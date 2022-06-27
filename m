@@ -2,274 +2,205 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D7B17C433EF
-	for <linux-ext4@archiver.kernel.org>; Sun, 26 Jun 2022 16:40:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C5B8C433EF
+	for <linux-ext4@archiver.kernel.org>; Mon, 27 Jun 2022 06:51:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230431AbiFZQkf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 26 Jun 2022 12:40:35 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49160 "EHLO
+        id S232523AbiF0Gv5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 27 Jun 2022 02:51:57 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43838 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230220AbiFZQke (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 26 Jun 2022 12:40:34 -0400
+        with ESMTP id S232117AbiF0Gv4 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Jun 2022 02:51:56 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9567F9594
-        for <linux-ext4@vger.kernel.org>; Sun, 26 Jun 2022 09:40:33 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3C2FD26C5;
+        Sun, 26 Jun 2022 23:51:55 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 2C1A260B50
-        for <linux-ext4@vger.kernel.org>; Sun, 26 Jun 2022 16:40:33 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 79CF1C34114;
-        Sun, 26 Jun 2022 16:40:32 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id D61A2612DB;
+        Mon, 27 Jun 2022 06:51:54 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 19B4BC341CA;
+        Mon, 27 Jun 2022 06:51:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1656261632;
-        bh=V9Svx3ReGMWFL0Xk6mqT9SYn/lKp+AKIxer1JwRQenU=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=JBZXdMSqwFjPnB4OMLMNUse7OrKq2fqiChq+cnSoMSZIfAXxtQC5eZDxLeSJ2CjnI
-         WkcJgyyM6IaGlPB5/gH3AShVCy+miYNUTbe6vfuVDk/8GDa8L0z3GOfwdUElc5gX+Q
-         e6jYgCteGO3WsB7tOKan06aUxVEifDHOxdR7tsngfHNx6e/3ZmVCMs+2rcIkmNkkZc
-         U0v5mDk/Td7mYYNjUzI36smJnITZKWObE8a8aI/Hcm+ofKAtOvUyQYnfhm8AvmuJA+
-         qZeeutG+sTmkNLPd9L/hWGtOnhv3u9OLY1DLgZy9uIk0F04D6BIhue3z2+5loMN2Vn
-         u0B02XqnxFQzw==
-Date:   Sun, 26 Jun 2022 09:40:31 -0700
-From:   "Darrick J. Wong" <djwong@kernel.org>
-To:     Jeremy Bongio <bongiojp@gmail.com>
-Cc:     Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] Add ioctls to get/set the ext4 superblock uuid.
-Message-ID: <YriL/2ixE6fsdkpP@magnolia>
-References: <20220625082225.103574-1-bongiojp@gmail.com>
+        s=k20201202; t=1656312714;
+        bh=+AyvxCvn4yrPcBcWfqYEVWf1b1GQlpHfuY/Cybxb1qo=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=u0kyDImxb6ZyniuA/XFG2ZruQkJXYj/PfvDeFPPIezA765VThYsDr0ji2oiz5QF3F
+         s1jByKAMJMVVEXc5AuuOQLBnBq86wBerTj9/815un4oI9ozaoP0eeS8AWP9+7tAT6R
+         7RX3MwLUokZiHug3h6a3TdaiphQDUbgY2Uzbsm5xq75/eqw0FN1OcWMYObRQLFxedC
+         mn2dPEufhuVilIqA//hKPekPP9ycmFsNDul+tU66lBUF/sVnnJTaiJf0nDTcB+KBaS
+         l2sT2EGU5EygVJobO9Jr3V9xkWr750hBsJUGi3Tg3rMkO8virBGT3EjrFsh0tGIULe
+         48KLCemLgTGpQ==
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-fscrypt@vger.kernel.org
+Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        Matthew Wilcox <willy@infradead.org>
+Subject: [PATCH 1/2] fscrypt: stop using PG_error to track error status
+Date:   Sun, 26 Jun 2022 23:50:49 -0700
+Message-Id: <20220627065050.274716-2-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.36.1
+In-Reply-To: <20220627065050.274716-1-ebiggers@kernel.org>
+References: <20220627065050.274716-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220625082225.103574-1-bongiojp@gmail.com>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, Jun 25, 2022 at 01:22:25AM -0700, Jeremy Bongio wrote:
-> This fixes a race between changing the ext4 superblock uuid and operations
-> like mounting, resizing, changing features, etc.
-> 
-> Reviewed-by: Theodore Ts'o <tytso@mit.edu>
-> Signed-off-by: Jeremy Bongio <bongiojp@gmail.com>
+From: Eric Biggers <ebiggers@google.com>
 
-This is a userspace abi change; it really should cc linux-fsdevel and
-linux-api.
+As a step towards freeing the PG_error flag for other uses, change ext4
+and f2fs to stop using PG_error to track decryption errors.  Instead, if
+a decryption error occurs, just mark the whole bio as failed.  The
+coarser granularity isn't really a problem since it isn't any worse than
+what the block layer provides, and errors from a multi-page readahead
+aren't reported to applications unless a single-page read fails too.
 
-> ---
->  fs/ext4/ext4.h  | 10 ++++++
->  fs/ext4/ioctl.c | 84 +++++++++++++++++++++++++++++++++++++++++++++++++
->  2 files changed, 94 insertions(+)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 75b8d81b2469..00747532cc4a 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -724,6 +724,8 @@ enum {
->  #define EXT4_IOC_GETSTATE		_IOW('f', 41, __u32)
->  #define EXT4_IOC_GET_ES_CACHE		_IOWR('f', 42, struct fiemap)
->  #define EXT4_IOC_CHECKPOINT		_IOW('f', 43, __u32)
-> +#define EXT4_IOC_GETFSUUID		_IOR('f', 44, struct fsuuid)
-> +#define EXT4_IOC_SETFSUUID		_IOW('f', 45, struct fsuuid)
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/crypto/bio.c         | 16 ++++++++++------
+ fs/ext4/readpage.c      |  8 +++++---
+ fs/f2fs/data.c          | 17 +++++++++--------
+ include/linux/fscrypt.h |  5 +++--
+ 4 files changed, 27 insertions(+), 19 deletions(-)
 
-One thing I've noticed people rarely do with a get/set ioctl pair -- the
-_IOR and _IOW macros encode the direction (R/W) in the ioctl number,
-which means that you don't need to use both 44 and 45 here.  We get 8
-bits of namespace ('f') and 8 bits of call number (44), and while
-they're generally not in /that/ short supply, a u16 will eventually fill
-up.
+diff --git a/fs/crypto/bio.c b/fs/crypto/bio.c
+index 2217fe5ece6f9..1b4403136d05c 100644
+--- a/fs/crypto/bio.c
++++ b/fs/crypto/bio.c
+@@ -25,21 +25,25 @@
+  * then this function isn't applicable.  This function may sleep, so it must be
+  * called from a workqueue rather than from the bio's bi_end_io callback.
+  *
+- * This function sets PG_error on any pages that contain any blocks that failed
+- * to be decrypted.  The filesystem must not mark such pages uptodate.
++ * Return: %true on success; %false on failure.  On failure, bio->bi_status is
++ *	   also set to an error status.
+  */
+-void fscrypt_decrypt_bio(struct bio *bio)
++bool fscrypt_decrypt_bio(struct bio *bio)
+ {
+ 	struct bio_vec *bv;
+ 	struct bvec_iter_all iter_all;
+ 
+ 	bio_for_each_segment_all(bv, bio, iter_all) {
+ 		struct page *page = bv->bv_page;
+-		int ret = fscrypt_decrypt_pagecache_blocks(page, bv->bv_len,
++		int err = fscrypt_decrypt_pagecache_blocks(page, bv->bv_len,
+ 							   bv->bv_offset);
+-		if (ret)
+-			SetPageError(page);
++
++		if (err) {
++			bio->bi_status = errno_to_blk_status(err);
++			return false;
++		}
+ 	}
++	return true;
+ }
+ EXPORT_SYMBOL(fscrypt_decrypt_bio);
+ 
+diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+index e02a5f14e0211..5ce4706f68a7c 100644
+--- a/fs/ext4/readpage.c
++++ b/fs/ext4/readpage.c
+@@ -96,10 +96,12 @@ static void decrypt_work(struct work_struct *work)
+ {
+ 	struct bio_post_read_ctx *ctx =
+ 		container_of(work, struct bio_post_read_ctx, work);
++	struct bio *bio = ctx->bio;
+ 
+-	fscrypt_decrypt_bio(ctx->bio);
+-
+-	bio_post_read_processing(ctx);
++	if (fscrypt_decrypt_bio(bio))
++		bio_post_read_processing(ctx);
++	else
++		__read_end_io(bio);
+ }
+ 
+ static void verity_work(struct work_struct *work)
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index 7fcbcf9797372..47065f17d579c 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -138,7 +138,7 @@ static void f2fs_finish_read_bio(struct bio *bio)
+ 			continue;
+ 		}
+ 
+-		/* PG_error was set if decryption or verity failed. */
++		/* PG_error was set if verity failed. */
+ 		if (bio->bi_status || PageError(page)) {
+ 			ClearPageUptodate(page);
+ 			/* will re-read again later */
+@@ -184,7 +184,7 @@ static void f2fs_verify_bio(struct work_struct *work)
+ 			struct page *page = bv->bv_page;
+ 
+ 			if (!f2fs_is_compressed_page(page) &&
+-			    !PageError(page) && !fsverity_verify_page(page))
++			    !fsverity_verify_page(page))
+ 				SetPageError(page);
+ 		}
+ 	} else {
+@@ -234,10 +234,8 @@ static void f2fs_handle_step_decompress(struct bio_post_read_ctx *ctx)
+ 	bio_for_each_segment_all(bv, ctx->bio, iter_all) {
+ 		struct page *page = bv->bv_page;
+ 
+-		/* PG_error was set if decryption failed. */
+ 		if (f2fs_is_compressed_page(page))
+-			f2fs_end_read_compressed_page(page, PageError(page),
+-						blkaddr);
++			f2fs_end_read_compressed_page(page, false, blkaddr);
+ 		else
+ 			all_compressed = false;
+ 
+@@ -257,14 +255,17 @@ static void f2fs_post_read_work(struct work_struct *work)
+ {
+ 	struct bio_post_read_ctx *ctx =
+ 		container_of(work, struct bio_post_read_ctx, work);
++	struct bio *bio = ctx->bio;
+ 
+-	if (ctx->enabled_steps & STEP_DECRYPT)
+-		fscrypt_decrypt_bio(ctx->bio);
++	if ((ctx->enabled_steps & STEP_DECRYPT) && !fscrypt_decrypt_bio(bio)) {
++		f2fs_finish_read_bio(bio);
++		return;
++	}
+ 
+ 	if (ctx->enabled_steps & STEP_DECOMPRESS)
+ 		f2fs_handle_step_decompress(ctx);
+ 
+-	f2fs_verify_and_finish_bio(ctx->bio);
++	f2fs_verify_and_finish_bio(bio);
+ }
+ 
+ static void f2fs_read_end_io(struct bio *bio)
+diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
+index e60d57c99cb6f..e9a3a51f29632 100644
+--- a/include/linux/fscrypt.h
++++ b/include/linux/fscrypt.h
+@@ -348,7 +348,7 @@ u64 fscrypt_fname_siphash(const struct inode *dir, const struct qstr *name);
+ int fscrypt_d_revalidate(struct dentry *dentry, unsigned int flags);
+ 
+ /* bio.c */
+-void fscrypt_decrypt_bio(struct bio *bio);
++bool fscrypt_decrypt_bio(struct bio *bio);
+ int fscrypt_zeroout_range(const struct inode *inode, pgoff_t lblk,
+ 			  sector_t pblk, unsigned int len);
+ 
+@@ -641,8 +641,9 @@ static inline int fscrypt_d_revalidate(struct dentry *dentry,
+ }
+ 
+ /* bio.c */
+-static inline void fscrypt_decrypt_bio(struct bio *bio)
++static inline bool fscrypt_decrypt_bio(struct bio *bio)
+ {
++	return true;
+ }
+ 
+ static inline int fscrypt_zeroout_range(const struct inode *inode, pgoff_t lblk,
 
-If you want to be paranoid, you could also encode a BUILD_BUG_ON to
-check that they're not the same.
+-- 
+2.36.1
 
->  
->  #define EXT4_IOC_SHUTDOWN _IOR ('X', 125, __u32)
->  
-> @@ -753,6 +755,14 @@ enum {
->  						EXT4_IOC_CHECKPOINT_FLAG_ZEROOUT | \
->  						EXT4_IOC_CHECKPOINT_FLAG_DRY_RUN)
->  
-> +/*
-> + * Structure for EXT4_IOC_GETFSUUID/EXT4_IOC_SETFSUUID
-> + */
-> +struct fsuuid {
-> +	size_t len;
-
-size_t... is a mess for userspace ABI.  If the kernel is running in a
-multiarch environment (e.g. i386 program running on x64 kernel) then
-you'll have to make sure that the field length is what you think it is.
-Given the current typedef hell w.r.t. size_t, I suggest making life
-easier on the reviewers and making @len explicitly sized.
-
-Also, please put in a @flags argument just in case someone someday needs
-to add some.
-
-> +	__u8 __user *b;
-
-Putting a pointer in an ioctl struct argument is a /very/ bad idea,
-because doing so (a) makes it harder for things like seccomp to inspect
-arguments, and (b) usually means you have to implement a bunch of fugly
-compat ioctl thunking code for multiarch systems (e.g. i386 program
-running on x64 kernel) to extract the pointer and convert it to a native
-pointer.
-
-You /could/ avoid both of these problems by requiring that the uuid data
-be stored in an unsized VLA at the end of the struct:
-
-	struct fsuuid {
-		__u32	fu_len;
-		__u32	fu_flags;
-
-		__u8	fu_uuid[];
-	};
-
-Then your set uuid validation code looks like this:
-
-	int ret = 0;
-	__u8 uuid[UUID_SIZE];
-	struct fsuuid fsuuid;
-
-	if (copy_from_user(&fsuuid, ufsuuid, sizeof(fsuuid)))
-		return -EFAULT;
-
-	if (fsuuid.fu_flags || fsuuid.fu_len != UUID_SIZE)
-		return -EINVAL;
-
-	if (copy_from_user(uuid, &fsuuid.fu_uuid[0], UUID_SIZE))
-		return -EFAULT;
-
-	/* actually set uuid... */
-
---D
-
-> +};
-> +
->  #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
->  /*
->   * ioctl commands in 32 bit emulation
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index cb01c1da0f9d..a47e24fc8c67 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -20,6 +20,7 @@
->  #include <linux/delay.h>
->  #include <linux/iversion.h>
->  #include <linux/fileattr.h>
-> +#include <linux/uuid.h>
->  #include "ext4_jbd2.h"
->  #include "ext4.h"
->  #include <linux/fsmap.h>
-> @@ -41,6 +42,15 @@ static void ext4_sb_setlabel(struct ext4_super_block *es, const void *arg)
->  	memcpy(es->s_volume_name, (char *)arg, EXT4_LABEL_MAX);
->  }
->  
-> +/*
-> + * Superblock modification callback function for changing file system
-> + * UUID.
-> + */
-> +static void ext4_sb_setuuid(struct ext4_super_block *es, const void *arg)
-> +{
-> +	memcpy(es->s_uuid, (__u8 *)arg, UUID_SIZE);
-> +}
-> +
->  static
->  int ext4_update_primary_sb(struct super_block *sb, handle_t *handle,
->  			   ext4_update_sb_callback func,
-> @@ -1131,6 +1141,74 @@ static int ext4_ioctl_getlabel(struct ext4_sb_info *sbi, char __user *user_label
->  	return 0;
->  }
->  
-> +static int ext4_ioctl_getuuid(struct ext4_sb_info *sbi,
-> +			struct fsuuid __user *ufsuuid)
-> +{
-> +	int ret = 0;
-> +	__u8 uuid[UUID_SIZE];
-> +	struct fsuuid fsuuid;
-> +
-> +	/* read uuid from userspace*/
-> +	if (copy_from_user(&fsuuid, ufsuuid, sizeof(fsuuid)))
-> +		return -EFAULT;
-> +
-> +	/* If invalid, return EINVAL */
-> +	if (fsuuid.len != UUID_SIZE)
-> +		return -EINVAL;
-> +
-> +
-> +	lock_buffer(sbi->s_sbh);
-> +	memcpy(uuid, sbi->s_es->s_uuid, UUID_SIZE);
-> +	unlock_buffer(sbi->s_sbh);
-> +
-> +	if (copy_to_user(fsuuid.b, uuid, UUID_SIZE))
-> +		ret = -EFAULT;
-> +
-> +	return ret;
-> +}
-> +
-> +static int ext4_ioctl_setuuid(struct file *filp,
-> +			const struct fsuuid __user *ufsuuid)
-> +{
-> +	int ret = 0;
-> +	struct super_block *sb = file_inode(filp)->i_sb;
-> +	struct fsuuid fsuuid;
-> +	__u8 uuid[UUID_SIZE];
-> +
-> +	if (!capable(CAP_SYS_ADMIN))
-> +		return -EPERM;
-> +
-> +	/*
-> +	 * If any checksums (group descriptors or metadata) are being used
-> +	 * then the checksum seed feature is required to change the UUID.
-> +	 */
-> +	if (((ext4_has_feature_gdt_csum(sb) || ext4_has_metadata_csum(sb))
-> +			&& !ext4_has_feature_csum_seed(sb))
-> +		|| ext4_has_feature_stable_inodes(sb))
-> +		return -EOPNOTSUPP;
-> +
-> +	/* Read the length uuid and userspace pointer to uuid from userspace. */
-> +	if (copy_from_user(&fsuuid, ufsuuid, sizeof(fsuuid)))
-> +		return -EFAULT;
-> +
-> +	/* If invalid, return EINVAL */
-> +	if (fsuuid.len != UUID_SIZE)
-> +		return -EINVAL;
-> +
-> +	/* Read uuid from userspace*/
-> +	if (copy_from_user(uuid, fsuuid.b, UUID_SIZE))
-> +		return -EFAULT;
-> +
-> +	ret = mnt_want_write_file(filp);
-> +	if (ret)
-> +		return ret;
-> +
-> +	ret = ext4_update_superblocks_fn(sb, ext4_sb_setuuid, &uuid);
-> +	mnt_drop_write_file(filp);
-> +
-> +	return ret;
-> +}
-> +
->  static long __ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
->  {
->  	struct inode *inode = file_inode(filp);
-> @@ -1509,6 +1587,10 @@ static long __ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
->  		return ext4_ioctl_setlabel(filp,
->  					   (const void __user *)arg);
->  
-> +	case EXT4_IOC_GETFSUUID:
-> +		return ext4_ioctl_getuuid(EXT4_SB(sb), (void __user *)arg);
-> +	case EXT4_IOC_SETFSUUID:
-> +		return ext4_ioctl_setuuid(filp, (const void __user *)arg);
->  	default:
->  		return -ENOTTY;
->  	}
-> @@ -1586,6 +1668,8 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
->  	case EXT4_IOC_CHECKPOINT:
->  	case FS_IOC_GETFSLABEL:
->  	case FS_IOC_SETFSLABEL:
-> +	case EXT4_IOC_GETFSUUID:
-> +	case EXT4_IOC_SETFSUUID:
->  		break;
->  	default:
->  		return -ENOIOCTLCMD;
-> -- 
-> 2.37.0.rc0.161.g10f37bed90-goog
-> 
