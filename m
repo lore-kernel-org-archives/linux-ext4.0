@@ -2,43 +2,43 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 13416C43334
-	for <linux-ext4@archiver.kernel.org>; Tue, 28 Jun 2022 00:15:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 05159CCA480
+	for <linux-ext4@archiver.kernel.org>; Tue, 28 Jun 2022 00:15:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242216AbiF1APt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 27 Jun 2022 20:15:49 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44392 "EHLO
+        id S242302AbiF1APv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 27 Jun 2022 20:15:51 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44410 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241616AbiF1AP3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Jun 2022 20:15:29 -0400
-Received: from NAM10-BN7-obe.outbound.protection.outlook.com (mail-bn7nam10on2067.outbound.protection.outlook.com [40.107.92.67])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B594A63D5;
-        Mon, 27 Jun 2022 17:15:28 -0700 (PDT)
+        with ESMTP id S242039AbiF1APb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Jun 2022 20:15:31 -0400
+Received: from NAM04-BN8-obe.outbound.protection.outlook.com (mail-bn8nam04on2056.outbound.protection.outlook.com [40.107.100.56])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 185F4641F;
+        Mon, 27 Jun 2022 17:15:30 -0700 (PDT)
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=BD2EQOcjfcS8lK/SsKTwyY2tYKtELO+gdLHjyqPKx3e/jtF50bV+qyTbmRqqNI1PZuFTC+C1mnDnzcJSa6jp5GJQryBJgkgLm7ZDdyKosmKlPkGErinv5TWDnThLWz4+cetBg/QbdxJYURhoQckfq54F+LB/ywwxAVgsJq7Wu5fl9R2unnLUPEwpDg7JvX5u5tjj71g8iP0XMbAKzStCiMrBGb3jHwysjg+V2GIYcaf6R2gV+xIH4BHD37EoA06KkF83sqPD9BEo5taPIWPqDEFhEgfYu55CopOEMZba9+AWnpK82pTdp3ermq6PgMO+KO4H8vuD3KkvfcGghrX9zw==
+ b=CQBoNlNOEbv562ppiTOUc5ziJc9wKlw7zOfWD2aYhQB2kd0SOw8lSEfa/OQU/Q1rYwriCt0B9srw7vk3EJg1geYHx0oGxS+iIHs15IPLH1rE6ParXJUcyjF+GfDX9f0g09ChqwQXzOitvbSHcXnsNSMJr8TWvLf3wq8WtTov/9qhiQuweEhDfS5H09kQEYRB5M4DpbO1L97vBq1xUSpiuiSUqjgaoWbJwbX93IYsIfAKKx7dT7+s7QR7aFql1TTzdiXeEIpbiaiyVcAUS5zLf4jemU9+5JpqV6CR3kZWhkEDUmu30mydB1yLaR61EtIT7QCZ89306kctCxOI+4n7eg==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector9901;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=lOc606mfE+GTytdQbIdWily1XFcltRIawMZTJWDA8VM=;
- b=WM3sNLWrpXgvH3IRMnTsskjSUBF5J7V3QGqzlRM9tPV5xWDA4jf9uMaDirE0BMLiIq5AK1XCnD/rllUJgkwTQVd6Igcgu0TDG1j+yojssDWNdo4P70PaNxX/UQfBXCjdzkm1pRN47IgorE2emwYNicqX9m5+NFa3EoiZj4gfbz2qn+qyjd7NrYRuMiUfA9r50jjFi7iYj0HjqfNKzbPYtw8IKb7YqWqD+OH5ksIM/p5SwjQrw8JQukoNBZN6vxohkhH2yviXotOHKs1chM5Kv1rjn5MXddaqthpNHRxjhXy2e6X/nSaiRLWBtSCFvo3zL7DWh5rNVcGeyVd805md6w==
+ bh=0Gq5krbSDZgVmQmlPCe18YVS7UIhP8NZXgBaLYb/5yI=;
+ b=DA6BCuaRtkF8NYh5oPiHmGcUWTiF0tRsxobKYVxm5Jizf/HiOdXro89G2Ke9JV5l2Bf967NDFVksdQw9SYnzct3hw9P5fA7hItdGU+ODNhEd9ys1akFcki0hRc1gbKuNgjRqDSDRj3/iBHnRxrrSXWtB13nITYDrU2oaQ0/hhiM65vGpQtkLKH37e258BDyjU+szrl+cGzqUk86q17pRSBKnrFdcLWzWo5fwevtcUWfG58/OTXLex7ICU8g99GF5zjPMir6iKndsV7K1tkVC9O/faO6mUc7yxvmTkIy4XW7i7kzGwFeNQrw6qOZ+lJD8dNlweBwF2dPx6hU0ncDsgw==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass (sender ip is
  165.204.84.17) smtp.rcpttodomain=nvidia.com smtp.mailfrom=amd.com; dmarc=pass
  (p=quarantine sp=quarantine pct=100) action=none header.from=amd.com;
  dkim=none (message not signed); arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=amd.com; s=selector1;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=lOc606mfE+GTytdQbIdWily1XFcltRIawMZTJWDA8VM=;
- b=uLGB7Sgr+3/FiBtGe1XlinL2uqhInwwb/LgZ5OwrYCOKzG1+BGB29aGMLP0M480j3wiYeIRflV36rykle7DBNtRk1CBzJX3X0cmMX69/B8BcuobrYOzF9nz4zG7s0N3x0+CWTrD9tdw58AkUOP+hnCfWCs5rHzrMhL7up9tPP0o=
+ bh=0Gq5krbSDZgVmQmlPCe18YVS7UIhP8NZXgBaLYb/5yI=;
+ b=2NTeppBeiOqRZNUx3VdUT5FXcIXb459R0UKQyX0gXTqWSVpYvfCKr2VufNkGoSUO9y3wf0SnKsQld4kUYN2tn/gm1DYLwszwoXYFlaqRtweYGZ6NyGit94Ve+AKOl3cEA8KhJFWXVwYZqqdZrBJVeXkoba6pgmIysBfZ8n+Fm6A=
 Received: from MW4PR03CA0175.namprd03.prod.outlook.com (2603:10b6:303:8d::30)
- by BN6PR12MB1939.namprd12.prod.outlook.com (2603:10b6:404:107::12) with
+ by CH2PR12MB3669.namprd12.prod.outlook.com (2603:10b6:610:27::25) with
  Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5373.15; Tue, 28 Jun
- 2022 00:15:26 +0000
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5373.16; Tue, 28 Jun
+ 2022 00:15:27 +0000
 Received: from CO1NAM11FT057.eop-nam11.prod.protection.outlook.com
- (2603:10b6:303:8d:cafe::e7) by MW4PR03CA0175.outlook.office365.com
+ (2603:10b6:303:8d:cafe::16) by MW4PR03CA0175.outlook.office365.com
  (2603:10b6:303:8d::30) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5373.17 via Frontend
- Transport; Tue, 28 Jun 2022 00:15:26 +0000
+ Transport; Tue, 28 Jun 2022 00:15:27 +0000
 X-MS-Exchange-Authentication-Results: spf=pass (sender IP is 165.204.84.17)
  smtp.mailfrom=amd.com; dkim=none (message not signed)
  header.d=none;dmarc=pass action=none header.from=amd.com;
@@ -48,11 +48,11 @@ Received-SPF: Pass (protection.outlook.com: domain of amd.com designates
 Received: from SATLEXMB04.amd.com (165.204.84.17) by
  CO1NAM11FT057.mail.protection.outlook.com (10.13.174.205) with Microsoft SMTP
  Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.20.5373.15 via Frontend Transport; Tue, 28 Jun 2022 00:15:25 +0000
+ 15.20.5373.15 via Frontend Transport; Tue, 28 Jun 2022 00:15:27 +0000
 Received: from alex-MS-7B09.amd.com (10.180.168.240) by SATLEXMB04.amd.com
  (10.181.40.145) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.28; Mon, 27 Jun
- 2022 19:15:23 -0500
+ 2022 19:15:25 -0500
 From:   Alex Sierra <alex.sierra@amd.com>
 To:     <jgg@nvidia.com>
 CC:     <david@redhat.com>, <Felix.Kuehling@amd.com>, <linux-mm@kvack.org>,
@@ -61,9 +61,9 @@ CC:     <david@redhat.com>, <Felix.Kuehling@amd.com>, <linux-mm@kvack.org>,
         <dri-devel@lists.freedesktop.org>, <hch@lst.de>,
         <jglisse@redhat.com>, <apopple@nvidia.com>, <willy@infradead.org>,
         <akpm@linux-foundation.org>
-Subject: [PATCH v6 06/14] mm: add device coherent checker to is_pinnable_page
-Date:   Mon, 27 Jun 2022 19:14:46 -0500
-Message-ID: <20220628001454.3503-7-alex.sierra@amd.com>
+Subject: [PATCH v6 09/14] lib: test_hmm add module param for zone device type
+Date:   Mon, 27 Jun 2022 19:14:49 -0500
+Message-ID: <20220628001454.3503-10-alex.sierra@amd.com>
 X-Mailer: git-send-email 2.32.0
 In-Reply-To: <20220628001454.3503-1-alex.sierra@amd.com>
 References: <20220628001454.3503-1-alex.sierra@amd.com>
@@ -75,167 +75,200 @@ X-ClientProxiedBy: SATLEXMB04.amd.com (10.181.40.145) To SATLEXMB04.amd.com
  (10.181.40.145)
 X-EOPAttributedMessage: 0
 X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: 28e050aa-050a-4656-c2ad-08da589b4cec
-X-MS-TrafficTypeDiagnostic: BN6PR12MB1939:EE_
+X-MS-Office365-Filtering-Correlation-Id: 785ac2d5-9c84-4c95-0466-08da589b4db5
+X-MS-TrafficTypeDiagnostic: CH2PR12MB3669:EE_
 X-MS-Exchange-SenderADCheck: 1
 X-MS-Exchange-AntiSpam-Relay: 0
 X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: fHZjme3QrUcv8uzFpdg09GbLsXhCf8XpwTTGz+lSfL5mBDMfbiJziO9+gJ9kQu91U8WXFlNDphnL48xvIYQ7Q9TJWpGYvNv8woAOwyDWuxKLiJ7XhnwYfAuB/NkCP+Hm5zy/oIaBy+9kHeWg+EmmZw76Tix81sjnAERo2Lc4OtfnA1VWAYzk8eFhTi+P9ns0RgJtPneZs0ojJRKwiLQSC9VtC5NfKpYYUVlB5ApfC49/eGAwZaFpFUGW+SUj4PM3yNU+iC5njnLh1QDIdXVBvL1Cn5CnHaktFvqQMILHIsGhXekqiL8HaV1TXh93hRYW6BMmcvjpDQHxUDGT5eThKz9PXg16Vxf35h8gXU8fwDN9udzjcMCyel6TMrxaX69qh3r4NTG7yH3pLRHLmvU0xzCCxsqvqIS14ma2VLZDJxk/0qp4ecAvYnZZ157KhQ0Skp1jslft0+zNNpz9XVArSLGjapQeZRWc5533rNm9fwzoY0vl03IxS3nP8+SA3Y4X057/5MjVB0rqMDXHg5FuS7boD/6VBb07Pi6Gd8BXc36/UNuqjOPn5QRlzTk+hNSerjs+G/kGvCMUH5i1EJrwmUfTZxiPRTK0+9YRVONy1qFmGLosVBfiSDM9BrilI6cT1uTOSAwlpn56xD1BF5gEy0LDXkmYxZX6LUhINYHM6B1L6cXHyI6mfAFYp1wFMJBJvdcfo4/Ua2Ip2CHBZgkxIguCLxzvD4nMPfEZf/qqP3sMkUEb0J7wNVkmDq9JYbrQZkRnB/IrQ0yNl7BpumNQ4pXyCl+R8qDHqnr24shvkt0YbziiKaF3z14Uw1mTGeWwXiDXtcal7A9TDz0Qy0hlKw==
-X-Forefront-Antispam-Report: CIP:165.204.84.17;CTRY:US;LANG:en;SCL:1;SRV:;IPV:CAL;SFV:NSPM;H:SATLEXMB04.amd.com;PTR:InfoDomainNonexistent;CAT:NONE;SFS:(13230016)(4636009)(346002)(376002)(396003)(39860400002)(136003)(40470700004)(46966006)(36840700001)(426003)(336012)(6916009)(2906002)(47076005)(36756003)(54906003)(316002)(36860700001)(2616005)(16526019)(4326008)(40480700001)(40460700003)(478600001)(83380400001)(1076003)(6666004)(70586007)(8936002)(186003)(70206006)(8676002)(41300700001)(86362001)(5660300002)(7416002)(81166007)(26005)(82740400003)(82310400005)(7696005)(44832011)(356005)(36900700001);DIR:OUT;SFP:1101;
+X-Microsoft-Antispam-Message-Info: DMPK10uccKv4VA3wDYXBsCn+dE2zZs9JaXLG8zUsl+gDxlFsnkDP2Mip09vF+N+lMEa56wgplLUO7BaikDcfTeoVVIPSFO0g2cQtEFkuBpVWafOBHmTvXD2r+D2X8xFQ0ft/9CSB1GlXZ8dvzB5/FJG6o8J2foxuglCoEGWuriroRVzA62K9ijVPwVPW0z5GNEXIJcFctvUzDBky2j8E/Kr8Ft2Dq8YX6IOW//Bmw/PYCzyIFAHjeRVdh5EjCLYyr84VHyfg4i9BLESDbvf4eToO67tmGVDS77/8Mw4QY+eBsvLF/6CBBv46S+IVuMlTv/xnZhDHzMOj6fxb0oFU6nQIyy3Mgm3SbrvGOEIQiNVixJp62r1/v+FrMs248sK1wQkvIDVWU7RpUWSyLzIBOG9MC8X9MCnxKcOVu9/ZH3YCGg7tYVd2Xra16YvhxupJiY4BnjHMnVLqGJ6gPqO2Q6KnLV895WDhBMxf/P9gdh15tbNQVl+An+WkDLc6WqPrhpzgpJvZdhTJ5mwM8ZlHZXbrEdzvUTDWhNzT3ie0TlGC/W4RxEX/BaroWhMHg7JIfKMdaS/auf41sWWV9UnymhNjXrRHBNQHUkLdztk04m+BXLmtUkn0sK4x61pIknYvUGejQTt9ldJz1mg0RuNLaTUmGRgl6ATwOzoMimZBAMx2i9ERjBa2GgRZpvKmAkOP9O0jDJ/M9+XzMWrRGojPRRVSQyvM1xbPUzUHyhoJALRsjIv/2C62tduCNrEzFbm4q4qAB+9Y9e6/J5cvetVUIhIH19ypOS5ZjocZ91m40+xfvqHatYXGyqBpZgCCl4JLbexGQVAOUzhm6RCa5mxlZw==
+X-Forefront-Antispam-Report: CIP:165.204.84.17;CTRY:US;LANG:en;SCL:1;SRV:;IPV:CAL;SFV:NSPM;H:SATLEXMB04.amd.com;PTR:InfoDomainNonexistent;CAT:NONE;SFS:(13230016)(4636009)(39860400002)(376002)(396003)(136003)(346002)(36840700001)(40470700004)(46966006)(4326008)(8676002)(82740400003)(316002)(356005)(70586007)(1076003)(70206006)(6666004)(36756003)(54906003)(82310400005)(186003)(36860700001)(40460700003)(16526019)(2616005)(40480700001)(83380400001)(47076005)(7696005)(426003)(2906002)(44832011)(41300700001)(7416002)(336012)(86362001)(8936002)(26005)(6916009)(478600001)(81166007)(5660300002)(36900700001);DIR:OUT;SFP:1101;
 X-OriginatorOrg: amd.com
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 28 Jun 2022 00:15:25.8387
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 28 Jun 2022 00:15:27.1355
  (UTC)
-X-MS-Exchange-CrossTenant-Network-Message-Id: 28e050aa-050a-4656-c2ad-08da589b4cec
+X-MS-Exchange-CrossTenant-Network-Message-Id: 785ac2d5-9c84-4c95-0466-08da589b4db5
 X-MS-Exchange-CrossTenant-Id: 3dd8961f-e488-4e60-8e11-a82d994e183d
 X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=3dd8961f-e488-4e60-8e11-a82d994e183d;Ip=[165.204.84.17];Helo=[SATLEXMB04.amd.com]
 X-MS-Exchange-CrossTenant-AuthSource: CO1NAM11FT057.eop-nam11.prod.protection.outlook.com
 X-MS-Exchange-CrossTenant-AuthAs: Anonymous
 X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: BN6PR12MB1939
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH2PR12MB3669
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-is_device_coherent checker was added to is_pinnable_page and renamed
-to is_longterm_pinnable_page. The reason is that device coherent
-pages are not supported for longterm pinning.
+In order to configure device coherent in test_hmm, two module parameters
+should be passed, which correspond to the SP start address of each
+device (2) spm_addr_dev0 & spm_addr_dev1. If no parameters are passed,
+private device type is configured.
 
 Signed-off-by: Alex Sierra <alex.sierra@amd.com>
+Acked-by: Felix Kuehling <Felix.Kuehling@amd.com>
+Reviewed-by: Alistair Poppple <apopple@nvidia.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/memremap.h | 25 +++++++++++++++++++++++++
- include/linux/mm.h       | 24 ------------------------
- mm/gup.c                 |  5 ++---
- mm/gup_test.c            |  4 ++--
- mm/hugetlb.c             |  2 +-
- 5 files changed, 30 insertions(+), 30 deletions(-)
+ lib/test_hmm.c      | 73 ++++++++++++++++++++++++++++++++-------------
+ lib/test_hmm_uapi.h |  1 +
+ 2 files changed, 53 insertions(+), 21 deletions(-)
 
-diff --git a/include/linux/memremap.h b/include/linux/memremap.h
-index 9f752ebed613..6fc0ced64b2d 100644
---- a/include/linux/memremap.h
-+++ b/include/linux/memremap.h
-@@ -169,6 +169,31 @@ static inline bool is_pci_p2pdma_page(const struct page *page)
- 		page->pgmap->type == MEMORY_DEVICE_PCI_P2PDMA;
+diff --git a/lib/test_hmm.c b/lib/test_hmm.c
+index 915ef6b5b0d4..afb30af9f3ff 100644
+--- a/lib/test_hmm.c
++++ b/lib/test_hmm.c
+@@ -37,6 +37,16 @@
+ #define DEVMEM_CHUNK_SIZE		(256 * 1024 * 1024U)
+ #define DEVMEM_CHUNKS_RESERVE		16
+ 
++static unsigned long spm_addr_dev0;
++module_param(spm_addr_dev0, long, 0644);
++MODULE_PARM_DESC(spm_addr_dev0,
++		"Specify start address for SPM (special purpose memory) used for device 0. By setting this Coherent device type will be used. Make sure spm_addr_dev1 is set too. Minimum SPM size should be DEVMEM_CHUNK_SIZE.");
++
++static unsigned long spm_addr_dev1;
++module_param(spm_addr_dev1, long, 0644);
++MODULE_PARM_DESC(spm_addr_dev1,
++		"Specify start address for SPM (special purpose memory) used for device 1. By setting this Coherent device type will be used. Make sure spm_addr_dev0 is set too. Minimum SPM size should be DEVMEM_CHUNK_SIZE.");
++
+ static const struct dev_pagemap_ops dmirror_devmem_ops;
+ static const struct mmu_interval_notifier_ops dmirror_min_ops;
+ static dev_t dmirror_dev;
+@@ -455,28 +465,44 @@ static int dmirror_write(struct dmirror *dmirror, struct hmm_dmirror_cmd *cmd)
+ 	return ret;
  }
  
-+/* MIGRATE_CMA and ZONE_MOVABLE do not allow pin pages */
-+#ifdef CONFIG_MIGRATION
-+static inline bool is_longterm_pinnable_page(struct page *page)
-+{
-+#ifdef CONFIG_CMA
-+	int mt = get_pageblock_migratetype(page);
-+
-+	if (mt == MIGRATE_CMA || mt == MIGRATE_ISOLATE)
-+		return false;
-+#endif
-+	return !(is_device_coherent_page(page) ||
-+		 is_zone_movable_page(page) ||
-+		 is_zero_pfn(page_to_pfn(page)));
-+}
-+#else
-+static inline bool is_longterm_pinnable_page(struct page *page)
-+{
-+	return true;
-+}
-+#endif
-+static inline bool folio_is_longterm_pinnable(struct folio *folio)
-+{
-+	return is_longterm_pinnable_page(&folio->page);
-+}
-+
- #ifdef CONFIG_ZONE_DEVICE
- void *memremap_pages(struct dev_pagemap *pgmap, int nid);
- void memunmap_pages(struct dev_pagemap *pgmap);
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index f6f5d48c1934..b91a4a1f260b 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1590,30 +1590,6 @@ static inline bool page_needs_cow_for_dma(struct vm_area_struct *vma,
- 	return page_maybe_dma_pinned(page);
- }
- 
--/* MIGRATE_CMA and ZONE_MOVABLE do not allow pin pages */
--#ifdef CONFIG_MIGRATION
--static inline bool is_pinnable_page(struct page *page)
--{
--#ifdef CONFIG_CMA
--	int mt = get_pageblock_migratetype(page);
--
--	if (mt == MIGRATE_CMA || mt == MIGRATE_ISOLATE)
--		return false;
--#endif
--	return !is_zone_movable_page(page) || is_zero_pfn(page_to_pfn(page));
--}
--#else
--static inline bool is_pinnable_page(struct page *page)
--{
--	return true;
--}
--#endif
--
--static inline bool folio_is_pinnable(struct folio *folio)
--{
--	return is_pinnable_page(&folio->page);
--}
--
- static inline void set_page_zone(struct page *page, enum zone_type zone)
+-static bool dmirror_allocate_chunk(struct dmirror_device *mdevice,
++static int dmirror_allocate_chunk(struct dmirror_device *mdevice,
+ 				   struct page **ppage)
  {
- 	page->flags &= ~(ZONES_MASK << ZONES_PGSHIFT);
-diff --git a/mm/gup.c b/mm/gup.c
-index c29a7b5fbbfd..ada73b775a82 100644
---- a/mm/gup.c
-+++ b/mm/gup.c
-@@ -133,8 +133,7 @@ struct folio *try_grab_folio(struct page *page, int refs, unsigned int flags)
- 		 * path.
- 		 */
- 		if (unlikely((flags & FOLL_LONGTERM) &&
--			     (!is_pinnable_page(page) ||
--			     is_device_coherent_page(page))))
-+			    !is_longterm_pinnable_page(page)))
- 			return NULL;
+ 	struct dmirror_chunk *devmem;
+-	struct resource *res;
++	struct resource *res = NULL;
+ 	unsigned long pfn;
+ 	unsigned long pfn_first;
+ 	unsigned long pfn_last;
+ 	void *ptr;
++	int ret = -ENOMEM;
  
- 		/*
-@@ -1931,7 +1930,7 @@ static long check_and_migrate_movable_pages(unsigned long nr_pages,
- 			continue;
+ 	devmem = kzalloc(sizeof(*devmem), GFP_KERNEL);
+ 	if (!devmem)
+-		return false;
++		return ret;
+ 
+-	res = request_free_mem_region(&iomem_resource, DEVMEM_CHUNK_SIZE,
+-				      "hmm_dmirror");
+-	if (IS_ERR(res))
++	switch (mdevice->zone_device_type) {
++	case HMM_DMIRROR_MEMORY_DEVICE_PRIVATE:
++		res = request_free_mem_region(&iomem_resource, DEVMEM_CHUNK_SIZE,
++					      "hmm_dmirror");
++		if (IS_ERR_OR_NULL(res))
++			goto err_devmem;
++		devmem->pagemap.range.start = res->start;
++		devmem->pagemap.range.end = res->end;
++		devmem->pagemap.type = MEMORY_DEVICE_PRIVATE;
++		break;
++	case HMM_DMIRROR_MEMORY_DEVICE_COHERENT:
++		devmem->pagemap.range.start = (MINOR(mdevice->cdevice.dev) - 2) ?
++							spm_addr_dev0 :
++							spm_addr_dev1;
++		devmem->pagemap.range.end = devmem->pagemap.range.start +
++					    DEVMEM_CHUNK_SIZE - 1;
++		devmem->pagemap.type = MEMORY_DEVICE_COHERENT;
++		break;
++	default:
++		ret = -EINVAL;
+ 		goto err_devmem;
++	}
+ 
+-	devmem->pagemap.type = MEMORY_DEVICE_PRIVATE;
+-	devmem->pagemap.range.start = res->start;
+-	devmem->pagemap.range.end = res->end;
+ 	devmem->pagemap.nr_range = 1;
+ 	devmem->pagemap.ops = &dmirror_devmem_ops;
+ 	devmem->pagemap.owner = mdevice;
+@@ -497,10 +523,14 @@ static bool dmirror_allocate_chunk(struct dmirror_device *mdevice,
+ 		mdevice->devmem_capacity = new_capacity;
+ 		mdevice->devmem_chunks = new_chunks;
+ 	}
+-
+ 	ptr = memremap_pages(&devmem->pagemap, numa_node_id());
+-	if (IS_ERR(ptr))
++	if (IS_ERR_OR_NULL(ptr)) {
++		if (ptr)
++			ret = PTR_ERR(ptr);
++		else
++			ret = -EFAULT;
+ 		goto err_release;
++	}
+ 
+ 	devmem->mdevice = mdevice;
+ 	pfn_first = devmem->pagemap.range.start >> PAGE_SHIFT;
+@@ -529,15 +559,17 @@ static bool dmirror_allocate_chunk(struct dmirror_device *mdevice,
+ 	}
+ 	spin_unlock(&mdevice->lock);
+ 
+-	return true;
++	return 0;
+ 
+ err_release:
+ 	mutex_unlock(&mdevice->devmem_lock);
+-	release_mem_region(devmem->pagemap.range.start, range_len(&devmem->pagemap.range));
++	if (res && devmem->pagemap.type == MEMORY_DEVICE_PRIVATE)
++		release_mem_region(devmem->pagemap.range.start,
++				   range_len(&devmem->pagemap.range));
+ err_devmem:
+ 	kfree(devmem);
+ 
+-	return false;
++	return ret;
+ }
+ 
+ static struct page *dmirror_devmem_alloc_page(struct dmirror_device *mdevice)
+@@ -562,7 +594,7 @@ static struct page *dmirror_devmem_alloc_page(struct dmirror_device *mdevice)
+ 		spin_unlock(&mdevice->lock);
+ 	} else {
+ 		spin_unlock(&mdevice->lock);
+-		if (!dmirror_allocate_chunk(mdevice, &dpage))
++		if (dmirror_allocate_chunk(mdevice, &dpage))
+ 			goto error;
+ 	}
+ 
+@@ -1232,10 +1264,8 @@ static int dmirror_device_init(struct dmirror_device *mdevice, int id)
+ 	if (ret)
+ 		return ret;
+ 
+-	/* Build a list of free ZONE_DEVICE private struct pages */
+-	dmirror_allocate_chunk(mdevice, NULL);
+-
+-	return 0;
++	/* Build a list of free ZONE_DEVICE struct pages */
++	return dmirror_allocate_chunk(mdevice, NULL);
+ }
+ 
+ static void dmirror_device_remove(struct dmirror_device *mdevice)
+@@ -1248,8 +1278,9 @@ static void dmirror_device_remove(struct dmirror_device *mdevice)
+ 				mdevice->devmem_chunks[i];
+ 
+ 			memunmap_pages(&devmem->pagemap);
+-			release_mem_region(devmem->pagemap.range.start,
+-					   range_len(&devmem->pagemap.range));
++			if (devmem->pagemap.type == MEMORY_DEVICE_PRIVATE)
++				release_mem_region(devmem->pagemap.range.start,
++						   range_len(&devmem->pagemap.range));
+ 			kfree(devmem);
  		}
+ 		kfree(mdevice->devmem_chunks);
+diff --git a/lib/test_hmm_uapi.h b/lib/test_hmm_uapi.h
+index 0511af7464ee..f700da7807c1 100644
+--- a/lib/test_hmm_uapi.h
++++ b/lib/test_hmm_uapi.h
+@@ -66,6 +66,7 @@ enum {
+ enum {
+ 	/* 0 is reserved to catch uninitialized type fields */
+ 	HMM_DMIRROR_MEMORY_DEVICE_PRIVATE = 1,
++	HMM_DMIRROR_MEMORY_DEVICE_COHERENT,
+ };
  
--		if (folio_is_pinnable(folio))
-+		if (folio_is_longterm_pinnable(folio))
- 			continue;
- 		/*
- 		 * Try to move out any movable page before pinning the range.
-diff --git a/mm/gup_test.c b/mm/gup_test.c
-index d974dec19e1c..9d705ba6737e 100644
---- a/mm/gup_test.c
-+++ b/mm/gup_test.c
-@@ -1,5 +1,5 @@
- #include <linux/kernel.h>
--#include <linux/mm.h>
-+#include <linux/memremap.h>
- #include <linux/slab.h>
- #include <linux/uaccess.h>
- #include <linux/ktime.h>
-@@ -53,7 +53,7 @@ static void verify_dma_pinned(unsigned int cmd, struct page **pages,
- 				dump_page(page, "gup_test failure");
- 				break;
- 			} else if (cmd == PIN_LONGTERM_BENCHMARK &&
--				WARN(!is_pinnable_page(page),
-+				WARN(!is_longterm_pinnable_page(page),
- 				     "pages[%lu] is NOT pinnable but pinned\n",
- 				     i)) {
- 				dump_page(page, "gup_test failure");
-diff --git a/mm/hugetlb.c b/mm/hugetlb.c
-index a57e1be41401..368fd33787b0 100644
---- a/mm/hugetlb.c
-+++ b/mm/hugetlb.c
-@@ -1135,7 +1135,7 @@ static struct page *dequeue_huge_page_node_exact(struct hstate *h, int nid)
- 
- 	lockdep_assert_held(&hugetlb_lock);
- 	list_for_each_entry(page, &h->hugepage_freelists[nid], lru) {
--		if (pin && !is_pinnable_page(page))
-+		if (pin && !is_longterm_pinnable_page(page))
- 			continue;
- 
- 		if (PageHWPoison(page))
+ #endif /* _LIB_TEST_HMM_UAPI_H */
 -- 
 2.32.0
 
