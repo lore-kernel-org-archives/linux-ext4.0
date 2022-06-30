@@ -2,98 +2,154 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 78ED4C433EF
-	for <linux-ext4@archiver.kernel.org>; Thu, 30 Jun 2022 02:17:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BBA8EC43334
+	for <linux-ext4@archiver.kernel.org>; Thu, 30 Jun 2022 08:48:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230031AbiF3CR0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 29 Jun 2022 22:17:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40238 "EHLO
+        id S232626AbiF3IsX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 30 Jun 2022 04:48:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49240 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229838AbiF3CRY (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Jun 2022 22:17:24 -0400
-Received: from smtp-fw-9103.amazon.com (smtp-fw-9103.amazon.com [207.171.188.200])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ECBDA3ED06
-        for <linux-ext4@vger.kernel.org>; Wed, 29 Jun 2022 19:17:23 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1656555443; x=1688091443;
-  h=from:to:cc:subject:date:message-id:content-id:
-   content-transfer-encoding:mime-version;
-  bh=9jANJrW7ubZRP9TAdwc8HwoaUKBQJ2y9smDQOggWf+Q=;
-  b=AXvJUPUYZ2gkouxixmcBJ3J1ZpgLWYOdgZUo7RyFo5YR6ajAtu5GOBg0
-   /p19MD1dZg2JptFYbShpAEKFkd0OQsvXWeh3mr/xLZYezVC9rx7xKBTyV
-   pMlvAiqTwobta58+wH7vV8LNoHRohe1iaTNdEryJjJTrB/w1vKtZumUcJ
-   4=;
-X-IronPort-AV: E=Sophos;i="5.92,232,1650931200"; 
-   d="scan'208";a="1029491557"
-Received: from pdx4-co-svc-p1-lb2-vlan3.amazon.com (HELO email-inbound-relay-pdx-2a-5bed4ba5.us-west-2.amazon.com) ([10.25.36.214])
-  by smtp-border-fw-9103.sea19.amazon.com with ESMTP; 30 Jun 2022 02:17:22 +0000
-Received: from EX13MTAUWB001.ant.amazon.com (pdx1-ws-svc-p6-lb9-vlan3.pdx.amazon.com [10.236.137.198])
-        by email-inbound-relay-pdx-2a-5bed4ba5.us-west-2.amazon.com (Postfix) with ESMTPS id 6478FE3903;
-        Thu, 30 Jun 2022 02:17:22 +0000 (UTC)
-Received: from EX13D23UWA003.ant.amazon.com (10.43.160.194) by
- EX13MTAUWB001.ant.amazon.com (10.43.161.207) with Microsoft SMTP Server (TLS)
- id 15.0.1497.36; Thu, 30 Jun 2022 02:17:21 +0000
-Received: from EX13D23UWA003.ant.amazon.com (10.43.160.194) by
- EX13D23UWA003.ant.amazon.com (10.43.160.194) with Microsoft SMTP Server (TLS)
- id 15.0.1497.36; Thu, 30 Jun 2022 02:17:21 +0000
-Received: from EX13D23UWA003.ant.amazon.com ([10.43.160.194]) by
- EX13D23UWA003.ant.amazon.com ([10.43.160.194]) with mapi id 15.00.1497.036;
- Thu, 30 Jun 2022 02:17:21 +0000
-From:   "Kiselev, Oleg" <okiselev@amazon.com>
-To:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-CC:     Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] ext4: reduce computation of overhead during resize
-Thread-Topic: [PATCH 1/2] ext4: reduce computation of overhead during resize
-Thread-Index: AQHYjCeH91+dMyGz00Kz59z9i8AzhA==
-Date:   Thu, 30 Jun 2022 02:17:21 +0000
-Message-ID: <D03FEE2D-DCAE-44A7-B0D3-0047808426BB@amazon.com>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-ms-exchange-messagesentrepresentingtype: 1
-x-ms-exchange-transport-fromentityheader: Hosted
-x-originating-ip: [10.43.160.98]
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <484D0C63709E0B4392430A7CC8E10D30@amazon.com>
-Content-Transfer-Encoding: base64
+        with ESMTP id S229964AbiF3IsX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Jun 2022 04:48:23 -0400
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4E8B7186CA
+        for <linux-ext4@vger.kernel.org>; Thu, 30 Jun 2022 01:48:21 -0700 (PDT)
+Received: from canpemm500005.china.huawei.com (unknown [172.30.72.54])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4LYX4L4gFGzkWdZ;
+        Thu, 30 Jun 2022 16:46:26 +0800 (CST)
+Received: from huawei.com (10.175.127.227) by canpemm500005.china.huawei.com
+ (7.192.104.229) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Thu, 30 Jun
+ 2022 16:48:19 +0800
+From:   Zhang Yi <yi.zhang@huawei.com>
+To:     <linux-ext4@vger.kernel.org>
+CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
+        <openglfreak@googlemail.com>, <yi.zhang@huawei.com>,
+        <yukuai3@huawei.com>
+Subject: [PATCH] ext4: fix reading leftover inlined symlinks
+Date:   Thu, 30 Jun 2022 17:01:00 +0800
+Message-ID: <20220630090100.2769490-1-yi.zhang@huawei.com>
+X-Mailer: git-send-email 2.31.1
 MIME-Version: 1.0
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.127.227]
+X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
+ canpemm500005.china.huawei.com (7.192.104.229)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-VGhpcyBwYXRjaCBhdm9pZHMgZG9pbmcgYW4gTyhuKioyKS1jb21wbGV4aXR5IHdhbGsgdGhyb3Vn
-aCBldmVyeSBmbGV4IGdyb3VwLg0KSW5zdGVhZCwgaXQgdXNlcyB0aGUgYWxyZWFkeSBjb21wdXRl
-ZCBvdmVyaGVhZCBpbmZvcm1hdGlvbiBmb3IgdGhlIG5ld2x5DQphbGxvY2F0ZWQgc3BhY2UsIGFu
-ZCBzaW1wbHkgYWRkcyBpdCB0byB0aGUgcHJldmlvdXNseSBjYWxjdWxhdGVkDQpvdmVyaGVhZCBz
-dG9yZWQgaW4gdGhlIHN1cGVyYmxvY2suICBUaGlzIGRyYXN0aWNhbGx5IHJlZHVjZXMgdGhlIHRp
-bWUNCnRha2VuIHRvIHJlc2l6ZSB2ZXJ5IGxhcmdlIGJpZ2FsbG9jIGZpbGVzeXN0ZW1zIChmcm9t
-IDMrIGhvdXJzIGZvciBhDQo2NFRCIGZzIGRvd24gdG8gbWlsbGlzZWNvbmRzKS4NCg0KU2lnbmVk
-LW9mZi1ieTogT2xlZyBLaXNlbGV2IDxva2lzZWxldkBhbWF6b24uY29tPg0KLS0tDQogZnMvZXh0
-NC9yZXNpemUuYyB8IDIwICsrKysrKysrKysrKysrKysrKystDQogMSBmaWxlIGNoYW5nZWQsIDE5
-IGluc2VydGlvbnMoKyksIDEgZGVsZXRpb24oLSkNCg0KZGlmZiAtLWdpdCBhL2ZzL2V4dDQvcmVz
-aXplLmMgYi9mcy9leHQ0L3Jlc2l6ZS5jDQppbmRleCA4YjcwYTQ3MDEyOTMuLjJhY2M5ZmNhOTll
-YSAxMDA2NDQNCi0tLSBhL2ZzL2V4dDQvcmVzaXplLmMNCisrKyBiL2ZzL2V4dDQvcmVzaXplLmMN
-CkBAIC0xMzgwLDYgKzEzODAsMTYgQEAgc3RhdGljIGludCBleHQ0X3NldHVwX25ld19kZXNjcyho
-YW5kbGVfdCAqaGFuZGxlLCBzdHJ1Y3Qgc3VwZXJfYmxvY2sgKnNiLA0KIAlyZXR1cm4gZXJyOw0K
-IH0NCg0KK3N0YXRpYyB2b2lkIGV4dDRfc2V0X292ZXJoZWFkKHN0cnVjdCBzdXBlcl9ibG9jayAq
-c2IsDQorICAgICAgICAgICAgICAgICAgICAgICAgICAgICBjb25zdCBleHQ0X2dycGJsa190IG92
-ZXJoZWFkKQ0KK3sNCisgICAgICAgc3RydWN0IGV4dDRfc2JfaW5mbyAqc2JpID0gRVhUNF9TQihz
-Yik7DQorICAgICAgIHN0cnVjdCBleHQ0X3N1cGVyX2Jsb2NrICplcyA9IHNiaS0+c19lczsNCisg
-ICAgICAgc2JpLT5zX292ZXJoZWFkICs9IG92ZXJoZWFkOw0KKyAgICAgICBlcy0+c19vdmVyaGVh
-ZF9jbHVzdGVycyA9IGNwdV90b19sZTMyKCh1bnNpZ25lZCBsb25nKSBzYmktPnNfb3ZlcmhlYWQp
-Ow0KKyAgICAgICBzbXBfd21iKCk7DQorfQ0KKw0KIC8qDQogICogZXh0NF91cGRhdGVfc3VwZXIo
-KSB1cGRhdGVzIHRoZSBzdXBlciBibG9jayBzbyB0aGF0IHRoZSBuZXdseSBhZGRlZA0KICAqIGdy
-b3VwcyBjYW4gYmUgc2VlbiBieSB0aGUgZmlsZXN5c3RlbS4NCkBAIC0xNDgyLDggKzE0OTIsMTYg
-QEAgc3RhdGljIHZvaWQgZXh0NF91cGRhdGVfc3VwZXIoc3RydWN0IHN1cGVyX2Jsb2NrICpzYiwN
-Cg0KIAkvKg0KIAkgKiBVcGRhdGUgdGhlIGZzIG92ZXJoZWFkIGluZm9ybWF0aW9uDQorCSAqDQor
-CSAqIEZvciBiaWdhbGxvYywgaWYgdGhlIHN1cGVyYmxvY2sgYWxyZWFkeSBoYXMgYSBwcm9wZXJs
-eSBjYWxjdWxhdGVkDQorCSAqIG92ZXJoZWFkLCB1cGRhdGUgaXQgd3RoIGEgdmFsdWUgYmFzZWQg
-b24gbnVtYmVycyBhbHJlYWR5IGNvbXB1dGVkDQorCSAqIGFib3ZlIGZvciB0aGUgbmV3bHkgYWxs
-b2NhdGVkIGNhcGFjaXR5Lg0KIAkgKi8NCi0JZXh0NF9jYWxjdWxhdGVfb3ZlcmhlYWQoc2IpOw0K
-KwlpZiAoZXh0NF9oYXNfZmVhdHVyZV9iaWdhbGxvYyhzYikgJiYgKHNiaS0+c19vdmVyaGVhZCAh
-PSAwKSkNCisJCWV4dDRfc2V0X292ZXJoZWFkKHNiLA0KKwkJCUVYVDRfTlVNX0IyQyhzYmksIGJs
-b2Nrc19jb3VudCAtIGZyZWVfYmxvY2tzKSk7DQorCWVsc2UNCisJCWV4dDRfY2FsY3VsYXRlX292
-ZXJoZWFkKHNiKTsNCg0KIAlpZiAodGVzdF9vcHQoc2IsIERFQlVHKSkNCiAJCXByaW50ayhLRVJO
-X0RFQlVHICJFWFQ0LWZzOiBhZGRlZCBncm91cCAldToiDQotLQ0KMi4zMi4wDQoNCg==
+Since commit 6493792d3299 ("ext4: convert symlink external data block
+mapping to bdev"), create new symlink with inline_data is not supported,
+but it missing to handle the leftover inlined symlinks, which could
+cause below error message and fail to read symlink.
+
+ ls: cannot read symbolic link 'foo': Structure needs cleaning
+
+ EXT4-fs error (device sda): ext4_map_blocks:605: inode #12: block
+ 2021161080: comm ls: lblock 0 mapped to illegal pblock 2021161080
+ (length 1)
+
+Fix this regression by adding ext4_read_inline_link(), which read the
+inline data directly and convert it through a kmalloced buffer.
+
+Fixes: 6493792d3299 ("ext4: convert symlink external data block mapping to bdev")
+Reported-by: Torge Matthies <openglfreak@googlemail.com>
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/ext4.h    |  1 +
+ fs/ext4/inline.c  | 30 ++++++++++++++++++++++++++++++
+ fs/ext4/symlink.c | 15 +++++++++++++++
+ 3 files changed, 46 insertions(+)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 75b8d81b2469..adfc30ee4b7b 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3583,6 +3583,7 @@ extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
+ extern int ext4_inline_data_fiemap(struct inode *inode,
+ 				   struct fiemap_extent_info *fieinfo,
+ 				   int *has_inline, __u64 start, __u64 len);
++extern void *ext4_read_inline_link(struct inode *inode);
+ 
+ struct iomap;
+ extern int ext4_inline_data_iomap(struct inode *inode, struct iomap *iomap);
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index cff52ff6549d..1fa36cbe09ec 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -6,6 +6,7 @@
+ 
+ #include <linux/iomap.h>
+ #include <linux/fiemap.h>
++#include <linux/namei.h>
+ #include <linux/iversion.h>
+ #include <linux/sched/mm.h>
+ 
+@@ -1588,6 +1589,35 @@ int ext4_read_inline_dir(struct file *file,
+ 	return ret;
+ }
+ 
++void *ext4_read_inline_link(struct inode *inode)
++{
++	struct ext4_iloc iloc;
++	int ret, inline_size;
++	void *link;
++
++	ret = ext4_get_inode_loc(inode, &iloc);
++	if (ret)
++		return ERR_PTR(ret);
++
++	ret = -ENOMEM;
++	inline_size = ext4_get_inline_size(inode);
++	link = kmalloc(inline_size + 1, GFP_NOFS);
++	if (!link)
++		goto out;
++
++	ret = ext4_read_inline_data(inode, link, inline_size, &iloc);
++	if (ret < 0) {
++		kfree(link);
++		goto out;
++	}
++	nd_terminate_link(link, inode->i_size, ret);
++out:
++	if (ret < 0)
++		link = ERR_PTR(ret);
++	brelse(iloc.bh);
++	return link;
++}
++
+ struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
+ 					struct ext4_dir_entry_2 **parent_de,
+ 					int *retval)
+diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
+index d281f5bcc526..3d3ed3c38f56 100644
+--- a/fs/ext4/symlink.c
++++ b/fs/ext4/symlink.c
+@@ -74,6 +74,21 @@ static const char *ext4_get_link(struct dentry *dentry, struct inode *inode,
+ 				 struct delayed_call *callback)
+ {
+ 	struct buffer_head *bh;
++	char *inline_link;
++
++	/*
++	 * Create a new inlined symlink is not supported, just provide a
++	 * method to read the leftovers.
++	 */
++	if (ext4_has_inline_data(inode)) {
++		if (!dentry)
++			return ERR_PTR(-ECHILD);
++
++		inline_link = ext4_read_inline_link(inode);
++		if (!IS_ERR(inline_link))
++			set_delayed_call(callback, kfree_link, inline_link);
++		return inline_link;
++	}
+ 
+ 	if (!dentry) {
+ 		bh = ext4_getblk(NULL, inode, 0, EXT4_GET_BLOCKS_CACHED_NOWAIT);
+-- 
+2.31.1
+
