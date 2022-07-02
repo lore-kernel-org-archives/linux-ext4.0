@@ -2,84 +2,84 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C52B3C433EF
-	for <linux-ext4@archiver.kernel.org>; Sat,  2 Jul 2022 04:25:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 971CECCA485
+	for <linux-ext4@archiver.kernel.org>; Sat,  2 Jul 2022 11:07:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232081AbiGBEZz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 2 Jul 2022 00:25:55 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58604 "EHLO
+        id S232215AbiGBLHx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 2 Jul 2022 07:07:53 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37556 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231243AbiGBEZy (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Jul 2022 00:25:54 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 382AB35DE0;
-        Fri,  1 Jul 2022 21:25:53 -0700 (PDT)
+        with ESMTP id S232149AbiGBLHw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Jul 2022 07:07:52 -0400
+Received: from sin.source.kernel.org (sin.source.kernel.org [IPv6:2604:1380:40e1:4800::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 99C8415A24;
+        Sat,  2 Jul 2022 04:07:51 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id C6DC260A1B;
-        Sat,  2 Jul 2022 04:25:52 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B2C8EC34114;
-        Sat,  2 Jul 2022 04:25:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linux-foundation.org;
-        s=korg; t=1656735952;
-        bh=CnLxEWfEVwpNoTxWsiwQ1LQuKst+72BKDbjbXAesDa4=;
-        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
-        b=LQCMYCHDQR6Snh03VJXykPrYGM58AdpZzxwBcPzIoKS+eBA9CKb8Ndukm4D2HfPUa
-         i4yAErDdhscv7vlgetKrJZ7oiJZp8dU98i+LE/12HMErHBMVVau0tOR8gyM7ntkFIH
-         yJLFkEd0F9svS2uuJzXBntMgT6QOg+GCbOO/3Vn8=
-Date:   Fri, 1 Jul 2022 21:25:51 -0700
-From:   Andrew Morton <akpm@linux-foundation.org>
-To:     David Hildenbrand <david@redhat.com>
-Cc:     Felix Kuehling <felix.kuehling@amd.com>,
-        Alex Sierra <alex.sierra@amd.com>, jgg@nvidia.com,
-        linux-mm@kvack.org, rcampbell@nvidia.com,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
-        hch@lst.de, jglisse@redhat.com, apopple@nvidia.com,
-        willy@infradead.org
-Subject: Re: [PATCH v7 01/14] mm: rename is_pinnable_pages to
- is_pinnable_longterm_pages
-Message-Id: <20220701212551.7198162dbd65746a69bc41b4@linux-foundation.org>
-In-Reply-To: <49315889-96de-8e41-f8ee-dd5b33c5e1db@redhat.com>
-References: <20220629035426.20013-1-alex.sierra@amd.com>
-        <20220629035426.20013-2-alex.sierra@amd.com>
-        <f00f9c93-c115-d222-dc8c-11493ccd2567@redhat.com>
-        <575b48a6-e372-acda-9a7c-449f307a588c@amd.com>
-        <49315889-96de-8e41-f8ee-dd5b33c5e1db@redhat.com>
-X-Mailer: Sylpheed 3.7.0 (GTK+ 2.24.33; x86_64-redhat-linux-gnu)
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+        by sin.source.kernel.org (Postfix) with ESMTPS id D86A9CE0121;
+        Sat,  2 Jul 2022 11:07:49 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0A511C341CA;
+        Sat,  2 Jul 2022 11:07:48 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1656760068;
+        bh=tBv95/of+78CCOl13jgM+LOJKweUAuGjF5j/ye3oFZ0=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=LT9KrD+rWg9IuzsItd1P7y/5em1aDpXbR2u7NogYL19x5A15sKXxbN9mMtJUFCgLl
+         5XyBnScayiFL4ktv3zhjlS+G3gwfrEZs8QDi9FXEKAXErB9Jh1cd8t2iR2MeITFtWy
+         VnK+KOALajxQ0ja4fLnSfeJ6JoEQMYueFxkzY/cbtZE3lN4HoeL7EW5DGAd3PwlZAz
+         9KEgumA/MhWFI3U7OY9/6xIANGO/L6XW+jSyZphg0cmR7Zzt5XqlpWcbgbOkxgZ9b3
+         8ZV4pDpcO5clpXmhU4eJQUsBOy/z/KX34LjEKAWoiTbGhzAhj8pq6odxWAybv1xMqu
+         fjGVZZkn4ysaQ==
+Received: from mchehab by mail.kernel.org with local (Exim 4.95)
+        (envelope-from <mchehab@kernel.org>)
+        id 1o7ayX-007grr-Jm;
+        Sat, 02 Jul 2022 12:07:45 +0100
+From:   Mauro Carvalho Chehab <mchehab@kernel.org>
+To:     Linux Doc Mailing List <linux-doc@vger.kernel.org>
+Cc:     Mauro Carvalho Chehab <mchehab@kernel.org>,
+        "Jonathan Corbet" <corbet@lwn.net>,
+        "Mauro Carvalho Chehab" <mchehab+huawei@kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH 01/12] docs: ext4: blockmap.rst: fix a broken table
+Date:   Sat,  2 Jul 2022 12:07:33 +0100
+Message-Id: <002632a675934d5e7e0899559eb9da4e53639137.1656759989.git.mchehab@kernel.org>
+X-Mailer: git-send-email 2.36.1
+In-Reply-To: <cover.1656759988.git.mchehab@kernel.org>
+References: <cover.1656759988.git.mchehab@kernel.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, 30 Jun 2022 00:15:06 +0200 David Hildenbrand <david@redhat.com> wrote:
+There's one missing space, causing a long error message when
+building the docs.
 
-> On 30.06.22 00:08, Felix Kuehling wrote:
-> > On 2022-06-29 03:33, David Hildenbrand wrote:
-> >> On 29.06.22 05:54, Alex Sierra wrote:
-> >>> is_pinnable_page() and folio_is_pinnable() were renamed to
-> >>> is_longterm_pinnable_page() and folio_is_longterm_pinnable()
-> >>> respectively. These functions are used in the FOLL_LONGTERM flag
-> >>> context.
-> >> Subject talks about "*_pages"
-> >>
-> >>
-> >> Can you elaborate why the move from mm.h to memremap.h is justified?
-> > 
-> > Patch 2 adds is_device_coherent_page in memremap.h and updates 
-> > is_longterm_pinnable_page to call is_device_coherent_page. memremap.h 
-> > cannot include mm.h because it is itself included by mm.h. So the choice 
-> > was to move is_longterm_pinnable_page to memremap.h, or move 
-> > is_device_coherent_page and all its dependencies to mm.h. The latter 
-> > would have been a bigger change.
-> 
-> I really don't think something mm generic that compiles without
-> ZONE_DEVICE belongs into memremap.h. Please find a cleaner way to get
-> this done.
+Signed-off-by: Mauro Carvalho Chehab <mchehab@kernel.org>
+---
 
-(without having bothered to look at the code...)
+To avoid mailbombing on a large number of people, only mailing lists were C/C on the cover.
+See [PATCH 00/12] at: https://lore.kernel.org/all/cover.1656759988.git.mchehab@kernel.org/
 
-The solution is always to create a new purpose-specific header file.
+ Documentation/filesystems/ext4/blockmap.rst | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Documentation/filesystems/ext4/blockmap.rst b/Documentation/filesystems/ext4/blockmap.rst
+index 2bd990402a5c..cc596541ce79 100644
+--- a/Documentation/filesystems/ext4/blockmap.rst
++++ b/Documentation/filesystems/ext4/blockmap.rst
+@@ -1,7 +1,7 @@
+ .. SPDX-License-Identifier: GPL-2.0
+ 
+ +---------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+-| i.i_block Offset   | Where It Points                                                                                                                                                                                                              |
++| i.i_block Offset    | Where It Points                                                                                                                                                                                                              |
+ +=====================+==============================================================================================================================================================================================================================+
+ | 0 to 11             | Direct map to file blocks 0 to 11.                                                                                                                                                                                           |
+ +---------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+-- 
+2.36.1
+
