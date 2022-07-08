@@ -2,45 +2,45 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 20604C433EF
-	for <linux-ext4@archiver.kernel.org>; Fri,  8 Jul 2022 03:20:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9994BC433EF
+	for <linux-ext4@archiver.kernel.org>; Fri,  8 Jul 2022 03:20:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236861AbiGHDUU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 7 Jul 2022 23:20:20 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53710 "EHLO
+        id S236845AbiGHDU0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 7 Jul 2022 23:20:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53746 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236845AbiGHDUT (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Jul 2022 23:20:19 -0400
+        with ESMTP id S237065AbiGHDUW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Jul 2022 23:20:22 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 56838747B4;
-        Thu,  7 Jul 2022 20:20:18 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BED986EEBF
+        for <linux-ext4@vger.kernel.org>; Thu,  7 Jul 2022 20:20:20 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-118-63.bstnma.fios.verizon.net [173.48.118.63])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2683JxER032632
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2683JxoB032643
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 7 Jul 2022 23:20:00 -0400
+        Thu, 7 Jul 2022 23:20:01 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1657250402; bh=F6pvyLnh3lX9Tis+dwIC/keqjw/oM/iUsJG6g/XqKPs=;
+        t=1657250402; bh=ddaMaG2VWMPJwD02ZENd8LExemS9R1QwwVkXDES7UEc=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=AfhnZLBo42DJXgMMv2RaGhLMFpwqXyI1ExJKlF3EpHbUasJUrUWkwNhJhImpapc20
-         OAzq966v38IPZVR5QhC7vxeDdYnb09gAo5iR2r9pCRKWCks3TUWLIY1npbKjtIOoWq
-         l1kwwMt48pcWfKDFuzaD/RVimRFDqAxgcSJxqLiamDcQS3LxbCg9lYt43a8kBifVGo
-         qs3GOXOsVB38WuarjWBN5ORq3EmR1ActyuTN0TEDno/5N/nEb6oybWxJ3KWUcCh1c5
-         x1htiaXgRxu7545Z27PORvYm5auru6ajpNdyOUx7R8V36SPuLYDK+jgRGKNyOncBBK
-         9ASnr48aROGRA==
+        b=SKnPAW+Q1gLIDDbpdGUlM3EF9kbEJiRvxkejYJbZt1GUmo+RgoEKEwvdOfGIZDAWE
+         h+0m7bIniS5ZwtcXZt6xDihRQzxFOtliMNUepmadcRs9x77C11yb6otlgIJP8/VvBP
+         sYd9d8acopUyBM2dylksfpXG3o7mh/56zOGgZbW8ziEFng+FFQBmktThIJlqG/8Va8
+         4HsxjxW7mE9Cd/n7cJsavo5Uo3az3oZ3bx5JRHUFcu91T/JC//w8oajvSqOnjBXO2J
+         PEZuAG2zSayRO7/yyTbj7VB9nE5ER+slIvZ2D8Zon//Y38HkwEl3urMg7+oEToWJXi
+         DzgYsU4Z4Hn+A==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 87FD115C433F; Thu,  7 Jul 2022 23:19:59 -0400 (EDT)
+        id 8CD5915C4343; Thu,  7 Jul 2022 23:19:59 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     adilger.kernel@dilger.ca, hanjinke.666@bytedance.com
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-        lei.rao@intel.com, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext4: reuse order and buddy in mb_mark_used when buddy split
-Date:   Thu,  7 Jul 2022 23:19:54 -0400
-Message-Id: <165725003055.1812964.2153174785419318400.b4-ty@mit.edu>
+To:     yi.zhang@huawei.com, linux-ext4@vger.kernel.org
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, yukuai3@huawei.com,
+        adilger.kernel@dilger.ca, openglfreak@googlemail.com, jack@suse.cz
+Subject: Re: [PATCH] ext4: fix reading leftover inlined symlinks
+Date:   Thu,  7 Jul 2022 23:19:57 -0400
+Message-Id: <165725003056.1812964.3320513804321929175.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20220606155305.74146-1-hanjinke.666@bytedance.com>
-References: <20220606155305.74146-1-hanjinke.666@bytedance.com>
+In-Reply-To: <20220630090100.2769490-1-yi.zhang@huawei.com>
+References: <20220630090100.2769490-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -48,21 +48,20 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, 6 Jun 2022 23:53:05 +0800, Jinke Han wrote:
-> From: hanjinke <hanjinke.666@bytedance.com>
+On Thu, 30 Jun 2022 17:01:00 +0800, Zhang Yi wrote:
+> Since commit 6493792d3299 ("ext4: convert symlink external data block
+> mapping to bdev"), create new symlink with inline_data is not supported,
+> but it missing to handle the leftover inlined symlinks, which could
+> cause below error message and fail to read symlink.
 > 
-> After each buddy split, mb_mark_used will search the proper order
-> for the block which may consume some loop in mb_find_order_for_block.
-> In fact, we can reuse the oder and buddy generated by the buddy split.
-> 
-> Reviewed by: lei.rao@intel.com
+>  ls: cannot read symbolic link 'foo': Structure needs cleaning
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: reuse order and buddy in mb_mark_used when buddy split
-      commit: 08779aaa3f63ccb5cb3a2b78135132231677085e
+[1/1] ext4: fix reading leftover inlined symlinks
+      commit: f50f5a5eac8092fb9b3365ca4b1d7407cdab8427
 
 Best regards,
 -- 
