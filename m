@@ -2,154 +2,59 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EEE02C43334
-	for <linux-ext4@archiver.kernel.org>; Sat,  9 Jul 2022 10:07:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C722FCCA47C
+	for <linux-ext4@archiver.kernel.org>; Sat,  9 Jul 2022 15:37:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229789AbiGIKHu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 9 Jul 2022 06:07:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32840 "EHLO
+        id S229515AbiGIPht (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 9 Jul 2022 11:37:49 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33040 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229723AbiGIKHo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 9 Jul 2022 06:07:44 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 509CF4B4B8;
-        Sat,  9 Jul 2022 03:07:41 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id E898E60E84;
-        Sat,  9 Jul 2022 10:07:39 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3EAE2C341C7;
-        Sat,  9 Jul 2022 10:07:39 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1657361259;
-        bh=KJtmXylkYfBUCP9nKw3ANSOdLovVVTpFPXktiDmYhX8=;
-        h=From:To:Cc:Subject:Date:From;
-        b=LnWbmh+eLrmzEUuOUtwt1Zk7RPhAHxviv/xN1zz17DDCm7ZZ2jcjIeAUW4KTxMXed
-         KM6hlnyvwgcE/ucoKBLNi3lTI0HLQorkZBQKDriJ83QapG5TazYrBSO0s5jpBgI518
-         zjHSfekRlLlgNoH4pC8Bvx7SWcUhuyyANeCxHX9hJfkXhijte2QxQFmBhEqOt4NAki
-         WRxJiBGp9FbjYtPunI+ANm5ybjHbUrO7XEI2HfTHJrTDCbiOpxKJM0muKF/npo2L8i
-         8btVRvA0c3zQa7eBwzLXG2Hotce3pbtGp96wKaC+VQwn/aYfgAwZb7CnJrfDBP08B6
-         LAxmYYMrturXw==
-Received: from mchehab by mail.kernel.org with local (Exim 4.95)
-        (envelope-from <mchehab@kernel.org>)
-        id 1oA7N9-004EGQ-BD;
-        Sat, 09 Jul 2022 11:07:35 +0100
-From:   Mauro Carvalho Chehab <mchehab@kernel.org>
-To:     Linux Doc Mailing List <linux-doc@vger.kernel.org>
-Cc:     Mauro Carvalho Chehab <mchehab@kernel.org>,
+        with ESMTP id S229478AbiGIPht (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 9 Jul 2022 11:37:49 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 55D161260A;
+        Sat,  9 Jul 2022 08:37:47 -0700 (PDT)
+Received: from cwcc.thunk.org (pool-173-48-118-63.bstnma.fios.verizon.net [173.48.118.63])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 269FbTwk024416
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sat, 9 Jul 2022 11:37:30 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1657381052; bh=9DitvARArg4OKL8NQwK5saaEpS4clc1oleOnJJ3e2rA=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To;
+        b=WnkeauIe0vsGvZqf4Iq3fZsUY55/p1pMzrArEgVExy5wAUZnCd6FF0kYKcxz4eRfu
+         8rh2wjw6exfCHhaWhplj7gUEEfV2iMCkKUILxUGpnZbHqIKHMJueNmgjH47yttn5Vd
+         D7fg7gO29jyUtYlV8/kfDMvjgxbB/i6kwqJE1vfK6AT2NMEBNH++57saXq0adaB0Yl
+         DA7cki0QU8OtP5aSt8jUyjKmaHRYRLoPBgb/zil9QBcfyGmc5FOKLDyD0BFO+8Ez8k
+         FrRuksLI2Qe2f1yS5mgXYSBK7Jq1noJlVe8S2CCxH+xdbUtKRalQ2ROItoyDRqY3HA
+         EXWUE5nsa/CHg==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 7164D15C4331; Sat,  9 Jul 2022 11:37:29 -0400 (EDT)
+Date:   Sat, 9 Jul 2022 11:37:29 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc:     Linux Doc Mailing List <linux-doc@vger.kernel.org>,
+        Jonathan Corbet <corbet@lwn.net>,
         Mauro Carvalho Chehab <mchehab+huawei@kernel.org>,
-        linux-kernel@vger.kernel.org, Jonathan Corbet <corbet@lwn.net>,
-        =?UTF-8?q?Christian=20K=C3=B6nig?= <christian.koenig@amd.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        "H. Peter Anvin" <hpa@zytor.com>,
-        =?UTF-8?q?Krzysztof=20Wilczy=C5=84ski?= <kw@linux.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, Alex Shi <alexs@kernel.org>,
-        Alexander Potapenko <glider@google.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Andrey Grodzovsky <andrey.grodzovsky@amd.com>,
-        Borislav Petkov <bp@alien8.de>,
-        Daniel Vetter <daniel@ffwll.ch>,
-        Dave Hansen <dave.hansen@linux.intel.com>,
-        David Airlie <airlied@linux.ie>,
-        Dmitry Vyukov <dvyukov@google.com>,
-        Eric Dumazet <edumazet@google.com>,
-        Ingo Molnar <mingo@redhat.com>,
-        Jakub Kicinski <kuba@kernel.org>, Leo Yan <leo.yan@linaro.org>,
-        Marc Kleine-Budde <mkl@pengutronix.de>,
-        Marco Elver <elver@google.com>,
-        Mathieu Poirier <mathieu.poirier@linaro.org>,
-        Max Staudt <max@enpas.org>,
-        Mike Kravetz <mike.kravetz@oracle.com>,
-        Mike Leach <mike.leach@linaro.org>,
-        Muchun Song <songmuchun@bytedance.com>,
-        Paolo Abeni <pabeni@redhat.com>,
-        Sumit Semwal <sumit.semwal@linaro.org>,
-        Suzuki K Poulose <suzuki.poulose@arm.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Wolfgang Grandegger <wg@grandegger.com>,
-        Yanteng Si <siyanteng@loongson.cn>, coresight@lists.linaro.org,
-        dri-devel@lists.freedesktop.org, kasan-dev@googlegroups.com,
-        kvm@vger.kernel.org, linaro-mm-sig@lists.linaro.org,
-        linux-arm-kernel@lists.infradead.org, linux-cachefs@redhat.com,
-        linux-can@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-media@vger.kernel.org,
-        linux-mm@kvack.org, linux-pci@vger.kernel.org,
-        linux-sgx@vger.kernel.org, netdev@vger.kernel.org, x86@kernel.org
-Subject: [PATCH v3 00/21] Update Documentation/ cross references and fix issues
-Date:   Sat,  9 Jul 2022 11:07:13 +0100
-Message-Id: <cover.1657360984.git.mchehab@kernel.org>
-X-Mailer: git-send-email 2.36.1
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v3 15/21] docs: ext4: blockmap.rst: fix a broken table
+Message-ID: <YsmguYemOmrLLXt9@mit.edu>
+References: <cover.1657360984.git.mchehab@kernel.org>
+ <29d2a3787e46de72db8563b8c08f593b6b6f0c14.1657360984.git.mchehab@kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <29d2a3787e46de72db8563b8c08f593b6b6f0c14.1657360984.git.mchehab@kernel.org>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This series fix almost all fixable issues when building the html docs at
-linux-next (next-20220608):
+On Sat, Jul 09, 2022 at 11:07:28AM +0100, Mauro Carvalho Chehab wrote:
+> There's one missing space, causing a long error message when
+> building the docs.
+> 
+> Signed-off-by: Mauro Carvalho Chehab <mchehab@kernel.org>
 
-- Address some broken cross-references;
-- Fix kernel-doc warnings;
-- Fix bad tags on ReST files.
-
-With this series applied, plus other pending patches that should hopefully
-be merged in time for the next merge window, htmldocs build will produce
-just 4 warnings with Sphinx 2.4.4.
-
-Sphinx >=3 will produce some extra false-positive warnings due to conflicts
-between structs and functions sharing the same name. Hopefully this will
-be fixed either on a new Sphinx 5.x version or Sphinx 6.0.
-
-Mauro Carvalho Chehab (21):
-  docs: networking: update netdevices.rst reference
-  docs: update vmalloced-kernel-stacks.rst reference
-  docs: update vmemmap_dedup.rst reference
-  docs: zh_CN: page_migration: fix reference to mm index.rst
-  dt-bindings: arm: update arm,coresight-cpu-debug.yaml reference
-  x86/sgx: fix kernel-doc markups
-  fscache: fix kernel-doc documentation
-  fs: namei: address some kernel-doc issues
-  drm/scheduler: fix a kernel-doc warning
-  drm/scheduler: add a missing kernel-doc parameter
-  kfence: fix a kernel-doc parameter
-  genalloc: add a description for start_addr parameter
-  textsearch: document list inside struct ts_ops
-  dcache: fix a kernel-doc warning
-  docs: ext4: blockmap.rst: fix a broken table
-  docs: PCI: pci-vntb-function.rst: Properly include ascii artwork
-  docs: PCI: pci-vntb-howto.rst: fix a title markup
-  docs: virt: kvm: fix a title markup at api.rst
-  docs: ABI: sysfs-bus-nvdimm
-  docs: leds: index.rst: add leds-qcom-lpg to it
-  Documentation: coresight: fix binding wildcards
-
- Documentation/ABI/testing/sysfs-bus-nvdimm             |  2 ++
- Documentation/PCI/endpoint/pci-vntb-function.rst       |  2 +-
- Documentation/PCI/endpoint/pci-vntb-howto.rst          |  2 +-
- Documentation/filesystems/ext4/blockmap.rst            |  2 +-
- Documentation/leds/index.rst                           |  1 +
- Documentation/trace/coresight/coresight-cpu-debug.rst  |  2 +-
- Documentation/trace/coresight/coresight.rst            |  2 +-
- Documentation/translations/zh_CN/mm/page_migration.rst |  2 +-
- .../translations/zh_CN/mm/vmalloced-kernel-stacks.rst  |  2 +-
- Documentation/virt/kvm/api.rst                         |  6 +++---
- arch/x86/include/uapi/asm/sgx.h                        | 10 ++++++++--
- drivers/gpu/drm/scheduler/sched_main.c                 |  1 +
- drivers/net/can/can327.c                               |  2 +-
- fs/namei.c                                             |  3 +++
- include/drm/gpu_scheduler.h                            |  1 +
- include/linux/dcache.h                                 |  2 +-
- include/linux/fscache.h                                |  4 ++--
- include/linux/genalloc.h                               |  1 +
- include/linux/kfence.h                                 |  1 +
- include/linux/textsearch.h                             |  1 +
- mm/hugetlb_vmemmap.h                                   |  2 +-
- 21 files changed, 34 insertions(+), 17 deletions(-)
-
--- 
-2.36.1
-
-
+Acked-by: Theodore Ts'o <tytso@mit.edu>
