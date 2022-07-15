@@ -2,244 +2,108 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CE551C43334
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Jul 2022 15:06:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 16B9EC43334
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Jul 2022 15:14:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234466AbiGOPG0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 15 Jul 2022 11:06:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46794 "EHLO
+        id S234487AbiGOPOe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 15 Jul 2022 11:14:34 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52974 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233536AbiGOPGD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Jul 2022 11:06:03 -0400
-Received: from NAM04-BN8-obe.outbound.protection.outlook.com (mail-bn8nam04on2075.outbound.protection.outlook.com [40.107.100.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B1C7A7D1C8;
-        Fri, 15 Jul 2022 08:05:57 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=W7QtJcwHyfmu1gRRtFFPjNgjP5Z8OhCnNZ6juvkGgSJxC8zFYOGmt3thxqn+DkURlbAqiSNIwNvVb+EQv251FKE6pBe5L6dbDrIw2mWh97lBtqL3HyWcV1rY6bI/Upup+w7biFJ0QhLA370xixVQnw0Dpo4o+0eJ0OyLa5EP8pZAN4ysO0Lp56npXpXyRN1VIbhhcBPhDyDMpl3UBgqz5E4lrzE3020c1A96uDZUfKmMeDWlluJ5OjmZZ4lxHRGEcW+gzGrVJk5a6EUPlp4WzqlsnEPIEepsu2MLwBLrx0i58ayjlGb8xvRuFuWnBDgyP3QqgZZPX27P5oboz9ezTA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=GP3ikngykfp62hqgKGCY9CKncoZ/5EVzq4BZbbmWmCY=;
- b=eFVRQ3FqlBnVxBUhzFMrWao6vZkAqBNtY0LO+/eYE2j47AC+NVOe7qaFj0jzJBFjs8kftBOjSC0m/DDlPdJPJLYd/L4319x02QldaAWf/zil7xcy7HJwDm4fbP8AfmnSwy/plWqWblJQ5yBzYjSOPNkmE0yXfphhtbTj4MR9oBKLA7E6pFy9c2MAcUCflupy2cgmRgEK7xczG7FyZhqb8mp3Aebzjcl2/OGbc53atqpLt2F9RrHa+71tklvyGE2dSZlx2Ecy5U9sq8hHV60aOSaGkzvi6eHBow2Ch9ctOY2u4oUmBCUcDej2x4WLZfKBQBm4kJUDPoX7rmOT0jVw0A==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass (sender ip is
- 165.204.84.17) smtp.rcpttodomain=nvidia.com smtp.mailfrom=amd.com; dmarc=pass
- (p=quarantine sp=quarantine pct=100) action=none header.from=amd.com;
- dkim=none (message not signed); arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=amd.com; s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=GP3ikngykfp62hqgKGCY9CKncoZ/5EVzq4BZbbmWmCY=;
- b=gl9t2K1Y/rtyNNjxh5mvYTs82rggHqmyNxhAW4OwsZ14Egn9DM8HSUfA3nzocaL58IdM7zXQ+34GyVIE5BF4nD9m2eI5z23euv+LRLOJTaITJpKuICpMrjY1pOrXFZt/b8Nkp2qMuFkduELbXxg3eJdzDBVRQ26vTeh4+vaUjJU=
-Received: from DM6PR17CA0021.namprd17.prod.outlook.com (2603:10b6:5:1b3::34)
- by DM6PR12MB3849.namprd12.prod.outlook.com (2603:10b6:5:1c7::26) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5417.21; Fri, 15 Jul
- 2022 15:05:52 +0000
-Received: from DM6NAM11FT067.eop-nam11.prod.protection.outlook.com
- (2603:10b6:5:1b3:cafe::c5) by DM6PR17CA0021.outlook.office365.com
- (2603:10b6:5:1b3::34) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5417.26 via Frontend
- Transport; Fri, 15 Jul 2022 15:05:52 +0000
-X-MS-Exchange-Authentication-Results: spf=pass (sender IP is 165.204.84.17)
- smtp.mailfrom=amd.com; dkim=none (message not signed)
- header.d=none;dmarc=pass action=none header.from=amd.com;
-Received-SPF: Pass (protection.outlook.com: domain of amd.com designates
- 165.204.84.17 as permitted sender) receiver=protection.outlook.com;
- client-ip=165.204.84.17; helo=SATLEXMB04.amd.com; pr=C
-Received: from SATLEXMB04.amd.com (165.204.84.17) by
- DM6NAM11FT067.mail.protection.outlook.com (10.13.172.76) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.20.5438.12 via Frontend Transport; Fri, 15 Jul 2022 15:05:52 +0000
-Received: from alex-MS-7B09.amd.com (10.180.168.240) by SATLEXMB04.amd.com
- (10.181.40.145) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.28; Fri, 15 Jul
- 2022 10:05:48 -0500
-From:   Alex Sierra <alex.sierra@amd.com>
-To:     <jgg@nvidia.com>
-CC:     <david@redhat.com>, <Felix.Kuehling@amd.com>, <linux-mm@kvack.org>,
-        <rcampbell@nvidia.com>, <linux-ext4@vger.kernel.org>,
-        <linux-xfs@vger.kernel.org>, <amd-gfx@lists.freedesktop.org>,
-        <dri-devel@lists.freedesktop.org>, <hch@lst.de>,
-        <jglisse@redhat.com>, <apopple@nvidia.com>, <willy@infradead.org>,
-        <akpm@linux-foundation.org>
-Subject: [PATCH v9 13/14] tools: add hmm gup tests for device coherent type
-Date:   Fri, 15 Jul 2022 10:05:20 -0500
-Message-ID: <20220715150521.18165-14-alex.sierra@amd.com>
-X-Mailer: git-send-email 2.32.0
-In-Reply-To: <20220715150521.18165-1-alex.sierra@amd.com>
-References: <20220715150521.18165-1-alex.sierra@amd.com>
+        with ESMTP id S233583AbiGOPOd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Jul 2022 11:14:33 -0400
+X-Greylist: delayed 122 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Fri, 15 Jul 2022 08:14:31 PDT
+Received: from out203-205-221-153.mail.qq.com (out203-205-221-153.mail.qq.com [203.205.221.153])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E42B8BB8
+        for <linux-ext4@vger.kernel.org>; Fri, 15 Jul 2022 08:14:31 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=foxmail.com;
+        s=s201512; t=1657898069;
+        bh=QXjGMiIOWyMCcQ2G5GQhhgyU7u0/1yl5SRfU0UEbqaM=;
+        h=Date:Subject:To:References:From:In-Reply-To;
+        b=obO37BHOdRsMDArKrGDfYXmlaHSXPyaHFsCjSvpmuc6OcU6UvNsxVaZX5jnaAKv9L
+         z+3oqoV+AsEKrsL01p9hsnxHhqcJgjhXPeoObrcOj/U9Bw6TwH0y1uxxgTHxVZLJ/C
+         LUdrZCH64HUaJRG1gjKSg+wVRCPIpsZ2iwvWIB3g=
+Received: from [192.168.50.235] ([123.112.69.211])
+        by newxmesmtplogicsvrsza32.qq.com (NewEsmtp) with SMTP
+        id 2D7BB450; Fri, 15 Jul 2022 23:11:23 +0800
+X-QQ-mid: xmsmtpt1657897883tn16lfu5w
+Message-ID: <tencent_8CDB89A1076C8F0FE46F79120D40114BAC05@qq.com>
+X-QQ-XMAILINFO: MVbvI5amSZ2YmAhZp7QRDsPBGq1BojgM8W64VwLO4pEcHTFEQmfPru5iv4mkJE
+         4T1u/Iq8Qs+MH7OnFg9xNyWZNFtfBwS3OtsYJuRxjmsCTPjkchTKQz0k/sx9vkdn9mWzB6gIp/Ee
+         bzPRsHNj5dr7WIRKn7f4jlf0nqD2uaKa1/xoOYsA5KGnNtxGDz1zCaNm6YMhz9WyW7CNCW2sQhWj
+         z20vsFMBdoFo7HFET5HlrMHmsb06T5bDRcFA5+/gePXAmwNLZ17MNGRhusebEeMQsvvUzpiVdO72
+         1UlyXPx8nNQUoXEqjjaOcQx7j7GPIEhSJb+UW/r+H0p7nvhxl7XkHOxFM147WqC3lBPLmvmB1cqz
+         d/Ja8zkCgl5vsinbPcOPEA0BHj6tUQq7jbbIeyI1n+OdMKrG9yRyJI6MQYq3sGZ/81lGeuAv7izz
+         TJochsW9xr3VlL0CrdXJ69rsJkbaQttE9IFrbQyM830UcBg2RWqbhxkKBkE2lxQeq6/I3YyV2m1M
+         0KE5chXXrJE/bZhwqwCFlH+msxcld/hLEuBqP//taCBZx458CTJdcDcFFpO7NXI/+pX3S1HkX0gg
+         JyaxSKrg73/yHPRTZj4gvxgecTKghlUAqsgwXrv4oi1QzS8yK/YJnqGQq5UtehyiF3ktqop3O+Yu
+         5ApFeYAsDD69BA0xXEMh1FGEkF9/1GmC5iqJNpgkB1zX1jvijf7sRZu7iwxkvy86/x9E7JOys/s7
+         yDkue5Uo34bAJ+vNOywWD3iDWFWvF7+8jHxvY31C19Y6u35knlnVFKj4ZZSg3fw5/c9Aws1SQhyh
+         9nkG/+z5OeKw9K4dUJpEsj+KIRJ+JxI5mKZ4nj/J8FLbHgHIbo6TIThfqf3Pi7TAMG6qVpVrzx8w
+         6MQME9sW85IFkExvo+sQiiaj3bCC5LgypDP8yqVmIeQQI7OTnn9QfX2VUtZ2ww1B7fpJzzeWn7Zf
+         U4lkXUqDU=
+X-OQ-MSGID: <3e05cb40-a7fd-ee8e-eb22-c961da7796dc@foxmail.com>
+Date:   Fri, 15 Jul 2022 23:11:23 +0800
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-Originating-IP: [10.180.168.240]
-X-ClientProxiedBy: SATLEXMB03.amd.com (10.181.40.144) To SATLEXMB04.amd.com
- (10.181.40.145)
-X-EOPAttributedMessage: 0
-X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: 395ea720-d326-47e7-07ac-08da667382d1
-X-MS-TrafficTypeDiagnostic: DM6PR12MB3849:EE_
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: rBdeFIjFRmVmSjrW6UaitFF0tc1tq0YlIC0wocoAHKevLRVgxx1WXTWwIkA2cvYAVvc83/kd+Tce/ZQcjDCSI5QID+QkdCII++ZNGlP3zOpzOd4Ok+pgZDSI6g8Mq9cvqA2AD7QSqQG9LWc36e1U8sasOc3pkh+Ie7Hc/dRFnHxS6OMkBHziQNU2CDjMfEDWkvkXkrJpKAaTIoJ2Fzu0xeBddgTxgTcsvzXw43b/ScgOWOiQv08RhYejxIJE5c3dk0q0uZnmdrSkY6sSiBxwondDhufi7hMM60c6lxHO4fE5/FWyJu8RhaYfumiFQ5vpm2IrGX6yo35wasyzS+j842Pn3yTNFh78/UgRIrRarSnCN9YyYoJ3Xn9JgqNCHgpidDAVKueMDyJu8PACkqKoq0ifuKMSh7hv93ndLE8Fdlc4Ng1Pf8sMi1VlS3XSPaZRHg3FE2A/IdO2QFgsNnIrrZ1z+cC48OB3dL6fwxZCaT1sH7/GasOcivV63HyDQxvi9cUynHkcpyqx4GLUUiJSPk+vNCGPXN1hybOQoJxlRqjIPyXSw5QymnEyeRiyBliYw4jZuDEjtvOIYGoZg/wHg5flebSw3SinDQfA4fqNTp1Xw3RC7SVovbHpfrs9REBmQJIOoHNQDioi0vydqq73tI/kFuTBktLiK6jhCozNi58dNAQMyrCOgYh/b3/InbmbhH+mdbAzfHZXkekjnfOvtz1Zt83bAUmIdb3TMkYcNaIPZmwTQ//Y/CCqUTHZzvKCLwAIF2CSKhhtIZzORLT7wjJ6XhWbEwVX2u4uKZ9MJZLUjN9TsvIDu3ze30mmsK8nwtSUDtqwVo5cPMNBVgveTWM2AgTVBdXPWWOuwIJD5lw=
-X-Forefront-Antispam-Report: CIP:165.204.84.17;CTRY:US;LANG:en;SCL:1;SRV:;IPV:CAL;SFV:NSPM;H:SATLEXMB04.amd.com;PTR:InfoDomainNonexistent;CAT:NONE;SFS:(13230016)(4636009)(396003)(136003)(346002)(39860400002)(376002)(46966006)(36840700001)(40470700004)(4326008)(44832011)(54906003)(6916009)(70586007)(26005)(41300700001)(316002)(2906002)(478600001)(70206006)(6666004)(8676002)(47076005)(16526019)(36756003)(426003)(186003)(86362001)(336012)(40460700003)(7696005)(1076003)(82740400003)(40480700001)(83380400001)(81166007)(5660300002)(8936002)(36860700001)(82310400005)(7416002)(2616005)(356005)(36900700001);DIR:OUT;SFP:1101;
-X-OriginatorOrg: amd.com
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 15 Jul 2022 15:05:52.7418
- (UTC)
-X-MS-Exchange-CrossTenant-Network-Message-Id: 395ea720-d326-47e7-07ac-08da667382d1
-X-MS-Exchange-CrossTenant-Id: 3dd8961f-e488-4e60-8e11-a82d994e183d
-X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=3dd8961f-e488-4e60-8e11-a82d994e183d;Ip=[165.204.84.17];Helo=[SATLEXMB04.amd.com]
-X-MS-Exchange-CrossTenant-AuthSource: DM6NAM11FT067.eop-nam11.prod.protection.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Anonymous
-X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM6PR12MB3849
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
+ Thunderbird/91.3.0
+Subject: Re: [PATCH] jbd2: Set the right uuid for block tag
+Content-Language: en-US
+To:     linux-ext4@vger.kernel.org
+References: <tencent_D668868A37626B4E053D6D7B5320DBCB1C08@qq.com>
+From:   Wang Jianjian <wangjianjian0@foxmail.com>
+In-Reply-To: <tencent_D668868A37626B4E053D6D7B5320DBCB1C08@qq.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The intention is to test hmm device coherent type under different get
-user pages paths. Also, test gup with FOLL_LONGTERM flag set in
-device coherent pages. These pages should get migrated back to system
-memory.
+Hi all,
+Is this a real problem need to fix ?
 
-Signed-off-by: Alex Sierra <alex.sierra@amd.com>
-Reviewed-by: Alistair Popple <apopple@nvidia.com>
----
- tools/testing/selftests/vm/hmm-tests.c | 110 +++++++++++++++++++++++++
- 1 file changed, 110 insertions(+)
-
-diff --git a/tools/testing/selftests/vm/hmm-tests.c b/tools/testing/selftests/vm/hmm-tests.c
-index 4b547188ec40..bb38b9777610 100644
---- a/tools/testing/selftests/vm/hmm-tests.c
-+++ b/tools/testing/selftests/vm/hmm-tests.c
-@@ -36,6 +36,7 @@
-  * in the usual include/uapi/... directory.
-  */
- #include "../../../../lib/test_hmm_uapi.h"
-+#include "../../../../mm/gup_test.h"
- 
- struct hmm_buffer {
- 	void		*ptr;
-@@ -59,6 +60,9 @@ enum {
- #define NTIMES		10
- 
- #define ALIGN(x, a) (((x) + (a - 1)) & (~((a) - 1)))
-+/* Just the flags we need, copied from mm.h: */
-+#define FOLL_WRITE	0x01	/* check pte is writable */
-+#define FOLL_LONGTERM   0x10000 /* mapping lifetime is indefinite */
- 
- FIXTURE(hmm)
- {
-@@ -1764,4 +1768,110 @@ TEST_F(hmm, exclusive_cow)
- 	hmm_buffer_free(buffer);
- }
- 
-+static int gup_test_exec(int gup_fd, unsigned long addr, int cmd,
-+			 int npages, int size, int flags)
-+{
-+	struct gup_test gup = {
-+		.nr_pages_per_call	= npages,
-+		.addr			= addr,
-+		.gup_flags		= FOLL_WRITE | flags,
-+		.size			= size,
-+	};
-+
-+	if (ioctl(gup_fd, cmd, &gup)) {
-+		perror("ioctl on error\n");
-+		return errno;
-+	}
-+
-+	return 0;
-+}
-+
-+/*
-+ * Test get user device pages through gup_test. Setting PIN_LONGTERM flag.
-+ * This should trigger a migration back to system memory for both, private
-+ * and coherent type pages.
-+ * This test makes use of gup_test module. Make sure GUP_TEST_CONFIG is added
-+ * to your configuration before you run it.
-+ */
-+TEST_F(hmm, hmm_gup_test)
-+{
-+	struct hmm_buffer *buffer;
-+	int gup_fd;
-+	unsigned long npages;
-+	unsigned long size;
-+	unsigned long i;
-+	int *ptr;
-+	int ret;
-+	unsigned char *m;
-+
-+	gup_fd = open("/sys/kernel/debug/gup_test", O_RDWR);
-+	if (gup_fd == -1)
-+		SKIP(return, "Skipping test, could not find gup_test driver");
-+
-+	npages = 4;
-+	size = npages << self->page_shift;
-+
-+	buffer = malloc(sizeof(*buffer));
-+	ASSERT_NE(buffer, NULL);
-+
-+	buffer->fd = -1;
-+	buffer->size = size;
-+	buffer->mirror = malloc(size);
-+	ASSERT_NE(buffer->mirror, NULL);
-+
-+	buffer->ptr = mmap(NULL, size,
-+			   PROT_READ | PROT_WRITE,
-+			   MAP_PRIVATE | MAP_ANONYMOUS,
-+			   buffer->fd, 0);
-+	ASSERT_NE(buffer->ptr, MAP_FAILED);
-+
-+	/* Initialize buffer in system memory. */
-+	for (i = 0, ptr = buffer->ptr; i < size / sizeof(*ptr); ++i)
-+		ptr[i] = i;
-+
-+	/* Migrate memory to device. */
-+	ret = hmm_migrate_sys_to_dev(self->fd, buffer, npages);
-+	ASSERT_EQ(ret, 0);
-+	ASSERT_EQ(buffer->cpages, npages);
-+	/* Check what the device read. */
-+	for (i = 0, ptr = buffer->mirror; i < size / sizeof(*ptr); ++i)
-+		ASSERT_EQ(ptr[i], i);
-+
-+	ASSERT_EQ(gup_test_exec(gup_fd,
-+				(unsigned long)buffer->ptr,
-+				GUP_BASIC_TEST, 1, self->page_size, 0), 0);
-+	ASSERT_EQ(gup_test_exec(gup_fd,
-+				(unsigned long)buffer->ptr + 1 * self->page_size,
-+				GUP_FAST_BENCHMARK, 1, self->page_size, 0), 0);
-+	ASSERT_EQ(gup_test_exec(gup_fd,
-+				(unsigned long)buffer->ptr + 2 * self->page_size,
-+				PIN_FAST_BENCHMARK, 1, self->page_size, FOLL_LONGTERM), 0);
-+	ASSERT_EQ(gup_test_exec(gup_fd,
-+				(unsigned long)buffer->ptr + 3 * self->page_size,
-+				PIN_LONGTERM_BENCHMARK, 1, self->page_size, 0), 0);
-+
-+	/* Take snapshot to CPU pagetables */
-+	ret = hmm_dmirror_cmd(self->fd, HMM_DMIRROR_SNAPSHOT, buffer, npages);
-+	ASSERT_EQ(ret, 0);
-+	ASSERT_EQ(buffer->cpages, npages);
-+	m = buffer->mirror;
-+	if (hmm_is_coherent_type(variant->device_number)) {
-+		ASSERT_EQ(HMM_DMIRROR_PROT_DEV_COHERENT_LOCAL | HMM_DMIRROR_PROT_WRITE, m[0]);
-+		ASSERT_EQ(HMM_DMIRROR_PROT_DEV_COHERENT_LOCAL | HMM_DMIRROR_PROT_WRITE, m[1]);
-+	} else {
-+		ASSERT_EQ(HMM_DMIRROR_PROT_WRITE, m[0]);
-+		ASSERT_EQ(HMM_DMIRROR_PROT_WRITE, m[1]);
-+	}
-+	ASSERT_EQ(HMM_DMIRROR_PROT_WRITE, m[2]);
-+	ASSERT_EQ(HMM_DMIRROR_PROT_WRITE, m[3]);
-+	/*
-+	 * Check again the content on the pages. Make sure there's no
-+	 * corrupted data.
-+	 */
-+	for (i = 0, ptr = buffer->ptr; i < size / sizeof(*ptr); ++i)
-+		ASSERT_EQ(ptr[i], i);
-+
-+	close(gup_fd);
-+	hmm_buffer_free(buffer);
-+}
- TEST_HARNESS_MAIN
--- 
-2.32.0
-
+On 7/12/22 00:26, Wang Jianjian wrote:
+> journal->j_uuid is not initialized and let us use the uuid from
+> j_superblock. And since this is the only place where j_uuid is used
+> so that we can remove it.
+> 
+> Signed-off-by: Wang Jianjian <wangjianjian0@foxmail.com>
+> ---
+>   fs/jbd2/commit.c     |  2 +-
+>   include/linux/jbd2.h | 10 ----------
+>   2 files changed, 1 insertion(+), 11 deletions(-)
+> 
+> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> index 5b9408e3b370..efde9c494e7a 100644
+> --- a/fs/jbd2/commit.c
+> +++ b/fs/jbd2/commit.c
+> @@ -720,7 +720,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+>   		bufs++;
+>   
+>   		if (first_tag) {
+> -			memcpy (tagp, journal->j_uuid, 16);
+> +			memcpy (tagp, journal->j_superblock->s_uuid, 16);
+>   			tagp += 16;
+>   			space_left -= 16;
+>   			first_tag = 0;
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index de9536680b2b..9d51f4b55cb5 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -1079,16 +1079,6 @@ struct journal_s
+>   	 */
+>   	tid_t			j_commit_request;
+>   
+> -	/**
+> -	 * @j_uuid:
+> -	 *
+> -	 * Journal uuid: identifies the object (filesystem, LVM volume etc)
+> -	 * backed by this journal.  This will eventually be replaced by an array
+> -	 * of uuids, allowing us to index multiple devices within a single
+> -	 * journal and to perform atomic updates across them.
+> -	 */
+> -	__u8			j_uuid[16];
+> -
+>   	/**
+>   	 * @j_task: Pointer to the current commit thread for this journal.
+>   	 */
+> 
