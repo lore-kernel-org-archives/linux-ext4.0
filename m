@@ -2,33 +2,33 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 338B6C433EF
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jul 2022 01:52:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 44B5CC433EF
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jul 2022 02:04:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240675AbiGTBwb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 19 Jul 2022 21:52:31 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48610 "EHLO
+        id S237782AbiGTCEc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 19 Jul 2022 22:04:32 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60860 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235626AbiGTBwa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jul 2022 21:52:30 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 574354D150;
-        Tue, 19 Jul 2022 18:52:29 -0700 (PDT)
-Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.55])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4Lndtj5kMJzkX6g;
-        Wed, 20 Jul 2022 09:50:05 +0800 (CST)
+        with ESMTP id S229690AbiGTCEa (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jul 2022 22:04:30 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4DA8254AFE;
+        Tue, 19 Jul 2022 19:04:29 -0700 (PDT)
+Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.53])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4Lnf9K5cwXzlVpK;
+        Wed, 20 Jul 2022 10:02:45 +0800 (CST)
 Received: from [10.174.177.174] (10.174.177.174) by
  dggpeml500021.china.huawei.com (7.185.36.21) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2375.24; Wed, 20 Jul 2022 09:52:27 +0800
-Message-ID: <a49ccfcd-51ae-eade-8c76-08c4d5d10afc@huawei.com>
-Date:   Wed, 20 Jul 2022 09:52:26 +0800
+ 15.1.2375.24; Wed, 20 Jul 2022 10:04:27 +0800
+Message-ID: <c79e6488-9fb0-271d-0f56-fee60f09b7da@huawei.com>
+Date:   Wed, 20 Jul 2022 10:04:26 +0800
 MIME-Version: 1.0
 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101
  Thunderbird/91.8.1
 Subject: Re: [PATCH 4.19] ext4: fix race condition between ext4_ioctl_setflags
  and ext4_fiemap
-To:     Theodore Ts'o <tytso@mit.edu>, Greg KH <gregkh@linuxfoundation.org>
+To:     Greg KH <gregkh@linuxfoundation.org>, Theodore Ts'o <tytso@mit.edu>
 CC:     <stable@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
         <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <ritesh.list@gmail.com>, <lczerner@redhat.com>,
@@ -39,36 +39,36 @@ CC:     <stable@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
 References: <20220715023928.2701166-1-libaokun1@huawei.com>
  <YtF1XygwvIo2Dwae@kroah.com>
  <425ab528-7d9a-975a-7f4c-5f903cedd8bc@huawei.com>
- <YtaVAWMlxrQNcS34@kroah.com> <Yta6THyDwHulhfi5@mit.edu>
+ <YtaVAWMlxrQNcS34@kroah.com>
+ <ffb13c36-521e-0e06-8fd6-30b0fec727da@huawei.com>
+ <YtairkXvrX6IZfrR@kroah.com> <Ytb+ji56S/de/5Rm@mit.edu>
+ <YtcCmILbA9mTh4Au@kroah.com>
 From:   Baokun Li <libaokun1@huawei.com>
-In-Reply-To: <Yta6THyDwHulhfi5@mit.edu>
+In-Reply-To: <YtcCmILbA9mTh4Au@kroah.com>
 Content-Type: text/plain; charset="UTF-8"; format=flowed
 Content-Transfer-Encoding: 8bit
 X-Originating-IP: [10.174.177.174]
-X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
+X-ClientProxiedBy: dggems704-chm.china.huawei.com (10.3.19.181) To
  dggpeml500021.china.huawei.com (7.185.36.21)
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-在 2022/7/19 22:06, Theodore Ts'o 写道:
-> On Tue, Jul 19, 2022 at 01:26:57PM +0200, Greg KH wrote:
->> On Sat, Jul 16, 2022 at 10:33:30AM +0800, Baokun Li wrote:
->>> This problem persists until the patch d3b6f23f7167("ext4: move ext4_fiemap
->>> to use iomap framework") is incorporated in v5.7-rc1.
->> Then why not ask for that change to be added instead?
-> Switching over to use the iomap framework is a quite invasive change,
-> which is fraught with danager and potential performance regressions.
-> So it's really not something that would be considered safe for an LTS
-> kernel.
+在 2022/7/20 3:14, Greg KH 写道:
+> On Tue, Jul 19, 2022 at 02:57:18PM -0400, Theodore Ts'o wrote:
+>> P.S.  If we go down this path, Greg K-H may also insist on getting the
+>> bug fix to the 5.4 LTS kernel, so that a bug isn't just fixed in 4.19
+>> LTS but not 5.4 LTS.  In which case, the same requirement of running
+>> "-c ext4/all -g auto" and showing that there are no test regressions
+>> is going to be a requirement for 5.4 LTS as well.
+> Yes, if this issue is also in 5.4 or any newer kernels, it HAS to be
+> fixed there at the same time, or before, as we can not have anyone
+> upgrading from an older kernel to a newer one and having a regression.
 >
-> As an upstream developer I'd ask why are people trying to use a kernel
-> as old as 4.19, but RHEL has done more insane things than that.  Also,
-> I know what the answer is, and it's just too depressing for a nice
-> summer day like this.  :-)
+> thanks,
 >
->         	  	    	     	       - Ted
+> greg k-h
 > .
 
 Indeed.
@@ -76,4 +76,5 @@ Indeed.
 -- 
 With Best Regards,
 Baokun Li
+
 
