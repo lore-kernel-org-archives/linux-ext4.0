@@ -2,46 +2,44 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DEC93C43334
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jul 2022 13:58:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E6441C433EF
+	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jul 2022 13:58:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235213AbiGVN6l (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 22 Jul 2022 09:58:41 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34734 "EHLO
+        id S235277AbiGVN6m (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 22 Jul 2022 09:58:42 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34746 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234347AbiGVN6g (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2022 09:58:36 -0400
+        with ESMTP id S229605AbiGVN6i (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2022 09:58:38 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 15A508FD74
-        for <linux-ext4@vger.kernel.org>; Fri, 22 Jul 2022 06:58:35 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5D4D58E6D7
+        for <linux-ext4@vger.kernel.org>; Fri, 22 Jul 2022 06:58:37 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-118-63.bstnma.fios.verizon.net [173.48.118.63])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 26MDwTce016737
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 26MDwUJE016785
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Fri, 22 Jul 2022 09:58:30 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1658498310; bh=on4p+ieFk5hDGlmkfp6dO2xVenNn9kwjnm98l8K+wKQ=;
+        t=1658498311; bh=FZ1hEHcgE8PeiD3hrxhgsOC5zYrrOVFRwVEEbrC4Xf0=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=f1AxNUnd11g3gDx/JT9azeP9lRLgr0dOUtoVQ/UbR3rbdPPIO+pfMDJslkUzdQ3y4
-         s+6mnaCJYLIu0hIFzYQWliyERPiforWGfoCQFC38kMmBPrPa/CVCZaFWOICeHk1wS8
-         y6CnLT+8zzUkyc1DR8RRCUwfra7/zYcH/E0wMvKGGXrqzw0Ny7l/gmm79JU86QEWmY
-         SLdFUMKfh5ZsgIMUAEw/Z1r4FNYzWW79mcPPniu7PPCTONJ0Dy3ctdoyDEwlxDVTWe
-         y6Mi+ZhWo289/aKAPntdk29cmilOYTYxX4BDv1SP2Z28AfEx0C3ATqhiFzhPVOlJEm
-         oOUjYOOFpRJ2A==
+        b=VJ3GOg9+vBYVHZDMIlMxU+7ImCJzupIuf2f9HY9Q3q8IGHiKcZZDV4TJKiyEVrBsm
+         31mxGbVhInFvS+16i8+bNZiNwEhVMffKLARgf0a1JrxwdDk4gO2Wz+kKagfPSJZWxj
+         UkKJe5YGgEEn6ZGpjuz9sWwdiaWan7n+41G3NEuKA8nIbXloCMHb3GUqnbYqpNbsEA
+         4upZ9OqltBzB8pb4k39LEX+hkF8iiFsetmmId2fMXM0w361DfrZDQnVoe+Ole2RBkq
+         AT/sKAzxjcEj3WRmk4ZlSgIiOIRQ3QJ971aPP3df+fWPLp6Jkjx4LOfl7QWyuKy6gs
+         4NOlv4Z1YjSfw==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 70B5515C3F03; Fri, 22 Jul 2022 09:58:27 -0400 (EDT)
+        id 79EB415C3F09; Fri, 22 Jul 2022 09:58:27 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>,
-        syzbot+15cd994e273307bf5cfa@syzkaller.appspotmail.com,
-        tadeusz.struk@linaro.org
-Subject: Re: [PATCH] ext4: block range must be validated before use in ext4_mb_clear_bb()
-Date:   Fri, 22 Jul 2022 09:58:17 -0400
-Message-Id: <165849767595.303416.2399065700843216204.b4-ty@mit.edu>
+To:     linux-ext4@vger.kernel.org, okiselev@amazon.com
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH -V2 2/2] ext4: avoid resizing to a partial cluster size
+Date:   Fri, 22 Jul 2022 09:58:22 -0400
+Message-Id: <165849767596.303416.9593678472601195632.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20220714165903.58260-1-lczerner@redhat.com>
-References: <20220714095300.ffij7re6l5n6ixlg@fedora> <20220714165903.58260-1-lczerner@redhat.com>
+In-Reply-To: <0E92A0AB-4F16-4F1A-94B7-702CC6504FDE@amazon.com>
+References: <0E92A0AB-4F16-4F1A-94B7-702CC6504FDE@amazon.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -49,20 +47,20 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, 14 Jul 2022 18:59:03 +0200, Lukas Czerner wrote:
-> Block range to free is validated in ext4_free_blocks() using
-> ext4_inode_block_valid() and then it's passed to ext4_mb_clear_bb().
-> However in some situations on bigalloc file system the range might be
-> adjusted after the validation in ext4_free_blocks() which can lead to
-> troubles on corrupted file systems such as one found by syzkaller that
-> resulted in the following BUG
+On Wed, 20 Jul 2022 04:27:48 +0000, Kiselev, Oleg wrote:
+> This patch avoids an attempt to resize the filesystem to an
+> unaligned cluster boundary.  An online resize to a size that is not
+> integral to cluster size results in the last iteration attempting to
+> grow the fs by a negative amount, which trips a BUG_ON and leaves the fs
+> with a corrupted in-memory superblock.
+> 
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: block range must be validated before use in ext4_mb_clear_bb()
-      commit: 91e204c46741b198693dd88bd7b03a5b5fe0ce17
+[2/2] ext4: avoid resizing to a partial cluster size
+      commit: 7c943cf3692f71226f462b80a1f367c788f84d1c
 
 Best regards,
 -- 
