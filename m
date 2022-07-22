@@ -2,44 +2,46 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 66361C43334
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jul 2022 13:58:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 119C1C433EF
+	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jul 2022 13:59:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234088AbiGVN6v (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 22 Jul 2022 09:58:51 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34836 "EHLO
+        id S235314AbiGVN7A (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 22 Jul 2022 09:59:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35138 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235103AbiGVN6l (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2022 09:58:41 -0400
+        with ESMTP id S235284AbiGVN6v (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2022 09:58:51 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 87909904DC;
-        Fri, 22 Jul 2022 06:58:40 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 58318904D4;
+        Fri, 22 Jul 2022 06:58:43 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-118-63.bstnma.fios.verizon.net [173.48.118.63])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 26MDwTbR016736
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 26MDwUgW016796
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 22 Jul 2022 09:58:30 -0400
+        Fri, 22 Jul 2022 09:58:31 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1658498310; bh=nrI8dhJqfy/c5qVm6+i8T9D+VQQkNHrMFFhXC0I/R+Y=;
+        t=1658498311; bh=cyLrSzInH7AFiTBUwcPn+0ryt9qDyhkDUN8qT2vZR/A=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=WpCF8n1K530MRkLZ5TplOe1xCMNAx62uXGR80euDaO2pf/rh2hGpbNN/3SZjAeSph
-         mMzg/f6uSIAxI3ya2eHF5egVfTyNJAg/pesfWDByLio9HIaIuBGjzbC90J2S1dV+VK
-         VnYOupdl8657uQmxWPKwlgXQHq0ztfA5YaQgP+WY7Nrlg+NJ6I5ogicGM4bo2Ulz9L
-         CTJke8BMS4ExfAIIDnGLthvh9pwLu0PN4d0zW1sGTiPKQP4Iv8bjaMYd6+a4iIiSor
-         Jmaq/mNPHDfrvevt/h4Huk9TeTo2DP9XRYoZFOz4w4W3GNRYQeTBhAEEuZzDRqoiLS
-         o0zEBg9RLbNhQ==
+        b=cr2HSfGBgScgh4O09NBu7B5gWqKPf3WSdAy7yt42ynvWXnGwVppqzSVHXosezljWm
+         J0N6juG8Ji5tOCP2yIuSMjUu/f4iE42DDt1IA7EcuqkoDYYG5dlLHM+I427FdKfCPu
+         oUUBg4VVMG3/6BIWjeHmtb77/NEcLBi/4PmPuG3jPEhhbRQ8yy1CcGnrqYCn8QlwHj
+         2mQTKmpL9SC8xCiVuawTUxS0/a56FzjAcKZLOnQeeB9MDAdH+v1TmVB4vlByaqz/WD
+         ZLQ7hwRP3dQlHY3842G5/9WpkczH/BC3qS8o/TRAhTqtFvT/YYubKE8LQYrCFmaXo8
+         GAxe1UjLJwtzQ==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 6EF6815C3F02; Fri, 22 Jul 2022 09:58:27 -0400 (EDT)
+        id 7D60915C3F0D; Fri, 22 Jul 2022 09:58:27 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, stable@vger.kernel.org
-Subject: Re: [PATCH 1/2] ext4: check if directory block is within i_size
-Date:   Fri, 22 Jul 2022 09:58:16 -0400
-Message-Id: <165849767595.303416.1808968339954270899.b4-ty@mit.edu>
+To:     linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
+        Ye Bin <yebin10@huawei.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, jack@suse.cz,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -next v2] ext4: fix warning in ext4_iomap_begin as race between bmap and write
+Date:   Fri, 22 Jul 2022 09:58:24 -0400
+Message-Id: <165849767593.303416.2022399899140738469.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20220704142721.157985-1-lczerner@redhat.com>
-References: <20220704142721.157985-1-lczerner@redhat.com>
+In-Reply-To: <20220617013935.397596-1-yebin10@huawei.com>
+References: <20220617013935.397596-1-yebin10@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -47,27 +49,38 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, 4 Jul 2022 16:27:20 +0200, Lukas Czerner wrote:
-> Currently ext4 directory handling code implicitly assumes that the
-> directory blocks are always within the i_size. In fact ext4_append()
-> will attempt to allocate next directory block based solely on i_size and
-> the i_size is then appropriately increased after a successful
-> allocation.
-> 
-> However, for this to work it requires i_size to be correct. If, for any
-> reason, the directory inode i_size is corrupted in a way that the
-> directory tree refers to a valid directory block past i_size, we could
-> end up corrupting parts of the directory tree structure by overwriting
-> already used directory blocks when modifying the directory.
+On Fri, 17 Jun 2022 09:39:35 +0800, Ye Bin wrote:
+> We got issue as follows:
+> ------------[ cut here ]------------
+> WARNING: CPU: 3 PID: 9310 at fs/ext4/inode.c:3441 ext4_iomap_begin+0x182/0x5d0
+> RIP: 0010:ext4_iomap_begin+0x182/0x5d0
+> RSP: 0018:ffff88812460fa08 EFLAGS: 00010293
+> RAX: ffff88811f168000 RBX: 0000000000000000 RCX: ffffffff97793c12
+> RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000003
+> RBP: ffff88812c669160 R08: ffff88811f168000 R09: ffffed10258cd20f
+> R10: ffff88812c669077 R11: ffffed10258cd20e R12: 0000000000000001
+> R13: 00000000000000a4 R14: 000000000000000c R15: ffff88812c6691ee
+> FS:  00007fd0d6ff3740(0000) GS:ffff8883af180000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 00007fd0d6dda290 CR3: 0000000104a62000 CR4: 00000000000006e0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+> Call Trace:
+>  iomap_apply+0x119/0x570
+>  iomap_bmap+0x124/0x150
+>  ext4_bmap+0x14f/0x250
+>  bmap+0x55/0x80
+>  do_vfs_ioctl+0x952/0xbd0
+>  __x64_sys_ioctl+0xc6/0x170
+>  do_syscall_64+0x33/0x40
+>  entry_SYSCALL_64_after_hwframe+0x44/0xa9
 > 
 > [...]
 
 Applied, thanks!
 
-[1/2] ext4: check if directory block is within i_size
-      commit: 65d23bd6e76ae07cee50c24d1fbeea4044aa41e7
-[2/2] ext4: make sure ext4_append() always allocates new block
-      commit: 6d3ab9450ea5ec08882ab2f255827f1a39e300de
+[1/1] ext4: fix warning in ext4_iomap_begin as race between bmap and write
+      commit: b2788f44f61b34468fec945d8ce99b06b7b8b176
 
 Best regards,
 -- 
