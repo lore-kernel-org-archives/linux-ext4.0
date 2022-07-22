@@ -2,115 +2,151 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0487BCCA495
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jul 2022 07:14:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9DEEFC43334
+	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jul 2022 07:21:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234523AbiGVHO0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 22 Jul 2022 03:14:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37304 "EHLO
+        id S234424AbiGVHV2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 22 Jul 2022 03:21:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48860 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229519AbiGVHOH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2022 03:14:07 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2356D951C6;
-        Fri, 22 Jul 2022 00:14:06 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id B431A62197;
-        Fri, 22 Jul 2022 07:14:05 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D89D4C36AE2;
-        Fri, 22 Jul 2022 07:14:04 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1658474045;
-        bh=Wv2MG+nWZ7BgS6tx1h+VHggdsb2rNvjySXUohJfACk0=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=YWy5FtGJZPK1pL8pJlprmjQGKf1KCsrp6nxgeQtmwntj/VBrecmscBttAdOGFPJrt
-         wpGPf/unKjmcYYazzi6V0ytKUawColKBBy2tKfJxKZpIL35siJFosKFaNsi1QrlaDT
-         2g71vdhGoHRH9hMTQJUbW2qwze629xZap0hnlCgyL9JIM2Ja4PAGXV2Fr8RzOwB0Lm
-         ti9Y6ZCBb3LCRZJ36Hxh/8nKEVTA2hLONdxxp3eB11eA+OTa/fsKbNW1pvNVg5Qeyx
-         eRkKZtKwKAzRHw3r4HNFVCddYQsC+yd4ufpUjTQeqsEagp2NgF8PxGGWmQwOYlxOxR
-         s96tl41X6jV9Q==
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fsdevel@vger.kernel.org
-Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-xfs@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-fscrypt@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Keith Busch <kbusch@kernel.org>
-Subject: [PATCH v4 7/9] f2fs: simplify f2fs_force_buffered_io()
-Date:   Fri, 22 Jul 2022 00:12:26 -0700
-Message-Id: <20220722071228.146690-8-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.37.0
-In-Reply-To: <20220722071228.146690-1-ebiggers@kernel.org>
-References: <20220722071228.146690-1-ebiggers@kernel.org>
+        with ESMTP id S234363AbiGVHV1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2022 03:21:27 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C2E272018E;
+        Fri, 22 Jul 2022 00:21:24 -0700 (PDT)
+Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.55])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4Lq14q2Tw2zjX5P;
+        Fri, 22 Jul 2022 15:18:35 +0800 (CST)
+Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
+ (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Fri, 22 Jul
+ 2022 15:21:21 +0800
+From:   Baokun Li <libaokun1@huawei.com>
+To:     <stable@vger.kernel.org>, <linux-ext4@vger.kernel.org>
+CC:     <gregkh@linuxfoundation.org>, <tytso@mit.edu>,
+        <adilger.kernel@dilger.ca>, <jack@suse.cz>,
+        <ritesh.list@gmail.com>, <lczerner@redhat.com>,
+        <enwlinux@gmail.com>, <linux-kernel@vger.kernel.org>,
+        <yi.zhang@huawei.com>, <yebin10@huawei.com>, <yukuai3@huawei.com>,
+        <libaokun1@huawei.com>, Hulk Robot <hulkci@huawei.com>
+Subject: [PATCH 5.4] ext4: fix race condition between ext4_ioctl_setflags and ext4_fiemap
+Date:   Fri, 22 Jul 2022 15:33:34 +0800
+Message-ID: <20220722073334.1893924-1-libaokun1@huawei.com>
+X-Mailer: git-send-email 2.31.1
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.127.227]
+X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
+ dggpeml500021.china.huawei.com (7.185.36.21)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+This patch and problem analysis is based on v4.19 LTS.
+The d3b6f23f7167("ext4: move ext4_fiemap to use iomap framework") patch
+is incorporated in v5.7-rc1. This patch avoids this problem by switching
+to iomap in ext4_fiemap.
 
-f2fs only allows direct I/O that is aligned to the filesystem block
-size.  Given that fact, simplify f2fs_force_buffered_io() by removing
-the redundant call to block_unaligned_IO().
+Hulk Robot reported a BUG on stable 4.19.252:
+==================================================================
+kernel BUG at fs/ext4/extents_status.c:762!
+invalid opcode: 0000 [#1] SMP KASAN PTI
+CPU: 7 PID: 2845 Comm: syz-executor Not tainted 4.19.252 #46
+RIP: 0010:ext4_es_cache_extent+0x30e/0x370
+[...]
+Call Trace:
+ ext4_cache_extents+0x238/0x2f0
+ ext4_find_extent+0x785/0xa40
+ ext4_fiemap+0x36d/0xe90
+ do_vfs_ioctl+0x6af/0x1200
+[...]
+==================================================================
 
-This makes it easier to reuse this code for STATX_DIOALIGN.
+Above issue may happen as follows:
+-------------------------------------
+           cpu1		    cpu2
+_____________________|_____________________
+do_vfs_ioctl
+ ext4_ioctl
+  ext4_ioctl_setflags
+   ext4_ind_migrate
+                        do_vfs_ioctl
+                         ioctl_fiemap
+                          ext4_fiemap
+                           ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)
+                           ext4_fill_fiemap_extents
+    down_write(&EXT4_I(inode)->i_data_sem);
+    ext4_ext_check_inode
+    ext4_clear_inode_flag(inode, EXT4_INODE_EXTENTS)
+    memset(ei->i_data, 0, sizeof(ei->i_data))
+    up_write(&EXT4_I(inode)->i_data_sem);
+                            down_read(&EXT4_I(inode)->i_data_sem);
+                            ext4_find_extent
+                             ext4_cache_extents
+                              ext4_es_cache_extent
+                               BUG_ON(end < lblk)
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
+We can easily reproduce this problem with the syzkaller testcase:
+```
+02:37:07 executing program 3:
+r0 = openat(0xffffffffffffff9c, &(0x7f0000000040)='./file0\x00', 0x26e1, 0x0)
+ioctl$FS_IOC_FSSETXATTR(r0, 0x40086602, &(0x7f0000000080)={0x17e})
+mkdirat(0xffffffffffffff9c, &(0x7f00000000c0)='./file1\x00', 0x1ff)
+r1 = openat(0xffffffffffffff9c, &(0x7f0000000100)='./file1\x00', 0x0, 0x0)
+ioctl$FS_IOC_FIEMAP(r1, 0xc020660b, &(0x7f0000000180)={0x0, 0x1, 0x0, 0xef3, 0x6, []}) (async, rerun: 32)
+ioctl$FS_IOC_FSSETXATTR(r1, 0x40086602, &(0x7f0000000140)={0x17e}) (rerun: 32)
+```
+
+To solve this issue, we use __generic_block_fiemap() instead of
+generic_block_fiemap() and add inode_lock_shared to avoid race condition.
+
+Reported-by: Hulk Robot <hulkci@huawei.com>
+Signed-off-by: Baokun Li <libaokun1@huawei.com>
 ---
- fs/f2fs/file.c | 24 ++++--------------------
- 1 file changed, 4 insertions(+), 20 deletions(-)
+ fs/ext4/extents.c | 15 +++++++++++----
+ 1 file changed, 11 insertions(+), 4 deletions(-)
 
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index ad0212848a1ab9..1b452bb75af29e 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -808,19 +808,7 @@ int f2fs_truncate(struct inode *inode)
- 	return 0;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index f1bbce4350c4..50f956bda34c 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -5175,16 +5175,21 @@ static int _ext4_fiemap(struct inode *inode,
+ 		fieinfo->fi_flags &= ~FIEMAP_FLAG_CACHE;
+ 	}
+ 
++	inode_lock_shared(inode);
+ 	/* fallback to generic here if not in extents fmt */
+ 	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) &&
+-	    fill == ext4_fill_fiemap_extents)
+-		return generic_block_fiemap(inode, fieinfo, start, len,
++	    fill == ext4_fill_fiemap_extents) {
++		error = __generic_block_fiemap(inode, fieinfo, start, len,
+ 			ext4_get_block);
++		goto out_unlock;
++	}
+ 
+ 	if (fill == ext4_fill_es_cache_info)
+ 		ext4_fiemap_flags &= FIEMAP_FLAG_XATTR;
+-	if (fiemap_check_flags(fieinfo, ext4_fiemap_flags))
+-		return -EBADR;
++	if (fiemap_check_flags(fieinfo, ext4_fiemap_flags)) {
++		error = -EBADR;
++		goto out_unlock;
++	}
+ 
+ 	if (fieinfo->fi_flags & FIEMAP_FLAG_XATTR) {
+ 		error = ext4_xattr_fiemap(inode, fieinfo);
+@@ -5204,6 +5209,8 @@ static int _ext4_fiemap(struct inode *inode,
+ 		 */
+ 		error = fill(inode, start_blk, len_blks, fieinfo);
+ 	}
++out_unlock:
++	inode_unlock_shared(inode);
+ 	return error;
  }
  
--static int block_unaligned_IO(struct inode *inode, struct kiocb *iocb,
--			      struct iov_iter *iter)
--{
--	unsigned int i_blkbits = READ_ONCE(inode->i_blkbits);
--	unsigned int blocksize_mask = (1 << i_blkbits) - 1;
--	loff_t offset = iocb->ki_pos;
--	unsigned long align = offset | iov_iter_alignment(iter);
--
--	return align & blocksize_mask;
--}
--
--static inline bool f2fs_force_buffered_io(struct inode *inode,
--				struct kiocb *iocb, struct iov_iter *iter)
-+static bool f2fs_force_buffered_io(struct inode *inode)
- {
- 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
- 
-@@ -840,12 +828,8 @@ static inline bool f2fs_force_buffered_io(struct inode *inode,
- 	 */
- 	if (f2fs_sb_has_blkzoned(sbi))
- 		return true;
--	if (f2fs_lfs_mode(sbi)) {
--		if (block_unaligned_IO(inode, iocb, iter))
--			return true;
--		if (F2FS_IO_ALIGNED(sbi))
--			return true;
--	}
-+	if (f2fs_lfs_mode(sbi) && F2FS_IO_ALIGNED(sbi))
-+		return true;
- 	if (is_sbi_flag_set(F2FS_I_SB(inode), SBI_CP_DISABLED))
- 		return true;
- 
-@@ -4205,7 +4189,7 @@ static bool f2fs_should_use_dio(struct inode *inode, struct kiocb *iocb,
- 	if (!(iocb->ki_flags & IOCB_DIRECT))
- 		return false;
- 
--	if (f2fs_force_buffered_io(inode, iocb, iter))
-+	if (f2fs_force_buffered_io(inode))
- 		return false;
- 
- 	/*
 -- 
-2.37.0
+2.31.1
 
