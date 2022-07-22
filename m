@@ -2,46 +2,47 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E754EC43334
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jul 2022 13:59:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 344C6CCA473
+	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jul 2022 13:59:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235379AbiGVN7S (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 22 Jul 2022 09:59:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35296 "EHLO
+        id S235386AbiGVN7V (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 22 Jul 2022 09:59:21 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35152 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235312AbiGVN66 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2022 09:58:58 -0400
+        with ESMTP id S235371AbiGVN7L (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2022 09:59:11 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A7D4F972F1;
-        Fri, 22 Jul 2022 06:58:45 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CC770951DD;
+        Fri, 22 Jul 2022 06:58:47 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-118-63.bstnma.fios.verizon.net [173.48.118.63])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 26MDwUMk016784
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 26MDwTHw016750
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Fri, 22 Jul 2022 09:58:30 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1658498311; bh=T15V89XX7qWqTYfArHI6um6VHFVudrMvVTFC24tW46I=;
+        t=1658498311; bh=sFpZcIaOd7DnAF9OZCZNzBmIaZ7bPD9+z4NRwNzFCPM=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=ASzXJv3QKSOMKeFgYu89kmFN9Nwl+FMvpmH0TAQkAY1L7a+oKeXnPZrZLxnS8yUQn
-         2sqPw1xt/KtoEG3WNOH5ryvV6Gc8lc5AZyIzZ4buaBCr1wO+NzMxPov45IoMvEMlVv
-         jfWiGcrj2dzaqz8tQ29F3Nf1ePUd0PaxGCfj6IjoWPn6+5ZnWaf8IhCpLcRj6ZQZ+w
-         j2ejNSJhBysOvKeaJKszeOu7HTIVoqx1kRFdiD1l9D+G25wMCJA7ybVJLWt4u+uyjb
-         txF51jf2VsdYfMtgg4T1shTyzLjwwm/L6h1GA2KgI1L8aqx6CcCtR5vIRW8DQF1yoE
-         Fq6hLchzvqWhg==
+        b=G6679RwMknwQswmRjxtxbkeCf9ZSVtPB8x0rLCWpKdSvdTs+8g5mrTj42hH571gIJ
+         90awH2+VL0bLEE2Cb4XGnEv7xEMPauskOyPXecr713XgWTEb1OGvWPhYLsu12CIkC6
+         ZdhKRS1owKtpnkw3WMKSQaM3GVbysTI++rhI6DwnlRjJ6L3gTjDrXqEf7aHUu3TNO9
+         kHOdlKJRLOITctal9EdjDAzYV+0HILuEcMsgZ8xNLCIDS7N5VHA3OZMABHap4EBgw4
+         ffQT6VXGqxVVTRHI0Ein5x1g005kt4h5Ppi7W/dBbiF97+xzKSwJgDa8mMLbkB0e+V
+         XRxNi7t29UfiQ==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 7BB1C15C3F0B; Fri, 22 Jul 2022 09:58:27 -0400 (EDT)
+        id 72D1915C3F04; Fri, 22 Jul 2022 09:58:27 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
-        Ye Bin <yebin10@huawei.com>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, jack@suse.cz,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -next] ext4: avoid remove directory when directory is corrupted
-Date:   Fri, 22 Jul 2022 09:58:23 -0400
-Message-Id: <165849767594.303416.6891115101184115416.b4-ty@mit.edu>
+To:     libaokun1@huawei.com, linux-ext4@vger.kernel.org
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, jack@suse.cz, lczerner@redhat.com,
+        yebin10@huawei.com, yi.zhang@huawei.com, ritesh.list@gmail.com,
+        linux-kernel@vger.kernel.org, enwlinux@gmail.com,
+        adilger.kernel@dilger.ca, yukuai3@huawei.com
+Subject: Re: [PATCH v3 0/4] ext4: fix use-after-free in ext4_xattr_set_entry
+Date:   Fri, 22 Jul 2022 09:58:18 -0400
+Message-Id: <165849767593.303416.8631216390537886242.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20220622090223.682234-1-yebin10@huawei.com>
-References: <20220622090223.682234-1-yebin10@huawei.com>
+In-Reply-To: <20220616021358.2504451-1-libaokun1@huawei.com>
+References: <20220616021358.2504451-1-libaokun1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -49,17 +50,28 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, 22 Jun 2022 17:02:23 +0800, Ye Bin wrote:
-> Now if check directoy entry is corrupted, ext4_empty_dir may return true
-> then directory will be removed when file system mounted with "errors=continue".
-> In order not to make things worse just return false when directory is corrupted.
+On Thu, 16 Jun 2022 10:13:54 +0800, Baokun Li wrote:
+> This series adds a macro for whether there is space for xattr in
+> ext4 inode, and fixes some problems with this macro.
 > 
+> V1->V2:
+> 	Split the patch to make the logic clearer.
+> 	Rename macro to EXT4_INODE_HAVE_XATTR_SPACE.
+> V2->V3:
+> 	Rename macro to EXT4_INODE_HAS_XATTR_SPACE.
 > 
+> [...]
 
 Applied, thanks!
 
-[1/1] ext4: avoid remove directory when directory is corrupted
-      commit: 39aa54792eaef404150d323709252f048aa5b6ff
+[1/4] ext4: add EXT4_INODE_HAS_XATTR_SPACE macro in xattr.h
+      commit: ff528f6b155ce79adf38583a66867d8e54cbd460
+[2/4] ext4: fix use-after-free in ext4_xattr_set_entry
+      commit: 0847102f2b38b43f7352ed8a7f714a291ed1513d
+[3/4] ext4: correct max_inline_xattr_value_size computing
+      commit: 3d783a3751995003002a5f4f6d333c7c02c7966e
+[4/4] ext4: correct the misjudgment in ext4_iget_extra_inode
+      commit: 31c5d92b53629452d669980d17adbd22f2af0d26
 
 Best regards,
 -- 
