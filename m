@@ -2,82 +2,63 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 045A4C43334
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jul 2022 13:55:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0225BC43334
+	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jul 2022 13:58:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230089AbiGVNzm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 22 Jul 2022 09:55:42 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33886 "EHLO
+        id S232566AbiGVN6d (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 22 Jul 2022 09:58:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34662 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229671AbiGVNzl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2022 09:55:41 -0400
+        with ESMTP id S229605AbiGVN6c (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2022 09:58:32 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CE32C87236;
-        Fri, 22 Jul 2022 06:55:40 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 406F08BAAC;
+        Fri, 22 Jul 2022 06:58:31 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-118-63.bstnma.fios.verizon.net [173.48.118.63])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 26MDtOIe015224
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 26MDwRn3016701
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 22 Jul 2022 09:55:25 -0400
+        Fri, 22 Jul 2022 09:58:28 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1658498126; bh=adOGrR/XnBYwUl94/YNKQYYFOIUm0MU+TJwn8QCkDdQ=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To;
-        b=Twa2n8cElnWOk9wJtu82xIorja+zyCG7F2qFd+ahBHkdpkAlWnWHYbalimcPshvjj
-         bNGxOOUrt1CURbl1bT4nYMDifH4FnH4AZI6TxoTDKtJ3rtjm+/4h8TK2131sdwnPU6
-         ITka+XOOPFiiVCybAWt14rsesERsvN2Cv4WkxJWyngW+35dyT0Z/ac/njfbQvBC9UI
-         Rjr0lMA+dHjiigIKCDnGa9gks7ldszw2NNitYEpEiSzLGCxNQ9HpZ1V2QDs7XBFJ7f
-         /tHbNMd7bR1k2N/JETZDwOyv5nEF150LkxqGqaJ/wxsqDb0FiDi8asnBWlDn/hH+wT
-         LswBwNKYejIoQ==
+        t=1658498309; bh=O2vZamNti37vaYiHfmsa7CRQrBvYBsTTdgnOC1njLI4=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References;
+        b=HHDhAyjs4H+p3JXzwLHAcZ7ZnaiXODrAZF6LE5J3apkR3sVVZ17w/NAD9zehbPwzP
+         KAWHuiSHDPsrymk2+i7ozwbyMVdR4rEBDPBvYBY/rVbryCfuNdb4wXHiLUh+ANVXnu
+         wLDFRZtMLVeAS95D2NZpTIiwGU2ODFqVqsPFhnlX+y1PXq7prXZkzT3mf5aOIQMrCc
+         1c5qaL4QAfUWAlWvoRqMBGUUBp4AlEsdsU5kZoB1dVgFkifmNUYM5LvKKGcw+vGZz5
+         UyTIleHPC5uZeyTbY0vLt4ytqIOSlJpNNcQaa4z272bkkb7xaYxKHpAn2chmGiyIeG
+         uZHWJBfNlpJzg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 99ACB15C3EF7; Fri, 22 Jul 2022 09:55:24 -0400 (EDT)
-Date:   Fri, 22 Jul 2022 09:55:24 -0400
+        id 67DEA15C3EFC; Fri, 22 Jul 2022 09:58:27 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     "Alejandro Colomar (man-pages)" <alx.manpages@gmail.com>
-Cc:     "Darrick J. Wong" <djwong@kernel.org>,
-        Jeremy Bongio <bongiojp@gmail.com>, linux-ext4@vger.kernel.org,
-        linux-man@vger.kernel.org
-Subject: Re: [PATCH v2] Add manpage for get/set fsuuid ioctl for ext4
- filesystem.
-Message-ID: <YtqsTM2qXyR+dlz6@mit.edu>
-References: <20220720234512.354076-1-bongiojp@gmail.com>
- <YtiZ+gOmOFTpiAjW@magnolia>
- <e503645b-e665-50c4-37a9-cdc8637ba1d8@gmail.com>
- <YtmXAyoF2PXstnLY@magnolia>
- <e1573002-7ea3-2636-b2d2-331767a5622f@gmail.com>
+To:     bongiojp@gmail.com
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org
+Subject: Re: [PATCH v5] Add ioctls to get/set the ext4 superblock uuid.
+Date:   Fri, 22 Jul 2022 09:58:12 -0400
+Message-Id: <165849767596.303416.13387912948805613383.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <20220721224422.438351-1-bongiojp@gmail.com>
+References: <20220721224422.438351-1-bongiojp@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <e1573002-7ea3-2636-b2d2-331767a5622f@gmail.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Jul 22, 2022 at 12:03:23PM +0200, Alejandro Colomar (man-pages) wrote:
-> > SEE ALSO
-> > 	ioctl(2)
-> > 
-> > at the end of an ioctl_XXX manpage like this one.
-> > 
+On Thu, 21 Jul 2022 15:44:22 -0700, Jeremy Bongio wrote:
+> This fixes a race between changing the ext4 superblock uuid and operations
+> like mounting, resizing, changing features, etc.
 > 
-> Okay.  Then may I ask for an EXAMPLES section with a program that
-> unequivocally shows users how to use it?
+> 
 
-I'll note that existing ioctl man pages don't have an explicit
-statement that a libc is required --- nor do we do this for open(2),
-stat(2), etc.   (And that's especially necessary for stat(2), BTW!)
+Applied, thanks!
 
-Many of the ioctl man pages (or other system call man pages, for that
-matter) also don't have an EXAMPLES section, either.
+[1/1] Add ioctls to get/set the ext4 superblock uuid.
+      commit: 2cdc09d757bf2cefe5de132076eb5d0a8e8df384
 
-Perhaps it would be useful to have a discussion over what the
-standards are for man pages in section 2, and when we need to state
-things that seem to be rather obvious (like "you must have a C
-library") and when there should be things like an EXAMPLES section?
-
-Some the suggestions you are making don't seem to be adhered to by
-the existing man pages, and more text is not always better.
-
-https://www.npr.org/sections/13.7/2014/02/03/270680304/this-could-have-been-shorter
-
-      	     	       	       		- Ted
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
