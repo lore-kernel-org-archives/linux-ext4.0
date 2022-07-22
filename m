@@ -2,44 +2,45 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4034ECCA493
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CC0D0CCA499
 	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jul 2022 07:14:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234421AbiGVHOM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 22 Jul 2022 03:14:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37274 "EHLO
+        id S234389AbiGVHOJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 22 Jul 2022 03:14:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37250 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234301AbiGVHOG (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2022 03:14:06 -0400
+        with ESMTP id S234230AbiGVHOE (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2022 03:14:04 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 81EA9936BA;
-        Fri, 22 Jul 2022 00:14:04 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B0A7893C25;
+        Fri, 22 Jul 2022 00:14:03 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 1696162190;
-        Fri, 22 Jul 2022 07:14:04 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9A486C341CA;
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 379086218F;
         Fri, 22 Jul 2022 07:14:03 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 54F7DC341CA;
+        Fri, 22 Jul 2022 07:14:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1658474043;
-        bh=4idVgRAKusE9xByup3Qe2uILHisarAzGtiVXG+Gs9Ns=;
+        s=k20201202; t=1658474042;
+        bh=hDPLaCgqAD8dm7MXlD1Frq819oFYqTXZlI03nvS/+yc=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=CrlqaAxITMZDfNJEKkfbbQ++wx2VrrRP24INBAKyh1uGtofDHzmHR8qQJ4mEGhh9v
-         2A5iTBrix2O+9LDiFMjVOjiBVCWyfJu2YBk9G/uZp3/1vG7W1zjRUiriUJi9YbEIdW
-         M6nGQfauy+4eUThbhYvt2g0Z3Rj3GIGtTzdnZ4bHGijhiu8AobyAhbNPspV74U93Rn
-         hJuLAwiteMlnHBFFZtBJP2qOtoi8HK3Z5VbXYcEe548sAXDLpvK8Op3K72DqMSS6Jl
-         VvIrnQz7wfM1OinaUYhZs2SF5LKHGVBFuKrM3CjZMW5E7pHO+BZfVtTQ/ug+cyfiW4
-         2/6i92y43Z5wQ==
+        b=CPs/ExZkA4M08BS5otGXisiQMuIlX3galN1C6QnfwwVe625akli4n5LfrbrAY5mM2
+         gvmOv++UaOhrkJlC0OWZv7Hpb3sLD5R72hYrlghJ/wlwR1RzQRMfT6IyFXZayOL8I3
+         XWfUBG5eX6aBtDFWLMffxIxw0bdoz7zQfD3uYNgMtEjmMk87GCylmrpiJKoQnrU8r9
+         SoaYkjkNIlnjLPP9jOxqgm5HtRlsgXEAUjW69aK4+Uub3cT9Mx5ubIJFgCBAamU3Ub
+         UV8xRndANioHaLHmlnYMsELapg0KhYKX2icgHOs2aXVcJ/r0ejCtmK0kBYgAWbqQb9
+         V8Hgqo6gX+cIA==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-xfs@vger.kernel.org, linux-api@vger.kernel.org,
         linux-fscrypt@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Keith Busch <kbusch@kernel.org>
-Subject: [PATCH v4 4/9] ext4: support STATX_DIOALIGN
-Date:   Fri, 22 Jul 2022 00:12:23 -0700
-Message-Id: <20220722071228.146690-5-ebiggers@kernel.org>
+        linux-kernel@vger.kernel.org, Keith Busch <kbusch@kernel.org>,
+        Christoph Hellwig <hch@lst.de>
+Subject: [PATCH v4 1/9] statx: add direct I/O alignment information
+Date:   Fri, 22 Jul 2022 00:12:20 -0700
+Message-Id: <20220722071228.146690-2-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.37.0
 In-Reply-To: <20220722071228.146690-1-ebiggers@kernel.org>
 References: <20220722071228.146690-1-ebiggers@kernel.org>
@@ -51,153 +52,109 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Add support for STATX_DIOALIGN to ext4, so that direct I/O alignment
-restrictions are exposed to userspace in a generic way.
+Traditionally, the conditions for when DIO (direct I/O) is supported
+were fairly simple.  For both block devices and regular files, DIO had
+to be aligned to the logical block size of the block device.
 
+However, due to filesystem features that have been added over time (e.g.
+multi-device support, data journalling, inline data, encryption, verity,
+compression, checkpoint disabling, log-structured mode), the conditions
+for when DIO is allowed on a regular file have gotten increasingly
+complex.  Whether a particular regular file supports DIO, and with what
+alignment, can depend on various file attributes and filesystem mount
+options, as well as which block device(s) the file's data is located on.
+
+Moreover, the general rule of DIO needing to be aligned to the block
+device's logical block size is being relaxed to allow user buffers (but
+not file offsets) aligned to the DMA alignment instead
+(https://lore.kernel.org/linux-block/20220610195830.3574005-1-kbusch@fb.com/T/#u).
+
+XFS has an ioctl XFS_IOC_DIOINFO that exposes DIO alignment information.
+Uplifting this to the VFS is one possibility.  However, as discussed
+(https://lore.kernel.org/linux-fsdevel/20220120071215.123274-1-ebiggers@kernel.org/T/#u),
+this ioctl is rarely used and not known to be used outside of
+XFS-specific code.  It was also never intended to indicate when a file
+doesn't support DIO at all, nor was it intended for block devices.
+
+Therefore, let's expose this information via statx().  Add the
+STATX_DIOALIGN flag and two new statx fields associated with it:
+
+* stx_dio_mem_align: the alignment (in bytes) required for user memory
+  buffers for DIO, or 0 if DIO is not supported on the file.
+
+* stx_dio_offset_align: the alignment (in bytes) required for file
+  offsets and I/O segment lengths for DIO, or 0 if DIO is not supported
+  on the file.  This will only be nonzero if stx_dio_mem_align is
+  nonzero, and vice versa.
+
+Note that as with other statx() extensions, if STATX_DIOALIGN isn't set
+in the returned statx struct, then these new fields won't be filled in.
+This will happen if the file is neither a regular file nor a block
+device, or if the file is a regular file and the filesystem doesn't
+support STATX_DIOALIGN.  It might also happen if the caller didn't
+include STATX_DIOALIGN in the request mask, since statx() isn't required
+to return unrequested information.
+
+This commit only adds the VFS-level plumbing for STATX_DIOALIGN.  For
+regular files, individual filesystems will still need to add code to
+support it.  For block devices, a separate commit will wire it up too.
+
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ext4/ext4.h  |  1 +
- fs/ext4/file.c  | 42 ++++++++++++++++++++++++++----------------
- fs/ext4/inode.c | 36 ++++++++++++++++++++++++++++++++++++
- 3 files changed, 63 insertions(+), 16 deletions(-)
+ fs/stat.c                 | 2 ++
+ include/linux/stat.h      | 2 ++
+ include/uapi/linux/stat.h | 4 +++-
+ 3 files changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 75b8d81b24692c..68e964394e9173 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2968,6 +2968,7 @@ extern struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- extern int  ext4_write_inode(struct inode *, struct writeback_control *);
- extern int  ext4_setattr(struct user_namespace *, struct dentry *,
- 			 struct iattr *);
-+extern u32  ext4_dio_alignment(struct inode *inode);
- extern int  ext4_getattr(struct user_namespace *, const struct path *,
- 			 struct kstat *, u32, unsigned int);
- extern void ext4_evict_inode(struct inode *);
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 26d7426208970d..8bb1c35fd6dd5a 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -36,24 +36,34 @@
- #include "acl.h"
- #include "truncate.h"
+diff --git a/fs/stat.c b/fs/stat.c
+index 9ced8860e0f35d..a7930d74448304 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -611,6 +611,8 @@ cp_statx(const struct kstat *stat, struct statx __user *buffer)
+ 	tmp.stx_dev_major = MAJOR(stat->dev);
+ 	tmp.stx_dev_minor = MINOR(stat->dev);
+ 	tmp.stx_mnt_id = stat->mnt_id;
++	tmp.stx_dio_mem_align = stat->dio_mem_align;
++	tmp.stx_dio_offset_align = stat->dio_offset_align;
  
--static bool ext4_dio_supported(struct kiocb *iocb, struct iov_iter *iter)
-+/*
-+ * Returns %true if the given DIO request should be attempted with DIO, or
-+ * %false if it should fall back to buffered I/O.
-+ *
-+ * DIO isn't well specified; when it's unsupported (either due to the request
-+ * being misaligned, or due to the file not supporting DIO at all), filesystems
-+ * either fall back to buffered I/O or return EINVAL.  For files that don't use
-+ * any special features like encryption or verity, ext4 has traditionally
-+ * returned EINVAL for misaligned DIO.  iomap_dio_rw() uses this convention too.
-+ * In this case, we should attempt the DIO, *not* fall back to buffered I/O.
-+ *
-+ * In contrast, in cases where DIO is unsupported due to ext4 features, ext4
-+ * traditionally falls back to buffered I/O.
-+ *
-+ * This function implements the traditional ext4 behavior in all these cases.
-+ */
-+static bool ext4_should_use_dio(struct kiocb *iocb, struct iov_iter *iter)
- {
- 	struct inode *inode = file_inode(iocb->ki_filp);
-+	u32 dio_align = ext4_dio_alignment(inode);
- 
--	if (IS_ENCRYPTED(inode)) {
--		if (!fscrypt_dio_supported(inode))
--			return false;
--		if (!IS_ALIGNED(iocb->ki_pos | iov_iter_alignment(iter),
--				i_blocksize(inode)))
--			return false;
--	}
--	if (fsverity_active(inode))
-+	if (dio_align == 0)
- 		return false;
--	if (ext4_should_journal_data(inode))
--		return false;
--	if (ext4_has_inline_data(inode))
--		return false;
--	return true;
-+
-+	if (dio_align == 1)
-+		return true;
-+
-+	return IS_ALIGNED(iocb->ki_pos | iov_iter_alignment(iter), dio_align);
+ 	return copy_to_user(buffer, &tmp, sizeof(tmp)) ? -EFAULT : 0;
  }
+diff --git a/include/linux/stat.h b/include/linux/stat.h
+index 7df06931f25d85..ff277ced50e9fd 100644
+--- a/include/linux/stat.h
++++ b/include/linux/stat.h
+@@ -50,6 +50,8 @@ struct kstat {
+ 	struct timespec64 btime;			/* File creation time */
+ 	u64		blocks;
+ 	u64		mnt_id;
++	u32		dio_mem_align;
++	u32		dio_offset_align;
+ };
  
- static ssize_t ext4_dio_read_iter(struct kiocb *iocb, struct iov_iter *to)
-@@ -68,7 +78,7 @@ static ssize_t ext4_dio_read_iter(struct kiocb *iocb, struct iov_iter *to)
- 		inode_lock_shared(inode);
- 	}
+ #endif
+diff --git a/include/uapi/linux/stat.h b/include/uapi/linux/stat.h
+index 1500a0f58041ae..7cab2c65d3d7fc 100644
+--- a/include/uapi/linux/stat.h
++++ b/include/uapi/linux/stat.h
+@@ -124,7 +124,8 @@ struct statx {
+ 	__u32	stx_dev_minor;
+ 	/* 0x90 */
+ 	__u64	stx_mnt_id;
+-	__u64	__spare2;
++	__u32	stx_dio_mem_align;	/* Memory buffer alignment for direct I/O */
++	__u32	stx_dio_offset_align;	/* File offset alignment for direct I/O */
+ 	/* 0xa0 */
+ 	__u64	__spare3[12];	/* Spare space for future expansion */
+ 	/* 0x100 */
+@@ -152,6 +153,7 @@ struct statx {
+ #define STATX_BASIC_STATS	0x000007ffU	/* The stuff in the normal stat struct */
+ #define STATX_BTIME		0x00000800U	/* Want/got stx_btime */
+ #define STATX_MNT_ID		0x00001000U	/* Got stx_mnt_id */
++#define STATX_DIOALIGN		0x00002000U	/* Want/got direct I/O alignment info */
  
--	if (!ext4_dio_supported(iocb, to)) {
-+	if (!ext4_should_use_dio(iocb, to)) {
- 		inode_unlock_shared(inode);
- 		/*
- 		 * Fallback to buffered I/O if the operation being performed on
-@@ -516,7 +526,7 @@ static ssize_t ext4_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	}
+ #define STATX__RESERVED		0x80000000U	/* Reserved for future struct statx expansion */
  
- 	/* Fallback to buffered I/O if the inode does not support direct I/O. */
--	if (!ext4_dio_supported(iocb, from)) {
-+	if (!ext4_should_use_dio(iocb, from)) {
- 		if (ilock_shared)
- 			inode_unlock_shared(inode);
- 		else
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 84c0eb55071d65..75dd332e9da57b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5536,6 +5536,22 @@ int ext4_setattr(struct user_namespace *mnt_userns, struct dentry *dentry,
- 	return error;
- }
- 
-+u32 ext4_dio_alignment(struct inode *inode)
-+{
-+	if (fsverity_active(inode))
-+		return 0;
-+	if (ext4_should_journal_data(inode))
-+		return 0;
-+	if (ext4_has_inline_data(inode))
-+		return 0;
-+	if (IS_ENCRYPTED(inode)) {
-+		if (!fscrypt_dio_supported(inode))
-+			return 0;
-+		return i_blocksize(inode);
-+	}
-+	return 1; /* use the iomap defaults */
-+}
-+
- int ext4_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 		 struct kstat *stat, u32 request_mask, unsigned int query_flags)
- {
-@@ -5551,6 +5567,26 @@ int ext4_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 		stat->btime.tv_nsec = ei->i_crtime.tv_nsec;
- 	}
- 
-+	/*
-+	 * Return the DIO alignment restrictions if requested.  We only return
-+	 * this information when requested, since on encrypted files it might
-+	 * take a fair bit of work to get if the file wasn't opened recently.
-+	 */
-+	if ((request_mask & STATX_DIOALIGN) && S_ISREG(inode->i_mode)) {
-+		u32 dio_align = ext4_dio_alignment(inode);
-+		unsigned int lbs = bdev_logical_block_size(inode->i_sb->s_bdev);
-+
-+		stat->result_mask |= STATX_DIOALIGN;
-+		if (dio_align == 1) {
-+			/* iomap defaults */
-+			stat->dio_mem_align = lbs;
-+			stat->dio_offset_align = lbs;
-+		} else {
-+			stat->dio_mem_align = dio_align;
-+			stat->dio_offset_align = dio_align;
-+		}
-+	}
-+
- 	flags = ei->i_flags & EXT4_FL_USER_VISIBLE;
- 	if (flags & EXT4_APPEND_FL)
- 		stat->attributes |= STATX_ATTR_APPEND;
 -- 
 2.37.0
 
