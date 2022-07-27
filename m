@@ -2,66 +2,80 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FEE5C04A68
-	for <linux-ext4@archiver.kernel.org>; Wed, 27 Jul 2022 11:53:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D3A2BC04A68
+	for <linux-ext4@archiver.kernel.org>; Wed, 27 Jul 2022 11:53:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232260AbiG0LxQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 27 Jul 2022 07:53:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40294 "EHLO
+        id S232500AbiG0LxX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 27 Jul 2022 07:53:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40392 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232153AbiG0LxQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Jul 2022 07:53:16 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 1363025285
-        for <linux-ext4@vger.kernel.org>; Wed, 27 Jul 2022 04:53:14 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1658922794;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=pMfHKlFrYjnxovEaG8YemezedsneUgj3glxjTg4e+70=;
-        b=J7n+/k7EmMoIXMj4eOOMh8Q2loTLcXBgFa4197U3EoC8N+woKhG/cLaAc+RmS7dLLatM7T
-        VhNA3HovW7Ji6KotgD5DgrvZUMceWSqLAMV8s1HpHioymd8W7xUbH9gBqylChGyAflBTPQ
-        V1t5bi5Dya7wNfxUWNv1lxYBBKg3ZKU=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-418-RjB390kPNJG_b5QCft_A1w-1; Wed, 27 Jul 2022 07:53:10 -0400
-X-MC-Unique: RjB390kPNJG_b5QCft_A1w-1
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        with ESMTP id S232504AbiG0LxW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Jul 2022 07:53:22 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4E11849B7D
+        for <linux-ext4@vger.kernel.org>; Wed, 27 Jul 2022 04:53:18 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 8B770802E5D;
-        Wed, 27 Jul 2022 11:53:10 +0000 (UTC)
-Received: from fedora (unknown [10.40.192.210])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id E04A418EB7;
-        Wed, 27 Jul 2022 11:53:09 +0000 (UTC)
-Date:   Wed, 27 Jul 2022 13:53:07 +0200
-From:   Lukas Czerner <lczerner@redhat.com>
-To:     "Darrick J. Wong" <djwong@kernel.org>
-Cc:     bugzilla-daemon@kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [Bug 216283] New: FUZZ: BUG() triggered in
+        by ams.source.kernel.org (Postfix) with ESMTPS id 06BDEB8202F
+        for <linux-ext4@vger.kernel.org>; Wed, 27 Jul 2022 11:53:17 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id AE290C4347C
+        for <linux-ext4@vger.kernel.org>; Wed, 27 Jul 2022 11:53:15 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1658922795;
+        bh=ErMJDgBN5YfYH6KPzp9CdkXYj/lXQm+JSWp0RpEWlr0=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=dSIwl6O3FY8t0JAtn0b331udN9yF3tFh2qRySlhKbgw8wjQ2GbcevGxHoONTGmScK
+         bv6PqIctqKyM9PhUPu/VCIfXruWU8Y0B9WDPmtLQEetkLXhHcFhvYpyRRN/JdsZqgs
+         Q8Bl8aNAnZZqnJl5Eeao+icrk7Hek+TnNmXFTlqycdnrMBxFvf/r+p1o74uYVGAJEP
+         XwYLiNvBdbMoG6AsEgTcYwe8EvbBbWH+EcFUjkJ8lkEVYRFSsevYlsGDA5fJ+T5hNT
+         Fxd+oFDgquo452Nj5PP+QdDDS3lahFci5Hb+5+bc/qMVFIg0ivYLuJXFxGFiaTfrnT
+         oNaMldszsxo6Q==
+Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
+        id 95424C433E6; Wed, 27 Jul 2022 11:53:15 +0000 (UTC)
+From:   bugzilla-daemon@kernel.org
+To:     linux-ext4@vger.kernel.org
+Subject: [Bug 216283] FUZZ: BUG() triggered in
  fs/ext4/extent.c:ext4_ext_insert_extent() when mount and operate on crafted
  image
-Message-ID: <20220727115307.qco6dn2tqqw52pl7@fedora>
+Date:   Wed, 27 Jul 2022 11:53:15 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: lczerner@redhat.com
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: 
+Message-ID: <bug-216283-13602-B3pbXtQvhV@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-216283-13602@https.bugzilla.kernel.org/>
 References: <bug-216283-13602@https.bugzilla.kernel.org/>
- <YuBKMLw6dpERM95F@magnolia>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <YuBKMLw6dpERM95F@magnolia>
-X-Scanned-By: MIMEDefang 2.79 on 10.11.54.5
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+https://bugzilla.kernel.org/show_bug.cgi?id=3D216283
+
+--- Comment #2 from Lukas Czerner (lczerner@redhat.com) ---
 On Tue, Jul 26, 2022 at 01:10:24PM -0700, Darrick J. Wong wrote:
 > If you are going to run some scripted tool to randomly
 > corrupt the filesystem to find failures, then you have an
 > ethical and moral responsibility to do some of the work to
 > narrow down and identify the cause of the failure, not just
 > throw them at someone to do all the work.
-> 
+>=20
 > --D
 
 While I understand the frustration with the fuzzer bug reports like this
@@ -89,3 +103,8 @@ energy to investigate.
 
 -Lukas
 
+--=20
+You may reply to this email to add a comment.
+
+You are receiving this mail because:
+You are watching the assignee of the bug.=
