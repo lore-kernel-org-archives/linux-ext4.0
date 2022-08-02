@@ -2,75 +2,61 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D0C6C00144
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B1AD3C3F6B0
 	for <linux-ext4@archiver.kernel.org>; Tue,  2 Aug 2022 01:06:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230203AbiHBBG6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 1 Aug 2022 21:06:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42168 "EHLO
+        id S231320AbiHBBG7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 1 Aug 2022 21:06:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42182 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229505AbiHBBG5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Aug 2022 21:06:57 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5B00218375
-        for <linux-ext4@vger.kernel.org>; Mon,  1 Aug 2022 18:06:56 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id E72FD60FED
-        for <linux-ext4@vger.kernel.org>; Tue,  2 Aug 2022 01:06:55 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 4B59FC43470
-        for <linux-ext4@vger.kernel.org>; Tue,  2 Aug 2022 01:06:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1659402415;
-        bh=I/a58rWKRG5/Fw8ExkMiEP8PQdWTvktQfUM2uRgKZcA=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=MsqMjZ4NJS36p/Cb+Meb9qiy9zbvw1m4YM7RvrfqtYhlVuSdOfYAfGhx3Blpl/GuV
-         1YGiCPRvga3HR2ezm1a1fPxY+Mbll07vSbjYFEhWzjTRNhvbLadTrYbJR+hoJgTkhp
-         a71Sr1sbvEJw98saC+6rP23esalRnN36c3IdLi3B7QHDnWEeJyu/XQULQ3UwfXWodX
-         Bd8ETQWwa9gnMt/+RCF5tYaEa41AxBVanlRFuY9DqYkx8v1ywvnNlNc6vbbNBtxfi0
-         1m1HLQudKu0DggUU+HC3FwRVz5vCN7nIRtZCXucg1SAbuA8ZwuRSws9mYgq7wdfMFj
-         2YvNTZyR9FjCA==
-Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
-        id 325D5C433E7; Tue,  2 Aug 2022 01:06:55 +0000 (UTC)
-From:   bugzilla-daemon@kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 216283] FUZZ: BUG() triggered in
+        with ESMTP id S230455AbiHBBG6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Aug 2022 21:06:58 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 305881FCD8
+        for <linux-ext4@vger.kernel.org>; Mon,  1 Aug 2022 18:06:57 -0700 (PDT)
+Received: from letrec.thunk.org (c-24-1-67-28.hsd1.il.comcast.net [24.1.67.28])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 27216d5Q009795
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Mon, 1 Aug 2022 21:06:41 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1659402402; bh=N4XA8UxqTt4WzZOVbUzEChIx6xTIt/EnZXrChYkBfXQ=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To;
+        b=VGWKv1T6BhwSR9IwYVK9qATilhjWyqcERs63QYi0KpDHgube6POjTm2xjzljth0xF
+         ZKSpUDxUNjeeDb2U4fuV0T94UPYeIGPb4syFquHDsRCGe72MqRcRPezek1bOu1hFA0
+         4LvbRcGVWAQ20btYIQc17axBjvEhBtLeDBZCikfWEgVvrlOFSnfEJpj/AQZ2LCN5b6
+         GUURYDjKc9VY2lDgx2WzB8JqeBPT5i7x3v5glKAwIqOJNKpi8RqKqfYcfg9WIO3bz5
+         7L5zMKEJwxON/wOXuFJRMakRfUnI+fAMNISIgMYq+WMhLTdvmOipZW7nAvVQKy4ymO
+         9G14X4utRXp1A==
+Received: by letrec.thunk.org (Postfix, from userid 15806)
+        id 964BD8C2E44; Mon,  1 Aug 2022 21:06:39 -0400 (EDT)
+Date:   Mon, 1 Aug 2022 21:06:39 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Dave Chinner <david@fromorbit.com>
+Cc:     Lukas Czerner <lczerner@redhat.com>,
+        "Darrick J. Wong" <djwong@kernel.org>, bugzilla-daemon@kernel.org,
+        linux-ext4@vger.kernel.org
+Subject: Re: [Bug 216283] New: FUZZ: BUG() triggered in
  fs/ext4/extent.c:ext4_ext_insert_extent() when mount and operate on crafted
  image
-Date:   Tue, 02 Aug 2022 01:06:54 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: tytso@mit.edu
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-216283-13602-rQFJ8C4k0S@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-216283-13602@https.bugzilla.kernel.org/>
+Message-ID: <Yuh4n60F3i/KBTTV@mit.edu>
 References: <bug-216283-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+ <YuBKMLw6dpERM95F@magnolia>
+ <20220727115307.qco6dn2tqqw52pl7@fedora>
+ <20220727232224.GW3600936@dread.disaster.area>
+ <20220728072510.yunkzplfqx2vt4wb@fedora>
+ <20220801224551.GA3861211@dread.disaster.area>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20220801224551.GA3861211@dread.disaster.area>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D216283
-
---- Comment #7 from Theodore Tso (tytso@mit.edu) ---
 On Tue, Aug 02, 2022 at 08:45:51AM +1000, Dave Chinner wrote:
->=20
+> 
 > On systems that automount filesytsems when you plug in a USB drive
 > (which most distros do out of the box) then a crash bug during mount
 > is, at minimum, an annoying DOS vector. And if it can result in a
@@ -91,7 +77,7 @@ is locked.  Enterprise class server class machines running enterprise
 distros have no business having the automounter enabled at all, and
 careful datacenter managers should fill in the USB ports with epoxy.
 For more common sense tips, see:
-https://www.youtube.com/watch?v=3Dkd33UVZhnAA
+https://www.youtube.com/watch?v=kd33UVZhnAA
 
 Look, bad buys have the time and energy to run file system fuzzers
 (many of which are open source and can be easily found on github).
@@ -107,10 +93,4 @@ have low CVE Security Scores *anyway*.
 
 Cheers,
 
-                                                - Ted
-
---=20
-You may reply to this email to add a comment.
-
-You are receiving this mail because:
-You are watching the assignee of the bug.=
+						- Ted
