@@ -2,95 +2,72 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B1AD3C3F6B0
-	for <linux-ext4@archiver.kernel.org>; Tue,  2 Aug 2022 01:06:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 021A5C00144
+	for <linux-ext4@archiver.kernel.org>; Tue,  2 Aug 2022 02:11:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231320AbiHBBG7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 1 Aug 2022 21:06:59 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42182 "EHLO
+        id S235469AbiHBCLD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 1 Aug 2022 22:11:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55876 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230455AbiHBBG6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Aug 2022 21:06:58 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 305881FCD8
-        for <linux-ext4@vger.kernel.org>; Mon,  1 Aug 2022 18:06:57 -0700 (PDT)
-Received: from letrec.thunk.org (c-24-1-67-28.hsd1.il.comcast.net [24.1.67.28])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 27216d5Q009795
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Mon, 1 Aug 2022 21:06:41 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1659402402; bh=N4XA8UxqTt4WzZOVbUzEChIx6xTIt/EnZXrChYkBfXQ=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To;
-        b=VGWKv1T6BhwSR9IwYVK9qATilhjWyqcERs63QYi0KpDHgube6POjTm2xjzljth0xF
-         ZKSpUDxUNjeeDb2U4fuV0T94UPYeIGPb4syFquHDsRCGe72MqRcRPezek1bOu1hFA0
-         4LvbRcGVWAQ20btYIQc17axBjvEhBtLeDBZCikfWEgVvrlOFSnfEJpj/AQZ2LCN5b6
-         GUURYDjKc9VY2lDgx2WzB8JqeBPT5i7x3v5glKAwIqOJNKpi8RqKqfYcfg9WIO3bz5
-         7L5zMKEJwxON/wOXuFJRMakRfUnI+fAMNISIgMYq+WMhLTdvmOipZW7nAvVQKy4ymO
-         9G14X4utRXp1A==
-Received: by letrec.thunk.org (Postfix, from userid 15806)
-        id 964BD8C2E44; Mon,  1 Aug 2022 21:06:39 -0400 (EDT)
-Date:   Mon, 1 Aug 2022 21:06:39 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Dave Chinner <david@fromorbit.com>
-Cc:     Lukas Czerner <lczerner@redhat.com>,
-        "Darrick J. Wong" <djwong@kernel.org>, bugzilla-daemon@kernel.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: [Bug 216283] New: FUZZ: BUG() triggered in
- fs/ext4/extent.c:ext4_ext_insert_extent() when mount and operate on crafted
- image
-Message-ID: <Yuh4n60F3i/KBTTV@mit.edu>
-References: <bug-216283-13602@https.bugzilla.kernel.org/>
- <YuBKMLw6dpERM95F@magnolia>
- <20220727115307.qco6dn2tqqw52pl7@fedora>
- <20220727232224.GW3600936@dread.disaster.area>
- <20220728072510.yunkzplfqx2vt4wb@fedora>
- <20220801224551.GA3861211@dread.disaster.area>
+        with ESMTP id S230338AbiHBCLC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Aug 2022 22:11:02 -0400
+Received: from out29-77.mail.aliyun.com (out29-77.mail.aliyun.com [115.124.29.77])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2BCC1B84E;
+        Mon,  1 Aug 2022 19:10:51 -0700 (PDT)
+X-Alimail-AntiSpam: AC=CONTINUE;BC=0.08153923|-1;BR=01201311R701S18rulernew998_84748_2000303;CH=blue;DM=|CONTINUE|false|;DS=CONTINUE|ham_system_inform|0.00132903-2.06163e-05-0.99865;FP=0|0|0|0|0|-1|-1|-1;HT=ay29a033018047212;MF=michael@allwinnertech.com;NM=1;PH=DS;RN=5;RT=5;SR=0;TI=SMTPD_---.Ojh14Qc_1659406238;
+Received: from SunxiBot.allwinnertech.com(mailfrom:michael@allwinnertech.com fp:SMTPD_---.Ojh14Qc_1659406238)
+          by smtp.aliyun-inc.com;
+          Tue, 02 Aug 2022 10:10:39 +0800
+From:   Michael Wu <michael@allwinnertech.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        allwinner-opensource-support@allwinnertech.com
+Subject: [PATCH] ext4: fix error when itable blocks is greater than s_itb_per_group
+Date:   Tue,  2 Aug 2022 10:10:29 +0800
+Message-Id: <20220802021029.16046-1-michael@allwinnertech.com>
+X-Mailer: git-send-email 2.29.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220801224551.GA3861211@dread.disaster.area>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Aug 02, 2022 at 08:45:51AM +1000, Dave Chinner wrote:
-> 
-> On systems that automount filesytsems when you plug in a USB drive
-> (which most distros do out of the box) then a crash bug during mount
-> is, at minimum, an annoying DOS vector. And if it can result in a
-> buffer overflow, then....
+The following error occurs when mounting the ext4 image made by image
+making tool:
+"ext4_init_inode_table:1301:comm ext4lazyinit:Something is wrong with group
+0: used itable blocks: 491; itable unused count: 0."
 
-You need physical access to plug in a USB drive, and if you can do
-that, the number of potential attack vectors are numerous.  eSATA,
-Firewire, etc., gives the potential hardware device direct access to
-the PCI bus and the ability to issue arbitrary DMA requests.  Badly
-implemented Thunderbolt devices can have the same vulnerability, and
-badly implemented USB controllers have their own entertaining issues.
-And if attackers have a bit more unguarded physical access time, there
-are no shortage of "evil maid" attacks that can be carried out.
+Currently all the inodes in block group0 and ext4 image is divided by
+s_inodes_per_group. That leads to a hazard: we can't ensure all
+s_inodes_per_group are divisible by s_inodes_per_block. For example, when
+the s_inodes_per_group (equals to 7851) is divided by s_inodes_per_block
+(which is 16), because 7851 is undivisible by 16, we get the wrong result
+490, while 491 is expected.
 
-As far as I'm concerned a secure system has automounters disabled, and
-comptent distributions should disable the automounter when the laptop
-is locked.  Enterprise class server class machines running enterprise
-distros have no business having the automounter enabled at all, and
-careful datacenter managers should fill in the USB ports with epoxy.
-For more common sense tips, see:
-https://www.youtube.com/watch?v=kd33UVZhnAA
+So, we suggest that s_itb_per_group should equal to
+DIV_ROUND_UP(s_inodes_per_group, s_inodes_per_block) instead of directly
+getting the result from s_inodes_per_group/s_inodes_per_block.
 
-Look, bad buys have the time and energy to run file system fuzzers
-(many of which are open source and can be easily found on github).
-I'm sure our good friends at the NSA, MSS, and KGB know all of this
-already; and the NSO group is apparently happy to make them available
-to anyone willing to pay, no matter what their human rights record
-might be.
+Signed-off-by: Michael Wu <michael@allwinnertech.com>
+---
+ fs/ext4/super.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-Security by obscurity never works, and as far as I am concerned, I am
-grateful when academics run fuzzers and report bugs to us.  Especially
-since attacks which require physical access or root privs are going to
-have low CVE Security Scores *anyway*.
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 845f2f8aee5f..76cbd638ea10 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4796,8 +4796,8 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 			 sbi->s_inodes_per_group);
+ 		goto failed_mount;
+ 	}
+-	sbi->s_itb_per_group = sbi->s_inodes_per_group /
+-					sbi->s_inodes_per_block;
++	sbi->s_itb_per_group = DIV_ROUND_UP(sbi->s_inodes_per_group,
++					    sbi->s_inodes_per_block);
+ 	sbi->s_desc_per_block = blocksize / EXT4_DESC_SIZE(sb);
+ 	sbi->s_sbh = bh;
+ 	sbi->s_mount_state = le16_to_cpu(es->s_state) & ~EXT4_FC_REPLAY;
+-- 
+2.29.0
 
-Cheers,
-
-						- Ted
