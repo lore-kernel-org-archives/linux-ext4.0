@@ -2,74 +2,54 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 14C25C19F2A
-	for <linux-ext4@archiver.kernel.org>; Thu,  4 Aug 2022 14:46:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 97E1DC25B06
+	for <linux-ext4@archiver.kernel.org>; Thu,  4 Aug 2022 14:46:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233403AbiHDOqD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 4 Aug 2022 10:46:03 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59102 "EHLO
+        id S234346AbiHDOqE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 4 Aug 2022 10:46:04 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59110 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240161AbiHDOqA (ORCPT
+        with ESMTP id S240163AbiHDOqA (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Aug 2022 10:46:00 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C1A671A39A
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ECD8E1A82A
         for <linux-ext4@vger.kernel.org>; Thu,  4 Aug 2022 07:45:57 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 5F97F60C7A
-        for <linux-ext4@vger.kernel.org>; Thu,  4 Aug 2022 14:45:57 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id AE858C433C1
-        for <linux-ext4@vger.kernel.org>; Thu,  4 Aug 2022 14:45:56 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1659624356;
-        bh=Or0sKAANoQZvPPUWjjVvODQJyeaD4RS1s6OX3f+cZtE=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=JKUXdUkZvwhDeUjCvOyPtfUqUCwfBBDYI9VW5H53jd43LCX4CCncS3BiKfcS1LCTU
-         VWoKJMgQ0WqRKEI4Rjqtju08ALmKz6fJTDkykZk44xGc5BPIzlb0hWrMtS/s9Fgw/S
-         yLoEk4+AkV2HGyZ4E4IiMOzYUBcHniSIno1SfNK4zZ7e87xaF7YGYN7EIP6sQlQm0U
-         tOrPgchOfXSCVAXdLyE8Ak8wixrWA1BG+OCiJfsIixBhjSMPq9I2xEpz3IHKa7+OzY
-         el235wxQRaWMLLN+uQtkpOx22yUERgeXLOoSwErExgG9MBxrYIP85oCFL3MY603jGF
-         d0XCbbftpbXNQ==
-Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
-        id 982E2C433EA; Thu,  4 Aug 2022 14:45:56 +0000 (UTC)
-From:   bugzilla-daemon@kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 216322] Freezing of tasks failed after 60.004 seconds (1 tasks
- refusing to freeze... task:fstrim  ext4_trim_fs - Dell XPS 13 9310
-Date:   Thu, 04 Aug 2022 14:45:56 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: tytso@mit.edu
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-216322-13602-cDr2h08iqz@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-216322-13602@https.bugzilla.kernel.org/>
+Received: from cwcc.thunk.org (pool-108-49-209-117.bstnma.fios.verizon.net [108.49.209.117])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 274EjjYZ012421
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 4 Aug 2022 10:45:46 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1659624346; bh=pRmSUd1EoEFpb3TNDL28gZctGYf5YR6L//sWKjJLihE=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To;
+        b=VHPn/vp4NkkVLR0/1oy5MmWSa1MQikEjGmbwJuV51jgkr7peGy7rvAAqqwv56H6U8
+         MeXOKwEgROBxiVEBZFWhov+A9zcfJQRZUrfft8PWFL4VqgtBzRu9WAuWzstInTlq1V
+         owYkn/E9JR98tYp4uPSuUaBmws39LdPmeTDDMkS/kfT6Oz696+e6kAhe0rmI/nXEk7
+         uUSU4DsSzDF1kBiNUQtV0pz5dWhwhUpK8YFCKX1VA32DdObGyxUHr8zVyZx838UJ+O
+         LoARp/FfUToM+EPcpm1HT0iQJ0tAK1+1tCxkKrstiJx1vqZhBGx5/JN4t882UPXwBU
+         UeVFl5DTBqa5Q==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id E6CE815C00E4; Thu,  4 Aug 2022 10:45:44 -0400 (EDT)
+Date:   Thu, 4 Aug 2022 10:45:44 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     bugzilla-daemon@kernel.org
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: [Bug 216322] Freezing of tasks failed after 60.004 seconds (1
+ tasks refusing to freeze... task:fstrim  ext4_trim_fs - Dell XPS 13 9310
+Message-ID: <YuvbmJRRUcemgPhp@mit.edu>
 References: <bug-216322-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+ <bug-216322-13602-2MvUDlAfJU@https.bugzilla.kernel.org/>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <bug-216322-13602-2MvUDlAfJU@https.bugzilla.kernel.org/>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D216322
-
---- Comment #5 from Theodore Tso (tytso@mit.edu) ---
 On Thu, Aug 04, 2022 at 11:47:47AM +0000, bugzilla-daemon@kernel.org wrote:
->=20
+> 
 > I agree that the FITRIM interface is flawed in this way. But
 > ext4_try_to_trim_range() actually does have fatal_signal_pending() and
 > will return -ERESTARTSYS if that's true. Or did you have something else in
@@ -108,10 +88,4 @@ getting stuck there.
 Even when we need to wait for the queue to be drained so there is
 space to send the next discard, that shouldn't take 60+ seconds.
 
-                                               - Ted
-
---=20
-You may reply to this email to add a comment.
-
-You are receiving this mail because:
-You are watching the assignee of the bug.=
+      	      	       		     	       - Ted
