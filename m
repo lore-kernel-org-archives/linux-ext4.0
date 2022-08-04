@@ -2,90 +2,136 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 97E1DC25B06
-	for <linux-ext4@archiver.kernel.org>; Thu,  4 Aug 2022 14:46:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 74A0FC3F6B0
+	for <linux-ext4@archiver.kernel.org>; Thu,  4 Aug 2022 16:29:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234346AbiHDOqE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 4 Aug 2022 10:46:04 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59110 "EHLO
+        id S239133AbiHDQ30 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 4 Aug 2022 12:29:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44480 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240163AbiHDOqA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Aug 2022 10:46:00 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ECD8E1A82A
-        for <linux-ext4@vger.kernel.org>; Thu,  4 Aug 2022 07:45:57 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-108-49-209-117.bstnma.fios.verizon.net [108.49.209.117])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 274EjjYZ012421
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 4 Aug 2022 10:45:46 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1659624346; bh=pRmSUd1EoEFpb3TNDL28gZctGYf5YR6L//sWKjJLihE=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To;
-        b=VHPn/vp4NkkVLR0/1oy5MmWSa1MQikEjGmbwJuV51jgkr7peGy7rvAAqqwv56H6U8
-         MeXOKwEgROBxiVEBZFWhov+A9zcfJQRZUrfft8PWFL4VqgtBzRu9WAuWzstInTlq1V
-         owYkn/E9JR98tYp4uPSuUaBmws39LdPmeTDDMkS/kfT6Oz696+e6kAhe0rmI/nXEk7
-         uUSU4DsSzDF1kBiNUQtV0pz5dWhwhUpK8YFCKX1VA32DdObGyxUHr8zVyZx838UJ+O
-         LoARp/FfUToM+EPcpm1HT0iQJ0tAK1+1tCxkKrstiJx1vqZhBGx5/JN4t882UPXwBU
-         UeVFl5DTBqa5Q==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id E6CE815C00E4; Thu,  4 Aug 2022 10:45:44 -0400 (EDT)
-Date:   Thu, 4 Aug 2022 10:45:44 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     bugzilla-daemon@kernel.org
-Cc:     linux-ext4@vger.kernel.org
-Subject: Re: [Bug 216322] Freezing of tasks failed after 60.004 seconds (1
- tasks refusing to freeze... task:fstrim  ext4_trim_fs - Dell XPS 13 9310
-Message-ID: <YuvbmJRRUcemgPhp@mit.edu>
-References: <bug-216322-13602@https.bugzilla.kernel.org/>
- <bug-216322-13602-2MvUDlAfJU@https.bugzilla.kernel.org/>
+        with ESMTP id S237992AbiHDQ3T (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Aug 2022 12:29:19 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7E1F36A480;
+        Thu,  4 Aug 2022 09:29:05 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ams.source.kernel.org (Postfix) with ESMTPS id B7C00B8264C;
+        Thu,  4 Aug 2022 16:29:03 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 72C39C433C1;
+        Thu,  4 Aug 2022 16:29:02 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1659630542;
+        bh=MZmFy+yL1qce8KzTGM2qNnoDFOQq/XztNHGKqADtvac=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=mAvwC498CPXNVBB1UlLiWT3cUeZiWAejcsQPuRDRoprDeKfRrnNnvCdocEw7DtrQA
+         1zrBpi0PyMtWChXEjqft0XX5W5HIHHHdLkPGioFJJ+ICUK8Tr5lV1m2CZzDb77sMdF
+         Y2KDr1VNsTN9hW67AnmTG1EjO0cpacQhgzpQ3z5O0AUZRDYvPxFOsiDU4FjJKDFtTj
+         7b5cF3J4aNsrZJ01Hu65XHGjgfStu6LIR4xe7lFpFQqgeHAyipcMVq+Ub0sVjr9k2w
+         s0Aig185NKuDt4zo4yYA8/s9FqfF45KmWccZXFQR3FKIYZcv5sxnozImWC+0PTAEku
+         tg+yO3iNVMsHQ==
+Date:   Thu, 4 Aug 2022 09:29:01 -0700
+From:   "Darrick J. Wong" <djwong@kernel.org>
+To:     guaneryu@gmail.com, zlang@redhat.com
+Cc:     linux-xfs@vger.kernel.org, fstests@vger.kernel.org, guan@eryu.me,
+        tytso@mit.edu, linux-ext4@vger.kernel.org
+Subject: [PATCH v1.3 3/3] common/ext4: provide custom ext4 scratch fs options
+Message-ID: <YuvzzdisuzXKVlJK@magnolia>
+References: <165950050051.198922.13423077997881086438.stgit@magnolia>
+ <165950051745.198922.6487109955066878945.stgit@magnolia>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <bug-216322-13602-2MvUDlAfJU@https.bugzilla.kernel.org/>
+In-Reply-To: <165950051745.198922.6487109955066878945.stgit@magnolia>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Aug 04, 2022 at 11:47:47AM +0000, bugzilla-daemon@kernel.org wrote:
-> 
-> I agree that the FITRIM interface is flawed in this way. But
-> ext4_try_to_trim_range() actually does have fatal_signal_pending() and
-> will return -ERESTARTSYS if that's true. Or did you have something else in
-> mind?
+From: Darrick J. Wong <djwong@kernel.org>
 
-The fatal_signal_pending() only checks for SIGKILL.  I'm not sure why
-it returns ERESTARTSYS, since that's not applicable for a kill -9
-signal.  The fake_signal_wake_up() function in kernel/freezer.c
-doesn't send a fatal signal, so the fatal_signal_pending() check isn't
-going to help here.
+Create a _scratch_options backend for ext* so that we can inject
+pathnames to external log devices into the scratch fs mount options.
+This enables common/dm* to install block device filters, e.g. dm-error
+for stress testing.
 
-> Also in that case, I see no reason why we would not be able to adjust
-> the fstrim_range to make it easier to re-start where we left off if
-> we're going to return -ERESTARTSYS. I am missing something?
+Signed-off-by: Darrick J. Wong <djwong@kernel.org>
+v1.1: bad at counting
+v1.2: refactor _scratch_mkfs_ext4 to use _scratch_options too
+v1.3: quiet down realpath usage when SCRATCH_LOGDEV is unset
+---
+ common/ext4 |   35 ++++++++++++++++++++++++++++++++---
+ common/rc   |    3 +++
+ 2 files changed, 35 insertions(+), 3 deletions(-)
 
-Well, we could adjust fstrim_range.start and fstrim_range.len to make
-it easier to restart --- but that's only if we know for sure that
-we're going to be restarting the system call.  So we need to break
-some abstraction barriers since if the signal is one where based on
-the sigaction flags, the system all is *not* restarted, then
-fstrim_range.len is supposed to contain the number of bytes trimmed.
-
-And even if the system call is restarted, there's no place to stash
-the number of bytes trimmed so far, since fstrim_range.len is
-overloaded.   This why the interface is so horrible...
-
-> I have not had time to look deeply into the traces, but are you actually
-> sure that we're not stuck in blkdev_issue_discard() instead?
-
-I'm not 100% certain, but unless the block device has been put to
-sleep first (in which case I think we would have noticed much sooner
-since lots of other suspend-to-ram use cases would be failling --- in
-writeback threads, for example), I'd be really surprised if we're
-getting stuck there.
-
-Even when we need to wait for the queue to be drained so there is
-space to send the next discard, that shouldn't take 60+ seconds.
-
-      	      	       		     	       - Ted
+diff --git a/common/ext4 b/common/ext4
+index 287705af..f2df888c 100644
+--- a/common/ext4
++++ b/common/ext4
+@@ -63,16 +63,24 @@ _setup_large_ext4_fs()
+ 	return 0
+ }
+ 
++_scratch_mkfs_ext4_opts()
++{
++	mkfs_opts=$*
++
++	_scratch_options mkfs
++
++	echo "$MKFS_EXT4_PROG $SCRATCH_OPTIONS $mkfs_opts"
++}
++
+ _scratch_mkfs_ext4()
+ {
+-	local mkfs_cmd="$MKFS_EXT4_PROG -F"
++	local mkfs_cmd="`_scratch_mkfs_ext4_opts`"
+ 	local mkfs_filter="grep -v -e ^Warning: -e \"^mke2fs \" | grep -v \"^$\""
+ 	local tmp=`mktemp -u`
+ 	local mkfs_status
+ 
+ 	[ "$USE_EXTERNAL" = yes -a ! -z "$SCRATCH_LOGDEV" ] && \
+-	    $mkfs_cmd -O journal_dev $MKFS_OPTIONS $SCRATCH_LOGDEV && \
+-	    mkfs_cmd="$mkfs_cmd -J device=$SCRATCH_LOGDEV"
++	    $MKFS_EXT4_PROG -F -O journal_dev $MKFS_OPTIONS $SCRATCH_LOGDEV
+ 
+ 	_scratch_do_mkfs "$mkfs_cmd" "$mkfs_filter" $* 2>$tmp.mkfserr 1>$tmp.mkfsstd
+ 	mkfs_status=$?
+@@ -154,3 +162,24 @@ _require_scratch_richacl_ext4()
+ 		|| _notrun "kernel doesn't support richacl feature on $FSTYP"
+ 	_scratch_unmount
+ }
++
++_scratch_ext4_options()
++{
++	local type=$1
++	local log_opt=""
++
++	case $type in
++	mkfs)
++		SCRATCH_OPTIONS="$SCRATCH_OPTIONS -F"
++		log_opt="-J device=$SCRATCH_LOGDEV"
++		;;
++	mount)
++		# As of kernel 5.19, the kernel mount option path parser only
++		# accepts direct paths to block devices--the final path
++		# component cannot be a symlink.
++		log_opt="-o journal_path=$(realpath -q "$SCRATCH_LOGDEV")"
++		;;
++	esac
++	[ "$USE_EXTERNAL" = yes -a ! -z "$SCRATCH_LOGDEV" ] && \
++		SCRATCH_OPTIONS="$SCRATCH_OPTIONS ${log_opt}"
++}
+diff --git a/common/rc b/common/rc
+index dc1d65c3..b82bb36b 100644
+--- a/common/rc
++++ b/common/rc
+@@ -178,6 +178,9 @@ _scratch_options()
+     "xfs")
+ 	_scratch_xfs_options "$@"
+ 	;;
++    ext2|ext3|ext4|ext4dev)
++	_scratch_ext4_options "$@"
++	;;
+     esac
+ }
+ 
