@@ -2,173 +2,158 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DFFA5C25B08
-	for <linux-ext4@archiver.kernel.org>; Fri,  5 Aug 2022 17:09:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 544F8C25B08
+	for <linux-ext4@archiver.kernel.org>; Fri,  5 Aug 2022 18:35:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240788AbiHERJK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 5 Aug 2022 13:09:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60728 "EHLO
+        id S241470AbiHESfw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 5 Aug 2022 14:35:52 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38740 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231585AbiHERJJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Aug 2022 13:09:09 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 2E2FD73900
-        for <linux-ext4@vger.kernel.org>; Fri,  5 Aug 2022 10:09:08 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1659719347;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=r5W15z17AzoYxP/ni8JAfiKh3GiNFy5l7z/vSQgPe6A=;
-        b=QOhY8tz00ADktMcY62N+8WQFS848EcR1fMsqT5lomrtZxf8KFG77xL9DvwdhTjzqM/reyg
-        lYufpZvueVcShVP6mSWoroqO8ugVuHg5SgsS80DTRmLFvFJJApL/AsNH/5G3bVZYS7LSdJ
-        w9b+bUqMb9QZomi9Wq6EWre8XEGSP70=
-Received: from mail-qk1-f197.google.com (mail-qk1-f197.google.com
- [209.85.222.197]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-315-3zqMGgV5Otyo49DiSaucyw-1; Fri, 05 Aug 2022 13:09:06 -0400
-X-MC-Unique: 3zqMGgV5Otyo49DiSaucyw-1
-Received: by mail-qk1-f197.google.com with SMTP id m8-20020a05620a24c800b006b5d8eb23efso2433003qkn.10
-        for <linux-ext4@vger.kernel.org>; Fri, 05 Aug 2022 10:09:05 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
-         :mime-version:content-disposition:in-reply-to;
-        bh=r5W15z17AzoYxP/ni8JAfiKh3GiNFy5l7z/vSQgPe6A=;
-        b=4DytbJMiJ5P7W2Tf3qalfpAghzi8EwSe7TJk3nOrYpaT9hK62w+TqJBYYt4rFR0wEP
-         eB28hgLE1O/Zqz2yDTEZeCUlqko8OhmEly8p+fTasyCvldr/FknZea6WzS6KshTjShL5
-         YJaB7nJmSHRj6LnF4LsMX2W5vUZr+XuW3ppdFtILleninF9DjTGHOdVRrgWCoauxPBE+
-         E1Dm6hFn/EO2H45NUOpkIRSF1uYsBMALXOMmoIH05YBY32OrVbd1CBU3gtFSKWqmHT3n
-         jwjAfbLuOO5QibB/8d/vRP8/TlQBcW1fTMKoLmT8loE3OEQ5LJIQlYV74+qSrYi7vJKz
-         FqEQ==
-X-Gm-Message-State: ACgBeo1etLdSkJWMZDZGeJGe2D9N2Hwz/QtNyp2YtRM4WwyritO8t8Rt
-        7RFmp4j19qOsaOT6+JoaWJwUh+lU0zd3E2bSbeLKWdD1AsJNcmxpaeGh7VNq6eE0sHgh77NjWqt
-        MD+V+6Et3ZZ2gDzK4RTN2GA==
-X-Received: by 2002:a0c:9d46:0:b0:476:ff07:3fe7 with SMTP id n6-20020a0c9d46000000b00476ff073fe7mr6613722qvf.15.1659719345487;
-        Fri, 05 Aug 2022 10:09:05 -0700 (PDT)
-X-Google-Smtp-Source: AA6agR7SGAsAp5S0tI0cjBQT5M9dteYX2aKog3Zhcsme6d1n+pmQikMyOMQ/NeozoNAYhuCGzwvx8w==
-X-Received: by 2002:a0c:9d46:0:b0:476:ff07:3fe7 with SMTP id n6-20020a0c9d46000000b00476ff073fe7mr6613688qvf.15.1659719344988;
-        Fri, 05 Aug 2022 10:09:04 -0700 (PDT)
-Received: from zlang-mailbox ([209.132.188.80])
-        by smtp.gmail.com with ESMTPSA id v19-20020a05620a441300b006b5f7d0d0b6sm3449126qkp.4.2022.08.05.10.09.02
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 05 Aug 2022 10:09:04 -0700 (PDT)
-Date:   Sat, 6 Aug 2022 01:08:58 +0800
-From:   Zorro Lang <zlang@redhat.com>
-To:     "Darrick J. Wong" <djwong@kernel.org>
-Cc:     linux-xfs@vger.kernel.org, fstests@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH v1.3 3/3] common/ext4: provide custom ext4 scratch fs
- options
-Message-ID: <20220805170858.bxpnzplbgrrlouha@zlang-mailbox>
-References: <165950050051.198922.13423077997881086438.stgit@magnolia>
- <165950051745.198922.6487109955066878945.stgit@magnolia>
- <YuvzzdisuzXKVlJK@magnolia>
+        with ESMTP id S241438AbiHESfu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Aug 2022 14:35:50 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EE396765E;
+        Fri,  5 Aug 2022 11:35:49 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 93E28B829F2;
+        Fri,  5 Aug 2022 18:35:48 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 58042C433C1;
+        Fri,  5 Aug 2022 18:35:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1659724547;
+        bh=rTxZdWYcyUDsw35HfXDcwe1teGLqBNlOzMdnw0TScoQ=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=X0JzmwCxMunXMqz2W2d286b6qohBaha2Iuo9HihcbgTlmjZgdBgFgvrU7GOCyGDjP
+         6P7uNyz2m2QFpvrRIrn92mlo03Ua/yjJeCMnxBmnVKRUc/Z3sG/Wx9fJqx+eyYQRnf
+         p6UGCCMEk/jy5Oy0O2Mvi8S+j12UyEQ05flmSDk8FyAdOkKgPMACPKQuvqkvOpIvF7
+         LBfmXYcwBsbZ/EP9Eewexcu1Ic1lPOUGiIEO3y6pL42atW1aKWUSdBVDDWNnkb469O
+         PfCldYXv0zezlS7DiJ31tAEAsCSEXTUlAgd8D66fbAnKQWmPtSBRhJo2hv9LdHMrcW
+         itIW3V6IPHqDQ==
+From:   Jeff Layton <jlayton@kernel.org>
+To:     linux-fsdevel@vger.kernel.org
+Cc:     dhowells@redhat.com, lczerner@redhat.com, bxue@redhat.com,
+        ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-afs@lists.infradead.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        Jeff Layton <jlayton@redhat.com>
+Subject: [RFC PATCH 1/4] vfs: report change attribute in statx for IS_I_VERSION inodes
+Date:   Fri,  5 Aug 2022 14:35:40 -0400
+Message-Id: <20220805183543.274352-2-jlayton@kernel.org>
+X-Mailer: git-send-email 2.37.1
+In-Reply-To: <20220805183543.274352-1-jlayton@kernel.org>
+References: <20220805183543.274352-1-jlayton@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <YuvzzdisuzXKVlJK@magnolia>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Aug 04, 2022 at 09:29:01AM -0700, Darrick J. Wong wrote:
-> From: Darrick J. Wong <djwong@kernel.org>
-> 
-> Create a _scratch_options backend for ext* so that we can inject
-> pathnames to external log devices into the scratch fs mount options.
-> This enables common/dm* to install block device filters, e.g. dm-error
-> for stress testing.
-> 
-> Signed-off-by: Darrick J. Wong <djwong@kernel.org>
-> v1.1: bad at counting
-> v1.2: refactor _scratch_mkfs_ext4 to use _scratch_options too
-> v1.3: quiet down realpath usage when SCRATCH_LOGDEV is unset
+From: Jeff Layton <jlayton@redhat.com>
 
-I think you'd like move these 3 change log lines after the "---" ?
+Claim one of the spare fields in struct statx to hold a 64-bit change
+attribute. When statx requests this attribute, do an
+inode_query_iversion and fill the result in the field.
 
-As usual, I'm going to give this patchset enough testing before merging
-it, due to it affect ext4 testing too much. And hope to get review from
-ext4 list, or "no objection" means all good by default :)
+Also update the test-statx.c program to fetch the change attribute as
+well.
 
-Thanks,
-Zorro
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/stat.c                 | 7 +++++++
+ include/linux/stat.h      | 1 +
+ include/uapi/linux/stat.h | 3 ++-
+ samples/vfs/test-statx.c  | 4 +++-
+ 4 files changed, 13 insertions(+), 2 deletions(-)
 
-> ---
->  common/ext4 |   35 ++++++++++++++++++++++++++++++++---
->  common/rc   |    3 +++
->  2 files changed, 35 insertions(+), 3 deletions(-)
-> 
-> diff --git a/common/ext4 b/common/ext4
-> index 287705af..f2df888c 100644
-> --- a/common/ext4
-> +++ b/common/ext4
-> @@ -63,16 +63,24 @@ _setup_large_ext4_fs()
->  	return 0
->  }
->  
-> +_scratch_mkfs_ext4_opts()
-> +{
-> +	mkfs_opts=$*
-> +
-> +	_scratch_options mkfs
-> +
-> +	echo "$MKFS_EXT4_PROG $SCRATCH_OPTIONS $mkfs_opts"
-> +}
-> +
->  _scratch_mkfs_ext4()
->  {
-> -	local mkfs_cmd="$MKFS_EXT4_PROG -F"
-> +	local mkfs_cmd="`_scratch_mkfs_ext4_opts`"
->  	local mkfs_filter="grep -v -e ^Warning: -e \"^mke2fs \" | grep -v \"^$\""
->  	local tmp=`mktemp -u`
->  	local mkfs_status
->  
->  	[ "$USE_EXTERNAL" = yes -a ! -z "$SCRATCH_LOGDEV" ] && \
-> -	    $mkfs_cmd -O journal_dev $MKFS_OPTIONS $SCRATCH_LOGDEV && \
-> -	    mkfs_cmd="$mkfs_cmd -J device=$SCRATCH_LOGDEV"
-> +	    $MKFS_EXT4_PROG -F -O journal_dev $MKFS_OPTIONS $SCRATCH_LOGDEV
->  
->  	_scratch_do_mkfs "$mkfs_cmd" "$mkfs_filter" $* 2>$tmp.mkfserr 1>$tmp.mkfsstd
->  	mkfs_status=$?
-> @@ -154,3 +162,24 @@ _require_scratch_richacl_ext4()
->  		|| _notrun "kernel doesn't support richacl feature on $FSTYP"
->  	_scratch_unmount
->  }
-> +
-> +_scratch_ext4_options()
-> +{
-> +	local type=$1
-> +	local log_opt=""
-> +
-> +	case $type in
-> +	mkfs)
-> +		SCRATCH_OPTIONS="$SCRATCH_OPTIONS -F"
-> +		log_opt="-J device=$SCRATCH_LOGDEV"
-> +		;;
-> +	mount)
-> +		# As of kernel 5.19, the kernel mount option path parser only
-> +		# accepts direct paths to block devices--the final path
-> +		# component cannot be a symlink.
-> +		log_opt="-o journal_path=$(realpath -q "$SCRATCH_LOGDEV")"
-> +		;;
-> +	esac
-> +	[ "$USE_EXTERNAL" = yes -a ! -z "$SCRATCH_LOGDEV" ] && \
-> +		SCRATCH_OPTIONS="$SCRATCH_OPTIONS ${log_opt}"
-> +}
-> diff --git a/common/rc b/common/rc
-> index dc1d65c3..b82bb36b 100644
-> --- a/common/rc
-> +++ b/common/rc
-> @@ -178,6 +178,9 @@ _scratch_options()
->      "xfs")
->  	_scratch_xfs_options "$@"
->  	;;
-> +    ext2|ext3|ext4|ext4dev)
-> +	_scratch_ext4_options "$@"
-> +	;;
->      esac
->  }
->  
-> 
+diff --git a/fs/stat.c b/fs/stat.c
+index 9ced8860e0f3..976e0a59ab23 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -17,6 +17,7 @@
+ #include <linux/syscalls.h>
+ #include <linux/pagemap.h>
+ #include <linux/compat.h>
++#include <linux/iversion.h>
+ 
+ #include <linux/uaccess.h>
+ #include <asm/unistd.h>
+@@ -118,6 +119,11 @@ int vfs_getattr_nosec(const struct path *path, struct kstat *stat,
+ 	stat->attributes_mask |= (STATX_ATTR_AUTOMOUNT |
+ 				  STATX_ATTR_DAX);
+ 
++	if ((request_mask & STATX_CHGATTR) && IS_I_VERSION(inode)) {
++		stat->result_mask |= STATX_CHGATTR;
++		stat->chgattr = inode_query_iversion(inode);
++	}
++
+ 	mnt_userns = mnt_user_ns(path->mnt);
+ 	if (inode->i_op->getattr)
+ 		return inode->i_op->getattr(mnt_userns, path, stat,
+@@ -611,6 +617,7 @@ cp_statx(const struct kstat *stat, struct statx __user *buffer)
+ 	tmp.stx_dev_major = MAJOR(stat->dev);
+ 	tmp.stx_dev_minor = MINOR(stat->dev);
+ 	tmp.stx_mnt_id = stat->mnt_id;
++	tmp.stx_chgattr = stat->chgattr;
+ 
+ 	return copy_to_user(buffer, &tmp, sizeof(tmp)) ? -EFAULT : 0;
+ }
+diff --git a/include/linux/stat.h b/include/linux/stat.h
+index 7df06931f25d..4a17887472f6 100644
+--- a/include/linux/stat.h
++++ b/include/linux/stat.h
+@@ -50,6 +50,7 @@ struct kstat {
+ 	struct timespec64 btime;			/* File creation time */
+ 	u64		blocks;
+ 	u64		mnt_id;
++	u64		chgattr;
+ };
+ 
+ #endif
+diff --git a/include/uapi/linux/stat.h b/include/uapi/linux/stat.h
+index 1500a0f58041..b45243a0fbc5 100644
+--- a/include/uapi/linux/stat.h
++++ b/include/uapi/linux/stat.h
+@@ -124,7 +124,7 @@ struct statx {
+ 	__u32	stx_dev_minor;
+ 	/* 0x90 */
+ 	__u64	stx_mnt_id;
+-	__u64	__spare2;
++	__u64	stx_chgattr;	/* Inode change attribute */
+ 	/* 0xa0 */
+ 	__u64	__spare3[12];	/* Spare space for future expansion */
+ 	/* 0x100 */
+@@ -152,6 +152,7 @@ struct statx {
+ #define STATX_BASIC_STATS	0x000007ffU	/* The stuff in the normal stat struct */
+ #define STATX_BTIME		0x00000800U	/* Want/got stx_btime */
+ #define STATX_MNT_ID		0x00001000U	/* Got stx_mnt_id */
++#define STATX_CHGATTR		0x00002000U	/* Want/git stx_chgattr */
+ 
+ #define STATX__RESERVED		0x80000000U	/* Reserved for future struct statx expansion */
+ 
+diff --git a/samples/vfs/test-statx.c b/samples/vfs/test-statx.c
+index 49c7a46cee07..767208d2f564 100644
+--- a/samples/vfs/test-statx.c
++++ b/samples/vfs/test-statx.c
+@@ -109,6 +109,8 @@ static void dump_statx(struct statx *stx)
+ 		printf(" Inode: %-11llu", (unsigned long long) stx->stx_ino);
+ 	if (stx->stx_mask & STATX_NLINK)
+ 		printf(" Links: %-5u", stx->stx_nlink);
++	if (stx->stx_mask & STATX_CHGATTR)
++		printf(" Change Attr: 0x%llx", stx->stx_chgattr);
+ 	if (stx->stx_mask & STATX_TYPE) {
+ 		switch (stx->stx_mode & S_IFMT) {
+ 		case S_IFBLK:
+@@ -218,7 +220,7 @@ int main(int argc, char **argv)
+ 	struct statx stx;
+ 	int ret, raw = 0, atflag = AT_SYMLINK_NOFOLLOW;
+ 
+-	unsigned int mask = STATX_BASIC_STATS | STATX_BTIME;
++	unsigned int mask = STATX_BASIC_STATS | STATX_BTIME | STATX_CHGATTR;
+ 
+ 	for (argv++; *argv; argv++) {
+ 		if (strcmp(*argv, "-F") == 0) {
+-- 
+2.37.1
 
