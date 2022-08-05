@@ -2,80 +2,74 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CAFBCC00140
-	for <linux-ext4@archiver.kernel.org>; Fri,  5 Aug 2022 18:35:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B16FAC00140
+	for <linux-ext4@archiver.kernel.org>; Fri,  5 Aug 2022 18:36:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241428AbiHESfu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 5 Aug 2022 14:35:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38712 "EHLO
+        id S241492AbiHESgD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 5 Aug 2022 14:36:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38816 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241130AbiHESft (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Aug 2022 14:35:49 -0400
+        with ESMTP id S241484AbiHESfx (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Aug 2022 14:35:53 -0400
 Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BA8E9765E;
-        Fri,  5 Aug 2022 11:35:48 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6D5A76350;
+        Fri,  5 Aug 2022 11:35:52 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 66EAEB80D83;
-        Fri,  5 Aug 2022 18:35:47 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2E91FC433D6;
-        Fri,  5 Aug 2022 18:35:45 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id DF232B829E9;
+        Fri,  5 Aug 2022 18:35:50 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BD426C433D6;
+        Fri,  5 Aug 2022 18:35:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1659724546;
-        bh=0nXuhjdJNF9HU4zM6ykQuL5s8Oky62WY1qkxmt9LyPg=;
-        h=From:To:Cc:Subject:Date:From;
-        b=lGCbyajAonhHywdyKx4A4xVUbXE6QpFYgWo1K1jBW9mZOSGz9j+yy7RMJttRLu5v7
-         vZeYpF40ZRBQnGviqeHrXhX5prfwnhpKh9gx8h1cAWn/YAfwteNd8AUB2aaV81uQaG
-         NUmc/zHpVmHxwyCgfX+jKfV1kK1nfUc0L/jbSu93a+qUOZmTG3NyEtCUyEu2KuXhqf
-         NIiiwnLFRhsQ334bAuZ4BuI9ybLGRN5u5AN9YNQ7xQ3AfdN69hIw878y8lZSgs3pAm
-         lLyp6L6pXHcM8mQwYM9oGjkFrlSg8LcoK4VvwPyk0gRX8vAju5/x8W95jWApO0loh1
-         iyePi98+oobMw==
+        s=k20201202; t=1659724549;
+        bh=IMTrWJWnieceGbG5NqZtFEctzXK036a+Q7hbE1yr5UE=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=tgn7hhdvDfOpGmH2MNlYJDkipS/1LtOgwvgrmyZIfwFOY21hGb2rYGFHPzuFfKaYS
+         +iHiQLsxliCX1g6VjMXydeMi5QYvLQJZ/Ycr89q4t/rpGmlo1ZBMsoYCu7mApT4C8y
+         vJMpCd1vtxt4rx+N527SMhS8kHBDbiaOWCVablIXKbN7L7iXZfmb9LWX13XRhTzs4R
+         OV0iOFGYLYBLGUNON95UGqw5J7VXNW440ygYcXyMY161/2G68hP2osUusyqcCieKFt
+         72GE+18HXyp/533ALd6KWJXgtmd4/Qqo3J1zir2MXfAJxqIJs2WVpk2H2sj7ry/SF9
+         JGlt+2/zLFEcw==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     dhowells@redhat.com, lczerner@redhat.com, bxue@redhat.com,
         ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-afs@lists.infradead.org, linux-ext4@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org
-Subject: [RFC PATCH 0/4] vfs: allow querying i_version via statx
-Date:   Fri,  5 Aug 2022 14:35:39 -0400
-Message-Id: <20220805183543.274352-1-jlayton@kernel.org>
+Subject: [RFC PATCH 3/4] afs: fill out change attribute in statx replies
+Date:   Fri,  5 Aug 2022 14:35:42 -0400
+Message-Id: <20220805183543.274352-4-jlayton@kernel.org>
 X-Mailer: git-send-email 2.37.1
+In-Reply-To: <20220805183543.274352-1-jlayton@kernel.org>
+References: <20220805183543.274352-1-jlayton@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Recently I posted a patch to turn on the i_version counter
-unconditionally in ext4, and Lukas rightly pointed out that we don't
-currently have an easy way to validate its functionality. You can fetch
-it via NFS (and see it in network traces), but there's no way to get to
-it from userland.
+Always copy the change attribute in a statx reply, and set the
+STATX_CHGATTR bit unconditionally.
 
-Besides testing, this may also be of use for userland NFS servers, or by
-any program that wants to accurately check for file changes, and not be
-subject to mtime granularity problems.
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/afs/inode.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-Comments and suggestions welcome. I'm not 100% convinced that this is a
-great idea, but we've had people ask for it before and it seems like a
-reasonable thing to provide.
-
-Jeff Layton (4):
-  vfs: report change attribute in statx for IS_I_VERSION inodes
-  nfs: report the change attribute if requested
-  afs: fill out change attribute in statx replies
-  ceph: fill in the change attribute in statx requests
-
- fs/afs/inode.c            |  2 ++
- fs/ceph/inode.c           | 14 +++++++++-----
- fs/nfs/inode.c            |  3 +++
- fs/stat.c                 |  7 +++++++
- include/linux/stat.h      |  1 +
- include/uapi/linux/stat.h |  3 ++-
- samples/vfs/test-statx.c  |  4 +++-
- 7 files changed, 27 insertions(+), 7 deletions(-)
-
+diff --git a/fs/afs/inode.c b/fs/afs/inode.c
+index 64dab70d4a4f..dffd6edd6628 100644
+--- a/fs/afs/inode.c
++++ b/fs/afs/inode.c
+@@ -760,6 +760,8 @@ int afs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 	do {
+ 		read_seqbegin_or_lock(&vnode->cb_lock, &seq);
+ 		generic_fillattr(&init_user_ns, inode, stat);
++		stat->chgattr = inode_peek_iversion_raw(inode);
++		stat->result_mask |= STATX_CHGATTR;
+ 		if (test_bit(AFS_VNODE_SILLY_DELETED, &vnode->flags) &&
+ 		    stat->nlink > 0)
+ 			stat->nlink -= 1;
 -- 
 2.37.1
 
