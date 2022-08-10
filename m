@@ -2,427 +2,147 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 08CACC19F2D
-	for <linux-ext4@archiver.kernel.org>; Tue,  9 Aug 2022 21:02:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D9FD4C19F2D
+	for <linux-ext4@archiver.kernel.org>; Wed, 10 Aug 2022 00:29:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230030AbiHIVBw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 9 Aug 2022 17:01:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54742 "EHLO
+        id S229621AbiHJA3u (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 9 Aug 2022 20:29:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39318 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230439AbiHIVA6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Aug 2022 17:00:58 -0400
-Received: from sin.source.kernel.org (sin.source.kernel.org [145.40.73.55])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 202DD2C11F;
-        Tue,  9 Aug 2022 14:00:51 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by sin.source.kernel.org (Postfix) with ESMTPS id 0BBABCE193E;
-        Tue,  9 Aug 2022 21:00:49 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 40BB9C433D6;
-        Tue,  9 Aug 2022 21:00:47 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1660078847;
-        bh=eiPQn7cGJWMMHAwHakKJ/wtSzsCU8/1/HqgFWIpiSmA=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=CDc0UiQ181b/IYCs2KdlG3ndQ1eY/evu1DA73yHQkwsnejOETtPODF6tSlzJdytgl
-         dukmm2EHJ+llXzkQtCEIS/ix5aKAxWhd2SYpFm05e9TmaU7Nt6P1Q57oZDVGtFvLWl
-         krpi7oQQ07Mw8dGGoGxOwDGc00ahy006RSG/H7Zb7PtevOuQ2GWSyJhcpul3MV2StR
-         WENhUjPgD0ZKNH6Qg7/jR2Vo6qB0SKekggNuBCb8yW1WfXs5pd5lOgXCighGAjjvEL
-         D364uitUCOSSq6XXZhx64NX12plpvaXij5Y04y4Yz766y05n9xMK+DA2dZiT7KyLgJ
-         u4+cSWag8lsiA==
-Subject: [PATCH 1/3] common/rc: move ext4-specific helpers into a separate
- common/ext4 file
-From:   "Darrick J. Wong" <djwong@kernel.org>
-To:     djwong@kernel.org, guaneryu@gmail.com, zlang@redhat.com
-Cc:     linux-xfs@vger.kernel.org, fstests@vger.kernel.org, guan@eryu.me,
-        tytso@mit.edu, linux-ext4@vger.kernel.org
-Date:   Tue, 09 Aug 2022 14:00:46 -0700
-Message-ID: <166007884681.3276300.8815951431509313240.stgit@magnolia>
-In-Reply-To: <166007884125.3276300.15348421560641051945.stgit@magnolia>
-References: <166007884125.3276300.15348421560641051945.stgit@magnolia>
-User-Agent: StGit/0.19
+        with ESMTP id S229475AbiHJA3s (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Aug 2022 20:29:48 -0400
+Received: from mail104.syd.optusnet.com.au (mail104.syd.optusnet.com.au [211.29.132.246])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id A5EF41AD81
+        for <linux-ext4@vger.kernel.org>; Tue,  9 Aug 2022 17:29:47 -0700 (PDT)
+Received: from dread.disaster.area (pa49-181-193-158.pa.nsw.optusnet.com.au [49.181.193.158])
+        by mail104.syd.optusnet.com.au (Postfix) with ESMTPS id 7EE1E62D628;
+        Wed, 10 Aug 2022 10:29:46 +1000 (AEST)
+Received: from dave by dread.disaster.area with local (Exim 4.92.3)
+        (envelope-from <david@fromorbit.com>)
+        id 1oLZbV-00BEms-F3; Wed, 10 Aug 2022 10:29:45 +1000
+Date:   Wed, 10 Aug 2022 10:29:45 +1000
+From:   Dave Chinner <david@fromorbit.com>
+To:     bugzilla-daemon@kernel.org
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: [Bug 216322] Freezing of tasks failed after 60.004 seconds (1
+ tasks refusing to freeze... task:fstrim  ext4_trim_fs - Dell XPS 13 9310
+Message-ID: <20220810002945.GK3861211@dread.disaster.area>
+References: <bug-216322-13602@https.bugzilla.kernel.org/>
+ <bug-216322-13602-2MvUDlAfJU@https.bugzilla.kernel.org/>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <bug-216322-13602-2MvUDlAfJU@https.bugzilla.kernel.org/>
+X-Optus-CM-Score: 0
+X-Optus-CM-Analysis: v=2.4 cv=VuxAv86n c=1 sm=1 tr=0 ts=62f2fbfa
+        a=SeswVvpAPK2RnNNwqI8AaA==:117 a=SeswVvpAPK2RnNNwqI8AaA==:17
+        a=ZCXp25Omcg5n1RXD:21 a=kj9zAlcOel0A:10 a=biHskzXt2R4A:10 a=VwQbUJbxAAAA:8
+        a=20KFwNOVAAAA:8 a=7-415B0cAAAA:8 a=Qzhb2gN4u6QXIkT9oDwA:9
+        a=CjuIK1q_8ugA:10 a=hP7KuYlNnP_hzIlKH_V0:22 a=AjGcO6oz07-iQ99wixmX:22
+        a=biEYGPWJfzWAr4FL6Ov7:22
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Darrick J. Wong <djwong@kernel.org>
+On Thu, Aug 04, 2022 at 11:47:47AM +0000, bugzilla-daemon@kernel.org wrote:
+> https://bugzilla.kernel.org/show_bug.cgi?id=216322
+> 
+> --- Comment #4 from Lukas Czerner (lczerner@redhat.com) ---
+> On Thu, Aug 04, 2022 at 12:44:45AM +0000, bugzilla-daemon@kernel.org wrote:
+> > https://bugzilla.kernel.org/show_bug.cgi?id=216322
+> > 
+> > Theodore Tso (tytso@mit.edu) changed:
+> > 
+> >            What    |Removed                     |Added
+> > ----------------------------------------------------------------------------
+> >                  CC|                            |tytso@mit.edu
+> > 
+> > --- Comment #2 from Theodore Tso (tytso@mit.edu) ---
+> > So the problem is that the FITRIM ioctl does not check if a signal is
+> > pending,
+> > and so if the fstrim program requests that the entire SSD (len=ULLONG_MAX),
+> > like the broomstick set off by Mickey Mouse in Fantasia's "Sorcerer's
+> > Apprentive", it will mindlessly send discard requests for any blocks not in
+> > use
+> > by the file system until it is done.   Or to put it another way, "Neither
+> > rain,
+> > nor snow, or a request to freeze the OS, shall stop the FITRIM ioctl from its
+> > appointed task."  :-)
+> > 
+> > The question is how to fix things.   The problem is that the FITRIM ioctl
+> > interface is pretty horrible.   The fstrim_range.len variable is an IN/OUT
+> > field where on the input it is the number of bytes that should be trimmed
+> > (from
+> > start to start+len) and when the ioctl returns fstrm_range.len is the number
+> > of
+> > bytes that were actually trimmed.   So this is not really amenable for
+> > -ERESTARTSYS.
+> > 
+> > Worse, the fstrim program in util-linux doesn't handle an EAGAIN error return
+> > code, so if it gets the EAGAIN after try_to_freeze_tasks send the fake signal
+> > to the process, fstrim will print to stderr "fstrim: FITRIM ioctl failed" and
+> > the rest of the file system trim operation will be aborted.
+> > 
+> > It might be that the only way we can fix this is to have FITRIM return
+> > EAGAIN,
+> > which will stop the fstrim in its tracks.  This is... not great, but
+> > typically
+> > fstrim is run out of crontab or a systemd timer once a month, so if the user
+> > tries to suspend right as the fstrim is running, hopefully we'll get lucky
+> > next
+> > month.    We can then try teach fstrim to do the right thing, and so this
+> > lossage mode would only happen in the combination of a new kernel and an
+> > older
+> > version of util-linux.
+> > 
+> > I'm not happy with that solution, but the alternative of creating a new
+> > FITRIM2
+> > ioctl that has a sane interface means that you need an new kernel and a new
+> > util-linux package, and if you don't, the user will have to deal with a hot
+> > laptop bag and a drained battery.   And not changing FITRIM's behaviour will
+> > have the same potential end result, if the user gets unlucky and tries to
+> > suspend the laptop when there is more than 60 seconds left before FITRIM to
+> > complete.   :-/
+> > 
+> > The other thing I'll note is that every file system has its own FITRIM
+> > implementation, and I suspect they all have this issue, because the FITRIM
+> > interface is fundamentally flawed.
+> 
+> I agree that the FITRIM interface is flawed in this way. But
+> ext4_try_to_trim_range() actually does have fatal_signal_pending() and
+> will return -ERESTARTSYS if that's true. Or did you have something else in
+> mind?
 
-Move the ext4-specific parts of common/rc into a separate file and
-source it when we test that.
+Why not just do:
 
-Signed-off-by: Darrick J. Wong <djwong@kernel.org>
----
- common/config |    4 +
- common/ext4   |  156 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- common/rc     |  153 --------------------------------------------------------
- 3 files changed, 160 insertions(+), 153 deletions(-)
- create mode 100644 common/ext4
+	if (freezing(current))
+		break;
 
+After the call to fatal_signal_pending()?
 
-diff --git a/common/config b/common/config
-index c30eec6d..5eaae447 100644
---- a/common/config
-+++ b/common/config
-@@ -512,6 +512,10 @@ _source_specific_fs()
- 		;;
- 	ext4)
- 		[ "$MKFS_EXT4_PROG" = "" ] && _fatal "mkfs.ext4 not found"
-+		. ./common/ext4
-+		;;
-+	ext2|ext3|ext4dev)
-+		. ./common/ext4
- 		;;
- 	f2fs)
- 		[ "$MKFS_F2FS_PROG" = "" ] && _fatal "mkfs.f2fs not found"
-diff --git a/common/ext4 b/common/ext4
-new file mode 100644
-index 00000000..287705af
---- /dev/null
-+++ b/common/ext4
-@@ -0,0 +1,156 @@
-+#
-+# ext4 specific common functions
-+#
-+
-+_setup_large_ext4_fs()
-+{
-+	local fs_size=$1
-+	local tmp_dir=/tmp/
-+
-+	[ "$LARGE_SCRATCH_DEV" != yes ] && return 0
-+	[ -z "$SCRATCH_DEV_EMPTY_SPACE" ] && SCRATCH_DEV_EMPTY_SPACE=0
-+	[ $SCRATCH_DEV_EMPTY_SPACE -ge $fs_size ] && return 0
-+
-+	# Default free space in the FS is 50GB, but you can specify more via
-+	# SCRATCH_DEV_EMPTY_SPACE
-+	local space_to_consume=$(($fs_size - 50*1024*1024*1024 - $SCRATCH_DEV_EMPTY_SPACE))
-+
-+	# mount the filesystem and create 16TB - 4KB files until we consume
-+	# all the necessary space.
-+	_try_scratch_mount 2>&1 >$tmp_dir/mnt.err
-+	local status=$?
-+	if [ $status -ne 0 ]; then
-+		echo "mount failed"
-+		cat $tmp_dir/mnt.err >&2
-+		rm -f $tmp_dir/mnt.err
-+		return $status
-+	fi
-+	rm -f $tmp_dir/mnt.err
-+
-+	local file_size=$((16*1024*1024*1024*1024 - 4096))
-+	local nfiles=0
-+	while [ $space_to_consume -gt $file_size ]; do
-+
-+		xfs_io -F -f \
-+			-c "truncate $file_size" \
-+			-c "falloc -k 0 $file_size" \
-+			$SCRATCH_MNT/.use_space.$nfiles 2>&1
-+		status=$?
-+		if [ $status -ne 0 ]; then
-+			break;
-+		fi
-+
-+		space_to_consume=$(( $space_to_consume - $file_size ))
-+		nfiles=$(($nfiles + 1))
-+	done
-+
-+	# consume the remaining space.
-+	if [ $space_to_consume -gt 0 ]; then
-+		xfs_io -F -f \
-+			-c "truncate $space_to_consume" \
-+			-c "falloc -k 0 $space_to_consume" \
-+			$SCRATCH_MNT/.use_space.$nfiles 2>&1
-+		status=$?
-+	fi
-+	export NUM_SPACE_FILES=$nfiles
-+
-+	_scratch_unmount
-+	if [ $status -ne 0 ]; then
-+		echo "large file prealloc failed"
-+		cat $tmp_dir/mnt.err >&2
-+		return $status
-+	fi
-+	return 0
-+}
-+
-+_scratch_mkfs_ext4()
-+{
-+	local mkfs_cmd="$MKFS_EXT4_PROG -F"
-+	local mkfs_filter="grep -v -e ^Warning: -e \"^mke2fs \" | grep -v \"^$\""
-+	local tmp=`mktemp -u`
-+	local mkfs_status
-+
-+	[ "$USE_EXTERNAL" = yes -a ! -z "$SCRATCH_LOGDEV" ] && \
-+	    $mkfs_cmd -O journal_dev $MKFS_OPTIONS $SCRATCH_LOGDEV && \
-+	    mkfs_cmd="$mkfs_cmd -J device=$SCRATCH_LOGDEV"
-+
-+	_scratch_do_mkfs "$mkfs_cmd" "$mkfs_filter" $* 2>$tmp.mkfserr 1>$tmp.mkfsstd
-+	mkfs_status=$?
-+
-+	if [ $mkfs_status -eq 0 -a "$LARGE_SCRATCH_DEV" = yes ]; then
-+		# manually parse the mkfs output to get the fs size in bytes
-+		local fs_size=`cat $tmp.mkfsstd | awk ' \
-+			/^Block size/ { split($2, a, "="); bs = a[2] ; } \
-+			/ inodes, / { blks = $3 } \
-+			/reserved for the super user/ { resv = $1 } \
-+			END { fssize = bs * blks - resv; print fssize }'`
-+
-+		_setup_large_ext4_fs $fs_size
-+		mkfs_status=$?
-+	fi
-+
-+	# output mkfs stdout and stderr
-+	cat $tmp.mkfsstd
-+	cat $tmp.mkfserr >&2
-+	rm -f $tmp.mkfserr $tmp.mkfsstd
-+
-+	return $mkfs_status
-+}
-+
-+_ext4_metadump()
-+{
-+	local device="$1"
-+	local dumpfile="$2"
-+	local compressopt="$3"
-+
-+	test -n "$E2IMAGE_PROG" || _fail "e2image not installed"
-+	$E2IMAGE_PROG -Q "$device" "$dumpfile"
-+	[ "$compressopt" = "compress" ] && [ -n "$DUMP_COMPRESSOR" ] &&
-+		$DUMP_COMPRESSOR -f "$dumpfile" &>> "$seqres.full"
-+}
-+
-+# this test requires the ext4 kernel support crc feature on scratch device
-+#
-+_require_scratch_ext4_crc()
-+{
-+	_scratch_mkfs_ext4 >/dev/null 2>&1
-+	dumpe2fs -h $SCRATCH_DEV 2> /dev/null | grep -q metadata_csum || _notrun "metadata_csum not supported by this filesystem"
-+	_try_scratch_mount >/dev/null 2>&1 \
-+	   || _notrun "Kernel doesn't support metadata_csum feature"
-+	_scratch_unmount
-+}
-+
-+# Check whether the specified feature whether it is supported by
-+# mkfs.ext4 and the kernel.
-+_require_scratch_ext4_feature()
-+{
-+    if [ -z "$1" ]; then
-+        echo "Usage: _require_scratch_ext4_feature feature"
-+        exit 1
-+    fi
-+    $MKFS_EXT4_PROG -F $MKFS_OPTIONS -O "$1" \
-+		    $SCRATCH_DEV 512m >/dev/null 2>&1 \
-+	|| _notrun "mkfs.ext4 doesn't support $1 feature"
-+    _try_scratch_mount >/dev/null 2>&1 \
-+	|| _notrun "Kernel doesn't support the ext4 feature(s): $1"
-+    _scratch_unmount
-+}
-+
-+# Disable extent zeroing for ext4 on the given device
-+_ext4_disable_extent_zeroout()
-+{
-+	local dev=${1:-$TEST_DEV}
-+	local sdev=`_short_dev $dev`
-+
-+	[ -f /sys/fs/ext4/$sdev/extent_max_zeroout_kb ] && \
-+		echo 0 >/sys/fs/ext4/$sdev/extent_max_zeroout_kb
-+}
-+
-+_require_scratch_richacl_ext4()
-+{
-+	_scratch_mkfs -O richacl >/dev/null 2>&1 \
-+		|| _notrun "can't mkfs $FSTYP with option -O richacl"
-+	_try_scratch_mount >/dev/null 2>&1 \
-+		|| _notrun "kernel doesn't support richacl feature on $FSTYP"
-+	_scratch_unmount
-+}
-diff --git a/common/rc b/common/rc
-index 197c9415..52dd3b41 100644
---- a/common/rc
-+++ b/common/rc
-@@ -559,113 +559,6 @@ _scratch_do_mkfs()
- 	return $mkfs_status
- }
- 
--_setup_large_ext4_fs()
--{
--	local fs_size=$1
--	local tmp_dir=/tmp/
--
--	[ "$LARGE_SCRATCH_DEV" != yes ] && return 0
--	[ -z "$SCRATCH_DEV_EMPTY_SPACE" ] && SCRATCH_DEV_EMPTY_SPACE=0
--	[ $SCRATCH_DEV_EMPTY_SPACE -ge $fs_size ] && return 0
--
--	# Default free space in the FS is 50GB, but you can specify more via
--	# SCRATCH_DEV_EMPTY_SPACE
--	local space_to_consume=$(($fs_size - 50*1024*1024*1024 - $SCRATCH_DEV_EMPTY_SPACE))
--
--	# mount the filesystem and create 16TB - 4KB files until we consume
--	# all the necessary space.
--	_try_scratch_mount 2>&1 >$tmp_dir/mnt.err
--	local status=$?
--	if [ $status -ne 0 ]; then
--		echo "mount failed"
--		cat $tmp_dir/mnt.err >&2
--		rm -f $tmp_dir/mnt.err
--		return $status
--	fi
--	rm -f $tmp_dir/mnt.err
--
--	local file_size=$((16*1024*1024*1024*1024 - 4096))
--	local nfiles=0
--	while [ $space_to_consume -gt $file_size ]; do
--
--		xfs_io -F -f \
--			-c "truncate $file_size" \
--			-c "falloc -k 0 $file_size" \
--			$SCRATCH_MNT/.use_space.$nfiles 2>&1
--		status=$?
--		if [ $status -ne 0 ]; then
--			break;
--		fi
--
--		space_to_consume=$(( $space_to_consume - $file_size ))
--		nfiles=$(($nfiles + 1))
--	done
--
--	# consume the remaining space.
--	if [ $space_to_consume -gt 0 ]; then
--		xfs_io -F -f \
--			-c "truncate $space_to_consume" \
--			-c "falloc -k 0 $space_to_consume" \
--			$SCRATCH_MNT/.use_space.$nfiles 2>&1
--		status=$?
--	fi
--	export NUM_SPACE_FILES=$nfiles
--
--	_scratch_unmount
--	if [ $status -ne 0 ]; then
--		echo "large file prealloc failed"
--		cat $tmp_dir/mnt.err >&2
--		return $status
--	fi
--	return 0
--}
--
--_scratch_mkfs_ext4()
--{
--	local mkfs_cmd="$MKFS_EXT4_PROG -F"
--	local mkfs_filter="grep -v -e ^Warning: -e \"^mke2fs \" | grep -v \"^$\""
--	local tmp=`mktemp -u`
--	local mkfs_status
--
--	[ "$USE_EXTERNAL" = yes -a ! -z "$SCRATCH_LOGDEV" ] && \
--	    $mkfs_cmd -O journal_dev $MKFS_OPTIONS $SCRATCH_LOGDEV && \
--	    mkfs_cmd="$mkfs_cmd -J device=$SCRATCH_LOGDEV"
--
--	_scratch_do_mkfs "$mkfs_cmd" "$mkfs_filter" $* 2>$tmp.mkfserr 1>$tmp.mkfsstd
--	mkfs_status=$?
--
--	if [ $mkfs_status -eq 0 -a "$LARGE_SCRATCH_DEV" = yes ]; then
--		# manually parse the mkfs output to get the fs size in bytes
--		local fs_size=`cat $tmp.mkfsstd | awk ' \
--			/^Block size/ { split($2, a, "="); bs = a[2] ; } \
--			/ inodes, / { blks = $3 } \
--			/reserved for the super user/ { resv = $1 } \
--			END { fssize = bs * blks - resv; print fssize }'`
--
--		_setup_large_ext4_fs $fs_size
--		mkfs_status=$?
--	fi
--
--	# output mkfs stdout and stderr
--	cat $tmp.mkfsstd
--	cat $tmp.mkfserr >&2
--	rm -f $tmp.mkfserr $tmp.mkfsstd
--
--	return $mkfs_status
--}
--
--_ext4_metadump()
--{
--	local device="$1"
--	local dumpfile="$2"
--	local compressopt="$3"
--
--	test -n "$E2IMAGE_PROG" || _fail "e2image not installed"
--	$E2IMAGE_PROG -Q "$device" "$dumpfile"
--	[ "$compressopt" = "compress" ] && [ -n "$DUMP_COMPRESSOR" ] &&
--		$DUMP_COMPRESSOR -f "$dumpfile" &>> "$seqres.full"
--}
--
- # Capture the metadata of a filesystem in a dump file for offline analysis.
- # This is not supported by all filesystem types, so this function should only
- # be used after a test has already failed.
-@@ -2245,33 +2138,6 @@ _require_non_zoned_device()
- 	fi
- }
- 
--# this test requires the ext4 kernel support crc feature on scratch device
--#
--_require_scratch_ext4_crc()
--{
--	_scratch_mkfs_ext4 >/dev/null 2>&1
--	dumpe2fs -h $SCRATCH_DEV 2> /dev/null | grep -q metadata_csum || _notrun "metadata_csum not supported by this filesystem"
--	_try_scratch_mount >/dev/null 2>&1 \
--	   || _notrun "Kernel doesn't support metadata_csum feature"
--	_scratch_unmount
--}
--
--# Check whether the specified feature whether it is supported by
--# mkfs.ext4 and the kernel.
--_require_scratch_ext4_feature()
--{
--    if [ -z "$1" ]; then
--        echo "Usage: _require_scratch_ext4_feature feature"
--        exit 1
--    fi
--    $MKFS_EXT4_PROG -F $MKFS_OPTIONS -O "$1" \
--		    $SCRATCH_DEV 512m >/dev/null 2>&1 \
--	|| _notrun "mkfs.ext4 doesn't support $1 feature"
--    _try_scratch_mount >/dev/null 2>&1 \
--	|| _notrun "Kernel doesn't support the ext4 feature(s): $1"
--    _scratch_unmount
--}
--
- # this test requires that external log/realtime devices are not in use
- #
- _require_nonexternal()
-@@ -2894,16 +2760,6 @@ _require_fail_make_request()
-  not found. Seems that CONFIG_FAULT_INJECTION_DEBUG_FS kernel config option not enabled"
- }
- 
--# Disable extent zeroing for ext4 on the given device
--_ext4_disable_extent_zeroout()
--{
--	local dev=${1:-$TEST_DEV}
--	local sdev=`_short_dev $dev`
--
--	[ -f /sys/fs/ext4/$sdev/extent_max_zeroout_kb ] && \
--		echo 0 >/sys/fs/ext4/$sdev/extent_max_zeroout_kb
--}
--
- # The default behavior of SEEK_HOLE is to always return EOF.
- # Filesystems that implement non-default behavior return the offset
- # of holes with SEEK_HOLE. There is no way to query the filesystem
-@@ -3001,15 +2857,6 @@ _require_scratch_richacl_xfs()
- 	_scratch_unmount
- }
- 
--_require_scratch_richacl_ext4()
--{
--	_scratch_mkfs -O richacl >/dev/null 2>&1 \
--		|| _notrun "can't mkfs $FSTYP with option -O richacl"
--	_try_scratch_mount >/dev/null 2>&1 \
--		|| _notrun "kernel doesn't support richacl feature on $FSTYP"
--	_scratch_unmount
--}
--
- _require_scratch_richacl_support()
- {
- 	_scratch_mount
+Remember: FITRIM is an -advisory- API. It does not provide any
+guarantees that the free space in the filesystem has any specific
+operation done on it, nor does the backing store guarantee that it
+performs GC on ranges the filesystem discards because discards are
+advisory as well!
 
+Hence the FITRIM API isn't a problem here at all - it's purely an
+advosiry interface and does not guarantee storage level garbage
+collection. Hence if filesystems skip the remaining requested range
+because the system is being suspended, then it isn't the end of the
+world.  Userspace already has to expect that FITRIM will *do
+nothing*, and if userspace is doing FITRIM often enough that suspend
+is an issue, the next scheduled userspace FITRIM pass will clean up
+what this one skipped...
+
+Hence I don't see any problem with just stopping FITRIM and
+returning "no error" if it detects a suspend operation in progress.
+Simple logic, easy to retrofit to all filesystems, and doesn't
+require any userspace awareness of the issue at all...
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
