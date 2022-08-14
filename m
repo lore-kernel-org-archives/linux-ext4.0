@@ -2,46 +2,46 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 406A1C282E7
-	for <linux-ext4@archiver.kernel.org>; Sun, 14 Aug 2022 15:52:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 03C9FC25B08
+	for <linux-ext4@archiver.kernel.org>; Sun, 14 Aug 2022 15:52:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241747AbiHNPwL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 14 Aug 2022 11:52:11 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53210 "EHLO
+        id S241765AbiHNPwO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 14 Aug 2022 11:52:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39470 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241752AbiHNPtK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Aug 2022 11:49:10 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 631B6E029;
-        Sun, 14 Aug 2022 08:35:32 -0700 (PDT)
+        with ESMTP id S242022AbiHNPu6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Aug 2022 11:50:58 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 64A26193FA;
+        Sun, 14 Aug 2022 08:36:37 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id A95D5B80B48;
-        Sun, 14 Aug 2022 15:35:31 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AC20DC433D7;
-        Sun, 14 Aug 2022 15:35:29 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 0111B60DCC;
+        Sun, 14 Aug 2022 15:36:37 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8FC60C433D7;
+        Sun, 14 Aug 2022 15:36:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1660491330;
-        bh=kKSIsqXJRRlKaNvuO5xJps+9eh+pHYaT/RSmtfWTLlk=;
+        s=k20201202; t=1660491396;
+        bh=3fOb7nZrb85VfjwVxmkPmeiKYYLqav0h6NPUqJrI90E=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=r0dbSd3K7lhhIV+L7cDRkfUP6b+DATLZyU8lp48ic+F9GEQIflXfPqM8MMYJaVZTW
-         +x38+KozqDCnbnK8v7W9Wj0Rx2+Fq6x8Iozg9l7FSovJscKMnURQlVeIowqgHequLF
-         eus2QVGzeMGK0gxPafcrAHDf+fyk1qbaHXHYPYwVHIr0USoexF6MTFy/zkbAX1yVFx
-         9vvZFuK129Qz8EH3iiB8VWxcDofZpFVO7wQ/xQYNJo4gPMsb+OSqZDXoaKdckccam8
-         Y7gkxGR0uTkDuFz5C+Tnro5fBDyIEA6kjys27dRafL7p6VH1bQAkrInlqFfBHWJixQ
-         4yiKxbbtHoyIA==
+        b=XS7HnC8p3nkGtCAQILQto53BQvoULfoLXuF+a/hV2hJuIt6I6SvWJwjeAAf/2u1Dr
+         yLBI/hvs15AI+cLiWxKKK9Mp24zcLAhSyZrza0kYaCidyB56po7pCRQahlz9sjyQeM
+         JOiP31ClQi+WuL1c3hTeXaDgGDplQFqNKbEQqzKWZ+wbn1cl0TzwSyxwmAGjYqiwwf
+         v40gI3EaMVt+fBf5sBzvx8QcpgHZA8gztVRSG5H7Vuj//sfkxcG/mu90RdV4umLjNQ
+         eG+kCenrLJBHHbEz74Bu+svdT3wR1DRHbeuWYSEvMIs0Ph/6qb4Vbuy9D7yTGseM9n
+         +44zTUVaOpkFQ==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     "Kiselev, Oleg" <okiselev@amazon.com>,
         Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.10 31/31] ext4: avoid resizing to a partial cluster size
-Date:   Sun, 14 Aug 2022 11:34:31 -0400
-Message-Id: <20220814153431.2379231-31-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 13/13] ext4: avoid resizing to a partial cluster size
+Date:   Sun, 14 Aug 2022 11:36:10 -0400
+Message-Id: <20220814153610.2380234-13-sashal@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220814153431.2379231-1-sashal@kernel.org>
-References: <20220814153431.2379231-1-sashal@kernel.org>
+In-Reply-To: <20220814153610.2380234-1-sashal@kernel.org>
+References: <20220814153610.2380234-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -69,10 +69,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 10 insertions(+)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 015028302305..0e43a32c94b1 100644
+index d37493b39ab9..a49fc255858c 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -1956,6 +1956,16 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
+@@ -1980,6 +1980,16 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
  	}
  	brelse(bh);
  
