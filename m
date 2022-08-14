@@ -2,72 +2,93 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AA06DC25B0F
-	for <linux-ext4@archiver.kernel.org>; Sat, 13 Aug 2022 14:58:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F6B0C25B0F
+	for <linux-ext4@archiver.kernel.org>; Sun, 14 Aug 2022 09:00:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239651AbiHMO6i (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 13 Aug 2022 10:58:38 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48968 "EHLO
+        id S230327AbiHNJA0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 14 Aug 2022 05:00:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41434 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239649AbiHMO6h (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Aug 2022 10:58:37 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B1E28DF31
-        for <linux-ext4@vger.kernel.org>; Sat, 13 Aug 2022 07:58:36 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-108-49-209-117.bstnma.fios.verizon.net [108.49.209.117])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 27DEwCoh022508
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 13 Aug 2022 10:58:13 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1660402694; bh=pZQVjdq5zdGKOG2lEi/fuSzrJyO7WWkHICXpw1lAlmQ=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=H17rHZmxHw/O//9+o6iPqMuf+RYj1Kw8ut9p555mZ4SRRM5DeokkDAhgOJ1CPT40l
-         gQpab//Vf7oQEYwGrzeXu29JSzDHLNXfCf9tWV964QCBaxHfpNvVZOUMu5ezyzlm4n
-         h0zKnJVDCJgLFUzKJER1qT+SDxybWs8l/112QsBPtH240pGbaOruNW+5FKyB5CdzXT
-         Mleu2YrAo3KCn3Akn+WEEGi3NCSQ+n3GJl38Ea2+I6sm7kRUWZ5oFqQ2k7DLrgrc6E
-         de8sFJWqQiUZP5CJOrlLSprnjwAEel/lcG6t60BORNI4li6fxnDl1zsxhytRWFOcQd
-         mf+MPt2CzQktg==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id B276F15C41BC; Sat, 13 Aug 2022 10:58:12 -0400 (EDT)
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     lihaoxiang9@huawei.com
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, louhongxiang@huawei.com,
-        linfeilong@huawei.com, linux-ext4@vger.kernel.org,
-        liuzhiqiang26@huawei.com
-Subject: Re: [PATCH] debugfs:add logdump with option -n that display n records
-Date:   Sat, 13 Aug 2022 10:58:10 -0400
-Message-Id: <166040264335.3360334.9256977073226062013.b4-ty@mit.edu>
-X-Mailer: git-send-email 2.31.0
-In-Reply-To: <608df030-593f-8c69-cb65-632a34729d23@huawei.com>
-References: <608df030-593f-8c69-cb65-632a34729d23@huawei.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+        with ESMTP id S230343AbiHNJAZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Aug 2022 05:00:25 -0400
+Received: from mail-pj1-x1034.google.com (mail-pj1-x1034.google.com [IPv6:2607:f8b0:4864:20::1034])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DFECC12F;
+        Sun, 14 Aug 2022 02:00:23 -0700 (PDT)
+Received: by mail-pj1-x1034.google.com with SMTP id s5-20020a17090a13c500b001f4da9ffe5fso12011047pjf.5;
+        Sun, 14 Aug 2022 02:00:23 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=message-id:date:subject:cc:to:from:from:to:cc;
+        bh=Z/Soyq/Fq75f7VTwuFktKuouQvCw6dYx/UMaXDk1MnA=;
+        b=Qt7jWb38s1GSt1eZcBFy01iGjIrHWb5hTRYaIVsRQV92CTLhjvZVpre5EwfgKIZo7E
+         oybs5JTxsLrbiQlrqhZFJ0DoUHsRsXgNz+MNzjL+rKkafrj5w49KaYsTtPcDlqDFCnIF
+         EOdH+s0Q0nFU8LOqIc1rtguVK4HXR8z5DVBfVEjQ+tMnpXVLmAh4QiJFcCILaXWmnBQa
+         BjBogmuTTps1EnJy4AhnXXumI21sZu3diFuR4c+Ys3ckM2XEtF2Rau5T6zUtN25uApNg
+         5YCEMmyhkl1our2fxOnGFY+YxI8p3Iav55SmjzDzZdJTBlnEvzA/TuPEuTF4KKvBPKB9
+         Hr/Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc;
+        bh=Z/Soyq/Fq75f7VTwuFktKuouQvCw6dYx/UMaXDk1MnA=;
+        b=gPoNYcJpmiQ6y7WHV+CcCc6cS0qfhZT5wulLX7HdGeuxelh2Zv64Q06+gxF+sq1STg
+         5d5yv5nG8jKzGKaWeMGzoS2c/e3D/NwsgWDnn7dwMOAupq04uLKbCdBgqGuTKmaJeE2d
+         aw2Sk1ldHgqDCq2R7ip1/Dm02DmftkJ4Qw6OrWS3N/IvhkHHDwhSdbflqCM0lijdKrp4
+         aP/jvDQk75Wszv37ldK8sKuR1tzXMwpwpUJ496E5Lp16kEYuCEerZBHJtTk180dB4hnp
+         uj3qz2m3PEF7HmCdWfze4hfAZ+qYGp+YgIT5uzOwLY7ltlxLxep9h+US9WYeoa+30ADX
+         N91g==
+X-Gm-Message-State: ACgBeo33uGNyNYMETutWcAzCIQ9XYnyznuIyqHN7dN9zlpes5ddsGAdD
+        iGcAXVbBm/EMrklqvY8JHb5iy0WTJh95NQ==
+X-Google-Smtp-Source: AA6agR7opm50KTFkwP+SPd+0BGto9bJuXZjeJPCLHWUkQkv5nWalyscAMQQBQFmAJZaEh2QMzCgWvw==
+X-Received: by 2002:a17:90a:e7cb:b0:1f5:38:cb53 with SMTP id kb11-20020a17090ae7cb00b001f50038cb53mr12893275pjb.110.1660467622931;
+        Sun, 14 Aug 2022 02:00:22 -0700 (PDT)
+Received: from localhost ([223.167.97.46])
+        by smtp.gmail.com with ESMTPSA id p9-20020a1709028a8900b0016be5f24aaesm4949328plo.163.2022.08.14.02.00.21
+        (version=TLS1_2 cipher=ECDHE-ECDSA-CHACHA20-POLY1305 bits=256/256);
+        Sun, 14 Aug 2022 02:00:22 -0700 (PDT)
+From:   JunChao Sun <sunjunchao2870@gmail.com>
+To:     linux-ext4@vger.kernel.org, linux-doc@vger.kernel.org
+Cc:     tytso@mit.edu, corbet@lwn.net,
+        JunChao Sun <sunjunchao2870@gmail.com>
+Subject: [PATCH] Documentation: ext4: correct the document about superblock
+Date:   Sun, 14 Aug 2022 02:00:16 -0700
+Message-Id: <20220814090016.3160-1-sunjunchao2870@gmail.com>
+X-Mailer: git-send-email 2.17.1
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, 14 Jul 2022 09:32:48 +0800, lihaoxiang (F) wrote:
-> The current version's debugfs possessed the function logdump. Executing
-> with option -O could output the log history. But when it occurred the block
-> which had no magic number in it's header, the program would exit.
-> 
-> Sometimes we were locating problems, needed for more transactions that
-> had replayed instead of the latest batch of transactions and we weren't
-> hope to display all the history in the meanwhile. So we introduced
-> the option -n used for controlling the print of history transactions.
-> Specially, this parameter was depending on the option -O otherwise it
-> couldn't work.
-> 
-> [...]
+Correct some questions like this:
+s_lastcheck_hi field should be upper 8 bits of the
+s_lastcheck field, rather than itself.
 
-Applied, thanks!
+Signed-off-by: JunChao Sun <sunjunchao2870@gmail.com>
+---
+ Documentation/filesystems/ext4/super.rst | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-[1/1] debugfs:add logdump with option -n that display n records
-      commit: 6e4cc3d5eeb2dfaa055e652b5390beaa6c3d05da
-
-Best regards,
+diff --git a/Documentation/filesystems/ext4/super.rst b/Documentation/filesystems/ext4/super.rst
+index 268888522e35..0152888cac29 100644
+--- a/Documentation/filesystems/ext4/super.rst
++++ b/Documentation/filesystems/ext4/super.rst
+@@ -456,15 +456,15 @@ The ext4 superblock is laid out as follows in
+    * - 0x277
+      - __u8
+      - s_lastcheck_hi
+-     - Upper 8 bits of the s_lastcheck_hi field.
++     - Upper 8 bits of the s_lastcheck field.
+    * - 0x278
+      - __u8
+      - s_first_error_time_hi
+-     - Upper 8 bits of the s_first_error_time_hi field.
++     - Upper 8 bits of the s_first_error_time field.
+    * - 0x279
+      - __u8
+      - s_last_error_time_hi
+-     - Upper 8 bits of the s_last_error_time_hi field.
++     - Upper 8 bits of the s_last_error_time field.
+    * - 0x27A
+      - __u8
+      - s_pad[2]
 -- 
-Theodore Ts'o <tytso@mit.edu>
+2.17.1
+
