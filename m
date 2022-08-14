@@ -2,46 +2,46 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 56AB8C25B0F
-	for <linux-ext4@archiver.kernel.org>; Sun, 14 Aug 2022 15:50:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7B0B4C3F6B0
+	for <linux-ext4@archiver.kernel.org>; Sun, 14 Aug 2022 15:52:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241834AbiHNPuG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 14 Aug 2022 11:50:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52726 "EHLO
+        id S241563AbiHNPwH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 14 Aug 2022 11:52:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40010 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241720AbiHNPst (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Aug 2022 11:48:49 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5B9AA101E4;
-        Sun, 14 Aug 2022 08:35:31 -0700 (PDT)
+        with ESMTP id S241950AbiHNPun (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Aug 2022 11:50:43 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8A7681CFDD;
+        Sun, 14 Aug 2022 08:36:09 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 7FBDDB80B77;
-        Sun, 14 Aug 2022 15:35:29 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 65C4BC433C1;
-        Sun, 14 Aug 2022 15:35:28 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 25F7760DDB;
+        Sun, 14 Aug 2022 15:36:09 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BF8D5C43470;
+        Sun, 14 Aug 2022 15:36:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1660491329;
-        bh=gQi2PczOaRIn8XIrEGaTogKHsMsbNglZfG09OvFUiPA=;
+        s=k20201202; t=1660491368;
+        bh=k8wS7Uf+smNCIfjSZJkQR7LB3/uGDvOYL43EJA5t2ug=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=R1cNozMdpibqep1Jg26TqLqUrPnuP0T6d77Ko4x6lyBlpOQhRxcYEAPT5ED+4etqV
-         Zp7KVOZzQnn6lSxRdVCkAAV7Wvzhnv8ea/WNbz8E41BAarHydWAKFI+YCdaUsrIDEf
-         pV+5oStSAKqLxJF3AhzTR0ALFAdP09wlUMlP4YauUnmL8vpxNCuu7geBQNuKRQd5n4
-         dgBC/q3Qs123kezwYSY97Q9d+nebGVl5Whr7EjWNt8YCyZtDjs8FsCa3pUnVzTPbEW
-         pmBAG8aGWrcT0gSZcmIPwR8oRJue4bwS/HSJkX1rT627S14L6r6fA6DYbXZz1qv76s
-         unUsnY7OYhVMQ==
+        b=UEaxVeu7E5YtL4KtXjZpfAXa6ajd69fGb1zmaRCwuTbtcZ4EoziD7YRPNXsCJABJC
+         Sq/7XjvAiZlqktez0ByS4mLK5p29d2AeuRK/yXovYxJsrHOY4s9ttde8ymPe8J/pI8
+         0KzVfhGe4oCHjn4w2aNFg/L5wGG0eFotVugqok9iVaBY6048oipTtUEgTZGtec16p8
+         krV729grBq5ugjH5wgR0AXIBnkw9qCWv5U9KAC8wFqTPe1cPcA0Q7z4CTc2KeE2PkQ
+         87fLz5sBJhk2rqeq0bIPdVbV+ISkrWq3SmySm9o+wtzL0H46eo9i7Kdw+Bq//n+L8b
+         OJK0KcsGN+pwQ==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Ye Bin <yebin10@huawei.com>, Jan Kara <jack@suse.cz>,
         Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.10 30/31] ext4: avoid remove directory when directory is corrupted
-Date:   Sun, 14 Aug 2022 11:34:30 -0400
-Message-Id: <20220814153431.2379231-30-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.4 20/21] ext4: avoid remove directory when directory is corrupted
+Date:   Sun, 14 Aug 2022 11:35:30 -0400
+Message-Id: <20220814153531.2379705-20-sashal@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220814153431.2379231-1-sashal@kernel.org>
-References: <20220814153431.2379231-1-sashal@kernel.org>
+In-Reply-To: <20220814153531.2379705-1-sashal@kernel.org>
+References: <20220814153531.2379705-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -68,10 +68,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 2 insertions(+), 5 deletions(-)
 
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 2c9ae72a1f5c..b7026a748854 100644
+index d151892db8b0..3ef57daf4a50 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -2938,11 +2938,8 @@ bool ext4_empty_dir(struct inode *inode)
+@@ -2913,11 +2913,8 @@ bool ext4_empty_dir(struct inode *inode)
  		de = (struct ext4_dir_entry_2 *) (bh->b_data +
  					(offset & (sb->s_blocksize - 1)));
  		if (ext4_check_dir_entry(inode, NULL, de, bh,
