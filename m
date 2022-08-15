@@ -2,106 +2,105 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 26AC9C25B0E
-	for <linux-ext4@archiver.kernel.org>; Tue, 16 Aug 2022 04:23:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E633CC28B2C
+	for <linux-ext4@archiver.kernel.org>; Tue, 16 Aug 2022 04:57:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229744AbiHPEXM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 16 Aug 2022 00:23:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60978 "EHLO
+        id S233906AbiHPE5F (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 16 Aug 2022 00:57:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56376 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229541AbiHPEW4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Aug 2022 00:22:56 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2C58337BB3D;
-        Mon, 15 Aug 2022 17:55:48 -0700 (PDT)
+        with ESMTP id S234167AbiHPE40 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Aug 2022 00:56:26 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 879A6BB6A8;
+        Mon, 15 Aug 2022 13:51:23 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 4303A6125E;
-        Tue, 16 Aug 2022 00:55:48 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5212EC433C1;
-        Tue, 16 Aug 2022 00:55:47 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1660611347;
-        bh=iu6B25e0sTxWSWP58J3cvJLRVLHWY1NS7egktCILRVc=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=krd6+dWmORUQTM50F/8J5UTDFvQpmjgyE2xt2quw2vdfZh6niGmFxiiV4AIz32H48
-         v/54PgeHP2vwqXwK32ajRlxpPJzlh1estyjWKs69bXa2t8XK5AILpoD8G+6e6l6TN2
-         JacTQRI/ggjw/oFEBUWvGlPNpoBqWi7pvwHjXWTNYZ4waocnQ7ZvCRK+HV+rcPvgUj
-         rn2X10wArCcnKg5D/Bt2iE7+193xqZkmDFK77dfsfvgi03cysOyvwTWWYr7n7HZDYk
-         5Leu70it3DTXaYFTpbub7m2JQZmVrC/jYpJVhrCsVduHmj+8JAVU1IiAScCxzXl5Gb
-         5hx6GXtLZcXBw==
-Date:   Mon, 15 Aug 2022 17:55:45 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Jaegeuk Kim <jaegeuk@kernel.org>
-Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-xfs@vger.kernel.org,
-        linux-api@vger.kernel.org, linux-fscrypt@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Keith Busch <kbusch@kernel.org>
-Subject: Re: [PATCH v4 6/9] f2fs: don't allow DIO reads but not DIO writes
-Message-ID: <YvrrEcw4E+rpDLwM@sol.localdomain>
-References: <20220722071228.146690-1-ebiggers@kernel.org>
- <20220722071228.146690-7-ebiggers@kernel.org>
- <YtyoF89iOg8gs7hj@google.com>
- <Yt7dCcG0ns85QqJe@sol.localdomain>
- <YuXyKh8Zvr56rR4R@google.com>
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 8225861089;
+        Mon, 15 Aug 2022 20:51:22 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 71D06C433D6;
+        Mon, 15 Aug 2022 20:51:21 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
+        s=korg; t=1660596681;
+        bh=eSju7C3yRhZNi5hkK0/J5yLVf4TRaMXFKrFi3jlI5tg=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=Nbhw+fo/PrWwYh3m9ohE5rU3dmDz5HEbDYYrIL7o6dbUORHDFnkOQHr6aBhSnlsuL
+         fAnL6MFjNaHjgK6fJm9aAN8bBBqnnCJyBB2lShPBfDQj9xmQD+FTIKiK0QMiqZ1djV
+         joah2hZaO3kR/XjPJuszHuFc/6tN/wAtJ2FbrLXI=
+From:   Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+To:     linux-kernel@vger.kernel.org
+Cc:     Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        stable@vger.kernel.org, stable@kernel.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jonathan Corbet <corbet@lwn.net>,
+        Wang Jianjian <wangjianjian3@huawei.com>,
+        linux-ext4@vger.kernel.org, Bagas Sanjaya <bagasdotme@gmail.com>,
+        Theodore Tso <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>
+Subject: [PATCH 5.19 1124/1157] Documentation: ext4: fix cell spacing of table heading on blockmap table
+Date:   Mon, 15 Aug 2022 20:08:00 +0200
+Message-Id: <20220815180525.307454244@linuxfoundation.org>
+X-Mailer: git-send-email 2.37.2
+In-Reply-To: <20220815180439.416659447@linuxfoundation.org>
+References: <20220815180439.416659447@linuxfoundation.org>
+User-Agent: quilt/0.67
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <YuXyKh8Zvr56rR4R@google.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, Jul 30, 2022 at 08:08:26PM -0700, Jaegeuk Kim wrote:
-> On 07/25, Eric Biggers wrote:
-> > On Sat, Jul 23, 2022 at 07:01:59PM -0700, Jaegeuk Kim wrote:
-> > > On 07/22, Eric Biggers wrote:
-> > > > From: Eric Biggers <ebiggers@google.com>
-> > > > 
-> > > > Currently, if an f2fs filesystem is mounted with the mode=lfs and
-> > > > io_bits mount options, DIO reads are allowed but DIO writes are not.
-> > > > Allowing DIO reads but not DIO writes is an unusual restriction, which
-> > > > is likely to be surprising to applications, namely any application that
-> > > > both reads and writes from a file (using O_DIRECT).  This behavior is
-> > > > also incompatible with the proposed STATX_DIOALIGN extension to statx.
-> > > > Given this, let's drop the support for DIO reads in this configuration.
-> > > 
-> > > IIRC, we allowed DIO reads since applications complained a lower performance.
-> > > So, I'm afraid this change will make another confusion to users. Could
-> > > you please apply the new bahavior only for STATX_DIOALIGN?
-> > > 
-> > 
-> > Well, the issue is that the proposed STATX_DIOALIGN fields cannot represent this
-> > weird case where DIO reads are allowed but not DIO writes.  So the question is
-> > whether this case actually matters, in which case we should make STATX_DIOALIGN
-> > distinguish between DIO reads and DIO writes, or whether it's some odd edge case
-> > that doesn't really matter, in which case we could just fix it or make
-> > STATX_DIOALIGN report that DIO is unsupported.  I was hoping that you had some
-> > insight here.  What sort of applications want DIO reads but not DIO writes?
-> > Is this common at all?
-> 
-> I think there's no specific application to use the LFS mode at this
-> moment, but I'd like to allow DIO read for zoned device which will be
-> used for Android devices.
-> 
+From: Bagas Sanjaya <bagasdotme@gmail.com>
 
-So if the zoned device feature becomes widely adopted, then STATX_DIOALIGN will
-be useless on all Android devices?  That sounds undesirable.  Are you sure that
-supporting DIO reads but not DIO writes actually works?  Does it not cause
-problems for existing applications?
+[ Upstream commit 442ec1e5bb7c46c72c41898e13a5744c84cadf51 ]
 
-What we need to do is make a decision about whether this means we should build
-in a stx_dio_direction field (indicating no support / readonly support /
-writeonly support / readwrite support) into the API from the beginning.  If we
-don't do that, then I don't think we could simply add such a field later, as the
-statx_dio_*_align fields will have already been assigned their meaning.  I think
-we'd instead have to "duplicate" the API, with STATX_DIOROALIGN and
-statx_dio_ro_*_align fields.  That seems uglier than building a directional
-indicator into the API from the beginning.  On the other hand, requiring all
-programs to check stx_dio_direction would add complexity to using the API.
+Commit 3103084afcf234 ("ext4, doc: remove unnecessary escaping") removes
+redundant underscore escaping, however the cell spacing in heading row of
+blockmap table became not aligned anymore, hence triggers malformed table
+warning:
 
-Any thoughts on this?
+Documentation/filesystems/ext4/blockmap.rst:3: WARNING: Malformed table.
 
-- Eric
++---------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| i.i_block Offset   | Where It Points                                                                                                                                                                                                              |
+<snipped>...
+
+The warning caused the table not being loaded.
+
+Realign the heading row cell by adding missing space at the first cell
+to fix the warning.
+
+Fixes: 3103084afcf234 ("ext4, doc: remove unnecessary escaping")
+Cc: stable@kernel.org
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: Jonathan Corbet <corbet@lwn.net>
+Cc: Wang Jianjian <wangjianjian3@huawei.com>
+Cc: linux-ext4@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Signed-off-by: Bagas Sanjaya <bagasdotme@gmail.com>
+Link: https://lore.kernel.org/r/20220619072938.7334-1-bagasdotme@gmail.com
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ Documentation/filesystems/ext4/blockmap.rst | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Documentation/filesystems/ext4/blockmap.rst b/Documentation/filesystems/ext4/blockmap.rst
+index 2bd990402a5c..cc596541ce79 100644
+--- a/Documentation/filesystems/ext4/blockmap.rst
++++ b/Documentation/filesystems/ext4/blockmap.rst
+@@ -1,7 +1,7 @@
+ .. SPDX-License-Identifier: GPL-2.0
+ 
+ +---------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+-| i.i_block Offset   | Where It Points                                                                                                                                                                                                              |
++| i.i_block Offset    | Where It Points                                                                                                                                                                                                              |
+ +=====================+==============================================================================================================================================================================================================================+
+ | 0 to 11             | Direct map to file blocks 0 to 11.                                                                                                                                                                                           |
+ +---------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+-- 
+2.35.1
+
+
+
