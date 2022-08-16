@@ -2,125 +2,159 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 49BCBC32772
-	for <linux-ext4@archiver.kernel.org>; Tue, 16 Aug 2022 06:42:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E349C2BB41
+	for <linux-ext4@archiver.kernel.org>; Tue, 16 Aug 2022 10:21:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229575AbiHPGmy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 16 Aug 2022 02:42:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47890 "EHLO
+        id S233675AbiHPKVd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 16 Aug 2022 06:21:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45062 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230155AbiHPGmk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Aug 2022 02:42:40 -0400
-Received: from mail-m974.mail.163.com (mail-m974.mail.163.com [123.126.97.4])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id A5541100E;
-        Mon, 15 Aug 2022 18:31:51 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-        s=s110527; h=From:Subject:Date:Message-Id:MIME-Version; bh=k8axr
-        /Aep0d+9tnwrwx2dH9IRoVDFQvDb+3T8DBTfYY=; b=SYrbCR1ChEwP7KDSYp3bn
-        0nlavgADJkGGdcCxQsNf5V+iGBa9qjRmlRqrPZ6hR6Hzo+YnCA5drFe/7L0jqlYL
-        xwd0DHBCWU+w/Vi1/QIEToRRJCsYp0caqKZT9mKOYSKu9ZTTQyFVbSekABoXxfwB
-        hT0yLk8C1SO011B15V0MAg=
-Received: from localhost.localdomain (unknown [116.128.244.169])
-        by smtp4 (Coremail) with SMTP id HNxpCgCXJsDL7_pipFLJVQ--.14169S2;
-        Tue, 16 Aug 2022 09:15:56 +0800 (CST)
-From:   Jiangshan Yi <13667453960@163.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca
-Cc:     lczerner@redhat.com, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Jiangshan Yi <yijiangshan@kylinos.cn>
-Subject: [PATCH v3] fs/ext4: replace ternary operator with min()/max() and min_t()
-Date:   Tue, 16 Aug 2022 09:15:53 +0800
-Message-Id: <20220816011553.2912926-1-13667453960@163.com>
-X-Mailer: git-send-email 2.25.1
+        with ESMTP id S234075AbiHPKU4 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Aug 2022 06:20:56 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D562052097;
+        Tue, 16 Aug 2022 02:36:08 -0700 (PDT)
+Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
+        by smtp-out1.suse.de (Postfix) with ESMTP id 4A308346EC;
+        Tue, 16 Aug 2022 09:34:23 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1660642463; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=iEdYfa1M4GgGzZG+RuOCPAb/W8L0e/bqVBO0WbncbEE=;
+        b=pBpO8XTXlRzfr9XHY2EY5XFEQIVO6s1UiN7LVjuYTNaMxZ1PC+GyuKrmKnORBcGFydH69W
+        CnwM9Nb68o57IONPf+0uX7J958FobhMNbGv/VNAWtKCxykUsWfcMZPwYgZZKLSDI6+2qzn
+        RfQVriyqAxiodJYgcae2V5FcNO57/cQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1660642463;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=iEdYfa1M4GgGzZG+RuOCPAb/W8L0e/bqVBO0WbncbEE=;
+        b=34FB+9QK0NXSIgtZkv3faxX4+8s2JgaMoRYkRu/il6P0qmVqGJ2OQE0yPWlt+IeVyDZPd1
+        p2RTyT8AIQphYQDQ==
+Received: from quack3.suse.cz (unknown [10.100.224.230])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by relay2.suse.de (Postfix) with ESMTPS id 221792C143;
+        Tue, 16 Aug 2022 09:34:23 +0000 (UTC)
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id CC041A066C; Tue, 16 Aug 2022 11:34:21 +0200 (CEST)
+Date:   Tue, 16 Aug 2022 11:34:21 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Stefan Wahren <stefan.wahren@i2se.com>
+Cc:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+        Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Ritesh Harjani <riteshh@linux.ibm.com>,
+        linux-fsdevel@vger.kernel.org,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Geetika.Moolchandani1@ibm.com, regressions@lists.linux.dev,
+        Florian Fainelli <f.fainelli@gmail.com>
+Subject: Re: [Regression] ext4: changes to mb_optimize_scan cause issues on
+ Raspberry Pi
+Message-ID: <20220816093421.ok26tcyvf6bm3ngy@quack3>
+References: <0d81a7c2-46b7-6010-62a4-3e6cfc1628d6@i2se.com>
+ <20220728100055.efbvaudwp3ofolpi@quack3>
+ <64b7899f-d84d-93de-f9c5-49538bd080d0@i2se.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: HNxpCgCXJsDL7_pipFLJVQ--.14169S2
-X-Coremail-Antispam: 1Uf129KBjvJXoWxGFWxCw4xury5CF45JFy3CFg_yoW5WFWfpF
-        n3AF18GFWru348uayIgr4UZ3W5W3WkG3y7XryY9r1UWFZIqFyxtrn8Kr1jvF1FgrWkZ34j
-        qFW0kr1UJwnIkFDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07UuuWJUUUUU=
-X-Originating-IP: [116.128.244.169]
-X-CM-SenderInfo: bprtllyxuvjmiwq6il2tof0z/1tbivgpe+1ZceYnPBQACsj
+In-Reply-To: <64b7899f-d84d-93de-f9c5-49538bd080d0@i2se.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Jiangshan Yi <yijiangshan@kylinos.cn>
+Hi Stefan!
 
-Fix the following coccicheck warning:
+On Sat 06-08-22 11:50:28, Stefan Wahren wrote:
+> Am 28.07.22 um 12:00 schrieb Jan Kara:
+> > Hello!
+> > 
+> > On Mon 18-07-22 15:29:47, Stefan Wahren wrote:
+> > > i noticed that since Linux 5.18 (Linux 5.19-rc6 is still affected) i'm
+> > > unable to run "rpi-update" without massive performance regression on my
+> > > Raspberry Pi 4 (multi_v7_defconfig + CONFIG_ARM_LPAE). Using Linux 5.17 this
+> > > tool successfully downloads the latest firmware (> 100 MB) on my development
+> > > micro SD card (Kingston 16 GB Industrial) with a ext4 filesystem within ~ 1
+> > > min. The same scenario on Linux 5.18 shows the following symptoms:
+> > Thanks for report and the bisection!
+> > > - download takes endlessly much time and leads to an abort by userspace in
+> > > most cases because of the poor performance
+> > > - massive system load during download even after download has been aborted
+> > > (heartbeat LED goes wild)
+> > OK, is it that the CPU is busy or are we waiting on the storage card?
+> > Observing top(1) for a while should be enough to get the idea.  (sorry, I'm
+> > not very familiar with RPi so I'm not sure what heartbeat LED shows).
+> 
+> My description wasn't precise. I mean the green ACT LED, which uses the LED
+> heartbeat trigger:
+> 
+> "This allows LEDs to be controlled by a CPU load average. The flash
+> frequency is a hyperbolic function of the 1-minute load average."
+> 
+> I'm not sure if it's CPU or IO driven load, here the top output in bad case:
+> 
+> top - 08:44:17 up 43 min,  2 users,  load average: 5,02, 5,45, 5,17
+> Tasks: 142 total,   1 running, 141 sleeping,   0 stopped,   0 zombie
+> %Cpu(s):  0,4 us,  0,4 sy,  0,0 ni, 49,0 id, 50,2 wa,  0,0 hi, 0,0 si,  0,0
+> st
+> MiB Mem :   7941,7 total,   4563,1 free,    312,7 used,   3066,0 buff/cache
+> MiB Swap:    100,0 total,    100,0 free,      0,0 used.   7359,6 avail Mem
 
-fs/ext4/inline.c:183: WARNING opportunity for min().
-fs/ext4/extents.c:2631: WARNING opportunity for max().
-fs/ext4/extents.c:2632: WARNING opportunity for min().
-fs/ext4/extents.c:5559: WARNING opportunity for max().
-fs/ext4/super.c:6908: WARNING opportunity for min().
+OK, there's plenty of memory available, CPUs are mostly idle, the load is
+likely created by tasks waiting for IO (which also contribute to load
+despite not consuming CPU). Not much surprising here.
 
-min()/max() and min_t() macro is defined in include/linux/minmax.h.
-It avoids multiple evaluations of the arguments when non-constant and
-performs strict type-checking.
+> > Can you run "iostat -x 1" while the download is running so that we can see
+> > roughly how the IO pattern looks?
+> > 
+> Here the output during download:
+> 
+> Device            r/s     w/s     rkB/s     wkB/s   rrqm/s wrqm/s  %rrqm 
+> %wrqm r_await w_await aqu-sz rareq-sz wareq-sz svctm  %util
+> mmcblk1          0,00    2,00      0,00     36,00     0,00 0,00   0,00  
+> 0,00    0,00 23189,50  46,38     0,00    18,00 500,00 100,00
+> 
+> avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+>            0,25    0,00    0,00   49,62    0,00   50,13
+> 
+> Device            r/s     w/s     rkB/s     wkB/s   rrqm/s wrqm/s  %rrqm 
+> %wrqm r_await w_await aqu-sz rareq-sz wareq-sz svctm  %util
+> mmcblk1          0,00    2,00      0,00     76,00     0,00 0,00   0,00  
+> 0,00    0,00 46208,50  92,42     0,00    38,00 500,00 100,00
+> 
+> avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+>            0,25    0,00    0,00   49,62    0,00   50,13
+> 
+> Device            r/s     w/s     rkB/s     wkB/s   rrqm/s wrqm/s  %rrqm 
+> %wrqm r_await w_await aqu-sz rareq-sz wareq-sz svctm  %util
+> mmcblk1          0,00    3,00      0,00     76,00     0,00 0,00   0,00  
+> 0,00    0,00 48521,67 145,56     0,00    25,33 333,33 100,00
+> 
+> avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+>            0,25    0,00    0,00   49,62    0,00   50,13
 
-Suggested-by: Lukas Czerner <lczerner@redhat.com>
-Signed-off-by: Jiangshan Yi <yijiangshan@kylinos.cn>
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/extents.c | 8 +++-----
- fs/ext4/inline.c  | 3 +--
- fs/ext4/super.c   | 3 +--
- 3 files changed, 5 insertions(+), 9 deletions(-)
+So this is interesting. We can see the card is 100% busy. The IO submitted
+to the card is formed by small requests - 18-38 KB per request - and each
+request takes 0.3-0.5s to complete. So the resulting throughput is horrible
+- only tens of KB/s. Also we can see there are many IOs queued for the
+device in parallel (aqu-sz columnt). This does not look like load I would
+expect to be generated by download of a large file from the web.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index c148bb97b527..37321aecd878 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2628,9 +2628,8 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 			  unwritten, ex_ee_len);
- 		path[depth].p_ext = ex;
- 
--		a = ex_ee_block > start ? ex_ee_block : start;
--		b = ex_ee_block+ex_ee_len - 1 < end ?
--			ex_ee_block+ex_ee_len - 1 : end;
-+		a = max(ex_ee_block, start);
-+		b = min(ex_ee_block + ex_ee_len - 1, end);
- 
- 		ext_debug(inode, "  border %u:%u\n", a, b);
- 
-@@ -5557,8 +5556,7 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
- 	 * ee_start_lblk to shift extents
- 	 */
- 	ret = ext4_ext_shift_extents(inode, handle,
--		ee_start_lblk > offset_lblk ? ee_start_lblk : offset_lblk,
--		len_lblk, SHIFT_RIGHT);
-+		max(ee_start_lblk, offset_lblk), len_lblk, SHIFT_RIGHT);
- 
- 	up_write(&EXT4_I(inode)->i_data_sem);
- 	if (IS_SYNC(inode))
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index a4fbe825694b..2b42ececa46d 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -180,8 +180,7 @@ static int ext4_read_inline_data(struct inode *inode, void *buffer,
- 
- 	BUG_ON(len > EXT4_I(inode)->i_inline_size);
- 
--	cp_len = len < EXT4_MIN_INLINE_DATA_SIZE ?
--			len : EXT4_MIN_INLINE_DATA_SIZE;
-+	cp_len = min_t(unsigned int, len, EXT4_MIN_INLINE_DATA_SIZE);
- 
- 	raw_inode = ext4_raw_inode(iloc);
- 	memcpy(buffer, (void *)(raw_inode->i_block), cp_len);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 9a66abcca1a8..5615bf7ab15d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -6905,8 +6905,7 @@ static ssize_t ext4_quota_read(struct super_block *sb, int type, char *data,
- 		len = i_size-off;
- 	toread = len;
- 	while (toread > 0) {
--		tocopy = sb->s_blocksize - offset < toread ?
--				sb->s_blocksize - offset : toread;
-+		tocopy = min(sb->s_blocksize - offset, toread);
- 		bh = ext4_bread(NULL, inode, blk, 0);
- 		if (IS_ERR(bh))
- 			return PTR_ERR(bh);
+You have mentioned in previous emails that with dd(1) you can do couple
+MB/s writing to this card which is far more than these tens of KB/s. So the
+file download must be doing something which really destroys the IO pattern
+(and with mb_optimize_scan=0 ext4 happened to be better dealing with it and
+generating better IO pattern). Can you perhaps strace the process doing the
+download (or perhaps strace -f the whole rpi-update process) so that we can
+see how does the load generated on the filesystem look like? Thanks!
+
+								Honza
 -- 
-2.25.1
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
