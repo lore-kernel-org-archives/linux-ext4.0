@@ -2,171 +2,78 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A5FFC3F6B0
-	for <linux-ext4@archiver.kernel.org>; Wed, 17 Aug 2022 13:11:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1680CC25B08
+	for <linux-ext4@archiver.kernel.org>; Wed, 17 Aug 2022 13:16:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239668AbiHQNL3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 17 Aug 2022 09:11:29 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59676 "EHLO
+        id S239694AbiHQNQT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 17 Aug 2022 09:16:19 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46682 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239712AbiHQNKU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Aug 2022 09:10:20 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AC77E6C125;
-        Wed, 17 Aug 2022 06:10:02 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 9F048612FE;
-        Wed, 17 Aug 2022 13:10:01 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 456D4C433D7;
-        Wed, 17 Aug 2022 13:10:00 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1660741801;
-        bh=QihSMJKjDch4GL1LywlKzg/ABMaKCsVyPC/+3xtGVJs=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=HjWdOD2GTsFR8qCj1Rh06D2z7laxaibwRorj9PYREs1gAmMEePcHp9JmUomv8KQcW
-         8fIixmRQO0fAoEeLaEXwXh1WdCidCsTnQO4hD0Jg9tXyRG0E0848sEliAnBoCf4nq/
-         RyDP08YAWSelZL6kq1a91iL53wsoECRWNInJTuBx+hf9f5pcesLGUDTi7MPHe8vmN1
-         WGnzMT178mBsTvK3Id0cva5Zq+sqT5Jy8XxK2gsGTUwkGgAcESBWQYUHIx0LRVAgeC
-         h0N1wJdQ/e5fCclD19jRjndgnxxqb0TTZb7Na01FN7PSPYkI90nOUMzrnIpO12hATS
-         +BhszTI1xxwgw==
-Message-ID: <e822b39e120332f88cbfe5d02d69c217bac74419.camel@kernel.org>
-Subject: Re: [PATCH] ext4: fix i_version handling in ext4
-From:   Jeff Layton <jlayton@kernel.org>
-To:     Jan Kara <jack@suse.cz>
-Cc:     tytso@mit.edu, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Lukas Czerner <lczerner@redhat.com>,
-        Christian Brauner <brauner@kernel.org>
-Date:   Wed, 17 Aug 2022 09:09:58 -0400
-In-Reply-To: <20220817130441.qigqv62wj6lrvxfc@quack3>
-References: <20220816131522.42467-1-jlayton@kernel.org>
-         <20220817130441.qigqv62wj6lrvxfc@quack3>
-Content-Type: text/plain; charset="ISO-8859-15"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.44.4 (3.44.4-1.fc36) 
+        with ESMTP id S239652AbiHQNPp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Aug 2022 09:15:45 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 90A4B62A99;
+        Wed, 17 Aug 2022 06:15:28 -0700 (PDT)
+Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.54])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4M77hh4ldBzkWRs;
+        Wed, 17 Aug 2022 21:12:04 +0800 (CST)
+Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
+ (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Wed, 17 Aug
+ 2022 21:15:25 +0800
+From:   Baokun Li <libaokun1@huawei.com>
+To:     <linux-ext4@vger.kernel.org>
+CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
+        <ritesh.list@gmail.com>, <lczerner@redhat.com>,
+        <enwlinux@gmail.com>, <linux-kernel@vger.kernel.org>,
+        <yi.zhang@huawei.com>, <yebin10@huawei.com>, <yukuai3@huawei.com>,
+        <libaokun1@huawei.com>
+Subject: [PATCH 0/2] ext4: fix a infinite loop in do_writepages after online resizing
+Date:   Wed, 17 Aug 2022 21:26:59 +0800
+Message-ID: <20220817132701.3015912-1-libaokun1@huawei.com>
+X-Mailer: git-send-email 2.31.1
 MIME-Version: 1.0
+Content-Type: text/plain; charset="y"
+Content-Transfer-Encoding: 8bit
+X-Originating-IP: [10.175.127.227]
+X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
+ dggpeml500021.china.huawei.com (7.185.36.21)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, 2022-08-17 at 15:04 +0200, Jan Kara wrote:
-> On Tue 16-08-22 09:15:22, Jeff Layton wrote:
-> > ext4 currently updates the i_version counter when the atime is updated
-> > during a read. This is less than ideal as it can cause unnecessary cach=
-e
-> > invalidations with NFSv4. The increment in ext4_mark_iloc_dirty is also
-> > problematic since it can also corrupt the i_version counter for
-> > ea_inodes.
-> >=20
-> > We aren't bumping the file times in ext4_mark_iloc_dirty, so changing
-> > the i_version there seems wrong, and is the cause of both problems.
-> > Remove that callsite and add increments to the setattr and setxattr
-> > codepaths (at the same time that we update the ctime). The i_version
-> > bump that already happens during timestamp updates should take care of
-> > the rest.
-> >=20
-> > Cc: Lukas Czerner <lczerner@redhat.com>
-> > Cc: Jan Kara <jack@suse.cz>
-> > Cc: Christian Brauner <brauner@kernel.org>
-> > Signed-off-by: Jeff Layton <jlayton@kernel.org>
->=20
-> After some verification (which was not completely trivial e.g. for
-> directories) I agree all cases should be covered. Feel free to add:
->=20
-> Reviewed-by: Jan Kara <jack@suse.cz>
->=20
-> 								Honza
->=20
+We got a issue: the ext4 writeback process was stuck in do_writepages and
+do_writepages kept retrying. However, '-ENOMEM' is returned each time, even
+if there is still free memory on the current machine.
 
-Thanks.
+We find that the direct cause of this issue is that the bg_inode_table_hi
+in the group descriptor is written to an incorrect value, which causes the
+inode block found through the inode table to exceed the end_ block。Then,
+sb_getblk always returns null, __ext4_get_inode_loc returns `-ENOMEM`,
+and do_writepages keeps retrying.
 
-I think this covers the typical cases, but there are some places I
-missed:
+The root cause is that the GDT is overwritten when the backup superblock
+is updated in the online resizing process of the disk. The prerequisite is
+that the block size of the disk is 1024, bigalloc and meta_bg are enabled,
+and sparse_super is disabled.
 
-The setacl codepath, for one, and there are a number of places that set
-the ctime explicitly for hole punching and the like. I'm planning to
-send a v2 once I do a bit more testing. I'll hold off on adding your
-Reviewed-by just yet, since the final patch may be quite a bit
-different.
+Therefore, the check on inode_table is added to __ext4_get_inode_loc by
+referring to the check on inode_bitmap in ext4_read_inode_bitmap to avoid
+infinite loops in similar cases. In addition, the offset of the backup
+super block in the group in the above case is also corrected to avoid some
+strange problems caused by the GDT being overwritten.
 
+Baokun Li (2):
+  ext4: fix GDT corruption after online resizing with bigalloc enable
+    and blocksize is 1024
+  ext4: add inode table check in __ext4_get_inode_loc to aovid possible
+    infinite loop
 
-> > ---
-> >  fs/ext4/inode.c | 10 +++++-----
-> >  fs/ext4/xattr.c |  2 ++
-> >  2 files changed, 7 insertions(+), 5 deletions(-)
-> >=20
-> > I think this patch should probably supersede Lukas' patch entitled:
-> >=20
-> >     ext4: don't increase iversion counter for ea_inodes
-> >=20
-> > This will also mean that we'll need to respin the patch to turn on the
-> > i_version counter unconditionally in ext4 (though that should be
-> > trivial).
-> >=20
-> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > index 601214453c3a..a70921df89a5 100644
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -5342,6 +5342,7 @@ int ext4_setattr(struct user_namespace *mnt_usern=
-s, struct dentry *dentry,
-> >  	int error, rc =3D 0;
-> >  	int orphan =3D 0;
-> >  	const unsigned int ia_valid =3D attr->ia_valid;
-> > +	bool inc_ivers =3D IS_IVERSION(inode);
-> > =20
-> >  	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
-> >  		return -EIO;
-> > @@ -5425,8 +5426,8 @@ int ext4_setattr(struct user_namespace *mnt_usern=
-s, struct dentry *dentry,
-> >  			return -EINVAL;
-> >  		}
-> > =20
-> > -		if (IS_I_VERSION(inode) && attr->ia_size !=3D inode->i_size)
-> > -			inode_inc_iversion(inode);
-> > +		if (attr->ia_size =3D=3D inode->i_size)
-> > +			inc_ivers =3D false;
-> > =20
-> >  		if (shrink) {
-> >  			if (ext4_should_order_data(inode)) {
-> > @@ -5528,6 +5529,8 @@ int ext4_setattr(struct user_namespace *mnt_usern=
-s, struct dentry *dentry,
-> >  	}
-> > =20
-> >  	if (!error) {
-> > +		if (inc_ivers)
-> > +			inode_inc_iversion(inode);
-> >  		setattr_copy(mnt_userns, inode, attr);
-> >  		mark_inode_dirty(inode);
-> >  	}
-> > @@ -5731,9 +5734,6 @@ int ext4_mark_iloc_dirty(handle_t *handle,
-> >  	}
-> >  	ext4_fc_track_inode(handle, inode);
-> > =20
-> > -	if (IS_I_VERSION(inode))
-> > -		inode_inc_iversion(inode);
-> > -
-> >  	/* the do_update_inode consumes one bh->b_count */
-> >  	get_bh(iloc->bh);
-> > =20
-> > diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> > index 533216e80fa2..4d84919d1c9c 100644
-> > --- a/fs/ext4/xattr.c
-> > +++ b/fs/ext4/xattr.c
-> > @@ -2412,6 +2412,8 @@ ext4_xattr_set_handle(handle_t *handle, struct in=
-ode *inode, int name_index,
-> >  	if (!error) {
-> >  		ext4_xattr_update_super_block(handle, inode->i_sb);
-> >  		inode->i_ctime =3D current_time(inode);
-> > +		if (IS_IVERSION(inode))
-> > +			inode_inc_iversion(inode);
-> >  		if (!value)
-> >  			no_expand =3D 0;
-> >  		error =3D ext4_mark_iloc_dirty(handle, inode, &is.iloc);
-> > --=20
-> > 2.37.2
-> >=20
+ fs/ext4/inode.c  | 10 +++++++++-
+ fs/ext4/resize.c |  6 +++++-
+ 2 files changed, 14 insertions(+), 2 deletions(-)
 
---=20
-Jeff Layton <jlayton@kernel.org>
+-- 
+2.31.1
+
