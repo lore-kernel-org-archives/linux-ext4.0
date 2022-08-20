@@ -2,225 +2,197 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 65BB2C25B08
-	for <linux-ext4@archiver.kernel.org>; Sat, 20 Aug 2022 06:26:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CDFB7C25B08
+	for <linux-ext4@archiver.kernel.org>; Sat, 20 Aug 2022 10:54:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244095AbiHTG0A (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 20 Aug 2022 02:26:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51836 "EHLO
+        id S1344430AbiHTKy0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 20 Aug 2022 06:54:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34684 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229458AbiHTGZ7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Aug 2022 02:25:59 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C14539F0FD;
-        Fri, 19 Aug 2022 23:25:56 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 40C6060C41;
-        Sat, 20 Aug 2022 06:25:56 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5AD0DC433C1;
-        Sat, 20 Aug 2022 06:25:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1660976755;
-        bh=9+ztVqpSbEOVwUvw4xOXCHoOncFZUnrxQsLaABqzYoo=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=g0pfiZfiseMHTmhBJ3uwKLat8/kKcO9+bbsa6I1/OhF2wweSD/TLgbvLZW0R0t1Wy
-         LKJLbBbAn7NVZ3ZLGMWnLz8abBPoeyfIiQFHCkduBVLW0Y/z54dd9Iuuk/W/Jk5H2g
-         L9qQD2e5aGnFEIMc7mAUrGtDFgXUyuVuZb2zr6kf0WFd1dA/tl5XIiCpnkxx6HDiIQ
-         tG4RkmkVhRX/iGtUENqobHSCSKZa4PfhW9bk9A1MOt8fBWffqeQaVYHi29Kuhlendy
-         aZw+stR6Jsg2GtaJSgs+kCPPUkvHPDaBWAfPTe6/JeAh/NVwhBLGsq6f/HVZ8Ovx5D
-         +P9YSHkcBOkVw==
-Date:   Fri, 19 Aug 2022 23:25:53 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Ye Bin <yebin10@huawei.com>
-Cc:     syzbot <syzbot+9543479984ae9e576000@syzkaller.appspotmail.com>,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
-        tytso@mit.edu, Jason Yan <yanaijie@huawei.com>
-Subject: Re: [syzbot] possible deadlock in ext4_bmap
-Message-ID: <YwB+cXMCS/uk61PR@sol.localdomain>
-References: <000000000000967c2805e5b5d4ed@google.com>
- <cad2edc1-57dd-1d79-0f2f-966e6fb31d5b@huawei.com>
+        with ESMTP id S1344276AbiHTKyY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Aug 2022 06:54:24 -0400
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 926328A6EA;
+        Sat, 20 Aug 2022 03:54:22 -0700 (PDT)
+Received: from dggemv704-chm.china.huawei.com (unknown [172.30.72.54])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4M8wQm4NpszlVq6;
+        Sat, 20 Aug 2022 18:51:12 +0800 (CST)
+Received: from kwepemm600013.china.huawei.com (7.193.23.68) by
+ dggemv704-chm.china.huawei.com (10.3.19.47) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2375.24; Sat, 20 Aug 2022 18:54:20 +0800
+Received: from huawei.com (10.175.127.227) by kwepemm600013.china.huawei.com
+ (7.193.23.68) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Sat, 20 Aug
+ 2022 18:54:19 +0800
+From:   Zhihao Cheng <chengzhihao1@huawei.com>
+To:     <jack@suse.com>, <tytso@mit.edu>, <brauner@kernel.org>
+CC:     <linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <chengzhihao1@huawei.com>,
+        <yukuai3@huawei.com>
+Subject: [PATCH 1/3] quota: Check next/prev free block number after reading from quota file
+Date:   Sat, 20 Aug 2022 19:05:12 +0800
+Message-ID: <20220820110514.881373-2-chengzhihao1@huawei.com>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20220820110514.881373-1-chengzhihao1@huawei.com>
+References: <20220820110514.881373-1-chengzhihao1@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <cad2edc1-57dd-1d79-0f2f-966e6fb31d5b@huawei.com>
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.127.227]
+X-ClientProxiedBy: dggems701-chm.china.huawei.com (10.3.19.178) To
+ kwepemm600013.china.huawei.com (7.193.23.68)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Aug 12, 2022 at 10:46:16AM +0800, 'Jason Yan' via syzkaller-bugs wrote:
-> The inode_lock(inode) in vfs_fileattr_set() is a regular file inode and
-> inode_lock_shared(inode) in ext4_bmap() is a journal inode.
-> 
-> So this might be a false positive deadlock warning.
-> 
-> Thanks,
-> Jason
-> 
-> On 2022/8/8 15:33, syzbot wrote:
-> > Hello,
-> > 
-> > syzbot found the following issue on:
-> > 
-> > HEAD commit:    ca688bff68bc Add linux-next specific files for 20220808
-> > git tree:       linux-next
-> > console output: https://syzkaller.appspot.com/x/log.txt?x=177eb001080000
-> > kernel config:  https://syzkaller.appspot.com/x/.config?x=4c20e006003cdecb
-> > dashboard link: https://syzkaller.appspot.com/bug?extid=9543479984ae9e576000
-> > compiler:       gcc (Debian 10.2.1-6) 10.2.1 20210110, GNU ld (GNU Binutils for Debian) 2.35.2
-> > 
-> > Unfortunately, I don't have any reproducer for this issue yet.
-> > 
-> > IMPORTANT: if you fix the issue, please add the following tag to the commit:
-> > Reported-by: syzbot+9543479984ae9e576000@syzkaller.appspotmail.com
-> > 
-> > ======================================================
-> > WARNING: possible circular locking dependency detected
-> > 5.19.0-next-20220808-syzkaller #0 Not tainted
-> > ------------------------------------------------------
-> > syz-executor.3/15950 is trying to acquire lock:
-> > ffff88801b348400 (&sb->s_type->i_mutex_key#8){++++}-{3:3}, at: inode_lock_shared include/linux/fs.h:771 [inline]
-> > ffff88801b348400 (&sb->s_type->i_mutex_key#8){++++}-{3:3}, at: ext4_bmap+0x4e/0x460 fs/ext4/inode.c:3157
-> > 
-> > but task is already holding lock:
-> > ffff88814bede3f8 (&journal->j_checkpoint_mutex){+.+.}-{3:3}, at: jbd2_journal_flush+0x487/0xc00 fs/jbd2/journal.c:2472
-> > 
-> > which lock already depends on the new lock.
-> > 
-> > 
-> > the existing dependency chain (in reverse order) is:
-> > 
-> > -> #1 (&journal->j_checkpoint_mutex){+.+.}-{3:3}:
-> >         __mutex_lock_common kernel/locking/mutex.c:603 [inline]
-> >         mutex_lock_io_nested+0x13f/0x1190 kernel/locking/mutex.c:833
-> >         __jbd2_log_wait_for_space+0x234/0x460 fs/jbd2/checkpoint.c:110
-> >         add_transaction_credits+0xa2d/0xb70 fs/jbd2/transaction.c:298
-> >         start_this_handle+0x3ae/0x14a0 fs/jbd2/transaction.c:422
-> >         jbd2__journal_start+0x38c/0x910 fs/jbd2/transaction.c:520
-> >         __ext4_journal_start_sb+0x3a3/0x490 fs/ext4/ext4_jbd2.c:105
-> >         __ext4_journal_start fs/ext4/ext4_jbd2.h:326 [inline]
-> >         ext4_dirty_inode+0x9d/0x110 fs/ext4/inode.c:5963
-> >         __mark_inode_dirty+0x48b/0x1040 fs/fs-writeback.c:2381
-> >         mark_inode_dirty include/linux/fs.h:2467 [inline]
-> >         generic_write_end+0x350/0x440 fs/buffer.c:2199
-> >         ext4_da_write_end+0x16e/0x9a0 fs/ext4/inode.c:3089
-> >         generic_perform_write+0x306/0x560 mm/filemap.c:3749
-> >         ext4_buffered_write_iter+0x15b/0x460 fs/ext4/file.c:270
-> >         ext4_file_write_iter+0x44a/0x1660 fs/ext4/file.c:679
-> >         call_write_iter include/linux/fs.h:2192 [inline]
-> >         do_iter_readv_writev+0x20b/0x3b0 fs/read_write.c:729
-> >         do_iter_write+0x182/0x700 fs/read_write.c:855
-> >         vfs_iter_write+0x70/0xa0 fs/read_write.c:896
-> >         iter_file_splice_write+0x741/0xc90 fs/splice.c:686
-> >         do_splice_from fs/splice.c:764 [inline]
-> >         direct_splice_actor+0x110/0x180 fs/splice.c:931
-> >         splice_direct_to_actor+0x331/0x8a0 fs/splice.c:886
-> >         do_splice_direct+0x1a7/0x270 fs/splice.c:974
-> >         do_sendfile+0xb19/0x1270 fs/read_write.c:1249
-> >         __do_sys_sendfile64 fs/read_write.c:1311 [inline]
-> >         __se_sys_sendfile64 fs/read_write.c:1303 [inline]
-> >         __x64_sys_sendfile64+0x149/0x210 fs/read_write.c:1303
-> >         do_syscall_x64 arch/x86/entry/common.c:50 [inline]
-> >         do_syscall_64+0x35/0xb0 arch/x86/entry/common.c:80
-> >         entry_SYSCALL_64_after_hwframe+0x63/0xcd
-> > 
-> > -> #0 (&sb->s_type->i_mutex_key#8){++++}-{3:3}:
-> >         check_prev_add kernel/locking/lockdep.c:3095 [inline]
-> >         check_prevs_add kernel/locking/lockdep.c:3214 [inline]
-> >         validate_chain kernel/locking/lockdep.c:3829 [inline]
-> >         __lock_acquire+0x2a43/0x56d0 kernel/locking/lockdep.c:5053
-> >         lock_acquire kernel/locking/lockdep.c:5666 [inline]
-> >         lock_acquire+0x1ab/0x570 kernel/locking/lockdep.c:5631
-> >         down_read+0x98/0x450 kernel/locking/rwsem.c:1499
-> >         inode_lock_shared include/linux/fs.h:771 [inline]
-> >         ext4_bmap+0x4e/0x460 fs/ext4/inode.c:3157
-> >         bmap+0xaa/0x120 fs/inode.c:1799
-> >         jbd2_journal_bmap+0xa8/0x180 fs/jbd2/journal.c:971
-> >         __jbd2_journal_erase fs/jbd2/journal.c:1784 [inline]
-> >         jbd2_journal_flush+0x84f/0xc00 fs/jbd2/journal.c:2490
-> >         ext4_ioctl_checkpoint fs/ext4/ioctl.c:1082 [inline]
-> >         __ext4_ioctl+0x28fd/0x4ab0 fs/ext4/ioctl.c:1586
-> >         vfs_ioctl fs/ioctl.c:51 [inline]
-> >         __do_sys_ioctl fs/ioctl.c:870 [inline]
-> >         __se_sys_ioctl fs/ioctl.c:856 [inline]
-> >         __x64_sys_ioctl+0x193/0x200 fs/ioctl.c:856
-> >         do_syscall_x64 arch/x86/entry/common.c:50 [inline]
-> >         do_syscall_64+0x35/0xb0 arch/x86/entry/common.c:80
-> >         entry_SYSCALL_64_after_hwframe+0x63/0xcd
-> > 
-> > other info that might help us debug this:
-> > 
-> >   Possible unsafe locking scenario:
-> > 
-> >         CPU0                    CPU1
-> >         ----                    ----
-> >    lock(&journal->j_checkpoint_mutex);
-> >                                 lock(&sb->s_type->i_mutex_key#8);
-> >                                 lock(&journal->j_checkpoint_mutex);
-> >    lock(&sb->s_type->i_mutex_key#8);
-> > 
-> >   *** DEADLOCK ***
-> > 
-> > 2 locks held by syz-executor.3/15950:
-> >   #0: ffff88814bede170 (&journal->j_barrier){+.+.}-{3:3}, at: jbd2_journal_lock_updates+0x15e/0x310 fs/jbd2/transaction.c:904
-> >   #1: ffff88814bede3f8 (&journal->j_checkpoint_mutex){+.+.}-{3:3}, at: jbd2_journal_flush+0x487/0xc00 fs/jbd2/journal.c:2472
-> > 
-> > stack backtrace:
-> > CPU: 1 PID: 15950 Comm: syz-executor.3 Not tainted 5.19.0-next-20220808-syzkaller #0
-> > Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/22/2022
-> > Call Trace:
-> >   <TASK>
-> >   __dump_stack lib/dump_stack.c:88 [inline]
-> >   dump_stack_lvl+0xcd/0x134 lib/dump_stack.c:106
-> >   check_noncircular+0x25f/0x2e0 kernel/locking/lockdep.c:2175
-> >   check_prev_add kernel/locking/lockdep.c:3095 [inline]
-> >   check_prevs_add kernel/locking/lockdep.c:3214 [inline]
-> >   validate_chain kernel/locking/lockdep.c:3829 [inline]
-> >   __lock_acquire+0x2a43/0x56d0 kernel/locking/lockdep.c:5053
-> >   lock_acquire kernel/locking/lockdep.c:5666 [inline]
-> >   lock_acquire+0x1ab/0x570 kernel/locking/lockdep.c:5631
-> >   down_read+0x98/0x450 kernel/locking/rwsem.c:1499
-> >   inode_lock_shared include/linux/fs.h:771 [inline]
-> >   ext4_bmap+0x4e/0x460 fs/ext4/inode.c:3157
-> >   bmap+0xaa/0x120 fs/inode.c:1799
-> >   jbd2_journal_bmap+0xa8/0x180 fs/jbd2/journal.c:971
-> >   __jbd2_journal_erase fs/jbd2/journal.c:1784 [inline]
-> >   jbd2_journal_flush+0x84f/0xc00 fs/jbd2/journal.c:2490
-> >   ext4_ioctl_checkpoint fs/ext4/ioctl.c:1082 [inline]
-> >   __ext4_ioctl+0x28fd/0x4ab0 fs/ext4/ioctl.c:1586
-> >   vfs_ioctl fs/ioctl.c:51 [inline]
-> >   __do_sys_ioctl fs/ioctl.c:870 [inline]
-> >   __se_sys_ioctl fs/ioctl.c:856 [inline]
-> >   __x64_sys_ioctl+0x193/0x200 fs/ioctl.c:856
-> >   do_syscall_x64 arch/x86/entry/common.c:50 [inline]
-> >   do_syscall_64+0x35/0xb0 arch/x86/entry/common.c:80
-> >   entry_SYSCALL_64_after_hwframe+0x63/0xcd
-> > RIP: 0033:0x7feb4e689279
-> > Code: ff ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 b8 ff ff ff f7 d8 64 89 01 48
-> > RSP: 002b:00007feb4f798168 EFLAGS: 00000246 ORIG_RAX: 0000000000000010
-> > RAX: ffffffffffffffda RBX: 00007feb4e79bf80 RCX: 00007feb4e689279
-> > RDX: 0000000020000000 RSI: 000000004004662b RDI: 0000000000000005
-> > RBP: 00007feb4e6e3189 R08: 0000000000000000 R09: 0000000000000000
-> > R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
-> > R13: 00007ffc38bb538f R14: 00007feb4f798300 R15: 0000000000022000
-> >   </TASK>
-> > 
-> > 
+Following process:
+ Init: v2_read_file_info: <3> dqi_free_blk 0 dqi_free_entry 5 dqi_blks 6
 
-I got this report while running syzkaller too.  It's very annoying because
-anyone running syzkaller will probably get this if the filesystem is ext4.
+ Step 1. chown bin f_a -> dquot_acquire -> v2_write_dquot:
+  qtree_write_dquot
+   do_insert_tree
+    find_free_dqentry
+     get_free_dqblk
+      write_blk(info->dqi_blocks) // info->dqi_blocks = 6, failure. The
+	   content in physical block (corresponding to blk 6) is random.
 
-ext4_bmap() didn't use to take the inode lock.  It started in this very recent
-commit:
+ Step 2. chown root f_a -> dquot_transfer -> dqput_all -> dqput ->
+         ext4_release_dquot -> v2_release_dquot -> qtree_delete_dquot:
+  dquot_release
+   remove_tree
+    free_dqentry
+     put_free_dqblk(6)
+      info->dqi_free_blk = blk    // info->dqi_free_blk = 6
 
-commit 51ae846cff568c8c29921b1b28eb2dfbcd4ac12d
-Author: Ye Bin <yebin10@huawei.com>
-Date:   Fri Jun 17 09:39:35 2022 +0800
+ Step 3. drop cache (buffer head for block 6 is released)
 
-    ext4: fix warning in ext4_iomap_begin as race between bmap and write
+ Step 4. chown bin f_b -> dquot_acquire -> commit_dqblk -> v2_write_dquot:
+  qtree_write_dquot
+   do_insert_tree
+    find_free_dqentry
+     get_free_dqblk
+      dh = (struct qt_disk_dqdbheader *)buf
+      blk = info->dqi_free_blk     // 6
+      ret = read_blk(info, blk, buf)  // The content of buf is random
+      info->dqi_free_blk = le32_to_cpu(dh->dqdh_next_free)  // random blk
 
-Ye, any thoughts on what to do about this?
+ Step 5. chown bin f_c -> notify_change -> ext4_setattr -> dquot_transfer:
+  dquot = dqget -> acquire_dquot -> ext4_acquire_dquot -> dquot_acquire ->
+          commit_dqblk -> v2_write_dquot -> dq_insert_tree:
+   do_insert_tree
+    find_free_dqentry
+     get_free_dqblk
+      blk = info->dqi_free_blk    // If blk < 0 and blk is not an error
+				     code, it will be returned as dquot
 
-- Eric
+  transfer_to[USRQUOTA] = dquot  // A random negative value
+  __dquot_transfer(transfer_to)
+   dquot_add_inodes(transfer_to[cnt])
+    spin_lock(&dquot->dq_dqb_lock)  // page fault
+
+, which will lead to kernel page fault:
+ Quota error (device sda): qtree_write_dquot: Error -8000 occurred
+ while creating quota
+ BUG: unable to handle page fault for address: ffffffffffffe120
+ #PF: supervisor write access in kernel mode
+ #PF: error_code(0x0002) - not-present page
+ Oops: 0002 [#1] PREEMPT SMP
+ CPU: 0 PID: 5974 Comm: chown Not tainted 6.0.0-rc1-00004
+ Hardware name: QEMU Standard PC (i440FX + PIIX, 1996)
+ RIP: 0010:_raw_spin_lock+0x3a/0x90
+ Call Trace:
+  dquot_add_inodes+0x28/0x270
+  __dquot_transfer+0x377/0x840
+  dquot_transfer+0xde/0x540
+  ext4_setattr+0x405/0x14d0
+  notify_change+0x68e/0x9f0
+  chown_common+0x300/0x430
+  __x64_sys_fchownat+0x29/0x40
+
+In order to avoid accessing invalid quota memory address, this patch adds
+block number checking of next/prev free block read from quota file.
+
+Fetch a reproducer in [Link].
+
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=216372
+Fixes: 1da177e4c3f4152 ("Linux-2.6.12-rc2")
+Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
+---
+ fs/quota/quota_tree.c | 38 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
+
+diff --git a/fs/quota/quota_tree.c b/fs/quota/quota_tree.c
+index 5f2405994280..f2e7f5b869a4 100644
+--- a/fs/quota/quota_tree.c
++++ b/fs/quota/quota_tree.c
+@@ -71,6 +71,35 @@ static ssize_t write_blk(struct qtree_mem_dqinfo *info, uint blk, char *buf)
+ 	return ret;
+ }
+ 
++static inline int do_check_range(struct super_block *sb, uint val, uint max_val)
++{
++	if (val >= max_val) {
++		quota_error(sb, "Getting block too big (%u >= %u)",
++			    val, max_val);
++		return -EUCLEAN;
++	}
++
++	return 0;
++}
++
++static int check_free_block(struct qtree_mem_dqinfo *info,
++			    struct qt_disk_dqdbheader *dh)
++{
++	int err = 0;
++	uint nextblk, prevblk;
++
++	nextblk = le32_to_cpu(dh->dqdh_next_free);
++	err = do_check_range(info->dqi_sb, nextblk, info->dqi_blocks);
++	if (err)
++		return err;
++	prevblk = le32_to_cpu(dh->dqdh_prev_free);
++	err = do_check_range(info->dqi_sb, prevblk, info->dqi_blocks);
++	if (err)
++		return err;
++
++	return err;
++}
++
+ /* Remove empty block from list and return it */
+ static int get_free_dqblk(struct qtree_mem_dqinfo *info)
+ {
+@@ -85,6 +114,9 @@ static int get_free_dqblk(struct qtree_mem_dqinfo *info)
+ 		ret = read_blk(info, blk, buf);
+ 		if (ret < 0)
+ 			goto out_buf;
++		ret = check_free_block(info, dh);
++		if (ret)
++			goto out_buf;
+ 		info->dqi_free_blk = le32_to_cpu(dh->dqdh_next_free);
+ 	}
+ 	else {
+@@ -232,6 +264,9 @@ static uint find_free_dqentry(struct qtree_mem_dqinfo *info,
+ 		*err = read_blk(info, blk, buf);
+ 		if (*err < 0)
+ 			goto out_buf;
++		*err = check_free_block(info, dh);
++		if (*err)
++			goto out_buf;
+ 	} else {
+ 		blk = get_free_dqblk(info);
+ 		if ((int)blk < 0) {
+@@ -424,6 +459,9 @@ static int free_dqentry(struct qtree_mem_dqinfo *info, struct dquot *dquot,
+ 		goto out_buf;
+ 	}
+ 	dh = (struct qt_disk_dqdbheader *)buf;
++	ret = check_free_block(info, dh);
++	if (ret)
++		goto out_buf;
+ 	le16_add_cpu(&dh->dqdh_entries, -1);
+ 	if (!le16_to_cpu(dh->dqdh_entries)) {	/* Block got free? */
+ 		ret = remove_free_dqentry(info, buf, blk);
+-- 
+2.31.1
+
