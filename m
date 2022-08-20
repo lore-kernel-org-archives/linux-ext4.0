@@ -2,38 +2,40 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 82B57C25B08
-	for <linux-ext4@archiver.kernel.org>; Sat, 20 Aug 2022 10:54:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 23030C32772
+	for <linux-ext4@archiver.kernel.org>; Sat, 20 Aug 2022 10:54:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345124AbiHTKy1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 20 Aug 2022 06:54:27 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34682 "EHLO
+        id S239636AbiHTKya (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 20 Aug 2022 06:54:30 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34784 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1344262AbiHTKyY (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Aug 2022 06:54:24 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 29EAA86B55;
-        Sat, 20 Aug 2022 03:54:22 -0700 (PDT)
-Received: from dggemv711-chm.china.huawei.com (unknown [172.30.72.53])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4M8wQl69VpzlVjr;
-        Sat, 20 Aug 2022 18:51:11 +0800 (CST)
+        with ESMTP id S1344493AbiHTKyZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Aug 2022 06:54:25 -0400
+Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 887E49083A;
+        Sat, 20 Aug 2022 03:54:23 -0700 (PDT)
+Received: from dggemv703-chm.china.huawei.com (unknown [172.30.72.54])
+        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4M8wSZ0FWYzGpVZ;
+        Sat, 20 Aug 2022 18:52:46 +0800 (CST)
 Received: from kwepemm600013.china.huawei.com (7.193.23.68) by
- dggemv711-chm.china.huawei.com (10.1.198.66) with Microsoft SMTP Server
+ dggemv703-chm.china.huawei.com (10.3.19.46) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2375.24; Sat, 20 Aug 2022 18:54:20 +0800
+ 15.1.2375.24; Sat, 20 Aug 2022 18:54:21 +0800
 Received: from huawei.com (10.175.127.227) by kwepemm600013.china.huawei.com
  (7.193.23.68) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Sat, 20 Aug
- 2022 18:54:19 +0800
+ 2022 18:54:20 +0800
 From:   Zhihao Cheng <chengzhihao1@huawei.com>
 To:     <jack@suse.com>, <tytso@mit.edu>, <brauner@kernel.org>
 CC:     <linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
         <linux-kernel@vger.kernel.org>, <chengzhihao1@huawei.com>,
         <yukuai3@huawei.com>
-Subject: [PATCH 0/3] Check content after reading from quota file
-Date:   Sat, 20 Aug 2022 19:05:11 +0800
-Message-ID: <20220820110514.881373-1-chengzhihao1@huawei.com>
+Subject: [PATCH 2/3] quota: Replace all block number checking with helper function
+Date:   Sat, 20 Aug 2022 19:05:13 +0800
+Message-ID: <20220820110514.881373-3-chengzhihao1@huawei.com>
 X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20220820110514.881373-1-chengzhihao1@huawei.com>
+References: <20220820110514.881373-1-chengzhihao1@huawei.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7BIT
 Content-Type:   text/plain; charset=US-ASCII
@@ -45,18 +47,80 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-1. Fix invalid memory access of dquot.
-2. Cleanup, replace places of block number checking with helper function.
-3. Add more sanity checking for the content read from quota file.
+Cleanup all block checking places, replace them with helper function
+do_check_range().
 
-Zhihao Cheng (3):
-  quota: Check next/prev free block number after reading from quota file
-  quota: Replace all block number checking with helper function
-  quota: Add more checking after reading from quota file
+Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
+---
+ fs/quota/quota_tree.c | 28 ++++++++++++----------------
+ 1 file changed, 12 insertions(+), 16 deletions(-)
 
- fs/quota/quota_tree.c | 81 ++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 69 insertions(+), 12 deletions(-)
-
+diff --git a/fs/quota/quota_tree.c b/fs/quota/quota_tree.c
+index f2e7f5b869a4..efbdef9fbcf3 100644
+--- a/fs/quota/quota_tree.c
++++ b/fs/quota/quota_tree.c
+@@ -71,11 +71,12 @@ static ssize_t write_blk(struct qtree_mem_dqinfo *info, uint blk, char *buf)
+ 	return ret;
+ }
+ 
+-static inline int do_check_range(struct super_block *sb, uint val, uint max_val)
++static inline int do_check_range(struct super_block *sb, uint val,
++				 uint min_val, uint max_val)
+ {
+-	if (val >= max_val) {
+-		quota_error(sb, "Getting block too big (%u >= %u)",
+-			    val, max_val);
++	if (val < min_val || val >= max_val) {
++		quota_error(sb, "Getting block %u out of range %u-%u",
++			    val, min_val, max_val);
+ 		return -EUCLEAN;
+ 	}
+ 
+@@ -89,11 +90,11 @@ static int check_free_block(struct qtree_mem_dqinfo *info,
+ 	uint nextblk, prevblk;
+ 
+ 	nextblk = le32_to_cpu(dh->dqdh_next_free);
+-	err = do_check_range(info->dqi_sb, nextblk, info->dqi_blocks);
++	err = do_check_range(info->dqi_sb, nextblk, 0, info->dqi_blocks);
+ 	if (err)
+ 		return err;
+ 	prevblk = le32_to_cpu(dh->dqdh_prev_free);
+-	err = do_check_range(info->dqi_sb, prevblk, info->dqi_blocks);
++	err = do_check_range(info->dqi_sb, prevblk, 0, info->dqi_blocks);
+ 	if (err)
+ 		return err;
+ 
+@@ -518,12 +519,10 @@ static int remove_tree(struct qtree_mem_dqinfo *info, struct dquot *dquot,
+ 		goto out_buf;
+ 	}
+ 	newblk = le32_to_cpu(ref[get_index(info, dquot->dq_id, depth)]);
+-	if (newblk < QT_TREEOFF || newblk >= info->dqi_blocks) {
+-		quota_error(dquot->dq_sb, "Getting block too big (%u >= %u)",
+-			    newblk, info->dqi_blocks);
+-		ret = -EUCLEAN;
++	ret = do_check_range(dquot->dq_sb, newblk, QT_TREEOFF,
++			     info->dqi_blocks);
++	if (ret)
+ 		goto out_buf;
+-	}
+ 
+ 	if (depth == info->dqi_qtree_depth - 1) {
+ 		ret = free_dqentry(info, dquot, newblk);
+@@ -624,12 +623,9 @@ static loff_t find_tree_dqentry(struct qtree_mem_dqinfo *info,
+ 	blk = le32_to_cpu(ref[get_index(info, dquot->dq_id, depth)]);
+ 	if (!blk)	/* No reference? */
+ 		goto out_buf;
+-	if (blk < QT_TREEOFF || blk >= info->dqi_blocks) {
+-		quota_error(dquot->dq_sb, "Getting block too big (%u >= %u)",
+-			    blk, info->dqi_blocks);
+-		ret = -EUCLEAN;
++	ret = do_check_range(dquot->dq_sb, blk, QT_TREEOFF, info->dqi_blocks);
++	if (ret)
+ 		goto out_buf;
+-	}
+ 
+ 	if (depth < info->dqi_qtree_depth - 1)
+ 		ret = find_tree_dqentry(info, dquot, blk, depth+1);
 -- 
 2.31.1
 
