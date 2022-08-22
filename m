@@ -2,39 +2,61 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A6E1CC28D13
-	for <linux-ext4@archiver.kernel.org>; Mon, 22 Aug 2022 13:48:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7AAD2C32774
+	for <linux-ext4@archiver.kernel.org>; Mon, 22 Aug 2022 14:46:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234900AbiHVNsQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 22 Aug 2022 09:48:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34210 "EHLO
+        id S235733AbiHVOqT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 22 Aug 2022 10:46:19 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34548 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235385AbiHVNsO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Aug 2022 09:48:14 -0400
-X-Greylist: delayed 342 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Mon, 22 Aug 2022 06:48:06 PDT
-Received: from host.eagleriverinteractive.com (q2bw-vrsg.accessdomain.com [72.10.54.41])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4DF0C39B82
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Aug 2022 06:48:06 -0700 (PDT)
-Received: by host.eagleriverinteractive.com (Postfix, from userid 10002)
-        id EF4E025B30; Mon, 22 Aug 2022 07:42:23 -0600 (MDT)
-To:     linux-ext4@vger.kernel.org
-Subject: Daily News: Sie konnten der nachste Millionar sein. Beeil dich
-X-PHP-Originating-Script: 10002:class-phpmailer.php
-Date:   Mon, 22 Aug 2022 13:42:23 +0000
-From:   Sonnenalp Hotel Gold Club <wordpress@sonnenalp.com>
-Message-ID: <a099559bbacab7e7f3939320b33a9754@sonnenalpgoldclub.com>
-X-Mailer: PHPMailer 5.2.22 (https://github.com/PHPMailer/PHPMailer)
-X-WPCF7-Content-Type: text/plain
-Reply-To: info@eagleriverassociates.com
+        with ESMTP id S235647AbiHVOpl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Aug 2022 10:45:41 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 97882248C2;
+        Mon, 22 Aug 2022 07:45:40 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=x9nBUo0+hZpdGfurRQeuyioQwpYpr7z6L1SJHhD4mc0=; b=srfxE/Q6nHF+9wd/VdS0IGeBqk
+        kf2royYp/fC6OyojYMvfqw8KVCd2y2ud1/MytJk1LfII+B1JXMgEsLbOtJAH2Qx7kdmcwytRDwhad
+        5DaqW4FqdAmCuqWK4x7aEb7eCfZn2Ki9VSP2o9lgDZ9M92V9cdJx5ySmGrnI5VjRZ/3eE7/Gx4Uq5
+        9BPikQCIB35OtKoIZvkJdpjcsQifNaRqMycBMQ5BDX4IfY+YW28krSeF/amGzTnMuKHBs2+o++7gI
+        pyBoej4IqhLuCmY/8HwCEkgp0G6MtY5GaTyCsz4Lh4jwWQWFocaZPJnLT+EMuLxxzewm1fNg8LYtq
+        4kRO/eSQ==;
+Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1oQ8gD-00EMmb-0K; Mon, 22 Aug 2022 14:45:29 +0000
+Date:   Mon, 22 Aug 2022 15:45:28 +0100
+From:   Matthew Wilcox <willy@infradead.org>
+To:     Siddh Raman Pant <code@siddh.me>
+Cc:     david@fromorbit.com, djwong@kernel.org, fgheet255t@gmail.com,
+        hch@infradead.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-xfs@vger.kernel.org, riteshh@linux.ibm.com,
+        syzbot+a8e049cd3abd342936b6@syzkaller.appspotmail.com,
+        syzkaller-bugs@googlegroups.com
+Subject: Re: [syzbot] WARNING in iomap_iter
+Message-ID: <YwOWiDKhVxm7m0fa@casper.infradead.org>
+References: <182c028abf0.2dc6f7c973088.2963173753499991828@siddh.me>
+ <20220821114816.24193-1-code@siddh.me>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20220821114816.24193-1-code@siddh.me>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Message Body:
-Jeden Tag erscheinen in Europa uber 900 neue Millionare http://news-synonym.donerbank.com/DW-6959
+On Sun, Aug 21, 2022 at 05:18:16PM +0530, Siddh Raman Pant wrote:
+> @@ -979,9 +979,15 @@ loop_set_status_from_info(struct loop_device *lo,
+>  
+>  	lo->lo_offset = info->lo_offset;
+>  	lo->lo_sizelimit = info->lo_sizelimit;
+> +	lo->lo_flags = info->lo_flags;
+> +
+> +	/* loff_t/int vars are assigned __u64/__u32 vars (respectively) */
+> +	if (lo->lo_offset < 0 || lo->lo_sizelimit < 0 || lo->lo_flags < 0)
+> +		return -EOVERFLOW;
 
---
-This e-mail was sent from a contact form on Sonnenalp Hotel Gold Club (https://sonnenalpgoldclub.com/contact/)
-
+Why would you check lo_flags?  That really, really should be an unsigned
+type.
