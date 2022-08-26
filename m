@@ -2,35 +2,35 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 47381C0502F
-	for <linux-ext4@archiver.kernel.org>; Fri, 26 Aug 2022 21:47:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D51C4C0502A
+	for <linux-ext4@archiver.kernel.org>; Fri, 26 Aug 2022 21:48:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345177AbiHZVrv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 26 Aug 2022 17:47:51 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52962 "EHLO
+        id S1345149AbiHZVsG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 26 Aug 2022 17:48:06 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52880 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1345148AbiHZVrZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Aug 2022 17:47:25 -0400
-Received: from sin.source.kernel.org (sin.source.kernel.org [IPv6:2604:1380:40e1:4800::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EB322D0216;
-        Fri, 26 Aug 2022 14:47:19 -0700 (PDT)
+        with ESMTP id S238322AbiHZVrf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Aug 2022 17:47:35 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 42A26C2E94;
+        Fri, 26 Aug 2022 14:47:23 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by sin.source.kernel.org (Postfix) with ESMTPS id A3D2ECE312B;
-        Fri, 26 Aug 2022 21:47:17 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EB54EC433D6;
-        Fri, 26 Aug 2022 21:47:13 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 93ABFB80B94;
+        Fri, 26 Aug 2022 21:47:21 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 86526C433C1;
+        Fri, 26 Aug 2022 21:47:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1661550435;
-        bh=3NonU2GerMrPghH8DGEw5liykSCzElPuDvCptLZ61mI=;
+        s=k20201202; t=1661550440;
+        bh=xtbo2PmEo6vYuYGtxTv4EQOtg8glEsMV05k2TJ2kn8k=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=P8Ibfp1lGyT4j3SfzJhYeRJ8QjoAXjKXdJDHFjIMuOgGhgHPxmaIZu/QUVjuf/pr4
-         LOA1O7PldD2eC3Av/Ltux4uQRjoJSIHX1Dhdr6ols5ZZpZ6Ih4+Q0XHobc4mH2VoeE
-         fBEGMxNE/3M+SoweiYZYVHCEuD+CGSzC5L68rEwxZO5IrJ3RsxbqIHOSBEx+O9y920
-         AcoBAOhQE3BLY9bNwA2dgZO6tkwmEU44wHDolEGLZyv44VtA+MmM1Zq6O8n4/HZxAA
-         3fMULJvB+hc1HNPpapY+/RBKQwjDtd9jzjzQuK5iKHBih5L9mbmrE9S8x+9WtNJspy
-         gaoOYxIKSFhHg==
+        b=dj1FebPFZcKxypMj0YjNWtnzNpkEZcooNWpTZIaj1zasrby5hYpf0NnxnKTmkTTnG
+         TNa/U46pKfjfgoEaHYQoDdfrMeoZifZCXrw6yM1qoHSqBjWZcfCLOWLkk53YMq4uYR
+         oRR8wQ8+g9vlJVo9N22+ePOuOSa3BMARbrYHikLxYLv71dwqu0AHrwgxg4znwPIGBs
+         PpKhqAtzP7RFTnQzo0V0N3MEhXWwQievnvVa1e6aIIFpehsf8u0nXYupZWvviVybLQ
+         3nRLB/COkfQlO58CjXzPAYNrCRFTv8rBTZDmhwzZjUXf4Kc1GKxPf7lk4TXMZUJOOC
+         8jdXfEHyx85oA==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, djwong@kernel.org,
         david@fromorbit.com, trondmy@hammerspace.com, neilb@suse.de,
@@ -40,11 +40,10 @@ To:     tytso@mit.edu, adilger.kernel@dilger.ca, djwong@kernel.org,
 Cc:     linux-api@vger.kernel.org, linux-btrfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-ceph@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org,
-        David Wysochanski <dwysocha@redhat.com>
-Subject: [PATCH v3 4/7] xfs: don't bump the i_version on an atime update in xfs_vn_update_time
-Date:   Fri, 26 Aug 2022 17:47:00 -0400
-Message-Id: <20220826214703.134870-5-jlayton@kernel.org>
+        linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org
+Subject: [PATCH v3 6/7] nfs: report the inode version in statx if requested
+Date:   Fri, 26 Aug 2022 17:47:02 -0400
+Message-Id: <20220826214703.134870-7-jlayton@kernel.org>
 X-Mailer: git-send-email 2.37.2
 In-Reply-To: <20220826214703.134870-1-jlayton@kernel.org>
 References: <20220826214703.134870-1-jlayton@kernel.org>
@@ -54,85 +53,54 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-xfs will update the i_version when updating only the atime value, which
-is not desirable for any of the current consumers of i_version. Doing so
-leads to unnecessary cache invalidations on NFS and extra measurement
-activity in IMA.
+Allow NFS to report the i_version in statx. Since the cost to fetch it
+is relatively cheap, do it unconditionally and just set the flag if it
+looks like it's valid.
 
-Add a new XFS_ILOG_NOIVER flag, and use that to indicate that the
-transaction should not update the i_version. Set that value in
-xfs_vn_update_time if we're only updating the atime.
-
-Cc: Dave Chinner <david@fromorbit.com>
-Cc: NeilBrown <neilb@suse.de>
-Cc: Trond Myklebust <trondmy@hammerspace.com>
-Cc: David Wysochanski <dwysocha@redhat.com>
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/xfs/libxfs/xfs_log_format.h  |  2 +-
- fs/xfs/libxfs/xfs_trans_inode.c |  2 +-
- fs/xfs/xfs_iops.c               | 11 +++++++++--
- 3 files changed, 11 insertions(+), 4 deletions(-)
+ fs/nfs/inode.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-Dave has NACK'ed this patch, but I'm sending it as a way to illustrate
-the problem. I still think this approach should at least fix the worst
-problems with atime updates being counted. We can look to carve out
-other "spurious" i_version updates as we identify them.
-
-If however there are offline analysis tools that require atime updates
-to be counted, then we won't be able to do this. If that's the case, how
-can we fix this such that serving xfs via NFSv4 doesn't suck?
-
-diff --git a/fs/xfs/libxfs/xfs_log_format.h b/fs/xfs/libxfs/xfs_log_format.h
-index b351b9dc6561..866a4c5cf70c 100644
---- a/fs/xfs/libxfs/xfs_log_format.h
-+++ b/fs/xfs/libxfs/xfs_log_format.h
-@@ -323,7 +323,7 @@ struct xfs_inode_log_format_32 {
- #define	XFS_ILOG_ABROOT	0x100	/* log i_af.i_broot */
- #define XFS_ILOG_DOWNER	0x200	/* change the data fork owner on replay */
- #define XFS_ILOG_AOWNER	0x400	/* change the attr fork owner on replay */
--
-+#define XFS_ILOG_NOIVER	0x800	/* don't bump i_version */
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index bea7c005119c..88c732a5c821 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -830,6 +830,8 @@ static u32 nfs_get_valid_attrmask(struct inode *inode)
+ 		reply_mask |= STATX_UID | STATX_GID;
+ 	if (!(cache_validity & NFS_INO_INVALID_BLOCKS))
+ 		reply_mask |= STATX_BLOCKS;
++	if (!(cache_validity & NFS_INO_INVALID_CHANGE))
++		reply_mask |= STATX_INO_VERSION;
+ 	return reply_mask;
+ }
  
- /*
-  * The timestamps are dirty, but not necessarily anything else in the inode
-diff --git a/fs/xfs/libxfs/xfs_trans_inode.c b/fs/xfs/libxfs/xfs_trans_inode.c
-index 8b5547073379..ffe6d296e7f9 100644
---- a/fs/xfs/libxfs/xfs_trans_inode.c
-+++ b/fs/xfs/libxfs/xfs_trans_inode.c
-@@ -126,7 +126,7 @@ xfs_trans_log_inode(
- 	 * unconditionally.
- 	 */
- 	if (!test_and_set_bit(XFS_LI_DIRTY, &iip->ili_item.li_flags)) {
--		if (IS_I_VERSION(inode) &&
-+		if (!(flags & XFS_ILOG_NOIVER) && IS_I_VERSION(inode) &&
- 		    inode_maybe_inc_iversion(inode, flags & XFS_ILOG_CORE))
- 			iversion_flags = XFS_ILOG_CORE;
- 	}
-diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
-index 45518b8c613c..94f14d96641b 100644
---- a/fs/xfs/xfs_iops.c
-+++ b/fs/xfs/xfs_iops.c
-@@ -1041,10 +1041,17 @@ xfs_vn_update_time(
- 		return error;
+@@ -848,7 +850,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
  
- 	xfs_ilock(ip, XFS_ILOCK_EXCL);
--	if (flags & S_CTIME)
-+
-+	if (!(flags & S_VERSION))
-+		log_flags |= XFS_ILOG_NOIVER;
-+	if (flags & S_CTIME) {
- 		inode->i_ctime = *now;
--	if (flags & S_MTIME)
-+		log_flags &= ~XFS_ILOG_NOIVER;
-+	}
-+	if (flags & S_MTIME) {
- 		inode->i_mtime = *now;
-+		log_flags &= ~XFS_ILOG_NOIVER;
-+	}
- 	if (flags & S_ATIME)
- 		inode->i_atime = *now;
+ 	request_mask &= STATX_TYPE | STATX_MODE | STATX_NLINK | STATX_UID |
+ 			STATX_GID | STATX_ATIME | STATX_MTIME | STATX_CTIME |
+-			STATX_INO | STATX_SIZE | STATX_BLOCKS;
++			STATX_INO | STATX_SIZE | STATX_BLOCKS | STATX_INO_VERSION;
  
+ 	if ((query_flags & AT_STATX_DONT_SYNC) && !force_sync) {
+ 		if (readdirplus_enabled)
+@@ -877,7 +879,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 	/* Is the user requesting attributes that might need revalidation? */
+ 	if (!(request_mask & (STATX_MODE|STATX_NLINK|STATX_ATIME|STATX_CTIME|
+ 					STATX_MTIME|STATX_UID|STATX_GID|
+-					STATX_SIZE|STATX_BLOCKS)))
++					STATX_SIZE|STATX_BLOCKS|STATX_INO_VERSION)))
+ 		goto out_no_revalidate;
+ 
+ 	/* Check whether the cached attributes are stale */
+@@ -915,6 +917,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 
+ 	generic_fillattr(&init_user_ns, inode, stat);
+ 	stat->ino = nfs_compat_user_ino64(NFS_FILEID(inode));
++	stat->ino_version = inode_peek_iversion_raw(inode);
+ 	if (S_ISDIR(inode->i_mode))
+ 		stat->blksize = NFS_SERVER(inode)->dtsize;
+ out:
 -- 
 2.37.2
 
