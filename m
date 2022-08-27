@@ -2,124 +2,163 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C278BC0502E
-	for <linux-ext4@archiver.kernel.org>; Fri, 26 Aug 2022 21:49:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0C18DC65C0D
+	for <linux-ext4@archiver.kernel.org>; Sat, 27 Aug 2022 07:01:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345312AbiHZVt1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 26 Aug 2022 17:49:27 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54126 "EHLO
+        id S232931AbiH0HBh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 27 Aug 2022 03:01:37 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54208 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1345237AbiHZVtL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Aug 2022 17:49:11 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4D848E86B0;
-        Fri, 26 Aug 2022 14:47:53 -0700 (PDT)
+        with ESMTP id S229453AbiH0HBe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Aug 2022 03:01:34 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2FC998D3F6;
+        Sat, 27 Aug 2022 00:01:31 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 77380611B8;
-        Fri, 26 Aug 2022 21:47:51 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E0523C433C1;
-        Fri, 26 Aug 2022 21:47:48 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 4882060FF6;
+        Sat, 27 Aug 2022 07:01:31 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4E483C433B5;
+        Sat, 27 Aug 2022 07:01:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1661550470;
-        bh=gLz5Ruse5elfcIgvMDWKp/BReownfZtaD32WbbWr76A=;
-        h=From:To:Cc:Subject:Date:From;
-        b=FfcrPUI2YtcwItJUli98wIyMhirsFq8i/ojoPLXVo4YVq5CrRAammwmg8IU+jM7nK
-         h3ZWcORGhfZ5E2MPhkdk4hMmEMx67+WTrQpYNf22qqBjkysL7AsDGszadAod937Rbl
-         kMGcojNQDcJaTl5ErtpYRKwsRj8WscbmbfDqROL4CeifPc/+ZerLa3gGarI8KU03o/
-         VT/ujDmyDKADuDo6MH9uECUTCmhpHyBKtyvxWcNWTJzjZYnmdL5BpVvNK6I95LeVgt
-         tA6Eq1HK4BaVHo+SoOMUxdSzH1nKqDzEOuJLX2D0LkzyE2OESJYNM/0pCWOM4/rlkI
-         c+/rmFfC8elyQ==
-From:   Jeff Layton <jlayton@kernel.org>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, djwong@kernel.org,
-        david@fromorbit.com, trondmy@hammerspace.com, neilb@suse.de,
-        viro@zeniv.linux.org.uk, zohar@linux.ibm.com, xiubli@redhat.com,
-        chuck.lever@oracle.com, lczerner@redhat.com, jack@suse.cz,
-        brauner@kernel.org, linux-man@vger.kernel.org
-Cc:     linux-api@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-ceph@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: [man-pages PATCH] statx, inode: document the new STATX_INO_VERSION field
-Date:   Fri, 26 Aug 2022 17:47:47 -0400
-Message-Id: <20220826214747.134964-1-jlayton@kernel.org>
+        s=k20201202; t=1661583690;
+        bh=999EIC9kZJkekVqVLTcGQG6rSacP6CreHwcuNLapaP0=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=KCIJwHUkmXU6bi1foHzgtpkUzvAeD+VbDPALoi9gBeVxcfN3V16yK8oD1oBm5Q+jt
+         JdTMTpXplEBoRDihN7zdti14JfShTbJilcE0cfZk2eEFGdIbyMzTogc3DkY2j+WnE2
+         f2B1DRSlsPLcw2qB5BBjgKR8r/D127waNhkPbWfBMMUjGEo9SKODe6SHZDT+KgKbLp
+         mWNf68s93CENq//sWiF3ZLaIUmyPDJK8AjjnWfCaQ8wzjxiC7OKXScCFqo5GltwXGI
+         ifXdBP8Qx4obXZ0TFX52ez8Tr0MqsMwBsyDQp31fSbcgZNwdt9Qq2xPBXn/yEFguZ3
+         yu5uMrn+aC9Rw==
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-fsdevel@vger.kernel.org
+Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-xfs@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-fscrypt@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Keith Busch <kbusch@kernel.org>,
+        Christoph Hellwig <hch@lst.de>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        "Martin K. Petersen" <martin.petersen@oracle.com>
+Subject: [PATCH v5 1/8] statx: add direct I/O alignment information
+Date:   Fri, 26 Aug 2022 23:58:44 -0700
+Message-Id: <20220827065851.135710-2-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.37.2
+In-Reply-To: <20220827065851.135710-1-ebiggers@kernel.org>
+References: <20220827065851.135710-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-We're planning to expose the inode change attribute via statx. Document
-what this value means and what an observer can infer from a change in
-its value.
+From: Eric Biggers <ebiggers@google.com>
 
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
+Traditionally, the conditions for when DIO (direct I/O) is supported
+were fairly simple.  For both block devices and regular files, DIO had
+to be aligned to the logical block size of the block device.
+
+However, due to filesystem features that have been added over time (e.g.
+multi-device support, data journalling, inline data, encryption, verity,
+compression, checkpoint disabling, log-structured mode), the conditions
+for when DIO is allowed on a regular file have gotten increasingly
+complex.  Whether a particular regular file supports DIO, and with what
+alignment, can depend on various file attributes and filesystem mount
+options, as well as which block device(s) the file's data is located on.
+
+Moreover, the general rule of DIO needing to be aligned to the block
+device's logical block size was recently relaxed to allow user buffers
+(but not file offsets) aligned to the DMA alignment instead.  See
+commit bf8d08532bc1 ("iomap: add support for dma aligned direct-io").
+
+XFS has an ioctl XFS_IOC_DIOINFO that exposes DIO alignment information.
+Uplifting this to the VFS is one possibility.  However, as discussed
+(https://lore.kernel.org/linux-fsdevel/20220120071215.123274-1-ebiggers@kernel.org/T/#u),
+this ioctl is rarely used and not known to be used outside of
+XFS-specific code.  It was also never intended to indicate when a file
+doesn't support DIO at all, nor was it intended for block devices.
+
+Therefore, let's expose this information via statx().  Add the
+STATX_DIOALIGN flag and two new statx fields associated with it:
+
+* stx_dio_mem_align: the alignment (in bytes) required for user memory
+  buffers for DIO, or 0 if DIO is not supported on the file.
+
+* stx_dio_offset_align: the alignment (in bytes) required for file
+  offsets and I/O segment lengths for DIO, or 0 if DIO is not supported
+  on the file.  This will only be nonzero if stx_dio_mem_align is
+  nonzero, and vice versa.
+
+Note that as with other statx() extensions, if STATX_DIOALIGN isn't set
+in the returned statx struct, then these new fields won't be filled in.
+This will happen if the file is neither a regular file nor a block
+device, or if the file is a regular file and the filesystem doesn't
+support STATX_DIOALIGN.  It might also happen if the caller didn't
+include STATX_DIOALIGN in the request mask, since statx() isn't required
+to return unrequested information.
+
+This commit only adds the VFS-level plumbing for STATX_DIOALIGN.  For
+regular files, individual filesystems will still need to add code to
+support it.  For block devices, a separate commit will wire it up too.
+
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Darrick J. Wong <djwong@kernel.org>
+Reviewed-by: Martin K. Petersen <martin.petersen@oracle.com>
+Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- man2/statx.2 | 13 +++++++++++++
- man7/inode.7 | 10 ++++++++++
- 2 files changed, 23 insertions(+)
+ fs/stat.c                 | 2 ++
+ include/linux/stat.h      | 2 ++
+ include/uapi/linux/stat.h | 4 +++-
+ 3 files changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/man2/statx.2 b/man2/statx.2
-index 0d1b4591f74c..644fb251f114 100644
---- a/man2/statx.2
-+++ b/man2/statx.2
-@@ -62,6 +62,7 @@ struct statx {
-     __u32 stx_dev_major;   /* Major ID */
-     __u32 stx_dev_minor;   /* Minor ID */
-     __u64 stx_mnt_id;      /* Mount ID */
-+    __u64 stx_ino_version; /* Inode change attribute */
+diff --git a/fs/stat.c b/fs/stat.c
+index 9ced8860e0f35d..a7930d74448304 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -611,6 +611,8 @@ cp_statx(const struct kstat *stat, struct statx __user *buffer)
+ 	tmp.stx_dev_major = MAJOR(stat->dev);
+ 	tmp.stx_dev_minor = MINOR(stat->dev);
+ 	tmp.stx_mnt_id = stat->mnt_id;
++	tmp.stx_dio_mem_align = stat->dio_mem_align;
++	tmp.stx_dio_offset_align = stat->dio_offset_align;
+ 
+ 	return copy_to_user(buffer, &tmp, sizeof(tmp)) ? -EFAULT : 0;
+ }
+diff --git a/include/linux/stat.h b/include/linux/stat.h
+index 7df06931f25d85..ff277ced50e9fd 100644
+--- a/include/linux/stat.h
++++ b/include/linux/stat.h
+@@ -50,6 +50,8 @@ struct kstat {
+ 	struct timespec64 btime;			/* File creation time */
+ 	u64		blocks;
+ 	u64		mnt_id;
++	u32		dio_mem_align;
++	u32		dio_offset_align;
  };
- .EE
- .in
-@@ -247,6 +248,7 @@ STATX_BTIME	Want stx_btime
- STATX_ALL	The same as STATX_BASIC_STATS | STATX_BTIME.
- 	It is deprecated and should not be used.
- STATX_MNT_ID	Want stx_mnt_id (since Linux 5.8)
-+STATX_INO_VERSION	Want stx_ino_version (since Linux 6.1)
- .TE
- .in
- .PP
-@@ -411,6 +413,17 @@ and corresponds to the number in the first field in one of the records in
- For further information on the above fields, see
- .BR inode (7).
- .\"
-+.TP
-+.I stx_ino_version
-+The inode version, also known as the inode change attribute. This
-+value is intended to change any time there is an inode status change. Any
-+operation that would cause the stx_ctime to change should also cause
-+stx_ino_version to change, even when there is no apparent change to the
-+stx_ctime due to timestamp granularity.
-+.IP
-+Note that an observer cannot infer anything about the nature or
-+magnitude of the change from the value of this field. A change in this value
-+only indicates that there may have been an explicit change in the inode.
- .SS File attributes
- The
- .I stx_attributes
-diff --git a/man7/inode.7 b/man7/inode.7
-index 9b255a890720..d296bb6df70c 100644
---- a/man7/inode.7
-+++ b/man7/inode.7
-@@ -184,6 +184,16 @@ Last status change timestamp (ctime)
- This is the file's last status change timestamp.
- It is changed by writing or by setting inode information
- (i.e., owner, group, link count, mode, etc.).
-+.TP
-+Inode version (i_version)
-+(not returned in the \fIstat\fP structure); \fIstatx.stx_ino_version\fP
-+.IP
-+This is the inode change attribute. Any operation that would result in a ctime
-+change should also result in a change to this value. The value must change even
-+in the case where the ctime change is not evident due to timestamp granularity.
-+An observer cannot infer anything from the actual value about the nature or
-+magnitude of the change. If it is different from the last time it was checked,
-+then something may have made an explicit change to the inode.
- .PP
- The timestamp fields report time measured with a zero point at the
- .IR Epoch ,
+ 
+ #endif
+diff --git a/include/uapi/linux/stat.h b/include/uapi/linux/stat.h
+index 1500a0f58041ae..7cab2c65d3d7fc 100644
+--- a/include/uapi/linux/stat.h
++++ b/include/uapi/linux/stat.h
+@@ -124,7 +124,8 @@ struct statx {
+ 	__u32	stx_dev_minor;
+ 	/* 0x90 */
+ 	__u64	stx_mnt_id;
+-	__u64	__spare2;
++	__u32	stx_dio_mem_align;	/* Memory buffer alignment for direct I/O */
++	__u32	stx_dio_offset_align;	/* File offset alignment for direct I/O */
+ 	/* 0xa0 */
+ 	__u64	__spare3[12];	/* Spare space for future expansion */
+ 	/* 0x100 */
+@@ -152,6 +153,7 @@ struct statx {
+ #define STATX_BASIC_STATS	0x000007ffU	/* The stuff in the normal stat struct */
+ #define STATX_BTIME		0x00000800U	/* Want/got stx_btime */
+ #define STATX_MNT_ID		0x00001000U	/* Got stx_mnt_id */
++#define STATX_DIOALIGN		0x00002000U	/* Want/got direct I/O alignment info */
+ 
+ #define STATX__RESERVED		0x80000000U	/* Reserved for future struct statx expansion */
+ 
 -- 
 2.37.2
 
