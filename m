@@ -2,33 +2,33 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 92D8CECAAA1
-	for <linux-ext4@archiver.kernel.org>; Tue, 30 Aug 2022 11:53:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3EED0C0502A
+	for <linux-ext4@archiver.kernel.org>; Tue, 30 Aug 2022 11:53:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229890AbiH3LxS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 30 Aug 2022 07:53:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51086 "EHLO
+        id S230343AbiH3LxT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 30 Aug 2022 07:53:19 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51092 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229734AbiH3LxJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Aug 2022 07:53:09 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C8C15A2A95
-        for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2022 04:53:05 -0700 (PDT)
+        with ESMTP id S229484AbiH3LxK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Aug 2022 07:53:10 -0400
+Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 28271A7A90
+        for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2022 04:53:07 -0700 (PDT)
 Received: from canpemm500004.china.huawei.com (unknown [172.30.72.53])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4MH5DT0YH2zYcqv;
-        Tue, 30 Aug 2022 19:48:41 +0800 (CST)
+        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4MH5HW1c7HzHnYm;
+        Tue, 30 Aug 2022 19:51:19 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm500004.china.huawei.com
  (7.192.104.92) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Tue, 30 Aug
- 2022 19:53:03 +0800
+ 2022 19:53:05 +0800
 From:   Jason Yan <yanaijie@huawei.com>
 To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <ritesh.list@gmail.com>, <lczerner@redhat.com>,
         <linux-ext4@vger.kernel.org>
 CC:     Jason Yan <yanaijie@huawei.com>
-Subject: [PATCH 07/13] ext4: factor out ext4_encoding_init()
-Date:   Tue, 30 Aug 2022 20:04:05 +0800
-Message-ID: <20220830120411.2371968-8-yanaijie@huawei.com>
+Subject: [PATCH 10/13] ext4: factor out ext4_geometry_check()
+Date:   Tue, 30 Aug 2022 20:04:08 +0800
+Message-ID: <20220830120411.2371968-11-yanaijie@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20220830120411.2371968-1-yanaijie@huawei.com>
 References: <20220830120411.2371968-1-yanaijie@huawei.com>
@@ -43,111 +43,151 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Factor out ext4_encoding_init(). No functional change.
+Factor out ext4_geometry_check(). No functional change.
 
 Signed-off-by: Jason Yan <yanaijie@huawei.com>
 ---
- fs/ext4/super.c | 80 +++++++++++++++++++++++++++----------------------
- 1 file changed, 44 insertions(+), 36 deletions(-)
+ fs/ext4/super.c | 111 ++++++++++++++++++++++++++----------------------
+ 1 file changed, 61 insertions(+), 50 deletions(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 458d146149b2..9ee27472b802 100644
+index 1e7d6eb6a3aa..4c6c4930e11b 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -4521,6 +4521,48 @@ static int ext4_inode_info_init(struct super_block *sb,
+@@ -4683,6 +4683,66 @@ static int ext4_compat_feature_check(struct super_block *sb,
  	return 0;
  }
  
-+static int ext4_encoding_init(struct super_block *sb, struct ext4_super_block *es)
++static int ext4_geometry_check(struct super_block *sb,
++			       struct ext4_super_block *es)
 +{
-+#if IS_ENABLED(CONFIG_UNICODE)
-+	const struct ext4_sb_encodings *encoding_info;
-+	struct unicode_map *encoding;
-+	__u16 encoding_flags = le16_to_cpu(es->s_encoding_flags);
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	__u64 blocks_count;
 +
-+	if (!ext4_has_feature_casefold(sb) || sb->s_encoding)
-+		return 0;
-+
-+	encoding_info = ext4_sb_read_encoding(es);
-+	if (!encoding_info) {
-+		ext4_msg(sb, KERN_ERR,
-+			"Encoding requested by superblock is unknown");
++	/* check blocks count against device size */
++	blocks_count = sb_bdev_nr_blocks(sb);
++	if (blocks_count && ext4_blocks_count(es) > blocks_count) {
++		ext4_msg(sb, KERN_WARNING, "bad geometry: block count %llu "
++		       "exceeds size of device (%llu blocks)",
++		       ext4_blocks_count(es), blocks_count);
 +		return -EINVAL;
 +	}
 +
-+	encoding = utf8_load(encoding_info->version);
-+	if (IS_ERR(encoding)) {
-+		ext4_msg(sb, KERN_ERR,
-+			"can't mount with superblock charset: %s-%u.%u.%u "
-+			"not supported by the kernel. flags: 0x%x.",
-+			encoding_info->name,
-+			unicode_major(encoding_info->version),
-+			unicode_minor(encoding_info->version),
-+			unicode_rev(encoding_info->version),
-+			encoding_flags);
++	/*
++	 * It makes no sense for the first data block to be beyond the end
++	 * of the filesystem.
++	 */
++	if (le32_to_cpu(es->s_first_data_block) >= ext4_blocks_count(es)) {
++		ext4_msg(sb, KERN_WARNING, "bad geometry: first data "
++			 "block %u is beyond end of filesystem (%llu)",
++			 le32_to_cpu(es->s_first_data_block),
++			 ext4_blocks_count(es));
 +		return -EINVAL;
 +	}
-+	ext4_msg(sb, KERN_INFO,"Using encoding defined by superblock: "
-+		"%s-%u.%u.%u with flags 0x%hx", encoding_info->name,
-+		unicode_major(encoding_info->version),
-+		unicode_minor(encoding_info->version),
-+		unicode_rev(encoding_info->version),
-+		encoding_flags);
++	if ((es->s_first_data_block == 0) && (es->s_log_block_size == 0) &&
++	    (sbi->s_cluster_ratio == 1)) {
++		ext4_msg(sb, KERN_WARNING, "bad geometry: first data "
++			 "block is 0 with a 1k block and cluster size");
++		return -EINVAL;
++	}
 +
-+	sb->s_encoding = encoding;
-+	sb->s_encoding_flags = encoding_flags;
-+#endif
++	blocks_count = (ext4_blocks_count(es) -
++			le32_to_cpu(es->s_first_data_block) +
++			EXT4_BLOCKS_PER_GROUP(sb) - 1);
++	do_div(blocks_count, EXT4_BLOCKS_PER_GROUP(sb));
++	if (blocks_count > ((uint64_t)1<<32) - EXT4_DESC_PER_BLOCK(sb)) {
++		ext4_msg(sb, KERN_WARNING, "groups count too large: %llu "
++		       "(block count %llu, first data block %u, "
++		       "blocks per group %lu)", blocks_count,
++		       ext4_blocks_count(es),
++		       le32_to_cpu(es->s_first_data_block),
++		       EXT4_BLOCKS_PER_GROUP(sb));
++		return -EINVAL;
++	}
++	sbi->s_groups_count = blocks_count;
++	sbi->s_blockfile_groups = min_t(ext4_group_t, sbi->s_groups_count,
++			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
++	if (((u64)sbi->s_groups_count * sbi->s_inodes_per_group) !=
++	    le32_to_cpu(es->s_inodes_count)) {
++		ext4_msg(sb, KERN_ERR, "inodes count not valid: %u vs %llu",
++			 le32_to_cpu(es->s_inodes_count),
++			 ((u64)sbi->s_groups_count * sbi->s_inodes_per_group));
++		return -EINVAL;
++	}
++
 +	return 0;
 +}
 +
  static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
  {
  	struct buffer_head *bh, **group_desc;
-@@ -4678,42 +4720,8 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+@@ -4698,7 +4758,6 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 	unsigned int db_count;
+ 	unsigned int i;
+ 	int needs_recovery, has_huge_files;
+-	__u64 blocks_count;
+ 	int err = 0;
+ 	ext4_group_t first_not_zeroed;
+ 	struct ext4_fs_context *ctx = fc->fs_private;
+@@ -4984,57 +5043,9 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 		goto failed_mount;
+ 	}
  
- 	ext4_apply_options(fc, sb);
- 
--#if IS_ENABLED(CONFIG_UNICODE)
--	if (ext4_has_feature_casefold(sb) && !sb->s_encoding) {
--		const struct ext4_sb_encodings *encoding_info;
--		struct unicode_map *encoding;
--		__u16 encoding_flags = le16_to_cpu(es->s_encoding_flags);
--
--		encoding_info = ext4_sb_read_encoding(es);
--		if (!encoding_info) {
--			ext4_msg(sb, KERN_ERR,
--				 "Encoding requested by superblock is unknown");
--			goto failed_mount;
--		}
--
--		encoding = utf8_load(encoding_info->version);
--		if (IS_ERR(encoding)) {
--			ext4_msg(sb, KERN_ERR,
--				 "can't mount with superblock charset: %s-%u.%u.%u "
--				 "not supported by the kernel. flags: 0x%x.",
--				 encoding_info->name,
--				 unicode_major(encoding_info->version),
--				 unicode_minor(encoding_info->version),
--				 unicode_rev(encoding_info->version),
--				 encoding_flags);
--			goto failed_mount;
--		}
--		ext4_msg(sb, KERN_INFO,"Using encoding defined by superblock: "
--			 "%s-%u.%u.%u with flags 0x%hx", encoding_info->name,
--			 unicode_major(encoding_info->version),
--			 unicode_minor(encoding_info->version),
--			 unicode_rev(encoding_info->version),
--			 encoding_flags);
--
--		sb->s_encoding = encoding;
--		sb->s_encoding_flags = encoding_flags;
+-	/* check blocks count against device size */
+-	blocks_count = sb_bdev_nr_blocks(sb);
+-	if (blocks_count && ext4_blocks_count(es) > blocks_count) {
+-		ext4_msg(sb, KERN_WARNING, "bad geometry: block count %llu "
+-		       "exceeds size of device (%llu blocks)",
+-		       ext4_blocks_count(es), blocks_count);
++	if (ext4_geometry_check(sb, es))
+ 		goto failed_mount;
 -	}
--#endif
-+	if (ext4_encoding_init(sb, es))
-+		goto failed_mount;
  
- 	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
- 		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting with data=journal disables delayed allocation, dioread_nolock, O_DIRECT and fast_commit support!\n");
+-	/*
+-	 * It makes no sense for the first data block to be beyond the end
+-	 * of the filesystem.
+-	 */
+-	if (le32_to_cpu(es->s_first_data_block) >= ext4_blocks_count(es)) {
+-		ext4_msg(sb, KERN_WARNING, "bad geometry: first data "
+-			 "block %u is beyond end of filesystem (%llu)",
+-			 le32_to_cpu(es->s_first_data_block),
+-			 ext4_blocks_count(es));
+-		goto failed_mount;
+-	}
+-	if ((es->s_first_data_block == 0) && (es->s_log_block_size == 0) &&
+-	    (sbi->s_cluster_ratio == 1)) {
+-		ext4_msg(sb, KERN_WARNING, "bad geometry: first data "
+-			 "block is 0 with a 1k block and cluster size");
+-		goto failed_mount;
+-	}
+-
+-	blocks_count = (ext4_blocks_count(es) -
+-			le32_to_cpu(es->s_first_data_block) +
+-			EXT4_BLOCKS_PER_GROUP(sb) - 1);
+-	do_div(blocks_count, EXT4_BLOCKS_PER_GROUP(sb));
+-	if (blocks_count > ((uint64_t)1<<32) - EXT4_DESC_PER_BLOCK(sb)) {
+-		ext4_msg(sb, KERN_WARNING, "groups count too large: %llu "
+-		       "(block count %llu, first data block %u, "
+-		       "blocks per group %lu)", blocks_count,
+-		       ext4_blocks_count(es),
+-		       le32_to_cpu(es->s_first_data_block),
+-		       EXT4_BLOCKS_PER_GROUP(sb));
+-		goto failed_mount;
+-	}
+-	sbi->s_groups_count = blocks_count;
+-	sbi->s_blockfile_groups = min_t(ext4_group_t, sbi->s_groups_count,
+-			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
+-	if (((u64)sbi->s_groups_count * sbi->s_inodes_per_group) !=
+-	    le32_to_cpu(es->s_inodes_count)) {
+-		ext4_msg(sb, KERN_ERR, "inodes count not valid: %u vs %llu",
+-			 le32_to_cpu(es->s_inodes_count),
+-			 ((u64)sbi->s_groups_count * sbi->s_inodes_per_group));
+-		ret = -EINVAL;
+-		goto failed_mount;
+-	}
+ 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
+ 		   EXT4_DESC_PER_BLOCK(sb);
+ 	if (ext4_has_feature_meta_bg(sb)) {
 -- 
 2.31.1
 
