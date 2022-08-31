@@ -2,149 +2,113 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 23B28C0502A
-	for <linux-ext4@archiver.kernel.org>; Wed, 31 Aug 2022 07:13:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C10E3ECAAD3
+	for <linux-ext4@archiver.kernel.org>; Wed, 31 Aug 2022 07:35:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231163AbiHaHND (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 31 Aug 2022 03:13:03 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56572 "EHLO
+        id S229652AbiHaHfU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 31 Aug 2022 03:35:20 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35314 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229998AbiHaHLu (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Aug 2022 03:11:50 -0400
-Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C1577220E0;
-        Wed, 31 Aug 2022 00:10:12 -0700 (PDT)
+        with ESMTP id S229529AbiHaHfT (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Aug 2022 03:35:19 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2F9D54A107
+        for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2022 00:35:15 -0700 (PDT)
 Received: from canpemm500005.china.huawei.com (unknown [172.30.72.57])
-        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4MHZyb1BlmzHnXc;
-        Wed, 31 Aug 2022 15:08:23 +0800 (CST)
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4MHbTL07yDzkWbH;
+        Wed, 31 Aug 2022 15:31:34 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm500005.china.huawei.com
  (7.192.104.229) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Wed, 31 Aug
- 2022 15:10:09 +0800
+ 2022 15:35:12 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
-To:     <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, <cluster-devel@redhat.com>,
-        <ntfs3@lists.linux.dev>, <ocfs2-devel@oss.oracle.com>,
-        <reiserfs-devel@vger.kernel.org>
-CC:     <jack@suse.cz>, <tytso@mit.edu>, <akpm@linux-foundation.org>,
-        <axboe@kernel.dk>, <viro@zeniv.linux.org.uk>,
-        <rpeterso@redhat.com>, <agruenba@redhat.com>,
-        <almaz.alexandrovich@paragon-software.com>, <mark@fasheh.com>,
-        <dushistov@mail.ru>, <hch@infradead.org>, <yi.zhang@huawei.com>,
-        <chengzhihao1@huawei.com>, <yukuai3@huawei.com>
-Subject: [PATCH 09/14] reiserfs: replace ll_rw_block()
-Date:   Wed, 31 Aug 2022 15:21:06 +0800
-Message-ID: <20220831072111.3569680-10-yi.zhang@huawei.com>
+To:     <linux-ext4@vger.kernel.org>
+CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
+        <openglfreak@googlemail.com>, <yi.zhang@huawei.com>,
+        <yukuai3@huawei.com>
+Subject: [PATCH] ext4: ext4_read_bh_lock() should submit IO if the buffer isn't uptodate
+Date:   Wed, 31 Aug 2022 15:46:29 +0800
+Message-ID: <20220831074629.3755110-1-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20220831072111.3569680-1-yi.zhang@huawei.com>
-References: <20220831072111.3569680-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7BIT
 Content-Type:   text/plain; charset=US-ASCII
 X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
+X-ClientProxiedBy: dggems703-chm.china.huawei.com (10.3.19.180) To
  canpemm500005.china.huawei.com (7.192.104.229)
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-ll_rw_block() is not safe for the sync read/write path because it cannot
-guarantee that submitting read/write IO if the buffer has been locked.
-We could get false positive EIO after wait_on_buffer() in read path if
-the buffer has been locked by others. So stop using ll_rw_block() in
-reiserfs. We also switch to new bh_readahead_batch() helper for the
-buffer array readahead path.
+Recently we notice that ext4 filesystem occasionally fail to read
+metadata from disk and report error message, but the disk and block
+layer looks fine. After analyse, we lockon commit 88dbcbb3a484
+("blkdev: avoid migration stalls for blkdev pages"). It provide a
+migration method for the bdev, we could move page that has buffers
+without extra users now, but it lock the buffers on the page, which
+breaks the fragile metadata read operation on ext4 filesystem,
+ext4_read_bh_lock() was copied from ll_rw_block(), it depends on the
+assumption of that locked buffer means it is under IO. So it just
+trylock the buffer and skip submit IO if it lock failed, after
+wait_on_buffer() we conclude IO error because the buffer is not
+uptodate.
+
+This issue could be easily reproduced by add some delay just after
+buffer_migrate_lock_buffers() in __buffer_migrate_folio() and do
+fsstress on ext4 filesystem.
+
+  EXT4-fs error (device pmem1): __ext4_find_entry:1658: inode #73193:
+  comm fsstress: reading directory lblock 0
+  EXT4-fs error (device pmem1): __ext4_find_entry:1658: inode #75334:
+  comm fsstress: reading directory lblock 0
+
+Fix it by removing the trylock logic in ext4_read_bh_lock(), just lock
+the buffer and submit IO if it's not uptodate, and also leave over
+readahead helper.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/reiserfs/journal.c | 11 ++++++-----
- fs/reiserfs/stree.c   |  4 ++--
- fs/reiserfs/super.c   |  4 +---
- 3 files changed, 9 insertions(+), 10 deletions(-)
+ fs/ext4/super.c | 16 +++++-----------
+ 1 file changed, 5 insertions(+), 11 deletions(-)
 
-diff --git a/fs/reiserfs/journal.c b/fs/reiserfs/journal.c
-index 94addfcefede..699b1b8d5b73 100644
---- a/fs/reiserfs/journal.c
-+++ b/fs/reiserfs/journal.c
-@@ -868,7 +868,7 @@ static int write_ordered_buffers(spinlock_t * lock,
- 		 */
- 		if (buffer_dirty(bh) && unlikely(bh->b_page->mapping == NULL)) {
- 			spin_unlock(lock);
--			ll_rw_block(REQ_OP_WRITE, 1, &bh);
-+			write_dirty_buffer(bh, 0);
- 			spin_lock(lock);
- 		}
- 		put_bh(bh);
-@@ -1054,7 +1054,7 @@ static int flush_commit_list(struct super_block *s,
- 		if (tbh) {
- 			if (buffer_dirty(tbh)) {
- 		            depth = reiserfs_write_unlock_nested(s);
--			    ll_rw_block(REQ_OP_WRITE, 1, &tbh);
-+			    write_dirty_buffer(tbh, 0);
- 			    reiserfs_write_lock_nested(s, depth);
- 			}
- 			put_bh(tbh) ;
-@@ -2240,7 +2240,7 @@ static int journal_read_transaction(struct super_block *sb,
- 		}
- 	}
- 	/* read in the log blocks, memcpy to the corresponding real block */
--	ll_rw_block(REQ_OP_READ, get_desc_trans_len(desc), log_blocks);
-+	bh_read_batch(log_blocks, get_desc_trans_len(desc));
- 	for (i = 0; i < get_desc_trans_len(desc); i++) {
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 9a66abcca1a8..629bba3fa99a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -205,19 +205,12 @@ int ext4_read_bh(struct buffer_head *bh, blk_opf_t op_flags, bh_end_io_t *end_io
  
- 		wait_on_buffer(log_blocks[i]);
-@@ -2342,10 +2342,11 @@ static struct buffer_head *reiserfs_breada(struct block_device *dev,
- 		} else
- 			bhlist[j++] = bh;
- 	}
--	ll_rw_block(REQ_OP_READ, j, bhlist);
-+	bh = bhlist[0];
-+	bh_read_nowait(bh, 0);
-+	bh_readahead_batch(&bhlist[1], j - 1, 0);
- 	for (i = 1; i < j; i++)
- 		brelse(bhlist[i]);
--	bh = bhlist[0];
- 	wait_on_buffer(bh);
- 	if (buffer_uptodate(bh))
- 		return bh;
-diff --git a/fs/reiserfs/stree.c b/fs/reiserfs/stree.c
-index 9a293609a022..84c12a1947b2 100644
---- a/fs/reiserfs/stree.c
-+++ b/fs/reiserfs/stree.c
-@@ -579,7 +579,7 @@ static int search_by_key_reada(struct super_block *s,
- 		if (!buffer_uptodate(bh[j])) {
- 			if (depth == -1)
- 				depth = reiserfs_write_unlock_nested(s);
--			ll_rw_block(REQ_OP_READ | REQ_RAHEAD, 1, bh + j);
-+			bh_readahead(bh[j], REQ_RAHEAD);
- 		}
- 		brelse(bh[j]);
- 	}
-@@ -685,7 +685,7 @@ int search_by_key(struct super_block *sb, const struct cpu_key *key,
- 			if (!buffer_uptodate(bh) && depth == -1)
- 				depth = reiserfs_write_unlock_nested(sb);
- 
--			ll_rw_block(REQ_OP_READ, 1, &bh);
-+			bh_read_nowait(bh, 0);
- 			wait_on_buffer(bh);
- 
- 			if (depth != -1)
-diff --git a/fs/reiserfs/super.c b/fs/reiserfs/super.c
-index c88cd2ce0665..8b1db82b6949 100644
---- a/fs/reiserfs/super.c
-+++ b/fs/reiserfs/super.c
-@@ -1702,9 +1702,7 @@ static int read_super_block(struct super_block *s, int offset)
- /* after journal replay, reread all bitmap and super blocks */
- static int reread_meta_blocks(struct super_block *s)
+ int ext4_read_bh_lock(struct buffer_head *bh, blk_opf_t op_flags, bool wait)
  {
--	ll_rw_block(REQ_OP_READ, 1, &SB_BUFFER_WITH_SB(s));
--	wait_on_buffer(SB_BUFFER_WITH_SB(s));
--	if (!buffer_uptodate(SB_BUFFER_WITH_SB(s))) {
-+	if (bh_read(SB_BUFFER_WITH_SB(s), 0)) {
- 		reiserfs_warning(s, "reiserfs-2504", "error reading the super");
- 		return 1;
+-	if (trylock_buffer(bh)) {
+-		if (wait)
+-			return ext4_read_bh(bh, op_flags, NULL);
++	lock_buffer(bh);
++	if (!wait) {
+ 		ext4_read_bh_nowait(bh, op_flags, NULL);
+ 		return 0;
  	}
+-	if (wait) {
+-		wait_on_buffer(bh);
+-		if (buffer_uptodate(bh))
+-			return 0;
+-		return -EIO;
+-	}
+-	return 0;
++	return ext4_read_bh(bh, op_flags, NULL);
+ }
+ 
+ /*
+@@ -264,7 +257,8 @@ void ext4_sb_breadahead_unmovable(struct super_block *sb, sector_t block)
+ 	struct buffer_head *bh = sb_getblk_gfp(sb, block, 0);
+ 
+ 	if (likely(bh)) {
+-		ext4_read_bh_lock(bh, REQ_RAHEAD, false);
++		if (trylock_buffer(bh))
++			ext4_read_bh_nowait(bh, REQ_RAHEAD, NULL);
+ 		brelse(bh);
+ 	}
+ }
 -- 
 2.31.1
 
