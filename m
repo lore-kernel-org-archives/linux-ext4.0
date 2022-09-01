@@ -2,25 +2,25 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5EB95ECAAD1
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Sep 2022 13:24:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0339AC64991
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Sep 2022 13:24:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234456AbiIANYn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 1 Sep 2022 09:24:43 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32792 "EHLO
+        id S234459AbiIANYp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 1 Sep 2022 09:24:45 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32818 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234176AbiIANYN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Sep 2022 09:24:13 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 918EE22BCA;
-        Thu,  1 Sep 2022 06:24:04 -0700 (PDT)
-Received: from canpemm500005.china.huawei.com (unknown [172.30.72.57])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4MJM8T339yzYd5T;
-        Thu,  1 Sep 2022 21:19:37 +0800 (CST)
+        with ESMTP id S234022AbiIANYO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Sep 2022 09:24:14 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D713C2BB12;
+        Thu,  1 Sep 2022 06:24:10 -0700 (PDT)
+Received: from canpemm500005.china.huawei.com (unknown [172.30.72.55])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4MJMBr1WRNznTwj;
+        Thu,  1 Sep 2022 21:21:40 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm500005.china.huawei.com
  (7.192.104.229) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Thu, 1 Sep
- 2022 21:24:01 +0800
+ 2022 21:24:07 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
         <linux-kernel@vger.kernel.org>, <cluster-devel@redhat.com>,
@@ -32,9 +32,9 @@ CC:     <tytso@mit.edu>, <akpm@linux-foundation.org>, <axboe@kernel.dk>,
         <mark@fasheh.com>, <dushistov@mail.ru>, <hch@infradead.org>,
         <yi.zhang@huawei.com>, <chengzhihao1@huawei.com>,
         <yukuai3@huawei.com>
-Subject: [PATCH v2 05/14] isofs: replace ll_rw_block()
-Date:   Thu, 1 Sep 2022 21:34:56 +0800
-Message-ID: <20220901133505.2510834-6-yi.zhang@huawei.com>
+Subject: [PATCH v2 11/14] ufs: replace ll_rw_block()
+Date:   Thu, 1 Sep 2022 21:35:02 +0800
+Message-ID: <20220901133505.2510834-12-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20220901133505.2510834-1-yi.zhang@huawei.com>
 References: <20220901133505.2510834-1-yi.zhang@huawei.com>
@@ -51,29 +51,37 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 ll_rw_block() is not safe for the sync read path because it cannot
 guarantee that submitting read IO if the buffer has been locked. We
-could get false positive EIO return from zisofs_uncompress_block() if
-he buffer has been locked by others. So stop using ll_rw_block(),
-switch to sync helper instead.
+could get false positive EIO after wait_on_buffer() if the buffer has
+been locked by others. So stop using ll_rw_block() in ufs.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/isofs/compress.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ufs/balloc.c | 12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
 
-diff --git a/fs/isofs/compress.c b/fs/isofs/compress.c
-index b466172eec25..59b03d74ecbe 100644
---- a/fs/isofs/compress.c
-+++ b/fs/isofs/compress.c
-@@ -82,7 +82,7 @@ static loff_t zisofs_uncompress_block(struct inode *inode, loff_t block_start,
- 		return 0;
- 	}
- 	haveblocks = isofs_get_blocks(inode, blocknum, bhs, needblocks);
--	ll_rw_block(REQ_OP_READ, haveblocks, bhs);
-+	bh_read_batch(haveblocks, bhs);
+diff --git a/fs/ufs/balloc.c b/fs/ufs/balloc.c
+index bd810d8239f2..2436e3f82147 100644
+--- a/fs/ufs/balloc.c
++++ b/fs/ufs/balloc.c
+@@ -295,14 +295,10 @@ static void ufs_change_blocknr(struct inode *inode, sector_t beg,
  
- 	curbh = 0;
- 	curpage = 0;
+ 			if (!buffer_mapped(bh))
+ 					map_bh(bh, inode->i_sb, oldb + pos);
+-			if (!buffer_uptodate(bh)) {
+-				ll_rw_block(REQ_OP_READ, 1, &bh);
+-				wait_on_buffer(bh);
+-				if (!buffer_uptodate(bh)) {
+-					ufs_error(inode->i_sb, __func__,
+-						  "read of block failed\n");
+-					break;
+-				}
++			if (bh_read(bh, 0) < 0) {
++				ufs_error(inode->i_sb, __func__,
++					  "read of block failed\n");
++				break;
+ 			}
+ 
+ 			UFSD(" change from %llu to %llu, pos %u\n",
 -- 
 2.31.1
 
