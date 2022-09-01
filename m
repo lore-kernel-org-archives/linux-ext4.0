@@ -2,25 +2,25 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 44EA0ECAAD3
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Sep 2022 13:24:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5EB95ECAAD1
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Sep 2022 13:24:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234437AbiIANYk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 1 Sep 2022 09:24:40 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33002 "EHLO
+        id S234456AbiIANYn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 1 Sep 2022 09:24:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32792 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234342AbiIANYM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Sep 2022 09:24:12 -0400
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1BE54E01D;
-        Thu,  1 Sep 2022 06:24:01 -0700 (PDT)
-Received: from canpemm500005.china.huawei.com (unknown [172.30.72.54])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4MJM9G2ZkzzkWrW;
-        Thu,  1 Sep 2022 21:20:18 +0800 (CST)
+        with ESMTP id S234176AbiIANYN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Sep 2022 09:24:13 -0400
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 918EE22BCA;
+        Thu,  1 Sep 2022 06:24:04 -0700 (PDT)
+Received: from canpemm500005.china.huawei.com (unknown [172.30.72.57])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4MJM8T339yzYd5T;
+        Thu,  1 Sep 2022 21:19:37 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm500005.china.huawei.com
  (7.192.104.229) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Thu, 1 Sep
- 2022 21:23:58 +0800
+ 2022 21:24:01 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
         <linux-kernel@vger.kernel.org>, <cluster-devel@redhat.com>,
@@ -32,9 +32,9 @@ CC:     <tytso@mit.edu>, <akpm@linux-foundation.org>, <axboe@kernel.dk>,
         <mark@fasheh.com>, <dushistov@mail.ru>, <hch@infradead.org>,
         <yi.zhang@huawei.com>, <chengzhihao1@huawei.com>,
         <yukuai3@huawei.com>
-Subject: [PATCH v2 02/14] fs/buffer: add some new buffer read helpers
-Date:   Thu, 1 Sep 2022 21:34:53 +0800
-Message-ID: <20220901133505.2510834-3-yi.zhang@huawei.com>
+Subject: [PATCH v2 05/14] isofs: replace ll_rw_block()
+Date:   Thu, 1 Sep 2022 21:34:56 +0800
+Message-ID: <20220901133505.2510834-6-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20220901133505.2510834-1-yi.zhang@huawei.com>
 References: <20220901133505.2510834-1-yi.zhang@huawei.com>
@@ -49,158 +49,31 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Current ll_rw_block() helper is fragile because it assumes that locked
-buffer means it's under IO which is submitted by some other who holds
-the lock, it skip buffer if it failed to get the lock, so it's only
-safe on the readahead path. Unfortunately, now that most filesystems
-still use this helper mistakenly on the sync metadata read path. There
-is no guarantee that the one who holds the buffer lock always submit IO
-(e.g. buffer_migrate_folio_norefs() after commit 88dbcbb3a484 ("blkdev:
-avoid migration stalls for blkdev pages"), it could lead to false
-positive -EIO when submitting reading IO.
-
-This patch add some friendly buffer read helpers to prepare replacing
-ll_rw_block() and similar calls. We can only call bh_readahead_[]
-helpers for the readahead paths.
+ll_rw_block() is not safe for the sync read path because it cannot
+guarantee that submitting read IO if the buffer has been locked. We
+could get false positive EIO return from zisofs_uncompress_block() if
+he buffer has been locked by others. So stop using ll_rw_block(),
+switch to sync helper instead.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/buffer.c                 | 65 +++++++++++++++++++++++++++++++++++++
- include/linux/buffer_head.h | 38 ++++++++++++++++++++++
- 2 files changed, 103 insertions(+)
+ fs/isofs/compress.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index a0b70b3239f3..a6bc769e665d 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -3017,6 +3017,71 @@ int bh_uptodate_or_lock(struct buffer_head *bh)
- }
- EXPORT_SYMBOL(bh_uptodate_or_lock);
+diff --git a/fs/isofs/compress.c b/fs/isofs/compress.c
+index b466172eec25..59b03d74ecbe 100644
+--- a/fs/isofs/compress.c
++++ b/fs/isofs/compress.c
+@@ -82,7 +82,7 @@ static loff_t zisofs_uncompress_block(struct inode *inode, loff_t block_start,
+ 		return 0;
+ 	}
+ 	haveblocks = isofs_get_blocks(inode, blocknum, bhs, needblocks);
+-	ll_rw_block(REQ_OP_READ, haveblocks, bhs);
++	bh_read_batch(haveblocks, bhs);
  
-+/**
-+ * __bh_read - Submit read for a locked buffer
-+ * @bh: struct buffer_head
-+ * @op_flags: appending REQ_OP_* flags besides REQ_OP_READ
-+ * @wait: wait until reading finish
-+ *
-+ * Returns zero on success or don't wait, and -EIO on error.
-+ */
-+int __bh_read(struct buffer_head *bh, blk_opf_t op_flags, bool wait)
-+{
-+	int ret = 0;
-+
-+	BUG_ON(!buffer_locked(bh));
-+
-+	get_bh(bh);
-+	bh->b_end_io = end_buffer_read_sync;
-+	submit_bh(REQ_OP_READ | op_flags, bh);
-+	if (wait) {
-+		wait_on_buffer(bh);
-+		if (!buffer_uptodate(bh))
-+			ret = -EIO;
-+	}
-+	return ret;
-+}
-+EXPORT_SYMBOL(__bh_read);
-+
-+/**
-+ * __bh_read_batch - Submit read for a batch of unlocked buffers
-+ * @nr: entry number of the buffer batch
-+ * @bhs: a batch of struct buffer_head
-+ * @op_flags: appending REQ_OP_* flags besides REQ_OP_READ
-+ * @force_lock: force to get a lock on the buffer if set, otherwise drops any
-+ *              buffer that cannot lock.
-+ *
-+ * Returns zero on success or don't wait, and -EIO on error.
-+ */
-+void __bh_read_batch(int nr, struct buffer_head *bhs[],
-+		     blk_opf_t op_flags, bool force_lock)
-+{
-+	int i;
-+
-+	for (i = 0; i < nr; i++) {
-+		struct buffer_head *bh = bhs[i];
-+
-+		if (buffer_uptodate(bh))
-+			continue;
-+
-+		if (force_lock)
-+			lock_buffer(bh);
-+		else
-+			if (!trylock_buffer(bh))
-+				continue;
-+
-+		if (buffer_uptodate(bh)) {
-+			unlock_buffer(bh);
-+			continue;
-+		}
-+
-+		bh->b_end_io = end_buffer_read_sync;
-+		get_bh(bh);
-+		submit_bh(REQ_OP_READ | op_flags, bh);
-+	}
-+}
-+EXPORT_SYMBOL(__bh_read_batch);
-+
- /**
-  * bh_submit_read - Submit a locked buffer for reading
-  * @bh: struct buffer_head
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index c3863c417b00..6d09785bed9f 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -232,6 +232,9 @@ void write_boundary_block(struct block_device *bdev,
- 			sector_t bblock, unsigned blocksize);
- int bh_uptodate_or_lock(struct buffer_head *bh);
- int bh_submit_read(struct buffer_head *bh);
-+int __bh_read(struct buffer_head *bh, blk_opf_t op_flags, bool wait);
-+void __bh_read_batch(int nr, struct buffer_head *bhs[],
-+		     blk_opf_t op_flags, bool force_lock);
- 
- extern int buffer_heads_over_limit;
- 
-@@ -399,6 +402,41 @@ static inline struct buffer_head *__getblk(struct block_device *bdev,
- 	return __getblk_gfp(bdev, block, size, __GFP_MOVABLE);
- }
- 
-+static inline void bh_readahead(struct buffer_head *bh, blk_opf_t op_flags)
-+{
-+	if (!buffer_uptodate(bh) && trylock_buffer(bh)) {
-+		if (!buffer_uptodate(bh))
-+			__bh_read(bh, op_flags, false);
-+		else
-+			unlock_buffer(bh);
-+	}
-+}
-+
-+static inline void bh_read_nowait(struct buffer_head *bh, blk_opf_t op_flags)
-+{
-+	if (!bh_uptodate_or_lock(bh))
-+		__bh_read(bh, op_flags, false);
-+}
-+
-+/* Returns 1 if buffer uptodated, 0 on success, and -EIO on error. */
-+static inline int bh_read(struct buffer_head *bh, blk_opf_t op_flags)
-+{
-+	if (bh_uptodate_or_lock(bh))
-+		return 1;
-+	return __bh_read(bh, op_flags, true);
-+}
-+
-+static inline void bh_read_batch(int nr, struct buffer_head *bhs[])
-+{
-+	__bh_read_batch(nr, bhs, 0, true);
-+}
-+
-+static inline void bh_readahead_batch(int nr, struct buffer_head *bhs[],
-+				      blk_opf_t op_flags)
-+{
-+	__bh_read_batch(nr, bhs, op_flags, false);
-+}
-+
- /**
-  *  __bread() - reads a specified block and returns the bh
-  *  @bdev: the block_device to read from
+ 	curbh = 0;
+ 	curpage = 0;
 -- 
 2.31.1
 
