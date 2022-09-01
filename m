@@ -2,117 +2,118 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8DF76C6FA82
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Sep 2022 22:07:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 37629ECAAD2
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Sep 2022 22:20:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235236AbiIAWHQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 1 Sep 2022 18:07:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40430 "EHLO
+        id S235140AbiIAWUs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 1 Sep 2022 18:20:48 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45908 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234700AbiIAWGJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Sep 2022 18:06:09 -0400
-Received: from mail-pj1-x1029.google.com (mail-pj1-x1029.google.com [IPv6:2607:f8b0:4864:20::1029])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6BCF09F0EC;
-        Thu,  1 Sep 2022 15:03:30 -0700 (PDT)
-Received: by mail-pj1-x1029.google.com with SMTP id fa2so274130pjb.2;
-        Thu, 01 Sep 2022 15:03:30 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date;
-        bh=6jEJW/hdf8NlYILH28nH262i/WrC/eObbm9U3wHW7N0=;
-        b=N9gi0ek73D6+Ob4gJQTCenTIizkASUjD+NGWnY0SxFC164jHY2z+KDjngS5u8a5ea1
-         pTnBRJWlclL9jxrutcaq59svND4AAi3Mu6zjZ5R0ZdTzg7WkwILrexZuQIgRHx4yncJe
-         OCQ0GP35CE39948Jkx+DdsWr/hVemLW0aPd8pHpB8mjZW2hr0avHI7FZaniFXz2bEU5c
-         8rj/3cGG0sHkP+Xg1vHbPyhxWGLC3ZGSwUXEq4Bo3qDVM63ON1NgwYw3KkUKbds8fRoP
-         Z5oZrMmJFM7HBd6JNC8OlP+eYzpgfFP4AsKvNF+23CtWe3kx/Wqjrlwut0YprghhKCzN
-         8ZkA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date;
-        bh=6jEJW/hdf8NlYILH28nH262i/WrC/eObbm9U3wHW7N0=;
-        b=Yw+B58Bx3KjaDVUIp22F0b09mWlJ9vVWqOWidEERczs4qMmRG7eaxhL4k+ABI+XzxL
-         PWv77w5/oZzZWQqOEAtUoyJksGr8A4LDtf+PRKLl7s8516OBWp6Z+HVwlhmrsig/EJ42
-         ETtwimDbhO0GTVcFRYDto7FiBldLT+6ZGr+XLXuMYm8pLq7Eb+mwOnWBdwb0gM65dDIU
-         sch+ZROfR1WW7SgGE2u26vds8cbtztCBtpvtNdTqgMElpGju6HUUNG38ACEmbyQz7sgy
-         a+gI6BWnZhBOxq/GocPfHGbtPXrDKji6czshDBJ46SN0wx5LH6qka6BDQ022RpNf44AD
-         HYXA==
-X-Gm-Message-State: ACgBeo0fQVNFDsFRjAZHPLkWozmScDx4/KL8q1OkjiyyoykpB1e9zOgQ
-        A8vPendCOaU04nXlJRi/GcfZwqh8VZ4hgg==
-X-Google-Smtp-Source: AA6agR6ueb+SpLMpe0ENf809+aslBhtpdEEwbT3aRvZt/q/0zk6S/BuXNiziVl4cLeo0K8hj5HTpaw==
-X-Received: by 2002:a17:903:40d2:b0:174:e086:c748 with SMTP id t18-20020a17090340d200b00174e086c748mr19496625pld.108.1662069786179;
-        Thu, 01 Sep 2022 15:03:06 -0700 (PDT)
-Received: from vmfolio.. (c-73-189-111-8.hsd1.ca.comcast.net. [73.189.111.8])
-        by smtp.googlemail.com with ESMTPSA id fv4-20020a17090b0e8400b001fb350026f1sm128894pjb.4.2022.09.01.15.03.04
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 01 Sep 2022 15:03:05 -0700 (PDT)
-From:   "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
-To:     linux-fsdevel@vger.kernel.org
-Cc:     linux-afs@lists.infradead.org, linux-kernel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-nilfs@vger.kernel.org, linux-mm@kvack.org,
-        "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
-Subject: [PATCH 22/23] nilfs2: Convert nilfs_clear_dirty_pages() to use filemap_get_folios_tag()
-Date:   Thu,  1 Sep 2022 15:01:37 -0700
-Message-Id: <20220901220138.182896-23-vishal.moola@gmail.com>
-X-Mailer: git-send-email 2.36.1
-In-Reply-To: <20220901220138.182896-1-vishal.moola@gmail.com>
-References: <20220901220138.182896-1-vishal.moola@gmail.com>
+        with ESMTP id S235208AbiIAWUF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Sep 2022 18:20:05 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1C049A00C9
+        for <linux-ext4@vger.kernel.org>; Thu,  1 Sep 2022 15:18:50 -0700 (PDT)
+Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 281MIkeB007490
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 1 Sep 2022 18:18:47 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1662070727; bh=1fmy4JMdWMLWBkOKbFdOvVqFlrib50Te/L4WBYdpgWE=;
+        h=From:To:Cc:Subject:Date;
+        b=LbwxqvSHDMWeFFSOPQyIMvzvBoZBKqZYv2jvLTo2cTsBSM7B/nnWN+Sgd66LD39xV
+         Sd/n23ZRZ5+myfQZpQ0jo1hKy9Is06JQVFt7Y0atD7/6uvD8TpC+hvD7afivXeZrcJ
+         yxkhb/01Hs1aH9SJWP/Fu/Q1kmp1Gy3luS6AKWxBGdyA8/qWE6VJjt2ntWakE93Obs
+         L1fXP9z/oGYx8DSycUkMU689lTuba1/inzOfYvbFAjIbryAPpQO+nmfVhyJwNQH3B7
+         EbHLyyr7yCkr2lDky6N/oXMFP6GWxL/ZgIIKn4hKo81GOTJO/VFe3AphxsPPiNMzg1
+         +KH34rHC2SMMg==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id AE9D815C525C; Thu,  1 Sep 2022 18:18:46 -0400 (EDT)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>
+Subject: [RFC PATCH] ext4: limit the number of retries after discarding preallocations blocks
+Date:   Thu,  1 Sep 2022 18:18:45 -0400
+Message-Id: <20220901221845.1753773-1-tytso@mit.edu>
+X-Mailer: git-send-email 2.31.0
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Convert function to use folios throughout. This is in preparation for
-the removal of find_get_pages_range_tag().
+This patch avoids threads live-locking for hours when a large number
+threads are competing over the last few free extents as they blocks
+getting added and removed from preallocation pools.  From our bug
+reporter:
 
-Signed-off-by: Vishal Moola (Oracle) <vishal.moola@gmail.com>
+   A reliable way for triggering this has multiple writers
+   continuously write() to files when the filesystem is full, while
+   small amounts of space are freed (e.g. by truncating a large file
+   -1MiB at a time). In the local filesystem, this can be done by
+   simply not checking the return code of write (0) and/or the error
+   (ENOSPACE) that is set. Over NFS with an async mount, even clients
+   with proper error checking will behave this way since the linux NFS
+   client implementation will not propagate the server errors [the
+   write syscalls immediately return success] until the file handle is
+   closed. This leads to a situation where NFS clients send a
+   continuous stream of WRITE rpcs which result in ERRNOSPACE -- but
+   since the client isn't seeing this, the stream of writes continues
+   at maximum network speed.
+
+   When some space does appear, multiple writers will all attempt to
+   claim it for their current write. For NFS, we may see dozens to
+   hundreds of threads that do this.
+
+   The real-world scenario of this is database backup tooling (in
+   particular, github.com/mdkent/percona-xtrabackup) which may write
+   large files (>1TiB) to NFS for safe keeping. Some temporary files
+   are written, rewound, and read back -- all before closing the file
+   handle (the temp file is actually unlinked, to trigger automatic
+   deletion on close/crash.) An application like this operating on an
+   async NFS mount will not see an error code until TiB have been
+   written/read.
+
+   The lockup was observed when running this database backup on large
+   filesystems (64 TiB in this case) with a high number of block
+   groups and no free space. Fragmentation is generally not a factor
+   in this filesystem (~thousands of large files, mostly contiguous
+   except for the parts written while the filesystem is at capacity.)
+
+[ DO NOT APPLY: This patch has only been lightly tested, although it
+  does appear to avoid NFS write threads from getting tied up for
+  *hours* before the system recovers.  Sending to the linux-ext4
+  mailing list for comments only. -- Ted ]
+
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/nilfs2/page.c | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+ fs/ext4/mballoc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nilfs2/page.c b/fs/nilfs2/page.c
-index 5c96084e829f..b66f4e988016 100644
---- a/fs/nilfs2/page.c
-+++ b/fs/nilfs2/page.c
-@@ -358,22 +358,22 @@ void nilfs_copy_back_pages(struct address_space *dmap,
-  */
- void nilfs_clear_dirty_pages(struct address_space *mapping, bool silent)
- {
--	struct pagevec pvec;
-+	struct folio_batch fbatch;
- 	unsigned int i;
- 	pgoff_t index = 0;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index bd8f8b5c3d30..8ab8ab8b0f42 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -5565,6 +5565,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 	ext4_fsblk_t block = 0;
+ 	unsigned int inquota = 0;
+ 	unsigned int reserv_clstrs = 0;
++	int retries = 0;
+ 	u64 seq;
  
--	pagevec_init(&pvec);
-+	folio_batch_init(&fbatch);
- 
--	while (pagevec_lookup_tag(&pvec, mapping, &index,
--					PAGECACHE_TAG_DIRTY)) {
--		for (i = 0; i < pagevec_count(&pvec); i++) {
--			struct page *page = pvec.pages[i];
-+	while (filemap_get_folios_tag(mapping, &index, (pgoff_t)-1,
-+				PAGECACHE_TAG_DIRTY, &fbatch)) {
-+		for (i = 0; i < folio_batch_count(&fbatch); i++) {
-+			struct folio *folio = fbatch.folios[i];
- 
--			lock_page(page);
--			nilfs_clear_dirty_page(page, silent);
--			unlock_page(page);
-+			folio_lock(folio);
-+			nilfs_clear_dirty_page(&folio->page, silent);
-+			folio_unlock(folio);
+ 	might_sleep();
+@@ -5667,7 +5668,8 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 			ar->len = ac->ac_b_ex.fe_len;
  		}
--		pagevec_release(&pvec);
-+		folio_batch_release(&fbatch);
- 		cond_resched();
- 	}
- }
+ 	} else {
+-		if (ext4_mb_discard_preallocations_should_retry(sb, ac, &seq))
++		if (++retries < 3 &&
++		    ext4_mb_discard_preallocations_should_retry(sb, ac, &seq))
+ 			goto repeat;
+ 		/*
+ 		 * If block allocation fails then the pa allocated above
 -- 
-2.36.1
+2.31.0
 
