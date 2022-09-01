@@ -2,25 +2,25 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D2524ECAAD1
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Sep 2022 13:26:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CB2E7C0502C
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Sep 2022 13:26:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234552AbiIAN0h (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 1 Sep 2022 09:26:37 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33004 "EHLO
+        id S234559AbiIAN0s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 1 Sep 2022 09:26:48 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34728 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234405AbiIANYf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Sep 2022 09:24:35 -0400
-Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 45CCE15722;
-        Thu,  1 Sep 2022 06:24:12 -0700 (PDT)
-Received: from canpemm500005.china.huawei.com (unknown [172.30.72.55])
-        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4MJM9S2QXMz1N7cR;
-        Thu,  1 Sep 2022 21:20:28 +0800 (CST)
+        with ESMTP id S234349AbiIANYw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Sep 2022 09:24:52 -0400
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A5B2D237D8;
+        Thu,  1 Sep 2022 06:24:05 -0700 (PDT)
+Received: from canpemm500005.china.huawei.com (unknown [172.30.72.53])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4MJM8V2lB1zYd5V;
+        Thu,  1 Sep 2022 21:19:38 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm500005.china.huawei.com
  (7.192.104.229) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Thu, 1 Sep
- 2022 21:24:08 +0800
+ 2022 21:24:02 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
         <linux-kernel@vger.kernel.org>, <cluster-devel@redhat.com>,
@@ -32,9 +32,9 @@ CC:     <tytso@mit.edu>, <akpm@linux-foundation.org>, <axboe@kernel.dk>,
         <mark@fasheh.com>, <dushistov@mail.ru>, <hch@infradead.org>,
         <yi.zhang@huawei.com>, <chengzhihao1@huawei.com>,
         <yukuai3@huawei.com>
-Subject: [PATCH v2 12/14] fs/buffer: remove ll_rw_block() helper
-Date:   Thu, 1 Sep 2022 21:35:03 +0800
-Message-ID: <20220901133505.2510834-13-yi.zhang@huawei.com>
+Subject: [PATCH v2 06/14] jbd2: replace ll_rw_block()
+Date:   Thu, 1 Sep 2022 21:34:57 +0800
+Message-ID: <20220901133505.2510834-7-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20220901133505.2510834-1-yi.zhang@huawei.com>
 References: <20220901133505.2510834-1-yi.zhang@huawei.com>
@@ -49,123 +49,97 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now that all ll_rw_block() users has been replaced to new safe helpers,
-we just remove it here.
+ll_rw_block() is not safe for the sync read path because it cannot
+guarantee that submitting read IO if the buffer has been locked. We
+could get false positive EIO after wait_on_buffer() if the buffer has
+been locked by others. So stop using ll_rw_block() in
+journal_get_superblock(). We also switch to new bh_readahead_batch()
+for the buffer array readahead path.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/buffer.c                 | 63 +++----------------------------------
- include/linux/buffer_head.h |  1 -
- 2 files changed, 4 insertions(+), 60 deletions(-)
+ fs/jbd2/journal.c  | 15 ++++++---------
+ fs/jbd2/recovery.c | 16 ++++++++++------
+ 2 files changed, 16 insertions(+), 15 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index aec568b3ae52..2cccc7586b99 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -152,7 +152,7 @@ static void __end_buffer_read_notouch(struct buffer_head *bh, int uptodate)
- 
- /*
-  * Default synchronous end-of-IO handler..  Just mark it up-to-date and
-- * unlock the buffer. This is what ll_rw_block uses too.
-+ * unlock the buffer.
-  */
- void end_buffer_read_sync(struct buffer_head *bh, int uptodate)
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 6350d3857c89..140b070471c0 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1893,19 +1893,16 @@ static int journal_get_superblock(journal_t *journal)
  {
-@@ -491,8 +491,8 @@ int inode_has_buffers(struct inode *inode)
-  * all already-submitted IO to complete, but does not queue any new
-  * writes to the disk.
-  *
-- * To do O_SYNC writes, just queue the buffer writes with ll_rw_block as
-- * you dirty the buffers, and then use osync_inode_buffers to wait for
-+ * To do O_SYNC writes, just queue the buffer writes with write_dirty_buffer
-+ * as you dirty the buffers, and then use osync_inode_buffers to wait for
-  * completion.  Any other dirty buffers which are not yet queued for
-  * write will not be flushed to disk by the osync.
-  */
-@@ -1806,7 +1806,7 @@ int __block_write_full_page(struct inode *inode, struct page *page,
- 		/*
- 		 * The page was marked dirty, but the buffers were
- 		 * clean.  Someone wrote them back by hand with
--		 * ll_rw_block/submit_bh.  A rare case.
-+		 * write_dirty_buffer/submit_bh.  A rare case.
- 		 */
- 		end_page_writeback(page);
+ 	struct buffer_head *bh;
+ 	journal_superblock_t *sb;
+-	int err = -EIO;
++	int err;
  
-@@ -2713,61 +2713,6 @@ int submit_bh(blk_opf_t opf, struct buffer_head *bh)
- }
- EXPORT_SYMBOL(submit_bh);
+ 	bh = journal->j_sb_buffer;
  
--/**
-- * ll_rw_block: low-level access to block devices (DEPRECATED)
-- * @opf: block layer request operation and flags.
-- * @nr: number of &struct buffer_heads in the array
-- * @bhs: array of pointers to &struct buffer_head
-- *
-- * ll_rw_block() takes an array of pointers to &struct buffer_heads, and
-- * requests an I/O operation on them, either a %REQ_OP_READ or a %REQ_OP_WRITE.
-- * @opf contains flags modifying the detailed I/O behavior, most notably
-- * %REQ_RAHEAD.
-- *
-- * This function drops any buffer that it cannot get a lock on (with the
-- * BH_Lock state bit), any buffer that appears to be clean when doing a write
-- * request, and any buffer that appears to be up-to-date when doing read
-- * request.  Further it marks as clean buffers that are processed for
-- * writing (the buffer cache won't assume that they are actually clean
-- * until the buffer gets unlocked).
-- *
-- * ll_rw_block sets b_end_io to simple completion handler that marks
-- * the buffer up-to-date (if appropriate), unlocks the buffer and wakes
-- * any waiters. 
-- *
-- * All of the buffers must be for the same device, and must also be a
-- * multiple of the current approved size for the device.
-- */
--void ll_rw_block(const blk_opf_t opf, int nr, struct buffer_head *bhs[])
--{
--	const enum req_op op = opf & REQ_OP_MASK;
--	int i;
--
--	for (i = 0; i < nr; i++) {
--		struct buffer_head *bh = bhs[i];
--
--		if (!trylock_buffer(bh))
--			continue;
--		if (op == REQ_OP_WRITE) {
--			if (test_clear_buffer_dirty(bh)) {
--				bh->b_end_io = end_buffer_write_sync;
--				get_bh(bh);
--				submit_bh(opf, bh);
--				continue;
--			}
--		} else {
--			if (!buffer_uptodate(bh)) {
--				bh->b_end_io = end_buffer_read_sync;
--				get_bh(bh);
--				submit_bh(opf, bh);
--				continue;
--			}
+ 	J_ASSERT(bh != NULL);
+-	if (!buffer_uptodate(bh)) {
+-		ll_rw_block(REQ_OP_READ, 1, &bh);
+-		wait_on_buffer(bh);
+-		if (!buffer_uptodate(bh)) {
+-			printk(KERN_ERR
+-				"JBD2: IO error reading journal superblock\n");
+-			goto out;
 -		}
--		unlock_buffer(bh);
--	}
--}
--EXPORT_SYMBOL(ll_rw_block);
--
- void write_dirty_buffer(struct buffer_head *bh, blk_opf_t op_flags)
- {
- 	lock_buffer(bh);
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index 6d09785bed9f..b415d8bc2a09 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -223,7 +223,6 @@ struct buffer_head *alloc_buffer_head(gfp_t gfp_flags);
- void free_buffer_head(struct buffer_head * bh);
- void unlock_buffer(struct buffer_head *bh);
- void __lock_buffer(struct buffer_head *bh);
--void ll_rw_block(blk_opf_t, int, struct buffer_head * bh[]);
- int sync_dirty_buffer(struct buffer_head *bh);
- int __sync_dirty_buffer(struct buffer_head *bh, blk_opf_t op_flags);
- void write_dirty_buffer(struct buffer_head *bh, blk_opf_t op_flags);
++	err = bh_read(bh, 0);
++	if (err < 0) {
++		printk(KERN_ERR
++			"JBD2: IO error reading journal superblock\n");
++		goto out;
+ 	}
+ 
+ 	if (buffer_verified(bh))
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index f548479615c6..1f878c315b03 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -100,7 +100,7 @@ static int do_readahead(journal_t *journal, unsigned int start)
+ 		if (!buffer_uptodate(bh) && !buffer_locked(bh)) {
+ 			bufs[nbufs++] = bh;
+ 			if (nbufs == MAXBUF) {
+-				ll_rw_block(REQ_OP_READ, nbufs, bufs);
++				bh_readahead_batch(nbufs, bufs, 0);
+ 				journal_brelse_array(bufs, nbufs);
+ 				nbufs = 0;
+ 			}
+@@ -109,7 +109,7 @@ static int do_readahead(journal_t *journal, unsigned int start)
+ 	}
+ 
+ 	if (nbufs)
+-		ll_rw_block(REQ_OP_READ, nbufs, bufs);
++		bh_readahead_batch(nbufs, bufs, 0);
+ 	err = 0;
+ 
+ failed:
+@@ -152,9 +152,14 @@ static int jread(struct buffer_head **bhp, journal_t *journal,
+ 		return -ENOMEM;
+ 
+ 	if (!buffer_uptodate(bh)) {
+-		/* If this is a brand new buffer, start readahead.
+-                   Otherwise, we assume we are already reading it.  */
+-		if (!buffer_req(bh))
++		/*
++		 * If this is a brand new buffer, start readahead.
++		 * Otherwise, we assume we are already reading it.
++		 */
++		bool need_readahead = !buffer_req(bh);
++
++		bh_read_nowait(bh, 0);
++		if (need_readahead)
+ 			do_readahead(journal, offset);
+ 		wait_on_buffer(bh);
+ 	}
+@@ -687,7 +692,6 @@ static int do_one_pass(journal_t *journal,
+ 					mark_buffer_dirty(nbh);
+ 					BUFFER_TRACE(nbh, "marking uptodate");
+ 					++info->nr_replays;
+-					/* ll_rw_block(WRITE, 1, &nbh); */
+ 					unlock_buffer(nbh);
+ 					brelse(obh);
+ 					brelse(nbh);
 -- 
 2.31.1
 
