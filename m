@@ -2,55 +2,88 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C1BEC6FA85
-	for <linux-ext4@archiver.kernel.org>; Fri,  2 Sep 2022 08:23:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DCD62C54EE9
+	for <linux-ext4@archiver.kernel.org>; Fri,  2 Sep 2022 13:49:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235293AbiIBIXC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 2 Sep 2022 04:23:02 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47436 "EHLO
+        id S236362AbiIBNtD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 2 Sep 2022 09:49:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33416 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235429AbiIBIXA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Sep 2022 04:23:00 -0400
-Received: from mail.connexion24.pl (mail.connexion24.pl [141.94.21.111])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AE59E564D4
-        for <linux-ext4@vger.kernel.org>; Fri,  2 Sep 2022 01:22:59 -0700 (PDT)
-Received: by mail.connexion24.pl (Postfix, from userid 1002)
-        id 26322A458F; Fri,  2 Sep 2022 07:56:01 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=connexion24.pl;
-        s=mail; t=1662105414;
-        bh=ChRcLNpIfKnVgp03/tSyWuRw1tWSTk/OEiEnuZMWs58=;
-        h=Date:From:To:Subject:From;
-        b=ST9l9x4rYmSeYBq8kgRZP/6HNJRSP+XK4kq0Xh5qaXknkbF39Sy8p/XMJu68eX7n8
-         ynEpOrhAck1WwQp3qCz8/Hg309z7pf5HIamDYOBxouDOxOASnCN/bJjOKjtSjxLQqr
-         CUVIW4vAfSTkDh/Q5RBGpY042t8Y7hXGbuQsenuYpcxFFzn2qwdFGnliwJafJwbhFC
-         mhHJpkBXNOQimNpE00bAt8L6//V+qrG/lbqDOXJ+YJfaT8xj8IIJqSG9EAMy2Jkj1B
-         ul+3jjsPwVBXB5tNDVS8a+NOrcWSOxSrz1JhHkQnPyCO+tBMm3NEKXLlpWJBO7EheF
-         Emn5Ssd76FhPw==
-Received: by mail.connexion24.pl for <linux-ext4@vger.kernel.org>; Fri,  2 Sep 2022 07:55:42 GMT
-Message-ID: <20220902064500-0.1.5l.yto8.0.dqs3ntk1a8@connexion24.pl>
-Date:   Fri,  2 Sep 2022 07:55:42 GMT
-From:   "Norbert Karecki" <norbert.karecki@connexion24.pl>
-To:     <linux-ext4@vger.kernel.org>
-Subject: Wycena paneli fotowoltaicznych
-X-Mailer: mail.connexion24.pl
+        with ESMTP id S237838AbiIBNsU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Sep 2022 09:48:20 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4546E166AA5;
+        Fri,  2 Sep 2022 06:23:17 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id D9D2F5BE03;
+        Fri,  2 Sep 2022 12:34:30 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1662122070;
+        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
+         cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=ZSh2REjiRAk/k5oPQg2yXZGh/unc7sc3tPapfoccmRI=;
+        b=wdEwtN3JZgc/dJfXvHTB2OuHq5iMMkwcvGadpvdtKl82JBp/CVm4q6hNc+Y/iWTf2Xz+aI
+        YGNc8TruF0sa2O/2hm9jHou3PZrcjEVob/160cOGyJ77oxrhQEaONmpuSIM0yX+QUzatCh
+        /RsJEpuKLTyOxrED2kdzlFs5ZvtVXAo=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1662122070;
+        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
+         cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=ZSh2REjiRAk/k5oPQg2yXZGh/unc7sc3tPapfoccmRI=;
+        b=KENUHNHD48w8jrLxhOstCJQGwUAg1XngO63jvWwXMV9t3VvgwJ8T1JrqwXS/ustyoxYoL+
+        euH2Gj9JTUuJQ1CQ==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 9A82A13328;
+        Fri,  2 Sep 2022 12:34:30 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id Wbq4JFb4EWMIaQAAMHmgww
+        (envelope-from <dsterba@suse.cz>); Fri, 02 Sep 2022 12:34:30 +0000
+Date:   Fri, 2 Sep 2022 14:29:10 +0200
+From:   David Sterba <dsterba@suse.cz>
+To:     "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
+Cc:     linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-nilfs@vger.kernel.org,
+        linux-mm@kvack.org
+Subject: Re: [PATCH 07/23] btrfs: Convert extent_write_cache_pages() to use
+ filemap_get_folios_tag()
+Message-ID: <20220902122910.GV13489@twin.jikos.cz>
+Reply-To: dsterba@suse.cz
+Mail-Followup-To: dsterba@suse.cz,
+        "Vishal Moola (Oracle)" <vishal.moola@gmail.com>,
+        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-nilfs@vger.kernel.org,
+        linux-mm@kvack.org
+References: <20220901220138.182896-1-vishal.moola@gmail.com>
+ <20220901220138.182896-8-vishal.moola@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20220901220138.182896-8-vishal.moola@gmail.com>
+User-Agent: Mutt/1.5.23.1-rc1 (2014-03-12)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Dzie=C5=84 dobry,
+On Thu, Sep 01, 2022 at 03:01:22PM -0700, Vishal Moola (Oracle) wrote:
+> Converted function to use folios throughout. This is in preparation for
+> the removal of find_get_pages_range_tag(). Now also supports large
+> folios.
+> 
+> Signed-off-by: Vishal Moola (Oracle) <vishal.moola@gmail.com>
 
-dostrzegam mo=C5=BCliwo=C5=9B=C4=87 wsp=C3=B3=C5=82pracy z Pa=C5=84stwa f=
-irm=C4=85.
-
-=C5=9Awiadczymy kompleksow=C4=85 obs=C5=82ug=C4=99 inwestycji w fotowolta=
-ik=C4=99, kt=C3=B3ra obni=C5=BCa koszty energii elektrycznej nawet o 90%.
-
-Czy s=C4=85 Pa=C5=84stwo zainteresowani weryfikacj=C4=85 wst=C4=99pnych p=
-ropozycji?
-
-
-Pozdrawiam,
-Norbert Karecki
+Acked-by: David Sterba <dsterba@suse.com>
