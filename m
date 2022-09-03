@@ -2,33 +2,33 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4054BC54EE9
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ABD88C6FA86
 	for <linux-ext4@archiver.kernel.org>; Sat,  3 Sep 2022 02:51:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231520AbiICCvA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 2 Sep 2022 22:51:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59696 "EHLO
+        id S231521AbiICCvB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 2 Sep 2022 22:51:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59712 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231442AbiICCu5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Sep 2022 22:50:57 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CC2D886FE7
-        for <linux-ext4@vger.kernel.org>; Fri,  2 Sep 2022 19:50:56 -0700 (PDT)
-Received: from canpemm500004.china.huawei.com (unknown [172.30.72.55])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4MKK102vZGzWf6N;
-        Sat,  3 Sep 2022 10:46:28 +0800 (CST)
+        with ESMTP id S231298AbiICCu6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Sep 2022 22:50:58 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 054FE87688
+        for <linux-ext4@vger.kernel.org>; Fri,  2 Sep 2022 19:50:57 -0700 (PDT)
+Received: from canpemm500004.china.huawei.com (unknown [172.30.72.57])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4MKK3G0CrTznTsT;
+        Sat,  3 Sep 2022 10:48:26 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm500004.china.huawei.com
  (7.192.104.92) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Sat, 3 Sep
- 2022 10:50:54 +0800
+ 2022 10:50:55 +0800
 From:   Jason Yan <yanaijie@huawei.com>
 To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <ritesh.list@gmail.com>, <lczerner@redhat.com>,
         <linux-ext4@vger.kernel.org>
 CC:     Jason Yan <yanaijie@huawei.com>
-Subject: [PATCH v2 02/13] ext4: remove cantfind_ext4 error handler
-Date:   Sat, 3 Sep 2022 11:01:45 +0800
-Message-ID: <20220903030156.770313-3-yanaijie@huawei.com>
+Subject: [PATCH v2 04/13] ext4: factor out ext4_handle_clustersize()
+Date:   Sat, 3 Sep 2022 11:01:47 +0800
+Message-ID: <20220903030156.770313-5-yanaijie@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20220903030156.770313-1-yanaijie@huawei.com>
 References: <20220903030156.770313-1-yanaijie@huawei.com>
@@ -43,94 +43,149 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The 'cantfind_ext4' error handler is just a error msg print and then
-goto failed_mount. This two level goto makes the code complex and not
-easy to read. The only benefit is that is saves a little bit code.
-However some branches can merge and some branches dot not even need it.
-So do some refactor and remove it.
+Factor out ext4_handle_clustersize(). No functional change.
 
 Signed-off-by: Jason Yan <yanaijie@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/super.c | 29 +++++++++++++----------------
- 1 file changed, 13 insertions(+), 16 deletions(-)
+ fs/ext4/super.c | 110 +++++++++++++++++++++++++++---------------------
+ 1 file changed, 61 insertions(+), 49 deletions(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 6126da867b26..6fced457ba3f 100644
+index 7cc499a221ff..09b3c51d472b 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -4373,8 +4373,12 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 	es = (struct ext4_super_block *) (bh->b_data + offset);
- 	sbi->s_es = es;
- 	sb->s_magic = le16_to_cpu(es->s_magic);
--	if (sb->s_magic != EXT4_SUPER_MAGIC)
--		goto cantfind_ext4;
-+	if (sb->s_magic != EXT4_SUPER_MAGIC) {
-+		if (!silent)
-+			ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
-+		goto failed_mount;
-+	}
+@@ -4366,6 +4366,64 @@ static void ext4_set_def_opts(struct super_block *sb,
+ 		set_opt(sb, DELALLOC);
+ }
+ 
++static int ext4_handle_clustersize(struct super_block *sb, int blocksize)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_super_block *es = sbi->s_es;
++	int clustersize;
 +
- 	sbi->s_kbytes_written = le64_to_cpu(es->s_kbytes_written);
- 
- 	/* Warn if metadata_csum and gdt_csum are both set. */
-@@ -4387,8 +4391,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 	if (!ext4_verify_csum_type(sb, es)) {
- 		ext4_msg(sb, KERN_ERR, "VFS: Found ext4 filesystem with "
- 			 "unknown checksum algorithm.");
--		silent = 1;
--		goto cantfind_ext4;
-+		goto failed_mount;
- 	}
- 	ext4_setup_csum_trigger(sb, EXT4_JTR_ORPHAN_FILE,
- 				ext4_orphan_file_block_trigger);
-@@ -4406,9 +4409,8 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 	if (!ext4_superblock_csum_verify(sb, es)) {
- 		ext4_msg(sb, KERN_ERR, "VFS: Found ext4 filesystem with "
- 			 "invalid superblock checksum.  Run e2fsck?");
--		silent = 1;
- 		ret = -EFSBADCRC;
--		goto cantfind_ext4;
-+		goto failed_mount;
- 	}
- 
- 	/* Precompute checksum seed for all metadata */
-@@ -4798,8 +4800,11 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 	sbi->s_inodes_per_group = le32_to_cpu(es->s_inodes_per_group);
- 
- 	sbi->s_inodes_per_block = blocksize / EXT4_INODE_SIZE(sb);
--	if (sbi->s_inodes_per_block == 0)
--		goto cantfind_ext4;
-+	if (sbi->s_inodes_per_block == 0 || sbi->s_blocks_per_group == 0) {
-+		if (!silent)
-+			ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
-+		goto failed_mount;
++	/* Handle clustersize */
++	clustersize = BLOCK_SIZE << le32_to_cpu(es->s_log_cluster_size);
++	if (ext4_has_feature_bigalloc(sb)) {
++		if (clustersize < blocksize) {
++			ext4_msg(sb, KERN_ERR,
++				 "cluster size (%d) smaller than "
++				 "block size (%d)", clustersize, blocksize);
++			return -EINVAL;
++		}
++		sbi->s_cluster_bits = le32_to_cpu(es->s_log_cluster_size) -
++			le32_to_cpu(es->s_log_block_size);
++		sbi->s_clusters_per_group =
++			le32_to_cpu(es->s_clusters_per_group);
++		if (sbi->s_clusters_per_group > blocksize * 8) {
++			ext4_msg(sb, KERN_ERR,
++				 "#clusters per group too big: %lu",
++				 sbi->s_clusters_per_group);
++			return -EINVAL;
++		}
++		if (sbi->s_blocks_per_group !=
++		    (sbi->s_clusters_per_group * (clustersize / blocksize))) {
++			ext4_msg(sb, KERN_ERR, "blocks per group (%lu) and "
++				 "clusters per group (%lu) inconsistent",
++				 sbi->s_blocks_per_group,
++				 sbi->s_clusters_per_group);
++			return -EINVAL;
++		}
++	} else {
++		if (clustersize != blocksize) {
++			ext4_msg(sb, KERN_ERR,
++				 "fragment/cluster size (%d) != "
++				 "block size (%d)", clustersize, blocksize);
++			return -EINVAL;
++		}
++		if (sbi->s_blocks_per_group > blocksize * 8) {
++			ext4_msg(sb, KERN_ERR,
++				 "#blocks per group too big: %lu",
++				 sbi->s_blocks_per_group);
++			return -EINVAL;
++		}
++		sbi->s_clusters_per_group = sbi->s_blocks_per_group;
++		sbi->s_cluster_bits = 0;
 +	}
- 	if (sbi->s_inodes_per_group < sbi->s_inodes_per_block ||
- 	    sbi->s_inodes_per_group > blocksize * 8) {
- 		ext4_msg(sb, KERN_ERR, "invalid inodes per group: %lu\n",
-@@ -4896,9 +4901,6 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 		goto failed_mount;
++	sbi->s_cluster_ratio = clustersize / blocksize;
++
++	/* Do we have standard group size of clustersize * 8 blocks ? */
++	if (sbi->s_blocks_per_group == clustersize << 3)
++		set_opt2(sb, STD_GROUP_SIZE);
++
++	return 0;
++}
++
+ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ {
+ 	struct buffer_head *bh, **group_desc;
+@@ -4377,7 +4435,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 	unsigned long offset = 0;
+ 	struct inode *root;
+ 	int ret = -ENOMEM;
+-	int blocksize, clustersize;
++	int blocksize;
+ 	unsigned int db_count;
+ 	unsigned int i;
+ 	int needs_recovery, has_huge_files;
+@@ -4847,54 +4905,8 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 		}
  	}
  
--	if (EXT4_BLOCKS_PER_GROUP(sb) == 0)
--		goto cantfind_ext4;
+-	/* Handle clustersize */
+-	clustersize = BLOCK_SIZE << le32_to_cpu(es->s_log_cluster_size);
+-	if (ext4_has_feature_bigalloc(sb)) {
+-		if (clustersize < blocksize) {
+-			ext4_msg(sb, KERN_ERR,
+-				 "cluster size (%d) smaller than "
+-				 "block size (%d)", clustersize, blocksize);
+-			goto failed_mount;
+-		}
+-		sbi->s_cluster_bits = le32_to_cpu(es->s_log_cluster_size) -
+-			le32_to_cpu(es->s_log_block_size);
+-		sbi->s_clusters_per_group =
+-			le32_to_cpu(es->s_clusters_per_group);
+-		if (sbi->s_clusters_per_group > blocksize * 8) {
+-			ext4_msg(sb, KERN_ERR,
+-				 "#clusters per group too big: %lu",
+-				 sbi->s_clusters_per_group);
+-			goto failed_mount;
+-		}
+-		if (sbi->s_blocks_per_group !=
+-		    (sbi->s_clusters_per_group * (clustersize / blocksize))) {
+-			ext4_msg(sb, KERN_ERR, "blocks per group (%lu) and "
+-				 "clusters per group (%lu) inconsistent",
+-				 sbi->s_blocks_per_group,
+-				 sbi->s_clusters_per_group);
+-			goto failed_mount;
+-		}
+-	} else {
+-		if (clustersize != blocksize) {
+-			ext4_msg(sb, KERN_ERR,
+-				 "fragment/cluster size (%d) != "
+-				 "block size (%d)", clustersize, blocksize);
+-			goto failed_mount;
+-		}
+-		if (sbi->s_blocks_per_group > blocksize * 8) {
+-			ext4_msg(sb, KERN_ERR,
+-				 "#blocks per group too big: %lu",
+-				 sbi->s_blocks_per_group);
+-			goto failed_mount;
+-		}
+-		sbi->s_clusters_per_group = sbi->s_blocks_per_group;
+-		sbi->s_cluster_bits = 0;
+-	}
+-	sbi->s_cluster_ratio = clustersize / blocksize;
 -
- 	/* check blocks count against device size */
- 	blocks_count = sb_bdev_nr_blocks(sb);
- 	if (blocks_count && ext4_blocks_count(es) > blocks_count) {
-@@ -5408,11 +5410,6 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+-	/* Do we have standard group size of clustersize * 8 blocks ? */
+-	if (sbi->s_blocks_per_group == clustersize << 3)
+-		set_opt2(sb, STD_GROUP_SIZE);
++	if (ext4_handle_clustersize(sb, blocksize))
++		goto failed_mount;
  
- 	return 0;
- 
--cantfind_ext4:
--	if (!silent)
--		ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
--	goto failed_mount;
--
- failed_mount9:
- 	ext4_release_orphan_info(sb);
- failed_mount8:
+ 	/*
+ 	 * Test whether we have more sectors than will fit in sector_t,
 -- 
 2.31.1
 
