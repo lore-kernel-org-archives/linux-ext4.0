@@ -2,33 +2,33 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 52FB4C54EE9
-	for <linux-ext4@archiver.kernel.org>; Sat,  3 Sep 2022 02:50:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4BAD5C38145
+	for <linux-ext4@archiver.kernel.org>; Sat,  3 Sep 2022 02:51:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231472AbiICCu6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 2 Sep 2022 22:50:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59674 "EHLO
+        id S231501AbiICCu7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 2 Sep 2022 22:50:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59694 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231408AbiICCu5 (ORCPT
+        with ESMTP id S231439AbiICCu5 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Sep 2022 22:50:57 -0400
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 60EE686C2A
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 98A1286C2C
         for <linux-ext4@vger.kernel.org>; Fri,  2 Sep 2022 19:50:56 -0700 (PDT)
-Received: from canpemm500004.china.huawei.com (unknown [172.30.72.54])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4MKK1q02nHzkWvb;
-        Sat,  3 Sep 2022 10:47:11 +0800 (CST)
+Received: from canpemm500004.china.huawei.com (unknown [172.30.72.53])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4MKK2634GvzlVj4;
+        Sat,  3 Sep 2022 10:47:26 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm500004.china.huawei.com
  (7.192.104.92) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Sat, 3 Sep
- 2022 10:50:53 +0800
+ 2022 10:50:54 +0800
 From:   Jason Yan <yanaijie@huawei.com>
 To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <ritesh.list@gmail.com>, <lczerner@redhat.com>,
         <linux-ext4@vger.kernel.org>
 CC:     Jason Yan <yanaijie@huawei.com>
-Subject: [PATCH v2 01/13] ext4: goto right label 'failed_mount3a'
-Date:   Sat, 3 Sep 2022 11:01:44 +0800
-Message-ID: <20220903030156.770313-2-yanaijie@huawei.com>
+Subject: [PATCH v2 03/13] ext4: factor out ext4_set_def_opts()
+Date:   Sat, 3 Sep 2022 11:01:46 +0800
+Message-ID: <20220903030156.770313-4-yanaijie@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20220903030156.770313-1-yanaijie@huawei.com>
 References: <20220903030156.770313-1-yanaijie@huawei.com>
@@ -43,58 +43,151 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Before these two branches neither loaded the journal nor created the
-xattr cache. So the right label to goto is 'failed_mount3a'. Although
-this did not cause any issues because the error handler validated if the
-pointer is null. However this still made me confused when reading
-the code. So it's still worth to modify to goto the right label.
+Factor out ext4_set_def_opts(). No functional change.
 
 Signed-off-by: Jason Yan <yanaijie@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/super.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ fs/ext4/super.c | 105 ++++++++++++++++++++++++++----------------------
+ 1 file changed, 56 insertions(+), 49 deletions(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 9a66abcca1a8..6126da867b26 100644
+index 6fced457ba3f..7cc499a221ff 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -5079,30 +5079,30 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 		   ext4_has_feature_journal_needs_recovery(sb)) {
- 		ext4_msg(sb, KERN_ERR, "required journal recovery "
- 		       "suppressed and not mounted read-only");
--		goto failed_mount_wq;
-+		goto failed_mount3a;
- 	} else {
- 		/* Nojournal mode, all journal mount options are illegal */
- 		if (test_opt2(sb, EXPLICIT_JOURNAL_CHECKSUM)) {
- 			ext4_msg(sb, KERN_ERR, "can't mount with "
- 				 "journal_checksum, fs mounted w/o journal");
--			goto failed_mount_wq;
-+			goto failed_mount3a;
- 		}
- 		if (test_opt(sb, JOURNAL_ASYNC_COMMIT)) {
- 			ext4_msg(sb, KERN_ERR, "can't mount with "
- 				 "journal_async_commit, fs mounted w/o journal");
--			goto failed_mount_wq;
-+			goto failed_mount3a;
- 		}
- 		if (sbi->s_commit_interval != JBD2_DEFAULT_MAX_COMMIT_AGE*HZ) {
- 			ext4_msg(sb, KERN_ERR, "can't mount with "
- 				 "commit=%lu, fs mounted w/o journal",
- 				 sbi->s_commit_interval / HZ);
--			goto failed_mount_wq;
-+			goto failed_mount3a;
- 		}
- 		if (EXT4_MOUNT_DATA_FLAGS &
- 		    (sbi->s_mount_opt ^ sbi->s_def_mount_opt)) {
- 			ext4_msg(sb, KERN_ERR, "can't mount with "
- 				 "data=, fs mounted w/o journal");
--			goto failed_mount_wq;
-+			goto failed_mount3a;
- 		}
- 		sbi->s_def_mount_opt &= ~EXT4_MOUNT_JOURNAL_CHECKSUM;
- 		clear_opt(sb, JOURNAL_CHECKSUM);
+@@ -4311,6 +4311,61 @@ static struct ext4_sb_info *ext4_alloc_sbi(struct super_block *sb)
+ 	return NULL;
+ }
+ 
++static void ext4_set_def_opts(struct super_block *sb,
++			      struct ext4_super_block *es)
++{
++	unsigned long def_mount_opts;
++
++	/* Set defaults before we parse the mount options */
++	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
++	set_opt(sb, INIT_INODE_TABLE);
++	if (def_mount_opts & EXT4_DEFM_DEBUG)
++		set_opt(sb, DEBUG);
++	if (def_mount_opts & EXT4_DEFM_BSDGROUPS)
++		set_opt(sb, GRPID);
++	if (def_mount_opts & EXT4_DEFM_UID16)
++		set_opt(sb, NO_UID32);
++	/* xattr user namespace & acls are now defaulted on */
++	set_opt(sb, XATTR_USER);
++#ifdef CONFIG_EXT4_FS_POSIX_ACL
++	set_opt(sb, POSIX_ACL);
++#endif
++	if (ext4_has_feature_fast_commit(sb))
++		set_opt2(sb, JOURNAL_FAST_COMMIT);
++	/* don't forget to enable journal_csum when metadata_csum is enabled. */
++	if (ext4_has_metadata_csum(sb))
++		set_opt(sb, JOURNAL_CHECKSUM);
++
++	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
++		set_opt(sb, JOURNAL_DATA);
++	else if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_ORDERED)
++		set_opt(sb, ORDERED_DATA);
++	else if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_WBACK)
++		set_opt(sb, WRITEBACK_DATA);
++
++	if (le16_to_cpu(es->s_errors) == EXT4_ERRORS_PANIC)
++		set_opt(sb, ERRORS_PANIC);
++	else if (le16_to_cpu(es->s_errors) == EXT4_ERRORS_CONTINUE)
++		set_opt(sb, ERRORS_CONT);
++	else
++		set_opt(sb, ERRORS_RO);
++	/* block_validity enabled by default; disable with noblock_validity */
++	set_opt(sb, BLOCK_VALIDITY);
++	if (def_mount_opts & EXT4_DEFM_DISCARD)
++		set_opt(sb, DISCARD);
++
++	if ((def_mount_opts & EXT4_DEFM_NOBARRIER) == 0)
++		set_opt(sb, BARRIER);
++
++	/*
++	 * enable delayed allocation by default
++	 * Use -o nodelalloc to turn it off
++	 */
++	if (!IS_EXT3_SB(sb) && !IS_EXT2_SB(sb) &&
++	    ((def_mount_opts & EXT4_DEFM_NODELALLOC) == 0))
++		set_opt(sb, DELALLOC);
++}
++
+ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ {
+ 	struct buffer_head *bh, **group_desc;
+@@ -4320,7 +4375,6 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 	ext4_fsblk_t block;
+ 	ext4_fsblk_t logical_sb_block;
+ 	unsigned long offset = 0;
+-	unsigned long def_mount_opts;
+ 	struct inode *root;
+ 	int ret = -ENOMEM;
+ 	int blocksize, clustersize;
+@@ -4420,43 +4474,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 		sbi->s_csum_seed = ext4_chksum(sbi, ~0, es->s_uuid,
+ 					       sizeof(es->s_uuid));
+ 
+-	/* Set defaults before we parse the mount options */
+-	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
+-	set_opt(sb, INIT_INODE_TABLE);
+-	if (def_mount_opts & EXT4_DEFM_DEBUG)
+-		set_opt(sb, DEBUG);
+-	if (def_mount_opts & EXT4_DEFM_BSDGROUPS)
+-		set_opt(sb, GRPID);
+-	if (def_mount_opts & EXT4_DEFM_UID16)
+-		set_opt(sb, NO_UID32);
+-	/* xattr user namespace & acls are now defaulted on */
+-	set_opt(sb, XATTR_USER);
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	set_opt(sb, POSIX_ACL);
+-#endif
+-	if (ext4_has_feature_fast_commit(sb))
+-		set_opt2(sb, JOURNAL_FAST_COMMIT);
+-	/* don't forget to enable journal_csum when metadata_csum is enabled. */
+-	if (ext4_has_metadata_csum(sb))
+-		set_opt(sb, JOURNAL_CHECKSUM);
+-
+-	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
+-		set_opt(sb, JOURNAL_DATA);
+-	else if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_ORDERED)
+-		set_opt(sb, ORDERED_DATA);
+-	else if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_WBACK)
+-		set_opt(sb, WRITEBACK_DATA);
+-
+-	if (le16_to_cpu(sbi->s_es->s_errors) == EXT4_ERRORS_PANIC)
+-		set_opt(sb, ERRORS_PANIC);
+-	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT4_ERRORS_CONTINUE)
+-		set_opt(sb, ERRORS_CONT);
+-	else
+-		set_opt(sb, ERRORS_RO);
+-	/* block_validity enabled by default; disable with noblock_validity */
+-	set_opt(sb, BLOCK_VALIDITY);
+-	if (def_mount_opts & EXT4_DEFM_DISCARD)
+-		set_opt(sb, DISCARD);
++	ext4_set_def_opts(sb, es);
+ 
+ 	sbi->s_resuid = make_kuid(&init_user_ns, le16_to_cpu(es->s_def_resuid));
+ 	sbi->s_resgid = make_kgid(&init_user_ns, le16_to_cpu(es->s_def_resgid));
+@@ -4464,17 +4482,6 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 	sbi->s_min_batch_time = EXT4_DEF_MIN_BATCH_TIME;
+ 	sbi->s_max_batch_time = EXT4_DEF_MAX_BATCH_TIME;
+ 
+-	if ((def_mount_opts & EXT4_DEFM_NOBARRIER) == 0)
+-		set_opt(sb, BARRIER);
+-
+-	/*
+-	 * enable delayed allocation by default
+-	 * Use -o nodelalloc to turn it off
+-	 */
+-	if (!IS_EXT3_SB(sb) && !IS_EXT2_SB(sb) &&
+-	    ((def_mount_opts & EXT4_DEFM_NODELALLOC) == 0))
+-		set_opt(sb, DELALLOC);
+-
+ 	/*
+ 	 * set default s_li_wait_mult for lazyinit, for the case there is
+ 	 * no mount option specified.
 -- 
 2.31.1
 
