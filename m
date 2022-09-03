@@ -2,33 +2,33 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5EEA2C54EE9
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D3162ECAAA1
 	for <linux-ext4@archiver.kernel.org>; Sat,  3 Sep 2022 02:51:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231696AbiICCvW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 2 Sep 2022 22:51:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60200 "EHLO
+        id S231478AbiICCvZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 2 Sep 2022 22:51:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60412 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231549AbiICCvH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Sep 2022 22:51:07 -0400
+        with ESMTP id S231596AbiICCvN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Sep 2022 22:51:13 -0400
 Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7FFA4AB051
-        for <linux-ext4@vger.kernel.org>; Fri,  2 Sep 2022 19:50:59 -0700 (PDT)
-Received: from canpemm500004.china.huawei.com (unknown [172.30.72.54])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4MKK1v130FzkWKS;
-        Sat,  3 Sep 2022 10:47:15 +0800 (CST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 07FB5F3246
+        for <linux-ext4@vger.kernel.org>; Fri,  2 Sep 2022 19:51:01 -0700 (PDT)
+Received: from canpemm500004.china.huawei.com (unknown [172.30.72.55])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4MKK3L1HY7znTvC;
+        Sat,  3 Sep 2022 10:48:30 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm500004.china.huawei.com
  (7.192.104.92) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Sat, 3 Sep
- 2022 10:50:57 +0800
+ 2022 10:50:59 +0800
 From:   Jason Yan <yanaijie@huawei.com>
 To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <ritesh.list@gmail.com>, <lczerner@redhat.com>,
         <linux-ext4@vger.kernel.org>
 CC:     Jason Yan <yanaijie@huawei.com>
-Subject: [PATCH v2 10/13] ext4: factor out ext4_geometry_check()
-Date:   Sat, 3 Sep 2022 11:01:53 +0800
-Message-ID: <20220903030156.770313-11-yanaijie@huawei.com>
+Subject: [PATCH v2 13/13] ext4: factor out ext4_journal_data_mode_check()
+Date:   Sat, 3 Sep 2022 11:01:56 +0800
+Message-ID: <20220903030156.770313-14-yanaijie@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20220903030156.770313-1-yanaijie@huawei.com>
 References: <20220903030156.770313-1-yanaijie@huawei.com>
@@ -43,77 +43,50 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Factor out ext4_geometry_check(). No functional change.
+Factor out ext4_journal_data_mode_check(). No functional change.
 
 Signed-off-by: Jason Yan <yanaijie@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Jan Kara<jack@suse.cz>
 ---
- fs/ext4/super.c | 111 ++++++++++++++++++++++++++----------------------
- 1 file changed, 61 insertions(+), 50 deletions(-)
+ fs/ext4/super.c | 60 ++++++++++++++++++++++++++++---------------------
+ 1 file changed, 35 insertions(+), 25 deletions(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 5f0e7c5188a3..69921a850644 100644
+index a464223b2913..cc9e834bc18c 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -4683,6 +4683,66 @@ static int ext4_check_feature_compatibility(struct super_block *sb,
- 	return 0;
+@@ -4910,6 +4910,39 @@ static int ext4_load_and_init_journal(struct super_block *sb,
+ 	return err;
  }
  
-+static int ext4_geometry_check(struct super_block *sb,
-+			       struct ext4_super_block *es)
++static int ext4_journal_data_mode_check(struct super_block *sb)
 +{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	__u64 blocks_count;
-+
-+	/* check blocks count against device size */
-+	blocks_count = sb_bdev_nr_blocks(sb);
-+	if (blocks_count && ext4_blocks_count(es) > blocks_count) {
-+		ext4_msg(sb, KERN_WARNING, "bad geometry: block count %llu "
-+		       "exceeds size of device (%llu blocks)",
-+		       ext4_blocks_count(es), blocks_count);
-+		return -EINVAL;
-+	}
-+
-+	/*
-+	 * It makes no sense for the first data block to be beyond the end
-+	 * of the filesystem.
-+	 */
-+	if (le32_to_cpu(es->s_first_data_block) >= ext4_blocks_count(es)) {
-+		ext4_msg(sb, KERN_WARNING, "bad geometry: first data "
-+			 "block %u is beyond end of filesystem (%llu)",
-+			 le32_to_cpu(es->s_first_data_block),
-+			 ext4_blocks_count(es));
-+		return -EINVAL;
-+	}
-+	if ((es->s_first_data_block == 0) && (es->s_log_block_size == 0) &&
-+	    (sbi->s_cluster_ratio == 1)) {
-+		ext4_msg(sb, KERN_WARNING, "bad geometry: first data "
-+			 "block is 0 with a 1k block and cluster size");
-+		return -EINVAL;
-+	}
-+
-+	blocks_count = (ext4_blocks_count(es) -
-+			le32_to_cpu(es->s_first_data_block) +
-+			EXT4_BLOCKS_PER_GROUP(sb) - 1);
-+	do_div(blocks_count, EXT4_BLOCKS_PER_GROUP(sb));
-+	if (blocks_count > ((uint64_t)1<<32) - EXT4_DESC_PER_BLOCK(sb)) {
-+		ext4_msg(sb, KERN_WARNING, "groups count too large: %llu "
-+		       "(block count %llu, first data block %u, "
-+		       "blocks per group %lu)", blocks_count,
-+		       ext4_blocks_count(es),
-+		       le32_to_cpu(es->s_first_data_block),
-+		       EXT4_BLOCKS_PER_GROUP(sb));
-+		return -EINVAL;
-+	}
-+	sbi->s_groups_count = blocks_count;
-+	sbi->s_blockfile_groups = min_t(ext4_group_t, sbi->s_groups_count,
-+			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
-+	if (((u64)sbi->s_groups_count * sbi->s_inodes_per_group) !=
-+	    le32_to_cpu(es->s_inodes_count)) {
-+		ext4_msg(sb, KERN_ERR, "inodes count not valid: %u vs %llu",
-+			 le32_to_cpu(es->s_inodes_count),
-+			 ((u64)sbi->s_groups_count * sbi->s_inodes_per_group));
-+		return -EINVAL;
++	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
++		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting with "
++			    "data=journal disables delayed allocation, "
++			    "dioread_nolock, O_DIRECT and fast_commit support!\n");
++		/* can't mount with both data=journal and dioread_nolock. */
++		clear_opt(sb, DIOREAD_NOLOCK);
++		clear_opt2(sb, JOURNAL_FAST_COMMIT);
++		if (test_opt2(sb, EXPLICIT_DELALLOC)) {
++			ext4_msg(sb, KERN_ERR, "can't mount with "
++				 "both data=journal and delalloc");
++			return -EINVAL;
++		}
++		if (test_opt(sb, DAX_ALWAYS)) {
++			ext4_msg(sb, KERN_ERR, "can't mount with "
++				 "both data=journal and dax");
++			return -EINVAL;
++		}
++		if (ext4_has_feature_encrypt(sb)) {
++			ext4_msg(sb, KERN_WARNING,
++				 "encrypted files will use data=ordered "
++				 "instead of data journaling mode");
++		}
++		if (test_opt(sb, DELALLOC))
++			clear_opt(sb, DELALLOC);
++	} else {
++		sb->s_iflags |= SB_I_CGROUPWB;
 +	}
 +
 +	return 0;
@@ -121,74 +94,41 @@ index 5f0e7c5188a3..69921a850644 100644
 +
  static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
  {
- 	struct buffer_head *bh, **group_desc;
-@@ -4698,7 +4758,6 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 	unsigned int db_count;
- 	unsigned int i;
- 	int needs_recovery, has_huge_files;
--	__u64 blocks_count;
- 	int err = 0;
- 	ext4_group_t first_not_zeroed;
- 	struct ext4_fs_context *ctx = fc->fs_private;
-@@ -4984,57 +5043,9 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 	struct buffer_head *bh;
+@@ -5033,31 +5066,8 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 	if (ext4_encoding_init(sb, es))
  		goto failed_mount;
- 	}
  
--	/* check blocks count against device size */
--	blocks_count = sb_bdev_nr_blocks(sb);
--	if (blocks_count && ext4_blocks_count(es) > blocks_count) {
--		ext4_msg(sb, KERN_WARNING, "bad geometry: block count %llu "
--		       "exceeds size of device (%llu blocks)",
--		       ext4_blocks_count(es), blocks_count);
-+	if (ext4_geometry_check(sb, es))
- 		goto failed_mount;
+-	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
+-		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting with data=journal disables delayed allocation, dioread_nolock, O_DIRECT and fast_commit support!\n");
+-		/* can't mount with both data=journal and dioread_nolock. */
+-		clear_opt(sb, DIOREAD_NOLOCK);
+-		clear_opt2(sb, JOURNAL_FAST_COMMIT);
+-		if (test_opt2(sb, EXPLICIT_DELALLOC)) {
+-			ext4_msg(sb, KERN_ERR, "can't mount with "
+-				 "both data=journal and delalloc");
+-			goto failed_mount;
+-		}
+-		if (test_opt(sb, DAX_ALWAYS)) {
+-			ext4_msg(sb, KERN_ERR, "can't mount with "
+-				 "both data=journal and dax");
+-			goto failed_mount;
+-		}
+-		if (ext4_has_feature_encrypt(sb)) {
+-			ext4_msg(sb, KERN_WARNING,
+-				 "encrypted files will use data=ordered "
+-				 "instead of data journaling mode");
+-		}
+-		if (test_opt(sb, DELALLOC))
+-			clear_opt(sb, DELALLOC);
+-	} else {
+-		sb->s_iflags |= SB_I_CGROUPWB;
 -	}
++	if (ext4_journal_data_mode_check(sb))
++		goto failed_mount;
  
--	/*
--	 * It makes no sense for the first data block to be beyond the end
--	 * of the filesystem.
--	 */
--	if (le32_to_cpu(es->s_first_data_block) >= ext4_blocks_count(es)) {
--		ext4_msg(sb, KERN_WARNING, "bad geometry: first data "
--			 "block %u is beyond end of filesystem (%llu)",
--			 le32_to_cpu(es->s_first_data_block),
--			 ext4_blocks_count(es));
--		goto failed_mount;
--	}
--	if ((es->s_first_data_block == 0) && (es->s_log_block_size == 0) &&
--	    (sbi->s_cluster_ratio == 1)) {
--		ext4_msg(sb, KERN_WARNING, "bad geometry: first data "
--			 "block is 0 with a 1k block and cluster size");
--		goto failed_mount;
--	}
--
--	blocks_count = (ext4_blocks_count(es) -
--			le32_to_cpu(es->s_first_data_block) +
--			EXT4_BLOCKS_PER_GROUP(sb) - 1);
--	do_div(blocks_count, EXT4_BLOCKS_PER_GROUP(sb));
--	if (blocks_count > ((uint64_t)1<<32) - EXT4_DESC_PER_BLOCK(sb)) {
--		ext4_msg(sb, KERN_WARNING, "groups count too large: %llu "
--		       "(block count %llu, first data block %u, "
--		       "blocks per group %lu)", blocks_count,
--		       ext4_blocks_count(es),
--		       le32_to_cpu(es->s_first_data_block),
--		       EXT4_BLOCKS_PER_GROUP(sb));
--		goto failed_mount;
--	}
--	sbi->s_groups_count = blocks_count;
--	sbi->s_blockfile_groups = min_t(ext4_group_t, sbi->s_groups_count,
--			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
--	if (((u64)sbi->s_groups_count * sbi->s_inodes_per_group) !=
--	    le32_to_cpu(es->s_inodes_count)) {
--		ext4_msg(sb, KERN_ERR, "inodes count not valid: %u vs %llu",
--			 le32_to_cpu(es->s_inodes_count),
--			 ((u64)sbi->s_groups_count * sbi->s_inodes_per_group));
--		ret = -EINVAL;
--		goto failed_mount;
--	}
- 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
- 		   EXT4_DESC_PER_BLOCK(sb);
- 	if (ext4_has_feature_meta_bg(sb)) {
+ 	sb->s_flags = (sb->s_flags & ~SB_POSIXACL) |
+ 		(test_opt(sb, POSIX_ACL) ? SB_POSIXACL : 0);
 -- 
 2.31.1
 
