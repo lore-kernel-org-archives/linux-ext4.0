@@ -2,79 +2,144 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A5CD4C6FA83
-	for <linux-ext4@archiver.kernel.org>; Sat,  3 Sep 2022 17:38:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A49D3ECAAD4
+	for <linux-ext4@archiver.kernel.org>; Sun,  4 Sep 2022 10:01:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232062AbiICRim (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 3 Sep 2022 13:38:42 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51026 "EHLO
+        id S230163AbiIDKBW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 4 Sep 2022 06:01:22 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48514 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232014AbiICRiV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Sep 2022 13:38:21 -0400
-Received: from mail-lf1-x130.google.com (mail-lf1-x130.google.com [IPv6:2a00:1450:4864:20::130])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 07E2A5723B;
-        Sat,  3 Sep 2022 10:38:08 -0700 (PDT)
-Received: by mail-lf1-x130.google.com with SMTP id z29so7504798lfb.13;
-        Sat, 03 Sep 2022 10:38:08 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:from:to:cc:subject:date;
-        bh=umA9pNWUzA7jidUk20/rQkICnueDyRo/bSzQh0Un5OQ=;
-        b=VyzRNIPerqW7I2eLeisbraYtMw+0LYm0zIpPAVWdKSSdHWT/xCWCsp0zWPwXoLJMh+
-         goWZU++QcdZPHEow/EbE3MCighBvzGVxClxj+OzcDeg7qVl++yunpPXNQ01tMimk9Nil
-         o3xjyWbouw8GEZ5rtVXpCeuyeOvZfUYvXih1iKUWZYS4B5zyr0rs+Qp7tMJsvv3NWnl0
-         0RaduV6sEHzrfBKsAnk/xWQvV3uUa4x+tn9f+zR5jX+WCCz3OtcEGQuCgvqQ1qtwV+4e
-         nsp1bSuMMrGMJHCG5Ru+yZt8lscOgM/sAHrlB6rqDFjTbCZDBlJetndoMkX0Uq4SD0cg
-         qr3g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:x-gm-message-state:from:to:cc:subject:date;
-        bh=umA9pNWUzA7jidUk20/rQkICnueDyRo/bSzQh0Un5OQ=;
-        b=dyl0MFsHz5WG1oEZjx+USnQNvwj3dbD40tLZnPe8DEM9qBXGAOR1NhZ3AWbDydVzI5
-         z6sn7iNcExGFPj5LoOHe/i6hdjsyquzegt1KEdqoVUnGMBoIutXWtTtpRBBopnvEYpH8
-         pcJqiIXQVj5oDxZ2NNnuA87PpqF+20k7+klDO5dpn3qKEno/gms/ORDeg3It3VCCKMhY
-         Bo8LeQjwq565SszVJFniIlPYZfzUPTfO+BP+/RmODCAvNS5i6PAEIGzYVRSOKIoJg+xd
-         K61oBupFRu0ChY1W81gDiRhvUG6JC0Xh+EnwtMHxuL4/eolzwYrMLu3swPpjogP2AZTe
-         CKjw==
-X-Gm-Message-State: ACgBeo3hmnw0GTYvZPoiFrI6Nn1K3fdmnMn/A5qjrfdIrPym6DR1/dAR
-        wVTTW00VNmkWlmv+E/ny52ImwXLxWLJwXyhWKT2J4vA/1hqSbQ==
-X-Google-Smtp-Source: AA6agR7Hs/+xwEowwLQe+sf+am2LMCCYbskcPVWg25l+bwBfAQC13YuN5kobnm2fSunCnRskcOjFYam9DiwtSafspBg=
-X-Received: by 2002:ac2:5510:0:b0:495:3773:f9fe with SMTP id
- j16-20020ac25510000000b004953773f9femr748646lfk.65.1662226686593; Sat, 03 Sep
- 2022 10:38:06 -0700 (PDT)
+        with ESMTP id S229754AbiIDKBV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 4 Sep 2022 06:01:21 -0400
+Received: from mout.kundenserver.de (mout.kundenserver.de [212.227.126.130])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3C38140566
+        for <linux-ext4@vger.kernel.org>; Sun,  4 Sep 2022 03:01:19 -0700 (PDT)
+Received: from [192.168.1.138] ([37.4.248.23]) by mrelayeu.kundenserver.de
+ (mreue011 [212.227.15.167]) with ESMTPSA (Nemesis) id
+ 1M277h-1oXGLS2u53-002YNG; Sun, 04 Sep 2022 12:01:07 +0200
+Message-ID: <c449eea8-87e4-3f74-5d11-d159eae28c0b@i2se.com>
+Date:   Sun, 4 Sep 2022 12:01:06 +0200
 MIME-Version: 1.0
-References: <20220901220138.182896-1-vishal.moola@gmail.com> <20220901220138.182896-21-vishal.moola@gmail.com>
-In-Reply-To: <20220901220138.182896-21-vishal.moola@gmail.com>
-From:   Ryusuke Konishi <konishi.ryusuke@gmail.com>
-Date:   Sun, 4 Sep 2022 02:37:49 +0900
-Message-ID: <CAKFNMo=TxJf=47DCnsscu7ZZuDNVi1LDoDHYZo_XscOSzOfi_g@mail.gmail.com>
-Subject: Re: [PATCH 20/23] nilfs2: Convert nilfs_btree_lookup_dirty_buffers()
- to use filemap_get_folios_tag()
-To:     "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
-Cc:     linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-nilfs@vger.kernel.org,
-        linux-mm@kvack.org
-Content-Type: text/plain; charset="UTF-8"
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
+ Thunderbird/91.11.0
+Subject: Re: [PATCH 0/2] ext4: Fix performance regression with mballoc
+Content-Language: en-US
+To:     Ojaswin Mujoo <ojaswin@linux.ibm.com>, Jan Kara <jack@suse.cz>
+Cc:     Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Thorsten Leemhuis <regressions@leemhuis.info>,
+        Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+References: <20220823134508.27854-1-jack@suse.cz>
+ <8e164532-c436-241f-33be-4b41f7f67235@i2se.com>
+ <20220824104010.4qvw46zmf42te53n@quack3>
+ <743489b4-4f9d-3a4d-d87e-e6bf981027c4@i2se.com>
+ <20220825091842.fybrfgdzd56xi53i@quack3>
+ <0a01dfee-59bf-7a16-6272-683a886e1299@i2se.com>
+ <20220826101522.b552tn646qobrjdx@quack3>
+ <Ywor0BFVnLYj2bxH@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
+From:   Stefan Wahren <stefan.wahren@i2se.com>
+In-Reply-To: <Ywor0BFVnLYj2bxH@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+X-Provags-ID: V03:K1:4NVdZeA6gUicw5YbbaVb1+TT67xR4JYw6wXAnP4MqoRi/9bcQnG
+ 7HbtTmB3ArGBNvBAh/IfcvupQnZDWsHtVm/1LW3XC4ByiGsTHzzZXLRbhNs8ImXbi4spRB5
+ Ic/mXAq86ropIJHTU7Sa4OX6x8PombrHoCUnkpNjB9CuQVb+T/7wVPmW+beD4UfFg6jo4+u
+ V+9YypEILEsFIotIBbW0g==
+X-UI-Out-Filterresults: notjunk:1;V03:K0:QNZMb3Qjfp4=:ZZPxQkZ0F8tV10BFljM0cz
+ G5lS4c4m2l1QmZRIAuJlQs6DJtieByJbSkeKari3mSzPebBlAl1XTtxWUBPWR5UEVELF1CHQ+
+ juQtkrmcUDZxxwMEbnmW2961WJJgvL2lMSOnNzk3+t04fxgFBlRg5f5jKJEgllyAYl21XP6VM
+ 95YF16JV1uAWx8+7GATwkskeV2QVOnWApOYPK77VcUnXS++rvL1/KikEm1PJrrrgmbnlXbUA0
+ nzAstKLoUdbVu7DNdQSfp0DH1nwFKAAzvVBtQjRy/l4HFA8/TGXMl2hh7JMZzO1J/P9PZpkov
+ xFHN0WHt4TUsgZthPBTarheZce6UPCMLyEN99h0CYSwZw2rx7z42EGirPoRinTYk7/QjMGZIi
+ WenXv14D3JY6KP2M5yMwL33QqdDIshtvsmsVY8RFGrhUU+KFgpEc/UcKTL+HP9wPqBHbD2WDG
+ Eh0LDwTnkxZf54fmJBfKlwAg4Y21cVhM9gVJARucW32+HiBNR2bkuH84hjLljkjGKPRsZVjl1
+ coZ+L8xNo8TprKcv56a7SbXYPd+hhNOKL11INBPPU00U9Q5mqJAid3N//Q0vbKlFYOS/sk+DQ
+ FKXBWY5OU7GnY5OiT2GzvL+3yGZcnzkFyfnCnA2eibPUCZ2Xc34pmqVbwsVi1VVRLtxk0sX79
+ T1U0PfNRS9slW+jbHfQ9kovqahU2A9EEAXsJ9M8T5ND053iKWYQHP9KgJv1AhYlDCP4Tnrsg0
+ ZH28H8nGxAaHNYMUeP6c1RsXO152nJzGYC0W2zUu711mh71miRkrNUWiA5GzT3iJ13i6g344b
+ rX/axbp
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Sep 2, 2022 at 7:06 AM Vishal Moola (Oracle) wrote:
->
-> Convert function to use folios throughout. This is in preparation for
-> the removal of find_get_pages_range_tag().
->
-> Signed-off-by: Vishal Moola (Oracle) <vishal.moola@gmail.com>
-> ---
->  fs/nilfs2/btree.c | 14 +++++++-------
->  1 file changed, 7 insertions(+), 7 deletions(-)
+Hi,
 
-Acked-by: Ryusuke Konishi <konishi.ryusuke@gmail.com>
+Am 27.08.22 um 16:36 schrieb Ojaswin Mujoo:
+> On Fri, Aug 26, 2022 at 12:15:22PM +0200, Jan Kara wrote:
+>> Hi Stefan,
+>>
+>> On Thu 25-08-22 18:57:08, Stefan Wahren wrote:
+>>>> Perhaps if you just download the archive manually, call sync(1), and measure
+>>>> how long it takes to (untar the archive + sync) in mb_optimize_scan=0/1 we
+>>>> can see whether plain untar is indeed making the difference or there's
+>>>> something else influencing the result as well (I have checked and
+>>>> rpi-update does a lot of other deleting & copying as the part of the
+>>>> update)? Thanks.
+>>> mb_optimize_scan=0 -> almost 5 minutes
+>>>
+>>> mb_optimize_scan=1 -> almost 18 minutes
+>>>
+>>> https://github.com/lategoodbye/mb_optimize_scan_regress/commit/3f3fe8f87881687bb654051942923a6b78f16dec
+>> Thanks! So now the iostat data indeed looks substantially different.
+>>
+>> 			nooptimize	optimize
+>> Total written		183.6 MB	190.5 MB
+>> Time (recorded)		283 s		1040 s
+>> Avg write request size	79 KB		41 KB
+>>
+>> So indeed with mb_optimize_scan=1 we do submit substantially smaller
+>> requests on average. So far I'm not sure why that is. Since Ojaswin can
+>> reproduce as well, let's see what he can see from block location info.
+>> Thanks again for help with debugging this and enjoy your vacation!
+>>
+> Hi Jan and Stefan,
+>
+> Apologies for the delay, I was on leave yesterday and couldn't find time to get to this.
+>
+> So I was able to collect the block numbers using the method you suggested. I converted the
+> blocks numbers to BG numbers and plotted that data to visualze the allocation spread. You can
+> find them here:
+>
+> mb-opt=0, patched kernel: https://github.com/OjaswinM/mbopt-bug/blob/master/grpahs/mbopt-0-patched.png
+> mb-opt=1, patched kernel: https://github.com/OjaswinM/mbopt-bug/blob/master/grpahs/mbopt-1-patched.png
+> mb-opt=1, unpatched kernel: https://github.com/OjaswinM/mbopt-bug/blob/master/grpahs/mbopt-1-unpatched.png
+>
+> Observations:
+> * Before the patched mb_optimize_scan=1 allocations were way more spread out in
+>    40 different BGs.
+> * With the patch, we still allocate in 36 different BGs but majority happen in
+>    just 1 or 2 BGs.
+> * With mb_optimize_scan=0, we only allocate in just 7 unique BGs, which could
+>    explain why this is faster.
 
-Thanks,
-Ryusuke Konishi
+thanks this is very helpful for me to understand. So it seems to me that 
+with disabled mb_optimized_scan we have a more sequential write behavior 
+and with enabled mb_optimized_scan a more random write behavior.
+
+ From my understanding writing small blocks at random addresses of the 
+sd card flash causes a lot of overhead, because the sd card controller 
+need to erase huge blocks (up to 1 MB) before it's able to program the 
+flash pages. This would explain why this series doesn't fix the 
+performance issue, the total amount of BGs is still much higher.
+
+Is this new block allocation pattern a side effect of the optimization 
+or desired?
+
+> Also, one strange thing I'm seeing is that the perfs don't really show any
+> particular function causing the regression, which is surprising considering
+> mb_optimize_scan=1 almost takes 10 times more time.
+>
+> All the perfs can be found here (raw files and perf report/diff --stdio ):
+> https://github.com/OjaswinM/mbopt-bug/tree/master/perfs
+>
+> Lastly, FWIW I'm not able to replicate the regression when using loop devices
+> and mb_optmize_scan=1 performs similar to mb-opmtimize_scan=0 (without patches
+> as well). Not sure if this is related to the issue or just some side effect of
+> using loop devices.
+The regression actually happen in the sd card, but it's triggered 
+external by the different IO pattern. For a loop device there is no 
+difference between sequential and random write.
+>
+> Will post here if I have any updates on this.
+>
+> Regards,
+> Ojaswin
