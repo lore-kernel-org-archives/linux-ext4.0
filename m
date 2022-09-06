@@ -2,54 +2,54 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 77ABFC6FA83
-	for <linux-ext4@archiver.kernel.org>; Tue,  6 Sep 2022 16:06:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BCC49ECAAA1
+	for <linux-ext4@archiver.kernel.org>; Tue,  6 Sep 2022 16:06:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232963AbiIFQGM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 6 Sep 2022 12:06:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49888 "EHLO
+        id S234248AbiIFQGN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 6 Sep 2022 12:06:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49926 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230060AbiIFQFt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Sep 2022 12:05:49 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BEC17327
-        for <linux-ext4@vger.kernel.org>; Tue,  6 Sep 2022 08:29:22 -0700 (PDT)
+        with ESMTP id S234073AbiIFQFu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Sep 2022 12:05:50 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BED4432E;
+        Tue,  6 Sep 2022 08:29:22 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 3E3051F922;
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 4283033843;
         Tue,  6 Sep 2022 15:29:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1662478161; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=xeBX+aqh8dI+zZamf+hnFHxB1cAUoFVE79Cq3AcYAWw=;
-        b=iYutOdHajKPdlycuKMrIVy/WoSKcBeO54HhMaQzR3WHqabELFXWfuZPSU9HERp3jXTGrSR
-        PWApwsdeH5pnN6Jre3+oNB2FRLBlN9q4EUYHc8I3V3EqtEXaXDY83Z/UX2w/PDKyQH4c3G
-        a3QAhh79LFF3NuSs4hFI3mrYcYEgmOQ=
+        bh=gMp2Hick6qOc8KeMg4OjzQqTj+axLzATYCnUdtiwa7A=;
+        b=TIp0HnuEHgojS7W82GLHZZc1Cvn3kTdD5mfuotwL2QOjciaIlvUdMdAvpYS+dgCrA3YW7+
+        BjaYzzqUfCHp/sBPcehfRjBiDHKPGll5093+PGCU2DlJU7QAj9bvt4PX8j2l5FM3PRcn+d
+        YI4ecnUQXWSnW8/K9s7HEprcGViu5Y0=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1662478161;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=xeBX+aqh8dI+zZamf+hnFHxB1cAUoFVE79Cq3AcYAWw=;
-        b=oOs3fxKeJfydNYr0q/OmiKcFlKJm5GiQJkbO8aQDnpg+NZQgpARqi/8pONFn1es4fUUaNv
-        INl1fedMXLX8XxBw==
+        bh=gMp2Hick6qOc8KeMg4OjzQqTj+axLzATYCnUdtiwa7A=;
+        b=aBZNfzBPn3m3lZLFgPr8tg5BHFGGovmmpxuRm5ZHsNO+UEmEmI1bx0C40orY5iL9Eic83i
+        Pp75cHZrHeSjyNDw==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 2E30D13A93;
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 3474013B2B;
         Tue,  6 Sep 2022 15:29:21 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id 9TIhDFFnF2NQHAAAMHmgww
+        id eZAaDFFnF2NSHAAAMHmgww
         (envelope-from <jack@suse.cz>); Tue, 06 Sep 2022 15:29:21 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 84282A0684; Tue,  6 Sep 2022 17:29:20 +0200 (CEST)
+        id 7A014A0681; Tue,  6 Sep 2022 17:29:20 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>,
@@ -57,46 +57,98 @@ Cc:     <linux-ext4@vger.kernel.org>,
         Ojaswin Mujoo <ojaswin@linux.ibm.com>,
         Stefan Wahren <stefan.wahren@i2se.com>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/5] ext4: Make directory inode spreading reflect flexbg size
-Date:   Tue,  6 Sep 2022 17:29:09 +0200
-Message-Id: <20220906152920.25584-3-jack@suse.cz>
+        Jan Kara <jack@suse.cz>, stable@vger.kernel.org
+Subject: [PATCH 1/5] ext4: Make mballoc try target group first even with mb_optimize_scan
+Date:   Tue,  6 Sep 2022 17:29:07 +0200
+Message-Id: <20220906152920.25584-1-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20220906150803.375-1-jack@suse.cz>
 References: <20220906150803.375-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1030; h=from:subject; bh=0ydVeHAR/W/FHxkhDmZbYwUxUA0Pga+4UqySultdu+Y=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjF2dE6HEeTN6O5RgZu8VXC5YfOcB8GhMVoenSbiI7 SJMRxpOJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYxdnRAAKCRCcnaoHP2RA2Uf4B/ 4m4hipZEFyCfvBbnqRVY/vuHFPg9ZBMFSx1h9e4yAbCG50KHPNeu4fWGPXcYPZ2M+niz8Dd4VwIOhU d/f5xzFgy7qxzv0JB6u7ePKarDYyXuz9/e39FlpcmPWDeixkCAFXIwadwVoojN5c46iBd47Y5axVm/ rnypd0/f42N/yQio8aOS/uM2oWXCTBJpmaTA0nsFIjzaKxCXmPgXZdpC421zPrPskB8qwZxt3zB/4N sPO4dA/VQw6E/pV3G6YczupzGJQoftQR1zMUneAuOxH4RiDRdankjlaIXplTWv9y736cmy8N1GYMYy U04cQyfKfN63UDzgVplH2u9WNDf2zX
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3229; h=from:subject; bh=K6xdj54Qpb8Tt5BBOUsH35H7W3BKo6m5J++7zK88L3w=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjF2dC5xDGfWfuB7942hkkjA4TzXmtO0MD+XfQKYBM 9hZceKCJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYxdnQgAKCRCcnaoHP2RA2ctrCA DY8HzJf/2fU07iV+Qth+MvHoUChGKLP8nv5pj7gAuiO2p6Kh13Os/d8kiZCcQw1Bb+bUm1S+ClVJzT okUIOmcM76Nk/xFiPUz32+/zvgc4zwv3naIZw1UXrfMgXPUh9GqQW5b4XuWEMenBrzOAc8jkpd02qp std5qKjBxO/4/1zeoOetdy5zO1RhXKsnbS+yDk05aMWqpe6CwEGrVwQiqdkGEFvOKdpoK2odqiM5jj kacoGog8A1M7Do5YPThFEv6RdCicN081w6j6rF62D+Bcj2BSHdjhSaqdCv+M7KcPe0VXZYBiWTqRgO xn3m37bQIJfmDh70ekSL6ky6kZzP/s
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Currently the Orlov inode allocator searches for free inodes for a
-directory only in flex block groups with at most inodes_per_group/16
-more directory inodes than average per flex block group. However with
-growing size of flex block group this becomes unnecessarily strict.
-Scale allowed difference from average directory count per flex block
-group with flex block group size as we do with other metrics.
+One of the side-effects of mb_optimize_scan was that the optimized
+functions to select next group to try were called even before we tried
+the goal group. As a result we no longer allocate files close to
+corresponding inodes as well as we don't try to expand currently
+allocated extent in the same group. This results in reaim regression
+with workfile.disk workload of upto 8% with many clients on my test
+machine:
 
+                     baseline               mb_optimize_scan
+Hmean     disk-1       2114.16 (   0.00%)     2099.37 (  -0.70%)
+Hmean     disk-41     87794.43 (   0.00%)    83787.47 *  -4.56%*
+Hmean     disk-81    148170.73 (   0.00%)   135527.05 *  -8.53%*
+Hmean     disk-121   177506.11 (   0.00%)   166284.93 *  -6.32%*
+Hmean     disk-161   220951.51 (   0.00%)   207563.39 *  -6.06%*
+Hmean     disk-201   208722.74 (   0.00%)   203235.59 (  -2.63%)
+Hmean     disk-241   222051.60 (   0.00%)   217705.51 (  -1.96%)
+Hmean     disk-281   252244.17 (   0.00%)   241132.72 *  -4.41%*
+Hmean     disk-321   255844.84 (   0.00%)   245412.84 *  -4.08%*
+
+Also this is causing huge regression (time increased by a factor of 5 or
+so) when untarring archive with lots of small files on some eMMC storage
+cards.
+
+Fix the problem by making sure we try goal group first.
+
+Fixes: 196e402adf2e ("ext4: improve cr 0 / cr 1 group scanning")
+CC: stable@vger.kernel.org
+Reported-by: Stefan Wahren <stefan.wahren@i2se.com>
+Link: https://lore.kernel.org/all/20220727105123.ckwrhbilzrxqpt24@quack3/
+Link: https://lore.kernel.org/all/0d81a7c2-46b7-6010-62a4-3e6cfc1628d6@i2se.com/
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ialloc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/mballoc.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index f73e5eb43eae..208b87ce8858 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -510,7 +510,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
- 		goto fallback;
- 	}
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index bd8f8b5c3d30..41e1cfecac3b 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1049,8 +1049,10 @@ static void ext4_mb_choose_next_group(struct ext4_allocation_context *ac,
+ {
+ 	*new_cr = ac->ac_criteria;
  
--	max_dirs = ndirs / ngroups + inodes_per_group / 16;
-+	max_dirs = ndirs / ngroups + inodes_per_group*flex_size / 16;
- 	min_inodes = avefreei - inodes_per_group*flex_size / 4;
- 	if (min_inodes < 1)
- 		min_inodes = 1;
+-	if (!should_optimize_scan(ac) || ac->ac_groups_linear_remaining)
++	if (!should_optimize_scan(ac) || ac->ac_groups_linear_remaining) {
++		*group = next_linear_group(ac, *group, ngroups);
+ 		return;
++	}
+ 
+ 	if (*new_cr == 0) {
+ 		ext4_mb_choose_next_group_cr0(ac, new_cr, group, ngroups);
+@@ -2636,7 +2638,7 @@ static noinline_for_stack int
+ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ {
+ 	ext4_group_t prefetch_grp = 0, ngroups, group, i;
+-	int cr = -1;
++	int cr = -1, new_cr;
+ 	int err = 0, first_err = 0;
+ 	unsigned int nr = 0, prefetch_ios = 0;
+ 	struct ext4_sb_info *sbi;
+@@ -2711,13 +2713,11 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 		ac->ac_groups_linear_remaining = sbi->s_mb_max_linear_groups;
+ 		prefetch_grp = group;
+ 
+-		for (i = 0; i < ngroups; group = next_linear_group(ac, group, ngroups),
+-			     i++) {
+-			int ret = 0, new_cr;
++		for (i = 0, new_cr = cr; i < ngroups; i++,
++		     ext4_mb_choose_next_group(ac, &new_cr, &group, ngroups)) {
++			int ret = 0;
+ 
+ 			cond_resched();
+-
+-			ext4_mb_choose_next_group(ac, &new_cr, &group, ngroups);
+ 			if (new_cr != cr) {
+ 				cr = new_cr;
+ 				goto repeat;
 -- 
 2.35.3
 
