@@ -2,145 +2,142 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 27ACBC6FA86
-	for <linux-ext4@archiver.kernel.org>; Wed,  7 Sep 2022 14:28:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1E6EDC6FA8A
+	for <linux-ext4@archiver.kernel.org>; Wed,  7 Sep 2022 14:44:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230229AbiIGO2t (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 7 Sep 2022 10:28:49 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37184 "EHLO
+        id S229488AbiIGOnl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 7 Sep 2022 10:43:41 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40820 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230246AbiIGO2g (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Sep 2022 10:28:36 -0400
-Received: from mail-pj1-x1035.google.com (mail-pj1-x1035.google.com [IPv6:2607:f8b0:4864:20::1035])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D04D784EE0
-        for <linux-ext4@vger.kernel.org>; Wed,  7 Sep 2022 07:28:16 -0700 (PDT)
-Received: by mail-pj1-x1035.google.com with SMTP id n65-20020a17090a5ac700b001fbb4fad865so14974590pji.1
-        for <linux-ext4@vger.kernel.org>; Wed, 07 Sep 2022 07:28:16 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
-         :from:to:cc:subject:date;
-        bh=12IUsA/cMwBIxeadxv4/3ocGPLCW9oxNtzio7zkZo5s=;
-        b=EntiqgPBDNS4gM6mqwS15o/ZX0gKmm835b1vEUMAL3kN0DIcQ0TfIg1MORJ3FeqgAq
-         ZXxqYa6Cy02HRnxgKj/6++outami4aDrHHYS5dKlD86Aza/Xo44TR2n1/6Ch8iacRBAG
-         4Gkg4OCvdrBo5jkfVDk8Mz/XUPGnHEas1WY8NtCiFP5/xyH3j4Rm70tG9dvGd58nctM6
-         545c3F+zjqfCQZYoVJNjSeDxn47ZczpXy2ZHJjPMh2nS84YowlJOVGptBybBKSpJ1pAn
-         f9k1xno5iAlicUXxVOl3pbCKLytYf2ZalL8oLj++bNM719ZRPcgt6YiV4zsMFiS9Wetg
-         yNHA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
-         :x-gm-message-state:from:to:cc:subject:date;
-        bh=12IUsA/cMwBIxeadxv4/3ocGPLCW9oxNtzio7zkZo5s=;
-        b=Aw8VGmW2zeeyQYwEKmcAYQkGjDb++URn8nIi0jxSDrl6M2rokj7wIYUxHnvgUYd3h2
-         7ObGK1jrVESwbfKgsvZV76iZPEvFI0uFKdIK+ZDlQPtCqO82XNrTh6U/U7tU52Xbe1Oz
-         raO21NyvEGEcw7zid2lf9m+05FnYqAuxGVyJgj/hmcb6AdxbeXxwIW8etrGNecOpm9jx
-         E9kDR9UmEq3L16xY8W7zGe91th3u8ZHq9GKVCKZIU2BWxm1OH81MK4UI5L0M/5ILoJvq
-         vnGZ7+RArpL/pggYjA0kharssWjKCZW3jHV/MysXsjYRceIzCCKnjDpfPAIQERCofevK
-         lTGQ==
-X-Gm-Message-State: ACgBeo1D0u9YsaZFSPSKrJpfSXXJr/N5Yu2GVX7a8hGsidIUf8Ccz562
-        PnGeX490vIbMPFm352Dwl6t8kk6F9dYppIvUkIUZFtH3
-X-Google-Smtp-Source: AA6agR6gn5iGsng7/8Z4oaqqBpruhE2SWx5AEpupp26ppwI/Mqr5uLIJpl/K4kpjwlr6dsv7tA3KI9hxsVxGWSdmfK0=
-X-Received: by 2002:a17:903:1250:b0:172:614b:5f01 with SMTP id
- u16-20020a170903125000b00172614b5f01mr4162412plh.103.1662560868490; Wed, 07
- Sep 2022 07:27:48 -0700 (PDT)
+        with ESMTP id S229701AbiIGOnP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Sep 2022 10:43:15 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 19927956BA;
+        Wed,  7 Sep 2022 07:43:14 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 745D9B81D4C;
+        Wed,  7 Sep 2022 14:43:12 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EC28BC433D6;
+        Wed,  7 Sep 2022 14:43:08 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1662561791;
+        bh=RJUuE6TtbAEmyXO144jflnrUxtajEUR5AU9O8xs0fkA=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=G3Mqs2auJIxQBypGYorryf7m3qZLDZrNkCO2Ze1TQVFb6eeUpsTrFjepv3AgkfcUO
+         N7rmiK+hknBW94epBcdF3wYws+2vefcFR/8VL26f0xi4GPORhEtyhN/SS0wBlZrv6G
+         C+OufpGojYQTqW4iDUIONf6B6VD1TUrNY7dPEAJ3Yoy7udhhp2mQ0FII/UALu9pTyl
+         JE2X4fC5LAY0K5ZTwdx1AumiYyRGDARwPNX2qzHQWvZNSTOiM7QDDlla4LpeaBPFmY
+         sdwQCneyPDbAD6Nv10StzJ4VY1Bekdy1/k/Lr61M7W8oHoiYa6yXzN/X9iTJRLol3t
+         xg9VTtkCFaUUg==
+Message-ID: <36e2a19ea789aca3c1cdc9a93b26285b6e7b428c.camel@kernel.org>
+Subject: Re: [man-pages RFC PATCH v4] statx, inode: document the new
+ STATX_INO_VERSION field
+From:   Jeff Layton <jlayton@kernel.org>
+To:     Jan Kara <jack@suse.cz>
+Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
+        NeilBrown <neilb@suse.de>, tytso@mit.edu,
+        adilger.kernel@dilger.ca, djwong@kernel.org, david@fromorbit.com,
+        trondmy@hammerspace.com, viro@zeniv.linux.org.uk,
+        zohar@linux.ibm.com, xiubli@redhat.com, chuck.lever@oracle.com,
+        lczerner@redhat.com, brauner@kernel.org, fweimer@redhat.com,
+        linux-man@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org
+Date:   Wed, 07 Sep 2022 10:43:07 -0400
+In-Reply-To: <20220907135153.qvgibskeuz427abw@quack3>
+References: <20220907111606.18831-1-jlayton@kernel.org>
+         <166255065346.30452.6121947305075322036@noble.neil.brown.name>
+         <79aaf122743a295ddab9525d9847ac767a3942aa.camel@kernel.org>
+         <20220907125211.GB17729@fieldses.org>
+         <771650a814ab1ff4dc5473d679936b747d9b6cf5.camel@kernel.org>
+         <20220907135153.qvgibskeuz427abw@quack3>
+Content-Type: text/plain; charset="ISO-8859-15"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.44.4 (3.44.4-1.fc36) 
 MIME-Version: 1.0
-References: <CAJJqR23jhPAgPQQ0F=3L4QG7gu7EqyocUyzRTRftEWAGQqHVQA@mail.gmail.com>
-In-Reply-To: <CAJJqR23jhPAgPQQ0F=3L4QG7gu7EqyocUyzRTRftEWAGQqHVQA@mail.gmail.com>
-From:   Luigi Fabio <luigi.fabio@gmail.com>
-Date:   Wed, 7 Sep 2022 10:27:14 -0400
-Message-ID: <CAJJqR20TR=QDnn9U7NPy=hCRbq-eMa8PjQ2-HsuRrpmybwTOpg@mail.gmail.com>
-Subject: Fwd: Ext4 filesystem recovery after mdraid failure
-To:     linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-I am encountering an unusual problem after an mdraid failure, I'll
-summarise briefly and can provide further details as required.
+On Wed, 2022-09-07 at 15:51 +0200, Jan Kara wrote:
+> On Wed 07-09-22 09:12:34, Jeff Layton wrote:
+> > On Wed, 2022-09-07 at 08:52 -0400, J. Bruce Fields wrote:
+> > > On Wed, Sep 07, 2022 at 08:47:20AM -0400, Jeff Layton wrote:
+> > > > On Wed, 2022-09-07 at 21:37 +1000, NeilBrown wrote:
+> > > > > On Wed, 07 Sep 2022, Jeff Layton wrote:
+> > > > > > +The change to \fIstatx.stx_ino_version\fP is not atomic with r=
+espect to the
+> > > > > > +other changes in the inode. On a write, for instance, the i_ve=
+rsion it usually
+> > > > > > +incremented before the data is copied into the pagecache. Ther=
+efore it is
+> > > > > > +possible to see a new i_version value while a read still shows=
+ the old data.
+> > > > >=20
+> > > > > Doesn't that make the value useless?
+> > > > >=20
+> > > >=20
+> > > > No, I don't think so. It's only really useful for comparing to an o=
+lder
+> > > > sample anyway. If you do "statx; read; statx" and the value hasn't
+> > > > changed, then you know that things are stable.=20
+> > >=20
+> > > I don't see how that helps.  It's still possible to get:
+> > >=20
+> > > 		reader		writer
+> > > 		------		------
+> > > 				i_version++
+> > > 		statx
+> > > 		read
+> > > 		statx
+> > > 				update page cache
+> > >=20
+> > > right?
+> > >=20
+> >=20
+> > Yeah, I suppose so -- the statx wouldn't necessitate any locking. In
+> > that case, maybe this is useless then other than for testing purposes
+> > and userland NFS servers.
+> >=20
+> > Would it be better to not consume a statx field with this if so? What
+> > could we use as an alternate interface? ioctl? Some sort of global
+> > virtual xattr? It does need to be something per-inode.
+>=20
+> I was thinking how hard would it be to increment i_version after updating
+> data but it will be rather hairy. In particular because of stuff like
+> IOCB_NOWAIT support which needs to bail if i_version update is needed. So
+> yeah, I don't think there's an easy way how to provide useful i_version f=
+or
+> general purpose use.
+>=20
 
-First of all, the context. This is happening on a Debian 11 system,
-amd64 arch, with current updates (kernel 5.10.136-1, util-linux
-2.36.1).
+Yeah, it does look ugly.
 
-The system has a 12 drive mdraid RAID5 for data, recently migrated to
-LSI 2308 HBAs.
-This is relevant because yesterday, at around 13,00 local (EST), four
-drives, an entire HBA channel, decided to drop from the RAID.
+Another idea might be to just take the i_rwsem for read in the statx
+codepath when STATX_INO_VERSION has been requested. xfs, ext4 and btrfs
+hold the i_rwsem exclusively over their buffered write ops. Doing that
+should be enough to prevent the race above, I think. The ext4 DAX path
+also looks ok there.
 
-Of course, mdraid didn't like that and stopped the arrays. I reverted
-to best practice and shut down the system first of all.
+The ext4 DIO write implementation seems to take the i_rwsem for read
+though unless the size is changing or the write is unaligned. So a
+i_rwsem readlock would probably not be enough to guard against changes
+there. Maybe we can just say if you're doing DIO, then don't expect real
+atomicity wrt i_version?
 
-Further context: the filesystem in the array is ancient - I am vaguely
-proud of that - from 2001.
-It started as ext2, grew to ext3, then to ext4 and finally to ext4 with 64 bits.
-Because I am paranoid, I always mount ext4 with nodelalloc and data=journal.
-The journal is external on a RAID1 of SSDs.
-I recently (within the last ~3 months) enabled metadata_csum, which is
-relevant to the following - the filesystem had never had metadata_csum
-enabled before.
+knfsd seems to already hold i_rwsem when doing directory morphing
+operations (where it fetches the pre and post attrs), but it doesn't
+take it when calling nfsd4_encode_fattr (which is used to fill out
+GETATTR and READDIR replies, etc.). We'd probably have to start taking
+it in those codepaths too.
 
-Upon reboot, the arrays would not reassemble - this is expected,
-because 4/12 drives were marked faulty. So I re--created the array
-using the same parameters as were used back when the array was built.
-Unfortunately, I had a moment of stupid and didn't specify metadata
-0.90 in the re--create, so it was recreated with metadata 1.2... which
-writes its data block at the beginning of the components, not at the
-end. I noticed it, restopped the array and recreated with the correct
-0.90, but the damage was done: the 256 byte + 12 * 20 header was
-written at the beginning of each of the 12 components.
-Still, unless I am mistaken, this just means that at worst 12x (second
-block of each component) were damaged, which shouldn't be too bad. The
-only further possibility is that mdraid also zeroed out the 'blank
-space' that it puts AFTER the header block and BEFORE the data, but
-according to documentation it shouldn't do that.
-In any case, I subsequently reassembled the array 'correctly' to match
-the previous order and settings and I believe I got it right. I kept
-the array RO and tried fsck -n, which gave me this:
-
-ext2fs_check_desc: Corrupt group descriptor: bad block for block bitmap
-fsck.ext4: Group descriptors look bad... trying backup blocks...
-
-It then warns that it won't attempt journal recovery because it's in
-RO mode and declares the fs clean - with a reasonable looking number
-of files and blocks.
-
-If I try to mount -t ext4 -o ro, I get :
-
-mount: /mnt: mount(2) system call failed: Structure needs cleaning.
-
-so before anything else, I tried fsck -nf to make sure that the REST
-of the filesystem is in one logical piece.
-THAT painted a very different picture:
-On pass 1, I get approximately 980k (almost 10^6) of
-Inode nnnnn passes checks, but checksum does not match inode
-and ~ 2000
-Inode nnnnn contains garbage
-Plus some 'tree not optimised' which are technically not errors, from
-what I understand.
-After ~11 hours, it switches to 1b, tells me that inode 12 has a long
-list of duplicate blocks
-
-Running additional passes to resolve blocks claimed by more than one inode...
-Pass 1B: Rescanning for multiply-claimed blocks
-Multiply-claimed block(s) in inode 12: 2928004133 [....]
-
-And ends after the list of multiply claimed blocks with:
-
-e2fsck: aborted
-Error while scanning inodes (8193): Inode checksum does not match inode
-
-/dev/md123: ********** WARNING: Filesystem still has errors **********
-
-
-/dev/md123: ********** WARNING: Filesystem still has errors **********
-
-So, what is my next step? I realise I should NOT have touched the
-original drives and dd-ed images to a separate array to work on those,
-but I believe the only writing that occurred were the mdraid
-superblocks.
-
-Where do I go from here?
-
-Thanks!
+We should also bear in mind that from userland, doing a read of a normal
+file and fetching the i_version takes two different syscalls. I'm not
+sure we need things to be truly "atomic", per-se. Whether and how we can
+exploit that fact, I'm not sure.
+--=20
+Jeff Layton <jlayton@kernel.org>
