@@ -2,91 +2,103 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 86CD4ECAAD5
-	for <linux-ext4@archiver.kernel.org>; Thu,  8 Sep 2022 09:13:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 507EEC38145
+	for <linux-ext4@archiver.kernel.org>; Thu,  8 Sep 2022 09:23:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230220AbiIHJNj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 8 Sep 2022 05:13:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52062 "EHLO
+        id S229957AbiIHJXY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 8 Sep 2022 05:23:24 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35868 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229776AbiIHJNi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Sep 2022 05:13:38 -0400
-Received: from mail-pf1-x436.google.com (mail-pf1-x436.google.com [IPv6:2607:f8b0:4864:20::436])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BE100FF514
-        for <linux-ext4@vger.kernel.org>; Thu,  8 Sep 2022 02:13:37 -0700 (PDT)
-Received: by mail-pf1-x436.google.com with SMTP id c198so7420765pfc.13
-        for <linux-ext4@vger.kernel.org>; Thu, 08 Sep 2022 02:13:37 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date;
-        bh=hnBPIcuBbiTJ6T38MqUXTmFHiX7vavyzIU2NCuu61RU=;
-        b=IM2MUcyeIPudii/nEByJXHG7P/xBWWz321xVy4k7h+Gl7P6pQvjSSMP2dn2RDwgrCq
-         kASfhgYNhsGX/WKfATRkEBOcDBWPBcewQYccZswx0dm2mkCOXn8MVUyK8EFgdiDV8Jql
-         xhJCGiAVesroQhBQyUzPeKHs7iiy5Dugti7MHr27K6EwIWtN+GPq6hVqkcAI65vrLYki
-         69xOWkHEgQY2agsn/WCNQm69/rruS48zBJQtcQv39DNAF4YkMeCuvAJZJVA6SRiDVkLz
-         HNWi1Wxpavu77E0e/8LLnophVd1SAB9trjDrur4ap+eakZd9HaXuQAGVw6h78zfQF3jS
-         93wQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date;
-        bh=hnBPIcuBbiTJ6T38MqUXTmFHiX7vavyzIU2NCuu61RU=;
-        b=rsFRO1Hw7UWz3YFqQcfW8qHz5bWmuKZq9hylIgVQ7birbB2jEsj6GSLtjjXsW/l9ij
-         +svUchOUw1q63FJ90E9AlN+XvsWjmWXsyJnxyTCaHjXDZfiHRO8xUwSS0arUVRF4+7vn
-         TSq7FFPAwey+WT4d5St8/UsB8IDtlKI9xxKVNfy86rfxbNdLewAEYWANUNOto77k4in5
-         at9YDDufRMuaxft1ZlhHagNJmZ/KChXLFuvY4d7OgfNTnexYGewXhZSL6w9/XSy68d2Z
-         XeHuao8+eUCM6sqVIx7qQId+CredzvY0JdToBQFMgBq8AID9KSAvb8O0hVz2jQEGTqUC
-         ZJjQ==
-X-Gm-Message-State: ACgBeo19Q7qsdiVEbPzZA1vb13kM9czm9K5CImrHOq+jkUTBXeFg0FGz
-        0yIplsUOz+wt0Msr3QRgtdg=
-X-Google-Smtp-Source: AA6agR4pj/WlN+8MJ5jCU36iu+RlA0gwT/KadYHOY3CTGd8by6O+RONBu8hoUGWSY8V4CWpN7w9NoA==
-X-Received: by 2002:a63:8a4a:0:b0:434:c99c:6fd4 with SMTP id y71-20020a638a4a000000b00434c99c6fd4mr6862822pgd.24.1662628417331;
-        Thu, 08 Sep 2022 02:13:37 -0700 (PDT)
-Received: from localhost ([2406:7400:63:83c4:f166:555c:90a1:a48d])
-        by smtp.gmail.com with ESMTPSA id ay6-20020a17090b030600b00200b12f2bf3sm1196833pjb.51.2022.09.08.02.13.36
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 08 Sep 2022 02:13:36 -0700 (PDT)
-Date:   Thu, 8 Sep 2022 14:43:32 +0530
-From:   "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
-To:     Alexey Lyashkov <alexey.lyashkov@gmail.com>
-Cc:     linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Artem Blagodarenko <artem.blagodarenko@gmail.com>,
-        Andrew Perepechko <anserper@ya.ru>
-Subject: Re: [PATCH] jbd2: wake up journal waiters in FIFO order, not  LIFO
-Message-ID: <20220908091332.lowhekyxcs23kgtu@riteshh-domain>
-References: <20220907165959.1137482-1-alexey.lyashkov@gmail.com>
- <20220908054611.vjcb27wmq4dggqmv@riteshh-domain>
+        with ESMTP id S231804AbiIHJWy (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Sep 2022 05:22:54 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7D970E1248
+        for <linux-ext4@vger.kernel.org>; Thu,  8 Sep 2022 02:21:39 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id BA01C33A5D;
+        Thu,  8 Sep 2022 09:21:36 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1662628896; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=HWobdIdBVqzKk8PTxur1hZpvv7SZFf41/a/VOf26Qr8=;
+        b=DRqu1t+AaWCTp8jLjMJLTbMZDbVDMmHK+6qA+91QvTjNFAvYzsT+GEflftqg0+3fko3xTy
+        H5OjcaZUWYk+XMrT7X6a25PgEo1t/S68NRUGx7TTCivF6ZB5GLFiEcuu8xQqEEfvDm9aVn
+        fG9WYp3YGYtf36Q612iigBxEq0Q1nus=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1662628896;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=HWobdIdBVqzKk8PTxur1hZpvv7SZFf41/a/VOf26Qr8=;
+        b=is//Hlo59PGxb1/egI/dpNBHvPxRk9f5eaBPZMDDccuYBQK/r8t9SO7n6bfTtY52JUFW0b
+        9NF1d121Xg452IBg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id AA7F213A72;
+        Thu,  8 Sep 2022 09:21:36 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id 8YmXKSC0GWOrRAAAMHmgww
+        (envelope-from <jack@suse.cz>); Thu, 08 Sep 2022 09:21:36 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id 1CB7AA0684; Thu,  8 Sep 2022 11:21:36 +0200 (CEST)
+From:   Jan Kara <jack@suse.cz>
+To:     Ted Tso <tytso@mit.edu>
+Cc:     <linux-ext4@vger.kernel.org>,
+        Thorsten Leemhuis <regressions@leemhuis.info>,
+        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+        Stefan Wahren <stefan.wahren@i2se.com>,
+        Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
+        Jan Kara <jack@suse.cz>
+Subject: [PATCH 3/5] ext4: Make directory inode spreading reflect flexbg size
+Date:   Thu,  8 Sep 2022 11:21:26 +0200
+Message-Id: <20220908092136.11770-3-jack@suse.cz>
+X-Mailer: git-send-email 2.35.3
+In-Reply-To: <20220908091301.147-1-jack@suse.cz>
+References: <20220908091301.147-1-jack@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220908054611.vjcb27wmq4dggqmv@riteshh-domain>
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1131; h=from:subject; bh=Nfjo5UZc1lyu8JjrRbs/4cX/UGYB6EcxiocVkBovhvs=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjGbQVUwdtDwfA4J9yJwE/M/Z+SOgDx7nZsFN9Cp2z C3SItK2JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYxm0FQAKCRCcnaoHP2RA2bltCA DldTAR6xeNciWva9fBlGHvqIvGY8aEAopTtxcy2RfUY6mxYh+E0FJgmgQP3fcb4PlkV/77uFdd7Ix3 0prDkbYdMNCKqk1oPvFpwsNjuV3oae8Q86WJD/gk6qHkEujiMisss5xGPm0AaWzYA9jU267eznYlmk ns3IC8D/hzkiH4D8BsxI3VC7vFD+gpubmmXul/0ZvVeq4XyXyl+pZvwPUex3e10hQZXfJL2z5p7R4C gxa9DZlUQW2rAaoToIa79gFzNxy3COayfE6ETQ/9r/lF1tvI/xImYnj7Iy57NO18HjTiSy8FHGvI/q OXVKB/dolVbowy59lCGGY9qUDo2s50
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 22/09/08 11:16AM, Ritesh Harjani (IBM) wrote:
-> On 22/09/07 07:59PM, Alexey Lyashkov wrote:
-> > From: Andrew Perepechko <anserper@ya.ru>
-> > 
-> > LIFO wakeup order is unfair and sometimes leads to a journal
-> > user not being able to get a journal handle for hundreds of
-> > transactions in a row.
-> > 
-> > FIFO wakeup can make things more fair.
-> 
-> prepare_to_wait() will always add the task to the head of the list.
-> While prepare_to_wait_exclusive() will add the task to the tail since all of the
-> exclusive tasks are added to the tail.
-> wake_up() function will wake up all non-exclusive and single exclusive task 
-> v/s
-> wake_up_all() function will wake up all tasks irrespective.
-> 
-> So your change does makes the ordering to FIFO, in which the task which came in 
-> first will be woken up first. 
+Currently the Orlov inode allocator searches for free inodes for a
+directory only in flex block groups with at most inodes_per_group/16
+more directory inodes than average per flex block group. However with
+growing size of flex block group this becomes unnecessarily strict.
+Scale allowed difference from average directory count per flex block
+group with flex block group size as we do with other metrics.
 
-With all other details which got discussed in other threads. 
-This looks like the right thing to do.
+Tested-by: Stefan Wahren <stefan.wahren@i2se.com>
+Tested-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/ialloc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index f73e5eb43eae..208b87ce8858 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -510,7 +510,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+ 		goto fallback;
+ 	}
+ 
+-	max_dirs = ndirs / ngroups + inodes_per_group / 16;
++	max_dirs = ndirs / ngroups + inodes_per_group*flex_size / 16;
+ 	min_inodes = avefreei - inodes_per_group*flex_size / 4;
+ 	if (min_inodes < 1)
+ 		min_inodes = 1;
+-- 
+2.35.3
+
