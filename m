@@ -2,50 +2,54 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D454BC38145
-	for <linux-ext4@archiver.kernel.org>; Thu,  8 Sep 2022 09:23:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E5259C54EE9
+	for <linux-ext4@archiver.kernel.org>; Thu,  8 Sep 2022 09:23:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231826AbiIHJXf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 8 Sep 2022 05:23:35 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39202 "EHLO
+        id S231478AbiIHJXw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 8 Sep 2022 05:23:52 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39224 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231373AbiIHJXN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Sep 2022 05:23:13 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3C2EEE126C
-        for <linux-ext4@vger.kernel.org>; Thu,  8 Sep 2022 02:21:50 -0700 (PDT)
+        with ESMTP id S231508AbiIHJXP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Sep 2022 05:23:15 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4BF9BE1272;
+        Thu,  8 Sep 2022 02:21:50 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id C6A831FA95;
+        by smtp-out1.suse.de (Postfix) with ESMTPS id C1BB333C1E;
         Thu,  8 Sep 2022 09:21:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1662628896; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=HLsO7kNea/ZPllJuIGUm5eeyvHOkZ4P6VFk2t1Xyfzc=;
-        b=Z5P3L4GfBaCXPMg5ygyz5KtTyYhXYXnkYBUSB17dMP419p4leQmKS43hR/7IX+xPtT7A3g
-        3HkVgPCKid/5WzSBWU6CJa+iAkUhYgXQQEIygdgUON/uyQj99mVa8yhyDhRGcMitqIIsEE
-        iQ+V+s8eMUYcw5xj48Gsgi603ogrhwY=
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=JTIu5g1ARjVeLQJtVEzb05xchksISn6WKWVZuhNYsXg=;
+        b=SSzznqIIRfcYlw6A7Cwn98kUCioGK/RDf6uSIrDqvyUZHRYc7/Oi9qpBruzhXiZGxytAqY
+        VO4F0Ux4Jr8msYYnShVSpBnsuriXbG36C56qP8StND6P/j+2WsADVYsNqvn/wFTSoMO/Vi
+        yRMWxIagdS55Zhp2wkaYskBIj9c7cEc=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1662628896;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=HLsO7kNea/ZPllJuIGUm5eeyvHOkZ4P6VFk2t1Xyfzc=;
-        b=lLCCB2hnM0BL9jr0ww68zX4gA+boeSWksFeRlw2T+YhrR2KCgbm4+t80le4c8Gx0H+3esb
-        h/3fxMe4pMlVhdBQ==
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=JTIu5g1ARjVeLQJtVEzb05xchksISn6WKWVZuhNYsXg=;
+        b=FkDqDKxBCQNBNLUyGpoWZ89NqCyR9Zdnu9Duv608sGYsSTMmFe3QF05QYO09E5bRjBzDdy
+        YipkgDpavOJHAGBQ==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id B89A213B5E;
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id B38A613A6D;
         Thu,  8 Sep 2022 09:21:36 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id wfEKLSC0GWO0RAAAMHmgww
+        id Sr85KyC0GWOxRAAAMHmgww
         (envelope-from <jack@suse.cz>); Thu, 08 Sep 2022 09:21:36 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 0F0D8A067E; Thu,  8 Sep 2022 11:21:36 +0200 (CEST)
+        id 1690CA0682; Thu,  8 Sep 2022 11:21:36 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>,
@@ -53,76 +57,83 @@ Cc:     <linux-ext4@vger.kernel.org>,
         Ojaswin Mujoo <ojaswin@linux.ibm.com>,
         Stefan Wahren <stefan.wahren@i2se.com>,
         Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
-        Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/5 v3] ext4: Fix performance regression with mballoc
-Date:   Thu,  8 Sep 2022 11:21:23 +0200
-Message-Id: <20220908091301.147-1-jack@suse.cz>
+        Jan Kara <jack@suse.cz>, stable@vger.kernel.org,
+        Ritesh Harjani <ritesh.list@gmail.com>
+Subject: [PATCH 2/5] ext4: Avoid unnecessary spreading of allocations among groups
+Date:   Thu,  8 Sep 2022 11:21:25 +0200
+Message-Id: <20220908092136.11770-2-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
+In-Reply-To: <20220908091301.147-1-jack@suse.cz>
+References: <20220908091301.147-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3096; h=from:subject:message-id; bh=yFEXB/lrsmhhdUOeaq3O6/9Z2nFMTjgU96U6QVEZhaU=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjGbQNJl4PyGv72BP2186vItijdYkKbXwnrrWVvdzr FzXJKpeJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYxm0DQAKCRCcnaoHP2RA2XSkB/ wIsggCJHhXf4BLJLdibLulBiu7tI7XCy61YuTIkabUeYFbTRoJDByMW9HtIGOIzfBVx6owF81CHF+h WJjQ+wGWhoUPdkDhuv3F6PXChlLtS8CuQ6jz1qfvSTw1vNyB7mPVPk/pyFoW7igu36IjrcwfTG0YJB KJxa3HvuP8yH9jO4pvlgEqQZcDkEoXCvrZbdVQyjVwFpaT64ZtlhcKNfKUxp6mP6dChoaNn0UTAKg0 t4LTYkAtT2Sofwd2w6/m/MD/ydrVhiYVqn2qJi/mLfKoblbsalmRLekthm4Bd1pKnGa+sVIYqFTpDh 8BmWEVyAATD2NA0a6AJeEMXDaVeptX
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2504; h=from:subject; bh=k7AJpELkbpX88tci6pp+mS3j4X4Sqvl1FyFZXO/4+i8=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjGbQUZm3QrW9BFTtpkv6HTcPbBJfWMNIlvzLdMAi6 si70bXmJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYxm0FAAKCRCcnaoHP2RA2QIqB/ 9T0I1UEO0EZOU7x0ou7D7tp/7ccdWqnYsigNWkNqWehhxeNcRFWIHcWO/Iszv0QRz5j+e0qKB7I81X ToQQUrEDn93MtFIQL6XT/P35ZyKm/IifBfkmm1V6pw7JzeRdMCJ0ScVF2rHY/m7azgAUqr+rg+hp7c ZQgIpup0JhTcbEgVMW5hGFnF4ZHly81TPqjIjo5qS2fAPFhgWxP17CYpJTUcy+gy/vO2PU9zM6oPZu zmjOAMGMYWzNyIlaC3rt7MoYWCZiwMDGt3Y1MG267DKdSWtEvTOPjbSVduHMHQvnZ4ojnnm2pLDUM/ 9FB5vM8A5mrlkwfPOwJFxFcUSdk0/m
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+mb_set_largest_free_order() updates lists containing groups with largest
+chunk of free space of given order. The way it updates it leads to
+always moving the group to the tail of the list. Thus allocations
+looking for free space of given order effectively end up cycling through
+all groups (and due to initialization in last to first order). This
+spreads allocations among block groups which reduces performance for
+rotating disks or low-end flash media. Change
+mb_set_largest_free_order() to only update lists if the order of the
+largest free chunk in the group changed.
 
-Here is the third version of my mballoc improvements to avoid spreading
-allocations with mb_optimize_scan=1. Since v2 there are only small changes and
-fixes found during review and testing. Overall the series looks mostly ready to
-go, I just didn't see any comments regarding patch 3 - a fix of metabg handling
-in the Orlov allocator which is kind of independent, I've just found it when
-reading the code. Also patch 5 needs final review after all the fixes.
+Fixes: 196e402adf2e ("ext4: improve cr 0 / cr 1 group scanning")
+CC: stable@vger.kernel.org
+Reported-and-tested-by: Stefan Wahren <stefan.wahren@i2se.com>
+Tested-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/mballoc.c | 24 +++++++++++++-----------
+ 1 file changed, 13 insertions(+), 11 deletions(-)
 
-Changes since v1:
-- reworked data structure for CR 1 scan
-- make small closed files use locality group preallocation
-- fix metabg handling in the Orlov allocator
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 41e1cfecac3b..6251b4a6cc63 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1077,23 +1077,25 @@ mb_set_largest_free_order(struct super_block *sb, struct ext4_group_info *grp)
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	int i;
+ 
+-	if (test_opt2(sb, MB_OPTIMIZE_SCAN) && grp->bb_largest_free_order >= 0) {
++	for (i = MB_NUM_ORDERS(sb) - 1; i >= 0; i--)
++		if (grp->bb_counters[i] > 0)
++			break;
++	/* No need to move between order lists? */
++	if (!test_opt2(sb, MB_OPTIMIZE_SCAN) ||
++	    i == grp->bb_largest_free_order) {
++		grp->bb_largest_free_order = i;
++		return;
++	}
++
++	if (grp->bb_largest_free_order >= 0) {
+ 		write_lock(&sbi->s_mb_largest_free_orders_locks[
+ 					      grp->bb_largest_free_order]);
+ 		list_del_init(&grp->bb_largest_free_order_node);
+ 		write_unlock(&sbi->s_mb_largest_free_orders_locks[
+ 					      grp->bb_largest_free_order]);
+ 	}
+-	grp->bb_largest_free_order = -1; /* uninit */
+-
+-	for (i = MB_NUM_ORDERS(sb) - 1; i >= 0; i--) {
+-		if (grp->bb_counters[i] > 0) {
+-			grp->bb_largest_free_order = i;
+-			break;
+-		}
+-	}
+-	if (test_opt2(sb, MB_OPTIMIZE_SCAN) &&
+-	    grp->bb_largest_free_order >= 0 && grp->bb_free) {
++	grp->bb_largest_free_order = i;
++	if (grp->bb_largest_free_order >= 0 && grp->bb_free) {
+ 		write_lock(&sbi->s_mb_largest_free_orders_locks[
+ 					      grp->bb_largest_free_order]);
+ 		list_add_tail(&grp->bb_largest_free_order_node,
+-- 
+2.35.3
 
-Changes since v2:
-- whitespace fixes
-- fix outdated comment
-- fix handling of mb_structs_summary procfs file
-- fix bad unlock on error recovery path
-
-Original cover letter:
-
-The patches fix the performance regression I was able to reproduce with reaim
-on my test machine:
-
-                     mb_optimize_scan=0     mb_optimize_scan=1     patched
-Hmean     disk-1       2076.12 (   0.00%)     2099.37 (   1.12%)     2032.52 (  -2.10%)
-Hmean     disk-41     92481.20 (   0.00%)    83787.47 *  -9.40%*    90308.37 (  -2.35%)
-Hmean     disk-81    155073.39 (   0.00%)   135527.05 * -12.60%*   154285.71 (  -0.51%)
-Hmean     disk-121   185109.64 (   0.00%)   166284.93 * -10.17%*   185298.62 (   0.10%)
-Hmean     disk-161   229890.53 (   0.00%)   207563.39 *  -9.71%*   232883.32 *   1.30%*
-Hmean     disk-201   223333.33 (   0.00%)   203235.59 *  -9.00%*   221446.93 (  -0.84%)
-Hmean     disk-241   235735.25 (   0.00%)   217705.51 *  -7.65%*   239483.27 *   1.59%*
-Hmean     disk-281   266772.15 (   0.00%)   241132.72 *  -9.61%*   263108.62 (  -1.37%)
-Hmean     disk-321   265435.50 (   0.00%)   245412.84 *  -7.54%*   267277.27 (   0.69%)
-
-The changes also significanly reduce spreading of allocations for small /
-moderately sized files. I'm not able to measure a performance difference
-resulting from this but on eMMC storage this seems to be the main culprit
-of reduced performance. Untarring of raspberry-pi archive touches following
-numbers of groups:
-
-	mb_optimize_scan=0	mb_optimize_scan=1	patched
-groups	4			22			7
-
-To achieve this I have added two more changes on top of v1 - patches 4 and 5.
-Patch 4 makes sure we use locality group preallocation even for files that are
-not likely to grow anymore (previously we have disabled all preallocations for
-such files, however locality group preallocation still makes a lot of sense for
-such files). This patch reduced spread of a small file allocations but larger
-file allocations were still spread significantly because they avoid locality
-group preallocation and as they are not power-of-two in size, they also
-immediately start with cr=1 scan. To address that I've changed the data
-structure for looking up the best block group to allocate from (see patch 5
-for details).
-
-								Honza
-Previous versions:
-Link: http://lore.kernel.org/r/20220823134508.27854-1-jack@suse.cz # v1
-Link: http://lore.kernel.org/r/20220906150803.375-1-jack@suse.cz # v2
