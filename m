@@ -2,35 +2,35 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 54D3FC54EE9
-	for <linux-ext4@archiver.kernel.org>; Thu,  8 Sep 2022 17:25:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 46FCFC38145
+	for <linux-ext4@archiver.kernel.org>; Thu,  8 Sep 2022 17:25:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231604AbiIHRZH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 8 Sep 2022 13:25:07 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53680 "EHLO
+        id S232204AbiIHRZw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 8 Sep 2022 13:25:52 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55632 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229491AbiIHRY6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Sep 2022 13:24:58 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9A014EE0A;
-        Thu,  8 Sep 2022 10:24:54 -0700 (PDT)
+        with ESMTP id S231522AbiIHRZD (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Sep 2022 13:25:03 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 719DB54CAA;
+        Thu,  8 Sep 2022 10:25:02 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 35065B821DC;
-        Thu,  8 Sep 2022 17:24:53 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D8AEBC433C1;
-        Thu,  8 Sep 2022 17:24:49 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id D32B661C61;
+        Thu,  8 Sep 2022 17:25:01 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2F165C433D6;
+        Thu,  8 Sep 2022 17:24:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1662657891;
-        bh=jJcFm13hVF9RY9y/OKHnwztBV1qiy0LTPkPTC1q0taw=;
-        h=From:To:Cc:Subject:Date:From;
-        b=qSgcME4dLdsxXrisJmoKXG1TUhRdr502APJkM8P+y8mGawxcYHF4Vbsp6U+AbzBcN
-         2buc6MAuMnTh+7N+Zpg6yFn/WaXGA6OZeTSMbmmloXPaBHpK3tX9gMenyJaauoirRT
-         GglAlnFZPmkcgd4XpkjLJ+wEDCDT3b+RCMkjTC6iI5SQm3ebRnpc+L4rAQP5Iwbyeq
-         T5LjD0nOG5UK51pJV09uUXidU/U9g4V4gSUW1DyZEK+fnTgpWjFTpH8OwmZeEuI6js
-         Gp5bMJkFa9Th3p+zoQ/smtzzIKb6VlglHE1eqz3KAV3NAUc0wwO6okbNxPvMjZjyls
-         D/lja4aKOv+0Q==
+        s=k20201202; t=1662657901;
+        bh=UwpZrmq+vN+P0GFsdu64X7LMo1+EIMrukCLbnYcvUpA=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=dFwRW3oosWundQ5oWMFWA5H3hpqlmGbpV2eiIskY7WQweKj+xUnhmgl+gbpb0sQGe
+         ZXAZU23BKc4FI10aF83CY/ZZFfK5l0gTMlA08eh1MPifKYmz0XgX0/k8AyI7xrZw1M
+         hHhqVkhjDGkKmzB+0tPqTbc8y8wPJeFXyTbjoXZiTytFsRlGA/ep9fu/0hctskcKZj
+         W+ndB0e2ODjjMZ5i3uIjLBLcBFv/0+BE89GfAF0iXD404rpZS1BVRc1H5SwmV+xJ8V
+         peIHz2e1h1WoTjUkNjm1m5k3ItjMSDWBAOd2uxsGpUi9Z2xf3VTrer0BxDfnBzzZQD
+         t7s16EzwBeQVQ==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, djwong@kernel.org,
         david@fromorbit.com, trondmy@hammerspace.com, neilb@suse.de,
@@ -40,72 +40,103 @@ To:     tytso@mit.edu, adilger.kernel@dilger.ca, djwong@kernel.org,
 Cc:     linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org
-Subject: [PATCH v5 0/8] vfs/nfsd: clean up handling of the i_version counter
-Date:   Thu,  8 Sep 2022 13:24:40 -0400
-Message-Id: <20220908172448.208585-1-jlayton@kernel.org>
+        linux-xfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH v5 4/8] vfs: plumb i_version handling into struct kstat
+Date:   Thu,  8 Sep 2022 13:24:44 -0400
+Message-Id: <20220908172448.208585-5-jlayton@kernel.org>
 X-Mailer: git-send-email 2.37.3
+In-Reply-To: <20220908172448.208585-1-jlayton@kernel.org>
+References: <20220908172448.208585-1-jlayton@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-v5: don't try to expose i_version to userland (yet)
-    use getattr to get i_version in nfsd
-    take inode lock when getting i_version
+From: Jeff Layton <jlayton@redhat.com>
 
-This set is a bit different from the earlier ones. In particular, it
-does not try to expose i_version to userland. STATX_INO_VERSION is added
-as a kernel-only symbol (for now), and the infrastructure is changed
-around to use it.
+The NFS server has a lot of special handling for different types of
+change attribute access, depending on what sort of inode we have. In
+most cases, it's doing a getattr anyway and then fetching that value
+after the fact.
 
-This allows us to fetch the i_version during the getattr operation, and
-eliminate the fetch_iversion export operation. This is a much more
-natual way to handle the i_version counter in nfsd and, as a bonus, this
-should allow nfsd to use ceph's i_version counter too. Huzzah!
+Rather that do that, add a new STATX_INO_VERSION flag that is a
+kernel-only symbol (for now). If requested and getattr can implement it,
+it can fill out this field. For IS_I_VERSION inodes, add a generic
+implementation in vfs_getattr_nosec. Take care to mask STATX_INO_VERSION
+off in requests from userland and in the result mask.
 
-The first two patches fix up ext4's i_version handling and enable it
-unconditionally. Those can go in independently of the rest, IMO. Ted, if
-you're ok with those and want to pick them up then that would be great.
+Eventually if we decide to make this available to userland, we can just
+designate a field for it in struct statx, and move the STATX_INO_VERSION
+definition to the uapi header.
 
-The rest of the patches clean up the i_version handling, but should not
-change the userland API at all.  This should make it very simple to
-expose i_version to userland in the future if we decide to do so. Maybe
-we should take these in via the nfsd tree? I'm not sure here.
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/stat.c            | 14 +++++++++++++-
+ include/linux/stat.h |  4 ++++
+ 2 files changed, 17 insertions(+), 1 deletion(-)
 
-The last patch should be considered an RFC. I think that that approach
-should prevent the potential race, without adding new work in the
-write codepath.
-
-Jeff Layton (8):
-  iversion: clarify when the i_version counter must be updated
-  ext4: fix i_version handling in ext4
-  ext4: unconditionally enable the i_version counter
-  vfs: plumb i_version handling into struct kstat
-  nfs: report the inode version in getattr if requested
-  ceph: report the inode version in getattr if requested
-  nfsd: use the getattr operation to fetch i_version
-  nfsd: take inode_lock when querying for NFSv4 GETATTR
-
- fs/ceph/inode.c          | 14 +++++++++-----
- fs/ext4/inode.c          | 15 +++++----------
- fs/ext4/ioctl.c          |  4 ++++
- fs/ext4/move_extent.c    |  6 ++++++
- fs/ext4/super.c          | 13 ++++---------
- fs/ext4/xattr.c          |  1 +
- fs/nfs/export.c          |  7 -------
- fs/nfs/inode.c           |  7 +++++--
- fs/nfsd/nfs4xdr.c        | 17 ++++++++++++++++-
- fs/nfsd/nfsfh.c          |  6 ++++++
- fs/nfsd/nfsfh.h          |  9 ++++-----
- fs/nfsd/vfs.h            |  7 ++++++-
- fs/stat.c                | 14 +++++++++++++-
- include/linux/exportfs.h |  1 -
- include/linux/iversion.h | 10 ++++++++--
- include/linux/stat.h     |  4 ++++
- 16 files changed, 91 insertions(+), 44 deletions(-)
-
+diff --git a/fs/stat.c b/fs/stat.c
+index 9ced8860e0f3..1a9c20ac5090 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -17,6 +17,7 @@
+ #include <linux/syscalls.h>
+ #include <linux/pagemap.h>
+ #include <linux/compat.h>
++#include <linux/iversion.h>
+ 
+ #include <linux/uaccess.h>
+ #include <asm/unistd.h>
+@@ -118,6 +119,11 @@ int vfs_getattr_nosec(const struct path *path, struct kstat *stat,
+ 	stat->attributes_mask |= (STATX_ATTR_AUTOMOUNT |
+ 				  STATX_ATTR_DAX);
+ 
++	if ((request_mask & STATX_INO_VERSION) && IS_I_VERSION(inode)) {
++		stat->result_mask |= STATX_INO_VERSION;
++		stat->ino_version = inode_query_iversion(inode);
++	}
++
+ 	mnt_userns = mnt_user_ns(path->mnt);
+ 	if (inode->i_op->getattr)
+ 		return inode->i_op->getattr(mnt_userns, path, stat,
+@@ -587,7 +593,8 @@ cp_statx(const struct kstat *stat, struct statx __user *buffer)
+ 
+ 	memset(&tmp, 0, sizeof(tmp));
+ 
+-	tmp.stx_mask = stat->result_mask;
++	/* STATX_INO_VERSION is kernel-only for now */
++	tmp.stx_mask = stat->result_mask & ~STATX_INO_VERSION;
+ 	tmp.stx_blksize = stat->blksize;
+ 	tmp.stx_attributes = stat->attributes;
+ 	tmp.stx_nlink = stat->nlink;
+@@ -626,6 +633,11 @@ int do_statx(int dfd, struct filename *filename, unsigned int flags,
+ 	if ((flags & AT_STATX_SYNC_TYPE) == AT_STATX_SYNC_TYPE)
+ 		return -EINVAL;
+ 
++	/* STATX_INO_VERSION is kernel-only for now. Ignore requests
++	 * from userland.
++	 */
++	mask &= ~STATX_INO_VERSION;
++
+ 	error = vfs_statx(dfd, filename, flags, &stat, mask);
+ 	if (error)
+ 		return error;
+diff --git a/include/linux/stat.h b/include/linux/stat.h
+index 7df06931f25d..d482bbfc1358 100644
+--- a/include/linux/stat.h
++++ b/include/linux/stat.h
+@@ -50,6 +50,10 @@ struct kstat {
+ 	struct timespec64 btime;			/* File creation time */
+ 	u64		blocks;
+ 	u64		mnt_id;
++	u64		ino_version;
+ };
+ 
++/* This definition is internal to the kernel for now. Mainly used by nfsd */
++#define STATX_INO_VERSION	0x40000000U	/* Want/got stx_change_attr */
++
+ #endif
 -- 
 2.37.3
 
