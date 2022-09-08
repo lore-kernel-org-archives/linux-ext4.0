@@ -2,54 +2,54 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 27197C54EE9
-	for <linux-ext4@archiver.kernel.org>; Thu,  8 Sep 2022 09:23:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E34CEC6FA82
+	for <linux-ext4@archiver.kernel.org>; Thu,  8 Sep 2022 09:23:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231320AbiIHJXe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 8 Sep 2022 05:23:34 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39198 "EHLO
+        id S231835AbiIHJXg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 8 Sep 2022 05:23:36 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37654 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230285AbiIHJXN (ORCPT
+        with ESMTP id S231406AbiIHJXN (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Sep 2022 05:23:13 -0400
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 09B37D4190;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 09C0ED99D4;
         Thu,  8 Sep 2022 02:21:49 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id AC5921FA59;
+        by smtp-out2.suse.de (Postfix) with ESMTPS id C1F131FA79;
         Thu,  8 Sep 2022 09:21:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1662628896; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=BFdL6/nO1VLnFbG0HqZd5h/ZHSiMduV/dSRQ7IXSHl4=;
-        b=Qf9m6kbSjVsyMJqlHzsuEsBqavQ9uoGIoKUjJXRzLLhXkpGUX0YCprkYruCmQAYULTklK8
-        m0MYUPe7EdB8/tNbo6CWYyigqOsK9BzjXIsKQDLv2ScF4/Yh2zrnCfgqCAtjsV/I1FBRwe
-        f74BhSNL46bZtUG0RqLpyj/v4Dlsov0=
+        bh=/T2gqCnaVMIrnu1bhWes7S5rCxq+aYcfojkZpwhcK9A=;
+        b=1iD0FmZ2Hqf6ExZ1fYkyqZwh8HMtyvulzgY35X+wPBUntqmvkPIXkH6WH7UwYUwlMNOGZe
+        nbL7GHSPZEqzZevFGONipjMu6jkqmCyHUy+p4KWElkqzBls3dx+axlG75IqI5LTRUCW4vi
+        5HCZnIguR+PRlk4p7/PkrBqnmzPjmRg=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1662628896;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=BFdL6/nO1VLnFbG0HqZd5h/ZHSiMduV/dSRQ7IXSHl4=;
-        b=SNzTnaC9kM0yRlFRm/wVDXNnZyvMYKwwEEOzpRcu1X7pX7Oj+hJoMEOUJCyOfN5eH+Lr8H
-        3TGovyInjOsKImBw==
+        bh=/T2gqCnaVMIrnu1bhWes7S5rCxq+aYcfojkZpwhcK9A=;
+        b=Y0dxXbRFjhvwaSKAgai3TNOVz9e/REPRoTBDQKNvjVyUHkkZrmo5Oxtlexwe6CTjsFbE3y
+        vaudJVTr5VUo5tCA==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 9F33F13A6D;
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id B0E8913B5D;
         Thu,  8 Sep 2022 09:21:36 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id RXHXJiC0GWOqRAAAMHmgww
+        id TDiYKiC0GWOsRAAAMHmgww
         (envelope-from <jack@suse.cz>); Thu, 08 Sep 2022 09:21:36 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 228E4A0685; Thu,  8 Sep 2022 11:21:36 +0200 (CEST)
+        id 125BAA066D; Thu,  8 Sep 2022 11:21:36 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>,
@@ -59,91 +59,99 @@ Cc:     <linux-ext4@vger.kernel.org>,
         Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
         Jan Kara <jack@suse.cz>, stable@vger.kernel.org,
         Ritesh Harjani <ritesh.list@gmail.com>
-Subject: [PATCH 4/5] ext4: Use locality group preallocation for small closed files
-Date:   Thu,  8 Sep 2022 11:21:27 +0200
-Message-Id: <20220908092136.11770-4-jack@suse.cz>
+Subject: [PATCH 1/5] ext4: Make mballoc try target group first even with mb_optimize_scan
+Date:   Thu,  8 Sep 2022 11:21:24 +0200
+Message-Id: <20220908092136.11770-1-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20220908091301.147-1-jack@suse.cz>
 References: <20220908091301.147-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2713; h=from:subject; bh=oJT4Qwm0EAPv5WsT8A0NaFv4D/W5/EnIQqmSj9R4dTs=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjGbQWPYGkjWzbRtTjD1RxlqTqcnEkY8MdcD8nl7VN PWyvH8CJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYxm0FgAKCRCcnaoHP2RA2ZBMB/ 92B5fzS6q3BFihnXiB0W5Df4b9AgH8HfR7ixXtkKhMtltA3dmIDTuWqf0AS4mtRbUlx6XTTOulJFq1 FUTPDLqgoaLZg3vRi5fyhkYl85l59MmQc60oBGOjGFrAM9+ynPBrSqfzM3cWKK4+rPjUpQMXSQ3rhq 4YlrlPlOS8JyWS4LGNFmOeLxYICeQay9noYOZb14uotZePjfLIUKTC09JPkytIgHjfg/ATdDWmIDxs nUjq9KTcss3ZaJ3aAMxOTbtj5FyRhaQCy+LSY4b6+y9vnOoSfjxZHGV+F0Nk2W6mA0NsR7Z4wC+YB5 uPKCikbg7Yc25lvNPQcudmPKvnVt1A
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3349; h=from:subject; bh=Q57kHbUxIETSpSaq6MNvVeGwmpZn+1WoPPXosbRjvag=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjGbQTGiXzCo2TURk0pEcrqRNL51jM02ZiWkmK4rjf 0rsh8+iJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYxm0EwAKCRCcnaoHP2RA2bD/B/ 4laWY+bgTBXzPo3DEqJfOY61ewWFro5p8X8qt2B1GedixLoOe1hhl4y37TXJF9snAXLhYTe3fO4S1L j4/6/SSQw6QaFBGJL4K/v7SmtL0foQr8cXRKe+GzvHmQjYVbV0riwqPQ0Y1xE3YyKxG+K0uhzB39eu 0Vo5FkJJ15NeHZbVmwdcn4GarWXEgef/EhsyKt+5uQAHpyGlSUo5Wx8eOLEhmlTuhJFm6X3SSMzb57 Dm655daizo7qaIbQs5/YboH/tIWx7w0cnk+kgfLAN/VvtTM8ZzH+gKkvj1T7mpVKC78z74ypA+X4S1 K7Enghi0I6OFZwKU+A4oalGE+wCctB
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Curently we don't use any preallocation when a file is already closed
-when allocating blocks (from writeback code when converting delayed
-allocation). However for small files, using locality group preallocation
-is actually desirable as that is not specific to a particular file.
-Rather it is a method to pack small files together to reduce
-fragmentation and for that the fact the file is closed is actually even
-stronger hint the file would benefit from packing. So change the logic
-to allow locality group preallocation in this case.
+One of the side-effects of mb_optimize_scan was that the optimized
+functions to select next group to try were called even before we tried
+the goal group. As a result we no longer allocate files close to
+corresponding inodes as well as we don't try to expand currently
+allocated extent in the same group. This results in reaim regression
+with workfile.disk workload of upto 8% with many clients on my test
+machine:
+
+                     baseline               mb_optimize_scan
+Hmean     disk-1       2114.16 (   0.00%)     2099.37 (  -0.70%)
+Hmean     disk-41     87794.43 (   0.00%)    83787.47 *  -4.56%*
+Hmean     disk-81    148170.73 (   0.00%)   135527.05 *  -8.53%*
+Hmean     disk-121   177506.11 (   0.00%)   166284.93 *  -6.32%*
+Hmean     disk-161   220951.51 (   0.00%)   207563.39 *  -6.06%*
+Hmean     disk-201   208722.74 (   0.00%)   203235.59 (  -2.63%)
+Hmean     disk-241   222051.60 (   0.00%)   217705.51 (  -1.96%)
+Hmean     disk-281   252244.17 (   0.00%)   241132.72 *  -4.41%*
+Hmean     disk-321   255844.84 (   0.00%)   245412.84 *  -4.08%*
+
+Also this is causing huge regression (time increased by a factor of 5 or
+so) when untarring archive with lots of small files on some eMMC storage
+cards.
+
+Fix the problem by making sure we try goal group first.
 
 Fixes: 196e402adf2e ("ext4: improve cr 0 / cr 1 group scanning")
 CC: stable@vger.kernel.org
 Reported-and-tested-by: Stefan Wahren <stefan.wahren@i2se.com>
 Tested-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+Link: https://lore.kernel.org/all/20220727105123.ckwrhbilzrxqpt24@quack3/
+Link: https://lore.kernel.org/all/0d81a7c2-46b7-6010-62a4-3e6cfc1628d6@i2se.com/
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/mballoc.c | 27 +++++++++++++++------------
- 1 file changed, 15 insertions(+), 12 deletions(-)
+ fs/ext4/mballoc.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 6251b4a6cc63..af1e49c3603f 100644
+index bd8f8b5c3d30..41e1cfecac3b 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -5195,6 +5195,7 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
- 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
- 	int bsbits = ac->ac_sb->s_blocksize_bits;
- 	loff_t size, isize;
-+	bool inode_pa_eligible, group_pa_eligible;
+@@ -1049,8 +1049,10 @@ static void ext4_mb_choose_next_group(struct ext4_allocation_context *ac,
+ {
+ 	*new_cr = ac->ac_criteria;
  
- 	if (!(ac->ac_flags & EXT4_MB_HINT_DATA))
+-	if (!should_optimize_scan(ac) || ac->ac_groups_linear_remaining)
++	if (!should_optimize_scan(ac) || ac->ac_groups_linear_remaining) {
++		*group = next_linear_group(ac, *group, ngroups);
  		return;
-@@ -5202,25 +5203,27 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
- 	if (unlikely(ac->ac_flags & EXT4_MB_HINT_GOAL_ONLY))
- 		return;
++	}
  
-+	group_pa_eligible = sbi->s_mb_group_prealloc > 0;
-+	inode_pa_eligible = true;
- 	size = ac->ac_o_ex.fe_logical + EXT4_C2B(sbi, ac->ac_o_ex.fe_len);
- 	isize = (i_size_read(ac->ac_inode) + ac->ac_sb->s_blocksize - 1)
- 		>> bsbits;
+ 	if (*new_cr == 0) {
+ 		ext4_mb_choose_next_group_cr0(ac, new_cr, group, ngroups);
+@@ -2636,7 +2638,7 @@ static noinline_for_stack int
+ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ {
+ 	ext4_group_t prefetch_grp = 0, ngroups, group, i;
+-	int cr = -1;
++	int cr = -1, new_cr;
+ 	int err = 0, first_err = 0;
+ 	unsigned int nr = 0, prefetch_ios = 0;
+ 	struct ext4_sb_info *sbi;
+@@ -2711,13 +2713,11 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 		ac->ac_groups_linear_remaining = sbi->s_mb_max_linear_groups;
+ 		prefetch_grp = group;
  
-+	/* No point in using inode preallocation for closed files */
- 	if ((size == isize) && !ext4_fs_is_busy(sbi) &&
--	    !inode_is_open_for_write(ac->ac_inode)) {
--		ac->ac_flags |= EXT4_MB_HINT_NOPREALLOC;
--		return;
--	}
-+	    !inode_is_open_for_write(ac->ac_inode))
-+		inode_pa_eligible = false;
+-		for (i = 0; i < ngroups; group = next_linear_group(ac, group, ngroups),
+-			     i++) {
+-			int ret = 0, new_cr;
++		for (i = 0, new_cr = cr; i < ngroups; i++,
++		     ext4_mb_choose_next_group(ac, &new_cr, &group, ngroups)) {
++			int ret = 0;
  
--	if (sbi->s_mb_group_prealloc <= 0) {
--		ac->ac_flags |= EXT4_MB_STREAM_ALLOC;
--		return;
--	}
+ 			cond_resched();
 -
--	/* don't use group allocation for large files */
- 	size = max(size, isize);
--	if (size > sbi->s_mb_stream_request) {
--		ac->ac_flags |= EXT4_MB_STREAM_ALLOC;
-+	/* Don't use group allocation for large files */
-+	if (size > sbi->s_mb_stream_request)
-+		group_pa_eligible = false;
-+
-+	if (!group_pa_eligible) {
-+		if (inode_pa_eligible)
-+			ac->ac_flags |= EXT4_MB_STREAM_ALLOC;
-+		else
-+			ac->ac_flags |= EXT4_MB_HINT_NOPREALLOC;
- 		return;
- 	}
- 
+-			ext4_mb_choose_next_group(ac, &new_cr, &group, ngroups);
+ 			if (new_cr != cr) {
+ 				cr = new_cr;
+ 				goto repeat;
 -- 
 2.35.3
 
