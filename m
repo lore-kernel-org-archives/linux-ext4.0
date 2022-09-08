@@ -2,138 +2,108 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D20A0C38145
-	for <linux-ext4@archiver.kernel.org>; Thu,  8 Sep 2022 08:22:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A181FECAAD5
+	for <linux-ext4@archiver.kernel.org>; Thu,  8 Sep 2022 08:30:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230070AbiIHIWF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 8 Sep 2022 04:22:05 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60418 "EHLO
+        id S230450AbiIHIaZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 8 Sep 2022 04:30:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51796 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230031AbiIHIWE (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Sep 2022 04:22:04 -0400
-Received: from mail-lj1-x231.google.com (mail-lj1-x231.google.com [IPv6:2a00:1450:4864:20::231])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D55AA3123D
-        for <linux-ext4@vger.kernel.org>; Thu,  8 Sep 2022 01:22:03 -0700 (PDT)
-Received: by mail-lj1-x231.google.com with SMTP id by6so18948615ljb.11
-        for <linux-ext4@vger.kernel.org>; Thu, 08 Sep 2022 01:22:03 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=to:references:message-id:content-transfer-encoding:cc:date
-         :in-reply-to:from:subject:mime-version:from:to:cc:subject:date;
-        bh=FEVbeJLU4ZxjTXcOBdx0iHNnTD7fkugL+PIDVfUXbUo=;
-        b=bxfcecMWqo7/3INJotiD4uNF243seN/X6yjx88jYAC4n3maKMEDkuf+pze8vUNB/ya
-         eW5uIsY6XsYNrznVue5nBmlamNH0s0y4BMz/0Z6wrNiVliawinTpJNqaCi0kdQGAr6Px
-         KSvHeeTLg4qYWPSgpJwbCmB+EuZyJsSRMxfBWXNdg1h/XFQM7FyhCIRKYv71pu1SfbQG
-         jyvu62FomCyRCUbhGDkUsuRqpYzknoK+X4RSm+dgTMgKUCYy238rbNwQtTtl31ymDhTT
-         02a6ClCnSEo/+tdmWBfwO9em5b38S//E/FcM1Vi3ou3JCcTMl0d4OaiB0yaLwwjujIcf
-         T7+Q==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=to:references:message-id:content-transfer-encoding:cc:date
-         :in-reply-to:from:subject:mime-version:x-gm-message-state:from:to:cc
-         :subject:date;
-        bh=FEVbeJLU4ZxjTXcOBdx0iHNnTD7fkugL+PIDVfUXbUo=;
-        b=2eg6pUgYZ+yXNj8Sftb6JwCY5yr0fb4zOLD1yjWsuVP5oZusZlV7EE6ilbpkuuqqck
-         +ud90xzHZL/IqkypQzEGdfJbcXEScSba2sKSQEnONcyx6pFL2wvVrr351qP6Oitmf0N8
-         9qWVwplrPkgXMhMdw8GU4Ry7rBbLMcWuA+oTy0V4Wy5iiSdq1KoEDsoR0qbRgF1ey1aw
-         /csg3AhRDeNQcN/pHrcW2UjE8YPj9NMImExE+nvPbGprcLgGeykkZX5Xhd2zEj+fqwFo
-         Dteb/IK251uGcuafuMblUmk1L8NrdiZ5qn6iC7tOfDvE3T42GCEu70lfE60oN+16fUre
-         Mx4w==
-X-Gm-Message-State: ACgBeo2nFrD/9HMghLI43EPRQGSurXUucNlxJSgJ2xYXxQ5ObEfPplt9
-        zzmugVJ9vsNmQWROlZeu/BiwwortmaS+6Q==
-X-Google-Smtp-Source: AA6agR7+UB38QS64O4PnVzrT9H0C8B0Vpbw8nmnNTtkJjtLAE2282XIdWKm2WimzMspWJBUx9Nr3lg==
-X-Received: by 2002:a2e:9946:0:b0:268:8415:444a with SMTP id r6-20020a2e9946000000b002688415444amr2038016ljj.62.1662625322240;
-        Thu, 08 Sep 2022 01:22:02 -0700 (PDT)
-Received: from smtpclient.apple ([46.246.26.67])
-        by smtp.gmail.com with ESMTPSA id g3-20020a056512118300b00494903a1f5dsm2936724lfr.187.2022.09.08.01.22.00
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 08 Sep 2022 01:22:01 -0700 (PDT)
-Content-Type: text/plain;
-        charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 14.0 \(3654.120.0.1.13\))
-Subject: Re: [PATCH] jbd2: wake up journal waiters in FIFO order, not  LIFO
-From:   Alexey Lyahkov <alexey.lyashkov@gmail.com>
-In-Reply-To: <20220908061153.dflgx7fjjav7pxyn@riteshh-domain>
-Date:   Thu, 8 Sep 2022 11:21:59 +0300
-Cc:     linux-ext4 <linux-ext4@vger.kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Artem Blagodarenko <artem.blagodarenko@gmail.com>,
-        Andrew Perepechko <anserper@ya.ru>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <5C1AAACF-5878-4812-8334-29A328B57A77@gmail.com>
-References: <20220907165959.1137482-1-alexey.lyashkov@gmail.com>
- <20220908054611.vjcb27wmq4dggqmv@riteshh-domain>
- <B32B956C-E851-42A2-9419-2947C442E2AA@gmail.com>
- <20220908061153.dflgx7fjjav7pxyn@riteshh-domain>
-To:     "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
-X-Mailer: Apple Mail (2.3654.120.0.1.13)
+        with ESMTP id S230075AbiIHIaX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Sep 2022 04:30:23 -0400
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 472194C617
+        for <linux-ext4@vger.kernel.org>; Thu,  8 Sep 2022 01:30:22 -0700 (PDT)
+Received: from pps.filterd (m0098410.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 2887fkqg013972;
+        Thu, 8 Sep 2022 08:30:09 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=date : from : to : cc :
+ subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=pp1; bh=+PmpHeSCe/w/YZD9Z9S+DUytMidEWOkGUD6M/XlkWJ4=;
+ b=qoZ9YenKd+CBZBPlsirZ9lplg4di/b6yijvMC1DLowlV2ZWHwvK4qPPRCNzTmO+Qashm
+ QA/xe+KYa8i9W4Tm7xDc/kpxR1YZ7Z7XuLVk0JKlToPRAvtWnzpDIp5u69kP6pzY1KZN
+ ZI5NCTym/pbj8ghUeao5AB8kgHOJSzC/R4baZziqaBZ8wSrYBwiNEzwLPj9konpdMH5y
+ qUToDxhPy6pMkAkQyZWIYNDr1ALKOmPAZjEyMQxCiCFvR0kFk0dXWkA3OFXk212fCmzz
+ jEs46ZmYIHkfjOr7bdzfA90Sua+73EQESnXL2d4WKUnJpDVakEa21mQvbcu5ypEEP8DM Tg== 
+Received: from ppma06ams.nl.ibm.com (66.31.33a9.ip4.static.sl-reverse.com [169.51.49.102])
+        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3jfc7s9jga-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 08 Sep 2022 08:30:09 +0000
+Received: from pps.filterd (ppma06ams.nl.ibm.com [127.0.0.1])
+        by ppma06ams.nl.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 2888KSNJ007320;
+        Thu, 8 Sep 2022 08:30:07 GMT
+Received: from b06cxnps3075.portsmouth.uk.ibm.com (d06relay10.portsmouth.uk.ibm.com [9.149.109.195])
+        by ppma06ams.nl.ibm.com with ESMTP id 3jbx6hp9xs-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 08 Sep 2022 08:30:06 +0000
+Received: from d06av25.portsmouth.uk.ibm.com (d06av25.portsmouth.uk.ibm.com [9.149.105.61])
+        by b06cxnps3075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 2888U42d38207988
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 8 Sep 2022 08:30:04 GMT
+Received: from d06av25.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id B805A11C04A;
+        Thu,  8 Sep 2022 08:30:04 +0000 (GMT)
+Received: from d06av25.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 6CCC611C05E;
+        Thu,  8 Sep 2022 08:30:02 +0000 (GMT)
+Received: from li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com (unknown [9.43.112.167])
+        by d06av25.portsmouth.uk.ibm.com (Postfix) with ESMTPS;
+        Thu,  8 Sep 2022 08:30:02 +0000 (GMT)
+Date:   Thu, 8 Sep 2022 13:59:58 +0530
+From:   Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To:     Jan Kara <jack@suse.cz>
+Cc:     Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Thorsten Leemhuis <regressions@leemhuis.info>,
+        Stefan Wahren <stefan.wahren@i2se.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: Re: [PATCH 5/5] ext4: Use buckets for cr 1 block scan instead of
+ rbtree
+Message-ID: <YxmoBpQdRqh/e4ol@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
+References: <20220906150803.375-1-jack@suse.cz>
+ <20220906152920.25584-5-jack@suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20220906152920.25584-5-jack@suse.cz>
+X-TM-AS-GCONF: 00
+X-Proofpoint-GUID: OmoWm3wpEkT5gGvEUJpKAJRj5SiuECEO
+X-Proofpoint-ORIG-GUID: OmoWm3wpEkT5gGvEUJpKAJRj5SiuECEO
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.205,Aquarius:18.0.895,Hydra:6.0.528,FMLib:17.11.122.1
+ definitions=2022-09-08_06,2022-09-07_02,2022-06-22_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
+ clxscore=1015 malwarescore=0 adultscore=0 mlxlogscore=999 phishscore=0
+ bulkscore=0 mlxscore=0 lowpriorityscore=0 suspectscore=0 spamscore=0
+ impostorscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2207270000 definitions=main-2209080028
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+Hi Jan,
 
+On Tue, Sep 06, 2022 at 05:29:11PM +0200, Jan Kara wrote:
+>  
+>  ** snip **
+>  /*
+>   * Choose next group by traversing average fragment size tree. Updates *new_cr
+Maybe we can change this to "average fragment size list of suitable
+order"
+> - * if cr lvel needs an update. Sets EXT4_MB_SEARCH_NEXT_LINEAR to indicate that
+> - * the linear search should continue for one iteration since there's lock
+> - * contention on the rb tree lock.
+> + * if cr level needs an update. 
+>   */
+>  static void ext4_mb_choose_next_group_cr1(struct ext4_allocation_context *ac,
+>  		int *new_cr, ext4_group_t *group, ext4_group_t ngroups)
+>  {
+>  	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
+> -	int avg_fragment_size, best_so_far;
+> -	struct rb_node *node, *found;
+> -	struct ext4_group_info *grp;
 
-> On 8 Sep 2022, at 09:11, Ritesh Harjani (IBM) <ritesh.list@gmail.com> =
-wrote:
->=20
-> On 22/09/08 08:51AM, Alexey Lyahkov wrote:
->> Hi Ritesh,
->>=20
->> This was hit on the Lustre OSS node when we have ton=E2=80=99s of =
-short write with sync/(journal commit) in parallel.
->> Each write was done from own thread (like 1k-2k threads in parallel).
->> It caused a situation when only few/some threads make a wakeup and =
-enter to the transaction until it will be T_LOCKED.
->> In our=E2=80=99s observation all handles from head was waked and =
-it=E2=80=99s handles added recently, while old handles still in list and
->=20
-> Thanks Alexey for providing the details.
->=20
->> It caused a soft lockup messages on console.
->=20
-> Did you mean hung task timeout? I was wondering why will there be soft =
-lockup
-> warning, because these old handles are anyway in a waiting state =
-right.
-> Am I missing something?
->=20
-Oh. I asked a colleges about details. It was internal lustre hung =
-detector not a kernel side
+Other than that, this patch along with the updated mb_structs_summary
+proc file change looks good to me.
 
-[ 2221.036503] Lustre: ll_ost_io04_080: service thread pid 55122 was =
-inactive for 80.284 seconds. The thread might be hung, or it might only =
-be slow and will resume later. Dumping the stack trace for debugging =
-purposes:
-[ 2221.036677] Pid: 55212, comm: ll_ost_io05_074 =
-4.18.0-305.10.2.x6.1.010.19.x86_64 #1 SMP Thu Jun 30 13:42:51 MDT 2022
-[ 2221.056673] Lustre: Skipped 2 previous similar messages
-[ 2221.067821] Call Trace TBD:
-[ 2221.067855] [<0>] wait_transaction_locked+0x89/0xc0 [jbd2]
-[ 2221.099175] [<0>] add_transaction_credits+0xd4/0x290 [jbd2]
-[ 2221.105266] [<0>] start_this_handle+0x10a/0x520 [jbd2]
-[ 2221.110904] [<0>] jbd2__journal_start+0xea/0x1f0 [jbd2]
-[ 2221.116679] [<0>] __ldiskfs_journal_start_sb+0x6e/0x130 [ldiskfs]
-[ 2221.123316] [<0>] osd_trans_start+0x13b/0x4f0 [osd_ldiskfs]
-[ 2221.129417] [<0>] ofd_commitrw_write+0x620/0x1830 [ofd]
-[ 2221.135147] [<0>] ofd_commitrw+0x731/0xd80 [ofd]
-[ 2221.140420] [<0>] obd_commitrw+0x1ac/0x370 [ptlrpc]
-[ 2221.145858] [<0>] tgt_brw_write+0x1913/0x1d50 [ptlrpc]
-[ 2221.151561] [<0>] tgt_request_handle+0xc93/0x1a40 [ptlrpc]
-[ 2221.157622] [<0>] ptlrpc_server_handle_request+0x323/0xbd0 [ptlrpc]
-[ 2221.164454] [<0>] ptlrpc_main+0xc06/0x1560 [ptlrpc]
-[ 2221.169860] [<0>] kthread+0x116/0x130
-[ 2221.174033] [<0>] ret_from_fork+0x1f/0x40
-
-
-Other logs have shown this thread can=E2=80=99t take a handle, but other =
-threads able to do it many times.
-Kernel detector don=E2=80=99t hit because thread have wakeup many times =
-but it have seen T_LOCKED and go to sleep again.
-
-Alex
-
-
-
-> -ritesh
-
+Regards,
+Ojaswin
