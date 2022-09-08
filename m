@@ -2,63 +2,125 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E9DA4C38145
-	for <linux-ext4@archiver.kernel.org>; Thu,  8 Sep 2022 08:36:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 29839ECAAD5
+	for <linux-ext4@archiver.kernel.org>; Thu,  8 Sep 2022 08:39:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230475AbiIHIgi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 8 Sep 2022 04:36:38 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36750 "EHLO
+        id S231384AbiIHIjt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 8 Sep 2022 04:39:49 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40054 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229484AbiIHIgd (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Sep 2022 04:36:33 -0400
-X-Greylist: delayed 443 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Thu, 08 Sep 2022 01:36:31 PDT
-Received: from forward107j.mail.yandex.net (forward107j.mail.yandex.net [5.45.198.252])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EF74CDFF67
-        for <linux-ext4@vger.kernel.org>; Thu,  8 Sep 2022 01:36:31 -0700 (PDT)
-Received: from forward503j.mail.yandex.net (forward503j.mail.yandex.net [IPv6:2a02:6b8:0:801:2::113])
-        by forward107j.mail.yandex.net (Yandex) with ESMTP id BC6BF887600;
-        Thu,  8 Sep 2022 11:28:35 +0300 (MSK)
-Received: from vla1-b7b6154c4cfd.qloud-c.yandex.net (vla1-b7b6154c4cfd.qloud-c.yandex.net [IPv6:2a02:6b8:c0d:3495:0:640:b7b6:154c])
-        by forward503j.mail.yandex.net (Yandex) with ESMTP id 851291DAEF93;
-        Thu,  8 Sep 2022 11:28:35 +0300 (MSK)
-Received: by vla1-b7b6154c4cfd.qloud-c.yandex.net (smtp/Yandex) with ESMTPSA id lcmUcd9y5j-SXhq3kDm;
-        Thu, 08 Sep 2022 11:28:35 +0300
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits))
-        (Client certificate not present)
-X-Yandex-Fwd: 1
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ya.ru; s=mail; t=1662625715;
-        bh=SR28xl9TqG4sh99CnRD+CmQIr/ApB1Bmm4ByGm5C2b8=;
-        h=From:In-Reply-To:Cc:Date:References:To:Subject:Message-ID;
-        b=reuNp+lLBN8mo7vsvboOao24yPThnisLtpARlors6+zExuM9d4AfyJHR8LS1XDqsJ
-         rPuXHIaXaFqC3yAx31fnNcxcSIda6y3EWCCZA2Oh4KGW7dkivmwwMJUH0wgY3T2Ycf
-         HUAdIop7PBthImY0kkicoyutfqUatc3W+GyotBzc=
-Authentication-Results: vla1-b7b6154c4cfd.qloud-c.yandex.net; dkim=pass header.i=@ya.ru
-Message-ID: <a6343e6d-00a9-3546-2182-6058150602b0@ya.ru>
-Date:   Thu, 8 Sep 2022 11:28:31 +0300
+        with ESMTP id S231171AbiIHIjc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Sep 2022 04:39:32 -0400
+Received: from mail-pl1-x631.google.com (mail-pl1-x631.google.com [IPv6:2607:f8b0:4864:20::631])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E8A4764EF
+        for <linux-ext4@vger.kernel.org>; Thu,  8 Sep 2022 01:39:28 -0700 (PDT)
+Received: by mail-pl1-x631.google.com with SMTP id u22so17095396plq.12
+        for <linux-ext4@vger.kernel.org>; Thu, 08 Sep 2022 01:39:28 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date;
+        bh=FbL6wbQTIIA+Tbn+IEhcdmbXS3h7pNSPA7zhMvPEliY=;
+        b=UkA8q9My1o0gUvxofouecCNQyUvkIokIJy2tbzGIAGx5XDFqKrwcFWUQG5rrcAay8h
+         S3vV2yzQ1NwUD0xPlrnC5U+PT8KWJOdx2MQNXInL5I5puTP/quwmArjUnKY9vnhGvSnb
+         cvadn32jzVljiUYXNSi1Mq1H2iHAp/iSKh7TGtPZ2/WMtkpvfvykfCyKvTAec9SR7Lkz
+         8Hji8lNQ5l116YF5c7I69PGsfKyUbFpKwAGfTmtSvjfsq19V4Xx5ShH7tr3FBTTJ0cwy
+         e1SEOXhfOy8QOCk8ADG+TmdUfi1rO79S/d71ZzlVLkakOr8jRzrCcbL9MZexjAWWZo//
+         h01A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date;
+        bh=FbL6wbQTIIA+Tbn+IEhcdmbXS3h7pNSPA7zhMvPEliY=;
+        b=JdZaC7cAianXlgyiK/Wkq9lHu+2FfNImgQbsIn1z2m9ySxEXOQxpEhJoTdxfLeer9i
+         IFXpsYwYCnqk54I3nBvkyuk+RR4OvvmfIahTnRl1sWjaxvQyYFP6Zn235Px4Uq/ZjOzE
+         QLrZWIOI+5zX90uEpUSP1RaPpH2nknDe1T/EKG/Rl1kMFlPacXgSwmaMEX0T1IK2XyHI
+         eR5oX3ZYO/8nFl6rN2nabQRCi0DO13VrVdxOhbqm6Dhv0Dv/8xjcqvrdONZ5rkla4vze
+         hP4M8Fd5iejCNzPq0OBOv+ksnlkWqlXTZ/OZ0nTD2OPGugOP+wVlKPJiKcyN2prSkZQI
+         GbEw==
+X-Gm-Message-State: ACgBeo0vf9Dy4TgkAW+kwGyZIN2pEuYt5oasob0OPK1CLpOOuZr+Ysoh
+        3LCkTD4Xkkz66+UAVHKX0eo=
+X-Google-Smtp-Source: AA6agR7XXnP0j/aQoxJS3UnCeHHtKWkL8ol2vS82+gWBOtvDXBzIpOA8ZoGn8wDnX2I4RxGeN6oZHw==
+X-Received: by 2002:a17:90b:1c11:b0:202:5301:a820 with SMTP id oc17-20020a17090b1c1100b002025301a820mr3095471pjb.193.1662626368311;
+        Thu, 08 Sep 2022 01:39:28 -0700 (PDT)
+Received: from localhost ([2406:7400:63:83c4:f166:555c:90a1:a48d])
+        by smtp.gmail.com with ESMTPSA id w24-20020aa79558000000b0053725e331a1sm14019586pfq.82.2022.09.08.01.39.27
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 08 Sep 2022 01:39:27 -0700 (PDT)
+Date:   Thu, 8 Sep 2022 14:09:22 +0530
+From:   "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
+To:     Jason Yan <yanaijie@huawei.com>
+Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
+        lczerner@redhat.com, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH v2 01/13] ext4: goto right label 'failed_mount3a'
+Message-ID: <20220908083922.cbwpwp7lmr3wqco3@riteshh-domain>
+References: <20220903030156.770313-1-yanaijie@huawei.com>
+ <20220903030156.770313-2-yanaijie@huawei.com>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
- Thunderbird/91.11.0
-Subject: Re: [PATCH] jbd2: wake up journal waiters in FIFO order, not LIFO
-Content-Language: en-US
-To:     Alexey Lyahkov <alexey.lyashkov@gmail.com>,
-        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
-Cc:     linux-ext4 <linux-ext4@vger.kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Artem Blagodarenko <artem.blagodarenko@gmail.com>
-References: <20220907165959.1137482-1-alexey.lyashkov@gmail.com>
- <20220908054611.vjcb27wmq4dggqmv@riteshh-domain>
- <B32B956C-E851-42A2-9419-2947C442E2AA@gmail.com>
- <20220908061153.dflgx7fjjav7pxyn@riteshh-domain>
- <5C1AAACF-5878-4812-8334-29A328B57A77@gmail.com>
-From:   Andrew <anserper@ya.ru>
-In-Reply-To: <5C1AAACF-5878-4812-8334-29A328B57A77@gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20220903030156.770313-2-yanaijie@huawei.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-> Other logs have shown this thread can’t take a handle, but other threads able to do it many times.
-> Kernel detector don’t hit because thread have wakeup many times but it have seen T_LOCKED and go to sleep again.
-Also, the transactions are small because the workload is sync writes.
+On 22/09/03 11:01AM, Jason Yan wrote:
+> Before these two branches neither loaded the journal nor created the
+> xattr cache. So the right label to goto is 'failed_mount3a'. Although
+> this did not cause any issues because the error handler validated if the
+> pointer is null. However this still made me confused when reading
+> the code. So it's still worth to modify to goto the right label.
+> 
+> Signed-off-by: Jason Yan <yanaijie@huawei.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/super.c | 10 +++++-----
+>  1 file changed, 5 insertions(+), 5 deletions(-)
+
+This looks good to me. 
+Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 9a66abcca1a8..6126da867b26 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -5079,30 +5079,30 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+>  		   ext4_has_feature_journal_needs_recovery(sb)) {
+>  		ext4_msg(sb, KERN_ERR, "required journal recovery "
+>  		       "suppressed and not mounted read-only");
+> -		goto failed_mount_wq;
+> +		goto failed_mount3a;
+>  	} else {
+>  		/* Nojournal mode, all journal mount options are illegal */
+>  		if (test_opt2(sb, EXPLICIT_JOURNAL_CHECKSUM)) {
+>  			ext4_msg(sb, KERN_ERR, "can't mount with "
+>  				 "journal_checksum, fs mounted w/o journal");
+> -			goto failed_mount_wq;
+> +			goto failed_mount3a;
+>  		}
+>  		if (test_opt(sb, JOURNAL_ASYNC_COMMIT)) {
+>  			ext4_msg(sb, KERN_ERR, "can't mount with "
+>  				 "journal_async_commit, fs mounted w/o journal");
+> -			goto failed_mount_wq;
+> +			goto failed_mount3a;
+>  		}
+>  		if (sbi->s_commit_interval != JBD2_DEFAULT_MAX_COMMIT_AGE*HZ) {
+>  			ext4_msg(sb, KERN_ERR, "can't mount with "
+>  				 "commit=%lu, fs mounted w/o journal",
+>  				 sbi->s_commit_interval / HZ);
+> -			goto failed_mount_wq;
+> +			goto failed_mount3a;
+>  		}
+>  		if (EXT4_MOUNT_DATA_FLAGS &
+>  		    (sbi->s_mount_opt ^ sbi->s_def_mount_opt)) {
+>  			ext4_msg(sb, KERN_ERR, "can't mount with "
+>  				 "data=, fs mounted w/o journal");
+> -			goto failed_mount_wq;
+> +			goto failed_mount3a;
+>  		}
+>  		sbi->s_def_mount_opt &= ~EXT4_MOUNT_JOURNAL_CHECKSUM;
+>  		clear_opt(sb, JOURNAL_CHECKSUM);
+> -- 
+> 2.31.1
+> 
