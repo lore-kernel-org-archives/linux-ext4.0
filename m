@@ -2,77 +2,69 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F0CCBC6FA83
-	for <linux-ext4@archiver.kernel.org>; Mon, 12 Sep 2022 00:54:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 90F87ECAAA1
+	for <linux-ext4@archiver.kernel.org>; Mon, 12 Sep 2022 02:20:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229601AbiILAyZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 11 Sep 2022 20:54:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35530 "EHLO
+        id S229585AbiILCUc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 11 Sep 2022 22:20:32 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54882 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229459AbiILAyX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 11 Sep 2022 20:54:23 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9DF6927CF5;
-        Sun, 11 Sep 2022 17:54:22 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 4F007B80C68;
-        Mon, 12 Sep 2022 00:54:21 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 09F45C433D6;
-        Mon, 12 Sep 2022 00:54:16 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1662944059;
-        bh=WDVtmnzEsaEU55TuvLxBRymxTuYaVUC9hgjRIe0bHt0=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=ZoxnvrqSSY20wV65g7z6/rwjE02vykYR2j0xgsMFiTFS3wcFoXQgc7ddRv8HVfb3f
-         Kwr6X2fw2mafz42Qbx5YdEIQQnsRulU5GDprmsG01tejmSwgFvr4Jx1B47ZL2SiCcG
-         Eyn7qIRIzb0YqpOmcociLL5XyxfDzbh0zkynyL7M0TA1icIoVgkGtGXOVtBvjI1oIN
-         Iw8cbqxwN+hQUZueBTkmVgQV2RAaCxx5KdzDrA5EkbLK7xfUqnQisUx0ldrLzg3M1r
-         oaH/BIP5FZbUDfOMoORvOPkiaFMoOUQT1g/YGC/jN8fIFwm06y/Lc3y+CcDBzZnAwH
-         78iOtWwzF2Ivg==
-Date:   Sun, 11 Sep 2022 19:54:12 -0500
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Stephen Rothwell <sfr@canb.auug.org.au>, linux-next@vger.kernel.org
-Cc:     linux-block@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-xfs@vger.kernel.org,
-        Keith Busch <kbusch@kernel.org>, linux-fscrypt@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>
-Subject: Re: [PATCH v5 0/8] make statx() return DIO alignment information
-Message-ID: <Yx6DNIorJ86IWk5q@quark>
-References: <20220827065851.135710-1-ebiggers@kernel.org>
- <YxfE8zjqkT6Zn+Vn@quark>
+        with ESMTP id S229583AbiILCUb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 11 Sep 2022 22:20:31 -0400
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C72531DA41
+        for <linux-ext4@vger.kernel.org>; Sun, 11 Sep 2022 19:20:29 -0700 (PDT)
+Received: from canpemm500004.china.huawei.com (unknown [172.30.72.53])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4MQqvZ0yy5zNm6Y;
+        Mon, 12 Sep 2022 10:15:54 +0800 (CST)
+Received: from [10.174.179.14] (10.174.179.14) by
+ canpemm500004.china.huawei.com (7.192.104.92) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2375.31; Mon, 12 Sep 2022 10:20:27 +0800
+Subject: Re: [PATCH v2 03/13] ext4: factor out ext4_set_def_opts()
+To:     "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
+CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
+        <lczerner@redhat.com>, <linux-ext4@vger.kernel.org>
+References: <20220903030156.770313-1-yanaijie@huawei.com>
+ <20220903030156.770313-4-yanaijie@huawei.com>
+ <20220908084426.w4ltd7cotudoykyw@riteshh-domain>
+From:   Jason Yan <yanaijie@huawei.com>
+Message-ID: <5000fb7d-21ce-ed5c-a621-6f91dec527e0@huawei.com>
+Date:   Mon, 12 Sep 2022 10:20:27 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
+ Thunderbird/78.12.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <YxfE8zjqkT6Zn+Vn@quark>
+In-Reply-To: <20220908084426.w4ltd7cotudoykyw@riteshh-domain>
+Content-Type: text/plain; charset="utf-8"; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Originating-IP: [10.174.179.14]
+X-ClientProxiedBy: dggems704-chm.china.huawei.com (10.3.19.181) To
+ canpemm500004.china.huawei.com (7.192.104.92)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Sep 06, 2022 at 03:08:51PM -0700, Eric Biggers wrote:
-> On Fri, Aug 26, 2022 at 11:58:43PM -0700, Eric Biggers wrote:
-> > This patchset makes the statx() system call return direct I/O (DIO)
-> > alignment information.  This allows userspace to easily determine
-> > whether a file supports DIO, and if so with what alignment restrictions.
+Hi Ritesh, thanks for the review.
+
+On 2022/9/8 16:44, Ritesh Harjani (IBM) wrote:
+> On 22/09/03 11:01AM, Jason Yan wrote:
+>> Factor out ext4_set_def_opts(). No functional change.
+>         if (blocksize == PAGE_SIZE)
+>                 set_opt(sb, DIOREAD_NOLOCK);
+> The patch looks good however, even this ^^ could be moved in
+> ext4_set_def_opts() via some refactoring.
 > 
-> Al, any thoughts on this patchset, and do you plan to apply it for 6.1?  Ideally
-> this would go through the VFS tree.  If not, I suppose I'll need to have it
-> added to linux-next and send the pull request myself.
+> If required you could even submit a seperate change for above.
 > 
-> - Eric
 
-Seems that it's up to me, then.
+Yes, this needs some refactoring. I would like to make a separate patch 
+in my next series.
 
-Stephen, can you add my git branch for this patchset to linux-next?
+Jason
 
-URL: https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git
-Branch: statx-dioalign
-
-This is targeting the 6.1 merge window with a pull request to Linus.
-
-Thanks!
-
-- Eric
+> Otherwise this change looks good to me.
+> Reviewed-by: Ritesh Harjani (IBM)<ritesh.list@gmail.com>
+> 
+> 
