@@ -2,119 +2,127 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AEC9FC6FA83
-	for <linux-ext4@archiver.kernel.org>; Mon, 12 Sep 2022 18:29:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5BA95C6FA82
+	for <linux-ext4@archiver.kernel.org>; Mon, 12 Sep 2022 21:49:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231286AbiILS3X (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 12 Sep 2022 14:29:23 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52402 "EHLO
+        id S230016AbiILVt4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 12 Sep 2022 17:49:56 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34296 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230493AbiILS2c (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Sep 2022 14:28:32 -0400
-Received: from mail-pl1-x62d.google.com (mail-pl1-x62d.google.com [IPv6:2607:f8b0:4864:20::62d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5B8791AF01;
-        Mon, 12 Sep 2022 11:26:11 -0700 (PDT)
-Received: by mail-pl1-x62d.google.com with SMTP id d12so9376264plr.6;
-        Mon, 12 Sep 2022 11:26:10 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date;
-        bh=lkGrgC7rGv3gNtROZri1LZJW+W1eletv7YqP1zeCUhw=;
-        b=fCy8TLtpc+2sHdfZpYJzZ3/33zUyiKgotMXve7zJnxVipv/nh1oXHb8bS2ysugI/9v
-         DPPmXTfFd2REo9KrIQqrSQArNmn2PIXW2Xf5/1Ut4j4N93Wdp+lwmDib+aOUEWzjjW2z
-         ZE7UUCvkcyVxvhRcudTBKvbY7PZCczmbSlXfRTufHjK1lQKZiPD4cVbUJ3kgQLIdrvTd
-         DEsLz2Pp7SVPdQ+qvHM0m7ftgUr0guyVgV77dhlT4Kf3Rdhp8jR2Z6CWYrkquI7PqWFw
-         z1Xy/MN+eXfTN+XVOyRTS9mw9r9QLcv9wmvp2cqbpHgbAYtX/bPNPHQhK3HBKbjjHYbK
-         mZ4A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date;
-        bh=lkGrgC7rGv3gNtROZri1LZJW+W1eletv7YqP1zeCUhw=;
-        b=bDk0euRFurrgogLmyvfiMiVJXJZMGPiV70fUXljn6o/6tFieCjph5fyFY46iGUrhr/
-         V24uDwBSAbfGUII8y4RC0kEEwV/4A1fBlYsX10WO5LOpAHNlj9P6c+E9FsiZ3vKpqT0D
-         +nYiRrhdQrzrUNV4tPn080DmzGLz2FQlbFzwebbMECU1dpfxlnfvXm4tNk/kW/C/I3V6
-         6DsVva3O/3K7Y5+RJLeKtq2JjM9YdS+xTlbJcE6nt7f6qDZw2Vb8Rh2Gg54T7QcbKylZ
-         iSnfOHpyb33QgikvOnrYm03IyRVSeqGmq2MHQvHT7LhjCtO8+mTUIjq5SAQPQMrGNvnG
-         uC7A==
-X-Gm-Message-State: ACgBeo0g0MzG5JLNUvjpdqpsis/Fd3o0gPdPWW92vlm2YQFKpnEVN+ZQ
-        AVrGfI1quP0BIV0fGNmBmUPGNgFzJabOVA==
-X-Google-Smtp-Source: AA6agR7ugObnvvF7oyQiEw4Z3c3fWFD4/N8jwEvlip2DlQU6J5KyEtNgXLRq2aVr22deGLsWpY1Yvg==
-X-Received: by 2002:a17:90b:1d8c:b0:202:abf5:4b21 with SMTP id pf12-20020a17090b1d8c00b00202abf54b21mr13212396pjb.162.1663007158527;
-        Mon, 12 Sep 2022 11:25:58 -0700 (PDT)
-Received: from vmfolio.. (c-73-189-111-8.hsd1.ca.comcast.net. [73.189.111.8])
-        by smtp.googlemail.com with ESMTPSA id x127-20020a626385000000b0053b2681b0e0sm5916894pfb.39.2022.09.12.11.25.57
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 12 Sep 2022 11:25:58 -0700 (PDT)
-From:   "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
-To:     linux-fsdevel@vger.kernel.org
-Cc:     linux-afs@lists.infradead.org, linux-kernel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-nilfs@vger.kernel.org, linux-mm@kvack.org,
-        "Vishal Moola (Oracle)" <vishal.moola@gmail.com>,
-        Ryusuke Konishi <konishi.ryusuke@gmail.com>
-Subject: [PATCH v2 22/23] nilfs2: Convert nilfs_clear_dirty_pages() to use filemap_get_folios_tag()
-Date:   Mon, 12 Sep 2022 11:22:23 -0700
-Message-Id: <20220912182224.514561-23-vishal.moola@gmail.com>
-X-Mailer: git-send-email 2.36.1
-In-Reply-To: <20220912182224.514561-1-vishal.moola@gmail.com>
-References: <20220912182224.514561-1-vishal.moola@gmail.com>
+        with ESMTP id S229539AbiILVtz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Sep 2022 17:49:55 -0400
+Received: from gandalf.ozlabs.org (mail.ozlabs.org [IPv6:2404:9400:2221:ea00::3])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 25D6FB7CF;
+        Mon, 12 Sep 2022 14:49:53 -0700 (PDT)
+Received: from authenticated.ozlabs.org (localhost [127.0.0.1])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange ECDHE (P-256) server-signature RSA-PSS (4096 bits) server-digest SHA256)
+        (No client certificate requested)
+        by mail.ozlabs.org (Postfix) with ESMTPSA id 4MRKy22vMMz4xFt;
+        Tue, 13 Sep 2022 07:49:46 +1000 (AEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=canb.auug.org.au;
+        s=201702; t=1663019388;
+        bh=CHb/HFS/YBUK6LYyCv0Ig6t6CoCQ9NnN9We46PpcpMM=;
+        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
+        b=gcuL+UE4DAC44wpK3nXAbvF2+K8mwss7m6RSNWaj8Mh8awM2Wt/FiEQf2vI9qPrnY
+         h/5aGQBKy+bfc0BS8MEjgJAHhu/shzbvce0n2hpOsptgWcxJTQNKx0F2N2FV/FLIX6
+         SpOIdzVbwdR2CAbCf35ZlU9hH8uoI9CBJiK1auFJZ1qFAmdHTLKQFFVg89Kc6/niwL
+         IlOLw8YTX9/eppj7U8UoqKtkLMot+bqQ6uYXyp+oVE9NWmlAIfgPhpcJ83VDjIpTS2
+         AUlCCsqj86uQnYPR07+4K1Fi+TPku0C2oWOxWOynty4hjlmoB9cqwzwOQjpkVRGxpz
+         C0++lys4Fdl6w==
+Date:   Tue, 13 Sep 2022 06:30:25 +1000
+From:   Stephen Rothwell <sfr@canb.auug.org.au>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     Stephen Rothwell <sfr@canb.auug.org.au>,
+        linux-next@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-api@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-xfs@vger.kernel.org,
+        Keith Busch <kbusch@kernel.org>, linux-fscrypt@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>
+Subject: Re: [PATCH v5 0/8] make statx() return DIO alignment information
+Message-ID: <20220913063025.4815466c@canb.auug.org.au>
+In-Reply-To: <Yx6DNIorJ86IWk5q@quark>
+References: <20220827065851.135710-1-ebiggers@kernel.org>
+        <YxfE8zjqkT6Zn+Vn@quark>
+        <Yx6DNIorJ86IWk5q@quark>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: multipart/signed; boundary="Sig_/ySqoajbBqbhy0s/Yyi/jEcM";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Convert function to use folios throughout. This is in preparation for
-the removal of find_get_pages_range_tag().
+--Sig_/ySqoajbBqbhy0s/Yyi/jEcM
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Vishal Moola (Oracle) <vishal.moola@gmail.com>
-Acked-by: Ryusuke Konishi <konishi.ryusuke@gmail.com>
----
- fs/nilfs2/page.c | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+Hi Eric,
 
-diff --git a/fs/nilfs2/page.c b/fs/nilfs2/page.c
-index 5c96084e829f..b66f4e988016 100644
---- a/fs/nilfs2/page.c
-+++ b/fs/nilfs2/page.c
-@@ -358,22 +358,22 @@ void nilfs_copy_back_pages(struct address_space *dmap,
-  */
- void nilfs_clear_dirty_pages(struct address_space *mapping, bool silent)
- {
--	struct pagevec pvec;
-+	struct folio_batch fbatch;
- 	unsigned int i;
- 	pgoff_t index = 0;
- 
--	pagevec_init(&pvec);
-+	folio_batch_init(&fbatch);
- 
--	while (pagevec_lookup_tag(&pvec, mapping, &index,
--					PAGECACHE_TAG_DIRTY)) {
--		for (i = 0; i < pagevec_count(&pvec); i++) {
--			struct page *page = pvec.pages[i];
-+	while (filemap_get_folios_tag(mapping, &index, (pgoff_t)-1,
-+				PAGECACHE_TAG_DIRTY, &fbatch)) {
-+		for (i = 0; i < folio_batch_count(&fbatch); i++) {
-+			struct folio *folio = fbatch.folios[i];
- 
--			lock_page(page);
--			nilfs_clear_dirty_page(page, silent);
--			unlock_page(page);
-+			folio_lock(folio);
-+			nilfs_clear_dirty_page(&folio->page, silent);
-+			folio_unlock(folio);
- 		}
--		pagevec_release(&pvec);
-+		folio_batch_release(&fbatch);
- 		cond_resched();
- 	}
- }
--- 
-2.36.1
+On Sun, 11 Sep 2022 19:54:12 -0500 Eric Biggers <ebiggers@kernel.org> wrote:
+>
+> On Tue, Sep 06, 2022 at 03:08:51PM -0700, Eric Biggers wrote:
+> > On Fri, Aug 26, 2022 at 11:58:43PM -0700, Eric Biggers wrote: =20
+> > > This patchset makes the statx() system call return direct I/O (DIO)
+> > > alignment information.  This allows userspace to easily determine
+> > > whether a file supports DIO, and if so with what alignment restrictio=
+ns. =20
+> >=20
+> > Al, any thoughts on this patchset, and do you plan to apply it for 6.1?=
+  Ideally
+> > this would go through the VFS tree.  If not, I suppose I'll need to hav=
+e it
+> > added to linux-next and send the pull request myself.
+> >=20
+> > - Eric =20
+>=20
+> Seems that it's up to me, then.
+>=20
+> Stephen, can you add my git branch for this patchset to linux-next?
+>=20
+> URL: https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git
+> Branch: statx-dioalign
+>=20
+> This is targeting the 6.1 merge window with a pull request to Linus.
 
+Added from today.
+
+Thanks for adding your subsystem tree as a participant of linux-next.  As
+you may know, this is not a judgement of your code.  The purpose of
+linux-next is for integration testing and to lower the impact of
+conflicts between subsystems in the next merge window.=20
+
+You will need to ensure that the patches/commits in your tree/series have
+been:
+     * submitted under GPL v2 (or later) and include the Contributor's
+        Signed-off-by,
+     * posted to the relevant mailing list,
+     * reviewed by you (or another maintainer of your subsystem tree),
+     * successfully unit tested, and=20
+     * destined for the current or next Linux merge window.
+
+Basically, this should be just what you would send to Linus (or ask him
+to fetch).  It is allowed to be rebased if you deem it necessary.
+
+--=20
+Cheers,
+Stephen Rothwell=20
+sfr@canb.auug.org.au
+
+--Sig_/ySqoajbBqbhy0s/Yyi/jEcM
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
+
+-----BEGIN PGP SIGNATURE-----
+
+iQEzBAEBCAAdFiEENIC96giZ81tWdLgKAVBC80lX0GwFAmMfluEACgkQAVBC80lX
+0GzrXAf9ESId1RmQujmRO/suIb7p60bPOkr5l/1EmdjlqHgMfXoP0bDKsbHNd3Do
+ZOf+Qj8BPc1KuPXgGEqZ8bWxEMOu5NtVl82bbhQwaMZbaObcE+CW34aaenRKRBCq
+kPAHrUAe3SGkuyVjQJFX0I0PdGe7WYoar4MhO3ULl1USnIEF0p6GCXXe1DvR2LRA
+6ZMdZbx+g9cPc2ya5lzpHLIkTaDSjjjE/blGA0UFuUYAyRUVEw0rGig1iPnQA+EP
+dr+aQ+9vZ1OICIy2tSpsplEl2Otk4rTA0EAB/BVYTDOBgMQQ6CLZN9o+1tHnmsuK
+/BZ7ql3uk0XzQR2n0awIeOjS13b5Sg==
+=u95+
+-----END PGP SIGNATURE-----
+
+--Sig_/ySqoajbBqbhy0s/Yyi/jEcM--
