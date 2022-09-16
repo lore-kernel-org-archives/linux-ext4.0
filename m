@@ -2,42 +2,42 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E47F1C6FA90
-	for <linux-ext4@archiver.kernel.org>; Fri, 16 Sep 2022 03:35:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0CEC5C6FA86
+	for <linux-ext4@archiver.kernel.org>; Fri, 16 Sep 2022 03:35:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229950AbiIPDfo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 15 Sep 2022 23:35:44 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55594 "EHLO
+        id S229896AbiIPDft (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 15 Sep 2022 23:35:49 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56392 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229483AbiIPDfZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Sep 2022 23:35:25 -0400
-Received: from mga12.intel.com (mga12.intel.com [192.55.52.136])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C7846766F;
-        Thu, 15 Sep 2022 20:35:22 -0700 (PDT)
+        with ESMTP id S229898AbiIPDff (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Sep 2022 23:35:35 -0400
+Received: from mga17.intel.com (mga17.intel.com [192.55.52.151])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 74D2E2C674;
+        Thu, 15 Sep 2022 20:35:34 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
   d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1663299322; x=1694835322;
+  t=1663299334; x=1694835334;
   h=subject:from:to:cc:date:message-id:in-reply-to:
    references:mime-version:content-transfer-encoding;
-  bh=09smizwI4GSJLiX2SQxDnF1gC8wYEWwvB8zT8M3pE8M=;
-  b=ALRJa740N8oIKKi6rgQ3AAxzXSpOdduIWifehDoHQBhZAEEjT1qfuRDt
-   mrBXp20ssWqwVeIE0vj285fonMzHX0EHrnnnjtC5pj1HVOtmuqy4czNlJ
-   UDal7VO4ptHynOBI7lEglaQzoSz+FDaU03KVRMywf4Fy0jjv4Jn4PSt4l
-   YNMZVt1rYdX6fdyI8NjjCfsgyb5t1gG1dx80OhgCXRexrDpoj6hSijMEW
-   iPsvNrPyI20y7sTe5k7/V9tfWwVdZvmSfSWURkOq2C2VbN4Ja97BNX7KD
-   2JoBH6GR6Mj6ISoK3cXEpUoX3iMYf9k3lLeV+hwsJ1BuHRPfLJ5ClRRYW
-   g==;
-X-IronPort-AV: E=McAfee;i="6500,9779,10471"; a="278630752"
+  bh=JMW9u8fUfl6xVouZZpm8FHKzsQjwv8MqqGLA900GgrQ=;
+  b=Xuf6d6X+UD9QkxwoTrdhGwNEY5nkE0zeG8RgtOVR+iRm2S2fK2B6sW+h
+   vTVMGbUyPoVN9/cmVTb/+z2BuQkZee8JczkIqG7Ff7Y7Q5IeBWkBZUZz+
+   278XDmxGX/OO4n7EK0rhct6OYNkQAsYNviEWEPrBKHLpggeoL3AltTG9Q
+   BrvM4KtIBzGams+B8hdakgtb0nc/aS6Z/bBF7lB3gspnaXdcTVuN3SGhc
+   bvzC8nrHA2FlE4XUwgtpndDndn5/bLNmtdUx79NJ3bBFJth07zgwHQ9s1
+   nECNpPi5WqRbOC1ZgnZs6aR671UVYsyM1318+0HJQyGgC6c/2lT6GoJpo
+   Q==;
+X-IronPort-AV: E=McAfee;i="6500,9779,10471"; a="279283812"
 X-IronPort-AV: E=Sophos;i="5.93,319,1654585200"; 
-   d="scan'208";a="278630752"
+   d="scan'208";a="279283812"
 Received: from orsmga005.jf.intel.com ([10.7.209.41])
-  by fmsmga106.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 15 Sep 2022 20:35:22 -0700
+  by fmsmga107.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 15 Sep 2022 20:35:33 -0700
 X-IronPort-AV: E=Sophos;i="5.93,319,1654585200"; 
-   d="scan'208";a="792961772"
+   d="scan'208";a="792961823"
 Received: from colinlix-mobl.amr.corp.intel.com (HELO dwillia2-xfh.jf.intel.com) ([10.209.29.52])
-  by orsmga005-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 15 Sep 2022 20:35:21 -0700
-Subject: [PATCH v2 02/18] fsdax: Use dax_page_idle() to document DAX busy
- page checking
+  by orsmga005-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 15 Sep 2022 20:35:33 -0700
+Subject: [PATCH v2 04/18] ext4: Add ext4_break_layouts() to the inode
+ eviction path
 From:   Dan Williams <dan.j.williams@intel.com>
 To:     akpm@linux-foundation.org
 Cc:     Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>,
@@ -48,8 +48,8 @@ Cc:     Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>,
         linux-fsdevel@vger.kernel.org, nvdimm@lists.linux.dev,
         linux-xfs@vger.kernel.org, linux-mm@kvack.org,
         linux-ext4@vger.kernel.org
-Date:   Thu, 15 Sep 2022 20:35:21 -0700
-Message-ID: <166329932151.2786261.15762187070104795379.stgit@dwillia2-xfh.jf.intel.com>
+Date:   Thu, 15 Sep 2022 20:35:33 -0700
+Message-ID: <166329933305.2786261.13953404062673878108.stgit@dwillia2-xfh.jf.intel.com>
 In-Reply-To: <166329930818.2786261.6086109734008025807.stgit@dwillia2-xfh.jf.intel.com>
 References: <166329930818.2786261.6086109734008025807.stgit@dwillia2-xfh.jf.intel.com>
 User-Agent: StGit/0.18-3-g996c
@@ -60,10 +60,18 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-In advance of converting DAX pages to be 0-based, use a new
-dax_page_idle() helper to both simplify that future conversion, but also
-document all the kernel locations that are watching for DAX page idle
-events.
+In preparation for moving DAX pages to be 0-based rather than 1-based
+for the idle refcount, the fsdax core wants to have all mappings in a
+"zapped" state before truncate. For typical pages this happens naturally
+via unmap_mapping_range(), for DAX pages some help is needed to record
+this state in the 'struct address_space' of the inode(s) where the page
+is mapped.
+
+That "zapped" state is recorded in DAX entries as a side effect of
+ext4_break_layouts(). Arrange for it to be called before all truncation
+events which already happens for truncate() and PUNCH_HOLE, but not
+truncate_inode_pages_final(). Arrange for ext4_break_layouts() before
+truncate_inode_pages_final().
 
 Cc: Matthew Wilcox <willy@infradead.org>
 Cc: Jan Kara <jack@suse.cz>
@@ -73,99 +81,35 @@ Cc: Christoph Hellwig <hch@lst.de>
 Cc: John Hubbard <jhubbard@nvidia.com>
 Signed-off-by: Dan Williams <dan.j.williams@intel.com>
 ---
- fs/dax.c            |    4 ++--
- fs/ext4/inode.c     |    3 +--
- fs/fuse/dax.c       |    5 ++---
- fs/xfs/xfs_file.c   |    5 ++---
- include/linux/dax.h |    9 +++++++++
- 5 files changed, 16 insertions(+), 10 deletions(-)
+ fs/ext4/inode.c |    8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/fs/dax.c b/fs/dax.c
-index c440dcef4b1b..e762b9c04fb4 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -395,7 +395,7 @@ static void dax_disassociate_entry(void *entry, struct address_space *mapping,
- 	for_each_mapped_pfn(entry, pfn) {
- 		struct page *page = pfn_to_page(pfn);
- 
--		WARN_ON_ONCE(trunc && page_ref_count(page) > 1);
-+		WARN_ON_ONCE(trunc && !dax_page_idle(page));
- 		if (dax_mapping_is_cow(page->mapping)) {
- 			/* keep the CoW flag if this page is still shared */
- 			if (page->index-- > 0)
-@@ -414,7 +414,7 @@ static struct page *dax_busy_page(void *entry)
- 	for_each_mapped_pfn(entry, pfn) {
- 		struct page *page = pfn_to_page(pfn);
- 
--		if (page_ref_count(page) > 1)
-+		if (!dax_page_idle(page))
- 			return page;
- 	}
- 	return NULL;
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b028a4413bea..478ec6bc0935 100644
+index 478ec6bc0935..326269ad3961 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -3961,8 +3961,7 @@ int ext4_break_layouts(struct inode *inode)
- 		if (!page)
- 			return 0;
- 
--		error = ___wait_var_event(page,
--					  atomic_read(&page->_refcount) == 1,
-+		error = ___wait_var_event(page, dax_page_idle(page),
- 					  TASK_INTERRUPTIBLE, 0, 0,
- 					  ext4_wait_dax_page(inode));
- 	} while (error == 0);
-diff --git a/fs/fuse/dax.c b/fs/fuse/dax.c
-index 4e12108c68af..ae52ef7dbabe 100644
---- a/fs/fuse/dax.c
-+++ b/fs/fuse/dax.c
-@@ -676,9 +676,8 @@ static int __fuse_dax_break_layouts(struct inode *inode, bool *retry,
- 		return 0;
- 
- 	*retry = true;
--	return ___wait_var_event(page, atomic_read(&page->_refcount) == 1,
--				 TASK_INTERRUPTIBLE, 0, 0,
--				 fuse_wait_dax_page(inode));
-+	return ___wait_var_event(page, dax_page_idle(page), TASK_INTERRUPTIBLE,
-+				 0, 0, fuse_wait_dax_page(inode));
- }
- 
- /* dmap_end == 0 leads to unmapping of whole file */
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 73e7b7ec0a4c..556e28d06788 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -827,9 +827,8 @@ xfs_break_dax_layouts(
- 		return 0;
- 
- 	*retry = true;
--	return ___wait_var_event(page, atomic_read(&page->_refcount) == 1,
--				 TASK_INTERRUPTIBLE, 0, 0,
--				 xfs_wait_dax_page(inode));
-+	return ___wait_var_event(page, dax_page_idle(page), TASK_INTERRUPTIBLE,
-+				 0, 0, xfs_wait_dax_page(inode));
- }
- 
- int
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index ba985333e26b..04987d14d7e0 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -210,6 +210,15 @@ int dax_zero_range(struct inode *inode, loff_t pos, loff_t len, bool *did_zero,
- int dax_truncate_page(struct inode *inode, loff_t pos, bool *did_zero,
- 		const struct iomap_ops *ops);
- 
-+/*
-+ * Document all the code locations that want know when a dax page is
-+ * unreferenced.
-+ */
-+static inline bool dax_page_idle(struct page *page)
-+{
-+	return page_ref_count(page) == 1;
-+}
+@@ -207,7 +207,11 @@ void ext4_evict_inode(struct inode *inode)
+ 			jbd2_complete_transaction(journal, commit_tid);
+ 			filemap_write_and_wait(&inode->i_data);
+ 		}
 +
- #if IS_ENABLED(CONFIG_DAX)
- int dax_read_lock(void);
- void dax_read_unlock(int id);
++		filemap_invalidate_lock(inode->i_mapping);
++		ext4_break_layouts(inode);
+ 		truncate_inode_pages_final(&inode->i_data);
++		filemap_invalidate_unlock(inode->i_mapping);
+ 
+ 		goto no_delete;
+ 	}
+@@ -218,7 +222,11 @@ void ext4_evict_inode(struct inode *inode)
+ 
+ 	if (ext4_should_order_data(inode))
+ 		ext4_begin_ordered_truncate(inode, 0);
++
++	filemap_invalidate_lock(inode->i_mapping);
++	ext4_break_layouts(inode);
+ 	truncate_inode_pages_final(&inode->i_data);
++	filemap_invalidate_unlock(inode->i_mapping);
+ 
+ 	/*
+ 	 * For inodes with journalled data, transaction commit could have
 
