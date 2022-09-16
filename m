@@ -2,41 +2,42 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A128C6FA90
-	for <linux-ext4@archiver.kernel.org>; Fri, 16 Sep 2022 03:35:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C469BC6FA91
+	for <linux-ext4@archiver.kernel.org>; Fri, 16 Sep 2022 03:35:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229773AbiIPDfj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 15 Sep 2022 23:35:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55152 "EHLO
+        id S229679AbiIPDfr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 15 Sep 2022 23:35:47 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56250 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229939AbiIPDfS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Sep 2022 23:35:18 -0400
-Received: from mga05.intel.com (mga05.intel.com [192.55.52.43])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A910721274;
-        Thu, 15 Sep 2022 20:35:16 -0700 (PDT)
+        with ESMTP id S229847AbiIPDfb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Sep 2022 23:35:31 -0400
+Received: from mga18.intel.com (mga18.intel.com [134.134.136.126])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 646701A818;
+        Thu, 15 Sep 2022 20:35:28 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
   d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1663299316; x=1694835316;
+  t=1663299328; x=1694835328;
   h=subject:from:to:cc:date:message-id:in-reply-to:
    references:mime-version:content-transfer-encoding;
-  bh=TFsjnfnCv3qQkchX3Q8w6OPDWs44NJ34NXLtENxpehE=;
-  b=lCoFo6LBdLCbxOktV/voBXwOw90yV85nxXczPXkSpPWscsABf9AN+kmv
-   M8pGlBuWod5FhhZVdHcPNj0eWVkmM6HvgYKnAq2FHqRDJVXjVXfaz33b4
-   zXt5Oq5lf2U9gNZPx33GB9NZxMnTSgUEXx6gNJOtDG6LIR0Uuf5MN0mP2
-   +QxnDekbCFJycwJqmhF9h7Ru+rJmc5j1cmxZvXeCqcLfenZO7LSpLdRzr
-   wKkXZa3giuw/eWBlR5EgkgO5B0+RIuS5LiXBndU9b3vmL0gcwBpn1zlXf
-   yThvOuS6jYfk8JzJyI0fuQcZZueMtkHn5mfa7mwlJDDY5JkdXqSyITG3U
-   g==;
-X-IronPort-AV: E=McAfee;i="6500,9779,10471"; a="385192359"
+  bh=3wvSjSkW/zXAYAgI4UeAUQfAuIeQwEc+TBBp6c7MzGs=;
+  b=Mb9F74okTHTmaV/cHLI1gJbR1l4CoGfOhappm4V4iOTjYZ05X1urdOxD
+   G2jrazMPdOsV2GSYMOIkN9WmnSm+cQqfdIdd5WaZ+SaO/fnlc9HXW9JLp
+   uakhy241zwgKOOFyVDT03ccpJIv8JuM28nkgIUUXFvfhlTogHY0j10Fp6
+   VGBij8x4GFIbJphhHxw4IPvexqQntK3357LnqBEBMQEo1coN36sqMkU1r
+   HoVxWPgIzcaUzFeIIMHB0I2MjHTos3uSC8jFQVmD0V5wwWDfjTn6pf3og
+   f9/ImlqTDD2i7N/F5iFIr8d2IDbUg8zIuPIDWPcHRYvXyzc+79kIAZUTp
+   A==;
+X-IronPort-AV: E=McAfee;i="6500,9779,10471"; a="281930433"
 X-IronPort-AV: E=Sophos;i="5.93,319,1654585200"; 
-   d="scan'208";a="385192359"
-Received: from fmsmga008.fm.intel.com ([10.253.24.58])
-  by fmsmga105.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 15 Sep 2022 20:35:16 -0700
+   d="scan'208";a="281930433"
+Received: from orsmga005.jf.intel.com ([10.7.209.41])
+  by orsmga106.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 15 Sep 2022 20:35:27 -0700
 X-IronPort-AV: E=Sophos;i="5.93,319,1654585200"; 
-   d="scan'208";a="679809163"
+   d="scan'208";a="792961807"
 Received: from colinlix-mobl.amr.corp.intel.com (HELO dwillia2-xfh.jf.intel.com) ([10.209.29.52])
-  by fmsmga008-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 15 Sep 2022 20:35:15 -0700
-Subject: [PATCH v2 01/18] fsdax: Wait on @page not @page->_refcount
+  by orsmga005-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 15 Sep 2022 20:35:27 -0700
+Subject: [PATCH v2 03/18] fsdax: Include unmapped inodes for page-idle
+ detection
 From:   Dan Williams <dan.j.williams@intel.com>
 To:     akpm@linux-foundation.org
 Cc:     Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>,
@@ -47,8 +48,8 @@ Cc:     Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>,
         linux-fsdevel@vger.kernel.org, nvdimm@lists.linux.dev,
         linux-xfs@vger.kernel.org, linux-mm@kvack.org,
         linux-ext4@vger.kernel.org
-Date:   Thu, 15 Sep 2022 20:35:15 -0700
-Message-ID: <166329931529.2786261.12375427940949385300.stgit@dwillia2-xfh.jf.intel.com>
+Date:   Thu, 15 Sep 2022 20:35:27 -0700
+Message-ID: <166329932730.2786261.8645669907699123863.stgit@dwillia2-xfh.jf.intel.com>
 In-Reply-To: <166329930818.2786261.6086109734008025807.stgit@dwillia2-xfh.jf.intel.com>
 References: <166329930818.2786261.6086109734008025807.stgit@dwillia2-xfh.jf.intel.com>
 User-Agent: StGit/0.18-3-g996c
@@ -59,9 +60,11 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The __wait_var_event facility calculates a wait queue from a hash of the
-address of the variable being passed. Use the @page argument directly as
-it is less to type and is the object that is being waited upon.
+A page can remain pinned even after it has been unmapped from userspace
+/ removed from the rmap. In advance of requiring that all
+dax_insert_entry() events are followed up 'break layouts' before a
+truncate event, make sure that 'break layouts' can find unmapped
+entries.
 
 Cc: Matthew Wilcox <willy@infradead.org>
 Cc: Jan Kara <jack@suse.cz>
@@ -71,76 +74,20 @@ Cc: Christoph Hellwig <hch@lst.de>
 Cc: John Hubbard <jhubbard@nvidia.com>
 Signed-off-by: Dan Williams <dan.j.williams@intel.com>
 ---
- fs/ext4/inode.c   |    8 ++++----
- fs/fuse/dax.c     |    6 +++---
- fs/xfs/xfs_file.c |    6 +++---
- mm/memremap.c     |    2 +-
- 4 files changed, 11 insertions(+), 11 deletions(-)
+ fs/dax.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 601214453c3a..b028a4413bea 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3961,10 +3961,10 @@ int ext4_break_layouts(struct inode *inode)
- 		if (!page)
- 			return 0;
+diff --git a/fs/dax.c b/fs/dax.c
+index e762b9c04fb4..76bad1c095c0 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -698,7 +698,7 @@ struct page *dax_layout_busy_page_range(struct address_space *mapping,
+ 	if (IS_ENABLED(CONFIG_FS_DAX_LIMITED))
+ 		return NULL;
  
--		error = ___wait_var_event(&page->_refcount,
--				atomic_read(&page->_refcount) == 1,
--				TASK_INTERRUPTIBLE, 0, 0,
--				ext4_wait_dax_page(inode));
-+		error = ___wait_var_event(page,
-+					  atomic_read(&page->_refcount) == 1,
-+					  TASK_INTERRUPTIBLE, 0, 0,
-+					  ext4_wait_dax_page(inode));
- 	} while (error == 0);
+-	if (!dax_mapping(mapping) || !mapping_mapped(mapping))
++	if (!dax_mapping(mapping))
+ 		return NULL;
  
- 	return error;
-diff --git a/fs/fuse/dax.c b/fs/fuse/dax.c
-index e23e802a8013..4e12108c68af 100644
---- a/fs/fuse/dax.c
-+++ b/fs/fuse/dax.c
-@@ -676,9 +676,9 @@ static int __fuse_dax_break_layouts(struct inode *inode, bool *retry,
- 		return 0;
- 
- 	*retry = true;
--	return ___wait_var_event(&page->_refcount,
--			atomic_read(&page->_refcount) == 1, TASK_INTERRUPTIBLE,
--			0, 0, fuse_wait_dax_page(inode));
-+	return ___wait_var_event(page, atomic_read(&page->_refcount) == 1,
-+				 TASK_INTERRUPTIBLE, 0, 0,
-+				 fuse_wait_dax_page(inode));
- }
- 
- /* dmap_end == 0 leads to unmapping of whole file */
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index c6c80265c0b2..73e7b7ec0a4c 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -827,9 +827,9 @@ xfs_break_dax_layouts(
- 		return 0;
- 
- 	*retry = true;
--	return ___wait_var_event(&page->_refcount,
--			atomic_read(&page->_refcount) == 1, TASK_INTERRUPTIBLE,
--			0, 0, xfs_wait_dax_page(inode));
-+	return ___wait_var_event(page, atomic_read(&page->_refcount) == 1,
-+				 TASK_INTERRUPTIBLE, 0, 0,
-+				 xfs_wait_dax_page(inode));
- }
- 
- int
-diff --git a/mm/memremap.c b/mm/memremap.c
-index 58b20c3c300b..95f6ffe9cb0f 100644
---- a/mm/memremap.c
-+++ b/mm/memremap.c
-@@ -520,7 +520,7 @@ bool __put_devmap_managed_page_refs(struct page *page, int refs)
- 	 * stable because nobody holds a reference on the page.
- 	 */
- 	if (page_ref_sub_return(page, refs) == 1)
--		wake_up_var(&page->_refcount);
-+		wake_up_var(page);
- 	return true;
- }
- EXPORT_SYMBOL(__put_devmap_managed_page_refs);
+ 	/* If end == LLONG_MAX, all pages from start to till end of file */
 
