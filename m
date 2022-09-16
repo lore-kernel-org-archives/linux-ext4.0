@@ -2,33 +2,33 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C6612ECAAD8
-	for <linux-ext4@archiver.kernel.org>; Fri, 16 Sep 2022 14:05:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 79DADECAAD8
+	for <linux-ext4@archiver.kernel.org>; Fri, 16 Sep 2022 14:05:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231923AbiIPOFA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 16 Sep 2022 10:05:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40204 "EHLO
+        id S231925AbiIPOFB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 16 Sep 2022 10:05:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40208 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231843AbiIPOEs (ORCPT
+        with ESMTP id S231840AbiIPOEs (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Sep 2022 10:04:48 -0400
 Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F39295FD9
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Sep 2022 07:04:46 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AB4C6CE1B
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Sep 2022 07:04:47 -0700 (PDT)
 Received: from canpemm500004.china.huawei.com (unknown [172.30.72.55])
-        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4MTbM02Xsgz14QTc;
-        Fri, 16 Sep 2022 22:00:44 +0800 (CST)
+        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4MTbM12FS0z14QbP;
+        Fri, 16 Sep 2022 22:00:45 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm500004.china.huawei.com
  (7.192.104.92) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.31; Fri, 16 Sep
- 2022 22:04:44 +0800
+ 2022 22:04:45 +0800
 From:   Jason Yan <yanaijie@huawei.com>
 To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <ritesh.list@gmail.com>, <lczerner@redhat.com>,
         <linux-ext4@vger.kernel.org>
 CC:     Jason Yan <yanaijie@huawei.com>
-Subject: [PATCH v3 09/16] ext4: factor out ext4_check_feature_compatibility()
-Date:   Fri, 16 Sep 2022 22:15:20 +0800
-Message-ID: <20220916141527.1012715-10-yanaijie@huawei.com>
+Subject: [PATCH v3 11/16] ext4: factor out ext4_group_desc_init() and ext4_group_desc_free()
+Date:   Fri, 16 Sep 2022 22:15:22 +0800
+Message-ID: <20220916141527.1012715-12-yanaijie@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20220916141527.1012715-1-yanaijie@huawei.com>
 References: <20220916141527.1012715-1-yanaijie@huawei.com>
@@ -43,177 +43,194 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Factor out ext4_check_feature_compatibility(). No functional change.
+Factor out ext4_group_desc_init() and ext4_group_desc_free(). No
+functional change.
 
 Signed-off-by: Jason Yan <yanaijie@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 ---
- fs/ext4/super.c | 144 ++++++++++++++++++++++++++----------------------
- 1 file changed, 77 insertions(+), 67 deletions(-)
+ fs/ext4/super.c | 143 ++++++++++++++++++++++++++++--------------------
+ 1 file changed, 84 insertions(+), 59 deletions(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 94e4045c0e76..285a918dd9bc 100644
+index 25450c79ad7a..923c250a2c1d 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -4613,6 +4613,82 @@ static int ext4_init_metadata_csum(struct super_block *sb, struct ext4_super_blo
+@@ -4749,9 +4749,89 @@ static int ext4_geometry_check(struct super_block *sb,
  	return 0;
  }
  
-+static int ext4_check_feature_compatibility(struct super_block *sb,
-+					    struct ext4_super_block *es,
-+					    int silent)
++static void ext4_group_desc_free(struct ext4_sb_info *sbi)
 +{
-+	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
-+	    (ext4_has_compat_features(sb) ||
-+	     ext4_has_ro_compat_features(sb) ||
-+	     ext4_has_incompat_features(sb)))
-+		ext4_msg(sb, KERN_WARNING,
-+		       "feature flags set on rev 0 fs, "
-+		       "running e2fsck is recommended");
++	struct buffer_head **group_desc;
++	int i;
 +
-+	if (es->s_creator_os == cpu_to_le32(EXT4_OS_HURD)) {
-+		set_opt2(sb, HURD_COMPAT);
-+		if (ext4_has_feature_64bit(sb)) {
++	rcu_read_lock();
++	group_desc = rcu_dereference(sbi->s_group_desc);
++	for (i = 0; i < sbi->s_gdb_count; i++)
++		brelse(group_desc[i]);
++	kvfree(group_desc);
++	rcu_read_unlock();
++}
++
++static int ext4_group_desc_init(struct super_block *sb,
++				struct ext4_super_block *es,
++				ext4_fsblk_t logical_sb_block,
++				ext4_group_t *first_not_zeroed)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	unsigned int db_count;
++	ext4_fsblk_t block;
++	int ret;
++	int i;
++
++	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
++		   EXT4_DESC_PER_BLOCK(sb);
++	if (ext4_has_feature_meta_bg(sb)) {
++		if (le32_to_cpu(es->s_first_meta_bg) > db_count) {
++			ext4_msg(sb, KERN_WARNING,
++				 "first meta block group too large: %u "
++				 "(group descriptor block count %u)",
++				 le32_to_cpu(es->s_first_meta_bg), db_count);
++			return -EINVAL;
++		}
++	}
++	rcu_assign_pointer(sbi->s_group_desc,
++			   kvmalloc_array(db_count,
++					  sizeof(struct buffer_head *),
++					  GFP_KERNEL));
++	if (sbi->s_group_desc == NULL) {
++		ext4_msg(sb, KERN_ERR, "not enough memory");
++		return -ENOMEM;
++	}
++
++	bgl_lock_init(sbi->s_blockgroup_lock);
++
++	/* Pre-read the descriptors into the buffer cache */
++	for (i = 0; i < db_count; i++) {
++		block = descriptor_loc(sb, logical_sb_block, i);
++		ext4_sb_breadahead_unmovable(sb, block);
++	}
++
++	for (i = 0; i < db_count; i++) {
++		struct buffer_head *bh;
++
++		block = descriptor_loc(sb, logical_sb_block, i);
++		bh = ext4_sb_bread_unmovable(sb, block);
++		if (IS_ERR(bh)) {
 +			ext4_msg(sb, KERN_ERR,
-+				 "The Hurd can't support 64-bit file systems");
-+			return -EINVAL;
++			       "can't read group descriptor %d", i);
++			sbi->s_gdb_count = i;
++			ret = PTR_ERR(bh);
++			goto out;
 +		}
-+
-+		/*
-+		 * ea_inode feature uses l_i_version field which is not
-+		 * available in HURD_COMPAT mode.
-+		 */
-+		if (ext4_has_feature_ea_inode(sb)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "ea_inode feature is not supported for Hurd");
-+			return -EINVAL;
-+		}
++		rcu_read_lock();
++		rcu_dereference(sbi->s_group_desc)[i] = bh;
++		rcu_read_unlock();
 +	}
-+
-+	if (IS_EXT2_SB(sb)) {
-+		if (ext2_feature_set_ok(sb))
-+			ext4_msg(sb, KERN_INFO, "mounting ext2 file system "
-+				 "using the ext4 subsystem");
-+		else {
-+			/*
-+			 * If we're probing be silent, if this looks like
-+			 * it's actually an ext[34] filesystem.
-+			 */
-+			if (silent && ext4_feature_set_ok(sb, sb_rdonly(sb)))
-+				return -EINVAL;
-+			ext4_msg(sb, KERN_ERR, "couldn't mount as ext2 due "
-+				 "to feature incompatibilities");
-+			return -EINVAL;
-+		}
++	sbi->s_gdb_count = db_count;
++	if (!ext4_check_descriptors(sb, logical_sb_block, first_not_zeroed)) {
++		ext4_msg(sb, KERN_ERR, "group descriptors corrupted!");
++		ret = -EFSCORRUPTED;
++		goto out;
 +	}
-+
-+	if (IS_EXT3_SB(sb)) {
-+		if (ext3_feature_set_ok(sb))
-+			ext4_msg(sb, KERN_INFO, "mounting ext3 file system "
-+				 "using the ext4 subsystem");
-+		else {
-+			/*
-+			 * If we're probing be silent, if this looks like
-+			 * it's actually an ext4 filesystem.
-+			 */
-+			if (silent && ext4_feature_set_ok(sb, sb_rdonly(sb)))
-+				return -EINVAL;
-+			ext4_msg(sb, KERN_ERR, "couldn't mount as ext3 due "
-+				 "to feature incompatibilities");
-+			return -EINVAL;
-+		}
-+	}
-+
-+	/*
-+	 * Check feature flags regardless of the revision level, since we
-+	 * previously didn't change the revision level when setting the flags,
-+	 * so there is a chance incompat flags are set on a rev 0 filesystem.
-+	 */
-+	if (!ext4_feature_set_ok(sb, (sb_rdonly(sb))))
-+		return -EINVAL;
-+
 +	return 0;
++out:
++	ext4_group_desc_free(sbi);
++	return ret;
 +}
 +
  static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
  {
- 	struct buffer_head *bh, **group_desc;
-@@ -4767,73 +4843,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 	sb->s_flags = (sb->s_flags & ~SB_POSIXACL) |
- 		(test_opt(sb, POSIX_ACL) ? SB_POSIXACL : 0);
- 
--	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
--	    (ext4_has_compat_features(sb) ||
--	     ext4_has_ro_compat_features(sb) ||
--	     ext4_has_incompat_features(sb)))
--		ext4_msg(sb, KERN_WARNING,
--		       "feature flags set on rev 0 fs, "
--		       "running e2fsck is recommended");
--
--	if (es->s_creator_os == cpu_to_le32(EXT4_OS_HURD)) {
--		set_opt2(sb, HURD_COMPAT);
--		if (ext4_has_feature_64bit(sb)) {
--			ext4_msg(sb, KERN_ERR,
--				 "The Hurd can't support 64-bit file systems");
--			goto failed_mount;
--		}
--
--		/*
--		 * ea_inode feature uses l_i_version field which is not
--		 * available in HURD_COMPAT mode.
--		 */
--		if (ext4_has_feature_ea_inode(sb)) {
--			ext4_msg(sb, KERN_ERR,
--				 "ea_inode feature is not supported for Hurd");
--			goto failed_mount;
--		}
--	}
--
--	if (IS_EXT2_SB(sb)) {
--		if (ext2_feature_set_ok(sb))
--			ext4_msg(sb, KERN_INFO, "mounting ext2 file system "
--				 "using the ext4 subsystem");
--		else {
--			/*
--			 * If we're probing be silent, if this looks like
--			 * it's actually an ext[34] filesystem.
--			 */
--			if (silent && ext4_feature_set_ok(sb, sb_rdonly(sb)))
--				goto failed_mount;
--			ext4_msg(sb, KERN_ERR, "couldn't mount as ext2 due "
--				 "to feature incompatibilities");
--			goto failed_mount;
--		}
--	}
--
--	if (IS_EXT3_SB(sb)) {
--		if (ext3_feature_set_ok(sb))
--			ext4_msg(sb, KERN_INFO, "mounting ext3 file system "
--				 "using the ext4 subsystem");
--		else {
--			/*
--			 * If we're probing be silent, if this looks like
--			 * it's actually an ext4 filesystem.
--			 */
--			if (silent && ext4_feature_set_ok(sb, sb_rdonly(sb)))
--				goto failed_mount;
--			ext4_msg(sb, KERN_ERR, "couldn't mount as ext3 due "
--				 "to feature incompatibilities");
--			goto failed_mount;
--		}
--	}
--
--	/*
--	 * Check feature flags regardless of the revision level, since we
--	 * previously didn't change the revision level when setting the flags,
--	 * so there is a chance incompat flags are set on a rev 0 filesystem.
--	 */
--	if (!ext4_feature_set_ok(sb, (sb_rdonly(sb))))
-+	if (ext4_check_feature_compatibility(sb, es, silent))
+-	struct buffer_head *bh, **group_desc;
++	struct buffer_head *bh;
+ 	struct ext4_super_block *es = NULL;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct flex_groups **flex_groups;
+@@ -4761,7 +4841,6 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 	struct inode *root;
+ 	int ret = -ENOMEM;
+ 	int blocksize;
+-	unsigned int db_count;
+ 	unsigned int i;
+ 	int needs_recovery, has_huge_files;
+ 	int err = 0;
+@@ -5052,57 +5131,9 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 	if (ext4_geometry_check(sb, es))
  		goto failed_mount;
  
- 	if (le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks) > (blocksize / 4)) {
+-	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
+-		   EXT4_DESC_PER_BLOCK(sb);
+-	if (ext4_has_feature_meta_bg(sb)) {
+-		if (le32_to_cpu(es->s_first_meta_bg) > db_count) {
+-			ext4_msg(sb, KERN_WARNING,
+-				 "first meta block group too large: %u "
+-				 "(group descriptor block count %u)",
+-				 le32_to_cpu(es->s_first_meta_bg), db_count);
+-			goto failed_mount;
+-		}
+-	}
+-	rcu_assign_pointer(sbi->s_group_desc,
+-			   kvmalloc_array(db_count,
+-					  sizeof(struct buffer_head *),
+-					  GFP_KERNEL));
+-	if (sbi->s_group_desc == NULL) {
+-		ext4_msg(sb, KERN_ERR, "not enough memory");
+-		ret = -ENOMEM;
++	err = ext4_group_desc_init(sb, es, logical_sb_block, &first_not_zeroed);
++	if (err)
+ 		goto failed_mount;
+-	}
+-
+-	bgl_lock_init(sbi->s_blockgroup_lock);
+-
+-	/* Pre-read the descriptors into the buffer cache */
+-	for (i = 0; i < db_count; i++) {
+-		block = descriptor_loc(sb, logical_sb_block, i);
+-		ext4_sb_breadahead_unmovable(sb, block);
+-	}
+-
+-	for (i = 0; i < db_count; i++) {
+-		struct buffer_head *bh;
+-
+-		block = descriptor_loc(sb, logical_sb_block, i);
+-		bh = ext4_sb_bread_unmovable(sb, block);
+-		if (IS_ERR(bh)) {
+-			ext4_msg(sb, KERN_ERR,
+-			       "can't read group descriptor %d", i);
+-			db_count = i;
+-			ret = PTR_ERR(bh);
+-			goto failed_mount2;
+-		}
+-		rcu_read_lock();
+-		rcu_dereference(sbi->s_group_desc)[i] = bh;
+-		rcu_read_unlock();
+-	}
+-	sbi->s_gdb_count = db_count;
+-	if (!ext4_check_descriptors(sb, logical_sb_block, &first_not_zeroed)) {
+-		ext4_msg(sb, KERN_ERR, "group descriptors corrupted!");
+-		ret = -EFSCORRUPTED;
+-		goto failed_mount2;
+-	}
+ 
+ 	timer_setup(&sbi->s_err_report, print_daily_error_info, 0);
+ 	spin_lock_init(&sbi->s_error_lock);
+@@ -5546,13 +5577,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 	flush_work(&sbi->s_error_work);
+ 	del_timer_sync(&sbi->s_err_report);
+ 	ext4_stop_mmpd(sbi);
+-failed_mount2:
+-	rcu_read_lock();
+-	group_desc = rcu_dereference(sbi->s_group_desc);
+-	for (i = 0; i < db_count; i++)
+-		brelse(group_desc[i]);
+-	kvfree(group_desc);
+-	rcu_read_unlock();
++	ext4_group_desc_free(sbi);
+ failed_mount:
+ 	if (sbi->s_chksum_driver)
+ 		crypto_free_shash(sbi->s_chksum_driver);
 -- 
 2.31.1
 
