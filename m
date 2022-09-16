@@ -2,33 +2,33 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E1953ECAAD8
-	for <linux-ext4@archiver.kernel.org>; Fri, 16 Sep 2022 14:04:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4A76BC6FA8B
+	for <linux-ext4@archiver.kernel.org>; Fri, 16 Sep 2022 14:04:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231889AbiIPOEu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 16 Sep 2022 10:04:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40042 "EHLO
+        id S231896AbiIPOEw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 16 Sep 2022 10:04:52 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40018 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231868AbiIPOEq (ORCPT
+        with ESMTP id S231861AbiIPOEq (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Sep 2022 10:04:46 -0400
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5C1EE15818
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Sep 2022 07:04:44 -0700 (PDT)
-Received: from canpemm500004.china.huawei.com (unknown [172.30.72.56])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4MTbNQ50CbznVGB;
-        Fri, 16 Sep 2022 22:01:58 +0800 (CST)
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1B44815802
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Sep 2022 07:04:42 -0700 (PDT)
+Received: from canpemm500004.china.huawei.com (unknown [172.30.72.57])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4MTbLC2bTgzNm6M;
+        Fri, 16 Sep 2022 22:00:03 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm500004.china.huawei.com
  (7.192.104.92) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.31; Fri, 16 Sep
- 2022 22:04:42 +0800
+ 2022 22:04:40 +0800
 From:   Jason Yan <yanaijie@huawei.com>
 To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <ritesh.list@gmail.com>, <lczerner@redhat.com>,
         <linux-ext4@vger.kernel.org>
 CC:     Jason Yan <yanaijie@huawei.com>
-Subject: [PATCH v3 04/16] ext4: factor out ext4_handle_clustersize()
-Date:   Fri, 16 Sep 2022 22:15:15 +0800
-Message-ID: <20220916141527.1012715-5-yanaijie@huawei.com>
+Subject: [PATCH v3 01/16] ext4: goto right label 'failed_mount3a'
+Date:   Fri, 16 Sep 2022 22:15:12 +0800
+Message-ID: <20220916141527.1012715-2-yanaijie@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20220916141527.1012715-1-yanaijie@huawei.com>
 References: <20220916141527.1012715-1-yanaijie@huawei.com>
@@ -43,150 +43,59 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Factor out ext4_handle_clustersize(). No functional change.
+Before these two branches neither loaded the journal nor created the
+xattr cache. So the right label to goto is 'failed_mount3a'. Although
+this did not cause any issues because the error handler validated if the
+pointer is null. However this still made me confused when reading
+the code. So it's still worth to modify to goto the right label.
 
 Signed-off-by: Jason Yan <yanaijie@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 ---
- fs/ext4/super.c | 110 +++++++++++++++++++++++++++---------------------
- 1 file changed, 61 insertions(+), 49 deletions(-)
+ fs/ext4/super.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7cc499a221ff..09b3c51d472b 100644
+index 9a66abcca1a8..6126da867b26 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -4366,6 +4366,64 @@ static void ext4_set_def_opts(struct super_block *sb,
- 		set_opt(sb, DELALLOC);
- }
- 
-+static int ext4_handle_clustersize(struct super_block *sb, int blocksize)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_super_block *es = sbi->s_es;
-+	int clustersize;
-+
-+	/* Handle clustersize */
-+	clustersize = BLOCK_SIZE << le32_to_cpu(es->s_log_cluster_size);
-+	if (ext4_has_feature_bigalloc(sb)) {
-+		if (clustersize < blocksize) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "cluster size (%d) smaller than "
-+				 "block size (%d)", clustersize, blocksize);
-+			return -EINVAL;
-+		}
-+		sbi->s_cluster_bits = le32_to_cpu(es->s_log_cluster_size) -
-+			le32_to_cpu(es->s_log_block_size);
-+		sbi->s_clusters_per_group =
-+			le32_to_cpu(es->s_clusters_per_group);
-+		if (sbi->s_clusters_per_group > blocksize * 8) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "#clusters per group too big: %lu",
-+				 sbi->s_clusters_per_group);
-+			return -EINVAL;
-+		}
-+		if (sbi->s_blocks_per_group !=
-+		    (sbi->s_clusters_per_group * (clustersize / blocksize))) {
-+			ext4_msg(sb, KERN_ERR, "blocks per group (%lu) and "
-+				 "clusters per group (%lu) inconsistent",
-+				 sbi->s_blocks_per_group,
-+				 sbi->s_clusters_per_group);
-+			return -EINVAL;
-+		}
-+	} else {
-+		if (clustersize != blocksize) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "fragment/cluster size (%d) != "
-+				 "block size (%d)", clustersize, blocksize);
-+			return -EINVAL;
-+		}
-+		if (sbi->s_blocks_per_group > blocksize * 8) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "#blocks per group too big: %lu",
-+				 sbi->s_blocks_per_group);
-+			return -EINVAL;
-+		}
-+		sbi->s_clusters_per_group = sbi->s_blocks_per_group;
-+		sbi->s_cluster_bits = 0;
-+	}
-+	sbi->s_cluster_ratio = clustersize / blocksize;
-+
-+	/* Do we have standard group size of clustersize * 8 blocks ? */
-+	if (sbi->s_blocks_per_group == clustersize << 3)
-+		set_opt2(sb, STD_GROUP_SIZE);
-+
-+	return 0;
-+}
-+
- static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- {
- 	struct buffer_head *bh, **group_desc;
-@@ -4377,7 +4435,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 	unsigned long offset = 0;
- 	struct inode *root;
- 	int ret = -ENOMEM;
--	int blocksize, clustersize;
-+	int blocksize;
- 	unsigned int db_count;
- 	unsigned int i;
- 	int needs_recovery, has_huge_files;
-@@ -4847,54 +4905,8 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+@@ -5079,30 +5079,30 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 		   ext4_has_feature_journal_needs_recovery(sb)) {
+ 		ext4_msg(sb, KERN_ERR, "required journal recovery "
+ 		       "suppressed and not mounted read-only");
+-		goto failed_mount_wq;
++		goto failed_mount3a;
+ 	} else {
+ 		/* Nojournal mode, all journal mount options are illegal */
+ 		if (test_opt2(sb, EXPLICIT_JOURNAL_CHECKSUM)) {
+ 			ext4_msg(sb, KERN_ERR, "can't mount with "
+ 				 "journal_checksum, fs mounted w/o journal");
+-			goto failed_mount_wq;
++			goto failed_mount3a;
  		}
- 	}
- 
--	/* Handle clustersize */
--	clustersize = BLOCK_SIZE << le32_to_cpu(es->s_log_cluster_size);
--	if (ext4_has_feature_bigalloc(sb)) {
--		if (clustersize < blocksize) {
--			ext4_msg(sb, KERN_ERR,
--				 "cluster size (%d) smaller than "
--				 "block size (%d)", clustersize, blocksize);
--			goto failed_mount;
--		}
--		sbi->s_cluster_bits = le32_to_cpu(es->s_log_cluster_size) -
--			le32_to_cpu(es->s_log_block_size);
--		sbi->s_clusters_per_group =
--			le32_to_cpu(es->s_clusters_per_group);
--		if (sbi->s_clusters_per_group > blocksize * 8) {
--			ext4_msg(sb, KERN_ERR,
--				 "#clusters per group too big: %lu",
--				 sbi->s_clusters_per_group);
--			goto failed_mount;
--		}
--		if (sbi->s_blocks_per_group !=
--		    (sbi->s_clusters_per_group * (clustersize / blocksize))) {
--			ext4_msg(sb, KERN_ERR, "blocks per group (%lu) and "
--				 "clusters per group (%lu) inconsistent",
--				 sbi->s_blocks_per_group,
--				 sbi->s_clusters_per_group);
--			goto failed_mount;
--		}
--	} else {
--		if (clustersize != blocksize) {
--			ext4_msg(sb, KERN_ERR,
--				 "fragment/cluster size (%d) != "
--				 "block size (%d)", clustersize, blocksize);
--			goto failed_mount;
--		}
--		if (sbi->s_blocks_per_group > blocksize * 8) {
--			ext4_msg(sb, KERN_ERR,
--				 "#blocks per group too big: %lu",
--				 sbi->s_blocks_per_group);
--			goto failed_mount;
--		}
--		sbi->s_clusters_per_group = sbi->s_blocks_per_group;
--		sbi->s_cluster_bits = 0;
--	}
--	sbi->s_cluster_ratio = clustersize / blocksize;
--
--	/* Do we have standard group size of clustersize * 8 blocks ? */
--	if (sbi->s_blocks_per_group == clustersize << 3)
--		set_opt2(sb, STD_GROUP_SIZE);
-+	if (ext4_handle_clustersize(sb, blocksize))
-+		goto failed_mount;
- 
- 	/*
- 	 * Test whether we have more sectors than will fit in sector_t,
+ 		if (test_opt(sb, JOURNAL_ASYNC_COMMIT)) {
+ 			ext4_msg(sb, KERN_ERR, "can't mount with "
+ 				 "journal_async_commit, fs mounted w/o journal");
+-			goto failed_mount_wq;
++			goto failed_mount3a;
+ 		}
+ 		if (sbi->s_commit_interval != JBD2_DEFAULT_MAX_COMMIT_AGE*HZ) {
+ 			ext4_msg(sb, KERN_ERR, "can't mount with "
+ 				 "commit=%lu, fs mounted w/o journal",
+ 				 sbi->s_commit_interval / HZ);
+-			goto failed_mount_wq;
++			goto failed_mount3a;
+ 		}
+ 		if (EXT4_MOUNT_DATA_FLAGS &
+ 		    (sbi->s_mount_opt ^ sbi->s_def_mount_opt)) {
+ 			ext4_msg(sb, KERN_ERR, "can't mount with "
+ 				 "data=, fs mounted w/o journal");
+-			goto failed_mount_wq;
++			goto failed_mount3a;
+ 		}
+ 		sbi->s_def_mount_opt &= ~EXT4_MOUNT_JOURNAL_CHECKSUM;
+ 		clear_opt(sb, JOURNAL_CHECKSUM);
 -- 
 2.31.1
 
