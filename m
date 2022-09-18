@@ -2,64 +2,64 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 362FCC32771
-	for <linux-ext4@archiver.kernel.org>; Sun, 18 Sep 2022 10:33:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4A4C3C32771
+	for <linux-ext4@archiver.kernel.org>; Sun, 18 Sep 2022 11:52:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229539AbiIRKdm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 18 Sep 2022 06:33:42 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44202 "EHLO
+        id S229458AbiIRLwc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 18 Sep 2022 07:52:32 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56010 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229541AbiIRKdj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Sep 2022 06:33:39 -0400
-Received: from mail-ej1-x633.google.com (mail-ej1-x633.google.com [IPv6:2a00:1450:4864:20::633])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C11361DA67
-        for <linux-ext4@vger.kernel.org>; Sun, 18 Sep 2022 03:33:38 -0700 (PDT)
-Received: by mail-ej1-x633.google.com with SMTP id sb3so28763001ejb.9
-        for <linux-ext4@vger.kernel.org>; Sun, 18 Sep 2022 03:33:38 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=cc:to:subject:message-id:date:from:mime-version:from:to:cc:subject
-         :date;
-        bh=mAqSDukE27pRl9JzgDtjNMx2nR6WnXWe1hBC0SoTGH0=;
-        b=BVGVTRvnARQoY8S6eX/mt5o3098Ub2ruYN/xcFxXG5g0s2y8i/Q0RNx40OwWPbnJqe
-         W9xipIYm32a9tKs2vmBjh71qP0vvngSSBQGQkmY7oxcTPDK1JmZbPFXZUIeODXfcKCNl
-         bRkDISmzGD7YHiGW23vFma2f6M1a7t9HjpsuOLOY7zJveuIfaaoe9uo53NkaOOAbQ3S0
-         nTPhs3rUtQC/dsTxxE86vYPuEHYoaf1dtIxAasutmHzRBV2+g6EGvZj8k90QCYcu/iOz
-         ArRc37hxs2f5NvIJAeBkCmmVvUbxYj2yNzND1kygdeEPX3SWgJmkipSGDwNX/qhYJulB
-         fnPw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=cc:to:subject:message-id:date:from:mime-version:x-gm-message-state
-         :from:to:cc:subject:date;
-        bh=mAqSDukE27pRl9JzgDtjNMx2nR6WnXWe1hBC0SoTGH0=;
-        b=2XAzPKmo/tXGQAum5MGk6h83tVnBa/JMFxW7dyE9zbz++VG51vJnWYuXPozgIE39o9
-         2AlnhqRBeIMFkWeAhCnT0DxTC9rZAVi2UJvU1KMmbEM7ZD9ArysgVBq/wpFepaaS3U4l
-         +DA1FxCKxE7/Jsr1qLisKrB9O/d59Qz3UcZhAgZz6e761yJy3pbkNQdCKMgdCnIyh9iX
-         PL878n/hpfefYtQSXxs9El5p52HIrT0TER2syibClr2lQoLeUFitZDlHE25CSbMsIqnB
-         JNdF3UnP8DteYxQjwLjW420tImbLsrFx2KGBpq1qRLSbKFae4NwTK7TUVufWY+jCXOrx
-         AcbQ==
-X-Gm-Message-State: ACrzQf1QFPX3WKcUxI+o3r8r8Hnq7LVCKMOg8E5dl/9B5wGLdJcNFTvP
-        LTIuUd53eojYksasiDRRNukwc/yMWZ6xuk+JYjH4uuImWa0=
-X-Google-Smtp-Source: AMsMyM6vFiqQzYUyMKI87GjlzSOKm28+UxF5sG/nmll7A0bqhFGi65LQxlG/Qixu7JzFXj4vfpawiCIKvnI0zVzJQUU=
-X-Received: by 2002:a17:906:65c6:b0:73c:8897:65b0 with SMTP id
- z6-20020a17090665c600b0073c889765b0mr9586740ejn.322.1663497217216; Sun, 18
- Sep 2022 03:33:37 -0700 (PDT)
+        with ESMTP id S229532AbiIRLwa (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Sep 2022 07:52:30 -0400
+Received: from out1.migadu.com (out1.migadu.com [91.121.223.63])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A15F02716B
+        for <linux-ext4@vger.kernel.org>; Sun, 18 Sep 2022 04:52:28 -0700 (PDT)
+X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
+        t=1663501947;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=oVBZfho8PdQ5yA76guiErK3yYPbS35fkQsCtJXulPpk=;
+        b=qGV0ipi+KqIDXHkE/ASDNaeg8/QvY0osojQP2jsv2mBgOBWjpJwKaMaWjn7KbR4C/LuzqR
+        F+eRTqn7WRZxkefbcjeeruTIMOHLKgmm5G/fGqkCWheZnZgSK6TMiNF9NXJZ42v/M9m18Z
+        6aJeJBbLO9p1A0v8G7U5k/oQYKHXOfU=
+From:   Guoqing Jiang <guoqing.jiang@linux.dev>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca
+Cc:     linux-ext4@vger.kernel.org
+Subject: [PATCH] ext4: remove redundant checking in ext4_ioctl_checkpoint
+Date:   Sun, 18 Sep 2022 19:52:19 +0800
+Message-Id: <20220918115219.12407-1-guoqing.jiang@linux.dev>
 MIME-Version: 1.0
-From:   JunChao Sun <sunjunchao2870@gmail.com>
-Date:   Sun, 18 Sep 2022 18:33:26 +0800
-Message-ID: <CAHB1Naj3y12kez5O66a9o-6tXu_Rf9svXCQK3eZfD38uO6pEwg@mail.gmail.com>
-Subject: xfstests ext4/049 failed on 5.9.16
-To:     "Theodore Ts'o" <tytso@mit.edu>
-Cc:     linux-ext4@vger.kernel.org, stable@kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+X-Migadu-Flow: FLOW_OUT
+X-Migadu-Auth-User: linux.dev
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi,
+It is already checked after comment "check for invalid bits set",
+so let's remove this one.
 
-Recently I ran xfstests on 5.9.16, and I noticed that ext4/049 failed.
-This case is tested for commit a149d2a5cabb (ext4: fix check to
-prevent false positive report of incorrect used inodes). The reason is
-that this commit is not merged in the 5.9.y branch, should we merge it
-into the 5.9.y as well as other unmerged branches?
+Signed-off-by: Guoqing Jiang <guoqing.jiang@linux.dev>
+---
+ fs/ext4/ioctl.c | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 3cf3ec4b1c21..80678af1fa7c 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -1060,9 +1060,6 @@ static int ext4_ioctl_checkpoint(struct file *filp, unsigned long arg)
+ 	if (!EXT4_SB(sb)->s_journal)
+ 		return -ENODEV;
+ 
+-	if (flags & ~EXT4_IOC_CHECKPOINT_FLAG_VALID)
+-		return -EINVAL;
+-
+ 	if ((flags & JBD2_JOURNAL_FLUSH_DISCARD) &&
+ 	    !bdev_max_discard_sectors(EXT4_SB(sb)->s_journal->j_dev))
+ 		return -EOPNOTSUPP;
+-- 
+2.31.1
+
