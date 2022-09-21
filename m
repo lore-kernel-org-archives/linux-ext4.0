@@ -2,100 +2,123 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C1498ECAAD8
-	for <linux-ext4@archiver.kernel.org>; Wed, 21 Sep 2022 12:23:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 43D07C6FA8E
+	for <linux-ext4@archiver.kernel.org>; Wed, 21 Sep 2022 13:31:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229833AbiIUMXr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 21 Sep 2022 08:23:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50630 "EHLO
+        id S230206AbiIUNbg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 21 Sep 2022 09:31:36 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52876 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230021AbiIUMXg (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Sep 2022 08:23:36 -0400
-Received: from mail-oa1-x33.google.com (mail-oa1-x33.google.com [IPv6:2001:4860:4864:20::33])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7961A97EC6;
-        Wed, 21 Sep 2022 05:23:32 -0700 (PDT)
-Received: by mail-oa1-x33.google.com with SMTP id 586e51a60fabf-1280590722dso8809378fac.1;
-        Wed, 21 Sep 2022 05:23:32 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date;
-        bh=3aJj791SFi8MBmk/3DDeNGs8qJFxgSOFtNXhCuwyFlE=;
-        b=gZm6pXwMq2/JC/UTzDilnXvNNyRSckcot0YJ/NTaLbwgqLHVdBCLiaVvIB0NkJ3bmZ
-         1nk1BYSkGZOBASjKxyjllVNk8cab+Hm+DELpIecZjGPDzX2v6JwuUZjXls2mHcirK/+e
-         GjHbLX+FHDyaNPWfCqF087+Pmtdly7g0V902It5/Dx8SAE/K1+IM5JFG6ucNTT+cOkQf
-         m8u3mwFCbWbPL8pqwWcIkjsxR8riTQ9TH/I8mBcIyfB08ZYi+DoeoHcsYYgHLNBEQyFC
-         KgihHc1TC+jck3iRBGiWUKBctERjn3cr1gNKfLL4FDlLcx9b8NBlZbFIrHHHViZYVUGz
-         VmkQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
-         :subject:date;
-        bh=3aJj791SFi8MBmk/3DDeNGs8qJFxgSOFtNXhCuwyFlE=;
-        b=dhJkOts+5k8Wmkk4KRUUXuZG7kvFYSYZdW/pxM8N9fwHiKWVFEaPocwtjchslb/fNe
-         ZZAO4kt1vt6ShQw+GBZi5OknO0QEa+RcVcZWSx39knPDwwXg4+f0JGm3dCTWtS9toSg1
-         fi574GFxSgF6181Vjdpk8lrToTN8MQdSaYy7mBJwp+YH72O87PCP0q9/iSb753SL8Wv9
-         G6jDWZkv8YZen26m3kjXFf/xPzSLchymxLH8etEn9Nm77fzgqjoea9Iv9UT7TLANae3r
-         o9v0TAbgORbEPy7FKfQUMrnwuSo+cDGywzGVAKT0Nz8qXQZWF8c4Mbk3CNBY3VULWXPB
-         G1QA==
-X-Gm-Message-State: ACrzQf3NaDW5cjC2ZhUHmKSKtUKU/WAtFiJU7DQ/+fND3AmbqXMVdAdP
-        9O10kfacZ3BBjNagu01Zz09YfR4N+kZQDNT9F1Y=
-X-Google-Smtp-Source: AMsMyM5ErvoOnIfJMUuBO4BbuAQd4iK1fvd9USzMtEX4sLhb80TdK3rfkL+JCPZ9lgL8+EHwcHMCghXo3GDIFPNl3xA=
-X-Received: by 2002:a05:6870:a78e:b0:12b:542b:e5b2 with SMTP id
- x14-20020a056870a78e00b0012b542be5b2mr4900564oao.112.1663763011355; Wed, 21
- Sep 2022 05:23:31 -0700 (PDT)
+        with ESMTP id S229890AbiIUNbf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Sep 2022 09:31:35 -0400
+Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B20128A7EC;
+        Wed, 21 Sep 2022 06:31:33 -0700 (PDT)
+Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.57])
+        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4MXfQV1SXLzHp5r;
+        Wed, 21 Sep 2022 21:29:22 +0800 (CST)
+Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
+ (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.31; Wed, 21 Sep
+ 2022 21:31:31 +0800
+From:   Baokun Li <libaokun1@huawei.com>
+To:     <linux-ext4@vger.kernel.org>
+CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
+        <ritesh.list@gmail.com>, <lczerner@redhat.com>,
+        <enwlinux@gmail.com>, <linux-kernel@vger.kernel.org>,
+        <yi.zhang@huawei.com>, <yebin10@huawei.com>,
+        <chengzhihao1@huawei.com>, <yukuai3@huawei.com>,
+        <libaokun1@huawei.com>
+Subject: [PATCH] ext4: fix use-after-free in ext4_ext_shift_extents
+Date:   Wed, 21 Sep 2022 21:42:18 +0800
+Message-ID: <20220921134218.3577001-1-libaokun1@huawei.com>
+X-Mailer: git-send-email 2.31.1
 MIME-Version: 1.0
-References: <CACX6voDfcTQzQJj=5Q-SLi0in1hXpo=Ri28rX73Og3GTObPBWA@mail.gmail.com>
- <20220921044419.epojssm3g4j3qkup@riteshh-domain>
-In-Reply-To: <20220921044419.epojssm3g4j3qkup@riteshh-domain>
-From:   hazem ahmed mohamed <hazem.ahmed.abuelfotoh@gmail.com>
-Date:   Wed, 21 Sep 2022 13:22:55 +0100
-Message-ID: <CACX6voCxHGd46ehrsys+3sVrA2Stq++O2ofh7E6f4MTN59Z2NQ@mail.gmail.com>
-Subject: Re: Ext4: Buffered random writes performance regression with
- dioread_nolock enabled
-To:     "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
-Cc:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "tytso@mit.edu" <tytso@mit.edu>,
-        "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
-        "regressions@lists.linux.dev" <regressions@lists.linux.dev>,
-        "stable@vger.kernel.org" <stable@vger.kernel.org>,
-        "Mohamed Abuelfotoh, Hazem" <abuehaze@amazon.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.127.227]
+X-ClientProxiedBy: dggems704-chm.china.huawei.com (10.3.19.181) To
+ dggpeml500021.china.huawei.com (7.185.36.21)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Thanks for sharing that unfortunately this patch has been merged to
-kernel 5.7 and I am still seeing that regression with later versions
-that include that patch.
+If the starting position of our insert range happens to be in the hole
+between the two ext4_extent_idx, because the lblk of the ext4_extent in
+the previous ext4_extent_idx is always less than the start, which leads
+to the "extent" variable access across the boundary, the following UAF is
+triggered:
+==================================================================
+BUG: KASAN: use-after-free in ext4_ext_shift_extents+0x257/0x790
+Read of size 4 at addr ffff88819807a008 by task fallocate/8010
+CPU: 3 PID: 8010 Comm: fallocate Tainted: G            E     5.10.0+ #492
+Call Trace:
+ dump_stack+0x7d/0xa3
+ print_address_description.constprop.0+0x1e/0x220
+ kasan_report.cold+0x67/0x7f
+ ext4_ext_shift_extents+0x257/0x790
+ ext4_insert_range+0x5b6/0x700
+ ext4_fallocate+0x39e/0x3d0
+ vfs_fallocate+0x26f/0x470
+ ksys_fallocate+0x3a/0x70
+ __x64_sys_fallocate+0x4f/0x60
+ do_syscall_64+0x33/0x40
+ entry_SYSCALL_64_after_hwframe+0x44/0xa9
+==================================================================
 
-Hazem.
+To solve this issue, when the ee_block of the last extent is less than
+the start, exit the loop in advance to avoid UAF.
 
-On Wed, 21 Sept 2022 at 05:44, Ritesh Harjani (IBM)
-<ritesh.list@gmail.com> wrote:
->
-> On 22/09/19 04:18PM, hazem ahmed mohamed wrote:
-> > Hey Team,
-> >
-> >
-> >
-> > I am sending this e-mail to report a performance regression that=E2=80=
-=99s
-> > caused by commit 244adf6426(ext4: make dioread_nolock the default) , I
-> > am listing the performance regression symptoms below & our analysis
-> > for the reported regression.
-> >
->
-> Although you did mention you already tested on the latest kernel too and =
-there
-> too you saw a similar performance regression.
-> But no harm in also double checking if you have this patch [1].
-> This does fixes a similar problem AFAIU.
->
->
-> [1]: https://lore.kernel.org/linux-ext4/20200520133119.1383-1-jack@suse.c=
-z/
->
-> -ritesh
+Fixes: 331573febb6a ("ext4: Add support FALLOC_FL_INSERT_RANGE for fallocate")
+Signed-off-by: Baokun Li <libaokun1@huawei.com>
+Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
+---
+We can try to reproduce this problem by following the steps below:
+1. Create an ext4 containing two ext4_extent_idx
+ mkfs.ext4 -F -O ^resize_inode,meta_bg,^sparse_super,^has_journal,^metadata_csum,quota,ea_inode -b 1024 -I 128 /dev/sda 4G
+ mount /dev/sda /tmp/test
+ touch file
+ dd if=/dev/urandom of=/tmp/test/file bs=1k count=800000
+ sync
+ echo 3 > /proc/sys/vm/drop_caches
+
+2. Create a hole between two ext4_extent_idx, 528482304 is the starting position of idx2
+ fallocate -i -o 528482304 -l 10M /tmp/test/file
+
+3. Keep moving right to make variable extent out of bounds
+ for i in `seq 0 500000`; do fallocate -i -o $[ 533725184 + 5242880 * i ] -l 10M /tmp/test/file ;done
+
+4. Execute "drop_caches" in another window try to trigger UAF
+ echo 3 > /proc/sys/vm/drop_caches
+
+ fs/ext4/extents.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index c148bb97b527..25fc1f4b35a5 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -5216,11 +5216,18 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
+ 		}
+ 
+ 		tmp = *iterator;
++		extent = EXT_LAST_EXTENT(path[depth].p_hdr);
+ 		if (SHIFT == SHIFT_LEFT) {
+-			extent = EXT_LAST_EXTENT(path[depth].p_hdr);
+ 			*iterator = le32_to_cpu(extent->ee_block) +
+ 					ext4_ext_get_actual_len(extent);
+ 		} else {
++			/*
++			 * start happens to be in the hole between
++			 * the two ext4_extent_idx.
++			 */
++			if (le32_to_cpu(extent->ee_block) < start)
++				break;
++
+ 			extent = EXT_FIRST_EXTENT(path[depth].p_hdr);
+ 			if (le32_to_cpu(extent->ee_block) > 0)
+ 				*iterator = le32_to_cpu(extent->ee_block) - 1;
+-- 
+2.31.1
+
