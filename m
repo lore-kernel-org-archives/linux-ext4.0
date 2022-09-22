@@ -2,121 +2,198 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 19F0AC54EE9
-	for <linux-ext4@archiver.kernel.org>; Thu, 22 Sep 2022 12:02:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7830C6FA82
+	for <linux-ext4@archiver.kernel.org>; Thu, 22 Sep 2022 12:53:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230119AbiIVMCM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 22 Sep 2022 08:02:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44900 "EHLO
+        id S230165AbiIVMxu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 22 Sep 2022 08:53:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57896 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229470AbiIVMCL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Sep 2022 08:02:11 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2BD89B774C;
-        Thu, 22 Sep 2022 05:02:09 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 459D81F90A;
-        Thu, 22 Sep 2022 12:02:08 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1663848128; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=mzraJ08XbFjKvF3H8c6KILYdRR2eaJrzAO7H5AN4OPE=;
-        b=nBWcPFYu+B37fjNNGJyCYovOcI5HXTBNjnyousgO5QBihaaIegJF34HHO/otCHi2IWF6pr
-        TvqyU8N+84nPEqgytFBAdNm1xSOgd2JueqLiveKWanjTpU9NhfhKjY1q9GMI3kfMwPwosc
-        IfYXNqL0u+kQ8ynXPkInhg+2nroRrQk=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1663848128;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=mzraJ08XbFjKvF3H8c6KILYdRR2eaJrzAO7H5AN4OPE=;
-        b=Otyf8rmsFxydujS408TICq0B91m7wiegCNqTMhb4wroUcweQpfoSM0RfgYznpAhLdMa9KA
-        gidmZTAnaWiVgCAg==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 36BA813AA5;
-        Thu, 22 Sep 2022 12:02:08 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id CIdWDcBOLGPISwAAMHmgww
-        (envelope-from <jack@suse.cz>); Thu, 22 Sep 2022 12:02:08 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id B0496A0684; Thu, 22 Sep 2022 14:02:07 +0200 (CEST)
-Date:   Thu, 22 Sep 2022 14:02:07 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Boyang Xue <bxue@redhat.com>
-Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [bug report] disk quota exceed after multiple write/delete loops
-Message-ID: <20220922120207.3jeasu24dmx5khlz@quack3>
-References: <CAHLe9YZvOcbimNsaYa=jk27uUR1jgVDtXXztLEa0AVnqveOoyQ@mail.gmail.com>
+        with ESMTP id S231680AbiIVMx1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Sep 2022 08:53:27 -0400
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C2E99E8D98;
+        Thu, 22 Sep 2022 05:53:22 -0700 (PDT)
+Received: from dggemv711-chm.china.huawei.com (unknown [172.30.72.54])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4MYFT15ZRszMnyl;
+        Thu, 22 Sep 2022 20:48:37 +0800 (CST)
+Received: from kwepemm600013.china.huawei.com (7.193.23.68) by
+ dggemv711-chm.china.huawei.com (10.1.198.66) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2375.31; Thu, 22 Sep 2022 20:53:20 +0800
+Received: from huawei.com (10.175.127.227) by kwepemm600013.china.huawei.com
+ (7.193.23.68) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.31; Thu, 22 Sep
+ 2022 20:53:19 +0800
+From:   Zhihao Cheng <chengzhihao1@huawei.com>
+To:     <jack@suse.com>, <tytso@mit.edu>, <brauner@kernel.org>
+CC:     <linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <chengzhihao1@huawei.com>,
+        <yukuai3@huawei.com>
+Subject: [PATCH v2 1/3] quota: Check next/prev free block number after reading from quota file
+Date:   Thu, 22 Sep 2022 21:03:59 +0800
+Message-ID: <20220922130401.1792256-2-chengzhihao1@huawei.com>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20220922130401.1792256-1-chengzhihao1@huawei.com>
+References: <20220922130401.1792256-1-chengzhihao1@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAHLe9YZvOcbimNsaYa=jk27uUR1jgVDtXXztLEa0AVnqveOoyQ@mail.gmail.com>
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.127.227]
+X-ClientProxiedBy: dggems701-chm.china.huawei.com (10.3.19.178) To
+ kwepemm600013.china.huawei.com (7.193.23.68)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello!
+Following process:
+ Init: v2_read_file_info: <3> dqi_free_blk 0 dqi_free_entry 5 dqi_blks 6
 
-On Tue 23-08-22 12:16:46, Boyang Xue wrote:
-> On the latest kernel 6.0.0-0.rc2, I find the user quota limit in an
-> ext4 mount is unstable, that after several successful "write file then
-> delete" loops, it will finally fail with "Disk quota exceeded". This
-> bug can be reproduced on at least kernel-6.0.0-0.rc2 and
-> kernel-5.14.0-*, but can't be reproduced on kernel-4.18.0 based RHEL8
-> kernel.
+ Step 1. chown bin f_a -> dquot_acquire -> v2_write_dquot:
+  qtree_write_dquot
+   do_insert_tree
+    find_free_dqentry
+     get_free_dqblk
+      write_blk(info->dqi_blocks) // info->dqi_blocks = 6, failure. The
+	   content in physical block (corresponding to blk 6) is random.
 
-<snip reproducer> 
+ Step 2. chown root f_a -> dquot_transfer -> dqput_all -> dqput ->
+         ext4_release_dquot -> v2_release_dquot -> qtree_delete_dquot:
+  dquot_release
+   remove_tree
+    free_dqentry
+     put_free_dqblk(6)
+      info->dqi_free_blk = blk    // info->dqi_free_blk = 6
 
-> Run log on kernel-6.0.0-0.rc2
-> ```
-> (...skip successful Run#[1-2]...)
-> *** Run#3 ***
-> --- Quota before writing file ---
-> Disk quotas for user quota_test_user1 (uid 1003):
->      Filesystem  blocks   quota   limit   grace   files   quota   limit   grace
->      /dev/loop0       0  200000  300000               0    2000    3000
-> --- ---
-> dd: error writing '/mntpt/test_300m': Disk quota exceeded
-> 299997+0 records in
-> 299996+0 records out
-> 307195904 bytes (307 MB, 293 MiB) copied, 1.44836 s, 212 MB/s
+ Step 3. drop cache (buffer head for block 6 is released)
 
-So this shows that we have failed allocating the last filesystem block.  I
-suspect this happens because the file gets allocted from several free space
-extens and so one extra indirect tree block needs to be allocated (or
-something like that). To verify that you can check the created file with
-"filefrag -v".
+ Step 4. chown bin f_b -> dquot_acquire -> commit_dqblk -> v2_write_dquot:
+  qtree_write_dquot
+   do_insert_tree
+    find_free_dqentry
+     get_free_dqblk
+      dh = (struct qt_disk_dqdbheader *)buf
+      blk = info->dqi_free_blk     // 6
+      ret = read_blk(info, blk, buf)  // The content of buf is random
+      info->dqi_free_blk = le32_to_cpu(dh->dqdh_next_free)  // random blk
 
-Anyway I don't think it is quite correct to assume the filesystem can fit
-300000 data blocks within 300000 block quota because the metadata overhead
-gets accounted into quota as well and the user has no direct control over
-that. So you should probably give filesystem some slack space in your
-tests for metadata overhead.
+ Step 5. chown bin f_c -> notify_change -> ext4_setattr -> dquot_transfer:
+  dquot = dqget -> acquire_dquot -> ext4_acquire_dquot -> dquot_acquire ->
+          commit_dqblk -> v2_write_dquot -> dq_insert_tree:
+   do_insert_tree
+    find_free_dqentry
+     get_free_dqblk
+      blk = info->dqi_free_blk    // If blk < 0 and blk is not an error
+				     code, it will be returned as dquot
 
-> --- Quota after writing file ---
-> Disk quotas for user quota_test_user1 (uid 1003):
->      Filesystem  blocks   quota   limit   grace   files   quota   limit   grace
->      /dev/loop0  300000* 200000  300000   7days       1    2000    3000
-> --- ---
-> --- Quota after deleting file ---
-> Disk quotas for user quota_test_user1 (uid 1003):
->      Filesystem  blocks   quota   limit   grace   files   quota   limit   grace
->      /dev/loop0       0  200000  300000               0    2000    3000
-> --- ---
-> ```
+  transfer_to[USRQUOTA] = dquot  // A random negative value
+  __dquot_transfer(transfer_to)
+   dquot_add_inodes(transfer_to[cnt])
+    spin_lock(&dquot->dq_dqb_lock)  // page fault
 
-								Honza
+, which will lead to kernel page fault:
+ Quota error (device sda): qtree_write_dquot: Error -8000 occurred
+ while creating quota
+ BUG: unable to handle page fault for address: ffffffffffffe120
+ #PF: supervisor write access in kernel mode
+ #PF: error_code(0x0002) - not-present page
+ Oops: 0002 [#1] PREEMPT SMP
+ CPU: 0 PID: 5974 Comm: chown Not tainted 6.0.0-rc1-00004
+ Hardware name: QEMU Standard PC (i440FX + PIIX, 1996)
+ RIP: 0010:_raw_spin_lock+0x3a/0x90
+ Call Trace:
+  dquot_add_inodes+0x28/0x270
+  __dquot_transfer+0x377/0x840
+  dquot_transfer+0xde/0x540
+  ext4_setattr+0x405/0x14d0
+  notify_change+0x68e/0x9f0
+  chown_common+0x300/0x430
+  __x64_sys_fchownat+0x29/0x40
 
+In order to avoid accessing invalid quota memory address, this patch adds
+block number checking of next/prev free block read from quota file.
 
+Fetch a reproducer in [Link].
+
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=216372
+Fixes: 1da177e4c3f4152 ("Linux-2.6.12-rc2")
+CC: stable@vger.kernel.org
+Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
+---
+ fs/quota/quota_tree.c | 38 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
+
+diff --git a/fs/quota/quota_tree.c b/fs/quota/quota_tree.c
+index 5f2405994280..f89186b6db1d 100644
+--- a/fs/quota/quota_tree.c
++++ b/fs/quota/quota_tree.c
+@@ -71,6 +71,35 @@ static ssize_t write_blk(struct qtree_mem_dqinfo *info, uint blk, char *buf)
+ 	return ret;
+ }
+ 
++static inline int do_check_range(struct super_block *sb, uint val, uint max_val)
++{
++	if (val >= max_val) {
++		quota_error(sb, "Getting block too big (%u >= %u)",
++			    val, max_val);
++		return -EUCLEAN;
++	}
++
++	return 0;
++}
++
++static int check_dquot_block_header(struct qtree_mem_dqinfo *info,
++				    struct qt_disk_dqdbheader *dh)
++{
++	int err = 0;
++	uint nextblk, prevblk;
++
++	nextblk = le32_to_cpu(dh->dqdh_next_free);
++	err = do_check_range(info->dqi_sb, nextblk, info->dqi_blocks);
++	if (err)
++		return err;
++	prevblk = le32_to_cpu(dh->dqdh_prev_free);
++	err = do_check_range(info->dqi_sb, prevblk, info->dqi_blocks);
++	if (err)
++		return err;
++
++	return err;
++}
++
+ /* Remove empty block from list and return it */
+ static int get_free_dqblk(struct qtree_mem_dqinfo *info)
+ {
+@@ -85,6 +114,9 @@ static int get_free_dqblk(struct qtree_mem_dqinfo *info)
+ 		ret = read_blk(info, blk, buf);
+ 		if (ret < 0)
+ 			goto out_buf;
++		ret = check_dquot_block_header(info, dh);
++		if (ret)
++			goto out_buf;
+ 		info->dqi_free_blk = le32_to_cpu(dh->dqdh_next_free);
+ 	}
+ 	else {
+@@ -232,6 +264,9 @@ static uint find_free_dqentry(struct qtree_mem_dqinfo *info,
+ 		*err = read_blk(info, blk, buf);
+ 		if (*err < 0)
+ 			goto out_buf;
++		*err = check_dquot_block_header(info, dh);
++		if (*err)
++			goto out_buf;
+ 	} else {
+ 		blk = get_free_dqblk(info);
+ 		if ((int)blk < 0) {
+@@ -424,6 +459,9 @@ static int free_dqentry(struct qtree_mem_dqinfo *info, struct dquot *dquot,
+ 		goto out_buf;
+ 	}
+ 	dh = (struct qt_disk_dqdbheader *)buf;
++	ret = check_dquot_block_header(info, dh);
++	if (ret)
++		goto out_buf;
+ 	le16_add_cpu(&dh->dqdh_entries, -1);
+ 	if (!le16_to_cpu(dh->dqdh_entries)) {	/* Block got free? */
+ 		ret = remove_free_dqentry(info, buf, blk);
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.31.1
+
