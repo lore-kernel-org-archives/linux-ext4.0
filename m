@@ -2,62 +2,71 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 32895C6FA82
-	for <linux-ext4@archiver.kernel.org>; Fri, 23 Sep 2022 07:41:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 17156ECAAD8
+	for <linux-ext4@archiver.kernel.org>; Fri, 23 Sep 2022 08:45:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229788AbiIWHlJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 23 Sep 2022 03:41:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54526 "EHLO
+        id S230327AbiIWIps (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 23 Sep 2022 04:45:48 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58956 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229804AbiIWHlF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Sep 2022 03:41:05 -0400
-Received: from mail.fadrush.pl (mail.fadrush.pl [54.37.225.211])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B839811C169
-        for <linux-ext4@vger.kernel.org>; Fri, 23 Sep 2022 00:41:04 -0700 (PDT)
-Received: by mail.fadrush.pl (Postfix, from userid 1002)
-        id C9CBE2257C; Fri, 23 Sep 2022 07:37:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fadrush.pl; s=mail;
-        t=1663918827; bh=bD6j9gIFU6CLTaCGl0Ow9oeIxtirvTfMeNZSfLEZQ+I=;
-        h=Date:From:To:Subject:From;
-        b=QPPMP16Ing9kaJ+h1LYjwWHI0NiGr7drb+/KuD7Ky4YogpACRxlDFEgzyefojjVi3
-         AHND3zuDRuX6xb7jVLSIEiDO8YMrM9ADJUc9xq4w3PILn+70CWQlXIwnEs6SJmlcqm
-         ZdFkZCCU+JBIo883EuXt2XgEreDfaBqC5G7dKFjArXIX/wfw+kaaP9B1ZIqohjMN3N
-         1xa6m7bfnP9lo1AFXbzZKFPBd1yKBi6pW2VZ5pwpQmY72UNXFxIt4Lpenoeu5j3vhe
-         rwpRQAnuVAbbk8HlESAG89XUZJfEtelDSWBL1FKUw1c3xj16s/zjA8Xo0D2AgEtYRZ
-         XS4Q6vpAmdvOw==
-Received: by mail.fadrush.pl for <linux-ext4@vger.kernel.org>; Fri, 23 Sep 2022 07:36:05 GMT
-Message-ID: <20220923064500-0.1.1t.h9ht.0.0ot0eifekq@fadrush.pl>
-Date:   Fri, 23 Sep 2022 07:36:05 GMT
-From:   "Jakub Olejniczak" <jakub.olejniczak@fadrush.pl>
-To:     <linux-ext4@vger.kernel.org>
-Subject: =?UTF-8?Q?Zwi=C4=99kszenie_p=C5=82ynno=C5=9Bci_finansowej?=
-X-Mailer: mail.fadrush.pl
+        with ESMTP id S229810AbiIWIpr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Sep 2022 04:45:47 -0400
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 671F2F1632;
+        Fri, 23 Sep 2022 01:45:46 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=DjlxZdtey44Z/qjRGLy58acitXkoH1HyP/t6lSaY/qE=; b=BXVZwtcb/kl8Tto92SETo8PZe8
+        REo44VsUynG9nEa6bfIsgSSQ+PzPNLvzLs+WSgeB1EkLVqCdFdDKhjWK/hC9q4mIh3GE70XDvE5K7
+        O1yCEuzo4mcNEttHs+gVEKb6QgKLb8HhKydQo1kR44Jm4XBMbIpywnDKaFYYNNqyK8760JAkCBe0G
+        31TUxsCdXgHaSLHMmk2cGVZaUkTW0lyjW7NrYq3G6IfxUTuAbOJjjtv6ubS2l9xMr4U+XmjPtE7lo
+        BU9xzoRrnwOaHo1rIz51+AjEm8rqdqIU3WaRllrm+oT/ZjTdPTlfO8nmOfhx2InEDN2GjwIyFSh0R
+        U0A62d+Q==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1obeJc-0032Vm-96; Fri, 23 Sep 2022 08:45:44 +0000
+Date:   Fri, 23 Sep 2022 01:45:44 -0700
+From:   Christoph Hellwig <hch@infradead.org>
+To:     Sarthak Kukreti <sarthakkukreti@chromium.org>
+Cc:     Christoph Hellwig <hch@infradead.org>, dm-devel@redhat.com,
+        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        virtualization@lists.linux-foundation.org,
+        Jens Axboe <axboe@kernel.dk>,
+        "Michael S . Tsirkin" <mst@redhat.com>,
+        Jason Wang <jasowang@redhat.com>,
+        Paolo Bonzini <pbonzini@redhat.com>,
+        Stefan Hajnoczi <stefanha@redhat.com>,
+        Alasdair Kergon <agk@redhat.com>,
+        Mike Snitzer <snitzer@kernel.org>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Bart Van Assche <bvanassche@google.com>,
+        Daniil Lunev <dlunev@google.com>,
+        Evan Green <evgreen@google.com>,
+        Gwendal Grignou <gwendal@google.com>
+Subject: Re: [PATCH RFC 4/8] fs: Introduce FALLOC_FL_PROVISION
+Message-ID: <Yy1yOGy7yF4AShDB@infradead.org>
+References: <20220915164826.1396245-1-sarthakkukreti@google.com>
+ <20220915164826.1396245-5-sarthakkukreti@google.com>
+ <YylweQAZkIdb5ixo@infradead.org>
+ <CAG9=OMNoG01UUStNs_Zhsv6mXZw0M0q2v54ZriJvHZ4aspvjEQ@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAG9=OMNoG01UUStNs_Zhsv6mXZw0M0q2v54ZriJvHZ4aspvjEQ@mail.gmail.com>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Dzie=C5=84 dobry,
+On Tue, Sep 20, 2022 at 10:54:32PM -0700, Sarthak Kukreti wrote:
+> [ mmc0blkp1 | ext4(1) | sparse file | loop | dm-thinp | dm-thin | ext4(2) ]
+> 
+> would be predicated on the guarantees of fallocate() per allocation
+> layer; if ext4(1) was replaced by a filesystem that did not support
+> fallocate(), then there would be no guarantee that a write to a file
+> on ext4(2) succeeds.
 
-kontaktuj=C4=99 si=C4=99 z Pa=C5=84stwem, poniewa=C5=BC chcia=C5=82bym za=
-proponowa=C4=87 wygodne rozwi=C4=85zanie, kt=C3=B3re umo=C5=BCliwi Pa=C5=84=
-stwa firmie stabilny rozw=C3=B3j.=20
-
-Konkurencyjne otoczenie wymaga ci=C4=85g=C5=82ego ulepszania i poszerzeni=
-a oferty, co z kolei wi=C4=85=C5=BCe si=C4=99 z konieczno=C5=9Bci=C4=85 i=
-nwestowania. Brak odpowiedniego kapita=C5=82u powa=C5=BCnie ogranicza tem=
-po rozwoju firmy.
-
-Od wielu lat z powodzeniem pomagam firmom w uzyskaniu najlepszej formy fi=
-nansowania z banku oraz UE. Mam sta=C5=82ych Klient=C3=B3w, kt=C3=B3rzy n=
-adal ch=C4=99tnie korzystaj=C4=85 z moich us=C5=82ug, a tak=C5=BCe poleca=
-j=C4=85 je innym.
-
-Czy chcieliby Pa=C5=84stwo skorzysta=C4=87 z pomocy wykwalifikowanego i d=
-o=C5=9Bwiadczonego doradcy finansowego?
-
-
-Pozdrawiam
-Jakub Olejniczak
+a write or any unlimited number of writes?
