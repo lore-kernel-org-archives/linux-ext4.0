@@ -2,76 +2,65 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E5B92ECAAD8
-	for <linux-ext4@archiver.kernel.org>; Fri, 23 Sep 2022 13:34:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D191C6FA90
+	for <linux-ext4@archiver.kernel.org>; Fri, 23 Sep 2022 13:35:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230356AbiIWNeN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 23 Sep 2022 09:34:13 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43004 "EHLO
+        id S231403AbiIWNfU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 23 Sep 2022 09:35:20 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45532 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229726AbiIWNeM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Sep 2022 09:34:12 -0400
-Received: from shell.v3.sk (mail.v3.sk [167.172.186.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6FC3B131F54
-        for <linux-ext4@vger.kernel.org>; Fri, 23 Sep 2022 06:34:11 -0700 (PDT)
-Received: from localhost (localhost.localdomain [127.0.0.1])
-        by zimbra.v3.sk (Postfix) with ESMTP id CE8A7E3887;
-        Fri, 23 Sep 2022 13:12:37 +0000 (UTC)
-Received: from shell.v3.sk ([127.0.0.1])
-        by localhost (zimbra.v3.sk [127.0.0.1]) (amavisd-new, port 10032)
-        with ESMTP id UpgK_Xk-K7Ha; Fri, 23 Sep 2022 13:12:36 +0000 (UTC)
-Received: from localhost (localhost.localdomain [127.0.0.1])
-        by zimbra.v3.sk (Postfix) with ESMTP id 0160FE3889;
-        Fri, 23 Sep 2022 13:12:36 +0000 (UTC)
-X-Virus-Scanned: amavisd-new at zimbra.v3.sk
-Received: from shell.v3.sk ([127.0.0.1])
-        by localhost (zimbra.v3.sk [127.0.0.1]) (amavisd-new, port 10026)
-        with ESMTP id QnzHD766Kf45; Fri, 23 Sep 2022 13:12:35 +0000 (UTC)
-Received: from localhost (unknown [109.183.109.54])
-        by zimbra.v3.sk (Postfix) with ESMTPSA id 56887E3887;
-        Fri, 23 Sep 2022 13:12:35 +0000 (UTC)
-From:   Lubomir Rintel <lkundrak@v3.sk>
-To:     Theodore Ts'o <tytso@mit.edu>
-Cc:     linux-ext4@vger.kernel.org, Lubomir Rintel <lkundrak@v3.sk>
-Subject: [PATCH] tune2fs: fix an error message
-Date:   Fri, 23 Sep 2022 15:25:48 +0200
-Message-Id: <20220923132548.1701519-1-lkundrak@v3.sk>
-X-Mailer: git-send-email 2.37.3
+        with ESMTP id S230356AbiIWNfR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Sep 2022 09:35:17 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8D6008FD6F;
+        Fri, 23 Sep 2022 06:35:15 -0700 (PDT)
+Received: from dggemv711-chm.china.huawei.com (unknown [172.30.72.56])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4MYtMW2lSVzlX08;
+        Fri, 23 Sep 2022 21:31:03 +0800 (CST)
+Received: from kwepemm600013.china.huawei.com (7.193.23.68) by
+ dggemv711-chm.china.huawei.com (10.1.198.66) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2375.31; Fri, 23 Sep 2022 21:35:13 +0800
+Received: from huawei.com (10.175.127.227) by kwepemm600013.china.huawei.com
+ (7.193.23.68) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.31; Fri, 23 Sep
+ 2022 21:35:12 +0800
+From:   Zhihao Cheng <chengzhihao1@huawei.com>
+To:     <jack@suse.com>, <tytso@mit.edu>, <brauner@kernel.org>
+CC:     <linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <chengzhihao1@huawei.com>,
+        <yukuai3@huawei.com>
+Subject: [PATCH v3 0/3] Check content after reading from quota file
+Date:   Fri, 23 Sep 2022 21:45:51 +0800
+Message-ID: <20220923134555.2623931-1-chengzhihao1@huawei.com>
+X-Mailer: git-send-email 2.31.1
 MIME-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.127.227]
+X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
+ kwepemm600013.china.huawei.com (7.193.23.68)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-  $ tune2fs -O ^has_journal -ff /dev/sdh2
-  Recovering journal. tune2fs: Unknown code ____ 251 while recovering jou=
-rnal.
+v1->v2:
+  Add CC-stable tag in first patch.
+  Rename check_free_block() -> check_dquot_block_header().
+v2->v3:
+  Define do_check_range() completely in patch 1.
+  Move 'dqdh_entries' checking into check_dquot_block_header().
+  Do block checing later in find_next_id().
 
-  Before: Please run e2fsck -fy -O.
-  After: Please run e2fsck -fy /dev/sdh2.
+Zhihao Cheng (3):
+  quota: Check next/prev free block number after reading from quota file
+  quota: Replace all block number checking with helper function
+  quota: Add more checking after reading from quota file
 
-Note this doesn't fix the "Unknown code" message, just the "Please run
-e2fsck" one.
+ fs/quota/quota_tree.c | 73 ++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 61 insertions(+), 12 deletions(-)
 
-Signed-off-by: Lubomir Rintel <lkundrak@v3.sk>
----
- misc/tune2fs.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 088f87e5..c85737ad 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -3343,7 +3343,7 @@ _("Warning: The journal is dirty. You may wish to r=
-eplay the journal like:\n\n"
- 		if (retval) {
- 			com_err("tune2fs", retval,
- 				"while recovering journal.\n");
--			printf(_("Please run e2fsck -fy %s.\n"), argv[1]);
-+			printf(_("Please run e2fsck -fy %s.\n"), device_name);
- 			rc =3D 1;
- 			goto closefs;
- 		}
---=20
-2.37.3
+-- 
+2.31.1
 
