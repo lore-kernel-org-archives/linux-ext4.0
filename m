@@ -2,95 +2,231 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 36519C6FA82
-	for <linux-ext4@archiver.kernel.org>; Sat, 24 Sep 2022 02:51:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 514AAC32771
+	for <linux-ext4@archiver.kernel.org>; Sat, 24 Sep 2022 07:41:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233109AbiIXCvK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 23 Sep 2022 22:51:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33434 "EHLO
+        id S233569AbiIXHl4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 24 Sep 2022 03:41:56 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58352 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233353AbiIXCu6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Sep 2022 22:50:58 -0400
-Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 159301075A3
-        for <linux-ext4@vger.kernel.org>; Fri, 23 Sep 2022 19:50:56 -0700 (PDT)
-Received: from dggemv711-chm.china.huawei.com (unknown [172.30.72.57])
-        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4MZD3s6WsjzHpW8;
-        Sat, 24 Sep 2022 10:48:41 +0800 (CST)
-Received: from kwepemm600003.china.huawei.com (7.193.23.202) by
- dggemv711-chm.china.huawei.com (10.1.198.66) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2375.31; Sat, 24 Sep 2022 10:50:54 +0800
-Received: from [127.0.0.1] (10.174.177.249) by kwepemm600003.china.huawei.com
- (7.193.23.202) with Microsoft SMTP Server (version=TLS1_2,
+        with ESMTP id S233559AbiIXHly (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 24 Sep 2022 03:41:54 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D53491181F0;
+        Sat, 24 Sep 2022 00:41:51 -0700 (PDT)
+Received: from canpemm500010.china.huawei.com (unknown [172.30.72.57])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4MZLTH2609zlXK8;
+        Sat, 24 Sep 2022 15:37:39 +0800 (CST)
+Received: from huawei.com (10.175.127.227) by canpemm500010.china.huawei.com
+ (7.192.105.118) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.31; Sat, 24 Sep
- 2022 10:50:53 +0800
-Subject: Re: [PATCH] tune2fs: fix a NULL dereference on failed journal replay
-To:     Lubomir Rintel <lkundrak@v3.sk>, Theodore Ts'o <tytso@mit.edu>
-CC:     <linux-ext4@vger.kernel.org>
-References: <20220923132735.1701587-1-lkundrak@v3.sk>
-From:   Zhiqiang Liu <liuzhiqiang26@huawei.com>
-Message-ID: <2bb44e20-d4a8-a176-34ab-0c5c74d755c6@huawei.com>
-Date:   Sat, 24 Sep 2022 10:50:51 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101
- Thunderbird/68.2.2
+ 2022 15:41:49 +0800
+From:   Ye Bin <yebin10@huawei.com>
+To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
+        <linux-ext4@vger.kernel.org>
+CC:     <linux-kernel@vger.kernel.org>, <jack@suse.cz>,
+        Ye Bin <yebin10@huawei.com>
+Subject: [PATCH -next 1/3] ext4: introduce EXT4_FC_TAG_BASE_LEN helper
+Date:   Sat, 24 Sep 2022 15:52:31 +0800
+Message-ID: <20220924075233.2315259-2-yebin10@huawei.com>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20220924075233.2315259-1-yebin10@huawei.com>
+References: <20220924075233.2315259-1-yebin10@huawei.com>
 MIME-Version: 1.0
-In-Reply-To: <20220923132735.1701587-1-lkundrak@v3.sk>
-Content-Type: text/plain; charset="utf-8"
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.174.177.249]
-X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
- kwepemm600003.china.huawei.com (7.193.23.202)
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.127.227]
+X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
+ canpemm500010.china.huawei.com (7.192.105.118)
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Nice catch
-But Li Jinlin has also found this problem, and sent a patch:
-"[PATCH] tune2fs: exit directly when fs freed in ext2fs_run_ext3_journal"
+Introduce EXT4_FC_TAG_BASE_LEN helper for calculate length of
+struct ext4_fc_tl.
 
-On 2022/9/23 21:27, Lubomir Rintel wrote:
-> Got a crash:
-> 
->   Starting program: e2fsprogs-1.46.5/misc/tune2fs -O ^has_journal -ff /dev/sdh2
->   tune2fs 1.46.5 (30-Dec-2021)
->   Recovering journal.
->   tune2fs: Unknown code ____ 251 while recovering journal.
->   Please run e2fsck -fy /dev/sdh2.
-> 
->   Program received signal SIGSEGV, Segmentation fault.
->   0x00007ffff7f8565a in ext2fs_mmp_stop (fs=0x0) at ../mmp.c:405
->   405		if (!ext2fs_has_feature_mmp(fs->super) ||
->   (gdb) bt
->   #0  0x00007ffff7f8565a in ext2fs_mmp_stop (fs=0x0) at ../mmp.c:405
->   #1  0x000055555555acd8 in main (argc=<optimized out>, argv=<optimized out>) at /home/lkundrak/fedora/e2fsprogs/e2fsprogs-1.46.5/misc/tune2fs.c:3441
->   (gdb)
-> 
-> Turns out, ext2fs_run_ext3_journal() can close fs and then fail. If that
-> happened, we shall not jump to closefs:, quit right away instead.
-> 
-> Signed-off-by: Lubomir Rintel <lkundrak@v3.sk>
-> ---
->  misc/tune2fs.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
-> 
-> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-> index 088f87e5..96cfd001 100644
-> --- a/misc/tune2fs.c
-> +++ b/misc/tune2fs.c
-> @@ -3345,7 +3345,10 @@ _("Warning: The journal is dirty. You may wish to replay the journal like:\n\n"
->  				"while recovering journal.\n");
->  			printf(_("Please run e2fsck -fy %s.\n"), argv[1]);
->  			rc = 1;
-> -			goto closefs;
-> +			if (fs)
-> +				goto closefs;
-> +			else
-> +				return 1;
->  		}
->  		sb = fs->super;
->  	}
-> 
+Signed-off-by: Ye Bin <yebin10@huawei.com>
+---
+ fs/ext4/fast_commit.c | 54 ++++++++++++++++++++++---------------------
+ fs/ext4/fast_commit.h |  3 +++
+ 2 files changed, 31 insertions(+), 26 deletions(-)
+
+diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
+index 54ccc61c713a..a65772c22f6d 100644
+--- a/fs/ext4/fast_commit.c
++++ b/fs/ext4/fast_commit.c
+@@ -702,10 +702,10 @@ static u8 *ext4_fc_reserve_space(struct super_block *sb, int len, u32 *crc)
+ 	 * After allocating len, we should have space at least for a 0 byte
+ 	 * padding.
+ 	 */
+-	if (len + sizeof(struct ext4_fc_tl) > bsize)
++	if (len + EXT4_FC_TAG_BASE_LEN > bsize)
+ 		return NULL;
+ 
+-	if (bsize - off - 1 > len + sizeof(struct ext4_fc_tl)) {
++	if (bsize - off - 1 > len + EXT4_FC_TAG_BASE_LEN) {
+ 		/*
+ 		 * Only allocate from current buffer if we have enough space for
+ 		 * this request AND we have space to add a zero byte padding.
+@@ -722,10 +722,10 @@ static u8 *ext4_fc_reserve_space(struct super_block *sb, int len, u32 *crc)
+ 	/* Need to add PAD tag */
+ 	tl = (struct ext4_fc_tl *)(sbi->s_fc_bh->b_data + off);
+ 	tl->fc_tag = cpu_to_le16(EXT4_FC_TAG_PAD);
+-	pad_len = bsize - off - 1 - sizeof(struct ext4_fc_tl);
++	pad_len = bsize - off - 1 - EXT4_FC_TAG_BASE_LEN;
+ 	tl->fc_len = cpu_to_le16(pad_len);
+ 	if (crc)
+-		*crc = ext4_chksum(sbi, *crc, tl, sizeof(*tl));
++		*crc = ext4_chksum(sbi, *crc, tl, EXT4_FC_TAG_BASE_LEN);
+ 	if (pad_len > 0)
+ 		ext4_fc_memzero(sb, tl + 1, pad_len, crc);
+ 	ext4_fc_submit_bh(sb, false);
+@@ -767,7 +767,7 @@ static int ext4_fc_write_tail(struct super_block *sb, u32 crc)
+ 	 * ext4_fc_reserve_space takes care of allocating an extra block if
+ 	 * there's no enough space on this block for accommodating this tail.
+ 	 */
+-	dst = ext4_fc_reserve_space(sb, sizeof(tl) + sizeof(tail), &crc);
++	dst = ext4_fc_reserve_space(sb, EXT4_FC_TAG_BASE_LEN + sizeof(tail), &crc);
+ 	if (!dst)
+ 		return -ENOSPC;
+ 
+@@ -777,8 +777,8 @@ static int ext4_fc_write_tail(struct super_block *sb, u32 crc)
+ 	tl.fc_len = cpu_to_le16(bsize - off - 1 + sizeof(struct ext4_fc_tail));
+ 	sbi->s_fc_bytes = round_up(sbi->s_fc_bytes, bsize);
+ 
+-	ext4_fc_memcpy(sb, dst, &tl, sizeof(tl), &crc);
+-	dst += sizeof(tl);
++	ext4_fc_memcpy(sb, dst, &tl, EXT4_FC_TAG_BASE_LEN, &crc);
++	dst += EXT4_FC_TAG_BASE_LEN;
+ 	tail.fc_tid = cpu_to_le32(sbi->s_journal->j_running_transaction->t_tid);
+ 	ext4_fc_memcpy(sb, dst, &tail.fc_tid, sizeof(tail.fc_tid), &crc);
+ 	dst += sizeof(tail.fc_tid);
+@@ -800,15 +800,15 @@ static bool ext4_fc_add_tlv(struct super_block *sb, u16 tag, u16 len, u8 *val,
+ 	struct ext4_fc_tl tl;
+ 	u8 *dst;
+ 
+-	dst = ext4_fc_reserve_space(sb, sizeof(tl) + len, crc);
++	dst = ext4_fc_reserve_space(sb, EXT4_FC_TAG_BASE_LEN + len, crc);
+ 	if (!dst)
+ 		return false;
+ 
+ 	tl.fc_tag = cpu_to_le16(tag);
+ 	tl.fc_len = cpu_to_le16(len);
+ 
+-	ext4_fc_memcpy(sb, dst, &tl, sizeof(tl), crc);
+-	ext4_fc_memcpy(sb, dst + sizeof(tl), val, len, crc);
++	ext4_fc_memcpy(sb, dst, &tl, EXT4_FC_TAG_BASE_LEN, crc);
++	ext4_fc_memcpy(sb, dst + EXT4_FC_TAG_BASE_LEN, val, len, crc);
+ 
+ 	return true;
+ }
+@@ -820,8 +820,8 @@ static bool ext4_fc_add_dentry_tlv(struct super_block *sb, u32 *crc,
+ 	struct ext4_fc_dentry_info fcd;
+ 	struct ext4_fc_tl tl;
+ 	int dlen = fc_dentry->fcd_name.len;
+-	u8 *dst = ext4_fc_reserve_space(sb, sizeof(tl) + sizeof(fcd) + dlen,
+-					crc);
++	u8 *dst = ext4_fc_reserve_space(sb,
++			EXT4_FC_TAG_BASE_LEN + sizeof(fcd) + dlen, crc);
+ 
+ 	if (!dst)
+ 		return false;
+@@ -830,8 +830,8 @@ static bool ext4_fc_add_dentry_tlv(struct super_block *sb, u32 *crc,
+ 	fcd.fc_ino = cpu_to_le32(fc_dentry->fcd_ino);
+ 	tl.fc_tag = cpu_to_le16(fc_dentry->fcd_op);
+ 	tl.fc_len = cpu_to_le16(sizeof(fcd) + dlen);
+-	ext4_fc_memcpy(sb, dst, &tl, sizeof(tl), crc);
+-	dst += sizeof(tl);
++	ext4_fc_memcpy(sb, dst, &tl, EXT4_FC_TAG_BASE_LEN, crc);
++	dst += EXT4_FC_TAG_BASE_LEN;
+ 	ext4_fc_memcpy(sb, dst, &fcd, sizeof(fcd), crc);
+ 	dst += sizeof(fcd);
+ 	ext4_fc_memcpy(sb, dst, fc_dentry->fcd_name.name, dlen, crc);
+@@ -868,13 +868,13 @@ static int ext4_fc_write_inode(struct inode *inode, u32 *crc)
+ 
+ 	ret = -ECANCELED;
+ 	dst = ext4_fc_reserve_space(inode->i_sb,
+-			sizeof(tl) + inode_len + sizeof(fc_inode.fc_ino), crc);
++		EXT4_FC_TAG_BASE_LEN + inode_len + sizeof(fc_inode.fc_ino), crc);
+ 	if (!dst)
+ 		goto err;
+ 
+-	if (!ext4_fc_memcpy(inode->i_sb, dst, &tl, sizeof(tl), crc))
++	if (!ext4_fc_memcpy(inode->i_sb, dst, &tl, EXT4_FC_TAG_BASE_LEN, crc))
+ 		goto err;
+-	dst += sizeof(tl);
++	dst += EXT4_FC_TAG_BASE_LEN;
+ 	if (!ext4_fc_memcpy(inode->i_sb, dst, &fc_inode, sizeof(fc_inode), crc))
+ 		goto err;
+ 	dst += sizeof(fc_inode);
+@@ -2026,9 +2026,10 @@ static int ext4_fc_replay_scan(journal_t *journal,
+ 	}
+ 
+ 	state->fc_replay_expected_off++;
+-	for (cur = start; cur < end; cur = cur + sizeof(tl) + le16_to_cpu(tl.fc_len)) {
+-		memcpy(&tl, cur, sizeof(tl));
+-		val = cur + sizeof(tl);
++	for (cur = start; cur < end;
++	     cur = cur + EXT4_FC_TAG_BASE_LEN + le16_to_cpu(tl.fc_len)) {
++		memcpy(&tl, cur, EXT4_FC_TAG_BASE_LEN);
++		val = cur + EXT4_FC_TAG_BASE_LEN;
+ 		ext4_debug("Scan phase, tag:%s, blk %lld\n",
+ 			  tag2str(le16_to_cpu(tl.fc_tag)), bh->b_blocknr);
+ 		switch (le16_to_cpu(tl.fc_tag)) {
+@@ -2051,13 +2052,13 @@ static int ext4_fc_replay_scan(journal_t *journal,
+ 		case EXT4_FC_TAG_PAD:
+ 			state->fc_cur_tag++;
+ 			state->fc_crc = ext4_chksum(sbi, state->fc_crc, cur,
+-					sizeof(tl) + le16_to_cpu(tl.fc_len));
++				EXT4_FC_TAG_BASE_LEN + le16_to_cpu(tl.fc_len));
+ 			break;
+ 		case EXT4_FC_TAG_TAIL:
+ 			state->fc_cur_tag++;
+ 			memcpy(&tail, val, sizeof(tail));
+ 			state->fc_crc = ext4_chksum(sbi, state->fc_crc, cur,
+-						sizeof(tl) +
++						EXT4_FC_TAG_BASE_LEN +
+ 						offsetof(struct ext4_fc_tail,
+ 						fc_crc));
+ 			if (le32_to_cpu(tail.fc_tid) == expected_tid &&
+@@ -2084,7 +2085,7 @@ static int ext4_fc_replay_scan(journal_t *journal,
+ 			}
+ 			state->fc_cur_tag++;
+ 			state->fc_crc = ext4_chksum(sbi, state->fc_crc, cur,
+-					    sizeof(tl) + le16_to_cpu(tl.fc_len));
++				EXT4_FC_TAG_BASE_LEN + le16_to_cpu(tl.fc_len));
+ 			break;
+ 		default:
+ 			ret = state->fc_replay_num_tags ?
+@@ -2139,9 +2140,10 @@ static int ext4_fc_replay(journal_t *journal, struct buffer_head *bh,
+ 	start = (u8 *)bh->b_data;
+ 	end = (__u8 *)bh->b_data + journal->j_blocksize - 1;
+ 
+-	for (cur = start; cur < end; cur = cur + sizeof(tl) + le16_to_cpu(tl.fc_len)) {
+-		memcpy(&tl, cur, sizeof(tl));
+-		val = cur + sizeof(tl);
++	for (cur = start; cur < end;
++	     cur = cur + EXT4_FC_TAG_BASE_LEN + le16_to_cpu(tl.fc_len)) {
++		memcpy(&tl, cur, EXT4_FC_TAG_BASE_LEN);
++		val = cur + EXT4_FC_TAG_BASE_LEN;
+ 
+ 		if (state->fc_replay_num_tags == 0) {
+ 			ret = JBD2_FC_REPLAY_STOP;
+diff --git a/fs/ext4/fast_commit.h b/fs/ext4/fast_commit.h
+index 1db12847a83b..a6154c3ed135 100644
+--- a/fs/ext4/fast_commit.h
++++ b/fs/ext4/fast_commit.h
+@@ -70,6 +70,9 @@ struct ext4_fc_tail {
+ 	__le32 fc_crc;
+ };
+ 
++/* Tag base length */
++#define EXT4_FC_TAG_BASE_LEN (sizeof(struct ext4_fc_tl))
++
+ /*
+  * Fast commit status codes
+  */
+-- 
+2.31.1
 
