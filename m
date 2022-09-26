@@ -2,66 +2,67 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 23740C32771
-	for <linux-ext4@archiver.kernel.org>; Mon, 26 Sep 2022 17:56:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E2EE0C32771
+	for <linux-ext4@archiver.kernel.org>; Mon, 26 Sep 2022 18:18:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231300AbiIZR4E (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 26 Sep 2022 13:56:04 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39562 "EHLO
+        id S230145AbiIZSSN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 26 Sep 2022 14:18:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59732 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230337AbiIZRzg (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Sep 2022 13:55:36 -0400
+        with ESMTP id S229751AbiIZSRw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Sep 2022 14:17:52 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0C6DF63F06;
-        Mon, 26 Sep 2022 10:32:56 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8DA82474CF;
+        Mon, 26 Sep 2022 11:08:47 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28QHWcvb001686
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28QI8gQ3023305
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Mon, 26 Sep 2022 13:32:39 -0400
+        Mon, 26 Sep 2022 14:08:43 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1664213561; bh=YMM3AaX/KN+4rmSmHEPW/8P60W72WjElwRSGsItg/ME=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To;
-        b=EXRHbov4H+arsPBg4xbppsLVAiSCAd4h8YWgCZXz3ek8HCYT5liQCykeuhSSJxKUz
-         dtMbMHCUgptChMoyuX1SspUc63WFD+GHNvUcn7gzKKQtGak4EzK7YkTV3gBF//Qv2g
-         2bvPotzOfgW9LN6G7cjKMEPoIJUSI/0H9KSBDrBes1X5LwXMKDxPTEE1Zd2rdHDSm2
-         QnAdLUSLnmDYyWdOBBm2Y2fwAlvAvqMf9hTLd+x0jEHKS0KcLXfZlQ7oOpBZK2dSRc
-         n4aA54/9Pw5eh8ICIGCk8N1wM3GFRi0Vx3tgdgFmXYNJEltCisvclksGy0JRaVhJ/D
-         DN1wh1T+K4jcQ==
+        t=1664215724; bh=syJbDzzk3vzCCtQWfbwxW952B4bzj79gnrZUWWp8YPw=;
+        h=Date:From:To:Cc:Subject;
+        b=SqNN2f8qchXfC7jyMhWCK95q2iNKw2VO2DQEtSmTgEXWeTnb3ZaTWeLVo0V6z1Yp2
+         NlNOGknCBU1CGIwb9hhC8cVQY82Gb3SQEQSSUzLBcfrlTaTPbRnKJuhBhqUqJGtREJ
+         /nCrTpK4VEUWvecCef2NII43FWD7xQrdYUWmHicgQek+L1u68rPbL7CRo0euP+yIOa
+         FTl3r598GDiBx2Y6Llc9CTe67OLdYivvJ2jNlbiVV4Z49SShzGrtaNeyQuHyYqgwB/
+         mnK/3sDxqglzMOiv4DRitwO9Dl8zGHXfBG97hz37Yr8yN38d76CLxbwl6pNGOmSidm
+         bplAp49AC7uHQ==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 3E1F515C526C; Mon, 26 Sep 2022 13:32:38 -0400 (EDT)
-Date:   Mon, 26 Sep 2022 13:32:38 -0400
+        id B4B7315C526C; Mon, 26 Sep 2022 14:08:42 -0400 (EDT)
+Date:   Mon, 26 Sep 2022 14:08:42 -0400
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Jan Kara <jack@suse.cz>
-Cc:     harshadshirwadkar@gmail.com, stable@vger.kernel.org,
-        ritesh.list@gmail.com, stefan.wahren@i2se.com,
-        ojaswin@linux.ibm.com, linux-ext4@vger.kernel.org,
-        regressions@leemhuis.info
-Subject: Re: [PATCH 1/5] ext4: Make mballoc try target group first even with
- mb_optimize_scan
-Message-ID: <YzHiNojNLa3u/yuf@mit.edu>
-References: <20220908091301.147-1-jack@suse.cz>
- <20220908092136.11770-1-jack@suse.cz>
- <166381513758.2957616.15274082762134894004.b4-ty@mit.edu>
- <20220922091542.pkhedytey7wzp5fi@quack3>
- <20220926091126.yx25wgeibxabmcaj@quack3>
+To:     Linus Torvalds <torvalds@linux-foundation.org>
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [GIT PULL] ext4 last-minute fixup
+Message-ID: <YzHqqg46Y34PX0Yq@mit.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20220926091126.yx25wgeibxabmcaj@quack3>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Sep 26, 2022 at 11:11:26AM +0200, Jan Kara wrote:
-> 
-> Ted, I've noticed you've merged my mballoc fixes (and pushed them to Linus)
-> without this fixup. Can you please merge it? The use of uninitialized
-> variable seems rare but possible...
+The following changes since commit 80fa46d6b9e7b1527bfd2197d75431fd9c382161:
 
-Oops, sorry my bad.  I had forgotten to merge the fix before I pushed
-them to Linus.  I'm preparing a follow-up push to Linus right now.
-Once a smoke test passes, I'll sned out the pull request.
+  ext4: limit the number of retries after discarding preallocations blocks (2022-09-22 10:51:19 -0400)
 
-       	     	  	       	    	- Ted
+are available in the Git repository at:
+
+  https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_fixes2
+
+for you to fetch changes up to a078dff870136090b5779ca2831870a6c5539d36:
+
+  ext4: fixup possible uninitialized variable access in ext4_mb_choose_next_group_cr1() (2022-09-26 13:21:05 -0400)
+
+----------------------------------------------------------------
+Fix an potential unitialzied variable bug; this was a fixup that I had
+forgotten to apply before the last pull request for ext4.  My bad.
+
+----------------------------------------------------------------
+Jan Kara (1):
+      ext4: fixup possible uninitialized variable access in ext4_mb_choose_next_group_cr1()
+
+ fs/ext4/mballoc.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
