@@ -2,48 +2,89 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6F120C04A95
-	for <linux-ext4@archiver.kernel.org>; Mon, 26 Sep 2022 02:20:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EBD8BC07E9D
+	for <linux-ext4@archiver.kernel.org>; Mon, 26 Sep 2022 05:02:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232377AbiIZCU1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 25 Sep 2022 22:20:27 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41848 "EHLO
+        id S229711AbiIZFCN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 26 Sep 2022 01:02:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50256 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231176AbiIZCU0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 25 Sep 2022 22:20:26 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 31EAD2529A
-        for <linux-ext4@vger.kernel.org>; Sun, 25 Sep 2022 19:20:24 -0700 (PDT)
-Received: from canpemm500008.china.huawei.com (unknown [172.30.72.54])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4MbRFb6DL0zWgtX;
-        Mon, 26 Sep 2022 10:16:19 +0800 (CST)
-Received: from huawei.com (10.175.124.27) by canpemm500008.china.huawei.com
- (7.192.105.151) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.31; Mon, 26 Sep
- 2022 10:20:22 +0800
-From:   Li Jinlin <lijinlin3@huawei.com>
-To:     <lijinlin3@huawei.com>
-CC:     <adilger@whamcloud.com>, <linfeilong@huawei.com>,
-        <linux-ext4@vger.kernel.org>, <liuzhiqiang26@huawei.com>,
-        <tytso@mit.edu>
-Subject: Re: [PATCH] tune2fs: exit directly when fs freed in ext2fs_run_ext3_journal
-Date:   Mon, 26 Sep 2022 17:46:49 +0800
-Message-ID: <20220926094649.1784658-1-lijinlin3@huawei.com>
-X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20220916074223.8885-1-lijinlin3@huawei.com>
-References: <20220916074223.8885-1-lijinlin3@huawei.com>
+        with ESMTP id S230173AbiIZFCL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Sep 2022 01:02:11 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BA5F527DEA
+        for <linux-ext4@vger.kernel.org>; Sun, 25 Sep 2022 22:02:10 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 66194B80B4A
+        for <linux-ext4@vger.kernel.org>; Mon, 26 Sep 2022 05:02:09 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 1C983C433D6
+        for <linux-ext4@vger.kernel.org>; Mon, 26 Sep 2022 05:02:08 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1664168528;
+        bh=JXUeo5yTG1HLHwAilfqVWk6/c2z1XfXvoFT4LonaqoA=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=IQVjMPSvIQTgcJAg4c49s1hTwAliaaFgSYq7dxgZU4opnIt2bD0ajFZs1LDCzW1bP
+         OPD7pgQwbTGyLHmytSy/izQ58gELFhFO9YgvsCfN2lx8AsF0THWksRDL9AcGwW3Up9
+         wY1RwEDjfDi11/3EYj0Edax+CralR6KIEOfWCVcixReE4oMIZVyTUinTtnPdfd695B
+         faC5t//h8l/1W+rHxAEJXh46633j4q8DS8fxcTRCUGbDIriaLNw/bZZsXN9rre7XnQ
+         TQ5nkW0KFXcjtmKrFJ56Yxwy0nYgbZPbehsze9CmmViP27+W02BGMzGDNp7FYzk36/
+         1akmFERnO9Oxg==
+Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
+        id 07C4BC433E9; Mon, 26 Sep 2022 05:02:08 +0000 (UTC)
+From:   bugzilla-daemon@kernel.org
+To:     linux-ext4@vger.kernel.org
+Subject: [Bug 216529] [fstests generic/048] BUG: Kernel NULL pointer
+ dereference at 0x00000069, filemap_release_folio+0x88/0xb0
+Date:   Mon, 26 Sep 2022 05:02:07 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: tytso@mit.edu
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: 
+Message-ID: <bug-216529-13602-cgKyBAxBC8@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-216529-13602@https.bugzilla.kernel.org/>
+References: <bug-216529-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.124.27]
-X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
- canpemm500008.china.huawei.com (7.192.105.151)
-X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-friendly ping ...
+https://bugzilla.kernel.org/show_bug.cgi?id=3D216529
 
-Thanks,
-Jinlin
+--- Comment #1 from Theodore Tso (tytso@mit.edu) ---
+On Sun, Sep 25, 2022 at 11:55:29AM +0000, bugzilla-daemon@kernel.org wrote:
+> https://bugzilla.kernel.org/show_bug.cgi?id=3D216529
+>=20
+>=20
+> Hit a panic on ppc64le, by running generic/048 with 1k block size:
+
+Hmm, does this reproduce reliably for you?  I test with a 1k block
+size on x86_64 as a proxy 4k block sizes on PPC64, where the blocksize
+< pagesize... and this isn't reproducing for me on x86, and I don't
+have access to a PPC64LE system.
+
+Ritesh, is this something you can take a look at it?  Thanks!
+
+                                       - Ted
+
+--=20
+You may reply to this email to add a comment.
+
+You are receiving this mail because:
+You are watching the assignee of the bug.=
