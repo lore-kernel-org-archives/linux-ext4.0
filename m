@@ -2,44 +2,45 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A5892C54EE9
-	for <linux-ext4@archiver.kernel.org>; Tue, 27 Sep 2022 21:53:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7851C07E9D
+	for <linux-ext4@archiver.kernel.org>; Tue, 27 Sep 2022 21:53:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231897AbiI0Vxp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 27 Sep 2022 17:53:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49920 "EHLO
+        id S231958AbiI0Vxq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 27 Sep 2022 17:53:46 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49932 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230307AbiI0Vxo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Sep 2022 17:53:44 -0400
+        with ESMTP id S231761AbiI0Vxp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Sep 2022 17:53:45 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C5C0992F41
-        for <linux-ext4@vger.kernel.org>; Tue, 27 Sep 2022 14:53:42 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7B3031075B5;
+        Tue, 27 Sep 2022 14:53:44 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28RLrb2a032585
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28RLrbNe032600
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Tue, 27 Sep 2022 17:53:38 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1664315618; bh=VgHYE0p98xfHsiire9xYV+Ua1T/r29z8AWyh89pCmr0=;
+        t=1664315619; bh=ad0Co2gwoETAaQ3iv6PJGA2jCBbTSP7zL889h15igoE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=lnvyNqdqA6rtSKkUtMk2ehVnIeYjQ8lvtcyhL96fzNTe6LaSG0LM94jQ+bYTBusJZ
-         TAzazvHgrFccCs/vOS0sGDlhwYhNddAxoi6sQXEWqZv5TT9jwP1Sy20J+hRixQscyN
-         ABRuURokY/gOqHz5xDisJ37iEEqnSt8NPInZE3kd+NCCvfHqtPEm/gXRFHrgUNz7hT
-         lnAFHgBAFYDfvzaKj5p7iNBdyAJrp/rsqeSbnyElW+R0Lrvv4688DSVBdiU48KyIQ8
-         s1jt3OxLdcxRlIjCdndNZpjT+sYRhplcmALIOlXJOKwsQ+p6e6gvKAQpdRFjcFZKWJ
-         hv/M/lgSCHdfQ==
+        b=FOmxrPo5BPxRjeBGGb5xkqf1Sont2q0Xc1rqMjLR1KEJKb9Gu163T70et7Hl/3WHf
+         z5ttIXJ32+QmkmhlQIPoNdpqYnOG3hdtYjfB0XQxBkMwqRAX7fnIZBeGPQr7kiaKH5
+         raID9JcxZfNN97pFY4wxLmUcqXWhUppuW7xrwhDbgJoYsr7FdAqmfM01FPD8eSJa2p
+         HgQsVHqhP//TQxrieUPh2KuE9eC0UcfTkjMWeCGWGeZByXnNQBUsTlWDTrUd8lpYgB
+         kaY1ldcLrjO5vk1m+zPJKWL4jvk1yRlDksRlJJKmiPzKpZVR7RW/cdNIeaqjbJT/gK
+         dV/GT/6iiTo+g==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 9CB3815C5289; Tue, 27 Sep 2022 17:53:37 -0400 (EDT)
+        id A33E915C528C; Tue, 27 Sep 2022 17:53:37 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org, enwlinux@gmail.com
-Cc:     "Theodore Ts'o" <tytso@mit.edu>
-Subject: Re: [PATCH v2] ext4: minor defrag code improvements
-Date:   Tue, 27 Sep 2022 17:53:31 -0400
-Message-Id: <166431556704.3511882.6483763123662055219.b4-ty@mit.edu>
+To:     adilger.kernel@dilger.ca, josh@joshtriplett.org
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: Don't run ext4lazyinit for read-only filesystems
+Date:   Tue, 27 Sep 2022 17:53:34 -0400
+Message-Id: <166431556706.3511882.3840047540179825060.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20220722163910.268564-1-enwlinux@gmail.com>
-References: <20220722163910.268564-1-enwlinux@gmail.com>
+In-Reply-To: <48b41da1498fcac3287e2e06b660680646c1c050.1659323972.git.josh@joshtriplett.org>
+References: <48b41da1498fcac3287e2e06b660680646c1c050.1659323972.git.josh@joshtriplett.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -47,20 +48,20 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, 22 Jul 2022 12:39:10 -0400, Eric Whitney wrote:
-> Modify the error returns for two file types that can't be defragged to
-> more clearly communicate those restrictions to a caller.  When the
-> defrag code is applied to swap files, return -ETXTBSY, and when applied
-> to quota files, return -EOPNOTSUPP.  Move an extent tree search whose
-> results are only occasionally required to the site always requiring them
-> for improved efficiency.  Address a few typos.
+On Sun, 31 Jul 2022 20:24:53 -0700, Josh Triplett wrote:
+> On a read-only filesystem, we won't invoke the block allocator, so we
+> don't need to prefetch the block bitmaps.
+> 
+> This avoids starting and running the ext4lazyinit thread at all on a
+> system with no read-write ext4 filesystems (for instance, a container VM
+> with read-only filesystems underneath an overlayfs).
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: minor defrag code improvements
-      commit: d412df530f77d0f61c41b83f925997452fc3944c
+[1/1] ext4: Don't run ext4lazyinit for read-only filesystems
+      commit: 3490a40364962a2599bc5a8126003a47150b84d3
 
 Best regards,
 -- 
