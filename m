@@ -2,46 +2,45 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A364C6FA83
-	for <linux-ext4@archiver.kernel.org>; Tue, 27 Sep 2022 21:53:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8FE51C07E9D
+	for <linux-ext4@archiver.kernel.org>; Tue, 27 Sep 2022 21:54:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232006AbiI0Vxs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 27 Sep 2022 17:53:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49946 "EHLO
+        id S231986AbiI0VyE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 27 Sep 2022 17:54:04 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50388 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231936AbiI0Vxq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Sep 2022 17:53:46 -0400
+        with ESMTP id S232142AbiI0Vx7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Sep 2022 17:53:59 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8187092F41
-        for <linux-ext4@vger.kernel.org>; Tue, 27 Sep 2022 14:53:45 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5FD5A1114D0
+        for <linux-ext4@vger.kernel.org>; Tue, 27 Sep 2022 14:53:55 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28RLrbGB032591
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28RLrdaT032630
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 27 Sep 2022 17:53:38 -0400
+        Tue, 27 Sep 2022 17:53:40 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1664315619; bh=z/dH5MAQt/MqY2/ExabwEofN5yOiVaRztYjMARf3e7U=;
+        t=1664315620; bh=6Zw/wV8jKoJPOnEXomcMNIZEhDil6t0J1qW1Cwj97/g=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=LzHWo9QPZv2Xo2LJK06saaYOg59VbSJS1rdqiXlmrcRvUVNC9XLh2dMhVUokIPO4k
-         1e0CQbz0/4vCuSESzZ11OC6ci8H/rFtGeswdGF07/GBnlJJIZWcKfWiwZO8dAS7/W3
-         diPrNmrjayfExb2fEVJQCyTTO/aXaOpvGbGuM5Tjc5oWxW18dQANYJv5s4jOy9V4bv
-         lhozWrv545NlRUhUuQZyAqkjJl51UoGNPiNX0+5ePExLvScFlcqn99zultb4w/79h5
-         PJdFwlJ4BiWoy664hyvEBxpCJIIxTRCubrFAGGtycDgS4UviAf5hPUjSeZx4XWSdkp
-         91Kfm50wzCcRA==
+        b=RYG3+sQjA5p3zWcOGUXgYIQ2GmMGS6jrkGbj6PfrXEmIljx08wuNYtl1hhpHhWQFn
+         4VAyFunO2Disnr+pEHwUADrpS0Wn+KsSo0F8JziP9d0vyQ33woHXsdjPAXnLaA8xVb
+         K1FuWnEJ566eIswt1zfFmzKcs55jQPYr6Xg0qyKVIAFVuukEd9bPGksAdwrR51JcdR
+         gZimjCL7h0KNtNgZ2NBcYrCtyvyIwhXGScvv5O6amo+bm/0HQuynMt+HIHySoPw8ip
+         fm8CDcSvz4zyT2Zqp+FDIdow/siugWtSdxElerF17cSTCGg4AValXWXfyEwG+JzMTH
+         l84SdxFqEfa/Q==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 9E92715C528A; Tue, 27 Sep 2022 17:53:37 -0400 (EDT)
+        id A697015C528E; Tue, 27 Sep 2022 17:53:37 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     jack@suse.cz
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, tadeusz.struk@linaro.org,
-        syzbot+bd13648a53ed6933ca49@syzkaller.appspotmail.com,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext4: Avoid crash when inline data creation follows DIO write
-Date:   Tue, 27 Sep 2022 17:53:32 -0400
-Message-Id: <166431556705.3511882.4814006809885292570.b4-ty@mit.edu>
+To:     linux-ext4@vger.kernel.org, xuyang2018.jy@fujitsu.com
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, lczerner@redhat.com,
+        jlayton@kernel.org, djwong@kernel.org, jack@suse.cz
+Subject: Re: [PATCH v1] ext4: Remove deprecated noacl/nouser_xattr options
+Date:   Tue, 27 Sep 2022 17:53:36 -0400
+Message-Id: <166431556706.3511882.843791619431401636.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20220727155753.13969-1-jack@suse.cz>
-References: <20220727155753.13969-1-jack@suse.cz>
+In-Reply-To: <1658977369-2478-1-git-send-email-xuyang2018.jy@fujitsu.com>
+References: <1658977369-2478-1-git-send-email-xuyang2018.jy@fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -49,20 +48,18 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, 27 Jul 2022 17:57:53 +0200, Jan Kara wrote:
-> When inode is created and written to using direct IO, there is nothing
-> to clear the EXT4_STATE_MAY_INLINE_DATA flag. Thus when inode gets
-> truncated later to say 1 byte and written using normal write, we will
-> try to store the data as inline data. This confuses the code later
-> because the inode now has both normal block and inline data allocated
-> and the confusion manifests for example as:
+On Thu, 28 Jul 2022 11:02:49 +0800, Yang Xu wrote:
+> These two options should have been removed since 3.5, but none notices it.
+> Recently, I and Darrick found this. Also, have some discussion for this[1][2][3].
 > 
-> [...]
+> So now, let's remove them.
+> 
+> 
 
 Applied, thanks!
 
-[1/1] ext4: Avoid crash when inline data creation follows DIO write
-      commit: 4331037750fdd4c698facc8a03075f88f15ffbe6
+[1/1] ext4: Remove deprecated noacl/nouser_xattr options
+      commit: 134435d6d0be21d567a95007323def8d0ebea27e
 
 Best regards,
 -- 
