@@ -2,89 +2,64 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A2F4C433FE
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Sep 2022 13:39:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B5094C433FE
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Sep 2022 14:21:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234940AbiI2NjY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 29 Sep 2022 09:39:24 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35952 "EHLO
+        id S235064AbiI2OVL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 29 Sep 2022 10:21:11 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46440 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234856AbiI2NjX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Sep 2022 09:39:23 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0AAAC18A48F;
-        Thu, 29 Sep 2022 06:39:22 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id C1FE81F8AC;
-        Thu, 29 Sep 2022 13:39:20 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1664458760; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=Ns2J5FCqMyaCVXAnlOwlYGE0L/n4dIeDiQPDs896ezA=;
-        b=IjHgqEycgP5J5wD2VLtonf+O1JFaEAlB2L/rY9szh34RIByWZDffula3+ZxNprIQvguaAG
-        uEgekbkMgXYkvo1ApZ5trxjIixhRO2mrk1cf7bDAsSwjOieA97PVgsp1g/30wnWDEV5rET
-        Iv7mvC2sImR4NKq151WheRZNvzxFSz8=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1664458760;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=Ns2J5FCqMyaCVXAnlOwlYGE0L/n4dIeDiQPDs896ezA=;
-        b=TuFYLQQcGaR9AcwAgJye4uhGokl2Gf8cI0mVsUFJsMZpMFPwN5EohuYrzfk+e4PYT0s3Tt
-        OGy9UulWHTUO8xBw==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id B47331348E;
-        Thu, 29 Sep 2022 13:39:20 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id fsUALAigNWPMKwAAMHmgww
-        (envelope-from <jack@suse.cz>); Thu, 29 Sep 2022 13:39:20 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 4EDB8A0681; Thu, 29 Sep 2022 15:39:20 +0200 (CEST)
-Date:   Thu, 29 Sep 2022 15:39:20 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Zhihao Cheng <chengzhihao1@huawei.com>
-Cc:     jack@suse.com, tytso@mit.edu, brauner@kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, yukuai3@huawei.com
-Subject: Re: [PATCH v3 0/3] Check content after reading from quota file
-Message-ID: <20220929133920.ckqbg7qjm557yyp3@quack3>
-References: <20220923134555.2623931-1-chengzhihao1@huawei.com>
+        with ESMTP id S235017AbiI2OVH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Sep 2022 10:21:07 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E80205F200;
+        Thu, 29 Sep 2022 07:21:03 -0700 (PDT)
+Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28TEKljw015823
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 29 Sep 2022 10:20:48 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1664461249; bh=3Ouo6kavYwrUtz2HGyh/EDIwQkfXK33AAc1QC2V0d5M=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To;
+        b=PJg1HXJ7EVMlAhCE4L/rFKWMedYKt7CfkrXv0cxeIOCVdSoY7oa6XkCcQsFLcJ93A
+         ghadcpkf4G4BokFs7TMCelI7mBgEXBy0yi4Xd4TgsoQtzrxpj+44/z4yMW9IIaEK6c
+         6jffvKJQikuEJYkw+0qreMlScCRdtTuI+qXFHBr6oRjK5laOwFWE9xyLYDi5rZoBkh
+         vq/+AgdpLgHbN2kVlsHg5uInxAbeXQn8tZEKAo1uwjgXniBaTMSSJhbIOwfXWBfkPA
+         Sk/Sroeg+aRc+uNy34Er0T5a2HOSiNeSO18BG9G7y+yQfJ9BvyRtD4GtcnTZoJqBvJ
+         aFWcnGnocWgrA==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 6839815C00C9; Thu, 29 Sep 2022 10:20:47 -0400 (EDT)
+Date:   Thu, 29 Sep 2022 10:20:47 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Marc =?iso-8859-1?Q?Aur=E8le?= La France <tsi@tuyoix.net>
+Cc:     Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: Register ext[23] support only after successful
+ ext4 registration
+Message-ID: <YzWpv8ZKJ7BrOBsg@mit.edu>
+References: <7ef87cdb-0d0b-2488-6f42-a670a6454630@tuyoix.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
 Content-Disposition: inline
-In-Reply-To: <20220923134555.2623931-1-chengzhihao1@huawei.com>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <7ef87cdb-0d0b-2488-6f42-a670a6454630@tuyoix.net>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri 23-09-22 21:45:51, Zhihao Cheng wrote:
-> v1->v2:
->   Add CC-stable tag in first patch.
->   Rename check_free_block() -> check_dquot_block_header().
-> v2->v3:
->   Define do_check_range() completely in patch 1.
->   Move 'dqdh_entries' checking into check_dquot_block_header().
->   Do block checing later in find_next_id().
-> 
-> Zhihao Cheng (3):
->   quota: Check next/prev free block number after reading from quota file
->   quota: Replace all block number checking with helper function
->   quota: Add more checking after reading from quota file
-> 
->  fs/quota/quota_tree.c | 73 ++++++++++++++++++++++++++++++++++++-------
->  1 file changed, 61 insertions(+), 12 deletions(-)
+On Wed, Aug 10, 2022 at 02:20:45PM -0600, Marc Aurèle La France wrote:
+> Register ext4 as a "replacement" for ext2 and ext3 only after ext4 itself has
+> been successfully registered.  As a side effect, this allows
+> unregister_as_ext[23]() to be inlined.
 
-Thanks! I've merged the patches to my tree now!
+The corrent ordering is deliberate; it allows file systems that have
+ext2 and ext3 only file system features will be reported as using ext2
+and ext3 in /proc/mounts.  This doesn't matter quite as much, but it
+could potentially break userspace if a legacy file system that only
+has ext2 file system features is mounted and reported as ext4.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+So sorry, I can't take this change.
+
+					- Ted
