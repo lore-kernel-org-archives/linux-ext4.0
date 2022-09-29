@@ -2,64 +2,64 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B5094C433FE
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Sep 2022 14:21:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B199DC433FE
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Sep 2022 14:58:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235064AbiI2OVL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 29 Sep 2022 10:21:11 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46440 "EHLO
+        id S235775AbiI2O6l (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 29 Sep 2022 10:58:41 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51016 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235017AbiI2OVH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Sep 2022 10:21:07 -0400
+        with ESMTP id S234945AbiI2O6i (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Sep 2022 10:58:38 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E80205F200;
-        Thu, 29 Sep 2022 07:21:03 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2446D13F290;
+        Thu, 29 Sep 2022 07:58:36 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28TEKljw015823
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28TEwTEb008318
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 29 Sep 2022 10:20:48 -0400
+        Thu, 29 Sep 2022 10:58:30 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1664461249; bh=3Ouo6kavYwrUtz2HGyh/EDIwQkfXK33AAc1QC2V0d5M=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To;
-        b=PJg1HXJ7EVMlAhCE4L/rFKWMedYKt7CfkrXv0cxeIOCVdSoY7oa6XkCcQsFLcJ93A
-         ghadcpkf4G4BokFs7TMCelI7mBgEXBy0yi4Xd4TgsoQtzrxpj+44/z4yMW9IIaEK6c
-         6jffvKJQikuEJYkw+0qreMlScCRdtTuI+qXFHBr6oRjK5laOwFWE9xyLYDi5rZoBkh
-         vq/+AgdpLgHbN2kVlsHg5uInxAbeXQn8tZEKAo1uwjgXniBaTMSSJhbIOwfXWBfkPA
-         Sk/Sroeg+aRc+uNy34Er0T5a2HOSiNeSO18BG9G7y+yQfJ9BvyRtD4GtcnTZoJqBvJ
-         aFWcnGnocWgrA==
+        t=1664463511; bh=kdsxJvgi7Z8/d9oueJIFBEjNALhXgg3ruarZnEnehrY=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References;
+        b=COht9PJ4BJQDNwPNYvPM8Bvont3qq9pLG0odXK4ol21BfmGp9iDAvWtJonhnHoJAx
+         PR3elX84tfCEc2eGfSqVUMPvx9iI2DJLWrQCqxTIbEnGRHBcUQ7NkX5BVnWZSLIuS6
+         nqW7YNdZ/b2tyk/z6zOcJeGCua9w6K/MTPHZdJG3RhS8ZJ07eFbdB/wyc4vQkmtZmT
+         34IbVgh0BdrKkoMJp28WoEW2lmTrt2aHNpWFEs/i8v4lvwatYqjH1fs5NTbiqWyUrO
+         Ibk8f9/P/RCxBqzC4ZxbzgEreNZAys2D/PaiUuSEec9XFxktVOHnn5xydw1WRhyOOh
+         NZDUJg1NfGvBQ==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 6839815C00C9; Thu, 29 Sep 2022 10:20:47 -0400 (EDT)
-Date:   Thu, 29 Sep 2022 10:20:47 -0400
+        id 76FB015C33A3; Thu, 29 Sep 2022 10:58:29 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Marc =?iso-8859-1?Q?Aur=E8le?= La France <tsi@tuyoix.net>
-Cc:     Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: Register ext[23] support only after successful
- ext4 registration
-Message-ID: <YzWpv8ZKJ7BrOBsg@mit.edu>
-References: <7ef87cdb-0d0b-2488-6f42-a670a6454630@tuyoix.net>
+To:     dilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, lalithkraj@google.com
+Cc:     "Theodore Ts'o" <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Make ext4_lazyinit_thread freezable.
+Date:   Thu, 29 Sep 2022 10:58:24 -0400
+Message-Id: <166446350043.149484.7219600189854097903.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <20220818214049.1519544-1-lalithkraj@google.com>
+References: <20220818214049.1519544-1-lalithkraj@google.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <7ef87cdb-0d0b-2488-6f42-a670a6454630@tuyoix.net>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Aug 10, 2022 at 02:20:45PM -0600, Marc Aurèle La France wrote:
-> Register ext4 as a "replacement" for ext2 and ext3 only after ext4 itself has
-> been successfully registered.  As a side effect, this allows
-> unregister_as_ext[23]() to be inlined.
+On Thu, 18 Aug 2022 21:40:49 +0000, Lalith Rajendran wrote:
+> ext4_lazyinit_thread is not set freezable. Hence when the thread calls
+> try_to_freeze it doesn't freeze during suspend and continues to send
+> requests to the storage during suspend, resulting in suspend failures.
+> 
+> 
 
-The corrent ordering is deliberate; it allows file systems that have
-ext2 and ext3 only file system features will be reported as using ext2
-and ext3 in /proc/mounts.  This doesn't matter quite as much, but it
-could potentially break userspace if a legacy file system that only
-has ext2 file system features is mounted and reported as ext4.
+Applied, thanks!
 
-So sorry, I can't take this change.
+[1/1] ext4: Make ext4_lazyinit_thread freezable.
+      commit: 5442d7d5073d1500c542ac0f2c881b738b1ef3a5
 
-					- Ted
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
