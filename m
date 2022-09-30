@@ -2,46 +2,45 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D764C433FE
-	for <linux-ext4@archiver.kernel.org>; Fri, 30 Sep 2022 03:21:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CE3F9C43217
+	for <linux-ext4@archiver.kernel.org>; Fri, 30 Sep 2022 03:21:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229548AbiI3DVG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 29 Sep 2022 23:21:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60714 "EHLO
+        id S230237AbiI3DVI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 29 Sep 2022 23:21:08 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33380 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230101AbiI3DUj (ORCPT
+        with ESMTP id S230081AbiI3DUj (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Sep 2022 23:20:39 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7687946857;
-        Thu, 29 Sep 2022 20:20:11 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AFF33474C2
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Sep 2022 20:20:11 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28U3JoRw002480
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28U3JpBO002543
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 29 Sep 2022 23:19:51 -0400
+        Thu, 29 Sep 2022 23:19:52 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1664507991; bh=E4TGpfDvPfEvqhTbdO0NtQ5/bhv79PLogXliI1Q3H1s=;
+        t=1664507993; bh=XdarjUWVbKjgyXKB8T04eWwJ13J3nKwEei6rPN90rmM=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=RlfgJVn5nGHN4UBXLmAS0KAyBF3OxAH+VmWopLTNGkZKYb82vHl3p5r6Uc/9cXOBc
-         t+wCCmZoU1I2JnBVKpjSTrt3nXZMah1jfObPgxYm94yiflfPyU0IaJi9PrayPFEdqo
-         8pyTBnIReT9ItQ+t18EBB8dQ4wUqiK2013coK4yptSL6roBNSIN+7EQHHocaUyZNPt
-         5trW/fO54BDuTH1tutupyrc1ZYnXl+TUpAk3x/XAM3Qo/0ApSsAn58OHzuczNfSfDK
-         /+zzaDvGiSc1HFpPH2y6tAHxm8Fdsq+YEJxjIo8wkGQhhimb/3EYfQYZgcqPGBHD6S
-         NZL6aCZ0DgZlQ==
+        b=AIUHhkJ0EoCH2SuU2jchyhhyE7kxd7h+WwFXiR6xx9wqu4S6Lozb96vGCNkFWCJDk
+         Ifmdrj4j4i9VLjPuhCNzTEQFJjXonIPWR3fwZMfoujgn9QznD2FoTqRjZlyZuhbE9R
+         CjPF6OLQt1WGT60sYcXKBlL0c7kynp1BG4B9ZiXEUE5bPcXMlHjcHJA8+jG4evAUoA
+         iG7jjvMfGsT9alOCJFqvFPC+SKb1mkADIqoPXOlU8v6JjX8V+CYOpGALKbtJMO/zZr
+         9fvvVhDc9G74F81hdq1OyT9X7hRBDeIdv6qXawPCVisqpix4Cu7yozePDLO/s/fwIc
+         EqGeRQNy+dXCw==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 9ED1415C35F1; Thu, 29 Sep 2022 23:19:47 -0400 (EDT)
+        id A402915C3710; Thu, 29 Sep 2022 23:19:47 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
-        yebin10@huawei.com
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-        jack@suse.cz
-Subject: Re: [PATCH -next v2 0/2] ext4: factor out ext4_free_ext_path()
-Date:   Thu, 29 Sep 2022 23:19:43 -0400
-Message-Id: <166450797717.256913.9601456605503921263.b4-ty@mit.edu>
+To:     linux-ext4@vger.kernel.org, Zhang Yi <yi.zhang@huawei.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
+        openglfreak@googlemail.com, jack@suse.cz, yukuai3@huawei.com
+Subject: Re: [PATCH] ext4: ext4_read_bh_lock() should submit IO if the buffer isn't uptodate
+Date:   Thu, 29 Sep 2022 23:19:46 -0400
+Message-Id: <166450797715.256913.16436347919601739345.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20220924021211.3831551-1-yebin10@huawei.com>
-References: <20220924021211.3831551-1-yebin10@huawei.com>
+In-Reply-To: <20220831074629.3755110-1-yi.zhang@huawei.com>
+References: <20220831074629.3755110-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -49,25 +48,26 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, 24 Sep 2022 10:12:09 +0800, Ye Bin wrote:
-> Diff v2 vs v1:
-> 1. Add one patch to remove unnecessary drop path references in
-> mext_check_coverage().
-> 2. Make 'ext4_ext_drop_refs()' static in fs/ext4/extents.c.
-> 3. Export non-inline 'ext4_free_ext_path()' API.
-> 
-> Ye Bin (2):
->   ext4: remove unnecessary drop path references in mext_check_coverage()
->   ext4: factor out ext4_free_ext_path()
+On Wed, 31 Aug 2022 15:46:29 +0800, Zhang Yi wrote:
+> Recently we notice that ext4 filesystem occasionally fail to read
+> metadata from disk and report error message, but the disk and block
+> layer looks fine. After analyse, we lockon commit 88dbcbb3a484
+> ("blkdev: avoid migration stalls for blkdev pages"). It provide a
+> migration method for the bdev, we could move page that has buffers
+> without extra users now, but it lock the buffers on the page, which
+> breaks the fragile metadata read operation on ext4 filesystem,
+> ext4_read_bh_lock() was copied from ll_rw_block(), it depends on the
+> assumption of that locked buffer means it is under IO. So it just
+> trylock the buffer and skip submit IO if it lock failed, after
+> wait_on_buffer() we conclude IO error because the buffer is not
+> uptodate.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/2] ext4: remove unnecessary drop path references in mext_check_coverage()
-      commit: cc984fd387b5258fa9eb96811796e4bcadc2b272
-[2/2] ext4: factor out ext4_free_ext_path()
-      commit: 6863dc4b094249163172691f09a91c28f36ee824
+[1/1] ext4: ext4_read_bh_lock() should submit IO if the buffer isn't uptodate
+      commit: 07e3f4273ff54a4c891f05e9f0f0c842b46578a7
 
 Best regards,
 -- 
