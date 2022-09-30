@@ -2,45 +2,46 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 834F6C433FE
-	for <linux-ext4@archiver.kernel.org>; Fri, 30 Sep 2022 03:21:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4C15BC433F5
+	for <linux-ext4@archiver.kernel.org>; Fri, 30 Sep 2022 03:21:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230222AbiI3DVC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 29 Sep 2022 23:21:02 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33326 "EHLO
+        id S230093AbiI3DVE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 29 Sep 2022 23:21:04 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60720 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230095AbiI3DUi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Sep 2022 23:20:38 -0400
+        with ESMTP id S230102AbiI3DUj (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Sep 2022 23:20:39 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 681F044564;
-        Thu, 29 Sep 2022 20:20:10 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CECF4474D7;
+        Thu, 29 Sep 2022 20:20:11 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28U3JlQq002399
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28U3JoM8002495
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 29 Sep 2022 23:19:48 -0400
+        Thu, 29 Sep 2022 23:19:51 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1664507989; bh=R8ciZ9UyEKbtxR2xmm1YUdV3bB4grlkkZiHKo2b8fzA=;
+        t=1664507992; bh=InwxxtZzPcg1a2jnoqdl/qmDf0hT2VtYsjfVKFLr6Ug=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=GPaEIpmjApmiOeNcscRLjyqIoYSHCRf+pT9VmTOL3jO72gxr1gdMc2/Rf+uO5UpQD
-         A9eBXo3+F5RDKsCutlzmfJPbtcHMxOPtV6PZvzzL86Ro54hwMy3m8T2tYCwzPYwPuC
-         al6qWwOU9ZMzbOPcOx10QF7uX4zV5vN1SS3a8YkQ7ERTX/gmbeNelu9lmaJ23ulghQ
-         gwAKB3K32E8zm6kSJh0TeiUZj8zFatjPmhKLOq/oA2f3pQQpkaQb+meGCsP6NOv0r/
-         yiUoSNUZvIu7Ub8zAVvCY1AB2Om/PlMKQZ4AMhXtnge0patgsN7iiy8r5IxFhkXeS9
-         rlfHjU2mPadAg==
+        b=DZbI3KE6nvZ+c/Qirh+L04wCJiZ8w/FuzhOYn/kg0QsrxHDLY3dCJmfO4GswJPtNf
+         xspgNmbs5Qdholt/hFvnBrdwoITY/VvLqPNw/hYeylUDW2dJ2yccFZk/UyMO51x7uu
+         IvBy8Le6SY1otxavF9oYIZrnVy+erDzXY7vKSKvlVBUM9/QBPZ0phbpl9/ZiBjzy7j
+         DpwmnhPVKeM7YTL6W9MobcrucxhW5P//g6b2hJNaj4Zala1h1LZWoSDWgEDzf0kGJa
+         acqpBGvRm0eDlA+E1fR2bOfQ6IUwPYFwjPoO1KscpmTpIIuFoLuvp60qsLqHdrVEXj
+         aRXZSyMhL+Rhw==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 9020815C3444; Thu, 29 Sep 2022 23:19:47 -0400 (EDT)
+        id A0B2815C35F2; Thu, 29 Sep 2022 23:19:47 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     adilger.kernel@dilger.ca, hanjinke.666@bytedance.com
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, yi.zhang@huawei.com
-Subject: Re: [PATCH v2] ext4: place buffer head allocation before handle start
-Date:   Thu, 29 Sep 2022 23:19:35 -0400
-Message-Id: <166450797714.256913.16618397949640055168.b4-ty@mit.edu>
+To:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        yebin10@huawei.com
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+        jack@suse.cz
+Subject: Re: [PATCH -next v2 0/2] some refactor of ext4_fc_track_inode
+Date:   Thu, 29 Sep 2022 23:19:44 -0400
+Message-Id: <166450797716.256913.3861377771149654034.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20220903012429.22555-1-hanjinke.666@bytedance.com>
-References: <20220903012429.22555-1-hanjinke.666@bytedance.com>
+In-Reply-To: <20220916083836.388347-1-yebin10@huawei.com>
+References: <20220916083836.388347-1-yebin10@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -48,25 +49,24 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, 3 Sep 2022 09:24:29 +0800, Jinke Han wrote:
-> From: Jinke Han <hanjinke.666@bytedance.com>
+On Fri, 16 Sep 2022 16:38:34 +0800, Ye Bin wrote:
+> diff v2 vs v1:
+> Add detail changelog for patch:"ext4: adjust fast commit disable judgement
+> order in ext4_fc_track_inode".
 > 
-> In our product environment, we encounter some jbd hung waiting handles to
-> stop while several writters were doing memory reclaim for buffer head
-> allocation in delay alloc write path. Ext4 do buffer head allocation with
-> holding transaction handle which may be blocked too long if the reclaim
-> works not so smooth. According to our bcc trace, the reclaim time in
-> buffer head allocation can reach 258s and the jbd transaction commit also
-> take almost the same time meanwhile. Except for these extreme cases,
-> we often see several seconds delays for cgroup memory reclaim on our
-> servers. This is more likely to happen considering docker environment.
+> Ye Bin (2):
+>   ext4: factor out ext4_fc_disabled()
+>   ext4: adjust fast commit disable judgement order in
+>     ext4_fc_track_inode
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: place buffer head allocation before handle start
-      commit: 843b6ee4b8d0d9e7507dad491920db1fbde12439
+[1/2] ext4: factor out ext4_fc_disabled()
+      commit: 4396ba8a73535e95ec16aedb9ef7a3cecdf385b4
+[2/2] ext4: adjust fast commit disable judgement order in ext4_fc_track_inode
+      commit: 79329f86d0e4dfc192579ed08039b89e6e8d4211
 
 Best regards,
 -- 
