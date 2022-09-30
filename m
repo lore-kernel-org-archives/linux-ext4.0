@@ -2,87 +2,76 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 220C8C43217
-	for <linux-ext4@archiver.kernel.org>; Fri, 30 Sep 2022 03:21:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A40C6C433F5
+	for <linux-ext4@archiver.kernel.org>; Fri, 30 Sep 2022 03:49:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230079AbiI3DVM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 29 Sep 2022 23:21:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33494 "EHLO
+        id S230121AbiI3DtQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 29 Sep 2022 23:49:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41382 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230125AbiI3DUk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Sep 2022 23:20:40 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2DACC491CF;
-        Thu, 29 Sep 2022 20:20:14 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
+        with ESMTP id S229974AbiI3DtP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Sep 2022 23:49:15 -0400
+X-Greylist: delayed 135 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Thu, 29 Sep 2022 20:49:12 PDT
+Received: from omta002.cacentral1.a.cloudfilter.net (omta002.cacentral1.a.cloudfilter.net [3.97.99.33])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CB9B81E277C;
+        Thu, 29 Sep 2022 20:49:11 -0700 (PDT)
+Received: from shw-obgw-4002a.ext.cloudfilter.net ([10.228.9.250])
+        by cmsmtp with ESMTP
+        id dkSuoL4PzSp39e6xloAsAf; Fri, 30 Sep 2022 03:45:21 +0000
+Received: from fanir.tuyoix.net ([68.150.218.192])
+        by cmsmtp with ESMTP
+        id e6xkoP3f2Adame6xkoy0Wt; Fri, 30 Sep 2022 03:45:21 +0000
+X-Authority-Analysis: v=2.4 cv=YdGuWidf c=1 sm=1 tr=0 ts=63366651
+ a=LfNn7serMq+1bQZBlMsSfQ==:117 a=LfNn7serMq+1bQZBlMsSfQ==:17
+ a=xOM3xZuef0cA:10 a=M51BFTxLslgA:10 a=nlC_4_pT8q9DhB4Ho9EA:9
+ a=OnIXDKW1BvDk6NnU-rsA:9 a=QEXdDO2ut3YA:10
+Received: from CLUIJ (cluij.tuyoix.net [192.168.144.15])
         (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28U3JnjD002434
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 29 Sep 2022 23:19:50 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1664507992; bh=kxeFPK+RvFEZgfBfdjxbsuOujsQLGwmMHUkdJndE2eE=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=gAoRElfCGB19SpXfp0y1D/9L8yrf5H732c6waH37ZuLrTob6sXgs56LpOIqkbojrr
-         btw7HPg1WDT1xdjkC8PVh2Bf8ih8M85MI8FpXn9pJGKPoXA7ohDiROMovv9LN90vDk
-         /90H/rGMe9H/r+O+sJIQsWFnP0FYzFKKhM4PKzcCLMXKYkVRbe/Tlsc/KQgRZt7XFg
-         gRNky0NoU3Z/AtF+LBrQRzPucmd0YavXiZuZCg/LDEyzsY14VMN1PSBp8m2IKMA1p4
-         mQnV9v+4jLe6aEVyA8q+iUr9y9zaqEyX20bq4KTX09XKWzy6vXi1dGjOBsKYQeaZMi
-         CNrvTQi4LWTtg==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 93FB215C34C3; Thu, 29 Sep 2022 23:19:47 -0400 (EDT)
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org, libaokun1@huawei.com
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, lczerner@redhat.com,
-        chengzhihao1@huawei.com, enwlinux@gmail.com,
-        linux-kernel@vger.kernel.org, ritesh.list@gmail.com,
-        stable@vger.kernel.org, adilger.kernel@dilger.ca,
-        yebin10@huawei.com, jack@suse.cz, yi.zhang@huawei.com,
-        yukuai3@huawei.com
-Subject: Re: [PATCH v2] ext4: fix use-after-free in ext4_ext_shift_extents
-Date:   Thu, 29 Sep 2022 23:19:37 -0400
-Message-Id: <166450797717.256913.12979997291945870141.b4-ty@mit.edu>
-X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20220922120434.1294789-1-libaokun1@huawei.com>
-References: <20220922120434.1294789-1-libaokun1@huawei.com>
+        by fanir.tuyoix.net (8.17.1/8.17.1) with ESMTPSA id 28U3jJDC017664
+        (version=TLSv1 cipher=ECDHE-RSA-AES256-SHA bits=256 verify=NO);
+        Thu, 29 Sep 2022 21:45:19 -0600
+Date:   Thu, 29 Sep 2022 21:45:04 -0600 (Mountain Daylight Time)
+From:   =?UTF-8?Q?Marc_Aur=C3=A8le_La_France?= <tsi@tuyoix.net>
+To:     "Theodore Ts'o" <tytso@mit.edu>
+cc:     Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: Register ext[23] support only after successful
+ ext4 registration
+In-Reply-To: <YzWpv8ZKJ7BrOBsg@mit.edu>
+Message-ID: <alpine.WNT.2.20.2209292143240.4648@CLUIJ>
+References: <7ef87cdb-0d0b-2488-6f42-a670a6454630@tuyoix.net> <YzWpv8ZKJ7BrOBsg@mit.edu>
+User-Agent: Alpine 2.20 (WNT 67 2015-01-07)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: multipart/mixed; BOUNDARY="119071-31548-1664509505=:4648"
+X-CMAE-Envelope: MS4xfM1fWbX60zC4cdcUcgV6kRxMbIaJ5wa/SSsZPXwEFlXHYSF3p8DSYgHs0qNdJAApkxAZPhri8E7aixqIh9mNkkovAXnMJjdjVZPV+OHEOSe9LIxIJiNS
+ b3jcGNnPjMfmt7Ie92Z8tAISuFK+YaqnWvkbdv2ubkS0YhvSiw/S1gh0Bayz9YLq13naT2WSSrYNB31N4DPEv7BVZdp4l9NKZ0NMRFtoONVA+afxBXtDGYHA
+ wjyjHcAN/fMshJ5jCBmlCkvKvV6gr/nPf30YFFD7mz0E+8xPpnoblVhIIS4f36YA
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, 22 Sep 2022 20:04:34 +0800, Baokun Li wrote:
-> If the starting position of our insert range happens to be in the hole
-> between the two ext4_extent_idx, because the lblk of the ext4_extent in
-> the previous ext4_extent_idx is always less than the start, which leads
-> to the "extent" variable access across the boundary, the following UAF is
-> triggered:
-> ==================================================================
-> BUG: KASAN: use-after-free in ext4_ext_shift_extents+0x257/0x790
-> Read of size 4 at addr ffff88819807a008 by task fallocate/8010
-> CPU: 3 PID: 8010 Comm: fallocate Tainted: G            E     5.10.0+ #492
-> Call Trace:
->  dump_stack+0x7d/0xa3
->  print_address_description.constprop.0+0x1e/0x220
->  kasan_report.cold+0x67/0x7f
->  ext4_ext_shift_extents+0x257/0x790
->  ext4_insert_range+0x5b6/0x700
->  ext4_fallocate+0x39e/0x3d0
->  vfs_fallocate+0x26f/0x470
->  ksys_fallocate+0x3a/0x70
->  __x64_sys_fallocate+0x4f/0x60
->  do_syscall_64+0x33/0x40
->  entry_SYSCALL_64_after_hwframe+0x44/0xa9
-> ==================================================================
-> 
-> [...]
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Applied, thanks!
+--119071-31548-1664509505=:4648
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8BIT
 
-[1/1] ext4: fix use-after-free in ext4_ext_shift_extents
-      (no commit info)
+On Thu, 29 Sep 2022, Theodore Ts'o wrote:
+> On Wed, Aug 10, 2022 at 02:20:45PM -0600, Marc Aurèle La France wrote:
+>> Register ext4 as a "replacement" for ext2 and ext3 only after ext4 itself has
+>> been successfully registered.  As a side effect, this allows
+>> unregister_as_ext[23]() to be inlined.
 
-Best regards,
--- 
-Theodore Ts'o <tytso@mit.edu>
+> The corrent ordering is deliberate; it allows file systems that have
+> ext2 and ext3 only file system features will be reported as using ext2
+> and ext3 in /proc/mounts.  This doesn't matter quite as much, but it
+> could potentially break userspace if a legacy file system that only
+> has ext2 file system features is mounted and reported as ext4.
+
+> So sorry, I can't take this change.
+
+Fair enough.  Thanks for responding.
+
+Marc.
+--119071-31548-1664509505=:4648--
