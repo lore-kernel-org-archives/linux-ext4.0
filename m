@@ -2,46 +2,46 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CAA59C433FE
-	for <linux-ext4@archiver.kernel.org>; Fri, 30 Sep 2022 03:21:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C4170C43217
+	for <linux-ext4@archiver.kernel.org>; Fri, 30 Sep 2022 03:21:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230204AbiI3DU6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 29 Sep 2022 23:20:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60630 "EHLO
+        id S230219AbiI3DVB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 29 Sep 2022 23:21:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60702 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229873AbiI3DUh (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Sep 2022 23:20:37 -0400
+        with ESMTP id S230094AbiI3DUi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Sep 2022 23:20:38 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B8B784151F;
-        Thu, 29 Sep 2022 20:20:08 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CD44E43322;
+        Thu, 29 Sep 2022 20:20:09 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28U3JnGH002454
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28U3Jn7c002433
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 29 Sep 2022 23:19:50 -0400
+        Thu, 29 Sep 2022 23:19:51 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1664507991; bh=P/tgbf7KCmi98p5dYaRwG22NUJ/yBxwwMYrnaxucbtU=;
+        t=1664507992; bh=5SVdgaNLhrOI7w/ZQg3N4vSzmXahsvbRHSlrOALTj8M=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=WEcVcazK35sQI0KJL/Whf0bEz7mKjne5q85XfnfR1xdNKDOkPBORp2RDRm8O2RDDT
-         kw7muAuuqce0jziwEfNhBUnXgzjuNB7GbeJTsg4yzk2NSQ5krp5PoWCtnLtEvsecOl
-         AzdCFmFR3bSJG/04+rLBWDQtJZxDEcS0BYwn6kxBvxeVSoc6ynSAPn/CGjCVvyihKL
-         bt5HjJ0bmm+l3sL8eLjUeye7ewlbjEKJ7Jx+CDsVJY2pOzSSqxrHOQXv7J+iPTvRDI
-         9r4UCkV/ZvwvyAbIIRlqNA3J6pbq3X+y1enWWined9o9MGHS0VqVWC84eq0SAH1zDV
-         cn2d1CjkKNhTQ==
+        b=McMTlkrMxWdgtYmAVDfLmUpg6ENA1bwwQ4IU4ieAeDQW2ZZ4avW6590rjAM3S8KI6
+         Nt0VxybxSIOcQQMWGnKzFtki7dy/colE5A+b51P4spiRUHOPL4FZg+CYvAzQKrG3qV
+         8ryRsC+q0GVpgzEaPcICXxL+HFE8IPn+q2RQtSEFsJ1W94mhJfvjRYGPio4pFdouE6
+         DtAec6KtnaionF0YtvyUn5YOPGcxE1ZAA2yNKFXLRr4M0rd6o0pvfxRpekicjrpHJc
+         Xr2k++Sdz4pivJw8F40UIkc/qMXWmPUC4Js6UfBUYSE+4cKTwkkU6JJaTA6S/9JTL8
+         z8Ofpcqxow4RA==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 97EB415C34E2; Thu, 29 Sep 2022 23:19:47 -0400 (EDT)
+        id 9193C15C3448; Thu, 29 Sep 2022 23:19:47 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
-        yebin10@huawei.com
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-        jack@suse.cz
-Subject: Re: [PATCH -next 0/2] Fix two issue in jbd2_fc_wait_bufs
-Date:   Thu, 29 Sep 2022 23:19:39 -0400
-Message-Id: <166450797716.256913.2463365477003955215.b4-ty@mit.edu>
+To:     Jan Kara <jack@suse.cz>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        bigeasy@linutronix.de, LKML <linux-kernel@vger.kernel.org>,
+        efault@gmx.de
+Subject: Re: [PATCH] mbcache: Avoid nesting of cache->c_list_lock under bit locks
+Date:   Thu, 29 Sep 2022 23:19:36 -0400
+Message-Id: <166450797715.256913.1802115613587243672.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20220914100812.1414768-1-yebin10@huawei.com>
-References: <20220914100812.1414768-1-yebin10@huawei.com>
+In-Reply-To: <20220908091032.10513-1-jack@suse.cz>
+References: <20220908091032.10513-1-jack@suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -49,22 +49,22 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, 14 Sep 2022 18:08:10 +0800, Ye Bin wrote:
-> Ye Bin (2):
->   jbd2: fix potential buffer head reference count leak
->   jbd2: fix potential use-after-free in jbd2_fc_wait_bufs
-> 
-> fs/jbd2/journal.c | 10 ++++++++--
->  1 file changed, 8 insertions(+), 2 deletions(-)
+On Thu, 8 Sep 2022 11:10:32 +0200, Jan Kara wrote:
+> Commit 307af6c87937 ("mbcache: automatically delete entries from cache
+> on freeing") started nesting cache->c_list_lock under the bit locks
+> protecting hash buckets of the mbcache hash table in
+> mb_cache_entry_create(). This causes problems for real-time kernels
+> because there spinlocks are sleeping locks while bitlocks stay atomic.
+> Luckily the nesting is easy to avoid by holding entry reference until
+> the entry is added to the LRU list. This makes sure we cannot race with
+> entry deletion.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/2] jbd2: fix potential buffer head reference count leak
-      commit: 53dee029ec341f5c985b880de34f64de60072688
-[2/2] jbd2: fix potential use-after-free in jbd2_fc_wait_bufs
-      commit: 6e16a2d9ff8f3ea4a53e10ae4607feb446cf5c90
+[1/1] mbcache: Avoid nesting of cache->c_list_lock under bit locks
+      commit: 9cbf99ae41e3a051cc9ec738f2c436ec1725e0e8
 
 Best regards,
 -- 
