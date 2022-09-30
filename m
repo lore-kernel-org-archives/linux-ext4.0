@@ -2,120 +2,110 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C1C0C433FE
-	for <linux-ext4@archiver.kernel.org>; Fri, 30 Sep 2022 11:27:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 31830C433FE
+	for <linux-ext4@archiver.kernel.org>; Fri, 30 Sep 2022 12:16:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231318AbiI3L1d (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 30 Sep 2022 07:27:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48904 "EHLO
+        id S231576AbiI3MQ0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 30 Sep 2022 08:16:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43064 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232598AbiI3L03 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Sep 2022 07:26:29 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0743F18B09;
-        Fri, 30 Sep 2022 04:18:57 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 9DC85B827BA;
-        Fri, 30 Sep 2022 11:18:56 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7186AC433B5;
-        Fri, 30 Sep 2022 11:18:53 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1664536735;
-        bh=xnrewwvldKIjoeh5ebiZu+onJb8qn6gj1nIuV6NIss8=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=NcCbX8EemXumNyb6KT05tfi/yNz/uFtXUTZvXGxbnSuQ2ZLVjG52bwXYXh5fpucLL
-         Axp4jUtiz64IRjTVjSGPMpgOGwmu8wvMssoRLFOIpJI522UPlfZVlcKmzveia0MsA0
-         QXEv6KjqFhnOQUm7yvMwpovx4fomvggXw6gH6kOyDiUirhpwVhUyKpaIclmtmJt7RQ
-         kx5xoyorCoq1DbAdE8t5XYdq8PRHdXV81SrEz057Yr0UW5CY0v+c4HHNpWyI2ju5z3
-         XlPgr7T1s3XlyK0ebZK7J8b1c6Sx0BGR1KCu1Fdmob2dvqZZYmgMwUW2ECkfNDyAWo
-         +oq2fJMT+cU2w==
-From:   Jeff Layton <jlayton@kernel.org>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, djwong@kernel.org,
-        david@fromorbit.com, trondmy@hammerspace.com, neilb@suse.de,
-        viro@zeniv.linux.org.uk, zohar@linux.ibm.com, xiubli@redhat.com,
-        chuck.lever@oracle.com, lczerner@redhat.com, jack@suse.cz,
-        bfields@fieldses.org, brauner@kernel.org, fweimer@redhat.com
-Cc:     linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org
-Subject: [PATCH v6 5/9] ceph: report the inode version in getattr if requested
-Date:   Fri, 30 Sep 2022 07:18:36 -0400
-Message-Id: <20220930111840.10695-6-jlayton@kernel.org>
-X-Mailer: git-send-email 2.37.3
-In-Reply-To: <20220930111840.10695-1-jlayton@kernel.org>
-References: <20220930111840.10695-1-jlayton@kernel.org>
+        with ESMTP id S231575AbiI3MQY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Sep 2022 08:16:24 -0400
+Received: from wp530.webpack.hosteurope.de (wp530.webpack.hosteurope.de [IPv6:2a01:488:42:1000:50ed:8234::])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 02FDBF3C68
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Sep 2022 05:16:24 -0700 (PDT)
+Received: from [2a02:8108:963f:de38:eca4:7d19:f9a2:22c5]; authenticated
+        by wp530.webpack.hosteurope.de running ExIM with esmtpsa (TLS1.3:ECDHE_RSA_AES_128_GCM_SHA256:128)
+        id 1oeEwI-0003sR-IN; Fri, 30 Sep 2022 14:16:22 +0200
+Message-ID: <17a07226-722f-d98f-3641-0c1c768c3a46@leemhuis.info>
+Date:   Fri, 30 Sep 2022 14:16:22 +0200
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
+ Thunderbird/102.3.1
+Subject: Re: [syzbot] possible deadlock in jbd2_journal_lock_updates
+ #forregzbot
+Content-Language: en-US, de-DE
+To:     Thilo Fromm <t-lo@linux.microsoft.com>
+Cc:     linux-ext4@vger.kernel.org,
+        "regressions@lists.linux.dev" <regressions@lists.linux.dev>
+References: <c77bf00f-4618-7149-56f1-b8d1664b9d07@linux.microsoft.com>
+From:   Thorsten Leemhuis <regressions@leemhuis.info>
+In-Reply-To: <c77bf00f-4618-7149-56f1-b8d1664b9d07@linux.microsoft.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-bounce-key: webpack.hosteurope.de;regressions@leemhuis.info;1664540184;e2f80536;
+X-HE-SMSGID: 1oeEwI-0003sR-IN
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-When getattr requests the STX_VERSION, request the full gamut of caps
-(similarly to how ctime is handled). When the change attribute seems to
-be valid, return it in the ino_version field and set the flag in the
-reply mask. Also, unconditionally enable STATX_ATTR_VERSION_MONOTONIC.
+[Note: this mail is primarily send for documentation purposes and/or for
+regzbot, my Linux kernel regression tracking bot. That's why I removed
+most or all folks from the list of recipients, but left any that looked
+like a mailing lists. These mails usually contain '#forregzbot' in the
+subject, to make them easy to spot and filter out.]
 
-Reviewed-by: Xiubo Li <xiubli@redhat.com>
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- fs/ceph/inode.c | 16 +++++++++++-----
- 1 file changed, 11 insertions(+), 5 deletions(-)
+[TLDR: I'm adding this regression report to the list of tracked
+regressions; all text from me you find below is based on a few templates
+paragraphs you might have encountered already already in similar form.]
 
-diff --git a/fs/ceph/inode.c b/fs/ceph/inode.c
-index 42351d7a0dd6..bcab855bf1ae 100644
---- a/fs/ceph/inode.c
-+++ b/fs/ceph/inode.c
-@@ -2415,10 +2415,10 @@ static int statx_to_caps(u32 want, umode_t mode)
- {
- 	int mask = 0;
- 
--	if (want & (STATX_MODE|STATX_UID|STATX_GID|STATX_CTIME|STATX_BTIME))
-+	if (want & (STATX_MODE|STATX_UID|STATX_GID|STATX_CTIME|STATX_BTIME|STATX_VERSION))
- 		mask |= CEPH_CAP_AUTH_SHARED;
- 
--	if (want & (STATX_NLINK|STATX_CTIME)) {
-+	if (want & (STATX_NLINK|STATX_CTIME|STATX_VERSION)) {
- 		/*
- 		 * The link count for directories depends on inode->i_subdirs,
- 		 * and that is only updated when Fs caps are held.
-@@ -2429,11 +2429,10 @@ static int statx_to_caps(u32 want, umode_t mode)
- 			mask |= CEPH_CAP_LINK_SHARED;
- 	}
- 
--	if (want & (STATX_ATIME|STATX_MTIME|STATX_CTIME|STATX_SIZE|
--		    STATX_BLOCKS))
-+	if (want & (STATX_ATIME|STATX_MTIME|STATX_CTIME|STATX_SIZE|STATX_BLOCKS|STATX_VERSION))
- 		mask |= CEPH_CAP_FILE_SHARED;
- 
--	if (want & (STATX_CTIME))
-+	if (want & (STATX_CTIME|STATX_VERSION))
- 		mask |= CEPH_CAP_XATTR_SHARED;
- 
- 	return mask;
-@@ -2475,6 +2474,11 @@ int ceph_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 		valid_mask |= STATX_BTIME;
- 	}
- 
-+	if (request_mask & STATX_VERSION) {
-+		stat->version = inode_peek_iversion_raw(inode);
-+		valid_mask |= STATX_VERSION;
-+	}
-+
- 	if (ceph_snap(inode) == CEPH_NOSNAP)
- 		stat->dev = inode->i_sb->s_dev;
- 	else
-@@ -2498,6 +2502,8 @@ int ceph_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 			stat->nlink = 1 + 1 + ci->i_subdirs;
- 	}
- 
-+	stat->attributes_mask |= STATX_ATTR_VERSION_MONOTONIC;
-+	stat->attributes |= STATX_ATTR_VERSION_MONOTONIC;
- 	stat->result_mask = request_mask & valid_mask;
- 	return err;
- }
--- 
-2.37.3
+Hi, this is your Linux kernel regression tracker.
 
+On 28.09.22 09:30, Thilo Fromm wrote:
+> Hello,
+> 
+>> So this seems like a real issue. Essentially, the problem is that
+>> ext4_bmap() acquires inode->i_rwsem while its caller
+>> jbd2_journal_flush() is holding journal->j_checkpoint_mutex. This
+>> looks like a real deadlock possibility.
+> 
+> Flatcar Container Linux users have reported a kernel issue which might
+> be caused by commit 51ae846cff5. The issue is triggered under I/O load
+> in certain conditions and leads to a complete system hang. I've pasted a
+> typical kernel log below; please refer to
+> https://github.com/flatcar/Flatcar/issues/847 for more details.
+> 
+> The issue can be triggered on Flatcar release 3227.2.2 / kernel version
+> 5.15.63 (we ship LTS kernels) but not on release 3227.2.1 / kernel
+> 5.15.58. 51ae846cff5 was introduced to 5.15 in 5.15.61.
+> 
+>> Thinking about it some more, it does not seem locking i_rwsem in
+>> ext4_bmap() is really workable and as I've noted in one of my replies
+>> to this patch [1] it is not a complete solution to the problem anyway.
+>> So I would be for reverting 51ae846cff5 and thinking more about how we
+>> can make inline data locking suck less...
+> 
+> Any thoughts on the revert? After a cursory glance at 51ae846cff5 this
+> commit merely seems to address a warning...
+
+CCing the regression mailing list, as it should be in the loop for all
+regressions, as explained here:
+https://www.kernel.org/doc/html/latest/admin-guide/reporting-issues.html
+
+Thanks for the report. To be sure below issue doesn't fall through the
+cracks unnoticed, I'm adding it to regzbot, my Linux kernel regression
+tracking bot (using the commit id from the stable tree where this occurs
+instead of 51ae846cff5):
+
+#regzbot ^introduced 30dfb75e1f86454
+#regzbot title ext4: system hangs on  Flatcar Container Linux
+#regzbot ignore-activity
+
+This isn't a regression? This issue or a fix for it are already
+discussed somewhere else? It was fixed already? You want to clarify when
+the regression started to happen? Or point out I got the title or
+something else totally wrong? Then just reply -- ideally with also
+telling regzbot about it, as explained here:
+https://linux-regtracking.leemhuis.info/tracked-regression/
+
+Reminder for developers: When fixing the issue, add 'Link:' tags
+pointing to the report (the mail this one replies to), as explained for
+in the Linux kernel's documentation; above webpage explains why this is
+important for tracked regressions.
+
+Ciao, Thorsten (wearing his 'the Linux kernel's regression tracker' hat)
+
+P.S.: As the Linux kernel's regression tracker I deal with a lot of
+reports and sometimes miss something important when writing mails like
+this. If that's the case here, don't hesitate to tell me in a public
+reply, it's in everyone's interest to set the public record straight.
