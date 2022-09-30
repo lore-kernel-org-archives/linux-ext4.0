@@ -2,35 +2,35 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C6725C4332F
-	for <linux-ext4@archiver.kernel.org>; Fri, 30 Sep 2022 11:27:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BAA03C4332F
+	for <linux-ext4@archiver.kernel.org>; Fri, 30 Sep 2022 11:27:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231958AbiI3L04 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 30 Sep 2022 07:26:56 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52552 "EHLO
+        id S231461AbiI3L1I (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 30 Sep 2022 07:27:08 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32840 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230085AbiI3L02 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Sep 2022 07:26:28 -0400
+        with ESMTP id S231177AbiI3L0b (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Sep 2022 07:26:31 -0400
 Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BBC56FAEA;
-        Fri, 30 Sep 2022 04:18:47 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DA7E2EE2E;
+        Fri, 30 Sep 2022 04:19:06 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id AC356B827AA;
-        Fri, 30 Sep 2022 11:18:45 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5374EC433C1;
-        Fri, 30 Sep 2022 11:18:42 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 77060B8280D;
+        Fri, 30 Sep 2022 11:19:05 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4AF6BC4347C;
+        Fri, 30 Sep 2022 11:19:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1664536724;
-        bh=qW5czRWn4GLiEtwmzJqFOMVb5w3oIFlZuNEbzaPShnI=;
-        h=From:To:Cc:Subject:Date:From;
-        b=qclGvuAaez5oX3gT5MUceMEYs9CNEX5R4R1bJF3WZ+L0+aYeWJ84DC5WTsT2xi8ia
-         U6cqxRjw80Txiw9vnu1hf973zEHsjPBWdl8q8vj7PSw8GbhVSfgi/4a5NVCGKZOFIU
-         BpT/1wGxzvsMtbjFGbXSIjk1VDdol6BqOFBhGa/z+KyWOLCN3krK9RFIpF/7dg0cLx
-         p6ye45BNLcd1z55bJMnBvTPVQcy4ZQA0nChO3ZKY63MmuWekHHjZTQnp5zC7tNugQh
-         FNt3Gv9RE0QvUuoMNl57bfwV9VVo6BLFr0yJH7M/cCMBzImSL2XuPSc1fpR8Xthb0H
-         z2UeJq0yMeptA==
+        s=k20201202; t=1664536744;
+        bh=x94ngh3SR30xuVLdH4ioO8YH0PC8Q6w0q3cK1o2WgAs=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=E1+suCyBf4Mq23dZykr03FKvOkB2KN2pmo4hPt9FSzh5mDyAgRwzx4IBi3jD2xYta
+         2aH0OFlPU2JQZt0iJZDPo+cYiYNcx36IEelulL17hYdS4gazqnHPs16SmxbYG7/sIh
+         Mn4Q66DPEqaqeLSh88qk9dZa9Z+SLVE+UCijLAM0IQjzkK+04GeTC+Y6owqADky9WX
+         6QI36erT6IJdk6dUqhK+InrXSOp5nQD/lPUXYB6IWKocKgbeYVjwswHwH3urvBP8HN
+         fKO0R+gneckl6h3osuEOy9z4kQ2Iw97ImHbJTgAgvforuxHZb1TWNVjqkRNIonephB
+         t2vFf8ic4Ckug==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, djwong@kernel.org,
         david@fromorbit.com, trondmy@hammerspace.com, neilb@suse.de,
@@ -41,78 +41,91 @@ Cc:     linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-xfs@vger.kernel.org
-Subject: [PATCH v6 0/9] vfs/nfsd: clean up handling of i_version counter
-Date:   Fri, 30 Sep 2022 07:18:31 -0400
-Message-Id: <20220930111840.10695-1-jlayton@kernel.org>
+Subject: [PATCH v6 9/9] ext4: update times after I/O in write codepaths
+Date:   Fri, 30 Sep 2022 07:18:40 -0400
+Message-Id: <20220930111840.10695-10-jlayton@kernel.org>
 X-Mailer: git-send-email 2.37.3
+In-Reply-To: <20220930111840.10695-1-jlayton@kernel.org>
+References: <20220930111840.10695-1-jlayton@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-v6: add support for STATX_ATTR_VERSION_MONOTONIC
-    add patch to expose i_version counter to userland
-    patches to update times/version after copying write data
+The times currently get updated before the data is copied (or the DIO is
+issued) which is problematic for NFSv4. A READ+GETATTR could race with a
+write in such a way to make the client associate the state of the file
+with the wrong change attribute, and that association could persist
+indefinitely if the file sees no further changes.
 
-An updated set of i_version handling changes! I've dropped the earlier
-ext4 patches since Ted has picked up the relevant ext4 ones.
+For this reason, it's better to bump the times and change attribute
+after the data has been copied or the DIO write issued.
 
-This set is based on linux-next, to make sure we don't collide with the
-statx DIO alignment patches, and some other i_version cleanups that are
-in flight.  I'm hoping those land in 6.1.
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/ext4/file.c | 20 +++++++++++++++++---
+ 1 file changed, 17 insertions(+), 3 deletions(-)
 
-There are a few changes since v5, mostly centered around adding
-STATX_ATTR_VERSION_MONOTONIC. I've also re-added the patch to expose
-STATX_VERSION to userland via statx. What I'm proposing should now
-(mostly) conform to the semantics I layed out in the manpage patch I
-sent recently [1].
-
-Finally, I've added two patches to make __generic_file_write_iter and
-ext4 update the c/mtime after copying file data instead of before, which
-Neil pointed out makes for better cache-coherency handling. Those should
-take care of ext4 and tmpfs. xfs and btrfs will need to make the same
-changes.
-
-One thing I'm not sure of is what we should do if update_times fails
-after an otherwise successful write. Should we just ignore that and move
-on (and maybe WARN)? Return an error? Set a writeback error? What's the
-right recourse there?
-
-I'd like to go ahead and get the first 6 patches from this series into
-linux-next fairly soon, so if anyone has objections, please speak up!
-
-[1]: https://lore.kernel.org/linux-nfs/20220928134200.28741-1-jlayton@kernel.org/T/#u
-
-Jeff Layton (9):
-  iversion: move inode_query_iversion to libfs.c
-  iversion: clarify when the i_version counter must be updated
-  vfs: plumb i_version handling into struct kstat
-  nfs: report the inode version in getattr if requested
-  ceph: report the inode version in getattr if requested
-  nfsd: use the getattr operation to fetch i_version
-  vfs: expose STATX_VERSION to userland
-  vfs: update times after copying data in __generic_file_write_iter
-  ext4: update times after I/O in write codepaths
-
- fs/ceph/inode.c           | 16 +++++++++----
- fs/ext4/file.c            | 20 +++++++++++++---
- fs/libfs.c                | 36 +++++++++++++++++++++++++++++
- fs/nfs/export.c           |  7 ------
- fs/nfs/inode.c            | 10 ++++++--
- fs/nfsd/nfs4xdr.c         |  4 +++-
- fs/nfsd/nfsfh.c           | 40 ++++++++++++++++++++++++++++++++
- fs/nfsd/nfsfh.h           | 29 +----------------------
- fs/nfsd/vfs.h             |  7 +++++-
- fs/stat.c                 |  7 ++++++
- include/linux/exportfs.h  |  1 -
- include/linux/iversion.h  | 48 ++++++++-------------------------------
- include/linux/stat.h      |  2 +-
- include/uapi/linux/stat.h |  6 +++--
- mm/filemap.c              | 17 ++++++++++----
- samples/vfs/test-statx.c  |  8 +++++--
- 16 files changed, 163 insertions(+), 95 deletions(-)
-
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 109d07629f81..1fa8e0239856 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -246,7 +246,7 @@ static ssize_t ext4_write_checks(struct kiocb *iocb, struct iov_iter *from)
+ 	if (count <= 0)
+ 		return count;
+ 
+-	ret = file_modified(iocb->ki_filp);
++	ret = file_remove_privs(iocb->ki_filp);
+ 	if (ret)
+ 		return ret;
+ 	return count;
+@@ -269,7 +269,11 @@ static ssize_t ext4_buffered_write_iter(struct kiocb *iocb,
+ 	current->backing_dev_info = inode_to_bdi(inode);
+ 	ret = generic_perform_write(iocb, from);
+ 	current->backing_dev_info = NULL;
+-
++	if (ret > 0) {
++		ssize_t ret2 = file_update_time(iocb->ki_filp);
++		if (ret2)
++			ret = ret2;
++	}
+ out:
+ 	inode_unlock(inode);
+ 	if (likely(ret > 0)) {
+@@ -455,7 +459,7 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
+ 		goto restart;
+ 	}
+ 
+-	ret = file_modified(file);
++	ret = file_remove_privs(file);
+ 	if (ret < 0)
+ 		goto out;
+ 
+@@ -572,6 +576,11 @@ static ssize_t ext4_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	if (extend)
+ 		ret = ext4_handle_inode_extension(inode, offset, ret, count);
+ 
++	if (ret > 0) {
++		ssize_t ret2 = file_update_time(iocb->ki_filp);
++		if (ret2)
++			ret = ret2;
++	}
+ out:
+ 	if (ilock_shared)
+ 		inode_unlock_shared(inode);
+@@ -653,6 +662,11 @@ ext4_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 
+ 	if (extend)
+ 		ret = ext4_handle_inode_extension(inode, offset, ret, count);
++	if (ret > 0) {
++		ssize_t ret2 = file_update_time(iocb->ki_filp);
++		if (ret2)
++			ret = ret2;
++	}
+ out:
+ 	inode_unlock(inode);
+ 	if (ret > 0)
 -- 
 2.37.3
 
