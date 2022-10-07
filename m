@@ -2,107 +2,67 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8EC05C433F5
-	for <linux-ext4@archiver.kernel.org>; Fri,  7 Oct 2022 12:54:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 96072C4332F
+	for <linux-ext4@archiver.kernel.org>; Fri,  7 Oct 2022 17:00:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229729AbiJGMyK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 7 Oct 2022 08:54:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46676 "EHLO
+        id S230386AbiJGRAp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 7 Oct 2022 13:00:45 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36960 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229592AbiJGMyI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Oct 2022 08:54:08 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 34B19F4738;
-        Fri,  7 Oct 2022 05:54:08 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        with ESMTP id S230378AbiJGRAX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Oct 2022 13:00:23 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B4C6C6B669;
+        Fri,  7 Oct 2022 10:00:18 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id DB7E21F8A8;
-        Fri,  7 Oct 2022 12:54:06 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1665147246; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type;
-        bh=2yea1I8bUHEi+w/xoHS0s9Q7Pp5CV/eDJLs78hkBV8I=;
-        b=BS0NWwnh0RrdSyqkC3BGUcRthX7wu3nZ5yfKqp3vY91QqcM2t57veK8w08fH6Obru/TIAg
-        MBa1bDoJAT6VIfIg71MBZ+gCXdlyjXH8nvfD2S/tjWZ0sgKg+i/Z8NgGnM5sOE7kBRMSnb
-        xRPxCiGJG2ejBogdkAes0ix8OyNrKAc=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1665147246;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type;
-        bh=2yea1I8bUHEi+w/xoHS0s9Q7Pp5CV/eDJLs78hkBV8I=;
-        b=s2J0xuBqdfWa0kjXtXzWRpQoGGTCedTyJ8oOBJWpDvaoAcSSEih1o8/KkKvNlbFNsQNKju
-        PR2+e/tPVhOtUhDA==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id B555213A9A;
-        Fri,  7 Oct 2022 12:54:06 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id EnbBK24hQGPTaQAAMHmgww
-        (envelope-from <jack@suse.cz>); Fri, 07 Oct 2022 12:54:06 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 25D1EA06E9; Fri,  7 Oct 2022 14:54:06 +0200 (CEST)
-Date:   Fri, 7 Oct 2022 14:54:06 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: [GIT PULL] ext2, udf, reiserfs, and quota fixes for v6.1-rc1
-Message-ID: <20221007125406.oaw57vy5zmino5rj@quack3>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 60EF961DCB;
+        Fri,  7 Oct 2022 17:00:18 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id C4DB1C43141;
+        Fri,  7 Oct 2022 17:00:17 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1665162017;
+        bh=bWDlBIilzoaw9yJkWw43+Vp+gq8dtlFaYO9UEXmQ7rE=;
+        h=Subject:From:In-Reply-To:References:Date:To:Cc:From;
+        b=ULjiRZz0BFJ7nC8cCTIslsuvsBiL+DdPMCOtLood3F6DgjqI0Xayw9qN69CIGMCCc
+         4J8vDmlVNoiF3tAcjZNaEdcTpByzP2gez3jI+PFBs4eGNxHBwQ4CWificR5v2zQyha
+         7FW+yTriGzvIa37j25QX33G+5lalmSTTwvASSy9IMTg2ZKeAf09Gti2PvTPlIwySib
+         pAqxo+iw359W7ICjDaHE9VqXto2s6jD/RzXMCMmAQF8ed8CXF12Ibxkvqy5t7Z0Bvo
+         UqFyBsZX0zyLj4aHbA5QVcfA+h5gsCmAuKrRPKJqgPi+mcXIqtzAmxkBO87CZPDCZl
+         QlrxkGsSY4XBA==
+Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
+        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id B1A51E21ED6;
+        Fri,  7 Oct 2022 17:00:17 +0000 (UTC)
+Subject: Re: [GIT PULL] ext2, udf, reiserfs, and quota fixes for v6.1-rc1
+From:   pr-tracker-bot@kernel.org
+In-Reply-To: <20221007125406.oaw57vy5zmino5rj@quack3>
+References: <20221007125406.oaw57vy5zmino5rj@quack3>
+X-PR-Tracked-List-Id: <linux-fsdevel.vger.kernel.org>
+X-PR-Tracked-Message-Id: <20221007125406.oaw57vy5zmino5rj@quack3>
+X-PR-Tracked-Remote: git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git fs-for_v6.1-rc1
+X-PR-Tracked-Commit-Id: 191249f708897fc34c78f4494f7156896aaaeca9
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: 188943a15638ceb91f960e072ed7609b2d7f2a55
+Message-Id: <166516201772.22254.17741104946754308536.pr-tracker-bot@kernel.org>
+Date:   Fri, 07 Oct 2022 17:00:17 +0000
+To:     Jan Kara <jack@suse.cz>
+Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-  Hello Linus,
+The pull request you sent on Fri, 7 Oct 2022 14:54:06 +0200:
 
-  could you please pull from
+> git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git fs-for_v6.1-rc1
 
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git fs-for_v6.1-rc1
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/188943a15638ceb91f960e072ed7609b2d7f2a55
 
-to get:
-* Fix for udf to make splicing work again
-* More disk format sanity checks for ext2 to avoid crashes found by syzbot
-* More quota disk format checks to avoid crashes found by fuzzing
-* Reiserfs & isofs cleanups
-
-Top of the tree is 191249f70889. The full shortlog is:
-
-Jan Kara (3):
-      udf: Support splicing to file
-      ext2: Add sanity checks for group and filesystem size
-      ext2: Use kvmalloc() for group descriptor array
-
-Jiangshan Yi (1):
-      fs/reiserfs: replace ternary operator with min() and min_t()
-
-Minghao Chi (1):
-      isofs: delete unnecessary checks before brelse()
-
-Zhihao Cheng (3):
-      quota: Check next/prev free block number after reading from quota file
-      quota: Replace all block number checking with helper function
-      quota: Add more checking after reading from quota file
-
-The diffstat is
-
- fs/ext2/super.c       | 22 ++++++++++++----
- fs/isofs/inode.c      |  9 +++----
- fs/quota/quota_tree.c | 73 ++++++++++++++++++++++++++++++++++++++++++---------
- fs/reiserfs/prints.c  |  2 +-
- fs/reiserfs/resize.c  |  2 +-
- fs/reiserfs/super.c   |  7 ++---
- fs/udf/file.c         |  1 +
- 7 files changed, 86 insertions(+), 30 deletions(-)
-
-							Thanks
-								Honza
+Thank you!
 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/prtracker.html
