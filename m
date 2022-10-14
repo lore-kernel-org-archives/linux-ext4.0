@@ -2,53 +2,53 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 50FC9C43217
-	for <linux-ext4@archiver.kernel.org>; Fri, 14 Oct 2022 08:50:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 110DBC4332F
+	for <linux-ext4@archiver.kernel.org>; Fri, 14 Oct 2022 08:50:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230040AbiJNIuT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 14 Oct 2022 04:50:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34146 "EHLO
+        id S230060AbiJNIuU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 14 Oct 2022 04:50:20 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34990 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229921AbiJNIty (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Oct 2022 04:49:54 -0400
-Received: from mail-wr1-x429.google.com (mail-wr1-x429.google.com [IPv6:2a00:1450:4864:20::429])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 50F10275D1;
-        Fri, 14 Oct 2022 01:49:52 -0700 (PDT)
-Received: by mail-wr1-x429.google.com with SMTP id w18so6502418wro.7;
-        Fri, 14 Oct 2022 01:49:51 -0700 (PDT)
+        with ESMTP id S229953AbiJNIt7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Oct 2022 04:49:59 -0400
+Received: from mail-wm1-x32e.google.com (mail-wm1-x32e.google.com [IPv6:2a00:1450:4864:20::32e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 86D5832BA7;
+        Fri, 14 Oct 2022 01:49:56 -0700 (PDT)
+Received: by mail-wm1-x32e.google.com with SMTP id c9-20020a05600c100900b003c6da0f9b62so2546530wmc.1;
+        Fri, 14 Oct 2022 01:49:56 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=FSLibGjWy/nIs1Cd+IM0NiQuRQgBV8RHoXsPr1HGgA4=;
-        b=jUVoj/7b6E4+o16YX/zkS7mGl1/zWyDsJt9qivb9kCg2BhWvw2bMcttep9H3CV3YBJ
-         ZjdSShNRgKcSC+Zk87vJh8JBMp8k2uWWSPXubm+PHqQyF1hqELTu4EtXfa6Lqj6SpsVp
-         9g2nh60gWPaU4054v3HwSy7DbEKSebYdF2n63JxmbBM9l0cnT4BXQqNVgGqeFBH6oz7e
-         r9um5udVerI7dyDwk7asIA2BKGEpG0dam2OwGNjSZ1t09gZfumg1EtSPwIKRA4vbClpA
-         5cTAxCqbYjGbvCCEAaVDLZCLqw8UCb06c7MOK1zgpzkC1fe577/DvfmcLc1yH4yXX9EQ
-         +Prw==
+        bh=gOV3h57ut5GHhGlnLsxkEHBnkvFbonX9ORLLuFusyi0=;
+        b=GfG0sfEgh2ptierbWCnoguBubKf8JDmmicxf1uJSpFpGObOsFWBqAhZpEYJ5Krl+yo
+         ZD1cwtaOtRSGc/If6NW2e99cfjHy447Mfkim3JBoO6lFHYVO43xdxReqY6l8QyFBn4Qc
+         tGp1dAr825o3wC1fJ3+NYRhGU424uQwhoZSV5IZH/fycyAueUF0kXNr3kuIlzRScRjEM
+         aqxVZim71FxWOLPQbEMG0l3htKZad0jBeYIJY2DLYtsbqGW8wiG+xF4GplnsrmQkllp0
+         oM0aAGnq+3SiJfldcLJyIp7maRrgbF8Lv6EtCNGsqquNz1rjsbw3Zxsk5zbVXT/52SAq
+         oChQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=FSLibGjWy/nIs1Cd+IM0NiQuRQgBV8RHoXsPr1HGgA4=;
-        b=jEjseO5pRkZWo05TSwEOz55LYzl3RST2zEf9VNhzbeTF9O1c3wpP0wKEHPiRQoVQWg
-         s8gA2zjmJt/QmsoEvbcZ6K08sZL6kJzwAA5nA3OGcmlrR8zbVAdyKChNe7ZTzYu42PNH
-         aJfYKyaHHyr2kjVateIW8JljsI5GrFiqacnMaje/R1lq+gsGCbjfBO3ts6vXB9niWkSL
-         3II26Ogadz5ShUAUHT1wfOVxcD+8UviX4MvW+OgGQd0VXmxOhpLOPdBY6FQ1TXV5hXgR
-         vw28/etNpFzkZSD+lHKvh19IhP+hglBRycefoCrJr/ZL3lvoBciBGJkQdfjGH8vz6e0g
-         iwEw==
-X-Gm-Message-State: ACrzQf1uMHDYfbEcj3v/FNptvNHWCHJJFH5J9YbkD7fUwfE7ojIWwcrN
-        YR9Tboh3IFcaa2/BMgNp2O0=
-X-Google-Smtp-Source: AMsMyM6RtssP0X8/PiYsddX84eZi5SsoPD+IvXeUhq3mBprDDszRzfOLZv3kstlVcvUswotyaxBNOQ==
-X-Received: by 2002:a5d:5b1f:0:b0:22e:51b0:2837 with SMTP id bx31-20020a5d5b1f000000b0022e51b02837mr2605593wrb.132.1665737390355;
-        Fri, 14 Oct 2022 01:49:50 -0700 (PDT)
+        bh=gOV3h57ut5GHhGlnLsxkEHBnkvFbonX9ORLLuFusyi0=;
+        b=yFc18Ic5uajmvY858S5SmYtEssLPjsgZ3xhbt5SLxBd5DKgGxNVdPiEKVGqQcyiRVx
+         hOYbYRKrNermmCe3SP/LNZrws7EhYTeigD8acNBYogs4HL3q1t/oryvNT0GKvT3DQ/vL
+         ASvTa9n4jk01jTgw/pty0FaBVcQOp7Fd8oEFtN7rXdsvEFXIkp0ljWQpwfboFF6bArc3
+         H1a2JhbnJYZKSUpQPynem1jCiNBLmeh9vXDhInQtZOUywg7QAGrYweNLFT8t9a+o2jIG
+         A5/RbJgP5ZAlal12VYy1tiq6LUlR8P8HYAH6tm62y37HbLePfFlN/pm6ZR8UaYEP888E
+         mefw==
+X-Gm-Message-State: ACrzQf3+WPZYFCGsXiYY2zWNaDDGanw5mkjHffyFN+3lEqjki/eraPHS
+        DpNQ/Rn2M9k1CHTWYbgLgs8=
+X-Google-Smtp-Source: AMsMyM77yv8Pg3D5oDIyozFj8+3/IZB1l6YKqrDliEThMChfauLgTj828aJxH3GHPZOHomGULwIXmw==
+X-Received: by 2002:a05:600c:4f93:b0:3b4:c026:85a1 with SMTP id n19-20020a05600c4f9300b003b4c02685a1mr9583025wmq.39.1665737394358;
+        Fri, 14 Oct 2022 01:49:54 -0700 (PDT)
 Received: from hrutvik.c.googlers.com.com (120.142.205.35.bc.googleusercontent.com. [35.205.142.120])
-        by smtp.gmail.com with ESMTPSA id 123-20020a1c1981000000b003c6c4639ac6sm1547372wmz.34.2022.10.14.01.49.49
+        by smtp.gmail.com with ESMTPSA id 123-20020a1c1981000000b003c6c4639ac6sm1547372wmz.34.2022.10.14.01.49.53
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 14 Oct 2022 01:49:50 -0700 (PDT)
+        Fri, 14 Oct 2022 01:49:54 -0700 (PDT)
 From:   Hrutvik Kanabar <hrkanabar@gmail.com>
 To:     Hrutvik Kanabar <hrutvik@google.com>
 Cc:     Marco Elver <elver@google.com>,
@@ -68,9 +68,9 @@ Cc:     Marco Elver <elver@google.com>,
         Sungjong Seo <sj1557.seo@samsung.com>,
         Anton Altaparmakov <anton@tuxera.com>,
         linux-ntfs-dev@lists.sourceforge.net
-Subject: [PATCH RFC 4/7] fs/exfat: support `DISABLE_FS_CSUM_VERIFICATION` config option
-Date:   Fri, 14 Oct 2022 08:48:34 +0000
-Message-Id: <20221014084837.1787196-5-hrkanabar@gmail.com>
+Subject: [PATCH RFC 7/7] fs/f2fs: support `DISABLE_FS_CSUM_VERIFICATION` config option
+Date:   Fri, 14 Oct 2022 08:48:37 +0000
+Message-Id: <20221014084837.1787196-8-hrkanabar@gmail.com>
 X-Mailer: git-send-email 2.38.0.413.g74048e4d9e-goog
 In-Reply-To: <20221014084837.1787196-1-hrkanabar@gmail.com>
 References: <20221014084837.1787196-1-hrkanabar@gmail.com>
@@ -87,38 +87,67 @@ verification.
 
 Signed-off-by: Hrutvik Kanabar <hrutvik@google.com>
 ---
- fs/exfat/nls.c   | 3 ++-
- fs/exfat/super.c | 3 +++
- 2 files changed, 5 insertions(+), 1 deletion(-)
+ fs/f2fs/checkpoint.c | 3 ++-
+ fs/f2fs/compress.c   | 3 ++-
+ fs/f2fs/f2fs.h       | 2 ++
+ fs/f2fs/inode.c      | 3 +++
+ 4 files changed, 9 insertions(+), 2 deletions(-)
 
-diff --git a/fs/exfat/nls.c b/fs/exfat/nls.c
-index 705710f93e2d..f0f92eaf6ccc 100644
---- a/fs/exfat/nls.c
-+++ b/fs/exfat/nls.c
-@@ -696,7 +696,8 @@ static int exfat_load_upcase_table(struct super_block *sb,
- 		brelse(bh);
+diff --git a/fs/f2fs/checkpoint.c b/fs/f2fs/checkpoint.c
+index 0c82dae082aa..cc5043fbffcb 100644
+--- a/fs/f2fs/checkpoint.c
++++ b/fs/f2fs/checkpoint.c
+@@ -864,7 +864,8 @@ static int get_checkpoint_version(struct f2fs_sb_info *sbi, block_t cp_addr,
  	}
  
--	if (index >= 0xFFFF && utbl_checksum == chksum)
-+	if (IS_ENABLED(CONFIG_DISABLE_FS_CSUM_VERIFICATION) ||
-+	    (index >= 0xFFFF && utbl_checksum == chksum))
- 		return 0;
+ 	crc = f2fs_checkpoint_chksum(sbi, *cp_block);
+-	if (crc != cur_cp_crc(*cp_block)) {
++	if (!IS_ENABLED(CONFIG_DISABLE_FS_CSUM_VERIFICATION) &&
++	    crc != cur_cp_crc(*cp_block)) {
+ 		f2fs_put_page(*cp_page, 1);
+ 		f2fs_warn(sbi, "invalid crc value");
+ 		return -EINVAL;
+diff --git a/fs/f2fs/compress.c b/fs/f2fs/compress.c
+index d315c2de136f..d0bce92dbf38 100644
+--- a/fs/f2fs/compress.c
++++ b/fs/f2fs/compress.c
+@@ -772,7 +772,8 @@ void f2fs_decompress_cluster(struct decompress_io_ctx *dic, bool in_task)
+ 		u32 provided = le32_to_cpu(dic->cbuf->chksum);
+ 		u32 calculated = f2fs_crc32(sbi, dic->cbuf->cdata, dic->clen);
  
- 	exfat_err(sb, "failed to load upcase table (idx : 0x%08x, chksum : 0x%08x, utbl_chksum : 0x%08x)",
-diff --git a/fs/exfat/super.c b/fs/exfat/super.c
-index 35f0305cd493..7418858792b3 100644
---- a/fs/exfat/super.c
-+++ b/fs/exfat/super.c
-@@ -564,6 +564,9 @@ static int exfat_verify_boot_region(struct super_block *sb)
- 	if (!bh)
- 		return -EIO;
+-		if (provided != calculated) {
++		if (!IS_ENABLED(CONFIG_DISABLE_FS_CSUM_VERIFICATION) &&
++		    provided != calculated) {
+ 			if (!is_inode_flag_set(dic->inode, FI_COMPRESS_CORRUPT)) {
+ 				set_inode_flag(dic->inode, FI_COMPRESS_CORRUPT);
+ 				printk_ratelimited(
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index e6355a5683b7..b27f1ec9b49f 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -1976,6 +1976,8 @@ static inline u32 f2fs_crc32(struct f2fs_sb_info *sbi, const void *address,
+ static inline bool f2fs_crc_valid(struct f2fs_sb_info *sbi, __u32 blk_crc,
+ 				  void *buf, size_t buf_size)
+ {
++	if (IS_ENABLED(CONFIG_DISABLE_FS_CSUM_VERIFICATION))
++		return true;
+ 	return f2fs_crc32(sbi, buf, buf_size) == blk_crc;
+ }
+ 
+diff --git a/fs/f2fs/inode.c b/fs/f2fs/inode.c
+index 9f0d3864d9f1..239bb08e45b1 100644
+--- a/fs/f2fs/inode.c
++++ b/fs/f2fs/inode.c
+@@ -181,6 +181,9 @@ bool f2fs_inode_chksum_verify(struct f2fs_sb_info *sbi, struct page *page)
+ #endif
+ 		return true;
  
 +	if (IS_ENABLED(CONFIG_DISABLE_FS_CSUM_VERIFICATION))
-+		return 0;
++		return true;
 +
- 	for (i = 0; i < sb->s_blocksize; i += sizeof(u32)) {
- 		p_chksum = (__le32 *)&bh->b_data[i];
- 		if (le32_to_cpu(*p_chksum) != chksum) {
+ 	ri = &F2FS_NODE(page)->i;
+ 	provided = le32_to_cpu(ri->i_inode_checksum);
+ 	calculated = f2fs_inode_chksum(sbi, page);
 -- 
 2.38.0.413.g74048e4d9e-goog
 
