@@ -2,230 +2,114 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4B4B4C4332F
-	for <linux-ext4@archiver.kernel.org>; Mon, 17 Oct 2022 15:45:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0B56DC433FE
+	for <linux-ext4@archiver.kernel.org>; Mon, 17 Oct 2022 20:27:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229673AbiJQPpb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 17 Oct 2022 11:45:31 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60330 "EHLO
+        id S230425AbiJQU1B (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 17 Oct 2022 16:27:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56076 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229900AbiJQPp3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Oct 2022 11:45:29 -0400
-Received: from mga17.intel.com (mga17.intel.com [192.55.52.151])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 34D1A4D248
-        for <linux-ext4@vger.kernel.org>; Mon, 17 Oct 2022 08:45:28 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1666021528; x=1697557528;
-  h=date:from:to:cc:subject:message-id:mime-version:
-   content-transfer-encoding;
-  bh=3v629TfnQ6eCHCvRptZHiwXoRTAfdgVXR3TJuTbFQ10=;
-  b=R+g0xXErCOfMuK1e8br1ZzMoenQtl92y+dQNxZai9CLApCuLwfbuxFBK
-   iTVuSwNINdI+pg/SLd9iKQw3evIjU3h3Pv6qAWz9QMPKxxa+2C+AK03/u
-   1sT+gYyEltgbIGOWNBj6hw2YXo6vh0hgwUzvLjzeER4HMAXt1bZXq/Hp1
-   OLB5McAvHZ3VdCBF4BnFT9D4zL4sQTtzly87hS60MsqkQU7Ph2B7zaQS/
-   pfT68s2F27L/VbcpoXFLXSTgq8C0eAFsU7ikbjuThG4IdtJQOKzrpzkoX
-   gzR6rsi5gxPsGrF1pZto9HFEUMjK3cHM+0gSIYcyu53YiYOZ5mKK4rtxS
-   A==;
-X-IronPort-AV: E=McAfee;i="6500,9779,10503"; a="286228422"
-X-IronPort-AV: E=Sophos;i="5.95,191,1661842800"; 
-   d="scan'208";a="286228422"
-Received: from fmsmga003.fm.intel.com ([10.253.24.29])
-  by fmsmga107.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 17 Oct 2022 08:45:27 -0700
-X-ExtLoop1: 1
-X-IronPort-AV: E=McAfee;i="6500,9779,10503"; a="717537483"
-X-IronPort-AV: E=Sophos;i="5.95,191,1661842800"; 
-   d="scan'208";a="717537483"
-Received: from lkp-server01.sh.intel.com (HELO 8381f64adc98) ([10.239.97.150])
-  by FMSMGA003.fm.intel.com with ESMTP; 17 Oct 2022 08:45:25 -0700
-Received: from kbuild by 8381f64adc98 with local (Exim 4.96)
-        (envelope-from <lkp@intel.com>)
-        id 1okSIu-0000fA-28;
-        Mon, 17 Oct 2022 15:45:24 +0000
-Date:   Mon, 17 Oct 2022 23:44:24 +0800
-From:   kernel test robot <lkp@intel.com>
-To:     Andrew Morton <akpm@linux-foundation.org>
-Cc:     ntfs3@lists.linux.dev, linux-mediatek@lists.infradead.org,
-        linux-ext4@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
-        Linux Memory Management List <linux-mm@kvack.org>
-Subject: [linux-next:master] BUILD REGRESSION
- 77d8bf70fac0900844491376bc18b491710168bf
-Message-ID: <634d7858.CIIfTENtfSUJb4x+%lkp@intel.com>
-User-Agent: Heirloom mailx 12.5 6/20/10
+        with ESMTP id S231300AbiJQU0m (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Oct 2022 16:26:42 -0400
+Received: from mail-pf1-x42c.google.com (mail-pf1-x42c.google.com [IPv6:2607:f8b0:4864:20::42c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3472434994;
+        Mon, 17 Oct 2022 13:24:57 -0700 (PDT)
+Received: by mail-pf1-x42c.google.com with SMTP id i3so12108454pfc.11;
+        Mon, 17 Oct 2022 13:24:56 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=GbkaK1BhnmuuyeEPYHO1j/C42qAqDKaBYuSZ7EsnhRU=;
+        b=NQ3KvRSSCU8wPaTgediDqeAMel/vIah0+7k422IToZaKZI3bGfU37b14iH42kEU0X7
+         Qzi6EP9hjDaf1fqg1ZQFK32c9ILuCZG+zRyKOIFQp5ZQMoB2jLD4q1Gyr0WQ8mtE2qRq
+         m8TScIwF6nHJLl980ya+Sr2hxZTVlJg4LpKy1hFXQBj8kaEyxSareN0Oky9YZM7BiaNw
+         2vWb6xBDZgHXAKHRWn3JDalz3e7jNZ/tPokjvwD0EzjqbULHQtABSVFlz/pa4stgqdUZ
+         akBnIoIm5M5fDRlS5Fp6GmmllvS/DMn6w9C+Jv33XGjD/jl12SrDdjixrx8PhoYvdeEc
+         +A9g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=GbkaK1BhnmuuyeEPYHO1j/C42qAqDKaBYuSZ7EsnhRU=;
+        b=TQmPzW2b2x4kba0D8LlBoeDh2kaq3YUFE8YnKYHLHP8GpkyqxFBIdac+Q/J6hlrxKg
+         M/A+ErL824+z7Lw4b25iykWlqbVOwOUSPu5S0m+UB1NKXQ1Uu6BuwRt8b6PUgLU2mB8G
+         QKYvjOw28TQMRVdmJZfLg1rhKgj/5X2DhYokJmFeHyDVgYsun/Ch1oyMIWZJsrXUEQcB
+         POiUQfI5asJxYX0NN4BIYPU5RLmcCJpzCYhytS/rLF6vdGgSzIshDxJvNkswYboCBrwW
+         YpISmMr341fJUKkwbp+xP/6Nh2HtE53z9IZqdvkf0FbgIqKFdKdi0ZtXGLacRT13Mj22
+         qiXA==
+X-Gm-Message-State: ACrzQf1vtbJ2zxwUEdsv9GNqsumjhSpzHiOGL6WrKJTBfO07LGrN9YZG
+        BikGluhLrJW2ozvE2lLRoLiwh1ClrLy+pQ==
+X-Google-Smtp-Source: AMsMyM4YYYiMlGZioccUtzsgvC8/uYYs8dSo4tR5iZYGSvU1XAyZz6D+QISkFp8v5lRsZ6zJPWfGpA==
+X-Received: by 2002:a05:6a00:230d:b0:53d:c198:6ad7 with SMTP id h13-20020a056a00230d00b0053dc1986ad7mr14548828pfh.67.1666038295539;
+        Mon, 17 Oct 2022 13:24:55 -0700 (PDT)
+Received: from vmfolio.. (c-76-102-73-225.hsd1.ca.comcast.net. [76.102.73.225])
+        by smtp.googlemail.com with ESMTPSA id pj12-20020a17090b4f4c00b00200b12f2bf5sm145037pjb.1.2022.10.17.13.24.54
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 17 Oct 2022 13:24:55 -0700 (PDT)
+From:   "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
+To:     linux-fsdevel@vger.kernel.org
+Cc:     linux-afs@lists.infradead.org, linux-kernel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+        linux-nilfs@vger.kernel.org, linux-mm@kvack.org,
+        "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
+Subject: [PATCH v3 01/23] pagemap: Add filemap_grab_folio()
+Date:   Mon, 17 Oct 2022 13:24:29 -0700
+Message-Id: <20221017202451.4951-2-vishal.moola@gmail.com>
+X-Mailer: git-send-email 2.36.1
+In-Reply-To: <20221017202451.4951-1-vishal.moola@gmail.com>
+References: <20221017202451.4951-1-vishal.moola@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git master
-branch HEAD: 77d8bf70fac0900844491376bc18b491710168bf  Add linux-next specific files for 20221017
+Add function filemap_grab_folio() to grab a folio from the page cache.
+This function is meant to serve as a folio replacement for
+grab_cache_page, and is used to facilitate the removal of
+find_get_pages_range_tag().
 
-Error/Warning reports:
+Signed-off-by: Vishal Moola (Oracle) <vishal.moola@gmail.com>
+---
+ include/linux/pagemap.h | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
-https://lore.kernel.org/linux-mm/202210110857.9s0tXVNn-lkp@intel.com
-
-Error/Warning: (recently discovered and may have been fixed)
-
-ERROR: modpost: "devm_ioremap_resource" [drivers/dma/idma64.ko] undefined!
-ERROR: modpost: "devm_ioremap_resource" [drivers/dma/qcom/hdma.ko] undefined!
-arch/arm64/kernel/alternative.c:199:6: warning: no previous prototype for 'apply_alternatives_vdso' [-Wmissing-prototypes]
-arch/arm64/kernel/alternative.c:295:14: warning: no previous prototype for 'alt_cb_patch_nops' [-Wmissing-prototypes]
-fs/ext4/super.c:1744:19: warning: 'deprecated_msg' defined but not used [-Wunused-const-variable=]
-
-Error/Warning ids grouped by kconfigs:
-
-gcc_recent_errors
-|-- arm64-allyesconfig
-|   |-- arch-arm64-kernel-alternative.c:warning:no-previous-prototype-for-alt_cb_patch_nops
-|   `-- arch-arm64-kernel-alternative.c:warning:no-previous-prototype-for-apply_alternatives_vdso
-|-- i386-allyesconfig
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-|-- i386-defconfig
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-|-- i386-randconfig-a003-20221017
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-|-- s390-allmodconfig
-|   |-- ERROR:devm_ioremap_resource-drivers-dma-idma64.ko-undefined
-|   `-- ERROR:devm_ioremap_resource-drivers-dma-qcom-hdma.ko-undefined
-|-- x86_64-allyesconfig
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-|-- x86_64-buildonly-randconfig-r003-20221017
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-|-- x86_64-defconfig
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-|-- x86_64-randconfig-a001-20221017
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-|-- x86_64-randconfig-a002-20221017
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-|-- x86_64-randconfig-a003-20221017
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-|-- x86_64-randconfig-a004-20221017
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-|-- x86_64-randconfig-a005-20221017
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-|-- x86_64-randconfig-a006-20221017
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-|-- x86_64-randconfig-r002-20221017
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-|-- x86_64-rhel-8.3
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-|-- x86_64-rhel-8.3-func
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-|-- x86_64-rhel-8.3-kselftests
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-|-- x86_64-rhel-8.3-kvm
-|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-`-- x86_64-rhel-8.3-syz
-    `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
-clang_recent_errors
-|-- arm64-randconfig-r011-20221017
-|   `-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
-|-- arm64-randconfig-r024-20221017
-|   `-- fs-ntfs3-namei.c:warning:variable-uni1-is-used-uninitialized-whenever-if-condition-is-true
-|-- hexagon-buildonly-randconfig-r006-20221017
-|   |-- drivers-phy-mediatek-phy-mtk-mipi-dsi-mt8173.c:warning:result-of-comparison-of-constant-with-expression-of-type-typeof-(_Generic((mask_)-char:(unsigned-char)-unsigned-char:(unsigned-char)-signed-char:
-|   `-- drivers-phy-mediatek-phy-mtk-mipi-dsi-mt8183.c:warning:result-of-comparison-of-constant-with-expression-of-type-typeof-(_Generic((mask_)-char:(unsigned-char)-unsigned-char:(unsigned-char)-signed-char:
-|-- hexagon-randconfig-r041-20221017
-|   |-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
-|   `-- fs-ntfs3-namei.c:warning:variable-uni1-is-used-uninitialized-whenever-if-condition-is-true
-|-- i386-randconfig-a013-20221017
-|   `-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
-|-- i386-randconfig-a014-20221017
-|   |-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
-|   `-- fs-ntfs3-namei.c:warning:variable-uni1-is-used-uninitialized-whenever-if-condition-is-true
-|-- i386-randconfig-a016-20221017
-|   `-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
-|-- mips-randconfig-r005-20221017
-|   |-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
-|   `-- fs-ntfs3-namei.c:warning:variable-uni1-is-used-uninitialized-whenever-if-condition-is-true
-|-- riscv-randconfig-r042-20221017
-|   `-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
-|-- s390-randconfig-r044-20221017
-|   |-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
-|   `-- fs-ntfs3-namei.c:warning:variable-uni1-is-used-uninitialized-whenever-if-condition-is-true
-|-- x86_64-randconfig-a011-20221017
-|   `-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
-|-- x86_64-randconfig-a012-20221017
-|   `-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
-|-- x86_64-randconfig-a016-20221017
-|   |-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
-|   `-- fs-ntfs3-namei.c:warning:variable-uni1-is-used-uninitialized-whenever-if-condition-is-true
-|-- x86_64-randconfig-r013-20221017
-|   |-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
-|   `-- fs-ntfs3-namei.c:warning:variable-uni1-is-used-uninitialized-whenever-if-condition-is-true
-`-- x86_64-rhel-8.3-rust
-    `-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
-
-elapsed time: 726m
-
-configs tested: 59
-configs skipped: 2
-
-gcc tested configs:
-um                             i386_defconfig
-um                           x86_64_defconfig
-x86_64                          rhel-8.3-func
-x86_64                    rhel-8.3-kselftests
-arc                  randconfig-r043-20221017
-i386                 randconfig-a001-20221017
-i386                                defconfig
-i386                 randconfig-a002-20221017
-i386                 randconfig-a003-20221017
-x86_64                              defconfig
-i386                 randconfig-a005-20221017
-i386                 randconfig-a004-20221017
-i386                 randconfig-a006-20221017
-x86_64                               rhel-8.3
-x86_64                           rhel-8.3-kvm
-arc                                 defconfig
-powerpc                           allnoconfig
-x86_64                           rhel-8.3-syz
-s390                             allmodconfig
-alpha                               defconfig
-x86_64                         rhel-8.3-kunit
-i386                             allyesconfig
-s390                                defconfig
-x86_64                           allyesconfig
-sh                               allmodconfig
-mips                             allyesconfig
-s390                             allyesconfig
-powerpc                          allmodconfig
-m68k                             allmodconfig
-arc                              allyesconfig
-alpha                            allyesconfig
-m68k                             allyesconfig
-x86_64               randconfig-a002-20221017
-arm                                 defconfig
-x86_64               randconfig-a003-20221017
-x86_64               randconfig-a004-20221017
-x86_64               randconfig-a001-20221017
-x86_64               randconfig-a005-20221017
-x86_64               randconfig-a006-20221017
-arm64                            allyesconfig
-arm                              allyesconfig
-ia64                             allmodconfig
-
-clang tested configs:
-hexagon              randconfig-r041-20221017
-hexagon              randconfig-r045-20221017
-s390                 randconfig-r044-20221017
-riscv                randconfig-r042-20221017
-x86_64               randconfig-a013-20221017
-i386                 randconfig-a011-20221017
-x86_64               randconfig-a012-20221017
-x86_64                          rhel-8.3-rust
-i386                 randconfig-a013-20221017
-x86_64               randconfig-a015-20221017
-x86_64               randconfig-a016-20221017
-i386                 randconfig-a012-20221017
-i386                 randconfig-a014-20221017
-x86_64               randconfig-a011-20221017
-i386                 randconfig-a016-20221017
-x86_64               randconfig-a014-20221017
-i386                 randconfig-a015-20221017
-
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index bbccb4044222..74d87e37a142 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -547,6 +547,26 @@ static inline struct folio *filemap_lock_folio(struct address_space *mapping,
+ 	return __filemap_get_folio(mapping, index, FGP_LOCK, 0);
+ }
+ 
++/**
++ * filemap_grab_folio - grab a folio from the page cache
++ * @mapping: The address space to search
++ * @index: The page index
++ *
++ * Looks up the page cache entry at @mapping & @index. If no folio is found,
++ * a new folio is created. The folio is locked, marked as accessed, and
++ * returned.
++ *
++ * Return: A found or created folio. NULL if no folio is found and failed to
++ * create a folio.
++ */
++static inline struct folio *filemap_grab_folio(struct address_space *mapping,
++					pgoff_t index)
++{
++	return __filemap_get_folio(mapping, index,
++			FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
++			mapping_gfp_mask(mapping));
++}
++
+ /**
+  * find_get_page - find and get a page reference
+  * @mapping: the address_space to search
 -- 
-0-DAY CI Kernel Test Service
-https://01.org/lkp
+2.36.1
+
