@@ -2,145 +2,269 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7AB74C433FE
-	for <linux-ext4@archiver.kernel.org>; Fri, 21 Oct 2022 03:45:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0F9CCC43217
+	for <linux-ext4@archiver.kernel.org>; Fri, 21 Oct 2022 05:13:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230033AbiJUDpv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 20 Oct 2022 23:45:51 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41758 "EHLO
+        id S229604AbiJUFNl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 21 Oct 2022 01:13:41 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36606 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229783AbiJUDpo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Oct 2022 23:45:44 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 740081826FC;
-        Thu, 20 Oct 2022 20:45:34 -0700 (PDT)
-Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.56])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4Mtqxd0RLNzVhmn;
-        Fri, 21 Oct 2022 11:40:53 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
- (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.31; Fri, 21 Oct
- 2022 11:45:32 +0800
-From:   Baokun Li <libaokun1@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <ritesh.list@gmail.com>, <linux-kernel@vger.kernel.org>,
-        <yi.zhang@huawei.com>, <yukuai3@huawei.com>, <libaokun1@huawei.com>
-Subject: [PATCH v2 1/2] ext4: fix bug_on in __es_tree_search caused by wrong s_usr_quota_inum
-Date:   Fri, 21 Oct 2022 12:07:30 +0800
-Message-ID: <20221021040731.4180649-2-libaokun1@huawei.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20221021040731.4180649-1-libaokun1@huawei.com>
-References: <20221021040731.4180649-1-libaokun1@huawei.com>
+        with ESMTP id S229889AbiJUFNk (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Oct 2022 01:13:40 -0400
+Received: from mga03.intel.com (mga03.intel.com [134.134.136.65])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8D1A2224AAE;
+        Thu, 20 Oct 2022 22:13:38 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1666329218; x=1697865218;
+  h=date:from:to:cc:subject:message-id:mime-version:
+   content-transfer-encoding;
+  bh=tSgW7eWdGSIprhy1GtLWEOVyBo94BWT87FvHLv7N54g=;
+  b=cQy/E6nX3Q3jk+Yf64HVUzQNYF1l9kXw3rxNZZEppEzizm2x8fGHQenK
+   /WWkCWiBb6QN0A5iU0LyLDfkWlS631D1TqYkq371vl0L6DskZO1kcrx3A
+   cFxJNNQmfVQ3DfRUWvw49pmQ3yfyW6+E+X4McKL3WHdFNzn+63GwwMMAD
+   POzPRgWy64tOvvDvJW6ePGS8XN0sWGoA83w8ourM20N+tbS5EOmrgL6pj
+   x3DMj/rLMz/w+tN6403L5wreWbqaPBnKtDvpn/vSrJ072SPu3WRCw+iMU
+   SLERjrpx32vWJj9VZBzPW/YJcutyCo7YP23ijCclGgJW8WQBmaB/zUILk
+   Q==;
+X-IronPort-AV: E=McAfee;i="6500,9779,10506"; a="308598523"
+X-IronPort-AV: E=Sophos;i="5.95,200,1661842800"; 
+   d="scan'208";a="308598523"
+Received: from orsmga007.jf.intel.com ([10.7.209.58])
+  by orsmga103.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 20 Oct 2022 22:13:30 -0700
+X-ExtLoop1: 1
+X-IronPort-AV: E=McAfee;i="6500,9779,10506"; a="625138409"
+X-IronPort-AV: E=Sophos;i="5.95,200,1661842800"; 
+   d="scan'208";a="625138409"
+Received: from lkp-server02.sh.intel.com (HELO b6d29c1a0365) ([10.239.97.151])
+  by orsmga007.jf.intel.com with ESMTP; 20 Oct 2022 22:13:28 -0700
+Received: from kbuild by b6d29c1a0365 with local (Exim 4.96)
+        (envelope-from <lkp@intel.com>)
+        id 1olkLX-0002DY-1V;
+        Fri, 21 Oct 2022 05:13:27 +0000
+Date:   Fri, 21 Oct 2022 13:12:55 +0800
+From:   kernel test robot <lkp@intel.com>
+To:     Andrew Morton <akpm@linux-foundation.org>
+Cc:     ntfs3@lists.linux.dev, linux-parisc@vger.kernel.org,
+        linux-mediatek@lists.infradead.org, linux-ext4@vger.kernel.org,
+        linux-arm-kernel@lists.infradead.org,
+        Linux Memory Management List <linux-mm@kvack.org>
+Subject: [linux-next:master] BUILD REGRESSION
+ acee3e83b493505058d1e48fce167f623dac1a05
+Message-ID: <63522a57.pwxlK8v2/w+DMFI9%lkp@intel.com>
+User-Agent: Heirloom mailx 12.5 6/20/10
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems704-chm.china.huawei.com (10.3.19.181) To
- dggpeml500021.china.huawei.com (7.185.36.21)
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-We got a issue as fllows:
-==================================================================
- kernel BUG at fs/ext4/extents_status.c:202!
- invalid opcode: 0000 [#1] PREEMPT SMP
- CPU: 1 PID: 810 Comm: mount Not tainted 6.1.0-rc1-next-g9631525255e3 #352
- RIP: 0010:__es_tree_search.isra.0+0xb8/0xe0
- RSP: 0018:ffffc90001227900 EFLAGS: 00010202
- RAX: 0000000000000000 RBX: 0000000077512a0f RCX: 0000000000000000
- RDX: 0000000000000002 RSI: 0000000000002a10 RDI: ffff8881004cd0c8
- RBP: ffff888177512ac8 R08: 47ffffffffffffff R09: 0000000000000001
- R10: 0000000000000001 R11: 00000000000679af R12: 0000000000002a10
- R13: ffff888177512d88 R14: 0000000077512a10 R15: 0000000000000000
- FS: 00007f4bd76dbc40(0000)GS:ffff88842fd00000(0000)knlGS:0000000000000000
- CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
- CR2: 00005653bf993cf8 CR3: 000000017bfdf000 CR4: 00000000000006e0
- DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
- DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
- Call Trace:
-  <TASK>
-  ext4_es_cache_extent+0xe2/0x210
-  ext4_cache_extents+0xd2/0x110
-  ext4_find_extent+0x5d5/0x8c0
-  ext4_ext_map_blocks+0x9c/0x1d30
-  ext4_map_blocks+0x431/0xa50
-  ext4_getblk+0x82/0x340
-  ext4_bread+0x14/0x110
-  ext4_quota_read+0xf0/0x180
-  v2_read_header+0x24/0x90
-  v2_check_quota_file+0x2f/0xa0
-  dquot_load_quota_sb+0x26c/0x760
-  dquot_load_quota_inode+0xa5/0x190
-  ext4_enable_quotas+0x14c/0x300
-  __ext4_fill_super+0x31cc/0x32c0
-  ext4_fill_super+0x115/0x2d0
-  get_tree_bdev+0x1d2/0x360
-  ext4_get_tree+0x19/0x30
-  vfs_get_tree+0x26/0xe0
-  path_mount+0x81d/0xfc0
-  do_mount+0x8d/0xc0
-  __x64_sys_mount+0xc0/0x160
-  do_syscall_64+0x35/0x80
-  entry_SYSCALL_64_after_hwframe+0x63/0xcd
-  </TASK>
-==================================================================
+tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git master
+branch HEAD: acee3e83b493505058d1e48fce167f623dac1a05  Add linux-next specific files for 20221020
 
-Above issue may happen as follows:
--------------------------------------
-ext4_fill_super
- ext4_orphan_cleanup
-  ext4_enable_quotas
-   ext4_quota_enable
-    ext4_iget --> get error inode <5>
-     ext4_ext_check_inode --> Wrong imode makes it escape inspection
-     make_bad_inode(inode) --> EXT4_BOOT_LOADER_INO set imode
-    dquot_load_quota_inode
-     vfs_setup_quota_inode --> check pass
-     dquot_load_quota_sb
-      v2_check_quota_file
-       v2_read_header
-        ext4_quota_read
-         ext4_bread
-          ext4_getblk
-           ext4_map_blocks
-            ext4_ext_map_blocks
-             ext4_find_extent
-              ext4_cache_extents
-               ext4_es_cache_extent
-                __es_tree_search.isra.0
-                 ext4_es_end --> Wrong extents trigger BUG_ON
+Error/Warning reports:
 
-In the above issue, s_usr_quota_inum is set to 5, but inode<5> contains
-incorrect imode and disordered extents. Because 5 is EXT4_BOOT_LOADER_INO,
-the ext4_ext_check_inode check in the ext4_iget function can be bypassed,
-finally, the extents that are not checked trigger the BUG_ON in the
-__es_tree_search function. To solve this issue, check whether qf_inode
-obtained by ext4_iget is bad_inode.
+https://lore.kernel.org/linux-mm/202210090954.pTR6m6rj-lkp@intel.com
+https://lore.kernel.org/linux-mm/202210110857.9s0tXVNn-lkp@intel.com
 
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
----
- fs/ext4/super.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Error/Warning: (recently discovered and may have been fixed)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7a57dadfe256..5a5f95c6a0cb 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -6907,9 +6907,9 @@ static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
- 		return -EPERM;
- 
- 	qf_inode = ext4_iget(sb, qf_inums[type], EXT4_IGET_SPECIAL);
--	if (IS_ERR(qf_inode)) {
-+	if (IS_ERR(qf_inode) || is_bad_inode(qf_inode)) {
- 		ext4_error(sb, "Bad quota inode # %lu", qf_inums[type]);
--		return PTR_ERR(qf_inode);
-+		return IS_ERR(qf_inode) ? PTR_ERR(qf_inode) : -EUCLEAN;
- 	}
- 
- 	/* Don't account quota for quota files to avoid recursion */
+ERROR: modpost: "devm_ioremap_resource" [drivers/dma/idma64.ko] undefined!
+ERROR: modpost: "devm_ioremap_resource" [drivers/dma/qcom/hdma.ko] undefined!
+arch/parisc/kernel/drivers.c:337 print_hwpath() warn: impossible condition '(path->bc[i] == -1) => (0-255 == (-1))'
+arch/parisc/kernel/drivers.c:410 setup_bus_id() warn: impossible condition '(path.bc[i] == -1) => (0-255 == (-1))'
+arch/parisc/kernel/drivers.c:486 create_parisc_device() warn: impossible condition '(modpath->bc[i] == -1) => (0-255 == (-1))'
+arch/parisc/kernel/drivers.c:759 hwpath_to_device() warn: impossible condition '(modpath->bc[i] == -1) => (0-255 == (-1))'
+fs/ext4/super.c:1744:19: warning: 'deprecated_msg' defined but not used [-Wunused-const-variable=]
+
+Error/Warning ids grouped by kconfigs:
+
+gcc_recent_errors
+|-- i386-allyesconfig
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- i386-defconfig
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- i386-randconfig-a003
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- i386-randconfig-a005
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- i386-randconfig-a012
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- i386-randconfig-a014
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- i386-randconfig-a016
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- parisc-randconfig-m041-20221019
+|   |-- arch-parisc-kernel-drivers.c-create_parisc_device()-warn:impossible-condition-(modpath-bc-i-)-(-)
+|   |-- arch-parisc-kernel-drivers.c-hwpath_to_device()-warn:impossible-condition-(modpath-bc-i-)-(-)
+|   |-- arch-parisc-kernel-drivers.c-print_hwpath()-warn:impossible-condition-(path-bc-i-)-(-)
+|   `-- arch-parisc-kernel-drivers.c-setup_bus_id()-warn:impossible-condition-(path.bc-i-)-(-)
+|-- s390-allmodconfig
+|   |-- ERROR:devm_ioremap_resource-drivers-dma-idma64.ko-undefined
+|   `-- ERROR:devm_ioremap_resource-drivers-dma-qcom-hdma.ko-undefined
+|-- x86_64-allyesconfig
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- x86_64-defconfig
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- x86_64-randconfig-a002
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- x86_64-randconfig-a006
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- x86_64-randconfig-a011
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- x86_64-randconfig-a015
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- x86_64-randconfig-m001
+|   `-- arch-x86-kernel-apic-apic.c-generic_processor_info()-warn:always-true-condition-(num_processors-()-)-(-u32max-)
+|-- x86_64-rhel-8.3
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- x86_64-rhel-8.3-func
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- x86_64-rhel-8.3-kselftests
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- x86_64-rhel-8.3-kunit
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+|-- x86_64-rhel-8.3-kvm
+|   `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+`-- x86_64-rhel-8.3-syz
+    `-- fs-ext4-super.c:warning:deprecated_msg-defined-but-not-used
+clang_recent_errors
+|-- arm-mmp2_defconfig
+|   `-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
+|-- arm-s3c2410_defconfig
+|   `-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
+|-- arm64-randconfig-r013-20221019
+|   |-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
+|   `-- fs-ntfs3-namei.c:warning:variable-uni1-is-used-uninitialized-whenever-if-condition-is-true
+|-- hexagon-randconfig-r006-20221019
+|   |-- drivers-phy-mediatek-phy-mtk-hdmi-mt2701.c:warning:result-of-comparison-of-constant-with-expression-of-type-typeof-(_Generic((mask_)-char:(unsigned-char)-unsigned-char:(unsigned-char)-signed-char:(uns
+|   |-- drivers-phy-mediatek-phy-mtk-hdmi-mt8173.c:warning:result-of-comparison-of-constant-with-expression-of-type-typeof-(_Generic((mask_)-char:(unsigned-char)-unsigned-char:(unsigned-char)-signed-char:(uns
+|   |-- drivers-phy-mediatek-phy-mtk-mipi-dsi-mt8173.c:warning:result-of-comparison-of-constant-with-expression-of-type-typeof-(_Generic((mask_)-char:(unsigned-char)-unsigned-char:(unsigned-char)-signed-char:
+|   |-- drivers-phy-mediatek-phy-mtk-mipi-dsi-mt8183.c:warning:result-of-comparison-of-constant-with-expression-of-type-typeof-(_Generic((mask_)-char:(unsigned-char)-unsigned-char:(unsigned-char)-signed-char:
+|   |-- drivers-phy-mediatek-phy-mtk-tphy.c:warning:result-of-comparison-of-constant-with-expression-of-type-typeof-(_Generic((mask_)-char:(unsigned-char)-unsigned-char:(unsigned-char)-signed-char:(unsigned-c
+|   `-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
+|-- hexagon-randconfig-r041-20221019
+|   |-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
+|   `-- fs-ntfs3-namei.c:warning:variable-uni1-is-used-uninitialized-whenever-if-condition-is-true
+|-- hexagon-randconfig-r045-20221019
+|   |-- drivers-phy-mediatek-phy-mtk-hdmi-mt2701.c:warning:result-of-comparison-of-constant-with-expression-of-type-typeof-(_Generic((mask_)-char:(unsigned-char)-unsigned-char:(unsigned-char)-signed-char:(uns
+|   |-- drivers-phy-mediatek-phy-mtk-hdmi-mt8173.c:warning:result-of-comparison-of-constant-with-expression-of-type-typeof-(_Generic((mask_)-char:(unsigned-char)-unsigned-char:(unsigned-char)-signed-char:(uns
+|   `-- drivers-phy-mediatek-phy-mtk-tphy.c:warning:result-of-comparison-of-constant-with-expression-of-type-typeof-(_Generic((mask_)-char:(unsigned-char)-unsigned-char:(unsigned-char)-signed-char:(unsigned-c
+|-- i386-randconfig-a002
+|   |-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
+|   `-- fs-ntfs3-namei.c:warning:variable-uni1-is-used-uninitialized-whenever-if-condition-is-true
+|-- i386-randconfig-a004
+|   |-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
+|   `-- fs-ntfs3-namei.c:warning:variable-uni1-is-used-uninitialized-whenever-if-condition-is-true
+|-- i386-randconfig-a011
+|   |-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
+|   `-- fs-ntfs3-namei.c:warning:variable-uni1-is-used-uninitialized-whenever-if-condition-is-true
+|-- i386-randconfig-a013
+|   `-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
+|-- i386-randconfig-a015
+|   |-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
+|   `-- fs-ntfs3-namei.c:warning:variable-uni1-is-used-uninitialized-whenever-if-condition-is-true
+|-- powerpc-allmodconfig
+|   |-- drivers-phy-mediatek-phy-mtk-hdmi-mt2701.c:warning:result-of-comparison-of-constant-with-expression-of-type-typeof-(_Generic((mask_)-char:(unsigned-char)-unsigned-char:(unsigned-char)-signed-char:(uns
+|   |-- drivers-phy-mediatek-phy-mtk-hdmi-mt8173.c:warning:result-of-comparison-of-constant-with-expression-of-type-typeof-(_Generic((mask_)-char:(unsigned-char)-unsigned-char:(unsigned-char)-signed-char:(uns
+|   |-- drivers-phy-mediatek-phy-mtk-mipi-dsi-mt8173.c:warning:result-of-comparison-of-constant-with-expression-of-type-typeof-(_Generic((mask_)-char:(unsigned-char)-unsigned-char:(unsigned-char)-signed-char:
+|   |-- drivers-phy-mediatek-phy-mtk-mipi-dsi-mt8183.c:warning:result-of-comparison-of-constant-with-expression-of-type-typeof-(_Generic((mask_)-char:(unsigned-char)-unsigned-char:(unsigned-char)-signed-char:
+|   |-- drivers-phy-mediatek-phy-mtk-tphy.c:warning:result-of-comparison-of-constant-with-expression-of-type-typeof-(_Generic((mask_)-char:(unsigned-char)-unsigned-char:(unsigned-char)-signed-char:(unsigned-c
+|   |-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
+|   `-- fs-ntfs3-namei.c:warning:variable-uni1-is-used-uninitialized-whenever-if-condition-is-true
+|-- powerpc-mpc512x_defconfig
+|   `-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
+|-- s390-randconfig-r044-20221019
+|   `-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
+|-- x86_64-randconfig-a005
+|   |-- fs-ext4-super.c:warning:unused-variable-deprecated_msg
+|   `-- fs-ntfs3-namei.c:warning:variable-uni1-is-used-uninitialized-whenever-if-condition-is-true
+
+elapsed time: 1482m
+
+configs tested: 74
+configs skipped: 3
+
+gcc tested configs:
+powerpc                           allnoconfig
+arc                                 defconfig
+um                             i386_defconfig
+um                           x86_64_defconfig
+i386                          randconfig-a001
+x86_64                              defconfig
+i386                          randconfig-a003
+x86_64                           rhel-8.3-syz
+alpha                               defconfig
+x86_64                         rhel-8.3-kunit
+sh                               allmodconfig
+i386                          randconfig-a005
+alpha                            allyesconfig
+x86_64                           rhel-8.3-kvm
+x86_64                          rhel-8.3-func
+s390                             allmodconfig
+x86_64                               rhel-8.3
+mips                             allyesconfig
+x86_64                    rhel-8.3-kselftests
+arc                              allyesconfig
+powerpc                          allmodconfig
+m68k                             allyesconfig
+x86_64                           allyesconfig
+s390                                defconfig
+arc                  randconfig-r043-20221019
+m68k                             allmodconfig
+x86_64                        randconfig-a004
+s390                             allyesconfig
+arm                                 defconfig
+x86_64                        randconfig-a002
+x86_64                        randconfig-a006
+i386                                defconfig
+x86_64                        randconfig-a013
+i386                             allyesconfig
+i386                          randconfig-a014
+i386                          randconfig-a012
+x86_64                        randconfig-a015
+i386                          randconfig-a016
+x86_64                        randconfig-a011
+arm                              allyesconfig
+arm64                            allyesconfig
+xtensa                    smp_lx200_defconfig
+mips                         db1xxx_defconfig
+arc                        vdk_hs38_defconfig
+powerpc                      ppc40x_defconfig
+sh                           se7712_defconfig
+m68k                         apollo_defconfig
+loongarch                           defconfig
+nios2                         10m50_defconfig
+sh                           se7343_defconfig
+sh                           se7750_defconfig
+
+clang tested configs:
+i386                          randconfig-a002
+i386                          randconfig-a004
+i386                          randconfig-a006
+riscv                randconfig-r042-20221019
+hexagon              randconfig-r045-20221019
+hexagon              randconfig-r041-20221019
+x86_64                        randconfig-a005
+s390                 randconfig-r044-20221019
+x86_64                        randconfig-a001
+x86_64                        randconfig-a003
+i386                          randconfig-a013
+x86_64                          rhel-8.3-rust
+i386                          randconfig-a015
+x86_64                        randconfig-a012
+i386                          randconfig-a011
+x86_64                        randconfig-a014
+arm                       mainstone_defconfig
+powerpc                      obs600_defconfig
+arm                            mmp2_defconfig
+mips                           ip28_defconfig
+s390                             alldefconfig
+arm                         s3c2410_defconfig
+powerpc                     mpc512x_defconfig
+powerpc                          allmodconfig
+
 -- 
-2.31.1
-
+0-DAY CI Kernel Test Service
+https://01.org/lkp
