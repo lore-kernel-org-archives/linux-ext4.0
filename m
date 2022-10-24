@@ -2,71 +2,112 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 225DBC433FE
-	for <linux-ext4@archiver.kernel.org>; Sat, 22 Oct 2022 12:45:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F19DECAAA1
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Oct 2022 10:46:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229576AbiJVMpr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 22 Oct 2022 08:45:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58158 "EHLO
+        id S229649AbiJXKqi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 24 Oct 2022 06:46:38 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46316 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229520AbiJVMpp (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Oct 2022 08:45:45 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0AF7099398
-        for <linux-ext4@vger.kernel.org>; Sat, 22 Oct 2022 05:45:43 -0700 (PDT)
-Received: from canpemm500004.china.huawei.com (unknown [172.30.72.54])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4MvgtN2xSLzVhkZ;
-        Sat, 22 Oct 2022 20:41:00 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by canpemm500004.china.huawei.com
- (7.192.104.92) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.31; Sat, 22 Oct
- 2022 20:45:41 +0800
-From:   Jason Yan <yanaijie@huawei.com>
-To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <ritesh.list@gmail.com>, <lczerner@redhat.com>,
-        <linux-ext4@vger.kernel.org>
-CC:     Jason Yan <yanaijie@huawei.com>
-Subject: [PATCH] ext4: fix wrong return err in ext4_load_and_init_journal()
-Date:   Sat, 22 Oct 2022 21:07:39 +0800
-Message-ID: <20221022130739.2515834-1-yanaijie@huawei.com>
-X-Mailer: git-send-email 2.31.1
+        with ESMTP id S229556AbiJXKqh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Oct 2022 06:46:37 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4A328175BF
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Oct 2022 03:46:36 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id EC8F822166;
+        Mon, 24 Oct 2022 10:46:34 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1666608394; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=2FvHy61zNNsqFHsuY2jmJJqiKx6vhdiyCJYsyr/Sidg=;
+        b=eXh+WShiPYnDYKYQ6u0ryuOLEHmYI/11W0LGpSdT/qPMlMT2v29xXszs6xSMlSNSiDHI2h
+        p+5E6QVsFp8r5oMF+YrgxSeS37vQzJ9lxoqL94bTLf+KKIvRvtzNbRrnPqrKtmUv7lODjn
+        OFS5f7KixEhDDzWFRImFbBLWSa3X/vw=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1666608394;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=2FvHy61zNNsqFHsuY2jmJJqiKx6vhdiyCJYsyr/Sidg=;
+        b=ifyagaWfmcOvEz4qUSEN+bMJaHFbO1WYNzZpEcj3UkbGGH6tY419BT6Z0eO8cyKZ/I/NON
+        sW49orQPm2Yc7aDA==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 3AFD313357;
+        Mon, 24 Oct 2022 10:46:34 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id vuZVDgptVmOAHgAAMHmgww
+        (envelope-from <jack@suse.cz>); Mon, 24 Oct 2022 10:46:34 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id 2A7AFA06F6; Mon, 24 Oct 2022 12:46:28 +0200 (CEST)
+Date:   Mon, 24 Oct 2022 12:46:28 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Thilo Fromm <t-lo@linux.microsoft.com>
+Cc:     Jan Kara <jack@suse.cz>, Ye Bin <yebin10@huawei.com>,
+        jack@suse.com, tytso@mit.edu, linux-ext4@vger.kernel.org,
+        regressions@lists.linux.dev,
+        Jeremi Piotrowski <jpiotrowski@linux.microsoft.com>
+Subject: Re: [syzbot] possible deadlock in jbd2_journal_lock_updates
+Message-ID: <20221024104628.ozxjtdrotysq2haj@quack3>
+References: <20220929082716.5urzcfk4hnapd3cr@quack3>
+ <d8b18ba8-ea12-b617-6b5e-455a1d7b5e21@linux.microsoft.com>
+ <20221004063807.GA30205@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
+ <20221004091035.idjgo2xyscf6ovnv@quack3>
+ <eeb17fca-4e79-b39f-c394-a6fa6873eb26@linux.microsoft.com>
+ <20221005151053.7jjgc7uhvquo6a5n@quack3>
+ <20221010142410.GA1689@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
+ <2ede5fce-7077-6e64-93a9-a7d993bc498f@linux.microsoft.com>
+ <20221014132543.i3aiyx4ent4qwy4i@quack3>
+ <d30f4e74-aa75-743d-3c89-80ec61d67c6c@linux.microsoft.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
- canpemm500004.china.huawei.com (7.192.104.92)
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <d30f4e74-aa75-743d-3c89-80ec61d67c6c@linux.microsoft.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The return value is wrong in ext4_load_and_init_journal(). The local
-variable 'err' need to be initialized before goto out. The original code
-in __ext4_fill_super() is fine because it has two return values 'ret'
-and 'err' and 'ret' is initialized as -EINVAL. After we factor out
-ext4_load_and_init_journal(), this code is broken. So fix it by directly
-returning -EINVAL in the error handler path.
+On Fri 21-10-22 12:23:41, Thilo Fromm wrote:
+> Hello Honza,
+> 
+> > > Just want to make sure this does not get lost - as mentioned earlier,
+> > > reverting 51ae846cff5 leads to a kernel build that does not have this issue.
+> > 
+> > Yes, I'm aware of this and still cannot quite wrap my head how it could be
+> > given the stacktraces I see :) They do not seem to come anywhere near that
+> > code...
+> 
+> Just reaching out to let folks know that we see more reports on this issue
+> coming in for kernels >=5.15.63, see
+> https://github.com/flatcar/Flatcar/issues/847#issuecomment-1286523602.
 
-Fixes: 9c1dd22d7422 (ext4: factor out ext4_load_and_init_journal())
-Signed-off-by: Jason Yan <yanaijie@huawei.com>
----
- fs/ext4/super.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Yeah, I was pondering about this for some time but still I have no clue who
+could be holding the buffer lock (which blocks the task holding the
+transaction open) or how this could related to the commit you have
+identified. I have two things to try:
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 989365b878a6..89c6bad28a8a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4885,7 +4885,7 @@ static int ext4_load_and_init_journal(struct super_block *sb,
- 	flush_work(&sbi->s_error_work);
- 	jbd2_journal_destroy(sbi->s_journal);
- 	sbi->s_journal = NULL;
--	return err;
-+	return -EINVAL;
- }
- 
- static int ext4_journal_data_mode_check(struct super_block *sb)
+1) Can you please check whether the deadlock reproduces also with 6.0
+kernel? The thing is that xattr handling code in ext4 has there some
+additional changes, commit 307af6c8793 ("mbcache: automatically delete
+entries from cache on freeing") in particular. 
+
+2) I have created a debug patch (against 5.15.x stable kernel). Can you
+please reproduce the failure with it and post the output of "echo w
+>/proc/sysrq-trigger" and also the output the debug patch will put into the
+kernel log? It will dump the information about buffer lock owner if we
+cannot get the lock for more than 32 seconds.
+
+Thanks for your help and patience.
+
+								Honza
 -- 
-2.31.1
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
