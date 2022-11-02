@@ -2,121 +2,172 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9502BC433FE
-	for <linux-ext4@archiver.kernel.org>; Wed,  2 Nov 2022 16:13:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A67BC4332F
+	for <linux-ext4@archiver.kernel.org>; Wed,  2 Nov 2022 20:55:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231675AbiKBQNV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 2 Nov 2022 12:13:21 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52114 "EHLO
+        id S231397AbiKBUzN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 2 Nov 2022 16:55:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44848 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231631AbiKBQMI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Nov 2022 12:12:08 -0400
-Received: from mail-pj1-x1029.google.com (mail-pj1-x1029.google.com [IPv6:2607:f8b0:4864:20::1029])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8808B2C674;
-        Wed,  2 Nov 2022 09:11:40 -0700 (PDT)
-Received: by mail-pj1-x1029.google.com with SMTP id b1-20020a17090a7ac100b00213fde52d49so2314784pjl.3;
-        Wed, 02 Nov 2022 09:11:40 -0700 (PDT)
+        with ESMTP id S230504AbiKBUzM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Nov 2022 16:55:12 -0400
+Received: from mail-pj1-x1036.google.com (mail-pj1-x1036.google.com [IPv6:2607:f8b0:4864:20::1036])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 53D5DA467
+        for <linux-ext4@vger.kernel.org>; Wed,  2 Nov 2022 13:55:09 -0700 (PDT)
+Received: by mail-pj1-x1036.google.com with SMTP id q1-20020a17090a750100b002139ec1e999so3010211pjk.1
+        for <linux-ext4@vger.kernel.org>; Wed, 02 Nov 2022 13:55:09 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=T3e61Fb9Dqh0rLEzgpxaQ/B901JahzW9QwTImcYRDNk=;
-        b=pqx1PJqOgEaKfUss0nxJak4n84vFKOvzq3ESyrjGFD8v8ROxU3CQGdvwQuKFd1I/w3
-         dCJ41EX/Bok9xslgktz6xXZZB5vDFu5BXOoWGO34UzLTcVVzuhGdIGcQHvEi5gNg3GSQ
-         gscxO1Gb4psr/vsFsU/1JpKGLnKfg3l6eDymWIA8qk7+XrNzqRLz/vgtPRF4DPnVnb4T
-         PW63xls+m/+8H/fBE5siUOyqDVnX5GNrTviD0Y18uYcvd2toxW0MDmiLDFy+p7D7UQQ6
-         IBU8URj3sypjIFT2nA8r21p6YwsgewrtbGGcm7sfWsWRu0sZsqZoVeMOaVhnUYxkI+jf
-         hvVQ==
+        d=dilger-ca.20210112.gappssmtp.com; s=20210112;
+        h=references:to:cc:in-reply-to:date:subject:mime-version:message-id
+         :from:from:to:cc:subject:date:message-id:reply-to;
+        bh=/8ADIFndQOnIrALBDqQjN84YmHUMrBD46NGumZr+MnE=;
+        b=XoPJ2Fn/YZqbR/iF40bP5tvj2ZBXyM/0KhvCULrGjMso0dL0Eh+M9G040gWnFCi6P4
+         ZgDH89GjSsB4Q+y7X85PH+xE0X1tjQIX5INr/jzGBgc9O6D5YolznmHxwLomDqn23ZIO
+         z0ZX+NBUeWHQ2CXTPflL5nHTid8amzuOZM9LjCpf9epQxTszX0x4s/JkBFmkgDBLydEU
+         yLdkA9h/N80PJw90Xw+t2kkzjP165lB4acANSbMFbZgnd9ZncUG0rIgSLjtGvli1by5z
+         4Ftlnqc10LsZgmWBNa4rppDzGq/3ikYT8NFwVnEfHCWHqP0nFiH/Woh4z3LP37tjSfzF
+         pWuA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=T3e61Fb9Dqh0rLEzgpxaQ/B901JahzW9QwTImcYRDNk=;
-        b=YmUupG7+40vpkFo5FeZHeZnyBRgb0unk3+IU0m9KM5NHl9y6ROwcmCSUppd0EEDalu
-         +W1hmKxby4hrpumwcvQoj4kx0DRgVslNeMWmvCcdj4XK5pG46B4S1cje9EeGX6ewEG3N
-         7XdL8KSM1lnk8K+ALUvlFDeBafim3mVmdtHwaIBINvPZ18QH/BEqnRUnj+ZUXigDzieG
-         BvSbBGjp/4hrAQCfXRaybXRn2TNF9yyNaTx48fKnbnT4U/kC9HfRmer/4f885HkFaoyP
-         fhcq1hUwxbE0I50ikAUP9eWVO66ERYjiFPdrn7xl/WvWeP4A/NwLGCY+C30nPnNy2vQx
-         81wg==
-X-Gm-Message-State: ACrzQf3k/7kEwfKo9QksgZqWKkqzuFEwwTo23NnDvK6HCfm99WDqtq8L
-        /T0Vr61yF909TJX7prGCx/zsU4NRkbfStw==
-X-Google-Smtp-Source: AMsMyM4+pj++Af4Edyb2QUG36sMaov5LKSRDOi2tknVjdB5MdIhE6lghLouhN9qeqBdhiOHeQb9nDw==
-X-Received: by 2002:a17:90a:9a8f:b0:212:ea8d:dc34 with SMTP id e15-20020a17090a9a8f00b00212ea8ddc34mr45089840pjp.30.1667405500003;
-        Wed, 02 Nov 2022 09:11:40 -0700 (PDT)
-Received: from fedora.hsd1.ca.comcast.net ([2601:644:8002:1c20::8080])
-        by smtp.googlemail.com with ESMTPSA id ms4-20020a17090b234400b00210c84b8ae5sm1632101pjb.35.2022.11.02.09.11.38
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 02 Nov 2022 09:11:39 -0700 (PDT)
-From:   "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
-To:     linux-fsdevel@vger.kernel.org
-Cc:     linux-afs@lists.infradead.org, linux-kernel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-nilfs@vger.kernel.org, linux-mm@kvack.org,
-        "Vishal Moola (Oracle)" <vishal.moola@gmail.com>,
-        Ryusuke Konishi <konishi.ryusuke@gmail.com>
-Subject: [PATCH v4 22/23] nilfs2: Convert nilfs_clear_dirty_pages() to use filemap_get_folios_tag()
-Date:   Wed,  2 Nov 2022 09:10:30 -0700
-Message-Id: <20221102161031.5820-23-vishal.moola@gmail.com>
-X-Mailer: git-send-email 2.38.1
-In-Reply-To: <20221102161031.5820-1-vishal.moola@gmail.com>
-References: <20221102161031.5820-1-vishal.moola@gmail.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        h=references:to:cc:in-reply-to:date:subject:mime-version:message-id
+         :from:x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=/8ADIFndQOnIrALBDqQjN84YmHUMrBD46NGumZr+MnE=;
+        b=iKreZMc4Cc6u9j6bwEl/Ody7Xb66iQNjEWy27h+umCNcnm+ki826e36WxgAJdop7nb
+         HZu6QREOvI8iRWWyfiuY5VQerCGsaiOu9wmMhIEO4Cly+lkp0STvYUkJF/NxX3sipgZo
+         KKJlx9ZBfkF6y+Jet6uImX4N4T+TxzjFl+0xCY3qaBRgSkhiyoDfphdvd4xRlqT/sxis
+         5/2EG7Demi4eOtjt15v53VLxL3io/JjDj/oMZv4K0wX5FLCDaELuSNQQ86hfq/Y/mXwW
+         JMfB/u9BsZpoW4mTNPRMCwgJ6v+HqOk3kXPChOQuvBLlb3qec8r4HjYuf7PCL9NDyLxb
+         xK/w==
+X-Gm-Message-State: ACrzQf0dC+PEUECxP+S8+GQcaH31/OAFuN6DtyzgrmOoDDUz59ieMv+a
+        1MlYsmaQX/N8a+re+HK6I+NOE5WheRMgp/fN
+X-Google-Smtp-Source: AMsMyM7eGSg+xKaY5ZBjDQLMIA0JXMa9OOywmTtfcsm8AWzpW0Z3Il/osMMJwtjbPfaRCX7bx0Pocg==
+X-Received: by 2002:a17:902:d70e:b0:178:2d9d:ba7b with SMTP id w14-20020a170902d70e00b001782d9dba7bmr26455002ply.90.1667422508786;
+        Wed, 02 Nov 2022 13:55:08 -0700 (PDT)
+Received: from cabot.adilger.int (S01061cabc081bf83.cg.shawcable.net. [70.77.221.9])
+        by smtp.gmail.com with ESMTPSA id f1-20020a170902f38100b00176ab6a0d5fsm8770542ple.54.2022.11.02.13.55.07
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 02 Nov 2022 13:55:07 -0700 (PDT)
+From:   Andreas Dilger <adilger@dilger.ca>
+Message-Id: <B8D39676-D175-4AC9-B74B-95D4AAF03A9A@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_F738C8B4-8AF1-4535-832F-B00CDB8CD548";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [e2fsprogs PATCH] e2fsck: don't allow journal inode to have
+ encrypt flag
+Date:   Wed, 2 Nov 2022 14:55:05 -0600
+In-Reply-To: <20221102053554.190282-1-ebiggers@kernel.org>
+Cc:     linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org
+To:     Eric Biggers <ebiggers@kernel.org>
+References: <20221102053554.190282-1-ebiggers@kernel.org>
+X-Mailer: Apple Mail (2.3273)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Convert function to use folios throughout. This is in preparation for
-the removal of find_get_pages_range_tag(). This change removes 2 calls
-to compound_head().
 
-Signed-off-by: Vishal Moola (Oracle) <vishal.moola@gmail.com>
-Acked-by: Ryusuke Konishi <konishi.ryusuke@gmail.com>
----
- fs/nilfs2/page.c | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+--Apple-Mail=_F738C8B4-8AF1-4535-832F-B00CDB8CD548
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-diff --git a/fs/nilfs2/page.c b/fs/nilfs2/page.c
-index d921542a9593..41ccd43cd979 100644
---- a/fs/nilfs2/page.c
-+++ b/fs/nilfs2/page.c
-@@ -358,22 +358,22 @@ void nilfs_copy_back_pages(struct address_space *dmap,
-  */
- void nilfs_clear_dirty_pages(struct address_space *mapping, bool silent)
- {
--	struct pagevec pvec;
-+	struct folio_batch fbatch;
- 	unsigned int i;
- 	pgoff_t index = 0;
- 
--	pagevec_init(&pvec);
-+	folio_batch_init(&fbatch);
- 
--	while (pagevec_lookup_tag(&pvec, mapping, &index,
--					PAGECACHE_TAG_DIRTY)) {
--		for (i = 0; i < pagevec_count(&pvec); i++) {
--			struct page *page = pvec.pages[i];
-+	while (filemap_get_folios_tag(mapping, &index, (pgoff_t)-1,
-+				PAGECACHE_TAG_DIRTY, &fbatch)) {
-+		for (i = 0; i < folio_batch_count(&fbatch); i++) {
-+			struct folio *folio = fbatch.folios[i];
- 
--			lock_page(page);
--			nilfs_clear_dirty_page(page, silent);
--			unlock_page(page);
-+			folio_lock(folio);
-+			nilfs_clear_dirty_page(&folio->page, silent);
-+			folio_unlock(folio);
- 		}
--		pagevec_release(&pvec);
-+		folio_batch_release(&fbatch);
- 		cond_resched();
- 	}
- }
--- 
-2.38.1
+On Nov 1, 2022, at 11:35 PM, Eric Biggers <ebiggers@kernel.org> wrote:
+>=20
+> From: Eric Biggers <ebiggers@google.com>
+>=20
+> Since the kernel is being fixed to consider journal inodes with the
+> 'encrypt' flag set to be invalid, also update e2fsck accordingly.
+>=20
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> ---
+> e2fsck/journal.c                   |   3 ++-
+> tests/f_badjour_encrypted/expect.1 |  30 +++++++++++++++++++++++++++++
+> tests/f_badjour_encrypted/expect.2 |   7 +++++++
+> tests/f_badjour_encrypted/image.gz | Bin 0 -> 2637 bytes
 
+Good to have a test case for this.
+
+In the past Ted has asked that new test cases are generated via mke2fs
+and debugfs in "f_XXX/script" file rather than a binary image, if =
+possible.
+That avoids saving a binary blob in Git, and also makes it much more
+clear in the future what is done to the filesystem to corrupt it, rather
+than having to reverse engineer this from the bits on disk.
+
+Something like tests/f_dup4/script is a good example of this.  You may
+be able to use something as simple as the following:
+
+    touch $TMPFILE
+    $MKE2FS -t ext4 -b 1024 -J size=3D4 ... $TMPFILE 16384
+    $DEBUGFS -w -R 'set_inode_field <8> flags 0x800' $TMPFILE
+    . $cmd_dir/run_e2fsck
+
+It might be more involved, depending on how the journal was corrupted.
+For complex debugfs changes, it is better to use a "here" document to
+perform multiple commands than running debugfs multiple times.
+
+The script is also much more compact than the binary image, and =
+tolerates
+changes a lot better as well.
+
+Cheers, Andreas
+
+> diff --git a/tests/f_badjour_encrypted/image.gz =
+b/tests/f_badjour_encrypted/image.gz
+> new file mode 100644
+> index =
+0000000000000000000000000000000000000000..660496ea5bba9b5589e6ce522feb998a=
+56ab946a
+> GIT binary patch
+> literal 2637
+> zcmb2|=3D3oE;CgwMHnR%A}ly$iH+hCjen-$w~Z}VkIC+6NxyCc!NYR5sNh}+xBbE4nR
+> zN&o!s6aW5(lcp<{UH`qxzUS4ptP5pfA=3D=3Dwwf8L3{|MOkc?r&esd8Bgo#^iqA5gFQC
+> z<@R-dVr@lCdHkR5{rAnDhwlG>jraZU^QHBbXJlmsKi|6fW!ukpZ~6bfSpUB2;pTmx
+> zj{M*I=3D+61|wWkw4%t_n+w)pIx)GIr3+pcz<UH*C1)vHaf+5&5L-JN;=3DTiBLGj=3DQD!=
+
+> zvwYR3oA+2BEcm`&zU2O)tkADJdjH<PwxLjZ&!1oZHNUt0v)ga`;{kvAnl~H3enld#
+> z$+@%1mc~a}A54fin`clHvi0Skf*&i~udaD@=3Di-@%?sorPp11i^EC2t^@q3p&nP$X3
+> zzi$!s_i3c{*ZQX!$^Q>{-utf_{{O+ORnhK@!q@)4KVSKq`3wIq_AmS|<S*DSsCW3^
+> z@Q?8?^DlP4J^%iH{<8evDyi)kD?Tqg`0VhxvhA|(9o0n`65ek4mi5+?8xj$4$636y
+> z`F^c@U-jvQi=3DWK?|9-~qcRR0El+UlfvVnKm_Je1l*?MoM1?axIu;=3DxksEaRLt^f1+
+> zcI>}%!KM17_pFRy`>QV2pCx6B<9`)>o$;~a`cLx=3D*Y;<@Z|{cwUm;riQQi9d{>A@(
+> z&c6T7uKx1sm(kDuuPD6Dvs!ev|MSq*t68t|F8)>W`}uD3t6l#pUM)HIKYZ_&&TqRj
+> zWsCn;=3D6#)UcWr%}?)}rh(#y8)a4!C~Kik#*_w$dx|Fgp#PX@#7>W*1KzH66-US2JE
+> z^-NZn>F!y<XV*Rp{k)o$kqqNTwTy<qXb9jBf%d~z-yS%C)HqDo|5YJ89>4NY+0hUf
+> k4S}H$0uFBvZUnjWfI|K2%r`6YXzOOCSzdj93=3D9ek0BUk;ZvX%Q
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_F738C8B4-8AF1-4535-832F-B00CDB8CD548
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAmNi2SkACgkQcqXauRfM
+H+D6Ag//WGQEg7Rk/DpzwGYxVQbpNdy7mrvDN5zPPJZG0ZyJNoh/TKhRaOc/00jX
+oAAfQv49V7hF76Hwr+uyD163w/xV8Aa6Grswlqdq0t1XyklfJOVFmTpIVfIb3dLg
+cvuyHNedx8KPHmxgs/ztv1MU4q59w9/G6LXWOiWltQC3rI1gjhCYfd9YnqxRtMZb
+nwssdswyPuOyI419qYco7t1e4Fmdgp23bd1hX+WyUDSLiagQajts7xMEn0iWOj1k
+Pkuv3MupcniYwcftM0nQQARzK0c3XetwVmFS1cwdxD1lq0c9wjTlkig1lpQCvFYR
+s+ka/HMojr29ch9K0OY4PWv2wU2M4PvlkxwYLlgIPkeY388Sh8VZTWbeGEc0ZJcB
+TQQdsDlsm2L4EsCSiTTsap/0H1/i5uIoL0u53VizFu808cM1eb1TQrU3yBh8EQN6
+LY2JRM6IDFlmG8PQUWt75UYev9KsSGSANWru4Dl4DPX0MX5JIcDSBfFKaR4ZSXOE
+IOqj+KOGPyRorVyFnEmEZ1Gb4kcE0qhkCWCjrAZXM+bhRMXjBwQV5cOL4liOP56k
+ChB7uNZ/VgBWruq//1c6w0P0BLaDrxXx+G6mP5nYH7DnLl/hFCqj4GMqJtp4/uMI
+F+inn+281xDTv2ZL6Zkp56vMy3thO8PKf/h/aj7gVT3ciq4caHM=
+=DuZ8
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_F738C8B4-8AF1-4535-832F-B00CDB8CD548--
