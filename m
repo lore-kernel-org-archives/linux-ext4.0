@@ -2,66 +2,64 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D10FAC4332F
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Nov 2022 12:30:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 69F37C4332F
+	for <linux-ext4@archiver.kernel.org>; Mon,  7 Nov 2022 12:30:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232284AbiKGMat (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 7 Nov 2022 07:30:49 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54132 "EHLO
+        id S231831AbiKGMau (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Nov 2022 07:30:50 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54230 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232134AbiKGM3I (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Nov 2022 07:29:08 -0500
-Received: from mail-pj1-x1034.google.com (mail-pj1-x1034.google.com [IPv6:2607:f8b0:4864:20::1034])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 17E93A186
-        for <linux-ext4@vger.kernel.org>; Mon,  7 Nov 2022 04:29:08 -0800 (PST)
-Received: by mail-pj1-x1034.google.com with SMTP id q1-20020a17090a750100b002139ec1e999so10148326pjk.1
-        for <linux-ext4@vger.kernel.org>; Mon, 07 Nov 2022 04:29:08 -0800 (PST)
+        with ESMTP id S232208AbiKGM31 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Nov 2022 07:29:27 -0500
+Received: from mail-pf1-x436.google.com (mail-pf1-x436.google.com [IPv6:2607:f8b0:4864:20::436])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B740C1B7B9
+        for <linux-ext4@vger.kernel.org>; Mon,  7 Nov 2022 04:29:25 -0800 (PST)
+Received: by mail-pf1-x436.google.com with SMTP id q9so10457934pfg.5
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Nov 2022 04:29:25 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=2nvBMel3mK2Mvtlci+Tq1QH/JT3NGu7C2JwIvGymT7Q=;
-        b=ePJ+cziZfDJxFxKvbhpzfqF8URTyI6EmFSPGx3+aAJrdEAkraliTEn570uM8cuxJEH
-         taNm/9liXM4MxlZViQS77Yf5b03lcsgcUOc1T0Fj4BwUuc+vAUurrouTAnVFIKsgxAXW
-         JCaM+VqtsBTRBDi6DdOZZDMhQLM39gwWb044FEQ8Rm0dSrRXwzrUBfiw5EhsCG1Ia6VP
-         SuT1kiTz2UP20S49rT6JL6N8cKsqZTWzwhQL5uexcFTCX17SKBU0/BR3STu3/iBtDkkN
-         MaMsDl+XuMBSPMu7lJnEGmJdG+ushXK4kv4oie3E9YO4jS7dNdYNjMuQkAVulpppJM86
-         B1aw==
+        bh=Vm7hA39O7IoRiEPnNzVpo9eYZrFR9MuwdVKpH1WkXyw=;
+        b=Ulyyhmy61IqcJV0xQeuXsHBBbmB5rT0zFmpEj5neoUwo1QrP1JSfZSKScdyVdqX2rO
+         MER6aSikvY8emKy+JgdvgbSVN5G1iiV1lpuByw2mGJT/HhyZ+hB/tu0VmM9qW2tnoBXp
+         FZ/0qiqIvFq7vkALaq7o+NJqmLbPHECzPUun9KrLC0FgB6lYSskm8RmFhfOSqNfx5V25
+         m0cpWReR3H+ISjSav9aeFXJPsfMc2dSsRw/jVuJ7YERM4HrIMh/GvUveGmzjNJWoOKrM
+         TOKNeUIUZTUHHs+QGBUyTSkvvKti/kWtFRbDrfZrmS0RCSjwxlYuhcaJkvUvBf0Wo/zb
+         Rm8Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=2nvBMel3mK2Mvtlci+Tq1QH/JT3NGu7C2JwIvGymT7Q=;
-        b=HvvL2KYae5ynmPpLX6DsafnCAFUuN6UKO/hHsFXH+9jDN9+CNM3tXrdASDKmEAcnGc
-         YivCV+8lx1wou+2Fp3sorgFgxBRIIkBW4wce65eYHP2cxGNYT0oxnL5PZ4SGupFAMmmB
-         34bzm8c7dogmlinKeOca0ikn88db6j6tBBcJSkqyCXzKd3TQGU3V4NeRCRABwJjnfYdN
-         y2yLvw+mQIbyAIMgIEtlYQV/uWfKkZfX1XT4jqjRDZT8vwfEeAat/qhPi/9P5ZMRPLDb
-         RIUbsPmbwLbNJkeemDmtAKrLTaKdpxAnvxxP8Dh9ogdMMgrA1AAj5JVknm2FNY84xtSW
-         Nbmw==
-X-Gm-Message-State: ANoB5pm4y5QHqr2+YDQf7U/FdIemAtc4fb8iioIaleSdEGtfp3zuU/1b
-        cx5V5xirNZcTpK++WtM1HWk=
-X-Google-Smtp-Source: AA0mqf6WIuLEIz+ZU0GRcWdutsJ6t8qFnTs4leRBJjZsnPj4BUdyYFeNVOaSt3rLfhtYP8AmLtxmjA==
-X-Received: by 2002:a17:903:1209:b0:188:8239:8ee3 with SMTP id l9-20020a170903120900b0018882398ee3mr4423144plh.21.1667824147644;
-        Mon, 07 Nov 2022 04:29:07 -0800 (PST)
+        bh=Vm7hA39O7IoRiEPnNzVpo9eYZrFR9MuwdVKpH1WkXyw=;
+        b=iv21G46GL4ilwM1VrZgvRHwV1bfuq5xw1BEhP5hpsG+zZsugToMTuZ8BY2TSruQZ3d
+         gVHnzsTJAwog+u8ZPC+uyVRFmSsZfq3dc0jLb9n9SAx2/cz4cZkW5KwXYMw5NB6J6Brj
+         EZRuT9ANfAMpqF7+otuH7iYznD1KS/3BUyTcWJkJLetSciZNX4TwcwCk3EQBVWwJRH3m
+         NnQNbIPT5wxAM2iHFL11/eZVRTXdPwHl9RURfE3A4zNf3QnT4XVR8LULq6iKdvj0w9X4
+         kAxWoAm51rFqBOVebj+Rqup5SSlfeH5sXkuYkXE5+UvovTf3/oKlvLejcjthmvUN0jT2
+         TSYA==
+X-Gm-Message-State: ACrzQf1nLCjKXXTcRsGE2IZWI/z61bgO5IBu9WBnnBvPgTEa07wBsADr
+        32Jr7CoNzdd30Y1oESApdP8=
+X-Google-Smtp-Source: AMsMyM7kWCiHOcXqct8qiDs9SRPSdYiTmnELvWrpxl52VJnuYlIvZiD8tvZZqks03BFHEhilieWYKQ==
+X-Received: by 2002:a63:581d:0:b0:42b:399:f15a with SMTP id m29-20020a63581d000000b0042b0399f15amr43135266pgb.337.1667824165272;
+        Mon, 07 Nov 2022 04:29:25 -0800 (PST)
 Received: from localhost ([2406:7400:63:f20b:312d:45b2:85c1:c486])
-        by smtp.gmail.com with ESMTPSA id n7-20020a63f807000000b0046ece12f042sm4047214pgh.15.2022.11.07.04.29.06
+        by smtp.gmail.com with ESMTPSA id m2-20020a170902768200b0017f72a430adsm4858722pll.71.2022.11.07.04.29.24
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 07 Nov 2022 04:29:06 -0800 (PST)
+        Mon, 07 Nov 2022 04:29:24 -0800 (PST)
 From:   "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
 To:     Theodore Ts'o <tytso@mit.edu>
 Cc:     linux-ext4@vger.kernel.org,
         Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
         Wang Shilong <wshilong@ddn.com>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
-        Li Xi <lixi@ddn.com>, Li Dongyang <dongyangli@ddn.com>,
-        Maloo <maloo@whamcloud.com>,
-        Andreas Dilger <adilger@whamcloud.com>,
-        Ritesh Harjani <ritesh.list@gmail.com>
-Subject: [RFCv1 66/72] e2fsck: merge casefolded dir lists after thread finish
-Date:   Mon,  7 Nov 2022 17:51:54 +0530
-Message-Id: <8f798915e2322756a7c01126865997ee3c77cc78.1667822612.git.ritesh.list@gmail.com>
+        Li Xi <lixi@ddn.com>,
+        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
+Subject: [RFCv1 69/72] e2fsck: Fix double free of inodes_to_process
+Date:   Mon,  7 Nov 2022 17:51:57 +0530
+Message-Id: <0de5025b40eb8f462d2f01321432ac0535345e3d.1667822612.git.ritesh.list@gmail.com>
 X-Mailer: git-send-email 2.37.3
 In-Reply-To: <cover.1667822611.git.ritesh.list@gmail.com>
 References: <cover.1667822611.git.ritesh.list@gmail.com>
@@ -71,78 +69,26 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Wang Shilong <wshilong@ddn.com>
+Found during code review, this fixes the double free of
+inodes_to_process in e2fsck_pass1_run.
 
-This is missed and should be done after threads finish.
-
-Original commit:
-18538b27 ("LU-8465 e2fsck: merge encrypted dir lists after thread finish")
-Upstream is now using e2fsck_struct->casefolded_dirs instead of
-encrypted_dirs.
-
-Only for the correctness of pfsck, we won't use casefolded feature on
-ldiskfs.
-
-Signed-off-by: Wang Shilong <wshilong@ddn.com>
-Signed-off-by: Li Dongyang <dongyangli@ddn.com>
-Tested-by: Maloo <maloo@whamcloud.com>
-Reviewed-by: Andreas Dilger <adilger@whamcloud.com>
 Signed-off-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 ---
- e2fsck/pass1.c | 26 ++++++++++++++++++++++++++
- 1 file changed, 26 insertions(+)
+ e2fsck/pass1.c | 1 -
+ 1 file changed, 1 deletion(-)
 
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 8a6cdd8f..7345c96d 100644
+index c934b021..4168a45d 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -2614,6 +2614,7 @@ static errcode_t e2fsck_pass1_thread_prepare(e2fsck_t global_ctx, e2fsck_t *thre
+@@ -2436,7 +2436,6 @@ void e2fsck_pass1_run(e2fsck_t ctx)
  	}
- 	memcpy(thread_context, global_ctx, sizeof(struct e2fsck_struct));
- 	thread_context->block_dup_map = NULL;
-+	thread_context->casefolded_dirs = NULL;
  
- 	retval = e2fsck_allocate_block_bitmap(global_ctx->fs,
- 				_("in-use block map"), EXT2FS_BMAP64_RBTREE,
-@@ -2905,6 +2906,24 @@ static errcode_t e2fsck_pass1_merge_ea_refcount(e2fsck_t global_ctx,
- 	return retval;
- }
- 
-+static errcode_t e2fsck_pass1_merge_casefolded_dirs(e2fsck_t global_ctx,
-+						   e2fsck_t thread_ctx)
-+{
-+	errcode_t retval = 0;
-+
-+	if (!thread_ctx->casefolded_dirs)
-+		return 0;
-+
-+	if (!global_ctx->casefolded_dirs)
-+		retval = ext2fs_badblocks_copy(thread_ctx->casefolded_dirs,
-+					       &global_ctx->casefolded_dirs);
-+	else
-+		retval = ext2fs_badblocks_merge(thread_ctx->casefolded_dirs,
-+						global_ctx->casefolded_dirs);
-+
-+	return retval;
-+}
-+
- static errcode_t e2fsck_pass1_merge_context(e2fsck_t global_ctx,
- 					    e2fsck_t thread_ctx)
- {
-@@ -2971,6 +2990,13 @@ static errcode_t e2fsck_pass1_merge_context(e2fsck_t global_ctx,
- 	if (retval)
- 		return retval;
- 
-+	retval = e2fsck_pass1_merge_casefolded_dirs(global_ctx, thread_ctx);
-+	if (retval) {
-+		com_err(global_ctx->program_name, 0,
-+			_("while merging casefolded dirs\n"));
-+		return retval;
-+	}
-+
- 	e2fsck_pass1_merge_invalid_bitmaps(global_ctx, thread_ctx);
- 
- 	retval = e2fsck_pass1_merge_bitmap(global_fs,
+ 	ctx->flags |= E2F_FLAG_ALLOC_OK;
+-	ext2fs_free_mem(&inodes_to_process);
+ endit:
+ 	e2fsck_use_inode_shortcuts(ctx, 0);
+ 	ext2fs_free_mem(&inodes_to_process);
 -- 
 2.37.3
 
