@@ -2,66 +2,64 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5EB50C433FE
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Nov 2022 12:30:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AD56AC433FE
+	for <linux-ext4@archiver.kernel.org>; Mon,  7 Nov 2022 12:31:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232299AbiKGMaz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 7 Nov 2022 07:30:55 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54188 "EHLO
+        id S232334AbiKGMbH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Nov 2022 07:31:07 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53712 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232314AbiKGM3P (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Nov 2022 07:29:15 -0500
-Received: from mail-pf1-x434.google.com (mail-pf1-x434.google.com [IPv6:2607:f8b0:4864:20::434])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 01956140F6
-        for <linux-ext4@vger.kernel.org>; Mon,  7 Nov 2022 04:29:14 -0800 (PST)
-Received: by mail-pf1-x434.google.com with SMTP id k15so10468929pfg.2
-        for <linux-ext4@vger.kernel.org>; Mon, 07 Nov 2022 04:29:13 -0800 (PST)
+        with ESMTP id S232153AbiKGMah (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Nov 2022 07:30:37 -0500
+Received: from mail-pj1-x1030.google.com (mail-pj1-x1030.google.com [IPv6:2607:f8b0:4864:20::1030])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7EDA91B7AA
+        for <linux-ext4@vger.kernel.org>; Mon,  7 Nov 2022 04:29:37 -0800 (PST)
+Received: by mail-pj1-x1030.google.com with SMTP id m6-20020a17090a5a4600b00212f8dffec9so10172195pji.0
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Nov 2022 04:29:37 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=ZnDhELuUV+zsI8HDQ2YNpQ64OU5t0mjR3T71P+XOOb8=;
-        b=a8MyoMNnwQNapkVU9vXHl1SynLKNVtf1HlTMYrxAOkJC8GJJeR8lrCFQxXcyvLd50v
-         hUFmLWGdlyoIHG7lcNcWilZrQXmLW+wzSPrm6Czl3o6gLAkTyOYZioenwDk0SlWGryaT
-         VhITN/gahSiEgoAqbbzZh7X0b2ym1bR/sgn11g54ZWblVJjCf8EjAy8MrBbAOd2dWAKB
-         xFoZRrIok1Ix4K2tZ0JsSTdYT9hOuQQYY+nrJuh6AdyGId0AwheOJsfUvs8h3NC1DFIt
-         ofgz3+bwQvmORE+20IUYpMmWRxtocOip84nxHPVeKkXJRa6oNUktXdOVChnE1Uqw6V0d
-         05HQ==
+        bh=brABaUCcI2WmtiC9btp4x4LzbwAmsKEEIExja+PubBU=;
+        b=AKQtLeQj2gU9Cpx6Cgl1I3ItI9fra2tqkX4jvbMRiJfShMzSZNUbaAUatvx26N1kHt
+         jRPTu1tsFWmPGn15HGxgUnS07OiQdDYrBDTnYZtCyRa8FvcstyQl563CaKdNHdzmbkxS
+         fWD7WoqCFQRfPlFiGXyH0WyK9HAaW04+1prO6YGirCtBfFIuiDHfKNZCkO5FLfNbJQI+
+         7W8/PkwGcMhYsYx6sFhbe9u7gDtaLZ7C/b5Ero3mAV3aHcQX16W/xnos3NQMyCSpfZAT
+         lCcj1XSa2Fbm4Hg94v0dvtugcOhfSBm07JsOby5VxLrF8i9LIU2AB/Tc2RggZFVy2oHr
+         j/PA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=ZnDhELuUV+zsI8HDQ2YNpQ64OU5t0mjR3T71P+XOOb8=;
-        b=LewHbNgmx8XUZ0K8j8oC2RX9/ZUHw8xIrxziKLBVtE9bbJS4KjnYLfYNZnlI4VyNpc
-         UAvDaZr72UuiH84odFutohg8h5j7LUJXJjXrKj+ffJcshM60D3Yxnp7oTpNPvtYdIiTA
-         1I4e/rUegKx+O8yDG+DEh3laah+lo3oRnfTF/Ysu9nFLRyuQe8ORuglq9CjNBQudkBU8
-         rT/ZuaB0Qamy52UKf5ebYFtOvk7jmZxYtRGH424rzRTjF7wRbxoA86miu85z/CJe/W7N
-         +lPBON+6l2/3zY2C4zTCTvEbboyDzkIJ3+U/i3U2I5VZG6RmhhD25VBpABve0G1N9IJi
-         HOiw==
-X-Gm-Message-State: ACrzQf1MaB9SX79dcDwyCoqfFj19/t06brqDvJK6+iytWH7cgQXC6jcr
-        RbjLFolkc7mnn7SAospDDxs=
-X-Google-Smtp-Source: AMsMyM7cgeXY+NWEal5v1KVDsWJHP0aMxV0ltnds59gS2+yMdyWKN05KmRTw+61XgMyHyFlrxMKe2g==
-X-Received: by 2002:a05:6a00:ac6:b0:530:3197:48b6 with SMTP id c6-20020a056a000ac600b00530319748b6mr50472097pfl.80.1667824153467;
-        Mon, 07 Nov 2022 04:29:13 -0800 (PST)
+        bh=brABaUCcI2WmtiC9btp4x4LzbwAmsKEEIExja+PubBU=;
+        b=6EtvtfQgc+b+qs+yowvQL0MdFZBJTQl3U3MgFPo96SRC2vrYlDdDB3UxmgVth6IBnA
+         z7mm7CvaiJDzAcyqdUyKlGg50OsOCTcMoawYwGx38MlSNEGHFRY9fXJjvXeDWx0OWZSM
+         e9v3aNtaYdya1KfXu0bFT1h7nmlEtq0yRDPt6me/tmprxuWP8hS09b9cLy2q3AEF6OrR
+         9G+3miE/jVK6Xti5207aPbcvRYwsKmfjYcDwRNFJFpfAwg3w9Uxrq0RktDVR8oLqcd4V
+         d52X5qxLLHpxhd6PxuRE5K5lu/AygKCpnmOVnhFH9ioRgo05WQeHpOTycPRID7bFioBi
+         Am9Q==
+X-Gm-Message-State: ACrzQf3dqmGNkfJz0KuwilKUER+GXDeIfpuGg//MMdkvn3VSwKnDxKip
+        Kp59VLPdnpTgcGxYYqtSUY0=
+X-Google-Smtp-Source: AMsMyM5xFatw0U4M8F8g/S4R3nOCTABfOUjCvzOEt0WFP4eF4xORPqgPDZBSdcGT4fRi2+JWVuaRGg==
+X-Received: by 2002:a17:90a:20c:b0:213:1179:1fff with SMTP id c12-20020a17090a020c00b0021311791fffmr52845952pjc.23.1667824177086;
+        Mon, 07 Nov 2022 04:29:37 -0800 (PST)
 Received: from localhost ([2406:7400:63:f20b:312d:45b2:85c1:c486])
-        by smtp.gmail.com with ESMTPSA id j7-20020a170902758700b0017f7e0f4a4esm4910492pll.35.2022.11.07.04.29.12
+        by smtp.gmail.com with ESMTPSA id fy14-20020a17090b020e00b002036006d65bsm4162096pjb.39.2022.11.07.04.29.35
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 07 Nov 2022 04:29:12 -0800 (PST)
+        Mon, 07 Nov 2022 04:29:36 -0800 (PST)
 From:   "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
 To:     Theodore Ts'o <tytso@mit.edu>
 Cc:     linux-ext4@vger.kernel.org,
         Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
         Wang Shilong <wshilong@ddn.com>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
-        Li Xi <lixi@ddn.com>, Sebastien Buisson <sbuisson@ddn.com>,
-        Maloo <maloo@whamcloud.com>, Li Dongyang <dongyangli@ddn.com>,
-        Andreas Dilger <adilger@whamcloud.com>,
-        Ritesh Harjani <ritesh.list@gmail.com>
-Subject: [RFCv1 67/72] sec: support encrypted files handling in pfsck mode
-Date:   Mon,  7 Nov 2022 17:51:55 +0530
-Message-Id: <77a302b36f3576b9a9f7ef6e42bc1ef939227090.1667822612.git.ritesh.list@gmail.com>
+        Li Xi <lixi@ddn.com>,
+        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
+Subject: [RFCv1 71/72] e2fsck: Make threads call log_out after pthread_join
+Date:   Mon,  7 Nov 2022 17:51:59 +0530
+Message-Id: <6a1aa669f380236663941522f84acf840919aac0.1667822612.git.ritesh.list@gmail.com>
 X-Mailer: git-send-email 2.37.3
 In-Reply-To: <cover.1667822611.git.ritesh.list@gmail.com>
 References: <cover.1667822611.git.ritesh.list@gmail.com>
@@ -71,235 +69,47 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Sebastien Buisson <sbuisson@ddn.com>
+All fsck threads will call for log_out prints after the pass1 their
+respective pass1 scanning is completed. This patch moves the log_out
+print from to after the pthread_join operation.
+This makes the threads always print the info in order.
 
-e2fsck needs to be improved in order to support encrypted files
-handling in parallel fsck mode. The e2fsck_merge_encrypted_info()
-function is added to merge encrypted inodes info collected from
-different threads in pass1, so that it can be used in pass2.
-
-Signed-off-by: Sebastien Buisson <sbuisson@ddn.com>
-Tested-by: Maloo <maloo@whamcloud.com>
-Reviewed-by: Li Dongyang <dongyangli@ddn.com>
-Reviewed-by: Andreas Dilger <adilger@whamcloud.com>
 Signed-off-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 ---
- e2fsck/e2fsck.h          |   2 +
- e2fsck/encrypted_files.c | 139 +++++++++++++++++++++++++++++++++++++++
- e2fsck/pass1.c           |  26 +++++++-
- 3 files changed, 164 insertions(+), 3 deletions(-)
+ e2fsck/pass1.c | 13 ++++++-------
+ 1 file changed, 6 insertions(+), 7 deletions(-)
 
-diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index 1e82b048..e4fb782a 100644
---- a/e2fsck/e2fsck.h
-+++ b/e2fsck/e2fsck.h
-@@ -642,6 +642,8 @@ __u32 find_encryption_policy(e2fsck_t ctx, ext2_ino_t ino);
- 
- void destroy_encryption_policy_map(e2fsck_t ctx);
- void destroy_encrypted_file_info(e2fsck_t ctx);
-+int e2fsck_merge_encrypted_info(e2fsck_t ctx, struct encrypted_file_info *src,
-+				struct encrypted_file_info *dest);
- 
- /* extents.c */
- errcode_t e2fsck_rebuild_extents_later(e2fsck_t ctx, ext2_ino_t ino);
-diff --git a/e2fsck/encrypted_files.c b/e2fsck/encrypted_files.c
-index 16be2d6d..53e03a62 100644
---- a/e2fsck/encrypted_files.c
-+++ b/e2fsck/encrypted_files.c
-@@ -456,3 +456,142 @@ void destroy_encrypted_file_info(e2fsck_t ctx)
- 		ctx->encrypted_files = NULL;
- 	}
- }
-+
-+/**
-+ * Search policy matching @policy in @info->policies
-+ * @ctx: e2fsck context
-+ * @info: encrypted_file_info to look into
-+ * @policy: the policy we are looking for
-+ * @parent: (out) last known parent, useful to insert a new leaf
-+ *	    in @info->policies
-+ *
-+ * Return: id of found policy on success, -1 if no matching policy found.
-+ */
-+static inline int search_policy(e2fsck_t ctx, struct encrypted_file_info *info,
-+				union fscrypt_policy policy,
-+				struct rb_node **parent)
-+{
-+	struct rb_node *n = info->policies.rb_node;
-+	struct policy_map_entry *entry;
-+
-+	while (n) {
-+		int res;
-+
-+		*parent = n;
-+		entry = ext2fs_rb_entry(n, struct policy_map_entry, node);
-+		res = cmp_fscrypt_policies(ctx, &policy, &entry->policy);
-+		if (res < 0)
-+			n = n->rb_left;
-+		else if (res > 0)
-+			n = n->rb_right;
-+		else
-+			return entry->policy_id;
-+	}
-+	return -1;
-+}
-+
-+/*
-+ * Merge @src encrypted info into @dest
-+ */
-+int e2fsck_merge_encrypted_info(e2fsck_t ctx, struct encrypted_file_info *src,
-+				 struct encrypted_file_info *dest)
-+{
-+	struct rb_root *src_policies = &src->policies;
-+	__u32 *policy_trans;
-+	int i, rc = 0;
-+
-+	if (dest->file_ranges[src->file_ranges_count - 1].last_ino >
-+	    src->file_ranges[0].first_ino) {
-+		/* Should never get here */
-+		fatal_error(ctx, "Encrypted inodes processed out of order");
-+	}
-+
-+	rc = ext2fs_get_array(src->next_policy_id, sizeof(__u32),
-+			      &policy_trans);
-+	if (rc)
-+		return rc;
-+
-+	/* First, deal with the encryption policy => ID map.
-+	 * Compare encryption policies in src with policies already recorded
-+	 * in dest. It can be similar policies, but recorded with a different
-+	 * id, so policy_trans array converts policy ids in src to ids in dest.
-+	 * This loop examines each policy in src->policies rb tree, updates
-+	 * policy_trans, and removes the entry from src, so that src->policies
-+	 * rb tree is cleaned up at the end of the loop.
-+	 */
-+	while (!ext2fs_rb_empty_root(src_policies)) {
-+		struct policy_map_entry *entry, *newentry;
-+		struct rb_node *new, *parent = NULL;
-+		int existing_polid;
-+
-+		entry = ext2fs_rb_entry(src_policies->rb_node,
-+					struct policy_map_entry, node);
-+		existing_polid = search_policy(ctx, dest,
-+					       entry->policy, &parent);
-+		if (existing_polid >= 0) {
-+			/* The policy in src is already recorded in dest,
-+			 * so just update its id.
-+			 */
-+			policy_trans[entry->policy_id] = existing_polid;
-+		} else {
-+			/* The policy in src is new to dest, so insert it
-+			 * with the next available id (its original id could
-+			 * be already used in dest).
-+			 */
-+			rc = ext2fs_get_mem(sizeof(*newentry), &newentry);
-+			if (rc)
-+				goto out_merge;
-+			newentry->policy_id = dest->next_policy_id++;
-+			newentry->policy = entry->policy;
-+			ext2fs_rb_link_node(&newentry->node, parent, &new);
-+			ext2fs_rb_insert_color(&newentry->node,
-+					       &dest->policies);
-+			policy_trans[entry->policy_id] = newentry->policy_id;
-+		}
-+		ext2fs_rb_erase(&entry->node, src_policies);
-+		ext2fs_free_mem(&entry);
-+	}
-+
-+	/* Second, deal with the inode number => encryption policy ID map. */
-+	if (dest->file_ranges_capacity <
-+	    dest->file_ranges_count + src->file_ranges_count) {
-+		/* dest->file_ranges is too short, increase its capacity. */
-+		size_t new_capacity = dest->file_ranges_count +
-+			src->file_ranges_count;
-+
-+		/* Make sure we at least double the capacity. */
-+		if (new_capacity < (dest->file_ranges_capacity * 2))
-+			new_capacity = dest->file_ranges_capacity * 2;
-+
-+		/* We won't need more than the filesystem's inode count. */
-+		if (new_capacity > ctx->fs->super->s_inodes_count)
-+			new_capacity = ctx->fs->super->s_inodes_count;
-+
-+		rc = ext2fs_resize_mem(dest->file_ranges_capacity *
-+				       sizeof(struct encrypted_file_range),
-+				       new_capacity *
-+				       sizeof(struct encrypted_file_range),
-+				       &dest->file_ranges);
-+		if (rc) {
-+			fix_problem(ctx, PR_1_ALLOCATE_ENCRYPTED_INODE_LIST,
-+				    NULL);
-+			/* Should never get here */
-+			ctx->flags |= E2F_FLAG_ABORT;
-+			goto out_merge;
-+		}
-+
-+		dest->file_ranges_capacity = new_capacity;
-+	}
-+	/* Copy file ranges from src to dest. */
-+	for (i = 0; i < src->file_ranges_count; i++) {
-+		/* Make sure to convert policy ids in src. */
-+		src->file_ranges[i].policy_id =
-+			policy_trans[src->file_ranges[i].policy_id];
-+		dest->file_ranges[dest->file_ranges_count++] =
-+			src->file_ranges[i];
-+	}
-+
-+out_merge:
-+	ext2fs_free_mem(&policy_trans);
-+	return rc;
-+}
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 7345c96d..e7dc017c 100644
+index 2ff83fcb..90adc419 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -2411,9 +2411,6 @@ void e2fsck_pass1_run(e2fsck_t ctx)
- 		ctx->ea_block_quota_inodes = 0;
- 	}
+@@ -3112,6 +3112,12 @@ static int e2fsck_pass1_thread_join(e2fsck_t global_ctx, e2fsck_t thread_ctx)
+ {
+ 	errcode_t retval;
  
--	/* We don't need the encryption policy => ID map any more */
--	destroy_encryption_policy_map(ctx);
++	log_out(thread_ctx,
++			_("Scanned group range [%u, %u), inodes %u\n"),
++			thread_ctx->thread_info.et_group_start,
++			thread_ctx->thread_info.et_group_end,
++			thread_ctx->thread_info.et_inode_number);
++
+ 	retval = e2fsck_pass1_merge_context(global_ctx, thread_ctx);
+ 
+ 	quota_release_context(&thread_ctx->qctx);
+@@ -3203,13 +3209,6 @@ static void *e2fsck_pass1_thread(void *arg)
+ 	e2fsck_pass1_run(thread_ctx);
+ 
+ out:
+-	if (thread_ctx->options & E2F_OPT_MULTITHREAD)
+-		log_out(thread_ctx,
+-			_("Scanned group range [%u, %u), inodes %u\n"),
+-			thread_ctx->thread_info.et_group_start,
+-			thread_ctx->thread_info.et_group_end,
+-			thread_ctx->thread_info.et_inode_number);
 -
- 	if (ctx->flags & E2F_FLAG_RESTART) {
- 		/*
- 		 * Only the master copy of the superblock and block
-@@ -2703,6 +2700,23 @@ static void e2fsck_pass1_merge_dx_dir(e2fsck_t global_ctx, e2fsck_t thread_ctx)
- 	e2fsck_merge_dx_dir(global_ctx, thread_ctx);
- }
- 
-+static int e2fsck_pass1_merge_encrypted_info(e2fsck_t global_ctx,
-+					      e2fsck_t thread_ctx)
-+{
-+	if (thread_ctx->encrypted_files == NULL)
-+		return 0;
-+
-+	if (global_ctx->encrypted_files == NULL) {
-+		global_ctx->encrypted_files = thread_ctx->encrypted_files;
-+		thread_ctx->encrypted_files = NULL;
-+		return 0;
-+	}
-+
-+	return e2fsck_merge_encrypted_info(global_ctx,
-+					   thread_ctx->encrypted_files,
-+					   global_ctx->encrypted_files);
-+}
-+
- static inline errcode_t
- e2fsck_pass1_merge_icount(ext2_icount_t *dest_icount,
- 			  ext2_icount_t *src_icount)
-@@ -2963,6 +2977,12 @@ static errcode_t e2fsck_pass1_merge_context(e2fsck_t global_ctx,
- 
- 	e2fsck_pass1_merge_dir_info(global_ctx, thread_ctx);
- 	e2fsck_pass1_merge_dx_dir(global_ctx, thread_ctx);
-+	retval = e2fsck_pass1_merge_encrypted_info(global_ctx, thread_ctx);
-+	if (retval) {
-+		com_err(global_ctx->program_name, 0,
-+			_("while merging encrypted info\n"));
-+		return retval;
-+	}
- 
- 	retval = ext2fs_merge_fs(&(thread_ctx->fs));
- 	if (retval) {
+ #ifdef DEBUG_THREADS
+ 	pthread_mutex_lock(&thread_debug->etd_mutex);
+ 	thread_debug->etd_finished_threads++;
 -- 
 2.37.3
 
