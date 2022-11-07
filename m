@@ -2,53 +2,53 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A56ACC4332F
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Nov 2022 12:28:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CCF08C433FE
+	for <linux-ext4@archiver.kernel.org>; Mon,  7 Nov 2022 12:28:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232282AbiKGM2n (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 7 Nov 2022 07:28:43 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53608 "EHLO
+        id S232280AbiKGM2x (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Nov 2022 07:28:53 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53892 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232277AbiKGM2g (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Nov 2022 07:28:36 -0500
-Received: from mail-pl1-x631.google.com (mail-pl1-x631.google.com [IPv6:2607:f8b0:4864:20::631])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3551C12D1B
-        for <linux-ext4@vger.kernel.org>; Mon,  7 Nov 2022 04:28:29 -0800 (PST)
-Received: by mail-pl1-x631.google.com with SMTP id j12so10911395plj.5
-        for <linux-ext4@vger.kernel.org>; Mon, 07 Nov 2022 04:28:29 -0800 (PST)
+        with ESMTP id S232286AbiKGM2q (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Nov 2022 07:28:46 -0500
+Received: from mail-pf1-x431.google.com (mail-pf1-x431.google.com [IPv6:2607:f8b0:4864:20::431])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 19C11A186
+        for <linux-ext4@vger.kernel.org>; Mon,  7 Nov 2022 04:28:45 -0800 (PST)
+Received: by mail-pf1-x431.google.com with SMTP id k22so10458988pfd.3
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Nov 2022 04:28:45 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=jFIewdpm8KInBVBgrg0PGTjUi+OYV8V6Z0qzY/EFJPg=;
-        b=JKu3DYpz7MaA651zSPW2aryhNcbW0+bOB4HrOWsqHRaTIoj6R9dZ8bLAZ9gF9toBjj
-         aemJreuoeR632vtT6O7Y23f26EXQMhQ9+Fdl9Nukr0ZUNwUsuPw48+8uYgVrLtfEOalg
-         cU97O6MwN3zdn2beb/5gjETBabwFTrsp6ElVtgvdYofJjc6gHFukAn/JFDaQhnKfWNqS
-         b2TXN2YBDVuAeTadUwSPSnG4MZn/ICHN3TtNzd3ltOd9eSGrtWSpI9Mg6jd6dg+pnyto
-         jRx3/WcFxM/BNFu+ZwrN8HHcSHVHzzMgWFagl09MYFVSGOOm96SDfPfeBLx1T74R+eDC
-         ZvSg==
+        bh=2EkOIBNA7D1BIBwaIa8nmWutEc3lXF7Ye4dNCdSq3Zo=;
+        b=Vb0c3YYyinSpocRDLeVPm3+j8BuhZZnwThaJg/Z3YlgMVJl7H0v49qd497i8qvoEix
+         5cpnYrTqYBoqgJZQEgUU1kPg3/JHW9/qR8rudacymuNcnM4NmfZpkGgNM42wPYChKGUw
+         OTmqWqdkQN3WARXBcH8ZIRxK39E3XRQIbCxYGgFi3YWiotuc35kGDeTf/Fw3a6Hd0Kmv
+         13bcMeGkLltdAqXOY6IVPl3K63HoPAbDUf5rRidvFE+yibPUMreHt1ZH72go9QBElKaJ
+         qvSkAiRoUMab/5UEDl0hITwnldwGTEagAkEnT03OHNUoWI1smQvKPESAmiNlTiLMmCVm
+         vevA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=jFIewdpm8KInBVBgrg0PGTjUi+OYV8V6Z0qzY/EFJPg=;
-        b=TFcsK2iqtCc2GS5Ii/bnxUeoVN0O9XyMR04M9M0CKdQjoSJsYBBP6lWVqOrYKQ7CYS
-         nzM9TOF7xhy+f4J3IEX085SoUNIdKOSJRls623n0Z9rQGB4zjghf0Z25Umam0bHwd7JV
-         Fwwn0PUxjPTSUtosZzQzCf8wjtjrwZe9Bm264CDzmGYXls4ef0SDh2mCsoX/+1Tqm7bI
-         emweB+BGq5xzitisElNkTvK6t9CHQCEjude45s7KyJRrycIxAGw1FAVWUxJ252NdO2gn
-         Xmef3XXW9Lb2ZoP4Dm5SqztwDDYd2suJnFw0E9b9ZOgaTED6Z+9UaEm1lusqn+Y371pF
-         koSw==
-X-Gm-Message-State: ACrzQf1VBKOoCpeeJHbVCr3zakWQvb85n4fd8An2Bi5YMU5iwyzUgLyi
-        /XhSZdwlbsRuzeIqEFHB0Rs=
-X-Google-Smtp-Source: AMsMyM7gc1wNho74ImwF+ZPwBfiqyWsVc9sHBGvveqEuY/bHNQCuf3BH31y3mVdc4Qkq5uuWvf1Ojw==
-X-Received: by 2002:a17:902:ec01:b0:186:748f:e8b6 with SMTP id l1-20020a170902ec0100b00186748fe8b6mr49858814pld.131.1667824108741;
-        Mon, 07 Nov 2022 04:28:28 -0800 (PST)
+        bh=2EkOIBNA7D1BIBwaIa8nmWutEc3lXF7Ye4dNCdSq3Zo=;
+        b=ElN05yQWIRURD9z78IGcWDeO1VogHICA6t32QXM3iyvBXEQ0E4kjz5fcuDlFta9kws
+         vtGzX89pHVgo3fn2w7yMxrx50KQCONsplHTnwNT/yJOqBYvcN7lhmHHHTxZauWQmd/mX
+         KaQG2wk41MDEK8FFdO+GKevvG2C99gGplwhqb5WvxZAJ/1W57HOY4+2dIYenmYjaPmsh
+         xRYPdR/vypTGYx8PGUKaRfoYvPLLPHZuM7VfX8CkfUSCTzp8bcpVIaq1vIdgyfGj+XXL
+         A+hpoFpqSJSl4VdydkY26w/DLlZyoqEzNS1n3btQRflZQumpBZFtCumx33XMawRR9qjE
+         SALA==
+X-Gm-Message-State: ANoB5pm0NTFFuF4j0u2nwyh5kHmeba7EJCWoHq49WKiW5y9gHOYuBoOO
+        NFie0eF54p4eZ5tN3q+v0ZIhPZVcn8E=
+X-Google-Smtp-Source: AA0mqf6ySxtcbQxnbU+V1sGDTVtvrnqX1Dnf6LnvSXEtMBHOTEuN3zfEBcSnd6njyJl4cS9zD9EwgQ==
+X-Received: by 2002:a63:e50d:0:b0:470:60a4:892b with SMTP id r13-20020a63e50d000000b0047060a4892bmr8384190pgh.148.1667824124613;
+        Mon, 07 Nov 2022 04:28:44 -0800 (PST)
 Received: from localhost ([2406:7400:63:f20b:312d:45b2:85c1:c486])
-        by smtp.gmail.com with ESMTPSA id w3-20020a628203000000b00562784609fbsm4332436pfd.209.2022.11.07.04.28.27
+        by smtp.gmail.com with ESMTPSA id c18-20020a63ea12000000b00462255f5aeasm4128183pgi.40.2022.11.07.04.28.43
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 07 Nov 2022 04:28:28 -0800 (PST)
+        Mon, 07 Nov 2022 04:28:43 -0800 (PST)
 From:   "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
 To:     Theodore Ts'o <tytso@mit.edu>
 Cc:     linux-ext4@vger.kernel.org,
@@ -56,9 +56,9 @@ Cc:     linux-ext4@vger.kernel.org,
         Wang Shilong <wshilong@ddn.com>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         Li Xi <lixi@ddn.com>, Ritesh Harjani <ritesh.list@gmail.com>
-Subject: [RFCv1 60/72] e2fsck: reset @inodes_to_rebuild if restart
-Date:   Mon,  7 Nov 2022 17:51:48 +0530
-Message-Id: <89bc200265e9aaa5a4d610f0fd18fc7acd934dec.1667822612.git.ritesh.list@gmail.com>
+Subject: [RFCv1 62/72] e2fsck: fix memory leaks with pfsck enabled
+Date:   Mon,  7 Nov 2022 17:51:50 +0530
+Message-Id: <1a72168b983a877458d5fc20409620df31b6a619.1667822612.git.ritesh.list@gmail.com>
 X-Mailer: git-send-email 2.37.3
 In-Reply-To: <cover.1667822611.git.ritesh.list@gmail.com>
 References: <cover.1667822611.git.ritesh.list@gmail.com>
@@ -70,46 +70,45 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Wang Shilong <wshilong@ddn.com>
 
-Verify multiple thread on a corrupted images hit following bug:
+valgrind detected two memory leaks:
 
-pass1.c:2902: e2fsck_pass1_thread_prepare:
-Assertion `global_ctx->inodes_to_rebuild == NULL' failed.
-Signal (6) SIGABRT si_code=SI_TKILL
-./e2fsck/e2fsck[0x43829e]
-/lib64/libpthread.so.0(+0x14b20)[0x7f3b45135b20]
-/lib64/libc.so.6(gsignal+0x145)[0x7f3b44f2c625]
-/lib64/libc.so.6(abort+0x12b)[0x7f3b44f158d9]
-/lib64/libc.so.6(+0x257a9)[0x7f3b44f157a9]
-/lib64/libc.so.6(+0x34a66)[0x7f3b44f24a66]
-./e2fsck/e2fsck(e2fsck_pass1+0x1662)[0x423572]
-./e2fsck/e2fsck(e2fsck_run+0x5a)[0x41611a]
-./e2fsck/e2fsck(main+0x1608)[0x4121b8]
-/lib64/libc.so.6(__libc_start_main+0xf3)[0x7f3b44f171a3]
-./e2fsck/e2fsck(_start+0x2e)[0x413dde]
-
-@inodes_to_rebuild could be not NULL after we restart pass1
+1) quota context is not released after merging.
+2) @refcount_orig should be released
 
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 Signed-off-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 ---
  e2fsck/e2fsck.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ e2fsck/pass1.c  | 1 +
+ 2 files changed, 5 insertions(+)
 
 diff --git a/e2fsck/e2fsck.c b/e2fsck/e2fsck.c
-index a5150dab..53af8905 100644
+index 53af8905..db0a5059 100644
 --- a/e2fsck/e2fsck.c
 +++ b/e2fsck/e2fsck.c
-@@ -79,6 +79,10 @@ errcode_t e2fsck_reset_context(e2fsck_t ctx)
- 		ext2fs_free_block_bitmap(ctx->inode_casefold_map);
- 		ctx->inode_casefold_map = 0;
+@@ -106,6 +106,10 @@ errcode_t e2fsck_reset_context(e2fsck_t ctx)
+ 		ea_refcount_free(ctx->refcount_extra);
+ 		ctx->refcount_extra = 0;
  	}
-+	if (ctx->inodes_to_rebuild) {
-+		ext2fs_free_inode_bitmap(ctx->inodes_to_rebuild);
-+		ctx->inodes_to_rebuild = 0;
++	if (ctx->refcount_orig) {
++		ea_refcount_free(ctx->refcount_orig);
++		ctx->refcount_orig = 0;
 +	}
- 	if (ctx->inode_link_info) {
- 		ext2fs_free_icount(ctx->inode_link_info);
- 		ctx->inode_link_info = 0;
+ 	if (ctx->ea_block_quota_blocks) {
+ 		ea_refcount_free(ctx->ea_block_quota_blocks);
+ 		ctx->ea_block_quota_blocks = 0;
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index ed4275c3..d745699d 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -3039,6 +3039,7 @@ static int e2fsck_pass1_thread_join(e2fsck_t global_ctx, e2fsck_t thread_ctx)
+ 
+ 	retval = e2fsck_pass1_merge_context(global_ctx, thread_ctx);
+ 
++	quota_release_context(&thread_ctx->qctx);
+ 	/*
+ 	 * @block_metadata_map and @block_dup_map are
+ 	 * shared, so we don't free them.
 -- 
 2.37.3
 
