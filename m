@@ -2,83 +2,59 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 53BFEC433FE
-	for <linux-ext4@archiver.kernel.org>; Tue,  8 Nov 2022 09:09:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D4DCC43217
+	for <linux-ext4@archiver.kernel.org>; Tue,  8 Nov 2022 12:19:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233328AbiKHJJT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 8 Nov 2022 04:09:19 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33280 "EHLO
+        id S234146AbiKHMTS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 8 Nov 2022 07:19:18 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38448 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229558AbiKHJJS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Nov 2022 04:09:18 -0500
-Received: from mail-yw1-x1133.google.com (mail-yw1-x1133.google.com [IPv6:2607:f8b0:4864:20::1133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0C0C517E31
-        for <linux-ext4@vger.kernel.org>; Tue,  8 Nov 2022 01:09:14 -0800 (PST)
-Received: by mail-yw1-x1133.google.com with SMTP id 00721157ae682-36a4b86a0abso128022947b3.7
-        for <linux-ext4@vger.kernel.org>; Tue, 08 Nov 2022 01:09:14 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20210112;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:from:to:cc:subject:date:message-id:reply-to;
-        bh=0/mSgd3/KZGrXlWsE1BO75aHYjWXnPANqXO30jlvy0o=;
-        b=H1EigSh4jOLThRSpHnq9dcIPvYq1a+cJg60eKWX0jxMGiEoZ0mo+2o5tl/OIMQUMIR
-         rilQK60Pz5yFli/andC57hJq6+PZvFQe5qFkMWEOMDd7ZrvCE8f6Mt4oFlrDbcZItgH9
-         XgzcLaEbWSxRmR2pOqH3glvWxtnOC0ClHmtmaoQwylDKc1I3EPLIJGdH9p5RJL6ygn3Z
-         8NWD8wGJyjDvU6qqlEcHl1e5E1xBLpadx/eUBbFR+hIAHfKE0bA8DNDQV45riUVRCPig
-         xIc5gq/GdP0/7jbVk8yIZ8gGW2LGv5fbv4CiqkHkdaE7bPwxWaPUiId9bpfxbX9vAKzc
-         +lRA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=0/mSgd3/KZGrXlWsE1BO75aHYjWXnPANqXO30jlvy0o=;
-        b=TKGxP9ZA6O+6aNYHSw7nFZOmWLMRVEUOwLi2/c9tW/o2y+ZQEZCnTHdkrK5y+g7yP3
-         7izW94U/QWgwNgFiPGAdYEBGxuMu3Rw4iAWanxzo4zJl/fFYJ8O/jz8afwKid2zKQUu4
-         JTsB+ZwBA5JOLSqPBn0cg5dMLu4vx/XFG3h/NASQKDD6lHxHgUDc+IlA38LbKVLuwrg2
-         st5fQ6niTa0ZnC0YoTdLnAMbbART81Ly/0O52h9R9hqBr5Dqem8hwqf+I4dIYTOVzOWA
-         TbnvqggO99tWAVbkAlCHC9eBVCuEVh8h+gaPDzX+cGW7IF83aw5wyMmwQOoryjt94Q9q
-         emBw==
-X-Gm-Message-State: ACrzQf3EsBNeQY0Q9q4zndcGWOuPuDEmEsqLr8TmHEmWsayujHrG9Z6A
-        ENfMnckQiQxJmJwd84J6yPddbQGvUdhV22WWqOUI0g==
-X-Google-Smtp-Source: AMsMyM4RQNU9stUJYhb4ZQLjB3gwRGc8RPODKXAWT5OzpvKnNsmrRhh9YG160heTdWtV/rSGnxwnNWI6zaktjNvEz7Q=
-X-Received: by 2002:a81:4811:0:b0:368:e6a7:6b38 with SMTP id
- v17-20020a814811000000b00368e6a76b38mr51888756ywa.20.1667898553086; Tue, 08
- Nov 2022 01:09:13 -0800 (PST)
-MIME-Version: 1.0
-References: <00000000000058d01705ecddccb0@google.com> <CAG_fn=WAyOc+1GEC+P3PpTM2zLcLcepAX1pPXkj5C6aPyrDVUA@mail.gmail.com>
- <Y2lGu/QTIWNpzFI3@sol.localdomain> <CAG_fn=VQBv-sgPhT0gLVChAtMNx0F3RcQYDKdvhBL4mBpiDkFA@mail.gmail.com>
-In-Reply-To: <CAG_fn=VQBv-sgPhT0gLVChAtMNx0F3RcQYDKdvhBL4mBpiDkFA@mail.gmail.com>
-From:   Alexander Potapenko <glider@google.com>
-Date:   Tue, 8 Nov 2022 10:08:36 +0100
-Message-ID: <CAG_fn=VPvdHxQc3xm5xkqgFq3uo5oTU_w5vyMj-qQD7DvwQ4BA@mail.gmail.com>
-Subject: Re: [syzbot] KMSAN: uninit-value in pagecache_write
+        with ESMTP id S234141AbiKHMTN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Nov 2022 07:19:13 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 58B5B4FF9A;
+        Tue,  8 Nov 2022 04:19:13 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id EFAE86151B;
+        Tue,  8 Nov 2022 12:19:12 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 00F39C433D6;
+        Tue,  8 Nov 2022 12:19:11 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
+        s=korg; t=1667909952;
+        bh=vaGB9U2rlqlyaopeED5o0EltCNuZ/88g3VWxR2AQADM=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=aTTlF5q1IAnQrmglZEz02guAWga8I32ZBQZzKM73aPY4G1+sgL0fzfX4ihcoAI8FU
+         e2uHNi/BFhoWnVXyX5ZnSwDMHOKgejCJM3H98SDtWKCmlDZVBRCFg2ukWzT6JUbg0W
+         Dpz6DwqikOlr8SpScMzIxE79PmEwfwYroEyapLo0=
+Date:   Tue, 8 Nov 2022 13:19:09 +0100
+From:   Greg KH <gregkh@linuxfoundation.org>
 To:     Eric Biggers <ebiggers@kernel.org>
-Cc:     syzbot <syzbot+9767be679ef5016b6082@syzkaller.appspotmail.com>,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
-        tytso@mit.edu
-Content-Type: text/plain; charset="UTF-8"
+Cc:     stable@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fscrypt@vger.kernel.org,
+        "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        Jintao Yin <nicememory@gmail.com>,
+        Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: Please apply "ext4,f2fs: fix readahead of verity data" to stable
+Message-ID: <Y2pJPTSzgnNk37oA@kroah.com>
+References: <Y2lL+lSibGY9hPEE@sol.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <Y2lL+lSibGY9hPEE@sol.localdomain>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-> >
-> > Anyway, this patch doesn't hurt, I suppose.  Can please you send it out as a
-> > formal patch to linux-ext4?  It would be easy for people to miss this patch
-> > buried in this thread.  Also, can you please send a patch to linux-f2fs-devel
-> > for the same code in fs/f2fs/verity.c?
->
-> Will do!
+On Mon, Nov 07, 2022 at 10:18:34AM -0800, Eric Biggers wrote:
+> Stable maintainers,
+> 
+> Please apply commit 4fa0e3ff217f775cb58d2d6d51820ec519243fb9
+> ("ext4,f2fs: fix readahead of verity data") to stable, 5.10 and later.  It
+> cherry-picks cleanly to 6.0 and 5.15.  I'll send it out manually for 5.10.
 
-Shall I also initialize fsdata here:
+All now queued up, thanks.
 
-$ git grep 'void \*fsdata;'
-fs/affs/file.c:         void *fsdata;
-fs/ext4/verity.c:               void *fsdata;
-fs/f2fs/verity.c:               void *fsdata;
-fs/hfs/extent.c:                void *fsdata;
-fs/hfsplus/extents.c:           void *fsdata;
-fs/ocfs2/mmap.c:        void *fsdata;
-
-?
+greg k-h
