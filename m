@@ -2,32 +2,32 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F38A9C43219
-	for <linux-ext4@archiver.kernel.org>; Tue,  8 Nov 2022 14:27:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 26070C4167B
+	for <linux-ext4@archiver.kernel.org>; Tue,  8 Nov 2022 14:27:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234401AbiKHO0u (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 8 Nov 2022 09:26:50 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57800 "EHLO
+        id S234520AbiKHO0z (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 8 Nov 2022 09:26:55 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57902 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234093AbiKHO0M (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Nov 2022 09:26:12 -0500
-Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2B8AA5C76C
-        for <linux-ext4@vger.kernel.org>; Tue,  8 Nov 2022 06:24:53 -0800 (PST)
-Received: from canpemm500005.china.huawei.com (unknown [172.30.72.54])
-        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4N69N81jH9z15MQy;
-        Tue,  8 Nov 2022 22:24:40 +0800 (CST)
+        with ESMTP id S234116AbiKHO0N (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Nov 2022 09:26:13 -0500
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0808A5C743
+        for <linux-ext4@vger.kernel.org>; Tue,  8 Nov 2022 06:24:55 -0800 (PST)
+Received: from canpemm500005.china.huawei.com (unknown [172.30.72.56])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4N69N92MfgzmV6l;
+        Tue,  8 Nov 2022 22:24:41 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm500005.china.huawei.com
  (7.192.104.229) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.31; Tue, 8 Nov
- 2022 22:24:51 +0800
+ 2022 22:24:53 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <yi.zhang@huawei.com>, <yukuai3@huawei.com>
-Subject: [PATCH 07/12] ext4: add dirblock I/O fault injection
-Date:   Tue, 8 Nov 2022 22:46:12 +0800
-Message-ID: <20221108144617.4159381-8-yi.zhang@huawei.com>
+Subject: [PATCH 11/12] ext4: add journal related fault injection
+Date:   Tue, 8 Nov 2022 22:46:16 +0800
+Message-ID: <20221108144617.4159381-12-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20221108144617.4159381-1-yi.zhang@huawei.com>
 References: <20221108144617.4159381-1-yi.zhang@huawei.com>
@@ -42,86 +42,138 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add directory block reading I/O fault injection, we can specify the
-inode and logical block to inject. It will return -EIO immediately
-instead of submitting I/O in readdir cases, but in the
-__ext4_find_entry() procedure, it's hard to inject error precisely due
-to the batch count reading, so it simulate error by clearing the
-buffer's uptodate flag after I/O complete.
+Add journal start, getting create/write access, and dirty metadata fault
+injection. The journal start fault injections return -ENOMEM directly,
+other 3 injections will abort the journal and return -EROFS.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/dir.c   | 3 +++
- fs/ext4/ext4.h  | 2 ++
- fs/ext4/namei.c | 4 ++++
- fs/ext4/sysfs.c | 1 +
- 4 files changed, 10 insertions(+)
+ fs/ext4/ext4.h      | 12 ++++++++++++
+ fs/ext4/ext4_jbd2.c | 22 ++++++++++++++++------
+ fs/ext4/ext4_jbd2.h |  5 +++++
+ fs/ext4/sysfs.c     |  5 +++++
+ 4 files changed, 38 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 3985f8c33f95..1cf2b89c9dcd 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -196,6 +196,9 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
- 					&file->f_ra, file,
- 					index, 1);
- 			file->f_ra.prev_pos = (loff_t)index << PAGE_SHIFT;
-+			err = ext4_fault_dirblock_io(inode, map.m_lblk);
-+			if (err)
-+				goto errout;
- 			bh = ext4_bread(NULL, inode, map.m_lblk, 0);
- 			if (IS_ERR(bh)) {
- 				err = PTR_ERR(bh);
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9c1dcbed59e6..aaa3a29cd0e7 100644
+index 813127cfd3c0..96b805992ea5 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1523,6 +1523,7 @@ enum ext4_fault_bits {
- 	EXT4_FAULT_BBITMAP_EIO,		/* block bitmap block */
- 	EXT4_FAULT_INODE_EIO,		/* inode */
- 	EXT4_FAULT_EXTENT_EIO,		/* extent block */
-+	EXT4_FAULT_DIRBLOCK_EIO,	/* directory block */
+@@ -1526,6 +1526,12 @@ enum ext4_fault_bits {
+ 	EXT4_FAULT_DIRBLOCK_EIO,	/* directory block */
+ 	EXT4_FAULT_XATTR_EIO,		/* xattr block */
+ 	EXT4_FAULT_SYMLINK_EIO,		/* symlink block */
++	/* journal error */
++	EXT4_FAULT_JOURNAL_START,	/* journal start inode */
++	EXT4_FAULT_JOURNAL_START_SB,	/* journal start sb */
++	EXT4_FAULT_JOURNAL_CREATE_ACCESS,	/* journal get create access */
++	EXT4_FAULT_JOURNAL_WRITE_ACCESS,	/* journal get write access */
++	EXT4_FAULT_JOURNAL_DIRTY_METADATA,	/* journal dirty meta data */
  	EXT4_FAULT_MAX
  };
  
-@@ -1626,6 +1627,7 @@ EXT4_FAULT_GRP_FN(IBITMAP_EIO, inode_bitmap_io, -EIO)
- EXT4_FAULT_GRP_FN(BBITMAP_EIO, block_bitmap_io, -EIO)
- EXT4_FAULT_INODE_FN(INODE_EIO, inode_io, -EIO)
- EXT4_FAULT_INODE_PBLOCK_FN(EXTENT_EIO, extent_io, -EIO)
-+EXT4_FAULT_INODE_LBLOCK_FN(DIRBLOCK_EIO, dirblock_io, -EIO)
+@@ -1633,6 +1639,12 @@ EXT4_FAULT_INODE_LBLOCK_FN(DIRBLOCK_EIO, dirblock_io, -EIO)
+ EXT4_FAULT_INODE_FN(XATTR_EIO, xattr_io, -EIO)
+ EXT4_FAULT_INODE_FN(SYMLINK_EIO, symlink_io, -EIO)
  
++EXT4_FAULT_INODE_FN(JOURNAL_START, journal_start, -ENOMEM)
++EXT4_FAULT_FN(JOURNAL_START_SB, journal_start_sb, -ENOMEM)
++EXT4_FAULT_INODE_PBLOCK_FN(JOURNAL_CREATE_ACCESS, journal_create_access, -EROFS)
++EXT4_FAULT_INODE_PBLOCK_FN(JOURNAL_WRITE_ACCESS, journal_write_access, -EROFS)
++EXT4_FAULT_INODE_PBLOCK_FN(JOURNAL_DIRTY_METADATA, journal_dirty_metadata, -EROFS)
++
  /*
   * fourth extended-fs super-block data in memory
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 4960ef9f05a0..fa754f1ba4a6 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -140,6 +140,8 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
+  */
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 8e1fb18f465e..e0972dea7463 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -95,6 +95,9 @@ handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
  
- 	if (ext4_simulate_fail(inode->i_sb, EXT4_SIM_DIRBLOCK_EIO))
- 		bh = ERR_PTR(-EIO);
-+	else if (ext4_fault_dirblock_io(inode, block))
-+		bh = ERR_PTR(-EIO);
- 	else
- 		bh = ext4_bread(NULL, inode, block, 0);
- 	if (IS_ERR(bh)) {
-@@ -1663,6 +1665,8 @@ static struct buffer_head *__ext4_find_entry(struct inode *dir,
- 		if ((bh = bh_use[ra_ptr++]) == NULL)
- 			goto next;
- 		wait_on_buffer(bh);
-+		if (ext4_fault_dirblock_io(dir, bh->b_blocknr))
-+			clear_buffer_uptodate(bh);
- 		if (!buffer_uptodate(bh)) {
- 			EXT4_ERROR_INODE_ERR(dir, EIO,
- 					     "reading directory lblock %lu",
+ 	trace_ext4_journal_start(sb, blocks, rsv_blocks, revoke_creds,
+ 				 _RET_IP_);
++	err = ext4_fault_journal_start_sb(sb);
++	if (err)
++		return ERR_PTR(err);
+ 	err = ext4_journal_check_start(sb);
+ 	if (err < 0)
+ 		return ERR_PTR(err);
+@@ -232,7 +235,9 @@ int __ext4_journal_get_write_access(const char *where, unsigned int line,
+ 		ext4_check_bdev_write_error(bh->b_bdev->bd_super);
+ 
+ 	if (ext4_handle_valid(handle)) {
+-		err = jbd2_journal_get_write_access(handle, bh);
++		err = ext4_fault_journal_write_access(sb, 0, bh->b_blocknr);
++		if (!err)
++			err = jbd2_journal_get_write_access(handle, bh);
+ 		if (err) {
+ 			ext4_journal_abort_handle(where, line, __func__, bh,
+ 						  handle, err);
+@@ -320,7 +325,9 @@ int __ext4_journal_get_create_access(const char *where, unsigned int line,
+ 	if (!ext4_handle_valid(handle))
+ 		return 0;
+ 
+-	err = jbd2_journal_get_create_access(handle, bh);
++	err = ext4_fault_journal_create_access(sb, 0, bh->b_blocknr);
++	if (!err)
++		err = jbd2_journal_get_create_access(handle, bh);
+ 	if (err) {
+ 		ext4_journal_abort_handle(where, line, __func__, bh, handle,
+ 					  err);
+@@ -338,7 +345,7 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+ 				 handle_t *handle, struct inode *inode,
+ 				 struct buffer_head *bh)
+ {
+-	int err = 0;
++	int err = 0, fa_err = 0;
+ 
+ 	might_sleep();
+ 
+@@ -346,9 +353,12 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+ 	set_buffer_prio(bh);
+ 	set_buffer_uptodate(bh);
+ 	if (ext4_handle_valid(handle)) {
+-		err = jbd2_journal_dirty_metadata(handle, bh);
+-		/* Errors can only happen due to aborted journal or a nasty bug */
+-		if (!is_handle_aborted(handle) && WARN_ON_ONCE(err)) {
++		if (bh->b_bdev->bd_super)
++			fa_err = ext4_fault_journal_dirty_metadata(bh->b_bdev->bd_super,
++						0, bh->b_blocknr);
++		if (!fa_err)
++			err = jbd2_journal_dirty_metadata(handle, bh);
++		if (!is_handle_aborted(handle) && (WARN_ON_ONCE(err) || fa_err)) {
+ 			ext4_journal_abort_handle(where, line, __func__, bh,
+ 						  handle, err);
+ 			if (inode == NULL) {
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index db2ae4a2b38d..b0a996f306bb 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -323,6 +323,11 @@ static inline handle_t *__ext4_journal_start(struct inode *inode,
+ 					     int blocks, int rsv_blocks,
+ 					     int revoke_creds)
+ {
++	int err;
++
++	err = ext4_fault_journal_start(inode->i_sb, inode->i_ino);
++	if (err)
++		return ERR_PTR(err);
+ 	return __ext4_journal_start_sb(inode->i_sb, line, type, blocks,
+ 				       rsv_blocks, revoke_creds);
+ }
 diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index bad4885399dd..0329205a9958 100644
+index aca91ab5b506..57deb90f3e42 100644
 --- a/fs/ext4/sysfs.c
 +++ b/fs/ext4/sysfs.c
-@@ -582,6 +582,7 @@ char *ext4_fault_names[EXT4_FAULT_MAX] = {
- 	"block_bitmap_eio",		/* EXT4_FAULT_BBITMAP_EIO */
- 	"inode_eio",			/* EXT4_FAULT_INODE_EIO */
- 	"extent_block_eio",		/* EXT4_FAULT_EXTENT_EIO */
-+	"dir_block_eio",		/* EXT4_FAULT_DIRBLOCK_EIO */
+@@ -585,6 +585,11 @@ char *ext4_fault_names[EXT4_FAULT_MAX] = {
+ 	"dir_block_eio",		/* EXT4_FAULT_DIRBLOCK_EIO */
+ 	"xattr_block_eio",		/* EXT4_FAULT_XATTR_EIO */
+ 	"symlink_block_eio",		/* EXT4_FAULT_SYMLINK_EIO */
++	"journal_start",		/* EXT4_FAULT_JOURNAL_START */
++	"journal_start_sb",		/* EXT4_FAULT_JOURNAL_START_SB */
++	"journal_get_create_access",	/* EXT4_FAULT_JOURNAL_CREATE_ACCESS */
++	"journal_get_write_access",	/* EXT4_FAULT_JOURNAL_WRITE_ACCESS */
++	"journal_dirty_metadata",	/* EXT4_FAULT_JOURNAL_DIRTY_METADATA */
  };
  
  static int ext4_fault_available_show(struct seq_file *m, void *v)
