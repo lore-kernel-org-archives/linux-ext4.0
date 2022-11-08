@@ -2,32 +2,32 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0BE89C4167D
-	for <linux-ext4@archiver.kernel.org>; Tue,  8 Nov 2022 14:27:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C01EC43219
+	for <linux-ext4@archiver.kernel.org>; Tue,  8 Nov 2022 14:27:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233740AbiKHO1D (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 8 Nov 2022 09:27:03 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57874 "EHLO
+        id S234054AbiKHO1F (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 8 Nov 2022 09:27:05 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36254 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234121AbiKHO0N (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Nov 2022 09:26:13 -0500
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A1C7F5B862
-        for <linux-ext4@vger.kernel.org>; Tue,  8 Nov 2022 06:24:54 -0800 (PST)
-Received: from canpemm500005.china.huawei.com (unknown [172.30.72.54])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4N69ND6GYszRp5v;
-        Tue,  8 Nov 2022 22:24:44 +0800 (CST)
+        with ESMTP id S234129AbiKHO0O (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Nov 2022 09:26:14 -0500
+Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E60D1C8A02
+        for <linux-ext4@vger.kernel.org>; Tue,  8 Nov 2022 06:24:55 -0800 (PST)
+Received: from canpemm500005.china.huawei.com (unknown [172.30.72.57])
+        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4N69Jx2yZlzHqRZ;
+        Tue,  8 Nov 2022 22:21:53 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm500005.china.huawei.com
  (7.192.104.229) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.31; Tue, 8 Nov
- 2022 22:24:52 +0800
+ 2022 22:24:53 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <yi.zhang@huawei.com>, <yukuai3@huawei.com>
-Subject: [PATCH 10/12] ext4: add symlink block I/O fault injection
-Date:   Tue, 8 Nov 2022 22:46:15 +0800
-Message-ID: <20221108144617.4159381-11-yi.zhang@huawei.com>
+Subject: [PATCH 12/12] ext4: remove simulate fail facility
+Date:   Tue, 8 Nov 2022 22:46:17 +0800
+Message-ID: <20221108144617.4159381-13-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20221108144617.4159381-1-yi.zhang@huawei.com>
 References: <20221108144617.4159381-1-yi.zhang@huawei.com>
@@ -42,71 +42,203 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add I/O fault injection when reading symlink block, user could specify
-which inode to inject error. It will return -EIO immediately instead of
-submitting I/O.
+Now that we have fault injection support for ext4, it could replace
+current simulate fail facility entirely, so this patch remove all
+ext4_simulate_fail() interface and supports.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/ext4.h    | 2 ++
- fs/ext4/symlink.c | 4 ++++
- fs/ext4/sysfs.c   | 1 +
- 3 files changed, 7 insertions(+)
+ fs/ext4/balloc.c |  4 +---
+ fs/ext4/ext4.h   | 38 --------------------------------------
+ fs/ext4/ialloc.c |  4 +---
+ fs/ext4/inode.c  |  6 ++----
+ fs/ext4/namei.c  | 10 +++-------
+ fs/ext4/sysfs.c  |  6 ------
+ 6 files changed, 7 insertions(+), 61 deletions(-)
 
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index ff5c90f4386d..999e66d9dc45 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -384,8 +384,7 @@ static int ext4_validate_block_bitmap(struct super_block *sb,
+ 	if (buffer_verified(bh))
+ 		goto verified;
+ 	if (unlikely(!ext4_block_bitmap_csum_verify(sb, block_group,
+-						    desc, bh) ||
+-		     ext4_simulate_fail(sb, EXT4_SIM_BBITMAP_CRC))) {
++						    desc, bh))) {
+ 		ext4_unlock_group(sb, block_group);
+ 		ext4_error(sb, "bg %u: bad block bitmap checksum", block_group);
+ 		ext4_mark_group_bitmap_corrupted(sb, block_group,
+@@ -537,7 +536,6 @@ int ext4_wait_block_bitmap(struct super_block *sb, ext4_group_t block_group,
+ 	if (!desc)
+ 		return -EFSCORRUPTED;
+ 	wait_on_buffer(bh);
+-	ext4_simulate_fail_bh(sb, bh, EXT4_SIM_BBITMAP_EIO);
+ 	if (!buffer_uptodate(bh)) {
+ 		ext4_error_err(sb, EIO, "Cannot read block bitmap - "
+ 			       "block_group = %u, block_bitmap = %llu",
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 94894daef595..813127cfd3c0 100644
+index 96b805992ea5..74b5b36c39d3 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1525,6 +1525,7 @@ enum ext4_fault_bits {
- 	EXT4_FAULT_EXTENT_EIO,		/* extent block */
- 	EXT4_FAULT_DIRBLOCK_EIO,	/* directory block */
- 	EXT4_FAULT_XATTR_EIO,		/* xattr block */
-+	EXT4_FAULT_SYMLINK_EIO,		/* symlink block */
- 	EXT4_FAULT_MAX
- };
+@@ -1849,9 +1849,6 @@ struct ext4_sb_info {
+ 	struct percpu_rw_semaphore s_writepages_rwsem;
+ 	struct dax_device *s_daxdev;
+ 	u64 s_dax_part_off;
+-#ifdef CONFIG_EXT4_DEBUG
+-	unsigned long s_simulate_fail;
+-#endif
+ #ifdef CONFIG_EXT4_FAULT_INJECTION
+ 	struct ext4_fault_attr s_fault_attr;
+ #endif
+@@ -1966,41 +1963,6 @@ static inline int ext4_test_mount_flag(struct super_block *sb, int bit)
+ 	return test_bit(bit, &EXT4_SB(sb)->s_mount_flags);
+ }
  
-@@ -1630,6 +1631,7 @@ EXT4_FAULT_INODE_FN(INODE_EIO, inode_io, -EIO)
- EXT4_FAULT_INODE_PBLOCK_FN(EXTENT_EIO, extent_io, -EIO)
- EXT4_FAULT_INODE_LBLOCK_FN(DIRBLOCK_EIO, dirblock_io, -EIO)
- EXT4_FAULT_INODE_FN(XATTR_EIO, xattr_io, -EIO)
-+EXT4_FAULT_INODE_FN(SYMLINK_EIO, symlink_io, -EIO)
- 
+-
+-/*
+- * Simulate_fail codes
+- */
+-#define EXT4_SIM_BBITMAP_EIO	1
+-#define EXT4_SIM_BBITMAP_CRC	2
+-#define EXT4_SIM_IBITMAP_EIO	3
+-#define EXT4_SIM_IBITMAP_CRC	4
+-#define EXT4_SIM_INODE_EIO	5
+-#define EXT4_SIM_INODE_CRC	6
+-#define EXT4_SIM_DIRBLOCK_EIO	7
+-#define EXT4_SIM_DIRBLOCK_CRC	8
+-
+-static inline bool ext4_simulate_fail(struct super_block *sb,
+-				     unsigned long code)
+-{
+-#ifdef CONFIG_EXT4_DEBUG
+-	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-
+-	if (unlikely(sbi->s_simulate_fail == code)) {
+-		sbi->s_simulate_fail = 0;
+-		return true;
+-	}
+-#endif
+-	return false;
+-}
+-
+-static inline void ext4_simulate_fail_bh(struct super_block *sb,
+-					 struct buffer_head *bh,
+-					 unsigned long code)
+-{
+-	if (!IS_ERR(bh) && ext4_simulate_fail(sb, code))
+-		clear_buffer_uptodate(bh);
+-}
+-
  /*
-  * fourth extended-fs super-block data in memory
-diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
-index 3d3ed3c38f56..5392e707418e 100644
---- a/fs/ext4/symlink.c
-+++ b/fs/ext4/symlink.c
-@@ -39,6 +39,8 @@ static const char *ext4_encrypted_get_link(struct dentry *dentry,
- 		caddr = EXT4_I(inode)->i_data;
- 		max_size = sizeof(EXT4_I(inode)->i_data);
- 	} else {
-+		if (ext4_fault_symlink_io(inode->i_sb, inode->i_ino))
-+			return ERR_PTR(-EIO);
- 		bh = ext4_bread(NULL, inode, 0, 0);
- 		if (IS_ERR(bh))
- 			return ERR_CAST(bh);
-@@ -97,6 +99,8 @@ static const char *ext4_get_link(struct dentry *dentry, struct inode *inode,
- 		if (!bh || !ext4_buffer_uptodate(bh))
- 			return ERR_PTR(-ECHILD);
- 	} else {
-+		if (ext4_fault_symlink_io(inode->i_sb, inode->i_ino))
-+			return ERR_PTR(-EIO);
- 		bh = ext4_bread(NULL, inode, 0, 0);
- 		if (IS_ERR(bh))
- 			return ERR_CAST(bh);
+  * Error number codes for s_{first,last}_error_errno
+  *
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index e299aa80a718..a45f0c0aaa3a 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -99,8 +99,7 @@ static int ext4_validate_inode_bitmap(struct super_block *sb,
+ 		goto verified;
+ 	blk = ext4_inode_bitmap(sb, desc);
+ 	if (!ext4_inode_bitmap_csum_verify(sb, block_group, desc, bh,
+-					   EXT4_INODES_PER_GROUP(sb) / 8) ||
+-	    ext4_simulate_fail(sb, EXT4_SIM_IBITMAP_CRC)) {
++					   EXT4_INODES_PER_GROUP(sb) / 8)) {
+ 		ext4_unlock_group(sb, block_group);
+ 		ext4_error(sb, "Corrupt inode bitmap - block_group = %u, "
+ 			   "inode_bitmap = %llu", block_group, blk);
+@@ -200,7 +199,6 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 		goto read_err;
+ 	}
+ 	ext4_read_bh(bh, REQ_META | REQ_PRIO, ext4_end_bitmap_read);
+-	ext4_simulate_fail_bh(sb, bh, EXT4_SIM_IBITMAP_EIO);
+ 	if (!buffer_uptodate(bh)) {
+ 		err = -EIO;
+ 		goto read_err;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 8c611ad6dac1..20546338bc2a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4578,7 +4578,6 @@ static int __ext4_get_inode_loc(struct super_block *sb, unsigned long ino,
+ 	ext4_read_bh_nowait(bh, REQ_META | REQ_PRIO, NULL);
+ 	blk_finish_plug(&plug);
+ 	wait_on_buffer(bh);
+-	ext4_simulate_fail_bh(sb, bh, EXT4_SIM_INODE_EIO);
+ 	if (!buffer_uptodate(bh))
+ 		goto err;
+ has_buffer:
+@@ -4835,9 +4834,8 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+ 					      sizeof(gen));
+ 	}
+ 
+-	if ((!ext4_inode_csum_verify(inode, raw_inode, ei) ||
+-	    ext4_simulate_fail(sb, EXT4_SIM_INODE_CRC)) &&
+-	     (!(EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY))) {
++	if (!ext4_inode_csum_verify(inode, raw_inode, ei) &&
++	    (!(EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY))) {
+ 		ext4_error_inode_err(inode, function, line, 0,
+ 				EFSBADCRC, "iget: checksum invalid");
+ 		ret = -EFSBADCRC;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index fa754f1ba4a6..e410e4c0357a 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -138,9 +138,7 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
+ 		return ERR_PTR(-EFSCORRUPTED);
+ 	}
+ 
+-	if (ext4_simulate_fail(inode->i_sb, EXT4_SIM_DIRBLOCK_EIO))
+-		bh = ERR_PTR(-EIO);
+-	else if (ext4_fault_dirblock_io(inode, block))
++	if (ext4_fault_dirblock_io(inode, block))
+ 		bh = ERR_PTR(-EIO);
+ 	else
+ 		bh = ext4_bread(NULL, inode, block, 0);
+@@ -187,8 +185,7 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
+ 	 * caller is sure it should be an index block.
+ 	 */
+ 	if (is_dx_block && type == INDEX) {
+-		if (ext4_dx_csum_verify(inode, dirent) &&
+-		    !ext4_simulate_fail(inode->i_sb, EXT4_SIM_DIRBLOCK_CRC))
++		if (ext4_dx_csum_verify(inode, dirent))
+ 			set_buffer_verified(bh);
+ 		else {
+ 			ext4_error_inode_err(inode, func, line, block,
+@@ -199,8 +196,7 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
+ 		}
+ 	}
+ 	if (!is_dx_block) {
+-		if (ext4_dirblock_csum_verify(inode, bh) &&
+-		    !ext4_simulate_fail(inode->i_sb, EXT4_SIM_DIRBLOCK_CRC))
++		if (ext4_dirblock_csum_verify(inode, bh))
+ 			set_buffer_verified(bh);
+ 		else {
+ 			ext4_error_inode_err(inode, func, line, block,
 diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index f7f8882037a5..aca91ab5b506 100644
+index 57deb90f3e42..091d6cca37c6 100644
 --- a/fs/ext4/sysfs.c
 +++ b/fs/ext4/sysfs.c
-@@ -584,6 +584,7 @@ char *ext4_fault_names[EXT4_FAULT_MAX] = {
- 	"extent_block_eio",		/* EXT4_FAULT_EXTENT_EIO */
- 	"dir_block_eio",		/* EXT4_FAULT_DIRBLOCK_EIO */
- 	"xattr_block_eio",		/* EXT4_FAULT_XATTR_EIO */
-+	"symlink_block_eio",		/* EXT4_FAULT_SYMLINK_EIO */
- };
- 
- static int ext4_fault_available_show(struct seq_file *m, void *v)
+@@ -227,9 +227,6 @@ EXT4_RW_ATTR_SBI_UI(warning_ratelimit_interval_ms, s_warning_ratelimit_state.int
+ EXT4_RW_ATTR_SBI_UI(warning_ratelimit_burst, s_warning_ratelimit_state.burst);
+ EXT4_RW_ATTR_SBI_UI(msg_ratelimit_interval_ms, s_msg_ratelimit_state.interval);
+ EXT4_RW_ATTR_SBI_UI(msg_ratelimit_burst, s_msg_ratelimit_state.burst);
+-#ifdef CONFIG_EXT4_DEBUG
+-EXT4_RW_ATTR_SBI_UL(simulate_fail, s_simulate_fail);
+-#endif
+ EXT4_RO_ATTR_SBI_ATOMIC(warning_count, s_warning_count);
+ EXT4_RO_ATTR_SBI_ATOMIC(msg_count, s_msg_count);
+ EXT4_RO_ATTR_ES_UI(errors_count, s_error_count);
+@@ -294,9 +291,6 @@ static struct attribute *ext4_attrs[] = {
+ 	ATTR_LIST(first_error_time),
+ 	ATTR_LIST(last_error_time),
+ 	ATTR_LIST(journal_task),
+-#ifdef CONFIG_EXT4_DEBUG
+-	ATTR_LIST(simulate_fail),
+-#endif
+ 	ATTR_LIST(mb_prefetch),
+ 	ATTR_LIST(mb_prefetch_limit),
+ 	ATTR_LIST(last_trim_minblks),
 -- 
 2.31.1
 
