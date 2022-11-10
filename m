@@ -2,91 +2,121 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 66D1DC433FE
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Nov 2022 00:53:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9667CC433FE
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Nov 2022 02:05:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229872AbiKJAxl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 9 Nov 2022 19:53:41 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45952 "EHLO
+        id S232583AbiKJCFA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 9 Nov 2022 21:05:00 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59872 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229615AbiKJAxk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Nov 2022 19:53:40 -0500
-Received: from mail-ej1-x62c.google.com (mail-ej1-x62c.google.com [IPv6:2a00:1450:4864:20::62c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0706C10577
-        for <linux-ext4@vger.kernel.org>; Wed,  9 Nov 2022 16:53:39 -0800 (PST)
-Received: by mail-ej1-x62c.google.com with SMTP id m22so1188626eji.10
-        for <linux-ext4@vger.kernel.org>; Wed, 09 Nov 2022 16:53:38 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=dYtXhWZHrD/qbmse2cMtjay8p2XmbwAaU+tbt2qCgho=;
-        b=pX2+lLTHGwwXetbe4aP9KJl+l6vXmvY6sHdLVWR/MAQHQ6DT+ni/NDH075VbNbCVer
-         13hmJEAndrM4germgohufpnugQQfMzNVKT40z6CLwWhWxh/WMaIOPbr1mD4Fr+M3O7W6
-         pELH8SzMdwDTk7HEJIvmQPBrkCVWBZnOYw9xAv+xDZ9IVNROrh6Hnf4L030AziJ6JAkD
-         bmp14lRhP6dsLOClpzcgJw09jG/kYM3D3R+bRxeOtYblT+s6cR+6SSxIYo1mHfHHzd8M
-         fPxdBMjCryUOXBsav42IbGkMgmxajJYNFJXMZWs2eEPfzaC2rDaZtVni76vB21s+MbUP
-         Izcg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=dYtXhWZHrD/qbmse2cMtjay8p2XmbwAaU+tbt2qCgho=;
-        b=Hglt8XVrJbd99q3KIbJdLunExhRjJhEWFtAt5ySCSxErhNtZZUMvtUhwvteFzSJi6A
-         IDmX7H3c+EaDdeZMHdZwnRyWUv54J6EoT4W1DFgmUrzDdVImU+EqTZfzHD1gN/MZ9+5Y
-         AQJ2JBCOX8XWHc7NPuv46/y3lKz5tCkhSiHBxg+88hWjMyRSlKOhwwc2YIi/DE+KUV70
-         5rGHbIEN1GrTnrbGfw6y7ESRn4T5YZNKywmInzCmMEDSCP+V4OapQqJG3Xo/xVCgHMjg
-         StVerq5+HHr1l3oKxBTpX807EjiG538JmITCKUvoWr3qhgfNVWsVuwHtj7PEVQ1QuGjI
-         v+RA==
-X-Gm-Message-State: ACrzQf1U88K1nMFejDAzFicJJ8b2Rxd44KHD49gicEGi1z7czxJH+P02
-        HEyVwL0dCU62FkHtLoxGZxKGBHEZYB00D+mtsx074Lp8nYN1eA==
-X-Google-Smtp-Source: AMsMyM5lEA4zHBBV60VbnlFuSR7MlpZtHSbOmYTMskvY/GZ0kP4ZM9hRUuMB/KZ3Sw1LuHlBunq5SWRDhawdau1KjPU=
-X-Received: by 2002:a17:906:cf82:b0:7ae:100a:8dc0 with SMTP id
- um2-20020a170906cf8200b007ae100a8dc0mr1739182ejb.424.1668041617507; Wed, 09
- Nov 2022 16:53:37 -0800 (PST)
+        with ESMTP id S232585AbiKJCEf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Nov 2022 21:04:35 -0500
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5455EBE5
+        for <linux-ext4@vger.kernel.org>; Wed,  9 Nov 2022 18:04:33 -0800 (PST)
+Received: from canpemm500005.china.huawei.com (unknown [172.30.72.56])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4N74s13cxjzRp7B;
+        Thu, 10 Nov 2022 10:04:21 +0800 (CST)
+Received: from huawei.com (10.175.127.227) by canpemm500005.china.huawei.com
+ (7.192.104.229) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.31; Thu, 10 Nov
+ 2022 10:04:31 +0800
+From:   Zhang Yi <yi.zhang@huawei.com>
+To:     <linux-ext4@vger.kernel.org>
+CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
+        <yi.zhang@huawei.com>, <yukuai3@huawei.com>
+Subject: [PATCH v2 01/12] ext4: add debugfs interface
+Date:   Thu, 10 Nov 2022 10:25:47 +0800
+Message-ID: <20221110022558.7844-2-yi.zhang@huawei.com>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20221110022558.7844-1-yi.zhang@huawei.com>
+References: <20221110022558.7844-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
-References: <20221109153822.80250-1-sunjunchao2870@gmail.com> <Y2vqs7/Djy22B6XE@sol.localdomain>
-In-Reply-To: <Y2vqs7/Djy22B6XE@sol.localdomain>
-From:   JunChao Sun <sunjunchao2870@gmail.com>
-Date:   Thu, 10 Nov 2022 08:53:26 +0800
-Message-ID: <CAHB1NaidN+FquNh2z-UXW8cycM-X5h+6T=XX=fEFyt2VkwXGvw@mail.gmail.com>
-Subject: Re: [PATCH] ext4: replace kmem_cache_create with KMEM_CACHE
-To:     Eric Biggers <ebiggers@kernel.org>
-Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, jack@suse.cz
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.127.227]
+X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
+ canpemm500005.china.huawei.com (7.192.104.229)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Yeah, maybe we should remove the SLAB_RECLAIM_ACCOUNT flag for static
-slab, and 16828088f9e51815 ("ext4: use KMEM_CACHE instead of
-kmem_cache_create") have done so. But should we remove
-SLAB_RECLAIM_ACCOUNT in this patch or belong to a separate patch?
+Add debugfs interface support, preparing to introduce fault injection
+facility.
 
-Eric Biggers <ebiggers@kernel.org> =E4=BA=8E2022=E5=B9=B411=E6=9C=8810=E6=
-=97=A5=E5=91=A8=E5=9B=9B 02:00=E5=86=99=E9=81=93=EF=BC=9A
->
-> On Wed, Nov 09, 2022 at 07:38:22AM -0800, JunChao Sun wrote:
-> > diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-> > index 3d21eae267fc..773176e7f9f5 100644
-> > --- a/fs/ext4/readpage.c
-> > +++ b/fs/ext4/readpage.c
-> > @@ -410,9 +410,8 @@ int ext4_mpage_readpages(struct inode *inode,
-> >
-> >  int __init ext4_init_post_read_processing(void)
-> >  {
-> > -     bio_post_read_ctx_cache =3D
-> > -             kmem_cache_create("ext4_bio_post_read_ctx",
-> > -                               sizeof(struct bio_post_read_ctx), 0, 0,=
- NULL);
-> > +     bio_post_read_ctx_cache =3D KMEM_CACHE(bio_post_read_ctx, SLAB_RE=
-CLAIM_ACCOUNT);
-> > +
->
-> Why use SLAB_RECLAIM_ACCOUNT here?
->
-> - Eric
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/ext4.h  |  1 +
+ fs/ext4/sysfs.c | 10 +++++++++-
+ 2 files changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8d5453852f98..53099ffe307f 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1551,6 +1551,7 @@ struct ext4_sb_info {
+ 	struct percpu_counter s_sra_exceeded_retry_limit;
+ 	struct blockgroup_lock *s_blockgroup_lock;
+ 	struct proc_dir_entry *s_proc;
++	struct dentry *s_debug;
+ 	struct kobject s_kobj;
+ 	struct completion s_kobj_unregister;
+ 	struct super_block *s_sb;
+diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
+index d233c24ea342..f3e4049ec50e 100644
+--- a/fs/ext4/sysfs.c
++++ b/fs/ext4/sysfs.c
+@@ -14,6 +14,7 @@
+ #include <linux/slab.h>
+ #include <linux/proc_fs.h>
+ #include <linux/part_stat.h>
++#include <linux/debugfs.h>
+ 
+ #include "ext4.h"
+ #include "ext4_jbd2.h"
+@@ -59,6 +60,8 @@ struct ext4_attr {
+ 	} u;
+ };
+ 
++static struct dentry *ext4_debugfs_root;
++
+ static ssize_t session_write_kbytes_show(struct ext4_sb_info *sbi, char *buf)
+ {
+ 	struct super_block *sb = sbi->s_buddy_cache->i_sb;
+@@ -548,6 +551,8 @@ int ext4_register_sysfs(struct super_block *sb)
+ 		proc_create_seq_data("mb_structs_summary", 0444, sbi->s_proc,
+ 				&ext4_mb_seq_structs_summary_ops, sb);
+ 	}
++	if (ext4_debugfs_root)
++		sbi->s_debug = debugfs_create_dir(sb->s_id, ext4_debugfs_root);
+ 	return 0;
+ }
+ 
+@@ -555,6 +560,7 @@ void ext4_unregister_sysfs(struct super_block *sb)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
++	debugfs_remove_recursive(sbi->s_debug);
+ 	if (sbi->s_proc)
+ 		remove_proc_subtree(sb->s_id, ext4_proc_root);
+ 	kobject_del(&sbi->s_kobj);
+@@ -580,6 +586,7 @@ int __init ext4_init_sysfs(void)
+ 		goto feat_err;
+ 
+ 	ext4_proc_root = proc_mkdir(proc_dirname, NULL);
++	ext4_debugfs_root = debugfs_create_dir("ext4", NULL);
+ 	return ret;
+ 
+ feat_err:
+@@ -599,5 +606,6 @@ void ext4_exit_sysfs(void)
+ 	ext4_root = NULL;
+ 	remove_proc_entry(proc_dirname, NULL);
+ 	ext4_proc_root = NULL;
++	debugfs_remove_recursive(ext4_debugfs_root);
++	ext4_debugfs_root = NULL;
+ }
+-
+-- 
+2.31.1
+
