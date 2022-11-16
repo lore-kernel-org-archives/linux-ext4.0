@@ -2,91 +2,63 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CA8C6C4332F
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Nov 2022 07:07:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 75C47C4332F
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Nov 2022 08:12:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232633AbiKPHG5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 16 Nov 2022 02:06:57 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37406 "EHLO
+        id S238362AbiKPIMT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 16 Nov 2022 03:12:19 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42288 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232413AbiKPHGr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Nov 2022 02:06:47 -0500
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7FBD513EBF;
-        Tue, 15 Nov 2022 23:06:46 -0800 (PST)
-Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.56])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4NBvGg5tKczRpPD;
-        Wed, 16 Nov 2022 15:06:19 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
- (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.31; Wed, 16 Nov
- 2022 15:06:38 +0800
-From:   Baokun Li <libaokun1@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <ritesh.list@gmail.com>, <linux-kernel@vger.kernel.org>,
-        <yi.zhang@huawei.com>, <yukuai3@huawei.com>,
-        <libaokun1@huawei.com>, "Darrick J . Wong" <djwong@kernel.org>
-Subject: [PATCH v2 1/3] ext4: fix bad checksum after online resize
-Date:   Wed, 16 Nov 2022 15:28:00 +0800
-Message-ID: <20221116072802.526990-2-libaokun1@huawei.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20221116072802.526990-1-libaokun1@huawei.com>
-References: <20221116072802.526990-1-libaokun1@huawei.com>
+        with ESMTP id S238794AbiKPIL6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Nov 2022 03:11:58 -0500
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DFF3A2CDCC;
+        Wed, 16 Nov 2022 00:09:28 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=fC4LrdUtHicDNTrM6ZQCgkHgfF5J9bOlSVqabw6qkVo=; b=rgHGM2WtyE9J9xNTJOoLkyh0HU
+        KA0SbPvfBG3eMMfXlW7Pn5OClY9qOSWpjp3XgCGpGFTzd1pb8NP7LHQqwqlK8wie7laXLNh22RNd6
+        nWn9l5R1/1ZefPg8tiyaHKH6KtapubFM/WqW0FkRgUFyktm9TaFzwrExteT7suQ9y6WXYOWYzaqsB
+        UHYLXV2irc3lUSgo04fxpZwR5cImwR5O8tfeuhA2yZDzxIGF5VfavMSfAClxNQS+pyuk9B2DGRYcP
+        6e07LZ8Yule1wh4d/kvm3udoOWts/etIGcfSfowQFztBMQB1z1LiAVs5UhfDKUN/KJy3oqaMEQ+OQ
+        NN3JvG/w==;
+Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1ovDU2-00HAeo-2Q; Wed, 16 Nov 2022 08:09:22 +0000
+Date:   Wed, 16 Nov 2022 08:09:22 +0000
+From:   Matthew Wilcox <willy@infradead.org>
+To:     "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
+Cc:     linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        akpm@linux-foundation.org, naoya.horiguchi@nec.com, tytso@mit.edu
+Subject: Re: [PATCH 1/4] ext4: Convert move_extent_per_page() to use folios
+Message-ID: <Y3SaskD7QurUVJFr@casper.infradead.org>
+References: <20221116021011.54164-1-vishal.moola@gmail.com>
+ <20221116021011.54164-2-vishal.moola@gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems704-chm.china.huawei.com (10.3.19.181) To
- dggpeml500021.china.huawei.com (7.185.36.21)
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20221116021011.54164-2-vishal.moola@gmail.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-When online resizing is performed twice consecutively, the error message
-"Superblock checksum does not match superblock" is displayed for the
-second time. Here's the reproducer:
+On Tue, Nov 15, 2022 at 06:10:08PM -0800, Vishal Moola (Oracle) wrote:
+>  {
+>  	struct inode *orig_inode = file_inode(o_filp);
+>  	struct page *pagep[2] = {NULL, NULL};
+> +	struct folio *folio[2] = {NULL, NULL};
 
-	mkfs.ext4 -F /dev/sdb 100M
-	mount /dev/sdb /tmp/test
-	resize2fs /dev/sdb 5G
-	resize2fs /dev/sdb 6G
+I have a feeling that mext_page_double_lock() should also be converted
+to use folios.  But this makes me nervous:
 
-To solve this issue, we moved the update of the checksum after the
-es->s_overhead_clusters is updated.
+        int blocks_per_page = PAGE_SIZE >> orig_inode->i_blkbits;
 
-Fixes: 026d0d27c488 ("ext4: reduce computation of overhead during resize")
-Fixes: de394a86658f ("ext4: update s_overhead_clusters in the superblock during an on-line resize")
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
-Reviewed-by: Darrick J. Wong <djwong@kernel.org>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/resize.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+and I'm not sure what will happen if one or both of the orig_page
+and donor_page is large -- possibly different sizes of large.
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 46b87ffeb304..cb99b410c9fa 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1476,8 +1476,6 @@ static void ext4_update_super(struct super_block *sb,
- 	 * active. */
- 	ext4_r_blocks_count_set(es, ext4_r_blocks_count(es) +
- 				reserved_blocks);
--	ext4_superblock_csum_set(sb);
--	unlock_buffer(sbi->s_sbh);
- 
- 	/* Update the free space counts */
- 	percpu_counter_add(&sbi->s_freeclusters_counter,
-@@ -1513,6 +1511,8 @@ static void ext4_update_super(struct super_block *sb,
- 		ext4_calculate_overhead(sb);
- 	es->s_overhead_clusters = cpu_to_le32(sbi->s_overhead);
- 
-+	ext4_superblock_csum_set(sb);
-+	unlock_buffer(sbi->s_sbh);
- 	if (test_opt(sb, DEBUG))
- 		printk(KERN_DEBUG "EXT4-fs: added group %u:"
- 		       "%llu blocks(%llu free %llu reserved)\n", flex_gd->count,
--- 
-2.31.1
-
+Obviously ext4 doesn't allow large folios today, but it would be good to
+get some reasoning about why this isn't laying a trap for later (or at
+least assertions that neither folio is large so that there's an obvious
+scream instead of silent data corruption).
