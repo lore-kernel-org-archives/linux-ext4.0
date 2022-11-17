@@ -2,94 +2,139 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0E350C4332F
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Nov 2022 01:21:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D2FF0C433FE
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Nov 2022 01:37:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239073AbiKQBVf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 16 Nov 2022 20:21:35 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58848 "EHLO
+        id S238735AbiKQBhe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 16 Nov 2022 20:37:34 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39442 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238990AbiKQBVa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Nov 2022 20:21:30 -0500
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2387A1FCE2;
-        Wed, 16 Nov 2022 17:21:28 -0800 (PST)
-Received: from mail02.huawei.com (unknown [172.30.67.153])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4NCMZB1jtHz4f3jLS;
-        Thu, 17 Nov 2022 09:21:22 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.127.227])
-        by APP4 (Coremail) with SMTP id gCh0CgAnmdaSjHVj0gCfAg--.26536S6;
-        Thu, 17 Nov 2022 09:21:25 +0800 (CST)
-From:   Ye Bin <yebin@huaweicloud.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
-        Ye Bin <yebin10@huawei.com>
-Subject: [PATCH 2/3] ext4: WANR_ON when detect abnormal 'i_reserved_data_blocks'
-Date:   Thu, 17 Nov 2022 09:42:45 +0800
-Message-Id: <20221117014246.610202-3-yebin@huaweicloud.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20221117014246.610202-1-yebin@huaweicloud.com>
-References: <20221117014246.610202-1-yebin@huaweicloud.com>
+        with ESMTP id S239017AbiKQBh1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Nov 2022 20:37:27 -0500
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4C70061BA4;
+        Wed, 16 Nov 2022 17:37:17 -0800 (PST)
+Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.57])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4NCMw42m0wzmW0d;
+        Thu, 17 Nov 2022 09:36:52 +0800 (CST)
+Received: from [10.174.177.174] (10.174.177.174) by
+ dggpeml500021.china.huawei.com (7.185.36.21) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2375.31; Thu, 17 Nov 2022 09:37:15 +0800
+Message-ID: <205254f9-ee77-4e5f-d5b3-f315c377f41e@huawei.com>
+Date:   Thu, 17 Nov 2022 09:37:14 +0800
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgAnmdaSjHVj0gCfAg--.26536S6
-X-Coremail-Antispam: 1UD129KBjvdXoW7GF1fWw1fuF4kWw4UGFW7urg_yoWkGrgEq3
-        WUAF10vrWfXw4S9Fs5GrnxJrZYka1DCr18Ww4rKw15Zr10vF4DCw4qyry3Arn5Way8Gr90
-        9rW8Jry3GrWrWjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-        9fnUUIcSsGvfJTRUUUbskYFVCjjxCrM7AC8VAFwI0_Xr0_Wr1l1xkIjI8I6I8E6xAIw20E
-        Y4v20xvaj40_JFC_Wr1l1IIY67AEw4v_Jr0_Jr4l82xGYIkIc2x26280x7IE14v26r15M2
-        8IrcIa0xkI8VCY1x0267AKxVW8JVW5JwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK
-        021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r
-        xl6s0DM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl
-        6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6x
-        IIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_
-        Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr
-        1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE
-        14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7
-        IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E
-        87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73Uj
-        IFyTuYvjxU2_MaUUUUU
-X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101
+ Thunderbird/102.1.2
+Subject: Re: [PATCH v2 2/3] ext4: fix corrupt backup group descriptors after
+ online resize
+Content-Language: en-US
+To:     Jan Kara <jack@suse.cz>
+CC:     <linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
+        <adilger.kernel@dilger.ca>, <ritesh.list@gmail.com>,
+        <linux-kernel@vger.kernel.org>, <yi.zhang@huawei.com>,
+        <yukuai3@huawei.com>
+References: <20221116072802.526990-1-libaokun1@huawei.com>
+ <20221116072802.526990-3-libaokun1@huawei.com>
+ <20221116114929.wmawudyczia55gpe@quack3>
+ <85db0e08-2413-5b6e-1477-47e369cb9f8a@huawei.com>
+ <20221116152618.hznqamogp2gwpqtp@quack3>
+From:   Baokun Li <libaokun1@huawei.com>
+In-Reply-To: <20221116152618.hznqamogp2gwpqtp@quack3>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Transfer-Encoding: 7bit
+X-Originating-IP: [10.174.177.174]
+X-ClientProxiedBy: dggems701-chm.china.huawei.com (10.3.19.178) To
+ dggpeml500021.china.huawei.com (7.185.36.21)
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ye Bin <yebin10@huawei.com>
+On 2022/11/16 23:26, Jan Kara wrote:
+> On Wed 16-11-22 21:14:16, Baokun Li wrote:
+>> On 2022/11/16 19:49, Jan Kara wrote:
+>>> On Wed 16-11-22 15:28:01, Baokun Li wrote:
+>>>> In commit 9a8c5b0d0615 ("ext4: update the backup superblock's at the end
+>>>> of the online resize"), it is assumed that update_backups() only updates
+>>>> backup superblocks, so each b_data is treated as a backupsuper block to
+>>>> update its s_block_group_nr and s_checksum. However, update_backups()
+>>>> also updates the backup group descriptors, which causes the backup group
+>>>> descriptors to be corrupted.
+>>>>
+>>>> The above commit fixes the problem of invalid checksum of the backup
+>>>> superblock. The root cause of this problem is that the checksum of
+>>>> ext4_update_super() is not set correctly. This problem has been fixed
+>>>> in the previous patch ("ext4: fix bad checksum after online resize").
+>>>> Therefore, roll back some modifications in the above commit.
+>>>>
+>>>> Fixes: 9a8c5b0d0615 ("ext4: update the backup superblock's at the end of the online resize")
+>>>> Signed-off-by: Baokun Li <libaokun1@huawei.com>
+>>> So I agree commit 9a8c5b0d0615 is broken and does corrupt group
+>>> descriptors. However I don't see how PATCH 1/3 in this series would fix all
+>>> the problems commit 9a8c5b0d0615 is trying to fix. In particular checksums
+>>> on backup superblocks will not be properly set by the resize code AFAICT.
+>>>
+>>> 								Honza
+>> I didn't find these two issues to be the same until I researched the problem
+>> in
+>> PATCH 3/3 and found that commit 9a8c5b0d0615 introduced a similar problem.
+>> Then, it is found that the backup superblock is directly copied from the
+>> primary
+>> superblock. If the backup superblock is faulty, the primary superblock must
+>> be
+>> faulty. In this case, patch 1 that fixes the primary superblock problem is
+>> thought
+>> of. So by rolling back commit 9a8c5b0d0615 to verify, I found that patch 1
+>> did
+>> fix the problem.
+>>
+>> Only ext4_flex_group_add() and ext4_group_extend_no_check() call
+>> update_backups() to update the backup superblock. Both of these functions
+>> correctly set the checksum of the primary superblock. The backup superblocks
+>> that are copied from them are also correct.
+>>
+>> In ext4_flex_group_add(), we only update the backup superblock if there are
+>> no
+>> previous errors, indicating that we must have updated the checksum in
+>> ext4_update_super() before executing update_backups(). The previous problem
+>> was that after we updated the checksum in ext4_update_super(), we modified
+>> s_overhead_clusters, so the checksums for both the primary and backup
+>> superblocks
+>> were incorrect. This problem has been fixed in PATCH 1/3, so checksum is set
+>> correctly in ext4_flex_group_add().
+>>
+>> The same is true in ext4_group_extend_no_check(), we only update the backup
+>> superblock if there are no errors, and we execute ext4_superblock_csum_set()
+>> to update the checksum before updating the backup superblock. Therefore,
+>> checksum is correctly set in ext4_group_extend_no_check().
+>>
+>> I think we only need to ensure that the checksum is set correctly when the
+>> buffer
+>> lock of sbi->s_sbh is unlocked. Therefore, the checksum should be correct
+>> before
+>> update_backups() holds the buffer lock. Also, in update_backups() we copy
+>> the
+>> entire superblock completely, and the checksum is unchanged, so we don't
+>> need
+>> to reset it.
+> So I agree the checksum should be matching but the backup superblock should
+> have also s_block_group_nr set properly and after updating that we need to
+> recalculate the checksum as well.
+>
+> 								Honza
 
-If 'i_reserved_data_blocks' is not cleared which mean something wrong
-with code, so emit WARN_ON to capture this abnormal closer to the first
-scene.
+Totally agree!
 
-Signed-off-by: Ye Bin <yebin10@huawei.com>
----
- fs/ext4/super.c | 13 ++++++++-----
- 1 file changed, 8 insertions(+), 5 deletions(-)
+I will try to fix this in a better way in V3.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 63ef74eb8091..30885a6fe18b 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1385,11 +1385,14 @@ static void ext4_destroy_inode(struct inode *inode)
- 		dump_stack();
- 	}
- 
--	if (EXT4_I(inode)->i_reserved_data_blocks)
--		ext4_msg(inode->i_sb, KERN_ERR,
--			 "Inode %lu (%p): i_reserved_data_blocks (%u) not cleared!",
--			 inode->i_ino, EXT4_I(inode),
--			 EXT4_I(inode)->i_reserved_data_blocks);
-+	if (EXT4_I(inode)->i_reserved_data_blocks) {
-+		ext4_warning(inode->i_sb, "Inode %lu (%p): "
-+			    "i_reserved_data_blocks (%u) not cleared!",
-+			     inode->i_ino, EXT4_I(inode),
-+			     EXT4_I(inode)->i_reserved_data_blocks);
-+
-+		WARN_ON(1);
-+	}
- }
- 
- static void init_once(void *foo)
+>>>> ---
+>>>>    fs/ext4/resize.c | 5 -----
+>>>>    1 file changed, 5 deletions(-)
+>>>>
+>>>>
+Thank you for your review!
 -- 
-2.31.1
-
+With Best Regards,
+Baokun Li
+.
