@@ -2,93 +2,105 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EB0CCC433FE
-	for <linux-ext4@archiver.kernel.org>; Mon, 21 Nov 2022 11:26:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3EED7C4332F
+	for <linux-ext4@archiver.kernel.org>; Mon, 21 Nov 2022 11:30:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230381AbiKUL0u (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 21 Nov 2022 06:26:50 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51920 "EHLO
+        id S230126AbiKULaT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 21 Nov 2022 06:30:19 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56588 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230331AbiKUL0O (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Nov 2022 06:26:14 -0500
-Received: from mail-ed1-x54a.google.com (mail-ed1-x54a.google.com [IPv6:2a00:1450:4864:20::54a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DC843E4C
-        for <linux-ext4@vger.kernel.org>; Mon, 21 Nov 2022 03:21:47 -0800 (PST)
-Received: by mail-ed1-x54a.google.com with SMTP id s14-20020a056402520e00b00469a9930c52so1408795edd.16
-        for <linux-ext4@vger.kernel.org>; Mon, 21 Nov 2022 03:21:47 -0800 (PST)
+        with ESMTP id S230401AbiKUL3k (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Nov 2022 06:29:40 -0500
+Received: from mail-yw1-x1136.google.com (mail-yw1-x1136.google.com [IPv6:2607:f8b0:4864:20::1136])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D6C06B97F3
+        for <linux-ext4@vger.kernel.org>; Mon, 21 Nov 2022 03:24:34 -0800 (PST)
+Received: by mail-yw1-x1136.google.com with SMTP id 00721157ae682-398cff43344so60649207b3.0
+        for <linux-ext4@vger.kernel.org>; Mon, 21 Nov 2022 03:24:34 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=google.com; s=20210112;
-        h=cc:to:from:subject:message-id:references:mime-version:in-reply-to
-         :date:from:to:cc:subject:date:message-id:reply-to;
-        bh=iseMGXVhmQtR+5DQv6vAmctq3FLXZ3Zx0bYYW0I3bps=;
-        b=fvoRIPmpwjc9kwZJjlC8SWhtwYdajteuU8MNnEWUMvn5GkD+yGWYPUsDcdndaw8YjK
-         fa13YD7A3DdjmU3EhEj99KaM6rOjUxJKB/d/QJYdnY6fqKOJgZkPoO8RrrWJe1U4umr+
-         hiUfjkhq3hMpxwynNBwHUtYJWY9QJy0HLcUfde1YnzFDialtNBgsAL/Lpaq6bDXTMM62
-         N5V2k9a1D0kusoUoO9/V+NmAYKbT5IpfYNf/E/G22Vwu5YTvASjATJcEIMrdADAeDQc2
-         MVVCkuX8C8EJypjMeMPM03N72UYeZDw46ri4QQG9SKF+2INt3aYRQ+JZ/H1xOpAorNwU
-         0etA==
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=Z0Yxxijw1rGvRh5thj+hdyAsK4hKNzeEn6cA7Ahy6R4=;
+        b=HG+D9UeDx4HZ6s3bsFbtXomKMBm/Wsv0I8Gt2SAPNz80qn0WqEBfTEO8M31PajsupY
+         2e2I7NaniuTDmzgpj9jtSwvC9pd2QV17kMFnPZm/bS954/kqXxbBe0IizUPf+pnYAuZQ
+         4Jebxz2oro59V4Fknt82a0kr7PusZAoySnkYbDNtLWec6n4Lgn4vCFInXEQ0fL5WpgHO
+         42Td3zL/3UdQ51/IW9Jp0ogB+rssDwWzqOekV9hUCWPMoXfQjPbsu9P1BBTL84gi1eIO
+         SbSCVGmubesPca1HwX69V3LIetUcELmuN3E+UB5C0h0zmZD494Td67Lk7Td3FoXtkRMf
+         RMJw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=cc:to:from:subject:message-id:references:mime-version:in-reply-to
-         :date:x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=iseMGXVhmQtR+5DQv6vAmctq3FLXZ3Zx0bYYW0I3bps=;
-        b=bN2xLrPTfK7SA04v7KyVrE15CZMx8m69z/j84sUjDQ64jpa7jIgypuwGOexCOpHNyq
-         /I6poTqSpMSy08/GiwyvxP8GAtbb8th5iJ33fgtRZDWu+mOCElHJ/asMBLNn005g0eeQ
-         CvFBnvNrWoyOPK9bx0yyeKSVCGqTCNdrgNRnOi8vFRD/RDgDcrsdBLnGakTEKvKQXQbR
-         01wFP14xBxGQl0yFyMQfKVljrkObai81juRPm6Rj7BW8Secf69mm1zuaO+oLrHo2VwQw
-         rvviYQWtXcGEMRybya/AvMgPY65hYCw+bemWTi7UlzXYWL5+vG+moatDxxRsh5pG4QZe
-         ENkA==
-X-Gm-Message-State: ANoB5pm7WH1jKK8bxzXqhsmcVbFEuivVtOVBhdB41pOkw/G4GJ99MzCn
-        04sqhLKOM5Z7XKIUs8IQkFLyFwgM9lI=
-X-Google-Smtp-Source: AA0mqf5//ubCLbRHw5k5ojH75x8ASFqsHvPLZaawkowyC5ynCgNspfsSIAS8NxDclO+KSFJJIsbTDrSav0k=
-X-Received: from glider.muc.corp.google.com ([2a00:79e0:9c:201:db68:962:2bf6:6c7])
- (user=glider job=sendgmr) by 2002:a17:907:8b13:b0:781:541:6599 with SMTP id
- sz19-20020a1709078b1300b0078105416599mr3206798ejc.45.1669029706445; Mon, 21
- Nov 2022 03:21:46 -0800 (PST)
-Date:   Mon, 21 Nov 2022 12:21:33 +0100
-In-Reply-To: <20221121112134.407362-1-glider@google.com>
-Mime-Version: 1.0
-References: <20221121112134.407362-1-glider@google.com>
-X-Mailer: git-send-email 2.38.1.584.g0f3c55d4c2-goog
-Message-ID: <20221121112134.407362-4-glider@google.com>
-Subject: [PATCH 4/5] fs: hfs: initialize fsdata in hfs_file_truncate()
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=Z0Yxxijw1rGvRh5thj+hdyAsK4hKNzeEn6cA7Ahy6R4=;
+        b=be0wQstMeh7vXigVTpglVdMil2QT03h9LU5XPjjTa1l0aB8V4hvTWj/djv+m/0Mg1K
+         8cYKK28kGqL6TitWIe3C6mVmldf96Kiw8vokGc9z891rzOptawumZfGfs6yEQzHQ5Dxw
+         qf8BCMZmnHMiWTCl7KPhTBY34Ixr4lnh/2+zC4XmtSU8tWtERbBtDrT8wCDlFlS/VcYY
+         7KxNTWslJT4gX7PxKBz/eEFQZdchnGFbkAB7pQw8xmEyFLsqUU4IFZ0dZ7Ayxvf+rC2D
+         4Nbepghhr533QQR4fOZ/+3vRafwSnymxsNjkn4eJi1f/bEw3sw0qTCQ+Hhc5P28Awcmm
+         U22w==
+X-Gm-Message-State: ANoB5pmSb2I+sce42rf2tcRklZa5pV/jgY9oObons89bO4rvdgutX44y
+        kstQSsB/NM7+9G3+q9XKMPHXqlb8byWiWSV0HZfjLA==
+X-Google-Smtp-Source: AA0mqf6lonTuOQc++bsUBoOIUNs2D/PyEdavPXG4/IVfsvUOai8Ap31tSYnDgK3s6D8683TvgIcwbu86D7SigqsG2s8=
+X-Received: by 2002:a81:a18e:0:b0:368:b923:b500 with SMTP id
+ y136-20020a81a18e000000b00368b923b500mr873052ywg.10.1669029873914; Mon, 21
+ Nov 2022 03:24:33 -0800 (PST)
+MIME-Version: 1.0
+References: <20221114082935.3007497-1-glider@google.com> <Y3KG9bAo11t84SIg@gmail.com>
+In-Reply-To: <Y3KG9bAo11t84SIg@gmail.com>
 From:   Alexander Potapenko <glider@google.com>
-To:     glider@google.com
+Date:   Mon, 21 Nov 2022 12:23:57 +0100
+Message-ID: <CAG_fn=VaBW3NBULC1JGhJW7hhWBb-h6Me_wecktt0Mgo+m8VeQ@mail.gmail.com>
+Subject: Re: [PATCH] fs: ext4: initialize fsdata in pagecache_write()
+To:     Eric Biggers <ebiggers@kernel.org>
 Cc:     linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
         tytso@mit.edu, adilger.kernel@dilger.ca, jaegeuk@kernel.org,
         chao@kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        Eric Biggers <ebiggers@kernel.org>
+        linux-ext4@vger.kernel.org,
+        syzbot+9767be679ef5016b6082@syzkaller.appspotmail.com
 Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-When aops->write_begin() does not initialize fsdata, KMSAN may report
-an error passing the latter to aops->write_end().
+On Mon, Nov 14, 2022 at 7:20 PM Eric Biggers <ebiggers@kernel.org> wrote:
+>
+> On Mon, Nov 14, 2022 at 09:29:35AM +0100, Alexander Potapenko wrote:
+> > [PATCH] fs: ext4: initialize fsdata in pagecache_write()
+> >
+> > When aops->write_begin() does not initialize fsdata, KMSAN reports
+> > an error passing the latter to aops->write_end().
+> >
+> > Fix this by unconditionally initializing fsdata.
+> >
+> > Also speculatively fix similar issues in affs, f2fs, hfs, hfsplus,
+> > as suggested by Eric Biggers.
+>
+> You might have better luck with separate patches for each filesystem, as =
+it
+> might be hard to get someone to apply this patch otherwise.
 
-Fix this by unconditionally initializing fsdata.
+Done.
+Please disregard this patch.
 
-Suggested-by: Eric Biggers <ebiggers@kernel.org>
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Signed-off-by: Alexander Potapenko <glider@google.com>
----
- fs/hfs/extent.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> If you do go with a single patch, then the subject prefix should be "fs:"=
+, not
+> "fs: ext4:".
+>
+> - Eric
 
-diff --git a/fs/hfs/extent.c b/fs/hfs/extent.c
-index 3f7e9bef98743..6d1878b99b305 100644
---- a/fs/hfs/extent.c
-+++ b/fs/hfs/extent.c
-@@ -486,7 +486,7 @@ void hfs_file_truncate(struct inode *inode)
- 		inode->i_size);
- 	if (inode->i_size > HFS_I(inode)->phys_size) {
- 		struct address_space *mapping = inode->i_mapping;
--		void *fsdata;
-+		void *fsdata = NULL;
- 		struct page *page;
- 
- 		/* XXX: Can use generic_cont_expand? */
--- 
-2.38.1.584.g0f3c55d4c2-goog
 
+
+--=20
+Alexander Potapenko
+Software Engineer
+
+Google Germany GmbH
+Erika-Mann-Stra=C3=9Fe, 33
+80636 M=C3=BCnchen
+
+Gesch=C3=A4ftsf=C3=BChrer: Paul Manicle, Liana Sebastian
+Registergericht und -nummer: Hamburg, HRB 86891
+Sitz der Gesellschaft: Hamburg
