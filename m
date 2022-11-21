@@ -2,48 +2,53 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4B7D7C433FE
-	for <linux-ext4@archiver.kernel.org>; Mon, 21 Nov 2022 11:53:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A9864C4332F
+	for <linux-ext4@archiver.kernel.org>; Mon, 21 Nov 2022 11:53:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230519AbiKULx1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 21 Nov 2022 06:53:27 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53690 "EHLO
+        id S231130AbiKULx3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 21 Nov 2022 06:53:29 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53692 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229721AbiKULxX (ORCPT
+        with ESMTP id S229903AbiKULxX (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Nov 2022 06:53:23 -0500
 Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 906C013F56;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AFDAF165B2;
         Mon, 21 Nov 2022 03:53:22 -0800 (PST)
 Received: from mail02.huawei.com (unknown [172.30.67.153])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4NG5PS0XXtz4f3jJG;
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4NG5PS4wjJz4f3jYt;
         Mon, 21 Nov 2022 19:53:16 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.127.227])
-        by APP4 (Coremail) with SMTP id gCh0CgDHONatZntj0uehAw--.51112S4;
+        by APP4 (Coremail) with SMTP id gCh0CgDHONatZntj0uehAw--.51112S6;
         Mon, 21 Nov 2022 19:53:19 +0800 (CST)
 From:   Ye Bin <yebin@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
 Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
         Ye Bin <yebin10@huawei.com>
-Subject: [PATCH v2 0/3] Fix two issues about bigalloc feature
-Date:   Mon, 21 Nov 2022 20:14:31 +0800
-Message-Id: <20221121121434.1061725-1-yebin@huaweicloud.com>
+Subject: [PATCH v2 2/3] ext4: record error when detect abnormal 'i_reserved_data_blocks'
+Date:   Mon, 21 Nov 2022 20:14:33 +0800
+Message-Id: <20221121121434.1061725-3-yebin@huaweicloud.com>
 X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20221121121434.1061725-1-yebin@huaweicloud.com>
+References: <20221121121434.1061725-1-yebin@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgDHONatZntj0uehAw--.51112S4
-X-Coremail-Antispam: 1UD129KBjDUn29KB7ZKAUJUUUUU529EdanIXcx71UUUUU7v73
-        VFW2AGmfu7bjvjm3AaLaJ3UjIYCTnIWjp_UUU5J7kC6x804xWl14x267AKxVW8JVW5JwAF
-        c2x0x2IEx4CE42xK8VAvwI8IcIk0rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII
-        0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xv
-        wVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4
-        x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG
-        64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r
-        1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwIxG
-        rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
-        vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IY
-        x2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Jr0_Gr1lIxAIcVCF04k26c
-        xKx2IYs7xG6rW3Jr0E3s1lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x02
-        67AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x07UWE__UUUUU=
+X-CM-TRANSID: gCh0CgDHONatZntj0uehAw--.51112S6
+X-Coremail-Antispam: 1UD129KBjvdXoW7GF1DXr1UJFW8Zr17uF13XFb_yoWkGrbEqw
+        40yF10v393Xw4xWFs5GrnxJFsYkF4kCr18Ww4rKF15Zr1jvF4DAw4kAry7Zrn5Way8Grn0
+        9rWfJry3GrWrWjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUbVxYFVCjjxCrM7AC8VAFwI0_Xr0_Wr1l1xkIjI8I6I8E6xAIw20E
+        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l82xGYIkIc2x26280x7IE14v26r15M2
+        8IrcIa0xkI8VCY1x0267AKxVW8JVW5JwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK
+        021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r
+        4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_
+        GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx
+        0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWU
+        JVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJV
+        W8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF
+        1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6x
+        IIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvE
+        x4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJbIYCTnIWIevJa
+        73UjIFyTuYvjxU2_MaUUUUU
 X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 X-CFilter-Loop: Reflected
 Precedence: bulk
@@ -52,20 +57,34 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ye Bin <yebin10@huawei.com>
 
-Diff V2 vs V1
-Use ext4_error() when detect 'i_reserved_data_blocks' and pending tree abnormal.
+If 'i_reserved_data_blocks' is not cleared which mean something wrong with
+code, free space accounting is likely wrong, according to Jan Kara's advice
+use ext4_error() to record this abnormal let fsck to repair and also we can
+capture this issue.
 
-Ye Bin (3):
-  ext4: fix incorrect calculate 'reserved' in '__es_remove_extent' when
-    enable bigalloc feature
-  ext4: record error when detect abnormal 'i_reserved_data_blocks'
-  ext4: add check pending tree when evict inode
+Signed-off-by: Ye Bin <yebin10@huawei.com>
+---
+ fs/ext4/super.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
- fs/ext4/extents_status.c | 31 ++++++++++++++++++++++++++++++-
- fs/ext4/extents_status.h |  1 +
- fs/ext4/super.c          | 10 ++++++----
- 3 files changed, 37 insertions(+), 5 deletions(-)
-
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 0690e2e0b74d..3d30007502a4 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1387,10 +1387,9 @@ static void ext4_destroy_inode(struct inode *inode)
+ 	}
+ 
+ 	if (EXT4_I(inode)->i_reserved_data_blocks)
+-		ext4_msg(inode->i_sb, KERN_ERR,
+-			 "Inode %lu (%p): i_reserved_data_blocks (%u) not cleared!",
+-			 inode->i_ino, EXT4_I(inode),
+-			 EXT4_I(inode)->i_reserved_data_blocks);
++		ext4_error(inode->i_sb, "Inode %lu (%p) i_reserved_data_blocks"
++			   " (%u) not cleared!", inode->i_ino, EXT4_I(inode),
++			   EXT4_I(inode)->i_reserved_data_blocks);
+ }
+ 
+ static void init_once(void *foo)
 -- 
 2.31.1
 
