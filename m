@@ -2,56 +2,56 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2687DC43217
-	for <linux-ext4@archiver.kernel.org>; Mon, 21 Nov 2022 11:26:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D2E7BC4332F
+	for <linux-ext4@archiver.kernel.org>; Mon, 21 Nov 2022 11:26:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231158AbiKUL0n (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 21 Nov 2022 06:26:43 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51838 "EHLO
+        id S230247AbiKUL0s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 21 Nov 2022 06:26:48 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52062 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229541AbiKUL0N (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Nov 2022 06:26:13 -0500
-Received: from mail-wm1-x349.google.com (mail-wm1-x349.google.com [IPv6:2a00:1450:4864:20::349])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2AE85B5C7A
-        for <linux-ext4@vger.kernel.org>; Mon, 21 Nov 2022 03:21:45 -0800 (PST)
-Received: by mail-wm1-x349.google.com with SMTP id z18-20020a05600c221200b003cf7fcc286aso2977864wml.1
-        for <linux-ext4@vger.kernel.org>; Mon, 21 Nov 2022 03:21:45 -0800 (PST)
+        with ESMTP id S229954AbiKUL0Q (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Nov 2022 06:26:16 -0500
+Received: from mail-wr1-x44a.google.com (mail-wr1-x44a.google.com [IPv6:2a00:1450:4864:20::44a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5E81DC0517
+        for <linux-ext4@vger.kernel.org>; Mon, 21 Nov 2022 03:21:50 -0800 (PST)
+Received: by mail-wr1-x44a.google.com with SMTP id v14-20020adf8b4e000000b0024174021277so3112278wra.13
+        for <linux-ext4@vger.kernel.org>; Mon, 21 Nov 2022 03:21:50 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=google.com; s=20210112;
         h=cc:to:from:subject:message-id:references:mime-version:in-reply-to
          :date:from:to:cc:subject:date:message-id:reply-to;
-        bh=V3ROk7430AgCjRwu8JCLeHALA6B0dvLhERaon//wlR0=;
-        b=VyCfbuWOem8BwV+1kbZt92/iURKerhApO5tHJL82Q3g8gJjhEf8Gf81lkNXinPV0WG
-         33XKENJFJcX8AOPHW1fpifSRoqxXlHBwqxVqieU0qAQ3CQLak9yv9kSmC8Cd+mpuXWqA
-         dMw4MYS/tqwBn9HATfin7JwAng24nM99T15wf8oiaR3VGtSchxTXvOchJ46VW/seRWPz
-         sXs38pJvJqRP0PnnJsEFB9KY5UE+hWn5HdPDuNxMBW9IoYXeVIqpE2I6F0yMLJyOGUuI
-         BmntwbMnaWN9YoJTyImpLCf9dUeBmBP1Zw2C7sgj5r2JExdS6DMuSGOCl6Jd1Ab+9sfj
-         6cPQ==
+        bh=+5wrCbW2TNaYb01/tuYYFENHET5JL1U7hc5fWA+Xdi0=;
+        b=sNA18t3VIhj8s/MCrsotPK65Vcuz2YR1Xj8oe9nNH5vPzwm6iPZt2X0Fc7s0yeYNzk
+         kcVq/GLKNy4xCjOiN3dPQ1eu2GOqYtIQk02hkZfOuEd7mV/pW1ZKoMoAKwdk/WlkUczu
+         VEFwbOMmBucZuvB4dVzjoZKobIlVhdSdhk1gHj3NlcrOxfhykMBq02Ddpx/UAcenV2d9
+         H6fFjTIDn+cvMsYeIEIrhjMZZ74aEv343aMnLSTE4WGvBXcbncZGKe/wfws0QqQql7yX
+         hbiDel8fgY1EKqDLgmq6zrkoNXrs0hkyg/paKn/mCux/h6gYGaXO8Q9fqkElW74W+eCO
+         HxRQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=cc:to:from:subject:message-id:references:mime-version:in-reply-to
          :date:x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=V3ROk7430AgCjRwu8JCLeHALA6B0dvLhERaon//wlR0=;
-        b=LSIVi9N1fVuMxBi8xUTds0zxJpGNfRVF2aHKfucxs90/nNICDLFducztCjJg4a9/g+
-         iq8AcC5cC3e27LZtgu3vMKlpqYPFn6ej+fmnzkmenm6wRKfnPtvOzzQjn8C5VNIW19KT
-         7iVzb72NCSn0qrredYCXpoJhWMsSaMJRmbtnv2oyi/qLmTChw2W7eQIWz+s/PSicjI6x
-         c890B5Siih/KtJ9pdFidv8dHaga+c5/8y9e/7R6ppzMRwh55L5uHzLFMZ+PO5W2OqRBA
-         Y2Q3nt/YdlHp1Vs/DPqRWjFf7P2I5tltNg17Q+MfHQgYrjpzkFfTkLBRECgWbYfAaz7A
-         q3qg==
-X-Gm-Message-State: ANoB5pnCdjvZR1Wzb9+BsxkuBzK1OrbIx24PeA2pu4DebzYRp+ukX+xU
-        mnwG2lbEccjmMhnDmDX2Qfroi/zVHfc=
-X-Google-Smtp-Source: AA0mqf4lwPSD6Y7DTAtXw3/2Z+F5J2o+aieN11Xy71eaA/djePFQf5kKRgdlXgAOixk8oilkdCgBRF7Z9oo=
+        bh=+5wrCbW2TNaYb01/tuYYFENHET5JL1U7hc5fWA+Xdi0=;
+        b=q9jBjuZF18UVotSbPtAGNNBEqJ7zVYotOBI+TEDQEyF5bNvW0KCuErujL9E8FQgvb6
+         zs5sHFtgF2bKMuAY1RTlEm8ZApLiCBonrtHilsXPHjMrCMtkl3T1u8VKHRMBA1GokRem
+         nEY/StNFX+RxXaK8y7pZqXHuXxG+F66k4R8/1ScXfbMBRoNtDePWIyt0uiq2LutnUwYf
+         yOVAQSJC/mnLGg0ANDvSkomdbkYGTmTLczJmYm2chne2Ipgqkw1kWc3s9seUrv/EcXis
+         jzus6dgEi0uobaNS1ZNH/A+aF9h75tP8ZupkPfTQMkopqR64kCajQW8Z+21sOgQjLYew
+         KTcw==
+X-Gm-Message-State: ANoB5pl0UhXcdXqZThVDJe8OfwguTlaTFfexQ8wkGaTIhk3n5QcAs9Wf
+        upEls86BJz2ehTF7+kDmGsNxjwTbuao=
+X-Google-Smtp-Source: AA0mqf7tPtGLz7FEjQT7OGHJ9yECs4p6OOzEpzUaOwIMlT2AhoWLN//j7QCBOd2xE5n98DwvX6ZF8x49BCU=
 X-Received: from glider.muc.corp.google.com ([2a00:79e0:9c:201:db68:962:2bf6:6c7])
- (user=glider job=sendgmr) by 2002:a5d:6706:0:b0:241:cf90:ab1e with SMTP id
- o6-20020a5d6706000000b00241cf90ab1emr1020206wru.685.1669029703858; Mon, 21
- Nov 2022 03:21:43 -0800 (PST)
-Date:   Mon, 21 Nov 2022 12:21:32 +0100
+ (user=glider job=sendgmr) by 2002:adf:f086:0:b0:22e:3725:8acc with SMTP id
+ n6-20020adff086000000b0022e37258accmr2585059wro.330.1669029709011; Mon, 21
+ Nov 2022 03:21:49 -0800 (PST)
+Date:   Mon, 21 Nov 2022 12:21:34 +0100
 In-Reply-To: <20221121112134.407362-1-glider@google.com>
 Mime-Version: 1.0
 References: <20221121112134.407362-1-glider@google.com>
 X-Mailer: git-send-email 2.38.1.584.g0f3c55d4c2-goog
-Message-ID: <20221121112134.407362-3-glider@google.com>
-Subject: [PATCH 3/5] fs: f2fs: initialize fsdata in pagecache_write()
+Message-ID: <20221121112134.407362-5-glider@google.com>
+Subject: [PATCH 5/5] fs: hfsplus: initialize fsdata in hfsplus_file_truncate()
 From:   Alexander Potapenko <glider@google.com>
 To:     glider@google.com
 Cc:     linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
@@ -70,25 +70,25 @@ an error passing the latter to aops->write_end().
 Fix this by unconditionally initializing fsdata.
 
 Suggested-by: Eric Biggers <ebiggers@kernel.org>
-Fixes: 95ae251fe828 ("f2fs: add fs-verity support")
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
 Signed-off-by: Alexander Potapenko <glider@google.com>
 ---
- fs/f2fs/verity.c | 2 +-
+ fs/hfsplus/extents.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/f2fs/verity.c b/fs/f2fs/verity.c
-index c352fff88a5e6..3f4f3295f1c66 100644
---- a/fs/f2fs/verity.c
-+++ b/fs/f2fs/verity.c
-@@ -81,7 +81,7 @@ static int pagecache_write(struct inode *inode, const void *buf, size_t count,
- 		size_t n = min_t(size_t, count,
- 				 PAGE_SIZE - offset_in_page(pos));
+diff --git a/fs/hfsplus/extents.c b/fs/hfsplus/extents.c
+index 721f779b4ec3e..7a542f3dbe502 100644
+--- a/fs/hfsplus/extents.c
++++ b/fs/hfsplus/extents.c
+@@ -554,7 +554,7 @@ void hfsplus_file_truncate(struct inode *inode)
+ 	if (inode->i_size > hip->phys_size) {
+ 		struct address_space *mapping = inode->i_mapping;
  		struct page *page;
 -		void *fsdata;
 +		void *fsdata = NULL;
- 		int res;
+ 		loff_t size = inode->i_size;
  
- 		res = aops->write_begin(NULL, mapping, pos, n, &page, &fsdata);
+ 		res = hfsplus_write_begin(NULL, mapping, size, 0,
 -- 
 2.38.1.584.g0f3c55d4c2-goog
 
