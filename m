@@ -2,46 +2,45 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C7D7C4332F
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Nov 2022 21:13:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DF1ADC433FE
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Nov 2022 21:13:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237017AbiK2VM7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 29 Nov 2022 16:12:59 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38474 "EHLO
+        id S237128AbiK2VNW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 29 Nov 2022 16:13:22 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40320 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236865AbiK2VMf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Nov 2022 16:12:35 -0500
+        with ESMTP id S236889AbiK2VMl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Nov 2022 16:12:41 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 862FF2613F;
-        Tue, 29 Nov 2022 13:12:26 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4D6FD13DDF
+        for <linux-ext4@vger.kernel.org>; Tue, 29 Nov 2022 13:12:40 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2ATLCJB3029725
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2ATLCLJ9029771
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 29 Nov 2022 16:12:20 -0500
+        Tue, 29 Nov 2022 16:12:21 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1669756342; bh=NVlHbOGEi8Vb8KhBrHaFFO2qVHyHoncNMDQIH/qVy3w=;
+        t=1669756342; bh=S7Jnx1qYVJ2q71fG9wc61THNDckCab0vrYwdOiW5SP0=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=WeygZ8mRKmR/BZl1HFfLPtC8TAlzOgRD6poOpU+FxNJG3N/pZC7LHmH5AXCSHKdRy
-         u1lS0nyaNkkOqTyaKStBxZ1HPljxGhHgGWwDq6DbMyb3abL2qid2J0zw+yXer4x7b6
-         XHnCXAa8xsB0nyi1Ojc8VEV76shaXFtR2LSdkMq1uA48KtF+7TMHWPqxnwpCGKbtz9
-         Cs9gla2hqoj5eFOEFdJHEwF4cUgEA1kOu7MnGnJGcyu0TqUA0eeLK/qC9F73mxW1B/
-         MfGoG2A/+DFGe8GvFzrDwCUBixvyIhJBUt6VwLmRTQdzx6iWgLS2VzmtUqb9eENSx2
-         2S2i22mD/vJZA==
+        b=Algx5VgoSbxV5UHZf9WEpV8cEt1Bhb3UdGd3OHb5YtknKjUBQ8xsD81wtrqul4522
+         LHtgrGSOvaQxS2mYUd/EzseKt98C+/uII2BgamWRTFphdrZF3IE23uBU4WB+ebzMLK
+         hz5dL0TjYOcBMau9TWm8MDKkZ1IgsYirXanplKQ/MQSpyTLOYv3l3MXbCO1L/Pekf6
+         tYL/FZFZRk09QXLLc7PiSwZACeQ4eMjMct0nCl1RJiKBYfWodKF4W3KlygAjEHCzMA
+         R+bwe1RbUeQA5ExoyqSmwQ8MXSunQ7Ww/2phfJqxhYPiiz5QmAzCawgjxZz4H0sRku
+         C8rJm5yAqtmzA==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 6089F15C33A3; Tue, 29 Nov 2022 16:12:19 -0500 (EST)
+        id 6D96E15C3AD1; Tue, 29 Nov 2022 16:12:19 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     adilger.kernel@dilger.ca, cgel.zte@gmail.com
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, Zeal Robot <zealci@zte.com.cn>,
-        Jinpeng Cui <cui.jinpeng2@zte.com.cn>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH linux-next] ext4: remove redundant variable err
-Date:   Tue, 29 Nov 2022 16:12:08 -0500
-Message-Id: <166975630694.2135297.2012560761216348231.b4-ty@mit.edu>
+To:     linux-ext4@vger.kernel.org, Zhang Yi <yi.zhang@huawei.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, jack@suse.cz, yukuai3@huawei.com,
+        adilger.kernel@dilger.ca
+Subject: Re: [PATCH v3 1/2] ext4: silence the warning when evicting inode with dioread_nolock
+Date:   Tue, 29 Nov 2022 16:12:15 -0500
+Message-Id: <166975630697.2135297.10209303433796955869.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20220831160843.305836-1-cui.jinpeng2@zte.com.cn>
-References: <20220831160843.305836-1-cui.jinpeng2@zte.com.cn>
+In-Reply-To: <20220629112647.4141034-1-yi.zhang@huawei.com>
+References: <20220629112647.4141034-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -49,18 +48,29 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, 31 Aug 2022 16:08:43 +0000, cgel.zte@gmail.com wrote:
-> From: Jinpeng Cui <cui.jinpeng2@zte.com.cn>
+On Wed, 29 Jun 2022 19:26:46 +0800, Zhang Yi wrote:
+> When evicting an inode with default dioread_nolock, it could be raced by
+> the unwritten extents converting kworker after writeback some new
+> allocated dirty blocks. It convert unwritten extents to written, the
+> extents could be merged to upper level and free extent blocks, so it
+> could mark the inode dirty again even this inode has been marked
+> I_FREEING. But the inode->i_io_list check and warning in
+> ext4_evict_inode() missing this corner case. Fortunately,
+> ext4_evict_inode() will wait all extents converting finished before this
+> check, so it will not lead to inode use-after-free problem, every thing
+> is OK besides this warning. The WARN_ON_ONCE was originally designed
+> for finding inode use-after-free issues in advance, but if we add
+> current dioread_nolock case in, it will become not quite useful, so fix
+> this warning by just remove this check.
 > 
-> Return value directly from ext4_group_extend_no_check()
-> instead of getting value from redundant variable err.
-> 
-> 
+> [...]
 
 Applied, thanks!
 
-[1/1] ext4: remove redundant variable err
-      commit: eb46ec409d2d9f2ea72af29428ad3dad754a7362
+[1/2] ext4: silence the warning when evicting inode with dioread_nolock
+      commit: bc12ac98ea2e1b70adc6478c8b473a0003b659d3
+[2/2] ext4: check and assert if marking an no_delete evicting inode dirty
+      commit: 318cdc822c63b6e2befcfdc2088378ae6fa18def
 
 Best regards,
 -- 
