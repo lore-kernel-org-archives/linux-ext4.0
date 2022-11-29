@@ -2,45 +2,47 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DF1ADC433FE
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Nov 2022 21:13:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 83DC8C46467
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Nov 2022 21:13:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237128AbiK2VNW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S237136AbiK2VNW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Tue, 29 Nov 2022 16:13:22 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40320 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40446 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236889AbiK2VMl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Nov 2022 16:12:41 -0500
+        with ESMTP id S236892AbiK2VMo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Nov 2022 16:12:44 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4D6FD13DDF
-        for <linux-ext4@vger.kernel.org>; Tue, 29 Nov 2022 13:12:40 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 316FA22BF7;
+        Tue, 29 Nov 2022 13:12:43 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2ATLCLJ9029771
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2ATLCJwj029735
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 29 Nov 2022 16:12:21 -0500
+        Tue, 29 Nov 2022 16:12:20 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1669756342; bh=S7Jnx1qYVJ2q71fG9wc61THNDckCab0vrYwdOiW5SP0=;
+        t=1669756341; bh=Xc6ScPsRePfO/+1EPTpMGxHkSC8xvx2I060fXoCkgis=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=Algx5VgoSbxV5UHZf9WEpV8cEt1Bhb3UdGd3OHb5YtknKjUBQ8xsD81wtrqul4522
-         LHtgrGSOvaQxS2mYUd/EzseKt98C+/uII2BgamWRTFphdrZF3IE23uBU4WB+ebzMLK
-         hz5dL0TjYOcBMau9TWm8MDKkZ1IgsYirXanplKQ/MQSpyTLOYv3l3MXbCO1L/Pekf6
-         tYL/FZFZRk09QXLLc7PiSwZACeQ4eMjMct0nCl1RJiKBYfWodKF4W3KlygAjEHCzMA
-         R+bwe1RbUeQA5ExoyqSmwQ8MXSunQ7Ww/2phfJqxhYPiiz5QmAzCawgjxZz4H0sRku
-         C8rJm5yAqtmzA==
+        b=c9/gQZFfACBuLjbXBQcLfOm8bLZ9TVJ2+WOXYCKn7j7iCUvJIQqOileznQtW221In
+         B8kwm49gmgZ2hKWn7ef3R0mMec/rqbENbSpF2s2eYBmTaXKpK26HqEuFraKnJLLXGC
+         s8ek/VmWjS1LA05FN5Uh1KT7G/LNNPZ3FnmbgP/F/pO2EABzCOsimIj53/yAptS7LQ
+         JY36DE1LAk3d2kVkx9D8T2mM8b5BO/YW/BlScu6jD4tWwH6IUWeUC9ZcHAOBVFUbAp
+         PbX5cW6vhOkYIU7QXzaNBwVLZzR3N7sPN6oVw7fk6GIZihwsmvEMXBI7Im9NDvIfbV
+         m+BCRk+pfbQvg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 6D96E15C3AD1; Tue, 29 Nov 2022 16:12:19 -0500 (EST)
+        id 6473015C3AA6; Tue, 29 Nov 2022 16:12:19 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org, Zhang Yi <yi.zhang@huawei.com>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, jack@suse.cz, yukuai3@huawei.com,
-        adilger.kernel@dilger.ca
-Subject: Re: [PATCH v3 1/2] ext4: silence the warning when evicting inode with dioread_nolock
-Date:   Tue, 29 Nov 2022 16:12:15 -0500
-Message-Id: <166975630697.2135297.10209303433796955869.b4-ty@mit.edu>
+To:     linux-ext4@vger.kernel.org,
+        Bixuan Cui <cuibixuan@linux.alibaba.com>,
+        linux-kernel@vger.kernel.org, bvanassche@acm.org,
+        rostedt@goodmis.org, axboe@kernel.dk, mhiramat@kernel.org
+Cc:     "Theodore Ts'o" <tytso@mit.edu>
+Subject: Re: [PATCH -next v2] jbd2: use the correct print format
+Date:   Tue, 29 Nov 2022 16:12:10 -0500
+Message-Id: <166975630695.2135297.11708030511108233612.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20220629112647.4141034-1-yi.zhang@huawei.com>
-References: <20220629112647.4141034-1-yi.zhang@huawei.com>
+In-Reply-To: <1665488024-95172-1-git-send-email-cuibixuan@linux.alibaba.com>
+References: <1665488024-95172-1-git-send-email-cuibixuan@linux.alibaba.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -48,29 +50,20 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, 29 Jun 2022 19:26:46 +0800, Zhang Yi wrote:
-> When evicting an inode with default dioread_nolock, it could be raced by
-> the unwritten extents converting kworker after writeback some new
-> allocated dirty blocks. It convert unwritten extents to written, the
-> extents could be merged to upper level and free extent blocks, so it
-> could mark the inode dirty again even this inode has been marked
-> I_FREEING. But the inode->i_io_list check and warning in
-> ext4_evict_inode() missing this corner case. Fortunately,
-> ext4_evict_inode() will wait all extents converting finished before this
-> check, so it will not lead to inode use-after-free problem, every thing
-> is OK besides this warning. The WARN_ON_ONCE was originally designed
-> for finding inode use-after-free issues in advance, but if we add
-> current dioread_nolock case in, it will become not quite useful, so fix
-> this warning by just remove this check.
+On Tue, 11 Oct 2022 19:33:44 +0800, Bixuan Cui wrote:
+> The print format error was found when using ftrace event:
+>     <...>-1406 [000] .... 23599442.895823: jbd2_end_commit: dev 252,8 transaction -1866216965 sync 0 head -1866217368
+>     <...>-1406 [000] .... 23599442.896299: jbd2_start_commit: dev 252,8 transaction -1866216964 sync 0
+> 
+> Use the correct print format for transaction, head and tid.
+> 
 > 
 > [...]
 
 Applied, thanks!
 
-[1/2] ext4: silence the warning when evicting inode with dioread_nolock
-      commit: bc12ac98ea2e1b70adc6478c8b473a0003b659d3
-[2/2] ext4: check and assert if marking an no_delete evicting inode dirty
-      commit: 318cdc822c63b6e2befcfdc2088378ae6fa18def
+[1/1] jbd2: use the correct print format
+      commit: 62734ac752c2f1b8b143a99e19342a5327def328
 
 Best regards,
 -- 
