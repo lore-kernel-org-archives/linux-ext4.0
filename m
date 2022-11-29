@@ -2,47 +2,47 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 83DC8C46467
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Nov 2022 21:13:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 73B88C4167B
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Nov 2022 21:13:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237136AbiK2VNW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 29 Nov 2022 16:13:22 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40446 "EHLO
+        id S236972AbiK2VNY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 29 Nov 2022 16:13:24 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40538 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236892AbiK2VMo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Nov 2022 16:12:44 -0500
+        with ESMTP id S236897AbiK2VMq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Nov 2022 16:12:46 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 316FA22BF7;
-        Tue, 29 Nov 2022 13:12:43 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6A6E5140B2;
+        Tue, 29 Nov 2022 13:12:45 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2ATLCJwj029735
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2ATLCL58029764
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 29 Nov 2022 16:12:20 -0500
+        Tue, 29 Nov 2022 16:12:21 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1669756341; bh=Xc6ScPsRePfO/+1EPTpMGxHkSC8xvx2I060fXoCkgis=;
+        t=1669756343; bh=D4a/3OPtZsqgpt2hLjT/spZXJ5i2lRaG6hjXHLv4JK0=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=c9/gQZFfACBuLjbXBQcLfOm8bLZ9TVJ2+WOXYCKn7j7iCUvJIQqOileznQtW221In
-         B8kwm49gmgZ2hKWn7ef3R0mMec/rqbENbSpF2s2eYBmTaXKpK26HqEuFraKnJLLXGC
-         s8ek/VmWjS1LA05FN5Uh1KT7G/LNNPZ3FnmbgP/F/pO2EABzCOsimIj53/yAptS7LQ
-         JY36DE1LAk3d2kVkx9D8T2mM8b5BO/YW/BlScu6jD4tWwH6IUWeUC9ZcHAOBVFUbAp
-         PbX5cW6vhOkYIU7QXzaNBwVLZzR3N7sPN6oVw7fk6GIZihwsmvEMXBI7Im9NDvIfbV
-         m+BCRk+pfbQvg==
+        b=F0uSkDmTjmuyjsShwB+ilh1uCEHO5lqLqRhx+CnDiHHwA7Se+f3vg+iMneibYTzZr
+         jZEb0GVelkCKevtPkd+riaeK8VidvmA9rx+BQOboGGhypIu3VpcXlZRIRhfSQbYytW
+         VJ37HTXTIa8kK57DIeL71m5qVasey0Wex6BaeMz/II1LAd9tSv2vmkglZaR3siVBBw
+         CGigGw88b3mOYe0k7U4o/mqpYVUfGeSCQ1uqNlMcAcxnkoktP2nn+n0iR2S6KMRp5o
+         3+S5aQbMMMpRoVH2jqJZW4dCbK/Mq1b242YNNiZqULC9ZX3+VZeWQ1n74VwgNQ8+r9
+         jDXelHBqWqlxg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 6473015C3AA6; Tue, 29 Nov 2022 16:12:19 -0500 (EST)
+        id 6B72915C3ACA; Tue, 29 Nov 2022 16:12:19 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org,
-        Bixuan Cui <cuibixuan@linux.alibaba.com>,
-        linux-kernel@vger.kernel.org, bvanassche@acm.org,
-        rostedt@goodmis.org, axboe@kernel.dk, mhiramat@kernel.org
-Cc:     "Theodore Ts'o" <tytso@mit.edu>
-Subject: Re: [PATCH -next v2] jbd2: use the correct print format
-Date:   Tue, 29 Nov 2022 16:12:10 -0500
-Message-Id: <166975630695.2135297.11708030511108233612.b4-ty@mit.edu>
+To:     linux-ext4@vger.kernel.org, Baokun Li <libaokun1@huawei.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+        enwlinux@gmail.com, jack@suse.cz, lczerner@redhat.com,
+        yukuai3@huawei.com, yi.zhang@huawei.com, yebin10@huawei.com,
+        ritesh.list@gmail.com, adilger.kernel@dilger.ca
+Subject: Re: [PATCH 0/2] ext4: fix a infinite loop in do_writepages after online resizing
+Date:   Tue, 29 Nov 2022 16:12:14 -0500
+Message-Id: <166975630697.2135297.7495422853696969304.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <1665488024-95172-1-git-send-email-cuibixuan@linux.alibaba.com>
-References: <1665488024-95172-1-git-send-email-cuibixuan@linux.alibaba.com>
+In-Reply-To: <20220817132701.3015912-1-libaokun1@huawei.com>
+References: <20220817132701.3015912-1-libaokun1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -50,20 +50,25 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, 11 Oct 2022 19:33:44 +0800, Bixuan Cui wrote:
-> The print format error was found when using ftrace event:
->     <...>-1406 [000] .... 23599442.895823: jbd2_end_commit: dev 252,8 transaction -1866216965 sync 0 head -1866217368
->     <...>-1406 [000] .... 23599442.896299: jbd2_start_commit: dev 252,8 transaction -1866216964 sync 0
+On Wed, 17 Aug 2022 21:26:59 +0800, Baokun Li wrote:
+> We got a issue: the ext4 writeback process was stuck in do_writepages and
+> do_writepages kept retrying. However, '-ENOMEM' is returned each time, even
+> if there is still free memory on the current machine.
 > 
-> Use the correct print format for transaction, head and tid.
-> 
+> We find that the direct cause of this issue is that the bg_inode_table_hi
+> in the group descriptor is written to an incorrect value, which causes the
+> inode block found through the inode table to exceed the end_ block。Then,
+> sb_getblk always returns null, __ext4_get_inode_loc returns `-ENOMEM`,
+> and do_writepages keeps retrying.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] jbd2: use the correct print format
-      commit: 62734ac752c2f1b8b143a99e19342a5327def328
+[1/2] ext4: fix GDT corruption after online resizing with bigalloc enable and blocksize is 1024
+      commit: 496fb12f8e236f303de6bc73a0334dd50c4eb64a
+[2/2] ext4: add inode table check in __ext4_get_inode_loc to aovid possible infinite loop
+      commit: bfb0625e8e86f8797264b1c7d10e146afe243d23
 
 Best regards,
 -- 
