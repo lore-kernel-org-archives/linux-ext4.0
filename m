@@ -2,289 +2,141 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EE011C46467
-	for <linux-ext4@archiver.kernel.org>; Wed, 30 Nov 2022 16:36:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0C2C3C4321E
+	for <linux-ext4@archiver.kernel.org>; Wed, 30 Nov 2022 20:10:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229862AbiK3Qg1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 30 Nov 2022 11:36:27 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56294 "EHLO
+        id S229892AbiK3UKC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 30 Nov 2022 15:10:02 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43794 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230308AbiK3QgO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Nov 2022 11:36:14 -0500
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D54B5880CB
-        for <linux-ext4@vger.kernel.org>; Wed, 30 Nov 2022 08:36:12 -0800 (PST)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id C6C6521B13;
-        Wed, 30 Nov 2022 16:36:09 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1669826169; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=2XUIn2iXXRl5GPSs06a0nbMiHNs3k/kJGcmFMOWzxV4=;
-        b=q08L7Rfz0GfBDKHK4ZFGbYmBn1vG4BJU7dTiZwh07lEbjbItuHupNM+MbdETwxRdZUrpFj
-        VPWN8CVwRNGJQD98jfNufIc7wbcD2BTgrA4NOI75XULwJfnNE7BK7f/SmuTJxla8MEtsnP
-        oVmR7WRe4Wqa/bI+b0NJi2nGtFoOyQY=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1669826169;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=2XUIn2iXXRl5GPSs06a0nbMiHNs3k/kJGcmFMOWzxV4=;
-        b=JQpZ4sqz2SNgSpJCVRptZ4lNhFRf5VTc7VSriyx5Q0AvmQuE4/Xjh3ux4Ir5CVAK1aEqYq
-        kc3PXSEVQ+QJM6Bw==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id B5CE213A70;
-        Wed, 30 Nov 2022 16:36:09 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id FThaLHmGh2NkQgAAMHmgww
-        (envelope-from <jack@suse.cz>); Wed, 30 Nov 2022 16:36:09 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id C5405A071A; Wed, 30 Nov 2022 17:36:08 +0100 (CET)
-From:   Jan Kara <jack@suse.cz>
-To:     Ted Tso <tytso@mit.edu>
-Cc:     <linux-ext4@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 6/9] ext4: Provide ext4_do_writepages()
-Date:   Wed, 30 Nov 2022 17:35:57 +0100
-Message-Id: <20221130163608.29034-6-jack@suse.cz>
-X-Mailer: git-send-email 2.35.3
-In-Reply-To: <20221130162435.2324-1-jack@suse.cz>
-References: <20221130162435.2324-1-jack@suse.cz>
+        with ESMTP id S229834AbiK3UJu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Nov 2022 15:09:50 -0500
+Received: from mail-io1-f70.google.com (mail-io1-f70.google.com [209.85.166.70])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2EE3891365
+        for <linux-ext4@vger.kernel.org>; Wed, 30 Nov 2022 12:09:49 -0800 (PST)
+Received: by mail-io1-f70.google.com with SMTP id z15-20020a5e860f000000b006c09237cc06so12235255ioj.21
+        for <linux-ext4@vger.kernel.org>; Wed, 30 Nov 2022 12:09:49 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=9KBzuD2ZwPlcaaxAlrMFnMjcuqM18+pImclhxcva+LQ=;
+        b=Q06SX/NXGinkvPW7OSuTpz5H8i4pB5EfTRsd0MnxECSWqZJ9ubQq2RtMPH/2r38ijZ
+         mfaWP4TABruTxBkkhp4Z2YDOcbZ7hypgxy3pPA3tYlNCull3vTEq6nuNpclJwrB1ZgYE
+         ScIa6uJ3eJOLrwMz1gp8OjaX7YHzPBK7epIayH2ErstlnZpQGxO7gaErEOvfzERJhLxq
+         yGK2Nix4fxlgCA4sQoyw0myZm7YVn+Xexfc/uu65BtOLTxkMHuU+WqJ5mZD5cF8zI1zc
+         ukWzo3sw5NUX2ZoMG/UoWPQB0rn3Cf44yQjLMUzsbIi0SDQy/ii1xBhj+r2NA4fILWjM
+         nVyg==
+X-Gm-Message-State: ANoB5pnEma7YKFNq7Mt9ZPG5cVQk90V+vvnQ5/QD7wRFMjjtcI7rnERy
+        sTpvBvmh5k5holhxqvS5zSqPNTg2LIip7teOsAkyda9czPxU
+X-Google-Smtp-Source: AA0mqf45/dOb2H0TF2O8Pjzbn92juxt643OEPV+MjSlI6zV+7m79TSoPOd7UcvTktHjLMYX9TSAiIAyQjMQHQJcTsyeVY/ordq+F
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7492; i=jack@suse.cz; h=from:subject; bh=wwP+UPIcACD2cLIUsEpYradw7BcwPJflCl5gq8Aqcxo=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjh4Zt9xBajrLWs5ltoQQmoyJmeie89oCXMVJ6sY8X bTKpQg+JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY4eGbQAKCRCcnaoHP2RA2SACB/ 9+UUduJqIZHEXjcLki+TcFI4jmE7Zaxj4e3fcYdcTyPKQ0flBLjXClOGwyCZi4Kg2sdY29debO+5ag VSu/wJsYhte2ydzhsES1GJnUtf44l72uiakROoBx0NUniXQMznRavbImfAAncUVwiF4T+pjy1ghjsc 03e0xSs1pXtehcRpf48qsOA7u/5dr8kb1fjf1Nl6U7kOOsXVSl4abIMZYuxJ3YdkncDZNVqehS9RPU KJAM3Fi/18QFzG9yYOaSpBKDmsMQ6z6/NAVhOONx1n0HUqzpsjVvPz2n914Lzi/ab3bMFup07M52zt dpfyd2nnDMz60GCbINO3BIBTMgrzGc
-X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
-Content-Transfer-Encoding: 8bit
+X-Received: by 2002:a92:de07:0:b0:303:1d4b:aeec with SMTP id
+ x7-20020a92de07000000b003031d4baeecmr5730734ilm.125.1669838988571; Wed, 30
+ Nov 2022 12:09:48 -0800 (PST)
+Date:   Wed, 30 Nov 2022 12:09:48 -0800
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <000000000000befd1d05eeb5af30@google.com>
+Subject: [syzbot] WARNING in ext4_expand_extra_isize_ea
+From:   syzbot <syzbot+4d99a966fd74bdeeec36@syzkaller.appspotmail.com>
+To:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
+        tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Provide ext4_do_writepages() function that takes mpage_da_data as an
-argument and make ext4_writepages() just a simple wrapper around it. No
-functional changes.
+Hello,
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+syzbot found the following issue on:
+
+HEAD commit:    644e9524388a Merge tag 'for-v6.1-rc' of git://git.kernel.o..
+git tree:       upstream
+console+strace: https://syzkaller.appspot.com/x/log.txt?x=12ad3e03880000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=8d01b6e3197974dd
+dashboard link: https://syzkaller.appspot.com/bug?extid=4d99a966fd74bdeeec36
+compiler:       Debian clang version 13.0.1-++20220126092033+75e33f71c2da-1~exp1~20220126212112.63, GNU ld (GNU Binutils for Debian) 2.35.2
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=12f49603880000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=163dfb9b880000
+
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/0968428e17b4/disk-644e9524.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/fd4c3bfd0777/vmlinux-644e9524.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/ee4571f27f1c/bzImage-644e9524.xz
+mounted in repro: https://storage.googleapis.com/syzbot-assets/e867d6971304/mount_0.gz
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+4d99a966fd74bdeeec36@syzkaller.appspotmail.com
+
+loop0: detected capacity change from 0 to 512
+EXT4-fs: Ignoring removed nobh option
+EXT4-fs (loop0): orphan cleanup on readonly fs
+------------[ cut here ]------------
+WARNING: CPU: 1 PID: 3631 at mm/page_alloc.c:5534 __alloc_pages+0x30a/0x560 mm/page_alloc.c:5534
+Modules linked in:
+CPU: 1 PID: 3631 Comm: syz-executor261 Not tainted 6.1.0-rc6-syzkaller-00308-g644e9524388a #0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 10/26/2022
+RIP: 0010:__alloc_pages+0x30a/0x560 mm/page_alloc.c:5534
+Code: 5c 24 04 0f 85 f3 00 00 00 44 89 e1 81 e1 7f ff ff ff a9 00 00 04 00 41 0f 44 cc 41 89 cc e9 e3 00 00 00 c6 05 51 7b 8f 0c 01 <0f> 0b 83 fb 0a 0f 86 c8 fd ff ff 31 db 48 c7 44 24 20 0e 36 e0 45
+RSP: 0018:ffffc90003ccf080 EFLAGS: 00010246
+RAX: ffffc90003ccf0e0 RBX: 000000000000000c RCX: 0000000000000000
+RDX: 0000000000000028 RSI: 0000000000000000 RDI: ffffc90003ccf108
+RBP: ffffc90003ccf198 R08: dffffc0000000000 R09: ffffc90003ccf0e0
+R10: fffff52000799e21 R11: 1ffff92000799e1c R12: 0000000000040c40
+R13: 1ffff92000799e18 R14: dffffc0000000000 R15: 1ffff92000799e14
+FS:  0000555555c10300(0000) GS:ffff8880b9900000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007ffc36f70000 CR3: 00000000744ad000 CR4: 00000000003506e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+Call Trace:
+ <TASK>
+ __alloc_pages_node include/linux/gfp.h:223 [inline]
+ alloc_pages_node include/linux/gfp.h:246 [inline]
+ __kmalloc_large_node+0x8a/0x1a0 mm/slab_common.c:1096
+ __do_kmalloc_node mm/slab_common.c:943 [inline]
+ __kmalloc+0xfe/0x1a0 mm/slab_common.c:968
+ kmalloc include/linux/slab.h:558 [inline]
+ ext4_xattr_move_to_block fs/ext4/xattr.c:2558 [inline]
+ ext4_xattr_make_inode_space fs/ext4/xattr.c:2673 [inline]
+ ext4_expand_extra_isize_ea+0xe3f/0x1cd0 fs/ext4/xattr.c:2765
+ __ext4_expand_extra_isize+0x2b8/0x3f0 fs/ext4/inode.c:5857
+ ext4_try_to_expand_extra_isize fs/ext4/inode.c:5900 [inline]
+ __ext4_mark_inode_dirty+0x51a/0x670 fs/ext4/inode.c:5978
+ ext4_inline_data_truncate+0x548/0xd00 fs/ext4/inline.c:2021
+ ext4_truncate+0x341/0xeb0 fs/ext4/inode.c:4221
+ ext4_process_orphan+0x1aa/0x2d0 fs/ext4/orphan.c:339
+ ext4_orphan_cleanup+0xb60/0x1340 fs/ext4/orphan.c:474
+ __ext4_fill_super fs/ext4/super.c:5515 [inline]
+ ext4_fill_super+0x80ed/0x8610 fs/ext4/super.c:5643
+ get_tree_bdev+0x400/0x620 fs/super.c:1324
+ vfs_get_tree+0x88/0x270 fs/super.c:1531
+ do_new_mount+0x289/0xad0 fs/namespace.c:3040
+ do_mount fs/namespace.c:3383 [inline]
+ __do_sys_mount fs/namespace.c:3591 [inline]
+ __se_sys_mount+0x2d3/0x3c0 fs/namespace.c:3568
+ do_syscall_x64 arch/x86/entry/common.c:50 [inline]
+ do_syscall_64+0x3d/0xb0 arch/x86/entry/common.c:80
+ entry_SYSCALL_64_after_hwframe+0x63/0xcd
+RIP: 0033:0x7f54cbc6ae2a
+Code: 83 c4 08 5b 5d c3 66 2e 0f 1f 84 00 00 00 00 00 c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 49 89 ca b8 a5 00 00 00 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 c0 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007ffc36f6f8e8 EFLAGS: 00000206 ORIG_RAX: 00000000000000a5
+RAX: ffffffffffffffda RBX: 0000000000000003 RCX: 00007f54cbc6ae2a
+RDX: 0000000020000440 RSI: 0000000020000480 RDI: 00007ffc36f6f8f0
+RBP: 00007ffc36f6f8f0 R08: 00007ffc36f6f930 R09: 000000000000041e
+R10: 0000000000000011 R11: 0000000000000206 R12: 0000000000000004
+R13: 0000555555c102c0 R14: 00007ffc36f6f930 R15: 0000000000000000
+ </TASK>
+
+
 ---
- fs/ext4/inode.c | 96 +++++++++++++++++++++++++++----------------------
- 1 file changed, 54 insertions(+), 42 deletions(-)
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 1cde20eb6500..fbea77ab470f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1543,9 +1543,12 @@ void ext4_da_release_space(struct inode *inode, int to_free)
-  */
- 
- struct mpage_da_data {
-+	/* These are input fields for ext4_do_writepages() */
- 	struct inode *inode;
- 	struct writeback_control *wbc;
-+	unsigned int can_map:1;	/* Can writepages call map blocks? */
- 
-+	/* These are internal state of ext4_do_writepages() */
- 	pgoff_t first_page;	/* The first page to write */
- 	pgoff_t next_page;	/* Current page to examine */
- 	pgoff_t last_page;	/* Last page to examine */
-@@ -1557,7 +1560,6 @@ struct mpage_da_data {
- 	struct ext4_map_blocks map;
- 	struct ext4_io_submit io_submit;	/* IO submission data */
- 	unsigned int do_map:1;
--	unsigned int can_map:1;	/* Can writepages call map blocks? */
- 	unsigned int scanned_until_end:1;
- };
- 
-@@ -2701,16 +2703,16 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
- 	return err;
- }
- 
--static int ext4_writepages(struct address_space *mapping,
--			   struct writeback_control *wbc)
-+static int ext4_do_writepages(struct mpage_da_data *mpd)
- {
-+	struct writeback_control *wbc = mpd->wbc;
- 	pgoff_t	writeback_index = 0;
- 	long nr_to_write = wbc->nr_to_write;
- 	int range_whole = 0;
- 	int cycled = 1;
- 	handle_t *handle = NULL;
--	struct mpage_da_data mpd;
--	struct inode *inode = mapping->host;
-+	struct inode *inode = mpd->inode;
-+	struct address_space *mapping = inode->i_mapping;
- 	int needed_blocks, rsv_blocks = 0, ret = 0;
- 	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
- 	struct blk_plug plug;
-@@ -2785,19 +2787,18 @@ static int ext4_writepages(struct address_space *mapping,
- 		writeback_index = mapping->writeback_index;
- 		if (writeback_index)
- 			cycled = 0;
--		mpd.first_page = writeback_index;
--		mpd.last_page = -1;
-+		mpd->first_page = writeback_index;
-+		mpd->last_page = -1;
- 	} else {
--		mpd.first_page = wbc->range_start >> PAGE_SHIFT;
--		mpd.last_page = wbc->range_end >> PAGE_SHIFT;
-+		mpd->first_page = wbc->range_start >> PAGE_SHIFT;
-+		mpd->last_page = wbc->range_end >> PAGE_SHIFT;
- 	}
- 
--	mpd.inode = inode;
--	mpd.wbc = wbc;
--	ext4_io_submit_init(&mpd.io_submit, wbc);
-+	ext4_io_submit_init(&mpd->io_submit, wbc);
- retry:
- 	if (wbc->sync_mode == WB_SYNC_ALL || wbc->tagged_writepages)
--		tag_pages_for_writeback(mapping, mpd.first_page, mpd.last_page);
-+		tag_pages_for_writeback(mapping, mpd->first_page,
-+					mpd->last_page);
- 	blk_start_plug(&plug);
- 
- 	/*
-@@ -2806,28 +2807,27 @@ static int ext4_writepages(struct address_space *mapping,
- 	 * in the block layer on device congestion while having transaction
- 	 * started.
- 	 */
--	mpd.do_map = 0;
--	mpd.scanned_until_end = 0;
--	mpd.can_map = 1;
--	mpd.io_submit.io_end = ext4_init_io_end(inode, GFP_KERNEL);
--	if (!mpd.io_submit.io_end) {
-+	mpd->do_map = 0;
-+	mpd->scanned_until_end = 0;
-+	mpd->io_submit.io_end = ext4_init_io_end(inode, GFP_KERNEL);
-+	if (!mpd->io_submit.io_end) {
- 		ret = -ENOMEM;
- 		goto unplug;
- 	}
--	ret = mpage_prepare_extent_to_map(&mpd);
-+	ret = mpage_prepare_extent_to_map(mpd);
- 	/* Unlock pages we didn't use */
--	mpage_release_unused_pages(&mpd, false);
-+	mpage_release_unused_pages(mpd, false);
- 	/* Submit prepared bio */
--	ext4_io_submit(&mpd.io_submit);
--	ext4_put_io_end_defer(mpd.io_submit.io_end);
--	mpd.io_submit.io_end = NULL;
-+	ext4_io_submit(&mpd->io_submit);
-+	ext4_put_io_end_defer(mpd->io_submit.io_end);
-+	mpd->io_submit.io_end = NULL;
- 	if (ret < 0)
- 		goto unplug;
- 
--	while (!mpd.scanned_until_end && wbc->nr_to_write > 0) {
-+	while (!mpd->scanned_until_end && wbc->nr_to_write > 0) {
- 		/* For each extent of pages we use new io_end */
--		mpd.io_submit.io_end = ext4_init_io_end(inode, GFP_KERNEL);
--		if (!mpd.io_submit.io_end) {
-+		mpd->io_submit.io_end = ext4_init_io_end(inode, GFP_KERNEL);
-+		if (!mpd->io_submit.io_end) {
- 			ret = -ENOMEM;
- 			break;
- 		}
-@@ -2851,16 +2851,16 @@ static int ext4_writepages(struct address_space *mapping,
- 			       "%ld pages, ino %lu; err %d", __func__,
- 				wbc->nr_to_write, inode->i_ino, ret);
- 			/* Release allocated io_end */
--			ext4_put_io_end(mpd.io_submit.io_end);
--			mpd.io_submit.io_end = NULL;
-+			ext4_put_io_end(mpd->io_submit.io_end);
-+			mpd->io_submit.io_end = NULL;
- 			break;
- 		}
--		mpd.do_map = 1;
-+		mpd->do_map = 1;
- 
--		trace_ext4_da_write_pages(inode, mpd.first_page, mpd.wbc);
--		ret = mpage_prepare_extent_to_map(&mpd);
--		if (!ret && mpd.map.m_len)
--			ret = mpage_map_and_submit_extent(handle, &mpd,
-+		trace_ext4_da_write_pages(inode, mpd->first_page, wbc);
-+		ret = mpage_prepare_extent_to_map(mpd);
-+		if (!ret && mpd->map.m_len)
-+			ret = mpage_map_and_submit_extent(handle, mpd,
- 					&give_up_on_write);
- 		/*
- 		 * Caution: If the handle is synchronous,
-@@ -2875,12 +2875,12 @@ static int ext4_writepages(struct address_space *mapping,
- 		if (!ext4_handle_valid(handle) || handle->h_sync == 0) {
- 			ext4_journal_stop(handle);
- 			handle = NULL;
--			mpd.do_map = 0;
-+			mpd->do_map = 0;
- 		}
- 		/* Unlock pages we didn't use */
--		mpage_release_unused_pages(&mpd, give_up_on_write);
-+		mpage_release_unused_pages(mpd, give_up_on_write);
- 		/* Submit prepared bio */
--		ext4_io_submit(&mpd.io_submit);
-+		ext4_io_submit(&mpd->io_submit);
- 
- 		/*
- 		 * Drop our io_end reference we got from init. We have
-@@ -2890,11 +2890,11 @@ static int ext4_writepages(struct address_space *mapping,
- 		 * up doing unwritten extent conversion.
- 		 */
- 		if (handle) {
--			ext4_put_io_end_defer(mpd.io_submit.io_end);
-+			ext4_put_io_end_defer(mpd->io_submit.io_end);
- 			ext4_journal_stop(handle);
- 		} else
--			ext4_put_io_end(mpd.io_submit.io_end);
--		mpd.io_submit.io_end = NULL;
-+			ext4_put_io_end(mpd->io_submit.io_end);
-+		mpd->io_submit.io_end = NULL;
- 
- 		if (ret == -ENOSPC && sbi->s_journal) {
- 			/*
-@@ -2914,8 +2914,8 @@ static int ext4_writepages(struct address_space *mapping,
- 	blk_finish_plug(&plug);
- 	if (!ret && !cycled && wbc->nr_to_write > 0) {
- 		cycled = 1;
--		mpd.last_page = writeback_index - 1;
--		mpd.first_page = 0;
-+		mpd->last_page = writeback_index - 1;
-+		mpd->first_page = 0;
- 		goto retry;
- 	}
- 
-@@ -2925,7 +2925,7 @@ static int ext4_writepages(struct address_space *mapping,
- 		 * Set the writeback_index so that range_cyclic
- 		 * mode will write it back later
- 		 */
--		mapping->writeback_index = mpd.first_page;
-+		mapping->writeback_index = mpd->first_page;
- 
- out_writepages:
- 	trace_ext4_writepages_result(inode, wbc, ret,
-@@ -2934,6 +2934,18 @@ static int ext4_writepages(struct address_space *mapping,
- 	return ret;
- }
- 
-+static int ext4_writepages(struct address_space *mapping,
-+			   struct writeback_control *wbc)
-+{
-+	struct mpage_da_data mpd = {
-+		.inode = mapping->host,
-+		.wbc = wbc,
-+		.can_map = 1,
-+	};
-+
-+	return ext4_do_writepages(&mpd);
-+}
-+
- static int ext4_dax_writepages(struct address_space *mapping,
- 			       struct writeback_control *wbc)
- {
--- 
-2.35.3
-
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+syzbot can test patches for this issue, for details see:
+https://goo.gl/tpsmEJ#testing-patches
