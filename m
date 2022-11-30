@@ -2,135 +2,95 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C21E8C4321E
-	for <linux-ext4@archiver.kernel.org>; Wed, 30 Nov 2022 16:36:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 41552C46467
+	for <linux-ext4@archiver.kernel.org>; Wed, 30 Nov 2022 16:36:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230282AbiK3QgQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 30 Nov 2022 11:36:16 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56292 "EHLO
+        id S229611AbiK3QgS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 30 Nov 2022 11:36:18 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56290 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230295AbiK3QgM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Nov 2022 11:36:12 -0500
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1886F86A36
-        for <linux-ext4@vger.kernel.org>; Wed, 30 Nov 2022 08:36:11 -0800 (PST)
+        with ESMTP id S230294AbiK3QgL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Nov 2022 11:36:11 -0500
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BACC0880EB
+        for <linux-ext4@vger.kernel.org>; Wed, 30 Nov 2022 08:36:10 -0800 (PST)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id C172421B12;
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 628851F45B;
         Wed, 30 Nov 2022 16:36:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1669826169; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=z441ZeCqEE0sfhCJc0co0PzncYIwOxI96zyBrV+QmUA=;
-        b=WzzKU3ENdzn5dLGDvZqQ42IvX0XYs4WZRcndcRgLC64k9sj76dcWVBWGydLrqt7kY7I09K
-        ZKlwX6ZxcFbn3zFe8ETrTfToZ637yoC3lcNCKu11lUf1/iwyanV2A0TfxqFuxSyw0wy0qH
-        NJkCKljD/xsTV9ADiLEmYuvZrPPCFm4=
+        bh=Yi3iYjfficMani0DB8DcTg/Hfupkks23yn5B9RYsXIo=;
+        b=rf2Qa1IGgG1gdU46qPM5TQi8ClqO5KKAKFKLmBpDJ7jUtqVWw33C7euzvQvoOR8aneDdLL
+        PJBXJDAPuhNIS8vhgKFv3+tn0vmZVyhPXFrcgOJ+kW1PWblAZDWh5PjplqNc5SQ3CfNA3c
+        Zkpb3cT86dt9us64jzlYYKHzjq3sdK8=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1669826169;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=z441ZeCqEE0sfhCJc0co0PzncYIwOxI96zyBrV+QmUA=;
-        b=4NbsOXjpoyi+P17xgOEQQUaIdlzqyKmQI8oYVIPL+Ku/dJOnu0jPlTRQmALUDJost8xjXt
-        15rkGuqQ0CqXQlAg==
+        bh=Yi3iYjfficMani0DB8DcTg/Hfupkks23yn5B9RYsXIo=;
+        b=OUH032FcREwwLzeD6858thcz/Lu6z0AysdPlLIP1J9oFZe4G3J2T/8uL5z/JGUbq1VHdso
+        +OWM+b26H5x/8dBg==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id B2CD613B25;
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 55FAA13A70;
         Wed, 30 Nov 2022 16:36:09 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id X9ylK3mGh2NiQgAAMHmgww
+        id mMX7FHmGh2NVQgAAMHmgww
         (envelope-from <jack@suse.cz>); Wed, 30 Nov 2022 16:36:09 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id D07B6A071D; Wed, 30 Nov 2022 17:36:08 +0100 (CET)
+        id B8B30A0718; Wed, 30 Nov 2022 17:36:08 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>,
         Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 8/9] ext4: Switch to using ext4_do_writepages() for ordered data writeout
-Date:   Wed, 30 Nov 2022 17:35:59 +0100
-Message-Id: <20221130163608.29034-8-jack@suse.cz>
+Subject: [PATCH 4/9] ext4: Drop pointless IO submission from ext4_bio_write_page()
+Date:   Wed, 30 Nov 2022 17:35:55 +0100
+Message-Id: <20221130163608.29034-4-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20221130162435.2324-1-jack@suse.cz>
 References: <20221130162435.2324-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2219; i=jack@suse.cz; h=from:subject; bh=xrZV+XmyUTBNF6kIFVC6Dhs/s/T7qbfVszfA0d8XoOU=; b=owGbwMvMwME4Z+4qdvsUh5uMp9WSGJLb2/JTfPu2/2495yO+WrttUumXtbnsQqzzE2fdan68qaTv V01CJ6MxCwMjB4OsmCLL6siL2tfmGXVtDdWQgRnEygQyhYGLUwAm8kOe/Q/Pu5YL3y9JnA3TMj2Yl3 rhyHqJOL3vh8oPp87+fC1q5SI1iZoFZ+71nnojfafmYr2pS0dwgYd6Qwm/KveDLEu+hUFWp51zfyfF Khv2dOw/6mr/Winjs7u2w6Nt1YJJ8UbBL5SdGLPq+Va9yPt0dM8O2U/+zOYSHxTS10Tt2HLT871uoL jmSh3hnZJWSxdu31dkaL5a1D79l2+84+3fdvwr9DY7xc+Q5/3kZflpSVPC5Qi94q5PB7qbre+3vbpV cVGLYw3TA0/xaMXvp6f7deVa7/gzsfeNVpuOtHatQq4iG9uG5ueTPsq+0wxweyDvsL7nY/In7+MCqZ 3n89jrnWy3Ho6w6U/VEmILvJsBAA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=797; i=jack@suse.cz; h=from:subject; bh=SXWIF7GCG3JqXi8R/f4M+Ly6lggE4TvljS0LQU2XOQk=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjh4ZrIDGPRd0mzF1lfqe9aMuXZRcdsir/ea4zxWav Je7Po6GJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY4eGawAKCRCcnaoHP2RA2YgzB/ 9TzYQ2afn5VR6Q6U9yaFKZRNC+bR7DoY6cP/lERMz2EMILB5PJ84XZKZJrHHwtQf/bdPuoscBR4VeE H4/18GwVMJxZZhVLUljpuVMWpQualqWPXG19jIp955eBPiYxU5/GP6dOAaK2C1dTIPcJfUQb27zBRs piGQtgBKl4xsHQ6zlaVNowSG7RqKU7dATjOyqI3JjTmPVdCePM2qJbqKCAYlb9kzO0Z/vVtSccu38k edP1mj7IMV0327ya/NwaY0oGTIbaihulZZNyYPu6N2+kZj/0hnTu/so6H1ifwAdfTxIe0gQldbBIjt 0hqUKMn0mCkkY0Cx2eFaWippY6Uv68
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Use the standard writepages method (ext4_do_writepages()) to perform
-writeout of ordered data during journal commit.
+We submit outstanding IO in ext4_bio_write_page() if we find a buffer we
+are not going to write. This is however pointless because we already
+handle submission of previous IO in case we detect newly added buffer
+head is discontiguous. So just delete the pointless IO submission call.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h  |  1 +
- fs/ext4/inode.c | 16 ++++++++++++++++
- fs/ext4/super.c |  3 +--
- 3 files changed, 18 insertions(+), 2 deletions(-)
+ fs/ext4/page-io.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 1b3bffc04fd0..07b55cc48578 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2999,6 +2999,7 @@ extern void ext4_set_inode_flags(struct inode *, bool init);
- extern int ext4_alloc_da_blocks(struct inode *inode);
- extern void ext4_set_aops(struct inode *inode);
- extern int ext4_writepage_trans_blocks(struct inode *);
-+extern int ext4_normal_submit_inode_data_buffers(struct jbd2_inode *jinode);
- extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
- extern int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
- 			     loff_t lstart, loff_t lend);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 00c4d12f8270..c131b611dabf 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2950,6 +2950,22 @@ static int ext4_writepages(struct address_space *mapping,
- 	return ret;
- }
- 
-+int ext4_normal_submit_inode_data_buffers(struct jbd2_inode *jinode)
-+{
-+	struct writeback_control wbc = {
-+		.sync_mode = WB_SYNC_ALL,
-+		.nr_to_write = LONG_MAX,
-+		.range_start = jinode->i_dirty_start,
-+		.range_end = jinode->i_dirty_end,
-+	};
-+	struct mpage_da_data mpd = {
-+		.inode = jinode->i_vfs_inode,
-+		.wbc = &wbc,
-+		.can_map = 0,
-+	};
-+	return ext4_do_writepages(&mpd);
-+}
-+
- static int ext4_dax_writepages(struct address_space *mapping,
- 			       struct writeback_control *wbc)
- {
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7cdd2138c897..c02329dd7574 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -540,8 +540,7 @@ static int ext4_journal_submit_inode_data_buffers(struct jbd2_inode *jinode)
- 	if (ext4_should_journal_data(jinode->i_vfs_inode))
- 		ret = ext4_journalled_submit_inode_data_buffers(jinode);
- 	else
--		ret = jbd2_journal_submit_inode_data_buffers(jinode);
--
-+		ret = ext4_normal_submit_inode_data_buffers(jinode);
- 	return ret;
- }
- 
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 2bdfb8a046d9..beaec6d81074 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -489,8 +489,6 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 					redirty_page_for_writepage(wbc, page);
+ 				keep_towrite = true;
+ 			}
+-			if (io->io_bio)
+-				ext4_io_submit(io);
+ 			continue;
+ 		}
+ 		if (buffer_new(bh))
 -- 
 2.35.3
 
