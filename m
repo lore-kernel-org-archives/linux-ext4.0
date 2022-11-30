@@ -2,129 +2,238 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 167CCC4321E
-	for <linux-ext4@archiver.kernel.org>; Wed, 30 Nov 2022 16:36:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7B9ACC352A1
+	for <linux-ext4@archiver.kernel.org>; Wed, 30 Nov 2022 16:36:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230319AbiK3QgY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 30 Nov 2022 11:36:24 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56306 "EHLO
+        id S230322AbiK3Qg0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 30 Nov 2022 11:36:26 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56292 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230306AbiK3QgM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Nov 2022 11:36:12 -0500
+        with ESMTP id S230307AbiK3QgN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Nov 2022 11:36:13 -0500
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 18A74880F0
-        for <linux-ext4@vger.kernel.org>; Wed, 30 Nov 2022 08:36:11 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D53026DFEA
+        for <linux-ext4@vger.kernel.org>; Wed, 30 Nov 2022 08:36:12 -0800 (PST)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id B950D21B11;
+        by smtp-out1.suse.de (Postfix) with ESMTPS id D4A4821B14;
         Wed, 30 Nov 2022 16:36:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1669826169; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=WNcFZrDchNAcG7wnaRrC+qlgFFqQw1xJwvIcMyjzi/U=;
-        b=U7p7LwYxmiUeQPjc32+DcgoND1P/CaIiCo3upXU3LNZbyz7ec6INjbyfyaCB/0wYWEjHL3
-        ptHi186AeyMayWcZEoJt/hPyTyEtRehEcr5hUetpCc1e5stAnpQswhh1EXqPpgJdBLFXvb
-        HTRlOEf1OKy0vLypHndWb8VsyoCQT0E=
+        bh=B0gTnsY4nTT6wh4dtPbXpE1nzLlHD8AcSrhjlLFNSpw=;
+        b=2SxRg8ZCtzkBkTms6vCeMAEdxr7PJMUzKlQaBI30HKHwaWt8VEzlwzhVeytSxuvrR3bzHH
+        Mh6xeFDqpfQKaKF4r7m6D0aHIhCTjMBnBKa2ScB4zmtO3dZapNwkvmwvu4N9wqNQ7qawwL
+        vdIpAkLhpM4Gv2kZbP7gmMoe8KScbrA=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1669826169;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=WNcFZrDchNAcG7wnaRrC+qlgFFqQw1xJwvIcMyjzi/U=;
-        b=QwI/Gw5f2h9ZyWoSp60B09J1KBPRBbM4/aI/2WiawvoqMceDKsj9zKLSrcG+Yd4WjAgs4n
-        BKS1Cby1T3qGbJAQ==
+        bh=B0gTnsY4nTT6wh4dtPbXpE1nzLlHD8AcSrhjlLFNSpw=;
+        b=dC+jMyqln5NDXVd7QpGxYDFmZWo0SlMTLxWVjBqMEEjUkcN7Q63I4vO6KEkiDmlPVixl4d
+        jreQ2/Mgtgt5qUBw==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id ADBDE13AFB;
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id C2C3F13AFB;
         Wed, 30 Nov 2022 16:36:09 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id 3H9mKnmGh2NhQgAAMHmgww
+        id 7FCAL3mGh2NmQgAAMHmgww
         (envelope-from <jack@suse.cz>); Wed, 30 Nov 2022 16:36:09 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id CADB7A071C; Wed, 30 Nov 2022 17:36:08 +0100 (CET)
+        id D599BA071E; Wed, 30 Nov 2022 17:36:08 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>,
         Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 7/9] ext4: Move percpu_rwsem protection into ext4_writepages()
-Date:   Wed, 30 Nov 2022 17:35:58 +0100
-Message-Id: <20221130163608.29034-7-jack@suse.cz>
+Subject: [PATCH 9/9] ext4: Remove ordered data support from ext4_writepage()
+Date:   Wed, 30 Nov 2022 17:36:00 +0100
+Message-Id: <20221130163608.29034-9-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20221130162435.2324-1-jack@suse.cz>
 References: <20221130162435.2324-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1816; i=jack@suse.cz; h=from:subject; bh=CqrdRoULi30+1u2C8jYfDV3/nqlShtu4GpVS5vyMC3Q=; b=owGbwMvMwME4Z+4qdvsUh5uMp9WSGJLb2/KyQ7ibvh3aGFES353i3PysS3/xMn1pjfemJ8PtSvTi wk51MhqzMDByMMiKKbKsjryofW2eUdfWUA0ZmEGsTCBTGLg4BWAiW1nY/wc4vxBYEyga/ej+C0v9rQ xSm5K75ufWfrzrqXnrgIyJ165X+53kPjxZ0959OfVa1bQrH+14WNnZ/Z5ycyi+ef3+7Qp/TolE8473 PVHXJFavytw4NVBOsS+VeWGQTOrKynPnHluJ1XzoZedyedoe3DTJu8R2kW7//k+RUVO2iXPa/GM9vm SPqG1yV1uDhObU/aefz11pXKpkZvvuXv7yppQTm3ctvX2uR+KY56Jf4fkzFz2KlnrtPOdZ62QLSaVp YrW5Me37NPunKlb92FTfY5+1y2Pes6LQ4/ePsXA3uvVr73/JIqYi8uxR5pkYEQmhO16iHR/seTUvX1 OIfBBa3MJdmaQyvY2118R8V0g6AA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6961; i=jack@suse.cz; h=from:subject; bh=B6Hm8+X6gHqS2o9OLk2WmhBw+YJETgo4MSHJSjEiGeM=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjh4Zv3U7mHOoX8gFIR+qqYNRvSIYGSbrJRtqS+mja 2DTmJB+JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY4eGbwAKCRCcnaoHP2RA2SV1CA CthsSjRxI5MjxjxUTOiFH6/GWk2DSAl3SM6o2Yjyd6vOhsnTVe+UDgyDf4Fvc0r9/PkEyeylQ7eavG Qzst47yCkQnbTxvl+dy85H8BGpZybq26Q8qRsIsuyun0faMGHVmlnJ+0xrRmtQ0Cn3WsI3T2Dm2/oN clndl7GSj5C8kZ7zsBv0ljmy7nVJ+JnFQvAam7oHDHGuY103deIxhveI0ZDinpfNAa0ete5rKZLNzV Kg0NW5Tlqkc7B14UvMpIT5fk7mlZ1qXaZVr5fzf0r9tPX3tcMeTTrlrRoXTN6uejnwU0U6WJjtjWap fm/KNC7H/N5ef03XPbg8EK0HUe6FJH
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Move protection by percpu_rwsem from ext4_do_writepages() to
-ext4_writepages(). We will not want to grab this protection during
-transaction commits as that would be prone to deadlocks and the
-protection is not needed. Move the shutdown state checking as well since
-we want to be able to complete commit while the shutdown is in progress.
+ext4_writepage() should not be called for ordered data anymore. Remove
+support for it from the function.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 16 ++++++++++------
- 1 file changed, 10 insertions(+), 6 deletions(-)
+ fs/ext4/inode.c | 116 ++++++------------------------------------------
+ 1 file changed, 13 insertions(+), 103 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index fbea77ab470f..00c4d12f8270 100644
+index c131b611dabf..0c8e700265f1 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2718,10 +2718,6 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
- 	struct blk_plug plug;
- 	bool give_up_on_write = false;
+@@ -1642,12 +1642,6 @@ static void ext4_print_free_blocks(struct inode *inode)
+ 	return;
+ }
  
--	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
--		return -EIO;
+-static int ext4_bh_delay_or_unwritten(handle_t *handle, struct inode *inode,
+-				      struct buffer_head *bh)
+-{
+-	return (buffer_delay(bh) || buffer_unwritten(bh)) && buffer_dirty(bh);
+-}
 -
--	percpu_down_read(&sbi->s_writepages_rwsem);
- 	trace_ext4_writepages(inode, wbc);
- 
- 	/*
-@@ -2930,20 +2926,28 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
- out_writepages:
- 	trace_ext4_writepages_result(inode, wbc, ret,
- 				     nr_to_write - wbc->nr_to_write);
--	percpu_up_read(&sbi->s_writepages_rwsem);
- 	return ret;
+ /*
+  * ext4_insert_delayed_block - adds a delayed block to the extents status
+  *                             tree, incrementing the reserved cluster/block
+@@ -1962,56 +1956,17 @@ static int __ext4_journalled_writepage(struct page *page,
  }
  
- static int ext4_writepages(struct address_space *mapping,
- 			   struct writeback_control *wbc)
+ /*
+- * Note that we don't need to start a transaction unless we're journaling data
+- * because we should have holes filled from ext4_page_mkwrite(). We even don't
+- * need to file the inode to the transaction's list in ordered mode because if
+- * we are writing back data added by write(), the inode is already there and if
+- * we are writing back data modified via mmap(), no one guarantees in which
+- * transaction the data will hit the disk. In case we are journaling data, we
+- * cannot start transaction directly because transaction start ranks above page
+- * lock so we have to do some magic.
+- *
+- * This function can get called via...
+- *   - ext4_writepages after taking page lock (have journal handle)
+- *   - journal_submit_inode_data_buffers (no journal handle)
+- *   - shrink_page_list via the kswapd/direct reclaim (no journal handle)
+- *   - grab_page_cache when doing write_begin (have journal handle)
+- *
+- * We don't do any block allocation in this function. If we have page with
+- * multiple blocks we need to write those buffer_heads that are mapped. This
+- * is important for mmaped based write. So if we do with blocksize 1K
+- * truncate(f, 1024);
+- * a = mmap(f, 0, 4096);
+- * a[0] = 'a';
+- * truncate(f, 4096);
+- * we have in the page first buffer_head mapped via page_mkwrite call back
+- * but other buffer_heads would be unmapped but dirty (dirty done via the
+- * do_wp_page). So writepage should write the first block. If we modify
+- * the mmap area beyond 1024 we will again get a page_fault and the
+- * page_mkwrite callback will do the block allocation and mark the
+- * buffer_heads mapped.
+- *
+- * We redirty the page if we have any buffer_heads that is either delay or
+- * unwritten in the page.
+- *
+- * We can get recursively called as show below.
+- *
+- *	ext4_writepage() -> kmalloc() -> __alloc_pages() -> page_launder() ->
+- *		ext4_writepage()
+- *
+- * But since we don't do any block allocation we should not deadlock.
+- * Page also have the dirty flag cleared so we don't get recurive page_lock.
++ * This function is now used only when journaling data. We cannot start
++ * transaction directly because transaction start ranks above page lock so we
++ * have to do some magic.
+  */
+ static int ext4_writepage(struct page *page,
+ 			  struct writeback_control *wbc)
  {
-+	struct super_block *sb = mapping->host->i_sb;
- 	struct mpage_da_data mpd = {
- 		.inode = mapping->host,
- 		.wbc = wbc,
- 		.can_map = 1,
- 	};
-+	int ret;
-+
-+	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
-+		return -EIO;
+ 	struct folio *folio = page_folio(page);
+-	int ret = 0;
+ 	loff_t size;
+ 	unsigned int len;
+-	struct buffer_head *page_bufs = NULL;
+ 	struct inode *inode = page->mapping->host;
+-	struct ext4_io_submit io_submit;
  
--	return ext4_do_writepages(&mpd);
-+	percpu_down_read(&EXT4_SB(sb)->s_writepages_rwsem);
-+	ret = ext4_do_writepages(&mpd);
-+	percpu_up_read(&EXT4_SB(sb)->s_writepages_rwsem);
-+
-+	return ret;
+ 	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb)))) {
+ 		folio_invalidate(folio, 0, folio_size(folio));
+@@ -2036,60 +1991,16 @@ static int ext4_writepage(struct page *page,
+ 		return 0;
+ 	}
+ 
+-	page_bufs = page_buffers(page);
+-	/*
+-	 * We cannot do block allocation or other extent handling in this
+-	 * function. If there are buffers needing that, we have to redirty
+-	 * the page. But we may reach here when we do a journal commit via
+-	 * journal_submit_inode_data_buffers() and in that case we must write
+-	 * allocated buffers to achieve data=ordered mode guarantees.
+-	 *
+-	 * Also, if there is only one buffer per page (the fs block
+-	 * size == the page size), if one buffer needs block
+-	 * allocation or needs to modify the extent tree to clear the
+-	 * unwritten flag, we know that the page can't be written at
+-	 * all, so we might as well refuse the write immediately.
+-	 * Unfortunately if the block size != page size, we can't as
+-	 * easily detect this case using ext4_walk_page_buffers(), but
+-	 * for the extremely common case, this is an optimization that
+-	 * skips a useless round trip through ext4_bio_write_page().
+-	 */
+-	if (ext4_walk_page_buffers(NULL, inode, page_bufs, 0, len, NULL,
+-				   ext4_bh_delay_or_unwritten)) {
+-		redirty_page_for_writepage(wbc, page);
+-		if ((current->flags & PF_MEMALLOC) ||
+-		    (inode->i_sb->s_blocksize == PAGE_SIZE)) {
+-			/*
+-			 * For memory cleaning there's no point in writing only
+-			 * some buffers. So just bail out. Warn if we came here
+-			 * from direct reclaim.
+-			 */
+-			WARN_ON_ONCE((current->flags & (PF_MEMALLOC|PF_KSWAPD))
+-							== PF_MEMALLOC);
+-			unlock_page(page);
+-			return 0;
+-		}
+-	}
+-
+-	if (PageChecked(page) && ext4_should_journal_data(inode))
+-		/*
+-		 * It's mmapped pagecache.  Add buffers and journal it.  There
+-		 * doesn't seem much point in redirtying the page here.
+-		 */
+-		return __ext4_journalled_writepage(page, len);
+-
+-	ext4_io_submit_init(&io_submit, wbc);
+-	io_submit.io_end = ext4_init_io_end(inode, GFP_NOFS);
+-	if (!io_submit.io_end) {
+-		redirty_page_for_writepage(wbc, page);
++	WARN_ON_ONCE(!ext4_should_journal_data(inode));
++	if (!PageChecked(page)) {
+ 		unlock_page(page);
+-		return -ENOMEM;
++		return 0;
+ 	}
+-	ret = ext4_bio_write_page(&io_submit, page, len);
+-	ext4_io_submit(&io_submit);
+-	/* Drop io_end reference we got from init */
+-	ext4_put_io_end_defer(io_submit.io_end);
+-	return ret;
++	/*
++	 * It's mmapped pagecache.  Add buffers and journal it.  There
++	 * doesn't seem much point in redirtying the page here.
++	 */
++	return __ext4_journalled_writepage(page, len);
  }
  
- static int ext4_dax_writepages(struct address_space *mapping,
+ static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
+@@ -3142,9 +3053,8 @@ static int ext4_da_write_end(struct file *file,
+ 	 * i_disksize since writeback will push i_disksize upto i_size
+ 	 * eventually. If the end of the current write is > i_size and
+ 	 * inside an allocated block (ext4_da_should_update_i_disksize()
+-	 * check), we need to update i_disksize here as neither
+-	 * ext4_writepage() nor certain ext4_writepages() paths not
+-	 * allocating blocks update i_disksize.
++	 * check), we need to update i_disksize here as ext4_writepages() need
++	 * not do it in this case.
+ 	 *
+ 	 * Note that we defer inode dirtying to generic_write_end() /
+ 	 * ext4_da_write_inline_data_end().
 -- 
 2.35.3
 
