@@ -2,40 +2,41 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 88C4EC47088
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Dec 2022 16:07:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AA55BC43217
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Dec 2022 16:08:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232170AbiLAQHm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 1 Dec 2022 11:07:42 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51690 "EHLO
+        id S232156AbiLAQIi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 1 Dec 2022 11:08:38 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52158 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230132AbiLAQHa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Dec 2022 11:07:30 -0500
+        with ESMTP id S231860AbiLAQIc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Dec 2022 11:08:32 -0500
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 63568B5DBA
-        for <linux-ext4@vger.kernel.org>; Thu,  1 Dec 2022 08:06:32 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1B59BE06
+        for <linux-ext4@vger.kernel.org>; Thu,  1 Dec 2022 08:07:34 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1669910791;
+        s=mimecast20190719; t=1669910853;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=PamKx232vfxvsaWPi1/5x3ys13CWorTpvsS3jNFLNq0=;
-        b=GvvFhYiar2tbpdIO9iL0OHcZNAYY+zJO/P3C/3pW4d9vWNPGjMSHC4LMBAsVERwKAfT8AE
-        d4XofQTH6uMZO0qt30Sm13zqChpkdpNgSIufDnfC1OgtXvFDolFQ2ZY85aBBA1tZmpsjk2
-        IxUs1Iyv2Xv5kNosqFFjm6YbeYqk0sM=
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=qqommci96us+QVDcXaQm47rsizn+sT4z8GqL5KIOQ8U=;
+        b=cpWvE8dzRHKOwYzlO21+zYypfvxvbzzRYkzOZoxQ/rQru8l4P3s5QEp239qHmGaH+3NXu3
+        3MRAGtNUXZ0LS/EnlDdYSk5G3BKpq9JQ1mVTufDadwqK6QwKRD3VGmw1ZBcHix2l7e8j5g
+        jyXT/IjOoyI664YBoOOE+v0i1N7gb28=
 Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
  [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-377-4kkp5bLeOxOLIRlBDC_4bg-1; Thu, 01 Dec 2022 11:06:23 -0500
-X-MC-Unique: 4kkp5bLeOxOLIRlBDC_4bg-1
+ us-mta-369-qMK60ov8MSi3UZwPT7S-dA-1; Thu, 01 Dec 2022 11:07:00 -0500
+X-MC-Unique: qMK60ov8MSi3UZwPT7S-dA-1
 Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.rdu2.redhat.com [10.11.54.3])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 3A233858F13;
-        Thu,  1 Dec 2022 16:06:22 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 30959800186;
+        Thu,  1 Dec 2022 16:06:29 +0000 (UTC)
 Received: from pasta.redhat.com (ovpn-192-141.brq.redhat.com [10.40.192.141])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 2DE53111E3FA;
-        Thu,  1 Dec 2022 16:06:19 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 2AB4D111E3FA;
+        Thu,  1 Dec 2022 16:06:27 +0000 (UTC)
 From:   Andreas Gruenbacher <agruenba@redhat.com>
 To:     Christoph Hellwig <hch@infradead.org>,
         "Darrick J . Wong" <djwong@kernel.org>,
@@ -44,9 +45,11 @@ To:     Christoph Hellwig <hch@infradead.org>,
 Cc:     Andreas Gruenbacher <agruenba@redhat.com>,
         linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-ext4@vger.kernel.org, cluster-devel@redhat.com
-Subject: [RFC 0/3] Turn iomap_page_ops into iomap_folio_ops
-Date:   Thu,  1 Dec 2022 17:06:16 +0100
-Message-Id: <20221201160619.1247788-1-agruenba@redhat.com>
+Subject: [RFC 3/3] gfs2: Fix race between shrinker and gfs2_iomap_folio_done
+Date:   Thu,  1 Dec 2022 17:06:19 +0100
+Message-Id: <20221201160619.1247788-4-agruenba@redhat.com>
+In-Reply-To: <20221201160619.1247788-1-agruenba@redhat.com>
+References: <20221201160619.1247788-1-agruenba@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 3.1 on 10.11.54.3
@@ -54,47 +57,41 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+In gfs2_iomap_folio_done(), add the modified buffer heads to the current
+transaction while the folio is still locked.  Otherwise, the shrinker
+can come in and free them before we get to gfs2_page_add_databufs().
 
-we're seeing a race between journaled data writes and the shrinker on
-gfs2.  What's happening is that gfs2_iomap_page_done() is called after
-the page has been unlocked, so try_to_free_buffers() can come in and
-free the buffers while gfs2_iomap_page_done() is trying to add them to
-the transaction.  Not good.
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+---
+ fs/gfs2/bmap.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-This is a proposal to change iomap_page_ops so that page_prepare()
-prepares the write and grabs the locked page, and page_done() unlocks
-and puts that page again.  While at it, this also converts the hooks
-from pages to folios.
-
-To move the pagecache_isize_extended() call in iomap_write_end() out of
-the way, a new folio_may_straddle_isize() helper is introduced that
-takes a locked folio.  That is then used when the inode size is updated,
-before the folio is unlocked.
-
-I've also converted the other applicable folio_may_straddle_isize()
-users, namely generic_write_end(), ext4_write_end(), and
-ext4_journalled_write_end().
-
-Any thoughts?
-
-Thanks,
-Andreas
-
-Andreas Gruenbacher (3):
-  fs: Add folio_may_straddle_isize helper
-  iomap: Turn iomap_page_ops into iomap_folio_ops
-  gfs2: Fix race between shrinker and gfs2_iomap_folio_done
-
- fs/buffer.c            |  5 ++---
- fs/ext4/inode.c        | 13 +++++------
- fs/gfs2/bmap.c         | 39 +++++++++++++++++++++++---------
- fs/iomap/buffered-io.c | 51 +++++++++++++++++++++---------------------
- include/linux/iomap.h  | 24 ++++++++++----------
- include/linux/mm.h     |  2 ++
- mm/truncate.c          | 34 ++++++++++++++++++++++++++++
- 7 files changed, 110 insertions(+), 58 deletions(-)
-
+diff --git a/fs/gfs2/bmap.c b/fs/gfs2/bmap.c
+index 18dcaa95408e..d8d9ee843ac9 100644
+--- a/fs/gfs2/bmap.c
++++ b/fs/gfs2/bmap.c
+@@ -990,18 +990,17 @@ gfs2_iomap_folio_done(struct inode *inode, struct folio *folio,
+ 	struct gfs2_inode *ip = GFS2_I(inode);
+ 	struct gfs2_sbd *sdp = GFS2_SB(inode);
+ 
+-	folio_unlock(folio);
+-
+ 	if (!gfs2_is_stuffed(ip))
+ 		gfs2_page_add_databufs(ip, &folio->page, offset_in_page(pos),
+ 				       copied);
+ 
++	folio_unlock(folio);
++	folio_put(folio);
++
+ 	if (tr->tr_num_buf_new)
+ 		__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
+ 
+ 	gfs2_trans_end(sdp);
+-
+-	folio_put(folio);
+ }
+ 
+ static const struct iomap_folio_ops gfs2_iomap_folio_ops = {
 -- 
 2.38.1
 
