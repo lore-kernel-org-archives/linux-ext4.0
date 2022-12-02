@@ -2,31 +2,31 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E3E6C4332F
-	for <linux-ext4@archiver.kernel.org>; Fri,  2 Dec 2022 10:27:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2833FC47088
+	for <linux-ext4@archiver.kernel.org>; Fri,  2 Dec 2022 10:27:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233360AbiLBK1S (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 2 Dec 2022 05:27:18 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36828 "EHLO
+        id S233370AbiLBK1U (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 2 Dec 2022 05:27:20 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36866 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233341AbiLBK1A (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Dec 2022 05:27:00 -0500
+        with ESMTP id S233394AbiLBK1J (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Dec 2022 05:27:09 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9AC8126AC0;
-        Fri,  2 Dec 2022 02:26:59 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3FAF126AC0;
+        Fri,  2 Dec 2022 02:27:09 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-        MIME-Version:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:
-        Content-ID:Content-Description:In-Reply-To:References;
-        bh=y5ud92nQf37ZqSh+JetkXlw12So9y6VeRppDRV99M7g=; b=4zgnIMqUuuHUVJitlEUYYYmcM3
-        kEsixiasYAjMMM5btmQIU+Zpfae0Lkl0d/VgRiT0cVctnlluIqtGna14M5iCcdN3h0Ew0rEik2/4d
-        fWLNknQ18SZSE/Ly9TVNlqNGRO7s5sTCSBfJlT7VDUzcKA0Co24ispszFFmX9PbeFYIIvjvYcYeGb
-        eXqTyL7EYkd/JrlE2RK/cLP9EYCvJzudmk+wc84VuY/nGJtsLrD/ZASRSmRcHACAq/9RkrB2A6BWX
-        5K/UGcRKqwfqzpiJbFmUFmGLlYSyg/Tovfe8z9j/3QLyGCwXe7Ppu+pk6A13jwtUAULbBrtWXHVe1
-        1/EZJ7Ow==;
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description;
+        bh=mbvlyXxWhO9WFxugvmMSJQGn9fzMBZ852OGR/GsDnBQ=; b=INC7W8kcASEs2+FQI6tK+fkYe7
+        FVLv5J6Yt9ZchoTmC3IrWcFjNI8P8nW/kfVnPT8z4afsigc0DyzXO/8jHJO4Lb+ZG3fJnolV4DQRY
+        IAUlwenbG5qLTeP0d/+f+FXyW/PFBt2gXZ6V7In4xC82yItOO63+eSh9MshNuHBeHLlaZoxr2Wtg7
+        h0UuhIkcrY6s4liyPpdjMHfpFvKmXU3TZC0Z8kursgybQFsK42q7alrWlDNMR9loGPNZPTlr5PC3X
+        0N2gBn0iRz0FtIqvqeAeyX0/yD7W1p+duoifLZEIOu0sc7+LbZHHQjXMm8l5LgxIqc7RrHLLYUWvZ
+        YtODIeZA==;
 Received: from [2001:4bb8:192:26e7:bcd3:7e81:e7de:56fd] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1p13Fm-00FQvi-FR; Fri, 02 Dec 2022 10:26:47 +0000
+        id 1p13G1-00FR1N-A5; Fri, 02 Dec 2022 10:27:01 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Andrew Morton <akpm@linux-foundation.org>,
         Namjae Jeon <linkinjeon@kernel.org>,
@@ -38,11 +38,14 @@ To:     Andrew Morton <akpm@linux-foundation.org>,
         Bob Copeland <me@bobcopeland.com>
 Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         jfs-discussion@lists.sourceforge.net,
-        linux-karma-devel@lists.sourceforge.net, linux-mm@kvack.org
-Subject: start removing writepage instances v2
-Date:   Fri,  2 Dec 2022 11:26:37 +0100
-Message-Id: <20221202102644.770505-1-hch@lst.de>
+        linux-karma-devel@lists.sourceforge.net, linux-mm@kvack.org,
+        Johannes Weiner <hannes@cmpxchg.org>
+Subject: [PATCH 5/7] hpfs: remove ->writepage
+Date:   Fri,  2 Dec 2022 11:26:42 +0100
+Message-Id: <20221202102644.770505-6-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
+In-Reply-To: <20221202102644.770505-1-hch@lst.de>
+References: <20221202102644.770505-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
@@ -50,28 +53,50 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi all,
+->writepage is a very inefficient method to write back data, and only
+used through write_cache_pages or a a fallback when no ->migrate_folio
+method is present.
 
-The VM doesn't need or want ->writepage for writeback and is fine with
-just having ->writepages as long as ->migrate_folio is implemented.
+Set ->migrate_folio to the generic buffer_head based helper, and remove
+the ->writepage implementation.
 
-This series removes all ->writepage instances that use
-block_write_full_page directly and also have a plain mpage_writepages
-based ->writepages.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Acked-by: Johannes Weiner <hannes@cmpxchg.org>
+---
+ fs/hpfs/file.c | 9 ++-------
+ 1 file changed, 2 insertions(+), 7 deletions(-)
 
-Andrew, can you pick this up through the -mm tree?
+diff --git a/fs/hpfs/file.c b/fs/hpfs/file.c
+index f7547a62c81f6a..88952d4a631e6c 100644
+--- a/fs/hpfs/file.c
++++ b/fs/hpfs/file.c
+@@ -163,11 +163,6 @@ static int hpfs_read_folio(struct file *file, struct folio *folio)
+ 	return mpage_read_folio(folio, hpfs_get_block);
+ }
+ 
+-static int hpfs_writepage(struct page *page, struct writeback_control *wbc)
+-{
+-	return block_write_full_page(page, hpfs_get_block, wbc);
+-}
+-
+ static void hpfs_readahead(struct readahead_control *rac)
+ {
+ 	mpage_readahead(rac, hpfs_get_block);
+@@ -248,12 +243,12 @@ const struct address_space_operations hpfs_aops = {
+ 	.dirty_folio	= block_dirty_folio,
+ 	.invalidate_folio = block_invalidate_folio,
+ 	.read_folio = hpfs_read_folio,
+-	.writepage = hpfs_writepage,
+ 	.readahead = hpfs_readahead,
+ 	.writepages = hpfs_writepages,
+ 	.write_begin = hpfs_write_begin,
+ 	.write_end = hpfs_write_end,
+-	.bmap = _hpfs_bmap
++	.bmap = _hpfs_bmap,
++	.migrate_folio = buffer_migrate_folio,
+ };
+ 
+ const struct file_operations hpfs_file_ops =
+-- 
+2.30.2
 
-Changes since v1:
- - dropped the ext2 and udf patches that Jan merged through
-   his tree
- - collected a bunch of ACKs
-
-Diffstat:
- exfat/inode.c   |    9 ++-------
- fat/inode.c     |    9 ++-------
- hfs/inode.c     |    2 +-
- hfsplus/inode.c |    2 +-
- hpfs/file.c     |    9 ++-------
- jfs/inode.c     |    7 +------
- omfs/file.c     |    7 +------
- 7 files changed, 10 insertions(+), 35 deletions(-)
