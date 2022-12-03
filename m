@@ -2,121 +2,126 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 11923C4332F
-	for <linux-ext4@archiver.kernel.org>; Fri,  2 Dec 2022 18:43:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C3D36C47089
+	for <linux-ext4@archiver.kernel.org>; Sat,  3 Dec 2022 00:54:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234619AbiLBSm7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 2 Dec 2022 13:42:59 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45436 "EHLO
+        id S235023AbiLCAyv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 2 Dec 2022 19:54:51 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43646 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232550AbiLBSme (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Dec 2022 13:42:34 -0500
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 20D58E3442
-        for <linux-ext4@vger.kernel.org>; Fri,  2 Dec 2022 10:40:11 -0800 (PST)
-Received: from imap1.suse-dmz.suse.de (imap1.suse-dmz.suse.de [192.168.254.73])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 68EDC21C6D;
-        Fri,  2 Dec 2022 18:39:44 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1670006384; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=N0QD24xiIxX6knKcXwKNJ+ozLIvx95Guu21OI/SOtms=;
-        b=D3CDualeL+9ssSCRz8C1pv3DeUrZCzK0TVtaI8hheScRM7E+r0/Su2JncHAXL+8PjFNp+S
-        ZRPPdbGpfHoVCp27efTyqWNv5HG86GXlkCwhSjfA0h3XynZQOwpM0lgcn1ZWTYk5kCRAyu
-        hipWh3AqecttdMe/4xLLaXA2mUzaQEw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1670006384;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=N0QD24xiIxX6knKcXwKNJ+ozLIvx95Guu21OI/SOtms=;
-        b=vMaiJtXxNlk/pbBMj1/g6/wFkES/b9JK5s+Ne9vgjF58PfWUQM2EtGkeLkAsTmkf8NssZk
-        K3t/oZ9kCkxANSBA==
-Received: from imap1.suse-dmz.suse.de (imap1.suse-dmz.suse.de [192.168.254.73])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap1.suse-dmz.suse.de (Postfix) with ESMTPS id 5D659136ED;
-        Fri,  2 Dec 2022 18:39:44 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap1.suse-dmz.suse.de with ESMTPSA
-        id /WTPFnBGimPEZAAAGKfGzw
-        (envelope-from <jack@suse.cz>); Fri, 02 Dec 2022 18:39:44 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 82D09A0725; Fri,  2 Dec 2022 19:39:43 +0100 (CET)
-From:   Jan Kara <jack@suse.cz>
-To:     Ted Tso <tytso@mit.edu>
-Cc:     <linux-ext4@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Ritesh Harjani <ritesh.list@gmail.com>, Jan Kara <jack@suse.cz>
-Subject: [PATCH v2 0/11] ext4: Stop providing .writepage hook
-Date:   Fri,  2 Dec 2022 19:39:35 +0100
-Message-Id: <20221202183943.22640-10-jack@suse.cz>
-X-Mailer: git-send-email 2.35.3
-In-Reply-To: <20221202163815.22928-1-jack@suse.cz>
+        with ESMTP id S235011AbiLCAyT (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Dec 2022 19:54:19 -0500
+Received: from mail-pg1-x533.google.com (mail-pg1-x533.google.com [IPv6:2607:f8b0:4864:20::533])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8E1289A4E5
+        for <linux-ext4@vger.kernel.org>; Fri,  2 Dec 2022 16:53:03 -0800 (PST)
+Received: by mail-pg1-x533.google.com with SMTP id v3so5713392pgh.4
+        for <linux-ext4@vger.kernel.org>; Fri, 02 Dec 2022 16:53:03 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=H4gE22UEJMKiRLenIWOFZNJhaaD3BRTTXiaPb8E6e3M=;
+        b=Sxj2Ry0hT1/GjLp/66GVQlB3dHL3YjShTaXrFB75CTQzyAu08FxSdrCvg7osZUt0WO
+         H+j2sLam+Y0Al3TpRtupOmwXL65ihABRmGANBeD3zpHjVFSTGAhaCtufDznGQ/Z9Jyd9
+         lyaVoET0oiAsNLlcR7ptWjNuSjmZj9Jv2vcud+Dg+EGkVqc3b7MQPPay7qSSMYRzgc3y
+         qR7RpKNXFcmGATLceRDYYuNIh7LIARK10QrbCTBEkxd8desxX8ib51hWFo/IHYW3//7F
+         luC+RoS+nxUIHbxdjTvP3s75zZuPUpA0iec0FeRrRf0TavxDARPXT+SzTbLGt6rqmwNj
+         NjBQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=H4gE22UEJMKiRLenIWOFZNJhaaD3BRTTXiaPb8E6e3M=;
+        b=0ZlUKFgCXBwxFu/M+dSR55U38ro/1/PqpKMKc6cZfSm7qMBxCKmFPTu96LZ94cydEE
+         Lmtum8OxZj08oEy1FcEhYNa7K/ekmZ3hfmL69J0w6wkEdMpGCTbXxN6Rb/BZycBy8PGj
+         IATbXvX336eO8cQDqan+fGyqeZ/UP30zvRYgNB92VtOH6fXPk+Sh3lAqPnuTgT9tUdLK
+         LLLqjmp7r1H65nWkb9loP8jWwxg5Y0y8BpqKL1gsHnRDZFeCjfXJQ31yX94zYjbXrHni
+         JCB2QElpfiKjPh1VGGF4rsSi/NWWOW/8Oq4RcHJYmUr3zY9GlK7ocJLMZES15Hlj2JWb
+         v0Nw==
+X-Gm-Message-State: ANoB5pleSNMhOP/jx7QP8uZbx4PlA7exKHgTQOKKwn6duX6Jgg9HVtsW
+        Oezb3f4OtREmMFhy/DaMpxrhDrdr6Qo=
+X-Google-Smtp-Source: AA0mqf4LIPl2KJI6Z83/KEuRUMo6f6FWwOg4CFTQmdw+GwccrEQpbaRlorUw+JvkSj1DZP5pwHwjOw==
+X-Received: by 2002:aa7:9388:0:b0:56d:4c7e:777a with SMTP id t8-20020aa79388000000b0056d4c7e777amr76668197pfe.0.1670028782914;
+        Fri, 02 Dec 2022 16:53:02 -0800 (PST)
+Received: from localhost ([2406:7400:63:f20b:f6ca:e236:f59f:8c18])
+        by smtp.gmail.com with ESMTPSA id w23-20020a1709026f1700b00189667acf19sm6099593plk.95.2022.12.02.16.53.01
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 02 Dec 2022 16:53:02 -0800 (PST)
+Date:   Sat, 3 Dec 2022 06:22:56 +0530
+From:   Ritesh Harjani <ritesh.list@gmail.com>
+To:     Jan Kara <jack@suse.cz>
+Cc:     Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH v2 0/11] ext4: Stop using ext4_writepage() for writeout
+ of ordered data
+Message-ID: <20221203005256.cqrvojj47blasal7@riteshh-domain>
 References: <20221202163815.22928-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2166; i=jack@suse.cz; h=from:subject; bh=BsCGjWRCdFXEvas2INa6yTNBIlrmzefUnzpzCcnTv4M=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjikZmfF6TZRvoDgxXlT79RQReTCBWbIOf2JOQgJ9D 9n87pWCJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY4pGZgAKCRCcnaoHP2RA2ckpCA DRjFqSbNvhGFx49LvuOFrm0LoBmSw7K2I1OXnoPvZ4egQCVW5yAEOT/oizGEf0OZROvo2qRPr6etXF /m69OnIqMD/A0cikotg+UCQB1QFkU2QGdgmhqs+h7YhARhSr3gcwpT2etKeKvcIhW5Qcr6qOZXeguI zl+3h7SSHQ+G5OCFYsOOKWgsdHDqmgxGBSHXdqTBRPVWl7PRb3PoevWVuz7UImGaUUmcEG9/Y3zfz6 TFoCXkMs37kzye9Jk2SDT9NWJN8UDciZIvPXvOxwMcuWAyzuUqSVMioMdAk06sLvvsXRGfloAE7454 /3+Mtsa3faEWHPy/KHtiCsJQxWZZ0Y
-X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20221202163815.22928-1-jack@suse.cz>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now we don't need .writepage hook for anything anymore. Reclaim is fine
-with relying on .writepages to clean pages and we often couldn't do much
-from the .writepage callback anyway. We only need to provide
-.migrate_folio callback for the ext4_journalled_aops - let's use
-buffer_migrate_page_norefs() there so that buffers cannot be modified
-under jdb2's hands.
+On 22/12/02 07:39PM, Jan Kara wrote:
+> Hello,
+>
+> this patch series modifies ext4 so that we stop using ext4_writepage() for
+> writeout of ordered data during transaction commit (through
+> generic_writepages() from jbd2_journal_submit_inode_data_buffers()). Instead we
+> directly call ext4_writepages() from the
+> ext4_journal_submit_inode_data_buffers(). This is part of Christoph's effort
+> to get rid of the .writepage() callback in all filesystems.
+>
+> I have also modified ext4_writepages() to use write_cache_pages() instead of
+> generic_writepages() so now we don't expose .writepage hook at all. We still
+> keep ext4_writepage() as a callback for write_cache_pages(). We should refactor
+> that path as well and get rid of ext4_writepage() completely but that is for a
+> separate cleanup. Also note that jbd2 still uses generic_writepages() in its
+> jbd2_journal_submit_inode_data_buffers() helper because it is still used from
+> OCFS2. Again, something to be dealt with in a separate patchset.
+>
+> Changes since v1:
+> * Added Reviewed-by tags from Ritesh
+> * Added patch to get rid of generic_writepages() in ext4_writepages()
+> * Added patch to get rid of .writepage hook
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+Oh! And what about the WARN_ON_ONCE in ext4_writepages() while loop, which we
+were discussing here [1]. Do you think that will help in catching anything nasty?
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d14c6d44bdf1..1c9dec0d5109 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3717,7 +3717,6 @@ static int ext4_iomap_swap_activate(struct swap_info_struct *sis,
- static const struct address_space_operations ext4_aops = {
- 	.read_folio		= ext4_read_folio,
- 	.readahead		= ext4_readahead,
--	.writepage		= ext4_writepage,
- 	.writepages		= ext4_writepages,
- 	.write_begin		= ext4_write_begin,
- 	.write_end		= ext4_write_end,
-@@ -3735,7 +3734,6 @@ static const struct address_space_operations ext4_aops = {
- static const struct address_space_operations ext4_journalled_aops = {
- 	.read_folio		= ext4_read_folio,
- 	.readahead		= ext4_readahead,
--	.writepage		= ext4_writepage,
- 	.writepages		= ext4_writepages,
- 	.write_begin		= ext4_write_begin,
- 	.write_end		= ext4_journalled_write_end,
-@@ -3744,6 +3742,7 @@ static const struct address_space_operations ext4_journalled_aops = {
- 	.invalidate_folio	= ext4_journalled_invalidate_folio,
- 	.release_folio		= ext4_release_folio,
- 	.direct_IO		= noop_direct_IO,
-+	.migrate_folio		= buffer_migrate_folio_norefs,
- 	.is_partially_uptodate  = block_is_partially_uptodate,
- 	.error_remove_page	= generic_error_remove_page,
- 	.swap_activate		= ext4_iomap_swap_activate,
-@@ -3752,7 +3751,6 @@ static const struct address_space_operations ext4_journalled_aops = {
- static const struct address_space_operations ext4_da_aops = {
- 	.read_folio		= ext4_read_folio,
- 	.readahead		= ext4_readahead,
--	.writepage		= ext4_writepage,
- 	.writepages		= ext4_writepages,
- 	.write_begin		= ext4_da_write_begin,
- 	.write_end		= ext4_da_write_end,
--- 
-2.35.3
+[1]: https://lore.kernel.org/linux-ext4/20221201115500.kbxtteft3v4pzqqx@quack3/T/#mcf7b6cc301062e52a3600194b03a9fd872ba52c5
 
+
+One thing I guess I missed in my previous review is the fast commit path.
+In my overnight testing of previous patch series I observed this warning.
+
+WARNING: CPU: 1 PID: 1746936 at fs/ext4/inode.c:1994 ext4_writepage+0x4e6/0x5e0
+RIP: 0010:ext4_writepage+0x4e6/0x5e0
+Call Trace:
+ <TASK>
+ __writepage+0x17/0x70
+ write_cache_pages+0x166/0x3c0
+ ? dirty_background_bytes_handler+0x30/0x30
+ ? finish_task_switch.isra.0+0x8e/0x260
+ ? _raw_spin_lock_irqsave+0x19/0x50
+ ? finish_wait+0x34/0x70
+ ? _raw_spin_unlock_irqrestore+0x1e/0x40
+ generic_writepages+0x4f/0x80
+ jbd2_journal_submit_inode_data_buffers+0x64/0x90
+ ext4_fc_commit+0x2e0/0x830
+ ? file_check_and_advance_wb_err+0x2e/0xd0
+ ? preempt_count_add+0x70/0xa0
+ ext4_sync_file+0x15c/0x380
+ __do_sys_msync+0x1c1/0x2a0
+ do_syscall_64+0x38/0x90
+ entry_SYSCALL_64_after_hwframe+0x63/0xcd
+
+-ritesh
+
+
+>
+> 								Honza
+> Previous versions:
+> Link: http://lore.kernel.org/r/20221130162435.2324-1-jack@suse.cz # v1
