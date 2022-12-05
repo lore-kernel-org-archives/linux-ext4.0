@@ -2,90 +2,131 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B81D7C47089
-	for <linux-ext4@archiver.kernel.org>; Mon,  5 Dec 2022 10:17:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B2FFFC4321E
+	for <linux-ext4@archiver.kernel.org>; Mon,  5 Dec 2022 12:29:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230243AbiLEKRq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 5 Dec 2022 05:17:46 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55044 "EHLO
+        id S231346AbiLEM3c (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 5 Dec 2022 07:29:32 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35526 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230393AbiLEKRn (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Dec 2022 05:17:43 -0500
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 797D4B55
-        for <linux-ext4@vger.kernel.org>; Mon,  5 Dec 2022 02:17:41 -0800 (PST)
+        with ESMTP id S230035AbiLEM3b (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Dec 2022 07:29:31 -0500
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 85ABBBC3E
+        for <linux-ext4@vger.kernel.org>; Mon,  5 Dec 2022 04:29:30 -0800 (PST)
 Received: from imap1.suse-dmz.suse.de (imap1.suse-dmz.suse.de [192.168.254.73])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id D863F21C41;
-        Mon,  5 Dec 2022 10:17:39 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 380A52001B;
+        Mon,  5 Dec 2022 12:29:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1670235459; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+        t=1670243369; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=BV9WAyegNBye8OCOsYo/1cJxpL271y+FDMQ1+2MSQcQ=;
-        b=zArE5V03Yc3P+2doLRbazXqtTgdScZHXGJix0IgG9aiPxUI4owTiqNUPI2PrkFcrnxHwh0
-        3r0AdwN1T7wWRZECApVqUC3H3XRtP7wjbwWanCPgzfSCbdgZHHQNmUjI7hnlJG/zxV3UwF
-        37ueO2iX45If4mxIBK2Sd8qqZED1fqM=
+        bh=yWUivoPF8rh6YNbRp12PTNmtUBRknCK4IxKDth2V10Y=;
+        b=loh/sGGvX5GEyFlOXQ48XI+lyzwZM7FJNeWbZYnrsroyrI0IaeinLQluZesztsP5ws3ZF/
+        URGXOIqyfKVfJpJMwByAj6Qb9ZZ86ZBgusInQ9o1JQgfNZXISiXm58SY8ziWDU4RWro2ZM
+        MjmtejF5gZzFLk6FIPfrMEO0DnFadbo=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1670235459;
+        s=susede2_ed25519; t=1670243369;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=BV9WAyegNBye8OCOsYo/1cJxpL271y+FDMQ1+2MSQcQ=;
-        b=kCmpTI9mMnepgEdxHSBc3kEk4H7zQO7ijPSz6kkz+O9x4BCM907cRurrE6jEa0iV503Pxt
-        B7GIVpzLqLg6gNBw==
+        bh=yWUivoPF8rh6YNbRp12PTNmtUBRknCK4IxKDth2V10Y=;
+        b=ee0v18A/pCqGViucPqNYtrmGcHvClMYCxFQpc6AHZzSAsVN1siN2Rlyso6mqWOpgCtzUsl
+        OoDSpoiLhtOzLjAA==
 Received: from imap1.suse-dmz.suse.de (imap1.suse-dmz.suse.de [192.168.254.73])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap1.suse-dmz.suse.de (Postfix) with ESMTPS id CA5141348F;
-        Mon,  5 Dec 2022 10:17:39 +0000 (UTC)
+        by imap1.suse-dmz.suse.de (Postfix) with ESMTPS id 1AFDC1348F;
+        Mon,  5 Dec 2022 12:29:29 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap1.suse-dmz.suse.de with ESMTPSA
-        id ob5ZMUPFjWM5fgAAGKfGzw
-        (envelope-from <jack@suse.cz>); Mon, 05 Dec 2022 10:17:39 +0000
+        id ZOOQBinkjWP8TQAAGKfGzw
+        (envelope-from <jack@suse.cz>); Mon, 05 Dec 2022 12:29:29 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 5ACC6A0727; Mon,  5 Dec 2022 11:17:39 +0100 (CET)
-Date:   Mon, 5 Dec 2022 11:17:39 +0100
+        id 43D90A060E; Mon,  5 Dec 2022 13:29:28 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
-To:     Christoph Hellwig <hch@infradead.org>
-Cc:     Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Ritesh Harjani <ritesh.list@gmail.com>
-Subject: Re: [PATCH v2 1/11] ext4: Remove ordered data support from
- ext4_writepage()
-Message-ID: <20221205101739.e3ssi3rtev2e6rro@quack3>
-References: <20221202163815.22928-1-jack@suse.cz>
- <20221202183943.22640-11-jack@suse.cz>
- <Y4xHB+fDxyfOCwu5@infradead.org>
+To:     Ted Tso <tytso@mit.edu>
+Cc:     <linux-ext4@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+        Jan Kara <jack@suse.cz>
+Subject: [PATCH v3 01/12] ext4: Handle redirtying in ext4_bio_write_page()
+Date:   Mon,  5 Dec 2022 13:29:15 +0100
+Message-Id: <20221205122928.21959-1-jack@suse.cz>
+X-Mailer: git-send-email 2.35.3
+In-Reply-To: <20221205122604.25994-1-jack@suse.cz>
+References: <20221205122604.25994-1-jack@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <Y4xHB+fDxyfOCwu5@infradead.org>
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2039; i=jack@suse.cz; h=from:subject; bh=vdozeUvfNYyCeixKiAugGlYRgdNUDNkZOW42CdQ7y9I=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjjeQcB+fHKP4nh1IIQZOIeG+ejYx8dHkOZhCuAUNp am41wMCJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY43kHAAKCRCcnaoHP2RA2bGLB/ 4rKZ6921BMWuj0gOZWxYg1GU4NKXpImsYj/M8wOp4OEHdTBH+1C/XQnH/IEiIB5kLbRCrpGHRxIVLD OHYQBFYTQnNzE0sfE+FAvE6w+kCJ3x8O7f3I69BIA6IQLKXKOyVh97bLVN1zZcTet2JQ7HXZ2+4ffm pc6VotqlCl3pGr/mlDmeZyVZL8gLo7fU3S3Zn7JUTQ3HJWm71v+kmAKZBZDeZNqrRXDp19WS6Y7CQQ pUydatg7WzHCPgDdQ2YIalygMl9biEbqwG7brN3W1rIQkJAlUSUggEJmlLc8gkObAo2NJ/14ldUiTp 8XvzXFmdIrG7OR6qKoyALbR1znkH80
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat 03-12-22 23:06:47, Christoph Hellwig wrote:
-> > + * This function is now used only when journaling data. We cannot start
-> > + * transaction directly because transaction start ranks above page lock so we
-> > + * have to do some magic.
-> >   */
-> > +static int ext4_writepage(struct page *page, struct writeback_control *wbc,
-> > +			  void *data)
-> 
-> Maybe call this ext4_journalled_writepage now to make the limitation
-> more clear?  And/or fold __ext4_journalled_writepage into while we're
-> at it.
+Since we want to transition transaction commits to use ext4_writepages()
+for writing back ordered, add handling of page redirtying into
+ext4_bio_write_page(). Also move buffer dirty bit clearing into the same
+place other buffer state handling.
 
-Yeah, I've renamed it to ext4_journalled_writepage. I've refrained from the
-folding of __ext4_journalled_writepage() because that is not completely
-trivial (due to goto labels, variable naming...) so it would require
-separate patch and I'll just spare that for the cleanup of the whole
-journalled writeout path.
+Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/page-io.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
 
-								Honza
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 97fa7b4c645f..4e68ace86f11 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -482,6 +482,13 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 			/* A hole? We can safely clear the dirty bit */
+ 			if (!buffer_mapped(bh))
+ 				clear_buffer_dirty(bh);
++			/*
++			 * Keeping dirty some buffer we cannot write? Make
++			 * sure to redirty the page. This happens e.g. when
++			 * doing writeout for transaction commit.
++			 */
++			if (buffer_dirty(bh) && !PageDirty(page))
++				redirty_page_for_writepage(wbc, page);
+ 			if (io->io_bio)
+ 				ext4_io_submit(io);
+ 			continue;
+@@ -489,6 +496,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 		if (buffer_new(bh))
+ 			clear_buffer_new(bh);
+ 		set_buffer_async_write(bh);
++		clear_buffer_dirty(bh);
+ 		nr_to_submit++;
+ 	} while ((bh = bh->b_this_page) != head);
+ 
+@@ -532,7 +540,10 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 			printk_ratelimited(KERN_ERR "%s: ret = %d\n", __func__, ret);
+ 			redirty_page_for_writepage(wbc, page);
+ 			do {
+-				clear_buffer_async_write(bh);
++				if (buffer_async_write(bh)) {
++					clear_buffer_async_write(bh);
++					set_buffer_dirty(bh);
++				}
+ 				bh = bh->b_this_page;
+ 			} while (bh != head);
+ 			goto unlock;
+@@ -546,7 +557,6 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 		io_submit_add_bh(io, inode,
+ 				 bounce_page ? bounce_page : page, bh);
+ 		nr_submitted++;
+-		clear_buffer_dirty(bh);
+ 	} while ((bh = bh->b_this_page) != head);
+ 
+ unlock:
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.35.3
+
