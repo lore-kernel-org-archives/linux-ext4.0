@@ -2,132 +2,123 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BCF27C4321E
-	for <linux-ext4@archiver.kernel.org>; Mon,  5 Dec 2022 12:29:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D2F52C4708C
+	for <linux-ext4@archiver.kernel.org>; Mon,  5 Dec 2022 12:29:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231829AbiLEM3m (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 5 Dec 2022 07:29:42 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35556 "EHLO
+        id S231826AbiLEM3o (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 5 Dec 2022 07:29:44 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35562 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231529AbiLEM3c (ORCPT
+        with ESMTP id S231639AbiLEM3c (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Dec 2022 07:29:32 -0500
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A28FA17403
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A2A9217405
         for <linux-ext4@vger.kernel.org>; Mon,  5 Dec 2022 04:29:31 -0800 (PST)
 Received: from imap1.suse-dmz.suse.de (imap1.suse-dmz.suse.de [192.168.254.73])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 29B2521E29;
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 2E6E121ED4;
         Mon,  5 Dec 2022 12:29:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1670243370; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=zpQ5pqECC7zfStAichmjNg9JJ5GpSKtsoF3bdTjzvm0=;
-        b=ivwJZwumwczJVtNUbt2afLLxe0C1G8BxYHsAkZCT4aby9gGytLte3N7oxhWnu41O0xfOeD
-        kRZv2kXvN9yXmUWFcYshEG0zV8FC21u2d07Ab3p4R6nwJVIhBjsq6QHy4mlu0DW+x3Oywm
-        2GbpmVOTrJNV6OixVWdhZGYx1JFfxX0=
+        bh=zkmm5tESiA9cgSppaoxoMWpVGNx7OwAEk4n220C6/Uo=;
+        b=LwBuwQsaWjPgDh8QVHGqNvvSrkiQb9m10ZbScfHPGaba/oQeWvGH0a2BBzjlF/XmgVqU4t
+        cFyTjwlokiZghkehREteB2yqk3TeA3MQD/lF2WOe6G9tqDq0FeMhpoiLxWhQwZOef2HwXe
+        BLv7FDBglbv6Lz0zKT1BhHiF0imXN1s=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1670243370;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=zpQ5pqECC7zfStAichmjNg9JJ5GpSKtsoF3bdTjzvm0=;
-        b=MzI+h1nBTGfkvtgumRe6Vr4D44t2wTyrUI7NAOgOg51wb2ktgCVSAYi2PMNyO0xsrwCitr
-        KBcu0k2UvZu+i5Cw==
+        bh=zkmm5tESiA9cgSppaoxoMWpVGNx7OwAEk4n220C6/Uo=;
+        b=KW1rGOCOlUM1PArydurjKQtnh6lKRIsQrIA2CwOzdf47xi+UlK6h6nPRQa2Nwco7OzYnh9
+        yYE02lP5tibegbBw==
 Received: from imap1.suse-dmz.suse.de (imap1.suse-dmz.suse.de [192.168.254.73])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap1.suse-dmz.suse.de (Postfix) with ESMTPS id 12097136A0;
+        by imap1.suse-dmz.suse.de (Postfix) with ESMTPS id 17B6A1397F;
         Mon,  5 Dec 2022 12:29:30 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap1.suse-dmz.suse.de with ESMTPSA
-        id VVpWBCrkjWMdTgAAGKfGzw
+        id V07GBSrkjWMfTgAAGKfGzw
         (envelope-from <jack@suse.cz>); Mon, 05 Dec 2022 12:29:30 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 650E0A0733; Mon,  5 Dec 2022 13:29:28 +0100 (CET)
+        id 7E6C8A073D; Mon,  5 Dec 2022 13:29:28 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>,
         Christoph Hellwig <hch@infradead.org>,
         "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-        Jan Kara <jack@suse.cz>
-Subject: [PATCH v3 07/12] ext4: Move percpu_rwsem protection into ext4_writepages()
-Date:   Mon,  5 Dec 2022 13:29:21 +0100
-Message-Id: <20221205122928.21959-7-jack@suse.cz>
+        Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@lst.de>
+Subject: [PATCH v3 11/12] ext4: Stop providing .writepage hook
+Date:   Mon,  5 Dec 2022 13:29:25 +0100
+Message-Id: <20221205122928.21959-11-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20221205122604.25994-1-jack@suse.cz>
 References: <20221205122604.25994-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1875; i=jack@suse.cz; h=from:subject; bh=j0DgcX6U83KV++ws+PacqXTcQBSes8Qh1QV7iXDVXAo=; b=owGbwMvMwME4Z+4qdvsUh5uMp9WSGJJ7nyiaiZyerLRHyUvZec5PkbDXyoneX2p1FzxIvOZmFn2l Kjuyk9GYhYGRg0FWTJFldeRF7WvzjLq2hmrIwAxiZQKZwsDFKQAT8WHnYOhf9LXgnrwhY2P+r8W/6k PsmtuzvjWcWbHs75Q2T0uGKj6Rr3P5TnxmkrpesXfqF/akkzPagOKr5KskCnsPsJ/dfP304W3NmjV8 csICvWECPAlV9loZkz9O1RJ7n7R/h8xTBZuvnz/ahgqw/ppfy2OzZ1ui91c3dt1LHz/6RZnM2ri8MO OC2dTWbCeejyc4FioKdyy43vRs69IVibxFZzdWhVZkts8UOmzZ9sj1teqWMumfU887tfwXNwpqkk5l vi1QXs5ix6I0j0vh3n/Dk/eFDsxnsdO3+Wlufkb02om+5zeu3JfdmrLiAcNEPnn57Rq9z7TeslV5GH JqVZS/cJyg8u+42lJBN8bbws8B
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2211; i=jack@suse.cz; h=from:subject; bh=NtH5GC2/iN/qQvDpkUBZhCS3WR7zsPKKsSdgPhweRFI=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjjeQkcwqiHIx90KR5UKvU6KxZC5zhtYbyaxLR7j7f zfOvYPWJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY43kJAAKCRCcnaoHP2RA2U2bCA DdfrE/6wSXP6ejIg0rXa3faCanYX0E+Y9betD2PrUaP/7VDtI/eRB4aWum9KqzAX6CAhkyfbAQwqoH JQzjoP9rUxfREaUg6FujTQRt+6yMSqufAxjXmFIgvLjL+FVaC9HvGrVwA6zy29i99ePrIGVLesIBfk kVxy+oFb6W5GUQrB2JvAsSauGyl9otWySvG9GzhwJZucZHW5Bbdny0sEQFlCYURxyrMROZ/PORo4MD lPa+rvNX1yDwriCY/3XQJ/tHt4Epaba6GO6V94TZCI41eotaMCQ09gZ6jsO37fflRVyXXLNYrr4dbe gJ5ZIbKm5GMJiARUBW6WEAPHk6KWYv
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Move protection by percpu_rwsem from ext4_do_writepages() to
-ext4_writepages(). We will not want to grab this protection during
-transaction commits as that would be prone to deadlocks and the
-protection is not needed. Move the shutdown state checking as well since
-we want to be able to complete commit while the shutdown is in progress.
+Now we don't need .writepage hook for anything anymore. Reclaim is fine
+with relying on .writepages to clean pages and we often couldn't do much
+from the .writepage callback anyway. We only need to provide
+.migrate_folio callback for the ext4_journalled_aops - let's use
+buffer_migrate_page_norefs() there so that buffers cannot be modified
+under jdb2's hands.
 
-Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 16 ++++++++++------
- 1 file changed, 10 insertions(+), 6 deletions(-)
+ fs/ext4/inode.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 99c66c768cd0..4f8f4959524c 100644
+index f3b3792c1c96..acf9d23c1cfb 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2720,10 +2720,6 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
- 	struct blk_plug plug;
- 	bool give_up_on_write = false;
- 
--	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
--		return -EIO;
--
--	percpu_down_read(&sbi->s_writepages_rwsem);
- 	trace_ext4_writepages(inode, wbc);
- 
- 	/*
-@@ -2933,20 +2929,28 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
- out_writepages:
- 	trace_ext4_writepages_result(inode, wbc, ret,
- 				     nr_to_write - wbc->nr_to_write);
--	percpu_up_read(&sbi->s_writepages_rwsem);
- 	return ret;
- }
- 
- static int ext4_writepages(struct address_space *mapping,
- 			   struct writeback_control *wbc)
- {
-+	struct super_block *sb = mapping->host->i_sb;
- 	struct mpage_da_data mpd = {
- 		.inode = mapping->host,
- 		.wbc = wbc,
- 		.can_map = 1,
- 	};
-+	int ret;
-+
-+	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
-+		return -EIO;
- 
--	return ext4_do_writepages(&mpd);
-+	percpu_down_read(&EXT4_SB(sb)->s_writepages_rwsem);
-+	ret = ext4_do_writepages(&mpd);
-+	percpu_up_read(&EXT4_SB(sb)->s_writepages_rwsem);
-+
-+	return ret;
- }
- 
- static int ext4_dax_writepages(struct address_space *mapping,
+@@ -3718,7 +3718,6 @@ static int ext4_iomap_swap_activate(struct swap_info_struct *sis,
+ static const struct address_space_operations ext4_aops = {
+ 	.read_folio		= ext4_read_folio,
+ 	.readahead		= ext4_readahead,
+-	.writepage		= ext4_writepage,
+ 	.writepages		= ext4_writepages,
+ 	.write_begin		= ext4_write_begin,
+ 	.write_end		= ext4_write_end,
+@@ -3736,7 +3735,6 @@ static const struct address_space_operations ext4_aops = {
+ static const struct address_space_operations ext4_journalled_aops = {
+ 	.read_folio		= ext4_read_folio,
+ 	.readahead		= ext4_readahead,
+-	.writepage		= ext4_writepage,
+ 	.writepages		= ext4_writepages,
+ 	.write_begin		= ext4_write_begin,
+ 	.write_end		= ext4_journalled_write_end,
+@@ -3745,6 +3743,7 @@ static const struct address_space_operations ext4_journalled_aops = {
+ 	.invalidate_folio	= ext4_journalled_invalidate_folio,
+ 	.release_folio		= ext4_release_folio,
+ 	.direct_IO		= noop_direct_IO,
++	.migrate_folio		= buffer_migrate_folio_norefs,
+ 	.is_partially_uptodate  = block_is_partially_uptodate,
+ 	.error_remove_page	= generic_error_remove_page,
+ 	.swap_activate		= ext4_iomap_swap_activate,
+@@ -3753,7 +3752,6 @@ static const struct address_space_operations ext4_journalled_aops = {
+ static const struct address_space_operations ext4_da_aops = {
+ 	.read_folio		= ext4_read_folio,
+ 	.readahead		= ext4_readahead,
+-	.writepage		= ext4_writepage,
+ 	.writepages		= ext4_writepages,
+ 	.write_begin		= ext4_da_write_begin,
+ 	.write_end		= ext4_da_write_end,
 -- 
 2.35.3
 
