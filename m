@@ -2,157 +2,180 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E57CCC352A1
-	for <linux-ext4@archiver.kernel.org>; Tue,  6 Dec 2022 14:20:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9EAD8C352A1
+	for <linux-ext4@archiver.kernel.org>; Tue,  6 Dec 2022 20:41:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234959AbiLFOU4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 6 Dec 2022 09:20:56 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33314 "EHLO
+        id S229548AbiLFUlZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 6 Dec 2022 15:41:25 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36428 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234910AbiLFOUs (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2022 09:20:48 -0500
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8D7182DA93;
-        Tue,  6 Dec 2022 06:20:44 -0800 (PST)
-Received: from mail02.huawei.com (unknown [172.30.67.153])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4NRMyX6KV9z4f3v58;
-        Tue,  6 Dec 2022 22:20:36 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.127.227])
-        by APP1 (Coremail) with SMTP id cCh0CgD37ay2T49jumSkBg--.19656S4;
-        Tue, 06 Dec 2022 22:20:39 +0800 (CST)
-From:   Ye Bin <yebin@huaweicloud.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
-        Ye Bin <yebin10@huawei.com>,
-        syzbot+4faa160fa96bfba639f8@syzkaller.appspotmail.com,
-        Jun Nie <jun.nie@linaro.org>
-Subject: [PATCH v2] ext4: fix kernel BUG in 'ext4_write_inline_data_end()'
-Date:   Tue,  6 Dec 2022 22:41:34 +0800
-Message-Id: <20221206144134.1919987-1-yebin@huaweicloud.com>
-X-Mailer: git-send-email 2.31.1
+        with ESMTP id S229445AbiLFUlY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2022 15:41:24 -0500
+Received: from mail-pg1-x52e.google.com (mail-pg1-x52e.google.com [IPv6:2607:f8b0:4864:20::52e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0AF7C140CE;
+        Tue,  6 Dec 2022 12:41:24 -0800 (PST)
+Received: by mail-pg1-x52e.google.com with SMTP id 6so14419972pgm.6;
+        Tue, 06 Dec 2022 12:41:24 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=eqWyNBxC7NJydI2Uy3WCSu1/x0WVl3HUjLnH2tKSHz0=;
+        b=WhvZ48cWD9H2UdGKE8MTubyz082b8vFSiHI4fwwvNgXWTH0/Yhz/GJSekQ5KZ6ULlP
+         qoEciX4aSmGMxRoRQTuoluXKlSzaO0fgZK8Umc7JVibYozGKBmJe2w3yoyopt+q6XADD
+         1buET3PVsu8NEgKnY77RQw72M1hxzNos1UTrgoYYKYeTzYBPw7qqruUv2C2/KyU7Mg7/
+         CgtV8jxlo8cEMTq3RqEnjkLltIabVYQ7bzJmqSJNlIjrD8bZrNquop+HVYxIMuKIGOLU
+         v2hrgFp6sSGJXYvqo251qfOXkG4p0UcPmQF0c67kWiRYTP6YvcdLl+l/2KSiWmS8Fq5h
+         GJXA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=eqWyNBxC7NJydI2Uy3WCSu1/x0WVl3HUjLnH2tKSHz0=;
+        b=NbuNrB9MyGoT/7B5iaa0f8/b21lzxUyZ+3JG3mO4o88Dt+OPM15Nb46WYCA096sdDg
+         ByHvNUaNIikp3pNq1ysQ80LxoBjcnjdxlQ6hdqJqkwMcK6kpaW3XRgnqySC7fVN/4olA
+         vEhiAhOk+t8UTivc70BDv6/YAkE/CQnwgmlPSFWRrO39lWFjWCa6w0R2C5pZ6r7/t/Gb
+         XDbdKo5InvJMgVqPSoiJZmLhLfUy30j27RylqkMld8Dxuin7KgMm+YpzoFFeGUtyuMzr
+         FZk/3OV3ypzUUUZSJw6IxewR1fB9qMOlzEwBDRIehAWh46iOvam6momgW0FwpOrcV8IN
+         f3Uw==
+X-Gm-Message-State: ANoB5pn/3ib0uN5ISoCer6cq6NgVIjtz/CvQzP0dK6MIPnprh1zBvDn5
+        EeUydd+LtOigbzBlsYTtMcs=
+X-Google-Smtp-Source: AA0mqf56Zz5d5PLS0OHSiNp/sFuA+5x82yz9SW00LlPfe7Jo3yPXXLB0jApKcQmEVksgRJ2TiKy2nQ==
+X-Received: by 2002:aa7:982b:0:b0:577:391e:16ac with SMTP id q11-20020aa7982b000000b00577391e16acmr5304762pfl.38.1670359283372;
+        Tue, 06 Dec 2022 12:41:23 -0800 (PST)
+Received: from fedora.hsd1.ca.comcast.net ([2601:644:8002:1c20::2c6b])
+        by smtp.googlemail.com with ESMTPSA id o25-20020aa79799000000b005769b244c2fsm6599295pfp.40.2022.12.06.12.41.22
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 06 Dec 2022 12:41:22 -0800 (PST)
+From:   "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
+To:     linux-mm@kvack.org
+Cc:     tytso@mit.edu, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
+        "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
+Subject: [PATCH mm-unstable] ext4: Convert mext_page_double_lock() to mext_folio_double_lock()
+Date:   Tue,  6 Dec 2022 12:41:15 -0800
+Message-Id: <20221206204115.35258-1-vishal.moola@gmail.com>
+X-Mailer: git-send-email 2.38.1
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: cCh0CgD37ay2T49jumSkBg--.19656S4
-X-Coremail-Antispam: 1UD129KBjvJXoWxXF48ZF4xurWUWw48uF18AFb_yoWrtw1rpr
-        Z8Gr1UGr4Iva4DCFWkAF1UZr1Uuwn8CF47WryIgr4kXa43Cw1UKF1FgF18J3WjyrZ2vrWY
-        qF4DCry8Kw15G3DanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUgEb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-        vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
-        xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-        0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-        6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-        Cjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCj
-        c4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4
-        CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1x
-        MIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_WFyUJV
-        Cq3wCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIY
-        CTnIWIevJa73UjIFyTuYvjxUrR6zUUUUU
-X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
-X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ye Bin <yebin10@huawei.com>
+Converts mext_page_double_lock() to use folios. This change saves
+146 bytes of kernel text and removes 3 calls to compound_head().
 
-Syzbot report follow issue:
-------------[ cut here ]------------
-kernel BUG at fs/ext4/inline.c:227!
-invalid opcode: 0000 [#1] PREEMPT SMP KASAN
-CPU: 1 PID: 3629 Comm: syz-executor212 Not tainted 6.1.0-rc5-syzkaller-00018-g59d0d52c30d4 #0
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 10/26/2022
-RIP: 0010:ext4_write_inline_data+0x344/0x3e0 fs/ext4/inline.c:227
-RSP: 0018:ffffc90003b3f368 EFLAGS: 00010293
-RAX: 0000000000000000 RBX: ffff8880704e16c0 RCX: 0000000000000000
-RDX: ffff888021763a80 RSI: ffffffff821e31a4 RDI: 0000000000000006
-RBP: 000000000006818e R08: 0000000000000006 R09: 0000000000068199
-R10: 0000000000000079 R11: 0000000000000000 R12: 000000000000000b
-R13: 0000000000068199 R14: ffffc90003b3f408 R15: ffff8880704e1c82
-FS:  000055555723e3c0(0000) GS:ffff8880b9b00000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007fffe8ac9080 CR3: 0000000079f81000 CR4: 0000000000350ee0
-Call Trace:
- <TASK>
- ext4_write_inline_data_end+0x2a3/0x12f0 fs/ext4/inline.c:768
- ext4_write_end+0x242/0xdd0 fs/ext4/inode.c:1313
- ext4_da_write_end+0x3ed/0xa30 fs/ext4/inode.c:3063
- generic_perform_write+0x316/0x570 mm/filemap.c:3764
- ext4_buffered_write_iter+0x15b/0x460 fs/ext4/file.c:285
- ext4_file_write_iter+0x8bc/0x16e0 fs/ext4/file.c:700
- call_write_iter include/linux/fs.h:2191 [inline]
- do_iter_readv_writev+0x20b/0x3b0 fs/read_write.c:735
- do_iter_write+0x182/0x700 fs/read_write.c:861
- vfs_iter_write+0x74/0xa0 fs/read_write.c:902
- iter_file_splice_write+0x745/0xc90 fs/splice.c:686
- do_splice_from fs/splice.c:764 [inline]
- direct_splice_actor+0x114/0x180 fs/splice.c:931
- splice_direct_to_actor+0x335/0x8a0 fs/splice.c:886
- do_splice_direct+0x1ab/0x280 fs/splice.c:974
- do_sendfile+0xb19/0x1270 fs/read_write.c:1255
- __do_sys_sendfile64 fs/read_write.c:1323 [inline]
- __se_sys_sendfile64 fs/read_write.c:1309 [inline]
- __x64_sys_sendfile64+0x1d0/0x210 fs/read_write.c:1309
- do_syscall_x64 arch/x86/entry/common.c:50 [inline]
- do_syscall_64+0x39/0xb0 arch/x86/entry/common.c:80
- entry_SYSCALL_64_after_hwframe+0x63/0xcd
----[ end trace 0000000000000000 ]---
-
-Above issue may happens as follows:
-ext4_da_write_begin
-  ext4_da_write_inline_data_begin
-    ext4_da_convert_inline_data_to_extent
-      ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
-ext4_da_write_end
-
-ext4_run_li_request
-  ext4_mb_prefetch
-    ext4_read_block_bitmap_nowait
-      ext4_validate_block_bitmap
-        ext4_mark_group_bitmap_corrupted(sb, block_group, EXT4_GROUP_INFO_BBITMAP_CORRUPT)
-	 percpu_counter_sub(&sbi->s_freeclusters_counter,grp->bb_free);
-	  -> sbi->s_freeclusters_counter become zero
-ext4_da_write_begin
-  if (ext4_nonda_switch(inode->i_sb)) -> As freeclusters_counter is zero will return true
-    *fsdata = (void *)FALL_BACK_TO_NONDELALLOC;
-    ext4_write_begin
-ext4_da_write_end
-  if (write_mode == FALL_BACK_TO_NONDELALLOC)
-    ext4_write_end
-      if (inline_data)
-        ext4_write_inline_data_end
-	  ext4_write_inline_data
-	    BUG_ON(pos + len > EXT4_I(inode)->i_inline_size);
-           -> As inode is already convert to extent, so 'pos + len' > inline_size
-	   -> then trigger BUG.
-
-To solve above issue, there's need to judge inode if has EXT4_STATE_MAY_INLINE_DATA
-flag in 'ext4_write_end()'. 'ext4_has_inline_data()' flag only cleared after do
-write back, EXT4_STATE_MAY_INLINE_DATA flag indicate that inode has inline data,
-so add this flag check except 'ext4_has_inline_data()' flag in 'ext4_write_end()'.
-
-Fixes:f19d5870cbf7("ext4: add normal write support for inline data")
-Reported-by: syzbot+4faa160fa96bfba639f8@syzkaller.appspotmail.com
-Reported-by: Jun Nie <jun.nie@linaro.org>
-Signed-off-by: Ye Bin <yebin10@huawei.com>
+Signed-off-by: Vishal Moola (Oracle) <vishal.moola@gmail.com>
 ---
- fs/ext4/inode.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/ext4/move_extent.c | 46 +++++++++++++++++++++----------------------
+ 1 file changed, 23 insertions(+), 23 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f0079835b8a8..25841a878ce9 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1315,7 +1315,8 @@ static int ext4_write_end(struct file *file,
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 8dbb87edf24c..2de9829aed63 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -110,22 +110,23 @@ mext_check_coverage(struct inode *inode, ext4_lblk_t from, ext4_lblk_t count,
+ }
  
- 	trace_ext4_write_end(inode, pos, len, copied);
+ /**
+- * mext_page_double_lock - Grab and lock pages on both @inode1 and @inode2
++ * mext_folio_double_lock - Grab and lock folio on both @inode1 and @inode2
+  *
+  * @inode1:	the inode structure
+  * @inode2:	the inode structure
+- * @index1:	page index
+- * @index2:	page index
+- * @page:	result page vector
++ * @index1:	folio index
++ * @index2:	folio index
++ * @folio:	result folio vector
+  *
+- * Grab two locked pages for inode's by inode order
++ * Grab two locked folio for inode's by inode order
+  */
+ static int
+-mext_page_double_lock(struct inode *inode1, struct inode *inode2,
+-		      pgoff_t index1, pgoff_t index2, struct page *page[2])
++mext_folio_double_lock(struct inode *inode1, struct inode *inode2,
++		      pgoff_t index1, pgoff_t index2, struct folio *folio[2])
+ {
+ 	struct address_space *mapping[2];
+ 	unsigned int flags;
++	unsigned fgp_flags = FGP_LOCK | FGP_WRITE | FGP_CREAT | FGP_STABLE;
  
--	if (ext4_has_inline_data(inode))
-+	if (ext4_has_inline_data(inode) &&
-+	    ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
- 		return ext4_write_inline_data_end(inode, pos, len, copied, page);
+ 	BUG_ON(!inode1 || !inode2);
+ 	if (inode1 < inode2) {
+@@ -138,28 +139,30 @@ mext_page_double_lock(struct inode *inode1, struct inode *inode2,
+ 	}
  
- 	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
+ 	flags = memalloc_nofs_save();
+-	page[0] = grab_cache_page_write_begin(mapping[0], index1);
+-	if (!page[0]) {
++	folio[0] = __filemap_get_folio(mapping[0], index1, fgp_flags,
++			mapping_gfp_mask(mapping[0]));
++	if (!folio[0]) {
+ 		memalloc_nofs_restore(flags);
+ 		return -ENOMEM;
+ 	}
+ 
+-	page[1] = grab_cache_page_write_begin(mapping[1], index2);
++	folio[1] = __filemap_get_folio(mapping[1], index2, fgp_flags,
++			mapping_gfp_mask(mapping[1]));
+ 	memalloc_nofs_restore(flags);
+-	if (!page[1]) {
+-		unlock_page(page[0]);
+-		put_page(page[0]);
++	if (!folio[1]) {
++		folio_unlock(folio[0]);
++		folio_put(folio[0]);
+ 		return -ENOMEM;
+ 	}
+ 	/*
+-	 * grab_cache_page_write_begin() may not wait on page's writeback if
++	 * __filemap_get_folio() may not wait on folio's writeback if
+ 	 * BDI not demand that. But it is reasonable to be very conservative
+-	 * here and explicitly wait on page's writeback
++	 * here and explicitly wait on folio's writeback
+ 	 */
+-	wait_on_page_writeback(page[0]);
+-	wait_on_page_writeback(page[1]);
++	folio_wait_writeback(folio[0]);
++	folio_wait_writeback(folio[1]);
+ 	if (inode1 > inode2)
+-		swap(page[0], page[1]);
++		swap(folio[0], folio[1]);
+ 
+ 	return 0;
+ }
+@@ -252,7 +255,6 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 		     int block_len_in_page, int unwritten, int *err)
+ {
+ 	struct inode *orig_inode = file_inode(o_filp);
+-	struct page *pagep[2] = {NULL, NULL};
+ 	struct folio *folio[2] = {NULL, NULL};
+ 	handle_t *handle;
+ 	ext4_lblk_t orig_blk_offset, donor_blk_offset;
+@@ -303,8 +305,8 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 
+ 	replaced_size = data_size;
+ 
+-	*err = mext_page_double_lock(orig_inode, donor_inode, orig_page_offset,
+-				     donor_page_offset, pagep);
++	*err = mext_folio_double_lock(orig_inode, donor_inode, orig_page_offset,
++				     donor_page_offset, folio);
+ 	if (unlikely(*err < 0))
+ 		goto stop_journal;
+ 	/*
+@@ -314,8 +316,6 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 	 * hold page's lock, if it is still the case data copy is not
+ 	 * necessary, just swap data blocks between orig and donor.
+ 	 */
+-	folio[0] = page_folio(pagep[0]);
+-	folio[1] = page_folio(pagep[1]);
+ 
+ 	VM_BUG_ON_FOLIO(folio_test_large(folio[0]), folio[0]);
+ 	VM_BUG_ON_FOLIO(folio_test_large(folio[1]), folio[1]);
 -- 
-2.31.1
+2.38.1
 
