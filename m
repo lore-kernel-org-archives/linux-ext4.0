@@ -2,46 +2,46 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2056CC352A1
-	for <linux-ext4@archiver.kernel.org>; Tue,  6 Dec 2022 21:02:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F5ADC3A5A7
+	for <linux-ext4@archiver.kernel.org>; Tue,  6 Dec 2022 21:02:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229779AbiLFVCH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 6 Dec 2022 16:02:07 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48564 "EHLO
+        id S229780AbiLFVCW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 6 Dec 2022 16:02:22 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48724 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229456AbiLFVCG (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2022 16:02:06 -0500
+        with ESMTP id S229456AbiLFVCV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2022 16:02:21 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3F66B45EE9;
-        Tue,  6 Dec 2022 13:02:05 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5056945A05;
+        Tue,  6 Dec 2022 13:02:20 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2B6L1sU5001527
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2B6L1tP5001542
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 6 Dec 2022 16:01:55 -0500
+        Tue, 6 Dec 2022 16:01:56 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1670360516; bh=ODQvcrPTn9RADyagdb6ol57IAff8wz0X0HXgGWqOtU0=;
+        t=1670360518; bh=3M+ItcVZbBCEgkgbGQ2OdnE5NwSqKq3lFYW45HxjIVM=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=K95iNMJtkNVJ44MzIxkjQFvmjyBdSxFHt06ONmBKvz1ym/QW0NPJg/dTnayuQd09e
-         8ZnQw7ujaJA6YrSyJ0Tds+/fMI4oyZx4uYiU/+P+3eSkEuwZREO0xLT6YucbROr+Fj
-         gLJ6v8CDAVB0VXjdKOHdYLfq12u8vyIZQYO+LX6EHSjL5CkmeVG5RP4mKSKMQo81Ir
-         c3NKM2GV+LHm4ecSlVW9WRePw4pN2TsU/40Ngepj5wud6R1cLdxNqWsy6vATL+6g7g
-         vcmzSrA3S+nypwhLP9iP1lR6BcSLFh1pmkgXH2MFLn/ZWy50LyMEBrzR+BIpVvYl52
-         sh8wBkPSyNIuA==
+        b=hRo7a+LjJvj/DMl64HDnPmaQGzEfPnSA5dotHbfOrx5R1Z2OrCA0FsPMX7KqzbRfb
+         WXhdummoVO1EN00MmDOTMPeSM42zOzggRWf52JutjLYrMVHZ+InS/Do1W/sr5EKcKe
+         eMkIhPSmwmpaVB+y/KCUmgPIUpV7PxpITYjQNmH7IO5pWQjny/HAU9cSaYuzrxFVIO
+         9ninUEEVZoxU8HozMT2h40CDvqaX+Ncj/7wfDK+2IOverCbMIwxlqYGk+D/bvRTsci
+         YnRnWBWP6qdHiFHTVejK5cFFOoqcba7pDYo0xbUB9W9+LcPjSR5IQFYTmnVHKO3Q0F
+         3R30lxqRMsz+Q==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id D3F5715C39E4; Tue,  6 Dec 2022 16:01:54 -0500 (EST)
+        id D70A715C3AE8; Tue,  6 Dec 2022 16:01:54 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Eric Biggers <ebiggers@kernel.org>, linux-ext4@vger.kernel.org
-Cc:     "Theodore Ts'o" <tytso@mit.edu>,
-        syzbot+ba9dac45bc76c490b7c3@syzkaller.appspotmail.com,
-        linux-fscrypt@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH] ext4: don't allow journal inode to have encrypt flag
-Date:   Tue,  6 Dec 2022 16:01:48 -0500
-Message-Id: <167036049593.156498.14603526492088665546.b4-ty@mit.edu>
+To:     Baokun Li <libaokun1@huawei.com>, linux-ext4@vger.kernel.org
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+        yi.zhang@huawei.com, ritesh.list@gmail.com,
+        adilger.kernel@dilger.ca, yukuai3@huawei.com, jack@suse.cz
+Subject: Re: [PATCH v3 0/4] ext4: fix two bug_on in __es_tree_search
+Date:   Tue,  6 Dec 2022 16:01:50 -0500
+Message-Id: <167036049592.156498.14036136511112425546.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20221102053312.189962-1-ebiggers@kernel.org>
-References: <20221102053312.189962-1-ebiggers@kernel.org>
+In-Reply-To: <20221026042310.3839669-1-libaokun1@huawei.com>
+References: <20221026042310.3839669-1-libaokun1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -49,26 +49,29 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, 1 Nov 2022 22:33:12 -0700, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> Mounting a filesystem whose journal inode has the encrypt flag causes a
-> NULL dereference in fscrypt_limit_io_blocks() when the 'inlinecrypt'
-> mount option is used.
-> 
-> The problem is that when jbd2_journal_init_inode() calls bmap(), it
-> eventually finds its way into ext4_iomap_begin(), which calls
-> fscrypt_limit_io_blocks().  fscrypt_limit_io_blocks() requires that if
-> the inode is encrypted, then its encryption key must already be set up.
-> That's not the case here, since the journal inode is never "opened" like
-> a normal file would be.  Hence the crash.
+On Wed, 26 Oct 2022 12:23:06 +0800, Baokun Li wrote:
+> V1->V2:
+> 	In patch 2, when imode is not set to S_IFREG, the inode also needs
+> 	to be initialized. Otherwise, the check can be bypassed, causing
+> 	the BUG_ON. (found in the review by yangerkun)
+> V2->V3:
+> 	a. add EXT4_IGET_BAD flag to prevent unexpected bad inode.
+> 	b. check bad quota inode in vfs_setup_quota_inode() instead of in
+> 	   ext4_quota_enable() for more generic approach to this problem.
+> 	c. add helper to check quota inums.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: don't allow journal inode to have encrypt flag
-      commit: 29cef51d8522c4d8953856afaffcaf1b754e4f6c
+[1/4] ext4: fix bug_on in __es_tree_search caused by bad quota inode
+      commit: c7e9666f28ba9bdeeb99fb0c60a27dbb88f452f4
+[2/4] ext4: add helper to check quota inums
+      commit: 9c4883f1b41181f2096e2ee4e98111008b77165c
+[3/4] ext4: add EXT4_IGET_BAD flag to prevent unexpected bad inode
+      commit: 10f525fda2faff81f6cfce2a6bc4b50a5254d9ea
+[4/4] ext4: fix bug_on in __es_tree_search caused by bad boot loader inode
+      commit: db14233edaf579153d8c92bf3a0ba27ceb87eabc
 
 Best regards,
 -- 
