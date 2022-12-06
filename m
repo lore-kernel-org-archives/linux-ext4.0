@@ -2,78 +2,72 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B3C5FC3A5A7
-	for <linux-ext4@archiver.kernel.org>; Tue,  6 Dec 2022 21:02:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FAF5C352A1
+	for <linux-ext4@archiver.kernel.org>; Tue,  6 Dec 2022 21:04:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229456AbiLFVCY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 6 Dec 2022 16:02:24 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48730 "EHLO
+        id S229841AbiLFVE6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 6 Dec 2022 16:04:58 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51378 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229601AbiLFVCV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2022 16:02:21 -0500
+        with ESMTP id S229840AbiLFVEw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2022 16:04:52 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4D1AD45EC3
-        for <linux-ext4@vger.kernel.org>; Tue,  6 Dec 2022 13:02:21 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B059747316;
+        Tue,  6 Dec 2022 13:04:50 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2B6L1s5x001532
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2B6L4hb3003623
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 6 Dec 2022 16:01:56 -0500
+        Tue, 6 Dec 2022 16:04:44 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1670360517; bh=RE08JzHgRayJdGe4tDQIqekPfzDjh3mlI+z+5l1uNQY=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=eG+aeD8CUlu/Sqfq1Qe1haFCUi0vPW2dNEvIniZBy98VUFNxeTTLHOrO1kr9/KO7z
-         FiulKxpI50ZZgMOYf10Z6B+8y9amQledms3ZnOBgZfj1d9EBi7pNJ5E+I5ac+86iZn
-         cAMXhVCbmttOSJ0zzfH+NZuzjwQQLmy0htYHQP1N2VynhjyspfSB33Rqp2LIDqu5PW
-         q9KTUzhHtXaiY0A3CGOrHmY4zQFPTVW1yNSw9thM3MfDGHPQz07oFmTA97+APXd5YG
-         n5Acd8M0rholD6ffPfd/At5HgRaLHp4gVLug6hibjUOGPNWjubYD5ZrNafnx4nejIS
-         uee8dmIGavsUA==
+        t=1670360684; bh=fMwVX4UxKI+NUwzpQSTT4neoisRqyhXXltho6hFAv6s=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To;
+        b=C3R9Naw1FOBHaZbZ/jPo0zymWFHZpNtg1gNlYf1+8WMXW1z1I9VUM5bYzvKGJ74w3
+         e/95Lxv0KRF9x+P3vAdIKe6wqV9Hfc5WkHH2AWRR5c3kxFlBZQPLmLviD0wzE3n+6k
+         z4rFbs4hTwFKUrp1IJJgMqmId9BdCny0M1EuWKsgf71medCamOB40yLDQfHBO9ZNbE
+         6SBwIh3EeBXkDT2V1XwJNtCxC29u+pLyDE83GFvE26s99GnO6+EVWHEIgKPtQiNzmm
+         q7dYRAB39d+zUAaQgDxYfbWpLqBOe+ZF7tu0B+GXjMHL6UKb7XukZ2U9e6zKI8wijO
+         Aq654mE9DhOzA==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id D28B315C3489; Tue,  6 Dec 2022 16:01:54 -0500 (EST)
+        id 2798C15C3489; Tue,  6 Dec 2022 16:04:43 -0500 (EST)
+Date:   Tue, 6 Dec 2022 16:04:43 -0500
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Gaosheng Cui <cuigaosheng1@huawei.com>, cmaiolino@redhat.com,
-        adilger.kernel@dilger.ca
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext4: fix undefined behavior in bit shift for ext4_check_flag_values
-Date:   Tue,  6 Dec 2022 16:01:47 -0500
-Message-Id: <167036049592.156498.2455997966584803257.b4-ty@mit.edu>
-X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20221031055833.3966222-1-cuigaosheng1@huawei.com>
-References: <20221031055833.3966222-1-cuigaosheng1@huawei.com>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+        Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+Subject: Re: [PATCH 0/7] ext4 fast-commit fixes
+Message-ID: <Y4+ua2XftbAYd8xq@mit.edu>
+References: <20221106224841.279231-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20221106224841.279231-1-ebiggers@kernel.org>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, 31 Oct 2022 13:58:33 +0800, Gaosheng Cui wrote:
-> Shifting signed 32-bit value by 31 bits is undefined, so changing
-> significant bit to unsigned. The UBSAN warning calltrace like below:
+On Sun, Nov 06, 2022 at 02:48:34PM -0800, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@kernel.org
 > 
-> UBSAN: shift-out-of-bounds in fs/ext4/ext4.h:591:2
-> left shift of 1 by 31 places cannot be represented in type 'int'
-> Call Trace:
->  <TASK>
->  dump_stack_lvl+0x7d/0xa5
->  dump_stack+0x15/0x1b
->  ubsan_epilogue+0xe/0x4e
->  __ubsan_handle_shift_out_of_bounds+0x1e7/0x20c
->  ext4_init_fs+0x5a/0x277
->  do_one_initcall+0x76/0x430
->  kernel_init_freeable+0x3b3/0x422
->  kernel_init+0x24/0x1e0
->  ret_from_fork+0x1f/0x30
->  </TASK>
+> This series fixes several bugs in the fast-commit feature.
 > 
-> [...]
+> Patch 6 may be the most controversial patch of this series, since it
+> would make old kernels unable to replay fast-commit journals created by
+> new kernels.  I'd appreciate any thoughts on whether that's okay.  I can
+> drop that patch if needed.
 
-Applied, thanks!
+Mumble.  Normally, it's something we would avoid, since there aren't
+that many users using fast commit, since it's not enabled by default.
+And given that the off-by-one errors are bugs, an it's a question of
+old kernels requiring a pretty buggy layout, the question is whether
+it's worth it to do an explicit version / feature flag and support
+both for some period of time.
 
-[1/1] ext4: fix undefined behavior in bit shift for ext4_check_flag_values
-      commit: 0cd464d06ba0b9941dd285042909dc4d94adb373
+I'm inclined to say no, and just let things slide, and instead make
+sure that e2fsck can handle both the old and the new format, and let
+that handle the fast commit replay if necessary.
 
-Best regards,
--- 
-Theodore Ts'o <tytso@mit.edu>
+Harshad, what do you think?
+
+						- Ted
