@@ -2,179 +2,101 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7820DC63707
-	for <linux-ext4@archiver.kernel.org>; Wed,  7 Dec 2022 07:20:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 11A2AC47089
+	for <linux-ext4@archiver.kernel.org>; Wed,  7 Dec 2022 07:35:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229778AbiLGHUF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 7 Dec 2022 02:20:05 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50586 "EHLO
+        id S229589AbiLGHf0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 7 Dec 2022 02:35:26 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59452 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229738AbiLGHT5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 02:19:57 -0500
-Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DF40F32057;
-        Tue,  6 Dec 2022 23:19:55 -0800 (PST)
-Received: from mail02.huawei.com (unknown [172.30.67.153])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4NRpZZ5LM9z4f3sC7;
-        Wed,  7 Dec 2022 15:19:50 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.127.227])
-        by APP4 (Coremail) with SMTP id gCh0CgBniteWPpBj6qE0Bw--.52253S9;
-        Wed, 07 Dec 2022 15:19:53 +0800 (CST)
-From:   Ye Bin <yebin@huaweicloud.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
-        Ye Bin <yebin10@huawei.com>
-Subject: [PATCH v2 5/6] ext4: rename xattr_find_entry() and __xattr_check_inode()
-Date:   Wed,  7 Dec 2022 15:40:42 +0800
-Message-Id: <20221207074043.1286731-6-yebin@huaweicloud.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20221207074043.1286731-1-yebin@huaweicloud.com>
+        with ESMTP id S229663AbiLGHfI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 02:35:08 -0500
+Received: from mail-pj1-x102b.google.com (mail-pj1-x102b.google.com [IPv6:2607:f8b0:4864:20::102b])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4F18D2AE39;
+        Tue,  6 Dec 2022 23:35:07 -0800 (PST)
+Received: by mail-pj1-x102b.google.com with SMTP id b13-20020a17090a5a0d00b0021906102d05so740873pjd.5;
+        Tue, 06 Dec 2022 23:35:07 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=9ZrF7oXJiczkGAEAp6okQb1rCRRzIpLB6iIyJkiyYBo=;
+        b=laYAyzvc+Ajp/Qs7j/MJsyuSkp0J4Jk4TDqAvKCSCuhUALua5MvY18vqHX6cHHuQEi
+         mQ+yMXT6GmDgTV5BBGfASb6vSqBzuXOK5FJa4vzvdcOjioZ19wOG871A7VDNznh9p7Xm
+         da25qMd/sMMZjo13h5CvJB0V9XT5Ofr/+OxS7fxkGcHkJcDOve3xCpOr4e1WRW7sCRyb
+         hmtbbeIFCCTun5LSmph8g10z0zonnb0wF5Zs/8QyMl+MwS0uoFEqbuAJNSSbIY50VOHS
+         V9gzHVMdPrP8jq6epfV4uRwoyS8XCTyE2s/hHsW5vdt8ByqF89rDZ2IXsKMFMmq6nwH/
+         R3Lg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=9ZrF7oXJiczkGAEAp6okQb1rCRRzIpLB6iIyJkiyYBo=;
+        b=O5OL+b6J/9ivWqaLZL2MR0/AUdsIkII4xEo5eYpKcasnPo5JcinewMf2YDDr9MYIHo
+         6bf21UBdfa5kFky+K8IZy/kpODNqAP0bRVxKfhFf0YHSe4S2XQNA2LLbgKS//9zc3u0o
+         SGATdS532eM4kXtbi3RtfKjBXMNoLZwUzaOSFHGSGMu3RckpGQnlbhinp5Cl8Y917a5d
+         /AqXsj4mdcWeysfy6fKOcoKCIDhdBf0czDrrqqU/F54+N50KoxlaX6amzQ34VL9QtiKa
+         UhYKbtfrQ2kKLMcFkxvVcP+KGsJ3L+cDmDFB2ZuQGJbf8matcTL4s+C+S/OQ61Nvm/fr
+         9fGg==
+X-Gm-Message-State: ANoB5plEpw9EwBE02Hhq1cnGgRijUDcV1mTPqbZDIaMh4jx4NaNnIkEv
+        0tVKZqFf83ZqYJd6iZTtt7vGtRaQpYs=
+X-Google-Smtp-Source: AA0mqf5Z+2efEZznUwcu/uE/m25vhOEEe8s8gJIxRsg9fOPTHQ9RX2X8QLQfYCZRvPtsnCy8QWeYHQ==
+X-Received: by 2002:a17:902:a989:b0:188:d4bf:dbfe with SMTP id bh9-20020a170902a98900b00188d4bfdbfemr72636333plb.31.1670398506742;
+        Tue, 06 Dec 2022 23:35:06 -0800 (PST)
+Received: from debian.me (subs02-180-214-232-19.three.co.id. [180.214.232.19])
+        by smtp.gmail.com with ESMTPSA id d6-20020a170902654600b00188ef3ea2b6sm13733241pln.262.2022.12.06.23.35.05
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 06 Dec 2022 23:35:06 -0800 (PST)
+Received: by debian.me (Postfix, from userid 1000)
+        id AB9101042C6; Wed,  7 Dec 2022 14:35:02 +0700 (WIB)
+Date:   Wed, 7 Dec 2022 14:35:02 +0700
+From:   Bagas Sanjaya <bagasdotme@gmail.com>
+To:     Ye Bin <yebin@huaweicloud.com>
+Cc:     tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jack@suse.cz, Ye Bin <yebin10@huawei.com>
+Subject: Re: [PATCH v2 5/6] ext4: rename xattr_find_entry() and
+ __xattr_check_inode()
+Message-ID: <Y5BCJja2oxI6p8EP@debian.me>
 References: <20221207074043.1286731-1-yebin@huaweicloud.com>
+ <20221207074043.1286731-6-yebin@huaweicloud.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgBniteWPpBj6qE0Bw--.52253S9
-X-Coremail-Antispam: 1UD129KBjvJXoW3GrW3AFW3JFyUXw13JF4kCrg_yoW7GFWkpF
-        yUJa4DJr48JryUur40yr17Zw1ag3W7Gay7ZayxC3WSyF1DXwn7tFyFkFn5CFyUur4kWw42
-        qF43K348u3WSk3DanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUvEb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
-        Cq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
-        rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267
-        AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E
-        14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7
-        xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Y
-        z7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7
-        v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF
-        1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_JFI_Gr1lIx
-        AIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI
-        42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWI
-        evJa73UjIFyTuYvjxUFgAwUUUUU
-X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
-X-CFilter-Loop: Reflected
+Content-Type: multipart/signed; micalg=pgp-sha256;
+        protocol="application/pgp-signature"; boundary="yAUBd0KfIXzRG67a"
+Content-Disposition: inline
+In-Reply-To: <20221207074043.1286731-6-yebin@huaweicloud.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ye Bin <yebin10@huawei.com>
 
-xattr_find_entry() and __xattr_check_inode() is in EXT4 xattr module. so
-add 'ext4' prefix to unify name style.
+--yAUBd0KfIXzRG67a
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Ye Bin <yebin10@huawei.com>
----
- fs/ext4/xattr.c | 35 ++++++++++++++++++-----------------
- 1 file changed, 18 insertions(+), 17 deletions(-)
+On Wed, Dec 07, 2022 at 03:40:42PM +0800, Ye Bin wrote:
+> From: Ye Bin <yebin10@huawei.com>
+>=20
+> xattr_find_entry() and __xattr_check_inode() is in EXT4 xattr module. so
+> add 'ext4' prefix to unify name style.
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index efa623658c12..5c0476ff62c8 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -290,8 +290,9 @@ __ext4_xattr_check_block(struct inode *inode, struct buffer_head *bh,
- 
- 
- static int
--__xattr_check_inode(struct inode *inode, struct ext4_xattr_ibody_header *header,
--			 void *end, const char *function, unsigned int line)
-+__ext4_xattr_check_inode(struct inode *inode,
-+			 struct ext4_xattr_ibody_header *header, void *end,
-+			 const char *function, unsigned int line)
- {
- 	int error = -EFSCORRUPTED;
- 
-@@ -307,12 +308,12 @@ __xattr_check_inode(struct inode *inode, struct ext4_xattr_ibody_header *header,
- 	return error;
- }
- 
--#define xattr_check_inode(inode, header, end) \
--	__xattr_check_inode((inode), (header), (end), __func__, __LINE__)
-+#define ext4_xattr_check_inode(inode, header, end) \
-+	__ext4_xattr_check_inode((inode), (header), (end), __func__, __LINE__)
- 
- static int
--xattr_find_entry(struct inode *inode, struct ext4_xattr_entry **pentry,
--		 void *end, int name_index, const char *name, int sorted)
-+ext4_xattr_find_entry(struct inode *inode, struct ext4_xattr_entry **pentry,
-+		      void *end, int name_index, const char *name, int sorted)
- {
- 	struct ext4_xattr_entry *entry, *next;
- 	size_t name_len;
-@@ -577,7 +578,7 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
- 	ext4_xattr_block_cache_insert(ea_block_cache, bh);
- 	entry = BFIRST(bh);
- 	end = bh->b_data + bh->b_size;
--	error = xattr_find_entry(inode, &entry, end, name_index, name, 1);
-+	error = ext4_xattr_find_entry(inode, &entry, end, name_index, name, 1);
- 	if (error)
- 		goto cleanup;
- 	size = le32_to_cpu(entry->e_value_size);
-@@ -628,11 +629,11 @@ ext4_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
- 	raw_inode = ext4_raw_inode(&iloc);
- 	header = IHDR(inode, raw_inode);
- 	end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
--	error = xattr_check_inode(inode, header, end);
-+	error = ext4_xattr_check_inode(inode, header, end);
- 	if (error)
- 		goto cleanup;
- 	entry = IFIRST(header);
--	error = xattr_find_entry(inode, &entry, end, name_index, name, 0);
-+	error = ext4_xattr_find_entry(inode, &entry, end, name_index, name, 0);
- 	if (error)
- 		goto cleanup;
- 	size = le32_to_cpu(entry->e_value_size);
-@@ -773,7 +774,7 @@ ext4_xattr_ibody_list(struct dentry *dentry, char *buffer, size_t buffer_size)
- 	raw_inode = ext4_raw_inode(&iloc);
- 	header = IHDR(inode, raw_inode);
- 	end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
--	error = xattr_check_inode(inode, header, end);
-+	error = ext4_xattr_check_inode(inode, header, end);
- 	if (error)
- 		goto cleanup;
- 	error = ext4_xattr_list_entries(dentry, IFIRST(header),
-@@ -859,7 +860,7 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)
- 		raw_inode = ext4_raw_inode(&iloc);
- 		header = IHDR(inode, raw_inode);
- 		end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
--		ret = xattr_check_inode(inode, header, end);
-+		ret = ext4_xattr_check_inode(inode, header, end);
- 		if (ret)
- 			goto out;
- 
-@@ -1862,8 +1863,8 @@ ext4_xattr_block_find(struct inode *inode, struct ext4_xattr_info *i,
- 		bs->s.first = BFIRST(bs->bh);
- 		bs->s.end = bs->bh->b_data + bs->bh->b_size;
- 		bs->s.here = bs->s.first;
--		error = xattr_find_entry(inode, &bs->s.here, bs->s.end,
--					 i->name_index, i->name, 1);
-+		error = ext4_xattr_find_entry(inode, &bs->s.here, bs->s.end,
-+					      i->name_index, i->name, 1);
- 		if (error && error != -ENODATA)
- 			return error;
- 		bs->s.not_found = error;
-@@ -2222,12 +2223,12 @@ int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
- 	is->s.here = is->s.first;
- 	is->s.end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
- 	if (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {
--		error = xattr_check_inode(inode, header, is->s.end);
-+		error = ext4_xattr_check_inode(inode, header, is->s.end);
- 		if (error)
- 			return error;
- 		/* Find the named attribute. */
--		error = xattr_find_entry(inode, &is->s.here, is->s.end,
--					 i->name_index, i->name, 0);
-+		error = ext4_xattr_find_entry(inode, &is->s.here, is->s.end,
-+					      i->name_index, i->name, 0);
- 		if (error && error != -ENODATA)
- 			return error;
- 		is->s.not_found = error;
-@@ -2742,7 +2743,7 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
- 	min_offs = end - base;
- 	total_ino = sizeof(struct ext4_xattr_ibody_header) + sizeof(u32);
- 
--	error = xattr_check_inode(inode, header, end);
-+	error = ext4_xattr_check_inode(inode, header, end);
- 	if (error)
- 		goto cleanup;
- 
--- 
-2.31.1
+What about "Prepend ext4 prefix to xattr_find_entry() and
+__xattr_check_inode(), since these functions are in ext4 xattr module."?
 
+--=20
+An old man doll... just what I always wanted! - Clara
+
+--yAUBd0KfIXzRG67a
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iHUEABYIAB0WIQSSYQ6Cy7oyFNCHrUH2uYlJVVFOowUCY5BCIAAKCRD2uYlJVVFO
+o1q2AP9OCsBqI3xnJN8LzepLK4M50OTJ80QelFu0vR7/EyPQjAEAkR+OCt+bNzOe
+KAp0W4BnsO7uxdsI0TyPfGyeyos6Vww=
+=Y9RF
+-----END PGP SIGNATURE-----
+
+--yAUBd0KfIXzRG67a--
