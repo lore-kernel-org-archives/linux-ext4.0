@@ -2,103 +2,69 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 73D2BC352A1
-	for <linux-ext4@archiver.kernel.org>; Wed,  7 Dec 2022 12:00:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 62AD2C63705
+	for <linux-ext4@archiver.kernel.org>; Wed,  7 Dec 2022 12:00:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230152AbiLGMAN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 7 Dec 2022 07:00:13 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58986 "EHLO
+        id S230166AbiLGMAQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 7 Dec 2022 07:00:16 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58372 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230196AbiLGL7z (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 06:59:55 -0500
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8E67C209
+        with ESMTP id S230233AbiLGL74 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 06:59:56 -0500
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8E81927C
         for <linux-ext4@vger.kernel.org>; Wed,  7 Dec 2022 03:59:39 -0800 (PST)
 Received: from imap1.suse-dmz.suse.de (imap1.suse-dmz.suse.de [192.168.254.73])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 3147F21C86;
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 386EF21C9B;
         Wed,  7 Dec 2022 11:59:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1670414378; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=OuymbYdwq//0yU4AGQtq1yLnLj4i8i2axD4bH6iP/Yg=;
-        b=KRdodYGenx0ZGzran/cTIgty5c4c/plzJxWyKXr3UuUzxWiIV0N/w7e8qU++mDFoHVRfP0
-        AeYt3iXj/TkO24y6qBl16tSTtDR8IsjboK0yGWn+SbcNa9JJyMhk3oDZbGZp0SokVaiKGL
-        DHaPlm9VuQhjVCgEOfDCBPfwhx/VTrM=
+         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+        bh=kDqVW9q5urJG5aAqUFxY4uqhQsCoZ4OPl+3rTUQdrGM=;
+        b=P4sfb04w+Y3XuGzlUyLbOI0iylvk68XZfBy3y8Bb+WT4XgNru0XzFC4WioidxmNEi/HDjM
+        Zw5unFKlDbDZd82l4diHlwYcWYzPIJxY2RpuHm7HoQnqiwdrWN1reL8OiiXvTlxcVQQozw
+        eSiUnZa/PV3d3oM752oCN+g6iCHQItU=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1670414378;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=OuymbYdwq//0yU4AGQtq1yLnLj4i8i2axD4bH6iP/Yg=;
-        b=wDTKgCydKKfHxaT49DfDTpMgLEu/Cf7odCkqAHesRxJzJJMiaT/g7UZYYcLr9hZrewWFCw
-        24lawn3AuWjJSxBQ==
+         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+        bh=kDqVW9q5urJG5aAqUFxY4uqhQsCoZ4OPl+3rTUQdrGM=;
+        b=qVhQNLGf6DFKvotBbIXh0lZPRGUIJlfGu8Xrg6eav6PJYlq7dPpu4QfgBMRtz8VGswY6WI
+        jzBbAgpT4zvcPVCg==
 Received: from imap1.suse-dmz.suse.de (imap1.suse-dmz.suse.de [192.168.254.73])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap1.suse-dmz.suse.de (Postfix) with ESMTPS id 2591113732;
+        by imap1.suse-dmz.suse.de (Postfix) with ESMTPS id 295D1136B4;
         Wed,  7 Dec 2022 11:59:38 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap1.suse-dmz.suse.de with ESMTPSA
-        id EZkoCSqAkGNrPQAAGKfGzw
+        id obybCSqAkGNsPQAAGKfGzw
         (envelope-from <jack@suse.cz>); Wed, 07 Dec 2022 11:59:38 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 5B615A0728; Wed,  7 Dec 2022 12:59:37 +0100 (CET)
+        id 524A5A0725; Wed,  7 Dec 2022 12:59:37 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Pengfei Xu <pengfei.xu@intel.com>,
         Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/2] ext4: Avoid unaccounted block allocation when expanding inode
-Date:   Wed,  7 Dec 2022 12:59:28 +0100
-Message-Id: <20221207115937.26601-2-jack@suse.cz>
+Subject: [PATCH 0/2] ext4: Fix unaccounted allocation when expanding inode space
+Date:   Wed,  7 Dec 2022 12:59:26 +0100
+Message-Id: <20221207115122.29033-1-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
-In-Reply-To: <20221207115122.29033-1-jack@suse.cz>
-References: <20221207115122.29033-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1181; i=jack@suse.cz; h=from:subject; bh=XHMqNmXUvIh74E0JeoIXJXEtWcAU/IhNo21BLzJMlG8=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjkIAfosqfAPr1Zemt9l7C9l3BprWmqxhNJyf0upwz KOyD2vCJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY5CAHwAKCRCcnaoHP2RA2b7uCA CfpQgh7yVuX5T3Q5cbn8Uli+nFp/UKj7xVTv/wpBnj5g/0gCALHN6t01GLHheC/67Q5ZOvEZGD3vgl coTByEhiX871R/FD72AX9LQLUQ/JjopNVQBSq4ZmNqw6yUSTOKKc80PjQLzCXCbouCWlfIQLD9p9GT aPyuNDIWPhpTpeYzmnHeXL+04yBD6OILLrL3syMn8tqUS/8JN78uxo7X4TapTHHWzME93R0Oxel49I tDI9J46+BE7EFCbE1JO0x2i6ePzfAxIigVeSII8d/M+N3w0mPKFwNOLsANiwUXYowpxTsH5t/08LNH WoixBAFQvSvCSjocdPAUM2fr+kJgvT
+X-Developer-Signature: v=1; a=openpgp-sha256; l=158; i=jack@suse.cz; h=from:subject:message-id; bh=Hr7YfmI8yJIHViN1mzL38eQMYwBLNa2JsgT1XqdrWJ8=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjkIAdKj83xrjUrlz12l6J2OCQH5W7ZXqfrTHtkWxL xYasXS2JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY5CAHQAKCRCcnaoHP2RA2UdwB/ 0U+XzxgVbC0toucWDga1zALWCwOSi0XjsgWum2kUMLIDap3Q90zJ+WSa/bxpXXsAh9/jfc+lIN9H4v +kDotKF/6UiS5qu3fE6oCAEkuR1/VwsjSrncFkKvZFwdRk8JKMWenS7WnSet3vqyIHMV82On+NhFvm gEkhpF+jGydpuvQTwUJQxIqrL+VLs/truXwFkuzHSr8j28kHk8Qbkpxc9PzznEpekkbr5Tt8mz9ByE LXkA2J2C7LlKUiBNEhXFzlN7gmCqhUUjMBt6EoAb1KbkutDlS+P1AliFTQWWM5uotD2E/sEvRxkNnw tdT7LqM7/4kqtoMvkRkl9PHdYRX9ee
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-When expanding inode space in ext4_expand_extra_isize_ea() we may need
-to allocate external xattr block. If quota is not initialized for the
-inode, the block allocation will not be accounted into quota usage. Make
-sure the quota is initialized before we try to expand inode space.
+Hello,
 
-Reported-by: Pengfei Xu <pengfei.xu@intel.com>
-Link: https://lore.kernel.org/all/Y5BT+k6xWqthZc1P@xpf.sh.intel.com
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+these patches fix the warning (and resulting block allocation not accounted
+into quota usage) when expanding space in the inode.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2b5ef1b64249..62c81af57bb0 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5853,6 +5853,14 @@ static int __ext4_expand_extra_isize(struct inode *inode,
- 		return 0;
- 	}
- 
-+	/*
-+	 * We may need to allocate external xattr block so we need quotas
-+	 * initialized. Here we can be called with various locks held so we
-+	 * cannot affort to initialize quotas ourselves. So just bail.
-+	 */
-+	if (dquot_initialize_needed(inode))
-+		return -EAGAIN;
-+
- 	/* try to expand with EAs present */
- 	error = ext4_expand_extra_isize_ea(inode, new_extra_isize,
- 					   raw_inode, handle);
--- 
-2.35.3
-
+								Honza
