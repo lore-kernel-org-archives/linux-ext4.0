@@ -2,72 +2,88 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D1D78C352A1
-	for <linux-ext4@archiver.kernel.org>; Wed,  7 Dec 2022 06:46:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B6D4AC352A1
+	for <linux-ext4@archiver.kernel.org>; Wed,  7 Dec 2022 07:19:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229660AbiLGGqX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 7 Dec 2022 01:46:23 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37486 "EHLO
+        id S229740AbiLGHT5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 7 Dec 2022 02:19:57 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50574 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229900AbiLGGqL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 01:46:11 -0500
-Received: from mail-lf1-x135.google.com (mail-lf1-x135.google.com [IPv6:2a00:1450:4864:20::135])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EA46154B3A
-        for <linux-ext4@vger.kernel.org>; Tue,  6 Dec 2022 22:46:07 -0800 (PST)
-Received: by mail-lf1-x135.google.com with SMTP id p8so27203197lfu.11
-        for <linux-ext4@vger.kernel.org>; Tue, 06 Dec 2022 22:46:07 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linaro.org; s=google;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:from:to:cc:subject:date:message-id:reply-to;
-        bh=UggBnOsrR1wkrKlJvT82Md2mFprFXQWOhZq6Vyy7RUo=;
-        b=mCdlG2Bgc/f4NLCzy43WqBES4E8lPmklK7koyRdfChGfTWeS85kK7HHqqOJP8BIjS3
-         QYx977jxzJ8U7TndfDGPoUlnX6VObd82cqQypwg94kjfdt2Io+tb1H96tFvX85/TF0rx
-         lzk4O7hh59l8MjRx2OdlKMZmECT5vh/Oeg5j5M0fv7Ea1Hd5DWotLGYMLb/YbtYlstoY
-         KS1luVzcvx0LpAUdHPue0E5ZiannpyztMjNk0XuHCscv7hWVuJAtMDc5TbfAdK6YFUYP
-         GjwIsfXsvxZXV54MbiVtWAcrdveBvZW/3Rgfqg7gd+ABQDOAkE+9gWS0jlz0hCz1jYO7
-         OWeA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=UggBnOsrR1wkrKlJvT82Md2mFprFXQWOhZq6Vyy7RUo=;
-        b=aZwQ0wnHEF9T27R28kNMueDZwgfFcSb5cUqSoK90wRVDEQtjl1p4gDmsByu+VkZqTc
-         B6b3bgmHZpQIqsFsMXI4pbdKgJWbJQK1HfpVqDJFZDfojOlkWC/kTrVwWdEWqfHL1E5e
-         yueF8WLWUTr32B0KHBwssxNVMcPlXAv/Iszrd2RPek+BAMLWIHrZbLJZUmG4FzVF7Kn/
-         g4dogq5VSCnpbWmFt1I04fsiHvOpMjaz3NnPhwZN7gTglN6vjC9pxBK35eLxKjSHAwM+
-         CLiv8LmE6YXwtT9wRCwH3cunbRMUzAo8VlVizHREvJ7D2l0fWWq9nUJDkrMd/2gM/lWD
-         sVqg==
-X-Gm-Message-State: ANoB5plM30m/4jPwafXXlD8ZU5ltXxy2pA5thtIaYXRYEXBAAfMOfgpO
-        fyxhVO9IoNSM5m38cUND6K8xR78akZQYULe/I9Ilmw==
-X-Google-Smtp-Source: AA0mqf75R2vTJ9LYkGzilSarQU81AXrkyaGMWGmYtfsvRnYLw6CFNWv6oHmlaI3sTnIQ+qBA+vfhN4eC63FSUJryZio=
-X-Received: by 2002:a05:6512:25a8:b0:4b5:7bf5:f885 with SMTP id
- bf40-20020a05651225a800b004b57bf5f885mr3154248lfb.330.1670395566220; Tue, 06
- Dec 2022 22:46:06 -0800 (PST)
+        with ESMTP id S229640AbiLGHT4 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 02:19:56 -0500
+Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 49EC631EEE;
+        Tue,  6 Dec 2022 23:19:55 -0800 (PST)
+Received: from mail02.huawei.com (unknown [172.30.67.153])
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4NRpZY49dDz4f3vf8;
+        Wed,  7 Dec 2022 15:19:49 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.127.227])
+        by APP4 (Coremail) with SMTP id gCh0CgBniteWPpBj6qE0Bw--.52253S7;
+        Wed, 07 Dec 2022 15:19:52 +0800 (CST)
+From:   Ye Bin <yebin@huaweicloud.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
+        Ye Bin <yebin10@huawei.com>
+Subject: [PATCH v2 3/6] ext4: remove unnessary size check in ext4_xattr_inode_get()
+Date:   Wed,  7 Dec 2022 15:40:40 +0800
+Message-Id: <20221207074043.1286731-4-yebin@huaweicloud.com>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20221207074043.1286731-1-yebin@huaweicloud.com>
+References: <20221207074043.1286731-1-yebin@huaweicloud.com>
 MIME-Version: 1.0
-References: <20221206144134.1919987-1-yebin@huaweicloud.com>
-In-Reply-To: <20221206144134.1919987-1-yebin@huaweicloud.com>
-From:   Jun Nie <jun.nie@linaro.org>
-Date:   Wed, 7 Dec 2022 14:44:12 +0800
-Message-ID: <CABymUCN-WC5aCpVestRFpXVgZobxs48crUDX2419yvXxLgyjRQ@mail.gmail.com>
-Subject: Re: [PATCH v2] ext4: fix kernel BUG in 'ext4_write_inline_data_end()'
-To:     Ye Bin <yebin@huaweicloud.com>
-Cc:     tytso@mit.edu, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jack@suse.cz, Ye Bin <yebin10@huawei.com>,
-        syzbot+4faa160fa96bfba639f8@syzkaller.appspotmail.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID: gCh0CgBniteWPpBj6qE0Bw--.52253S7
+X-Coremail-Antispam: 1UD129KBjvdXoW7Jw4rXF1fZw15GrWfur4xXrb_yoW3trXEya
+        4qqr4UGr43Xr1xWrWDAF1ay3ZYy3W8Gr1fuF4kJFy7Z3WaqayvvrWDXrWUZr13Ww4rt3Z8
+        Z34DJrW7GFyFgjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUbV8YFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
+        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l82xGYIkIc2x26280x7IE14v26r1rM2
+        8IrcIa0xkI8VCY1x0267AKxVW8JVW5JwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK
+        021l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r
+        4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_
+        GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx
+        0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWU
+        JVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJV
+        W8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF
+        1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6x
+        IIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvE
+        x4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvj
+        DU0xZFpf9x07jnyCJUUUUU=
+X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi Bin,
+From: Ye Bin <yebin10@huawei.com>
 
-Thanks for the patch! The bug is reproduced with this patch. I can
-help trigger another
-test when you have new patch.
-https://syzkaller.appspot.com/text?tag=CrashLog&x=16760797880000
+As previous patch add check in ext4_xattr_check_entries(), before call
+ext4_xattr_inode_get() will already do xattr entries check.
 
-Regards,
-Jun
+Signed-off-by: Ye Bin <yebin10@huawei.com>
+---
+ fs/ext4/xattr.c | 8 --------
+ 1 file changed, 8 deletions(-)
+
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index eed001eee3ec..75287422c36c 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -525,14 +525,6 @@ ext4_xattr_inode_get(struct inode *inode, struct ext4_xattr_entry *entry,
+ 		goto out;
+ 	}
+ 
+-	if (i_size_read(ea_inode) != size) {
+-		ext4_warning_inode(ea_inode,
+-				   "ea_inode file size=%llu entry size=%zu",
+-				   i_size_read(ea_inode), size);
+-		err = -EFSCORRUPTED;
+-		goto out;
+-	}
+-
+ 	err = ext4_xattr_inode_read(ea_inode, buffer, size);
+ 	if (err)
+ 		goto out;
+-- 
+2.31.1
+
