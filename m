@@ -2,69 +2,162 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 62AD2C63705
-	for <linux-ext4@archiver.kernel.org>; Wed,  7 Dec 2022 12:00:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E27EDC352A1
+	for <linux-ext4@archiver.kernel.org>; Wed,  7 Dec 2022 12:03:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230166AbiLGMAQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 7 Dec 2022 07:00:16 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58372 "EHLO
+        id S229966AbiLGMDV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 7 Dec 2022 07:03:21 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36002 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230233AbiLGL74 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 06:59:56 -0500
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8E81927C
-        for <linux-ext4@vger.kernel.org>; Wed,  7 Dec 2022 03:59:39 -0800 (PST)
+        with ESMTP id S229952AbiLGMDU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 07:03:20 -0500
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 88E60248E2;
+        Wed,  7 Dec 2022 04:03:18 -0800 (PST)
 Received: from imap1.suse-dmz.suse.de (imap1.suse-dmz.suse.de [192.168.254.73])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 386EF21C9B;
-        Wed,  7 Dec 2022 11:59:38 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 476DF21C43;
+        Wed,  7 Dec 2022 12:03:17 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1670414378; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=kDqVW9q5urJG5aAqUFxY4uqhQsCoZ4OPl+3rTUQdrGM=;
-        b=P4sfb04w+Y3XuGzlUyLbOI0iylvk68XZfBy3y8Bb+WT4XgNru0XzFC4WioidxmNEi/HDjM
-        Zw5unFKlDbDZd82l4diHlwYcWYzPIJxY2RpuHm7HoQnqiwdrWN1reL8OiiXvTlxcVQQozw
-        eSiUnZa/PV3d3oM752oCN+g6iCHQItU=
+        t=1670414597; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=m3WRQ0AODchCGFbUuvDHlnmympYC9bYtk3pQXjwDDvE=;
+        b=1pHZp4UnQLr1K623RgYtry6plRMatvIS+nTMO8gKhIkXB5jxLPXMD6BpzswcetjtxE7Z93
+        nbSmT7TdqA9pV9qUFi0XJM7Ha651lC8CDv3WTfstz+ux5e8C87dBK9XuGDXigcOxHJKA/4
+        pZjru+8NnPpCAn6FAsWf3aeDST2kpd8=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1670414378;
+        s=susede2_ed25519; t=1670414597;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=kDqVW9q5urJG5aAqUFxY4uqhQsCoZ4OPl+3rTUQdrGM=;
-        b=qVhQNLGf6DFKvotBbIXh0lZPRGUIJlfGu8Xrg6eav6PJYlq7dPpu4QfgBMRtz8VGswY6WI
-        jzBbAgpT4zvcPVCg==
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=m3WRQ0AODchCGFbUuvDHlnmympYC9bYtk3pQXjwDDvE=;
+        b=D5ZSM/+fDrYU+e5q0FxCFhV0p7CANb17nmKFr7I6z9ldALNjDj1AyBDm7NcaCcZ2989ACl
+        GVBHlBQQBeemtVCw==
 Received: from imap1.suse-dmz.suse.de (imap1.suse-dmz.suse.de [192.168.254.73])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap1.suse-dmz.suse.de (Postfix) with ESMTPS id 295D1136B4;
-        Wed,  7 Dec 2022 11:59:38 +0000 (UTC)
+        by imap1.suse-dmz.suse.de (Postfix) with ESMTPS id 188B5136B4;
+        Wed,  7 Dec 2022 12:03:17 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap1.suse-dmz.suse.de with ESMTPSA
-        id obybCSqAkGNsPQAAGKfGzw
-        (envelope-from <jack@suse.cz>); Wed, 07 Dec 2022 11:59:38 +0000
+        id DuPyBQWBkGN4PwAAGKfGzw
+        (envelope-from <jack@suse.cz>); Wed, 07 Dec 2022 12:03:17 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 524A5A0725; Wed,  7 Dec 2022 12:59:37 +0100 (CET)
+        id 658E0A0725; Wed,  7 Dec 2022 13:03:16 +0100 (CET)
+Date:   Wed, 7 Dec 2022 13:03:16 +0100
 From:   Jan Kara <jack@suse.cz>
-To:     Ted Tso <tytso@mit.edu>
-Cc:     <linux-ext4@vger.kernel.org>, Pengfei Xu <pengfei.xu@intel.com>,
-        Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/2] ext4: Fix unaccounted allocation when expanding inode space
-Date:   Wed,  7 Dec 2022 12:59:26 +0100
-Message-Id: <20221207115122.29033-1-jack@suse.cz>
-X-Mailer: git-send-email 2.35.3
+To:     "yebin (H)" <yebin10@huawei.com>
+Cc:     Jan Kara <jack@suse.cz>, Ye Bin <yebin@huaweicloud.com>,
+        tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2 2/6] ext4: add primary check extended attribute inode
+ in ext4_xattr_check_entries()
+Message-ID: <20221207120316.nzyuxofwlvbmqhsk@quack3>
+References: <20221207074043.1286731-1-yebin@huaweicloud.com>
+ <20221207074043.1286731-3-yebin@huaweicloud.com>
+ <20221207111437.birh6zujw4wauvhu@quack3>
+ <63907B8A.9030800@huawei.com>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=158; i=jack@suse.cz; h=from:subject:message-id; bh=Hr7YfmI8yJIHViN1mzL38eQMYwBLNa2JsgT1XqdrWJ8=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjkIAdKj83xrjUrlz12l6J2OCQH5W7ZXqfrTHtkWxL xYasXS2JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY5CAHQAKCRCcnaoHP2RA2UdwB/ 0U+XzxgVbC0toucWDga1zALWCwOSi0XjsgWum2kUMLIDap3Q90zJ+WSa/bxpXXsAh9/jfc+lIN9H4v +kDotKF/6UiS5qu3fE6oCAEkuR1/VwsjSrncFkKvZFwdRk8JKMWenS7WnSet3vqyIHMV82On+NhFvm gEkhpF+jGydpuvQTwUJQxIqrL+VLs/truXwFkuzHSr8j28kHk8Qbkpxc9PzznEpekkbr5Tt8mz9ByE LXkA2J2C7LlKUiBNEhXFzlN7gmCqhUUjMBt6EoAb1KbkutDlS+P1AliFTQWWM5uotD2E/sEvRxkNnw tdT7LqM7/4kqtoMvkRkl9PHdYRX9ee
-X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <63907B8A.9030800@huawei.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+On Wed 07-12-22 19:39:54, yebin (H) wrote:
+> 
+> 
+> On 2022/12/7 19:14, Jan Kara wrote:
+> > On Wed 07-12-22 15:40:39, Ye Bin wrote:
+> > > From: Ye Bin <yebin10@huawei.com>
+> > > 
+> > > Add primary check for extended attribute inode, only do hash check when read
+> > > ea_inode's data in ext4_xattr_inode_get().
+> > > 
+> > > Signed-off-by: Ye Bin <yebin10@huawei.com>
+> > ...
+> > 
+> > > +static inline int ext4_xattr_check_extra_inode(struct inode *inode,
+> > > +					       struct ext4_xattr_entry *entry)
+> > > +{
+> > > +	int err;
+> > > +	struct inode *ea_inode;
+> > > +
+> > > +	err = ext4_xattr_inode_iget(inode, le32_to_cpu(entry->e_value_inum),
+> > > +				    le32_to_cpu(entry->e_hash), &ea_inode);
+> > > +	if (err)
+> > > +		return err;
+> > > +
+> > > +	if (i_size_read(ea_inode) != le32_to_cpu(entry->e_value_size)) {
+> > > +		ext4_warning_inode(ea_inode,
+> > > +                           "ea_inode file size=%llu entry size=%u",
+> > > +                           i_size_read(ea_inode),
+> > > +			   le32_to_cpu(entry->e_value_size));
+> > > +		err = -EFSCORRUPTED;
+> > > +	}
+> > > +	iput(ea_inode);
+> > > +
+> > > +	return err;
+> > > +}
+> > > +
+> > >   static int
+> > > -ext4_xattr_check_entries(struct ext4_xattr_entry *entry, void *end,
+> > > -			 void *value_start)
+> > > +ext4_xattr_check_entries(struct inode *inode, struct ext4_xattr_entry *entry,
+> > > +			 void *end, void *value_start)
+> > >   {
+> > >   	struct ext4_xattr_entry *e = entry;
+> > > @@ -221,6 +247,10 @@ ext4_xattr_check_entries(struct ext4_xattr_entry *entry, void *end,
+> > >   			    size > end - value ||
+> > >   			    EXT4_XATTR_SIZE(size) > end - value)
+> > >   				return -EFSCORRUPTED;
+> > > +		} else if (entry->e_value_inum) {
+> > > +			int err = ext4_xattr_check_extra_inode(inode, entry);
+> > > +			if (err)
+> > > +				return err;
+> > >   		}
+> > >   		entry = EXT4_XATTR_NEXT(entry);
+> > >   	}
+> > So I was thinking about this. It is nice to have the inode references
+> > checked but OTOH this is rather expensive for a filesystem with EA inodes -
+> > we have to lookup and possibly load EA inodes from the disk although they
+> > won't be needed for anything else than the check. Also as you have noticed
+> > we do check whether i_size and xattr size as recorded in xattr entry match
+> > in ext4_xattr_inode_iget() which gets called once we need to do anything
+> > with the EA inode.
+> > 
+> > Also I've checked and we do call ext4_xattr_check_block() and
+> > xattr_check_inode() in ext4_expand_extra_isize_ea() so Ted's suspicion that
+> > the problem comes from not checking the xattr entries before moving them
+> > from the inode was not correct.
+> > 
+> > So to summarize, I don't think this and the following patch is actually
+> > needed and brings benefit that would outweight the performance cost.
+> > 
+> > 								Honza
+> 
+> Yes, I agree with you.
+> In ext4_ xattr_ check_ Entries () simply verifies the length of the extended
+> attribute with
+> ea_inode. If the previous patch is not merged, EXT4_ XATTR_ SIZE_ MAX is
+> much larger
+> than the actual constraint value. Data verification can only be postponed
+> until the ea_inode
+> is read.
+>
+> So your suggestion is to modify EXT4_ XATTR_ SIZE_ MAX Or defer data
+> verification until the ea_inode is read?
 
-these patches fix the warning (and resulting block allocation not accounted
-into quota usage) when expanding space in the inode.
+My suggestion would be to take patches 1,4,5,6 from your series. So reduce
+EXT4_XATTR_SIZE_MAX (if Ted agrees), use kvmalloc() instead of kmalloc(),
+do the cleanup of funtion names, and fix the inode refcount leak.
 
 								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
