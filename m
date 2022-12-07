@@ -2,138 +2,190 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 26D68C352A1
-	for <linux-ext4@archiver.kernel.org>; Wed,  7 Dec 2022 11:27:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A04DCC352A1
+	for <linux-ext4@archiver.kernel.org>; Wed,  7 Dec 2022 11:27:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229904AbiLGL1q (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 7 Dec 2022 06:27:46 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39648 "EHLO
+        id S229988AbiLGL1s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 7 Dec 2022 06:27:48 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39646 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229893AbiLGL10 (ORCPT
+        with ESMTP id S229888AbiLGL10 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 06:27:26 -0500
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2A51019C32
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2A3C6167FC
         for <linux-ext4@vger.kernel.org>; Wed,  7 Dec 2022 03:27:25 -0800 (PST)
 Received: from imap1.suse-dmz.suse.de (imap1.suse-dmz.suse.de [192.168.254.73])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id CC2D21FDCD;
+        by smtp-out1.suse.de (Postfix) with ESMTPS id BCA0E21CA2;
         Wed,  7 Dec 2022 11:27:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1670412443; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=QBKreX3WrgErele8L7u8nVH17dq+EVu9oGvoF+vxPDE=;
-        b=czKFWdO8cKaB/MZYfyQ84EgWWvbY3bWWAdzsRahyCFX1UJtHUXJCsGVhTsYFcgphsMVocS
-        yyvisUlZjpFduBad6UMbK77ufGW+h8la3HW3JwqcsypG7vuYPLYUL8D/3pkVrgz8iI3PSN
-        Th1ZM3r6XlI4r9bi/UAWgeAnmzCeWYs=
+        bh=HYf0IkhECOZNgwrdtQYX1MrqB3mq4jpEBMupUm5ruSY=;
+        b=JT4j9D9OrapF3VONhUdcBv3L4360wR0NZ1lHWjkRUCjNPkGUWdXkEWZvaLbQnX7dIIwM6w
+        j3VrhvyRimZNiLdTebcPdYzu4RoAyQ8KiV02eBQDL0YzC13pN45dRccikk5Enr+TF+ymwE
+        p3pyE2MSghIZ8KUWfnRg+fkXV/g3qzk=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1670412443;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=QBKreX3WrgErele8L7u8nVH17dq+EVu9oGvoF+vxPDE=;
-        b=c7BXSZzfIOeunBJou66xAhsnynR3lR5AqA+lj/eOfSZd7GvD5L2Tk975qwKJUe/stxTZTZ
-        JZ2yZf2rTvia0WBg==
+        bh=HYf0IkhECOZNgwrdtQYX1MrqB3mq4jpEBMupUm5ruSY=;
+        b=drg5lzTtRif9dJKI4wd/JsjCFpf01H5GhvwzXuwd4pIs0cTTxDIKbieT+uPicV6zTb8Tyi
+        T5qPL01gSoIx3BAQ==
 Received: from imap1.suse-dmz.suse.de (imap1.suse-dmz.suse.de [192.168.254.73])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap1.suse-dmz.suse.de (Postfix) with ESMTPS id BF13413885;
+        by imap1.suse-dmz.suse.de (Postfix) with ESMTPS id AE77113732;
         Wed,  7 Dec 2022 11:27:23 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap1.suse-dmz.suse.de with ESMTPSA
-        id PoanLpt4kGNHLAAAGKfGzw
+        id UdqUKpt4kGM/LAAAGKfGzw
         (envelope-from <jack@suse.cz>); Wed, 07 Dec 2022 11:27:23 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 0384DA0733; Wed,  7 Dec 2022 12:27:23 +0100 (CET)
+        id E367AA072C; Wed,  7 Dec 2022 12:27:22 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>,
         Christoph Hellwig <hch@infradead.org>,
         "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
         Jan Kara <jack@suse.cz>
-Subject: [PATCH v4 08/13] ext4: Switch to using ext4_do_writepages() for ordered data writeout
-Date:   Wed,  7 Dec 2022 12:27:11 +0100
-Message-Id: <20221207112722.22220-8-jack@suse.cz>
+Subject: [PATCH v4 05/13] ext4: Add support for writepages calls that cannot map blocks
+Date:   Wed,  7 Dec 2022 12:27:08 +0100
+Message-Id: <20221207112722.22220-5-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20221207112259.8143-1-jack@suse.cz>
 References: <20221207112259.8143-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2278; i=jack@suse.cz; h=from:subject; bh=Xla02KpoxUXAb9plraIfU2pPNCtU7kGlSHOadzf1kqA=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjkHiPAIGF8wiX8A0ogB0q+Wk3tz7lp59ACKhFyATW iXPC/9yJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY5B4jwAKCRCcnaoHP2RA2YeuB/ 9/fE4el91sUxnqc2mDP6cz0IWjX9aC4pgQRb1S60/me8oe9kw6993SlLDt0W4JzHQ+TMYoVZLSsTHL C0U1WBLomvB53NhK5M2R5NxQjlAsxqQ+y8+7IdYrTFb1//Qaxl34C6VkbU0dduyg2HkBjDO6xRm12D VANX9vjHno90G8U7FAH0FOJj14xfFSU6e2K/SgW7TvAlPwrY2OJ2VXCKlmEuchgw2ZcQh505jsmTDh ltP1w2ylpFSjW97Wh3SN2BRecHeEHK57+I2XRmdyXynvdDr/1E0w00abgNXALA/GRUyvBJ/GG1Huz/ lUb7Xr0w0A6d7+rJZSI5axOe87/xR4
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4315; i=jack@suse.cz; h=from:subject; bh=vklnG3keGZI1aQNoUJl4qzV4oTftyblr0jtEzrr4S7M=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjkHiMDoc29oZyu4a+sEkq/V07JalCSVS+HyXs3J4V 7W+DkSeJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY5B4jAAKCRCcnaoHP2RA2diNB/ 9guPd8Uut9eMX4Zp4rg6jp7cvfPNtB8hIbhN6oqBUMh4V5D/whs83uEUUuxr9U4gqxmuTwyI+FIhlm 0IRwX1+71gMidb0kaE4OV/yEG0eUQdCcw3bU6yIBTLffT4THI2mvupe2Ki0VzF/gpn0L+eYrGullvn T2LZ1otDAP3+3/7wJ9gY6DOMRHne40NjArTePizOV6DaEF4INcgRw1pR/83pYL4t+/L7ovckj/3C6y FCPqb18j5lKmN46tnrI8DZ28pqm91KUfGo7bDtqEx0W3y4YAH/vw+Ttcti/8A4bYWv+qPHEqI5R7Cm wmKbqya+fx2PDZIRQF3Y4kt26c9AGX
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Use the standard writepages method (ext4_do_writepages()) to perform
-writeout of ordered data during journal commit.
+Add support for calls to ext4_writepages() than cannot map blocks. These
+will be issued from jbd2 transaction commit code.
 
 Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h  |  1 +
- fs/ext4/inode.c | 16 ++++++++++++++++
- fs/ext4/super.c |  3 +--
- 3 files changed, 18 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c | 62 ++++++++++++++++++++++++++++++++++++++-----------
+ 1 file changed, 48 insertions(+), 14 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 1b3bffc04fd0..07b55cc48578 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2999,6 +2999,7 @@ extern void ext4_set_inode_flags(struct inode *, bool init);
- extern int ext4_alloc_da_blocks(struct inode *inode);
- extern void ext4_set_aops(struct inode *inode);
- extern int ext4_writepage_trans_blocks(struct inode *);
-+extern int ext4_normal_submit_inode_data_buffers(struct jbd2_inode *jinode);
- extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
- extern int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
- 			     loff_t lstart, loff_t lend);
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4f8f4959524c..b93a436bf5bc 100644
+index 43eb175d0c1c..9ba843b7a92c 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2953,6 +2953,22 @@ static int ext4_writepages(struct address_space *mapping,
- 	return ret;
+@@ -1557,6 +1557,7 @@ struct mpage_da_data {
+ 	struct ext4_map_blocks map;
+ 	struct ext4_io_submit io_submit;	/* IO submission data */
+ 	unsigned int do_map:1;
++	unsigned int can_map:1;	/* Can writepages call map blocks? */
+ 	unsigned int scanned_until_end:1;
+ };
+ 
+@@ -2549,18 +2550,33 @@ static int ext4_da_writepages_trans_blocks(struct inode *inode)
+ 				MAX_WRITEPAGES_EXTENT_LEN + bpp - 1, bpp);
  }
  
-+int ext4_normal_submit_inode_data_buffers(struct jbd2_inode *jinode)
++/* Return true if the page needs to be written as part of transaction commit */
++static bool ext4_page_nomap_can_writeout(struct page *page)
 +{
-+	struct writeback_control wbc = {
-+		.sync_mode = WB_SYNC_ALL,
-+		.nr_to_write = LONG_MAX,
-+		.range_start = jinode->i_dirty_start,
-+		.range_end = jinode->i_dirty_end,
-+	};
-+	struct mpage_da_data mpd = {
-+		.inode = jinode->i_vfs_inode,
-+		.wbc = &wbc,
-+		.can_map = 0,
-+	};
-+	return ext4_do_writepages(&mpd);
++	struct buffer_head *bh, *head;
++
++	bh = head = page_buffers(page);
++	do {
++		if (buffer_dirty(bh) && buffer_mapped(bh) && !buffer_delay(bh))
++			return true;
++	} while ((bh = bh->b_this_page) != head);
++	return false;
 +}
 +
- static int ext4_dax_writepages(struct address_space *mapping,
- 			       struct writeback_control *wbc)
- {
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7cdd2138c897..c02329dd7574 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -540,8 +540,7 @@ static int ext4_journal_submit_inode_data_buffers(struct jbd2_inode *jinode)
- 	if (ext4_should_journal_data(jinode->i_vfs_inode))
- 		ret = ext4_journalled_submit_inode_data_buffers(jinode);
- 	else
--		ret = jbd2_journal_submit_inode_data_buffers(jinode);
--
-+		ret = ext4_normal_submit_inode_data_buffers(jinode);
- 	return ret;
- }
+ /*
+  * mpage_prepare_extent_to_map - find & lock contiguous range of dirty pages
+- * 				 and underlying extent to map
++ * 				 needing mapping, submit mapped pages
+  *
+  * @mpd - where to look for pages
+  *
+  * Walk dirty pages in the mapping. If they are fully mapped, submit them for
+- * IO immediately. When we find a page which isn't mapped we start accumulating
+- * extent of buffers underlying these pages that needs mapping (formed by
+- * either delayed or unwritten buffers). We also lock the pages containing
+- * these buffers. The extent found is returned in @mpd structure (starting at
+- * mpd->lblk with length mpd->len blocks).
++ * IO immediately. If we cannot map blocks, we submit just already mapped
++ * buffers in the page for IO and keep page dirty. When we can map blocks and
++ * we find a page which isn't mapped we start accumulating extent of buffers
++ * underlying these pages that needs mapping (formed by either delayed or
++ * unwritten buffers). We also lock the pages containing these buffers. The
++ * extent found is returned in @mpd structure (starting at mpd->lblk with
++ * length mpd->len blocks).
+  *
+  * Note that this function can attach bios to one io_end structure which are
+  * neither logically nor physically contiguous. Although it may seem as an
+@@ -2651,14 +2667,30 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 			if (mpd->map.m_len == 0)
+ 				mpd->first_page = page->index;
+ 			mpd->next_page = page->index + 1;
+-			/* Add all dirty buffers to mpd */
+-			lblk = ((ext4_lblk_t)page->index) <<
+-				(PAGE_SHIFT - blkbits);
+-			head = page_buffers(page);
+-			err = mpage_process_page_bufs(mpd, head, head, lblk);
+-			if (err <= 0)
+-				goto out;
+-			err = 0;
++			/*
++			 * Writeout for transaction commit where we cannot
++			 * modify metadata is simple. Just submit the page.
++			 */
++			if (!mpd->can_map) {
++				if (ext4_page_nomap_can_writeout(page)) {
++					err = mpage_submit_page(mpd, page);
++					if (err < 0)
++						goto out;
++				} else {
++					unlock_page(page);
++					mpd->first_page++;
++				}
++			} else {
++				/* Add all dirty buffers to mpd */
++				lblk = ((ext4_lblk_t)page->index) <<
++					(PAGE_SHIFT - blkbits);
++				head = page_buffers(page);
++				err = mpage_process_page_bufs(mpd, head, head,
++							      lblk);
++				if (err <= 0)
++					goto out;
++				err = 0;
++			}
+ 			left--;
+ 		}
+ 		pagevec_release(&pvec);
+@@ -2778,6 +2810,7 @@ static int ext4_writepages(struct address_space *mapping,
+ 	 */
+ 	mpd.do_map = 0;
+ 	mpd.scanned_until_end = 0;
++	mpd.can_map = 1;
+ 	mpd.io_submit.io_end = ext4_init_io_end(inode, GFP_KERNEL);
+ 	if (!mpd.io_submit.io_end) {
+ 		ret = -ENOMEM;
+@@ -2801,6 +2834,7 @@ static int ext4_writepages(struct address_space *mapping,
+ 			break;
+ 		}
  
++		WARN_ON_ONCE(!mpd->can_map);
+ 		/*
+ 		 * We have two constraints: We find one extent to map and we
+ 		 * must always write out whole page (makes a difference when
 -- 
 2.35.3
 
