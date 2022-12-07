@@ -2,134 +2,132 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1441BC4708E
-	for <linux-ext4@archiver.kernel.org>; Wed,  7 Dec 2022 11:27:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E52BAC352A1
+	for <linux-ext4@archiver.kernel.org>; Wed,  7 Dec 2022 11:27:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230028AbiLGL1u (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 7 Dec 2022 06:27:50 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39670 "EHLO
+        id S229972AbiLGL1x (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 7 Dec 2022 06:27:53 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39644 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229972AbiLGL12 (ORCPT
+        with ESMTP id S229936AbiLGL12 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 06:27:28 -0500
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4F226FAF3
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 10A505FB5
         for <linux-ext4@vger.kernel.org>; Wed,  7 Dec 2022 03:27:27 -0800 (PST)
 Received: from imap1.suse-dmz.suse.de (imap1.suse-dmz.suse.de [192.168.254.73])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id D1C8621CA5;
+        by smtp-out1.suse.de (Postfix) with ESMTPS id C3E9F21CA4;
         Wed,  7 Dec 2022 11:27:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1670412443; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=0Nhtqr8UdriMk3AjDYwCLDj+xnYpZDjboz9Lzk4A8nk=;
-        b=XN93s56DV+clF4NhM+KJ1Oqfapyoj3vc03FhQ4/4QG84ySeL3VZQ9BpNAv/UJwKpxsVGQG
-        9Kj5v9fE7l/h3h5a4ElRHRy+U1ooKA2gOvULxcc8xmjG6zvDeWrdqZybrhBYxDTTH2MYxo
-        WXSKLALS/OfSzekAKF4uo9XR+/QvTTA=
+        bh=zpQ5pqECC7zfStAichmjNg9JJ5GpSKtsoF3bdTjzvm0=;
+        b=Cdt+6O0Hq+Rv38q0B/zo6ODyKM9xdns5Z5PPlg7SA7erQtgXHK5bTlQZYZdG+nBubz0oV1
+        RHorHwrDQO9+ipmlHG7Sr40PsrdHRk1bSryZwtzOT2mxDXjMmwTG83I3lddb/rZHJ7tOmd
+        W45R+TwP4F1Qux62Ya7vOP+O+uvuPL4=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1670412443;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=0Nhtqr8UdriMk3AjDYwCLDj+xnYpZDjboz9Lzk4A8nk=;
-        b=FFVreM/Acw3wftHUfnEcNgDNeXeU0FIivENUOCfBayIpMulfTR1EKCwg91zKg5a5fNAvCZ
-        SxH1j3ztwz08LvCA==
+        bh=zpQ5pqECC7zfStAichmjNg9JJ5GpSKtsoF3bdTjzvm0=;
+        b=vkZ8NCwumUsmOPsCQX3OIlsc1f504akqUPrta8BmeLL3YzfnoCC5bOHeqVtRoqPbQ6ocIB
+        OktGLCSxpcPgXdCg==
 Received: from imap1.suse-dmz.suse.de (imap1.suse-dmz.suse.de [192.168.254.73])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap1.suse-dmz.suse.de (Postfix) with ESMTPS id C5B6913732;
+        by imap1.suse-dmz.suse.de (Postfix) with ESMTPS id B99B01373B;
         Wed,  7 Dec 2022 11:27:23 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap1.suse-dmz.suse.de with ESMTPSA
-        id f61EMJt4kGNJLAAAGKfGzw
+        id e2hILZt4kGNDLAAAGKfGzw
         (envelope-from <jack@suse.cz>); Wed, 07 Dec 2022 11:27:23 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 09F79A0735; Wed,  7 Dec 2022 12:27:23 +0100 (CET)
+        id F0F79A0732; Wed,  7 Dec 2022 12:27:22 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>,
         Christoph Hellwig <hch@infradead.org>,
         "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
         Jan Kara <jack@suse.cz>
-Subject: [PATCH v4 09/13] jbd2: Switch jbd2_submit_inode_data() to use fs-provided hook for data writeout
-Date:   Wed,  7 Dec 2022 12:27:12 +0100
-Message-Id: <20221207112722.22220-9-jack@suse.cz>
+Subject: [PATCH v4 07/13] ext4: Move percpu_rwsem protection into ext4_writepages()
+Date:   Wed,  7 Dec 2022 12:27:10 +0100
+Message-Id: <20221207112722.22220-7-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20221207112259.8143-1-jack@suse.cz>
 References: <20221207112259.8143-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2428; i=jack@suse.cz; h=from:subject; bh=BwhuXcDi8ihTJ1g4K2G+XR7kilsjYpigi3eooLgj1Wg=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjkHiQKJLB5Af/xkDBCmsVQDb+UPi+dX+R4/U3QGNB teu4GI+JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY5B4kAAKCRCcnaoHP2RA2aSsCA CqoYFlDdLWfghtWtfm7eXyis6wIQNXh6BpWqtiPN7cBB71EDP56X5jyM+Zrown4X8cvC7bU0KVroOj 9WCqLiMwxZpTLko/6Bn/Yv4NG0kEJKeJZdB28mscFhHOlxh+0eCfGqbiIyFe05F0ENfWnqtMkTsvMG 6Qvu/myhTi3YSdZFJLnKRfwsITmhaKaY1pyVUl/AX5VEtuSAjSGJWbVXbWx3XjnnUK4gGEjAx+uTSM 6Y1n5nur8MCsElZOE0Ael0F4bNNOXoqi39oT7FKc4kCnsmcrQGM1niqeZzvV5OmDLk2YKYHuR6dt3U zOjZjw4L3K0Em8GvU83+f+WgzMfrjn
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1875; i=jack@suse.cz; h=from:subject; bh=j0DgcX6U83KV++ws+PacqXTcQBSes8Qh1QV7iXDVXAo=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjkHiONhTLkyK8IkojQ5z5FFbrI2FL9H0toOBh1kY2 W9R6a1mJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY5B4jgAKCRCcnaoHP2RA2bx3CA CQLOS8kVmkrm6rXpXZ+vbcs5uUZaar8yv9IYkvxJPoWByVUvkIzZTSffY/K8KhrC0FJoQ8PUqfcEvr uzYPSNWDCcDtGYZMpz6l1L3ct7tyUH+5ZmUb0yoKP1RaRf1rKnXiQp8kmPPaZhQOWQOmuNvlqMUJc8 d/57SSJUIC2Ijnik1C/1b7/Ei7Ngn5Iq624ywpPuoztsLwmWkxYNHBTfE0KRngMn3JoqIsRA9UQi9g F0JWCFRMJ2TWpGxnIWpAcDmOUltrub3A0Wbd8DwWJQv2qrGhjlRaBqyMpyHiEN+zLjumyPlEhILJXW HQE47dOp1I3J5lpuQ08uPKrAtfM7xB
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-jbd2_submit_inode_data() hardcoded use of
-jbd2_journal_submit_inode_data_buffers() for submission of data pages.
-Make it use j_submit_inode_data_buffers hook instead. This effectively
-switches ext4 fastcommits to use ext4_writepages() for data writeout
-instead of generic_writepages().
+Move protection by percpu_rwsem from ext4_do_writepages() to
+ext4_writepages(). We will not want to grab this protection during
+transaction commits as that would be prone to deadlocks and the
+protection is not needed. Move the shutdown state checking as well since
+we want to be able to complete commit while the shutdown is in progress.
 
+Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/fast_commit.c | 2 +-
- fs/jbd2/commit.c      | 5 ++---
- include/linux/jbd2.h  | 2 +-
- 3 files changed, 4 insertions(+), 5 deletions(-)
+ fs/ext4/inode.c | 16 ++++++++++------
+ 1 file changed, 10 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 0f6d0a80467d..7c6694593497 100644
---- a/fs/ext4/fast_commit.c
-+++ b/fs/ext4/fast_commit.c
-@@ -986,7 +986,7 @@ static int ext4_fc_submit_inode_data_all(journal_t *journal)
- 			finish_wait(&ei->i_fc_wait, &wait);
- 		}
- 		spin_unlock(&sbi->s_fc_lock);
--		ret = jbd2_submit_inode_data(ei->jinode);
-+		ret = jbd2_submit_inode_data(journal, ei->jinode);
- 		if (ret)
- 			return ret;
- 		spin_lock(&sbi->s_fc_lock);
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 885a7a6cc53e..4810438b7856 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -207,14 +207,13 @@ int jbd2_journal_submit_inode_data_buffers(struct jbd2_inode *jinode)
- }
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 99c66c768cd0..4f8f4959524c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2720,10 +2720,6 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
+ 	struct blk_plug plug;
+ 	bool give_up_on_write = false;
  
- /* Send all the data buffers related to an inode */
--int jbd2_submit_inode_data(struct jbd2_inode *jinode)
-+int jbd2_submit_inode_data(journal_t *journal, struct jbd2_inode *jinode)
- {
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+-		return -EIO;
 -
- 	if (!jinode || !(jinode->i_flags & JI_WRITE_DATA))
- 		return 0;
+-	percpu_down_read(&sbi->s_writepages_rwsem);
+ 	trace_ext4_writepages(inode, wbc);
  
- 	trace_jbd2_submit_inode_data(jinode->i_vfs_inode);
--	return jbd2_journal_submit_inode_data_buffers(jinode);
-+	return journal->j_submit_inode_data_buffers(jinode);
- 
+ 	/*
+@@ -2933,20 +2929,28 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
+ out_writepages:
+ 	trace_ext4_writepages_result(inode, wbc, ret,
+ 				     nr_to_write - wbc->nr_to_write);
+-	percpu_up_read(&sbi->s_writepages_rwsem);
+ 	return ret;
  }
- EXPORT_SYMBOL(jbd2_submit_inode_data);
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 0b7242370b56..2170e0cc279d 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1662,7 +1662,7 @@ int jbd2_fc_begin_commit(journal_t *journal, tid_t tid);
- int jbd2_fc_end_commit(journal_t *journal);
- int jbd2_fc_end_commit_fallback(journal_t *journal);
- int jbd2_fc_get_buf(journal_t *journal, struct buffer_head **bh_out);
--int jbd2_submit_inode_data(struct jbd2_inode *jinode);
-+int jbd2_submit_inode_data(journal_t *journal, struct jbd2_inode *jinode);
- int jbd2_wait_inode_data(journal_t *journal, struct jbd2_inode *jinode);
- int jbd2_fc_wait_bufs(journal_t *journal, int num_blks);
- int jbd2_fc_release_bufs(journal_t *journal);
+ 
+ static int ext4_writepages(struct address_space *mapping,
+ 			   struct writeback_control *wbc)
+ {
++	struct super_block *sb = mapping->host->i_sb;
+ 	struct mpage_da_data mpd = {
+ 		.inode = mapping->host,
+ 		.wbc = wbc,
+ 		.can_map = 1,
+ 	};
++	int ret;
++
++	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
++		return -EIO;
+ 
+-	return ext4_do_writepages(&mpd);
++	percpu_down_read(&EXT4_SB(sb)->s_writepages_rwsem);
++	ret = ext4_do_writepages(&mpd);
++	percpu_up_read(&EXT4_SB(sb)->s_writepages_rwsem);
++
++	return ret;
+ }
+ 
+ static int ext4_dax_writepages(struct address_space *mapping,
 -- 
 2.35.3
 
