@@ -2,93 +2,230 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B86A0C352A1
-	for <linux-ext4@archiver.kernel.org>; Wed,  7 Dec 2022 11:17:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D9079C352A1
+	for <linux-ext4@archiver.kernel.org>; Wed,  7 Dec 2022 11:27:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229559AbiLGLRc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 7 Dec 2022 06:17:32 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60426 "EHLO
+        id S229904AbiLGL10 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 7 Dec 2022 06:27:26 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39624 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229774AbiLGLRa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 06:17:30 -0500
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5B2332BD9
-        for <linux-ext4@vger.kernel.org>; Wed,  7 Dec 2022 03:17:29 -0800 (PST)
+        with ESMTP id S229709AbiLGL1Z (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 06:27:25 -0500
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9ACA6228
+        for <linux-ext4@vger.kernel.org>; Wed,  7 Dec 2022 03:27:24 -0800 (PST)
 Received: from imap1.suse-dmz.suse.de (imap1.suse-dmz.suse.de [192.168.254.73])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 1D0C321C7B;
-        Wed,  7 Dec 2022 11:17:28 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 57DCA21C95;
+        Wed,  7 Dec 2022 11:27:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1670411848; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+        t=1670412443; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=Nl3cYnoVvIf50ZKL46F6ecGRdU1pjqEdzszMDzYGKFU=;
-        b=AVDPXKGllvjKAC1hczPdpgK/XRWO8ALsxxugPSrmBfCSMPVkfwHMf9Jq5aihOeOFhUbHZy
-        VZngxlI5hgGv8fa1nICQm/0ffdZwdoUZ0fSCj3wZHFzGuAY+Cajn7aEaEtTKNhTtexCoz0
-        vJo1jR4GmVHkzGzmnxmTTNKVzKhepdY=
+        bh=77G42jyCLCxqHXtKUfKLyfMpUWH1ePC4gHzKYHeOcPM=;
+        b=yZkIB1lBc7dEfc+a+AxbYfVfWkv4KM+M3sS4HhYXSl414Wbv+j5zXyGjvIPgdKMVV2Hfnu
+        nnyiiSr1fVArVe+8gz9S4g916ItUjGtD72Bjp9lDV4mc97813mUs4yNPF/cLd4lUp9spr+
+        O5XyotmndpIooT3jAumWyRo7G7MsVrY=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1670411848;
+        s=susede2_ed25519; t=1670412443;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=Nl3cYnoVvIf50ZKL46F6ecGRdU1pjqEdzszMDzYGKFU=;
-        b=DjJzkIYaKfqprPFdDhKAZcdQqebXQMbn+7XbSY2ly00k5SZJLJk/BeAbAV5slJX2iP8ElD
-        sqdCOwrRPL10hNAA==
+        bh=77G42jyCLCxqHXtKUfKLyfMpUWH1ePC4gHzKYHeOcPM=;
+        b=GWTMQVLGtEiDbzpFhVi9ACr5gmTuWdshqNK9Ikas26VUwq/mRYYzFkKrezbR4DVBRZG/Cc
+        Cr1RmasrVXPm/cBg==
 Received: from imap1.suse-dmz.suse.de (imap1.suse-dmz.suse.de [192.168.254.73])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap1.suse-dmz.suse.de (Postfix) with ESMTPS id 0D2C8134CD;
-        Wed,  7 Dec 2022 11:17:28 +0000 (UTC)
+        by imap1.suse-dmz.suse.de (Postfix) with ESMTPS id 4682D136B4;
+        Wed,  7 Dec 2022 11:27:23 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap1.suse-dmz.suse.de with ESMTPSA
-        id WXopA0h2kGPnJgAAGKfGzw
-        (envelope-from <jack@suse.cz>); Wed, 07 Dec 2022 11:17:28 +0000
+        id nTkuEZt4kGMsLAAAGKfGzw
+        (envelope-from <jack@suse.cz>); Wed, 07 Dec 2022 11:27:23 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 85784A0725; Wed,  7 Dec 2022 12:17:27 +0100 (CET)
-Date:   Wed, 7 Dec 2022 12:17:27 +0100
+        id D3152A0728; Wed,  7 Dec 2022 12:27:22 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
-To:     Christoph Hellwig <hch@infradead.org>
-Cc:     Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org,
+To:     Ted Tso <tytso@mit.edu>
+Cc:     <linux-ext4@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>,
         "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-        Christoph Hellwig <hch@lst.de>,
-        Matthew Wilcox <willy@infradead.org>, linux-mm@kvack.org
-Subject: Re: [PATCH v3 11/12] ext4: Stop providing .writepage hook
-Message-ID: <20221207111727.d5dbfq4mewm4njth@quack3>
-References: <20221205122604.25994-1-jack@suse.cz>
- <20221205122928.21959-11-jack@suse.cz>
- <Y460RpKTCDuPKWmN@mit.edu>
- <20221206105225.nr734teqlkueqdph@quack3>
- <Y5BDCtdcZooiMhy5@infradead.org>
+        Jan Kara <jack@suse.cz>
+Subject: [PATCH v4 02/13] ext4: Move keep_towrite handling to ext4_bio_write_page()
+Date:   Wed,  7 Dec 2022 12:27:05 +0100
+Message-Id: <20221207112722.22220-2-jack@suse.cz>
+X-Mailer: git-send-email 2.35.3
+In-Reply-To: <20221207112259.8143-1-jack@suse.cz>
+References: <20221207112259.8143-1-jack@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <Y5BDCtdcZooiMhy5@infradead.org>
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5311; i=jack@suse.cz; h=from:subject; bh=4BEBMuubTi6wzu1p0dUteVLsznv1GLCDItrtKTNYI5E=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjkHiKkEjDDlFxxdvGxblAV29RSyx82jUQUUJxApPT AwBuFt6JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY5B4igAKCRCcnaoHP2RA2WmDB/ wLYCsTrpXx55IK6zhY2EEYFVtTz/pDA5XcuCyjkf/ajfQQ2m5aRSijjCgiPf6Bvy1DnYDlSOqKk/BD cS0OVoBXMTGIcbdgjWGJq6bxRmaSs3uHPcQAtXdTp5oDXTYQAxBeE+ddlwVLDYDnwO0e+DS2y2JpYN fW6KSj3C7tkQmnDlOXoIzGBvWllIEtxxaYjz7aj0X2ssdj85O2xOm0a6Sibd8F2CiOLVJliXCW/b3y FBMOeNDlPdl8xE72g6Mofukyvy1nmlDkxn+tStP0vNsHUB3XG9PLWlWd3fC1iyRJJZH2X1QWOg0PLq tqZsOreXFXi/3UExsfglwgQFAmKkC6
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue 06-12-22 23:38:50, Christoph Hellwig wrote:
-> On Tue, Dec 06, 2022 at 11:52:25AM +0100, Jan Kara wrote:
-> > I don't expect any objection. The only reason we didn't export that
-> > function when I've added it was that only blkdev code was using it and that
-> > cannot be compiled as a module. Should I send a patch to 
-> > 
-> > I've added a patch to the series to export this function. It is attached.
-> > 
-> > I can also repost the whole series if these are the only changes that block
-> > the inclusion.
-> 
-> I'd do an EXPORT_SYMBOL_GPL, but otherwise the export looks fine, and it
-> would be good to get this conversion going!
+When we are writing back page but we cannot for some reason write all
+its buffers (e.g. because we cannot allocate blocks in current context) we
+have to keep TOWRITE tag set in the mapping as otherwise racing
+WB_SYNC_ALL writeback that could write these buffers can skip the page
+and result in data loss. We will need this logic for writeback during
+transaction commit so move the logic from ext4_writepage() to
+ext4_bio_write_page().
 
-OK, I've just copied how buffer_migrate_folio() is exported but I don't
-mind a GPL export. I'll change it and push out new version of the series.
+Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/ext4.h    |  3 +--
+ fs/ext4/inode.c   |  6 ++----
+ fs/ext4/page-io.c | 36 +++++++++++++++++++++---------------
+ 3 files changed, 24 insertions(+), 21 deletions(-)
 
-								Honza
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8d5453852f98..1b3bffc04fd0 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3756,8 +3756,7 @@ extern void ext4_end_io_rsv_work(struct work_struct *work);
+ extern void ext4_io_submit(struct ext4_io_submit *io);
+ extern int ext4_bio_write_page(struct ext4_io_submit *io,
+ 			       struct page *page,
+-			       int len,
+-			       bool keep_towrite);
++			       int len);
+ extern struct ext4_io_end_vec *ext4_alloc_io_end_vec(ext4_io_end_t *io_end);
+ extern struct ext4_io_end_vec *ext4_last_io_end_vec(ext4_io_end_t *io_end);
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 2b5ef1b64249..43eb175d0c1c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2009,7 +2009,6 @@ static int ext4_writepage(struct page *page,
+ 	struct buffer_head *page_bufs = NULL;
+ 	struct inode *inode = page->mapping->host;
+ 	struct ext4_io_submit io_submit;
+-	bool keep_towrite = false;
+ 
+ 	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb)))) {
+ 		folio_invalidate(folio, 0, folio_size(folio));
+@@ -2067,7 +2066,6 @@ static int ext4_writepage(struct page *page,
+ 			unlock_page(page);
+ 			return 0;
+ 		}
+-		keep_towrite = true;
+ 	}
+ 
+ 	if (PageChecked(page) && ext4_should_journal_data(inode))
+@@ -2084,7 +2082,7 @@ static int ext4_writepage(struct page *page,
+ 		unlock_page(page);
+ 		return -ENOMEM;
+ 	}
+-	ret = ext4_bio_write_page(&io_submit, page, len, keep_towrite);
++	ret = ext4_bio_write_page(&io_submit, page, len);
+ 	ext4_io_submit(&io_submit);
+ 	/* Drop io_end reference we got from init */
+ 	ext4_put_io_end_defer(io_submit.io_end);
+@@ -2118,7 +2116,7 @@ static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
+ 		len = size & ~PAGE_MASK;
+ 	else
+ 		len = PAGE_SIZE;
+-	err = ext4_bio_write_page(&mpd->io_submit, page, len, false);
++	err = ext4_bio_write_page(&mpd->io_submit, page, len);
+ 	if (!err)
+ 		mpd->wbc->nr_to_write--;
+ 	mpd->first_page++;
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 4e68ace86f11..4f9ecacd10aa 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -430,8 +430,7 @@ static void io_submit_add_bh(struct ext4_io_submit *io,
+ 
+ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 			struct page *page,
+-			int len,
+-			bool keep_towrite)
++			int len)
+ {
+ 	struct page *bounce_page = NULL;
+ 	struct inode *inode = page->mapping->host;
+@@ -441,14 +440,11 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 	int nr_submitted = 0;
+ 	int nr_to_submit = 0;
+ 	struct writeback_control *wbc = io->io_wbc;
++	bool keep_towrite = false;
+ 
+ 	BUG_ON(!PageLocked(page));
+ 	BUG_ON(PageWriteback(page));
+ 
+-	if (keep_towrite)
+-		set_page_writeback_keepwrite(page);
+-	else
+-		set_page_writeback(page);
+ 	ClearPageError(page);
+ 
+ 	/*
+@@ -483,12 +479,17 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 			if (!buffer_mapped(bh))
+ 				clear_buffer_dirty(bh);
+ 			/*
+-			 * Keeping dirty some buffer we cannot write? Make
+-			 * sure to redirty the page. This happens e.g. when
+-			 * doing writeout for transaction commit.
++			 * Keeping dirty some buffer we cannot write? Make sure
++			 * to redirty the page and keep TOWRITE tag so that
++			 * racing WB_SYNC_ALL writeback does not skip the page.
++			 * This happens e.g. when doing writeout for
++			 * transaction commit.
+ 			 */
+-			if (buffer_dirty(bh) && !PageDirty(page))
+-				redirty_page_for_writepage(wbc, page);
++			if (buffer_dirty(bh)) {
++				if (!PageDirty(page))
++					redirty_page_for_writepage(wbc, page);
++				keep_towrite = true;
++			}
+ 			if (io->io_bio)
+ 				ext4_io_submit(io);
+ 			continue;
+@@ -500,6 +501,10 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 		nr_to_submit++;
+ 	} while ((bh = bh->b_this_page) != head);
+ 
++	/* Nothing to submit? Just unlock the page... */
++	if (!nr_to_submit)
++		goto unlock;
++
+ 	bh = head = page_buffers(page);
+ 
+ 	/*
+@@ -550,6 +555,11 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 		}
+ 	}
+ 
++	if (keep_towrite)
++		set_page_writeback_keepwrite(page);
++	else
++		set_page_writeback(page);
++
+ 	/* Now submit buffers to write */
+ 	do {
+ 		if (!buffer_async_write(bh))
+@@ -558,11 +568,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 				 bounce_page ? bounce_page : page, bh);
+ 		nr_submitted++;
+ 	} while ((bh = bh->b_this_page) != head);
+-
+ unlock:
+ 	unlock_page(page);
+-	/* Nothing submitted - we have to end page writeback */
+-	if (!nr_submitted)
+-		end_page_writeback(page);
+ 	return ret;
+ }
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.35.3
+
