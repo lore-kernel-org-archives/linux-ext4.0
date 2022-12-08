@@ -2,50 +2,53 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 751F5C6370A
-	for <linux-ext4@archiver.kernel.org>; Thu,  8 Dec 2022 02:11:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0C444C63709
+	for <linux-ext4@archiver.kernel.org>; Thu,  8 Dec 2022 02:11:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229762AbiLHCLs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 7 Dec 2022 21:11:48 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42838 "EHLO
+        id S229807AbiLHCLt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 7 Dec 2022 21:11:49 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42844 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229449AbiLHCLp (ORCPT
+        with ESMTP id S229696AbiLHCLp (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 21:11:45 -0500
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8B27792A2C;
-        Wed,  7 Dec 2022 18:11:43 -0800 (PST)
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1EEAC92FCD;
+        Wed,  7 Dec 2022 18:11:44 -0800 (PST)
 Received: from mail02.huawei.com (unknown [172.30.67.153])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4NSHhT5lBXz4f3jYv;
-        Thu,  8 Dec 2022 10:11:37 +0800 (CST)
+        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4NSHhV6vk3z4f3lGs;
+        Thu,  8 Dec 2022 10:11:38 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.127.227])
-        by APP4 (Coremail) with SMTP id gCh0CgB3m9jbR5Fjj5BiBw--.22193S4;
-        Thu, 08 Dec 2022 10:11:40 +0800 (CST)
+        by APP4 (Coremail) with SMTP id gCh0CgB3m9jbR5Fjj5BiBw--.22193S6;
+        Thu, 08 Dec 2022 10:11:41 +0800 (CST)
 From:   Ye Bin <yebin@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
 Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
         Ye Bin <yebin10@huawei.com>
-Subject: [PATCH v3 0/4] Fix two issue about ext4 extended attribute
-Date:   Thu,  8 Dec 2022 10:32:29 +0800
-Message-Id: <20221208023233.1231330-1-yebin@huaweicloud.com>
+Subject: [PATCH v3 2/4] ext4: allocate extended attribute value in vmalloc area
+Date:   Thu,  8 Dec 2022 10:32:31 +0800
+Message-Id: <20221208023233.1231330-3-yebin@huaweicloud.com>
 X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20221208023233.1231330-1-yebin@huaweicloud.com>
+References: <20221208023233.1231330-1-yebin@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgB3m9jbR5Fjj5BiBw--.22193S4
-X-Coremail-Antispam: 1UD129KBjvdXoWrZFy3ZFy7XFWkAF4fGw4UArb_yoWfuwc_GF
-        y8ta95Jr4jqa48Wa9FyF10yFyrKF48Gr1rZF1kCFsrZry7ZFWDZFWkJrWxur1UuF4jy3Z8
-        ZF17trWfAF92gjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-        9fnUUIcSsGvfJTRUUUbokYFVCjjxCrM7AC8VAFwI0_Gr0_Xr1l1xkIjI8I6I8E6xAIw20E
-        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l8cAvFVAK0II2c7xJM28CjxkF64kEwV
-        A0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x02
-        67AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I
-        0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
-        x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
-        0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Y
-        z7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zV
-        AF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4l
-        IxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8VAvwI8IcIk0rVWrZr1j6s
-        0DMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Jr0_GrUvcSsG
-        vfC2KfnxnUUI43ZEXa7IU1zuWJUUUUU==
+X-CM-TRANSID: gCh0CgB3m9jbR5Fjj5BiBw--.22193S6
+X-Coremail-Antispam: 1UD129KBjvJXoW7ArWfur4kXF4kZFWrtF1xuFg_yoW8Gr1Upa
+        9xKa40kr13Xry7uFWIkr48Z342g3ZrGr47uay3Xw40vFy5Xwn2gFyayFWYvF15ZFWftr1v
+        qF1Dtr18Zw43t3DanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUvGb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
+        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUXw
+        A2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
+        w2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
+        W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
+        6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
+        Ij6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
+        Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr
+        0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY
+        17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcV
+        C0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY
+        6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa
+        73UjIFyTuYvjxU2_MaUUUUU
 X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 X-CFilter-Loop: Reflected
 Precedence: bulk
@@ -54,30 +57,39 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ye Bin <yebin10@huawei.com>
 
-Diff v3 vs v2:
-1. Remove patch [2-3].
-2. Modify change log according to Bagas Sanjaya's suggestions.
+Now, extended attribute value maximum length is 64K. The memory requested
+here does not need continuous physical addresses, so it is appropriate to
+use kvmalloc to request memory. At the same time, it can also cope with
+the situation that the extended attribute will become longer in the future.
 
-Diff v2 vs v1:
-1.Modify commit message about "ext4: fix WARNING in ext4_expand_extra_isize_ea"
-2.Modify the indentation of arguments about "ext4: rename xattr_find_entry()
-and __xattr_check_inode()"
+Signed-off-by: Ye Bin <yebin10@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/xattr.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-This patchset fix two issues:
-1. Patch [1]-[4] fix WARNING in ext4_expand_extra_isize_ea.
-2. Patch [6] fix inode leak in 'ext4_xattr_inode_create()'.
-3. Patch [5] is cleanup.
-
-Ye Bin (4):
-  ext4: fix WARNING in ext4_expand_extra_isize_ea
-  ext4: allocate extended attribute value in vmalloc area
-  ext4: rename xattr_find_entry() and __xattr_check_inode()
-  ext4: fix inode leak in 'ext4_xattr_inode_create()'
-
- fs/ext4/xattr.c | 42 +++++++++++++++++++++++-------------------
- fs/ext4/xattr.h | 11 +++--------
- 2 files changed, 26 insertions(+), 27 deletions(-)
-
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 718ef3987f94..23cfefc6d262 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -2556,7 +2556,7 @@ static int ext4_xattr_move_to_block(handle_t *handle, struct inode *inode,
+ 
+ 	is = kzalloc(sizeof(struct ext4_xattr_ibody_find), GFP_NOFS);
+ 	bs = kzalloc(sizeof(struct ext4_xattr_block_find), GFP_NOFS);
+-	buffer = kmalloc(value_size, GFP_NOFS);
++	buffer = kvmalloc(value_size, GFP_NOFS);
+ 	b_entry_name = kmalloc(entry->e_name_len + 1, GFP_NOFS);
+ 	if (!is || !bs || !buffer || !b_entry_name) {
+ 		error = -ENOMEM;
+@@ -2608,7 +2608,7 @@ static int ext4_xattr_move_to_block(handle_t *handle, struct inode *inode,
+ 	error = 0;
+ out:
+ 	kfree(b_entry_name);
+-	kfree(buffer);
++	kvfree(buffer);
+ 	if (is)
+ 		brelse(is->iloc.bh);
+ 	if (bs)
 -- 
 2.31.1
 
