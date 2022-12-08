@@ -2,53 +2,50 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B564DC4708E
-	for <linux-ext4@archiver.kernel.org>; Thu,  8 Dec 2022 02:11:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B3E60C4708E
+	for <linux-ext4@archiver.kernel.org>; Thu,  8 Dec 2022 03:13:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229835AbiLHCLv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 7 Dec 2022 21:11:51 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42848 "EHLO
+        id S229601AbiLHDNj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 7 Dec 2022 22:13:39 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55800 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229701AbiLHCLp (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 21:11:45 -0500
+        with ESMTP id S229501AbiLHDNi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 22:13:38 -0500
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3411192FD0;
-        Wed,  7 Dec 2022 18:11:44 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BB6436F0D2;
+        Wed,  7 Dec 2022 19:13:36 -0800 (PST)
 Received: from mail02.huawei.com (unknown [172.30.67.153])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4NSHhV5GS9z4f3jLy;
-        Thu,  8 Dec 2022 10:11:38 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4NSK3t6SLqz4f3pFZ;
+        Thu,  8 Dec 2022 11:13:30 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.127.227])
-        by APP4 (Coremail) with SMTP id gCh0CgB3m9jbR5Fjj5BiBw--.22193S7;
-        Thu, 08 Dec 2022 10:11:41 +0800 (CST)
+        by APP1 (Coremail) with SMTP id cCh0CgAn0a9cVpFjvYz4Bg--.16330S4;
+        Thu, 08 Dec 2022 11:13:33 +0800 (CST)
 From:   Ye Bin <yebin@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
 Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
         Ye Bin <yebin10@huawei.com>
-Subject: [PATCH v3 3/4] ext4: rename xattr_find_entry() and __xattr_check_inode()
-Date:   Thu,  8 Dec 2022 10:32:32 +0800
-Message-Id: <20221208023233.1231330-4-yebin@huaweicloud.com>
+Subject: [PATCH v4 0/3] Fix two issues about bigalloc feature
+Date:   Thu,  8 Dec 2022 11:34:23 +0800
+Message-Id: <20221208033426.1832460-1-yebin@huaweicloud.com>
 X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20221208023233.1231330-1-yebin@huaweicloud.com>
-References: <20221208023233.1231330-1-yebin@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgB3m9jbR5Fjj5BiBw--.22193S7
-X-Coremail-Antispam: 1UD129KBjvJXoW3ArW8KF1kArW8Wr18uF4fAFb_yoW7XF15pF
-        yUta4DJr48JryUur40yr17Zw1ag3W7Ga17ZayxC3WftF1kX3s7tFyFkFn5CFyUWr4kWw42
-        qF43K348u3WSk3DanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUvGb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUWw
-        A2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
-        w2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
-        W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
-        6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
-        Ij6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
-        Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr
-        0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY
-        17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcV
-        C0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY
-        6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa
-        73UjIFyTuYvjxU2PEfUUUUU
+X-CM-TRANSID: cCh0CgAn0a9cVpFjvYz4Bg--.16330S4
+X-Coremail-Antispam: 1UD129KBjvdXoWrZFy7tr47KrWDCw1xGrW7Jwb_yoW3WwcEvr
+        18A348Xr97W3yI9anxKr4kAFyYkw4kur13uws2vFn8ZryjvrW8JwsFyryfZrZ8WFW0ya4F
+        yr1DJrZakwsF9jkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUboxYFVCjjxCrM7AC8VAFwI0_Gr0_Xr1l1xkIjI8I6I8E6xAIw20E
+        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l8cAvFVAK0II2c7xJM28CjxkF64kEwV
+        A0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x02
+        67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267
+        AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80
+        ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4
+        AY6r1j6r4UM4x0Y48IcxkI7VAKI48JMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY
+        6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17
+        CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF
+        0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_WFyUJVCq3w
+        CI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnI
+        WIevJa73UjIFyTuYvjxUrR6zUUUUU
 X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 X-CFilter-Loop: Reflected
 Precedence: bulk
@@ -57,126 +54,28 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ye Bin <yebin10@huawei.com>
 
-Prepend ext4 prefix to function names of xattr_find_entry() and
-__xattr_check_inode() for consistency with other functions in ext4
-xattr module.
+Diff v4 Vs v3:
+1. Fix checkpatch warning.
+2. Fix alignment issues about patch [2-3]
 
-Signed-off-by: Ye Bin <yebin10@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/xattr.c | 35 ++++++++++++++++++-----------------
- 1 file changed, 18 insertions(+), 17 deletions(-)
+Diff v3 Vs v2:
+1. Add fixes tag and rename label 'out' for first patch.
+2. Do not split string across lines for second patch.
+3. Just check pending tree if empty, drop clear code for third patch.
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 23cfefc6d262..99dacb0393fa 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -260,8 +260,9 @@ __ext4_xattr_check_block(struct inode *inode, struct buffer_head *bh,
- 
- 
- static int
--__xattr_check_inode(struct inode *inode, struct ext4_xattr_ibody_header *header,
--			 void *end, const char *function, unsigned int line)
-+__ext4_xattr_check_inode(struct inode *inode,
-+			 struct ext4_xattr_ibody_header *header, void *end,
-+			 const char *function, unsigned int line)
- {
- 	int error = -EFSCORRUPTED;
- 
-@@ -276,12 +277,12 @@ __xattr_check_inode(struct inode *inode, struct ext4_xattr_ibody_header *header,
- 	return error;
- }
- 
--#define xattr_check_inode(inode, header, end) \
--	__xattr_check_inode((inode), (header), (end), __func__, __LINE__)
-+#define ext4_xattr_check_inode(inode, header, end) \
-+	__ext4_xattr_check_inode((inode), (header), (end), __func__, __LINE__)
- 
- static int
--xattr_find_entry(struct inode *inode, struct ext4_xattr_entry **pentry,
--		 void *end, int name_index, const char *name, int sorted)
-+ext4_xattr_find_entry(struct inode *inode, struct ext4_xattr_entry **pentry,
-+		      void *end, int name_index, const char *name, int sorted)
- {
- 	struct ext4_xattr_entry *entry, *next;
- 	size_t name_len;
-@@ -554,7 +555,7 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
- 	ext4_xattr_block_cache_insert(ea_block_cache, bh);
- 	entry = BFIRST(bh);
- 	end = bh->b_data + bh->b_size;
--	error = xattr_find_entry(inode, &entry, end, name_index, name, 1);
-+	error = ext4_xattr_find_entry(inode, &entry, end, name_index, name, 1);
- 	if (error)
- 		goto cleanup;
- 	size = le32_to_cpu(entry->e_value_size);
-@@ -605,11 +606,11 @@ ext4_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
- 	raw_inode = ext4_raw_inode(&iloc);
- 	header = IHDR(inode, raw_inode);
- 	end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
--	error = xattr_check_inode(inode, header, end);
-+	error = ext4_xattr_check_inode(inode, header, end);
- 	if (error)
- 		goto cleanup;
- 	entry = IFIRST(header);
--	error = xattr_find_entry(inode, &entry, end, name_index, name, 0);
-+	error = ext4_xattr_find_entry(inode, &entry, end, name_index, name, 0);
- 	if (error)
- 		goto cleanup;
- 	size = le32_to_cpu(entry->e_value_size);
-@@ -750,7 +751,7 @@ ext4_xattr_ibody_list(struct dentry *dentry, char *buffer, size_t buffer_size)
- 	raw_inode = ext4_raw_inode(&iloc);
- 	header = IHDR(inode, raw_inode);
- 	end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
--	error = xattr_check_inode(inode, header, end);
-+	error = ext4_xattr_check_inode(inode, header, end);
- 	if (error)
- 		goto cleanup;
- 	error = ext4_xattr_list_entries(dentry, IFIRST(header),
-@@ -836,7 +837,7 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)
- 		raw_inode = ext4_raw_inode(&iloc);
- 		header = IHDR(inode, raw_inode);
- 		end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
--		ret = xattr_check_inode(inode, header, end);
-+		ret = ext4_xattr_check_inode(inode, header, end);
- 		if (ret)
- 			goto out;
- 
-@@ -1839,8 +1840,8 @@ ext4_xattr_block_find(struct inode *inode, struct ext4_xattr_info *i,
- 		bs->s.first = BFIRST(bs->bh);
- 		bs->s.end = bs->bh->b_data + bs->bh->b_size;
- 		bs->s.here = bs->s.first;
--		error = xattr_find_entry(inode, &bs->s.here, bs->s.end,
--					 i->name_index, i->name, 1);
-+		error = ext4_xattr_find_entry(inode, &bs->s.here, bs->s.end,
-+					      i->name_index, i->name, 1);
- 		if (error && error != -ENODATA)
- 			return error;
- 		bs->s.not_found = error;
-@@ -2199,12 +2200,12 @@ int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
- 	is->s.here = is->s.first;
- 	is->s.end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
- 	if (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {
--		error = xattr_check_inode(inode, header, is->s.end);
-+		error = ext4_xattr_check_inode(inode, header, is->s.end);
- 		if (error)
- 			return error;
- 		/* Find the named attribute. */
--		error = xattr_find_entry(inode, &is->s.here, is->s.end,
--					 i->name_index, i->name, 0);
-+		error = ext4_xattr_find_entry(inode, &is->s.here, is->s.end,
-+					      i->name_index, i->name, 0);
- 		if (error && error != -ENODATA)
- 			return error;
- 		is->s.not_found = error;
-@@ -2719,7 +2720,7 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
- 	min_offs = end - base;
- 	total_ino = sizeof(struct ext4_xattr_ibody_header) + sizeof(u32);
- 
--	error = xattr_check_inode(inode, header, end);
-+	error = ext4_xattr_check_inode(inode, header, end);
- 	if (error)
- 		goto cleanup;
- 
+Diff V2 vs V1:
+Use ext4_error() when detect 'i_reserved_data_blocks' and pending tree abnormal.
+
+Ye Bin (3):
+  ext4: fix incorrect calculate 'reserved' in '__es_remove_extent' when
+    enable bigalloc feature
+  ext4: record error when detect abnormal 'i_reserved_data_blocks'
+  ext4: add check pending tree when evict inode
+
+ fs/ext4/extents_status.c |  3 ++-
+ fs/ext4/super.c          | 13 +++++++++----
+ 2 files changed, 11 insertions(+), 5 deletions(-)
+
 -- 
 2.31.1
 
