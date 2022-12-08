@@ -2,135 +2,150 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B48DC4708D
-	for <linux-ext4@archiver.kernel.org>; Thu,  8 Dec 2022 01:37:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D536C4708E
+	for <linux-ext4@archiver.kernel.org>; Thu,  8 Dec 2022 02:11:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229555AbiLHBhQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 7 Dec 2022 20:37:16 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53792 "EHLO
+        id S229722AbiLHCLq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 7 Dec 2022 21:11:46 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42840 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229544AbiLHBhP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 20:37:15 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 014FB900DE
-        for <linux-ext4@vger.kernel.org>; Wed,  7 Dec 2022 17:37:13 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 9F59DB821A5
-        for <linux-ext4@vger.kernel.org>; Thu,  8 Dec 2022 01:37:12 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 306B7C433D6
-        for <linux-ext4@vger.kernel.org>; Thu,  8 Dec 2022 01:37:11 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1670463431;
-        bh=nFDiteMICbZtbizBzUkdHP0ocrGg0lx4uX06vyDmZA0=;
-        h=Date:From:To:Subject:From;
-        b=g9m8RStATSYZHhvcK4umH4X6BiXetPWgz3LtbuHv3/S7oDNsuPAams5aHFPxfZmqS
-         iLuHHB5VYPpxjDT+oMdKpo9UNz2MfU++/SmaoZXqpyY8nx2IHDslR939WsaXu8FJYQ
-         W6f30RMBQ1LwR8mH3YQPKTC60gzU831Cxklfqp4LlJB8Z7qULCQXsRWG0uxyHzdpff
-         RCo/i89Dk6aQeu5ZAg5/iDlKUQG2DNnqgN27Wv8BbBA9fRbr0HbejfJzDrC2YbPLpL
-         k97WtGXZCN021jYo0oN22salafTEjY3yqes4+KOGOWW29vGjx5NG0/x3yUJ7jb3ndE
-         IvMwBJkiZDtcA==
-Date:   Wed, 7 Dec 2022 17:37:10 -0800
-From:   "Darrick J. Wong" <djwong@kernel.org>
-To:     linux-ext4 <linux-ext4@vger.kernel.org>
-Subject: uninit variable warnings on gcc 11.3?
-Message-ID: <Y5E/xhJyFIXN31oZ@magnolia>
+        with ESMTP id S229689AbiLHCLp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2022 21:11:45 -0500
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BABD792A3F;
+        Wed,  7 Dec 2022 18:11:43 -0800 (PST)
+Received: from mail02.huawei.com (unknown [172.30.67.153])
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4NSHhV0pM2z4f3m6k;
+        Thu,  8 Dec 2022 10:11:38 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.127.227])
+        by APP4 (Coremail) with SMTP id gCh0CgB3m9jbR5Fjj5BiBw--.22193S5;
+        Thu, 08 Dec 2022 10:11:41 +0800 (CST)
+From:   Ye Bin <yebin@huaweicloud.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
+        Ye Bin <yebin10@huawei.com>,
+        syzbot+4d99a966fd74bdeeec36@syzkaller.appspotmail.com
+Subject: [PATCH v3 1/4] ext4: fix WARNING in ext4_expand_extra_isize_ea
+Date:   Thu,  8 Dec 2022 10:32:30 +0800
+Message-Id: <20221208023233.1231330-2-yebin@huaweicloud.com>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20221208023233.1231330-1-yebin@huaweicloud.com>
+References: <20221208023233.1231330-1-yebin@huaweicloud.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
+X-CM-TRANSID: gCh0CgB3m9jbR5Fjj5BiBw--.22193S5
+X-Coremail-Antispam: 1UD129KBjvJXoWxGrW3JFy5KrWkJr4rZr4kXrb_yoWrtFW5pw
+        43A347Cr48XF9rCF4xAr1jqw1DWwn3CF4UAryxWrn7ZFy3Xw1xKa95Kr4SqFyxtrW8Jry2
+        qFn8J34rKw15GaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUvGb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
+        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUGw
+        A2048vs2IY020Ec7CjxVAFwI0_JFI_Gr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
+        w2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
+        W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
+        6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
+        Ij6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
+        Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr
+        0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY
+        17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcV
+        C0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY
+        6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa
+        73UjIFyTuYvjxUzl1vUUUUU
+X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi everyone,
+From: Ye Bin <yebin10@huawei.com>
 
-I went on a spree of trying to build things with W=12e this afternoon,
-and I noticed that gcc spat out the following warnings.  I can't tell if
-these warnings are bogus noise or if they actually could cause problems,
-particularly in the extent status tree bits.  That said, IIRC there's
-been some mention of weirdness wrt that part of ext4, so I thought I
-should mention this in case it's significant to anyone.
+Syzbot found the following issue:
+------------[ cut here ]------------
+WARNING: CPU: 1 PID: 3631 at mm/page_alloc.c:5534 __alloc_pages+0x30a/0x560 mm/page_alloc.c:5534
+Modules linked in:
+CPU: 1 PID: 3631 Comm: syz-executor261 Not tainted 6.1.0-rc6-syzkaller-00308-g644e9524388a #0
+Hardware name: Google Compute Engine/Google Compute Engine, BIOS Google 10/26/2022
+RIP: 0010:__alloc_pages+0x30a/0x560 mm/page_alloc.c:5534
+RSP: 0018:ffffc90003ccf080 EFLAGS: 00010246
+RAX: ffffc90003ccf0e0 RBX: 000000000000000c RCX: 0000000000000000
+RDX: 0000000000000028 RSI: 0000000000000000 RDI: ffffc90003ccf108
+RBP: ffffc90003ccf198 R08: dffffc0000000000 R09: ffffc90003ccf0e0
+R10: fffff52000799e21 R11: 1ffff92000799e1c R12: 0000000000040c40
+R13: 1ffff92000799e18 R14: dffffc0000000000 R15: 1ffff92000799e14
+FS:  0000555555c10300(0000) GS:ffff8880b9900000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007ffc36f70000 CR3: 00000000744ad000 CR4: 00000000003506e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+Call Trace:
+ <TASK>
+ __alloc_pages_node include/linux/gfp.h:223 [inline]
+ alloc_pages_node include/linux/gfp.h:246 [inline]
+ __kmalloc_large_node+0x8a/0x1a0 mm/slab_common.c:1096
+ __do_kmalloc_node mm/slab_common.c:943 [inline]
+ __kmalloc+0xfe/0x1a0 mm/slab_common.c:968
+ kmalloc include/linux/slab.h:558 [inline]
+ ext4_xattr_move_to_block fs/ext4/xattr.c:2558 [inline]
+ ext4_xattr_make_inode_space fs/ext4/xattr.c:2673 [inline]
+ ext4_expand_extra_isize_ea+0xe3f/0x1cd0 fs/ext4/xattr.c:2765
+ __ext4_expand_extra_isize+0x2b8/0x3f0 fs/ext4/inode.c:5857
+ ext4_try_to_expand_extra_isize fs/ext4/inode.c:5900 [inline]
+ __ext4_mark_inode_dirty+0x51a/0x670 fs/ext4/inode.c:5978
+ ext4_inline_data_truncate+0x548/0xd00 fs/ext4/inline.c:2021
+ ext4_truncate+0x341/0xeb0 fs/ext4/inode.c:4221
+ ext4_process_orphan+0x1aa/0x2d0 fs/ext4/orphan.c:339
+ ext4_orphan_cleanup+0xb60/0x1340 fs/ext4/orphan.c:474
+ __ext4_fill_super fs/ext4/super.c:5515 [inline]
+ ext4_fill_super+0x80ed/0x8610 fs/ext4/super.c:5643
+ get_tree_bdev+0x400/0x620 fs/super.c:1324
+ vfs_get_tree+0x88/0x270 fs/super.c:1531
+ do_new_mount+0x289/0xad0 fs/namespace.c:3040
+ do_mount fs/namespace.c:3383 [inline]
+ __do_sys_mount fs/namespace.c:3591 [inline]
+ __se_sys_mount+0x2d3/0x3c0 fs/namespace.c:3568
+ do_syscall_x64 arch/x86/entry/common.c:50 [inline]
+ do_syscall_64+0x3d/0xb0 arch/x86/entry/common.c:80
+ entry_SYSCALL_64_after_hwframe+0x63/0xcd
+ </TASK>
 
---D
+Reason is allocate 16M memory by kmalloc, but MAX_ORDER is 11, kmalloc
+can allocate maximum size memory is 4M.
+XATTR_SIZE_MAX is currently 64K, but EXT4_XATTR_SIZE_MAX is 16M, so
+'ext4_xattr_check_entries()' regards this length as legal. Then trigger
+warning in 'ext4_xattr_move_to_block()'.
+To solve above issue, change EXT4_XATTR_SIZE_MAX from 16M to 64K.
+As VFS limit extended attribute maximum size to 64K. So we can assume
+that there will be no extended attribute with a length greater than 64K.
 
-In file included from /storage/home/djwong/cdev/work/linux-xfs/fs/ext4/extents.c:33:
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/extents.c: In function ‘ext4_ext_map_blocks’:
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/ext4_extents.h:230:15: warning: ‘zero_ex2.ee_start_lo’ may be used uninitialized in this function [-Wmaybe-uninitialized]
-  230 |         block = le32_to_cpu(ex->ee_start_lo);
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/extents.c:3426:38: note: ‘zero_ex2.ee_start_lo’ was declared here
- 3426 |         struct ext4_extent zero_ex1, zero_ex2;
-      |                                      ^~~~~~~~
-In file included from /storage/home/djwong/cdev/work/linux-xfs/fs/ext4/extents.c:33:
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/ext4_extents.h:231:19: warning: ‘zero_ex2.ee_start_hi’ may be used uninitialized in this function [-Wmaybe-uninitialized]
-  231 |         block |= ((ext4_fsblk_t) le16_to_cpu(ex->ee_start_hi) << 31) << 1;
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/extents.c:3426:38: note: ‘zero_ex2.ee_start_hi’ was declared here
- 3426 |         struct ext4_extent zero_ex1, zero_ex2;
-      |                                      ^~~~~~~~
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/extents.c:3140:16: warning: ‘zero_ex2.ee_block’ may be used uninitialized in this function [-Wmaybe-uninitialized]
- 3140 |         return ext4_es_insert_extent(inode, ee_block, ee_len, ee_pblock,
-      |                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- 3141 |                                      EXTENT_STATUS_WRITTEN);
-      |                                      ~~~~~~~~~~~~~~~~~~~~~~
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/extents.c:3426:38: note: ‘zero_ex2.ee_block’ was declared here
- 3426 |         struct ext4_extent zero_ex1, zero_ex2;
-      |                                      ^~~~~~~~
-In file included from /storage/home/djwong/cdev/work/linux-xfs/fs/ext4/extents.c:33:
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/ext4_extents.h:230:15: warning: ‘zero_ex1.ee_start_lo’ may be used uninitialized in this function [-Wmaybe-uninitialized]
-  230 |         block = le32_to_cpu(ex->ee_start_lo);
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/extents.c:3426:28: note: ‘zero_ex1.ee_start_lo’ was declared here
- 3426 |         struct ext4_extent zero_ex1, zero_ex2;
-      |                            ^~~~~~~~
-In file included from /storage/home/djwong/cdev/work/linux-xfs/fs/ext4/extents.c:33:
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/ext4_extents.h:231:19: warning: ‘zero_ex1.ee_start_hi’ may be used uninitialized in this function [-Wmaybe-uninitialized]
-  231 |         block |= ((ext4_fsblk_t) le16_to_cpu(ex->ee_start_hi) << 31) << 1;
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/extents.c:3426:28: note: ‘zero_ex1.ee_start_hi’ was declared here
- 3426 |         struct ext4_extent zero_ex1, zero_ex2;
-      |                            ^~~~~~~~
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/extents.c:3140:16: warning: ‘zero_ex1.ee_block’ may be used uninitialized in this function [-Wmaybe-uninitialized]
- 3140 |         return ext4_es_insert_extent(inode, ee_block, ee_len, ee_pblock,
-      |                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- 3141 |                                      EXTENT_STATUS_WRITTEN);
-      |                                      ~~~~~~~~~~~~~~~~~~~~~~
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/extents.c:3426:28: note: ‘zero_ex1.ee_block’ was declared here
- 3426 |         struct ext4_extent zero_ex1, zero_ex2;
-      |                            ^~~~~~~~
-  CC [M]  fs/ext4/inode.o
-  CC [M]  fs/ext4/ioctl.o
-  CC [M]  fs/ext4/mballoc.o
-  CC [M]  fs/ext4/migrate.o
-  CC [M]  fs/ext4/mmp.o
-  CC [M]  fs/ext4/move_extent.o
-  CC [M]  fs/ext4/namei.o
-  CC [M]  fs/ext4/readpage.o
-  CC [M]  fs/ext4/page-io.o
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/inode.c: In function ‘ext4_page_mkwrite’:
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/inode.c:6205:23: warning: ‘get_block’ may be used uninitialized in this function [-Wmaybe-uninitialized]
- 6205 |                 err = block_page_mkwrite(vma, vmf, get_block);
-      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  CC [M]  fs/ext4/resize.o
-  CC [M]  fs/ext4/super.o
-  CC [M]  fs/ext4/symlink.o
-  CC [M]  fs/ext4/sysfs.o
-  CC [M]  fs/ext4/xattr.o
-  CC [M]  fs/ext4/xattr_hurd.o
-  CC [M]  fs/ext4/xattr_trusted.o
-  CC [M]  fs/ext4/xattr_user.o
-  CC [M]  fs/ext4/fast_commit.o
-  CC [M]  fs/ext4/orphan.o
-  CC [M]  fs/ext4/acl.o
-  CC [M]  fs/ext4/xattr_security.o
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/super.c: In function ‘ext4_fill_super’:
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/super.c:5486:15: warning: ‘first_not_zeroed’ may be used uninitialized in this function [-Wmaybe-uninitialized]
- 5486 |         err = ext4_register_li_request(sb, first_not_zeroed);
-      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/super.c:5042:22: note: ‘first_not_zeroed’ was declared here
- 5042 |         ext4_group_t first_not_zeroed;
-      |                      ^~~~~~~~~~~~~~~~
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/super.c:3253:46: warning: ‘logical_sb_block’ may be used uninitialized in this function [-Wmaybe-uninitialized]
- 3253 |                 if (block_bitmap >= sb_block + 1 &&
-      |                                     ~~~~~~~~~^~~
-/storage/home/djwong/cdev/work/linux-xfs/fs/ext4/super.c:5036:22: note: ‘logical_sb_block’ was declared here
- 5036 |         ext4_fsblk_t logical_sb_block;
-      |                      ^~~~~~~~~~~~~~~~
+Reported-by: syzbot+4d99a966fd74bdeeec36@syzkaller.appspotmail.com
+Fixes: 54dd0e0a1b25 ("ext4: add extra checks to ext4_xattr_block_get()")
+Signed-off-by: Ye Bin <yebin10@huawei.com>
+---
+ fs/ext4/xattr.h | 11 +++--------
+ 1 file changed, 3 insertions(+), 8 deletions(-)
+
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 824faf0b15a8..c71e582b1007 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -71,15 +71,10 @@ struct ext4_xattr_entry {
+ #define IFIRST(hdr) ((struct ext4_xattr_entry *)((hdr)+1))
+ 
+ /*
+- * XATTR_SIZE_MAX is currently 64k, but for the purposes of checking
+- * for file system consistency errors, we use a somewhat bigger value.
+- * This allows XATTR_SIZE_MAX to grow in the future, but by using this
+- * instead of INT_MAX for certain consistency checks, we don't need to
+- * worry about arithmetic overflows.  (Actually XATTR_SIZE_MAX is
+- * defined in include/uapi/linux/limits.h, so changing it is going
+- * not going to be trivial....)
++ * Use XATTR_SIZE_MAX to checking for file system consistency errors. Extended
++ * attribute length exceed XATTR_SIZE_MAX is illegal.
+  */
+-#define EXT4_XATTR_SIZE_MAX (1 << 24)
++#define EXT4_XATTR_SIZE_MAX XATTR_SIZE_MAX
+ 
+ /*
+  * The minimum size of EA value when you start storing it in an external inode
+-- 
+2.31.1
+
