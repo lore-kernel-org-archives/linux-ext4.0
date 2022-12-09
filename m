@@ -2,114 +2,85 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D04C6C4332F
-	for <linux-ext4@archiver.kernel.org>; Fri,  9 Dec 2022 04:52:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 27293C4332F
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Dec 2022 05:36:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229468AbiLIEwH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 8 Dec 2022 23:52:07 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36770 "EHLO
+        id S229479AbiLIFgA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 9 Dec 2022 00:36:00 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55252 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229462AbiLIEwG (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Dec 2022 23:52:06 -0500
-Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5A84C1B1F3
-        for <linux-ext4@vger.kernel.org>; Thu,  8 Dec 2022 20:52:01 -0800 (PST)
-Received: from dggpeml500006.china.huawei.com (unknown [172.30.72.54])
-        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4NSxVx2Twrz15N5g;
-        Fri,  9 Dec 2022 11:35:37 +0800 (CST)
-Received: from [10.174.178.112] (10.174.178.112) by
- dggpeml500006.china.huawei.com (7.185.36.76) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2375.31; Fri, 9 Dec 2022 11:36:28 +0800
-Message-ID: <f32e24e3-0990-b026-14e4-9bfbe23e9c34@huawei.com>
-Date:   Fri, 9 Dec 2022 11:36:27 +0800
+        with ESMTP id S229470AbiLIFf7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Dec 2022 00:35:59 -0500
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E29862613B
+        for <linux-ext4@vger.kernel.org>; Thu,  8 Dec 2022 21:35:57 -0800 (PST)
+Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2B95ZPuE021945
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 9 Dec 2022 00:35:26 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1670564128; bh=igVYNk9fltUzsRoiHK8ckHLy/kWhm5sy4aTQx/TrRIE=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To;
+        b=ZROy0XJ+s5F+j3Ct3NHhGqf343nXklhpk9E5bGSJhqVIgcHaNsIx8L279tHWoq1aE
+         zhGEb7GCVt7H2tElU69BmkRUSlZK8T119OBqNEamlLGKIXxtVnTMMRxpQ7HMSTbI2A
+         A7kKHPIbrOcbfOORyhBQZgFAW+nD0nY2PFYRgXgdJ4XYC99WUy/rqcpTHfVkwIppHD
+         fuebiZWEvJO0CjDHr/s3rZbmf1AcZ1MAYenpetjXA92ihzHLZGuJOaa4Spq3Sz7gyF
+         8kveBfCW7/suV+xzyb7g0hGHwJz5/AYMCvsyeWYkRUxzNQIHzStujNQgtJCUNucM5I
+         cUP3XH2W2D0LQ==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id DE3BA15C3AE9; Fri,  9 Dec 2022 00:35:24 -0500 (EST)
+Date:   Fri, 9 Dec 2022 00:35:24 -0500
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Ye Bin <yebin@huaweicloud.com>
+Cc:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, jack@suse.cz,
+        Ye Bin <yebin10@huawei.com>,
+        syzbot+4d99a966fd74bdeeec36@syzkaller.appspotmail.com
+Subject: Re: [PATCH v3 1/4] ext4: fix WARNING in ext4_expand_extra_isize_ea
+Message-ID: <Y5LJHI1cHDK0Stjq@mit.edu>
+References: <20221208023233.1231330-1-yebin@huaweicloud.com>
+ <20221208023233.1231330-2-yebin@huaweicloud.com>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101
- Thunderbird/102.0
-Subject: Re: [PATCH] tune2fs:check return value of ext2fs_mmp_update2 in
- rewrite_metadata_checksums
-Content-Language: en-US
-From:   "lihaoxiang (F)" <lihaoxiang9@huawei.com>
-To:     <tytso@mit.edu>
-CC:     <linux-ext4@vger.kernel.org>,
-        Zhiqiang Liu <liuzhiqiang26@huawei.com>,
-        <linfeilong@huawei.com>, <louhongxiang@huawei.com>,
-        "lijinlin (A)" <lijinlin3@huawei.com>
-References: <fbe3716b-e8bb-58c0-6c55-a88b6979063c@huawei.com>
-In-Reply-To: <fbe3716b-e8bb-58c0-6c55-a88b6979063c@huawei.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.174.178.112]
-X-ClientProxiedBy: dggpeml500022.china.huawei.com (7.185.36.66) To
- dggpeml500006.china.huawei.com (7.185.36.76)
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20221208023233.1231330-2-yebin@huaweicloud.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-friendly ping...
+In general, please don't use commit summaries like:
 
-On 2022/11/29 14:58, lihaoxiang (F) wrote:
-> Tune2fs hasn't consider about the result of executing ext2fs_mmp_update2
-> when it try to rewrite_metadata_checksums. If the ext2fs_mmp_update2
-> failed, multi-mount protection couldn't guard there has the only node
-> (i.e. this program) accessing this device in the meantime.
-> 
-> We solve this problem to verify the return value of ext2fs_mmp_update2.
-> It terminate rewrite_metadata_checksums and exit immediately if the
-> wrong error code returned.
-> 
-> Signed-off-by: lihaoxiang <lihaoxiang9@huawei.com>
-> ---
->  misc/tune2fs.c | 17 +++++++++++++----
->  1 file changed, 13 insertions(+), 4 deletions(-)
-> 
-> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-> index bed3d95..aa51864 100644
-> --- a/misc/tune2fs.c
-> +++ b/misc/tune2fs.c
-> @@ -930,7 +930,7 @@ static void rewrite_inodes(ext2_filsys fs, unsigned int flags)
->  	ext2fs_free_mem(&ctx.ea_buf);
->  }
-> 
-> -static void rewrite_metadata_checksums(ext2_filsys fs, unsigned int flags)
-> +static errcode_t rewrite_metadata_checksums(ext2_filsys fs, unsigned int flags)
->  {
->  	errcode_t retval;
->  	dgrp_t i;
-> @@ -945,7 +945,9 @@ static void rewrite_metadata_checksums(ext2_filsys fs, unsigned int flags)
->  	rewrite_inodes(fs, flags);
->  	ext2fs_mark_ib_dirty(fs);
->  	ext2fs_mark_bb_dirty(fs);
-> -	ext2fs_mmp_update2(fs, 1);
-> +	retval = ext2fs_mmp_update2(fs, 1);
-> +	if (retval)
-> +		return retval;
->  	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
->  	fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
->  	if (ext2fs_has_feature_metadata_csum(fs->super))
-> @@ -953,6 +955,7 @@ static void rewrite_metadata_checksums(ext2_filsys fs, unsigned int flags)
->  	else
->  		fs->super->s_checksum_type = 0;
->  	ext2fs_mark_super_dirty(fs);
-> +	return 0;
->  }
-> 
->  static void enable_uninit_bg(ext2_filsys fs)
-> @@ -3410,8 +3413,14 @@ _("Warning: The journal is dirty. You may wish to replay the journal like:\n\n"
->  		}
->  	}
-> 
-> -	if (rewrite_checksums)
-> -		rewrite_metadata_checksums(fs, rewrite_checksums);
-> +	if (rewrite_checksums) {
-> +		retval = rewrite_metadata_checksums(fs, rewrite_checksums);
-> +		if (retval != 0) {
-> +			printf("Failed to rewrite metadata checksums\n");
-> +			rc = 1;
-> +			goto closefs;
-> +		}
-> +	}
-> 
->  	if (l_flag)
->  		list_super(sb);
+	ext4: fix WARNING in ext4_expand_extra_isize_ea
+	
+The commit summary should be a summary of what the change *does*.  A
+description of *why* the change is needed is properly placed in the
+body of the description.  So something like "ext4: clamp
+EXT4_XATTR_SIZE_MAX to XATTR_SIZE_MAX" would be a better one-line
+commit summary.
+
+That being said, I've decided to not apply this patch.  A 16 MB
+extended attribute size is not _that_ insane, although admittedly it's
+quite bit larger than any other file system or OS supports (unless you
+include Solaris and NTFS's alternate data forks as "extended
+attributes").
+
+I personally don't think the mm/page_alloc warning is that big of a
+deal (even if it does cause a Syzbot report), and if you really do
+care about suppressing the warning, using the kvmalloc() instead of
+kmalloc() will do that --- and it does make ext4 friendly in the case
+of where we are storing, say, a 30KB Windows ACL as an extended
+attribute, since it avoided needing to make a order 3 page allocation.
+(Which again, as far as I'm concerned, is more important than the
+suppressing the page_alloc warning.)
+
+We may ultimately decide to clamp EXT4_XATTR_SIZE_MAX to
+XATTR_SIZE_MAX, but one could imagine some system attribute that in
+the future might want to be larger than 32k, that wouldn't be accessed
+via the standard xattr API.  That seems unlikely, but I want to keep
+our options open.
+
+Cheers,
+
+					- Ted
