@@ -2,147 +2,97 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4BF67C4332F
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Dec 2022 22:46:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F33C0C46467
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Dec 2022 23:10:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229637AbiLNWp7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 14 Dec 2022 17:45:59 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36406 "EHLO
+        id S229448AbiLNXKx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 14 Dec 2022 18:10:53 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45804 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229592AbiLNWpq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Dec 2022 17:45:46 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 64F8A25D4;
-        Wed, 14 Dec 2022 14:45:44 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 14DE2B81A45;
-        Wed, 14 Dec 2022 22:45:43 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9331AC433F0;
-        Wed, 14 Dec 2022 22:45:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1671057941;
-        bh=uJ3FO4tiueVTb/4lrSOqyDlwjeWDWqy+a4fT7SmmDcs=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=C0QbxiKYE2VOxgX/uB7OvsCcHekCwBxYw2+DygusA8QIW/Quxt8Sawkvfo9So92Wj
-         mjwygoQ2CFNs9P6CmgHk/tVl+ql2dSMbauBMdaAScm4f6KWZgeoWkweCOQGhMKhbqX
-         3k7Xy5GcgXcmkNtcKsbSDkNOzSK3XXnsz1gjrM8Z5VFoVvaxhpTxejOCJY/1i2yFci
-         eF3GpIKe7EAvDJq1hWb/td9LMQxR5YRfLmjCBdXQL3XOOQcGyez3hIv9Hmkk9Qcswn
-         BxQvfLOScLeHlnKv4MPCW/egRGUiIAei68p7yH4P5nrWUOsjxEnLojV0nDm308RKYn
-         NCDecNzthjJjQ==
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fscrypt@vger.kernel.org
-Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        with ESMTP id S229695AbiLNXKw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Dec 2022 18:10:52 -0500
+Received: from mail-pj1-x102e.google.com (mail-pj1-x102e.google.com [IPv6:2607:f8b0:4864:20::102e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A25E5261A
+        for <linux-ext4@vger.kernel.org>; Wed, 14 Dec 2022 15:10:50 -0800 (PST)
+Received: by mail-pj1-x102e.google.com with SMTP id u15-20020a17090a3fcf00b002191825cf02so860235pjm.2
+        for <linux-ext4@vger.kernel.org>; Wed, 14 Dec 2022 15:10:50 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=fromorbit-com.20210112.gappssmtp.com; s=20210112;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=sfUK4j3uPSy8USYGH1WaBKFFv+FcT9DPrt0X+dJMTPs=;
+        b=cGHJXZ7+kyvGSVT2OxZJ+Jak0y2wfSb6LWPex+ngGJ8Tu3SIAg7xRRWfX1C2WHhhGL
+         7Ry8iM8UO7Clz11UW7kHc5i2VR3RNt/SOyAXzXn9qWcmuRGRz3pSwbDeNUVToTat8oo6
+         EJNqgHPLfZcPylGQ8uYwR5SamH1F51HUyj0mOwIWHc8yUc/a/usMejiDPfPBvvpe2gOc
+         /B4BTGH6TJhwb+JOs6UXtePadcmVKAocK94oAl9pBXh5bdIAY6VkTorkgeOy4eIudSYp
+         o0jMzhNkhgRAjCA+6PjoIIraN4O1TW0oNJ4bqsBzlyaQdWs0nU8lfoL5pasMX84NTPRF
+         UWRg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=sfUK4j3uPSy8USYGH1WaBKFFv+FcT9DPrt0X+dJMTPs=;
+        b=UNObcxnL/+V2qBwPYDE7JaeTuLqTwocrs0Z6+XbhT7ZxaotzIQUXBKG4ZXoYnQolmf
+         9fFQNB7CeXeW78K57uWDPDYjk8MMbvNW70D1HXftHXr7il1ATxyorSCgdyHhNyooIzTx
+         3min/24DtlNtejer2AFuUDHIkQPfDnvyBaW8+sJdJkjSbhiRs9uUdKA2w9rAVnFTraE/
+         rLsXfW/GNMkzyaSf5YEwu5ZOMr2oorFqcOzjbNLMY9EXbFguYvmKgdzrq2SFCISB47bG
+         bzj3LQ3iThaf2jxv1BYnhtwKG47LuVQQhVx2ndWjE/bcjqTfLfKLYGY1jV/Vm7wVJ4yS
+         WRHQ==
+X-Gm-Message-State: ANoB5pmBSNGRUyqELF7OcyF8eWR+glzKIHhfgdjo81FFliuZ2vhOdumU
+        gEkrgsUKCv4yFSlDO7oongnqRw==
+X-Google-Smtp-Source: AA0mqf7404FQ+x51OsOEaz7mEzZOPK6J+OFvmRUDGC16ye2topm2HL7s7i7K+EGGKyoECUiGW5VY+Q==
+X-Received: by 2002:a05:6a20:3b01:b0:ac:2559:35f6 with SMTP id c1-20020a056a203b0100b000ac255935f6mr30989367pzh.28.1671059450001;
+        Wed, 14 Dec 2022 15:10:50 -0800 (PST)
+Received: from dread.disaster.area (pa49-181-138-158.pa.nsw.optusnet.com.au. [49.181.138.158])
+        by smtp.gmail.com with ESMTPSA id rm10-20020a17090b3eca00b00218fba260e2sm1870310pjb.43.2022.12.14.15.10.49
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 14 Dec 2022 15:10:49 -0800 (PST)
+Received: from dave by dread.disaster.area with local (Exim 4.92.3)
+        (envelope-from <david@fromorbit.com>)
+        id 1p5ati-008W7d-Nw; Thu, 15 Dec 2022 10:10:46 +1100
+Date:   Thu, 15 Dec 2022 10:10:46 +1100
+From:   Dave Chinner <david@fromorbit.com>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
         linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: [PATCH 2/4] fsverity: optimize fsverity_prepare_setattr() on non-verity files
-Date:   Wed, 14 Dec 2022 14:43:02 -0800
-Message-Id: <20221214224304.145712-3-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.38.1
-In-Reply-To: <20221214224304.145712-1-ebiggers@kernel.org>
+Subject: Re: [PATCH 0/4] fsverity cleanups
+Message-ID: <20221214231046.GB1971568@dread.disaster.area>
 References: <20221214224304.145712-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20221214224304.145712-1-ebiggers@kernel.org>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+On Wed, Dec 14, 2022 at 02:43:00PM -0800, Eric Biggers wrote:
+> This series implements a few cleanups that have been suggested 
+> in the thread "[RFC PATCH 00/11] fs-verity support for XFS"
+> (https://lore.kernel.org/linux-fsdevel/20221213172935.680971-1-aalbersh@redhat.com/T/#u).
+> 
+> This applies to mainline (commit 93761c93e9da).
+> 
+> Eric Biggers (4):
+>   fsverity: optimize fsverity_file_open() on non-verity files
+>   fsverity: optimize fsverity_prepare_setattr() on non-verity files
+>   fsverity: optimize fsverity_cleanup_inode() on non-verity files
+>   fsverity: pass pos and size to ->write_merkle_tree_block
+> 
+>  fs/btrfs/verity.c        | 19 ++++-------
+>  fs/ext4/verity.c         |  6 ++--
+>  fs/f2fs/verity.c         |  6 ++--
+>  fs/verity/enable.c       |  4 +--
+>  fs/verity/open.c         | 46 ++++---------------------
+>  include/linux/fsverity.h | 74 +++++++++++++++++++++++++++++++++-------
+>  6 files changed, 84 insertions(+), 71 deletions(-)
 
-Make fsverity_prepare_setattr() an inline function that does the
-IS_VERITY() check, then (if needed) calls __fsverity_prepare_setattr()
-to do the real work.  This reduces the overhead on non-verity files.
+The whole series looks fairly sane to me.
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/verity/open.c         | 16 +++-------------
- include/linux/fsverity.h | 26 ++++++++++++++++++++++----
- 2 files changed, 25 insertions(+), 17 deletions(-)
+Acked-by: Dave Chinner <dchinner@redhat.com>
 
-diff --git a/fs/verity/open.c b/fs/verity/open.c
-index 673d6db9abdf..e1e531d5e09a 100644
---- a/fs/verity/open.c
-+++ b/fs/verity/open.c
-@@ -337,26 +337,16 @@ int __fsverity_file_open(struct inode *inode, struct file *filp)
- }
- EXPORT_SYMBOL_GPL(__fsverity_file_open);
- 
--/**
-- * fsverity_prepare_setattr() - prepare to change a verity inode's attributes
-- * @dentry: dentry through which the inode is being changed
-- * @attr: attributes to change
-- *
-- * Verity files are immutable, so deny truncates.  This isn't covered by the
-- * open-time check because sys_truncate() takes a path, not a file descriptor.
-- *
-- * Return: 0 on success, -errno on failure
-- */
--int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr)
-+int __fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr)
- {
--	if (IS_VERITY(d_inode(dentry)) && (attr->ia_valid & ATTR_SIZE)) {
-+	if (attr->ia_valid & ATTR_SIZE) {
- 		pr_debug("Denying truncate of verity file (ino %lu)\n",
- 			 d_inode(dentry)->i_ino);
- 		return -EPERM;
- 	}
- 	return 0;
- }
--EXPORT_SYMBOL_GPL(fsverity_prepare_setattr);
-+EXPORT_SYMBOL_GPL(__fsverity_prepare_setattr);
- 
- /**
-  * fsverity_cleanup_inode() - free the inode's verity info, if present
-diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
-index 326bf2e2b903..84b498fff7ec 100644
---- a/include/linux/fsverity.h
-+++ b/include/linux/fsverity.h
-@@ -149,7 +149,7 @@ int fsverity_get_digest(struct inode *inode,
- /* open.c */
- 
- int __fsverity_file_open(struct inode *inode, struct file *filp);
--int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr);
-+int __fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr);
- void fsverity_cleanup_inode(struct inode *inode);
- 
- /* read_metadata.c */
-@@ -198,10 +198,10 @@ static inline int __fsverity_file_open(struct inode *inode, struct file *filp)
- 	return -EOPNOTSUPP;
- }
- 
--static inline int fsverity_prepare_setattr(struct dentry *dentry,
--					   struct iattr *attr)
-+static inline int __fsverity_prepare_setattr(struct dentry *dentry,
-+					     struct iattr *attr)
- {
--	return IS_VERITY(d_inode(dentry)) ? -EOPNOTSUPP : 0;
-+	return -EOPNOTSUPP;
- }
- 
- static inline void fsverity_cleanup_inode(struct inode *inode)
-@@ -274,4 +274,22 @@ static inline int fsverity_file_open(struct inode *inode, struct file *filp)
- 	return 0;
- }
- 
-+/**
-+ * fsverity_prepare_setattr() - prepare to change a verity inode's attributes
-+ * @dentry: dentry through which the inode is being changed
-+ * @attr: attributes to change
-+ *
-+ * Verity files are immutable, so deny truncates.  This isn't covered by the
-+ * open-time check because sys_truncate() takes a path, not a file descriptor.
-+ *
-+ * Return: 0 on success, -errno on failure
-+ */
-+static inline int fsverity_prepare_setattr(struct dentry *dentry,
-+					   struct iattr *attr)
-+{
-+	if (IS_VERITY(d_inode(dentry)))
-+		return __fsverity_prepare_setattr(dentry, attr);
-+	return 0;
-+}
-+
- #endif	/* _LINUX_FSVERITY_H */
 -- 
-2.38.1
-
+Dave Chinner
+david@fromorbit.com
