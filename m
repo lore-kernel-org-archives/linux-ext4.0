@@ -2,319 +2,152 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 56038C001B2
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Dec 2022 22:00:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 446F7C4708D
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Dec 2022 22:45:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229647AbiLNWAm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 14 Dec 2022 17:00:42 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44520 "EHLO
+        id S229562AbiLNWpo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 14 Dec 2022 17:45:44 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36350 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229737AbiLNWAl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Dec 2022 17:00:41 -0500
-Received: from mail-pj1-x102b.google.com (mail-pj1-x102b.google.com [IPv6:2607:f8b0:4864:20::102b])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C906810DF
-        for <linux-ext4@vger.kernel.org>; Wed, 14 Dec 2022 14:00:38 -0800 (PST)
-Received: by mail-pj1-x102b.google.com with SMTP id q17-20020a17090aa01100b002194cba32e9so718790pjp.1
-        for <linux-ext4@vger.kernel.org>; Wed, 14 Dec 2022 14:00:38 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20210112.gappssmtp.com; s=20210112;
-        h=references:to:cc:in-reply-to:date:subject:mime-version:message-id
-         :from:from:to:cc:subject:date:message-id:reply-to;
-        bh=8FpNnOPc5sS3j7iqk2fBcYakjdmIg1vo7RmQml45Yvs=;
-        b=ujZ4JgJ/MUjDYOqXKckEiwC6dGSbYWrtWcMqaGWBpomwg9PuAv2P8Yw7RW+jDmwtf2
-         BQyjfXc6ju2spo25nFb7qDCm4Pf5K7D/YwcmSf0jzEdSArsorXgzmc0mllK5APD85kqd
-         Q87y88grCbvvIUjZJ8oGhLxANNzXRJXnU7T2dx4NJ9cr4Jzq8831PIxs01RTHQEaB6xD
-         IQ+iNVXf54dymZhsAkvvbGbmK38ZQxpCCryl1d44m2lH7zhkVrX3W+k8CkqB5X0LtZe9
-         2TC2+TN9XOIYe7IFu6M8o5V4hmaNFYg3w1Sj8keD5iqf47yTNLyHee482QncU+40RmbR
-         bcmQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=references:to:cc:in-reply-to:date:subject:mime-version:message-id
-         :from:x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=8FpNnOPc5sS3j7iqk2fBcYakjdmIg1vo7RmQml45Yvs=;
-        b=BP17AdFuYxV3vj+wDve5+pxmN2RLV948ZyMMgQoreGwnmPPKAngxfPTVNJhN79kZnR
-         8A5SfXO8fBktXEzKOl+ckZwIdbdfvrehNuhnNdL9iWd8fgyB1T+pBKU3+fhr/W6ipzOY
-         o+uUB7cMZVnBTmcjN+psMWl+ClIqC1FxhYR2uC0dAs+N7WCTlEToihQTvOuOPojqCSDw
-         lLTcwP6mUHzzwmfRreEy/Iz1nH0awK3/eulFUattymbn+L3TXbeidhhuPDfeRUQluJ+W
-         umIjKXCsLqyWoIrZ0coMSeiUOoqL/2/MtSimoeprqJdgy9jXCmPkxlEMoGwwCX7AZone
-         HdkQ==
-X-Gm-Message-State: ANoB5pmkVJWkzbQiEgVdOqSK2Jl16sGMuySnVD0VnCvfeKWQ2KTkteSs
-        L4ROzT0jUKh4vr91h+hQfKhTJJnMxoeMBV+l
-X-Google-Smtp-Source: AA0mqf7khqA6Hh94X9toNjX2xMQlfDv8z4BziyJXHgGKMjhxPwg0X/3n1Vqr8beiqyCLc96l/kxQWA==
-X-Received: by 2002:a17:902:eb84:b0:189:e6a5:6bf5 with SMTP id q4-20020a170902eb8400b00189e6a56bf5mr29392465plg.4.1671055238165;
-        Wed, 14 Dec 2022 14:00:38 -0800 (PST)
-Received: from cabot.adilger.int (S01061cabc081bf83.cg.shawcable.net. [70.77.221.9])
-        by smtp.gmail.com with ESMTPSA id d6-20020a170902654600b0017f9db0236asm2337773pln.82.2022.12.14.14.00.36
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 14 Dec 2022 14:00:37 -0800 (PST)
-From:   Andreas Dilger <adilger@dilger.ca>
-Message-Id: <2FEE2257-0486-4C62-8482-731AA796AB2E@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_C3DF419D-EEF3-4EE1-B844-992BDF0D6B18";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH] ext4: improve xattr consistency checking and error
- reporting
-Date:   Wed, 14 Dec 2022 15:00:34 -0700
-In-Reply-To: <20221214200818.870087-1-tytso@mit.edu>
-Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        yebin@huaweicloud.com
-To:     Theodore Ts'o <tytso@mit.edu>
-References: <20221214200818.870087-1-tytso@mit.edu>
-X-Mailer: Apple Mail (2.3273)
+        with ESMTP id S229462AbiLNWpn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Dec 2022 17:45:43 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7601DE096;
+        Wed, 14 Dec 2022 14:45:42 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 0F46961C2E;
+        Wed, 14 Dec 2022 22:45:42 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 46DCBC433EF;
+        Wed, 14 Dec 2022 22:45:41 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1671057941;
+        bh=PpIDTRfGV+7IlKXrZnNL1XI8NOCD138aZ//MeOn5bJs=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=bIxb3U19TdTMW/XjZRbF5iSsWfBW1G2AXMyGoj7Rdb/4gR2zYLH0BcqXN+abh/pRv
+         M7fnNFvC1yHuSa/Rvuuild7RK7E4EbaNcmm+Ik+HNTLRUeoW0otySnAkIkZ/vv6vJt
+         Jujbk5HQA56SgDMPGaAK7Eg4z8F2fnlagjLJB2zoExMnvKcwnJ4yXR07hZzEVZTVQH
+         dgOPGr6mDo4GxlfwomIGxxLJPigyEUCALpmIEEb/mpEXbjGR9ixUq6wOOtWgIzawTk
+         zhCMPqNy34vmxw2ZYbKx+2WRBdFtYz3IfQT8BKzOGIRKH1c2VK0ptVVK5UowjlbROW
+         s9TwIHGJ4YSbg==
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-fscrypt@vger.kernel.org
+Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+Subject: [PATCH 1/4] fsverity: optimize fsverity_file_open() on non-verity files
+Date:   Wed, 14 Dec 2022 14:43:01 -0800
+Message-Id: <20221214224304.145712-2-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.38.1
+In-Reply-To: <20221214224304.145712-1-ebiggers@kernel.org>
+References: <20221214224304.145712-1-ebiggers@kernel.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+From: Eric Biggers <ebiggers@google.com>
 
---Apple-Mail=_C3DF419D-EEF3-4EE1-B844-992BDF0D6B18
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Make fsverity_file_open() an inline function that does the IS_VERITY()
+check, then (if needed) calls __fsverity_file_open() to do the real
+work.  This reduces the overhead on non-verity files.
 
-On Dec 14, 2022, at 1:08 PM, Theodore Ts'o <tytso@mit.edu> wrote:
->=20
-> Refactor the in-inode and xattr block consistency checking, and report
-> more fine-grained reports of the consistency problems.  Also add more
-> consistency checks for ea_inode number.
->=20
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/verity/open.c         | 20 ++------------------
+ include/linux/fsverity.h | 26 +++++++++++++++++++++++---
+ 2 files changed, 25 insertions(+), 21 deletions(-)
 
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+diff --git a/fs/verity/open.c b/fs/verity/open.c
+index 81ff94442f7b..673d6db9abdf 100644
+--- a/fs/verity/open.c
++++ b/fs/verity/open.c
+@@ -325,24 +325,8 @@ static int ensure_verity_info(struct inode *inode)
+ 	return err;
+ }
+ 
+-/**
+- * fsverity_file_open() - prepare to open a verity file
+- * @inode: the inode being opened
+- * @filp: the struct file being set up
+- *
+- * When opening a verity file, deny the open if it is for writing.  Otherwise,
+- * set up the inode's ->i_verity_info if not already done.
+- *
+- * When combined with fscrypt, this must be called after fscrypt_file_open().
+- * Otherwise, we won't have the key set up to decrypt the verity metadata.
+- *
+- * Return: 0 on success, -errno on failure
+- */
+-int fsverity_file_open(struct inode *inode, struct file *filp)
++int __fsverity_file_open(struct inode *inode, struct file *filp)
+ {
+-	if (!IS_VERITY(inode))
+-		return 0;
+-
+ 	if (filp->f_mode & FMODE_WRITE) {
+ 		pr_debug("Denying opening verity file (ino %lu) for write\n",
+ 			 inode->i_ino);
+@@ -351,7 +335,7 @@ int fsverity_file_open(struct inode *inode, struct file *filp)
+ 
+ 	return ensure_verity_info(inode);
+ }
+-EXPORT_SYMBOL_GPL(fsverity_file_open);
++EXPORT_SYMBOL_GPL(__fsverity_file_open);
+ 
+ /**
+  * fsverity_prepare_setattr() - prepare to change a verity inode's attributes
+diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
+index 40f14e5fed9d..326bf2e2b903 100644
+--- a/include/linux/fsverity.h
++++ b/include/linux/fsverity.h
+@@ -148,7 +148,7 @@ int fsverity_get_digest(struct inode *inode,
+ 
+ /* open.c */
+ 
+-int fsverity_file_open(struct inode *inode, struct file *filp);
++int __fsverity_file_open(struct inode *inode, struct file *filp);
+ int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr);
+ void fsverity_cleanup_inode(struct inode *inode);
+ 
+@@ -193,9 +193,9 @@ static inline int fsverity_get_digest(struct inode *inode,
+ 
+ /* open.c */
+ 
+-static inline int fsverity_file_open(struct inode *inode, struct file *filp)
++static inline int __fsverity_file_open(struct inode *inode, struct file *filp)
+ {
+-	return IS_VERITY(inode) ? -EOPNOTSUPP : 0;
++	return -EOPNOTSUPP;
+ }
+ 
+ static inline int fsverity_prepare_setattr(struct dentry *dentry,
+@@ -254,4 +254,24 @@ static inline bool fsverity_active(const struct inode *inode)
+ 	return fsverity_get_info(inode) != NULL;
+ }
+ 
++/**
++ * fsverity_file_open() - prepare to open a verity file
++ * @inode: the inode being opened
++ * @filp: the struct file being set up
++ *
++ * When opening a verity file, deny the open if it is for writing.  Otherwise,
++ * set up the inode's ->i_verity_info if not already done.
++ *
++ * When combined with fscrypt, this must be called after fscrypt_file_open().
++ * Otherwise, we won't have the key set up to decrypt the verity metadata.
++ *
++ * Return: 0 on success, -errno on failure
++ */
++static inline int fsverity_file_open(struct inode *inode, struct file *filp)
++{
++	if (IS_VERITY(inode))
++		return __fsverity_file_open(inode, filp);
++	return 0;
++}
++
+ #endif	/* _LINUX_FSVERITY_H */
+-- 
+2.38.1
 
-A minor nit below, but no reason not to hold up the patch.
-
-> static int
-> -ext4_xattr_check_entries(struct ext4_xattr_entry *entry, void *end,
-> -			 void *value_start)
-> +check_xattrs(struct inode *inode, struct buffer_head *bh,
-> +	     struct ext4_xattr_entry *entry, void *end, void =
-*value_start,
-> +	     const char *function, unsigned int line)
-> {
-> 	struct ext4_xattr_entry *e =3D entry;
-
-"e" isn't a great variable name (though it predates the patch), maybe =
-"last"
-or "last_entry" is better since that is what it is used for later?
-
-> +	int err =3D -EFSCORRUPTED;
-> +	char *err_str;
-> +
-> +	if (bh) {
-> +		if (BHDR(bh)->h_magic !=3D cpu_to_le32(EXT4_XATTR_MAGIC) =
-||
-> +		    BHDR(bh)->h_blocks !=3D cpu_to_le32(1)) {
-> +			err_str =3D "invalid header";
-> +			goto errout;
-> +		}
-> +		if (buffer_verified(bh))
-> +			return 0;
-> +		if (!ext4_xattr_block_csum_verify(inode, bh)) {
-> +			err =3D -EFSBADCRC;
-> +			err_str =3D "invalid checksum";
-> +			goto errout;
-> +		}
-> +	} else {
-> +		struct ext4_xattr_ibody_header *header =3D value_start;
-> +
-> +		header -=3D 1;
-> +		if (end - (void *)header < sizeof(*header) + =
-sizeof(u32)) {
-> +			err_str =3D "in-inode xattr block too small";
-> +			goto errout;
-> +		}
-> +		if (header->h_magic !=3D cpu_to_le32(EXT4_XATTR_MAGIC)) =
-{
-> +			err_str =3D "bad magic number in in-inode =
-xattr";
-> +			goto errout;
-> +		}
-> +	}
->=20
-> 	/* Find the end of the names list */
-> 	while (!IS_LAST_ENTRY(e)) {
-> 		struct ext4_xattr_entry *next =3D EXT4_XATTR_NEXT(e);
-> -		if ((void *)next >=3D end)
-> -			return -EFSCORRUPTED;
-> -		if (strnlen(e->e_name, e->e_name_len) !=3D =
-e->e_name_len)
-> -			return -EFSCORRUPTED;
-> +		if ((void *)next >=3D end) {
-> +			err_str =3D "e_name out of bounds";
-> +			goto errout;
-> +		}
-> +		if (strnlen(e->e_name, e->e_name_len) !=3D =
-e->e_name_len) {
-> +			err_str =3D "bad e_name length";
-> +			goto errout;
-> +		}
-> 		e =3D next;
-> 	}
->=20
-> 	/* Check the values */
-> 	while (!IS_LAST_ENTRY(entry)) {
-> 		u32 size =3D le32_to_cpu(entry->e_value_size);
-> +		unsigned long ea_ino =3D =
-le32_to_cpu(entry->e_value_inum);
->=20
-> -		if (size > EXT4_XATTR_SIZE_MAX)
-> -			return -EFSCORRUPTED;
-> +		if (!ext4_has_feature_ea_inode(inode->i_sb) && ea_ino) {
-> +			err_str =3D "ea_inode specified without ea_inode =
-feature enabled";
-> +			goto errout;
-> +		}
-> +		if (ea_ino && ((ea_ino =3D=3D EXT4_ROOT_INO) ||
-> +			       !ext4_valid_inum(inode->i_sb, ea_ino))) {
-> +			err_str =3D "invalid ea_ino";
-> +			goto errout;
-> +		}
-> +		if (size > EXT4_XATTR_SIZE_MAX) {
-> +			err_str =3D "e_value size too large";
-> +			goto errout;
-> +		}
->=20
-> 		if (size !=3D 0 && entry->e_value_inum =3D=3D 0) {
-> 			u16 offs =3D le16_to_cpu(entry->e_value_offs);
-> @@ -214,66 +260,54 @@ ext4_xattr_check_entries(struct ext4_xattr_entry =
-*entry, void *end,
-> 			 * the padded and unpadded sizes, since the size =
-may
-> 			 * overflow to 0 when adding padding.
-> 			 */
-> -			if (offs > end - value_start)
-> -				return -EFSCORRUPTED;
-> +			if (offs > end - value_start) {
-> +				err_str =3D "e_value out of bounds";
-> +				goto errout;
-> +			}
-> 			value =3D value_start + offs;
-> 			if (value < (void *)e + sizeof(u32) ||
-> 			    size > end - value ||
-> -			    EXT4_XATTR_SIZE(size) > end - value)
-> -				return -EFSCORRUPTED;
-> +			    EXT4_XATTR_SIZE(size) > end - value) {
-> +				err_str =3D "overlapping e_value ";
-> +				goto errout;
-> +			}
-> 		}
-> 		entry =3D EXT4_XATTR_NEXT(entry);
-> 	}
-> -
-> +	if (bh)
-> +		set_buffer_verified(bh);
-> 	return 0;
-> +
-> +errout:
-> +	if (bh)
-> +		__ext4_error_inode(inode, function, line, 0, -err,
-> +				   "corrupted xattr block %llu: %s",
-> +				   (unsigned long long) bh->b_blocknr,
-> +				   err_str);
-> +	else
-> +		__ext4_error_inode(inode, function, line, 0, -err,
-> +				   "corrupted in-inode xattr: %s", =
-err_str);
-> +	return err;
-> }
->=20
-> static inline int
-> __ext4_xattr_check_block(struct inode *inode, struct buffer_head *bh,
-> 			 const char *function, unsigned int line)
-> {
-> -	int error =3D -EFSCORRUPTED;
-> -
-> -	if (BHDR(bh)->h_magic !=3D cpu_to_le32(EXT4_XATTR_MAGIC) ||
-> -	    BHDR(bh)->h_blocks !=3D cpu_to_le32(1))
-> -		goto errout;
-> -	if (buffer_verified(bh))
-> -		return 0;
-> -
-> -	error =3D -EFSBADCRC;
-> -	if (!ext4_xattr_block_csum_verify(inode, bh))
-> -		goto errout;
-> -	error =3D ext4_xattr_check_entries(BFIRST(bh), bh->b_data + =
-bh->b_size,
-> -					 bh->b_data);
-> -errout:
-> -	if (error)
-> -		__ext4_error_inode(inode, function, line, 0, -error,
-> -				   "corrupted xattr block %llu",
-> -				   (unsigned long long) bh->b_blocknr);
-> -	else
-> -		set_buffer_verified(bh);
-> -	return error;
-> +	return check_xattrs(inode, bh, BFIRST(bh), bh->b_data + =
-bh->b_size,
-> +			    bh->b_data, function, line);
-> }
->=20
-> #define ext4_xattr_check_block(inode, bh) \
-> 	__ext4_xattr_check_block((inode), (bh),  __func__, __LINE__)
->=20
->=20
-> -static int
-> +static inline int
-> __xattr_check_inode(struct inode *inode, struct =
-ext4_xattr_ibody_header *header,
-> 			 void *end, const char *function, unsigned int =
-line)
-> {
-> -	int error =3D -EFSCORRUPTED;
-> -
-> -	if (end - (void *)header < sizeof(*header) + sizeof(u32) ||
-> -	    (header->h_magic !=3D cpu_to_le32(EXT4_XATTR_MAGIC)))
-> -		goto errout;
-> -	error =3D ext4_xattr_check_entries(IFIRST(header), end, =
-IFIRST(header));
-> -errout:
-> -	if (error)
-> -		__ext4_error_inode(inode, function, line, 0, -error,
-> -				   "corrupted in-inode xattr");
-> -	return error;
-> +	return check_xattrs(inode, NULL, IFIRST(header), end, =
-IFIRST(header),
-> +			    function, line);
-> }
->=20
-> #define xattr_check_inode(inode, header, end) \
-> --
-> 2.31.0
->=20
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_C3DF419D-EEF3-4EE1-B844-992BDF0D6B18
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAmOaR4IACgkQcqXauRfM
-H+AarQ/+LMhkNlIpR7HMTo8eKEJJ9C7wxVhJ0UL2HdPivrXUg0DDfu177HL57P89
-6tCd8AcTWRnvHp9Qpq0+r0aSbQvXYH+ATMi919fYW6wdIXDRIF4G7Jv3AKP4RAzP
-4pSq5nvipa6rrW9JuJLpdDX39wKZaAYTCtwf9442RilaO9rEx/IdypLkIkXyRPuC
-qHiHRtfFEBDFUDFCGdLgS+sIFzOpcAvoBkbodzo8H8y1cksqIY1DaYHz2kf5sTOA
-RNxfyMJKIgj8AnpDcNSl9lb9CloFux4DuqqYEGOOGC+RQ5BDg8+G0bfCICzp43jX
-rM5kXL/UvZCoB0bc4L4KGH+/RQMOEO3zVeEZhlmP597av4Bv+8PAl4zSw69XFQwO
-i8kcsCke242MDA72KGy5RSJsAkKA0/dSYoMfxkJ6n07B4tqOxk6Goylw4Me+HPH0
-QndrCAOY0tfAznejHCbg2kpJmwuOjWgP/L1DcNc2KmvW/+nTE7dXtt+P3boDlbsE
-nkWuTq2AFOn8zMvYnteJK/xp2j7jRiUt4EfBN2EAlq5Khj8sQeAP1puzB2OAOiW7
-gfGhp2RcDAhKfxiefpCeWBgeMzQwfE9IFo+yo8AVnq4YXXCsSlcXPYNoEbyjns18
-eBnZ3CvyJvUF10zRUHfVWJ4G7j5XGF2IXrZbSsm5zFSCmEFprY0=
-=DsKs
------END PGP SIGNATURE-----
-
---Apple-Mail=_C3DF419D-EEF3-4EE1-B844-992BDF0D6B18--
