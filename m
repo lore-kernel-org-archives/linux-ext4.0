@@ -2,41 +2,41 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4C8F6C3DA71
-	for <linux-ext4@archiver.kernel.org>; Fri, 16 Dec 2022 15:07:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AEBB2C3DA78
+	for <linux-ext4@archiver.kernel.org>; Fri, 16 Dec 2022 15:08:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231337AbiLPPH6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 16 Dec 2022 10:07:58 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40318 "EHLO
+        id S231297AbiLPPH7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 16 Dec 2022 10:07:59 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39050 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231279AbiLPPHa (ORCPT
+        with ESMTP id S231292AbiLPPHa (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Dec 2022 10:07:30 -0500
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DF2B013F44
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Dec 2022 07:06:42 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 81E8865B6
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Dec 2022 07:06:39 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1671203202;
+        s=mimecast20190719; t=1671203198;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=BZgSNEk7ohWBknf3nvFSN56CDLafXV5s1mvKpkk+zzc=;
-        b=coy2XM1AnTOfy6NyJkMYW5vH8S/r5GhdHHVZ4aORkKwp8ij5gBFraxjJ/LIlHJhHN1zc4H
-        dOq7L4JXfHBQdpZleIKr9by7CH0Nbs4rhys4+lwAA0t8Qhv13lqsfA4NSTskqrgAxGYbjZ
-        h0NNlhpewuy10KVdmkh3yy6mpPguHa4=
+        bh=VO+moG/oEppC7fzqfjLDfJ6GvGE7XkJyRsj4uh85qjM=;
+        b=ixX9ZZpB8zvX0z3ELt0L3bjXPbZckDX7aXj9crg4SnczXmFo3Y4zU5WU1FP2VdVXxGEI1N
+        p0TU4GHh11dyo8to2OPqQSXhzBguAXJ+VdBzHo6XmH4QlDG4omXGTrwoADYHjtgA/QUhfv
+        K9Od+gHDxXaHw1JBz/pFWcx9a8D8uik=
 Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
  [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-422-FlOPzOmuOOS6mhfGXN7I-w-1; Fri, 16 Dec 2022 10:06:40 -0500
-X-MC-Unique: FlOPzOmuOOS6mhfGXN7I-w-1
+ us-mta-424-72lxkenAM3Cbt1AoMuZRSg-1; Fri, 16 Dec 2022 10:06:35 -0500
+X-MC-Unique: 72lxkenAM3Cbt1AoMuZRSg-1
 Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.rdu2.redhat.com [10.11.54.7])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 1B27710119EB;
-        Fri, 16 Dec 2022 15:06:40 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id A7461858F09;
+        Fri, 16 Dec 2022 15:06:34 +0000 (UTC)
 Received: from pasta.redhat.com (ovpn-192-182.brq.redhat.com [10.40.192.182])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id CE64C14171BE;
-        Fri, 16 Dec 2022 15:06:37 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 9912E14171C0;
+        Fri, 16 Dec 2022 15:06:32 +0000 (UTC)
 From:   Andreas Gruenbacher <agruenba@redhat.com>
 To:     Christoph Hellwig <hch@infradead.org>,
         "Darrick J . Wong" <djwong@kernel.org>,
@@ -45,9 +45,9 @@ To:     Christoph Hellwig <hch@infradead.org>,
 Cc:     Andreas Gruenbacher <agruenba@redhat.com>,
         linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-ext4@vger.kernel.org, cluster-devel@redhat.com
-Subject: [RFC v3 4/7] iomap: Add iomap_folio_prepare helper
-Date:   Fri, 16 Dec 2022 16:06:23 +0100
-Message-Id: <20221216150626.670312-5-agruenba@redhat.com>
+Subject: [RFC v3 2/7] iomap: Add iomap_folio_done helper
+Date:   Fri, 16 Dec 2022 16:06:21 +0100
+Message-Id: <20221216150626.670312-3-agruenba@redhat.com>
 In-Reply-To: <20221216150626.670312-1-agruenba@redhat.com>
 References: <20221216150626.670312-1-agruenba@redhat.com>
 MIME-Version: 1.0
@@ -57,81 +57,85 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add an iomap_folio_prepare() helper that gets a folio reference based on
-an iomap iterator and an offset into the address space.
+Add an iomap_folio_done() helper to encapsulate unlocking the folio,
+calling ->page_done(), and putting the folio.  This doesn't change the
+functionality.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/iomap/buffered-io.c | 27 +++++++++++++++++++++------
- include/linux/iomap.h  |  1 +
- 2 files changed, 22 insertions(+), 6 deletions(-)
+ fs/iomap/buffered-io.c | 28 +++++++++++++++++-----------
+ 1 file changed, 17 insertions(+), 11 deletions(-)
 
 diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
-index 517ad5380a62..f0f167ca1b2e 100644
+index 347010c6a652..8ce9abb29d46 100644
 --- a/fs/iomap/buffered-io.c
 +++ b/fs/iomap/buffered-io.c
-@@ -457,6 +457,26 @@ bool iomap_is_partially_uptodate(struct folio *folio, size_t from, size_t count)
+@@ -575,6 +575,19 @@ static int __iomap_write_begin(const struct iomap_iter *iter, loff_t pos,
+ 	return 0;
  }
- EXPORT_SYMBOL_GPL(iomap_is_partially_uptodate);
  
-+/**
-+ * iomap_folio_prepare - get a folio reference for writing
-+ * @iter: iteration structure
-+ * @pos: start offset of write
-+ *
-+ * Returns a locked reference to the folio at @pos, or NULL if the folio could
-+ * not be obtained.
-+ */
-+struct folio *iomap_folio_prepare(struct iomap_iter *iter, loff_t pos)
++static void iomap_folio_done(struct iomap_iter *iter, loff_t pos, size_t ret,
++		struct folio *folio)
 +{
-+	unsigned fgp = FGP_LOCK | FGP_WRITE | FGP_CREAT | FGP_STABLE | FGP_NOFS;
++	const struct iomap_page_ops *page_ops = iter->iomap.page_ops;
 +
-+	if (iter->flags & IOMAP_NOWAIT)
-+		fgp |= FGP_NOWAIT;
-+
-+	return __filemap_get_folio(iter->inode->i_mapping, pos >> PAGE_SHIFT,
-+			fgp, mapping_gfp_mask(iter->inode->i_mapping));
++	if (folio)
++		folio_unlock(folio);
++	if (page_ops && page_ops->page_done)
++		page_ops->page_done(iter->inode, pos, ret, &folio->page);
++	if (folio)
++		folio_put(folio);
 +}
-+EXPORT_SYMBOL(iomap_folio_prepare);
 +
- bool iomap_release_folio(struct folio *folio, gfp_t gfp_flags)
+ static int iomap_write_begin_inline(const struct iomap_iter *iter,
+ 		struct folio *folio)
  {
- 	trace_iomap_release_folio(folio->mapping->host, folio_pos(folio),
-@@ -603,12 +623,8 @@ static int iomap_write_begin(struct iomap_iter *iter, loff_t pos,
- 	const struct iomap_page_ops *page_ops = iter->iomap.page_ops;
- 	const struct iomap *srcmap = iomap_iter_srcmap(iter);
- 	struct folio *folio;
--	unsigned fgp = FGP_LOCK | FGP_WRITE | FGP_CREAT | FGP_STABLE | FGP_NOFS;
- 	int status = 0;
- 
--	if (iter->flags & IOMAP_NOWAIT)
--		fgp |= FGP_NOWAIT;
--
- 	BUG_ON(pos + len > iter->iomap.offset + iter->iomap.length);
- 	if (srcmap != &iter->iomap)
- 		BUG_ON(pos + len > srcmap->offset + srcmap->length);
-@@ -625,8 +641,7 @@ static int iomap_write_begin(struct iomap_iter *iter, loff_t pos,
- 			return status;
- 	}
- 
--	folio = __filemap_get_folio(iter->inode->i_mapping, pos >> PAGE_SHIFT,
--			fgp, mapping_gfp_mask(iter->inode->i_mapping));
-+	folio = iomap_folio_prepare(iter, pos);
+@@ -616,7 +629,8 @@ static int iomap_write_begin(struct iomap_iter *iter, loff_t pos,
+ 			fgp, mapping_gfp_mask(iter->inode->i_mapping));
  	if (!folio) {
  		status = (iter->flags & IOMAP_NOWAIT) ? -EAGAIN : -ENOMEM;
- 		iomap_folio_done(iter, pos, 0, NULL);
-diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-index 743e2a909162..0bf16ef22d81 100644
---- a/include/linux/iomap.h
-+++ b/include/linux/iomap.h
-@@ -261,6 +261,7 @@ int iomap_file_buffered_write_punch_delalloc(struct inode *inode,
- int iomap_read_folio(struct folio *folio, const struct iomap_ops *ops);
- void iomap_readahead(struct readahead_control *, const struct iomap_ops *ops);
- bool iomap_is_partially_uptodate(struct folio *, size_t from, size_t count);
-+struct folio *iomap_folio_prepare(struct iomap_iter *iter, loff_t pos);
- bool iomap_release_folio(struct folio *folio, gfp_t gfp_flags);
- void iomap_invalidate_folio(struct folio *folio, size_t offset, size_t len);
- int iomap_file_unshare(struct inode *inode, loff_t pos, loff_t len,
+-		goto out_no_page;
++		iomap_folio_done(iter, pos, 0, NULL);
++		return status;
+ 	}
+ 
+ 	/*
+@@ -656,13 +670,9 @@ static int iomap_write_begin(struct iomap_iter *iter, loff_t pos,
+ 	return 0;
+ 
+ out_unlock:
+-	folio_unlock(folio);
+-	folio_put(folio);
++	iomap_folio_done(iter, pos, 0, folio);
+ 	iomap_write_failed(iter->inode, pos, len);
+ 
+-out_no_page:
+-	if (page_ops && page_ops->page_done)
+-		page_ops->page_done(iter->inode, pos, 0, NULL);
+ 	return status;
+ }
+ 
+@@ -712,7 +722,6 @@ static size_t iomap_write_end_inline(const struct iomap_iter *iter,
+ static size_t iomap_write_end(struct iomap_iter *iter, loff_t pos, size_t len,
+ 		size_t copied, struct folio *folio)
+ {
+-	const struct iomap_page_ops *page_ops = iter->iomap.page_ops;
+ 	const struct iomap *srcmap = iomap_iter_srcmap(iter);
+ 	loff_t old_size = iter->inode->i_size;
+ 	size_t ret;
+@@ -736,11 +745,8 @@ static size_t iomap_write_end(struct iomap_iter *iter, loff_t pos, size_t len,
+ 		iter->iomap.flags |= IOMAP_F_SIZE_CHANGED;
+ 		folio_may_straddle_isize(iter->inode, folio, old_size, pos);
+ 	}
+-	folio_unlock(folio);
+ 
+-	if (page_ops && page_ops->page_done)
+-		page_ops->page_done(iter->inode, pos, ret, &folio->page);
+-	folio_put(folio);
++	iomap_folio_done(iter, pos, ret, folio);
+ 
+ 	if (ret < len)
+ 		iomap_write_failed(iter->inode, pos + ret, len - ret);
 -- 
 2.38.1
 
