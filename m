@@ -2,82 +2,129 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F5E9C4167B
-	for <linux-ext4@archiver.kernel.org>; Fri, 23 Dec 2022 15:41:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DBFFBC46467
+	for <linux-ext4@archiver.kernel.org>; Fri, 23 Dec 2022 20:37:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236486AbiLWPld (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 23 Dec 2022 10:41:33 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53234 "EHLO
+        id S233182AbiLWUg7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 23 Dec 2022 15:36:59 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56416 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236522AbiLWPlV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Dec 2022 10:41:21 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3314A1148;
-        Fri, 23 Dec 2022 07:41:20 -0800 (PST)
+        with ESMTP id S232834AbiLWUg6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Dec 2022 15:36:58 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7236C1D309;
+        Fri, 23 Dec 2022 12:36:57 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id A9E326158B;
-        Fri, 23 Dec 2022 15:41:19 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 55F15C433D2;
-        Fri, 23 Dec 2022 15:41:15 +0000 (UTC)
-Date:   Fri, 23 Dec 2022 10:41:13 -0500
-From:   Steven Rostedt <rostedt@goodmis.org>
-To:     Linus Torvalds <torvalds@linux-foundation.org>,
-        Thomas Gleixner <tglx@linutronix.de>
-Cc:     LKML <linux-kernel@vger.kernel.org>,
-        Stephen Boyd <sboyd@kernel.org>,
-        Guenter Roeck <linux@roeck-us.net>,
-        Anna-Maria Gleixner <anna-maria@linutronix.de>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Julia Lawall <Julia.Lawall@inria.fr>, linux-sh@vger.kernel.org,
-        cgroups@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-acpi@vger.kernel.org,
-        linux-atm-general@lists.sourceforge.net, netdev@vger.kernel.org,
-        drbd-dev@lists.linbit.com, linux-bluetooth@vger.kernel.org,
-        intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
-        linux-input@vger.kernel.org, linux-leds@vger.kernel.org,
-        linux-media@vger.kernel.org, intel-wired-lan@lists.osuosl.org,
-        linux-usb@vger.kernel.org, linux-wireless@vger.kernel.org,
-        brcm80211-dev-list.pdl@broadcom.com,
-        SHA-cyfmac-dev-list@infineon.com, linux-scsi@vger.kernel.org,
-        linux-staging@lists.linux.dev, linux-ext4@vger.kernel.org,
-        linux-nilfs@vger.kernel.org, bridge@lists.linux-foundation.org,
-        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
-        lvs-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        tipc-discussion@lists.sourceforge.net, alsa-devel@alsa-project.org
-Subject: Re: [PATCH] treewide: Convert del_timer*() to timer_shutdown*()
-Message-ID: <20221223104113.0bc8d37f@gandalf.local.home>
-In-Reply-To: <20221220134519.3dd1318b@gandalf.local.home>
-References: <20221220134519.3dd1318b@gandalf.local.home>
-X-Mailer: Claws Mail 3.17.8 (GTK+ 2.24.33; x86_64-pc-linux-gnu)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 0630261EED;
+        Fri, 23 Dec 2022 20:36:57 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2C4AAC433F0;
+        Fri, 23 Dec 2022 20:36:56 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1671827816;
+        bh=iUdBvdNiQeVKQXe2/6eUg98m/CYbzWe1kqf/gTptRGs=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=o8C+LgP264e1gacZYiTziQL/GH12JCvASKiy5SXoD1HtZfRYZgkHJnfdt2sNMXL0v
+         X34BZqbXGrrKNvyzK3y83BjWzbYzV5+Q1Is+CpOJXNGdxZDkXLyjDTQUga5Q2CZpCw
+         OqVIOMlddULiPdjDnZ3AymdRzg1VekEkK3hxKn9z04fj6l6qHYAgUz5kgQN0f41Od9
+         gAi0ffWHW59SXVPnfoc5xbsnhxtkkvYOI/9lYfpiJE0UuQWSj5+gwE6Mx9N32bmvLx
+         gZsX1DoA4hCdVrVaOBmsJQJMOwKM95SYpLYribt5jmS/hpnI7h7Xb+DI4LHfKiL+mL
+         ZLwS/xH9MtKVQ==
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-fscrypt@vger.kernel.org
+Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org,
+        Andrey Albershteyn <aalbersh@redhat.com>
+Subject: [PATCH v2 01/11] fsverity: use unsigned long for level_start
+Date:   Fri, 23 Dec 2022 12:36:28 -0800
+Message-Id: <20221223203638.41293-2-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.39.0
+In-Reply-To: <20221223203638.41293-1-ebiggers@kernel.org>
+References: <20221223203638.41293-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, 20 Dec 2022 13:45:19 -0500
-Steven Rostedt <rostedt@goodmis.org> wrote:
+From: Eric Biggers <ebiggers@google.com>
 
-> [
->   Linus,
-> 
->     I ran the script against your latest master branch:
->     commit b6bb9676f2165d518b35ba3bea5f1fcfc0d969bf
-> 
->     As the timer_shutdown*() code is now in your tree, I figured
->     we can start doing the conversions. At least add the trivial ones
->     now as Thomas suggested that this gets applied at the end of the
->     merge window, to avoid conflicts with linux-next during the
->     development cycle. I can wait to Friday to run it again, and
->     resubmit.
-> 
->     What is the best way to handle this?
-> ]
+fs/verity/ isn't consistent with whether Merkle tree block indices are
+'unsigned long' or 'u64'.  There's no real point to using u64 for them,
+though, since (a) a Merkle tree with over ULONG_MAX blocks would only be
+needed for a file larger than MAX_LFS_FILESIZE, and (b) for reads, the
+status of all Merkle tree blocks has to be tracked in memory.
 
-Note, I just did a git remote update, checked out the latest, re-ran the
-script, and this patch hasn't changed.
+Therefore, let's make things a bit more efficient on 32-bit systems by
+using 'unsigned long[]' for merkle_tree_params::level_start, instead of
+'u64[]'.  Also, to be extra safe, explicitly check that there aren't
+more than ULONG_MAX Merkle tree blocks.
 
--- Steve
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/verity/fsverity_private.h |  2 +-
+ fs/verity/open.c             | 20 +++++++++++++++-----
+ 2 files changed, 16 insertions(+), 6 deletions(-)
+
+diff --git a/fs/verity/fsverity_private.h b/fs/verity/fsverity_private.h
+index a16038a0ee67d..e8b40c8000be7 100644
+--- a/fs/verity/fsverity_private.h
++++ b/fs/verity/fsverity_private.h
+@@ -52,7 +52,7 @@ struct merkle_tree_params {
+ 	 * Starting block index for each tree level, ordered from leaf level (0)
+ 	 * to root level ('num_levels - 1')
+ 	 */
+-	u64 level_start[FS_VERITY_MAX_LEVELS];
++	unsigned long level_start[FS_VERITY_MAX_LEVELS];
+ };
+ 
+ /*
+diff --git a/fs/verity/open.c b/fs/verity/open.c
+index e0ef1a6283943..83ccc3c137363 100644
+--- a/fs/verity/open.c
++++ b/fs/verity/open.c
+@@ -34,6 +34,7 @@ int fsverity_init_merkle_tree_params(struct merkle_tree_params *params,
+ 	struct fsverity_hash_alg *hash_alg;
+ 	int err;
+ 	u64 blocks;
++	u64 blocks_in_level[FS_VERITY_MAX_LEVELS];
+ 	u64 offset;
+ 	int level;
+ 
+@@ -94,17 +95,26 @@ int fsverity_init_merkle_tree_params(struct merkle_tree_params *params,
+ 		}
+ 		blocks = (blocks + params->hashes_per_block - 1) >>
+ 			 params->log_arity;
+-		/* temporarily using level_start[] to store blocks in level */
+-		params->level_start[params->num_levels++] = blocks;
++		blocks_in_level[params->num_levels++] = blocks;
+ 	}
+-	params->level0_blocks = params->level_start[0];
++	params->level0_blocks = blocks_in_level[0];
+ 
+ 	/* Compute the starting block of each level */
+ 	offset = 0;
+ 	for (level = (int)params->num_levels - 1; level >= 0; level--) {
+-		blocks = params->level_start[level];
+ 		params->level_start[level] = offset;
+-		offset += blocks;
++		offset += blocks_in_level[level];
++	}
++
++	/*
++	 * Since the data, and thus also the Merkle tree, cannot have more than
++	 * ULONG_MAX pages, hash block indices can always fit in an
++	 * 'unsigned long'.  To be safe, explicitly check for it too.
++	 */
++	if (offset > ULONG_MAX) {
++		fsverity_err(inode, "Too many blocks in Merkle tree");
++		err = -EFBIG;
++		goto out_err;
+ 	}
+ 
+ 	params->tree_size = offset << log_blocksize;
+-- 
+2.39.0
+
