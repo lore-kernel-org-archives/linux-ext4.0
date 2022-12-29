@@ -2,160 +2,175 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C7E61C4708D
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Dec 2022 08:19:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 49ECBC3DA7D
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Dec 2022 08:22:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230323AbiL2ISr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 29 Dec 2022 03:18:47 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38740 "EHLO
+        id S233158AbiL2IWs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 29 Dec 2022 03:22:48 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43702 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233233AbiL2ISC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Dec 2022 03:18:02 -0500
-Received: from mail-ed1-x52b.google.com (mail-ed1-x52b.google.com [IPv6:2a00:1450:4864:20::52b])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7A67B13F7B
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Dec 2022 00:17:13 -0800 (PST)
-Received: by mail-ed1-x52b.google.com with SMTP id c17so25738897edj.13
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Dec 2022 00:17:13 -0800 (PST)
+        with ESMTP id S230334AbiL2IWq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Dec 2022 03:22:46 -0500
+Received: from mail-ed1-x536.google.com (mail-ed1-x536.google.com [IPv6:2a00:1450:4864:20::536])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7505D11822
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Dec 2022 00:22:44 -0800 (PST)
+Received: by mail-ed1-x536.google.com with SMTP id b88so18529981edf.6
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Dec 2022 00:22:44 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=chromium.org; s=google;
         h=cc:to:subject:message-id:date:from:in-reply-to:references
          :mime-version:from:to:cc:subject:date:message-id:reply-to;
-        bh=w0NMCIz7aH+VtGKA1bV7VY9PC5bA85xBilVtidrBy8A=;
-        b=Dv54hQGxUOdBIlokyeIJGJM6C9dSb3WVRynrmpQdXN4zRwmNZbdD6fSlv8r6gBwxHw
-         c59E7zQLobJEgVpznEZ+LJjUufBU4Gm7pmBUoRzl6FXxrUcIIRktCKOSpDR7Si+60hLO
-         hbdIMmrf6vVI4hz95givK9GKzPnRV3GQ4ca5o=
+        bh=cdbk6YKET6QEGq9IebYDQMQPZF6j/6rc109njHhKlvI=;
+        b=e0zqBtvvlQD2HeN7X7P1SHKwtY1WmNXBewHhrqgYf+Cjes2XV0RT3hygT/cZ9mLgAg
+         mK9seVibJbFJISY9ylAm9410ISVQog0mR5lB7brL/TzMXjDdvh0jGSUofBvfksQXdS0N
+         Bc48MzAHtkmpJ07DAwIqs27Z+Q8lD/rkRbbfs=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=cc:to:subject:message-id:date:from:in-reply-to:references
          :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
          :reply-to;
-        bh=w0NMCIz7aH+VtGKA1bV7VY9PC5bA85xBilVtidrBy8A=;
-        b=cAjcV3hWsZAp54ftyCneMZXParH2rLffP0+aimXHUvdFYo86nenYtQAq52alV4fw+D
-         VpjQt54bSLpFYUC64+TJjvtAsQV2xLPTdQA8gmzpENF08HF4frM9jEDlc4/yNCG6xMkM
-         RCwTHHGoiNadsT9i3kTqkjkW06X/EKb+IiikkJUpq1fRV+P0IC9aMjw4QBstmQk10N/c
-         j++0zGBtxt0uWOmrW8juVd97a8NA3pBjujUEJ1rB5S2hZaknQdUMpLXM1w8AYdIMM0Ff
-         gvVVtZXCb6tiADKPZ7issWNW8Ygi71Tlpy6+JE8CVYXODuFFVoP0m0ihNw+BvfILlWd1
-         yVKQ==
-X-Gm-Message-State: AFqh2kpfpXocAk6CFA12fwm3CGIMM6mw9CPRTWxAaYblOHSynMsjCg0G
-        Mka2N8ln9jt72fE91vdscJMAJ6YHAGzl4IN6cAxnzg==
-X-Google-Smtp-Source: AMrXdXu3EKpSmLPFvCpiaXPU3Qs1Jd81kJn1isDVUcu3PP3d3QTMj7mvfgCejXWSIQqTSxpfbstvHC/uh543CNwAPrU=
-X-Received: by 2002:a05:6402:f27:b0:485:8114:9779 with SMTP id
- i39-20020a0564020f2700b0048581149779mr1316677eda.41.1672301831977; Thu, 29
- Dec 2022 00:17:11 -0800 (PST)
+        bh=cdbk6YKET6QEGq9IebYDQMQPZF6j/6rc109njHhKlvI=;
+        b=glsdAikP6pY7a8W7trGevQstvDiEIpGgg2TC/KJbqkmjNrZcz+F4FmZC2JOr/ki4e1
+         q2yQC4c5K+EVf3qdTuzO6dNTzj5bYYZnxeQlDLxj7eshuSzdt4CBtAUtRweldbUoPsWP
+         S4VUHtw5alcJjNOcdquKbE4HHSpUo1yDLpDhaxoFZ0+/anMRWJPuH/RFwLeUzHVhEnYh
+         t5S4wR8DA6dZLiZWAfVlhW1wRmO+nhLrXwlpv2Nl7NqMLfMVN48QSWT1+SCJWDanHxRM
+         qYXTNobDtoRdpnCOXbc+41ErkUopueA0pGGK9zcp8l3W5KFhlcKqxc/b26q6SLV8YmOv
+         NmNw==
+X-Gm-Message-State: AFqh2kpOp7dYSTjBlIn9fF5mUUmiWEJOI3QycOC3Ob2OGecwELJAGAxL
+        eTPP3Sj5Mo7KNCDFb1Q2FXAzl39bu8bVUkemmII7rw==
+X-Google-Smtp-Source: AMrXdXsQ7w+8O+47UlcrH/eyB1AcY+iw3zi67xHAp19yIp7KZoxSU3hceHOEF+dEFVjlYfKxx8GN7IxiiG1wtM0JlDA=
+X-Received: by 2002:a05:6402:1654:b0:47f:e663:1d78 with SMTP id
+ s20-20020a056402165400b0047fe6631d78mr1566473edx.237.1672302162986; Thu, 29
+ Dec 2022 00:22:42 -0800 (PST)
 MIME-Version: 1.0
 References: <20220915164826.1396245-1-sarthakkukreti@google.com>
- <YyQTM5PRT2o/GDwy@fedora> <CAG9=OMPHZqdDhX=M+ovdg5fa3x4-Q_1r5SWPa8pMTQw0mr5fPg@mail.gmail.com>
- <Yylvvm3zVgqpqDrm@infradead.org> <CAAKderPF5Z5QLxyEb80Y+90+eR0sfRmL-WfgXLp=eL=HxWSZ9g@mail.gmail.com>
- <YymkSDsFVVg1nbDP@infradead.org> <CAAKderNcHpbBqWqqd5-WuKLRCQQUt7a_4D4ti4gy15+fKGK0vQ@mail.gmail.com>
- <Yy1zkMH0f9ski4Sg@infradead.org> <Yy29y/jUvWM6GRZ5@redhat.com>
-In-Reply-To: <Yy29y/jUvWM6GRZ5@redhat.com>
+ <20220915164826.1396245-3-sarthakkukreti@google.com> <Yy3BXc9wf4PH6Rby@redhat.com>
+In-Reply-To: <Yy3BXc9wf4PH6Rby@redhat.com>
 From:   Sarthak Kukreti <sarthakkukreti@chromium.org>
-Date:   Thu, 29 Dec 2022 00:17:00 -0800
-Message-ID: <CAG9=OMPQEoMVpXD8PeHwkymwk-zfB3mSvDO_W6h0S3Zom62JBQ@mail.gmail.com>
-Subject: Re: [PATCH RFC 0/8] Introduce provisioning primitives for thinly
- provisioned storage
+Date:   Thu, 29 Dec 2022 00:22:32 -0800
+Message-ID: <CAG9=OMMgtscWZyZYHsY0pp-9we+yxs=88sr_yMb6pfz7e75nyA@mail.gmail.com>
+Subject: Re: [PATCH RFC 2/8] dm: Add support for block provisioning
 To:     Mike Snitzer <snitzer@redhat.com>
-Cc:     Christoph Hellwig <hch@infradead.org>,
-        Daniil Lunev <dlunev@google.com>, Jens Axboe <axboe@kernel.dk>,
-        linux-block@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+Cc:     dm-devel@redhat.com, linux-block@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        virtualization@lists.linux-foundation.org,
+        Jens Axboe <axboe@kernel.dk>,
         "Michael S . Tsirkin" <mst@redhat.com>,
         Jason Wang <jasowang@redhat.com>,
-        Bart Van Assche <bvanassche@google.com>,
-        Mike Snitzer <snitzer@kernel.org>,
-        linux-kernel@vger.kernel.org, Gwendal Grignou <gwendal@google.com>,
-        virtualization@lists.linux-foundation.org, dm-devel@redhat.com,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Stefan Hajnoczi <stefanha@redhat.com>,
         Paolo Bonzini <pbonzini@redhat.com>,
-        linux-ext4@vger.kernel.org, Evan Green <evgreen@google.com>,
-        Alasdair Kergon <agk@redhat.com>
+        Stefan Hajnoczi <stefanha@redhat.com>,
+        Alasdair Kergon <agk@redhat.com>,
+        Mike Snitzer <snitzer@kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Bart Van Assche <bvanassche@google.com>,
+        Daniil Lunev <dlunev@google.com>,
+        Evan Green <evgreen@google.com>,
+        Gwendal Grignou <gwendal@google.com>
 Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Sep 23, 2022 at 7:08 AM Mike Snitzer <snitzer@redhat.com> wrote:
+On Fri, Sep 23, 2022 at 7:23 AM Mike Snitzer <snitzer@redhat.com> wrote:
 >
-> On Fri, Sep 23 2022 at  4:51P -0400,
-> Christoph Hellwig <hch@infradead.org> wrote:
+> On Thu, Sep 15 2022 at 12:48P -0400,
+> Sarthak Kukreti <sarthakkukreti@chromium.org> wrote:
 >
-> > On Wed, Sep 21, 2022 at 07:48:50AM +1000, Daniil Lunev wrote:
-> > > > There is no such thing as WRITE UNAVAILABLE in NVMe.
-> > > Apologize, that is WRITE UNCORRECTABLE. Chapter 3.2.7 of
-> > > NVM Express NVM Command Set Specification 1.0b
+> > From: Sarthak Kukreti <sarthakkukreti@chromium.org>
 > >
-> > Write uncorrectable is a very different thing, and the equivalent of the
-> > horribly misnamed SCSI WRITE LONG COMMAND.  It injects an unrecoverable
-> > error, and does not provision anything.
+> > Add support to dm devices for REQ_OP_PROVISION. The default mode
+> > is to pass through the request and dm-thin will utilize it to provision
+> > blocks.
 > >
-> > > * Each application is potentially allowed to consume the entirety
-> > >   of the disk space - there is no strict size limit for application
-> > > * Applications need to pre-allocate space sometime, for which
-> > >   they use fallocate. Once the operation succeeded, the application
-> > >   assumed the space is guaranteed to be there for it.
-> > > * Since filesystems on the volumes are independent, filesystem
-> > >   level enforcement of size constraints is impossible and the only
-> > >   common level is the thin pool, thus, each fallocate has to find its
-> > >   representation in thin pool one way or another - otherwise you
-> > >   may end up in the situation, where FS thinks it has allocated space
-> > >   but when it tries to actually write it, the thin pool is already
-> > >   exhausted.
-> > > * Hole-Punching fallocate will not reach the thin pool, so the only
-> > >   solution presently is zero-writing pre-allocate.
+> > Signed-off-by: Sarthak Kukreti <sarthakkukreti@chromium.org>
+> > ---
+> >  drivers/md/dm-crypt.c         |  4 +-
+> >  drivers/md/dm-linear.c        |  1 +
+> >  drivers/md/dm-table.c         | 17 +++++++
+> >  drivers/md/dm-thin.c          | 86 +++++++++++++++++++++++++++++++++--
+> >  drivers/md/dm.c               |  4 ++
+> >  include/linux/device-mapper.h |  6 +++
+> >  6 files changed, 113 insertions(+), 5 deletions(-)
 > >
-> > To me it sounds like you want a non-thin pool in dm-thin and/or
-> > guaranted space reservations for it.
->
-> What is implemented in this patchset: enablement for dm-thinp to
-> actually provide guarantees which fallocate requires.
->
-> Seems you're getting hung up on the finishing details in HW (details
-> which are _not_ the point of this patchset).
->
-> The proposed changes are in service to _Linux_ code. The patchset
-> implements the primitive from top (ext4) to bottom (dm-thinp, loop).
-> It stops short of implementing handling everywhere that'd need it
-> (e.g. in XFS, etc). But those changes can come as follow-on work once
-> the primitive is established top to bottom.
->
-> But you know all this ;)
->
-> > > * Thus, a provisioning block operation allows an interface specific
-> > >   operation that guarantees the presence of the block in the
-> > >   mapped space. LVM Thin-pool itself is the primary target for our
-> > >   use case but the argument is that this operation maps well to
-> > >   other interfaces which allow thinly provisioned units.
+> > diff --git a/drivers/md/dm-crypt.c b/drivers/md/dm-crypt.c
+> > index 159c6806c19b..357f0899cfb6 100644
+> > --- a/drivers/md/dm-crypt.c
+> > +++ b/drivers/md/dm-crypt.c
+> > @@ -3081,6 +3081,8 @@ static int crypt_ctr_optional(struct dm_target *ti, unsigned int argc, char **ar
+> >       if (ret)
+> >               return ret;
 > >
-> > I think where you are trying to go here is badly mistaken.  With flash
-> > (or hard drive SMR) there is no such thing as provisioning LBAs.  Every
-> > write is out of place, and a one time space allocation does not help
-> > you at all.  So fundamentally what you try to here just goes against
-> > the actual physics of modern storage media.  While there are some
-> > layers that keep up a pretence, trying to that an an exposed API
-> > level is a really bad idea.
+> > +     ti->num_provision_bios = 1;
+> > +
+> >       while (opt_params--) {
+> >               opt_string = dm_shift_arg(&as);
+> >               if (!opt_string) {
+> > @@ -3384,7 +3386,7 @@ static int crypt_map(struct dm_target *ti, struct bio *bio)
+> >        * - for REQ_OP_DISCARD caller must use flush if IO ordering matters
+> >        */
+> >       if (unlikely(bio->bi_opf & REQ_PREFLUSH ||
+> > -         bio_op(bio) == REQ_OP_DISCARD)) {
+> > +         bio_op(bio) == REQ_OP_DISCARD || bio_op(bio) == REQ_OP_PROVISION)) {
+> >               bio_set_dev(bio, cc->dev->bdev);
+> >               if (bio_sectors(bio))
+> >                       bio->bi_iter.bi_sector = cc->start +
+> > diff --git a/drivers/md/dm-linear.c b/drivers/md/dm-linear.c
+> > index 3212ef6aa81b..1aa782149428 100644
+> > --- a/drivers/md/dm-linear.c
+> > +++ b/drivers/md/dm-linear.c
+> > @@ -61,6 +61,7 @@ static int linear_ctr(struct dm_target *ti, unsigned int argc, char **argv)
+> >       ti->num_discard_bios = 1;
+> >       ti->num_secure_erase_bios = 1;
+> >       ti->num_write_zeroes_bios = 1;
+> > +     ti->num_provision_bios = 1;
+> >       ti->private = lc;
+> >       return 0;
+> >
+> > diff --git a/drivers/md/dm-table.c b/drivers/md/dm-table.c
+> > index 332f96b58252..b7f9cb66b7ba 100644
+> > --- a/drivers/md/dm-table.c
+> > +++ b/drivers/md/dm-table.c
+> > @@ -1853,6 +1853,18 @@ static bool dm_table_supports_write_zeroes(struct dm_table *t)
+> >       return true;
+> >  }
+> >
+> > +static bool dm_table_supports_provision(struct dm_table *t)
+> > +{
+> > +     for (unsigned int i = 0; i < t->num_targets; i++) {
+> > +             struct dm_target *ti = dm_table_get_target(t, i);
+> > +
+> > +             if (ti->num_provision_bios)
+> > +                     return true;
+> > +     }
+> > +
+> > +     return false;
+> > +}
+> > +
 >
-> This doesn't need to be so feudal.  Reserving an LBA in physical HW
-> really isn't the point.
+> This needs to go a step further and verify a device in the stack
+> actually services REQ_OP_PROVISION.
 >
-> Fact remains: an operation that ensures space is actually reserved via
-> fallocate is long overdue (just because an FS did its job doesn't mean
-> underlying layers reflect that). And certainly useful, even if "only"
-> benefiting dm-thinp and the loop driver. Like other block primitives,
-> REQ_OP_PROVISION is filtered out by block core if the device doesn't
-> support it.
+> Please see dm_table_supports_discards(): it iterates all devices in
+> the table and checks that support is advertised.
 >
-> That said, I agree with Brian Foster that we need really solid
-> documentation and justification for why fallocate mode=0 cannot be
-> used (but the case has been made in this thread).
+> For discard, DM requires that _all_ devices in a table advertise
+> support (that is pretty strict and likely could be relaxed to _any_).
 >
-> Also, I do see an issue with the implementation (relative to stacked
-> devices): dm_table_supports_provision() is too myopic about DM. It
-> needs to go a step further and verify that some layer in the stack
-> actually services REQ_OP_PROVISION. Will respond to DM patch too.
+> You'll need ti->provision_supported (like ->discards_supported) to
+> advertise actual support is provided by dm-thinp (even if underlying
+> devices don't support it).
 >
-Thanks all for the suggestions and feedback! I just posted v2 (more
-than a bit belatedly) on the various mailing lists with the relevant
-fixes, documentation and some benchmarks on performance.
+> And yeah, dm-thinp passdown support for REQ_OP_PROVISION can follow
+> later as needed (if there actual HW that would benefit from
+> REQ_OP_PROVISION).
+>
+Done, thanks (the provision support, not the passdown)! I think the
+one case where passdown might help is to build images with dm-thinp
+already set up on one of the partitions (I have something in the works
+for ChromiumOS images to do VM tests with preset state :)). That would
+allow us to preallocate space for thin logical volumes inside the
+image file.
 
-Best
-Sarthak
+> Mike
+>
