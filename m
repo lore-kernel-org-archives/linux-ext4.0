@@ -2,50 +2,50 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 936A4C3DA79
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Dec 2022 08:13:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 87A5BC3DA79
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Dec 2022 08:13:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231214AbiL2INU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 29 Dec 2022 03:13:20 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37714 "EHLO
+        id S233023AbiL2INZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 29 Dec 2022 03:13:25 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37920 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232644AbiL2INI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Dec 2022 03:13:08 -0500
-Received: from mail-pl1-x631.google.com (mail-pl1-x631.google.com [IPv6:2607:f8b0:4864:20::631])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CEEEA10B60
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Dec 2022 00:13:01 -0800 (PST)
-Received: by mail-pl1-x631.google.com with SMTP id s7so18288679plk.5
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Dec 2022 00:13:01 -0800 (PST)
+        with ESMTP id S233014AbiL2INT (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Dec 2022 03:13:19 -0500
+Received: from mail-pj1-x1031.google.com (mail-pj1-x1031.google.com [IPv6:2607:f8b0:4864:20::1031])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AF41D11822
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Dec 2022 00:13:06 -0800 (PST)
+Received: by mail-pj1-x1031.google.com with SMTP id c8-20020a17090a4d0800b00225c3614161so15119910pjg.5
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Dec 2022 00:13:06 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=chromium.org; s=google;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=LPgg4/E3xwiWPCkuKUsuYriDQInX30Nw0OCXNJZ+bXk=;
-        b=JRQzQRQ/h7n4/IZEyBjWvWRtcDuyVX+Iug4JMnDafdf2iXKCL2eZDsBxuEa5yueYbz
-         GBtzujYQ+rtNV3fFWhrS01wFk9UXHIUawqQpFmfKsUPE+V+W140LW12HtP23wsQOc9TO
-         1safTRCxSdYVsi2hSVsSmGRIpKPCrzb51h++E=
+        bh=97i6P/h7b+1gvIVRYO+DX34CDfR4Yqv0wh8jpsVN6uA=;
+        b=J3UxtnO0lRODuALIZIbXFjggUs9csqzYnLWy6fCUhVcEssVoXOgvKDKzSKMFzlyrjx
+         IAcfKrnfFQdpsDZbxkBzRb3HsHRv4Zx0R+LRjDqk5C1MorbFDuEtB4dQo6e2wnJcboJU
+         lOoPqaeq28xjwQUyT3StdCsVbKKsSKUNoIs8A=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=LPgg4/E3xwiWPCkuKUsuYriDQInX30Nw0OCXNJZ+bXk=;
-        b=dQUWGaQa+N/7F2C8aHz+8ogGPw87hJsx4LS8ehh+kHMckhdo8gaNEcVgOBFkhhltMY
-         TsI8h6N5eI5ymsVA5mSKb9+uLFiAFrpAbDAttgdXK+lyu5tqFLeYZbnUK6SQhp8AbQKV
-         B1vau6LCsQNRGbBACAO2ZN1K9Le70bGUOrGA4hzG+37jL/tZ05hx3RJPHeljxe2Kdukt
-         Oh6CDkRNjaX5nPaTTi3mOu1OdSSfvQSXaEH8FrHmSqYxsNViJgHmSUEo3hLb6FXkESt7
-         QymLJruaFXDhHpy03urtDhE/DVihW3TuoYJ1qg7cEfXgkVJ9Oukv6zMbEPYWVOMvol47
-         /aOQ==
-X-Gm-Message-State: AFqh2krFQG78ayAsgHDn+zsTcOQ5HNQL7Y6oF5JcU6rIvq31h3X5Ydwl
-        gDn/8XnYAxpwPvtAb4HM7PkWug==
-X-Google-Smtp-Source: AMrXdXsfqqYCIpyBiZr/cTv9/CTKLr3m3pQrIjpFfBa2/Eo9DJ18jgamvtyxXSOS/6bH1HpMdN9jKg==
-X-Received: by 2002:a17:902:b60e:b0:189:89a4:3954 with SMTP id b14-20020a170902b60e00b0018989a43954mr30107986pls.41.1672301581332;
-        Thu, 29 Dec 2022 00:13:01 -0800 (PST)
+        bh=97i6P/h7b+1gvIVRYO+DX34CDfR4Yqv0wh8jpsVN6uA=;
+        b=BW3lOW55kywxOr0S0TvLcWYvx14vRvNKQ964StKeA5YtZ3iBRpG2Fta6xwPVUDSukz
+         ykC+urA+d+ZasG6hqZqOBT6uH6NVniT/68XX3Eof88oRQLNs9zp2yNWeYjHRIg5P/vHj
+         0VRbWIUPAXM60pm/8jPIoJaS2biiawBz9K7m5Pbu80VUw7EmK/kHEwUl1IrY1xA26Awv
+         6wdQ0uroZz4plwfMJFOwFtSsUIPwfoC0ukuvHBcBnX+avf3DlVlQhhtAfGmzQnw6t+6O
+         NfiYia4DO1iq1gA/rLnMhxmO4SRVRIMqzrBqlE9A/mSaCSxaZYr1u1cx3n6rCMdeKk8H
+         u+4w==
+X-Gm-Message-State: AFqh2kq1AmUuBquarxHaYXS9W1QaAIydSvd1lrmgC2bvCIMju8pyvLtQ
+        70dajE6/FRn4Yn6n83YtBgF/AA==
+X-Google-Smtp-Source: AMrXdXuG8djGml0FmIoeHtIQvCDtglHyJ1RnAJ0w5NvdgLWhnB8c6w6P+S+xrI2iEBZecvFqN4EojA==
+X-Received: by 2002:a17:902:9687:b0:192:9ab2:fd1c with SMTP id n7-20020a170902968700b001929ab2fd1cmr2910136plp.26.1672301586179;
+        Thu, 29 Dec 2022 00:13:06 -0800 (PST)
 Received: from sarthakkukreti-glaptop.hsd1.ca.comcast.net ([2601:647:4200:b5b0:75ff:1277:3d7b:d67a])
-        by smtp.gmail.com with ESMTPSA id 12-20020a170902e9cc00b00192820d00d0sm6496325plk.120.2022.12.29.00.12.59
+        by smtp.gmail.com with ESMTPSA id 12-20020a170902e9cc00b00192820d00d0sm6496325plk.120.2022.12.29.00.13.04
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 29 Dec 2022 00:13:00 -0800 (PST)
+        Thu, 29 Dec 2022 00:13:05 -0800 (PST)
 From:   Sarthak Kukreti <sarthakkukreti@chromium.org>
 To:     sarthakkukreti@google.com, dm-devel@redhat.com,
         linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -63,9 +63,9 @@ Cc:     Jens Axboe <axboe@kernel.dk>,
         Bart Van Assche <bvanassche@google.com>,
         Daniil Lunev <dlunev@google.com>,
         "Darrick J. Wong" <djwong@kernel.org>
-Subject: [PATCH v2 1/7] block: Introduce provisioning primitives
-Date:   Thu, 29 Dec 2022 00:12:46 -0800
-Message-Id: <20221229081252.452240-2-sarthakkukreti@chromium.org>
+Subject: [PATCH v2 3/7] fs: Introduce FALLOC_FL_PROVISION
+Date:   Thu, 29 Dec 2022 00:12:48 -0800
+Message-Id: <20221229081252.452240-4-sarthakkukreti@chromium.org>
 X-Mailer: git-send-email 2.39.0.314.g84b9a713c41-goog
 In-Reply-To: <20221229081252.452240-1-sarthakkukreti@chromium.org>
 References: <20221229081252.452240-1-sarthakkukreti@chromium.org>
@@ -75,335 +75,112 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Introduce block request REQ_OP_PROVISION. The intent of this request
-is to request underlying storage to preallocate disk space for the given
-block range. Block device that support this capability will export
-a provision limit within their request queues.
+FALLOC_FL_PROVISION is a new fallocate() allocation mode that
+sends a hint to (supported) thinly provisioned block devices to
+allocate space for the given range of sectors via REQ_OP_PROVISION.
+
+The man pages for both fallocate(2) and posix_fallocate(3) describe
+the default allocation mode as:
+
+```
+The default operation (i.e., mode is zero) of fallocate()
+allocates the disk space within the range specified by offset and len.
+...
+subsequent writes to bytes in the specified range are guaranteed
+not to fail because of lack of disk space.
+```
+
+For thinly provisioned storage constructs (dm-thin, filesystems on sparse
+files), the term 'disk space' is overloaded and can either mean the apparent
+disk space in the filesystem/thin logical volume or the true disk
+space that will be utilized on the underlying non-sparse allocation layer.
+
+The use of a separate mode allows us to cleanly disambiguate whether fallocate()
+causes allocation only at the current layer (default mode) or whether it propagates
+allocations to underlying layers (provision mode) for thinly provisioned filesystems/
+block devices. For devices that do not support REQ_OP_PROVISION, both these
+allocation modes will be equivalent. Given the performance cost of sending provision
+requests to the underlying layers, keeping the default mode as-is allows users to
+preserve existing behavior.
 
 Signed-off-by: Sarthak Kukreti <sarthakkukreti@chromium.org>
 ---
- block/blk-core.c          |  5 ++++
- block/blk-lib.c           | 53 +++++++++++++++++++++++++++++++++++++++
- block/blk-merge.c         | 18 +++++++++++++
- block/blk-settings.c      | 19 ++++++++++++++
- block/blk-sysfs.c         |  8 ++++++
- block/bounce.c            |  1 +
- include/linux/bio.h       |  6 +++--
- include/linux/blk_types.h |  5 +++-
- include/linux/blkdev.h    | 16 ++++++++++++
- 9 files changed, 128 insertions(+), 3 deletions(-)
+ block/fops.c                | 15 +++++++++++----
+ include/linux/falloc.h      |  3 ++-
+ include/uapi/linux/falloc.h |  8 ++++++++
+ 3 files changed, 21 insertions(+), 5 deletions(-)
 
-diff --git a/block/blk-core.c b/block/blk-core.c
-index 9321767470dc..30bcabc7dc01 100644
---- a/block/blk-core.c
-+++ b/block/blk-core.c
-@@ -123,6 +123,7 @@ static const char *const blk_op_name[] = {
- 	REQ_OP_NAME(WRITE_ZEROES),
- 	REQ_OP_NAME(DRV_IN),
- 	REQ_OP_NAME(DRV_OUT),
-+	REQ_OP_NAME(PROVISION)
- };
- #undef REQ_OP_NAME
+diff --git a/block/fops.c b/block/fops.c
+index 50d245e8c913..01bde561e1e2 100644
+--- a/block/fops.c
++++ b/block/fops.c
+@@ -598,7 +598,8 @@ static ssize_t blkdev_read_iter(struct kiocb *iocb, struct iov_iter *to)
  
-@@ -785,6 +786,10 @@ void submit_bio_noacct(struct bio *bio)
- 		if (!q->limits.max_write_zeroes_sectors)
- 			goto not_supported;
- 		break;
-+	case REQ_OP_PROVISION:
-+		if (!q->limits.max_provision_sectors)
-+			goto not_supported;
-+		break;
- 	default:
- 		break;
- 	}
-diff --git a/block/blk-lib.c b/block/blk-lib.c
-index e59c3069e835..647b6451660b 100644
---- a/block/blk-lib.c
-+++ b/block/blk-lib.c
-@@ -343,3 +343,56 @@ int blkdev_issue_secure_erase(struct block_device *bdev, sector_t sector,
- 	return ret;
- }
- EXPORT_SYMBOL(blkdev_issue_secure_erase);
-+
-+/**
-+ * blkdev_issue_provision - provision a block range
-+ * @bdev:	blockdev to write
-+ * @sector:	start sector
-+ * @nr_sects:	number of sectors to provision
-+ * @gfp_mask:	memory allocation flags (for bio_alloc)
-+ *
-+ * Description:
-+ *  Issues a provision request to the block device for the range of sectors.
-+ *  For thinly provisioned block devices, this acts as a signal for the
-+ *  underlying storage pool to allocate space for this block range.
-+ */
-+int blkdev_issue_provision(struct block_device *bdev, sector_t sector,
-+		sector_t nr_sects, gfp_t gfp)
-+{
-+	sector_t bs_mask = (bdev_logical_block_size(bdev) >> 9) - 1;
-+	unsigned int max_sectors = bdev_max_provision_sectors(bdev);
-+	struct bio *bio = NULL;
-+	struct blk_plug plug;
-+	int ret = 0;
-+
-+	if (max_sectors == 0)
-+		return -EOPNOTSUPP;
-+	if ((sector | nr_sects) & bs_mask)
-+		return -EINVAL;
-+	if (bdev_read_only(bdev))
-+		return -EPERM;
-+
-+	blk_start_plug(&plug);
-+	for (;;) {
-+		unsigned int req_sects = min_t(sector_t, nr_sects, max_sectors);
-+
-+		bio = blk_next_bio(bio, bdev, 0, REQ_OP_PROVISION, gfp);
-+		bio->bi_iter.bi_sector = sector;
-+		bio->bi_iter.bi_size = req_sects << SECTOR_SHIFT;
-+
-+		sector += req_sects;
-+		nr_sects -= req_sects;
-+		if (!nr_sects) {
-+			ret = submit_bio_wait(bio);
-+			if (ret == -EOPNOTSUPP)
-+				ret = 0;
-+			bio_put(bio);
-+			break;
-+		}
-+		cond_resched();
+ #define	BLKDEV_FALLOC_FL_SUPPORTED					\
+ 		(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |		\
+-		 FALLOC_FL_ZERO_RANGE | FALLOC_FL_NO_HIDE_STALE)
++		 FALLOC_FL_ZERO_RANGE | FALLOC_FL_NO_HIDE_STALE |	\
++		 FALLOC_FL_PROVISION)
+ 
+ static long blkdev_fallocate(struct file *file, int mode, loff_t start,
+ 			     loff_t len)
+@@ -634,9 +635,11 @@ static long blkdev_fallocate(struct file *file, int mode, loff_t start,
+ 	filemap_invalidate_lock(inode->i_mapping);
+ 
+ 	/* Invalidate the page cache, including dirty pages. */
+-	error = truncate_bdev_range(bdev, file->f_mode, start, end);
+-	if (error)
+-		goto fail;
++	if (mode != FALLOC_FL_PROVISION) {
++		error = truncate_bdev_range(bdev, file->f_mode, start, end);
++		if (error)
++			goto fail;
 +	}
-+	blk_finish_plug(&plug);
-+
-+	return ret;
-+}
-+EXPORT_SYMBOL(blkdev_issue_provision);
-diff --git a/block/blk-merge.c b/block/blk-merge.c
-index 35a8f75cc45d..3ab35bb2a333 100644
---- a/block/blk-merge.c
-+++ b/block/blk-merge.c
-@@ -158,6 +158,21 @@ static struct bio *bio_split_write_zeroes(struct bio *bio,
- 	return bio_split(bio, lim->max_write_zeroes_sectors, GFP_NOIO, bs);
- }
  
-+static struct bio *bio_split_provision(struct bio *bio,
-+					const struct queue_limits *lim,
-+					unsigned *nsegs, struct bio_set *bs)
-+{
-+	*nsegs = 0;
-+
-+	if (!lim->max_provision_sectors)
-+		return NULL;
-+
-+	if (bio_sectors(bio) <= lim->max_provision_sectors)
-+		return NULL;
-+
-+	return bio_split(bio, lim->max_provision_sectors, GFP_NOIO, bs);
-+}
-+
- /*
-  * Return the maximum number of sectors from the start of a bio that may be
-  * submitted as a single request to a block device. If enough sectors remain,
-@@ -355,6 +370,9 @@ struct bio *__bio_split_to_limits(struct bio *bio,
- 	case REQ_OP_WRITE_ZEROES:
- 		split = bio_split_write_zeroes(bio, lim, nr_segs, bs);
+ 	switch (mode) {
+ 	case FALLOC_FL_ZERO_RANGE:
+@@ -654,6 +657,10 @@ static long blkdev_fallocate(struct file *file, int mode, loff_t start,
+ 		error = blkdev_issue_discard(bdev, start >> SECTOR_SHIFT,
+ 					     len >> SECTOR_SHIFT, GFP_KERNEL);
  		break;
-+	case REQ_OP_PROVISION:
-+		split = bio_split_provision(bio, lim, nr_segs, bs);
++	case FALLOC_FL_PROVISION:
++		error = blkdev_issue_provision(bdev, start >> SECTOR_SHIFT,
++					       len >> SECTOR_SHIFT, GFP_KERNEL);
 +		break;
  	default:
- 		split = bio_split_rw(bio, lim, nr_segs, bs,
- 				get_max_io_size(bio, lim) << SECTOR_SHIFT);
-diff --git a/block/blk-settings.c b/block/blk-settings.c
-index 0477c4d527fe..57d88204fbbe 100644
---- a/block/blk-settings.c
-+++ b/block/blk-settings.c
-@@ -58,6 +58,7 @@ void blk_set_default_limits(struct queue_limits *lim)
- 	lim->zoned = BLK_ZONED_NONE;
- 	lim->zone_write_granularity = 0;
- 	lim->dma_alignment = 511;
-+	lim->max_provision_sectors = 0;
- }
+ 		error = -EOPNOTSUPP;
+ 	}
+diff --git a/include/linux/falloc.h b/include/linux/falloc.h
+index f3f0b97b1675..b9a40a61a59b 100644
+--- a/include/linux/falloc.h
++++ b/include/linux/falloc.h
+@@ -30,7 +30,8 @@ struct space_resv {
+ 					 FALLOC_FL_COLLAPSE_RANGE |	\
+ 					 FALLOC_FL_ZERO_RANGE |		\
+ 					 FALLOC_FL_INSERT_RANGE |	\
+-					 FALLOC_FL_UNSHARE_RANGE)
++					 FALLOC_FL_UNSHARE_RANGE |	\
++					 FALLOC_FL_PROVISION)
  
- /**
-@@ -81,6 +82,7 @@ void blk_set_stacking_limits(struct queue_limits *lim)
- 	lim->max_dev_sectors = UINT_MAX;
- 	lim->max_write_zeroes_sectors = UINT_MAX;
- 	lim->max_zone_append_sectors = UINT_MAX;
-+	lim->max_provision_sectors = UINT_MAX;
- }
- EXPORT_SYMBOL(blk_set_stacking_limits);
+ /* on ia32 l_start is on a 32-bit boundary */
+ #if defined(CONFIG_X86_64)
+diff --git a/include/uapi/linux/falloc.h b/include/uapi/linux/falloc.h
+index 51398fa57f6c..2d323d113eed 100644
+--- a/include/uapi/linux/falloc.h
++++ b/include/uapi/linux/falloc.h
+@@ -77,4 +77,12 @@
+  */
+ #define FALLOC_FL_UNSHARE_RANGE		0x40
  
-@@ -202,6 +204,20 @@ void blk_queue_max_write_zeroes_sectors(struct request_queue *q,
- }
- EXPORT_SYMBOL(blk_queue_max_write_zeroes_sectors);
- 
-+/**
-+ * blk_queue_max_provision_sectors - set max sectors for a single provision
++/*
++ * FALLOC_FL_PROVISION acts as a hint for thinly provisioned devices to allocate
++ * blocks for the range/EOF.
 + *
-+ * @q:  the request queue for the device
-+ * @max_provision_sectors: maximum number of sectors to provision per command
-+ **/
++ * FALLOC_FL_PROVISION can only be used with allocate-mode fallocate.
++ */
++#define FALLOC_FL_PROVISION		0x80
 +
-+void blk_queue_max_provision_sectors(struct request_queue *q,
-+		unsigned int max_provision_sectors)
-+{
-+	q->limits.max_provision_sectors = max_provision_sectors;
-+}
-+EXPORT_SYMBOL(blk_queue_max_provision_sectors);
-+
- /**
-  * blk_queue_max_zone_append_sectors - set max sectors for a single zone append
-  * @q:  the request queue for the device
-@@ -572,6 +588,9 @@ int blk_stack_limits(struct queue_limits *t, struct queue_limits *b,
- 	t->max_segment_size = min_not_zero(t->max_segment_size,
- 					   b->max_segment_size);
- 
-+	t->max_provision_sectors = min_not_zero(t->max_provision_sectors,
-+						b->max_provision_sectors);
-+
- 	t->misaligned |= b->misaligned;
- 
- 	alignment = queue_limit_alignment_offset(b, start);
-diff --git a/block/blk-sysfs.c b/block/blk-sysfs.c
-index 93d9e9c9a6ea..2e678417b302 100644
---- a/block/blk-sysfs.c
-+++ b/block/blk-sysfs.c
-@@ -131,6 +131,12 @@ static ssize_t queue_max_discard_segments_show(struct request_queue *q,
- 	return queue_var_show(queue_max_discard_segments(q), page);
- }
- 
-+static ssize_t queue_max_provision_sectors_show(struct request_queue *q,
-+		char *page)
-+{
-+	return queue_var_show(queue_max_provision_sectors(q), (page));
-+}
-+
- static ssize_t queue_max_integrity_segments_show(struct request_queue *q, char *page)
- {
- 	return queue_var_show(q->limits.max_integrity_segments, page);
-@@ -589,6 +595,7 @@ QUEUE_RO_ENTRY(queue_io_min, "minimum_io_size");
- QUEUE_RO_ENTRY(queue_io_opt, "optimal_io_size");
- 
- QUEUE_RO_ENTRY(queue_max_discard_segments, "max_discard_segments");
-+QUEUE_RO_ENTRY(queue_max_provision_sectors, "max_provision_sectors");
- QUEUE_RO_ENTRY(queue_discard_granularity, "discard_granularity");
- QUEUE_RO_ENTRY(queue_discard_max_hw, "discard_max_hw_bytes");
- QUEUE_RW_ENTRY(queue_discard_max, "discard_max_bytes");
-@@ -638,6 +645,7 @@ static struct attribute *queue_attrs[] = {
- 	&queue_max_sectors_entry.attr,
- 	&queue_max_segments_entry.attr,
- 	&queue_max_discard_segments_entry.attr,
-+	&queue_max_provision_sectors_entry.attr,
- 	&queue_max_integrity_segments_entry.attr,
- 	&queue_max_segment_size_entry.attr,
- 	&elv_iosched_entry.attr,
-diff --git a/block/bounce.c b/block/bounce.c
-index 7cfcb242f9a1..ab9d8723ae64 100644
---- a/block/bounce.c
-+++ b/block/bounce.c
-@@ -176,6 +176,7 @@ static struct bio *bounce_clone_bio(struct bio *bio_src)
- 	case REQ_OP_DISCARD:
- 	case REQ_OP_SECURE_ERASE:
- 	case REQ_OP_WRITE_ZEROES:
-+	case REQ_OP_PROVISION:
- 		break;
- 	default:
- 		bio_for_each_segment(bv, bio_src, iter)
-diff --git a/include/linux/bio.h b/include/linux/bio.h
-index 22078a28d7cb..5025af105b7c 100644
---- a/include/linux/bio.h
-+++ b/include/linux/bio.h
-@@ -55,7 +55,8 @@ static inline bool bio_has_data(struct bio *bio)
- 	    bio->bi_iter.bi_size &&
- 	    bio_op(bio) != REQ_OP_DISCARD &&
- 	    bio_op(bio) != REQ_OP_SECURE_ERASE &&
--	    bio_op(bio) != REQ_OP_WRITE_ZEROES)
-+	    bio_op(bio) != REQ_OP_WRITE_ZEROES &&
-+	    bio_op(bio) != REQ_OP_PROVISION)
- 		return true;
- 
- 	return false;
-@@ -65,7 +66,8 @@ static inline bool bio_no_advance_iter(const struct bio *bio)
- {
- 	return bio_op(bio) == REQ_OP_DISCARD ||
- 	       bio_op(bio) == REQ_OP_SECURE_ERASE ||
--	       bio_op(bio) == REQ_OP_WRITE_ZEROES;
-+	       bio_op(bio) == REQ_OP_WRITE_ZEROES ||
-+	       bio_op(bio) == REQ_OP_PROVISION;
- }
- 
- static inline void *bio_data(struct bio *bio)
-diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
-index 99be590f952f..27bdf88f541c 100644
---- a/include/linux/blk_types.h
-+++ b/include/linux/blk_types.h
-@@ -385,7 +385,10 @@ enum req_op {
- 	REQ_OP_DRV_IN		= (__force blk_opf_t)34,
- 	REQ_OP_DRV_OUT		= (__force blk_opf_t)35,
- 
--	REQ_OP_LAST		= (__force blk_opf_t)36,
-+	/* request device to provision block */
-+	REQ_OP_PROVISION        = (__force blk_opf_t)37,
-+
-+	REQ_OP_LAST		= (__force blk_opf_t)38,
- };
- 
- enum req_flag_bits {
-diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index 301cf1cf4f2f..f1abc7b43e25 100644
---- a/include/linux/blkdev.h
-+++ b/include/linux/blkdev.h
-@@ -302,6 +302,7 @@ struct queue_limits {
- 	unsigned int		discard_granularity;
- 	unsigned int		discard_alignment;
- 	unsigned int		zone_write_granularity;
-+	unsigned int		max_provision_sectors;
- 
- 	unsigned short		max_segments;
- 	unsigned short		max_integrity_segments;
-@@ -918,6 +919,8 @@ extern void blk_queue_max_discard_sectors(struct request_queue *q,
- 		unsigned int max_discard_sectors);
- extern void blk_queue_max_write_zeroes_sectors(struct request_queue *q,
- 		unsigned int max_write_same_sectors);
-+extern void blk_queue_max_provision_sectors(struct request_queue *q,
-+		unsigned int max_provision_sectors);
- extern void blk_queue_logical_block_size(struct request_queue *, unsigned int);
- extern void blk_queue_max_zone_append_sectors(struct request_queue *q,
- 		unsigned int max_zone_append_sectors);
-@@ -1057,6 +1060,9 @@ int __blkdev_issue_discard(struct block_device *bdev, sector_t sector,
- int blkdev_issue_secure_erase(struct block_device *bdev, sector_t sector,
- 		sector_t nr_sects, gfp_t gfp);
- 
-+extern int blkdev_issue_provision(struct block_device *bdev, sector_t sector,
-+		sector_t nr_sects, gfp_t gfp_mask);
-+
- #define BLKDEV_ZERO_NOUNMAP	(1 << 0)  /* do not free blocks */
- #define BLKDEV_ZERO_NOFALLBACK	(1 << 1)  /* don't write explicit zeroes */
- 
-@@ -1135,6 +1141,11 @@ static inline unsigned short queue_max_discard_segments(const struct request_que
- 	return q->limits.max_discard_segments;
- }
- 
-+static inline unsigned short queue_max_provision_sectors(const struct request_queue *q)
-+{
-+	return q->limits.max_provision_sectors;
-+}
-+
- static inline unsigned int queue_max_segment_size(const struct request_queue *q)
- {
- 	return q->limits.max_segment_size;
-@@ -1271,6 +1282,11 @@ static inline bool bdev_nowait(struct block_device *bdev)
- 	return test_bit(QUEUE_FLAG_NOWAIT, &bdev_get_queue(bdev)->queue_flags);
- }
- 
-+static inline unsigned int bdev_max_provision_sectors(struct block_device *bdev)
-+{
-+	return bdev_get_queue(bdev)->limits.max_provision_sectors;
-+}
-+
- static inline enum blk_zoned_model bdev_zoned_model(struct block_device *bdev)
- {
- 	struct request_queue *q = bdev_get_queue(bdev);
+ #endif /* _UAPI_FALLOC_H_ */
 -- 
 2.37.3
 
