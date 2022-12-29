@@ -2,31 +2,31 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 267BCC4332F
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Dec 2022 16:11:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D4D30C4708E
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Dec 2022 16:11:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233652AbiL2QLL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 29 Dec 2022 11:11:11 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50668 "EHLO
+        id S233648AbiL2QLM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 29 Dec 2022 11:11:12 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50674 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230449AbiL2QKy (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Dec 2022 11:10:54 -0500
+        with ESMTP id S233343AbiL2QLA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Dec 2022 11:11:00 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6C81210A7;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EF2CB1111;
         Thu, 29 Dec 2022 08:10:50 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-        MIME-Version:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:
-        Content-ID:Content-Description:In-Reply-To:References;
-        bh=rRMjyybI4BLGnpomTYi5lWNLUT7Kcy+Hv5Mat8aX7RQ=; b=30PC0fVD2644K3q35Oc0cw5f1v
-        LTpWsGmTAvtWdovsneRivRCLXQqwtM1G/u5qMZ5ReUGiW2Bqqbmpak/j5/zXkmZE70FB7O3OIzsPw
-        bnM+fLK7J9EoU3zXk5qFE5qD0b4FftkAYzJbSDH8SyjZzLfSLu8MinxJO6b5m0Y3eHuy0fPDRKsdz
-        MQ1tnejaevDS0o1+/tm8Uhlrx2xgd6/YjnsvkyvwBiI/b/8osn+I7sutWA8g4koNVqcjSQY1ulCGe
-        7bYVL4pD9JBD2CGWxGIZ0qwEV/fMEKKx0GrCUmjV5QQYg2eju3SaZHsWOZq67PuuaYSXwL7trb+2q
-        bCFKXNtQ==;
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description;
+        bh=x4y/4KuqfNuPAflIAi82X++2iXzPIgIv4Sol4IXfpIE=; b=hCkiJn6NwipyF95xZ/GfQjLDmb
+        Si4sdlVrqYhOzIyOHDvE4X1IaWOLKGwwB/WyfjcmVjqFBn391Tx3NsE4ImwHez5KUQC/YOtFnd3mB
+        r0I/7KTgno8i5rUd8vWxs5M/4cUs5R7OBibrzqx9/lV/aVXxlt4uKk9q1q5ScZ1TEx6FqrKHPk9Ow
+        3MypnruGXVZJgQEhTyB8WJmJjakTwGYd+3QT1gdqttF5scQ2eSbdXz50yJDorlrrXTwZmCZInLwjR
+        YllxS++9Um0yVvQk5aqOUb7TRQl9yf2UWXnv73HmIV5RLJGI6TFAVilzX/ndLItpgvO2wMHJZDKsO
+        xGCE/zIA==;
 Received: from rrcs-67-53-201-206.west.biz.rr.com ([67.53.201.206] helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pAvUI-00HKJB-Qm; Thu, 29 Dec 2022 16:10:35 +0000
+        id 1pAvUQ-00HKPY-BW; Thu, 29 Dec 2022 16:10:42 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Andrew Morton <akpm@linux-foundation.org>,
         "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
@@ -38,10 +38,12 @@ To:     Andrew Morton <akpm@linux-foundation.org>,
 Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         ntfs3@lists.linux.dev, ocfs2-devel@oss.oracle.com,
         linux-mm@kvack.org
-Subject: remove generic_writepages
-Date:   Thu, 29 Dec 2022 06:10:25 -1000
-Message-Id: <20221229161031.391878-1-hch@lst.de>
+Subject: [PATCH 6/6] mm: remove generic_writepages
+Date:   Thu, 29 Dec 2022 06:10:31 -1000
+Message-Id: <20221229161031.391878-7-hch@lst.de>
 X-Mailer: git-send-email 2.35.1
+In-Reply-To: <20221229161031.391878-1-hch@lst.de>
+References: <20221229161031.391878-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
@@ -49,24 +51,106 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi all,
+Now that all external callers are gone, just fold it into do_writepages.
 
-this series removes generic_writepages by open coding the current
-functionality in the three remaining callers.  Besides removing some
-code the main benefit is that one of the few remaining ->writepage
-callers from outside the core page cache code go away.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ include/linux/writeback.h |  2 --
+ mm/page-writeback.c       | 53 +++++++++++----------------------------
+ 2 files changed, 15 insertions(+), 40 deletions(-)
 
-Note that testing has been a bit limited - ntfs3 does not seem to
-be supported by xfstests at all, and xfstests on ocfs2 is a complete
-shit show even for the base line.
+diff --git a/include/linux/writeback.h b/include/linux/writeback.h
+index 06f9291b6fd512..2554b71765e9d0 100644
+--- a/include/linux/writeback.h
++++ b/include/linux/writeback.h
+@@ -369,8 +369,6 @@ bool wb_over_bg_thresh(struct bdi_writeback *wb);
+ typedef int (*writepage_t)(struct page *page, struct writeback_control *wbc,
+ 				void *data);
+ 
+-int generic_writepages(struct address_space *mapping,
+-		       struct writeback_control *wbc);
+ void tag_pages_for_writeback(struct address_space *mapping,
+ 			     pgoff_t start, pgoff_t end);
+ int write_cache_pages(struct address_space *mapping,
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index ad608ef2a24365..dfeeceebba0ae0 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -2526,12 +2526,8 @@ int write_cache_pages(struct address_space *mapping,
+ }
+ EXPORT_SYMBOL(write_cache_pages);
+ 
+-/*
+- * Function used by generic_writepages to call the real writepage
+- * function and set the mapping flags on error
+- */
+-static int __writepage(struct page *page, struct writeback_control *wbc,
+-		       void *data)
++static int writepage_cb(struct page *page, struct writeback_control *wbc,
++		void *data)
+ {
+ 	struct address_space *mapping = data;
+ 	int ret = mapping->a_ops->writepage(page, wbc);
+@@ -2539,34 +2535,6 @@ static int __writepage(struct page *page, struct writeback_control *wbc,
+ 	return ret;
+ }
+ 
+-/**
+- * generic_writepages - walk the list of dirty pages of the given address space and writepage() all of them.
+- * @mapping: address space structure to write
+- * @wbc: subtract the number of written pages from *@wbc->nr_to_write
+- *
+- * This is a library function, which implements the writepages()
+- * address_space_operation.
+- *
+- * Return: %0 on success, negative error code otherwise
+- */
+-int generic_writepages(struct address_space *mapping,
+-		       struct writeback_control *wbc)
+-{
+-	struct blk_plug plug;
+-	int ret;
+-
+-	/* deal with chardevs and other special file */
+-	if (!mapping->a_ops->writepage)
+-		return 0;
+-
+-	blk_start_plug(&plug);
+-	ret = write_cache_pages(mapping, wbc, __writepage, mapping);
+-	blk_finish_plug(&plug);
+-	return ret;
+-}
+-
+-EXPORT_SYMBOL(generic_writepages);
+-
+ int do_writepages(struct address_space *mapping, struct writeback_control *wbc)
+ {
+ 	int ret;
+@@ -2577,11 +2545,20 @@ int do_writepages(struct address_space *mapping, struct writeback_control *wbc)
+ 	wb = inode_to_wb_wbc(mapping->host, wbc);
+ 	wb_bandwidth_estimate_start(wb);
+ 	while (1) {
+-		if (mapping->a_ops->writepages)
++		if (mapping->a_ops->writepages) {
+ 			ret = mapping->a_ops->writepages(mapping, wbc);
+-		else
+-			ret = generic_writepages(mapping, wbc);
+-		if ((ret != -ENOMEM) || (wbc->sync_mode != WB_SYNC_ALL))
++		} else if (mapping->a_ops->writepage) {
++			struct blk_plug plug;
++
++			blk_start_plug(&plug);
++			ret = write_cache_pages(mapping, wbc, writepage_cb,
++						mapping);
++			blk_finish_plug(&plug);
++		} else {
++			/* deal with chardevs and other special files */
++			ret = 0;
++		}
++		if (ret != -ENOMEM || wbc->sync_mode != WB_SYNC_ALL)
+ 			break;
+ 
+ 		/*
+-- 
+2.35.1
 
-Diffstat:
- fs/jbd2/commit.c          |   25 ---------------------
- fs/jbd2/journal.c         |    1 
- fs/mpage.c                |    8 ------
- fs/ntfs3/inode.c          |   33 +++++++++++++---------------
- fs/ocfs2/journal.c        |   16 +++++++++++++
- include/linux/jbd2.h      |    2 -
- include/linux/writeback.h |    2 -
- mm/page-writeback.c       |   53 +++++++++++++---------------------------------
- 8 files changed, 45 insertions(+), 95 deletions(-)
