@@ -2,79 +2,111 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7768AC3DA79
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Dec 2022 16:11:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1BBEBC3DA79
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Dec 2022 20:30:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233696AbiL2QLR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 29 Dec 2022 11:11:17 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50672 "EHLO
+        id S231158AbiL2Ua5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 29 Dec 2022 15:30:57 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50178 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231442AbiL2QLA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Dec 2022 11:11:00 -0500
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E6C4BE9D;
-        Thu, 29 Dec 2022 08:10:50 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
-        :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=/OSTms68IPUXcD9mOyJwWhvTFEvxpirJZnFVgrc7HRI=; b=mG3Xd47oTUQecGZV2lFfDakfTy
-        v9T6b0WubaweFmczUE/fgvx9Ej4TE34uR+iCTgXqcWAZEtr4nOwjmIu7RgbAexm9fF0FQQClyljLk
-        26JoH5gI1K+5QiVdrRypcrfvoceq4NJW/JTha943AxPSp195deUacqWMuM6Hw4hLbyFsR5+6RgEUA
-        Fn1sHTGv69ttZMtXYF7gIJkwL61CE3QVKLKPdS29QXQgMpfIwoP5p45q41XYs+lhHGRJDhPj5r0sc
-        mLVdGFgskkvDGn9spGCbLcJnva/V2khDSMNj+mzAJRxEDup9kUduZRBnmm9ZYAUWooRXugVtUAP2G
-        kI54fxzg==;
-Received: from rrcs-67-53-201-206.west.biz.rr.com ([67.53.201.206] helo=localhost)
-        by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pAvUO-00HKOB-Uf; Thu, 29 Dec 2022 16:10:41 +0000
-From:   Christoph Hellwig <hch@lst.de>
-To:     Andrew Morton <akpm@linux-foundation.org>,
-        "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
-        Mark Fasheh <mark@fasheh.com>,
-        Joel Becker <jlbec@evilplan.org>,
-        Joseph Qi <joseph.qi@linux.alibaba.com>,
-        "Matthew Wilcox (Oracle)" <willy@infradead.org>
-Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        ntfs3@lists.linux.dev, ocfs2-devel@oss.oracle.com,
-        linux-mm@kvack.org
-Subject: [PATCH 5/6] ocfs2: use filemap_fdatawrite_wbc instead of generic_writepages
-Date:   Thu, 29 Dec 2022 06:10:30 -1000
-Message-Id: <20221229161031.391878-6-hch@lst.de>
-X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20221229161031.391878-1-hch@lst.de>
-References: <20221229161031.391878-1-hch@lst.de>
+        with ESMTP id S229598AbiL2Uao (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Dec 2022 15:30:44 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8ADA214096;
+        Thu, 29 Dec 2022 12:30:40 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 1CDD5B81915;
+        Thu, 29 Dec 2022 20:30:39 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7502CC433EF;
+        Thu, 29 Dec 2022 20:30:37 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1672345837;
+        bh=0XooJ9mP9l4J/Pq38WJ2Fm3KDYSSG/D++B3s60OVmcs=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=FqKTBZPVOV8UWlTk9+gSb7VxZIa9+2CnWxn0kauBH6+Q/AqaPoTocgFGzoAIX+cE0
+         S3jWIAE4yg9z6RYCiKzT2ESGWmGthYRNOrZMTXSyiT2nSwtA4e6bq+fMDvmMuadvGw
+         ewrnKIRUbtgSSs6lE0H1+6PcO2oHQZLz6KYA9rIquUEW7uZFEFBsyIHsDYjOnHUt/A
+         OZbD0otttU1EYogIk27WWczmq+ynIWDbPBTTwDerbwqYop8JvLCDeCTv2xIP7dAnw9
+         bV6ciTVTnDm6GjzSqI5ExvrzoNLDUPV3JqQLG1pWtjvo3Jsf6XCjvrBDCELjx4H1V9
+         iil1tj388JOlQ==
+Date:   Thu, 29 Dec 2022 12:30:35 -0800
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Lizhi Xu <lizhi.xu@windriver.com>
+Cc:     mail@anirudhrb.com, adilger.kernel@dilger.ca, akpm@osdl.org,
+        alex@clusterfs.com, gregkh@linuxfoundation.org,
+        linux-ext4@vger.kernel.org,
+        linux-kernel-mentees@lists.linuxfoundation.org,
+        linux-kernel@vger.kernel.org, shaggy@austin.ibm.com,
+        syzbot+2dcfeaf8cb49b05e8f1a@syzkaller.appspotmail.com,
+        tytso@mit.edu
+Subject: Re: How can this fix prevent information from leaking to user space
+ and prevent the kernel from crashing?
+Message-ID: <Y63464YEo30Ga/US@sol.localdomain>
+References: <20210506185655.7118-1-mail@anirudhrb.com>
+ <20221226143119.3719096-1-lizhi.xu@windriver.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20221226143119.3719096-1-lizhi.xu@windriver.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-filemap_fdatawrite_wbc is a fairly thing wrapper around do_writepages,
-and the big difference there is support for cgroup writeback, which
-is not supported by ocfs2, and the potential to use ->writepages instead
-of ->writepage, which ocfs2 does not currently implement but eventually
-should.
+On Mon, Dec 26, 2022 at 10:31:19PM +0800, Lizhi Xu wrote:
+> Hi, Anirudh Rayabharam
+> 
+> I verify this patch in the following environment, using reproducer: https://syzkaller.appspot.com/x/repro.c?x=122870ff800000
+> 
+> 1. kernel version:  kernel version 5.15.72 
+> 2. gcc 11.3
+> 3. libc 2.35
+> 
+> Because the kernel version 5.15.72 already contains this patch ce3aba43599f0b50adbebff133df8d08a3d5fffe, 
+> So I deleted this patch to make a kernel image to reproduce the problem,
+> On the other hand, I reserve this patch to verify that the problem has been fixed,
+> The result of the experiment is that no matter whether this patch is applied or not, 
+> this problem cannot be reproduced in kernel version 5.15.72.
+> 
+> In addition, I am also very confused. There are three places to initialize "eh_generation". 
+> There is no other reference to the parameter "eh_generation" in all the source code of the kernel,
+> At the same time, there is no indirect operation on the parameter "eh_generation" in reproducer,
+> How can this fix prevent information from leaking to user space and prevent the kernel from crashing?
+> 
+> > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> > index 77c84d6f1af6..677d4821bcc1 100644
+> > --- a/fs/ext4/extents.c
+> > +++ b/fs/ext4/extents.c
+> > @@ -825,6 +825,7 @@ void ext4_ext_tree_init(handle_t *handle, struct inode *inode)
+> >  	eh->eh_entries = 0;
+> >  	eh->eh_magic = EXT4_EXT_MAGIC;
+> >  	eh->eh_max = cpu_to_le16(ext4_ext_space_root(inode, 0));
+> > +	eh->eh_generation = 0;
+> >  	ext4_mark_inode_dirty(handle, inode);
+> >  }
+> >  
+> > @@ -1090,6 +1091,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+> >  	neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode, 0));
+> >  	neh->eh_magic = EXT4_EXT_MAGIC;
+> >  	neh->eh_depth = 0;
+> > +	neh->eh_generation = 0;
+> >  
+> >  	/* move remainder of path[depth] to the new leaf */
+> >  	if (unlikely(path[depth].p_hdr->eh_entries !=
+> > @@ -1167,6 +1169,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+> >  		neh->eh_magic = EXT4_EXT_MAGIC;
+> >  		neh->eh_max = cpu_to_le16(ext4_ext_space_block_idx(inode, 0));
+> >  		neh->eh_depth = cpu_to_le16(depth - i);
+> > +		neh->eh_generation = 0;
+> >  		fidx = EXT_FIRST_INDEX(neh);
+> >  		fidx->ei_block = border;
+> >  		ext4_idx_store_pblock(fidx, oldblock);
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/ocfs2/journal.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+The information leak was that uninitialized memory was being written to disk.
 
-diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
-index 59f612684c5178..25d8072ccfce46 100644
---- a/fs/ocfs2/journal.c
-+++ b/fs/ocfs2/journal.c
-@@ -852,7 +852,7 @@ static int ocfs2_journal_submit_inode_data_buffers(struct jbd2_inode *jinode)
- 		.range_end = jinode->i_dirty_end,
- 	};
- 
--	return generic_writepages(mapping, &wbc);
-+	return filemap_fdatawrite_wbc(mapping, &wbc);
- }
- 
- int ocfs2_journal_init(struct ocfs2_super *osb, int *dirty)
--- 
-2.35.1
+The way this bug was detected is with KMSAN.  If your kernel does not have KMSAN
+enabled, the reproducer will not appear to do anything.  Note that KMSAN
+requires Linux v6.1 or later and clang v14.0.6 or later.
 
+- Eric
