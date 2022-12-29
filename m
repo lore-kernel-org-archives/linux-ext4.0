@@ -2,56 +2,55 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4686EC3DA7D
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Dec 2022 08:16:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 593B3C4332F
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Dec 2022 08:19:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233216AbiL2IQb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 29 Dec 2022 03:16:31 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39018 "EHLO
+        id S232887AbiL2ISv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 29 Dec 2022 03:18:51 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39004 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233254AbiL2IPw (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Dec 2022 03:15:52 -0500
-Received: from mail-ej1-x635.google.com (mail-ej1-x635.google.com [IPv6:2a00:1450:4864:20::635])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9674913DCF
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Dec 2022 00:14:37 -0800 (PST)
-Received: by mail-ej1-x635.google.com with SMTP id x22so43400148ejs.11
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Dec 2022 00:14:37 -0800 (PST)
+        with ESMTP id S233241AbiL2ISF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Dec 2022 03:18:05 -0500
+Received: from mail-ed1-x533.google.com (mail-ed1-x533.google.com [IPv6:2a00:1450:4864:20::533])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2035013CFD
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Dec 2022 00:17:36 -0800 (PST)
+Received: by mail-ed1-x533.google.com with SMTP id u28so20936409edd.10
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Dec 2022 00:17:36 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=chromium.org; s=google;
         h=cc:to:subject:message-id:date:from:in-reply-to:references
          :mime-version:from:to:cc:subject:date:message-id:reply-to;
-        bh=Wf4Oclx/s2DatfZfaRbzTJQI1IZBAeRXW5JK4LTSla4=;
-        b=NU2n1cZSHmMnwavRmjaGTIOlZm9KKoVlTctPjkyNTmZUljpRpEn9h6P8v4Hs9lilpI
-         mkCIQ2k2l/xfRvQXQ69rAtGkTcoyANDRbInSespNg/TQMBEiJJphNIESLhmtweJP/7+h
-         Wp7m19/xGESByGcjrF6tidvzavgdhhzaF0/Yw=
+        bh=7n+B+X0KvL5FYpt4R5yWJ/ag0L0NLxa0tbY9qucKwuI=;
+        b=aM/Ttwb0xqobbPsfNShnECgwZZ0RVTZPBATDxWKlrmgoYc131+i6w0GKSBj1PdVklm
+         gbChCXaQ6kiGtiwXqjToSpSW7zNn+YGWX5SWfwTFn1L5KuHM7Q7U66SHcHp9Wg2KrYUe
+         zxjDtJAp6e++CJq9Z/mH0g4XiyUZ6LJVU+4AY=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=cc:to:subject:message-id:date:from:in-reply-to:references
          :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
          :reply-to;
-        bh=Wf4Oclx/s2DatfZfaRbzTJQI1IZBAeRXW5JK4LTSla4=;
-        b=u1PIm49MenL8X97mAVWNyDyedU2GY/xejiypU+y0lRulFNWTXO0hW62AhB/mxxtIT1
-         ZpD2XUR+9FFGJk5PVg1eGZuuhEDV+JJWGA74h4OxFJLBQvTNMAUk+KmC1nQtl44110L2
-         RaXeiqOhbXFNGPu5lINE/eJhS6nuvsedUDBzdC21yDFdwidwJLQ6BfMd4fDRwhiefgeM
-         /v/cpe4t6a9gTAeNklORZyhKSYxiPGfKF1EOEV1WDupOfV+WOkJk4EEXoCjv+1IcqIaf
-         7JW4BmdUzA9OmsLvth9aX2nUbtrOnEIn0xg12N0m5RMppdaHiALIIg8Ve6resSnYZ9Xz
-         Y5Hg==
-X-Gm-Message-State: AFqh2kqiux6jRzT9qXHD6F5VgtM5LSNaOV9I/hf8EkrzhayWYPxJDkg7
-        u5EMtKbndN2QFSZdp8JPNvRlnN3ozk6X1DtYl5lBOA==
-X-Google-Smtp-Source: AMrXdXs300Z+BXOJPxEJlPkjyVUzSJVOjoySN3yowIHivu+kDMNajS+vq938RArP6B2ta87auqxQOwl3KblSmt1bED8=
-X-Received: by 2002:a17:907:c013:b0:7c0:eb3c:1037 with SMTP id
- ss19-20020a170907c01300b007c0eb3c1037mr2068068ejc.663.1672301676050; Thu, 29
- Dec 2022 00:14:36 -0800 (PST)
+        bh=7n+B+X0KvL5FYpt4R5yWJ/ag0L0NLxa0tbY9qucKwuI=;
+        b=LtT2pwpmotGyVm4GWiPvjgWaRrcqPdK8hq4w3HvKzEK+XmU6XHOLquCjwzgYI0JiwQ
+         OBhBrYyz6w5N9eFw7l4/1cGk9/Qe71jnbmP0Uvzuf/DMg0JpMIEANTn8Dn8/nBVoKfAE
+         2mmSv9P8zn0//RKFcgD6820Cc+CupcvnDDi8/bEHOBElHbZffTTarp0LtaxetgWJa/Jc
+         svi565BTBuhZk8G+WQLzTPiTxx58eYfnmlTOoyenC7NQZIIP1YXnQSqjaI3HqA/LjWDn
+         8Qo32/55P5CGAAhhWemJSbbmFcBQk5sYBHNFryWgaZWiu67Bk6qOZvOghp36ayrO9NhU
+         esyw==
+X-Gm-Message-State: AFqh2koJY0qETNBN4r2m+aPYh8ns/QON4ZDKfQE01v9KrKaeM6fsEmOK
+        wimRfk3jVMku5muWx018j6ntwPj2FYgtaRMleAjn9Q==
+X-Google-Smtp-Source: AMrXdXulwl3zEgOGWwmMivflDb4UfyGNGI7lU4m/aeAvt/3L5Hf+inrJtG+WSFp0FPQl5mpy0l5FjfKOF5TBfRVSOU8=
+X-Received: by 2002:a50:fe17:0:b0:487:e554:31e8 with SMTP id
+ f23-20020a50fe17000000b00487e55431e8mr670416edt.353.1672301854647; Thu, 29
+ Dec 2022 00:17:34 -0800 (PST)
 MIME-Version: 1.0
 References: <20220915164826.1396245-1-sarthakkukreti@google.com>
- <20220915164826.1396245-5-sarthakkukreti@google.com> <YylweQAZkIdb5ixo@infradead.org>
- <CAG9=OMNoG01UUStNs_Zhsv6mXZw0M0q2v54ZriJvHZ4aspvjEQ@mail.gmail.com> <Yy1yOGy7yF4AShDB@infradead.org>
-In-Reply-To: <Yy1yOGy7yF4AShDB@infradead.org>
+ <20220915164826.1396245-2-sarthakkukreti@google.com> <Yy3NeY02zEMLTdsa@redhat.com>
+In-Reply-To: <Yy3NeY02zEMLTdsa@redhat.com>
 From:   Sarthak Kukreti <sarthakkukreti@chromium.org>
-Date:   Thu, 29 Dec 2022 00:14:25 -0800
-Message-ID: <CAG9=OMOLLjVJHTPmDSPM3t+Ko90CcN5C01UhEadZReECUE5umw@mail.gmail.com>
-Subject: Re: [PATCH RFC 4/8] fs: Introduce FALLOC_FL_PROVISION
-To:     Christoph Hellwig <hch@infradead.org>
+Date:   Thu, 29 Dec 2022 00:17:23 -0800
+Message-ID: <CAG9=OMO=j=kOGX4hnYSt490wURF_a8ZM5MctKpeV2TaiKS8RhQ@mail.gmail.com>
+Subject: Re: [PATCH RFC 1/8] block: Introduce provisioning primitives
+To:     Mike Snitzer <snitzer@redhat.com>
 Cc:     dm-devel@redhat.com, linux-block@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
         virtualization@lists.linux-foundation.org,
@@ -73,37 +72,65 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Sep 23, 2022 at 1:45 AM Christoph Hellwig <hch@infradead.org> wrote:
+On Fri, Sep 23, 2022 at 8:15 AM Mike Snitzer <snitzer@redhat.com> wrote:
 >
-> On Tue, Sep 20, 2022 at 10:54:32PM -0700, Sarthak Kukreti wrote:
-> > [ mmc0blkp1 | ext4(1) | sparse file | loop | dm-thinp | dm-thin | ext4(2) ]
+> On Thu, Sep 15 2022 at 12:48P -0400,
+> Sarthak Kukreti <sarthakkukreti@chromium.org> wrote:
+>
+> > From: Sarthak Kukreti <sarthakkukreti@chromium.org>
 > >
-> > would be predicated on the guarantees of fallocate() per allocation
-> > layer; if ext4(1) was replaced by a filesystem that did not support
-> > fallocate(), then there would be no guarantee that a write to a file
-> > on ext4(2) succeeds.
+> > Introduce block request REQ_OP_PROVISION. The intent of this request
+> > is to request underlying storage to preallocate disk space for the given
+> > block range. Block device that support this capability will export
+> > a provision limit within their request queues.
+> >
+> > Signed-off-by: Sarthak Kukreti <sarthakkukreti@chromium.org>
+> > ---
+> >  block/blk-core.c          |  5 ++++
+> >  block/blk-lib.c           | 55 +++++++++++++++++++++++++++++++++++++++
+> >  block/blk-merge.c         | 17 ++++++++++++
+> >  block/blk-settings.c      | 19 ++++++++++++++
+> >  block/blk-sysfs.c         |  8 ++++++
+> >  block/bounce.c            |  1 +
+> >  include/linux/bio.h       |  6 +++--
+> >  include/linux/blk_types.h |  5 +++-
+> >  include/linux/blkdev.h    | 16 ++++++++++++
+> >  9 files changed, 129 insertions(+), 3 deletions(-)
+> >
+> > diff --git a/block/blk-settings.c b/block/blk-settings.c
+> > index 8bb9eef5310e..be79ad68b330 100644
+> > --- a/block/blk-settings.c
+> > +++ b/block/blk-settings.c
+> > @@ -57,6 +57,7 @@ void blk_set_default_limits(struct queue_limits *lim)
+> >       lim->misaligned = 0;
+> >       lim->zoned = BLK_ZONED_NONE;
+> >       lim->zone_write_granularity = 0;
+> > +     lim->max_provision_sectors = 0;
+> >  }
+> >  EXPORT_SYMBOL(blk_set_default_limits);
+> >
+> > @@ -81,6 +82,7 @@ void blk_set_stacking_limits(struct queue_limits *lim)
+> >       lim->max_dev_sectors = UINT_MAX;
+> >       lim->max_write_zeroes_sectors = UINT_MAX;
+> >       lim->max_zone_append_sectors = UINT_MAX;
+> > +     lim->max_provision_sectors = UINT_MAX;
+> >  }
+> >  EXPORT_SYMBOL(blk_set_stacking_limits);
+> >
 >
-> a write or any unlimited number of writes?
+> Please work through the blk_stack_limits() implementation too (simple
+> min_not_zero?).
+>
+(Sorry, I might have misunderstood what you meant) Doesn't the chunk
+at L572 handle this:
 
-(Apologies for the super late reply!) In this case, even a write won't
-be guaranteed if we run out of space on the lower filesystem. Looking
-at the fallocate() man page, I think the key part lies in the
-following phrase (emphasis mine):
 
-```
-After a successful call, subsequent writes into the range
-specified by offset and len are guaranteed not to fail _because of
-lack of disk space_
-```
+@@ -572,6 +588,9 @@ int blk_stack_limits(struct queue_limits *t,
+struct queue_limits *b,
+        t->max_segment_size = min_not_zero(t->max_segment_size,
+                                           b->max_segment_size);
 
-So, it's not a blanket guarantee that all writes will always succeed,
-but that any writes into that range will not fail due to lack of disk
-space. As you mentioned, writes may happen out-of-place in one or more
-layer. But the fallocate(FALLOC_FL_PROVISION) ensures that each layer
-will preserve space for writes into that range to not fail with ENOSPC
-(so eg. ext4 and dm-thinp will set aside enough extents to fulfil that
-promise later on for all writes).
-
-Best
-
-Sarthak
++       t->max_provision_sectors = min_not_zero(t->max_provision_sectors,
++                                               b->max_provision_sectors);
++
+        t->misaligned |= b->misaligned;
