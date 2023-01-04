@@ -2,53 +2,52 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E8E3C63707
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6226EC63709
 	for <linux-ext4@archiver.kernel.org>; Wed,  4 Jan 2023 21:15:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235406AbjADVPH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 4 Jan 2023 16:15:07 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57382 "EHLO
+        id S240244AbjADVO7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 Jan 2023 16:14:59 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57364 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240264AbjADVPA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2023 16:15:00 -0500
-Received: from mail-pl1-x62a.google.com (mail-pl1-x62a.google.com [IPv6:2607:f8b0:4864:20::62a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1748B1CB3D;
-        Wed,  4 Jan 2023 13:14:59 -0800 (PST)
-Received: by mail-pl1-x62a.google.com with SMTP id 17so37263994pll.0;
-        Wed, 04 Jan 2023 13:14:59 -0800 (PST)
+        with ESMTP id S235287AbjADVO5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2023 16:14:57 -0500
+Received: from mail-pj1-x102b.google.com (mail-pj1-x102b.google.com [IPv6:2607:f8b0:4864:20::102b])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 689731B9DA;
+        Wed,  4 Jan 2023 13:14:56 -0800 (PST)
+Received: by mail-pj1-x102b.google.com with SMTP id cp9-20020a17090afb8900b00226a934e0e5so1873607pjb.1;
+        Wed, 04 Jan 2023 13:14:56 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=KWc2oMWZrabUsNL93YYBg0xBgzl7UJM5P4FHRP4dszA=;
-        b=X+JhwQB/YFpkv9O3Sz2RIqehaNfUYePllMKYDSfYMVmQ80S+7Znm3qUhQQutUgGzcL
-         0uq/hVoyBfqjmkDpyVZm/VIPt68FQqEGQ82Nd+zz6E+E98NXjR4XSpPj/MXztZhY0W/5
-         2SnakvGDdpx0xcZLQD7UZxy8cVZY3oo6XDRKLX6rp+1lZ5XfYRhOxIIbBxK+QOE0O7oY
-         mvbbq1JpLOKHZ6D7c98chruQCpXs68i4ZX3rFltoX/XuVJPECIsdkN1cooENDtzYQJT2
-         bRwgzwaxOKhTwxGYYDaTYxmm4WsaqrwCXgLa3BEJo54/4GqC8mZRZtI56zwUYC6qebL9
-         Oo2w==
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=XF0rWcwOaeOy9W3XDndGOlTI6VOcqMAlw6Z0kSP+ZIE=;
+        b=mwUaRHyXO3QpRK5P0JqCEjtDjkmGl7YgUMaT1I2YjsKhseOwqNkNS33mOlEf/eRTXu
+         Dx4cepCH0DpI7UZias9hAXzrqhmP9FqJPQ5SpCcrNsEip5tDid5QCJ8rq3xSJ7zfXgzS
+         VkkY41Iwf5a5gzpho+eHq9V7JD1kKJVPOfzCuRJq6ljFPE+NlmpfzNYoSMe4wocuCgzf
+         S6i7hTWrnSsU5BeCV3tLAdKHoc+E6ZXdQXMGE1pFenz1nLeHJTOMKZAollRFOqAqS7OZ
+         auFae1eJ8Ii2yGyYjhvy6b6WvXd1YJI0BgZbYV7R5btP09Ol+PqZuvdKcR/Dbg+8nqw5
+         sxBQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=KWc2oMWZrabUsNL93YYBg0xBgzl7UJM5P4FHRP4dszA=;
-        b=JgvoNm0ehFACkQtiQpM9h2G4NU3ZW4DxOyg8oPIhRTCCxX8knz53vCYFSXm6GvXUHI
-         Ev5EuDRVFiE2gjHXO4o+IoATLSxLyW/xruLYPuDVSLMzD6qI1i60sR60Ml8f6cGt8lzV
-         q8cdhMdT3eoHXunHLXPdUu98UgiuD3Bszh7T1FgiGZJ/fGsXMrVF6eUAZa3bhLcMHCba
-         jfADS3UJQTGELFQ8qJCjL5c4JVp/nDfTM3cmo1VzFof0sEFAeGKjemwHnHpaXY6/7Ghc
-         ubaY407rcI76MwJntzEbJBMJADAwKVRmHXh+yHlmPJdMmXcy53RJkYkECkl4p0FWQnJ8
-         dzxQ==
-X-Gm-Message-State: AFqh2krKOphbfLWlmiXt7urgTO+cQ1D6xeknMO+n5tWWUTAfBlBtzfMZ
-        yffhN798KKWjXIWaKID7CglXR0t5EYoI6w==
-X-Google-Smtp-Source: AMrXdXsQLnyc09jFT7hjT2KR1nJMp1M067OD5YrApEuRuIFS+9J6bRUAVKGRrDQmj0MgbIV/5rlsug==
-X-Received: by 2002:a17:90a:cc2:b0:219:9973:2746 with SMTP id 2-20020a17090a0cc200b0021999732746mr65437761pjt.0.1672866898346;
-        Wed, 04 Jan 2023 13:14:58 -0800 (PST)
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=XF0rWcwOaeOy9W3XDndGOlTI6VOcqMAlw6Z0kSP+ZIE=;
+        b=VXUdT2qJNV2+51ymPdStnnbXkLEO+YYaaZqRzKkqvwyTrB8ZiM5kvLPWDZuyIkp40t
+         KwuvYPgYLdFs/AUWR1oj/IwdEjYnv62J6K63fw4Nbou1Kn2jEe2nc+rE1fyYps2SiMUC
+         fp6hb2ErAaJvfFtth+DS50MmNNkmUzIiOzsGMPQqtFI/SSMdMyAe43GLUzqGHTILSa51
+         tOnjlpsIH3s3BHucazaHZuRefdP1Ck0jooQbGJrg93ia6AE0opLYo1RLoXeIXAPXz8iU
+         lRRg350TTraGEnL8udJCWl0NpSfUElVywgRHTY3nPau69R8Js2uGBvSw8TSVckoJAFvB
+         X3dA==
+X-Gm-Message-State: AFqh2kpDWAd7wjlled99pb0sBQSDjMptgWcma3nf84rFxSYBdwaC6ju8
+        TTv6m3s2goEH2Fqi5mlXfd6hHv/26T0=
+X-Google-Smtp-Source: AMrXdXuHWcLr2ISD1AWLN6noveXBmNIMzDKhC6iHCDPkCElkMLkDu5P/j13SKsDU15gZnXatqrr41A==
+X-Received: by 2002:a17:90a:cc0b:b0:219:5955:7570 with SMTP id b11-20020a17090acc0b00b0021959557570mr23943541pju.46.1672866895416;
+        Wed, 04 Jan 2023 13:14:55 -0800 (PST)
 Received: from fedora.hsd1.ca.comcast.net ([2601:644:8002:1c20::a55d])
-        by smtp.googlemail.com with ESMTPSA id i8-20020a17090a138800b00226369149cesm6408pja.21.2023.01.04.13.14.57
+        by smtp.googlemail.com with ESMTPSA id i8-20020a17090a138800b00226369149cesm6408pja.21.2023.01.04.13.14.53
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 04 Jan 2023 13:14:58 -0800 (PST)
+        Wed, 04 Jan 2023 13:14:54 -0800 (PST)
 From:   "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     linux-afs@lists.infradead.org, linux-kernel@vger.kernel.org,
@@ -56,115 +55,107 @@ Cc:     linux-afs@lists.infradead.org, linux-kernel@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
         linux-nilfs@vger.kernel.org, linux-mm@kvack.org,
-        "Vishal Moola (Oracle)" <vishal.moola@gmail.com>,
-        Matthew Wilcow <willy@infradead.org>
-Subject: [PATCH v5 02/23] filemap: Added filemap_get_folios_tag()
-Date:   Wed,  4 Jan 2023 13:14:27 -0800
-Message-Id: <20230104211448.4804-3-vishal.moola@gmail.com>
+        "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
+Subject: [PATCH v5 00/23] Convert to filemap_get_folios_tag()
+Date:   Wed,  4 Jan 2023 13:14:25 -0800
+Message-Id: <20230104211448.4804-1-vishal.moola@gmail.com>
 X-Mailer: git-send-email 2.38.1
-In-Reply-To: <20230104211448.4804-1-vishal.moola@gmail.com>
-References: <20230104211448.4804-1-vishal.moola@gmail.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This is the equivalent of find_get_pages_range_tag(), except for folios
-instead of pages.
+This patch series replaces find_get_pages_range_tag() with
+filemap_get_folios_tag(). This also allows the removal of multiple
+calls to compound_head() throughout.
+It also makes a good chunk of the straightforward conversions to folios,
+and takes the opportunity to introduce a function that grabs a folio
+from the pagecache.
 
-One noteable difference is filemap_get_folios_tag() does not take in a
-maximum pages argument. It instead tries to fill a folio batch and stops
-either once full (15 folios) or reaching the end of the search range.
+I've run xfstests on xfs, btrfs, ext4, f2fs, and nilfs2, but more testing may
+be beneficial. The page-writeback and filemap changes implicitly work. Still
+looking for review of cifs, gfs2, and ext4.
 
-The new function supports large folios, the initial function did not
-since all callers don't use large folios.
-
-Signed-off-by: Vishal Moola (Oracle) <vishal.moola@gmail.com>
-Reviewed-by: Matthew Wilcow (Oracle) <willy@infradead.org>
 ---
- include/linux/pagemap.h |  2 ++
- mm/filemap.c            | 54 +++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 56 insertions(+)
+v5:
+  Rebased onto upstream 6.2-rc2
+  Filesystems modified to use folio_get() instead of folio_ref_inc()
+  F2fs modified to maintain use of F2FS_ONSTACK_PAGES
 
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 468183be67be..bb3c1d51b1cb 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -739,6 +739,8 @@ unsigned filemap_get_folios(struct address_space *mapping, pgoff_t *start,
- 		pgoff_t end, struct folio_batch *fbatch);
- unsigned filemap_get_folios_contig(struct address_space *mapping,
- 		pgoff_t *start, pgoff_t end, struct folio_batch *fbatch);
-+unsigned filemap_get_folios_tag(struct address_space *mapping, pgoff_t *start,
-+		pgoff_t end, xa_mark_t tag, struct folio_batch *fbatch);
- unsigned find_get_pages_range_tag(struct address_space *mapping, pgoff_t *index,
- 			pgoff_t end, xa_mark_t tag, unsigned int nr_pages,
- 			struct page **pages);
-diff --git a/mm/filemap.c b/mm/filemap.c
-index c4d4ace9cc70..291bb3e0957a 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2281,6 +2281,60 @@ unsigned filemap_get_folios_contig(struct address_space *mapping,
- }
- EXPORT_SYMBOL(filemap_get_folios_contig);
- 
-+/**
-+ * filemap_get_folios_tag - Get a batch of folios matching @tag
-+ * @mapping:    The address_space to search
-+ * @start:      The starting page index
-+ * @end:        The final page index (inclusive)
-+ * @tag:        The tag index
-+ * @fbatch:     The batch to fill
-+ *
-+ * Same as filemap_get_folios(), but only returning folios tagged with @tag.
-+ *
-+ * Return: The number of folios found.
-+ * Also update @start to index the next folio for traversal.
-+ */
-+unsigned filemap_get_folios_tag(struct address_space *mapping, pgoff_t *start,
-+			pgoff_t end, xa_mark_t tag, struct folio_batch *fbatch)
-+{
-+	XA_STATE(xas, &mapping->i_pages, *start);
-+	struct folio *folio;
-+
-+	rcu_read_lock();
-+	while ((folio = find_get_entry(&xas, end, tag)) != NULL) {
-+		/*
-+		 * Shadow entries should never be tagged, but this iteration
-+		 * is lockless so there is a window for page reclaim to evict
-+		 * a page we saw tagged. Skip over it.
-+		 */
-+		if (xa_is_value(folio))
-+			continue;
-+		if (!folio_batch_add(fbatch, folio)) {
-+			unsigned long nr = folio_nr_pages(folio);
-+
-+			if (folio_test_hugetlb(folio))
-+				nr = 1;
-+			*start = folio->index + nr;
-+			goto out;
-+		}
-+	}
-+	/*
-+	 * We come here when there is no page beyond @end. We take care to not
-+	 * overflow the index @start as it confuses some of the callers. This
-+	 * breaks the iteration when there is a page at index -1 but that is
-+	 * already broke anyway.
-+	 */
-+	if (end == (pgoff_t)-1)
-+		*start = (pgoff_t)-1;
-+	else
-+		*start = end + 1;
-+out:
-+	rcu_read_unlock();
-+
-+	return folio_batch_count(fbatch);
-+}
-+EXPORT_SYMBOL(filemap_get_folios_tag);
-+
- /**
-  * find_get_pages_range_tag - Find and return head pages matching @tag.
-  * @mapping:	the address_space to search
+v4:
+  Fixed a bug with reference counting in cifs changes
+  - Reported-by: kernel test robot <oliver.sang@intel.com> 
+  Improved commit messages to be more meaningful
+  Got some Acked-bys and Reviewed-bys
+
+v3:
+  Rebased onto upstream 6.1
+  Simplified the ceph patch to only necessary changes
+  Changed commit messages throughout to be clearer
+  Got an Acked-by for another nilfs patch
+  Got Tested-by for afs
+
+v2:
+  Got Acked-By tags for nilfs and btrfs changes
+  Fixed an error arising in f2fs
+  - Reported-by: kernel test robot <lkp@intel.com>
+
+Vishal Moola (Oracle) (23):
+  pagemap: Add filemap_grab_folio()
+  filemap: Added filemap_get_folios_tag()
+  filemap: Convert __filemap_fdatawait_range() to use
+    filemap_get_folios_tag()
+  page-writeback: Convert write_cache_pages() to use
+    filemap_get_folios_tag()
+  afs: Convert afs_writepages_region() to use filemap_get_folios_tag()
+  btrfs: Convert btree_write_cache_pages() to use
+    filemap_get_folio_tag()
+  btrfs: Convert extent_write_cache_pages() to use
+    filemap_get_folios_tag()
+  ceph: Convert ceph_writepages_start() to use filemap_get_folios_tag()
+  cifs: Convert wdata_alloc_and_fillpages() to use
+    filemap_get_folios_tag()
+  ext4: Convert mpage_prepare_extent_to_map() to use
+    filemap_get_folios_tag()
+  f2fs: Convert f2fs_fsync_node_pages() to use filemap_get_folios_tag()
+  f2fs: Convert f2fs_flush_inline_data() to use filemap_get_folios_tag()
+  f2fs: Convert f2fs_sync_node_pages() to use filemap_get_folios_tag()
+  f2fs: Convert f2fs_write_cache_pages() to use filemap_get_folios_tag()
+  f2fs: Convert last_fsync_dnode() to use filemap_get_folios_tag()
+  f2fs: Convert f2fs_sync_meta_pages() to use filemap_get_folios_tag()
+  gfs2: Convert gfs2_write_cache_jdata() to use filemap_get_folios_tag()
+  nilfs2: Convert nilfs_lookup_dirty_data_buffers() to use
+    filemap_get_folios_tag()
+  nilfs2: Convert nilfs_lookup_dirty_node_buffers() to use
+    filemap_get_folios_tag()
+  nilfs2: Convert nilfs_btree_lookup_dirty_buffers() to use
+    filemap_get_folios_tag()
+  nilfs2: Convert nilfs_copy_dirty_pages() to use
+    filemap_get_folios_tag()
+  nilfs2: Convert nilfs_clear_dirty_pages() to use
+    filemap_get_folios_tag()
+  filemap: Remove find_get_pages_range_tag()
+
+ fs/afs/write.c          | 116 ++++++++++++++++++++--------------------
+ fs/btrfs/extent_io.c    |  57 ++++++++++----------
+ fs/ceph/addr.c          |  58 ++++++++++----------
+ fs/cifs/file.c          |  32 +++++++++--
+ fs/ext4/inode.c         |  65 +++++++++++-----------
+ fs/f2fs/checkpoint.c    |  49 +++++++++--------
+ fs/f2fs/data.c          |  84 ++++++++++++++++++++---------
+ fs/f2fs/node.c          |  72 +++++++++++++------------
+ fs/gfs2/aops.c          |  64 ++++++++++++----------
+ fs/nilfs2/btree.c       |  14 ++---
+ fs/nilfs2/page.c        |  59 ++++++++++----------
+ fs/nilfs2/segment.c     |  44 +++++++--------
+ include/linux/pagemap.h |  32 +++++++----
+ include/linux/pagevec.h |   8 ---
+ mm/filemap.c            |  84 ++++++++++++++---------------
+ mm/page-writeback.c     |  44 +++++++--------
+ mm/swap.c               |  10 ----
+ 17 files changed, 481 insertions(+), 411 deletions(-)
+
 -- 
 2.38.1
 
