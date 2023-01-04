@@ -2,113 +2,134 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D424C4332F
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 Jan 2023 06:44:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E5558C4332F
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 Jan 2023 06:51:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231128AbjADGnv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 4 Jan 2023 01:43:51 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53910 "EHLO
+        id S233279AbjADGvi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 Jan 2023 01:51:38 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58468 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233513AbjADGnl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2023 01:43:41 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9F88E1157;
-        Tue,  3 Jan 2023 22:43:40 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 338C2615B9;
-        Wed,  4 Jan 2023 06:43:40 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3C343C433D2;
-        Wed,  4 Jan 2023 06:43:39 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1672814619;
-        bh=6N2Ke/st2hAmX2V/VgSABXPm5IauQsGR3LMjD5iJN8Y=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=CoPzNQXbuZbSVda/faaYideuP/YV0mH1Cm201igkahsCYWKp/9CZ7fq67eVdgST4g
-         s74JrHfPByRtGaFM+mIG3FtWZmxD1fGOwFO9AkRs1Ccu3y4HVOmKlclhv9+jqFBZaN
-         YYVZo/hWZ2LpSdE8Ugql18VpQ1ap3x4vWJS8v06L/ln5EN6ugWf/2G9ZxP8riDDo/C
-         sHcTLSTS/Wc9KvZgkGOeN97v4gwtOBBZI2ewMCDi2RQmzA5qMuZYtTXdRqOW8xfXui
-         k21k3HSS6hCmZP037e1e4qFUKrp4pIU1DxouZeoTqncsDGUvoRNGPj9qYqjUNUoJk+
-         l5xEXxAUE9TUQ==
-Date:   Tue, 3 Jan 2023 22:43:37 -0800
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Kees Cook <keescook@chromium.org>
-Cc:     tytso@mit.edu, Andreas Dilger <adilger.kernel@dilger.ca>,
-        Nathan Chancellor <nathan@kernel.org>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Tom Rix <trix@redhat.com>, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, llvm@lists.linux.dev,
-        linux-hardening@vger.kernel.org
-Subject: Re: [PATCH] ext4: Fix function prototype mismatch for ext4_feat_ktype
-Message-ID: <Y7UgGSoeB+3yQD8V@sol.localdomain>
-References: <20230103234616.never.915-kees@kernel.org>
- <Y7THENi5v2+fgUAc@gmail.com>
+        with ESMTP id S233583AbjADGva (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2023 01:51:30 -0500
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7E84B2DDC;
+        Tue,  3 Jan 2023 22:51:27 -0800 (PST)
+Received: from mail02.huawei.com (unknown [172.30.67.153])
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Nn0cp1Tcbz4f3pPP;
+        Wed,  4 Jan 2023 14:51:22 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.127.227])
+        by APP4 (Coremail) with SMTP id gCh0CgCH77LrIbVjk6tLBA--.65158S4;
+        Wed, 04 Jan 2023 14:51:24 +0800 (CST)
+From:   Ye Bin <yebin@huaweicloud.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
+        Ye Bin <yebin10@huawei.com>,
+        syzbot+bf4bb7731ef73b83a3b4@syzkaller.appspotmail.com
+Subject: [PATCH] ext4: fix use-after-free Read in ext4_find_extent for bigalloc + inline
+Date:   Wed,  4 Jan 2023 15:15:59 +0800
+Message-Id: <20230104071559.2051847-1-yebin@huaweicloud.com>
+X-Mailer: git-send-email 2.31.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <Y7THENi5v2+fgUAc@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID: gCh0CgCH77LrIbVjk6tLBA--.65158S4
+X-Coremail-Antispam: 1UD129KBjvJXoWxGrW3XryxKr17GF1rAw4xZwb_yoWrWrW7p3
+        s8Jr97Gr40v34qkFZ7Jr1UXF1UJw47Ca1UGryfGr18XFyUGw10gF1ktF1UJa4vgrW8ZFyU
+        tF1Dt34UKw15AaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUgKb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+        vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
+        xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
+        0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+        6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+        Cjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCj
+        c4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4
+        CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1x
+        MIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_WFyUJV
+        Cq3wCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r1j6r4UYxBI
+        daVFxhVjvjDU0xZFpf9x07UWE__UUUUU=
+X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Jan 04, 2023 at 12:23:44AM +0000, Eric Biggers wrote:
-> I'm also surprised that this wasn't found earlier.  Is it possible that CFI does
-> not actually distinguish between the two function prototypes here?
-> 
+From: Ye Bin <yebin10@huawei.com>
 
-It's because this code is only reached when ext4 is a loadable module and it is
-being unloaded.  I can reproduce the CFI failure by doing that.
+Syzbot found the following issue:
+loop0: detected capacity change from 0 to 2048
+EXT4-fs (loop0): mounted filesystem 00000000-0000-0000-0000-000000000000 without journal. Quota mode: none.
+==================================================================
+BUG: KASAN: use-after-free in ext4_ext_binsearch_idx fs/ext4/extents.c:768 [inline]
+BUG: KASAN: use-after-free in ext4_find_extent+0x76e/0xd90 fs/ext4/extents.c:931
+Read of size 4 at addr ffff888073644750 by task syz-executor420/5067
 
-In addition to the naming tweak I requested, can you also add Fixes and Cc
-stable tags?
+CPU: 0 PID: 5067 Comm: syz-executor420 Not tainted 6.2.0-rc1-syzkaller #0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 10/26/2022
+Call Trace:
+ <TASK>
+ __dump_stack lib/dump_stack.c:88 [inline]
+ dump_stack_lvl+0x1b1/0x290 lib/dump_stack.c:106
+ print_address_description+0x74/0x340 mm/kasan/report.c:306
+ print_report+0x107/0x1f0 mm/kasan/report.c:417
+ kasan_report+0xcd/0x100 mm/kasan/report.c:517
+ ext4_ext_binsearch_idx fs/ext4/extents.c:768 [inline]
+ ext4_find_extent+0x76e/0xd90 fs/ext4/extents.c:931
+ ext4_clu_mapped+0x117/0x970 fs/ext4/extents.c:5809
+ ext4_insert_delayed_block fs/ext4/inode.c:1696 [inline]
+ ext4_da_map_blocks fs/ext4/inode.c:1806 [inline]
+ ext4_da_get_block_prep+0x9e8/0x13c0 fs/ext4/inode.c:1870
+ ext4_block_write_begin+0x6a8/0x2290 fs/ext4/inode.c:1098
+ ext4_da_write_begin+0x539/0x760 fs/ext4/inode.c:3082
+ generic_perform_write+0x2e4/0x5e0 mm/filemap.c:3772
+ ext4_buffered_write_iter+0x122/0x3a0 fs/ext4/file.c:285
+ ext4_file_write_iter+0x1d0/0x18f0
+ call_write_iter include/linux/fs.h:2186 [inline]
+ new_sync_write fs/read_write.c:491 [inline]
+ vfs_write+0x7dc/0xc50 fs/read_write.c:584
+ ksys_write+0x177/0x2a0 fs/read_write.c:637
+ do_syscall_x64 arch/x86/entry/common.c:50 [inline]
+ do_syscall_64+0x3d/0xb0 arch/x86/entry/common.c:80
+ entry_SYSCALL_64_after_hwframe+0x63/0xcd
+RIP: 0033:0x7f4b7a9737b9
+RSP: 002b:00007ffc5cac3668 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 00007f4b7a9737b9
+RDX: 00000000175d9003 RSI: 0000000020000200 RDI: 0000000000000004
+RBP: 00007f4b7a933050 R08: 0000000000000000 R09: 0000000000000000
+R10: 000000000000079f R11: 0000000000000246 R12: 00007f4b7a9330e0
+R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
+ </TASK>
 
-By the way, here's the log from the CFI failure I got:
+Above issue is happens when enable bigalloc and inline data feature. As
+commit 131294c35ed6 fixed delayed allocation bug in ext4_clu_mapped for
+bigalloc + inline. But it only resolved issue when has inline data, if
+inline data has been converted to extent(ext4_da_convert_inline_data_to_extent)
+before writepages, there is no EXT4_STATE_MAY_INLINE_DATA flag. However
+i_data is still store inline data in this scene. Then will trigger UAF
+when find extent.
+To resolve above issue, there is need to add judge "ext4_has_inline_data(inode)"
+in ext4_clu_mapped().
 
-[   16.412498] CFI failure at kobject_put+0xbb/0x1b0 (target: kfree+0x0/0x180; expected type: 0x7c4aa698)
-[   16.413716] invalid opcode: 0000 [#1] PREEMPT SMP
-[   16.414299] CPU: 2 PID: 179 Comm: rmmod Tainted: G                T  6.2.0-rc2 #28
-[   16.415223] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Arch Linux 1.16.1-1-1 04/01/2014
-[   16.416383] RIP: 0010:kobject_put+0xbb/0x1b0
-[   16.416926] Code: df e8 f9 03 00 00 4d 85 e4 74 24 49 83 3c 24 00 74 1d 0f 1f 44 00 00 48 89 df 4d 8b 1c 24 41 ba 68 59 b5 9
-[   16.419199] RSP: 0018:ffffc90000283e20 EFLAGS: 00010a13
-[   16.419842] RAX: 0000000000000000 RBX: ffff88800436c9c0 RCX: 0000000000000000
-[   16.420719] RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff88800436c9c0
-[   16.421595] RBP: ffffc90000283e40 R08: 0000000000000000 R09: 0000000000000000
-[   16.422465] R10: 0000000017461662 R11: ffffffff81216a20 R12: ffffffffa00f9510
-[   16.423330] R13: 0000000000000000 R14: ffff88800436ca80 R15: ffff888007643950
-[   16.424207] FS:  00007f7bf573f740(0000) GS:ffff88807dd00000(0000) knlGS:0000000000000000
-[   16.425188] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[   16.425814] CR2: 0000561eb661f818 CR3: 00000000074c9000 CR4: 00000000003506e0
-[   16.426574] Call Trace:
-[   16.426862]  <TASK>
-[   16.427098]  ext4_exit_sysfs+0x14/0x60 [ext4]
-[   16.427604]  cleanup_module+0x67/0xedb [ext4]
-[   16.428099]  __se_sys_delete_module+0x22d/0x3e0
-[   16.428593]  ? syscall_enter_from_user_mode+0x2a/0x1d0
-[   16.429142]  ? syscall_enter_from_user_mode+0x2a/0x1d0
-[   16.429694]  __x64_sys_delete_module+0x11/0x20
-[   16.430173]  do_syscall_64+0x53/0xb0
-[   16.430562]  entry_SYSCALL_64_after_hwframe+0x63/0xcd
-[   16.431151] RIP: 0033:0x7f7bf584ccfb
-[   16.431544] Code: 73 01 c3 48 8b 0d 8d f0 0c 00 f7 d8 64 89 01 48 83 c8 ff c3 66 2e 0f 1f 84 00 00 00 00 00 90 f3 0f 1e fa 8
-[   16.433517] RSP: 002b:00007fff7d959068 EFLAGS: 00000206 ORIG_RAX: 00000000000000b0
-[   16.434327] RAX: ffffffffffffffda RBX: 0000561eb6615750 RCX: 00007f7bf584ccfb
-[   16.435090] RDX: 0000000000000000 RSI: 0000000000000800 RDI: 0000561eb66157b8
-[   16.435852] RBP: 0000000000000000 R08: 1999999999999999 R09: 0000000000000000
-[   16.436617] R10: 00007f7bf58c2ac0 R11: 0000000000000206 R12: 0000000000000000
-[   16.437472] R13: 00007fff7d9592d0 R14: 00007fff7d959d80 R15: 0000561eb66152a0
-[   16.438307]  </TASK>
-[   16.438552] Modules linked in: ext4(-) crc32c_generic mbcache crc16 jbd2
-[   16.439321] ---[ end trace 0000000000000000 ]---
-[   16.439829] RIP: 0010:kobject_put+0xbb/0x1b0
-[   16.440294] Code: df e8 f9 03 00 00 4d 85 e4 74 24 49 83 3c 24 00 74 1d 0f 1f 44 00 00 48 89 df 4d 8b 1c 24 41 ba 68 59 b5 9
-[   16.442310] RSP: 0018:ffffc90000283e20 EFLAGS: 00010a13
-[   16.442960] RAX: 0000000000000000 RBX: ffff88800436c9c0 RCX: 0000000000000000
-[   16.443719] RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff88800436c9c0
-[   16.444472] RBP: ffffc90000283e40 R08: 0000000000000000 R09: 0000000000000000
-[   16.445231] R10: 0000000017461662 R11: ffffffff81216a20 R12: ffffffffa00f9510
-[   16.446012] R13: 0000000000000000 R14: ffff88800436ca80 R15: ffff888007643950
-[   16.446779] FS:  00007f7bf573f740(0000) GS:ffff88807dd00000(0000) knlGS:0000000000000000
-[   16.447658] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[   16.448276] CR2: 0000561eb661f818 CR3: 00000000074c9000 CR4: 00000000003506e0
+Reported-by: syzbot+bf4bb7731ef73b83a3b4@syzkaller.appspotmail.com
+Fixes: 131294c35ed6 ("ext4: fix delayed allocation bug in ext4_clu_mapped for bigalloc + inline")
+Signed-off-by: Ye Bin <yebin10@huawei.com>
+---
+ fs/ext4/extents.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 9de1c9d1a13d..ee5acf2bd5e6 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -5802,7 +5802,8 @@ int ext4_clu_mapped(struct inode *inode, ext4_lblk_t lclu)
+ 	 * mapped - no physical clusters have been allocated, and the
+ 	 * file has no extents
+ 	 */
+-	if (ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
++	if (ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA) ||
++	    ext4_has_inline_data(inode))
+ 		return 0;
+ 
+ 	/* search for the extent closest to the first block in the cluster */
+-- 
+2.31.1
+
