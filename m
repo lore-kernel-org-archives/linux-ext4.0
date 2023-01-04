@@ -2,42 +2,44 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 65DABC4332F
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 Jan 2023 09:03:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 494ADC46467
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 Jan 2023 09:04:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233583AbjADJDK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 4 Jan 2023 04:03:10 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58686 "EHLO
+        id S233802AbjADJDl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 Jan 2023 04:03:41 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58702 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233638AbjADJC7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2023 04:02:59 -0500
+        with ESMTP id S233883AbjADJDJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2023 04:03:09 -0500
 Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B6A05B1B
-        for <linux-ext4@vger.kernel.org>; Wed,  4 Jan 2023 01:02:57 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 515DDB1B
+        for <linux-ext4@vger.kernel.org>; Wed,  4 Jan 2023 01:03:08 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 6EA97B810FA
-        for <linux-ext4@vger.kernel.org>; Wed,  4 Jan 2023 09:02:56 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0DD38C433D2
-        for <linux-ext4@vger.kernel.org>; Wed,  4 Jan 2023 09:02:55 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 063F5B8133B
+        for <linux-ext4@vger.kernel.org>; Wed,  4 Jan 2023 09:03:07 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 88B98C433EF;
+        Wed,  4 Jan 2023 09:03:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1672822975;
-        bh=96PysuTJcji9VxGtfhjyLfRcj6J+QiTMPndHE/BKAYU=;
-        h=From:To:Subject:Date:From;
-        b=X+6Jagt49+kF+NshW7m1+2X07ergEa0StTwzN80WJwbCf1vzT7c98s06pyrvUR+tJ
-         +SGX5EHinupfR2RffXP/75RCZJqKvGTbOCtHZM4h68EYte5gNaiWb4DB/u9hz0J+ww
-         6voFg5JO0JDBNger/f4QS8rWw1dOw0qq+pjWjejST8pk6c+RwGaLUif9T5rIOv+6iA
-         lT3oGBL8i3/imaAkDPai3aDqf7niMT3XNTKIMLUgi/vJYKMdluLGt6cvhjMkOWk5gi
-         OrhRWQD7KYzph1QjdRNnVYDMd7YqEkOUPFZ7zg5PMxmDxYAppLXKVja8WDwE/v782Z
-         tGRHBBaUVtZQQ==
+        s=k20201202; t=1672822985;
+        bh=k1uPoNqAHdL6Rca2cRUhMBtrkHhGlNDWcNrRDqd3l1U=;
+        h=From:To:Cc:Subject:Date:From;
+        b=i1TeCx3BCLRrLjrcgpU8K7OA50B6s53W8EY31mwXMdX/5XkI8xebTNwzQ+mpyti/c
+         qyz94SEuwSLiqIcEcejaLpwUGkm9rr63ixv3cnnULMlkkJGCr+2nCEVJViOg/geT3l
+         OvWE1Vo+cN8g+u83W88AgiGOo2l7YJOL+ZD65l99ch0YLO4EoRPJvMBo91ND7d7j32
+         5cG0ek8p7H8kG96OnQav0zmFVVxeZaTAkXYHN5ENMVj7nYpqS3RjdgxQ2SINHcTVQm
+         vUqJJ1JhHtdDkI/bNzXIyWVZx5IEXkOATuaZuaM7/kqylDMkO6rrXCEYt8sOyhJm1a
+         a7d01Q9DpmNTA==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [e2fsprogs PATCH] libext2fs: consistently use #ifdefs in ext2fs_print_bmap_statistics()
-Date:   Wed,  4 Jan 2023 01:01:16 -0800
-Message-Id: <20230104090116.275764-1-ebiggers@kernel.org>
+Cc:     Paulo Antonio Alvarez <pauloaalvarez@gmail.com>
+Subject: [e2fsprogs PATCH] libext2fs: fix 32-bit Windows build
+Date:   Wed,  4 Jan 2023 01:03:01 -0800
+Message-Id: <20230104090301.275976-1-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
@@ -45,55 +47,109 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Since the 'now' variable is only used to calculate 'inuse', and 'inuse'
-is only used when defined(ENABLE_BMAP_STATS_OPS), it makes sense to
-guard the declaration and initialization of 'now' and 'inuse' by the
-same condition, just like the '*_perc' variables in the same function.
+_WIN32 is the standard macro to detect Windows, regardless of 32-bit or
+64-bit.  _WIN64 is for 64-bit Windows only.  Use _WIN32 where _WIN64 was
+incorrectly being used.
 
-This addresses the following compiler warning with clang -Wall:
+This fixes several 32-bit Windows build errors, for example this one:
 
-gen_bitmap64.c:187:9: warning: variable 'inuse' set but not used [-Wunused-but-set-variable]
-        double inuse;
-               ^
+plausible.c: In function ‘print_ext2_info’:
+plausible.c:109:31: error: ‘unix_io_manager’ undeclared (first use in this function); did you mean ‘undo_io_manager’?
+  109 |                               unix_io_manager,
+      |                               ^~~~~~~~~~~~~~~
+      |                               undo_io_manager
 
+Fixes: 86b6db9f5a43 ("libext2fs: code adaptation to use the Windows IO manager")
+Cc: Paulo Antonio Alvarez <pauloaalvarez@gmail.com>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- lib/ext2fs/gen_bitmap64.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ lib/ext2fs/getsectsize.c | 12 ++++++------
+ lib/support/plausible.c  |  2 +-
+ util/subst.c             |  4 ++--
+ 3 files changed, 9 insertions(+), 9 deletions(-)
 
-diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
-index c860c10e..1a1eeefe 100644
---- a/lib/ext2fs/gen_bitmap64.c
-+++ b/lib/ext2fs/gen_bitmap64.c
-@@ -183,11 +183,9 @@ static void ext2fs_print_bmap_statistics(ext2fs_generic_bitmap_64 bitmap)
- #ifdef ENABLE_BMAP_STATS_OPS
- 	float mark_seq_perc = 0.0, test_seq_perc = 0.0;
- 	float mark_back_perc = 0.0, test_back_perc = 0.0;
--#endif
--	double inuse;
- 	struct timeval now;
-+	double inuse;
+diff --git a/lib/ext2fs/getsectsize.c b/lib/ext2fs/getsectsize.c
+index 3a461eb9..bd978c53 100644
+--- a/lib/ext2fs/getsectsize.c
++++ b/lib/ext2fs/getsectsize.c
+@@ -51,10 +51,10 @@
+  */
+ errcode_t ext2fs_get_device_sectsize(const char *file, int *sectsize)
+ {
+-#ifdef _WIN64
++#ifdef _WIN32
+ 	*sectsize = 512; // just guessing
+ 	return 0;
+-#else // not _WIN64
++#else // not _WIN32
  
--#ifdef ENABLE_BMAP_STATS_OPS
- 	if (stats->test_count) {
- 		test_seq_perc = ((float)stats->test_seq /
- 				 stats->test_count) * 100;
-@@ -201,7 +199,6 @@ static void ext2fs_print_bmap_statistics(ext2fs_generic_bitmap_64 bitmap)
- 		mark_back_perc = ((float)stats->mark_back /
- 				  stats->mark_count) * 100;
- 	}
--#endif
+ 	int	fd;
  
- 	if (gettimeofday(&now, (struct timezone *) NULL) == -1) {
- 		perror("gettimeofday");
-@@ -212,6 +209,7 @@ static void ext2fs_print_bmap_statistics(ext2fs_generic_bitmap_64 bitmap)
- 		(((double) now.tv_usec) * 0.000001);
- 	inuse -= (double) stats->created.tv_sec + \
- 		(((double) stats->created.tv_usec) * 0.000001);
-+#endif /* ENABLE_BMAP_STATS_OPS */
+@@ -78,7 +78,7 @@ errcode_t ext2fs_get_device_sectsize(const char *file, int *sectsize)
+ 	close(fd);
+ 	return 0;
  
- 	fprintf(stderr, "\n[+] %s bitmap (type %d)\n", bitmap->description,
- 		stats->type);
+-#endif // ifdef _WIN64
++#endif // ifdef _WIN32
+ }
+ 
+ /*
+@@ -117,11 +117,11 @@ int ext2fs_get_dio_alignment(int fd)
+  */
+ errcode_t ext2fs_get_device_phys_sectsize(const char *file, int *sectsize)
+ {
+-#ifdef _WIN64
++#ifdef _WIN32
+ 
+ 	return ext2fs_get_device_sectsize(file, sectsize);
+ 
+-#else // not _WIN64
++#else // not _WIN32
+ 
+ 	int	fd;
+ 
+@@ -147,5 +147,5 @@ errcode_t ext2fs_get_device_phys_sectsize(const char *file, int *sectsize)
+ 	close(fd);
+ 	return 0;
+ 
+-#endif // ifdef _WIN64
++#endif // ifdef _WIN32
+ }
+diff --git a/lib/support/plausible.c b/lib/support/plausible.c
+index bbed2a70..349aa2c4 100644
+--- a/lib/support/plausible.c
++++ b/lib/support/plausible.c
+@@ -103,7 +103,7 @@ static void print_ext2_info(const char *device)
+ 	time_t			tm;
+ 
+ 	retval = ext2fs_open2(device, 0, EXT2_FLAG_64BITS, 0, 0,
+-#ifdef _WIN64
++#ifdef _WIN32
+ 			      windows_io_manager,
+ #else
+ 			      unix_io_manager,
+diff --git a/util/subst.c b/util/subst.c
+index c0eda5cf..be2a0dda 100644
+--- a/util/subst.c
++++ b/util/subst.c
+@@ -434,7 +434,7 @@ int main(int argc, char **argv)
+ 					printf("Using original atime\n");
+ 				set_utimes(outfn, fileno(old), tv);
+ 			}
+-#ifndef _WIN64
++#ifndef _WIN32
+ 			if (ofd >= 0)
+ 				(void) fchmod(ofd, 0444);
+ #endif
+@@ -444,7 +444,7 @@ int main(int argc, char **argv)
+ 		} else {
+ 			if (verbose)
+ 				printf("Creating or replacing %s.\n", outfn);
+-#ifndef _WIN64
++#ifndef _WIN32
+ 			if (ofd >= 0)
+ 				(void) fchmod(ofd, 0444);
+ #endif
 -- 
 2.39.0
 
