@@ -2,140 +2,116 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8310DC53210
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 Jan 2023 21:09:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 89380C54EBC
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 Jan 2023 21:15:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235503AbjADVJX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 4 Jan 2023 16:09:23 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55256 "EHLO
+        id S235460AbjADVPC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 Jan 2023 16:15:02 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57370 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240314AbjADVJR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2023 16:09:17 -0500
-Received: from mail-pl1-x636.google.com (mail-pl1-x636.google.com [IPv6:2607:f8b0:4864:20::636])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 75B6A1D0E6
-        for <linux-ext4@vger.kernel.org>; Wed,  4 Jan 2023 13:09:15 -0800 (PST)
-Received: by mail-pl1-x636.google.com with SMTP id p24so14676807plw.11
-        for <linux-ext4@vger.kernel.org>; Wed, 04 Jan 2023 13:09:15 -0800 (PST)
+        with ESMTP id S240175AbjADVO6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2023 16:14:58 -0500
+Received: from mail-pj1-x102e.google.com (mail-pj1-x102e.google.com [IPv6:2607:f8b0:4864:20::102e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8F1851CFC3;
+        Wed,  4 Jan 2023 13:14:57 -0800 (PST)
+Received: by mail-pj1-x102e.google.com with SMTP id o2so32016978pjh.4;
+        Wed, 04 Jan 2023 13:14:57 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=chromium.org; s=google;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=N7e2wI5rOH0TCS8vVnB78L3eDotCSnHcKsvZPx9y4wU=;
-        b=C40Gz9QcfmKE0+Yw+ZeeTtIoek8V2TWOtdR4AwnrKaklJs1/LZvWLUeB1itG4Ck7np
-         NvAjiGYGr+Bgcu814J00sXqoYVsSICOnjmrhBRtx07jFQtcJ7pQUAVzh3jVRGTt0V192
-         8p0dpcIHT8EpUHXJWkMhixUl1sAJWNWU12Q4M=
+        d=gmail.com; s=20210112;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=Yo+m9KCho02Llmwjmz5bDSbKVzw32DqjrZ5KrSHhgyc=;
+        b=bjZkMxIPNZ3wmKI3QGSepT81I5OzcwJOIb/dnupKeJzgemoOZcjM4yfreHA+pwVbeP
+         HOd/bgUCet0z9B/XX2tfep3wWWWYLyeCIHFa1NDUjFWQdX5A572uwUJHv92lvCUSn0jH
+         nDD1ayF0cF1sYXZY6D7okVUr906wpDImdUvSkzV/8th2CAYrKdz3orCKBweWTHnMlK4j
+         8Q9LXTwaogmTrXs5Gj4PAGJAZD90/jRoTwO/o58iZ0J59ckgaPVRY99HTFyy5G/KNc7Q
+         k+iq8jJPMbsMV3H/So6AzW1W8RbB4qBsSsxHHBAFfFQVhi108BAllJmmP6SyPMsZeGbG
+         6mUA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=N7e2wI5rOH0TCS8vVnB78L3eDotCSnHcKsvZPx9y4wU=;
-        b=18Bq03UPTYDekKGh0YCSHuGu9b11eHqOmyQ1lOYLz+Xw4v/30O4Iyj8BD2qvh9PeoB
-         i2Ae5QDxj4SKakU7195DS1tuoioF/Ar+EYIj5v+LRANsPZ6ERwbWQ1JCsKHQ61eEOuMG
-         kblG8fpB8QnmpSLFgJ62sN8OfcwYAAFJw1xw/7UQi5H8jr4rt3UzYWeePMUTyqvJ20xA
-         Q+W4filjgKqsztWd3xuTd43S5JoaYDD3YLn63bwMWrS9BcTJmY74wKvCffXYz+0TKkw0
-         xRf3yg22JuBPni+d7CGnP4Aj9CPeS7gjPH25dB8GkyHIWtGppOjKMSwHuu7hZDa48ln0
-         /+cg==
-X-Gm-Message-State: AFqh2kqqZy86NWGqefJL8uaUn5pyaamFrVqSl5S7tO4UdfYqjIdQZYsa
-        SIJacbnHLIddEqeUekEbFvg9qg==
-X-Google-Smtp-Source: AMrXdXsS+rbrcdC8oxPFmFfnIHZhQwxagm363BI8RJ3ymU5GkpRbqX0sIx+1yKRH2LDDjk/ySqK3IQ==
-X-Received: by 2002:a17:903:2682:b0:192:f12a:42de with SMTP id jf2-20020a170903268200b00192f12a42demr2516867plb.42.1672866554980;
-        Wed, 04 Jan 2023 13:09:14 -0800 (PST)
-Received: from www.outflux.net (smtp.outflux.net. [198.145.64.163])
-        by smtp.gmail.com with ESMTPSA id d19-20020a656b93000000b00476dc914262sm20817436pgw.1.2023.01.04.13.09.14
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=Yo+m9KCho02Llmwjmz5bDSbKVzw32DqjrZ5KrSHhgyc=;
+        b=cQ669PKHaCAe+x5Fr2EBb0p8SMbQOlx6cyePucjInMnPn3wIO4CBnRCPxufRb6CthH
+         QavCqqoovn+vLDMAZtHyOTq+Zg0L0xs/VfXSFNRLEqsX5oV7Vv3LABR3NcmiynUif17b
+         cyU9Mou/ehAIj0o8UdG0Q/o9r5ZQl2IHFg5QfiILK6REK7e1W7ln5nnicOoGzjS97rT4
+         CpvJ5crel+I4z2qk0PbdyHghRQ05/rtoeCAjQY/ZaE7yEq5S3r2icpEASblnHhczDgRZ
+         QhcAfTfRxu8I3gTuHwskmhbojkBSBx1SM+5pMnoHx4mkGoAERPLFX25R7eU1tWFm/60J
+         YMuQ==
+X-Gm-Message-State: AFqh2krsdY6/B7lSY9+rINQ09FXqTHvwdAmXj/+nzcAIStw5Y05azCqE
+        YddCMnUeCLrDysoCNbVhdcmng10Y9eVPTQ==
+X-Google-Smtp-Source: AMrXdXtzyCslo5KrrtE6aj4KE0tZMImyQpChectqYz62yJ5Pkw2zwmGtohmj+/DGwHCRBdZk95hgJQ==
+X-Received: by 2002:a17:90b:92:b0:225:eda7:13e with SMTP id bb18-20020a17090b009200b00225eda7013emr35757516pjb.40.1672866896879;
+        Wed, 04 Jan 2023 13:14:56 -0800 (PST)
+Received: from fedora.hsd1.ca.comcast.net ([2601:644:8002:1c20::a55d])
+        by smtp.googlemail.com with ESMTPSA id i8-20020a17090a138800b00226369149cesm6408pja.21.2023.01.04.13.14.55
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 04 Jan 2023 13:09:14 -0800 (PST)
-From:   Kees Cook <keescook@chromium.org>
-To:     Theodore Ts'o <tytso@mit.edu>
-Cc:     Kees Cook <keescook@chromium.org>,
-        Eric Biggers <ebiggers@kernel.org>, stable@vger.kernel.org,
-        "Gustavo A . R . Silva" <gustavoars@kernel.org>,
-        Nathan Chancellor <nathan@kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Tom Rix <trix@redhat.com>,
-        Riccardo Schirone <sirmy15@gmail.com>,
-        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        llvm@lists.linux.dev, linux-hardening@vger.kernel.org
-Subject: [PATCH v2] ext4: Fix function prototype mismatch for ext4_feat_ktype
-Date:   Wed,  4 Jan 2023 13:09:12 -0800
-Message-Id: <20230104210908.gonna.388-kees@kernel.org>
-X-Mailer: git-send-email 2.34.1
+        Wed, 04 Jan 2023 13:14:56 -0800 (PST)
+From:   "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
+To:     linux-fsdevel@vger.kernel.org
+Cc:     linux-afs@lists.infradead.org, linux-kernel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+        linux-nilfs@vger.kernel.org, linux-mm@kvack.org,
+        "Vishal Moola (Oracle)" <vishal.moola@gmail.com>,
+        Matthew Wilcox <willy@infradead.org>
+Subject: [PATCH v5 01/23] pagemap: Add filemap_grab_folio()
+Date:   Wed,  4 Jan 2023 13:14:26 -0800
+Message-Id: <20230104211448.4804-2-vishal.moola@gmail.com>
+X-Mailer: git-send-email 2.38.1
+In-Reply-To: <20230104211448.4804-1-vishal.moola@gmail.com>
+References: <20230104211448.4804-1-vishal.moola@gmail.com>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2508; h=from:subject:message-id; bh=rWss1AWpfgN5m5MJ3ZzB8riftLh8uHlWslxcv4hTtPQ=; b=owEBbQKS/ZANAwAKAYly9N/cbcAmAcsmYgBjter33m3BUzBmkepopp8BSQH8S0ACYSatzHFDr43m Af3b0nKJAjMEAAEKAB0WIQSlw/aPIp3WD3I+bhOJcvTf3G3AJgUCY7Xq9wAKCRCJcvTf3G3AJlFJD/ 4lw5d6tzW8szirp5AWtqCSAk2F8btgMJ0kn+otr52eFrv50d4FyF2DrGCrjKHW6TrCV5R1IbGuxzyC cNxeDeUXZ08+2+Z5coqXuQVIKi2ccgbzJXkcpJyBqidP6Q5EE/9jPxv1isYpI8Wx6pUqvFb3JC3JNU TxeGXpu1Etl3gs6tj+WVwfVrf3waEGXNvG7oVLMSK9SY2GMqJdQvBE2m8It9yxubznQVH4FcdUZkge WZiHcQxMTjJJvExrAJQMPCOZTGydwKp4sFIEfuBik8owEqDw+rp0pLWFDykwlB2gQ43H31hlfp5qvD ja0NSNl9ClP3XMtlAddoBVD83OAz5WM5QLRmjfkQZcLpeV4OoEhoLFkkPTOmhrtgYD4QR+oboFL5VJ bR+fyrp9wFy7sabuSYn7UD2SLENbyhyRQJ1Wq+KvK/POkLsr2q2OEyiFD5QxFhuJcQxqQjSu+dusLQ eQAXZxZNr2EY+gc/MsVQo82SCi1QUaYrz9iMWQBmPeUDvdzzPNg9HzV//sljmjTyt/lUfh+txYyN+D kqSNKiD/EKX27Rb/N8+6MRVLavRsCvZInKdmiJRsZ4m9Ht4fJQkF7+V+d+YDJkJHTdvyr2LdZK3GuT iZ9bjmYHTDnQQL+Ry+OxvAHK3To6Qg+N+G8ZLl8PsGiWtfPDv+XCmw+7WWmw==
-X-Developer-Key: i=keescook@chromium.org; a=openpgp; fpr=A5C3F68F229DD60F723E6E138972F4DFDC6DC026
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-With clang's kernel control flow integrity (kCFI, CONFIG_CFI_CLANG),
-indirect call targets are validated against the expected function
-pointer prototype to make sure the call target is valid to help mitigate
-ROP attacks. If they are not identical, there is a failure at run time,
-which manifests as either a kernel panic or thread getting killed.
+Add function filemap_grab_folio() to grab a folio from the page cache.
+This function is meant to serve as a folio replacement for
+grab_cache_page, and is used to facilitate the removal of
+find_get_pages_range_tag().
 
-ext4_feat_ktype was setting the "release" handler to "kfree", which
-doesn't have a matching function prototype. Add a simple wrapper
-with the correct prototype.
-
-This was found as a result of Clang's new -Wcast-function-type-strict
-flag, which is more sensitive than the simpler -Wcast-function-type,
-which only checks for type width mismatches.
-
-Note that this code is only reached when ext4 is a loadable module and
-it is being unloaded:
-
- CFI failure at kobject_put+0xbb/0x1b0 (target: kfree+0x0/0x180; expected type: 0x7c4aa698)
- ...
- RIP: 0010:kobject_put+0xbb/0x1b0
- ...
- Call Trace:
-  <TASK>
-  ext4_exit_sysfs+0x14/0x60 [ext4]
-  cleanup_module+0x67/0xedb [ext4]
-
-Fixes: b99fee58a20a ("ext4: create ext4_feat kobject dynamically")
-Cc: Theodore Ts'o <tytso@mit.edu>
-Cc: Eric Biggers <ebiggers@kernel.org>
-Cc: stable@vger.kernel.org
-Build-tested-by: Gustavo A. R. Silva <gustavoars@kernel.org>
-Reviewed-by: Gustavo A. R. Silva <gustavoars@kernel.org>
-Reviewed-by: Nathan Chancellor <nathan@kernel.org>
-Link: https://lore.kernel.org/r/20230103234616.never.915-kees@kernel.org
-Signed-off-by: Kees Cook <keescook@chromium.org>
+Signed-off-by: Vishal Moola (Oracle) <vishal.moola@gmail.com>
+Reviewed-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
-v2: rename callback, improve commit log (ebiggers)
-v1: https://lore.kernel.org/lkml/20230103234616.never.915-kees@kernel.org
----
- fs/ext4/sysfs.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ include/linux/pagemap.h | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
-diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index d233c24ea342..e2b8b3437c58 100644
---- a/fs/ext4/sysfs.c
-+++ b/fs/ext4/sysfs.c
-@@ -491,6 +491,11 @@ static void ext4_sb_release(struct kobject *kobj)
- 	complete(&sbi->s_kobj_unregister);
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 29e1f9e76eb6..468183be67be 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -546,6 +546,26 @@ static inline struct folio *filemap_lock_folio(struct address_space *mapping,
+ 	return __filemap_get_folio(mapping, index, FGP_LOCK, 0);
  }
  
-+static void ext4_feat_release(struct kobject *kobj)
++/**
++ * filemap_grab_folio - grab a folio from the page cache
++ * @mapping: The address space to search
++ * @index: The page index
++ *
++ * Looks up the page cache entry at @mapping & @index. If no folio is found,
++ * a new folio is created. The folio is locked, marked as accessed, and
++ * returned.
++ *
++ * Return: A found or created folio. NULL if no folio is found and failed to
++ * create a folio.
++ */
++static inline struct folio *filemap_grab_folio(struct address_space *mapping,
++					pgoff_t index)
 +{
-+	kfree(kobj);
++	return __filemap_get_folio(mapping, index,
++			FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
++			mapping_gfp_mask(mapping));
 +}
 +
- static const struct sysfs_ops ext4_attr_ops = {
- 	.show	= ext4_attr_show,
- 	.store	= ext4_attr_store,
-@@ -505,7 +510,7 @@ static struct kobj_type ext4_sb_ktype = {
- static struct kobj_type ext4_feat_ktype = {
- 	.default_groups = ext4_feat_groups,
- 	.sysfs_ops	= &ext4_attr_ops,
--	.release	= (void (*)(struct kobject *))kfree,
-+	.release	= ext4_feat_release,
- };
- 
- void ext4_notify_error_sysfs(struct ext4_sb_info *sbi)
+ /**
+  * find_get_page - find and get a page reference
+  * @mapping: the address_space to search
 -- 
-2.34.1
+2.38.1
 
