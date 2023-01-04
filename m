@@ -2,41 +2,41 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AFB6DC54EBD
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 Jan 2023 09:04:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A137C54EF0
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 Jan 2023 09:04:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233954AbjADJDo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 4 Jan 2023 04:03:44 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58908 "EHLO
+        id S234129AbjADJEO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 Jan 2023 04:04:14 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59008 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233859AbjADJD3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2023 04:03:29 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E5C9B15F2A
-        for <linux-ext4@vger.kernel.org>; Wed,  4 Jan 2023 01:03:19 -0800 (PST)
+        with ESMTP id S234066AbjADJDv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2023 04:03:51 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 21F7CB1B
+        for <linux-ext4@vger.kernel.org>; Wed,  4 Jan 2023 01:03:51 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 74570615F7
-        for <linux-ext4@vger.kernel.org>; Wed,  4 Jan 2023 09:03:19 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C3DECC433D2;
-        Wed,  4 Jan 2023 09:03:18 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id CFC24B81366
+        for <linux-ext4@vger.kernel.org>; Wed,  4 Jan 2023 09:03:49 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 76461C433D2;
+        Wed,  4 Jan 2023 09:03:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1672822998;
-        bh=IBRh2ipcWVWg09S9BWqomTqx71XgiCEBxdpbpMDtH1I=;
+        s=k20201202; t=1672823028;
+        bh=n+8e/fJ/L1a0Revfdd/SwZ8NDjuLIr+Yj1JiI1MHyyA=;
         h=From:To:Cc:Subject:Date:From;
-        b=qjqK0iVK3EGLGl96nDeQfFt4Zd7fSvZDD9+/ZoKLIOxwckovbhWehpyuKEsgYjGXD
-         n+eJTx8FDczeWsss5alLkR/JVo+YbaYAaXE7o8UAPlX0T+oUPUBNrJkTmHQI7GYiiH
-         rkIo243mkVqYgspqFDEshHlPrxvGiDkFZ+nP8hcCT9mTuFiUoue299T4mnwLcDA0zl
-         ozcBDnS3HBAcFNIw050ExREWMPAtucjdmU/26hCjRDmVhzar6wzbhTOS1eL1oXP1T3
-         n5GnVIrGpU4ea32pp44GeHyyaqoCSjQRygOfIUIjoIs6wZFObrPkwKVTbtpT/BP4DC
-         v/HItsBcC1iWw==
+        b=nP+7ma6K4CnUxvrvKwqzRnzIcreBT4rtxXB8nv/5WgJYVrpvs1C2rYgXov4EdXEVA
+         ii2V5gu5TX/LzWhB8BJ2i0nGNpwNz58y2UYOzYXVQbXdQU0GHKSJuOo+29J3DX0l58
+         OtVP7ZGLPzEmOJecRLhElvP5UL+I+PXDx5reOLy7noHllRSfl3Zwcd/2ZX03BXESqQ
+         rzJGLeC5uel/e7pvRnryn2yoY3GqtFvSuhoWTztfJkhlpg5NCq4YucGlDqfEKMB8dL
+         /bM3ynv9lnkHmhb0bklSZK0xtJMvdajW/pHWZ4lj7iboGdtNi7doSYdIxxkV8iwcgH
+         6Kv3/r3Cj3nKA==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Cc:     Andreas Dilger <adilger@dilger.ca>
-Subject: [e2fsprogs PATCH] libext2fs: remove unused variable in ext2fs_xattrs_read_inode()
-Date:   Wed,  4 Jan 2023 01:03:14 -0800
-Message-Id: <20230104090314.276028-1-ebiggers@kernel.org>
+Cc:     Lukas Czerner <lczerner@redhat.com>
+Subject: [e2fsprogs PATCH] libsupport: remove unused label in get_devname()
+Date:   Wed,  4 Jan 2023 01:03:41 -0800
+Message-Id: <20230104090341.276131-1-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -49,29 +49,29 @@ From: Eric Biggers <ebiggers@google.com>
 
 Address the following compiler warning with gcc -Wall:
 
-ext_attr.c: In function ‘ext2fs_xattrs_read_inode’:
-ext_attr.c:1000:16: warning: unused variable ‘i’ [-Wunused-variable]
- 1000 |         size_t i;
-      |                ^
+devname.c: In function ‘get_devname’:
+devname.c:61:1: warning: label ‘out_strdup’ defined but not used [-Wunused-label]
+   61 | out_strdup:
+      | ^~~~~~~~~~
 
-Cc: Andreas Dilger <adilger@dilger.ca>
+Cc: Lukas Czerner <lczerner@redhat.com>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- lib/ext2fs/ext_attr.c | 1 -
+ lib/support/devname.c | 1 -
  1 file changed, 1 deletion(-)
 
-diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
-index d36fe68d..6fc4214c 100644
---- a/lib/ext2fs/ext_attr.c
-+++ b/lib/ext2fs/ext_attr.c
-@@ -997,7 +997,6 @@ errcode_t ext2fs_xattrs_read_inode(struct ext2_xattr_handle *handle,
- 	unsigned int storage_size;
- 	char *start, *block_buf = NULL;
- 	blk64_t blk;
--	size_t i;
- 	errcode_t err = 0;
+diff --git a/lib/support/devname.c b/lib/support/devname.c
+index 8c2349a3..e0306ddf 100644
+--- a/lib/support/devname.c
++++ b/lib/support/devname.c
+@@ -58,7 +58,6 @@ char *get_devname(blkid_cache cache, const char *token, const char *value)
+ 		goto out;
+ 	}
  
- 	EXT2_CHECK_MAGIC(handle, EXT2_ET_MAGIC_EA_HANDLE);
+-out_strdup:
+ 	if (is_file)
+ 		ret = strdup(token);
+ out:
 -- 
 2.39.0
 
