@@ -2,53 +2,53 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AD696C54E76
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 Jan 2023 21:16:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 053A3C54EBC
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 Jan 2023 21:16:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240617AbjADVQG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 4 Jan 2023 16:16:06 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57596 "EHLO
+        id S240551AbjADVQB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 Jan 2023 16:16:01 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57550 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240354AbjADVPX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2023 16:15:23 -0500
-Received: from mail-pl1-x62b.google.com (mail-pl1-x62b.google.com [IPv6:2607:f8b0:4864:20::62b])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B190D1CFEA;
-        Wed,  4 Jan 2023 13:15:22 -0800 (PST)
-Received: by mail-pl1-x62b.google.com with SMTP id d9so20453667pll.9;
-        Wed, 04 Jan 2023 13:15:22 -0800 (PST)
+        with ESMTP id S240348AbjADVPS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2023 16:15:18 -0500
+Received: from mail-pj1-x1033.google.com (mail-pj1-x1033.google.com [IPv6:2607:f8b0:4864:20::1033])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A08A21CFEA;
+        Wed,  4 Jan 2023 13:15:16 -0800 (PST)
+Received: by mail-pj1-x1033.google.com with SMTP id n12so24641316pjp.1;
+        Wed, 04 Jan 2023 13:15:16 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=L90Su4X0B6ZDbXSVecEDf/ou5Q5FXQ0WnoUVcaVOv6Y=;
-        b=IJQ2lGSLIhJxuzMRKK4freJEwBJhCzBUrph/WLRQ43Sy4Xeacbh1o7/sSt5j3pOh8Z
-         LL8WHQC/7wF5bp73Ob+g8tBBd0notcEteRMybn5RyZfu96sHRm/Pwe8Ls04wVXfjMg20
-         8FMDvGDJgsLK1C7YpCx3k79sPNIbPSWeB8cC6hxkdsp0thSpN2GQNQUGqoi3GcaDthu/
-         w+Bbr2ES9OtWsORlXKrzLdZc6TBzxjM1qEpazgTeIQ7mhN7PD2UYDA1xUnKMGnkHAoYQ
-         iN/0O7yxoY8ZPHeBYXpu6QcmywT4JFhGiJUbmS68g6J79g5xBmH4zGz9QdwEO8z0grET
-         Xf/g==
+        bh=geJwjn4yJKU06Ftbar/y+HcHHoAvhwpeBoUnwsGYEks=;
+        b=Fd8n+f1/NPank65Zw/kHWJBXTOelusyND5cLXZf9F1s+KS4ORsP19uuv4siEdxBQJT
+         10Ra99IFy6Oh1HDT1wvzP/oAFamJWd9Qb78Y7+Dr1J5qmNaV5uUh0D+BORnnhdkICTEi
+         hvZ+N2BPjnPfx8nWabVIQ1bECzthUh6LIjPR0RUAG1DeoReFNu2ALc98+mFNSkzv5jSF
+         7ilXbV6Nd18bsqHzZbqMVX3Ckh1Ya5P58tpex0qa/qLrNBKPcUgEHDw0n2jHxI1unlNg
+         jnduvhRGFEBTsAEtI0NgpHNFrUDMt7WRZ2kUYfejbotDf+e3vgHq5Tkx9eaJHjgYE3BO
+         Jn4w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=L90Su4X0B6ZDbXSVecEDf/ou5Q5FXQ0WnoUVcaVOv6Y=;
-        b=XMkcn6oRgsS2tJhRd2k+/ijcAb6kt7IXksh6gu7ytEqHD9jA7NlxDCEjhSdZz2BPzm
-         RTqwEFn7pJXCPGIX66IeKaX01E769Jnj8d3BGhdnT7aC1fOfRiuC5mHAKMVWtXgLGRRt
-         SZl5/ygPXTjR6H4r/dmpF49YXctDleD5DeZVvSLWd8LxhyJ2FpgiE6kBAN3wbW8qXItz
-         7w4NjWjA/YnagYvmx3FOhEYTS3omYkNr850fFIWrqtsZ8ZRoa+6XRy0wVS1mPK4iOwRV
-         r2t17g20Eoo9bACLgXkQsiFHYOMlMJ2vu4LxD/06N9dP8zCA+DSKTBsanZ67c6FCPld4
-         UliA==
-X-Gm-Message-State: AFqh2kr9cP90i8vY2g9dSqObcwDO7abcgFIQLGHEPuDcGKUsGN35VAMf
-        2EK2YWuPQF/Spx9cMMsLSKVr8Nn33A3zSA==
-X-Google-Smtp-Source: AMrXdXs0jILNZaSP5jFG9YIUbLTH48SWLc/tHrgI72duQuw1JM4+CAQ/qirxeGWB7GaMFZz6MKkM3A==
-X-Received: by 2002:a17:90a:8c18:b0:221:5897:d46d with SMTP id a24-20020a17090a8c1800b002215897d46dmr51320455pjo.1.1672866921917;
-        Wed, 04 Jan 2023 13:15:21 -0800 (PST)
+        bh=geJwjn4yJKU06Ftbar/y+HcHHoAvhwpeBoUnwsGYEks=;
+        b=jiNi9ijJJvZRzoeKvWm1pQIQrf+dfqG1q3p8nnDJAOqcB5yTXOb63cCmUIKPQo7SI7
+         PgCPo1SrmmArRM7tlkeLfnbhYq2SV97lrwqG+fMv9AXAY55YmFgH0Ho2QDZZGDZdHhK0
+         0I5QNUffqb3DYGw4wMxXUeIPcaWvwvdbJNzbQthWj8qBUKEg0FLFv4q4uZ1OLGfkp/l9
+         ZQWRlU8y4CpzdVaVJVXO0N7/nYPrg+HANH5FahdDniX3t26+oVo/X7rYr8pVG4G54FOm
+         Bn8H/czSoyODSrxCAIohUprT4zoMLYCp8w2eOq3WUC/F+0DRkUyhWSPqejwD2ZGf/sUZ
+         N76Q==
+X-Gm-Message-State: AFqh2koZOBOQ4noojmq5EECfcl/YWX5si/FOP3Pvi+zfbZxwcDqheKAY
+        h6is4sftgFcm3ofzTSzyA2A4wsgD3i+LKw==
+X-Google-Smtp-Source: AMrXdXvBKEF5T2wnCoAj1IOJ4U73abN05uBfAh53KWBYn4m7hU5hHoJzlZNlJTGgGpr6V62AVrABGQ==
+X-Received: by 2002:a05:6a20:8ee1:b0:ac:3f3f:9fbd with SMTP id m33-20020a056a208ee100b000ac3f3f9fbdmr49160604pzk.48.1672866916135;
+        Wed, 04 Jan 2023 13:15:16 -0800 (PST)
 Received: from fedora.hsd1.ca.comcast.net ([2601:644:8002:1c20::a55d])
-        by smtp.googlemail.com with ESMTPSA id i8-20020a17090a138800b00226369149cesm6408pja.21.2023.01.04.13.15.20
+        by smtp.googlemail.com with ESMTPSA id i8-20020a17090a138800b00226369149cesm6408pja.21.2023.01.04.13.15.14
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 04 Jan 2023 13:15:21 -0800 (PST)
+        Wed, 04 Jan 2023 13:15:15 -0800 (PST)
 From:   "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     linux-afs@lists.infradead.org, linux-kernel@vger.kernel.org,
@@ -56,11 +56,10 @@ Cc:     linux-afs@lists.infradead.org, linux-kernel@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
         linux-nilfs@vger.kernel.org, linux-mm@kvack.org,
-        "Vishal Moola (Oracle)" <vishal.moola@gmail.com>,
-        Ryusuke Konishi <konishi.ryusuke@gmail.com>
-Subject: [PATCH v5 18/23] nilfs2: Convert nilfs_lookup_dirty_data_buffers() to use filemap_get_folios_tag()
-Date:   Wed,  4 Jan 2023 13:14:43 -0800
-Message-Id: <20230104211448.4804-19-vishal.moola@gmail.com>
+        "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
+Subject: [PATCH v5 14/23] f2fs: Convert f2fs_write_cache_pages() to use filemap_get_folios_tag()
+Date:   Wed,  4 Jan 2023 13:14:39 -0800
+Message-Id: <20230104211448.4804-15-vishal.moola@gmail.com>
 X-Mailer: git-send-email 2.38.1
 In-Reply-To: <20230104211448.4804-1-vishal.moola@gmail.com>
 References: <20230104211448.4804-1-vishal.moola@gmail.com>
@@ -70,82 +69,212 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Convert function to use folios throughout. This is in preparation for
-the removal of find_get_pages_range_tag(). This change removes 4 calls
-to compound_head().
+Converted the function to use a folio_batch instead of pagevec. This is in
+preparation for the removal of find_get_pages_range_tag().
+
+Also modified f2fs_all_cluster_page_ready to take in a folio_batch instead
+of pagevec. This does NOT support large folios. The function currently
+only utilizes folios of size 1 so this shouldn't cause any issues right
+now.
+
+This version of the patch limits the number of pages fetched to
+F2FS_ONSTACK_PAGES. If that ever happens, update the start index here
+since filemap_get_folios_tag() updates the index to be after the last
+found folio, not necessarily the last used page.
 
 Signed-off-by: Vishal Moola (Oracle) <vishal.moola@gmail.com>
-Acked-by: Ryusuke Konishi <konishi.ryusuke@gmail.com>
 ---
- fs/nilfs2/segment.c | 29 ++++++++++++++++-------------
- 1 file changed, 16 insertions(+), 13 deletions(-)
+ fs/f2fs/data.c | 84 ++++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 58 insertions(+), 26 deletions(-)
 
-diff --git a/fs/nilfs2/segment.c b/fs/nilfs2/segment.c
-index 76c3bd88b858..8866af742a49 100644
---- a/fs/nilfs2/segment.c
-+++ b/fs/nilfs2/segment.c
-@@ -680,7 +680,7 @@ static size_t nilfs_lookup_dirty_data_buffers(struct inode *inode,
- 					      loff_t start, loff_t end)
- {
- 	struct address_space *mapping = inode->i_mapping;
--	struct pagevec pvec;
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index 6e43e19c7d1c..ee1256e4fd92 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -2957,6 +2957,7 @@ static int f2fs_write_cache_pages(struct address_space *mapping,
+ 	int ret = 0;
+ 	int done = 0, retry = 0;
+ 	struct page *pages[F2FS_ONSTACK_PAGES];
 +	struct folio_batch fbatch;
- 	pgoff_t index = 0, last = ULONG_MAX;
- 	size_t ndirties = 0;
+ 	struct f2fs_sb_info *sbi = F2FS_M_SB(mapping);
+ 	struct bio *bio = NULL;
+ 	sector_t last_block;
+@@ -2977,6 +2978,7 @@ static int f2fs_write_cache_pages(struct address_space *mapping,
+ 		.private = NULL,
+ 	};
+ #endif
++	int nr_folios, p, idx;
+ 	int nr_pages;
+ 	pgoff_t index;
+ 	pgoff_t end;		/* Inclusive */
+@@ -2987,6 +2989,8 @@ static int f2fs_write_cache_pages(struct address_space *mapping,
+ 	int submitted = 0;
  	int i;
-@@ -694,23 +694,26 @@ static size_t nilfs_lookup_dirty_data_buffers(struct inode *inode,
- 		index = start >> PAGE_SHIFT;
- 		last = end >> PAGE_SHIFT;
- 	}
--	pagevec_init(&pvec);
+ 
 +	folio_batch_init(&fbatch);
-  repeat:
- 	if (unlikely(index > last) ||
--	    !pagevec_lookup_range_tag(&pvec, mapping, &index, last,
--				PAGECACHE_TAG_DIRTY))
-+	      !filemap_get_folios_tag(mapping, &index, last,
-+		      PAGECACHE_TAG_DIRTY, &fbatch))
- 		return ndirties;
- 
--	for (i = 0; i < pagevec_count(&pvec); i++) {
-+	for (i = 0; i < folio_batch_count(&fbatch); i++) {
- 		struct buffer_head *bh, *head;
--		struct page *page = pvec.pages[i];
-+		struct folio *folio = fbatch.folios[i];
- 
--		lock_page(page);
--		if (!page_has_buffers(page))
--			create_empty_buffers(page, i_blocksize(inode), 0);
--		unlock_page(page);
-+		folio_lock(folio);
-+		head = folio_buffers(folio);
-+		if (!head) {
-+			create_empty_buffers(&folio->page, i_blocksize(inode), 0);
-+			head = folio_buffers(folio);
++
+ 	if (get_dirty_pages(mapping->host) <=
+ 				SM_I(F2FS_M_SB(mapping))->min_hot_blocks)
+ 		set_inode_flag(mapping->host, FI_HOT_DATA);
+@@ -3012,13 +3016,38 @@ static int f2fs_write_cache_pages(struct address_space *mapping,
+ 		tag_pages_for_writeback(mapping, index, end);
+ 	done_index = index;
+ 	while (!done && !retry && (index <= end)) {
+-		nr_pages = find_get_pages_range_tag(mapping, &index, end,
+-				tag, F2FS_ONSTACK_PAGES, pages);
+-		if (nr_pages == 0)
++		nr_pages = 0;
++again:
++		nr_folios = filemap_get_folios_tag(mapping, &index, end,
++				tag, &fbatch);
++		if (nr_folios == 0) {
++			if (nr_pages)
++				goto write;
+ 			break;
 +		}
-+		folio_unlock(folio);
  
--		bh = head = page_buffers(page);
-+		bh = head;
- 		do {
- 			if (!buffer_dirty(bh) || buffer_async_write(bh))
- 				continue;
-@@ -718,13 +721,13 @@ static size_t nilfs_lookup_dirty_data_buffers(struct inode *inode,
- 			list_add_tail(&bh->b_assoc_buffers, listp);
- 			ndirties++;
- 			if (unlikely(ndirties >= nlimit)) {
--				pagevec_release(&pvec);
++		for (i = 0; i < nr_folios; i++) {
++			struct folio *folio = fbatch.folios[i];
++
++			idx = 0;
++			p = folio_nr_pages(folio);
++add_more:
++			pages[nr_pages] = folio_page(folio, idx);
++			folio_get(folio);
++			if (++nr_pages == F2FS_ONSTACK_PAGES) {
++				index = folio->index + idx + 1;
 +				folio_batch_release(&fbatch);
- 				cond_resched();
- 				return ndirties;
++				goto write;
++			}
++			if (++idx < p)
++				goto add_more;
++		}
++		folio_batch_release(&fbatch);
++		goto again;
++write:
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pages[i];
++			struct folio *folio = page_folio(page);
+ 			bool need_readd;
+ readd:
+ 			need_readd = false;
+@@ -3035,7 +3064,7 @@ static int f2fs_write_cache_pages(struct address_space *mapping,
+ 				}
+ 
+ 				if (!f2fs_cluster_can_merge_page(&cc,
+-								page->index)) {
++								folio->index)) {
+ 					ret = f2fs_write_multi_pages(&cc,
+ 						&submitted, wbc, io_type);
+ 					if (!ret)
+@@ -3044,27 +3073,28 @@ static int f2fs_write_cache_pages(struct address_space *mapping,
+ 				}
+ 
+ 				if (unlikely(f2fs_cp_error(sbi)))
+-					goto lock_page;
++					goto lock_folio;
+ 
+ 				if (!f2fs_cluster_is_empty(&cc))
+-					goto lock_page;
++					goto lock_folio;
+ 
+ 				if (f2fs_all_cluster_page_ready(&cc,
+ 					pages, i, nr_pages, true))
+-					goto lock_page;
++					goto lock_folio;
+ 
+ 				ret2 = f2fs_prepare_compress_overwrite(
+ 							inode, &pagep,
+-							page->index, &fsdata);
++							folio->index, &fsdata);
+ 				if (ret2 < 0) {
+ 					ret = ret2;
+ 					done = 1;
+ 					break;
+ 				} else if (ret2 &&
+ 					(!f2fs_compress_write_end(inode,
+-						fsdata, page->index, 1) ||
++						fsdata, folio->index, 1) ||
+ 					 !f2fs_all_cluster_page_ready(&cc,
+-						pages, i, nr_pages, false))) {
++						pages, i, nr_pages,
++						false))) {
+ 					retry = 1;
+ 					break;
+ 				}
+@@ -3077,46 +3107,47 @@ static int f2fs_write_cache_pages(struct address_space *mapping,
+ 				break;
  			}
- 		} while (bh = bh->b_this_page, bh != head);
- 	}
--	pagevec_release(&pvec);
-+	folio_batch_release(&fbatch);
- 	cond_resched();
- 	goto repeat;
- }
+ #ifdef CONFIG_F2FS_FS_COMPRESSION
+-lock_page:
++lock_folio:
+ #endif
+-			done_index = page->index;
++			done_index = folio->index;
+ retry_write:
+-			lock_page(page);
++			folio_lock(folio);
+ 
+-			if (unlikely(page->mapping != mapping)) {
++			if (unlikely(folio->mapping != mapping)) {
+ continue_unlock:
+-				unlock_page(page);
++				folio_unlock(folio);
+ 				continue;
+ 			}
+ 
+-			if (!PageDirty(page)) {
++			if (!folio_test_dirty(folio)) {
+ 				/* someone wrote it for us */
+ 				goto continue_unlock;
+ 			}
+ 
+-			if (PageWriteback(page)) {
++			if (folio_test_writeback(folio)) {
+ 				if (wbc->sync_mode != WB_SYNC_NONE)
+-					f2fs_wait_on_page_writeback(page,
++					f2fs_wait_on_page_writeback(
++							&folio->page,
+ 							DATA, true, true);
+ 				else
+ 					goto continue_unlock;
+ 			}
+ 
+-			if (!clear_page_dirty_for_io(page))
++			if (!folio_clear_dirty_for_io(folio))
+ 				goto continue_unlock;
+ 
+ #ifdef CONFIG_F2FS_FS_COMPRESSION
+ 			if (f2fs_compressed_file(inode)) {
+-				get_page(page);
+-				f2fs_compress_ctx_add_page(&cc, page);
++				folio_get(folio);
++				f2fs_compress_ctx_add_page(&cc, &folio->page);
+ 				continue;
+ 			}
+ #endif
+-			ret = f2fs_write_single_data_page(page, &submitted,
+-					&bio, &last_block, wbc, io_type,
+-					0, true);
++			ret = f2fs_write_single_data_page(&folio->page,
++					&submitted, &bio, &last_block,
++					wbc, io_type, 0, true);
+ 			if (ret == AOP_WRITEPAGE_ACTIVATE)
+-				unlock_page(page);
++				folio_unlock(folio);
+ #ifdef CONFIG_F2FS_FS_COMPRESSION
+ result:
+ #endif
+@@ -3140,7 +3171,8 @@ static int f2fs_write_cache_pages(struct address_space *mapping,
+ 					}
+ 					goto next;
+ 				}
+-				done_index = page->index + 1;
++				done_index = folio->index +
++					folio_nr_pages(folio);
+ 				done = 1;
+ 				break;
+ 			}
 -- 
 2.38.1
 
