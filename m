@@ -2,42 +2,43 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F8EBC3DA7D
-	for <linux-ext4@archiver.kernel.org>; Thu,  5 Jan 2023 07:17:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7B263C5479D
+	for <linux-ext4@archiver.kernel.org>; Thu,  5 Jan 2023 07:17:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231210AbjAEHRQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 5 Jan 2023 02:17:16 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33992 "EHLO
+        id S231233AbjAEHRS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 5 Jan 2023 02:17:18 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33996 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230389AbjAEHRL (ORCPT
+        with ESMTP id S230423AbjAEHRL (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jan 2023 02:17:11 -0500
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 167E45276E;
-        Wed,  4 Jan 2023 23:17:09 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 572E953724;
+        Wed,  4 Jan 2023 23:17:10 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 6487B618FF;
+        by dfw.source.kernel.org (Postfix) with ESMTPS id E738E6187F;
         Thu,  5 Jan 2023 07:17:09 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A631AC433EF;
-        Thu,  5 Jan 2023 07:17:08 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 97C2EC433F0;
+        Thu,  5 Jan 2023 07:17:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1672903028;
-        bh=hPUwFYWj0A7kOhIr3GkylzuNAfDaCWcm9MA3oXycCjo=;
+        s=k20201202; t=1672903029;
+        bh=1GKspHWwI8hefCzAlE4tVHVOSEMaUVMl7Mu48wMfSAM=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=ffyo5GjnR5dIsi05cikixB4H9kSeAbyA7Y5BGx/F44Hvk7nmSS2OndNCRdfpZ/erB
-         DCozSqhgD2AYwc+6ytWEvIrwkgGla8gCfMKtz7cPOZRbDCE7uOf+K2LDEhrYqNs/O0
-         KWY2UKkugPn9YOOHzedpnKCEmF0kRJvhd6kPDpL4rIZbTt3KN5Si/ShYAERMoa7sWp
-         kzvUwsopaNZK5mr7Gozz7j8m1k5XizxZiCNV248daUwSGrJmeTeA8w9TzNrqfrfJUz
-         Y0IMNBvSBtlrti8UJpUZTWgO8I4l2vJG4zp3WxZNHP9fPUXhvsAjf7+6XUiM00fkM9
-         IGl4WW9iNQMOg==
+        b=duF/f+5enx0wWGApIN8lShAL50bOvJEYYelc0t72cVhgQI6/IvUlqM6TCGj4h5URe
+         wyZP+52/mJuCKc3h/OVdNK8epnsNmCaeNAiTERIQnVa+qVOnElmmgO5oQ3OqZHX3V/
+         OGOWQYxcE5JL5mTdirUEZO6tnE+TH0oU70kqb9kK72Hec5zqh0EfkQnS/5ZUEdBOIp
+         8YSDTQc9EVkEB5pU15z9b7QY1OhWDUJZavIKkLn+9dLwoOL2s6rP4zHv7Md1GlqVMy
+         5vjjcT3R7algazI1VmFx/7euCxoIRbAp+J5n3UF8gXi73prcAP93evPRI8id3iD3vX
+         Bi6IjJcHe1q1Q==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     stable@vger.kernel.org
-Cc:     linux-ext4@vger.kernel.org, Ye Bin <yebin10@huawei.com>,
+Cc:     linux-ext4@vger.kernel.org,
+        syzbot+1a748d0007eeac3ab079@syzkaller.appspotmail.com,
         Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 5.15 04/10] ext4: factor out ext4_fc_get_tl()
-Date:   Wed,  4 Jan 2023 23:13:53 -0800
-Message-Id: <20230105071359.257952-5-ebiggers@kernel.org>
+Subject: [PATCH 5.15 07/10] ext4: don't set up encryption key during jbd2 transaction
+Date:   Wed,  4 Jan 2023 23:13:56 -0800
+Message-Id: <20230105071359.257952-8-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230105071359.257952-1-ebiggers@kernel.org>
 References: <20230105071359.257952-1-ebiggers@kernel.org>
@@ -47,151 +48,164 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ye Bin <yebin10@huawei.com>
+From: Eric Biggers <ebiggers@google.com>
 
-commit dcc5827484d6e53ccda12334f8bbfafcc593ceda upstream.
+commit 4c0d5778385cb3618ff26a561ce41de2b7d9de70 upstream.
 
-Factor out ext4_fc_get_tl() to fill 'tl' with host byte order.
+Commit a80f7fcf1867 ("ext4: fixup ext4_fc_track_* functions' signature")
+extended the scope of the transaction in ext4_unlink() too far, making
+it include the call to ext4_find_entry().  However, ext4_find_entry()
+can deadlock when called from within a transaction because it may need
+to set up the directory's encryption key.
 
-Signed-off-by: Ye Bin <yebin10@huawei.com>
-Link: https://lore.kernel.org/r/20220924075233.2315259-3-yebin10@huawei.com
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Fix this by restoring the transaction to its original scope.
+
+Reported-by: syzbot+1a748d0007eeac3ab079@syzkaller.appspotmail.com
+Fixes: a80f7fcf1867 ("ext4: fixup ext4_fc_track_* functions' signature")
+Cc: <stable@vger.kernel.org> # v5.10+
 Signed-off-by: Eric Biggers <ebiggers@google.com>
+Link: https://lore.kernel.org/r/20221106224841.279231-3-ebiggers@kernel.org
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/fast_commit.c | 46 +++++++++++++++++++++++--------------------
- 1 file changed, 25 insertions(+), 21 deletions(-)
+ fs/ext4/ext4.h        |  4 ++--
+ fs/ext4/fast_commit.c |  2 +-
+ fs/ext4/namei.c       | 44 +++++++++++++++++++++++--------------------
+ 3 files changed, 27 insertions(+), 23 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index bbbb6881f930b..bc209f3033273 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3647,8 +3647,8 @@ extern void ext4_initialize_dirent_tail(struct buffer_head *bh,
+ 					unsigned int blocksize);
+ extern int ext4_handle_dirty_dirblock(handle_t *handle, struct inode *inode,
+ 				      struct buffer_head *bh);
+-extern int __ext4_unlink(handle_t *handle, struct inode *dir, const struct qstr *d_name,
+-			 struct inode *inode);
++extern int __ext4_unlink(struct inode *dir, const struct qstr *d_name,
++			 struct inode *inode, struct dentry *dentry);
+ extern int __ext4_link(struct inode *dir, struct inode *inode,
+ 		       struct dentry *dentry);
+ 
 diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 9b1dedd03be0a..fdce08c68cd43 100644
+index 33ce0e96868a7..0caa03805f0df 100644
 --- a/fs/ext4/fast_commit.c
 +++ b/fs/ext4/fast_commit.c
-@@ -1271,7 +1271,7 @@ struct dentry_info_args {
- };
+@@ -1330,7 +1330,7 @@ static int ext4_fc_replay_unlink(struct super_block *sb, struct ext4_fc_tl *tl,
+ 		return 0;
+ 	}
  
- static inline void tl_to_darg(struct dentry_info_args *darg,
--			      struct  ext4_fc_tl *tl, u8 *val)
-+			      struct ext4_fc_tl *tl, u8 *val)
- {
- 	struct ext4_fc_dentry_info fcd;
- 
-@@ -1280,8 +1280,14 @@ static inline void tl_to_darg(struct dentry_info_args *darg,
- 	darg->parent_ino = le32_to_cpu(fcd.fc_parent_ino);
- 	darg->ino = le32_to_cpu(fcd.fc_ino);
- 	darg->dname = val + offsetof(struct ext4_fc_dentry_info, fc_dname);
--	darg->dname_len = le16_to_cpu(tl->fc_len) -
--		sizeof(struct ext4_fc_dentry_info);
-+	darg->dname_len = tl->fc_len - sizeof(struct ext4_fc_dentry_info);
-+}
-+
-+static inline void ext4_fc_get_tl(struct ext4_fc_tl *tl, u8 *val)
-+{
-+	memcpy(tl, val, EXT4_FC_TAG_BASE_LEN);
-+	tl->fc_len = le16_to_cpu(tl->fc_len);
-+	tl->fc_tag = le16_to_cpu(tl->fc_tag);
+-	ret = __ext4_unlink(NULL, old_parent, &entry, inode);
++	ret = __ext4_unlink(old_parent, &entry, inode, NULL);
+ 	/* -ENOENT ok coz it might not exist anymore. */
+ 	if (ret == -ENOENT)
+ 		ret = 0;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index c4ec7a4fdaf75..1e6cc6c21d606 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3204,14 +3204,20 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 	return retval;
  }
  
- /* Unlink replay function */
-@@ -1446,7 +1452,7 @@ static int ext4_fc_replay_inode(struct super_block *sb, struct ext4_fc_tl *tl,
- 	struct ext4_inode *raw_fc_inode;
- 	struct inode *inode = NULL;
- 	struct ext4_iloc iloc;
--	int inode_len, ino, ret, tag = le16_to_cpu(tl->fc_tag);
-+	int inode_len, ino, ret, tag = tl->fc_tag;
- 	struct ext4_extent_header *eh;
+-int __ext4_unlink(handle_t *handle, struct inode *dir, const struct qstr *d_name,
+-		  struct inode *inode)
++int __ext4_unlink(struct inode *dir, const struct qstr *d_name,
++		  struct inode *inode,
++		  struct dentry *dentry /* NULL during fast_commit recovery */)
+ {
+ 	int retval = -ENOENT;
+ 	struct buffer_head *bh;
+ 	struct ext4_dir_entry_2 *de;
++	handle_t *handle;
+ 	int skip_remove_dentry = 0;
  
- 	memcpy(&fc_inode, val, sizeof(fc_inode));
-@@ -1471,7 +1477,7 @@ static int ext4_fc_replay_inode(struct super_block *sb, struct ext4_fc_tl *tl,
- 	if (ret)
- 		goto out;
++	/*
++	 * Keep this outside the transaction; it may have to set up the
++	 * directory's encryption key, which isn't GFP_NOFS-safe.
++	 */
+ 	bh = ext4_find_entry(dir, d_name, &de, NULL);
+ 	if (IS_ERR(bh))
+ 		return PTR_ERR(bh);
+@@ -3228,7 +3234,14 @@ int __ext4_unlink(handle_t *handle, struct inode *dir, const struct qstr *d_name
+ 		if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
+ 			skip_remove_dentry = 1;
+ 		else
+-			goto out;
++			goto out_bh;
++	}
++
++	handle = ext4_journal_start(dir, EXT4_HT_DIR,
++				    EXT4_DATA_TRANS_BLOCKS(dir->i_sb));
++	if (IS_ERR(handle)) {
++		retval = PTR_ERR(handle);
++		goto out_bh;
+ 	}
  
--	inode_len = le16_to_cpu(tl->fc_len) - sizeof(struct ext4_fc_inode);
-+	inode_len = tl->fc_len - sizeof(struct ext4_fc_inode);
- 	raw_inode = ext4_raw_inode(&iloc);
+ 	if (IS_DIRSYNC(dir))
+@@ -3237,12 +3250,12 @@ int __ext4_unlink(handle_t *handle, struct inode *dir, const struct qstr *d_name
+ 	if (!skip_remove_dentry) {
+ 		retval = ext4_delete_entry(handle, dir, de, bh);
+ 		if (retval)
+-			goto out;
++			goto out_handle;
+ 		dir->i_ctime = dir->i_mtime = current_time(dir);
+ 		ext4_update_dx_flag(dir);
+ 		retval = ext4_mark_inode_dirty(handle, dir);
+ 		if (retval)
+-			goto out;
++			goto out_handle;
+ 	} else {
+ 		retval = 0;
+ 	}
+@@ -3255,15 +3268,17 @@ int __ext4_unlink(handle_t *handle, struct inode *dir, const struct qstr *d_name
+ 		ext4_orphan_add(handle, inode);
+ 	inode->i_ctime = current_time(inode);
+ 	retval = ext4_mark_inode_dirty(handle, inode);
+-
+-out:
++	if (dentry && !retval)
++		ext4_fc_track_unlink(handle, dentry);
++out_handle:
++	ext4_journal_stop(handle);
++out_bh:
+ 	brelse(bh);
+ 	return retval;
+ }
  
- 	memcpy(raw_inode, raw_fc_inode, offsetof(struct ext4_inode, i_block));
-@@ -1958,12 +1964,12 @@ static int ext4_fc_replay_scan(journal_t *journal,
+ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ {
+-	handle_t *handle;
+ 	int retval;
  
- 	state->fc_replay_expected_off++;
- 	for (cur = start; cur < end;
--	     cur = cur + EXT4_FC_TAG_BASE_LEN + le16_to_cpu(tl.fc_len)) {
--		memcpy(&tl, cur, EXT4_FC_TAG_BASE_LEN);
-+	     cur = cur + EXT4_FC_TAG_BASE_LEN + tl.fc_len) {
-+		ext4_fc_get_tl(&tl, cur);
- 		val = cur + EXT4_FC_TAG_BASE_LEN;
- 		ext4_debug("Scan phase, tag:%s, blk %lld\n",
--			  tag2str(le16_to_cpu(tl.fc_tag)), bh->b_blocknr);
--		switch (le16_to_cpu(tl.fc_tag)) {
-+			   tag2str(tl.fc_tag), bh->b_blocknr);
-+		switch (tl.fc_tag) {
- 		case EXT4_FC_TAG_ADD_RANGE:
- 			memcpy(&ext, val, sizeof(ext));
- 			ex = (struct ext4_extent *)&ext.fc_ex;
-@@ -1983,7 +1989,7 @@ static int ext4_fc_replay_scan(journal_t *journal,
- 		case EXT4_FC_TAG_PAD:
- 			state->fc_cur_tag++;
- 			state->fc_crc = ext4_chksum(sbi, state->fc_crc, cur,
--				EXT4_FC_TAG_BASE_LEN + le16_to_cpu(tl.fc_len));
-+				EXT4_FC_TAG_BASE_LEN + tl.fc_len);
- 			break;
- 		case EXT4_FC_TAG_TAIL:
- 			state->fc_cur_tag++;
-@@ -2016,7 +2022,7 @@ static int ext4_fc_replay_scan(journal_t *journal,
- 			}
- 			state->fc_cur_tag++;
- 			state->fc_crc = ext4_chksum(sbi, state->fc_crc, cur,
--				EXT4_FC_TAG_BASE_LEN + le16_to_cpu(tl.fc_len));
-+				EXT4_FC_TAG_BASE_LEN + tl.fc_len);
- 			break;
- 		default:
- 			ret = state->fc_replay_num_tags ?
-@@ -2072,8 +2078,8 @@ static int ext4_fc_replay(journal_t *journal, struct buffer_head *bh,
- 	end = (__u8 *)bh->b_data + journal->j_blocksize - 1;
+ 	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
+@@ -3281,16 +3296,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 	if (retval)
+ 		goto out_trace;
  
- 	for (cur = start; cur < end;
--	     cur = cur + EXT4_FC_TAG_BASE_LEN + le16_to_cpu(tl.fc_len)) {
--		memcpy(&tl, cur, EXT4_FC_TAG_BASE_LEN);
-+	     cur = cur + EXT4_FC_TAG_BASE_LEN + tl.fc_len) {
-+		ext4_fc_get_tl(&tl, cur);
- 		val = cur + EXT4_FC_TAG_BASE_LEN;
+-	handle = ext4_journal_start(dir, EXT4_HT_DIR,
+-				    EXT4_DATA_TRANS_BLOCKS(dir->i_sb));
+-	if (IS_ERR(handle)) {
+-		retval = PTR_ERR(handle);
+-		goto out_trace;
+-	}
+-
+-	retval = __ext4_unlink(handle, dir, &dentry->d_name, d_inode(dentry));
+-	if (!retval)
+-		ext4_fc_track_unlink(handle, dentry);
++	retval = __ext4_unlink(dir, &dentry->d_name, d_inode(dentry), dentry);
+ #ifdef CONFIG_UNICODE
+ 	/* VFS negative dentries are incompatible with Encoding and
+ 	 * Case-insensitiveness. Eventually we'll want avoid
+@@ -3301,8 +3307,6 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 	if (IS_CASEFOLDED(dir))
+ 		d_invalidate(dentry);
+ #endif
+-	if (handle)
+-		ext4_journal_stop(handle);
  
- 		if (state->fc_replay_num_tags == 0) {
-@@ -2081,10 +2087,9 @@ static int ext4_fc_replay(journal_t *journal, struct buffer_head *bh,
- 			ext4_fc_set_bitmaps_and_counters(sb);
- 			break;
- 		}
--		ext4_debug("Replay phase, tag:%s\n",
--				tag2str(le16_to_cpu(tl.fc_tag)));
-+		ext4_debug("Replay phase, tag:%s\n", tag2str(tl.fc_tag));
- 		state->fc_replay_num_tags--;
--		switch (le16_to_cpu(tl.fc_tag)) {
-+		switch (tl.fc_tag) {
- 		case EXT4_FC_TAG_LINK:
- 			ret = ext4_fc_replay_link(sb, &tl, val);
- 			break;
-@@ -2105,19 +2110,18 @@ static int ext4_fc_replay(journal_t *journal, struct buffer_head *bh,
- 			break;
- 		case EXT4_FC_TAG_PAD:
- 			trace_ext4_fc_replay(sb, EXT4_FC_TAG_PAD, 0,
--					     le16_to_cpu(tl.fc_len), 0);
-+					     tl.fc_len, 0);
- 			break;
- 		case EXT4_FC_TAG_TAIL:
--			trace_ext4_fc_replay(sb, EXT4_FC_TAG_TAIL, 0,
--					     le16_to_cpu(tl.fc_len), 0);
-+			trace_ext4_fc_replay(sb, EXT4_FC_TAG_TAIL,
-+					     0, tl.fc_len, 0);
- 			memcpy(&tail, val, sizeof(tail));
- 			WARN_ON(le32_to_cpu(tail.fc_tid) != expected_tid);
- 			break;
- 		case EXT4_FC_TAG_HEAD:
- 			break;
- 		default:
--			trace_ext4_fc_replay(sb, le16_to_cpu(tl.fc_tag), 0,
--					     le16_to_cpu(tl.fc_len), 0);
-+			trace_ext4_fc_replay(sb, tl.fc_tag, 0, tl.fc_len, 0);
- 			ret = -ECANCELED;
- 			break;
- 		}
+ out_trace:
+ 	trace_ext4_unlink_exit(dentry, retval);
 -- 
 2.39.0
 
