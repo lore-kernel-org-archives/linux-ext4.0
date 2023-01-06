@@ -2,101 +2,184 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4325FC3DA7A
-	for <linux-ext4@archiver.kernel.org>; Fri,  6 Jan 2023 10:22:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E4AE1C4708D
+	for <linux-ext4@archiver.kernel.org>; Fri,  6 Jan 2023 11:31:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229701AbjAFKWk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 6 Jan 2023 05:22:40 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59562 "EHLO
+        id S233386AbjAFLbj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 6 Jan 2023 06:31:39 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34406 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232327AbjAFKWi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Jan 2023 05:22:38 -0500
+        with ESMTP id S229737AbjAFLbi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Jan 2023 06:31:38 -0500
 Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B98866086D;
-        Fri,  6 Jan 2023 02:22:36 -0800 (PST)
-Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.57])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4NpK692HZyzqTKJ;
-        Fri,  6 Jan 2023 18:17:53 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
- (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D8B541A39E;
+        Fri,  6 Jan 2023 03:31:36 -0800 (PST)
+Received: from kwepemm600013.china.huawei.com (unknown [172.30.72.54])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4NpLdm4pcBzqTwL;
+        Fri,  6 Jan 2023 19:26:52 +0800 (CST)
+Received: from huawei.com (10.175.127.227) by kwepemm600013.china.huawei.com
+ (7.193.23.68) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.34; Fri, 6 Jan
- 2023 18:22:34 +0800
-From:   Baokun Li <libaokun1@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <ritesh.list@gmail.com>, <linux-kernel@vger.kernel.org>,
-        <yi.zhang@huawei.com>, <yukuai3@huawei.com>,
-        <libaokun1@huawei.com>,
-        =?UTF-8?q?Lu=C3=ADs=20Henriques?= <lhenriques@suse.de>
-Subject: [PATCH 1/2] ext4: fail ext4_iget if special inode unallocated
-Date:   Fri, 6 Jan 2023 18:47:05 +0800
-Message-ID: <20230106104706.2410740-2-libaokun1@huawei.com>
+ 2023 19:31:33 +0800
+From:   Zhihao Cheng <chengzhihao1@huawei.com>
+To:     <tytso@mit.edu>, <jack@suse.com>
+CC:     <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <chengzhihao1@huawei.com>, <yi.zhang@huawei.com>,
+        <libaokun1@huawei.com>, <zhanchengbin1@huawei.com>
+Subject: [PATCH v2] jbd2: Fix data missing when reusing bh which is ready to be checkpointed
+Date:   Fri, 6 Jan 2023 19:56:03 +0800
+Message-ID: <20230106115603.2624644-1-chengzhihao1@huawei.com>
 X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20230106104706.2410740-1-libaokun1@huawei.com>
-References: <20230106104706.2410740-1-libaokun1@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
 X-Originating-IP: [10.175.127.227]
 X-ClientProxiedBy: dggems704-chm.china.huawei.com (10.3.19.181) To
- dggpeml500021.china.huawei.com (7.185.36.21)
+ kwepemm600013.china.huawei.com (7.193.23.68)
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-In ext4_fill_super(), EXT4_ORPHAN_FS flag is cleared after
-ext4_orphan_cleanup() is executed. Therefore, when __ext4_iget() is
-called to get an inode whose i_nlink is 0 when the flag exists, no error
-is returned. If the inode is a special inode, a null pointer dereference
-may occur. If the value of i_nlink is 0 for any inodes (except boot loader
-inodes) got by using the EXT4_IGET_SPECIAL flag, the current file system
-is corrupted. Therefore, make the ext4_iget() function return an error if
-it gets such an abnormal special inode.
+Following process will make data lost and could lead to a filesystem
+corrupted problem:
 
-Link: https://bugzilla.kernel.org/show_bug.cgi?id=199179
-Link: https://bugzilla.kernel.org/show_bug.cgi?id=216541
-Link: https://bugzilla.kernel.org/show_bug.cgi?id=216539
-Reported-by: Luís Henriques <lhenriques@suse.de>
-Suggested-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
+1. jh(bh) is inserted into T1->t_checkpoint_list, bh is dirty, and
+   jh->b_transaction = NULL
+2. T1 is added into journal->j_checkpoint_transactions.
+3. Get bh prepare to write while doing checkpoing:
+           PA				    PB
+   do_get_write_access             jbd2_log_do_checkpoint
+    spin_lock(&jh->b_state_lock)
+     if (buffer_dirty(bh))
+      clear_buffer_dirty(bh)   // clear buffer dirty
+       set_buffer_jbddirty(bh)
+				    transaction =
+				    journal->j_checkpoint_transactions
+				    jh = transaction->t_checkpoint_list
+				    if (!buffer_dirty(bh))
+		                      __jbd2_journal_remove_checkpoint(jh)
+				      // bh won't be flushed
+		                    jbd2_cleanup_journal_tail
+    __jbd2_journal_file_buffer(jh, transaction, BJ_Reserved)
+4. Aborting journal/Power-cut before writing latest bh on journal area.
+
+In this way we get a corrupted filesystem with bh's data lost.
+
+Fix it by moving the clearing of buffer_dirty bit just before the call
+to __jbd2_journal_file_buffer(), both bit clearing and jh->b_transaction
+assignment are under journal->j_list_lock locked, so that
+jbd2_log_do_checkpoint() will wait until jh's new transaction fininshed
+even bh is currently not dirty. And journal_shrink_one_cp_list() won't
+remove jh from checkpoint list if the buffer head is reused in
+do_get_write_access().
+
+Cc: <stable@kernel.org>
+Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
+Signed-off-by: zhanchengbin <zhanchengbin1@huawei.com>
+Suggested-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 12 ++++--------
- 1 file changed, 4 insertions(+), 8 deletions(-)
+ v1->v2: Adopt Jan's suggestion, move the clearing of buffer_dirty bit
+	 and __jbd2_journal_file_buffer() inside journal->j_list_lock
+	 locking area.
+ fs/jbd2/transaction.c | 51 ++++++++++++++++++++++++++++---------------
+ 1 file changed, 34 insertions(+), 17 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9d9f414f99fe..3f7cfa91ba89 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4872,13 +4872,6 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 		goto bad_inode;
- 	raw_inode = ext4_raw_inode(&iloc);
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 6a404ac1c178..06a5e7961ef2 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1010,36 +1010,37 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
+ 	 * ie. locked but not dirty) or tune2fs (which may actually have
+ 	 * the buffer dirtied, ugh.)  */
  
--	if ((ino == EXT4_ROOT_INO) && (raw_inode->i_links_count == 0)) {
--		ext4_error_inode(inode, function, line, 0,
--				 "iget: root inode unallocated");
--		ret = -EFSCORRUPTED;
--		goto bad_inode;
--	}
+-	if (buffer_dirty(bh)) {
++	if (buffer_dirty(bh) && jh->b_transaction) {
+ 		/*
+ 		 * First question: is this buffer already part of the current
+ 		 * transaction or the existing committing transaction?
+ 		 */
+-		if (jh->b_transaction) {
+-			J_ASSERT_JH(jh,
+-				jh->b_transaction == transaction ||
+-				jh->b_transaction ==
+-					journal->j_committing_transaction);
+-			if (jh->b_next_transaction)
+-				J_ASSERT_JH(jh, jh->b_next_transaction ==
+-							transaction);
+-			warn_dirty_buffer(bh);
+-		}
++		J_ASSERT_JH(jh, jh->b_transaction == transaction ||
++			jh->b_transaction == journal->j_committing_transaction);
++		if (jh->b_next_transaction)
++			J_ASSERT_JH(jh, jh->b_next_transaction == transaction);
++		warn_dirty_buffer(bh);
+ 		/*
+-		 * In any case we need to clean the dirty flag and we must
+-		 * do it under the buffer lock to be sure we don't race
+-		 * with running write-out.
++		 * We need to clean the dirty flag and we must do it under the
++		 * buffer lock to be sure we don't race with running write-out.
+ 		 */
+ 		JBUFFER_TRACE(jh, "Journalling dirty buffer");
+ 		clear_buffer_dirty(bh);
++		/*
++		 * Setting jbddirty after clearing buffer dirty is necessary.
++		 * Function jbd2_journal_restart() could keep buffer on
++		 * BJ_Reserved list until the transaction committing, then the
++		 * buffer won't be dirtied by jbd2_journal_refile_buffer()
++		 * after committing, the buffer couldn't fall on disk even
++		 * last checkpoint finished, which may corrupt filesystem.
++		 */
+ 		set_buffer_jbddirty(bh);
+ 	}
+ 
+-	unlock_buffer(bh);
 -
- 	if ((flags & EXT4_IGET_HANDLE) &&
- 	    (raw_inode->i_links_count == 0) && (raw_inode->i_mode == 0)) {
- 		ret = -ESTALE;
-@@ -4951,10 +4944,13 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 	 * NeilBrown 1999oct15
+ 	error = -EROFS;
+ 	if (is_handle_aborted(handle)) {
+ 		spin_unlock(&jh->b_state_lock);
++		unlock_buffer(bh);
+ 		goto out;
+ 	}
+ 	error = 0;
+@@ -1049,8 +1050,10 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
+ 	 * b_next_transaction points to it
  	 */
- 	if (inode->i_nlink == 0) {
--		if ((inode->i_mode == 0 ||
-+		if ((inode->i_mode == 0 || (flags & EXT4_IGET_SPECIAL) ||
- 		     !(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS)) &&
- 		    ino != EXT4_BOOT_LOADER_INO) {
- 			/* this inode is deleted */
-+			if (flags & EXT4_IGET_SPECIAL)
-+				ext4_error_inode(inode, function, line, 0,
-+						 "iget: special inode unallocated");
- 			ret = -ESTALE;
- 			goto bad_inode;
- 		}
+ 	if (jh->b_transaction == transaction ||
+-	    jh->b_next_transaction == transaction)
++	    jh->b_next_transaction == transaction) {
++		unlock_buffer(bh);
+ 		goto done;
++	}
+ 
+ 	/*
+ 	 * this is the first time this transaction is touching this buffer,
+@@ -1074,10 +1077,24 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
+ 		 */
+ 		smp_wmb();
+ 		spin_lock(&journal->j_list_lock);
++		if (test_clear_buffer_dirty(bh)) {
++			/*
++			 * Execute buffer dirty clearing and jh->b_transaction
++			 * assignment under journal->j_list_lock locked to
++			 * prevent bh being removed from checkpoint list if
++			 * the buffer is in an intermediate state (not dirty
++			 * and jh->b_transaction is NULL).
++			 */
++			JBUFFER_TRACE(jh, "Journalling dirty buffer");
++			set_buffer_jbddirty(bh);
++		}
+ 		__jbd2_journal_file_buffer(jh, transaction, BJ_Reserved);
+ 		spin_unlock(&journal->j_list_lock);
++		unlock_buffer(bh);
+ 		goto done;
+ 	}
++	unlock_buffer(bh);
++
+ 	/*
+ 	 * If there is already a copy-out version of this buffer, then we don't
+ 	 * need to make another one
 -- 
 2.31.1
 
