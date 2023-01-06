@@ -2,34 +2,38 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9181FC3DA7A
-	for <linux-ext4@archiver.kernel.org>; Fri,  6 Jan 2023 10:22:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 211DBC5479D
+	for <linux-ext4@archiver.kernel.org>; Fri,  6 Jan 2023 10:22:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232940AbjAFKWi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 6 Jan 2023 05:22:38 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59558 "EHLO
+        id S233325AbjAFKWj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 6 Jan 2023 05:22:39 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59560 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229701AbjAFKWh (ORCPT
+        with ESMTP id S231511AbjAFKWh (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Jan 2023 05:22:37 -0500
 Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0A5C434756;
-        Fri,  6 Jan 2023 02:22:35 -0800 (PST)
-Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.54])
-        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4NpK9t033Kz16Llt;
-        Fri,  6 Jan 2023 18:21:06 +0800 (CST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AC429551CB;
+        Fri,  6 Jan 2023 02:22:36 -0800 (PST)
+Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.57])
+        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4NpK9v0ZTtz16MMd;
+        Fri,  6 Jan 2023 18:21:07 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
  (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.34; Fri, 6 Jan
- 2023 18:22:33 +0800
+ 2023 18:22:34 +0800
 From:   Baokun Li <libaokun1@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <ritesh.list@gmail.com>, <linux-kernel@vger.kernel.org>,
-        <yi.zhang@huawei.com>, <yukuai3@huawei.com>, <libaokun1@huawei.com>
-Subject: [PATCH 0/2] ext4: fix possible null pointer dereference in ext4_get_group_info
-Date:   Fri, 6 Jan 2023 18:47:04 +0800
-Message-ID: <20230106104706.2410740-1-libaokun1@huawei.com>
+        <yi.zhang@huawei.com>, <yukuai3@huawei.com>,
+        <libaokun1@huawei.com>,
+        =?UTF-8?q?Lu=C3=ADs=20Henriques?= <lhenriques@suse.de>
+Subject: [PATCH 2/2] ext4: update s_journal_inum if it changes after journal replay
+Date:   Fri, 6 Jan 2023 18:47:06 +0800
+Message-ID: <20230106104706.2410740-3-libaokun1@huawei.com>
 X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20230106104706.2410740-1-libaokun1@huawei.com>
+References: <20230106104706.2410740-1-libaokun1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8bit
@@ -41,14 +45,39 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Baokun Li (2):
-  ext4: fail ext4_iget if special inode unallocated
-  ext4: update s_journal_inum if it changes after journal replay
+When mounting a crafted ext4 image, s_journal_inum may change after journal
+replay, which is obviously unreasonable because we have successfully loaded
+and replayed the journal through the old s_journal_inum. And the new
+s_journal_inum bypasses some of the checks in ext4_get_journal(), which
+may trigger a null pointer dereference problem. So if s_journal_inum
+changes after the journal replay, we ignore the change, and rewrite the
+current journal_inum to the superblock.
 
- fs/ext4/inode.c | 12 ++++--------
- fs/ext4/super.c |  7 +++++--
- 2 files changed, 9 insertions(+), 10 deletions(-)
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=216541
+Reported-by: Luís Henriques <lhenriques@suse.de>
+Signed-off-by: Baokun Li <libaokun1@huawei.com>
+---
+ fs/ext4/super.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 260c1b3e3ef2..3fe9dc19ff9c 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -5953,8 +5953,11 @@ static int ext4_load_journal(struct super_block *sb,
+ 	if (!really_read_only && journal_devnum &&
+ 	    journal_devnum != le32_to_cpu(es->s_journal_dev)) {
+ 		es->s_journal_dev = cpu_to_le32(journal_devnum);
+-
+-		/* Make sure we flush the recovery flag to disk. */
++		ext4_commit_super(sb);
++	}
++	if (!really_read_only && journal_inum &&
++	    journal_inum != le32_to_cpu(es->s_journal_inum)) {
++		es->s_journal_inum = cpu_to_le32(journal_inum);
+ 		ext4_commit_super(sb);
+ 	}
+ 
 -- 
 2.31.1
 
