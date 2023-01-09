@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B2E32C7112F
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4DE39C678DE
 	for <linux-ext4@archiver.kernel.org>; Mon,  9 Jan 2023 04:05:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236481AbjAIEFO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 8 Jan 2023 23:05:14 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55018 "EHLO
+        id S236802AbjAIEFJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 8 Jan 2023 23:05:09 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54722 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236513AbjAIEEO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Jan 2023 23:04:14 -0500
-Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 4A64711A12
-        for <linux-ext4@vger.kernel.org>; Sun,  8 Jan 2023 20:03:53 -0800 (PST)
+        with ESMTP id S236517AbjAIEER (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Jan 2023 23:04:17 -0500
+Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 60C4411A3A
+        for <linux-ext4@vger.kernel.org>; Sun,  8 Jan 2023 20:03:58 -0800 (PST)
 Received: from unknown (HELO lgemrelse6q.lge.com) (156.147.1.121)
-        by 156.147.23.51 with ESMTP; 9 Jan 2023 12:33:52 +0900
+        by 156.147.23.52 with ESMTP; 9 Jan 2023 12:33:54 +0900
 X-Original-SENDERIP: 156.147.1.121
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.121 with ESMTP; 9 Jan 2023 12:33:52 +0900
+        by 156.147.1.121 with ESMTP; 9 Jan 2023 12:33:54 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
 From:   Byungchul Park <byungchul.park@lge.com>
@@ -45,9 +45,9 @@ Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
         melissa.srw@gmail.com, hamohammed.sa@gmail.com,
         42.hyeyoo@gmail.com, chris.p.wilson@intel.com,
         gwan-gyeong.mun@intel.com
-Subject: [PATCH RFC v7 08/23] dept: Apply sdt_might_sleep_strong() to PG_{locked,writeback} wait
-Date:   Mon,  9 Jan 2023 12:33:36 +0900
-Message-Id: <1673235231-30302-9-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH RFC v7 19/23] dept: Apply timeout consideration to swait
+Date:   Mon,  9 Jan 2023 12:33:47 +0900
+Message-Id: <1673235231-30302-20-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1673235231-30302-1-git-send-email-byungchul.park@lge.com>
 References: <1673235231-30302-1-git-send-email-byungchul.park@lge.com>
@@ -55,56 +55,31 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Makes Dept able to track dependencies by PG_{locked,writeback} waits.
+Now that CONFIG_DEPT_AGGRESSIVE_TIMEOUT_WAIT was introduced, apply the
+consideration to swait, assuming an input 'ret' in ___swait_event()
+macro is used as a timeout value.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- mm/filemap.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ include/linux/swait.h | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index c4d4ace..b013a5b 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -42,6 +42,7 @@
- #include <linux/ramfs.h>
- #include <linux/page_idle.h>
- #include <linux/migrate.h>
-+#include <linux/dept_sdt.h>
- #include <asm/pgalloc.h>
- #include <asm/tlbflush.h>
- #include "internal.h"
-@@ -1215,6 +1216,9 @@ static inline bool folio_trylock_flag(struct folio *folio, int bit_nr,
- /* How many times do we accept lock stealing from under a waiter? */
- int sysctl_page_lock_unfairness = 5;
- 
-+static struct dept_map __maybe_unused PG_locked_map = DEPT_MAP_INITIALIZER(PG_locked_map, NULL);
-+static struct dept_map __maybe_unused PG_writeback_map = DEPT_MAP_INITIALIZER(PG_writeback_map, NULL);
-+
- static inline int folio_wait_bit_common(struct folio *folio, int bit_nr,
- 		int state, enum behavior behavior)
- {
-@@ -1226,6 +1230,11 @@ static inline int folio_wait_bit_common(struct folio *folio, int bit_nr,
- 	unsigned long pflags;
- 	bool in_thrashing;
- 
-+	if (bit_nr == PG_locked)
-+		sdt_might_sleep_strong(&PG_locked_map);
-+	else if (bit_nr == PG_writeback)
-+		sdt_might_sleep_strong(&PG_writeback_map);
-+
- 	if (bit_nr == PG_locked &&
- 	    !folio_test_uptodate(folio) && folio_test_workingset(folio)) {
- 		delayacct_thrashing_start(&in_thrashing);
-@@ -1327,6 +1336,8 @@ static inline int folio_wait_bit_common(struct folio *folio, int bit_nr,
- 	 */
- 	finish_wait(q, wait);
- 
-+	sdt_might_sleep_finish();
-+
- 	if (thrashing) {
- 		delayacct_thrashing_end(&in_thrashing);
- 		psi_memstall_leave(&pflags);
+diff --git a/include/linux/swait.h b/include/linux/swait.h
+index 1304209..339e5f2 100644
+--- a/include/linux/swait.h
++++ b/include/linux/swait.h
+@@ -162,7 +162,10 @@ static inline bool swq_has_sleeper(struct swait_queue_head *wq)
+ 	struct swait_queue __wait;					\
+ 	long __ret = ret;						\
+ 									\
+-	sdt_might_sleep_weak(NULL);					\
++	if (!__ret || __ret == MAX_SCHEDULE_TIMEOUT)			\
++		sdt_might_sleep_weak(NULL);				\
++	else								\
++		sdt_might_sleep_weak_timeout(NULL);			\
+ 	INIT_LIST_HEAD(&__wait.task_list);				\
+ 	for (;;) {							\
+ 		long __int = prepare_to_swait_event(&wq, &__wait, state);\
 -- 
 1.9.1
 
