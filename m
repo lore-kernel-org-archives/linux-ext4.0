@@ -2,20 +2,20 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4DE39C678DE
-	for <linux-ext4@archiver.kernel.org>; Mon,  9 Jan 2023 04:05:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 22C5EC71136
+	for <linux-ext4@archiver.kernel.org>; Mon,  9 Jan 2023 04:05:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236802AbjAIEFJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 8 Jan 2023 23:05:09 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54722 "EHLO
+        id S236514AbjAIEFW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 8 Jan 2023 23:05:22 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55054 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236517AbjAIEER (ORCPT
+        with ESMTP id S236518AbjAIEER (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Jan 2023 23:04:17 -0500
-Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 60C4411A3A
+Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 60BF811A36
         for <linux-ext4@vger.kernel.org>; Sun,  8 Jan 2023 20:03:58 -0800 (PST)
 Received: from unknown (HELO lgemrelse6q.lge.com) (156.147.1.121)
-        by 156.147.23.52 with ESMTP; 9 Jan 2023 12:33:54 +0900
+        by 156.147.23.53 with ESMTP; 9 Jan 2023 12:33:54 +0900
 X-Original-SENDERIP: 156.147.1.121
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
@@ -45,9 +45,9 @@ Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
         melissa.srw@gmail.com, hamohammed.sa@gmail.com,
         42.hyeyoo@gmail.com, chris.p.wilson@intel.com,
         gwan-gyeong.mun@intel.com
-Subject: [PATCH RFC v7 19/23] dept: Apply timeout consideration to swait
-Date:   Mon,  9 Jan 2023 12:33:47 +0900
-Message-Id: <1673235231-30302-20-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH RFC v7 22/23] dept: Apply timeout consideration to dma fence wait
+Date:   Mon,  9 Jan 2023 12:33:50 +0900
+Message-Id: <1673235231-30302-23-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1673235231-30302-1-git-send-email-byungchul.park@lge.com>
 References: <1673235231-30302-1-git-send-email-byungchul.park@lge.com>
@@ -56,30 +56,41 @@ List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
 Now that CONFIG_DEPT_AGGRESSIVE_TIMEOUT_WAIT was introduced, apply the
-consideration to swait, assuming an input 'ret' in ___swait_event()
-macro is used as a timeout value.
+consideration to dma fence wait.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- include/linux/swait.h | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ drivers/dma-buf/dma-fence.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/swait.h b/include/linux/swait.h
-index 1304209..339e5f2 100644
---- a/include/linux/swait.h
-+++ b/include/linux/swait.h
-@@ -162,7 +162,10 @@ static inline bool swq_has_sleeper(struct swait_queue_head *wq)
- 	struct swait_queue __wait;					\
- 	long __ret = ret;						\
- 									\
--	sdt_might_sleep_weak(NULL);					\
-+	if (!__ret || __ret == MAX_SCHEDULE_TIMEOUT)			\
-+		sdt_might_sleep_weak(NULL);				\
-+	else								\
-+		sdt_might_sleep_weak_timeout(NULL);			\
- 	INIT_LIST_HEAD(&__wait.task_list);				\
- 	for (;;) {							\
- 		long __int = prepare_to_swait_event(&wq, &__wait, state);\
+diff --git a/drivers/dma-buf/dma-fence.c b/drivers/dma-buf/dma-fence.c
+index dd190cf..ee9b350 100644
+--- a/drivers/dma-buf/dma-fence.c
++++ b/drivers/dma-buf/dma-fence.c
+@@ -783,7 +783,10 @@ struct default_wait_cb {
+ 	cb.task = current;
+ 	list_add(&cb.base.node, &fence->cb_list);
+ 
+-	sdt_might_sleep_strong(NULL);
++	if (timeout == MAX_SCHEDULE_TIMEOUT)
++		sdt_might_sleep_strong(NULL);
++	else
++		sdt_might_sleep_strong_timeout(NULL);
+ 	while (!test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags) && ret > 0) {
+ 		if (intr)
+ 			__set_current_state(TASK_INTERRUPTIBLE);
+@@ -887,7 +890,10 @@ struct default_wait_cb {
+ 		}
+ 	}
+ 
+-	sdt_might_sleep_strong(NULL);
++	if (timeout == MAX_SCHEDULE_TIMEOUT)
++		sdt_might_sleep_strong(NULL);
++	else
++		sdt_might_sleep_strong_timeout(NULL);
+ 	while (ret > 0) {
+ 		if (intr)
+ 			set_current_state(TASK_INTERRUPTIBLE);
 -- 
 1.9.1
 
