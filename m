@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E02D3C678D8
-	for <linux-ext4@archiver.kernel.org>; Mon,  9 Jan 2023 04:05:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B2E32C7112F
+	for <linux-ext4@archiver.kernel.org>; Mon,  9 Jan 2023 04:05:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236787AbjAIEFF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 8 Jan 2023 23:05:05 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55118 "EHLO
+        id S236481AbjAIEFO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 8 Jan 2023 23:05:14 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55018 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236573AbjAIEEV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Jan 2023 23:04:21 -0500
+        with ESMTP id S236513AbjAIEEO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Jan 2023 23:04:14 -0500
 Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 17D8E1180E
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 4A64711A12
         for <linux-ext4@vger.kernel.org>; Sun,  8 Jan 2023 20:03:53 -0800 (PST)
 Received: from unknown (HELO lgemrelse6q.lge.com) (156.147.1.121)
-        by 156.147.23.51 with ESMTP; 9 Jan 2023 12:33:53 +0900
+        by 156.147.23.51 with ESMTP; 9 Jan 2023 12:33:52 +0900
 X-Original-SENDERIP: 156.147.1.121
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.121 with ESMTP; 9 Jan 2023 12:33:53 +0900
+        by 156.147.1.121 with ESMTP; 9 Jan 2023 12:33:52 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
 From:   Byungchul Park <byungchul.park@lge.com>
@@ -45,9 +45,9 @@ Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
         melissa.srw@gmail.com, hamohammed.sa@gmail.com,
         42.hyeyoo@gmail.com, chris.p.wilson@intel.com,
         gwan-gyeong.mun@intel.com
-Subject: [PATCH RFC v7 13/23] dept: Distinguish each work from another
-Date:   Mon,  9 Jan 2023 12:33:41 +0900
-Message-Id: <1673235231-30302-14-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH RFC v7 08/23] dept: Apply sdt_might_sleep_strong() to PG_{locked,writeback} wait
+Date:   Mon,  9 Jan 2023 12:33:36 +0900
+Message-Id: <1673235231-30302-9-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1673235231-30302-1-git-send-email-byungchul.park@lge.com>
 References: <1673235231-30302-1-git-send-email-byungchul.park@lge.com>
@@ -55,81 +55,56 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Workqueue already provides concurrency control. By that, any wait in a
-work doesn't prevents events in other works with the control enabled.
-Thus, each work would better be considered a different context.
-
-So let Dept assign a different context id to each work.
+Makes Dept able to track dependencies by PG_{locked,writeback} waits.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- include/linux/dept.h     |  2 ++
- kernel/dependency/dept.c | 10 ++++++++++
- kernel/workqueue.c       |  3 +++
- 3 files changed, 15 insertions(+)
+ mm/filemap.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-diff --git a/include/linux/dept.h b/include/linux/dept.h
-index 777c837..625c645 100644
---- a/include/linux/dept.h
-+++ b/include/linux/dept.h
-@@ -515,6 +515,7 @@ struct dept_task {
- extern void dept_sched_enter(void);
- extern void dept_sched_exit(void);
- extern void dept_kernel_enter(void);
-+extern void dept_work_enter(void);
+diff --git a/mm/filemap.c b/mm/filemap.c
+index c4d4ace..b013a5b 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -42,6 +42,7 @@
+ #include <linux/ramfs.h>
+ #include <linux/page_idle.h>
+ #include <linux/migrate.h>
++#include <linux/dept_sdt.h>
+ #include <asm/pgalloc.h>
+ #include <asm/tlbflush.h>
+ #include "internal.h"
+@@ -1215,6 +1216,9 @@ static inline bool folio_trylock_flag(struct folio *folio, int bit_nr,
+ /* How many times do we accept lock stealing from under a waiter? */
+ int sysctl_page_lock_unfairness = 5;
  
- static inline void dept_ecxt_enter_nokeep(struct dept_map *m)
++static struct dept_map __maybe_unused PG_locked_map = DEPT_MAP_INITIALIZER(PG_locked_map, NULL);
++static struct dept_map __maybe_unused PG_writeback_map = DEPT_MAP_INITIALIZER(PG_writeback_map, NULL);
++
+ static inline int folio_wait_bit_common(struct folio *folio, int bit_nr,
+ 		int state, enum behavior behavior)
  {
-@@ -565,6 +566,7 @@ static inline void dept_ecxt_enter_nokeep(struct dept_map *m)
- #define dept_sched_enter()				do { } while (0)
- #define dept_sched_exit()				do { } while (0)
- #define dept_kernel_enter()				do { } while (0)
-+#define dept_work_enter()				do { } while (0)
- #define dept_ecxt_enter_nokeep(m)			do { } while (0)
- #define dept_key_init(k)				do { (void)(k); } while (0)
- #define dept_key_destroy(k)				do { (void)(k); } while (0)
-diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index e98617b..2f215c2 100644
---- a/kernel/dependency/dept.c
-+++ b/kernel/dependency/dept.c
-@@ -1954,6 +1954,16 @@ void dept_hardirqs_off(unsigned long ip)
- }
- EXPORT_SYMBOL_GPL(dept_hardirqs_off);
+@@ -1226,6 +1230,11 @@ static inline int folio_wait_bit_common(struct folio *folio, int bit_nr,
+ 	unsigned long pflags;
+ 	bool in_thrashing;
  
-+/*
-+ * Assign a different context id to each work.
-+ */
-+void dept_work_enter(void)
-+{
-+	struct dept_task *dt = dept_task();
++	if (bit_nr == PG_locked)
++		sdt_might_sleep_strong(&PG_locked_map);
++	else if (bit_nr == PG_writeback)
++		sdt_might_sleep_strong(&PG_writeback_map);
 +
-+	dt->cxt_id[DEPT_CXT_PROCESS] += 1UL << DEPT_CXTS_NR;
-+}
+ 	if (bit_nr == PG_locked &&
+ 	    !folio_test_uptodate(folio) && folio_test_workingset(folio)) {
+ 		delayacct_thrashing_start(&in_thrashing);
+@@ -1327,6 +1336,8 @@ static inline int folio_wait_bit_common(struct folio *folio, int bit_nr,
+ 	 */
+ 	finish_wait(q, wait);
+ 
++	sdt_might_sleep_finish();
 +
- void dept_kernel_enter(void)
- {
- 	struct dept_task *dt = dept_task();
-diff --git a/kernel/workqueue.c b/kernel/workqueue.c
-index 07895de..69c4f46 100644
---- a/kernel/workqueue.c
-+++ b/kernel/workqueue.c
-@@ -51,6 +51,7 @@
- #include <linux/sched/isolation.h>
- #include <linux/nmi.h>
- #include <linux/kvm_para.h>
-+#include <linux/dept.h>
- 
- #include "workqueue_internal.h"
- 
-@@ -2199,6 +2200,8 @@ static void process_one_work(struct worker *worker, struct work_struct *work)
- 
- 	lockdep_copy_map(&lockdep_map, &work->lockdep_map);
- #endif
-+	dept_work_enter();
-+
- 	/* ensure we're on the correct CPU */
- 	WARN_ON_ONCE(!(pool->flags & POOL_DISASSOCIATED) &&
- 		     raw_smp_processor_id() != pool->cpu);
+ 	if (thrashing) {
+ 		delayacct_thrashing_end(&in_thrashing);
+ 		psi_memstall_leave(&pflags);
 -- 
 1.9.1
 
