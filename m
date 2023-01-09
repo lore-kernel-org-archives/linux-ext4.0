@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 47C19C71130
-	for <linux-ext4@archiver.kernel.org>; Mon,  9 Jan 2023 04:06:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 58D6EC678D6
+	for <linux-ext4@archiver.kernel.org>; Mon,  9 Jan 2023 04:06:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236893AbjAIEFw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 8 Jan 2023 23:05:52 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55150 "EHLO
+        id S236170AbjAIEGH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 8 Jan 2023 23:06:07 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55054 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236671AbjAIEE3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Jan 2023 23:04:29 -0500
-Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id CB4D311C2E
+        with ESMTP id S236443AbjAIEEa (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Jan 2023 23:04:30 -0500
+Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id E7C4911C31
         for <linux-ext4@vger.kernel.org>; Sun,  8 Jan 2023 20:03:54 -0800 (PST)
 Received: from unknown (HELO lgemrelse6q.lge.com) (156.147.1.121)
-        by 156.147.23.53 with ESMTP; 9 Jan 2023 12:33:53 +0900
+        by 156.147.23.51 with ESMTP; 9 Jan 2023 12:33:54 +0900
 X-Original-SENDERIP: 156.147.1.121
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.121 with ESMTP; 9 Jan 2023 12:33:53 +0900
+        by 156.147.1.121 with ESMTP; 9 Jan 2023 12:33:54 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
 From:   Byungchul Park <byungchul.park@lge.com>
@@ -45,9 +45,9 @@ Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
         melissa.srw@gmail.com, hamohammed.sa@gmail.com,
         42.hyeyoo@gmail.com, chris.p.wilson@intel.com,
         gwan-gyeong.mun@intel.com
-Subject: [PATCH RFC v7 15/23] locking/lockdep, cpu/hotplus: Use a weaker annotation in AP thread
-Date:   Mon,  9 Jan 2023 12:33:43 +0900
-Message-Id: <1673235231-30302-16-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH RFC v7 18/23] dept: Apply timeout consideration to wait_for_completion()/complete()
+Date:   Mon,  9 Jan 2023 12:33:46 +0900
+Message-Id: <1673235231-30302-19-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1673235231-30302-1-git-send-email-byungchul.park@lge.com>
 References: <1673235231-30302-1-git-send-email-byungchul.park@lge.com>
@@ -55,33 +55,74 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-cb92173d1f0 ("locking/lockdep, cpu/hotplug: Annotate AP thread") was
-introduced to make lockdep_assert_cpus_held() work in AP thread.
-
-However, the annotation is too strong for that purpose. We don't have to
-use more than try lock annotation for that.
-
-Furthermore, now that Dept was introduced, false positive alarms was
-reported by that. Replaced it with try lock annotation.
+Now that CONFIG_DEPT_AGGRESSIVE_TIMEOUT_WAIT was introduced, apply the
+consideration to wait_for_completion()/complete().
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- kernel/cpu.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/linux/completion.h | 21 +++++++++++++++++----
+ 1 file changed, 17 insertions(+), 4 deletions(-)
 
-diff --git a/kernel/cpu.c b/kernel/cpu.c
-index 6c0a92c..6a9b9c3 100644
---- a/kernel/cpu.c
-+++ b/kernel/cpu.c
-@@ -356,7 +356,7 @@ int lockdep_is_cpus_held(void)
+diff --git a/include/linux/completion.h b/include/linux/completion.h
+index 0408f6d..57a715f 100644
+--- a/include/linux/completion.h
++++ b/include/linux/completion.h
+@@ -11,6 +11,7 @@
  
- static void lockdep_acquire_cpus_lock(void)
- {
--	rwsem_acquire(&cpu_hotplug_lock.dep_map, 0, 0, _THIS_IP_);
-+	rwsem_acquire(&cpu_hotplug_lock.dep_map, 0, 1, _THIS_IP_);
- }
+ #include <linux/swait.h>
+ #include <linux/dept_sdt.h>
++#include <linux/sched.h>
  
- static void lockdep_release_cpus_lock(void)
+ /*
+  * struct completion - structure used to maintain state for a "completion"
+@@ -153,7 +154,10 @@ extern long raw_wait_for_completion_killable_timeout(
+ #define wait_for_completion_timeout(x, t)			\
+ ({								\
+ 	unsigned long __ret;					\
+-	sdt_might_sleep_strong(NULL);				\
++	if ((t) == MAX_SCHEDULE_TIMEOUT)			\
++		sdt_might_sleep_strong(NULL);			\
++	else							\
++		sdt_might_sleep_strong_timeout(NULL);		\
+ 	__ret = raw_wait_for_completion_timeout(x, t);		\
+ 	sdt_might_sleep_finish();				\
+ 	__ret;							\
+@@ -161,7 +165,10 @@ extern long raw_wait_for_completion_killable_timeout(
+ #define wait_for_completion_io_timeout(x, t)			\
+ ({								\
+ 	unsigned long __ret;					\
+-	sdt_might_sleep_strong(NULL);				\
++	if ((t) == MAX_SCHEDULE_TIMEOUT)			\
++		sdt_might_sleep_strong(NULL);			\
++	else							\
++		sdt_might_sleep_strong_timeout(NULL);		\
+ 	__ret = raw_wait_for_completion_io_timeout(x, t);	\
+ 	sdt_might_sleep_finish();				\
+ 	__ret;							\
+@@ -169,7 +176,10 @@ extern long raw_wait_for_completion_killable_timeout(
+ #define wait_for_completion_interruptible_timeout(x, t)		\
+ ({								\
+ 	long __ret;						\
+-	sdt_might_sleep_strong(NULL);				\
++	if ((t) == MAX_SCHEDULE_TIMEOUT)			\
++		sdt_might_sleep_strong(NULL);			\
++	else							\
++		sdt_might_sleep_strong_timeout(NULL);		\
+ 	__ret = raw_wait_for_completion_interruptible_timeout(x, t);\
+ 	sdt_might_sleep_finish();				\
+ 	__ret;							\
+@@ -177,7 +187,10 @@ extern long raw_wait_for_completion_killable_timeout(
+ #define wait_for_completion_killable_timeout(x, t)		\
+ ({								\
+ 	long __ret;						\
+-	sdt_might_sleep_strong(NULL);				\
++	if ((t) == MAX_SCHEDULE_TIMEOUT)			\
++		sdt_might_sleep_strong(NULL);			\
++	else							\
++		sdt_might_sleep_strong_timeout(NULL);		\
+ 	__ret = raw_wait_for_completion_killable_timeout(x, t);	\
+ 	sdt_might_sleep_finish();				\
+ 	__ret;							\
 -- 
 1.9.1
 
