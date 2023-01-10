@@ -2,124 +2,79 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A049C54EBE
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Jan 2023 04:02:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4E2ABC46467
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Jan 2023 04:05:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229922AbjAJEC5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 9 Jan 2023 23:02:57 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58406 "EHLO
+        id S229600AbjAJEF3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 9 Jan 2023 23:05:29 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59256 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229609AbjAJECv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jan 2023 23:02:51 -0500
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1DDCD1AD84;
-        Mon,  9 Jan 2023 20:02:48 -0800 (PST)
-Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.54])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4NrcYy2G2nzJqpR;
-        Tue, 10 Jan 2023 12:01:26 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
- (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.34; Tue, 10 Jan
- 2023 12:02:42 +0800
-From:   Baokun Li <libaokun1@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <ritesh.list@gmail.com>, <linux-kernel@vger.kernel.org>,
-        <yi.zhang@huawei.com>, <yukuai3@huawei.com>,
-        <libaokun1@huawei.com>,
-        <syzbot+77d6fcc37bbb92f26048@syzkaller.appspotmail.com>
-Subject: [PATCH] ext4: fix task hung in ext4_xattr_delete_inode
-Date:   Tue, 10 Jan 2023 12:27:09 +0800
-Message-ID: <20230110042709.2136336-1-libaokun1@huawei.com>
-X-Mailer: git-send-email 2.31.1
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
- dggpeml500021.china.huawei.com (7.185.36.21)
-X-CFilter-Loop: Reflected
+        with ESMTP id S229607AbjAJEFV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jan 2023 23:05:21 -0500
+X-Greylist: delayed 91 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Mon, 09 Jan 2023 20:05:18 PST
+Received: from omta001.cacentral1.a.cloudfilter.net (omta001.cacentral1.a.cloudfilter.net [3.97.99.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E10F0178B9
+        for <linux-ext4@vger.kernel.org>; Mon,  9 Jan 2023 20:05:18 -0800 (PST)
+Received: from shw-obgw-4004a.ext.cloudfilter.net ([10.228.9.227])
+        by cmsmtp with ESMTP
+        id F1qOppuvmc9C4F5rWp0PWq; Tue, 10 Jan 2023 04:03:46 +0000
+Received: from centos7.dilger.int ([70.77.221.9])
+        by cmsmtp with ESMTP
+        id F5rVpYzG73fOSF5rVpEx6L; Tue, 10 Jan 2023 04:03:46 +0000
+X-Authority-Analysis: v=2.4 cv=J8G5USrS c=1 sm=1 tr=0 ts=63bce3a2
+ a=2Y6h5+ypAxmHcsumz2f7Og==:117 a=2Y6h5+ypAxmHcsumz2f7Og==:17 a=RPJ6JBhKAAAA:8
+ a=5Gn-ALmo8zlZPzAHQEsA:9 a=fa_un-3J20JGBB2Tu-mn:22
+From:   Andreas Dilger <adilger@dilger.ca>
+To:     tytso@mit.edu
+Cc:     linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH] tests: fix r_move_itable_realloc to run on Linux
+Date:   Mon,  9 Jan 2023 21:02:52 -0700
+Message-Id: <1673323372-13786-1-git-send-email-adilger@dilger.ca>
+X-Mailer: git-send-email 1.8.3.1
+X-CMAE-Envelope: MS4xfOfBY30R9lqcF+GN456hBnTKbr3f3hN0uIxvHNoULe/EAL/wF70XrSkbpwC9XupsT8JTXSRpt5TCMiHyMit/pFZTAwfRL7SjGPIAqRdL8KwWDJ1MPgEj
+ obPyL6dsxluvuDcWReAVr0ti7fDPsHZwnLz451mxD0fi6olQZkGETtoIhjPytaMPdZgchpqbR0UDo1GnySeySkvIJYXFRTj8/rO+CTOnYZwXR7EzdBj5LAKN
+ MqUD91zMxx0LRATgh/58Bw==
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Syzbot reported a hung task problem:
-==================================================================
-INFO: task syz-executor232:5073 blocked for more than 143 seconds.
-      Not tainted 6.2.0-rc2-syzkaller-00024-g512dee0c00ad #0
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-task:syz-exec232 state:D stack:21024 pid:5073 ppid:5072 flags:0x00004004
-Call Trace:
- <TASK>
- context_switch kernel/sched/core.c:5244 [inline]
- __schedule+0x995/0xe20 kernel/sched/core.c:6555
- schedule+0xcb/0x190 kernel/sched/core.c:6631
- __wait_on_freeing_inode fs/inode.c:2196 [inline]
- find_inode_fast+0x35a/0x4c0 fs/inode.c:950
- iget_locked+0xb1/0x830 fs/inode.c:1273
- __ext4_iget+0x22e/0x3ed0 fs/ext4/inode.c:4861
- ext4_xattr_inode_iget+0x68/0x4e0 fs/ext4/xattr.c:389
- ext4_xattr_inode_dec_ref_all+0x1a7/0xe50 fs/ext4/xattr.c:1148
- ext4_xattr_delete_inode+0xb04/0xcd0 fs/ext4/xattr.c:2880
- ext4_evict_inode+0xd7c/0x10b0 fs/ext4/inode.c:296
- evict+0x2a4/0x620 fs/inode.c:664
- ext4_orphan_cleanup+0xb60/0x1340 fs/ext4/orphan.c:474
- __ext4_fill_super fs/ext4/super.c:5516 [inline]
- ext4_fill_super+0x81cd/0x8700 fs/ext4/super.c:5644
- get_tree_bdev+0x400/0x620 fs/super.c:1282
- vfs_get_tree+0x88/0x270 fs/super.c:1489
- do_new_mount+0x289/0xad0 fs/namespace.c:3145
- do_mount fs/namespace.c:3488 [inline]
- __do_sys_mount fs/namespace.c:3697 [inline]
- __se_sys_mount+0x2d3/0x3c0 fs/namespace.c:3674
- do_syscall_x64 arch/x86/entry/common.c:50 [inline]
- do_syscall_64+0x3d/0xb0 arch/x86/entry/common.c:80
- entry_SYSCALL_64_after_hwframe+0x63/0xcd
-RIP: 0033:0x7fa5406fd5ea
-RSP: 002b:00007ffc7232f968 EFLAGS: 00000202 ORIG_RAX: 00000000000000a5
-RAX: ffffffffffffffda RBX: 0000000000000003 RCX: 00007fa5406fd5ea
-RDX: 0000000020000440 RSI: 0000000020000000 RDI: 00007ffc7232f970
-RBP: 00007ffc7232f970 R08: 00007ffc7232f9b0 R09: 0000000000000432
-R10: 0000000000804a03 R11: 0000000000000202 R12: 0000000000000004
-R13: 0000555556a7a2c0 R14: 00007ffc7232f9b0 R15: 0000000000000000
- </TASK>
-==================================================================
+The check for the various unsupported OSes incorrectly checked if
+the string "FreeBSD" was true, which it always was.  Fix this.
 
-The problem is that the inode contains an xattr entry with ea_inum of 15
-when cleaning up an orphan inode <15>. When evict inode <15>, the reference
-counting of the corresponding EA inode is decreased. When EA inode <15> is
-found by find_inode_fast() in __ext4_iget(), it is found that the EA inode
-holds the I_FREEING flag and waits for the EA inode to complete deletion.
-As a result, when inode <15> is being deleted, we wait for inode <15> to
-complete the deletion, resulting in an infinite loop and triggering Hung
-Task. To solve this problem, we only need to check whether the ino of EA
-inode and parent is the same before getting EA inode.
+Update the expect file as commit v1.46.4-17-g4ea80d031c7e did to
+adjust the total number of blocks requested during resize.
 
-Link: https://syzkaller.appspot.com/bug?extid=77d6fcc37bbb92f26048
-Reported-by: syzbot+77d6fcc37bbb92f26048@syzkaller.appspotmail.com
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
+Change-Id: I272dbec67ab30bac6413eb4cba0e3ab00183b893
+Fixes: 5a3ea3905f ("tests: force test file systems to be built for Linux OS")
+Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/ext4/xattr.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ tests/r_move_itable_realloc/expect | 2 +-
+ tests/r_move_itable_realloc/script | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 7decaaf27e82..9ff8fcf78bb8 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -386,6 +386,13 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
- 	struct inode *inode;
- 	int err;
- 
-+	if (parent->i_ino == ea_ino) {
-+		ext4_error(parent->i_sb,
-+			   "Parent and EA inode have the same ino %lu", ea_ino);
-+		err = -EUCLEAN;
-+		goto error;
-+	}
-+
- 	inode = ext4_iget(parent->i_sb, ea_ino, EXT4_IGET_NORMAL);
- 	if (IS_ERR(inode)) {
- 		err = PTR_ERR(inode);
+diff --git a/tests/r_move_itable_realloc/expect b/tests/r_move_itable_realloc/expect
+index 67f2fe4a8a6b..8ce56dbc07dd 100644
+--- a/tests/r_move_itable_realloc/expect
++++ b/tests/r_move_itable_realloc/expect
+@@ -1,6 +1,6 @@
+ mke2fs -q -F -o Linux -b 1024 -i 1024 -O ^resize_inode -t ext4 test.img 1024000
+ resize2fs -p test.img 100000000
+-Resizing the filesystem on test.img to 100000000 (1k) blocks.
++Resizing the filesystem on test.img to 99999745 (1k) blocks.
+ Begin pass 2 (max = 2061)
+ Relocating blocks             ----------------------------------------XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ Begin pass 3 (max = 125)
+diff --git a/tests/r_move_itable_realloc/script b/tests/r_move_itable_realloc/script
+index 20c26dbd9a9c..49f8d58a2783 100644
+--- a/tests/r_move_itable_realloc/script
++++ b/tests/r_move_itable_realloc/script
+@@ -1,5 +1,5 @@
+ os=$(uname -s)
+-if [ "$os" = "Darwin" -o "$os" = "GNU" -o "FreeBSD" ]; then
++if [ "$os" = "Darwin" -o "$os" = "GNU" -o "$os" = "FreeBSD" ]; then
+ 	# creates a 96GB filesystem
+ 	echo "$test_name: $test_description: skipped: skipped for $os"
+ 	return 0
 -- 
-2.31.1
+1.8.3.1
 
