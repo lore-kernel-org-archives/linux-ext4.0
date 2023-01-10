@@ -2,88 +2,88 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C64AEC6379F
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Jan 2023 09:05:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A0094C46467
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Jan 2023 09:08:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231626AbjAJJF1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 10 Jan 2023 04:05:27 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51372 "EHLO
+        id S231368AbjAJJIH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 10 Jan 2023 04:08:07 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54876 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231950AbjAJJEq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jan 2023 04:04:46 -0500
-Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 083EF4C739
-        for <linux-ext4@vger.kernel.org>; Tue, 10 Jan 2023 01:03:28 -0800 (PST)
-Received: from dggpeml500006.china.huawei.com (unknown [172.30.72.56])
-        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4Nrl9g0dtqzJqB8;
-        Tue, 10 Jan 2023 16:59:19 +0800 (CST)
-Received: from [10.174.178.112] (10.174.178.112) by
- dggpeml500006.china.huawei.com (7.185.36.76) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2375.34; Tue, 10 Jan 2023 17:03:25 +0800
-Message-ID: <75f6787c-b5aa-724b-9eae-3706ceb43ec6@huawei.com>
-Date:   Tue, 10 Jan 2023 17:03:24 +0800
+        with ESMTP id S235803AbjAJJHl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jan 2023 04:07:41 -0500
+Received: from mail-qt1-x831.google.com (mail-qt1-x831.google.com [IPv6:2607:f8b0:4864:20::831])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D750419C25;
+        Tue, 10 Jan 2023 01:07:40 -0800 (PST)
+Received: by mail-qt1-x831.google.com with SMTP id jr10so3106432qtb.7;
+        Tue, 10 Jan 2023 01:07:40 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc:subject:date:message-id:reply-to;
+        bh=gXHkdvWBXNLyizQqN+zkUZ//tPu5q4K0Ow4ZbjvaKhg=;
+        b=LeSg2FkhIhu9tMHW5R4n9vrheCJBYn824F/gOjqNBUOgydaQ/eiaUxZG/wQyoZbTHT
+         QBn7BYZr/zCCaT5RJ0keGxHcFRmZvWzv+AOF+80jy2PvB9p9erNBDxTkIBmlcU44ayk3
+         5LGUQAytZyMu7VeARuyBifwCPsQrcuWKCAPL3i+6LtuNUpXC9zTDWYPmr/CeeW5TtDxO
+         UTCCP0h3BB+ExMIDZG5F69XD3vN+LM5GxutZyMMfGah9eNnIRjzbjUiwQzRgYXTTdyZ1
+         7Hq8GXMEGhHC0z2krtnm7+gQd4dtKGRnJQcPdEN75WtGfp9FplamJ042YDnxa26P2WhT
+         mB1w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=gXHkdvWBXNLyizQqN+zkUZ//tPu5q4K0Ow4ZbjvaKhg=;
+        b=diVndK3t53zlfWBJr/GD4P1z8fp0/L/WVkW8vXRBcEx2j4Vid9Euci8ulRo1VRlvfT
+         mT+uPuAdarPe+u3pZf5wQfK3MyilFWI8TvrCtNjbvquhRHaWlR4c5DtuOeMTe1PSZOzw
+         /XkWB+D43rYkAU4GGayVHeiR1MW5vH2JuwR42nWBQGvg6BtrvQqs12e5ytcEAl9EAZbv
+         WXv7MLw6TUagpiDzHA72CCYvO5NB9nWxXost2NX3KuuPwwRiroiq00VHwG3r1IheVA1I
+         jCT/R699093H4R+3jHfxzEGVhpIhw3ww6yJ4SKyIBJsZFW+U1qyBHy/S53bR+Ab1oxN4
+         8Rpg==
+X-Gm-Message-State: AFqh2kp52osMP6i6mq22eXlOtAhZmR/0Cl841mz+0szXsj+NbvKPtLRB
+        dPR3+Aiv5PnhnuxSt7objuwBZVBKSwCB5aQm3tYkg+K8lC4=
+X-Google-Smtp-Source: AMrXdXs6uhQyxln3cf7HEIycxq2EFSA7Nn+yk7nOOwlXGh0hcw7vP/9kuIOgPi/gxFvAWtY489aIJuA9oy3Nx0jH16g=
+X-Received: by 2002:ac8:5544:0:b0:3a9:6c70:3992 with SMTP id
+ o4-20020ac85544000000b003a96c703992mr3080249qtr.585.1673341659942; Tue, 10
+ Jan 2023 01:07:39 -0800 (PST)
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101
- Thunderbird/102.0
-Subject: Re: [PATCH] mmp:fix wrong comparison in ext2fs_mmp_stop
-Content-Language: en-US
-From:   "lihaoxiang (F)" <lihaoxiang9@huawei.com>
-To:     <tytso@mit.edu>
-CC:     <linux-ext4@vger.kernel.org>,
-        Zhiqiang Liu <liuzhiqiang26@huawei.com>,
-        <linfeilong@huawei.com>, <louhongxiang@huawei.com>,
-        "lijinlin (A)" <lijinlin3@huawei.com>
-References: <d791b3d2-c438-3541-76ae-d228ba7b8cd4@huawei.com>
- <734733d3-4d5d-d153-d26c-2468d47699ca@huawei.com>
-In-Reply-To: <734733d3-4d5d-d153-d26c-2468d47699ca@huawei.com>
+References: <20230108213305.GO1971568@dread.disaster.area> <20230108194034.1444764-1-agruenba@redhat.com>
+ <20230108194034.1444764-5-agruenba@redhat.com> <20230109124642.1663842-1-agruenba@redhat.com>
+ <Y70l9ZZXpERjPqFT@infradead.org>
+In-Reply-To: <Y70l9ZZXpERjPqFT@infradead.org>
+From:   =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
+Date:   Tue, 10 Jan 2023 10:07:28 +0100
+Message-ID: <CAHpGcML+3tHmvKzzpun52BfZy94ekqGe+sXWZBDe04D_+0N=Ug@mail.gmail.com>
+Subject: Re: [RFC v6 04/10] iomap: Add iomap_get_folio helper
+To:     Christoph Hellwig <hch@infradead.org>
+Cc:     Andreas Gruenbacher <agruenba@redhat.com>,
+        Dave Chinner <dchinner@redhat.com>,
+        "Darrick J . Wong" <djwong@kernel.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Matthew Wilcox <willy@infradead.org>,
+        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, cluster-devel@redhat.com,
+        Christoph Hellwig <hch@lst.de>
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.174.178.112]
-X-ClientProxiedBy: dggpeml100013.china.huawei.com (7.185.36.238) To
- dggpeml500006.china.huawei.com (7.185.36.76)
-X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-friendly ping...
+Am Di., 10. Jan. 2023 um 09:52 Uhr schrieb Christoph Hellwig
+<hch@infradead.org>:
+> On Mon, Jan 09, 2023 at 01:46:42PM +0100, Andreas Gruenbacher wrote:
+> > We can handle that by adding a new IOMAP_NOCREATE iterator flag and
+> > checking for that in iomap_get_folio().  Your patch then turns into
+> > the below.
+>
+> Exactly.  And as I already pointed out in reply to Dave's original
+> patch what we really should be doing is returning an ERR_PTR from
+> __filemap_get_folio instead of reverse-engineering the expected
+> error code.
+>
+> The only big question is if we should apply Dave's patch first as a bug
+> fix before this series, and I suspect we should do that.
 
-On 2022/12/9 11:37, lihaoxiang (F) wrote:
-> friendly ping...
-> 
-> On 2022/11/29 15:02, lihaoxiang (F) wrote:
->> In our knowledge, ext2fs_mmp_stop use to process the rest of work
->> when mmp will finish. Critically, it must check if the mmp block is
->> not changed. But there exist an error in comparing the mmp and mmp_cmp.
->>
->> Look to ext2fs_mmp_read, the assignment of mmp_cmp retrieve from the
->> superblock of disk and it copy to mmp_buf if mmp_buf is not none
->> and not equal to mmp_cmp in the meanwhile. However, ext2fs_mmp_stop
->> pass the no NULL pointer fs->mmp_buf which has possed the mmp info to
->> ext2fs_mmp_read. Consequently, ext2fs_mmp_read override fs->mmp_buf
->> by fs->mmp_cmp so that loss the meaning of comparing themselves
->> after that and worse yet, couldn't judge whether the struct of mmp
->> has changed.
->>
->> In fact, we only need to modify the parameter to NULL pointer for
->> solving this problem.
->>
->> Signed-off-by: lihaoxiang <lihaoxiang9@huawei.com>
->> ---
->>  lib/ext2fs/mmp.c | 2 +-
->>  1 file changed, 1 insertion(+), 1 deletion(-)
->>
->> diff --git a/lib/ext2fs/mmp.c b/lib/ext2fs/mmp.c
->> index 7970aac2..14289706 100644
->> --- a/lib/ext2fs/mmp.c
->> +++ b/lib/ext2fs/mmp.c
->> @@ -407,7 +407,7 @@ errcode_t ext2fs_mmp_stop(ext2_filsys fs)
->>  	    (fs->mmp_buf == NULL) || (fs->mmp_cmp == NULL))
->>  		goto mmp_error;
->>
->> -	retval = ext2fs_mmp_read(fs, fs->super->s_mmp_block, fs->mmp_buf);
->> +	retval = ext2fs_mmp_read(fs, fs->super->s_mmp_block, NULL);
->>  	if (retval)
->>  		goto mmp_error;
->>
+Sounds fine. I assume Dave is going to send an update.
+
+Thanks,
+Andreas
