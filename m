@@ -2,58 +2,84 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 15A99C46467
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Jan 2023 15:48:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E69BFC46467
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Jan 2023 18:49:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231479AbjAJPsq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 10 Jan 2023 10:48:46 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50770 "EHLO
+        id S239588AbjAJStK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 10 Jan 2023 13:49:10 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33100 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234331AbjAJPsn (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jan 2023 10:48:43 -0500
+        with ESMTP id S239727AbjAJSsg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jan 2023 13:48:36 -0500
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C6E1B44C51;
-        Tue, 10 Jan 2023 07:48:42 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9E37265372;
+        Tue, 10 Jan 2023 10:42:05 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 5FFD96179A;
-        Tue, 10 Jan 2023 15:48:42 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 520A0C433D2;
-        Tue, 10 Jan 2023 15:48:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
-        s=korg; t=1673365721;
-        bh=SzybKE2ZlLj8N7A2p4KL6+AnhlUYuvQ+HeRllUMW3JQ=;
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 3A7B861881;
+        Tue, 10 Jan 2023 18:42:05 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 767D3C433EF;
+        Tue, 10 Jan 2023 18:42:04 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1673376124;
+        bh=g3CRnTTazWLR2Hh58q3CRcJBbpAnJEnxst035yVP2JI=;
         h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=WlTSXLYf6qCVE2hsVw7zPfW8JjJyhblhwnrkE4XFcPlSw4wfmCqXi4Wwm2dg9I5Ya
-         fNY94Nthouy9DLT3VQmIdePxpbZcB2dyw/GbRAcuBQJZPIDD3yohBbDMYwmcX0tCIp
-         PBnRdR2Guq15moUM+TMBoVU3/klhTnAKnjHsSVjQ=
-Date:   Tue, 10 Jan 2023 16:48:35 +0100
-From:   Greg KH <gregkh@linuxfoundation.org>
-To:     Eric Biggers <ebiggers@kernel.org>
-Cc:     stable@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: Please apply "ext4: don't allow journal inode to have encrypt
- flag" to 5.15 and earlier
-Message-ID: <Y72I0/KixO+WoKsc@kroah.com>
-References: <Y7nWexWBpMWKwdeB@sol.localdomain>
+        b=dqTUBuLoJqiA6XVnVZWR+jPO7aNl7WWPgJZJ6OhsJDk+nWTQLSw1HLn617q1B+IvI
+         /xTo4MhG+C4e92CmQbPuosfUhQ67lQURj0w8zUxeHdq7wEtl/3bEBJvRhFoDbkGOJ1
+         juAKdMMT2/e5U2s2Z4atHu89Hss1utQctXg5R6xhmnBzEolqYZJ9/xL0FFyEEibHXq
+         UrgmBT/fs/d6aBCiXmHVshq2kcdGkQVLUY96mAQK+qSTH9FU9V5Rlj1t5sZsxs0BL9
+         6Ggt3vRGC2qhEGPvw1rY/K8TD+43AXWwGLnhL4RQCfiKKgQkmW4pbmHcc4PYZM3eaa
+         whUGhcZMEyfNA==
+Date:   Tue, 10 Jan 2023 18:42:03 +0000
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Alexander Potapenko <glider@google.com>
+Cc:     dsterba@suse.cz, linux-kernel@vger.kernel.org,
+        akpm@linux-foundation.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+        jaegeuk@kernel.org, chao@kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net
+Subject: Re: [PATCH 2/5] fs: affs: initialize fsdata in affs_truncate()
+Message-ID: <Y72xe72B+A1KrcaY@gmail.com>
+References: <20221121112134.407362-1-glider@google.com>
+ <20221121112134.407362-2-glider@google.com>
+ <20221122145615.GE5824@twin.jikos.cz>
+ <CAG_fn=Waivo=jEEqp7uMjKXdAvqP3XPtnAQeiRfu6ptwPmkyjw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <Y7nWexWBpMWKwdeB@sol.localdomain>
+In-Reply-To: <CAG_fn=Waivo=jEEqp7uMjKXdAvqP3XPtnAQeiRfu6ptwPmkyjw@mail.gmail.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, Jan 07, 2023 at 12:30:51PM -0800, Eric Biggers wrote:
-> Please apply commit 105c78e12468 ("ext4: don't allow journal inode to have
-> encrypt flag") to the 5.15, 5.10, 5.4, and 4.19 LTS kernels, where it applies
-> cleanly.
+On Tue, Jan 10, 2023 at 01:27:03PM +0100, Alexander Potapenko wrote:
+> On Tue, Nov 22, 2022 at 3:56 PM David Sterba <dsterba@suse.cz> wrote:
+> >
+> > On Mon, Nov 21, 2022 at 12:21:31PM +0100, Alexander Potapenko wrote:
+> > > When aops->write_begin() does not initialize fsdata, KMSAN may report
+> > > an error passing the latter to aops->write_end().
+> > >
+> > > Fix this by unconditionally initializing fsdata.
+> > >
+> > > Suggested-by: Eric Biggers <ebiggers@kernel.org>
+> > > Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+> > > Signed-off-by: Alexander Potapenko <glider@google.com>
+> >
+> > With the fixed Fixes: reference,
+> >
+> > Acked-by: David Sterba <dsterba@suse.com>
 > 
-> It didn't get applied automatically because for the Fixes tag, I used a commit
-> in 5.18.  However, that was the commit that exposed the problem, not the root
-> cause.  IMO it makes sense to apply this to earlier kernels too, especially
-> because some people have backported the 5.18 commit.
+> Hi David,
+> 
+> I've noticed that the ext4 counterpart of this patch is in the
+> upstream tree already, whereas the affs, f2fs, hfs and hfsplus
+> versions are not.
+> Are they picked via a different tree?
 
-All now queued up, thanks.
+Generally each filesystem has its own development tree.  All the information is
+in MAINTAINERS.  hfs and hfsplus are unmaintained, though.
 
-greg k-h
+Maybe try asking Andrew Morton to apply the hfs and hfsplus patches, and any
+others that don't get applied, as "maintainer of last resort".
+
+- Eric
