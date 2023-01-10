@@ -2,42 +2,42 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B7481C67871
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Jan 2023 09:05:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 31E5EC678D9
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Jan 2023 09:05:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230380AbjAJJFZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 10 Jan 2023 04:05:25 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51154 "EHLO
+        id S231309AbjAJJF2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 10 Jan 2023 04:05:28 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51920 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231796AbjAJJE3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jan 2023 04:04:29 -0500
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9130518E1D
-        for <linux-ext4@vger.kernel.org>; Tue, 10 Jan 2023 01:03:04 -0800 (PST)
-Received: from dggpeml500006.china.huawei.com (unknown [172.30.72.53])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4Nrl8M187xzqV1Y;
-        Tue, 10 Jan 2023 16:58:11 +0800 (CST)
+        with ESMTP id S231222AbjAJJEt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jan 2023 04:04:49 -0500
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C1D4E4FD6F
+        for <linux-ext4@vger.kernel.org>; Tue, 10 Jan 2023 01:04:11 -0800 (PST)
+Received: from dggpeml500006.china.huawei.com (unknown [172.30.72.55])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4NrlFJ2p22zRr2h;
+        Tue, 10 Jan 2023 17:02:28 +0800 (CST)
 Received: from [10.174.178.112] (10.174.178.112) by
  dggpeml500006.china.huawei.com (7.185.36.76) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2375.34; Tue, 10 Jan 2023 17:02:56 +0800
-Message-ID: <7dcbadf1-e0eb-d7b4-592f-835bb5a2d740@huawei.com>
-Date:   Tue, 10 Jan 2023 17:02:55 +0800
+ 15.1.2375.34; Tue, 10 Jan 2023 17:04:08 +0800
+Message-ID: <85b8fe22-a24a-a749-400e-eda20435147d@huawei.com>
+Date:   Tue, 10 Jan 2023 17:04:08 +0800
 MIME-Version: 1.0
 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101
  Thunderbird/102.0
-Subject: Re: [PATCH] tune2fs:check return value of ext2fs_mmp_update2 in
- rewrite_metadata_checksums
+Subject: Re: [PATCH] debugfs:fix repeated output problem with logdump
+Content-Language: en-US
 From:   "lihaoxiang (F)" <lihaoxiang9@huawei.com>
 To:     <tytso@mit.edu>
 CC:     <linux-ext4@vger.kernel.org>,
         Zhiqiang Liu <liuzhiqiang26@huawei.com>,
-        <linfeilong@huawei.com>, <louhongxiang@huawei.com>,
-        "lijinlin (A)" <lijinlin3@huawei.com>
-References: <fbe3716b-e8bb-58c0-6c55-a88b6979063c@huawei.com>
- <f32e24e3-0990-b026-14e4-9bfbe23e9c34@huawei.com>
-Content-Language: en-US
-In-Reply-To: <f32e24e3-0990-b026-14e4-9bfbe23e9c34@huawei.com>
+        <linfeilong@huawei.com>, <louhongxiang@huawei.com>
+References: <6ab429c0-6dd0-968f-d4e0-54035d177dbf@huawei.com>
+ <15d1538a-7c47-ca39-960a-ef8e901ecbb9@huawei.com>
+ <5e63f2ad-5695-a5ed-9a36-047672727a53@huawei.com>
+ <f6655630-c276-b059-8961-c32d55f3330e@huawei.com>
+In-Reply-To: <f6655630-c276-b059-8961-c32d55f3330e@huawei.com>
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
 X-Originating-IP: [10.174.178.112]
@@ -50,70 +50,67 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 friendly ping...
 
-On 2022/12/9 11:36, lihaoxiang (F) wrote:
-> friendly ping...
+On 2022/12/15 10:31, lihaoxiang (F) wrote:
+> Hi professor Tytso, we found that logdump has the problem to print circulately in the case which logs area are full of valid transactions. We propose the final solution as follow:
+> ---------------------------------------------------------------------
+> Date: Thu, 10 Nov 2022 17:09:20 +0800
+> Subject: [PATCH] debugfs:fix repeated output problem with logdump
 > 
-> On 2022/11/29 14:58, lihaoxiang (F) wrote:
->> Tune2fs hasn't consider about the result of executing ext2fs_mmp_update2
->> when it try to rewrite_metadata_checksums. If the ext2fs_mmp_update2
->> failed, multi-mount protection couldn't guard there has the only node
->> (i.e. this program) accessing this device in the meantime.
->>
->> We solve this problem to verify the return value of ext2fs_mmp_update2.
->> It terminate rewrite_metadata_checksums and exit immediately if the
->> wrong error code returned.
->>
->> Signed-off-by: lihaoxiang <lihaoxiang9@huawei.com>
->> ---
->>  misc/tune2fs.c | 17 +++++++++++++----
->>  1 file changed, 13 insertions(+), 4 deletions(-)
->>
->> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
->> index bed3d95..aa51864 100644
->> --- a/misc/tune2fs.c
->> +++ b/misc/tune2fs.c
->> @@ -930,7 +930,7 @@ static void rewrite_inodes(ext2_filsys fs, unsigned int flags)
->>  	ext2fs_free_mem(&ctx.ea_buf);
->>  }
->>
->> -static void rewrite_metadata_checksums(ext2_filsys fs, unsigned int flags)
->> +static errcode_t rewrite_metadata_checksums(ext2_filsys fs, unsigned int flags)
->>  {
->>  	errcode_t retval;
->>  	dgrp_t i;
->> @@ -945,7 +945,9 @@ static void rewrite_metadata_checksums(ext2_filsys fs, unsigned int flags)
->>  	rewrite_inodes(fs, flags);
->>  	ext2fs_mark_ib_dirty(fs);
->>  	ext2fs_mark_bb_dirty(fs);
->> -	ext2fs_mmp_update2(fs, 1);
->> +	retval = ext2fs_mmp_update2(fs, 1);
->> +	if (retval)
->> +		return retval;
->>  	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
->>  	fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
->>  	if (ext2fs_has_feature_metadata_csum(fs->super))
->> @@ -953,6 +955,7 @@ static void rewrite_metadata_checksums(ext2_filsys fs, unsigned int flags)
->>  	else
->>  		fs->super->s_checksum_type = 0;
->>  	ext2fs_mark_super_dirty(fs);
->> +	return 0;
->>  }
->>
->>  static void enable_uninit_bg(ext2_filsys fs)
->> @@ -3410,8 +3413,14 @@ _("Warning: The journal is dirty. You may wish to replay the journal like:\n\n"
->>  		}
->>  	}
->>
->> -	if (rewrite_checksums)
->> -		rewrite_metadata_checksums(fs, rewrite_checksums);
->> +	if (rewrite_checksums) {
->> +		retval = rewrite_metadata_checksums(fs, rewrite_checksums);
->> +		if (retval != 0) {
->> +			printf("Failed to rewrite metadata checksums\n");
->> +			rc = 1;
->> +			goto closefs;
->> +		}
->> +	}
->>
->>  	if (l_flag)
->>  		list_super(sb);
+> Currently, the module of logdump with parameter -O or -On might fall
+> into printing duplicate transactions circulately.
+> 
+> In fact, it would exit when it check the no magic number in transaction's
+> block head. But sometimes there hasn't no magic number block spanning
+> the whole log area so it cause the multi meaningless loop until a new no
+> magic block was founded.
+> 
+> We record the first blocknr of logs for comparing this value to that when
+> it meet the block again. If the comparison is equal then it exit immediately.
+> 
+> Signed-off-by: lihaoxiang <lihaoxiang9@huawei.com>
+> ---
+>  debugfs/logdump.c | 15 +++++++++++++++
+>  1 file changed, 15 insertions(+)
+> 
+> diff --git a/debugfs/logdump.c b/debugfs/logdump.c
+> index 614414e5..a6d03f5c 100644
+> --- a/debugfs/logdump.c
+> +++ b/debugfs/logdump.c
+> @@ -376,11 +376,14 @@ static void dump_journal(char *cmdname, FILE *out_file,
+>  	journal_header_t	*header;
+>  	tid_t			transaction;
+>  	unsigned int		blocknr = 0;
+> +	unsigned int		last_blocknr;
+> +	unsigned int		first_transaction_blocknr;
+>  	int			fc_done;
+>  	__u64			total_len;
+>  	__u32			maxlen;
+>  	int64_t			cur_counts = 0;
+>  	bool			exist_no_magic = false;
+> +	bool			reverse_flag = false;
+> 
+>  	/* First, check to see if there's an ext2 superblock header */
+>  	retval = read_journal_block(cmdname, source, 0, buf, 2048);
+> @@ -470,10 +473,22 @@ static void dump_journal(char *cmdname, FILE *out_file,
+>  			blocknr = 1;
+>  	}
+> 
+> +	first_transaction_blocknr = blocknr;
+> +	last_blocknr = blocknr - 1;
+> +
+>  	while (1) {
+>  		if (dump_old && (dump_counts != -1) && (cur_counts >= dump_counts))
+>  			break;
+> 
+> +		if (last_blocknr != (blocknr - 1))
+> +			reverse_flag = true;
+> +		last_blocknr = blocknr;
+> +
+> +		if ((blocknr == first_transaction_blocknr) && reverse_flag) {
+> +			fprintf(out_file, "Dump all %lld journal records.\n", cur_counts);
+> +			break;
+> +		}
+> +
+>  		retval = read_journal_block(cmdname, source,
+>  				((ext2_loff_t) blocknr) * blocksize,
+>  				buf, blocksize);
