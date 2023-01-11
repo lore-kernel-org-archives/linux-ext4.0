@@ -2,146 +2,84 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AB8ADC5479D
-	for <linux-ext4@archiver.kernel.org>; Wed, 11 Jan 2023 15:47:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CB332C46467
+	for <linux-ext4@archiver.kernel.org>; Wed, 11 Jan 2023 18:31:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239465AbjAKPrC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 11 Jan 2023 10:47:02 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34938 "EHLO
+        id S231490AbjAKSbB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 11 Jan 2023 13:31:01 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37462 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232477AbjAKPq1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jan 2023 10:46:27 -0500
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 646583B924
-        for <linux-ext4@vger.kernel.org>; Wed, 11 Jan 2023 07:44:10 -0800 (PST)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        with ESMTP id S239010AbjAKSaY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jan 2023 13:30:24 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 990F233D68
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Jan 2023 10:30:22 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 1C41D4CDF;
-        Wed, 11 Jan 2023 15:43:40 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1673451820; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=qwczy+UDYj18TbxkAMvC7qrXX4CX2pJuDg23rlJQdPM=;
-        b=vZfqua1J1aB7UkB1vojCo5+vp/U3fS6KbIXcHo6QSY4ksAEFO1g1NuEdEiV7JbL1mtyGPE
-        F0Bb6XuwfT7uq241EsmLfxYmmFXYofsszaNRUUNFfX/tCKesf/y+oMcp4w3Ee+/qrOVpoZ
-        0gdwGXUw/zkUIFEVastbem3DP4psAi0=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1673451820;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=qwczy+UDYj18TbxkAMvC7qrXX4CX2pJuDg23rlJQdPM=;
-        b=B0eQZJ0h1jlu7KRyoHORKamEm/jio9g8Zp7LBnShw37L2RMVpU8gxdpRcDh4tAmzMZU46z
-        RvU9j4Rw3yb0egBg==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 035531358A;
-        Wed, 11 Jan 2023 15:43:40 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id sS3NACzZvmPOOwAAMHmgww
-        (envelope-from <jack@suse.cz>); Wed, 11 Jan 2023 15:43:40 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 2D404A074F; Wed, 11 Jan 2023 16:43:38 +0100 (CET)
-From:   Jan Kara <jack@suse.cz>
-To:     Ted Tso <tytso@mit.edu>
-Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 5/7] ext4: Move page unlocking out of mpage_submit_page()
-Date:   Wed, 11 Jan 2023 16:43:29 +0100
-Message-Id: <20230111154338.392-5-jack@suse.cz>
-X-Mailer: git-send-email 2.35.3
-In-Reply-To: <20230111152736.9608-1-jack@suse.cz>
-References: <20230111152736.9608-1-jack@suse.cz>
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 0C6EF61D56
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Jan 2023 18:30:22 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 57682C433D2;
+        Wed, 11 Jan 2023 18:30:21 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1673461821;
+        bh=E8F1TYJUfPhYvJ807ETicuxzuXNnua/3NO0Wm9S/EQU=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=ZJ2ORDT5rU4XO2JSRhOaPnjyVLg0iRor4WSmN3QwURezMadTA8q6bwi6spL9yNo6+
+         dd88IgpHf5QkRRDBAm/0BT0V1RtL3WZlTbUSFb6x4n3zPdFb7keJWSpfoJVpkisA7v
+         56R+l+cny75R8I1gVG7B4lyiwwk6lcpfaEsQ8aLl3KNIIV6gegx4WaILe3l4tj6+0z
+         0IrXvdUJPXaRy/h1g47D92SabnmF59YLG46pDJad5XeVBI3ppzbamBoxkGkMQozLYr
+         VYxiVC9DR9ND24zfvi5YZX4db96Zf6/1MrSn7s0DYo82uLfbPqedI26tS/BYc+f0HG
+         EJnpJdhQj7Aeg==
+Date:   Wed, 11 Jan 2023 10:30:19 -0800
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Jan Kara <jack@suse.cz>
+Cc:     linux-ext4@vger.kernel.org, Ye Bin <yebin10@huawei.com>
+Subject: Re: [PATCH] ext4: use ext4_fc_tl_mem in fast-commit replay path
+Message-ID: <Y78AO7WX5Q6Zju3p@sol.localdomain>
+References: <20221217050212.150665-1-ebiggers@kernel.org>
+ <20230111144327.gb6p3foqj23mby7w@quack3>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2463; i=jack@suse.cz; h=from:subject; bh=TIislCEYm8JsMX39PpjQA05elqHdpeu+/dFa5UWEXA8=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjvtkhWeIvTZ+1zwsmoYXQLVOIZDuOo5IAGspUmIXx uGcdK52JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY77ZIQAKCRCcnaoHP2RA2bSXCA Dlsmcj//cGTZzfF74CXFY1jhKOp/H4J8Kov2fYQ+hL8uQV3J3yk04jNNgg2ihR7OTnlJgBbkOst1WO bkeuNPuS2098qXxnTEVzpamHfBQKd0/hlfODnU8OX2GIC2XfHtDIkWzrOV7eKRIcpXGA91EhuMN2A8 k2NthuW4YooV7/gCRmIxkE+037OXtM/vuVL/z8SBl0M2hUWZSEtjRuVV4RCOMY510XpOgzYLzuqnJD RaG8MQSZGOCGZcqozIdMn2GsAdeq6AKu2pmPdeSyqb25mAyA1UQtTYnp/PurQC1eUD8CRcCTtmBVPQ 6pQkut2zP8znepRgrjn4xCuKufSqf2
-X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230111144327.gb6p3foqj23mby7w@quack3>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Move page unlocking during page writeback out of mpage_submit_page()
-into the callers. This will allow writeback in data=journal mode to keep
-the page locked for a bit longer. Since page unlocking it tightly
-connected to increment of mpd->first_page (as that determines cleanup of
-locked but unwritten pages), move page unlocking as well as
-mpd->first_page handling into a helper function.
+On Wed, Jan 11, 2023 at 03:43:27PM +0100, Jan Kara wrote:
+> On Fri 16-12-22 21:02:12, Eric Biggers wrote:
+> > From: Eric Biggers <ebiggers@google.com>
+> > 
+> > To avoid 'sparse' warnings about missing endianness conversions, don't
+> > store native endianness values into struct ext4_fc_tl.  Instead, use a
+> > separate struct type, ext4_fc_tl_mem.
+> > 
+> > Fixes: dcc5827484d6 ("ext4: factor out ext4_fc_get_tl()")
+> > Cc: Ye Bin <yebin10@huawei.com>
+> > Signed-off-by: Eric Biggers <ebiggers@google.com>
+> 
+> Looks good to me. Just one nit below:
+> 
+> > -static inline void ext4_fc_get_tl(struct ext4_fc_tl *tl, u8 *val)
+> > +static inline void ext4_fc_get_tl(struct ext4_fc_tl_mem *tl, u8 *val)
+> >  {
+> > -	memcpy(tl, val, EXT4_FC_TAG_BASE_LEN);
+> > -	tl->fc_len = le16_to_cpu(tl->fc_len);
+> > -	tl->fc_tag = le16_to_cpu(tl->fc_tag);
+> > +	struct ext4_fc_tl tl_disk;
+> > +
+> > +	memcpy(&tl_disk, val, EXT4_FC_TAG_BASE_LEN);
+> > +	tl->fc_len = le16_to_cpu(tl_disk.fc_len);
+> > +	tl->fc_tag = le16_to_cpu(tl_disk.fc_tag);
+> >  }
+> 
+> So why not just:
+> 
+> 	struct ext4_fc_tl *tl_disk = (struct ext4_fc_tl *)val;
+> 
+> instead of memcpy?
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c | 21 ++++++++++++---------
- 1 file changed, 12 insertions(+), 9 deletions(-)
+That would result in unaligned memory accesses.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 237880f0d406..28b59e078a1d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2083,6 +2083,12 @@ static int ext4_writepage(struct page *page,
- 	return ret;
- }
- 
-+static void mpage_page_done(struct mpage_da_data *mpd, struct page *page)
-+{
-+	mpd->first_page++;
-+	unlock_page(page);
-+}
-+
- static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
- {
- 	int len;
-@@ -2111,10 +2117,8 @@ static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
- 	else
- 		len = PAGE_SIZE;
- 	err = ext4_bio_write_page(&mpd->io_submit, page, len);
--	unlock_page(page);
- 	if (!err)
- 		mpd->wbc->nr_to_write--;
--	mpd->first_page++;
- 
- 	return err;
- }
-@@ -2226,6 +2230,7 @@ static int mpage_process_page_bufs(struct mpage_da_data *mpd,
- 	/* So far everything mapped? Submit the page for IO. */
- 	if (mpd->map.m_len == 0) {
- 		err = mpage_submit_page(mpd, head->b_page);
-+		mpage_page_done(mpd, head->b_page);
- 		if (err < 0)
- 			return err;
- 	}
-@@ -2357,6 +2362,7 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
- 				goto out;
- 			/* Page fully mapped - let IO run! */
- 			err = mpage_submit_page(mpd, page);
-+			mpage_page_done(mpd, page);
- 			if (err < 0)
- 				goto out;
- 		}
-@@ -2667,14 +2673,11 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
- 			 * modify metadata is simple. Just submit the page.
- 			 */
- 			if (!mpd->can_map) {
--				if (ext4_page_nomap_can_writeout(page)) {
-+				if (ext4_page_nomap_can_writeout(page))
- 					err = mpage_submit_page(mpd, page);
--					if (err < 0)
--						goto out;
--				} else {
--					unlock_page(page);
--					mpd->first_page++;
--				}
-+				mpage_page_done(mpd, page);
-+				if (err < 0)
-+					goto out;
- 			} else {
- 				/* Add all dirty buffers to mpd */
- 				lblk = ((ext4_lblk_t)page->index) <<
--- 
-2.35.3
-
+- Eric
