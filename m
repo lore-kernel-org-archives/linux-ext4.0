@@ -2,80 +2,134 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8AEA2C5479D
-	for <linux-ext4@archiver.kernel.org>; Wed, 11 Jan 2023 15:46:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F508C46467
+	for <linux-ext4@archiver.kernel.org>; Wed, 11 Jan 2023 15:46:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239423AbjAKPqu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 11 Jan 2023 10:46:50 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36254 "EHLO
+        id S239482AbjAKPqv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 11 Jan 2023 10:46:51 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34936 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238492AbjAKPq1 (ORCPT
+        with ESMTP id S238827AbjAKPq1 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jan 2023 10:46:27 -0500
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DA5C33B91C
-        for <linux-ext4@vger.kernel.org>; Wed, 11 Jan 2023 07:44:09 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5F6603B920
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Jan 2023 07:44:10 -0800 (PST)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 4D2324CDD;
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 47D644CDC;
         Wed, 11 Jan 2023 15:43:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1673451819; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=z5ZrJlQkxZx9CsViJbrTWVWqR8IS91864hNdz+vs1xw=;
-        b=zevMPDlazAhyZEv+nu1snjlQ/6Odx5iyIVn5xF/z3jgIEUgJogyyZeKzq9tqiVnr6B41Fn
-        jVlt/ei1hrqmlNpXEU/M+DSi310AX+z3zVWf+cqU+eznwhgN8a+XF/TLZD/H0Y0o4DmezX
-        WqELiQYj2vitelfSpJDcgRyDpdRxOR8=
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=6vKk+UjtaYyTgUG5kRPuE6Dux62abObV4tz4J0MHgHc=;
+        b=bSecToR501v6G84ByahV5p/clH4tFTdAd0yjpsPG7c0xYmLbcUalpfhrSUWBsM7K3hD5Ow
+        DD6qbqqMFBtmE3H+e/eh4rM7avN6C1Uij+uc01nH62KCdlALgj3DNMFkVPJxM9xdxugXa4
+        Db5VnPOLjdr7hQ5DkZPfw6f7Vk0JB+M=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1673451819;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=z5ZrJlQkxZx9CsViJbrTWVWqR8IS91864hNdz+vs1xw=;
-        b=8hPYw9vr5d9zhSaSiztrTQR7xofByR2Xzh5pPOtNeWuZNOHfTyV6zgQdyLbAqjaAj7Nm81
-        zxdRcpNmn/DKv4Ag==
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=6vKk+UjtaYyTgUG5kRPuE6Dux62abObV4tz4J0MHgHc=;
+        b=+R9eCOzZMSuRHVA3D0clEyras8YQkq6kwCegJf+K0zZTRpJXbGO5Qy61zcaXw2xKt8UPYX
+        KtA/Ve9qehBmUMBQ==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 3696513776;
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 3434013677;
         Wed, 11 Jan 2023 15:43:39 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id 58pRDSvZvmO8OwAAMHmgww
+        id +ES1DCvZvmO6OwAAMHmgww
         (envelope-from <jack@suse.cz>); Wed, 11 Jan 2023 15:43:39 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 13C16A0744; Wed, 11 Jan 2023 16:43:38 +0100 (CET)
+        id 28001A074D; Wed, 11 Jan 2023 16:43:38 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/7] ext4: Cleanup data=journal writeback path
-Date:   Wed, 11 Jan 2023 16:43:24 +0100
-Message-Id: <20230111152736.9608-1-jack@suse.cz>
+Subject: [PATCH 4/7] ext4: Don't unlock page in ext4_bio_write_page()
+Date:   Wed, 11 Jan 2023 16:43:28 +0100
+Message-Id: <20230111154338.392-4-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
+In-Reply-To: <20230111152736.9608-1-jack@suse.cz>
+References: <20230111152736.9608-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=969; i=jack@suse.cz; h=from:subject:message-id; bh=N+pqz/JilUmyeFE/VNUJX5YXuwxOR9NVFr0gfMi8/Vw=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjvtkXGb2RaYzQu7y5qJp9LT3OT3Na8d+SfhtgweUv Dm6d5VGJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY77ZFwAKCRCcnaoHP2RA2ZAcCA C9zpMCsmNlBbMZ1iMmybBY6VIqcyC1Wmhzq8xZE1Ly2U9w9LUN8zEy4rIIDRpJhUeyl2DX7ARECXyz n5ckddMp9WTS4hQ5DWvgENoqSquPLNFF3bF2JrHTkzxR8zjX50AYlVsv1FovgCBrK+dgf+tUspZyY3 YavEHn1/LL94m0UG6AyrTYz8lFjF0QNUtigw02p18zfzCtdB/BayxJGOWVLJEhvhjfcXt8Jm85VtFH r4A0X8MKA+Eq36G0PEaCr+m/yKk3F3T+Oioj1fd9PPLK5guVVeHZmiObQvTWnnt+wAXZXBD0H09oSB d5et4gsHGAn5biYRDCM0BtfjKYA9S3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1887; i=jack@suse.cz; h=from:subject; bh=J/YYy9kOGvXtlg3KxCeHOp+Rgo+fGGYk65kMXfU15NM=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjvtkgAAryq3r3xYhzCIPiQrIy00tr8a95O6b5WPBg p5euuk+JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY77ZIAAKCRCcnaoHP2RA2TTFB/ wOPDZH85o/u8fJmbEsVA3swMNB4M8a9jyo6FGc92VgqFfpv407392OO/1RrS4JJf1wADH14eC03QLm SflxdDZgNTfANF/TquH2XdEmZUep6CqBsed14N9S8IIWTpmt/N/CNM+1XEFpQAVG7pbXv7uWj3RIWR JoiJjN0bc7Cbn4QILshHf407E5swF/FcEbdK/K2HjFhQ/IIlQyx+VN/lM4go0pPpP1jOZD/5dBtj87 1vl+f4E4mjCm8Cj2T8zAqfLgG6MYS2AUOjMl9Q39nEmtTp1SyzOEENn9opwLKF1plw3iWNo+F2Lg1c zZcCmoe8Wn7YpHzIjuIwrO6G8CywlR
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+Do not unlock the written page in ext4_bio_write_page(). Instead leave
+the page locked and unlock it in the callers. We'll need to keep the
+page locked for data=journal writeback for a bit longer.
 
-this patch series implements promised cleanup of ext4 data=journal writeback
-path. That way we can get rid of last remnants of old support for .writepage
-callback and mostly unify this writeback path with standard data handling
-modes. We also update some of the stale comments regarding data=journal mode
-along the way.
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c   |  2 ++
+ fs/ext4/page-io.c | 10 +++++-----
+ 2 files changed, 7 insertions(+), 5 deletions(-)
 
-Note that patch 3 (ext4: Mark page for delayed dirtying only if it is pinned)
-currently breaks somewhat the data=journal guarantees if mapped page cache is
-used as a buffer for direct IO read because that path does not pin pages yet
-(David Howels is working on it). But I figured this is not a huge deal for a
-cornercase usecase of a cornercase configuration and keeping marking page for
-delayed dirtying unconditionally is problematic as checkpointing dirties the
-page as well so it is effectively permanently added to the journal. It was
-problematic already in the past and happened to work only by luck.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 4c14aa1b9152..237880f0d406 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2076,6 +2076,7 @@ static int ext4_writepage(struct page *page,
+ 		return -ENOMEM;
+ 	}
+ 	ret = ext4_bio_write_page(&io_submit, page, len);
++	unlock_page(page);
+ 	ext4_io_submit(&io_submit);
+ 	/* Drop io_end reference we got from init */
+ 	ext4_put_io_end_defer(io_submit.io_end);
+@@ -2110,6 +2111,7 @@ static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
+ 	else
+ 		len = PAGE_SIZE;
+ 	err = ext4_bio_write_page(&mpd->io_submit, page, len);
++	unlock_page(page);
+ 	if (!err)
+ 		mpd->wbc->nr_to_write--;
+ 	mpd->first_page++;
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index beaec6d81074..3bc7c7c5b99d 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -500,7 +500,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 
+ 	/* Nothing to submit? Just unlock the page... */
+ 	if (!nr_to_submit)
+-		goto unlock;
++		return 0;
+ 
+ 	bh = head = page_buffers(page);
+ 
+@@ -548,7 +548,8 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 				}
+ 				bh = bh->b_this_page;
+ 			} while (bh != head);
+-			goto unlock;
++
++			return ret;
+ 		}
+ 	}
+ 
+@@ -564,7 +565,6 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 		io_submit_add_bh(io, inode,
+ 				 bounce_page ? bounce_page : page, bh);
+ 	} while ((bh = bh->b_this_page) != head);
+-unlock:
+-	unlock_page(page);
+-	return ret;
++
++	return 0;
+ }
+-- 
+2.35.3
 
-								Honza
