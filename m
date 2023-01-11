@@ -2,131 +2,126 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BF6A7C54EBC
-	for <linux-ext4@archiver.kernel.org>; Wed, 11 Jan 2023 15:46:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5CB81C46467
+	for <linux-ext4@archiver.kernel.org>; Wed, 11 Jan 2023 15:46:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239408AbjAKPqF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 11 Jan 2023 10:46:05 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35140 "EHLO
+        id S235388AbjAKPqT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 11 Jan 2023 10:46:19 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35692 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235186AbjAKPpe (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jan 2023 10:45:34 -0500
+        with ESMTP id S239479AbjAKPpm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jan 2023 10:45:42 -0500
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8161BB43
-        for <linux-ext4@vger.kernel.org>; Wed, 11 Jan 2023 07:43:43 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B0EF939FB6
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Jan 2023 07:43:46 -0800 (PST)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 344A08B8CF;
-        Wed, 11 Jan 2023 15:43:39 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 20FEE8B8D3;
+        Wed, 11 Jan 2023 15:43:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1673451819; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1673451820; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=H9Y3Ug2d9PxV/z1Yd+PN2GAKUVsib+KNAWTAz2ds8Bc=;
-        b=jM5omugWJM8fc8v2JVwu7HVfB+x/Q9zYYl+EkJrMq6+kpi2bHddAHK24xz4Imd3iNEJ1jI
-        s0o5/gUIWKy1tKBOit776Bsj/jxn34CFe4I6HTf5fLy78TvSraldWj1YYMxrNPgCSHo3eF
-        WBUcmeLGg63EaxHOArcAWauReUlKCmw=
+        bh=/eDpHMFOwJ7Imien0QpSOQ3X4KMxSthjAjrPjJ/A2yw=;
+        b=YyeYZkD7n5nSD58tK8w1PGsAiWyqYR2sorp6bweXNQwp5/6axd3vAVSCz+35OahwToKmDf
+        wnuNj39+XPRrUrMTLpfqXA0GDVIiObI95W7Ld+JJANDR9T/HRyhouM5Nk2wy9NfnTOz+Jv
+        pEwjGM0Nksp+7uRc8VBTlQhnPrx1w1s=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1673451819;
+        s=susede2_ed25519; t=1673451820;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=H9Y3Ug2d9PxV/z1Yd+PN2GAKUVsib+KNAWTAz2ds8Bc=;
-        b=Wxkp2+bJ8oZvDOvVzyMGiubIymqMbC+872iuBmaJq7zNFhbR8AQRqSqDCnj97wAXNi3KbF
-        wWkT5VPSv3YCQODA==
+        bh=/eDpHMFOwJ7Imien0QpSOQ3X4KMxSthjAjrPjJ/A2yw=;
+        b=l9l47LUKAse16ObMufLnouCOE7p2hp2Op5gB78y5/0XAhYVFxTAwdKvQkqJTefoNLh/4ZD
+        l4z9C5RmiG+JUTDQ==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 1F23B1358A;
-        Wed, 11 Jan 2023 15:43:39 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 06E8313594;
+        Wed, 11 Jan 2023 15:43:40 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id YrymByvZvmOzOwAAMHmgww
-        (envelope-from <jack@suse.cz>); Wed, 11 Jan 2023 15:43:39 +0000
+        id nV6jASzZvmPPOwAAMHmgww
+        (envelope-from <jack@suse.cz>); Wed, 11 Jan 2023 15:43:40 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 22C72A0749; Wed, 11 Jan 2023 16:43:38 +0100 (CET)
+        id 32E2BA0752; Wed, 11 Jan 2023 16:43:38 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/7] ext4: Mark page for delayed dirtying only if it is pinned
-Date:   Wed, 11 Jan 2023 16:43:27 +0100
-Message-Id: <20230111154338.392-3-jack@suse.cz>
+Subject: [PATCH 6/7] ext4: Move mpage_page_done() calls after error handling
+Date:   Wed, 11 Jan 2023 16:43:30 +0100
+Message-Id: <20230111154338.392-6-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20230111152736.9608-1-jack@suse.cz>
 References: <20230111152736.9608-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3033; i=jack@suse.cz; h=from:subject; bh=0gbqwrLZ82QItIKg9QqxNzvnP9BHqzEl1X5/Ky10LFQ=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjvtkfPwmMmwNe5QpgEUhINfTekEKiaCdIcWLLueSn acDWyOGJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY77ZHwAKCRCcnaoHP2RA2QiiB/ 4mUTEYooyueI0NTiBJR4QAJ83bqBTaDfkSp5CuHEWFEJm8CzltXAEXJYwAnfXX19qjOs6pUWwk+Nve lzH8KV/tiFSH3/jdWJPJ9lvrWgldUEhcKfupJLUSL2jhp3smi1y2e2tPu+VPdxPTRZmu7XmZtiX8/G bHMC4IlksdlOEikuaXPiDNZLslCt6h+a2wXpgo3IbHpivcStgnAwJrqpKtkV9otkaKGokvMK8U1U12 2QDJN+PUZ8+MrPw/vKdCY8l0ebD0EvwTiCXs/vIU5efS3o4cHxrUVERt84QqTPiv2weffz5Gyc7lko KUA1s0DrQ6SLHMBPFqHoAdffNfcXkN
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1987; i=jack@suse.cz; h=from:subject; bh=TTp6BPUOiVSDwO9eHBxXU6rfjaCY0QsiMMuLhfjClZ8=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBjvtkhpwZfI0H6Jz4ybZBzDI0gKM8BzgSWBcWS87ax zKzdMC+JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY77ZIQAKCRCcnaoHP2RA2aFACA CBqQfuJvLMZhMlayyZR8ApJF0iumvB3LKzxl1YwmHWBtRQHeE0LAQ9Y2ZpNujTuKhAPNzEWTCvFadM VAOkjPLF1p031gP/S0sNznDqWRjptO31vxvMu0fPt8k47G7sqevEnnGGEAauy6GDsqwLWumo4lditI RHfxtZWXl0xRPpEhlQimfcqtvJez7Jv/JLFqyF3lIso4UnjR1awjAnEPeGU0DBdooXjX1OJw/Twv1s Is1n+typtcmjonzjGB9k8Ram0N1C0fouPvNOQpcuNzg6LgK0pWoJJuE8M2hJMdB0YJamfGUXsdtKkl Q5rGFZX467qV42Du0jlrItaSA+m3t8
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-In data=journal mode, page should be dirtied only when it has buffers
-for checkpoint or it is writeably mapped. In the first case, we don't
-need to do anything special. In the second case, page was already added
-to the journal by ext4_page_mkwrite() and since transaction commit
-writeprotects mapped pages again, page should be writeable (and thus
-dirtied) only while it is part of the running transaction. So nothing
-needs to be done either. The only special case is when someone pins the
-page and uses this pin for modifying page data. So recognize this
-special case and only then mark the page as having data that needs
-adding to the journal.
+In case mpage_submit_page() returns error, it doesn't really matter
+whether we call mpage_page_done() and then return error or whether we
+return directly because in that case page cleanup will be done by
+mpage_release_unused_pages() instead. Logically, it makes more sense to
+leave the cleanup to mpage_release_unused_pages() because we didn't
+succeed in writing the page. So move mpage_page_done() calls after the
+error handling.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 28 +++++++++++++++-------------
- 1 file changed, 15 insertions(+), 13 deletions(-)
+ fs/ext4/inode.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 13cab2a47f99..4c14aa1b9152 100644
+index 28b59e078a1d..d0102b1c6b27 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -3670,24 +3670,26 @@ const struct iomap_ops ext4_iomap_report_ops = {
- };
- 
- /*
-- * Whenever the folio is being dirtied, corresponding buffers should already
-- * be attached to the transaction (we take care of this in ext4_page_mkwrite()
-- * and ext4_write_begin()). However we cannot move buffers to dirty transaction
-- * lists here because ->dirty_folio is called under VFS locks and the folio
-- * is not necessarily locked.
-- *
-- * We cannot just dirty the folio and leave attached buffers clean, because the
-- * buffers' dirty state is "definitive".  We cannot just set the buffers dirty
-- * or jbddirty because all the journalling code will explode.
-- *
-- * So what we do is to mark the folio "pending dirty" and next time writepage
-- * is called, propagate that into the buffers appropriately.
-+ * For data=journal mode, folio should be marked dirty only when it was
-+ * writeably mapped. When that happens, it was already attached to the
-+ * transaction and marked as jbddirty (we take care of this in
-+ * ext4_page_mkwrite()). On transaction commit, we writeprotect page mappings
-+ * so we should have nothing to do here, except for the case when someone
-+ * had the page pinned and dirtied the page through this pin (e.g. by doing
-+ * direct IO to it). In that case we'd need to attach buffers here to the
-+ * transaction but we cannot due to lock ordering.  We cannot just dirty the
-+ * folio and leave attached buffers clean, because the buffers' dirty state is
-+ * "definitive".  We cannot just set the buffers dirty or jbddirty because all
-+ * the journalling code will explode.  So what we do is to mark the folio
-+ * "pending dirty" and next time ext4_writepages() is called, attach buffers
-+ * to the transaction appropriately.
-  */
- static bool ext4_journalled_dirty_folio(struct address_space *mapping,
- 		struct folio *folio)
- {
- 	WARN_ON_ONCE(!folio_buffers(folio));
--	folio_set_checked(folio);
-+	if (folio_may_be_dma_pinned(folio))
-+		folio_set_checked(folio);
- 	return filemap_dirty_folio(mapping, folio);
- }
- 
+@@ -2230,9 +2230,9 @@ static int mpage_process_page_bufs(struct mpage_da_data *mpd,
+ 	/* So far everything mapped? Submit the page for IO. */
+ 	if (mpd->map.m_len == 0) {
+ 		err = mpage_submit_page(mpd, head->b_page);
+-		mpage_page_done(mpd, head->b_page);
+ 		if (err < 0)
+ 			return err;
++		mpage_page_done(mpd, head->b_page);
+ 	}
+ 	if (lblk >= blocks) {
+ 		mpd->scanned_until_end = 1;
+@@ -2362,9 +2362,9 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 				goto out;
+ 			/* Page fully mapped - let IO run! */
+ 			err = mpage_submit_page(mpd, page);
+-			mpage_page_done(mpd, page);
+ 			if (err < 0)
+ 				goto out;
++			mpage_page_done(mpd, page);
+ 		}
+ 		folio_batch_release(&fbatch);
+ 	}
+@@ -2673,11 +2673,12 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 			 * modify metadata is simple. Just submit the page.
+ 			 */
+ 			if (!mpd->can_map) {
+-				if (ext4_page_nomap_can_writeout(page))
++				if (ext4_page_nomap_can_writeout(page)) {
+ 					err = mpage_submit_page(mpd, page);
++					if (err < 0)
++						goto out;
++				}
+ 				mpage_page_done(mpd, page);
+-				if (err < 0)
+-					goto out;
+ 			} else {
+ 				/* Add all dirty buffers to mpd */
+ 				lblk = ((ext4_lblk_t)page->index) <<
 -- 
 2.35.3
 
