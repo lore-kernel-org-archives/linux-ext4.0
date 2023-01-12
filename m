@@ -2,62 +2,107 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BD728C54EBD
-	for <linux-ext4@archiver.kernel.org>; Thu, 12 Jan 2023 08:58:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EB8F8C54EBD
+	for <linux-ext4@archiver.kernel.org>; Thu, 12 Jan 2023 09:35:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239918AbjALI6S (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 12 Jan 2023 03:58:18 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50372 "EHLO
+        id S231559AbjALJf3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 12 Jan 2023 04:35:29 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50978 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229780AbjALI5A (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jan 2023 03:57:00 -0500
-Received: from mail.glencoeaur.com (mail.glencoeaur.com [217.61.97.113])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B2BCD50F42
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Jan 2023 00:54:59 -0800 (PST)
-Received: by mail.glencoeaur.com (Postfix, from userid 1001)
-        id E819E8208C; Thu, 12 Jan 2023 08:35:44 +0000 (GMT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=glencoeaur.com;
-        s=mail; t=1673512555;
-        bh=2S0GQFScndXkBEK4sqdoOhOYLqsB2sEH8Q5XQfVvKpo=;
-        h=Date:From:To:Subject:From;
-        b=C6eh6kHYvFicoxT0kS41SI2CNN9SWIOAnJm/HdYvKgHI7Xdu9yCTyAPkJdTvYnnae
-         a7x4e6K3AIkr7aowkYVGEvSnil2+z7/yuIozABVERn2wesbFmqQx1pSN7enxCA+oyC
-         +sgOUndRtXdsbJ4RYJEW0e6Ut5LhqPYEc8cnJjmNOLdH6Ln870vDBE/1GInZGL7Pe/
-         QFkjlOdgLlCweeS+F+2GofSXfL5zTBX/gepFjRwjSIEMvyyBceji6henLbUn8+n2sc
-         tvdj32YnA4pUsdACO/ztakiVKlNYtFTQlY5om9mzf3PwKg723SEiXFwn+vpVWYfUmQ
-         9epOQGN5u6sFg==
-Received: by mail.glencoeaur.com for <linux-ext4@vger.kernel.org>; Thu, 12 Jan 2023 08:35:33 GMT
-Message-ID: <20230112074500-0.1.z.3fs3.0.cb44p5pdpl@glencoeaur.com>
-Date:   Thu, 12 Jan 2023 08:35:33 GMT
-From:   "Zbynek Spacek" <zbynek.spacek@glencoeaur.com>
-To:     <linux-ext4@vger.kernel.org>
-Subject: Silikonmischungen
-X-Mailer: mail.glencoeaur.com
+        with ESMTP id S240069AbjALJek (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jan 2023 04:34:40 -0500
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8BFC25329A
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Jan 2023 01:29:08 -0800 (PST)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 541773EE65;
+        Thu, 12 Jan 2023 09:29:06 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1673515746; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=Au5Y5lilpkftIEJcJmkAVkWWK4MwBRarZO0HiIlsDaY=;
+        b=ZBntweEsOGOjmrpvxSFlY7uDxfHe2rre8qMcO2sfRBPjVFjmlhqnwm4Ba8lq4i3uxom08F
+        GrSJEwHEckB9285yVFILRAi4XFIBcotxz4sFlC2LtVMNxGDJp9X/CB/mQ4Km3uYVBNsEP1
+        c5NT1vocfiEHZzpVL0c2B6m19uuKbKc=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1673515746;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=Au5Y5lilpkftIEJcJmkAVkWWK4MwBRarZO0HiIlsDaY=;
+        b=cIief3i6LjU5006LTjwD9v8XWnIIIj6xy1COcsPuJkS8mSYZwpRi9y2x0k2aIrPzvE44BC
+        olh7M7Rcn3s7tuAg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 45D0113776;
+        Thu, 12 Jan 2023 09:29:06 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id 7OMAEeLSv2P6FwAAMHmgww
+        (envelope-from <jack@suse.cz>); Thu, 12 Jan 2023 09:29:06 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id 925B0A0744; Thu, 12 Jan 2023 10:29:05 +0100 (CET)
+Date:   Thu, 12 Jan 2023 10:29:05 +0100
+From:   Jan Kara <jack@suse.cz>
+To:     Ted Tso <tytso@mit.edu>
+Cc:     linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 3/7] ext4: Mark page for delayed dirtying only if it is
+ pinned
+Message-ID: <20230112092905.chrxh6dlnxfakxz6@quack3>
+References: <20230111152736.9608-1-jack@suse.cz>
+ <20230111154338.392-3-jack@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230111154338.392-3-jack@suse.cz>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Good morning,
+On Wed 11-01-23 16:43:27, Jan Kara wrote:
+> In data=journal mode, page should be dirtied only when it has buffers
+> for checkpoint or it is writeably mapped. In the first case, we don't
+> need to do anything special. In the second case, page was already added
+> to the journal by ext4_page_mkwrite() and since transaction commit
+> writeprotects mapped pages again, page should be writeable (and thus
+> dirtied) only while it is part of the running transaction. So nothing
+> needs to be done either. The only special case is when someone pins the
+> page and uses this pin for modifying page data. So recognize this
+> special case and only then mark the page as having data that needs
+> adding to the journal.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+...
+>  static bool ext4_journalled_dirty_folio(struct address_space *mapping,
+>  		struct folio *folio)
+>  {
+>  	WARN_ON_ONCE(!folio_buffers(folio));
+> -	folio_set_checked(folio);
+> +	if (folio_may_be_dma_pinned(folio))
 
-do you need intermediates for processing, plastics (e.g. rubber) or silic=
-one mixtures?
+Bah, this should be folio_maybe_dma_pinned(). I had it there and that's
+what I've tested with but before submission I was laboring whether I should
+really keep this change or not, had it deleted for a while and then
+restored the change, and while doing that I've introduced this bug. :-|
 
-We provide a wide range of silicone rubbers with various properties, sili=
-cone mixtures from renowned manufacturers such as Wacker, Elastosil LR an=
-d dyes, stabilizers, primers and anti-adhesive additives.
+I'll resend with this bug fixed but before doing that I'll wait a few days
+whether someone has more comments.
 
-We also produce technical silicone compounds with increased resistance to=
- oils, resistant to high temperatures and water vapor, conductive and man=
-y more.
+								Honza
 
-We provide fast order fulfillment, timely deliveries and cost optimizatio=
-n.
-
-Can I introduce what we can offer you?
-
-
-Best regards
-Zbynek Spacek
+> +		folio_set_checked(folio);
+>  	return filemap_dirty_folio(mapping, folio);
+>  }
+>  
+> -- 
+> 2.35.3
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
