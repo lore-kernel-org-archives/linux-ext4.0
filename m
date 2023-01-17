@@ -2,158 +2,91 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A286C677F1
-	for <linux-ext4@archiver.kernel.org>; Tue, 17 Jan 2023 19:40:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C69BBC00A5A
+	for <linux-ext4@archiver.kernel.org>; Tue, 17 Jan 2023 22:43:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232484AbjAQTi3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 17 Jan 2023 14:38:29 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59634 "EHLO
+        id S229741AbjAQWng (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 17 Jan 2023 17:43:36 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40624 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232700AbjAQTf5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Jan 2023 14:35:57 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5CE8DC645
-        for <linux-ext4@vger.kernel.org>; Tue, 17 Jan 2023 10:41:01 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1673980860;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=iFiAegt8WNgL5MZXxVPS9mQqy9Ss59WQtK/8IB6U8eA=;
-        b=PhEA8i2XWpVfAY17MnnwMgrZfqjGG+tMWzjMtRljREezy6gwy7p96vrsML79mo7qJhKaEm
-        ky1EAVfIom9Qmjwrz+SDqqiyx2fgtR406zcgpCq7cspASSCCTjogdk+lltnZsp1sMA++y4
-        ZxWzW9j6rKMRLphlBIiTGGN6gt5sF/M=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-260-lxBEaWcGM4C8NbHUfeyPBA-1; Tue, 17 Jan 2023 13:40:57 -0500
-X-MC-Unique: lxBEaWcGM4C8NbHUfeyPBA-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        with ESMTP id S229848AbjAQWmR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Jan 2023 17:42:17 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6B6CB474F8;
+        Tue, 17 Jan 2023 14:29:40 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id B21F2811E6E;
-        Tue, 17 Jan 2023 18:40:54 +0000 (UTC)
-Received: from [10.18.17.153] (dhcp-17-153.bos.redhat.com [10.18.17.153])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id CA68B2166B29;
-        Tue, 17 Jan 2023 18:40:51 +0000 (UTC)
-Message-ID: <0110b1d1-17c4-49a3-64c0-ad7d7b8cbd29@redhat.com>
-Date:   Tue, 17 Jan 2023 13:40:51 -0500
+        by ams.source.kernel.org (Postfix) with ESMTPS id 295EEB81A37;
+        Tue, 17 Jan 2023 22:29:39 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C24E6C433D2;
+        Tue, 17 Jan 2023 22:29:37 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1673994577;
+        bh=qS6ZJxg4vh5cOUtgwsaJZG2uxddKkuZqTHqVL43d+Es=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=Zdk7JMS9iaxlGp7q27SWD3wL86+NWu6/+7LYPuCR+h1ZmVM4tcjBgGeSX2hM3hxkJ
+         4ceulhQZw4soZvhKlyhT15IjoF4inNRzp2oG5BGPIlYp056TfDrIJr128o+mVqmDEr
+         ca4Mokh1BV7aUTA3rzgx/o3lC0Yc8xEemDOL0oonTL8NWPmPymZ9ViXEWY0WFbBF6k
+         fbzC5PFCSTXW4DU+5RM1CP3nbf5CEs6M32TK+CFtonGTQMzcEQioFom1n2czQaesL9
+         QsQaGVlti99waqI0WkjbxCEq+khFplHHNpAUcvXuBPXvJoNEPYRjRCH4LuODvZMSig
+         A3UB2HJnSyMUw==
+Date:   Tue, 17 Jan 2023 22:29:36 +0000
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Greg KH <greg@kroah.com>
+Cc:     stable@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 5.15 00/10] ext4 fast-commit fixes for 5.15-stable
+Message-ID: <Y8chUKeNaULEhM+V@gmail.com>
+References: <20230105071359.257952-1-ebiggers@kernel.org>
+ <Y7a8B2+AjwxpmTfh@kroah.com>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
- Thunderbird/102.4.0
-Subject: Re: [PATCH RFC v7 00/23] DEPT(Dependency Tracker)
-Content-Language: en-US
-To:     Boqun Feng <boqun.feng@gmail.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     Byungchul Park <byungchul.park@lge.com>,
-        linux-kernel@vger.kernel.org, damien.lemoal@opensource.wdc.com,
-        linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, mingo@redhat.com, peterz@infradead.org,
-        will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
-        joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
-        duyuyang@gmail.com, johannes.berg@intel.com, tj@kernel.org,
-        tytso@mit.edu, willy@infradead.org, david@fromorbit.com,
-        amir73il@gmail.com, gregkh@linuxfoundation.org,
-        kernel-team@lge.com, linux-mm@kvack.org, akpm@linux-foundation.org,
-        mhocko@kernel.org, minchan@kernel.org, hannes@cmpxchg.org,
-        vdavydov.dev@gmail.com, sj@kernel.org, jglisse@redhat.com,
-        dennis@kernel.org, cl@linux.com, penberg@kernel.org,
-        rientjes@google.com, vbabka@suse.cz, ngupta@vflare.org,
-        linux-block@vger.kernel.org, paolo.valente@linaro.org,
-        josef@toxicpanda.com, linux-fsdevel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, jack@suse.cz, jlayton@kernel.org,
-        dan.j.williams@intel.com, hch@infradead.org, djwong@kernel.org,
-        dri-devel@lists.freedesktop.org, rodrigosiqueiramelo@gmail.com,
-        melissa.srw@gmail.com, hamohammed.sa@gmail.com,
-        42.hyeyoo@gmail.com, chris.p.wilson@intel.com,
-        gwan-gyeong.mun@intel.com
-References: <1673235231-30302-1-git-send-email-byungchul.park@lge.com>
- <CAHk-=whpkWbdeZE1zask8YPzVYevJU2xOXqOposBujxZsa2-tQ@mail.gmail.com>
- <Y8bmeffIQ3iXU3Ux@boqun-archlinux>
-From:   Waiman Long <longman@redhat.com>
-In-Reply-To: <Y8bmeffIQ3iXU3Ux@boqun-archlinux>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.6
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <Y7a8B2+AjwxpmTfh@kroah.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 1/17/23 13:18, Boqun Feng wrote:
-> [Cc Waiman]
->
-> On Mon, Jan 16, 2023 at 10:00:52AM -0800, Linus Torvalds wrote:
->> [ Back from travel, so trying to make sense of this series.. ]
->>
->> On Sun, Jan 8, 2023 at 7:33 PM Byungchul Park <byungchul.park@lge.com> wrote:
->>> I've been developing a tool for detecting deadlock possibilities by
->>> tracking wait/event rather than lock(?) acquisition order to try to
->>> cover all synchonization machanisms. It's done on v6.2-rc2.
->> Ugh. I hate how this adds random patterns like
->>
->>          if (timeout == MAX_SCHEDULE_TIMEOUT)
->>                  sdt_might_sleep_strong(NULL);
->>          else
->>                  sdt_might_sleep_strong_timeout(NULL);
->>     ...
->>          sdt_might_sleep_finish();
->>
->> to various places, it seems so very odd and unmaintainable.
->>
->> I also recall this giving a fair amount of false positives, are they all fixed?
->>
->  From the following part in the cover letter, I guess the answer is no?
->
-> 	...
->          6. Multiple reports are allowed.
->          7. Deduplication control on multiple reports.
->          8. Withstand false positives thanks to 6.
-> 	...
->
-> seems to me that the logic is since DEPT allows multiple reports so that
-> false positives are fitlerable by users?
->
->> Anyway, I'd really like the lockdep people to comment and be involved.
-> I never get Cced, so I'm unware of this for a long time...
->
-> A few comments after a quick look:
->
-> *	Looks like the DEPT dependency graph doesn't handle the
-> 	fair/unfair readers as lockdep current does. Which bring the
-> 	next question.
->
-> *	Can DEPT pass all the selftests of lockdep in
-> 	lib/locking-selftests.c?
->
-> *	Instead of introducing a brand new detector/dependency tracker,
-> 	could we first improve the lockdep's dependency tracker? I think
-> 	Byungchul also agrees that DEPT and lockdep should share the
-> 	same dependency tracker and the benefit of improving the
-> 	existing one is that we can always use the self test to catch
-> 	any regression. Thoughts?
->
-> Actually the above sugguest is just to revert revert cross-release
-> without exposing any annotation, which I think is more practical to
-> review and test.
->
-> I'd sugguest we 1) first improve the lockdep dependency tracker with
-> wait/event in mind and then 2) introduce wait related annotation so that
-> users can use, and then 3) look for practical ways to resolve false
-> positives/multi reports with the help of users, if all goes well,
-> 4) make it all operation annotated.
+Hi Greg,
 
-I agree with your suggestions. In fact, the lockdep code itself is one 
-of major overheads when running a debug kernel. If we have another set 
-of parallel dependency tracker, we may slow down a debug kernel even 
-more. So I would rather prefer improving the existing lockdep code 
-instead creating a completely new one.
+On Thu, Jan 05, 2023 at 01:01:11PM +0100, Greg KH wrote:
+> On Wed, Jan 04, 2023 at 11:13:49PM -0800, Eric Biggers wrote:
+> > This series backports 6 commits with 'Cc stable' that had failed to be
+> > applied, and 4 related commits that made the backports much easier.
+> > Please apply this series to 5.15-stable.
+> > 
+> > I verified that this series does not cause any regressions with
+> > 'gce-xfstests -c ext4/fast_commit -g auto'.  There is one test failure
+> > both before and after (ext4/050).
+> 
+> All now queued up, thanks.
+> 
+> greg k-h
 
-I do agree that the lockdep code itself is now rather complex. A 
-separate dependency tracker, however, may undergo similar transformation 
-over time to become more and more complex due to the needs to meet 
-different requirement and constraints.
 
-Cheers,
-Longman
+It's too late to fix now, but the commits in 5.15-stable all use
+"Eric Biggers <ebiggers@kernel.org>" as the author instead of the From line in
+the patch itself.  For example, patch 1 became:
 
+	commit b0ed9a032e52a175683d18e2e2e8eec0f9ba1ff9
+	Author: Eric Biggers <ebiggers@kernel.org>
+	Date:   Wed Jan 4 23:13:50 2023 -0800
+
+	    ext4: remove unused enum EXT4_FC_COMMIT_FAILED
+
+	    From: Ritesh Harjani <riteshh@linux.ibm.com>
+
+	    commit c864ccd182d6ff2730a0f5b636c6b7c48f6f4f7f upstream.
+
+For reference, the upstream commit is:
+
+	commit c864ccd182d6ff2730a0f5b636c6b7c48f6f4f7f
+	Author: Ritesh Harjani <riteshh@linux.ibm.com>
+	Date:   Sat Mar 12 11:09:46 2022 +0530
+
+	    ext4: remove unused enum EXT4_FC_COMMIT_FAILED
+
+Do you know how this happened, and how it can be prevented in the future?  I
+think I sent everything out correctly, so I think this is something on your end.
+
+- Eric
