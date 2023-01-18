@@ -2,149 +2,78 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9DE24C004D4
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Jan 2023 10:06:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EA737C32793
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Jan 2023 10:40:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230073AbjARKGf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 18 Jan 2023 05:06:35 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42136 "EHLO
+        id S229773AbjARKkQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 18 Jan 2023 05:40:16 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33812 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230218AbjARKFW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Jan 2023 05:05:22 -0500
-Received: from esa6.hgst.iphmx.com (esa6.hgst.iphmx.com [216.71.154.45])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EE4C76B9B6
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Jan 2023 01:11:14 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple;
-  d=wdc.com; i=@wdc.com; q=dns/txt; s=dkim.wdc.com;
-  t=1674033080; x=1705569080;
-  h=message-id:date:mime-version:subject:to:cc:references:
-   from:in-reply-to:content-transfer-encoding;
-  bh=z6BysG4KL98DqsIpUTGvi6mt5tSfxRSvpbiiNzn9uKM=;
-  b=SNj70+Yk6v5KDJ81NNS3VA+0nsdLwQV/J/rHY6Bi0mrQhBNaafreVLO4
-   mU9HSqJeEhfScnPKChaJDG1MR10poSt40QPHrwi2C6JO5ESKbYGlnsEgw
-   nAGtXzvtjA/oNNUubu8fTiaAI5x7H/7Ex/RlkQa0gq1mF0i8bGVIoY/O1
-   My0R5arVuYZHPzLsZvHXKb0/q0xgu+9f+lhr/Md0ZSaK5ghDEpaeI2DSf
-   hKp3rUfLPryAx7G0Hff5Oai5+zXPYkYO7CIguY4JedeMpj9OpZn1PP8Fw
-   LxfJ+o/t0qwpKuYQ9J2wX6D/eBcwNWvgHrGJ5tUelFvzupfKFc/Irwszf
-   Q==;
-X-IronPort-AV: E=Sophos;i="5.97,224,1669046400"; 
-   d="scan'208";a="221199189"
-Received: from h199-255-45-14.hgst.com (HELO uls-op-cesaep01.wdc.com) ([199.255.45.14])
-  by ob1.hgst.iphmx.com with ESMTP; 18 Jan 2023 17:11:08 +0800
-IronPort-SDR: jglsEg31NvZH4VlDq53w2v2S4OtNw7PSndYX4fvglTuhXfXcGsyNTfLlnU2p75K7ATEU1yaMcr
- eV7MMb5GJYC5jUnO9l1wJs4NE2X5Aq5MaWovAaGc4Fjvb2HGHHLO3Ss5njrX6zMFGlU/BeHkOi
- kXYf51hZOWUFv8rrqYRb7jMoEMddU42SSfYGRm6txWO4KAypV0F4YKC5MmKRUDPU2q/rOzQVCr
- H86XztLBEosl7jtzv30RZXi5MfEmQuAj1QuvoEV2kHl1YPxWzstmgJJJG6QGGZ7dgyAOm8IB4f
- rXE=
-Received: from uls-op-cesaip02.wdc.com ([10.248.3.37])
-  by uls-op-cesaep01.wdc.com with ESMTP/TLS/ECDHE-RSA-AES128-GCM-SHA256; 18 Jan 2023 00:28:49 -0800
-IronPort-SDR: 1yS3yg5aaz2XCihGydchs3NwrbRNyh7DjaDHxRfZOxAu2PKIv5+7P53WIr581d8y5fMTaJAXAl
- KViGPCLQ3VHvKgpgCFLdw3220yC5TLruDKAVi0RIvoxGXnQ/v2h7EceQAqMYONkN+RcwtTnSoJ
- qIOr1XVUWeFCknXu2+9homiyqus1pV4bawlp7I7FDGWESzfUjRPEJhL14x7hFBxwuugljBzpvx
- xm5evMqkMV0lWJGK+e+S7XPiaNQSjHzaHPe/i5pqBq8BT2B8WqM3jyoZ9Najo53r6qYQdeLwFr
- iO8=
-WDCIronportException: Internal
-Received: from usg-ed-osssrv.wdc.com ([10.3.10.180])
-  by uls-op-cesaip02.wdc.com with ESMTP/TLS/ECDHE-RSA-AES128-GCM-SHA256; 18 Jan 2023 01:11:09 -0800
-Received: from usg-ed-osssrv.wdc.com (usg-ed-osssrv.wdc.com [127.0.0.1])
-        by usg-ed-osssrv.wdc.com (Postfix) with ESMTP id 4Nxg3b5hmXz1Rwt8
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Jan 2023 01:11:07 -0800 (PST)
-Authentication-Results: usg-ed-osssrv.wdc.com (amavisd-new); dkim=pass
-        reason="pass (just generated, assumed good)"
-        header.d=opensource.wdc.com
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=
-        opensource.wdc.com; h=content-transfer-encoding:content-type
-        :in-reply-to:organization:from:references:to:content-language
-        :subject:user-agent:mime-version:date:message-id; s=dkim; t=
-        1674033067; x=1676625068; bh=z6BysG4KL98DqsIpUTGvi6mt5tSfxRSvpbi
-        iNzn9uKM=; b=Ga3takGvh+J+i7baxfPg8EsKVzqG8+qfIZBhYx0Y1fKrLOUEE1F
-        CeqynFOIi/QYls9toCQc2be+9JUXbeUUqMD3fTt9E2ZQzVVD/rocU+UaICXzKHLR
-        JpXHM9BSsdrsIhvJH4ELmOUrWeGU5hx0yMLqyxyFz2h2rykU/1pHIbUm9VLhA+ia
-        XwQQ0zsq1vmGKV0b7APXF2R4L6vgHFCQfIAFt10/oNWp3yRXvnmpC+vXREgW7jWQ
-        quw8DByP6O+2Hno02DR23ivqpBSrDapBZ5vf/zWXT8/ACrUGmxZ6Cb5bWA9cpQBz
-        bOwip/HCJ31zLsqAntEsKMpB5vDo8Bendjg==
-X-Virus-Scanned: amavisd-new at usg-ed-osssrv.wdc.com
-Received: from usg-ed-osssrv.wdc.com ([127.0.0.1])
-        by usg-ed-osssrv.wdc.com (usg-ed-osssrv.wdc.com [127.0.0.1]) (amavisd-new, port 10026)
-        with ESMTP id XangxJi1zmKK for <linux-ext4@vger.kernel.org>;
-        Wed, 18 Jan 2023 01:11:07 -0800 (PST)
-Received: from [10.225.163.40] (unknown [10.225.163.40])
-        by usg-ed-osssrv.wdc.com (Postfix) with ESMTPSA id 4Nxg3Y0J3Zz1RvLy;
-        Wed, 18 Jan 2023 01:11:04 -0800 (PST)
-Message-ID: <3855fa1d-ec30-2c63-c5e2-b388e8a02b3e@opensource.wdc.com>
-Date:   Wed, 18 Jan 2023 18:11:03 +0900
-MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
- Thunderbird/102.6.0
-Subject: Re: [RFC v6 08/10] iomap/xfs: Eliminate the iomap_valid handler
-Content-Language: en-US
-To:     Christoph Hellwig <hch@infradead.org>,
-        "Darrick J. Wong" <djwong@kernel.org>
-Cc:     =?UTF-8?Q?Andreas_Gr=c3=bcnbacher?= <andreas.gruenbacher@gmail.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Damien Le Moal <damien.lemoal@wdc.com>,
+        with ESMTP id S229750AbjARKjO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Jan 2023 05:39:14 -0500
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E88874F85B;
+        Wed, 18 Jan 2023 01:43:41 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description;
+        bh=MhCSeZxb0+ckteL2o3EcN0B0EMYZcaQYxCAND8YfTVw=; b=zb1P9ij/tKigVouQ1O/C4uCAS7
+        +JypLZQNpDNL8SKR+sx/aWG6SqmtWucbKq/npM9f01Nx4vipYaGkmRmfWPM8//WBMOWyul+joXZdf
+        kI5DelXAG5u3Mial8ZsWDnwcWoQEls3QmRsMZpx+Ma9ZXSGvSOElPAlQ+CVHpa0i0ip+rT5GjIbdg
+        S5G36phYR1i2oNyuWdEu+/jo4jmYoCDTehy+LLF2qrMRA/2CXC2tH9oCz02ukaqRRI8A/Yxuj3r11
+        ZC3nBMs5rlV1N/an3gFPLb/4i4RUC1kPq64ESJTixD6mQn5Lrv1DKGai8eyUnSX8o2BGpovyOd4r7
+        +F3UHI8g==;
+Received: from 213-147-167-250.nat.highway.webapn.at ([213.147.167.250] helo=localhost)
+        by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1pI4yo-0009vw-M1; Wed, 18 Jan 2023 09:43:39 +0000
+From:   Christoph Hellwig <hch@lst.de>
+To:     Andrew Morton <akpm@linux-foundation.org>,
         Matthew Wilcox <willy@infradead.org>,
-        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, cluster-devel@redhat.com
-References: <20230108194034.1444764-1-agruenba@redhat.com>
- <20230108194034.1444764-9-agruenba@redhat.com>
- <20230108215911.GP1971568@dread.disaster.area>
- <CAHc6FU4z1nC8zdM8NvUyMqU29_J7_oNu1pvBHuOvR+M6gq7F0Q@mail.gmail.com>
- <20230109225453.GQ1971568@dread.disaster.area>
- <CAHpGcM+urV5LYpTZQWTRoK6VWaLx0sxk3mDe_kd3VznMY9woVw@mail.gmail.com>
- <Y8Q4FmhYehpQPZ3Z@magnolia> <Y8eeAmm1Vutq3Fc9@infradead.org>
-From:   Damien Le Moal <damien.lemoal@opensource.wdc.com>
-Organization: Western Digital Research
-In-Reply-To: <Y8eeAmm1Vutq3Fc9@infradead.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+        Hugh Dickins <hughd@google.com>
+Cc:     linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, cluster-devel@redhat.com,
+        linux-mm@kvack.org, linux-xfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nilfs@vger.kernel.org
+Subject: [PATCH 1/9] mm: don't look at xarray value entries in split_huge_pages_in_file
+Date:   Wed, 18 Jan 2023 10:43:21 +0100
+Message-Id: <20230118094329.9553-2-hch@lst.de>
+X-Mailer: git-send-email 2.39.0
+In-Reply-To: <20230118094329.9553-1-hch@lst.de>
+References: <20230118094329.9553-1-hch@lst.de>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 1/18/23 16:21, Christoph Hellwig wrote:
-> On Sun, Jan 15, 2023 at 09:29:58AM -0800, Darrick J. Wong wrote:
->> I don't have any objections to pulling everything except patches 8 and
->> 10 for testing this week. 
-> 
-> That would be great.  I now have a series to return the ERR_PTR
-> from __filemap_get_folio which will cause a minor conflict, but
-> I think that's easy enough for Linux to handle.
-> 
->>
->> 1. Does zonefs need to revalidate mappings?  The mappings are 1:1 so I
->> don't think it does, but OTOH zone pointer management might complicate
->> that.
-> 
-> Adding Damien.
+split_huge_pages_in_file never wants to do anything with the special
+value enties.  Switch to using filemap_get_folio to not even see them.
 
-zonefs has a static mapping of file blocks that never changes and is fully
-populated up to a file max size from mount. So zonefs is not using the
-iomap_valid page operation. In fact, zonefs is not even using struct
-iomap_page_ops.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ mm/huge_memory.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-> 
->> 2. How about porting the writeback iomap validation to use this
->> mechanism?  (I suspect Dave might already be working on this...)
-> 
-> What is "this mechanism"?  Do you mean the here removed ->iomap_valid
-> ?   writeback calls into ->map_blocks for every block while under the
-> folio lock, so the validation can (and for XFS currently is) done
-> in that.  Moving it out into a separate method with extra indirect
-> functiona call overhead and interactions between the methods seems
-> like a retrograde step to me.
-> 
->> 2. Do we need to revalidate mappings for directio writes?  I think the
->> answer is no (for xfs) because the ->iomap_begin call will allocate
->> whatever blocks are needed and truncate/punch/reflink block on the
->> iolock while the directio writes are pending, so you'll never end up
->> with a stale mapping.
-> 
-> Yes.
-
+diff --git a/mm/huge_memory.c b/mm/huge_memory.c
+index 1d6977dc6b31ba..a2830019aaa017 100644
+--- a/mm/huge_memory.c
++++ b/mm/huge_memory.c
+@@ -3100,11 +3100,10 @@ static int split_huge_pages_in_file(const char *file_path, pgoff_t off_start,
+ 	mapping = candidate->f_mapping;
+ 
+ 	for (index = off_start; index < off_end; index += nr_pages) {
+-		struct folio *folio = __filemap_get_folio(mapping, index,
+-						FGP_ENTRY, 0);
++		struct folio *folio = filemap_get_folio(mapping, index);
+ 
+ 		nr_pages = 1;
+-		if (xa_is_value(folio) || !folio)
++		if (!folio)
+ 			continue;
+ 
+ 		if (!folio_test_large(folio))
 -- 
-Damien Le Moal
-Western Digital Research
+2.39.0
 
