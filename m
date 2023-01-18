@@ -2,151 +2,200 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 84B85C38159
-	for <linux-ext4@archiver.kernel.org>; Tue, 17 Jan 2023 22:54:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DA09CC00A5A
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Jan 2023 00:39:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229599AbjAQWyF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 17 Jan 2023 17:54:05 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51168 "EHLO
+        id S229503AbjARAjn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 17 Jan 2023 19:39:43 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36338 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230038AbjAQWxj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Jan 2023 17:53:39 -0500
-Received: from mail-pj1-x102a.google.com (mail-pj1-x102a.google.com [IPv6:2607:f8b0:4864:20::102a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3DCC7A7335
-        for <linux-ext4@vger.kernel.org>; Tue, 17 Jan 2023 13:45:01 -0800 (PST)
-Received: by mail-pj1-x102a.google.com with SMTP id z4-20020a17090a170400b00226d331390cso215169pjd.5
-        for <linux-ext4@vger.kernel.org>; Tue, 17 Jan 2023 13:45:01 -0800 (PST)
+        with ESMTP id S229746AbjARAjC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Jan 2023 19:39:02 -0500
+Received: from mail-pj1-x102f.google.com (mail-pj1-x102f.google.com [IPv6:2607:f8b0:4864:20::102f])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CAF8558289
+        for <linux-ext4@vger.kernel.org>; Tue, 17 Jan 2023 16:11:00 -0800 (PST)
+Received: by mail-pj1-x102f.google.com with SMTP id w4-20020a17090ac98400b002186f5d7a4cso641621pjt.0
+        for <linux-ext4@vger.kernel.org>; Tue, 17 Jan 2023 16:11:00 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=fromorbit-com.20210112.gappssmtp.com; s=20210112;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
-        bh=USmZ3gy1BtrvJEjQBDI3lCph9qcXhvk22Q1eYhBS7oY=;
-        b=RzlLBPcasIN4kEzbfwMjk5cRM6RzwFCQycQzVF/x4CvKYodGJqRrS9P5q74WNvc6Im
-         sDWvEIyNad70vlaiE6T40dRq5QUvZXsqoq0NXlZB7cmswZRDhil02hlp0EswfhbYDaUk
-         pd/nv9SJeu522LsTq6VLRAhoTLIvaozFDG5jLwWqU3xOBIqEgBYVlWWKsrSzSeARYQR4
-         y78EEbm0a5Q6LDKTJy99roURs/IxG5iRb0G4vxXbkZX8afv5Jnrinw0ihUUqjURO6eUv
-         FubRf20KyCuUdR73WoBP8CQ1GMNILJs936p5zQJtUZNrm02T05XIEZDWRpoeFnX0UPQ0
-         wPAQ==
+        d=dilger-ca.20210112.gappssmtp.com; s=20210112;
+        h=references:to:cc:in-reply-to:date:subject:mime-version:message-id
+         :from:from:to:cc:subject:date:message-id:reply-to;
+        bh=pzEdmN39Unq8aY/sGjFArgb3bCi8SP9Ib6NE2vIEiyI=;
+        b=wXnzlkDCWr5+eyW1tQuaZhE+erFaeCBZyHwy+IOFdnpfJkrySosYe3OCoRrcuUEa38
+         OQzA+SREBOrMEWvyEc1VDVI5v7M/MKGnsuGggiAuriZgzpPLnA4QkqQyBlYxiS0c28TR
+         cJyFHnKavKKqndGBkiiXKD/gbw0vWGZq1X4qrC0gapU6ak6p7HQEWRSpo7luiO85vAwU
+         NFJi6Niemhh+wPAE3WOSV0AtkihPGF/o+J28DZk6oJTDlwqFWvcjFfM5/vw3VdZmyyH1
+         DLR18vKQd+Estm8pRJPbN4cyFQeE4ppAy4VRI/TRrC9Qi2Q1JiMtqfnmC303qoXuD3xS
+         0HMg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=USmZ3gy1BtrvJEjQBDI3lCph9qcXhvk22Q1eYhBS7oY=;
-        b=yy9doKCmBD+3ERaxLRkBQwsdjJ9u6nei+QGxJs7VxF0q94hyQNSmAgZabnX7vMKg8U
-         DGdRbaVJMJqIjKbM3uT1WBuzXxg6wfYKtqRHIz/K+Ke88ok/YQk8eVSqNrX+trcql67i
-         ydKmeOdUa+gxif3JlUEMvkb2mIqD0kjlyYkb9ScvYtTigS8SYFi1miqmrdg4wkiRkKp5
-         tuPFgvJV+EEA8yPbTS0yx+B+Yhq3G3tlYS80/pKWr/eKetisvbcptEuSIv/KRsiI2TB6
-         MeaOpqLMbGbdeazXs+aNiI5NKl4jX6smeorhAVc/GpRL5jKiGIRXkTcp3aAF3UnT3Oc3
-         E5yw==
-X-Gm-Message-State: AFqh2kogml8LQjXgWFjp7yO6dex6TxHH0Cxi9B/znVOE7/cRrfK45Lr5
-        fySOt2cSfqogz9hTD1xc2N+naA==
-X-Google-Smtp-Source: AMrXdXsjLWlijwip6i3qxiUNT6rq/EuKFl3lJ7Oc5PLOZ9TkVQf8fY86eptlCDPi8YvH3xl+tGL+uQ==
-X-Received: by 2002:a17:903:1ce:b0:193:29db:e0b7 with SMTP id e14-20020a17090301ce00b0019329dbe0b7mr6977692plh.54.1673991900952;
-        Tue, 17 Jan 2023 13:45:00 -0800 (PST)
-Received: from dread.disaster.area (pa49-186-146-207.pa.vic.optusnet.com.au. [49.186.146.207])
-        by smtp.gmail.com with ESMTPSA id x15-20020a170902ec8f00b00189fd83eb95sm21754927plg.69.2023.01.17.13.45.00
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 17 Jan 2023 13:45:00 -0800 (PST)
-Received: from dave by dread.disaster.area with local (Exim 4.92.3)
-        (envelope-from <david@fromorbit.com>)
-        id 1pHtlJ-004Ivt-MX; Wed, 18 Jan 2023 08:44:57 +1100
-Date:   Wed, 18 Jan 2023 08:44:57 +1100
-From:   Dave Chinner <david@fromorbit.com>
-To:     Jan Kara <jack@suse.cz>
-Cc:     Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, Ted Tso <tytso@mit.edu>,
-        linux-xfs@vger.kernel.org
-Subject: Re: Locking issue with directory renames
-Message-ID: <20230117214457.GG360264@dread.disaster.area>
-References: <20230117123735.un7wbamlbdihninm@quack3>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20230117123735.un7wbamlbdihninm@quack3>
+        h=references:to:cc:in-reply-to:date:subject:mime-version:message-id
+         :from:x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=pzEdmN39Unq8aY/sGjFArgb3bCi8SP9Ib6NE2vIEiyI=;
+        b=nvCj7KDXLcHs6I7QFFh2wey6beLzYeiv61ohhxExkdr5uzSymaPP2cIKPWd5aKiE7H
+         2M4xH/8vF+FnCAh7zGjuYySmHqJqDv0osOHufzCmeI1+EjhaJjC5kH4BffHILKObrGVb
+         f/y8gigCJjDRyAjfyzVUnxcTbu+tD70Uo3f39RlZghdrvDAMTV6fHwrnXqBl4Ywo5ixj
+         kgrnRymJ0BmHN7TpeZF99s/Vcu/4L3336MsKCCCc7J/ZJ9P6Ot5SEDluszWG2/06060D
+         hB8w/TkUhWMv0s76LD2el8ggWcqgm4KBSJ824+UiOBd+JoeHB0LCQeoAi2IGN+4POs4u
+         XiAg==
+X-Gm-Message-State: AFqh2kq0ZDdH5K6Av53lxHkH5SU8M5SUIGwlw6a+pKY4+rWeUM5yymgN
+        qzt2gJDAgypFNG9AQsI1SUInwDC7DQEr9PQ9eRE=
+X-Google-Smtp-Source: AMrXdXu4zz9OEdBwQxeeyHLknKFFk9HuQejLpxumR6ZOx6uxJGfcSi22Hqb+c9uo2eR+Vk2DPtRSog==
+X-Received: by 2002:a17:902:848d:b0:192:fe4b:da3a with SMTP id c13-20020a170902848d00b00192fe4bda3amr5156149plo.10.1674000660271;
+        Tue, 17 Jan 2023 16:11:00 -0800 (PST)
+Received: from cabot.adilger.int (S01061cabc081bf83.cg.shawcable.net. [70.77.221.9])
+        by smtp.gmail.com with ESMTPSA id k11-20020a63f00b000000b0047685ed724dsm18056048pgh.40.2023.01.17.16.10.59
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Tue, 17 Jan 2023 16:10:59 -0800 (PST)
+From:   Andreas Dilger <adilger@dilger.ca>
+Message-Id: <7DE6598D-B60D-466F-8771-5FEC0FDEC57F@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_E6AB58D9-A35D-4999-8357-C3D05FF9EC98";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: generic/454 regression in 6.2-rc1
+Date:   Tue, 17 Jan 2023 17:10:55 -0700
+In-Reply-To: <Y8bpkm3jA3bDm3eL@debian-BULLSEYE-live-builder-AMD64>
+Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+To:     Eric Whitney <enwlinux@gmail.com>,
+        "Jason A. Donenfeld" <Jason@zx2c4.com>
+References: <Y8bpkm3jA3bDm3eL@debian-BULLSEYE-live-builder-AMD64>
+X-Mailer: Apple Mail (2.3273)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Jan 17, 2023 at 01:37:35PM +0100, Jan Kara wrote:
-> Hello!
-> 
-> I've some across an interesting issue that was spotted by syzbot [1]. The
-> report is against UDF but AFAICS the problem exists for ext4 as well and
-> possibly other filesystems. The problem is the following: When we are
-> renaming directory 'dir' say rename("foo/dir", "bar/") we lock 'foo' and
-> 'bar' but 'dir' is unlocked because the locking done by vfs_rename() is
-> 
->         if (!is_dir || (flags & RENAME_EXCHANGE))
->                 lock_two_nondirectories(source, target);
->         else if (target)
->                 inode_lock(target);
-> 
-> However some filesystems (e.g. UDF but ext4 as well, I suspect XFS may be
-> hurt by this as well because it converts among multiple dir formats) need
-> to update parent pointer in 'dir' and nothing protects this update against
-> a race with someone else modifying 'dir'. Now this is mostly harmless
-> because the parent pointer (".." directory entry) is at the beginning of
-> the directory and stable however if for example the directory is converted
-> from packed "in-inode" format to "expanded" format as a result of
-> concurrent operation on 'dir', the filesystem gets corrupted (or crashes as
-> in case of UDF).
 
-No, xfs_rename() does not have this problem - we pass four inodes to
-the function - the source directory, source inode, destination
-directory and destination inode.
+--Apple-Mail=_E6AB58D9-A35D-4999-8357-C3D05FF9EC98
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-In the above case, "dir/" is passed to XFs as the source inode - the
-src_dir is "foo/", the target dir is "bar/" and the target inode is
-null. src_dir != target_dir, so we set the "new_parent" flag. the
-srouce inode is a directory, so we set the src_is_directory flag,
-too.
+On Jan 17, 2023, at 11:31 AM, Eric Whitney <enwlinux@gmail.com> wrote:
+>=20
+> My 6.2-rc1 regression run on the current x86-64 test appliance =
+revealed a new
+> failure for generic/454 on the 4k file system configuration and all =
+other
+> configurations using a 4k block size.  This failure reproduces with =
+100%
+> reliability and continues to appear as of 6.2-rc4.
+>=20
+> The test output indicates that the file system under test is =
+inconsistent.
 
-We lock all three inodes that are passed. We do various things, then
-run:
+There is actually support in the superblock for both signed and unsigned =
+char
+hash calculations, exactly because there was a bug like this in the =
+past.
+It looks like the ext4 code/build is still using the signed hash =
+functions:
 
-        if (new_parent && src_is_directory) {
-                /*
-                 * Rewrite the ".." entry to point to the new
-                 * directory.
-                 */
-                error = xfs_dir_replace(tp, src_ip, &xfs_name_dotdot,
-                                        target_dp->i_ino, spaceres);
-                ASSERT(error != -EEXIST);
-                if (error)
-                        goto out_trans_cancel;
-        }
 
-which replaces the ".." entry in source inode atomically whilst it
-is locked.  Any directory format changes that occur during the
-rename are done while the ILOCK is held, so they appear atomic to
-outside observers that are trying to parse the directory structure
-(e.g. readdir).
+static int __ext4_fill_super(struct fs_context *fc, struct super_block =
+*sb)
+{
+	:
+	:
+                if (i & EXT2_FLAGS_UNSIGNED_HASH)
+                        sbi->s_hash_unsigned =3D 3;
+                else if ((i & EXT2_FLAGS_SIGNED_HASH) =3D=3D 0) {
+#ifdef __CHAR_UNSIGNED__
+                        if (!sb_rdonly(sb))
+                                es->s_flags |=3D
+                                        =
+cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
+                        sbi->s_hash_unsigned =3D 3;
+#else
+                        if (!sb_rdonly(sb))
+                                es->s_flags |=3D
+                                        =
+cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
+#endif
+                }
 
-> So we'd need to lock 'source' if it is a directory.
+It looks like this *should* be detecting the unsigned/signed char type
+automatically based on __CHAR_UNSIGNED__, but that isn't working =
+properly
+in this case.  I have no idea whether this is a compiler or kernel =
+issue,
+just thought I'd point out the background of what ext4 is doing here.
 
-Yup, and XFS goes further by always locking the source inode in a
-rename, even if it is not a directory. This ensures the inode being
-moved cannot have it's metadata otherwise modified whilst the rename
-is in progress, even if that modification would have no impact on
-the rename. It's a pretty strict interpretation of "rename is an
-atomic operation", but it avoids accidentally missing nasty corner
-cases like the one described above...
+Cheers, Andreas
 
-> Ideally this would
-> happen in VFS as otherwise I bet a lot of filesystems will get this wrong
-> so could vfs_rename() lock 'source' if it is a dir as well? Essentially
-> this would amount to calling lock_two_nondirectories(source, target)
-> unconditionally but that would become a serious misnomer ;). Al, any
-> thought?
+> e2fsck reports:
+>=20
+> *** fsck.ext4 output ***
+> fsck from util-linux 2.36.1
+> e2fsck 1.46.2 (28-Feb-2021)
+> Pass 1: Checking inodes, blocks, and sizes
+> Extended attribute in inode 131074 has a hash (857950233) which is =
+invalid
+> Clear? no
+>=20
+> Extended attribute in inode 131074 has a hash (736302368) which is =
+invalid
+> Clear? no
+>=20
+> Extended attribute in inode 131074 has a hash (674453032) which is =
+invalid
+> Clear? no
+>=20
+> Extended attribute in inode 131074 has a hash (2299266654) which is =
+invalid
+> Clear? no
+>=20
+> Extended attribute in inode 131074 has a hash (3503002490) which is =
+invalid
+> Clear? no
+>=20
+> < and continues with more of the same >
+>=20
+> The failure bisects to the following commit in -rc1:
+>=20
+> 3bc753c06dd0 ("kbuild: treat char as always unsigned")
+>=20
+> The comment for this commit suggests that it's likely to cause things =
+to
+> break where there has been type misuse for char;  presumably, that's =
+what's
+> happened here.
+>=20
+> Eric
+>=20
 
-XFS just has a function that allows for an arbitrary number of
-inodes to be locked in the given order: xfs_lock_inodes(). For
-rename, the lock order is determined by xfs_sort_for_rename().
 
-Cheers,
+Cheers, Andreas
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+
+
+
+
+
+--Apple-Mail=_E6AB58D9-A35D-4999-8357-C3D05FF9EC98
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAmPHOQ8ACgkQcqXauRfM
+H+A7ww/+KX8Ony4/A0QAS178SGdXM0nVqsMK0fahR+SWCiFNh/Q/2se6sJGgyEPf
+8rEP2VRzvFuWRM8vF91QYSPRzuVHpm/pLqT9/yFb6+vvaqX5gyFhL9m9lq+bpKBI
+cYiRgeC0lVujw7aYpPeTZwP0owmLkFxyVaBdOapAaNoqJMxcmxnJRlCzHAiCDyEU
+q9KNzJk8q2NwVNu8GPDV3ivl5VOHoY+J3k8G/dcV1wbQVxBf6Ym2IOk6kNZQACuH
+IflaXhwBPtg9PmUVPTY4dbkbC2/D0VudxMT+9KQkZ/5OkV1jJeuFF8GnfhG/1Z7W
+YVJs02fphAT1jKjTXNdy4zEH/qDQT7QQdos4dQBqplmOhwfqHuruxS9sMb5H6ykg
+dsQh2Me4Y6wzx/pMZRJbX5q82c6cb5o5l74RsFnG4AqHspeqMtRs37vvgsDh8Fwe
+4D6SUxM/uIQ2aCTTN1RdUScuIG3zu43LIgLGrCAc7ptvMO7s2GxlhGc21e49edIf
+WnLmvBjDnNiLGdAjnWbXaN70Y10xn2fzVX6VmaHQFVlsJk1vml1g7R4dg6gA1jgA
+fSG4DedLhpu1yil5z+npo3ryd2Jua1KnYuHOGUaqs+1cnlgjQSpckNhidp3g5gm2
+6tAkNtmCAIbXv4+TipA4XeNiLX7qxmSJcRR8NWYUeITSzT6Cfqg=
+=ecss
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_E6AB58D9-A35D-4999-8357-C3D05FF9EC98--
