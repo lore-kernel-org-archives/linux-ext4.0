@@ -2,38 +2,38 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 00435C38147
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Jan 2023 13:33:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9F82EC32793
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Jan 2023 13:34:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230353AbjARNdN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 18 Jan 2023 08:33:13 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35788 "EHLO
+        id S229767AbjARNej (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 18 Jan 2023 08:34:39 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35770 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231169AbjARNcz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Jan 2023 08:32:55 -0500
-Received: from galois.linutronix.de (Galois.linutronix.de [193.142.43.55])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4280E8457E;
-        Wed, 18 Jan 2023 04:59:36 -0800 (PST)
+        with ESMTP id S230287AbjARNeW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Jan 2023 08:34:22 -0500
+Received: from galois.linutronix.de (Galois.linutronix.de [IPv6:2a0a:51c0:0:12e:550::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8C5B787644;
+        Wed, 18 Jan 2023 05:01:02 -0800 (PST)
 From:   Thomas Gleixner <tglx@linutronix.de>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linutronix.de;
-        s=2020; t=1674046774;
+        s=2020; t=1674046861;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=Ia5mcSSMCX645DNR37kXbpCtB0DOcgHMBUz20RFHfC4=;
-        b=PgZLyda/qk+zlwhzR6idZiNhlWjQ9dhxCmeT4rrrl2GneTevgb/CsxE+hZPT77/XxN/D3C
-        OdouussxQq3+fqW0hIcz/Ki25tMkMCvzzYDB8pBZcMQlLCpDT5VZb1pVYMSDA/j2hwWryO
-        XALXhf/W98qKDyrndcj1X2VDtSU3suaEkQMvFPFJNRpd3rP5YqRNavHx/iRYRfI3oGDLj7
-        Fyk2vEI66UfwY0KA5lZAxmspc7UiU9mKVU0asexmqh+7rGYFxRvu36Ar6cF1VNhzA334Kh
-        j+N92wF2QwyoojycoKuUH4XjJ9yjXMXivJ1ePjsam5T0B2hbJpAWejPbykJQrw==
+        bh=PvU5ktIQmVNE7PMEvHhaDxnSXDUDDxFR9HB1GTxmaWs=;
+        b=zqvl7Bj+ZRP9DSrW/fabry1GJ6PA3Qs7F0wn8VIaO3nv79rgrCMrMlgJcMINIqL9TcAz6a
+        P8bb+kjC3vFVYjKqtFTr2wq5LoUKf+cRMpTyTa6OFw1uIS842CRMYDilcYo5ld1kHwt+BM
+        Lpk6hvrc0bUAVHQdFG+nNoPV7xV14/Z2zZ+AMPBkDEl1eQpu8xWhx5HxJckCd6It3gtwOp
+        b00/Ba7HLqNcXFVoI9RBqA1XXiX/QSg0sLO/wio0GiDmh9tAQOgXOFfbfIrSWIknG7fvQG
+        dVIxwGYgY4T9XvjdSg8nnQ1rNvaAiKcBKllNi8/QiKvD6BLG71Crj8WAdF07dQ==
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=linutronix.de;
-        s=2020e; t=1674046774;
+        s=2020e; t=1674046861;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=Ia5mcSSMCX645DNR37kXbpCtB0DOcgHMBUz20RFHfC4=;
-        b=twkPO4xqcEqK9BdeHGZeT7P1XO2VXaNzoSGOiyD8GCiyvcCMbRNK/TsG05ivxP6PlVlbsI
-        bMflMGBUtRJ91XBw==
+        bh=PvU5ktIQmVNE7PMEvHhaDxnSXDUDDxFR9HB1GTxmaWs=;
+        b=QXhl89bqfWvcYxf1pYaDR/+FRpRaGdsHvTHK92uTVq3RXeDDH1cKWqHk6Icb4ZDeglUhSq
+        KVsyMn+ekUETd0DQ==
 To:     Byungchul Park <byungchul.park@lge.com>,
         linux-kernel@vger.kernel.org
 Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
@@ -57,13 +57,13 @@ Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
         melissa.srw@gmail.com, hamohammed.sa@gmail.com,
         42.hyeyoo@gmail.com, chris.p.wilson@intel.com,
         gwan-gyeong.mun@intel.com
-Subject: Re: [PATCH RFC v7 07/23] dept: Apply sdt_might_sleep_strong() to
- wait_for_completion()/complete()
-In-Reply-To: <1673235231-30302-8-git-send-email-byungchul.park@lge.com>
+Subject: Re: [PATCH RFC v7 03/23] dept: Add single event dependency tracker
+ APIs
+In-Reply-To: <1673235231-30302-4-git-send-email-byungchul.park@lge.com>
 References: <1673235231-30302-1-git-send-email-byungchul.park@lge.com>
- <1673235231-30302-8-git-send-email-byungchul.park@lge.com>
-Date:   Wed, 18 Jan 2023 13:59:34 +0100
-Message-ID: <87wn5khubt.ffs@tglx>
+ <1673235231-30302-4-git-send-email-byungchul.park@lge.com>
+Date:   Wed, 18 Jan 2023 14:01:01 +0100
+Message-ID: <87tu0ohu9e.ffs@tglx>
 MIME-Version: 1.0
 Content-Type: text/plain
 Precedence: bulk
@@ -71,27 +71,41 @@ List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
 On Mon, Jan 09 2023 at 12:33, Byungchul Park wrote:
-> Makes Dept able to track dependencies by
-> wait_for_completion()/complete().
->
-> In order to obtain the meaningful caller points, replace all the
-> wait_for_completion*() declarations with macros in the header.
+> +/*
+> + * sdt_might_sleep() and its family will be committed in __schedule()
+> + * when it actually gets to __schedule(). Both dept_request_event() and
+> + * dept_wait() will be performed on the commit.
+> + */
+> +
+> +/*
+> + * Use the code location as the class key if an explicit map is not used.
+> + */
+> +#define sdt_might_sleep_strong(m)					\
+> +	do {								\
+> +		struct dept_map *__m = m;				\
+> +		static struct dept_key __key;				\
+> +		dept_stage_wait(__m, __m ? NULL : &__key, _THIS_IP_, __func__, true);\
+> +	} while (0)
+> +
+> +/*
+> + * Use the code location as the class key if an explicit map is not used.
+> + */
+> +#define sdt_might_sleep_weak(m)						\
+> +	do {								\
+> +		struct dept_map *__m = m;				\
+> +		static struct dept_key __key;				\
+> +		dept_stage_wait(__m, __m ? NULL : &__key, _THIS_IP_, __func__, false);\
+> +	} while (0)
+> +
+> +#define sdt_might_sleep_finish()	dept_clean_stage()
+> +
+> +#define sdt_ecxt_enter(m)		dept_ecxt_enter(m, 1UL, _THIS_IP_, "start", "event", 0)
+> +#define sdt_event(m)			dept_event(m, 1UL, _THIS_IP_, __func__)
+> +#define sdt_ecxt_exit(m)		dept_ecxt_exit(m, 1UL, _THIS_IP_)
 
-That's just wrong.
-
-> -extern void wait_for_completion(struct completion *);
-> +extern void raw_wait_for_completion(struct completion *);
-
-> +#define wait_for_completion(x)					\
-> +({								\
-> +	sdt_might_sleep_strong(NULL);				\
-> +	raw_wait_for_completion(x);				\
-> +	sdt_might_sleep_finish();				\
-> +})
-
-The very same can be achieved with a proper annotation which does not
-enforce THIS_IP but allows to use __builtin_return_address($N). That's
-what everything else uses too.
+None of the above comes with a proper documentation of the various
+macros/functions. How should anyone aside of you understand what this is
+about and how this should be used?
 
 Thanks,
 
