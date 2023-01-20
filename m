@@ -2,178 +2,234 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8E0B0C6379F
-	for <linux-ext4@archiver.kernel.org>; Thu, 19 Jan 2023 19:26:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8DD24C004D4
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Jan 2023 00:09:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229728AbjAST0E (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 19 Jan 2023 14:26:04 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41968 "EHLO
+        id S229450AbjATAJh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 19 Jan 2023 19:09:37 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60960 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229876AbjASTZ5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jan 2023 14:25:57 -0500
-Received: from mail-qt1-x835.google.com (mail-qt1-x835.google.com [IPv6:2607:f8b0:4864:20::835])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 46BDC530ED;
-        Thu, 19 Jan 2023 11:25:45 -0800 (PST)
-Received: by mail-qt1-x835.google.com with SMTP id s4so2378091qtx.6;
-        Thu, 19 Jan 2023 11:25:45 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:feedback-id:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=xamYJZSiEPy9Mjo2njH+JPn5/UHZCpsx0WYfjjoyGiY=;
-        b=MrwOCC5ehcze1hpMjcT+s1KhKEgcE4YPuq3yqI1Cm5uRCIw1PUevaLEC6XkTcNhbT9
-         Zw0OvgbmLEFdn1tUM2fjgufvEQCRxf9F5A/ADdKpwTfdOwWf/0FqKiy1RuuQeUDtT2r1
-         WOQNX4WCd5xldt11cYOVTcAYa8grKYNOtlZuJLBY7Hqr8xr25RNCaSO7DWHMR1iJ2wZ4
-         jILLDKWwZP8GiSLOga1KZkHZ1Quhj6gfAe4Q0cx1AezAz9Aw7s1aRjjoXenbgYqQO8nm
-         QgeiFuARK8oNcrVywEUZQ78eB39jl9apcTRWslHRMXoRBD4K3HuCxamntvSxOTPxK4uE
-         BODA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:feedback-id:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=xamYJZSiEPy9Mjo2njH+JPn5/UHZCpsx0WYfjjoyGiY=;
-        b=tq+trOZ8NniRqlPpQ7ZVgULWMFj+94r3w+jkwm10HiVyr9mcUrJ1zM7eWM1RuvhA+J
-         AyiD9Sa8Ldoz3wvlkRJkMH9300p0A/e0MFDMlnGHARDj/0+DlKPcagJ5bXYiWHSt+kzX
-         PzMqIrIfRaPSrIXqtFGORt3MQ0WHbSNtmF4LMbsuAJYlmZD9OwNT4f8fKb18oTh4XFjI
-         p87Dhz2pBuiTEuikcF4jj+o4nmt75pbcPai2AjYAgD/AVjjWH2aci8Nig3JnN4brCfTV
-         Q89Kvvr62SK2CBdPhcxuKwgF2m7EKkdczO1pXLHPt2HOiJiOQeJZ5LlARTOz29kyPn8A
-         SKJg==
-X-Gm-Message-State: AFqh2ko8vWAYA3M0ykHLj3EZ8kOcTjd2Gh/vh+wqy610HCTwbnbroTIh
-        9iKSTNRumdPDf0csLzDAu+SmksT/kbk=
-X-Google-Smtp-Source: AMrXdXv6/5PtZaK3QzptagCsxzBPPETPDBX9eIEhj7kPWY4WuBsc33JbZzxeaNRbDyw281mOZy4DMg==
-X-Received: by 2002:ac8:4446:0:b0:3b6:377b:e05c with SMTP id m6-20020ac84446000000b003b6377be05cmr12291034qtn.47.1674156344292;
-        Thu, 19 Jan 2023 11:25:44 -0800 (PST)
-Received: from auth2-smtp.messagingengine.com (auth2-smtp.messagingengine.com. [66.111.4.228])
-        by smtp.gmail.com with ESMTPSA id ej4-20020a05622a4f8400b003b693fe4427sm727836qtb.90.2023.01.19.11.25.43
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 19 Jan 2023 11:25:43 -0800 (PST)
-Received: from compute6.internal (compute6.nyi.internal [10.202.2.47])
-        by mailauth.nyi.internal (Postfix) with ESMTP id 20B2C27C0054;
-        Thu, 19 Jan 2023 14:25:42 -0500 (EST)
-Received: from mailfrontend1 ([10.202.2.162])
-  by compute6.internal (MEProxy); Thu, 19 Jan 2023 14:25:43 -0500
-X-ME-Sender: <xms:NZnJYwTxwYLfh8N7togMMPPYVeKdqLNSU6cBkqgYw1MVfb1Q7g283w>
-    <xme:NZnJY9xSw9qvXrrAIJEbpvx12Y2TyP_RnRTmtBw-y1f1OYtEkrBMU_4YXAozbQqOh
-    zbQZ0y4tj_ONrG2QQ>
-X-ME-Received: <xmr:NZnJY91HzMP2Iy60XcV_ZcT4yKf2IQY3ocx0fpLzHGwRF2CeF0X43zzN0DQ>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgedvhedruddutddguddviecutefuodetggdotefrod
-    ftvfcurfhrohhfihhlvgemucfhrghsthforghilhdpqfgfvfdpuffrtefokffrpgfnqfgh
-    necuuegrihhlohhuthemuceftddtnecusecvtfgvtghiphhivghnthhsucdlqddutddtmd
-    enucfjughrpeffhffvvefukfhfgggtuggjsehttdertddttddvnecuhfhrohhmpeeuohhq
-    uhhnucfhvghnghcuoegsohhquhhnrdhfvghnghesghhmrghilhdrtghomheqnecuggftrf
-    grthhtvghrnhephedugfduffffteeutddvheeuveelvdfhleelieevtdeguefhgeeuveei
-    udffiedvnecuvehluhhsthgvrhfuihiivgeptdenucfrrghrrghmpehmrghilhhfrhhomh
-    epsghoqhhunhdomhgvshhmthhprghuthhhphgvrhhsohhnrghlihhthidqieelvdeghedt
-    ieegqddujeejkeehheehvddqsghoqhhunhdrfhgvnhhgpeepghhmrghilhdrtghomhesfh
-    higihmvgdrnhgrmhgv
-X-ME-Proxy: <xmx:NZnJY0CTKhGEBWy1veKc6w2hVzbwm1Rf2uZ1Xsyyk9_pC7SbEHDNOw>
-    <xmx:NZnJY5j2rwpIuu1Rn9fBKWIyoQvQrI42uB43xg7d0VHM2TJ04SwWGA>
-    <xmx:NZnJYworf0mYeiLAkASjr3os2e8ECpvW0MlaGgzHEya6_0aWJpdS2A>
-    <xmx:NpnJY464YDfl0tqd71pt0eI__JWNhiE-bQVw-oxLk6HFFui_uQOFPuiI1T8>
-Feedback-ID: iad51458e:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Thu,
- 19 Jan 2023 14:25:40 -0500 (EST)
-Date:   Thu, 19 Jan 2023 11:25:16 -0800
-From:   Boqun Feng <boqun.feng@gmail.com>
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     Byungchul Park <byungchul.park@lge.com>,
-        linux-kernel@vger.kernel.org, torvalds@linux-foundation.org,
-        damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        mingo@redhat.com, peterz@infradead.org, will@kernel.org,
-        tglx@linutronix.de, rostedt@goodmis.org, joel@joelfernandes.org,
-        sashal@kernel.org, daniel.vetter@ffwll.ch, duyuyang@gmail.com,
-        johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
-        david@fromorbit.com, amir73il@gmail.com,
-        gregkh@linuxfoundation.org, kernel-team@lge.com,
-        linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
-        minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com,
-        sj@kernel.org, jglisse@redhat.com, dennis@kernel.org, cl@linux.com,
-        penberg@kernel.org, rientjes@google.com, vbabka@suse.cz,
-        ngupta@vflare.org, linux-block@vger.kernel.org,
-        paolo.valente@linaro.org, josef@toxicpanda.com,
-        linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        jack@suse.cz, jlayton@kernel.org, dan.j.williams@intel.com,
-        hch@infradead.org, djwong@kernel.org,
-        dri-devel@lists.freedesktop.org, rodrigosiqueiramelo@gmail.com,
-        melissa.srw@gmail.com, hamohammed.sa@gmail.com,
-        42.hyeyoo@gmail.com, chris.p.wilson@intel.com,
-        gwan-gyeong.mun@intel.com, max.byungchul.park@gmail.com,
-        longman@redhat.com
-Subject: Re: [PATCH RFC v7 00/23] DEPT(Dependency Tracker)
-Message-ID: <Y8mZHKJV4FH17vGn@boqun-archlinux>
-References: <Y8bmeffIQ3iXU3Ux@boqun-archlinux>
- <1674109388-6663-1-git-send-email-byungchul.park@lge.com>
- <Y8lGxkBrls6qQOdM@casper.infradead.org>
+        with ESMTP id S229379AbjATAJg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jan 2023 19:09:36 -0500
+Received: from sin.source.kernel.org (sin.source.kernel.org [145.40.73.55])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AB96DA25AD
+        for <linux-ext4@vger.kernel.org>; Thu, 19 Jan 2023 16:09:34 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by sin.source.kernel.org (Postfix) with ESMTPS id E5806CE25E5
+        for <linux-ext4@vger.kernel.org>; Fri, 20 Jan 2023 00:09:32 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 27510C433EF
+        for <linux-ext4@vger.kernel.org>; Fri, 20 Jan 2023 00:09:31 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1674173371;
+        bh=OjI+upvB+xdK/9pT790KyMj7CMTs0LWpcJMt3qFhIVM=;
+        h=From:To:Subject:Date:From;
+        b=j0yHKxoO6h9/uKfpot1n93aUfylOJMpUzNHQM86wYbvF7HVo2+DMmnZJ76WUTAZL1
+         i8lPvN4elQktbb8iCUzTm9GyWqQB2Z538j8AoI+raNSsbRn1zxeOHjjG4N7DlVN7zv
+         x1u7vRceBg92jFfGaErV7hL0+Hhgm8Vn8hT2EHWAc8UBIteLWgPXaP3n5DSVLpy6no
+         ck78nWHBLJ5htGMFmEB+GzRlUTGiecNVD0GJdm1buw0oIAzezd60J3smnFNcR0cJWd
+         xeu3RjRu5nVhfTJ0hk5jUIVsa+YsM9GjjjovfFC3p2bvy0mbPxsk7jMw4OUQKG00/C
+         C1Wmq9ca1Fjug==
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-ext4@vger.kernel.org
+Subject: [e2fsprogs PATCH] mk_hugefiles: simplify get_partition_start()
+Date:   Thu, 19 Jan 2023 16:09:21 -0800
+Message-Id: <20230120000921.76265-1-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.39.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <Y8lGxkBrls6qQOdM@casper.infradead.org>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Jan 19, 2023 at 01:33:58PM +0000, Matthew Wilcox wrote:
-> On Thu, Jan 19, 2023 at 03:23:08PM +0900, Byungchul Park wrote:
-> > Boqun wrote:
-> > > *	Looks like the DEPT dependency graph doesn't handle the
-> > > 	fair/unfair readers as lockdep current does. Which bring the
-> > > 	next question.
-> > 
-> > No. DEPT works better for unfair read. It works based on wait/event. So
-> > read_lock() is considered a potential wait waiting on write_unlock()
-> > while write_lock() is considered a potential wait waiting on either
-> > write_unlock() or read_unlock(). DEPT is working perfect for it.
-> > 
-> > For fair read (maybe you meant queued read lock), I think the case
-> > should be handled in the same way as normal lock. I might get it wrong.
-> > Please let me know if I miss something.
-> 
-> From the lockdep/DEPT point of view, the question is whether:
-> 
-> 	read_lock(A)
-> 	read_lock(A)
-> 
-> can deadlock if a writer comes in between the two acquisitions and
-> sleeps waiting on A to be released.  A fair lock will block new
-> readers when a writer is waiting, while an unfair lock will allow
-> new readers even while a writer is waiting.
-> 
+From: Eric Biggers <ebiggers@google.com>
 
-To be more accurate, a fair reader will wait if there is a writer
-waiting for other reader (fair or not) to unlock, and an unfair reader
-won't.
+search_sysfs_block() is causing -Wformat-truncation warnings.  These
+could be fixed by checking the return value of snprintf(), instead of
+doing buggy checks like 'strlen(p_de->d_name) > SYSFS_PATH_LEN -
+strlen(path) - 32', which has an integer underflow bug.
 
-In kernel there are read/write locks that can have both fair and unfair
-readers (e.g. queued rwlock). Regarding deadlocks,
+However, the only purpose of search_sysfs_block() is to find the sysfs
+directory for a block device by device number.  That can trivially be
+done using /sys/dev/block/$major:$minor.  So just do that instead.  Also
+make get_partition_start() explicitly Linux-only, as it has never worked
+anywhere else.
 
-	T0		T1		T2
-	--		--		--
-	fair_read_lock(A);
-			write_lock(B);
-					write_lock(A);
-	write_lock(B);
-			unfair_read_lock(A);
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ misc/mk_hugefiles.c | 131 +++-----------------------------------------
+ 1 file changed, 7 insertions(+), 124 deletions(-)
 
-the above is not a deadlock, since T1's unfair reader can "steal" the
-lock. However the following is a deadlock:
+diff --git a/misc/mk_hugefiles.c b/misc/mk_hugefiles.c
+index 0280b41e7..a7266c8a6 100644
+--- a/misc/mk_hugefiles.c
++++ b/misc/mk_hugefiles.c
+@@ -2,13 +2,8 @@
+  * mk_hugefiles.c -- create huge files
+  */
+ 
+-#define _XOPEN_SOURCE 600 /* for inclusion of PATH_MAX in Solaris */
+-#define _BSD_SOURCE	  /* for makedev() and major() */
+-#define _DEFAULT_SOURCE	  /* since glibc 2.20 _BSD_SOURCE is deprecated */
+-
+ #include "config.h"
+ #include <stdio.h>
+-#include <stdarg.h>
+ #include <string.h>
+ #include <strings.h>
+ #include <fcntl.h>
+@@ -68,141 +63,29 @@ static char *fn_buf;
+ static char *fn_numbuf;
+ int zero_hugefile = 1;
+ 
+-#define SYSFS_PATH_LEN 300
+-typedef char sysfs_path_t[SYSFS_PATH_LEN];
+-
+-#ifndef HAVE_SNPRINTF
+-/*
+- * We are very careful to avoid needing to worry about buffer
+- * overflows, so we don't really need to use snprintf() except as an
+- * additional safety check.  So if snprintf() is not present, it's
+- * safe to fall back to vsprintf().  This provides portability since
+- * vsprintf() is guaranteed by C89, while snprintf() is only
+- * guaranteed by C99 --- which for example, Microsoft Visual Studio
+- * has *still* not bothered to implement.  :-/  (Not that I expect
+- * mke2fs to be ported to MS Visual Studio any time soon, but
+- * libext2fs *does* get built on Microsoft platforms, and we might
+- * want to move this into libext2fs some day.)
+- */
+-static int my_snprintf(char *str, size_t size, const char *format, ...)
+-{
+-	va_list	ap;
+-	int ret;
+-
+-	va_start(ap, format);
+-	ret = vsprintf(str, format, ap);
+-	va_end(ap);
+-	return ret;
+-}
+-
+-#define snprintf my_snprintf
+-#endif
+-
+-/*
+- * Fall back to Linux's definitions of makedev and major are needed.
+- * The search_sysfs_block() function is highly unlikely to work on
+- * non-Linux systems anyway.
+- */
+-#ifndef makedev
+-#define makedev(maj, min) (((maj) << 8) + (min))
+-#endif
+-
+-static char *search_sysfs_block(dev_t devno, sysfs_path_t ret_path)
+-{
+-	struct dirent	*de, *p_de;
+-	DIR		*dir = NULL, *p_dir = NULL;
+-	FILE		*f;
+-	sysfs_path_t	path, p_path;
+-	unsigned int	major, minor;
+-	char		*ret = ret_path;
+-
+-	ret_path[0] = 0;
+-	if ((dir = opendir("/sys/block")) == NULL)
+-		return NULL;
+-	while ((de = readdir(dir)) != NULL) {
+-		if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..") ||
+-		    strlen(de->d_name) > sizeof(path)-32)
+-			continue;
+-		snprintf(path, SYSFS_PATH_LEN,
+-			 "/sys/block/%s/dev", de->d_name);
+-		f = fopen(path, "r");
+-		if (f &&
+-		    (fscanf(f, "%u:%u", &major, &minor) == 2)) {
+-			fclose(f); f = NULL;
+-			if (makedev(major, minor) == devno) {
+-				snprintf(ret_path, SYSFS_PATH_LEN,
+-					 "/sys/block/%s", de->d_name);
+-				goto success;
+-			}
+-#ifdef major
+-			if (major(devno) != major)
+-				continue;
+-#endif
+-		}
+-		if (f)
+-			fclose(f);
+-
+-		snprintf(path, SYSFS_PATH_LEN, "/sys/block/%s", de->d_name);
+-
+-		if (p_dir)
+-			closedir(p_dir);
+-		if ((p_dir = opendir(path)) == NULL)
+-			continue;
+-		while ((p_de = readdir(p_dir)) != NULL) {
+-			if (!strcmp(p_de->d_name, ".") ||
+-			    !strcmp(p_de->d_name, "..") ||
+-			    (strlen(p_de->d_name) >
+-			     SYSFS_PATH_LEN - strlen(path) - 32))
+-				continue;
+-			snprintf(p_path, SYSFS_PATH_LEN, "%s/%s/dev",
+-				 path, p_de->d_name);
+-
+-			f = fopen(p_path, "r");
+-			if (f &&
+-			    (fscanf(f, "%u:%u", &major, &minor) == 2) &&
+-			    (((major << 8) + minor) == devno)) {
+-				fclose(f);
+-				snprintf(ret_path, SYSFS_PATH_LEN, "%s/%s",
+-					 path, p_de->d_name);
+-				goto success;
+-			}
+-			if (f)
+-				fclose(f);
+-		}
+-	}
+-	ret = NULL;
+-success:
+-	if (dir)
+-		closedir(dir);
+-	if (p_dir)
+-		closedir(p_dir);
+-	return ret;
+-}
+-
+ static blk64_t get_partition_start(const char *device_name)
+ {
++#ifdef __linux__
+ 	unsigned long long start;
+-	sysfs_path_t	path;
++	char		path[128];
+ 	struct stat	st;
+ 	FILE		*f;
+-	char		*cp;
+ 	int		n;
+ 
+ 	if ((stat(device_name, &st) < 0) || !S_ISBLK(st.st_mode))
+ 		return 0;
+ 
+-	cp = search_sysfs_block(st.st_rdev, path);
+-	if (!cp)
+-		return 0;
+-	if (strlen(path) > SYSFS_PATH_LEN - sizeof("/start"))
+-		return 0;
+-	strcat(path, "/start");
++	sprintf(path, "/sys/dev/block/%d:%d/start",
++		major(st.st_rdev), minor(st.st_rdev));
+ 	f = fopen(path, "r");
+ 	if (!f)
+ 		return 0;
+ 	n = fscanf(f, "%llu", &start);
+ 	fclose(f);
+ 	return (n == 1) ? start : 0;
++#else
++	return 0;
++#endif
+ }
+ 
+ static errcode_t create_directory(ext2_filsys fs, char *dir,
 
-	T0		T1		T2
-	--		--		--
-	unfair_read_lock(A);
-			write_lock(B);
-					write_lock(A);
-	write_lock(B);
-			fair_read_lock(A);
+base-commit: 6695555e50a374f897965300568253f242a0b13b
+-- 
+2.39.0
 
-, since T'1 fair reader will wait.
-
-FWIW, lockdep is able to catch this (figuring out which is deadlock and
-which is not) since two years ago, plus other trivial deadlock detection
-for read/write locks. Needless to say, if lib/lock-selftests.c was given
-a try, one could find it out on one's own.
-
-Regards,
-Boqun
