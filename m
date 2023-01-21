@@ -2,31 +2,31 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 43F72C38159
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 06:58:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AA230C004D4
+	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 06:58:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230012AbjAUG6V (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Jan 2023 01:58:21 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44486 "EHLO
+        id S229737AbjAUG63 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Jan 2023 01:58:29 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44456 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229902AbjAUG6T (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 01:58:19 -0500
+        with ESMTP id S229947AbjAUG6V (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 01:58:21 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B5B8A611EA;
-        Fri, 20 Jan 2023 22:58:10 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 240B06C105;
+        Fri, 20 Jan 2023 22:58:16 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=YYpS3Y5p5Tks64mwSZy8Ca3HveuDUE7eUAUp6nFbmxA=; b=i34OoNOiuOAMqsVR5goGoV7AAN
-        68Fu9N8d4Dw7F1z2fIjIM+x1l580f1YXaquY4Wcl9zjTXWB6O/JrNkq55Pe95jE7djhGlJa6sDDvk
-        CAUzPFbOqqw6RhDYLJUEnFXlj6vPwYQWaLCHnfMcnwurzh6cv9vB+okzKJoHtlY3dHYFk2Sjh8ZJ2
-        AvAENi9Ag/pAooPiFgszDIENS+ujLdYXF5Ajyjr46LHZ9X+EojW2hDgdnAyu1mF8ueZvkO+J2isnX
-        y07MeXsZtQ4PV15Zxm2OTXsFJhWD28Muv18kQZKaxIVXaCsqF5IKhlIatUTuFgyOGZcDXns7qhVXX
-        huf1HbyA==;
+        bh=72dbPnQldghXJsWt6hBZ/ADNkiEKaZsKzxCkekJEdAU=; b=EwtGJdYhbY2t5msbayuhoiWkpe
+        t6MwHMua7C4MCPLQpu3tFasW+WmUYj7lC4AOYQnwz08fambYeKpMPRiROaZQd5HO+QYqJCB1TNKNy
+        NDrFLEbFZd7oXPqhg22FKmQ/iZyvTzrfDVoCr7fi/kMrj5I5xwyScolm4xH6P4xCA8wakx0Djui6w
+        5gGQm0cHzgcYY4fVBu0uPaBIxMKCzwsH1+EMy0qjvlNu7sv+t/x+2tPkuaoQrrof7B6CQmFfx/lm6
+        cNXGZSlwSjg0xTj8OBxNz35zWnQF3+xHMG9XkqAuteCgpWjW/af6YwE6nakL4Pe/4B+KdbLazR4zp
+        PKWk1kjg==;
 Received: from [2001:4bb8:19a:2039:6754:cc81:9ace:36fc] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pJ7pI-00DSPB-Bf; Sat, 21 Jan 2023 06:58:08 +0000
+        id 1pJ7pN-00DSRH-Cq; Sat, 21 Jan 2023 06:58:14 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Andrew Morton <akpm@linux-foundation.org>,
         Matthew Wilcox <willy@infradead.org>,
@@ -35,9 +35,9 @@ Cc:     linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
         linux-ext4@vger.kernel.org, cluster-devel@redhat.com,
         linux-mm@kvack.org, linux-xfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nilfs@vger.kernel.org
-Subject: [PATCH 4/7] shmem: remove shmem_get_partial_folio
-Date:   Sat, 21 Jan 2023 07:57:52 +0100
-Message-Id: <20230121065755.1140136-5-hch@lst.de>
+Subject: [PATCH 6/7] mm: remove FGP_ENTRY
+Date:   Sat, 21 Jan 2023 07:57:54 +0100
+Message-Id: <20230121065755.1140136-7-hch@lst.de>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230121065755.1140136-1-hch@lst.de>
 References: <20230121065755.1140136-1-hch@lst.de>
@@ -48,115 +48,70 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add a new SGP_FIND mode for shmem_get_partial_folio that works like
-SGP_READ, but does not check i_size.  Use that instead of open coding
-the page cache lookup in shmem_get_partial_folio.  Note that this is
-a behavior change in that it reads in swap cache entries for offsets
-outside i_size, possibly causing a little bit of extra work.
+FGP_ENTRY is unused now, so remove it.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/shmem_fs.h |  1 +
- mm/shmem.c               | 46 ++++++++++++----------------------------
- 2 files changed, 15 insertions(+), 32 deletions(-)
+ include/linux/pagemap.h | 3 +--
+ mm/filemap.c            | 7 +------
+ mm/folio-compat.c       | 4 ++--
+ 3 files changed, 4 insertions(+), 10 deletions(-)
 
-diff --git a/include/linux/shmem_fs.h b/include/linux/shmem_fs.h
-index d09d54be4ffd99..7ba160ac066e5e 100644
---- a/include/linux/shmem_fs.h
-+++ b/include/linux/shmem_fs.h
-@@ -105,6 +105,7 @@ enum sgp_type {
- 	SGP_CACHE,	/* don't exceed i_size, may allocate page */
- 	SGP_WRITE,	/* may exceed i_size, may allocate !Uptodate page */
- 	SGP_FALLOC,	/* like SGP_WRITE, but make existing page Uptodate */
-+	SGP_FIND,	/* like SGP_READ, but also read outside i_size */
- };
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 24dedf6b12be49..e2208ee36966ea 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -504,8 +504,7 @@ pgoff_t page_cache_prev_miss(struct address_space *mapping,
+ #define FGP_NOFS		0x00000010
+ #define FGP_NOWAIT		0x00000020
+ #define FGP_FOR_MMAP		0x00000040
+-#define FGP_ENTRY		0x00000080
+-#define FGP_STABLE		0x00000100
++#define FGP_STABLE		0x00000080
  
- int shmem_get_folio(struct inode *inode, pgoff_t index, struct folio **foliop,
-diff --git a/mm/shmem.c b/mm/shmem.c
-index de6fa3980c7d6b..a8371ffeeee54a 100644
---- a/mm/shmem.c
-+++ b/mm/shmem.c
-@@ -877,27 +877,6 @@ void shmem_unlock_mapping(struct address_space *mapping)
- 	}
- }
+ void *filemap_get_entry(struct address_space *mapping, pgoff_t index);
+ struct folio *__filemap_get_folio(struct address_space *mapping, pgoff_t index,
+diff --git a/mm/filemap.c b/mm/filemap.c
+index ed0583f9e27512..35baadd130795c 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1889,8 +1889,6 @@ void *filemap_get_entry(struct address_space *mapping, pgoff_t index)
+  *
+  * * %FGP_ACCESSED - The folio will be marked accessed.
+  * * %FGP_LOCK - The folio is returned locked.
+- * * %FGP_ENTRY - If there is a shadow / swap / DAX entry, return it
+- *   instead of allocating a new folio to replace it.
+  * * %FGP_CREAT - If no page is present then a new page is allocated using
+  *   @gfp and added to the page cache and the VM's LRU list.
+  *   The page is returned locked and with an increased refcount.
+@@ -1916,11 +1914,8 @@ struct folio *__filemap_get_folio(struct address_space *mapping, pgoff_t index,
  
--static struct folio *shmem_get_partial_folio(struct inode *inode, pgoff_t index)
--{
--	struct folio *folio;
--
--	/*
--	 * At first avoid shmem_get_folio(,,,SGP_READ): that fails
--	 * beyond i_size, and reports fallocated pages as holes.
--	 */
--	folio = __filemap_get_folio(inode->i_mapping, index,
--					FGP_ENTRY | FGP_LOCK, 0);
--	if (!xa_is_value(folio))
--		return folio;
--	/*
--	 * But read a page back from swap if any of it is within i_size
--	 * (although in some cases this is just a waste of time).
--	 */
--	folio = NULL;
--	shmem_get_folio(inode, index, &folio, SGP_READ);
--	return folio;
--}
--
- /*
-  * Remove range of pages and swap entries from page cache, and free them.
-  * If !unfalloc, truncate or punch hole; if unfalloc, undo failed fallocate.
-@@ -957,7 +936,8 @@ static void shmem_undo_range(struct inode *inode, loff_t lstart, loff_t lend,
- 		goto whole_folios;
- 
- 	same_folio = (lstart >> PAGE_SHIFT) == (lend >> PAGE_SHIFT);
--	folio = shmem_get_partial_folio(inode, lstart >> PAGE_SHIFT);
-+	folio = NULL;
-+	shmem_get_folio(inode, lstart >> PAGE_SHIFT, &folio, SGP_FIND);
- 	if (folio) {
- 		same_folio = lend < folio_pos(folio) + folio_size(folio);
- 		folio_mark_dirty(folio);
-@@ -971,14 +951,16 @@ static void shmem_undo_range(struct inode *inode, loff_t lstart, loff_t lend,
+ repeat:
+ 	folio = filemap_get_entry(mapping, index);
+-	if (xa_is_value(folio)) {
+-		if (fgp_flags & FGP_ENTRY)
+-			return folio;
++	if (xa_is_value(folio))
  		folio = NULL;
- 	}
+-	}
+ 	if (!folio)
+ 		goto no_page;
  
--	if (!same_folio)
--		folio = shmem_get_partial_folio(inode, lend >> PAGE_SHIFT);
--	if (folio) {
--		folio_mark_dirty(folio);
--		if (!truncate_inode_partial_folio(folio, lstart, lend))
--			end = folio->index;
--		folio_unlock(folio);
--		folio_put(folio);
-+	if (!same_folio) {
-+		folio = NULL;
-+		shmem_get_folio(inode, lend >> PAGE_SHIFT, &folio, SGP_FIND);
-+		if (folio) {
-+			folio_mark_dirty(folio);
-+			if (!truncate_inode_partial_folio(folio, lstart, lend))
-+				end = folio->index;
-+			folio_unlock(folio);
-+			folio_put(folio);
-+		}
- 	}
+diff --git a/mm/folio-compat.c b/mm/folio-compat.c
+index 18c48b55792635..f3841b4977b68e 100644
+--- a/mm/folio-compat.c
++++ b/mm/folio-compat.c
+@@ -97,8 +97,8 @@ struct page *pagecache_get_page(struct address_space *mapping, pgoff_t index,
+ 	struct folio *folio;
  
- whole_folios:
-@@ -1900,7 +1882,7 @@ static int shmem_get_folio_gfp(struct inode *inode, pgoff_t index,
- 		if (folio_test_uptodate(folio))
- 			goto out;
- 		/* fallocated folio */
--		if (sgp != SGP_READ)
-+		if (sgp != SGP_READ && sgp != SGP_FIND)
- 			goto clear;
- 		folio_unlock(folio);
- 		folio_put(folio);
-@@ -1911,7 +1893,7 @@ static int shmem_get_folio_gfp(struct inode *inode, pgoff_t index,
- 	 * SGP_NOALLOC: fail on hole, with NULL folio, letting caller fail.
- 	 */
- 	*foliop = NULL;
--	if (sgp == SGP_READ)
-+	if (sgp == SGP_READ || sgp == SGP_FIND)
- 		return 0;
- 	if (sgp == SGP_NOALLOC)
- 		return -ENOENT;
+ 	folio = __filemap_get_folio(mapping, index, fgp_flags, gfp);
+-	if (!folio || xa_is_value(folio))
+-		return &folio->page;
++	if (!folio)
++		return NULL;
+ 	return folio_file_page(folio, index);
+ }
+ EXPORT_SYMBOL(pagecache_get_page);
 -- 
 2.39.0
 
