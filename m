@@ -2,40 +2,42 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 899AFC38142
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:37:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 44848C54E94
+	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:37:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229895AbjAUUhP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Jan 2023 15:37:15 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52590 "EHLO
+        id S230007AbjAUUhR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Jan 2023 15:37:17 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52616 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230006AbjAUUgt (ORCPT
+        with ESMTP id S230008AbjAUUgt (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:49 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 14A9329176
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DD80B29400
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:45 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id A43AA60B92
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:44 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6CAE9C433EF
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:44 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 8873D60B6F
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:45 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 43D36C433A1;
+        Sat, 21 Jan 2023 20:36:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674333404;
-        bh=VEkoFq9DgQ/t9PgvjnI05sXJeWdbDnvI1z7dx9j6ORI=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=QKTyeFqKJTgVz/2ybdDJkBkseGND2s+vADrnwlaxeOWHgPD9nSHGVJO8xCllOakid
-         YhIiPDI2wi5RMCI5N7tC9tfXiLHoj4Io34/bjy+1dxGHWhBxyTPVGFaUl/H0N7SwDi
-         KLjWD5begeqGBXpWj4AqBsgrU0+vd87JPiGHb/LpNNhbasTWT2fTVWHHzEB21ifqP2
-         yErNCS8ZltB/OnPZk0fY8Y92q5Kp/cF0P6PpG7nUI8uXq4uY7UIh8qKpXSGytaaU58
-         nSYP5Ce9QpkkV9MQAnY4Cm1Kp1ph1PM9FVnJddp3FJy1XcWdKHCe8SL2vvM+BzBMNQ
-         B5J+is2gez01g==
+        s=k20201202; t=1674333405;
+        bh=SBCJzKRGKr2mo1lvVTXZL+ohtZ1777FKKIEY4Px0uhE=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=BHs72LE4o1ibFawv7A/FhoCcxlwJ1R3iEZTIsZZdjVUX/ZTTFjIq6W3xNHyqiqmp0
+         n8WkiOtqi+pNVNpGI20MhmwFIQmTv8g6nvf4K6yM6HUnUZl+wAnFZ0pCCzsHGqAaVq
+         SwLwmWEBS4gGQPEg5c5ynmrMpDw/5+9R9qoT4emukMHfjthqw0SBxOXH/r5kmq6ec2
+         tOAqpUlQflwkcgqJyoat3iim5Tgy4uuEnTtYNc7LQnL9iJiJmxWLOt8atGpymiQ+o/
+         VITT1Ztj0uhpoeKWGojEO8gRiRO3XWorx+H9ruQ73+df1ccOhUXNFUKgglY2M1BDlC
+         1ER8YhRRDI8OA==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 30/38] misc/fuse2fs: avoid error-prone strncpy() pattern
-Date:   Sat, 21 Jan 2023 12:32:22 -0800
-Message-Id: <20230121203230.27624-31-ebiggers@kernel.org>
+Cc:     Jeremy Bongio <bongiojp@gmail.com>,
+        Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 34/38] misc/tune2fs: fix setting fsuuid::fsu_len
+Date:   Sat, 21 Jan 2023 12:32:26 -0800
+Message-Id: <20230121203230.27624-35-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230121203230.27624-1-ebiggers@kernel.org>
 References: <20230121203230.27624-1-ebiggers@kernel.org>
@@ -47,36 +49,36 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-'strncpy(dst, src, strlen(src))' is usually wrong, as it doesn't copy
-the null terminator.  For this reason, it causes a -Wstringop-truncation
-warning with gcc 8 and later.
+Minus does not mean equals.
 
-The code happens to be correct anyway, since the destination buffer is
-zero-initialized.  But to avoid relying on this, let's just copy the
-terminating null.
+Besides fixing an obvious bug, this avoids the following compiler
+warning with clang -Wall:
 
+tune2fs.c:3625:20: warning: expression result unused [-Wunused-value]
+                        fsuuid->fsu_len - UUID_SIZE;
+                        ~~~~~~~~~~~~~~~ ^ ~~~~~~~~~
+
+Fixes: a83e199da0ca ("tune2fs: Add support for get/set UUID ioctls.")
+Reviewed-by: Jeremy Bongio <bongiojp@gmail.com>
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- misc/fuse2fs.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ misc/tune2fs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
-index c59572129..6d4bcf4fd 100644
---- a/misc/fuse2fs.c
-+++ b/misc/fuse2fs.c
-@@ -2508,9 +2508,10 @@ static int copy_names(char *name, char *value EXT2FS_ATTR((unused)),
- 		      size_t value_len EXT2FS_ATTR((unused)), void *data)
- {
- 	char **b = data;
-+	size_t name_len = strlen(name);
- 
--	strncpy(*b, name, strlen(name));
--	*b = *b + strlen(name) + 1;
-+	memcpy(*b, name, name_len + 1);
-+	*b = *b + name_len + 1;
- 
- 	return 0;
- }
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 088f87e53..7937b8b56 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -3622,7 +3622,7 @@ _("Warning: The journal is dirty. You may wish to replay the journal like:\n\n"
+ 		ret = -1;
+ #ifdef __linux__
+ 		if (fsuuid) {
+-			fsuuid->fsu_len - UUID_SIZE;
++			fsuuid->fsu_len = UUID_SIZE;
+ 			fsuuid->fsu_flags = 0;
+ 			memcpy(&fsuuid->fsu_uuid, new_uuid, UUID_SIZE);
+ 			ret = ioctl(fd, EXT4_IOC_SETFSUUID, fsuuid);
 -- 
 2.39.0
 
