@@ -2,40 +2,40 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 74061C54EB4
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:36:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4FB15C38142
+	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:36:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229866AbjAUUgo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S229875AbjAUUgo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Sat, 21 Jan 2023 15:36:44 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52394 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52400 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229706AbjAUUgm (ORCPT
+        with ESMTP id S229493AbjAUUgm (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:42 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 23CB829143
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 23B8729142
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:41 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id A81AD60B6C
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:40 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 70472C4339B
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:40 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id C1E13B80862
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:39 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 65963C4339C
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674333400;
-        bh=6vaEcMU11C00JgLvJinTeK77gDvStZvOlqFTbREyXSM=;
+        s=k20201202; t=1674333398;
+        bh=EQHzEyg22Gzigjwzdy0o6sn2XHp/O9QfU3MfLeTNFFo=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=JCzwUxp8O1RrY0XzQ5C/7gJrIHHCf8jyBgR90U1nLLGr8upbLKds6GGt7zg+Slrsc
-         WlOdC6xvOOw4QnSMb3Wrjb30k/6SvPRJ3N2wMpmolR2sihQ31MVwqjSpUYvQQ63cX1
-         0be6GKhf3pKlZpTmT2azYEP0ZDp7YRLZRJYovJook9uQo1M15AqeOquBxcos85oJ8i
-         RACvb+k4fmD2IE/so4YHFLtfMUKVzWQit/NuwI/lJyG7RZN4elkpbqNSHx+P6RIUgH
-         INHixUNzYuDdGAC9CK8n1w3rHyGqHXqvaFY/+wP9snUceth1PtgaIsJFnbivv41RG5
-         UcB4sxFbD51Hw==
+        b=qM+qDqyqo8KmF+CBMm9hznOW4N7MOxBVr5noMBwNX0bgEI14unmx2wgKGagRxQ1RX
+         PT0LQ4Od6C4kOVqU5ALTqvoo75TozxvOz8sqWUCJvbUrznqfZHBk3kZ00IN5DA801S
+         s4w1XTu0WEt2M4ixqcBcK3aYr+RFjBWEEJFuGZliVes6gvZ2kXQE8bXEOfsJwJQ/R3
+         saTgF6o9ITd+s+EAQTRyIYWM0F5Vmrbc7BMcdjLYwNOgBJZwPTPM+yTMQO17wRF9H+
+         FTz/8kNm42jK9VexMLvY6GkpGkkO/8YMmoWD52Ve9pn9hADP+PbCjO/tAZExg65/y5
+         uZSsetWs/wA6A==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 11/38] lib/blkid: suppress -Wstringop-truncation warning in blkid_strndup()
-Date:   Sat, 21 Jan 2023 12:32:03 -0800
-Message-Id: <20230121203230.27624-12-ebiggers@kernel.org>
+Subject: [PATCH 01/38] configure.ac: only use Windows I/O manager on native Windows
+Date:   Sat, 21 Jan 2023 12:31:53 -0800
+Message-Id: <20230121203230.27624-2-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230121203230.27624-1-ebiggers@kernel.org>
 References: <20230121203230.27624-1-ebiggers@kernel.org>
@@ -47,44 +47,31 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Unfortunately, gcc gets confused by blkid_strndup() and incorrectly
-thinks the destination string is not being null-terminated.  This is
-part of -Wstringop-truncation, enabled automatically by -Wall in gcc 8
-and later.  Let's just suppress this warning here.
+Cygwin and MSYS2 are UNIX-compatible platforms on top of Windows, so
+they should use the UNIX I/O manager, not the Windows I/O manager.
 
+(Note that "cygwin" was misspelled as "cigwin", so the code did not have
+the intended effect anyway.)
+
+Fixes: d1d44c146a5e ("ext2fs: compile the io implementation according to os")
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- lib/blkid/devno.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ configure.ac | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/lib/blkid/devno.c b/lib/blkid/devno.c
-index 34ceb3c48..b1cadc9df 100644
---- a/lib/blkid/devno.c
-+++ b/lib/blkid/devno.c
-@@ -37,6 +37,12 @@
- 
- #include "blkidP.h"
- 
-+#if defined(__GNUC__) && __GNUC__ >= 8
-+/* gcc incorrectly thinks the destination string is not being null-terminated */
-+#pragma GCC diagnostic push
-+#pragma GCC diagnostic ignored "-Wstringop-truncation"
-+#endif
-+
- char *blkid_strndup(const char *s, int length)
- {
- 	char *ret;
-@@ -55,6 +61,10 @@ char *blkid_strndup(const char *s, int length)
- 	return ret;
- }
- 
-+#if defined(__GNUC__) && __GNUC__ >= 8
-+#pragma GCC diagnostic pop
-+#endif
-+
- char *blkid_strdup(const char *s)
- {
- 	return blkid_strndup(s, 0);
+diff --git a/configure.ac b/configure.ac
+index 78f71fd8e..5f440f1fc 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1826,7 +1826,7 @@ dnl Adjust the compiled files if we are on windows vs everywhere else
+ dnl
+ OS_IO_FILE=""
+ [case "$host_os" in
+-  cigwin*|mingw*|msys*)
++  mingw*)
+     OS_IO_FILE=windows_io
+   ;;
+   *)
 -- 
 2.39.0
 
