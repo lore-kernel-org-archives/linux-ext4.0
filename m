@@ -2,40 +2,40 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 71C89C54E94
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:36:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 939EAC54EED
+	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:36:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229680AbjAUUgm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Jan 2023 15:36:42 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52378 "EHLO
+        id S229764AbjAUUgn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Jan 2023 15:36:43 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52392 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229493AbjAUUgl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:41 -0500
+        with ESMTP id S229687AbjAUUgm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:42 -0500
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C8A3128D32
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:40 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0263D28D3E
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:41 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 60B4960B6A
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 8038760ADD
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:40 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6FCD3C433A4
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D2018C4339E
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=k20201202; t=1674333399;
-        bh=HX09Cuo3sj19yD8wnataeATkDbzkFtj6TJWC2V9XPIc=;
+        bh=IRtFKx1Qv/BeXJIpY4N5ZFn3oUsQkx1zaMi9+y9XAAM=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=uYK9Ybb9I7MRM7DKODLzf3D4azE9ezFH8wlQXSZ1fn0XX8nobVsK4SF0I+8kH0FXi
-         9lZkWeAfZeVujd2DnO3zVyDNP3qYb902BsjO+cR+O9g+koxBHNkixL9wPzdeXeKQeI
-         /TzWwQO93ytSUNTkiZyQm+xDzOXK8KIAIhxTQaVRQ+xLkrwI9lUiIXRD23uG93GpBB
-         /qTqo/b3JWIfvovv3ak8kNNYywLtirRhPmISF6H5UCDbL5amAU8Ck7whO9VouI2EGQ
-         6mlnwFaH36abt2WoVx8DDBMeyBXjhG/HnVZcVfGtUX+pYS5evBf9UVZOPZpypKEcll
-         5fNDfoQCS+tVQ==
+        b=hB2pT9IoMRtbID42+4+nFdbMbwplG3jCUwO0ij0o4ve/PNKvbjsQBlYzj5ma+ik8g
+         xGik4EKvKiSMhzlVVK/vPy9SkbkvN7sYsifzgxzfqu8/9C8qTvel+Igi3+Ki5L0qav
+         fcAT0I5z95hYrlNsdmFs5+mXrdSe9EVayWFUqbQ0bTrDcoNzsgajFvN5JsbAiKlVe9
+         KSxGdYRyRbrGWR5GMSwSx27ETD1DGHpEL0X3YlZUXAURFLJMnMkcAmUiwW5akO4zgt
+         skWcIE+Gt5m987ED18uG731+aXr3HIHOxtm4iNLu9uXaba0IldYYWOWXbCYE6zAOAh
+         82IUYX2AIfJKg==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 06/38] lib, misc: eliminate dependency on Winsock
-Date:   Sat, 21 Jan 2023 12:31:58 -0800
-Message-Id: <20230121203230.27624-7-ebiggers@kernel.org>
+Subject: [PATCH 08/38] lib/blkid: fix unaligned access to hfs_mdb
+Date:   Sat, 21 Jan 2023 12:32:00 -0800
+Message-Id: <20230121203230.27624-9-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230121203230.27624-1-ebiggers@kernel.org>
 References: <20230121203230.27624-1-ebiggers@kernel.org>
@@ -47,105 +47,65 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Currently Windows builds of e2fsprogs rely on the Windows Socket API
-(Winsock) to provide htonl() and ntohl().  For this to actually work,
-though, HAVE_WINSOCK_H needs to be defined, and the binaries need to be
-linked to -lws2_32.  The Android.bp files do this; however, the
-autotools-based build system does not.
+With -Wall, gcc warns:
 
-Since htonl() and ntohl() are trivial, let's instead just add a file
-include/mingw/arpa/inet.h with definitions for these.
+      ./probe.c:1209:42: error: taking address of packed member of
+               'struct hfs_mdb' may result in an unaligned pointer value
+
+This seems to be a real unaligned memory access bug, as the offset of
+the 64-bit value from the start of the buffer is 116, which is not a
+multiple of 8.  Fix it by using memcpy().
+
+Do the same for hfsplus to fix the same warning, though in that case the
+offset is a multiple of 8 so it was defined behavior.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- include/mingw/arpa/inet.h | 5 +++++
- lib/e2p/Android.bp        | 4 ----
- lib/ext2fs/Android.bp     | 2 --
- lib/ext2fs/jfs_compat.h   | 4 ----
- misc/Android.bp           | 1 -
- util/android_config.h     | 1 -
- 6 files changed, 5 insertions(+), 12 deletions(-)
- create mode 100644 include/mingw/arpa/inet.h
+ lib/blkid/probe.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
 
-diff --git a/include/mingw/arpa/inet.h b/include/mingw/arpa/inet.h
-new file mode 100644
-index 000000000..55dfa3691
---- /dev/null
-+++ b/include/mingw/arpa/inet.h
-@@ -0,0 +1,5 @@
-+#pragma once
-+
-+/* Windows is always little endian. */
-+#define htonl	__builtin_bswap32
-+#define ntohl	__builtin_bswap32
-diff --git a/lib/e2p/Android.bp b/lib/e2p/Android.bp
-index 6f0620af0..050d869b3 100644
---- a/lib/e2p/Android.bp
-+++ b/lib/e2p/Android.bp
-@@ -59,10 +59,6 @@ cc_library {
-                 "-Wno-unused-variable",
-                 "-Wno-error=typedef-redefinition",
-             ],
--
--            host_ldlibs: [
--                "-lws2_32",
--            ],
-         },
-     },
+diff --git a/lib/blkid/probe.c b/lib/blkid/probe.c
+index b8b6558e3..6a3bb2478 100644
+--- a/lib/blkid/probe.c
++++ b/lib/blkid/probe.c
+@@ -1198,7 +1198,6 @@ static int probe_hfs(struct blkid_probe *probe __BLKID_ATTR((unused)),
+ 			 unsigned char *buf)
+ {
+ 	struct hfs_mdb *hfs = (struct hfs_mdb *)buf;
+-	unsigned long long *uuid_ptr;
+ 	char	uuid_str[17];
+ 	__u64	uuid;
  
-diff --git a/lib/ext2fs/Android.bp b/lib/ext2fs/Android.bp
-index 365ca709f..eb4482d79 100644
---- a/lib/ext2fs/Android.bp
-+++ b/lib/ext2fs/Android.bp
-@@ -126,8 +126,6 @@ cc_library {
-                 "-Wno-unused-variable",
-                 "-Wno-error=typedef-redefinition",
-             ],
--
--            host_ldlibs: ["-lws2_32"],
-         },
-     },
+@@ -1206,8 +1205,8 @@ static int probe_hfs(struct blkid_probe *probe __BLKID_ATTR((unused)),
+ 	    (memcmp(hfs->embed_sig, "HX", 2) == 0))
+ 		return 1;	/* Not hfs, but an embedded HFS+ */
  
-diff --git a/lib/ext2fs/jfs_compat.h b/lib/ext2fs/jfs_compat.h
-index e11cf494e..0e96b56c1 100644
---- a/lib/ext2fs/jfs_compat.h
-+++ b/lib/ext2fs/jfs_compat.h
-@@ -7,11 +7,7 @@
- #ifdef HAVE_NETINET_IN_H
- #include <netinet/in.h>
- #endif
--#ifdef HAVE_WINSOCK_H
--#include <winsock.h>
--#else
- #include <arpa/inet.h>
--#endif
- #include <stdbool.h>
+-	uuid_ptr = (unsigned long long *)hfs->finder_info.id;
+-	uuid = blkid_le64(*uuid_ptr);
++	memcpy(&uuid, hfs->finder_info.id, 8);
++	uuid = blkid_le64(uuid);
+ 	if (uuid) {
+ 		sprintf(uuid_str, "%016llX", uuid);
+ 		blkid_set_tag(probe->dev, "UUID", uuid_str, 0);
+@@ -1243,7 +1242,6 @@ static int probe_hfsplus(struct blkid_probe *probe,
+ 	unsigned int leaf_node_size;
+ 	unsigned int leaf_block;
+ 	unsigned int label_len;
+-	unsigned long long *uuid_ptr;
+ 	__u64 leaf_off, uuid;
+ 	char	uuid_str[17], label[512];
+ 	int ext;
+@@ -1274,8 +1272,8 @@ static int probe_hfsplus(struct blkid_probe *probe,
+ 	    (memcmp(hfsplus->signature, "HX", 2) != 0))
+ 		return 1;
  
- #define printk printf
-diff --git a/misc/Android.bp b/misc/Android.bp
-index 78e18e420..2baeac2ad 100644
---- a/misc/Android.bp
-+++ b/misc/Android.bp
-@@ -91,7 +91,6 @@ cc_binary {
-                 "-Wno-error"
-             ],
-             ldflags: ["-static"],
--            host_ldlibs: ["-lws2_32"],
-             enabled: true
-         },
-         android: {
-diff --git a/util/android_config.h b/util/android_config.h
-index 6ac16fec1..90b8f8a8f 100644
---- a/util/android_config.h
-+++ b/util/android_config.h
-@@ -36,7 +36,6 @@
- 
- #if defined(_WIN32)
- # define HAVE_LINUX_TYPES_H 1
--# define HAVE_WINSOCK_H 1
- #endif
- #if defined(__APPLE__) || defined(__linux__)
- # define HAVE_FCNTL 1
+-	uuid_ptr = (unsigned long long *)hfsplus->finder_info.id;
+-	uuid = blkid_le64(*uuid_ptr);
++	memcpy(&uuid, hfsplus->finder_info.id, 8);
++	uuid = blkid_le64(uuid);
+ 	if (uuid) {
+ 		sprintf(uuid_str, "%016llX", uuid);
+ 		blkid_set_tag(probe->dev, "UUID", uuid_str, 0);
 -- 
 2.39.0
 
