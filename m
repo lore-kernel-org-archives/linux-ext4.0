@@ -2,40 +2,40 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5B19AC54EAA
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:37:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8ACADC38142
+	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:37:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230086AbjAUUhS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Jan 2023 15:37:18 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52620 "EHLO
+        id S230090AbjAUUhT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Jan 2023 15:37:19 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52592 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230011AbjAUUgt (ORCPT
+        with ESMTP id S229853AbjAUUgt (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:49 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DD9D829403
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:45 -0800 (PST)
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2208F29405
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:46 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id B218760B07
+        by dfw.source.kernel.org (Postfix) with ESMTPS id E98E760ADD
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:45 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 129D5C433EF
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B2D3EC4339C
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=k20201202; t=1674333405;
-        bh=BHlFdsm+U4LzKUPj9OwfoZOYeQ7WU/+UY8dOM0bSebE=;
+        bh=G0jzgh7IdyeVDxBwCIN9i7zDEFV94xVS5Dm7rVHXGvg=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=aZOCkfwBZxehZlEDlb0iP79onRFrHkhJO8rA+SSkNh+8e2UbKGRSg5oiD83Sd/3Zs
-         XYDnQBRNBk34f6icbcWNOr9vPD2QGvBWANZqtjILTFPokkE2X9ABZ1al5eGOYp0Xvi
-         EajX28hjAqSHPBCBrxmrDJD52aanPO/mEyh+r7iuGIGYTuNUph6qr/yoEsqdNiuDsH
-         0HXmywRF04JUzfLMQM4LaKGAvFdAe23+8332s/kvrEs0zHZPd6p3Pp5j1O/gMfLrJR
-         5oJyo49sArVBZa8S5Quthosz27TyH2pUMaAjc96Dhr+SjzJAqGQMMO4b5jcECdxgfo
-         X5BLtQE/Go0MQ==
+        b=DgIWQhX0aeqPT2Z52629tb6cjTmogpUQW4d0K7jr+2bQUKxa74nK+NdZ5rftILrWP
+         nQ4xvUY9gmknrHLnHB1fjAXJ2ScF2FzDew4byX+wr15Fgjqyub2dNJWWHJWeDDtuj7
+         WTL3OKqBf8PvcLJog+v8AHGPmVP1yzuY2/t/VmVXxDBt8377x3z0mDh2gA1J9DkQtQ
+         uGAbeG1T6hESgvMW8l/gH8IdDADhBjxSJOlVm81l3D7tXOo21fa/y5qIkMYqD3usio
+         hyWhl2cpcoj/OwBQZ2HbQ3cHiuX8092P9oRIHfx8yY3EnQum2Y1HXrVuSP7AToBzXE
+         r7f3QvjzU0QyA==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 33/38] misc/mke2fs: fix a -Wunused-variable warning in PRS()
-Date:   Sat, 21 Jan 2023 12:32:25 -0800
-Message-Id: <20230121203230.27624-34-ebiggers@kernel.org>
+Subject: [PATCH 36/38] misc/util.c: enable MinGW alarm() when building for Windows
+Date:   Sat, 21 Jan 2023 12:32:28 -0800
+Message-Id: <20230121203230.27624-37-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230121203230.27624-1-ebiggers@kernel.org>
 References: <20230121203230.27624-1-ebiggers@kernel.org>
@@ -47,41 +47,47 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-This showed up when building for Windows.
+To compile for Windows, this file needs MinGW's implementation of
+alarm().  To expose that definition, some macros must be defined before
+including the system headers.  This was done in Android.bp, but it was
+not done in the autotools-based build system.  Define these macros in
+the source file itself so that all build systems work.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- misc/mke2fs.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ misc/Android.bp | 2 --
+ misc/util.c     | 5 +++++
+ 2 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 24cc14750..7028d3935 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1598,7 +1598,6 @@ static void PRS(int argc, char *argv[])
- 	 * Finally, we complain about fs_blocks_count > 2^32 on a non-64bit fs.
- 	 */
- 	blk64_t		fs_blocks_count = 0;
--	long		sysval;
- 	int		s_opt = -1, r_opt = -1;
- 	char		*fs_features = 0;
- 	int		fs_features_size = 0;
-@@ -1632,9 +1631,12 @@ static void PRS(int argc, char *argv[])
- #define _SC_PAGESIZE _SC_PAGE_SIZE
+diff --git a/misc/Android.bp b/misc/Android.bp
+index 2baeac2ad..2b1620ac6 100644
+--- a/misc/Android.bp
++++ b/misc/Android.bp
+@@ -83,8 +83,6 @@ cc_binary {
+         windows: {
+             include_dirs: [ "external/e2fsprogs/include/mingw" ],
+             cflags: [
+-                "-D_POSIX",
+-                "-D__USE_MINGW_ALARM",
+                 // mke2fs.c has a warning from gcc which cannot be suppressed:
+                 // passing argument 3 of 'ext2fs_get_device_size' from
+                 // incompatible pointer type
+diff --git a/misc/util.c b/misc/util.c
+index e84ebab5b..3e83169f1 100644
+--- a/misc/util.c
++++ b/misc/util.c
+@@ -16,6 +16,11 @@
+ #define _LARGEFILE64_SOURCE
  #endif
- #ifdef _SC_PAGESIZE
--	sysval = sysconf(_SC_PAGESIZE);
--	if (sysval > 0)
--		sys_page_size = sysval;
-+	{
-+		long sysval = sysconf(_SC_PAGESIZE);
-+
-+		if (sysval > 0)
-+			sys_page_size = sysval;
-+	}
- #endif /* _SC_PAGESIZE */
- #endif /* HAVE_SYSCONF */
  
++#ifdef _WIN32
++#define _POSIX
++#define __USE_MINGW_ALARM
++#endif
++
+ #include "config.h"
+ #include <fcntl.h>
+ #include <setjmp.h>
 -- 
 2.39.0
 
