@@ -2,40 +2,40 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3021DC54E94
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:36:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5942EC54EB4
+	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:36:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229880AbjAUUgp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Jan 2023 15:36:45 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52402 "EHLO
+        id S230017AbjAUUgu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Jan 2023 15:36:50 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52430 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229709AbjAUUgm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:42 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7607629146
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:41 -0800 (PST)
+        with ESMTP id S229840AbjAUUgn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:43 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1528829147
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:42 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 2B24DB807E4
+        by dfw.source.kernel.org (Postfix) with ESMTPS id E1ED260B72
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:40 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C7594C433A0
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:38 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3F82CC433A8
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674333398;
-        bh=g/X1fsEW6TIot+jRGRs90ZiT5k6YYFv8xrkvOgmtZfw=;
+        s=k20201202; t=1674333400;
+        bh=U7wI4qHzRE7/py31orTHfxUE3tXqYIJBmnHYRx8/5Ac=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=lISjL/TWjrBuLZswQvq07ULddsrgSHDuQnFHlbKCRVTfSMs6IBb7kdikyqmvEBiBv
-         daDmP5VXrGo+NIsLTeypLPTnmHbt1FK9dUiH/ndN615RupUhmL0vY3q75A9vfo0Lin
-         QmWVmG1WmnbrTEKfmevwZyAvT4a/UTCONYQLB0cqJPsj4g9KM1gqK72zFY2kZ9mSzo
-         il2Mv37SOYNE8M4jAJeg4SVkHZ/+XjD4VwSUjYKmLr4LLy0efnjZuFejguRblm9jTP
-         g5BtAwiNeL2Fdxt87yPZ9EzAZNOfCZIK5Oub2ggP5MUkKdmselrj2KSmPxgzjlp5UF
-         Y1FFdsxcjaydg==
+        b=jJ7MmG54Gh4jMe3/+sOba4oPma8Y3PlfXtkIIpi50jgXko230QTGP5NXMmFHyWnkL
+         BV/DYbFxRGH46Oo7WGctwKH8QwFsP5511vYGL9Q4x+I/oqWlgsrtB/LRYXhBRm1cnt
+         pvHBwmJ9dWWi897+4Ad5vCOrbdukWCicJaM6mkCsIJJ4z15/kgbGlYcJ+5dVSTSJj5
+         uZGMiSLDnKd5D5TUAGUV96vrf8OM1gqQiy/d91Zc3+bQYJ4mv1vykR1MtOpqkisp7Q
+         cvjaBs6dNs25oJ4vMZRa/aKk3nV6dYxrKZNCy2E4CLk9A9WhP5JgPZ6TD4noGR5SMe
+         wkQuoSSXuUgmw==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 03/38] configure.ac: automatically add include/mingw/ headers
-Date:   Sat, 21 Jan 2023 12:31:55 -0800
-Message-Id: <20230121203230.27624-4-ebiggers@kernel.org>
+Subject: [PATCH 10/38] lib/blkid: suppress -Wunused-result warning in blkid_flush_cache()
+Date:   Sat, 21 Jan 2023 12:32:02 -0800
+Message-Id: <20230121203230.27624-11-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230121203230.27624-1-ebiggers@kernel.org>
 References: <20230121203230.27624-1-ebiggers@kernel.org>
@@ -47,49 +47,37 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Since the include/mingw/ directory needs to be on the include path when
-building for Windows with MinGW, add it to INCLUDES automatically, and
-AC_DEFINE the corresponding HAVE_*_H constants.
+When _FORTIFY_SOURCE is defined, glibc annotates link() with the
+warn_unused_result function attribute.  With gcc, that makes
+'(void) link()' cause a -Wunused-result warning, despite the explicit
+cast to void.  That's annoying, since the use case in lib/blkid/save.c
+is legitimate (opportunistic backup).  So let's suppress this warning.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- configure.ac | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ lib/blkid/save.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/configure.ac b/configure.ac
-index e3884db60..d62d99dc8 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -1036,6 +1036,17 @@ AC_CHECK_HEADERS(m4_flatten([
- 	sys/wait.h
- 	sys/xattr.h
- ]))
-+case "$host_os" in
-+mingw*)
-+	# The above checks only detect system headers, not the headers in
-+	# ./include/mingw/, so explicitly define them to be available.
-+	AC_DEFINE(HAVE_LINUX_TYPES_H, 1)
-+	AC_DEFINE(HAVE_SYS_STAT_H, 1)
-+	AC_DEFINE(HAVE_SYS_SYSMACROS_H, 1)
-+	AC_DEFINE(HAVE_SYS_TYPES_H, 1)
-+	AC_DEFINE(HAVE_UNISTD_H, 1)
-+	;;
-+esac
- dnl Check where to find a dd(1) that supports iflag=fullblock
- dnl and oflag=append
- AC_MSG_CHECKING([for a dd(1) program that supports iflag=fullblock])
-@@ -1710,6 +1721,11 @@ fi
- if test -n "$WITH_DIET_LIBC" ; then
- 	INCLUDES="$INCLUDES -D_REENTRANT"
- fi
-+case "$host_os" in
-+mingw*)
-+	INCLUDES=$INCLUDES' -I$(top_srcdir)/include/mingw'
-+	;;
-+esac
- AC_SUBST(INCLUDES)
- dnl
- dnl Build CFLAGS
+diff --git a/lib/blkid/save.c b/lib/blkid/save.c
+index 036f07a4a..6f4499cfd 100644
+--- a/lib/blkid/save.c
++++ b/lib/blkid/save.c
+@@ -154,7 +154,15 @@ int blkid_flush_cache(blkid_cache cache)
+ 			if (backup) {
+ 				sprintf(backup, "%s.old", filename);
+ 				unlink(backup);
++#if defined(__GNUC__) && __GNUC__ >= 5
++/* explicit (void) cast is not enough with glibc and _FORTIFY_SOURCE */
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wunused-result"
++#endif
+ 				(void) link(filename, backup);
++#if defined(__GNUC__) && __GNUC__ >= 5
++#pragma GCC diagnostic pop
++#endif
+ 				free(backup);
+ 			}
+ 			if (rename(opened, filename) < 0)
 -- 
 2.39.0
 
