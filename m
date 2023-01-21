@@ -2,40 +2,41 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 61C21C54E94
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:37:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 81EE7C54EAA
+	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:37:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230083AbjAUUhJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Jan 2023 15:37:09 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52582 "EHLO
+        id S230084AbjAUUhK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Jan 2023 15:37:10 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52584 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229989AbjAUUgt (ORCPT
+        with ESMTP id S230002AbjAUUgt (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:49 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BEB252916C
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:44 -0800 (PST)
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9B5162917E
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:45 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 73B4160B76
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:44 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3C25DC4339C
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:44 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 7CBA360B6E
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:45 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CE9DFC4339C;
+        Sat, 21 Jan 2023 20:36:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=k20201202; t=1674333404;
-        bh=IF0tzK9qzRjNcfSVZjyoBUt3GW1r1KZLNwT9shnLSiw=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=RN0PH/lPg6F1oUwkbqvwSa2X2ZeXvzvTJeWqmKoWTl+iVPDqxCf3xjD2sfzJMBd37
-         9TVE4z4BNCFYqRKrPRu6Ekyxi+mL46rr+tsdoFHQxyoJ2dcUseArpzuyQH8i4bURD7
-         8Eg5W63g1E6xLzfsZCMlAToSV7ozC989NRPlezL7qLeRnZcdge54Tlt+2OX1aRSAOQ
-         Pu/Ku1cMzjqZLy9kJ40tRPfZl6TZJjV9HQQMcccDvs7hLsTaaLXh8vs3RwBDuVc3yP
-         hRjZKa4aiJZOfN89czSi/hVEJtEYI05B1sSzswB/gxeszA/X6Jd0U62XiAsPRbd33L
-         HwXUtbVQiXUIg==
+        bh=omOEh/OU/autDrsEmmKxzE47wZxPhhPXi4Sar7ryPus=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=VbYgZSBhwIEW8/lslE2qXsqF/04GnDQzSBm6AI1SGVyrynhXdB6JN7cOfMKc5z6C1
+         FAB/a2XC+QVxjh9fr/kjXaN8ddqRZOGjVrEVLR8F6cWejuOi3UbgZm4uxPXy0IpKFM
+         RnHPRpOCdyqlp5v4tCzqbYSGwUVzviko7Gr3nRBiL6VxKRHL/4MJzViPelaHXzfVxo
+         tmLa3En1iGg64j5rfmzQY2YPUzWXSa9GZmtIyWHPNaIPJCOkGY4AJpkyjSEuq2NbPi
+         QFCuhXVBH2QKoBEoT08Ksmot8lgcGXiJsdQWoKwWXwFNo5UQScA4Sp8arUnkqJJCkX
+         XlSxm/ZNoBQzg==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 29/38] misc/e4defrag: fix -Wstringop-truncation warnings
-Date:   Sat, 21 Jan 2023 12:32:21 -0800
-Message-Id: <20230121203230.27624-30-ebiggers@kernel.org>
+Cc:     Paulo Antonio Alvarez <pauloaalvarez@gmail.com>
+Subject: [PATCH 32/38] misc/mke2fs: fix Windows build
+Date:   Sat, 21 Jan 2023 12:32:24 -0800
+Message-Id: <20230121203230.27624-33-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230121203230.27624-1-ebiggers@kernel.org>
 References: <20230121203230.27624-1-ebiggers@kernel.org>
@@ -47,86 +48,101 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Fix two -Wstringop-truncation warnings in is_ext4() by simplifying how
-how mnt_type is handled and by using the correct bound for mnt_fsname.
+unix_io_manager is no longer available on Windows.  windows_io_manager
+must be used instead.
 
-Fix a -Wstringop-truncation warning in main() by replacing the fragile
-pattern 'strncpy(dst, src, strnlen(src, N))', which doesn't
-null-terminate the destination string, with a standard string copy.  (It
-happened to work anyway because dst happens to be zero-initialized.)
-
-These warnings showed up when building with -Wall with gcc 8 or later.
-
+Fixes: 86b6db9f5a43 ("libext2fs: code adaptation to use the Windows IO manager")
+Cc: Paulo Antonio Alvarez <pauloaalvarez@gmail.com>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- misc/e4defrag.c | 30 +++++++++---------------------
- 1 file changed, 9 insertions(+), 21 deletions(-)
+ lib/ext2fs/ext2_io.h    |  2 ++
+ lib/support/plausible.c |  7 +------
+ misc/mke2fs.c           | 12 ++++++------
+ 3 files changed, 9 insertions(+), 12 deletions(-)
 
-diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-index 9ec265f2e..33bd05d2c 100644
---- a/misc/e4defrag.c
-+++ b/misc/e4defrag.c
-@@ -258,12 +258,12 @@ static int get_mount_point(const char *devname, char *mount_point,
-  *
-  * @file:		the file's name.
-  */
--static int is_ext4(const char *file, char *devname)
-+static int is_ext4(const char *file, char devname[PATH_MAX + 1])
- {
- 	int 	maxlen = 0;
- 	int	len, ret;
-+	int	type_is_ext4 = 0;
- 	FILE	*fp = NULL;
--	char	*mnt_type = NULL;
- 	/* Refer to /etc/mtab */
- 	const char	*mtab = MOUNTED;
- 	char	file_path[PATH_MAX + 1];
-@@ -307,26 +307,16 @@ static int is_ext4(const char *file, char *devname)
+diff --git a/lib/ext2fs/ext2_io.h b/lib/ext2fs/ext2_io.h
+index 8fe5b3235..679184e39 100644
+--- a/lib/ext2fs/ext2_io.h
++++ b/lib/ext2fs/ext2_io.h
+@@ -145,10 +145,12 @@ extern errcode_t io_channel_cache_readahead(io_channel io,
+ #ifdef _WIN32
+ /* windows_io.c */
+ extern io_manager windows_io_manager;
++#define default_io_manager windows_io_manager
+ #else
+ /* unix_io.c */
+ extern io_manager unix_io_manager;
+ extern io_manager unixfd_io_manager;
++#define default_io_manager unix_io_manager
+ #endif
  
- 		maxlen = len;
+ /* sparse_io.c */
+diff --git a/lib/support/plausible.c b/lib/support/plausible.c
+index 349aa2c4f..65a6b2e14 100644
+--- a/lib/support/plausible.c
++++ b/lib/support/plausible.c
+@@ -103,12 +103,7 @@ static void print_ext2_info(const char *device)
+ 	time_t			tm;
  
--		mnt_type = realloc(mnt_type, strlen(mnt->mnt_type) + 1);
--		if (mnt_type == NULL) {
--			endmntent(fp);
--			return -1;
--		}
--		memset(mnt_type, 0, strlen(mnt->mnt_type) + 1);
--		strncpy(mnt_type, mnt->mnt_type, strlen(mnt->mnt_type));
-+		type_is_ext4 = !strcmp(mnt->mnt_type, FS_EXT4);
- 		strncpy(lost_found_dir, mnt->mnt_dir, PATH_MAX);
--		strncpy(devname, mnt->mnt_fsname, strlen(mnt->mnt_fsname) + 1);
-+		strncpy(devname, mnt->mnt_fsname, PATH_MAX);
- 	}
+ 	retval = ext2fs_open2(device, 0, EXT2_FLAG_64BITS, 0, 0,
+-#ifdef _WIN32
+-			      windows_io_manager,
+-#else
+-			      unix_io_manager,
+-#endif
+-                  &fs);
++			      default_io_manager, &fs);
+ 	if (retval)
+ 		return;
+ 	sb = fs->super;
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index bde1e582e..24cc14750 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1950,10 +1950,10 @@ profile_error:
+ #ifdef CONFIG_TESTIO_DEBUG
+ 		if (getenv("TEST_IO_FLAGS") || getenv("TEST_IO_BLOCK")) {
+ 			io_ptr = test_io_manager;
+-			test_io_backing_manager = unix_io_manager;
++			test_io_backing_manager = default_io_manager;
+ 		} else
+ #endif
+-			io_ptr = unix_io_manager;
++			io_ptr = default_io_manager;
+ 		retval = ext2fs_open(journal_device,
+ 				     EXT2_FLAG_JOURNAL_DEV_OK, 0,
+ 				     0, io_ptr, &jfs);
+@@ -2736,7 +2736,7 @@ static int should_do_undo(const char *name)
+ 	io_channel channel;
+ 	__u16	s_magic;
+ 	struct ext2_super_block super;
+-	io_manager manager = unix_io_manager;
++	io_manager manager = default_io_manager;
+ 	int csum_flag, force_undo;
  
- 	endmntent(fp);
--	if (mnt_type && strcmp(mnt_type, FS_EXT4) == 0) {
--		FREE(mnt_type);
-+	if (type_is_ext4)
- 		return 0;
--	} else {
--		FREE(mnt_type);
--		PRINT_ERR_MSG(NGMSG_EXT4);
--		return -1;
--	}
-+	PRINT_ERR_MSG(NGMSG_EXT4);
-+	return -1;
- }
+ 	csum_flag = ext2fs_has_feature_metadata_csum(&fs_param) ||
+@@ -3041,10 +3041,10 @@ int main (int argc, char *argv[])
+ #ifdef CONFIG_TESTIO_DEBUG
+ 	if (getenv("TEST_IO_FLAGS") || getenv("TEST_IO_BLOCK")) {
+ 		io_ptr = test_io_manager;
+-		test_io_backing_manager = unix_io_manager;
++		test_io_backing_manager = default_io_manager;
+ 	} else
+ #endif
+-		io_ptr = unix_io_manager;
++		io_ptr = default_io_manager;
  
- /*
-@@ -1865,11 +1855,9 @@ int main(int argc, char *argv[])
- 			/* fall through */
- 		case DEVNAME:
- 			if (arg_type == DEVNAME) {
--				strncpy(lost_found_dir, dir_name,
--					strnlen(dir_name, PATH_MAX));
-+				strcpy(lost_found_dir, dir_name);
- 				strncat(lost_found_dir, "/lost+found/",
--					PATH_MAX - strnlen(lost_found_dir,
--							   PATH_MAX));
-+					PATH_MAX - strlen(lost_found_dir));
- 			}
+ 	if (undo_file != NULL || should_do_undo(device_name)) {
+ 		retval = mke2fs_setup_tdb(device_name, &io_ptr);
+@@ -3449,7 +3449,7 @@ int main (int argc, char *argv[])
  
- 			nftw64(dir_name, calc_entry_counts, FTW_OPEN_FD, flags);
+ 		retval = ext2fs_open(journal_device, EXT2_FLAG_RW|
+ 				     EXT2_FLAG_JOURNAL_DEV_OK, 0,
+-				     fs->blocksize, unix_io_manager, &jfs);
++				     fs->blocksize, default_io_manager, &jfs);
+ 		if (retval) {
+ 			com_err(program_name, retval,
+ 				_("while trying to open journal device %s\n"),
 -- 
 2.39.0
 
