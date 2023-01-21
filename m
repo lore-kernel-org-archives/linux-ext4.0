@@ -2,40 +2,41 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 525BBC38142
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F2630C54EAA
 	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:37:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230041AbjAUUhC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Jan 2023 15:37:02 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52578 "EHLO
+        id S229764AbjAUUhD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Jan 2023 15:37:03 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52600 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229967AbjAUUgs (ORCPT
+        with ESMTP id S229970AbjAUUgs (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:48 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A680329157
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0F7032915E
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:43 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 61A6660B7F
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 72C9460ADD
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:43 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BE496C4339B
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:42 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 32B8DC433A7;
+        Sat, 21 Jan 2023 20:36:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674333402;
-        bh=biRELdgM3R8+fJoxOyh4m11cf4MkKzKLRr029v4SWCI=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=eIoZ9d+DoTRYjPLaw1hpknbgKnpPJMUXnAsTXIDcm6GjMuqkMBvNixZ6hI8xeMkKo
-         s0I9FRx0L8tn1wOB43t2VjQFUQ8KPYibCYNrTxH7P32HfY+90PgR3jDpCLKeFa+66b
-         mM7MQS15uWVvbclB6RQERwYvI8TZTm8ycOwsHvQo1k9MkSMWLAlfHzmnxd7wGtoM2C
-         2kNZJRFmc1xkvLVtXTNZ1b+jQbYIxyTPQ2P3ZtCd9tFHfN2Vnz0zlCicm21kb9icoM
-         sXf2pqX03VYaOm+Rd57mm1L2+ac/tedtr27dq1Dxs0+/MBKKfkWPouAv95EO7lWhFH
-         K24f2TRpsenWw==
+        s=k20201202; t=1674333403;
+        bh=js4EoiNuVDSE622JrtozM8VHganSNbk0FH7XROPaiHw=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=PyyguBZmVU9j5aXZQqlkKXqpe1FGMjJ6MajMTNdEExVyeuwm3JS/lUgxRE83JymcV
+         8d0h/CUJSCAJclO2uNMmYyuGAb+c354mMmOMtuVGbqPX+y3W5HWneVZe3KFD7qIcAf
+         rvncf+XCWf9BRayiC1zXmhFClqdntko1ju38R7lMgY+ph+YMLgakBW9XSp/gd3Gj0o
+         B7rQzazvfswf5R6KbBU8kxiJluibBzTJJ6zrE5FWH4UivA464k0t/0rX7OHU7nEpHm
+         skMrlZzM63Bbf2ToVVI6zLivdRH9nYIvNlvqvP5TQDBmuFLIRYNwageEIe1ptva/o+
+         +R8fQtok6AuyA==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 22/38] lib/ss: fix 'make install' by creating man1dir
-Date:   Sat, 21 Jan 2023 12:32:14 -0800
-Message-Id: <20230121203230.27624-23-ebiggers@kernel.org>
+Cc:     Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 24/38] lib/support: clean up definition of flags_array
+Date:   Sat, 21 Jan 2023 12:32:16 -0800
+Message-Id: <20230121203230.27624-25-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230121203230.27624-1-ebiggers@kernel.org>
 References: <20230121203230.27624-1-ebiggers@kernel.org>
@@ -47,32 +48,95 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-'make install' does not work because libss tries to install a man page
-without creating the directory first.  Fix this.
+Add braces to address the following compiler warning with gcc -Wall:
 
+print_fs_flags.c:24:42: warning: missing braces around initializer [-Wmissing-braces]
+   24 | static struct flags_name flags_array[] = {
+      |                                          ^
+
+Also add 'const', and add an explicit NULL in the last entry.
+
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- lib/ss/Makefile.in | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ lib/support/print_fs_flags.c | 60 ++++++++++++++++++------------------
+ 1 file changed, 30 insertions(+), 30 deletions(-)
 
-diff --git a/lib/ss/Makefile.in b/lib/ss/Makefile.in
-index 40294db0b..bb5041893 100644
---- a/lib/ss/Makefile.in
-+++ b/lib/ss/Makefile.in
-@@ -125,10 +125,11 @@ ss.pc: $(srcdir)/ss.pc.in $(top_builddir)/config.status
- 	$(Q) cd $(top_builddir); CONFIG_FILES=lib/ss/ss.pc ./config.status
+diff --git a/lib/support/print_fs_flags.c b/lib/support/print_fs_flags.c
+index e54acc04b..f47cd6653 100644
+--- a/lib/support/print_fs_flags.c
++++ b/lib/support/print_fs_flags.c
+@@ -21,40 +21,40 @@ struct flags_name {
+ 	const char	*name;
+ };
  
- installdirs::
--	$(E) "	MKDIR_P $(libdir) $(includedir)/ss $(datadir)/ss $(bindir)"
-+	$(E) "	MKDIR_P $(libdir) $(includedir)/ss $(datadir)/ss $(bindir) $(pkgconfigdir) $(man1dir)"
- 	$(Q) $(MKDIR_P) $(DESTDIR)$(libdir) \
- 		$(DESTDIR)$(includedir)/ss $(DESTDIR)$(datadir)/ss \
--		$(DESTDIR)$(bindir) $(DESTDIR)$(pkgconfigdir)
-+		$(DESTDIR)$(bindir) $(DESTDIR)$(pkgconfigdir) \
-+		$(DESTDIR)$(man1dir)
+-static struct flags_name flags_array[] = {
+-	EXT2_FLAG_RW, "EXT2_FLAG_RW",
+-	EXT2_FLAG_CHANGED, "EXT2_FLAG_CHANGED",
+-	EXT2_FLAG_DIRTY, "EXT2_FLAG_DIRTY",
+-	EXT2_FLAG_VALID, "EXT2_FLAG_VALID",
+-	EXT2_FLAG_IB_DIRTY, "EXT2_FLAG_IB_DIRTY",
+-	EXT2_FLAG_BB_DIRTY, "EXT2_FLAG_BB_DIRTY",
+-	EXT2_FLAG_SWAP_BYTES, "EXT2_FLAG_SWAP_BYTES",
+-	EXT2_FLAG_SWAP_BYTES_READ, "EXT2_FLAG_SWAP_BYTES_READ",
+-	EXT2_FLAG_SWAP_BYTES_WRITE, "EXT2_FLAG_SWAP_BYTES_WRITE",
+-	EXT2_FLAG_MASTER_SB_ONLY, "EXT2_FLAG_MASTER_SB_ONLY",
+-	EXT2_FLAG_FORCE, "EXT2_FLAG_FORCE",
+-	EXT2_FLAG_SUPER_ONLY, "EXT2_FLAG_SUPER_ONLY",
+-	EXT2_FLAG_JOURNAL_DEV_OK, "EXT2_FLAG_JOURNAL_DEV_OK",
+-	EXT2_FLAG_IMAGE_FILE, "EXT2_FLAG_IMAGE_FILE",
+-	EXT2_FLAG_EXCLUSIVE, "EXT2_FLAG_EXCLUSIVE",
+-	EXT2_FLAG_SOFTSUPP_FEATURES, "EXT2_FLAG_SOFTSUPP_FEATURES",
+-	EXT2_FLAG_NOFREE_ON_ERROR, "EXT2_FLAG_NOFREE_ON_ERROR",
+-	EXT2_FLAG_64BITS, "EXT2_FLAG_64BITS",
+-	EXT2_FLAG_PRINT_PROGRESS, "EXT2_FLAG_PRINT_PROGRESS",
+-	EXT2_FLAG_DIRECT_IO, "EXT2_FLAG_DIRECT_IO",
+-	EXT2_FLAG_SKIP_MMP, "EXT2_FLAG_SKIP_MMP",
+-	EXT2_FLAG_IGNORE_CSUM_ERRORS, "EXT2_FLAG_IGNORE_CSUM_ERRORS",
+-	EXT2_FLAG_SHARE_DUP, "EXT2_FLAG_SHARE_DUP",
+-	EXT2_FLAG_IGNORE_SB_ERRORS, "EXT2_FLAG_IGNORE_SB_ERRORS",
+-	EXT2_FLAG_BBITMAP_TAIL_PROBLEM, "EXT2_FLAG_BBITMAP_TAIL_PROBLEM",
+-	EXT2_FLAG_IBITMAP_TAIL_PROBLEM, "EXT2_FLAG_IBITMAP_TAIL_PROBLEM",
+-	EXT2_FLAG_THREADS, "EXT2_FLAG_THREADS",
+-	0
++static const struct flags_name flags_array[] = {
++	{ EXT2_FLAG_RW, "EXT2_FLAG_RW" },
++	{ EXT2_FLAG_CHANGED, "EXT2_FLAG_CHANGED" },
++	{ EXT2_FLAG_DIRTY, "EXT2_FLAG_DIRTY" },
++	{ EXT2_FLAG_VALID, "EXT2_FLAG_VALID" },
++	{ EXT2_FLAG_IB_DIRTY, "EXT2_FLAG_IB_DIRTY" },
++	{ EXT2_FLAG_BB_DIRTY, "EXT2_FLAG_BB_DIRTY" },
++	{ EXT2_FLAG_SWAP_BYTES, "EXT2_FLAG_SWAP_BYTES" },
++	{ EXT2_FLAG_SWAP_BYTES_READ, "EXT2_FLAG_SWAP_BYTES_READ" },
++	{ EXT2_FLAG_SWAP_BYTES_WRITE, "EXT2_FLAG_SWAP_BYTES_WRITE" },
++	{ EXT2_FLAG_MASTER_SB_ONLY, "EXT2_FLAG_MASTER_SB_ONLY" },
++	{ EXT2_FLAG_FORCE, "EXT2_FLAG_FORCE" },
++	{ EXT2_FLAG_SUPER_ONLY, "EXT2_FLAG_SUPER_ONLY" },
++	{ EXT2_FLAG_JOURNAL_DEV_OK, "EXT2_FLAG_JOURNAL_DEV_OK" },
++	{ EXT2_FLAG_IMAGE_FILE, "EXT2_FLAG_IMAGE_FILE" },
++	{ EXT2_FLAG_EXCLUSIVE, "EXT2_FLAG_EXCLUSIVE" },
++	{ EXT2_FLAG_SOFTSUPP_FEATURES, "EXT2_FLAG_SOFTSUPP_FEATURES" },
++	{ EXT2_FLAG_NOFREE_ON_ERROR, "EXT2_FLAG_NOFREE_ON_ERROR" },
++	{ EXT2_FLAG_64BITS, "EXT2_FLAG_64BITS" },
++	{ EXT2_FLAG_PRINT_PROGRESS, "EXT2_FLAG_PRINT_PROGRESS" },
++	{ EXT2_FLAG_DIRECT_IO, "EXT2_FLAG_DIRECT_IO" },
++	{ EXT2_FLAG_SKIP_MMP, "EXT2_FLAG_SKIP_MMP" },
++	{ EXT2_FLAG_IGNORE_CSUM_ERRORS, "EXT2_FLAG_IGNORE_CSUM_ERRORS" },
++	{ EXT2_FLAG_SHARE_DUP, "EXT2_FLAG_SHARE_DUP" },
++	{ EXT2_FLAG_IGNORE_SB_ERRORS, "EXT2_FLAG_IGNORE_SB_ERRORS" },
++	{ EXT2_FLAG_BBITMAP_TAIL_PROBLEM, "EXT2_FLAG_BBITMAP_TAIL_PROBLEM" },
++	{ EXT2_FLAG_IBITMAP_TAIL_PROBLEM, "EXT2_FLAG_IBITMAP_TAIL_PROBLEM" },
++	{ EXT2_FLAG_THREADS, "EXT2_FLAG_THREADS" },
++	{ 0, NULL },
+ };
  
- install:: libss.a $(INSTALL_HFILES) installdirs ss_err.h mk_cmds ss.pc
- 	$(E) "	INSTALL_DATA $(DESTDIR)$(libdir)/libss.a"
+ void print_fs_flags(FILE * f, unsigned long flags)
+ {
+-	struct flags_name *fp;
++	const struct flags_name *fp;
+ 	int	first = 1, pos = 16;
+ 
+ 	for (fp = flags_array; fp->flag != 0; fp++) {
 -- 
 2.39.0
 
