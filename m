@@ -2,41 +2,40 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 81EE7C54EAA
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EFEF3C54EB4
 	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:37:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230084AbjAUUhK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Jan 2023 15:37:10 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52584 "EHLO
+        id S230002AbjAUUhL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Jan 2023 15:37:11 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52606 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230002AbjAUUgt (ORCPT
+        with ESMTP id S229991AbjAUUgt (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:49 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9B5162917E
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:45 -0800 (PST)
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CADC42916E
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:44 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 7CBA360B6E
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:45 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CE9DFC4339C;
-        Sat, 21 Jan 2023 20:36:44 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 7C88FB807E4
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:43 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 252ADC433A0
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674333404;
-        bh=omOEh/OU/autDrsEmmKxzE47wZxPhhPXi4Sar7ryPus=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=VbYgZSBhwIEW8/lslE2qXsqF/04GnDQzSBm6AI1SGVyrynhXdB6JN7cOfMKc5z6C1
-         FAB/a2XC+QVxjh9fr/kjXaN8ddqRZOGjVrEVLR8F6cWejuOi3UbgZm4uxPXy0IpKFM
-         RnHPRpOCdyqlp5v4tCzqbYSGwUVzviko7Gr3nRBiL6VxKRHL/4MJzViPelaHXzfVxo
-         tmLa3En1iGg64j5rfmzQY2YPUzWXSa9GZmtIyWHPNaIPJCOkGY4AJpkyjSEuq2NbPi
-         QFCuhXVBH2QKoBEoT08Ksmot8lgcGXiJsdQWoKwWXwFNo5UQScA4Sp8arUnkqJJCkX
-         XlSxm/ZNoBQzg==
+        s=k20201202; t=1674333402;
+        bh=kKpY6N1wjkPqyVf8e/HsPEpKOt8PNFJDIyv9bhAd80w=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=i0LG2n5m0wq9iDttGSX96j5HWfoiUpGAj2KE0FfI+q+MrEOwHkqERPCqCA3HGlYQw
+         KwQzf92tdO8+dt7xnG2+8TnoE+XeOOimktxqDgwwEMgdPa2gyJa9Hf4TWgwTKeqUpd
+         H4umUyH6gmp5ohTKX6j5kw4Ow5aQ6B1JUyX1b8KROFFH/4eZrwEHBjrECutMzx1OIA
+         Kgesr9TnVfpTHX24HhLXj8wLDB2wRDO0xJVq3kWZZBRfnnBUIojI/0WPq+5Zsf83Gf
+         fIJci506dqInUOlamVkrVtsAt0ClD3uFaYlw2jPK+eLJE1idDwVVN2wZJrBPAdHodV
+         5pwzlJCAmN9BQ==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Cc:     Paulo Antonio Alvarez <pauloaalvarez@gmail.com>
-Subject: [PATCH 32/38] misc/mke2fs: fix Windows build
-Date:   Sat, 21 Jan 2023 12:32:24 -0800
-Message-Id: <20230121203230.27624-33-ebiggers@kernel.org>
+Subject: [PATCH 19/38] lib/ext2fs: fix two compiler warnings in windows_io.c
+Date:   Sat, 21 Jan 2023 12:32:11 -0800
+Message-Id: <20230121203230.27624-20-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230121203230.27624-1-ebiggers@kernel.org>
 References: <20230121203230.27624-1-ebiggers@kernel.org>
@@ -48,101 +47,61 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-unix_io_manager is no longer available on Windows.  windows_io_manager
-must be used instead.
+init_private_data() triggers a -Wstringop-truncation warning, due to a
+real bug.  Fix it.
 
-Fixes: 86b6db9f5a43 ("libext2fs: code adaptation to use the Windows IO manager")
-Cc: Paulo Antonio Alvarez <pauloaalvarez@gmail.com>
+windows_open() has a -Wunused-variable warning because some
+macOS-specific code was copied there for no reason.  Remove it.
+
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- lib/ext2fs/ext2_io.h    |  2 ++
- lib/support/plausible.c |  7 +------
- misc/mke2fs.c           | 12 ++++++------
- 3 files changed, 9 insertions(+), 12 deletions(-)
+ lib/ext2fs/windows_io.c | 12 +-----------
+ 1 file changed, 1 insertion(+), 11 deletions(-)
 
-diff --git a/lib/ext2fs/ext2_io.h b/lib/ext2fs/ext2_io.h
-index 8fe5b3235..679184e39 100644
---- a/lib/ext2fs/ext2_io.h
-+++ b/lib/ext2fs/ext2_io.h
-@@ -145,10 +145,12 @@ extern errcode_t io_channel_cache_readahead(io_channel io,
- #ifdef _WIN32
- /* windows_io.c */
- extern io_manager windows_io_manager;
-+#define default_io_manager windows_io_manager
- #else
- /* unix_io.c */
- extern io_manager unix_io_manager;
- extern io_manager unixfd_io_manager;
-+#define default_io_manager unix_io_manager
+diff --git a/lib/ext2fs/windows_io.c b/lib/ext2fs/windows_io.c
+index 68b5571bb..83aea68b6 100644
+--- a/lib/ext2fs/windows_io.c
++++ b/lib/ext2fs/windows_io.c
+@@ -499,9 +499,6 @@ static errcode_t windows_open_channel(struct windows_private_data *data,
+ #if defined(O_DIRECT)
+ 	if (flags & IO_FLAG_DIRECT_IO)
+ 		io->align = ext2fs_get_dio_alignment(data->dev);
+-#elif defined(F_NOCACHE)
+-	if (flags & IO_FLAG_DIRECT_IO)
+-		io->align = 4096;
  #endif
  
- /* sparse_io.c */
-diff --git a/lib/support/plausible.c b/lib/support/plausible.c
-index 349aa2c4f..65a6b2e14 100644
---- a/lib/support/plausible.c
-+++ b/lib/support/plausible.c
-@@ -103,12 +103,7 @@ static void print_ext2_info(const char *device)
- 	time_t			tm;
+ 	/*
+@@ -609,7 +606,7 @@ static struct windows_private_data *init_private_data(const char *name, int flag
+ 		return NULL;
  
- 	retval = ext2fs_open2(device, 0, EXT2_FLAG_64BITS, 0, 0,
--#ifdef _WIN32
--			      windows_io_manager,
--#else
--			      unix_io_manager,
+ 	memset(data, 0, sizeof(struct windows_private_data));
+-	strncpy(data->name, name, sizeof(data->name));
++	strncpy(data->name, name, sizeof(data->name) - 1);
+ 	data->magic = EXT2_ET_MAGIC_WINDOWS_IO_CHANNEL;
+ 	data->io_stats.num_fields = 2;
+ 	data->flags = flags;
+@@ -620,7 +617,6 @@ static struct windows_private_data *init_private_data(const char *name, int flag
+ 
+ static errcode_t windows_open(const char *name, int flags, io_channel *channel)
+ {
+-	int fd = -1;
+ 	int open_flags;
+ 	struct windows_private_data *data;
+ 
+@@ -644,12 +640,6 @@ static errcode_t windows_open(const char *name, int flags, io_channel *channel)
+ 		return EXT2_ET_BAD_DEVICE_NAME;
+ 	}
+ 
+-#if defined(F_NOCACHE) && !defined(IO_DIRECT)
+-	if (flags & IO_FLAG_DIRECT_IO) {
+-		if (fcntl(fd, F_NOCACHE, 1) < 0)
+-			return errno;
+-	}
 -#endif
--                  &fs);
-+			      default_io_manager, &fs);
- 	if (retval)
- 		return;
- 	sb = fs->super;
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index bde1e582e..24cc14750 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1950,10 +1950,10 @@ profile_error:
- #ifdef CONFIG_TESTIO_DEBUG
- 		if (getenv("TEST_IO_FLAGS") || getenv("TEST_IO_BLOCK")) {
- 			io_ptr = test_io_manager;
--			test_io_backing_manager = unix_io_manager;
-+			test_io_backing_manager = default_io_manager;
- 		} else
- #endif
--			io_ptr = unix_io_manager;
-+			io_ptr = default_io_manager;
- 		retval = ext2fs_open(journal_device,
- 				     EXT2_FLAG_JOURNAL_DEV_OK, 0,
- 				     0, io_ptr, &jfs);
-@@ -2736,7 +2736,7 @@ static int should_do_undo(const char *name)
- 	io_channel channel;
- 	__u16	s_magic;
- 	struct ext2_super_block super;
--	io_manager manager = unix_io_manager;
-+	io_manager manager = default_io_manager;
- 	int csum_flag, force_undo;
+ 	return windows_open_channel(data, flags, channel, windows_io_manager);
+ }
  
- 	csum_flag = ext2fs_has_feature_metadata_csum(&fs_param) ||
-@@ -3041,10 +3041,10 @@ int main (int argc, char *argv[])
- #ifdef CONFIG_TESTIO_DEBUG
- 	if (getenv("TEST_IO_FLAGS") || getenv("TEST_IO_BLOCK")) {
- 		io_ptr = test_io_manager;
--		test_io_backing_manager = unix_io_manager;
-+		test_io_backing_manager = default_io_manager;
- 	} else
- #endif
--		io_ptr = unix_io_manager;
-+		io_ptr = default_io_manager;
- 
- 	if (undo_file != NULL || should_do_undo(device_name)) {
- 		retval = mke2fs_setup_tdb(device_name, &io_ptr);
-@@ -3449,7 +3449,7 @@ int main (int argc, char *argv[])
- 
- 		retval = ext2fs_open(journal_device, EXT2_FLAG_RW|
- 				     EXT2_FLAG_JOURNAL_DEV_OK, 0,
--				     fs->blocksize, unix_io_manager, &jfs);
-+				     fs->blocksize, default_io_manager, &jfs);
- 		if (retval) {
- 			com_err(program_name, retval,
- 				_("while trying to open journal device %s\n"),
 -- 
 2.39.0
 
