@@ -2,41 +2,40 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F2630C54EAA
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:37:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 78DEEC38142
+	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:37:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229764AbjAUUhD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Jan 2023 15:37:03 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52600 "EHLO
+        id S229825AbjAUUhF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Jan 2023 15:37:05 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52602 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229970AbjAUUgs (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:48 -0500
+        with ESMTP id S229984AbjAUUgt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:49 -0500
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0F7032915E
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:43 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BE93C29169
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:44 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 72C9460ADD
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 11CDB60B81
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:44 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CEDF6C433A8
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:43 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 32B8DC433A7;
-        Sat, 21 Jan 2023 20:36:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=k20201202; t=1674333403;
-        bh=js4EoiNuVDSE622JrtozM8VHganSNbk0FH7XROPaiHw=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=PyyguBZmVU9j5aXZQqlkKXqpe1FGMjJ6MajMTNdEExVyeuwm3JS/lUgxRE83JymcV
-         8d0h/CUJSCAJclO2uNMmYyuGAb+c354mMmOMtuVGbqPX+y3W5HWneVZe3KFD7qIcAf
-         rvncf+XCWf9BRayiC1zXmhFClqdntko1ju38R7lMgY+ph+YMLgakBW9XSp/gd3Gj0o
-         B7rQzazvfswf5R6KbBU8kxiJluibBzTJJ6zrE5FWH4UivA464k0t/0rX7OHU7nEpHm
-         skMrlZzM63Bbf2ToVVI6zLivdRH9nYIvNlvqvP5TQDBmuFLIRYNwageEIe1ptva/o+
-         +R8fQtok6AuyA==
+        bh=RnNP8QvLhZniSZKh7fzsGa9zTQXAgXo++gBVjqnTZ6w=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=mcP8bPJ3DHQCgFXNQmaAfRMCYoeCtsY7eQypIBh4vqaJx45NIYIKsVTprnSYL3wMb
+         /jqZnm2y2R0aLeeTedPzCflLbbgy5aB6v1Mq9v/BqfsJ6zs2GuH5ieZ+1jrQlV3vnp
+         yM3GV/HpkUucaGqEPJ5w3yfvn7RyJ+r3Y8g34sFeYjUrX9z2fJQ3ALjZiZWD4F9zce
+         5sQICO6YSttL9+WtA0IGZ3YUJy10nnfiUCo/2u1SnKSocOuUSYtRjktry4GQiE06wQ
+         JAN8WzBO0R7aBUWZAxtYSQz3uUQosXleR6nKTs0qw+X959EuHj0Je4DV3+iSA/Sczi
+         ACE8pTpxPy0xg==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Cc:     Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 24/38] lib/support: clean up definition of flags_array
-Date:   Sat, 21 Jan 2023 12:32:16 -0800
-Message-Id: <20230121203230.27624-25-ebiggers@kernel.org>
+Subject: [PATCH 27/38] misc/create_inode: fix -Wunused-variable warnings in __populate_fs()
+Date:   Sat, 21 Jan 2023 12:32:19 -0800
+Message-Id: <20230121203230.27624-28-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230121203230.27624-1-ebiggers@kernel.org>
 References: <20230121203230.27624-1-ebiggers@kernel.org>
@@ -48,95 +47,51 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Add braces to address the following compiler warning with gcc -Wall:
+These showed up when building for Windows.
 
-print_fs_flags.c:24:42: warning: missing braces around initializer [-Wmissing-braces]
-   24 | static struct flags_name flags_array[] = {
-      |                                          ^
-
-Also add 'const', and add an explicit NULL in the last entry.
-
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- lib/support/print_fs_flags.c | 60 ++++++++++++++++++------------------
- 1 file changed, 30 insertions(+), 30 deletions(-)
+ misc/create_inode.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/lib/support/print_fs_flags.c b/lib/support/print_fs_flags.c
-index e54acc04b..f47cd6653 100644
---- a/lib/support/print_fs_flags.c
-+++ b/lib/support/print_fs_flags.c
-@@ -21,40 +21,40 @@ struct flags_name {
+diff --git a/misc/create_inode.c b/misc/create_inode.c
+index c00d54588..7ce69c2b0 100644
+--- a/misc/create_inode.c
++++ b/misc/create_inode.c
+@@ -813,11 +813,9 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
  	const char	*name;
- };
- 
--static struct flags_name flags_array[] = {
--	EXT2_FLAG_RW, "EXT2_FLAG_RW",
--	EXT2_FLAG_CHANGED, "EXT2_FLAG_CHANGED",
--	EXT2_FLAG_DIRTY, "EXT2_FLAG_DIRTY",
--	EXT2_FLAG_VALID, "EXT2_FLAG_VALID",
--	EXT2_FLAG_IB_DIRTY, "EXT2_FLAG_IB_DIRTY",
--	EXT2_FLAG_BB_DIRTY, "EXT2_FLAG_BB_DIRTY",
--	EXT2_FLAG_SWAP_BYTES, "EXT2_FLAG_SWAP_BYTES",
--	EXT2_FLAG_SWAP_BYTES_READ, "EXT2_FLAG_SWAP_BYTES_READ",
--	EXT2_FLAG_SWAP_BYTES_WRITE, "EXT2_FLAG_SWAP_BYTES_WRITE",
--	EXT2_FLAG_MASTER_SB_ONLY, "EXT2_FLAG_MASTER_SB_ONLY",
--	EXT2_FLAG_FORCE, "EXT2_FLAG_FORCE",
--	EXT2_FLAG_SUPER_ONLY, "EXT2_FLAG_SUPER_ONLY",
--	EXT2_FLAG_JOURNAL_DEV_OK, "EXT2_FLAG_JOURNAL_DEV_OK",
--	EXT2_FLAG_IMAGE_FILE, "EXT2_FLAG_IMAGE_FILE",
--	EXT2_FLAG_EXCLUSIVE, "EXT2_FLAG_EXCLUSIVE",
--	EXT2_FLAG_SOFTSUPP_FEATURES, "EXT2_FLAG_SOFTSUPP_FEATURES",
--	EXT2_FLAG_NOFREE_ON_ERROR, "EXT2_FLAG_NOFREE_ON_ERROR",
--	EXT2_FLAG_64BITS, "EXT2_FLAG_64BITS",
--	EXT2_FLAG_PRINT_PROGRESS, "EXT2_FLAG_PRINT_PROGRESS",
--	EXT2_FLAG_DIRECT_IO, "EXT2_FLAG_DIRECT_IO",
--	EXT2_FLAG_SKIP_MMP, "EXT2_FLAG_SKIP_MMP",
--	EXT2_FLAG_IGNORE_CSUM_ERRORS, "EXT2_FLAG_IGNORE_CSUM_ERRORS",
--	EXT2_FLAG_SHARE_DUP, "EXT2_FLAG_SHARE_DUP",
--	EXT2_FLAG_IGNORE_SB_ERRORS, "EXT2_FLAG_IGNORE_SB_ERRORS",
--	EXT2_FLAG_BBITMAP_TAIL_PROBLEM, "EXT2_FLAG_BBITMAP_TAIL_PROBLEM",
--	EXT2_FLAG_IBITMAP_TAIL_PROBLEM, "EXT2_FLAG_IBITMAP_TAIL_PROBLEM",
--	EXT2_FLAG_THREADS, "EXT2_FLAG_THREADS",
--	0
-+static const struct flags_name flags_array[] = {
-+	{ EXT2_FLAG_RW, "EXT2_FLAG_RW" },
-+	{ EXT2_FLAG_CHANGED, "EXT2_FLAG_CHANGED" },
-+	{ EXT2_FLAG_DIRTY, "EXT2_FLAG_DIRTY" },
-+	{ EXT2_FLAG_VALID, "EXT2_FLAG_VALID" },
-+	{ EXT2_FLAG_IB_DIRTY, "EXT2_FLAG_IB_DIRTY" },
-+	{ EXT2_FLAG_BB_DIRTY, "EXT2_FLAG_BB_DIRTY" },
-+	{ EXT2_FLAG_SWAP_BYTES, "EXT2_FLAG_SWAP_BYTES" },
-+	{ EXT2_FLAG_SWAP_BYTES_READ, "EXT2_FLAG_SWAP_BYTES_READ" },
-+	{ EXT2_FLAG_SWAP_BYTES_WRITE, "EXT2_FLAG_SWAP_BYTES_WRITE" },
-+	{ EXT2_FLAG_MASTER_SB_ONLY, "EXT2_FLAG_MASTER_SB_ONLY" },
-+	{ EXT2_FLAG_FORCE, "EXT2_FLAG_FORCE" },
-+	{ EXT2_FLAG_SUPER_ONLY, "EXT2_FLAG_SUPER_ONLY" },
-+	{ EXT2_FLAG_JOURNAL_DEV_OK, "EXT2_FLAG_JOURNAL_DEV_OK" },
-+	{ EXT2_FLAG_IMAGE_FILE, "EXT2_FLAG_IMAGE_FILE" },
-+	{ EXT2_FLAG_EXCLUSIVE, "EXT2_FLAG_EXCLUSIVE" },
-+	{ EXT2_FLAG_SOFTSUPP_FEATURES, "EXT2_FLAG_SOFTSUPP_FEATURES" },
-+	{ EXT2_FLAG_NOFREE_ON_ERROR, "EXT2_FLAG_NOFREE_ON_ERROR" },
-+	{ EXT2_FLAG_64BITS, "EXT2_FLAG_64BITS" },
-+	{ EXT2_FLAG_PRINT_PROGRESS, "EXT2_FLAG_PRINT_PROGRESS" },
-+	{ EXT2_FLAG_DIRECT_IO, "EXT2_FLAG_DIRECT_IO" },
-+	{ EXT2_FLAG_SKIP_MMP, "EXT2_FLAG_SKIP_MMP" },
-+	{ EXT2_FLAG_IGNORE_CSUM_ERRORS, "EXT2_FLAG_IGNORE_CSUM_ERRORS" },
-+	{ EXT2_FLAG_SHARE_DUP, "EXT2_FLAG_SHARE_DUP" },
-+	{ EXT2_FLAG_IGNORE_SB_ERRORS, "EXT2_FLAG_IGNORE_SB_ERRORS" },
-+	{ EXT2_FLAG_BBITMAP_TAIL_PROBLEM, "EXT2_FLAG_BBITMAP_TAIL_PROBLEM" },
-+	{ EXT2_FLAG_IBITMAP_TAIL_PROBLEM, "EXT2_FLAG_IBITMAP_TAIL_PROBLEM" },
-+	{ EXT2_FLAG_THREADS, "EXT2_FLAG_THREADS" },
-+	{ 0, NULL },
- };
- 
- void print_fs_flags(FILE * f, unsigned long flags)
- {
--	struct flags_name *fp;
-+	const struct flags_name *fp;
- 	int	first = 1, pos = 16;
- 
- 	for (fp = flags_array; fp->flag != 0; fp++) {
+ 	struct dirent	**dent;
+ 	struct stat	st;
+-	char		*ln_target = NULL;
+ 	unsigned int	save_inode;
+ 	ext2_ino_t	ino;
+ 	errcode_t	retval = 0;
+-	int		read_cnt;
+ 	int		hdlink;
+ 	size_t		cur_dir_path_len;
+ 	int		i, num_dents;
+@@ -900,7 +898,10 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
+ 				goto out;
+ 			}
+ 			break;
+-		case S_IFLNK:
++		case S_IFLNK: {
++			char *ln_target;
++			int read_cnt;
++
+ 			ln_target = malloc(st.st_size + 1);
+ 			if (ln_target == NULL) {
+ 				com_err(__func__, retval,
+@@ -935,7 +936,8 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
+ 				goto out;
+ 			}
+ 			break;
+-#endif
++		}
++#endif /* !_WIN32 */
+ 		case S_IFREG:
+ 			retval = do_write_internal(fs, parent_ino, name, name,
+ 						   root);
 -- 
 2.39.0
 
