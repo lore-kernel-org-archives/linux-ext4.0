@@ -2,41 +2,40 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B23EDC38142
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:36:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 05D6BC54EB4
+	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:36:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230021AbjAUUgw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Jan 2023 15:36:52 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52580 "EHLO
+        id S230034AbjAUUgy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Jan 2023 15:36:54 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52578 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229883AbjAUUgr (ORCPT
+        with ESMTP id S229881AbjAUUgr (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:47 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E65C029143
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6811D2914B
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:42 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id B10D260B6A
+        by ams.source.kernel.org (Postfix) with ESMTPS id 1E3C1B80880
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:41 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 724ADC4339E;
-        Sat, 21 Jan 2023 20:36:41 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A120FC433A7
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674333401;
-        bh=mYuMEikLUJ9WzfsPcciIqqBc8WId6z72Oq+uxwsfhkI=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Zy9E218R/rcw9ngYvrn+HubwFzeqNRyNtQ9+8i8c3lVWXyvJVa6ZzCbrA+XRsRqEb
-         C4bQXu4t7VICDdZlDP3Lucyn/bCHVW5HN+5Yqg9ERzPcWbsu3vfJpyKbC/0qbDBQez
-         RRBmPnvPHZnCyC7pXT2TmWB/1LQOsUKxBGb0wi+laB3xHWsrg0AYR88yak8CUz4vSA
-         b3yLQSJBW/8/l2n9YGco8p9gGiHs0/TQMrDKzuED7tgJJK6nM8nfcwPVd1hM8RW+T3
-         JgkGiL0fHyi660SQbz7mEM07FgnI803KCD77Az0BxtcPpfsbJkC6wa5wNvLUPR0m+j
-         b7pfvZcoNlszw==
+        s=k20201202; t=1674333399;
+        bh=whuH9yPE9amH85pSRITB4jYCMo0rheLcLtdVhHG7Hys=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=se023mMtw7kiavtRInQkp0DCu741IFudNClGUlnCC+Cg3oAoIpTRR5Xl37rHAl5du
+         QRROlYJATJCZMhBmYIu7VoO1t06cKaUKjNTRFNHUPJ4CFBPSXYYjgXcAKds8HMYlKL
+         n99iAZ1LAk0imUyooq9fmhuPj+M6Ufq0mIZLKgK96MKAB99z6w8ddpHD9gPHnHlmI8
+         uMLk9Jk6gubyAZGUWlAb6H5SckWgSqcs+/XFdEOeom6zgjMlth5/v35iSrJquSUuSd
+         HQTfZ/P1WwRxW0E9w6XxHUnfCT69jYcoIIVfH9GKA5Acd8dep0qnlkfzcDAmNiKU2Z
+         xaP7GwifDH7lA==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Cc:     Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 16/38] lib/ext2fs: consistently use #ifdefs in ext2fs_print_bmap_statistics()
-Date:   Sat, 21 Jan 2023 12:32:08 -0800
-Message-Id: <20230121203230.27624-17-ebiggers@kernel.org>
+Subject: [PATCH 07/38] lib/blkid: remove 32-bit x86 byteswap assembly
+Date:   Sat, 21 Jan 2023 12:31:59 -0800
+Message-Id: <20230121203230.27624-8-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230121203230.27624-1-ebiggers@kernel.org>
 References: <20230121203230.27624-1-ebiggers@kernel.org>
@@ -48,55 +47,79 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Since the 'now' variable is only used to calculate 'inuse', and 'inuse'
-is only used when defined(ENABLE_BMAP_STATS_OPS), it makes sense to
-guard the declaration and initialization of 'now' and 'inuse' by the
-same condition, just like the '*_perc' variables in the same function.
+libblkid contains 32-bit x86 assembly language implementations of 16-bit
+and 32-bit byteswaps.  However, modern compilers can easily generate the
+bswap instruction automatically from the corresponding C expression.
+And no one ever bothered to add assembly for x86_64 or other
+architectures, anyway.  So let's just remove this outdated code, which
+was maybe useful in the 90s, but is no longer useful.
 
-This addresses the following compiler warning with clang -Wall:
-
-gen_bitmap64.c:187:9: warning: variable 'inuse' set but not used [-Wunused-but-set-variable]
-        double inuse;
-               ^
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- lib/ext2fs/gen_bitmap64.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ lib/blkid/probe.h | 43 -------------------------------------------
+ 1 file changed, 43 deletions(-)
 
-diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
-index c860c10ed..1a1eeefeb 100644
---- a/lib/ext2fs/gen_bitmap64.c
-+++ b/lib/ext2fs/gen_bitmap64.c
-@@ -183,11 +183,9 @@ static void ext2fs_print_bmap_statistics(ext2fs_generic_bitmap_64 bitmap)
- #ifdef ENABLE_BMAP_STATS_OPS
- 	float mark_seq_perc = 0.0, test_seq_perc = 0.0;
- 	float mark_back_perc = 0.0, test_back_perc = 0.0;
+diff --git a/lib/blkid/probe.h b/lib/blkid/probe.h
+index dea4081d0..063a5b5c0 100644
+--- a/lib/blkid/probe.h
++++ b/lib/blkid/probe.h
+@@ -814,46 +814,6 @@ struct exfat_entry_label {
+ #define _INLINE_ static inline
+ #endif
+ 
+-static __u16 blkid_swab16(__u16 val);
+-static __u32 blkid_swab32(__u32 val);
+-static __u64 blkid_swab64(__u64 val);
+-
+-#if ((defined __GNUC__) && \
+-     (defined(__i386__) || defined(__i486__) || defined(__i586__)))
+-
+-#define _BLKID_HAVE_ASM_BITOPS_
+-
+-_INLINE_ __u32 blkid_swab32(__u32 val)
+-{
+-#ifdef EXT2FS_REQUIRE_486
+-	__asm__("bswap %0" : "=r" (val) : "0" (val));
+-#else
+-	__asm__("xchgb %b0,%h0\n\t"	/* swap lower bytes	*/
+-		"rorl $16,%0\n\t"	/* swap words		*/
+-		"xchgb %b0,%h0"		/* swap higher bytes	*/
+-		:"=q" (val)
+-		: "0" (val));
 -#endif
--	double inuse;
- 	struct timeval now;
-+	double inuse;
- 
--#ifdef ENABLE_BMAP_STATS_OPS
- 	if (stats->test_count) {
- 		test_seq_perc = ((float)stats->test_seq /
- 				 stats->test_count) * 100;
-@@ -201,7 +199,6 @@ static void ext2fs_print_bmap_statistics(ext2fs_generic_bitmap_64 bitmap)
- 		mark_back_perc = ((float)stats->mark_back /
- 				  stats->mark_count) * 100;
- 	}
+-	return val;
+-}
+-
+-_INLINE_ __u16 blkid_swab16(__u16 val)
+-{
+-	__asm__("xchgb %b0,%h0"		/* swap bytes		*/ \
+-		: "=q" (val) \
+-		:  "0" (val)); \
+-		return val;
+-}
+-
+-_INLINE_ __u64 blkid_swab64(__u64 val)
+-{
+-	return (blkid_swab32(val >> 32) |
+-		(((__u64) blkid_swab32(val & 0xFFFFFFFFUL)) << 32));
+-}
 -#endif
+-
+-#if !defined(_BLKID_HAVE_ASM_BITOPS_)
+-
+ _INLINE_  __u16 blkid_swab16(__u16 val)
+ {
+ 	return (val >> 8) | (val << 8);
+@@ -870,9 +830,6 @@ _INLINE_ __u64 blkid_swab64(__u64 val)
+ 	return (blkid_swab32(val >> 32) |
+ 		(((__u64) blkid_swab32(val & 0xFFFFFFFFUL)) << 32));
+ }
+-#endif
+-
+-
  
- 	if (gettimeofday(&now, (struct timezone *) NULL) == -1) {
- 		perror("gettimeofday");
-@@ -212,6 +209,7 @@ static void ext2fs_print_bmap_statistics(ext2fs_generic_bitmap_64 bitmap)
- 		(((double) now.tv_usec) * 0.000001);
- 	inuse -= (double) stats->created.tv_sec + \
- 		(((double) stats->created.tv_usec) * 0.000001);
-+#endif /* ENABLE_BMAP_STATS_OPS */
- 
- 	fprintf(stderr, "\n[+] %s bitmap (type %d)\n", bitmap->description,
- 		stats->type);
+ #ifdef WORDS_BIGENDIAN
+ #define blkid_le16(x) blkid_swab16(x)
 -- 
 2.39.0
 
