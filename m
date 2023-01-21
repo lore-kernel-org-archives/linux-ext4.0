@@ -2,40 +2,40 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EED8BC54EED
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:37:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 525BBC38142
+	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:37:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229954AbjAUUhB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Jan 2023 15:37:01 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52576 "EHLO
+        id S230041AbjAUUhC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Jan 2023 15:37:02 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52578 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229961AbjAUUgs (ORCPT
+        with ESMTP id S229967AbjAUUgs (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:48 -0500
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 17C0D2915F
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:44 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A680329157
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:43 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id A0BD060B72
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 61A6660B7F
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:43 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 69F83C433A1
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:43 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BE496C4339B
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674333403;
-        bh=kti/DpdHfEfhMTbcC9Le45ZXZpgKFpFCpFhO0AZSpFA=;
+        s=k20201202; t=1674333402;
+        bh=biRELdgM3R8+fJoxOyh4m11cf4MkKzKLRr029v4SWCI=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=P34F22tT9UjTGKAW/2Wd7b4EtRI/q4FG55U0pPnOv/L0Soe4P+3zz0gnxJDP0sN1Q
-         7qiVnAc268Fa0XSdVzL8opY4/RM0Q0O4st9+UThnCTLyvFbw7/zW0TcZD0Rbwc1C6q
-         /8Gn877NsRHZTepoa826DpJreFOOKrpdl3R4VIFp4c/NZEmYlsjKyt3Dfqhdxm7mBI
-         ktXa+1AgJf73inqmf2/p0HzX8KWBegWDUhEQn2l+n+Y9ZZ/QarRRUSeoOy9SJwnLx2
-         UDmPO7Cxfjf/4ugUPkHU3Tzff+QjLugMm/8qAIQC9oF6AVoofBdGPG8rjiEuCogsU/
-         gqrwg6VVYV1/A==
+        b=eIoZ9d+DoTRYjPLaw1hpknbgKnpPJMUXnAsTXIDcm6GjMuqkMBvNixZ6hI8xeMkKo
+         s0I9FRx0L8tn1wOB43t2VjQFUQ8KPYibCYNrTxH7P32HfY+90PgR3jDpCLKeFa+66b
+         mM7MQS15uWVvbclB6RQERwYvI8TZTm8ycOwsHvQo1k9MkSMWLAlfHzmnxd7wGtoM2C
+         2kNZJRFmc1xkvLVtXTNZ1b+jQbYIxyTPQ2P3ZtCd9tFHfN2Vnz0zlCicm21kb9icoM
+         sXf2pqX03VYaOm+Rd57mm1L2+ac/tedtr27dq1Dxs0+/MBKKfkWPouAv95EO7lWhFH
+         K24f2TRpsenWw==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 25/38] lib/uuid: remove conflicting Windows implementation of gettimeofday()
-Date:   Sat, 21 Jan 2023 12:32:17 -0800
-Message-Id: <20230121203230.27624-26-ebiggers@kernel.org>
+Subject: [PATCH 22/38] lib/ss: fix 'make install' by creating man1dir
+Date:   Sat, 21 Jan 2023 12:32:14 -0800
+Message-Id: <20230121203230.27624-23-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230121203230.27624-1-ebiggers@kernel.org>
 References: <20230121203230.27624-1-ebiggers@kernel.org>
@@ -47,53 +47,32 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-When building libuuid for Windows with MinGW with the default settings,
-there is a build error in lib/uuid/gen_uuid.c because the explicit
-definition of gettimeofday() conflicts with MinGW's declaration of
-gettimeofday().  gen_uuid.c apparently expects USE_MINGW to be defined
-to avoid that, but the build system doesn't actually do that.
-
-Since native Windows builds of e2fsprogs are currently only supported
-via MinGW anyway (in particular, Visual Studio is not supported), let's
-fix this by just removing our own definition of gettimeofday().
+'make install' does not work because libss tries to install a man page
+without creating the directory first.  Fix this.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- lib/uuid/gen_uuid.c | 21 ---------------------
- 1 file changed, 21 deletions(-)
+ lib/ss/Makefile.in | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/lib/uuid/gen_uuid.c b/lib/uuid/gen_uuid.c
-index 14c98eb4a..a2225ccee 100644
---- a/lib/uuid/gen_uuid.c
-+++ b/lib/uuid/gen_uuid.c
-@@ -117,27 +117,6 @@
- THREAD_LOCAL unsigned short jrand_seed[3];
- #endif
+diff --git a/lib/ss/Makefile.in b/lib/ss/Makefile.in
+index 40294db0b..bb5041893 100644
+--- a/lib/ss/Makefile.in
++++ b/lib/ss/Makefile.in
+@@ -125,10 +125,11 @@ ss.pc: $(srcdir)/ss.pc.in $(top_builddir)/config.status
+ 	$(Q) cd $(top_builddir); CONFIG_FILES=lib/ss/ss.pc ./config.status
  
--#ifdef _WIN32
--#ifndef USE_MINGW
--static void gettimeofday (struct timeval *tv, void *dummy)
--{
--	FILETIME	ftime;
--	uint64_t	n;
--
--	GetSystemTimeAsFileTime (&ftime);
--	n = (((uint64_t) ftime.dwHighDateTime << 32)
--	     + (uint64_t) ftime.dwLowDateTime);
--	if (n) {
--		n /= 10;
--		n -= ((369 * 365 + 89) * (uint64_t) 86400) * 1000000;
--	}
--
--	tv->tv_sec = n / 1000000;
--	tv->tv_usec = n % 1000000;
--}
--#endif
--#endif
--
- static int get_random_fd(void)
- {
- 	struct timeval	tv;
+ installdirs::
+-	$(E) "	MKDIR_P $(libdir) $(includedir)/ss $(datadir)/ss $(bindir)"
++	$(E) "	MKDIR_P $(libdir) $(includedir)/ss $(datadir)/ss $(bindir) $(pkgconfigdir) $(man1dir)"
+ 	$(Q) $(MKDIR_P) $(DESTDIR)$(libdir) \
+ 		$(DESTDIR)$(includedir)/ss $(DESTDIR)$(datadir)/ss \
+-		$(DESTDIR)$(bindir) $(DESTDIR)$(pkgconfigdir)
++		$(DESTDIR)$(bindir) $(DESTDIR)$(pkgconfigdir) \
++		$(DESTDIR)$(man1dir)
+ 
+ install:: libss.a $(INSTALL_HFILES) installdirs ss_err.h mk_cmds ss.pc
+ 	$(E) "	INSTALL_DATA $(DESTDIR)$(libdir)/libss.a"
 -- 
 2.39.0
 
