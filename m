@@ -2,40 +2,40 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5942EC54EB4
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:36:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DC393C54EED
+	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:36:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230017AbjAUUgu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Jan 2023 15:36:50 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52430 "EHLO
+        id S229995AbjAUUgt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Jan 2023 15:36:49 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52418 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229840AbjAUUgn (ORCPT
+        with ESMTP id S229687AbjAUUgn (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:43 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1528829147
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1369F28D32
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:42 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id E1ED260B72
+        by dfw.source.kernel.org (Postfix) with ESMTPS id D930E60B6E
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:40 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3F82CC433A8
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A0FEFC4339E
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=k20201202; t=1674333400;
-        bh=U7wI4qHzRE7/py31orTHfxUE3tXqYIJBmnHYRx8/5Ac=;
+        bh=cetx1mAkAWZjY6IHf+Af5VO4OdrotI1R9aiRjV/sLsM=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=jJ7MmG54Gh4jMe3/+sOba4oPma8Y3PlfXtkIIpi50jgXko230QTGP5NXMmFHyWnkL
-         BV/DYbFxRGH46Oo7WGctwKH8QwFsP5511vYGL9Q4x+I/oqWlgsrtB/LRYXhBRm1cnt
-         pvHBwmJ9dWWi897+4Ad5vCOrbdukWCicJaM6mkCsIJJ4z15/kgbGlYcJ+5dVSTSJj5
-         uZGMiSLDnKd5D5TUAGUV96vrf8OM1gqQiy/d91Zc3+bQYJ4mv1vykR1MtOpqkisp7Q
-         cvjaBs6dNs25oJ4vMZRa/aKk3nV6dYxrKZNCy2E4CLk9A9WhP5JgPZ6TD4noGR5SMe
-         wkQuoSSXuUgmw==
+        b=merEyI3StstuHSbg9s1J8ptsLAuRAdufsgHoW10gKV+ioKSpGPZrMckBJA+AQG908
+         W4WfkYC6Itv3EY3xXoILRllRSce+YhZ2LKl6XsFJeyJCr06XbPlyWW6zzC5YLTWL7W
+         uyooZNRLuNTOnUYcERQYGdf/PFEowCuLsAKMpjoOHtOuJbyKAnbI6yXKCagVnH5U5u
+         IW7fZA7D/+lBEO+kgF0GuSp/UJGoXwgIq5AeIr2uHrn5fcDKGRvH3Blx+aBn3GQHan
+         UI/dTer4lD+Tmx2bDYu9l+uG48Zgl26A7wUYo63rWxsHe0Ht5K5QtLlD4aNniDx+Ho
+         QAzs99yNlVKyQ==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 10/38] lib/blkid: suppress -Wunused-result warning in blkid_flush_cache()
-Date:   Sat, 21 Jan 2023 12:32:02 -0800
-Message-Id: <20230121203230.27624-11-ebiggers@kernel.org>
+Subject: [PATCH 12/38] lib/e2p: fix a -Wunused-variable warning in getflags()
+Date:   Sat, 21 Jan 2023 12:32:04 -0800
+Message-Id: <20230121203230.27624-13-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230121203230.27624-1-ebiggers@kernel.org>
 References: <20230121203230.27624-1-ebiggers@kernel.org>
@@ -47,37 +47,35 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-When _FORTIFY_SOURCE is defined, glibc annotates link() with the
-warn_unused_result function attribute.  With gcc, that makes
-'(void) link()' cause a -Wunused-result warning, despite the explicit
-cast to void.  That's annoying, since the use case in lib/blkid/save.c
-is legitimate (opportunistic backup).  So let's suppress this warning.
+This affected Windows builds.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- lib/blkid/save.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ lib/e2p/getflags.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/lib/blkid/save.c b/lib/blkid/save.c
-index 036f07a4a..6f4499cfd 100644
---- a/lib/blkid/save.c
-+++ b/lib/blkid/save.c
-@@ -154,7 +154,15 @@ int blkid_flush_cache(blkid_cache cache)
- 			if (backup) {
- 				sprintf(backup, "%s.old", filename);
- 				unlink(backup);
-+#if defined(__GNUC__) && __GNUC__ >= 5
-+/* explicit (void) cast is not enough with glibc and _FORTIFY_SOURCE */
-+#pragma GCC diagnostic push
-+#pragma GCC diagnostic ignored "-Wunused-result"
-+#endif
- 				(void) link(filename, backup);
-+#if defined(__GNUC__) && __GNUC__ >= 5
-+#pragma GCC diagnostic pop
-+#endif
- 				free(backup);
- 			}
- 			if (rename(opened, filename) < 0)
+diff --git a/lib/e2p/getflags.c b/lib/e2p/getflags.c
+index e4e2ad735..6708cd68b 100644
+--- a/lib/e2p/getflags.c
++++ b/lib/e2p/getflags.c
+@@ -30,8 +30,8 @@
+ 
+ int getflags (int fd, unsigned long * flags)
+ {
+-	struct stat buf;
+ #if HAVE_STAT_FLAGS
++	struct stat buf;
+ 
+ 	if (fstat (fd, &buf) == -1)
+ 		return -1;
+@@ -53,6 +53,7 @@ int getflags (int fd, unsigned long * flags)
+ 	return 0;
+ #else
+ #if HAVE_EXT2_IOCTLS
++	struct stat buf;
+ 	int r, f;
+ 
+ 	if (!fstat(fd, &buf) &&
 -- 
 2.39.0
 
