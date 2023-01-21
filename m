@@ -2,44 +2,45 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DE31FC38142
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:36:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 40620C54E94
+	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:36:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230036AbjAUUgz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S229986AbjAUUgz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Sat, 21 Jan 2023 15:36:55 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52576 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52582 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229709AbjAUUgr (ORCPT
+        with ESMTP id S229888AbjAUUgr (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:47 -0500
-Received: from sin.source.kernel.org (sin.source.kernel.org [145.40.73.55])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 62F8B29149
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DB49E28D3E
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:42 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by sin.source.kernel.org (Postfix) with ESMTPS id 93CEBCE0A19
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 174ED60B76
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:41 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D2001C433A0
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:40 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9684DC433EF
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674333398;
-        bh=nHfz2otl4U+5Pr63vSB63sCCWYB9/BfF30kLLccFCno=;
+        s=k20201202; t=1674333400;
+        bh=VvXtES7I3U2zXIiT7Pdtpoc8YGQ5YDLdeE5z3UJnzRs=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=Sd0eWdH5u6kem3h3qzFW5pDw4LaRSeVAQOu/OG9q+aEkumJYx3uSjOHRXpK0svnUA
-         VPiLoOQaIa8EmXqUGBL86aSu1xAkgiim2Tb5WL/ITjsmD82MeKYZyEZFkLZt1YtdfX
-         XoYk0PhuHfX4RZSo47tXOOeDeU9NbHTNBjUMmbQnAd88L2obInmPTpkS0hR+FVgL3M
-         k/CEx4z/vb7qU2C702451osJ6bSBG2Ir+6/unTDrXkQhwbzTezVh568n38Ek2LbvIq
-         zolUy0s8YYSDHmDv8hPwZA0oDDf3k+SiYSz0bP8VVloZ/0dZ3BSHU6FUNUMSe2rUTi
-         XiqGBiVOmWd0Q==
+        b=N6SGpLC8wn1UXK0IDZdDiL5bYEOigGxIKc97BYDlS0VI6wvDdKlnUWaB1ESpHVxzp
+         xO/84GBZIKoYI6b7I+J+/2MAlM1x6AvyR9EQgZJTBhTshYJOq8O498ejTtcpcn+qeg
+         xJug+D9WdzpKl+jRqzSMDkkn9k53ygL3EBOQzga3grDHkcV+EvEtuOkrYPdBBgEEO9
+         FTKE1bfjFwf2u0+KAxQip9Sy0rlCRy64m1/kPLvvMeiQfoMsdLpztLvUTn/106aruE
+         Gge7jIbx2Twoeo2pvLXdzu3/DuMSCOcTOPvLwZy0aAaZ8UVzBx52q1arXsBDHnHXJe
+         RYkJQb+86rymQ==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 02/38] configure.ac: disable tdb by default on Windows
-Date:   Sat, 21 Jan 2023 12:31:54 -0800
-Message-Id: <20230121203230.27624-3-ebiggers@kernel.org>
+Subject: [PATCH 13/38] lib/{e2p,ss}: remove manual declarations of errno
+Date:   Sat, 21 Jan 2023 12:32:05 -0800
+Message-Id: <20230121203230.27624-14-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230121203230.27624-1-ebiggers@kernel.org>
 References: <20230121203230.27624-1-ebiggers@kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
@@ -47,66 +48,123 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-The tdb support does not build for Windows, due to the use of various
-UNIX-isms, so disable it by default when building for Windows.
+As per 'man 3 errno':
+
+    On some ancient systems, <errno.h> was not present or did not
+    declare errno, so that it was necessary to declare errno manually
+    (i.e., extern int errno).   **Do not do this**.  It long ago ceased
+    to be necessary, and it will cause problems with modern versions of
+    the C library.
+
+One of the platforms it causes a problem on is Windows:
+
+    In file included from fgetversion.c:28:
+    fgetversion.c: In function ‘fgetversion’:
+    fgetversion.c:68:20: warning: ‘_errno’ redeclared without dllimport attribute: previous dllimport ignored [-Wattributes]
+       68 |         extern int errno;
+          |                    ^~~~~
+
+Just remove these obsolete manual declarations of errno.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- configure.ac | 32 ++++++++++++++++++++++++--------
- 1 file changed, 24 insertions(+), 8 deletions(-)
+ lib/e2p/fgetversion.c | 2 --
+ lib/e2p/fsetversion.c | 1 -
+ lib/e2p/getversion.c  | 1 -
+ lib/e2p/setversion.c  | 1 -
+ lib/ss/execute_cmd.c  | 2 --
+ lib/ss/help.c         | 2 --
+ lib/ss/pager.c        | 2 --
+ 7 files changed, 11 deletions(-)
 
-diff --git a/configure.ac b/configure.ac
-index 5f440f1fc..e3884db60 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -845,23 +845,39 @@ dnl
- AH_TEMPLATE([CONFIG_TDB], [Define to 1 to enable tdb support])
- AC_ARG_ENABLE([tdb],
- AS_HELP_STRING([--disable-tdb],[disable tdb support]),
-+[
- if test "$enableval" = "no"
- then
- 	AC_MSG_RESULT([Disabling tdb support])
--	TDB_CMT="#"
--	TDB_MAN_COMMENT='.\"'
-+	CONFIG_TDB=0
- else
- 	AC_MSG_RESULT([Enabling tdb support])
-+	CONFIG_TDB=1
-+fi
-+]
-+,
-+[
-+case "$host_os" in
-+mingw*)
-+	AC_MSG_RESULT([Disabling tdb support by default])
-+	CONFIG_TDB=0
-+	;;
-+*)
-+	AC_MSG_RESULT([Enabling tdb support by default])
-+	CONFIG_TDB=1
-+	;;
-+esac
-+]
-+)
-+if test "$CONFIG_TDB" = "1"
-+then
- 	AC_DEFINE(CONFIG_TDB, 1)
- 	TDB_CMT=""
- 	TDB_MAN_COMMENT=""
-+else
-+	TDB_CMT="#"
-+	TDB_MAN_COMMENT='.\"'
- fi
--,
--AC_MSG_RESULT([Enabling mmp support by default])
--AC_DEFINE(CONFIG_TDB, 1)
--TDB_CMT=""
--TDB_MAN_COMMENT=""
--)
- AC_SUBST(TDB_CMT)
- AC_SUBST(TDB_MAN_COMMENT)
- dnl
+diff --git a/lib/e2p/fgetversion.c b/lib/e2p/fgetversion.c
+index a65e9a5c5..f3a5b4cdf 100644
+--- a/lib/e2p/fgetversion.c
++++ b/lib/e2p/fgetversion.c
+@@ -65,8 +65,6 @@ int fgetversion(const char *name, unsigned long *version)
+ 	rc = syscall(SYS_fsctl, name, EXT2_IOC_GETVERSION, &ver, 0);
+ # endif /* !APPLE_DARWIN */
+ #else /* ! HAVE_EXT2_IOCTLS */
+-	extern int errno;
+-
+ 	errno = EOPNOTSUPP;
+ #endif /* ! HAVE_EXT2_IOCTLS */
+ 	if (rc == 0)
+diff --git a/lib/e2p/fsetversion.c b/lib/e2p/fsetversion.c
+index c2e045591..5f844b55e 100644
+--- a/lib/e2p/fsetversion.c
++++ b/lib/e2p/fsetversion.c
+@@ -65,7 +65,6 @@ int fsetversion (const char * name, unsigned long version)
+    return syscall(SYS_fsctl, name, EXT2_IOC_SETVERSION, &ver, 0);
+ #endif
+ #else /* ! HAVE_EXT2_IOCTLS */
+-	extern int errno;
+ 	errno = EOPNOTSUPP;
+ 	return -1;
+ #endif /* ! HAVE_EXT2_IOCTLS */
+diff --git a/lib/e2p/getversion.c b/lib/e2p/getversion.c
+index 9f719b4a9..d374a0ea7 100644
+--- a/lib/e2p/getversion.c
++++ b/lib/e2p/getversion.c
+@@ -35,7 +35,6 @@ int getversion (int fd, unsigned long * version)
+ 	*version = ver;
+ 	return r;
+ #else /* ! HAVE_EXT2_IOCTLS */
+-	extern int errno;
+ 	errno = EOPNOTSUPP;
+ 	return -1;
+ #endif /* ! HAVE_EXT2_IOCTLS */
+diff --git a/lib/e2p/setversion.c b/lib/e2p/setversion.c
+index 2bc933749..dd4a3f06b 100644
+--- a/lib/e2p/setversion.c
++++ b/lib/e2p/setversion.c
+@@ -34,7 +34,6 @@ int setversion (int fd, unsigned long version)
+ 	ver = (int) version;
+ 	return ioctl (fd, EXT2_IOC_SETVERSION, &ver);
+ #else /* ! HAVE_EXT2_IOCTLS */
+-	extern int errno;
+ 	errno = EOPNOTSUPP;
+ 	return -1;
+ #endif /* ! HAVE_EXT2_IOCTLS */
+diff --git a/lib/ss/execute_cmd.c b/lib/ss/execute_cmd.c
+index 2e2c8cfa0..d092134a3 100644
+--- a/lib/ss/execute_cmd.c
++++ b/lib/ss/execute_cmd.c
+@@ -17,8 +17,6 @@
+ #endif
+ #ifdef HAVE_ERRNO_H
+ #include <errno.h>
+-#else
+-extern int errno;
+ #endif
+ #include "ss_internal.h"
+ #include <stdio.h>
+diff --git a/lib/ss/help.c b/lib/ss/help.c
+index a22b40178..54c78f239 100644
+--- a/lib/ss/help.c
++++ b/lib/ss/help.c
+@@ -20,8 +20,6 @@
+ #endif
+ #ifdef HAVE_ERRNO_H
+ #include <errno.h>
+-#else
+-extern int errno;
+ #endif
+ #include <fcntl.h>
+ #include <sys/param.h>
+diff --git a/lib/ss/pager.c b/lib/ss/pager.c
+index b9b889962..ba32b2019 100644
+--- a/lib/ss/pager.c
++++ b/lib/ss/pager.c
+@@ -20,8 +20,6 @@
+ #endif
+ #ifdef HAVE_ERRNO_H
+ #include <errno.h>
+-#else
+-extern int errno;
+ #endif
+ 
+ #include "ss_internal.h"
 -- 
 2.39.0
 
