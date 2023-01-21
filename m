@@ -2,40 +2,40 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E258C54EB4
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:37:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C2AAC38142
+	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:37:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229966AbjAUUhE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Jan 2023 15:37:04 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52580 "EHLO
+        id S230063AbjAUUhI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Jan 2023 15:37:08 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52604 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229789AbjAUUgs (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:48 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 51BDF29162
+        with ESMTP id S229985AbjAUUgt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:49 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 647A929164
         for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:44 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id D73C860B82
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:43 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9AA18C433AE
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:43 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 453F060B6A
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:44 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0B469C433A7
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674333403;
-        bh=NubxdydFKlAsKZc1R6sME1DJ73Ww+oGasw368sh41fw=;
+        s=k20201202; t=1674333404;
+        bh=k/zPJBS29Jxqgu03dWEGg+K+owm+W0mnZF+A3RqTr1w=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=AkG7qmr1RmwGU36v2RyzrMYCS7uOoADjl47u3jhauirNJHQfh61EPqxoU+6+v37Lj
-         tcatyzmqB6ItsBaxP/xWLHO0W4eG/+raEfce96xhGqiNxo5iTc4PwnFfSLz3STRpoG
-         tXii4GHeoaXZ6+upX9KuX5i1RA/eCHcC9w7rZb6m/6/3HOVarIqQtkn2/e9VO2wbMR
-         gLMG10LAGzFoJI+OlWtMp5yOuoWkRLVil+fi/NAkqe/QuwffPJclVZ45683uZKT7ro
-         5rWotzLSS14uPtQDDODJq7eYP/FH7Hw4nwz2Lw4M3CPZfoJtXotOb/AH2jf5iP/4F7
-         ALS9SZ9r3aRRQ==
+        b=DQo9lfAPKDj4fJnTkGP6VMNJwsmsJHVbGD2bu3T4YJfcEZIJ+Vj/XymJuoD3+waPq
+         T6lkDmKfzf63vxJPQnC5i0utBzhXA1Qqv2eYFZp2eyTuE+G+67OEh/brhMnmXid1f3
+         rFDKaMKeIJHQ5+1r+bZHbPJs1h9ZlSaPJ4+OfSmuLtzF5vXDIpCTlP7sA9Yv94/STu
+         Ra/6oOSzjiE2+BCaHa5WLbcv3s6yfAekorO2bwQ+lsSO/3IKgeKtdon3KJbKbl6hu+
+         3/wVUhy+WbhZfwfQts4axGlVtm128bKT5dwW9BFE6jMIJAUSxzxkq5Cz5T9SGW0iSF
+         eA9aOHti9qFFw==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 26/38] e2fsck: use real functions for kernel slab functions
-Date:   Sat, 21 Jan 2023 12:32:18 -0800
-Message-Id: <20230121203230.27624-27-ebiggers@kernel.org>
+Subject: [PATCH 28/38] misc/create_inode: simplify logic in scandir()
+Date:   Sat, 21 Jan 2023 12:32:20 -0800
+Message-Id: <20230121203230.27624-29-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230121203230.27624-1-ebiggers@kernel.org>
 References: <20230121203230.27624-1-ebiggers@kernel.org>
@@ -47,117 +47,71 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-The macros that e2fsck uses to implement kmalloc et al. use only some of
-their arguments, so unlike standard function calls, they can cause
-compiler warnings like:
-
-./../e2fsck/revoke.c:141:8: warning: variable 'gfp_mask' set but not used [-Wunused-but-set-variable]
-
-Fix this by providing a proper definition for each function, making sure
-to match the function prototypes used in the kernel.
-
-Remove the kmem_cache_t typedef, as it doesn't exist in the kernel.
+The control flow in scandir() (only used on Windows) confuses gcc into
+thinking that *name_list is not always set on success, which causes a
+-Wmaybe-uninitialized warning in __populate_fs().  As far as I can tell
+it's a false positive; however, avoid it by cleanly separating the
+success and failure cases in scandir().
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- e2fsck/jfs_user.h | 62 ++++++++++++++++++++++++++++++++++-------------
- 1 file changed, 45 insertions(+), 17 deletions(-)
+ misc/create_inode.c | 26 ++++++++++----------------
+ 1 file changed, 10 insertions(+), 16 deletions(-)
 
-diff --git a/e2fsck/jfs_user.h b/e2fsck/jfs_user.h
-index 969cd1b92..1167c80d3 100644
---- a/e2fsck/jfs_user.h
-+++ b/e2fsck/jfs_user.h
-@@ -82,16 +82,9 @@ struct kdev_s {
- #define buffer_req(bh) 1
- #define do_readahead(journal, start) do {} while (0)
+diff --git a/misc/create_inode.c b/misc/create_inode.c
+index 7ce69c2b0..6e61d98e6 100644
+--- a/misc/create_inode.c
++++ b/misc/create_inode.c
+@@ -763,39 +763,33 @@ static int scandir(const char *dir_name, struct dirent ***name_list,
+ 			size_t new_list_size = temp_list_size + 32;
+ 			struct dirent **new_list = (struct dirent**)realloc(
+ 				temp_list, new_list_size * sizeof(struct dirent*));
+-			if (new_list == NULL) {
+-				goto out;
+-			}
++			if (new_list == NULL)
++				goto out_err;
+ 			temp_list_size = new_list_size;
+ 			temp_list = new_list;
+ 		}
+ 		// add the copy of dirent to the list
+ 		temp_list[num_dent] = (struct dirent*)malloc((dent->d_reclen + 3) & ~3);
+ 		if (!temp_list[num_dent])
+-			goto out;
++			goto out_err;
+ 		memcpy(temp_list[num_dent], dent, dent->d_reclen);
+ 		num_dent++;
+ 	}
++	closedir(dir);
  
--typedef struct kmem_cache {
--	int	object_length;
--} kmem_cache_t;
+ 	if (compar != NULL) {
+ 		qsort(temp_list, num_dent, sizeof(struct dirent*),
+ 		      (int (*)(const void*, const void*))compar);
+ 	}
 -
--#define kmem_cache_alloc(cache, flags) malloc((cache)->object_length)
--#define kmem_cache_free(cache, obj) free(obj)
--#define kmem_cache_create(name, len, a, b, c) do_cache_create(len)
--#define kmem_cache_destroy(cache) do_cache_destroy(cache)
--#define kmalloc(len, flags) malloc(len)
--#define kfree(p) free(p)
-+struct kmem_cache {
-+	unsigned int	object_size;
-+};
+-        // release the temp list
+ 	*name_list = temp_list;
+-	temp_list = NULL;
++	return num_dent;
  
- #define cond_resched()	do { } while (0)
- 
-@@ -107,8 +100,16 @@ typedef struct kmem_cache {
-  * functions.
-  */
- #ifdef NO_INLINE_FUNCS
--extern kmem_cache_t *do_cache_create(int len);
--extern void do_cache_destroy(kmem_cache_t *cache);
-+extern struct kmem_cache *kmem_cache_create(const char *name,
-+					    unsigned int size,
-+					    unsigned int align,
-+					    unsigned int flags,
-+					    void (*ctor)(void *));
-+extern void kmem_cache_destroy(struct kmem_cache *s);
-+extern void *kmem_cache_alloc(struct kmem_cache *cachep, gfp_t flags);
-+extern void kmem_cache_free(struct kmem_cache *s, void *objp);
-+extern void *kmalloc(size_t size, gfp_t flags);
-+extern void kfree(const void *objp);
- extern size_t journal_tag_bytes(journal_t *journal);
- extern __u32 __hash_32(__u32 val);
- extern __u32 hash_32(__u32 val, unsigned int bits);
-@@ -139,19 +140,46 @@ extern void jbd2_descriptor_block_csum_set(journal_t *j,
- #endif /* __STDC_VERSION__ >= 199901L */
- #endif /* E2FSCK_INCLUDE_INLINE_FUNCS */
- 
--_INLINE_ kmem_cache_t *do_cache_create(int len)
-+_INLINE_ struct kmem_cache *
-+kmem_cache_create(const char *name EXT2FS_ATTR((unused)),
-+		  unsigned int size,
-+		  unsigned int align EXT2FS_ATTR((unused)),
-+		  unsigned int flags EXT2FS_ATTR((unused)),
-+		  void (*ctor)(void *) EXT2FS_ATTR((unused)))
- {
--	kmem_cache_t *new_cache;
-+	struct kmem_cache *new_cache;
- 
- 	new_cache = malloc(sizeof(*new_cache));
- 	if (new_cache)
--		new_cache->object_length = len;
-+		new_cache->object_size = size;
- 	return new_cache;
+-out:
+-	if (temp_list != NULL) {
+-		while (num_dent > 0) {
+-			free(temp_list[--num_dent]);
+-		}
+-		free(temp_list);
+-		num_dent = -1;
+-	}
++out_err:
+ 	closedir(dir);
+-	return num_dent;
++	while (num_dent > 0)
++		free(temp_list[--num_dent]);
++	free(temp_list);
++	return -1;
  }
  
--_INLINE_ void do_cache_destroy(kmem_cache_t *cache)
-+_INLINE_ void kmem_cache_destroy(struct kmem_cache *s)
-+{
-+	free(s);
-+}
-+
-+_INLINE_ void *kmem_cache_alloc(struct kmem_cache *cachep,
-+				gfp_t flags EXT2FS_ATTR((unused)))
-+{
-+	return malloc(cachep->object_size);
-+}
-+
-+_INLINE_ void kmem_cache_free(struct kmem_cache *s EXT2FS_ATTR((unused)),
-+			      void *objp)
-+{
-+	free(objp);
-+}
-+
-+_INLINE_ void *kmalloc(size_t size, gfp_t flags EXT2FS_ATTR((unused)))
-+{
-+	return malloc(size);
-+}
-+
-+_INLINE_ void kfree(const void *objp)
- {
--	free(cache);
-+	free((void *)objp);
- }
- 
- /* generic hashing taken from the Linux kernel */
+ static int alphasort(const struct dirent **a, const struct dirent **b) {
 -- 
 2.39.0
 
