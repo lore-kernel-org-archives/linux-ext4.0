@@ -2,44 +2,46 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8ACADC38142
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:37:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 445DFC54E94
+	for <linux-ext4@archiver.kernel.org>; Sat, 21 Jan 2023 20:37:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230090AbjAUUhT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Jan 2023 15:37:19 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52592 "EHLO
+        id S229980AbjAUUh3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Jan 2023 15:37:29 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52622 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229853AbjAUUgt (ORCPT
+        with ESMTP id S229687AbjAUUgt (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2023 15:36:49 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2208F29405
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:46 -0800 (PST)
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DD88E29401
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 12:36:45 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id E98E760ADD
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:45 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B2D3EC4339C
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:45 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 5F799B80880
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2023 20:36:44 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EEFC1C433A4;
+        Sat, 21 Jan 2023 20:36:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674333405;
-        bh=G0jzgh7IdyeVDxBwCIN9i7zDEFV94xVS5Dm7rVHXGvg=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=DgIWQhX0aeqPT2Z52629tb6cjTmogpUQW4d0K7jr+2bQUKxa74nK+NdZ5rftILrWP
-         nQ4xvUY9gmknrHLnHB1fjAXJ2ScF2FzDew4byX+wr15Fgjqyub2dNJWWHJWeDDtuj7
-         WTL3OKqBf8PvcLJog+v8AHGPmVP1yzuY2/t/VmVXxDBt8377x3z0mDh2gA1J9DkQtQ
-         uGAbeG1T6hESgvMW8l/gH8IdDADhBjxSJOlVm81l3D7tXOo21fa/y5qIkMYqD3usio
-         hyWhl2cpcoj/OwBQZ2HbQ3cHiuX8092P9oRIHfx8yY3EnQum2Y1HXrVuSP7AToBzXE
-         r7f3QvjzU0QyA==
+        s=k20201202; t=1674333403;
+        bh=nZolUev9y8vGyoa8mztER7yXUdthugp/QkTK4SWdr5o=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=oXP2lFEmSIJuACU2+meYlEBLshtyUJNYwdLygZPo1oRSCh+zZc3XNl/LH1REwKzLr
+         wThPOFIJGwr2I6aDkIHDy34M2EITXXCoCsZkG7MYYMMNyPAr5uts4+ZrfVXBLWjdFu
+         8NLbAlOe3U5zN9qFzDxG8FoadGzp9rX/DGT7jcpn5rew5UXSCVvjb0lfhoAbCMCOoZ
+         7HaQ4SSWlhTQzyX741wHhSBUlO36Tz9l5NxWz4NzilGuvHrnbxOG7q8V5gp60DC7u0
+         K5D+feHCeuhVyxhzPsRCVwdmTPrEVLddlPyQrYAI5kZgVhhsTCQgsf56ke+SzpWPEu
+         lGOgIPdmBX1Ow==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 36/38] misc/util.c: enable MinGW alarm() when building for Windows
-Date:   Sat, 21 Jan 2023 12:32:28 -0800
-Message-Id: <20230121203230.27624-37-ebiggers@kernel.org>
+Cc:     Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 23/38] lib/support: remove unused label in get_devname()
+Date:   Sat, 21 Jan 2023 12:32:15 -0800
+Message-Id: <20230121203230.27624-24-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230121203230.27624-1-ebiggers@kernel.org>
 References: <20230121203230.27624-1-ebiggers@kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
@@ -47,47 +49,31 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-To compile for Windows, this file needs MinGW's implementation of
-alarm().  To expose that definition, some macros must be defined before
-including the system headers.  This was done in Android.bp, but it was
-not done in the autotools-based build system.  Define these macros in
-the source file itself so that all build systems work.
+Address the following compiler warning with gcc -Wall:
 
+devname.c: In function ‘get_devname’:
+devname.c:61:1: warning: label ‘out_strdup’ defined but not used [-Wunused-label]
+   61 | out_strdup:
+      | ^~~~~~~~~~
+
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- misc/Android.bp | 2 --
- misc/util.c     | 5 +++++
- 2 files changed, 5 insertions(+), 2 deletions(-)
+ lib/support/devname.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/misc/Android.bp b/misc/Android.bp
-index 2baeac2ad..2b1620ac6 100644
---- a/misc/Android.bp
-+++ b/misc/Android.bp
-@@ -83,8 +83,6 @@ cc_binary {
-         windows: {
-             include_dirs: [ "external/e2fsprogs/include/mingw" ],
-             cflags: [
--                "-D_POSIX",
--                "-D__USE_MINGW_ALARM",
-                 // mke2fs.c has a warning from gcc which cannot be suppressed:
-                 // passing argument 3 of 'ext2fs_get_device_size' from
-                 // incompatible pointer type
-diff --git a/misc/util.c b/misc/util.c
-index e84ebab5b..3e83169f1 100644
---- a/misc/util.c
-+++ b/misc/util.c
-@@ -16,6 +16,11 @@
- #define _LARGEFILE64_SOURCE
- #endif
+diff --git a/lib/support/devname.c b/lib/support/devname.c
+index 8c2349a32..e0306ddfb 100644
+--- a/lib/support/devname.c
++++ b/lib/support/devname.c
+@@ -58,7 +58,6 @@ char *get_devname(blkid_cache cache, const char *token, const char *value)
+ 		goto out;
+ 	}
  
-+#ifdef _WIN32
-+#define _POSIX
-+#define __USE_MINGW_ALARM
-+#endif
-+
- #include "config.h"
- #include <fcntl.h>
- #include <setjmp.h>
+-out_strdup:
+ 	if (is_file)
+ 		ret = strdup(token);
+ out:
 -- 
 2.39.0
 
