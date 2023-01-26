@@ -2,38 +2,38 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AB625C636BD
-	for <linux-ext4@archiver.kernel.org>; Thu, 26 Jan 2023 20:24:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4E063C54EAA
+	for <linux-ext4@archiver.kernel.org>; Thu, 26 Jan 2023 20:24:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231542AbjAZUYm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 26 Jan 2023 15:24:42 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39002 "EHLO
+        id S232868AbjAZUYn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 26 Jan 2023 15:24:43 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38988 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232808AbjAZUYZ (ORCPT
+        with ESMTP id S232806AbjAZUYZ (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Jan 2023 15:24:25 -0500
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7694E4AA49;
-        Thu, 26 Jan 2023 12:24:24 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0016A4B76C;
+        Thu, 26 Jan 2023 12:24:23 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=kEXYXbsM0fDELA034BmJN/Q2NbhIEm6ZfcGpwk7oDVY=; b=mLcquS0ppn9TSucOfF8R/FH4l5
-        FykYbPiUsQv7/Li4nCSYIetf+8eL8XSpnVIk+Hv3WqhksU7xC/wOv7nmh2UPmWLhelEd/LkZXsn88
-        k0iG6iGqyjZmrUxaddSQuMUATmfIiwe/gEUHQQ0JlM3nAfJWMamrw4k7TXiBtWCwCjcWPcVC3zGK8
-        8C05hutgaeLmeAJ43AggmGOAZ3QY6CxWemCBjjztuYTPCz4T14iV2sqsSl7xCoe5LxzKuSdeDxqtF
-        esh0YK9Tkg9sJkMUi2J1O0GgbQ5Rp1XDGmnVuhjYRB09Eop7qsePQOh8F3uMUQh4zhjmvHnlTxk1l
-        yTEfyXiw==;
+        bh=EeaPNEObsha+AWBX8R4Y4ZrKu6zLMBpNN7SqkKmdALs=; b=pruIDXeh6ee4FkxCdrpK8QyZmK
+        lt3hVxfxXuyXALqwxERt+j/qLl+MaC8xYrXgPlPyHJ1fsoCAMh+yjthH2cJXx3wRftQjnb9iI+5du
+        Kd4o5odr7E+/uDa+YbIb+FFdG/KP4X487UsJTfqLzLaPIC+3clFBC8kmI2IdUvY4TYy/SQkYiZ6O6
+        cLr4AIug+eXMBPyOanM3V+BTF57EuSTECm9jFHeTtyyN3CRO2PBOfzX7tKfadFRL4WLCB+jDsOEp7
+        87HrGcdUgwDgsOjsZUjcEd+GgT0HFJwQ7fBDv1syYw15BW4jRaA7XqtjdLL/400A/fKALJnCY1IvS
+        6fY1KSNA==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pL8nF-0073ln-M6; Thu, 26 Jan 2023 20:24:21 +0000
+        id 1pL8nF-0073lM-58; Thu, 26 Jan 2023 20:24:21 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     "Theodore Tso" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 27/31] ext4: Use a folio in ext4_page_mkwrite()
-Date:   Thu, 26 Jan 2023 20:24:11 +0000
-Message-Id: <20230126202415.1682629-28-willy@infradead.org>
+Subject: [PATCH 24/31] ext4: Convert ext4_mpage_readpages() to work on folios
+Date:   Thu, 26 Jan 2023 20:24:08 +0000
+Message-Id: <20230126202415.1682629-25-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230126202415.1682629-1-willy@infradead.org>
 References: <20230126202415.1682629-1-willy@infradead.org>
@@ -43,130 +43,190 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Convert to the folio API, saving a few calls to compound_head().
+This definitely doesn't include support for large folios; there
+are all kinds of assumptions about the number of buffers attached
+to a folio.  But it does remove several calls to compound_head().
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/ext4/inode.c | 46 ++++++++++++++++++++++------------------------
- 1 file changed, 22 insertions(+), 24 deletions(-)
+ fs/ext4/ext4.h     |  2 +-
+ fs/ext4/inode.c    |  7 +++---
+ fs/ext4/readpage.c | 58 +++++++++++++++++++++-------------------------
+ 3 files changed, 31 insertions(+), 36 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index d2998800855c..faa54035dbc8 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3646,7 +3646,7 @@ static inline void ext4_set_de_type(struct super_block *sb,
+ 
+ /* readpages.c */
+ extern int ext4_mpage_readpages(struct inode *inode,
+-		struct readahead_control *rac, struct page *page);
++		struct readahead_control *rac, struct folio *folio);
+ extern int __init ext4_init_post_read_processing(void);
+ extern void ext4_exit_post_read_processing(void);
+ 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9bcf7459a0c0..dcb99121f1c1 100644
+index 8929add6808a..dbfc0670de75 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -6215,7 +6215,7 @@ static int ext4_bh_unmapped(handle_t *handle, struct inode *inode,
- vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+@@ -3299,17 +3299,16 @@ static sector_t ext4_bmap(struct address_space *mapping, sector_t block)
+ 
+ static int ext4_read_folio(struct file *file, struct folio *folio)
  {
- 	struct vm_area_struct *vma = vmf->vma;
--	struct page *page = vmf->page;
-+	struct folio *folio = page_folio(vmf->page);
- 	loff_t size;
- 	unsigned long len;
- 	int err;
-@@ -6259,19 +6259,18 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
- 		goto out_ret;
- 	}
+-	struct page *page = &folio->page;
+ 	int ret = -EAGAIN;
+-	struct inode *inode = page->mapping->host;
++	struct inode *inode = folio->mapping->host;
  
--	lock_page(page);
-+	folio_lock(folio);
- 	size = i_size_read(inode);
- 	/* Page got truncated from under us? */
--	if (page->mapping != mapping || page_offset(page) > size) {
--		unlock_page(page);
-+	if (folio->mapping != mapping || folio_pos(folio) > size) {
-+		folio_unlock(folio);
- 		ret = VM_FAULT_NOPAGE;
- 		goto out;
- 	}
+-	trace_ext4_readpage(page);
++	trace_ext4_readpage(&folio->page);
  
--	if (page->index == size >> PAGE_SHIFT)
--		len = size & ~PAGE_MASK;
--	else
--		len = PAGE_SIZE;
-+	len = folio_size(folio);
-+	if (folio_pos(folio) + len > size)
-+		len = size - folio_pos(folio);
- 	/*
- 	 * Return if we have all the buffers mapped. This avoids the need to do
- 	 * journal_start/journal_stop which can block and take a long time
-@@ -6279,17 +6278,17 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
- 	 * This cannot be done for data journalling, as we have to add the
- 	 * inode to the transaction's list to writeprotect pages on commit.
- 	 */
--	if (page_has_buffers(page)) {
--		if (!ext4_walk_page_buffers(NULL, inode, page_buffers(page),
-+	if (folio_buffers(folio)) {
-+		if (!ext4_walk_page_buffers(NULL, inode, folio_buffers(folio),
- 					    0, len, NULL,
- 					    ext4_bh_unmapped)) {
- 			/* Wait so that we don't change page under IO */
--			wait_for_stable_page(page);
-+			folio_wait_stable(folio);
- 			ret = VM_FAULT_LOCKED;
- 			goto out;
- 		}
- 	}
--	unlock_page(page);
-+	folio_unlock(folio);
- 	/* OK, we need to fill the hole... */
- 	if (ext4_should_dioread_nolock(inode))
- 		get_block = ext4_get_block_unwritten;
-@@ -6310,36 +6309,35 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
- 	if (!ext4_should_journal_data(inode)) {
- 		err = block_page_mkwrite(vma, vmf, get_block);
- 	} else {
--		lock_page(page);
-+		folio_lock(folio);
- 		size = i_size_read(inode);
- 		/* Page got truncated from under us? */
--		if (page->mapping != mapping || page_offset(page) > size) {
-+		if (folio->mapping != mapping || folio_pos(folio) > size) {
- 			ret = VM_FAULT_NOPAGE;
- 			goto out_error;
- 		}
+ 	if (ext4_has_inline_data(inode))
+ 		ret = ext4_readpage_inline(inode, folio);
  
--		if (page->index == size >> PAGE_SHIFT)
--			len = size & ~PAGE_MASK;
--		else
--			len = PAGE_SIZE;
-+		len = folio_size(folio);
-+		if (folio_pos(folio) + len > size)
-+			len = size - folio_pos(folio);
+ 	if (ret == -EAGAIN)
+-		return ext4_mpage_readpages(inode, NULL, page);
++		return ext4_mpage_readpages(inode, NULL, folio);
  
--		err = __block_write_begin(page, 0, len, ext4_get_block);
-+		err = __block_write_begin(&folio->page, 0, len, ext4_get_block);
- 		if (!err) {
- 			ret = VM_FAULT_SIGBUS;
- 			if (ext4_walk_page_buffers(handle, inode,
--					page_buffers(page), 0, len, NULL,
-+					folio_buffers(folio), 0, len, NULL,
- 					do_journal_get_write_access))
- 				goto out_error;
- 			if (ext4_walk_page_buffers(handle, inode,
--					page_buffers(page), 0, len, NULL,
-+					folio_buffers(folio), 0, len, NULL,
- 					write_end_fn))
- 				goto out_error;
- 			if (ext4_jbd2_inode_add_write(handle, inode,
--						      page_offset(page), len))
-+						      folio_pos(folio), len))
- 				goto out_error;
- 			ext4_set_inode_state(inode, EXT4_STATE_JDATA);
- 		} else {
--			unlock_page(page);
-+			folio_unlock(folio);
- 		}
- 	}
- 	ext4_journal_stop(handle);
-@@ -6352,7 +6350,7 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
- 	sb_end_pagefault(inode->i_sb);
  	return ret;
- out_error:
--	unlock_page(page);
-+	folio_unlock(folio);
- 	ext4_journal_stop(handle);
- 	goto out;
  }
+diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+index c61dc8a7c014..8092d2ace75e 100644
+--- a/fs/ext4/readpage.c
++++ b/fs/ext4/readpage.c
+@@ -218,7 +218,7 @@ static inline loff_t ext4_readpage_limit(struct inode *inode)
+ }
+ 
+ int ext4_mpage_readpages(struct inode *inode,
+-		struct readahead_control *rac, struct page *page)
++		struct readahead_control *rac, struct folio *folio)
+ {
+ 	struct bio *bio = NULL;
+ 	sector_t last_block_in_bio = 0;
+@@ -247,16 +247,15 @@ int ext4_mpage_readpages(struct inode *inode,
+ 		int fully_mapped = 1;
+ 		unsigned first_hole = blocks_per_page;
+ 
+-		if (rac) {
+-			page = readahead_page(rac);
+-			prefetchw(&page->flags);
+-		}
++		if (rac)
++			folio = readahead_folio(rac);
++		prefetchw(&folio->flags);
+ 
+-		if (page_has_buffers(page))
++		if (folio_buffers(folio))
+ 			goto confused;
+ 
+ 		block_in_file = next_block =
+-			(sector_t)page->index << (PAGE_SHIFT - blkbits);
++			(sector_t)folio->index << (PAGE_SHIFT - blkbits);
+ 		last_block = block_in_file + nr_pages * blocks_per_page;
+ 		last_block_in_file = (ext4_readpage_limit(inode) +
+ 				      blocksize - 1) >> blkbits;
+@@ -290,7 +289,7 @@ int ext4_mpage_readpages(struct inode *inode,
+ 
+ 		/*
+ 		 * Then do more ext4_map_blocks() calls until we are
+-		 * done with this page.
++		 * done with this folio.
+ 		 */
+ 		while (page_block < blocks_per_page) {
+ 			if (block_in_file < last_block) {
+@@ -299,11 +298,11 @@ int ext4_mpage_readpages(struct inode *inode,
+ 
+ 				if (ext4_map_blocks(NULL, inode, &map, 0) < 0) {
+ 				set_error_page:
+-					SetPageError(page);
+-					zero_user_segment(page, 0,
+-							  PAGE_SIZE);
+-					unlock_page(page);
+-					goto next_page;
++					folio_set_error(folio);
++					folio_zero_segment(folio, 0,
++							  folio_size(folio));
++					folio_unlock(folio);
++					continue;
+ 				}
+ 			}
+ 			if ((map.m_flags & EXT4_MAP_MAPPED) == 0) {
+@@ -333,22 +332,22 @@ int ext4_mpage_readpages(struct inode *inode,
+ 			}
+ 		}
+ 		if (first_hole != blocks_per_page) {
+-			zero_user_segment(page, first_hole << blkbits,
+-					  PAGE_SIZE);
++			folio_zero_segment(folio, first_hole << blkbits,
++					  folio_size(folio));
+ 			if (first_hole == 0) {
+-				if (ext4_need_verity(inode, page->index) &&
+-				    !fsverity_verify_page(page))
++				if (ext4_need_verity(inode, folio->index) &&
++				    !fsverity_verify_page(&folio->page))
+ 					goto set_error_page;
+-				SetPageUptodate(page);
+-				unlock_page(page);
+-				goto next_page;
++				folio_mark_uptodate(folio);
++				folio_unlock(folio);
++				continue;
+ 			}
+ 		} else if (fully_mapped) {
+-			SetPageMappedToDisk(page);
++			folio_set_mappedtodisk(folio);
+ 		}
+ 
+ 		/*
+-		 * This page will go to BIO.  Do we need to send this
++		 * This folio will go to BIO.  Do we need to send this
+ 		 * BIO off first?
+ 		 */
+ 		if (bio && (last_block_in_bio != blocks[0] - 1 ||
+@@ -366,7 +365,7 @@ int ext4_mpage_readpages(struct inode *inode,
+ 					REQ_OP_READ, GFP_KERNEL);
+ 			fscrypt_set_bio_crypt_ctx(bio, inode, next_block,
+ 						  GFP_KERNEL);
+-			ext4_set_bio_post_read_ctx(bio, inode, page->index);
++			ext4_set_bio_post_read_ctx(bio, inode, folio->index);
+ 			bio->bi_iter.bi_sector = blocks[0] << (blkbits - 9);
+ 			bio->bi_end_io = mpage_end_io;
+ 			if (rac)
+@@ -374,7 +373,7 @@ int ext4_mpage_readpages(struct inode *inode,
+ 		}
+ 
+ 		length = first_hole << blkbits;
+-		if (bio_add_page(bio, page, length, 0) < length)
++		if (!bio_add_folio(bio, folio, length, 0))
+ 			goto submit_and_realloc;
+ 
+ 		if (((map.m_flags & EXT4_MAP_BOUNDARY) &&
+@@ -384,19 +383,16 @@ int ext4_mpage_readpages(struct inode *inode,
+ 			bio = NULL;
+ 		} else
+ 			last_block_in_bio = blocks[blocks_per_page - 1];
+-		goto next_page;
++		continue;
+ 	confused:
+ 		if (bio) {
+ 			submit_bio(bio);
+ 			bio = NULL;
+ 		}
+-		if (!PageUptodate(page))
+-			block_read_full_folio(page_folio(page), ext4_get_block);
++		if (!folio_test_uptodate(folio))
++			block_read_full_folio(folio, ext4_get_block);
+ 		else
+-			unlock_page(page);
+-	next_page:
+-		if (rac)
+-			put_page(page);
++			folio_unlock(folio);
+ 	}
+ 	if (bio)
+ 		submit_bio(bio);
 -- 
 2.35.1
 
