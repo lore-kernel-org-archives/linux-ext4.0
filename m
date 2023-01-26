@@ -2,38 +2,38 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4C786C05027
-	for <linux-ext4@archiver.kernel.org>; Thu, 26 Jan 2023 20:25:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1FD49C54EAA
+	for <linux-ext4@archiver.kernel.org>; Thu, 26 Jan 2023 20:25:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232932AbjAZUZa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 26 Jan 2023 15:25:30 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38916 "EHLO
+        id S232938AbjAZUZt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 26 Jan 2023 15:25:49 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39744 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232893AbjAZUYs (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Jan 2023 15:24:48 -0500
+        with ESMTP id S232292AbjAZUYz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Jan 2023 15:24:55 -0500
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DD9DA61875;
-        Thu, 26 Jan 2023 12:24:42 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0A8A5728ED;
+        Thu, 26 Jan 2023 12:24:46 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=0j9u/ZuPqTgqTR+4p+jCsICMT8bSmT1HNBvq/sPzFs8=; b=YFXGF/UdiPBrSYza7smljAWmsQ
-        w1b2lnIV+YKTNXkPc3/D2A6n9qKz3R4pGwHj8p39k/7LTfoPhoGbV7Yb+74tDvwChMl9ILSZ1vly4
-        XQj9d5LjxVqT5mkG3w7EidznxhlPk6H/yxd69ins0rqMEXs377qi4M/Fdjn6CE/FWGc+7sbJ90/kr
-        dpHiJwhEpFVVPXOjS+dYHPo774KSNBZAKI3m5ekY4qquI62+gHrYXLZzYWDEAV2+meDElTN2Cz8cL
-        bcgAhHfK/0EFPF2SdICONp/9Swesk78XON/bOIFSVpdsjVlq/0WHrgaK/cuijTcqn5c0C9naUHFNt
-        b2tdeZmQ==;
+        bh=6nWGi4oOmhc7aGpc2yEDO3lz/Me2HXzFePEcirx6YtI=; b=CxVl80kA21lvOFu1Hj125JMKiP
+        wYNNTNaeeJ/q6X1aRe9Dwdw81zNTD3eGJEzYnEpc9O3sAw4HJugtuJLEOgXttaslJ79a/zQUA3OUq
+        1Uk/3KPr+OKBW7RycbiJLbWK3t+TPw5Jm6cDlchnmgNGPnXWrmPaclQB+fkxwhI+Mj5F4XA2WLZF2
+        xcxLoz/IS9LHmci0gciNMzohWUk60B4dHdxwCRN836GmOTh18f60C37DOHnlzzmXh5A9sJ4PI8R+g
+        KxXlkKK2cRbAtfoOsyHZ6f2UxaK2BW1HH41BADzY1c2mHKuI4wPQgvT7LEzMCDJMvkH/JspwWlrkW
+        7ZtYK9JQ==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pL8nD-0073jY-2Q; Thu, 26 Jan 2023 20:24:19 +0000
+        id 1pL8nD-0073jc-8H; Thu, 26 Jan 2023 20:24:19 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     "Theodore Tso" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 07/31] ext4: Convert mpage_submit_page() to mpage_submit_folio()
-Date:   Thu, 26 Jan 2023 20:23:51 +0000
-Message-Id: <20230126202415.1682629-8-willy@infradead.org>
+Subject: [PATCH 09/31] ext4: Convert ext4_readpage_inline() to take a folio
+Date:   Thu, 26 Jan 2023 20:23:53 +0000
+Message-Id: <20230126202415.1682629-10-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230126202415.1682629-1-willy@infradead.org>
 References: <20230126202415.1682629-1-willy@infradead.org>
@@ -43,92 +43,77 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-All callers now have a folio so we can pass one in and use the folio
-APIs to support large folios as well as save instructions by eliminating
-calls to compound_head().
+Use the folio API in this function, saves a few calls to compound_head().
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/ext4/inode.c | 29 ++++++++++++++---------------
- 1 file changed, 14 insertions(+), 15 deletions(-)
+ fs/ext4/ext4.h   |  2 +-
+ fs/ext4/inline.c | 14 +++++++-------
+ fs/ext4/inode.c  |  2 +-
+ 3 files changed, 9 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index e8f2918fd854..8b91e325492f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2097,34 +2097,33 @@ static int ext4_writepage(struct page *page,
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 7a132e8648f4..d2998800855c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3549,7 +3549,7 @@ extern int ext4_init_inline_data(handle_t *handle, struct inode *inode,
+ 				 unsigned int len);
+ extern int ext4_destroy_inline_data(handle_t *handle, struct inode *inode);
+ 
+-extern int ext4_readpage_inline(struct inode *inode, struct page *page);
++int ext4_readpage_inline(struct inode *inode, struct folio *folio);
+ extern int ext4_try_to_write_inline_data(struct address_space *mapping,
+ 					 struct inode *inode,
+ 					 loff_t pos, unsigned len,
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 2b42ececa46d..38f6282cc012 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -502,7 +502,7 @@ static int ext4_read_inline_page(struct inode *inode, struct page *page)
  	return ret;
  }
  
--static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
-+static int mpage_submit_folio(struct mpage_da_data *mpd, struct folio *folio)
+-int ext4_readpage_inline(struct inode *inode, struct page *page)
++int ext4_readpage_inline(struct inode *inode, struct folio *folio)
  {
--	int len;
-+	size_t len;
- 	loff_t size;
- 	int err;
+ 	int ret = 0;
  
--	BUG_ON(page->index != mpd->first_page);
--	clear_page_dirty_for_io(page);
-+	BUG_ON(folio->index != mpd->first_page);
-+	folio_clear_dirty_for_io(folio);
- 	/*
- 	 * We have to be very careful here!  Nothing protects writeback path
- 	 * against i_size changes and the page can be writeably mapped into
- 	 * page tables. So an application can be growing i_size and writing
--	 * data through mmap while writeback runs. clear_page_dirty_for_io()
-+	 * data through mmap while writeback runs. folio_clear_dirty_for_io()
- 	 * write-protects our page in page tables and the page cannot get
--	 * written to again until we release page lock. So only after
--	 * clear_page_dirty_for_io() we are safe to sample i_size for
-+	 * written to again until we release folio lock. So only after
-+	 * folio_clear_dirty_for_io() we are safe to sample i_size for
- 	 * ext4_bio_write_page() to zero-out tail of the written page. We rely
- 	 * on the barrier provided by TestClearPageDirty in
--	 * clear_page_dirty_for_io() to make sure i_size is really sampled only
-+	 * folio_clear_dirty_for_io() to make sure i_size is really sampled only
- 	 * after page tables are updated.
+@@ -516,16 +516,16 @@ int ext4_readpage_inline(struct inode *inode, struct page *page)
+ 	 * Current inline data can only exist in the 1st page,
+ 	 * So for all the other pages, just set them uptodate.
  	 */
- 	size = i_size_read(mpd->inode);
--	if (page->index == size >> PAGE_SHIFT &&
-+	len = folio_size(folio);
-+	if (folio_pos(folio) + len > size &&
- 	    !ext4_verity_in_progress(mpd->inode))
- 		len = size & ~PAGE_MASK;
--	else
--		len = PAGE_SIZE;
--	err = ext4_bio_write_page(&mpd->io_submit, page, len);
-+	err = ext4_bio_write_page(&mpd->io_submit, &folio->page, len);
- 	if (!err)
- 		mpd->wbc->nr_to_write--;
- 	mpd->first_page++;
-@@ -2238,7 +2237,7 @@ static int mpage_process_page_bufs(struct mpage_da_data *mpd,
- 	} while (lblk++, (bh = bh->b_this_page) != head);
- 	/* So far everything mapped? Submit the page for IO. */
- 	if (mpd->map.m_len == 0) {
--		err = mpage_submit_page(mpd, head->b_page);
-+		err = mpage_submit_folio(mpd, head->b_folio);
- 		if (err < 0)
- 			return err;
+-	if (!page->index)
+-		ret = ext4_read_inline_page(inode, page);
+-	else if (!PageUptodate(page)) {
+-		zero_user_segment(page, 0, PAGE_SIZE);
+-		SetPageUptodate(page);
++	if (!folio->index)
++		ret = ext4_read_inline_page(inode, &folio->page);
++	else if (!folio_test_uptodate(folio)) {
++		folio_zero_segment(folio, 0, PAGE_SIZE);
++		folio_mark_uptodate(folio);
  	}
-@@ -2370,7 +2369,7 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
- 			if (err < 0 || map_bh)
- 				goto out;
- 			/* Page fully mapped - let IO run! */
--			err = mpage_submit_page(mpd, &folio->page);
-+			err = mpage_submit_folio(mpd, folio);
- 			if (err < 0)
- 				goto out;
- 		}
-@@ -2680,7 +2679,7 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
- 			 */
- 			if (!mpd->can_map) {
- 				if (ext4_page_nomap_can_writeout(&folio->page)) {
--					err = mpage_submit_page(mpd, &folio->page);
-+					err = mpage_submit_folio(mpd, folio);
- 					if (err < 0)
- 						goto out;
- 				} else {
+ 
+ 	up_read(&EXT4_I(inode)->xattr_sem);
+ 
+-	unlock_page(page);
++	folio_unlock(folio);
+ 	return ret >= 0 ? 0 : ret;
+ }
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index fcd904123384..c627686295e0 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3300,7 +3300,7 @@ static int ext4_read_folio(struct file *file, struct folio *folio)
+ 	trace_ext4_readpage(page);
+ 
+ 	if (ext4_has_inline_data(inode))
+-		ret = ext4_readpage_inline(inode, page);
++		ret = ext4_readpage_inline(inode, folio);
+ 
+ 	if (ret == -EAGAIN)
+ 		return ext4_mpage_readpages(inode, NULL, page);
 -- 
 2.35.1
 
