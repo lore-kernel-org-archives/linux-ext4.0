@@ -2,107 +2,75 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B3244C54EAA
-	for <linux-ext4@archiver.kernel.org>; Fri, 27 Jan 2023 16:38:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A3FAC54EAA
+	for <linux-ext4@archiver.kernel.org>; Fri, 27 Jan 2023 17:47:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234973AbjA0QiR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 27 Jan 2023 11:38:17 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34684 "EHLO
+        id S235119AbjA0Rrb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 27 Jan 2023 12:47:31 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36178 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234747AbjA0QiR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Jan 2023 11:38:17 -0500
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 76112EC7F;
-        Fri, 27 Jan 2023 08:38:12 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=X3sZG6YT4e1cd8R14oPBhXJnjRzul+FbROxn9J75/K0=; b=ptB/48lvFwK++L3qy23e27/NB2
-        tHFMn3tCtRW9n+50nnnep+w+XF52bRKZ3bP+CuOl5S7LyKgrA70qe3QkGN7MrBdSxnKCeXLqLoVhO
-        8mMEKk9eNccyQGULhM3Bd/DJuK0gifS0++8qPXM+qNzA77NBizCUntj3Hs477IhfX5lamG1jkRqVZ
-        jxq+PEhWAAsSNw+GmcXDBMemxlfGVZKTRx8Ay3cTAMmE95HYLs8sV6uw8MuZm4fIB0XRYBGnX9KL2
-        frByO5IXxLtT3qRSoMJ2sK/vLhqX9/ai2epenMSpIWKK+HGMl44la6Cr1D7KC7e9plu4k4LVmwkA0
-        OJViKFAg==;
-Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pLRjj-007sAw-Uh; Fri, 27 Jan 2023 16:37:59 +0000
-Date:   Fri, 27 Jan 2023 16:37:59 +0000
-From:   Matthew Wilcox <willy@infradead.org>
-To:     Eric Biggers <ebiggers@kernel.org>
-Cc:     Theodore Tso <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 02/31] fscrypt: Add some folio helper functions
-Message-ID: <Y9P959mJherU8Yru@casper.infradead.org>
-References: <20230126202415.1682629-1-willy@infradead.org>
- <20230126202415.1682629-3-willy@infradead.org>
- <Y9M+tl5CcNfRScds@sol.localdomain>
- <Y9P4MYXE9NcC8+gv@casper.infradead.org>
- <Y9P6GkuXHp9Gh6ai@sol.localdomain>
+        with ESMTP id S229711AbjA0Rra (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Jan 2023 12:47:30 -0500
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CA8867D2AB
+        for <linux-ext4@vger.kernel.org>; Fri, 27 Jan 2023 09:47:28 -0800 (PST)
+Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 30RHl07C003043
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 27 Jan 2023 12:47:01 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1674841622; bh=aGEe9mvjMjdDcvfHbHPcQqZAinng9dGaYQVeh7gV+E8=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References;
+        b=Y1lAe8HaBr+NaPrzQNZ6uMjYTEynHSH7TGmMR37PsqE355wVhN8sfKfcMPvgyiOXi
+         kpA3VoqZH8rE6TqJNZi/h1sSqYAHLjrPAdWKGjrZBirOGC7OkdfBJpXTqGkVnQ4S6Q
+         O206E8ePoWiH7snsg86s4LWFcqC23WW6N74Rh1d3c+WrEwM+Oq/y2SqWBwsGl/uL05
+         n1/AEp7Fgcgw81LtdiK7HSL0vEIXG5wb/YOrx0a62lJjpgVjQ4xdKlQhmNKfOrxLXX
+         D6xAOt5BXYyy6doBW7ZCgFAWInH8KEzBhkB62wqGq0TXvhQE6ZzrqqlCmkwv/EeHE1
+         yNvcZ4B1UG6Cw==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 9A49015C3589; Thu, 26 Jan 2023 11:01:53 -0500 (EST)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     "lihaoxiang (F)" <lihaoxiang9@huawei.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>,
+        Zhiqiang Liu <liuzhiqiang26@huawei.com>,
+        "lijinlin (A)" <lijinlin3@huawei.com>, linfeilong@huawei.com,
+        louhongxiang@huawei.com, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] mmp:fix wrong comparison in ext2fs_mmp_stop
+Date:   Thu, 26 Jan 2023 11:01:52 -0500
+Message-Id: <167474888836.17682.11878698054727825163.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <d791b3d2-c438-3541-76ae-d228ba7b8cd4@huawei.com>
+References: <d791b3d2-c438-3541-76ae-d228ba7b8cd4@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <Y9P6GkuXHp9Gh6ai@sol.localdomain>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Jan 27, 2023 at 08:21:46AM -0800, Eric Biggers wrote:
-> On Fri, Jan 27, 2023 at 04:13:37PM +0000, Matthew Wilcox wrote:
-> > On Thu, Jan 26, 2023 at 07:02:14PM -0800, Eric Biggers wrote:
-> > > On Thu, Jan 26, 2023 at 08:23:46PM +0000, Matthew Wilcox (Oracle) wrote:
-> > > > fscrypt_is_bounce_folio() is the equivalent of fscrypt_is_bounce_page()
-> > > > and fscrypt_pagecache_folio() is the equivalent of fscrypt_pagecache_page().
-> > > > 
-> > > > Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-> > > > ---
-> > > >  include/linux/fscrypt.h | 21 +++++++++++++++++++++
-> > > >  1 file changed, 21 insertions(+)
-> > > > 
-> > > > diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-> > > > index 4f5f8a651213..c2c07d36fb3a 100644
-> > > > --- a/include/linux/fscrypt.h
-> > > > +++ b/include/linux/fscrypt.h
-> > > > @@ -273,6 +273,16 @@ static inline struct page *fscrypt_pagecache_page(struct page *bounce_page)
-> > > >  	return (struct page *)page_private(bounce_page);
-> > > >  }
-> > > >  
-> > > > +static inline bool fscrypt_is_bounce_folio(struct folio *folio)
-> > > > +{
-> > > > +	return folio->mapping == NULL;
-> > > > +}
-> > > > +
-> > > > +static inline struct folio *fscrypt_pagecache_folio(struct folio *bounce_folio)
-> > > > +{
-> > > > +	return bounce_folio->private;
-> > > > +}
-> > > 
-> > > ext4_bio_write_folio() is still doing:
-> > > 
-> > > 	bounce_page = fscrypt_encrypt_pagecache_blocks(&folio->page, ...);
-> > > 
-> > > Should it be creating a "bounce folio" instead, or is that not in the scope of
-> > > this patchset?
-> > 
-> > It's out of scope for _this_ patchset.  I think it's a patchset that
-> > could come either before or after, and is needed to support large folios
-> > with ext4.  The biggest problem with doing that conversion is that
-> > bounce pages are allocated from a mempool which obviously only allocates
-> > order-0 folios.  I don't know what to do about that.  Have a mempool
-> > for each order of folio that the filesystem supports?  Try to allocate
-> > folios without a mempool and then split the folio if allocation fails?
-> > Have a mempool containing PMD-order pages and split them ourselves if
-> > we need to allocate from the mempool?
-> > 
-> > Nothing's really standing out to me as the perfect answer.  There are
-> > probably other alternatives.
+On Tue, 29 Nov 2022 15:02:39 +0800, lihaoxiang (F) wrote:
+> In our knowledge, ext2fs_mmp_stop use to process the rest of work
+> when mmp will finish. Critically, it must check if the mmp block is
+> not changed. But there exist an error in comparing the mmp and mmp_cmp.
 > 
-> Would it be possible to keep using bounce *pages* all the time, even when the
-> pagecache contains large folios?
+> Look to ext2fs_mmp_read, the assignment of mmp_cmp retrieve from the
+> superblock of disk and it copy to mmp_buf if mmp_buf is not none
+> and not equal to mmp_cmp in the meanwhile. However, ext2fs_mmp_stop
+> pass the no NULL pointer fs->mmp_buf which has possed the mmp info to
+> ext2fs_mmp_read. Consequently, ext2fs_mmp_read override fs->mmp_buf
+> by fs->mmp_cmp so that loss the meaning of comparing themselves
+> after that and worse yet, couldn't judge whether the struct of mmp
+> has changed.
+> 
+> [...]
 
-I _think_ so.  Probably the best solution is to attempt to allocate an
-order-N folio (with GFP_NOWAIT?) and then fall back to allocating 2^N
-pages from the mempool.  It'll require some surgery to ext4_finish_bio()
-as well as ext4_bio_write_folio(), fscrypt_encrypt_pagecache_blocks()
-and fscrypt_free_bounce_page(), but I think it's doable.  I'll try
-to whip something up.
+Applied, thanks!
+
+[1/1] mmp:fix wrong comparison in ext2fs_mmp_stop
+      (no commit info)
+
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
