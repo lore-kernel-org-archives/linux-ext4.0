@@ -2,38 +2,38 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4E063C54EAA
-	for <linux-ext4@archiver.kernel.org>; Thu, 26 Jan 2023 20:24:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AB085C61DB3
+	for <linux-ext4@archiver.kernel.org>; Thu, 26 Jan 2023 20:24:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232868AbjAZUYn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 26 Jan 2023 15:24:43 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38988 "EHLO
+        id S232873AbjAZUYo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 26 Jan 2023 15:24:44 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38918 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232806AbjAZUYZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Jan 2023 15:24:25 -0500
+        with ESMTP id S232798AbjAZUYY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Jan 2023 15:24:24 -0500
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0016A4B76C;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8DE5749952;
         Thu, 26 Jan 2023 12:24:23 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=EeaPNEObsha+AWBX8R4Y4ZrKu6zLMBpNN7SqkKmdALs=; b=pruIDXeh6ee4FkxCdrpK8QyZmK
-        lt3hVxfxXuyXALqwxERt+j/qLl+MaC8xYrXgPlPyHJ1fsoCAMh+yjthH2cJXx3wRftQjnb9iI+5du
-        Kd4o5odr7E+/uDa+YbIb+FFdG/KP4X487UsJTfqLzLaPIC+3clFBC8kmI2IdUvY4TYy/SQkYiZ6O6
-        cLr4AIug+eXMBPyOanM3V+BTF57EuSTECm9jFHeTtyyN3CRO2PBOfzX7tKfadFRL4WLCB+jDsOEp7
-        87HrGcdUgwDgsOjsZUjcEd+GgT0HFJwQ7fBDv1syYw15BW4jRaA7XqtjdLL/400A/fKALJnCY1IvS
-        6fY1KSNA==;
+        bh=Yp1hifiEATrURCYketbD6BQMeHyHPE7j4pW3CSdtzfM=; b=Ywr/wpTTJM9J2sODBgsVk4tFI7
+        JwOIzUxqqaG0kiJjtgre/K/HQEgxH3wnDdkkCobqs//J5ttfZF6w1XFbHGze1OqqSC2XBq/ZpCHo8
+        mpIAG3k2IQyNLIW/CZwv/7TgJuoJDHKOg2uuLJJFJ3ND1jz2RBj4T4EOJNA3MmMEal8LeYsN5sl5k
+        ILYxENWT+wx8CreqQKkuSUDwwVyatpOwyIVUgRsjGjUHE9xfEGYvsGn1HkPieW7lazOIXn0LJsaso
+        k0Y6OPOQ6+bAmuGP6F9xlaPWuGQujSzgg7wAh5LoBwZQxcHpmrGdWHggWO8aof965M/14oyYZrNsi
+        NFbfGfYA==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pL8nF-0073lM-58; Thu, 26 Jan 2023 20:24:21 +0000
+        id 1pL8nE-0073kx-Ob; Thu, 26 Jan 2023 20:24:20 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     "Theodore Tso" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 24/31] ext4: Convert ext4_mpage_readpages() to work on folios
-Date:   Thu, 26 Jan 2023 20:24:08 +0000
-Message-Id: <20230126202415.1682629-25-willy@infradead.org>
+Subject: [PATCH 21/31] ext4: Convert __ext4_journalled_writepage() to take a folio
+Date:   Thu, 26 Jan 2023 20:24:05 +0000
+Message-Id: <20230126202415.1682629-22-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230126202415.1682629-1-willy@infradead.org>
 References: <20230126202415.1682629-1-willy@infradead.org>
@@ -43,190 +43,134 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This definitely doesn't include support for large folios; there
-are all kinds of assumptions about the number of buffers attached
-to a folio.  But it does remove several calls to compound_head().
+Use the folio APIs throughout and remove a PAGE_SIZE assumption.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/ext4/ext4.h     |  2 +-
- fs/ext4/inode.c    |  7 +++---
- fs/ext4/readpage.c | 58 +++++++++++++++++++++-------------------------
- 3 files changed, 31 insertions(+), 36 deletions(-)
+ fs/ext4/inode.c | 46 +++++++++++++++++++++++-----------------------
+ 1 file changed, 23 insertions(+), 23 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index d2998800855c..faa54035dbc8 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3646,7 +3646,7 @@ static inline void ext4_set_de_type(struct super_block *sb,
- 
- /* readpages.c */
- extern int ext4_mpage_readpages(struct inode *inode,
--		struct readahead_control *rac, struct page *page);
-+		struct readahead_control *rac, struct folio *folio);
- extern int __init ext4_init_post_read_processing(void);
- extern void ext4_exit_post_read_processing(void);
- 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 8929add6808a..dbfc0670de75 100644
+index 727aa2e51a9d..9b2c21d0e1f3 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -3299,17 +3299,16 @@ static sector_t ext4_bmap(struct address_space *mapping, sector_t block)
- 
- static int ext4_read_folio(struct file *file, struct folio *folio)
- {
--	struct page *page = &folio->page;
- 	int ret = -EAGAIN;
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = folio->mapping->host;
- 
--	trace_ext4_readpage(page);
-+	trace_ext4_readpage(&folio->page);
- 
- 	if (ext4_has_inline_data(inode))
- 		ret = ext4_readpage_inline(inode, folio);
- 
- 	if (ret == -EAGAIN)
--		return ext4_mpage_readpages(inode, NULL, page);
-+		return ext4_mpage_readpages(inode, NULL, folio);
- 
- 	return ret;
- }
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index c61dc8a7c014..8092d2ace75e 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -218,7 +218,7 @@ static inline loff_t ext4_readpage_limit(struct inode *inode)
+@@ -136,7 +136,7 @@ static inline int ext4_begin_ordered_truncate(struct inode *inode,
+ 						   new_size);
  }
  
- int ext4_mpage_readpages(struct inode *inode,
--		struct readahead_control *rac, struct page *page)
-+		struct readahead_control *rac, struct folio *folio)
+-static int __ext4_journalled_writepage(struct page *page, unsigned int len);
++static int __ext4_journalled_writepage(struct folio *folio, unsigned int len);
+ static int ext4_meta_trans_blocks(struct inode *inode, int lblocks,
+ 				  int pextents);
+ 
+@@ -1891,10 +1891,10 @@ int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+ 	return 0;
+ }
+ 
+-static int __ext4_journalled_writepage(struct page *page,
++static int __ext4_journalled_writepage(struct folio *folio,
+ 				       unsigned int len)
  {
- 	struct bio *bio = NULL;
- 	sector_t last_block_in_bio = 0;
-@@ -247,16 +247,15 @@ int ext4_mpage_readpages(struct inode *inode,
- 		int fully_mapped = 1;
- 		unsigned first_hole = blocks_per_page;
+-	struct address_space *mapping = page->mapping;
++	struct address_space *mapping = folio->mapping;
+ 	struct inode *inode = mapping->host;
+ 	handle_t *handle = NULL;
+ 	int ret = 0, err = 0;
+@@ -1902,37 +1902,38 @@ static int __ext4_journalled_writepage(struct page *page,
+ 	struct buffer_head *inode_bh = NULL;
+ 	loff_t size;
  
--		if (rac) {
--			page = readahead_page(rac);
--			prefetchw(&page->flags);
--		}
-+		if (rac)
-+			folio = readahead_folio(rac);
-+		prefetchw(&folio->flags);
+-	ClearPageChecked(page);
++	folio_clear_checked(folio);
  
--		if (page_has_buffers(page))
-+		if (folio_buffers(folio))
- 			goto confused;
- 
- 		block_in_file = next_block =
--			(sector_t)page->index << (PAGE_SHIFT - blkbits);
-+			(sector_t)folio->index << (PAGE_SHIFT - blkbits);
- 		last_block = block_in_file + nr_pages * blocks_per_page;
- 		last_block_in_file = (ext4_readpage_limit(inode) +
- 				      blocksize - 1) >> blkbits;
-@@ -290,7 +289,7 @@ int ext4_mpage_readpages(struct inode *inode,
- 
- 		/*
- 		 * Then do more ext4_map_blocks() calls until we are
--		 * done with this page.
-+		 * done with this folio.
- 		 */
- 		while (page_block < blocks_per_page) {
- 			if (block_in_file < last_block) {
-@@ -299,11 +298,11 @@ int ext4_mpage_readpages(struct inode *inode,
- 
- 				if (ext4_map_blocks(NULL, inode, &map, 0) < 0) {
- 				set_error_page:
--					SetPageError(page);
--					zero_user_segment(page, 0,
--							  PAGE_SIZE);
--					unlock_page(page);
--					goto next_page;
-+					folio_set_error(folio);
-+					folio_zero_segment(folio, 0,
-+							  folio_size(folio));
-+					folio_unlock(folio);
-+					continue;
- 				}
- 			}
- 			if ((map.m_flags & EXT4_MAP_MAPPED) == 0) {
-@@ -333,22 +332,22 @@ int ext4_mpage_readpages(struct inode *inode,
- 			}
- 		}
- 		if (first_hole != blocks_per_page) {
--			zero_user_segment(page, first_hole << blkbits,
--					  PAGE_SIZE);
-+			folio_zero_segment(folio, first_hole << blkbits,
-+					  folio_size(folio));
- 			if (first_hole == 0) {
--				if (ext4_need_verity(inode, page->index) &&
--				    !fsverity_verify_page(page))
-+				if (ext4_need_verity(inode, folio->index) &&
-+				    !fsverity_verify_page(&folio->page))
- 					goto set_error_page;
--				SetPageUptodate(page);
--				unlock_page(page);
--				goto next_page;
-+				folio_mark_uptodate(folio);
-+				folio_unlock(folio);
-+				continue;
- 			}
- 		} else if (fully_mapped) {
--			SetPageMappedToDisk(page);
-+			folio_set_mappedtodisk(folio);
- 		}
- 
- 		/*
--		 * This page will go to BIO.  Do we need to send this
-+		 * This folio will go to BIO.  Do we need to send this
- 		 * BIO off first?
- 		 */
- 		if (bio && (last_block_in_bio != blocks[0] - 1 ||
-@@ -366,7 +365,7 @@ int ext4_mpage_readpages(struct inode *inode,
- 					REQ_OP_READ, GFP_KERNEL);
- 			fscrypt_set_bio_crypt_ctx(bio, inode, next_block,
- 						  GFP_KERNEL);
--			ext4_set_bio_post_read_ctx(bio, inode, page->index);
-+			ext4_set_bio_post_read_ctx(bio, inode, folio->index);
- 			bio->bi_iter.bi_sector = blocks[0] << (blkbits - 9);
- 			bio->bi_end_io = mpage_end_io;
- 			if (rac)
-@@ -374,7 +373,7 @@ int ext4_mpage_readpages(struct inode *inode,
- 		}
- 
- 		length = first_hole << blkbits;
--		if (bio_add_page(bio, page, length, 0) < length)
-+		if (!bio_add_folio(bio, folio, length, 0))
- 			goto submit_and_realloc;
- 
- 		if (((map.m_flags & EXT4_MAP_BOUNDARY) &&
-@@ -384,19 +383,16 @@ int ext4_mpage_readpages(struct inode *inode,
- 			bio = NULL;
- 		} else
- 			last_block_in_bio = blocks[blocks_per_page - 1];
--		goto next_page;
-+		continue;
- 	confused:
- 		if (bio) {
- 			submit_bio(bio);
- 			bio = NULL;
- 		}
--		if (!PageUptodate(page))
--			block_read_full_folio(page_folio(page), ext4_get_block);
-+		if (!folio_test_uptodate(folio))
-+			block_read_full_folio(folio, ext4_get_block);
- 		else
--			unlock_page(page);
--	next_page:
--		if (rac)
--			put_page(page);
-+			folio_unlock(folio);
+ 	if (inline_data) {
+-		BUG_ON(page->index != 0);
++		BUG_ON(folio->index != 0);
+ 		BUG_ON(len > ext4_get_max_inline_size(inode));
+-		inode_bh = ext4_journalled_write_inline_data(inode, len, page);
++		inode_bh = ext4_journalled_write_inline_data(inode, len,
++							     &folio->page);
+ 		if (inode_bh == NULL)
+ 			goto out;
  	}
- 	if (bio)
- 		submit_bio(bio);
+ 	/*
+-	 * We need to release the page lock before we start the
+-	 * journal, so grab a reference so the page won't disappear
++	 * We need to release the folio lock before we start the
++	 * journal, so grab a reference so the folio won't disappear
+ 	 * out from under us.
+ 	 */
+-	get_page(page);
+-	unlock_page(page);
++	folio_get(folio);
++	folio_unlock(folio);
+ 
+ 	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE,
+ 				    ext4_writepage_trans_blocks(inode));
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+-		put_page(page);
++		folio_put(folio);
+ 		goto out_no_pagelock;
+ 	}
+ 	BUG_ON(!ext4_handle_valid(handle));
+ 
+-	lock_page(page);
+-	put_page(page);
++	folio_lock(folio);
++	folio_put(folio);
+ 	size = i_size_read(inode);
+-	if (page->mapping != mapping || page_offset(page) > size) {
+-		/* The page got truncated from under us */
++	if (folio->mapping != mapping || folio_pos(folio) > size) {
++		/* The folio got truncated from under us */
+ 		ext4_journal_stop(handle);
+ 		ret = 0;
+ 		goto out;
+@@ -1941,12 +1942,11 @@ static int __ext4_journalled_writepage(struct page *page,
+ 	if (inline_data) {
+ 		ret = ext4_mark_inode_dirty(handle, inode);
+ 	} else {
+-		struct buffer_head *page_bufs = page_buffers(page);
++		struct buffer_head *page_bufs = folio_buffers(folio);
+ 
+-		if (page->index == size >> PAGE_SHIFT)
+-			len = size & ~PAGE_MASK;
+-		else
+-			len = PAGE_SIZE;
++		len = folio_size(folio);
++		if (folio_pos(folio) + len > size)
++			len = size - folio_pos(folio);
+ 
+ 		ret = ext4_walk_page_buffers(handle, inode, page_bufs, 0, len,
+ 					     NULL, do_journal_get_write_access);
+@@ -1956,7 +1956,7 @@ static int __ext4_journalled_writepage(struct page *page,
+ 	}
+ 	if (ret == 0)
+ 		ret = err;
+-	err = ext4_jbd2_inode_add_write(handle, inode, page_offset(page), len);
++	err = ext4_jbd2_inode_add_write(handle, inode, folio_pos(folio), len);
+ 	if (ret == 0)
+ 		ret = err;
+ 	EXT4_I(inode)->i_datasync_tid = handle->h_transaction->t_tid;
+@@ -1966,7 +1966,7 @@ static int __ext4_journalled_writepage(struct page *page,
+ 
+ 	ext4_set_inode_state(inode, EXT4_STATE_JDATA);
+ out:
+-	unlock_page(page);
++	folio_unlock(folio);
+ out_no_pagelock:
+ 	brelse(inode_bh);
+ 	return ret;
+@@ -2086,7 +2086,7 @@ static int ext4_writepage(struct page *page,
+ 		 * It's mmapped pagecache.  Add buffers and journal it.  There
+ 		 * doesn't seem much point in redirtying the folio here.
+ 		 */
+-		return __ext4_journalled_writepage(page, len);
++		return __ext4_journalled_writepage(folio, len);
+ 
+ 	ext4_io_submit_init(&io_submit, wbc);
+ 	io_submit.io_end = ext4_init_io_end(inode, GFP_NOFS);
 -- 
 2.35.1
 
