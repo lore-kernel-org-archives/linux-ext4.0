@@ -2,38 +2,38 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 09E1FC61DA3
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A8F1DC636CC
 	for <linux-ext4@archiver.kernel.org>; Thu, 26 Jan 2023 20:24:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232777AbjAZUYb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 26 Jan 2023 15:24:31 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38894 "EHLO
+        id S232648AbjAZUYc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 26 Jan 2023 15:24:32 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38916 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232783AbjAZUYX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Jan 2023 15:24:23 -0500
+        with ESMTP id S232786AbjAZUYY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Jan 2023 15:24:24 -0500
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6649B4996E;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DBDB74B4B0;
         Thu, 26 Jan 2023 12:24:22 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=GVHnYKlWroCQt1vq8X/m3nZwxtJ1hxutRRN2IluE1Lg=; b=mxtrTwwQ5buP+bfuGhkgVjul+B
-        /VRyWhbjZHbI4t85AOAoogW01ETn5DdJqSQcsjvMdcnDlT0q2E5zrfeFBgSLrVKORuN6Dhxg/z+PM
-        ToCki5mZ8vPVQnzZ281NOi8b4nUpWsIPApVjoHx+UQCBhUPMi2Fx08fEVhAXKQpqPna9deBBvWNK2
-        DLM2/rUbD+GWlaZ1vRmptpJs90gOvWduV5aRNg+ht4+DMigp6dIFwxBuCGJbYnN1f5qpsrC4vOgsY
-        I/+UW87dI51snV8SZu0EMQUMf0n+Q1/EZMGp9pRV+BlQMZ/B9o0ywe5M4PAwNVsYdSA6dQenYq+Dd
-        /7b0+iGg==;
+        bh=yAoys4dBl+8BQmn25O6SNEK7s+nZO9rSb1qSFkT15mg=; b=OTeTcS2lohbDE+SOs0t9SnhyLx
+        1prRKQuAvenp+fP5/vVAzbVEAQ2Ekjz1RpeSdWlVBAHVnPLwOEFijil2YQdntZWmmGo6LC3KVbk//
+        1Yn3cBiQ6ZB8edf2VihSA7MWV1cbpzvD+SFPJWGEeaPAOIax2BeR1GVjVItlVEsb42jOtRVNHUTsG
+        aJiFuWxF9kRCPgMumB0/qkclXmtjeLDebZMewOm3Tj6liSLYKN6H1vIQtAltNBVjfh9vWaUyW9Xvg
+        KAzIwZhfN+aG4JTei0M1Mm48zbRLK6SXSSjUHEHcPlG/7nyOGOsi9sP5urVKJ4fk6FllANVtxNpYU
+        QrhHr6lw==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pL8nD-0073k5-OJ; Thu, 26 Jan 2023 20:24:19 +0000
+        id 1pL8nE-0073kN-3D; Thu, 26 Jan 2023 20:24:20 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     "Theodore Tso" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 13/31] ext4: Convert ext4_da_write_inline_data_begin() to use a folio
-Date:   Thu, 26 Jan 2023 20:23:57 +0000
-Message-Id: <20230126202415.1682629-14-willy@infradead.org>
+Subject: [PATCH 16/31] ext4: Convert ext4_write_begin() to use a folio
+Date:   Thu, 26 Jan 2023 20:24:00 +0000
+Message-Id: <20230126202415.1682629-17-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230126202415.1682629-1-willy@infradead.org>
 References: <20230126202415.1682629-1-willy@infradead.org>
@@ -43,71 +43,132 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Saves a number of calls to compound_head().
+Remove a lot of calls to compound_head().
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/ext4/inline.c | 20 +++++++++-----------
- 1 file changed, 9 insertions(+), 11 deletions(-)
+ fs/ext4/inode.c | 53 +++++++++++++++++++++++++------------------------
+ 1 file changed, 27 insertions(+), 26 deletions(-)
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 99c77dd519f0..b8e22348dad2 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -910,10 +910,9 @@ int ext4_da_write_inline_data_begin(struct address_space *mapping,
- {
- 	int ret;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c627686295e0..9233d6b68ebe 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1156,7 +1156,7 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+ 	int ret, needed_blocks;
  	handle_t *handle;
+ 	int retries = 0;
 -	struct page *page;
 +	struct folio *folio;
- 	struct ext4_iloc iloc;
- 	int retries = 0;
--	unsigned int flags;
+ 	pgoff_t index;
+ 	unsigned from, to;
  
- 	ret = ext4_get_inode_loc(inode, &iloc);
- 	if (ret)
-@@ -945,10 +944,9 @@ int ext4_da_write_inline_data_begin(struct address_space *mapping,
- 	 * We cannot recurse into the filesystem as the transaction
- 	 * is already started.
+@@ -1183,68 +1183,69 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+ 	}
+ 
+ 	/*
+-	 * grab_cache_page_write_begin() can take a long time if the
+-	 * system is thrashing due to memory pressure, or if the page
++	 * __filemap_get_folio() can take a long time if the
++	 * system is thrashing due to memory pressure, or if the folio
+ 	 * is being written back.  So grab it first before we start
+ 	 * the transaction handle.  This also allows us to allocate
+-	 * the page (if needed) without using GFP_NOFS.
++	 * the folio (if needed) without using GFP_NOFS.
  	 */
--	flags = memalloc_nofs_save();
--	page = grab_cache_page_write_begin(mapping, 0);
--	memalloc_nofs_restore(flags);
--	if (!page) {
-+	folio = __filemap_get_folio(mapping, 0, FGP_WRITEBEGIN | FGP_NOFS,
+ retry_grab:
+-	page = grab_cache_page_write_begin(mapping, index);
+-	if (!page)
++	folio = __filemap_get_folio(mapping, index, FGP_WRITEBEGIN,
 +					mapping_gfp_mask(mapping));
-+	if (!folio) {
- 		ret = -ENOMEM;
- 		goto out_journal;
- 	}
-@@ -959,8 +957,8 @@ int ext4_da_write_inline_data_begin(struct address_space *mapping,
- 		goto out_release_page;
++	if (!folio)
+ 		return -ENOMEM;
+ 	/*
+ 	 * The same as page allocation, we prealloc buffer heads before
+ 	 * starting the handle.
+ 	 */
+-	if (!page_has_buffers(page))
+-		create_empty_buffers(page, inode->i_sb->s_blocksize, 0);
++	if (!folio_buffers(folio))
++		create_empty_buffers(&folio->page, inode->i_sb->s_blocksize, 0);
+ 
+-	unlock_page(page);
++	folio_unlock(folio);
+ 
+ retry_journal:
+ 	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, needed_blocks);
+ 	if (IS_ERR(handle)) {
+-		put_page(page);
++		folio_put(folio);
+ 		return PTR_ERR(handle);
  	}
  
--	if (!PageUptodate(page)) {
--		ret = ext4_read_inline_page(inode, page);
-+	if (!folio_test_uptodate(folio)) {
-+		ret = ext4_read_inline_page(inode, &folio->page);
- 		if (ret < 0)
- 			goto out_release_page;
+-	lock_page(page);
+-	if (page->mapping != mapping) {
+-		/* The page got truncated from under us */
+-		unlock_page(page);
+-		put_page(page);
++	folio_lock(folio);
++	if (folio->mapping != mapping) {
++		/* The folio got truncated from under us */
++		folio_unlock(folio);
++		folio_put(folio);
+ 		ext4_journal_stop(handle);
+ 		goto retry_grab;
  	}
-@@ -970,13 +968,13 @@ int ext4_da_write_inline_data_begin(struct address_space *mapping,
- 		goto out_release_page;
+-	/* In case writeback began while the page was unlocked */
+-	wait_for_stable_page(page);
++	/* In case writeback began while the folio was unlocked */
++	folio_wait_stable(folio);
  
- 	up_read(&EXT4_I(inode)->xattr_sem);
+ #ifdef CONFIG_FS_ENCRYPTION
+ 	if (ext4_should_dioread_nolock(inode))
+-		ret = ext4_block_write_begin(page, pos, len,
++		ret = ext4_block_write_begin(&folio->page, pos, len,
+ 					     ext4_get_block_unwritten);
+ 	else
+-		ret = ext4_block_write_begin(page, pos, len,
++		ret = ext4_block_write_begin(&folio->page, pos, len,
+ 					     ext4_get_block);
+ #else
+ 	if (ext4_should_dioread_nolock(inode))
+-		ret = __block_write_begin(page, pos, len,
++		ret = __block_write_begin(&folio->page, pos, len,
+ 					  ext4_get_block_unwritten);
+ 	else
+-		ret = __block_write_begin(page, pos, len, ext4_get_block);
++		ret = __block_write_begin(&folio->page, pos, len, ext4_get_block);
+ #endif
+ 	if (!ret && ext4_should_journal_data(inode)) {
+ 		ret = ext4_walk_page_buffers(handle, inode,
+-					     page_buffers(page), from, to, NULL,
+-					     do_journal_get_write_access);
++					     folio_buffers(folio), from, to,
++					     NULL, do_journal_get_write_access);
+ 	}
+ 
+ 	if (ret) {
+ 		bool extended = (pos + len > inode->i_size) &&
+ 				!ext4_verity_in_progress(inode);
+ 
+-		unlock_page(page);
++		folio_unlock(folio);
+ 		/*
+ 		 * __block_write_begin may have instantiated a few blocks
+ 		 * outside i_size.  Trim these off again. Don't need
+@@ -1272,10 +1273,10 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+ 		if (ret == -ENOSPC &&
+ 		    ext4_should_retry_alloc(inode->i_sb, &retries))
+ 			goto retry_journal;
+-		put_page(page);
++		folio_put(folio);
+ 		return ret;
+ 	}
 -	*pagep = page;
 +	*pagep = &folio->page;
- 	brelse(iloc.bh);
- 	return 1;
- out_release_page:
- 	up_read(&EXT4_I(inode)->xattr_sem);
--	unlock_page(page);
--	put_page(page);
-+	folio_unlock(folio);
-+	folio_put(folio);
- out_journal:
- 	ext4_journal_stop(handle);
- out:
+ 	return ret;
+ }
+ 
 -- 
 2.35.1
 
