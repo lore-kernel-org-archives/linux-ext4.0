@@ -2,38 +2,38 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E3294C54EAA
-	for <linux-ext4@archiver.kernel.org>; Thu, 26 Jan 2023 20:24:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B8A23C636CB
+	for <linux-ext4@archiver.kernel.org>; Thu, 26 Jan 2023 20:24:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232853AbjAZUYh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 26 Jan 2023 15:24:37 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38984 "EHLO
+        id S232854AbjAZUYi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 26 Jan 2023 15:24:38 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38916 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232801AbjAZUYZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Jan 2023 15:24:25 -0500
+        with ESMTP id S232799AbjAZUYY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Jan 2023 15:24:24 -0500
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0EADB4B88D;
-        Thu, 26 Jan 2023 12:24:24 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DD4EB49954;
+        Thu, 26 Jan 2023 12:24:23 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=07jZVgnshAtXEL+2qn3RaXP+/v3Z8FnGfbVeAWNPvp8=; b=YdP3KGeVrX3PlhQjWiiFiGBmUL
-        89ShociKKWDjzI5TA2+ueXa8ryD/IkJ3LvE2KcQLot31lApvCVmrEL6DozrUKRe0tWyLAlheVecjU
-        DAPfxMaeCajYG2i94dxk2dxUKavXdQ5kwLYQ2qOzDw2Gc8WQh10JkRCyT4t7NRBrQ/ERElM3fLQiP
-        I83SVaiHmYhrtO5UQGffutc7T1eBLe8sV1Dj51WwxUc8/M2koOvH6tGb+WjHRZAzpTFXSPvxpt9Pg
-        V+sK38tiFSI1kIQryh3hWlsxzKwGEwNzPDM6DAwRIvdlkUvRx15s04bl71P07y6qbqsNkJcTOnUXG
-        NwyPTakA==;
+        bh=bUmnptUoiyyV9s9VNe8+i6VzP5JZO1CccQPGrLeqfzk=; b=Or9xS/22gf8YWDIrqz0fC3yypQ
+        /cHKtRkxj4qpPiQJd1xbokNjr3oTeMUuhLaXM+KW6Yq2ofUQ14fY+an9D7gRIZ+r/s3Pq1o2YDKBu
+        LBmx/FZ7nMmyLg8nlR+sVY4lISirQ1/hO2XEeLW/s4o/p6t2kddlxXwShyemrpJTn+tJbwYknKIWT
+        e1bFyvQgLa7HCA18CvVvhTMHaddiQ0B6LrIN4Y4zo+n96ZrhN9kfDL3nNN9yV34l18FVibiR68i1d
+        icliu7WbOwpCfbLoAtNHEBxBYWLI20/uXhEITYsnOHDXztfRBkqDn4Yie7btkXUBeoW9lNGsTHYwN
+        ri0jxJIw==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pL8nF-0073lV-An; Thu, 26 Jan 2023 20:24:21 +0000
+        id 1pL8nE-0073lD-Vu; Thu, 26 Jan 2023 20:24:21 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     "Theodore Tso" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 25/31] ext4: Convert ext4_block_write_begin() to take a folio
-Date:   Thu, 26 Jan 2023 20:24:09 +0000
-Message-Id: <20230126202415.1682629-26-willy@infradead.org>
+Subject: [PATCH 23/31] ext4: Use a folio in ext4_da_write_begin()
+Date:   Thu, 26 Jan 2023 20:24:07 +0000
+Message-Id: <20230126202415.1682629-24-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230126202415.1682629-1-willy@infradead.org>
 References: <20230126202415.1682629-1-willy@infradead.org>
@@ -43,130 +43,67 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-All the callers now have a folio, so pass that in and operate on folios.
-Removes four calls to compound_head().
+Remove a few calls to compound_head().
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/ext4/inode.c | 41 +++++++++++++++++++++--------------------
- 1 file changed, 21 insertions(+), 20 deletions(-)
+ fs/ext4/inode.c | 21 +++++++++++----------
+ 1 file changed, 11 insertions(+), 10 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index dbfc0670de75..507c7f88d737 100644
+index e7e8f2946012..8929add6808a 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1055,12 +1055,12 @@ int do_journal_get_write_access(handle_t *handle, struct inode *inode,
+@@ -3046,7 +3046,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+ 			       struct page **pagep, void **fsdata)
+ {
+ 	int ret, retries = 0;
+-	struct page *page;
++	struct folio *folio;
+ 	pgoff_t index;
+ 	struct inode *inode = mapping->host;
+ 
+@@ -3073,22 +3073,23 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+ 	}
+ 
+ retry:
+-	page = grab_cache_page_write_begin(mapping, index);
+-	if (!page)
++	folio = __filemap_get_folio(mapping, index, FGP_WRITEBEGIN,
++			mapping_gfp_mask(mapping));
++	if (!folio)
+ 		return -ENOMEM;
+ 
+-	/* In case writeback began while the page was unlocked */
+-	wait_for_stable_page(page);
++	/* In case writeback began while the folio was unlocked */
++	folio_wait_stable(folio);
+ 
+ #ifdef CONFIG_FS_ENCRYPTION
+-	ret = ext4_block_write_begin(page, pos, len,
++	ret = ext4_block_write_begin(&folio->page, pos, len,
+ 				     ext4_da_get_block_prep);
+ #else
+-	ret = __block_write_begin(page, pos, len, ext4_da_get_block_prep);
++	ret = __block_write_begin(&folio->page, pos, len, ext4_da_get_block_prep);
+ #endif
+ 	if (ret < 0) {
+-		unlock_page(page);
+-		put_page(page);
++		folio_unlock(folio);
++		folio_put(folio);
+ 		/*
+ 		 * block_write_begin may have instantiated a few blocks
+ 		 * outside i_size.  Trim these off again. Don't need
+@@ -3103,7 +3104,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+ 		return ret;
+ 	}
+ 
+-	*pagep = page;
++	*pagep = &folio->page;
+ 	return ret;
  }
  
- #ifdef CONFIG_FS_ENCRYPTION
--static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
-+static int ext4_block_write_begin(struct folio *folio, loff_t pos, unsigned len,
- 				  get_block_t *get_block)
- {
- 	unsigned from = pos & (PAGE_SIZE - 1);
- 	unsigned to = from + len;
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = folio->mapping->host;
- 	unsigned block_start, block_end;
- 	sector_t block;
- 	int err = 0;
-@@ -1070,22 +1070,24 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- 	int nr_wait = 0;
- 	int i;
- 
--	BUG_ON(!PageLocked(page));
-+	BUG_ON(!folio_test_locked(folio));
- 	BUG_ON(from > PAGE_SIZE);
- 	BUG_ON(to > PAGE_SIZE);
- 	BUG_ON(from > to);
- 
--	if (!page_has_buffers(page))
--		create_empty_buffers(page, blocksize, 0);
--	head = page_buffers(page);
-+	head = folio_buffers(folio);
-+	if (!head) {
-+		create_empty_buffers(&folio->page, blocksize, 0);
-+		head = folio_buffers(folio);
-+	}
- 	bbits = ilog2(blocksize);
--	block = (sector_t)page->index << (PAGE_SHIFT - bbits);
-+	block = (sector_t)folio->index << (PAGE_SHIFT - bbits);
- 
- 	for (bh = head, block_start = 0; bh != head || !block_start;
- 	    block++, block_start = block_end, bh = bh->b_this_page) {
- 		block_end = block_start + blocksize;
- 		if (block_end <= from || block_start >= to) {
--			if (PageUptodate(page)) {
-+			if (folio_test_uptodate(folio)) {
- 				set_buffer_uptodate(bh);
- 			}
- 			continue;
-@@ -1098,19 +1100,20 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- 			if (err)
- 				break;
- 			if (buffer_new(bh)) {
--				if (PageUptodate(page)) {
-+				if (folio_test_uptodate(folio)) {
- 					clear_buffer_new(bh);
- 					set_buffer_uptodate(bh);
- 					mark_buffer_dirty(bh);
- 					continue;
- 				}
- 				if (block_end > to || block_start < from)
--					zero_user_segments(page, to, block_end,
--							   block_start, from);
-+					folio_zero_segments(folio, to,
-+							    block_end,
-+							    block_start, from);
- 				continue;
- 			}
- 		}
--		if (PageUptodate(page)) {
-+		if (folio_test_uptodate(folio)) {
- 			set_buffer_uptodate(bh);
- 			continue;
- 		}
-@@ -1130,13 +1133,13 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- 			err = -EIO;
- 	}
- 	if (unlikely(err)) {
--		page_zero_new_buffers(page, from, to);
-+		page_zero_new_buffers(&folio->page, from, to);
- 	} else if (fscrypt_inode_uses_fs_layer_crypto(inode)) {
- 		for (i = 0; i < nr_wait; i++) {
- 			int err2;
- 
--			err2 = fscrypt_decrypt_pagecache_blocks(page, blocksize,
--								bh_offset(wait[i]));
-+			err2 = fscrypt_decrypt_pagecache_blocks(&folio->page,
-+						blocksize, bh_offset(wait[i]));
- 			if (err2) {
- 				clear_buffer_uptodate(wait[i]);
- 				err = err2;
-@@ -1223,11 +1226,10 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
- 
- #ifdef CONFIG_FS_ENCRYPTION
- 	if (ext4_should_dioread_nolock(inode))
--		ret = ext4_block_write_begin(&folio->page, pos, len,
-+		ret = ext4_block_write_begin(folio, pos, len,
- 					     ext4_get_block_unwritten);
- 	else
--		ret = ext4_block_write_begin(&folio->page, pos, len,
--					     ext4_get_block);
-+		ret = ext4_block_write_begin(folio, pos, len, ext4_get_block);
- #else
- 	if (ext4_should_dioread_nolock(inode))
- 		ret = __block_write_begin(&folio->page, pos, len,
-@@ -3082,8 +3084,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
- 	folio_wait_stable(folio);
- 
- #ifdef CONFIG_FS_ENCRYPTION
--	ret = ext4_block_write_begin(&folio->page, pos, len,
--				     ext4_da_get_block_prep);
-+	ret = ext4_block_write_begin(folio, pos, len, ext4_da_get_block_prep);
- #else
- 	ret = __block_write_begin(&folio->page, pos, len, ext4_da_get_block_prep);
- #endif
 -- 
 2.35.1
 
