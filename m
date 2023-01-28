@@ -2,40 +2,40 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 52430C38142
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 82E5DC636CC
 	for <linux-ext4@archiver.kernel.org>; Sat, 28 Jan 2023 22:58:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231567AbjA1W6p (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 28 Jan 2023 17:58:45 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54340 "EHLO
+        id S231797AbjA1W6q (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 28 Jan 2023 17:58:46 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54338 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230012AbjA1W6n (ORCPT
+        with ESMTP id S230325AbjA1W6n (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Jan 2023 17:58:43 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 13A4E233E0
-        for <linux-ext4@vger.kernel.org>; Sat, 28 Jan 2023 14:58:43 -0800 (PST)
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9B17122A03
+        for <linux-ext4@vger.kernel.org>; Sat, 28 Jan 2023 14:58:42 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id ACBDC60C53
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 1DAE160C26
         for <linux-ext4@vger.kernel.org>; Sat, 28 Jan 2023 22:58:42 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0D2A1C4339E
-        for <linux-ext4@vger.kernel.org>; Sat, 28 Jan 2023 22:58:42 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7302BC433EF
+        for <linux-ext4@vger.kernel.org>; Sat, 28 Jan 2023 22:58:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674946722;
-        bh=S9EG6xTRy0n5rDDtlmHE3JRNqxIsKAYfyqOTfxAeQjM=;
+        s=k20201202; t=1674946721;
+        bh=2X8lgeo655rQ+0A49CCi05+HuhTOsBXlqkgk7n9JcpY=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=hB9IjBs1RoQ7jzTklojbEJqQSjf1TVFx3N48qxGuJxDnj6zwPEQle/k7CNJmT5nP1
-         26FQZBSdIbNlpQjKHSMAAWAs911iRMQCfOuWp/+13FPq67r+2JVXr2ppL8wpWIufWe
-         pdUvC3RAroWZebxbvvlArd5EtUtGUG4KLLJfcZc9lfAqWfIpx7STItZDnmZRNFeF5B
-         m84fntQXjeUG94n+OfeIbmqEuHGb2i15aIyP2F3JKmmKucylMtZLoAAueLAS9IjW/D
-         yK8+OKXaIxGE34hFt+kBloY5y9yWdkwB6fisCO32SqccKOgTGW1ZT0wWpUKgav2D+U
-         IU08VqntRUIAA==
+        b=JDMJeOboAL77rzch9nxHNSoiX1nQwLcSzwyTatX12NuTZXr0x/A6iv5JeAv9lnTjx
+         QhRrtSfzqxWC2Up+3We4aMQMtTY5giZn/cwnKkPeCuiGqR1x3jyHx5qcQEQmePXJOh
+         RD4PGlc4Y1p2wlR/8ATnFURe3pglwaef1BEeFsNyrminAw65mhTiN0Yu7bfblMos5w
+         fV5iEi345vM87016MzHHBQTiKHjArY/E0TEZm1AVJo4PsHCUPHQG/eUZYGJ4UoZ449
+         Iv2GPoUTO0z4vtrqLs8QPrysiXA/5o3Eb1bDGPdtohOaNr8L7u9sHk7Rt+cy4YGKGG
+         8v3/rE0zhbDXA==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 4/4] lib/uuid: remove unneeded Windows UUID workaround
-Date:   Sat, 28 Jan 2023 14:46:51 -0800
-Message-Id: <20230128224651.59593-5-ebiggers@kernel.org>
+Subject: [PATCH 1/4] ci.yml: ensure -Werror really gets used in all cases
+Date:   Sat, 28 Jan 2023 14:46:48 -0800
+Message-Id: <20230128224651.59593-2-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.1
 In-Reply-To: <20230128224651.59593-1-ebiggers@kernel.org>
 References: <20230128224651.59593-1-ebiggers@kernel.org>
@@ -47,96 +47,101 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Some .c files in lib/uuid/ contain the following:
+-Werror wasn't actually being used when building the libraries, as the
+libraries use CFLAGS_STLIB instead of CFLAGS.
 
-	#ifdef _WIN32
-	#define _WIN32_WINNT 0x0500
-	#include <windows.h>
-	#define UUID MYUUID
-	#endif
+Use CFLAGS_WARN, which gets included in both.
 
-This seems to have been intended to allow the use of a local "UUID" type
-without colliding with "UUID" in the Windows API.  However, this is
-unnecessary because there's no local "UUID" type -- there's only uuid_t.
-
-None of these .c files need the include of windows.h, either.
-
-Finally, the unconditional definition of _WIN32_WINNT causes a compiler
-warning when the user defines _WIN32_WINNT themself.
-
-Since this code is unnecessary and is causing problems, just remove it.
+Note: -Werror can't just be passed to 'configure' like the other flags
+are, as it interferes with some of the configure checks.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- lib/uuid/Android.bp  | 2 --
- lib/uuid/gen_uuid.c  | 5 -----
- lib/uuid/tst_uuid.c  | 6 ------
- lib/uuid/uuid_time.c | 6 ------
- 4 files changed, 19 deletions(-)
+ .github/workflows/ci.yml | 28 ++++++++++++++--------------
+ 1 file changed, 14 insertions(+), 14 deletions(-)
 
-diff --git a/lib/uuid/Android.bp b/lib/uuid/Android.bp
-index 67968dba3..daf30bb94 100644
---- a/lib/uuid/Android.bp
-+++ b/lib/uuid/Android.bp
-@@ -45,8 +45,6 @@ cc_library {
-     ],
-     target: {
-         windows: {
--            // Cannot suppress the _WIN32_WINNT redefined warning.
--            cflags: ["-Wno-error"],
-             include_dirs: [ "external/e2fsprogs/include/mingw" ],
-             enabled: true
-         },
-diff --git a/lib/uuid/gen_uuid.c b/lib/uuid/gen_uuid.c
-index a2225ccee..2f028867a 100644
---- a/lib/uuid/gen_uuid.c
-+++ b/lib/uuid/gen_uuid.c
-@@ -41,11 +41,6 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 29482178d..97b15bfbb 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -10,7 +10,7 @@ jobs:
+     steps:
+     - uses: actions/checkout@v2
+     - run: ./configure CC=gcc CFLAGS="$DEF_CFLAGS"
+-    - run: make -j8 check V=1 CFLAGS="$DEF_CFLAGS -Werror"
++    - run: make -j8 check V=1 CFLAGS_WARN="-Werror"
+     - run: make -j8 install V=1 DESTDIR=$PWD/installdir
+     - run: make -j8 uninstall V=1 DESTDIR=$PWD/installdir
  
- #include "config.h"
+@@ -24,7 +24,7 @@ jobs:
+         sudo apt-get update
+         sudo apt-get install -y clang
+     - run: ./configure CC=clang CFLAGS="$DEF_CFLAGS"
+-    - run: make -j8 check V=1 CFLAGS="$DEF_CFLAGS -Werror"
++    - run: make -j8 check V=1 CFLAGS_WARN="-Werror"
+     - run: make -j8 install V=1 DESTDIR=$PWD/installdir
+     - run: make -j8 uninstall V=1 DESTDIR=$PWD/installdir
  
--#ifdef _WIN32
--#define _WIN32_WINNT 0x0500
--#include <windows.h>
--#define UUID MYUUID
--#endif
- #include <stdio.h>
- #ifdef HAVE_UNISTD_H
- #include <unistd.h>
-diff --git a/lib/uuid/tst_uuid.c b/lib/uuid/tst_uuid.c
-index 649bfbc05..c1c290158 100644
---- a/lib/uuid/tst_uuid.c
-+++ b/lib/uuid/tst_uuid.c
-@@ -34,12 +34,6 @@
+@@ -38,7 +38,7 @@ jobs:
+         sudo apt-get update
+         sudo apt-get install -y gcc-multilib
+     - run: ./configure CC=gcc CFLAGS="$DEF_CFLAGS -m32" LDFLAGS="-m32"
+-    - run: make -j8 check V=1 CFLAGS="$DEF_CFLAGS -m32 -Werror"
++    - run: make -j8 check V=1 CFLAGS_WARN="-Werror"
+     - run: make -j8 install V=1 DESTDIR=$PWD/installdir
+     - run: make -j8 uninstall V=1 DESTDIR=$PWD/installdir
  
- #include "config.h"
+@@ -53,7 +53,7 @@ jobs:
+         sudo apt-get install -y clang
+     - run: echo "ASAN_CFLAGS=$DEF_CFLAGS -fsanitize=address -fno-sanitize-recover=address" >> $GITHUB_ENV
+     - run: ./configure CC=clang CFLAGS="$ASAN_CFLAGS" LDFLAGS="$ASAN_CFLAGS"
+-    - run: make -j8 check V=1 CFLAGS="$ASAN_CFLAGS -Werror"
++    - run: make -j8 check V=1 CFLAGS_WARN="-Werror"
  
--#ifdef _WIN32
--#define _WIN32_WINNT 0x0500
--#include <windows.h>
--#define UUID MYUUID
--#endif
--
- #include <stdio.h>
- #include <stdlib.h>
+   ubsan-build-and-test:
+     name: Build and test with UBSAN enabled
+@@ -66,7 +66,7 @@ jobs:
+         sudo apt-get install -y clang
+     - run: echo "UBSAN_CFLAGS=$DEF_CFLAGS -fsanitize=undefined -fno-sanitize-recover=undefined" >> $GITHUB_ENV
+     - run: ./configure CC=clang CFLAGS="$UBSAN_CFLAGS" LDFLAGS="$UBSAN_CFLAGS"
+-    - run: make -j8 check V=1 CFLAGS="$UBSAN_CFLAGS -Werror"
++    - run: make -j8 check V=1 CFLAGS_WARN="-Werror"
  
-diff --git a/lib/uuid/uuid_time.c b/lib/uuid/uuid_time.c
-index af837a2ca..b519d3c4b 100644
---- a/lib/uuid/uuid_time.c
-+++ b/lib/uuid/uuid_time.c
-@@ -36,12 +36,6 @@
+   macos-build-and-test:
+     name: Build and test on macOS
+@@ -76,7 +76,7 @@ jobs:
+     - run: ./configure CFLAGS="$DEF_CFLAGS"
+       # -Wno-error=deprecated-declarations is needed to suppress known warnings
+       # due to e2fsprogs' use of sbrk(0) and daemon().
+-    - run: make -j8 check V=1 CFLAGS="$DEF_CFLAGS -Werror -Wno-error=deprecated-declarations"
++    - run: make -j8 check V=1 CFLAGS_WARN="-Werror -Wno-error=deprecated-declarations"
+     - run: make -j8 install DESTDIR=$PWD/installdir
+     - run: make -j8 uninstall DESTDIR=$PWD/installdir
  
- #include "config.h"
- 
--#ifdef _WIN32
--#define _WIN32_WINNT 0x0500
--#include <windows.h>
--#define UUID MYUUID
--#endif
--
- #include <stdio.h>
- #ifdef HAVE_UNISTD_H
- #include <unistd.h>
+@@ -104,13 +104,13 @@ jobs:
+     # dependencies: all libraries except libss.  The build system doesn't want
+     # to build just those parts, though, so do it one step at a time...
+     - run: ./configure CFLAGS="$DEF_CFLAGS"
+-    - run: make -j8 subs V=1 CFLAGS="$DEF_CFLAGS -Werror"
+-    - run: make -j8 -C lib/et/ all V=1 CFLAGS="$DEF_CFLAGS -Werror"
+-    - run: make -j8 -C lib/uuid/ all V=1 CFLAGS="$DEF_CFLAGS -Werror"
+-    - run: make -j8 -C lib/blkid/ all V=1 CFLAGS="$DEF_CFLAGS -Werror"
+-    - run: make -j8 -C lib/ext2fs/ all V=1 CFLAGS="$DEF_CFLAGS -Werror"
+-    - run: make -j8 -C lib/support/ all V=1 CFLAGS="$DEF_CFLAGS -Werror"
+-    - run: make -j8 -C lib/e2p/ all V=1 CFLAGS="$DEF_CFLAGS -Werror"
+-    - run: make -j8 -C misc/ mke2fs V=1 CFLAGS="$DEF_CFLAGS -Werror"
++    - run: make -j8 subs V=1 CFLAGS_WARN="-Werror"
++    - run: make -j8 -C lib/et/ all V=1 CFLAGS_WARN="-Werror"
++    - run: make -j8 -C lib/uuid/ all V=1 CFLAGS_WARN="-Werror"
++    - run: make -j8 -C lib/blkid/ all V=1 CFLAGS_WARN="-Werror"
++    - run: make -j8 -C lib/ext2fs/ all V=1 CFLAGS_WARN="-Werror"
++    - run: make -j8 -C lib/support/ all V=1 CFLAGS_WARN="-Werror"
++    - run: make -j8 -C lib/e2p/ all V=1 CFLAGS_WARN="-Werror"
++    - run: make -j8 -C misc/ mke2fs V=1 CFLAGS_WARN="-Werror"
+     - run: touch image.ext4
+     - run: misc/mke2fs.exe -T ext4 image.ext4 128M
+
+base-commit: 0352d353adbe6c5d6f1937e12c66e599b8657d72
 -- 
 2.39.1
 
