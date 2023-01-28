@@ -2,118 +2,141 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 16781C61DB3
-	for <linux-ext4@archiver.kernel.org>; Sat, 28 Jan 2023 20:31:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 52430C38142
+	for <linux-ext4@archiver.kernel.org>; Sat, 28 Jan 2023 22:58:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234777AbjA1Ubv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 28 Jan 2023 15:31:51 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58880 "EHLO
+        id S231567AbjA1W6p (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 28 Jan 2023 17:58:45 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54340 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234994AbjA1Ubk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Jan 2023 15:31:40 -0500
-Received: from mga11.intel.com (mga11.intel.com [192.55.52.93])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 505B529E09;
-        Sat, 28 Jan 2023 12:31:05 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1674937865; x=1706473865;
-  h=date:from:to:cc:subject:message-id:references:
-   mime-version:in-reply-to;
-  bh=KMvQ4PikohERJD+6DblQkrJ3J4O0NmthJ12AQuApcLQ=;
-  b=AIF8Usk84yRXoYJ57zIcPQ5uFsLmuR2JKf0UOYFLjLXVBrND1Kti0eTo
-   gj8vseWNutTGUrgXijVtmTttjm/LoK7H2Z0+Wp2xR8+Q87BRr+rBaano6
-   r3utKS4Z+7Ykxk+zTGDrJeLDwjOzN8rQXeE5SKOUdBVnlG6SH3U2wYh3m
-   /4FvTRRqGal5bOBLasq5Jmn2MALyNPRUK4GEL/o2uab9EVdU4rDCPW0uQ
-   zxOSHIBTYM83nZXlQ/0twk/eoBNBjGrh/oKH+QHJUcg/wm/OHNALNirCh
-   cKnc8ZFUUmMpNoKe1pYFAYLyNQmajtpp9RdZ4QTOvOuW9u8KphzNDqF+l
-   Q==;
-X-IronPort-AV: E=McAfee;i="6500,9779,10604"; a="325025784"
-X-IronPort-AV: E=Sophos;i="5.97,254,1669104000"; 
-   d="scan'208";a="325025784"
-Received: from orsmga005.jf.intel.com ([10.7.209.41])
-  by fmsmga102.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 Jan 2023 12:31:01 -0800
-X-ExtLoop1: 1
-X-IronPort-AV: E=McAfee;i="6500,9779,10604"; a="837533337"
-X-IronPort-AV: E=Sophos;i="5.97,254,1669104000"; 
-   d="scan'208";a="837533337"
-Received: from lkp-server01.sh.intel.com (HELO ffa7f14d1d0f) ([10.239.97.150])
-  by orsmga005.jf.intel.com with ESMTP; 28 Jan 2023 12:30:51 -0800
-Received: from kbuild by ffa7f14d1d0f with local (Exim 4.96)
-        (envelope-from <lkp@intel.com>)
-        id 1pLrqc-00015I-2y;
-        Sat, 28 Jan 2023 20:30:50 +0000
-Date:   Sun, 29 Jan 2023 04:30:30 +0800
-From:   kernel test robot <lkp@intel.com>
-To:     Byungchul Park <max.byungchul.park@gmail.com>,
-        linux-kernel@vger.kernel.org
-Cc:     oe-kbuild-all@lists.linux.dev, torvalds@linux-foundation.org,
-        damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        mingo@redhat.com, peterz@infradead.org, will@kernel.org,
-        tglx@linutronix.de, rostedt@goodmis.org, joel@joelfernandes.org,
-        sashal@kernel.org, daniel.vetter@ffwll.ch, duyuyang@gmail.com,
-        johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
-        willy@infradead.org, david@fromorbit.com, amir73il@gmail.com,
-        gregkh@linuxfoundation.org, kernel-team@lge.com,
-        linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
-        minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com,
-        sj@kernel.org
-Subject: Re: [PATCH v8 25/25] dept: Track the potential waits of
- PG_{locked,writeback}
-Message-ID: <202301290402.j3poWc84-lkp@intel.com>
-References: <1674782358-25542-26-git-send-email-max.byungchul.park@gmail.com>
+        with ESMTP id S230012AbjA1W6n (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Jan 2023 17:58:43 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 13A4E233E0
+        for <linux-ext4@vger.kernel.org>; Sat, 28 Jan 2023 14:58:43 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id ACBDC60C53
+        for <linux-ext4@vger.kernel.org>; Sat, 28 Jan 2023 22:58:42 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0D2A1C4339E
+        for <linux-ext4@vger.kernel.org>; Sat, 28 Jan 2023 22:58:42 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1674946722;
+        bh=S9EG6xTRy0n5rDDtlmHE3JRNqxIsKAYfyqOTfxAeQjM=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=hB9IjBs1RoQ7jzTklojbEJqQSjf1TVFx3N48qxGuJxDnj6zwPEQle/k7CNJmT5nP1
+         26FQZBSdIbNlpQjKHSMAAWAs911iRMQCfOuWp/+13FPq67r+2JVXr2ppL8wpWIufWe
+         pdUvC3RAroWZebxbvvlArd5EtUtGUG4KLLJfcZc9lfAqWfIpx7STItZDnmZRNFeF5B
+         m84fntQXjeUG94n+OfeIbmqEuHGb2i15aIyP2F3JKmmKucylMtZLoAAueLAS9IjW/D
+         yK8+OKXaIxGE34hFt+kBloY5y9yWdkwB6fisCO32SqccKOgTGW1ZT0wWpUKgav2D+U
+         IU08VqntRUIAA==
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-ext4@vger.kernel.org
+Subject: [PATCH 4/4] lib/uuid: remove unneeded Windows UUID workaround
+Date:   Sat, 28 Jan 2023 14:46:51 -0800
+Message-Id: <20230128224651.59593-5-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.39.1
+In-Reply-To: <20230128224651.59593-1-ebiggers@kernel.org>
+References: <20230128224651.59593-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1674782358-25542-26-git-send-email-max.byungchul.park@gmail.com>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi Byungchul,
+From: Eric Biggers <ebiggers@google.com>
 
-Thank you for the patch! Yet something to improve:
+Some .c files in lib/uuid/ contain the following:
 
-[auto build test ERROR on tip/locking/core]
-[also build test ERROR on tip/sched/core drm-misc/drm-misc-next linus/master v6.2-rc5 next-20230127]
-[If your patch is applied to the wrong git tree, kindly drop us a note.
-And when submitting patch, we suggest to use '--base' as documented in
-https://git-scm.com/docs/git-format-patch#_base_tree_information]
+	#ifdef _WIN32
+	#define _WIN32_WINNT 0x0500
+	#include <windows.h>
+	#define UUID MYUUID
+	#endif
 
-url:    https://github.com/intel-lab-lkp/linux/commits/Byungchul-Park/llist-Move-llist_-head-node-definition-to-types-h/20230128-102456
-patch link:    https://lore.kernel.org/r/1674782358-25542-26-git-send-email-max.byungchul.park%40gmail.com
-patch subject: [PATCH v8 25/25] dept: Track the potential waits of PG_{locked,writeback}
-config: s390-allmodconfig (https://download.01.org/0day-ci/archive/20230129/202301290402.j3poWc84-lkp@intel.com/config)
-compiler: s390-linux-gcc (GCC) 12.1.0
-reproduce (this is a W=1 build):
-        wget https://raw.githubusercontent.com/intel/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
-        chmod +x ~/bin/make.cross
-        # https://github.com/intel-lab-lkp/linux/commit/ba934a05473c5212edeff20f2298a249bfe87351
-        git remote add linux-review https://github.com/intel-lab-lkp/linux
-        git fetch --no-tags linux-review Byungchul-Park/llist-Move-llist_-head-node-definition-to-types-h/20230128-102456
-        git checkout ba934a05473c5212edeff20f2298a249bfe87351
-        # save the config file
-        mkdir build_dir && cp config build_dir/.config
-        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=gcc-12.1.0 make.cross W=1 O=build_dir ARCH=s390 olddefconfig
-        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=gcc-12.1.0 make.cross W=1 O=build_dir ARCH=s390 SHELL=/bin/bash
+This seems to have been intended to allow the use of a local "UUID" type
+without colliding with "UUID" in the Windows API.  However, this is
+unnecessary because there's no local "UUID" type -- there's only uuid_t.
 
-If you fix the issue, kindly add following tag where applicable
-| Reported-by: kernel test robot <lkp@intel.com>
+None of these .c files need the include of windows.h, either.
 
-All errors (new ones prefixed by >>, old ones prefixed by <<):
+Finally, the unconditional definition of _WIN32_WINNT causes a compiler
+warning when the user defines _WIN32_WINNT themself.
 
->> ERROR: modpost: "PG_locked_map" [mm/zsmalloc.ko] undefined!
->> ERROR: modpost: "PG_locked_map" [mm/z3fold.ko] undefined!
->> ERROR: modpost: "PG_locked_map" [fs/reiserfs/reiserfs.ko] undefined!
->> ERROR: modpost: "PG_locked_map" [fs/ext4/ext4.ko] undefined!
->> ERROR: modpost: "PG_locked_map" [fs/ext2/ext2.ko] undefined!
->> ERROR: modpost: "PG_locked_map" [fs/jbd2/jbd2.ko] undefined!
->> ERROR: modpost: "PG_locked_map" [fs/minix/minix.ko] undefined!
->> ERROR: modpost: "PG_locked_map" [fs/ecryptfs/ecryptfs.ko] undefined!
->> ERROR: modpost: "PG_locked_map" [fs/nfs/nfs.ko] undefined!
->> ERROR: modpost: "PG_locked_map" [fs/sysv/sysv.ko] undefined!
-WARNING: modpost: suppressed 44 unresolved symbol warnings because there were too many)
+Since this code is unnecessary and is causing problems, just remove it.
 
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ lib/uuid/Android.bp  | 2 --
+ lib/uuid/gen_uuid.c  | 5 -----
+ lib/uuid/tst_uuid.c  | 6 ------
+ lib/uuid/uuid_time.c | 6 ------
+ 4 files changed, 19 deletions(-)
+
+diff --git a/lib/uuid/Android.bp b/lib/uuid/Android.bp
+index 67968dba3..daf30bb94 100644
+--- a/lib/uuid/Android.bp
++++ b/lib/uuid/Android.bp
+@@ -45,8 +45,6 @@ cc_library {
+     ],
+     target: {
+         windows: {
+-            // Cannot suppress the _WIN32_WINNT redefined warning.
+-            cflags: ["-Wno-error"],
+             include_dirs: [ "external/e2fsprogs/include/mingw" ],
+             enabled: true
+         },
+diff --git a/lib/uuid/gen_uuid.c b/lib/uuid/gen_uuid.c
+index a2225ccee..2f028867a 100644
+--- a/lib/uuid/gen_uuid.c
++++ b/lib/uuid/gen_uuid.c
+@@ -41,11 +41,6 @@
+ 
+ #include "config.h"
+ 
+-#ifdef _WIN32
+-#define _WIN32_WINNT 0x0500
+-#include <windows.h>
+-#define UUID MYUUID
+-#endif
+ #include <stdio.h>
+ #ifdef HAVE_UNISTD_H
+ #include <unistd.h>
+diff --git a/lib/uuid/tst_uuid.c b/lib/uuid/tst_uuid.c
+index 649bfbc05..c1c290158 100644
+--- a/lib/uuid/tst_uuid.c
++++ b/lib/uuid/tst_uuid.c
+@@ -34,12 +34,6 @@
+ 
+ #include "config.h"
+ 
+-#ifdef _WIN32
+-#define _WIN32_WINNT 0x0500
+-#include <windows.h>
+-#define UUID MYUUID
+-#endif
+-
+ #include <stdio.h>
+ #include <stdlib.h>
+ 
+diff --git a/lib/uuid/uuid_time.c b/lib/uuid/uuid_time.c
+index af837a2ca..b519d3c4b 100644
+--- a/lib/uuid/uuid_time.c
++++ b/lib/uuid/uuid_time.c
+@@ -36,12 +36,6 @@
+ 
+ #include "config.h"
+ 
+-#ifdef _WIN32
+-#define _WIN32_WINNT 0x0500
+-#include <windows.h>
+-#define UUID MYUUID
+-#endif
+-
+ #include <stdio.h>
+ #ifdef HAVE_UNISTD_H
+ #include <unistd.h>
 -- 
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests
+2.39.1
+
