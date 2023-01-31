@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AD164C678D4
-	for <linux-ext4@archiver.kernel.org>; Tue, 31 Jan 2023 08:40:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BECF9C636CC
+	for <linux-ext4@archiver.kernel.org>; Tue, 31 Jan 2023 08:40:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231685AbjAaIkQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 31 Jan 2023 03:40:16 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52906 "EHLO
+        id S231709AbjAaIkg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 31 Jan 2023 03:40:36 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53062 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231588AbjAaIkH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jan 2023 03:40:07 -0500
+        with ESMTP id S231634AbjAaIkM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jan 2023 03:40:12 -0500
 Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id BDDE03524E
-        for <linux-ext4@vger.kernel.org>; Tue, 31 Jan 2023 00:39:56 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 98B61367C5
+        for <linux-ext4@vger.kernel.org>; Tue, 31 Jan 2023 00:39:58 -0800 (PST)
 Received: from unknown (HELO lgeamrelo04.lge.com) (156.147.1.127)
-        by 156.147.23.53 with ESMTP; 31 Jan 2023 17:39:56 +0900
+        by 156.147.23.53 with ESMTP; 31 Jan 2023 17:39:58 +0900
 X-Original-SENDERIP: 156.147.1.127
 X-Original-MAILFROM: max.byungchul.park@gmail.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.127 with ESMTP; 31 Jan 2023 17:39:56 +0900
+        by 156.147.1.127 with ESMTP; 31 Jan 2023 17:39:58 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: max.byungchul.park@gmail.com
 From:   Byungchul Park <max.byungchul.park@gmail.com>
@@ -46,9 +46,9 @@ Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
         42.hyeyoo@gmail.com, chris.p.wilson@intel.com,
         gwan-gyeong.mun@intel.com, max.byungchul.park@gmail.com,
         boqun.feng@gmail.com, longman@redhat.com, hdanton@sina.com
-Subject: [PATCH v9 04/25] dept: Add lock dependency tracker APIs
-Date:   Tue, 31 Jan 2023 17:39:33 +0900
-Message-Id: <1675154394-25598-5-git-send-email-max.byungchul.park@gmail.com>
+Subject: [PATCH v9 09/25] dept: Apply sdt_might_sleep_{start,end}() to swait
+Date:   Tue, 31 Jan 2023 17:39:38 +0900
+Message-Id: <1675154394-25598-10-git-send-email-max.byungchul.park@gmail.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1675154394-25598-1-git-send-email-max.byungchul.park@gmail.com>
 References: <1675154394-25598-1-git-send-email-max.byungchul.park@gmail.com>
@@ -56,97 +56,41 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Wrapped the base APIs for easier annotation on typical lock.
+Makes Dept able to track dependencies by swaits.
 
 Signed-off-by: Byungchul Park <max.byungchul.park@gmail.com>
 ---
- include/linux/dept_ldt.h | 77 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 77 insertions(+)
- create mode 100644 include/linux/dept_ldt.h
+ include/linux/swait.h | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/include/linux/dept_ldt.h b/include/linux/dept_ldt.h
-new file mode 100644
-index 00000000..062613e
---- /dev/null
-+++ b/include/linux/dept_ldt.h
-@@ -0,0 +1,77 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * Lock Dependency Tracker
-+ *
-+ * Started by Byungchul Park <max.byungchul.park@gmail.com>:
-+ *
-+ *  Copyright (c) 2020 LG Electronics, Inc., Byungchul Park
-+ */
-+
-+#ifndef __LINUX_DEPT_LDT_H
-+#define __LINUX_DEPT_LDT_H
-+
-+#include <linux/dept.h>
-+
-+#ifdef CONFIG_DEPT
-+#define LDT_EVT_L			1UL
-+#define LDT_EVT_R			2UL
-+#define LDT_EVT_W			1UL
-+#define LDT_EVT_RW			(LDT_EVT_R | LDT_EVT_W)
-+#define LDT_EVT_ALL			(LDT_EVT_L | LDT_EVT_RW)
-+
-+#define ldt_init(m, k, su, n)		dept_map_init(m, k, su, n)
-+#define ldt_lock(m, sl, t, n, i)					\
-+	do {								\
-+		if (n)							\
-+			dept_ecxt_enter_nokeep(m);			\
-+		else if (t)						\
-+			dept_ecxt_enter(m, LDT_EVT_L, i, "trylock", "unlock", sl);\
-+		else {							\
-+			dept_wait(m, LDT_EVT_L, i, "lock", sl);		\
-+			dept_ecxt_enter(m, LDT_EVT_L, i, "lock", "unlock", sl);\
-+		}							\
-+	} while (0)
-+
-+#define ldt_rlock(m, sl, t, n, i, q)					\
-+	do {								\
-+		if (n)							\
-+			dept_ecxt_enter_nokeep(m);			\
-+		else if (t)						\
-+			dept_ecxt_enter(m, LDT_EVT_R, i, "read_trylock", "read_unlock", sl);\
-+		else {							\
-+			dept_wait(m, q ? LDT_EVT_RW : LDT_EVT_W, i, "read_lock", sl);\
-+			dept_ecxt_enter(m, LDT_EVT_R, i, "read_lock", "read_unlock", sl);\
-+		}							\
-+	} while (0)
-+
-+#define ldt_wlock(m, sl, t, n, i)					\
-+	do {								\
-+		if (n)							\
-+			dept_ecxt_enter_nokeep(m);			\
-+		else if (t)						\
-+			dept_ecxt_enter(m, LDT_EVT_W, i, "write_trylock", "write_unlock", sl);\
-+		else {							\
-+			dept_wait(m, LDT_EVT_RW, i, "write_lock", sl);	\
-+			dept_ecxt_enter(m, LDT_EVT_W, i, "write_lock", "write_unlock", sl);\
-+		}							\
-+	} while (0)
-+
-+#define ldt_unlock(m, i)		dept_ecxt_exit(m, LDT_EVT_ALL, i)
-+
-+#define ldt_downgrade(m, i)						\
-+	do {								\
-+		if (dept_ecxt_holding(m, LDT_EVT_W))			\
-+			dept_map_ecxt_modify(m, LDT_EVT_W, NULL, LDT_EVT_R, i, "downgrade", "read_unlock", -1);\
-+	} while (0)
-+
-+#define ldt_set_class(m, n, k, sl, i)	dept_map_ecxt_modify(m, LDT_EVT_ALL, k, 0UL, i, "lock_set_class", "(any)unlock", sl)
-+#else /* !CONFIG_DEPT */
-+#define ldt_init(m, k, su, n)		do { (void)(k); } while (0)
-+#define ldt_lock(m, sl, t, n, i)	do { } while (0)
-+#define ldt_rlock(m, sl, t, n, i, q)	do { } while (0)
-+#define ldt_wlock(m, sl, t, n, i)	do { } while (0)
-+#define ldt_unlock(m, i)		do { } while (0)
-+#define ldt_downgrade(m, i)		do { } while (0)
-+#define ldt_set_class(m, n, k, sl, i)	do { } while (0)
-+#endif
-+#endif /* __LINUX_DEPT_LDT_H */
+diff --git a/include/linux/swait.h b/include/linux/swait.h
+index 6a8c22b..0284821 100644
+--- a/include/linux/swait.h
++++ b/include/linux/swait.h
+@@ -6,6 +6,7 @@
+ #include <linux/stddef.h>
+ #include <linux/spinlock.h>
+ #include <linux/wait.h>
++#include <linux/dept_sdt.h>
+ #include <asm/current.h>
+ 
+ /*
+@@ -161,6 +162,7 @@ static inline bool swq_has_sleeper(struct swait_queue_head *wq)
+ 	struct swait_queue __wait;					\
+ 	long __ret = ret;						\
+ 									\
++	sdt_might_sleep_start(NULL);					\
+ 	INIT_LIST_HEAD(&__wait.task_list);				\
+ 	for (;;) {							\
+ 		long __int = prepare_to_swait_event(&wq, &__wait, state);\
+@@ -176,6 +178,7 @@ static inline bool swq_has_sleeper(struct swait_queue_head *wq)
+ 		cmd;							\
+ 	}								\
+ 	finish_swait(&wq, &__wait);					\
++	sdt_might_sleep_end();						\
+ __out:	__ret;								\
+ })
+ 
 -- 
 1.9.1
 
