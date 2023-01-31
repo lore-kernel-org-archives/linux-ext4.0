@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 44E64C636CC
-	for <linux-ext4@archiver.kernel.org>; Tue, 31 Jan 2023 08:40:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 79E71C636CD
+	for <linux-ext4@archiver.kernel.org>; Tue, 31 Jan 2023 08:42:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231640AbjAaIk5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 31 Jan 2023 03:40:57 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53400 "EHLO
+        id S231856AbjAaImF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 31 Jan 2023 03:42:05 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52796 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231659AbjAaIkN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jan 2023 03:40:13 -0500
+        with ESMTP id S231690AbjAaIkf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jan 2023 03:40:35 -0500
 Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id D1A113EC53
-        for <linux-ext4@vger.kernel.org>; Tue, 31 Jan 2023 00:39:57 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id C670C46174
+        for <linux-ext4@vger.kernel.org>; Tue, 31 Jan 2023 00:39:58 -0800 (PST)
 Received: from unknown (HELO lgeamrelo04.lge.com) (156.147.1.127)
-        by 156.147.23.51 with ESMTP; 31 Jan 2023 17:39:57 +0900
+        by 156.147.23.51 with ESMTP; 31 Jan 2023 17:39:58 +0900
 X-Original-SENDERIP: 156.147.1.127
 X-Original-MAILFROM: max.byungchul.park@gmail.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.127 with ESMTP; 31 Jan 2023 17:39:57 +0900
+        by 156.147.1.127 with ESMTP; 31 Jan 2023 17:39:58 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: max.byungchul.park@gmail.com
 From:   Byungchul Park <max.byungchul.park@gmail.com>
@@ -46,9 +46,9 @@ Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
         42.hyeyoo@gmail.com, chris.p.wilson@intel.com,
         gwan-gyeong.mun@intel.com, max.byungchul.park@gmail.com,
         boqun.feng@gmail.com, longman@redhat.com, hdanton@sina.com
-Subject: [PATCH v9 07/25] dept: Apply sdt_might_sleep_{start,end}() to wait_for_completion()/complete()
-Date:   Tue, 31 Jan 2023 17:39:36 +0900
-Message-Id: <1675154394-25598-8-git-send-email-max.byungchul.park@gmail.com>
+Subject: [PATCH v9 10/25] dept: Apply sdt_might_sleep_{start,end}() to waitqueue wait
+Date:   Tue, 31 Jan 2023 17:39:39 +0900
+Message-Id: <1675154394-25598-11-git-send-email-max.byungchul.park@gmail.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1675154394-25598-1-git-send-email-max.byungchul.park@gmail.com>
 References: <1675154394-25598-1-git-send-email-max.byungchul.park@gmail.com>
@@ -56,79 +56,41 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Makes Dept able to track dependencies by
-wait_for_completion()/complete().
+Makes Dept able to track dependencies by waitqueue waits.
 
 Signed-off-by: Byungchul Park <max.byungchul.park@gmail.com>
 ---
- include/linux/completion.h | 30 +++++++++++++++++++++++++-----
- 1 file changed, 25 insertions(+), 5 deletions(-)
+ include/linux/wait.h | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/include/linux/completion.h b/include/linux/completion.h
-index 62b32b1..32d535a 100644
---- a/include/linux/completion.h
-+++ b/include/linux/completion.h
-@@ -10,6 +10,7 @@
-  */
- 
- #include <linux/swait.h>
+diff --git a/include/linux/wait.h b/include/linux/wait.h
+index a0307b5..ff349e6 100644
+--- a/include/linux/wait.h
++++ b/include/linux/wait.h
+@@ -7,6 +7,7 @@
+ #include <linux/list.h>
+ #include <linux/stddef.h>
+ #include <linux/spinlock.h>
 +#include <linux/dept_sdt.h>
  
- /*
-  * struct completion - structure used to maintain state for a "completion"
-@@ -26,14 +27,33 @@
- struct completion {
- 	unsigned int done;
- 	struct swait_queue_head wait;
-+	struct dept_map dmap;
- };
+ #include <asm/current.h>
+ #include <uapi/linux/wait.h>
+@@ -303,6 +304,7 @@ static inline void wake_up_pollfree(struct wait_queue_head *wq_head)
+ 	struct wait_queue_entry __wq_entry;					\
+ 	long __ret = ret;	/* explicit shadow */				\
+ 										\
++	sdt_might_sleep_start(NULL);						\
+ 	init_wait_entry(&__wq_entry, exclusive ? WQ_FLAG_EXCLUSIVE : 0);	\
+ 	for (;;) {								\
+ 		long __int = prepare_to_wait_event(&wq_head, &__wq_entry, state);\
+@@ -318,6 +320,7 @@ static inline void wake_up_pollfree(struct wait_queue_head *wq_head)
+ 		cmd;								\
+ 	}									\
+ 	finish_wait(&wq_head, &__wq_entry);					\
++	sdt_might_sleep_end();							\
+ __out:	__ret;									\
+ })
  
-+#define init_completion(x)				\
-+do {							\
-+	sdt_map_init(&(x)->dmap);			\
-+	__init_completion(x);				\
-+} while (0)
-+
-+/*
-+ * XXX: No use cases for now. Fill the body when needed.
-+ */
- #define init_completion_map(x, m) init_completion(x)
--static inline void complete_acquire(struct completion *x) {}
--static inline void complete_release(struct completion *x) {}
-+
-+static inline void complete_acquire(struct completion *x)
-+{
-+	sdt_might_sleep_start(&x->dmap);
-+}
-+
-+static inline void complete_release(struct completion *x)
-+{
-+	sdt_might_sleep_end();
-+}
- 
- #define COMPLETION_INITIALIZER(work) \
--	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait) }
-+	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait), \
-+	  .dmap = DEPT_MAP_INITIALIZER(work, NULL), }
- 
- #define COMPLETION_INITIALIZER_ONSTACK_MAP(work, map) \
- 	(*({ init_completion_map(&(work), &(map)); &(work); }))
-@@ -75,13 +95,13 @@ static inline void complete_release(struct completion *x) {}
- #endif
- 
- /**
-- * init_completion - Initialize a dynamically allocated completion
-+ * __init_completion - Initialize a dynamically allocated completion
-  * @x:  pointer to completion structure that is to be initialized
-  *
-  * This inline function will initialize a dynamically created completion
-  * structure.
-  */
--static inline void init_completion(struct completion *x)
-+static inline void __init_completion(struct completion *x)
- {
- 	x->done = 0;
- 	init_swait_queue_head(&x->wait);
 -- 
 1.9.1
 
