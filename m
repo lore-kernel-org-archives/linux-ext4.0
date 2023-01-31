@@ -2,66 +2,133 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6D861C61DA4
-	for <linux-ext4@archiver.kernel.org>; Tue, 31 Jan 2023 03:13:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 02D8CC636CD
+	for <linux-ext4@archiver.kernel.org>; Tue, 31 Jan 2023 06:16:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230370AbjAaDNy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 30 Jan 2023 22:13:54 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42114 "EHLO
+        id S229588AbjAaGQL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 31 Jan 2023 01:16:11 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55810 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230511AbjAaDNp (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Jan 2023 22:13:45 -0500
+        with ESMTP id S230137AbjAaGQJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jan 2023 01:16:09 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A855BF740
-        for <linux-ext4@vger.kernel.org>; Mon, 30 Jan 2023 19:13:14 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B6FD53BDBA
+        for <linux-ext4@vger.kernel.org>; Mon, 30 Jan 2023 22:16:01 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 30V3CiYh013236
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 30V6FlAu024382
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Mon, 30 Jan 2023 22:12:45 -0500
+        Tue, 31 Jan 2023 01:15:49 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1675134765; bh=Y3yqB0tpY18RVTzG1azKoVPV3LHN2h3tqhK7YByPirE=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To;
-        b=pw+8wS3dDnELQgphzr6N1p1AR//3lZBDC3EwBLOiD4uMIoCCJr1qn30oNRd1/xIxa
-         SuDSpUHAWEhiGQBgdAgA4NcxIMaDCPGjIXiz+dMRbP9K2FiheNnApcjIbweRytW/qR
-         KKqzYi2luQ0TRvUx8+NvRjzE88s4pXYLfskRkbb29ncz7YtwuYmizDHcCBg3g2D2lO
-         59AVcO5LuFv+a/FdBlnG17Z3pI/EK4wTmwzOe4LY8uFNz+GMeNrwObq//DkM7r8edH
-         QA1uEAOhDVmpgiWYKazye3/iP6e8DdHqCPA8EQAt5n42VDoF7FCCZ5LY17RHQV2t+H
-         mYeiag1Yf+aBA==
+        t=1675145749; bh=kZvJHUTIUyHJrXL19dTYGYTlG0sjPmkge1I/9CEBrug=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References;
+        b=fhbcU8fPtHhDUgc7mfzxt/GIA+RZvMWdNV34Fq+JsYiVla3MithM5t4nRL9Hqy/Uw
+         pABy/rLbVmPgywAR5ICHP4zMBnvXY7xvcbttTEt7UNmexAvOwB0xQoJfqhlq9uK0to
+         nYY5aGf8SE6TbzidF0tL5KcPtZvn69YTXA3IrnuB8yDGwV7PhB3c68JHaqlNGbFOqj
+         VvgrcebTzLaSboMLf64AUY1d46+6lQMAAqyEUSJf2dJg9KWJXmb+GiS0/Y8hv8X2QL
+         X5+fT3H4RQBO1P4aKaBjCmu76Ndkbfpba8hfaVxyaOTg2YDi9NcFdfwrnkKiaoIFId
+         +Z+kjHx7zCf9w==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id E32C915C359D; Mon, 30 Jan 2023 22:12:43 -0500 (EST)
-Date:   Mon, 30 Jan 2023 22:12:43 -0500
+        id BE11815C359E; Tue, 31 Jan 2023 01:15:47 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     zhanchengbin <zhanchengbin1@huawei.com>
-Cc:     linux-ext4@vger.kernel.org, linfeilong <linfeilong@huawei.com>,
-        liuzhiqiang26@huawei.com
-Subject: Re: [PATCH] unix_io.c: fix deadlock problem in unix_write_blk64
-Message-ID: <Y9iHKxQ8jszr+/g4@mit.edu>
-References: <310fb77f-dfed-1196-c4ee-30d5138ee5a2@huawei.com>
- <Y9DJnh9P+FijguS2@mit.edu>
+To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc:     zhanchengbin1@huawei.com, linfeilong@huawei.com,
+        "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH 1/3] libext2fs: unix_io: add flag which suppresses calling the write error handler
+Date:   Tue, 31 Jan 2023 01:15:40 -0500
+Message-Id: <20230131061542.324172-2-tytso@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <20230131061542.324172-1-tytso@mit.edu>
+References: <20230131061542.324172-1-tytso@mit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <Y9DJnh9P+FijguS2@mit.edu>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Jan 25, 2023 at 01:18:06AM -0500, Theodore Ts'o wrote:
-> 
-> Fortunately, we're safe on the read side, because we currently very
-> carefully do not call raw_read_blk() while holding the CACHE_MUTEX.
-> Instead, we write the data from the user-supplied buffer, and *then*
-  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> take the cache mutex, and then save the data from the user-supplied
-> buffer into the cache.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ lib/ext2fs/unix_io.c | 19 +++++++++++--------
+ 1 file changed, 11 insertions(+), 8 deletions(-)
 
-Correction: the last sentence of this paragraph should begin:
+diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
+index e53db333..02d7fe1a 100644
+--- a/lib/ext2fs/unix_io.c
++++ b/lib/ext2fs/unix_io.c
+@@ -337,10 +337,13 @@ error_unlock:
+ 	return retval;
+ }
+ 
++#define RAW_WRITE_NO_HANDLER	1
++
+ static errcode_t raw_write_blk(io_channel channel,
+ 			       struct unix_private_data *data,
+ 			       unsigned long long block,
+-			       int count, const void *bufv)
++			       int count, const void *bufv,
++			       int flags)
+ {
+ 	ssize_t		size;
+ 	ext2_loff_t	location;
+@@ -482,7 +485,7 @@ bounce_write:
+ error_unlock:
+ 	mutex_unlock(data, BOUNCE_MTX);
+ error_out:
+-	if (channel->write_error)
++	if (((flags & RAW_WRITE_NO_HANDLER) == 0) && channel->write_error)
+ 		retval = (channel->write_error)(channel, block, count, buf,
+ 						size, actual, retval);
+ 	return retval;
+@@ -580,7 +583,7 @@ static void reuse_cache(io_channel channel, struct unix_private_data *data,
+ 		 struct unix_cache *cache, unsigned long long block)
+ {
+ 	if (cache->dirty && cache->in_use)
+-		raw_write_blk(channel, data, cache->block, 1, cache->buf);
++		raw_write_blk(channel, data, cache->block, 1, cache->buf, 0);
+ 
+ 	cache->in_use = 1;
+ 	cache->dirty = 0;
+@@ -616,7 +619,7 @@ static errcode_t flush_cached_blocks(io_channel channel,
+ 			continue;
+ 
+ 		retval = raw_write_blk(channel, data,
+-				       cache->block, 1, cache->buf);
++				       cache->block, 1, cache->buf, 0);
+ 		if (retval)
+ 			retval2 = retval;
+ 		else
+@@ -1067,10 +1070,10 @@ static errcode_t unix_write_blk64(io_channel channel, unsigned long long block,
+ 	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
+ 
+ #ifdef NO_IO_CACHE
+-	return raw_write_blk(channel, data, block, count, buf);
++	return raw_write_blk(channel, data, block, count, buf, 0);
+ #else
+ 	if (data->flags & IO_FLAG_NOCACHE)
+-		return raw_write_blk(channel, data, block, count, buf);
++		return raw_write_blk(channel, data, block, count, buf, 0);
+ 	/*
+ 	 * If we're doing an odd-sized write or a very large write,
+ 	 * flush out the cache completely and then do a direct write.
+@@ -1079,7 +1082,7 @@ static errcode_t unix_write_blk64(io_channel channel, unsigned long long block,
+ 		if ((retval = flush_cached_blocks(channel, data,
+ 						  FLUSH_INVALIDATE)))
+ 			return retval;
+-		return raw_write_blk(channel, data, block, count, buf);
++		return raw_write_blk(channel, data, block, count, buf, 0);
+ 	}
+ 
+ 	/*
+@@ -1089,7 +1092,7 @@ static errcode_t unix_write_blk64(io_channel channel, unsigned long long block,
+ 	 */
+ 	writethrough = channel->flags & CHANNEL_FLAGS_WRITETHROUGH;
+ 	if (writethrough)
+-		retval = raw_write_blk(channel, data, block, count, buf);
++		retval = raw_write_blk(channel, data, block, count, buf, 0);
+ 
+ 	cp = buf;
+ 	mutex_lock(data, CACHE_MTX);
+-- 
+2.31.0
 
-"Instead, we READ the data INTO the user-supplied buffer, ..."
-
-I have a series of patches that should address the deadlock issue,
-that I'll be sending out shortly.
-
-						- Ted
