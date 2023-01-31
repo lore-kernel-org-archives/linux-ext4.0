@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3DADAC38142
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 65FBEC636CC
 	for <linux-ext4@archiver.kernel.org>; Tue, 31 Jan 2023 08:43:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231754AbjAaIm6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 31 Jan 2023 03:42:58 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53430 "EHLO
+        id S231764AbjAaInA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 31 Jan 2023 03:43:00 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54914 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231764AbjAaIky (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jan 2023 03:40:54 -0500
-Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 3D933474C1
+        with ESMTP id S231752AbjAaIkx (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jan 2023 03:40:53 -0500
+Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 6CA7647423
         for <linux-ext4@vger.kernel.org>; Tue, 31 Jan 2023 00:40:01 -0800 (PST)
 Received: from unknown (HELO lgeamrelo04.lge.com) (156.147.1.127)
-        by 156.147.23.53 with ESMTP; 31 Jan 2023 17:40:00 +0900
+        by 156.147.23.51 with ESMTP; 31 Jan 2023 17:39:59 +0900
 X-Original-SENDERIP: 156.147.1.127
 X-Original-MAILFROM: max.byungchul.park@gmail.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.127 with ESMTP; 31 Jan 2023 17:40:00 +0900
+        by 156.147.1.127 with ESMTP; 31 Jan 2023 17:39:59 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: max.byungchul.park@gmail.com
 From:   Byungchul Park <max.byungchul.park@gmail.com>
@@ -46,9 +46,9 @@ Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
         42.hyeyoo@gmail.com, chris.p.wilson@intel.com,
         gwan-gyeong.mun@intel.com, max.byungchul.park@gmail.com,
         boqun.feng@gmail.com, longman@redhat.com, hdanton@sina.com
-Subject: [PATCH v9 17/25] dept: Track timeout waits separately with a new Kconfig
-Date:   Tue, 31 Jan 2023 17:39:46 +0900
-Message-Id: <1675154394-25598-18-git-send-email-max.byungchul.park@gmail.com>
+Subject: [PATCH v9 14/25] dept: Add a mechanism to refill the internal memory pools on running out
+Date:   Tue, 31 Jan 2023 17:39:43 +0900
+Message-Id: <1675154394-25598-15-git-send-email-max.byungchul.park@gmail.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1675154394-25598-1-git-send-email-max.byungchul.park@gmail.com>
 References: <1675154394-25598-1-git-send-email-max.byungchul.park@gmail.com>
@@ -56,369 +56,268 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Waits with valid timeouts don't actually cause deadlocks. However, Dept
-has been reporting the cases as well because it's worth informing the
-circular dependency for some cases where, for example, timeout is used
-to avoid a deadlock but not meant to be expired.
+Dept engine works in a constrained environment. For example, Dept cannot
+make use of dynamic allocation e.g. kmalloc(). So Dept has been using
+static pools to keep memory chunks Dept uses.
 
-However, yes, there are also a lot of, even more, cases where timeout
-is used for its clear purpose and meant to be expired.
-
-Let Dept report these as an information rather than shouting DEADLOCK.
-Plus, introduced CONFIG_DEPT_AGGRESSIVE_TIMEOUT_WAIT Kconfig to make it
-optional so that any reports involving waits with timeouts can be turned
-on/off depending on the purpose.
+However, Dept would barely work once any of the pools gets run out. So
+implemented a mechanism for the refill on the lack by any chance, using
+irq work and workqueue that fits on the contrained environment.
 
 Signed-off-by: Byungchul Park <max.byungchul.park@gmail.com>
 ---
- include/linux/dept.h     | 15 ++++++++---
- include/linux/dept_ldt.h |  6 ++---
- include/linux/dept_sdt.h | 12 ++++++---
- kernel/dependency/dept.c | 66 +++++++++++++++++++++++++++++++++++++++++-------
- lib/Kconfig.debug        | 10 ++++++++
- 5 files changed, 89 insertions(+), 20 deletions(-)
+ include/linux/dept.h            |  19 ++++++--
+ kernel/dependency/dept.c        | 104 ++++++++++++++++++++++++++++++++++------
+ kernel/dependency/dept_object.h |  10 ++--
+ kernel/dependency/dept_proc.c   |   8 ++--
+ 4 files changed, 112 insertions(+), 29 deletions(-)
 
 diff --git a/include/linux/dept.h b/include/linux/dept.h
-index 583e8fe..0aa8d90 100644
+index d9ca9dd..583e8fe 100644
 --- a/include/linux/dept.h
 +++ b/include/linux/dept.h
-@@ -270,6 +270,11 @@ struct dept_wait {
- 			 * whether this wait is for commit in scheduler
- 			 */
- 			bool		sched_sleep;
-+
-+			/*
-+			 * whether a timeout is set
-+			 */
-+			bool				timeout;
- 		};
- 	};
- };
-@@ -458,6 +463,7 @@ struct dept_task {
- 	bool				stage_sched_map;
- 	const char			*stage_w_fn;
- 	unsigned long			stage_ip;
-+	bool				stage_timeout;
+@@ -336,9 +336,19 @@ struct dept_pool {
+ 	size_t				obj_sz;
  
  	/*
- 	 * the number of missing ecxts
-@@ -496,6 +502,7 @@ struct dept_task {
- 	.stage_sched_map = false,				\
- 	.stage_w_fn = NULL,					\
- 	.stage_ip = 0UL,					\
-+	.stage_timeout = false,					\
- 	.missing_ecxt = 0,					\
- 	.hardirqs_enabled = false,				\
- 	.softirqs_enabled = false,				\
-@@ -513,8 +520,8 @@ struct dept_task {
- extern void dept_map_reinit(struct dept_map *m, struct dept_key *k, int sub_u, const char *n);
- extern void dept_map_copy(struct dept_map *to, struct dept_map *from);
+-	 * the number of the static array
++	 * the remaining number of the object in spool
+ 	 */
+-	atomic_t			obj_nr;
++	int				obj_nr;
++
++	/*
++	 * the number of the object in spool
++	 */
++	int				tot_nr;
++
++	/*
++	 * accumulated amount of memory used by the object in byte
++	 */
++	atomic_t			acc_sz;
  
--extern void dept_wait(struct dept_map *m, unsigned long w_f, unsigned long ip, const char *w_fn, int sub_l);
--extern void dept_stage_wait(struct dept_map *m, struct dept_key *k, unsigned long ip, const char *w_fn);
-+extern void dept_wait(struct dept_map *m, unsigned long w_f, unsigned long ip, const char *w_fn, int sub_l, long timeout);
-+extern void dept_stage_wait(struct dept_map *m, struct dept_key *k, unsigned long ip, const char *w_fn, long timeout);
- extern void dept_request_event_wait_commit(void);
- extern void dept_clean_stage(void);
- extern void dept_stage_event(struct task_struct *t, unsigned long ip);
-@@ -566,8 +573,8 @@ static inline void dept_ecxt_enter_nokeep(struct dept_map *m)
- #define dept_map_reinit(m, k, su, n)			do { (void)(n); (void)(k); } while (0)
- #define dept_map_copy(t, f)				do { } while (0)
+ 	/*
+ 	 * offset of ->pool_node
+@@ -348,9 +358,10 @@ struct dept_pool {
+ 	/*
+ 	 * pointer to the pool
+ 	 */
+-	void				*spool;
++	void				*spool; /* static pool */
++	void				*rpool; /* reserved pool */
+ 	struct llist_head		boot_pool;
+-	struct llist_head __percpu	*lpool;
++	struct llist_head __percpu	*lpool; /* local pool */
+ };
  
--#define dept_wait(m, w_f, ip, w_fn, sl)			do { (void)(w_fn); } while (0)
--#define dept_stage_wait(m, k, ip, w_fn)			do { (void)(k); (void)(w_fn); } while (0)
-+#define dept_wait(m, w_f, ip, w_fn, sl, t)		do { (void)(w_fn); } while (0)
-+#define dept_stage_wait(m, k, ip, w_fn, t)		do { (void)(k); (void)(w_fn); } while (0)
- #define dept_request_event_wait_commit()		do { } while (0)
- #define dept_clean_stage()				do { } while (0)
- #define dept_stage_event(t, ip)				do { } while (0)
-diff --git a/include/linux/dept_ldt.h b/include/linux/dept_ldt.h
-index 062613e..8adf298 100644
---- a/include/linux/dept_ldt.h
-+++ b/include/linux/dept_ldt.h
-@@ -27,7 +27,7 @@
- 		else if (t)						\
- 			dept_ecxt_enter(m, LDT_EVT_L, i, "trylock", "unlock", sl);\
- 		else {							\
--			dept_wait(m, LDT_EVT_L, i, "lock", sl);		\
-+			dept_wait(m, LDT_EVT_L, i, "lock", sl, false);	\
- 			dept_ecxt_enter(m, LDT_EVT_L, i, "lock", "unlock", sl);\
- 		}							\
- 	} while (0)
-@@ -39,7 +39,7 @@
- 		else if (t)						\
- 			dept_ecxt_enter(m, LDT_EVT_R, i, "read_trylock", "read_unlock", sl);\
- 		else {							\
--			dept_wait(m, q ? LDT_EVT_RW : LDT_EVT_W, i, "read_lock", sl);\
-+			dept_wait(m, q ? LDT_EVT_RW : LDT_EVT_W, i, "read_lock", sl, false);\
- 			dept_ecxt_enter(m, LDT_EVT_R, i, "read_lock", "read_unlock", sl);\
- 		}							\
- 	} while (0)
-@@ -51,7 +51,7 @@
- 		else if (t)						\
- 			dept_ecxt_enter(m, LDT_EVT_W, i, "write_trylock", "write_unlock", sl);\
- 		else {							\
--			dept_wait(m, LDT_EVT_RW, i, "write_lock", sl);	\
-+			dept_wait(m, LDT_EVT_RW, i, "write_lock", sl, false);\
- 			dept_ecxt_enter(m, LDT_EVT_W, i, "write_lock", "write_unlock", sl);\
- 		}							\
- 	} while (0)
-diff --git a/include/linux/dept_sdt.h b/include/linux/dept_sdt.h
-index 12a793b..21fce52 100644
---- a/include/linux/dept_sdt.h
-+++ b/include/linux/dept_sdt.h
-@@ -22,11 +22,12 @@
- 
- #define sdt_map_init_key(m, k)		dept_map_init(m, k, 0, #m)
- 
--#define sdt_wait(m)							\
-+#define sdt_wait_timeout(m, t)						\
- 	do {								\
- 		dept_request_event(m);					\
--		dept_wait(m, 1UL, _THIS_IP_, __func__, 0);		\
-+		dept_wait(m, 1UL, _THIS_IP_, __func__, 0, t);		\
- 	} while (0)
-+#define sdt_wait(m) sdt_wait_timeout(m, -1L)
- 
- /*
-  * sdt_might_sleep() and its family will be committed in __schedule()
-@@ -37,12 +38,13 @@
- /*
-  * Use the code location as the class key if an explicit map is not used.
-  */
--#define sdt_might_sleep_start(m)					\
-+#define sdt_might_sleep_start_timeout(m, t)				\
- 	do {								\
- 		struct dept_map *__m = m;				\
- 		static struct dept_key __key;				\
--		dept_stage_wait(__m, __m ? NULL : &__key, _THIS_IP_, __func__);\
-+		dept_stage_wait(__m, __m ? NULL : &__key, _THIS_IP_, __func__, t);\
- 	} while (0)
-+#define sdt_might_sleep_start(m) sdt_might_sleep_start_timeout(m, -1L)
- 
- #define sdt_might_sleep_end()		dept_clean_stage()
- 
-@@ -52,7 +54,9 @@
- #else /* !CONFIG_DEPT */
- #define sdt_map_init(m)			do { } while (0)
- #define sdt_map_init_key(m, k)		do { (void)(k); } while (0)
-+#define sdt_wait_timeout(m, t)		do { } while (0)
- #define sdt_wait(m)			do { } while (0)
-+#define sdt_might_sleep_start_timeout(m, t) do { } while (0)
- #define sdt_might_sleep_start(m)	do { } while (0)
- #define sdt_might_sleep_end()		do { } while (0)
- #define sdt_ecxt_enter(m)		do { } while (0)
+ struct dept_ecxt_held {
 diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index 0ac6442..3ab999f 100644
+index 1f1aca4..0ac6442 100644
 --- a/kernel/dependency/dept.c
 +++ b/kernel/dependency/dept.c
-@@ -740,6 +740,8 @@ static void print_diagram(struct dept_dep *d)
- 	if (!irqf) {
- 		print_spc(spc, "[S] %s(%s:%d)\n", c_fn, fc_n, fc->sub_id);
- 		print_spc(spc, "[W] %s(%s:%d)\n", w_fn, tc_n, tc->sub_id);
-+		if (w->timeout)
-+			print_spc(spc, "--------------- >8 timeout ---------------\n");
- 		print_spc(spc, "[E] %s(%s:%d)\n", e_fn, fc_n, fc->sub_id);
- 	}
- }
-@@ -793,6 +795,24 @@ static void print_dep(struct dept_dep *d)
+@@ -74,6 +74,9 @@
+ #include <linux/dept.h>
+ #include <linux/utsname.h>
+ #include <linux/kernel.h>
++#include <linux/workqueue.h>
++#include <linux/irq_work.h>
++#include <linux/vmalloc.h>
+ #include "dept_internal.h"
  
- static void save_current_stack(int skip);
+ static int dept_stop;
+@@ -122,10 +125,12 @@
+ 			WARN(1, "DEPT_STOP: " s);			\
+ 	})
  
-+static bool is_timeout_wait_circle(struct dept_class *c)
+-#define DEPT_INFO_ONCE(s...) pr_warn_once("DEPT_INFO_ONCE: " s)
++#define DEPT_INFO_ONCE(s...)	pr_warn_once("DEPT_INFO_ONCE: " s)
++#define DEPT_INFO(s...)		pr_warn("DEPT_INFO: " s)
+ 
+ static arch_spinlock_t dept_spin = (arch_spinlock_t)__ARCH_SPIN_LOCK_UNLOCKED;
+ static arch_spinlock_t stage_spin = (arch_spinlock_t)__ARCH_SPIN_LOCK_UNLOCKED;
++static arch_spinlock_t dept_pool_spin = (arch_spinlock_t)__ARCH_SPIN_LOCK_UNLOCKED;
+ 
+ /*
+  * DEPT internal engine should be careful in using outside functions
+@@ -264,6 +269,7 @@ static inline bool valid_key(struct dept_key *k)
+ 
+ #define OBJECT(id, nr)							\
+ static struct dept_##id spool_##id[nr];					\
++static struct dept_##id rpool_##id[nr];					\
+ static DEFINE_PER_CPU(struct llist_head, lpool_##id);
+ 	#include "dept_object.h"
+ #undef  OBJECT
+@@ -272,14 +278,70 @@ struct dept_pool dept_pool[OBJECT_NR] = {
+ #define OBJECT(id, nr) {						\
+ 	.name = #id,							\
+ 	.obj_sz = sizeof(struct dept_##id),				\
+-	.obj_nr = ATOMIC_INIT(nr),					\
++	.obj_nr = nr,							\
++	.tot_nr = nr,							\
++	.acc_sz = ATOMIC_INIT(sizeof(spool_##id) + sizeof(rpool_##id)), \
+ 	.node_off = offsetof(struct dept_##id, pool_node),		\
+ 	.spool = spool_##id,						\
++	.rpool = rpool_##id,						\
+ 	.lpool = &lpool_##id, },
+ 	#include "dept_object.h"
+ #undef  OBJECT
+ };
+ 
++static void dept_wq_work_fn(struct work_struct *work)
 +{
-+	struct dept_class *fc = c->bfs_parent;
-+	struct dept_class *tc = c;
++	int i;
 +
-+	do {
-+		struct dept_dep *d = lookup_dep(fc, tc);
++	for (i = 0; i < OBJECT_NR; i++) {
++		struct dept_pool *p = dept_pool + i;
++		int sz = p->tot_nr * p->obj_sz;
++		void *rpool;
++		bool need;
 +
-+		if (d->wait->timeout)
-+			return true;
++		arch_spin_lock(&dept_pool_spin);
++		need = !p->rpool;
++		arch_spin_unlock(&dept_pool_spin);
 +
-+		tc = fc;
-+		fc = fc->bfs_parent;
-+	} while (tc != c);
++		if (!need)
++			continue;
 +
-+	return false;
++		rpool = vmalloc(sz);
++
++		if (!rpool) {
++			DEPT_STOP("Failed to extend internal resources.\n");
++			break;
++		}
++
++		arch_spin_lock(&dept_pool_spin);
++		if (!p->rpool) {
++			p->rpool = rpool;
++			rpool = NULL;
++			atomic_add(sz, &p->acc_sz);
++		}
++		arch_spin_unlock(&dept_pool_spin);
++
++		if (rpool)
++			vfree(rpool);
++		else
++			DEPT_INFO("Dept object(%s) just got refilled successfully.\n", p->name);
++	}
++}
++
++static DECLARE_WORK(dept_wq_work, dept_wq_work_fn);
++
++static void dept_irq_work_fn(struct irq_work *w)
++{
++	schedule_work(&dept_wq_work);
++}
++
++static DEFINE_IRQ_WORK(dept_irq_work, dept_irq_work_fn);
++
++static void request_rpool_refill(void)
++{
++	irq_work_queue(&dept_irq_work);
 +}
 +
  /*
-  * Print all classes in a circle.
-  */
-@@ -815,10 +835,14 @@ static void print_circle(struct dept_class *c)
- 	pr_warn("summary\n");
- 	pr_warn("---------------------------------------------------\n");
- 
--	if (fc == tc)
-+	if (is_timeout_wait_circle(c)) {
-+		pr_warn("NOT A DEADLOCK BUT A CIRCULAR DEPENDENCY\n");
-+		pr_warn("CHECK IF THE TIMEOUT IS INTENDED\n\n");
-+	} else if (fc == tc) {
- 		pr_warn("*** AA DEADLOCK ***\n\n");
--	else
-+	} else {
- 		pr_warn("*** DEADLOCK ***\n\n");
-+	}
- 
- 	i = 0;
- 	do {
-@@ -1564,7 +1588,8 @@ static void add_dep(struct dept_ecxt *e, struct dept_wait *w)
- static atomic_t wgen = ATOMIC_INIT(1);
- 
- static void add_wait(struct dept_class *c, unsigned long ip,
--		     const char *w_fn, int sub_l, bool sched_sleep)
-+		     const char *w_fn, int sub_l, bool sched_sleep,
-+		     bool timeout)
- {
- 	struct dept_task *dt = dept_task();
- 	struct dept_wait *w;
-@@ -1584,6 +1609,7 @@ static void add_wait(struct dept_class *c, unsigned long ip,
- 	w->wait_fn = w_fn;
- 	w->wait_stack = get_current_stack();
- 	w->sched_sleep = sched_sleep;
-+	w->timeout = timeout;
- 
- 	cxt = cur_cxt();
- 	if (cxt == DEPT_CXT_HIRQ || cxt == DEPT_CXT_SIRQ)
-@@ -2338,7 +2364,7 @@ static struct dept_class *check_new_class(struct dept_key *local,
-  */
- static void __dept_wait(struct dept_map *m, unsigned long w_f,
- 			unsigned long ip, const char *w_fn, int sub_l,
--			bool sched_sleep, bool sched_map)
-+			bool sched_sleep, bool sched_map, bool timeout)
- {
- 	int e;
- 
-@@ -2361,7 +2387,7 @@ static void __dept_wait(struct dept_map *m, unsigned long w_f,
- 		if (!c)
- 			continue;
- 
--		add_wait(c, ip, w_fn, sub_l, sched_sleep);
-+		add_wait(c, ip, w_fn, sub_l, sched_sleep, timeout);
- 	}
- }
- 
-@@ -2403,14 +2429,23 @@ static void __dept_event(struct dept_map *m, unsigned long e_f,
- }
- 
- void dept_wait(struct dept_map *m, unsigned long w_f,
--	       unsigned long ip, const char *w_fn, int sub_l)
-+	       unsigned long ip, const char *w_fn, int sub_l,
-+	       long timeoutval)
- {
- 	struct dept_task *dt = dept_task();
- 	unsigned long flags;
-+	bool timeout;
- 
- 	if (unlikely(!dept_working()))
- 		return;
- 
-+	timeout = timeoutval > 0 && timeoutval < MAX_SCHEDULE_TIMEOUT;
-+
-+#if !defined(CONFIG_DEPT_AGGRESSIVE_TIMEOUT_WAIT)
-+	if (timeout)
-+		return;
-+#endif
-+
- 	if (dt->recursive)
- 		return;
- 
-@@ -2419,21 +2454,30 @@ void dept_wait(struct dept_map *m, unsigned long w_f,
- 
- 	flags = dept_enter();
- 
--	__dept_wait(m, w_f, ip, w_fn, sub_l, false, false);
-+	__dept_wait(m, w_f, ip, w_fn, sub_l, false, false, timeout);
- 
- 	dept_exit(flags);
- }
- EXPORT_SYMBOL_GPL(dept_wait);
- 
- void dept_stage_wait(struct dept_map *m, struct dept_key *k,
--		     unsigned long ip, const char *w_fn)
-+		     unsigned long ip, const char *w_fn,
-+		     long timeoutval)
- {
- 	struct dept_task *dt = dept_task();
- 	unsigned long flags;
-+	bool timeout;
- 
- 	if (unlikely(!dept_working()))
- 		return;
- 
-+	timeout = timeoutval > 0 && timeoutval < MAX_SCHEDULE_TIMEOUT;
-+
-+#if !defined(CONFIG_DEPT_AGGRESSIVE_TIMEOUT_WAIT)
-+	if (timeout)
-+		return;
-+#endif
-+
- 	if (m && m->nocheck)
- 		return;
- 
-@@ -2481,6 +2525,7 @@ void dept_stage_wait(struct dept_map *m, struct dept_key *k,
- 
- 	dt->stage_w_fn = w_fn;
- 	dt->stage_ip = ip;
-+	dt->stage_timeout = timeout;
- unlock:
- 	arch_spin_unlock(&stage_spin);
- 
-@@ -2506,6 +2551,7 @@ void dept_clean_stage(void)
- 	dt->stage_sched_map = false;
- 	dt->stage_w_fn = NULL;
- 	dt->stage_ip = 0UL;
-+	dt->stage_timeout = false;
- 	arch_spin_unlock(&stage_spin);
- 
- 	dept_exit_recursive(flags);
-@@ -2523,6 +2569,7 @@ void dept_request_event_wait_commit(void)
- 	unsigned long ip;
- 	const char *w_fn;
- 	bool sched_map;
-+	bool timeout;
- 
- 	if (unlikely(!dept_working()))
- 		return;
-@@ -2545,6 +2592,7 @@ void dept_request_event_wait_commit(void)
- 	w_fn = dt->stage_w_fn;
- 	ip = dt->stage_ip;
- 	sched_map = dt->stage_sched_map;
-+	timeout = dt->stage_timeout;
- 
+  * Can use llist no matter whether CONFIG_ARCH_HAVE_NMI_SAFE_CMPXCHG is
+  * enabled or not because NMI and other contexts in the same CPU never
+@@ -315,19 +377,31 @@ static void *from_pool(enum object_t t)
  	/*
- 	 * Avoid zero wgen.
-@@ -2552,7 +2600,7 @@ void dept_request_event_wait_commit(void)
- 	wg = atomic_inc_return(&wgen) ?: atomic_inc_return(&wgen);
- 	WRITE_ONCE(dt->stage_m.wgen, wg);
- 
--	__dept_wait(&dt->stage_m, 1UL, ip, w_fn, 0, true, sched_map);
-+	__dept_wait(&dt->stage_m, 1UL, ip, w_fn, 0, true, sched_map, timeout);
- exit:
- 	dept_exit(flags);
- }
-diff --git a/lib/Kconfig.debug b/lib/Kconfig.debug
-index 611fd01..912309b 100644
---- a/lib/Kconfig.debug
-+++ b/lib/Kconfig.debug
-@@ -1282,6 +1282,16 @@ config DEPT
- 	  noting, to mitigate the impact by the false positives, multi
- 	  reporting has been supported.
- 
-+config DEPT_AGGRESSIVE_TIMEOUT_WAIT
-+	bool "Aggressively track even timeout waits"
-+	depends on DEPT
-+	default n
-+	help
-+	  Timeout wait doesn't contribute to a deadlock. However,
-+	  informing a circular dependency might be helpful for cases
-+	  that timeout is used to avoid a deadlock. Say N if you'd like
-+	  to avoid verbose reports.
+ 	 * Try static pool.
+ 	 */
+-	if (atomic_read(&p->obj_nr) > 0) {
+-		int idx = atomic_dec_return(&p->obj_nr);
++	arch_spin_lock(&dept_pool_spin);
 +
- config LOCK_DEBUGGING_SUPPORT
- 	bool
- 	depends on TRACE_IRQFLAGS_SUPPORT && STACKTRACE_SUPPORT && LOCKDEP_SUPPORT
++	if (!p->obj_nr) {
++		p->spool = p->rpool;
++		p->obj_nr = p->rpool ? p->tot_nr : 0;
++		p->rpool = NULL;
++		request_rpool_refill();
++	}
++
++	if (p->obj_nr) {
++		void *ret;
++
++		p->obj_nr--;
++		ret = p->spool + (p->obj_nr * p->obj_sz);
++		arch_spin_unlock(&dept_pool_spin);
+ 
+-		if (idx >= 0)
+-			return p->spool + (idx * p->obj_sz);
++		return ret;
+ 	}
++	arch_spin_unlock(&dept_pool_spin);
+ 
+-	DEPT_INFO_ONCE("---------------------------------------------\n"
+-		"  Some of Dept internal resources are run out.\n"
+-		"  Dept might still work if the resources get freed.\n"
+-		"  However, the chances are Dept will suffer from\n"
+-		"  the lack from now. Needs to extend the internal\n"
+-		"  resource pools. Ask max.byungchul.park@gmail.com\n");
++	DEPT_INFO("------------------------------------------\n"
++		"  Dept object(%s) is run out.\n"
++		"  Dept is trying to refill the object.\n"
++		"  Nevertheless, if it fails, Dept will stop.\n",
++		p->name);
+ 	return NULL;
+ }
+ 
+@@ -3000,8 +3074,8 @@ void __init dept_init(void)
+ 	pr_info("... DEPT_MAX_ECXT_HELD  : %d\n", DEPT_MAX_ECXT_HELD);
+ 	pr_info("... DEPT_MAX_SUBCLASSES : %d\n", DEPT_MAX_SUBCLASSES);
+ #define OBJECT(id, nr)							\
+-	pr_info("... memory used by %s: %zu KB\n",			\
+-	       #id, B2KB(sizeof(struct dept_##id) * nr));
++	pr_info("... memory initially used by %s: %zu KB\n",		\
++	       #id, B2KB(sizeof(spool_##id) + sizeof(rpool_##id)));
+ 	#include "dept_object.h"
+ #undef  OBJECT
+ #define HASH(id, bits)							\
+@@ -3009,6 +3083,6 @@ void __init dept_init(void)
+ 	       #id, B2KB(sizeof(struct hlist_head) * (1 << (bits))));
+ 	#include "dept_hash.h"
+ #undef  HASH
+-	pr_info("... total memory used by objects and hashs: %zu KB\n", B2KB(mem_total));
++	pr_info("... total memory initially used by objects and hashs: %zu KB\n", B2KB(mem_total));
+ 	pr_info("... per task memory footprint: %zu bytes\n", sizeof(struct dept_task));
+ }
+diff --git a/kernel/dependency/dept_object.h b/kernel/dependency/dept_object.h
+index 0b7eb16..4f936ad 100644
+--- a/kernel/dependency/dept_object.h
++++ b/kernel/dependency/dept_object.h
+@@ -6,8 +6,8 @@
+  * nr: # of the object that should be kept in the pool.
+  */
+ 
+-OBJECT(dep, 1024 * 8)
+-OBJECT(class, 1024 * 8)
+-OBJECT(stack, 1024 * 32)
+-OBJECT(ecxt, 1024 * 16)
+-OBJECT(wait, 1024 * 32)
++OBJECT(dep, 1024 * 4 * 2)
++OBJECT(class, 1024 * 4)
++OBJECT(stack, 1024 * 4 * 8)
++OBJECT(ecxt, 1024 * 4 * 2)
++OBJECT(wait, 1024 * 4 * 4)
+diff --git a/kernel/dependency/dept_proc.c b/kernel/dependency/dept_proc.c
+index 7d61dfb..f07a512 100644
+--- a/kernel/dependency/dept_proc.c
++++ b/kernel/dependency/dept_proc.c
+@@ -73,12 +73,10 @@ static int dept_stats_show(struct seq_file *m, void *v)
+ {
+ 	int r;
+ 
+-	seq_puts(m, "Availability in the static pools:\n\n");
++	seq_puts(m, "Accumulated amount of memory used by pools:\n\n");
+ #define OBJECT(id, nr)							\
+-	r = atomic_read(&dept_pool[OBJECT_##id].obj_nr);		\
+-	if (r < 0)							\
+-		r = 0;							\
+-	seq_printf(m, "%s\t%d/%d(%d%%)\n", #id, r, nr, (r * 100) / (nr));
++	r = atomic_read(&dept_pool[OBJECT_##id].acc_sz);		\
++	seq_printf(m, "%s\t%d KB\n", #id, r / 1024);
+ 	#include "dept_object.h"
+ #undef  OBJECT
+ 
 -- 
 1.9.1
 
