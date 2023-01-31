@@ -2,210 +2,108 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 869EFC38142
-	for <linux-ext4@archiver.kernel.org>; Tue, 31 Jan 2023 06:16:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 47F2AC636CD
+	for <linux-ext4@archiver.kernel.org>; Tue, 31 Jan 2023 08:40:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230202AbjAaGQQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 31 Jan 2023 01:16:16 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55832 "EHLO
+        id S231534AbjAaIkB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 31 Jan 2023 03:40:01 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52780 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229919AbjAaGQK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jan 2023 01:16:10 -0500
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D5AE73C290
-        for <linux-ext4@vger.kernel.org>; Mon, 30 Jan 2023 22:16:04 -0800 (PST)
-Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 30V6FlR3024373
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 31 Jan 2023 01:15:49 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1675145749; bh=bB3ol3QwJHPaCYD51i1b5VRfIPM/3/RD8IZoaQQRJng=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=fRZJt8WUpVA7l3xb5BsvS1lUmoNvEJWfugXGdvw3kTu+4q8PG/GjoQs+EBWcWX/7D
-         QeIAaT9705uG9TdmCUoyV0yzVaH8E0+JD7ssQAoJLnVkOKi6+xsXjhjp3ewIMQSGZr
-         +re9QP0+lHQyoowDExEBQXP3S+px2M9UIwIAdDULkxW/E+Rp8CG4sB9Wt2NTUlKd03
-         /EJ1qyS+qd2xIVWsLOWQPhNaRCEIh0xKyGP5mKOH6yBXzaOi1dTcVK3++7oTWvyvGx
-         2CAm9VN2s8nk77kpozP2+Kxgh1A7IDvFTr4cKRiS6A2XnCBSLgKjlvDBaEzMe1NKI7
-         pbCASFbHBj27w==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id C030315C359F; Tue, 31 Jan 2023 01:15:47 -0500 (EST)
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc:     zhanchengbin1@huawei.com, linfeilong@huawei.com,
-        "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 2/3] libext2fs: unix_io: fix potential error path deadlock in reuse_cache()
-Date:   Tue, 31 Jan 2023 01:15:41 -0500
-Message-Id: <20230131061542.324172-3-tytso@mit.edu>
-X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230131061542.324172-1-tytso@mit.edu>
-References: <20230131061542.324172-1-tytso@mit.edu>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        with ESMTP id S231502AbjAaIkA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jan 2023 03:40:00 -0500
+Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 6706926869
+        for <linux-ext4@vger.kernel.org>; Tue, 31 Jan 2023 00:39:56 -0800 (PST)
+Received: from unknown (HELO lgeamrelo04.lge.com) (156.147.1.127)
+        by 156.147.23.52 with ESMTP; 31 Jan 2023 17:39:55 +0900
+X-Original-SENDERIP: 156.147.1.127
+X-Original-MAILFROM: max.byungchul.park@gmail.com
+Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
+        by 156.147.1.127 with ESMTP; 31 Jan 2023 17:39:55 +0900
+X-Original-SENDERIP: 10.177.244.38
+X-Original-MAILFROM: max.byungchul.park@gmail.com
+From:   Byungchul Park <max.byungchul.park@gmail.com>
+To:     linux-kernel@vger.kernel.org
+Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
+        linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, mingo@redhat.com, peterz@infradead.org,
+        will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
+        joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
+        duyuyang@gmail.com, johannes.berg@intel.com, tj@kernel.org,
+        tytso@mit.edu, willy@infradead.org, david@fromorbit.com,
+        amir73il@gmail.com, gregkh@linuxfoundation.org,
+        kernel-team@lge.com, linux-mm@kvack.org, akpm@linux-foundation.org,
+        mhocko@kernel.org, minchan@kernel.org, hannes@cmpxchg.org,
+        vdavydov.dev@gmail.com, sj@kernel.org, jglisse@redhat.com,
+        dennis@kernel.org, cl@linux.com, penberg@kernel.org,
+        rientjes@google.com, vbabka@suse.cz, ngupta@vflare.org,
+        linux-block@vger.kernel.org, paolo.valente@linaro.org,
+        josef@toxicpanda.com, linux-fsdevel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, jack@suse.cz, jlayton@kernel.org,
+        dan.j.williams@intel.com, hch@infradead.org, djwong@kernel.org,
+        dri-devel@lists.freedesktop.org, rodrigosiqueiramelo@gmail.com,
+        melissa.srw@gmail.com, hamohammed.sa@gmail.com,
+        42.hyeyoo@gmail.com, chris.p.wilson@intel.com,
+        gwan-gyeong.mun@intel.com, max.byungchul.park@gmail.com,
+        boqun.feng@gmail.com, longman@redhat.com, hdanton@sina.com
+Subject: [PATCH v9 01/25] llist: Move llist_{head,node} definition to types.h
+Date:   Tue, 31 Jan 2023 17:39:30 +0900
+Message-Id: <1675154394-25598-2-git-send-email-max.byungchul.park@gmail.com>
+X-Mailer: git-send-email 1.9.1
+In-Reply-To: <1675154394-25598-1-git-send-email-max.byungchul.park@gmail.com>
+References: <1675154394-25598-1-git-send-email-max.byungchul.park@gmail.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This was reported by [1] but the fix was incorrect.  The issue is that
-when unix_io was made thread-safe, it was necessary that to add a
-CACHE_MUTEX to protect multiple threads from potentially colliding
-with the very simple writeback cache used by the unix_io I/O manager.
-The original I/O manager was purposefully kept simple, used a
-fixed-size cache; accordingly, the locking used also kept simple, and
-used a single global mutex.
+llist_head and llist_node can be used by very primitives. For example,
+Dept for tracking dependency uses llist things in its header. To avoid
+header dependency, move those to types.h.
 
-[1] https://lore.kernel.org/r/310fb77f-dfed-1196-c4ee-30d5138ee5a2@huawei.com
-
-The problem was that if an application (such as e2fsck) registers a
-write error handler, that handler would be called with the CACHE_MUTEX
-still held, and if that application tried to do any I/O --- for
-example, closing the file system using ext2fs_close() and then exiting
---- the application would deadlock.
-
-We should perhaps fix this either by deciding that the simple Unix I/O
-cache doesn't actually buy much beyond some system call overhead, or
-by putting in a full-fledged buffer I/O cache system which uses a much
-larger cache with allocated memory, fine-grained locking and Direct
-I/O to prevent double cache at the kernel and userspace level.
-However, for now, fix the problem by waiting until after we have
-released the CACHE_MUTEX before calling the write handler.  This is
-good enough given how e2fsck's ehandler.c use case, and in practice no
-one else really uses the error handler in any case.
-
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Byungchul Park <max.byungchul.park@gmail.com>
 ---
- lib/ext2fs/unix_io.c | 75 ++++++++++++++++++++++++++++++++++++++++----
- 1 file changed, 69 insertions(+), 6 deletions(-)
+ include/linux/llist.h | 8 --------
+ include/linux/types.h | 8 ++++++++
+ 2 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
-index 02d7fe1a..2e108a2f 100644
---- a/lib/ext2fs/unix_io.c
-+++ b/lib/ext2fs/unix_io.c
-@@ -94,6 +94,7 @@ struct unix_cache {
- 	int			access_time;
- 	unsigned		dirty:1;
- 	unsigned		in_use:1;
-+	unsigned		write_err:1;
+diff --git a/include/linux/llist.h b/include/linux/llist.h
+index 85bda2d..99cc3c3 100644
+--- a/include/linux/llist.h
++++ b/include/linux/llist.h
+@@ -53,14 +53,6 @@
+ #include <linux/stddef.h>
+ #include <linux/types.h>
+ 
+-struct llist_head {
+-	struct llist_node *first;
+-};
+-
+-struct llist_node {
+-	struct llist_node *next;
+-};
+-
+ #define LLIST_HEAD_INIT(name)	{ NULL }
+ #define LLIST_HEAD(name)	struct llist_head name = LLIST_HEAD_INIT(name)
+ 
+diff --git a/include/linux/types.h b/include/linux/types.h
+index ea8cf60a..b12a444 100644
+--- a/include/linux/types.h
++++ b/include/linux/types.h
+@@ -187,6 +187,14 @@ struct hlist_node {
+ 	struct hlist_node *next, **pprev;
  };
  
- #define CACHE_SIZE 8
-@@ -579,16 +580,27 @@ static struct unix_cache *find_cached_block(struct unix_private_data *data,
- /*
-  * Reuse a particular cache entry for another block.
-  */
--static void reuse_cache(io_channel channel, struct unix_private_data *data,
--		 struct unix_cache *cache, unsigned long long block)
-+static errcode_t reuse_cache(io_channel channel,
-+		struct unix_private_data *data, struct unix_cache *cache,
-+		unsigned long long block)
- {
--	if (cache->dirty && cache->in_use)
--		raw_write_blk(channel, data, cache->block, 1, cache->buf, 0);
-+	if (cache->dirty && cache->in_use) {
-+		errcode_t retval;
++struct llist_head {
++	struct llist_node *first;
++};
 +
-+		retval = raw_write_blk(channel, data, cache->block, 1,
-+				       cache->buf, RAW_WRITE_NO_HANDLER);
-+		if (retval) {
-+			cache->write_err = 1;
-+			return retval;
-+		}
-+	}
- 
- 	cache->in_use = 1;
- 	cache->dirty = 0;
-+	cache->write_err = 0;
- 	cache->block = block;
- 	cache->access_time = ++data->access_time;
-+	return 0;
- }
- 
- #define FLUSH_INVALIDATE	0x01
-@@ -1037,7 +1049,10 @@ static errcode_t unix_read_blk64(io_channel channel, unsigned long long block,
- 		/* Save the results in the cache */
- 		for (j=0; j < i; j++) {
- 			if (!find_cached_block(data, block, &cache)) {
--				reuse_cache(channel, data, cache, block);
-+				retval = reuse_cache(channel, data,
-+						     cache, block);
-+				if (retval)
-+					goto call_write_handler;
- 				memcpy(cache->buf, cp, channel->block_size);
- 			}
- 			count--;
-@@ -1047,6 +1062,28 @@ static errcode_t unix_read_blk64(io_channel channel, unsigned long long block,
- 	}
- 	mutex_unlock(data, CACHE_MTX);
- 	return 0;
++struct llist_node {
++	struct llist_node *next;
++};
 +
-+call_write_handler:
-+	if (cache->write_err && channel->write_error) {
-+		char *err_buf = NULL;
-+		unsigned long long err_block = cache->block;
-+
-+		cache->dirty = 0;
-+		cache->in_use = 0;
-+		cache->write_err = 0;
-+		if (io_channel_alloc_buf(channel, 0, &err_buf))
-+			err_buf = NULL;
-+		else
-+			memcpy(err_buf, cache->buf, channel->block_size);
-+		mutex_unlock(data, CACHE_MTX);
-+		(channel->write_error)(channel, err_block, 1, err_buf,
-+				       channel->block_size, -1,
-+				       retval);
-+		if (err_buf)
-+			ext2fs_free_mem(&err_buf);
-+	} else
-+		mutex_unlock(data, CACHE_MTX);
-+	return retval;
- #endif /* NO_IO_CACHE */
- }
- 
-@@ -1099,8 +1136,12 @@ static errcode_t unix_write_blk64(io_channel channel, unsigned long long block,
- 	while (count > 0) {
- 		cache = find_cached_block(data, block, &reuse);
- 		if (!cache) {
-+			errcode_t err;
-+
- 			cache = reuse;
--			reuse_cache(channel, data, cache, block);
-+			err = reuse_cache(channel, data, cache, block);
-+			if (err)
-+				goto call_write_handler;
- 		}
- 		if (cache->buf != cp)
- 			memcpy(cache->buf, cp, channel->block_size);
-@@ -1111,6 +1152,28 @@ static errcode_t unix_write_blk64(io_channel channel, unsigned long long block,
- 	}
- 	mutex_unlock(data, CACHE_MTX);
- 	return retval;
-+
-+call_write_handler:
-+	if (cache->write_err && channel->write_error) {
-+		char *err_buf = NULL;
-+		unsigned long long err_block = cache->block;
-+
-+		cache->dirty = 0;
-+		cache->in_use = 0;
-+		cache->write_err = 0;
-+		if (io_channel_alloc_buf(channel, 0, &err_buf))
-+			err_buf = NULL;
-+		else
-+			memcpy(err_buf, cache->buf, channel->block_size);
-+		mutex_unlock(data, CACHE_MTX);
-+		(channel->write_error)(channel, err_block, 1, err_buf,
-+				       channel->block_size, -1,
-+				       retval);
-+		if (err_buf)
-+			ext2fs_free_mem(&err_buf);
-+	} else
-+		mutex_unlock(data, CACHE_MTX);
-+	return retval;
- #endif /* NO_IO_CACHE */
- }
- 
+ struct ustat {
+ 	__kernel_daddr_t	f_tfree;
+ #ifdef CONFIG_ARCH_32BIT_USTAT_F_TINODE
 -- 
-2.31.0
+1.9.1
 
