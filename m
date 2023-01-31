@@ -2,85 +2,146 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 84D95C38142
-	for <linux-ext4@archiver.kernel.org>; Tue, 31 Jan 2023 06:16:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 89BEEC636D3
+	for <linux-ext4@archiver.kernel.org>; Tue, 31 Jan 2023 06:16:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229963AbjAaGQN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 31 Jan 2023 01:16:13 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55814 "EHLO
+        id S230229AbjAaGQO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 31 Jan 2023 01:16:14 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55812 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230146AbjAaGQJ (ORCPT
+        with ESMTP id S230202AbjAaGQJ (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jan 2023 01:16:09 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 979123B652
-        for <linux-ext4@vger.kernel.org>; Mon, 30 Jan 2023 22:16:04 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3F9D53B668
+        for <linux-ext4@vger.kernel.org>; Mon, 30 Jan 2023 22:16:02 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 30V6Fllp024372
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 30V6Flm9024387
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Tue, 31 Jan 2023 01:15:49 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1675145749; bh=hLou58FOHENe/dNZmvXpv2PAJVqLzUyie6xQoHGmIf4=;
-        h=From:To:Cc:Subject:Date;
-        b=C4xVlxHsNEwjoJfi3bkvQiGToHVHMYgYY3iie3N2HlZ+merJYesJUuwzZsD4dKedy
-         LSLD281kSUvLzbtKHhLrQ511eYFSinCbn7SiI9z0RwPyvNsVJOoNxW195TcO5zkzER
-         V0x3YAsP2HhwzG9tVKKNv+TL9gvABZetnLcY07CVpbd0RincKBEu71Wq0aL5+NdbOd
-         DQednXGm1QwaCvsUD3a4JJYm0k28Qcld+yBQtGI6Cbo2MHF7KCQ4y+9DmGgcIXz+AX
-         JbZ7b0hJxsEHm8QLGVBfklyfBHtRmm2DxtQmSEV6axfnqXV1uzuw8a820EzT2k77Cd
-         Sngohm/UgFk/w==
+        t=1675145749; bh=UBnODzrvHrhWlE18sysyOhRWhOHYCrKAw7AocrTCRRY=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References;
+        b=mruIK0rpMEQm/7r6n1zD7+ojlH/xyW6BHsQ2RU9NlD+QQApxhF/Yh5E7aYraD4Mu5
+         0SpywscVgdwcGEPTKxEfGr4tXUITsmOOtlQON2hGwRTvlyTGKM9FN8EUSK5gCcAKf7
+         vRa03z3KV2V9Dwz6OhvAch5WsKdgo/ziBEg+X8diNBUiMQi3gBgQ4+LD5vHfruQCzl
+         3KhKjXcnsHyfOMvFnWM+Jkw5dnlz/dYGUeTcEDiAVQBLtpAr1JouGL2omsp+Dbp4OA
+         H6k2VtSaonmsrajGh4wIV0RJa0AVeT5KQaHkgJ6AzwxVT/8hd9wz1qvokH0YdnHIvX
+         FrLPSugfP+T/g==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id BC80915C359D; Tue, 31 Jan 2023 01:15:47 -0500 (EST)
+        id C191815C35A0; Tue, 31 Jan 2023 01:15:47 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
 To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc:     zhanchengbin1@huawei.com, linfeilong@huawei.com,
         "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 0/3] e2fsprogs: fix deadlock issus in unix_io on write errors
-Date:   Tue, 31 Jan 2023 01:15:39 -0500
-Message-Id: <20230131061542.324172-1-tytso@mit.edu>
+Subject: [PATCH 3/3] libext2fs: unix_io: fix_potential error path deadlock in flush_cached_blocks()
+Date:   Tue, 31 Jan 2023 01:15:42 -0500
+Message-Id: <20230131061542.324172-4-tytso@mit.edu>
 X-Mailer: git-send-email 2.31.0
+In-Reply-To: <20230131061542.324172-1-tytso@mit.edu>
+References: <20230131061542.324172-1-tytso@mit.edu>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This problem was reported by [1] but the fix was incorrect.  The issue
-is that when unix_io was made thread-safe, it was necessary that to
-add a CACHE_MUTEX to protect multiple threads from potentially
-colliding with the very simple writeback cache used by the unix_io I/O
-manager.  The original I/O manager was purposefully kept simple, used
-a fixed-size cache; accordingly, the locking used also kept simple,
-and used a single global mutex.
+We can't call the error handler while holding the CACHE_MUTEX (see
+previous commit, "libext2fs: unix_io: fix_potential error path
+deadlock in reuse_cache()" for details), so first try to write out all
+of the dirty blocks in the cache, and then for those where we had
+errors, then call the error handler.
 
-[1] https://lore.kernel.org/r/310fb77f-dfed-1196-c4ee-30d5138ee5a2@huawei.com
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ lib/ext2fs/unix_io.c | 61 ++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 48 insertions(+), 13 deletions(-)
 
-The problem was that if an application (such as e2fsck) registers a
-write error handler, that handler would be called with the CACHE_MUTEX
-still held, and if that application tried to do any I/O --- for
-example, closing the file system using ext2fs_close() and then exiting
---- the application would deadlock.
-
-The fixes here are good enough for the use case found in e2fsprogs,
-and in practice there are very few other users of the error handler
-feature in libext2fs.
-
-
-
-
-
-*** BLURB HERE ***
-
-Theodore Ts'o (3):
-  libext2fs: unix_io: add flag which suppresses calling the write error
-    handler
-  libext2fs: unix_io: fix potential error path deadlock in reuse_cache()
-  libext2fs: unix_io: fix_potential error path deadlock in
-    flush_cached_blocks()
-
- lib/ext2fs/unix_io.c | 151 ++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 126 insertions(+), 25 deletions(-)
-
+diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
+index 2e108a2f..353d85af 100644
+--- a/lib/ext2fs/unix_io.c
++++ b/lib/ext2fs/unix_io.c
+@@ -614,31 +614,66 @@ static errcode_t flush_cached_blocks(io_channel channel,
+ 				     int flags)
+ {
+ 	struct unix_cache	*cache;
+-	errcode_t		retval, retval2;
++	errcode_t		retval, retval2 = 0;
+ 	int			i;
++	int			errors_found = 0;
+ 
+-	retval2 = 0;
+ 	if ((flags & FLUSH_NOLOCK) == 0)
+ 		mutex_lock(data, CACHE_MTX);
+ 	for (i=0, cache = data->cache; i < CACHE_SIZE; i++, cache++) {
+-		if (!cache->in_use)
++		if (!cache->in_use || !cache->dirty)
+ 			continue;
+-
+-		if (flags & FLUSH_INVALIDATE)
+-			cache->in_use = 0;
+-
+-		if (!cache->dirty)
+-			continue;
+-
+ 		retval = raw_write_blk(channel, data,
+-				       cache->block, 1, cache->buf, 0);
+-		if (retval)
++				       cache->block, 1, cache->buf,
++				       RAW_WRITE_NO_HANDLER);
++		if (retval) {
++			cache->write_err = 1;
++			errors_found = 1;
+ 			retval2 = retval;
+-		else
++		} else {
+ 			cache->dirty = 0;
++			cache->write_err = 0;
++			if (flags & FLUSH_INVALIDATE)
++				cache->in_use = 0;
++		}
+ 	}
+ 	if ((flags & FLUSH_NOLOCK) == 0)
+ 		mutex_unlock(data, CACHE_MTX);
++retry:
++	while (errors_found) {
++		if ((flags & FLUSH_NOLOCK) == 0)
++			mutex_lock(data, CACHE_MTX);
++		errors_found = 0;
++		for (i=0, cache = data->cache; i < CACHE_SIZE; i++, cache++) {
++			if (!cache->in_use || !cache->write_err)
++				continue;
++			errors_found = 1;
++			if (cache->write_err && channel->write_error) {
++				char *err_buf = NULL;
++				unsigned long long err_block = cache->block;
++
++				cache->dirty = 0;
++				cache->in_use = 0;
++				cache->write_err = 0;
++				if (io_channel_alloc_buf(channel, 0,
++							 &err_buf))
++					err_buf = NULL;
++				else
++					memcpy(err_buf, cache->buf,
++					       channel->block_size);
++				mutex_unlock(data, CACHE_MTX);
++				(channel->write_error)(channel, err_block,
++					1, err_buf, channel->block_size, -1,
++					retval2);
++				if (err_buf)
++					ext2fs_free_mem(&err_buf);
++				goto retry;
++			} else
++				cache->write_err = 0;
++		}
++		if ((flags & FLUSH_NOLOCK) == 0)
++			mutex_unlock(data, CACHE_MTX);
++	}
+ 	return retval2;
+ }
+ #endif /* NO_IO_CACHE */
 -- 
 2.31.0
 
