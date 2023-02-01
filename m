@@ -2,53 +2,53 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E95DDC636D3
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Feb 2023 11:23:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 61ACDC05027
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Feb 2023 11:23:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232401AbjBALXE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 Feb 2023 06:23:04 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43960 "EHLO
+        id S232456AbjBALXH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 Feb 2023 06:23:07 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43962 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230496AbjBALXA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Feb 2023 06:23:00 -0500
+        with ESMTP id S231420AbjBALXB (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Feb 2023 06:23:01 -0500
 Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 19FAC3C1A;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A9CF44EE8;
         Wed,  1 Feb 2023 03:22:59 -0800 (PST)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4P6KK94q4lz4f3jYx;
-        Wed,  1 Feb 2023 19:22:53 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4P6KKB6w1vz4f3nTZ;
+        Wed,  1 Feb 2023 19:22:54 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.127.227])
-        by APP3 (Coremail) with SMTP id _Ch0CgDn4R+NS9pj_j45Cg--.57546S5;
-        Wed, 01 Feb 2023 19:22:55 +0800 (CST)
+        by APP3 (Coremail) with SMTP id _Ch0CgDn4R+NS9pj_j45Cg--.57546S9;
+        Wed, 01 Feb 2023 19:22:57 +0800 (CST)
 From:   Ye Bin <yebin@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
 Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
         Ye Bin <yebin10@huawei.com>
-Subject: [PATCH 1/5] jbd2: introduce callback for recovery journal
-Date:   Wed,  1 Feb 2023 19:46:47 +0800
-Message-Id: <20230201114651.4090446-2-yebin@huaweicloud.com>
+Subject: [PATCH 5/5] ext4: make sure fs error flag setted before clear journal error
+Date:   Wed,  1 Feb 2023 19:46:51 +0800
+Message-Id: <20230201114651.4090446-6-yebin@huaweicloud.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20230201114651.4090446-1-yebin@huaweicloud.com>
 References: <20230201114651.4090446-1-yebin@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: _Ch0CgDn4R+NS9pj_j45Cg--.57546S5
-X-Coremail-Antispam: 1UD129KBjvJXoWrtryrCryxJrW7Aw4UWry7Awb_yoW8JrW8pa
-        s5Cwn3CFW8uFy7Cr1fJa18AFWIv3yv9r4UGF98u3s0y347trZ2qaykGw15try5Ar43K3yj
-        qr1UCrW3Cw1YkrDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUvGb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUGw
-        A2048vs2IY020Ec7CjxVAFwI0_JFI_Gr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
-        w2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
-        W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
-        6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
-        Ij6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
-        Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr
-        0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY
-        17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcV
-        C0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY
-        6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa
-        73UjIFyTuYvjxUzoGQUUUUU
+X-CM-TRANSID: _Ch0CgDn4R+NS9pj_j45Cg--.57546S9
+X-Coremail-Antispam: 1UD129KBjvdXoWrtryDXF13GrW7XryxXryrZwb_yoWkXwbEq3
+        yxZan5Wrs3Ar1xK3WrCan8WwnYvws2vrnYqasayF15uryDXa4kCa4kWryfurn8urWrKrZ8
+        JF18ZFn7KFWkZjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUbVAYFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
+        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l82xGYIkIc2x26280x7IE14v26r126s
+        0DM28IrcIa0xkI8VCY1x0267AKxVW5JVCq3wA2ocxC64kIII0Yj41l84x0c7CEw4AK67xG
+        Y2AK021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14
+        v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAF
+        wI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2
+        WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkE
+        bVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbV
+        WUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF
+        67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42
+        IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF
+        0xvEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxh
+        VjvjDU0xZFpf9x07UZo7tUUUUU=
 X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 X-CFilter-Loop: Reflected
 Precedence: bulk
@@ -57,38 +57,35 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ye Bin <yebin10@huawei.com>
 
-EXT4 file system's super block may submited by journal, however it
-maybe submited directly when do error handle and also other scene.
-So super block isn't uptodate in journal. So there is need to do
-some extra handle when recover journal.
+Now, jounral error number maybe cleared even though ext4_commit_super()
+failed. This may lead to error flag miss, then fsck will miss to check
+file system deeply.
 
 Signed-off-by: Ye Bin <yebin10@huawei.com>
 ---
- include/linux/jbd2.h | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ fs/ext4/super.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 5962072a4b19..ab0e1a435a50 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1308,6 +1308,17 @@ struct journal_s
- 				    struct buffer_head *bh,
- 				    enum passtype pass, int off,
- 				    tid_t expected_commit_id);
-+	/*
-+	 * EXT4 file system's super block may submited by journal, however it
-+	 * maybe submited directly when do error handle. So super block isn't
-+	 * uptodate in journal. So there is need to do some extra handle when
-+	 * recover journal.
-+	 */
-+	void *j_replay_private_data;
-+	int (*j_replay_prepare_callback)(struct journal_s *journal);
-+	int (*j_replay_callback)(struct journal_s *journal,
-+				  struct buffer_head *bh);
-+	void (*j_replay_end_callback)(struct journal_s *journal);
- };
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index ab136d08d93d..c36cc9708258 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -6146,11 +6146,13 @@ static int ext4_clear_journal_err(struct super_block *sb,
+ 		errstr = ext4_decode_error(sb, j_errno, nbuf);
+ 		ext4_warning(sb, "Filesystem error recorded "
+ 			     "from previous mount: %s", errstr);
+-		ext4_warning(sb, "Marking fs in need of filesystem check.");
  
- #define jbd2_might_wait_for_commit(j) \
+ 		EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
+ 		es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
+-		ext4_commit_super(sb);
++		j_errno = ext4_commit_super(sb);
++		if (j_errno)
++			return j_errno;
++		ext4_warning(sb, "Marked fs in need of filesystem check.");
+ 
+ 		jbd2_journal_clear_err(journal);
+ 		jbd2_journal_update_sb_errno(journal);
 -- 
 2.31.1
 
