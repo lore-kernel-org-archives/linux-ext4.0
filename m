@@ -2,83 +2,72 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 00B8AC05027
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Feb 2023 11:23:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C650C636CD
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Feb 2023 12:45:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231760AbjBALXM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 Feb 2023 06:23:12 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43964 "EHLO
+        id S231624AbjBAMpp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 Feb 2023 07:45:45 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56744 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231986AbjBALXC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Feb 2023 06:23:02 -0500
-Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 21FF96A63;
-        Wed,  1 Feb 2023 03:23:00 -0800 (PST)
-Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4P6KKB48Pcz4f3jYs;
-        Wed,  1 Feb 2023 19:22:54 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.127.227])
-        by APP3 (Coremail) with SMTP id _Ch0CgDn4R+NS9pj_j45Cg--.57546S8;
-        Wed, 01 Feb 2023 19:22:56 +0800 (CST)
-From:   Ye Bin <yebin@huaweicloud.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
-        Ye Bin <yebin10@huawei.com>
-Subject: [PATCH 4/5] ext4: fix super block checksum error
-Date:   Wed,  1 Feb 2023 19:46:50 +0800
-Message-Id: <20230201114651.4090446-5-yebin@huaweicloud.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20230201114651.4090446-1-yebin@huaweicloud.com>
-References: <20230201114651.4090446-1-yebin@huaweicloud.com>
+        with ESMTP id S231668AbjBAMpo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Feb 2023 07:45:44 -0500
+Received: from mail-il1-f198.google.com (mail-il1-f198.google.com [209.85.166.198])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6FD712DE4F
+        for <linux-ext4@vger.kernel.org>; Wed,  1 Feb 2023 04:45:40 -0800 (PST)
+Received: by mail-il1-f198.google.com with SMTP id k7-20020a056e02156700b0030f025aeca3so11343139ilu.12
+        for <linux-ext4@vger.kernel.org>; Wed, 01 Feb 2023 04:45:40 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=to:from:subject:message-id:in-reply-to:date:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=V5gRBWvCrC4ivORDLYanYAKruxMNDrxF3nhXlCgZ6d4=;
+        b=b/4w3Z/85tQVX9mXlKD+p9dlmYuAVr/yb7GGORazQhem52e0XUrl2QoJgEB7bkLTqa
+         e96Fa0Mw71is8R3s2+Rg33VaOzh/R+Ij58cHjSPqIrdVW18j3OfokPjY/q/NzQNSketG
+         kNm+zjc+ptGQGHD6q0xlj39PVjm9/Ouzhg0Hnd0VlrWBa4mHvFxlc8yZYfFZLPkmFywI
+         je40lxoSxCl2DTfhgTXzvbURIrWtE/TPB+FJ+39qPAXjVlrwesmifpetsLXznMyjXLxE
+         Rs+zHMXFQPlhqWr+eJOWGrbG8n4wVBHRl8D5k7GQcQe2bQogtzhmhb3CgkdpOZBZB3M0
+         1Bnw==
+X-Gm-Message-State: AO0yUKXVBE9vYgJq4NSoljApgIMSej/UJpnL6hebbw8YsJ/AYn2gkpYF
+        tTb52yj0489yha6w0Eet+HD0izbSNCh4vKmdvQIEvUg7bWh0
+X-Google-Smtp-Source: AK7set8i4uvYg6+GpTdMSIzx6vtF835rmgFlCdJGSpv7rq6MO3NDFTCc1cgEiGwQuSXfchipNn98YjYUH3i1f67LYl1nHTfNNSY5
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: _Ch0CgDn4R+NS9pj_j45Cg--.57546S8
-X-Coremail-Antispam: 1UD129KBjvdXoW7Jr18Jw4xWrWfZw4xJw1rCrg_yoW3KFX_Ga
-        yxXw1rWr4fJa1Sg3W8Kr1Yv3W0grs2vF1rXa93AF1rXF1DXFs2qw4kurZF9rn8Wr4vqr45
-        Ar48K348Gr97WjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-        9fnUUIcSsGvfJTRUUUbVAYFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
-        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l82xGYIkIc2x26280x7IE14v26r126s
-        0DM28IrcIa0xkI8VCY1x0267AKxVW5JVCq3wA2ocxC64kIII0Yj41l84x0c7CEw4AK67xG
-        Y2AK021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14
-        v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAF
-        wI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2
-        WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkE
-        bVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbV
-        WUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF
-        67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42
-        IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF
-        0xvEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxh
-        VjvjDU0xZFpf9x07UZo7tUUUUU=
-X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
-X-CFilter-Loop: Reflected
+X-Received: by 2002:a05:6638:3a0f:b0:3a9:611a:928b with SMTP id
+ cn15-20020a0566383a0f00b003a9611a928bmr461546jab.55.1675255539387; Wed, 01
+ Feb 2023 04:45:39 -0800 (PST)
+Date:   Wed, 01 Feb 2023 04:45:39 -0800
+In-Reply-To: <0000000000006c411605e2f127e5@google.com>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <0000000000005555f005f3a2d3da@google.com>
+Subject: Re: kernel BUG in ext4_free_blocks (2)
+From:   syzbot <syzbot+15cd994e273307bf5cfa@syzkaller.appspotmail.com>
+To:     adilger.kernel@dilger.ca, gregkh@linuxfoundation.org,
+        joneslee@google.com, lczerner@redhat.com, lee@kernel.org,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        nogikh@google.com, sashal@kernel.org, stable@vger.kernel.org,
+        syzkaller-android-bugs@googlegroups.com, tadeusz.struk@linaro.org,
+        tudor.ambarus@linaro.org, tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ye Bin <yebin10@huawei.com>
+This bug is marked as fixed by commit:
+ext4: block range must be validated before use in ext4_mb_clear_bb()
 
-As commit("ext4: fix error flag covered by journal recovery") update
-error record when do journal recovery.There is need to recalculate
-super block checksum after update error record or will lead to super
-block checksum mismatch to data.
+But I can't find it in the tested trees[1] for more than 90 days.
+Is it a correct commit? Please update it by replying:
 
-Signed-off-by: Ye Bin <yebin10@huawei.com>
+#syz fix: exact-commit-title
+
+Until then the bug is still considered open and new crashes with
+the same signature are ignored.
+
+Kernel: Android 5.10
+Dashboard link: https://syzkaller.appspot.com/bug?extid=15cd994e273307bf5cfa
+
 ---
- fs/ext4/ext4_jbd2.c | 1 +
- 1 file changed, 1 insertion(+)
+[1] I expect the commit to be present in:
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index 7c0f2bed0ec4..21f4f00429a1 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -430,6 +430,7 @@ static int ext4_replay_callback(struct journal_s *journal,
- 	       journal->j_replay_private_data, EXT4_S_ERR_LEN);
- 	if (sbi->s_mount_state & EXT4_ERROR_FS)
- 		es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
-+	ext4_superblock_csum_set(sb);
- 
- 	return 0;
- }
--- 
-2.31.1
-
+1. android12-5.10-lts branch of
+https://android.googlesource.com/kernel/common
