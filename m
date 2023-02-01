@@ -2,147 +2,108 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 46FD6C38142
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Feb 2023 06:31:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 377EDC05027
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Feb 2023 09:29:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230514AbjBAGbj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 Feb 2023 01:31:39 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58286 "EHLO
+        id S231751AbjBAJ3x (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 Feb 2023 04:29:53 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49314 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230266AbjBAGbi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Feb 2023 01:31:38 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C4672564B1;
-        Tue, 31 Jan 2023 22:31:36 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 18568B81F2D;
-        Wed,  1 Feb 2023 06:31:35 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 46DECC4339C;
-        Wed,  1 Feb 2023 06:31:33 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1675233093;
-        bh=kODbu8v8FoJJKSYLR/mctHsB9SNw4l1AhxYgBT5F4R8=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=a9FoKfofj9I8z7FRGoI5KTEFES31+jAGm9T1tXLHLt1ICF1vzD9lVLQ1PMHKF118R
-         6gxgIJ4cvI9lNcgU8jhgYhiEgv0BWrRs5Y/zh8bBLAXcpiK3QfXg6S7LZIzG/slYMS
-         swQmWjHUhSmrxd2OTgLY5hwoNrZgsycTEcAuddMz581Mil5Ri2sQKK3WIB2+xpqArZ
-         kEhjGm4ZjunZ/TEXjM0KgrLsC6WGXeZTQmZl679nScLECIBqVi2GGuQ9cdxWQq4Zgo
-         u0iSFo5+bK8fU17enBhGUD60FFec9CC5212xX0Hf8PjBrr4OTPvVVBpviTK7zVBKNh
-         4741njuFWUngA==
-Date:   Tue, 31 Jan 2023 22:31:31 -0800
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Tejun Heo <tj@kernel.org>
-Cc:     Matthew Wilcox <willy@infradead.org>,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        stable@vger.kernel.org, cgroups@vger.kernel.org
-Subject: Re: [PATCH] fscrypt: Copy the memcg information to the ciphertext
- page
-Message-ID: <Y9oHQ6MfRbfwmFyK@sol.localdomain>
-References: <20230129121851.2248378-1-willy@infradead.org>
- <Y9a2m8uvmXmCVYvE@sol.localdomain>
- <Y9bkoasmAmtQ2nSV@casper.infradead.org>
- <Y9mH0PCcZoGPryXw@slm.duckdns.org>
+        with ESMTP id S231752AbjBAJ3v (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Feb 2023 04:29:51 -0500
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A599C5D915
+        for <linux-ext4@vger.kernel.org>; Wed,  1 Feb 2023 01:29:47 -0800 (PST)
+Received: from mail02.huawei.com (unknown [172.30.67.169])
+        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4P6GpY0Xwjz4f3lKR
+        for <linux-ext4@vger.kernel.org>; Wed,  1 Feb 2023 17:29:41 +0800 (CST)
+Received: from [10.174.176.34] (unknown [10.174.176.34])
+        by APP4 (Coremail) with SMTP id gCh0CgCH77IEMdpju0AzCw--.2703S3;
+        Wed, 01 Feb 2023 17:29:42 +0800 (CST)
+Subject: Re: [RFC PATCH 2/2] ext4: add journal cycled recording support
+To:     kernel test robot <yujie.liu@intel.com>
+Cc:     oe-lkp@lists.linux.dev, lkp@intel.com, linux-ext4@vger.kernel.org,
+        tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
+        yi.zhang@huawei.com, yukuai3@huawei.com
+References: <202301301621.30292a65-yujie.liu@intel.com>
+From:   Zhang Yi <yi.zhang@huaweicloud.com>
+Message-ID: <01625b14-a998-3c94-46dd-c13d1fc077dd@huaweicloud.com>
+Date:   Wed, 1 Feb 2023 17:29:40 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
+ Thunderbird/78.12.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <Y9mH0PCcZoGPryXw@slm.duckdns.org>
+In-Reply-To: <202301301621.30292a65-yujie.liu@intel.com>
+Content-Type: text/plain; charset=windows-1252
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID: gCh0CgCH77IEMdpju0AzCw--.2703S3
+X-Coremail-Antispam: 1UD129KBjvJXoW7Cr43ur4DuFWfKr18ZF4fZrb_yoW8tr45pa
+        97Wr4YyrWvqw1xJr4q9a1rua48WwnYkF45Wwn2g343GayYvFy2qrs2qF4UXFy5ArZxWFya
+        q3WkC3sIg3W2ya7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUyCb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+        vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
+        xVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxV
+        AFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2
+        j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7x
+        kEbVWUJVW8JwACjcxG0xvEwIxGrwCYjI0SjxkI62AI1cAE67vIY487MxAIw28IcxkI7VAK
+        I48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7
+        xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xII
+        jxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw2
+        0EY4v20xvaj40_WFyUJVCq3wCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF
+        7I0E14v26r1j6r4UYxBIdaVFxhVjvjDU0xZFpf9x07UWE__UUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Jan 31, 2023 at 11:27:44AM -1000, Tejun Heo wrote:
-> Hello,
+Hello
+
+On 2023/1/30 17:19, kernel test robot wrote:
+> Greeting,
 > 
-> On Sun, Jan 29, 2023 at 09:26:57PM +0000, Matthew Wilcox wrote:
-> > > > diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
-> > > > index e78be66bbf01..a4e76f96f291 100644
-> > > > --- a/fs/crypto/crypto.c
-> > > > +++ b/fs/crypto/crypto.c
-> > > > @@ -205,6 +205,9 @@ struct page *fscrypt_encrypt_pagecache_blocks(struct page *page,
-> > > >  	}
-> > > >  	SetPagePrivate(ciphertext_page);
-> > > >  	set_page_private(ciphertext_page, (unsigned long)page);
-> > > > +#ifdef CONFIG_MEMCG
-> > > > +	ciphertext_page->memcg_data = page->memcg_data;
-> > > > +#endif
-> > > >  	return ciphertext_page;
-> > > >  }
-> > > 
-> > > Nothing outside mm/ and include/linux/memcontrol.h does anything with memcg_data
-> > > directly.  Are you sure this is the right thing to do here?
-> > 
-> > Nope ;-)  Happy to hear from people who know more about cgroups than I
-> > do.  Adding some more ccs.
-> > 
-> > > Also, this patch causes the following:
-> > 
-> > Oops.  Clearly memcg_data needs to be set to NULL before we free it.
+> FYI, we noticed xfstests.ext4.053.fail due to commit (built with gcc-11):
 > 
-> These can usually be handled by explicitly associating the bio's to the
-> desired cgroups using one of bio_associate_blkg*() or
-> bio_clone_blkg_association().
+> commit: 8ed4c906ef9a43941026aad0360d84a9338e1c4c ("[RFC PATCH 2/2] ext4: add journal cycled recording support")
+> url: https://github.com/intel-lab-lkp/linux/commits/Zhang-Yi/jbd2-cycled-record-log-on-clean-journal-logging-area/20230119-131055
+> base: https://git.kernel.org/cgit/linux/kernel/git/tytso/ext4.git dev
+> patch link: https://lore.kernel.org/all/20230119034600.3431194-3-yi.zhang@huaweicloud.com/
+> patch subject: [RFC PATCH 2/2] ext4: add journal cycled recording support
+> 
+> in testcase: xfstests
+> version: xfstests-x86_64-fb6575e-1_20230116
+> with following parameters:
+> 
+> 	disk: 4HDD
+> 	fs: ext2
+> 	test: ext4-group-02
+> 
+> test-description: xfstests is a regression test suite for xfs and other files ystems.
+> test-url: git://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git
+> 
+> on test machine: 4 threads Intel(R) Core(TM) i5-6500 CPU @ 3.20GHz (Skylake) with 32G memory
+> 
+> caused below changes (please refer to attached dmesg/kmsg for entire log/backtrace):
+> 
+> 
+> QA output created by 053
+> Silence is golden.
+> mounting ext3 "noload" checking "norecovery" (going to remount options noload) (failed remount) FAILED
+> mounting ext3 "noload" checking "noload" (going to remount options noload) (failed remount) FAILED
+> mounting ext3 "data=journal" (failed mount) FAILED
+> mounting ext3 "data=journal" (failed mount) FAILED
+> mounting ext3 "data=ordered" (failed mount) FAILED
+> mounting ext3 "data=ordered" (failed mount) FAILED
+> mounting ext3 "data=writeback" (failed mount) FAILED
+> mounting ext3 "data=writeback" (failed mount) FAILED
+> mkfs failed - /usr/sbin/mkfs.ext4 -Fq -J device=/dev/loop0 /dev/sda4 1048576k /dev/sda4
+> 
+> 
 
-Here that already happens in wbc_init_bio(), called from io_submit_init_bio() in
-fs/ext4/page-io.c.
+This is a separate issue and could be fixed by "[PATCH] ext4: fix incorrect options show of original mount_opt and extend mount_opt2",
+https://lore.kernel.org/linux-ext4/20230130111138.76tp6pij3yhh4brh@quack3/T/#m96a1cffd567bdd844233b3115a6635391ed0b45b
 
-> It is possible to go through memcg ownership
-> too using set_active_memcg() so that the page is owned by the target cgroup;
-> however, the page ownership doesn't directly map to IO ownership as the
-> relationship depends on the type of the page (e.g. IO ownership for
-> pagecache writeback is determined per-inode, not per-page). If the in-flight
-> pages are limited, it probably is better to set bio association directly.
+Thanks,
+Yi.
 
-ext4 also calls wbc_account_cgroup_owner() for each pagecache page that's
-written out.  It seems this is for a different purpose -- it looks like the
-fs-writeback code is trying to figure out which cgroup "owns" the inode based on
-which cgroup "owns" most of the pagecache pages?
-
-The bug we're discussing here is that when ext4 writes out a pagecache page in
-an encrypted file, it first encrypts the data into a bounce page, then passes
-the bounce page (which don't have a memcg) to wbc_account_cgroup_owner().  Maybe
-the proper fix is to just pass the pagecache page to wbc_account_cgroup_owner()
-instead?  See below for ext4 (a separate patch would be needed for f2fs):
-
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index beaec6d81074a..1e4db96a04e63 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -409,7 +409,8 @@ static void io_submit_init_bio(struct ext4_io_submit *io,
- 
- static void io_submit_add_bh(struct ext4_io_submit *io,
- 			     struct inode *inode,
--			     struct page *page,
-+			     struct page *pagecache_page,
-+			     struct page *bounce_page,
- 			     struct buffer_head *bh)
- {
- 	int ret;
-@@ -421,10 +422,11 @@ static void io_submit_add_bh(struct ext4_io_submit *io,
- 	}
- 	if (io->io_bio == NULL)
- 		io_submit_init_bio(io, bh);
--	ret = bio_add_page(io->io_bio, page, bh->b_size, bh_offset(bh));
-+	ret = bio_add_page(io->io_bio, bounce_page ?: pagecache_page,
-+			   bh->b_size, bh_offset(bh));
- 	if (ret != bh->b_size)
- 		goto submit_and_retry;
--	wbc_account_cgroup_owner(io->io_wbc, page, bh->b_size);
-+	wbc_account_cgroup_owner(io->io_wbc, pagecache_page, bh->b_size);
- 	io->io_next_block++;
- }
- 
-@@ -561,8 +563,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 	do {
- 		if (!buffer_async_write(bh))
- 			continue;
--		io_submit_add_bh(io, inode,
--				 bounce_page ? bounce_page : page, bh);
-+		io_submit_add_bh(io, inode, page, bounce_page, bh);
- 	} while ((bh = bh->b_this_page) != head);
- unlock:
- 	unlock_page(page);
