@@ -2,30 +2,30 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A95E2C63797
-	for <linux-ext4@archiver.kernel.org>; Thu,  2 Feb 2023 20:44:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 479BAC636D3
+	for <linux-ext4@archiver.kernel.org>; Thu,  2 Feb 2023 20:44:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233001AbjBBUol (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 2 Feb 2023 15:44:41 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41644 "EHLO
+        id S232930AbjBBUoh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 2 Feb 2023 15:44:37 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41638 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232111AbjBBUog (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Feb 2023 15:44:36 -0500
+        with ESMTP id S231345AbjBBUof (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Feb 2023 15:44:35 -0500
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C76919EEA;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C4F7746A5;
         Thu,  2 Feb 2023 12:44:33 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=3DLfbYeltsUE3NkYQxzmRoc7Gye1xXr71K3DBJBtYI8=; b=My+pp2jnzUtx0mU74aDrHBAfVv
-        47t6HILhQnY1KaWUmZhAh5Wqw/ZzWZ6ELcjVHzxBAaJVU/zPNhUYV+Oyu8b8NUlzlznAT7362AF5Q
-        gSQhH0el02AH+zggm7MaQts0TQfCLVs/ET3zZFTx6kLY0UFy7JiwRH5IpJXhmrrpwqnp6dChipQdC
-        PEYc0G6v9HjbUwlt4SWnW8UNsQnyNapLR7lOnkWFSFia65JmJyVQlKc6deSxOSY62WoNxa79NTi5h
-        pyqzpXh91k9bcb2gbuVSWm4A6vmNmeqVjxhn6iRYRNaJwId/QFcOjPBC/JShhXajsyYYE1HBY8GMI
-        sUEu9Ryw==;
+        bh=7vw66D2vDIhBX9oEFJWgWei9pEvFRsbTDrfadEvnVH0=; b=LI7K/fD5Vk/tdkvyGHcHCHPIn3
+        ki8YM6I42VIZSzQNTxPrzW20eQcMlMiBbgoAoAw8253XrGoeMklOlEKMUxU2uC2X6XcBepRXQM2wQ
+        YATyAgvwBIxy4fzWAmTKtS8Uj2OY3SvCwtjfcCu15kPUtBjNTOq46bndEOSVGF8Ub11cNCBl93Vg9
+        SWkM5MsQ0M+rvDWlwv+bSz97kX6B7VYPTSLxZ9dgDzRfutfB6502mkCo5mEQs0xsV8HA8rHlCRSdS
+        KOTUidRSNdF7Zes+5Cdj1siYfhphWwyw25V0So6hp97947mMQ7zwQbXNCDbg4RdAq7LzH3UQO0x0G
+        oB6KKg6g==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pNgRa-00Di7L-PL; Thu, 02 Feb 2023 20:44:30 +0000
+        id 1pNgRb-00Di7X-Bg; Thu, 02 Feb 2023 20:44:31 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -33,9 +33,9 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-ext4@vger.kernel.org, linux-mm@kvack.org,
         Hugh Dickins <hughd@google.com>, linux-kernel@vger.kernel.org,
         fstests@vger.kernel.org
-Subject: [PATCH 1/5] truncate: Zero bytes after 'oldsize' if we're expanding the file
-Date:   Thu,  2 Feb 2023 20:44:23 +0000
-Message-Id: <20230202204428.3267832-2-willy@infradead.org>
+Subject: [PATCH 3/5] tmpfs: Zero bytes after 'oldsize' if we're expanding the file
+Date:   Thu,  2 Feb 2023 20:44:25 +0000
+Message-Id: <20230202204428.3267832-4-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230202204428.3267832-1-willy@infradead.org>
 References: <20230202204428.3267832-1-willy@infradead.org>
@@ -48,33 +48,24 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 POSIX requires that "If the file size is increased, the extended area
 shall appear as if it were zero-filled".  It is possible to use mmap to
 write past EOF and that data will become visible instead of zeroes.
-This fixes the problem for the filesystems which simply call
-truncate_setsize().  More complex filesystems will need their own
-patches.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- mm/truncate.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ mm/shmem.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/mm/truncate.c b/mm/truncate.c
-index 7b4ea4c4a46b..cebfc5415e9a 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -763,9 +763,12 @@ void truncate_setsize(struct inode *inode, loff_t newsize)
- 	loff_t oldsize = inode->i_size;
- 
- 	i_size_write(inode, newsize);
--	if (newsize > oldsize)
-+	if (newsize > oldsize) {
- 		pagecache_isize_extended(inode, oldsize, newsize);
--	truncate_pagecache(inode, newsize);
-+		truncate_pagecache(inode, oldsize);
-+	} else {
-+		truncate_pagecache(inode, newsize);
-+	}
- }
- EXPORT_SYMBOL(truncate_setsize);
+diff --git a/mm/shmem.c b/mm/shmem.c
+index 0005ab2c29af..2c8e8b417b00 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -1124,6 +1124,8 @@ static int shmem_setattr(struct user_namespace *mnt_userns,
+ 			if (oldsize > holebegin)
+ 				unmap_mapping_range(inode->i_mapping,
+ 							holebegin, 0, 1);
++		} else {
++			shmem_truncate_range(inode, oldsize, newsize);
+ 		}
+ 	}
  
 -- 
 2.35.1
