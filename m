@@ -2,52 +2,55 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1E1ACC61DA4
-	for <linux-ext4@archiver.kernel.org>; Thu,  2 Feb 2023 14:22:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 797CAC05027
+	for <linux-ext4@archiver.kernel.org>; Thu,  2 Feb 2023 14:22:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232110AbjBBOWj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 2 Feb 2023 09:22:39 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38666 "EHLO
+        id S232375AbjBBOWk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 2 Feb 2023 09:22:40 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38668 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231904AbjBBOWi (ORCPT
+        with ESMTP id S232345AbjBBOWi (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Feb 2023 09:22:38 -0500
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BFCE11B564
-        for <linux-ext4@vger.kernel.org>; Thu,  2 Feb 2023 06:22:35 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 888368E4A9
+        for <linux-ext4@vger.kernel.org>; Thu,  2 Feb 2023 06:22:36 -0800 (PST)
 Received: from mail02.huawei.com (unknown [172.30.67.169])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4P71Fx60MSz4f3jZJ
-        for <linux-ext4@vger.kernel.org>; Thu,  2 Feb 2023 22:22:29 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4P71Fy4cDHz4f3p1d
+        for <linux-ext4@vger.kernel.org>; Thu,  2 Feb 2023 22:22:30 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.170])
-        by APP4 (Coremail) with SMTP id gCh0CgCnD7Mgx9tjTJV+Cw--.129S4;
-        Thu, 02 Feb 2023 22:22:30 +0800 (CST)
+        by APP4 (Coremail) with SMTP id gCh0CgCnD7Mgx9tjTJV+Cw--.129S6;
+        Thu, 02 Feb 2023 22:22:32 +0800 (CST)
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
         harshadshirwadkar@gmail.com, yi.zhang@huawei.com,
         yi.zhang@huaweicloud.com, yukuai3@huawei.com
-Subject: [RFC PATCH v2 0/2] ext4, jbd2: journal cycled record transactions between each mounts
-Date:   Thu,  2 Feb 2023 22:22:22 +0800
-Message-Id: <20230202142224.3679549-1-yi.zhang@huawei.com>
+Subject: [RFC PATCH v2 2/2] ext4: add journal cycled recording support
+Date:   Thu,  2 Feb 2023 22:22:24 +0800
+Message-Id: <20230202142224.3679549-3-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20230202142224.3679549-1-yi.zhang@huawei.com>
+References: <20230202142224.3679549-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgCnD7Mgx9tjTJV+Cw--.129S4
-X-Coremail-Antispam: 1UD129KBjvJXoW7uw4xXF17ZFyftF43tF4fZrb_yoW8JFWfpF
-        93tw15Wr1kZFyxA3Za9ay7JrWYyws5CFy7WFy3Wa4rKa98JryIqws7tr13CFyYyrWI9a1U
-        Gr1UJr4DKw12k37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUvCb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-        vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
-        xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-        0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-        6I80ewAv7VC0I7IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-        Cjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0aVACjI8F5VA0II8E6IAqYI8I648v4I1l
-        42xK82IYc2Ij64vIr41l42xK82IY64kExVAvwVAq07x20xyl4I8I3I0E4IkC6x0Yz7v_Jr
-        0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY
-        17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcV
-        C0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8VAvwI8IcIk0rVWrZr1j6s0DMIIF
-        0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Jr0_GrUvcSsGvfC2Kf
-        nxnUUI43ZEXa7IUbmhF7UUUUU==
+X-CM-TRANSID: gCh0CgCnD7Mgx9tjTJV+Cw--.129S6
+X-Coremail-Antispam: 1UD129KBjvJXoWxZF1fXFy5WFW5GF4xZr4ktFb_yoW5KFyUpr
+        yDJFy3Cr1jvryUurWxXFs3XrWjvryFkFy7ur92kw1a9a9Fyr1xtFW2qF15ta4jqFWrX34k
+        WFyrJ347Ga42kFDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUPlb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUXw
+        A2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
+        w2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
+        W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
+        6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
+        Ij6xIIjxv20xvE14v26r106r15McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
+        Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7Iv64x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20x
+        vY0x0EwIxGrwCF04k20xvEw4C26cxK6c8Ij28IcwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC2
+        0s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI
+        0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv2
+        0xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2js
+        IE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZF
+        pf9x07jb2-5UUUUU=
 Sender: yi.zhang@huaweicloud.com
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 X-CFilter-Loop: Reflected
@@ -55,40 +58,93 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Zhang Yi <yi.zhang@huaweicloud.com>
+Introduce a new mount option names 'journal_cycle_record' to let jbd2
+continue record journal log from the recovered head transaction block
+or checkpointed/cleaned transactions on the previous mount.
 
-v1->v2:
- - Fix the format type warning.
- - Add more check of journal_cycle_record mount options in remount.
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/ext4.h  |  2 ++
+ fs/ext4/super.c | 18 ++++++++++++++++++
+ 2 files changed, 20 insertions(+)
 
-Hello, This patch set introduce a new mount option names
-journal_cycle_record, it save journal head for a clean unmounted file
-system, let ext4 continue/cycled record new journal transactions after
-previous mount or recovered transactions for unclean file system. It
-could give us more info when analysing a corrupted file system image
-and locate kernel consistency bugs more conveniently.
-
-This is just the kernel part and have already passed throuth xfstests in
-auto mode (it depends on one prefix patch[1]). I will continue the
-e2fsprogs' part if nobody strong dislike that. Any comments are welcome.
-
-[1] https://lore.kernel.org/linux-ext4/20230130111138.76tp6pij3yhh4brh@quack3/T/#m96a1cffd567bdd844233b3115a6635391ed0b45b
-
-Thanks,
-Yi.
-
-
-Zhang Yi (2):
-  jbd2: cycled record log on clean journal logging area
-  ext4: add journal cycled recording support
-
- fs/ext4/ext4.h       |  2 ++
- fs/ext4/super.c      | 18 ++++++++++++++++++
- fs/jbd2/journal.c    | 18 ++++++++++++++++--
- fs/jbd2/recovery.c   | 22 +++++++++++++++++-----
- include/linux/jbd2.h |  9 +++++++--
- 5 files changed, 60 insertions(+), 9 deletions(-)
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 140e1eb300d1..b62e7886fc2c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1267,6 +1267,8 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT2_MB_OPTIMIZE_SCAN	0x00000080 /* Optimize group
+ 						    * scanning in mballoc
+ 						    */
++#define EXT4_MOUNT2_JOURNAL_CYCLE_RECORD	0x00000100 /* Journal cycled record
++							    * log on empty logging area */
+ 
+ #define clear_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt &= \
+ 						~EXT4_MOUNT_##opt
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 260c1b3e3ef2..d9eeda327539 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1591,6 +1591,7 @@ enum {
+ 	Opt_max_dir_size_kb, Opt_nojournal_checksum, Opt_nombcache,
+ 	Opt_no_prefetch_block_bitmaps, Opt_mb_optimize_scan,
+ 	Opt_errors, Opt_data, Opt_data_err, Opt_jqfmt, Opt_dax_type,
++	Opt_journal_cycle_record,
+ #ifdef CONFIG_EXT4_DEBUG
+ 	Opt_fc_debug_max_replay, Opt_fc_debug_force
+ #endif
+@@ -1670,6 +1671,7 @@ static const struct fs_parameter_spec ext4_param_specs[] = {
+ 	fsparam_flag	("journal_checksum",	Opt_journal_checksum),
+ 	fsparam_flag	("nojournal_checksum",	Opt_nojournal_checksum),
+ 	fsparam_flag	("journal_async_commit",Opt_journal_async_commit),
++	fsparam_flag	("journal_cycle_record",Opt_journal_cycle_record),
+ 	fsparam_flag	("abort",		Opt_abort),
+ 	fsparam_enum	("data",		Opt_data, ext4_param_data),
+ 	fsparam_enum	("data_err",		Opt_data_err,
+@@ -1826,6 +1828,8 @@ static const struct mount_opts {
+ 	{Opt_nombcache, EXT4_MOUNT_NO_MBCACHE, MOPT_SET},
+ 	{Opt_no_prefetch_block_bitmaps, EXT4_MOUNT_NO_PREFETCH_BLOCK_BITMAPS,
+ 	 MOPT_SET},
++	{Opt_journal_cycle_record, EXT4_MOUNT2_JOURNAL_CYCLE_RECORD,
++	 MOPT_SET | MOPT_2 | MOPT_NO_EXT2},
+ #ifdef CONFIG_EXT4_DEBUG
+ 	{Opt_fc_debug_force, EXT4_MOUNT2_JOURNAL_FAST_COMMIT,
+ 	 MOPT_SET | MOPT_2 | MOPT_EXT4_ONLY},
+@@ -2772,6 +2776,13 @@ static int ext4_check_opt_consistency(struct fs_context *fc,
+ 			    !(sbi->s_mount_opt2 & EXT4_MOUNT2_DAX_INODE))) {
+ 			goto fail_dax_change_remount;
+ 		}
++
++		if (ctx_test_mount_opt2(ctx, EXT4_MOUNT2_JOURNAL_CYCLE_RECORD) &&
++		    !test_opt2(sb, JOURNAL_CYCLE_RECORD)) {
++			ext4_msg(NULL, KERN_ERR,
++				 "can't change journal_cycle_record on remount");
++			return -EINVAL;
++		}
+ 	}
+ 
+ 	return ext4_check_quota_consistency(fc, sb);
+@@ -5293,6 +5304,11 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 			goto failed_mount3a;
+ 		}
+ 
++		if (test_opt2(sb, JOURNAL_CYCLE_RECORD)) {
++			ext4_msg(sb, KERN_ERR, "can't mount with "
++				 "journal_cycle_record, fs mounted w/o journal");
++			goto failed_mount3a;
++		}
+ 		if (test_opt2(sb, EXPLICIT_JOURNAL_CHECKSUM)) {
+ 			ext4_msg(sb, KERN_ERR, "can't mount with "
+ 				 "journal_checksum, fs mounted w/o journal");
+@@ -5698,6 +5714,8 @@ static void ext4_init_journal_params(struct super_block *sb, journal_t *journal)
+ 		journal->j_flags |= JBD2_ABORT_ON_SYNCDATA_ERR;
+ 	else
+ 		journal->j_flags &= ~JBD2_ABORT_ON_SYNCDATA_ERR;
++	if (test_opt2(sb, JOURNAL_CYCLE_RECORD))
++		journal->j_flags |= JBD2_CYCLE_RECORD;
+ 	write_unlock(&journal->j_state_lock);
+ }
+ 
 -- 
 2.31.1
 
