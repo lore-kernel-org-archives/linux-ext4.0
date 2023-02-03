@@ -2,61 +2,61 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2EDE7C636CC
-	for <linux-ext4@archiver.kernel.org>; Fri,  3 Feb 2023 21:03:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 441A9C636CC
+	for <linux-ext4@archiver.kernel.org>; Fri,  3 Feb 2023 21:03:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233650AbjBCVDR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 3 Feb 2023 16:03:17 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46096 "EHLO
+        id S233006AbjBCVDY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 3 Feb 2023 16:03:24 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46322 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233385AbjBCVCQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Feb 2023 16:02:16 -0500
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B63A2ADBBF;
-        Fri,  3 Feb 2023 13:01:03 -0800 (PST)
+        with ESMTP id S233456AbjBCVCS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Feb 2023 16:02:18 -0500
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0BD65AF0CF;
+        Fri,  3 Feb 2023 13:01:13 -0800 (PST)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 6EF8C35225;
-        Fri,  3 Feb 2023 21:01:02 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id BEA8335229;
+        Fri,  3 Feb 2023 21:01:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1675458062; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1675458071; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=6JM0S233H5Zlg+wbmnMEORelYFxm/eYxtlgCAFxYHpM=;
-        b=RHBSf8tLDD1qBfHRuD5rEr0W2FiKZdvW+VnDQ29rOp4EjA8voyuaMvtYJh1+dC5IT3+94h
-        mWQvBZJu01NC3tP59ne1o0xlyHiuvbPdVGa3Om/VKcJaO3MotAyz749wBFcDa3Ztdv3MPK
-        gH+mnmB/N3MqoxPkg1hlBlNdwC588EY=
+        bh=pHCZyJAodGxzYJy9CRO1y2Ojz5lOmcNehoROILAvaTo=;
+        b=jPFyJFgXr00F4ibd2FHK4/m7NkiNDPoKJF/lRyUEBYYTrYSbsp2iavZM8VrXBpX0GHp4vc
+        ZLTM/NP0Jk/T4cGYe3b5mZgVV4qQeTMjCg5b/tDKc/VhhlzkJyZe91yoTjC4b+m4eQiXBE
+        eMrObPWbmOJ4XVA8JZeJm2JyNAey3iE=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1675458062;
+        s=susede2_ed25519; t=1675458071;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=6JM0S233H5Zlg+wbmnMEORelYFxm/eYxtlgCAFxYHpM=;
-        b=cr13Y4pJqQk1Kw2d0p6MK1SswSuP8zEd5IT0QTqz8HrLGvHs5neX+lpbjOC43QhX4Mq4B0
-        A7L1EQ1xxAg58BBA==
+        bh=pHCZyJAodGxzYJy9CRO1y2Ojz5lOmcNehoROILAvaTo=;
+        b=zcGoUjCjzWnTtH045njIPtNw0QMmHqHbd9BaI1Ss0rLpjCPDYtl8TrwCR4oA9Ivka7Kzr5
+        hPg5+WuzI+gFR6AA==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id F3BAE1358A;
-        Fri,  3 Feb 2023 21:01:01 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 4D0D71358A;
+        Fri,  3 Feb 2023 21:01:11 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id T3HWLg123WPyJgAAMHmgww
-        (envelope-from <krisman@suse.de>); Fri, 03 Feb 2023 21:01:01 +0000
+        id m1UNBhd23WP4JgAAMHmgww
+        (envelope-from <krisman@suse.de>); Fri, 03 Feb 2023 21:01:11 +0000
 From:   Gabriel Krisman Bertazi <krisman@suse.de>
 To:     viro@zeniv.linux.org.uk, tytso@mit.edu, jaegeuk@kernel.org,
         ebiggers@kernel.org, jack@suse.cz
 Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
         Gabriel Krisman Bertazi <krisman@collabora.com>
-Subject: [PATCH v2 3/7] libfs: Validate negative dentries in case-insensitive directories
-Date:   Fri,  3 Feb 2023 18:00:35 -0300
-Message-Id: <20230203210039.16289-4-krisman@suse.de>
+Subject: [PATCH v2 6/7] ext4: Enable negative dentries on case-insensitive lookup
+Date:   Fri,  3 Feb 2023 18:00:38 -0300
+Message-Id: <20230203210039.16289-7-krisman@suse.de>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20230203210039.16289-1-krisman@suse.de>
 References: <20230203210039.16289-1-krisman@suse.de>
@@ -68,58 +68,75 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Gabriel Krisman Bertazi <krisman@collabora.com>
 
-Introduce a dentry revalidation helper to be used by case-insensitive
-filesystems to check if it is safe to reuse a negative dentry.
-
-A negative dentry is safe to be reused on a case-insensitive lookup if
-it was created during a case-insensitive lookup and this is not a lookup
-that will instantiate a dentry. If this is a creation lookup, we also
-need to make sure the name matches sensitively the name under lookup in
-order to assure the name preserving semantics.
+Instead of invalidating negative dentries during case-insensitive
+lookups, mark them as such and let them be added to the dcache.
+d_ci_revalidate is able to properly filter them out if necessary based
+on the dentry casefold flag.
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
 ---
- fs/libfs.c | 24 ++++++++++++++++++++++++
- 1 file changed, 24 insertions(+)
+ fs/ext4/namei.c | 34 +++-------------------------------
+ 1 file changed, 3 insertions(+), 31 deletions(-)
 
-diff --git a/fs/libfs.c b/fs/libfs.c
-index aada4e7c8713..e3daca88d1d3 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -1467,9 +1467,33 @@ static int generic_ci_d_hash(const struct dentry *dentry, struct qstr *str)
- 	return 0;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index dd28453d6ea3..36d6683ff616 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1851,16 +1851,9 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
+ 		}
+ 	}
+ 
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	if (!inode && IS_CASEFOLDED(dir)) {
+-		/* Eventually we want to call d_add_ci(dentry, NULL)
+-		 * for negative dentries in the encoding case as
+-		 * well.  For now, prevent the negative dentry
+-		 * from being cached.
+-		 */
+-		return NULL;
+-	}
+-#endif
++	if (IS_ENABLED(CONFIG_UNICODE) && IS_CASEFOLDED(dir))
++		d_set_casefold_lookup(dentry);
++
+ 	return d_splice_alias(inode, dentry);
  }
  
-+static inline int generic_ci_d_revalidate(struct dentry *dentry,
-+					  const struct qstr *name,
-+					  unsigned int flags)
-+{
-+	int is_creation = flags & (LOOKUP_CREATE | LOOKUP_RENAME_TARGET);
-+
-+	if (d_is_negative(dentry)) {
-+		const struct dentry *parent = READ_ONCE(dentry->d_parent);
-+		const struct inode *dir = READ_ONCE(parent->d_inode);
-+
-+		if (dir && needs_casefold(dir)) {
-+			if (!d_is_casefold_lookup(dentry))
-+				return 0;
-+
-+			if (is_creation &&
-+			    (dentry->d_name.len != name->len ||
-+			     memcmp(dentry->d_name.name, name->name, name->len)))
-+				return 0;
-+		}
-+	}
-+	return 1;
-+}
-+
- static const struct dentry_operations generic_ci_dentry_ops = {
- 	.d_hash = generic_ci_d_hash,
- 	.d_compare = generic_ci_d_compare,
-+	.d_revalidate_name = generic_ci_d_revalidate,
- };
- #endif
+@@ -3186,17 +3179,6 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 	ext4_fc_track_unlink(handle, dentry);
+ 	retval = ext4_mark_inode_dirty(handle, dir);
  
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	/* VFS negative dentries are incompatible with Encoding and
+-	 * Case-insensitiveness. Eventually we'll want avoid
+-	 * invalidating the dentries here, alongside with returning the
+-	 * negative dentries at ext4_lookup(), when it is better
+-	 * supported by the VFS for the CI case.
+-	 */
+-	if (IS_CASEFOLDED(dir))
+-		d_invalidate(dentry);
+-#endif
+-
+ end_rmdir:
+ 	brelse(bh);
+ 	if (handle)
+@@ -3297,16 +3279,6 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 		goto out_trace;
+ 
+ 	retval = __ext4_unlink(dir, &dentry->d_name, d_inode(dentry), dentry);
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	/* VFS negative dentries are incompatible with Encoding and
+-	 * Case-insensitiveness. Eventually we'll want avoid
+-	 * invalidating the dentries here, alongside with returning the
+-	 * negative dentries at ext4_lookup(), when it is  better
+-	 * supported by the VFS for the CI case.
+-	 */
+-	if (IS_CASEFOLDED(dir))
+-		d_invalidate(dentry);
+-#endif
+ 
+ out_trace:
+ 	trace_ext4_unlink_exit(dentry, retval);
 -- 
 2.35.3
 
