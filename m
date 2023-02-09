@@ -2,39 +2,39 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 580E9C636D7
-	for <linux-ext4@archiver.kernel.org>; Thu,  9 Feb 2023 11:57:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B4212C05027
+	for <linux-ext4@archiver.kernel.org>; Thu,  9 Feb 2023 11:57:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230201AbjBIL5X (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 9 Feb 2023 06:57:23 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58394 "EHLO
+        id S230265AbjBIL5m (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 9 Feb 2023 06:57:42 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59006 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229761AbjBIL4O (ORCPT
+        with ESMTP id S229822AbjBIL4O (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Feb 2023 06:56:14 -0500
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BF38F5C495;
-        Thu,  9 Feb 2023 03:46:31 -0800 (PST)
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6E3925C497;
+        Thu,  9 Feb 2023 03:46:32 -0800 (PST)
 Received: from mail02.huawei.com (unknown [172.30.67.169])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4PCFSf6FNhz4f3v75;
-        Thu,  9 Feb 2023 19:46:26 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PCFSg4RwNz4f3jqV;
+        Thu,  9 Feb 2023 19:46:27 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgAn3rEQ3eRjgb0tDQ--.53508S13;
+        by APP4 (Coremail) with SMTP id gCh0CgAn3rEQ3eRjgb0tDQ--.53508S15;
         Thu, 09 Feb 2023 19:46:29 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH 11/21] ext4: remove unnecessary e4b->bd_buddy_page check in ext4_mb_load_buddy_gfp
-Date:   Fri, 10 Feb 2023 03:48:15 +0800
-Message-Id: <20230209194825.511043-12-shikemeng@huaweicloud.com>
+Subject: [PATCH 13/21] ext4: remove dead check in mb_buddy_mark_free
+Date:   Fri, 10 Feb 2023 03:48:17 +0800
+Message-Id: <20230209194825.511043-14-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230209194825.511043-1-shikemeng@huaweicloud.com>
 References: <20230209194825.511043-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgAn3rEQ3eRjgb0tDQ--.53508S13
-X-Coremail-Antispam: 1UD129KBjvdXoWrZr1rGF1Uuw1xKw13Cry7GFg_yoW3Arc_Ga
-        4I9r48tr4rJryqkF1xZwsIyws8KanY9rWUXFZ3tryUZFyUZrWDZw1kZr1Fya1xuFy29rW5
-        CF13ZF9rJFW09jkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+X-CM-TRANSID: gCh0CgAn3rEQ3eRjgb0tDQ--.53508S15
+X-Coremail-Antispam: 1UD129KBjvdXoW7Xr4rJr4xZF45Gr18Gw43trb_yoW3Cwc_Ka
+        43A3ykJrWrtr4Fka4kAr4vgr48K3Z5Cr47X345tr4xWFyUW393Aw1Dtrn3AF1xu3y2yrWD
+        GF95Ga47uF4FgjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
         9fnUUIcSsGvfJTRUUUbSxYFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
         Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl82
         xGYIkIc2x26280x7IE14v26r126s0DM28IrcIa0xkI8VCY1x0267AKxVW5JVCq3wA2ocxC
@@ -54,29 +54,28 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-e4b->bd_buddy_page is only set if we initialize ext4_buddy successfully. So
-e4b->bd_buddy_page is always NULL in error handle branch. Just remove the
-dead check.
+We always adjust first to even number and adjust last to odd number, so
+first == last will never happen. Remove this dead check.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 ---
- fs/ext4/mballoc.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ fs/ext4/mballoc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 15fc7105becc..74da24c9bf14 100644
+index bdabe0d81d4a..0fdbf16ac180 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -1555,8 +1555,7 @@ ext4_mb_load_buddy_gfp(struct super_block *sb, ext4_group_t group,
- 		put_page(page);
- 	if (e4b->bd_bitmap_page)
- 		put_page(e4b->bd_bitmap_page);
--	if (e4b->bd_buddy_page)
--		put_page(e4b->bd_buddy_page);
-+
- 	e4b->bd_buddy = NULL;
- 	e4b->bd_bitmap = NULL;
- 	return ret;
+@@ -1718,7 +1718,8 @@ static void mb_buddy_mark_free(struct ext4_buddy *e4b, int first, int last)
+ 			break;
+ 		order++;
+ 
+-		if (first == last || !(buddy2 = mb_find_buddy(e4b, order, &max))) {
++		buddy2 = mb_find_buddy(e4b, order, &max);
++		if (!buddy2) {
+ 			mb_clear_bits(buddy, first, last - first + 1);
+ 			e4b->bd_info->bb_counters[order - 1] += last - first + 1;
+ 			break;
 -- 
 2.30.0
 
