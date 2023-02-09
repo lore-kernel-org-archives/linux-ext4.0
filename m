@@ -2,44 +2,46 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D754C636D7
-	for <linux-ext4@archiver.kernel.org>; Thu,  9 Feb 2023 15:57:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 92B7CC636D6
+	for <linux-ext4@archiver.kernel.org>; Thu,  9 Feb 2023 15:57:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231159AbjBIP5a (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 9 Feb 2023 10:57:30 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44794 "EHLO
+        id S231194AbjBIP5g (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 9 Feb 2023 10:57:36 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44806 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231200AbjBIP53 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Feb 2023 10:57:29 -0500
+        with ESMTP id S230522AbjBIP5e (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Feb 2023 10:57:34 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7B2212C670
-        for <linux-ext4@vger.kernel.org>; Thu,  9 Feb 2023 07:57:28 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DA2D8B752
+        for <linux-ext4@vger.kernel.org>; Thu,  9 Feb 2023 07:57:33 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 319Fuq0h019612
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 319FuqRm019617
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Thu, 9 Feb 2023 10:56:53 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1675958214; bh=or7EpFxIpSIU1N7C+m8fzV0exEm1a8ruCKHXenTJQU0=;
+        t=1675958213; bh=XWDuEgqowYvNONg7D5VE7dPa7kK2LIp8g7pYSGZSoIk=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=AnzoNwIwBfyaH7K03UGOwuJ15brSEJ43sGYumLqpjMZ23rM4h5tGIWYr41mi5yQtJ
-         lRjShhuDbcLQGuak9stFTtFbSWSPJg35SNXbqzSuaZf4srfqb/udJVgImFALjmcFlJ
-         X1iBm/aYKdIWORcxpVST5cLUdRKoiXymiF39UQ3tO3+/SfKS0/ptO7CAXjpl7LuYZ0
-         /qp2OqoJ4QLMjE1vDdqzPxtgu83ibymyyD9QRciLM09AZlCyY28P6QcMoC4ldbJOnJ
-         aWOyLWRUe9tUV6oKYECKYXByRqP55Qo89zE9TfLeUwCe0Tcdq4PQjHvXgxpcIIW/We
-         UoH0RDbBeU9RQ==
+        b=CSQAIAqbr6hJqpIKn2Z33UbkFw8Sg72CkkRXyNsfBMQh6hZi/1zgMFNUf5kbk/wsm
+         IiQIV+GzDCJJgjRJgGs+R/oLB0Szpp2717VO/b8qPo43LHmX4BvxGK44WJQWGTj95k
+         3ou6NjnYvoi24PyJKNeVJkCAnG2+eaf8gfuw2+9Cy8nnj9+g31ng+zAS9CJwynCzK6
+         PXObd6z2a40n2e9CLVkqOq8SyfVgJnDK0n9odTan4e6xOezQ2XCbebbTr279oguRS7
+         pMANr/yZmeFzzI85IM91+Lb+GSSUgnPz3GpQj7FRIy9VFSjrHk5q+CRK12MqTNZdPN
+         wFehwjqlkkgtA==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id F394515C340F; Thu,  9 Feb 2023 10:56:51 -0500 (EST)
+        id 02A7315C3589; Thu,  9 Feb 2023 10:56:52 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org, Eric Biggers <ebiggers@kernel.org>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, Ye Bin <yebin10@huawei.com>
-Subject: Re: [PATCH] ext4: use ext4_fc_tl_mem in fast-commit replay path
-Date:   Thu,  9 Feb 2023 10:56:48 -0500
-Message-Id: <167595818785.2451331.14863312824605865865.b4-ty@mit.edu>
+To:     linux-ext4@vger.kernel.org,
+        Wang Jianjian <wangjianjian3@huawei.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, zhengbowen7@huawei.com,
+        wangqiang62@huawei.com, zhangzhikang1@huawei.com
+Subject: Re: [PATCH 1/1] ext4: Don't show commit interval if it is zero
+Date:   Thu,  9 Feb 2023 10:56:50 -0500
+Message-Id: <167595818786.2451331.4287438712674756802.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20221217050212.150665-1-ebiggers@kernel.org>
-References: <20221217050212.150665-1-ebiggers@kernel.org>
+In-Reply-To: <20221219015128.876717-1-wangjianjian3@huawei.com>
+References: <20221219015128.876717-1-wangjianjian3@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -47,20 +49,15 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, 16 Dec 2022 21:02:12 -0800, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> To avoid 'sparse' warnings about missing endianness conversions, don't
-> store native endianness values into struct ext4_fc_tl.  Instead, use a
-> separate struct type, ext4_fc_tl_mem.
+On Mon, 19 Dec 2022 09:51:28 +0800, Wang Jianjian wrote:
+> If commit interval is 0, it means using default value.
 > 
 > 
-> [...]
 
 Applied, thanks!
 
-[1/1] ext4: use ext4_fc_tl_mem in fast-commit replay path
-      commit: 11768cfd98136dd8399480c60b7a5d3d3c7b109b
+[1/1] ext4: Don't show commit interval if it is zero
+      commit: 934b0de1e9fdea93c4c7f2e18915c54fae67bdc6
 
 Best regards,
 -- 
