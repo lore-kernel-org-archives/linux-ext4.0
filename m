@@ -2,42 +2,42 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 326E8C61DA4
-	for <linux-ext4@archiver.kernel.org>; Thu,  9 Feb 2023 11:57:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9FA2CC6379F
+	for <linux-ext4@archiver.kernel.org>; Thu,  9 Feb 2023 11:57:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230084AbjBIL46 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 9 Feb 2023 06:56:58 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58370 "EHLO
+        id S230108AbjBIL5B (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 9 Feb 2023 06:57:01 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58986 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229519AbjBIL4L (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Feb 2023 06:56:11 -0500
+        with ESMTP id S229588AbjBIL4M (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Feb 2023 06:56:12 -0500
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8DAAB5C482;
-        Thu,  9 Feb 2023 03:46:29 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 86C5B5C488;
+        Thu,  9 Feb 2023 03:46:30 -0800 (PST)
 Received: from mail02.huawei.com (unknown [172.30.67.169])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PCFSc6TkGz4f3jLm;
-        Thu,  9 Feb 2023 19:46:24 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PCFSd6933z4f3m7P;
+        Thu,  9 Feb 2023 19:46:25 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgAn3rEQ3eRjgb0tDQ--.53508S6;
-        Thu, 09 Feb 2023 19:46:26 +0800 (CST)
+        by APP4 (Coremail) with SMTP id gCh0CgAn3rEQ3eRjgb0tDQ--.53508S9;
+        Thu, 09 Feb 2023 19:46:27 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH 04/21] ext4: get correct ext4_group_info in ext4_mb_prefetch_fini
-Date:   Fri, 10 Feb 2023 03:48:08 +0800
-Message-Id: <20230209194825.511043-5-shikemeng@huaweicloud.com>
+Subject: [PATCH 07/21] ext4: protect pa->pa_free in ext4_discard_allocated_blocks
+Date:   Fri, 10 Feb 2023 03:48:11 +0800
+Message-Id: <20230209194825.511043-8-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230209194825.511043-1-shikemeng@huaweicloud.com>
 References: <20230209194825.511043-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgAn3rEQ3eRjgb0tDQ--.53508S6
-X-Coremail-Antispam: 1UD129KBjvdXoW7Jr15AF4Dtw4rtw13uFW8Xrb_yoWDtFc_ta
-        4xAr1fGryrJw1xKr4Sgrn0ya1UtFs5Jr1UXFWftr1fuF4UJw45ZFykAr47Ar17ua93tFZx
-        tr9xJFyxJFn2gjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+X-CM-TRANSID: gCh0CgAn3rEQ3eRjgb0tDQ--.53508S9
+X-Coremail-Antispam: 1UD129KBjvdXoW7Gr1UGF18KFyDJryxXF47Arb_yoW3ArXEka
+        48AF4xJFWrJa4S93W8tay0qr4rKF4Syr4UWFWrtr43ua1rXF4fG3WDXr1rJrZxWa12y3y7
+        C3sY9ryUGanagjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
         9fnUUIcSsGvfJTRUUUbS8YFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
         Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl82
-        xGYIkIc2x26280x7IE14v26r126s0DM28IrcIa0xkI8VCY1x0267AKxVW8JVW5JwA2ocxC
+        xGYIkIc2x26280x7IE14v26r126s0DM28IrcIa0xkI8VCY1x0267AKxVW5JVCq3wA2ocxC
         64kIII0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM2
         8EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq
         3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8w
@@ -45,46 +45,40 @@ X-Coremail-Antispam: 1UD129KBjvdXoW7Jr15AF4Dtw4rtw13uFW8Xrb_yoWDtFc_ta
         14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x
         0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E
         7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcV
-        C0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF
+        C0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF
         04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7
-        CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07jyYLPUUUUU=
+        CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07jstxDUUUUU=
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-We always get ext4_group_desc with group + 1 and ext4_group_info with
-group to check if we need do initialize ext4_group_info for the group.
-Just get ext4_group_desc with group for ext4_group_info initialization
-check.
+If ext4_mb_mark_diskspace_used fails in ext4_mb_new_blocks, we may
+discard pa already in list. Protect pa with pa_lock to avoid race.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 ---
- fs/ext4/mballoc.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/ext4/mballoc.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 352ac9139fee..f24f80ecf318 100644
+index 433337ac8da2..4e1caac74b44 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -2570,13 +2570,13 @@ void ext4_mb_prefetch_fini(struct super_block *sb, ext4_group_t group,
- 			   unsigned int nr)
- {
- 	while (nr-- > 0) {
--		struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group,
--								  NULL);
--		struct ext4_group_info *grp = ext4_get_group_info(sb, group);
-+		struct ext4_group_desc *gdp;
-+		struct ext4_group_info *grp;
+@@ -4263,8 +4263,11 @@ static void ext4_discard_allocated_blocks(struct ext4_allocation_context *ac)
+ 		ext4_mb_unload_buddy(&e4b);
+ 		return;
+ 	}
+-	if (pa->pa_type == MB_INODE_PA)
++	if (pa->pa_type == MB_INODE_PA) {
++		spin_lock(&pa->pa_lock);
+ 		pa->pa_free += ac->ac_b_ex.fe_len;
++		spin_unlock(&pa->pa_lock);
++	}
+ }
  
- 		if (!group)
- 			group = ext4_get_groups_count(sb);
- 		group--;
-+		gdp = ext4_get_group_desc(sb, group, NULL);
- 		grp = ext4_get_group_info(sb, group);
- 
- 		if (EXT4_MB_GRP_NEED_INIT(grp) &&
+ /*
 -- 
 2.30.0
 
