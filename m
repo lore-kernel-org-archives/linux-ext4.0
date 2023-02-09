@@ -2,90 +2,64 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A136C64EC5
-	for <linux-ext4@archiver.kernel.org>; Thu,  9 Feb 2023 11:57:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E763C61DA4
+	for <linux-ext4@archiver.kernel.org>; Thu,  9 Feb 2023 15:57:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229823AbjBIL55 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 9 Feb 2023 06:57:57 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58440 "EHLO
+        id S230348AbjBIP5P (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 9 Feb 2023 10:57:15 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44680 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229765AbjBIL4R (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Feb 2023 06:56:17 -0500
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 081D05C4A6;
-        Thu,  9 Feb 2023 03:46:34 -0800 (PST)
-Received: from mail02.huawei.com (unknown [172.30.67.169])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PCFSk0tgTz4f3k61;
-        Thu,  9 Feb 2023 19:46:30 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgAn3rEQ3eRjgb0tDQ--.53508S23;
-        Thu, 09 Feb 2023 19:46:32 +0800 (CST)
-From:   Kemeng Shi <shikemeng@huaweicloud.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz
-Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH 21/21] ext4: simplify calculation of blkoff in ext4_mb_new_blocks_simple
-Date:   Fri, 10 Feb 2023 03:48:25 +0800
-Message-Id: <20230209194825.511043-22-shikemeng@huaweicloud.com>
-X-Mailer: git-send-email 2.30.0
-In-Reply-To: <20230209194825.511043-1-shikemeng@huaweicloud.com>
-References: <20230209194825.511043-1-shikemeng@huaweicloud.com>
+        with ESMTP id S231240AbjBIP5N (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Feb 2023 10:57:13 -0500
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A54DE2B631
+        for <linux-ext4@vger.kernel.org>; Thu,  9 Feb 2023 07:57:07 -0800 (PST)
+Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 319FuqVQ019618
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 9 Feb 2023 10:56:53 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1675958214; bh=AOLKA4OAVKOEzTVswvLfgRyKkolhjkXWuFeXKF0Ywqg=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References;
+        b=bpEg/kLsHPfl+cU6TrAWmG8gc/+3uV9/WAWR4hdcs25svrocdARXsJPOzgAuRGxHq
+         IHHHP3plvB1sBc/2VM7fMOLCQxCYXFPPbmzuIAMnVHdDxFH0I8igz4LQPWqGzESicB
+         hS10Zc1dqwHqd8QO2ckN6m7ByTcg7mTni9LYBUPZw0u6mglfwvrFBqSo78oRBXB8Jm
+         vyTBUbUnp9pw0OBu3gAX07T8dqSVgCrtO3oaoZBdyPwW7jukwEkC92v2HeyAVXPLsE
+         i2o3DSLAIOGslPfLsSyl9T93RnV4hQImmJHTCtmTQGb+8PJw1/tGxWyUc18d6Uest6
+         mEXGLa3wIB6jA==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 00CB215C3587; Thu,  9 Feb 2023 10:56:51 -0500 (EST)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     "Theodore Ts'o" <tytso@mit.edu>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc:     yebin@huaweicloud.com
+Subject: Re: [PATCH] ext4: improve xattr consistency checking and error reporting
+Date:   Thu,  9 Feb 2023 10:56:49 -0500
+Message-Id: <167595818785.2451331.503812160366980592.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <20221214200818.870087-1-tytso@mit.edu>
+References: <20221214200818.870087-1-tytso@mit.edu>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgAn3rEQ3eRjgb0tDQ--.53508S23
-X-Coremail-Antispam: 1UD129KBjvdXoWrtFWDZw4xCw4DKr4UCw4fGrg_yoWfKFc_Ka
-        4xZr48JFyrJr1fuFnYqrZ8tFW7ta1xAr1ruFWIqrySvF1YqFWxu3WDArZ0yF9ruay3Aas8
-        Cr9xurW3KF109jkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-        9fnUUIcSsGvfJTRUUUbSAYFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
-        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl82
-        xGYIkIc2x26280x7IE14v26r126s0DM28IrcIa0xkI8VCY1x0267AKxVW5JVCq3wA2ocxC
-        64kIII0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM2
-        8EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq
-        3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8w
-        Aqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE
-        14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x
-        0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E
-        7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcV
-        C0I7IYx2IY67AKxVW5JVW7JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY
-        6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aV
-        CY1x0267AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x07jstxDUUUUU=
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
-X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-We try to allocate a block from goal in ext4_mb_new_blocks_simple. We
-only need get blkoff in first group with goal and set blkoff to 0 for
-the rest groups.
+On Wed, 14 Dec 2022 15:08:18 -0500, Theodore Ts'o wrote:
+> Refactor the in-inode and xattr block consistency checking, and report
+> more fine-grained reports of the consistency problems.  Also add more
+> consistency checks for ea_inode number.
+> 
+> 
 
-Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
----
- fs/ext4/mballoc.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+Applied, thanks!
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 5bc30cd5debf..bd5e4db677c7 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -5772,9 +5772,6 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
- 			return 0;
- 		}
- 
--		ext4_get_group_no_and_offset(sb,
--			max(ext4_group_first_block_no(sb, group), goal),
--			NULL, &blkoff);
- 		while (1) {
- 			i = mb_find_next_zero_bit(bitmap_bh->b_data, max,
- 						blkoff);
-@@ -5789,6 +5786,8 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
- 		brelse(bitmap_bh);
- 		if (i < max)
- 			break;
-+
-+		blkoff = 0;
- 	}
- 
- 	if (group >= ext4_get_groups_count(sb) || i >= max) {
+[1/1] ext4: improve xattr consistency checking and error reporting
+      commit: 3478c83cf26bbffd026ae6a56bcb1fe544f0834e
+
+Best regards,
 -- 
-2.30.0
-
+Theodore Ts'o <tytso@mit.edu>
