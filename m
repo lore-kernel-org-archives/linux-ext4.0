@@ -2,53 +2,53 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 26DC9C05027
-	for <linux-ext4@archiver.kernel.org>; Fri, 10 Feb 2023 02:57:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E2F5C636D4
+	for <linux-ext4@archiver.kernel.org>; Fri, 10 Feb 2023 02:57:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230473AbjBJC5J (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 9 Feb 2023 21:57:09 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47066 "EHLO
+        id S230474AbjBJC5M (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 9 Feb 2023 21:57:12 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47068 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230061AbjBJC5F (ORCPT
+        with ESMTP id S230074AbjBJC5F (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Feb 2023 21:57:05 -0500
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 25381663D2;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BC6C5663D3;
         Thu,  9 Feb 2023 18:57:04 -0800 (PST)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PCdgH3YWsz4f3nTL;
-        Fri, 10 Feb 2023 10:56:59 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PCdgJ0tC0z4f3nTN;
+        Fri, 10 Feb 2023 10:57:00 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.127.227])
-        by APP3 (Coremail) with SMTP id _Ch0CgCHgR96suVjIkgqDA--.35208S7;
-        Fri, 10 Feb 2023 10:57:01 +0800 (CST)
+        by APP3 (Coremail) with SMTP id _Ch0CgCHgR96suVjIkgqDA--.35208S9;
+        Fri, 10 Feb 2023 10:57:02 +0800 (CST)
 From:   Ye Bin <yebin@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
 Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
         Ye Bin <yebin10@huawei.com>
-Subject: [PATCH v2 3/6] jbd2: do extra handle when do journal recovery
-Date:   Fri, 10 Feb 2023 11:20:41 +0800
-Message-Id: <20230210032044.146115-4-yebin@huaweicloud.com>
+Subject: [PATCH v2 5/6] ext4: fix super block checksum error
+Date:   Fri, 10 Feb 2023 11:20:43 +0800
+Message-Id: <20230210032044.146115-6-yebin@huaweicloud.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20230210032044.146115-1-yebin@huaweicloud.com>
 References: <20230210032044.146115-1-yebin@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: _Ch0CgCHgR96suVjIkgqDA--.35208S7
-X-Coremail-Antispam: 1UD129KBjvJXoW7urWfWr1fuw4xtr4rWF4UArb_yoW8Xw13pw
-        15Cr95KrWqvr17A3Z3JwsFgFWaqr4FyFWUGFsI93Zayay5trZFk3yxtwn0gFW8Jr15K3yr
-        JF15J3y8KwnYkw7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUvGb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUWw
-        A2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
-        w2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
-        W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
-        6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
-        Ij6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
-        Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr
-        0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY
-        17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcV
-        C0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY
-        6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa
-        73UjIFyTuYvjxU2PEfUUUUU
+X-CM-TRANSID: _Ch0CgCHgR96suVjIkgqDA--.35208S9
+X-Coremail-Antispam: 1UD129KBjvdXoW7Jr18Jw4xWrWfZw4xJw1rCrg_yoW3KFX_Ga
+        yxXw4rWrn3Aa1S93W8Gr4Yv3W0grs2vF1rJas3Cr1rXF1DXFs2qw4kCrZF9rn8ur4ktr45
+        Ar48Kry8Gr97XjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUbVAYFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
+        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l82xGYIkIc2x26280x7IE14v26r126s
+        0DM28IrcIa0xkI8VCY1x0267AKxVW5JVCq3wA2ocxC64kIII0Yj41l84x0c7CEw4AK67xG
+        Y2AK021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14
+        v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAF
+        wI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2
+        WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkE
+        bVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbV
+        WUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF
+        67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42
+        IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF
+        0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxh
+        VjvjDU0xZFpf9x07UZo7tUUUUU=
 X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 X-CFilter-Loop: Reflected
 Precedence: bulk
@@ -57,67 +57,28 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ye Bin <yebin10@huawei.com>
 
-Ext4 file system's super block in journal maybe not uptodate, when
-file system has error, we need set error information when do recover
-uper block.
+As commit("ext4: fix error flag covered by journal recovery") update
+error record when do journal recovery.There is need to recalculate
+super block checksum after update error record or will lead to super
+block checksum mismatch to data.
 
 Signed-off-by: Ye Bin <yebin10@huawei.com>
 ---
- fs/jbd2/recovery.c | 27 +++++++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
+ fs/ext4/ext4_jbd2.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index 8286a9ec122f..83b1a9689984 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -309,6 +309,15 @@ int jbd2_journal_recover(journal_t *journal)
- 		return 0;
- 	}
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index af03035606e1..ffcb0d58d407 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -430,6 +430,7 @@ static int ext4_replay_callback(struct journal_s *journal,
+ 	       journal->j_replay_private_data, EXT4_S_ERR_LEN);
+ 	if (sbi->s_mount_state & EXT4_ERROR_FS)
+ 		es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
++	ext4_superblock_csum_set(sb);
  
-+	if (journal->j_replay_prepare_callback) {
-+		err = journal->j_replay_prepare_callback(journal);
-+		if (err) {
-+			jbd2_debug(1, "JBD2: failed to prepare replay %d",
-+				   err);
-+			return err;
-+		}
-+	}
-+
- 	err = do_one_pass(journal, &info, PASS_SCAN);
- 	if (!err)
- 		err = do_one_pass(journal, &info, PASS_REVOKE);
-@@ -335,6 +344,10 @@ int jbd2_journal_recover(journal_t *journal)
- 		if (!err)
- 			err = err2;
- 	}
-+
-+	if (journal->j_replay_end_callback)
-+		journal->j_replay_end_callback(journal);
-+
- 	return err;
+ 	return 0;
  }
- 
-@@ -687,6 +700,20 @@ static int do_one_pass(journal_t *journal,
- 						*((__be32 *)nbh->b_data) =
- 						cpu_to_be32(JBD2_MAGIC_NUMBER);
- 					}
-+					if (unlikely(journal->j_replay_callback)) {
-+						err = journal->j_replay_callback(
-+							journal, nbh);
-+						if (err) {
-+							printk(KERN_ERR
-+							       "JBD2: replay "
-+							       "call back "
-+							       "failed.\n");
-+							unlock_buffer(nbh);
-+							brelse(obh);
-+							brelse(nbh);
-+							goto failed;
-+						}
-+					}
- 
- 					BUFFER_TRACE(nbh, "marking dirty");
- 					set_buffer_uptodate(nbh);
 -- 
 2.31.1
 
