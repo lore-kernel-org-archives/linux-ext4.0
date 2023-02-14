@@ -2,132 +2,90 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 71216C636D4
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Feb 2023 01:12:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E77E9C636D4
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Feb 2023 02:05:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229812AbjBNBM3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 13 Feb 2023 20:12:29 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34860 "EHLO
+        id S231195AbjBNCFd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 13 Feb 2023 21:05:33 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34202 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229462AbjBNBM2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Feb 2023 20:12:28 -0500
+        with ESMTP id S229738AbjBNCFc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Feb 2023 21:05:32 -0500
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 63D8C2D7C;
-        Mon, 13 Feb 2023 17:12:27 -0800 (PST)
-Received: from mail02.huawei.com (unknown [172.30.67.153])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PG38k1czxz4f3jZ3;
-        Tue, 14 Feb 2023 09:12:22 +0800 (CST)
-Received: from [10.174.178.129] (unknown [10.174.178.129])
-        by APP4 (Coremail) with SMTP id gCh0CgCHOa303+pjQe5PDg--.64967S2;
-        Tue, 14 Feb 2023 09:12:22 +0800 (CST)
-Subject: Re: [PATCH 04/21] ext4: get correct ext4_group_info in
- ext4_mb_prefetch_fini
-To:     Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-References: <20230209194825.511043-1-shikemeng@huaweicloud.com>
- <20230209194825.511043-5-shikemeng@huaweicloud.com>
- <Y+ngxf4fBbhPBHPk@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
- <51940a4e-b01d-cef8-af35-87788df483f1@huaweicloud.com>
- <Y+qaN6fnlOX8EjtL@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
-From:   Kemeng Shi <shikemeng@huaweicloud.com>
-Message-ID: <85ab22be-7d91-62f7-b2b5-84f183c73f67@huaweicloud.com>
-Date:   Tue, 14 Feb 2023 09:12:20 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.5.0
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4CA3012F0B;
+        Mon, 13 Feb 2023 18:05:29 -0800 (PST)
+Received: from mail02.huawei.com (unknown [172.30.67.143])
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PG4Kw2Snzz4f3jZH;
+        Tue, 14 Feb 2023 10:05:24 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.127.227])
+        by APP3 (Coremail) with SMTP id _Ch0CgCnUiBk7OpjvrkRDQ--.53521S6;
+        Tue, 14 Feb 2023 10:05:26 +0800 (CST)
+From:   Ye Bin <yebin@huaweicloud.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
+        Ye Bin <yebin10@huawei.com>
+Subject: [PATCH v3 2/2] ext4: make sure fs error flag setted before clear journal error
+Date:   Tue, 14 Feb 2023 10:29:05 +0800
+Message-Id: <20230214022905.765088-3-yebin@huaweicloud.com>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20230214022905.765088-1-yebin@huaweicloud.com>
+References: <20230214022905.765088-1-yebin@huaweicloud.com>
 MIME-Version: 1.0
-In-Reply-To: <Y+qaN6fnlOX8EjtL@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
-Content-Type: text/plain; charset=gbk
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID: gCh0CgCHOa303+pjQe5PDg--.64967S2
-X-Coremail-Antispam: 1UD129KBjvJXoW7urWkKF4UCr17XF43Wr4fAFb_yoW5JF17pr
-        Z3GF1jkr4rWr1DCr4I93yjq3W8tw4Igr1UXry3Xw1UurZrtr97JF97Kr18uF1UJFWfWF12
-        v3Z8uFy3Cr12k37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUyEb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-        vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7Cj
-        xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-        0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-        6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-        Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JMxk0xIA0c2IEe2xFo4CEbIxvr21l42xK82IYc2Ij
-        64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x
-        8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE
-        2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42
-        xK8VAvwI8IcIk0rVWrZr1j6s0DMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIE
-        c7CjxVAFwI0_Jr0_GrUvcSsGvfC2KfnxnUUI43ZEXa7IU1CPfJUUUUU==
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID: _Ch0CgCnUiBk7OpjvrkRDQ--.53521S6
+X-Coremail-Antispam: 1UD129KBjvdXoWrtryDXF13GrW7XryxXryrZwb_yoWkXwbEq3
+        yxAan5Wrs3Ar1Ika1rCan8Ww1vvws2vFn8X3ZayF15uryDXa4kCa4DWryfurn8urZ5KrZ8
+        JF18ZFn3GaykXjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUbV8YFVCjjxCrM7AC8VAFwI0_Xr0_Wr1l1xkIjI8I6I8E6xAIw20E
+        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l82xGYIkIc2x26280x7IE14v26r15M2
+        8IrcIa0xkI8VCY1x0267AKxVW8JVW5JwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK
+        021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r
+        4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_
+        GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx
+        0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWU
+        JVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJV
+        W8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF
+        1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6x
+        IIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvE
+        x4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvj
+        DU0xZFpf9x07jeWlkUUUUU=
+X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+From: Ye Bin <yebin10@huawei.com>
 
+Now, jounral error number maybe cleared even though ext4_commit_super()
+failed. This may lead to error flag miss, then fsck will miss to check
+file system deeply.
 
-on 2/14/2023 4:14 AM, Ojaswin Mujoo wrote:
-> On Mon, Feb 13, 2023 at 08:27:32PM +0800, Kemeng Shi wrote:
->>
->>
->> on 2/13/2023 3:03 PM, Ojaswin Mujoo wrote:
->>> On Fri, Feb 10, 2023 at 03:48:08AM +0800, Kemeng Shi wrote:
->>>> We always get ext4_group_desc with group + 1 and ext4_group_info with
->>>> group to check if we need do initialize ext4_group_info for the group.
->>>> Just get ext4_group_desc with group for ext4_group_info initialization
->>>> check.
->>>>
->>>> Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
->>>> ---
->>>>  fs/ext4/mballoc.c | 6 +++---
->>>>  1 file changed, 3 insertions(+), 3 deletions(-)
->>>>
->>>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
->>>> index 352ac9139fee..f24f80ecf318 100644
->>>> --- a/fs/ext4/mballoc.c
->>>> +++ b/fs/ext4/mballoc.c
->>>> @@ -2570,13 +2570,13 @@ void ext4_mb_prefetch_fini(struct super_block *sb, ext4_group_t group,
->>>>  			   unsigned int nr)
->>>>  {
->>>>  	while (nr-- > 0) {
->>>> -		struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group,
->>>> -								  NULL);
->>>> -		struct ext4_group_info *grp = ext4_get_group_info(sb, group);
->>>> +		struct ext4_group_desc *gdp;
->>>> +		struct ext4_group_info *grp;
->>>>  
->>>>  		if (!group)
->>>>  			group = ext4_get_groups_count(sb);
->>>>  		group--;
->>>> +		gdp = ext4_get_group_desc(sb, group, NULL);
->>>>  		grp = ext4_get_group_info(sb, group);
->>>>  
->>>>  		if (EXT4_MB_GRP_NEED_INIT(grp) &&
->>>> -- 
->>>> 2.30.0
->>>>
->>>
->>> This is a duplicate of [1] :)
->>>
->>> But I'm okay with this going in as that patchseries might take some time
->>> to get merged. Feel free to add:
->>>
->>> Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com> 
->>>
->>> [1] https://lore.kernel.org/r/85bbcb3774e38de65b737ef0000241ddbdda73aa.1674822311.git.ojaswin@linux.ibm.com
->>>
->> Hi Ojaswin, Thank you so much to review my code. I 'm sorry that I didn't
->> notice this patch is duplicated and I really appreciate that you allow this
->> one to get merged first. I will add your sign to this patch in next version.
->> Thanks!
-> Hi Kemeng,
-> 
-> So I'm not sure what the norm is when dealing with such duplicate
-> patches, but if you do plan to add the Signed-off-by then I'd just like
-> to point out that the patch I linked is mainly from Ritesh Harjani, so
-> you can pick his Signed-off-by rather than mine.
-> 
-Sorry that I miss that there are two Signed-off-bys in patch you have already
-sent. I will collect both signs to this patch. Thanks!
+Signed-off-by: Ye Bin <yebin10@huawei.com>
+---
+ fs/ext4/super.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index b94754ba8556..619ef6d021d4 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -6163,11 +6163,13 @@ static int ext4_clear_journal_err(struct super_block *sb,
+ 		errstr = ext4_decode_error(sb, j_errno, nbuf);
+ 		ext4_warning(sb, "Filesystem error recorded "
+ 			     "from previous mount: %s", errstr);
+-		ext4_warning(sb, "Marking fs in need of filesystem check.");
+ 
+ 		EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
+ 		es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
+-		ext4_commit_super(sb);
++		j_errno = ext4_commit_super(sb);
++		if (j_errno)
++			return j_errno;
++		ext4_warning(sb, "Marked fs in need of filesystem check.");
+ 
+ 		jbd2_journal_clear_err(journal);
+ 		jbd2_journal_update_sb_errno(journal);
 -- 
-Best wishes
-Kemeng Shi
+2.31.1
 
