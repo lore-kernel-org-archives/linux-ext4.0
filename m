@@ -2,95 +2,167 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A0F59C64EC7
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Feb 2023 02:05:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F163C6379F
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Feb 2023 08:50:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229863AbjBNCFf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 13 Feb 2023 21:05:35 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34220 "EHLO
+        id S232142AbjBNIuY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 14 Feb 2023 03:50:24 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51924 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230116AbjBNCFc (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Feb 2023 21:05:32 -0500
-Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4C973113F6;
-        Mon, 13 Feb 2023 18:05:29 -0800 (PST)
-Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4PG4Kv6234z4f3l7r;
-        Tue, 14 Feb 2023 10:05:23 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.127.227])
-        by APP3 (Coremail) with SMTP id _Ch0CgCnUiBk7OpjvrkRDQ--.53521S4;
-        Tue, 14 Feb 2023 10:05:25 +0800 (CST)
-From:   Ye Bin <yebin@huaweicloud.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
-        Ye Bin <yebin10@huawei.com>
-Subject: [PATCH v3 0/2] fix error flag covered by journal recovery
-Date:   Tue, 14 Feb 2023 10:29:03 +0800
-Message-Id: <20230214022905.765088-1-yebin@huaweicloud.com>
-X-Mailer: git-send-email 2.31.1
+        with ESMTP id S232090AbjBNIuQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Feb 2023 03:50:16 -0500
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0888E2331E;
+        Tue, 14 Feb 2023 00:50:10 -0800 (PST)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id B3A221F37C;
+        Tue, 14 Feb 2023 08:50:08 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1676364608; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=fgt1M4WVOfjuxhjUWkQ8zKMH0N3h69+3N1PY/RQYSso=;
+        b=LJno83LysU0JabzHaH661dd02/JbqhimY6SoOLZRFE3f4Cgy869WP8sBJLbDYzh6NcFInu
+        yqb0at8wHLEel6A1u6OMZg6IuLtpQ2MMchvlw/wuHUDiOXc7JoY/9FDDZDoo6JC7mvoydT
+        n3wzl2NEUheXadbBEu3WSH2a+cWHeIY=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1676364608;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=fgt1M4WVOfjuxhjUWkQ8zKMH0N3h69+3N1PY/RQYSso=;
+        b=2aerJwqEJW1i/msnr0E9a2cnUo+n+bRMAfXO6jjFmooeM0VK8Y9t9j8mvOiYqVVLVkvBLk
+        Cw3/wMWijTz65dDw==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id A64C7138E3;
+        Tue, 14 Feb 2023 08:50:08 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id fOGcKEBL62NqMwAAMHmgww
+        (envelope-from <jack@suse.cz>); Tue, 14 Feb 2023 08:50:08 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id 356C1A06D8; Tue, 14 Feb 2023 09:50:08 +0100 (CET)
+Date:   Tue, 14 Feb 2023 09:50:08 +0100
+From:   Jan Kara <jack@suse.cz>
+To:     Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Cc:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+        Theodore Ts'o <tytso@mit.edu>,
+        Ritesh Harjani <riteshh@linux.ibm.com>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        rookxu <brookxu.cn@gmail.com>,
+        Ritesh Harjani <ritesh.list@gmail.com>
+Subject: Re: [PATCH v3 7/8] ext4: Use rbtrees to manage PAs instead of inode
+ i_prealloc_list
+Message-ID: <20230214085008.gix3dvvyg7wcf3bz@quack3>
+References: <Y8Z413XTPMr//bln@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
+ <20230117110335.7dtlq4catefgjrm3@quack3>
+ <Y8jizbGg6l2WxJPF@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
+ <20230127144312.3m3hmcufcvxxp6f4@quack3>
+ <Y9zHkMx7w4Io0TTv@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
+ <Y+OGkVvzPN0RMv0O@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
+ <20230209105418.ucowiqnnptbpwone@quack3>
+ <Y+UzQJRIJEiAr4Z4@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
+ <20230210143753.ofh6wouk7vi7ygcl@quack3>
+ <Y+p6URWLBPd6VUHD@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: _Ch0CgCnUiBk7OpjvrkRDQ--.53521S4
-X-Coremail-Antispam: 1UD129KBjvJXoW7WF4fGFW5Gr17KF1kWr4fGrg_yoW8Ww1xpa
-        95ur98KrWvqF1IyF93Aay7t3ykX3s5AFWrWFsruw1Iyw15Gr1av3s7tF4agFWUKr1Sg3yj
-        qF18J34rKa4qkFDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUgKb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-        vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
-        xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-        0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-        6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-        Cjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCj
-        c4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4
-        CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1x
-        MIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_WFyUJV
-        Cq3wCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r1j6r4UYxBI
-        daVFxhVjvjDU0xZFpf9x07UWE__UUUUU=
-X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <Y+p6URWLBPd6VUHD@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ye Bin <yebin10@huawei.com>
 
-Diff v3 Vs v2:
-Only fix fs error flag lost when previous journal errno is not record
-in disk. As this may lead to drop orphan list, however fs not record
-error flag, then fsck will not repair deeply.
+Hi Ojaswin!
 
-Diff v2 vs v1:
-Move call 'j_replay_prepare_callback' and 'j_replay_end_callback' from
-ext4_load_journal() to jbd2_journal_recover().
+On Mon 13-02-23 23:28:41, Ojaswin Mujoo wrote:
+> On Fri, Feb 10, 2023 at 03:37:53PM +0100, Jan Kara wrote:
+> > > See my comments at the end for more info.
+> > > 
+> > > > 
+> > > > > Also, another thing I noticed is that after ext4_mb_normalize_request(),
+> > > > > sometimes the original range can also exceed the normalized goal range,
+> > > > > which is again was a bit surprising to me since my understanding was
+> > > > > that normalized range would always encompass the orignal range.
+> > > > 
+> > > > Well, isn't that because (part of) the requested original range is already
+> > > > preallocated? Or what causes the goal range to be shortened?
+> > > > 
+> > > Yes I think that pre existing PAs could be one of the cases.
+> > > 
+> > > Other than that, I'm also seeing some cases of sparse writes which can cause
+> > > ext4_mb_normalize_request() to result in having an original range that
+> > > overflows out of the goal range. For example, I observed these values just
+> > > after the if else if else conditions in the function, before we check if range
+> > > overlaps pre existing PAs:
+> > > 
+> > > orig_ex:2045/2055(len:10) normalized_range:0/2048, orig_isize:8417280
+> > > 
+> > > Basically, since isize is large and we are doing a sparse write, we end
+> > > up in the following if condition:
+> > > 
+> > > 	} else if (NRL_CHECK_SIZE(ac->ac_o_ex.fe_len,
+> > > 								(8<<20)>>bsbits, max, 8 * 1024)) {
+> > > 		start_off = ((loff_t)ac->ac_o_ex.fe_logical >> (23 - bsbits)) << 23;
+> > > 		size = 8 * 1024 * 1024;
+> > >  }
+> > > 
+> > > Resulting in normalized range less than original range.
+> > 
+> > I see.
+> > 
+> > > Now, in any case, once we get such an overflow, if we try to enter the PA
+> > > adjustment window in ext4_mb_new_inode_pa() function, we will again end
+> > > up with a best extent overflowing out of goal extent since we would try
+> > > to cover the original extent. 
+> > > 
+> > > So yeah, seems like there are 2 cases where we could result in
+> > > overlapping PAs:
+> > > 
+> > > 1. Due to off calculation in PA adjustment window, as we discussed.  2.
+> > > Due to original extent overflowing out of goal extent.
+> > > 
+> > > I think the 3 step solution you proposed works well to counter 1 but not
+> > > 2, so we probably need some more logic on top of your solution to take
+> > > care of that.  I'll think some more on how to fix this but I think this
+> > > will be as a separate patch.
+> > 
+> > Well, my algorithm will still result in preallocation being within the goal
+> > range AFAICS. In the example above we had:
+> > 
+> > Orig 2045/2055 Goal 0/2048
+> > 
+> > Suppose we found 200 blocks. So we try placing preallocation like:
+> > 
+> > 1848/2048, it covers the original starting block 2045 so we are fine and
+> > create preallocation 1848/2048. Nothing has overflown the goal window...
+> 
+> Ahh okay, I though you meant checking if we covered the complete
+> original range instead of just the original start. In that case we
+> should be good.
+> 
+> However, I still feel that the example where we unnecessarily end up with 
+> a lesser goal len than original len should not happen. Maybe in
+> ext4_mb_normalize_request(), instead of hardcording the goal lengths for
+> different i_sizes, we can select the next power of 2 greater than our
+> original length or some similar heuristic. What do you think?
 
-When do fault injection test, got issue as follows:
-EXT4-fs (dm-5): warning: mounting fs with errors, running e2fsck is recommended
-EXT4-fs (dm-5): Errors on filesystem, clearing orphan list.
-EXT4-fs (dm-5): recovery complete
-EXT4-fs (dm-5): mounted filesystem with ordered data mode. Opts: data_err=abort,errors=remount-ro
+I agree that seems suboptimal but I'd leave tweaking this heuristic for a
+separate patchset. In this one I'd just fix the minimum to make ranges not
+overlap. The current heuristic makes sense as an anti-fragmentation measure
+when there's enough free space. We can tweak the goal window heuristic of
+mballoc but it would require some deeper thought and measurements, how it
+affects fragmentation for various workloads so it is not just about
+changing those several lines of code...
 
-EXT4-fs (dm-5): recovery complete
-EXT4-fs (dm-5): mounted filesystem with ordered data mode. Opts: data_err=abort,errors=remount-ro
-
-Without do file system check, file system is clean when do second mount.
-Theoretically, the kernel will not clear fs error flag. In errors=remount-ro
-mode the last super block is commit directly. So super block in journal is
-not uptodate. When do jounral recovery, the uptodate super block will be
-covered by jounral data. If super block submit all failed after recover
-journal, then file system error flag is lost. When do "fsck -a" couldn't
-repair file system deeply.
-To solve above issue we need to do extra handle when do super block journal
-recovery.
-
-
-Ye Bin (2):
-  ext4: commit super block if fs record error when journal record
-    without error
-  ext4: make sure fs error flag setted before clear journal error
-
- fs/ext4/super.c | 18 ++++++++++++++++--
- 1 file changed, 16 insertions(+), 2 deletions(-)
+								Honza
 
 -- 
-2.31.1
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
