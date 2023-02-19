@@ -2,45 +2,46 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EAEE7C6379F
-	for <linux-ext4@archiver.kernel.org>; Sun, 19 Feb 2023 05:41:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 63B66C05027
+	for <linux-ext4@archiver.kernel.org>; Sun, 19 Feb 2023 05:41:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229682AbjBSFlO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 19 Feb 2023 00:41:14 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32974 "EHLO
+        id S229703AbjBSFl2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 19 Feb 2023 00:41:28 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33384 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229677AbjBSFlN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Feb 2023 00:41:13 -0500
+        with ESMTP id S229667AbjBSFl1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Feb 2023 00:41:27 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EAD3D1350F
-        for <linux-ext4@vger.kernel.org>; Sat, 18 Feb 2023 21:41:08 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 69B0913D4C
+        for <linux-ext4@vger.kernel.org>; Sat, 18 Feb 2023 21:41:22 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 31J5evua024889
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 31J5evIg024876
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Sun, 19 Feb 2023 00:40:58 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1676785260; bh=FKWmy3Qx4/LRt9+DBIawgClF6sMZzztRBF/z65pju4Q=;
+        t=1676785260; bh=casH54JtW/otMH7sj7fBvGYiaTIafQTckJf0Umd3EPU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=W2UBaG+YDE+DFXCjggaqow+t9vrHwYiQwsCrgQnEKa0xWIAmhCIoBDI5phoT0yrrw
-         nauNCeDm8hIpo79CgdB2+bfOA2Zb9HnCPDUqUbeeNHsTfxVVSPmDUFSaURp6fkv2c2
-         sjEo5tkZXRcbseTr6Fl6/018h9LCvns146F3rjpLdGIjN9wWmbjI2jsXf4dQbCRusK
-         8/RkU5WuEZ/1K7bHy1lWIR9YvFLgOmkTouFWjlibI0PHTxK0yFAZx/JRKTJKfIAsuE
-         z3G+TouGAFgf9mLzNbrMlpt7q0d/Q9N4qlgeLYDbgs9NbDKRMcnP3rKbVNdNs7dFPh
-         uR5N6W8XUIYwQ==
+        b=QC5edBPTCn1iCizX0crRRvtxqyBvPyakApt/+J7ECVjEAh8kYC2LJvc9TFX6kMUIG
+         eQrA0UZ2V24OzuApaPmc0ElZkIvgGvg+FAmAVK68YJvjYKGl4apcsue/J/NBY5vAYi
+         36lsdflVuuvNamMlrF+BXD3K60eTbwDBN1IOIh4a/wodQ4fMKfZTsUfyVqLtffe1GM
+         rpfiYe2g52ak+TeH+wgyFD5oLaeVOIfdWe3qyA7gTzWzsXD4LxEecE8O3zdD1KlMz3
+         MPK1VvZBAuzPH6WFV4GLsh+gzPnWTYV8DOBtzQRwfqtRMSAESu5rB5PiisuXaXP3L+
+         ReKUI6nYEr5Zg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id CED0315C35AA; Sun, 19 Feb 2023 00:40:55 -0500 (EST)
+        id CB41915C35A8; Sun, 19 Feb 2023 00:40:55 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     adilger.kernel@dilger.ca, XU pengfei <xupengfei@nfschina.com>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 1/1] fs/ext4/inode.c: Remove unnecessary variable initialization
-Date:   Sun, 19 Feb 2023 00:40:50 -0500
-Message-Id: <167678522164.2723470.8999691512656829391.b4-ty@mit.edu>
+To:     linux-ext4@vger.kernel.org, Baokun Li <libaokun1@huawei.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, yukuai3@huawei.com, jack@suse.cz,
+        ritesh.list@gmail.com, adilger.kernel@dilger.ca,
+        yi.zhang@huawei.com, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2 0/2] ext4: fix possible null pointer dereference in ext4_get_group_info
+Date:   Sun, 19 Feb 2023 00:40:48 -0500
+Message-Id: <167678522171.2723470.10131660626461360692.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230104055229.3663-1-xupengfei@nfschina.com>
-References: <20230104055229.3663-1-xupengfei@nfschina.com>
+In-Reply-To: <20230107032126.4165860-1-libaokun1@huawei.com>
+References: <20230107032126.4165860-1-libaokun1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -48,15 +49,23 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, 4 Jan 2023 13:52:29 +0800, XU pengfei wrote:
-> Variables are assigned first and then used. Initialization is not required.
+On Sat, 7 Jan 2023 11:21:24 +0800, Baokun Li wrote:
+> V1->V2:
+> 	In PATCH 1/2, -EFSCORRUPTED instead of -ESTALE is returned for
+> 	special inode errors, and extra parentheses are removed.
 > 
+> Baokun Li (2):
+>   ext4: fail ext4_iget if special inode unallocated
+>   ext4: update s_journal_inum if it changes after journal replay
 > 
+> [...]
 
 Applied, thanks!
 
-[1/1] fs/ext4/inode.c: Remove unnecessary variable initialization
-      commit: 7fc51f923ea6b1c6f304789965414149eaedb358
+[1/2] ext4: fail ext4_iget if special inode unallocated
+      commit: 5cd740287ae5e3f9d1c46f5bfe8778972fd6d3fe
+[2/2] ext4: update s_journal_inum if it changes after journal replay
+      commit: 3039d8b8692408438a618fac2776b629852663c3
 
 Best regards,
 -- 
