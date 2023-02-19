@@ -2,46 +2,46 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 350C1C05027
-	for <linux-ext4@archiver.kernel.org>; Sun, 19 Feb 2023 05:42:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 30125C61DA4
+	for <linux-ext4@archiver.kernel.org>; Sun, 19 Feb 2023 05:42:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229739AbjBSFmD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 19 Feb 2023 00:42:03 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33644 "EHLO
+        id S229790AbjBSFmE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 19 Feb 2023 00:42:04 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34118 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229770AbjBSFlr (ORCPT
+        with ESMTP id S229710AbjBSFlr (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Feb 2023 00:41:47 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B319C14234
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B25DE1422A
         for <linux-ext4@vger.kernel.org>; Sat, 18 Feb 2023 21:41:31 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 31J5ewaN024899
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 31J5ewLe024911
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sun, 19 Feb 2023 00:40:58 -0500
+        Sun, 19 Feb 2023 00:40:59 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1676785260; bh=ZWg3MIgPYlHwhuQ3ZZvG1yz+8gII+IfK+0vIJYCSEfw=;
+        t=1676785260; bh=0TGHAhFG0IqAM3vRu3QgNblByxOEsyPLzsBdi7vUhP0=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=KCi4PUWExNS27jJjWC+hy7wqEfaH/5PY8Wd0rCJ0FNs3YmhqCKO4GLjx08tN/sSrC
-         ZDZSr4leZCXcYHUg1+ilizjpupuy4Q7dJYwutpigkXN1OenFqMeeQBgBqP2dMbbdSa
-         PXdWH+Yv4sUYhVhbkXIolCvENTsU2u4uSShX/xreGqvkf+ukux7tm9PCGMVmeFaw30
-         D+d/bzB1g5F2Cnnu14oVW7U+xAdOj2Q1/ai6C2/5nOBCwR8gjG/sXIGZGTCup/rIZa
-         T4w9y2Llhwj8o7sC0YzxILbuBQrzvRn8DGFhE+0ZKgxF/aY6+PK33YFLoG1S/G2GnN
-         qJv/ZoT9fyLQw==
+        b=Z2ORY/59g1STw3WBsm75G/AjvaHXulplYu9MKSpjPmN99+3fnTdERoZFhLEYelyYG
+         mz4S6pSKmsq2wuZy3uM0D1a3Xj+05+faCzQtTwYIOLMcAbupH52m8wmnyG1a2q6fOu
+         Q+w9VIgMRIaaZavKQh5E67gsMFq16JqY3J68Dr7EvEeM28vZzg2ypx8gIKmf2LXVXH
+         GttJ5nlQC1yfTwOBw53rwANn+fSPL4P9rz1qdgDNI1VGzA00YYwLvsfKsRfUq4gFDX
+         jrUD9wRme4uo9K/gYFSTzPD1UGSvaNKoGRetXxvMVbeX4Td+Q7YIh4c8+p9FXqktSx
+         10sUUEE3bK0YA==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id D267E15C35AD; Sun, 19 Feb 2023 00:40:55 -0500 (EST)
+        id D5B4E15C35AF; Sun, 19 Feb 2023 00:40:55 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org, Zhang Yi <yi.zhang@huaweicloud.com>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, harshadshirwadkar@gmail.com,
-        yukuai3@huawei.com, jack@suse.cz, adilger.kernel@dilger.ca,
-        yi.zhang@huawei.com
-Subject: Re: [PATCH] ext4: fix incorrect options show of original mount_opt and extend mount_opt2
-Date:   Sun, 19 Feb 2023 00:40:52 -0500
-Message-Id: <167678522175.2723470.947251130041541201.b4-ty@mit.edu>
+To:     jack@suse.com, zhanchengbin <zhanchengbin1@huawei.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        liuzhiqiang26@huawei.com, yebin10@huawei.com, yi.zhang@huawei.com,
+        linfeilong@huawei.com
+Subject: Re: [PATCH] ext4: fix inode tree inconsistency caused by ENOMEM
+Date:   Sun, 19 Feb 2023 00:40:54 -0500
+Message-Id: <167678522163.2723470.4254795729575378394.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230129034939.3702550-1-yi.zhang@huaweicloud.com>
-References: <20230129034939.3702550-1-yi.zhang@huaweicloud.com>
+In-Reply-To: <20230103022812.130603-1-zhanchengbin1@huawei.com>
+References: <20230103022812.130603-1-zhanchengbin1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -49,20 +49,20 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sun, 29 Jan 2023 11:49:39 +0800, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
-> 
-> Current _ext4_show_options() do not distinguish MOPT_2 flag, so it mixed
-> extend sbi->s_mount_opt2 options with sbi->s_mount_opt, it could lead to
-> show incorrect options, e.g. show fc_debug_force if we mount with
-> errors=continue mode and miss it if we set.
+On Tue, 3 Jan 2023 10:28:12 +0800, zhanchengbin wrote:
+> If ENOMEM fails when the extent is splitting, we need to restore the length
+> of the split extent.
+> In the ext4_split_extent_at function, only in ext4_ext_create_new_leaf will
+> it alloc memory and change the shape of the extent tree,even if an ENOMEM
+> is returned at this time, the extent tree is still self-consistent, Just
+> restore the split extent lens in the function ext4_split_extent_at.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: fix incorrect options show of original mount_opt and extend mount_opt2
-      commit: 2c2dec1e86cc43266e084a8782f91613d52eeddf
+[1/1] ext4: fix inode tree inconsistency caused by ENOMEM
+      commit: 3f5424790d4377839093b68c12b130077a4e4510
 
 Best regards,
 -- 
