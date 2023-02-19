@@ -2,47 +2,53 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B53FDC05027
-	for <linux-ext4@archiver.kernel.org>; Sun, 19 Feb 2023 05:41:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 48A99C61DA4
+	for <linux-ext4@archiver.kernel.org>; Sun, 19 Feb 2023 05:41:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229829AbjBSFlk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 19 Feb 2023 00:41:40 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33500 "EHLO
+        id S229801AbjBSFlv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 19 Feb 2023 00:41:51 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33896 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229770AbjBSFl3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Feb 2023 00:41:29 -0500
+        with ESMTP id S229819AbjBSFli (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Feb 2023 00:41:38 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8336713DDC
-        for <linux-ext4@vger.kernel.org>; Sat, 18 Feb 2023 21:41:27 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 18C2E13DF8
+        for <linux-ext4@vger.kernel.org>; Sat, 18 Feb 2023 21:41:30 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 31J5evMf024884
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 31J5evJY024869
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sun, 19 Feb 2023 00:40:58 -0500
+        Sun, 19 Feb 2023 00:40:59 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1676785260; bh=ZzRA0hmQMcS6crBq/PmHuyK/79Sdm4JNNsfHzdcLDok=;
+        t=1676785262; bh=L1BHkHi6T6qz27wZYhHErthtb81Jb5TkLhnb88KVfFc=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=pselJx+2ij/49hbVfWDGLAZSVr50hZf/jjKq94yDW2y2OW/UabWLJdIiyCEmeVFVf
-         xHXVb4weWyi1KKXq+qwBSKrMSYdA2IfpJyahJ8sEuudD4Ei1cAaILS9ohaTI0m0S+5
-         tE8ujhjU2DPGkI4mjSjKpxQPX3Q3zK3/ylQ1Jt3Q2c6NlFLUfaH4yZsog75sF4pRlr
-         ubQ0O0gFwsCGhWhZofBS7b/21mlqXl9ywtJs+4Y2emWj+R5hSRpFe2K20twiPfuFmp
-         neQ8aUgxwic3SVurC7WmR1Y1hsWuhQzT1vb03FaELEGA9BahF5sjZ9wm/GgYQoDkfb
-         FNmmVZmu3E6gQ==
+        b=W8q1MJILVWeW7U0Rr0HxqnkfP4cIr5QB0Q4dXqkSq+6YYZUmxY2nQnWQti4HUlQsv
+         ox3yih4VNlr/QeeFX39vnbJauYNwbFc5Xc37McUH/Lx+G+7tKKX9+Aey/JEgfyE9Cl
+         He+1J9s/GWZapxXm9YJUhcC8HqTFl096W3dR9svjlG2/o2s9PYQSexPiKfHHGrRq5/
+         oVAxgjJHFztjaPIMgwk4A3krlcTVoYAy/v5rJc2QG12FpH2mmMdKHu4j5OSr0z+x8W
+         1IzbgAMpNTEHiBQdYbKmVOjkKeaIfkRPgGxXX+UjwzpiT6FeGA4RJSFJyaosDOTF7C
+         JwVRQKmkeeLgQ==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id CD0D715C35A9; Sun, 19 Feb 2023 00:40:55 -0500 (EST)
+        id C977B15C35A7; Sun, 19 Feb 2023 00:40:55 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org, Baokun Li <libaokun1@huawei.com>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, yukuai3@huawei.com, jack@suse.cz,
-        syzbot+77d6fcc37bbb92f26048@syzkaller.appspotmail.com,
-        ritesh.list@gmail.com, adilger.kernel@dilger.ca,
-        yi.zhang@huawei.com, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] ext4: fix task hung in ext4_xattr_delete_inode
-Date:   Sun, 19 Feb 2023 00:40:49 -0500
-Message-Id: <167678522173.2723470.11858190476110112490.b4-ty@mit.edu>
+To:     Kees Cook <keescook@chromium.org>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        llvm@lists.linux.dev, Tom Rix <trix@redhat.com>,
+        linux-hardening@vger.kernel.org,
+        Nathan Chancellor <nathan@kernel.org>,
+        Eric Biggers <ebiggers@kernel.org>, stable@vger.kernel.org,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Riccardo Schirone <sirmy15@gmail.com>,
+        linux-kernel@vger.kernel.org,
+        "Gustavo A . R . Silva" <gustavoars@kernel.org>
+Subject: Re: [PATCH v2] ext4: Fix function prototype mismatch for ext4_feat_ktype
+Date:   Sun, 19 Feb 2023 00:40:47 -0500
+Message-Id: <167678522170.2723470.13730761644590168004.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230110133436.996350-1-libaokun1@huawei.com>
-References: <20230110133436.996350-1-libaokun1@huawei.com>
+In-Reply-To: <20230104210908.gonna.388-kees@kernel.org>
+References: <20230104210908.gonna.388-kees@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -50,55 +56,23 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, 10 Jan 2023 21:34:36 +0800, Baokun Li wrote:
-> Syzbot reported a hung task problem:
-> ==================================================================
-> INFO: task syz-executor232:5073 blocked for more than 143 seconds.
->       Not tainted 6.2.0-rc2-syzkaller-00024-g512dee0c00ad #0
-> "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-> task:syz-exec232 state:D stack:21024 pid:5073 ppid:5072 flags:0x00004004
-> Call Trace:
->  <TASK>
->  context_switch kernel/sched/core.c:5244 [inline]
->  __schedule+0x995/0xe20 kernel/sched/core.c:6555
->  schedule+0xcb/0x190 kernel/sched/core.c:6631
->  __wait_on_freeing_inode fs/inode.c:2196 [inline]
->  find_inode_fast+0x35a/0x4c0 fs/inode.c:950
->  iget_locked+0xb1/0x830 fs/inode.c:1273
->  __ext4_iget+0x22e/0x3ed0 fs/ext4/inode.c:4861
->  ext4_xattr_inode_iget+0x68/0x4e0 fs/ext4/xattr.c:389
->  ext4_xattr_inode_dec_ref_all+0x1a7/0xe50 fs/ext4/xattr.c:1148
->  ext4_xattr_delete_inode+0xb04/0xcd0 fs/ext4/xattr.c:2880
->  ext4_evict_inode+0xd7c/0x10b0 fs/ext4/inode.c:296
->  evict+0x2a4/0x620 fs/inode.c:664
->  ext4_orphan_cleanup+0xb60/0x1340 fs/ext4/orphan.c:474
->  __ext4_fill_super fs/ext4/super.c:5516 [inline]
->  ext4_fill_super+0x81cd/0x8700 fs/ext4/super.c:5644
->  get_tree_bdev+0x400/0x620 fs/super.c:1282
->  vfs_get_tree+0x88/0x270 fs/super.c:1489
->  do_new_mount+0x289/0xad0 fs/namespace.c:3145
->  do_mount fs/namespace.c:3488 [inline]
->  __do_sys_mount fs/namespace.c:3697 [inline]
->  __se_sys_mount+0x2d3/0x3c0 fs/namespace.c:3674
->  do_syscall_x64 arch/x86/entry/common.c:50 [inline]
->  do_syscall_64+0x3d/0xb0 arch/x86/entry/common.c:80
->  entry_SYSCALL_64_after_hwframe+0x63/0xcd
-> RIP: 0033:0x7fa5406fd5ea
-> RSP: 002b:00007ffc7232f968 EFLAGS: 00000202 ORIG_RAX: 00000000000000a5
-> RAX: ffffffffffffffda RBX: 0000000000000003 RCX: 00007fa5406fd5ea
-> RDX: 0000000020000440 RSI: 0000000020000000 RDI: 00007ffc7232f970
-> RBP: 00007ffc7232f970 R08: 00007ffc7232f9b0 R09: 0000000000000432
-> R10: 0000000000804a03 R11: 0000000000000202 R12: 0000000000000004
-> R13: 0000555556a7a2c0 R14: 00007ffc7232f9b0 R15: 0000000000000000
->  </TASK>
-> ==================================================================
+On Wed, 4 Jan 2023 13:09:12 -0800, Kees Cook wrote:
+> With clang's kernel control flow integrity (kCFI, CONFIG_CFI_CLANG),
+> indirect call targets are validated against the expected function
+> pointer prototype to make sure the call target is valid to help mitigate
+> ROP attacks. If they are not identical, there is a failure at run time,
+> which manifests as either a kernel panic or thread getting killed.
+> 
+> ext4_feat_ktype was setting the "release" handler to "kfree", which
+> doesn't have a matching function prototype. Add a simple wrapper
+> with the correct prototype.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: fix task hung in ext4_xattr_delete_inode
-      commit: 0f7bfd6f8164be32dbbdf36aa1e5d00485c53cd7
+[1/1] ext4: Fix function prototype mismatch for ext4_feat_ktype
+      commit: d99a55a94a0db8eda4a336a6f21730b844b8d2d2
 
 Best regards,
 -- 
