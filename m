@@ -2,96 +2,86 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DD964C64EC7
-	for <linux-ext4@archiver.kernel.org>; Tue, 21 Feb 2023 03:57:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F3381C636D7
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Feb 2023 03:57:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233529AbjBUD5s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 20 Feb 2023 22:57:48 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54804 "EHLO
+        id S232966AbjBUD5t (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 20 Feb 2023 22:57:49 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54806 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232692AbjBUD5n (ORCPT
+        with ESMTP id S233147AbjBUD5n (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Feb 2023 22:57:43 -0500
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E3EED24CA3;
-        Mon, 20 Feb 2023 19:57:38 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0491C24CAC;
+        Mon, 20 Feb 2023 19:57:39 -0800 (PST)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4PLQV52Yqfz4f3wDH;
+        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4PLQV56rBbz4f3tDj;
         Tue, 21 Feb 2023 11:57:33 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP2 (Coremail) with SMTP id Syh0CgC3q+ktQfRj8VfgDw--.30652S4;
-        Tue, 21 Feb 2023 11:57:35 +0800 (CST)
+        by APP2 (Coremail) with SMTP id Syh0CgC3q+ktQfRj8VfgDw--.30652S6;
+        Tue, 21 Feb 2023 11:57:36 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
         shikemeng@huaweicloud.com
-Subject: [PATCH 2/7] ext4: correct validation check of inode table in ext4_valid_block_bitmap
-Date:   Tue, 21 Feb 2023 19:59:14 +0800
-Message-Id: <20230221115919.1918161-3-shikemeng@huaweicloud.com>
+Subject: [PATCH 4/7] ext4: remove unnecessary check in ext4_bg_num_gdb_nometa
+Date:   Tue, 21 Feb 2023 19:59:16 +0800
+Message-Id: <20230221115919.1918161-5-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230221115919.1918161-1-shikemeng@huaweicloud.com>
 References: <20230221115919.1918161-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: Syh0CgC3q+ktQfRj8VfgDw--.30652S4
-X-Coremail-Antispam: 1UD129KBjvJXoW7CF48Xw48WF17XF13Zr17trb_yoW8XF48p3
-        98JF4jqr43Ar1DZw4ftF9Yqw1fGw1vgw47Grn3Wr13GrW2ga4SyF90kryag3WftFWDAry0
-        v3sYv3y7Zw1rua7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUBE14x267AKxVW5JVWrJwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
-        0E87I2jVAFwI0_Jryl82xGYIkIc2x26xkF7I0E14v26r1I6r4UM28lY4IEw2IIxxk0rwA2
-        F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjx
-        v20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2
-        z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0V
-        AKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1l
-        Ox8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErc
-        IFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v2
-        6r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2
-        Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_
-        Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMI
-        IF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0pRcBMtUUUUU
-        =
+X-CM-TRANSID: Syh0CgC3q+ktQfRj8VfgDw--.30652S6
+X-Coremail-Antispam: 1UD129KBjvdXoWrZrWUWr4xJF18KrykJFW5ZFb_yoWfArc_Ka
+        y7XF1xua43Xw1fKa4xKws5K347Kr4vyr45XFn3try3ua48tayxA34DArs3ZayDuF47ArZ5
+        Za4xu347tw4IqjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUbgkYFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
+        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl82
+        xGYIkIc2x26280x7IE14v26r126s0DM28IrcIa0xkI8VCY1x0267AKxVW8JVW5JwA2ocxC
+        64kIII0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM2
+        8EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq
+        3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8w
+        Aqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE
+        14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II
+        8E6IAqYI8I648v4I1l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2Iq
+        xVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r
+        126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY
+        6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67
+        AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuY
+        vjTRQIDrUUUUU
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-1.Last valid cluster of inode table is EXT4_B2C(sbi, offset +
-sbi->s_itb_per_group - 1). We should make sure last valid cluster is <
-max_bit, i.e., EXT4_B2C(sbi, offset + sbi->s_itb_per_group - 1) is <
-max_bit rather than EXT4_B2C(sbi, offset + sbi->s_itb_per_group) is
-< max_bit.
-
-2.Bit search length should be last valid cluster plus 1, i.e.,
-EXT4_B2C(sbi, offset + sbi->s_itb_per_group - 1) + 1 rather than
-EXT4_B2C(sbi, offset + sbi->s_itb_per_group).
+We only call ext4_bg_num_gdb_nometa if there is no meta_bg feature or group
+does not reach first_meta_bg, so group must not reside in meta group. Then
+group has a global gdt if superblock exists. Just remove confusing branch
+that meta_bg feature exists.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 ---
- fs/ext4/balloc.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/ext4/balloc.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
 
 diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 10cab743e313..22be5cd70505 100644
+index 9b8a32b90ddc..08f1692f7d2f 100644
 --- a/fs/ext4/balloc.c
 +++ b/fs/ext4/balloc.c
-@@ -350,13 +350,13 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
- 	blk = ext4_inode_table(sb, desc);
- 	offset = blk - group_first_block;
- 	if (offset < 0 || EXT4_B2C(sbi, offset) >= max_bit ||
--	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group) >= max_bit)
-+	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group - 1) >= max_bit)
- 		return blk;
- 	next_zero_bit = ext4_find_next_zero_bit(bh->b_data,
--			EXT4_B2C(sbi, offset + sbi->s_itb_per_group),
-+			EXT4_B2C(sbi, offset + sbi->s_itb_per_group - 1) + 1,
- 			EXT4_B2C(sbi, offset));
- 	if (next_zero_bit <
--	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group))
-+	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group - 1) + 1)
- 		/* bad bitmap for inode tables */
- 		return blk;
- 	return 0;
+@@ -844,10 +844,7 @@ static unsigned long ext4_bg_num_gdb_nometa(struct super_block *sb,
+ 	if (!ext4_bg_has_super(sb, group))
+ 		return 0;
+ 
+-	if (ext4_has_feature_meta_bg(sb))
+-		return le32_to_cpu(EXT4_SB(sb)->s_es->s_first_meta_bg);
+-	else
+-		return EXT4_SB(sb)->s_gdb_count;
++	return EXT4_SB(sb)->s_gdb_count;
+ }
+ 
+ /**
 -- 
 2.30.0
 
