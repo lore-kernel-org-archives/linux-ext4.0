@@ -2,82 +2,96 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 17684C64ED9
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DD964C64EC7
 	for <linux-ext4@archiver.kernel.org>; Tue, 21 Feb 2023 03:57:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233524AbjBUD5r (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 20 Feb 2023 22:57:47 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54814 "EHLO
+        id S233529AbjBUD5s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 20 Feb 2023 22:57:48 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54804 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233250AbjBUD5n (ORCPT
+        with ESMTP id S232692AbjBUD5n (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Feb 2023 22:57:43 -0500
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8291024CB9;
-        Mon, 20 Feb 2023 19:57:39 -0800 (PST)
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E3EED24CA3;
+        Mon, 20 Feb 2023 19:57:38 -0800 (PST)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PLQV64wg2z4f3jZM;
-        Tue, 21 Feb 2023 11:57:34 +0800 (CST)
+        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4PLQV52Yqfz4f3wDH;
+        Tue, 21 Feb 2023 11:57:33 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP2 (Coremail) with SMTP id Syh0CgC3q+ktQfRj8VfgDw--.30652S8;
-        Tue, 21 Feb 2023 11:57:36 +0800 (CST)
+        by APP2 (Coremail) with SMTP id Syh0CgC3q+ktQfRj8VfgDw--.30652S4;
+        Tue, 21 Feb 2023 11:57:35 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
         shikemeng@huaweicloud.com
-Subject: [PATCH 6/7] ext4: stop trying to verify just initialized bitmap in ext4_read_block_bitmap_nowait
-Date:   Tue, 21 Feb 2023 19:59:18 +0800
-Message-Id: <20230221115919.1918161-7-shikemeng@huaweicloud.com>
+Subject: [PATCH 2/7] ext4: correct validation check of inode table in ext4_valid_block_bitmap
+Date:   Tue, 21 Feb 2023 19:59:14 +0800
+Message-Id: <20230221115919.1918161-3-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230221115919.1918161-1-shikemeng@huaweicloud.com>
 References: <20230221115919.1918161-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: Syh0CgC3q+ktQfRj8VfgDw--.30652S8
-X-Coremail-Antispam: 1UD129KBjvdXoWrury8ZrW7KrW7KFWfCF48WFg_yoW3WFXEga
-        srZw1kW3y3Jw1Sk3Wvva90qr4ktF4rJr48WFWaqFyfuF1UK3WfZa1vyw1fuFZxuFy7Aa4D
-        AFyYqry7JaySgjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-        9fnUUIcSsGvfJTRUUUbDkFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
-        6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M28IrcIa0xkI8V
-        A2jI8067AKxVWUAVCq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJ
-        M28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2I
-        x0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK
-        6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4
-        xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8
-        JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20V
-        AGYxC7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAF
-        wI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc4
-        0Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1I6r4UMIIF0xvE2Ix0cI8IcVCY1x0267AK
-        xVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr
-        1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7sRiVbyDUU
-        UUU==
+X-CM-TRANSID: Syh0CgC3q+ktQfRj8VfgDw--.30652S4
+X-Coremail-Antispam: 1UD129KBjvJXoW7CF48Xw48WF17XF13Zr17trb_yoW8XF48p3
+        98JF4jqr43Ar1DZw4ftF9Yqw1fGw1vgw47Grn3Wr13GrW2ga4SyF90kryag3WftFWDAry0
+        v3sYv3y7Zw1rua7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUBE14x267AKxVW5JVWrJwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
+        0E87I2jVAFwI0_Jryl82xGYIkIc2x26xkF7I0E14v26r1I6r4UM28lY4IEw2IIxxk0rwA2
+        F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjx
+        v20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2
+        z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0V
+        AKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1l
+        Ox8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErc
+        IFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v2
+        6r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2
+        Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_
+        Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMI
+        IF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0pRcBMtUUUUU
+        =
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-For case we initialize a bitmap bh, we will set bitmap bh verified.
-We can return immediately instead of goto verify to remove unnecessary
-work for trying to verify bitmap bh.
+1.Last valid cluster of inode table is EXT4_B2C(sbi, offset +
+sbi->s_itb_per_group - 1). We should make sure last valid cluster is <
+max_bit, i.e., EXT4_B2C(sbi, offset + sbi->s_itb_per_group - 1) is <
+max_bit rather than EXT4_B2C(sbi, offset + sbi->s_itb_per_group) is
+< max_bit.
+
+2.Bit search length should be last valid cluster plus 1, i.e.,
+EXT4_B2C(sbi, offset + sbi->s_itb_per_group - 1) + 1 rather than
+EXT4_B2C(sbi, offset + sbi->s_itb_per_group).
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 ---
- fs/ext4/balloc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/balloc.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 4de06d68e9e7..dab46274d591 100644
+index 10cab743e313..22be5cd70505 100644
 --- a/fs/ext4/balloc.c
 +++ b/fs/ext4/balloc.c
-@@ -484,7 +484,7 @@ ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group,
- 		set_buffer_verified(bh);
- 		ext4_unlock_group(sb, block_group);
- 		unlock_buffer(bh);
--		goto verify;
-+		return bh;
- 	}
- 	ext4_unlock_group(sb, block_group);
- 	if (buffer_uptodate(bh)) {
+@@ -350,13 +350,13 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
+ 	blk = ext4_inode_table(sb, desc);
+ 	offset = blk - group_first_block;
+ 	if (offset < 0 || EXT4_B2C(sbi, offset) >= max_bit ||
+-	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group) >= max_bit)
++	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group - 1) >= max_bit)
+ 		return blk;
+ 	next_zero_bit = ext4_find_next_zero_bit(bh->b_data,
+-			EXT4_B2C(sbi, offset + sbi->s_itb_per_group),
++			EXT4_B2C(sbi, offset + sbi->s_itb_per_group - 1) + 1,
+ 			EXT4_B2C(sbi, offset));
+ 	if (next_zero_bit <
+-	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group))
++	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group - 1) + 1)
+ 		/* bad bitmap for inode tables */
+ 		return blk;
+ 	return 0;
 -- 
 2.30.0
 
