@@ -2,236 +2,177 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CD804C636D6
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Feb 2023 13:12:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3540EC61DA4
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Feb 2023 15:14:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232197AbjBVNMf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 22 Feb 2023 08:12:35 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33372 "EHLO
+        id S232329AbjBVPOO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 22 Feb 2023 10:14:14 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32938 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229561AbjBVNM1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Feb 2023 08:12:27 -0500
-Received: from mail-lj1-x234.google.com (mail-lj1-x234.google.com [IPv6:2a00:1450:4864:20::234])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 82FD33B0CE
-        for <linux-ext4@vger.kernel.org>; Wed, 22 Feb 2023 05:12:24 -0800 (PST)
-Received: by mail-lj1-x234.google.com with SMTP id a30so7844743ljr.0
-        for <linux-ext4@vger.kernel.org>; Wed, 22 Feb 2023 05:12:24 -0800 (PST)
+        with ESMTP id S231653AbjBVPON (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Feb 2023 10:14:13 -0500
+Received: from mail-wm1-x32c.google.com (mail-wm1-x32c.google.com [IPv6:2a00:1450:4864:20::32c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DDD5125E34;
+        Wed, 22 Feb 2023 07:14:02 -0800 (PST)
+Received: by mail-wm1-x32c.google.com with SMTP id l2-20020a05600c1d0200b003e1f6dff952so6596617wms.1;
+        Wed, 22 Feb 2023 07:14:02 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linaro.org; s=google;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=oK0AQMNR90IXprBf0YC2HUcZwjPfMUnLVMauRW7h31s=;
-        b=Amwg5UumUVioyg9RHsXp9Ky0ggwyvXUUex/yDlVHBYVKK4ZzERhOMjLnqmQDrXGUCJ
-         AbDIrSuzxaB3L7YvGRen5J6uCTScsXQd4WQEBgxqFEE3RydANniKu3lvVYfZ2DHXdjZo
-         y2yKTlu40cJm+MOTI/0E6PBOVFIA5ovuEeNOgCT3fpZgLSzYL9FzJEfOYgB0kHmPa+O1
-         iVTVWiD1ZixelS8sz2qvOsGdUZU/ocr/hQFEA4Bp98cWzlkSHUGF6XOe3xIUQRq1m/58
-         W6qPLP3vfy8qm7PdMa4z5S7i7pjCHXG1RMXjhpmI1upU1fNPpjpHXsrkDkhKAfFkf7lo
-         G83Q==
+        d=gmail.com; s=20210112;
+        h=in-reply-to:content-disposition:mime-version:message-id:subject:cc
+         :to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=HkaxeYhyJCWKI+iCl7pvg7H2rt01JeowCIL7n4FAO0Q=;
+        b=AguK+BWlwz3zrXlQyvM2aiRghQwbl5dyMcNVkMjmecRjnOHdoL/QIXr8OoqFTLfalY
+         1VYfvve8fefZrlGO0rouPRQvXyLe6W/NjA0tw+n4/mzrLrm5lNfBj6x2ar8wQ+A3OMHH
+         XOcSNMryFp336zqTbVWuFoGBX6DzK93mkUmUW37CUiVLbYP7uyAdo+03E/J6bblXQECk
+         oH4E/x7eDThJkimkOtww0d6EpQcxg/MiBxVq2hxMB1/M1hO3pRctDinIuYPlIuskNPTd
+         cNZdX5Y75u+w+UfexlvZv64fxvshX4zwFliJWpxXVmRaqgC0wQD++h7g7TMJvPw8UbUk
+         EPfA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=oK0AQMNR90IXprBf0YC2HUcZwjPfMUnLVMauRW7h31s=;
-        b=QmBNIa0nWl+lKarc0U/EYES7qjV+hkw4XIlHu+ZPEbdd99cW0OYmiJSVNoRvwdsAAE
-         xYFuVcDA8eZAm5wJHgSyApe3yXLDv/4EZyuETrxB4y5vB7z+QhDKDTd/cT3Xm1cyo3xa
-         /rubyYWTZa0PqSixTyVvEG0y3WvQsnl7Tin6PeNiXo99nveciU5NR9Ut8hMFJiR6v/1z
-         9Mg8oLXdUWFQ62CQF7uEtojPgeG9R8bRd7LWbR3/hula4MjKMQDwcvO7BhCFWWzdzfsx
-         8JO5nt56Rg0yTyYPnpkIUhxrfruE69ZT/DYlIycM0yGNSjxlg8lWep91x0IhQ2kHmvoH
-         2/7g==
-X-Gm-Message-State: AO0yUKV1i6jRSGVODswXrnCalSslP69B5T3XMu/7KL4sG5TmdbDO+Dqh
-        ufBJMrXn/Rd46YgtSBEvBu2UXd7qIX62KCJALzo=
-X-Google-Smtp-Source: AK7set9OguqdOHMphOq4bnKYWrOa0Li5fPVk1pMp9Hh9cW11sCJuRx0sM4JdGGb/FK+Qd77scgs/0w==
-X-Received: by 2002:a2e:b8c4:0:b0:290:6e13:7674 with SMTP id s4-20020a2eb8c4000000b002906e137674mr4521593ljp.31.1677071542753;
-        Wed, 22 Feb 2023 05:12:22 -0800 (PST)
-Received: from ta1.c.googlers.com.com (138.58.228.35.bc.googleusercontent.com. [35.228.58.138])
-        by smtp.gmail.com with ESMTPSA id y25-20020a2e7d19000000b0029335c12997sm564383ljc.58.2023.02.22.05.12.22
+        h=in-reply-to:content-disposition:mime-version:message-id:subject:cc
+         :to:from:date:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=HkaxeYhyJCWKI+iCl7pvg7H2rt01JeowCIL7n4FAO0Q=;
+        b=GFL+d6J2tQGM6K036nrKc9i25EiGumTKgxkIe1A+LAxipP4u1LS5apgL6VB2QX6WGZ
+         p0E3gkGMpiX3aWco4Ucd4GXD7X1ETl28O2cqRNriIyrKDjY64mGdDG5QJLKQacBJStk+
+         5dPbpNv8j4rv0XmziFPEwJNj3ScvAOhfzoNLVUN2iPXoV8t9+K/eNdFr8NtyYJxyLDSp
+         U85qAIb2baArLr5N6EEKfHMi42kZjZ49ihm+zXx6Qm4+98yN6CGXjHOVztv5mXPTfANr
+         3tzhFAG7MWukp1ekx5she9PScjvNBEGiM8bC7D7CseE2Ky1phLbmttyNIzfFfJoAKGbq
+         KZ4g==
+X-Gm-Message-State: AO0yUKWeTurtx4zBBFWj1i/gI5e69W9iXLiWlqh1fDarGZ9HIoy0Aj8G
+        ooGBCFd8YN1Z6HRn9qrrD7o=
+X-Google-Smtp-Source: AK7set+ltF+ZntzbSmcyHqL7HMnw2q2Vf54UvAMiQB932c0IKSyLIFdRxk3wK9yrEfB8UMHAmDWDaQ==
+X-Received: by 2002:a05:600c:755:b0:3dc:59ee:7978 with SMTP id j21-20020a05600c075500b003dc59ee7978mr6944055wmn.38.1677078841354;
+        Wed, 22 Feb 2023 07:14:01 -0800 (PST)
+Received: from localhost ([102.36.222.112])
+        by smtp.gmail.com with ESMTPSA id j7-20020a05600c42c700b003db012d49b7sm2630173wme.2.2023.02.22.07.13.58
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 22 Feb 2023 05:12:22 -0800 (PST)
-From:   Tudor Ambarus <tudor.ambarus@linaro.org>
-To:     tytso@mit.edu, darrick.wong@oracle.com, djwong@kernel.org,
-        adilger.kernel@dilger.ca
-Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        joneslee@google.com, Tudor Ambarus <tudor.ambarus@linaro.org>
-Subject: [PATCH 2/3] ext4: fsmap: Consolidate fsmap_head checks
-Date:   Wed, 22 Feb 2023 13:12:10 +0000
-Message-Id: <20230222131211.3898066-3-tudor.ambarus@linaro.org>
-X-Mailer: git-send-email 2.39.2.637.g21b0678d19-goog
-In-Reply-To: <20230222131211.3898066-1-tudor.ambarus@linaro.org>
-References: <20230222131211.3898066-1-tudor.ambarus@linaro.org>
+        Wed, 22 Feb 2023 07:14:00 -0800 (PST)
+Date:   Wed, 22 Feb 2023 18:13:55 +0300
+From:   Dan Carpenter <error27@gmail.com>
+To:     oe-kbuild@lists.linux.dev, Kemeng Shi <shikemeng@huaweicloud.com>,
+        tytso@mit.edu, adilger.kernel@dilger.ca
+Cc:     lkp@intel.com, oe-kbuild-all@lists.linux.dev,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        shikemeng@huaweicloud.com
+Subject: Re: [PATCH 7/7] ext4: improve inode table blocks counting in
+ ext4_num_overhead_clusters
+Message-ID: <202302222219.u328sqfs-lkp@intel.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230221115919.1918161-8-shikemeng@huaweicloud.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Sanity checks should be done the soonest possible to avoid superfluous
-computations when user provides wrong data. Gather all the checks on
-user provided data in a single method and call it immediately after
-copying the data from user.
+Hi Kemeng,
 
-Signed-off-by: Tudor Ambarus <tudor.ambarus@linaro.org>
----
- fs/ext4/fsmap.c | 52 ++++++++++++++++++++++++++++++++++++-------------
- fs/ext4/fsmap.h |  3 +++
- fs/ext4/ioctl.c | 17 +++-------------
- 3 files changed, 44 insertions(+), 28 deletions(-)
+https://git-scm.com/docs/git-format-patch#_base_tree_information]
 
-diff --git a/fs/ext4/fsmap.c b/fs/ext4/fsmap.c
-index b5289378a761..a27d9f0967b7 100644
---- a/fs/ext4/fsmap.c
-+++ b/fs/ext4/fsmap.c
-@@ -9,6 +9,7 @@
- #include "fsmap.h"
- #include "mballoc.h"
- #include <linux/sort.h>
-+#include <linux/string.h>
- #include <linux/list_sort.h>
- #include <trace/events/ext4.h>
- 
-@@ -571,7 +572,7 @@ static int ext4_getfsmap_datadev(struct super_block *sb,
- 
- /* Do we recognize the device? */
- static bool ext4_getfsmap_is_valid_device(struct super_block *sb,
--					  struct ext4_fsmap *fm)
-+					  const struct fsmap *fm)
- {
- 	if (fm->fmr_device == 0 || fm->fmr_device == UINT_MAX ||
- 	    fm->fmr_device == new_encode_dev(sb->s_bdev->bd_dev))
-@@ -583,17 +584,19 @@ static bool ext4_getfsmap_is_valid_device(struct super_block *sb,
- }
- 
- /* Ensure that the low key is less than the high key. */
--static bool ext4_getfsmap_check_keys(struct ext4_fsmap *low_key,
--				     struct ext4_fsmap *high_key)
-+static bool ext4_getfsmap_check_keys(const struct fsmap *low_key,
-+				     const struct fsmap *high_key)
- {
-+	u64 l_fmr_phys = low_key->fmr_physical + low_key->fmr_length;
-+
- 	if (low_key->fmr_device > high_key->fmr_device)
- 		return false;
- 	if (low_key->fmr_device < high_key->fmr_device)
- 		return true;
- 
--	if (low_key->fmr_physical > high_key->fmr_physical)
-+	if (l_fmr_phys > high_key->fmr_physical)
- 		return false;
--	if (low_key->fmr_physical < high_key->fmr_physical)
-+	if (l_fmr_phys < high_key->fmr_physical)
- 		return true;
- 
- 	if (low_key->fmr_owner > high_key->fmr_owner)
-@@ -604,6 +607,36 @@ static bool ext4_getfsmap_check_keys(struct ext4_fsmap *low_key,
- 	return false;
- }
- 
-+int ext4_fsmap_check_head(struct super_block *sb,
-+			  const struct fsmap_head *head)
-+{
-+	const struct fsmap *l = &head->fmh_keys[0];
-+	const struct fsmap *h = &head->fmh_keys[1];
-+
-+	if (memchr_inv(head->fmh_reserved, 0, sizeof(head->fmh_reserved)) ||
-+	    memchr_inv(l->fmr_reserved, 0, sizeof(l->fmr_reserved)) ||
-+	    memchr_inv(h->fmr_reserved, 0, sizeof(h->fmr_reserved)))
-+		return -EINVAL;
-+	/*
-+	 * ext4 doesn't report file extents at all, so the only valid
-+	 * file offsets are the magic ones (all zeroes or all ones).
-+	 */
-+	if (l->fmr_offset || (h->fmr_offset != 0 && h->fmr_offset != -1ULL))
-+		return -EINVAL;
-+
-+	if (head->fmh_iflags & ~FMH_IF_VALID)
-+		return -EINVAL;
-+
-+	if (!ext4_getfsmap_is_valid_device(sb, l) ||
-+	    !ext4_getfsmap_is_valid_device(sb, h))
-+		return -EINVAL;
-+
-+	if (!ext4_getfsmap_check_keys(l, h))
-+		return -EINVAL;
-+
-+	return 0;
-+}
-+
- #define EXT4_GETFSMAP_DEVS	2
- /*
-  * Get filesystem's extents as described in head, and format for
-@@ -635,12 +668,6 @@ int ext4_getfsmap(struct super_block *sb, struct ext4_fsmap_head *head,
- 	int i;
- 	int error = 0;
- 
--	if (head->fmh_iflags & ~FMH_IF_VALID)
--		return -EINVAL;
--	if (!ext4_getfsmap_is_valid_device(sb, &head->fmh_keys[0]) ||
--	    !ext4_getfsmap_is_valid_device(sb, &head->fmh_keys[1]))
--		return -EINVAL;
--
- 	head->fmh_entries = 0;
- 
- 	/* Set up our device handlers. */
-@@ -673,9 +700,6 @@ int ext4_getfsmap(struct super_block *sb, struct ext4_fsmap_head *head,
- 	dkeys[0].fmr_length = 0;
- 	memset(&dkeys[1], 0xFF, sizeof(struct ext4_fsmap));
- 
--	if (!ext4_getfsmap_check_keys(dkeys, &head->fmh_keys[1]))
--		return -EINVAL;
--
- 	info.gfi_next_fsblk = head->fmh_keys[0].fmr_physical +
- 			  head->fmh_keys[0].fmr_length;
- 	info.gfi_formatter = formatter;
-diff --git a/fs/ext4/fsmap.h b/fs/ext4/fsmap.h
-index ac642be2302e..8325258def7b 100644
---- a/fs/ext4/fsmap.h
-+++ b/fs/ext4/fsmap.h
-@@ -8,6 +8,7 @@
- #define	__EXT4_FSMAP_H__
- 
- struct fsmap;
-+struct fsmap_head;
- 
- /* internal fsmap representation */
- struct ext4_fsmap {
-@@ -32,6 +33,8 @@ void ext4_fsmap_from_internal(struct super_block *sb, struct fsmap *dest,
- 		struct ext4_fsmap *src);
- void ext4_fsmap_to_internal(struct super_block *sb, struct ext4_fsmap *dest,
- 		struct fsmap *src);
-+int ext4_fsmap_check_head(struct super_block *sb,
-+			  const struct fsmap_head *head);
- 
- /* fsmap to userspace formatter - copy to user & advance pointer */
- typedef int (*ext4_fsmap_format_t)(struct ext4_fsmap *, void *);
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 8067ccda34e4..eb0ecb012e6a 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -874,20 +874,9 @@ static int ext4_ioc_getfsmap(struct super_block *sb,
- 
- 	if (copy_from_user(&head, arg, sizeof(struct fsmap_head)))
- 		return -EFAULT;
--	if (memchr_inv(head.fmh_reserved, 0, sizeof(head.fmh_reserved)) ||
--	    memchr_inv(head.fmh_keys[0].fmr_reserved, 0,
--		       sizeof(head.fmh_keys[0].fmr_reserved)) ||
--	    memchr_inv(head.fmh_keys[1].fmr_reserved, 0,
--		       sizeof(head.fmh_keys[1].fmr_reserved)))
--		return -EINVAL;
--	/*
--	 * ext4 doesn't report file extents at all, so the only valid
--	 * file offsets are the magic ones (all zeroes or all ones).
--	 */
--	if (head.fmh_keys[0].fmr_offset ||
--	    (head.fmh_keys[1].fmr_offset != 0 &&
--	     head.fmh_keys[1].fmr_offset != -1ULL))
--		return -EINVAL;
-+	error = ext4_fsmap_check_head(sb, &head);
-+	if (error)
-+		return error;
- 
- 	xhead.fmh_iflags = head.fmh_iflags;
- 	xhead.fmh_count = head.fmh_count;
+url:    https://github.com/intel-lab-lkp/linux/commits/Kemeng-Shi/ext4-properly-handle-error-of-ext4_init_block_bitmap-in-ext4_read_block_bitmap_nowait/20230221-115830
+base:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
+patch link:    https://lore.kernel.org/r/20230221115919.1918161-8-shikemeng%40huaweicloud.com
+patch subject: [PATCH 7/7] ext4: improve inode table blocks counting in ext4_num_overhead_clusters
+config: riscv-randconfig-m031-20230219 (https://download.01.org/0day-ci/archive/20230222/202302222219.u328sqfs-lkp@intel.com/config)
+compiler: riscv32-linux-gcc (GCC) 12.1.0
+
+If you fix the issue, kindly add following tag where applicable
+| Reported-by: kernel test robot <lkp@intel.com>
+| Reported-by: Dan Carpenter <error27@gmail.com>
+| Link: https://lore.kernel.org/r/202302222219.u328sqfs-lkp@intel.com/
+
+New smatch warnings:
+fs/ext4/balloc.c:153 ext4_num_overhead_clusters() error: uninitialized symbol 'block_cluster'.
+
+vim +/block_cluster +153 fs/ext4/balloc.c
+
+c197855ea14175 Stephen Hemminger 2014-05-12   87  static unsigned ext4_num_overhead_clusters(struct super_block *sb,
+e187c6588d6ef3 Theodore Ts'o     2009-02-06   88  					   ext4_group_t block_group,
+e187c6588d6ef3 Theodore Ts'o     2009-02-06   89  					   struct ext4_group_desc *gdp)
+0bf7e8379ce7e0 Jose R. Santos    2008-06-03   90  {
+2b59a2fd93873a Kemeng Shi        2023-02-21   91  	unsigned base_clusters, num_clusters;
+2b59a2fd93873a Kemeng Shi        2023-02-21   92  	int block_cluster, inode_cluster;
+2b59a2fd93873a Kemeng Shi        2023-02-21   93  	int itbl_cluster_start = -1, itbl_cluster_end = -1;
+d5b8f31007a937 Theodore Ts'o     2011-09-09   94  	ext4_fsblk_t start = ext4_group_first_block_no(sb, block_group);
+2b59a2fd93873a Kemeng Shi        2023-02-21   95  	ext4_fsblk_t end = start + EXT4_BLOCKS_PER_GROUP(sb) - 1;
+2b59a2fd93873a Kemeng Shi        2023-02-21   96  	ext4_fsblk_t itbl_blk_start, itbl_blk_end;
+0bf7e8379ce7e0 Jose R. Santos    2008-06-03   97  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+0bf7e8379ce7e0 Jose R. Santos    2008-06-03   98  
+d5b8f31007a937 Theodore Ts'o     2011-09-09   99  	/* This is the number of clusters used by the superblock,
+d5b8f31007a937 Theodore Ts'o     2011-09-09  100  	 * block group descriptors, and reserved block group
+d5b8f31007a937 Theodore Ts'o     2011-09-09  101  	 * descriptor blocks */
+2b59a2fd93873a Kemeng Shi        2023-02-21  102  	base_clusters = ext4_num_base_meta_clusters(sb, block_group);
+2b59a2fd93873a Kemeng Shi        2023-02-21  103  	num_clusters = base_clusters;
+2b59a2fd93873a Kemeng Shi        2023-02-21  104  
+2b59a2fd93873a Kemeng Shi        2023-02-21  105  	/*
+2b59a2fd93873a Kemeng Shi        2023-02-21  106  	 * Account and record inode table clusters if any cluster
+2b59a2fd93873a Kemeng Shi        2023-02-21  107  	 * is in the block group, or inode table cluster range is
+2b59a2fd93873a Kemeng Shi        2023-02-21  108  	 * [-1, -1] and won't overlap with block/inode bitmap cluster
+2b59a2fd93873a Kemeng Shi        2023-02-21  109  	 * accounted below.
+2b59a2fd93873a Kemeng Shi        2023-02-21  110  	 */
+2b59a2fd93873a Kemeng Shi        2023-02-21  111  	itbl_blk_start = ext4_inode_table(sb, gdp);
+2b59a2fd93873a Kemeng Shi        2023-02-21  112  	itbl_blk_end = itbl_blk_start + sbi->s_itb_per_group - 1;
+2b59a2fd93873a Kemeng Shi        2023-02-21  113  	if (itbl_blk_start <= end && itbl_blk_end >= start) {
+2b59a2fd93873a Kemeng Shi        2023-02-21  114  		itbl_blk_start = itbl_blk_start >= start ?
+2b59a2fd93873a Kemeng Shi        2023-02-21  115  			itbl_blk_start : start;
+2b59a2fd93873a Kemeng Shi        2023-02-21  116  		itbl_blk_end = itbl_blk_end <= end ?
+2b59a2fd93873a Kemeng Shi        2023-02-21  117  			itbl_blk_end : end;
+2b59a2fd93873a Kemeng Shi        2023-02-21  118  
+2b59a2fd93873a Kemeng Shi        2023-02-21  119  		itbl_cluster_start = EXT4_B2C(sbi, itbl_blk_start - start);
+2b59a2fd93873a Kemeng Shi        2023-02-21  120  		itbl_cluster_end = EXT4_B2C(sbi, itbl_blk_end - start);
+2b59a2fd93873a Kemeng Shi        2023-02-21  121  
+2b59a2fd93873a Kemeng Shi        2023-02-21  122  		num_clusters += itbl_cluster_end - itbl_cluster_start + 1;
+2b59a2fd93873a Kemeng Shi        2023-02-21  123  		/* check if border cluster is overlapped */
+2b59a2fd93873a Kemeng Shi        2023-02-21  124  		if (itbl_cluster_start == base_clusters - 1)
+2b59a2fd93873a Kemeng Shi        2023-02-21  125  			num_clusters--;
+2b59a2fd93873a Kemeng Shi        2023-02-21  126  	}
+0bf7e8379ce7e0 Jose R. Santos    2008-06-03  127  
+d5b8f31007a937 Theodore Ts'o     2011-09-09  128  	/*
+2b59a2fd93873a Kemeng Shi        2023-02-21  129  	 * For the allocation bitmaps, we first need to check to see
+2b59a2fd93873a Kemeng Shi        2023-02-21  130  	 * if the block is in the block group.  If it is, then check
+2b59a2fd93873a Kemeng Shi        2023-02-21  131  	 * to see if the cluster is already accounted for in the clusters
+2b59a2fd93873a Kemeng Shi        2023-02-21  132  	 * used for the base metadata cluster and inode tables cluster.
+d5b8f31007a937 Theodore Ts'o     2011-09-09  133  	 * Normally all of these blocks are contiguous, so the special
+d5b8f31007a937 Theodore Ts'o     2011-09-09  134  	 * case handling shouldn't be necessary except for *very*
+d5b8f31007a937 Theodore Ts'o     2011-09-09  135  	 * unusual file system layouts.
+d5b8f31007a937 Theodore Ts'o     2011-09-09  136  	 */
+d5b8f31007a937 Theodore Ts'o     2011-09-09  137  	if (ext4_block_in_group(sb, ext4_block_bitmap(sb, gdp), block_group)) {
+b0dd6b70f0fda1 Theodore Ts'o     2012-06-07  138  		block_cluster = EXT4_B2C(sbi,
+b0dd6b70f0fda1 Theodore Ts'o     2012-06-07  139  					 ext4_block_bitmap(sb, gdp) - start);
+2b59a2fd93873a Kemeng Shi        2023-02-21  140  		if (block_cluster >= base_clusters &&
+2b59a2fd93873a Kemeng Shi        2023-02-21  141  		    (block_cluster < itbl_cluster_start ||
+2b59a2fd93873a Kemeng Shi        2023-02-21  142  		    block_cluster > itbl_cluster_end))
+d5b8f31007a937 Theodore Ts'o     2011-09-09  143  			num_clusters++;
+d5b8f31007a937 Theodore Ts'o     2011-09-09  144  	}
+d5b8f31007a937 Theodore Ts'o     2011-09-09  145  
+d5b8f31007a937 Theodore Ts'o     2011-09-09  146  	if (ext4_block_in_group(sb, ext4_inode_bitmap(sb, gdp), block_group)) {
+
+These two conditions are exactly the same so I don't see why they can't
+be combined into one condition.  I have read the comment, but I guess I
+don't understand ext4 well enough to really understand it.
+
+d5b8f31007a937 Theodore Ts'o     2011-09-09  147  		inode_cluster = EXT4_B2C(sbi,
+b0dd6b70f0fda1 Theodore Ts'o     2012-06-07  148  					 ext4_inode_bitmap(sb, gdp) - start);
+2b59a2fd93873a Kemeng Shi        2023-02-21  149  		/*
+2b59a2fd93873a Kemeng Shi        2023-02-21  150  		 * Additional check if inode bitmap is in just accounted
+2b59a2fd93873a Kemeng Shi        2023-02-21  151  		 * block_cluster
+2b59a2fd93873a Kemeng Shi        2023-02-21  152  		 */
+2b59a2fd93873a Kemeng Shi        2023-02-21 @153  		if (inode_cluster != block_cluster &&
+
+So this seems like a false positive to me.  But the code is puzzling for
+a human or for a static checker.
+
+2b59a2fd93873a Kemeng Shi        2023-02-21  154  		    inode_cluster >= base_clusters &&
+2b59a2fd93873a Kemeng Shi        2023-02-21  155  		    (inode_cluster < itbl_cluster_start ||
+2b59a2fd93873a Kemeng Shi        2023-02-21  156  		    inode_cluster > itbl_cluster_end))
+d5b8f31007a937 Theodore Ts'o     2011-09-09  157  			num_clusters++;
+0bf7e8379ce7e0 Jose R. Santos    2008-06-03  158  	}
+d5b8f31007a937 Theodore Ts'o     2011-09-09  159  
+d5b8f31007a937 Theodore Ts'o     2011-09-09  160  	return num_clusters;
+0bf7e8379ce7e0 Jose R. Santos    2008-06-03  161  }
+
 -- 
-2.39.2.637.g21b0678d19-goog
+0-DAY CI Kernel Test Service
+https://github.com/intel/lkp-tests
 
