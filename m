@@ -2,41 +2,41 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E3B4C6FA8E
-	for <linux-ext4@archiver.kernel.org>; Tue, 28 Feb 2023 05:13:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E50AAC64ED6
+	for <linux-ext4@archiver.kernel.org>; Tue, 28 Feb 2023 05:13:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229880AbjB1FNi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 28 Feb 2023 00:13:38 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41706 "EHLO
+        id S229911AbjB1FNk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 28 Feb 2023 00:13:40 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41712 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229714AbjB1FNc (ORCPT
+        with ESMTP id S229727AbjB1FNc (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Feb 2023 00:13:32 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7B948BDD4
-        for <linux-ext4@vger.kernel.org>; Mon, 27 Feb 2023 21:13:30 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5C276C149
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Feb 2023 21:13:31 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 31S5DOLP002515
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 31S5DPox002546
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 28 Feb 2023 00:13:25 -0500
+        Tue, 28 Feb 2023 00:13:26 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1677561205; bh=6Pe4F/L+5ydLysNZG0f6vS8n/MIKOjxYdH+fmh8wGu4=;
+        t=1677561207; bh=1mFhtS5WcStUC2XoEd1vbLLcu9CGq0pjvMByAmu2nio=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=BYfZ7W7HvGEwb4Vn9B0y2jAYAL4s0OrkAO01R7XFFf8vJT44agReIU98lTp7sp64Q
-         JywPgH1rIKcKccamwUroSezw5nQA0rohCQK0civNA4hmKFrkp6spHTvSL/OwFH96bf
-         bclUN4NvlHDoXb+1O5Lg0Emx5xmkwx4KEZPCFPVtsLYx2mIT35DNt6JGKpQh+sN9Iu
-         YVMuxtCwBMbJrIkj3SXwpmU8ggQxeiI2U640AhEHrTcNv4UqzqewKgCgM9rJreVk1S
-         j+fFSaY0LbNDZV38LPM+ouAFVRxc0UYEebL5ziFZvvWGgHn5sJ8Q8K1zNKqJgGzgxd
-         SXlCksLgxTSAA==
+        b=jUYPHNEsBsh5UlN32QOi0eNyrtPq4glLJ0zhxiAw1E1qTri5YQDWWJHtS2YaHDd/B
+         HW12FHVmypYrLLcIpCNZ6MqqiHR5t9nODz6ZAUVdljJOzdvdWIfzlnD/TYs6CXa1/3
+         FOres4MvaqOf5o+bZ37SF0PGFYGeT8Hr6LXfbgRmX1M5wJfbuj7r9Op8RvG3aRTNCU
+         A3R7VoDSJn21dvxu9yuPYR/X95V+LmjFr6+XANXBo/NaWongYqXYqwuzVEvFCm+Yny
+         WpeHS+ZjVVD8iaOfdhzk5XAU6pt2Ewn5+eUF4wEZB/074+q4OUX9sRZZb5NusBJh0Q
+         HOoBe05Pz/yhg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 2C79315C5824; Tue, 28 Feb 2023 00:13:24 -0500 (EST)
+        id 3360115C5828; Tue, 28 Feb 2023 00:13:24 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
 To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc:     Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 1/7] ext4: Update stale comment about write constraints
-Date:   Tue, 28 Feb 2023 00:13:13 -0500
-Message-Id: <20230228051319.4085470-2-tytso@mit.edu>
+Subject: [PATCH 5/7] ext4: Move page unlocking out of mpage_submit_page()
+Date:   Tue, 28 Feb 2023 00:13:17 -0500
+Message-Id: <20230228051319.4085470-6-tytso@mit.edu>
 X-Mailer: git-send-email 2.31.0
 In-Reply-To: <20230228051319.4085470-1-tytso@mit.edu>
 References: <20230228051319.4085470-1-tytso@mit.edu>
@@ -48,67 +48,82 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Jan Kara <jack@suse.cz>
 
-The comment above do_journal_get_write_access() is very stale. Most of
-it just does not refer to what the function does today or how jbd2
-works. The bit about transaction handling during write(2) is still
-correct so just update the function names in that part and move the
-comment to a more appropriate place.
+Move page unlocking during page writeback out of mpage_submit_page()
+into the callers. This will allow writeback in data=journal mode to keep
+the page locked for a bit longer. Since page unlocking it tightly
+connected to increment of mpd->first_page (as that determines cleanup of
+locked but unwritten pages), move page unlocking as well as
+mpd->first_page handling into a helper function.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/inode.c | 31 +++++++------------------------
- 1 file changed, 7 insertions(+), 24 deletions(-)
+ fs/ext4/inode.c | 21 ++++++++++++---------
+ 1 file changed, 12 insertions(+), 9 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d251d705c276..178978484acc 100644
+index 27a11bed897e..a1fe5e3e7697 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1004,30 +1004,6 @@ int ext4_walk_page_buffers(handle_t *handle, struct inode *inode,
+@@ -2083,6 +2083,12 @@ static int ext4_writepage(struct page *page,
  	return ret;
  }
  
--/*
-- * To preserve ordering, it is essential that the hole instantiation and
-- * the data write be encapsulated in a single transaction.  We cannot
-- * close off a transaction and start a new one between the ext4_get_block()
-- * and the commit_write().  So doing the jbd2_journal_start at the start of
-- * prepare_write() is the right place.
-- *
-- * Also, this function can nest inside ext4_writepage().  In that case, we
-- * *know* that ext4_writepage() has generated enough buffer credits to do the
-- * whole page.  So we won't block on the journal in that case, which is good,
-- * because the caller may be PF_MEMALLOC.
-- *
-- * By accident, ext4 can be reentered when a transaction is open via
-- * quota file writes.  If we were to commit the transaction while thus
-- * reentered, there can be a deadlock - we would be holding a quota
-- * lock, and the commit would never complete if another thread had a
-- * transaction open and was blocking on the quota lock - a ranking
-- * violation.
-- *
-- * So what we do is to rely on the fact that jbd2_journal_stop/journal_start
-- * will _not_ run commit under these circumstances because handle->h_ref
-- * is elevated.  We'll still have enough credits for the tiny quotafile
-- * write.
-- */
- int do_journal_get_write_access(handle_t *handle, struct inode *inode,
- 				struct buffer_head *bh)
++static void mpage_page_done(struct mpage_da_data *mpd, struct page *page)
++{
++	mpd->first_page++;
++	unlock_page(page);
++}
++
+ static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
  {
-@@ -1149,6 +1125,13 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- }
- #endif
+ 	int len;
+@@ -2111,10 +2117,8 @@ static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
+ 	else
+ 		len = PAGE_SIZE;
+ 	err = ext4_bio_write_page(&mpd->io_submit, page, len);
+-	unlock_page(page);
+ 	if (!err)
+ 		mpd->wbc->nr_to_write--;
+-	mpd->first_page++;
  
-+/*
-+ * To preserve ordering, it is essential that the hole instantiation and
-+ * the data write be encapsulated in a single transaction.  We cannot
-+ * close off a transaction and start a new one between the ext4_get_block()
-+ * and the ext4_write_end().  So doing the jbd2_journal_start at the start of
-+ * ext4_write_begin() is the right place.
-+ */
- static int ext4_write_begin(struct file *file, struct address_space *mapping,
- 			    loff_t pos, unsigned len,
- 			    struct page **pagep, void **fsdata)
+ 	return err;
+ }
+@@ -2226,6 +2230,7 @@ static int mpage_process_page_bufs(struct mpage_da_data *mpd,
+ 	/* So far everything mapped? Submit the page for IO. */
+ 	if (mpd->map.m_len == 0) {
+ 		err = mpage_submit_page(mpd, head->b_page);
++		mpage_page_done(mpd, head->b_page);
+ 		if (err < 0)
+ 			return err;
+ 	}
+@@ -2357,6 +2362,7 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 				goto out;
+ 			/* Page fully mapped - let IO run! */
+ 			err = mpage_submit_page(mpd, page);
++			mpage_page_done(mpd, page);
+ 			if (err < 0)
+ 				goto out;
+ 		}
+@@ -2666,14 +2672,11 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 			 * modify metadata is simple. Just submit the page.
+ 			 */
+ 			if (!mpd->can_map) {
+-				if (ext4_page_nomap_can_writeout(&folio->page)) {
++				if (ext4_page_nomap_can_writeout(&folio->page))
+ 					err = mpage_submit_page(mpd, &folio->page);
+-					if (err < 0)
+-						goto out;
+-				} else {
+-					folio_unlock(folio);
+-					mpd->first_page += folio_nr_pages(folio);
+-				}
++				mpage_page_done(mpd, &folio->page);
++				if (err < 0)
++					goto out;
+ 			} else {
+ 				/* Add all dirty buffers to mpd */
+ 				lblk = ((ext4_lblk_t)folio->index) <<
 -- 
 2.31.0
 
