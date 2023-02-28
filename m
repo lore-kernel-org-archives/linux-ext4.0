@@ -2,41 +2,41 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AF9A6C64EC7
-	for <linux-ext4@archiver.kernel.org>; Tue, 28 Feb 2023 05:13:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FBBDC64ED6
+	for <linux-ext4@archiver.kernel.org>; Tue, 28 Feb 2023 05:13:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229825AbjB1FNf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 28 Feb 2023 00:13:35 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41690 "EHLO
+        id S229841AbjB1FNg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 28 Feb 2023 00:13:36 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41710 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229590AbjB1FNc (ORCPT
+        with ESMTP id S229691AbjB1FNc (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Feb 2023 00:13:32 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2E467BB88
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EB6ACC147
         for <linux-ext4@vger.kernel.org>; Mon, 27 Feb 2023 21:13:30 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 31S5DOFR002510
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 31S5DOrJ002520
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Tue, 28 Feb 2023 00:13:25 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1677561205; bh=KnEDW8ilSvhEPOI5cvRVr6i9vSF4QbI3Qm2OGrhLPGY=;
+        t=1677561206; bh=nLztm898n4WV8BJn4dMNe0MEMUwkb/2JGezxEYn6LlE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=JboRo5+bU7yEs9jGsUljE794ArB4aH/Dxwf1+OKHdvj0Ng9XbjeGsrc4FsKU7Y+nQ
-         GnZu0uIZDckmanhj/6yjntgJCZHRJJqHCmKtbtlObp6rMPTEKKRy2qnK1jrRE8bVUh
-         /l7WpDA9xtAJj7mwmtn5E/VJPWk6ZfV9ogbOxOyuZKXEVuXSit98iKukl4E3EGzT/C
-         GDqjzV+UAve2Nq52snbStReMWRwx1tu+Tmv9WfgdcOTv9TZPXvZdPO5kY5lj52PMNU
-         tCm1yV3Md5cijfpGvRsMZvcrkiATZE7OW0TGmCYM0fE6ZiNXSK8gaVh5gMBhZuIal/
-         iwL3BdND736PA==
+        b=BbBV6AUavANRH/Kn+zRLxIBC8TEQ0+mD3u5R/nFt2T41pHamTH8SxJXeQb2xDCbNp
+         e23aZIGL3skObrcGZA44ct+EV9AJVsGGhjNBG7i+SatYn1LSjf7G+IGCUI16F15BE8
+         nquTRe1ALne3+nbgDqq7QOrFg6F12HcAJzXF/o94fESfy2iE3WdJ794sbfoD99fQdB
+         VIoZsH+pHdN5UUGIc2i3cazw5kRFcm6a9lEloOuRRDTgGGn2vCGuNHEId95TSKUob5
+         f7A+y2lxtSWJYN1D8DEY4r/S8u4/pjet6wL4uKbRiFW2pVfYbL7onYlNEde28d+vE/
+         YkRHE2uGvLgKw==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 2DA1515C5825; Tue, 28 Feb 2023 00:13:24 -0500 (EST)
+        id 3168F15C5827; Tue, 28 Feb 2023 00:13:24 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
 To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc:     Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 2/7] ext4: Use nr_to_write directly in mpage_prepare_extent_to_map()
-Date:   Tue, 28 Feb 2023 00:13:14 -0500
-Message-Id: <20230228051319.4085470-3-tytso@mit.edu>
+Subject: [PATCH 4/7] ext4: Don't unlock page in ext4_bio_write_page()
+Date:   Tue, 28 Feb 2023 00:13:16 -0500
+Message-Id: <20230228051319.4085470-5-tytso@mit.edu>
 X-Mailer: git-send-email 2.31.0
 In-Reply-To: <20230228051319.4085470-1-tytso@mit.edu>
 References: <20230228051319.4085470-1-tytso@mit.edu>
@@ -48,49 +48,70 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Jan Kara <jack@suse.cz>
 
-When looking up extent of pages to map in mpage_prepare_extent_to_map()
-we count how many pages we still need to find in a copy of
-wbc->nr_to_write counter. With more complex page handling for
-data=journal mode, it will be easier to use wbc->nr_to_write directly so
-that we don't forget to carry over changes back to nr_to_write counter.
+Do not unlock the written page in ext4_bio_write_page(). Instead leave
+the page locked and unlock it in the callers. We'll need to keep the
+page locked for data=journal writeback for a bit longer.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/inode.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/ext4/inode.c   |  2 ++
+ fs/ext4/page-io.c | 10 +++++-----
+ 2 files changed, 7 insertions(+), 5 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 178978484acc..98dd50d7e72a 100644
+index 5c1d1b0bf5ee..27a11bed897e 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2580,7 +2580,6 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
- 	struct address_space *mapping = mpd->inode->i_mapping;
- 	struct folio_batch fbatch;
- 	unsigned int nr_folios;
--	long left = mpd->wbc->nr_to_write;
- 	pgoff_t index = mpd->first_page;
- 	pgoff_t end = mpd->last_page;
- 	xa_mark_t tag;
-@@ -2613,7 +2612,9 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
- 			 * newly appeared dirty pages, but have not synced all
- 			 * of the old dirty pages.
- 			 */
--			if (mpd->wbc->sync_mode == WB_SYNC_NONE && left <= 0)
-+			if (mpd->wbc->sync_mode == WB_SYNC_NONE &&
-+			    mpd->wbc->nr_to_write <=
-+			    mpd->map.m_len >> (PAGE_SHIFT - blkbits))
- 				goto out;
+@@ -2076,6 +2076,7 @@ static int ext4_writepage(struct page *page,
+ 		return -ENOMEM;
+ 	}
+ 	ret = ext4_bio_write_page(&io_submit, page, len);
++	unlock_page(page);
+ 	ext4_io_submit(&io_submit);
+ 	/* Drop io_end reference we got from init */
+ 	ext4_put_io_end_defer(io_submit.io_end);
+@@ -2110,6 +2111,7 @@ static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
+ 	else
+ 		len = PAGE_SIZE;
+ 	err = ext4_bio_write_page(&mpd->io_submit, page, len);
++	unlock_page(page);
+ 	if (!err)
+ 		mpd->wbc->nr_to_write--;
+ 	mpd->first_page++;
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index beaec6d81074..3bc7c7c5b99d 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -500,7 +500,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
  
- 			/* If we can't merge this page, we are done. */
-@@ -2682,7 +2683,6 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
- 					goto out;
- 				err = 0;
- 			}
--			left -= folio_nr_pages(folio);
+ 	/* Nothing to submit? Just unlock the page... */
+ 	if (!nr_to_submit)
+-		goto unlock;
++		return 0;
+ 
+ 	bh = head = page_buffers(page);
+ 
+@@ -548,7 +548,8 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 				}
+ 				bh = bh->b_this_page;
+ 			} while (bh != head);
+-			goto unlock;
++
++			return ret;
  		}
- 		folio_batch_release(&fbatch);
- 		cond_resched();
+ 	}
+ 
+@@ -564,7 +565,6 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 		io_submit_add_bh(io, inode,
+ 				 bounce_page ? bounce_page : page, bh);
+ 	} while ((bh = bh->b_this_page) != head);
+-unlock:
+-	unlock_page(page);
+-	return ret;
++
++	return 0;
+ }
 -- 
 2.31.0
 
