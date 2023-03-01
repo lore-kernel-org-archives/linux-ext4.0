@@ -2,113 +2,98 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 12FB6C64ED6
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Mar 2023 11:12:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 86858C64EC7
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Mar 2023 11:35:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229574AbjCALMz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 Mar 2023 06:12:55 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53118 "EHLO
+        id S230033AbjCALf5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 Mar 2023 06:35:57 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49220 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229608AbjCALMu (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Mar 2023 06:12:50 -0500
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 538D73B87C
-        for <linux-ext4@vger.kernel.org>; Wed,  1 Mar 2023 03:12:40 -0800 (PST)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 5A2131FE15;
-        Wed,  1 Mar 2023 11:12:39 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1677669159; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=hsiXxYWtWvmov5CXejO7JzhNMjMWT22ZYKaAedRDp78=;
-        b=nnMwbZFVp+ghXoe7JWa3lRjzgug00FO7DoelhcdC1yR6rTD0m2OOgw75D3fpvZ4BR0GkOI
-        poo435LF7oRwt4OhzgNqa0x32vshFEOe4uQ405rMhiVKk0B9zYeJZApi6cXzS+kLC2EvOH
-        //z9whqFVq/nXvdiByCP+WYYdi4w5nw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1677669159;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=hsiXxYWtWvmov5CXejO7JzhNMjMWT22ZYKaAedRDp78=;
-        b=8n6LwJtlIGONr2r/4rl4BbweiN3VpI8sfipDOD6BAwBlndr5w1sobDgIzbCAnqp2rgq/J0
-        EqDjNpsUH/K6w4Dw==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 4F4C313A3E;
-        Wed,  1 Mar 2023 11:12:39 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id CaFWEycz/2MERQAAMHmgww
-        (envelope-from <jack@suse.cz>); Wed, 01 Mar 2023 11:12:39 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id C97B8A06F3; Wed,  1 Mar 2023 12:12:38 +0100 (CET)
-From:   Jan Kara <jack@suse.cz>
-To:     <linux-ext4@vger.kernel.org>
-Cc:     Jan Kara <jack@suse.cz>,
-        syzbot+4fec412f59eba8c01b77@syzkaller.appspotmail.com
-Subject: [PATCH 2/2] ext2: Check block size validity during mount
-Date:   Wed,  1 Mar 2023 12:12:31 +0100
-Message-Id: <20230301111238.22856-2-jack@suse.cz>
-X-Mailer: git-send-email 2.35.3
-In-Reply-To: <20230301111026.15102-1-jack@suse.cz>
-References: <20230301111026.15102-1-jack@suse.cz>
+        with ESMTP id S229510AbjCALfz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Mar 2023 06:35:55 -0500
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7E0165FE5;
+        Wed,  1 Mar 2023 03:35:54 -0800 (PST)
+Received: from mail02.huawei.com (unknown [172.30.67.169])
+        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4PRXH92f8Vz4f3knR;
+        Wed,  1 Mar 2023 19:35:49 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.127.227])
+        by APP3 (Coremail) with SMTP id _Ch0CgDHcyGVOP9jOXabEA--.39702S4;
+        Wed, 01 Mar 2023 19:35:51 +0800 (CST)
+From:   Ye Bin <yebin@huaweicloud.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
+        Ye Bin <yebin10@huawei.com>
+Subject: [PATCH v4 0/2] fix error flag covered by journal recovery
+Date:   Wed,  1 Mar 2023 19:59:07 +0800
+Message-Id: <20230301115909.184772-1-yebin@huaweicloud.com>
+X-Mailer: git-send-email 2.31.1
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1532; i=jack@suse.cz; h=from:subject; bh=oQu+c6jEEuBIgghq0JkuMFE3JnwaE1eY7blemXFqnhI=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBj/zMezuaQvUQa1zHePk2bDsa/Y7fhO8OL9zygUhbm qJpIdCCJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY/8zHgAKCRCcnaoHP2RA2SLNB/ 0epaD7h8+nk42myWXoR6tIj4AyRh2ytGW3BpN28I4vIT4HFy5ZD7hWkmMaWc2xdyF2xQe3j2axJ0eU NyNSAOocRkf+8VbJgN8KpNlv86OU0jx8l3sdqymYFRJuffsfqwWjvOPI7lbnkXEiP79UkezABC9TrL IAn+W7yl8qOvJ97Ml195vfP7gqCnxG3ELq1RodgGJad+uypvTtw/WJlRZ0BgZqzcQq7v7DDBGZ7JW7 C8UCkaBcIX5jZx00shDBye/dOFXGHYnLwShLWMHg6ubuMEbS3omxvV2+LLbC6kc729+qNEutvqJ+qO La2qwmsYoN5pqcmkC548GRcoeUZoYR
-X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
+X-CM-TRANSID: _Ch0CgDHcyGVOP9jOXabEA--.39702S4
+X-Coremail-Antispam: 1UD129KBjvJXoW7WF47CFW8CF4DtFW7JrWfuFg_yoW8AF45pa
+        95ur98KrWvvF1IyFykJay7t3yDX3sxAFWrWF4Duw1Iyw15Gr1av3s7tF4a9FWUKr1Sgayj
+        qF18J34rKayDKFJanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUgCb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+        vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Xr0_Ar1l84ACjcxK6xIIjxv20xvEc7Cj
+        xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I
+        0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
+        x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
+        0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Y
+        z7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zV
+        AF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4l
+        IxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8VAvwI8IcIk0rVWrZr1j6s
+        0DMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Jr0_GrUvcSsG
+        vfC2KfnxnUUI43ZEXa7IU1zuWJUUUUU==
+X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Check that log of block size stored in the superblock has sensible
-value. Otherwise the shift computing the block size can overflow leading
-to undefined behavior.
+From: Ye Bin <yebin10@huawei.com>
 
-Reported-by: syzbot+4fec412f59eba8c01b77@syzkaller.appspotmail.com
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext2/ext2.h  | 1 +
- fs/ext2/super.c | 7 +++++++
- 2 files changed, 8 insertions(+)
+Diff v4 Vs v3:
+After journal replay recover 'es->s_state' error flag like recover error
+info.
 
-diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index 6c8e838bb278..8244366862e4 100644
---- a/fs/ext2/ext2.h
-+++ b/fs/ext2/ext2.h
-@@ -180,6 +180,7 @@ static inline struct ext2_sb_info *EXT2_SB(struct super_block *sb)
- #define EXT2_MIN_BLOCK_SIZE		1024
- #define	EXT2_MAX_BLOCK_SIZE		65536
- #define EXT2_MIN_BLOCK_LOG_SIZE		  10
-+#define EXT2_MAX_BLOCK_LOG_SIZE		  16
- #define EXT2_BLOCK_SIZE(s)		((s)->s_blocksize)
- #define	EXT2_ADDR_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (__u32))
- #define EXT2_BLOCK_SIZE_BITS(s)		((s)->s_blocksize_bits)
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 69c88facfe90..f342f347a695 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -945,6 +945,13 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
- 		goto failed_mount;
- 	}
- 
-+	if (le32_to_cpu(es->s_log_block_size) >
-+	    (EXT2_MAX_BLOCK_LOG_SIZE - BLOCK_SIZE_BITS)) {
-+		ext2_msg(sb, KERN_ERR,
-+			 "Invalid log block size: %u",
-+			 le32_to_cpu(es->s_log_block_size));
-+		goto failed_mount;
-+	}
- 	blocksize = BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
- 
- 	if (test_opt(sb, DAX)) {
+Diff v3 Vs v2:
+Only fix fs error flag lost when previous journal errno is not record
+in disk. As this may lead to drop orphan list, however fs not record
+error flag, then fsck will not repair deeply.
+
+Diff v2 vs v1:
+Move call 'j_replay_prepare_callback' and 'j_replay_end_callback' from
+ext4_load_journal() to jbd2_journal_recover().
+
+When do fault injection test, got issue as follows:
+EXT4-fs (dm-5): warning: mounting fs with errors, running e2fsck is recommended
+EXT4-fs (dm-5): Errors on filesystem, clearing orphan list.
+EXT4-fs (dm-5): recovery complete
+EXT4-fs (dm-5): mounted filesystem with ordered data mode. Opts: data_err=abort,errors=remount-ro
+
+EXT4-fs (dm-5): recovery complete
+EXT4-fs (dm-5): mounted filesystem with ordered data mode. Opts: data_err=abort,errors=remount-ro
+
+Without do file system check, file system is clean when do second mount.
+Theoretically, the kernel will not clear fs error flag. In errors=remount-ro
+mode the last super block is commit directly. So super block in journal is
+not uptodate. When do jounral recovery, the uptodate super block will be
+covered by jounral data. If super block submit all failed after recover
+journal, then file system error flag is lost. When do "fsck -a" couldn't
+repair file system deeply.
+To solve above issue we need to do extra handle when do super block journal
+recovery.
+
+Ye Bin (2):
+  ext4: commit super block if fs record error when journal record
+    without error
+  ext4: make sure fs error flag setted before clear journal error
+
+ fs/ext4/super.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
 -- 
-2.35.3
+2.31.1
 
