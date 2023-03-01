@@ -2,91 +2,122 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 11DC5C7EE2D
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Mar 2023 11:36:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2D220C64EC7
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Mar 2023 11:37:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229510AbjCALf7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 Mar 2023 06:35:59 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49230 "EHLO
+        id S229529AbjCALhZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 Mar 2023 06:37:25 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50600 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229529AbjCALf4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Mar 2023 06:35:56 -0500
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B7E322FCE5;
-        Wed,  1 Mar 2023 03:35:54 -0800 (PST)
-Received: from mail02.huawei.com (unknown [172.30.67.169])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PRXHB0sl3z4f3jYp;
-        Wed,  1 Mar 2023 19:35:50 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.127.227])
-        by APP3 (Coremail) with SMTP id _Ch0CgDHcyGVOP9jOXabEA--.39702S6;
-        Wed, 01 Mar 2023 19:35:52 +0800 (CST)
-From:   Ye Bin <yebin@huaweicloud.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
-        Ye Bin <yebin10@huawei.com>
-Subject: [PATCH v4 2/2] ext4: make sure fs error flag setted before clear journal error
-Date:   Wed,  1 Mar 2023 19:59:09 +0800
-Message-Id: <20230301115909.184772-3-yebin@huaweicloud.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20230301115909.184772-1-yebin@huaweicloud.com>
-References: <20230301115909.184772-1-yebin@huaweicloud.com>
+        with ESMTP id S229501AbjCALhY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Mar 2023 06:37:24 -0500
+Received: from mail-ed1-x532.google.com (mail-ed1-x532.google.com [IPv6:2a00:1450:4864:20::532])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5EF5B2FCE5
+        for <linux-ext4@vger.kernel.org>; Wed,  1 Mar 2023 03:37:23 -0800 (PST)
+Received: by mail-ed1-x532.google.com with SMTP id d30so52547961eda.4
+        for <linux-ext4@vger.kernel.org>; Wed, 01 Mar 2023 03:37:23 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linaro.org; s=google; t=1677670642;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=ILqP9JaynhHBwPJ20FgojHiwm2UE6OMpf0+hJUlUpUE=;
+        b=IRON5pELOnYTwC6medrpi0oj7p738+1pKaLtmbt54GdDIrNTndeF+R2wNBQhFwxH9X
+         kSXSsLQ665bfemVTSlnewc054ZPa+AXF5xID/boXXoyR0hwphO+pkm1lSZe1uQH1j2+U
+         e2nSpnDeUDrcYcDw7y7BAKLD9giqkqTSIIavMIjE8LsiMbo0OZa21ApfOX6LdwoUEoHp
+         khA8Y4d0kA1T3Pxwrc9GQ2x5FJBoli4PmWy1wcA2Iz56tpxHfmC1gTOKWakrq1utTFJ0
+         vqi2+xnhBBqy2BbMycTI6FTZdwqYE7koqZRBdGMV6hzSmt+DGGk196BApkhToRsde8/N
+         mzFQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112; t=1677670642;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=ILqP9JaynhHBwPJ20FgojHiwm2UE6OMpf0+hJUlUpUE=;
+        b=3HPXKI3dP5/UTTrP4+5g34jVjh6Mlm84k7V6EhAte457rUWKiwvfiQlSFJEtwPtdVa
+         6103nW1EtKcbbc2YMdEyV7/21AoNL87nOExXQ0KlaW7XH23l9aUfYNZ+ADWOWXyoMduM
+         zvJi1AjlQkj50jEKpYAe9Rx+WhStS7+bt60XNkd7oypQPq+5qWclkxIaFDH2I/sgNGc0
+         ggI8KYZq95AfGOWujQhmNvJJyv1KKtUgLV7Hsc9cMsVJtQsIRSMA8Kklccyli5x2dgq0
+         CAbXasYp+6AiZwsaL2urvV9xEmkqidHGeX50RBubR/wIL394e9PJQ4IayJFDLPZOHpkV
+         P/Dg==
+X-Gm-Message-State: AO0yUKUSi9nhMd9MCE6YC3NBXvhShTeubOQ2qqp3j6ag8dlk8OXW3X1F
+        1557sEU1XJAk89AwxaSy9I3f+3j9GIXZwAYaYP4=
+X-Google-Smtp-Source: AK7set+GlisWBkApY0lPbaSLVubH29AwZs/YD/vcXnU+9BwISblJe3y1JGzj1xVbVgHvFDN9kgA0QA==
+X-Received: by 2002:a17:906:68da:b0:8af:2fa1:5ae5 with SMTP id y26-20020a17090668da00b008af2fa15ae5mr5693036ejr.53.1677670641879;
+        Wed, 01 Mar 2023 03:37:21 -0800 (PST)
+Received: from [192.168.2.107] ([79.115.63.78])
+        by smtp.gmail.com with ESMTPSA id v13-20020a1709064e8d00b008e3bf17fb2asm5783415eju.19.2023.03.01.03.37.21
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 01 Mar 2023 03:37:21 -0800 (PST)
+Message-ID: <d2a5be55-4bcb-da7e-fae5-9cc598223b17@linaro.org>
+Date:   Wed, 1 Mar 2023 11:37:20 +0000
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: _Ch0CgDHcyGVOP9jOXabEA--.39702S6
-X-Coremail-Antispam: 1UD129KBjvdXoWrtryDXF13GrW7XryxXryrZwb_yoWkZrcEq3
-        yIyan5WrsxAw1xK3WrCan8WwnYvws2vr15X3ZayF15uryDXas5Ca4DWr93urn8urWrKrZ8
-        tF17ZF1fG3ykXjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-        9fnUUIcSsGvfJTRUUUbsAYFVCjjxCrM7AC8VAFwI0_Xr0_Wr1l1xkIjI8I6I8E6xAIw20E
-        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l82xGYIkIc2x26280x7IE14v26r15M2
-        8IrcIa0xkI8VCY1x0267AKxVW8JVW5JwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK
-        021l84ACjcxK6xIIjxv20xvE14v26ryj6F1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26F
-        4j6r4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0
-        oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7V
-        C0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j
-        6r4UM4x0Y48IcxkI7VAKI48JMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r
-        4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF
-        67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2I
-        x0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2
-        z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnU
-        UI43ZEXa7IU86wZ7UUUUU==
-X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
-X-CFilter-Loop: Reflected
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
+ Thunderbird/102.7.1
+Subject: Re: [PATCH 2/2] ext2: Check block size validity during mount
+Content-Language: en-US
+To:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+Cc:     syzbot+4fec412f59eba8c01b77@syzkaller.appspotmail.com
+References: <20230301111026.15102-1-jack@suse.cz>
+ <20230301111238.22856-2-jack@suse.cz>
+From:   Tudor Ambarus <tudor.ambarus@linaro.org>
+In-Reply-To: <20230301111238.22856-2-jack@suse.cz>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ye Bin <yebin10@huawei.com>
+Hi!
 
-Now, jounral error number maybe cleared even though ext4_commit_super()
-failed. This may lead to error flag miss, then fsck will miss to check
-file system deeply.
+On 3/1/23 11:12, Jan Kara wrote:
+> Check that log of block size stored in the superblock has sensible
+> value. Otherwise the shift computing the block size can overflow leading
+> to undefined behavior.
+> 
+> Reported-by: syzbot+4fec412f59eba8c01b77@syzkaller.appspotmail.com
 
-Signed-off-by: Ye Bin <yebin10@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/super.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+Would be helpful to also have:
+LINK: https://syzkaller.appspot.com/bug?extid=4fec412f59eba8c01b77
+a "Fixes:" tag and
+Cc: stable@vger.kernel.org
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 9df8fada2dce..7736c96d5a78 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -6152,11 +6152,13 @@ static int ext4_clear_journal_err(struct super_block *sb,
- 		errstr = ext4_decode_error(sb, j_errno, nbuf);
- 		ext4_warning(sb, "Filesystem error recorded "
- 			     "from previous mount: %s", errstr);
--		ext4_warning(sb, "Marking fs in need of filesystem check.");
- 
- 		EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
- 		es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
--		ext4_commit_super(sb);
-+		j_errno = ext4_commit_super(sb);
-+		if (j_errno)
-+			return j_errno;
-+		ext4_warning(sb, "Marked fs in need of filesystem check.");
- 
- 		jbd2_journal_clear_err(journal);
- 		jbd2_journal_update_sb_errno(journal);
--- 
-2.31.1
+Cheers,
+ta
 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>   fs/ext2/ext2.h  | 1 +
+>   fs/ext2/super.c | 7 +++++++
+>   2 files changed, 8 insertions(+)
+> 
+> diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+> index 6c8e838bb278..8244366862e4 100644
+> --- a/fs/ext2/ext2.h
+> +++ b/fs/ext2/ext2.h
+> @@ -180,6 +180,7 @@ static inline struct ext2_sb_info *EXT2_SB(struct super_block *sb)
+>   #define EXT2_MIN_BLOCK_SIZE		1024
+>   #define	EXT2_MAX_BLOCK_SIZE		65536
+>   #define EXT2_MIN_BLOCK_LOG_SIZE		  10
+> +#define EXT2_MAX_BLOCK_LOG_SIZE		  16
+>   #define EXT2_BLOCK_SIZE(s)		((s)->s_blocksize)
+>   #define	EXT2_ADDR_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (__u32))
+>   #define EXT2_BLOCK_SIZE_BITS(s)		((s)->s_blocksize_bits)
+> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+> index 69c88facfe90..f342f347a695 100644
+> --- a/fs/ext2/super.c
+> +++ b/fs/ext2/super.c
+> @@ -945,6 +945,13 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+>   		goto failed_mount;
+>   	}
+>   
+> +	if (le32_to_cpu(es->s_log_block_size) >
+> +	    (EXT2_MAX_BLOCK_LOG_SIZE - BLOCK_SIZE_BITS)) {
+> +		ext2_msg(sb, KERN_ERR,
+> +			 "Invalid log block size: %u",
+> +			 le32_to_cpu(es->s_log_block_size));
+> +		goto failed_mount;
+> +	}
+>   	blocksize = BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
+>   
+>   	if (test_opt(sb, DAX)) {
