@@ -2,73 +2,95 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 238EEC64ED6
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Mar 2023 10:08:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 85B24C64ED6
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Mar 2023 11:12:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230072AbjCAKIr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 Mar 2023 05:08:47 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57160 "EHLO
+        id S229564AbjCALMt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 Mar 2023 06:12:49 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53098 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229958AbjCAKIU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Mar 2023 05:08:20 -0500
-Received: from mail-il1-f197.google.com (mail-il1-f197.google.com [209.85.166.197])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 02B2D1C596
-        for <linux-ext4@vger.kernel.org>; Wed,  1 Mar 2023 02:08:20 -0800 (PST)
-Received: by mail-il1-f197.google.com with SMTP id b4-20020a92c844000000b00317983ace21so504875ilq.6
-        for <linux-ext4@vger.kernel.org>; Wed, 01 Mar 2023 02:08:19 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=to:from:subject:message-id:in-reply-to:date:mime-version
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=TTSQYNOg9OZQxBXRQdwYpLcJKsFubqAo72NPGlg9CpM=;
-        b=LQnDcvC3PhYUC0ic6qFSCWf3n8IEU81OMiwTB7ufNohPTXnhxzzA79XhVRRcJnMmSB
-         r5rEa44vn90sClcQlkV1sBhRVACVDyt+GP4Tp/pLCKsC1PzC7ZWR+EzN0DuhqQubVUm9
-         ekRT/wS9KLUX5TFtRXRfb9J1qUMv4evB9wRcENj/KGWOJtz7W9jEq3tB7uUIT9Bnu+Ob
-         RTqjKTHQaLu1Z1NH8wERzQXsbFafnfL+4v83qN0OhB/lE+QjEvaEplFq0guOlUgcDWuI
-         HuZGttedJzfoYSGXoq1uajKAPuSIEIry351+xuHlnNW0R7PahO7hdE5YEVaM+npLhV9I
-         ZIRA==
-X-Gm-Message-State: AO0yUKV+ZsI1sH//x3Xj0cQflotXqRFwKdVz/YMvsf+aCI68KnZjDs6d
-        ed/jIl/Y5w/1xnq5juO/ML5m65UZc8g2lj5NhU9nUO0Kt6Ib
-X-Google-Smtp-Source: AK7set+9+5X/rmiwzS5y9zd/polCDgC1mf5cojHMVCq+fi5kymlSfbpp3XXnKUbMuUR5F04OX2n/O6uA1Abba2gonsivBHeDDaEE
+        with ESMTP id S229537AbjCALMs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Mar 2023 06:12:48 -0500
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A8A2B3B860
+        for <linux-ext4@vger.kernel.org>; Wed,  1 Mar 2023 03:12:40 -0800 (PST)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 50E0D1FE12;
+        Wed,  1 Mar 2023 11:12:39 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1677669159; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=G0AlmLfGiekbq2yaipJ0jfe7KDoKX8ZNdImobOAmth4=;
+        b=fnNra/oubDt9rxddgmU7EcpjFnKT6OOT4IYufD9JA6vJQ5pXqhSWOTYIHRgUKJlm2kjFQi
+        dze7RasAf6XxLWbZRWX4ieHai8qFCLZ3sdMmPGMoJBQGRFIXxTartdc+eSO+v7KeCSTyH8
+        EkK0A1HiwHO71Uudyqa62Po4F6mzBqA=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1677669159;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=G0AlmLfGiekbq2yaipJ0jfe7KDoKX8ZNdImobOAmth4=;
+        b=1GvwfIR9o0BC4oF5JsEihCab6d0hZNEyoa/zMFgx6A5qZ6wbnkGKr9lV5ge+DgpLpSQR1R
+        hwad/QcB/DbJrVCg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 4633113A64;
+        Wed,  1 Mar 2023 11:12:39 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id gwgcEScz/2MBRQAAMHmgww
+        (envelope-from <jack@suse.cz>); Wed, 01 Mar 2023 11:12:39 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id C29B4A06C6; Wed,  1 Mar 2023 12:12:38 +0100 (CET)
+From:   Jan Kara <jack@suse.cz>
+To:     <linux-ext4@vger.kernel.org>
+Cc:     Jan Kara <jack@suse.cz>
+Subject: [PATCH 1/2] ext2: Correct maximum ext2 filesystem block size
+Date:   Wed,  1 Mar 2023 12:12:30 +0100
+Message-Id: <20230301111238.22856-1-jack@suse.cz>
+X-Mailer: git-send-email 2.35.3
+In-Reply-To: <20230301111026.15102-1-jack@suse.cz>
+References: <20230301111026.15102-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6602:151:b0:745:c41a:8f0f with SMTP id
- v17-20020a056602015100b00745c41a8f0fmr2577531iot.2.1677665299348; Wed, 01 Mar
- 2023 02:08:19 -0800 (PST)
-Date:   Wed, 01 Mar 2023 02:08:19 -0800
-In-Reply-To: <00000000000052865105f5c8f2c8@google.com>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <0000000000003845ba05f5d3e416@google.com>
-Subject: Re: [syzbot] [ext4?] possible deadlock in jbd2_log_wait_commit
-From:   syzbot <syzbot+9d16c39efb5fade84574@syzkaller.appspotmail.com>
-To:     hdanton@sina.com, jack@suse.com, jack@suse.cz,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
-        tytso@mit.edu
-Content-Type: text/plain; charset="UTF-8"
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1003; i=jack@suse.cz; h=from:subject; bh=PgP57hZZyxmhshvWjcnY3d3TJ8st/Of9jYF9AyeSaOM=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBj/zMdgBbfHPWvUR/gInxc3NRLP0Kw9sk9wihgEiIV UZmH8t6JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCY/8zHQAKCRCcnaoHP2RA2bFLCA DS9UpRfvP0yDt8NauIbZwjK1Ts/NOMIjFHEh56Fk2MHahSoInlIOBonZrRohGm8E6lRuzFYsg8zlWv HNpjdupy3/J2i1tTnlM0cspgKeaSqnZjtR20RFRgP4pJeIBf8SlIm9me3QVKZ1PGk4t5JCa/P5V+M8 oq8OP1OI0B1ER822veHPFfFaL1KmhoqIzaiWeRvsXiocFB8ayveQYD4v/AW7sGBRl8Jwctsf6G34lo cuDAAWDbqxtN+0RAYU69B/UmQdMRP1Ml2HnnFQQoy6l9vHHUhzZvYN+o5S9O6LfQVb8WNt9Fm7PYcz ux4A5GkP0/py5rnDZkWhnaTQ6VUuUT
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-syzbot has bisected this issue to:
+Ext2 has traditionally supported filesystem block sizes upto page size
+or upto 65536. Macro EXT2_MAX_BLOCK_SIZE is set to 4096, however that is
+never used in ext2 so practically we always allowed whatever
+sb_set_blocksize() accepted. Fix value of EXT2_MAX_BLOCK_SIZE because it
+will be used in the next patch.
 
-commit 0813299c586b175d7edb25f56412c54b812d0379
-Author: Jan Kara <jack@suse.cz>
-Date:   Thu Jan 26 11:22:21 2023 +0000
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext2/ext2.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-    ext4: Fix possible corruption when moving a directory
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index cb78d7dcfb95..6c8e838bb278 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -178,7 +178,7 @@ static inline struct ext2_sb_info *EXT2_SB(struct super_block *sb)
+  * Macro-instructions used to manage several block sizes
+  */
+ #define EXT2_MIN_BLOCK_SIZE		1024
+-#define	EXT2_MAX_BLOCK_SIZE		4096
++#define	EXT2_MAX_BLOCK_SIZE		65536
+ #define EXT2_MIN_BLOCK_LOG_SIZE		  10
+ #define EXT2_BLOCK_SIZE(s)		((s)->s_blocksize)
+ #define	EXT2_ADDR_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (__u32))
+-- 
+2.35.3
 
-bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=14845d50c80000
-start commit:   e492250d5252 Merge tag 'pwm/for-6.3-rc1' of git://git.kern..
-git tree:       upstream
-final oops:     https://syzkaller.appspot.com/x/report.txt?x=16845d50c80000
-console output: https://syzkaller.appspot.com/x/log.txt?x=12845d50c80000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=f763d89e26d3d4c4
-dashboard link: https://syzkaller.appspot.com/bug?extid=9d16c39efb5fade84574
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=11d96208c80000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=176d917f480000
-
-Reported-by: syzbot+9d16c39efb5fade84574@syzkaller.appspotmail.com
-Fixes: 0813299c586b ("ext4: Fix possible corruption when moving a directory")
-
-For information about bisection process see: https://goo.gl/tpsmEJ#bisection
