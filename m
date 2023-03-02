@@ -2,62 +2,63 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F832C678D4
-	for <linux-ext4@archiver.kernel.org>; Thu,  2 Mar 2023 15:36:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CE8DEC7EE2F
+	for <linux-ext4@archiver.kernel.org>; Thu,  2 Mar 2023 15:36:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230085AbjCBPgk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 2 Mar 2023 10:36:40 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37404 "EHLO
+        id S230142AbjCBPgl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 2 Mar 2023 10:36:41 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37428 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229994AbjCBPga (ORCPT
+        with ESMTP id S230039AbjCBPga (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Mar 2023 10:36:30 -0500
-Received: from mail-lf1-x12a.google.com (mail-lf1-x12a.google.com [IPv6:2a00:1450:4864:20::12a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D4C94360BA
-        for <linux-ext4@vger.kernel.org>; Thu,  2 Mar 2023 07:36:27 -0800 (PST)
-Received: by mail-lf1-x12a.google.com with SMTP id bi9so22651585lfb.2
-        for <linux-ext4@vger.kernel.org>; Thu, 02 Mar 2023 07:36:27 -0800 (PST)
+Received: from mail-lf1-x12e.google.com (mail-lf1-x12e.google.com [IPv6:2a00:1450:4864:20::12e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6257136FED
+        for <linux-ext4@vger.kernel.org>; Thu,  2 Mar 2023 07:36:28 -0800 (PST)
+Received: by mail-lf1-x12e.google.com with SMTP id s20so22580298lfb.11
+        for <linux-ext4@vger.kernel.org>; Thu, 02 Mar 2023 07:36:28 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linaro.org; s=google; t=1677771386;
+        d=linaro.org; s=google; t=1677771388;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=2gdId53Dyw2GpHctsUcNS/lVxL2AmQmaS15K9tykDPs=;
-        b=XdT166J/QndycjCUH2wF0qEwJV08gQQLP6JJWmMTO4zVyiH5rpasQ3Jca64N0jvjHk
-         pDgmjZlP7ENS7xmC9K1oZAqv3VfM2jTYnqAzrxyZwhkjRMYQQewb7RDg5McUuaCuc3bz
-         0qEJYj3lm6TRk175jeCh1Z3RLpMra5CzzeifUV+nwUY9kx1msmd6JvvixTJ8WRwzp6xt
-         xYIFK8Gae04geIxspLhYPvf9E9JBc7age6/LoIEqnBrXgxs535q+dbmwRyTzkTk/f9/T
-         OKdAjIkfLto5U8fOxziqXvfh6PTYamJpyUGEcgSbUZ1YgoYgJMAYlEmTxwH2T60thAq1
-         l4Yw==
+        bh=xPP3HXcCysfTznKsDYThrcBwtl/yG8ZLYuAVSZJtJ+o=;
+        b=xdv5/7ylluaW3v2WHm00b1OBIYqoIirvCXVySNdVpvERx7L9jAqYcDxPVx8FDDCBO0
+         fOtWyr9llberWp31txlJjjvV0GlGXeFFN6o3rszBGThkl/Qa6Et90HUAX5pZvBI7ABWY
+         8hDCjzIxf82i5tOGFzKndrK/uF7lJ9LQTcO8lapnOyOyhlUw00J0739fUp8iQR69J7Ch
+         8X0sMGCGb9S6Rk1jluOjLw6G8bT/zqQD4+FC/MOIRZvvW6XjNecX3UGlz7c1BTlvXZZn
+         hj5S6GEMtQlJ1VHq0TC7Tdt4YuOWBg3yb93cLSH0zqdWafPKJcIAv/Gac7lJOOja72qL
+         zFwQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112; t=1677771386;
+        d=1e100.net; s=20210112; t=1677771388;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=2gdId53Dyw2GpHctsUcNS/lVxL2AmQmaS15K9tykDPs=;
-        b=PF5X2YEcj6FgQ4o3Lrkj9zAVkhXyS1EJSgyT1A44bP1ydp3WNbQmw/w51OGIy55TqP
-         59wdzZuH+dQL4vOCrue8p6AFL2gri1zxx4tQqo5SpOlIhrRs6lxwqYbG8OwlApkchAPt
-         F56BTrhmj/EnJgDaaeXY5NwwZAxtsyCjQJxo66Zarot4AfEIyeN86XO/3DNgzfpUb9ep
-         LFozn7L7fV5rTUy2g94lb5gyjaPhqb5LobABrm6oahihzRWz1Uuje19d9lCdvkjJZy0A
-         eq0QsFY5APEZvY+khbhiWA4F+5eyEQbFbNvcdq0B4ExkAQqnaP5oK5lGM/jjFjrGCwDm
-         gvPQ==
-X-Gm-Message-State: AO0yUKXuPoURIvp7athTnf8IU8qNYeJULaLADLQ+86y6AI3uokGeyy5u
-        E1V6225XHTbNf/+vpip5iezSGw==
-X-Google-Smtp-Source: AK7set+4+8xAxb5SSt2w7KuJV3dOH53ByauHa3PtpPAtU+bO92ZOVYVojb/fOUxtOglsU/VZFd/tFg==
-X-Received: by 2002:ac2:4213:0:b0:4dd:ad4b:efd with SMTP id y19-20020ac24213000000b004ddad4b0efdmr2844820lfh.52.1677771386183;
-        Thu, 02 Mar 2023 07:36:26 -0800 (PST)
+        bh=xPP3HXcCysfTznKsDYThrcBwtl/yG8ZLYuAVSZJtJ+o=;
+        b=0j5oqxxYH5a5irAvZgtqdhbVv4Xf/5YPEQBXaTCteQ2WkSkjqta+T23Nx02OZrJHsw
+         2GQ0l0ArbOPbTILZ2LkB+aSXo6vI3ygX5TQk3nmzGrzy+wR7lEmYmGqNl4e1Ab/md0lr
+         qYWczcMit1D+3pKwZYen3qz+QXGoDh9MoBFaf2Kk4ut+C6jLZSw8eQcZufHXxnlqea+4
+         WOYIlhoOhqhvh2hAYE3LybFZDEURdxHDvH19z+arH+z51qwg4gtG+9Mn63i3Zz5GQ4GY
+         AKQhpDf+S7lmG6jq17aj4Tv4tDCik+Gt+sKa5U6y5bLRyWXY8UG9Uy0jgrpEyVJN69ls
+         Vi9Q==
+X-Gm-Message-State: AO0yUKXoOuJnK0V14T8+ejlqFe1ywfE29MmoKmRg4iu1rRtdnNq4XB6r
+        7gGBu+lQQ0SCd6o3R3WS1pYT2Q==
+X-Google-Smtp-Source: AK7set93ZYW1xBaJdP9TfUcpnqshkEhG0x6bOeCHFRSevglUZ/k28gZkEwXDaNLfG3E4qRUrgCVDEg==
+X-Received: by 2002:ac2:5330:0:b0:4e1:46e9:ec3e with SMTP id f16-20020ac25330000000b004e146e9ec3emr2826110lfh.61.1677771387836;
+        Thu, 02 Mar 2023 07:36:27 -0800 (PST)
 Received: from ta1.c.googlers.com.com (61.215.228.35.bc.googleusercontent.com. [35.228.215.61])
-        by smtp.gmail.com with ESMTPSA id p17-20020a05651238d100b004db2978e330sm2170509lft.258.2023.03.02.07.36.25
+        by smtp.gmail.com with ESMTPSA id p17-20020a05651238d100b004db2978e330sm2170509lft.258.2023.03.02.07.36.27
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 02 Mar 2023 07:36:25 -0800 (PST)
+        Thu, 02 Mar 2023 07:36:27 -0800 (PST)
 From:   Tudor Ambarus <tudor.ambarus@linaro.org>
 To:     stable@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        joneslee@google.com, Ritesh Harjani <riteshh@linux.ibm.com>,
-        Jan Kara <jack@suse.cz>,
+        joneslee@google.com, Lukas Czerner <lczerner@redhat.com>,
+        syzbot+15cd994e273307bf5cfa@syzkaller.appspotmail.com,
+        Tadeusz Struk <tadeusz.struk@linaro.org>,
         Tudor Ambarus <tudor.ambarus@linaro.org>
-Subject: [PATCH][for stable 5.{15, 10} 2/4] ext4: add ext4_sb_block_valid() refactored out of ext4_inode_block_valid()
-Date:   Thu,  2 Mar 2023 15:36:08 +0000
-Message-Id: <20230302153610.1204653-3-tudor.ambarus@linaro.org>
+Subject: [PATCH][for stable 5.{15, 10} 4/4] ext4: block range must be validated before use in ext4_mb_clear_bb()
+Date:   Thu,  2 Mar 2023 15:36:10 +0000
+Message-Id: <20230302153610.1204653-5-tudor.ambarus@linaro.org>
 X-Mailer: git-send-email 2.40.0.rc0.216.gc4246ad0f0-goog
 In-Reply-To: <20230302153610.1204653-1-tudor.ambarus@linaro.org>
 References: <20230302153610.1204653-1-tudor.ambarus@linaro.org>
@@ -67,89 +68,145 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ritesh Harjani <riteshh@linux.ibm.com>
+From: Lukas Czerner <lczerner@redhat.com>
 
-[ Upstream commit 6bc6c2bdf1baca6522b8d9ba976257d722423085 ]
+[ Upstream commit 1e1c2b86ef86a8477fd9b9a4f48a6bfe235606f6 ]
 
-This API will be needed at places where we don't have an inode
-for e.g. while freeing blocks in ext4_group_add_blocks()
+Block range to free is validated in ext4_free_blocks() using
+ext4_inode_block_valid() and then it's passed to ext4_mb_clear_bb().
+However in some situations on bigalloc file system the range might be
+adjusted after the validation in ext4_free_blocks() which can lead to
+troubles on corrupted file systems such as one found by syzkaller that
+resulted in the following BUG
 
-Suggested-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
-Link: https://lore.kernel.org/r/dd34a236543ad5ae7123eeebe0cb69e6bdd44f34.1644992610.git.riteshh@linux.ibm.com
+kernel BUG at fs/ext4/ext4.h:3319!
+PREEMPT SMP NOPTI
+CPU: 28 PID: 4243 Comm: repro Kdump: loaded Not tainted 5.19.0-rc6+ #1
+Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.15.0-1.fc35 04/01/2014
+RIP: 0010:ext4_free_blocks+0x95e/0xa90
+Call Trace:
+ <TASK>
+ ? lock_timer_base+0x61/0x80
+ ? __es_remove_extent+0x5a/0x760
+ ? __mod_timer+0x256/0x380
+ ? ext4_ind_truncate_ensure_credits+0x90/0x220
+ ext4_clear_blocks+0x107/0x1b0
+ ext4_free_data+0x15b/0x170
+ ext4_ind_truncate+0x214/0x2c0
+ ? _raw_spin_unlock+0x15/0x30
+ ? ext4_discard_preallocations+0x15a/0x410
+ ? ext4_journal_check_start+0xe/0x90
+ ? __ext4_journal_start_sb+0x2f/0x110
+ ext4_truncate+0x1b5/0x460
+ ? __ext4_journal_start_sb+0x2f/0x110
+ ext4_evict_inode+0x2b4/0x6f0
+ evict+0xd0/0x1d0
+ ext4_enable_quotas+0x11f/0x1f0
+ ext4_orphan_cleanup+0x3de/0x430
+ ? proc_create_seq_private+0x43/0x50
+ ext4_fill_super+0x295f/0x3ae0
+ ? snprintf+0x39/0x40
+ ? sget_fc+0x19c/0x330
+ ? ext4_reconfigure+0x850/0x850
+ get_tree_bdev+0x16d/0x260
+ vfs_get_tree+0x25/0xb0
+ path_mount+0x431/0xa70
+ __x64_sys_mount+0xe2/0x120
+ do_syscall_64+0x5b/0x80
+ ? do_user_addr_fault+0x1e2/0x670
+ ? exc_page_fault+0x70/0x170
+ entry_SYSCALL_64_after_hwframe+0x46/0xb0
+RIP: 0033:0x7fdf4e512ace
+
+Fix it by making sure that the block range is properly validated before
+used every time it changes in ext4_free_blocks() or ext4_mb_clear_bb().
+
+Link: https://syzkaller.appspot.com/bug?id=5266d464285a03cee9dbfda7d2452a72c3c2ae7c
+Reported-by: syzbot+15cd994e273307bf5cfa@syzkaller.appspotmail.com
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Cc: Tadeusz Struk <tadeusz.struk@linaro.org>
+Tested-by: Tadeusz Struk <tadeusz.struk@linaro.org>
+Link: https://lore.kernel.org/r/20220714165903.58260-1-lczerner@redhat.com
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Tudor Ambarus <tudor.ambarus@linaro.org>
 ---
- fs/ext4/block_validity.c | 26 +++++++++++++++++---------
- fs/ext4/ext4.h           |  3 +++
- 2 files changed, 20 insertions(+), 9 deletions(-)
+ fs/ext4/mballoc.c | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-index 4666b55b736e..5504f72bbbbe 100644
---- a/fs/ext4/block_validity.c
-+++ b/fs/ext4/block_validity.c
-@@ -292,15 +292,10 @@ void ext4_release_system_zone(struct super_block *sb)
- 		call_rcu(&system_blks->rcu, ext4_destroy_system_zone);
- }
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 7b4359862a60..e6718bfc6c55 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -5916,6 +5916,15 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
  
--/*
-- * Returns 1 if the passed-in block region (start_blk,
-- * start_blk+count) is valid; 0 if some part of the block region
-- * overlaps with some other filesystem metadata blocks.
-- */
--int ext4_inode_block_valid(struct inode *inode, ext4_fsblk_t start_blk,
--			  unsigned int count)
-+int ext4_sb_block_valid(struct super_block *sb, struct inode *inode,
-+				ext4_fsblk_t start_blk, unsigned int count)
- {
--	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_system_blocks *system_blks;
- 	struct ext4_system_zone *entry;
- 	struct rb_node *n;
-@@ -329,7 +324,9 @@ int ext4_inode_block_valid(struct inode *inode, ext4_fsblk_t start_blk,
- 		else if (start_blk >= (entry->start_blk + entry->count))
- 			n = n->rb_right;
- 		else {
--			ret = (entry->ino == inode->i_ino);
-+			ret = 0;
-+			if (inode)
-+				ret = (entry->ino == inode->i_ino);
- 			break;
- 		}
+ 	sbi = EXT4_SB(sb);
+ 
++	if (!(flags & EXT4_FREE_BLOCKS_VALIDATED) &&
++	    !ext4_inode_block_valid(inode, block, count)) {
++		ext4_error(sb, "Freeing blocks in system zone - "
++			   "Block = %llu, count = %lu", block, count);
++		/* err = 0. ext4_std_error should be a no op */
++		goto error_return;
++	}
++	flags |= EXT4_FREE_BLOCKS_VALIDATED;
++
+ do_more:
+ 	overflow = 0;
+ 	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
+@@ -5932,6 +5941,8 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
+ 		overflow = EXT4_C2B(sbi, bit) + count -
+ 			EXT4_BLOCKS_PER_GROUP(sb);
+ 		count -= overflow;
++		/* The range changed so it's no longer validated */
++		flags &= ~EXT4_FREE_BLOCKS_VALIDATED;
  	}
-@@ -338,6 +335,17 @@ int ext4_inode_block_valid(struct inode *inode, ext4_fsblk_t start_blk,
- 	return ret;
- }
+ 	count_clusters = EXT4_NUM_B2C(sbi, count);
+ 	bitmap_bh = ext4_read_block_bitmap(sb, block_group);
+@@ -5946,7 +5957,8 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
+ 		goto error_return;
+ 	}
  
-+/*
-+ * Returns 1 if the passed-in block region (start_blk,
-+ * start_blk+count) is valid; 0 if some part of the block region
-+ * overlaps with some other filesystem metadata blocks.
-+ */
-+int ext4_inode_block_valid(struct inode *inode, ext4_fsblk_t start_blk,
-+			  unsigned int count)
-+{
-+	return ext4_sb_block_valid(inode->i_sb, inode, start_blk, count);
-+}
-+
- int ext4_check_blockref(const char *function, unsigned int line,
- 			struct inode *inode, __le32 *p, unsigned int max)
- {
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index bc209f303327..80f0942fa165 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3698,6 +3698,9 @@ extern int ext4_inode_block_valid(struct inode *inode,
- 				  unsigned int count);
- extern int ext4_check_blockref(const char *, unsigned int,
- 			       struct inode *, __le32 *, unsigned int);
-+extern int ext4_sb_block_valid(struct super_block *sb, struct inode *inode,
-+				ext4_fsblk_t start_blk, unsigned int count);
-+
+-	if (!ext4_inode_block_valid(inode, block, count)) {
++	if (!(flags & EXT4_FREE_BLOCKS_VALIDATED) &&
++	    !ext4_inode_block_valid(inode, block, count)) {
+ 		ext4_error(sb, "Freeing blocks in system zone - "
+ 			   "Block = %llu, count = %lu", block, count);
+ 		/* err = 0. ext4_std_error should be a no op */
+@@ -6069,6 +6081,8 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
+ 		block += count;
+ 		count = overflow;
+ 		put_bh(bitmap_bh);
++		/* The range changed so it's no longer validated */
++		flags &= ~EXT4_FREE_BLOCKS_VALIDATED;
+ 		goto do_more;
+ 	}
+ error_return:
+@@ -6115,6 +6129,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 			   "block = %llu, count = %lu", block, count);
+ 		return;
+ 	}
++	flags |= EXT4_FREE_BLOCKS_VALIDATED;
  
- /* extents.c */
- struct ext4_ext_path;
+ 	ext4_debug("freeing block %llu\n", block);
+ 	trace_ext4_free_blocks(inode, block, count, flags);
+@@ -6146,6 +6161,8 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 			block -= overflow;
+ 			count += overflow;
+ 		}
++		/* The range changed so it's no longer validated */
++		flags &= ~EXT4_FREE_BLOCKS_VALIDATED;
+ 	}
+ 	overflow = EXT4_LBLK_COFF(sbi, count);
+ 	if (overflow) {
+@@ -6156,6 +6173,8 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 				return;
+ 		} else
+ 			count += sbi->s_cluster_ratio - overflow;
++		/* The range changed so it's no longer validated */
++		flags &= ~EXT4_FREE_BLOCKS_VALIDATED;
+ 	}
+ 
+ 	if (!bh && (flags & EXT4_FREE_BLOCKS_FORGET)) {
 -- 
 2.40.0.rc0.216.gc4246ad0f0-goog
 
