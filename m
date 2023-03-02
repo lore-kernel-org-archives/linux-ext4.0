@@ -2,133 +2,128 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B36F8C7EE3A
-	for <linux-ext4@archiver.kernel.org>; Thu,  2 Mar 2023 15:36:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C4F08C7EE2F
+	for <linux-ext4@archiver.kernel.org>; Thu,  2 Mar 2023 15:49:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230053AbjCBPgn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 2 Mar 2023 10:36:43 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37790 "EHLO
+        id S229796AbjCBPtC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 2 Mar 2023 10:49:02 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48932 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229929AbjCBPgj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Mar 2023 10:36:39 -0500
-Received: from mail-lf1-x129.google.com (mail-lf1-x129.google.com [IPv6:2a00:1450:4864:20::129])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CA6D737546
-        for <linux-ext4@vger.kernel.org>; Thu,  2 Mar 2023 07:36:28 -0800 (PST)
-Received: by mail-lf1-x129.google.com with SMTP id f18so22669820lfa.3
-        for <linux-ext4@vger.kernel.org>; Thu, 02 Mar 2023 07:36:28 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linaro.org; s=google; t=1677771387;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=tU1uRAhzsVoBdXD+RtSgjM2zLnzd5LFyExq7JwMSefY=;
-        b=QkQLjOi8GvNhoAnYX+Jj2O5035sBaO3DVCqKuI/pUDUkZDES2L5FtLuLMh63HkVxYj
-         NRKMWgDUQev3birx1DTgJU6DwmBeWl5eyayh6RyPZg8xsATSQeb4W8WT4WPSMFEb0kQM
-         U5a4eC0ESRI7ep0FMYTBjb5gPus4COkoUh55yeysdynHfyXkO88XDa+PKUdipr9XneI4
-         scqMRSTfUD++K/CWy23E58hyegWlTDXm6I0yXr7cv9FeNaalKE4RlCZTpUfyWxYELWql
-         A6FhaLyZYrfz2m/5clI4iUqtdDITEU23VX4aNZ1xA/j/a+x2UOJLFObjk7np3Tt8A+Ap
-         jnWA==
+        with ESMTP id S229703AbjCBPtA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Mar 2023 10:49:00 -0500
+Received: from mail-io1-f71.google.com (mail-io1-f71.google.com [209.85.166.71])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 413B3193D5
+        for <linux-ext4@vger.kernel.org>; Thu,  2 Mar 2023 07:48:59 -0800 (PST)
+Received: by mail-io1-f71.google.com with SMTP id z5-20020a6b5c05000000b007447572f3f8so10758084ioh.3
+        for <linux-ext4@vger.kernel.org>; Thu, 02 Mar 2023 07:48:59 -0800 (PST)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112; t=1677771387;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=tU1uRAhzsVoBdXD+RtSgjM2zLnzd5LFyExq7JwMSefY=;
-        b=n5rH6i7SRW4+R+BAvM9vQEbIJ1hX6jD3Wb6TI9/rljWVWOiiKUaieaENGISCgwpyYP
-         KS9dFB/fFabPVSHIDp1dHF0qMgeb2BdFVUPmZDS2kJaeum05QWZl754EqhKY6DbCQIFH
-         U9hn5WrsJyoSWldyXtegQ/qGX24HdrQ+gmCIZWSqi3WCQQC8aW6teOaxTDO0T87G6MmG
-         M9Zn2zwuNs+M+txKBZt+hUJpwela6C1xIbnlYKxUJXabcqE956+yQqsgAe9bzXE5fNHP
-         scw/YAbmblicS9FpJGkh/iyO7CiKYk+lzx2kUyqk0J9eHBTCtoy++5XOEK/L8yIr34Fd
-         u0eg==
-X-Gm-Message-State: AO0yUKXrvD9IQbMBSttijF1Xx24IwRoy2ZgzosWwUPI2MinabZLmLyw0
-        Wl8noLrj1xqTOwpml7QciSKMeA==
-X-Google-Smtp-Source: AK7set8sJTLO9CCSsJJRosOnAY+i38CiUycGIL2zq/K7T87fr0OtVM/49TCqf1Lz0ZaxySlQA4biaA==
-X-Received: by 2002:ac2:46f6:0:b0:4dd:cbf3:e981 with SMTP id q22-20020ac246f6000000b004ddcbf3e981mr2764196lfo.28.1677771387030;
-        Thu, 02 Mar 2023 07:36:27 -0800 (PST)
-Received: from ta1.c.googlers.com.com (61.215.228.35.bc.googleusercontent.com. [35.228.215.61])
-        by smtp.gmail.com with ESMTPSA id p17-20020a05651238d100b004db2978e330sm2170509lft.258.2023.03.02.07.36.26
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 02 Mar 2023 07:36:26 -0800 (PST)
-From:   Tudor Ambarus <tudor.ambarus@linaro.org>
-To:     stable@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca
-Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        joneslee@google.com, Ritesh Harjani <riteshh@linux.ibm.com>,
-        Jan Kara <jack@suse.cz>,
-        Tudor Ambarus <tudor.ambarus@linaro.org>
-Subject: [PATCH][for stable 5.{15, 10} 3/4] ext4: add strict range checks while freeing blocks
-Date:   Thu,  2 Mar 2023 15:36:09 +0000
-Message-Id: <20230302153610.1204653-4-tudor.ambarus@linaro.org>
-X-Mailer: git-send-email 2.40.0.rc0.216.gc4246ad0f0-goog
-In-Reply-To: <20230302153610.1204653-1-tudor.ambarus@linaro.org>
-References: <20230302153610.1204653-1-tudor.ambarus@linaro.org>
+        d=1e100.net; s=20210112;
+        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=/n/K/3RHA4xTQoVXC4jaK6WOJ78Yt5GL4rZVXOaD90Q=;
+        b=Q4EoHOfCZUOIVfHh9zN2GDUaI+/jG70I5fK54e33cO+qlIe1tOdzdaVRA71XZEll7w
+         U1mrHCN1RTMOxPgR9AryZoviZ1/m9UUeJoCTiFvyvbwVmi3noxRln9EH6VFo42u5keGN
+         D9VIrHUBGXv6oQBfsAHSKkTQdna+/BZzG8x0WvwIj7ukBCor4gFCd+ycbqeTmvjKalZf
+         2L8pfBKO8JaJTGSNP7rp0YDqohrq34HGuSlw8o4Zqge4igRO88zusIz3OJ+OIlUw1+dI
+         jsy7/mcOVymPMQjGLRs7swviHii2uTLFThaWBgqF+wzwg4gxCLNFKEdX1yghEq6S8MJU
+         0tMA==
+X-Gm-Message-State: AO0yUKWQ6vYPvXcIaF2JyTE1Hdbgo+91eE7/RLQzKgG1B8X4oI8yFoIW
+        YY/nKY3LDTBb82t2ozLkJzcG050SzdKY3P9RHRGU5V+YNY5a
+X-Google-Smtp-Source: AK7set/znnO3YPzxVExuJmcztdQN+pgOa3zswTUqOVqNKOeXhuNuoBX4V/MbspPKMQlXP1igfFl0tyEvJwqmClChuztQ1+u+pJpr
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-Received: by 2002:a05:6e02:11ad:b0:315:459e:177d with SMTP id
+ 13-20020a056e0211ad00b00315459e177dmr1173113ilj.2.1677772138620; Thu, 02 Mar
+ 2023 07:48:58 -0800 (PST)
+Date:   Thu, 02 Mar 2023 07:48:58 -0800
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <000000000000562d8105f5ecc4ca@google.com>
+Subject: [syzbot] [ext4?] kernel BUG in ext4_write_inline_data_end
+From:   syzbot <syzbot+198e7455f3a4f38b838a@syzkaller.appspotmail.com>
+To:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        syzkaller-bugs@googlegroups.com, tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ritesh Harjani <riteshh@linux.ibm.com>
+Hello,
 
-[ Upstream commit a00b482b82fb098956a5bed22bd7873e56f152f1 ]
+syzbot found the following issue on:
 
-Currently ext4_mb_clear_bb() & ext4_group_add_blocks() only checks
-whether the given block ranges (which is to be freed) belongs to any FS
-metadata blocks or not, of the block's respective block group.
-But to detect any FS error early, it is better to add more strict
-checkings in those functions which checks whether the given blocks
-belongs to any critical FS metadata or not within system-zone.
+HEAD commit:    2ebd1fbb946d Merge branch 'for-next/core' into for-kernelci
+git tree:       git://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux.git for-kernelci
+console output: https://syzkaller.appspot.com/x/log.txt?x=13de1350c80000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=3519974f3f27816d
+dashboard link: https://syzkaller.appspot.com/bug?extid=198e7455f3a4f38b838a
+compiler:       Debian clang version 15.0.7, GNU ld (GNU Binutils for Debian) 2.35.2
+userspace arch: arm64
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=160fccacc80000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=17e5963cc80000
 
-Suggested-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Link: https://lore.kernel.org/r/ddd9143d064774e32d6364a99667817c6e8bfdc0.1644992610.git.riteshh@linux.ibm.com
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Tudor Ambarus <tudor.ambarus@linaro.org>
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/16985cc7a274/disk-2ebd1fbb.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/fd3452567115/vmlinux-2ebd1fbb.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/c75510922212/Image-2ebd1fbb.gz.xz
+mounted in repro: https://storage.googleapis.com/syzbot-assets/0427397bf5ad/mount_0.gz
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+198e7455f3a4f38b838a@syzkaller.appspotmail.com
+
+------------[ cut here ]------------
+kernel BUG at fs/ext4/inline.c:226!
+Internal error: Oops - BUG: 00000000f2000800 [#1] PREEMPT SMP
+Modules linked in:
+CPU: 0 PID: 6191 Comm: syz-executor142 Not tainted 6.2.0-syzkaller-18300-g2ebd1fbb946d #0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 01/21/2023
+pstate: 80400005 (Nzcv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+pc : ext4_write_inline_data fs/ext4/inline.c:226 [inline]
+pc : ext4_write_inline_data_end+0xe28/0xf84 fs/ext4/inline.c:767
+lr : ext4_write_inline_data fs/ext4/inline.c:226 [inline]
+lr : ext4_write_inline_data_end+0xe28/0xf84 fs/ext4/inline.c:767
+sp : ffff80001eac7520
+x29: ffff80001eac7630 x28: ffff0000d7a63680 x27: dfff800000000000
+x26: 0000000000000060 x25: ffff80001eac75c0 x24: 0000000040000000
+x23: 000000000000006c x22: 0000000000000060 x21: 000000000000000c
+x20: ffff0000de2e48e8 x19: 0000000000000000 x18: ffff80001eac70d8
+x17: ffff800015b8d000 x16: ffff80001231393c x15: 00000000200002c0
+x14: 1ffff00002b720af x13: 0000000000000007 x12: 0000000000000001
+x11: ff80800008e4087c x10: 0000000000000000 x9 : ffff800008e4087c
+x8 : ffff0000d7a63680 x7 : ffff800008de16f0 x6 : 0000000000000000
+x5 : 0000000000000000 x4 : 00000000000008a5 x3 : ffff800008b36a88
+x2 : 0000000000000001 x1 : 0000000000000060 x0 : 000000000000006c
+Call trace:
+ ext4_write_inline_data fs/ext4/inline.c:226 [inline]
+ ext4_write_inline_data_end+0xe28/0xf84 fs/ext4/inline.c:767
+ ext4_da_write_end+0x330/0x9fc fs/ext4/inode.c:3150
+ generic_perform_write+0x384/0x55c mm/filemap.c:3784
+ ext4_buffered_write_iter+0x2e0/0x538 fs/ext4/file.c:285
+ ext4_file_write_iter+0x188/0x16c0
+ call_write_iter include/linux/fs.h:2189 [inline]
+ new_sync_write fs/read_write.c:491 [inline]
+ vfs_write+0x610/0x914 fs/read_write.c:584
+ ksys_write+0x15c/0x26c fs/read_write.c:637
+ __do_sys_write fs/read_write.c:649 [inline]
+ __se_sys_write fs/read_write.c:646 [inline]
+ __arm64_sys_write+0x7c/0x90 fs/read_write.c:646
+ __invoke_syscall arch/arm64/kernel/syscall.c:38 [inline]
+ invoke_syscall+0x98/0x2c0 arch/arm64/kernel/syscall.c:52
+ el0_svc_common+0x138/0x258 arch/arm64/kernel/syscall.c:142
+ do_el0_svc+0x64/0x198 arch/arm64/kernel/syscall.c:193
+ el0_svc+0x58/0x168 arch/arm64/kernel/entry-common.c:637
+ el0t_64_sync_handler+0x84/0xf0 arch/arm64/kernel/entry-common.c:655
+ el0t_64_sync+0x190/0x194 arch/arm64/kernel/entry.S:591
+Code: 14000043 97db2731 d4210000 97db272f (d4210000) 
+---[ end trace 0000000000000000 ]---
+
+
 ---
- fs/ext4/mballoc.c | 16 +++-------------
- 1 file changed, 3 insertions(+), 13 deletions(-)
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 4418d011a654..7b4359862a60 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -5946,13 +5946,7 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
- 		goto error_return;
- 	}
- 
--	if (in_range(ext4_block_bitmap(sb, gdp), block, count) ||
--	    in_range(ext4_inode_bitmap(sb, gdp), block, count) ||
--	    in_range(block, ext4_inode_table(sb, gdp),
--		     sbi->s_itb_per_group) ||
--	    in_range(block + count - 1, ext4_inode_table(sb, gdp),
--		     sbi->s_itb_per_group)) {
--
-+	if (!ext4_inode_block_valid(inode, block, count)) {
- 		ext4_error(sb, "Freeing blocks in system zone - "
- 			   "Block = %llu, count = %lu", block, count);
- 		/* err = 0. ext4_std_error should be a no op */
-@@ -6023,7 +6017,7 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
- 						 NULL);
- 			if (err && err != -EOPNOTSUPP)
- 				ext4_msg(sb, KERN_WARNING, "discard request in"
--					 " group:%d block:%d count:%lu failed"
-+					 " group:%u block:%d count:%lu failed"
- 					 " with %d", block_group, bit, count,
- 					 err);
- 		} else
-@@ -6236,11 +6230,7 @@ int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
- 		goto error_return;
- 	}
- 
--	if (in_range(ext4_block_bitmap(sb, desc), block, count) ||
--	    in_range(ext4_inode_bitmap(sb, desc), block, count) ||
--	    in_range(block, ext4_inode_table(sb, desc), sbi->s_itb_per_group) ||
--	    in_range(block + count - 1, ext4_inode_table(sb, desc),
--		     sbi->s_itb_per_group)) {
-+	if (!ext4_sb_block_valid(sb, NULL, block, count)) {
- 		ext4_error(sb, "Adding blocks in system zones - "
- 			   "Block = %llu, count = %lu",
- 			   block, count);
--- 
-2.40.0.rc0.216.gc4246ad0f0-goog
-
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+syzbot can test patches for this issue, for details see:
+https://goo.gl/tpsmEJ#testing-patches
