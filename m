@@ -2,100 +2,98 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 82F17C7EE30
-	for <linux-ext4@archiver.kernel.org>; Fri,  3 Mar 2023 09:20:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 91148C678D4
+	for <linux-ext4@archiver.kernel.org>; Fri,  3 Mar 2023 09:20:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230263AbjCCJUQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 3 Mar 2023 04:20:16 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49900 "EHLO
+        id S230290AbjCCJUS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 3 Mar 2023 04:20:18 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49876 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230078AbjCCJT4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Mar 2023 04:19:56 -0500
+        with ESMTP id S230056AbjCCJTz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Mar 2023 04:19:55 -0500
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3E0A441B7F;
-        Fri,  3 Mar 2023 01:19:55 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E2783DBDB;
+        Fri,  3 Mar 2023 01:19:54 -0800 (PST)
 Received: from mail02.huawei.com (unknown [172.30.67.153])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PSj9L6Jdfz4f3nV9;
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PSj9L1105z4f3jpm;
         Fri,  3 Mar 2023 17:19:50 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgDnnbGyuwFkFpqfEg--.45687S15;
-        Fri, 03 Mar 2023 17:19:52 +0800 (CST)
+        by APP4 (Coremail) with SMTP id gCh0CgDnnbGyuwFkFpqfEg--.45687S13;
+        Fri, 03 Mar 2023 17:19:51 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com,
         ritesh.list@gmail.com
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
         shikemeng@huaweicloud.com
-Subject: [PATCH v3 13/20] ext4: remove ac->ac_found > sbi->s_mb_min_to_scan dead check in ext4_mb_check_limits
-Date:   Sat,  4 Mar 2023 01:21:13 +0800
-Message-Id: <20230303172120.3800725-14-shikemeng@huaweicloud.com>
+Subject: [PATCH v3 11/20] ext4: remove unnecessary check in ext4_mb_new_blocks
+Date:   Sat,  4 Mar 2023 01:21:11 +0800
+Message-Id: <20230303172120.3800725-12-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230303172120.3800725-1-shikemeng@huaweicloud.com>
 References: <20230303172120.3800725-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgDnnbGyuwFkFpqfEg--.45687S15
-X-Coremail-Antispam: 1UD129KBjvJXoW7KrW5tF1rZrW3CryUCr17Wrg_yoW8Ar1Upa
-        nrCryUG3yxWr1a9wsrK3Z8W3WFkw4fKFyxtryxur1rA3W7X3yqka9xtFyUZF9Fyws3Z3Wf
-        ZFyYvr4UGw4Ika7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUPF14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
-        0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
-        rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6x
-        IIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xv
-        wVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFc
-        xC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_
-        Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2
-        IErcIFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
-        14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIx
-        kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAF
-        wI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JV
-        WxJwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjTRKfOw
-        UUUUU
+X-CM-TRANSID: gCh0CgDnnbGyuwFkFpqfEg--.45687S13
+X-Coremail-Antispam: 1UD129KBjvdXoW7JFyrZFW5uw13tFW5GFy3Arb_yoWkXFXEga
+        yvyw18Ca1ft34Ska1kAr40gFs0gFs5tF18XFZrKr43uF15X3yrW34kZrs5Zr1kWay2y3sx
+        ur1rArWvyr4S9jkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUbDAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+        6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M28IrcIa0xkI8V
+        A2jI8067AKxVWUAVCq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJ
+        M28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2I
+        x0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK
+        6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4
+        xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8
+        JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20V
+        AGYxC7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAF
+        wI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc4
+        0Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r4j6ryUMIIF0xvE2Ix0cI8IcVCY1x0267AK
+        xVWxJVW8Jr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r4j6F
+        4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0pRvJPtU
+        UUUU=
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Only call trace of ext4_mb_check_limits is as following:
-ext4_mb_complex_scan_group
-	ext4_mb_measure_extent
-		ext4_mb_check_limits(ac, e4b, 0);
-	ext4_mb_check_limits(ac, e4b, 1);
+1. remove unnecessary ac check:
+We always go to out tag before ac is successfully allocated, then we can
+move out tag after free of ac and remove NULL check of ac.
 
-If the first ac->ac_found > sbi->s_mb_max_to_scan check in
-ext4_mb_check_limits is met, we will set ac_status to
-AC_STATUS_BREAK and call ext4_mb_try_best_found to try to use
-ac->ac_b_ex.
-If ext4_mb_try_best_found successes, then block allocation finishs,
-the removed ac->ac_found > sbi->s_mb_min_to_scan check is not reachable.
-If ext4_mb_try_best_found fails, then we set EXT4_MB_HINT_FIRST and
-reset ac->ac_b_ex to retry block allocation. We will use any found
-free extent in ext4_mb_measure_extent before reach the removed
-ac->ac_found > sbi->s_mb_min_to_scan check.
-In summary, the removed ac->ac_found > sbi->s_mb_min_to_scan check is
-not reachable and we can remove that dead check.
+2. remove unnecessary *errp check:
+We always go to errout tag if *errp is non-zero, then we can move errout
+tag into error handle if *errp is non-zero.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/mballoc.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ fs/ext4/mballoc.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 16f926675006..5315c67905f6 100644
+index 6eea1296b82a..e53bf9d5a48d 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -2039,8 +2039,7 @@ static void ext4_mb_check_limits(struct ext4_allocation_context *ac,
- 	if (bex->fe_len < gex->fe_len)
- 		return;
+@@ -5641,16 +5641,15 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 		*errp = -ENOSPC;
+ 	}
  
--	if ((finish_group || ac->ac_found > sbi->s_mb_min_to_scan)
--			&& bex->fe_group == e4b->bd_group) {
-+	if (finish_group && bex->fe_group == e4b->bd_group) {
- 		/* recheck chunk's availability - we don't know
- 		 * when it was found (within this lock-unlock
- 		 * period or not) */
+-errout:
+ 	if (*errp) {
++errout:
+ 		ac->ac_b_ex.fe_len = 0;
+ 		ar->len = 0;
+ 		ext4_mb_show_ac(ac);
+ 	}
+ 	ext4_mb_release_context(ac);
++	kmem_cache_free(ext4_ac_cachep, ac);
+ out:
+-	if (ac)
+-		kmem_cache_free(ext4_ac_cachep, ac);
+ 	if (inquota && ar->len < inquota)
+ 		dquot_free_block(ar->inode, EXT4_C2B(sbi, inquota - ar->len));
+ 	if (!ar->len) {
 -- 
 2.30.0
 
