@@ -2,84 +2,124 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 31BC2C64EC4
-	for <linux-ext4@archiver.kernel.org>; Fri,  3 Mar 2023 09:20:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5492BC7EE36
+	for <linux-ext4@archiver.kernel.org>; Fri,  3 Mar 2023 09:20:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230204AbjCCJUJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 3 Mar 2023 04:20:09 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49796 "EHLO
+        id S230227AbjCCJUK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 3 Mar 2023 04:20:10 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49844 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230000AbjCCJTx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Mar 2023 04:19:53 -0500
+        with ESMTP id S230045AbjCCJTz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Mar 2023 04:19:55 -0500
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E5C8C23DA8;
-        Fri,  3 Mar 2023 01:19:52 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D382634301;
+        Fri,  3 Mar 2023 01:19:53 -0800 (PST)
 Received: from mail02.huawei.com (unknown [172.30.67.153])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PSj9J3XCHz4f3nTZ;
-        Fri,  3 Mar 2023 17:19:48 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PSj9K0zbqz4f3nTW;
+        Fri,  3 Mar 2023 17:19:49 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgDnnbGyuwFkFpqfEg--.45687S8;
+        by APP4 (Coremail) with SMTP id gCh0CgDnnbGyuwFkFpqfEg--.45687S10;
         Fri, 03 Mar 2023 17:19:50 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com,
         ritesh.list@gmail.com
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
         shikemeng@huaweicloud.com
-Subject: [PATCH v3 06/20] ext4: protect pa->pa_free in ext4_discard_allocated_blocks
-Date:   Sat,  4 Mar 2023 01:21:06 +0800
-Message-Id: <20230303172120.3800725-7-shikemeng@huaweicloud.com>
+Subject: [PATCH v3 08/20] ext4: remove unused return value of ext4_mb_try_best_found and ext4_mb_free_metadata
+Date:   Sat,  4 Mar 2023 01:21:08 +0800
+Message-Id: <20230303172120.3800725-9-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230303172120.3800725-1-shikemeng@huaweicloud.com>
 References: <20230303172120.3800725-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgDnnbGyuwFkFpqfEg--.45687S8
-X-Coremail-Antispam: 1UD129KBjvdXoW7Gr1UGF18KFyfKw1fXF1rCrg_yoW3KrbE9a
-        48CF4xJFWrJw1fu3W8tay0qrs5KF4Fyr4UWFWrtw1fu3WrXF4fG3WDXr1rJr9rWa1jy343
-        C3s5uryUGF40gjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-        9fnUUIcSsGvfJTRUUUbDkFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
-        6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M28IrcIa0xkI8V
-        A2jI8067AKxVWUAVCq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJ
-        M28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2I
-        x0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK
-        6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4
-        xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8
-        JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20V
-        AGYxC7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAF
-        wI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc4
-        0Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1I6r4UMIIF0xvE2Ix0cI8IcVCY1x0267AK
-        xVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr
-        1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7sRiVbyDUU
-        UUU==
+X-CM-TRANSID: gCh0CgDnnbGyuwFkFpqfEg--.45687S10
+X-Coremail-Antispam: 1UD129KBjvJXoWxJrWUZFWxZFW8tF18XF48tFb_yoW8tr47pF
+        srJFy8Cr1xXrn8uFZrua15X3ZY9w4xua4UGryIgw1rCF13urWDKF47t3W0vFyFqrWkuFnx
+        AFWqvr15GrsrK37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUPF14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
+        0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
+        rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6x
+        IIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xv
+        wVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFc
+        xC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_
+        Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2
+        IErcIFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
+        14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIx
+        kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAF
+        wI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJV
+        W8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjTRKfOw
+        UUUUU
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-If ext4_mb_mark_diskspace_used fails in ext4_mb_new_blocks, we may
-discard pa already in list. Protect pa with pa_lock to avoid race.
+Return value static function ext4_mb_try_best_found and
+ext4_mb_free_metadata is not used. Just remove unused return value.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/mballoc.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ fs/ext4/mballoc.c | 11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index d6a27e47584a..56f35a25842c 100644
+index fca11be28fcb..df76f859f3ff 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -4266,8 +4266,11 @@ static void ext4_discard_allocated_blocks(struct ext4_allocation_context *ac)
- 		ext4_mb_unload_buddy(&e4b);
- 		return;
+@@ -2124,7 +2124,7 @@ static void ext4_mb_measure_extent(struct ext4_allocation_context *ac,
+ }
+ 
+ static noinline_for_stack
+-int ext4_mb_try_best_found(struct ext4_allocation_context *ac,
++void ext4_mb_try_best_found(struct ext4_allocation_context *ac,
+ 					struct ext4_buddy *e4b)
+ {
+ 	struct ext4_free_extent ex = ac->ac_b_ex;
+@@ -2135,7 +2135,7 @@ int ext4_mb_try_best_found(struct ext4_allocation_context *ac,
+ 	BUG_ON(ex.fe_len <= 0);
+ 	err = ext4_mb_load_buddy(ac->ac_sb, group, e4b);
+ 	if (err)
+-		return err;
++		return;
+ 
+ 	ext4_lock_group(ac->ac_sb, group);
+ 	max = mb_find_extent(e4b, ex.fe_start, ex.fe_len, &ex);
+@@ -2147,8 +2147,6 @@ int ext4_mb_try_best_found(struct ext4_allocation_context *ac,
+ 
+ 	ext4_unlock_group(ac->ac_sb, group);
+ 	ext4_mb_unload_buddy(e4b);
+-
+-	return 0;
+ }
+ 
+ static noinline_for_stack
+@@ -5699,7 +5697,7 @@ static void ext4_try_merge_freed_extent(struct ext4_sb_info *sbi,
+ 	kmem_cache_free(ext4_free_data_cachep, entry);
+ }
+ 
+-static noinline_for_stack int
++static noinline_for_stack void
+ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 		      struct ext4_free_data *new_entry)
+ {
+@@ -5742,7 +5740,7 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 				EXT4_C2B(sbi, cluster),
+ 				"Block already on to-be-freed list");
+ 			kmem_cache_free(ext4_free_data_cachep, new_entry);
+-			return 0;
++			return;
+ 		}
  	}
--	if (pa->pa_type == MB_INODE_PA)
-+	if (pa->pa_type == MB_INODE_PA) {
-+		spin_lock(&pa->pa_lock);
- 		pa->pa_free += ac->ac_b_ex.fe_len;
-+		spin_unlock(&pa->pa_lock);
-+	}
+ 
+@@ -5768,7 +5766,6 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 	list_add_tail(&new_entry->efd_list, &sbi->s_freed_data_list);
+ 	sbi->s_mb_free_pending += clusters;
+ 	spin_unlock(&sbi->s_md_lock);
+-	return 0;
  }
  
  /*
