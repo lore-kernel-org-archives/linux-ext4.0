@@ -2,79 +2,95 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9CD13C678D4
-	for <linux-ext4@archiver.kernel.org>; Fri,  3 Mar 2023 09:20:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8AE7AC7EE2F
+	for <linux-ext4@archiver.kernel.org>; Fri,  3 Mar 2023 09:30:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230000AbjCCJUZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 3 Mar 2023 04:20:25 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49942 "EHLO
+        id S229895AbjCCJaU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 3 Mar 2023 04:30:20 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39600 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230177AbjCCJT6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Mar 2023 04:19:58 -0500
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 55C6C34301;
-        Fri,  3 Mar 2023 01:19:57 -0800 (PST)
-Received: from mail02.huawei.com (unknown [172.30.67.153])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PSj9N6qfJz4f3nTZ;
-        Fri,  3 Mar 2023 17:19:52 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgDnnbGyuwFkFpqfEg--.45687S21;
-        Fri, 03 Mar 2023 17:19:54 +0800 (CST)
-From:   Kemeng Shi <shikemeng@huaweicloud.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com,
-        ritesh.list@gmail.com
-Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        shikemeng@huaweicloud.com
-Subject: [PATCH v3 19/20] ext4: remove comment code ext4_discard_preallocations
-Date:   Sat,  4 Mar 2023 01:21:19 +0800
-Message-Id: <20230303172120.3800725-20-shikemeng@huaweicloud.com>
-X-Mailer: git-send-email 2.30.0
-In-Reply-To: <20230303172120.3800725-1-shikemeng@huaweicloud.com>
-References: <20230303172120.3800725-1-shikemeng@huaweicloud.com>
+        with ESMTP id S231239AbjCCJaC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Mar 2023 04:30:02 -0500
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2A7856E89
+        for <linux-ext4@vger.kernel.org>; Fri,  3 Mar 2023 01:29:48 -0800 (PST)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 357A521D8E;
+        Fri,  3 Mar 2023 09:29:40 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1677835780; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=3y7Mcf628eY2GEMjtqKkx0w3TAoa0PbWVEYy1K4VKP0=;
+        b=w6zg0IoEECk399cz3m5sg9WDQDtnlWqQUxus+ZqKN5SLsn1cU1GkMhQPzMU8R1ZUSuhkW4
+        rQxDqEmsUQR9SDZfuq0XK4S35XB+QCkfHz7ER4F4i0sVXYRCnNMKjC44TVute4NJ49ZK6I
+        324asVFlIBHtJcB6ti87PGhIRvTPqXs=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1677835780;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=3y7Mcf628eY2GEMjtqKkx0w3TAoa0PbWVEYy1K4VKP0=;
+        b=ik0JhgIGG/+WgN5YIruJPexQqlsX0mX3BS7W+/MkTH9PN/T8rFwSlZmaQrwBGW5SB1dqh+
+        amcV383Wo0+Qv/Bg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 295F11329E;
+        Fri,  3 Mar 2023 09:29:40 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id /EEKCgS+AWSTbAAAMHmgww
+        (envelope-from <jack@suse.cz>); Fri, 03 Mar 2023 09:29:40 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id B20FBA06E5; Fri,  3 Mar 2023 10:29:39 +0100 (CET)
+Date:   Fri, 3 Mar 2023 10:29:39 +0100
+From:   Jan Kara <jack@suse.cz>
+To:     Theodore Ts'o <tytso@mit.edu>
+Cc:     Jan Kara <jack@suse.cz>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH REBASED 0/7] ext4: Cleanup data=journal writeback path
+Message-ID: <20230303092939.kq4mlowe2y2x6ncx@quack3>
+References: <20230228051319.4085470-1-tytso@mit.edu>
+ <20230228135854.ky2zpwal7trz6yg3@quack3>
+ <ZACmnwm9in84kbOB@mit.edu>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgDnnbGyuwFkFpqfEg--.45687S21
-X-Coremail-Antispam: 1UD129KBjDUn29KB7ZKAUJUUUUU529EdanIXcx71UUUUU7v73
-        VFW2AGmfu7bjvjm3AaLaJ3UjIYCTnIWjp_UUUO07AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E
-        6xAIw20EY4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JF
-        v_Gryl82xGYIkIc2x26280x7IE14v26r126s0DM28IrcIa0xkI8VCY1x0267AKxVW5JVCq
-        3wA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26w
-        1j6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AK
-        xVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcV
-        AaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0E
-        x4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwACjI
-        8F5VA0II8E6IAqYI8I648v4I1l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_
-        Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17
-        CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Gr0_Xr1lIxAIcVC0
-        I7IYx2IY6xkF7I0E14v26r4UJVWxJr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
-        vEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJbIYCTnIWIev
-        Ja73UjIFyTuYvjTRKfOwUUUUU
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <ZACmnwm9in84kbOB@mit.edu>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Just remove comment code in ext4_discard_preallocations.
+On Thu 02-03-23 08:37:35, Theodore Ts'o wrote:
+> On Tue, Feb 28, 2023 at 02:58:54PM +0100, Jan Kara wrote:
+> > 
+> > Regarding the warning somehow there are dirty pages left after the
+> > procedures freeze_super() goes through to flush all dirty data. That is not
+> > too surprising since in data=journal mode pages get (as a surprise to
+> > freezing code) dirtied when transaction commits. I thought we have this
+> > covered by jbd2_journal_flush() call in ext4_freeze() but maybe there are
+> > some stranded PageDirty bits left? It needs more debugging...
+> 
+> So the question I have is whether this is a bug that was always there,
+> or perhaps code changes affected the timing, so that it was much more
+> likely to happen (although in my testing it's still only triggering
+> about 50% of the time).
+> 
+> This warning can mean that data can be lost, especially if someone was
+> doing hibernation, right?  We can discuss this at today's ext4 video
+> conference, but I'm inclined to wait until the next merge cycle for
+> this patch series until we can figure out what's going on.  Jan, what
+> do you think?
 
-Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
----
- fs/ext4/mballoc.c | 1 -
- 1 file changed, 1 deletion(-)
+As we discussed in the meeting, I'll have a look into the failure. For now
+I'd keep patches on hold as it is not urgent patchset.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index d4e226c16baf..1103d35b31cb 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4925,7 +4925,6 @@ void ext4_discard_preallocations(struct inode *inode, unsigned int needed)
- 	int err;
- 
- 	if (!S_ISREG(inode->i_mode)) {
--		/*BUG_ON(!list_empty(&ei->i_prealloc_list));*/
- 		return;
- 	}
- 
+								Honza
 -- 
-2.30.0
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
