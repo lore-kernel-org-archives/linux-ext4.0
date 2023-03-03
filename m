@@ -2,157 +2,88 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0153FC7EE32
-	for <linux-ext4@archiver.kernel.org>; Fri,  3 Mar 2023 07:58:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6BD06C678D4
+	for <linux-ext4@archiver.kernel.org>; Fri,  3 Mar 2023 09:20:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229713AbjCCH6v (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 3 Mar 2023 02:58:51 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54244 "EHLO
+        id S229806AbjCCJUB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 3 Mar 2023 04:20:01 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49770 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229510AbjCCH6r (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Mar 2023 02:58:47 -0500
+        with ESMTP id S229913AbjCCJTw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Mar 2023 04:19:52 -0500
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A1313457EF;
-        Thu,  2 Mar 2023 23:58:45 -0800 (PST)
-Received: from mail02.huawei.com (unknown [172.30.67.169])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PSgMh6kZHz4f3jLN;
-        Fri,  3 Mar 2023 15:58:40 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.127.227])
-        by APP3 (Coremail) with SMTP id _Ch0CgCnUyGwqAFkWC0HEQ--.51341S6;
-        Fri, 03 Mar 2023 15:58:42 +0800 (CST)
-From:   Ye Bin <yebin@huaweicloud.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
-        Ye Bin <yebin10@huawei.com>,
-        syzbot+d30838395804afc2fa6f@syzkaller.appspotmail.com
-Subject: [PATCH v2 2/2] ext4: fix WARNING in ext4_update_inline_data
-Date:   Fri,  3 Mar 2023 16:21:58 +0800
-Message-Id: <20230303082158.4012809-3-yebin@huaweicloud.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20230303082158.4012809-1-yebin@huaweicloud.com>
-References: <20230303082158.4012809-1-yebin@huaweicloud.com>
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9826A23DA8;
+        Fri,  3 Mar 2023 01:19:51 -0800 (PST)
+Received: from mail02.huawei.com (unknown [172.30.67.153])
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PSj9H0S5Yz4f3m7K;
+        Fri,  3 Mar 2023 17:19:47 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.124.27])
+        by APP4 (Coremail) with SMTP id gCh0CgDnnbGyuwFkFpqfEg--.45687S4;
+        Fri, 03 Mar 2023 17:19:48 +0800 (CST)
+From:   Kemeng Shi <shikemeng@huaweicloud.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com,
+        ritesh.list@gmail.com
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        shikemeng@huaweicloud.com
+Subject: [PATCH v3 02/20] ext4: allow to find by goal if EXT4_MB_HINT_GOAL_ONLY is set
+Date:   Sat,  4 Mar 2023 01:21:02 +0800
+Message-Id: <20230303172120.3800725-3-shikemeng@huaweicloud.com>
+X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20230303172120.3800725-1-shikemeng@huaweicloud.com>
+References: <20230303172120.3800725-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: _Ch0CgCnUyGwqAFkWC0HEQ--.51341S6
-X-Coremail-Antispam: 1UD129KBjvJXoWxGrWxZw4DCryDXw4fGw15urg_yoWrKFyUpF
-        WrGr1UGr48XFyUCFWxAr17Ary5uw13CF4UJrZ7Wr4DZFyUtw1IgFyrtF13JFyUtrsYkry2
-        qF98t340gr15GaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUvGb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUXw
-        A2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
-        w2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
-        W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
-        6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
-        Ij6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
-        Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr
-        0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY
-        17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcV
-        C0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY
-        6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa
-        73UjIFyTuYvjxU2_MaUUUUU
-X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
+X-CM-TRANSID: gCh0CgDnnbGyuwFkFpqfEg--.45687S4
+X-Coremail-Antispam: 1UD129KBjvdXoWrury7ur4xtw1kZr4DtFW7twb_yoWDKFcE9F
+        yUAr1xZan5Jw1S93Z5AayFkF4vgF4Fqr4rXFWrJrZxZF4UXw48Aa4qyrs3Zwn2kw47Zry3
+        Z34YgFyxAr4IqjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUbqAYFVCjjxCrM7AC8VAFwI0_Xr0_Wr1l1xkIjI8I6I8E6xAIw20E
+        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl82
+        xGYIkIc2x26280x7IE14v26r15M28IrcIa0xkI8VCY1x0267AKxVW8JVW5JwA2ocxC64kI
+        II0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7
+        xvwVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2
+        z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4
+        xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v2
+        6r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6I
+        AqYI8I648v4I1l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAq
+        x4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r
+        1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF
+        7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxV
+        WUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjTR
+        mfOrUUUUU
+X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ye Bin <yebin10@huawei.com>
+If EXT4_MB_HINT_GOAL_ONLY is set, ext4_mb_regular_allocator will only
+allocate blocks from ext4_mb_find_by_goal. Allow to find by goal in
+ext4_mb_find_by_goal if EXT4_MB_HINT_GOAL_ONLY is set or allocation
+with EXT4_MB_HINT_GOAL_ONLY set will always fail.
 
-Syzbot found the following issue:
-EXT4-fs (loop0): mounted filesystem 00000000-0000-0000-0000-000000000000 without journal. Quota mode: none.
-fscrypt: AES-256-CTS-CBC using implementation "cts-cbc-aes-aesni"
-fscrypt: AES-256-XTS using implementation "xts-aes-aesni"
-------------[ cut here ]------------
-WARNING: CPU: 0 PID: 5071 at mm/page_alloc.c:5525 __alloc_pages+0x30a/0x560 mm/page_alloc.c:5525
-Modules linked in:
-CPU: 1 PID: 5071 Comm: syz-executor263 Not tainted 6.2.0-rc1-syzkaller #0
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 10/26/2022
-RIP: 0010:__alloc_pages+0x30a/0x560 mm/page_alloc.c:5525
-RSP: 0018:ffffc90003c2f1c0 EFLAGS: 00010246
-RAX: ffffc90003c2f220 RBX: 0000000000000014 RCX: 0000000000000000
-RDX: 0000000000000028 RSI: 0000000000000000 RDI: ffffc90003c2f248
-RBP: ffffc90003c2f2d8 R08: dffffc0000000000 R09: ffffc90003c2f220
-R10: fffff52000785e49 R11: 1ffff92000785e44 R12: 0000000000040d40
-R13: 1ffff92000785e40 R14: dffffc0000000000 R15: 1ffff92000785e3c
-FS:  0000555556c0d300(0000) GS:ffff8880b9800000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007f95d5e04138 CR3: 00000000793aa000 CR4: 00000000003506f0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-Call Trace:
- <TASK>
- __alloc_pages_node include/linux/gfp.h:237 [inline]
- alloc_pages_node include/linux/gfp.h:260 [inline]
- __kmalloc_large_node+0x95/0x1e0 mm/slab_common.c:1113
- __do_kmalloc_node mm/slab_common.c:956 [inline]
- __kmalloc+0xfe/0x190 mm/slab_common.c:981
- kmalloc include/linux/slab.h:584 [inline]
- kzalloc include/linux/slab.h:720 [inline]
- ext4_update_inline_data+0x236/0x6b0 fs/ext4/inline.c:346
- ext4_update_inline_dir fs/ext4/inline.c:1115 [inline]
- ext4_try_add_inline_entry+0x328/0x990 fs/ext4/inline.c:1307
- ext4_add_entry+0x5a4/0xeb0 fs/ext4/namei.c:2385
- ext4_add_nondir+0x96/0x260 fs/ext4/namei.c:2772
- ext4_create+0x36c/0x560 fs/ext4/namei.c:2817
- lookup_open fs/namei.c:3413 [inline]
- open_last_lookups fs/namei.c:3481 [inline]
- path_openat+0x12ac/0x2dd0 fs/namei.c:3711
- do_filp_open+0x264/0x4f0 fs/namei.c:3741
- do_sys_openat2+0x124/0x4e0 fs/open.c:1310
- do_sys_open fs/open.c:1326 [inline]
- __do_sys_openat fs/open.c:1342 [inline]
- __se_sys_openat fs/open.c:1337 [inline]
- __x64_sys_openat+0x243/0x290 fs/open.c:1337
- do_syscall_x64 arch/x86/entry/common.c:50 [inline]
- do_syscall_64+0x3d/0xb0 arch/x86/entry/common.c:80
- entry_SYSCALL_64_after_hwframe+0x63/0xcd
+EXT4_MB_HINT_GOAL_ONLY is not used at all, so the problem is not
+found for now.
 
-Above issue happens as follows:
-ext4_iget
-   ext4_find_inline_data_nolock ->i_inline_off=164 i_inline_size=60
-ext4_try_add_inline_entry
-   __ext4_mark_inode_dirty
-      ext4_expand_extra_isize_ea ->i_extra_isize=32 s_want_extra_isize=44
-         ext4_xattr_shift_entries
-	 ->after shift i_inline_off is incorrect, actually is change to 176
-ext4_try_add_inline_entry
-  ext4_update_inline_dir
-    get_max_inline_xattr_value_size
-      if (EXT4_I(inode)->i_inline_off)
-	entry = (struct ext4_xattr_entry *)((void *)raw_inode +
-			EXT4_I(inode)->i_inline_off);
-        free += EXT4_XATTR_SIZE(le32_to_cpu(entry->e_value_size));
-	->As entry is incorrect, then 'free' may be negative
-   ext4_update_inline_data
-      value = kzalloc(len, GFP_NOFS);
-      -> len is unsigned int, maybe very large, then trigger warning when
-         'kzalloc()'
-To resolve above issue there's need to update 'i_inline_off' after
-'ext4_xattr_shift_entries()'. At here we do not need to set
-EXT4_STATE_MAY_INLINE_DATA flag. As if do mark inode dirty we already set
-this flag if need. If we set EXT4_STATE_MAY_INLINE_DATA flag may lead to
-BUG_ON in ext4_writepages().
-
-Reported-by: syzbot+d30838395804afc2fa6f@syzkaller.appspotmail.com
-Signed-off-by: Ye Bin <yebin10@huawei.com>
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/xattr.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/ext4/mballoc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 62f2ec599218..6acb8c4598d9 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -2852,6 +2852,9 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
- 			(void *)header, total_ino);
- 	EXT4_I(inode)->i_extra_isize = new_extra_isize;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 36cd545f5ab4..6122278e91eb 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2162,7 +2162,7 @@ int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
+ 	struct ext4_group_info *grp = ext4_get_group_info(ac->ac_sb, group);
+ 	struct ext4_free_extent ex;
  
-+	if (ext4_has_inline_data(inode))
-+		error = ext4_find_inline_data_nolock(inode, true);
-+
- cleanup:
- 	if (error && (mnt_count != le16_to_cpu(sbi->s_es->s_mnt_count))) {
- 		ext4_warning(inode->i_sb, "Unable to expand inode %lu. Delete some EAs or run e2fsck.",
+-	if (!(ac->ac_flags & EXT4_MB_HINT_TRY_GOAL))
++	if (!(ac->ac_flags & (EXT4_MB_HINT_TRY_GOAL | EXT4_MB_HINT_GOAL_ONLY)))
+ 		return 0;
+ 	if (grp->bb_free == 0)
+ 		return 0;
 -- 
-2.31.1
+2.30.0
 
