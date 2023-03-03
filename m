@@ -2,108 +2,93 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A7A70C7EE33
-	for <linux-ext4@archiver.kernel.org>; Fri,  3 Mar 2023 09:20:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 317E6C7EE30
+	for <linux-ext4@archiver.kernel.org>; Fri,  3 Mar 2023 09:20:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230326AbjCCJUX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 3 Mar 2023 04:20:23 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49940 "EHLO
+        id S230344AbjCCJUY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 3 Mar 2023 04:20:24 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49910 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230161AbjCCJT6 (ORCPT
+        with ESMTP id S230195AbjCCJT6 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Mar 2023 04:19:58 -0500
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2D05923DA8;
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B04A7DBDB;
         Fri,  3 Mar 2023 01:19:57 -0800 (PST)
 Received: from mail02.huawei.com (unknown [172.30.67.153])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4PSj9N2h1Xz4f3mKk;
-        Fri,  3 Mar 2023 17:19:52 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PSj9P2JmNz4f3nVG;
+        Fri,  3 Mar 2023 17:19:53 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgDnnbGyuwFkFpqfEg--.45687S20;
-        Fri, 03 Mar 2023 17:19:54 +0800 (CST)
+        by APP4 (Coremail) with SMTP id gCh0CgDnnbGyuwFkFpqfEg--.45687S22;
+        Fri, 03 Mar 2023 17:19:55 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com,
         ritesh.list@gmail.com
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
         shikemeng@huaweicloud.com
-Subject: [PATCH v3 18/20] ext4: remove repeat assignment to ac_f_ex
-Date:   Sat,  4 Mar 2023 01:21:18 +0800
-Message-Id: <20230303172120.3800725-19-shikemeng@huaweicloud.com>
+Subject: [PATCH v3 20/20] ext4: simplify calculation of blkoff in ext4_mb_new_blocks_simple
+Date:   Sat,  4 Mar 2023 01:21:20 +0800
+Message-Id: <20230303172120.3800725-21-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230303172120.3800725-1-shikemeng@huaweicloud.com>
 References: <20230303172120.3800725-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgDnnbGyuwFkFpqfEg--.45687S20
-X-Coremail-Antispam: 1UD129KBjvJXoW7tryxGr18Cw1fGF1fGr4UArb_yoW8WF4xp3
-        ZxtF1Fkw1fXr1DCFZ2g3WDG3WFkw47Gr1UJry0g3WrJFZxKFW7Gw4kta4Iqa9xCrZ3AFnx
-        ZrWxAF1UGrsrK3DanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUPI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
-        0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
-        rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6x
-        IIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xv
-        wVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFc
-        xC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_
-        Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2
-        IErcIFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
-        14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIx
-        kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAF
-        wI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr
-        0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0pRv
-        JPtUUUUU=
+X-CM-TRANSID: gCh0CgDnnbGyuwFkFpqfEg--.45687S22
+X-Coremail-Antispam: 1UD129KBjvdXoWrtFWDZw4xCw4DKr4UCw4fGrg_yoWfKFc_Ka
+        4xZr48JFWrJr1fuFn5JrZ8tF47ta1kJr1ruFZ2qryfZF1YvFWxuw1DArZ0yFyDuay5Aas8
+        Cr9xurW5Kr10vjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUbqxFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+        6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M28IrcIa0xkI8V
+        A2jI8067AKxVWUAVCq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJ
+        M28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2I
+        x0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK
+        6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4
+        xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8
+        JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20V
+        AGYxC7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAF
+        wI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc4
+        0Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26ryj6F1UMIIF0xvE2Ix0cI8IcVCY1x0267AK
+        xVW8Jr0_Cr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JV
+        WxJwCI42IY6I8E87Iv6xkF7I0E14v26r4UJVWxJrUvcSsGvfC2KfnxnUUI43ZEXa7sRiVb
+        yDUUUUU==
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Call trace to assign ac_f_ex:
-ext4_mb_use_best_found
-	ac->ac_f_ex = ac->ac_b_ex;
-	ext4_mb_new_preallocation
-		ext4_mb_new_group_pa
-			ac->ac_f_ex = ac->ac_b_ex;
-		ext4_mb_new_inode_pa
-			ac->ac_f_ex = ac->ac_b_ex;
-
-Actually allocated blocks is already stored in ac_f_ex in
-ext4_mb_use_best_found, so there is no need to assign ac_f_ex
-in ext4_mb_new_group_pa and ext4_mb_new_inode_pa.
-Just remove repeat assignment to ac_f_ex in ext4_mb_new_group_pa
-and ext4_mb_new_inode_pa.
+We try to allocate a block from goal in ext4_mb_new_blocks_simple. We
+only need get blkoff in first group with goal and set blkoff to 0 for
+the rest groups.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/mballoc.c | 8 --------
- 1 file changed, 8 deletions(-)
+ fs/ext4/mballoc.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index b9e69f3a678f..d4e226c16baf 100644
+index 1103d35b31cb..85d5e219933f 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -4635,10 +4635,6 @@ ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
- 		BUG_ON(ac->ac_o_ex.fe_len > ac->ac_b_ex.fe_len);
+@@ -5772,9 +5772,6 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
+ 			return 0;
+ 		}
+ 
+-		ext4_get_group_no_and_offset(sb,
+-			max(ext4_group_first_block_no(sb, group), goal),
+-			NULL, &blkoff);
+ 		while (1) {
+ 			i = mb_find_next_zero_bit(bitmap_bh->b_data, max,
+ 						blkoff);
+@@ -5789,6 +5786,8 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
+ 		brelse(bitmap_bh);
+ 		if (i < max)
+ 			break;
++
++		blkoff = 0;
  	}
  
--	/* preallocation can change ac_b_ex, thus we store actually
--	 * allocated blocks for history */
--	ac->ac_f_ex = ac->ac_b_ex;
--
- 	pa->pa_lstart = ac->ac_b_ex.fe_logical;
- 	pa->pa_pstart = ext4_grp_offs_to_block(sb, &ac->ac_b_ex);
- 	pa->pa_len = ac->ac_b_ex.fe_len;
-@@ -4689,10 +4685,6 @@ ext4_mb_new_group_pa(struct ext4_allocation_context *ac)
- 
- 	pa = ac->ac_pa;
- 
--	/* preallocation can change ac_b_ex, thus we store actually
--	 * allocated blocks for history */
--	ac->ac_f_ex = ac->ac_b_ex;
--
- 	pa->pa_pstart = ext4_grp_offs_to_block(sb, &ac->ac_b_ex);
- 	pa->pa_lstart = pa->pa_pstart;
- 	pa->pa_len = ac->ac_b_ex.fe_len;
+ 	if (group >= ext4_get_groups_count(sb) || i >= max) {
 -- 
 2.30.0
 
