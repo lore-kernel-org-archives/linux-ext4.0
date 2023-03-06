@@ -2,72 +2,58 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 04142C6FD19
-	for <linux-ext4@archiver.kernel.org>; Mon,  6 Mar 2023 09:26:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D435C678D4
+	for <linux-ext4@archiver.kernel.org>; Mon,  6 Mar 2023 09:40:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229917AbjCFJ0p (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 6 Mar 2023 04:26:45 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36402 "EHLO
+        id S230107AbjCFJk6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 6 Mar 2023 04:40:58 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52252 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229871AbjCFJ0n (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Mar 2023 04:26:43 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 10557231E0;
-        Mon,  6 Mar 2023 01:26:41 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 9D4E3B80D27;
-        Mon,  6 Mar 2023 09:26:40 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C2167C433EF;
-        Mon,  6 Mar 2023 09:26:36 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1678094799;
-        bh=57FrCCZ2Wq+YAZlBEbTVLCXLXyHrbe4LXgxzAP6Rt70=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=aGpHk5/EASsEtl4vKnAkGUaXhtbPzA/d2cXgftsQx8PVrRgVXQNsAAnUOBX1GgX6I
-         G/6gfIFXfw4GETwfv8Vqa+2mueXnJba6vq4doCPeNTZ+42jYFYMi/XGYUBkeA8X/oD
-         ElKS799bOnXufZBGOEBscaDcXEpJHRp87DtATu56G0m7hUhBUbQpW3gm1nxMrdfglF
-         0ZbBUcHJGIkJmz/Hsybihbq8zOv2if13KJ/EEandIpN1dFYg7WzDuihAtyiEKIBsW3
-         NHz3uKORaef+IPel5P8LpgPELeV5dFcgKzByHGHs4b9oIVc5RyT13xsoOqXUWsxf3W
-         aynSxAyBPrijQ==
-Date:   Mon, 6 Mar 2023 10:26:33 +0100
-From:   Christian Brauner <brauner@kernel.org>
-To:     Christoph Hellwig <hch@lst.de>
-Cc:     linux-fsdevel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
-        Seth Forshee <sforshee@kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-unionfs@vger.kernel.org
-Subject: Re: [PATCH v3 00/10] acl: drop posix acl handlers from xattr handlers
-Message-ID: <20230306092633.tobpejvw7mwcx22v@wittgenstein>
-References: <20230125-fs-acl-remove-generic-xattr-handlers-v3-0-f760cc58967d@kernel.org>
- <20230201133020.GA31902@lst.de>
- <20230201134254.fai2vc7gtzj6iikx@wittgenstein>
+        with ESMTP id S230117AbjCFJkx (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Mar 2023 04:40:53 -0500
+X-Greylist: delayed 1187 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Mon, 06 Mar 2023 01:40:50 PST
+Received: from mail.ettrick.pl (mail.ettrick.pl [141.94.21.111])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E7A74233CB
+        for <linux-ext4@vger.kernel.org>; Mon,  6 Mar 2023 01:40:50 -0800 (PST)
+Received: by mail.ettrick.pl (Postfix, from userid 1002)
+        id 78460A3DE9; Mon,  6 Mar 2023 09:01:15 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=ettrick.pl; s=mail;
+        t=1678093386; bh=KHux3km3Civcx5ChslOYQZwQRBjoJa4kWJfGcMIuN6w=;
+        h=Date:From:To:Subject:From;
+        b=iu6qR/X79GErb40D5JMD7rizQK23cPIeVQPzNGAxRY2pN3vzjHHx4u0DfGhAihqgS
+         2wleBooxj5OKhojA5OWfQ+5/dF5cYroKkMQSWIXR7wcxw7N61nFCXzMU/J4LX0UuCH
+         6PjskPj0bvDvkQTJYs5bL8jkOhLD+5Tdw4BHA7jAivVBO/Q5Mo45ttFfQEQzvOZF4l
+         zauKzgRzzQpyb8fg2GpxqrUmpnheeCX27pz4PfMF7V3laRsQoSpjCzWslGy1IBlECQ
+         8nLYrh4V2+210uwguHVkjeFX5EyAQ3+nLW25Qd37+2h/zP5Xd+0+bFd9i1GmSWQh8f
+         XckZFYVQID77A==
+Received: by mail.ettrick.pl for <linux-ext4@vger.kernel.org>; Mon,  6 Mar 2023 09:00:53 GMT
+Message-ID: <20230306074500-0.1.97.36yjl.0.gifkx2l83x@ettrick.pl>
+Date:   Mon,  6 Mar 2023 09:00:53 GMT
+From:   "Norbert Karecki" <norbert.karecki@ettrick.pl>
+To:     <linux-ext4@vger.kernel.org>
+Subject: Fotowoltaika - nowe warunki
+X-Mailer: mail.ettrick.pl
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <20230201134254.fai2vc7gtzj6iikx@wittgenstein>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Feb 01, 2023 at 02:42:54PM +0100, Christian Brauner wrote:
-> On Wed, Feb 01, 2023 at 02:30:20PM +0100, Christoph Hellwig wrote:
-> > This version looks good to me, but I'd really prefer if a reiserfs
-> > insider could look over the reiserfs patches.
-> 
-> I consider this material for v6.4 even with an -rc8 for v6.3. So there's
-> time but we shouldn't block it on reiserfs. Especially, since it's
-> marked deprecated.
+Dzie=C5=84 dobry,
 
-So I've applied this now. If there's still someone interested in
-checking the reiserfs bits more than what we did with xfstests they
-should please do so. But I don't want to hold up this series waiting for
-that to happen.
+chcia=C5=82bym poinformowa=C4=87, i=C5=BC mog=C4=85 Pa=C5=84stwo uzyska=C4=
+=87 dofinansowanie na systemy fotowoltaiczne w ramach nowej edycji progra=
+mu M=C3=B3j Pr=C4=85d.
 
-> 
-> Fwiw, I've tested reiserfs with xfstests on a kernel with and without
-> this series applied and there's no regressions. But it's overall pretty
-> buggy at least according to xfstests. Which is expected, I guess.
+Program zapewnia 6000 z=C5=82 dofinansowania na instalacj=C4=99 paneli i =
+16 000 z=C5=82 na magazyn energii, ni=C5=BCsze cen pr=C4=85du i mo=C5=BCl=
+iwo=C5=9B=C4=87 odliczenia koszt=C3=B3w zwi=C4=85zanych z instalacj=C4=85=
+ fotowoltaiki w ramach rozliczenia PIT (tzw. ulga termomodernizacyjna).
+
+Czy s=C4=85 Pa=C5=84stwo otwarci na wst=C4=99pn=C4=85 rozmow=C4=99 w tym =
+temacie?
+
+
+Pozdrawiam,
+Norbert Karecki
