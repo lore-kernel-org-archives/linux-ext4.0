@@ -2,112 +2,96 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6269AC678D4
-	for <linux-ext4@archiver.kernel.org>; Mon,  6 Mar 2023 09:52:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AE8DEC678D4
+	for <linux-ext4@archiver.kernel.org>; Mon,  6 Mar 2023 10:16:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229842AbjCFJwg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 6 Mar 2023 04:52:36 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39776 "EHLO
+        id S230521AbjCFKQd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 6 Mar 2023 05:16:33 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38978 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229865AbjCFJwe (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Mar 2023 04:52:34 -0500
-Received: from mail-pl1-x62f.google.com (mail-pl1-x62f.google.com [IPv6:2607:f8b0:4864:20::62f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7328023641;
-        Mon,  6 Mar 2023 01:52:31 -0800 (PST)
-Received: by mail-pl1-x62f.google.com with SMTP id h8so9618438plf.10;
-        Mon, 06 Mar 2023 01:52:31 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=in-reply-to:subject:cc:to:from:message-id:date:from:to:cc:subject
-         :date:message-id:reply-to;
-        bh=wG8c7belK9OM/OT139DOvd0umxDg1Jwx48LfTTUoDq8=;
-        b=Bqk84XzlHXdUfL5jaevO/928dBaaKnaQ/6iMPIvzXXK4wXwLhD8T6jH72W2O9clYGr
-         w4468W4AUtB14ezm/PNepGojuEiqbA3wwrhczCUmfTyMcUCq/qHaHETuhPdN3sceUATq
-         kjFclmdVx8nb3gOomQeOZS2/43S6EDre1NqDWzHyRwePjObcFmiQ6/PyvjUa0vFW1sCB
-         +sP9OvcIZ4mDCMQafARVvfE6MvvGiB6YhK8uV8Jw6eaPXHgUboGFoQPrtpYshvuo2KE+
-         P54u+DEuJzRaKNJDcsrTj999zPH45FGYMPJVVy33hABYOjS5ASLFiJ1tli7793TEwIy0
-         DHMw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=in-reply-to:subject:cc:to:from:message-id:date:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=wG8c7belK9OM/OT139DOvd0umxDg1Jwx48LfTTUoDq8=;
-        b=cL2AC2iAw6O4HxzbTgvug/CufLH2Nn3dx913oGl+zQ36eR1q7xrR8MmyBfNRQjj0Il
-         H9z89tCUcRJiKFTz+CwB0FJADJ2CbXK3M1U0eIUzgILhLwYC5Nswryotyf8eBJhy3ZKT
-         YuapAFm7uYZlUBhSz+vwblvZ8MBbShkoFGFcEb7iZfcbpxaAnDt4HJ62w4kHXDL8x91R
-         79+b6TQNr5uJWftXdsoVvXElWH8qRnnhFi/jcL/SEpOUYFQxoSPCdON63KhHN7tC2C7n
-         iUsxPFjeYllKvw857j7fILF7IIJnRWyCdRy2GybylCk3ZHZ8okfYYQ8LZD1r/c/CTWMR
-         TaHA==
-X-Gm-Message-State: AO0yUKWFvMzeLPQQHuKZ0hQTEfCtWQAVBhfd74bvHLunP/7AhEgIdmuB
-        35rkirXib3Fntfr8CSfzpJjE1m7kW28=
-X-Google-Smtp-Source: AK7set/bBdX5zqdpORgqfqafnX6iscVVZGVVNV/7vxmq/Vj9Zf+JCNzxV2mm3lWUKcFbiEvJ7NsuKA==
-X-Received: by 2002:a17:903:32d0:b0:19a:a810:542 with SMTP id i16-20020a17090332d000b0019aa8100542mr13107676plr.61.1678096350554;
-        Mon, 06 Mar 2023 01:52:30 -0800 (PST)
-Received: from rh-tp ([129.41.58.18])
-        by smtp.gmail.com with ESMTPSA id u4-20020a170902e80400b0019d397b0f18sm6238132plg.214.2023.03.06.01.52.28
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 06 Mar 2023 01:52:30 -0800 (PST)
-Date:   Mon, 06 Mar 2023 20:51:45 +0530
-Message-Id: <87r0u129di.fsf@doe.com>
-From:   Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     Theodore Tso <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 25/31] ext4: Convert ext4_block_write_begin() to take a folio
-In-Reply-To: <ZAWj4FHczOQwwEbK@casper.infradead.org>
+        with ESMTP id S230522AbjCFKP5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Mar 2023 05:15:57 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C589F25B81
+        for <linux-ext4@vger.kernel.org>; Mon,  6 Mar 2023 02:15:28 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ams.source.kernel.org (Postfix) with ESMTPS id EE71DB80D7A
+        for <linux-ext4@vger.kernel.org>; Mon,  6 Mar 2023 10:15:26 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id A4EB2C43446
+        for <linux-ext4@vger.kernel.org>; Mon,  6 Mar 2023 10:15:25 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1678097725;
+        bh=VeHRse/mm59vdaNXb/w7eApkpE9KyvX701oRkjvARmA=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=Y6PcXYHwQ3fWi0LWAOGn4iF3Ks+hPwwAhOEYvTlCaCsTb91U1h1h0c6Mer7X/xnBk
+         g0K3tlA4CLbcJc2EchWVd/n/+FbQrTT5ar9ZeWAQjjB0hFK2OQn7RTB7RQ3Mi8YRXB
+         HFk89pkhMo09wPI1BZGzh7ZOCBkP9gCbxPh0Y81pxOaBjrzH3EaFc6pCxpPiqESBcC
+         BmsFzSbR42M5LRBjbh2ICXrQFjMAsKsA47BKg+J48caG3T5JSm/Q9E0V4T0IAWpRGg
+         NUc4BChrUxplRiZDJg19KXfOG0LxXYIxOQhGNVODMQRRLotP3ZYdL0o33IAZ998h6b
+         68YJYxCfpFB0Q==
+Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
+        id 8D169C43145; Mon,  6 Mar 2023 10:15:25 +0000 (UTC)
+From:   bugzilla-daemon@kernel.org
+To:     linux-ext4@vger.kernel.org
+Subject: [Bug 217145] Feature request: I need very long directory and file
+ names
+Date:   Mon, 06 Mar 2023 10:15:25 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: kernel@nerdbynature.de
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: cc
+Message-ID: <bug-217145-13602-xUjOe0PCqO@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-217145-13602@https.bugzilla.kernel.org/>
+References: <bug-217145-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
+MIME-Version: 1.0
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Matthew Wilcox <willy@infradead.org> writes:
+https://bugzilla.kernel.org/show_bug.cgi?id=3D217145
 
-> On Mon, Mar 06, 2023 at 12:21:48PM +0530, Ritesh Harjani wrote:
->> "Matthew Wilcox (Oracle)" <willy@infradead.org> writes:
->>
->> > All the callers now have a folio, so pass that in and operate on folios.
->> > Removes four calls to compound_head().
->>
->> Why do you say four? Isn't it 3 calls of PageUptodate(page) which
->> removes calls to compound_head()? Which one did I miss?
->>
->> > -	BUG_ON(!PageLocked(page));
->> > +	BUG_ON(!folio_test_locked(folio));
->
-> That one ;-)
+Christian Kujau (kernel@nerdbynature.de) changed:
 
-__PAGEFLAG(Locked, locked, PF_NO_TAIL)
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |kernel@nerdbynature.de
 
-#define __PAGEFLAG(uname, lname, policy)				\
-	TESTPAGEFLAG(uname, lname, policy)				\
-	__SETPAGEFLAG(uname, lname, policy)				\
-	__CLEARPAGEFLAG(uname, lname, policy)
+--- Comment #1 from Christian Kujau (kernel@nerdbynature.de) ---
+Ext4 (and Btrfs and XFS too) supports file names up to 255 bytes long. How =
+long
+do you need a file name to be? That 1-3 KB refers to....a list of files, or=
+ the
+actual file name length? I'm interested in the actual use cases for this. A=
+lso,
+what's that name of the torrent client that magically truncates file names
+here?
 
-#define TESTPAGEFLAG(uname, lname, policy)				\
-static __always_inline bool folio_test_##lname(struct folio *folio)	\
-{ return test_bit(PG_##lname, folio_flags(folio, FOLIO_##policy)); }	\
-static __always_inline int Page##uname(struct page *page)		\
-{ return test_bit(PG_##lname, &policy(page, 0)->flags); }
+$ mkdir -p $(perl -e 'print "a"x255')/$(perl -e 'print "b"x255')
+$ touch $(perl -e 'print "a"x255')/$(perl -e 'print "b"x255')/$(perl -e 'pr=
+int
+"c"x255')
+$ find a*
+aaaaaaaaaaaaa[...] well, you get the idea :-)
 
-How? PageLocked(page) doesn't do any compount_head() calls no?
+--=20
+You may reply to this email to add a comment.
 
--ritesh
-
->
->> >  	} else if (fscrypt_inode_uses_fs_layer_crypto(inode)) {
->> >  		for (i = 0; i < nr_wait; i++) {
->> >  			int err2;
->> >
->> > -			err2 = fscrypt_decrypt_pagecache_blocks(page, blocksize,
->> > -								bh_offset(wait[i]));
->> > +			err2 = fscrypt_decrypt_pagecache_blocks(&folio->page,
->> > +						blocksize, bh_offset(wait[i]));
->>
->> folio_decrypt_pagecache_blocks() takes folio as it's argument now.
->>
->> Other than that it looks good to me. Please feel free to add -
->> Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
->
-> Thanks.  I'll refresh this patchset next week.
-
-Sure. Thanks!
+You are receiving this mail because:
+You are watching the assignee of the bug.=
