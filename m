@@ -2,98 +2,106 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 20F97C6FD20
-	for <linux-ext4@archiver.kernel.org>; Mon,  6 Mar 2023 22:09:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 13D8AC6FA99
+	for <linux-ext4@archiver.kernel.org>; Tue,  7 Mar 2023 01:29:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229895AbjCFWJc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 6 Mar 2023 17:09:32 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34758 "EHLO
+        id S229925AbjCGB3z (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 6 Mar 2023 20:29:55 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56464 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229651AbjCFWJa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Mar 2023 17:09:30 -0500
-X-Greylist: delayed 434 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Mon, 06 Mar 2023 14:09:28 PST
-Received: from gimli.rothwell.id.au (gimli.rothwell.id.au [103.230.158.156])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 94C4F3A86A;
-        Mon,  6 Mar 2023 14:09:28 -0800 (PST)
-Received: from authenticated.rothwell.id.au (localhost [127.0.0.1])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange ECDHE (P-256) server-signature RSA-PSS (4096 bits) server-digest SHA256)
-        (No client certificate requested)
-        by mail.rothwell.id.au (Postfix) with ESMTPSA id 4PVsxT2rNJz10D8;
-        Tue,  7 Mar 2023 09:02:04 +1100 (AEDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=rothwell.id.au;
-        s=201702; t=1678140128;
-        bh=CT3TMcpY6lA0teNpfbCN+jQnW4E+gRCV+4UTTjMGssc=;
-        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
-        b=lnIMNfLIUI7olNLDKs9n+tXXOi8l7ihqREx1UhulmGiXDoQ11PR1r+P1Et1pck5kh
-         YEfAWenwbH616KGWrC10Feqk9XWjVtzo4p8sHbV1mSSRMcsWlCBdreo/w91nIEA/yQ
-         CybzKjirCMvMcAx5dEy/2vHq7BKbSt266tIeBbHBo6HhYYXLqd+JMsd/s9VP2POfuK
-         bTHdZsqk5sG8L0OXGksmFi572maPf8/gMr8arwdGMeu2zse4/ni3TaiOGG36D4k7NB
-         VpcHZAUMecXBk/RRhY6Rw0lLKmbhXBS3XLZCbxPjkAy9sLTEvHAhbzJenE4gP6K57A
-         E2lzj/xiwtoAg==
-Date:   Tue, 7 Mar 2023 09:02:03 +1100
-From:   Stephen Rothwell <sfr@rothwell.id.au>
-To:     Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>
-Cc:     Bagas Sanjaya <bagasdotme@gmail.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Matthew Wilcox <willy@infradead.org>,
-        Linux Next Mailing List <linux-next@vger.kernel.org>,
-        ext4 Development <linux-ext4@vger.kernel.org>
-Subject: Re: The state of ext4 tree merging (was Re: Linux 6.3-rc1)
-Message-ID: <20230307090203.56c41488@oak.ozlabs.ibm.com>
-In-Reply-To: <20230306124134.hmeuvjhihs4ubpmz@quack3>
-References: <CAHk-=wgr1D8hb75Z+nn+4LXUnosp0HM+gP+YJEcEav1DgTC=Cw@mail.gmail.com>
-        <ZAVbZJSyOdF0BxAJ@debian.me>
-        <20230306124134.hmeuvjhihs4ubpmz@quack3>
-X-Mailer: Claws Mail 4.1.1 (GTK 3.24.36; aarch64-unknown-linux-gnu)
+        with ESMTP id S229880AbjCGB3t (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Mar 2023 20:29:49 -0500
+Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F32FB37F35;
+        Mon,  6 Mar 2023 17:29:47 -0800 (PST)
+Received: from mail02.huawei.com (unknown [172.30.67.169])
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PVyY22SyBz4f3m6j;
+        Tue,  7 Mar 2023 09:29:42 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.127.227])
+        by APP3 (Coremail) with SMTP id _Ch0CgBH9CGFkwZk1RTkEQ--.45801S5;
+        Tue, 07 Mar 2023 09:29:44 +0800 (CST)
+From:   Ye Bin <yebin@huaweicloud.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+Cc:     linux-kernel@vger.kernel.org, jack@suse.cz,
+        Ye Bin <yebin10@huawei.com>
+Subject: [PATCH v4 1/2] ext4: remove set 'EXT4_STATE_MAY_INLINE_DATA' flag from ext4_find_inline_data_nolock()
+Date:   Tue,  7 Mar 2023 09:52:52 +0800
+Message-Id: <20230307015253.2232062-2-yebin@huaweicloud.com>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20230307015253.2232062-1-yebin@huaweicloud.com>
+References: <20230307015253.2232062-1-yebin@huaweicloud.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="Sig_/azmCj37hp48XC88B.Q0BoGS";
- protocol="application/pgp-signature"; micalg=pgp-sha256
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID: _Ch0CgBH9CGFkwZk1RTkEQ--.45801S5
+X-Coremail-Antispam: 1UD129KBjvJXoW7try7Aw4kCFyrCF13uF18uFg_yoW8Aw1kpr
+        Z8G34kGw1DZFyv9FZ2qr1UZr1aga1xCw4UWFyI9r4kXF95J34Igr1Yyr13Aa4UKrWqv3ya
+        gFy5Kr48uw13GrJanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUvGb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUGw
+        A2048vs2IY020Ec7CjxVAFwI0_JFI_Gr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
+        w2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
+        W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
+        6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
+        Ij6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
+        Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr
+        0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY
+        17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcV
+        C0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY
+        6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa
+        73UjIFyTuYvjxUzoGQUUUUU
+X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
---Sig_/azmCj37hp48XC88B.Q0BoGS
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+From: Ye Bin <yebin10@huawei.com>
 
-Hi all,
+The only caller of ext4_find_inline_data_nolock() that needs setting of
+EXT4_STATE_MAY_INLINE_DATA flag is ext4_iget_extra_inode(). In
+ext4_write_inline_data_end() we just need to update inode->i_inline_off.
+Since we are going to add one more caller that does not need to set
+EXT4_STATE_MAY_INLINE_DATA, just move setting of EXT4_STATE_MAY_INLINE_DATA
+out to ext4_iget_extra_inode().
 
-On Mon, 6 Mar 2023 13:41:34 +0100 Jan Kara <jack@suse.cz> wrote:
->
-> To be fair, the data=3Djournal cleanups got held back only partially due =
-to
-> the merge issues. Another problem is that they somehow make problems with
-> filesystem freezing in data=3Djournal mode more frequent and we wanted to
-> understand (and hopefully fix) that. Of course if Ted could look into this
-> earlier or I could earlier debug these issues, we could have merged the
-> cleanups but that's always the case that you have to prioritize and these
-> cleanups don't have that high priority...
+Signed-off-by: Ye Bin <yebin10@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inline.c | 1 -
+ fs/ext4/inode.c  | 7 ++++++-
+ 2 files changed, 6 insertions(+), 2 deletions(-)
 
-In that case, it would be nice (for me at least) if the ext4 tree was
-now reset to be v6.3-rc1 i.e. get rid of the duplicate commits and the
-new stuff that is still being worked on.
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 2b42ececa46d..1602d74b5eeb 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -159,7 +159,6 @@ int ext4_find_inline_data_nolock(struct inode *inode)
+ 					(void *)ext4_raw_inode(&is.iloc));
+ 		EXT4_I(inode)->i_inline_size = EXT4_MIN_INLINE_DATA_SIZE +
+ 				le32_to_cpu(is.s.here->e_value_size);
+-		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
+ 	}
+ out:
+ 	brelse(is.iloc.bh);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index d251d705c276..bf0b7dea4900 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4797,8 +4797,13 @@ static inline int ext4_iget_extra_inode(struct inode *inode,
+ 
+ 	if (EXT4_INODE_HAS_XATTR_SPACE(inode)  &&
+ 	    *magic == cpu_to_le32(EXT4_XATTR_MAGIC)) {
++		int err;
++
+ 		ext4_set_inode_state(inode, EXT4_STATE_XATTR);
+-		return ext4_find_inline_data_nolock(inode);
++		err = ext4_find_inline_data_nolock(inode);
++		if (!err && ext4_has_inline_data(inode))
++			ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
++		return err;
+ 	} else
+ 		EXT4_I(inode)->i_inline_off = 0;
+ 	return 0;
+-- 
+2.31.1
 
---=20
-Cheers,
-Stephen Rothwell
-
---Sig_/azmCj37hp48XC88B.Q0BoGS
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
-
------BEGIN PGP SIGNATURE-----
-
-iQEzBAEBCAAdFiEENIC96giZ81tWdLgKAVBC80lX0GwFAmQGYtsACgkQAVBC80lX
-0Gzs2wgAjNS8RWpLPCi6vkgiXrAVXehIVNeARS5omvrCfoPz7D00jC2QkzjfjV69
-IskkliLupht9ZvOllPkerP5ToqZSof+qDQZBJqGUkbPnK/+jnq1mvPn1OLdjYR6A
-7PBWiBhcJ3nyU7wxLmdu5GPt1ETViOgWl6SM7Cj+y482kfM0+OiTbdN8Xtfyj8rD
-i0Z7J50DlFFq6xqKCPhUvZiYj1L7L1vHX3klSGbjc3AW5VFjkJfJXELUS0P4foOu
-v17o7RbnjlA1UMFFdXQyNg9PEG4lf68vNUmiKR6MW5KPzJ0i2BDuRpe77plBzE1o
-gBaFfrT0rplyWiWfJHBWVi81NFohJA==
-=z0a5
------END PGP SIGNATURE-----
-
---Sig_/azmCj37hp48XC88B.Q0BoGS--
