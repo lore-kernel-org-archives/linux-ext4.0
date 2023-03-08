@@ -2,47 +2,46 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AA0CEC6FD20
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Mar 2023 04:33:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 43972C64EC4
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Mar 2023 04:34:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229682AbjCHEdy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 7 Mar 2023 23:33:54 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44506 "EHLO
+        id S229919AbjCHEeI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 7 Mar 2023 23:34:08 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44930 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229742AbjCHEdp (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Mar 2023 23:33:45 -0500
+        with ESMTP id S229806AbjCHEdu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Mar 2023 23:33:50 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9898E41B6F
-        for <linux-ext4@vger.kernel.org>; Tue,  7 Mar 2023 20:33:41 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4CEC44108E
+        for <linux-ext4@vger.kernel.org>; Tue,  7 Mar 2023 20:33:49 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 3284XTsv021500
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 3284XTvr021510
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Tue, 7 Mar 2023 23:33:30 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1678250012; bh=+kUWUn38BH757yTcGKYg/R+b2u1y8Z0de2DOAnM6DOU=;
+        t=1678250011; bh=5pMWU6jII+CDzJ3zfBYzkUuOg2Vxa1wRZCqfVcF9NJw=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=Zf6vQ1rpopLr1AUjE0sRrOn0BAUIJW5TfFE6RvYMZillJ/3pmpYiHXFny1AQtLVs2
-         TSMCibUYPISvdrEKrzok+mnmoS8kZThOK9U+ytT88ui6y2CKmJJr3Y+9a8KrguBtCF
-         Lwslt+1ZjgiJdCPpOJBThfD+itWO8lKCbsuWq5vP4mIvlWQ5RD0i6rXBCnPotoeTvN
-         B8vtPK8NsehiXZc3B20jWgNjyuXlLngwsL12bxoJn/8+puwDCqNCX0cpynrSysoa8e
-         DKE5aSUIUg2hoklSUDrTvFBJi2EZxSupYvzYTHFK/gUVUTCNKj5vzUCA3YYDiHwV00
-         3kl5NSt0zCKcg==
+        b=fQhdRuF0Ca9IEXfQKd+n1CWjT4/CljpFoikCFVl7AO2kkLJZ1QrGEPJcagh7ta2rY
+         BGXxUedt75uaQKW7xU1cgPnuBe//MVsbHRA6aCnxEuj6oWspQ7Z91SvYoXoqIpbliP
+         hMhV7kimgU4zNhgCardZfP3GqqqajPTIRl8j0b2pfjDWL38Ye2Kl8FAzgS4Xc5ImWD
+         OUMXf52s2nH5CtbxDuU+VwC5StYHrIWm9lLlRnsPvWemVDXhTNlIagqLz5YSZthj4X
+         Ru2u5eR7BMIj+DqlkfW+7Fpm47kjVB9Eo3HseBZnt6KVmCZYKTwjCBbGDoOmC8fzNP
+         FbaBkJ14wWcVg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id CC87A15C3441; Tue,  7 Mar 2023 23:33:29 -0500 (EST)
+        id CF9E715C3444; Tue,  7 Mar 2023 23:33:29 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Wu Bo <bo.wu@vivo.com>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-doc@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Jonathan Corbet <corbet@lwn.net>,
-        linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH v2] docs: ext4: modify the group desc size to 64
-Date:   Tue,  7 Mar 2023 23:33:20 -0500
-Message-Id: <167824999282.2129363.5569221761031906694.b4-ty@mit.edu>
+To:     linux-ext4@vger.kernel.org, Eric Biggers <ebiggers@kernel.org>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-fscrypt@vger.kernel.org,
+        stable@vger.kernel.org, Matthew Wilcox <willy@infradead.org>,
+        Tejun Heo <tj@kernel.org>, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH] ext4: fix cgroup writeback accounting with fs-layer encryption
+Date:   Tue,  7 Mar 2023 23:33:22 -0500
+Message-Id: <167824999281.2129363.12204207098890359786.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230222013525.14748-1-bo.wu@vivo.com>
-References: <20230222013525.14748-1-bo.wu@vivo.com>
+In-Reply-To: <20230203005503.141557-1-ebiggers@kernel.org>
+References: <20230203005503.141557-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -50,17 +49,25 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, 22 Feb 2023 09:35:24 +0800, Wu Bo wrote:
-> Since the default ext4 group desc size is 64 now (assuming that the
-> 64-bit feature is enbled). And the size mentioned in this doc is 64 too.
-> Change it to 64.
+On Thu, 2 Feb 2023 16:55:03 -0800, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
 > 
+> When writing a page from an encrypted file that is using
+> filesystem-layer encryption (not inline encryption), ext4 encrypts the
+> pagecache page into a bounce page, then writes the bounce page.
 > 
+> It also passes the bounce page to wbc_account_cgroup_owner().  That's
+> incorrect, because the bounce page is a newly allocated temporary page
+> that doesn't have the memory cgroup of the original pagecache page.
+> This makes wbc_account_cgroup_owner() not account the I/O to the owner
+> of the pagecache page as it should.
+> 
+> [...]
 
 Applied, thanks!
 
-[1/1] docs: ext4: modify the group desc size to 64
-      commit: b7eef407e5271f5135ce97bfd6e2e5009922331e
+[1/1] ext4: fix cgroup writeback accounting with fs-layer encryption
+      commit: ffec85d53d0f39ee4680a2cf0795255e000e1feb
 
 Best regards,
 -- 
