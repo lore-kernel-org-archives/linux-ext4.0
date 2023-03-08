@@ -2,45 +2,45 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 271A2C678D5
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Mar 2023 04:33:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A5F7C64EC4
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Mar 2023 04:33:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229754AbjCHEdq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 7 Mar 2023 23:33:46 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44748 "EHLO
+        id S229769AbjCHEds (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 7 Mar 2023 23:33:48 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44618 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229764AbjCHEdk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Mar 2023 23:33:40 -0500
+        with ESMTP id S229780AbjCHEdl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Mar 2023 23:33:41 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CAF0C9887D
-        for <linux-ext4@vger.kernel.org>; Tue,  7 Mar 2023 20:33:36 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 030BD98E8F
+        for <linux-ext4@vger.kernel.org>; Tue,  7 Mar 2023 20:33:37 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 3284XVKk021552
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 3284XTIK021511
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 7 Mar 2023 23:33:32 -0500
+        Tue, 7 Mar 2023 23:33:30 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1678250012; bh=jM+CeGJETG6tHHcSFWSXuokokOH10VGCFF29bqpb0zE=;
+        t=1678250011; bh=AtGTfNGVlTo+6qf8F2BUGuKXyT5UAFpW1qsSK4MUwZ4=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=OZ8tFUlDkJ08YQE/HjxCuFh/ncZkXEHXAfZduwI9ygJb1eFSzbx4byMukHD/9pMok
-         dzaeWKOpy15K4mBtqznoWe9de16jSBuCCJz5vY865UQ87RzLLfBeQhxv+IwMlBIk+K
-         4zwOM9EBLJampym/uavTWpCZwBvsfdjvoN3L41ivEnJs31+fqdl3DwoNEj1IPBmywi
-         rhdiAHfnVQ7NoyAa0XO4mhCuS3uGv9eOqQdabtFcJQ1Y0DIlA/is3ZS/XEfRg8WP/5
-         ltRwH+KovY3424QqwD1CjLKCkVfREfqG2MuDvPmpKVkmnSA1PmNqtMl18Nuqg3+PmU
-         WyPHfsTpRjrGA==
+        b=N6rBG8VbznZJf9ZhRgu+VWz4soc+gNPXYU0mryllFMj1AVwbrc3W/DYjDoitZBY6I
+         6/p/50ej8ke5DXjhy7n+0JnM+a3TlGAZchu0oIvdUDB3VH2LkV73ChH+wgr9DEDtBp
+         Cm5dXvx2CUhDsmFF1r9YXwV+SBBtXp2nnyhNOtvOpHTbijY0X3nzsV22LQxSIHAJj4
+         /9H1MoP/ygh+biDqBGrGY/+CXNVvK7qVA9Pu883lEMqk2tsbZi0sCtHoXvz9tlEzyb
+         pHHlYvXAeB+O3SYd4CwhYHQofhomsmB1dKZGQVzEFhOFZukbvEC9FnLkAN7JM03rDk
+         lR+KYcDlnZDGQ==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id D6A0B15C348E; Tue,  7 Mar 2023 23:33:29 -0500 (EST)
+        id D33FC15C348C; Tue,  7 Mar 2023 23:33:29 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Tudor Ambarus <tudor.ambarus@linaro.org>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
-Subject: Re: [PATCH] ext4: Fix comment about the 64BIT feature
-Date:   Tue,  7 Mar 2023 23:33:26 -0500
-Message-Id: <167824999282.2129363.16805187093249173797.b4-ty@mit.edu>
+To:     Jan Kara <jack@suse.cz>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        syzbot+9d16c39efb5fade84574@syzkaller.appspotmail.com
+Subject: Re: [PATCH] ext4: Fix deadlock during directory rename
+Date:   Tue,  7 Mar 2023 23:33:24 -0500
+Message-Id: <167824999283.2129363.13902737390476485440.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230301133842.671821-1-tudor.ambarus@linaro.org>
-References: <20230301133842.671821-1-tudor.ambarus@linaro.org>
+In-Reply-To: <20230301141004.15087-1-jack@suse.cz>
+References: <20230301141004.15087-1-jack@suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -48,16 +48,20 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, 1 Mar 2023 13:38:42 +0000, Tudor Ambarus wrote:
-> 64BIT is part of the incompatible feature set, update the comment
-> accordingly.
+On Wed, 1 Mar 2023 15:10:04 +0100, Jan Kara wrote:
+> As lockdep properly warns, we should not be locking i_rwsem while having
+> transactions started as the proper lock ordering used by all directory
+> handling operations is i_rwsem -> transaction start. Fix the lock
+> ordering by moving the locking of the directory earlier in
+> ext4_rename().
 > 
 > 
+> [...]
 
 Applied, thanks!
 
-[1/1] ext4: Fix comment about the 64BIT feature
-      commit: 7fc1f5c28ae4c615ccc5346f39a7bf4c4e0900ac
+[1/1] ext4: Fix deadlock during directory rename
+      commit: 3c92792da8506a295afb6d032b4476e46f979725
 
 Best regards,
 -- 
