@@ -2,46 +2,47 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8C9B8C6FD20
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Mar 2023 04:33:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C4C9CC64EC4
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Mar 2023 04:33:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229809AbjCHEdu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 7 Mar 2023 23:33:50 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44822 "EHLO
+        id S229823AbjCHEdv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 7 Mar 2023 23:33:51 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44644 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229793AbjCHEdm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Mar 2023 23:33:42 -0500
+        with ESMTP id S229627AbjCHEdn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Mar 2023 23:33:43 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B32D728D2F
-        for <linux-ext4@vger.kernel.org>; Tue,  7 Mar 2023 20:33:38 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 72C5927D4B
+        for <linux-ext4@vger.kernel.org>; Tue,  7 Mar 2023 20:33:41 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 3284XVYK021546
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 3284XTSB021512
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 7 Mar 2023 23:33:32 -0500
+        Tue, 7 Mar 2023 23:33:30 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1678250014; bh=nK0/F+PjoqGyeJmtF8j75L5Aa7k2eV9Y3ZR28DHzAds=;
+        t=1678250011; bh=6eBgwYhaNsb4f/VJduAEdAamqyPQbmcvtbGKcjhn+dc=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=BBazZ1qe3/6BcN4F4exmsANPxm9sHtnlWi/tZJXp9ODMBrk5pUk6Jyw5jFJ+oGt9a
-         TJtk41oC8TyYIMno4iBdWgK2rPxnoL+g3yXQ0lEuIjn11lkyhvyuwtw7GpuzaFOlTh
-         KfKjLUV2fVTP0cugqvXAlKFVoIgZh+o7YVMMQzyWKXUiO0KNeaoutmtVFafChozyaJ
-         NLbakelJK0ueQIYe18b79mKJb+5gFz0R3g+ss/Bz1oOUH7IV8zXxGiTEIwtShoOnrz
-         +WcT6ZipnC5nrEbau/f38LJDSAzGuNmaRD5g5VYEyOfLLWpK4R/fShc398O5vjh7Fl
-         nU3jYDKH3lBIQ==
+        b=WRBmdcZklPchT78WOnIX3P0Og7aUqTg5IKmtNVe2ZIluXfgn0YGdyjlMVYigi5KFk
+         Fy0B0Ag6cu+xIiaPtINwfv5rROw9L5nSM8FKUcA24hP0nmdi9oOr8t23tH/9HviDsW
+         i/a5XvPsh9LAQTjjNFaol+GjpyUBaOi628vkt2B5DEnbKfX9cErDTndn++efqwa+yr
+         MG/P6ICe8z95RW2zU8qOrn2OwWGhmfsLyCY3Q0TFJPh3Uc+ZEhb1Xb621102qkrDrC
+         ILRC4qaJxtImbA2xIwVIoT3UHlg6spgvl8d/kJgzVfbsnfUqV23WpMQ8GiBaOYroH0
+         hJTDoS97WsoNg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id D4EE515C348D; Tue,  7 Mar 2023 23:33:29 -0500 (EST)
+        id CDDF915C3443; Tue,  7 Mar 2023 23:33:29 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Andreas Dilger <adilger.kernel@dilger.ca>,
-        =?UTF-8?q?Thomas=20Wei=C3=9Fschuh?= <linux@weissschuh.net>
+To:     "Darrick J. Wong" <djwong@kernel.org>
 Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext4: make kobj_type structures constant
-Date:   Tue,  7 Mar 2023 23:33:25 -0500
-Message-Id: <167824999282.2129363.18336636567964036362.b4-ty@mit.edu>
+        Tudor Ambarus <tudor.ambarus@linaro.org>,
+        Jun Nie <jun.nie@linaro.org>, Lee Jones <joneslee@google.com>,
+        linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
+Subject: Re: [PATCH] ext4: fix another off-by-one fsmap error on 1k block filesystems
+Date:   Tue,  7 Mar 2023 23:33:21 -0500
+Message-Id: <167824999281.2129363.10471803960046031746.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230209-kobj_type-ext4-v1-1-6865fb05c1f8@weissschuh.net>
-References: <20230209-kobj_type-ext4-v1-1-6865fb05c1f8@weissschuh.net>
+In-Reply-To: <Y+58NPTH7VNGgzdd@magnolia>
+References: <Y+58NPTH7VNGgzdd@magnolia>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -49,20 +50,27 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, 09 Feb 2023 03:18:35 +0000, Thomas Weißschuh wrote:
-> Since commit ee6d3dd4ed48 ("driver core: make kobj_type constant.")
-> the driver core allows the usage of const struct kobj_type.
+On Thu, 16 Feb 2023 10:55:48 -0800, Darrick J. Wong wrote:
+> From: Darrick J. Wong <djwong@kernel.org>
 > 
-> Take advantage of this to constify the structure definitions to prevent
-> modification at runtime.
+> Apparently syzbot figured out that issuing this FSMAP call:
 > 
+> struct fsmap_head cmd = {
+> 	.fmh_count	= ...;
+> 	.fmh_keys	= {
+> 		{ .fmr_device = /* ext4 dev */, .fmr_physical = 0, },
+> 		{ .fmr_device = /* ext4 dev */, .fmr_physical = 0, },
+> 	},
+> ...
+> };
+> ret = ioctl(fd, FS_IOC_GETFSMAP, &cmd);
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: make kobj_type structures constant
-      commit: 60db00e0a1490adcdc8b80887f7caf954d8bcd3e
+[1/1] ext4: fix another off-by-one fsmap error on 1k block filesystems
+      commit: c993799baf9c5861f8df91beb80e1611b12efcbd
 
 Best regards,
 -- 
