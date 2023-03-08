@@ -2,110 +2,67 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 516ADC678D5
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Mar 2023 04:32:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9CEE4C64EC4
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Mar 2023 04:33:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229614AbjCHEcO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 7 Mar 2023 23:32:14 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41484 "EHLO
+        id S229718AbjCHEdp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 7 Mar 2023 23:33:45 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44652 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229551AbjCHEcM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Mar 2023 23:32:12 -0500
+        with ESMTP id S229755AbjCHEdi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Mar 2023 23:33:38 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DF6FF9F07F
-        for <linux-ext4@vger.kernel.org>; Tue,  7 Mar 2023 20:32:09 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C093495E0E
+        for <linux-ext4@vger.kernel.org>; Tue,  7 Mar 2023 20:33:33 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 3284Vd5a020749
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 3284XTwP021501
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 7 Mar 2023 23:31:40 -0500
+        Tue, 7 Mar 2023 23:33:30 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1678249901; bh=RGWp900Vv8zD7g2BiMd0+FWzx27JFxBB6jqBFBVJLeE=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To;
-        b=FTRNm+ZYfbag/9ldQ59g9vFRiXuub5iM47i+J+fpxISzdAdvJnGyriUG/tmsY2fNF
-         fK4vvRhokMU/Koh+papQg3HLp7kN9MTRNYjwlBMTweEbWvD4BDx+v3OR94FM5BNf8D
-         kjKI8RvEp7QBtXCBJCYxVnn0rZuIQmWIdW2Pr0mf1RrNBkmi13/ZnT361EdwFMmZLc
-         xi4PuQHYV2LW1a+rnoZXbZonsyUnzxM/ldXwQq5YWiQxeGjn7xT04V2Yx0f1aB5g93
-         CHN+7hNg0ECe6wFgoSP+adSqTl/fDxujZH4u6wqmxMMtp41Le64wcxThkxBhyZ8cCW
-         sSGRJhRCF9ktg==
+        t=1678250011; bh=/ofLAobISyWG4eGB29qn5insCmJ/hmVFSzIUdpK3DbU=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References;
+        b=bRFwSl4ib4NScGtn6+eY9ZK/v6iMoCRpOAb/1qbqaRXt7d8MhWdqkzKB34yEcommG
+         VV49zF+tP8Twr769cnU9GNrxdtFlLq9ooWqVzIWTz2LHejWDdde4RU3fk30tnlLHOY
+         BqeYMMWic74czZjxZE5pEbMYZymnhTPzfNF6Jg6dmyGWk7zbFzvgj8ZPkQUkaeo9It
+         xvlIdAzdHic6HX7XAwSflIFHzTA2rr+9m/QxUO/S8Q8wn4OTkyF9iDJ/Ij0WVIgqp0
+         Pv756b9Acxnh1L3Dd/4bFojknjuyWx/mUvmYVcvD2ugdvw4SMAKCeHd4m3H3sf1sGF
+         GyLIaMxk6xtUA==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 1616915C3441; Tue,  7 Mar 2023 23:31:39 -0500 (EST)
-Date:   Tue, 7 Mar 2023 23:31:39 -0500
+        id D140015C3448; Tue,  7 Mar 2023 23:33:29 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Zhihao Cheng <chengzhihao1@huawei.com>
-Cc:     jack@suse.com, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        yi.zhang@huawei.com
-Subject: Re: [PATCH] ext4: Fix WANRON caused by unconsistent boot loader
- inode's i_size and i_disksize
-Message-ID: <20230308043139.GD860405@mit.edu>
-References: <20230308032643.641113-1-chengzhihao1@huawei.com>
+To:     linux-ext4@vger.kernel.org, Eric Whitney <enwlinux@gmail.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: fix RENAME_WHITEOUT handling for inline directories
+Date:   Tue,  7 Mar 2023 23:33:23 -0500
+Message-Id: <167824999281.2129363.15378666529053966811.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <20230210173244.679890-1-enwlinux@gmail.com>
+References: <20230210173244.679890-1-enwlinux@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20230308032643.641113-1-chengzhihao1@huawei.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Mar 08, 2023 at 11:26:43AM +0800, Zhihao Cheng wrote:
-> Using corrupted ext4 image(non-zero i_size for boot loader inode) could
-> trigger WARNON 'i_size_read(inode) < EXT4_I(inode)->i_disksize' in
-> ext4_handle_inode_extension():
+On Fri, 10 Feb 2023 12:32:44 -0500, Eric Whitney wrote:
+> A significant number of xfstests can cause ext4 to log one or more
+> warning messages when they are run on a test file system where the
+> inline_data feature has been enabled.  An example:
 > 
->  WARNING: CPU: 0 PID: 2580 at fs/ext4/file.c:319
->  CPU: 0 PID: 2580 Comm: bb Not tainted 6.3.0-rc1-00004-g703695902cfa
->  RIP: 0010:ext4_file_write_iter+0xbc7/0xd10
->  Call Trace:
->   vfs_write+0x3b1/0x5c0
->   ksys_write+0x77/0x160
->   __x64_sys_write+0x22/0x30
->   do_syscall_64+0x39/0x80
+> "EXT4-fs warning (device vdc): ext4_dirblock_csum_set:425: inode
+>  #16385: comm fsstress: No space for directory leaf checksum. Please
+> run e2fsck -D."
 > 
-> Reproducer (See Link):
->  1. mount corrupted ext4 image with non-zero i_size for boot loader inode
->  2. ioctl(fd, EXT4_IOC_SWAP_BOOT)
->  3. write(fd)  // O_DIRECT
-> 
-> Fix it by setting i_disksize while first loading boot loader inode.
+> [...]
 
-Thanks for reporting the bug, but this is not the correct fix.
+Applied, thanks!
 
-We need to swap i_disksize when we swap i_size in swap_inode_data().
-Otherwise, if we fail later in the swap_inode_boot_loader() function,
-the change to i_datasize won't get undone, which will lead to further
-problems.
+[1/1] ext4: fix RENAME_WHITEOUT handling for inline directories
+      commit: c9f62c8b2dbf7240536c0cc9a4529397bb8bf38e
 
-The correct fix is here:
-
-	https://lore.kernel.org/all/20230308041252.GC860405@mit.edu/
-
-						- Ted
-
-P.S.  Chrome refused to download the b.c attachment, claiming it was
-"dangerous".  Perhaps it was because of the commands involving
-system(3) which among other things, uses dd to overwrite /dev/sda with
-the image file.
-
-It's best if the reproducer program doesn't doesn't make assumption
-about whether it's safe to randomly dd files to /dev/sda.  Of course,
-I'm a paranoid s.o.b. so I'm not about to download, compile and
-blindly run a random program that I get from the 'net.  :-)
-
-But it's actually not all that convenient.  So I just deleted all of
-the system(3) calls from your b.c program, and then used a simple
-shell script:
-
-     cp /vtmp/disk /vtmp/foo.img
-     mount -o loop /vtmp/foo.img /mnt
-     cd /mnt
-     /vtmp/b
-
-... where /vtmp in the guest VM is automatically setup if you are
-using kvm-xfstests[1] to be a 9p file system passthrough of
-/tmp/kvm-xfstests-$USER on the host.
-
-[1] https://github.com/tytso/xfstests-bld/blob/master/Documentation/kvm-xfstests.md
-
-
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
