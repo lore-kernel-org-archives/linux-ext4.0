@@ -2,73 +2,67 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 43972C64EC4
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Mar 2023 04:34:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 78757C64EC4
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Mar 2023 04:56:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229919AbjCHEeI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 7 Mar 2023 23:34:08 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44930 "EHLO
+        id S229558AbjCHE4b (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 7 Mar 2023 23:56:31 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36480 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229806AbjCHEdu (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Mar 2023 23:33:50 -0500
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4CEC44108E
-        for <linux-ext4@vger.kernel.org>; Tue,  7 Mar 2023 20:33:49 -0800 (PST)
-Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 3284XTvr021510
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 7 Mar 2023 23:33:30 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1678250011; bh=5pMWU6jII+CDzJ3zfBYzkUuOg2Vxa1wRZCqfVcF9NJw=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=fQhdRuF0Ca9IEXfQKd+n1CWjT4/CljpFoikCFVl7AO2kkLJZ1QrGEPJcagh7ta2rY
-         BGXxUedt75uaQKW7xU1cgPnuBe//MVsbHRA6aCnxEuj6oWspQ7Z91SvYoXoqIpbliP
-         hMhV7kimgU4zNhgCardZfP3GqqqajPTIRl8j0b2pfjDWL38Ye2Kl8FAzgS4Xc5ImWD
-         OUMXf52s2nH5CtbxDuU+VwC5StYHrIWm9lLlRnsPvWemVDXhTNlIagqLz5YSZthj4X
-         Ru2u5eR7BMIj+DqlkfW+7Fpm47kjVB9Eo3HseBZnt6KVmCZYKTwjCBbGDoOmC8fzNP
-         FbaBkJ14wWcVg==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id CF9E715C3444; Tue,  7 Mar 2023 23:33:29 -0500 (EST)
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org, Eric Biggers <ebiggers@kernel.org>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-fscrypt@vger.kernel.org,
-        stable@vger.kernel.org, Matthew Wilcox <willy@infradead.org>,
-        Tejun Heo <tj@kernel.org>, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] ext4: fix cgroup writeback accounting with fs-layer encryption
-Date:   Tue,  7 Mar 2023 23:33:22 -0500
-Message-Id: <167824999281.2129363.12204207098890359786.b4-ty@mit.edu>
-X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230203005503.141557-1-ebiggers@kernel.org>
-References: <20230203005503.141557-1-ebiggers@kernel.org>
+        with ESMTP id S229456AbjCHE43 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Mar 2023 23:56:29 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EB4BA5F6E1
+        for <linux-ext4@vger.kernel.org>; Tue,  7 Mar 2023 20:56:28 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 711F461617
+        for <linux-ext4@vger.kernel.org>; Wed,  8 Mar 2023 04:56:28 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BAF27C433EF;
+        Wed,  8 Mar 2023 04:56:27 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1678251387;
+        bh=sEoDFlU6ygjVkObRN3oZKHbetlxhmHX0ZhumG+HuncQ=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=ao2gYROUBq+1DCQm5a7JcWKfYilmbAtS03pL4Lb7Wx5jkGVtogBtyvIwdubmmVpFb
+         X0q0+fUR2Ll3lW1III7o5wkehl0FYiMkKbG1uON3pbHX983Mo1wTPvSma2aWUH5gZM
+         ehdzj5VtiieqfpXVc/xsMMYbZRHSiLQZS+WjY1JLuv0TBwduOPzNnjCNQZPimiROQE
+         qRbWYO0mGGio/NhjXhD8JT1Gvk127sovg+kzNyTUasTAeHrFLIEEm20g3eo1YLACyj
+         Po1AwZv50Db+qqF5RgqXYlCScX05h3qH/DoJBzNU0er6nIvziivZDfYeE9rBnWsOuG
+         cbt5qLPYYRjyQ==
+Date:   Tue, 7 Mar 2023 20:56:26 -0800
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Theodore Ts'o <tytso@mit.edu>
+Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH] ext4, jbd2: add an optimized bmap for the journal inode
+Message-ID: <ZAgVej4bnMLfHKpf@sol.localdomain>
+References: <20230308041615.2121699-1-tytso@mit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230308041615.2121699-1-tytso@mit.edu>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, 2 Feb 2023 16:55:03 -0800, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
+On Tue, Mar 07, 2023 at 11:16:15PM -0500, Theodore Ts'o wrote:
+> The generic bmap() function exported by the VFS takes locks and does
+> checks that are not necessary for the journal inode.  So allow the
+> file system to set a journal-optimized bmap function in
+> journal->j_bmap.
 > 
-> When writing a page from an encrypted file that is using
-> filesystem-layer encryption (not inline encryption), ext4 encrypts the
-> pagecache page into a bounce page, then writes the bounce page.
+> The also has the benefit of avoiding some false positives by DEPT.
 > 
-> It also passes the bounce page to wbc_account_cgroup_owner().  That's
-> incorrect, because the bounce page is a newly allocated temporary page
-> that doesn't have the memory cgroup of the original pagecache page.
-> This makes wbc_account_cgroup_owner() not account the I/O to the owner
-> of the pagecache page as it should.
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+>  fs/ext4/super.c      | 23 +++++++++++++++++++++++
+>  fs/jbd2/journal.c    |  9 ++++++---
+>  include/linux/jbd2.h |  8 ++++++++
+>  3 files changed, 37 insertions(+), 3 deletions(-)
 > 
-> [...]
 
-Applied, thanks!
+Should this also be marked as a fix for the syzbot report
+https://syzkaller.appspot.com/bug?id=e4aaa78795e490421c79f76ec3679006c8ff4cf0 ?
 
-[1/1] ext4: fix cgroup writeback accounting with fs-layer encryption
-      commit: ffec85d53d0f39ee4680a2cf0795255e000e1feb
-
-Best regards,
--- 
-Theodore Ts'o <tytso@mit.edu>
+- Eric
