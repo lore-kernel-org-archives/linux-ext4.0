@@ -2,89 +2,111 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1E8CDC74A44
-	for <linux-ext4@archiver.kernel.org>; Sat, 11 Mar 2023 09:06:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CD018C6FA99
+	for <linux-ext4@archiver.kernel.org>; Sun, 12 Mar 2023 04:41:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230182AbjCKJGw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 11 Mar 2023 04:06:52 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50408 "EHLO
+        id S229672AbjCLEl2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 11 Mar 2023 23:41:28 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52186 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230186AbjCKJGs (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Mar 2023 04:06:48 -0500
-Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E661011E6EB;
-        Sat, 11 Mar 2023 01:06:46 -0800 (PST)
-Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PYcVT0wGdz4f3jHm;
-        Sat, 11 Mar 2023 17:06:41 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP2 (Coremail) with SMTP id Syh0CgDHu+mhRAxkx4BgFA--.7403S3;
-        Sat, 11 Mar 2023 17:06:42 +0800 (CST)
-From:   Kemeng Shi <shikemeng@huaweicloud.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca
-Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        shikemeng@huaweicloud.com
-Subject: [PATCH 1/2] ext4: fix typos in mballoc
-Date:   Sun, 12 Mar 2023 01:09:48 +0800
-Message-Id: <20230311170949.1047958-2-shikemeng@huaweicloud.com>
-X-Mailer: git-send-email 2.30.0
-In-Reply-To: <20230311170949.1047958-1-shikemeng@huaweicloud.com>
-References: <20230311170949.1047958-1-shikemeng@huaweicloud.com>
+        with ESMTP id S229515AbjCLEl1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Mar 2023 23:41:27 -0500
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C93B038B7C
+        for <linux-ext4@vger.kernel.org>; Sat, 11 Mar 2023 20:41:23 -0800 (PST)
+Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 32C4fG8t031509
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sat, 11 Mar 2023 23:41:17 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1678596078; bh=MUTFrTJV2TG1PRFQ5UV72VyZiWZbhttWsOcRl7qYvuo=;
+        h=Date:From:To:Cc:Subject;
+        b=fSsgTgMOLSRvblisQ50uGYd0giPA+5GY1xJ1NgtVAXyj4cguEg42JnMDD/zddz2CO
+         L4blTxMaq0zeP7LT8Vs0P7MmQycMTxmVXgYYmvmIUQJ7jioNdAA/1QDkIbvDMjAGSR
+         8G4nG0bnC5Yba141Fsu9kYts84xszbPyBoIiyf8jVnffS+yznAvCxuXnEToqrbI/J0
+         naJdF6nEVzv9wJzGW9bSImxWvLjS/YF6cfL+syMWOyxyUGFBHsbxTgQ6XY5JLWPz4I
+         2/TF7l+uCkVYaA8asQK6Mu/4uuFf8E/tcgOx1fUxDvJ4f042SRAo3jg4XbLeCzeYmc
+         uUSiJQSmqnXyw==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 3DBF215C45B9; Sat, 11 Mar 2023 23:41:16 -0500 (EST)
+Date:   Sat, 11 Mar 2023 23:41:16 -0500
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Linus Torvalds <torvalds@linux-foundation.org>
+Cc:     linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: [GIT PULL] ext4 fixes for 6.3-rc2
+Message-ID: <20230312044116.GA2694785@mit.edu>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: Syh0CgDHu+mhRAxkx4BgFA--.7403S3
-X-Coremail-Antispam: 1UD129KBjvJXoW7uw1fGw4rXFy3Gw1fAF1rXrb_yoW8Gr4rpr
-        s7XF1akwsxWryY9an2k3Wjqw1fG397Cr15Gr1Ygw15ZFW3JrWIkF4DtryrGFyrC39rXF1a
-        vFs0vr13uwsruaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUBC14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
-        0E87I2jVAFwI0_Jr4l82xGYIkIc2x26xkF7I0E14v26r1Y6r1xM28lY4IEw2IIxxk0rwA2
-        F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjx
-        v20xvEc7CjxVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E
-        87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64
-        kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm
-        72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYx
-        C7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_
-        Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x
-        0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWU
-        JVW8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIx
-        AIcVC2z280aVCY1x0267AKxVWUJVW8JbIYCTnIWIevJa73UjIFyTuYvjTRN189UUUUU
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
-X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-pa_plen -> pa_len
-pa_start -> pa_pstart
+The following changes since commit e3645d72f8865ffe36f9dc811540d40aa3c848d3:
 
-Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
----
- fs/ext4/mballoc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+  ext4: fix incorrect options show of original mount_opt and extend mount_opt2 (2023-02-25 15:39:08 -0500)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 85d5e219933f..13dce6f07fa4 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4146,7 +4146,7 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 	 * provide gurantee on number of contiguous blocks allocation since that
- 	 * depends upon free space left, etc).
- 	 * In case of inode pa, later we use the allocated blocks
--	 * [pa_start + fe_logical - pa_lstart, fe_len/size] from the preallocated
-+	 * [pa_pstart + fe_logical - pa_lstart, fe_len/size] from the preallocated
- 	 * range of goal/best blocks [start, size] to put it at the
- 	 * ac_o_ex.fe_logical extent of this inode.
- 	 * (See ext4_mb_use_inode_pa() for more details)
-@@ -4298,7 +4298,7 @@ static void ext4_mb_use_group_pa(struct ext4_allocation_context *ac,
- 	ac->ac_status = AC_STATUS_FOUND;
- 	ac->ac_pa = pa;
- 
--	/* we don't correct pa_pstart or pa_plen here to avoid
-+	/* we don't correct pa_pstart or pa_len here to avoid
- 	 * possible race when the group is being loaded concurrently
- 	 * instead we correct pa later, after blocks are marked
- 	 * in on-disk bitmap -- see ext4_mb_release_context()
--- 
-2.30.0
+are available in the Git repository at:
 
+  https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
+
+for you to fetch changes up to f5361da1e60d54ec81346aee8e3d8baf1be0b762:
+
+  ext4: zero i_disksize when initializing the bootloader inode (2023-03-11 00:44:24 -0500)
+
+----------------------------------------------------------------
+Bug fixes and regressions for ext4, the most serious of which is a
+potential deadlock during directory renames that was introduced during
+the merge window discovered by a combination of syzbot and lockdep.
+
+----------------------------------------------------------------
+Darrick J. Wong (1):
+      ext4: fix another off-by-one fsmap error on 1k block filesystems
+
+Eric Biggers (1):
+      ext4: fix cgroup writeback accounting with fs-layer encryption
+
+Eric Whitney (1):
+      ext4: fix RENAME_WHITEOUT handling for inline directories
+
+Jan Kara (1):
+      ext4: Fix deadlock during directory rename
+
+Theodore Ts'o (1):
+      ext4, jbd2: add an optimized bmap for the journal inode
+
+Thomas Weiﬂschuh (1):
+      ext4: make kobj_type structures constant
+
+Tudor Ambarus (1):
+      ext4: Fix comment about the 64BIT feature
+
+Wu Bo (1):
+      docs: ext4: modify the group desc size to 64
+
+Ye Bin (4):
+      ext4: move where set the MAY_INLINE_DATA flag is set
+      ext4: fix WARNING in ext4_update_inline_data
+      ext4: commit super block if fs record error when journal record without error
+      ext4: make sure fs error flag setted before clear journal error
+
+Zhihao Cheng (1):
+      ext4: zero i_disksize when initializing the bootloader inode
+
+ Documentation/filesystems/ext4/blockgroup.rst |  6 +++---
+ fs/ext4/ext4.h                                |  2 +-
+ fs/ext4/fsmap.c                               |  2 ++
+ fs/ext4/inline.c                              |  1 -
+ fs/ext4/inode.c                               |  7 +++++-
+ fs/ext4/ioctl.c                               |  1 +
+ fs/ext4/namei.c                               | 39 +++++++++++++++++++++-------------
+ fs/ext4/page-io.c                             | 11 +++++-----
+ fs/ext4/super.c                               | 38 +++++++++++++++++++++++++++++++--
+ fs/ext4/sysfs.c                               |  4 ++--
+ fs/ext4/xattr.c                               |  3 +++
+ fs/jbd2/journal.c                             |  9 +++++---
+ include/linux/jbd2.h                          |  8 +++++++
+ 13 files changed, 98 insertions(+), 33 deletions(-)
