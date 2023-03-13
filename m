@@ -2,33 +2,33 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 06C5EC74A4B
-	for <linux-ext4@archiver.kernel.org>; Mon, 13 Mar 2023 13:21:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 095EDC7618D
+	for <linux-ext4@archiver.kernel.org>; Mon, 13 Mar 2023 13:21:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230247AbjCMNVT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 13 Mar 2023 09:21:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59688 "EHLO
+        id S230348AbjCMNVU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 13 Mar 2023 09:21:20 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59692 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229996AbjCMNVP (ORCPT
+        with ESMTP id S229997AbjCMNVP (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Mar 2023 09:21:15 -0400
-Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3A3C1360B7;
-        Mon, 13 Mar 2023 06:21:13 -0700 (PDT)
-Received: from kwepemm600013.china.huawei.com (unknown [172.30.72.56])
-        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4PZxzq5GCxz17KfZ;
-        Mon, 13 Mar 2023 21:18:15 +0800 (CST)
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 05B1C303F6;
+        Mon, 13 Mar 2023 06:21:14 -0700 (PDT)
+Received: from kwepemm600013.china.huawei.com (unknown [172.30.72.57])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4PZy2D0l9FzrScw;
+        Mon, 13 Mar 2023 21:20:20 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by kwepemm600013.china.huawei.com
  (7.193.23.68) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.21; Mon, 13 Mar
- 2023 21:21:09 +0800
+ 2023 21:21:11 +0800
 From:   Zhihao Cheng <chengzhihao1@huawei.com>
 To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.com>,
         <tudor.ambarus@linaro.org>
 CC:     <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
         <chengzhihao1@huawei.com>, <yi.zhang@huawei.com>
-Subject: [PATCH v2 1/5] ext4: Fix reusing stale buffer heads from last failed mounting
-Date:   Mon, 13 Mar 2023 21:20:17 +0800
-Message-ID: <20230313132021.672134-2-chengzhihao1@huawei.com>
+Subject: [PATCH v2 3/5] jbd2: switch to check format version in superblock directly
+Date:   Mon, 13 Mar 2023 21:20:19 +0800
+Message-ID: <20230313132021.672134-4-chengzhihao1@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20230313132021.672134-1-chengzhihao1@huawei.com>
 References: <20230313132021.672134-1-chengzhihao1@huawei.com>
@@ -43,118 +43,109 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Following process makes ext4 load stale buffer heads from last failed
-mounting in a new mounting operation:
-mount_bdev
- ext4_fill_super
- | ext4_load_and_init_journal
- |  ext4_load_journal
- |   jbd2_journal_load
- |    load_superblock
- |     journal_get_superblock
- |      set_buffer_verified(bh) // buffer head is verified
- |   jbd2_journal_recover // failed caused by EIO
- | goto failed_mount3a // skip 'sb->s_root' initialization
- deactivate_locked_super
-  kill_block_super
-   generic_shutdown_super
-    if (sb->s_root)
-    // false, skip ext4_put_super->invalidate_bdev->
-    // invalidate_mapping_pages->mapping_evict_folio->
-    // filemap_release_folio->try_to_free_buffers, which
-    // cannot drop buffer head.
-   blkdev_put
-    blkdev_put_whole
-     if (atomic_dec_and_test(&bdev->bd_openers))
-     // false, systemd-udev happens to open the device. Then
-     // blkdev_flush_mapping->kill_bdev->truncate_inode_pages->
-     // truncate_inode_folio->truncate_cleanup_folio->
-     // folio_invalidate->block_invalidate_folio->
-     // filemap_release_folio->try_to_free_buffers will be skipped,
-     // dropping buffer head is missed again.
+From: Zhang Yi <yi.zhang@huawei.com>
 
-Second mount:
-ext4_fill_super
- ext4_load_and_init_journal
-  ext4_load_journal
-   ext4_get_journal
-    jbd2_journal_init_inode
-     journal_init_common
-      bh = getblk_unmovable
-       bh = __find_get_block // Found stale bh in last failed mounting
-      journal->j_sb_buffer = bh
-   jbd2_journal_load
-    load_superblock
-     journal_get_superblock
-      if (buffer_verified(bh))
-      // true, skip journal->j_format_version = 2, value is 0
-    jbd2_journal_recover
-     do_one_pass
-      next_log_block += count_tags(journal, bh)
-      // According to journal_tag_bytes(), 'tag_bytes' calculating is
-      // affected by jbd2_has_feature_csum3(), jbd2_has_feature_csum3()
-      // returns false because 'j->j_format_version >= 2' is not true,
-      // then we get wrong next_log_block. The do_one_pass may exit
-      // early whenoccuring non JBD2_MAGIC_NUMBER in 'next_log_block'.
+We should only check and set extented features if journal format version
+is 2, and now we check the in memory copy of the superblock
+'journal->j_format_version', which relys on the parameter initialization
+sequence, switch to use the h_blocktype in superblock cloud be more
+clear.
 
-The filesystem is corrupted here, journal is partially replayed, and
-new journal sequence number actually is already used by last mounting.
-
-The invalidate_bdev() can drop all buffer heads even racing with bare
-reading block device(eg. systemd-udev), so we can fix it by invalidating
-bdev in error handling path in __ext4_fill_super().
-
-Fetch a reproducer in [Link].
-
-Link: https://bugzilla.kernel.org/show_bug.cgi?id=217171
-Fixes: 25ed6e8a54df ("jbd2: enable journal clients to enable v2 checksumming")
-Cc: stable@vger.kernel.org # v3.5
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
 ---
- fs/ext4/super.c | 15 ++++++++-------
- 1 file changed, 8 insertions(+), 7 deletions(-)
+ fs/jbd2/journal.c    | 16 +++++++---------
+ include/linux/jbd2.h | 17 ++++++++++++++---
+ 2 files changed, 21 insertions(+), 12 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 88f7b8a88c76..7e990637bc48 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1126,6 +1126,12 @@ static void ext4_blkdev_remove(struct ext4_sb_info *sbi)
- 	struct block_device *bdev;
- 	bdev = sbi->s_journal_bdev;
- 	if (bdev) {
-+		/*
-+		 * Invalidate the journal device's buffers.  We don't want them
-+		 * floating about in memory - the physical journal device may
-+		 * hotswapped, and it breaks the `ro-after' testing code.
-+		 */
-+		invalidate_bdev(bdev);
- 		ext4_blkdev_put(bdev);
- 		sbi->s_journal_bdev = NULL;
- 	}
-@@ -1271,14 +1277,8 @@ static void ext4_put_super(struct super_block *sb)
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index e80c781731f8..b991d5c21d16 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -2059,10 +2059,12 @@ int jbd2_journal_load(journal_t *journal)
+ 		return err;
  
- 	sync_blockdev(sb->s_bdev);
- 	invalidate_bdev(sb->s_bdev);
--	if (sbi->s_journal_bdev && sbi->s_journal_bdev != sb->s_bdev) {
--		/*
--		 * Invalidate the journal device's buffers.  We don't want them
--		 * floating about in memory - the physical journal device may
--		 * hotswapped, and it breaks the `ro-after' testing code.
--		 */
-+	if (sbi->s_journal_bdev) {
- 		sync_blockdev(sbi->s_journal_bdev);
--		invalidate_bdev(sbi->s_journal_bdev);
- 		ext4_blkdev_remove(sbi);
- 	}
+ 	sb = journal->j_superblock;
+-	/* If this is a V2 superblock, then we have to check the
+-	 * features flags on it. */
  
-@@ -5610,6 +5610,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 	brelse(sbi->s_sbh);
- 	ext4_blkdev_remove(sbi);
- out_fail:
-+	invalidate_bdev(sb->s_bdev);
- 	sb->s_fs_info = NULL;
- 	return err ? err : ret;
- }
+-	if (journal->j_format_version >= 2) {
++	/*
++	 * If this is a V2 superblock, then we have to check the
++	 * features flags on it.
++	 */
++	if (jbd2_format_support_feature(journal)) {
+ 		if ((sb->s_feature_ro_compat &
+ 		     ~cpu_to_be32(JBD2_KNOWN_ROCOMPAT_FEATURES)) ||
+ 		    (sb->s_feature_incompat &
+@@ -2224,7 +2226,7 @@ int jbd2_journal_check_used_features(journal_t *journal, unsigned long compat,
+ 	if (journal->j_format_version == 0 &&
+ 	    journal_get_superblock(journal) != 0)
+ 		return 0;
+-	if (journal->j_format_version == 1)
++	if (!jbd2_format_support_feature(journal))
+ 		return 0;
+ 
+ 	sb = journal->j_superblock;
+@@ -2254,11 +2256,7 @@ int jbd2_journal_check_available_features(journal_t *journal, unsigned long comp
+ 	if (!compat && !ro && !incompat)
+ 		return 1;
+ 
+-	/* We can support any known requested features iff the
+-	 * superblock is in version 2.  Otherwise we fail to support any
+-	 * extended sb features. */
+-
+-	if (journal->j_format_version != 2)
++	if (!jbd2_format_support_feature(journal))
+ 		return 0;
+ 
+ 	if ((compat   & JBD2_KNOWN_COMPAT_FEATURES) == compat &&
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index ad7bb6861143..7095c0f17ad0 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1305,11 +1305,22 @@ struct journal_s
+ 		rwsem_release(&j->j_trans_commit_map, _THIS_IP_); \
+ 	} while (0)
+ 
++/*
++ * We can support any known requested features iff the
++ * superblock is not in version 1.  Otherwise we fail to support any
++ * extended sb features.
++ */
++static inline bool jbd2_format_support_feature(journal_t *j)
++{
++	return j->j_superblock->s_header.h_blocktype !=
++					cpu_to_be32(JBD2_SUPERBLOCK_V1);
++}
++
+ /* journal feature predicate functions */
+ #define JBD2_FEATURE_COMPAT_FUNCS(name, flagname) \
+ static inline bool jbd2_has_feature_##name(journal_t *j) \
+ { \
+-	return ((j)->j_format_version >= 2 && \
++	return (jbd2_format_support_feature(j) && \
+ 		((j)->j_superblock->s_feature_compat & \
+ 		 cpu_to_be32(JBD2_FEATURE_COMPAT_##flagname)) != 0); \
+ } \
+@@ -1327,7 +1338,7 @@ static inline void jbd2_clear_feature_##name(journal_t *j) \
+ #define JBD2_FEATURE_RO_COMPAT_FUNCS(name, flagname) \
+ static inline bool jbd2_has_feature_##name(journal_t *j) \
+ { \
+-	return ((j)->j_format_version >= 2 && \
++	return (jbd2_format_support_feature(j) && \
+ 		((j)->j_superblock->s_feature_ro_compat & \
+ 		 cpu_to_be32(JBD2_FEATURE_RO_COMPAT_##flagname)) != 0); \
+ } \
+@@ -1345,7 +1356,7 @@ static inline void jbd2_clear_feature_##name(journal_t *j) \
+ #define JBD2_FEATURE_INCOMPAT_FUNCS(name, flagname) \
+ static inline bool jbd2_has_feature_##name(journal_t *j) \
+ { \
+-	return ((j)->j_format_version >= 2 && \
++	return (jbd2_format_support_feature(j) && \
+ 		((j)->j_superblock->s_feature_incompat & \
+ 		 cpu_to_be32(JBD2_FEATURE_INCOMPAT_##flagname)) != 0); \
+ } \
 -- 
 2.31.1
 
