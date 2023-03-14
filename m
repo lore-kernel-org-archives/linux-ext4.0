@@ -2,110 +2,76 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A8616C6FD1C
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Mar 2023 12:11:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 29300C6FD1D
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Mar 2023 12:24:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231599AbjCNMLn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 14 Mar 2023 08:11:43 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50806 "EHLO
+        id S232109AbjCNMYn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 14 Mar 2023 08:24:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42504 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229785AbjCNMLj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2023 08:11:39 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A6153136CD;
-        Tue, 14 Mar 2023 05:11:27 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 5E53921F40;
-        Tue, 14 Mar 2023 12:11:26 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1678795886; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=s2dHuFPNx3KCvvsboJ162WK1k4dyig5+4Y9mV/1pyXo=;
-        b=GYkqm4rYsXwWrs4MCP4gre2izmaNULMmpVlaRo8TWt30K/brTSjQZokav8SNL4xtZ/LBmo
-        ZAzOV3nLyzCInw92hzbeKdZqui7SC7sx+tODdJke7Eeggv7TpAj95dkAm5ibbjpGjb5N/V
-        QMKB9YC8XOy0o4S0aFJT0mK49YfnYk8=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1678795886;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=s2dHuFPNx3KCvvsboJ162WK1k4dyig5+4Y9mV/1pyXo=;
-        b=IJa08WT6+jbTyaV/Z3al53p/eRMy4hVeUExX3gyNYa+KDurAbDT9RmbhnaQ79AWRLrkO2U
-        a8E7CDFb40gStOCA==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 3835113A26;
-        Tue, 14 Mar 2023 12:11:26 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id k6qoDW5kEGT1TAAAMHmgww
-        (envelope-from <jack@suse.cz>); Tue, 14 Mar 2023 12:11:26 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 91E25A06FD; Tue, 14 Mar 2023 13:11:25 +0100 (CET)
-Date:   Tue, 14 Mar 2023 13:11:25 +0100
-From:   Jan Kara <jack@suse.cz>
-To:     Zhihao Cheng <chengzhihao1@huawei.com>
-Cc:     Jan Kara <jack@suse.cz>, tytso@mit.edu, adilger.kernel@dilger.ca,
-        jack@suse.com, tudor.ambarus@linaro.org,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        yi.zhang@huawei.com
+        with ESMTP id S231290AbjCNMYY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2023 08:24:24 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4FDD9A189E;
+        Tue, 14 Mar 2023 05:20:46 -0700 (PDT)
+Received: from kwepemm600013.china.huawei.com (unknown [172.30.72.53])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4PbX9l19g8znX5q;
+        Tue, 14 Mar 2023 19:58:51 +0800 (CST)
+Received: from [10.174.178.46] (10.174.178.46) by
+ kwepemm600013.china.huawei.com (7.193.23.68) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.21; Tue, 14 Mar 2023 20:01:47 +0800
 Subject: Re: [PATCH v2 1/5] ext4: Fix reusing stale buffer heads from last
  failed mounting
-Message-ID: <20230314121125.tnz22hckcaj46kp6@quack3>
+To:     Jan Kara <jack@suse.cz>
+CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.com>,
+        <tudor.ambarus@linaro.org>, <linux-ext4@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <yi.zhang@huawei.com>
 References: <20230313132021.672134-1-chengzhihao1@huawei.com>
  <20230313132021.672134-2-chengzhihao1@huawei.com>
  <20230314113342.74g2pfwe5y7b5poa@quack3>
- <b7d108d6-9e5a-d88a-305d-932e75098b09@huawei.com>
+From:   Zhihao Cheng <chengzhihao1@huawei.com>
+Message-ID: <b7d108d6-9e5a-d88a-305d-932e75098b09@huawei.com>
+Date:   Tue, 14 Mar 2023 20:01:46 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101
+ Thunderbird/68.5.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
+In-Reply-To: <20230314113342.74g2pfwe5y7b5poa@quack3>
+Content-Type: text/plain; charset="gbk"; format=flowed
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <b7d108d6-9e5a-d88a-305d-932e75098b09@huawei.com>
+X-Originating-IP: [10.174.178.46]
+X-ClientProxiedBy: dggems703-chm.china.huawei.com (10.3.19.180) To
+ kwepemm600013.china.huawei.com (7.193.23.68)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue 14-03-23 20:01:46, Zhihao Cheng wrote:
-> åœ¨ 2023/3/14 19:33, Jan Kara å†™é“:
-> Hi Jan,
+ÔÚ 2023/3/14 19:33, Jan Kara Ð´µÀ:
+Hi Jan,
+
 > 
-> > 
-> > > @@ -1271,14 +1277,8 @@ static void ext4_put_super(struct super_block *sb)
-> > >   	sync_blockdev(sb->s_bdev);
-> > >   	invalidate_bdev(sb->s_bdev);
+>> @@ -1271,14 +1277,8 @@ static void ext4_put_super(struct super_block *sb)
+>>   
+>>   	sync_blockdev(sb->s_bdev);
+>>   	invalidate_bdev(sb->s_bdev);
+
+For journal in the inode case, journal bhs come from block device, which 
+means buffers will be dropped after this line 
+'invalidate_bdev(sb->s_bdev)' being executed.
+
+>> -	if (sbi->s_journal_bdev && sbi->s_journal_bdev != sb->s_bdev) {
+>> -		/*
+>> -		 * Invalidate the journal device's buffers.  We don't want them
+>> -		 * floating about in memory - the physical journal device may
+>> -		 * hotswapped, and it breaks the `ro-after' testing code.
+>> -		 */
+>> +	if (sbi->s_journal_bdev) {
+>>   		sync_blockdev(sbi->s_journal_bdev);
+>> -		invalidate_bdev(sbi->s_journal_bdev);
+>>   		ext4_blkdev_remove(sbi);
+>>   	}
+>  > Hum, but this will invalidate bhs only if journal is stored on a block
+> device. If journal is in the inode (the common case), we won't invalidate
+> anything (sbi->s_journal_bdev is NULL) and the same problem can happen?
 > 
-> For journal in the inode case, journal bhs come from block device, which
-> means buffers will be dropped after this line 'invalidate_bdev(sb->s_bdev)'
-> being executed.
-
-Right, I've missed that. But then why do you remove the sbi->s_journal_bdev
-!= sb->s_bdev condition below?
-
-> > > -	if (sbi->s_journal_bdev && sbi->s_journal_bdev != sb->s_bdev) {
-> > > -		/*
-> > > -		 * Invalidate the journal device's buffers.  We don't want them
-> > > -		 * floating about in memory - the physical journal device may
-> > > -		 * hotswapped, and it breaks the `ro-after' testing code.
-> > > -		 */
-> > > +	if (sbi->s_journal_bdev) {
-> > >   		sync_blockdev(sbi->s_journal_bdev);
-> > > -		invalidate_bdev(sbi->s_journal_bdev);
-> > >   		ext4_blkdev_remove(sbi);
-> > >   	}
-> >  > Hum, but this will invalidate bhs only if journal is stored on a block
-> > device. If journal is in the inode (the common case), we won't invalidate
-> > anything (sbi->s_journal_bdev is NULL) and the same problem can happen?
-> > 
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
