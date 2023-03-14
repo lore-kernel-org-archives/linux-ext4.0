@@ -2,63 +2,98 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E365CC74A5B
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Mar 2023 12:25:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 62EA2C6FD1C
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Mar 2023 12:44:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230177AbjCNMZz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 14 Mar 2023 08:25:55 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42526 "EHLO
+        id S231686AbjCNMoE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 14 Mar 2023 08:44:04 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59286 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232242AbjCNMZB (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2023 08:25:01 -0400
-Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CDBE1A3B6E;
-        Tue, 14 Mar 2023 05:21:47 -0700 (PDT)
-Received: from kwepemm600013.china.huawei.com (unknown [172.30.72.56])
-        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4PbXFq3GcwzKn40;
-        Tue, 14 Mar 2023 20:02:23 +0800 (CST)
-Received: from [10.174.178.46] (10.174.178.46) by
- kwepemm600013.china.huawei.com (7.193.23.68) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2507.21; Tue, 14 Mar 2023 20:02:36 +0800
-Subject: Re: [PATCH v2 2/5] jbd2: remove unused feature macros
-To:     Jan Kara <jack@suse.cz>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.com>,
-        <tudor.ambarus@linaro.org>, <linux-ext4@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, <yi.zhang@huawei.com>
-References: <20230313132021.672134-1-chengzhihao1@huawei.com>
- <20230313132021.672134-3-chengzhihao1@huawei.com>
- <20230314113504.xfo7q2uy6q623vzb@quack3>
-From:   Zhihao Cheng <chengzhihao1@huawei.com>
-Message-ID: <5e3274b9-af8f-e031-0418-b400bc1f8d10@huawei.com>
-Date:   Tue, 14 Mar 2023 20:02:35 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101
- Thunderbird/68.5.0
+        with ESMTP id S230211AbjCNMnv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2023 08:43:51 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A2A239F23B;
+        Tue, 14 Mar 2023 05:43:18 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 8C6B46175A;
+        Tue, 14 Mar 2023 12:43:15 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1FA08C4339C;
+        Tue, 14 Mar 2023 12:43:14 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1678797795;
+        bh=6BjCbJe3yeBFWIjm8HU9/LEHEJ3td8ALArsN78304o8=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=noLQv5c/MeUTHDxMFcDNFv1ZJ/0mUs/HxiGLfE3Wb8cM3lBBkG+LE2LpiEQuRrjQO
+         BS78xGbxF8W4nh0Y56ooMLnNfLxC9we5NWGk37L83JmhwhCTGVB+A/IX1P68SawJmN
+         Qa6a12ZwCVaySne49Hsv8JS1GRBmo513GE8V7X315KPD52bZDkfnuS3Aj6wzbhoS0C
+         6zloFk/ZDGoiymY4/zQxVtJhG6GR1rZS7XrOlUWhER4RBW7ZWmWiImprrzd4UqyHyi
+         NIAlZPoaoQ5qW46litWYbZd/xrDrN34g5KtwXnV3eQbOsAhut5aFo85yUZKM3GPdRn
+         PIjw/N0LpN4nw==
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Baokun Li <libaokun1@huawei.com>,
+        =?UTF-8?q?Lu=C3=ADs=20Henriques?= <lhenriques@suse.de>,
+        Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+        Sasha Levin <sashal@kernel.org>, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 6.2 06/13] ext4: update s_journal_inum if it changes after journal replay
+Date:   Tue, 14 Mar 2023 08:42:58 -0400
+Message-Id: <20230314124305.470657-6-sashal@kernel.org>
+X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20230314124305.470657-1-sashal@kernel.org>
+References: <20230314124305.470657-1-sashal@kernel.org>
 MIME-Version: 1.0
-In-Reply-To: <20230314113504.xfo7q2uy6q623vzb@quack3>
-Content-Type: text/plain; charset="gbk"; format=flowed
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.174.178.46]
-X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
- kwepemm600013.china.huawei.com (7.193.23.68)
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=UTF-8
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi Jan,
-> On Mon 13-03-23 21:20:18, Zhihao Cheng wrote:
->> From: Zhang Yi <yi.zhang@huawei.com>
->>
->> JBD2_HAS_[IN|RO_]COMPAT_FEATURE macros are no longer used, just remove
->> them.
->>
->> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
->> Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
-> 
-> I gave you my Reviewed-by on this patch (and a few others in this series).
-> Why didn't you include it?
-> 
+From: Baokun Li <libaokun1@huawei.com>
 
-Sorry, my fault. Will add in v3.
+[ Upstream commit 3039d8b8692408438a618fac2776b629852663c3 ]
+
+When mounting a crafted ext4 image, s_journal_inum may change after journal
+replay, which is obviously unreasonable because we have successfully loaded
+and replayed the journal through the old s_journal_inum. And the new
+s_journal_inum bypasses some of the checks in ext4_get_journal(), which
+may trigger a null pointer dereference problem. So if s_journal_inum
+changes after the journal replay, we ignore the change, and rewrite the
+current journal_inum to the superblock.
+
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=216541
+Reported-by: Luís Henriques <lhenriques@suse.de>
+Signed-off-by: Baokun Li <libaokun1@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Link: https://lore.kernel.org/r/20230107032126.4165860-3-libaokun1@huawei.com
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ fs/ext4/super.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index c81fa0fa9901a..e79ca9ef98316 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -5967,8 +5967,11 @@ static int ext4_load_journal(struct super_block *sb,
+ 	if (!really_read_only && journal_devnum &&
+ 	    journal_devnum != le32_to_cpu(es->s_journal_dev)) {
+ 		es->s_journal_dev = cpu_to_le32(journal_devnum);
+-
+-		/* Make sure we flush the recovery flag to disk. */
++		ext4_commit_super(sb);
++	}
++	if (!really_read_only && journal_inum &&
++	    journal_inum != le32_to_cpu(es->s_journal_inum)) {
++		es->s_journal_inum = cpu_to_le32(journal_inum);
+ 		ext4_commit_super(sb);
+ 	}
+ 
+-- 
+2.39.2
 
