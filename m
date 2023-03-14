@@ -2,35 +2,35 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2CEFDC74A5B
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Mar 2023 12:50:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8CCADC7618A
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Mar 2023 12:50:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231840AbjCNMu0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 14 Mar 2023 08:50:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49254 "EHLO
+        id S231889AbjCNMu1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 14 Mar 2023 08:50:27 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49518 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232542AbjCNMuA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2023 08:50:00 -0400
+        with ESMTP id S232565AbjCNMuD (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2023 08:50:03 -0400
 Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0F313A6143;
-        Tue, 14 Mar 2023 05:46:22 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D6947A6163;
+        Tue, 14 Mar 2023 05:46:27 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 730EAB81974;
-        Tue, 14 Mar 2023 12:44:33 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 264C4C433D2;
-        Tue, 14 Mar 2023 12:44:31 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id DAFF3B8190D;
+        Tue, 14 Mar 2023 12:44:42 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B38BDC433EF;
+        Tue, 14 Mar 2023 12:44:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1678797872;
-        bh=E8JmovzNaomgost4CO4gFqcP4MICGl60tu//f4SphD0=;
+        s=k20201202; t=1678797881;
+        bh=7DmNxZJqukWJaNrA/PcLBQo2mG8nzNG7iAqBuMFlaME=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=KpOnj7te8IJLl7/PzlN6S4kjfncPUYgnIwyakDpY9/L1M+smS/GKCejPqFN5tuwrL
-         QOszK5Vx8DuQm83xzPn/i+6P60wifiuVAox0uh5nACoUXzB3An4vosp04ejXOKc5+I
-         luPWLG1AYgXPL66i+7UR4IrkebVmGNpgYpzeHKx5K7yIf7wfkzLGTtE77Vb6+reabj
-         pmZGU33s2LXIv+VLIdWsAp3DZPsQx76uNBFQoJ1P6e2Se/vqhglEYU/6KSX9QByBKf
-         CmXdOBDVDuNLXleqYPRY5000Z54ms5iHdxSZm72aQaBwmQVnDhgASob3TQSoanbJks
-         aB17MkyysPeKw==
+        b=hNamuczieGyRXvCmwMOJz1MufSHn7CSCr9c9LSkQ8SITX1AoZpBvZt+n7y500Q1JE
+         efOCEeY5QYyA6aNhA0H1losvlQyf3iYM9rtica9VOmJt/box+0GscvWEk331ZNaeeI
+         Kxa7AHPwcWBngGilUImiq7LpIm1NmXIJlKOwZDmt3HdO4w++6Aq11+EPgFU+T9VGTy
+         DDvqx9xI3Jlvy6XrKxeWKVsYXw/UPGeK7xJlgNVN7b6kytc6NptzsA1TgyoiXs/RRv
+         valBl8oQ0I0TBwtTCFHnskEhbkLNJRalFe2QOTtFJah4FVDfwSwusUDalUFdpsVFTT
+         cxsDUqh0I7vNQ==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Baokun Li <libaokun1@huawei.com>,
@@ -38,12 +38,12 @@ Cc:     Baokun Li <libaokun1@huawei.com>,
         Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
         Sasha Levin <sashal@kernel.org>, adilger.kernel@dilger.ca,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 5/7] ext4: fix task hung in ext4_xattr_delete_inode
-Date:   Tue, 14 Mar 2023 08:44:22 -0400
-Message-Id: <20230314124424.471460-5-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 4/5] ext4: fix task hung in ext4_xattr_delete_inode
+Date:   Tue, 14 Mar 2023 08:44:34 -0400
+Message-Id: <20230314124435.471553-4-sashal@kernel.org>
 X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230314124424.471460-1-sashal@kernel.org>
-References: <20230314124424.471460-1-sashal@kernel.org>
+In-Reply-To: <20230314124435.471553-1-sashal@kernel.org>
+References: <20230314124435.471553-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -120,10 +120,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 11 insertions(+)
 
 diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 23334cfeac552..724e9f0ed733a 100644
+index d189016903191..96760c5f3cc7f 100644
 --- a/fs/ext4/xattr.c
 +++ b/fs/ext4/xattr.c
-@@ -384,6 +384,17 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
+@@ -383,6 +383,17 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
  	struct inode *inode;
  	int err;
  
