@@ -2,122 +2,78 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A719C7618A
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Mar 2023 12:56:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 38F28C6FD1D
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Mar 2023 12:57:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232366AbjCNM4D (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 14 Mar 2023 08:56:03 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35718 "EHLO
+        id S231892AbjCNM5p (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 14 Mar 2023 08:57:45 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59230 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232530AbjCNMyx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2023 08:54:53 -0400
+        with ESMTP id S231350AbjCNM5a (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2023 08:57:30 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BCBBFA5912;
-        Tue, 14 Mar 2023 05:50:21 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 55A2CA8C75
+        for <linux-ext4@vger.kernel.org>; Tue, 14 Mar 2023 05:52:52 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 4A7DD6176A;
-        Tue, 14 Mar 2023 12:43:14 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D804DC433EF;
-        Tue, 14 Mar 2023 12:43:12 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 350AB61761
+        for <linux-ext4@vger.kernel.org>; Tue, 14 Mar 2023 12:51:56 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 9063FC433D2
+        for <linux-ext4@vger.kernel.org>; Tue, 14 Mar 2023 12:51:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1678797793;
-        bh=RlGw2+zN3x2Zf8Mx3lPRTadiNVQxpPa6Pt0D5V+jmt4=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=jCThL6xs4e5AhtIXeEka6iEno5fAhjERXBBeLUIFWwg6ZgzVx3nFGWe1MKGmk3vnk
-         f014qGrEI2H8tCeXZOK0ofiveALVJ6nedx5cuDdCzMe0jTJ9WwXtXBqSgUGLSlE8y/
-         9SeitXC3ovyXSqaJi16kCTfLP9OXV6NzeSHdifp9wbp7nQQJSq+tiFk3HiIzUE6N3R
-         rMnaIwjagRADdjvmP+BuPdUI1sq6CgVOaOoLnlJrFaqwxFF9p6xdcoHoEvIXuzYNOu
-         wU7OJ+EjHDDKf2UjK601hPqNejhIJq4peD4Y40iDordmw5z2u7r5X8/DTMkWHZaxkg
-         to2cQXhQziz6A==
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Baokun Li <libaokun1@huawei.com>,
-        =?UTF-8?q?Lu=C3=ADs=20Henriques?= <lhenriques@suse.de>,
-        Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        Sasha Levin <sashal@kernel.org>, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 6.2 05/13] ext4: fail ext4_iget if special inode unallocated
-Date:   Tue, 14 Mar 2023 08:42:57 -0400
-Message-Id: <20230314124305.470657-5-sashal@kernel.org>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230314124305.470657-1-sashal@kernel.org>
-References: <20230314124305.470657-1-sashal@kernel.org>
+        s=k20201202; t=1678798315;
+        bh=Dqip2iNX0CwvA2Ev/D/MlkkXqGS8oIOP43g6vx2mH/4=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=b/gmg0kcDKL1OLxR5KcpKZpfdyFjzwdN0N+ur7ShEwMKS6Wsifde4Yw08XNS8RCol
+         YPSea7aMg/xO6MC8tNvlU3JI2V4wup2gq3dhRsprlyq62HOkBxk/1qnLyvFqAAu/XO
+         9DN5JesMoeyx58bToAb2Fe2Rhc9tiPXgqRoZargdTT0Mf0NyWZC+5EqJz7fzZgVClY
+         DnPEiMU1Kb+1rUVsPrZpEnY0zy8bbCpgyGd/fSs2mXv68I6ZP8uuVbzWdoVvaulLdL
+         4MgPv2Zl+nK1oSER6x50g6jAVQ49khDPqJxtC3H7WJcWWET83KVwnx5jVa+VqoH8tQ
+         gujKlj1jbAPMw==
+Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
+        id 77A7CC43144; Tue, 14 Mar 2023 12:51:55 +0000 (UTC)
+From:   bugzilla-daemon@kernel.org
+To:     linux-ext4@vger.kernel.org
+Subject: [Bug 217189] SATA HDD not detected
+Date:   Tue, 14 Mar 2023 12:51:55 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: aros@gmx.com
+X-Bugzilla-Status: NEEDINFO
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: bug_status
+Message-ID: <bug-217189-13602-cdvTLzuVin@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-217189-13602@https.bugzilla.kernel.org/>
+References: <bug-217189-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Baokun Li <libaokun1@huawei.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=3D217189
 
-[ Upstream commit 5cd740287ae5e3f9d1c46f5bfe8778972fd6d3fe ]
+Artem S. Tashkinov (aros@gmx.com) changed:
 
-In ext4_fill_super(), EXT4_ORPHAN_FS flag is cleared after
-ext4_orphan_cleanup() is executed. Therefore, when __ext4_iget() is
-called to get an inode whose i_nlink is 0 when the flag exists, no error
-is returned. If the inode is a special inode, a null pointer dereference
-may occur. If the value of i_nlink is 0 for any inodes (except boot loader
-inodes) got by using the EXT4_IGET_SPECIAL flag, the current file system
-is corrupted. Therefore, make the ext4_iget() function return an error if
-it gets such an abnormal special inode.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|NEW                         |NEEDINFO
 
-Link: https://bugzilla.kernel.org/show_bug.cgi?id=199179
-Link: https://bugzilla.kernel.org/show_bug.cgi?id=216541
-Link: https://bugzilla.kernel.org/show_bug.cgi?id=216539
-Reported-by: Luís Henriques <lhenriques@suse.de>
-Suggested-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Link: https://lore.kernel.org/r/20230107032126.4165860-2-libaokun1@huawei.com
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/ext4/inode.c | 18 ++++++++----------
- 1 file changed, 8 insertions(+), 10 deletions(-)
+--=20
+You may reply to this email to add a comment.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9d9f414f99fec..ed7598127e7c5 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4872,13 +4872,6 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 		goto bad_inode;
- 	raw_inode = ext4_raw_inode(&iloc);
- 
--	if ((ino == EXT4_ROOT_INO) && (raw_inode->i_links_count == 0)) {
--		ext4_error_inode(inode, function, line, 0,
--				 "iget: root inode unallocated");
--		ret = -EFSCORRUPTED;
--		goto bad_inode;
--	}
--
- 	if ((flags & EXT4_IGET_HANDLE) &&
- 	    (raw_inode->i_links_count == 0) && (raw_inode->i_mode == 0)) {
- 		ret = -ESTALE;
-@@ -4951,11 +4944,16 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 	 * NeilBrown 1999oct15
- 	 */
- 	if (inode->i_nlink == 0) {
--		if ((inode->i_mode == 0 ||
-+		if ((inode->i_mode == 0 || flags & EXT4_IGET_SPECIAL ||
- 		     !(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS)) &&
- 		    ino != EXT4_BOOT_LOADER_INO) {
--			/* this inode is deleted */
--			ret = -ESTALE;
-+			/* this inode is deleted or unallocated */
-+			if (flags & EXT4_IGET_SPECIAL) {
-+				ext4_error_inode(inode, function, line, 0,
-+						 "iget: special inode unallocated");
-+				ret = -EFSCORRUPTED;
-+			} else
-+				ret = -ESTALE;
- 			goto bad_inode;
- 		}
- 		/* The only unlinked inodes we let through here have
--- 
-2.39.2
-
+You are receiving this mail because:
+You are watching the assignee of the bug.=
