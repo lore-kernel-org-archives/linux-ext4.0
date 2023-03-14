@@ -2,48 +2,48 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A29CC6FD1C
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Mar 2023 12:49:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3EBEFC7618A
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Mar 2023 12:49:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232386AbjCNMtC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 14 Mar 2023 08:49:02 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35206 "EHLO
+        id S232402AbjCNMtQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 14 Mar 2023 08:49:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44142 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232335AbjCNMsJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2023 08:48:09 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AA38FA4017;
-        Tue, 14 Mar 2023 05:45:38 -0700 (PDT)
+        with ESMTP id S232271AbjCNMsi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2023 08:48:38 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BB298A4023;
+        Tue, 14 Mar 2023 05:45:44 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 4DAA16176E;
-        Tue, 14 Mar 2023 12:43:53 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D0599C4339C;
-        Tue, 14 Mar 2023 12:43:51 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 4A3446176B;
+        Tue, 14 Mar 2023 12:44:20 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B6625C4339B;
+        Tue, 14 Mar 2023 12:44:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1678797832;
-        bh=H86i0pfEXKyVRTLsGvt2vGQ3Xc0J3lDRY8JaftqgaI4=;
+        s=k20201202; t=1678797859;
+        bh=AEMEFTaT/HVBbYOiuvFYc6mSADnmr+0IyrC6EL8S+Ng=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=annDt4wAtcoIhxIZJvAlkY7+5oDCBhcp5eudEV0ICziDWxidobDOl5IG/kKapv6Gd
-         EK6WJbt27UssSqAKyRgx+0hiY54E1UO9OfVmCXG/hNsrHkipzM2fMu1irjJ9rIkfth
-         h4DMFIDp5yH3bGEmhosS3N8S3x9W29WbgHBnITssoWp5m0FzEdB3+2VVflxVVl14KE
-         OpUIxJ/XF1GfI7KOKNWqPTkgKWKHgK9jytg11tkRj/rjme1WPO3urKr5lfGA1ff1+l
-         sOxPwwpkcEUOUYOVbAuulHeNyYIuDvuxKFBY8SRxC//ABmAS5QU8ajyeIjelmotkXQ
-         86oW7dl4h4yIw==
+        b=qyy4LNm8yJX30YDTb/9gJB3ugmLRT/BS19mXMi1Z1qLbXbD7Gd832bYDjpASyExVv
+         +zovzRofCgwshSspBa0xucCZjf9Ghtb1c5AI+2jO4HgTt/nHNMHvHh3PbogI9gJzT8
+         HUl++dFU5+wZB3lWsQ/KkNt7dWvQWAEOkqbOrHldkVxlzT25tfMPJxMYJFs1qRwwSG
+         DDUwkFvRRQm7lliKRxRhWcwbEAbbfIUOF3gk7YNBIb1nkoof4aAZUpe+CjqI8eUcDJ
+         1bcu4q4GuTTob1Y8Fo9r1Eb+yT1Bo+JX5AvCVODj7eXSmaWeV05giSoiBTGa9bFzDS
+         j7NgQn4XZpYiA==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Baokun Li <libaokun1@huawei.com>,
         =?UTF-8?q?Lu=C3=ADs=20Henriques?= <lhenriques@suse.de>,
-        Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+        Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
         Sasha Levin <sashal@kernel.org>, adilger.kernel@dilger.ca,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.15 05/10] ext4: update s_journal_inum if it changes after journal replay
-Date:   Tue, 14 Mar 2023 08:43:39 -0400
-Message-Id: <20230314124344.471127-5-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.4 4/7] ext4: fail ext4_iget if special inode unallocated
+Date:   Tue, 14 Mar 2023 08:44:09 -0400
+Message-Id: <20230314124412.471364-4-sashal@kernel.org>
 X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230314124344.471127-1-sashal@kernel.org>
-References: <20230314124344.471127-1-sashal@kernel.org>
+In-Reply-To: <20230314124412.471364-1-sashal@kernel.org>
+References: <20230314124412.471364-1-sashal@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 X-stable: review
@@ -55,45 +55,69 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Baokun Li <libaokun1@huawei.com>
 
-[ Upstream commit 3039d8b8692408438a618fac2776b629852663c3 ]
+[ Upstream commit 5cd740287ae5e3f9d1c46f5bfe8778972fd6d3fe ]
 
-When mounting a crafted ext4 image, s_journal_inum may change after journal
-replay, which is obviously unreasonable because we have successfully loaded
-and replayed the journal through the old s_journal_inum. And the new
-s_journal_inum bypasses some of the checks in ext4_get_journal(), which
-may trigger a null pointer dereference problem. So if s_journal_inum
-changes after the journal replay, we ignore the change, and rewrite the
-current journal_inum to the superblock.
+In ext4_fill_super(), EXT4_ORPHAN_FS flag is cleared after
+ext4_orphan_cleanup() is executed. Therefore, when __ext4_iget() is
+called to get an inode whose i_nlink is 0 when the flag exists, no error
+is returned. If the inode is a special inode, a null pointer dereference
+may occur. If the value of i_nlink is 0 for any inodes (except boot loader
+inodes) got by using the EXT4_IGET_SPECIAL flag, the current file system
+is corrupted. Therefore, make the ext4_iget() function return an error if
+it gets such an abnormal special inode.
 
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=199179
 Link: https://bugzilla.kernel.org/show_bug.cgi?id=216541
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=216539
 Reported-by: Luís Henriques <lhenriques@suse.de>
+Suggested-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
-Link: https://lore.kernel.org/r/20230107032126.4165860-3-libaokun1@huawei.com
+Link: https://lore.kernel.org/r/20230107032126.4165860-2-libaokun1@huawei.com
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/super.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c | 18 ++++++++----------
+ 1 file changed, 8 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 802ca160d31ed..6df4da084190f 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5385,8 +5385,11 @@ static int ext4_load_journal(struct super_block *sb,
- 	if (!really_read_only && journal_devnum &&
- 	    journal_devnum != le32_to_cpu(es->s_journal_dev)) {
- 		es->s_journal_dev = cpu_to_le32(journal_devnum);
--
--		/* Make sure we flush the recovery flag to disk. */
-+		ext4_commit_super(sb);
-+	}
-+	if (!really_read_only && journal_inum &&
-+	    journal_inum != le32_to_cpu(es->s_journal_inum)) {
-+		es->s_journal_inum = cpu_to_le32(journal_inum);
- 		ext4_commit_super(sb);
- 	}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index cafa06114a1d1..c186005f651c3 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4939,13 +4939,6 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+ 		goto bad_inode;
+ 	raw_inode = ext4_raw_inode(&iloc);
  
+-	if ((ino == EXT4_ROOT_INO) && (raw_inode->i_links_count == 0)) {
+-		ext4_error_inode(inode, function, line, 0,
+-				 "iget: root inode unallocated");
+-		ret = -EFSCORRUPTED;
+-		goto bad_inode;
+-	}
+-
+ 	if ((flags & EXT4_IGET_HANDLE) &&
+ 	    (raw_inode->i_links_count == 0) && (raw_inode->i_mode == 0)) {
+ 		ret = -ESTALE;
+@@ -5016,11 +5009,16 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+ 	 * NeilBrown 1999oct15
+ 	 */
+ 	if (inode->i_nlink == 0) {
+-		if ((inode->i_mode == 0 ||
++		if ((inode->i_mode == 0 || flags & EXT4_IGET_SPECIAL ||
+ 		     !(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS)) &&
+ 		    ino != EXT4_BOOT_LOADER_INO) {
+-			/* this inode is deleted */
+-			ret = -ESTALE;
++			/* this inode is deleted or unallocated */
++			if (flags & EXT4_IGET_SPECIAL) {
++				ext4_error_inode(inode, function, line, 0,
++						 "iget: special inode unallocated");
++				ret = -EFSCORRUPTED;
++			} else
++				ret = -ESTALE;
+ 			goto bad_inode;
+ 		}
+ 		/* The only unlinked inodes we let through here have
 -- 
 2.39.2
 
