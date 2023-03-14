@@ -2,35 +2,35 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3EBEFC7618A
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Mar 2023 12:49:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4FA1BC76195
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Mar 2023 12:49:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232402AbjCNMtQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 14 Mar 2023 08:49:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44142 "EHLO
+        id S232419AbjCNMtU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 14 Mar 2023 08:49:20 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46146 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232271AbjCNMsi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2023 08:48:38 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BB298A4023;
-        Tue, 14 Mar 2023 05:45:44 -0700 (PDT)
+        with ESMTP id S232291AbjCNMsk (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2023 08:48:40 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C517A72B19;
+        Tue, 14 Mar 2023 05:45:49 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 4A3446176B;
-        Tue, 14 Mar 2023 12:44:20 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B6625C4339B;
-        Tue, 14 Mar 2023 12:44:18 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 09390B8191D;
+        Tue, 14 Mar 2023 12:44:08 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F15AAC4339E;
+        Tue, 14 Mar 2023 12:44:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1678797859;
-        bh=AEMEFTaT/HVBbYOiuvFYc6mSADnmr+0IyrC6EL8S+Ng=;
+        s=k20201202; t=1678797846;
+        bh=7k+n3dNoc7z/dJQxCR6EdQjZROTFnPWiYiSHDPqcrvE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=qyy4LNm8yJX30YDTb/9gJB3ugmLRT/BS19mXMi1Z1qLbXbD7Gd832bYDjpASyExVv
-         +zovzRofCgwshSspBa0xucCZjf9Ghtb1c5AI+2jO4HgTt/nHNMHvHh3PbogI9gJzT8
-         HUl++dFU5+wZB3lWsQ/KkNt7dWvQWAEOkqbOrHldkVxlzT25tfMPJxMYJFs1qRwwSG
-         DDUwkFvRRQm7lliKRxRhWcwbEAbbfIUOF3gk7YNBIb1nkoof4aAZUpe+CjqI8eUcDJ
-         1bcu4q4GuTTob1Y8Fo9r1Eb+yT1Bo+JX5AvCVODj7eXSmaWeV05giSoiBTGa9bFzDS
-         j7NgQn4XZpYiA==
+        b=KeBjZtvpPq8tTO6poj3fmCYmF/PquFnKP3cX2zOwC7veRiM/zqStcf+A5APmpJ5mz
+         oVIRvg1EfMbR8c5iGzQFZwp3hPwFF2q4As1PEOUAz6niLg2YsljeZEufbSm+yXLbLB
+         8Ve1nw+SOBma3217jntx1rNVRflN1GdVMtYRfx+MVL0RbJiAOT3FZoP4RQQwGK3eAU
+         oSIwIbkPnNQI6f3lPLK+nQE4pgVlMTOxWLRPGH8hSTMlQY9GGX8FZGq+4zo2d2rUpj
+         jdKoUsR1XaB90YHDTrEyvmhs3wvy5qL77qsf2y/G2VAPKuav0mNFOHRwgS10JXEBQ4
+         +CSmVjW/vivcA==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Baokun Li <libaokun1@huawei.com>,
@@ -38,12 +38,12 @@ Cc:     Baokun Li <libaokun1@huawei.com>,
         Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
         Sasha Levin <sashal@kernel.org>, adilger.kernel@dilger.ca,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 4/7] ext4: fail ext4_iget if special inode unallocated
-Date:   Tue, 14 Mar 2023 08:44:09 -0400
-Message-Id: <20230314124412.471364-4-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.10 4/8] ext4: fail ext4_iget if special inode unallocated
+Date:   Tue, 14 Mar 2023 08:43:56 -0400
+Message-Id: <20230314124400.471257-4-sashal@kernel.org>
 X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230314124412.471364-1-sashal@kernel.org>
-References: <20230314124412.471364-1-sashal@kernel.org>
+In-Reply-To: <20230314124400.471257-1-sashal@kernel.org>
+References: <20230314124400.471257-1-sashal@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 X-stable: review
@@ -81,10 +81,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 8 insertions(+), 10 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index cafa06114a1d1..c186005f651c3 100644
+index 355343cf4609b..03805ec32dae5 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4939,13 +4939,6 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+@@ -4716,13 +4716,6 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
  		goto bad_inode;
  	raw_inode = ext4_raw_inode(&iloc);
  
@@ -98,7 +98,7 @@ index cafa06114a1d1..c186005f651c3 100644
  	if ((flags & EXT4_IGET_HANDLE) &&
  	    (raw_inode->i_links_count == 0) && (raw_inode->i_mode == 0)) {
  		ret = -ESTALE;
-@@ -5016,11 +5009,16 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+@@ -4795,11 +4788,16 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
  	 * NeilBrown 1999oct15
  	 */
  	if (inode->i_nlink == 0) {
