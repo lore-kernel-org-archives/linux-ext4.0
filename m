@@ -2,35 +2,35 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C87C3C7618E
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Mar 2023 12:47:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 87D7BC7618A
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Mar 2023 12:48:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231902AbjCNMrk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 14 Mar 2023 08:47:40 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60702 "EHLO
+        id S232304AbjCNMr7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 14 Mar 2023 08:47:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34584 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231899AbjCNMqh (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2023 08:46:37 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E7149CF;
-        Tue, 14 Mar 2023 05:45:02 -0700 (PDT)
+        with ESMTP id S232036AbjCNMqo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2023 08:46:44 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 522EC13538;
+        Tue, 14 Mar 2023 05:45:11 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 5D967B81903;
-        Tue, 14 Mar 2023 12:43:55 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1E869C433D2;
-        Tue, 14 Mar 2023 12:43:53 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 97E5861784;
+        Tue, 14 Mar 2023 12:44:21 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 19F47C433D2;
+        Tue, 14 Mar 2023 12:44:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1678797834;
-        bh=gtKWOBVoykvW3MmxnXAoOqzcSe9kd2TLCeoczo7gIe8=;
+        s=k20201202; t=1678797861;
+        bh=6wOjxvU0pf9ThQYGKLb7k1KPzfrr1cdG3+OV1Kq/b5Q=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=ZIaCvzdb4IC3kCiYlBGV7AbcpnG5sVkBPyPyP/f8mQXIgkNwvCjsce/V62XlMMckr
-         /dNHLXWx2yVQtollB5th3xeLHyVEWJhwEh2T21ZDXUO1bjPLQIyb/R+PwMpixtLCLN
-         DROt8s6CSE7zcDU04YoJDstLnphdIF28nE10JoUuRycPlREpIjpja/wr162Xm4Rafe
-         conrSULW5G/oy3cVaevv20ca5YXYvpYTJSrdHOjnYyu9E2jgDlE7I7tipGsSNIM/Kx
-         PZQcKgvdh774y1/hgvifcAL6fbqIvYgyxulvi4xKmBuvkfsIos9mXx733uBnuvL3xx
-         MzMkh+0wP4Wcg==
+        b=Kvk4CBw9prjPPDFkPZgGT48Oj4emg5pTjkrPVGlMX3AmoVBqWeMEOyyaznoXy3y0b
+         CXDK+NB3KcY9A+Jreif7TDLBIcU9gvJvJLns7M0+wXno5pZxToydr5h2+piRJdjnbU
+         LvVx89GCSz2bOIrZhTAU5UGkfj+MP/Ke5JJSoglTs38ARsFzy1yhZaQUJ3abcfzMNX
+         ZEjUusaC6hVlUE97GLPcyuIjp0GX7k9R/BCnXNzdOR6XQXu/I9kPDVKYMvLwGjeZi2
+         iYH9dNwj93m4tYfkC3Pw0aHKjoxzU0TEEENWgqis1Y7A6S6b7u3EPN79nJ7E61AXhn
+         algnmTPdI12jw==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Baokun Li <libaokun1@huawei.com>,
@@ -38,12 +38,12 @@ Cc:     Baokun Li <libaokun1@huawei.com>,
         Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
         Sasha Levin <sashal@kernel.org>, adilger.kernel@dilger.ca,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.15 06/10] ext4: fix task hung in ext4_xattr_delete_inode
-Date:   Tue, 14 Mar 2023 08:43:40 -0400
-Message-Id: <20230314124344.471127-6-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.4 5/7] ext4: fix task hung in ext4_xattr_delete_inode
+Date:   Tue, 14 Mar 2023 08:44:10 -0400
+Message-Id: <20230314124412.471364-5-sashal@kernel.org>
 X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230314124344.471127-1-sashal@kernel.org>
-References: <20230314124344.471127-1-sashal@kernel.org>
+In-Reply-To: <20230314124412.471364-1-sashal@kernel.org>
+References: <20230314124412.471364-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -120,10 +120,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 11 insertions(+)
 
 diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index d6edf38de31b7..3837a5f4f1d6f 100644
+index cf794afbd52fb..74e1e14d04778 100644
 --- a/fs/ext4/xattr.c
 +++ b/fs/ext4/xattr.c
-@@ -386,6 +386,17 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
+@@ -384,6 +384,17 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
  	struct inode *inode;
  	int err;
  
