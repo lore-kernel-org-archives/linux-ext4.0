@@ -2,145 +2,84 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8CCADC7618A
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Mar 2023 12:50:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1ED64C6FD1C
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Mar 2023 12:56:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231889AbjCNMu1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 14 Mar 2023 08:50:27 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49518 "EHLO
+        id S232066AbjCNM4C (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 14 Mar 2023 08:56:02 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60790 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232565AbjCNMuD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2023 08:50:03 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D6947A6163;
-        Tue, 14 Mar 2023 05:46:27 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id DAFF3B8190D;
-        Tue, 14 Mar 2023 12:44:42 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B38BDC433EF;
-        Tue, 14 Mar 2023 12:44:40 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1678797881;
-        bh=7DmNxZJqukWJaNrA/PcLBQo2mG8nzNG7iAqBuMFlaME=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=hNamuczieGyRXvCmwMOJz1MufSHn7CSCr9c9LSkQ8SITX1AoZpBvZt+n7y500Q1JE
-         efOCEeY5QYyA6aNhA0H1losvlQyf3iYM9rtica9VOmJt/box+0GscvWEk331ZNaeeI
-         Kxa7AHPwcWBngGilUImiq7LpIm1NmXIJlKOwZDmt3HdO4w++6Aq11+EPgFU+T9VGTy
-         DDvqx9xI3Jlvy6XrKxeWKVsYXw/UPGeK7xJlgNVN7b6kytc6NptzsA1TgyoiXs/RRv
-         valBl8oQ0I0TBwtTCFHnskEhbkLNJRalFe2QOTtFJah4FVDfwSwusUDalUFdpsVFTT
-         cxsDUqh0I7vNQ==
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Baokun Li <libaokun1@huawei.com>,
-        syzbot+77d6fcc37bbb92f26048@syzkaller.appspotmail.com,
-        Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-        Sasha Levin <sashal@kernel.org>, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 4/5] ext4: fix task hung in ext4_xattr_delete_inode
-Date:   Tue, 14 Mar 2023 08:44:34 -0400
-Message-Id: <20230314124435.471553-4-sashal@kernel.org>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230314124435.471553-1-sashal@kernel.org>
-References: <20230314124435.471553-1-sashal@kernel.org>
+        with ESMTP id S232689AbjCNMzP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2023 08:55:15 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AC1A8ACB8C;
+        Tue, 14 Mar 2023 05:50:43 -0700 (PDT)
+Received: from kwepemm600013.china.huawei.com (unknown [172.30.72.57])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4PbXrH5Q8MznXTd;
+        Tue, 14 Mar 2023 20:28:47 +0800 (CST)
+Received: from [10.174.178.46] (10.174.178.46) by
+ kwepemm600013.china.huawei.com (7.193.23.68) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.21; Tue, 14 Mar 2023 20:31:43 +0800
+Subject: Re: [PATCH v2 1/5] ext4: Fix reusing stale buffer heads from last
+ failed mounting
+To:     Jan Kara <jack@suse.cz>
+CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.com>,
+        <tudor.ambarus@linaro.org>, <linux-ext4@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <yi.zhang@huawei.com>
+References: <20230313132021.672134-1-chengzhihao1@huawei.com>
+ <20230313132021.672134-2-chengzhihao1@huawei.com>
+ <20230314113342.74g2pfwe5y7b5poa@quack3>
+ <b7d108d6-9e5a-d88a-305d-932e75098b09@huawei.com>
+ <20230314121125.tnz22hckcaj46kp6@quack3>
+From:   Zhihao Cheng <chengzhihao1@huawei.com>
+Message-ID: <f86584f6-3877-ff18-47a1-2efaa12d18b2@huawei.com>
+Date:   Tue, 14 Mar 2023 20:31:43 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101
+ Thunderbird/68.5.0
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
+In-Reply-To: <20230314121125.tnz22hckcaj46kp6@quack3>
+Content-Type: text/plain; charset="utf-8"; format=flowed
 Content-Transfer-Encoding: 8bit
+X-Originating-IP: [10.174.178.46]
+X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
+ kwepemm600013.china.huawei.com (7.193.23.68)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Baokun Li <libaokun1@huawei.com>
+> On Tue 14-03-23 20:01:46, Zhihao Cheng wrote:
+>> 在 2023/3/14 19:33, Jan Kara 写道:
+>> Hi Jan,
+>>
+>>>
+>>>> @@ -1271,14 +1277,8 @@ static void ext4_put_super(struct super_block *sb)
+>>>>    	sync_blockdev(sb->s_bdev);
+>>>>    	invalidate_bdev(sb->s_bdev);
+>>
+>> For journal in the inode case, journal bhs come from block device, which
+>> means buffers will be dropped after this line 'invalidate_bdev(sb->s_bdev)'
+>> being executed.
+> 
+> Right, I've missed that. But then why do you remove the sbi->s_journal_bdev
+> != sb->s_bdev condition below?
+> 
 
-[ Upstream commit 0f7bfd6f8164be32dbbdf36aa1e5d00485c53cd7 ]
+I think 'sbi->s_journal_bdev != sb->s_bdev' always becomes true if 
+sbi->s_journal_bdev exists.
 
-Syzbot reported a hung task problem:
-==================================================================
-INFO: task syz-executor232:5073 blocked for more than 143 seconds.
-      Not tainted 6.2.0-rc2-syzkaller-00024-g512dee0c00ad #0
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-task:syz-exec232 state:D stack:21024 pid:5073 ppid:5072 flags:0x00004004
-Call Trace:
- <TASK>
- context_switch kernel/sched/core.c:5244 [inline]
- __schedule+0x995/0xe20 kernel/sched/core.c:6555
- schedule+0xcb/0x190 kernel/sched/core.c:6631
- __wait_on_freeing_inode fs/inode.c:2196 [inline]
- find_inode_fast+0x35a/0x4c0 fs/inode.c:950
- iget_locked+0xb1/0x830 fs/inode.c:1273
- __ext4_iget+0x22e/0x3ed0 fs/ext4/inode.c:4861
- ext4_xattr_inode_iget+0x68/0x4e0 fs/ext4/xattr.c:389
- ext4_xattr_inode_dec_ref_all+0x1a7/0xe50 fs/ext4/xattr.c:1148
- ext4_xattr_delete_inode+0xb04/0xcd0 fs/ext4/xattr.c:2880
- ext4_evict_inode+0xd7c/0x10b0 fs/ext4/inode.c:296
- evict+0x2a4/0x620 fs/inode.c:664
- ext4_orphan_cleanup+0xb60/0x1340 fs/ext4/orphan.c:474
- __ext4_fill_super fs/ext4/super.c:5516 [inline]
- ext4_fill_super+0x81cd/0x8700 fs/ext4/super.c:5644
- get_tree_bdev+0x400/0x620 fs/super.c:1282
- vfs_get_tree+0x88/0x270 fs/super.c:1489
- do_new_mount+0x289/0xad0 fs/namespace.c:3145
- do_mount fs/namespace.c:3488 [inline]
- __do_sys_mount fs/namespace.c:3697 [inline]
- __se_sys_mount+0x2d3/0x3c0 fs/namespace.c:3674
- do_syscall_x64 arch/x86/entry/common.c:50 [inline]
- do_syscall_64+0x3d/0xb0 arch/x86/entry/common.c:80
- entry_SYSCALL_64_after_hwframe+0x63/0xcd
-RIP: 0033:0x7fa5406fd5ea
-RSP: 002b:00007ffc7232f968 EFLAGS: 00000202 ORIG_RAX: 00000000000000a5
-RAX: ffffffffffffffda RBX: 0000000000000003 RCX: 00007fa5406fd5ea
-RDX: 0000000020000440 RSI: 0000000020000000 RDI: 00007ffc7232f970
-RBP: 00007ffc7232f970 R08: 00007ffc7232f9b0 R09: 0000000000000432
-R10: 0000000000804a03 R11: 0000000000000202 R12: 0000000000000004
-R13: 0000555556a7a2c0 R14: 00007ffc7232f9b0 R15: 0000000000000000
- </TASK>
-==================================================================
 
-The problem is that the inode contains an xattr entry with ea_inum of 15
-when cleaning up an orphan inode <15>. When evict inode <15>, the reference
-counting of the corresponding EA inode is decreased. When EA inode <15> is
-found by find_inode_fast() in __ext4_iget(), it is found that the EA inode
-holds the I_FREEING flag and waits for the EA inode to complete deletion.
-As a result, when inode <15> is being deleted, we wait for inode <15> to
-complete the deletion, resulting in an infinite loop and triggering Hung
-Task. To solve this problem, we only need to check whether the ino of EA
-inode and parent is the same before getting EA inode.
+mount_bdev
+  fmode_t mode = FMODE_READ | FMODE_EXCL
+  bdev_a = blkdev_get_by_path(dev_name, mode, fs_type)
 
-Link: https://syzkaller.appspot.com/bug?extid=77d6fcc37bbb92f26048
-Reported-by: syzbot+77d6fcc37bbb92f26048@syzkaller.appspotmail.com
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Link: https://lore.kernel.org/r/20230110133436.996350-1-libaokun1@huawei.com
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/ext4/xattr.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index d189016903191..96760c5f3cc7f 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -383,6 +383,17 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
- 	struct inode *inode;
- 	int err;
- 
-+	/*
-+	 * We have to check for this corruption early as otherwise
-+	 * iget_locked() could wait indefinitely for the state of our
-+	 * parent inode.
-+	 */
-+	if (parent->i_ino == ea_ino) {
-+		ext4_error(parent->i_sb,
-+			   "Parent and EA inode have the same ino %lu", ea_ino);
-+		return -EFSCORRUPTED;
-+	}
-+
- 	inode = ext4_iget(parent->i_sb, ea_ino, EXT4_IGET_NORMAL);
- 	if (IS_ERR(inode)) {
- 		err = PTR_ERR(inode);
--- 
-2.39.2
+mount_bdev->ext4_fill_super->ext4_load_and_init_journal->ext4_load_journal->ext4_get_dev_journal:
+  bdev_b = ext4_blkdev_get(j_dev, sb)
+   bdev_b = blkdev_get_by_dev(dev, FMODE_READ|FMODE_WRITE|FMODE_EXCL, sb)
+  EXT4_SB(sb)->s_journal_bdev = bdev_b
 
+
+bdev_a cannot be bdev_b, because bd_prepare_to_claim() makes sure the 
+same block device cannot be openned twice with mode 'FMODE_EXCL'.
