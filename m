@@ -2,61 +2,61 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 217D7C7618B
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Mar 2023 11:21:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6205FC6FD1D
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Mar 2023 11:21:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231831AbjCOLVW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Mar 2023 07:21:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35830 "EHLO
+        id S231862AbjCOLVZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Mar 2023 07:21:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35826 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231820AbjCOLUk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Mar 2023 07:20:40 -0400
-Received: from mail-lj1-x232.google.com (mail-lj1-x232.google.com [IPv6:2a00:1450:4864:20::232])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 12D5E1E1D7
-        for <linux-ext4@vger.kernel.org>; Wed, 15 Mar 2023 04:20:18 -0700 (PDT)
-Received: by mail-lj1-x232.google.com with SMTP id t14so19043680ljd.5
-        for <linux-ext4@vger.kernel.org>; Wed, 15 Mar 2023 04:20:18 -0700 (PDT)
+        with ESMTP id S231946AbjCOLUl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Mar 2023 07:20:41 -0400
+Received: from mail-lj1-x234.google.com (mail-lj1-x234.google.com [IPv6:2a00:1450:4864:20::234])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A7CDD25956
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Mar 2023 04:20:20 -0700 (PDT)
+Received: by mail-lj1-x234.google.com with SMTP id by8so19035050ljb.7
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Mar 2023 04:20:20 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linaro.org; s=google; t=1678879217;
+        d=linaro.org; s=google; t=1678879218;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=IUIBQeZLD1/U/OTUld+6Gx5O9QYoGGbr9KxfQ5s0UqY=;
-        b=AItDdog7vDad4NG6hg0wN8/WcKP89JIGr1xI+3j+EwGdAurYhg8Ub8UL5PsSJCsAyC
-         PtZIDR/4hWCq4sWavs2eMChzAUrgSFQNBKChOYytijclhgcuVJctvVkn+AkS0Fe/R5Lr
-         MY2ERby+IbCllKs+XFajCoG3znoZVNLpkLN9x2hRWLawQfuDrEoBTrcct+CoPJaKoE9I
-         U1gLZqN7Oqsa/4c/FUVDANoZBs/EUzJ1HAwbAzqutvUBLT/pe/Zduy2GiljK1rzM7IV3
-         S7nUieDROgBF+XAyOI1bcxm5pUab2eK73lRolJqrhAyUe61hIohCi+4Xpy18AgEw3qqS
-         gmQg==
+        bh=qcQzXxRlB4R8bjUx2JPwloCJknWzyZI/8Ri1y7i2H+0=;
+        b=SUZ73EPhQzBmnB9wlCxQPgnzUTUs98qCj9QX1OTzyNmQB3KpC1WGqlH/YZKJLWaLiU
+         9WQCPY7lrAKNmhFm/7qhhWUGl+8oH1lucjZAjDQ7jMrb5h7QiGoi2Ja6/aXs/fTa/udo
+         sTBwcnlxvAT0cj+EWa4lxtYsnlzQNpZ0ZW7CpFySnpgtls6hTiMfa2TRP3rxosD0nCAx
+         mjxd+kSK5IGKGjfbF7wRFHYTW95XDjaUr3MtBKMlVrcNcl75LPoo5Mmyo35/2NVVU5JV
+         /Mz3k+GOJPyysu2JMBKHukfAIjX9KWcKlDOHyHKnTZu1eU2+9lh+KKDfDpuelM+xkpFc
+         iDRw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112; t=1678879217;
+        d=1e100.net; s=20210112; t=1678879218;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=IUIBQeZLD1/U/OTUld+6Gx5O9QYoGGbr9KxfQ5s0UqY=;
-        b=vxPesgnkYbOzKUT0O0XPrdUzzQ+ckBIHCSju1aPDffnk9/bu1BYAwdpErXXhZX+CH1
-         yJGyfk6uGxGeUEh5zuDi+EU/9n15PPw7M5ENV/fMdkEBI0XKJda0eQb1a7iHsq3jAGA0
-         2CP5in79THy6rvODaerKV8ROgSj8LqUpI509s2vJEoIPopD1BgnHcAKhQIe4ECK2ASwZ
-         N9qjvMAun/G9UEyzYd8y/z5OvM2N2wJz6rmu9ju+s/T5c5o/4wckXhMPHS+oohQG+nR/
-         l71kPkMpPmW2N/NipgjNHRgzj8lA4Luboa5hqJi4IX9o3WXGFYMCxKl7RdagvEwHpKJS
-         xDag==
-X-Gm-Message-State: AO0yUKWYG9leMWMjKofyaopGCTkU5hbK6jzWLLXco8xjFOfRVOF+8rkp
-        QcBzFLyAb9hutHbgVxcMh4WbgTp8t67EaiWk50M=
-X-Google-Smtp-Source: AK7set/yBNSJIoaShXOc1c2uObsDThrYX2WB5Cd0hELWCCOdsKTmpHWENUh9MuGZuqSad5bOW/xHXg==
-X-Received: by 2002:a2e:be9a:0:b0:292:8283:2c03 with SMTP id a26-20020a2ebe9a000000b0029282832c03mr989045ljr.51.1678879217212;
-        Wed, 15 Mar 2023 04:20:17 -0700 (PDT)
+        bh=qcQzXxRlB4R8bjUx2JPwloCJknWzyZI/8Ri1y7i2H+0=;
+        b=dKlQ8V5fqLWDjhnjObbOg7zuy3Uh4ZhPS8dIiqJU6HFC+PMM1bPMUQTmLhPIbn1Vj/
+         kv6LtRrc0oLSjxgWoliAfVyQlQlRRB9q/xCc2ZK8UXC7X11Ly46AnCcSUbstoy2J0ncP
+         GfLs2cSzxG42cHhMWnp9/IUdKQHscLFNrPh2h5G2ac8Ad71UNSjZWr9d87d0wJeQSKIJ
+         1nA70PFiyWyrCN0pVgnCx9z7Bst37TOpFLnTxGrl/cInOLGx6GyLucCAQ60Oh8BvhG1u
+         zl7AVIVNZqq/ZWHIMuoY0cUAZ28vvLtobjaRXAiH6F2jw4fQHWuRfQ71i1Ss01aCwhx4
+         oKAw==
+X-Gm-Message-State: AO0yUKWv9zvCG8GwZ4fljBa19DxIAsc3ekV45MzdHWzKCIF+ROqnoWEZ
+        TKxpkIuFRo/EXfClcVnrY1s0IQ==
+X-Google-Smtp-Source: AK7set+dSPQUBEC2PZNxPjdDMKR1xAxJO7NIAsPa4q7mhxsTIDizU4SC6Lvmt+PVU4YiiEgYm/J5wA==
+X-Received: by 2002:a05:651c:504:b0:295:ac00:2f2d with SMTP id o4-20020a05651c050400b00295ac002f2dmr974108ljp.10.1678879218731;
+        Wed, 15 Mar 2023 04:20:18 -0700 (PDT)
 Received: from ta1.c.googlers.com.com (61.215.228.35.bc.googleusercontent.com. [35.228.215.61])
-        by smtp.gmail.com with ESMTPSA id k2-20020a2e92c2000000b00295da33c42dsm817410ljh.15.2023.03.15.04.20.16
+        by smtp.gmail.com with ESMTPSA id k2-20020a2e92c2000000b00295da33c42dsm817410ljh.15.2023.03.15.04.20.18
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 15 Mar 2023 04:20:16 -0700 (PDT)
+        Wed, 15 Mar 2023 04:20:18 -0700 (PDT)
 From:   Tudor Ambarus <tudor.ambarus@linaro.org>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
         djwong@kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
         leejones@google.com, Tudor Ambarus <tudor.ambarus@linaro.org>
-Subject: [PATCH v2 2/5] ext4: fsmap: Check fmh_iflags value directly on the user copied data
-Date:   Wed, 15 Mar 2023 11:20:08 +0000
-Message-Id: <20230315112011.927091-3-tudor.ambarus@linaro.org>
+Subject: [PATCH v2 4/5] ext4: fsmap: Do the validation checks on constified fsmap data
+Date:   Wed, 15 Mar 2023 11:20:10 +0000
+Message-Id: <20230315112011.927091-5-tudor.ambarus@linaro.org>
 X-Mailer: git-send-email 2.40.0.rc1.284.g88254d51c5-goog
 In-Reply-To: <20230315112011.927091-1-tudor.ambarus@linaro.org>
 References: <20230315112011.927091-1-tudor.ambarus@linaro.org>
@@ -66,48 +66,67 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-struct ext4_fsmap_head is the ext4 internal fsmap representation of
-struct fsmap_head. As the code was, the fmh_iflags validation was done
-on the fmh_iflags value of the internal fsmap representation. Since
-xhead.fmh_iflags is initialized with head.fmh_iflags and not changed
-afterwards, do the validation of fmh_iflags directly on fsmap_head data,
-it spares some superfluous initializations in case the user provides a
-wrong value for fmh_iflags.
+Now that we do the sanity checks directly on the data copied from user,
+we can also constify the fsmap data while the checks are in progress.
+Do the validation checks on constified data, it imposes that the fsmap
+data is not updated during validation and assures readers that nothing
+strange happens during the validation sequence of calls.
 
 Signed-off-by: Tudor Ambarus <tudor.ambarus@linaro.org>
 ---
 v2: new patch
 
- fs/ext4/fsmap.c | 2 --
- fs/ext4/ioctl.c | 2 ++
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/fsmap.c | 8 ++++----
+ fs/ext4/fsmap.h | 3 ++-
+ 2 files changed, 6 insertions(+), 5 deletions(-)
 
 diff --git a/fs/ext4/fsmap.c b/fs/ext4/fsmap.c
-index cdf9bfe10137..7765293bfa5d 100644
+index 463e8165b1e9..655379c96fcf 100644
 --- a/fs/ext4/fsmap.c
 +++ b/fs/ext4/fsmap.c
-@@ -635,8 +635,6 @@ int ext4_getfsmap(struct super_block *sb, struct ext4_fsmap_head *head,
- 	int i;
- 	int error = 0;
+@@ -572,7 +572,7 @@ static int ext4_getfsmap_datadev(struct super_block *sb,
  
--	if (head->fmh_iflags & ~FMH_IF_VALID)
--		return -EINVAL;
- 	if (!ext4_getfsmap_is_valid_device(sb, &head->fmh_keys[0]) ||
- 	    !ext4_getfsmap_is_valid_device(sb, &head->fmh_keys[1]))
- 		return -EINVAL;
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 2b412f1cbc10..77b0198a0f48 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -873,6 +873,8 @@ static int ext4_ioc_getfsmap(struct super_block *sb,
+ /* Do we recognize the device? */
+ static bool ext4_getfsmap_is_valid_device(struct super_block *sb,
+-					  struct fsmap *fm)
++					  const struct fsmap *fm)
+ {
+ 	if (fm->fmr_device == 0 || fm->fmr_device == UINT_MAX ||
+ 	    fm->fmr_device == new_encode_dev(sb->s_bdev->bd_dev))
+@@ -584,8 +584,8 @@ static bool ext4_getfsmap_is_valid_device(struct super_block *sb,
+ }
  
- 	if (copy_from_user(&head, arg, sizeof(struct fsmap_head)))
- 		return -EFAULT;
-+	if (head.fmh_iflags & ~FMH_IF_VALID)
-+		return -EINVAL;
- 	if (memchr_inv(head.fmh_reserved, 0, sizeof(head.fmh_reserved)) ||
- 	    memchr_inv(head.fmh_keys[0].fmr_reserved, 0,
- 		       sizeof(head.fmh_keys[0].fmr_reserved)) ||
+ /* Ensure that the low key is less than the high key. */
+-static bool ext4_getfsmap_check_keys(struct fsmap *low_key,
+-				     struct fsmap *high_key)
++static bool ext4_getfsmap_check_keys(const struct fsmap *low_key,
++				     const struct fsmap *high_key)
+ {
+ 	u64 l_fmr_phys = low_key->fmr_physical + low_key->fmr_length;
+ 
+@@ -607,7 +607,7 @@ static bool ext4_getfsmap_check_keys(struct fsmap *low_key,
+ 	return false;
+ }
+ 
+-int ext4_fsmap_check_head(struct super_block *sb, struct fsmap_head *head)
++int ext4_fsmap_check_head(struct super_block *sb, const struct fsmap_head *head)
+ {
+ 	const struct fsmap *l = &head->fmh_keys[0];
+ 	const struct fsmap *h = &head->fmh_keys[1];
+diff --git a/fs/ext4/fsmap.h b/fs/ext4/fsmap.h
+index e7c510afd672..8325258def7b 100644
+--- a/fs/ext4/fsmap.h
++++ b/fs/ext4/fsmap.h
+@@ -33,7 +33,8 @@ void ext4_fsmap_from_internal(struct super_block *sb, struct fsmap *dest,
+ 		struct ext4_fsmap *src);
+ void ext4_fsmap_to_internal(struct super_block *sb, struct ext4_fsmap *dest,
+ 		struct fsmap *src);
+-int ext4_fsmap_check_head(struct super_block *sb, struct fsmap_head *head);
++int ext4_fsmap_check_head(struct super_block *sb,
++			  const struct fsmap_head *head);
+ 
+ /* fsmap to userspace formatter - copy to user & advance pointer */
+ typedef int (*ext4_fsmap_format_t)(struct ext4_fsmap *, void *);
 -- 
 2.40.0.rc1.284.g88254d51c5-goog
 
