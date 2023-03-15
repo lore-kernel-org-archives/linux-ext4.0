@@ -2,58 +2,100 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 60EF7C6FD1D
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Mar 2023 17:58:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 60DDFC7618D
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Mar 2023 18:19:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231838AbjCOR6S (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Mar 2023 13:58:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51494 "EHLO
+        id S232619AbjCOSTn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Mar 2023 14:19:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53192 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232207AbjCOR6J (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Mar 2023 13:58:09 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9A23337571
-        for <linux-ext4@vger.kernel.org>; Wed, 15 Mar 2023 10:58:03 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 32FHvbS8006202
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 15 Mar 2023 13:57:39 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1678903060; bh=09grMownhl4xwuVSr+pgF+GRSd0lyBDxZ4GNkmzKy2A=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To;
-        b=RPZhtmNcVeepYUr98JKqT8rlvIeu0ui2J2dVmZSBj8WxGHIlq+jyNgFn3+RSXFPL4
-         3w7Sibfm65Ovj3WeOm3phrVyAXPaYTXrK8xf8EevulHqQYOGOyGtlhbj5yPhqn+nog
-         HIZZXQyDahR0q8yueHachC+zWnCohDtJuQVvpYqbNEwg0IzvdZGf3wnkYG2ypN+A5k
-         blnnb9AAzvYWw85wxZtq3ihZSrTktW2bB1T65bhePW8h9yfBet+sJOFo8sHabBLiQy
-         WkDdKl197G7yrPAHSVKN6AYM7Yd3dfs98qwmCYfpv9kxe+A9OKVN8EKBB9WAjcJc5N
-         leCulAuVZPvVw==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id CE5BD15C5830; Wed, 15 Mar 2023 13:57:37 -0400 (EDT)
-Date:   Wed, 15 Mar 2023 13:57:37 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     "Matthew Wilcox (Oracle)" <willy@infradead.org>
-Cc:     Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 00/31] Convert most of ext4 to folios
-Message-ID: <20230315175737.GA3024297@mit.edu>
-References: <20230126202415.1682629-1-willy@infradead.org>
+        with ESMTP id S232496AbjCOSTe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Mar 2023 14:19:34 -0400
+Received: from mail-qv1-xf32.google.com (mail-qv1-xf32.google.com [IPv6:2607:f8b0:4864:20::f32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7425479B09
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Mar 2023 11:19:32 -0700 (PDT)
+Received: by mail-qv1-xf32.google.com with SMTP id x8so2127507qvr.9
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Mar 2023 11:19:32 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=joelfernandes.org; s=google; t=1678904372;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=zopkQ37OTbb3jqgpfO1W4/ZEQgiXwNommG9IMZvT2rg=;
+        b=TLYClVd+VJLKTpszbcY+j5Cmv4IE4AGWIiTfyq5wjafEITguH3DeszdQNA3wA+fTJP
+         Iu1VSWCUseU8K3SHSlfuwq9B/N9dua+Daz7K8vnKt4UH++qSDzv/Q6FTB8oS7N7seNRM
+         0uau9GpCOhyskfAsaKnRFlCO4F1KMLe6iOvig=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112; t=1678904372;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=zopkQ37OTbb3jqgpfO1W4/ZEQgiXwNommG9IMZvT2rg=;
+        b=jdK8Ub+YDgFhXfin5RPqJw8Jqk/hTDWgIjU7f0FNImG+lQ330UiGW8T3nNcz1UfEF7
+         QOrXrAZTN6U6iyvMNiorfnOC56znAcgQ5msms0n46VfJX+6BuvFw61WgUf7SxyziSlnF
+         zdfESp/ldgrQjU9S6yjzuJcjERqqeDUSJl3sQUaQQE/K5MWlQo6h6F5JHD1K4JejY58s
+         BAlyagsvZC4bS9ZQnV6KgY60cP3rPB+H541KpHblE667JpE8pRTM3Zf8X2qNFrSO51Ep
+         i8acKs5X0vbQIFg+AHRJOStmOkb5cq+ja1m4JLDZ/fOG5iMSeEBGTTi9l+Ys5ddSuCWt
+         SzCw==
+X-Gm-Message-State: AO0yUKWlQYxZgzfmJAqEdWu9vsSt/V+DHgk0RC/bdHDmbx1OiJZDpVA4
+        IUOBbR5BWJmGPkJ6VBnATMO9tA==
+X-Google-Smtp-Source: AK7set/hCCFJOC2Yg+Yoi2Re2vblNTj2n9yVDq3z2Os1uV34xJ6baMyuRQji3/AZqoHcyys1zoL/Cw==
+X-Received: by 2002:a05:6214:d89:b0:56e:ac97:85da with SMTP id e9-20020a0562140d8900b0056eac9785damr26734276qve.30.1678904372039;
+        Wed, 15 Mar 2023 11:19:32 -0700 (PDT)
+Received: from joelboxx.c.googlers.com.com (129.239.188.35.bc.googleusercontent.com. [35.188.239.129])
+        by smtp.gmail.com with ESMTPSA id v125-20020a379383000000b007458ae32290sm4113974qkd.128.2023.03.15.11.19.31
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 15 Mar 2023 11:19:31 -0700 (PDT)
+From:   "Joel Fernandes (Google)" <joel@joelfernandes.org>
+To:     "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Cc:     "Uladzislau Rezki (Sony)" <urezki@gmail.com>,
+        Lukas Czerner <lczerner@redhat.com>,
+        "Paul E . McKenney" <paulmck@kernel.org>,
+        Joel Fernandes <joel@joelfernandes.org>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH v2 07/14] ext4/super: Rename kfree_rcu() to kfree_rcu_mightsleep()
+Date:   Wed, 15 Mar 2023 18:18:54 +0000
+Message-Id: <20230315181902.4177819-7-joel@joelfernandes.org>
+X-Mailer: git-send-email 2.40.0.rc1.284.g88254d51c5-goog
+In-Reply-To: <20230315181902.4177819-1-joel@joelfernandes.org>
+References: <20230315181902.4177819-1-joel@joelfernandes.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20230126202415.1682629-1-willy@infradead.org>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-I've pushed Jan's data=writeback cleanup patches, which, among other
-things completely eliminates ext4_writepage) to the ext4 tree's dev
-branch.  So when you rebase these patches for the next version of this
-series, please base them on
+From: "Uladzislau Rezki (Sony)" <urezki@gmail.com>
 
-https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
+The kfree_rcu() and kvfree_rcu() macros' single-argument forms are
+deprecated.  Therefore switch to the new kfree_rcu_mightsleep() and
+kvfree_rcu_mightsleep() variants. The goal is to avoid accidental use
+of the single-argument forms, which can introduce functionality bugs in
+atomic contexts and latency bugs in non-atomic contexts.
 
-Thanks!!
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Lukas Czerner <lczerner@redhat.com>
+Signed-off-by: Uladzislau Rezki (Sony) <urezki@gmail.com>
+Signed-off-by: Paul E. McKenney <paulmck@kernel.org>
+Signed-off-by: Joel Fernandes (Google) <joel@joelfernandes.org>
+---
+ fs/ext4/super.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-					- Ted
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 88f7b8a88c76..405a66b47311 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2500,7 +2500,7 @@ static void ext4_apply_quota_options(struct fs_context *fc,
+ 			qname = rcu_replace_pointer(sbi->s_qf_names[i], qname,
+ 						lockdep_is_held(&sb->s_umount));
+ 			if (qname)
+-				kfree_rcu(qname);
++				kfree_rcu_mightsleep(qname);
+ 		}
+ 	}
+ 
+-- 
+2.40.0.rc1.284.g88254d51c5-goog
+
