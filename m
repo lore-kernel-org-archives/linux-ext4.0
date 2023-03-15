@@ -2,104 +2,78 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E2A45C6FD1D
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Mar 2023 14:59:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B60C5C61DA4
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Mar 2023 16:17:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232582AbjCOO7d (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Mar 2023 10:59:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47218 "EHLO
+        id S232340AbjCOQRS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Mar 2023 12:17:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56438 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233225AbjCOO7N (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Mar 2023 10:59:13 -0400
-Received: from mail-pj1-x1036.google.com (mail-pj1-x1036.google.com [IPv6:2607:f8b0:4864:20::1036])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D41719749E;
-        Wed, 15 Mar 2023 07:58:32 -0700 (PDT)
-Received: by mail-pj1-x1036.google.com with SMTP id h12-20020a17090aea8c00b0023d1311fab3so2301520pjz.1;
-        Wed, 15 Mar 2023 07:58:32 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112; t=1678892284;
-        h=in-reply-to:subject:cc:to:from:message-id:date:from:to:cc:subject
-         :date:message-id:reply-to;
-        bh=dokgrxg7LsaZ2JGu50D2m9zJ1ZTRNdIVZnZRE9TyiYA=;
-        b=JOC7Mx3fWiA0zvfzLyHe7LRt+2rWixnacoz+bNjQ8+ZMI8yHWZBIt1yPfC81kq39ch
-         xOfgrbI84b5FYqRMGFLEZSA3/ViD+njB6PJajq/s+uq/EA2ADgk/zUcVrmbBevFkgX+8
-         QYw20yj8LRrlb3xGJYC/WVaolFWkbQ9c8hRXTsVCtLxMUhfwJbQ0K4msRG2bPaStks5M
-         IoSp1JfCsyXnLeeKALXNY4Rm7UzEuJFb00I3uXtw57qtPVvDq+FNdm4ros/BMM31wzJF
-         UClxpKxyjcjZpHj7/kCzMf0Ly49DZ7NRtdVVzuIuLKrODSNvNQDOtQkBDOn77D1agNJA
-         yOLw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112; t=1678892284;
-        h=in-reply-to:subject:cc:to:from:message-id:date:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=dokgrxg7LsaZ2JGu50D2m9zJ1ZTRNdIVZnZRE9TyiYA=;
-        b=7yi0PPJtcHvOPlAq4+Qh9MzdkWjbRFWcwek2ZYQw59VnGM/Lutg3H9F3YfZQ0p8tDz
-         lvnSm3V5fdSWpg5jU6gJunY/KBQT4qiCd3kaws5lXhRMCeAOYIRORs0S3KuHf13yyUgt
-         5d+z3LG9Li2dc1otJUz31HIPyJzbXgJfKB9KaG4/RO2Il6oHM/jFZUVCzeztmnOnNIDl
-         9dOO9VucA8b3QVfS+0e5F4lZfY+I5XhDEZs92/LinJbP9UDgBG8RcgIi9ZMLohEYpsV8
-         ytfE2paXG3R8N+rSBpeZTDXG9Q8KgNm4F0QEOc2KL/EZJeIWSiCgE0oMgPRu0wtduQnr
-         +4Lg==
-X-Gm-Message-State: AO0yUKUnxwecqfz4aaRV/CArs6j2kElVGIPcP5RuBc58qJ553zCcnXs1
-        SSQ4D03MQD3gT9xRzG5P333/p+khuaBtAQ==
-X-Google-Smtp-Source: AK7set8AwaWLXTj1ENvzQEn1jH4j8u0dxhPBRYCKYfKuP0E894bHLAaP+DtFYemzWsyvHC1obYkKxA==
-X-Received: by 2002:a05:6a20:7b28:b0:d5:8207:9f08 with SMTP id s40-20020a056a207b2800b000d582079f08mr54647pzh.33.1678892284282;
-        Wed, 15 Mar 2023 07:58:04 -0700 (PDT)
-Received: from rh-tp ([2406:7400:63:469f:1474:7c59:3a57:aab6])
-        by smtp.gmail.com with ESMTPSA id s5-20020aa78285000000b005d296facfa3sm3643422pfm.36.2023.03.15.07.58.02
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 15 Mar 2023 07:58:03 -0700 (PDT)
-Date:   Wed, 15 Mar 2023 20:27:50 +0530
-Message-Id: <874jqm83kh.fsf@doe.com>
-From:   Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     Theodore Tso <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 25/31] ext4: Convert ext4_block_write_begin() to take a folio
-In-Reply-To: <ZBFMT6L0QqpDcWNm@casper.infradead.org>
+        with ESMTP id S232313AbjCOQQu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Mar 2023 12:16:50 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A470B2694
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Mar 2023 09:16:20 -0700 (PDT)
+Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 32FGGFkn006780
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Wed, 15 Mar 2023 12:16:16 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1678896976; bh=zQ/Hu9kJeReFnLn4i3pu0oXpLUgSddHUxRvffa4cIGc=;
+        h=From:To:Subject:Date:In-Reply-To:References;
+        b=DnVBhTGCwb89enN+k6YMjp/PVYmLv2NjR5NGFhK56rwwoxUlFbDhxACHZjU1tnnYv
+         9poWf4jtI4vgErY6G3A1Gco53d2XfCeWdPAEcvExaxLCdDsaMK8+DGQFAlxNVxOxmS
+         5z+QTu/oyeiCxFZL3vyidi9zH24MgMdchTlH6ByONCn8PDlRevPboUda83Zi26vGzy
+         wBluRzy/JhrAkpe77c2S2NY5+imTQ5QkYDWgzIAQEyULYStX4fiGiq7HAjjDgrjsgU
+         oN8WeEyNtC4N5HCv2rVjjAK/3XZZZbOhX0O/r190xUmqOVefBBPz64UBUJ5VDWN9Gk
+         aij5loO1+Y7Vg==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 90B8715C5831; Wed, 15 Mar 2023 12:16:15 -0400 (EDT)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     "Theodore Ts'o" <tytso@mit.edu>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH REBASED 0/7] ext4: Cleanup data=journal writeback path
+Date:   Wed, 15 Mar 2023 12:16:12 -0400
+Message-Id: <167889696171.3024151.6524579261091560528.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <20230228051319.4085470-1-tytso@mit.edu>
+References: <20230228051319.4085470-1-tytso@mit.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Matthew Wilcox <willy@infradead.org> writes:
+On Tue, 28 Feb 2023 00:13:12 -0500, Theodore Ts'o wrote:
+> This is Jan's data=journal cleanup patch series, previously submitted
+> here[1] rebased on top of Linus's patches to address merge conflicts
+> with mm-stable, per this discussion[2].
+> 
+> [1] https://lore.kernel.org/r/20230111152736.9608-1-jack@suse.cz
+> [2] https://lore.kernel.org/r/Y/k4Jvph15ugcY54@mit.edu
+> 
+> [...]
 
-> On Mon, Mar 06, 2023 at 08:51:45PM +0530, Ritesh Harjani wrote:
->> Matthew Wilcox <willy@infradead.org> writes:
->> 
->> > On Mon, Mar 06, 2023 at 12:21:48PM +0530, Ritesh Harjani wrote:
->> >> "Matthew Wilcox (Oracle)" <willy@infradead.org> writes:
->> >>
->> >> > All the callers now have a folio, so pass that in and operate on folios.
->> >> > Removes four calls to compound_head().
->> >>
->> >> Why do you say four? Isn't it 3 calls of PageUptodate(page) which
->> >> removes calls to compound_head()? Which one did I miss?
->> >>
->> >> > -	BUG_ON(!PageLocked(page));
->> >> > +	BUG_ON(!folio_test_locked(folio));
->> >
->> > That one ;-)
->> 
->> __PAGEFLAG(Locked, locked, PF_NO_TAIL)
->> 
->> #define __PAGEFLAG(uname, lname, policy)				\
->> 	TESTPAGEFLAG(uname, lname, policy)				\
->> 	__SETPAGEFLAG(uname, lname, policy)				\
->> 	__CLEARPAGEFLAG(uname, lname, policy)
->> 
->> #define TESTPAGEFLAG(uname, lname, policy)				\
->> static __always_inline bool folio_test_##lname(struct folio *folio)	\
->> { return test_bit(PG_##lname, folio_flags(folio, FOLIO_##policy)); }	\
->> static __always_inline int Page##uname(struct page *page)		\
->> { return test_bit(PG_##lname, &policy(page, 0)->flags); }
->> 
->> How? PageLocked(page) doesn't do any compount_head() calls no?
->
-> You missed one piece of the definition ...
->
-> #define PF_NO_TAIL(page, enforce) ({                                    \
->                 VM_BUG_ON_PGFLAGS(enforce && PageTail(page), page);     \
->                 PF_POISONED_CHECK(compound_head(page)); })
+Applied, thanks!
 
-aah yes, right. Thanks for pointing it.
+[1/7] ext4: Update stale comment about write constraints
+      commit: e7a2d7ab32fd5bfe431d69df56eedf74c747dfa1
+[2/7] ext4: Use nr_to_write directly in mpage_prepare_extent_to_map()
+      commit: 6e6213b505709902199d69f56f64bba3dbd867ff
+[3/7] ext4: Mark page for delayed dirtying only if it is pinned
+      commit: 90f1929e5e5af0467572c81e6ac78ae20316f439
+[4/7] ext4: Don't unlock page in ext4_bio_write_page()
+      commit: 2c892bdd69ce89e534c915e84c3e4ba98de9ef6c
+[5/7] ext4: Move page unlocking out of mpage_submit_page()
+      commit: 22e00e971f55a0b7b375d937db614863e1a2e500
+[6/7] ext4: Move mpage_page_done() calls after error handling
+      commit: 47c6f573b4ef9bf68ce45bd4e4c35ef56d326fe1
+[7/7] ext4: Convert data=journal writeback to use ext4_writepages()
+      commit: f7233fb54d18b45b42d8f6ad6a95bd8641114c36
 
--ritesh
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
