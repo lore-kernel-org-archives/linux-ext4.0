@@ -2,86 +2,187 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BFF62C6FD1D
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Mar 2023 17:40:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8407DC6FD1D
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Mar 2023 17:58:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232168AbjCORkH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Mar 2023 13:40:07 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48268 "EHLO
+        id S232292AbjCOR6H (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Mar 2023 13:58:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51494 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231508AbjCORkF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Mar 2023 13:40:05 -0400
-Received: from mail-il1-x134.google.com (mail-il1-x134.google.com [IPv6:2607:f8b0:4864:20::134])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E9C154DE25
-        for <linux-ext4@vger.kernel.org>; Wed, 15 Mar 2023 10:40:03 -0700 (PDT)
-Received: by mail-il1-x134.google.com with SMTP id bp11so5359645ilb.3
-        for <linux-ext4@vger.kernel.org>; Wed, 15 Mar 2023 10:40:03 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=kernel-dk.20210112.gappssmtp.com; s=20210112; t=1678902003; x=1681494003;
-        h=content-transfer-encoding:in-reply-to:references:to:from
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=/5df0VVcQalC1bXRcr/ZzFE9DW4g6pmup34uWUxk2BE=;
-        b=zwxQprHXlzq84Q96JdMBQaXVvSCHCBcJxqwLAdS2/M6P2PZf8X+QBMdh444n639VR4
-         9WawyHfreN9zeFpPIMhQsN7v7r0TWD5dW79rcxlqjdiRYD9CKeuHkVzP5OWvsI8S+cvb
-         GDC4tEZKH/QFkrr8nDLOkHeZriSUz/RbHofPkaXRLz6fCHLG90K7wPEWbwpuibh0EhcR
-         33COVEz8u5PDhku1P4VHqFjFgejAw7CwBqNz45vHuiNQSzxFc3uFKrVQz8nlcFD8nJwq
-         dMtxuCBUyahbswuu6YxFGozBwSWkHygIp6T2Q+IOaD+QgWYfWWa0Sr2JJEOOVVm6dXWr
-         6wqg==
+        with ESMTP id S231838AbjCOR6F (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Mar 2023 13:58:05 -0400
+Received: from mail-il1-f197.google.com (mail-il1-f197.google.com [209.85.166.197])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D7C2932500
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Mar 2023 10:57:56 -0700 (PDT)
+Received: by mail-il1-f197.google.com with SMTP id v14-20020a92c80e000000b0031faea6493cso10185797iln.11
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Mar 2023 10:57:56 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112; t=1678902003; x=1681494003;
-        h=content-transfer-encoding:in-reply-to:references:to:from
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=/5df0VVcQalC1bXRcr/ZzFE9DW4g6pmup34uWUxk2BE=;
-        b=IcGDGaPK2fcU53rj6Z3ZqLdDmLBZV6GSTfUxLYucDXLF+fcPZ1BQX+f/MdlQPQsvC5
-         iON8VH7rzJCthGVmEROjrJ0y/Chx0rLu+BuaqMADKiMTYyqoyOZ/O++heCX9BbwRjzI9
-         qGFgE2SxbTt4kV/7p+ALB002bghzLAOlFwf5n9zpPIjUnxvHjuEfwfhKr6d3GAvXtmQY
-         EiPA6tjzWvudVVMruZel/CDqlvdf1kSyqGK+5hsg0EB7Hp2vc+sOTsE4Kb2M5ujtsyQE
-         llz73upU1GJ5LagNIx6FCAGROT0Bi4LAn9H7BedlXmhH/8JTR2URx4qNeTTu9hq8jpl8
-         AyKw==
-X-Gm-Message-State: AO0yUKXULuuLjx/2tS1NfoXNZOaK+U6vs8Kxn4PX1yGKQ18a5kxijEHW
-        9+5s5IZOFRQlzSzZmzE516UxGQ==
-X-Google-Smtp-Source: AK7set8OzK+A6f5D0yNLMn24/3DUQDhPAXFB5nnrO48ARbTVMVcy3wWxXjFNd9A785kMM5Plifl11g==
-X-Received: by 2002:a05:6e02:dd3:b0:317:2f8d:528f with SMTP id l19-20020a056e020dd300b003172f8d528fmr62272ilj.2.1678902003223;
-        Wed, 15 Mar 2023 10:40:03 -0700 (PDT)
-Received: from [192.168.1.94] ([96.43.243.2])
-        by smtp.gmail.com with ESMTPSA id y17-20020a056e02119100b0031798b87a14sm1786576ili.19.2023.03.15.10.40.02
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Wed, 15 Mar 2023 10:40:02 -0700 (PDT)
-Message-ID: <b11d27d5-8e83-7144-cdc8-3966abf42db5@kernel.dk>
-Date:   Wed, 15 Mar 2023 11:40:02 -0600
+        d=1e100.net; s=20210112; t=1678903076;
+        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=zfP2RrGfa+6Gegi6FbN5052XrJmeuObXATx/IVMNmRc=;
+        b=lt38rhedGMbTAMzU1Ez8q417PIQGzDrD3iI64a9GtMkhFkhKDoeNt1j9t7fxGNcjnl
+         2mEiDOXtZf1Q8vklPhmJikB6zQN27rhmibhGpu79fM4EC8aaYa3W0U50Z1WJ7iDa/8R3
+         sUaPX+AKOm3/r5jcMQHw5p5OohES5b4D6uLg7fr3zrsAHaqq1cEvnbjl6GL+q7FKtqXv
+         oVtRv4SLegWo7mxM/6j1w+/gb599Sjx1ehsbSLTercwmdEGr1iL/HWVWcndwdevKrrpX
+         jJZn1MKjAxnNipSySsUs+F6D8Ru4lt/h8yNKE7gcCrNDQkgELDdzDrBPAzZTvIj/Ntik
+         QZvQ==
+X-Gm-Message-State: AO0yUKUUigy54EvXRJHzxvi/Gx7Bv6AQdSDjQBim4dvzPopJXKv5KxZ3
+        ndE79h24admG389D6LHBi3ZCBuamNxaCELze5Pxy7baQCEj8
+X-Google-Smtp-Source: AK7set+CvUevlQ/ozJc/gsCV323wqZhj4dpP3PLYQoJzXwEYZLxNHHJY/caAiaGCwPiT2h/UZvutF/h9WRAsjmwizceuLfgm88M8
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux aarch64; rv:102.0) Gecko/20100101
- Thunderbird/102.8.0
-Subject: Re: [PATCHSET for-next 0/2] Flag file systems as supporting parallel
- dio writes
-Content-Language: en-US
-From:   Jens Axboe <axboe@kernel.dk>
-To:     io-uring@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org
-References: <20230307172015.54911-1-axboe@kernel.dk>
-In-Reply-To: <20230307172015.54911-1-axboe@kernel.dk>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+X-Received: by 2002:a05:6e02:d46:b0:310:9d77:6063 with SMTP id
+ h6-20020a056e020d4600b003109d776063mr3650597ilj.5.1678903076058; Wed, 15 Mar
+ 2023 10:57:56 -0700 (PDT)
+Date:   Wed, 15 Mar 2023 10:57:56 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <00000000000075fe1b05f6f415f7@google.com>
+Subject: [syzbot] [ext4?] WARNING in kvfree (2)
+From:   syzbot <syzbot+64b645917ce07d89bde5@syzkaller.appspotmail.com>
+To:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        syzkaller-bugs@googlegroups.com, tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 3/7/23 10:20 AM, Jens Axboe wrote:
-> Hi,
-> 
-> This has been on my TODO list for a while, and now that ext4 supports
-> parallel dio writes as well, time to dust it off and send it out... This
-> adds an FMODE flag to inform users that a given file supports parallel
-> dio writes. io_uring can use this to avoid serializing dio writes
-> upfront, in case it isn't needed. A few details in patch #2, patch 1 does
-> nothing by itself.
+Hello,
 
-I'm assuming silence is consent here and folks are fine with this
-change?
+syzbot found the following issue on:
 
--- 
-Jens Axboe
+HEAD commit:    fe15c26ee26e Linux 6.3-rc1
+git tree:       git://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux.git for-kernelci
+console output: https://syzkaller.appspot.com/x/log.txt?x=1100fce2c80000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=7573cbcd881a88c9
+dashboard link: https://syzkaller.appspot.com/bug?extid=64b645917ce07d89bde5
+compiler:       Debian clang version 15.0.7, GNU ld (GNU Binutils for Debian) 2.35.2
+userspace arch: arm64
+
+Unfortunately, I don't have any reproducer for this issue yet.
+
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/89d41abd07bd/disk-fe15c26e.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/fa75f5030ade/vmlinux-fe15c26e.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/590d0f5903ee/Image-fe15c26e.gz.xz
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+64b645917ce07d89bde5@syzkaller.appspotmail.com
+
+------------[ cut here ]------------
+WARNING: CPU: 1 PID: 9389 at mm/slab_common.c:935 free_large_kmalloc+0x34/0x138 mm/slab_common.c:936
+Modules linked in:
+CPU: 1 PID: 9389 Comm: syz-executor.5 Not tainted 6.3.0-rc1-syzkaller-gfe15c26ee26e #0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 03/02/2023
+pstate: 80400005 (Nzcv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+pc : free_large_kmalloc+0x34/0x138 mm/slab_common.c:936
+lr : kfree+0x184/0x228 mm/slab_common.c:1013
+sp : ffff8000227974e0
+x29: ffff8000227974e0 x28: 00000000000003bc x27: ffff000142fd15a4
+x26: dfff800000000000 x25: 0000000000000020 x24: ffff0000c4f01c00
+x23: 0000000000000020 x22: ffff00012f6d48e8 x21: ffff800008829ce8
+x20: ffff000142fd15a4 x19: fffffc00050bf440 x18: ffff8000227970e0
+x17: ffff800015cdd000 x16: ffff800008313a3c x15: 0000000000000000
+x14: 00000000ffff8000 x13: 00000000ecdf532c x12: 0000000000000003
+x11: ff8080000809b854 x10: 0000000000000000 x9 : 05ffc0000000203a
+x8 : ffff8000186ee000 x7 : 0000000000000000 x6 : 000000000000003f
+x5 : 0000000000000040 x4 : fffffffffffffff0 x3 : 0000000000000000
+x2 : 0000000000000006 x1 : ffff000142fd15a4 x0 : fffffc00050bf440
+Call trace:
+ free_large_kmalloc+0x34/0x138 mm/slab_common.c:936
+ kfree+0x184/0x228 mm/slab_common.c:1013
+ kvfree+0x40/0x50 mm/util.c:649
+ ext4_xattr_move_to_block fs/ext4/xattr.c:2680 [inline]
+ ext4_xattr_make_inode_space fs/ext4/xattr.c:2743 [inline]
+ ext4_expand_extra_isize_ea+0xcf8/0x1620 fs/ext4/xattr.c:2835
+ __ext4_expand_extra_isize+0x290/0x348 fs/ext4/inode.c:5955
+ ext4_try_to_expand_extra_isize fs/ext4/inode.c:5998 [inline]
+ __ext4_mark_inode_dirty+0x5dc/0xa94 fs/ext4/inode.c:6076
+ __ext4_unlink+0x768/0x998 fs/ext4/namei.c:3256
+ ext4_unlink+0x2ec/0xb10 fs/ext4/namei.c:3299
+ vfs_unlink+0x2f0/0x508 fs/namei.c:4250
+ do_unlinkat+0x4c8/0x82c fs/namei.c:4316
+ __do_sys_unlinkat fs/namei.c:4359 [inline]
+ __se_sys_unlinkat fs/namei.c:4352 [inline]
+ __arm64_sys_unlinkat+0xcc/0xfc fs/namei.c:4352
+ __invoke_syscall arch/arm64/kernel/syscall.c:38 [inline]
+ invoke_syscall+0x98/0x2c0 arch/arm64/kernel/syscall.c:52
+ el0_svc_common+0x138/0x258 arch/arm64/kernel/syscall.c:142
+ do_el0_svc+0x64/0x198 arch/arm64/kernel/syscall.c:193
+ el0_svc+0x58/0x168 arch/arm64/kernel/entry-common.c:637
+ el0t_64_sync_handler+0x84/0xf0 arch/arm64/kernel/entry-common.c:655
+ el0t_64_sync+0x190/0x194 arch/arm64/kernel/entry.S:591
+irq event stamp: 3482
+hardirqs last  enabled at (3481): [<ffff80000898bb44>] kasan_quarantine_put+0x1a0/0x1c8 mm/kasan/quarantine.c:242
+hardirqs last disabled at (3482): [<ffff80001245e098>] el1_dbg+0x24/0x80 arch/arm64/kernel/entry-common.c:405
+softirqs last  enabled at (3300): [<ffff800008034240>] local_bh_enable+0x10/0x34 include/linux/bottom_half.h:32
+softirqs last disabled at (3298): [<ffff80000803420c>] local_bh_disable+0x10/0x34 include/linux/bottom_half.h:19
+---[ end trace 0000000000000000 ]---
+object pointer: 0x000000000b8c335f
+==================================================================
+BUG: KASAN: invalid-free in kfree+0x184/0x228 mm/slab_common.c:1013
+Free of addr ffff000142fd15a4 by task syz-executor.5/9389
+
+CPU: 0 PID: 9389 Comm: syz-executor.5 Tainted: G        W          6.3.0-rc1-syzkaller-gfe15c26ee26e #0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 03/02/2023
+Call trace:
+ dump_backtrace+0x1c8/0x1f4 arch/arm64/kernel/stacktrace.c:158
+ show_stack+0x2c/0x3c arch/arm64/kernel/stacktrace.c:165
+ __dump_stack lib/dump_stack.c:88 [inline]
+ dump_stack_lvl+0xd0/0x124 lib/dump_stack.c:106
+ print_address_description mm/kasan/report.c:319 [inline]
+ print_report+0x174/0x514 mm/kasan/report.c:430
+ kasan_report_invalid_free+0xc4/0x114 mm/kasan/report.c:501
+ __kasan_kfree_large+0xa4/0xc0 mm/kasan/common.c:272
+ kasan_kfree_large include/linux/kasan.h:170 [inline]
+ free_large_kmalloc+0x70/0x138 mm/slab_common.c:939
+ kfree+0x184/0x228 mm/slab_common.c:1013
+ kvfree+0x40/0x50 mm/util.c:649
+ ext4_xattr_move_to_block fs/ext4/xattr.c:2680 [inline]
+ ext4_xattr_make_inode_space fs/ext4/xattr.c:2743 [inline]
+ ext4_expand_extra_isize_ea+0xcf8/0x1620 fs/ext4/xattr.c:2835
+ __ext4_expand_extra_isize+0x290/0x348 fs/ext4/inode.c:5955
+ ext4_try_to_expand_extra_isize fs/ext4/inode.c:5998 [inline]
+ __ext4_mark_inode_dirty+0x5dc/0xa94 fs/ext4/inode.c:6076
+ __ext4_unlink+0x768/0x998 fs/ext4/namei.c:3256
+ ext4_unlink+0x2ec/0xb10 fs/ext4/namei.c:3299
+ vfs_unlink+0x2f0/0x508 fs/namei.c:4250
+ do_unlinkat+0x4c8/0x82c fs/namei.c:4316
+ __do_sys_unlinkat fs/namei.c:4359 [inline]
+ __se_sys_unlinkat fs/namei.c:4352 [inline]
+ __arm64_sys_unlinkat+0xcc/0xfc fs/namei.c:4352
+ __invoke_syscall arch/arm64/kernel/syscall.c:38 [inline]
+ invoke_syscall+0x98/0x2c0 arch/arm64/kernel/syscall.c:52
+ el0_svc_common+0x138/0x258 arch/arm64/kernel/syscall.c:142
+ do_el0_svc+0x64/0x198 arch/arm64/kernel/syscall.c:193
+ el0_svc+0x58/0x168 arch/arm64/kernel/entry-common.c:637
+ el0t_64_sync_handler+0x84/0xf0 arch/arm64/kernel/entry-common.c:655
+ el0t_64_sync+0x190/0x194 arch/arm64/kernel/entry.S:591
+
+The buggy address belongs to the physical page:
+page:000000004ed01e6f refcount:2 mapcount:0 mapping:0000000047d3c139 index:0x1 pfn:0x182fd1
+memcg:ffff000131a56000
+aops:def_blk_aops ino:700005
+flags: 0x5ffc0000000203a(referenced|dirty|lru|active|private|node=0|zone=2|lastcpupid=0x7ff)
+raw: 05ffc0000000203a fffffc0003531048 fffffc0005118988 ffff0000c0497610
+raw: 0000000000000001 ffff0000e0738cb0 00000002ffffffff ffff000131a56000
+page dumped because: kasan: bad access detected
+
+Memory state around the buggy address:
+ ffff000142fd1480: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ ffff000142fd1500: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+>ffff000142fd1580: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+                               ^
+ ffff000142fd1600: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ ffff000142fd1680: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+==================================================================
 
 
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
