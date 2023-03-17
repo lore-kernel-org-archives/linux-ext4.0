@@ -2,109 +2,170 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5D5F2C6FD1D
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Mar 2023 15:51:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2FD7DC6FD1D
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Mar 2023 21:12:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230031AbjCQPvT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 17 Mar 2023 11:51:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39642 "EHLO
+        id S230046AbjCQVMe convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 17 Mar 2023 17:12:34 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42602 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229808AbjCQPvS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Mar 2023 11:51:18 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 25538457C4
-        for <linux-ext4@vger.kernel.org>; Fri, 17 Mar 2023 08:51:17 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 32HFolij015247
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 17 Mar 2023 11:50:48 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1679068250; bh=tsuI/3AQbb01opNQjlPT5OtU6shs2k5NRqebA+XQ/O4=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To;
-        b=oGQSktXGSx7A73SE3u8bOgcG6CYh40tQTA0hbo3KWAxrR4P/XVYNa/tT5l8cteSqy
-         6wZt7G7NO/Bn3tiQsQixOtl87C2xELVCdHL2l0PNYsD3jian/BBX0SVVQSNix5snOY
-         mrlK650tq/w+I2gqnkeDV8+5VTBjzy8n9PjPH8kp9EWCtUgN9sD90PeBJf1s59X/AR
-         DPsjzjeKYLH4Ro84Yfv2UDibyOlLDqlL/eF2bnG/i1lAXJWI+2T8kUWhi+hfcjNzAe
-         rxGigEa5azKlALNSjDB/tpS4YNjycjNuORbUws1NEECTsVeubgnJRVgADf+Hotlurh
-         IWTrg4dPzxkjg==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id B108615C33A7; Fri, 17 Mar 2023 11:50:47 -0400 (EDT)
-Date:   Fri, 17 Mar 2023 11:50:47 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Kemeng Shi <shikemeng@huaweicloud.com>
-Cc:     adilger.kernel@dilger.ca, ojaswin@linux.ibm.com,
-        ritesh.list@gmail.com,
-        Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v3 20/20] ext4: simplify calculation of blkoff in
- ext4_mb_new_blocks_simple
-Message-ID: <20230317155047.GB3270589@mit.edu>
-References: <20230303172120.3800725-1-shikemeng@huaweicloud.com>
- <20230303172120.3800725-21-shikemeng@huaweicloud.com>
- <20230316050740.GL860405@mit.edu>
- <d88a3d33-6832-2921-c8bb-b935b19e7db4@huaweicloud.com>
+        with ESMTP id S229509AbjCQVMd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Mar 2023 17:12:33 -0400
+Received: from mail-io1-f69.google.com (mail-io1-f69.google.com [209.85.166.69])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7097D3FB95
+        for <linux-ext4@vger.kernel.org>; Fri, 17 Mar 2023 14:12:30 -0700 (PDT)
+Received: by mail-io1-f69.google.com with SMTP id r3-20020a6b5d03000000b007530ad88769so3087888iob.4
+        for <linux-ext4@vger.kernel.org>; Fri, 17 Mar 2023 14:12:30 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112; t=1679087549;
+        h=content-transfer-encoding:to:from:subject:message-id:date
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=0eUVOzUS5o3ynrBgooZBRstZBkugFAkgwbSHpaw7MSs=;
+        b=V0N1bln6P8WdYaVU6pvhzr/fP2I9KmE4Sq2ULFrzxBkyaFsM2dO0y/Nuiv09d89qPi
+         wn6jhqNm2jEgIFgDNyE+LcLIffeFlAezkdwQ6smKO5JUgyV3g91rYnrph3esuB1xE6tM
+         jA01ReWkA2KZwgovqI8LHJ6uqmwKu+nAjxYMZ/OlC8rqzjXsWPffB4dxd58QRnNMiPk9
+         HsuXfC44+60zeS90QBBK9sz0xssgvOlGQPawsnIj/D5arutf3jfCOv6axjGkaU2SckTo
+         Dl+FPmYgItYL9BFxWQEyfyLr3sHtW33JFf1CqQ51BSeFp0CME4ZoZ29o3462+0nM9JxY
+         GvDA==
+X-Gm-Message-State: AO0yUKVkSUgsA4fTHNld3V/TKCVOg5Bk/rrbOfz+jmvZlJnefj9jefxg
+        b+tAy9bnJy1go9gyHEP/y9xjE/hQLNF+A9w2uK5WzQWPQcP3
+X-Google-Smtp-Source: AK7set8mHQCT0vXcX2Qn2Djz/3mgNnT1D+UxvaaiYG2ygiebSAbUtsMJ5s9FL/UJu1E6NbnVjQ9dIPdC2V3lnw147cBKzi4nr1BU
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <d88a3d33-6832-2921-c8bb-b935b19e7db4@huaweicloud.com>
+X-Received: by 2002:a5e:c809:0:b0:752:a213:257a with SMTP id
+ y9-20020a5ec809000000b00752a213257amr23959iol.3.1679087549803; Fri, 17 Mar
+ 2023 14:12:29 -0700 (PDT)
+Date:   Fri, 17 Mar 2023 14:12:29 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <000000000000f3f2f305f71f0879@google.com>
+Subject: [syzbot] [ext4?] WARNING: bad unlock balance in ext4_xattr_get
+From:   syzbot <syzbot+ebaf26199c734bd9931d@syzkaller.appspotmail.com>
+To:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        syzkaller-bugs@googlegroups.com, tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Mar 16, 2023 at 06:19:40PM +0800, Kemeng Shi wrote:
-> Hi Theodore, thanks for feedback. I will submit another patchset for
-> mballoc and I would like to include this fix if no one else does. As
-> new patches may be conflicted with old ones I submited, I would submit
-> the new patchset after the old ones are fully reviewed and applied
-> if this fix is not in rush. Thanks!
+Hello,
 
-Hi, I've already taken the your patches into the dev branch; were
-there any changes you were intending to make to your patches?
+syzbot found the following issue on:
 
-If you could submit a separate fix for the bug that I noticed, that
-would be great.
+HEAD commit:    2e84eedb182e Merge branch 'for-next/core' into for-kernelci
+git tree:       git://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux.git for-kernelci
+console output: https://syzkaller.appspot.com/x/log.txt?x=1665c5e5480000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=e8cf742d9a45bfb6
+dashboard link: https://syzkaller.appspot.com/bug?extid=ebaf26199c734bd9931d
+compiler:       Debian clang version 13.0.1-6~deb11u1, GNU ld (GNU Binutils for Debian) 2.35.2
+userspace arch: arm64
 
-Also, if you are interested in doing some more work in mballoc.c, I
-was wondering if you would be interested in adding some Kunit tests
-for mballoc.c.  A simple example Kunit test for ext4 can be found in
-fs/ext4/inode_test.c.  (The convention is to place tests for foo.c in
-foo_test.c.)
+Unfortunately, I don't have any reproducer for this issue yet.
 
-[1] https://docs.kernel.org/dev-tools/kunit/
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/acdd02708d19/disk-2e84eedb.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/0929da006e5e/vmlinux-2e84eedb.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/728c7b1a181a/Image-2e84eedb.gz.xz
 
-In order to add mballoc Kunit tests, we will need to add some "mock"[2]
-functions to simulate what happens when mballoc.c tries reading a
-block bitmap.  My thinking was to have a test provide an array of some
-data structure like this:
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+ebaf26199c734bd9931d@syzkaller.appspotmail.com
 
-struct test_bitmap {
-       unsigned int	start;
-       unsigned int	len;
-};
+=====================================
+WARNING: bad unlock balance detected!
+6.2.0-rc5-syzkaller-17291-g2e84eedb182e #0 Not tainted
+-------------------------------------
+syz-executor.1/23387 is trying to release lock (��) at:
+[<ffff800008874a1c>] ext4_xattr_get+0x2fc/0x418 fs/ext4/xattr.c:686
+but there are no more locks to release!
 
-[2] https://en.wikipedia.org/wiki/Mock_object
+other info that might help us debug this:
+no locks held by syz-executor.1/23387.
 
-... which indicates the starting block, and the length of a run of
-blocks that are marked as in use, where the list of blocks are sorted
-by starting block number, and where a starting block of ~0 indicates
-the end of the list of block extents.
+stack backtrace:
+CPU: 0 PID: 23387 Comm: syz-executor.1 Not tainted 6.2.0-rc5-syzkaller-17291-g2e84eedb182e #0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 10/26/2022
+Call trace:
+ dump_backtrace+0x1c4/0x1f0 arch/arm64/kernel/stacktrace.c:156
+ show_stack+0x2c/0x3c arch/arm64/kernel/stacktrace.c:163
+ __dump_stack lib/dump_stack.c:88 [inline]
+ dump_stack_lvl+0x104/0x16c lib/dump_stack.c:106
+ dump_stack+0x1c/0x58 lib/dump_stack.c:113
+ print_unlock_imbalance_bug+0x198/0x1a0 kernel/locking/lockdep.c:5108
+ lock_release+0x1f8/0x2b4 kernel/locking/lockdep.c:5688
+ up_read+0x30/0x48 kernel/locking/rwsem.c:1604
+ ext4_xattr_get+0x2fc/0x418 fs/ext4/xattr.c:686
+ ext4_xattr_trusted_get+0x40/0x54 fs/ext4/xattr_trusted.c:27
+ __vfs_getxattr+0x258/0x268 fs/xattr.c:425
+ vfs_getxattr+0x1c0/0x208 fs/xattr.c:458
+ do_getxattr+0xf4/0x2bc fs/xattr.c:717
+ getxattr+0xdc/0x12c fs/xattr.c:751
+ path_getxattr+0xa0/0x14c fs/xattr.c:767
+ __do_sys_getxattr fs/xattr.c:779 [inline]
+ __se_sys_getxattr fs/xattr.c:776 [inline]
+ __arm64_sys_getxattr+0x28/0x38 fs/xattr.c:776
+ __invoke_syscall arch/arm64/kernel/syscall.c:38 [inline]
+ invoke_syscall arch/arm64/kernel/syscall.c:52 [inline]
+ el0_svc_common+0x138/0x220 arch/arm64/kernel/syscall.c:142
+ do_el0_svc+0x48/0x104 arch/arm64/kernel/syscall.c:193
+ el0_svc+0x58/0x150 arch/arm64/kernel/entry-common.c:637
+ el0t_64_sync_handler+0x84/0xf0 arch/arm64/kernel/entry-common.c:655
+ el0t_64_sync+0x190/0x194 arch/arm64/kernel/entry.S:584
+------------[ cut here ]------------
+DEBUG_RWSEMS_WARN_ON(sem->magic != sem): count = 0x100, magic = 0xffff0001191985c8, owner = 0xffff0000c5881a01, curr 0xffff0000c5881a00, list not empty
+WARNING: CPU: 1 PID: 23387 at kernel/locking/rwsem.c:1335 __up_read+0x198/0x2ac kernel/locking/rwsem.c:1335
+Modules linked in:
+CPU: 1 PID: 23387 Comm: syz-executor.1 Not tainted 6.2.0-rc5-syzkaller-17291-g2e84eedb182e #0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 10/26/2022
+pstate: 60400005 (nZCv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+pc : __up_read+0x198/0x2ac kernel/locking/rwsem.c:1335
+lr : __up_read+0x198/0x2ac kernel/locking/rwsem.c:1335
+sp : ffff800014fcb9e0
+x29: ffff800014fcb9e0 x28: ffff80000d6c32f8 x27: ffff00011a409b00
+x26: 00000000ffffffc3 x25: 0000000000000004 x24: ffff800014fcbc30
+x23: 00000000000000ee x22: ffff0001191987b8 x21: ffff80000d52c000
+x20: ffff0001191985c8 x19: ffff000119198560 x18: 000000000000011a
+x17: ffff80000c16e8bc x16: 0000000000000002 x15: 0000000000000000
+x14: 0000000040000002 x13: 0000000000000002 x12: 0000000000040000
+x11: 000000000000e9c1 x10: ffff8000188fd000 x9 : eaec873b24b4e100
+x8 : eaec873b24b4e100 x7 : 0000000000000000 x6 : ffff80000816ead8
+x5 : 0000000000000000 x4 : 0000000000000001 x3 : 0000000000000000
+x2 : ffff0001fefdef08 x1 : 0000000100000000 x0 : 0000000000000097
+Call trace:
+ __up_read+0x198/0x2ac kernel/locking/rwsem.c:1335
+ up_read+0x38/0x48 kernel/locking/rwsem.c:1605
+ ext4_xattr_get+0x2fc/0x418 fs/ext4/xattr.c:686
+ ext4_xattr_trusted_get+0x40/0x54 fs/ext4/xattr_trusted.c:27
+ __vfs_getxattr+0x258/0x268 fs/xattr.c:425
+ vfs_getxattr+0x1c0/0x208 fs/xattr.c:458
+ do_getxattr+0xf4/0x2bc fs/xattr.c:717
+ getxattr+0xdc/0x12c fs/xattr.c:751
+ path_getxattr+0xa0/0x14c fs/xattr.c:767
+ __do_sys_getxattr fs/xattr.c:779 [inline]
+ __se_sys_getxattr fs/xattr.c:776 [inline]
+ __arm64_sys_getxattr+0x28/0x38 fs/xattr.c:776
+ __invoke_syscall arch/arm64/kernel/syscall.c:38 [inline]
+ invoke_syscall arch/arm64/kernel/syscall.c:52 [inline]
+ el0_svc_common+0x138/0x220 arch/arm64/kernel/syscall.c:142
+ do_el0_svc+0x48/0x104 arch/arm64/kernel/syscall.c:193
+ el0_svc+0x58/0x150 arch/arm64/kernel/entry-common.c:637
+ el0t_64_sync_handler+0x84/0xf0 arch/arm64/kernel/entry-common.c:655
+ el0t_64_sync+0x190/0x194 arch/arm64/kernel/entry.S:584
+irq event stamp: 6175
+hardirqs last  enabled at (6175): [<ffff80000c120a38>] __exit_to_kernel_mode arch/arm64/kernel/entry-common.c:84 [inline]
+hardirqs last  enabled at (6175): [<ffff80000c120a38>] exit_to_kernel_mode+0xe8/0x118 arch/arm64/kernel/entry-common.c:94
+hardirqs last disabled at (6174): [<ffff80000c12a184>] preempt_schedule_irq+0x80/0x110 kernel/sched/core.c:6919
+softirqs last  enabled at (6120): [<ffff80000801c9f4>] local_bh_enable+0x10/0x34 include/linux/bottom_half.h:32
+softirqs last disabled at (6118): [<ffff80000801c9c0>] local_bh_disable+0x10/0x34 include/linux/bottom_half.h:19
+---[ end trace 0000000000000000 ]---
 
-We would also need have a set of utility ext4 Kunit functions to
-create "fake" ext4 superblocks and ext4_sb_info structures.
 
-I was originally thinking that obvious starting Kunit tests would be
-for fs/ext4/hash.c and fs/ext4/extents_status.c, since they require
-the little or no "mocking" support.  However, there are so many
-changes in fs/ext4/mballoc.c, the urgency in having unit tests for it
-is getting more urgent --- since if there is a bug in one of these
-functions, such as the one that I noted in
-ext4_mb_new_blocks_simple(), since it's harder to exhaustively test
-some of these smaller sub-functions in integration tests such as those
-found in xfstests.  Unit tests are the best way to make sure we're
-testing all of the code paths in a complex module such as mballoc.c
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-Cheers,
-
-						- Ted
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
