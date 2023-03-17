@@ -2,78 +2,78 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F4BCC6FD1D
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Mar 2023 08:38:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D4B0C6FD1D
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Mar 2023 08:39:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231539AbjCQIip (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 17 Mar 2023 04:38:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51656 "EHLO
+        id S231213AbjCQIi7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 17 Mar 2023 04:38:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52244 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231134AbjCQIiR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Mar 2023 04:38:17 -0400
+        with ESMTP id S231130AbjCQIib (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Mar 2023 04:38:31 -0400
 Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5AD24227B8;
-        Fri, 17 Mar 2023 01:37:49 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ABC226A1CA;
+        Fri, 17 Mar 2023 01:37:57 -0700 (PDT)
 Received: from pps.filterd (m0098421.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 32H8JYg3016374;
-        Fri, 17 Mar 2023 08:37:29 GMT
+        by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 32H8JSIQ016301;
+        Fri, 17 Mar 2023 08:37:38 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
  : date : message-id : in-reply-to : references : mime-version :
  content-transfer-encoding; s=pp1;
- bh=cWo8OOwUTQBXPaob0NMzJY1au+EYjMxCZdGmi6DLNnA=;
- b=rZiJ2DuQUmAp4mMzYAzfvV+U0h5NbBnjBHZo5AWLZSSEHCdCQqVTHRD4xZzNzTsOpKtL
- kdzD3ODIoNLvrSEL4657Rr1ewm4GvZLICDH9q1SkCmYd1zDnM081RopdkW2GFx2vxlhN
- nHUTokr7feeKYnMfNQs6vlctx+qUPZwLbarq0roIW4wVf30dhm1uGQEDIniH2KzQouD7
- xG8EcW8wrBLhuzEuiQe+344aNU0iMkzUnVR1Sqco2KJI5PlGRv3fWtmbHKv8bHzMysYK
- 4MLnxrW78hzkwQhtZj5TjOrmcZIalUV4i1bYYYlwIO2N6q1YylT/WDj2o+/6azq1jJAF cw== 
+ bh=itKEK4oNCV7DlUSLzWA1Wtf6ATzED6UkuTpj584/Dpk=;
+ b=CK974veiDR40zXwFlghM4ECNnviy4cNwFc5xWY/HqlPl36mjkL5dKwd2vzojgR6MWAZU
+ fJVRhhLwdhtlKn2ATDOuR7EpGYBn1e1rUlMH7gvblADQe/qMeGlb1BvYT0cXAQTY6bc1
+ l2wIeBw2NcXnHKcDu5J1L+/Ca3l5vGSBGV2QC2IrwI3b/r1KcBVfOPWZnVTJm913gOQ4
+ 1Eh6Wq21eRBIppy8ozJ8yP9jsC3xaitEBMjZWP5i/y7M6KWnAXJ0QqblvgDedgSkVatm
+ 0x+o+sXffs2Nn7j2NSJk5e41XvezPOAonFYe7K4ipzb+lniINWppVVrmdl/epGpB4F+W +w== 
 Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3pcmkjrb2x-1
+        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3pcmkjrb6j-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 17 Mar 2023 08:37:29 +0000
+        Fri, 17 Mar 2023 08:37:37 +0000
 Received: from m0098421.ppops.net (m0098421.ppops.net [127.0.0.1])
-        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 32H8Jeq0016497;
-        Fri, 17 Mar 2023 08:37:29 GMT
-Received: from ppma06ams.nl.ibm.com (66.31.33a9.ip4.static.sl-reverse.com [169.51.49.102])
-        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3pcmkjrb26-1
+        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 32H8TMat021274;
+        Fri, 17 Mar 2023 08:37:36 GMT
+Received: from ppma03ams.nl.ibm.com (62.31.33a9.ip4.static.sl-reverse.com [169.51.49.98])
+        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3pcmkjrb4m-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 17 Mar 2023 08:37:29 +0000
-Received: from pps.filterd (ppma06ams.nl.ibm.com [127.0.0.1])
-        by ppma06ams.nl.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 32H6uCbU030602;
-        Fri, 17 Mar 2023 08:37:27 GMT
-Received: from smtprelay07.fra02v.mail.ibm.com ([9.218.2.229])
-        by ppma06ams.nl.ibm.com (PPS) with ESMTPS id 3pbskt1vct-1
+        Fri, 17 Mar 2023 08:37:36 +0000
+Received: from pps.filterd (ppma03ams.nl.ibm.com [127.0.0.1])
+        by ppma03ams.nl.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 32H6jEIS015009;
+        Fri, 17 Mar 2023 08:37:32 GMT
+Received: from smtprelay05.fra02v.mail.ibm.com ([9.218.2.225])
+        by ppma03ams.nl.ibm.com (PPS) with ESMTPS id 3pbsf3hwa6-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 17 Mar 2023 08:37:27 +0000
+        Fri, 17 Mar 2023 08:37:32 +0000
 Received: from smtpav01.fra02v.mail.ibm.com (smtpav01.fra02v.mail.ibm.com [10.20.54.100])
-        by smtprelay07.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 32H8bPLG50004446
+        by smtprelay05.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 32H8bUDr25690676
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 17 Mar 2023 08:37:25 GMT
+        Fri, 17 Mar 2023 08:37:30 GMT
 Received: from smtpav01.fra02v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id EC6A620F51;
-        Fri, 17 Mar 2023 08:37:24 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id 6CF0920F63;
+        Fri, 17 Mar 2023 08:37:30 +0000 (GMT)
 Received: from smtpav01.fra02v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id BB63F20F5C;
-        Fri, 17 Mar 2023 08:37:22 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id 3B2B020F67;
+        Fri, 17 Mar 2023 08:37:28 +0000 (GMT)
 Received: from li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com (unknown [9.43.91.202])
         by smtpav01.fra02v.mail.ibm.com (Postfix) with ESMTP;
-        Fri, 17 Mar 2023 08:37:22 +0000 (GMT)
+        Fri, 17 Mar 2023 08:37:27 +0000 (GMT)
 From:   Ojaswin Mujoo <ojaswin@linux.ibm.com>
 To:     linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
 Cc:     Ritesh Harjani <riteshh@linux.ibm.com>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         Jan Kara <jack@suse.cz>, rookxu <brookxu.cn@gmail.com>,
         Ritesh Harjani <ritesh.list@gmail.com>
-Subject: [PATCH v5 2/9] ext4: Refactor code related to freeing PAs
-Date:   Fri, 17 Mar 2023 14:07:06 +0530
-Message-Id: <4c7e8b6a2fbb0c7336f4158cf1006e4765e1468e.1679042083.git.ojaswin@linux.ibm.com>
+Subject: [PATCH v5 4/9] ext4: Move overlap assert logic into a separate function
+Date:   Fri, 17 Mar 2023 14:07:08 +0530
+Message-Id: <9daf8d640692e03c2a710d2919a5cb70bbc6ef0d.1679042083.git.ojaswin@linux.ibm.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <cover.1679042083.git.ojaswin@linux.ibm.com>
 References: <cover.1679042083.git.ojaswin@linux.ibm.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-TM-AS-GCONF: 00
-X-Proofpoint-GUID: CzpmM66D8B3cb09qG5i7TUoilKabKsx8
-X-Proofpoint-ORIG-GUID: RqJ-bY-uT7bbXc9Lx9YZU2ZJF__CCts-
+X-Proofpoint-GUID: G6UsBIuJtdmIB91Wl4FLhYHqV5rt-aoc
+X-Proofpoint-ORIG-GUID: XLjWzKe8dqXLT8kpUf6iR3wMf66zz2Ds
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.254,Aquarius:18.0.942,Hydra:6.0.573,FMLib:17.11.170.22
  definitions=2023-03-17_04,2023-03-16_02,2023-02-09_01
@@ -86,14 +86,10 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch makes the following changes:
-
-*  Rename ext4_mb_pa_free to ext4_mb_pa_put_free
-   to better reflect its purpose
-
-*  Add new ext4_mb_pa_free() which only handles freeing
-
-*  Refactor ext4_mb_pa_callback() to use ext4_mb_pa_free()
+Abstract out the logic to double check for overlaps in normalize_pa to
+a separate function. Since there has been no reports in past where we
+have seen any overlaps which hits this bug_on(), in future we can
+consider calling this function under "#ifdef AGGRESSIVE_CHECK" only.
 
 There are no functional changes in this patch
 
@@ -101,88 +97,62 @@ Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/mballoc.c | 30 +++++++++++++++++++++---------
- 1 file changed, 21 insertions(+), 9 deletions(-)
+ fs/ext4/mballoc.c | 35 ++++++++++++++++++++++++-----------
+ 1 file changed, 24 insertions(+), 11 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index ed58cefed7fa..18b65e53abbb 100644
+index a1429d5a1197..daa8411d6b61 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -4527,16 +4527,22 @@ static void ext4_mb_mark_pa_deleted(struct super_block *sb,
- 	}
+@@ -3978,6 +3978,29 @@ static void ext4_mb_normalize_group_request(struct ext4_allocation_context *ac)
+ 	mb_debug(sb, "goal %u blocks for locality group\n", ac->ac_g_ex.fe_len);
  }
  
--static void ext4_mb_pa_callback(struct rcu_head *head)
-+static inline void ext4_mb_pa_free(struct ext4_prealloc_space *pa)
- {
--	struct ext4_prealloc_space *pa;
--	pa = container_of(head, struct ext4_prealloc_space, u.pa_rcu);
--
-+	BUG_ON(!pa);
- 	BUG_ON(atomic_read(&pa->pa_count));
- 	BUG_ON(pa->pa_deleted == 0);
- 	kmem_cache_free(ext4_pspace_cachep, pa);
- }
- 
-+static void ext4_mb_pa_callback(struct rcu_head *head)
++static inline void
++ext4_mb_pa_assert_overlap(struct ext4_allocation_context *ac,
++			  ext4_lblk_t start, ext4_lblk_t end)
 +{
-+	struct ext4_prealloc_space *pa;
++	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
++	struct ext4_inode_info *ei = EXT4_I(ac->ac_inode);
++	struct ext4_prealloc_space *tmp_pa;
++	ext4_lblk_t tmp_pa_start, tmp_pa_end;
 +
-+	pa = container_of(head, struct ext4_prealloc_space, u.pa_rcu);
-+	ext4_mb_pa_free(pa);
++	rcu_read_lock();
++	list_for_each_entry_rcu(tmp_pa, &ei->i_prealloc_list, pa_inode_list) {
++		spin_lock(&tmp_pa->pa_lock);
++		if (tmp_pa->pa_deleted == 0) {
++			tmp_pa_start = tmp_pa->pa_lstart;
++			tmp_pa_end = tmp_pa->pa_lstart + EXT4_C2B(sbi, tmp_pa->pa_len);
++
++			BUG_ON(!(start >= tmp_pa_end || end <= tmp_pa_start));
++		}
++		spin_unlock(&tmp_pa->pa_lock);
++	}
++	rcu_read_unlock();
 +}
 +
  /*
-  * drops a reference to preallocated space descriptor
-  * if this was the last reference and the space is consumed
-@@ -5054,14 +5060,20 @@ static int ext4_mb_pa_alloc(struct ext4_allocation_context *ac)
- 	return 0;
- }
+  * Normalization means making request better in terms of
+  * size and alignment
+@@ -4135,17 +4158,7 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+ 	size = end - start;
  
--static void ext4_mb_pa_free(struct ext4_allocation_context *ac)
-+static void ext4_mb_pa_put_free(struct ext4_allocation_context *ac)
- {
- 	struct ext4_prealloc_space *pa = ac->ac_pa;
+ 	/* XXX: extra loop to check we really don't overlap preallocations */
+-	rcu_read_lock();
+-	list_for_each_entry_rcu(tmp_pa, &ei->i_prealloc_list, pa_inode_list) {
+-		spin_lock(&tmp_pa->pa_lock);
+-		if (tmp_pa->pa_deleted == 0) {
+-			tmp_pa_start = tmp_pa->pa_lstart;
+-			tmp_pa_end = tmp_pa->pa_lstart + EXT4_C2B(sbi, tmp_pa->pa_len);
+-			BUG_ON(!(start >= tmp_pa_end || end <= tmp_pa_start));
+-		}
+-		spin_unlock(&tmp_pa->pa_lock);
+-	}
+-	rcu_read_unlock();
++	ext4_mb_pa_assert_overlap(ac, start, end);
  
- 	BUG_ON(!pa);
- 	ac->ac_pa = NULL;
- 	WARN_ON(!atomic_dec_and_test(&pa->pa_count));
--	kmem_cache_free(ext4_pspace_cachep, pa);
-+	/*
-+	 * current function is only called due to an error or due to
-+	 * len of found blocks < len of requested blocks hence the PA has not
-+	 * been added to grp->bb_prealloc_list. So we don't need to lock it
-+	 */
-+	pa->pa_deleted = 1;
-+	ext4_mb_pa_free(pa);
- }
- 
- #ifdef CONFIG_EXT4_DEBUG
-@@ -5604,13 +5616,13 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
- 		 * So we have to free this pa here itself.
- 		 */
- 		if (*errp) {
--			ext4_mb_pa_free(ac);
-+			ext4_mb_pa_put_free(ac);
- 			ext4_discard_allocated_blocks(ac);
- 			goto errout;
- 		}
- 		if (ac->ac_status == AC_STATUS_FOUND &&
- 			ac->ac_o_ex.fe_len >= ac->ac_f_ex.fe_len)
--			ext4_mb_pa_free(ac);
-+			ext4_mb_pa_put_free(ac);
- 	}
- 	if (likely(ac->ac_status == AC_STATUS_FOUND)) {
- 		*errp = ext4_mb_mark_diskspace_used(ac, handle, reserv_clstrs);
-@@ -5629,7 +5641,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
- 		 * If block allocation fails then the pa allocated above
- 		 * needs to be freed here itself.
- 		 */
--		ext4_mb_pa_free(ac);
-+		ext4_mb_pa_put_free(ac);
- 		*errp = -ENOSPC;
- 	}
- 
+ 	/*
+ 	 * In this function "start" and "size" are normalized for better
 -- 
 2.31.1
 
