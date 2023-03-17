@@ -2,367 +2,222 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DEC64C6FD1D
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Mar 2023 08:39:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 85046C6FD1D
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Mar 2023 08:40:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231668AbjCQIjb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 17 Mar 2023 04:39:31 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54258 "EHLO
+        id S229523AbjCQIka (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 17 Mar 2023 04:40:30 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33216 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230305AbjCQIih (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Mar 2023 04:38:37 -0400
-Received: from mx0a-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A65605C120;
-        Fri, 17 Mar 2023 01:38:01 -0700 (PDT)
-Received: from pps.filterd (m0098420.ppops.net [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 32H8Xjsk009507;
-        Fri, 17 Mar 2023 08:37:43 GMT
+        with ESMTP id S231453AbjCQIil (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Mar 2023 04:38:41 -0400
+Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0B0856C1AB;
+        Fri, 17 Mar 2023 01:38:08 -0700 (PDT)
+Received: from pps.filterd (m0127361.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 32H6rhIm020277;
+        Fri, 17 Mar 2023 08:37:49 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
  : date : message-id : in-reply-to : references : mime-version :
  content-transfer-encoding; s=pp1;
- bh=5ToCGndGrfBgU8fI3DqP0qmbg9X/6BHwu6TgHqY6wfs=;
- b=QsQgxPLc3DdXIUFhswBCXjdAUy8Y/0lUzAfG3urVNjGZTFaKgaq9SJRz5UhVdfg/WT4m
- urqV/RXUelJTWjEmUsGlBB6lf0Y0Dw41G8PEUoWIV7Vr92IesYCLBAvcTvDOjfL7tnLV
- IZHb+14XIFBs76WZtKG9EnRSnTEbxf1/4a/1vu1dM72F6kpjYkt/YbH6RW5foVP8OvJT
- w0uqnM/hPLLyASx1lUq7IHSjQNAmOWX70PHL2ADCSClffF6PH2OuvoTjVfMvGsihXxlL
- gO2briEOS+Mm3hMSepcB280SypQccSuZ3wO7B2d8+edwOXMJrFOvtNy3/wvaQFWHw6vw /A== 
+ bh=HSDS+Qx+SjPNvm1jwTuGxSQbPBt82pI2ogEXSkF/j4Y=;
+ b=rzr6eiFpukyYV4hLc9fSeBNE8ptPp/atFcyKUCETOQ+Zgw8UiJQ8eDsbYSIQDi29iZbm
+ U8SzULOnaDx+8VMk+ih9xJLcz3LItCqcHoC8LY2PLVlAP6JiWyIzE4EA/TPRS+4DH+qw
+ Ztc/VPoQlbGztEqv3g+ypLQtviAzAS3rTfe0ewcaoGlnIdfda992nNiaiFcqn/cVDWXH
+ aT/0W2dilt4f2QBWUKJiDF/Vv0vXTj6cxzyigzdSy9h2ukQ3dvo5D72lTKcOFur+1Cde
+ b6nbKxbErq4hvCgECE3qkFnm4P7Q19fZju5kGSKTwenNToW1kDG2/1/6EjaBcLoXORlr GA== 
 Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com (PPS) with ESMTPS id 3pcmta023u-1
+        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3pcjfhkf1t-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 17 Mar 2023 08:37:43 +0000
-Received: from m0098420.ppops.net (m0098420.ppops.net [127.0.0.1])
-        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 32H8YO7s010700;
-        Fri, 17 Mar 2023 08:37:42 GMT
-Received: from ppma06ams.nl.ibm.com (66.31.33a9.ip4.static.sl-reverse.com [169.51.49.102])
-        by mx0b-001b2d01.pphosted.com (PPS) with ESMTPS id 3pcmta023e-1
+        Fri, 17 Mar 2023 08:37:48 +0000
+Received: from m0127361.ppops.net (m0127361.ppops.net [127.0.0.1])
+        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 32H7fhUa005878;
+        Fri, 17 Mar 2023 08:37:48 GMT
+Received: from ppma03ams.nl.ibm.com (62.31.33a9.ip4.static.sl-reverse.com [169.51.49.98])
+        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3pcjfhkf1e-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 17 Mar 2023 08:37:42 +0000
-Received: from pps.filterd (ppma06ams.nl.ibm.com [127.0.0.1])
-        by ppma06ams.nl.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 32H7GeMk029280;
-        Fri, 17 Mar 2023 08:37:40 GMT
-Received: from smtprelay06.fra02v.mail.ibm.com ([9.218.2.230])
-        by ppma06ams.nl.ibm.com (PPS) with ESMTPS id 3pbskt1vd3-1
+        Fri, 17 Mar 2023 08:37:47 +0000
+Received: from pps.filterd (ppma03ams.nl.ibm.com [127.0.0.1])
+        by ppma03ams.nl.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 32H6Wulb015005;
+        Fri, 17 Mar 2023 08:37:46 GMT
+Received: from smtprelay04.fra02v.mail.ibm.com ([9.218.2.228])
+        by ppma03ams.nl.ibm.com (PPS) with ESMTPS id 3pbsf3hwac-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 17 Mar 2023 08:37:40 +0000
+        Fri, 17 Mar 2023 08:37:45 +0000
 Received: from smtpav01.fra02v.mail.ibm.com (smtpav01.fra02v.mail.ibm.com [10.20.54.100])
-        by smtprelay06.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 32H8bcUW19399118
+        by smtprelay04.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 32H8bhDb28967632
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 17 Mar 2023 08:37:38 GMT
+        Fri, 17 Mar 2023 08:37:43 GMT
 Received: from smtpav01.fra02v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 3218220F6E;
-        Fri, 17 Mar 2023 08:37:38 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id 79DDC20F72;
+        Fri, 17 Mar 2023 08:37:43 +0000 (GMT)
 Received: from smtpav01.fra02v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 0037020F63;
-        Fri, 17 Mar 2023 08:37:35 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id 5884020F6F;
+        Fri, 17 Mar 2023 08:37:41 +0000 (GMT)
 Received: from li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com (unknown [9.43.91.202])
         by smtpav01.fra02v.mail.ibm.com (Postfix) with ESMTP;
-        Fri, 17 Mar 2023 08:37:35 +0000 (GMT)
+        Fri, 17 Mar 2023 08:37:41 +0000 (GMT)
 From:   Ojaswin Mujoo <ojaswin@linux.ibm.com>
 To:     linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
 Cc:     Ritesh Harjani <riteshh@linux.ibm.com>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         Jan Kara <jack@suse.cz>, rookxu <brookxu.cn@gmail.com>,
         Ritesh Harjani <ritesh.list@gmail.com>
-Subject: [PATCH v5 7/9] ext4: Convert pa->pa_inode_list and pa->pa_obj_lock into a union
-Date:   Fri, 17 Mar 2023 14:07:11 +0530
-Message-Id: <b2c4acec698a0340883f90b9fe0c03c9be5e2106.1679042083.git.ojaswin@linux.ibm.com>
+Subject: [PATCH v5 9/9] ext4: Remove the logic to trim inode PAs
+Date:   Fri, 17 Mar 2023 14:07:13 +0530
+Message-Id: <c5615ef200217c8d3145add2ee01dc6a1737c21b.1679042083.git.ojaswin@linux.ibm.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <cover.1679042083.git.ojaswin@linux.ibm.com>
 References: <cover.1679042083.git.ojaswin@linux.ibm.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-TM-AS-GCONF: 00
-X-Proofpoint-ORIG-GUID: bfDBSHTfKCHKbNLPqrjdRa3QLryvFkn_
-X-Proofpoint-GUID: 3sXRt0Zcw0PVye3udgs9ghPTXOccb4V4
+X-Proofpoint-GUID: KhD8h4OwYX3pwDnxCHUYdMfFAYO2nq5Y
+X-Proofpoint-ORIG-GUID: diH0tfxZsi3-YLSZe5J9I6h0FJ48ex3i
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.254,Aquarius:18.0.942,Hydra:6.0.573,FMLib:17.11.170.22
  definitions=2023-03-17_04,2023-03-16_02,2023-02-09_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 phishscore=0 bulkscore=0
- spamscore=0 clxscore=1015 priorityscore=1501 adultscore=0 suspectscore=0
- impostorscore=0 mlxlogscore=999 malwarescore=0 mlxscore=0
- lowpriorityscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 clxscore=1015 suspectscore=0
+ priorityscore=1501 bulkscore=0 lowpriorityscore=0 adultscore=0
+ impostorscore=0 mlxscore=0 malwarescore=0 spamscore=0 phishscore=0
+ mlxlogscore=999 classifier=spam adjust=0 reason=mlx scancount=1
  engine=8.12.0-2303150002 definitions=main-2303170057
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-** Splitting pa->pa_inode_list **
+Earlier, inode PAs were stored in a linked list. This caused a need to
+periodically trim the list down inorder to avoid growing it to a very
+large size, as this would severly affect performance during list
+iteration.
 
-Currently, we use the same pa->pa_inode_list to add a pa to either
-the inode preallocation list or the locality group preallocation list.
-For better clarity, split this list into a union of 2 list_heads and use
-either of the them based on the type of pa.
-
-** Splitting pa->pa_obj_lock **
-
-Currently, pa->pa_obj_lock is either assigned &ei->i_prealloc_lock for
-inode PAs or lg_prealloc_lock for lg PAs, and is then used to lock the
-lists containing these PAs. Make the distinction between the 2 PA types
-clear by changing this lock to a union of 2 locks. Explicitly use the
-pa_lock_node.inode_lock for inode PAs and pa_lock_node.lg_lock for lg
-PAs.
-
-This patch is required so that the locality group preallocation code
-remains the same as in upcoming patches we are going to make changes to
-inode preallocation code to move from list to rbtree based
-implementation. This patch also makes it easier to review the upcoming
-patches.
-
-There are no functional changes in this patch.
+Recent patches changed this list to an rbtree, and since the tree scales
+up much better, we no longer need to have the trim functionality, hence
+remove it.
 
 Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/mballoc.c | 76 +++++++++++++++++++++++++++--------------------
- fs/ext4/mballoc.h | 10 +++++--
- 2 files changed, 52 insertions(+), 34 deletions(-)
+ Documentation/admin-guide/ext4.rst |  3 ---
+ fs/ext4/ext4.h                     |  1 -
+ fs/ext4/mballoc.c                  | 20 --------------------
+ fs/ext4/mballoc.h                  |  5 -----
+ fs/ext4/sysfs.c                    |  2 --
+ 5 files changed, 31 deletions(-)
 
+diff --git a/Documentation/admin-guide/ext4.rst b/Documentation/admin-guide/ext4.rst
+index 4c559e08d11e..5740d85439ff 100644
+--- a/Documentation/admin-guide/ext4.rst
++++ b/Documentation/admin-guide/ext4.rst
+@@ -489,9 +489,6 @@ Files in /sys/fs/ext4/<devname>:
+         multiple of this tuning parameter if the stripe size is not set in the
+         ext4 superblock
+ 
+-  mb_max_inode_prealloc
+-        The maximum length of per-inode ext4_prealloc_space list.
+-
+   mb_max_to_scan
+         The maximum number of extents the multiblock allocator will search to
+         find the best extent.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8cf955b1dca5..993d3284b430 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1613,7 +1613,6 @@ struct ext4_sb_info {
+ 	unsigned int s_mb_stats;
+ 	unsigned int s_mb_order2_reqs;
+ 	unsigned int s_mb_group_prealloc;
+-	unsigned int s_mb_max_inode_prealloc;
+ 	unsigned int s_max_dir_size_kb;
+ 	/* where last allocation was done - for stream allocation */
+ 	unsigned long s_mb_last_group;
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 1304c95d8c59..711661219473 100644
+index f7603dafb672..d5837c5acbc7 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -3988,7 +3988,7 @@ ext4_mb_pa_assert_overlap(struct ext4_allocation_context *ac,
- 	ext4_lblk_t tmp_pa_start, tmp_pa_end;
- 
- 	rcu_read_lock();
--	list_for_each_entry_rcu(tmp_pa, &ei->i_prealloc_list, pa_inode_list) {
-+	list_for_each_entry_rcu(tmp_pa, &ei->i_prealloc_list, pa_node.inode_list) {
- 		spin_lock(&tmp_pa->pa_lock);
- 		if (tmp_pa->pa_deleted == 0) {
- 			tmp_pa_start = tmp_pa->pa_lstart;
-@@ -4026,7 +4026,7 @@ ext4_mb_pa_adjust_overlap(struct ext4_allocation_context *ac,
- 
- 	/* check we don't cross already preallocated blocks */
- 	rcu_read_lock();
--	list_for_each_entry_rcu(tmp_pa, &ei->i_prealloc_list, pa_inode_list) {
-+	list_for_each_entry_rcu(tmp_pa, &ei->i_prealloc_list, pa_node.inode_list) {
- 		if (tmp_pa->pa_deleted)
- 			continue;
- 		spin_lock(&tmp_pa->pa_lock);
-@@ -4408,7 +4408,7 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
- 
- 	/* first, try per-file preallocation */
- 	rcu_read_lock();
--	list_for_each_entry_rcu(tmp_pa, &ei->i_prealloc_list, pa_inode_list) {
-+	list_for_each_entry_rcu(tmp_pa, &ei->i_prealloc_list, pa_node.inode_list) {
- 
- 		/* all fields in this condition don't change,
- 		 * so we can skip locking for them */
-@@ -4465,7 +4465,7 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
- 	for (i = order; i < PREALLOC_TB_SIZE; i++) {
- 		rcu_read_lock();
- 		list_for_each_entry_rcu(tmp_pa, &lg->lg_prealloc_list[i],
--					pa_inode_list) {
-+					pa_node.lg_list) {
- 			spin_lock(&tmp_pa->pa_lock);
- 			if (tmp_pa->pa_deleted == 0 &&
- 					tmp_pa->pa_free >= ac->ac_o_ex.fe_len) {
-@@ -4639,9 +4639,15 @@ static void ext4_mb_put_pa(struct ext4_allocation_context *ac,
- 	list_del(&pa->pa_group_list);
- 	ext4_unlock_group(sb, grp);
- 
--	spin_lock(pa->pa_obj_lock);
--	list_del_rcu(&pa->pa_inode_list);
--	spin_unlock(pa->pa_obj_lock);
-+	if (pa->pa_type == MB_INODE_PA) {
-+		spin_lock(pa->pa_node_lock.inode_lock);
-+		list_del_rcu(&pa->pa_node.inode_list);
-+		spin_unlock(pa->pa_node_lock.inode_lock);
-+	} else {
-+		spin_lock(pa->pa_node_lock.lg_lock);
-+		list_del_rcu(&pa->pa_node.lg_list);
-+		spin_unlock(pa->pa_node_lock.lg_lock);
-+	}
- 
- 	call_rcu(&(pa)->u.pa_rcu, ext4_mb_pa_callback);
- }
-@@ -4717,7 +4723,7 @@ ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
- 	pa->pa_len = ac->ac_b_ex.fe_len;
- 	pa->pa_free = pa->pa_len;
- 	spin_lock_init(&pa->pa_lock);
--	INIT_LIST_HEAD(&pa->pa_inode_list);
-+	INIT_LIST_HEAD(&pa->pa_node.inode_list);
- 	INIT_LIST_HEAD(&pa->pa_group_list);
- 	pa->pa_deleted = 0;
- 	pa->pa_type = MB_INODE_PA;
-@@ -4732,14 +4738,14 @@ ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
- 	ei = EXT4_I(ac->ac_inode);
- 	grp = ext4_get_group_info(sb, ac->ac_b_ex.fe_group);
- 
--	pa->pa_obj_lock = &ei->i_prealloc_lock;
-+	pa->pa_node_lock.inode_lock = &ei->i_prealloc_lock;
- 	pa->pa_inode = ac->ac_inode;
- 
- 	list_add(&pa->pa_group_list, &grp->bb_prealloc_list);
- 
--	spin_lock(pa->pa_obj_lock);
--	list_add_rcu(&pa->pa_inode_list, &ei->i_prealloc_list);
--	spin_unlock(pa->pa_obj_lock);
-+	spin_lock(pa->pa_node_lock.inode_lock);
-+	list_add_rcu(&pa->pa_node.inode_list, &ei->i_prealloc_list);
-+	spin_unlock(pa->pa_node_lock.inode_lock);
- 	atomic_inc(&ei->i_prealloc_active);
+@@ -3417,7 +3417,6 @@ int ext4_mb_init(struct super_block *sb)
+ 	sbi->s_mb_stats = MB_DEFAULT_STATS;
+ 	sbi->s_mb_stream_request = MB_DEFAULT_STREAM_THRESHOLD;
+ 	sbi->s_mb_order2_reqs = MB_DEFAULT_ORDER2_REQS;
+-	sbi->s_mb_max_inode_prealloc = MB_DEFAULT_MAX_INODE_PREALLOC;
+ 	/*
+ 	 * The default group preallocation is 512, which for 4k block
+ 	 * sizes translates to 2 megabytes.  However for bigalloc file
+@@ -5600,29 +5599,11 @@ static void ext4_mb_add_n_trim(struct ext4_allocation_context *ac)
+ 	return ;
  }
  
-@@ -4767,7 +4773,7 @@ ext4_mb_new_group_pa(struct ext4_allocation_context *ac)
- 	pa->pa_len = ac->ac_b_ex.fe_len;
- 	pa->pa_free = pa->pa_len;
- 	spin_lock_init(&pa->pa_lock);
--	INIT_LIST_HEAD(&pa->pa_inode_list);
-+	INIT_LIST_HEAD(&pa->pa_node.lg_list);
- 	INIT_LIST_HEAD(&pa->pa_group_list);
- 	pa->pa_deleted = 0;
- 	pa->pa_type = MB_GROUP_PA;
-@@ -4783,7 +4789,7 @@ ext4_mb_new_group_pa(struct ext4_allocation_context *ac)
- 	lg = ac->ac_lg;
- 	BUG_ON(lg == NULL);
+-/*
+- * if per-inode prealloc list is too long, trim some PA
+- */
+-static void ext4_mb_trim_inode_pa(struct inode *inode)
+-{
+-	struct ext4_inode_info *ei = EXT4_I(inode);
+-	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+-	int count, delta;
+-
+-	count = atomic_read(&ei->i_prealloc_active);
+-	delta = (sbi->s_mb_max_inode_prealloc >> 2) + 1;
+-	if (count > sbi->s_mb_max_inode_prealloc + delta) {
+-		count -= sbi->s_mb_max_inode_prealloc;
+-		ext4_discard_preallocations(inode, count);
+-	}
+-}
+-
+ /*
+  * release all resource we used in allocation
+  */
+ static int ext4_mb_release_context(struct ext4_allocation_context *ac)
+ {
+-	struct inode *inode = ac->ac_inode;
+ 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
+ 	struct ext4_prealloc_space *pa = ac->ac_pa;
+ 	if (pa) {
+@@ -5658,7 +5639,6 @@ static int ext4_mb_release_context(struct ext4_allocation_context *ac)
+ 	if (ac->ac_flags & EXT4_MB_HINT_GROUP_ALLOC)
+ 		mutex_unlock(&ac->ac_lg->lg_mutex);
+ 	ext4_mb_collect_stats(ac);
+-	ext4_mb_trim_inode_pa(inode);
+ 	return 0;
+ }
  
--	pa->pa_obj_lock = &lg->lg_prealloc_lock;
-+	pa->pa_node_lock.lg_lock = &lg->lg_prealloc_lock;
- 	pa->pa_inode = NULL;
- 
- 	list_add(&pa->pa_group_list, &grp->bb_prealloc_list);
-@@ -4959,9 +4965,15 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
- 	list_for_each_entry_safe(pa, tmp, &list, u.pa_tmp_list) {
- 
- 		/* remove from object (inode or locality group) */
--		spin_lock(pa->pa_obj_lock);
--		list_del_rcu(&pa->pa_inode_list);
--		spin_unlock(pa->pa_obj_lock);
-+		if (pa->pa_type == MB_GROUP_PA) {
-+			spin_lock(pa->pa_node_lock.lg_lock);
-+			list_del_rcu(&pa->pa_node.lg_list);
-+			spin_unlock(pa->pa_node_lock.lg_lock);
-+		} else {
-+			spin_lock(pa->pa_node_lock.inode_lock);
-+			list_del_rcu(&pa->pa_node.inode_list);
-+			spin_unlock(pa->pa_node_lock.inode_lock);
-+		}
- 
- 		if (pa->pa_type == MB_GROUP_PA)
- 			ext4_mb_release_group_pa(&e4b, pa);
-@@ -5023,8 +5035,8 @@ void ext4_discard_preallocations(struct inode *inode, unsigned int needed)
- 	spin_lock(&ei->i_prealloc_lock);
- 	while (!list_empty(&ei->i_prealloc_list) && needed) {
- 		pa = list_entry(ei->i_prealloc_list.prev,
--				struct ext4_prealloc_space, pa_inode_list);
--		BUG_ON(pa->pa_obj_lock != &ei->i_prealloc_lock);
-+				struct ext4_prealloc_space, pa_node.inode_list);
-+		BUG_ON(pa->pa_node_lock.inode_lock != &ei->i_prealloc_lock);
- 		spin_lock(&pa->pa_lock);
- 		if (atomic_read(&pa->pa_count)) {
- 			/* this shouldn't happen often - nobody should
-@@ -5041,7 +5053,7 @@ void ext4_discard_preallocations(struct inode *inode, unsigned int needed)
- 		if (pa->pa_deleted == 0) {
- 			ext4_mb_mark_pa_deleted(sb, pa);
- 			spin_unlock(&pa->pa_lock);
--			list_del_rcu(&pa->pa_inode_list);
-+			list_del_rcu(&pa->pa_node.inode_list);
- 			list_add(&pa->u.pa_tmp_list, &list);
- 			needed--;
- 			continue;
-@@ -5331,7 +5343,7 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
- 
- 	spin_lock(&lg->lg_prealloc_lock);
- 	list_for_each_entry_rcu(pa, &lg->lg_prealloc_list[order],
--				pa_inode_list,
-+				pa_node.lg_list,
- 				lockdep_is_held(&lg->lg_prealloc_lock)) {
- 		spin_lock(&pa->pa_lock);
- 		if (atomic_read(&pa->pa_count)) {
-@@ -5354,7 +5366,7 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
- 		ext4_mb_mark_pa_deleted(sb, pa);
- 		spin_unlock(&pa->pa_lock);
- 
--		list_del_rcu(&pa->pa_inode_list);
-+		list_del_rcu(&pa->pa_node.lg_list);
- 		list_add(&pa->u.pa_tmp_list, &discard_list);
- 
- 		total_entries--;
-@@ -5415,7 +5427,7 @@ static void ext4_mb_add_n_trim(struct ext4_allocation_context *ac)
- 	/* Add the prealloc space to lg */
- 	spin_lock(&lg->lg_prealloc_lock);
- 	list_for_each_entry_rcu(tmp_pa, &lg->lg_prealloc_list[order],
--				pa_inode_list,
-+				pa_node.lg_list,
- 				lockdep_is_held(&lg->lg_prealloc_lock)) {
- 		spin_lock(&tmp_pa->pa_lock);
- 		if (tmp_pa->pa_deleted) {
-@@ -5424,8 +5436,8 @@ static void ext4_mb_add_n_trim(struct ext4_allocation_context *ac)
- 		}
- 		if (!added && pa->pa_free < tmp_pa->pa_free) {
- 			/* Add to the tail of the previous entry */
--			list_add_tail_rcu(&pa->pa_inode_list,
--						&tmp_pa->pa_inode_list);
-+			list_add_tail_rcu(&pa->pa_node.lg_list,
-+						&tmp_pa->pa_node.lg_list);
- 			added = 1;
- 			/*
- 			 * we want to count the total
-@@ -5436,7 +5448,7 @@ static void ext4_mb_add_n_trim(struct ext4_allocation_context *ac)
- 		lg_prealloc_count++;
- 	}
- 	if (!added)
--		list_add_tail_rcu(&pa->pa_inode_list,
-+		list_add_tail_rcu(&pa->pa_node.lg_list,
- 					&lg->lg_prealloc_list[order]);
- 	spin_unlock(&lg->lg_prealloc_lock);
- 
-@@ -5492,9 +5504,9 @@ static int ext4_mb_release_context(struct ext4_allocation_context *ac)
- 			 * doesn't grow big.
- 			 */
- 			if (likely(pa->pa_free)) {
--				spin_lock(pa->pa_obj_lock);
--				list_del_rcu(&pa->pa_inode_list);
--				spin_unlock(pa->pa_obj_lock);
-+				spin_lock(pa->pa_node_lock.lg_lock);
-+				list_del_rcu(&pa->pa_node.lg_list);
-+				spin_unlock(pa->pa_node_lock.lg_lock);
- 				ext4_mb_add_n_trim(ac);
- 			}
- 		}
-@@ -5504,9 +5516,9 @@ static int ext4_mb_release_context(struct ext4_allocation_context *ac)
- 			 * treat per-inode prealloc list as a lru list, then try
- 			 * to trim the least recently used PA.
- 			 */
--			spin_lock(pa->pa_obj_lock);
--			list_move(&pa->pa_inode_list, &ei->i_prealloc_list);
--			spin_unlock(pa->pa_obj_lock);
-+			spin_lock(pa->pa_node_lock.inode_lock);
-+			list_move(&pa->pa_node.inode_list, &ei->i_prealloc_list);
-+			spin_unlock(pa->pa_node_lock.inode_lock);
- 		}
- 
- 		ext4_mb_put_pa(ac, ac->ac_sb, pa);
 diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-index dcda2a943cee..398a6688c341 100644
+index f8e8ee493867..6d85ee8674a6 100644
 --- a/fs/ext4/mballoc.h
 +++ b/fs/ext4/mballoc.h
-@@ -114,7 +114,10 @@ struct ext4_free_data {
- };
+@@ -73,11 +73,6 @@
+  */
+ #define MB_DEFAULT_GROUP_PREALLOC	512
  
- struct ext4_prealloc_space {
--	struct list_head	pa_inode_list;
-+	union {
-+		struct list_head	inode_list; /* for inode PAs */
-+		struct list_head	lg_list;	/* for lg PAs */
-+	} pa_node;
- 	struct list_head	pa_group_list;
- 	union {
- 		struct list_head pa_tmp_list;
-@@ -128,7 +131,10 @@ struct ext4_prealloc_space {
- 	ext4_grpblk_t		pa_len;		/* len of preallocated chunk */
- 	ext4_grpblk_t		pa_free;	/* how many blocks are free */
- 	unsigned short		pa_type;	/* pa type. inode or group */
--	spinlock_t		*pa_obj_lock;
-+	union {
-+		spinlock_t		*inode_lock;	/* locks the inode list holding this PA */
-+		spinlock_t		*lg_lock;	/* locks the lg list holding this PA */
-+	} pa_node_lock;
- 	struct inode		*pa_inode;	/* hack, for history only */
- };
- 
+-/*
+- * maximum length of inode prealloc list
+- */
+-#define MB_DEFAULT_MAX_INODE_PREALLOC	512
+-
+ /*
+  * Number of groups to search linearly before performing group scanning
+  * optimization.
+diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
+index 12d6252e3e22..3042bc605bbf 100644
+--- a/fs/ext4/sysfs.c
++++ b/fs/ext4/sysfs.c
+@@ -214,7 +214,6 @@ EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
+ EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
+ EXT4_RW_ATTR_SBI_UI(mb_stream_req, s_mb_stream_request);
+ EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
+-EXT4_RW_ATTR_SBI_UI(mb_max_inode_prealloc, s_mb_max_inode_prealloc);
+ EXT4_RW_ATTR_SBI_UI(mb_max_linear_groups, s_mb_max_linear_groups);
+ EXT4_RW_ATTR_SBI_UI(extent_max_zeroout_kb, s_extent_max_zeroout_kb);
+ EXT4_ATTR(trigger_fs_error, 0200, trigger_test_error);
+@@ -264,7 +263,6 @@ static struct attribute *ext4_attrs[] = {
+ 	ATTR_LIST(mb_order2_req),
+ 	ATTR_LIST(mb_stream_req),
+ 	ATTR_LIST(mb_group_prealloc),
+-	ATTR_LIST(mb_max_inode_prealloc),
+ 	ATTR_LIST(mb_max_linear_groups),
+ 	ATTR_LIST(max_writeback_mb_bump),
+ 	ATTR_LIST(extent_max_zeroout_kb),
 -- 
 2.31.1
 
