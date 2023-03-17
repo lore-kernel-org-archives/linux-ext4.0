@@ -2,53 +2,50 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C9738C76196
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Mar 2023 09:10:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D3973C761AF
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Mar 2023 09:10:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230093AbjCQJKL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 17 Mar 2023 05:10:11 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32794 "EHLO
+        id S230180AbjCQJKN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 17 Mar 2023 05:10:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32802 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231572AbjCQJJv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Mar 2023 05:09:51 -0400
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4AA061A48A
+        with ESMTP id S231596AbjCQJJw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Mar 2023 05:09:52 -0400
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C442E144A8
         for <linux-ext4@vger.kernel.org>; Fri, 17 Mar 2023 02:09:34 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PdJGx6gwsz4f3kpW
+        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4PdJGx0VZmz4f3l79
         for <linux-ext4@vger.kernel.org>; Fri, 17 Mar 2023 17:09:29 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.170])
-        by APP4 (Coremail) with SMTP id gCh0CgAHcLNGLhRk8RgkFg--.44000S6;
-        Fri, 17 Mar 2023 17:09:31 +0800 (CST)
+        by APP4 (Coremail) with SMTP id gCh0CgAHcLNGLhRk8RgkFg--.44000S4;
+        Fri, 17 Mar 2023 17:09:29 +0800 (CST)
 From:   Zhang Yi <yi.zhang@huaweicloud.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
         yi.zhang@huawei.com, yi.zhang@huaweicloud.com, yukuai3@huawei.com
-Subject: [PATCH v4 2/2] ext4: add journal cycled recording support
-Date:   Fri, 17 Mar 2023 17:09:26 +0800
-Message-Id: <20230317090926.4149399-3-yi.zhang@huaweicloud.com>
+Subject: [PATCH v4 0/2] ext4, jbd2: journal cycled record transactions between each mount
+Date:   Fri, 17 Mar 2023 17:09:24 +0800
+Message-Id: <20230317090926.4149399-1-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20230317090926.4149399-1-yi.zhang@huaweicloud.com>
-References: <20230317090926.4149399-1-yi.zhang@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgAHcLNGLhRk8RgkFg--.44000S6
-X-Coremail-Antispam: 1UD129KBjvdXoWruFWkGFy8Cr4rAr47GFW5GFg_yoWDGrc_X3
-        yxJFsrXwsxJF4S9a1rCa1UWryYvFZ7ur1rG34xt3sYgF1DtF4DGF4qqr92krn8WFZ5trZx
-        Xw4xJF1IqF9FqjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-        9fnUUIcSsGvfJTRUUUb-kFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
-        6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUXwA2048vs2IY02
-        0Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xv
-        wVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM2
-        8EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AI
-        xVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20x
-        vE14v26r1Y6r17McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xv
-        r2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7MxAIw28IcxkI7VAKI48JMxC20s
-        026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_
-        JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14
-        v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xva
-        j40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JV
-        W8JrUvcSsGvfC2KfnxnUUI43ZEXa7VUjIzuJUUUUU==
+X-CM-TRANSID: gCh0CgAHcLNGLhRk8RgkFg--.44000S4
+X-Coremail-Antispam: 1UD129KBjvJXoW7tFy7ZFy7ArWfXFykGw1kGrg_yoW8ur4kpF
+        W3t3yY9rykXFyxAwsaka17XrWFqw40yFW7Wrnxu34Fyw45AF1Igw4fKFyY9F1DtrWSga1F
+        qr1UtF45Ga4jy37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUyG14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
+        1l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
+        JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
+        CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
+        2Ix0cI8IcVAFwI0_Jrv_JF1lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
+        W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1l42xK82IYc2Ij64vI
+        r41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8Gjc
+        xK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0
+        cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8V
+        AvwI8IcIk0rVWrZr1j6s0DMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7Cj
+        xVAFwI0_Jr0_GrUvcSsGvfC2KfnxnUUI43ZEXa7VUbE_M3UUUUU==
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 X-CFilter-Loop: Reflected
 Precedence: bulk
@@ -57,31 +54,55 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Always enable 'JBD2_CYCLE_RECORD' journal option on ext4, letting the
-jbd2 continue to record new journal transactions from the recovered
-journal head or the checkpointed transactions in the previous mount.
+v3->v4:
+ - Remove journal_cycle_record mount option, always enable it on ext4.
+v2->v3:
+ - Prevent warning if mount old image with journal_cycle_record enabled.
+ - Limit this mount option into ext4 iamge only.
+v1->v2:
+ - Fix the format type warning.
+ - Add more check of journal_cycle_record mount options in remount.
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
----
- fs/ext4/super.c | 5 +++++
- 1 file changed, 5 insertions(+)
+Hello!
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 88f7b8a88c76..9b46adae241b 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5691,6 +5691,11 @@ static void ext4_init_journal_params(struct super_block *sb, journal_t *journal)
- 		journal->j_flags |= JBD2_ABORT_ON_SYNCDATA_ERR;
- 	else
- 		journal->j_flags &= ~JBD2_ABORT_ON_SYNCDATA_ERR;
-+	/*
-+	 * Always enable journal cycle record option, letting the journal
-+	 * records log transactions continuously between each mount.
-+	 */
-+	journal->j_flags |= JBD2_CYCLE_RECORD;
- 	write_unlock(&journal->j_state_lock);
- }
- 
+This patch set is the fourth edition of the journal_cycle_record mount
+option. It save journal head for a clean unmounted file system in the
+journal super block, which could let us record journal transactions
+between each mount continuously. It could help us to do journal
+backtrack and find root cause from a corrupted filesystem. Current
+filesystem's corruption analysis is difficult and less useful
+information, especially on the real products. It is useful to some
+extent, especially for the cases of doing fuzzy tests and deploy in
+some shout-runing products.
+
+I will send out the corresponding e2fsprogs part v2 separately, all of
+these have done below test cases and also passed xfstests in auto mode.
+ - Mount a filesystem with empty journal.
+ - Mount a filesystem with journal ended in an unrecovered complete
+   transaction.
+ - Mount a filesystem with journal ended in an incomplete transaction.
+ - Mount a corrupted filesystem with out of bound journal s_head.
+ - Mount old filesystem without journal s_head set.
+
+Any comments are welcome.
+
+Thanks!
+Yi.
+
+v3: https://lore.kernel.org/linux-ext4/20230314140522.3266591-1-yi.zhang@huaweicloud.com/
+v2: https://lore.kernel.org/linux-ext4/20230202142224.3679549-1-yi.zhang@huawei.com/
+v1: https://lore.kernel.org/linux-ext4/20230119034600.3431194-3-yi.zhang@huaweicloud.com/
+
+Zhang Yi (2):
+  jbd2: continue to record log between each mount
+  ext4: add journal cycled recording support
+
+ fs/ext4/super.c      |  5 +++++
+ fs/jbd2/journal.c    | 18 ++++++++++++++++--
+ fs/jbd2/recovery.c   | 22 +++++++++++++++++-----
+ include/linux/jbd2.h |  9 +++++++--
+ 4 files changed, 45 insertions(+), 9 deletions(-)
+
 -- 
 2.31.1
 
