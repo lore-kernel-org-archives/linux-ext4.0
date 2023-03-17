@@ -2,75 +2,98 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 37D3BC74A5B
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Mar 2023 01:53:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 57993C6FD1F
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Mar 2023 02:53:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229813AbjCQBxS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 16 Mar 2023 21:53:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51992 "EHLO
+        id S229832AbjCQCxQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 16 Mar 2023 22:53:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42614 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229808AbjCQBxQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Mar 2023 21:53:16 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DA5ECB3739
-        for <linux-ext4@vger.kernel.org>; Thu, 16 Mar 2023 18:53:10 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 32H1qlbq031889
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 16 Mar 2023 21:52:48 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1679017969; bh=lHdKXc/FDJt0WWkuSj/wlF9gETWp14K7K01kNRsjoRc=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=VTPQBF/1gh22bdguDGgSUgDVWlUPw+47EssFY7zlJ54vG058zkyMx8ayV9PY60SWW
-         eqPpWjd5u434p5mrwN13vJAT3z8YwdxE7vglWi5qrWmNfs7q7uhhmdeW7G9p0ECzRi
-         vieGz4YNaWlzD+n216PpXnIz5XtwyWxNPnsyibsryvJxtyhdasf5CKpPE+IlRiF7MN
-         +uIeL9EbQG6RqfYwnTZA9oOBZ3DUUh3r+evhSoVT3EWC3ip6ZPOi0bmZTN1zXTa7L8
-         GOLtHxBJNUUHj3fd2rgHYf1IiASXtaI8i5scyt8XwDvNRVEb/NrA5r22R42pAPa8ZB
-         xPbJ6ghfjW51Q==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 248AC15C45B9; Thu, 16 Mar 2023 21:52:47 -0400 (EDT)
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Kemeng Shi <shikemeng@huaweicloud.com>, adilger.kernel@dilger.ca
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linfeilong@huawei.com, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 0/4] Remove unused group parameter in bitmap checksum
-Date:   Thu, 16 Mar 2023 21:52:43 -0400
-Message-Id: <167901794966.3178390.3572385760525524905.b4-ty@mit.edu>
-X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230221203027.2359920-1-shikemeng@huaweicloud.com>
-References: <20230221203027.2359920-1-shikemeng@huaweicloud.com>
+        with ESMTP id S229716AbjCQCxO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Mar 2023 22:53:14 -0400
+Received: from mail-pj1-x102a.google.com (mail-pj1-x102a.google.com [IPv6:2607:f8b0:4864:20::102a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AD9AF3D0A6
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Mar 2023 19:53:09 -0700 (PDT)
+Received: by mail-pj1-x102a.google.com with SMTP id cn6so3629014pjb.2
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Mar 2023 19:53:09 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=kernel-dk.20210112.gappssmtp.com; s=20210112; t=1679021589; x=1681613589;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=E+eXRdP9Oh06pkJEQfCkDaUqO1qE+/y/kM5YhZ0CyF8=;
+        b=66N2L5uy/PSyfUNkUPj5rCSWt0gJZJ31p4S2CMQEiXYLF146Zki/X97oGU+s9I2u6Y
+         xCcS2stF6nU6bP3In4pcLJn10+1/WsT0s1vL4TcrkJyxXxpCofxhWCLOo+J6nk45kxyG
+         7uy1/q1FsA79toXpAgRT3uwxANG544bdY44I21fDzaGoItRK9zOfjuwH6uro56aguizm
+         9dBTuY+BXEjweMC/1q+F/DPd8J74gZrvf7SsgGhr5b/V9CZhBVawneYzTWhzm7MLa6a+
+         NyF6sNC34a0/M/XCegFzKCWBlNvZgPTZ3KdPyfROtUh45kY/igru5nZcORVh6WFkUV0j
+         Sv9A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112; t=1679021589; x=1681613589;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=E+eXRdP9Oh06pkJEQfCkDaUqO1qE+/y/kM5YhZ0CyF8=;
+        b=Eq22KF44N8TbPvjkAFLWJouCS8e8NBqN8hU+Tpu91SZ+hv+J5jLhntH3+TRwGK0Gyf
+         EfJMFs97F4OL6cKUz0S7BIDl7iG3Dy2aU+PSTLVl4ALSswfqAm4aPg6AMRdk6VOv+3bX
+         EYWI6yNKKQV9IpBEUeaWUoK9oanDH5F2i0DRExMnOTt1Mcl/DS6JaPHO74EAmogZA6dE
+         1rT3nfh1r1vvs7xuYQ6go/C+a+LVfObPjKviOVZii0rvfyW5Jr7ewPfmwsU7LJEt5oYG
+         TzCb/N2+Ni6lcfEimenkOI6Lqqvb2aIgxBI1prt4T8anDZCUqbg8nmitybW9ADECZNqN
+         mLYw==
+X-Gm-Message-State: AO0yUKWlZUg7L11HecxQZpxFv/3LZru0bv/QnJZu3ybBRmj7zLNYZwc2
+        3z18WyQCuBRgTM9xnwuPGLAIIQ==
+X-Google-Smtp-Source: AK7set+lrtaNiEv6+zEyWS9cYD4p972SFQ5dYlgq6B5kZ0CNj58XZrBm9watTWVPNI590v7FWOwzmA==
+X-Received: by 2002:a05:6a20:6914:b0:cd:fc47:dd73 with SMTP id q20-20020a056a20691400b000cdfc47dd73mr10145784pzj.2.1679021588750;
+        Thu, 16 Mar 2023 19:53:08 -0700 (PDT)
+Received: from [192.168.1.136] ([198.8.77.157])
+        by smtp.gmail.com with ESMTPSA id y127-20020a633285000000b00502ea8014f3sm340501pgy.42.2023.03.16.19.53.07
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 16 Mar 2023 19:53:08 -0700 (PDT)
+Message-ID: <c9c2c53e-ca65-2122-84fd-05cb4da99aa6@kernel.dk>
+Date:   Thu, 16 Mar 2023 20:53:07 -0600
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+User-Agent: Mozilla/5.0 (X11; Linux aarch64; rv:102.0) Gecko/20100101
+ Thunderbird/102.8.0
+Subject: Re: [PATCHSET for-next 0/2] Flag file systems as supporting parallel
+ dio writes
+Content-Language: en-US
+To:     "Darrick J. Wong" <djwong@kernel.org>
+Cc:     io-uring@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org
+References: <20230307172015.54911-1-axboe@kernel.dk>
+ <b11d27d5-8e83-7144-cdc8-3966abf42db5@kernel.dk>
+ <20230316042912.GI11376@frogsfrogsfrogs>
+From:   Jens Axboe <axboe@kernel.dk>
+In-Reply-To: <20230316042912.GI11376@frogsfrogsfrogs>
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, 22 Feb 2023 04:30:23 +0800, Kemeng Shi wrote:
-> checksum functions. Each function is cleaned in a separated patch.
-> Thanks!
+On 3/15/23 10:29 PM, Darrick J. Wong wrote:
+> On Wed, Mar 15, 2023 at 11:40:02AM -0600, Jens Axboe wrote:
+>> On 3/7/23 10:20 AM, Jens Axboe wrote:
+>>> Hi,
+>>>
+>>> This has been on my TODO list for a while, and now that ext4 supports
+>>> parallel dio writes as well, time to dust it off and send it out... This
+>>> adds an FMODE flag to inform users that a given file supports parallel
+>>> dio writes. io_uring can use this to avoid serializing dio writes
+>>> upfront, in case it isn't needed. A few details in patch #2, patch 1 does
+>>> nothing by itself.
+>>
+>> I'm assuming silence is consent here and folks are fine with this
+>> change?
 > 
-> Kemeng Shi (4):
->   ext4: remove unused group parameter in ext4_inode_bitmap_csum_verify
->   ext4: remove unused group parameter in ext4_inode_bitmap_csum_set
->   ext4: remove unused group parameter in ext4_block_bitmap_csum_verify
->   ext4: remove unused group parameter in ext4_block_bitmap_csum_set
+> Oh, yeah, this one fell off my radar.
 > 
-> [...]
+> LGTM,
+> Reviewed-by: Darrick J. Wong <djwong@kernel.org>
 
-Applied, thanks!
+Thanks Darrick.
 
-[1/4] ext4: remove unused group parameter in ext4_inode_bitmap_csum_verify
-      commit: b689b64229af15259db90652b8e99502bbb31078
-[2/4] ext4: remove unused group parameter in ext4_inode_bitmap_csum_set
-      commit: 96b71c52b744c17dd57b1ae842e878be921d2a80
-[3/4] ext4: remove unused group parameter in ext4_block_bitmap_csum_verify
-      commit: 2ad044d3a6851cb9755b56a1bcbe1f49e5175399
-[4/4] ext4: remove unused group parameter in ext4_block_bitmap_csum_set
-      commit: d7214a6a02a0c7447cce55ebf05de5f7c8df9adf
-
-Best regards,
 -- 
-Theodore Ts'o <tytso@mit.edu>
+Jens Axboe
+
+
