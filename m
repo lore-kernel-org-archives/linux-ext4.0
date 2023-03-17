@@ -2,46 +2,45 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 97FE9C74A5B
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Mar 2023 01:53:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 37D3BC74A5B
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Mar 2023 01:53:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229769AbjCQBxF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 16 Mar 2023 21:53:05 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51298 "EHLO
+        id S229813AbjCQBxS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 16 Mar 2023 21:53:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51992 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229665AbjCQBxC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Mar 2023 21:53:02 -0400
+        with ESMTP id S229808AbjCQBxQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Mar 2023 21:53:16 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A885461537
-        for <linux-ext4@vger.kernel.org>; Thu, 16 Mar 2023 18:53:00 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DA5ECB3739
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Mar 2023 18:53:10 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 32H1qlF1031894
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 32H1qlbq031889
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Thu, 16 Mar 2023 21:52:48 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1679017969; bh=Dpb5lFuYBD+4vnKs9bysSdGWrOl3vpQOpIwx8+7CXTc=;
+        t=1679017969; bh=lHdKXc/FDJt0WWkuSj/wlF9gETWp14K7K01kNRsjoRc=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=KzLxTCpxFxW2oJcfLtcW50/CNaGIDYSG1+CVomhzMAd/NmUKtwvHFyCMJHmn17UFD
-         DDQ9rMt6jrI4g6p+/WcKOXlHAFARiQ6w6Laq/ELFxjnd/NZorcamXkYCxGzJvzIp9O
-         cy8ekKbNjkk/s/BVXp1ao/Io/JS2BWsUt3mOFGF5qO+XUMC0sODKzxJgwaXBc16BfC
-         3lmUKITyMr/Nd0WHQ3AIT7me6OpBhp8HG2slw152+qBCm98O7dTsU4aG5iEekzLYDr
-         1X+xbvK5l8ij0HUB39zaiUjOWuzIDYcHJuapLqg6lFhXnUvVTJ0/Jry3di8zTG9O20
-         OOYstVMCtRIfw==
+        b=VTPQBF/1gh22bdguDGgSUgDVWlUPw+47EssFY7zlJ54vG058zkyMx8ayV9PY60SWW
+         eqPpWjd5u434p5mrwN13vJAT3z8YwdxE7vglWi5qrWmNfs7q7uhhmdeW7G9p0ECzRi
+         vieGz4YNaWlzD+n216PpXnIz5XtwyWxNPnsyibsryvJxtyhdasf5CKpPE+IlRiF7MN
+         +uIeL9EbQG6RqfYwnTZA9oOBZ3DUUh3r+evhSoVT3EWC3ip6ZPOi0bmZTN1zXTa7L8
+         GOLtHxBJNUUHj3fd2rgHYf1IiASXtaI8i5scyt8XwDvNRVEb/NrA5r22R42pAPa8ZB
+         xPbJ6ghfjW51Q==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 287A115C45BC; Thu, 16 Mar 2023 21:52:47 -0400 (EDT)
+        id 248AC15C45B9; Thu, 16 Mar 2023 21:52:47 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Kemeng Shi <shikemeng@huaweicloud.com>, adilger.kernel@dilger.ca,
-        ojaswin@linux.ibm.com, ritesh.list@gmail.com
+To:     Kemeng Shi <shikemeng@huaweicloud.com>, adilger.kernel@dilger.ca
 Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v3 00/20] Some bugfix and cleanup to mballoc
-Date:   Thu, 16 Mar 2023 21:52:45 -0400
-Message-Id: <167901794966.3178390.4675690414969962516.b4-ty@mit.edu>
+        linfeilong@huawei.com, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 0/4] Remove unused group parameter in bitmap checksum
+Date:   Thu, 16 Mar 2023 21:52:43 -0400
+Message-Id: <167901794966.3178390.3572385760525524905.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230303172120.3800725-1-shikemeng@huaweicloud.com>
-References: <20230303172120.3800725-1-shikemeng@huaweicloud.com>
+In-Reply-To: <20230221203027.2359920-1-shikemeng@huaweicloud.com>
+References: <20230221203027.2359920-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -49,54 +48,28 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, 4 Mar 2023 01:21:00 +0800, Kemeng Shi wrote:
-> patches to make EXT4_MB_HINT_GOAL_ONLY work properly, protect pa->pa_free
-> from race and so on. More details can be found in git log.
+On Wed, 22 Feb 2023 04:30:23 +0800, Kemeng Shi wrote:
+> checksum functions. Each function is cleaned in a separated patch.
 > Thanks!
 > 
+> Kemeng Shi (4):
+>   ext4: remove unused group parameter in ext4_inode_bitmap_csum_verify
+>   ext4: remove unused group parameter in ext4_inode_bitmap_csum_set
+>   ext4: remove unused group parameter in ext4_block_bitmap_csum_verify
+>   ext4: remove unused group parameter in ext4_block_bitmap_csum_set
+> 
+> [...]
 
 Applied, thanks!
 
-[01/20] ext4: set goal start correctly in ext4_mb_normalize_request
-        commit: 98860659740354352783cb55c8443e0e46e0978c
-[02/20] ext4: allow to find by goal if EXT4_MB_HINT_GOAL_ONLY is set
-        commit: cace8c0f41382effffa8a14cfc4666a5ae171d03
-[03/20] ext4: get correct ext4_group_info in ext4_mb_prefetch_fini
-        commit: 36a366185c1c733ce43e8d6d8ca43997c5b601ce
-[04/20] ext4: correct calculation of s_mb_preallocated
-        commit: a53b8e3f47d790cb8b520b89b59cf0b65aee7e38
-[05/20] ext4: correct start of used group pa for debug in ext4_mb_use_group_pa
-        commit: 043a9c31c51a26c5926fd62bdd9d7a057cc4acd1
-[06/20] ext4: protect pa->pa_free in ext4_discard_allocated_blocks
-        commit: 5ddfc1b03d405d2890dc75eee6e1659c0e022407
-[07/20] ext4: add missed brelse in ext4_free_blocks_simple
-        commit: a8735a61d23ce9f91c965041eb3ff2a8501853f2
-[08/20] ext4: remove unused return value of ext4_mb_try_best_found and ext4_mb_free_metadata
-        commit: 1104c3ce5375bbc1229a8e56f7ac84e23953b887
-[09/20] ext4: Remove unnecessary release when memory allocation failed in ext4_mb_init_cache
-        commit: d5e46843e6db39ae386dd7c728861caca3bb0e6e
-[10/20] ext4: remove unnecessary e4b->bd_buddy_page check in ext4_mb_load_buddy_gfp
-        commit: d53c2664698f218acd8ce8848427be4da039dee9
-[11/20] ext4: remove unnecessary check in ext4_mb_new_blocks
-        commit: 4e91261632b0b1d0dee4a9bd99ac70d49d35ebc5
-[12/20] ext4: remove dead check in mb_buddy_mark_free
-        commit: 0b6d4554bdc97d40692abf05a0f087656acfa876
-[13/20] ext4: remove ac->ac_found > sbi->s_mb_min_to_scan dead check in ext4_mb_check_limits
-        commit: 38121fdf014cbd631e83fe9aa20a93a57670c2fe
-[14/20] ext4: use best found when complex scan of group finishs
-        commit: be52c043d5d18d23605980c3485ae41de19cc99c
-[15/20] ext4: remove unnecessary exit_meta_group_info tag
-        commit: 1a5500baa0235477ac6eef76d75c70540522e886
-[16/20] ext4: remove unnecessary count2 in ext4_free_data_in_buddy
-        commit: 8df82ffee909b633f727414a4b50c2638de9c3d4
-[17/20] ext4: remove unnecessary goto in ext4_mb_mark_diskspace_used
-        commit: 101cbefae32efa89e717c89919a9164c4ea2b0a5
-[18/20] ext4: remove repeat assignment to ac_f_ex
-        commit: b9a0763df46aaa1d7c33859e24ff0ebd4fea009c
-[19/20] ext4: remove comment code ext4_discard_preallocations
-        commit: e0057b7ceade573f52a51a5bce75de8a1abe60b0
-[20/20] ext4: simplify calculation of blkoff in ext4_mb_new_blocks_simple
-        commit: 7bb392f6f9c465182aea60cc55287595bf28f866
+[1/4] ext4: remove unused group parameter in ext4_inode_bitmap_csum_verify
+      commit: b689b64229af15259db90652b8e99502bbb31078
+[2/4] ext4: remove unused group parameter in ext4_inode_bitmap_csum_set
+      commit: 96b71c52b744c17dd57b1ae842e878be921d2a80
+[3/4] ext4: remove unused group parameter in ext4_block_bitmap_csum_verify
+      commit: 2ad044d3a6851cb9755b56a1bcbe1f49e5175399
+[4/4] ext4: remove unused group parameter in ext4_block_bitmap_csum_set
+      commit: d7214a6a02a0c7447cce55ebf05de5f7c8df9adf
 
 Best regards,
 -- 
