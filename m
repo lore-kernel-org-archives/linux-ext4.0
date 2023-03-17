@@ -2,43 +2,43 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C2DB9C74A5B
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Mar 2023 05:02:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D73EFC74A5B
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Mar 2023 05:05:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229845AbjCQFCZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 17 Mar 2023 01:02:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52844 "EHLO
+        id S229903AbjCQFFX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 17 Mar 2023 01:05:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57218 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229911AbjCQFCK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Mar 2023 01:02:10 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 983F0BBB10;
-        Thu, 16 Mar 2023 22:02:00 -0700 (PDT)
+        with ESMTP id S229489AbjCQFFX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Mar 2023 01:05:23 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BEED5231F4;
+        Thu, 16 Mar 2023 22:05:21 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 4B800B82445;
-        Fri, 17 Mar 2023 05:01:59 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D1B50C4339B;
-        Fri, 17 Mar 2023 05:01:57 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 2510EB82401;
+        Fri, 17 Mar 2023 05:05:20 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8D649C433EF;
+        Fri, 17 Mar 2023 05:05:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1679029318;
-        bh=SEN+wVm2sQvgTh/0rJIl6wpeBwZA0mlG/ddXP4Pu9c4=;
+        s=k20201202; t=1679029518;
+        bh=+FCsAePNiEbZwQOAc4eWABK4quiynO1ZGWgjAZOkSBg=;
         h=From:To:Cc:Subject:Date:From;
-        b=GdXT4Rk8vzBIR4XokQIN+LPdhMeFXmo7XveFUVq9UdrVHVGiKuyCTSSJc2s6UNqbp
-         3fyYeXuukxXzuDJlqTqqi7Ooe6zNSv1zilDtgdDc0T2vNFB+JXHmvfo/YcrP9bhPvQ
-         Qf6+BqIOlwJZixNvqNBEzOTU6gOAFrLriMpZc2NEb55pBkdmQF0iw3G1uATS4JsfAj
-         P34z4cOmnmji1Ajy8cX328afAJQeqX6IkPazubVHP/tI6EN1RmbsBNBpiORsRYG5in
-         JMQXYzYtcqBUVsKgmAVWkrlVvpcR6al20FU8LiQoa9IvtItdMA8+C8fDoq4CsXuc2H
-         Xd2cnP0ipWCQw==
+        b=huTFhY5Jr/7vbHIbYrNlAvwONQTZNgPii/fR4rcV/BgnxLZ6JDgpFZ0DtTeLIyRoi
+         JeA7kcM5AP4nuqj5knHPHkQSxgmn/cyG3agSCH7LmxR+AReSeLyIYZy5snW+sjhyQv
+         DDiRfWzgu24DDgNgcr7+o5k0f4TUGuLwvuCq4OvsVDOTFNCjAvHib2aGGTKC6/h9IA
+         OxbBg/dOw5WlJ7pEvmllpE5s9Fo7oHsRaPfy0ypTyHb4DwK+wqVOB29hl/TqKqomKL
+         bfdMjgk3ZOvv0KiGz63S6N9Wo0bAesLUZjYc73dP1O0qV6e/9fBM/kRpIwsdfao9NH
+         Lt1SHW+4SrM4g==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     stable@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org,
         "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         Tejun Heo <tj@kernel.org>, Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 5.4] ext4: fix cgroup writeback accounting with fs-layer encryption
-Date:   Thu, 16 Mar 2023 22:01:19 -0700
-Message-Id: <20230317050119.55794-1-ebiggers@kernel.org>
+Subject: [PATCH 4.19] ext4: fix cgroup writeback accounting with fs-layer encryption
+Date:   Thu, 16 Mar 2023 22:05:10 -0700
+Message-Id: <20230317050510.61555-1-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.39.2
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
@@ -71,14 +71,14 @@ Acked-by: Tejun Heo <tj@kernel.org>
 Link: https://lore.kernel.org/r/20230203005503.141557-1-ebiggers@kernel.org
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/page-io.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ fs/ext4/page-io.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
 
 diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index b66b335a0ca6f..5858fb9b5cd53 100644
+index 3de933354a08b..bf910f2664690 100644
 --- a/fs/ext4/page-io.c
 +++ b/fs/ext4/page-io.c
-@@ -380,7 +380,8 @@ static int io_submit_init_bio(struct ext4_io_submit *io,
+@@ -388,7 +388,8 @@ static int io_submit_init_bio(struct ext4_io_submit *io,
  
  static int io_submit_add_bh(struct ext4_io_submit *io,
  			    struct inode *inode,
@@ -88,7 +88,7 @@ index b66b335a0ca6f..5858fb9b5cd53 100644
  			    struct buffer_head *bh)
  {
  	int ret;
-@@ -395,10 +396,11 @@ static int io_submit_add_bh(struct ext4_io_submit *io,
+@@ -403,10 +404,11 @@ static int io_submit_add_bh(struct ext4_io_submit *io,
  			return ret;
  		io->io_bio->bi_write_hint = inode->i_write_hint;
  	}
@@ -97,17 +97,18 @@ index b66b335a0ca6f..5858fb9b5cd53 100644
 +			   bh->b_size, bh_offset(bh));
  	if (ret != bh->b_size)
  		goto submit_and_retry;
--	wbc_account_cgroup_owner(io->io_wbc, page, bh->b_size);
-+	wbc_account_cgroup_owner(io->io_wbc, pagecache_page, bh->b_size);
+-	wbc_account_io(io->io_wbc, page, bh->b_size);
++	wbc_account_io(io->io_wbc, pagecache_page, bh->b_size);
  	io->io_next_block++;
  	return 0;
  }
-@@ -511,7 +513,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+@@ -514,8 +516,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
  	do {
  		if (!buffer_async_write(bh))
  			continue;
--		ret = io_submit_add_bh(io, inode, bounce_page ?: page, bh);
-+		ret = io_submit_add_bh(io, inode, page, bounce_page, bh);
+-		ret = io_submit_add_bh(io, inode,
+-				       data_page ? data_page : page, bh);
++		ret = io_submit_add_bh(io, inode, page, data_page, bh);
  		if (ret) {
  			/*
  			 * We only get here on ENOMEM.  Not much else
