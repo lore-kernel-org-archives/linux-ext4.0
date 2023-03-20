@@ -2,83 +2,101 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BFC3EC7618A
-	for <linux-ext4@archiver.kernel.org>; Mon, 20 Mar 2023 13:18:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EC691C7618A
+	for <linux-ext4@archiver.kernel.org>; Mon, 20 Mar 2023 13:20:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231806AbjCTNSz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 20 Mar 2023 09:18:55 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42218 "EHLO
+        id S229901AbjCTNUN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 20 Mar 2023 09:20:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41918 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231772AbjCTNSV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Mar 2023 09:18:21 -0400
-Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F20371B567;
-        Mon, 20 Mar 2023 06:18:16 -0700 (PDT)
+        with ESMTP id S231836AbjCTNTu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Mar 2023 09:19:50 -0400
+Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EE6A924134;
+        Mon, 20 Mar 2023 06:19:42 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4PgFfV63n2z4f3jY9;
-        Mon, 20 Mar 2023 21:18:10 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgAHvrEQXRhkWTLvFg--.47360S2;
-        Mon, 20 Mar 2023 21:18:10 +0800 (CST)
-From:   Kemeng Shi <shikemeng@huaweicloud.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca,
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PgFh93yN6z4f3jQb;
+        Mon, 20 Mar 2023 21:19:37 +0800 (CST)
+Received: from [10.174.178.129] (unknown [10.174.178.129])
+        by APP4 (Coremail) with SMTP id gCh0CgDHeq5pXRhkOUPvFg--.63166S2;
+        Mon, 20 Mar 2023 21:19:39 +0800 (CST)
+Subject: Re: [PATCH 7/7] ext4: improve inode table blocks counting in
+ ext4_num_overhead_clusters
+To:     Jan Kara <jack@suse.cz>
+Cc:     tytso@mit.edu, adilger.kernel@dilger.ca,
         linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc:     error27@gmail.com, jack@suse.cz, shikemeng@huaweicloud.com
-Subject: [PATCH] ext4: avoid to access uninitialized block_cluster
-Date:   Tue, 21 Mar 2023 05:21:06 +0800
-Message-Id: <20230320212106.4164212-1-shikemeng@huaweicloud.com>
-X-Mailer: git-send-email 2.30.0
+References: <20230221115919.1918161-1-shikemeng@huaweicloud.com>
+ <20230221115919.1918161-8-shikemeng@huaweicloud.com>
+ <20230320124444.kkp4es2wyke7vqgx@quack3>
+From:   Kemeng Shi <shikemeng@huaweicloud.com>
+Message-ID: <afde9290-39d4-0273-40de-153a53f60e31@huaweicloud.com>
+Date:   Mon, 20 Mar 2023 21:19:37 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
+ Thunderbird/60.5.0
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgAHvrEQXRhkWTLvFg--.47360S2
-X-Coremail-Antispam: 1UD129KBjvJXoWrtFy7JF4UCr4fJw1DKF4fAFb_yoW8Jr48pw
-        sIy3W5GrW5ur1qga1fJr97Xw4rGw18Kr17Ja43Cr13WFZrXw4xJF95tFs0vF1j9rZrCF9I
-        vr129rWUu3s5G37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUv014x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2ocxC64kIII
-        0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xv
-        wVC0I7IYx2IY6xkF7I0E14v26F4j6r4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7
-        xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40E
-        FcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr
-        0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8v
-        x2IErcIFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F4
-        0E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1l
-        IxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxV
-        AFwI0_Jr0_Gr1lIxAIcVCF04k26cxKx2IYs7xG6rW3Jr0E3s1lIxAIcVC2z280aVAFwI0_
-        Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7sRi
-        Pl1DUUUUU==
+In-Reply-To: <20230320124444.kkp4es2wyke7vqgx@quack3>
+Content-Type: text/plain; charset=gbk
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID: gCh0CgDHeq5pXRhkOUPvFg--.63166S2
+X-Coremail-Antispam: 1UD129KBjvJXoW7urWfJrW7Ww4kCw15Cw18uFg_yoW8Xr4rpr
+        4xta45tr45urWqgr4SyF9rXrWFga15Kr47Ja13Gr13GayDuws2gr9xtrs0vF12gw47Aw1q
+        qFW3C3yUu3sxA37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUyEb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
+        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+        vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7Cj
+        xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
+        0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+        6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+        Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JMxk0xIA0c2IEe2xFo4CEbIxvr21l42xK82IYc2Ij
+        64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x
+        8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE
+        2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42
+        xK8VAvwI8IcIk0rVW3JVWrJr1lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY
+        1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU1CPfJUUUUU==
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-If inode bitmap block and block bitmap block are in different group,
-there is a risk to access uninitialized block_cluster in
-ext4_num_overhead_clusters. Initialize block_cluster to -1 to fix this.
 
-Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-Reported-by: kernel test robot <lkp@intel.com>
-Reported-by: Dan Carpenter <error27@gmail.com>
-Link: https://lore.kernel.org/r/202303171446.eLEhZzAu-lkp@intel.com/
-Fixes: e3c70113e2cb ("ext4: improve inode table blocks counting in ext4_num_overhead_clusters")
----
- fs/ext4/balloc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 49fdb758b0e4..094269488183 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -89,7 +89,7 @@ static unsigned ext4_num_overhead_clusters(struct super_block *sb,
- 					   struct ext4_group_desc *gdp)
- {
- 	unsigned base_clusters, num_clusters;
--	int block_cluster, inode_cluster;
-+	int block_cluster = -1, inode_cluster;
- 	int itbl_cluster_start = -1, itbl_cluster_end = -1;
- 	ext4_fsblk_t start = ext4_group_first_block_no(sb, block_group);
- 	ext4_fsblk_t end = start + EXT4_BLOCKS_PER_GROUP(sb) - 1;
+on 3/20/2023 8:44 PM, Jan Kara wrote:
+> On Tue 21-02-23 19:59:19, Kemeng Shi wrote:
+>> As inode table blocks are contiguous, inode table blocks inside the
+>> block_group can be represented as range [itbl_cluster_start,
+>> itbl_cluster_last]. Then we can simply account inode table cluters and
+>> check cluster overlap with [itbl_cluster_start, itbl_cluster_last] instead
+>> of traverse each block of inode table.
+>> By the way, this patch fixes code style problem of comment for
+>> ext4_num_overhead_clusters.
+>>
+>> Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+> 
+> FWIW this is triggering Coverity warning:
+> 
+> *** CID 1536792:  Uninitialized variables  (UNINIT)
+> /fs/ext4/balloc.c: 153 in ext4_num_overhead_clusters()
+> 147                     inode_cluster = EXT4_B2C(sbi,
+> 148                                              ext4_inode_bitmap(sb, gdp) - st
+> 149                     /*
+> 150                      * Additional check if inode bitmap is in just accounted
+> 151                      * block_cluster
+> 152                      */
+>>>>     CID 1536792:  Uninitialized variables  (UNINIT)
+>>>>     Using uninitialized value "block_cluster".
+> 153                     if (inode_cluster != block_cluster &&
+> 154                         inode_cluster >= base_clusters &&
+> 155                         (inode_cluster < itbl_cluster_start ||
+> 156                         inode_cluster > itbl_cluster_end))
+> 157                             num_clusters++;
+> 158             }
+> 
+> which actually looks valid AFAICT.
+Yes, there is a risk to access uninitialized block_cluster if block bitmap block
+and inode bitmap block are in different groups. Patch to fix is just sent. Thanks!
+
 -- 
-2.30.0
+Best wishes
+Kemeng Shi
 
