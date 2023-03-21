@@ -2,83 +2,215 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8C7E7C6FD1D
-	for <linux-ext4@archiver.kernel.org>; Tue, 21 Mar 2023 08:10:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B4128C6FD1D
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Mar 2023 12:06:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230505AbjCUIJ6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 21 Mar 2023 04:09:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55510 "EHLO
+        id S230361AbjCUMG6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 21 Mar 2023 08:06:58 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50934 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230332AbjCUIJd (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Mar 2023 04:09:33 -0400
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 60628193C8;
-        Tue, 21 Mar 2023 01:09:29 -0700 (PDT)
-Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4Pgkln0VFFz4f3nqL;
-        Tue, 21 Mar 2023 16:09:25 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgDnnbEzZhlk+NQhFw--.4478S9;
-        Tue, 21 Mar 2023 16:09:26 +0800 (CST)
-From:   Kemeng Shi <shikemeng@huaweicloud.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc:     ojaswin@linux.ibm.com, shikemeng@huaweicloud.com
-Subject: [PATCH 7/8] ext4: remove ext4_block_group and ext4_block_group_offset declaration
-Date:   Wed, 22 Mar 2023 00:12:19 +0800
-Message-Id: <20230321161220.418652-8-shikemeng@huaweicloud.com>
-X-Mailer: git-send-email 2.30.0
-In-Reply-To: <20230321161220.418652-1-shikemeng@huaweicloud.com>
-References: <20230321161220.418652-1-shikemeng@huaweicloud.com>
+        with ESMTP id S229825AbjCUMG5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Mar 2023 08:06:57 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3799C231D5
+        for <linux-ext4@vger.kernel.org>; Tue, 21 Mar 2023 05:06:55 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id DAD7E21CFC;
+        Tue, 21 Mar 2023 12:06:53 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1679400413; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=MP3VFALtpR8gvOUel1LxeLSW9BCT9mc760UNQiDULLM=;
+        b=ZXoyf+Fo6UZmi8QGdJvaz5t56xzJoYa1pPMGSTxwVRJvpXdmg4ASOxr02v+ro871MMxWWk
+        yemERZcorJ3jQXPhwZXRvmggauVy1/nmmy9gw79IxZs//Qo8cman6hBixl+Zgvh/wn0rd6
+        DN86bJx7WVT19UpyYk2Qw6PIqgGGiGY=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1679400413;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=MP3VFALtpR8gvOUel1LxeLSW9BCT9mc760UNQiDULLM=;
+        b=T9jM9Kz4k8V8stXWMdIzZ2GzQ6MvU/0yGFJ4rQjz6Ga6dBoKB/jDY5dpPMw6GeOf2k1th8
+        rQtEU5uJjX8evuDg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id CB4C613451;
+        Tue, 21 Mar 2023 12:06:53 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id iDeWMd2dGWQ0JgAAMHmgww
+        (envelope-from <jack@suse.cz>); Tue, 21 Mar 2023 12:06:53 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id 26DF0A071C; Tue, 21 Mar 2023 13:06:53 +0100 (CET)
+Date:   Tue, 21 Mar 2023 13:06:53 +0100
+From:   Jan Kara <jack@suse.cz>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: Fix warnings when freezing filesystem with
+ journaled data
+Message-ID: <20230321120653.j5fpyqk4iat6wrvu@quack3>
+References: <20230308142528.12384-1-jack@suse.cz>
+ <20230319183617.GA896@sol.localdomain>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgDnnbEzZhlk+NQhFw--.4478S9
-X-Coremail-Antispam: 1UD129KBjvdXoWrtF17JFyUWF1fJFWDZF4DCFg_yoWfKrb_Aw
-        17Jrs3GFyfJw1Ska1jgrs8Ar4rtws3Jw4DWa10gryrX3WDXF4jva4DCrn7Ars8u3WUA3W3
-        Ar9rXF17JFW8XjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-        9fnUUIcSsGvfJTRUUUbDkFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
-        6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M28IrcIa0xkI8V
-        A2jI8067AKxVWUAVCq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJ
-        M28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2I
-        x0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK
-        6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4
-        xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8
-        JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20V
-        AGYxC7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAF
-        wI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc4
-        0Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1I6r4UMIIF0xvE2Ix0cI8IcVCY1x0267AK
-        xVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr
-        1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7sRiVbyDUU
-        UUU==
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230319183617.GA896@sol.localdomain>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-For ext4_block_group and ext4_block_group_offset, there are only
-declaration without definition. Just remove them.
+Hi Eric,
 
-Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
----
- fs/ext4/ext4.h | 4 ----
- 1 file changed, 4 deletions(-)
+On Sun 19-03-23 11:36:17, Eric Biggers wrote:
+> On Wed, Mar 08, 2023 at 03:25:28PM +0100, Jan Kara wrote:
+> > Test generic/390 in data=journal mode often triggers a warning that
+> > ext4_do_writepages() tries to start a transaction on frozen filesystem.
+> > This happens because although all dirty data is properly written, jbd2
+> > checkpointing code writes data through submit_bh() and as a result only
+> > buffer dirty bits are cleared but page dirty bits stay set. Later when
+> > the filesystem is frozen, writeback code comes, tries to write
+> > supposedly dirty pages and the warning triggers. Fix the problem by
+> > calling sync_filesystem() once more after flushing the whole journal to
+> > clear stray page dirty bits.
+> > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > ---
+> >  fs/ext4/inode.c | 15 ++++++++++++++-
+> >  fs/ext4/super.c | 11 +++++++++++
+> >  2 files changed, 25 insertions(+), 1 deletion(-)
+> > 
+> >   This patch fixes warnings for generic/390 test. Admittedly it is a bit of a
+> > hack and the right fix is to change jbd2 code to avoid leaving stray page dirty
+> > bits but that is actually surprisingly difficult to do due to locking
+> > constraints without regressing metadata intensive workloads. Applies on top of
+> > my data=journal cleanup series.
+> > 
+> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > index 4a45d320fda8..d86efa3d959d 100644
+> > --- a/fs/ext4/inode.c
+> > +++ b/fs/ext4/inode.c
+> > @@ -2410,6 +2410,7 @@ static int mpage_journal_page_buffers(handle_t *handle,
+> >  static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+> >  {
+> >  	struct address_space *mapping = mpd->inode->i_mapping;
+> > +	struct super_block *sb = mpd->inode->i_sb;
+> >  	struct folio_batch fbatch;
+> >  	unsigned int nr_folios;
+> >  	pgoff_t index = mpd->first_page;
+> > @@ -2427,7 +2428,15 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+> >  	else
+> >  		tag = PAGECACHE_TAG_DIRTY;
+> >  
+> > -	if (ext4_should_journal_data(mpd->inode)) {
+> > +	/*
+> > +	 * Start a transaction for writeback of journalled data. We don't start
+> > +	 * start the transaction if the filesystem is frozen. In that case we
+> > +	 * should not have any dirty data to write anymore but possibly there
+> > +	 * are stray page dirty bits left by the checkpointing code so this
+> > +	 * loop clears them.
+> > +	 */
+> > +	if (ext4_should_journal_data(mpd->inode) &&
+> > +	    sb->s_writers.frozen >= SB_FREEZE_FS) {
+> >  		handle = ext4_journal_start(mpd->inode, EXT4_HT_WRITE_PAGE,
+> >  					    bpp);
+> >  		if (IS_ERR(handle))
+> > @@ -2520,12 +2529,16 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+> >  			 */
+> >  			if (!mpd->can_map) {
+> >  				if (ext4_page_nomap_can_writeout(&folio->page)) {
+> > +					WARN_ON_ONCE(sb->s_writers.frozen ==
+> > +						     SB_FREEZE_COMPLETE);
+> >  					err = mpage_submit_page(mpd, &folio->page);
+> >  					if (err < 0)
+> >  						goto out;
+> >  				}
+> >  				/* Pending dirtying of journalled data? */
+> >  				if (PageChecked(&folio->page)) {
+> > +					WARN_ON_ONCE(sb->s_writers.frozen >=
+> > +						     SB_FREEZE_FS);
+> >  					err = mpage_journal_page_buffers(handle,
+> >  						mpd, &folio->page);
+> >  					if (err < 0)
+> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> > index 88f7b8a88c76..8cdf1a4e0011 100644
+> > --- a/fs/ext4/super.c
+> > +++ b/fs/ext4/super.c
+> > @@ -6259,6 +6259,17 @@ static int ext4_freeze(struct super_block *sb)
+> >  		if (error < 0)
+> >  			goto out;
+> >  
+> > +		/*
+> > +		 * Do another sync. We really should not have any dirty data
+> > +		 * anymore but our checkpointing code does not clear page dirty
+> > +		 * bits due to locking constraints so writeback still can get
+> > +		 * started for inodes with journalled data which triggers
+> > +		 * annoying warnings.
+> > +		 */
+> > +		error = sync_filesystem(sb);
+> > +		if (error < 0)
+> > +			goto out;
+> > +
+> >  		/* Journal blocked and flushed, clear needs_recovery flag. */
+> >  		ext4_clear_feature_journal_needs_recovery(sb);
+> >  		if (ext4_orphan_file_empty(sb))
+> 
+> This patch causes a NULL dereference of 'handle' in mpage_journal_page_buffers()
+> when running the fsverity stress test generic/579 with data journaling enabled.
+> To reproduce:
+> 
+> 	kvm-xfstests -c ext4/data_journal generic/579
+> 
+> First, isn't the condition 'ext4_should_journal_data(mpd->inode) &&
+> sb->s_writers.frozen >= SB_FREEZE_FS' wrong?  Shouldn't it check
+> 'sb->s_writers.frozen < SB_FREEZE_FS' instead?
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9b2cfc32cf78..f25f13a357de 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2697,10 +2697,6 @@ extern void ext4_get_group_no_and_offset(struct super_block *sb,
- extern ext4_group_t ext4_get_group_number(struct super_block *sb,
- 					  ext4_fsblk_t block);
- 
--extern unsigned int ext4_block_group(struct super_block *sb,
--			ext4_fsblk_t blocknr);
--extern ext4_grpblk_t ext4_block_group_offset(struct super_block *sb,
--			ext4_fsblk_t blocknr);
- extern int ext4_bg_has_super(struct super_block *sb, ext4_group_t group);
- extern unsigned long ext4_bg_num_gdb(struct super_block *sb,
- 			ext4_group_t group);
+Indeed, I wonder how this has passed all the other testing I and Ted did :)
+I'll send a fix.
+
+> That fixes the crash by itself.  However, the other reason this happens is that
+> the PG_checked bit is being used by both data=journal (to mark DMA-pinned dirty
+> pages?) and by fsverity (to mark Merkle tree pages that have been verified).
+
+Yup.
+
+> These two uses of PG_checked shouldn't actually collide, since fsverity files
+> are read-only, and FS_IOC_ENABLE_VERITY calls filemap_write_and_wait() before
+> finishing enabling fsverity.  PG_checked isn't used for fsverity until after
+> fsverity has finished being enabled, at which point there should no longer be
+> any dirty pages.  But, they are in fact colliding somehow.  Is it expected that
+> dirty pages are still left after filemap_write_and_wait()?
+
+Sadly filemap_write_and_wait() is not enough to clean pages from a file
+with journalled data. For couple of reasons:
+
+1) Pages can be part of the running transaction so until we commit that
+(which filemap_write_and_wait() does not do, only whole ext4_sync_file()
+does that) they are not really stable.
+
+2) Once the transaction commits, pages get marked as dirty for
+checkpointing code to pick them up.
+
+So to fully clean journaled data pages you need a sequence like:
+
+filemap_write_and_wait() (to add PageChecked pages to the journal)
+ext4_force_commit() (to commit the transaction with the pages)
+filemap_write_and_wait() (to clean pages that need checkpointing)
+
+I know this sucks and there are quite a few places that need special
+handling of journalled data because of this. Ideally we'd hide all these
+details in ext4_writepages() but the hard part is how to do this without
+making performance go completely out of the window. But I think now that
+the journalled data writeout path is simplified, we can handle it
+reasonably.
+
+								Honza
 -- 
-2.30.0
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
