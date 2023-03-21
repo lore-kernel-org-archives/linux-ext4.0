@@ -2,111 +2,82 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 823B0C6FD1D
-	for <linux-ext4@archiver.kernel.org>; Tue, 21 Mar 2023 01:38:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D1104C6FD1D
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Mar 2023 08:09:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229833AbjCUBiW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 20 Mar 2023 21:38:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48040 "EHLO
+        id S230320AbjCUIJd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 21 Mar 2023 04:09:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55516 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229755AbjCUBiV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Mar 2023 21:38:21 -0400
-Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1E0A1BB94;
-        Mon, 20 Mar 2023 18:38:18 -0700 (PDT)
-Received: from kwepemm600013.china.huawei.com (unknown [172.30.72.54])
-        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4PgZ443Zc8z9thY;
-        Tue, 21 Mar 2023 09:37:56 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by kwepemm600013.china.huawei.com
- (7.193.23.68) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.21; Tue, 21 Mar
- 2023 09:38:16 +0800
-From:   Zhihao Cheng <chengzhihao1@huawei.com>
-To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.com>,
-        <tudor.ambarus@linaro.org>
-CC:     <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <chengzhihao1@huawei.com>, <yi.zhang@huawei.com>
-Subject: [PATCH v2] ext4: Fix i_disksize exceeding i_size problem in paritally written case
-Date:   Tue, 21 Mar 2023 09:37:21 +0800
-Message-ID: <20230321013721.89818-1-chengzhihao1@huawei.com>
-X-Mailer: git-send-email 2.31.1
+        with ESMTP id S230298AbjCUIJb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Mar 2023 04:09:31 -0400
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8EB2F1ABC5;
+        Tue, 21 Mar 2023 01:09:28 -0700 (PDT)
+Received: from mail02.huawei.com (unknown [172.30.67.143])
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Pgklm0lw2z4f3vdV;
+        Tue, 21 Mar 2023 16:09:24 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.124.27])
+        by APP4 (Coremail) with SMTP id gCh0CgDnnbEzZhlk+NQhFw--.4478S5;
+        Tue, 21 Mar 2023 16:09:25 +0800 (CST)
+From:   Kemeng Shi <shikemeng@huaweicloud.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc:     ojaswin@linux.ibm.com, shikemeng@huaweicloud.com
+Subject: [PATCH 3/8] ext4: fix wrong unit use in ext4_mb_new_inode_pa
+Date:   Wed, 22 Mar 2023 00:12:15 +0800
+Message-Id: <20230321161220.418652-4-shikemeng@huaweicloud.com>
+X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20230321161220.418652-1-shikemeng@huaweicloud.com>
+References: <20230321161220.418652-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems703-chm.china.huawei.com (10.3.19.180) To
- kwepemm600013.china.huawei.com (7.193.23.68)
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID: gCh0CgDnnbEzZhlk+NQhFw--.4478S5
+X-Coremail-Antispam: 1UD129KBjvdXoW7JrWUKw47uF4kZry7GryUWrg_yoW3Zrc_Ca
+        1DCr4IvFyrtr1I9a1Syay8Ar9YgF1kJr4jqr45try3ZF18ur42kwsFvr45XayxGry7A3sx
+        G3WYgr1FgF1S9jkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUbqAYFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
+        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl82
+        xGYIkIc2x26280x7IE14v26r1rM28IrcIa0xkI8VCY1x0267AKxVW8JVW5JwA2ocxC64kI
+        II0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7
+        xvwVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2
+        z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4
+        xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v2
+        6r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6I
+        AqYI8I648v4I1l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAq
+        x4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r
+        1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF
+        7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxV
+        WUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjTR
+        HMKAUUUUU
+X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Following process makes i_disksize exceed i_size:
+fe_logical and win are both in block unit. Remove wrong convertion for
+win from block unit to cluster unit.
 
-generic_perform_write
- copied = iov_iter_copy_from_user_atomic(len) // copied < len
- ext4_da_write_end
- | ext4_update_i_disksize
- |  new_i_size = pos + copied;
- |  WRITE_ONCE(EXT4_I(inode)->i_disksize, newsize) // update i_disksize
- | generic_write_end
- |  copied = block_write_end(copied, len) // copied = 0
- |   if (unlikely(copied < len))
- |    if (!PageUptodate(page))
- |     copied = 0;
- |  if (pos + copied > inode->i_size) // return false
- if (unlikely(copied == 0))
-  goto again;
- if (unlikely(iov_iter_fault_in_readable(i, bytes))) {
-  status = -EFAULT;
-  break;
- }
-
-We get i_disksize greater than i_size here, which could trigger WARNING
-check 'i_size_read(inode) < EXT4_I(inode)->i_disksize' while doing dio:
-
-ext4_dio_write_iter
- iomap_dio_rw
-  __iomap_dio_rw // return err, length is not aligned to 512
- ext4_handle_inode_extension
-  WARN_ON_ONCE(i_size_read(inode) < EXT4_I(inode)->i_disksize) // Oops
-
- WARNING: CPU: 2 PID: 2609 at fs/ext4/file.c:319
- CPU: 2 PID: 2609 Comm: aa Not tainted 6.3.0-rc2
- RIP: 0010:ext4_file_write_iter+0xbc7
- Call Trace:
-  vfs_write+0x3b1
-  ksys_write+0x77
-  do_syscall_64+0x39
-
-Fix it by updating 'copied' value before updating i_disksize just like
-ext4_write_inline_data_end() does.
-
-Fetch a reproducer in [Link].
-
-Link: https://bugzilla.kernel.org/show_bug.cgi?id=217209
-Fixes: 64769240bd07 ("ext4: Add delayed allocation support in data=writeback mode")
-Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 ---
- v1->v2: Check and update 'copied' value before updating i_disksize rather
-	 than opencoding generic_write_end().
- fs/ext4/inode.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/ext4/mballoc.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index bf0b7dea4900..41ba1c432844 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3148,6 +3148,9 @@ static int ext4_da_write_end(struct file *file,
- 	    ext4_has_inline_data(inode))
- 		return ext4_write_inline_data_end(inode, pos, len, copied, page);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 7f695830621a..86d978e1f7dc 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4640,8 +4640,7 @@ ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
+ 		if (offs && offs < win)
+ 			win = offs;
  
-+	if (unlikely(copied < len) && !PageUptodate(page))
-+		copied = 0;
-+
- 	start = pos & (PAGE_SIZE - 1);
- 	end = start + copied - 1;
- 
+-		ac->ac_b_ex.fe_logical = ac->ac_o_ex.fe_logical -
+-			EXT4_NUM_B2C(sbi, win);
++		ac->ac_b_ex.fe_logical = ac->ac_o_ex.fe_logical - win;
+ 		BUG_ON(ac->ac_o_ex.fe_logical < ac->ac_b_ex.fe_logical);
+ 		BUG_ON(ac->ac_o_ex.fe_len > ac->ac_b_ex.fe_len);
+ 	}
 -- 
-2.31.1
+2.30.0
 
