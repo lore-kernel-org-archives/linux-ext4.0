@@ -2,44 +2,44 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5CE77C6FD1F
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Mar 2023 14:11:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 780B9C6FD1F
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Mar 2023 14:11:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231286AbjCVOLh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 22 Mar 2023 10:11:37 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36892 "EHLO
+        id S231148AbjCVOL4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 22 Mar 2023 10:11:56 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37272 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230525AbjCVOLg (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Mar 2023 10:11:36 -0400
-Received: from mga11.intel.com (mga11.intel.com [192.55.52.93])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0C30B60408;
-        Wed, 22 Mar 2023 07:11:36 -0700 (PDT)
+        with ESMTP id S231334AbjCVOLw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Mar 2023 10:11:52 -0400
+Received: from mga17.intel.com (mga17.intel.com [192.55.52.151])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 664E061538;
+        Wed, 22 Mar 2023 07:11:50 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
   d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1679494296; x=1711030296;
-  h=from:to:cc:subject:date:message-id:mime-version:
-   content-transfer-encoding;
-  bh=R/NM27p9IJi6tkU9vm19fosAfBY50JC5QYvv4nC1jcA=;
-  b=POU+yTTlBSqr7o9NjYicgBJYMt3C/okMo5kemBzAdf8lfYRbm/tQstxU
-   lSot/OI/5KRrXhayFZlROBR7aL7Idjwr1cGPQ6E1/Cmg4n+XUHqDfPMEM
-   6Ehl42TRviadSW/vha2vVjlVGxIeejvtfe2YkMiA8ACz0bArNwqp9l2BJ
-   KM4ETa715kIEnEmMzZt+67HLT9rdpwhMTiofsb2Udj1ZrJCK5LcoB8jmm
-   G6G+a8AvrKZJZoPwmiI7xTu+JE5d2aU5GSimQBHj3Q18bDgl3/2zdea37
-   RrjMGtgnUWwVol6Uo3tNPHGXmTCvV3N/M4zaZ9MVOImtw2wWlH7X8t4eI
-   g==;
-X-IronPort-AV: E=McAfee;i="6600,9927,10657"; a="336725182"
+  t=1679494310; x=1711030310;
+  h=from:to:cc:subject:date:message-id:in-reply-to:
+   references:mime-version:content-transfer-encoding;
+  bh=NtifLXAlEOC7145wqW0H2RVF/LMJYofx4l0+YchUjsw=;
+  b=ZDQGjBZdmgowWchuIny2nhWLOqMzfjcShR2zPaQIagn3RBo3E5BoGnGP
+   BN51OFTYZoDlUI9FEisRQtYCe/xWOVk156zpWE+4GHcjl+ANf2kjonBo4
+   cMI1OrPoDICdBuy/7sPBYM7I+qcgwuEA75OXcpxpMqI/LNqlPajutWkNj
+   XI6F4F81LyyHyqr6PJXBPg09axxp1zBS9VYo2jr2v2/xjgUhJM2rMYCDJ
+   pUyjI6RkFldACgNPeuO8xjy4qU/X6XJ+Ag++HZ9LbbW9XC6R/kj03lQC9
+   aOyifkHLd+6Qi8d8ayQUhKwVbVQRx3NxRX9qZch2rue8LhjCxRFbragP6
+   w==;
+X-IronPort-AV: E=McAfee;i="6600,9927,10657"; a="319613517"
 X-IronPort-AV: E=Sophos;i="5.98,282,1673942400"; 
-   d="scan'208";a="336725182"
-Received: from fmsmga002.fm.intel.com ([10.253.24.26])
-  by fmsmga102.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 22 Mar 2023 07:11:35 -0700
+   d="scan'208";a="319613517"
+Received: from orsmga004.jf.intel.com ([10.7.209.38])
+  by fmsmga107.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 22 Mar 2023 07:11:50 -0700
 X-ExtLoop1: 1
-X-IronPort-AV: E=McAfee;i="6600,9927,10657"; a="792574215"
+X-IronPort-AV: E=McAfee;i="6600,9927,10657"; a="805829250"
 X-IronPort-AV: E=Sophos;i="5.98,282,1673942400"; 
-   d="scan'208";a="792574215"
+   d="scan'208";a="805829250"
 Received: from black.fi.intel.com ([10.237.72.28])
-  by fmsmga002.fm.intel.com with ESMTP; 22 Mar 2023 07:11:33 -0700
+  by orsmga004.jf.intel.com with ESMTP; 22 Mar 2023 07:11:46 -0700
 Received: by black.fi.intel.com (Postfix, from userid 1003)
-        id 6D4D51CC; Wed, 22 Mar 2023 16:12:19 +0200 (EET)
+        id 236531CC; Wed, 22 Mar 2023 16:12:33 +0200 (EET)
 From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 To:     Kees Cook <keescook@chromium.org>,
         Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
@@ -49,35 +49,70 @@ To:     Kees Cook <keescook@chromium.org>,
 Cc:     "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
         Andy Shevchenko <andy@kernel.org>,
         "Rafael J. Wysocki" <rafael@kernel.org>
-Subject: [PATCH v1 0/3] lib/string_helpers et al.: Change return value of strreplace()
-Date:   Wed, 22 Mar 2023 16:12:03 +0200
-Message-Id: <20230322141206.56347-1-andriy.shevchenko@linux.intel.com>
+Subject: [PATCH v1 2/3] lib/string_helpers: Change returned value of the strreplace()
+Date:   Wed, 22 Mar 2023 16:12:05 +0200
+Message-Id: <20230322141206.56347-3-andriy.shevchenko@linux.intel.com>
 X-Mailer: git-send-email 2.40.0.1.gaa8946217a0b
+In-Reply-To: <20230322141206.56347-1-andriy.shevchenko@linux.intel.com>
+References: <20230322141206.56347-1-andriy.shevchenko@linux.intel.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-It's more convenient to have strreplace() to return the original
-pointer. This will help users to make their code better.
+It's more useful to return the original string with strreplace(),
+so it may be used like
 
-The patch 1 kills the only user of the returned value of strreplace(),
-Patch 2 converts the return value of strreplace(). And patch 3 shows
-how it may be useful.That said, the series can be routed via fs tree,
-with or without the last patch.
+	attr->name = strreplace(name, '/', '_');
 
-Andy Shevchenko (3):
-  jbd2: Avoid printing out the boundary
-  lib/string_helpers: Change returned value of the strreplace()
-  kobject: Use return value of strreplace()
+While at it, amend the kernel documentation.
 
- fs/jbd2/journal.c      |  5 ++---
+Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+---
  include/linux/string.h |  2 +-
- lib/kobject.c          |  3 +--
  lib/string_helpers.c   | 10 +++++++---
- 4 files changed, 11 insertions(+), 9 deletions(-)
+ 2 files changed, 8 insertions(+), 4 deletions(-)
 
+diff --git a/include/linux/string.h b/include/linux/string.h
+index a7bff7ed3cb0..cb0c24ce0826 100644
+--- a/include/linux/string.h
++++ b/include/linux/string.h
+@@ -169,7 +169,7 @@ static inline void memcpy_flushcache(void *dst, const void *src, size_t cnt)
+ #endif
+ 
+ void *memchr_inv(const void *s, int c, size_t n);
+-char *strreplace(char *s, char old, char new);
++char *strreplace(char *str, char old, char new);
+ 
+ extern void kfree_const(const void *x);
+ 
+diff --git a/lib/string_helpers.c b/lib/string_helpers.c
+index 230020a2e076..ab7b1577cbcf 100644
+--- a/lib/string_helpers.c
++++ b/lib/string_helpers.c
+@@ -979,14 +979,18 @@ EXPORT_SYMBOL(__sysfs_match_string);
+ 
+ /**
+  * strreplace - Replace all occurrences of character in string.
+- * @s: The string to operate on.
++ * @str: The string to operate on.
+  * @old: The character being replaced.
+  * @new: The character @old is replaced with.
+  *
+- * Returns pointer to the nul byte at the end of @s.
++ * Replaces the each @old character with a @new one in the given string @str.
++ *
++ * Return: pointer to the original string @str.
+  */
+-char *strreplace(char *s, char old, char new)
++char *strreplace(char *str, char old, char new)
+ {
++	char *s = str;
++
+ 	for (; *s; ++s)
+ 		if (*s == old)
+ 			*s = new;
 -- 
 2.40.0.1.gaa8946217a0b
 
