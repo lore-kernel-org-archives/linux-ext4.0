@@ -2,90 +2,72 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0573AC6FD1F
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Mar 2023 03:30:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 64B18C74A5B
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Mar 2023 03:30:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229904AbjCVDay (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 21 Mar 2023 23:30:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38786 "EHLO
+        id S229996AbjCVDa4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 21 Mar 2023 23:30:56 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38836 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229747AbjCVDaw (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Mar 2023 23:30:52 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B4177BDEB
-        for <linux-ext4@vger.kernel.org>; Tue, 21 Mar 2023 20:30:51 -0700 (PDT)
+        with ESMTP id S229876AbjCVDay (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Mar 2023 23:30:54 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 332E91ABEB
+        for <linux-ext4@vger.kernel.org>; Tue, 21 Mar 2023 20:30:53 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 4747D61E74
+        by ams.source.kernel.org (Postfix) with ESMTPS id B4E02B819BC
         for <linux-ext4@vger.kernel.org>; Wed, 22 Mar 2023 03:30:51 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 89899C433D2
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 57C0CC433EF
         for <linux-ext4@vger.kernel.org>; Wed, 22 Mar 2023 03:30:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=k20201202; t=1679455850;
-        bh=Kx94LyeQiRoEMTNKLWu/szK/MzaYm0uwTuF/hkCJbUo=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=qnL9Aoih+vdqiwfztlgDZXSRTFD8GfBTyyo+mjMbHy2YPoOrJ2v0BI4WRfTTndT85
-         UyBtZTi8CKNb1fXzJ0s6hmkmqaxmWa/OMBNloHTF6NXUEpuUJCKLVqkSijtZ5KJVjS
-         bqW9H6f+Aj5s0uoRnxyTu9RAjElG5/q5xwBd3UTQwEZK5HAg3jzyLtexQdd3auouTJ
-         bE2MhYDpn69Ws/mEvYs6TVHhqJZlN4fCyfqNusUsWPj3VhmOrC5y+0j0OWT9BB/6kL
-         DIwPBMkN6C4t9Q6gs5BbjdrLx7tbdm/I37DEUuz8+i7x12h46+Ycjtz5KzP5Tl9q0V
-         2fm5+/ztyAGoA==
+        bh=h5jtfd7slZO0OyHC9FvVshZ56LsV0R3jGENFV3aJ6uM=;
+        h=From:To:Subject:Date:From;
+        b=Ei80ltr6i0Lg9AaS0q1VGvt6XYsl4nmNAzWRgE16Qr1GdZh+eDM4ESpsDcq/XOUsG
+         3Un3w2QrUpThV6cKGTcCVx388959MBG0f75gmemlNb0bxt1jgz1iXd4WWFDGK2oxA+
+         sKxrz9I0DJAUfkoLu6RklqhB4B3C6XETuar1tXu6Q3TXkbj+fcd4aSqOlYbbx9EgKU
+         ItBq1npAtD5Uop4pzM5HrsdlgXn6fl8/SYupMtWBpcwNavxQfSNJt+Tk7J1aWef9+t
+         FRN86ZC07NFvXUWLduhHkoefkmPKISLKyDzbdJZ00+BY53rg9fVToxfvYM4azgyD2N
+         nwK1NtwrBi5dA==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 1/3] e2fsck: avoid -Wtautological-constant-out-of-range-compare warnings
-Date:   Tue, 21 Mar 2023 20:29:43 -0700
-Message-Id: <20230322032945.31779-2-ebiggers@kernel.org>
+Subject: [PATCH 0/3] e2fsprogs: test cross-compiling for Android
+Date:   Tue, 21 Mar 2023 20:29:42 -0700
+Message-Id: <20230322032945.31779-1-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.40.0
-In-Reply-To: <20230322032945.31779-1-ebiggers@kernel.org>
-References: <20230322032945.31779-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+This series adds jobs to .github/workflows/ci.yml that cross-compile
+e2fsprogs for Android.  To make that possible, it also fixes a couple
+warnings and an error that show up when building e2fsprogs for Android
+using the autotools-based build system.
 
-Fix two compiler warnings on 32-bit platforms that have mallinfo() but
-not mallinfo2().  These showed up when building e2fsprogs for armv7a or
-i686 Android using the Android NDK, targeting Android API level 32 or
-lower and using the autotools-based build system.
+This applies to the latest 'maint' branch.  I've tested that the updated
+GitHub Actions workflow passes
+(https://github.com/ebiggers/e2fsprogs/actions/runs/4486115058).
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- e2fsck/iscan.c | 3 ++-
- e2fsck/util.c  | 3 ++-
- 2 files changed, 4 insertions(+), 2 deletions(-)
+Eric Biggers (3):
+  e2fsck: avoid -Wtautological-constant-out-of-range-compare warnings
+  e2freefrag: don't use linux/fsmap.h when fsmap_sizeof() is missing
+  ci.yml: test cross-compiling for Android
 
-diff --git a/e2fsck/iscan.c b/e2fsck/iscan.c
-index 33c6a4cdc..1253f52ff 100644
---- a/e2fsck/iscan.c
-+++ b/e2fsck/iscan.c
-@@ -120,7 +120,8 @@ void print_resource_track(const char *desc,
- 	} else
- #elif defined HAVE_MALLINFO
- 	/* don't use mallinfo() if over 2GB used, since it returns "int" */
--	if ((char *)sbrk(0) - (char *)track->brk_start < 2LL << 30) {
-+	if ((unsigned long)((char *)sbrk(0) - (char *)track->brk_start) <
-+	    2UL << 30) {
- 		struct mallinfo	malloc_info = mallinfo();
- 
- 		printf("Memory used: %lluk/%lluk (%lluk/%lluk), ",
-diff --git a/e2fsck/util.c b/e2fsck/util.c
-index 42740d9ef..0fe436031 100644
---- a/e2fsck/util.c
-+++ b/e2fsck/util.c
-@@ -441,7 +441,8 @@ void print_resource_track(e2fsck_t ctx, const char *desc,
- 	} else
- #elif defined HAVE_MALLINFO
- 	/* don't use mallinfo() if over 2GB used, since it returns "int" */
--	if ((char *)sbrk(0) - (char *)track->brk_start < 2LL << 30) {
-+	if ((unsigned long)((char *)sbrk(0) - (char *)track->brk_start) <
-+	    2UL << 30) {
- 		struct mallinfo	malloc_info = mallinfo();
- 
- 		log_out(ctx, _("Memory used: %lluk/%lluk (%lluk/%lluk), "),
+ .github/workflows/ci.yml | 33 +++++++++++++++
+ configure                | 91 ++++++++++++++++++++++++++--------------
+ configure.ac             |  6 +++
+ e2fsck/iscan.c           |  3 +-
+ e2fsck/util.c            |  3 +-
+ lib/config.h.in          |  3 ++
+ misc/e2freefrag.c        |  2 +-
+ 7 files changed, 107 insertions(+), 34 deletions(-)
+
+
+base-commit: cbc6a5ae4f350bfb0dd0daa39544615a5d0a956a
 -- 
 2.40.0
 
