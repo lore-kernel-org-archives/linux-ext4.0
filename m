@@ -2,33 +2,33 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C559C6FD1C
-	for <linux-ext4@archiver.kernel.org>; Thu, 23 Mar 2023 14:08:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C9C33C6FD1D
+	for <linux-ext4@archiver.kernel.org>; Thu, 23 Mar 2023 14:08:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231470AbjCWOIa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 23 Mar 2023 10:08:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38686 "EHLO
+        id S231416AbjCWOId (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 23 Mar 2023 10:08:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38794 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231375AbjCWOIZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Mar 2023 10:08:25 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 936772B60C
-        for <linux-ext4@vger.kernel.org>; Thu, 23 Mar 2023 07:07:06 -0700 (PDT)
+        with ESMTP id S231448AbjCWOI3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Mar 2023 10:08:29 -0400
+Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 07B4F1B33C
+        for <linux-ext4@vger.kernel.org>; Thu, 23 Mar 2023 07:07:09 -0700 (PDT)
 Received: from canpemm100004.china.huawei.com (unknown [172.30.72.56])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4Pj6WQ4F31zSnxK;
-        Thu, 23 Mar 2023 22:03:30 +0800 (CST)
+        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4Pj6Wq0hwRz17Nb5;
+        Thu, 23 Mar 2023 22:03:51 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm100004.china.huawei.com
  (7.192.105.92) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.21; Thu, 23 Mar
- 2023 22:06:57 +0800
+ 2023 22:06:58 +0800
 From:   Jason Yan <yanaijie@huawei.com>
 To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <ritesh.list@gmail.com>, <lczerner@redhat.com>,
         <linux-ext4@vger.kernel.org>
 CC:     Jason Yan <yanaijie@huawei.com>
-Subject: [PATCH 4/8] ext4: factor out ext4_flex_groups_free()
-Date:   Thu, 23 Mar 2023 22:05:13 +0800
-Message-ID: <20230323140517.1070239-5-yanaijie@huawei.com>
+Subject: [PATCH 7/8] ext4: factor out ext4_block_group_meta_init()
+Date:   Thu, 23 Mar 2023 22:05:16 +0800
+Message-ID: <20230323140517.1070239-8-yanaijie@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20230323140517.1070239-1-yanaijie@huawei.com>
 References: <20230323140517.1070239-1-yanaijie@huawei.com>
@@ -43,85 +43,129 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Factor out ext4_flex_groups_free() and it can be used both in
-__ext4_fill_super() and ext4_put_super().
+Factor out ext4_block_group_meta_init(). No functional change.
 
 Signed-off-by: Jason Yan <yanaijie@huawei.com>
 ---
- fs/ext4/super.c | 35 +++++++++++++++++------------------
- 1 file changed, 17 insertions(+), 18 deletions(-)
+ fs/ext4/super.c | 90 ++++++++++++++++++++++++++++---------------------
+ 1 file changed, 51 insertions(+), 39 deletions(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 0b354a6e4f41..ed7bd3bb45f2 100644
+index 6c9ffbe5095f..282f8e853893 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -1239,11 +1239,25 @@ static void ext4_group_desc_free(struct ext4_sb_info *sbi)
- 	rcu_read_unlock();
+@@ -5113,6 +5113,55 @@ static void ext4_hash_info_init(struct super_block *sb)
+ 	}
  }
  
-+static void ext4_flex_groups_free(struct ext4_sb_info *sbi)
++static int ext4_block_group_meta_init(struct super_block *sb, int silent)
 +{
-+	struct flex_groups **flex_groups;
-+	int i;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_super_block *es = sbi->s_es;
++	int has_huge_files;
 +
-+	rcu_read_lock();
-+	flex_groups = rcu_dereference(sbi->s_flex_groups);
-+	if (flex_groups) {
-+		for (i = 0; i < sbi->s_flex_groups_allocated; i++)
-+			kvfree(flex_groups[i]);
-+		kvfree(flex_groups);
++	has_huge_files = ext4_has_feature_huge_file(sb);
++	sbi->s_bitmap_maxbytes = ext4_max_bitmap_size(sb->s_blocksize_bits,
++						      has_huge_files);
++	sb->s_maxbytes = ext4_max_size(sb->s_blocksize_bits, has_huge_files);
++
++	sbi->s_desc_size = le16_to_cpu(es->s_desc_size);
++	if (ext4_has_feature_64bit(sb)) {
++		if (sbi->s_desc_size < EXT4_MIN_DESC_SIZE_64BIT ||
++		    sbi->s_desc_size > EXT4_MAX_DESC_SIZE ||
++		    !is_power_of_2(sbi->s_desc_size)) {
++			ext4_msg(sb, KERN_ERR,
++			       "unsupported descriptor size %lu",
++			       sbi->s_desc_size);
++			return -EINVAL;
++		}
++	} else
++		sbi->s_desc_size = EXT4_MIN_DESC_SIZE;
++
++	sbi->s_blocks_per_group = le32_to_cpu(es->s_blocks_per_group);
++	sbi->s_inodes_per_group = le32_to_cpu(es->s_inodes_per_group);
++
++	sbi->s_inodes_per_block = sb->s_blocksize / EXT4_INODE_SIZE(sb);
++	if (sbi->s_inodes_per_block == 0 || sbi->s_blocks_per_group == 0) {
++		if (!silent)
++			ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
++		return -EINVAL;
 +	}
-+	rcu_read_unlock();
++	if (sbi->s_inodes_per_group < sbi->s_inodes_per_block ||
++	    sbi->s_inodes_per_group > sb->s_blocksize * 8) {
++		ext4_msg(sb, KERN_ERR, "invalid inodes per group: %lu\n",
++			 sbi->s_inodes_per_group);
++		return -EINVAL;
++	}
++	sbi->s_itb_per_group = sbi->s_inodes_per_group /
++					sbi->s_inodes_per_block;
++	sbi->s_desc_per_block = sb->s_blocksize / EXT4_DESC_SIZE(sb);
++	sbi->s_mount_state = le16_to_cpu(es->s_state) & ~EXT4_FC_REPLAY;
++	sbi->s_addr_per_block_bits = ilog2(EXT4_ADDR_PER_BLOCK(sb));
++	sbi->s_desc_per_block_bits = ilog2(EXT4_DESC_PER_BLOCK(sb));
++
++	return 0;
 +}
 +
- static void ext4_put_super(struct super_block *sb)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_super_block *es = sbi->s_es;
--	struct flex_groups **flex_groups;
- 	int aborted = 0;
- 	int i, err;
- 
-@@ -1294,14 +1308,7 @@ static void ext4_put_super(struct super_block *sb)
- 		ext4_commit_super(sb);
- 
- 	ext4_group_desc_free(sbi);
--	rcu_read_lock();
--	flex_groups = rcu_dereference(sbi->s_flex_groups);
--	if (flex_groups) {
--		for (i = 0; i < sbi->s_flex_groups_allocated; i++)
--			kvfree(flex_groups[i]);
--		kvfree(flex_groups);
--	}
--	rcu_read_unlock();
-+	ext4_flex_groups_free(sbi);
- 	ext4_percpu_param_destroy(sbi);
- #ifdef CONFIG_QUOTA
- 	for (i = 0; i < EXT4_MAXQUOTAS; i++)
-@@ -5091,7 +5098,6 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
  {
  	struct ext4_super_block *es = NULL;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	struct flex_groups **flex_groups;
- 	ext4_fsblk_t logical_sb_block;
+@@ -5121,7 +5170,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
  	struct inode *root;
  	int ret = -ENOMEM;
-@@ -5566,14 +5572,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 	ext4_unregister_li_request(sb);
- failed_mount6:
- 	ext4_mb_release(sb);
--	rcu_read_lock();
--	flex_groups = rcu_dereference(sbi->s_flex_groups);
--	if (flex_groups) {
--		for (i = 0; i < sbi->s_flex_groups_allocated; i++)
--			kvfree(flex_groups[i]);
--		kvfree(flex_groups);
+ 	unsigned int i;
+-	int needs_recovery, has_huge_files;
++	int needs_recovery;
+ 	int err = 0;
+ 	ext4_group_t first_not_zeroed;
+ 	struct ext4_fs_context *ctx = fc->fs_private;
+@@ -5219,45 +5268,8 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 		goto failed_mount;
+ 	}
+ 
+-	has_huge_files = ext4_has_feature_huge_file(sb);
+-	sbi->s_bitmap_maxbytes = ext4_max_bitmap_size(sb->s_blocksize_bits,
+-						      has_huge_files);
+-	sb->s_maxbytes = ext4_max_size(sb->s_blocksize_bits, has_huge_files);
+-
+-	sbi->s_desc_size = le16_to_cpu(es->s_desc_size);
+-	if (ext4_has_feature_64bit(sb)) {
+-		if (sbi->s_desc_size < EXT4_MIN_DESC_SIZE_64BIT ||
+-		    sbi->s_desc_size > EXT4_MAX_DESC_SIZE ||
+-		    !is_power_of_2(sbi->s_desc_size)) {
+-			ext4_msg(sb, KERN_ERR,
+-			       "unsupported descriptor size %lu",
+-			       sbi->s_desc_size);
+-			goto failed_mount;
+-		}
+-	} else
+-		sbi->s_desc_size = EXT4_MIN_DESC_SIZE;
+-
+-	sbi->s_blocks_per_group = le32_to_cpu(es->s_blocks_per_group);
+-	sbi->s_inodes_per_group = le32_to_cpu(es->s_inodes_per_group);
+-
+-	sbi->s_inodes_per_block = sb->s_blocksize / EXT4_INODE_SIZE(sb);
+-	if (sbi->s_inodes_per_block == 0 || sbi->s_blocks_per_group == 0) {
+-		if (!silent)
+-			ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
++	if (ext4_block_group_meta_init(sb, silent))
+ 		goto failed_mount;
 -	}
--	rcu_read_unlock();
-+	ext4_flex_groups_free(sbi);
- 	ext4_percpu_param_destroy(sbi);
- failed_mount5:
- 	ext4_ext_release(sb);
+-	if (sbi->s_inodes_per_group < sbi->s_inodes_per_block ||
+-	    sbi->s_inodes_per_group > sb->s_blocksize * 8) {
+-		ext4_msg(sb, KERN_ERR, "invalid inodes per group: %lu\n",
+-			 sbi->s_inodes_per_group);
+-		goto failed_mount;
+-	}
+-	sbi->s_itb_per_group = sbi->s_inodes_per_group /
+-					sbi->s_inodes_per_block;
+-	sbi->s_desc_per_block = sb->s_blocksize / EXT4_DESC_SIZE(sb);
+-	sbi->s_mount_state = le16_to_cpu(es->s_state) & ~EXT4_FC_REPLAY;
+-	sbi->s_addr_per_block_bits = ilog2(EXT4_ADDR_PER_BLOCK(sb));
+-	sbi->s_desc_per_block_bits = ilog2(EXT4_DESC_PER_BLOCK(sb));
+ 
+ 	ext4_hash_info_init(sb);
+ 
 -- 
 2.31.1
 
