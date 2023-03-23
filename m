@@ -2,68 +2,61 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0FD7EC6FD1D
-	for <linux-ext4@archiver.kernel.org>; Thu, 23 Mar 2023 14:19:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B650EC6FD1C
+	for <linux-ext4@archiver.kernel.org>; Thu, 23 Mar 2023 14:21:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231667AbjCWOTq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 23 Mar 2023 10:19:46 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50528 "EHLO
+        id S229976AbjCWOVr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 23 Mar 2023 10:21:47 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51366 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231663AbjCWOTP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Mar 2023 10:19:15 -0400
+        with ESMTP id S230455AbjCWOVb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Mar 2023 10:21:31 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A3D5135EE7
-        for <linux-ext4@vger.kernel.org>; Thu, 23 Mar 2023 07:19:09 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 98D855B9D
+        for <linux-ext4@vger.kernel.org>; Thu, 23 Mar 2023 07:21:30 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 32NEInaa001556
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 32NELHju003275
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 23 Mar 2023 10:18:50 -0400
+        Thu, 23 Mar 2023 10:21:18 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1679581131; bh=cGD8jvsfa9IIYRW5RRrX3cUET8CNS99iIvfOWiCAkM8=;
+        t=1679581278; bh=Lie5CtaiQbNIDt1S3TRfnx3qWKLuVWEezgIsumJ4veo=;
         h=Date:From:To:Cc:Subject:References:In-Reply-To;
-        b=a8gn2XBSn61rTvA9THZMLq1sHhazldZ6opzjvVDg7Pr1ea4gSPtgwMQxuAplyBxJ/
-         SH8HJFsUOGpi/y/JZcBUKZj6WOpOvHagaQQyMgzy7cuDCuEfXKSVAWhKIfFhji6Uvg
-         h1YnLBt5rqGsYdSVM3uxzZ+b/cvgVNSFB0P7m/epKz1tK/edoAZQey7wZcl/1FzdiD
-         v9JvxxmxULL2NIthhGI9ZVACQLVtz2N7/Co9GgWLt0105/CJz7K7UBScaT+E3gE43N
-         1lONi5UFR9RdwM2+zkGm06kA+P9iVJ5rW392yI877lUhWrY/zHdiKZv43CDVqHlcto
-         ijOvmkONLn+1w==
+        b=Yu8y5BmEZQ6dKOkADZsggQzwLw+MvxjSIrkTK1GYoyYEvz9dCjZRcJiBA75EDZ9Bl
+         vTsOqm36128cMMIgcRal42BcNZ0/SoC/f3GytJ/pox4lATwKRuTJf9CfD/Y5FntqlU
+         OFSyteMeXLTef6RWl1LV7l5kMGcBPCgd0p7KT4BEE6X5lQO30f68mqWb3xrSRWHc54
+         /+tOuJ46xr5aAbcTFSoCC7oNv7Trnj58ORhGK6wIGRLsKr+f086XlSQ/JQLZP/Bj0N
+         P+nE7b0BwVXQbB3F5OEjp/tid8WKQ2KSb8j2ddqFNfFdJbv4NzQ2dbrL7xtr3SbJGI
+         SNLF5M9W2nUzw==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 424E815C4279; Thu, 23 Mar 2023 10:18:49 -0400 (EDT)
-Date:   Thu, 23 Mar 2023 10:18:49 -0400
+        id 1689E15C4279; Thu, 23 Mar 2023 10:21:17 -0400 (EDT)
+Date:   Thu, 23 Mar 2023 10:21:17 -0400
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Kemeng Shi <shikemeng@huaweicloud.com>
-Cc:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, error27@gmail.com, jack@suse.cz
-Subject: Re: [PATCH] ext4: avoid to access uninitialized block_cluster
-Message-ID: <20230323141849.GA136146@mit.edu>
-References: <20230320212106.4164212-1-shikemeng@huaweicloud.com>
+To:     Jan Kara <jack@suse.cz>
+Cc:     Eric Biggers <ebiggers@kernel.org>, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: Fix warnings when freezing filesystem with
+ journaled data
+Message-ID: <20230323142117.GB136146@mit.edu>
+References: <20230308142528.12384-1-jack@suse.cz>
+ <20230319183617.GA896@sol.localdomain>
+ <20230321120653.j5fpyqk4iat6wrvu@quack3>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20230320212106.4164212-1-shikemeng@huaweicloud.com>
+In-Reply-To: <20230321120653.j5fpyqk4iat6wrvu@quack3>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Mar 21, 2023 at 05:21:06AM +0800, Kemeng Shi wrote:
-> If inode bitmap block and block bitmap block are in different group,
-> there is a risk to access uninitialized block_cluster in
-> ext4_num_overhead_clusters. Initialize block_cluster to -1 to fix this.
-> 
-> Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-> Reported-by: kernel test robot <lkp@intel.com>
-> Reported-by: Dan Carpenter <error27@gmail.com>
-> Link: https://lore.kernel.org/r/202303171446.eLEhZzAu-lkp@intel.com/
-> Fixes: e3c70113e2cb ("ext4: improve inode table blocks counting in ext4_num_overhead_clusters")
+Jan, have you had a chance to look into finding a fixup to the problem
+that Eric identified?  I'm not sure how I had missed this in my
+testing as well.  :-/
 
-Thanks for the fix-up and to Dan and the zero-day test bot for noting
-the problem.  Since I've needed to rebase the ext4 dev tree to pick up
-an urgent fixup as well as deal with some other problematic commits,
-I've merged this fix into the base commit "ext4: improve inode table
-blocks counting in ext4_num_overhead_clusters".
+If fixing this is going to take a while, I can drop this patch for
+now, especially since you've pointed out that the warning is a false
+positive.
 
-Cheers,
+Thanks,
 
 					- Ted
