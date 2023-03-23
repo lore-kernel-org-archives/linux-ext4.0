@@ -2,102 +2,181 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 29679C77B60
-	for <linux-ext4@archiver.kernel.org>; Thu, 23 Mar 2023 12:36:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C9A22C76195
+	for <linux-ext4@archiver.kernel.org>; Thu, 23 Mar 2023 14:08:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231823AbjCWMgr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 23 Mar 2023 08:36:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38324 "EHLO
+        id S231418AbjCWOIZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 23 Mar 2023 10:08:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38598 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231848AbjCWMgm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Mar 2023 08:36:42 -0400
-Received: from mga09.intel.com (mga09.intel.com [134.134.136.24])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A33071CF41;
-        Thu, 23 Mar 2023 05:36:38 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1679574998; x=1711110998;
-  h=from:to:cc:subject:date:message-id:in-reply-to:
-   references:mime-version:content-transfer-encoding;
-  bh=OAAjRWa/GMe3Eyh4EzhGnD6aqq4E5v6Kahs4zyE3gnQ=;
-  b=JlFNifkK2vnleKWitd8wXZANVEYiicxQLwnQXd87xpz+53z7ivSXme5e
-   LFqVkMfbRvJP46qEMHryBS4MDn3vyHQ+D1UxsHJbeOuoWsMY98G84facW
-   ouoTF3riOFnLy1aoNup3eimJ1HjUhqhC4DWNtKLGXvj+TW12ykCmx2Osi
-   AYcn1BTuhfIMtuVkSEPkuaB3T/QXZ6YEetm/zC/ERsg6Jk4wrj1hV2qsJ
-   r64rGSUDMpLDsJe/jq5xyPWPfuodcVCnqk/z4PEIUMq14kfIz/uX89CpO
-   8NmlNF78jg8jhnqn2Q6VuREvkwyJwWI7ERw0rqVDLQyjlPdhVa1S2k6kO
-   g==;
-X-IronPort-AV: E=McAfee;i="6600,9927,10657"; a="341011540"
-X-IronPort-AV: E=Sophos;i="5.98,283,1673942400"; 
-   d="scan'208";a="341011540"
-Received: from orsmga005.jf.intel.com ([10.7.209.41])
-  by orsmga102.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 23 Mar 2023 05:36:23 -0700
-X-ExtLoop1: 1
-X-IronPort-AV: E=McAfee;i="6600,9927,10657"; a="856466578"
-X-IronPort-AV: E=Sophos;i="5.98,283,1673942400"; 
-   d="scan'208";a="856466578"
-Received: from black.fi.intel.com ([10.237.72.28])
-  by orsmga005.jf.intel.com with ESMTP; 23 Mar 2023 05:36:20 -0700
-Received: by black.fi.intel.com (Postfix, from userid 1003)
-        id 237F794; Thu, 23 Mar 2023 14:37:07 +0200 (EET)
-From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-To:     Kees Cook <keescook@chromium.org>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
-        Cezary Rojewski <cezary.rojewski@intel.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-        Andy Shevchenko <andy@kernel.org>,
-        "Rafael J. Wysocki" <rafael@kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH v2 1/3] jbd2: Avoid printing outside the boundary of the buffer
-Date:   Thu, 23 Mar 2023 14:37:02 +0200
-Message-Id: <20230323123704.37983-2-andriy.shevchenko@linux.intel.com>
-X-Mailer: git-send-email 2.40.0.1.gaa8946217a0b
-In-Reply-To: <20230323123704.37983-1-andriy.shevchenko@linux.intel.com>
-References: <20230323123704.37983-1-andriy.shevchenko@linux.intel.com>
+        with ESMTP id S231357AbjCWOIU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Mar 2023 10:08:20 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 777C52B297
+        for <linux-ext4@vger.kernel.org>; Thu, 23 Mar 2023 07:07:02 -0700 (PDT)
+Received: from canpemm100004.china.huawei.com (unknown [172.30.72.53])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4Pj6ZB29vfzrTCp;
+        Thu, 23 Mar 2023 22:05:54 +0800 (CST)
+Received: from huawei.com (10.175.127.227) by canpemm100004.china.huawei.com
+ (7.192.105.92) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.21; Thu, 23 Mar
+ 2023 22:06:56 +0800
+From:   Jason Yan <yanaijie@huawei.com>
+To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
+        <ritesh.list@gmail.com>, <lczerner@redhat.com>,
+        <linux-ext4@vger.kernel.org>
+CC:     Jason Yan <yanaijie@huawei.com>
+Subject: [PATCH 2/8] ext4: factor out ext4_percpu_param_init() and ext4_percpu_param_destroy()
+Date:   Thu, 23 Mar 2023 22:05:11 +0800
+Message-ID: <20230323140517.1070239-3-yanaijie@huawei.com>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20230323140517.1070239-1-yanaijie@huawei.com>
+References: <20230323140517.1070239-1-yanaijie@huawei.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.127.227]
+X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
+ canpemm100004.china.huawei.com (7.192.105.92)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Theoretically possible that "%pg" will take all room for the j_devname
-and hence the "-%lu" will go outside the boundary due to unconditional
-sprintf() in use. To make this code more robust, replace two sequential
-s*printf():s by a single call and then replace forbidden character.
-It's possible to do this way, because '/' won't ever be in the result
-of "-%lu".
+Factor out ext4_percpu_param_init() and ext4_percpu_param_destroy(). And
+also use ext4_percpu_param_destroy() in ext4_put_super() to avoid
+duplicated code. No functional change.
 
-Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Jason Yan <yanaijie@huawei.com>
 ---
- fs/jbd2/journal.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ fs/ext4/super.c | 85 ++++++++++++++++++++++++++-----------------------
+ 1 file changed, 46 insertions(+), 39 deletions(-)
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 8ae419152ff6..6e17f8f94dfd 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1491,7 +1491,6 @@ journal_t *jbd2_journal_init_inode(struct inode *inode)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index ec71b5fb1dca..e346b1f908ed 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1183,6 +1183,49 @@ static inline void ext4_quota_off_umount(struct super_block *sb)
+ }
+ #endif
+ 
++static int ext4_percpu_param_init(struct ext4_sb_info *sbi)
++{
++	ext4_fsblk_t block;
++	int err;
++
++	block = ext4_count_free_clusters(sbi->s_sb);
++	ext4_free_blocks_count_set(sbi->s_es, EXT4_C2B(sbi, block));
++	err = percpu_counter_init(&sbi->s_freeclusters_counter, block,
++				  GFP_KERNEL);
++	if (!err) {
++		unsigned long freei = ext4_count_free_inodes(sbi->s_sb);
++		sbi->s_es->s_free_inodes_count = cpu_to_le32(freei);
++		err = percpu_counter_init(&sbi->s_freeinodes_counter, freei,
++					  GFP_KERNEL);
++	}
++	if (!err)
++		err = percpu_counter_init(&sbi->s_dirs_counter,
++					  ext4_count_dirs(sbi->s_sb), GFP_KERNEL);
++	if (!err)
++		err = percpu_counter_init(&sbi->s_dirtyclusters_counter, 0,
++					  GFP_KERNEL);
++	if (!err)
++		err = percpu_counter_init(&sbi->s_sra_exceeded_retry_limit, 0,
++					  GFP_KERNEL);
++	if (!err)
++		err = percpu_init_rwsem(&sbi->s_writepages_rwsem);
++
++	if (err)
++		ext4_msg(sbi->s_sb, KERN_ERR, "insufficient memory");
++
++	return err;
++}
++
++static void ext4_percpu_param_destroy(struct ext4_sb_info *sbi)
++{
++	percpu_counter_destroy(&sbi->s_freeclusters_counter);
++	percpu_counter_destroy(&sbi->s_freeinodes_counter);
++	percpu_counter_destroy(&sbi->s_dirs_counter);
++	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
++	percpu_counter_destroy(&sbi->s_sra_exceeded_retry_limit);
++	percpu_free_rwsem(&sbi->s_writepages_rwsem);
++}
++
+ static void ext4_put_super(struct super_block *sb)
  {
- 	journal_t *journal;
- 	sector_t blocknr;
--	char *p;
- 	int err = 0;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+@@ -1250,12 +1293,7 @@ static void ext4_put_super(struct super_block *sb)
+ 		kvfree(flex_groups);
+ 	}
+ 	rcu_read_unlock();
+-	percpu_counter_destroy(&sbi->s_freeclusters_counter);
+-	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+-	percpu_counter_destroy(&sbi->s_dirs_counter);
+-	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
+-	percpu_counter_destroy(&sbi->s_sra_exceeded_retry_limit);
+-	percpu_free_rwsem(&sbi->s_writepages_rwsem);
++	ext4_percpu_param_destroy(sbi);
+ #ifdef CONFIG_QUOTA
+ 	for (i = 0; i < EXT4_MAXQUOTAS; i++)
+ 		kfree(get_qf_name(sb, sbi, i));
+@@ -5058,7 +5096,6 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 	struct ext4_super_block *es = NULL;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct flex_groups **flex_groups;
+-	ext4_fsblk_t block;
+ 	ext4_fsblk_t logical_sb_block;
+ 	struct inode *root;
+ 	int ret = -ENOMEM;
+@@ -5450,33 +5487,8 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 		sbi->s_journal->j_commit_callback =
+ 			ext4_journal_commit_callback;
  
- 	blocknr = 0;
-@@ -1515,9 +1514,8 @@ journal_t *jbd2_journal_init_inode(struct inode *inode)
+-	block = ext4_count_free_clusters(sb);
+-	ext4_free_blocks_count_set(sbi->s_es,
+-				   EXT4_C2B(sbi, block));
+-	err = percpu_counter_init(&sbi->s_freeclusters_counter, block,
+-				  GFP_KERNEL);
+-	if (!err) {
+-		unsigned long freei = ext4_count_free_inodes(sb);
+-		sbi->s_es->s_free_inodes_count = cpu_to_le32(freei);
+-		err = percpu_counter_init(&sbi->s_freeinodes_counter, freei,
+-					  GFP_KERNEL);
+-	}
+-	if (!err)
+-		err = percpu_counter_init(&sbi->s_dirs_counter,
+-					  ext4_count_dirs(sb), GFP_KERNEL);
+-	if (!err)
+-		err = percpu_counter_init(&sbi->s_dirtyclusters_counter, 0,
+-					  GFP_KERNEL);
+-	if (!err)
+-		err = percpu_counter_init(&sbi->s_sra_exceeded_retry_limit, 0,
+-					  GFP_KERNEL);
+-	if (!err)
+-		err = percpu_init_rwsem(&sbi->s_writepages_rwsem);
+-
+-	if (err) {
+-		ext4_msg(sb, KERN_ERR, "insufficient memory");
++	if (ext4_percpu_param_init(sbi))
+ 		goto failed_mount6;
+-	}
  
- 	journal->j_inode = inode;
- 	snprintf(journal->j_devname, sizeof(journal->j_devname),
--		 "%pg", journal->j_dev);
--	p = strreplace(journal->j_devname, '/', '!');
--	sprintf(p, "-%lu", journal->j_inode->i_ino);
-+		 "%pg-%lu", journal->j_dev, journal->j_inode->i_ino);
-+	strreplace(journal->j_devname, '/', '!');
- 	jbd2_stats_proc_init(journal);
- 
- 	return journal;
+ 	if (ext4_has_feature_flex_bg(sb))
+ 		if (!ext4_fill_flex_info(sb)) {
+@@ -5566,12 +5578,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 		kvfree(flex_groups);
+ 	}
+ 	rcu_read_unlock();
+-	percpu_counter_destroy(&sbi->s_freeclusters_counter);
+-	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+-	percpu_counter_destroy(&sbi->s_dirs_counter);
+-	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
+-	percpu_counter_destroy(&sbi->s_sra_exceeded_retry_limit);
+-	percpu_free_rwsem(&sbi->s_writepages_rwsem);
++	ext4_percpu_param_destroy(sbi);
+ failed_mount5:
+ 	ext4_ext_release(sb);
+ 	ext4_release_system_zone(sb);
 -- 
-2.40.0.1.gaa8946217a0b
+2.31.1
 
