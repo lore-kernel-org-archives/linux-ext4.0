@@ -2,33 +2,33 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 29BB8C7619A
-	for <linux-ext4@archiver.kernel.org>; Thu, 23 Mar 2023 14:08:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A97EC6FD1D
+	for <linux-ext4@archiver.kernel.org>; Thu, 23 Mar 2023 14:08:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231388AbjCWOI0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 23 Mar 2023 10:08:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38594 "EHLO
+        id S231422AbjCWOI1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 23 Mar 2023 10:08:27 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38642 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231364AbjCWOIU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Mar 2023 10:08:20 -0400
+        with ESMTP id S231376AbjCWOIX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Mar 2023 10:08:23 -0400
 Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 62C8C2BECE
-        for <linux-ext4@vger.kernel.org>; Thu, 23 Mar 2023 07:07:01 -0700 (PDT)
-Received: from canpemm100004.china.huawei.com (unknown [172.30.72.53])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4Pj6Z95yZpzrWYH;
-        Thu, 23 Mar 2023 22:05:53 +0800 (CST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 03A6B2B602
+        for <linux-ext4@vger.kernel.org>; Thu, 23 Mar 2023 07:07:03 -0700 (PDT)
+Received: from canpemm100004.china.huawei.com (unknown [172.30.72.56])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4Pj6ZB5Rn0zrWYZ;
+        Thu, 23 Mar 2023 22:05:54 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm100004.china.huawei.com
  (7.192.105.92) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.21; Thu, 23 Mar
- 2023 22:06:55 +0800
+ 2023 22:06:56 +0800
 From:   Jason Yan <yanaijie@huawei.com>
 To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <ritesh.list@gmail.com>, <lczerner@redhat.com>,
         <linux-ext4@vger.kernel.org>
 CC:     Jason Yan <yanaijie@huawei.com>
-Subject: [PATCH 1/8] ext4: factor out ext4_hash_info_init()
-Date:   Thu, 23 Mar 2023 22:05:10 +0800
-Message-ID: <20230323140517.1070239-2-yanaijie@huawei.com>
+Subject: [PATCH 3/8] ext4: use ext4_group_desc_free() in ext4_put_super() to save some duplicated code
+Date:   Thu, 23 Mar 2023 22:05:12 +0800
+Message-ID: <20230323140517.1070239-4-yanaijie@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20230323140517.1070239-1-yanaijie@huawei.com>
 References: <20230323140517.1070239-1-yanaijie@huawei.com>
@@ -43,82 +43,77 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Factor out ext4_hash_info_init() to simplify __ext4_fill_super(). No
-functional change.
+The only difference here is that ->s_group_desc and ->s_flex_groups share
+the same rcu read lock here but it is not necessary. In other places they
+do not share the lock at all.
 
 Signed-off-by: Jason Yan <yanaijie@huawei.com>
 ---
- fs/ext4/super.c | 50 +++++++++++++++++++++++++++++--------------------
- 1 file changed, 30 insertions(+), 20 deletions(-)
+ fs/ext4/super.c | 32 ++++++++++++++------------------
+ 1 file changed, 14 insertions(+), 18 deletions(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f43e526112ae..ec71b5fb1dca 100644
+index e346b1f908ed..0b354a6e4f41 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -5024,6 +5024,35 @@ static int ext4_load_super(struct super_block *sb, ext4_fsblk_t *lsb,
- 	return ret;
+@@ -1226,11 +1226,23 @@ static void ext4_percpu_param_destroy(struct ext4_sb_info *sbi)
+ 	percpu_free_rwsem(&sbi->s_writepages_rwsem);
  }
  
-+static void ext4_hash_info_init(struct super_block *sb)
++static void ext4_group_desc_free(struct ext4_sb_info *sbi)
 +{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_super_block *es = sbi->s_es;
-+	unsigned int i;
++	struct buffer_head **group_desc;
++	int i;
 +
-+	for (i = 0; i < 4; i++)
-+		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
-+
-+	sbi->s_def_hash_version = es->s_def_hash_version;
-+	if (ext4_has_feature_dir_index(sb)) {
-+		i = le32_to_cpu(es->s_flags);
-+		if (i & EXT2_FLAGS_UNSIGNED_HASH)
-+			sbi->s_hash_unsigned = 3;
-+		else if ((i & EXT2_FLAGS_SIGNED_HASH) == 0) {
-+#ifdef __CHAR_UNSIGNED__
-+			if (!sb_rdonly(sb))
-+				es->s_flags |=
-+					cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
-+			sbi->s_hash_unsigned = 3;
-+#else
-+			if (!sb_rdonly(sb))
-+				es->s_flags |=
-+					cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
-+#endif
-+		}
-+	}
++	rcu_read_lock();
++	group_desc = rcu_dereference(sbi->s_group_desc);
++	for (i = 0; i < sbi->s_gdb_count; i++)
++		brelse(group_desc[i]);
++	kvfree(group_desc);
++	rcu_read_unlock();
 +}
 +
- static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ static void ext4_put_super(struct super_block *sb)
  {
- 	struct ext4_super_block *es = NULL;
-@@ -5179,26 +5208,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 	sbi->s_addr_per_block_bits = ilog2(EXT4_ADDR_PER_BLOCK(sb));
- 	sbi->s_desc_per_block_bits = ilog2(EXT4_DESC_PER_BLOCK(sb));
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_super_block *es = sbi->s_es;
+-	struct buffer_head **group_desc;
+ 	struct flex_groups **flex_groups;
+ 	int aborted = 0;
+ 	int i, err;
+@@ -1281,11 +1293,8 @@ static void ext4_put_super(struct super_block *sb)
+ 	if (!sb_rdonly(sb))
+ 		ext4_commit_super(sb);
  
--	for (i = 0; i < 4; i++)
--		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
--	sbi->s_def_hash_version = es->s_def_hash_version;
--	if (ext4_has_feature_dir_index(sb)) {
--		i = le32_to_cpu(es->s_flags);
--		if (i & EXT2_FLAGS_UNSIGNED_HASH)
--			sbi->s_hash_unsigned = 3;
--		else if ((i & EXT2_FLAGS_SIGNED_HASH) == 0) {
--#ifdef __CHAR_UNSIGNED__
--			if (!sb_rdonly(sb))
--				es->s_flags |=
--					cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
--			sbi->s_hash_unsigned = 3;
--#else
--			if (!sb_rdonly(sb))
--				es->s_flags |=
--					cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
--#endif
--		}
--	}
-+	ext4_hash_info_init(sb);
++	ext4_group_desc_free(sbi);
+ 	rcu_read_lock();
+-	group_desc = rcu_dereference(sbi->s_group_desc);
+-	for (i = 0; i < sbi->s_gdb_count; i++)
+-		brelse(group_desc[i]);
+-	kvfree(group_desc);
+ 	flex_groups = rcu_dereference(sbi->s_flex_groups);
+ 	if (flex_groups) {
+ 		for (i = 0; i < sbi->s_flex_groups_allocated; i++)
+@@ -4757,19 +4766,6 @@ static int ext4_geometry_check(struct super_block *sb,
+ 	return 0;
+ }
  
- 	if (ext4_handle_clustersize(sb))
- 		goto failed_mount;
+-static void ext4_group_desc_free(struct ext4_sb_info *sbi)
+-{
+-	struct buffer_head **group_desc;
+-	int i;
+-
+-	rcu_read_lock();
+-	group_desc = rcu_dereference(sbi->s_group_desc);
+-	for (i = 0; i < sbi->s_gdb_count; i++)
+-		brelse(group_desc[i]);
+-	kvfree(group_desc);
+-	rcu_read_unlock();
+-}
+-
+ static int ext4_group_desc_init(struct super_block *sb,
+ 				struct ext4_super_block *es,
+ 				ext4_fsblk_t logical_sb_block,
 -- 
 2.31.1
 
