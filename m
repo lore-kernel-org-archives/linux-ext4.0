@@ -2,37 +2,37 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 31988C76195
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Mar 2023 18:02:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 81D12C6FD20
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Mar 2023 18:02:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232382AbjCXSCo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 24 Mar 2023 14:02:44 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47192 "EHLO
+        id S231288AbjCXSC6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 24 Mar 2023 14:02:58 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47200 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231872AbjCXSCS (ORCPT
+        with ESMTP id S232254AbjCXSCS (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Mar 2023 14:02:18 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C18386EA1;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C46FD1DBA9;
         Fri, 24 Mar 2023 11:01:58 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=bu7uZgrjAEFRngwiRJYcdU86axyjwDNbBJmyJgRwmhM=; b=NEvm3VMZhlPIbzOespe1UXoX4S
-        zCCIQmHHAOgmSMVOEBlyXlq2gsvo0HX8qeYfnT+m/tlit0lVhmdERTeGJtMY5lhaZf7IcS4Oc+iaO
-        SL8/4mIvbq9NuK9LwmpqkLmlhOlDpZy+mLsAmm/SvcckPU0oEjKpIkEfcIFNbGc9R1YmRzh78/3iC
-        ZOE37vPvfNbv9mnUQbqz9UUhO7aeVIXKVTI8Ex+XjMKnh7ORmgrjL5bu4BWGWMmTZg/Gexz1zPXmc
-        5EyxfzohLaxddLMtCICBREv+kRUskdnfOhdr/jRKJxWPLvsdI6VUJWrEt5ggzeXG1RPaJ6yXPv3Pe
-        lerVLo6w==;
+        bh=eq0Hn7DJEbMJVam2AiJQ2bZ34gX46DFpdYzh7SX7fJc=; b=gfPQj7CQaQb6F3Vf8qLxo+fTWk
+        J0znFAL+IiNymV92Fj90QbCOYdxiQJhp7bPSMctzgtY516IU/kPNSxFTqCn6RiK5bOyWb27L7Ur/x
+        /LA4GJYyU41UlWi3uuXSGcBVj3/cxuDaEQxZLvKH4XyH2IDaXCXK5pysld6grO33ygyPOyTjCe+XD
+        G3zXGj//QFCDA9bSwupVouNVMyt9c1ag3cnfjGa2nPoMmhy7mC86839V9k6PSGlCmsZm3ZhCPhuqV
+        dYUPTnNLCUzNMI4U2h9DLVFLTw+0Mmynbgzk0BhTGGf1PnYlbJR40t3tbQsLpCKjckQDUJZ0QqnWy
+        BDxmVcnA==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pfljM-0057Ze-2C; Fri, 24 Mar 2023 18:01:36 +0000
+        id 1pfljL-0057Yx-86; Fri, 24 Mar 2023 18:01:35 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH v2 11/29] ext4: Convert ext4_try_to_write_inline_data() to use a folio
-Date:   Fri, 24 Mar 2023 18:01:11 +0000
-Message-Id: <20230324180129.1220691-12-willy@infradead.org>
+Subject: [PATCH v2 05/29] ext4: Turn mpage_process_page() into mpage_process_folio()
+Date:   Fri, 24 Mar 2023 18:01:05 +0000
+Message-Id: <20230324180129.1220691-6-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230324180129.1220691-1-willy@infradead.org>
 References: <20230324180129.1220691-1-willy@infradead.org>
@@ -42,65 +42,94 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Saves a number of calls to compound_head().
+The page/folio is only used to extract the buffers, so this is a
+simple change.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+Reviewed-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/inline.c | 24 +++++++++++-------------
- 1 file changed, 11 insertions(+), 13 deletions(-)
+ fs/ext4/inode.c | 35 ++++++++++++++++++-----------------
+ 1 file changed, 18 insertions(+), 17 deletions(-)
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index f339340ba66c..881d559c503f 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -653,8 +653,7 @@ int ext4_try_to_write_inline_data(struct address_space *mapping,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index eaeec84ec1b0..f8c02e55fbe3 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2022,21 +2022,22 @@ static int mpage_process_page_bufs(struct mpage_da_data *mpd,
+ }
+ 
+ /*
+- * mpage_process_page - update page buffers corresponding to changed extent and
+- *		       may submit fully mapped page for IO
+- *
+- * @mpd		- description of extent to map, on return next extent to map
+- * @m_lblk	- logical block mapping.
+- * @m_pblk	- corresponding physical mapping.
+- * @map_bh	- determines on return whether this page requires any further
++ * mpage_process_folio - update folio buffers corresponding to changed extent
++ *			 and may submit fully mapped page for IO
++ * @mpd: description of extent to map, on return next extent to map
++ * @folio: Contains these buffers.
++ * @m_lblk: logical block mapping.
++ * @m_pblk: corresponding physical mapping.
++ * @map_bh: determines on return whether this page requires any further
+  *		  mapping or not.
+- * Scan given page buffers corresponding to changed extent and update buffer
++ *
++ * Scan given folio buffers corresponding to changed extent and update buffer
+  * state according to new extent state.
+  * We map delalloc buffers to their physical location, clear unwritten bits.
+- * If the given page is not fully mapped, we update @map to the next extent in
+- * the given page that needs mapping & return @map_bh as true.
++ * If the given folio is not fully mapped, we update @mpd to the next extent in
++ * the given folio that needs mapping & return @map_bh as true.
+  */
+-static int mpage_process_page(struct mpage_da_data *mpd, struct page *page,
++static int mpage_process_folio(struct mpage_da_data *mpd, struct folio *folio,
+ 			      ext4_lblk_t *m_lblk, ext4_fsblk_t *m_pblk,
+ 			      bool *map_bh)
  {
- 	int ret;
- 	handle_t *handle;
--	unsigned int flags;
--	struct page *page;
-+	struct folio *folio;
- 	struct ext4_iloc iloc;
+@@ -2049,14 +2050,14 @@ static int mpage_process_page(struct mpage_da_data *mpd, struct page *page,
+ 	ssize_t io_end_size = 0;
+ 	struct ext4_io_end_vec *io_end_vec = ext4_last_io_end_vec(io_end);
  
- 	if (pos + len > ext4_get_max_inline_size(inode))
-@@ -691,28 +690,27 @@ int ext4_try_to_write_inline_data(struct address_space *mapping,
- 	if (ret)
- 		goto out;
+-	bh = head = page_buffers(page);
++	bh = head = folio_buffers(folio);
+ 	do {
+ 		if (lblk < mpd->map.m_lblk)
+ 			continue;
+ 		if (lblk >= mpd->map.m_lblk + mpd->map.m_len) {
+ 			/*
+ 			 * Buffer after end of mapped extent.
+-			 * Find next buffer in the page to map.
++			 * Find next buffer in the folio to map.
+ 			 */
+ 			mpd->map.m_len = 0;
+ 			mpd->map.m_flags = 0;
+@@ -2129,9 +2130,9 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 		if (nr == 0)
+ 			break;
+ 		for (i = 0; i < nr; i++) {
+-			struct page *page = &fbatch.folios[i]->page;
++			struct folio *folio = fbatch.folios[i];
  
--	flags = memalloc_nofs_save();
--	page = grab_cache_page_write_begin(mapping, 0);
--	memalloc_nofs_restore(flags);
--	if (!page) {
-+	folio = __filemap_get_folio(mapping, 0, FGP_WRITEBEGIN | FGP_NOFS,
-+					mapping_gfp_mask(mapping));
-+	if (!folio) {
- 		ret = -ENOMEM;
- 		goto out;
- 	}
- 
--	*pagep = page;
-+	*pagep = &folio->page;
- 	down_read(&EXT4_I(inode)->xattr_sem);
- 	if (!ext4_has_inline_data(inode)) {
- 		ret = 0;
--		unlock_page(page);
--		put_page(page);
-+		folio_unlock(folio);
-+		folio_put(folio);
- 		goto out_up_read;
- 	}
- 
--	if (!PageUptodate(page)) {
--		ret = ext4_read_inline_page(inode, page);
-+	if (!folio_test_uptodate(folio)) {
-+		ret = ext4_read_inline_page(inode, &folio->page);
- 		if (ret < 0) {
--			unlock_page(page);
--			put_page(page);
-+			folio_unlock(folio);
-+			folio_put(folio);
- 			goto out_up_read;
+-			err = mpage_process_page(mpd, page, &lblk, &pblock,
++			err = mpage_process_folio(mpd, folio, &lblk, &pblock,
+ 						 &map_bh);
+ 			/*
+ 			 * If map_bh is true, means page may require further bh
+@@ -2141,10 +2142,10 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 			if (err < 0 || map_bh)
+ 				goto out;
+ 			/* Page fully mapped - let IO run! */
+-			err = mpage_submit_page(mpd, page);
++			err = mpage_submit_page(mpd, &folio->page);
+ 			if (err < 0)
+ 				goto out;
+-			mpage_page_done(mpd, page);
++			mpage_page_done(mpd, &folio->page);
  		}
+ 		folio_batch_release(&fbatch);
  	}
 -- 
 2.39.2
