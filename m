@@ -2,85 +2,126 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 60A7FC6FD20
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Mar 2023 15:59:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ABFE2C6FD1C
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Mar 2023 18:02:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232240AbjCXP7x (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 24 Mar 2023 11:59:53 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54554 "EHLO
+        id S232328AbjCXSCc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 24 Mar 2023 14:02:32 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46324 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232163AbjCXP7t (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Mar 2023 11:59:49 -0400
-Received: from mail-io1-f70.google.com (mail-io1-f70.google.com [209.85.166.70])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3AD2022117
-        for <linux-ext4@vger.kernel.org>; Fri, 24 Mar 2023 08:59:48 -0700 (PDT)
-Received: by mail-io1-f70.google.com with SMTP id a21-20020a5d9595000000b0074c9dc19e16so1360028ioo.15
-        for <linux-ext4@vger.kernel.org>; Fri, 24 Mar 2023 08:59:48 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112; t=1679673587;
-        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=aU4lvqzTsj4oTR3MxWa2VVfTmYihFf5fMUtRbA8JGCY=;
-        b=UpI5DtYUN/45T+6TX4pPMgsL+hvmn8vl5sbZsohTTarJozZSJ+rqLN85jiEVWMJIfN
-         809HLDYm4gtTgkqpGKNX/Xvua98u9QcRnTvQxdVhjtBkIkSHuZ9fBykg/6p1OKCGjdS/
-         Isu5bfYlU1bNlDH8GbYZ8lw1oHCG/gXrZE7vxOPRKc6BqLo1KjxholSv7TrJ3dOAVhHI
-         xw7zDhtoTyAWfbXLFUG2SVYGfk5eMZvb9BTciITVsnx4y0wIKmJcgeKT43Z9bfenMtAF
-         p6++KmX2SQWExby2H8vKNGrjImU+WVdy0c9J6H1pSLGCz+qGufRYUDHiETQ+SlYT/tjV
-         6GSQ==
-X-Gm-Message-State: AAQBX9e5h3sX2HXV58v0ftuvpVXwt7GIUa6zlX6aChMNxXZxKC0XUUv2
-        GhCjfyiOOIsqKbHn/BOfygpwfMSnrA92mlmDsN2F3zfJooI+DQ4=
-X-Google-Smtp-Source: AKy350ZsuAufE6bu9FQLZNsGkHxqsA1ORS7Q0ORagXa3v9v0p6hfTuoxI9RdzgAzIc+RNEsoVbz4fxIfdR+JmrrK8xZEnJ2oQxnL
+        with ESMTP id S232191AbjCXSCQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Mar 2023 14:02:16 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 836AC1ADF4;
+        Fri, 24 Mar 2023 11:01:55 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
+        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
+        Content-Type:Content-ID:Content-Description;
+        bh=qX773DXHpngVi8ieIBjRiMv4TcGKt612phEcB/GXHSc=; b=qtWbQ+fO2KVezdGN4e0kVk4lm3
+        kgI2bTS/pP+OcQ+cpXcUUwWkOgiu1wvu0Cj5GrlSskIuOGo7fMUkhwykvBRkq9PvB18zRvqKgeqr4
+        W/2KedWHgOJhRvDdht00WnlEFrZy6knK1FegvDjJ5/WWxUeA1ztyzNkjPz32rrzKleMOLWh9MFt7b
+        rnFY2C8i6OxgJ3YLD4ssfAy6TLO+b89CFn8whlxWDx2TPjSq7Vdu+tMGvhUuosXyZkXHNhHHBdrVx
+        WfVFkZDWLcI4tkGz2OUCJAfyOLyXQd9ZSNnbyQVTxtwZ9HE0zhWHA8gP1rQlTyIf4Rbdy+fTDjq/V
+        AKB8CEHQ==;
+Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1pfljL-0057ZG-Lw; Fri, 24 Mar 2023 18:01:35 +0000
+From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca
+Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: [PATCH v2 08/29] ext4: Convert ext4_bio_write_page() to ext4_bio_write_folio()
+Date:   Fri, 24 Mar 2023 18:01:08 +0000
+Message-Id: <20230324180129.1220691-9-willy@infradead.org>
+X-Mailer: git-send-email 2.37.1
+In-Reply-To: <20230324180129.1220691-1-willy@infradead.org>
+References: <20230324180129.1220691-1-willy@infradead.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6e02:1988:b0:325:e254:8ef1 with SMTP id
- g8-20020a056e02198800b00325e2548ef1mr676754ilf.4.1679673587531; Fri, 24 Mar
- 2023 08:59:47 -0700 (PDT)
-Date:   Fri, 24 Mar 2023 08:59:47 -0700
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <000000000000860b5105f7a77b97@google.com>
-Subject: [syzbot] [ext4] Monthly Report
-From:   syzbot <syzbot+list0d9154e4f559c9f5f96f@syzkaller.appspotmail.com>
-To:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello ext4 maintainers/developers,
+The only caller now has a folio so pass it in directly and avoid the call
+to page_folio() at the beginning.
 
-This is a 30-day syzbot report for ext4 subsystem.
-All related reports/information can be found at:
-https://syzkaller.appspot.com/upstream/s/ext4
-
-During the period, 17 new issues were detected and 4 were fixed.
-In total, 94 issues are still open and 92 have been fixed so far.
-
-Some of the still happening issues:
-
-Crashes Repro Title
-81778   Yes   possible deadlock in jbd2_journal_lock_updates
-              https://syzkaller.appspot.com/bug?extid=79e6bbabf3ce17357969
-34932   Yes   possible deadlock in __jbd2_log_wait_for_space
-              https://syzkaller.appspot.com/bug?extid=fa1bbda326271b8808c9
-6768    Yes   WARNING in ext4_dirty_folio
-              https://syzkaller.appspot.com/bug?extid=ecab51a4a5b9f26eeaa1
-4301    Yes   possible deadlock in dquot_commit (2)
-              https://syzkaller.appspot.com/bug?extid=70ff52e51b7e7714db8a
-846     Yes   INFO: task hung in iterate_supers
-              https://syzkaller.appspot.com/bug?extid=2349f5067b1772c1d8a5
-817     Yes   BUG: soft lockup in smp_call_function
-              https://syzkaller.appspot.com/bug?extid=cce3691658bef1b12ac9
-550     Yes   INFO: task hung in __sync_dirty_buffer
-              https://syzkaller.appspot.com/bug?extid=91dccab7c64e2850a4e5
-388     No    possible deadlock in ext4_map_blocks
-              https://syzkaller.appspot.com/bug?extid=6de5025c31d33047d2a4
-168     Yes   possible deadlock in process_measurement (3)
-              https://syzkaller.appspot.com/bug?extid=ccfcdc8958f74084f16d
-167     No    INFO: task hung in path_openat (7)
-              https://syzkaller.appspot.com/bug?extid=950a0cdaa2fdd14f5bdc
-
+Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+Reviewed-by: Theodore Ts'o <tytso@mit.edu>
 ---
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+ fs/ext4/ext4.h    |  5 ++---
+ fs/ext4/inode.c   |  6 +++---
+ fs/ext4/page-io.c | 10 ++++------
+ 3 files changed, 9 insertions(+), 12 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9b2cfc32cf78..bee344ebd385 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3757,9 +3757,8 @@ extern void ext4_io_submit_init(struct ext4_io_submit *io,
+ 				struct writeback_control *wbc);
+ extern void ext4_end_io_rsv_work(struct work_struct *work);
+ extern void ext4_io_submit(struct ext4_io_submit *io);
+-extern int ext4_bio_write_page(struct ext4_io_submit *io,
+-			       struct page *page,
+-			       int len);
++int ext4_bio_write_folio(struct ext4_io_submit *io, struct folio *page,
++		size_t len);
+ extern struct ext4_io_end_vec *ext4_alloc_io_end_vec(ext4_io_end_t *io_end);
+ extern struct ext4_io_end_vec *ext4_last_io_end_vec(ext4_io_end_t *io_end);
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 801fdeffe2f9..4119c63c1215 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1885,8 +1885,8 @@ static int mpage_submit_folio(struct mpage_da_data *mpd, struct folio *folio)
+ 	 * write-protects our page in page tables and the page cannot get
+ 	 * written to again until we release folio lock. So only after
+ 	 * folio_clear_dirty_for_io() we are safe to sample i_size for
+-	 * ext4_bio_write_page() to zero-out tail of the written page. We rely
+-	 * on the barrier provided by TestClearPageDirty in
++	 * ext4_bio_write_folio() to zero-out tail of the written page. We rely
++	 * on the barrier provided by folio_test_clear_dirty() in
+ 	 * folio_clear_dirty_for_io() to make sure i_size is really sampled only
+ 	 * after page tables are updated.
+ 	 */
+@@ -1895,7 +1895,7 @@ static int mpage_submit_folio(struct mpage_da_data *mpd, struct folio *folio)
+ 	if (folio_pos(folio) + len > size &&
+ 	    !ext4_verity_in_progress(mpd->inode))
+ 		len = size & ~PAGE_MASK;
+-	err = ext4_bio_write_page(&mpd->io_submit, &folio->page, len);
++	err = ext4_bio_write_folio(&mpd->io_submit, folio, len);
+ 	if (!err)
+ 		mpd->wbc->nr_to_write--;
+ 
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index f0144ef39bb1..8fe1875b0a42 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -426,11 +426,9 @@ static void io_submit_add_bh(struct ext4_io_submit *io,
+ 	io->io_next_block++;
+ }
+ 
+-int ext4_bio_write_page(struct ext4_io_submit *io,
+-			struct page *page,
+-			int len)
++int ext4_bio_write_folio(struct ext4_io_submit *io, struct folio *folio,
++		size_t len)
+ {
+-	struct folio *folio = page_folio(page);
+ 	struct folio *io_folio = folio;
+ 	struct inode *inode = folio->mapping->host;
+ 	unsigned block_start;
+@@ -523,8 +521,8 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 		if (io->io_bio)
+ 			gfp_flags = GFP_NOWAIT | __GFP_NOWARN;
+ 	retry_encrypt:
+-		bounce_page = fscrypt_encrypt_pagecache_blocks(page, enc_bytes,
+-							       0, gfp_flags);
++		bounce_page = fscrypt_encrypt_pagecache_blocks(&folio->page,
++					enc_bytes, 0, gfp_flags);
+ 		if (IS_ERR(bounce_page)) {
+ 			ret = PTR_ERR(bounce_page);
+ 			if (ret == -ENOMEM &&
+-- 
+2.39.2
+
