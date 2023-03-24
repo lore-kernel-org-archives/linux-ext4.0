@@ -2,38 +2,37 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D645C6FD1C
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E0BF2C7619A
 	for <linux-ext4@archiver.kernel.org>; Fri, 24 Mar 2023 18:03:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231254AbjCXSDI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 24 Mar 2023 14:03:08 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47238 "EHLO
+        id S232388AbjCXSDJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 24 Mar 2023 14:03:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34574 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232119AbjCXSCT (ORCPT
+        with ESMTP id S230015AbjCXSCT (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Mar 2023 14:02:19 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 72C4B1DBB4;
-        Fri, 24 Mar 2023 11:01:59 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B0BE11E1E1;
+        Fri, 24 Mar 2023 11:02:00 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=XZo0De81T2dQE7D9eCZ6Mf4v87jwXmqiYDQUera2jp4=; b=Sl6xbNEIouzza83Z7mJLCHqpk7
-        yOoN1klYcpLdoHb2cgT9EBfxF8b8rNWThh5GewByd0LGTQog7v46ez+fB9GmEmHueIUW1ysmfzHTO
-        04tpGIQkpmenrwGmD0dXfaW+5pNvuYGnkhJDYVJ2NS7hupLUFvXFeV5bG0gwH5HQLNZYk3HRXW9R/
-        76uchhzCvl491K5UHkMNTbf3AW0eU+2kE7n4607eWSqLbBNGda7JO70Ajh8OXgteIudH2ro9LnHD6
-        b3wGTncBEHe20WWfSCXYm8Rz0MQ1+sLHxXjZf22JjaArB3t6QYvBxdq9RAA4wvEj9EQhjdVOcI3hM
-        b03B1WiQ==;
+        bh=P9ibJkeUthI44ZenmUELPb5YMrgRPR94Wi1/9fwNzOc=; b=fTj6ebnk0HDRI1qiZAciucu1kq
+        49kKAhUn3ZaBiO8KnlMrrwOXAgaYzmgCNz+zW7XWj7sdJdUbmDRxYvIIaDwuP2oFwRxGsTvsWVIca
+        ShZMO4ibYDJ6YH7iVq9uXHqVZN6S/VX9lnu8N44VfwoJbcdPLU1npUBfsDUt7LAgqofZZ3bLQJ+LB
+        MhVwPiSJny1LJIghebFj8rWNzgrLVJEcp6SzaEumpLr2FRoQLpER27v48B0ieVZ5xDRAYMxjd3W5S
+        TrGY9MknZ796fBDKmVZ7LSZj3fzaoqosbvp3OqFex6E4wuhMNGZvuH9vZpWKE9VXn6ay8CHZPDE3f
+        5dpOXA7A==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pfljL-0057Yv-5A; Fri, 24 Mar 2023 18:01:35 +0000
+        id 1pfljL-0057ZY-U8; Fri, 24 Mar 2023 18:01:35 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Ritesh Harjani <ritesh.list@gmail.com>
-Subject: [PATCH v2 04/29] ext4: Convert ext4_finish_bio() to use folios
-Date:   Fri, 24 Mar 2023 18:01:04 +0000
-Message-Id: <20230324180129.1220691-5-willy@infradead.org>
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: [PATCH v2 10/29] ext4: Convert ext4_convert_inline_data_to_extent() to use a folio
+Date:   Fri, 24 Mar 2023 18:01:10 +0000
+Message-Id: <20230324180129.1220691-11-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230324180129.1220691-1-willy@infradead.org>
 References: <20230324180129.1220691-1-willy@infradead.org>
@@ -43,76 +42,100 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Prepare ext4 to support large folios in the page writeback path.
-Also set the actual error in the mapping, not just -EIO.
+Saves a number of calls to compound_head().
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-Reviewed-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/page-io.c | 32 ++++++++++++++++----------------
- 1 file changed, 16 insertions(+), 16 deletions(-)
+ fs/ext4/inline.c | 40 +++++++++++++++++++---------------------
+ 1 file changed, 19 insertions(+), 21 deletions(-)
 
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 7850d2cb2e08..f0144ef39bb1 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -99,30 +99,30 @@ static void buffer_io_error(struct buffer_head *bh)
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index e9bae3002319..f339340ba66c 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -534,8 +534,7 @@ static int ext4_convert_inline_data_to_extent(struct address_space *mapping,
+ 	int ret, needed_blocks, no_expand;
+ 	handle_t *handle = NULL;
+ 	int retries = 0, sem_held = 0;
+-	struct page *page = NULL;
+-	unsigned int flags;
++	struct folio *folio = NULL;
+ 	unsigned from, to;
+ 	struct ext4_iloc iloc;
  
- static void ext4_finish_bio(struct bio *bio)
- {
--	struct bio_vec *bvec;
--	struct bvec_iter_all iter_all;
-+	struct folio_iter fi;
+@@ -564,10 +563,9 @@ static int ext4_convert_inline_data_to_extent(struct address_space *mapping,
  
--	bio_for_each_segment_all(bvec, bio, iter_all) {
--		struct page *page = bvec->bv_page;
--		struct page *bounce_page = NULL;
-+	bio_for_each_folio_all(fi, bio) {
-+		struct folio *folio = fi.folio;
-+		struct folio *io_folio = NULL;
- 		struct buffer_head *bh, *head;
--		unsigned bio_start = bvec->bv_offset;
--		unsigned bio_end = bio_start + bvec->bv_len;
-+		size_t bio_start = fi.offset;
-+		size_t bio_end = bio_start + fi.length;
- 		unsigned under_io = 0;
- 		unsigned long flags;
- 
--		if (fscrypt_is_bounce_page(page)) {
--			bounce_page = page;
--			page = fscrypt_pagecache_page(bounce_page);
-+		if (fscrypt_is_bounce_folio(folio)) {
-+			io_folio = folio;
-+			folio = fscrypt_pagecache_folio(folio);
- 		}
- 
- 		if (bio->bi_status) {
--			SetPageError(page);
--			mapping_set_error(page->mapping, -EIO);
-+			int err = blk_status_to_errno(bio->bi_status);
-+			folio_set_error(folio);
-+			mapping_set_error(folio->mapping, err);
- 		}
--		bh = head = page_buffers(page);
-+		bh = head = folio_buffers(folio);
- 		/*
--		 * We check all buffers in the page under b_uptodate_lock
-+		 * We check all buffers in the folio under b_uptodate_lock
- 		 * to avoid races with other end io clearing async_write flags
- 		 */
- 		spin_lock_irqsave(&head->b_uptodate_lock, flags);
-@@ -141,8 +141,8 @@ static void ext4_finish_bio(struct bio *bio)
- 		} while ((bh = bh->b_this_page) != head);
- 		spin_unlock_irqrestore(&head->b_uptodate_lock, flags);
- 		if (!under_io) {
--			fscrypt_free_bounce_page(bounce_page);
--			end_page_writeback(page);
-+			fscrypt_free_bounce_page(&io_folio->page);
-+			folio_end_writeback(folio);
- 		}
+ 	/* We cannot recurse into the filesystem as the transaction is already
+ 	 * started */
+-	flags = memalloc_nofs_save();
+-	page = grab_cache_page_write_begin(mapping, 0);
+-	memalloc_nofs_restore(flags);
+-	if (!page) {
++	folio = __filemap_get_folio(mapping, 0, FGP_WRITEBEGIN | FGP_NOFS,
++			mapping_gfp_mask(mapping));
++	if (!folio) {
+ 		ret = -ENOMEM;
+ 		goto out;
  	}
- }
+@@ -582,8 +580,8 @@ static int ext4_convert_inline_data_to_extent(struct address_space *mapping,
+ 
+ 	from = 0;
+ 	to = ext4_get_inline_size(inode);
+-	if (!PageUptodate(page)) {
+-		ret = ext4_read_inline_page(inode, page);
++	if (!folio_test_uptodate(folio)) {
++		ret = ext4_read_inline_page(inode, &folio->page);
+ 		if (ret < 0)
+ 			goto out;
+ 	}
+@@ -593,21 +591,21 @@ static int ext4_convert_inline_data_to_extent(struct address_space *mapping,
+ 		goto out;
+ 
+ 	if (ext4_should_dioread_nolock(inode)) {
+-		ret = __block_write_begin(page, from, to,
++		ret = __block_write_begin(&folio->page, from, to,
+ 					  ext4_get_block_unwritten);
+ 	} else
+-		ret = __block_write_begin(page, from, to, ext4_get_block);
++		ret = __block_write_begin(&folio->page, from, to, ext4_get_block);
+ 
+ 	if (!ret && ext4_should_journal_data(inode)) {
+-		ret = ext4_walk_page_buffers(handle, inode, page_buffers(page),
+-					     from, to, NULL,
+-					     do_journal_get_write_access);
++		ret = ext4_walk_page_buffers(handle, inode,
++					     folio_buffers(folio), from, to,
++					     NULL, do_journal_get_write_access);
+ 	}
+ 
+ 	if (ret) {
+-		unlock_page(page);
+-		put_page(page);
+-		page = NULL;
++		folio_unlock(folio);
++		folio_put(folio);
++		folio = NULL;
+ 		ext4_orphan_add(handle, inode);
+ 		ext4_write_unlock_xattr(inode, &no_expand);
+ 		sem_held = 0;
+@@ -627,12 +625,12 @@ static int ext4_convert_inline_data_to_extent(struct address_space *mapping,
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+ 		goto retry;
+ 
+-	if (page)
+-		block_commit_write(page, from, to);
++	if (folio)
++		block_commit_write(&folio->page, from, to);
+ out:
+-	if (page) {
+-		unlock_page(page);
+-		put_page(page);
++	if (folio) {
++		folio_unlock(folio);
++		folio_put(folio);
+ 	}
+ 	if (sem_held)
+ 		ext4_write_unlock_xattr(inode, &no_expand);
 -- 
 2.39.2
 
