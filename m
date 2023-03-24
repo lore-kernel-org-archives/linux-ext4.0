@@ -2,37 +2,37 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 81D12C6FD20
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Mar 2023 18:02:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2EEDCC76196
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Mar 2023 18:03:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231288AbjCXSC6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 24 Mar 2023 14:02:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47200 "EHLO
+        id S232235AbjCXSDA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 24 Mar 2023 14:03:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47212 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232254AbjCXSCS (ORCPT
+        with ESMTP id S229681AbjCXSCS (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Mar 2023 14:02:18 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C46FD1DBA9;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C4A2A1DBB0;
         Fri, 24 Mar 2023 11:01:58 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=eq0Hn7DJEbMJVam2AiJQ2bZ34gX46DFpdYzh7SX7fJc=; b=gfPQj7CQaQb6F3Vf8qLxo+fTWk
-        J0znFAL+IiNymV92Fj90QbCOYdxiQJhp7bPSMctzgtY516IU/kPNSxFTqCn6RiK5bOyWb27L7Ur/x
-        /LA4GJYyU41UlWi3uuXSGcBVj3/cxuDaEQxZLvKH4XyH2IDaXCXK5pysld6grO33ygyPOyTjCe+XD
-        G3zXGj//QFCDA9bSwupVouNVMyt9c1ag3cnfjGa2nPoMmhy7mC86839V9k6PSGlCmsZm3ZhCPhuqV
-        dYUPTnNLCUzNMI4U2h9DLVFLTw+0Mmynbgzk0BhTGGf1PnYlbJR40t3tbQsLpCKjckQDUJZ0QqnWy
-        BDxmVcnA==;
+        bh=38asVv3di4Eft0TAyxJHVa3D6XL7ozd7QdZLvOUUQPQ=; b=MCzLqm8Bi1/gBR9b43pRGbgI0O
+        OE1lIt+d0kWYQYTapxGZz/4joRuHDieJxBx0q4+NjosQJ6JY16gPN3lumrTeJbxE/kGqZYgOMdqZL
+        TKhcOpOaX5LUJ/5mkfNE3MIf804nUMHu/MqS7K+kYs9jSmrGt6SFQS6i5UisHcF5gOmUJPo8cgC2j
+        XbgtL8GhkfH1YwcFzL3kXZeQLSIdemhLvt7wGEh6/4aaXLpjZslDjPevwCtGYYycWMsGqIsY54SpY
+        NDWKsSnTGEjOvY7sDyvJSKbH4OvqmgRpE5TyKCDavHdHGXUeqIN27bIwYkHPmSBwwpaxbVeafUVJH
+        SL/QwKbw==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pfljL-0057Yx-86; Fri, 24 Mar 2023 18:01:35 +0000
+        id 1pfljM-0057aK-V3; Fri, 24 Mar 2023 18:01:37 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH v2 05/29] ext4: Turn mpage_process_page() into mpage_process_folio()
-Date:   Fri, 24 Mar 2023 18:01:05 +0000
-Message-Id: <20230324180129.1220691-6-willy@infradead.org>
+Subject: [PATCH v2 18/29] ext4: Use a folio in ext4_journalled_write_end()
+Date:   Fri, 24 Mar 2023 18:01:18 +0000
+Message-Id: <20230324180129.1220691-19-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230324180129.1220691-1-willy@infradead.org>
 References: <20230324180129.1220691-1-willy@infradead.org>
@@ -42,95 +42,59 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The page/folio is only used to extract the buffers, so this is a
-simple change.
+Convert the incoming page to a folio to remove a few calls to
+compound_head().
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 Reviewed-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/inode.c | 35 ++++++++++++++++++-----------------
- 1 file changed, 18 insertions(+), 17 deletions(-)
+ fs/ext4/inode.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index eaeec84ec1b0..f8c02e55fbe3 100644
+index af2bfabfbd27..172b4ca43981 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2022,21 +2022,22 @@ static int mpage_process_page_bufs(struct mpage_da_data *mpd,
- }
- 
- /*
-- * mpage_process_page - update page buffers corresponding to changed extent and
-- *		       may submit fully mapped page for IO
-- *
-- * @mpd		- description of extent to map, on return next extent to map
-- * @m_lblk	- logical block mapping.
-- * @m_pblk	- corresponding physical mapping.
-- * @map_bh	- determines on return whether this page requires any further
-+ * mpage_process_folio - update folio buffers corresponding to changed extent
-+ *			 and may submit fully mapped page for IO
-+ * @mpd: description of extent to map, on return next extent to map
-+ * @folio: Contains these buffers.
-+ * @m_lblk: logical block mapping.
-+ * @m_pblk: corresponding physical mapping.
-+ * @map_bh: determines on return whether this page requires any further
-  *		  mapping or not.
-- * Scan given page buffers corresponding to changed extent and update buffer
-+ *
-+ * Scan given folio buffers corresponding to changed extent and update buffer
-  * state according to new extent state.
-  * We map delalloc buffers to their physical location, clear unwritten bits.
-- * If the given page is not fully mapped, we update @map to the next extent in
-- * the given page that needs mapping & return @map_bh as true.
-+ * If the given folio is not fully mapped, we update @mpd to the next extent in
-+ * the given folio that needs mapping & return @map_bh as true.
-  */
--static int mpage_process_page(struct mpage_da_data *mpd, struct page *page,
-+static int mpage_process_folio(struct mpage_da_data *mpd, struct folio *folio,
- 			      ext4_lblk_t *m_lblk, ext4_fsblk_t *m_pblk,
- 			      bool *map_bh)
+@@ -1392,6 +1392,7 @@ static int ext4_journalled_write_end(struct file *file,
+ 				     loff_t pos, unsigned len, unsigned copied,
+ 				     struct page *page, void *fsdata)
  {
-@@ -2049,14 +2050,14 @@ static int mpage_process_page(struct mpage_da_data *mpd, struct page *page,
- 	ssize_t io_end_size = 0;
- 	struct ext4_io_end_vec *io_end_vec = ext4_last_io_end_vec(io_end);
++	struct folio *folio = page_folio(page);
+ 	handle_t *handle = ext4_journal_current_handle();
+ 	struct inode *inode = mapping->host;
+ 	loff_t old_size = inode->i_size;
+@@ -1410,25 +1411,26 @@ static int ext4_journalled_write_end(struct file *file,
+ 	if (ext4_has_inline_data(inode))
+ 		return ext4_write_inline_data_end(inode, pos, len, copied, page);
  
--	bh = head = page_buffers(page);
-+	bh = head = folio_buffers(folio);
- 	do {
- 		if (lblk < mpd->map.m_lblk)
- 			continue;
- 		if (lblk >= mpd->map.m_lblk + mpd->map.m_len) {
- 			/*
- 			 * Buffer after end of mapped extent.
--			 * Find next buffer in the page to map.
-+			 * Find next buffer in the folio to map.
- 			 */
- 			mpd->map.m_len = 0;
- 			mpd->map.m_flags = 0;
-@@ -2129,9 +2130,9 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
- 		if (nr == 0)
- 			break;
- 		for (i = 0; i < nr; i++) {
--			struct page *page = &fbatch.folios[i]->page;
-+			struct folio *folio = fbatch.folios[i];
- 
--			err = mpage_process_page(mpd, page, &lblk, &pblock,
-+			err = mpage_process_folio(mpd, folio, &lblk, &pblock,
- 						 &map_bh);
- 			/*
- 			 * If map_bh is true, means page may require further bh
-@@ -2141,10 +2142,10 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
- 			if (err < 0 || map_bh)
- 				goto out;
- 			/* Page fully mapped - let IO run! */
--			err = mpage_submit_page(mpd, page);
-+			err = mpage_submit_page(mpd, &folio->page);
- 			if (err < 0)
- 				goto out;
--			mpage_page_done(mpd, page);
-+			mpage_page_done(mpd, &folio->page);
- 		}
- 		folio_batch_release(&fbatch);
+-	if (unlikely(copied < len) && !PageUptodate(page)) {
++	if (unlikely(copied < len) && !folio_test_uptodate(folio)) {
+ 		copied = 0;
+ 		ext4_journalled_zero_new_buffers(handle, inode, page, from, to);
+ 	} else {
+ 		if (unlikely(copied < len))
+ 			ext4_journalled_zero_new_buffers(handle, inode, page,
+ 							 from + copied, to);
+-		ret = ext4_walk_page_buffers(handle, inode, page_buffers(page),
++		ret = ext4_walk_page_buffers(handle, inode,
++					     folio_buffers(folio),
+ 					     from, from + copied, &partial,
+ 					     write_end_fn);
+ 		if (!partial)
+-			SetPageUptodate(page);
++			folio_mark_uptodate(folio);
  	}
+ 	if (!verity)
+ 		size_changed = ext4_update_inode_size(inode, pos + copied);
+ 	ext4_set_inode_state(inode, EXT4_STATE_JDATA);
+ 	EXT4_I(inode)->i_datasync_tid = handle->h_transaction->t_tid;
+-	unlock_page(page);
+-	put_page(page);
++	folio_unlock(folio);
++	folio_put(folio);
+ 
+ 	if (old_size < pos && !verity)
+ 		pagecache_isize_extended(inode, old_size, pos);
 -- 
 2.39.2
 
