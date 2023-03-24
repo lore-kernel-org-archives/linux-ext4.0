@@ -2,37 +2,37 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 26434C76195
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E7001C76196
 	for <linux-ext4@archiver.kernel.org>; Fri, 24 Mar 2023 18:03:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232398AbjCXSDL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 24 Mar 2023 14:03:11 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34750 "EHLO
+        id S232403AbjCXSDN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 24 Mar 2023 14:03:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45574 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231499AbjCXSCU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Mar 2023 14:02:20 -0400
+        with ESMTP id S232124AbjCXSCV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Mar 2023 14:02:21 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C580D1E1FE;
-        Fri, 24 Mar 2023 11:02:00 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C7E7621977;
+        Fri, 24 Mar 2023 11:02:01 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=S2Z9x16UPdx3I5jrV5LgIqL2E9Twqwvu5YRxbNS1slE=; b=lqitLbCOsIGhXhtRrB0cFaDU6c
-        Ps7vjWVh/PJ8dEMq3/rsvhFh8BW2UDQfojFu1lmQ2w+/ewfShaxdKoqjqjBu/JUnHL/G+itqeewpP
-        5MRKK2WGl7Uea0DBa4yS2uv7XK+XafGXFt014ho2HIWBftQ8fLR+RMy2ReS7J7tLoG4tc2I+2HhbA
-        uOFumqKPhYuskrhgwkWP9LbipQEB4BKCJy/sCLjqkT8Zu9NPIMyKckkI1y1qC1tSiEP4tuoudSzty
-        MnvXCtn0O+nj18PbiNMbeLLMc8T+/UY0UrRifXLtXncaN4y7n2bHOxgZXAj+Nj7Z7L4hf35P7UvU1
-        yw6LPq+Q==;
+        bh=MGN3vFL81QYuszytlukf8a9MbfEwpRsuaQzu7+5vdaU=; b=oi92BTxA6u8dXfMwKg/pLsiVDj
+        aDi/pFFCfSabzwfN5kU9B0Arotv/QOXcotcy4OR9AIacmvqHTQiHArcjjLKuIRxuGXnDmju65ZIJx
+        xGmQx8VmwM3IOSCvztMRvNuyzYnJ1SHHB4IUkca+/Liq5VZl2n6a5evkG1MgcA6xL3ZXOBiZHpCPD
+        BHa4Z1o9zyVykFhKpBkODoLHNcHgz0jnUGDNLeo0DKaZVB404vCJmQmRskU2tKXMhqKLZJctttYRX
+        PGIw8cKYC2bhWn1gVkq1zsFRfuVPTU+YEbehe8lj17SElzw44Dl5QHAuNJCw5axvNfnYqa+4tSsAE
+        HIuCAZvw==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pfljM-0057aE-Qe; Fri, 24 Mar 2023 18:01:36 +0000
+        id 1pfljM-0057Zk-72; Fri, 24 Mar 2023 18:01:36 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH v2 17/29] ext4: Convert ext4_write_end() to use a folio
-Date:   Fri, 24 Mar 2023 18:01:17 +0000
-Message-Id: <20230324180129.1220691-18-willy@infradead.org>
+Subject: [PATCH v2 12/29] ext4: Convert ext4_da_convert_inline_data_to_extent() to use a folio
+Date:   Fri, 24 Mar 2023 18:01:12 +0000
+Message-Id: <20230324180129.1220691-13-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230324180129.1220691-1-willy@infradead.org>
 References: <20230324180129.1220691-1-willy@infradead.org>
@@ -42,57 +42,75 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Convert the incoming struct page to a folio.  Replaces two implicit
-calls to compound_head() with one explicit call.
+Saves a number of calls to compound_head().
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-Reviewed-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/inode.c | 13 +++++++------
- 1 file changed, 7 insertions(+), 6 deletions(-)
+ fs/ext4/inline.c | 27 ++++++++++++++-------------
+ 1 file changed, 14 insertions(+), 13 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 769f6d5e0ec3..af2bfabfbd27 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1289,6 +1289,7 @@ static int ext4_write_end(struct file *file,
- 			  loff_t pos, unsigned len, unsigned copied,
- 			  struct page *page, void *fsdata)
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 881d559c503f..45d74274d822 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -848,10 +848,11 @@ static int ext4_da_convert_inline_data_to_extent(struct address_space *mapping,
+ 						 void **fsdata)
  {
-+	struct folio *folio = page_folio(page);
- 	handle_t *handle = ext4_journal_current_handle();
- 	struct inode *inode = mapping->host;
- 	loff_t old_size = inode->i_size;
-@@ -1304,7 +1305,7 @@ static int ext4_write_end(struct file *file,
+ 	int ret = 0, inline_size;
+-	struct page *page;
++	struct folio *folio;
  
- 	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
- 	/*
--	 * it's important to update i_size while still holding page lock:
-+	 * it's important to update i_size while still holding folio lock:
- 	 * page writeout could otherwise come in and zero beyond i_size.
- 	 *
- 	 * If FS_IOC_ENABLE_VERITY is running on this inode, then Merkle tree
-@@ -1312,15 +1313,15 @@ static int ext4_write_end(struct file *file,
- 	 */
- 	if (!verity)
- 		i_size_changed = ext4_update_inode_size(inode, pos + copied);
--	unlock_page(page);
--	put_page(page);
-+	folio_unlock(folio);
-+	folio_put(folio);
+-	page = grab_cache_page_write_begin(mapping, 0);
+-	if (!page)
++	folio = __filemap_get_folio(mapping, 0, FGP_WRITEBEGIN,
++					mapping_gfp_mask(mapping));
++	if (!folio)
+ 		return -ENOMEM;
  
- 	if (old_size < pos && !verity)
- 		pagecache_isize_extended(inode, old_size, pos);
- 	/*
--	 * Don't mark the inode dirty under page lock. First, it unnecessarily
--	 * makes the holding time of page lock longer. Second, it forces lock
--	 * ordering of page lock and transaction start for journaling
-+	 * Don't mark the inode dirty under folio lock. First, it unnecessarily
-+	 * makes the holding time of folio lock longer. Second, it forces lock
-+	 * ordering of folio lock and transaction start for journaling
- 	 * filesystems.
- 	 */
- 	if (i_size_changed)
+ 	down_read(&EXT4_I(inode)->xattr_sem);
+@@ -862,32 +863,32 @@ static int ext4_da_convert_inline_data_to_extent(struct address_space *mapping,
+ 
+ 	inline_size = ext4_get_inline_size(inode);
+ 
+-	if (!PageUptodate(page)) {
+-		ret = ext4_read_inline_page(inode, page);
++	if (!folio_test_uptodate(folio)) {
++		ret = ext4_read_inline_page(inode, &folio->page);
+ 		if (ret < 0)
+ 			goto out;
+ 	}
+ 
+-	ret = __block_write_begin(page, 0, inline_size,
++	ret = __block_write_begin(&folio->page, 0, inline_size,
+ 				  ext4_da_get_block_prep);
+ 	if (ret) {
+ 		up_read(&EXT4_I(inode)->xattr_sem);
+-		unlock_page(page);
+-		put_page(page);
++		folio_unlock(folio);
++		folio_put(folio);
+ 		ext4_truncate_failed_write(inode);
+ 		return ret;
+ 	}
+ 
+-	SetPageDirty(page);
+-	SetPageUptodate(page);
++	folio_mark_dirty(folio);
++	folio_mark_uptodate(folio);
+ 	ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
+ 	*fsdata = (void *)CONVERT_INLINE_DATA;
+ 
+ out:
+ 	up_read(&EXT4_I(inode)->xattr_sem);
+-	if (page) {
+-		unlock_page(page);
+-		put_page(page);
++	if (folio) {
++		folio_unlock(folio);
++		folio_put(folio);
+ 	}
+ 	return ret;
+ }
 -- 
 2.39.2
 
