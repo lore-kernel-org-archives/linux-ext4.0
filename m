@@ -2,95 +2,66 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 29F24C6FD20
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Mar 2023 18:04:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 692DAC76195
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Mar 2023 22:29:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232495AbjCXSEL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 24 Mar 2023 14:04:11 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46826 "EHLO
+        id S231864AbjCXW35 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 24 Mar 2023 18:29:57 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42342 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232272AbjCXSC3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Mar 2023 14:02:29 -0400
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 08D291C32E;
-        Fri, 24 Mar 2023 11:02:10 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
-        Content-Type:Content-ID:Content-Description;
-        bh=8fvAIpVHPNF+3bUB5cbw/cVz3lzrHE7MjwOU7M8nQTQ=; b=ilpxX33sEUXweM5cHL8rn69SEK
-        ongJBeZVKdt8PEnDLnQ3+Zd2MJWbmFuF4LMifsKuxQpbK8dCdobo6Eo+teflrPhJK0I93K92P53pX
-        b+yU+Pglrh02ZtINkJSxieOl2FCvz0zx2rwPMlGaNdhj9ta80usEFhjwE3WsuXMYL+h6VuTPEmkvz
-        azDE+IsjlC0Mo91DgTY3S20wjbygU9J5Httke1HKjgxWNojoKmM9XRa+MjwQYTwzGVEpUknno4B3p
-        aWJQ0OCP37R9fVW5TwCFBbgKP81lEMUDo+9kDhsKaX53Yi2l8EiFU9xqXPp1ljWOJ/WiP+JjST2Hl
-        jy4KMrDQ==;
-Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pfljK-0057Yr-V8; Fri, 24 Mar 2023 18:01:35 +0000
-From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca
-Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Ritesh Harjani <ritesh.list@gmail.com>
-Subject: [PATCH v2 02/29] fscrypt: Add some folio helper functions
-Date:   Fri, 24 Mar 2023 18:01:02 +0000
-Message-Id: <20230324180129.1220691-3-willy@infradead.org>
-X-Mailer: git-send-email 2.37.1
-In-Reply-To: <20230324180129.1220691-1-willy@infradead.org>
+        with ESMTP id S231572AbjCXW34 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Mar 2023 18:29:56 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A70DC9030;
+        Fri, 24 Mar 2023 15:29:55 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 5F2F8B8263C;
+        Fri, 24 Mar 2023 22:29:54 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E6997C433EF;
+        Fri, 24 Mar 2023 22:29:52 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1679696993;
+        bh=AAbNs8yXqUH1VLSX1EbrMvKD4w9xN6cND5bc44EXnNs=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=oub1ERdZpGa3VXfqNJirfBHoExS41xguPkv2XJ0Yn6CIYq2Uj0hWsuDUfxH4zLOyl
+         TuPfAJRDy1U+yYcDKhvEQurhpP0MALiu8x/6PLJJ5q6Gu3SQqvQOe7kd7vtZ1SuCoV
+         eT0rp5WEz7VHugRV8OFFXrt7yI7sIUsaJS01ZuFOlMcb6vA6qBdYXew+TfVSfgXDzf
+         vR0jrgsgvKNNI2CCXFKeyTMw4DCBAzkeZU1v8DhD28tlABtLeuEqCzocGXI4kLHMWj
+         NwBk3heZKxnNTrRzR7JPyVo2Hop0Hf5sZOjKjbyjdcCyYefBcTSFE2QL5YMa+Ctdef
+         H7Q8Td4itDxOw==
+Date:   Fri, 24 Mar 2023 15:29:51 -0700
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     "Matthew Wilcox (Oracle)" <willy@infradead.org>
+Cc:     tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH v2 23/29] ext4: Convert ext4_mpage_readpages() to work on
+ folios
+Message-ID: <20230324222951.GA5083@sol.localdomain>
 References: <20230324180129.1220691-1-willy@infradead.org>
+ <20230324180129.1220691-24-willy@infradead.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230324180129.1220691-24-willy@infradead.org>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-fscrypt_is_bounce_folio() is the equivalent of fscrypt_is_bounce_page()
-and fscrypt_pagecache_folio() is the equivalent of fscrypt_pagecache_page().
+On Fri, Mar 24, 2023 at 06:01:23PM +0000, Matthew Wilcox (Oracle) wrote:
+>  		if (first_hole != blocks_per_page) {
+> -			zero_user_segment(page, first_hole << blkbits,
+> -					  PAGE_SIZE);
+> +			folio_zero_segment(folio, first_hole << blkbits,
+> +					  folio_size(folio));
+>  			if (first_hole == 0) {
+> -				if (ext4_need_verity(inode, page->index) &&
+> -				    !fsverity_verify_page(page))
+> +				if (ext4_need_verity(inode, folio->index) &&
+> +				    !fsverity_verify_page(&folio->page))
+>  					goto set_error_page;
 
-Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
----
- include/linux/fscrypt.h | 21 +++++++++++++++++++++
- 1 file changed, 21 insertions(+)
+This can use fsverity_verify_folio().
 
-diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-index a69f1302051d..c895b12737a1 100644
---- a/include/linux/fscrypt.h
-+++ b/include/linux/fscrypt.h
-@@ -273,6 +273,16 @@ static inline struct page *fscrypt_pagecache_page(struct page *bounce_page)
- 	return (struct page *)page_private(bounce_page);
- }
- 
-+static inline bool fscrypt_is_bounce_folio(struct folio *folio)
-+{
-+	return folio->mapping == NULL;
-+}
-+
-+static inline struct folio *fscrypt_pagecache_folio(struct folio *bounce_folio)
-+{
-+	return bounce_folio->private;
-+}
-+
- void fscrypt_free_bounce_page(struct page *bounce_page);
- 
- /* policy.c */
-@@ -446,6 +456,17 @@ static inline struct page *fscrypt_pagecache_page(struct page *bounce_page)
- 	return ERR_PTR(-EINVAL);
- }
- 
-+static inline bool fscrypt_is_bounce_folio(struct folio *folio)
-+{
-+	return false;
-+}
-+
-+static inline struct folio *fscrypt_pagecache_folio(struct folio *bounce_folio)
-+{
-+	WARN_ON_ONCE(1);
-+	return ERR_PTR(-EINVAL);
-+}
-+
- static inline void fscrypt_free_bounce_page(struct page *bounce_page)
- {
- }
--- 
-2.39.2
-
+- Eric
