@@ -2,108 +2,99 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 766DEC6FD18
-	for <linux-ext4@archiver.kernel.org>; Wed, 29 Mar 2023 15:50:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0B368C74A5B
+	for <linux-ext4@archiver.kernel.org>; Wed, 29 Mar 2023 15:50:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230389AbjC2PuO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S230425AbjC2PuO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Wed, 29 Mar 2023 11:50:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37328 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37346 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230245AbjC2PuG (ORCPT
+        with ESMTP id S230247AbjC2PuG (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Mar 2023 11:50:06 -0400
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BAD0D5258
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D61285588
         for <linux-ext4@vger.kernel.org>; Wed, 29 Mar 2023 08:50:04 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id E27BC21A1B;
-        Wed, 29 Mar 2023 15:50:02 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 8D8E221A1C;
+        Wed, 29 Mar 2023 15:50:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1680105002; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1680105003; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=VSHoy5sqEIsxfRrEwVp737xIrtbHS4OaWQUOqoD88/0=;
-        b=TYQO5Ff9bLtZs13u3HJwEedwd40cMv+svm/enx0NgIHQZ0SHGEdkJpCmXuRxf0NMZIzr7v
-        ZNN9wx4DW21BtcnZmo+xi4bTmNcwawzZYsyNcYNT7cf7IczgXCnRgn3M4sFyyxHXcnimyJ
-        tdyHIDhu+ltxDX4NngfdlIdtPVn9aJ4=
+        bh=n6mFTNsPAlX4aM7ayWY6bDtyV8ROmsAxRc6wOQ4NTzs=;
+        b=tb2IkMootnQyJmz8gYwcGKLaFlI3jf7Tg3G3Jy+pYylQbpGtoM4Zk94epXTVrauLiihB+u
+        QQS6PHyDaXC6Eh3k++50wm7RAM8IULQ/zk1vw7paCpZsxAEWC6NDFIlH9IPp3uF83CkZlU
+        Jd8L915eE/dym5woJozE3Tt244IiD0c=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1680105002;
+        s=susede2_ed25519; t=1680105003;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=VSHoy5sqEIsxfRrEwVp737xIrtbHS4OaWQUOqoD88/0=;
-        b=Q6kRWouRbCA24o1tSXxvERcS7a2rL2Kc/lpV/H07DVNFu3/kAVdcRsFeXfHFjYkWzRC69j
-        0kAGIDYUSMAgbFBg==
+        bh=n6mFTNsPAlX4aM7ayWY6bDtyV8ROmsAxRc6wOQ4NTzs=;
+        b=knbrPh8Gw/E9OQ2YLjkL2rALvYlm+aeaRAYB4QTO3WDZUq/qMmvZVgfXMGyNIOKOfT1IiI
+        tbJi5SpBd53/ApAw==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id B7225138FF;
-        Wed, 29 Mar 2023 15:50:01 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id B08E913A18;
+        Wed, 29 Mar 2023 15:50:02 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id V3yuLCleJGRWYwAAMHmgww
-        (envelope-from <jack@suse.cz>); Wed, 29 Mar 2023 15:50:01 +0000
+        id gc8VKypeJGRiYwAAMHmgww
+        (envelope-from <jack@suse.cz>); Wed, 29 Mar 2023 15:50:02 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 4A27FA0746; Wed, 29 Mar 2023 17:49:50 +0200 (CEST)
+        id 6B103A0755; Wed, 29 Mar 2023 17:49:50 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 06/13] ext4: Drop special handling of journalled data from ext4_sync_file()
-Date:   Wed, 29 Mar 2023 17:49:37 +0200
-Message-Id: <20230329154950.19720-6-jack@suse.cz>
+Subject: [PATCH 12/13] ext4: Update comment in mpage_prepare_extent_to_map()
+Date:   Wed, 29 Mar 2023 17:49:43 +0200
+Message-Id: <20230329154950.19720-12-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20230329125740.4127-1-jack@suse.cz>
 References: <20230329125740.4127-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1389; i=jack@suse.cz; h=from:subject; bh=lzmTZToFAZLhUKG/l1ewqL7RDUtgwUySTRzjL32WFKw=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBkJF4R+0u0e3OmEwlFCFAyrNvJ+e2goWyRaNVuV5Yj tFq1BSGJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCZCReEQAKCRCcnaoHP2RA2QYEB/ 0W92JuDp8u44T8NUqK6txpinz+5Qg3LEz7Ek8calUhWL1DsRU8L+1ujLT/ciWITsOktixn12vYkGKZ LY17g1qt0iKnGxnLRfOLZY3qckTKcvSwDdK+SQfl88gB3UfbPM5/PkFxL6TIncRj0oN/I85VVhHRyr x3XskxF+VmYCRI9DecnOCGv0EPHhTOrT9dMpcU6t5usOwusHsR5Y7x4R+Q0XGSRKzau29pkQqknVBl j5ItNByJTkfX9WEp3+v47vkmSbm6EampkmYfRhHf+0Pe6oggvgXxjmpDWL19aJaHiJgN+wVn5UQKDr dtkEnheEvWwecaYYLGmc/VhkRtXrqe
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1258; i=jack@suse.cz; h=from:subject; bh=JuJKMzle1SxXfisUwr+OoJQBJlYVLkJcuPotCRuJdSg=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBkJF4WeEVZqr4amnqsj7mdL7xepPJnfgOxiwfFHQVu IHph6OOJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCZCReFgAKCRCcnaoHP2RA2ea0B/ 41OnehWlQSX9ZYC392iy6CG2Gzn2qgtZwC9yO71m7oOLMw3t8d+d3OoywRliorDfVUrtVjbp3JsibH 3yXvMx5xo1y+ZMijmU6ElapLUqDo6R+LV+YRCxEGv0HkHmdcUnMd2lPh9/E3XyNaAKsF5LYogreLBJ WXUsdfUyIH0ixK9Eat5DlT+TuLbrWDi3UQxaNyMd4LJWUVww3xxtxRIA0nqd69DDBirIor3U4BoKnD Xo0wzlQXn69oL9mVJfLMK0Piq9Fo2XyE+asTAvroyYVAZH9MIF7V8MjLi0wXZPIgiROqDMVG0iP/UI MszF8tM4ShILAGbULkJh1uDpt15H28
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now that ext4_writepages() make sure all pages with journalled data are
-stable on disk, we don't need special handling of journalled data in
-ext4_sync_file().
+Since filemap_write_and_wait() is now enough to get journalled data to
+final location update the comment in mpage_prepare_extent_to_map().
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/fsync.c | 11 -----------
- 1 file changed, 11 deletions(-)
+ fs/ext4/inode.c | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index 027a7d7037a0..f65fdb27ce14 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -153,23 +153,12 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 		goto out;
- 
- 	/*
--	 * data=writeback,ordered:
- 	 *  The caller's filemap_fdatawrite()/wait will sync the data.
- 	 *  Metadata is in the journal, we wait for proper transaction to
- 	 *  commit here.
--	 *
--	 * data=journal:
--	 *  filemap_fdatawrite won't do anything (the buffers are clean).
--	 *  ext4_force_commit will write the file data into the journal and
--	 *  will wait on that.
--	 *  filemap_fdatawait() will encounter a ton of newly-dirtied pages
--	 *  (they were dirtied by commit).  But that's OK - the blocks are
--	 *  safe in-journal, which is all fsync() needs to ensure.
- 	 */
- 	if (!sbi->s_journal)
- 		ret = ext4_fsync_nojournal(inode, datasync, &needs_barrier);
--	else if (ext4_should_journal_data(inode))
--		ret = ext4_force_commit(inode->i_sb);
- 	else
- 		ret = ext4_fsync_journal(inode, datasync, &needs_barrier);
- 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 3c6bce0afb20..25a9e7586c50 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2490,11 +2490,10 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 			 * Just submit the page. For data=journal mode we
+ 			 * first handle writeout of the page for checkpoint and
+ 			 * only after that handle delayed page dirtying. This
+-			 * is crutial so that forcing a transaction commit and
+-			 * then calling filemap_write_and_wait() guarantees
+-			 * current state of data is in its final location. Such
+-			 * sequence is used for example by insert/collapse
+-			 * range operations before discarding the page cache.
++			 * makes sure current data is checkpointed to the final
++			 * location before possibly journalling it again which
++			 * is desirable when the page is frequently dirtied
++			 * through a pin.
+ 			 */
+ 			if (!mpd->can_map) {
+ 				WARN_ON_ONCE(sb->s_writers.frozen ==
 -- 
 2.35.3
 
