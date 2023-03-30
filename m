@@ -2,55 +2,55 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 06B0AC761A6
-	for <linux-ext4@archiver.kernel.org>; Thu, 30 Mar 2023 13:50:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 552F0C761A6
+	for <linux-ext4@archiver.kernel.org>; Thu, 30 Mar 2023 15:57:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231883AbjC3Nuk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 30 Mar 2023 09:50:40 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37978 "EHLO
+        id S233542AbjC3P5a (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 30 Mar 2023 11:57:30 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50050 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231949AbjC3Nui (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Mar 2023 09:50:38 -0400
-Received: from mga03.intel.com (mga03.intel.com [134.134.136.65])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6C3A45B86;
-        Thu, 30 Mar 2023 06:50:36 -0700 (PDT)
+        with ESMTP id S233520AbjC3P5a (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Mar 2023 11:57:30 -0400
+Received: from mga12.intel.com (mga12.intel.com [192.55.52.136])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5D96B10C4;
+        Thu, 30 Mar 2023 08:57:29 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
   d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1680184236; x=1711720236;
+  t=1680191849; x=1711727849;
   h=date:from:to:cc:subject:message-id:references:
    mime-version:in-reply-to;
-  bh=0RFB1dYZ9F2StXue2dw6vh4Fi8li3Ziwy4v/kPzxaaQ=;
-  b=lyayXXt0GM7m6k/XxvD5TSE9A3oHJgvmpiZamgOH10syR0w/TN58jPKF
-   ncppL7wXIas07HXkrqIchrxNwYMKnCRX9jW5kSSnPwvqDNGaQ5OSOa19L
-   +je0qhEBoPjNjFUs+vxVE3H5adhWkhTxjx4jUhxnr5eHk+A9T4nF3kqWs
-   zIt+OGr1sasyfP6LmpJlF4DEHsxu6SkB12IR0nupKspI+gscGog3WUsBD
-   njgeb5qaf28JeYpf46rTLcYXd2IEr+fRkNdbQaunbQqT/n9O4ziN4r+0d
-   tjEhQBgf/y0SYVZ3HhEkmvE9VexLrplPNklS69XFo7GbAODHoTlul1iqt
+  bh=yewbTr0pQ+oC1FbnuuY+aaJjtcnB2/gFXv8AOAt+sQE=;
+  b=KD4/dU4SH1pVCox2bvAHGHeUagjnMbLvPrZRBUjpD1ESMBJKLfwwbvFH
+   IY443USq5SMqocDPFLyRbEWgM2RqEZLqWcvqiAFZNk9ufRKLnkjSRIaVC
+   C29Nrti9sC3udohbWeOEVOthywmhnLXUhldvMIP1cZNXu3kub5kDtFEEX
+   +9N0OFN/Q0jmhtfQ8Ysfi4thutjg6O0sB7QvZtEaUGXFQZHyuBvaf2K5F
+   S9aKnT0xkqmNQkuzcBMzyDepGsocTzBBLujbvgZztdSxWUB0cd96cI77P
+   K+BoTrPQ2qgSj0ah7Ngaw5MkiIMv18kO5ehIjClCv+Xv9rnL3OLd9++Rn
    Q==;
-X-IronPort-AV: E=McAfee;i="6600,9927,10665"; a="343638563"
-X-IronPort-AV: E=Sophos;i="5.98,303,1673942400"; 
-   d="scan'208";a="343638563"
-Received: from fmsmga004.fm.intel.com ([10.253.24.48])
-  by orsmga103.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 30 Mar 2023 06:22:58 -0700
+X-IronPort-AV: E=McAfee;i="6600,9927,10665"; a="320861249"
+X-IronPort-AV: E=Sophos;i="5.98,305,1673942400"; 
+   d="scan'208";a="320861249"
+Received: from fmsmga006.fm.intel.com ([10.253.24.20])
+  by fmsmga106.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 30 Mar 2023 08:57:18 -0700
 X-ExtLoop1: 1
-X-IronPort-AV: E=McAfee;i="6600,9927,10665"; a="753990820"
-X-IronPort-AV: E=Sophos;i="5.98,303,1673942400"; 
-   d="scan'208";a="753990820"
+X-IronPort-AV: E=McAfee;i="6600,9927,10665"; a="930775185"
+X-IronPort-AV: E=Sophos;i="5.98,305,1673942400"; 
+   d="scan'208";a="930775185"
 Received: from lkp-server01.sh.intel.com (HELO b613635ddfff) ([10.239.97.150])
-  by fmsmga004.fm.intel.com with ESMTP; 30 Mar 2023 06:22:56 -0700
+  by fmsmga006.fm.intel.com with ESMTP; 30 Mar 2023 08:57:02 -0700
 Received: from kbuild by b613635ddfff with local (Exim 4.96)
         (envelope-from <lkp@intel.com>)
-        id 1phsEx-000KtE-0z;
-        Thu, 30 Mar 2023 13:22:55 +0000
-Date:   Thu, 30 Mar 2023 21:22:28 +0800
+        id 1phue3-000Ky8-10;
+        Thu, 30 Mar 2023 15:56:59 +0000
+Date:   Thu, 30 Mar 2023 23:56:54 +0800
 From:   kernel test robot <lkp@intel.com>
 To:     Josh Triplett <josh@joshtriplett.org>,
         Theodore Ts'o <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-Cc:     llvm@lists.linux.dev, oe-kbuild-all@lists.linux.dev
+Cc:     oe-kbuild-all@lists.linux.dev
 Subject: Re: [PATCH] ext4: Add a uapi header for ext4 userspace APIs
-Message-ID: <202303302155.FBlvXAL3-lkp@intel.com>
+Message-ID: <202303302331.taAOklAx-lkp@intel.com>
 References: <f0c650c0a0bcc799101573d265f3006c6f6bd046.1680149153.git.josh@joshtriplett.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -74,31 +74,29 @@ url:    https://github.com/intel-lab-lkp/linux/commits/Josh-Triplett/ext4-Add-a-
 base:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
 patch link:    https://lore.kernel.org/r/f0c650c0a0bcc799101573d265f3006c6f6bd046.1680149153.git.josh%40joshtriplett.org
 patch subject: [PATCH] ext4: Add a uapi header for ext4 userspace APIs
-config: x86_64-randconfig-a016 (https://download.01.org/0day-ci/archive/20230330/202303302155.FBlvXAL3-lkp@intel.com/config)
-compiler: clang version 14.0.6 (https://github.com/llvm/llvm-project f28c006a5895fc0e329fe15fead81e37457cb1d1)
+config: x86_64-randconfig-a015 (https://download.01.org/0day-ci/archive/20230330/202303302331.taAOklAx-lkp@intel.com/config)
+compiler: gcc-11 (Debian 11.3.0-8) 11.3.0
 reproduce (this is a W=1 build):
-        wget https://raw.githubusercontent.com/intel/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
-        chmod +x ~/bin/make.cross
         # https://github.com/intel-lab-lkp/linux/commit/9e61a3eab96b327fb2392b2ae665c6bc25e4b004
         git remote add linux-review https://github.com/intel-lab-lkp/linux
         git fetch --no-tags linux-review Josh-Triplett/ext4-Add-a-uapi-header-for-ext4-userspace-APIs/20230330-123712
         git checkout 9e61a3eab96b327fb2392b2ae665c6bc25e4b004
         # save the config file
         mkdir build_dir && cp config build_dir/.config
-        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=clang make.cross W=1 O=build_dir ARCH=x86_64 olddefconfig
-        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=clang make.cross W=1 O=build_dir ARCH=x86_64 SHELL=/bin/bash
+        make W=1 O=build_dir ARCH=x86_64 olddefconfig
+        make W=1 O=build_dir ARCH=x86_64 SHELL=/bin/bash
 
 If you fix the issue, kindly add following tag where applicable
 | Reported-by: kernel test robot <lkp@intel.com>
-| Link: https://lore.kernel.org/oe-kbuild-all/202303302155.FBlvXAL3-lkp@intel.com/
+| Link: https://lore.kernel.org/oe-kbuild-all/202303302331.taAOklAx-lkp@intel.com/
 
 All errors (new ones prefixed by >>):
 
-   In file included from <built-in>:1:
->> ./usr/include/linux/ext4.h:7:10: fatal error: 'uapi/linux/fiemap.h' file not found
-   #include <uapi/linux/fiemap.h>
-            ^~~~~~~~~~~~~~~~~~~~~
-   1 error generated.
+   In file included from <command-line>:
+>> ./usr/include/linux/ext4.h:7:10: fatal error: uapi/linux/fiemap.h: No such file or directory
+       7 | #include <uapi/linux/fiemap.h>
+         |          ^~~~~~~~~~~~~~~~~~~~~
+   compilation terminated.
 
 -- 
 0-DAY CI Kernel Test Service
