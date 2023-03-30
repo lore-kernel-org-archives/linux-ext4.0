@@ -2,112 +2,104 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C2C93C6FD1D
-	for <linux-ext4@archiver.kernel.org>; Thu, 30 Mar 2023 13:47:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 06B0AC761A6
+	for <linux-ext4@archiver.kernel.org>; Thu, 30 Mar 2023 13:50:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232156AbjC3NrS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 30 Mar 2023 09:47:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35568 "EHLO
+        id S231883AbjC3Nuk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 30 Mar 2023 09:50:40 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37978 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232001AbjC3NrR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Mar 2023 09:47:17 -0400
-Received: from mail-ed1-x52f.google.com (mail-ed1-x52f.google.com [IPv6:2a00:1450:4864:20::52f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4D142CA
-        for <linux-ext4@vger.kernel.org>; Thu, 30 Mar 2023 06:47:16 -0700 (PDT)
-Received: by mail-ed1-x52f.google.com with SMTP id r11so76731126edd.5
-        for <linux-ext4@vger.kernel.org>; Thu, 30 Mar 2023 06:47:16 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linaro.org; s=google; t=1680184034;
-        h=content-transfer-encoding:in-reply-to:from:references:cc:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=7heuTSxTseGx6DRd1J0KDR2xUe+BJ0nlLM1TKQLexsI=;
-        b=eEvxUUcCgtdPkTaWnlq98JyD0YDBwGyNzMkarDDRXGioMx58qsAhiHXVP7Pm8k3ptY
-         OQLxjeR882CPmERFLOTrQzAtlK29YMs0aqG8uQ+lcvpSXixQ4stGS8zpD/XENfBphQ9M
-         dla9t94zuHDmU5ndx9dtNEW72X656Jadqf5ke/nKA6oGkTarWt/Dv458LWmIVlPbTD4O
-         c+oIIN6lq+MQTT1UKYDeBnqJVODDkq2VNXQTrTk8XBkWmt2IKZ52dA0uLZA78cMXJZzw
-         XNqWWUdQ3veIon5RS4OQ8LowOhgBJka6wvwuYvuHMEHsezcUn2YNjfCG3UwzG+5qgWYb
-         QExw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112; t=1680184034;
-        h=content-transfer-encoding:in-reply-to:from:references:cc:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=7heuTSxTseGx6DRd1J0KDR2xUe+BJ0nlLM1TKQLexsI=;
-        b=CzJ6kLlegWK7lNCPqfLdiY3wc+apNzdZ6eJS2etup+HfLP7c6McNa6CE3TCQsgkWol
-         JiDEgAc/EOI84XF41KNJxDoOB8EROpUgb7W0VTXiB7dOBVqZV9FM3yU5PTwTbd0amR/e
-         Aa9sJxmknROHZSWpj/E9E3kn1cOvJqp+BXhmHjKGzDuY59aXm6IzkzQhYz7WYqzu2uhX
-         FQmK1DutcAhCbkV89m9o94BvZfFA+Fo9AmicsvqvD4oZnSpqyEe+UeCy1EptnvrJJZA6
-         OazRZq25Cig6AkPnvnFdJ7jzZ1Xmg2/pmRmLdaEALrIMpiVuHnUL3Yg1PxA1HM6cAqGE
-         hmmQ==
-X-Gm-Message-State: AAQBX9f6R0BgwmwAouxNe9L/Y36jQV2qlrojnJATCqVdg/qY99jc03Jg
-        B3AyItJww8hg+P2u8ANBhezZ29n6JJmRwUNibftMiA==
-X-Google-Smtp-Source: AKy350avsdzd2DtKve0wHEmyKWZ5v7Q4Wzltkvqn3YQnOvRP0aU79AWzKoxvtbhSShhNLd7Mz298RQ==
-X-Received: by 2002:a17:906:801:b0:92e:efa:b9b4 with SMTP id e1-20020a170906080100b0092e0efab9b4mr27892658ejd.22.1680184034684;
-        Thu, 30 Mar 2023 06:47:14 -0700 (PDT)
-Received: from [192.168.2.107] ([79.115.63.91])
-        by smtp.gmail.com with ESMTPSA id u20-20020a50c054000000b004aeeb476c5bsm18060637edd.24.2023.03.30.06.47.13
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 30 Mar 2023 06:47:14 -0700 (PDT)
-Message-ID: <1f3d50b0-0528-befb-4fc6-8b5a96fc41b6@linaro.org>
-Date:   Thu, 30 Mar 2023 14:47:12 +0100
+        with ESMTP id S231949AbjC3Nui (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Mar 2023 09:50:38 -0400
+Received: from mga03.intel.com (mga03.intel.com [134.134.136.65])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6C3A45B86;
+        Thu, 30 Mar 2023 06:50:36 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1680184236; x=1711720236;
+  h=date:from:to:cc:subject:message-id:references:
+   mime-version:in-reply-to;
+  bh=0RFB1dYZ9F2StXue2dw6vh4Fi8li3Ziwy4v/kPzxaaQ=;
+  b=lyayXXt0GM7m6k/XxvD5TSE9A3oHJgvmpiZamgOH10syR0w/TN58jPKF
+   ncppL7wXIas07HXkrqIchrxNwYMKnCRX9jW5kSSnPwvqDNGaQ5OSOa19L
+   +je0qhEBoPjNjFUs+vxVE3H5adhWkhTxjx4jUhxnr5eHk+A9T4nF3kqWs
+   zIt+OGr1sasyfP6LmpJlF4DEHsxu6SkB12IR0nupKspI+gscGog3WUsBD
+   njgeb5qaf28JeYpf46rTLcYXd2IEr+fRkNdbQaunbQqT/n9O4ziN4r+0d
+   tjEhQBgf/y0SYVZ3HhEkmvE9VexLrplPNklS69XFo7GbAODHoTlul1iqt
+   Q==;
+X-IronPort-AV: E=McAfee;i="6600,9927,10665"; a="343638563"
+X-IronPort-AV: E=Sophos;i="5.98,303,1673942400"; 
+   d="scan'208";a="343638563"
+Received: from fmsmga004.fm.intel.com ([10.253.24.48])
+  by orsmga103.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 30 Mar 2023 06:22:58 -0700
+X-ExtLoop1: 1
+X-IronPort-AV: E=McAfee;i="6600,9927,10665"; a="753990820"
+X-IronPort-AV: E=Sophos;i="5.98,303,1673942400"; 
+   d="scan'208";a="753990820"
+Received: from lkp-server01.sh.intel.com (HELO b613635ddfff) ([10.239.97.150])
+  by fmsmga004.fm.intel.com with ESMTP; 30 Mar 2023 06:22:56 -0700
+Received: from kbuild by b613635ddfff with local (Exim 4.96)
+        (envelope-from <lkp@intel.com>)
+        id 1phsEx-000KtE-0z;
+        Thu, 30 Mar 2023 13:22:55 +0000
+Date:   Thu, 30 Mar 2023 21:22:28 +0800
+From:   kernel test robot <lkp@intel.com>
+To:     Josh Triplett <josh@joshtriplett.org>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+Cc:     llvm@lists.linux.dev, oe-kbuild-all@lists.linux.dev
+Subject: Re: [PATCH] ext4: Add a uapi header for ext4 userspace APIs
+Message-ID: <202303302155.FBlvXAL3-lkp@intel.com>
+References: <f0c650c0a0bcc799101573d265f3006c6f6bd046.1680149153.git.josh@joshtriplett.org>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
- Thunderbird/102.7.1
-Subject: Re: [PATCH RESEND][for-stable 5.10, 5.4, 4.19, 4.14] ext4: fix kernel
- BUG in 'ext4_write_inline_data_end()'
-Content-Language: en-US
-To:     Greg KH <gregkh@linuxfoundation.org>
-Cc:     stable@kernel.org, stable@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, boyu.mt@taobao.com,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        leejones@google.com, Ye Bin <yebin10@huawei.com>,
-        syzbot+4faa160fa96bfba639f8@syzkaller.appspotmail.com,
-        Jun Nie <jun.nie@linaro.org>
-References: <20230307103840.2603092-1-tudor.ambarus@linaro.org>
- <42739df1-8b63-dfd6-6ec5-6c59d5d41dd8@linaro.org>
- <ZCV6I-CBHVw2GPre@kroah.com>
- <661ff1fb-ab0d-e0a3-693c-073443f556df@linaro.org>
- <ZCWFx_iRPRr1Afw0@kroah.com>
-From:   Tudor Ambarus <tudor.ambarus@linaro.org>
-In-Reply-To: <ZCWFx_iRPRr1Afw0@kroah.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <f0c650c0a0bcc799101573d265f3006c6f6bd046.1680149153.git.josh@joshtriplett.org>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+Hi Josh,
 
+I love your patch! Yet something to improve:
 
-On 3/30/23 13:51, Greg KH wrote:
-> On Thu, Mar 30, 2023 at 01:21:55PM +0100, Tudor Ambarus wrote:
->>
->>
->> On 3/30/23 13:01, Greg KH wrote:
->>> On Thu, Mar 30, 2023 at 12:42:27PM +0100, Tudor Ambarus wrote:
->>>> + stable@vger.kernel.org
->>>>
->>>> Hi!
->>>>
->>>> Can we queue this to Linux stable, please?
->>>
->>> Queue what exactly?
->>>
->>
->> The patch on which we reply:
->> https://lore.kernel.org/all/20230307103840.2603092-1-tudor.ambarus@linaro.org/
->>
->> Shall I do something different next time?
-> 
-> Please resend, your commit message is very confusing and this patch is
+[auto build test ERROR on tytso-ext4/dev]
+[also build test ERROR on linus/master v6.3-rc4 next-20230330]
+[If your patch is applied to the wrong git tree, kindly drop us a note.
+And when submitting patch, we suggest to use '--base' as documented in
+https://git-scm.com/docs/git-format-patch#_base_tree_information]
 
-Indeed.
-> long out of my review queue for some reason.
-> 
+url:    https://github.com/intel-lab-lkp/linux/commits/Josh-Triplett/ext4-Add-a-uapi-header-for-ext4-userspace-APIs/20230330-123712
+base:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
+patch link:    https://lore.kernel.org/r/f0c650c0a0bcc799101573d265f3006c6f6bd046.1680149153.git.josh%40joshtriplett.org
+patch subject: [PATCH] ext4: Add a uapi header for ext4 userspace APIs
+config: x86_64-randconfig-a016 (https://download.01.org/0day-ci/archive/20230330/202303302155.FBlvXAL3-lkp@intel.com/config)
+compiler: clang version 14.0.6 (https://github.com/llvm/llvm-project f28c006a5895fc0e329fe15fead81e37457cb1d1)
+reproduce (this is a W=1 build):
+        wget https://raw.githubusercontent.com/intel/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
+        chmod +x ~/bin/make.cross
+        # https://github.com/intel-lab-lkp/linux/commit/9e61a3eab96b327fb2392b2ae665c6bc25e4b004
+        git remote add linux-review https://github.com/intel-lab-lkp/linux
+        git fetch --no-tags linux-review Josh-Triplett/ext4-Add-a-uapi-header-for-ext4-userspace-APIs/20230330-123712
+        git checkout 9e61a3eab96b327fb2392b2ae665c6bc25e4b004
+        # save the config file
+        mkdir build_dir && cp config build_dir/.config
+        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=clang make.cross W=1 O=build_dir ARCH=x86_64 olddefconfig
+        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=clang make.cross W=1 O=build_dir ARCH=x86_64 SHELL=/bin/bash
 
-Replaced the blurb with a 2 line explanation in the [] section above my
-S-o-b:
-https://lore.kernel.org/stable/20230330134233.3407390-1-tudor.ambarus@linaro.org/T/#u
+If you fix the issue, kindly add following tag where applicable
+| Reported-by: kernel test robot <lkp@intel.com>
+| Link: https://lore.kernel.org/oe-kbuild-all/202303302155.FBlvXAL3-lkp@intel.com/
 
-Cheers,
-ta
+All errors (new ones prefixed by >>):
+
+   In file included from <built-in>:1:
+>> ./usr/include/linux/ext4.h:7:10: fatal error: 'uapi/linux/fiemap.h' file not found
+   #include <uapi/linux/fiemap.h>
+            ^~~~~~~~~~~~~~~~~~~~~
+   1 error generated.
+
+-- 
+0-DAY CI Kernel Test Service
+https://github.com/intel/lkp-tests
