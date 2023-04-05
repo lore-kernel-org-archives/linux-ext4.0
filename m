@@ -2,131 +2,83 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 24974C77B62
-	for <linux-ext4@archiver.kernel.org>; Wed,  5 Apr 2023 07:49:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8333AC76188
+	for <linux-ext4@archiver.kernel.org>; Wed,  5 Apr 2023 08:48:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237154AbjDEHtr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 5 Apr 2023 03:49:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33180 "EHLO
+        id S237236AbjDEIsQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 5 Apr 2023 04:48:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43926 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237087AbjDEHtp (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Apr 2023 03:49:45 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9B8E446AE;
-        Wed,  5 Apr 2023 00:49:40 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 3663A63960;
-        Wed,  5 Apr 2023 07:49:40 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 895D0C433D2;
-        Wed,  5 Apr 2023 07:49:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1680680979;
-        bh=Weq5xIt7NaRy390+BxKr0DPL+Sx0J9wKSXtMC/5JUh0=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=l5Flc0M5e8GB39z9f8BFJ5ebxS8y3KvMmKQItlraREhf8AkpnxMWHlz+JXp8p7uI1
-         Kljlt0scTB58bQpEmq4GK+eEA+W3BOPA5cN1xWCrA68FuXwrY3GmcIErMd7I6tygyc
-         V9JzsMXQMyO0n9SdIkQE39mGNJMhI4Juz/LKaq5zFFseVa5v/r1CJgL8buDMvRme/M
-         V60YaWT3OGRM2C3c4p9BXErpUiMxTPWmcEsEkzEZBNsBmiLmJeuYqKxc6IXyHEJcg/
-         oPvvLtbmc/+Gs5xXnYjOU/toIg6/1FGapaFmAgQB8BCmWBhC4ZrbJ8UgmFtFOJlHgF
-         qh4BFYcRworMg==
-Date:   Wed, 5 Apr 2023 09:49:27 +0200
-From:   Christian Brauner <brauner@kernel.org>
-To:     Zorro Lang <zlang@kernel.org>
-Cc:     fstests@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        ocfs2-devel@oss.oracle.com, linux-unionfs@vger.kernel.org,
-        jack@suse.com, linux-xfs@vger.kernel.org, fdmanana@suse.com,
-        ebiggers@google.com, amir73il@gmail.com, djwong@kernel.org,
-        anand.jain@oracle.com
-Subject: Re: [PATCH 3/5] fstests/MAINTAINERS: add supported mailing list
-Message-ID: <20230405-bazillus-nanotechnologie-a8cf619d8454@brauner>
-References: <20230404171411.699655-1-zlang@kernel.org>
- <20230404171411.699655-4-zlang@kernel.org>
+        with ESMTP id S237210AbjDEIsM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Apr 2023 04:48:12 -0400
+Received: from mail-il1-x12c.google.com (mail-il1-x12c.google.com [IPv6:2607:f8b0:4864:20::12c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A0A8A3599;
+        Wed,  5 Apr 2023 01:48:11 -0700 (PDT)
+Received: by mail-il1-x12c.google.com with SMTP id v5so15878890ilj.4;
+        Wed, 05 Apr 2023 01:48:11 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112; t=1680684491;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=+I6RLfy7p3pfnrp1t4tfB17I5n8zpBk+7c0bn0ShMwk=;
+        b=BG3AEdrJJ0ZcQ2QpGmViN9LyS+MPb/fqMGFAr5Grwyj3ovcJOmc1pTHjPyIL1XD/AX
+         G66whUC3DnyDBqcK2Y5sH8DubURH4ns2a1SXG6vHaK8G8mrsJ2yPvWQDnnXjSPB6MHPk
+         dS85xVYbu7J3mGbGFcBRUOldjIXBmnOJQ7sSy7unpS51TfqKTyNpDg5hciebMH7XKE6F
+         bGmEKTAOu78E+yhHOFbpua5J2R/mTscFRNH08vSnMh+pqnB9fut1gK36jF8cqzXE8MdK
+         u7okQX6g2pz7IK3zadkrbkPAMGL89G1tBfl/HtjhiGJlJIC42giDgHEvDrKOa8oXPEGM
+         m/IQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112; t=1680684491;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=+I6RLfy7p3pfnrp1t4tfB17I5n8zpBk+7c0bn0ShMwk=;
+        b=nrlvPLqXIDwFGxpZE0TwA4UY6/xsFrS74uRx/EJgT8NXL2SRVnsQ3MipcJ5fyWjZ5l
+         4K5RhbOt6adFkUXAD54WWUudHfAoNki8sgcIMu9XMHNtHxDglkNeqfmwBVReXafMdYAL
+         syPn9kTdv3mRfL2RwrOe8gx3JIl01DKwomz7eIApKOI7odiskbvXX7UPkBtnCFUispvB
+         gm2C9kyRHGXY/1cImEX8qcJjVNSF0L5IhnVX6CiU/0cER50jIqiGmiv/NruElG05apLU
+         adX1PfuMeqYxfKUGUqkHRMKQtPknYXdpJhXOucNDBGbpGDhSIqXIVhWvjb68iyVGjenB
+         wIyg==
+X-Gm-Message-State: AAQBX9fGnipoNNmfoVRE1Wx8InSLV+XPIs/Goj6p4Gl3pJm4acfcqB1y
+        YB/JtgiAf3TyFfXdBnIQwSxy8/om58hF9iFu3CM=
+X-Google-Smtp-Source: AKy350bt+tihLu4R/cuRxtZMh9NKFLSUtLTfqU8EqI8rR6ILEh5Rmsp1q3KCTonEB2gR18n1tuSY7+NU35k6ABFa+Lk=
+X-Received: by 2002:a05:6e02:96c:b0:326:4af5:28b5 with SMTP id
+ q12-20020a056e02096c00b003264af528b5mr1448626ilt.3.1680684490954; Wed, 05 Apr
+ 2023 01:48:10 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <20230404171411.699655-4-zlang@kernel.org>
+References: <20230403135304.19858-1-wuchi.zero@gmail.com> <ZC0J6I1pYNZBB30y@infradead.org>
+In-Reply-To: <ZC0J6I1pYNZBB30y@infradead.org>
+From:   chi wu <wuchi.zero@gmail.com>
+Date:   Wed, 5 Apr 2023 16:47:59 +0800
+Message-ID: <CA+tQmHA_3_Oc-0AQ0a29DTwU4mkEqhOiAE6gXa4Ly4gZGpn5Vw@mail.gmail.com>
+Subject: Re: [PATCH] ext4: simplify 32bit calculation of lblk
+To:     Christoph Hellwig <hch@infradead.org>
+Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com,
+        ritesh.list@gmail.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Apr 05, 2023 at 01:14:09AM +0800, Zorro Lang wrote:
-> The fstests supports different kind of fs testing, better to cc
-> specific fs mailing list for specific fs testing, to get better
-> reviewing points. So record these mailing lists and files related
-> with them in MAINTAINERS file.
-> 
-> Signed-off-by: Zorro Lang <zlang@kernel.org>
-> ---
-> 
-> If someone mailing list doesn't want to be in cc list of related fstests
-> patch, please reply this email, I'll remove that line.
-> 
-> Or if I missed someone mailing list, please feel free to tell me.
-> 
-> Thanks,
-> Zorro
-> 
->  MAINTAINERS | 77 +++++++++++++++++++++++++++++++++++++++++++++++++++++
->  1 file changed, 77 insertions(+)
-> 
-> diff --git a/MAINTAINERS b/MAINTAINERS
-> index 09b1a5a3..620368cb 100644
-> --- a/MAINTAINERS
-> +++ b/MAINTAINERS
-> @@ -107,6 +107,83 @@ Maintainers List
->  	  should send patch to fstests@ at least. Other relevant mailing list
->  	  or reviewer or co-maintainer can be in cc list.
->  
-> +BTRFS
-> +L:	linux-btrfs@vger.kernel.org
-> +S:	Supported
-> +F:	tests/btrfs/
-> +F:	common/btrfs
-> +
-> +CEPH
-> +L:	ceph-devel@vger.kernel.org
-> +S:	Supported
-> +F:	tests/ceph/
-> +F:	common/ceph
-> +
-> +CIFS
-> +L:	linux-cifs@vger.kernel.org
-> +S:	Supported
-> +F:	tests/cifs
-> +
-> +EXT4
-> +L:	linux-ext4@vger.kernel.org
-> +S:	Supported
-> +F:	tests/ext4/
-> +F:	common/ext4
-> +
-> +F2FS
-> +L:	linux-f2fs-devel@lists.sourceforge.net
-> +S:	Supported
-> +F:	tests/f2fs/
-> +F:	common/f2fs
-> +
-> +FSVERITY
-> +L:	fsverity@lists.linux.dev
-> +S:	Supported
-> +F:	common/verity
-> +
-> +FSCRYPT
-> +L:      linux-fscrypt@vger.kernel.org
-> +S:	Supported
-> +F:	common/encrypt
-> +
-> +FS-IDMAPPED
-> +L:	linux-fsdevel@vger.kernel.org
-> +S:	Supported
-> +F:	src/vfs/
+Christoph Hellwig <hch@infradead.org> =E4=BA=8E2023=E5=B9=B44=E6=9C=885=E6=
+=97=A5=E5=91=A8=E4=B8=89 13:40=E5=86=99=E9=81=93=EF=BC=9A
+>
+> On Mon, Apr 03, 2023 at 09:53:04PM +0800, wuchi wrote:
+> > -                     if (block > ext_block)
+> > -                             return ext_pblk + (block - ext_block);
+> > -                     else
+> > -                             return ext_pblk - (ext_block - block);
+> > +                     return ext_pblk + ((signed long long)block - (sig=
+ned long long)ext_block);
+>
+> And what exactly is the value add here, except for turning an easy
+> to parse statement into a complex expression using casts?
+>
+Yes=EF=BC=8Cit will be more complex. the original intention is to reduce th=
+e
+conditional branch.
 
-Same suggestion as earlier, make that section VFS as it covers generic
-functionality,
-
-Acked-by: Christian Brauner <brauner@kernel.org>
+=3D=3D=3D=3D=3D=3D=3D
