@@ -2,133 +2,167 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D06DFC76196
-	for <linux-ext4@archiver.kernel.org>; Thu,  6 Apr 2023 13:29:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 20990C7618D
+	for <linux-ext4@archiver.kernel.org>; Thu,  6 Apr 2023 14:03:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238518AbjDFN3W (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 6 Apr 2023 09:29:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58874 "EHLO
+        id S238894AbjDFODW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 6 Apr 2023 10:03:22 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44588 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238523AbjDFN3N (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Apr 2023 09:29:13 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 72DED65A9;
-        Thu,  6 Apr 2023 06:29:11 -0700 (PDT)
-Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.57])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4Psj2L16N8zKx5m;
-        Thu,  6 Apr 2023 21:26:34 +0800 (CST)
+        with ESMTP id S230029AbjDFODV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Apr 2023 10:03:21 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8DF7749CE;
+        Thu,  6 Apr 2023 07:03:19 -0700 (PDT)
+Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.53])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4Psjmj68qcznb9n;
+        Thu,  6 Apr 2023 21:59:49 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
  (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.23; Thu, 6 Apr
- 2023 21:29:03 +0800
+ 2023 22:03:16 +0800
 From:   Baokun Li <libaokun1@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <ritesh.list@gmail.com>, <linux-kernel@vger.kernel.org>,
-        <yi.zhang@huawei.com>, <yangerkun@huawei.com>,
-        <yukuai3@huawei.com>, <libaokun1@huawei.com>
-Subject: [PATCH v2 1/2] ext4: only update i_reserved_data_blocks on successful block allocation
-Date:   Thu, 6 Apr 2023 21:28:33 +0800
-Message-ID: <20230406132834.1669710-2-libaokun1@huawei.com>
+To:     <linux-fsdevel@vger.kernel.org>
+CC:     <viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <tj@kernel.org>,
+        <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
+        <ritesh.list@gmail.com>, <linux-ext4@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <yi.zhang@huawei.com>,
+        <yangerkun@huawei.com>, <yukuai3@huawei.com>,
+        <libaokun1@huawei.com>, <stable@vger.kernel.org>
+Subject: [RFC PATCH] writeback, cgroup: fix null-ptr-deref write in bdi_split_work_to_wbs
+Date:   Thu, 6 Apr 2023 22:02:47 +0800
+Message-ID: <20230406140247.1936541-1-libaokun1@huawei.com>
 X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20230406132834.1669710-1-libaokun1@huawei.com>
-References: <20230406132834.1669710-1-libaokun1@huawei.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7BIT
 Content-Type:   text/plain; charset=US-ASCII
 X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems703-chm.china.huawei.com (10.3.19.180) To
+X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
  dggpeml500021.china.huawei.com (7.185.36.21)
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-In our fault injection test, we create an ext4 file, migrate it to
-non-extent based file, then punch a hole and finally trigger a WARN_ON
-in the ext4_da_update_reserve_space():
+KASAN report null-ptr-deref:
+==================================================================
+BUG: KASAN: null-ptr-deref in bdi_split_work_to_wbs+0x6ce/0x6e0
+Write of size 8 at addr 0000000000000000 by task syz-executor.3/3514
 
-EXT4-fs warning (device sda): ext4_da_update_reserve_space:369:
-ino 14, used 11 with only 10 reserved data blocks
+CPU: 3 PID: 3514 Comm: syz-executor.3 Not tainted 5.10.0-dirty #1
+Call Trace:
+ dump_stack+0xbe/0xfd
+ __kasan_report.cold+0x34/0x84
+ kasan_report+0x3a/0x50
+ check_memory_region+0xfd/0x1f0
+ bdi_split_work_to_wbs+0x6ce/0x6e0
+ __writeback_inodes_sb_nr+0x184/0x1f0
+ try_to_writeback_inodes_sb+0x7f/0xa0
+ ext4_nonda_switch+0x125/0x130
+ ext4_da_write_begin+0x126/0x6e0
+ generic_perform_write+0x199/0x3a0
+ ext4_buffered_write_iter+0x16d/0x2b0
+ ext4_file_write_iter+0xea/0x140
+ new_sync_write+0x2fa/0x430
+ vfs_write+0x4a1/0x570
+ ksys_write+0xf6/0x1f0
+ do_syscall_64+0x30/0x40
+ entry_SYSCALL_64_after_hwframe+0x61/0xc6
+RIP: 0033:0x45513d
+[...]
+==================================================================
 
-When writing back a non-extent based file, if we enable delalloc, the
-number of reserved blocks will be subtracted from the number of blocks
-mapped by ext4_ind_map_blocks(), and the extent status tree will be
-updated. We update the extent status tree by first removing the old
-extent_status and then inserting the new extent_status. If the block range
-we remove happens to be in an extent, then we need to allocate another
-extent_status with ext4_es_alloc_extent().
+Above issue may happen as follows:
 
-       use old    to remove   to add new
-    |----------|------------|------------|
-              old extent_status
+            cpu1                        cpu2
+----------------------------|----------------------------
+ext4_nonda_switch
+ try_to_writeback_inodes_sb
+  __writeback_inodes_sb_nr
+   bdi_split_work_to_wbs
+    kmalloc(sizeof(*work), GFP_ATOMIC)  ---> alloc mem failed
+                                inode_switch_wbs
+                                 inode_switch_wbs_work_fn
+                                  wb_put_many
+                                   percpu_ref_put_many
+                                    ref->data->release(ref)
+                                     cgwb_release
+                                      &wb->release_work
+                                       cgwb_release_workfn
+                                        percpu_ref_exit
+                                         ref->data = NULL
+                                         kfree(data)
+    wb_get(wb)
+     percpu_ref_get(&wb->refcnt)
+      percpu_ref_get_many(ref, 1)
+       atomic_long_add(nr, &ref->data->count) ---> ref->data = NULL
+        atomic64_add(i, v) ---> trigger null-ptr-deref
 
-The problem is that the allocation of a new extent_status failed due to a
-fault injection, and __es_shrink() did not get free memory, resulting in
-a return of -ENOMEM. Then do_writepages() retries after receiving -ENOMEM,
-we map to the same extent again, and the number of reserved blocks is again
-subtracted from the number of blocks in that extent. Since the blocks in
-the same extent are subtracted twice, we end up triggering WARN_ON at
-ext4_da_update_reserve_space() because used > ei->i_reserved_data_blocks.
+bdi_split_work_to_wbs() traverses &bdi->wb_list to split work into all wbs.
+If the allocation of new work fails, the on-stack fallback will be used and
+the reference count of the current wb is increased afterwards. If cgroup
+writeback membership switches occur before getting the reference count and
+the current wb is released as old_wd, then calling wb_get() or wb_put()
+will trigger the null pointer dereference above.
 
-For non-extent based file, we update the number of reserved blocks after
-ext4_ind_map_blocks() is executed, which causes a problem that when we call
-ext4_ind_map_blocks() to create a block, it doesn't always create a block,
-but we always reduce the number of reserved blocks. So we move the logic
-for updating reserved blocks to ext4_ind_map_blocks() to ensure that the
-number of reserved blocks is updated only after we do succeed in allocating
-some new blocks.
+A similar problem is fixed in commit 7fc5854f8c6e ("writeback: synchronize
+sync(2) against cgroup writeback membership switches"), but the patch only
+adds locks to sync_inodes_sb() and not to the __writeback_inodes_sb_nr()
+function that also calls bdi_split_work_to_wbs() function. So avoid the
+above race by adding the same lock to __writeback_inodes_sb_nr() and
+expanding the range of wb_switch_rwsem held in inode_switch_wbs_work_fn().
 
-Fixes: 5f634d064c70 ("ext4: Fix quota accounting error with fallocate")
+Fixes: b817525a4a80 ("writeback: bdi_writeback iteration must not skip dying ones")
+Cc: stable@vger.kernel.org
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 ---
-V1->V2:
-	Modify the patch description and add the Fixes tag.
+ fs/fs-writeback.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
- fs/ext4/indirect.c |  8 ++++++++
- fs/ext4/inode.c    | 10 ----------
- 2 files changed, 8 insertions(+), 10 deletions(-)
-
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index c68bebe7ff4b..9acab70ddf5e 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -651,6 +651,14 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index 195dc23e0d83..52825aaf549b 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -506,13 +506,13 @@ static void inode_switch_wbs_work_fn(struct work_struct *work)
+ 	spin_unlock(&new_wb->list_lock);
+ 	spin_unlock(&old_wb->list_lock);
  
- 	ext4_update_inode_fsync_trans(handle, inode, 1);
- 	count = ar.len;
-+
-+	/*
-+	 * Update reserved blocks/metadata blocks after successful block
-+	 * allocation which had been deferred till now.
-+	 */
-+	if ((count > 0) && (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE))
-+		ext4_da_update_reserve_space(inode, count, 1);
-+
- got_it:
- 	map->m_flags |= EXT4_MAP_MAPPED;
- 	map->m_pblk = le32_to_cpu(chain[depth-1].key);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 97eb728cb958..33ae92f0ddfb 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -659,16 +659,6 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 			 */
- 			ext4_clear_inode_state(inode, EXT4_STATE_EXT_MIGRATE);
- 		}
+-	up_read(&bdi->wb_switch_rwsem);
 -
--		/*
--		 * Update reserved blocks/metadata blocks after successful
--		 * block allocation which had been deferred till now. We don't
--		 * support fallocate for non extent files. So we can update
--		 * reserve space here.
--		 */
--		if ((retval > 0) &&
--			(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE))
--			ext4_da_update_reserve_space(inode, retval, 1);
+ 	if (nr_switched) {
+ 		wb_wakeup(new_wb);
+ 		wb_put_many(old_wb, nr_switched);
  	}
  
- 	if (retval > 0) {
++	up_read(&bdi->wb_switch_rwsem);
++
+ 	for (inodep = isw->inodes; *inodep; inodep++)
+ 		iput(*inodep);
+ 	wb_put(new_wb);
+@@ -936,6 +936,11 @@ static long wb_split_bdi_pages(struct bdi_writeback *wb, long nr_pages)
+  * have dirty inodes.  If @base_work->nr_page isn't %LONG_MAX, it's
+  * distributed to the busy wbs according to each wb's proportion in the
+  * total active write bandwidth of @bdi.
++ *
++ * Called under &bdi->wb_switch_rwsem, otherwise bdi_split_work_to_wbs()
++ * may race against cgwb (cgroup writeback) membership switches, which may
++ * cause some inodes to fail to write back, or even trigger a null pointer
++ * dereference using a freed wb.
+  */
+ static void bdi_split_work_to_wbs(struct backing_dev_info *bdi,
+ 				  struct wb_writeback_work *base_work,
+@@ -2637,8 +2642,11 @@ static void __writeback_inodes_sb_nr(struct super_block *sb, unsigned long nr,
+ 		return;
+ 	WARN_ON(!rwsem_is_locked(&sb->s_umount));
+ 
++	/* protect against inode wb switch, see inode_switch_wbs_work_fn() */
++	bdi_down_write_wb_switch_rwsem(bdi);
+ 	bdi_split_work_to_wbs(sb->s_bdi, &work, skip_if_busy);
+ 	wb_wait_for_completion(&done);
++	bdi_up_write_wb_switch_rwsem(bdi);
+ }
+ 
+ /**
 -- 
 2.31.1
 
