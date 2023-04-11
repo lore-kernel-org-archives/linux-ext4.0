@@ -2,104 +2,56 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BB9B0C76196
-	for <linux-ext4@archiver.kernel.org>; Mon, 10 Apr 2023 17:45:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F39A8C77B73
+	for <linux-ext4@archiver.kernel.org>; Tue, 11 Apr 2023 05:02:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230000AbjDJRpt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 10 Apr 2023 13:45:49 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36198 "EHLO
+        id S229839AbjDKFCG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 11 Apr 2023 01:02:06 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60806 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229503AbjDJRps (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Apr 2023 13:45:48 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2A8DC171C;
-        Mon, 10 Apr 2023 10:45:47 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id B965B610A3;
-        Mon, 10 Apr 2023 17:45:46 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1CC0DC433D2;
-        Mon, 10 Apr 2023 17:45:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1681148746;
-        bh=Q72b34YBtc7OXzlvOQZ3dPKBZ4tw4gB1Uk02Sk+ZOxk=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=G/G2jOWOmBcqah9uKdDP7U0f+PCmS5RTT9H0cTBuVaFjX7PfIKGfmy0XkQI5BInZr
-         3NvcwNYSGElLLQg2L8tvKzVJc5HlMdL3NnvKlgvO3t8XPttosac3Bm377sBBC0ZvJZ
-         o6delpRrwT7W7L7Elhd/NpV5+o7b5X3vvtrURuIkbD2E4PeDDi1trJVBc07rH1Ai/e
-         FEll0jV9xkFBUMAEcPV7hGvGqNgs2xtVHWApf8KfDBuIKlrpm4EIAuaEEqc93yW+gD
-         o2L37UUddeCbp7Cggouqwfgu8oOFCxolY/CPffCF6xVwWzOEd9A6088yKp04+LhoG2
-         ZGl3RFt3wH9yg==
-Date:   Mon, 10 Apr 2023 10:45:45 -0700
-From:   "Darrick J. Wong" <djwong@kernel.org>
-To:     Guoqing Cai <u202112087@hust.edu.cn>
-Cc:     Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-        HUST OS Kernel Contribution 
-        <hust-os-kernel-patches@googlegroups.com>,
-        Dongliang Mu <dzm91@hust.edu.cn>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] fs: jbd2: fix an incorrect warn log
-Message-ID: <20230410174545.GA360877@frogsfrogsfrogs>
-References: <20230410172039.1752440-1-u202112087@hust.edu.cn>
+        with ESMTP id S229692AbjDKFCF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Apr 2023 01:02:05 -0400
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D9F8E199F;
+        Mon, 10 Apr 2023 22:02:00 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=KBhNfUOcD8iQz+TMuW2IJQH6CYVeRvhGPDElxngGpyE=; b=SuYCXB7pkcbxWbG1OHBZx7juNA
+        pku0+MY68aN+S95h6lBSIC3+WUupYPcZ/eHTEqYAFMoLUQnYO8MeMYSbBdMCyQylUcDHHLHcmIXd7
+        e5NqbRZSQB0gMOfbiVnUErygHRgsOtoOGaC/2EcI+J1zpIrNhA2wJV2TkXNBC4tU7LeHeSTqUrrZO
+        VIlNf2JBzbM+1SJ8Gb7TZBAgltRuPGZead5QKLPM2er7apLZLYmpxUY511LIx0AYMvAIJ3J+L1juU
+        k1OlPAFQtvgOTFojCSEo3+oOplG9rBmr5OVIw9zq4j1KxjAJOgfkDHNzOUYwe4/ft+nr670+zJOBn
+        JIilyNgg==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.96 #2 (Red Hat Linux))
+        id 1pm68l-00GQYB-0D;
+        Tue, 11 Apr 2023 05:01:59 +0000
+Date:   Mon, 10 Apr 2023 22:01:59 -0700
+From:   Christoph Hellwig <hch@infradead.org>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     fsverity@lists.linux.dev, linux-crypto@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-btrfs@vger.kernel.org
+Subject: Re: [RFC PATCH] fsverity: use shash API instead of ahash API
+Message-ID: <ZDTpx15RX/64lbjY@infradead.org>
+References: <20230406003714.94580-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20230410172039.1752440-1-u202112087@hust.edu.cn>
+In-Reply-To: <20230406003714.94580-1-ebiggers@kernel.org>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Apr 11, 2023 at 01:20:38AM +0800, Guoqing Cai wrote:
-> In jbd2_journal_load(), when journal_reset fails, it prints an incorrect
-> warn log.
-> 
-> Fix this by changing the goto statement to return statement.
-> 
-> Signed-off-by: Guoqing Cai <u202112087@hust.edu.cn>
-> Reviewed-by: Dongliang Mu <dzm91@hust.edu.cn>
-> ---
->  fs/jbd2/journal.c | 12 +++++-------
->  1 file changed, 5 insertions(+), 7 deletions(-)
-> 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index e80c781731f8..555f09ca1d99 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -2082,8 +2082,10 @@ int jbd2_journal_load(journal_t *journal)
->  
->  	/* Let the recovery code check whether it needs to recover any
->  	 * data from the journal. */
-> -	if (jbd2_journal_recover(journal))
-> -		goto recovery_error;
-> +	if (jbd2_journal_recover(journal)) {
-> +		printk(KERN_WARNING "JBD2: recovery failed\n");
-> +		return -EIO;
-> +	}
->  
->  	if (journal->j_failed_commit) {
->  		printk(KERN_ERR "JBD2: journal transaction %u on %s "
-> @@ -2101,14 +2103,10 @@ int jbd2_journal_load(journal_t *journal)
->  	 * reinitialise the dynamic contents of the superblock in memory
->  	 * and reset them on disk. */
->  	if (journal_reset(journal))
-> -		goto recovery_error;
-> +		return -EIO;
+On Wed, Apr 05, 2023 at 05:37:14PM -0700, Eric Biggers wrote:
+> Therefore, let's convert fs/verity/ from ahash to shash.  This
+> simplifies the code, and it should also slightly improve performance for
+> everyone who wasn't actually using one of these ahash-only crypto
+> accelerators, i.e. almost everyone (or maybe even everyone)!
 
-Why wouldn't you warn about the journal reset failing here?
-
---D
-
->  
->  	journal->j_flags |= JBD2_LOADED;
->  	return 0;
-> -
-> -recovery_error:
-> -	printk(KERN_WARNING "JBD2: recovery failed\n");
-> -	return -EIO;
->  }
->  
->  /**
-> -- 
-> 2.40.0
-> 
+This looks like a very nice cleanup to me.  So unless someone really
+uses async crypto offload heavily for fsverity and can come up with
+a convincing argument for that, I'm all for the change.
