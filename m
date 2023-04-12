@@ -2,154 +2,124 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 38CA7C77B73
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 12:42:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7CA07C77B73
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 13:42:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230506AbjDLMmn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Apr 2023 08:42:43 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57634 "EHLO
+        id S230368AbjDLNmA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Apr 2023 09:42:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45252 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231689AbjDLMmS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 08:42:18 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8F8047DBB;
-        Wed, 12 Apr 2023 05:42:08 -0700 (PDT)
-Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.55])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4PxMgk395czSrt2;
-        Wed, 12 Apr 2023 20:38:10 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
- (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.23; Wed, 12 Apr
- 2023 20:42:06 +0800
-From:   Baokun Li <libaokun1@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <ritesh.list@gmail.com>, <linux-kernel@vger.kernel.org>,
-        <yi.zhang@huawei.com>, <yangerkun@huawei.com>,
-        <yukuai3@huawei.com>, <libaokun1@huawei.com>
-Subject: [PATCH v3 6/8] ext4: make ext4_es_insert_delayed_block return void
-Date:   Wed, 12 Apr 2023 20:41:24 +0800
-Message-ID: <20230412124126.2286716-7-libaokun1@huawei.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20230412124126.2286716-1-libaokun1@huawei.com>
-References: <20230412124126.2286716-1-libaokun1@huawei.com>
+        with ESMTP id S230033AbjDLNl5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 09:41:57 -0400
+Received: from NAM02-SN1-obe.outbound.protection.outlook.com (mail-sn1nam02on2043.outbound.protection.outlook.com [40.107.96.43])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 525FE5B93;
+        Wed, 12 Apr 2023 06:41:45 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=S7dQ6i8ERKm5Nihj9NtJILKzULilYBipSU0X37XbCA2UW/yFRZ5y5FTdkZA7c1MQfeeUGmFkMqvgs7gvt3U2CyusgPSNoeVI68ivfEIKv8vLG4O05MPnoml4c+p7/dfGfOHf+eky8iRsmm6YxF43dxyMcWsUxxnvmal8xZNePRGTCKrFJDi3tM4eqpGwVCrq5Qs17uVheWYU6LpIUHMO6XKCqBVOtIvXkUZ/eQZDeoiJAiV5XVkBaleaSdvLYR64plwPVeZ9WD2Plq+A+pc2zy3ZeV9s8VOjy3p+raAU/Z4P1hL5fGfD7sSs85GofPsfxYDIbmvWiftx+4UcR+M5mA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=6NtRM6foZVF7dirdFvnADX4sX/vedPPdl7yQXNLwDEw=;
+ b=a+ZMLE2eG94509lG88G2rYPVgIv3Ozz3B7WVBYOiHodhJX31O0IorKQRgIAVpXuSu/XZXYbc336qDWskrgOGsOH+lKFbHIclBCUV1wfan4F+rdM0k5hxvO1kpXGcnz7eMZgKDccvxoYNMvEMy97auZIx1KMxFON6XSH4Q8LMhy3AbCTFnKf6nEi5lVMOrnZPSzHm8TQ19g8Gb3ADOGRxYdzrk8ox102a86uw1b9BKkOn+wqt6J2AowoWCFTm6t0B6QDJgwxgGc0SzpnNgOChhxuYMwVvYrg9DiqyR5nD5BGm1nsM5AVRZuu40dew9Ry3AShPSMiKAMaBU5ydGfuaVQ==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass (sender ip is
+ 50.222.100.11) smtp.rcpttodomain=ddn.com smtp.mailfrom=ddn.com; dmarc=pass
+ (p=reject sp=reject pct=100) action=none header.from=ddn.com; dkim=none
+ (message not signed); arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ddn.com; s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=6NtRM6foZVF7dirdFvnADX4sX/vedPPdl7yQXNLwDEw=;
+ b=Sm8tLO4sZMy+nvNoH3FlqqNXdZ6rZv8Wtu0ovdakcNunjEVu8H6U+Vnab6NrJHKJaAgHNgQ4J2ZS6SyWdNZg95DUlr6wqFWBlTbe/BObdetfFNN8gnz5pwIeQMgB61Sw+yOl07GYzFY3cAs1HdjJ+k6WSLOiNHo+g8D6BFCoHgs=
+Received: from DM6PR07CA0108.namprd07.prod.outlook.com (2603:10b6:5:330::14)
+ by SN7PR19MB6879.namprd19.prod.outlook.com (2603:10b6:806:260::19) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.6277.34; Wed, 12 Apr
+ 2023 13:41:42 +0000
+Received: from DM6NAM04FT062.eop-NAM04.prod.protection.outlook.com
+ (2603:10b6:5:330:cafe::77) by DM6PR07CA0108.outlook.office365.com
+ (2603:10b6:5:330::14) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.6277.40 via Frontend
+ Transport; Wed, 12 Apr 2023 13:41:41 +0000
+X-MS-Exchange-Authentication-Results: spf=pass (sender IP is 50.222.100.11)
+ smtp.mailfrom=ddn.com; dkim=none (message not signed)
+ header.d=none;dmarc=pass action=none header.from=ddn.com;
+Received-SPF: Pass (protection.outlook.com: domain of ddn.com designates
+ 50.222.100.11 as permitted sender) receiver=protection.outlook.com;
+ client-ip=50.222.100.11; helo=uww-mx01.datadirectnet.com; pr=C
+Received: from uww-mx01.datadirectnet.com (50.222.100.11) by
+ DM6NAM04FT062.mail.protection.outlook.com (10.13.158.72) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.6298.31 via Frontend Transport; Wed, 12 Apr 2023 13:41:41 +0000
+Received: from localhost (unknown [10.68.0.8])
+        by uww-mx01.datadirectnet.com (Postfix) with ESMTP id 4C8B920C687A;
+        Wed, 12 Apr 2023 07:42:49 -0600 (MDT)
+From:   Bernd Schubert <bschubert@ddn.com>
+To:     axboe@kernel.dk
+Cc:     io-uring@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        dsingh@ddn.com, bschubert@ddn.com
+Subject: [PATCH 1/2] fs: add FMODE_DIO_PARALLEL_WRITE flag
+Date:   Wed, 12 Apr 2023 15:40:57 +0200
+Message-Id: <20230412134057.381941-1-bschubert@ddn.com>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20230307172015.54911-2-axboe@kernel.dk>
+References: <20230307172015.54911-2-axboe@kernel.dk>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
- dggpeml500021.china.huawei.com (7.185.36.21)
-X-CFilter-Loop: Reflected
+Content-Transfer-Encoding: 8bit
+X-EOPAttributedMessage: 0
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: DM6NAM04FT062:EE_|SN7PR19MB6879:EE_
+Content-Type: text/plain
+X-MS-Office365-Filtering-Correlation-Id: f40167ea-4c4d-43fa-c74e-08db3b5ba633
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam: BCL:0;
+X-Microsoft-Antispam-Message-Info: dz7Tqvn2HDepCbqgEBoyFPVHorpGCDi1kxQKIufW+IHlhsdGDvJZvVvWOX60rfAl0murbmLVm5CTL8KQKZVNQl3ce0xGoJ+gSvRfFCWuOv/254Y8OfWDi2Q5yltMq8KooaEhu3TfkedqNyXBQvfGXihEuNPtCos69hxN2Ewb39UVyFmbEhMhsSl2pTKw7NV/mUrDZye5drQFfwrIuQbJeQIciEk366s0zd7TcpAGMa/rALPSt00byBwb6Ngc32UujVYedGnZ7q22jg0YJFlOAiqODpNFJwUW0GlytDyKpBu4UxyR6KnxYN1f9FHXEeeK0A1Ms8t3uYOW3+uTxHqiRtLp8isb3tD/EZrKYrIuv/kxnloa6UkoOYftsTjcl0vNd36qY0WpU5Y1ht7iNJow2GSmiuzSnM8HTip3GRK1ExcPlL7aBW0U3ImwTsq4V0oHJdTcNu8466kvs44SL3DxEDnasCxMkOUxs8P5BIE3Uj3w9qrb/8/g7rjnvxMoA4PNkSVqc2wxvQzF8gOO4AqWNlP9c+6NTq5qohwKsQUMhOqpc5sIi/YTJhlj3c6Hi+z3q5yun8IV7kiu74ojA8tsMB1SJSRQdD7DncIt4wXGsK43pMsQ8XanQEHhxqE4XkgRt8kU5PUqSSSu0ywW63X+wmHfILAg0F0060EqvgSo5fC5zsh1wuRn7gTV6L4pXL/r63/BB6zx5ZYPilF8V28Kqg==
+X-Forefront-Antispam-Report: CIP:50.222.100.11;CTRY:US;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:uww-mx01.datadirectnet.com;PTR:InfoDomainNonexistent;CAT:NONE;SFS:(13230028)(4636009)(396003)(39850400004)(346002)(376002)(136003)(451199021)(46966006)(36840700001)(36860700001)(6666004)(70586007)(82740400003)(81166007)(5660300002)(4744005)(2906002)(8676002)(316002)(8936002)(40480700001)(86362001)(36756003)(82310400005)(4326008)(356005)(70206006)(6916009)(41300700001)(26005)(336012)(2616005)(47076005)(1076003)(6266002)(478600001)(186003)(36900700001);DIR:OUT;SFP:1101;
+X-OriginatorOrg: ddn.com
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 12 Apr 2023 13:41:41.8749
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: f40167ea-4c4d-43fa-c74e-08db3b5ba633
+X-MS-Exchange-CrossTenant-Id: 753b6e26-6fd3-43e6-8248-3f1735d59bb4
+X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=753b6e26-6fd3-43e6-8248-3f1735d59bb4;Ip=[50.222.100.11];Helo=[uww-mx01.datadirectnet.com]
+X-MS-Exchange-CrossTenant-AuthSource: DM6NAM04FT062.eop-NAM04.prod.protection.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN7PR19MB6879
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now it never fails when inserting a delay extent, so the return value in
-ext4_es_insert_delayed_block is no longer necessary, let it return void.
+Miklos, Jens,
 
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
+could we please also set this flag for fuse?
+
+
+Thanks,
+Bernd
+
+
+fuse: Set FMODE_DIO_PARALLEL_WRITE flag
+
+From: Bernd Schubert <bschubert@ddn.com>
+
+Fuse can also do parallel DIO writes, if userspace has enabled it.
+
+Signed-off-by: Bernd Schubert <bschubert@ddn.com>
 ---
-V2->V3:
-	New added.
+ fs/fuse/file.c |    3 +++
+ 1 file changed, 3 insertions(+)
 
- fs/ext4/extents_status.c | 23 ++++++-----------------
- fs/ext4/extents_status.h |  4 ++--
- fs/ext4/inode.c          |  7 ++-----
- 3 files changed, 10 insertions(+), 24 deletions(-)
-
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 1ba2dd14367c..047ec2fc4899 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -1980,17 +1980,14 @@ bool ext4_is_pending(struct inode *inode, ext4_lblk_t lblk)
-  * @lblk - logical block to be added
-  * @allocated - indicates whether a physical cluster has been allocated for
-  *              the logical cluster that contains the block
-- *
-- * Returns 0 on success, negative error code on failure.
-  */
--int ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
--				 bool allocated)
-+void ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
-+				  bool allocated)
- {
- 	struct extent_status newes;
--	int err = 0;
- 
- 	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
--		return 0;
-+		return;
- 
- 	es_debug("add [%u/1) delayed to extent status tree of inode %lu\n",
- 		 lblk, inode->i_ino);
-@@ -2005,24 +2002,16 @@ int ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
- 	write_lock(&EXT4_I(inode)->i_es_lock);
- 
- 	__es_remove_extent(inode, lblk, lblk, NULL);
--retry:
--	err = __es_insert_extent(inode, &newes);
--	if (err == -ENOMEM && __es_shrink(EXT4_SB(inode->i_sb),
--					  128, EXT4_I(inode)))
--		goto retry;
--	if (err != 0)
--		goto error;
-+
-+	/* We never return an error when inserting a delayed extent. */
-+	(void) __es_insert_extent(inode, &newes);
- 
- 	if (allocated)
- 		__insert_pending(inode, lblk);
--
--error:
- 	write_unlock(&EXT4_I(inode)->i_es_lock);
- 
- 	ext4_es_print_tree(inode);
- 	ext4_print_pending_tree(inode);
--
--	return err;
- }
- 
- /*
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index 526a68890aa6..c22edb931f1b 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -249,8 +249,8 @@ extern void ext4_exit_pending(void);
- extern void ext4_init_pending_tree(struct ext4_pending_tree *tree);
- extern void ext4_remove_pending(struct inode *inode, ext4_lblk_t lblk);
- extern bool ext4_is_pending(struct inode *inode, ext4_lblk_t lblk);
--extern int ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
--					bool allocated);
-+extern void ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
-+					 bool allocated);
- extern unsigned int ext4_es_delayed_clu(struct inode *inode, ext4_lblk_t lblk,
- 					ext4_lblk_t len);
- extern void ext4_clear_inode_es(struct inode *inode);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3bd4d5bbf0aa..9fd3d526f591 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1635,7 +1635,7 @@ static void ext4_print_free_blocks(struct inode *inode)
- static int ext4_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
--	int ret;
-+	int ret = 0;
- 	bool allocated = false;
- 	bool reserved = false;
- 
-@@ -1677,10 +1677,7 @@ static int ext4_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk)
- 		}
+diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+index 875314ee6f59..46e7f1196fd1 100644
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -215,6 +215,9 @@ void fuse_finish_open(struct inode *inode, struct file *file)
  	}
- 
--	ret = ext4_es_insert_delayed_block(inode, lblk, allocated);
--	if (ret && reserved)
--		ext4_da_release_space(inode, 1);
--
-+	ext4_es_insert_delayed_block(inode, lblk, allocated);
- errout:
- 	return ret;
+ 	if ((file->f_mode & FMODE_WRITE) && fc->writeback_cache)
+ 		fuse_link_write_file(file);
++
++	if (ff->open_flags & FOPEN_PARALLEL_DIRECT_WRITES)
++		file->f_mode |= FMODE_DIO_PARALLEL_WRITE;
  }
--- 
-2.31.1
-
+ 
+ int fuse_open_common(struct inode *inode, struct file *file, bool isdir)
