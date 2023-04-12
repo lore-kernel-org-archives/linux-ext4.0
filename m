@@ -2,40 +2,40 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1AE13C77B71
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D72A1C77B72
 	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 09:26:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230064AbjDLJ0q (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Apr 2023 05:26:46 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40438 "EHLO
+        id S229633AbjDLJ0s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Apr 2023 05:26:48 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40440 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230123AbjDLJ0Q (ORCPT
+        with ESMTP id S230126AbjDLJ0Q (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 05:26:16 -0400
-Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D52157EE1;
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D5B0D7EE8;
         Wed, 12 Apr 2023 02:26:13 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4PxHQ80vF6z4f435t;
-        Wed, 12 Apr 2023 17:26:08 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgDHL7MpeTZkL5_1HA--.3769S10;
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PxHQ95B84z4f4lKj;
         Wed, 12 Apr 2023 17:26:09 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.124.27])
+        by APP4 (Coremail) with SMTP id gCh0CgDHL7MpeTZkL5_1HA--.3769S14;
+        Wed, 12 Apr 2023 17:26:11 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
         shikemeng@huaweicloud.com
-Subject: [PATCH v2 08/19] ext4: get block from bh before pass it to ext4_free_blocks_simple in ext4_free_blocks
-Date:   Thu, 13 Apr 2023 01:28:22 +0800
-Message-Id: <20230412172833.2317696-9-shikemeng@huaweicloud.com>
+Subject: [PATCH v2 12/19] ext4: factor out codes to update block bitmap and group descriptor on disk from ext4_mb_mark_bb
+Date:   Thu, 13 Apr 2023 01:28:26 +0800
+Message-Id: <20230412172833.2317696-13-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230412172833.2317696-1-shikemeng@huaweicloud.com>
 References: <20230412172833.2317696-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgDHL7MpeTZkL5_1HA--.3769S10
-X-Coremail-Antispam: 1UD129KBjvJXoW7JF48Cr4UZw1DJw1xJFy8Grg_yoW8Jr17pw
-        srAFyrGr1kWwn2gF4fJw15JwsI9w48G3WUWFWfWw18Xry7X34Sy3WqyF15WF1UtrZav3ZF
-        qFn0grW5Cw4UuaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID: gCh0CgDHL7MpeTZkL5_1HA--.3769S14
+X-Coremail-Antispam: 1UD129KBjvJXoW3AF4rZw47WF43Jr4xXry7Wrg_yoW7tw4rpF
+        9IyF1DCr43Grnrur43W342q3WrKw109w1kGryfC345CF4ayr95WF1xKFyF9as0yFZrJFnF
+        qF1Ykw4xur1furDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
         9KBjDU0xBIdaVrnRJUUUPF14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
         rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
         0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
@@ -46,9 +46,9 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7JF48Cr4UZw1DJw1xJFy8Grg_yoW8Jr17pw
         Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2
         IErcIFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
         14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIx
-        kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAF
-        wI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJV
-        W8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjTRKfOw
+        kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAF
+        wI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JV
+        WxJwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjTRKfOw
         UUUUU
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
@@ -56,46 +56,215 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-ext4_free_blocks will retrieve block from bh if block parameter is zero.
-Retrieve block before ext4_free_blocks_simple to avoid potentially
-passing wrong block to ext4_free_blocks_simple.
+There are several reasons to add a general function to update block
+bitmap and group descriptor on disk:
+1. pair behavior of alloc/free bits. For example,
+ext4_mb_new_blocks_simple will update free_clusters in struct flex_groups
+in ext4_mb_mark_bb while ext4_free_blocks_simple forgets this.
+2. remove repeat code to read from disk, update and write back to disk.
+3. reduce future unit test mocks to catch real IO to update structure
+on disk.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 ---
- fs/ext4/mballoc.c | 13 +++++++------
- 1 file changed, 7 insertions(+), 6 deletions(-)
+ fs/ext4/mballoc.c | 157 +++++++++++++++++++++++++---------------------
+ 1 file changed, 87 insertions(+), 70 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index b9a7b669b97d..ca11d0aa8a59 100644
+index 11ea5feb6a0d..b93260eaad92 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -6117,12 +6117,6 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+@@ -3731,6 +3731,86 @@ void ext4_exit_mballoc(void)
+ 	ext4_groupinfo_destroy_slabs();
+ }
  
- 	sbi = EXT4_SB(sb);
- 
--	if (sbi->s_mount_state & EXT4_FC_REPLAY) {
--		ext4_free_blocks_simple(inode, block, count);
--		return;
--	}
--
--	might_sleep();
- 	if (bh) {
- 		if (block)
- 			BUG_ON(block != bh->b_blocknr);
-@@ -6130,6 +6124,13 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 			block = bh->b_blocknr;
- 	}
- 
-+	if (sbi->s_mount_state & EXT4_FC_REPLAY) {
-+		ext4_free_blocks_simple(inode, block, count);
-+		return;
++struct ext4_mark_context {
++	struct super_block *sb;
++	int state;
++};
++
++static int
++ext4_mb_mark_group_bb(struct ext4_mark_context *mc, ext4_group_t group,
++		      ext4_grpblk_t blkoff, ext4_grpblk_t len)
++{
++	struct super_block *sb = mc->sb;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct buffer_head *bitmap_bh = NULL;
++	struct ext4_group_desc *gdp;
++	struct buffer_head *gdp_bh;
++	int err;
++	unsigned int i, already, changed;
++
++	bitmap_bh = ext4_read_block_bitmap(sb, group);
++	if (IS_ERR(bitmap_bh))
++		return PTR_ERR(bitmap_bh);
++
++	err = -EIO;
++	gdp = ext4_get_group_desc(sb, group, &gdp_bh);
++	if (!gdp)
++		goto out_err;
++
++	ext4_lock_group(sb, group);
++	if (ext4_has_group_desc_csum(sb) &&
++	    (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))) {
++		gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
++		ext4_free_group_clusters_set(sb, gdp,
++			ext4_free_clusters_after_init(sb, group, gdp));
 +	}
 +
-+	might_sleep();
++	already = 0;
++	for (i = 0; i < len; i++)
++		if (mb_test_bit(blkoff + i, bitmap_bh->b_data) ==
++				mc->state)
++			already++;
++	changed = len - already;
 +
- 	if (!(flags & EXT4_FREE_BLOCKS_VALIDATED) &&
- 	    !ext4_inode_block_valid(inode, block, count)) {
- 		ext4_error(sb, "Freeing blocks not in datazone - "
++	if (mc->state) {
++		mb_set_bits(bitmap_bh->b_data, blkoff, len);
++		ext4_free_group_clusters_set(sb, gdp,
++			ext4_free_group_clusters(sb, gdp) - changed);
++	} else {
++		mb_clear_bits(bitmap_bh->b_data, blkoff, len);
++		ext4_free_group_clusters_set(sb, gdp,
++			ext4_free_group_clusters(sb, gdp) + changed);
++	}
++
++	ext4_block_bitmap_csum_set(sb, gdp, bitmap_bh);
++	ext4_group_desc_csum_set(sb, group, gdp);
++	ext4_unlock_group(sb, group);
++
++	if (sbi->s_log_groups_per_flex) {
++		ext4_group_t flex_group = ext4_flex_group(sbi, group);
++		struct flex_groups *fg = sbi_array_rcu_deref(sbi,
++					   s_flex_groups, flex_group);
++
++		if (mc->state)
++			atomic64_sub(changed, &fg->free_clusters);
++		else
++			atomic64_add(changed, &fg->free_clusters);
++	}
++
++	err = ext4_handle_dirty_metadata(NULL, NULL, bitmap_bh);
++	if (err)
++		goto out_err;
++	err = ext4_handle_dirty_metadata(NULL, NULL, gdp_bh);
++	if (err)
++		goto out_err;
++
++	sync_dirty_buffer(bitmap_bh);
++	sync_dirty_buffer(gdp_bh);
++
++out_err:
++	brelse(bitmap_bh);
++	return err;
++}
+ 
+ /*
+  * Check quota and mark chosen space (ac->ac_b_ex) non-free in bitmaps
+@@ -3857,15 +3937,15 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
+ 			int len, int state)
+ {
+-	struct buffer_head *bitmap_bh = NULL;
+-	struct ext4_group_desc *gdp;
+-	struct buffer_head *gdp_bh;
++	struct ext4_mark_context mc = {
++		.sb = sb,
++		.state = state,
++	};
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	ext4_group_t group;
+ 	ext4_grpblk_t blkoff;
+-	int i, err;
+-	int already;
+-	unsigned int clen, clen_changed, thisgrp_len;
++	int err;
++	unsigned int clen, thisgrp_len;
+ 
+ 	while (len > 0) {
+ 		ext4_get_group_no_and_offset(sb, block, &group, &blkoff);
+@@ -3886,80 +3966,17 @@ void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
+ 			ext4_error(sb, "Marking blocks in system zone - "
+ 				   "Block = %llu, len = %u",
+ 				   block, thisgrp_len);
+-			bitmap_bh = NULL;
+ 			break;
+ 		}
+ 
+-		bitmap_bh = ext4_read_block_bitmap(sb, group);
+-		if (IS_ERR(bitmap_bh)) {
+-			err = PTR_ERR(bitmap_bh);
+-			bitmap_bh = NULL;
+-			break;
+-		}
+-
+-		err = -EIO;
+-		gdp = ext4_get_group_desc(sb, group, &gdp_bh);
+-		if (!gdp)
+-			break;
+-
+-		ext4_lock_group(sb, group);
+-		already = 0;
+-		for (i = 0; i < clen; i++)
+-			if (!mb_test_bit(blkoff + i, bitmap_bh->b_data) ==
+-					 !state)
+-				already++;
+-
+-		clen_changed = clen - already;
+-		if (state)
+-			mb_set_bits(bitmap_bh->b_data, blkoff, clen);
+-		else
+-			mb_clear_bits(bitmap_bh->b_data, blkoff, clen);
+-		if (ext4_has_group_desc_csum(sb) &&
+-		    (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))) {
+-			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+-			ext4_free_group_clusters_set(sb, gdp,
+-			     ext4_free_clusters_after_init(sb, group, gdp));
+-		}
+-		if (state)
+-			clen = ext4_free_group_clusters(sb, gdp) - clen_changed;
+-		else
+-			clen = ext4_free_group_clusters(sb, gdp) + clen_changed;
+-
+-		ext4_free_group_clusters_set(sb, gdp, clen);
+-		ext4_block_bitmap_csum_set(sb, gdp, bitmap_bh);
+-		ext4_group_desc_csum_set(sb, group, gdp);
+-
+-		ext4_unlock_group(sb, group);
+-
+-		if (sbi->s_log_groups_per_flex) {
+-			ext4_group_t flex_group = ext4_flex_group(sbi, group);
+-			struct flex_groups *fg = sbi_array_rcu_deref(sbi,
+-						   s_flex_groups, flex_group);
+-
+-			if (state)
+-				atomic64_sub(clen_changed, &fg->free_clusters);
+-			else
+-				atomic64_add(clen_changed, &fg->free_clusters);
+-
+-		}
+-
+-		err = ext4_handle_dirty_metadata(NULL, NULL, bitmap_bh);
+-		if (err)
+-			break;
+-		sync_dirty_buffer(bitmap_bh);
+-		err = ext4_handle_dirty_metadata(NULL, NULL, gdp_bh);
+-		sync_dirty_buffer(gdp_bh);
++		err = ext4_mb_mark_group_bb(&mc, group, blkoff, clen);
+ 		if (err)
+ 			break;
+ 
+ 		block += thisgrp_len;
+ 		len -= thisgrp_len;
+-		brelse(bitmap_bh);
+ 		BUG_ON(len < 0);
+ 	}
+-
+-	if (err)
+-		brelse(bitmap_bh);
+ }
+ 
+ /*
 -- 
 2.30.0
 
