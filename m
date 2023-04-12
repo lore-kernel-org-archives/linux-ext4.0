@@ -2,54 +2,55 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8C595C7619A
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 17:46:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 99F00C7619A
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 18:17:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229786AbjDLRqf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Apr 2023 13:46:35 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47796 "EHLO
+        id S229755AbjDLSRb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Apr 2023 14:17:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36202 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229482AbjDLRqe (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 13:46:34 -0400
-Received: from mga06.intel.com (mga06b.intel.com [134.134.136.31])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8ABE42697;
-        Wed, 12 Apr 2023 10:46:32 -0700 (PDT)
+        with ESMTP id S229804AbjDLSR2 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 14:17:28 -0400
+Received: from mga12.intel.com (mga12.intel.com [192.55.52.136])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 022F1769E;
+        Wed, 12 Apr 2023 11:17:24 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
   d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1681321592; x=1712857592;
+  t=1681323444; x=1712859444;
   h=date:from:to:cc:subject:message-id:references:
    mime-version:in-reply-to;
-  bh=mIg/PdOWqRtz6YIfoWbbfNd8QfS4uRg4EPBlGFTu+pE=;
-  b=EHJg0zZeNfg0mqPg1wSdEndWf4y+P0mitxtoqDZrRHFZs3maRCOcG9f4
-   8rc9UkOyomR32xfbpJ0wJ9SShTHpFpT99zegIym/54f1cAPPg6/tqj4Wj
-   nt0P33GEr/VWGJwVcCr/eRcLO9qEGGVrp9ar7Z+04Wl1GpydJ8cLPq7Kt
-   E6czAFnFQSt4bNKbmuLJSCnLA43+yPT/04G7zZLEuvS13pp1BAaJiis8K
-   o2iVIHv0AWoVqGx7irAocyqjuCDJxH0BmOKhyUb/cDsIoJm5DdmOjpThZ
-   IvP3uwFShYDzrvu7KFaAbIbsV42/RG1jEfaQ1rXqTSdJ7OoSn2UPunXHh
-   Q==;
-X-IronPort-AV: E=McAfee;i="6600,9927,10678"; a="406803188"
+  bh=Y02E6hvkxtc5Gw89z3ATruCZ4MvvZMvsFhWaaNNs1sg=;
+  b=KC7jdR20/LJ3U7cuFvDiGi4MQgO/KZGIQBhYdzNYoZ5ltT0B6DV7OpZg
+   rgxtgUjdMfzU0iiev74FLe1tdvCTkkRunHHKC0VgkLFmf9LjyM/XD77J9
+   5th7kO2QQBZZyorXseSD/mW71/WToZ70K51figiuYaWEjS9r0LkL2XKvB
+   ++2EtV2mJTi3l377qVcQF3GjP23tzxpaozqn0lYUsiypE/WeomuCgAKKy
+   /6dHx3kyZBzOsc7sOvxKQxd+c4kI4exK2iIyoESxnXpGdnZcAW7bUe6k0
+   D515MCAv8q4KPSLIOIU0Tbx+gKLKrIilNdomlu2YGjwYSeXdjXsG7pYwn
+   w==;
+X-IronPort-AV: E=McAfee;i="6600,9927,10678"; a="323606915"
 X-IronPort-AV: E=Sophos;i="5.98,339,1673942400"; 
-   d="scan'208";a="406803188"
-Received: from orsmga007.jf.intel.com ([10.7.209.58])
-  by orsmga104.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 12 Apr 2023 10:46:23 -0700
+   d="scan'208";a="323606915"
+Received: from fmsmga007.fm.intel.com ([10.253.24.52])
+  by fmsmga106.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 12 Apr 2023 11:17:23 -0700
 X-ExtLoop1: 1
-X-IronPort-AV: E=McAfee;i="6600,9927,10678"; a="682574205"
+X-IronPort-AV: E=McAfee;i="6600,9927,10678"; a="691633211"
 X-IronPort-AV: E=Sophos;i="5.98,339,1673942400"; 
-   d="scan'208";a="682574205"
+   d="scan'208";a="691633211"
 Received: from lkp-server01.sh.intel.com (HELO b613635ddfff) ([10.239.97.150])
-  by orsmga007.jf.intel.com with ESMTP; 12 Apr 2023 10:46:20 -0700
+  by fmsmga007.fm.intel.com with ESMTP; 12 Apr 2023 11:17:21 -0700
 Received: from kbuild by b613635ddfff with local (Exim 4.96)
         (envelope-from <lkp@intel.com>)
-        id 1pmeY0-000XxZ-0A;
-        Wed, 12 Apr 2023 17:46:20 +0000
-Date:   Thu, 13 Apr 2023 01:45:43 +0800
+        id 1pmf20-000XyP-1d;
+        Wed, 12 Apr 2023 18:17:20 +0000
+Date:   Thu, 13 Apr 2023 02:16:51 +0800
 From:   kernel test robot <lkp@intel.com>
 To:     Kemeng Shi <shikemeng@huaweicloud.com>, tytso@mit.edu,
         adilger.kernel@dilger.ca, ojaswin@linux.ibm.com
-Cc:     oe-kbuild-all@lists.linux.dev, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, shikemeng@huaweicloud.com
+Cc:     llvm@lists.linux.dev, oe-kbuild-all@lists.linux.dev,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        shikemeng@huaweicloud.com
 Subject: Re: [PATCH v2 18/19] ext4: add some kunit stub for mballoc kunit test
-Message-ID: <202304130140.2kslXTgi-lkp@intel.com>
+Message-ID: <202304130244.S0jqbqkn-lkp@intel.com>
 References: <20230412172833.2317696-19-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -74,151 +75,112 @@ url:    https://github.com/intel-lab-lkp/linux/commits/Kemeng-Shi/ext4-fix-wrong
 base:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
 patch link:    https://lore.kernel.org/r/20230412172833.2317696-19-shikemeng%40huaweicloud.com
 patch subject: [PATCH v2 18/19] ext4: add some kunit stub for mballoc kunit test
-config: loongarch-randconfig-r004-20230409 (https://download.01.org/0day-ci/archive/20230413/202304130140.2kslXTgi-lkp@intel.com/config)
-compiler: loongarch64-linux-gcc (GCC) 12.1.0
+config: powerpc-randconfig-r006-20230409 (https://download.01.org/0day-ci/archive/20230413/202304130244.S0jqbqkn-lkp@intel.com/config)
+compiler: clang version 17.0.0 (https://github.com/llvm/llvm-project 2c57868e2e877f73c339796c3374ae660bb77f0d)
 reproduce (this is a W=1 build):
         wget https://raw.githubusercontent.com/intel/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
         chmod +x ~/bin/make.cross
+        # install powerpc cross compiling tool for clang build
+        # apt-get install binutils-powerpc-linux-gnu
         # https://github.com/intel-lab-lkp/linux/commit/357d528a1ead868fa038c4bfe426744ac7c34ea6
         git remote add linux-review https://github.com/intel-lab-lkp/linux
         git fetch --no-tags linux-review Kemeng-Shi/ext4-fix-wrong-unit-use-in-ext4_mb_normalize_request/20230412-172757
         git checkout 357d528a1ead868fa038c4bfe426744ac7c34ea6
         # save the config file
         mkdir build_dir && cp config build_dir/.config
-        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=gcc-12.1.0 make.cross W=1 O=build_dir ARCH=loongarch olddefconfig
-        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=gcc-12.1.0 make.cross W=1 O=build_dir ARCH=loongarch SHELL=/bin/bash fs/
+        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=clang make.cross W=1 O=build_dir ARCH=powerpc olddefconfig
+        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=clang make.cross W=1 O=build_dir ARCH=powerpc SHELL=/bin/bash fs/
 
 If you fix the issue, kindly add following tag where applicable
 | Reported-by: kernel test robot <lkp@intel.com>
-| Link: https://lore.kernel.org/oe-kbuild-all/202304130140.2kslXTgi-lkp@intel.com/
+| Link: https://lore.kernel.org/oe-kbuild-all/202304130244.S0jqbqkn-lkp@intel.com/
 
 All warnings (new ones prefixed by >>):
 
-   fs/ext4/mballoc.c: In function 'ext4_mb_mark_group_bb':
->> fs/ext4/mballoc.c:3752:9: warning: ISO C90 forbids mixed declarations and code [-Wdeclaration-after-statement]
-    3752 |         handle_t *handle = mc->handle;
-         |         ^~~~~~~~
+>> fs/ext4/balloc.c:275:15: warning: mixing declarations and code is incompatible with standards before C99 [-Wdeclaration-after-statement]
+           unsigned int group_desc;
+                        ^
+   fs/ext4/balloc.c:435:26: warning: mixing declarations and code is incompatible with standards before C99 [-Wdeclaration-after-statement]
+           struct ext4_group_desc *desc;
+                                   ^
+   fs/ext4/balloc.c:538:26: warning: mixing declarations and code is incompatible with standards before C99 [-Wdeclaration-after-statement]
+           struct ext4_group_desc *desc;
+                                   ^
+   3 warnings generated.
 --
-   fs/ext4/balloc.c: In function 'ext4_get_group_desc':
->> fs/ext4/balloc.c:275:9: warning: ISO C90 forbids mixed declarations and code [-Wdeclaration-after-statement]
-     275 |         unsigned int group_desc;
-         |         ^~~~~~~~
-   fs/ext4/balloc.c: In function 'ext4_read_block_bitmap_nowait':
-   fs/ext4/balloc.c:435:9: warning: ISO C90 forbids mixed declarations and code [-Wdeclaration-after-statement]
-     435 |         struct ext4_group_desc *desc;
-         |         ^~~~~~
-   fs/ext4/balloc.c: In function 'ext4_wait_block_bitmap':
-   fs/ext4/balloc.c:538:9: warning: ISO C90 forbids mixed declarations and code [-Wdeclaration-after-statement]
-     538 |         struct ext4_group_desc *desc;
-         |         ^~~~~~
+>> fs/ext4/mballoc.c:3752:12: warning: mixing declarations and code is incompatible with standards before C99 [-Wdeclaration-after-statement]
+           handle_t *handle = mc->handle;
+                     ^
+   1 warning generated.
 
 
-vim +3752 fs/ext4/mballoc.c
+vim +275 fs/ext4/balloc.c
 
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3743  
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3744  static int
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3745  ext4_mb_mark_group_bb(struct ext4_mark_context *mc, ext4_group_t group,
-a760807c4967d7 Kemeng Shi 2023-04-13  3746  		      ext4_grpblk_t blkoff, ext4_grpblk_t len, int flags)
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3747  {
-357d528a1ead86 Kemeng Shi 2023-04-13  3748  #ifdef CONFIG_EXT4_KUNIT_TESTS
-357d528a1ead86 Kemeng Shi 2023-04-13  3749  	KUNIT_STATIC_STUB_REDIRECT(ext4_mb_mark_group_bb,
-357d528a1ead86 Kemeng Shi 2023-04-13  3750  				   mc, group, blkoff, len, flags);
-357d528a1ead86 Kemeng Shi 2023-04-13  3751  #endif
-a760807c4967d7 Kemeng Shi 2023-04-13 @3752  	handle_t *handle = mc->handle;
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3753  	struct super_block *sb = mc->sb;
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3754  	struct ext4_sb_info *sbi = EXT4_SB(sb);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3755  	struct buffer_head *bitmap_bh = NULL;
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3756  	struct ext4_group_desc *gdp;
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3757  	struct buffer_head *gdp_bh;
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3758  	int err;
-a760807c4967d7 Kemeng Shi 2023-04-13  3759  	unsigned int i, already, changed = len;
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3760  
-a760807c4967d7 Kemeng Shi 2023-04-13  3761  	mc->changed = 0;
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3762  	bitmap_bh = ext4_read_block_bitmap(sb, group);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3763  	if (IS_ERR(bitmap_bh))
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3764  		return PTR_ERR(bitmap_bh);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3765  
-a760807c4967d7 Kemeng Shi 2023-04-13  3766  	if (handle) {
-a760807c4967d7 Kemeng Shi 2023-04-13  3767  		BUFFER_TRACE(bitmap_bh, "getting write access");
-a760807c4967d7 Kemeng Shi 2023-04-13  3768  		err = ext4_journal_get_write_access(handle, sb, bitmap_bh,
-a760807c4967d7 Kemeng Shi 2023-04-13  3769  						    EXT4_JTR_NONE);
-a760807c4967d7 Kemeng Shi 2023-04-13  3770  		if (err)
-a760807c4967d7 Kemeng Shi 2023-04-13  3771  			goto out_err;
-a760807c4967d7 Kemeng Shi 2023-04-13  3772  	}
-a760807c4967d7 Kemeng Shi 2023-04-13  3773  
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3774  	err = -EIO;
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3775  	gdp = ext4_get_group_desc(sb, group, &gdp_bh);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3776  	if (!gdp)
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3777  		goto out_err;
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3778  
-a760807c4967d7 Kemeng Shi 2023-04-13  3779  	if (handle) {
-a760807c4967d7 Kemeng Shi 2023-04-13  3780  		BUFFER_TRACE(gdp_bh, "get_write_access");
-a760807c4967d7 Kemeng Shi 2023-04-13  3781  		err = ext4_journal_get_write_access(handle, sb, gdp_bh,
-a760807c4967d7 Kemeng Shi 2023-04-13  3782  						    EXT4_JTR_NONE);
-a760807c4967d7 Kemeng Shi 2023-04-13  3783  		if (err)
-a760807c4967d7 Kemeng Shi 2023-04-13  3784  			goto out_err;
-a760807c4967d7 Kemeng Shi 2023-04-13  3785  	}
-a760807c4967d7 Kemeng Shi 2023-04-13  3786  
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3787  	ext4_lock_group(sb, group);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3788  	if (ext4_has_group_desc_csum(sb) &&
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3789  	    (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))) {
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3790  		gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3791  		ext4_free_group_clusters_set(sb, gdp,
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3792  			ext4_free_clusters_after_init(sb, group, gdp));
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3793  	}
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3794  
-a760807c4967d7 Kemeng Shi 2023-04-13  3795  	if (flags & EXT4_MB_BITMAP_MARKED_CHECK) {
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3796  		already = 0;
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3797  		for (i = 0; i < len; i++)
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3798  			if (mb_test_bit(blkoff + i, bitmap_bh->b_data) ==
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3799  					mc->state)
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3800  				already++;
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3801  		changed = len - already;
-a760807c4967d7 Kemeng Shi 2023-04-13  3802  	}
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3803  
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3804  	if (mc->state) {
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3805  		mb_set_bits(bitmap_bh->b_data, blkoff, len);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3806  		ext4_free_group_clusters_set(sb, gdp,
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3807  			ext4_free_group_clusters(sb, gdp) - changed);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3808  	} else {
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3809  		mb_clear_bits(bitmap_bh->b_data, blkoff, len);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3810  		ext4_free_group_clusters_set(sb, gdp,
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3811  			ext4_free_group_clusters(sb, gdp) + changed);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3812  	}
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3813  
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3814  	ext4_block_bitmap_csum_set(sb, gdp, bitmap_bh);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3815  	ext4_group_desc_csum_set(sb, group, gdp);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3816  	ext4_unlock_group(sb, group);
-a760807c4967d7 Kemeng Shi 2023-04-13  3817  	mc->changed = changed;
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3818  
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3819  	if (sbi->s_log_groups_per_flex) {
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3820  		ext4_group_t flex_group = ext4_flex_group(sbi, group);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3821  		struct flex_groups *fg = sbi_array_rcu_deref(sbi,
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3822  					   s_flex_groups, flex_group);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3823  
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3824  		if (mc->state)
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3825  			atomic64_sub(changed, &fg->free_clusters);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3826  		else
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3827  			atomic64_add(changed, &fg->free_clusters);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3828  	}
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3829  
-a760807c4967d7 Kemeng Shi 2023-04-13  3830  	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3831  	if (err)
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3832  		goto out_err;
-a760807c4967d7 Kemeng Shi 2023-04-13  3833  	err = ext4_handle_dirty_metadata(handle, NULL, gdp_bh);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3834  	if (err)
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3835  		goto out_err;
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3836  
-a760807c4967d7 Kemeng Shi 2023-04-13  3837  	if (flags & EXT4_MB_SYNC_UPDATE) {
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3838  		sync_dirty_buffer(bitmap_bh);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3839  		sync_dirty_buffer(gdp_bh);
-a760807c4967d7 Kemeng Shi 2023-04-13  3840  	}
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3841  
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3842  out_err:
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3843  	brelse(bitmap_bh);
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3844  	return err;
-80cb2f14af5f5f Kemeng Shi 2023-04-13  3845  }
-c9de560ded61fa Alex Tomas 2008-01-29  3846  
+717d50e4971b81 Andreas Dilger    2007-10-16  248  
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  249  /*
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  250   * The free blocks are managed by bitmaps.  A file system contains several
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  251   * blocks groups.  Each group contains 1 bitmap block for blocks, 1 bitmap
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  252   * block for inodes, N blocks for the inode table and data blocks.
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  253   *
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  254   * The file system contains group descriptors which are located after the
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  255   * super block.  Each descriptor contains the number of the bitmap block and
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  256   * the free blocks count in the block.  The descriptors are loaded in memory
+e627432c2948d5 Aneesh Kumar K.V  2007-02-20  257   * when a file system is mounted (see ext4_fill_super).
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  258   */
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  259  
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  260  /**
+617ba13b31fbf5 Mingming Cao      2006-10-11  261   * ext4_get_group_desc() -- load group descriptor from disk
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  262   * @sb:			super block
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  263   * @block_group:	given block group
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  264   * @bh:			pointer to the buffer head to store the block
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  265   *			group descriptor
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  266   */
+617ba13b31fbf5 Mingming Cao      2006-10-11  267  struct ext4_group_desc * ext4_get_group_desc(struct super_block *sb,
+fd2d42912f9f09 Avantika Mathur   2008-01-28  268  					     ext4_group_t block_group,
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  269  					     struct buffer_head **bh)
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  270  {
+357d528a1ead86 Kemeng Shi        2023-04-13  271  #ifdef CONFIG_EXT4_KUNIT_TESTS
+357d528a1ead86 Kemeng Shi        2023-04-13  272  	KUNIT_STATIC_STUB_REDIRECT(ext4_get_group_desc,
+357d528a1ead86 Kemeng Shi        2023-04-13  273  				   sb, block_group, bh);
+357d528a1ead86 Kemeng Shi        2023-04-13  274  #endif
+498e5f24158da7 Theodore Ts'o     2008-11-05 @275  	unsigned int group_desc;
+498e5f24158da7 Theodore Ts'o     2008-11-05  276  	unsigned int offset;
+8df9675f8b498d Theodore Ts'o     2009-05-01  277  	ext4_group_t ngroups = ext4_get_groups_count(sb);
+617ba13b31fbf5 Mingming Cao      2006-10-11  278  	struct ext4_group_desc *desc;
+617ba13b31fbf5 Mingming Cao      2006-10-11  279  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+1d0c3924a92e69 Theodore Ts'o     2020-02-15  280  	struct buffer_head *bh_p;
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  281  
+8df9675f8b498d Theodore Ts'o     2009-05-01  282  	if (block_group >= ngroups) {
+12062dddda4509 Eric Sandeen      2010-02-15  283  		ext4_error(sb, "block_group >= groups_count - block_group = %u,"
+12062dddda4509 Eric Sandeen      2010-02-15  284  			   " groups_count = %u", block_group, ngroups);
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  285  
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  286  		return NULL;
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  287  	}
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  288  
+617ba13b31fbf5 Mingming Cao      2006-10-11  289  	group_desc = block_group >> EXT4_DESC_PER_BLOCK_BITS(sb);
+617ba13b31fbf5 Mingming Cao      2006-10-11  290  	offset = block_group & (EXT4_DESC_PER_BLOCK(sb) - 1);
+1d0c3924a92e69 Theodore Ts'o     2020-02-15  291  	bh_p = sbi_array_rcu_deref(sbi, s_group_desc, group_desc);
+1d0c3924a92e69 Theodore Ts'o     2020-02-15  292  	/*
+1d0c3924a92e69 Theodore Ts'o     2020-02-15  293  	 * sbi_array_rcu_deref returns with rcu unlocked, this is ok since
+1d0c3924a92e69 Theodore Ts'o     2020-02-15  294  	 * the pointer being dereferenced won't be dereferenced again. By
+1d0c3924a92e69 Theodore Ts'o     2020-02-15  295  	 * looking at the usage in add_new_gdb() the value isn't modified,
+1d0c3924a92e69 Theodore Ts'o     2020-02-15  296  	 * just the pointer, and so it remains valid.
+1d0c3924a92e69 Theodore Ts'o     2020-02-15  297  	 */
+1d0c3924a92e69 Theodore Ts'o     2020-02-15  298  	if (!bh_p) {
+12062dddda4509 Eric Sandeen      2010-02-15  299  		ext4_error(sb, "Group descriptor not loaded - "
+498e5f24158da7 Theodore Ts'o     2008-11-05  300  			   "block_group = %u, group_desc = %u, desc = %u",
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  301  			   block_group, group_desc, offset);
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  302  		return NULL;
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  303  	}
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  304  
+0d1ee42f27d30e Alexandre Ratchov 2006-10-11  305  	desc = (struct ext4_group_desc *)(
+1d0c3924a92e69 Theodore Ts'o     2020-02-15  306  		(__u8 *)bh_p->b_data +
+0d1ee42f27d30e Alexandre Ratchov 2006-10-11  307  		offset * EXT4_DESC_SIZE(sb));
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  308  	if (bh)
+1d0c3924a92e69 Theodore Ts'o     2020-02-15  309  		*bh = bh_p;
+0d1ee42f27d30e Alexandre Ratchov 2006-10-11  310  	return desc;
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  311  }
+ac27a0ec112a08 Dave Kleikamp     2006-10-11  312  
 
 -- 
 0-DAY CI Kernel Test Service
