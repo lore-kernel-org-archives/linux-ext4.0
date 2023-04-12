@@ -2,159 +2,70 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B8A43C7619A
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 12:42:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 09C5FC77B72
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 12:42:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231761AbjDLMmg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Apr 2023 08:42:36 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57574 "EHLO
+        id S231574AbjDLMmj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Apr 2023 08:42:39 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57608 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231574AbjDLMmR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 08:42:17 -0400
-Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 40A557ABD;
+        with ESMTP id S231512AbjDLMmS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 08:42:18 -0400
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DEBEB7EC1;
         Wed, 12 Apr 2023 05:42:08 -0700 (PDT)
-Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.53])
-        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4PxMlP69SxzDsrS;
-        Wed, 12 Apr 2023 20:41:21 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
- (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.23; Wed, 12 Apr
- 2023 20:42:05 +0800
-From:   Baokun Li <libaokun1@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <ritesh.list@gmail.com>, <linux-kernel@vger.kernel.org>,
-        <yi.zhang@huawei.com>, <yangerkun@huawei.com>,
-        <yukuai3@huawei.com>, <libaokun1@huawei.com>
-Subject: [PATCH v3 4/8] ext4: make __es_remove_extent return void
-Date:   Wed, 12 Apr 2023 20:41:22 +0800
-Message-ID: <20230412124126.2286716-5-libaokun1@huawei.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20230412124126.2286716-1-libaokun1@huawei.com>
-References: <20230412124126.2286716-1-libaokun1@huawei.com>
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=ddg0vAHFen4K0AUyZN8TD9RJ8e2AKTjO8ch3srJurzE=; b=0NE81cyrNaY13C8K9Ohz51hMMT
+        H8xLDlox7rtYU3JMpi/o1SAdWWlvObLHFQJfTqJCbAGM9dcW5OL8gHOZ2ZyXZ5JEpZ35YBRQ/SJDw
+        Awg6JdUVWLxnk5KF/M2Zl8rnE5rVIWXzbsN5geWGxL03pJgn+yPqrtFK/f1rScaWvqKNiob9Q1uq4
+        zwBzDQd4VSvi9A91DWhyreN5V2CWY4ROZWwPn6JruDwiEvPhDvD3Tdms4YsiY3X3AIsTMbXL2g90M
+        hMjXbvq2r3mP+FN6fVrvENh5aI7Debl3VW76+MlDBh6fTbdSchuGtO8uG4TwA5+cmLhI6OwLIqLCA
+        8ozb6KTg==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.96 #2 (Red Hat Linux))
+        id 1pmZnb-003BFA-1a;
+        Wed, 12 Apr 2023 12:42:07 +0000
+Date:   Wed, 12 Apr 2023 05:42:07 -0700
+From:   Christoph Hellwig <hch@infradead.org>
+To:     Dave Chinner <david@fromorbit.com>
+Cc:     Eric Biggers <ebiggers@kernel.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        Andrey Albershteyn <aalbersh@redhat.com>, djwong@kernel.org,
+        dchinner@redhat.com, linux-xfs@vger.kernel.org,
+        fsverity@lists.linux.dev, rpeterso@redhat.com, agruenba@redhat.com,
+        xiang@kernel.org, chao@kernel.org,
+        damien.lemoal@opensource.wdc.com, jth@kernel.org,
+        linux-erofs@lists.ozlabs.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        cluster-devel@redhat.com
+Subject: Re: [PATCH v2 00/23] fs-verity support for XFS
+Message-ID: <ZDanH46VI7KmQeSV@infradead.org>
+References: <20230404145319.2057051-1-aalbersh@redhat.com>
+ <ZDTt8jSdG72/UnXi@infradead.org>
+ <20230412023319.GA5105@sol.localdomain>
+ <20230412031826.GI3223426@dread.disaster.area>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
- dggpeml500021.china.huawei.com (7.185.36.21)
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230412031826.GI3223426@dread.disaster.area>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now __es_remove_extent() cannot fail (it will always remove what it should,
-maybe more) so just make it return void.
+On Wed, Apr 12, 2023 at 01:18:26PM +1000, Dave Chinner wrote:
+> Right. It's not entirely simple to store metadata on disk beyond EOF
+> in XFS because of all the assumptions throughout the IO path and
+> allocator interfaces that it can allocate space beyond EOF at will
+> and something else will clean it up later if it is not needed. This
+> impacts on truncate, delayed allocation, writeback, IO completion,
+> EOF block removal on file close, background garbage collection,
+> ENOSPC/EDQUOT driven space freeing, etc.  Some of these things cross
+> over into iomap infrastructure, too.
 
-Suggested-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
----
-V2->V3:
-	New added.
-
- fs/ext4/extents_status.c | 30 +++++++++++-------------------
- 1 file changed, 11 insertions(+), 19 deletions(-)
-
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index a7c3200f9cbe..5207d3a9c1ad 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -145,8 +145,8 @@ static struct kmem_cache *ext4_es_cachep;
- static struct kmem_cache *ext4_pending_cachep;
- 
- static int __es_insert_extent(struct inode *inode, struct extent_status *newes);
--static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
--			      ext4_lblk_t end, int *reserved);
-+static void __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
-+			       ext4_lblk_t end, int *reserved);
- static int es_reclaim_extents(struct ext4_inode_info *ei, int *nr_to_scan);
- static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
- 		       struct ext4_inode_info *locked_ei);
-@@ -862,9 +862,7 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 	ext4_es_insert_extent_check(inode, &newes);
- 
- 	write_lock(&EXT4_I(inode)->i_es_lock);
--	err = __es_remove_extent(inode, lblk, end, NULL);
--	if (err != 0)
--		goto error;
-+	__es_remove_extent(inode, lblk, end, NULL);
- retry:
- 	err = __es_insert_extent(inode, &newes);
- 	if (err == -ENOMEM && __es_shrink(EXT4_SB(inode->i_sb),
-@@ -878,7 +876,6 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 	     status & EXTENT_STATUS_UNWRITTEN))
- 		__revise_pending(inode, lblk, len);
- 
--error:
- 	write_unlock(&EXT4_I(inode)->i_es_lock);
- 
- 	ext4_es_print_tree(inode);
-@@ -1311,11 +1308,10 @@ static unsigned int get_rsvd(struct inode *inode, ext4_lblk_t end,
-  *
-  * If @reserved is not NULL and delayed allocation is enabled, counts
-  * block/cluster reservations freed by removing range and if bigalloc
-- * enabled cancels pending reservations as needed. Returns 0 on success,
-- * error code on failure.
-+ * enabled cancels pending reservations as needed.
-  */
--static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
--			      ext4_lblk_t end, int *reserved)
-+static void __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
-+			       ext4_lblk_t end, int *reserved)
- {
- 	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
- 	struct rb_node *node;
-@@ -1334,9 +1330,9 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- 
- 	es = __es_tree_search(&tree->root, lblk);
- 	if (!es)
--		goto out;
-+		return;
- 	if (es->es_lblk > end)
--		goto out;
-+		return;
- 
- 	/* Simply invalidate cache_es. */
- 	tree->cache_es = NULL;
-@@ -1370,7 +1366,7 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- 				    __es_shrink(EXT4_SB(inode->i_sb),
- 							128, EXT4_I(inode)))
- 					goto retry;
--				goto out;
-+				return;
- 			}
- 		} else {
- 			es->es_lblk = end + 1;
-@@ -1429,8 +1425,6 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- out_get_reserved:
- 	if (count_reserved)
- 		*reserved = get_rsvd(inode, end, es, &rc);
--out:
--	return err;
- }
- 
- /*
-@@ -1469,7 +1463,7 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- 	 * is reclaimed.
- 	 */
- 	write_lock(&EXT4_I(inode)->i_es_lock);
--	err = __es_remove_extent(inode, lblk, end, &reserved);
-+	__es_remove_extent(inode, lblk, end, &reserved);
- 	write_unlock(&EXT4_I(inode)->i_es_lock);
- 	ext4_es_print_tree(inode);
- 	ext4_da_release_space(inode, reserved);
-@@ -2012,9 +2006,7 @@ int ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
- 
- 	write_lock(&EXT4_I(inode)->i_es_lock);
- 
--	err = __es_remove_extent(inode, lblk, lblk, NULL);
--	if (err != 0)
--		goto error;
-+	__es_remove_extent(inode, lblk, lblk, NULL);
- retry:
- 	err = __es_insert_extent(inode, &newes);
- 	if (err == -ENOMEM && __es_shrink(EXT4_SB(inode->i_sb),
--- 
-2.31.1
-
+To me that actually makes it easier to support the metadata beyond
+i_size.  Remember that the file is immutable after add fsverity
+hash is added.  So basically we just need to skip freeing the
+eofblocks if that flag is set.
