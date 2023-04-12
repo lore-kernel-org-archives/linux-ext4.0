@@ -2,34 +2,34 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 88A2AC77B73
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 12:42:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DBB83C77B6E
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 12:42:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231658AbjDLMmh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Apr 2023 08:42:37 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57530 "EHLO
+        id S231512AbjDLMmk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Apr 2023 08:42:40 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57648 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231596AbjDLMmS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 08:42:18 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3FCEA7ABA;
-        Wed, 12 Apr 2023 05:42:08 -0700 (PDT)
-Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.55])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4PxMjH2NfLzKxhw;
-        Wed, 12 Apr 2023 20:39:31 +0800 (CST)
+        with ESMTP id S231695AbjDLMmT (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 08:42:19 -0400
+Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2EEB87EC4;
+        Wed, 12 Apr 2023 05:42:09 -0700 (PDT)
+Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.57])
+        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4PxMh92qvYz17S81;
+        Wed, 12 Apr 2023 20:38:33 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
  (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.23; Wed, 12 Apr
- 2023 20:42:05 +0800
+ 2023 20:42:07 +0800
 From:   Baokun Li <libaokun1@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <ritesh.list@gmail.com>, <linux-kernel@vger.kernel.org>,
         <yi.zhang@huawei.com>, <yangerkun@huawei.com>,
         <yukuai3@huawei.com>, <libaokun1@huawei.com>
-Subject: [PATCH v3 5/8] ext4: make ext4_es_remove_extent return void
-Date:   Wed, 12 Apr 2023 20:41:23 +0800
-Message-ID: <20230412124126.2286716-6-libaokun1@huawei.com>
+Subject: [PATCH v3 7/8] ext4: make ext4_es_insert_extent return void
+Date:   Wed, 12 Apr 2023 20:41:25 +0800
+Message-ID: <20230412124126.2286716-8-libaokun1@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20230412124126.2286716-1-libaokun1@huawei.com>
 References: <20230412124126.2286716-1-libaokun1@huawei.com>
@@ -44,186 +44,162 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-After __es_remove_extent returns void, the return value in
-ext4_es_remove_extent is also unnecessary, so make it return void too.
+In ext4_es_insert_extent, for extents that are not must be kept, the return
+value is set to 0 even if the allocation returns -ENOMEM, and now inserting
+an extent that must be kept never fails, hence ext4_es_insert_extent never
+returns an error either, so let it return void.
 
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 ---
 V2->V3:
 	New added.
 
- fs/ext4/extents.c        | 34 ++++++----------------------------
- fs/ext4/extents_status.c | 12 +++++-------
- fs/ext4/extents_status.h |  4 ++--
- fs/ext4/inline.c         | 12 ++----------
- fs/ext4/inode.c          |  8 ++------
- 5 files changed, 17 insertions(+), 53 deletions(-)
+ fs/ext4/extents.c        |  5 +++--
+ fs/ext4/extents_status.c | 16 +++++-----------
+ fs/ext4/extents_status.h |  6 +++---
+ fs/ext4/inode.c          | 21 ++++++---------------
+ 4 files changed, 17 insertions(+), 31 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 3559ea6b0781..e6695fec59af 100644
+index e6695fec59af..d555ed924f37 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -4403,15 +4403,8 @@ int ext4_ext_truncate(handle_t *handle, struct inode *inode)
+@@ -3136,8 +3136,9 @@ static int ext4_zeroout_es(struct inode *inode, struct ext4_extent *ex)
+ 	if (ee_len == 0)
+ 		return 0;
  
- 	last_block = (inode->i_size + sb->s_blocksize - 1)
- 			>> EXT4_BLOCK_SIZE_BITS(sb);
--retry:
--	err = ext4_es_remove_extent(inode, last_block,
--				    EXT_MAX_BLOCKS - last_block);
--	if (err == -ENOMEM) {
--		memalloc_retry_wait(GFP_ATOMIC);
--		goto retry;
--	}
--	if (err)
--		return err;
-+	ext4_es_remove_extent(inode, last_block, EXT_MAX_BLOCKS - last_block);
-+
- retry_remove_space:
- 	err = ext4_ext_remove_space(inode, last_block, EXT_MAX_BLOCKS - 1);
- 	if (err == -ENOMEM) {
-@@ -5363,13 +5356,7 @@ static int ext4_collapse_range(struct file *file, loff_t offset, loff_t len)
+-	return ext4_es_insert_extent(inode, ee_block, ee_len, ee_pblock,
+-				     EXTENT_STATUS_WRITTEN);
++	ext4_es_insert_extent(inode, ee_block, ee_len, ee_pblock,
++			      EXTENT_STATUS_WRITTEN);
++	return 0;
+ }
  
- 	down_write(&EXT4_I(inode)->i_data_sem);
- 	ext4_discard_preallocations(inode, 0);
--
--	ret = ext4_es_remove_extent(inode, punch_start,
--				    EXT_MAX_BLOCKS - punch_start);
--	if (ret) {
--		up_write(&EXT4_I(inode)->i_data_sem);
--		goto out_stop;
--	}
-+	ext4_es_remove_extent(inode, punch_start, EXT_MAX_BLOCKS - punch_start);
- 
- 	ret = ext4_ext_remove_space(inode, punch_start, punch_stop - 1);
- 	if (ret) {
-@@ -5554,12 +5541,7 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
- 		ext4_free_ext_path(path);
- 	}
- 
--	ret = ext4_es_remove_extent(inode, offset_lblk,
--			EXT_MAX_BLOCKS - offset_lblk);
--	if (ret) {
--		up_write(&EXT4_I(inode)->i_data_sem);
--		goto out_stop;
--	}
-+	ext4_es_remove_extent(inode, offset_lblk, EXT_MAX_BLOCKS - offset_lblk);
- 
- 	/*
- 	 * if offset_lblk lies in a hole which is at start of file, use
-@@ -5617,12 +5599,8 @@ ext4_swap_extents(handle_t *handle, struct inode *inode1,
- 	BUG_ON(!inode_is_locked(inode1));
- 	BUG_ON(!inode_is_locked(inode2));
- 
--	*erp = ext4_es_remove_extent(inode1, lblk1, count);
--	if (unlikely(*erp))
--		return 0;
--	*erp = ext4_es_remove_extent(inode2, lblk2, count);
--	if (unlikely(*erp))
--		return 0;
-+	ext4_es_remove_extent(inode1, lblk1, count);
-+	ext4_es_remove_extent(inode2, lblk2, count);
- 
- 	while (count) {
- 		struct ext4_extent *ex1, *ex2, tmp_ex;
+ /* FIXME!! we need to try to merge to left or right after zero-out  */
 diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 5207d3a9c1ad..1ba2dd14367c 100644
+index 047ec2fc4899..ab345523c8b1 100644
 --- a/fs/ext4/extents_status.c
 +++ b/fs/ext4/extents_status.c
-@@ -1435,24 +1435,23 @@ static void __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
-  * @len - number of blocks to remove
-  *
-  * Reduces block/cluster reservation count and for bigalloc cancels pending
-- * reservations as needed. Returns 0 on success, error code on failure.
-+ * reservations as needed.
+@@ -823,12 +823,10 @@ static int __es_insert_extent(struct inode *inode, struct extent_status *newes)
+ /*
+  * ext4_es_insert_extent() adds information to an inode's extent
+  * status tree.
+- *
+- * Return 0 on success, error code on failure.
   */
--int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
--			  ext4_lblk_t len)
-+void ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
-+			   ext4_lblk_t len)
+-int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+-			  ext4_lblk_t len, ext4_fsblk_t pblk,
+-			  unsigned int status)
++void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
++			   ext4_lblk_t len, ext4_fsblk_t pblk,
++			   unsigned int status)
  {
- 	ext4_lblk_t end;
--	int err = 0;
- 	int reserved = 0;
+ 	struct extent_status newes;
+ 	ext4_lblk_t end = lblk + len - 1;
+@@ -836,13 +834,13 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
  
  	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
 -		return 0;
 +		return;
  
- 	trace_ext4_es_remove_extent(inode, lblk, len);
- 	es_debug("remove [%u/%u) from extent status tree of inode %lu\n",
- 		 lblk, len, inode->i_ino);
+ 	es_debug("add [%u/%u) %llu %x to extent status tree of inode %lu\n",
+ 		 lblk, len, pblk, status, inode->i_ino);
  
  	if (!len)
--		return err;
+-		return 0;
 +		return;
  
- 	end = lblk + len - 1;
  	BUG_ON(end < lblk);
-@@ -1467,7 +1466,6 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 
+@@ -868,8 +866,6 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	if (err == -ENOMEM && __es_shrink(EXT4_SB(inode->i_sb),
+ 					  128, EXT4_I(inode)))
+ 		goto retry;
+-	if (err == -ENOMEM && !ext4_es_must_keep(&newes))
+-		err = 0;
+ 
+ 	if (sbi->s_cluster_ratio > 1 && test_opt(inode->i_sb, DELALLOC) &&
+ 	    (status & EXTENT_STATUS_WRITTEN ||
+@@ -879,8 +875,6 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
  	write_unlock(&EXT4_I(inode)->i_es_lock);
+ 
  	ext4_es_print_tree(inode);
- 	ext4_da_release_space(inode, reserved);
+-
 -	return err;
  }
  
- static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
+ /*
 diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index 4ec30a798260..526a68890aa6 100644
+index c22edb931f1b..d9847a4a25db 100644
 --- a/fs/ext4/extents_status.h
 +++ b/fs/ext4/extents_status.h
-@@ -133,8 +133,8 @@ extern int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+@@ -127,9 +127,9 @@ extern int __init ext4_init_es(void);
+ extern void ext4_exit_es(void);
+ extern void ext4_es_init_tree(struct ext4_es_tree *tree);
+ 
+-extern int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+-				 ext4_lblk_t len, ext4_fsblk_t pblk,
+-				 unsigned int status);
++extern void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
++				  ext4_lblk_t len, ext4_fsblk_t pblk,
++				  unsigned int status);
  extern void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
  				 ext4_lblk_t len, ext4_fsblk_t pblk,
  				 unsigned int status);
--extern int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
--				 ext4_lblk_t len);
-+extern void ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
-+				  ext4_lblk_t len);
- extern void ext4_es_find_extent_range(struct inode *inode,
- 				      int (*match_fn)(struct extent_status *es),
- 				      ext4_lblk_t lblk, ext4_lblk_t end,
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 1602d74b5eeb..dc88ec0e6611 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1955,16 +1955,8 @@ int ext4_inline_data_truncate(struct inode *inode, int *has_inline)
- 		 * the extent status cache must be cleared to avoid leaving
- 		 * behind stale delayed allocated extent entries
- 		 */
--		if (!ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) {
--retry:
--			err = ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
--			if (err == -ENOMEM) {
--				memalloc_retry_wait(GFP_ATOMIC);
--				goto retry;
--			}
--			if (err)
--				goto out_error;
--		}
-+		if (!ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
-+			ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
- 
- 		/* Clear the content in the xattr space. */
- 		if (inline_size > EXT4_MIN_INLINE_DATA_SIZE) {
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 33ae92f0ddfb..3bd4d5bbf0aa 100644
+index 9fd3d526f591..fc80791c239c 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4026,12 +4026,8 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
- 		down_write(&EXT4_I(inode)->i_data_sem);
- 		ext4_discard_preallocations(inode, 0);
+@@ -594,10 +594,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		    ext4_es_scan_range(inode, &ext4_es_is_delayed, map->m_lblk,
+ 				       map->m_lblk + map->m_len - 1))
+ 			status |= EXTENT_STATUS_DELAYED;
+-		ret = ext4_es_insert_extent(inode, map->m_lblk,
+-					    map->m_len, map->m_pblk, status);
+-		if (ret < 0)
+-			retval = ret;
++		ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
++				      map->m_pblk, status);
+ 	}
+ 	up_read((&EXT4_I(inode)->i_data_sem));
  
--		ret = ext4_es_remove_extent(inode, first_block,
--					    stop_block - first_block);
--		if (ret) {
--			up_write(&EXT4_I(inode)->i_data_sem);
--			goto out_stop;
+@@ -706,12 +704,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		    ext4_es_scan_range(inode, &ext4_es_is_delayed, map->m_lblk,
+ 				       map->m_lblk + map->m_len - 1))
+ 			status |= EXTENT_STATUS_DELAYED;
+-		ret = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+-					    map->m_pblk, status);
+-		if (ret < 0) {
+-			retval = ret;
+-			goto out_sem;
 -		}
-+		ext4_es_remove_extent(inode, first_block,
-+				      stop_block - first_block);
++		ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
++				      map->m_pblk, status);
+ 	}
  
- 		if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
- 			ret = ext4_ext_remove_space(inode, first_block,
+ out_sem:
+@@ -1776,7 +1770,6 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 		set_buffer_new(bh);
+ 		set_buffer_delay(bh);
+ 	} else if (retval > 0) {
+-		int ret;
+ 		unsigned int status;
+ 
+ 		if (unlikely(retval != map->m_len)) {
+@@ -1789,10 +1782,8 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 
+ 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+ 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+-		ret = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+-					    map->m_pblk, status);
+-		if (ret != 0)
+-			retval = ret;
++		ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
++				      map->m_pblk, status);
+ 	}
+ 
+ out_unlock:
 -- 
 2.31.1
 
