@@ -2,128 +2,84 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BD1A6C7619A
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 07:47:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4E6D9C7619A
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 09:26:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229924AbjDLHrs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Apr 2023 03:47:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37234 "EHLO
+        id S230056AbjDLJ0T (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Apr 2023 05:26:19 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40224 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229854AbjDLHro (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 03:47:44 -0400
-Received: from mail-pj1-x1033.google.com (mail-pj1-x1033.google.com [IPv6:2607:f8b0:4864:20::1033])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 53E7161BF
-        for <linux-ext4@vger.kernel.org>; Wed, 12 Apr 2023 00:47:43 -0700 (PDT)
-Received: by mail-pj1-x1033.google.com with SMTP id c10-20020a17090abf0a00b0023d1bbd9f9eso13769211pjs.0
-        for <linux-ext4@vger.kernel.org>; Wed, 12 Apr 2023 00:47:43 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1681285662;
-        h=message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=501liZLtrBrP3uOqXrKpjeNE37BdPgtVkc0/sTO4GKQ=;
-        b=ADdTjEWJfUQ0t2OmZZ7XrWs7OlcZo/ffK86KX0qSgIVzzXWLmRAPdOk8KlNQdZBrnL
-         JSKocMtK3W3AsbPMvnuF87zsAjYWrGcqZ8ksVpQcQl4n/2gwXhG3u95Dh1buXUdSm2Wr
-         uEkknULxJTXKIOJERPlwQ3FTOBJJL4GeEugasK4iX2okh5NUYsjqYtNmlz3TOv1EUzLv
-         cIsVHcWgOXN0CBZ09CaVN/t3Ga1/uL/6Ug1ojgU4lbOOeOZeAMJbqiFJIQSjr/VuXzDK
-         doUz4iawzluknN4Yv4Wsw0k/ayYhQ+RuPJDT52q3IaYDs9GE5OJ0z3bdYBE1MNxW0fhO
-         uSEg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112; t=1681285662;
-        h=message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=501liZLtrBrP3uOqXrKpjeNE37BdPgtVkc0/sTO4GKQ=;
-        b=hWVZL7WYTvVbv1YYz6DKYdNcX8vPK9D+2Q0T5pt+EXVmOOpOsmmpjvWACxu7kjK3sy
-         ySDy29hKXWITdO6Y+wY6yknObpyDMRaq2gCOaYXwSNeXOjHFgNlzJewJ7uO90mS8E6ZP
-         3EMACYLU7do/1TS5r5/T+nglH0SPOqiaHKkdgo8v9gpOM9mx9MZUa5fyP4nK+sKI7A3R
-         xtse/W0eRUHcQuD8JTPOhXFzPTW1bod3ar0bziFVSW3TwXcH6N6yRwxxco85nUkOZVLF
-         1xAo4ORJMpv6Y7dlHfufbP0D0x0yM9quC8ocQDDr+LAOR3kvQjSjIXFnQwDk16WuZ/4G
-         7oCA==
-X-Gm-Message-State: AAQBX9fJ7cs/nW0TmAHh4/QFIID63AnxNCd6ilyBNbySdncxoxMdENBF
-        8Kjv7944DfbU3r/dSDtrlezHiTMul0eb9Q==
-X-Google-Smtp-Source: AKy350b89aTyR4PHnd+ri7TXR+PrPfN3A5phUgA/oysD61hm/tzgH1gH7BxU21v3NqY4yjBGY1mgDg==
-X-Received: by 2002:a17:902:d2d0:b0:1a6:7632:2b1a with SMTP id n16-20020a170902d2d000b001a676322b1amr289649plc.64.1681285662257;
-        Wed, 12 Apr 2023 00:47:42 -0700 (PDT)
-Received: from localhost ([222.70.26.66])
-        by smtp.gmail.com with ESMTPSA id iw5-20020a170903044500b0019a91895cdfsm10958012plb.50.2023.04.12.00.47.41
-        (version=TLS1_2 cipher=ECDHE-ECDSA-CHACHA20-POLY1305 bits=256/256);
-        Wed, 12 Apr 2023 00:47:41 -0700 (PDT)
-From:   JunChao Sun <sunjunchao2870@gmail.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     tytso@mit.edu, yi.zhang@huawei.com, jack@suse.cz,
-        sunjunchao <sunjunchao@yanrongyun.com>,
-        JunChao Sun <sunjunchao2870@gmail.com>
-Subject: [PATCH] ext4: remove BUG_ON which will be triggered in race scenario
-Date:   Wed, 12 Apr 2023 00:47:37 -0700
-Message-Id: <20230412074737.5769-1-sunjunchao2870@gmail.com>
-X-Mailer: git-send-email 2.17.1
+        with ESMTP id S230028AbjDLJ0M (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 05:26:12 -0400
+Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C325E7EEC;
+        Wed, 12 Apr 2023 02:26:10 -0700 (PDT)
+Received: from mail02.huawei.com (unknown [172.30.67.143])
+        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4PxHQ55q7Gz4f3vd3;
+        Wed, 12 Apr 2023 17:26:05 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.124.27])
+        by APP4 (Coremail) with SMTP id gCh0CgDHL7MpeTZkL5_1HA--.3769S3;
+        Wed, 12 Apr 2023 17:26:07 +0800 (CST)
+From:   Kemeng Shi <shikemeng@huaweicloud.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        shikemeng@huaweicloud.com
+Subject: [PATCH v2 01/19] ext4: fix wrong unit use in ext4_mb_normalize_request
+Date:   Thu, 13 Apr 2023 01:28:15 +0800
+Message-Id: <20230412172833.2317696-2-shikemeng@huaweicloud.com>
+X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20230412172833.2317696-1-shikemeng@huaweicloud.com>
+References: <20230412172833.2317696-1-shikemeng@huaweicloud.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID: gCh0CgDHL7MpeTZkL5_1HA--.3769S3
+X-Coremail-Antispam: 1UD129KBjvdXoW7XF17Jw43uF45Kry3AFy7Jrb_yoWDWrbEvF
+        yjyrn7WrWrJw1aka1Sy3yfKr95Ka18tFnrZr43Z3yxuF1DWrWfua4qyr95A3yxG34UJay3
+        K34rXr1fWF4FgjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUb6AFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+        6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M28IrcIa0xkI8V
+        A2jI8067AKxVWUGwA2048vs2IY020Ec7CjxVAFwI0_JFI_Gr1l8cAvFVAK0II2c7xJM28C
+        jxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI
+        8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E
+        87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64
+        kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm
+        72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYx
+        C7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_
+        Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x
+        0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8
+        JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIx
+        AIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7sREgyCDUUUUU=
+        =
+X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: sunjunchao <sunjunchao@yanrongyun.com>
+NRL_CHECK_SIZE will compare input req and size, so req and size should
+be in same unit. Input req "fe_len" is in cluster unit while input
+size "(8<<20)>>bsbits" is in block unit. Convert "fe_len" to block
+unit to fix the mismatch.
 
-There is a BUG_ON statement which will be triggered in the
-following scenario, let's remove it.
-
-thread0                                         thread1
-ext4_write_begin(inode0)
-    ->ext4_try_to_write_inline_data()
-        written some bits successfully
-ext4_write_end(inode0)
-    ->ext4_write_inline_data_end()
-                                            ext4_write_begin(inode0)
-                                                ->ext4_try_to_write_inline_data()
-                                                    ->ext4_convert_inline_data_to_extent()
-                                                        ->ext4_write_lock_xattr()
-                                                            ->ext4_destroy_inline_data_nolock()
-                                                                ->ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
-                                                        ->ext4_write_unlock_xattr()
-        ->ext4_write_lock_xattr()
-        ->BUG_ON(!ext4_has_inline_data()) will be triggered
-
-The problematic logic is that ext4_write_end() test ext4_has_inline_data()
-without holding xattr_sem, and ext4_write_inline_data_end() test it again using
-a BUG_ON() with holding xattr_sem.
-
-Signed-off-by: JunChao Sun <sunjunchao2870@gmail.com>
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/inline.c | 6 +++++-
- fs/ext4/inode.c  | 5 ++++-
- 2 files changed, 9 insertions(+), 2 deletions(-)
+ fs/ext4/mballoc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 1602d74..b5752975 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -753,7 +753,11 @@ int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
- 			goto out;
- 		}
- 		ext4_write_lock_xattr(inode, &no_expand);
--		BUG_ON(!ext4_has_inline_data(inode));
-+		if (!ext4_has_inline_data(inode)) {
-+			ext4_write_unlock_xattr(inode, &no_expand);
-+			brelse(iloc.bh);
-+			return -ENODATA;
-+		}
- 
- 		/*
- 		 * ei->i_inline_off may have changed since
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index bf0b7de..7502657 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1317,7 +1317,10 @@ static int ext4_write_end(struct file *file,
- 
- 	if (ext4_has_inline_data(inode) &&
- 	    ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
--		return ext4_write_inline_data_end(inode, pos, len, copied, page);
-+		ret = ext4_write_inline_data_end(inode, pos, len, copied, page);
-+
-+	if (ret != -ENODATA)
-+		return ret;
- 
- 	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
- 	/*
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 63a68cee36c6..6318c763a239 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4056,7 +4056,7 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+ 		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
+ 							(22 - bsbits)) << 22;
+ 		size = 4 * 1024 * 1024;
+-	} else if (NRL_CHECK_SIZE(ac->ac_o_ex.fe_len,
++	} else if (NRL_CHECK_SIZE(EXT4_C2B(sbi, ac->ac_o_ex.fe_len),
+ 					(8<<20)>>bsbits, max, 8 * 1024)) {
+ 		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
+ 							(23 - bsbits)) << 23;
 -- 
-1.8.3.1
+2.30.0
 
