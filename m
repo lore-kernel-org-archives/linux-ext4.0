@@ -2,269 +2,206 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D72A1C77B72
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 09:26:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E3838C7619A
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 10:18:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229633AbjDLJ0s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Apr 2023 05:26:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40440 "EHLO
+        id S231310AbjDLKSr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Apr 2023 06:18:47 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34052 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230126AbjDLJ0Q (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 05:26:16 -0400
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D5B0D7EE8;
-        Wed, 12 Apr 2023 02:26:13 -0700 (PDT)
-Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PxHQ95B84z4f4lKj;
-        Wed, 12 Apr 2023 17:26:09 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgDHL7MpeTZkL5_1HA--.3769S14;
-        Wed, 12 Apr 2023 17:26:11 +0800 (CST)
-From:   Kemeng Shi <shikemeng@huaweicloud.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com
-Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        shikemeng@huaweicloud.com
-Subject: [PATCH v2 12/19] ext4: factor out codes to update block bitmap and group descriptor on disk from ext4_mb_mark_bb
-Date:   Thu, 13 Apr 2023 01:28:26 +0800
-Message-Id: <20230412172833.2317696-13-shikemeng@huaweicloud.com>
-X-Mailer: git-send-email 2.30.0
-In-Reply-To: <20230412172833.2317696-1-shikemeng@huaweicloud.com>
-References: <20230412172833.2317696-1-shikemeng@huaweicloud.com>
+        with ESMTP id S231270AbjDLKSp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 06:18:45 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 356474C19;
+        Wed, 12 Apr 2023 03:18:44 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id E91851F6E6;
+        Wed, 12 Apr 2023 10:18:42 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1681294722; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=dmOoVTX9gnkxDiayDDxZ3/kFfYy1jXxF5rFN0OslPTw=;
+        b=Sl8f1FB88uVYTGKvQafE7wbnuyk6f/agFZhs8d3xV05EK82NvvFtJfWf2mvoz9w02dfciv
+        o6dF9fs7U/L+yOztrkDFCIs9TBHoJuVoPbi4L1kWTho6aXAyDZNQrD+wVDCh/CoHz1O+96
+        9+ylqlNLlaTaPq4WzRJE2i/GUYPpaCc=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1681294722;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=dmOoVTX9gnkxDiayDDxZ3/kFfYy1jXxF5rFN0OslPTw=;
+        b=6qmzC9hDi+At7IJOlAKpnaTHZLlBildG4atf+bFVwwTrrgCSZgL3zanbacnydQZM67JdB7
+        Mg+jhoJUK6nD2fDg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id D8969139EE;
+        Wed, 12 Apr 2023 10:18:42 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id n0hRNIKFNmR4FQAAMHmgww
+        (envelope-from <jack@suse.cz>); Wed, 12 Apr 2023 10:18:42 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id 5BB3EA0732; Wed, 12 Apr 2023 12:18:42 +0200 (CEST)
+Date:   Wed, 12 Apr 2023 12:18:42 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Christian Brauner <brauner@kernel.org>
+Cc:     Jan Kara <jack@suse.cz>, jack@suse.com,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
+        syzbot <syzbot+cdcd444e4d3a256ada13@syzkaller.appspotmail.com>,
+        syzbot <syzbot+aacb82fca60873422114@syzkaller.appspotmail.com>
+Subject: Re: [syzbot] [fs?] possible deadlock in quotactl_fd
+Message-ID: <20230412101842.m6vr26eqnfjaftdr@quack3>
+References: <000000000000f1a9d205f909f327@google.com>
+ <000000000000ee3a3005f909f30a@google.com>
+ <20230411-sendung-apokalypse-05af1adb8889@brauner>
+ <20230411105542.6dee4qf2tgt5scwx@quack3>
+ <20230411-stich-tonart-8da033e58554@brauner>
+ <20230411-skandal-global-379ddaf6e66a@brauner>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgDHL7MpeTZkL5_1HA--.3769S14
-X-Coremail-Antispam: 1UD129KBjvJXoW3AF4rZw47WF43Jr4xXry7Wrg_yoW7tw4rpF
-        9IyF1DCr43Grnrur43W342q3WrKw109w1kGryfC345CF4ayr95WF1xKFyF9as0yFZrJFnF
-        qF1Ykw4xur1furDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUPF14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
-        0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
-        rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6x
-        IIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xv
-        wVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFc
-        xC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_
-        Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2
-        IErcIFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
-        14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIx
-        kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAF
-        wI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JV
-        WxJwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjTRKfOw
-        UUUUU
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230411-skandal-global-379ddaf6e66a@brauner>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-There are several reasons to add a general function to update block
-bitmap and group descriptor on disk:
-1. pair behavior of alloc/free bits. For example,
-ext4_mb_new_blocks_simple will update free_clusters in struct flex_groups
-in ext4_mb_mark_bb while ext4_free_blocks_simple forgets this.
-2. remove repeat code to read from disk, update and write back to disk.
-3. reduce future unit test mocks to catch real IO to update structure
-on disk.
+On Tue 11-04-23 16:01:16, Christian Brauner wrote:
+> On Tue, Apr 11, 2023 at 03:40:25PM +0200, Christian Brauner wrote:
+> > On Tue, Apr 11, 2023 at 12:55:42PM +0200, Jan Kara wrote:
+> > > On Tue 11-04-23 12:11:52, Christian Brauner wrote:
+> > > > On Mon, Apr 10, 2023 at 11:53:46PM -0700, syzbot wrote:
+> > > > > Hello,
+> > > > > 
+> > > > > syzbot found the following issue on:
+> > > > > 
+> > > > > HEAD commit:    0d3eb744aed4 Merge tag 'urgent-rcu.2023.04.07a' of git://g..
+> > > > > git tree:       upstream
+> > > > > console output: https://syzkaller.appspot.com/x/log.txt?x=11798e4bc80000
+> > > > > kernel config:  https://syzkaller.appspot.com/x/.config?x=c21559e740385326
+> > > > > dashboard link: https://syzkaller.appspot.com/bug?extid=cdcd444e4d3a256ada13
+> > > > > compiler:       gcc (Debian 10.2.1-6) 10.2.1 20210110, GNU ld (GNU Binutils for Debian) 2.35.2
+> > > > > 
+> > > > > Unfortunately, I don't have any reproducer for this issue yet.
+> > > > > 
+> > > > > Downloadable assets:
+> > > > > disk image: https://storage.googleapis.com/syzbot-assets/a02928003efa/disk-0d3eb744.raw.xz
+> > > > > vmlinux: https://storage.googleapis.com/syzbot-assets/7839447005a4/vmlinux-0d3eb744.xz
+> > > > > kernel image: https://storage.googleapis.com/syzbot-assets/d26ab3184148/bzImage-0d3eb744.xz
+> > > > > 
+> > > > > IMPORTANT: if you fix the issue, please add the following tag to the commit:
+> > > > > Reported-by: syzbot+cdcd444e4d3a256ada13@syzkaller.appspotmail.com
+> > > > > 
+> > > > > ======================================================
+> > > > > WARNING: possible circular locking dependency detected
+> > > > > 6.3.0-rc6-syzkaller-00016-g0d3eb744aed4 #0 Not tainted
+> > > > > ------------------------------------------------------
+> > > > > syz-executor.3/11858 is trying to acquire lock:
+> > > > > ffff88802a3bc0e0 (&type->s_umount_key#31){++++}-{3:3}, at: __do_sys_quotactl_fd+0x174/0x3f0 fs/quota/quota.c:997
+> > > > > 
+> > > > > but task is already holding lock:
+> > > > > ffff88802a3bc460 (sb_writers#4){.+.+}-{0:0}, at: __do_sys_quotactl_fd+0xd3/0x3f0 fs/quota/quota.c:990
+> > > > > 
+> > > > > which lock already depends on the new lock.
+> > > > > 
+> > > > > 
+> > > > > the existing dependency chain (in reverse order) is:
+> > > > > 
+> > > > > -> #1 (sb_writers#4){.+.+}-{0:0}:
+> > > > >        percpu_down_read include/linux/percpu-rwsem.h:51 [inline]
+> > > > >        __sb_start_write include/linux/fs.h:1477 [inline]
+> > > > >        sb_start_write include/linux/fs.h:1552 [inline]
+> > > > >        write_mmp_block+0xc4/0x820 fs/ext4/mmp.c:50
+> > > > >        ext4_multi_mount_protect+0x50d/0xac0 fs/ext4/mmp.c:343
+> > > > >        __ext4_remount fs/ext4/super.c:6543 [inline]
+> > > > >        ext4_reconfigure+0x242b/0x2b60 fs/ext4/super.c:6642
+> > > > >        reconfigure_super+0x40c/0xa30 fs/super.c:956
+> > > > >        vfs_fsconfig_locked fs/fsopen.c:254 [inline]
+> > > > >        __do_sys_fsconfig+0xa3a/0xc20 fs/fsopen.c:439
+> > > > >        do_syscall_x64 arch/x86/entry/common.c:50 [inline]
+> > > > >        do_syscall_64+0x39/0xb0 arch/x86/entry/common.c:80
+> > > > >        entry_SYSCALL_64_after_hwframe+0x63/0xcd
+> > > > > 
+> > > > > -> #0 (&type->s_umount_key#31){++++}-{3:3}:
+> > > > >        check_prev_add kernel/locking/lockdep.c:3098 [inline]
+> > > > >        check_prevs_add kernel/locking/lockdep.c:3217 [inline]
+> > > > >        validate_chain kernel/locking/lockdep.c:3832 [inline]
+> > > > >        __lock_acquire+0x2ec7/0x5d40 kernel/locking/lockdep.c:5056
+> > > > >        lock_acquire kernel/locking/lockdep.c:5669 [inline]
+> > > > >        lock_acquire+0x1af/0x520 kernel/locking/lockdep.c:5634
+> > > > >        down_write+0x92/0x200 kernel/locking/rwsem.c:1573
+> > > > >        __do_sys_quotactl_fd+0x174/0x3f0 fs/quota/quota.c:997
+> > > > >        do_syscall_x64 arch/x86/entry/common.c:50 [inline]
+> > > > >        do_syscall_64+0x39/0xb0 arch/x86/entry/common.c:80
+> > > > >        entry_SYSCALL_64_after_hwframe+0x63/0xcd
+> > > > > 
+> > > > > other info that might help us debug this:
+> > > > > 
+> > > > >  Possible unsafe locking scenario:
+> > > > > 
+> > > > >        CPU0                    CPU1
+> > > > >        ----                    ----
+> > > > >   lock(sb_writers#4);
+> > > > >                                lock(&type->s_umount_key#31);
+> > > > >                                lock(sb_writers#4);
+> > > > >   lock(&type->s_umount_key#31);
+> > > > > 
+> > > > >  *** DEADLOCK ***
+> > > > 
+> > > > Hmkay, I understand how this happens, I think:
+> > > > 
+> > > > fsconfig(FSCONFIG_CMD_RECONFIGURE)                      quotactl_fd(Q_QUOTAON/Q_QUOTAOFF/Q_XQUOTAON/Q_XQUOTAOFF)
+> > > > 							-> mnt_want_write(f.file->f_path.mnt);
+> > > > -> down_write(&sb->s_umount);                              -> __sb_start_write(sb, SB_FREEZE_WRITE) 
+> > > > -> reconfigure_super(fc);
+> > > >    -> ext4_multi_mount_protect()
+> > > >       -> __sb_start_write(sb, SB_FREEZE_WRITE)         -> down_write(&sb->s_umount);
+> > > > -> up_write(&sb->s_umount);
+> > > 
+> > > Thanks for having a look!
+> > > 
+> > > > I have to step away from the computer now for a bit but naively it seem
+> > > > that the locking order for quotactl_fd() should be the other way around.
+> > > > 
+> > > > But while I'm here, why does quotactl_fd() take mnt_want_write() but
+> > > > quotactl() doesn't? It seems that if one needs to take it both need to
+> > > > take it.
+> > > 
+> > > Couple of notes here:
+> > > 
+> > > 1) quotactl() handles the filesystem freezing by grabbing the s_umount
+> > > semaphore, checking the superblock freeze state (it cannot change while
+> > > s_umount is held) and proceeding if fs is not frozen. This logic is hidden
+> > > in quotactl_block().
+> > > 
+> > > 2) The proper lock ordering is indeed freeze-protection -> s_umount because
+> > > that is implicitely dictated by how filesystem freezing works. If you grab
+> > 
+> > Yep.
+> 
+> One final thought about this. quotactl() and quotactl_fd() could do the
+> same thing though, right? quotactl() could just be made to use the same
+> locking scheme as quotactl_fd(). Not saying it has to, but the code
+> would probably be easier to understand/maintain if both would use the same.
 
-Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
----
- fs/ext4/mballoc.c | 157 +++++++++++++++++++++++++---------------------
- 1 file changed, 87 insertions(+), 70 deletions(-)
+Yes, that would be nice. But quotactl(2) gets a block device as an
+argument, needs to translate that to a superblock (user_get_super()) and
+only then we could use sb_start_write() to protect from fs freezing - but
+we already hold s_umount from user_get_super() so we can't do that due to
+lock ordering. That's why handling the freeze protection is so contrived in
+quotactl(2). We used to have variant of user_get_super() that guaranteed
+returning thawed superblock but Christoph didn't like it and only quota
+code was using it so stuff got opencoded in the quota code instead (see
+commit 60b498852bf2 ("fs: remove get_super_thawed and
+get_super_exclusive_thawed").
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 11ea5feb6a0d..b93260eaad92 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3731,6 +3731,86 @@ void ext4_exit_mballoc(void)
- 	ext4_groupinfo_destroy_slabs();
- }
- 
-+struct ext4_mark_context {
-+	struct super_block *sb;
-+	int state;
-+};
-+
-+static int
-+ext4_mb_mark_group_bb(struct ext4_mark_context *mc, ext4_group_t group,
-+		      ext4_grpblk_t blkoff, ext4_grpblk_t len)
-+{
-+	struct super_block *sb = mc->sb;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct buffer_head *bitmap_bh = NULL;
-+	struct ext4_group_desc *gdp;
-+	struct buffer_head *gdp_bh;
-+	int err;
-+	unsigned int i, already, changed;
-+
-+	bitmap_bh = ext4_read_block_bitmap(sb, group);
-+	if (IS_ERR(bitmap_bh))
-+		return PTR_ERR(bitmap_bh);
-+
-+	err = -EIO;
-+	gdp = ext4_get_group_desc(sb, group, &gdp_bh);
-+	if (!gdp)
-+		goto out_err;
-+
-+	ext4_lock_group(sb, group);
-+	if (ext4_has_group_desc_csum(sb) &&
-+	    (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))) {
-+		gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
-+		ext4_free_group_clusters_set(sb, gdp,
-+			ext4_free_clusters_after_init(sb, group, gdp));
-+	}
-+
-+	already = 0;
-+	for (i = 0; i < len; i++)
-+		if (mb_test_bit(blkoff + i, bitmap_bh->b_data) ==
-+				mc->state)
-+			already++;
-+	changed = len - already;
-+
-+	if (mc->state) {
-+		mb_set_bits(bitmap_bh->b_data, blkoff, len);
-+		ext4_free_group_clusters_set(sb, gdp,
-+			ext4_free_group_clusters(sb, gdp) - changed);
-+	} else {
-+		mb_clear_bits(bitmap_bh->b_data, blkoff, len);
-+		ext4_free_group_clusters_set(sb, gdp,
-+			ext4_free_group_clusters(sb, gdp) + changed);
-+	}
-+
-+	ext4_block_bitmap_csum_set(sb, gdp, bitmap_bh);
-+	ext4_group_desc_csum_set(sb, group, gdp);
-+	ext4_unlock_group(sb, group);
-+
-+	if (sbi->s_log_groups_per_flex) {
-+		ext4_group_t flex_group = ext4_flex_group(sbi, group);
-+		struct flex_groups *fg = sbi_array_rcu_deref(sbi,
-+					   s_flex_groups, flex_group);
-+
-+		if (mc->state)
-+			atomic64_sub(changed, &fg->free_clusters);
-+		else
-+			atomic64_add(changed, &fg->free_clusters);
-+	}
-+
-+	err = ext4_handle_dirty_metadata(NULL, NULL, bitmap_bh);
-+	if (err)
-+		goto out_err;
-+	err = ext4_handle_dirty_metadata(NULL, NULL, gdp_bh);
-+	if (err)
-+		goto out_err;
-+
-+	sync_dirty_buffer(bitmap_bh);
-+	sync_dirty_buffer(gdp_bh);
-+
-+out_err:
-+	brelse(bitmap_bh);
-+	return err;
-+}
- 
- /*
-  * Check quota and mark chosen space (ac->ac_b_ex) non-free in bitmaps
-@@ -3857,15 +3937,15 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
- 			int len, int state)
- {
--	struct buffer_head *bitmap_bh = NULL;
--	struct ext4_group_desc *gdp;
--	struct buffer_head *gdp_bh;
-+	struct ext4_mark_context mc = {
-+		.sb = sb,
-+		.state = state,
-+	};
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	ext4_group_t group;
- 	ext4_grpblk_t blkoff;
--	int i, err;
--	int already;
--	unsigned int clen, clen_changed, thisgrp_len;
-+	int err;
-+	unsigned int clen, thisgrp_len;
- 
- 	while (len > 0) {
- 		ext4_get_group_no_and_offset(sb, block, &group, &blkoff);
-@@ -3886,80 +3966,17 @@ void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
- 			ext4_error(sb, "Marking blocks in system zone - "
- 				   "Block = %llu, len = %u",
- 				   block, thisgrp_len);
--			bitmap_bh = NULL;
- 			break;
- 		}
- 
--		bitmap_bh = ext4_read_block_bitmap(sb, group);
--		if (IS_ERR(bitmap_bh)) {
--			err = PTR_ERR(bitmap_bh);
--			bitmap_bh = NULL;
--			break;
--		}
--
--		err = -EIO;
--		gdp = ext4_get_group_desc(sb, group, &gdp_bh);
--		if (!gdp)
--			break;
--
--		ext4_lock_group(sb, group);
--		already = 0;
--		for (i = 0; i < clen; i++)
--			if (!mb_test_bit(blkoff + i, bitmap_bh->b_data) ==
--					 !state)
--				already++;
--
--		clen_changed = clen - already;
--		if (state)
--			mb_set_bits(bitmap_bh->b_data, blkoff, clen);
--		else
--			mb_clear_bits(bitmap_bh->b_data, blkoff, clen);
--		if (ext4_has_group_desc_csum(sb) &&
--		    (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))) {
--			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
--			ext4_free_group_clusters_set(sb, gdp,
--			     ext4_free_clusters_after_init(sb, group, gdp));
--		}
--		if (state)
--			clen = ext4_free_group_clusters(sb, gdp) - clen_changed;
--		else
--			clen = ext4_free_group_clusters(sb, gdp) + clen_changed;
--
--		ext4_free_group_clusters_set(sb, gdp, clen);
--		ext4_block_bitmap_csum_set(sb, gdp, bitmap_bh);
--		ext4_group_desc_csum_set(sb, group, gdp);
--
--		ext4_unlock_group(sb, group);
--
--		if (sbi->s_log_groups_per_flex) {
--			ext4_group_t flex_group = ext4_flex_group(sbi, group);
--			struct flex_groups *fg = sbi_array_rcu_deref(sbi,
--						   s_flex_groups, flex_group);
--
--			if (state)
--				atomic64_sub(clen_changed, &fg->free_clusters);
--			else
--				atomic64_add(clen_changed, &fg->free_clusters);
--
--		}
--
--		err = ext4_handle_dirty_metadata(NULL, NULL, bitmap_bh);
--		if (err)
--			break;
--		sync_dirty_buffer(bitmap_bh);
--		err = ext4_handle_dirty_metadata(NULL, NULL, gdp_bh);
--		sync_dirty_buffer(gdp_bh);
-+		err = ext4_mb_mark_group_bb(&mc, group, blkoff, clen);
- 		if (err)
- 			break;
- 
- 		block += thisgrp_len;
- 		len -= thisgrp_len;
--		brelse(bitmap_bh);
- 		BUG_ON(len < 0);
- 	}
--
--	if (err)
--		brelse(bitmap_bh);
- }
- 
- /*
+								Honza
 -- 
-2.30.0
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
