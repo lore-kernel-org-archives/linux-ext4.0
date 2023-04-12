@@ -2,41 +2,41 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C89A9C77B6E
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 09:26:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4809FC77B71
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 09:26:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230036AbjDLJ0a (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Apr 2023 05:26:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40254 "EHLO
+        id S230301AbjDLJ0c (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Apr 2023 05:26:32 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40252 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230100AbjDLJ0P (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 05:26:15 -0400
+        with ESMTP id S230109AbjDLJ0Q (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 05:26:16 -0400
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AE0726195;
-        Wed, 12 Apr 2023 02:26:11 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2BD097EF5;
+        Wed, 12 Apr 2023 02:26:13 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PxHQ76bwvz4f42Yr;
-        Wed, 12 Apr 2023 17:26:07 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgDHL7MpeTZkL5_1HA--.3769S8;
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4PxHQ90Sv3z4f4cmM;
         Wed, 12 Apr 2023 17:26:09 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.124.27])
+        by APP4 (Coremail) with SMTP id gCh0CgDHL7MpeTZkL5_1HA--.3769S12;
+        Wed, 12 Apr 2023 17:26:10 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
         shikemeng@huaweicloud.com
-Subject: [PATCH v2 06/19] ext4: remove ext4_block_group and ext4_block_group_offset declaration
-Date:   Thu, 13 Apr 2023 01:28:20 +0800
-Message-Id: <20230412172833.2317696-7-shikemeng@huaweicloud.com>
+Subject: [PATCH v2 10/19] ext4: fix wrong unit use in ext4_mb_clear_bb
+Date:   Thu, 13 Apr 2023 01:28:24 +0800
+Message-Id: <20230412172833.2317696-11-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230412172833.2317696-1-shikemeng@huaweicloud.com>
 References: <20230412172833.2317696-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgDHL7MpeTZkL5_1HA--.3769S8
-X-Coremail-Antispam: 1UD129KBjvdXoWrtF17JFyUWF1fJF18CryrXrb_yoWDWFX_Aw
-        17Jr4kGFWfJw1Ska1jgrs8Ars5tr4xXr4DWa18WryrX3WDXF4jva4DCrn7Ars8u3WUAF13
-        Ar9rXF17JFy8XjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-        9fnUUIcSsGvfJTRUUUbDkFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+X-CM-TRANSID: gCh0CgDHL7MpeTZkL5_1HA--.3769S12
+X-Coremail-Antispam: 1UD129KBjvdXoW7Wr1rAr4xZw1UuF15Jw4UXFb_yoW3Kwb_K3
+        WDArWkGryrJwn3CF1ftw45tFZ0gF40kFykXFyfKF4xuF15XFZ7u34DGrW3Ar1xWay3t3y3
+        CFnYvryfCFWS9jkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUbDAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
         6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M28IrcIa0xkI8V
         A2jI8067AKxVWUAVCq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJ
         M28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2I
@@ -46,40 +46,39 @@ X-Coremail-Antispam: 1UD129KBjvdXoWrtF17JFyUWF1fJF18CryrXrb_yoWDWFX_Aw
         JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20V
         AGYxC7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAF
         wI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc4
-        0Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1I6r4UMIIF0xvE2Ix0cI8IcVCY1x0267AK
-        xVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr
-        1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7sRiVbyDUU
-        UUU==
+        0Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r4j6ryUMIIF0xvE2Ix0cI8IcVCY1x0267AK
+        xVWxJVW8Jr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r4j6F
+        4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0pRvJPtU
+        UUUU=
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-For ext4_block_group and ext4_block_group_offset, there are only
-declaration without definition. Just remove them.
+Function ext4_issue_discard need count in cluster. Pass count_clusters
+instead of count to fix the mismatch.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/ext4.h | 4 ----
- 1 file changed, 4 deletions(-)
+ fs/ext4/mballoc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9b2cfc32cf78..f25f13a357de 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2697,10 +2697,6 @@ extern void ext4_get_group_no_and_offset(struct super_block *sb,
- extern ext4_group_t ext4_get_group_number(struct super_block *sb,
- 					  ext4_fsblk_t block);
- 
--extern unsigned int ext4_block_group(struct super_block *sb,
--			ext4_fsblk_t blocknr);
--extern ext4_grpblk_t ext4_block_group_offset(struct super_block *sb,
--			ext4_fsblk_t blocknr);
- extern int ext4_bg_has_super(struct super_block *sb, ext4_group_t group);
- extern unsigned long ext4_bg_num_gdb(struct super_block *sb,
- 			ext4_group_t group);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 2bbfded78093..eac91b2e3aa3 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -6029,8 +6029,8 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
+ 		 * them with group lock_held
+ 		 */
+ 		if (test_opt(sb, DISCARD)) {
+-			err = ext4_issue_discard(sb, block_group, bit, count,
+-						 NULL);
++			err = ext4_issue_discard(sb, block_group, bit,
++						 count_clusters, NULL);
+ 			if (err && err != -EOPNOTSUPP)
+ 				ext4_msg(sb, KERN_WARNING, "discard request in"
+ 					 " group:%u block:%d count:%lu failed"
 -- 
 2.30.0
 
