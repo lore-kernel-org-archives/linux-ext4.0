@@ -2,169 +2,223 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 68693C7619A
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 17:25:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8C595C7619A
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 17:46:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229548AbjDLRZg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Apr 2023 13:25:36 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35980 "EHLO
+        id S229786AbjDLRqf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Apr 2023 13:46:35 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47796 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229477AbjDLRZf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 13:25:35 -0400
+        with ESMTP id S229482AbjDLRqe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 13:46:34 -0400
 Received: from mga06.intel.com (mga06b.intel.com [134.134.136.31])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D0DF32D59;
-        Wed, 12 Apr 2023 10:25:33 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8ABE42697;
+        Wed, 12 Apr 2023 10:46:32 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
   d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1681320333; x=1712856333;
+  t=1681321592; x=1712857592;
   h=date:from:to:cc:subject:message-id:references:
    mime-version:in-reply-to;
-  bh=Fg6uGIM3FM+B+1guXhrCn+MxDSVjY3zwLFWXWk63VL8=;
-  b=eQP/ZMR1APpIs6Pq9ia47D6oxRFvizp3vOnBmtUiAIQinEP/o9QhH5jN
-   k/WwKOmtzg4AR5viSxV8koWKijVpveyMg1OliGrPMeVmQFHIvCcbn0J04
-   28/g9vFrgFLjSYMsbRUF3xmx9ebNuXjLziu3/p8NOkWzrPhNqfycU09dX
-   3MXQ7WufYFBFVCb6D9oKuCbX+MypJ0F7tSO4mqFEvMlDX9OXJsl/AtHgv
-   ceED+bcdTc2+2GWmjUscZJTkc41dKe2q/YfOR7nmf7a7LZCeQjKgaQrJg
-   xl03gabS83bLXzxKnVD9B9xeDUqUGXlLY3DnqKsyDke2M2NQQROdK7+Fg
-   A==;
-X-IronPort-AV: E=McAfee;i="6600,9927,10678"; a="406794192"
+  bh=mIg/PdOWqRtz6YIfoWbbfNd8QfS4uRg4EPBlGFTu+pE=;
+  b=EHJg0zZeNfg0mqPg1wSdEndWf4y+P0mitxtoqDZrRHFZs3maRCOcG9f4
+   8rc9UkOyomR32xfbpJ0wJ9SShTHpFpT99zegIym/54f1cAPPg6/tqj4Wj
+   nt0P33GEr/VWGJwVcCr/eRcLO9qEGGVrp9ar7Z+04Wl1GpydJ8cLPq7Kt
+   E6czAFnFQSt4bNKbmuLJSCnLA43+yPT/04G7zZLEuvS13pp1BAaJiis8K
+   o2iVIHv0AWoVqGx7irAocyqjuCDJxH0BmOKhyUb/cDsIoJm5DdmOjpThZ
+   IvP3uwFShYDzrvu7KFaAbIbsV42/RG1jEfaQ1rXqTSdJ7OoSn2UPunXHh
+   Q==;
+X-IronPort-AV: E=McAfee;i="6600,9927,10678"; a="406803188"
 X-IronPort-AV: E=Sophos;i="5.98,339,1673942400"; 
-   d="scan'208";a="406794192"
-Received: from orsmga008.jf.intel.com ([10.7.209.65])
-  by orsmga104.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 12 Apr 2023 10:25:24 -0700
+   d="scan'208";a="406803188"
+Received: from orsmga007.jf.intel.com ([10.7.209.58])
+  by orsmga104.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 12 Apr 2023 10:46:23 -0700
 X-ExtLoop1: 1
-X-IronPort-AV: E=McAfee;i="6600,9927,10678"; a="719468741"
+X-IronPort-AV: E=McAfee;i="6600,9927,10678"; a="682574205"
 X-IronPort-AV: E=Sophos;i="5.98,339,1673942400"; 
-   d="scan'208";a="719468741"
+   d="scan'208";a="682574205"
 Received: from lkp-server01.sh.intel.com (HELO b613635ddfff) ([10.239.97.150])
-  by orsmga008.jf.intel.com with ESMTP; 12 Apr 2023 10:25:20 -0700
+  by orsmga007.jf.intel.com with ESMTP; 12 Apr 2023 10:46:20 -0700
 Received: from kbuild by b613635ddfff with local (Exim 4.96)
         (envelope-from <lkp@intel.com>)
-        id 1pmeDf-000XwN-0G;
-        Wed, 12 Apr 2023 17:25:19 +0000
-Date:   Thu, 13 Apr 2023 01:24:41 +0800
+        id 1pmeY0-000XxZ-0A;
+        Wed, 12 Apr 2023 17:46:20 +0000
+Date:   Thu, 13 Apr 2023 01:45:43 +0800
 From:   kernel test robot <lkp@intel.com>
-To:     Baokun Li <libaokun1@huawei.com>, linux-ext4@vger.kernel.org
-Cc:     llvm@lists.linux.dev, oe-kbuild-all@lists.linux.dev, tytso@mit.edu,
-        adilger.kernel@dilger.ca, jack@suse.cz, ritesh.list@gmail.com,
-        linux-kernel@vger.kernel.org, yi.zhang@huawei.com,
-        yangerkun@huawei.com, yukuai3@huawei.com, libaokun1@huawei.com
-Subject: Re: [PATCH v3 6/8] ext4: make ext4_es_insert_delayed_block return
- void
-Message-ID: <202304130044.d3iOG59z-lkp@intel.com>
-References: <20230412124126.2286716-7-libaokun1@huawei.com>
+To:     Kemeng Shi <shikemeng@huaweicloud.com>, tytso@mit.edu,
+        adilger.kernel@dilger.ca, ojaswin@linux.ibm.com
+Cc:     oe-kbuild-all@lists.linux.dev, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, shikemeng@huaweicloud.com
+Subject: Re: [PATCH v2 18/19] ext4: add some kunit stub for mballoc kunit test
+Message-ID: <202304130140.2kslXTgi-lkp@intel.com>
+References: <20230412172833.2317696-19-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20230412124126.2286716-7-libaokun1@huawei.com>
+In-Reply-To: <20230412172833.2317696-19-shikemeng@huaweicloud.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi Baokun,
+Hi Kemeng,
 
 kernel test robot noticed the following build warnings:
 
 [auto build test WARNING on tytso-ext4/dev]
-[also build test WARNING on linus/master v6.3-rc6 next-20230412]
+[also build test WARNING on next-20230412]
+[cannot apply to linus/master v6.3-rc6]
 [If your patch is applied to the wrong git tree, kindly drop us a note.
 And when submitting patch, we suggest to use '--base' as documented in
 https://git-scm.com/docs/git-format-patch#_base_tree_information]
 
-url:    https://github.com/intel-lab-lkp/linux/commits/Baokun-Li/ext4-only-update-i_reserved_data_blocks-on-successful-block-allocation/20230412-204407
+url:    https://github.com/intel-lab-lkp/linux/commits/Kemeng-Shi/ext4-fix-wrong-unit-use-in-ext4_mb_normalize_request/20230412-172757
 base:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-patch link:    https://lore.kernel.org/r/20230412124126.2286716-7-libaokun1%40huawei.com
-patch subject: [PATCH v3 6/8] ext4: make ext4_es_insert_delayed_block return void
-config: x86_64-randconfig-a002-20230410 (https://download.01.org/0day-ci/archive/20230413/202304130044.d3iOG59z-lkp@intel.com/config)
-compiler: clang version 14.0.6 (https://github.com/llvm/llvm-project f28c006a5895fc0e329fe15fead81e37457cb1d1)
+patch link:    https://lore.kernel.org/r/20230412172833.2317696-19-shikemeng%40huaweicloud.com
+patch subject: [PATCH v2 18/19] ext4: add some kunit stub for mballoc kunit test
+config: loongarch-randconfig-r004-20230409 (https://download.01.org/0day-ci/archive/20230413/202304130140.2kslXTgi-lkp@intel.com/config)
+compiler: loongarch64-linux-gcc (GCC) 12.1.0
 reproduce (this is a W=1 build):
         wget https://raw.githubusercontent.com/intel/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
         chmod +x ~/bin/make.cross
-        # https://github.com/intel-lab-lkp/linux/commit/87f992eeab9cd894894e27c3c6ff322cbd473ebf
+        # https://github.com/intel-lab-lkp/linux/commit/357d528a1ead868fa038c4bfe426744ac7c34ea6
         git remote add linux-review https://github.com/intel-lab-lkp/linux
-        git fetch --no-tags linux-review Baokun-Li/ext4-only-update-i_reserved_data_blocks-on-successful-block-allocation/20230412-204407
-        git checkout 87f992eeab9cd894894e27c3c6ff322cbd473ebf
+        git fetch --no-tags linux-review Kemeng-Shi/ext4-fix-wrong-unit-use-in-ext4_mb_normalize_request/20230412-172757
+        git checkout 357d528a1ead868fa038c4bfe426744ac7c34ea6
         # save the config file
         mkdir build_dir && cp config build_dir/.config
-        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=clang make.cross W=1 O=build_dir ARCH=x86_64 olddefconfig
-        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=clang make.cross W=1 O=build_dir ARCH=x86_64 SHELL=/bin/bash fs/ext4/
+        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=gcc-12.1.0 make.cross W=1 O=build_dir ARCH=loongarch olddefconfig
+        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=gcc-12.1.0 make.cross W=1 O=build_dir ARCH=loongarch SHELL=/bin/bash fs/
 
 If you fix the issue, kindly add following tag where applicable
 | Reported-by: kernel test robot <lkp@intel.com>
-| Link: https://lore.kernel.org/oe-kbuild-all/202304130044.d3iOG59z-lkp@intel.com/
+| Link: https://lore.kernel.org/oe-kbuild-all/202304130140.2kslXTgi-lkp@intel.com/
 
 All warnings (new ones prefixed by >>):
 
->> fs/ext4/inode.c:1640:7: warning: variable 'reserved' set but not used [-Wunused-but-set-variable]
-           bool reserved = false;
-                ^
-   1 warning generated.
+   fs/ext4/mballoc.c: In function 'ext4_mb_mark_group_bb':
+>> fs/ext4/mballoc.c:3752:9: warning: ISO C90 forbids mixed declarations and code [-Wdeclaration-after-statement]
+    3752 |         handle_t *handle = mc->handle;
+         |         ^~~~~~~~
+--
+   fs/ext4/balloc.c: In function 'ext4_get_group_desc':
+>> fs/ext4/balloc.c:275:9: warning: ISO C90 forbids mixed declarations and code [-Wdeclaration-after-statement]
+     275 |         unsigned int group_desc;
+         |         ^~~~~~~~
+   fs/ext4/balloc.c: In function 'ext4_read_block_bitmap_nowait':
+   fs/ext4/balloc.c:435:9: warning: ISO C90 forbids mixed declarations and code [-Wdeclaration-after-statement]
+     435 |         struct ext4_group_desc *desc;
+         |         ^~~~~~
+   fs/ext4/balloc.c: In function 'ext4_wait_block_bitmap':
+   fs/ext4/balloc.c:538:9: warning: ISO C90 forbids mixed declarations and code [-Wdeclaration-after-statement]
+     538 |         struct ext4_group_desc *desc;
+         |         ^~~~~~
 
 
-vim +/reserved +1640 fs/ext4/inode.c
+vim +3752 fs/ext4/mballoc.c
 
-df22291ff0fde0 Aneesh Kumar K.V 2008-09-08  1623  
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1624  /*
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1625   * ext4_insert_delayed_block - adds a delayed block to the extents status
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1626   *                             tree, incrementing the reserved cluster/block
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1627   *                             count or making a pending reservation
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1628   *                             where needed
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1629   *
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1630   * @inode - file containing the newly added block
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1631   * @lblk - logical block to be added
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1632   *
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1633   * Returns 0 on success, negative error code on failure.
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1634   */
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1635  static int ext4_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk)
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1636  {
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1637  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-87f992eeab9cd8 Baokun Li        2023-04-12  1638  	int ret = 0;
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1639  	bool allocated = false;
-6fed83957f21ef Jeffle Xu        2021-08-23 @1640  	bool reserved = false;
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1641  
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1642  	/*
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1643  	 * If the cluster containing lblk is shared with a delayed,
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1644  	 * written, or unwritten extent in a bigalloc file system, it's
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1645  	 * already been accounted for and does not need to be reserved.
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1646  	 * A pending reservation must be made for the cluster if it's
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1647  	 * shared with a written or unwritten extent and doesn't already
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1648  	 * have one.  Written and unwritten extents can be purged from the
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1649  	 * extents status tree if the system is under memory pressure, so
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1650  	 * it's necessary to examine the extent tree if a search of the
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1651  	 * extents status tree doesn't get a match.
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1652  	 */
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1653  	if (sbi->s_cluster_ratio == 1) {
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1654  		ret = ext4_da_reserve_space(inode);
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1655  		if (ret != 0)   /* ENOSPC */
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1656  			goto errout;
-6fed83957f21ef Jeffle Xu        2021-08-23  1657  		reserved = true;
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1658  	} else {   /* bigalloc */
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1659  		if (!ext4_es_scan_clu(inode, &ext4_es_is_delonly, lblk)) {
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1660  			if (!ext4_es_scan_clu(inode,
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1661  					      &ext4_es_is_mapped, lblk)) {
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1662  				ret = ext4_clu_mapped(inode,
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1663  						      EXT4_B2C(sbi, lblk));
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1664  				if (ret < 0)
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1665  					goto errout;
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1666  				if (ret == 0) {
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1667  					ret = ext4_da_reserve_space(inode);
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1668  					if (ret != 0)   /* ENOSPC */
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1669  						goto errout;
-6fed83957f21ef Jeffle Xu        2021-08-23  1670  					reserved = true;
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1671  				} else {
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1672  					allocated = true;
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1673  				}
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1674  			} else {
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1675  				allocated = true;
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1676  			}
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1677  		}
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1678  	}
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1679  
-87f992eeab9cd8 Baokun Li        2023-04-12  1680  	ext4_es_insert_delayed_block(inode, lblk, allocated);
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1681  errout:
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1682  	return ret;
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1683  }
-0b02f4c0d6d9e2 Eric Whitney     2018-10-01  1684  
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3743  
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3744  static int
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3745  ext4_mb_mark_group_bb(struct ext4_mark_context *mc, ext4_group_t group,
+a760807c4967d7 Kemeng Shi 2023-04-13  3746  		      ext4_grpblk_t blkoff, ext4_grpblk_t len, int flags)
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3747  {
+357d528a1ead86 Kemeng Shi 2023-04-13  3748  #ifdef CONFIG_EXT4_KUNIT_TESTS
+357d528a1ead86 Kemeng Shi 2023-04-13  3749  	KUNIT_STATIC_STUB_REDIRECT(ext4_mb_mark_group_bb,
+357d528a1ead86 Kemeng Shi 2023-04-13  3750  				   mc, group, blkoff, len, flags);
+357d528a1ead86 Kemeng Shi 2023-04-13  3751  #endif
+a760807c4967d7 Kemeng Shi 2023-04-13 @3752  	handle_t *handle = mc->handle;
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3753  	struct super_block *sb = mc->sb;
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3754  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3755  	struct buffer_head *bitmap_bh = NULL;
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3756  	struct ext4_group_desc *gdp;
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3757  	struct buffer_head *gdp_bh;
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3758  	int err;
+a760807c4967d7 Kemeng Shi 2023-04-13  3759  	unsigned int i, already, changed = len;
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3760  
+a760807c4967d7 Kemeng Shi 2023-04-13  3761  	mc->changed = 0;
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3762  	bitmap_bh = ext4_read_block_bitmap(sb, group);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3763  	if (IS_ERR(bitmap_bh))
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3764  		return PTR_ERR(bitmap_bh);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3765  
+a760807c4967d7 Kemeng Shi 2023-04-13  3766  	if (handle) {
+a760807c4967d7 Kemeng Shi 2023-04-13  3767  		BUFFER_TRACE(bitmap_bh, "getting write access");
+a760807c4967d7 Kemeng Shi 2023-04-13  3768  		err = ext4_journal_get_write_access(handle, sb, bitmap_bh,
+a760807c4967d7 Kemeng Shi 2023-04-13  3769  						    EXT4_JTR_NONE);
+a760807c4967d7 Kemeng Shi 2023-04-13  3770  		if (err)
+a760807c4967d7 Kemeng Shi 2023-04-13  3771  			goto out_err;
+a760807c4967d7 Kemeng Shi 2023-04-13  3772  	}
+a760807c4967d7 Kemeng Shi 2023-04-13  3773  
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3774  	err = -EIO;
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3775  	gdp = ext4_get_group_desc(sb, group, &gdp_bh);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3776  	if (!gdp)
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3777  		goto out_err;
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3778  
+a760807c4967d7 Kemeng Shi 2023-04-13  3779  	if (handle) {
+a760807c4967d7 Kemeng Shi 2023-04-13  3780  		BUFFER_TRACE(gdp_bh, "get_write_access");
+a760807c4967d7 Kemeng Shi 2023-04-13  3781  		err = ext4_journal_get_write_access(handle, sb, gdp_bh,
+a760807c4967d7 Kemeng Shi 2023-04-13  3782  						    EXT4_JTR_NONE);
+a760807c4967d7 Kemeng Shi 2023-04-13  3783  		if (err)
+a760807c4967d7 Kemeng Shi 2023-04-13  3784  			goto out_err;
+a760807c4967d7 Kemeng Shi 2023-04-13  3785  	}
+a760807c4967d7 Kemeng Shi 2023-04-13  3786  
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3787  	ext4_lock_group(sb, group);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3788  	if (ext4_has_group_desc_csum(sb) &&
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3789  	    (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))) {
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3790  		gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3791  		ext4_free_group_clusters_set(sb, gdp,
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3792  			ext4_free_clusters_after_init(sb, group, gdp));
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3793  	}
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3794  
+a760807c4967d7 Kemeng Shi 2023-04-13  3795  	if (flags & EXT4_MB_BITMAP_MARKED_CHECK) {
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3796  		already = 0;
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3797  		for (i = 0; i < len; i++)
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3798  			if (mb_test_bit(blkoff + i, bitmap_bh->b_data) ==
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3799  					mc->state)
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3800  				already++;
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3801  		changed = len - already;
+a760807c4967d7 Kemeng Shi 2023-04-13  3802  	}
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3803  
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3804  	if (mc->state) {
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3805  		mb_set_bits(bitmap_bh->b_data, blkoff, len);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3806  		ext4_free_group_clusters_set(sb, gdp,
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3807  			ext4_free_group_clusters(sb, gdp) - changed);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3808  	} else {
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3809  		mb_clear_bits(bitmap_bh->b_data, blkoff, len);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3810  		ext4_free_group_clusters_set(sb, gdp,
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3811  			ext4_free_group_clusters(sb, gdp) + changed);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3812  	}
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3813  
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3814  	ext4_block_bitmap_csum_set(sb, gdp, bitmap_bh);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3815  	ext4_group_desc_csum_set(sb, group, gdp);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3816  	ext4_unlock_group(sb, group);
+a760807c4967d7 Kemeng Shi 2023-04-13  3817  	mc->changed = changed;
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3818  
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3819  	if (sbi->s_log_groups_per_flex) {
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3820  		ext4_group_t flex_group = ext4_flex_group(sbi, group);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3821  		struct flex_groups *fg = sbi_array_rcu_deref(sbi,
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3822  					   s_flex_groups, flex_group);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3823  
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3824  		if (mc->state)
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3825  			atomic64_sub(changed, &fg->free_clusters);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3826  		else
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3827  			atomic64_add(changed, &fg->free_clusters);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3828  	}
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3829  
+a760807c4967d7 Kemeng Shi 2023-04-13  3830  	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3831  	if (err)
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3832  		goto out_err;
+a760807c4967d7 Kemeng Shi 2023-04-13  3833  	err = ext4_handle_dirty_metadata(handle, NULL, gdp_bh);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3834  	if (err)
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3835  		goto out_err;
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3836  
+a760807c4967d7 Kemeng Shi 2023-04-13  3837  	if (flags & EXT4_MB_SYNC_UPDATE) {
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3838  		sync_dirty_buffer(bitmap_bh);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3839  		sync_dirty_buffer(gdp_bh);
+a760807c4967d7 Kemeng Shi 2023-04-13  3840  	}
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3841  
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3842  out_err:
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3843  	brelse(bitmap_bh);
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3844  	return err;
+80cb2f14af5f5f Kemeng Shi 2023-04-13  3845  }
+c9de560ded61fa Alex Tomas 2008-01-29  3846  
 
 -- 
 0-DAY CI Kernel Test Service
