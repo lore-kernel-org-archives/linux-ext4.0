@@ -2,34 +2,34 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E1AECC77B6E
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 12:42:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B8A43C7619A
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 Apr 2023 12:42:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231751AbjDLMmZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Apr 2023 08:42:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57556 "EHLO
+        id S231761AbjDLMmg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Apr 2023 08:42:36 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57574 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231552AbjDLMmR (ORCPT
+        with ESMTP id S231574AbjDLMmR (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Apr 2023 08:42:17 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 086FE7AA3;
-        Wed, 12 Apr 2023 05:42:07 -0700 (PDT)
-Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.55])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4PxMgh2R37zSrW7;
-        Wed, 12 Apr 2023 20:38:08 +0800 (CST)
+Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 40A557ABD;
+        Wed, 12 Apr 2023 05:42:08 -0700 (PDT)
+Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.53])
+        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4PxMlP69SxzDsrS;
+        Wed, 12 Apr 2023 20:41:21 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
  (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.23; Wed, 12 Apr
- 2023 20:42:04 +0800
+ 2023 20:42:05 +0800
 From:   Baokun Li <libaokun1@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <ritesh.list@gmail.com>, <linux-kernel@vger.kernel.org>,
         <yi.zhang@huawei.com>, <yangerkun@huawei.com>,
         <yukuai3@huawei.com>, <libaokun1@huawei.com>
-Subject: [PATCH v3 2/8] ext4: add a new helper to check if es must be kept
-Date:   Wed, 12 Apr 2023 20:41:20 +0800
-Message-ID: <20230412124126.2286716-3-libaokun1@huawei.com>
+Subject: [PATCH v3 4/8] ext4: make __es_remove_extent return void
+Date:   Wed, 12 Apr 2023 20:41:22 +0800
+Message-ID: <20230412124126.2286716-5-libaokun1@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20230412124126.2286716-1-libaokun1@huawei.com>
 References: <20230412124126.2286716-1-libaokun1@huawei.com>
@@ -44,100 +44,117 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-A helper function is added to help determine if the current extent can
-be dropped, although only ext4_es_is_delayed() extents cannot be dropped
-currently.
+Now __es_remove_extent() cannot fail (it will always remove what it should,
+maybe more) so just make it return void.
 
 Suggested-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 ---
 V2->V3:
-	Rename ext4_es_alloc_should_nofail to ext4_es_must_keep.
+	New added.
 
- fs/ext4/extents_status.c | 35 ++++++++++++++++++++++-------------
- 1 file changed, 22 insertions(+), 13 deletions(-)
+ fs/ext4/extents_status.c | 30 +++++++++++-------------------
+ 1 file changed, 11 insertions(+), 19 deletions(-)
 
 diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 7bc221038c6c..f9dab2510bdc 100644
+index a7c3200f9cbe..5207d3a9c1ad 100644
 --- a/fs/ext4/extents_status.c
 +++ b/fs/ext4/extents_status.c
-@@ -448,6 +448,20 @@ static void ext4_es_list_del(struct inode *inode)
- 	spin_unlock(&sbi->s_es_lock);
+@@ -145,8 +145,8 @@ static struct kmem_cache *ext4_es_cachep;
+ static struct kmem_cache *ext4_pending_cachep;
+ 
+ static int __es_insert_extent(struct inode *inode, struct extent_status *newes);
+-static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+-			      ext4_lblk_t end, int *reserved);
++static void __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
++			       ext4_lblk_t end, int *reserved);
+ static int es_reclaim_extents(struct ext4_inode_info *ei, int *nr_to_scan);
+ static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
+ 		       struct ext4_inode_info *locked_ei);
+@@ -862,9 +862,7 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	ext4_es_insert_extent_check(inode, &newes);
+ 
+ 	write_lock(&EXT4_I(inode)->i_es_lock);
+-	err = __es_remove_extent(inode, lblk, end, NULL);
+-	if (err != 0)
+-		goto error;
++	__es_remove_extent(inode, lblk, end, NULL);
+ retry:
+ 	err = __es_insert_extent(inode, &newes);
+ 	if (err == -ENOMEM && __es_shrink(EXT4_SB(inode->i_sb),
+@@ -878,7 +876,6 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	     status & EXTENT_STATUS_UNWRITTEN))
+ 		__revise_pending(inode, lblk, len);
+ 
+-error:
+ 	write_unlock(&EXT4_I(inode)->i_es_lock);
+ 
+ 	ext4_es_print_tree(inode);
+@@ -1311,11 +1308,10 @@ static unsigned int get_rsvd(struct inode *inode, ext4_lblk_t end,
+  *
+  * If @reserved is not NULL and delayed allocation is enabled, counts
+  * block/cluster reservations freed by removing range and if bigalloc
+- * enabled cancels pending reservations as needed. Returns 0 on success,
+- * error code on failure.
++ * enabled cancels pending reservations as needed.
+  */
+-static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+-			      ext4_lblk_t end, int *reserved)
++static void __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
++			       ext4_lblk_t end, int *reserved)
+ {
+ 	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
+ 	struct rb_node *node;
+@@ -1334,9 +1330,9 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 
+ 	es = __es_tree_search(&tree->root, lblk);
+ 	if (!es)
+-		goto out;
++		return;
+ 	if (es->es_lblk > end)
+-		goto out;
++		return;
+ 
+ 	/* Simply invalidate cache_es. */
+ 	tree->cache_es = NULL;
+@@ -1370,7 +1366,7 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				    __es_shrink(EXT4_SB(inode->i_sb),
+ 							128, EXT4_I(inode)))
+ 					goto retry;
+-				goto out;
++				return;
+ 			}
+ 		} else {
+ 			es->es_lblk = end + 1;
+@@ -1429,8 +1425,6 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ out_get_reserved:
+ 	if (count_reserved)
+ 		*reserved = get_rsvd(inode, end, es, &rc);
+-out:
+-	return err;
  }
  
-+/*
-+ * Returns 1 indicates that we cannot fail to allocate memory for this
-+ * extent_status and cannot reclaim, clear, or free the extent until
-+ * its status changes.
-+ */
-+static inline int ext4_es_must_keep(struct extent_status *es)
-+{
-+	/* filemap, bigalloc, and seek_data/hole need to use it. */
-+	if (ext4_es_is_delayed(es))
-+		return 1;
-+
-+	return 0;
-+}
-+
- static struct extent_status *
- ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
- 		     ext4_fsblk_t pblk)
-@@ -460,10 +474,8 @@ ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
- 	es->es_len = len;
- 	es->es_pblk = pblk;
+ /*
+@@ -1469,7 +1463,7 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	 * is reclaimed.
+ 	 */
+ 	write_lock(&EXT4_I(inode)->i_es_lock);
+-	err = __es_remove_extent(inode, lblk, end, &reserved);
++	__es_remove_extent(inode, lblk, end, &reserved);
+ 	write_unlock(&EXT4_I(inode)->i_es_lock);
+ 	ext4_es_print_tree(inode);
+ 	ext4_da_release_space(inode, reserved);
+@@ -2012,9 +2006,7 @@ int ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
  
--	/*
--	 * We don't count delayed extent because we never try to reclaim them
--	 */
--	if (!ext4_es_is_delayed(es)) {
-+	/* We never try to reclaim a must kept extent, so we don't count it. */
-+	if (!ext4_es_must_keep(es)) {
- 		if (!EXT4_I(inode)->i_es_shk_nr++)
- 			ext4_es_list_add(inode);
- 		percpu_counter_inc(&EXT4_SB(inode->i_sb)->
-@@ -481,8 +493,8 @@ static void ext4_es_free_extent(struct inode *inode, struct extent_status *es)
- 	EXT4_I(inode)->i_es_all_nr--;
- 	percpu_counter_dec(&EXT4_SB(inode->i_sb)->s_es_stats.es_stats_all_cnt);
+ 	write_lock(&EXT4_I(inode)->i_es_lock);
  
--	/* Decrease the shrink counter when this es is not delayed */
--	if (!ext4_es_is_delayed(es)) {
-+	/* Decrease the shrink counter when this es is not a must be kept */
-+	if (!ext4_es_must_keep(es)) {
- 		BUG_ON(EXT4_I(inode)->i_es_shk_nr == 0);
- 		if (!--EXT4_I(inode)->i_es_shk_nr)
- 			ext4_es_list_del(inode);
-@@ -853,7 +865,7 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+-	err = __es_remove_extent(inode, lblk, lblk, NULL);
+-	if (err != 0)
+-		goto error;
++	__es_remove_extent(inode, lblk, lblk, NULL);
+ retry:
+ 	err = __es_insert_extent(inode, &newes);
  	if (err == -ENOMEM && __es_shrink(EXT4_SB(inode->i_sb),
- 					  128, EXT4_I(inode)))
- 		goto retry;
--	if (err == -ENOMEM && !ext4_es_is_delayed(&newes))
-+	if (err == -ENOMEM && !ext4_es_must_keep(&newes))
- 		err = 0;
- 
- 	if (sbi->s_cluster_ratio > 1 && test_opt(inode->i_sb, DELALLOC) &&
-@@ -1706,11 +1718,8 @@ static int es_do_reclaim_extents(struct ext4_inode_info *ei, ext4_lblk_t end,
- 
- 		(*nr_to_scan)--;
- 		node = rb_next(&es->rb_node);
--		/*
--		 * We can't reclaim delayed extent from status tree because
--		 * fiemap, bigallic, and seek_data/hole need to use it.
--		 */
--		if (ext4_es_is_delayed(es))
-+		/* We can't reclaim a must be kept extent from status tree. */
-+		if (ext4_es_must_keep(es))
- 			goto next;
- 		if (ext4_es_is_referenced(es)) {
- 			ext4_es_clear_referenced(es);
-@@ -1774,7 +1783,7 @@ void ext4_clear_inode_es(struct inode *inode)
- 	while (node) {
- 		es = rb_entry(node, struct extent_status, rb_node);
- 		node = rb_next(node);
--		if (!ext4_es_is_delayed(es)) {
-+		if (!ext4_es_must_keep(es)) {
- 			rb_erase(&es->rb_node, &tree->root);
- 			ext4_es_free_extent(inode, es);
- 		}
 -- 
 2.31.1
 
