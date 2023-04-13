@@ -2,53 +2,53 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 912E3C77B61
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Apr 2023 08:41:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0347FC77B6C
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Apr 2023 08:41:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229728AbjDMIl1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 13 Apr 2023 04:41:27 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40460 "EHLO
+        id S229990AbjDMIln (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 13 Apr 2023 04:41:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40546 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229799AbjDMIlX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Apr 2023 04:41:23 -0400
-Received: from mail-pj1-x1030.google.com (mail-pj1-x1030.google.com [IPv6:2607:f8b0:4864:20::1030])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AF32786BA;
-        Thu, 13 Apr 2023 01:41:22 -0700 (PDT)
-Received: by mail-pj1-x1030.google.com with SMTP id y11-20020a17090a600b00b0024693e96b58so13358648pji.1;
-        Thu, 13 Apr 2023 01:41:22 -0700 (PDT)
+        with ESMTP id S229871AbjDMIl3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Apr 2023 04:41:29 -0400
+Received: from mail-pf1-x436.google.com (mail-pf1-x436.google.com [IPv6:2607:f8b0:4864:20::436])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3AF0B83F8;
+        Thu, 13 Apr 2023 01:41:28 -0700 (PDT)
+Received: by mail-pf1-x436.google.com with SMTP id d2e1a72fcca58-63b27afefacso113848b3a.1;
+        Thu, 13 Apr 2023 01:41:28 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1681375282; x=1683967282;
+        d=gmail.com; s=20221208; t=1681375287; x=1683967287;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=Nqs0GWdhPn+37kbmYRo+WO1uS0UsbgWQLh94vg5vg2c=;
-        b=jAJwZXGKv8P8nrqTBMHoNi1ucJUMfbQkRVARvfhdayRUvEushTA39/t4rmt0h2TJH4
-         GqKGptTtdyFAkmxi0YftNYXi5k1dXR7supmidRl07HS5091s+0Y9VHbUz6xZfP67V7fh
-         UOCP1MsovQJ9rqy2XZ6UvXhrPMmrJeV8N7d3GScAV/a5KKvR8lMYcaUWMxtyq8UeqNP3
-         bLitsERG68AT2+2NSxhzKMi2j7WLiGDI5xQ2yiPAqGg6umyMOybiQEccSxKxEPIxljvZ
-         BShsP5d+wLhqkDuHhHpnNMeWiie82wl/mBpbgAKvfWRE5vSQY6hALhsWMzIZ+Np5zE4W
-         mruA==
+        bh=MNOw2u2eN+tovkE55NV5VEud2NLie+WZxAuBLZs7iOE=;
+        b=WZ2z9ywkElikDuGBRjkOaReSMnzPZ6MVKwHDMlVy6nmkUvJN7CSRpAxRWzK/9P3UxL
+         ih9eDFYAYSONYEL8mi57kf4vI7tzjKrRrIC6/fRhyWOR6XB2pRN9V8tnAdhcO5y6+2fs
+         ayjJ3Ac8gcNVn48O35WpeVY1oBIUVUcVxmPdeIrVzS02aIc2U+65Dt4CW7gR/5xjHgXR
+         4kfMLQRdZ5+hEeaUb4XRRXmYy6fsdOQc6+ov0duxRUK+Jn+dA0U06KKQFuN0+Wpe14nB
+         YGelnSyu9UsP0EJDOuWefc88avoznLIZIRAUl9Q5JtplTQRkim+DUW4dq/0L8rAwA4/N
+         nUjA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1681375282; x=1683967282;
+        d=1e100.net; s=20221208; t=1681375287; x=1683967287;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=Nqs0GWdhPn+37kbmYRo+WO1uS0UsbgWQLh94vg5vg2c=;
-        b=jEhQ3yfclmjw1PziMEy4DwLKmusXIcsT335FdYWd4XMI/23LQ5OFR9Dl+UU8hsxVu5
-         9OStr5MdBLQEhAbqJ5UL8HY+WQE9BVPnrh52KTro6VaVbL2aevF4BhI9QmBBiP06GbU+
-         WqFSg3aZ9oMJ6xieu0HjM5wFioX/U9PBcyNHzzG4KpCMERhLldnzP7ULeMldgtjhxn/g
-         WEn1MDBN4PJHdJ4WIfl0H/epGBpoGBgXd4TSJvweNRoTp/9WuWXVUoYPBe0Ot9WeGhjq
-         Ao16Aq04kh1g/L9Pnn2gjDAFds18OTuZTrroFO3s/ZLEGC9ictwUb4DNzm8pW78bS9x2
-         aJ3Q==
-X-Gm-Message-State: AAQBX9etSCVvU8mJOnqemki1ae8CIRV0jgXRxenEh+6HT3KYOa/HUogZ
-        B+zWsflv7luQO/TJ6kzgwNL5gtWrKeQ=
-X-Google-Smtp-Source: AKy350YSdCe1aH+gHYYWj3JznkNMGdxtlHD95bvInMmGE21WUpkTT5xzsG0pL14p1eAqL/CFtr5ZNA==
-X-Received: by 2002:a05:6a20:429d:b0:ec:7332:b642 with SMTP id o29-20020a056a20429d00b000ec7332b642mr562896pzj.18.1681375281834;
-        Thu, 13 Apr 2023 01:41:21 -0700 (PDT)
+        bh=MNOw2u2eN+tovkE55NV5VEud2NLie+WZxAuBLZs7iOE=;
+        b=dpLh5WNMkbfwjcr8tNJ5nfOdMpGkGwn3BIk+pLiDUkppO4XnfvWZaTIF8LoO46ekjg
+         2VcGwXm0r0K/f5tGlkzu0lPe/gILAW9Fdh6QcpvWK4SM2SFIRtIsiQ9TG8hInlKDk+on
+         8WSptnfV7G63nQq/xWwPAkST6mbrxstik0PLRF4S4EnQrZoUHccV4uzrbjPoTBG4O12k
+         BezDNzu8cYrKlgpVXFK2Gjy6GjV3AzQeujw9d05h4lsq4ukXjdPaqE1IbwxnErYCjcT8
+         KMVrHu1es/Sag/l70dvjCcuDXsCKWyJjnTlHQF/3hpcwTzFGJjIDM3YObZ7C6fpcOrmz
+         I8Yg==
+X-Gm-Message-State: AAQBX9dHhlhhBRJNBeiLgaW6GWWZFQUpQ/uIfXl5oG/8MRa3J13McwMU
+        9K68sUYGqcE8860T0UkSP3w/RV0Msxg=
+X-Google-Smtp-Source: AKy350aoUTUzMsqvzqRMnUga31Qax0vGfLL3jvS3AOEmZ2sEeXA2MD3TKRqq8riz4b/GZXoq+Atzhg==
+X-Received: by 2002:a05:6a00:2448:b0:63a:cefa:9d44 with SMTP id d8-20020a056a00244800b0063acefa9d44mr2306945pfj.14.1681375287294;
+        Thu, 13 Apr 2023 01:41:27 -0700 (PDT)
 Received: from rh-tp.. ([2406:7400:63:7035:9095:349e:5f0b:ded0])
-        by smtp.gmail.com with ESMTPSA id g8-20020aa78188000000b0063b23c92d02sm817243pfi.212.2023.04.13.01.41.19
+        by smtp.gmail.com with ESMTPSA id g8-20020aa78188000000b0063b23c92d02sm817243pfi.212.2023.04.13.01.41.24
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 13 Apr 2023 01:41:21 -0700 (PDT)
+        Thu, 13 Apr 2023 01:41:27 -0700 (PDT)
 From:   "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
 To:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
 Cc:     Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
@@ -56,9 +56,9 @@ Cc:     Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
         Ojaswin Mujoo <ojaswin@linux.ibm.com>,
         Disha Goel <disgoel@linux.ibm.com>,
         "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
-Subject: [RFCv3 02/10] libfs: Add __generic_file_fsync_nolock implementation
-Date:   Thu, 13 Apr 2023 14:10:24 +0530
-Message-Id: <e65768eb0fe145c803ba4afdc869a1757d51d758.1681365596.git.ritesh.list@gmail.com>
+Subject: [RFCv3 04/10] ext2: Use __generic_file_fsync_nolock implementation
+Date:   Thu, 13 Apr 2023 14:10:26 +0530
+Message-Id: <41ba782c0467b46a6cf9e69bd651fbb3c33a78f4.1681365596.git.ritesh.list@gmail.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <cover.1681365596.git.ritesh.list@gmail.com>
 References: <cover.1681365596.git.ritesh.list@gmail.com>
@@ -68,95 +68,38 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Some of the higher layers like iomap takes inode_lock() when calling
-generic_write_sync().
-Also writeback already happens from other paths without inode lock,
-so it's difficult to say that we really need sync_mapping_buffers() to
-take any inode locking here. Having said that, let's add a _nolock
-variant of this function in libfs for now so that filesystems like
-ext2 and ext4's nojournal mode can use it.
+Next patch converts ext2 to use iomap interface for DIO.
+iomap layer can call generic_write_sync() -> ext2_fsync() from
+iomap_dio_complete while still holding the inode_lock().
 
-Ext4 when got converted to iomap for direct-io already copied it's own
-variant of __generic_file_fsync() without lock. Hence let's add a helper
-API and use it both in ext2 and ext4.
-
-Later we can review other filesystems as well to see if we can make
-_nolock as the default path if inode_lock() is not necessary here.
+Now writeback from other paths doesn't need inode_lock().
+It seems there is also no need of an inode_lock for
+sync_mapping_buffers(). It uses it's own mapping->private_lock
+for it's buffer list handling.
+Hence this patch is in preparation to move ext2 to iomap.
+This uses __generic_file_fsync_nolock() variant in ext2_fsync().
 
 Tested-by: Disha Goel <disgoel@linux.ibm.com>
 Signed-off-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 ---
- fs/libfs.c         | 43 +++++++++++++++++++++++++++++++++++++++++++
- include/linux/fs.h |  2 ++
- 2 files changed, 45 insertions(+)
+ fs/ext2/file.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/fs/libfs.c b/fs/libfs.c
-index 4eda519c3002..054f2e0ab3cb 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -1110,6 +1110,49 @@ struct dentry *generic_fh_to_parent(struct super_block *sb, struct fid *fid,
- }
- EXPORT_SYMBOL_GPL(generic_fh_to_parent);
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index 6b4bebe982ca..1d0bc3fc88bb 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -153,7 +153,9 @@ int ext2_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+ 	int ret;
+ 	struct super_block *sb = file->f_mapping->host->i_sb;
  
-+/**
-+ * __generic_file_fsync_nolock - generic fsync implementation for simple
-+ * filesystems with no inode lock
-+ *
-+ * @file:	file to synchronize
-+ * @start:	start offset in bytes
-+ * @end:	end offset in bytes (inclusive)
-+ * @datasync:	only synchronize essential metadata if true
-+ *
-+ * This is a generic implementation of the fsync method for simple
-+ * filesystems which track all non-inode metadata in the buffers list
-+ * hanging off the address_space structure.
-+ */
-+int __generic_file_fsync_nolock(struct file *file, loff_t start, loff_t end,
-+				bool datasync)
-+{
-+	struct inode *inode = file->f_mapping->host;
-+	int err;
-+	int ret;
-+
-+	err = file_write_and_wait_range(file, start, end);
-+	if (err)
-+		return err;
-+
-+	ret = sync_mapping_buffers(inode->i_mapping);
-+	if (!(inode->i_state & I_DIRTY_ALL))
-+		goto out;
-+	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
-+		goto out;
-+
-+	err = sync_inode_metadata(inode, 1);
-+	if (ret == 0)
-+		ret = err;
-+
-+out:
-+	/* check and advance again to catch errors after syncing out buffers */
-+	err = file_check_and_advance_wb_err(file);
-+	if (ret == 0)
-+		ret = err;
-+	return ret;
-+}
-+EXPORT_SYMBOL(__generic_file_fsync_nolock);
-+
- /**
-  * __generic_file_fsync - generic fsync implementation for simple filesystems
-  *
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index c85916e9f7db..9ca3813f43e2 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2935,6 +2935,8 @@ extern ssize_t simple_read_from_buffer(void __user *to, size_t count,
- extern ssize_t simple_write_to_buffer(void *to, size_t available, loff_t *ppos,
- 		const void __user *from, size_t count);
- 
-+int __generic_file_fsync_nolock(struct file *file, loff_t start, loff_t end,
-+				bool datasync);
- extern int __generic_file_fsync(struct file *, loff_t, loff_t, int);
- extern int generic_file_fsync(struct file *, loff_t, loff_t, int);
- 
+-	ret = generic_file_fsync(file, start, end, datasync);
++	ret = __generic_file_fsync_nolock(file, start, end, datasync);
++	if (!ret)
++		ret = blkdev_issue_flush(sb->s_bdev);
+ 	if (ret == -EIO)
+ 		/* We don't really know where the IO error happened... */
+ 		ext2_error(sb, __func__,
 -- 
 2.39.2
 
