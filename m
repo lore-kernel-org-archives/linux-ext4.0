@@ -2,83 +2,69 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C49AAC77B6C
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Apr 2023 10:34:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E690C77B6E
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Apr 2023 12:26:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230397AbjDMKe7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 13 Apr 2023 06:34:59 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47888 "EHLO
+        id S229772AbjDMM0c (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 13 Apr 2023 08:26:32 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41472 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230394AbjDMKe4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Apr 2023 06:34:56 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5EB0930FB;
-        Thu, 13 Apr 2023 03:34:49 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 90BC61F383;
-        Thu, 13 Apr 2023 10:34:48 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1681382088; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=PRmU1UOn8b5dubK28JOLEnSxE8xtD2PQEvlIOjmwKlc=;
-        b=YZhAicgBQ8IEqcLhF69qcmhxbTpTCqxT4IwvnVHg+An0NjGNp8IrFc5cewA0IyrOwZyjUw
-        J9c/a+xjjxNzG7+bPEgNI2owhaf6s/RSf4Qbw9iYPUS/2rgAUIzIvAtc/8zZ8GrWFbD+ni
-        DjXL2M8Eriw6mmibztYfUvkg6gQSXw4=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1681382088;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=PRmU1UOn8b5dubK28JOLEnSxE8xtD2PQEvlIOjmwKlc=;
-        b=bH+VKwUAk2J4eiCwYA36BbIXQ/qLuhvWxxHR68EjjNjXqtASau2YdBXqLPjMrbAljka3uq
-        gbYGQuNNJVbkGIBA==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 817731390E;
-        Thu, 13 Apr 2023 10:34:48 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id 582RH8jaN2SnTgAAMHmgww
-        (envelope-from <jack@suse.cz>); Thu, 13 Apr 2023 10:34:48 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 04640A0732; Thu, 13 Apr 2023 12:34:47 +0200 (CEST)
-Date:   Thu, 13 Apr 2023 12:34:47 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Baokun Li <libaokun1@huawei.com>
-Cc:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, ritesh.list@gmail.com,
-        linux-kernel@vger.kernel.org, yi.zhang@huawei.com,
-        yangerkun@huawei.com, yukuai3@huawei.com
+        with ESMTP id S229663AbjDMM0b (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Apr 2023 08:26:31 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B1129359A;
+        Thu, 13 Apr 2023 05:26:30 -0700 (PDT)
+Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.55])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4PxzHb4hLkznbsH;
+        Thu, 13 Apr 2023 20:22:51 +0800 (CST)
+Received: from [10.174.177.174] (10.174.177.174) by
+ dggpeml500021.china.huawei.com (7.185.36.21) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.23; Thu, 13 Apr 2023 20:26:27 +0800
+Message-ID: <d232ab9c-4268-1fc1-5265-64b69e273eca@huawei.com>
+Date:   Thu, 13 Apr 2023 20:26:27 +0800
+MIME-Version: 1.0
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101
+ Thunderbird/102.1.2
 Subject: Re: [PATCH v3 2/8] ext4: add a new helper to check if es must be kept
-Message-ID: <20230413103447.br5wgi6zhaaarcaz@quack3>
+Content-Language: en-US
+To:     Jan Kara <jack@suse.cz>
+CC:     <linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
+        <adilger.kernel@dilger.ca>, <ritesh.list@gmail.com>,
+        <linux-kernel@vger.kernel.org>, <yi.zhang@huawei.com>,
+        <yangerkun@huawei.com>, <yukuai3@huawei.com>,
+        Baokun Li <libaokun1@huawei.com>
 References: <20230412124126.2286716-1-libaokun1@huawei.com>
  <20230412124126.2286716-3-libaokun1@huawei.com>
  <20230412185300.rpfwdlxeiptqaxes@quack3>
  <22b3bfef-7a47-036d-125b-180040a0c743@huawei.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <22b3bfef-7a47-036d-125b-180040a0c743@huawei.com>
+ <20230413103447.br5wgi6zhaaarcaz@quack3>
+From:   Baokun Li <libaokun1@huawei.com>
+In-Reply-To: <20230413103447.br5wgi6zhaaarcaz@quack3>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Transfer-Encoding: 7bit
+X-Originating-IP: [10.174.177.174]
+X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
+ dggpeml500021.china.huawei.com (7.185.36.21)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu 13-04-23 10:00:56, Baokun Li wrote:
-> Can you please help review the remaining patches for any problems?
-> If you have any suggestions, I'll fix them together and post another version
-> of v4.
+On 2023/4/13 18:34, Jan Kara wrote:
+> On Thu 13-04-23 10:00:56, Baokun Li wrote:
+>> Can you please help review the remaining patches for any problems?
+>> If you have any suggestions, I'll fix them together and post another version
+>> of v4.
+> Yes, I've got a bit stuck thinking about the GFP_NOFAIL problem and how to
+> best solve it. It will require some changes but most of the patchset can
+> stay I believe.
+>
+> 								Honza
 
-Yes, I've got a bit stuck thinking about the GFP_NOFAIL problem and how to
-best solve it. It will require some changes but most of the patchset can
-stay I believe.
+OK! Thank you so much! That's a tricky one indeed.
 
-								Honza
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+With Best Regards,
+Baokun Li
+.
