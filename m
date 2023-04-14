@@ -2,89 +2,57 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1153AC77B6E
-	for <linux-ext4@archiver.kernel.org>; Fri, 14 Apr 2023 12:51:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B4E43C77B72
+	for <linux-ext4@archiver.kernel.org>; Fri, 14 Apr 2023 13:06:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229784AbjDNMvw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 14 Apr 2023 08:51:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35936 "EHLO
+        id S229995AbjDNNGx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 14 Apr 2023 09:06:53 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47008 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229544AbjDNMvv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Apr 2023 08:51:51 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 656F54C22;
-        Fri, 14 Apr 2023 05:51:50 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 12A6921961;
-        Fri, 14 Apr 2023 12:51:49 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1681476709; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=iWBlwHvWOD4JRJQREhWhtFsot85ORsl/tkKnRk+m6bM=;
-        b=BHziAQw+YXHl6adelbQWUX1U8WKCC5KnpNdZOnmPJBwxzXb6lyhLbC6n31Ywyh6hI/0wn+
-        Dd6nMb67APAKYo/Km+049SZ/xhDqFnvWnJLLK00M405pHiln8NlqpHtMvbh/yuZF+YhP5/
-        mgPtHBCO87e2jvY5LIRKB8z48B/ozaI=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1681476709;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=iWBlwHvWOD4JRJQREhWhtFsot85ORsl/tkKnRk+m6bM=;
-        b=R6e8so7n8jrNI3PtwtasNoioQpQSSaT4qKqOkoNLqDwJY5t2IiVT2nVF2fr3Y80C+Yk4H6
-        eU0Zv/WklidAQmCg==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 03658139FC;
-        Fri, 14 Apr 2023 12:51:49 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id CtrRAGVMOWTHdAAAMHmgww
-        (envelope-from <jack@suse.cz>); Fri, 14 Apr 2023 12:51:49 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 84E78A0732; Fri, 14 Apr 2023 14:51:48 +0200 (CEST)
-Date:   Fri, 14 Apr 2023 14:51:48 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Christoph Hellwig <hch@infradead.org>
-Cc:     "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+        with ESMTP id S229994AbjDNNGw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Apr 2023 09:06:52 -0400
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 76B6A269E;
+        Fri, 14 Apr 2023 06:06:50 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=a7uVri7lJkNYdLXa9nTsHNwRFKHH3fmlJle0oiZUJUc=; b=QOZk1zGQh/c8rQTFozR3dgbCES
+        4H1pF/gCflNH8O5Xcq30nz0QZZ0O3g8IDItFc2bF24qc3HRJI21Eh+vYEjS1pB/rl8M6XrqPjtx9v
+        6YY2yoNXcSdsrPUfqx8uBWjNNHzX9cGU/LK2mczlGV1wKE1JK9x9gF/jFrPbVbWEXDVCE3aJlxNS6
+        QIV2rLiaLvSz6JVv63J2vhX58n+QcFbUw3gCVcs+616iWL+f5kdyooWwg6n9N8OwaWj/XMhamlUAj
+        rXw6G2gtRnHbOQLKH69zJRfcFFe536SqCzTA8mn1Inm4xVFo0kFgXvUtFqZ4isy2SyT5x15E0p07K
+        XAQLzLaQ==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.96 #2 (Red Hat Linux))
+        id 1pnJ8a-009dKj-39;
+        Fri, 14 Apr 2023 13:06:48 +0000
+Date:   Fri, 14 Apr 2023 06:06:48 -0700
+From:   Christoph Hellwig <hch@infradead.org>
+To:     Ritesh Harjani <ritesh.list@gmail.com>
+Cc:     Christoph Hellwig <hch@infradead.org>,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Jan Kara <jack@suse.cz>,
         "Darrick J . Wong" <djwong@kernel.org>,
         Ojaswin Mujoo <ojaswin@linux.ibm.com>,
         Disha Goel <disgoel@linux.ibm.com>
-Subject: Re: [RFCv3 02/10] libfs: Add __generic_file_fsync_nolock
- implementation
-Message-ID: <20230414125148.du7r6ljdyzckoysh@quack3>
-References: <cover.1681365596.git.ritesh.list@gmail.com>
- <e65768eb0fe145c803ba4afdc869a1757d51d758.1681365596.git.ritesh.list@gmail.com>
- <ZDjrvCbCwxN+mRUS@infradead.org>
+Subject: Re: [RFCv3 10/10] iomap: Add trace points for DIO path
+Message-ID: <ZDlP6EiwKDE35ZG7@infradead.org>
+References: <ZDjs+/T/mf1nHUHI@infradead.org>
+ <877cuezykp.fsf@doe.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <ZDjrvCbCwxN+mRUS@infradead.org>
+In-Reply-To: <877cuezykp.fsf@doe.com>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu 13-04-23 22:59:24, Christoph Hellwig wrote:
-> Still no fan of the naming and placement here.  This is specific
-> to the fs/buffer.c infrastructure.
+On Fri, Apr 14, 2023 at 01:26:38PM +0530, Ritesh Harjani wrote:
+> How about this below change? Does this look good to you?
+> It should cover all error types and both entry and exit.
 
-I'm fine with moving generic_file_fsync() & friends to fs/buffer.c and
-creating the new function there if it makes you happier. But I think
-function names should be consistent (hence the new function would be named
-__generic_file_fsync_nolock()). I agree the name is not ideal and would use
-cleanup (along with transitioning everybody to not take i_rwsem) but I
-don't want to complicate this series by touching 13+ callsites of
-generic_file_fsync() and __generic_file_fsync(). That's for a separate
-series.
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+I don't think it is very useful.  The complete tracepoint is the
+end of the I/O.  Having a separate end one doesn't make sense.
+That's why I suggested a queued one for the asynchronous case.
