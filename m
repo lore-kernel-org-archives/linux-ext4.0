@@ -2,53 +2,53 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C0F63C77B71
-	for <linux-ext4@archiver.kernel.org>; Sat, 15 Apr 2023 07:45:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C3CBC77B78
+	for <linux-ext4@archiver.kernel.org>; Sat, 15 Apr 2023 07:45:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229623AbjDOHpF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 15 Apr 2023 03:45:05 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44950 "EHLO
+        id S229866AbjDOHpH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 15 Apr 2023 03:45:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45062 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229717AbjDOHoz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Apr 2023 03:44:55 -0400
-Received: from mail-pg1-x52c.google.com (mail-pg1-x52c.google.com [IPv6:2607:f8b0:4864:20::52c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7922486A8;
-        Sat, 15 Apr 2023 00:44:53 -0700 (PDT)
-Received: by mail-pg1-x52c.google.com with SMTP id 41be03b00d2f7-5180af0e886so1137529a12.2;
-        Sat, 15 Apr 2023 00:44:53 -0700 (PDT)
+        with ESMTP id S229766AbjDOHpA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Apr 2023 03:45:00 -0400
+Received: from mail-pl1-x632.google.com (mail-pl1-x632.google.com [IPv6:2607:f8b0:4864:20::632])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 05766868B;
+        Sat, 15 Apr 2023 00:44:59 -0700 (PDT)
+Received: by mail-pl1-x632.google.com with SMTP id lh8so7638933plb.1;
+        Sat, 15 Apr 2023 00:44:58 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1681544692; x=1684136692;
+        d=gmail.com; s=20221208; t=1681544698; x=1684136698;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=/aUzNSib1xZc4N397XkhllM7kWsYiTGLSPxW8fTLrLg=;
-        b=WVFn5pYvfKGrsqMwyiypVB7vkhJ5P2GUPONFvv48C4qek8FMe5fTf6mFH0EsKrhvCQ
-         KIHV5ex11xDPOhHH5XBWcSlIX3BBni+JvM7xQecyGMR9BXgSUEe6W/1nJhreYPJeoEtR
-         6SedOs4bg2OwGPNWaiySdSoAZqllK9ZD94eHBTTQQB570R1Wcb3TI//Qeziu9y+OVXd5
-         YimEkStskKrdcNrOijumamMiR+nRxPxCSVFgTSvOV/i/nJfuDYqDVSFsmeIFr9WIN4zw
-         XcMVxxK4Up6+1S3KO4dnltsErCtufLvYyWSEij5cJmb4S3Wnam099nGelO6/2fen0+pD
-         X6Pg==
+        bh=dq3WSJRx+3juJv5mvF0LWC9xqRUZPcnpXvObkoDs6EI=;
+        b=mIXPpLLfqW0plhN4QYG/ap6gBD3EY8FzALweFpVqSeEZeOpsWFnV++4I/ALh1xWNDU
+         Ggil12rwHtirg9XJKiZzauJdwLWXIPKYz4kGkfGyjqh1tM7qa9YgFCsj2SizyqC5S9Tm
+         g+JA2v1vbcP7pPvx9xYyv0eoiusA9OcuKQMfcxgiT5Zt1CbvC4RFbs36dypdcsKWsoEL
+         yFuTSqYq3H1hyNpmO3TJwUlLXVmfCzlLJNXd1Gr94Ddw1le0LmRY+rw0Y4dEds8PSFxd
+         4OStfMflbgVnS33B3ZgAyXTgDe55wEamFea6SiMhDXUW24FZn+OC5wjY6aKVHj8jmhao
+         O15w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1681544692; x=1684136692;
+        d=1e100.net; s=20221208; t=1681544698; x=1684136698;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=/aUzNSib1xZc4N397XkhllM7kWsYiTGLSPxW8fTLrLg=;
-        b=eioknrazavQVai581Ttg6huTs9kXahufK31rnYOejBurcuF44twM7rQa6C7Ya96m9R
-         zx0d+A3eGQn/yvRGRLvQqkGmIyfIZRTFA1iuRr2cQ5EME+SsBPEE4acP0jh7DyOWjIKl
-         IqqyVzLrPCgp9elecX94zZMY7DrsmepmiWP/tkcvq+rQLDZVbdQ8oJ/hlGjY0K4nvCQb
-         akOZj0Y1PbKEDzJ5ymPg15xAdxoum6/3A16VVMHlJ3raezVYkT2W+/CIotHu598xspx1
-         ++sTxUxypCF77pKE5qNoQzUKm+dpwreftZ4b7ngJFvvo1hKAjjmhHOB2g2+LWYYXuo9G
-         14zQ==
-X-Gm-Message-State: AAQBX9fy3GXzh+eDn2EQ5kLVBDOYcL7NVTsy3ILRZ3UMvwfhzKoeoVk4
-        RQirDEBHARTF4LsSq2Q00EYTNEe0tPQ=
-X-Google-Smtp-Source: AKy350YUv4pndk80/2asqlsQ5hSjyKR6oaJ1rz1MKbgBJCERTnTrz2RF5erXdlwkMYkF8lML4AYOFw==
-X-Received: by 2002:a05:6a00:1a43:b0:634:657e:546e with SMTP id h3-20020a056a001a4300b00634657e546emr11785404pfv.5.1681544692428;
-        Sat, 15 Apr 2023 00:44:52 -0700 (PDT)
+        bh=dq3WSJRx+3juJv5mvF0LWC9xqRUZPcnpXvObkoDs6EI=;
+        b=SoaETanySaeYMyZoH7IifoMX8mQRAVvIf4vfNghb2+HfANDdAEfy7I1gssNwEgEBx5
+         CgA/ViU29kCXU2HObmVHsEjjKa1fPxC9KNIByo35U8zUz5nFt7gns4wLIEfzg6delbwM
+         7yilr5gkTB8tsk6xocJ6+f/wCKUWKpbqDaKbkntALG+tOGAbCyGiZzkuvAC26Jhxt0Kz
+         GEXXqEWSoQA7LQMav7aboBvw8e8xSb1wS9SOYMHutCpXBk2Gohjc2hnEjuThMZZE3baJ
+         XxcyTpNYtQSf8J/o9pSxjcETCyyLNZuFzoKhzKHnDKCNLCvqBhZzEGLjjgOgpknSXlP3
+         m62Q==
+X-Gm-Message-State: AAQBX9eM1ntE6GPaAzdBEoWIl8FRMlEbXjDT3HyX1DFbQc/HogYyPfFH
+        Gcc4Timx9DL4TthxWoYwJg34/PX4WVs=
+X-Google-Smtp-Source: AKy350Z1ZbbVZBs8Tgi+MyQJG9cccXlO+XWJZnxuwSK9NziOsQ+aa3U4p2KyOqXPwhifSL1q+1s+dQ==
+X-Received: by 2002:a05:6a20:8401:b0:ee:658c:ad4e with SMTP id c1-20020a056a20840100b000ee658cad4emr4945001pzd.25.1681544698121;
+        Sat, 15 Apr 2023 00:44:58 -0700 (PDT)
 Received: from rh-tp.. ([2406:7400:63:2dd2:1827:1d70:2273:8ee0])
-        by smtp.gmail.com with ESMTPSA id e21-20020aa78255000000b0063b675f01a5sm2338789pfn.11.2023.04.15.00.44.50
+        by smtp.gmail.com with ESMTPSA id e21-20020aa78255000000b0063b675f01a5sm2338789pfn.11.2023.04.15.00.44.55
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 15 Apr 2023 00:44:52 -0700 (PDT)
+        Sat, 15 Apr 2023 00:44:57 -0700 (PDT)
 From:   "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
 To:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
 Cc:     Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
@@ -56,9 +56,9 @@ Cc:     Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
         Ojaswin Mujoo <ojaswin@linux.ibm.com>,
         Disha Goel <disgoel@linux.ibm.com>,
         "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
-Subject: [RFCv4 5/9] ext2: Move direct-io to use iomap
-Date:   Sat, 15 Apr 2023 13:14:26 +0530
-Message-Id: <78fed3db1cd6889b2c26866b9ce3c2538c7a77f7.1681544352.git.ritesh.list@gmail.com>
+Subject: [RFCv4 7/9] ext2: Add direct-io trace points
+Date:   Sat, 15 Apr 2023 13:14:28 +0530
+Message-Id: <31978052d40e4e6b148e0c8cf6ca07bdfc7990e5.1681544352.git.ritesh.list@gmail.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <cover.1681544352.git.ritesh.list@gmail.com>
 References: <cover.1681544352.git.ritesh.list@gmail.com>
@@ -68,281 +68,217 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch converts ext2 direct-io path to iomap interface.
-- This also takes care of DIO_SKIP_HOLES part in which we return -ENOTBLK
-  from ext2_iomap_begin(), in case if the write is done on a hole.
-- This fallbacks to buffered-io in case of DIO_SKIP_HOLES or in case of
-  a partial write or if any error is detected in ext2_iomap_end().
-  We try to return -ENOTBLK in such cases.
-- For any unaligned or extending DIO writes, we pass
-  IOMAP_DIO_FORCE_WAIT flag to ensure synchronous writes.
-- For extending writes we set IOMAP_F_DIRTY in ext2_iomap_begin because
-  otherwise with dsync writes on devices that support FUA, generic_write_sync
-  won't be called and we might miss inode metadata updates.
-- Since ext2 already now uses _nolock vartiant of sync write. Hence
-  there is no inode lock problem with iomap in this patch.
-- ext2_iomap_ops are now being shared by DIO, DAX & fiemap path
+This patch adds the trace point to ext2 direct-io apis
+in fs/ext2/file.c
 
-Tested-by: Disha Goel <disgoel@linux.ibm.com>
+Here is how the output looks like
+         xfs_io-4099  [004]    81.431800: ext2_dio_write_iter_start: dev 7:7 ino 0xc isize 0x4000 pos 0x4000 count 4096 flags DIRECT aio 0 ret=0
+         xfs_io-4099  [004]    81.432002: ext2_dio_write_end_io: dev 7:7 ino 0xc isize 0x5000 pos 0x4000 count 4096 flags DIRECT aio 0 ret=0
+         xfs_io-4099  [004]    81.432014: ext2_dio_write_iter_dio_end: dev 7:7 ino 0xc isize 0x5000 pos 0x5000 count 0 flags DIRECT aio 0 ret=4096
+aio-dio-fcntl-r-4103  [005]    81.461123: ext2_dio_write_iter_start: dev 7:7 ino 0xc isize 0x400 pos 0x200 count 512 flags DIRECT|WRITE aio 1 ret=0
+aio-dio-fcntl-r-4103  [005]    81.462099: ext2_dio_write_end_io: dev 7:7 ino 0xc isize 0x400 pos 0x200 count 512 flags DIRECT|WRITE aio 1 ret=0
+aio-dio-fcntl-r-4103  [005]    81.462133: ext2_dio_write_iter_dio_end: dev 7:7 ino 0xc isize 0x400 pos 0x400 count 0 flags DIRECT|WRITE aio 1 ret=512
+
+Reported-and-tested-by: Disha Goel <disgoel@linux.ibm.com>
+[Need to add CFLAGS_trace for fixing unable to find trace file problem]
 Signed-off-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 ---
- fs/ext2/ext2.h  |   1 +
- fs/ext2/file.c  | 115 ++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext2/inode.c |  53 ++++++++++++++--------
- 3 files changed, 150 insertions(+), 19 deletions(-)
+ fs/ext2/Makefile |  5 ++-
+ fs/ext2/file.c   | 10 +++++-
+ fs/ext2/trace.c  |  6 ++++
+ fs/ext2/trace.h  | 94 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 113 insertions(+), 2 deletions(-)
+ create mode 100644 fs/ext2/trace.c
+ create mode 100644 fs/ext2/trace.h
 
-diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index cb78d7dcfb95..00168447d48c 100644
---- a/fs/ext2/ext2.h
-+++ b/fs/ext2/ext2.h
-@@ -753,6 +753,7 @@ extern unsigned long ext2_count_free (struct buffer_head *, unsigned);
- extern struct inode *ext2_iget (struct super_block *, unsigned long);
- extern int ext2_write_inode (struct inode *, struct writeback_control *);
- extern void ext2_evict_inode(struct inode *);
-+void ext2_write_failed(struct address_space *mapping, loff_t to);
- extern int ext2_get_block(struct inode *, sector_t, struct buffer_head *, int);
- extern int ext2_setattr (struct mnt_idmap *, struct dentry *, struct iattr *);
- extern int ext2_getattr (struct mnt_idmap *, const struct path *,
+diff --git a/fs/ext2/Makefile b/fs/ext2/Makefile
+index 311479d864a7..8860948ef9ca 100644
+--- a/fs/ext2/Makefile
++++ b/fs/ext2/Makefile
+@@ -6,7 +6,10 @@
+ obj-$(CONFIG_EXT2_FS) += ext2.o
+ 
+ ext2-y := balloc.o dir.o file.o ialloc.o inode.o \
+-	  ioctl.o namei.o super.o symlink.o
++	  ioctl.o namei.o super.o symlink.o trace.o
++
++# For tracepoints to include our trace.h from tracepoint infrastructure
++CFLAGS_trace.o := -I$(src)
+ 
+ ext2-$(CONFIG_EXT2_FS_XATTR)	 += xattr.o xattr_user.o xattr_trusted.o
+ ext2-$(CONFIG_EXT2_FS_POSIX_ACL) += acl.o
 diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-index 7603427fb38f..704abe0a79cb 100644
+index 704abe0a79cb..c3e8d8cc6792 100644
 --- a/fs/ext2/file.c
 +++ b/fs/ext2/file.c
-@@ -164,12 +164,124 @@ int ext2_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+@@ -29,6 +29,7 @@
+ #include "ext2.h"
+ #include "xattr.h"
+ #include "acl.h"
++#include "trace.h"
+ 
+ #ifdef CONFIG_FS_DAX
+ static ssize_t ext2_dax_read_iter(struct kiocb *iocb, struct iov_iter *to)
+@@ -170,9 +171,11 @@ static ssize_t ext2_dio_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ 	struct inode *inode = file->f_mapping->host;
+ 	ssize_t ret;
+ 
++	trace_ext2_dio_read_begin(iocb, to, 0);
+ 	inode_lock_shared(inode);
+ 	ret = iomap_dio_rw(iocb, to, &ext2_iomap_ops, NULL, 0, NULL, 0);
+ 	inode_unlock_shared(inode);
++	trace_ext2_dio_read_end(iocb, to, ret);
+ 
+ 	return ret;
+ }
+@@ -200,6 +203,7 @@ static int ext2_dio_write_end_io(struct kiocb *iocb, ssize_t size,
+ 		mark_inode_dirty(inode);
+ 	}
+ out:
++	trace_ext2_dio_write_endio(iocb, size, error);
+ 	return error;
+ }
+ 
+@@ -216,7 +220,9 @@ static ssize_t ext2_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	unsigned long blocksize = inode->i_sb->s_blocksize;
+ 	loff_t offset = iocb->ki_pos;
+ 	loff_t count = iov_iter_count(from);
++	ssize_t status = 0;
+ 
++	trace_ext2_dio_write_begin(iocb, from, 0);
+ 	inode_lock(inode);
+ 	ret = generic_write_checks(iocb, from);
+ 	if (ret <= 0)
+@@ -244,7 +250,6 @@ static ssize_t ext2_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	/* handle case for partial write and for fallback to buffered write */
+ 	if (ret >= 0 && iov_iter_count(from)) {
+ 		loff_t pos, endbyte;
+-		ssize_t status;
+ 		int ret2;
+ 
+ 		iocb->ki_flags &= ~IOCB_DIRECT;
+@@ -270,6 +275,9 @@ static ssize_t ext2_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 
+ out_unlock:
+ 	inode_unlock(inode);
++	if (status)
++		trace_ext2_dio_write_buff_end(iocb, from, status);
++	trace_ext2_dio_write_end(iocb, from, ret);
  	return ret;
  }
  
-+static ssize_t ext2_dio_read_iter(struct kiocb *iocb, struct iov_iter *to)
-+{
-+	struct file *file = iocb->ki_filp;
-+	struct inode *inode = file->f_mapping->host;
-+	ssize_t ret;
+diff --git a/fs/ext2/trace.c b/fs/ext2/trace.c
+new file mode 100644
+index 000000000000..b01cdf6526fd
+--- /dev/null
++++ b/fs/ext2/trace.c
+@@ -0,0 +1,6 @@
++// SPDX-License-Identifier: GPL-2.0
++#include "ext2.h"
++#include <linux/uio.h>
 +
-+	inode_lock_shared(inode);
-+	ret = iomap_dio_rw(iocb, to, &ext2_iomap_ops, NULL, 0, NULL, 0);
-+	inode_unlock_shared(inode);
++#define CREATE_TRACE_POINTS
++#include "trace.h"
+diff --git a/fs/ext2/trace.h b/fs/ext2/trace.h
+new file mode 100644
+index 000000000000..37228a2c2fa6
+--- /dev/null
++++ b/fs/ext2/trace.h
+@@ -0,0 +1,94 @@
++// SPDX-License-Identifier: GPL-2.0
 +
-+	return ret;
-+}
++#undef TRACE_SYSTEM
++#define TRACE_SYSTEM ext2
 +
-+static int ext2_dio_write_end_io(struct kiocb *iocb, ssize_t size,
-+				 int error, unsigned int flags)
-+{
-+	loff_t pos = iocb->ki_pos;
-+	struct inode *inode = file_inode(iocb->ki_filp);
++#if !defined(_EXT2_TRACE_H) || defined(TRACE_HEADER_MULTI_READ)
++#define _EXT2_TRACE_H
 +
-+	if (error)
-+		goto out;
++#include <linux/tracepoint.h>
 +
-+	/*
-+	 * If we are extending the file, we have to update i_size here before
-+	 * page cache gets invalidated in iomap_dio_rw(). This prevents racing
-+	 * buffered reads from zeroing out too much from page cache pages.
-+	 * Note that all extending writes always happens synchronously with
-+	 * inode lock held by ext2_dio_write_iter(). So it is safe to update
-+	 * inode size here for extending file writes.
-+	 */
-+	pos += size;
-+	if (pos > i_size_read(inode)) {
-+		i_size_write(inode, pos);
-+		mark_inode_dirty(inode);
-+	}
-+out:
-+	return error;
-+}
++DECLARE_EVENT_CLASS(ext2_dio_class,
++	TP_PROTO(struct kiocb *iocb, struct iov_iter *iter, ssize_t ret),
++	TP_ARGS(iocb, iter, ret),
++	TP_STRUCT__entry(
++		__field(dev_t,	dev)
++		__field(ino_t,	ino)
++		__field(loff_t, isize)
++		__field(loff_t, pos)
++		__field(size_t,	count)
++		__field(int,	ki_flags)
++		__field(bool,	aio)
++		__field(ssize_t, ret)
++	),
++	TP_fast_assign(
++		__entry->dev = file_inode(iocb->ki_filp)->i_sb->s_dev;
++		__entry->ino = file_inode(iocb->ki_filp)->i_ino;
++		__entry->isize = file_inode(iocb->ki_filp)->i_size;
++		__entry->pos = iocb->ki_pos;
++		__entry->count = iov_iter_count(iter);
++		__entry->ki_flags = iocb->ki_flags;
++		__entry->aio = !is_sync_kiocb(iocb);
++		__entry->ret = ret;
++	),
++	TP_printk("dev %d:%d ino 0x%lx isize 0x%llx pos 0x%llx count %zu flags %s aio %d ret %zd",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  __entry->ino,
++		  __entry->isize,
++		  __entry->pos,
++		  __entry->count,
++		  __print_flags(__entry->ki_flags, "|", TRACE_IOCB_STRINGS),
++		  __entry->aio,
++		  __entry->ret)
++);
 +
-+static const struct iomap_dio_ops ext2_dio_write_ops = {
-+	.end_io = ext2_dio_write_end_io,
-+};
++#define DEFINE_DIO_RW_EVENT(name)					  \
++DEFINE_EVENT(ext2_dio_class, name,					  \
++	TP_PROTO(struct kiocb *iocb, struct iov_iter *iter, ssize_t ret), \
++	TP_ARGS(iocb, iter, ret))
++DEFINE_DIO_RW_EVENT(ext2_dio_write_begin);
++DEFINE_DIO_RW_EVENT(ext2_dio_write_end);
++DEFINE_DIO_RW_EVENT(ext2_dio_write_buff_end);
++DEFINE_DIO_RW_EVENT(ext2_dio_read_begin);
++DEFINE_DIO_RW_EVENT(ext2_dio_read_end);
 +
-+static ssize_t ext2_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
-+{
-+	struct file *file = iocb->ki_filp;
-+	struct inode *inode = file->f_mapping->host;
-+	ssize_t ret;
-+	unsigned int flags = 0;
-+	unsigned long blocksize = inode->i_sb->s_blocksize;
-+	loff_t offset = iocb->ki_pos;
-+	loff_t count = iov_iter_count(from);
++TRACE_EVENT(ext2_dio_write_endio,
++	TP_PROTO(struct kiocb *iocb, ssize_t size, int ret),
++	TP_ARGS(iocb, size, ret),
++	TP_STRUCT__entry(
++		__field(dev_t,	dev)
++		__field(ino_t,	ino)
++		__field(loff_t, isize)
++		__field(loff_t, pos)
++		__field(ssize_t, size)
++		__field(int,	ki_flags)
++		__field(bool,	aio)
++		__field(int,	ret)
++	),
++	TP_fast_assign(
++		__entry->dev = file_inode(iocb->ki_filp)->i_sb->s_dev;
++		__entry->ino = file_inode(iocb->ki_filp)->i_ino;
++		__entry->isize = file_inode(iocb->ki_filp)->i_size;
++		__entry->pos = iocb->ki_pos;
++		__entry->size = size;
++		__entry->ki_flags = iocb->ki_flags;
++		__entry->aio = !is_sync_kiocb(iocb);
++		__entry->ret = ret;
++	),
++	TP_printk("dev %d:%d ino 0x%lx isize 0x%llx pos 0x%llx size %zd flags %s aio %d ret %d",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  __entry->ino,
++		  __entry->isize,
++		  __entry->pos,
++		  __entry->size,
++		  __print_flags(__entry->ki_flags, "|", TRACE_IOCB_STRINGS),
++		  __entry->aio,
++		  __entry->ret)
++);
 +
-+	inode_lock(inode);
-+	ret = generic_write_checks(iocb, from);
-+	if (ret <= 0)
-+		goto out_unlock;
++#endif /* _EXT2_TRACE_H */
 +
-+	ret = kiocb_modified(iocb);
-+	if (ret)
-+		goto out_unlock;
-+
-+	/* use IOMAP_DIO_FORCE_WAIT for unaligned or extending writes */
-+	if (iocb->ki_pos + iov_iter_count(from) > i_size_read(inode) ||
-+	   (!IS_ALIGNED(iocb->ki_pos | iov_iter_alignment(from), blocksize)))
-+		flags |= IOMAP_DIO_FORCE_WAIT;
-+
-+	ret = iomap_dio_rw(iocb, from, &ext2_iomap_ops, &ext2_dio_write_ops,
-+			   flags, NULL, 0);
-+
-+	/* ENOTBLK is magic return value for fallback to buffered-io */
-+	if (ret == -ENOTBLK)
-+		ret = 0;
-+
-+	if (ret < 0 && ret != -EIOCBQUEUED)
-+		ext2_write_failed(inode->i_mapping, offset + count);
-+
-+	/* handle case for partial write and for fallback to buffered write */
-+	if (ret >= 0 && iov_iter_count(from)) {
-+		loff_t pos, endbyte;
-+		ssize_t status;
-+		int ret2;
-+
-+		iocb->ki_flags &= ~IOCB_DIRECT;
-+		pos = iocb->ki_pos;
-+		status = generic_perform_write(iocb, from);
-+		if (unlikely(status < 0)) {
-+			ret = status;
-+			goto out_unlock;
-+		}
-+
-+		iocb->ki_pos += status;
-+		ret += status;
-+		endbyte = pos + status - 1;
-+		ret2 = filemap_write_and_wait_range(inode->i_mapping, pos,
-+						    endbyte);
-+		if (!ret2)
-+			invalidate_mapping_pages(inode->i_mapping,
-+						 pos >> PAGE_SHIFT,
-+						 endbyte >> PAGE_SHIFT);
-+		if (ret > 0)
-+			generic_write_sync(iocb, ret);
-+	}
-+
-+out_unlock:
-+	inode_unlock(inode);
-+	return ret;
-+}
-+
- static ssize_t ext2_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
- {
- #ifdef CONFIG_FS_DAX
- 	if (IS_DAX(iocb->ki_filp->f_mapping->host))
- 		return ext2_dax_read_iter(iocb, to);
- #endif
-+	if (iocb->ki_flags & IOCB_DIRECT)
-+		return ext2_dio_read_iter(iocb, to);
-+
- 	return generic_file_read_iter(iocb, to);
- }
- 
-@@ -179,6 +291,9 @@ static ssize_t ext2_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	if (IS_DAX(iocb->ki_filp->f_mapping->host))
- 		return ext2_dax_write_iter(iocb, from);
- #endif
-+	if (iocb->ki_flags & IOCB_DIRECT)
-+		return ext2_dio_write_iter(iocb, from);
-+
- 	return generic_file_write_iter(iocb, from);
- }
- 
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index dc76147e7b07..75983215c7a1 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -56,7 +56,7 @@ static inline int ext2_inode_is_fast_symlink(struct inode *inode)
- 
- static void ext2_truncate_blocks(struct inode *inode, loff_t offset);
- 
--static void ext2_write_failed(struct address_space *mapping, loff_t to)
-+void ext2_write_failed(struct address_space *mapping, loff_t to)
- {
- 	struct inode *inode = mapping->host;
- 
-@@ -809,9 +809,27 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 	bool new = false, boundary = false;
- 	u32 bno;
- 	int ret;
-+	bool create = flags & IOMAP_WRITE;
-+
-+	/*
-+	 * For writes that could fill holes inside i_size on a
-+	 * DIO_SKIP_HOLES filesystem we forbid block creations: only
-+	 * overwrites are permitted.
-+	 */
-+	if ((flags & IOMAP_DIRECT) &&
-+	    (first_block << blkbits) < i_size_read(inode))
-+		create = 0;
-+
-+	/*
-+	 * Writes that span EOF might trigger an IO size update on completion,
-+	 * so consider them to be dirty for the purposes of O_DSYNC even if
-+	 * there is no other metadata changes pending or have been made here.
-+	 */
-+	if ((flags & IOMAP_WRITE) && offset + length > i_size_read(inode))
-+		iomap->flags |= IOMAP_F_DIRTY;
- 
- 	ret = ext2_get_blocks(inode, first_block, max_blocks,
--			&bno, &new, &boundary, flags & IOMAP_WRITE);
-+			&bno, &new, &boundary, create);
- 	if (ret < 0)
- 		return ret;
- 
-@@ -823,6 +841,12 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 		iomap->bdev = inode->i_sb->s_bdev;
- 
- 	if (ret == 0) {
-+		/*
-+		 * Switch to buffered-io for writing to holes in a non-extent
-+		 * based filesystem to avoid stale data exposure problem.
-+		 */
-+		if (!create && (flags & IOMAP_WRITE) && (flags & IOMAP_DIRECT))
-+			return -ENOTBLK;
- 		iomap->type = IOMAP_HOLE;
- 		iomap->addr = IOMAP_NULL_ADDR;
- 		iomap->length = 1 << blkbits;
-@@ -844,6 +868,13 @@ static int
- ext2_iomap_end(struct inode *inode, loff_t offset, loff_t length,
- 		ssize_t written, unsigned flags, struct iomap *iomap)
- {
-+	/*
-+	 * Switch to buffered-io in case of any error.
-+	 * Blocks allocated can be used by the buffered-io path.
-+	 */
-+	if ((flags & IOMAP_DIRECT) && (flags & IOMAP_WRITE) && written == 0)
-+		return -ENOTBLK;
-+
- 	if (iomap->type == IOMAP_MAPPED &&
- 	    written < length &&
- 	    (flags & IOMAP_WRITE))
-@@ -908,22 +939,6 @@ static sector_t ext2_bmap(struct address_space *mapping, sector_t block)
- 	return generic_block_bmap(mapping,block,ext2_get_block);
- }
- 
--static ssize_t
--ext2_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
--{
--	struct file *file = iocb->ki_filp;
--	struct address_space *mapping = file->f_mapping;
--	struct inode *inode = mapping->host;
--	size_t count = iov_iter_count(iter);
--	loff_t offset = iocb->ki_pos;
--	ssize_t ret;
--
--	ret = blockdev_direct_IO(iocb, inode, iter, ext2_get_block);
--	if (ret < 0 && iov_iter_rw(iter) == WRITE)
--		ext2_write_failed(mapping, offset + count);
--	return ret;
--}
--
- static int
- ext2_writepages(struct address_space *mapping, struct writeback_control *wbc)
- {
-@@ -946,7 +961,7 @@ const struct address_space_operations ext2_aops = {
- 	.write_begin		= ext2_write_begin,
- 	.write_end		= ext2_write_end,
- 	.bmap			= ext2_bmap,
--	.direct_IO		= ext2_direct_IO,
-+	.direct_IO		= noop_direct_IO,
- 	.writepages		= ext2_writepages,
- 	.migrate_folio		= buffer_migrate_folio,
- 	.is_partially_uptodate	= block_is_partially_uptodate,
++#undef TRACE_INCLUDE_PATH
++#define TRACE_INCLUDE_PATH .
++#define TRACE_INCLUDE_FILE trace
++#include <trace/define_trace.h>
 -- 
 2.39.2
 
