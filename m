@@ -2,121 +2,101 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 75D78C77B61
-	for <linux-ext4@archiver.kernel.org>; Mon, 17 Apr 2023 00:22:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F0808C77B61
+	for <linux-ext4@archiver.kernel.org>; Mon, 17 Apr 2023 03:04:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229677AbjDQAWf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 16 Apr 2023 20:22:35 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52448 "EHLO
+        id S230029AbjDQDEI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 16 Apr 2023 23:04:08 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32922 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229473AbjDQAWe (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Apr 2023 20:22:34 -0400
-Received: from mail-pj1-x102a.google.com (mail-pj1-x102a.google.com [IPv6:2607:f8b0:4864:20::102a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 555AE1FEE
-        for <linux-ext4@vger.kernel.org>; Sun, 16 Apr 2023 17:22:33 -0700 (PDT)
-Received: by mail-pj1-x102a.google.com with SMTP id mq14-20020a17090b380e00b002472a2d9d6aso9822422pjb.5
-        for <linux-ext4@vger.kernel.org>; Sun, 16 Apr 2023 17:22:33 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1681690953; x=1684282953;
-        h=in-reply-to:subject:cc:to:from:message-id:date:from:to:cc:subject
-         :date:message-id:reply-to;
-        bh=kzUb+dnKFXQbMCTRcQralYuGqBAI/mILIuDWpFRIY4E=;
-        b=jfeWLmtXnhzyK0kdEUh0Ks0VNyBsqP2K1CnZ6oMdqreVIVK9gTMXwO8uruTUlw/h09
-         nIyyBy/G4+MxWMteBMORd6iJJbNfIzxlQdXrVlSLljcRlR5MtKLidfUJ2zx2WBsANJ8w
-         qEVIu+sKsHHcnUevoSbM25b1gW+8elN1MozUheNI6HIcpeKmB0y+bggP9/5zqONKMMjW
-         IUQFZX66sZqgSl4uhvlzPUY/EpJ2+zcaljQt0l+M2mQrBiAbZXgNlkWNm2hdva7epv5g
-         2yiw+47Uh4IGagX1Z4V0c0EcyJ+9uARQvBGFzJFxRGfYO9vqI/CrgMl2RXr18RyL3Ff4
-         WjPQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1681690953; x=1684282953;
-        h=in-reply-to:subject:cc:to:from:message-id:date:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=kzUb+dnKFXQbMCTRcQralYuGqBAI/mILIuDWpFRIY4E=;
-        b=llWJyf0NNrnjIX9Jr18k5REv4QGxj8I02dd1PpJOHYSyCpZgl/r2A98J6Hj+J+0wdi
-         HQu69NvPKZ2Fp+CylaBeTZ9AabhEs6UWEIrEeAXlnpsCWOf5e9SQfcZ2x/hlobBUdhyq
-         wum1tF9Mwdy84GfFl1vF6OEKlwHDTuquMz/cnpV5XvtwNSRa9GQi5TB8y7/pUNtrroqB
-         EehraDPp+jkXoJARRYtzOvlxeIRHyZYOWPFecwQtjlxzx0soFU9j9Duw5B6uKOP3gc5h
-         BO/GkGzgDCaRPTsAANhOgSVDtHC6VD69wDR9BEgnHwSeLeEdY9tZsszCjQRy9fYuLCUh
-         4iXw==
-X-Gm-Message-State: AAQBX9c3PupOPg8stSUcurX6vP5vOktXt/yO4bTCOpZvtL6dNfl+mryl
-        S0f/ImXCkyexdsMVORFgZc4=
-X-Google-Smtp-Source: AKy350aq94l84SugGgNyBRZu45Mj547lIdXGhcftEuxIV7SlcoavBaRCDikH5Msg/mPZ6oe4WQH3xg==
-X-Received: by 2002:a17:903:1211:b0:1a2:23f7:20f with SMTP id l17-20020a170903121100b001a223f7020fmr12517390plh.28.1681690952673;
-        Sun, 16 Apr 2023 17:22:32 -0700 (PDT)
-Received: from rh-tp ([2406:7400:63:2dd2:8818:e6e1:3a73:368c])
-        by smtp.gmail.com with ESMTPSA id w3-20020a170902a70300b001a1faeac240sm6323528plq.186.2023.04.16.17.22.30
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 16 Apr 2023 17:22:32 -0700 (PDT)
-Date:   Mon, 17 Apr 2023 05:52:12 +0530
-Message-Id: <87zg77ici3.fsf@doe.com>
-From:   Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-        Disha Goel <disgoel@linux.ibm.com>
-Subject: Re: [RFCv1 3/4] ext4: Make mpage_journal_page_buffers use folio
-In-Reply-To: <ZDxQghSIxhX+YUME@casper.infradead.org>
+        with ESMTP id S229473AbjDQDEA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Apr 2023 23:04:00 -0400
+Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 67F5D26BB;
+        Sun, 16 Apr 2023 20:03:58 -0700 (PDT)
+Received: from mail02.huawei.com (unknown [172.30.67.143])
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Q0Bhn4yfzz4f47kF;
+        Mon, 17 Apr 2023 11:03:53 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.124.27])
+        by APP1 (Coremail) with SMTP id cCh0CgAXODIXtzxkfzJgHA--.17426S4;
+        Mon, 17 Apr 2023 11:03:55 +0800 (CST)
+From:   Kemeng Shi <shikemeng@huaweicloud.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        shikemeng@huaweicloud.com
+Subject: [PATCH v3 02/19] ext4: fix unit mismatch in ext4_mb_new_blocks_simple
+Date:   Mon, 17 Apr 2023 19:06:00 +0800
+Message-Id: <20230417110617.2664129-3-shikemeng@huaweicloud.com>
+X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20230417110617.2664129-1-shikemeng@huaweicloud.com>
+References: <20230417110617.2664129-1-shikemeng@huaweicloud.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID: cCh0CgAXODIXtzxkfzJgHA--.17426S4
+X-Coremail-Antispam: 1UD129KBjvJXoW7tw1DGFW3GrWkurWxur4xtFb_yoW8Gw4rpw
+        s8AF10kr1xWr1Dua1xZ3yFqw1fZw1xCr17XrZ5C395WryxX34fCFsxtF1rtF1rtFsxX3ZI
+        qr15Zryruw48G3DanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUPSb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
+        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
+        8IrcIa0xkI8VA2jI8067AKxVWUXwA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK
+        0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4
+        x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l
+        84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I
+        8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AK
+        xVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zV
+        CS5cI20VAGYxC7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E
+        5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAV
+        WUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY
+        1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI
+        0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7s
+        RNVbyUUUUUU==
+X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Matthew Wilcox <willy@infradead.org> writes:
+The "i" returned from mb_find_next_zero_bit is in cluster unit and we
+need offset "block" corresponding to "i" in block unit. Convert "i" to
+block unit to fix the unit mismatch.
 
-> On Mon, Apr 17, 2023 at 12:01:52AM +0530, Ritesh Harjani (IBM) wrote:
->> This patch converts mpage_journal_page_buffers() to use folio and also
->> removes the PAGE_SIZE assumption.
->
-> Bit of an oversight on my part.  I neglected to do this after Jan added
-> it.  Perils of parallel development ...
->
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+---
+ fs/ext4/mballoc.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-Yes, these got left overs because of the parallel series.
-
->> -static int ext4_journal_page_buffers(handle_t *handle, struct page *page,
->> -				     int len)
->> +static int ext4_journal_page_buffers(handle_t *handle, struct folio *folio,
->> +				     size_t len)
->
-> Should this be called ext4_journal_folio_buffers?
-
-Sure. Will make the change. Otherwise this patch looks good to you?
-I also had a query regarding setting "len = size - folio_pos(folio)" in this patch.
-Details of which I had pasted in the cover letter. Let me copy-paste
-it here from the cover letter. Could you please take a look at it?
-
-
-<copy-paste>
-Also had a query w.r.t your change [1]. I couldn't understand this change diff
-from [1]. Given if we are making the conversion to folio, then shouldn't we do
-len = size - folio_pos(pos), instead of len = size & ~PAGE_MASK
-Could you please tell if the current change in [1] is kept deliberately?
-At other places you did make len as size - folio_pos(pos) which removes the
-PAGE_SIZE assumption.
-
--static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
-+static int mpage_submit_folio(struct mpage_da_data *mpd, struct folio *folio)
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 544915088d99..fbbd19cec1c9 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -5954,6 +5954,7 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
  {
--	int len;
-+	size_t len;
+ 	struct buffer_head *bitmap_bh;
+ 	struct super_block *sb = ar->inode->i_sb;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	ext4_group_t group;
+ 	ext4_grpblk_t blkoff;
+ 	ext4_grpblk_t max = EXT4_CLUSTERS_PER_GROUP(sb);
+@@ -5982,7 +5983,8 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
+ 			if (i >= max)
+ 				break;
+ 			if (ext4_fc_replay_check_excluded(sb,
+-				ext4_group_first_block_no(sb, group) + i)) {
++				ext4_group_first_block_no(sb, group) +
++				EXT4_C2B(sbi, i))) {
+ 				blkoff = i + 1;
+ 			} else
+ 				break;
+@@ -5999,7 +6001,7 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
+ 		return 0;
+ 	}
+ 
+-	block = ext4_group_first_block_no(sb, group) + i;
++	block = ext4_group_first_block_no(sb, group) + EXT4_C2B(sbi, i);
+ 	ext4_mb_mark_bb(sb, block, 1, 1);
+ 	ar->len = 1;
+ 
+-- 
+2.30.0
 
-	<...>
-
-	size = i_size_read(mpd->inode);
--	if (page->index == size >> PAGE_SHIFT &&
-+	len = folio_size(folio);
-+	if (folio_pos(folio) + len > size &&
- 	    !ext4_verity_in_progress(mpd->inode))
- 		len = size & ~PAGE_MASK;
--	else
--		len = PAGE_SIZE;
--	err = ext4_bio_write_page(&mpd->io_submit, page, len);
-+	err = ext4_bio_write_page(&mpd->io_submit, &folio->page, len);
- 	if (!err)
- 		mpd->wbc->nr_to_write--;
-
-[1]: https://lore.kernel.org/linux-ext4/20230324180129.1220691-7-willy@infradead.org/
-
-
-Thanks for the quick review!
-
--ritesh
