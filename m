@@ -2,82 +2,100 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DC103C77B73
-	for <linux-ext4@archiver.kernel.org>; Mon, 17 Apr 2023 03:04:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 03D12C77B79
+	for <linux-ext4@archiver.kernel.org>; Mon, 17 Apr 2023 03:04:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230070AbjDQDE2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 16 Apr 2023 23:04:28 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32984 "EHLO
+        id S230079AbjDQDEa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 16 Apr 2023 23:04:30 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32968 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229762AbjDQDED (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Apr 2023 23:04:03 -0400
+        with ESMTP id S229604AbjDQDEC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Apr 2023 23:04:02 -0400
 Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B393526BE;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 69964270C;
         Sun, 16 Apr 2023 20:04:01 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Q0Bhr3g6Bz4f47kc;
-        Mon, 17 Apr 2023 11:03:56 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Q0Bhq3xLDz4f47kR;
+        Mon, 17 Apr 2023 11:03:55 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP1 (Coremail) with SMTP id cCh0CgAXODIXtzxkfzJgHA--.17426S13;
-        Mon, 17 Apr 2023 11:03:57 +0800 (CST)
+        by APP1 (Coremail) with SMTP id cCh0CgAXODIXtzxkfzJgHA--.17426S10;
+        Mon, 17 Apr 2023 11:03:56 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
         shikemeng@huaweicloud.com
-Subject: [PATCH v3 11/19] ext4: fix wrong unit use in ext4_mb_new_blocks
-Date:   Mon, 17 Apr 2023 19:06:09 +0800
-Message-Id: <20230417110617.2664129-12-shikemeng@huaweicloud.com>
+Subject: [PATCH v3 08/19] ext4: get block from bh before pass it to ext4_free_blocks_simple in ext4_free_blocks
+Date:   Mon, 17 Apr 2023 19:06:06 +0800
+Message-Id: <20230417110617.2664129-9-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230417110617.2664129-1-shikemeng@huaweicloud.com>
 References: <20230417110617.2664129-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: cCh0CgAXODIXtzxkfzJgHA--.17426S13
-X-Coremail-Antispam: 1UD129KBjvdXoWrtF47ZFW7Cw18trW3WrWkXrb_yoW3Grg_GF
-        17ArW8Jr4rJwn5CF95JrW8t3WrKr18Ar1rXFW3tr45Za45XFZrCw1DJryrAr4DWa4aka9x
-        Z3s5WryxKr1S9jkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-        9fnUUIcSsGvfJTRUUUbDAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
-        6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M28IrcIa0xkI8V
-        A2jI8067AKxVWUAVCq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJ
-        M28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2I
-        x0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK
-        6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4
-        xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8
-        JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20V
-        AGYxC7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAF
-        wI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc4
-        0Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r4j6ryUMIIF0xvE2Ix0cI8IcVCY1x0267AK
-        xVWxJVW8Jr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r4j6F
-        4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0pRvJPtU
-        UUUU=
+X-CM-TRANSID: cCh0CgAXODIXtzxkfzJgHA--.17426S10
+X-Coremail-Antispam: 1UD129KBjvJXoW7JF48Cr4UZw1DJw1xJFy8Grg_yoW8Jr17pr
+        srCFyrGr1kWwn2gF4fJr15Jwsa9w48G3WUWFWfuw18Xry7Z34Sy3WqyF15WF1UtrZav3ZF
+        qFn0grW5Cw4UuaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUPF14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
+        0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
+        rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6x
+        IIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xv
+        wVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFc
+        xC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_
+        Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2
+        IErcIFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
+        14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIx
+        kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAF
+        wI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJV
+        W8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjTRKfOw
+        UUUUU
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Function ext4_mb_new_blocks_simple needs count in cluster. Function
-ext4_mb_new_blocks accepts count in block. Convert count to cluster
-to fix the mismatch.
+ext4_free_blocks will retrieve block from bh if block parameter is zero.
+Retrieve block before ext4_free_blocks_simple to avoid potentially
+passing wrong block to ext4_free_blocks_simple.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 ---
- fs/ext4/mballoc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/mballoc.c | 13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 4a345e3c1c78..6d4471fd3049 100644
+index e980513c7a14..f37e921c11e5 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -6315,7 +6315,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 	}
+@@ -6310,12 +6310,6 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
  
- 	if (sbi->s_mount_state & EXT4_FC_REPLAY) {
+ 	sbi = EXT4_SB(sb);
+ 
+-	if (sbi->s_mount_state & EXT4_FC_REPLAY) {
 -		ext4_free_blocks_simple(inode, block, count);
-+		ext4_free_blocks_simple(inode, block, EXT4_NUM_B2C(sbi, count));
- 		return;
+-		return;
+-	}
+-
+-	might_sleep();
+ 	if (bh) {
+ 		if (block)
+ 			BUG_ON(block != bh->b_blocknr);
+@@ -6323,6 +6317,13 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 			block = bh->b_blocknr;
  	}
  
++	if (sbi->s_mount_state & EXT4_FC_REPLAY) {
++		ext4_free_blocks_simple(inode, block, count);
++		return;
++	}
++
++	might_sleep();
++
+ 	if (!(flags & EXT4_FREE_BLOCKS_VALIDATED) &&
+ 	    !ext4_inode_block_valid(inode, block, count)) {
+ 		ext4_error(sb, "Freeing blocks not in datazone - "
 -- 
 2.30.0
 
