@@ -2,40 +2,40 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 37DEAC77B61
-	for <linux-ext4@archiver.kernel.org>; Mon, 17 Apr 2023 03:04:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 46CF6C77B73
+	for <linux-ext4@archiver.kernel.org>; Mon, 17 Apr 2023 03:04:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230072AbjDQDEN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 16 Apr 2023 23:04:13 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32928 "EHLO
+        id S230094AbjDQDEP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 16 Apr 2023 23:04:15 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32926 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229539AbjDQDEB (ORCPT
+        with ESMTP id S229508AbjDQDEB (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Apr 2023 23:04:01 -0400
 Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 75D782716;
-        Sun, 16 Apr 2023 20:03:58 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 753C92718;
+        Sun, 16 Apr 2023 20:03:59 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Q0Bhp4F9yz4f47kL;
-        Mon, 17 Apr 2023 11:03:54 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Q0Bhq2r1mz4f42Yl;
+        Mon, 17 Apr 2023 11:03:55 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP1 (Coremail) with SMTP id cCh0CgAXODIXtzxkfzJgHA--.17426S7;
+        by APP1 (Coremail) with SMTP id cCh0CgAXODIXtzxkfzJgHA--.17426S9;
         Mon, 17 Apr 2023 11:03:56 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
         shikemeng@huaweicloud.com
-Subject: [PATCH v3 05/19] ext4: add EXT4_MB_HINT_GOAL_ONLY test in ext4_mb_use_preallocated
-Date:   Mon, 17 Apr 2023 19:06:03 +0800
-Message-Id: <20230417110617.2664129-6-shikemeng@huaweicloud.com>
+Subject: [PATCH v3 07/19] ext4: try all groups in ext4_mb_new_blocks_simple
+Date:   Mon, 17 Apr 2023 19:06:05 +0800
+Message-Id: <20230417110617.2664129-8-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230417110617.2664129-1-shikemeng@huaweicloud.com>
 References: <20230417110617.2664129-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: cCh0CgAXODIXtzxkfzJgHA--.17426S7
-X-Coremail-Antispam: 1UD129KBjvJXoW7tr18JFy3uFy5ur1rtr1DJrb_yoW8KrWUpF
-        ZxAF15CrnIgw1xuws3Ww15Cw1fKw48K348JrWagr1rArWxGr47Canxt3yUuFyqkrWrZFn8
-        ZF4avay7Gr4I93DanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID: cCh0CgAXODIXtzxkfzJgHA--.17426S9
+X-Coremail-Antispam: 1UD129KBjvJXoW7ur13Kry7uF1DAFyDArWrKrg_yoW8AF4Dpw
+        sxCF18Gr1fWrnF9FsFg34SqF1xJw1I9F1UWryfC34rGrZrXryfJFsxKF1rta1YyFZ3X3ZI
+        vr4Yvry5Aa1jgaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
         9KBjDU0xBIdaVrnRJUUUPY14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
         rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
         0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
@@ -56,72 +56,57 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-ext4_mb_use_preallocated will ignore the demand to alloc goal blocks,
-although the EXT4_MB_HINT_GOAL_ONLY is requested.
-For group pa, ext4_mb_group_or_file will not set EXT4_MB_HINT_GROUP_ALLOC
-if EXT4_MB_HINT_GOAL_ONLY is set. So we will not alloc goal blocks from
-group pa if EXT4_MB_HINT_GOAL_ONLY is set.
-For inode pa, ext4_mb_pa_goal_check is added to check if free extent in
-found inode pa meets goal blocks when EXT4_MB_HINT_GOAL_ONLY is set.
+ext4_mb_new_blocks_simple ignores the group before goal, so it will fail
+if free blocks reside in group before goal. Try all groups to avoid
+unexpected failure.
+Search finishes either if any free block is found or if no available
+blocks are found. Simpliy check "i >= max" to distinguish the above
+cases.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-Suggested-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Suggested-by: Theodore Ts'o <tytso@mit.edu>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/mballoc.c | 34 +++++++++++++++++++++++++++++++++-
- 1 file changed, 33 insertions(+), 1 deletion(-)
+ fs/ext4/mballoc.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 799d2f0d465c..204b94717778 100644
+index 204b94717778..e980513c7a14 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -4492,6 +4492,37 @@ ext4_mb_check_group_pa(ext4_fsblk_t goal_block,
- 	return pa;
- }
+@@ -5990,7 +5990,7 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
+ 	struct buffer_head *bitmap_bh;
+ 	struct super_block *sb = ar->inode->i_sb;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	ext4_group_t group;
++	ext4_group_t group, nr;
+ 	ext4_grpblk_t blkoff;
+ 	ext4_grpblk_t max = EXT4_CLUSTERS_PER_GROUP(sb);
+ 	ext4_grpblk_t i = 0;
+@@ -6004,7 +6004,7 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
  
-+/*
-+ * check if found pa meets EXT4_MB_HINT_GOAL_ONLY
-+ */
-+static bool
-+ext4_mb_pa_goal_check(struct ext4_allocation_context *ac,
-+		      struct ext4_prealloc_space *pa)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
-+	ext4_fsblk_t start;
-+
-+	if (likely(!(ac->ac_flags & EXT4_MB_HINT_GOAL_ONLY)))
-+		return true;
-+
-+	/*
-+	 * If EXT4_MB_HINT_GOAL_ONLY is set, ac_g_ex will not be adjusted
-+	 * in ext4_mb_normalize_request and will keep same with ac_o_ex
-+	 * from ext4_mb_initialize_context. Choose ac_g_ex here to keep
-+	 * consistent with ext4_mb_find_by_goal.
-+	 */
-+	start = pa->pa_pstart +
-+		(ac->ac_g_ex.fe_logical - pa->pa_lstart);
-+	if (ext4_grp_offs_to_block(ac->ac_sb, &ac->ac_g_ex) != start)
-+		return false;
-+
-+	if (ac->ac_g_ex.fe_len > pa->pa_len -
-+	    EXT4_B2C(sbi, ac->ac_g_ex.fe_logical - pa->pa_lstart))
-+		return false;
-+
-+	return true;
-+}
-+
- /*
-  * search goal blocks in preallocated space
-  */
-@@ -4542,7 +4573,8 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
+ 	ar->len = 0;
+ 	ext4_get_group_no_and_offset(sb, goal, &group, &blkoff);
+-	for (; group < ext4_get_groups_count(sb); group++) {
++	for (nr = ext4_get_groups_count(sb); nr > 0; nr--) {
+ 		bitmap_bh = ext4_read_block_bitmap(sb, group);
+ 		if (IS_ERR(bitmap_bh)) {
+ 			*errp = PTR_ERR(bitmap_bh);
+@@ -6028,10 +6028,13 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
+ 		if (i < max)
+ 			break;
  
- 		/* found preallocated blocks, use them */
- 		spin_lock(&tmp_pa->pa_lock);
--		if (tmp_pa->pa_deleted == 0 && tmp_pa->pa_free) {
-+		if (tmp_pa->pa_deleted == 0 && tmp_pa->pa_free &&
-+		    likely(ext4_mb_pa_goal_check(ac, tmp_pa))) {
- 			atomic_inc(&tmp_pa->pa_count);
- 			ext4_mb_use_inode_pa(ac, tmp_pa);
- 			spin_unlock(&tmp_pa->pa_lock);
++		if (++group >= ext4_get_groups_count(sb))
++			group = 0;
++
+ 		blkoff = 0;
+ 	}
+ 
+-	if (group >= ext4_get_groups_count(sb) || i >= max) {
++	if (i >= max) {
+ 		*errp = -ENOSPC;
+ 		return 0;
+ 	}
 -- 
 2.30.0
 
