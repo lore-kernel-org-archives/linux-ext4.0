@@ -2,132 +2,131 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 73C94C77B75
-	for <linux-ext4@archiver.kernel.org>; Wed, 19 Apr 2023 23:21:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3AD90C77B7C
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Apr 2023 00:49:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232142AbjDSXV2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 19 Apr 2023 19:21:28 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44292 "EHLO
+        id S232573AbjDTAtC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 19 Apr 2023 20:49:02 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48512 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231950AbjDSXV0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Apr 2023 19:21:26 -0400
-Received: from mail-pl1-x629.google.com (mail-pl1-x629.google.com [IPv6:2607:f8b0:4864:20::629])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 64B3E1FC3
-        for <linux-ext4@vger.kernel.org>; Wed, 19 Apr 2023 16:21:22 -0700 (PDT)
-Received: by mail-pl1-x629.google.com with SMTP id d9443c01a7336-1a8097c1ccfso5783485ad.1
-        for <linux-ext4@vger.kernel.org>; Wed, 19 Apr 2023 16:21:22 -0700 (PDT)
+        with ESMTP id S232299AbjDTAs6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Apr 2023 20:48:58 -0400
+Received: from mail-pl1-x62d.google.com (mail-pl1-x62d.google.com [IPv6:2607:f8b0:4864:20::62d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 87CC75B89
+        for <linux-ext4@vger.kernel.org>; Wed, 19 Apr 2023 17:48:57 -0700 (PDT)
+Received: by mail-pl1-x62d.google.com with SMTP id d9443c01a7336-1a6762fd23cso5333455ad.3
+        for <linux-ext4@vger.kernel.org>; Wed, 19 Apr 2023 17:48:57 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=fromorbit-com.20221208.gappssmtp.com; s=20221208; t=1681946482; x=1684538482;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
-        bh=O4EzLlnke++OBfC+QU/8848E+9V2OKTR6syW6axwlV8=;
-        b=1rSGerHklr5JAXi27oI/uAKbIpnzmbhuAcqtkq9Ewpy+oxiEbVyn+NXg0Nte1Jz5gb
-         Jddew7juj8EN4LNPm7rX/98XzjawOZWNBXgYRDT4svPbR6SgKWYB3DBdvEC6M5GMrfwT
-         NVGwJGMv68WQml94zJmFq7eiIKhhHdqtvpReJGsxvaD7E+Q5v+/9MtrHrCKvxTmZ6EDY
-         BasRW6aVsh4KPRIad1iWbms6wcLJVor1YOWpS9y4GmXYAKYprdaeppUQ33xbvQC/eBjL
-         dLUjVVOrNBmfM3cIFzadvXJVlSI7PHUWmH/8OBSUCDMgpYod0Y/sBth54czPU5qQiJoJ
-         NrDQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1681946482; x=1684538482;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
+        d=chromium.org; s=google; t=1681951737; x=1684543737;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=O4EzLlnke++OBfC+QU/8848E+9V2OKTR6syW6axwlV8=;
-        b=FqgCy3NQi5l3p0DjTJcMU/ym8gsv4aNkOv8CRV2sgKN9EYjYxNRGsZ3w2T7Qqca1tF
-         G9Ht7k67m9EVW7af2wQKPc/O3RDj7bTpPwjvy28aiDKVJmE2i2deAKJYpz89IjEepqn5
-         YxH7s3foLWNZuvgsZoN58egSIqy4HDwHnIwNQxai+50jEPeAYbvnBWf/3iKq4ZVdgZnZ
-         2ms4EsAbWXJ5+wS7F7vKzAbvYg3Bh4HmwfQXODik/IbRiiv7swjF9MrAP/WPtW3DC3ze
-         vm0FApMh5IrLHaVeujm5u/ke7nvDXWNxMKtEsI5L6Rp1rMELjdSwrS9N4iBiag6JUZkv
-         otow==
-X-Gm-Message-State: AAQBX9cvAci1cZkvXhs3OvISuDTrNijTkLEB2AIZ+ExcIUPsuIKqZRQJ
-        RevR3xxTx4zTEuZ1Hv7KIyubsw==
-X-Google-Smtp-Source: AKy350Z4u0R970I4rdGzZzRQmNJeDe7b2z6B1qSAUlPIrkwDXPChvEc+qQO8pUmxrKDtn7iIylQMpQ==
-X-Received: by 2002:a17:902:b089:b0:19d:611:2815 with SMTP id p9-20020a170902b08900b0019d06112815mr6659257plr.42.1681946481873;
-        Wed, 19 Apr 2023 16:21:21 -0700 (PDT)
-Received: from dread.disaster.area (pa49-180-41-174.pa.nsw.optusnet.com.au. [49.180.41.174])
-        by smtp.gmail.com with ESMTPSA id ja13-20020a170902efcd00b0019682e27995sm6226725plb.223.2023.04.19.16.21.21
+        bh=G8Jg49/KQsZt4WzBpHKtXWTZpexlXZcV39964TwtkKY=;
+        b=Q4O+/LqSIe1dsLzJhrazbt5goLnGi1zJWJbTolX3hoDJhRdiYIt8oP3uueEYErY/Me
+         zQFFkE4rPiCEQLA8DNT5eqI7xXNcKG9o07MjxHnnVHAWwiIa2Rlq84+FMrIzrcymDMj0
+         zmTM8yrT7jralZt9fyBveGGYaxRpJ9r5tkzj0=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1681951737; x=1684543737;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=G8Jg49/KQsZt4WzBpHKtXWTZpexlXZcV39964TwtkKY=;
+        b=IzgJwY4r0DeiKAXcg///ROl3MbPE8qA9gclJZQ9icT4NWgAbLG6ART70FcEJ6UGEmp
+         X+e6Ht8Sh/XrWSTFFxsNyhyz8nLr5zkxEDD1cSCumXoAaA8cA4OK/LVnfGXzzZpDrkQF
+         kM1Ew9J+nHFLZNHN+ufRIIatubS/xhq0/3M+Kr8J27mabyLX50sRhZ5ONK4kl/itkGzD
+         /GV4nmL/9wd+GlZnku7NRJGiyQyfqpotlZG4Vu9+a6KfEDJQ88hBTwHgD/zW2pcC88/i
+         TdgwBCvSfzGGXroduzD9xs4QV4Jr5nVY64Iy31HSh1MeFGzT05t04SfzQ9u6m9FZQ1x8
+         IKGw==
+X-Gm-Message-State: AAQBX9fQM9aIh7i0tQj85KcZ7wDyneZb/1aJACvDftYKjpiPOFxfRGDo
+        e0vyHMvqjNM8nnT4sMHmov/AZg==
+X-Google-Smtp-Source: AKy350Zv7+C4nbn5BKw2snuixQns/eVqKDeE09iyFz2LG4XBGopEf6DRHNtYzyNhmmireBFKIpsriQ==
+X-Received: by 2002:a17:902:ea0f:b0:19c:b11b:ffca with SMTP id s15-20020a170902ea0f00b0019cb11bffcamr8862265plg.23.1681951736959;
+        Wed, 19 Apr 2023 17:48:56 -0700 (PDT)
+Received: from sarthakkukreti-glaptop.corp.google.com ([2620:15c:9d:200:5113:a333:10ce:e2d])
+        by smtp.gmail.com with ESMTPSA id io18-20020a17090312d200b001a65575c13asm74323plb.48.2023.04.19.17.48.55
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 19 Apr 2023 16:21:21 -0700 (PDT)
-Received: from dave by dread.disaster.area with local (Exim 4.92.3)
-        (envelope-from <david@fromorbit.com>)
-        id 1ppH70-005RJM-QK; Thu, 20 Apr 2023 09:21:18 +1000
-Date:   Thu, 20 Apr 2023 09:21:18 +1000
-From:   Dave Chinner <david@fromorbit.com>
-To:     "Darrick J. Wong" <djwong@kernel.org>
-Cc:     Mike Snitzer <snitzer@kernel.org>,
-        Sarthak Kukreti <sarthakkukreti@chromium.org>,
-        dm-devel@redhat.com, linux-block@vger.kernel.org,
+        Wed, 19 Apr 2023 17:48:56 -0700 (PDT)
+From:   Sarthak Kukreti <sarthakkukreti@chromium.org>
+To:     dm-devel@redhat.com, linux-block@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
-        Theodore Ts'o <tytso@mit.edu>,
+        linux-fsdevel@vger.kernel.org
+Cc:     Jens Axboe <axboe@kernel.dk>,
         "Michael S. Tsirkin" <mst@redhat.com>,
         Jason Wang <jasowang@redhat.com>,
-        Bart Van Assche <bvanassche@google.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Daniil Lunev <dlunev@google.com>,
         Stefan Hajnoczi <stefanha@redhat.com>,
+        Alasdair Kergon <agk@redhat.com>,
+        Mike Snitzer <snitzer@kernel.org>,
+        Christoph Hellwig <hch@infradead.org>,
         Brian Foster <bfoster@redhat.com>,
-        Alasdair Kergon <agk@redhat.com>
-Subject: Re: [PATCH v4 1/4] block: Introduce provisioning primitives
-Message-ID: <20230419232118.GL447837@dread.disaster.area>
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Bart Van Assche <bvanassche@google.com>,
+        Daniil Lunev <dlunev@google.com>,
+        "Darrick J. Wong" <djwong@kernel.org>
+Subject: [PATCH v5 1/5] block: Don't invalidate pagecache for invalid falloc modes
+Date:   Wed, 19 Apr 2023 17:48:46 -0700
+Message-ID: <20230420004850.297045-2-sarthakkukreti@chromium.org>
+X-Mailer: git-send-email 2.40.0.634.g4ca3ef3211-goog
+In-Reply-To: <20230420004850.297045-1-sarthakkukreti@chromium.org>
 References: <20230414000219.92640-1-sarthakkukreti@chromium.org>
- <20230418221207.244685-1-sarthakkukreti@chromium.org>
- <20230418221207.244685-2-sarthakkukreti@chromium.org>
- <20230419153611.GE360885@frogsfrogsfrogs>
- <ZEAUHnWqt9cIiJRb@redhat.com>
- <20230419172602.GE360881@frogsfrogsfrogs>
+ <20230420004850.297045-1-sarthakkukreti@chromium.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20230419172602.GE360881@frogsfrogsfrogs>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Apr 19, 2023 at 10:26:02AM -0700, Darrick J. Wong wrote:
-> On Wed, Apr 19, 2023 at 12:17:34PM -0400, Mike Snitzer wrote:
-> > (And obviously needs fixing independent of this patchset)
-> > 
-> > Shouldn't mkfs first check that the underlying storage supports
-> > REQ_OP_PROVISION by verifying
-> > /sys/block/<dev>/queue/provision_max_bytes exists and is not 0?
-> > (Just saying, we need to add new features more defensively.. you just
-> > made the case based on this scenario's implications alone)
-> 
-> Not for fallocate -- for regular files, there's no way to check if the
-> filesystem actually supports the operation requested other than to try
-> it and see if it succeeds.  We probably should've defined a DRY_RUN flag
-> for that purpose back when it was introduced.
+Only call truncate_bdev_range() if the fallocate mode is
+supported. This fixes a bug where data in the pagecache
+could be invalidated if the fallocate() was called on the
+block device with an invalid mode.
 
-That ignores the fact that fallocate() was never intended to
-guarantee it will work in all contexts - it's an advisory interface
-at it's most basic level. If the call succeeds, then great, it does
-what is says on the box, but if it fails then it should have no
-visible effect on user data at all and the application still needs
-to perform whatever modification it needed done in some other way.
+Fixes: 25f4c41415e5 ("block: implement (some of) fallocate for block devices")
+Signed-off-by: Sarthak Kukreti <sarthakkukreti@chromium.org>
+---
+ block/fops.c | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
 
-IOWs, calling it one a block device without first checking if the
-block device supports that fallocate operation is exactly how it is
-supposed to be used. If the kernel can't handle this gracefully
-without corrupting data, then that's a kernel bug and not an
-application problem.
-
-> For fallocate calls to block devices, yes, the program can check the
-> queue limits in sysfs if fstat says the supplied path is a block device,
-> but I don't know that most programs are that thorough.  The fallocate(1)
-> CLI program does not check.
-
-Right. fallocate() was intended to just do the right thing without
-the application having to jump thrown an unknown number of hoops to
-determine if fallocate() can be used or not in the context it is
-executing in.  The kernel implementation is supposed to abstract all that
-context-dependent behaviour away from the application; all the
-application has to do is implement the fallocate() fast path and a
-single generic "do the right thing the slow way" fallback when the
-fallocate() method it called is not supported...
-
--Dave.
+diff --git a/block/fops.c b/block/fops.c
+index d2e6be4e3d1c..2fd7e8b9ab48 100644
+--- a/block/fops.c
++++ b/block/fops.c
+@@ -648,25 +648,27 @@ static long blkdev_fallocate(struct file *file, int mode, loff_t start,
+ 
+ 	filemap_invalidate_lock(inode->i_mapping);
+ 
+-	/* Invalidate the page cache, including dirty pages. */
+-	error = truncate_bdev_range(bdev, file->f_mode, start, end);
+-	if (error)
+-		goto fail;
+-
++	/*
++	 * Invalidate the page cache, including dirty pages, for valid
++	 * de-allocate mode calls to fallocate().
++	 */
+ 	switch (mode) {
+ 	case FALLOC_FL_ZERO_RANGE:
+ 	case FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE:
+-		error = blkdev_issue_zeroout(bdev, start >> SECTOR_SHIFT,
++		error = truncate_bdev_range(bdev, file->f_mode, start, end) ||
++			blkdev_issue_zeroout(bdev, start >> SECTOR_SHIFT,
+ 					     len >> SECTOR_SHIFT, GFP_KERNEL,
+ 					     BLKDEV_ZERO_NOUNMAP);
+ 		break;
+ 	case FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE:
+-		error = blkdev_issue_zeroout(bdev, start >> SECTOR_SHIFT,
++		error = truncate_bdev_range(bdev, file->f_mode, start, end) ||
++			blkdev_issue_zeroout(bdev, start >> SECTOR_SHIFT,
+ 					     len >> SECTOR_SHIFT, GFP_KERNEL,
+ 					     BLKDEV_ZERO_NOFALLBACK);
+ 		break;
+ 	case FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE | FALLOC_FL_NO_HIDE_STALE:
+-		error = blkdev_issue_discard(bdev, start >> SECTOR_SHIFT,
++		error = truncate_bdev_range(bdev, file->f_mode, start, end) ||
++			blkdev_issue_discard(bdev, start >> SECTOR_SHIFT,
+ 					     len >> SECTOR_SHIFT, GFP_KERNEL);
+ 		break;
+ 	default:
 -- 
-Dave Chinner
-david@fromorbit.com
+2.40.0.634.g4ca3ef3211-goog
+
