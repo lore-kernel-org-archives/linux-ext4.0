@@ -2,96 +2,128 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B68F9C77B73
-	for <linux-ext4@archiver.kernel.org>; Thu, 20 Apr 2023 16:22:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 53EE5C77B73
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Apr 2023 16:51:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231256AbjDTQW0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 20 Apr 2023 12:22:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41846 "EHLO
+        id S229704AbjDTQvj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 20 Apr 2023 12:51:39 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60396 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234590AbjDTQWW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Apr 2023 12:22:22 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 01D8C4EEB
-        for <linux-ext4@vger.kernel.org>; Thu, 20 Apr 2023 09:22:13 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 33KGLn4A022422
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 20 Apr 2023 12:21:51 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1682007713; bh=Pgoib2xJLamlh14Ws3Aj+acQ/+ZcnQAq6JGT3R0x8hE=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=iV5w4qFe2rHE2zHGxyJL3EyEqolylwCFLa9jV9nG9k6/Q3O7AOYmQOUec87r0uB58
-         emoSOE/H29x72MCp4y3g6zLDtWMIEzAQ2Wc3BB1rslVE/9Un1rgpe8oh4pVL8w7ch+
-         zzjLEgrNXmrAFKW6FEY3qVAqwzkHWnqYnZhtF6Deuyo78WE4xm1OwGcVN5cvsElMa7
-         pxTdrX5z9e2MehHsLGsih5e/f74roACGbKohzbzd3XkaZxERSm/nrwfFJQxySJA4KQ
-         WGFk6/3jzEtLXrTyMDgQH2tc4A+t9zFBd9d8gCY8k0swOO2yRg4VPkqv1dhRQ9k/RB
-         W6wSMYQv9LR/w==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id E9B4E15C543F; Thu, 20 Apr 2023 09:47:12 -0400 (EDT)
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     adilger.kernel@dilger.ca, jack@suse.cz, ritesh.list@gmail.com,
-        lczerner@redhat.com, linux-ext4@vger.kernel.org,
-        Jason Yan <yanaijie@huawei.com>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>
-Subject: Re: [PATCH 0/8] some refactor of __ext4_fill_super(), part 2.
-Date:   Thu, 20 Apr 2023 09:47:11 -0400
-Message-Id: <168199842264.1078192.15929592065751634681.b4-ty@mit.edu>
-X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230323140517.1070239-1-yanaijie@huawei.com>
-References: <20230323140517.1070239-1-yanaijie@huawei.com>
+        with ESMTP id S229579AbjDTQvj (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Apr 2023 12:51:39 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2831B269E;
+        Thu, 20 Apr 2023 09:51:38 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id BA02E64AB8;
+        Thu, 20 Apr 2023 16:51:37 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C1979C433EF;
+        Thu, 20 Apr 2023 16:51:36 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1682009497;
+        bh=gHK+hdAcuU5ofvzwMj41uJvVD9wpUSxv26wdE+c3IuU=;
+        h=From:Date:Subject:To:Cc:From;
+        b=GO5P+rmHlfogAbiSBl3cKO8jDfIt5axbZnaMRRSO4ab0xkSfhyRNhPp9tEnbHuz/O
+         mnLadyGrasIuaUbVUEIbmroW4i36UP3sA5VmDs29X4WDhwBo2gi4oqKmgyS5xHmFlE
+         oyrRQcwlcFs9MWJ5kAhNC/MixlG+wsqW9m+GRg1DP7rBsuTl/LDYLCaBDl+LSJzVdh
+         8nn/B5U/nfDjhukSTZ5Ze05NBuK2ufeTCK/DZxcdR/Qdn0UkDkxwCrv/UV/4Izpi2Y
+         GOB9N0+2WyngOimR0of44o2Fi0z6QuBEOrAjih982Oy+tA/BfTmuvUOMgo79q+qp97
+         ZRPtpZjlz4TNg==
+From:   Nathan Chancellor <nathan@kernel.org>
+Date:   Thu, 20 Apr 2023 09:51:24 -0700
+Subject: [PATCH] ext4: Fix unused iterator variable warnings
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: 7bit
+Message-Id: <20230420-ext4-unused-variables-super-c-v1-1-138b6db6c21c@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAIttQWQC/x2N0QqDMAwAf0XyvECtCtt+ZewhbbMZ2DpJrAjiv
+ 1v3eBzcbWCswgb3ZgPlRUx+uUJ7aSCOlN+MkiqDd75zvXfI69xjycU44UIqFD5saGVixYiRQqJ
+ huKZb10JtBDLGoJTjeFa+ZDPrKSbll6z/8eO57wezizuTiAAAAA==
+To:     tytso@mit.edu, adilger.kernel@dilger.ca
+Cc:     yanaijie@huawei.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Nathan Chancellor <nathan@kernel.org>
+X-Mailer: b4 0.13-dev
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2345; i=nathan@kernel.org;
+ h=from:subject:message-id; bh=gHK+hdAcuU5ofvzwMj41uJvVD9wpUSxv26wdE+c3IuU=;
+ b=owGbwMvMwCEmm602sfCA1DTG02pJDCmOuTOCVX+4fv8vFsNXdagsOFJug8aEY98i1sns/7XXY
+ UHzsUvHO0pZGMQ4GGTFFFmqH6seNzScc5bxxqlJMHNYmUCGMHBxCsBEpK8y/OG/evHBis/HeMKk
+ FwvZbdpTe/niX/OIRbUJknmly3QkmV8z/C/58COjZZKdSuVzUTXFpZESu65xJQQ2MUufMeb+JdZ
+ 5mRsA
+X-Developer-Key: i=nathan@kernel.org; a=openpgp;
+ fpr=2437CB76E544CB6AB3D9DFD399739260CB6CB716
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+When CONFIG_QUOTA is disabled, there are warnings around unused iterator
+variables:
 
-On Thu, 23 Mar 2023 22:05:09 +0800, Jason Yan wrote:
-> This is a continuous effort to make __ext4_fill_super() shorter and more
-> readable. The previous work is here[1]. I'm using my spare time to do this
-> work so it's a bit late after the previous series.
-> 
-> [1] http://patchwork.ozlabs.org/project/linux-ext4/cover/20220916141527.1012715-1-yanaijie@huawei.com/
-> 
-> Jason Yan (8):
->   ext4: factor out ext4_hash_info_init()
->   ext4: factor out ext4_percpu_param_init() and
->     ext4_percpu_param_destroy()
->   ext4: use ext4_group_desc_free() in ext4_put_super() to save some
->     duplicated code
->   ext4: factor out ext4_flex_groups_free()
->   ext4: rename two functions with 'check'
->   ext4: move s_reserved_gdt_blocks and addressable checking into
->     ext4_check_geometry()
->   ext4: factor out ext4_block_group_meta_init()
->   ext4: move dax and encrypt checking into
->     ext4_check_feature_compatibility()
-> 
-> [...]
+  fs/ext4/super.c: In function 'ext4_put_super':
+  fs/ext4/super.c:1262:13: error: unused variable 'i' [-Werror=unused-variable]
+   1262 |         int i, err;
+        |             ^
+  fs/ext4/super.c: In function '__ext4_fill_super':
+  fs/ext4/super.c:5200:22: error: unused variable 'i' [-Werror=unused-variable]
+   5200 |         unsigned int i;
+        |                      ^
+  cc1: all warnings being treated as errors
 
-Applied, thanks!
+The kernel has updated to gnu11, allowing the variables to be declared
+within the for loop. Do so to clear up the warnings.
 
-[1/8] ext4: factor out ext4_hash_info_init()
-      commit: db9345d9e6f075e1ec26afadf744078ead935fec
-[2/8] ext4: factor out ext4_percpu_param_init() and ext4_percpu_param_destroy()
-      commit: 1f79467c8a6be64940a699de1bd43338a6dd9fdd
-[3/8] ext4: use ext4_group_desc_free() in ext4_put_super() to save some duplicated code
-      commit: 6ef684988816fdfa29ceff260c97d725a489a942
-[4/8] ext4: factor out ext4_flex_groups_free()
-      commit: dcbf87589d90e3bd5a5a4cf832517f22f3c55efb
-[5/8] ext4: rename two functions with 'check'
-      commit: 68e624398f7df3fd91d4a4cd148e722a18d76054
-[6/8] ext4: move s_reserved_gdt_blocks and addressable checking into ext4_check_geometry()
-      commit: 269e9226c29fbfe7f66a324d6d32d4a53bcffbbe
-[7/8] ext4: factor out ext4_block_group_meta_init()
-      commit: 107d2be90116a1731d2d81296100c0a4c454a89f
-[8/8] ext4: move dax and encrypt checking into ext4_check_feature_compatibility()
-      commit: 54902099b1d8b62bea7cfd949aa3acd9eae1c3db
+Fixes: dcbf87589d90 ("ext4: factor out ext4_flex_groups_free()")
+Signed-off-by: Nathan Chancellor <nathan@kernel.org>
+---
+ fs/ext4/super.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 403cc0e6cd65..f16492b8c98d 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1259,7 +1259,7 @@ static void ext4_put_super(struct super_block *sb)
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_super_block *es = sbi->s_es;
+ 	int aborted = 0;
+-	int i, err;
++	int err;
+ 
+ 	/*
+ 	 * Unregister sysfs before destroying jbd2 journal.
+@@ -1311,7 +1311,7 @@ static void ext4_put_super(struct super_block *sb)
+ 	ext4_flex_groups_free(sbi);
+ 	ext4_percpu_param_destroy(sbi);
+ #ifdef CONFIG_QUOTA
+-	for (i = 0; i < EXT4_MAXQUOTAS; i++)
++	for (int i = 0; i < EXT4_MAXQUOTAS; i++)
+ 		kfree(get_qf_name(sb, sbi, i));
+ #endif
+ 
+@@ -5197,7 +5197,6 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 	ext4_fsblk_t logical_sb_block;
+ 	struct inode *root;
+ 	int ret = -ENOMEM;
+-	unsigned int i;
+ 	int needs_recovery;
+ 	int err = 0;
+ 	ext4_group_t first_not_zeroed;
+@@ -5628,7 +5627,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ #endif
+ 
+ #ifdef CONFIG_QUOTA
+-	for (i = 0; i < EXT4_MAXQUOTAS; i++)
++	for (unsigned int i = 0; i < EXT4_MAXQUOTAS; i++)
+ 		kfree(get_qf_name(sb, sbi, i));
+ #endif
+ 	fscrypt_free_dummy_policy(&sbi->s_dummy_enc_policy);
+
+---
+base-commit: 519fe1bae7e20fc4e7f179d50b6102b49980e85d
+change-id: 20230420-ext4-unused-variables-super-c-cabda558d931
 
 Best regards,
 -- 
-Theodore Ts'o <tytso@mit.edu>
+Nathan Chancellor <nathan@kernel.org>
+
