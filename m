@@ -2,34 +2,34 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B2C66C77B61
-	for <linux-ext4@archiver.kernel.org>; Mon, 24 Apr 2023 03:40:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 51C80C77B76
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Apr 2023 03:40:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230493AbjDXDkG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 23 Apr 2023 23:40:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35472 "EHLO
+        id S230475AbjDXDkH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 23 Apr 2023 23:40:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35520 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230419AbjDXDju (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Apr 2023 23:39:50 -0400
-Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E7C3C2D50;
-        Sun, 23 Apr 2023 20:39:46 -0700 (PDT)
-Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.53])
-        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4Q4W7r5ZzxzKtYv;
-        Mon, 24 Apr 2023 11:38:48 +0800 (CST)
+        with ESMTP id S230432AbjDXDjv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Apr 2023 23:39:51 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F01142D78;
+        Sun, 23 Apr 2023 20:39:47 -0700 (PDT)
+Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.57])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4Q4W4W6rdDznf6g;
+        Mon, 24 Apr 2023 11:35:55 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
  (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.23; Mon, 24 Apr
- 2023 11:39:44 +0800
+ 2023 11:39:45 +0800
 From:   Baokun Li <libaokun1@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <ritesh.list@gmail.com>, <linux-kernel@vger.kernel.org>,
         <yi.zhang@huawei.com>, <yangerkun@huawei.com>,
         <yukuai3@huawei.com>, <libaokun1@huawei.com>
-Subject: [PATCH v4 10/12] ext4: make ext4_es_insert_delayed_block() return void
-Date:   Mon, 24 Apr 2023 11:38:44 +0800
-Message-ID: <20230424033846.4732-11-libaokun1@huawei.com>
+Subject: [PATCH v4 12/12] ext4: make ext4_zeroout_es() return void
+Date:   Mon, 24 Apr 2023 11:38:46 +0800
+Message-ID: <20230424033846.4732-13-libaokun1@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20230424033846.4732-1-libaokun1@huawei.com>
 References: <20230424033846.4732-1-libaokun1@huawei.com>
@@ -44,109 +44,60 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now it never fails when inserting a delay extent, so the return value in
-ext4_es_insert_delayed_block is no longer necessary, let it return void.
+After ext4_es_insert_extent() returns void, the return value in
+ext4_zeroout_es() is also unnecessary, so make it return void too.
 
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 ---
- fs/ext4/extents_status.c | 10 ++++------
- fs/ext4/extents_status.h |  4 ++--
- fs/ext4/inode.c          | 10 ++--------
- 3 files changed, 8 insertions(+), 16 deletions(-)
+ fs/ext4/extents.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 2a394c40f4b7..b12c5cfdf601 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -2020,11 +2020,9 @@ bool ext4_is_pending(struct inode *inode, ext4_lblk_t lblk)
-  * @lblk - logical block to be added
-  * @allocated - indicates whether a physical cluster has been allocated for
-  *              the logical cluster that contains the block
-- *
-- * Returns 0 on success, negative error code on failure.
-  */
--int ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
--				 bool allocated)
-+void ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
-+				  bool allocated)
- {
- 	struct extent_status newes;
- 	int err1 = 0;
-@@ -2033,7 +2031,7 @@ int ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
- 	struct extent_status *es2 = NULL;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index d555ed924f37..6c3080830b00 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3123,7 +3123,7 @@ void ext4_ext_release(struct super_block *sb)
+ #endif
+ }
  
- 	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
+-static int ext4_zeroout_es(struct inode *inode, struct ext4_extent *ex)
++static void ext4_zeroout_es(struct inode *inode, struct ext4_extent *ex)
+ {
+ 	ext4_lblk_t  ee_block;
+ 	ext4_fsblk_t ee_pblock;
+@@ -3134,11 +3134,10 @@ static int ext4_zeroout_es(struct inode *inode, struct ext4_extent *ex)
+ 	ee_pblock = ext4_ext_pblock(ex);
+ 
+ 	if (ee_len == 0)
 -		return 0;
 +		return;
  
- 	es_debug("add [%u/1) delayed to extent status tree of inode %lu\n",
- 		 lblk, inode->i_ino);
-@@ -2075,7 +2073,7 @@ int ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
- 
- 	ext4_es_print_tree(inode);
- 	ext4_print_pending_tree(inode);
+ 	ext4_es_insert_extent(inode, ee_block, ee_len, ee_pblock,
+ 			      EXTENT_STATUS_WRITTEN);
 -	return 0;
-+	return;
  }
  
- /*
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index 526a68890aa6..c22edb931f1b 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -249,8 +249,8 @@ extern void ext4_exit_pending(void);
- extern void ext4_init_pending_tree(struct ext4_pending_tree *tree);
- extern void ext4_remove_pending(struct inode *inode, ext4_lblk_t lblk);
- extern bool ext4_is_pending(struct inode *inode, ext4_lblk_t lblk);
--extern int ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
--					bool allocated);
-+extern void ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
-+					 bool allocated);
- extern unsigned int ext4_es_delayed_clu(struct inode *inode, ext4_lblk_t lblk,
- 					ext4_lblk_t len);
- extern void ext4_clear_inode_es(struct inode *inode);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index a0bfe77d5537..4221b2dafeb5 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1641,9 +1641,8 @@ static void ext4_print_free_blocks(struct inode *inode)
- static int ext4_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
--	int ret;
-+	int ret = 0;
- 	bool allocated = false;
--	bool reserved = false;
- 
- 	/*
- 	 * If the cluster containing lblk is shared with a delayed,
-@@ -1660,7 +1659,6 @@ static int ext4_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk)
- 		ret = ext4_da_reserve_space(inode);
- 		if (ret != 0)   /* ENOSPC */
- 			goto errout;
--		reserved = true;
- 	} else {   /* bigalloc */
- 		if (!ext4_es_scan_clu(inode, &ext4_es_is_delonly, lblk)) {
- 			if (!ext4_es_scan_clu(inode,
-@@ -1673,7 +1671,6 @@ static int ext4_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk)
- 					ret = ext4_da_reserve_space(inode);
- 					if (ret != 0)   /* ENOSPC */
- 						goto errout;
--					reserved = true;
- 				} else {
- 					allocated = true;
- 				}
-@@ -1683,10 +1680,7 @@ static int ext4_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk)
- 		}
+ /* FIXME!! we need to try to merge to left or right after zero-out  */
+@@ -3288,7 +3287,7 @@ static int ext4_split_extent_at(handle_t *handle,
+ 			err = ext4_ext_dirty(handle, inode, path + path->p_depth);
+ 			if (!err)
+ 				/* update extent status tree */
+-				err = ext4_zeroout_es(inode, &zero_ex);
++				ext4_zeroout_es(inode, &zero_ex);
+ 			/* If we failed at this point, we don't know in which
+ 			 * state the extent tree exactly is so don't try to fix
+ 			 * length of the original extent as it may do even more
+@@ -3641,9 +3640,8 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ out:
+ 	/* If we have gotten a failure, don't zero out status tree */
+ 	if (!err) {
+-		err = ext4_zeroout_es(inode, &zero_ex1);
+-		if (!err)
+-			err = ext4_zeroout_es(inode, &zero_ex2);
++		ext4_zeroout_es(inode, &zero_ex1);
++		ext4_zeroout_es(inode, &zero_ex2);
  	}
- 
--	ret = ext4_es_insert_delayed_block(inode, lblk, allocated);
--	if (ret && reserved)
--		ext4_da_release_space(inode, 1);
--
-+	ext4_es_insert_delayed_block(inode, lblk, allocated);
- errout:
- 	return ret;
+ 	return err ? err : allocated;
  }
 -- 
 2.31.1
