@@ -2,90 +2,71 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 026BEC77B60
-	for <linux-ext4@archiver.kernel.org>; Wed, 26 Apr 2023 23:07:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 02133C77B7C
+	for <linux-ext4@archiver.kernel.org>; Wed, 26 Apr 2023 23:12:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236225AbjDZXHZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 26 Apr 2023 19:07:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36076 "EHLO
+        id S236172AbjDZXMx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 26 Apr 2023 19:12:53 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38450 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233809AbjDZXHX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Apr 2023 19:07:23 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 059BE2694;
-        Wed, 26 Apr 2023 16:07:22 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 8B97363998;
-        Wed, 26 Apr 2023 23:07:21 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id DA025C4339C;
-        Wed, 26 Apr 2023 23:07:20 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1682550440;
-        bh=71/XsA8gAmo1yutYZ1cS0twFrW61Rssu2AmOx0Z5eqs=;
-        h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
-        b=LCsCJGnd35MidYfxnMlF2ceb389n1B9U+KnzrgVKwgz5bAx1JzOufQeZ/SGRGVkkX
-         AkwL7o7IUXB84i3Vrp+2dYvTEB2raGyt1bPfIePkPzimyVl0QF0nykjXoFPdK/iGyF
-         xmS+0hcVEEqQ/mzOQIEuWBo+aNi0OdLZoD2sU5j7TMMHl0xiWsv3YDVAgdm/lv4bBl
-         2hkD0FnZL1h9SA7ETWRkHuT5vigtQxRgpaiySgxZcycuzc9OCObp4SvRjW6CqNYxGL
-         A85Yr6YutIEXIGmgBh1OeDzgtzNYHzp8kT1wAHqE0jDNsJNShVauqRfHNLAzt5GYDW
-         hhMvyD5bq6lZw==
-Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
-        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id B47F5E270D8;
-        Wed, 26 Apr 2023 23:07:20 +0000 (UTC)
-Content-Type: text/plain; charset="utf-8"
+        with ESMTP id S236034AbjDZXMv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Apr 2023 19:12:51 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3989E30DA
+        for <linux-ext4@vger.kernel.org>; Wed, 26 Apr 2023 16:12:45 -0700 (PDT)
+Received: from letrec.thunk.org ([76.150.80.181])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 33QNC4rL018996
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Wed, 26 Apr 2023 19:12:05 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1682550727; bh=a28AE7O4X83WWFRQ6/mRv8wwHivs9drRMGuAgV2hNZk=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To;
+        b=kY28SrgCLZILV53+lsfg5h5l4QnFMhzMkUbS0hwj0iZDGfLlswNTyZ2M31mmjDvJw
+         ifLN2AaAgKQKDA43ZILHlq2+tJl/xEC/dGageHbtWrvOC8KfQvO+IxJngJPeudtbD+
+         Hx86xFyGSUkznglbZHZWlImznZY2MWZ2L2PZ2gxLUMsnOb/h0Wm0c5JacwJcwM8yE9
+         YZRpbkgG6hL56MW2lj0/xLKMntGZ74EvoK0mNviWl6fPbfpJ40lteUNViJ+bp41OA5
+         hmTCRvNC32iQoOIpTENMRjv9qooe7XZIzYMDmh5dG43++p8qTwj3zryE1WoDQs3uUe
+         +nX8+YLtZSWaA==
+Received: by letrec.thunk.org (Postfix, from userid 15806)
+        id CC6718C01FA; Wed, 26 Apr 2023 19:12:03 -0400 (EDT)
+Date:   Wed, 26 Apr 2023 19:12:03 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Matthew Wilcox <willy@infradead.org>
+Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
+        Nathan Chancellor <nathan@kernel.org>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Dan Carpenter <error27@gmail.com>
+Subject: Re: [GIT PULL] ext4 changes for the 6.4 merge window
+Message-ID: <ZEmvw4x+M+4kgENG@mit.edu>
+References: <20230425041838.GA150312@mit.edu>
+ <CAHk-=wiP0983VQYvhgJQgvk-VOwSfwNQUiy5RLr_ipz8tbaK4Q@mail.gmail.com>
+ <ZEl3QmF1PYXKaBTz@casper.infradead.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Subject: Re: [f2fs-dev] [PATCH v3 00/10] acl: drop posix acl handlers from xattr
- handlers
-From:   patchwork-bot+f2fs@kernel.org
-Message-Id: <168255044073.16014.8337870090900748986.git-patchwork-notify@kernel.org>
-Date:   Wed, 26 Apr 2023 23:07:20 +0000
-References: <20230125-fs-acl-remove-generic-xattr-handlers-v3-0-f760cc58967d@kernel.org>
-In-Reply-To: <20230125-fs-acl-remove-generic-xattr-handlers-v3-0-f760cc58967d@kernel.org>
-To:     Christian Brauner <brauner@kernel.org>
-Cc:     linux-fsdevel@vger.kernel.org, hch@lst.de,
-        linux-unionfs@vger.kernel.org, reiserfs-devel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, viro@zeniv.linux.org.uk,
-        linux-ext4@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        sforshee@kernel.org
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <ZEl3QmF1PYXKaBTz@casper.infradead.org>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello:
-
-This patch was applied to jaegeuk/f2fs.git (dev)
-by Christian Brauner (Microsoft) <brauner@kernel.org>:
-
-On Wed, 01 Feb 2023 14:14:51 +0100 you wrote:
-> Hey everyone,
+On Wed, Apr 26, 2023 at 08:10:58PM +0100, Matthew Wilcox wrote:
 > 
-> After we finished the introduction of the new posix acl api last cycle
-> we still left the generic POSIX ACL xattr handlers around in the
-> filesystems xattr handlers for two reasons:
+> This feels like something smatch could catch.  Adding Dan.
 > 
-> (1) Because a few filesystems rely on the ->list() method of the generic
->     POSIX ACL xattr handlers in their ->listxattr() inode operation.
-> (2) POSIX ACLs are only available if IOP_XATTR is raised. The IOP_XATTR
->     flag is raised in inode_init_always() based on whether the
->     sb->s_xattr pointer is non-NULL. IOW, the registered xattr handlers
->     of the filesystem are used to raise IOP_XATTR.
->     If we were to remove the generic POSIX ACL xattr handlers from all
->     filesystems we would risk regressing filesystems that only implement
->     POSIX ACL support and no other xattrs (nfs3 comes to mind).
-> 
-> [...]
+> Unfortunately, I don't know that we have any buildbots that run smatch,
+> and most developers don't, so it'll always be an after-the-fact patch
+> to fix it rather than "anybody using W=1" or "anybody using C=1" will
+> catch it before it gets anywhere near a maintainer.
 
-Here is the summary with links:
-  - [f2fs-dev,v3,05/10] fs: simplify ->listxattr() implementation
-    https://git.kernel.org/jaegeuk/f2fs/c/a5488f29835c
+Well, if we can ask Mark Brown to run smatch on linux-next, we can
+catch most of these things quickly; in fact, this would have been
+*only* caught on linux-next, since in this case, we got caught out by
+a change in a function signature happening in one tree, and a new use
+of that function in another tree.
 
-You are awesome, thank you!
--- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/patchwork/pwbot.html
+Is this something that we could teach sparse to catch?
 
-
+   		       	  	      	     	- Ted
