@@ -2,120 +2,74 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0D9C8C77B60
-	for <linux-ext4@archiver.kernel.org>; Sun, 30 Apr 2023 17:58:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 446D0C77B60
+	for <linux-ext4@archiver.kernel.org>; Sun, 30 Apr 2023 17:59:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230235AbjD3R6C (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 30 Apr 2023 13:58:02 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57162 "EHLO
+        id S230374AbjD3R7h (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 30 Apr 2023 13:59:37 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57262 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229596AbjD3R6B (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 30 Apr 2023 13:58:01 -0400
-X-Greylist: delayed 63 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Sun, 30 Apr 2023 10:57:59 PDT
-Received: from mail3-relais-sop.national.inria.fr (mail3-relais-sop.national.inria.fr [192.134.164.104])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B5CC41992
-        for <linux-ext4@vger.kernel.org>; Sun, 30 Apr 2023 10:57:59 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-  d=inria.fr; s=dc;
-  h=date:from:to:cc:subject:message-id:mime-version;
-  bh=4Mqtu1t9eePALD3efCrUxAu5RMuT1favQiL1IkZSMjM=;
-  b=cJYGMwV99Hes8LvxWP2JPujgfsZA+zY0YhjgJRHdAo+XRipr0TjgKtgO
-   rj51jRgtROjwpk3bd0UAtPAIpTAwPKhkhoAizykQOlhamD3/zbRPdQjKb
-   HB8YcgzVr+dWEZ8Q2AdB+lG9eBVpSD+756zCk5LqABZtsXzS0en2KAsah
-   Q=;
-Authentication-Results: mail3-relais-sop.national.inria.fr; dkim=none (message not signed) header.i=none; spf=SoftFail smtp.mailfrom=julia.lawall@inria.fr; dmarc=fail (p=none dis=none) d=inria.fr
-X-IronPort-AV: E=Sophos;i="5.99,239,1677538800"; 
-   d="scan'208";a="54742619"
-Received: from 231.85.89.92.rev.sfr.net (HELO hadrien) ([92.89.85.231])
-  by mail3-relais-sop.national.inria.fr with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 30 Apr 2023 19:56:55 +0200
-Date:   Sun, 30 Apr 2023 19:56:54 +0200 (CEST)
-From:   Julia Lawall <julia.lawall@inria.fr>
-X-X-Sender: jll@hadrien
-To:     Theodore Ts'o <tytso@mit.edu>
-cc:     linux-ext4@vger.kernel.org, oe-kbuild-all@lists.linux.dev,
-        lkp@intel.com
-Subject: [tytso-ext4:test 112/113] fs/ext4/mballoc.c:2598:6-9: duplicated
- argument to && or || (fwd)
-Message-ID: <alpine.DEB.2.22.394.2304301956001.3000@hadrien>
-User-Agent: Alpine 2.22 (DEB 394 2020-01-19)
+        with ESMTP id S229596AbjD3R7g (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 30 Apr 2023 13:59:36 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C36B61992
+        for <linux-ext4@vger.kernel.org>; Sun, 30 Apr 2023 10:59:34 -0700 (PDT)
+Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 33UHx8C5016289
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sun, 30 Apr 2023 13:59:10 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1682877551; bh=fQoDw9Lx8Q2yffx7+iFh3/aPhT6B99JNicwJBnAe1mk=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References;
+        b=fClBy0CQ0dpIQRu89v7OA5LG7OkA54kN4+lmS1p+tuCHTDab5AA/UMLNAA92l0+lg
+         p5S6DnOJPjSwUtRVHlB+/v7394xcR/s+9z8+u6oOJ2nZNkO0S/NEycGh09Z/88m+t9
+         V3kc+cb3p3HlQ7b3MoGKynUMN+IbVuj4k3rkPhXmyUtQ0LPwEBUhghK70sLfF7a6bL
+         T4oAIltTqLXiYuEZBZZcbaMakGNJ6ZFM5+H141l2lMHgE6R+1OMKZwTuWopGXw4EHr
+         R4tgu/mapfZjGF0RqcUQHnuWYO7AoavVwuIPF0D1cBWmeroB5eJnEIoQHjmHJPpcJq
+         eXYMvB+Drb9qQ==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 86FD515C02E3; Sun, 30 Apr 2023 13:59:08 -0400 (EDT)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     adilger.kernel@dilger.ca, Nathan Chancellor <nathan@kernel.org>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, yanaijie@huawei.com,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: Fix unused iterator variable warnings
+Date:   Sun, 30 Apr 2023 13:59:06 -0400
+Message-Id: <168287753833.584010.6362113120710816488.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <20230420-ext4-unused-variables-super-c-v1-1-138b6db6c21c@kernel.org>
+References: <20230420-ext4-unused-variables-super-c-v1-1-138b6db6c21c@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-There is a double test of grp on line 2598.
 
-julia
+On Thu, 20 Apr 2023 09:51:24 -0700, Nathan Chancellor wrote:
+> When CONFIG_QUOTA is disabled, there are warnings around unused iterator
+> variables:
+> 
+>   fs/ext4/super.c: In function 'ext4_put_super':
+>   fs/ext4/super.c:1262:13: error: unused variable 'i' [-Werror=unused-variable]
+>    1262 |         int i, err;
+>         |             ^
+>   fs/ext4/super.c: In function '__ext4_fill_super':
+>   fs/ext4/super.c:5200:22: error: unused variable 'i' [-Werror=unused-variable]
+>    5200 |         unsigned int i;
+>         |                      ^
+>   cc1: all warnings being treated as errors
+> 
+> [...]
 
----------- Forwarded message ----------
-Date: Mon, 1 May 2023 01:53:12 +0800
-From: kernel test robot <lkp@intel.com>
-To: oe-kbuild@lists.linux.dev
-Cc: lkp@intel.com, Julia Lawall <julia.lawall@inria.fr>
-Subject: [tytso-ext4:test 112/113] fs/ext4/mballoc.c:2598:6-9: duplicated
-    argument to && or ||
+Applied, thanks!
 
-BCC: lkp@intel.com
-CC: oe-kbuild-all@lists.linux.dev
-CC: linux-ext4@vger.kernel.org
-TO: "Theodore Ts'o" <tytso@mit.edu>
+[1/1] ext4: Fix unused iterator variable warnings
+      commit: 856dd6c5981260b4d1aa84b78373ad54a203db48
 
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git test
-head:   493cc71f24795ab9afc311649f5d2c23f652fb1e
-commit: b9d6ed27a28439d79a90058587b2e3eeb2fcab73 [112/113] ext4: DO NOT MERGE: allow ext4_get_group_info() to fail
-:::::: branch date: 22 hours ago
-:::::: commit date: 25 hours ago
-config: i386-randconfig-c021 (https://download.01.org/0day-ci/archive/20230501/202305010128.IfRIXw8H-lkp@intel.com/config)
-compiler: gcc-11 (Debian 11.3.0-12) 11.3.0
-
-If you fix the issue, kindly add following tag where applicable
-| Reported-by: kernel test robot <lkp@intel.com>
-| Reported-by: Julia Lawall <julia.lawall@inria.fr>
-| Link: https://lore.kernel.org/r/202305010128.IfRIXw8H-lkp@intel.com/
-
-cocci warnings: (new ones prefixed by >>)
->> fs/ext4/mballoc.c:2598:6-9: duplicated argument to && or ||
-
-vim +2598 fs/ext4/mballoc.c
-
-cfd73237722135 Alex Zhuravlev 2020-04-21  2572
-cfd73237722135 Alex Zhuravlev 2020-04-21  2573  /*
-cfd73237722135 Alex Zhuravlev 2020-04-21  2574   * Prefetching reads the block bitmap into the buffer cache; but we
-cfd73237722135 Alex Zhuravlev 2020-04-21  2575   * need to make sure that the buddy bitmap in the page cache has been
-cfd73237722135 Alex Zhuravlev 2020-04-21  2576   * initialized.  Note that ext4_mb_init_group() will block if the I/O
-cfd73237722135 Alex Zhuravlev 2020-04-21  2577   * is not yet completed, or indeed if it was not initiated by
-cfd73237722135 Alex Zhuravlev 2020-04-21  2578   * ext4_mb_prefetch did not start the I/O.
-cfd73237722135 Alex Zhuravlev 2020-04-21  2579   *
-cfd73237722135 Alex Zhuravlev 2020-04-21  2580   * TODO: We should actually kick off the buddy bitmap setup in a work
-cfd73237722135 Alex Zhuravlev 2020-04-21  2581   * queue when the buffer I/O is completed, so that we don't block
-cfd73237722135 Alex Zhuravlev 2020-04-21  2582   * waiting for the block allocation bitmap read to finish when
-cfd73237722135 Alex Zhuravlev 2020-04-21  2583   * ext4_mb_prefetch_fini is called from ext4_mb_regular_allocator().
-cfd73237722135 Alex Zhuravlev 2020-04-21  2584   */
-3d392b2676bf31 Theodore Ts'o  2020-07-17  2585  void ext4_mb_prefetch_fini(struct super_block *sb, ext4_group_t group,
-cfd73237722135 Alex Zhuravlev 2020-04-21  2586  			   unsigned int nr)
-cfd73237722135 Alex Zhuravlev 2020-04-21  2587  {
-22fab984025313 Kemeng Shi     2023-03-04  2588  	struct ext4_group_desc *gdp;
-22fab984025313 Kemeng Shi     2023-03-04  2589  	struct ext4_group_info *grp;
-cfd73237722135 Alex Zhuravlev 2020-04-21  2590
-22fab984025313 Kemeng Shi     2023-03-04  2591  	while (nr-- > 0) {
-cfd73237722135 Alex Zhuravlev 2020-04-21  2592  		if (!group)
-cfd73237722135 Alex Zhuravlev 2020-04-21  2593  			group = ext4_get_groups_count(sb);
-cfd73237722135 Alex Zhuravlev 2020-04-21  2594  		group--;
-22fab984025313 Kemeng Shi     2023-03-04  2595  		gdp = ext4_get_group_desc(sb, group, NULL);
-cfd73237722135 Alex Zhuravlev 2020-04-21  2596  		grp = ext4_get_group_info(sb, group);
-cfd73237722135 Alex Zhuravlev 2020-04-21  2597
-b9d6ed27a28439 Theodore Ts'o  2023-04-29 @2598  		if (grp && grp && EXT4_MB_GRP_NEED_INIT(grp) &&
-cfd73237722135 Alex Zhuravlev 2020-04-21  2599  		    ext4_free_group_clusters(sb, gdp) > 0 &&
-cfd73237722135 Alex Zhuravlev 2020-04-21  2600  		    !(ext4_has_group_desc_csum(sb) &&
-cfd73237722135 Alex Zhuravlev 2020-04-21  2601  		      (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)))) {
-cfd73237722135 Alex Zhuravlev 2020-04-21  2602  			if (ext4_mb_init_group(sb, group, GFP_NOFS))
-cfd73237722135 Alex Zhuravlev 2020-04-21  2603  				break;
-cfd73237722135 Alex Zhuravlev 2020-04-21  2604  		}
-cfd73237722135 Alex Zhuravlev 2020-04-21  2605  	}
-cfd73237722135 Alex Zhuravlev 2020-04-21  2606  }
-cfd73237722135 Alex Zhuravlev 2020-04-21  2607
-
+Best regards,
 -- 
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests
+Theodore Ts'o <tytso@mit.edu>
