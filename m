@@ -2,116 +2,49 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DAC55C77B61
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 May 2023 13:26:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 23626C77B61
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 May 2023 14:46:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232455AbjEAN0Z (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 1 May 2023 09:26:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56604 "EHLO
+        id S232575AbjEAOqm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 1 May 2023 10:46:42 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54584 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232289AbjEAN0Y (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 May 2023 09:26:24 -0400
-Received: from mail-ej1-x632.google.com (mail-ej1-x632.google.com [IPv6:2a00:1450:4864:20::632])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0C73218E
-        for <linux-ext4@vger.kernel.org>; Mon,  1 May 2023 06:26:23 -0700 (PDT)
-Received: by mail-ej1-x632.google.com with SMTP id a640c23a62f3a-958bb7731a9so516580766b.0
-        for <linux-ext4@vger.kernel.org>; Mon, 01 May 2023 06:26:22 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=cloudflare.com; s=google; t=1682947581; x=1685539581;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=f9cyg065wfP6TddaAwGYXK4uibrlWAL6qKdFTwcry6o=;
-        b=gH2RedCByLlEpfX84KOzVmptYqV1qj09T1N+Mt5/QmRQyzNvfAZyWlYlVDHZ7DHbRe
-         yhngUYfb/Dc472mGvpihQH7X1MKAMAArlY3rmpXeNiGgkQnWSEeVnDPJ6/Gk9/F4tBXC
-         3IkSACUyB0p94ZdLwZbShWyXE4Kbep2AYfP/0=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1682947581; x=1685539581;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=f9cyg065wfP6TddaAwGYXK4uibrlWAL6qKdFTwcry6o=;
-        b=CcLtC6gx4fRWPhCe0on1tgwRylBT42shixhlwXozXiSJfDvNSuPNyw2eX5goV8DzxK
-         ackRewxeknGDS3HH9PX1j01kJKTKJ5VppLWQCGx2zaE25LwRUF+2+vlyozVPvLveO7Kp
-         YFCQq2iVmLFDRyZUh1ng3yC5ilqrP2ypg4fqbONxxLM2HVQu2eWjzUNaYkpBke+qEFfo
-         sYL7pATIcfnMPlNmvB+JzUbsCptav7RXKZxWNvjNvL3TRnj7AqW80XRchmbBPWH7zgMh
-         B5or5hpKePjloVs2K4525xl+Wi+y0UpBWu5Gcru2W0VYZOrZH9OJTsEsHZeo7K7C8XUN
-         6Vzg==
-X-Gm-Message-State: AC+VfDzkVJMhtNOGqsPTfBkc0u1svB5WhiQ3tQy0YRRtRKk61hGS8YhJ
-        LUWw9kud0RW0/LlwnAlu3OJkzg==
-X-Google-Smtp-Source: ACHHUZ4KfMpS92cFeoS88pft9NxrUges95GqscIkKaXM0aJe3FGT4ol/Gok4hZSMi1fA2xGjzwRI4g==
-X-Received: by 2002:a17:907:844:b0:961:8d21:a471 with SMTP id ww4-20020a170907084400b009618d21a471mr3970021ejb.58.1682947581367;
-        Mon, 01 May 2023 06:26:21 -0700 (PDT)
-Received: from cloudflare.com (apn-31-0-39-53.dynamic.gprs.plus.pl. [31.0.39.53])
-        by smtp.gmail.com with ESMTPSA id ho17-20020a1709070e9100b0094edfbd475csm14514115ejc.127.2023.05.01.06.26.20
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 01 May 2023 06:26:20 -0700 (PDT)
-From:   Jakub Sitnicki <jakub@cloudflare.com>
-To:     adilger.kernel@dilger.ca, jack@suse.cz, lczerner@redhat.com,
-        linux-ext4@vger.kernel.org, ritesh.list@gmail.com, tytso@mit.edu
-Cc:     yanaijie@huawei.com, kernel-team@cloudflare.com,
-        kernel test robot <lkp@intel.com>
-Subject: [PATCH] ext4: unbreak build with CONFIG_QUOTA=n
-Date:   Mon,  1 May 2023 15:26:19 +0200
-Message-Id: <20230501132619.161735-1-jakub@cloudflare.com>
-X-Mailer: git-send-email 2.40.0
+        with ESMTP id S232070AbjEAOql (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 May 2023 10:46:41 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 28D92E9
+        for <linux-ext4@vger.kernel.org>; Mon,  1 May 2023 07:46:39 -0700 (PDT)
+Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 341EkWjk009738
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Mon, 1 May 2023 10:46:33 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1682952394; bh=1hS6tpwzGBFwF1HZqIjNluK+tKVasJjPlzPNt1RRQLY=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To;
+        b=GauAwYSCr0/2MZCy8myAhxB3OYeUNr513J/F2VwN7Qo4CxmufnrkjHHwxRp6rPNI9
+         ruRKMBrHJI6Vx/5+SvpkpvwE8BQiWVFnhORyIqamOsfrwVRai+/C087Ko3N5Gwu+R3
+         Ih6iGIlYxUUIVqaseYrWmSgykX0cdMsMvl8JtA920jNL6C0NrOvE+xESI5VuhusFZ8
+         9KGVF2udZKHuJ1hPoG1KmYSmuDcdFQCSrlnhAqZPfvhBq6gc3hoLR+tL3ICkjN95B4
+         aZTXhzQfzhUBq4ukeCyFSRw00LPsF8IeGKDQEmIHQ2cDJ5RV0tL8Oz1+JGDhRqHfeX
+         EzWTk/O0i7nWA==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 212FB15C02E2; Mon,  1 May 2023 10:46:32 -0400 (EDT)
+Date:   Mon, 1 May 2023 10:46:32 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     syzbot <syzbot+fa1bbda326271b8808c9@syzkaller.appspotmail.com>
+Cc:     jack@suse.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com
+Subject: Re: [syzbot] possible deadlock in __jbd2_log_wait_for_space
+Message-ID: <20230501144632.GA599899@mit.edu>
+References: <000000000000994fbe05e5b5d4d9@google.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <000000000000994fbe05e5b5d4d9@google.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Commit dcbf87589d90 ("ext4: factor out ext4_flex_groups_free()") made some
-loop count variables unused when CONFIG_QUOTA is unset.
-
-Make the unused counters local to the loop scope to fix the build.
-
-Fixes: dcbf87589d90 ("ext4: factor out ext4_flex_groups_free()")
-Reported-by: kernel test robot <lkp@intel.com>
-Link: https://lore.kernel.org/oe-kbuild-all/202303240449.6Cg6YXJO-lkp@intel.com/
-Signed-off-by: Jakub Sitnicki <jakub@cloudflare.com>
----
- fs/ext4/super.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d03bf0ecf505..9b331ef593ea 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1259,7 +1259,7 @@ static void ext4_put_super(struct super_block *sb)
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_super_block *es = sbi->s_es;
- 	int aborted = 0;
--	int i, err;
-+	int err;
- 
- 	/*
- 	 * Unregister sysfs before destroying jbd2 journal.
-@@ -1311,7 +1311,7 @@ static void ext4_put_super(struct super_block *sb)
- 	ext4_flex_groups_free(sbi);
- 	ext4_percpu_param_destroy(sbi);
- #ifdef CONFIG_QUOTA
--	for (i = 0; i < EXT4_MAXQUOTAS; i++)
-+	for (int i = 0; i < EXT4_MAXQUOTAS; i++)
- 		kfree(get_qf_name(sb, sbi, i));
- #endif
- 
-@@ -5197,7 +5197,6 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 	ext4_fsblk_t logical_sb_block;
- 	struct inode *root;
- 	int ret = -ENOMEM;
--	unsigned int i;
- 	int needs_recovery;
- 	int err = 0;
- 	ext4_group_t first_not_zeroed;
-@@ -5628,7 +5627,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- #endif
- 
- #ifdef CONFIG_QUOTA
--	for (i = 0; i < EXT4_MAXQUOTAS; i++)
-+	for (int i = 0; i < EXT4_MAXQUOTAS; i++)
- 		kfree(get_qf_name(sb, sbi, i));
- #endif
- 	fscrypt_free_dummy_policy(&sbi->s_dummy_enc_policy);
--- 
-2.40.0
-
+#syz fix: ext4, jbd2: add an optimized bmap for the journal inode
