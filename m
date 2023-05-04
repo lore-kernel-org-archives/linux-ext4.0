@@ -2,44 +2,44 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DE046C7EE21
-	for <linux-ext4@archiver.kernel.org>; Thu,  4 May 2023 20:06:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E861DC7EE2F
+	for <linux-ext4@archiver.kernel.org>; Thu,  4 May 2023 20:06:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232296AbjEDUGC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 4 May 2023 16:06:02 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33896 "EHLO
+        id S232544AbjEDUGH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 4 May 2023 16:06:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51902 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232837AbjEDUFT (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 May 2023 16:05:19 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A075211B68;
-        Thu,  4 May 2023 12:53:07 -0700 (PDT)
+        with ESMTP id S232680AbjEDUE6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 May 2023 16:04:58 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8F56818DF8;
+        Thu,  4 May 2023 12:52:45 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 3FAD9637F4;
-        Thu,  4 May 2023 19:51:58 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B280FC4339C;
-        Thu,  4 May 2023 19:51:56 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id B14436383F;
+        Thu,  4 May 2023 19:51:42 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 53A9EC4339E;
+        Thu,  4 May 2023 19:51:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1683229917;
-        bh=iR/nlUNGNbVADlE07LBDuRJABnisqQ6YT/4eVXgThXU=;
+        s=k20201202; t=1683229902;
+        bh=kjDxpS1S+ouR3A6pmDzptiANECN9+w6b76/64cl+HkU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=BcvSbeVrZpEL5BhO4Xyz11qfL7M6f5g4VJaPbc5dh6nuLJtzfJ7qvczSMI+MegfK5
-         ibhgBEb2foEg0VEf2oqJYui17Y1TgkHTcNrHtIpRslLDBsjZ3XL9c9v56XOk7NsbFy
-         e+W9AnbAC+fgIPjKe4qkHWdqKF8YeNm7qCU40NtUWeQ18mPGc7mLViY47B59I5/zGc
-         y69wAw14qqzWX+rCPpELEb2TMW7C+4yByF4OfeMjm64IWstENiG212P6jc8EV7Sbok
-         2UIvvsoKzfEUpRLh44j+7dUPI4O281ughToex29bM509SZWMviQW43S7UWCKO+BN+F
-         o3vIffFTl7Erg==
+        b=ExDheRZrBhxuSWyOWrEQkFjkCpuJmMh6PqI60tw7RsZ7LX/YnhWJwVF8Iu2KRG8cE
+         gXZAqUk9JlMF6sclSkIdDhJbv0Q/AlcxIOtjIJHIcY+Dht0XE5juReshq6SNAjZ2ko
+         YFWfo4hJAkMMdSn9uZHV/irbUqFhJV8DeWLBy2DXncxp6FZ7NiE15G1sLV36OvlE18
+         J/nARA2Ek1M/s86ldcAEIEdRIIh+iInRT7u4yNsvzosYtETAzH3tG/DY5wHLDL60Xu
+         8pkz0EsTb4R/kikcNbt2R5wZvxJpCxw76Zy+5Go+1QaLO/sM3cHxyyNF6J9eti0GEx
+         FIwVboHAPTWSg==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Ojaswin Mujoo <ojaswin@linux.ibm.com>, Jan Kara <jack@suse.cz>,
-        Ritesh Harjani <ritesh.list@gmail.com>,
-        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 10/13] ext4: Fix best extent lstart adjustment logic in ext4_mb_new_inode_pa()
-Date:   Thu,  4 May 2023 15:51:27 -0400
-Message-Id: <20230504195132.3808946-10-sashal@kernel.org>
+Cc:     Jan Kara <jack@suse.cz>,
+        syzbot+4fec412f59eba8c01b77@syzkaller.appspotmail.com,
+        Sasha Levin <sashal@kernel.org>, jack@suse.com,
+        linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.19 03/13] ext2: Check block size validity during mount
+Date:   Thu,  4 May 2023 15:51:20 -0400
+Message-Id: <20230504195132.3808946-3-sashal@kernel.org>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20230504195132.3808946-1-sashal@kernel.org>
 References: <20230504195132.3808946-1-sashal@kernel.org>
@@ -51,126 +51,52 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+From: Jan Kara <jack@suse.cz>
 
-[ Upstream commit 93cdf49f6eca5e23f6546b8f28457b2e6a6961d9 ]
+[ Upstream commit 62aeb94433fcec80241754b70d0d1836d5926b0a ]
 
-When the length of best extent found is less than the length of goal extent
-we need to make sure that the best extent atleast covers the start of the
-original request. This is done by adjusting the ac_b_ex.fe_logical (logical
-start) of the extent.
+Check that log of block size stored in the superblock has sensible
+value. Otherwise the shift computing the block size can overflow leading
+to undefined behavior.
 
-While doing so, the current logic sometimes results in the best extent's
-logical range overflowing the goal extent. Since this best extent is later
-added to the inode preallocation list, we have a possibility of introducing
-overlapping preallocations. This is discussed in detail here [1].
-
-As per Jan's suggestion, to fix this, replace the existing logic with the
-below logic for adjusting best extent as it keeps fragmentation in check
-while ensuring logical range of best extent doesn't overflow out of goal
-extent:
-
-1. Check if best extent can be kept at end of goal range and still cover
-   original start.
-2. Else, check if best extent can be kept at start of goal range and still
-   cover original start.
-3. Else, keep the best extent at start of original request.
-
-Also, add a few extra BUG_ONs that might help catch errors faster.
-
-[1] https://lore.kernel.org/r/Y+OGkVvzPN0RMv0O@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com
-
-Suggested-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Link: https://lore.kernel.org/r/f96aca6d415b36d1f90db86c1a8cd7e2e9d7ab0e.1679731817.git.ojaswin@linux.ibm.com
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Reported-by: syzbot+4fec412f59eba8c01b77@syzkaller.appspotmail.com
+Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/mballoc.c | 49 ++++++++++++++++++++++++++++++-----------------
- 1 file changed, 31 insertions(+), 18 deletions(-)
+ fs/ext2/ext2.h  | 1 +
+ fs/ext2/super.c | 7 +++++++
+ 2 files changed, 8 insertions(+)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 13032903d7423..e1391b64b43b5 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3376,6 +3376,7 @@ static void ext4_mb_use_inode_pa(struct ext4_allocation_context *ac,
- 	BUG_ON(start < pa->pa_pstart);
- 	BUG_ON(end > pa->pa_pstart + EXT4_C2B(sbi, pa->pa_len));
- 	BUG_ON(pa->pa_free < len);
-+	BUG_ON(ac->ac_b_ex.fe_len <= 0);
- 	pa->pa_free -= len;
- 
- 	mb_debug(1, "use %llu/%u from inode pa %p\n", start, len, pa);
-@@ -3680,10 +3681,8 @@ ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
- 		return -ENOMEM;
- 
- 	if (ac->ac_b_ex.fe_len < ac->ac_g_ex.fe_len) {
--		int winl;
--		int wins;
--		int win;
--		int offs;
-+		int new_bex_start;
-+		int new_bex_end;
- 
- 		/* we can't allocate as much as normalizer wants.
- 		 * so, found space must get proper lstart
-@@ -3691,26 +3690,40 @@ ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
- 		BUG_ON(ac->ac_g_ex.fe_logical > ac->ac_o_ex.fe_logical);
- 		BUG_ON(ac->ac_g_ex.fe_len < ac->ac_o_ex.fe_len);
- 
--		/* we're limited by original request in that
--		 * logical block must be covered any way
--		 * winl is window we can move our chunk within */
--		winl = ac->ac_o_ex.fe_logical - ac->ac_g_ex.fe_logical;
-+		/*
-+		 * Use the below logic for adjusting best extent as it keeps
-+		 * fragmentation in check while ensuring logical range of best
-+		 * extent doesn't overflow out of goal extent:
-+		 *
-+		 * 1. Check if best ex can be kept at end of goal and still
-+		 *    cover original start
-+		 * 2. Else, check if best ex can be kept at start of goal and
-+		 *    still cover original start
-+		 * 3. Else, keep the best ex at start of original request.
-+		 */
-+		new_bex_end = ac->ac_g_ex.fe_logical +
-+			EXT4_C2B(sbi, ac->ac_g_ex.fe_len);
-+		new_bex_start = new_bex_end - EXT4_C2B(sbi, ac->ac_b_ex.fe_len);
-+		if (ac->ac_o_ex.fe_logical >= new_bex_start)
-+			goto adjust_bex;
- 
--		/* also, we should cover whole original request */
--		wins = EXT4_C2B(sbi, ac->ac_b_ex.fe_len - ac->ac_o_ex.fe_len);
-+		new_bex_start = ac->ac_g_ex.fe_logical;
-+		new_bex_end =
-+			new_bex_start + EXT4_C2B(sbi, ac->ac_b_ex.fe_len);
-+		if (ac->ac_o_ex.fe_logical < new_bex_end)
-+			goto adjust_bex;
- 
--		/* the smallest one defines real window */
--		win = min(winl, wins);
-+		new_bex_start = ac->ac_o_ex.fe_logical;
-+		new_bex_end =
-+			new_bex_start + EXT4_C2B(sbi, ac->ac_b_ex.fe_len);
- 
--		offs = ac->ac_o_ex.fe_logical %
--			EXT4_C2B(sbi, ac->ac_b_ex.fe_len);
--		if (offs && offs < win)
--			win = offs;
-+adjust_bex:
-+		ac->ac_b_ex.fe_logical = new_bex_start;
- 
--		ac->ac_b_ex.fe_logical = ac->ac_o_ex.fe_logical -
--			EXT4_NUM_B2C(sbi, win);
- 		BUG_ON(ac->ac_o_ex.fe_logical < ac->ac_b_ex.fe_logical);
- 		BUG_ON(ac->ac_o_ex.fe_len > ac->ac_b_ex.fe_len);
-+		BUG_ON(new_bex_end > (ac->ac_g_ex.fe_logical +
-+				      EXT4_C2B(sbi, ac->ac_g_ex.fe_len)));
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index 00e759f051619..a203a5723e2c0 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -177,6 +177,7 @@ static inline struct ext2_sb_info *EXT2_SB(struct super_block *sb)
+ #define EXT2_MIN_BLOCK_SIZE		1024
+ #define	EXT2_MAX_BLOCK_SIZE		4096
+ #define EXT2_MIN_BLOCK_LOG_SIZE		  10
++#define EXT2_MAX_BLOCK_LOG_SIZE		  16
+ #define EXT2_BLOCK_SIZE(s)		((s)->s_blocksize)
+ #define	EXT2_ADDR_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (__u32))
+ #define EXT2_BLOCK_SIZE_BITS(s)		((s)->s_blocksize_bits)
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 44a1f356aca29..3349ce85d27cb 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -978,6 +978,13 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto failed_mount;
  	}
  
- 	/* preallocation can change ac_b_ex, thus we store actually
++	if (le32_to_cpu(es->s_log_block_size) >
++	    (EXT2_MAX_BLOCK_LOG_SIZE - BLOCK_SIZE_BITS)) {
++		ext2_msg(sb, KERN_ERR,
++			 "Invalid log block size: %u",
++			 le32_to_cpu(es->s_log_block_size));
++		goto failed_mount;
++	}
+ 	blocksize = BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
+ 
+ 	if (sbi->s_mount_opt & EXT2_MOUNT_DAX) {
 -- 
 2.39.2
 
