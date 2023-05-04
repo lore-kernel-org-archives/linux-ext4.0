@@ -2,47 +2,47 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 41F8CC7EE25
-	for <linux-ext4@archiver.kernel.org>; Thu,  4 May 2023 20:09:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E0D1BC7EE22
+	for <linux-ext4@archiver.kernel.org>; Thu,  4 May 2023 20:09:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232925AbjEDUJc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 4 May 2023 16:09:32 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34642 "EHLO
+        id S232761AbjEDUJo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 4 May 2023 16:09:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33848 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232926AbjEDUJE (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 May 2023 16:09:04 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1A72C19D6F;
-        Thu,  4 May 2023 12:54:35 -0700 (PDT)
+        with ESMTP id S232683AbjEDUJT (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 May 2023 16:09:19 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A42C81A11C;
+        Thu,  4 May 2023 12:54:41 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id B7F7463833;
-        Thu,  4 May 2023 19:51:56 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4946DC4339B;
-        Thu,  4 May 2023 19:51:55 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id A64216381F;
+        Thu,  4 May 2023 19:52:31 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4ED3CC433D2;
+        Thu,  4 May 2023 19:52:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1683229916;
-        bh=nr+0fPJxSelgCEG6I59mvuzXgHNsAMSRjWIqRoqcVDU=;
+        s=k20201202; t=1683229951;
+        bh=xRM85o9I9fPfa7NXIPacJD8ttYODnSJqn3HCikW4rek=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=esjtqcKKvbasaxTXfAJfafMWOhqBXDufATSmnMhz8xm+K294ZwDiDcFYLiUZXU9DQ
-         vdfUMDRYc+PacDaM2ihxB2g7Aj52XnbntbBjoTHrpmCuI6+0zOeTYNz66TQc09aslM
-         sJ9xl2z8/bWLjQenMPI+l9aTCR2+zHgCRkPMR/kAyWmNzjAByTl3BetFybDoL4oDC5
-         B9XCaCeqgkCM6jMA3vzmnP/nSGIQAjdE3mcs6ssneSThcMDrP2Xsa3ehK2X5kZNXM8
-         oBmp6sGGGuB66ecv6WCUqWV5uvuUsozj+uiRthoqP98+Ti/U4d0r6yELEvTwQYvIXL
-         qFhfRgoVLB5uQ==
+        b=iInvKMxKbDxVxvCHiOQ/bAAckhABFB/MVBQKJmAACm+Xlq8qVctSe75GK40w1mB2x
+         mcdx4wENN1GDsTaEfzCf8WNyKwvcBIYjDRZSYHc6xnBQDmltpmUlt9YHTpJRn72D12
+         gR6RryyqN5fTIkQH2pBSVZBJT79sr/QVg0mZkx2LYgFf7AvM3f1cydjNBsPEfO8bI1
+         /EcA1xJr3BehPta8nldaGVHf2KFOBOrQ6LGyJfOAGnIXUv1aKEteGQPag4KyMYNm/F
+         dpbE7RrlGa9VhOv8jYYZVGO501oihMQ1UuLgz1L1brcNHJfdbr9m03dvrb7DDeW+BY
+         hAnJqTIIa7PzA==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Kemeng Shi <shikemeng@huaweicloud.com>,
         Ritesh Harjani <ritesh.list@gmail.com>,
         Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 09/13] ext4: set goal start correctly in ext4_mb_normalize_request
-Date:   Thu,  4 May 2023 15:51:26 -0400
-Message-Id: <20230504195132.3808946-9-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 09/13] ext4: set goal start correctly in ext4_mb_normalize_request
+Date:   Thu,  4 May 2023 15:52:01 -0400
+Message-Id: <20230504195207.3809116-9-sashal@kernel.org>
 X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230504195132.3808946-1-sashal@kernel.org>
-References: <20230504195132.3808946-1-sashal@kernel.org>
+In-Reply-To: <20230504195207.3809116-1-sashal@kernel.org>
+References: <20230504195207.3809116-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -76,10 +76,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 10 insertions(+), 6 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 4ea4fe92eb8c9..13032903d7423 100644
+index a93bd342e0ae6..60f202e63eebd 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -3089,6 +3089,7 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+@@ -3116,6 +3116,7 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
  				struct ext4_allocation_request *ar)
  {
  	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
@@ -87,7 +87,7 @@ index 4ea4fe92eb8c9..13032903d7423 100644
  	int bsbits, max;
  	ext4_lblk_t end;
  	loff_t size, start_off;
-@@ -3269,18 +3270,21 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+@@ -3296,18 +3297,21 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
  	ac->ac_g_ex.fe_len = EXT4_NUM_B2C(sbi, size);
  
  	/* define goal start in order to merge */
