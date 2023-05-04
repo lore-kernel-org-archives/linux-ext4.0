@@ -2,47 +2,47 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9814DC7EE22
-	for <linux-ext4@archiver.kernel.org>; Thu,  4 May 2023 20:06:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6B18EC77B78
+	for <linux-ext4@archiver.kernel.org>; Thu,  4 May 2023 20:07:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232240AbjEDUGB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 4 May 2023 16:06:01 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33860 "EHLO
+        id S232879AbjEDUHD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 4 May 2023 16:07:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34498 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232963AbjEDUFg (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 May 2023 16:05:36 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0F9B919915;
-        Thu,  4 May 2023 12:53:28 -0700 (PDT)
+        with ESMTP id S229811AbjEDUF6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 May 2023 16:05:58 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ACEC914E55;
+        Thu,  4 May 2023 12:53:53 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id DD50F6389F;
-        Thu,  4 May 2023 19:52:17 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9B381C43442;
-        Thu,  4 May 2023 19:52:16 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 25DD16376D;
+        Thu,  4 May 2023 19:44:40 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C0A40C433A1;
+        Thu,  4 May 2023 19:44:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1683229937;
-        bh=NWcAK2jZaWIg8oh2/zqFwf5x7GS/Tjlh3ak4HK9Z0bY=;
+        s=k20201202; t=1683229479;
+        bh=MabVeKf67bdGxQWhug9guqP+n3QAIhouqhZ8bmwGJic=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=WFPw6eX7HVcqwQFTqQEXU2JcK40iQSn0R2hpDu1he2q2KHz5VQNeSCbTkNCqdS+Ts
-         IPks8aQlxc7IElRx0L3dQ1jWYGxewHd36Uz26/SaJbE17ElBJklWV4JNrh+mzy/El7
-         CdgKmUUsNsXb5nN9Xo0PIA+16DDmQ9ek1c9ufRAo9Bohu92Epqz6Dn/BYvwVFynWkM
-         rJHbIhiTBCuG/0jjVbzWkraZv1pBhzdaIKrTIhJxMLuuBvq+ON6slLoiffr6QSjZyE
-         BHI4iepyGtcngwyp8jqjNfsWpx8LiOBS2+t0mmprDpl3gcmgFXUudt/kXXHLNw1PRn
-         iXwszCT4fdhKQ==
+        b=Kjv3HidjIs8fe7N+JFtjAGLU6KIrbPb+wssFjDorbhwPRzSZt74utlhpOoxqUt0rL
+         eao3Z5dQDHqnpqv0WN+CklY0JFMaZeO42RH5HQ3jW1p8HVuUX/t8lgC/gbm+TvZefe
+         dU7DvJLUw0waxJ3y/Gf+iVHeFKlZloIi97GDCtQu9NVYrZfvylvNPG+pvpbv0XON9O
+         qr6uSQA4ylUOtoFrVegCobbxh36Heq3XPNcVaUMoZbIePTYEuMvJBtUyvg/CYwfdnq
+         pcBishQ1YUhgTR0ti4owYcUmITmutEwQGyh8rURbDPnIFUeS+fPwNucWviTz7yfubP
+         CsSGGwLvAsdFA==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Jan Kara <jack@suse.cz>,
         syzbot+4fec412f59eba8c01b77@syzkaller.appspotmail.com,
         Sasha Levin <sashal@kernel.org>, jack@suse.com,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 03/13] ext2: Check block size validity during mount
-Date:   Thu,  4 May 2023 15:51:55 -0400
-Message-Id: <20230504195207.3809116-3-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 6.2 07/53] ext2: Check block size validity during mount
+Date:   Thu,  4 May 2023 15:43:27 -0400
+Message-Id: <20230504194413.3806354-7-sashal@kernel.org>
 X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230504195207.3809116-1-sashal@kernel.org>
-References: <20230504195207.3809116-1-sashal@kernel.org>
+In-Reply-To: <20230504194413.3806354-1-sashal@kernel.org>
+References: <20230504194413.3806354-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -68,10 +68,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  2 files changed, 8 insertions(+)
 
 diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index 032295e1d3865..b500fed96a692 100644
+index 28de11a22e5f6..dc5dcb78bc27f 100644
 --- a/fs/ext2/ext2.h
 +++ b/fs/ext2/ext2.h
-@@ -177,6 +177,7 @@ static inline struct ext2_sb_info *EXT2_SB(struct super_block *sb)
+@@ -180,6 +180,7 @@ static inline struct ext2_sb_info *EXT2_SB(struct super_block *sb)
  #define EXT2_MIN_BLOCK_SIZE		1024
  #define	EXT2_MAX_BLOCK_SIZE		4096
  #define EXT2_MIN_BLOCK_LOG_SIZE		  10
@@ -80,10 +80,10 @@ index 032295e1d3865..b500fed96a692 100644
  #define	EXT2_ADDR_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (__u32))
  #define EXT2_BLOCK_SIZE_BITS(s)		((s)->s_blocksize_bits)
 diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 5f7079b65426c..7ca9fb0bfc324 100644
+index 69c88facfe90e..f342f347a695f 100644
 --- a/fs/ext2/super.c
 +++ b/fs/ext2/super.c
-@@ -965,6 +965,13 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+@@ -945,6 +945,13 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
  		goto failed_mount;
  	}
  
@@ -96,7 +96,7 @@ index 5f7079b65426c..7ca9fb0bfc324 100644
 +	}
  	blocksize = BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
  
- 	if (sbi->s_mount_opt & EXT2_MOUNT_DAX) {
+ 	if (test_opt(sb, DAX)) {
 -- 
 2.39.2
 
