@@ -2,47 +2,47 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C6BD9C7EE21
-	for <linux-ext4@archiver.kernel.org>; Thu,  4 May 2023 19:53:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 61697C7EE29
+	for <linux-ext4@archiver.kernel.org>; Thu,  4 May 2023 19:56:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231731AbjEDTxm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 4 May 2023 15:53:42 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59308 "EHLO
+        id S231903AbjEDT4j (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 4 May 2023 15:56:39 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43460 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231465AbjEDTwl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 May 2023 15:52:41 -0400
+        with ESMTP id S232480AbjEDT4I (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 May 2023 15:56:08 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 52C2614E4D;
-        Thu,  4 May 2023 12:47:25 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 78CC81C0F7;
+        Thu,  4 May 2023 12:49:25 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 30C8F637BD;
-        Thu,  4 May 2023 19:47:22 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B2E8BC433EF;
-        Thu,  4 May 2023 19:47:20 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id D244163801;
+        Thu,  4 May 2023 19:49:05 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 50BE8C4339B;
+        Thu,  4 May 2023 19:49:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1683229641;
-        bh=wH4JO4rPQ1dUQxEejRuFxtF4ehqYN343f1J9J8yEza8=;
+        s=k20201202; t=1683229745;
+        bh=KBbLHB3W595ZHLY9iyrj8ireU+PEvPjhLx1gv5CrqIA=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=st4HggMHHoT2PosZ4Xn9YodfT5rS2wXczvOMieMp2bPDE+bRxTiDkIj72iqQzsm+a
-         1PZIiJcFBXoQu0Jzq0OQ3IXXVWxID6fnYTusZDKW7WsckhJm4NiwO1tYnWMRxV9t/z
-         /ED6d1dmooQHVEygmxUuy/2wuu1cRAQysV0GTVo1/jFMr5wfXUIfEYACBjCBGqUygb
-         ZQEjNxJrpfYjPC1rD9J8+VYNh3DtmI83AH5CCsbApiiea107LBQ46RCTVohCiEQ7Vd
-         6Hv6BGVUpWYHKYoj9YYeK2gEUk3YpUR216EDRquQctzC5wOLBk/0Kqdcc8Eu1nUjz/
-         cTnNGsg77o8+w==
+        b=BIPshuvvvQACfpAnjECI1L5Y+zB33lXx4Cxls+BlAemDdmKXphQ0E+4s7y20P7ikk
+         zUW7GHdYjXVwupZQI6eSDIm1QeAatxy3gAq96KBS3DDcOdBNlH3rbAt+h9OXD722L0
+         NB9F+Xj6QKsZNa66ktnz9a+UUlKbRm0qfhdh8OU80G4Bq2H4HXRrg0eDeKqaxIHNJg
+         3lvohZ+EIWKPdOD2ysnh4V03iYgSsBOlIUuAoVMdddevjvEsXdBBwD8Xzkbnq6leSS
+         kjTxer13+3iBOBIHsZ2rJ8L+6uB1YoD058+SxaXpMo9WH+0vnlDR7C2zIARGGo1eSr
+         N91k0Bf0ndk1Q==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Ojaswin Mujoo <ojaswin@linux.ibm.com>, Jan Kara <jack@suse.cz>,
         Ritesh Harjani <ritesh.list@gmail.com>,
         Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 6.1 20/49] ext4: Fix best extent lstart adjustment logic in ext4_mb_new_inode_pa()
-Date:   Thu,  4 May 2023 15:45:57 -0400
-Message-Id: <20230504194626.3807438-20-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.15 16/30] ext4: Fix best extent lstart adjustment logic in ext4_mb_new_inode_pa()
+Date:   Thu,  4 May 2023 15:48:09 -0400
+Message-Id: <20230504194824.3808028-16-sashal@kernel.org>
 X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230504194626.3807438-1-sashal@kernel.org>
-References: <20230504194626.3807438-1-sashal@kernel.org>
+In-Reply-To: <20230504194824.3808028-1-sashal@kernel.org>
+References: <20230504194824.3808028-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -92,10 +92,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 31 insertions(+), 18 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 6c2d52b6e42c7..67a7aa3383655 100644
+index b737437618047..c8dfea7c4ba43 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -4296,6 +4296,7 @@ static void ext4_mb_use_inode_pa(struct ext4_allocation_context *ac,
+@@ -4308,6 +4308,7 @@ static void ext4_mb_use_inode_pa(struct ext4_allocation_context *ac,
  	BUG_ON(start < pa->pa_pstart);
  	BUG_ON(end > pa->pa_pstart + EXT4_C2B(sbi, pa->pa_len));
  	BUG_ON(pa->pa_free < len);
@@ -103,7 +103,7 @@ index 6c2d52b6e42c7..67a7aa3383655 100644
  	pa->pa_free -= len;
  
  	mb_debug(ac->ac_sb, "use %llu/%d from inode pa %p\n", start, len, pa);
-@@ -4620,10 +4621,8 @@ ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
+@@ -4632,10 +4633,8 @@ ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
  	pa = ac->ac_pa;
  
  	if (ac->ac_b_ex.fe_len < ac->ac_g_ex.fe_len) {
@@ -116,7 +116,7 @@ index 6c2d52b6e42c7..67a7aa3383655 100644
  
  		/* we can't allocate as much as normalizer wants.
  		 * so, found space must get proper lstart
-@@ -4631,26 +4630,40 @@ ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
+@@ -4643,26 +4642,40 @@ ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
  		BUG_ON(ac->ac_g_ex.fe_logical > ac->ac_o_ex.fe_logical);
  		BUG_ON(ac->ac_g_ex.fe_len < ac->ac_o_ex.fe_len);
  
