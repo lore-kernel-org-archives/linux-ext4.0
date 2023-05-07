@@ -2,133 +2,111 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D376C7EE2D
-	for <linux-ext4@archiver.kernel.org>; Mon,  8 May 2023 13:01:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CD8D2C7EE22
+	for <linux-ext4@archiver.kernel.org>; Mon,  8 May 2023 13:01:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234618AbjEHNBj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 8 May 2023 09:01:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56020 "EHLO
+        id S234774AbjEHNBp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 8 May 2023 09:01:45 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56072 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234137AbjEHNBf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 8 May 2023 09:01:35 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C6F7639193
-        for <linux-ext4@vger.kernel.org>; Mon,  8 May 2023 06:01:32 -0700 (PDT)
+        with ESMTP id S234310AbjEHNBg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 8 May 2023 09:01:36 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3D9533A5CF
+        for <linux-ext4@vger.kernel.org>; Mon,  8 May 2023 06:01:34 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 312F121FB6;
-        Mon,  8 May 2023 13:01:31 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id C003221FBF;
+        Mon,  8 May 2023 13:01:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1683550891; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1683550892; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=U2pPHQEs5vuc5rVQp916bvbwMf/lld84n13snyVIL+Q=;
-        b=1oKsLxpmVdQYy34Bi467lGw+HnRAzKIcGcjxjQDH4f78zsQe5EaEJ2Mqjs1vQRvL2iAtpK
-        T2IcCajnvhlv608RGjysa8iS1GmNaFhMCfS0+mALDxLf3nJGFiJKiwUmkDYJ5JbLo1AGIa
-        bv6b+zy9/4m5Hg+jjC3EY6Dhz14qPzc=
+        bh=UHMAqZuaFd3LimKgcftvbLRB2BK6HNxJUf8juJpgGnw=;
+        b=PMUr0nve5b1BEB5dOVg5LZ5fJYnl6R3b1+1fkUQ98NW7ljTT1v0OW/KS7kUGS8LHHOxVQD
+        RKwIqlGqrQHDAYWpW9NRfH42Gt9xGh/mQgUXUeLZoyG0r699CTlkV2N2rGM7L1rvsHf24h
+        1ehb+K18Vv4VkXLKcLn9sGNJzzdcoiI=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1683550891;
+        s=susede2_ed25519; t=1683550892;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=U2pPHQEs5vuc5rVQp916bvbwMf/lld84n13snyVIL+Q=;
-        b=JPRLzDBMQ0POIE/Cvbtf+R6hrR+9mvpQI8cIA1YnN8a5iM1ow4QAXchMjZtLlOk2HAXjNH
-        RRkb+BxIXxqpSQDw==
+        bh=UHMAqZuaFd3LimKgcftvbLRB2BK6HNxJUf8juJpgGnw=;
+        b=4WutXT59g8orC157mO+sF5m4XsOro8woWqBX3SDcTiNrEgih4CJV/uqiNHVUAGSCwCeVoj
+        6Nn+HBd+5LNrkGDg==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id F0936139F8;
-        Mon,  8 May 2023 13:01:30 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 94BE4139F8;
+        Mon,  8 May 2023 13:01:32 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id SxKgOqryWGSiXQAAMHmgww
-        (envelope-from <jack@suse.cz>); Mon, 08 May 2023 13:01:30 +0000
+        id ArpHJKzyWGS9XQAAMHmgww
+        (envelope-from <jack@suse.cz>); Mon, 08 May 2023 13:01:32 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id DD96AA0749; Sun,  7 May 2023 20:31:19 +0200 (CEST)
-Date:   Sun, 7 May 2023 20:31:19 +0200
+        id 65CBDA06C5; Sun,  7 May 2023 20:18:16 +0200 (CEST)
+Date:   Sun, 7 May 2023 20:18:16 +0200
 From:   Jan Kara <jack@suse.cz>
 To:     Theodore Ts'o <tytso@mit.edu>
 Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        syzbot+64b645917ce07d89bde5@syzkaller.appspotmail.com,
-        syzbot+0d042627c4f2ad332195@syzkaller.appspotmail.com
-Subject: Re: [PATCH] ext4: fix invalid free tracking in
- ext4_xattr_move_to_block()
-Message-ID: <20230507183119.o5hqzh5qduzqdidz@quack3>
-References: <20230430160426.581366-1-tytso@mit.edu>
+        syzbot+e2efa3efc15a1c9e95c3@syzkaller.appspotmail.com
+Subject: Re: [PATCH 1/2] ext4: allow ext4_get_group_info() to fail
+Message-ID: <20230507181816.tsnqhzgajftcbsz5@quack3>
+References: <20230430154311.579720-1-tytso@mit.edu>
+ <20230430154311.579720-2-tytso@mit.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20230430160426.581366-1-tytso@mit.edu>
+In-Reply-To: <20230430154311.579720-2-tytso@mit.edu>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sun 30-04-23 12:04:26, Theodore Ts'o wrote:
-> In ext4_xattr_move_to_block(), the value of the extended attribute
-> which we need to move to an external block may be allocated by
-> kvmalloc() if the value is stored in an external inode.  So at the end
-> of the function the code tried to check if this was the case by
-> testing entry->e_value_inum.
+On Sun 30-04-23 11:43:10, Theodore Ts'o wrote:
+> Previously, ext4_get_group_info() would treat an invalid group number
+> as BUG(), since in theory it should never happen.  However, if a
+> malicious attaker (or fuzzer) modifies the superblock via the block
+> device while it is the file system is mounted, it is possible for
+> s_first_data_block to get set to a very large number.  In that case,
+> when calculating the block group of some block number (such as the
+> starting block of a preallocation region), could result in an
+> underflow and very large block group number.  Then the BUG_ON check in
+> ext4_get_group_info() would fire, resutling in a denial of service
+> attack that can be triggered by root or someone with write access to
+> the block device.
 > 
-> However, at this point, the pointer to the xattr entry is no longer
-> valid, because it was removed from the original location where it had
-> been stored.  So we could end up calling kvfree() on a pointer which
-> was not allocated by kvmalloc(); or we could also potentially leak
-> memory by not freeing the buffer when it should be freed.  Fix this by
-> storing whether it should be freed in a separate variable.
+> For a quality of implementation perspective, it's best that even if
+> the system administrator does something that they shouldn't, that it
+> will not trigger a BUG.  So instead of BUG'ing, ext4_get_group_info()
+> will call ext4_error and return NULL.  We also add fallback code in
+> all of the callers of ext4_get_group_info() that it might NULL.
 > 
-> Link: https://syzkaller.appspot.com/bug?id=5c2aee8256e30b55ccf57312c16d88417adbd5e1
-> Link: https://syzkaller.appspot.com/bug?id=41a6b5d4917c0412eb3b3c3c604965bed7d7420b
-> Reported-by: syzbot+64b645917ce07d89bde5@syzkaller.appspotmail.com
-> Reported-by: syzbot+0d042627c4f2ad332195@syzkaller.appspotmail.com
+> Also, since ext4_get_group_info() was already borderline to be an
+> inline function, un-inline it.  The results in a next reduction of the
+> compiled text size of ext4 by roughly 2k.
+> 
+> Reported-by: syzbot+e2efa3efc15a1c9e95c3@syzkaller.appspotmail.com
+> Link: https://syzkaller.appspot.com/bug?id=69b28112e098b070f639efb356393af3ffec4220
 > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-Good spotting. Feel free to add:
+The patch looks good except for one small problem already found by Julia:
+
+> @@ -2578,7 +2595,7 @@ void ext4_mb_prefetch_fini(struct super_block *sb, ext4_group_t group,
+>  		gdp = ext4_get_group_desc(sb, group, NULL);
+>  		grp = ext4_get_group_info(sb, group);
+>  
+> -		if (EXT4_MB_GRP_NEED_INIT(grp) &&
+> +		if (grp && grp && EXT4_MB_GRP_NEED_INIT(grp) &&
+		    ^^^ one of these should be gdp.
+
+With this fixed feel free to add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
-
-> ---
->  fs/ext4/xattr.c | 5 +++--
->  1 file changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 767454d74cd6..e33a323faf3c 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -2615,6 +2615,7 @@ static int ext4_xattr_move_to_block(handle_t *handle, struct inode *inode,
->  		.in_inode = !!entry->e_value_inum,
->  	};
->  	struct ext4_xattr_ibody_header *header = IHDR(inode, raw_inode);
-> +	int needs_kvfree = 0;
->  	int error;
->  
->  	is = kzalloc(sizeof(struct ext4_xattr_ibody_find), GFP_NOFS);
-> @@ -2637,7 +2638,7 @@ static int ext4_xattr_move_to_block(handle_t *handle, struct inode *inode,
->  			error = -ENOMEM;
->  			goto out;
->  		}
-> -
-> +		needs_kvfree = 1;
->  		error = ext4_xattr_inode_get(inode, entry, buffer, value_size);
->  		if (error)
->  			goto out;
-> @@ -2676,7 +2677,7 @@ static int ext4_xattr_move_to_block(handle_t *handle, struct inode *inode,
->  
->  out:
->  	kfree(b_entry_name);
-> -	if (entry->e_value_inum && buffer)
-> +	if (needs_kvfree && buffer)
->  		kvfree(buffer);
->  	if (is)
->  		brelse(is->iloc.bh);
-> -- 
-> 2.31.0
-> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
