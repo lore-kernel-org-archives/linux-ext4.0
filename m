@@ -2,69 +2,80 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 63BC3C77B7F
-	for <linux-ext4@archiver.kernel.org>; Mon,  8 May 2023 17:51:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C90DEC7EE22
+	for <linux-ext4@archiver.kernel.org>; Mon,  8 May 2023 20:35:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233109AbjEHRvS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 8 May 2023 13:51:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51362 "EHLO
+        id S232792AbjEHUf2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 8 May 2023 16:35:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37588 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232492AbjEHRvR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 8 May 2023 13:51:17 -0400
-Received: from mail-pf1-x436.google.com (mail-pf1-x436.google.com [IPv6:2607:f8b0:4864:20::436])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CE41044A0
-        for <linux-ext4@vger.kernel.org>; Mon,  8 May 2023 10:51:16 -0700 (PDT)
-Received: by mail-pf1-x436.google.com with SMTP id d2e1a72fcca58-643846c006fso5156399b3a.0
-        for <linux-ext4@vger.kernel.org>; Mon, 08 May 2023 10:51:16 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1683568276; x=1686160276;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=VafRcudYIB+Vss0WviCwV8NofZWUWxagaBIfp0lm4Xg=;
-        b=MVvBoUj+VREvhlPQsIh+KA6acXVbp/HF6AqLrfN/BuY9jt4ubR7gG6IATdPBpfk0g/
-         k2KMY8/tsU4zklANHFkewsCVlix1kP9tlOCT9F+N4MD7VL1nzPB3hDSfkfCAcyksNo7X
-         9Vcrag49A3+J+sGzb2rtWpEsI1QJ39g+lHeLqO5uiSY6kjk23LpxKGMJMyUru31dqs5k
-         aN3pc4xJso4Pk6ZbYRXBgVxcrAUn8cwF1tYzINpaSaA72MlEi8nxkG9wAogSqP0MTifb
-         O9B2rgDCOpbKj7eDh1HCrJez6iSBqQAlW5bzOWh9ZMAexGx2KkPPqfWroRcEyhVoaF4y
-         AJJA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1683568276; x=1686160276;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=VafRcudYIB+Vss0WviCwV8NofZWUWxagaBIfp0lm4Xg=;
-        b=FnxrbQQkSuWM9GIOX50qq5Ohd76KWphOuHfAKaPNf2TgTYKO57d4FMyWUE9jCmYFRV
-         wzMciMPw3AX3DRm5ykLUFUJMf+oi0Rg364+2pR/sbIRhRILvm3nPvvcQEGeAKfa69m+/
-         HsR0QU+Qvjz+VTP6FtNp5/vHoF1mDKntenBTm30dNOtf0D8VSUjX1eA3cNAnq1xdc87j
-         F3ew8WU0YM72Ls7ZoIUbCR8zVNezMgl8g4gRQlkEE9nub4xLwOPkbwQX/KU/B8FX15dD
-         GvTgH1yQwHJd/0tHg/pw2THKfS+wVMgZZeet5QWwUQeNktpY7LfsdGUws8kL9pf/jTId
-         fPzw==
-X-Gm-Message-State: AC+VfDwHoLySLou73n9/vUPw53NWMw13OzRu+iJ8Z25EUXkzLihH8M2R
-        QPMJTJYJL2BYy+5+6x8pnEA=
-X-Google-Smtp-Source: ACHHUZ6qLNciLWXUpTN47N/IknRHSontPkasdyLEy+xKCIKc7YIPoOaOieDWr8jWjlbACZwUEbIhBg==
-X-Received: by 2002:a05:6a00:168b:b0:63d:2d7d:b6f2 with SMTP id k11-20020a056a00168b00b0063d2d7db6f2mr15830838pfc.4.1683568276132;
-        Mon, 08 May 2023 10:51:16 -0700 (PDT)
-Received: from localhost.localdomain (ec2-43-207-231-123.ap-northeast-1.compute.amazonaws.com. [43.207.231.123])
-        by smtp.gmail.com with ESMTPSA id c4-20020aa781c4000000b006413bf90e72sm263676pfn.62.2023.05.08.10.51.13
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 08 May 2023 10:51:15 -0700 (PDT)
-From:   youling257 <youling257@gmail.com>
-To:     jack@suse.cz
-Cc:     hch@infradead.org, hch@lst.de, linux-ext4@vger.kernel.org,
-        ritesh.list@gmail.com, tytso@mit.edu
-Subject: [PATCH v4 12/13] ext4: Stop providing .writepage hook
-Date:   Tue,  9 May 2023 01:51:08 +0800
-Message-Id: <20230508175108.6986-1-youling257@gmail.com>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20221207112722.22220-12-jack@suse.cz>
-References: <20221207112722.22220-12-jack@suse.cz>
+        with ESMTP id S229560AbjEHUf1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 8 May 2023 16:35:27 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F2C0E9D
+        for <linux-ext4@vger.kernel.org>; Mon,  8 May 2023 13:35:25 -0700 (PDT)
+Received: from letrec.thunk.org (vancouverconventioncentre.com [72.28.92.216] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 348KZHbO020025
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Mon, 8 May 2023 16:35:18 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1683578119; bh=NcleiIM/pIJcJl2FICwVL7dtxLix3rEheNFsBQzEAy8=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To;
+        b=CBtPeJy0p2DMMgqcApaiqKEy9+W8LX0g6oV3lv40IAPm0qdLOj/y5vce3UA9VX22k
+         Pw3SfSaqokHSyO0X6mAAXfzSNR5a3El+U78a/s0lkf4Jw7C0ngKs/6ElId+75Asr+I
+         OmqwGJYI0DXZLJIK99CSQvCabarO8fY72G0FkBu+io2VhK+fAJymrH6iFOh5v4Teq5
+         g0l7XQPfWFDmI9iDd6n01p2P4pPveEBiKPwgQOxk6kexPNuNpmrUEXC/5W2NhLlMdk
+         fwecHlznJ1dJfNE7zwKR52h007BJHf9qKtMA5OP2Dpf2HxOnkwCoeAXn06zAFWQsY5
+         AR8NwzbNtmEzQ==
+Received: by letrec.thunk.org (Postfix, from userid 15806)
+        id D7F858C03B2; Mon,  8 May 2023 16:35:15 -0400 (EDT)
+Date:   Mon, 8 May 2023 16:35:15 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Jan Kara <jack@suse.cz>
+Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        syzbot+e2efa3efc15a1c9e95c3@syzkaller.appspotmail.com
+Subject: Re: [PATCH 2/2] ext4: remove a BUG_ON in ext4_mb_release_group_pa()
+Message-ID: <ZFldA72PlRBDOrRD@mit.edu>
+References: <20230430154311.579720-1-tytso@mit.edu>
+ <20230430154311.579720-3-tytso@mit.edu>
+ <20230507182833.ma7fugevh7imz2tj@quack3>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230507182833.ma7fugevh7imz2tj@quack3>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-I using linux mainline kernel on android. https://github.com/youling257/android-mainline/commits/6.4  https://github.com/youling257/android-mainline/commits/6.3
-"ext4: Stop providing .writepage hook" cause some android app unable to read storage/emulated/0 files, i need to say android esdfs file system storage/emulated is ext4 data/media bind mount.
-I want to ask, why android storage/emulated need .writepage hook?
+On Sun, May 07, 2023 at 08:28:33PM +0200, Jan Kara wrote:
+> OK, looks good to me. But frankly there are many other interesting ways how
+> bogus group numbers output when this happens can return is fun stuff - e.g.
+> ext4_group_first_block_no() is going to return invalid blocks etc. So it
+> feels a bit like endless whack-a-mole game. Anyway I agree the series seem
+> to fix a big chunk of these sites so feel free to add:
+
+The main thing I'm trying to avoid is a kernel crash or possible
+out-of-bounds read or write, which could lead to a security
+vulnerability.  If a a bad block number being returned by. say,
+ext4_group_first_block_no() "only" results in an I/O error when or
+(further) corruption of the block device, that's not a problem as far
+as I'm concerned.  After all, if a malicious root access has
+read/write access to the block device, they can corrupt the file
+system *anyway*.
+
+I wasn't able to find cases where a crazy return value from
+ext4_group_first_block_no() which would cause a BUG or a buffer
+overrun.  If we (or syzbot) finds a case where this could happen, we
+could copy s_es->s_first_data_block to sbi->s_first_data_block and
+then validate it during the file system mount.
+
+I also did a quick spot check what nastiness could be caused by
+real-time frobbing of s_blocks_count s_inodes_count and couldn't find
+anything there either.  So it looks like s_first_data_block is the one
+which is the most problematic.
+
+Cheers,
+
+						- Ted
