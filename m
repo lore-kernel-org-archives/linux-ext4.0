@@ -2,163 +2,81 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 92C37C77B7F
-	for <linux-ext4@archiver.kernel.org>; Fri, 12 May 2023 13:16:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 90716C77B75
+	for <linux-ext4@archiver.kernel.org>; Tue,  9 May 2023 22:23:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241159AbjELNQS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 12 May 2023 09:16:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37804 "EHLO
+        id S235541AbjEIWX3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 9 May 2023 18:23:29 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58914 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241180AbjELNQN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 12 May 2023 09:16:13 -0400
-Received: from mail-il1-f199.google.com (mail-il1-f199.google.com [209.85.166.199])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CB91714E4C
-        for <linux-ext4@vger.kernel.org>; Fri, 12 May 2023 06:15:45 -0700 (PDT)
-Received: by mail-il1-f199.google.com with SMTP id e9e14a558f8ab-331632be774so364406765ab.0
-        for <linux-ext4@vger.kernel.org>; Fri, 12 May 2023 06:15:45 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1683897344; x=1686489344;
-        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=dG2eApiQtw6EgBiB77e39j8L4/16nv2XSt+vqnLbeIk=;
-        b=DyrseaMQQ4VNhH/9rq0pjcGDZjUneOywXLt0sJeaecUTFTqkWy24SR07UoZ9nWC8lf
-         OKstkVwWPlggUOQsmVKQaYVZRUk97idyCnvpI5mwpR400Vcfg9uE9UyZYGlOj5X14xiH
-         UQyDDGlu3VsUx/4qYekQ2wIda8A+vHZU0vZjekLH8DHkGROvcBKUGUXoO/FA0cQhModF
-         ewQfT5wDxBxlYnCJSsNn+Tms18wW6KgUXb/am8Nqv1f2ASB3FHWNTqhDYk5eoh8hT6jo
-         TxVK+Bo4JTD2lKjVowg6JYKY2NkGUoOGD7xFlet1S9wAxIXORafR4n+wSt3odymz105S
-         0y/w==
-X-Gm-Message-State: AC+VfDzYpVIOP4JX8isQBOwawgqJ46U+BOQbIvwAs7I/j44fYE9Mi4Im
-        TjKTANiD0AP/7fN1suoYpc4hPzNksFmvoZAID38XtVePkRUV
-X-Google-Smtp-Source: ACHHUZ6lHUXFAvY3XmXJ5lxtlioqhGUNNrWs+dFObehrOfT4vuBYpMN/DzDPG77CXi7LeNN4wM01Cqu2bMych2sAdQHDkH0TnZ0F
+        with ESMTP id S230264AbjEIWX1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 May 2023 18:23:27 -0400
+Received: from www262.sakura.ne.jp (www262.sakura.ne.jp [202.181.97.72])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3096C1992
+        for <linux-ext4@vger.kernel.org>; Tue,  9 May 2023 15:23:26 -0700 (PDT)
+Received: from fsav119.sakura.ne.jp (fsav119.sakura.ne.jp [27.133.134.246])
+        by www262.sakura.ne.jp (8.15.2/8.15.2) with ESMTP id 349MMwQI004688;
+        Wed, 10 May 2023 07:22:58 +0900 (JST)
+        (envelope-from penguin-kernel@I-love.SAKURA.ne.jp)
+Received: from www262.sakura.ne.jp (202.181.97.72)
+ by fsav119.sakura.ne.jp (F-Secure/fsigk_smtp/550/fsav119.sakura.ne.jp);
+ Wed, 10 May 2023 07:22:58 +0900 (JST)
+X-Virus-Status: clean(F-Secure/fsigk_smtp/550/fsav119.sakura.ne.jp)
+Received: from [192.168.1.6] (M106072142033.v4.enabler.ne.jp [106.72.142.33])
+        (authenticated bits=0)
+        by www262.sakura.ne.jp (8.15.2/8.15.2) with ESMTPSA id 349MMwNn004685
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NO);
+        Wed, 10 May 2023 07:22:58 +0900 (JST)
+        (envelope-from penguin-kernel@I-love.SAKURA.ne.jp)
+Message-ID: <610781bc-cf11-fc89-a46f-87cb8235d439@I-love.SAKURA.ne.jp>
+Date:   Wed, 10 May 2023 07:22:55 +0900
 MIME-Version: 1.0
-X-Received: by 2002:a02:3546:0:b0:40f:8f07:e28e with SMTP id
- y6-20020a023546000000b0040f8f07e28emr7462886jae.1.1683897344175; Fri, 12 May
- 2023 06:15:44 -0700 (PDT)
-Date:   Fri, 12 May 2023 06:15:44 -0700
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <00000000000009b58d05fb7ee7ad@google.com>
-Subject: [syzbot] [ext4?] general protection fault in ext4_acquire_dquot
-From:   syzbot <syzbot+e633c79ceaecbf479854@syzkaller.appspotmail.com>
-To:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        llvm@lists.linux.dev, nathan@kernel.org, ndesaulniers@google.com,
-        syzkaller-bugs@googlegroups.com, trix@redhat.com, tytso@mit.edu
-Content-Type: text/plain; charset="UTF-8"
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101
+ Thunderbird/102.10.1
+Subject: [PATCH] workingset: add missing rcu_read_unlock() in
+ lru_gen_refault()
+Content-Language: en-US
+To:     syzbot <syzbot+3c6cac1550288f8e7060@syzkaller.appspotmail.com>,
+        syzkaller-bugs@googlegroups.com,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Nhat Pham <nphamcs@gmail.com>
+References: <0000000000004c3e6b05fb414be2@google.com>
+Cc:     linux-mm <linux-mm@kvack.org>
+From:   Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+In-Reply-To: <0000000000004c3e6b05fb414be2@google.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+syzbot is reporting sleep in RCU context, for commit d66c718d28ac
+("workingset: refactor LRU refault to expose refault recency check")
+missed rcu_read_unlock().
 
-syzbot found the following issue on:
-
-HEAD commit:    14f8db1c0f9a Merge branch 'for-next/core' into for-kernelci
-git tree:       git://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux.git for-kernelci
-console output: https://syzkaller.appspot.com/x/log.txt?x=13c79eca280000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=a837a8ba7e88bb45
-dashboard link: https://syzkaller.appspot.com/bug?extid=e633c79ceaecbf479854
-compiler:       Debian clang version 15.0.7, GNU ld (GNU Binutils for Debian) 2.35.2
-userspace arch: arm64
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=130464fa280000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=13134234280000
-
-Downloadable assets:
-disk image: https://storage.googleapis.com/syzbot-assets/ad6ce516eed3/disk-14f8db1c.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/1f38c2cc7667/vmlinux-14f8db1c.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/d795115eee39/Image-14f8db1c.gz.xz
-mounted in repro: https://storage.googleapis.com/syzbot-assets/aa1d3602f38e/mount_0.gz
-
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+e633c79ceaecbf479854@syzkaller.appspotmail.com
-
-Unable to handle kernel paging request at virtual address dfff800000000005
-KASAN: null-ptr-deref in range [0x0000000000000028-0x000000000000002f]
-Mem abort info:
-  ESR = 0x0000000096000006
-  EC = 0x25: DABT (current EL), IL = 32 bits
-  SET = 0, FnV = 0
-  EA = 0, S1PTW = 0
-  FSC = 0x06: level 2 translation fault
-Data abort info:
-  ISV = 0, ISS = 0x00000006
-  CM = 0, WnR = 0
-[dfff800000000005] address between user and kernel address ranges
-Internal error: Oops: 0000000096000006 [#1] PREEMPT SMP
-Modules linked in:
-CPU: 0 PID: 6080 Comm: syz-executor747 Not tainted 6.3.0-rc7-syzkaller-g14f8db1c0f9a #0
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 04/14/2023
-pstate: 80400005 (Nzcv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
-pc : ext4_acquire_dquot+0x1d4/0x398 fs/ext4/super.c:6766
-lr : dquot_to_inode fs/ext4/super.c:6740 [inline]
-lr : ext4_acquire_dquot+0x1ac/0x398 fs/ext4/super.c:6766
-sp : ffff80001eb27280
-x29: ffff80001eb27280 x28: 1fffe0001c3c01fc x27: ffff800015d705b0
-x26: ffff0000dd93c000 x25: ffff0000dd93e000 x24: 1fffe0001c3c021c
-x23: dfff800000000000 x22: 0000000000000049 x21: 0000000000000028
-x20: 0000000000000000 x19: ffff0000e1e00fc0 x18: ffff0001b426cca8
-x17: 0000000000000000 x16: ffff8000089669b0 x15: 0000000000000001
-x14: 1ffff00002bae0b0 x13: dfff800000000000 x12: 0000000000000001
-x11: 0000000000000000 x10: 0000000000000000 x9 : 0000000000000000
-x8 : 0000000000000005 x7 : ffff800008c11f68 x6 : 0000000000000000
-x5 : 0000000000000000 x4 : 0000000000000001 x3 : ffff800012441b4c
-x2 : 0000000000000001 x1 : 0000000000000001 x0 : 0000000000000003
-Call trace:
- ext4_acquire_dquot+0x1d4/0x398 fs/ext4/super.c:6766
- dqget+0x844/0xc48 fs/quota/dquot.c:914
- __dquot_initialize+0x2cc/0xb54 fs/quota/dquot.c:1492
- dquot_initialize fs/quota/dquot.c:1550 [inline]
- dquot_file_open+0x90/0xc8 fs/quota/dquot.c:2181
- ext4_file_open+0x230/0x590 fs/ext4/file.c:903
- do_dentry_open+0x724/0xf90 fs/open.c:920
- vfs_open+0x7c/0x90 fs/open.c:1051
- do_open fs/namei.c:3560 [inline]
- path_openat+0x1f2c/0x27f8 fs/namei.c:3715
- do_filp_open+0x1bc/0x3cc fs/namei.c:3742
- do_sys_openat2+0x128/0x3d8 fs/open.c:1348
- do_sys_open fs/open.c:1364 [inline]
- __do_sys_openat fs/open.c:1380 [inline]
- __se_sys_openat fs/open.c:1375 [inline]
- __arm64_sys_openat+0x1f0/0x240 fs/open.c:1375
- __invoke_syscall arch/arm64/kernel/syscall.c:38 [inline]
- invoke_syscall+0x98/0x2c0 arch/arm64/kernel/syscall.c:52
- el0_svc_common+0x138/0x258 arch/arm64/kernel/syscall.c:142
- do_el0_svc+0x64/0x198 arch/arm64/kernel/syscall.c:193
- el0_svc+0x4c/0x15c arch/arm64/kernel/entry-common.c:637
- el0t_64_sync_handler+0x84/0xf0 arch/arm64/kernel/entry-common.c:655
- el0t_64_sync+0x190/0x194 arch/arm64/kernel/entry.S:591
-Code: 97e8a7df f94002a8 9100a115 d343fea8 (38776908) 
----[ end trace 0000000000000000 ]---
-----------------
-Code disassembly (best guess):
-   0:	97e8a7df 	bl	0xffffffffffa29f7c
-   4:	f94002a8 	ldr	x8, [x21]
-   8:	9100a115 	add	x21, x8, #0x28
-   c:	d343fea8 	lsr	x8, x21, #3
-* 10:	38776908 	ldrb	w8, [x8, x23] <-- trapping instruction
-
-
+Reported-by: syzbot <syzbot+3c6cac1550288f8e7060@syzkaller.appspotmail.com>
+Closes: https://syzkaller.appspot.com/bug?extid=3c6cac1550288f8e7060
+Signed-off-by: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+Fixes: d66c718d28ac ("workingset: refactor LRU refault to expose refault recency check")
 ---
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+ mm/workingset.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-syzbot will keep track of this issue. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+diff --git a/mm/workingset.c b/mm/workingset.c
+index d81f9dafc9f1..90ae785d4c9c 100644
+--- a/mm/workingset.c
++++ b/mm/workingset.c
+@@ -303,7 +303,7 @@ static void lru_gen_refault(struct folio *folio, void *shadow)
+ 		goto unlock;
+ 
+ 	if (pgdat != folio_pgdat(folio))
+-		return;
++		goto unlock;
+ 
+ 	lruvec = mem_cgroup_lruvec(memcg, pgdat);
+ 	lrugen = &lruvec->lrugen;
+-- 
+2.18.4
 
-If the bug is already fixed, let syzbot know by replying with:
-#syz fix: exact-commit-title
 
-If you want syzbot to run the reproducer, reply with:
-#syz test: git://repo/address.git branch-or-commit-hash
-If you attach or paste a git patch, syzbot will apply it before testing.
-
-If you want to change bug's subsystems, reply with:
-#syz set subsystems: new-subsystem
-(See the list of subsystem names on the web dashboard)
-
-If the bug is a duplicate of another bug, reply with:
-#syz dup: exact-subject-of-another-report
-
-If you want to undo deduplication, reply with:
-#syz undup
