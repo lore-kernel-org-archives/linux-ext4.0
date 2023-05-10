@@ -2,51 +2,88 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B3FDDC77B7C
-	for <linux-ext4@archiver.kernel.org>; Wed, 10 May 2023 18:59:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0B4F2C7EE22
+	for <linux-ext4@archiver.kernel.org>; Wed, 10 May 2023 19:04:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235954AbjEJS7R (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 10 May 2023 14:59:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48034 "EHLO
+        id S236161AbjEJTEL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 10 May 2023 15:04:11 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51576 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233852AbjEJS7P (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 10 May 2023 14:59:15 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 699B710D3
-        for <linux-ext4@vger.kernel.org>; Wed, 10 May 2023 11:59:14 -0700 (PDT)
-Received: from letrec.thunk.org (vancouverconventioncentre.com [72.28.92.215] (may be forged))
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 34AIx6e0021568
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 10 May 2023 14:59:08 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1683745149; bh=hYe5mbgVey+MBUg28ndipfbchjF7PO883Q+kdEbNMhs=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To;
-        b=kqISOQ6ov8yjxe2M3SFXkCfz9KnSa85jc8WTj9p5g/bMlMsXujMQn2Cm/3Qa6pT1S
-         l+bdbdPlMygfaC+bWQiGpGAd++Zwhc8RvNanOOcZ03BvgbDJlLIeQOS91i0L67Cwq5
-         Vw1ODVzzgpVzL7tf8hbTMvCHEA6I0qywR0zYpdHcWFVniYVFdrf48ydSnDXsoreh0m
-         flzt6xE/NWMfYLArfCKjlU4fe7Bfj0s+sh0EsN6CyBNbpVwTYB7W+QlW+/lX3u3hZ1
-         dmv7mjaTyoQ8hMDmpOaFv1OdVzZBdgCdXKIx31OE5H8v4rzFoSyZZphwxHSySpgZie
-         fXcP7JlQoHZLg==
-Received: by letrec.thunk.org (Postfix, from userid 15806)
-        id A54258C03A8; Wed, 10 May 2023 14:59:05 -0400 (EDT)
-Date:   Wed, 10 May 2023 14:59:05 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     syzbot <syzbot+3c6cac1550288f8e7060@syzkaller.appspotmail.com>
-Cc:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        syzkaller-bugs@googlegroups.com
+        with ESMTP id S236215AbjEJTEH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 10 May 2023 15:04:07 -0400
+Received: from mail-il1-x130.google.com (mail-il1-x130.google.com [IPv6:2607:f8b0:4864:20::130])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 87C0959E9
+        for <linux-ext4@vger.kernel.org>; Wed, 10 May 2023 12:03:41 -0700 (PDT)
+Received: by mail-il1-x130.google.com with SMTP id e9e14a558f8ab-33164ec77ccso385065ab.0
+        for <linux-ext4@vger.kernel.org>; Wed, 10 May 2023 12:03:41 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20221208; t=1683745420; x=1686337420;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=QbhNMNTbdw0qSNr0k4GpjBRX50qyOAXsQymwFeq14SQ=;
+        b=ALKj+cgF6QebrDIyAnmVX9FjK0szrVsXsON/2iAcGk0STw53FR1dwLN7acc5qq5JEP
+         zTfJzSZx4XigbhJsQJzq55FJCy3hUPonwmhltIzQu6RXKjP/S+DHm6Xmv11fyYjSCtg6
+         Y05NP1Q8h+wTJIgIQdP2sMwFzQAv/gbnNSRDF5OKxvpUQ/g8+9RvWr5zGpPqNZmcY+t0
+         tXG65o7WNuwLUWNV0DeN2rOJmlhmAPIHZQphqhRRzGwGZRPr+TRKgK4/4UHLf+ndm49i
+         ZdHFOY0JrGWBMXytzvLWAqnvwblCdIXDo2Gv9iFRNu5uarqlfLODc62jEfzAm8iztL2O
+         3HLw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1683745420; x=1686337420;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=QbhNMNTbdw0qSNr0k4GpjBRX50qyOAXsQymwFeq14SQ=;
+        b=W0OQC8YZ2vs5hX1GRIsrlwzujWtK1AYO64+ccI2gOM7ph+pNonj2oETAHu0WQW8fmk
+         0mKptu3vrhq33PVNhY1B1zYasYkevda+v6QDt0S/4v6BWxHtlrvUEqVRnkYBU8Mkk0BX
+         z8hUQtSIWyLfSFkl2P7IBw6LwhMRii98NRtM2mqLS83M5610F7LBRfxH5eye9qlv5AIn
+         i1CNDnNqoWhCmtUv5LwzvGnyuMFF2qTQS+vN9H1Ac3uMPDtp1lQLzHDjdnhIFOFU/EeK
+         7rWse+y4i1spNotqAcvkTChywVRU0Y3uN0P5Dl8/t57+1VWbMx5NecY5HpG3XrR01zuI
+         H3eQ==
+X-Gm-Message-State: AC+VfDxB8i5v6yv1PMdjiQzpDLF4cdI6lmnVD1xzf48NUXqnZjyAjUwL
+        8agoiRIk+mA06HwMsYKWxkjbe71jEc6MdV9FoAkg44NuqFPsg5R8EEE=
+X-Google-Smtp-Source: ACHHUZ6veQGLSpr6GGUnXWOfjv15A2Rk/hJDrJPU/i7J6ttYheTKI1yAN0to5XpAHpU2QEXKoI2EPyA9y24FdQDEIy4=
+X-Received: by 2002:a05:6e02:1d03:b0:331:2623:c5f4 with SMTP id
+ i3-20020a056e021d0300b003312623c5f4mr24618ila.1.1683745420690; Wed, 10 May
+ 2023 12:03:40 -0700 (PDT)
+MIME-Version: 1.0
+References: <ZFvpefM2MgrdJ7v4@mit.edu> <000000000000bd687205fb5b7714@google.com>
+In-Reply-To: <000000000000bd687205fb5b7714@google.com>
+From:   Aleksandr Nogikh <nogikh@google.com>
+Date:   Wed, 10 May 2023 21:03:29 +0200
+Message-ID: <CANp29Y6kwK_BAjtOrc0_3NhOzU1RaA2dH2ctwE3uRHg-S56P0g@mail.gmail.com>
 Subject: Re: [syzbot] [ext4?] BUG: sleeping function called from invalid
  context in alloc_buffer_head
-Message-ID: <ZFvpefM2MgrdJ7v4@mit.edu>
-References: <0000000000004c3e6b05fb414be2@google.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <0000000000004c3e6b05fb414be2@google.com>
+To:     syzbot <syzbot+3c6cac1550288f8e7060@syzkaller.appspotmail.com>
+Cc:     tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-#syz set: subsystems mm
+#syz set subsystems: mm
+
+On Wed, May 10, 2023 at 8:59=E2=80=AFPM syzbot
+<syzbot+3c6cac1550288f8e7060@syzkaller.appspotmail.com> wrote:
+>
+> > #syz set: subsystems mm
+>
+> The specified label "mm" is unknown.
+> Please use one of the supported labels.
+>
+> The following labels are suported:
+> missing-backport, no-reminders, prio: {low, normal, high}, subsystems: {.=
+. see below ..}
+> The list of subsystems: https://syzkaller.appspot.com/upstream/subsystems=
+?all=3Dtrue
+>
+> --
+> You received this message because you are subscribed to the Google Groups=
+ "syzkaller-bugs" group.
+> To unsubscribe from this group and stop receiving emails from it, send an=
+ email to syzkaller-bugs+unsubscribe@googlegroups.com.
+> To view this discussion on the web visit https://groups.google.com/d/msgi=
+d/syzkaller-bugs/000000000000bd687205fb5b7714%40google.com.
