@@ -2,101 +2,95 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4332DC77B75
-	for <linux-ext4@archiver.kernel.org>; Fri, 12 May 2023 22:03:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2D265C77B75
+	for <linux-ext4@archiver.kernel.org>; Fri, 12 May 2023 22:50:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239757AbjELWDV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 12 May 2023 18:03:21 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40892 "EHLO
+        id S239694AbjELWum (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 12 May 2023 18:50:42 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54726 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231325AbjELWDT (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 12 May 2023 18:03:19 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 42F1C10C9
-        for <linux-ext4@vger.kernel.org>; Fri, 12 May 2023 15:03:18 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 34CM3CKp013016
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 12 May 2023 18:03:12 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1683928993; bh=iIyr1OgraawM51obo7cofzPvcYsrDguKcQMjMExh5gk=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=ZQfvbBLJrdTS2d9EYLWwQa/5wk5Zs+M12sHiSo9l7Oy95EQra47cqhz5r9TJD/k66
-         ceTr74zNROUNxvU8j7kYcNqf/7ktxanvYQyp474R4AfZIz8JUQqat8wgVy0Bo9ATIr
-         fzFjnRh+D22f71B3CBmgw3aakI7lECJdW4FZDRng9WvumjWPy8uTQCH82ZCWIrtier
-         5FvOZiIVU2zHYsTeG0hv9vdA+1edF5lpG6tP1AFAGQRb0PYh1sCnbhVES7xKkgqrP1
-         gexvPXdd2amMBs3aL74/ZObEhj/DGUNxFK6ks2mw3uAoxd7kS+2hlV17mZfZ02aQed
-         qFKcF2YIWGtCA==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id DEACE15C02E6; Fri, 12 May 2023 18:03:11 -0400 (EDT)
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>,
-        syzbot+1966db24521e5f6e23f7@syzkaller.appspotmail.com
-Subject: [PATCH 1/2] ext4: add bounds checking in get_max_inline_xattr_value_size()
-Date:   Fri, 12 May 2023 18:03:06 -0400
-Message-Id: <20230512220307.1412989-1-tytso@mit.edu>
-X-Mailer: git-send-email 2.31.0
-In-Reply-To: <ZF6vgw+DUP7/orzj@mit.edu>
-References: <ZF6vgw+DUP7/orzj@mit.edu>
+        with ESMTP id S229611AbjELWul (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 12 May 2023 18:50:41 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BB1C54C15
+        for <linux-ext4@vger.kernel.org>; Fri, 12 May 2023 15:50:40 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 4FB4965906
+        for <linux-ext4@vger.kernel.org>; Fri, 12 May 2023 22:50:40 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D5AE3C433D2;
+        Fri, 12 May 2023 22:50:38 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
+        s=korg; t=1683931839;
+        bh=nXYRhFPTfZeYNs3shFM/TPqJk2ZET0Jeuh1G/3FIVDo=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=zkFK6bOv2/fia1w1M7KO2n26AaBxgPCQdKToKDcywbLLvml6RIPfh+zQBKnTSHVx5
+         vo+dXOuAF8eTyEoA843TAtTHTCtAEA7C0fyA8bzCevNQ44KbUrCvgqpVTzTVfmb0gc
+         iYFpUt136fo/f0mK3kYdDvfmdRXEGRWUX3P+ZFWE=
+Date:   Sat, 13 May 2023 07:50:34 +0900
+From:   Greg KH <gregkh@linuxfoundation.org>
+To:     Marcus Hoffmann <marcus.hoffmann@othermo.de>
+Cc:     tytso@mit.edu, famzah@icdsoft.com, jack@suse.cz,
+        linux-ext4@vger.kernel.org
+Subject: Re: kernel BUG at fs/ext4/inode.c:1914 - page_buffers()
+Message-ID: <2023051300-deploy-cable-9087@gregkh>
+References: <20230315185711.GB3024297@mit.edu>
+ <578c0eb1-5271-b5fe-afa2-e2c1107b8968@othermo.de>
+ <2023051249-finalize-sneak-2864@gregkh>
+ <114216cf-6dfe-71b3-0ffe-3883296bc144@othermo.de>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <114216cf-6dfe-71b3-0ffe-3883296bc144@othermo.de>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Normally the extended attributes in the inode body would have been
-checked when the inode is first opened, but if someone is writing to
-the block device while the file system is mounted, it's possible for
-the inode table to get corrupted.  Add bounds checking to avoid
-reading beyond the end of allocated memory if this happens.
+On Fri, May 12, 2023 at 04:24:30PM +0200, Marcus Hoffmann wrote:
+> On 12.05.23 14:19, Greg KH wrote:
+> > On Thu, May 11, 2023 at 11:21:27AM +0200, Marcus Hoffmann wrote:
+> > > Hi,
+> > > 
+> > > > On Wed, Mar 15, 2023 at 18:57, Theodore Ts'o wrote:
+> > > > 
+> > > > Yeah, sorry, I didn't see it since it was in an attachment as opposed
+> > > > to with an explicit [PATCH] subject line.
+> > > > 
+> > > > And at this point, the data=journal writeback patches have landed in
+> > > > the ext4/dev tree, and while we could try to see if we could land this
+> > > > before the next merge window, I'm worried about merge or semantic
+> > > > conflicts of having both patches in a tree at one time.
+> > > > 
+> > > > I guess we could send it to Linus, let it get backported into stable,
+> > > > and then revert it during the merge window, ahead of applying the
+> > > > data=journal cleanup patch series.  But that seems a bit ugly.  Or we
+> > > > could ask for an exception from the stable kernel folks, after I do a
+> > > > full set of xfstests runs on it.  (Of course, I don't think anyone has
+> > > > been able to create a reliable reproducer, so all we can do is to test
+> > > > for regression failures.)
+> > > > 
+> > > > Jan, Greg, what do you think?
+> > > 
+> > > We've noticed this appearing for us as well now (on 5.15 with
+> > > data=journaled) and I wanted to ask what the status here is. Did any fix
+> > > here make it into a stable kernel yet? If not, I suppose I can still
+> > > apply the patch posted above as a quick-fix until this (or another
+> > > solution) makes it into the stable tree?
+> > 
+> > Any reason you can't just move to 6.1.y instead?  What prevents that?
+> > 
+> 
+> We will move to 6.1.y soon-ish (we are downstream from the rpi kernel tree)
+> Is this problem fixed there though? I couldn't really find anything
+> related to that in the tree?
 
-Reported-by: syzbot+1966db24521e5f6e23f7@syzkaller.appspotmail.com
-Link: https://syzkaller.appspot.com/bug?extid=1966db24521e5f6e23f7
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/inline.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+Test it and see!
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index d3dfc51a43c5..f47adb284e90 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -34,6 +34,7 @@ static int get_max_inline_xattr_value_size(struct inode *inode,
- 	struct ext4_xattr_ibody_header *header;
- 	struct ext4_xattr_entry *entry;
- 	struct ext4_inode *raw_inode;
-+	void *end;
- 	int free, min_offs;
- 
- 	if (!EXT4_INODE_HAS_XATTR_SPACE(inode))
-@@ -57,14 +58,23 @@ static int get_max_inline_xattr_value_size(struct inode *inode,
- 	raw_inode = ext4_raw_inode(iloc);
- 	header = IHDR(inode, raw_inode);
- 	entry = IFIRST(header);
-+	end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
- 
- 	/* Compute min_offs. */
--	for (; !IS_LAST_ENTRY(entry); entry = EXT4_XATTR_NEXT(entry)) {
-+	while (!IS_LAST_ENTRY(entry)) {
-+		void *next = EXT4_XATTR_NEXT(entry);
-+
-+		if (next >= end) {
-+			EXT4_ERROR_INODE(inode,
-+					 "corrupt xattr in inline inode");
-+			return 0;
-+		}
- 		if (!entry->e_value_inum && entry->e_value_size) {
- 			size_t offs = le16_to_cpu(entry->e_value_offs);
- 			if (offs < min_offs)
- 				min_offs = offs;
- 		}
-+		entry = next;
- 	}
- 	free = min_offs -
- 		((void *)entry - (void *)IFIRST(header)) - sizeof(__u32);
--- 
-2.31.0
+And if you are downstream from the RPI kernel tree, my sympathies,
+that's a tough place to be given the speed of it updating (i.e. not at
+all...)
 
+good luck!
+
+greg k-h
