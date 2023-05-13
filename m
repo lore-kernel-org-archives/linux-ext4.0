@@ -2,95 +2,69 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2D265C77B75
-	for <linux-ext4@archiver.kernel.org>; Fri, 12 May 2023 22:50:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 57C8CC77B7F
+	for <linux-ext4@archiver.kernel.org>; Sat, 13 May 2023 04:59:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239694AbjELWum (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 12 May 2023 18:50:42 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54726 "EHLO
+        id S230307AbjEME7o (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 13 May 2023 00:59:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48114 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229611AbjELWul (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 12 May 2023 18:50:41 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BB1C54C15
-        for <linux-ext4@vger.kernel.org>; Fri, 12 May 2023 15:50:40 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 4FB4965906
-        for <linux-ext4@vger.kernel.org>; Fri, 12 May 2023 22:50:40 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D5AE3C433D2;
-        Fri, 12 May 2023 22:50:38 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
-        s=korg; t=1683931839;
-        bh=nXYRhFPTfZeYNs3shFM/TPqJk2ZET0Jeuh1G/3FIVDo=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=zkFK6bOv2/fia1w1M7KO2n26AaBxgPCQdKToKDcywbLLvml6RIPfh+zQBKnTSHVx5
-         vo+dXOuAF8eTyEoA843TAtTHTCtAEA7C0fyA8bzCevNQ44KbUrCvgqpVTzTVfmb0gc
-         iYFpUt136fo/f0mK3kYdDvfmdRXEGRWUX3P+ZFWE=
-Date:   Sat, 13 May 2023 07:50:34 +0900
-From:   Greg KH <gregkh@linuxfoundation.org>
-To:     Marcus Hoffmann <marcus.hoffmann@othermo.de>
-Cc:     tytso@mit.edu, famzah@icdsoft.com, jack@suse.cz,
-        linux-ext4@vger.kernel.org
-Subject: Re: kernel BUG at fs/ext4/inode.c:1914 - page_buffers()
-Message-ID: <2023051300-deploy-cable-9087@gregkh>
-References: <20230315185711.GB3024297@mit.edu>
- <578c0eb1-5271-b5fe-afa2-e2c1107b8968@othermo.de>
- <2023051249-finalize-sneak-2864@gregkh>
- <114216cf-6dfe-71b3-0ffe-3883296bc144@othermo.de>
+        with ESMTP id S229545AbjEME7n (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 13 May 2023 00:59:43 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E4719449C
+        for <linux-ext4@vger.kernel.org>; Fri, 12 May 2023 21:59:41 -0700 (PDT)
+Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 34D4xX58020075
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sat, 13 May 2023 00:59:34 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1683953975; bh=QIvOIcqpjxYGgMhk21e537adDmqHT5Ejg+fwI5KC/q0=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References;
+        b=PbJPQ6ikyC0PryHYsl1TmUqHffgBfXNIq8XXi+Lvw1DpHmKWj0KZIbl8Hi5mJL6y3
+         Xnx93gBpVOZcBN/v6phddN7nWYsYXQayRMaIdbORs3um5jzcinLmBpws+MmL3SS+gx
+         3NV5nzjvnSDRPwth9fYEdoWesTpVJGqmhtzIstyci4mgOvM9cWvesxG6JmNN1k7tuT
+         aH8Xw3LjOx2/yR4geDSjYFlIqYtKWppE4WDBwnhpXFCpZpppVRay9rFpAsyCJHeLdi
+         zMpygDDZUHdP69C3lQh05/kSBk0UnAkhnH+N3Qf7eX8tpXW3o6cgBavdmO6gVokO23
+         g7pmN1ScJ+Y4w==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 75BE915C02E8; Sat, 13 May 2023 00:59:33 -0400 (EDT)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Jan Kara <jack@suse.cz>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        syzbot+4a03518df1e31b537066@syzkaller.appspotmail.com,
+        Dmitry Vyukov <dvyukov@google.com>
+Subject: Re: [PATCH v2] ext4: Fix data races when using cached status extents
+Date:   Sat, 13 May 2023 00:59:29 -0400
+Message-Id: <168395396129.1443054.18017236499948982224.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <20230504125524.10802-1-jack@suse.cz>
+References: <20230504125524.10802-1-jack@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <114216cf-6dfe-71b3-0ffe-3883296bc144@othermo.de>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, May 12, 2023 at 04:24:30PM +0200, Marcus Hoffmann wrote:
-> On 12.05.23 14:19, Greg KH wrote:
-> > On Thu, May 11, 2023 at 11:21:27AM +0200, Marcus Hoffmann wrote:
-> > > Hi,
-> > > 
-> > > > On Wed, Mar 15, 2023 at 18:57, Theodore Ts'o wrote:
-> > > > 
-> > > > Yeah, sorry, I didn't see it since it was in an attachment as opposed
-> > > > to with an explicit [PATCH] subject line.
-> > > > 
-> > > > And at this point, the data=journal writeback patches have landed in
-> > > > the ext4/dev tree, and while we could try to see if we could land this
-> > > > before the next merge window, I'm worried about merge or semantic
-> > > > conflicts of having both patches in a tree at one time.
-> > > > 
-> > > > I guess we could send it to Linus, let it get backported into stable,
-> > > > and then revert it during the merge window, ahead of applying the
-> > > > data=journal cleanup patch series.  But that seems a bit ugly.  Or we
-> > > > could ask for an exception from the stable kernel folks, after I do a
-> > > > full set of xfstests runs on it.  (Of course, I don't think anyone has
-> > > > been able to create a reliable reproducer, so all we can do is to test
-> > > > for regression failures.)
-> > > > 
-> > > > Jan, Greg, what do you think?
-> > > 
-> > > We've noticed this appearing for us as well now (on 5.15 with
-> > > data=journaled) and I wanted to ask what the status here is. Did any fix
-> > > here make it into a stable kernel yet? If not, I suppose I can still
-> > > apply the patch posted above as a quick-fix until this (or another
-> > > solution) makes it into the stable tree?
-> > 
-> > Any reason you can't just move to 6.1.y instead?  What prevents that?
-> > 
+
+On Thu, 04 May 2023 14:55:24 +0200, Jan Kara wrote:
+> When using cached extent stored in extent status tree in tree->cache_es
+> another process holding ei->i_es_lock for reading can be racing with us
+> setting new value of tree->cache_es. If the compiler would decide to
+> refetch tree->cache_es at an unfortunate moment, it could result in a
+> bogus in_range() check. Fix the possible race by using READ_ONCE() when
+> using tree->cache_es only under ei->i_es_lock for reading.
 > 
-> We will move to 6.1.y soon-ish (we are downstream from the rpi kernel tree)
-> Is this problem fixed there though? I couldn't really find anything
-> related to that in the tree?
+> [...]
 
-Test it and see!
+Applied, thanks!
 
-And if you are downstream from the RPI kernel tree, my sympathies,
-that's a tough place to be given the speed of it updating (i.e. not at
-all...)
+[1/1] ext4: Fix data races when using cached status extents
+      commit: 185e33d15ebf4a9d779fa78249b6cc95a071967e
 
-good luck!
-
-greg k-h
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
