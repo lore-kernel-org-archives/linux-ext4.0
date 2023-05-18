@@ -2,50 +2,50 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A926EC7EE2C
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 May 2023 22:34:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F182FC77B7A
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 May 2023 22:34:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231211AbjERWeV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 18 May 2023 18:34:21 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46892 "EHLO
+        id S231235AbjERWe3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 18 May 2023 18:34:29 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46864 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230523AbjERWeH (ORCPT
+        with ESMTP id S231156AbjERWeH (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 May 2023 18:34:07 -0400
-Received: from mail-pf1-x42c.google.com (mail-pf1-x42c.google.com [IPv6:2607:f8b0:4864:20::42c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0E78D1701
-        for <linux-ext4@vger.kernel.org>; Thu, 18 May 2023 15:33:56 -0700 (PDT)
-Received: by mail-pf1-x42c.google.com with SMTP id d2e1a72fcca58-64d15660784so953743b3a.0
-        for <linux-ext4@vger.kernel.org>; Thu, 18 May 2023 15:33:56 -0700 (PDT)
+Received: from mail-pl1-x62c.google.com (mail-pl1-x62c.google.com [IPv6:2607:f8b0:4864:20::62c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EA791E61
+        for <linux-ext4@vger.kernel.org>; Thu, 18 May 2023 15:33:59 -0700 (PDT)
+Received: by mail-pl1-x62c.google.com with SMTP id d9443c01a7336-1ae763f9c0bso5876495ad.2
+        for <linux-ext4@vger.kernel.org>; Thu, 18 May 2023 15:33:59 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=chromium.org; s=google; t=1684449236; x=1687041236;
+        d=chromium.org; s=google; t=1684449239; x=1687041239;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=zm9KFPuB6bZdPEt5ywklKgC04Y1roJ5KGT6m6yDSM9c=;
-        b=J6G6dzFzsckhnbDFzMyZKOGalJbcY4DZcK74lzD5Tg3LqMjiFUQckbLhoUSqQMPD99
-         fflGmW5rBVV7umE83swE0uxmUBxgoyyrgIbpC/La362qVLTlxl211jd00JflQ/+YjlA0
-         mvI0HGvZ3CFxru84tptgY6AakytJrcf+TvMF8=
+        bh=D1nBFbl2kNhqRXHkgIUn6lQxv3BWL5XvL+95Aso43MI=;
+        b=JnT3Nm6byGtDawfZcACo1v8lokc0XTySqmTYShweWMVp8qL45gp07eq/6jgdwoVlR0
+         nZXUqAFvVJd7nS83y/ZXaFd7TsKRuQjPPI8JmvPWUHujsZkS7P4hHgSkTkmF2pkjGl9K
+         DSB916FWMBFpvSJ5MLATv/gve4uyaJyVrwk+M=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1684449236; x=1687041236;
+        d=1e100.net; s=20221208; t=1684449239; x=1687041239;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=zm9KFPuB6bZdPEt5ywklKgC04Y1roJ5KGT6m6yDSM9c=;
-        b=QtVNVvHPDRh7zpRXBSlhKxCwMkBC0T8PZNYteTi16z7uQ1kabT2nVUkdUgSTmnBNp+
-         mvjr1Z2j93Bw8DMXV5XONoRtgTBM6053nATMP6NjWupTvJpS/039yzUZzNErTdQqA5Nc
-         pYw/JJX3Ceytb4NTqDqPx0vNfzD80D9w1kP5NQ1Wif8bSmLJmtqPkkmaZNFVjYmdK08u
-         5KULYaQjTdr56jIIenr1iZe9rT4e5xXAr0rfRGjYU+4fTBgY6PQhbHOHqVDVtjyompzB
-         ReFzkDaciOeWiDfctdfDtcTX6hZSSRRiG/5yYFxGH4KwquN591JvSqaDaP8e8a3H+P5Q
-         nNgQ==
-X-Gm-Message-State: AC+VfDwqPSSfYfbGzsiJ1ssML4/byHyhUnjbGkYVcZHP7JXabtcgYI2B
-        HJ96bKy/9z+wP+9UXAvW87r9ug==
-X-Google-Smtp-Source: ACHHUZ7VpBcD+VQBtKXGBQBwb8EinggyxyYEJ7xx416fDkKt0EPx4x5EXrHM8kavrKqdYKO41ivKAw==
-X-Received: by 2002:a17:903:26d3:b0:1ac:6e1f:d19c with SMTP id jg19-20020a17090326d300b001ac6e1fd19cmr578638plb.41.1684449236202;
-        Thu, 18 May 2023 15:33:56 -0700 (PDT)
+        bh=D1nBFbl2kNhqRXHkgIUn6lQxv3BWL5XvL+95Aso43MI=;
+        b=UCqlfrTeT49zt3qxX0Ftm4NE8IhWnbUdykgJPe+5Nd8zQFo/UnCYNWU8pR8lpF2QUg
+         4ePwaqjntN9piHcu6fc4u12Tf5sRNEZYlb1Ycq4iHcBRKROW6Sz1kKKLaEkSYiVIaPjE
+         kTIqbpmH4bYbifxGXYzZhTDo7siJEwmbzG7ih2jsOHQFD3rcCQaohBfcGPi4wGIwGVXP
+         nXgSsNWCYgi9hQBXdAUIFu/q7GsFlZB5RvUdIQjwW7ml2EXIKqLLPVS/SmKOSuegRSIz
+         lwSYl8TOXEcfvIH2Zhz08AxcH1+GNn02tfntJx4io2QVAPyAjmickj1aolEDGc8QunNX
+         Ec7w==
+X-Gm-Message-State: AC+VfDzKjcJL+U6iL2hFUKd+FzSQvW0KvhaEOSKwZefNumc9MIHPQJ+r
+        3oqCy5ykY007g3mKCyMSEVYUyA==
+X-Google-Smtp-Source: ACHHUZ7zJhYjfPa+ZbTaOHzNa4SnFtqdlL9pTqh+Bv9ufbfnFBxQYSdHmDSrGjM9o2XMte6XYk8eIA==
+X-Received: by 2002:a17:903:2689:b0:1ac:8837:df8 with SMTP id jf9-20020a170903268900b001ac88370df8mr699263plb.6.1684449239382;
+        Thu, 18 May 2023 15:33:59 -0700 (PDT)
 Received: from sarthakkukreti-glaptop.corp.google.com ([100.107.238.113])
-        by smtp.gmail.com with ESMTPSA id q4-20020a170902b10400b001aafb802efbsm1996502plr.12.2023.05.18.15.33.54
+        by smtp.gmail.com with ESMTPSA id q4-20020a170902b10400b001aafb802efbsm1996502plr.12.2023.05.18.15.33.57
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 18 May 2023 15:33:55 -0700 (PDT)
+        Thu, 18 May 2023 15:33:59 -0700 (PDT)
 From:   Sarthak Kukreti <sarthakkukreti@chromium.org>
 To:     dm-devel@redhat.com, linux-block@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
@@ -62,9 +62,9 @@ Cc:     Jens Axboe <axboe@kernel.dk>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         Bart Van Assche <bvanassche@google.com>,
         "Darrick J. Wong" <djwong@kernel.org>
-Subject: [PATCH v7 3/5] dm: Add block provisioning support
-Date:   Thu, 18 May 2023 15:33:24 -0700
-Message-ID: <20230518223326.18744-4-sarthakkukreti@chromium.org>
+Subject: [PATCH v7 5/5] loop: Add support for provision requests
+Date:   Thu, 18 May 2023 15:33:26 -0700
+Message-ID: <20230518223326.18744-6-sarthakkukreti@chromium.org>
 X-Mailer: git-send-email 2.40.1.698.g37aff9b760-goog
 In-Reply-To: <20230518223326.18744-1-sarthakkukreti@chromium.org>
 References: <20230518223326.18744-1-sarthakkukreti@chromium.org>
@@ -74,194 +74,106 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add block provisioning support for device-mapper targets.
-dm-crypt, dm-snap and dm-linear will, by default, passthrough
-REQ_OP_PROVISION requests to the underlying device, if
-supported.
+Add support for provision requests to loopback devices.
+Loop devices will configure provision support based on
+whether the underlying block device/file can support
+the provision request and upon receiving a provision bio,
+will map it to the backing device/storage. For loop devices
+over files, a REQ_OP_PROVISION request will translate to
+an fallocate mode 0 call on the backing file.
 
 Signed-off-by: Sarthak Kukreti <sarthakkukreti@chromium.org>
 ---
- drivers/md/dm-crypt.c         |  4 +++-
- drivers/md/dm-linear.c        |  1 +
- drivers/md/dm-snap.c          |  7 +++++++
- drivers/md/dm-table.c         | 23 +++++++++++++++++++++++
- drivers/md/dm.c               |  6 ++++++
- include/linux/device-mapper.h | 17 +++++++++++++++++
- 6 files changed, 57 insertions(+), 1 deletion(-)
+ drivers/block/loop.c | 34 +++++++++++++++++++++++++++++++---
+ 1 file changed, 31 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/md/dm-crypt.c b/drivers/md/dm-crypt.c
-index 8b47b913ee83..5a7c475ce6fc 100644
---- a/drivers/md/dm-crypt.c
-+++ b/drivers/md/dm-crypt.c
-@@ -3336,6 +3336,8 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
- 		cc->tag_pool_max_sectors <<= cc->sector_shift;
- 	}
- 
-+	ti->num_provision_bios = 1;
-+
- 	ret = -ENOMEM;
- 	cc->io_queue = alloc_workqueue("kcryptd_io/%s", WQ_MEM_RECLAIM, 1, devname);
- 	if (!cc->io_queue) {
-@@ -3390,7 +3392,7 @@ static int crypt_map(struct dm_target *ti, struct bio *bio)
- 	 * - for REQ_OP_DISCARD caller must use flush if IO ordering matters
+diff --git a/drivers/block/loop.c b/drivers/block/loop.c
+index bc31bb7072a2..7fe1a6629754 100644
+--- a/drivers/block/loop.c
++++ b/drivers/block/loop.c
+@@ -311,16 +311,20 @@ static int lo_fallocate(struct loop_device *lo, struct request *rq, loff_t pos,
+ {
+ 	/*
+ 	 * We use fallocate to manipulate the space mappings used by the image
+-	 * a.k.a. discard/zerorange.
++	 * a.k.a. discard/provision/zerorange.
  	 */
- 	if (unlikely(bio->bi_opf & REQ_PREFLUSH ||
--	    bio_op(bio) == REQ_OP_DISCARD)) {
-+	    bio_op(bio) == REQ_OP_DISCARD || bio_op(bio) == REQ_OP_PROVISION)) {
- 		bio_set_dev(bio, cc->dev->bdev);
- 		if (bio_sectors(bio))
- 			bio->bi_iter.bi_sector = cc->start +
-diff --git a/drivers/md/dm-linear.c b/drivers/md/dm-linear.c
-index f4448d520ee9..74ee27ca551a 100644
---- a/drivers/md/dm-linear.c
-+++ b/drivers/md/dm-linear.c
-@@ -62,6 +62,7 @@ static int linear_ctr(struct dm_target *ti, unsigned int argc, char **argv)
- 	ti->num_discard_bios = 1;
- 	ti->num_secure_erase_bios = 1;
- 	ti->num_write_zeroes_bios = 1;
-+	ti->num_provision_bios = 1;
- 	ti->private = lc;
- 	return 0;
+ 	struct file *file = lo->lo_backing_file;
+ 	int ret;
  
-diff --git a/drivers/md/dm-snap.c b/drivers/md/dm-snap.c
-index 9c49f53760d0..0dfda50ac4e0 100644
---- a/drivers/md/dm-snap.c
-+++ b/drivers/md/dm-snap.c
-@@ -1358,6 +1358,7 @@ static int snapshot_ctr(struct dm_target *ti, unsigned int argc, char **argv)
- 	if (s->discard_zeroes_cow)
- 		ti->num_discard_bios = (s->discard_passdown_origin ? 2 : 1);
- 	ti->per_io_data_size = sizeof(struct dm_snap_tracked_chunk);
-+	ti->num_provision_bios = 1;
+-	mode |= FALLOC_FL_KEEP_SIZE;
++	if (mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_ZERO_RANGE) &&
++	    !bdev_max_discard_sectors(lo->lo_device))
++		return -EOPNOTSUPP;
  
- 	/* Add snapshot to the list of snapshots for this origin */
- 	/* Exceptions aren't triggered till snapshot_resume() is called */
-@@ -2003,6 +2004,11 @@ static int snapshot_map(struct dm_target *ti, struct bio *bio)
- 	/* If the block is already remapped - use that, else remap it */
- 	e = dm_lookup_exception(&s->complete, chunk);
- 	if (e) {
-+		if (unlikely(bio_op(bio) == REQ_OP_PROVISION)) {
-+			bio_endio(bio);
-+			r = DM_MAPIO_SUBMITTED;
-+			goto out_unlock;
-+		}
- 		remap_exception(s, e, bio, chunk);
- 		if (unlikely(bio_op(bio) == REQ_OP_DISCARD) &&
- 		    io_overlaps_chunk(s, bio)) {
-@@ -2413,6 +2419,7 @@ static void snapshot_io_hints(struct dm_target *ti, struct queue_limits *limits)
- 		/* All discards are split on chunk_size boundary */
- 		limits->discard_granularity = snap->store->chunk_size;
- 		limits->max_discard_sectors = snap->store->chunk_size;
-+		limits->max_provision_sectors = snap->store->chunk_size;
+-	if (!bdev_max_discard_sectors(lo->lo_device))
++	if (mode == 0 && !bdev_max_provision_sectors(lo->lo_device))
+ 		return -EOPNOTSUPP;
  
- 		up_read(&_origins_lock);
- 	}
-diff --git a/drivers/md/dm-table.c b/drivers/md/dm-table.c
-index 1398f1d6e83e..4b2998c1e1dc 100644
---- a/drivers/md/dm-table.c
-+++ b/drivers/md/dm-table.c
-@@ -1845,6 +1845,26 @@ static bool dm_table_supports_write_zeroes(struct dm_table *t)
- 	return true;
++	mode |= FALLOC_FL_KEEP_SIZE;
++
+ 	ret = file->f_op->fallocate(file, mode, pos, blk_rq_bytes(rq));
+ 	if (unlikely(ret && ret != -EINVAL && ret != -EOPNOTSUPP))
+ 		return -EIO;
+@@ -488,6 +492,8 @@ static int do_req_filebacked(struct loop_device *lo, struct request *rq)
+ 				FALLOC_FL_PUNCH_HOLE);
+ 	case REQ_OP_DISCARD:
+ 		return lo_fallocate(lo, rq, pos, FALLOC_FL_PUNCH_HOLE);
++	case REQ_OP_PROVISION:
++		return lo_fallocate(lo, rq, pos, 0);
+ 	case REQ_OP_WRITE:
+ 		if (cmd->use_aio)
+ 			return lo_rw_aio(lo, cmd, pos, ITER_SOURCE);
+@@ -754,6 +760,25 @@ static void loop_sysfs_exit(struct loop_device *lo)
+ 				   &loop_attribute_group);
  }
  
-+static int device_provision_capable(struct dm_target *ti, struct dm_dev *dev,
-+				    sector_t start, sector_t len, void *data)
++static void loop_config_provision(struct loop_device *lo)
 +{
-+	return bdev_max_provision_sectors(dev->bdev);
-+}
++	struct file *file = lo->lo_backing_file;
++	struct inode *inode = file->f_mapping->host;
 +
-+static bool dm_table_supports_provision(struct dm_table *t)
-+{
-+	for (unsigned int i = 0; i < t->num_targets; i++) {
-+		struct dm_target *ti = dm_table_get_target(t, i);
-+
-+		if (ti->provision_supported ||
-+		    (ti->type->iterate_devices &&
-+		    ti->type->iterate_devices(ti, device_provision_capable, NULL)))
-+			return true;
++	/*
++	 * If the backing device is a block device, mirror its provisioning
++	 * capability.
++	 */
++	if (S_ISBLK(inode->i_mode)) {
++		blk_queue_max_provision_sectors(lo->lo_queue,
++			bdev_max_provision_sectors(I_BDEV(inode)));
++	} else if (file->f_op->fallocate) {
++		blk_queue_max_provision_sectors(lo->lo_queue, UINT_MAX >> 9);
++	} else {
++		blk_queue_max_provision_sectors(lo->lo_queue, 0);
 +	}
-+
-+	return false;
 +}
 +
- static int device_not_nowait_capable(struct dm_target *ti, struct dm_dev *dev,
- 				     sector_t start, sector_t len, void *data)
+ static void loop_config_discard(struct loop_device *lo)
  {
-@@ -1978,6 +1998,9 @@ int dm_table_set_restrictions(struct dm_table *t, struct request_queue *q,
- 	if (!dm_table_supports_write_zeroes(t))
- 		q->limits.max_write_zeroes_sectors = 0;
+ 	struct file *file = lo->lo_backing_file;
+@@ -1092,6 +1117,7 @@ static int loop_configure(struct loop_device *lo, fmode_t mode,
+ 	blk_queue_io_min(lo->lo_queue, bsize);
  
-+	if (!dm_table_supports_provision(t))
-+		q->limits.max_provision_sectors = 0;
-+
- 	dm_table_verify_integrity(t);
- 
- 	/*
-diff --git a/drivers/md/dm.c b/drivers/md/dm.c
-index 3b694ba3a106..9b94121b8d38 100644
---- a/drivers/md/dm.c
-+++ b/drivers/md/dm.c
-@@ -1609,6 +1609,7 @@ static bool is_abnormal_io(struct bio *bio)
- 		case REQ_OP_DISCARD:
- 		case REQ_OP_SECURE_ERASE:
- 		case REQ_OP_WRITE_ZEROES:
-+		case REQ_OP_PROVISION:
- 			return true;
- 		default:
- 			break;
-@@ -1641,6 +1642,11 @@ static blk_status_t __process_abnormal_io(struct clone_info *ci,
- 		if (ti->max_write_zeroes_granularity)
- 			max_granularity = limits->max_write_zeroes_sectors;
- 		break;
-+	case REQ_OP_PROVISION:
-+		num_bios = ti->num_provision_bios;
-+		if (ti->max_provision_granularity)
-+			max_granularity = limits->max_provision_sectors;
-+		break;
- 	default:
- 		break;
+ 	loop_config_discard(lo);
++	loop_config_provision(lo);
+ 	loop_update_rotational(lo);
+ 	loop_update_dio(lo);
+ 	loop_sysfs_init(lo);
+@@ -1304,6 +1330,7 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)
  	}
-diff --git a/include/linux/device-mapper.h b/include/linux/device-mapper.h
-index a52d2b9a6846..9981378457d2 100644
---- a/include/linux/device-mapper.h
-+++ b/include/linux/device-mapper.h
-@@ -334,6 +334,12 @@ struct dm_target {
- 	 */
- 	unsigned int num_write_zeroes_bios;
  
-+	/*
-+	 * The number of PROVISION bios that will be submitted to the target.
-+	 * The bio number can be accessed with dm_bio_get_target_bio_nr.
-+	 */
-+	unsigned int num_provision_bios;
-+
- 	/*
- 	 * The minimum number of extra bytes allocated in each io for the
- 	 * target to use.
-@@ -358,6 +364,11 @@ struct dm_target {
- 	 */
- 	bool discards_supported:1;
+ 	loop_config_discard(lo);
++	loop_config_provision(lo);
  
-+	/* Set if this target needs to receive provision requests regardless of
-+	 * whether or not its underlying devices have support.
-+	 */
-+	bool provision_supported:1;
-+
- 	/*
- 	 * Set if this target requires that discards be split on
- 	 * 'max_discard_sectors' boundaries.
-@@ -376,6 +387,12 @@ struct dm_target {
- 	 */
- 	bool max_write_zeroes_granularity:1;
- 
-+	/*
-+	 * Set if this target requires that provisions be split on
-+	 * 'max_provision_sectors' boundaries.
-+	 */
-+	bool max_provision_granularity:1;
-+
- 	/*
- 	 * Set if we need to limit the number of in-flight bios when swapping.
- 	 */
+ 	/* update dio if lo_offset or transfer is changed */
+ 	__loop_update_dio(lo, lo->use_dio);
+@@ -1830,6 +1857,7 @@ static blk_status_t loop_queue_rq(struct blk_mq_hw_ctx *hctx,
+ 	case REQ_OP_FLUSH:
+ 	case REQ_OP_DISCARD:
+ 	case REQ_OP_WRITE_ZEROES:
++	case REQ_OP_PROVISION:
+ 		cmd->use_aio = false;
+ 		break;
+ 	default:
 -- 
 2.40.1.698.g37aff9b760-goog
 
