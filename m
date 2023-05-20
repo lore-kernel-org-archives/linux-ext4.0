@@ -2,52 +2,79 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 644BDC77B7A
-	for <linux-ext4@archiver.kernel.org>; Sat, 20 May 2023 05:11:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A935EC77B7D
+	for <linux-ext4@archiver.kernel.org>; Sat, 20 May 2023 07:22:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231220AbjETFLK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 20 May 2023 01:11:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33168 "EHLO
+        id S229952AbjETHWn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 20 May 2023 03:22:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50116 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231290AbjETFKn (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 20 May 2023 01:10:43 -0400
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 85F33E52;
-        Fri, 19 May 2023 22:10:21 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=IZDwpSbAMestbxTLBfVfseHT/Ao1tda2Hw4YjCVMEYs=; b=cHkX9gDilxrMdUT4jG8u5OaHR4
-        L649r4BgCX/pLuYAkhtU7SfafGHxxnrkUHEgT73x1yGjbRqyAlVK21YJ9K37RG+dA6B4QsRCgDg5u
-        AMOqipYZn/a8zn8pcotnMu0xnrY0QfgL3AWKEk2bB7uEqQdxqWYQHjtC3u8IGIjc9BW/mC34TmmPK
-        4hfhEzqh4EWdQQP0Rk18v7/YSyzKzOWnHuAu/JZ6gwW/k/cKdTLVGCvGU/aHKgYJaGyj+c4eypG3x
-        qMaW3NS65gjbl/lOfjSfziIpL+N28MVHooIGIOoavwJekn2IMwGE+x/KxENxInlUVJdZ6dLPQSnzT
-        K0XEfMPQ==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.96 #2 (Red Hat Linux))
-        id 1q0Er9-000kTk-0P;
-        Sat, 20 May 2023 05:10:15 +0000
-Date:   Fri, 19 May 2023 22:10:15 -0700
-From:   Christoph Hellwig <hch@infradead.org>
-To:     Eric Biggers <ebiggers@kernel.org>
-Cc:     fsverity@lists.linux.dev, linux-crypto@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-btrfs@vger.kernel.org
-Subject: Re: [PATCH v2] fsverity: use shash API instead of ahash API
-Message-ID: <ZGhWN6zohGXQvPNv@infradead.org>
-References: <20230516052306.99600-1-ebiggers@kernel.org>
+        with ESMTP id S229807AbjETHWm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 20 May 2023 03:22:42 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CF4ADA0
+        for <linux-ext4@vger.kernel.org>; Sat, 20 May 2023 00:21:53 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1684567313;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=tMJ2UA9C086zsdoWMPyTFKlyEmN1wmL+SV81fprldkY=;
+        b=QLxRWWJ7zx/hoX7dvlsu4BTMnoFAu4tYQIzXnIiIgwsaRItosEyDzKXxDLSppo7iIoMXIC
+        a7iTq948kGt6j00ftwZCueJf11vNVpz9p842SSO4LaTxEnuFdg2kXG8/59Pdz3A9SeqeHN
+        jyHb67WUU8X+xF7XQkdIzWfFXMzfsF8=
+Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
+ [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-367-sQc6AOqrP_Cwo3YRKP2QvA-1; Sat, 20 May 2023 03:21:48 -0400
+X-MC-Unique: sQc6AOqrP_Cwo3YRKP2QvA-1
+Received: from smtp.corp.redhat.com (int-mx09.intmail.prod.int.rdu2.redhat.com [10.11.54.9])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 74C912800C31;
+        Sat, 20 May 2023 07:21:47 +0000 (UTC)
+Received: from warthog.procyon.org.uk (unknown [10.42.28.221])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id A9A0E4F2DE3;
+        Sat, 20 May 2023 07:21:44 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+        Kingdom.
+        Registered in England and Wales under Company Registration No. 3798903
+From:   David Howells <dhowells@redhat.com>
+In-Reply-To: <ZGhIpbrgQaPRPC3c@infradead.org>
+References: <ZGhIpbrgQaPRPC3c@infradead.org> <20230520000049.2226926-1-dhowells@redhat.com> <20230520000049.2226926-19-dhowells@redhat.com>
+To:     Christoph Hellwig <hch@infradead.org>
+Cc:     dhowells@redhat.com, Jens Axboe <axboe@kernel.dk>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>,
+        Jeff Layton <jlayton@kernel.org>,
+        David Hildenbrand <david@redhat.com>,
+        Jason Gunthorpe <jgg@nvidia.com>,
+        Logan Gunthorpe <logang@deltatee.com>,
+        Hillf Danton <hdanton@sina.com>,
+        Christian Brauner <brauner@kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-fsdevel@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH v21 18/30] ext4: Provide a splice-read stub
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20230516052306.99600-1-ebiggers@kernel.org>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <2233564.1684567304.1@warthog.procyon.org.uk>
+Date:   Sat, 20 May 2023 08:21:44 +0100
+Message-ID: <2233565.1684567304@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 3.1 on 10.11.54.9
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-I'm not really an expert on fsverify, but the rationale of not using
-clumsy external crypto offloads from the file system makes sense, and
-the code looks much nicer now:
+Christoph Hellwig <hch@infradead.org> wrote:
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+> Not sure I'd call this a stub, but then again I'm not a native speaker.
+
+"Wrapper"?
+
+David
+
