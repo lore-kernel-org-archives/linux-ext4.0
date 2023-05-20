@@ -2,49 +2,36 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A935EC77B7D
-	for <linux-ext4@archiver.kernel.org>; Sat, 20 May 2023 07:22:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 028D6C77B7A
+	for <linux-ext4@archiver.kernel.org>; Sat, 20 May 2023 09:02:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229952AbjETHWn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 20 May 2023 03:22:43 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50116 "EHLO
+        id S230166AbjETJCO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 20 May 2023 05:02:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37362 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229807AbjETHWm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 20 May 2023 03:22:42 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CF4ADA0
-        for <linux-ext4@vger.kernel.org>; Sat, 20 May 2023 00:21:53 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1684567313;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=tMJ2UA9C086zsdoWMPyTFKlyEmN1wmL+SV81fprldkY=;
-        b=QLxRWWJ7zx/hoX7dvlsu4BTMnoFAu4tYQIzXnIiIgwsaRItosEyDzKXxDLSppo7iIoMXIC
-        a7iTq948kGt6j00ftwZCueJf11vNVpz9p842SSO4LaTxEnuFdg2kXG8/59Pdz3A9SeqeHN
-        jyHb67WUU8X+xF7XQkdIzWfFXMzfsF8=
-Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
- [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-367-sQc6AOqrP_Cwo3YRKP2QvA-1; Sat, 20 May 2023 03:21:48 -0400
-X-MC-Unique: sQc6AOqrP_Cwo3YRKP2QvA-1
-Received: from smtp.corp.redhat.com (int-mx09.intmail.prod.int.rdu2.redhat.com [10.11.54.9])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 74C912800C31;
-        Sat, 20 May 2023 07:21:47 +0000 (UTC)
-Received: from warthog.procyon.org.uk (unknown [10.42.28.221])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id A9A0E4F2DE3;
-        Sat, 20 May 2023 07:21:44 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
-        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
-        Kingdom.
-        Registered in England and Wales under Company Registration No. 3798903
-From:   David Howells <dhowells@redhat.com>
-In-Reply-To: <ZGhIpbrgQaPRPC3c@infradead.org>
-References: <ZGhIpbrgQaPRPC3c@infradead.org> <20230520000049.2226926-1-dhowells@redhat.com> <20230520000049.2226926-19-dhowells@redhat.com>
-To:     Christoph Hellwig <hch@infradead.org>
-Cc:     dhowells@redhat.com, Jens Axboe <axboe@kernel.dk>,
+        with ESMTP id S229568AbjETJCM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 20 May 2023 05:02:12 -0400
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8828510A;
+        Sat, 20 May 2023 02:02:11 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=ROreG6kiJHA2gDeVQnQ0pl8EyThSYR4NrNrObaLNkZo=; b=Libx7jSdGZ1yT/+90Pr5nn5tPz
+        3p/rS2poLYavfOHw9sceEoZ4jk351v9PEiQKKkDexGqeC0iG7jPdlPISLRaA1weC4tqtAlkNNOjwV
+        cftsjyXliWrqKtqzUflc0PTqANZCbz2JDrBJnQz4LFIL7htsGtwIMJMiMVAQIv6mTFqiEEqWYf2R6
+        IOXzsmP2u2XQLRlo61Rd9aarKFAjHtb711mqbOGthUvI5NeXjLaj3NCX+vbF1ALHFqg+jIvBJwM6S
+        OAqzeMnsRKZOmS5KTJkXQ0MJt+c0WpZpbna26j/YewRlYIA9orFYD00/eGI2AvUcuOtK4UOLKMiQa
+        nyQyuprQ==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.96 #2 (Red Hat Linux))
+        id 1q0ITD-0014R0-1T;
+        Sat, 20 May 2023 09:01:47 +0000
+Date:   Sat, 20 May 2023 02:01:47 -0700
+From:   Christoph Hellwig <hch@infradead.org>
+To:     David Howells <dhowells@redhat.com>
+Cc:     Christoph Hellwig <hch@infradead.org>,
+        Jens Axboe <axboe@kernel.dk>,
         Al Viro <viro@zeniv.linux.org.uk>,
         Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>,
         Jeff Layton <jlayton@kernel.org>,
@@ -60,21 +47,25 @@ Cc:     dhowells@redhat.com, Jens Axboe <axboe@kernel.dk>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         linux-ext4@vger.kernel.org
 Subject: Re: [PATCH v21 18/30] ext4: Provide a splice-read stub
+Message-ID: <ZGiMewK8CW7DB4sl@infradead.org>
+References: <ZGhIpbrgQaPRPC3c@infradead.org>
+ <20230520000049.2226926-1-dhowells@redhat.com>
+ <20230520000049.2226926-19-dhowells@redhat.com>
+ <2233565.1684567304@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <2233564.1684567304.1@warthog.procyon.org.uk>
-Date:   Sat, 20 May 2023 08:21:44 +0100
-Message-ID: <2233565.1684567304@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.9
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <2233565.1684567304@warthog.procyon.org.uk>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Christoph Hellwig <hch@infradead.org> wrote:
+On Sat, May 20, 2023 at 08:21:44AM +0100, David Howells wrote:
+> Christoph Hellwig <hch@infradead.org> wrote:
+> 
+> > Not sure I'd call this a stub, but then again I'm not a native speaker.
+> 
+> "Wrapper"?
 
-> Not sure I'd call this a stub, but then again I'm not a native speaker.
-
-"Wrapper"?
-
-David
-
+That's what I'd call it, yes.
