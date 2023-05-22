@@ -2,42 +2,41 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A7CBEC7EE26
-	for <linux-ext4@archiver.kernel.org>; Mon, 22 May 2023 00:07:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 65524C7EE2D
+	for <linux-ext4@archiver.kernel.org>; Mon, 22 May 2023 00:18:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230256AbjEVAHj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 21 May 2023 20:07:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60146 "EHLO
+        id S231176AbjEVAS4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 21 May 2023 20:18:56 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33522 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229481AbjEVAHi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 21 May 2023 20:07:38 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E5EBED1;
-        Sun, 21 May 2023 17:07:37 -0700 (PDT)
+        with ESMTP id S229481AbjEVASx (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 21 May 2023 20:18:53 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C8894CE;
+        Sun, 21 May 2023 17:18:52 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 631896174C;
-        Mon, 22 May 2023 00:07:37 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 21004C433D2;
-        Mon, 22 May 2023 00:07:34 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 5E06761007;
+        Mon, 22 May 2023 00:18:52 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1BF4FC433D2;
+        Mon, 22 May 2023 00:18:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1684714056;
-        bh=logUhuMuaDvrFGp87a3eXuBZVgOPH38ZQeOk9oWMxhA=;
+        s=k20201202; t=1684714731;
+        bh=h2BlMcmISXxBJFSILWKzzV9GG3WnuD1b35xLXlZqY4I=;
         h=Date:Subject:To:Cc:References:From:In-Reply-To:From;
-        b=jinVW+8eNfBmMJvPLIRbSMrX3C+ysBP344vv+qMi84FjV2X+zzFwAh8xh+THsy/A8
-         f7n7CscOp9ldNzbMYKqQROCTt+AS2stpbpTN5qKl4tiJAwkxedNRln1tS95W+JHVfL
-         MlrT+lXxAxiWe2UTwO7ndf3emdaYv3zxBJ5GihMIvhIezJ3AGMv4m3w3sorDMEvyPf
-         FkNSWSW6DtqVfjWPCwUzSDgy0Ug7/6HBtXxZfFSyEx8EAJMuiEkELi3AT9cEPjV+k5
-         p0DQ1x6g3QKPp4NSjgQJvj1BT18DFRjljg71PKaVdhIQjyEcKo9DHNhzPm+akQ6HSZ
-         HYHWZZRzzH9tA==
-Message-ID: <73104483-a4ae-b7e9-2383-c28714e9859b@kernel.org>
-Date:   Mon, 22 May 2023 09:07:33 +0900
+        b=OTmSvnLVrUx5+NbcZIxTzzydzv3A5BNLReE/DyE2lyV2N/3GqXIw4IW8eAQShb48+
+         4bm1AQ9EZEU+sBSdm1BOuD13kRY9SvmeTaNtg6bfSeB2sLyOyzXJ4EgGrnI0jPLuh0
+         mK6l2dCQrzkxdkklB9ispUe3ZMjsm6DrqdmTvUqNBefiiPFIQBZwe3mgtpf/jEYMrL
+         0U3HQ0t796I+NScqJCww21UlMh+5NQ5JHq7HgcN6RGjVafWaEk8ps5pVgEU8zZliF1
+         nOB+MpyFf0xd/qe/t2qz6qdSviIxdssojY3wRb2rA9Y1VJuCgfIV1VVl5K0L0vadgj
+         xZ4RorGU2k3KQ==
+Message-ID: <afb7a441-afd5-c9c5-f168-29420b88d92e@kernel.org>
+Date:   Mon, 22 May 2023 09:18:48 +0900
 MIME-Version: 1.0
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
  Thunderbird/102.10.0
-Subject: Re: [PATCH 09/13] iomap: use kiocb_write_and_wait and
- kiocb_invalidate_pages
+Subject: Re: [PATCH 11/13] fuse: update ki_pos in fuse_perform_write
 Content-Language: en-US
 To:     Christoph Hellwig <hch@lst.de>,
         Matthew Wilcox <willy@infradead.org>
@@ -59,10 +58,10 @@ Cc:     Jens Axboe <axboe@kernel.dk>, Xiubo Li <xiubli@redhat.com>,
         cluster-devel@redhat.com, linux-xfs@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-mm@kvack.org
 References: <20230519093521.133226-1-hch@lst.de>
- <20230519093521.133226-10-hch@lst.de>
+ <20230519093521.133226-12-hch@lst.de>
 From:   Damien Le Moal <dlemoal@kernel.org>
 Organization: Western Digital Research
-In-Reply-To: <20230519093521.133226-10-hch@lst.de>
+In-Reply-To: <20230519093521.133226-12-hch@lst.de>
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
 Precedence: bulk
@@ -70,9 +69,8 @@ List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
 On 5/19/23 18:35, Christoph Hellwig wrote:
-> Use the common helpers for direct I/O page invalidation instead of
-> open coding the logic.  This leads to a slight reordering of checks
-> in __iomap_dio_rw to keep the logic straight.
+> Both callers of fuse_perform_write need to updated ki_pos, move it into
+> common code.
 > 
 > Signed-off-by: Christoph Hellwig <hch@lst.de>
 
