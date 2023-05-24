@@ -2,228 +2,227 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 686B9C77B7C
-	for <linux-ext4@archiver.kernel.org>; Wed, 24 May 2023 03:50:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7FC80C77B7A
+	for <linux-ext4@archiver.kernel.org>; Wed, 24 May 2023 05:32:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239366AbjEXDuX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 23 May 2023 23:50:23 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56092 "EHLO
+        id S238604AbjEXFc7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 24 May 2023 01:32:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59748 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239290AbjEXDuP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 23 May 2023 23:50:15 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E2819E8
-        for <linux-ext4@vger.kernel.org>; Tue, 23 May 2023 20:50:13 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 34O3nv3b023546
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 23 May 2023 23:49:58 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1684900199; bh=Wz9Y2fZsqsMtKHCtbx2Up2waOXlgqywjsko2hKpHRNo=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=RQe8hq2QUxWh6U5V/qYCCleddcWtVNhJsla4GvAYZ7vCEmaTNQkc7dEsOLNcjmwR2
-         ZtscV2+lJfN52SFGObi4uXBrCY8vcaJudF6w4FeBV8ybyEdswrWzlsXqoXIjtiYjTR
-         Zb6OCLa+9NLmkKuA1wlD2coTzXprbTL2NrfuCgWXN7ruH+lG82IKHG4sYKwDKpqte0
-         5vZMfIrPNYfPmRLsTW2HBGJA6hHz6H8B5mW2tcGkYG3ZQvi4KoetxFfxtmb2dxH4Kt
-         XAa1SUSZIcHlu2z2a9SeDNDLkOlB6qWvlUNno51x0VwuS8pwQzcm8CTk2HH2xDreq3
-         5ge+QlXL0D2Ig==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 8881415C052C; Tue, 23 May 2023 23:49:57 -0400 (EDT)
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>,
-        syzbot+cbb68193bdb95af4340a@syzkaller.appspotmail.com,
-        syzbot+62120febbd1ee3c3c860@syzkaller.appspotmail.com,
-        syzbot+edce54daffee36421b4c@syzkaller.appspotmail.com,
-        stable@kernel.org
-Subject: [PATCH 1/4] ext4: add EA_INODE checking to ext4_iget()
-Date:   Tue, 23 May 2023 23:49:48 -0400
-Message-Id: <20230524034951.779531-2-tytso@mit.edu>
-X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230524034951.779531-1-tytso@mit.edu>
-References: <20230524034951.779531-1-tytso@mit.edu>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        with ESMTP id S238870AbjEXFcx (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 24 May 2023 01:32:53 -0400
+Received: from mga05.intel.com (mga05.intel.com [192.55.52.43])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 640D21B0
+        for <linux-ext4@vger.kernel.org>; Tue, 23 May 2023 22:32:49 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1684906369; x=1716442369;
+  h=date:from:to:cc:subject:message-id;
+  bh=7EO6yvbXKCJRE3w5JQoA59hcvPLR2TwCgLC9pdVfGwg=;
+  b=Mc2XBfzcRQgQdvi1O5BP3DrrTHs/2X9FItPtS2+1TDZz4ELyhMjXbMxM
+   H9Ycxlxw1tW3/IwVqf3XnArt+X0PLehoTgF0exHcB7Tg8DJRxWg7Z43Qk
+   osIkIOm27nuQADJkJt9wdI4cJtdiFtcRmH8WP7Vc6ElSNM5DJB523+p0e
+   nUrXeMw55/Nf+cyi/X8Yv54zi2P+e0dDpGNVicKELGgPKAfkIgWjUfcsn
+   DRnCmCxoO2EdlycE701PUzGzLHeXleNZ9ENIfVcvqiFoAVYCePbm+CdwC
+   FY3KWpcx2LqoY/pQm967iZhN5CifDKWCvN70J75pvYA4dk2Titc0Ve76p
+   w==;
+X-IronPort-AV: E=McAfee;i="6600,9927,10719"; a="439813770"
+X-IronPort-AV: E=Sophos;i="6.00,188,1681196400"; 
+   d="scan'208";a="439813770"
+Received: from fmsmga006.fm.intel.com ([10.253.24.20])
+  by fmsmga105.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 23 May 2023 22:32:49 -0700
+X-ExtLoop1: 1
+X-IronPort-AV: E=McAfee;i="6600,9927,10719"; a="950855126"
+X-IronPort-AV: E=Sophos;i="6.00,188,1681196400"; 
+   d="scan'208";a="950855126"
+Received: from lkp-server01.sh.intel.com (HELO dea6d5a4f140) ([10.239.97.150])
+  by fmsmga006.fm.intel.com with ESMTP; 23 May 2023 22:32:48 -0700
+Received: from kbuild by dea6d5a4f140 with local (Exim 4.96)
+        (envelope-from <lkp@intel.com>)
+        id 1q1h79-000ERH-1Y;
+        Wed, 24 May 2023 05:32:47 +0000
+Date:   Wed, 24 May 2023 13:32:23 +0800
+From:   kernel test robot <lkp@intel.com>
+To:     "Theodore Ts'o" <tytso@mit.edu>
+Cc:     linux-ext4@vger.kernel.org
+Subject: [tytso-ext4:test] BUILD SUCCESS
+ 6a5695213ee67fc52e60fd1a6078266b026828d9
+Message-ID: <20230524053223.5UgSV%lkp@intel.com>
+User-Agent: s-nail v14.9.24
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add a new flag, EXT4_IGET_EA_INODE which indicates whether the inode
-is expected to have the EA_INODE flag or not.  If the flag is not
-set/clear as expected, then fail the iget() operation and mark the
-file system as corrupted.
+tree/branch: INFO setup_repo_specs: /db/releases/20230524121217/lkp-src/repo/*/tytso-ext4
+https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git test
+branch HEAD: 6a5695213ee67fc52e60fd1a6078266b026828d9  ext4: disallow ea_inodes with extended attributes
 
-This commit also makes the ext4_iget() always perform the
-is_bad_inode() check even when the inode is already inode cache.  This
-allows us to remove the is_bad_inode() check from the callers of
-ext4_iget() in the ea_inode code.
+elapsed time: 720m
 
-Reported-by: syzbot+cbb68193bdb95af4340a@syzkaller.appspotmail.com
-Reported-by: syzbot+62120febbd1ee3c3c860@syzkaller.appspotmail.com
-Reported-by: syzbot+edce54daffee36421b4c@syzkaller.appspotmail.com
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@kernel.org
----
- fs/ext4/ext4.h  |  3 ++-
- fs/ext4/inode.c | 31 ++++++++++++++++++++++++++-----
- fs/ext4/xattr.c | 36 +++++++-----------------------------
- 3 files changed, 35 insertions(+), 35 deletions(-)
+configs tested: 156
+configs skipped: 12
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6948d673bba2..9525c52b78dc 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2901,7 +2901,8 @@ typedef enum {
- 	EXT4_IGET_NORMAL =	0,
- 	EXT4_IGET_SPECIAL =	0x0001, /* OK to iget a system inode */
- 	EXT4_IGET_HANDLE = 	0x0002,	/* Inode # is from a handle */
--	EXT4_IGET_BAD =		0x0004  /* Allow to iget a bad inode */
-+	EXT4_IGET_BAD =		0x0004, /* Allow to iget a bad inode */
-+	EXT4_IGET_EA_INODE =	0x0008	/* Inode should contain an EA value */
- } ext4_iget_flags;
- 
- extern struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ce5f21b6c2b3..258f3cbed347 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4641,6 +4641,21 @@ static inline void ext4_inode_set_iversion_queried(struct inode *inode, u64 val)
- 		inode_set_iversion_queried(inode, val);
- }
- 
-+static const char *check_igot_inode(struct inode *inode, ext4_iget_flags flags)
-+
-+{
-+	if (flags & EXT4_IGET_EA_INODE) {
-+		if (!(EXT4_I(inode)->i_flags & EXT4_EA_INODE_FL))
-+			return "missing EA_INODE flag";
-+	} else {
-+		if ((EXT4_I(inode)->i_flags & EXT4_EA_INODE_FL))
-+			return "unexpected EA_INODE flag";
-+	}
-+	if (is_bad_inode(inode) && !(flags & EXT4_IGET_BAD))
-+		return "unexpected bad inode w/o EXT4_IGET_BAD";
-+	return NULL;
-+}
-+
- struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 			  ext4_iget_flags flags, const char *function,
- 			  unsigned int line)
-@@ -4650,6 +4665,7 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 	struct ext4_inode_info *ei;
- 	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
- 	struct inode *inode;
-+	const char *err_str;
- 	journal_t *journal = EXT4_SB(sb)->s_journal;
- 	long ret;
- 	loff_t size;
-@@ -4677,8 +4693,14 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 	inode = iget_locked(sb, ino);
- 	if (!inode)
- 		return ERR_PTR(-ENOMEM);
--	if (!(inode->i_state & I_NEW))
-+	if (!(inode->i_state & I_NEW)) {
-+		if ((err_str = check_igot_inode(inode, flags)) != NULL) {
-+			ext4_error_inode(inode, function, line, 0, err_str);
-+			iput(inode);
-+			return ERR_PTR(-EFSCORRUPTED);
-+		}
- 		return inode;
-+	}
- 
- 	ei = EXT4_I(inode);
- 	iloc.bh = NULL;
-@@ -4944,10 +4966,9 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 	if (IS_CASEFOLDED(inode) && !ext4_has_feature_casefold(inode->i_sb))
- 		ext4_error_inode(inode, function, line, 0,
- 				 "casefold flag without casefold feature");
--	if (is_bad_inode(inode) && !(flags & EXT4_IGET_BAD)) {
--		ext4_error_inode(inode, function, line, 0,
--				 "bad inode without EXT4_IGET_BAD flag");
--		ret = -EUCLEAN;
-+	if ((err_str = check_igot_inode(inode, flags)) != NULL) {
-+		ext4_error_inode(inode, function, line, 0, err_str);
-+		ret = -EFSCORRUPTED;
- 		goto bad_inode;
- 	}
- 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index dfc2e223bd10..a27208129a80 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -433,7 +433,7 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
- 		return -EFSCORRUPTED;
- 	}
- 
--	inode = ext4_iget(parent->i_sb, ea_ino, EXT4_IGET_NORMAL);
-+	inode = ext4_iget(parent->i_sb, ea_ino, EXT4_IGET_EA_INODE);
- 	if (IS_ERR(inode)) {
- 		err = PTR_ERR(inode);
- 		ext4_error(parent->i_sb,
-@@ -441,23 +441,6 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
- 			   err);
- 		return err;
- 	}
--
--	if (is_bad_inode(inode)) {
--		ext4_error(parent->i_sb,
--			   "error while reading EA inode %lu is_bad_inode",
--			   ea_ino);
--		err = -EIO;
--		goto error;
--	}
--
--	if (!(EXT4_I(inode)->i_flags & EXT4_EA_INODE_FL)) {
--		ext4_error(parent->i_sb,
--			   "EA inode %lu does not have EXT4_EA_INODE_FL flag",
--			    ea_ino);
--		err = -EINVAL;
--		goto error;
--	}
--
- 	ext4_xattr_inode_set_class(inode);
- 
- 	/*
-@@ -478,9 +461,6 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
- 
- 	*ea_inode = inode;
- 	return 0;
--error:
--	iput(inode);
--	return err;
- }
- 
- /* Remove entry from mbcache when EA inode is getting evicted */
-@@ -1556,11 +1536,10 @@ ext4_xattr_inode_cache_find(struct inode *inode, const void *value,
- 
- 	while (ce) {
- 		ea_inode = ext4_iget(inode->i_sb, ce->e_value,
--				     EXT4_IGET_NORMAL);
--		if (!IS_ERR(ea_inode) &&
--		    !is_bad_inode(ea_inode) &&
--		    (EXT4_I(ea_inode)->i_flags & EXT4_EA_INODE_FL) &&
--		    i_size_read(ea_inode) == value_len &&
-+				     EXT4_IGET_EA_INODE);
-+		if (IS_ERR(ea_inode))
-+			goto next_entry;
-+		if (i_size_read(ea_inode) == value_len &&
- 		    !ext4_xattr_inode_read(ea_inode, ea_data, value_len) &&
- 		    !ext4_xattr_inode_verify_hashes(ea_inode, NULL, ea_data,
- 						    value_len) &&
-@@ -1570,9 +1549,8 @@ ext4_xattr_inode_cache_find(struct inode *inode, const void *value,
- 			kvfree(ea_data);
- 			return ea_inode;
- 		}
--
--		if (!IS_ERR(ea_inode))
--			iput(ea_inode);
-+		iput(ea_inode);
-+	next_entry:
- 		ce = mb_cache_entry_find_next(ea_inode_cache, ce);
- 	}
- 	kvfree(ea_data);
+The following configs have been built successfully.
+More configs may be tested in the coming days.
+
+tested configs:
+alpha                            allyesconfig   gcc  
+alpha                               defconfig   gcc  
+alpha                randconfig-r036-20230522   gcc  
+arc                              allyesconfig   gcc  
+arc                          axs101_defconfig   gcc  
+arc                                 defconfig   gcc  
+arc                            hsdk_defconfig   gcc  
+arc                        nsimosci_defconfig   gcc  
+arc                  randconfig-r012-20230522   gcc  
+arc                  randconfig-r043-20230521   gcc  
+arc                  randconfig-r043-20230522   gcc  
+arm                              allmodconfig   gcc  
+arm                              allyesconfig   gcc  
+arm                                 defconfig   gcc  
+arm                       imx_v6_v7_defconfig   gcc  
+arm                  randconfig-r014-20230522   gcc  
+arm                  randconfig-r034-20230521   gcc  
+arm                  randconfig-r046-20230521   clang
+arm                  randconfig-r046-20230522   gcc  
+arm64                            allyesconfig   gcc  
+arm64                               defconfig   gcc  
+arm64                randconfig-r021-20230521   gcc  
+arm64                randconfig-r024-20230522   clang
+arm64                randconfig-r033-20230521   clang
+csky                                defconfig   gcc  
+csky                 randconfig-r036-20230521   gcc  
+hexagon              randconfig-r024-20230521   clang
+hexagon              randconfig-r031-20230522   clang
+hexagon              randconfig-r041-20230521   clang
+hexagon              randconfig-r041-20230522   clang
+hexagon              randconfig-r045-20230521   clang
+hexagon              randconfig-r045-20230522   clang
+i386                             allyesconfig   gcc  
+i386                              debian-10.3   gcc  
+i386                                defconfig   gcc  
+i386                 randconfig-a001-20230522   gcc  
+i386                 randconfig-a002-20230522   gcc  
+i386                 randconfig-a003-20230522   gcc  
+i386                 randconfig-a004-20230522   gcc  
+i386                 randconfig-a005-20230522   gcc  
+i386                 randconfig-a006-20230522   gcc  
+i386                 randconfig-r016-20230522   clang
+ia64                             allmodconfig   gcc  
+ia64                                defconfig   gcc  
+ia64                 randconfig-r026-20230522   gcc  
+loongarch                        allmodconfig   gcc  
+loongarch                         allnoconfig   gcc  
+loongarch    buildonly-randconfig-r003-20230522   gcc  
+loongarch                           defconfig   gcc  
+loongarch            randconfig-r004-20230522   gcc  
+loongarch            randconfig-r012-20230521   gcc  
+loongarch            randconfig-r014-20230521   gcc  
+m68k                             allmodconfig   gcc  
+m68k         buildonly-randconfig-r002-20230521   gcc  
+m68k                                defconfig   gcc  
+m68k                 randconfig-r021-20230522   gcc  
+m68k                 randconfig-r022-20230521   gcc  
+m68k                 randconfig-r032-20230522   gcc  
+microblaze           randconfig-r006-20230521   gcc  
+mips                             allmodconfig   gcc  
+mips                             allyesconfig   gcc  
+mips         buildonly-randconfig-r002-20230522   clang
+mips         buildonly-randconfig-r004-20230521   gcc  
+mips         buildonly-randconfig-r006-20230521   gcc  
+mips                 randconfig-r004-20230521   gcc  
+nios2                               defconfig   gcc  
+nios2                randconfig-r023-20230522   gcc  
+openrisc             randconfig-r002-20230522   gcc  
+openrisc             randconfig-r015-20230522   gcc  
+parisc                              defconfig   gcc  
+parisc               randconfig-r001-20230522   gcc  
+parisc               randconfig-r033-20230522   gcc  
+parisc               randconfig-r034-20230522   gcc  
+parisc64                            defconfig   gcc  
+powerpc                          allmodconfig   gcc  
+powerpc                           allnoconfig   gcc  
+powerpc      buildonly-randconfig-r004-20230522   clang
+powerpc                      chrp32_defconfig   gcc  
+powerpc              randconfig-r026-20230521   gcc  
+riscv                            allmodconfig   gcc  
+riscv                             allnoconfig   gcc  
+riscv        buildonly-randconfig-r001-20230522   clang
+riscv        buildonly-randconfig-r005-20230522   clang
+riscv                               defconfig   gcc  
+riscv                randconfig-r025-20230522   clang
+riscv                randconfig-r042-20230521   gcc  
+riscv                randconfig-r042-20230522   clang
+riscv                          rv32_defconfig   gcc  
+s390                             allmodconfig   gcc  
+s390                             allyesconfig   gcc  
+s390                                defconfig   gcc  
+s390                 randconfig-r001-20230521   clang
+s390                 randconfig-r002-20230521   clang
+s390                 randconfig-r011-20230521   gcc  
+s390                 randconfig-r013-20230521   gcc  
+s390                 randconfig-r044-20230521   gcc  
+s390                 randconfig-r044-20230522   clang
+sh                               allmodconfig   gcc  
+sh           buildonly-randconfig-r001-20230521   gcc  
+sh                   randconfig-r015-20230521   gcc  
+sh                           se7705_defconfig   gcc  
+sh                     sh7710voipgw_defconfig   gcc  
+sparc                               defconfig   gcc  
+sparc                randconfig-r005-20230522   gcc  
+sparc                randconfig-r035-20230522   gcc  
+sparc64      buildonly-randconfig-r006-20230522   gcc  
+sparc64              randconfig-r003-20230521   gcc  
+sparc64              randconfig-r006-20230522   gcc  
+sparc64              randconfig-r013-20230522   gcc  
+sparc64              randconfig-r032-20230521   gcc  
+um                                  defconfig   gcc  
+um                             i386_defconfig   gcc  
+um                           x86_64_defconfig   gcc  
+x86_64                            allnoconfig   gcc  
+x86_64                           allyesconfig   gcc  
+x86_64                              defconfig   gcc  
+x86_64                                  kexec   gcc  
+x86_64               randconfig-a001-20230522   gcc  
+x86_64               randconfig-a002-20230522   gcc  
+x86_64               randconfig-a003-20230522   gcc  
+x86_64               randconfig-a004-20230522   gcc  
+x86_64               randconfig-a005-20230522   gcc  
+x86_64               randconfig-a006-20230522   gcc  
+x86_64               randconfig-a011-20230522   clang
+x86_64               randconfig-a012-20230522   clang
+x86_64               randconfig-a013-20230522   clang
+x86_64               randconfig-a014-20230522   clang
+x86_64               randconfig-a015-20230522   clang
+x86_64               randconfig-a016-20230522   clang
+x86_64               randconfig-r011-20230522   clang
+x86_64               randconfig-r022-20230522   clang
+x86_64               randconfig-x051-20230522   clang
+x86_64               randconfig-x052-20230522   clang
+x86_64               randconfig-x053-20230522   clang
+x86_64               randconfig-x054-20230522   clang
+x86_64               randconfig-x055-20230522   clang
+x86_64               randconfig-x056-20230522   clang
+x86_64               randconfig-x061-20230522   clang
+x86_64               randconfig-x062-20230522   clang
+x86_64               randconfig-x063-20230522   clang
+x86_64               randconfig-x064-20230522   clang
+x86_64               randconfig-x065-20230522   clang
+x86_64               randconfig-x066-20230522   clang
+x86_64               randconfig-x071-20230522   gcc  
+x86_64               randconfig-x072-20230522   gcc  
+x86_64               randconfig-x073-20230522   gcc  
+x86_64               randconfig-x074-20230522   gcc  
+x86_64               randconfig-x075-20230522   gcc  
+x86_64               randconfig-x076-20230522   gcc  
+x86_64               randconfig-x081-20230522   gcc  
+x86_64               randconfig-x082-20230522   gcc  
+x86_64               randconfig-x083-20230522   gcc  
+x86_64               randconfig-x084-20230522   gcc  
+x86_64               randconfig-x085-20230522   gcc  
+x86_64               randconfig-x086-20230522   gcc  
+x86_64                               rhel-8.3   gcc  
+
 -- 
-2.31.0
-
+0-DAY CI Kernel Test Service
+https://github.com/intel/lkp-tests
