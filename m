@@ -2,78 +2,75 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 594E0C7EE23
-	for <linux-ext4@archiver.kernel.org>; Wed, 24 May 2023 03:50:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8FD1EC77B7C
+	for <linux-ext4@archiver.kernel.org>; Wed, 24 May 2023 03:50:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239311AbjEXDuP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 23 May 2023 23:50:15 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55706 "EHLO
+        id S239354AbjEXDuR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 23 May 2023 23:50:17 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55880 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239401AbjEXDuE (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 23 May 2023 23:50:04 -0400
+        with ESMTP id S239265AbjEXDuL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 23 May 2023 23:50:11 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DEF71198
-        for <linux-ext4@vger.kernel.org>; Tue, 23 May 2023 20:50:01 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B7E3DFA
+        for <linux-ext4@vger.kernel.org>; Tue, 23 May 2023 20:50:10 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 34O3nvil023545
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 34O3nvTI023548
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Tue, 23 May 2023 23:49:58 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1684900198; bh=d4Y5lN7BkJNBJXjjwgnM1FCPxi88QClAbvXuwBnMXWE=;
-        h=From:To:Cc:Subject:Date;
-        b=kNyLT4eGUHlDOMZmy2ht6mUoFO9xFRZoISUa++JgKzofbPWHKTR5XkAi4TsHF4zOA
-         c/B8/3kVbpZHLkavSTeDrMrx6p/Ad9dJV9x8jj6XkYXtaW1OSrTGKNsVH+Aibpt5ta
-         FbNzVCXzO9i2RHwUYRiqKZ1CPsIjvjPpG1Jx0tqQ/M3a+d43uFKlehIvBOFc0ieTUg
-         tbCP2VJBHVcfc7Am+8M4VoiZTWQnxkVTKuj1VgUpn5SRkau64yYCPgq43kVgdcRp8F
-         DSzuB03vb8o+7hwyzjX+eIYBVLeha0jqsS8TSQzyWa60uHLlDrlERHezhu/uwTNjF0
-         92aYbNWBC+kNg==
+        t=1684900199; bh=LDdPWpg3cnYRw6nGzZtk6G6JnmPnT2mMBhfp1e0PK84=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References;
+        b=f4A0loeyXm7TDpUQjaVDyLQpo8cEhaO6Egz/frMahlscKNsIffg9dXfVchrbQMQlO
+         yNdn59LUR59mZunmoCnZdH1oOQbYywt7oot1slk7YxyxMnYG1FQf0EF2h8A2YTepBE
+         s5l6CvlMmudPcjLdRRNJiUOoxWZEAa01Vu5yzX0KJ6S2eCOcQzHSHnhOEfWz3GdqV7
+         uh0XR+ELZknZwDtHLB271UZFstIbCzreEnX3ir/mnXEA1QNMY11Nhx1FCbn6g+lHqg
+         r59oYGhmwoYsIkxYzwSgMF+BeuC5YF/NHnJFfOv+8wVsoO0IIJzq5w9FUPd780g4LP
+         4egFF7K4qM4dg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 869C015C052B; Tue, 23 May 2023 23:49:57 -0400 (EDT)
+        id 89F5E15C052D; Tue, 23 May 2023 23:49:57 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
 To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 0/4] ext4: clean up ea_inode handling
-Date:   Tue, 23 May 2023 23:49:47 -0400
-Message-Id: <20230524034951.779531-1-tytso@mit.edu>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, stable@kernel.org,
+        syzbot+d4b971e744b1f5439336@syzkaller.appspotmail.com
+Subject: [PATCH 2/4] ext4: set lockdep subclass for the ea_inode in ext4_xattr_inode_cache_find()
+Date:   Tue, 23 May 2023 23:49:49 -0400
+Message-Id: <20230524034951.779531-3-tytso@mit.edu>
 X-Mailer: git-send-email 2.31.0
+In-Reply-To: <20230524034951.779531-1-tytso@mit.edu>
+References: <20230524034951.779531-1-tytso@mit.edu>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This fixes a number of problems with ea_inode handling which were
-pointed out by syzbot.  The first and third add some additional
-checking for invalid / maliciously fuzzed file systems.  The second
-and fourth patch adds some lockdep annotations to avoid some false
-positive reports from lockdep.
+If the ea_inode has been pushed out of the inode cache while there is
+still a reference in the mb_cache, the lockdep subclass will not be
+set on the inode, which can lead to some lockdep false positives.
 
-There is still one remaining syzbot report[1] relating to ea_inodes
-not handled by this patch series, and that is an apparently deadlock
-which happens when a kernel thread is freeing an ea_inode racing with
-another thread which is trying to find the mbcache entry (presumably
-with the intent of reusing it).  The problem is apparently hard to
-reproduce; it's only been hit 4 times, and there is no C reproducer;
-just a syzkaller reproducer.  So we'll leave that for another day/
+Fixes: 33d201e0277b ("xt4: fix lockdep warning about recursive inode locking")
+Cc: stable@kernel.org
+Reported-by: syzbot+d4b971e744b1f5439336@syzkaller.appspotmail.com
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/xattr.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-[1] https://syzkaller.appspot.com/bug?extid=38e6635a03c83c76297a
-    INFO: task hung in ext4_evict_ea_inode
-
-
-Theodore Ts'o (4):
-  ext4: add EA_INODE checking to ext4_iget()
-  ext4: set lockdep subclass for the ea_inode in
-    ext4_xattr_inode_cache_find()
-  ext4: disallow ea_inodes with extended attributes
-  ext4: add lockdep annotations for i_data_sem for ea_inode's
-
- fs/ext4/ext4.h  |  5 ++++-
- fs/ext4/inode.c | 34 +++++++++++++++++++++++++++++-----
- fs/ext4/xattr.c | 41 ++++++++++++-----------------------------
- 3 files changed, 45 insertions(+), 35 deletions(-)
-
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index a27208129a80..ff7ab63c5b4f 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1539,6 +1539,7 @@ ext4_xattr_inode_cache_find(struct inode *inode, const void *value,
+ 				     EXT4_IGET_EA_INODE);
+ 		if (IS_ERR(ea_inode))
+ 			goto next_entry;
++		ext4_xattr_inode_set_class(ea_inode);
+ 		if (i_size_read(ea_inode) == value_len &&
+ 		    !ext4_xattr_inode_read(ea_inode, ea_data, value_len) &&
+ 		    !ext4_xattr_inode_verify_hashes(ea_inode, NULL, ea_data,
 -- 
 2.31.0
 
