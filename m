@@ -2,138 +2,103 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 90EC6C7EE2D
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DB09BC7EE2F
 	for <linux-ext4@archiver.kernel.org>; Thu, 25 May 2023 11:34:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240971AbjEYLdl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 25 May 2023 07:33:41 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55870 "EHLO
+        id S240626AbjEYLdo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 25 May 2023 07:33:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55882 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240755AbjEYLdc (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 25 May 2023 07:33:32 -0400
-Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3AA2EE7;
-        Thu, 25 May 2023 04:33:31 -0700 (PDT)
-Received: from pps.filterd (m0353728.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 34PBIHRa015124;
-        Thu, 25 May 2023 11:33:21 GMT
+        with ESMTP id S231491AbjEYLdg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 25 May 2023 07:33:36 -0400
+Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6227B12F;
+        Thu, 25 May 2023 04:33:32 -0700 (PDT)
+Received: from pps.filterd (m0356516.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 34PADGRW007782;
+        Thu, 25 May 2023 11:33:24 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
  : date : message-id : in-reply-to : references : mime-version :
  content-transfer-encoding; s=pp1;
- bh=OemCn1E4YGTfPcU/Xjj6Y9mi4ltTHwa0DIvygIQ2Nk4=;
- b=HpRXh+AdlDIQ/O5J/uYxEyAGVLUINtN3aGi+JBFcByvB/bfLq1EwE0MfCLFqrjdmfWef
- CC/XeJVkaL9A/PZOqzPsO0tHwASHSEa13WJu6ae8wQOkhSXcSapARuLuSw2UQR/6IfuB
- hlynS0GXg1+XJRCZ0MOS3XPUx3soMapQxQeyqu1dRqW79pGq8cz6/cdEt65CdKvW9FGq
- 3HaJVMU7kAYLNzGW/b2GUpzwNlCf1vz/4+ouF+vfQzoaDO9dDvcXnDj9eNBkYhjrPBPe
- 1JGVMksILmK31Hn11sgP6WzjcUyIeiBPv0IPXCFZHQfkgcIeqs8OQMLp5WCVgwsAu12y Sw== 
-Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3qt6p60bp0-1
+ bh=jpKB/Cu0/a1TyjNxyFz/CQQnLADMgzFNjxzQ90nNq90=;
+ b=sA0AQO9Q+YNzM2U1zto0nyIOz8C6AYci3kcsoxF5VKlFuBQETRIgVdekzHB0B+XoiYbQ
+ CDyREf9jG2ybza6v5ZtxEUFdL0ZhFGKFp0nskW4f/o+lCzr0P7oQoi0IQQvxiXUHou1s
+ wb1QZmH7e5cjVVgGSGMV516UM79KG40hcqj7ZKNjMeZ3FmWDfJvq/1bLcaxUdIki+MNF
+ fRFbo66WtXimP6wBBE0+l3KpUp31RKh2tWPC4Vt6maNthihK12EX1wFt8dEe1AP7g5+L
+ R8e6ylEh3yfOEhYORBbvxNVS7YxtzRe4xxNI3itzwnrXXKzv9tSTlAWukALsplr1xku5 cw== 
+Received: from ppma04fra.de.ibm.com (6a.4a.5195.ip4.static.sl-reverse.com [149.81.74.106])
+        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3qt5ktj3gc-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 25 May 2023 11:33:21 +0000
-Received: from m0353728.ppops.net (m0353728.ppops.net [127.0.0.1])
-        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 34PBIePo016937;
-        Thu, 25 May 2023 11:33:20 GMT
-Received: from ppma06ams.nl.ibm.com (66.31.33a9.ip4.static.sl-reverse.com [169.51.49.102])
-        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3qt6p60bks-1
+        Thu, 25 May 2023 11:33:24 +0000
+Received: from pps.filterd (ppma04fra.de.ibm.com [127.0.0.1])
+        by ppma04fra.de.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 34P5qoG4013258;
+        Thu, 25 May 2023 11:33:22 GMT
+Received: from smtprelay07.fra02v.mail.ibm.com ([9.218.2.229])
+        by ppma04fra.de.ibm.com (PPS) with ESMTPS id 3qppcf20qq-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 25 May 2023 11:33:20 +0000
-Received: from pps.filterd (ppma06ams.nl.ibm.com [127.0.0.1])
-        by ppma06ams.nl.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 34P0lCxF007529;
-        Thu, 25 May 2023 11:33:17 GMT
-Received: from smtprelay01.fra02v.mail.ibm.com ([9.218.2.227])
-        by ppma06ams.nl.ibm.com (PPS) with ESMTPS id 3qppc3jduu-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 25 May 2023 11:33:17 +0000
+        Thu, 25 May 2023 11:33:22 +0000
 Received: from smtpav01.fra02v.mail.ibm.com (smtpav01.fra02v.mail.ibm.com [10.20.54.100])
-        by smtprelay01.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 34PBXFvD17433178
+        by smtprelay07.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 34PBXKNE60948806
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 25 May 2023 11:33:15 GMT
+        Thu, 25 May 2023 11:33:20 GMT
 Received: from smtpav01.fra02v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 5F9972004E;
-        Thu, 25 May 2023 11:33:15 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id F403D2004D;
+        Thu, 25 May 2023 11:33:19 +0000 (GMT)
 Received: from smtpav01.fra02v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 52F702004D;
-        Thu, 25 May 2023 11:33:13 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id 251922004B;
+        Thu, 25 May 2023 11:33:18 +0000 (GMT)
 Received: from li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.in.ibm.com (unknown [9.109.253.169])
         by smtpav01.fra02v.mail.ibm.com (Postfix) with ESMTP;
-        Thu, 25 May 2023 11:33:13 +0000 (GMT)
+        Thu, 25 May 2023 11:33:17 +0000 (GMT)
 From:   Ojaswin Mujoo <ojaswin@linux.ibm.com>
 To:     linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
 Cc:     Ritesh Harjani <riteshh@linux.ibm.com>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jan Kara <jack@suse.cz>,
-        Kemeng Shi <shikemeng@huaweicloud.com>,
-        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
-Subject: [PATCH 02/13] ext4: mballoc: Remove useless setting of ac_criteria
-Date:   Thu, 25 May 2023 17:02:56 +0530
-Message-Id: <9190a546a98e053364583b499804472ec04d747b.1685009579.git.ojaswin@linux.ibm.com>
+        Jan Kara <jack@suse.cz>, Kemeng Shi <shikemeng@huaweicloud.com>
+Subject: [PATCH 04/13] ext4: Fix a small typo in ext4_mb_prefetch_fini()
+Date:   Thu, 25 May 2023 17:02:58 +0530
+Message-Id: <39e9a6c41244ecd49552262af51aa8aa5ae1bc9d.1685009579.git.ojaswin@linux.ibm.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <cover.1685009579.git.ojaswin@linux.ibm.com>
 References: <cover.1685009579.git.ojaswin@linux.ibm.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-TM-AS-GCONF: 00
-X-Proofpoint-ORIG-GUID: DNLIjiq17q6H5-Gr97_jYi_OTLVFX2nb
-X-Proofpoint-GUID: bwrCziY6CJnaqqmmkh1VlVvlIv_Au4Ji
+X-Proofpoint-ORIG-GUID: _3Qfh_YVxRUizpHRJGoOMHnYi5tYNjzM
+X-Proofpoint-GUID: _3Qfh_YVxRUizpHRJGoOMHnYi5tYNjzM
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.254,Aquarius:18.0.957,Hydra:6.0.573,FMLib:17.11.176.26
- definitions=2023-05-25_06,2023-05-25_01,2023-05-22_02
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 clxscore=1015
- lowpriorityscore=0 adultscore=0 suspectscore=0 mlxscore=0 malwarescore=0
- spamscore=0 bulkscore=0 phishscore=0 impostorscore=0 mlxlogscore=999
- priorityscore=1501 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2304280000 definitions=main-2305250096
+ definitions=2023-05-25_06,2023-05-24_01,2023-05-22_02
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 mlxlogscore=999
+ lowpriorityscore=0 impostorscore=0 malwarescore=0 phishscore=0
+ clxscore=1015 mlxscore=0 spamscore=0 adultscore=0 priorityscore=1501
+ bulkscore=0 suspectscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2304280000 definitions=main-2305250092
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
+Fix a small typo in the if condition introduced in the
+commit b6bef1b5.
 
-There will be changes coming in future patches which will introduce a new
-criteria for block allocation. This removes the useless setting of ac_criteria.
-AFAIU, this might be only used to differentiate between whether a preallocated
-blocks was allocated or was regular allocator called for allocating blocks.
-Hence this also adds the debug prints to identify what type of block allocation
-was done in ext4_mb_show_ac().
-
-Signed-off-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/mballoc.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ fs/ext4/mballoc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 2e1a5f001883..288d504ee744 100644
+index 288d504ee744..72c5d1a33bad 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -4582,7 +4582,6 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
- 			atomic_inc(&tmp_pa->pa_count);
- 			ext4_mb_use_inode_pa(ac, tmp_pa);
- 			spin_unlock(&tmp_pa->pa_lock);
--			ac->ac_criteria = 10;
- 			read_unlock(&ei->i_prealloc_lock);
- 			return true;
- 		}
-@@ -4625,7 +4624,6 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
- 	}
- 	if (cpa) {
- 		ext4_mb_use_group_pa(ac, cpa);
--		ac->ac_criteria = 20;
- 		return true;
- 	}
- 	return false;
-@@ -5407,6 +5405,10 @@ static void ext4_mb_show_ac(struct ext4_allocation_context *ac)
- 			(unsigned long)ac->ac_b_ex.fe_logical,
- 			(int)ac->ac_criteria);
- 	mb_debug(sb, "%u found", ac->ac_found);
-+	mb_debug(sb, "used pa: %s, ", ac->ac_pa ? "yes" : "no");
-+	if (ac->ac_pa)
-+		mb_debug(sb, "pa_type %s\n", ac->ac_pa->pa_type == MB_GROUP_PA ?
-+			 "group pa" : "inode pa");
- 	ext4_mb_show_pa(sb);
- }
- #else
+@@ -2609,7 +2609,7 @@ void ext4_mb_prefetch_fini(struct super_block *sb, ext4_group_t group,
+ 		gdp = ext4_get_group_desc(sb, group, NULL);
+ 		grp = ext4_get_group_info(sb, group);
+ 
+-		if (grp && grp && EXT4_MB_GRP_NEED_INIT(grp) &&
++		if (gdp && grp && EXT4_MB_GRP_NEED_INIT(grp) &&
+ 		    ext4_free_group_clusters(sb, gdp) > 0 &&
+ 		    !(ext4_has_group_desc_csum(sb) &&
+ 		      (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)))) {
 -- 
 2.31.1
 
