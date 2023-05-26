@@ -2,41 +2,41 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8A15AC77B73
-	for <linux-ext4@archiver.kernel.org>; Fri, 26 May 2023 12:56:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 89EDBC77B7A
+	for <linux-ext4@archiver.kernel.org>; Fri, 26 May 2023 13:56:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243486AbjEZM4T (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 26 May 2023 08:56:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45042 "EHLO
+        id S243319AbjEZN4X (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 26 May 2023 09:56:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43988 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S243518AbjEZM4N (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 26 May 2023 08:56:13 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E75F5E7A
-        for <linux-ext4@vger.kernel.org>; Fri, 26 May 2023 05:55:56 -0700 (PDT)
+        with ESMTP id S231604AbjEZN4V (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 26 May 2023 09:56:21 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9A3BCF3
+        for <linux-ext4@vger.kernel.org>; Fri, 26 May 2023 06:56:19 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 4456164FC3
-        for <linux-ext4@vger.kernel.org>; Fri, 26 May 2023 12:55:28 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 8087FC433EF
-        for <linux-ext4@vger.kernel.org>; Fri, 26 May 2023 12:55:27 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 2731960D58
+        for <linux-ext4@vger.kernel.org>; Fri, 26 May 2023 13:56:19 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 6A535C4339E
+        for <linux-ext4@vger.kernel.org>; Fri, 26 May 2023 13:56:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1685105727;
-        bh=CShuw+7Z/J5B9aGABBE+CWQyqboR9sdrdmPlktAKA7A=;
+        s=k20201202; t=1685109378;
+        bh=sopAS+pJl3fMGhCEj0QQpqYKGPKfQfOaWvnsoRF5Tmw=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=VKqqCgPTj08RpMgdguWdytfC9iQALo+J6MIJAcfGVw8hCB9J0B0N5x0Q48OXVOyjS
-         +8ptnCFqAXMjSANhP8ig3hZdN3mvtB/b4qXDfzLlR+Airu6OpNhgNKonrI5IoR/QDg
-         /BfaZvNYHkm6RgISZTkEz9kFiHtOt0V9gPZ+wTbfnfb5cWQL7s9/dq2Bh/xOBdHtPS
-         3qS7Ht6Kj5IQixM/4pJtiiog0f8IrMIybd6tccm0CKgWUTqPYP8k3SOovEODk409Or
-         khhM3BtApNhR+qNbIDw+9y2CD1O+uIBqJL2ibdu9Rk4RyU7oDYGCnrWa+pYYAI0Vlo
-         3R6xNAFwOpqtw==
+        b=Rol12D79zpPjBixuc51xVOkFdjJTlLF8NC29MZpq4+KXBmdNMT0aOSt7YhK+tEQJa
+         nWW2Q1wb0aG0KN8uMrTQFOlKHXbA/jWDVsojUKcUfH00R3gPG1qwcbeMY2JTxJUEG8
+         ZMa2jJJx7DwxgaFpH40cFRnn+OUr+CbU5eo//kIEBDrjsw5I4FtsVc29m86zAcJFL9
+         CPp1R7IimJm3vHDdzbOGSPNxjZBe2C1eDSdV1qug/v0FZ93hiJ2avRSDgh7Bod+rHk
+         GFxirG+XjA0uV7/8S+GVrhfoz0VI8IJnvDMI2CzSZ6WToLzWhteSe2WkjBQ+O/HUE5
+         STn0g3HwnOp5w==
 Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
-        id 7222CC43141; Fri, 26 May 2023 12:55:27 +0000 (UTC)
+        id 52E20C43142; Fri, 26 May 2023 13:56:18 +0000 (UTC)
 From:   bugzilla-daemon@kernel.org
 To:     linux-ext4@vger.kernel.org
 Subject: [Bug 217490] Wrongly judgement for buffer head removing
-Date:   Fri, 26 May 2023 12:55:27 +0000
+Date:   Fri, 26 May 2023 13:56:18 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -45,14 +45,14 @@ X-Bugzilla-Component: ext4
 X-Bugzilla-Version: 2.5
 X-Bugzilla-Keywords: 
 X-Bugzilla-Severity: normal
-X-Bugzilla-Who: chengzhihao1@huawei.com
+X-Bugzilla-Who: bagasdotme@gmail.com
 X-Bugzilla-Status: NEW
 X-Bugzilla-Resolution: 
 X-Bugzilla-Priority: P3
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: attachments.created
-Message-ID: <bug-217490-13602-BjUjNF5oAo@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: cc
+Message-ID: <bug-217490-13602-thHdeV30va@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-217490-13602@https.bugzilla.kernel.org/>
 References: <bug-217490-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -66,10 +66,16 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=3D217490
 
---- Comment #5 from Zhihao Cheng (chengzhihao1@huawei.com) ---
-Created attachment 304331
-  --> https://bugzilla.kernel.org/attachment.cgi?id=3D304331&action=3Dedit
-diff_3
+Bagas Sanjaya (bagasdotme@gmail.com) changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |bagasdotme@gmail.com
+
+--- Comment #7 from Bagas Sanjaya (bagasdotme@gmail.com) ---
+Can you send your diffs as proper patches to linux-ext4@vger.kernel.org for
+review? (Hint: see Documentation/process/submitting-patches.rst for how to
+contribute patches.)
 
 --=20
 You may reply to this email to add a comment.
