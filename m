@@ -2,161 +2,116 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D20ECC77B73
-	for <linux-ext4@archiver.kernel.org>; Tue, 30 May 2023 12:41:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 709F2C77B73
+	for <linux-ext4@archiver.kernel.org>; Tue, 30 May 2023 12:42:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230013AbjE3MlH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 30 May 2023 08:41:07 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38982 "EHLO
+        id S231658AbjE3Mmw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 30 May 2023 08:42:52 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40844 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229568AbjE3MlF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 30 May 2023 08:41:05 -0400
-Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 864EB102;
-        Tue, 30 May 2023 05:40:40 -0700 (PDT)
-Received: from pps.filterd (m0356517.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 34UCNvJA001911;
-        Tue, 30 May 2023 12:34:01 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
- : date : message-id : in-reply-to : references : mime-version :
- content-transfer-encoding; s=pp1;
- bh=+BnaDz8GOFXK9Oo3BhAJjGeaM8iWRw27pFgOHNngyF0=;
- b=gM/wS2SPf5FIc+fIV1j8oWiRfV465rz+BEbTYy4VbR0BCP1hdAOulBuDTxp6sUiDQKly
- aINYu9qVJW+rWng6+cMTJsZjDh43QJtRMgrbwcKfS1gRdXoLp7iBApJkC+u2mlJk4avv
- LjbqF46OGuj/dtmmIMn9CoeuvyMv8Yi7TU2/zEFsm8WQ5lHXDhLVkUp7+m9fzksgZwIc
- KNYBPeFDg4jDlqmHDy8IOO1bnLEOlC2LSOeEZuKig7ADgq+ORkFPBC2lqn0t2Yxxacma
- aoOFC4oPvNN8gKLplE/X3tcWjgR7vcAwUyBSyLp9TbO8ucmgCDw/Utfbhkml/OeXZrPo cA== 
-Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3qwh46r8gh-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 30 May 2023 12:34:00 +0000
-Received: from m0356517.ppops.net (m0356517.ppops.net [127.0.0.1])
-        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 34UCPBkp005122;
-        Tue, 30 May 2023 12:34:00 GMT
-Received: from ppma04ams.nl.ibm.com (63.31.33a9.ip4.static.sl-reverse.com [169.51.49.99])
-        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3qwh46r8f3-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 30 May 2023 12:34:00 +0000
-Received: from pps.filterd (ppma04ams.nl.ibm.com [127.0.0.1])
-        by ppma04ams.nl.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 34U2f7Gt007278;
-        Tue, 30 May 2023 12:33:58 GMT
-Received: from smtprelay06.fra02v.mail.ibm.com ([9.218.2.230])
-        by ppma04ams.nl.ibm.com (PPS) with ESMTPS id 3qu9g59fdv-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 30 May 2023 12:33:57 +0000
-Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
-        by smtprelay06.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 34UCXtJa28967358
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 30 May 2023 12:33:55 GMT
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 646472004B;
-        Tue, 30 May 2023 12:33:55 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 6627820040;
-        Tue, 30 May 2023 12:33:53 +0000 (GMT)
-Received: from li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.in.ibm.com (unknown [9.109.253.169])
-        by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTP;
-        Tue, 30 May 2023 12:33:53 +0000 (GMT)
-From:   Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To:     linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-Cc:     Ritesh Harjani <riteshh@linux.ibm.com>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jan Kara <jack@suse.cz>,
-        Kemeng Shi <shikemeng@huaweicloud.com>,
-        Ritesh Harjani <ritesh.list@gmail.com>
-Subject: [PATCH v2 01/12] Revert "ext4: remove ac->ac_found > sbi->s_mb_min_to_scan dead check in ext4_mb_check_limits"
-Date:   Tue, 30 May 2023 18:03:39 +0530
-Message-Id: <ddcae9658e46880dfec2fb0aa61d01fb3353d202.1685449706.git.ojaswin@linux.ibm.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <cover.1685449706.git.ojaswin@linux.ibm.com>
-References: <cover.1685449706.git.ojaswin@linux.ibm.com>
+        with ESMTP id S229821AbjE3Mmu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 30 May 2023 08:42:50 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 645E8A1;
+        Tue, 30 May 2023 05:42:22 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id BB3FC62F82;
+        Tue, 30 May 2023 12:42:18 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 78B3CC433D2;
+        Tue, 30 May 2023 12:42:15 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1685450538;
+        bh=AjbhKWnLkbzSGImSCtxRr31JpRn/bFy4QpGd/SOJtsQ=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=U+6p+TL98fxRHUAbLkCHzfVMO5xsp5WqmINUupyMMLssUcIgc7Kmxv+V5Kds/fS0N
+         yzdgl57dIZFTnAnMYhyai0TY9oiFNDAeL90OBvAgWMy8D7OVhPQfEttMLr8iPJCiJa
+         PdOkheBNknMRnIRgb67UOyGSZX4jrtc6jAD6hFbXNk9vZfqEQi6Jkd/SIVZf0VVWcY
+         TDax/ezF+3aGAVkJzc+V/S2laopkDQr19jiOqZOAfD6tWfhr9herMBemtwqsN43Oyk
+         fqM1pNJGwLAhDlCQ0WyBCzAlWxBBawRN6NTDWgG2e5AfzdYsZQ/b1Bkm6gyqiAMOp9
+         Gg6KXHzh3jOkQ==
+Date:   Tue, 30 May 2023 14:42:07 +0200
+From:   Christian Brauner <brauner@kernel.org>
+To:     Jan Kara <jack@suse.cz>
+Cc:     Al Viro <viro@ZenIV.linux.org.uk>, linux-fsdevel@vger.kernel.org,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        "Darrick J. Wong" <djwong@kernel.org>, Ted Tso <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-xfs@vger.kernel.org,
+        stable@vger.kernel.org
+Subject: Re: [PATCH 4/6] fs: Establish locking order for unrelated directories
+Message-ID: <20230530-darauf-nordost-4e631cd8f1d0@brauner>
+References: <20230525100654.15069-1-jack@suse.cz>
+ <20230525101624.15814-4-jack@suse.cz>
+ <20230526-polarstern-herrichten-32fc46c63bfc@brauner>
+ <20230529124131.gbb3fmhrspl332i6@quack3>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-TM-AS-GCONF: 00
-X-Proofpoint-ORIG-GUID: MKzok8uVa59I_SxTeep2p2vJ_uz6d4jo
-X-Proofpoint-GUID: gWtt9MZouc8fyq9c5n5xISEDpgCVchP2
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.254,Aquarius:18.0.957,Hydra:6.0.573,FMLib:17.11.176.26
- definitions=2023-05-30_08,2023-05-30_01,2023-05-22_02
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 spamscore=0
- priorityscore=1501 suspectscore=0 impostorscore=0 lowpriorityscore=0
- phishscore=0 clxscore=1015 adultscore=0 mlxlogscore=996 mlxscore=0
- bulkscore=0 malwarescore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2304280000 definitions=main-2305300103
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <20230529124131.gbb3fmhrspl332i6@quack3>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This reverts commit 32c0869370194ae5ac9f9f501953ef693040f6a1.
+On Mon, May 29, 2023 at 02:41:31PM +0200, Jan Kara wrote:
+> On Fri 26-05-23 11:45:15, Christian Brauner wrote:
+> > On Thu, May 25, 2023 at 12:16:10PM +0200, Jan Kara wrote:
+> > > Currently the locking order of inode locks for directories that are not
+> > > in ancestor relationship is not defined because all operations that
+> > > needed to lock two directories like this were serialized by
+> > > sb->s_vfs_rename_mutex. However some filesystems need to lock two
+> > > subdirectories for RENAME_EXCHANGE operations and for this we need the
+> > > locking order established even for two tree-unrelated directories.
+> > > Provide a helper function lock_two_inodes() that establishes lock
+> > > ordering for any two inodes and use it in lock_two_directories().
+> > > 
+> > > CC: stable@vger.kernel.org
+> > > Signed-off-by: Jan Kara <jack@suse.cz>
+> > > ---
+> > >  fs/inode.c    | 34 ++++++++++++++++++++++++++++++++++
+> > >  fs/internal.h |  2 ++
+> > >  fs/namei.c    |  4 ++--
+> > >  3 files changed, 38 insertions(+), 2 deletions(-)
+> > > 
+> > > diff --git a/fs/inode.c b/fs/inode.c
+> > > index 577799b7855f..2015fa50d34a 100644
+> > > --- a/fs/inode.c
+> > > +++ b/fs/inode.c
+> > > @@ -1103,6 +1103,40 @@ void discard_new_inode(struct inode *inode)
+> > >  }
+> > >  EXPORT_SYMBOL(discard_new_inode);
+> > >  
+> > > +/**
+> > > + * lock_two_inodes - lock two inodes (may be regular files but also dirs)
+> > > + *
+> > > + * Lock any non-NULL argument. The caller must make sure that if he is passing
+> > > + * in two directories, one is not ancestor of the other.  Zero, one or two
+> > > + * objects may be locked by this function.
+> > > + *
+> > > + * @inode1: first inode to lock
+> > > + * @inode2: second inode to lock
+> > > + * @subclass1: inode lock subclass for the first lock obtained
+> > > + * @subclass2: inode lock subclass for the second lock obtained
+> > > + */
+> > > +void lock_two_inodes(struct inode *inode1, struct inode *inode2,
+> > > +		     unsigned subclass1, unsigned subclass2)
+> > > +{
+> > > +	if (!inode1 || !inode2)
+> > > +		goto lock;
+> > 
+> > Before this change in
+> > 
+> > lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
+> > 
+> > the swap() would cause the non-NULL inode to always be locked with
+> > I_MUTEX_NONDIR2. Now it can be either I_MUTEX_NORMAL or I_MUTEX_NONDIR2.
+> > Is that change intentional?
+> 
+> Kind of. I don't think we really care so I didn't bother to complicate the
+> code for this. If you think keeping the lockdep class consistent is worth
+> it, I can modify the patch...
 
-The reverted commit was intended to remove a dead check however it was observed
-that this check was actually being used to exit early instead of looping
-sbi->s_mb_max_to_scan times when we are able to find a free extent bigger than
-the goal extent. Due to this, a my performance tests (fsmark, parallel file
-writes in a highly fragmented FS) were seeing a 2x-3x regression.
-
-Example, the default value of the following variables is:
-
-sbi->s_mb_max_to_scan = 200
-sbi->s_mb_min_to_scan = 10
-
-In ext4_mb_check_limits() if we find an extent smaller than goal, then we return
-early and try again. This loop will go on until we have processed
-sbi->s_mb_max_to_scan(=200) number of free extents at which point we exit and
-just use whatever we have even if it is smaller than goal extent.
-
-Now, the regression comes when we find an extent bigger than goal. Earlier, in
-this case we would loop only sbi->s_mb_min_to_scan(=10) times and then just use
-the bigger extent. However with commit 32c08693 that check was removed and hence
-we would loop sbi->s_mb_max_to_scan(=200) times even though we have a big enough
-free extent to satisfy the request. The only time we would exit early would be
-when the free extent is *exactly* the size of our goal, which is pretty uncommon
-occurrence and so we would almost always end up looping 200 times.
-
-Hence, revert the commit by adding the check back to fix the regression. Also
-add a comment to outline this policy.
-
-Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-Reviewed-by: Kemeng Shi <shikemeng@huaweicloud.com>
----
- fs/ext4/mballoc.c | 16 +++++++++++++++-
- 1 file changed, 15 insertions(+), 1 deletion(-)
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index d4b6a2c1881d..7ac6d3524f29 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2063,7 +2063,7 @@ static void ext4_mb_check_limits(struct ext4_allocation_context *ac,
- 	if (bex->fe_len < gex->fe_len)
- 		return;
- 
--	if (finish_group)
-+	if (finish_group || ac->ac_found > sbi->s_mb_min_to_scan)
- 		ext4_mb_use_best_found(ac, e4b);
- }
- 
-@@ -2075,6 +2075,20 @@ static void ext4_mb_check_limits(struct ext4_allocation_context *ac,
-  * in the context. Later, the best found extent will be used, if
-  * mballoc can't find good enough extent.
-  *
-+ * The algorithm used is roughly as follows:
-+ *
-+ * * If free extent found is exactly as big as goal, then
-+ *   stop the scan and use it immediately
-+ *
-+ * * If free extent found is smaller than goal, then keep retrying
-+ *   upto a max of sbi->s_mb_max_to_scan times (default 200). After
-+ *   that stop scanning and use whatever we have.
-+ *
-+ * * If free extent found is bigger than goal, then keep retrying
-+ *   upto a max of sbi->s_mb_min_to_scan times (default 10) before
-+ *   stopping the scan and using the extent.
-+ *
-+ *
-  * FIXME: real allocation policy is to be designed yet!
-  */
- static void ext4_mb_measure_extent(struct ext4_allocation_context *ac,
--- 
-2.31.1
-
+Either a short comment or consistent lockdep class would be nice. I know
+it probably doesn't matter much but otherwise someone may end up
+wondering whether that's ok or not.
