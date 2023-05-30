@@ -2,174 +2,68 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3EF69C7EE2E
-	for <linux-ext4@archiver.kernel.org>; Tue, 30 May 2023 16:31:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A59FBC7EE23
+	for <linux-ext4@archiver.kernel.org>; Tue, 30 May 2023 19:26:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230311AbjE3QbA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 30 May 2023 12:31:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45354 "EHLO
+        id S231356AbjE3T0o (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 30 May 2023 15:26:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55284 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233564AbjE3Qag (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 30 May 2023 12:30:36 -0400
-Received: from mail-yw1-x112a.google.com (mail-yw1-x112a.google.com [IPv6:2607:f8b0:4864:20::112a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 72AD5196;
-        Tue, 30 May 2023 09:30:14 -0700 (PDT)
-Received: by mail-yw1-x112a.google.com with SMTP id 00721157ae682-565c9109167so30948787b3.2;
-        Tue, 30 May 2023 09:30:14 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1685464141; x=1688056141;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :reply-to:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to;
-        bh=RaH6YlQLj82X1bK0066HcpgE2an8J/ytXi93zQbg3cQ=;
-        b=NiGox1WIIjth2AXTGOrzWLBf8ocEgyj8zWCgZoMezoWh8FD6QM/0tPrXmn7BSHEMyV
-         Ghm66GNFV6l4CebnGoiMKEapSzx+VaH1b1A2mUJFdz+2xaOtAl1yB5Icir/ErZt0wGE6
-         JyIAjLMoPWWC1k2Syer1b/bsqCeXF0silPz2ctpTMt7r/Pe2/FPQqlFLc/FIsalEMmU0
-         0w7JItwNex+0rTcHsMg5mpbjpH4F87ZpEr8WqrSaTOrABPnnwpPxhhgSlDHzM8bBeAwN
-         Ly8AT2ssLYkRFmnOP4FAjUZVKbnfYBM/gqE1la3gTV/SVnnUQpN83OuEYSN/T8L9ktYv
-         mZPg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1685464141; x=1688056141;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :reply-to:in-reply-to:references:mime-version:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=RaH6YlQLj82X1bK0066HcpgE2an8J/ytXi93zQbg3cQ=;
-        b=eA1jXlrzwY0gZQcaT+hA5UQIOpmZyYpfenqvyO9OXUzVn9aZjRJbZ2dPdmDv2ePWIa
-         eToZ+LDmLzf1VV4Z62XBU6ZGAT+sZtFuqOAijPKxgrhaj/XpMwVvVkiV58o4chHkSr2G
-         ctHzt6HOs6n0GevIbczPEAyZgLt6Cez30mKqMc63U8WrzSuoyWjYLc62oMKYBE9c6SGd
-         Ii8H4UH8Nc5YPogy2tM5GTy3qV4ZqrJQuAydasiAyz0R/4uRV94sQ5kme+oKZi6pBaN/
-         NHmkhNY1zdHhViXE3sm/XnE9qzK+BcYUUaxi9FeeTsAjgABIIrm6ZcMWIvvTG6P1qRnJ
-         qJfg==
-X-Gm-Message-State: AC+VfDxgR9GxfVpCGS6OvZrH/KoQIqPbSsCONFhhAikyv1Rjd4pvzmW3
-        NNLjfljH4aNbzUvngfKq406ZbdWOb220MS3dK6A=
-X-Google-Smtp-Source: ACHHUZ7pu7vphBMBZ8mAXs/tfRsKu1hhZ0D0tIefznTvYwXkKqBLlWSLtS0FFFsJK9fj4GTt5i9js4ELTS/MwImZplc=
-X-Received: by 2002:a81:778b:0:b0:55d:cf78:ed20 with SMTP id
- s133-20020a81778b000000b0055dcf78ed20mr2741306ywc.42.1685464141132; Tue, 30
- May 2023 09:29:01 -0700 (PDT)
+        with ESMTP id S232005AbjE3T0m (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 30 May 2023 15:26:42 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6C72F102
+        for <linux-ext4@vger.kernel.org>; Tue, 30 May 2023 12:26:41 -0700 (PDT)
+Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 34UJQcIx011213
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Tue, 30 May 2023 15:26:39 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1685474799; bh=LP4GTc9jo1xC/A6a3LF3hy2V4U/4KugGDFq8dckbZ28=;
+        h=From:To:Subject:Date:In-Reply-To:References;
+        b=I7i3o5mMbHrjj1CKC9bo7xMC/n9pCL4NuU7q0btEPJ3ud31bhVVqR29ozAOh5fkTP
+         w3+ceQJzW8+iGBCuckUYTxcDXyqFdBgfuinyvdO6kPEzYczpVoXY4TK3pOnxi0Of06
+         jpMlBhswXZeK+ICSddWS0h2LoRYkFWgmNIMDKnK7z3KmyhBlnqBu8UyN7mJF3t+o6x
+         Dq16d344mf/SULLkkIPpC7W0pR6evKwwHLZmwwUnCRTGr497YNobP//QWzKvxDTt5L
+         RfHuiIY3aK0OwHfl3tMmK5xyDTKYWvrywRqcQbdTI4WJyLhSEXboIIYRM5kflj0WYG
+         LO2KfCzO+tzrA==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id DF72815C04AF; Tue, 30 May 2023 15:26:37 -0400 (EDT)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: enable the lazy init thread when remounting read/write
+Date:   Tue, 30 May 2023 15:26:36 -0400
+Message-Id: <168547476046.200310.7041705947856028358.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <20230527035729.1001605-1-tytso@mit.edu>
+References: <ZGPDX3pMMa3yg4yg@debian-BULLSEYE-live-builder-AMD64> <20230527035729.1001605-1-tytso@mit.edu>
 MIME-Version: 1.0
-References: <cover.1685449706.git.ojaswin@linux.ibm.com> <ddcae9658e46880dfec2fb0aa61d01fb3353d202.1685449706.git.ojaswin@linux.ibm.com>
-In-Reply-To: <ddcae9658e46880dfec2fb0aa61d01fb3353d202.1685449706.git.ojaswin@linux.ibm.com>
-Reply-To: sedat.dilek@gmail.com
-From:   Sedat Dilek <sedat.dilek@gmail.com>
-Date:   Tue, 30 May 2023 18:28:22 +0200
-Message-ID: <CA+icZUXDFbxRvx8-pvEwsZAu+-28bX4VDTj6ZTPtvn4gWqGnCg@mail.gmail.com>
-Subject: Re: [PATCH v2 01/12] Revert "ext4: remove ac->ac_found >
- sbi->s_mb_min_to_scan dead check in ext4_mb_check_limits"
-To:     Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Cc:     linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-        Ritesh Harjani <riteshh@linux.ibm.com>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jan Kara <jack@suse.cz>,
-        Kemeng Shi <shikemeng@huaweicloud.com>,
-        Ritesh Harjani <ritesh.list@gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, May 30, 2023 at 3:25=E2=80=AFPM Ojaswin Mujoo <ojaswin@linux.ibm.co=
-m> wrote:
->
-> This reverts commit 32c0869370194ae5ac9f9f501953ef693040f6a1.
->
-> The reverted commit was intended to remove a dead check however it was ob=
-served
-> that this check was actually being used to exit early instead of looping
-> sbi->s_mb_max_to_scan times when we are able to find a free extent bigger=
- than
-> the goal extent. Due to this, a my performance tests (fsmark, parallel fi=
-le
-> writes in a highly fragmented FS) were seeing a 2x-3x regression.
->
-> Example, the default value of the following variables is:
->
-> sbi->s_mb_max_to_scan =3D 200
-> sbi->s_mb_min_to_scan =3D 10
->
-> In ext4_mb_check_limits() if we find an extent smaller than goal, then we=
- return
-> early and try again. This loop will go on until we have processed
-> sbi->s_mb_max_to_scan(=3D200) number of free extents at which point we ex=
-it and
-> just use whatever we have even if it is smaller than goal extent.
->
-> Now, the regression comes when we find an extent bigger than goal. Earlie=
-r, in
-> this case we would loop only sbi->s_mb_min_to_scan(=3D10) times and then =
-just use
-> the bigger extent. However with commit 32c08693 that check was removed an=
-d hence
-> we would loop sbi->s_mb_max_to_scan(=3D200) times even though we have a b=
-ig enough
-> free extent to satisfy the request. The only time we would exit early wou=
-ld be
-> when the free extent is *exactly* the size of our goal, which is pretty u=
-ncommon
-> occurrence and so we would almost always end up looping 200 times.
->
-> Hence, revert the commit by adding the check back to fix the regression. =
-Also
-> add a comment to outline this policy.
->
 
-Hi,
+On Fri, 26 May 2023 23:57:29 -0400, Theodore Ts'o wrote:
+> In commit a44be64bbecb ("ext4: don't clear SB_RDONLY when remounting
+> r/w until quota is re-enabled") we defer clearing tyhe SB_RDONLY flag
+> in struct super.  However, we didn't defer when we checked sb_rdonly()
+> to determine the lazy itable init thread should be enabled, with the
+> next result that the lazy inode table initialization would not be
+> properly started.  This can cause generic/231 to fail in ext4's
+> nojournal mode.
+> 
+> [...]
 
-I applied this single patch of your series v2 on top of Linux v6.4-rc4.
+Applied, thanks!
 
-So, if this is a regression I ask myself if this is material for Linux 6.4?
+[1/1] ext4: enable the lazy init thread when remounting read/write
+      commit: 781c858c35c821f7055ccca73d27b6d1c77798b3
 
-Can you comment on this, please?
-
-Thanks.
-
-Regards,
--Sedat-
-
-
-> Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-> Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-> Reviewed-by: Kemeng Shi <shikemeng@huaweicloud.com>
-> ---
->  fs/ext4/mballoc.c | 16 +++++++++++++++-
->  1 file changed, 15 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index d4b6a2c1881d..7ac6d3524f29 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -2063,7 +2063,7 @@ static void ext4_mb_check_limits(struct ext4_alloca=
-tion_context *ac,
->         if (bex->fe_len < gex->fe_len)
->                 return;
->
-> -       if (finish_group)
-> +       if (finish_group || ac->ac_found > sbi->s_mb_min_to_scan)
->                 ext4_mb_use_best_found(ac, e4b);
->  }
->
-> @@ -2075,6 +2075,20 @@ static void ext4_mb_check_limits(struct ext4_alloc=
-ation_context *ac,
->   * in the context. Later, the best found extent will be used, if
->   * mballoc can't find good enough extent.
->   *
-> + * The algorithm used is roughly as follows:
-> + *
-> + * * If free extent found is exactly as big as goal, then
-> + *   stop the scan and use it immediately
-> + *
-> + * * If free extent found is smaller than goal, then keep retrying
-> + *   upto a max of sbi->s_mb_max_to_scan times (default 200). After
-> + *   that stop scanning and use whatever we have.
-> + *
-> + * * If free extent found is bigger than goal, then keep retrying
-> + *   upto a max of sbi->s_mb_min_to_scan times (default 10) before
-> + *   stopping the scan and using the extent.
-> + *
-> + *
->   * FIXME: real allocation policy is to be designed yet!
->   */
->  static void ext4_mb_measure_extent(struct ext4_allocation_context *ac,
-> --
-> 2.31.1
->
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
