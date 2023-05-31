@@ -2,116 +2,192 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4CA0FC7EE24
-	for <linux-ext4@archiver.kernel.org>; Wed, 31 May 2023 07:53:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E21BDC77B7C
+	for <linux-ext4@archiver.kernel.org>; Wed, 31 May 2023 08:58:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234944AbjEaHxC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 31 May 2023 03:53:02 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55300 "EHLO
+        id S235012AbjEaI6I (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 31 May 2023 04:58:08 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42000 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233832AbjEaHwU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 May 2023 03:52:20 -0400
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2DBBF93;
-        Wed, 31 May 2023 00:51:13 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
-        :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=aL4JtBxyhKSUIoIs8zshulNYsaa+7wvzZcQ7A9usZGk=; b=aD7gWyr8b1clmJUz0ng4wh8iN1
-        2pIdPjbYXIRRh1Kmmhvr9XUZfJmEzYUSG9MpfRaqOXtpIf81N0C4KW91kRTVNx/1xjofKh6ID5fEZ
-        y0kgxzCPuOAOcRvxjkI+DhSzh8PYwGOXVEdzJScdskD02HMegMKHsJzKs791UpMHizTDm3fmN//tX
-        6rl5sT9sqqCp86Mfokmpj/WL2CP1OSYP66n1f8RX2gICxutiEFyhwPyN+TIwbF9/1JsQcegS+vv7u
-        4nIF9K3m4qzWLhU31xzEOyoJGgpwCjxO0CBkTrYH/d1JRTGC4jWZ7AwjftTuF3pr+nYL1/XFGg0kY
-        tKlqRbMg==;
-Received: from [2001:4bb8:182:6d06:f5c3:53d7:b5aa:b6a7] (helo=localhost)
-        by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1q4Gbi-00GW03-0R;
-        Wed, 31 May 2023 07:50:58 +0000
-From:   Christoph Hellwig <hch@lst.de>
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     Jens Axboe <axboe@kernel.dk>, Xiubo Li <xiubli@redhat.com>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christian Brauner <brauner@kernel.org>,
-        "Theodore Ts'o" <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>,
-        Chao Yu <chao@kernel.org>, Miklos Szeredi <miklos@szeredi.hu>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>,
-        Damien Le Moal <dlemoal@kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        linux-block@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, Hannes Reinecke <hare@suse.de>,
-        Miklos Szeredi <mszeredi@redhat.com>
-Subject: [PATCH 11/12] fuse: drop redundant arguments to fuse_perform_write
-Date:   Wed, 31 May 2023 09:50:25 +0200
-Message-Id: <20230531075026.480237-12-hch@lst.de>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230531075026.480237-1-hch@lst.de>
-References: <20230531075026.480237-1-hch@lst.de>
+        with ESMTP id S231397AbjEaI6G (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 May 2023 04:58:06 -0400
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A7257C0;
+        Wed, 31 May 2023 01:58:03 -0700 (PDT)
+Received: from pps.filterd (m0353729.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 34V8a5W4018378;
+        Wed, 31 May 2023 08:57:55 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=date : from : to : cc :
+ subject : message-id : references : mime-version : content-type :
+ content-transfer-encoding : in-reply-to; s=pp1;
+ bh=DCijIo14IUSsxzXzY9h3WyI/6hJYnKjXFiCCeIxmllw=;
+ b=VFZFGvSDUmzEdeJ7iPQn0JiNqtlQDiseu52b/KMO0Jj0m5NgOvh7nbYEflxGVXj0We28
+ zvCFhGlnlTZ4wI0XfOuuAuTMB0jO3uvU3OFVmFBjqLgFBkSpgDXMHAHuL3tHMG9OXkyf
+ ZypQu3rSLM9PXyD1y3dxxM3NLVDVE0xUMvftHgszXRFIxFbsgXReBDwlWHpXgft/pTg/
+ aMKhn19i4G2lvzjELYxDI7rKvIZkOOBl2gENwAh30d9GfiXySG1y3nDl3h24bQLyvpBo
+ Ur7IoSNYFOeTsLYkIXy+eJqqoS61/voyP+H62NY+ldwHZH4A8AvmUuxYxqyVF2vce23T 0Q== 
+Received: from pps.reinject (localhost [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3qwygvdamc-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Wed, 31 May 2023 08:57:54 +0000
+Received: from m0353729.ppops.net (m0353729.ppops.net [127.0.0.1])
+        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 34V8tnb2025274;
+        Wed, 31 May 2023 08:57:54 GMT
+Received: from ppma03ams.nl.ibm.com (62.31.33a9.ip4.static.sl-reverse.com [169.51.49.98])
+        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3qwygvdakn-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Wed, 31 May 2023 08:57:53 +0000
+Received: from pps.filterd (ppma03ams.nl.ibm.com [127.0.0.1])
+        by ppma03ams.nl.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 34V4XbYc003811;
+        Wed, 31 May 2023 08:57:51 GMT
+Received: from smtprelay02.fra02v.mail.ibm.com ([9.218.2.226])
+        by ppma03ams.nl.ibm.com (PPS) with ESMTPS id 3qu9g51w2x-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Wed, 31 May 2023 08:57:51 +0000
+Received: from smtpav04.fra02v.mail.ibm.com (smtpav04.fra02v.mail.ibm.com [10.20.54.103])
+        by smtprelay02.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 34V8vmZl16646764
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 31 May 2023 08:57:49 GMT
+Received: from smtpav04.fra02v.mail.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id E03BD2004B;
+        Wed, 31 May 2023 08:57:48 +0000 (GMT)
+Received: from smtpav04.fra02v.mail.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id BFD0620040;
+        Wed, 31 May 2023 08:57:46 +0000 (GMT)
+Received: from li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com (unknown [9.43.79.149])
+        by smtpav04.fra02v.mail.ibm.com (Postfix) with ESMTPS;
+        Wed, 31 May 2023 08:57:46 +0000 (GMT)
+Date:   Wed, 31 May 2023 14:27:44 +0530
+From:   Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To:     Sedat Dilek <sedat.dilek@gmail.com>
+Cc:     linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+        Ritesh Harjani <riteshh@linux.ibm.com>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Jan Kara <jack@suse.cz>,
+        Kemeng Shi <shikemeng@huaweicloud.com>,
+        Ritesh Harjani <ritesh.list@gmail.com>
+Subject: Re: [PATCH v2 01/12] Revert "ext4: remove ac->ac_found >
+ sbi->s_mb_min_to_scan dead check in ext4_mb_check_limits"
+Message-ID: <ZHcMCGO5zW/P8LHh@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
+References: <cover.1685449706.git.ojaswin@linux.ibm.com>
+ <ddcae9658e46880dfec2fb0aa61d01fb3353d202.1685449706.git.ojaswin@linux.ibm.com>
+ <CA+icZUXDFbxRvx8-pvEwsZAu+-28bX4VDTj6ZTPtvn4gWqGnCg@mail.gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+In-Reply-To: <CA+icZUXDFbxRvx8-pvEwsZAu+-28bX4VDTj6ZTPtvn4gWqGnCg@mail.gmail.com>
+X-TM-AS-GCONF: 00
+X-Proofpoint-ORIG-GUID: tq1pskt3MKwfPjNSmqkQTGhC4glPTm7c
+X-Proofpoint-GUID: e0FgBzwwsD7oRx9WBcyChwPsMs0b4CVF
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.254,Aquarius:18.0.957,Hydra:6.0.573,FMLib:17.11.176.26
+ definitions=2023-05-31_04,2023-05-30_01,2023-05-22_02
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 malwarescore=0
+ lowpriorityscore=0 mlxlogscore=979 adultscore=0 bulkscore=0 mlxscore=0
+ clxscore=1015 priorityscore=1501 suspectscore=0 impostorscore=0
+ spamscore=0 phishscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2304280000 definitions=main-2305310074
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-pos is always equal to iocb->ki_pos, and mapping is always equal to
-iocb->ki_filp->f_mapping.
+On Tue, May 30, 2023 at 06:28:22PM +0200, Sedat Dilek wrote:
+> On Tue, May 30, 2023 at 3:25 PM Ojaswin Mujoo <ojaswin@linux.ibm.com> wrote:
+> >
+> > This reverts commit 32c0869370194ae5ac9f9f501953ef693040f6a1.
+> >
+> > The reverted commit was intended to remove a dead check however it was observed
+> > that this check was actually being used to exit early instead of looping
+> > sbi->s_mb_max_to_scan times when we are able to find a free extent bigger than
+> > the goal extent. Due to this, a my performance tests (fsmark, parallel file
+> > writes in a highly fragmented FS) were seeing a 2x-3x regression.
+> >
+> > Example, the default value of the following variables is:
+> >
+> > sbi->s_mb_max_to_scan = 200
+> > sbi->s_mb_min_to_scan = 10
+> >
+> > In ext4_mb_check_limits() if we find an extent smaller than goal, then we return
+> > early and try again. This loop will go on until we have processed
+> > sbi->s_mb_max_to_scan(=200) number of free extents at which point we exit and
+> > just use whatever we have even if it is smaller than goal extent.
+> >
+> > Now, the regression comes when we find an extent bigger than goal. Earlier, in
+> > this case we would loop only sbi->s_mb_min_to_scan(=10) times and then just use
+> > the bigger extent. However with commit 32c08693 that check was removed and hence
+> > we would loop sbi->s_mb_max_to_scan(=200) times even though we have a big enough
+> > free extent to satisfy the request. The only time we would exit early would be
+> > when the free extent is *exactly* the size of our goal, which is pretty uncommon
+> > occurrence and so we would almost always end up looping 200 times.
+> >
+> > Hence, revert the commit by adding the check back to fix the regression. Also
+> > add a comment to outline this policy.
+> >
+> 
+> Hi,
+> 
+> I applied this single patch of your series v2 on top of Linux v6.4-rc4.
+> 
+> So, if this is a regression I ask myself if this is material for Linux 6.4?
+> 
+> Can you comment on this, please?
+> 
+> Thanks.
+> 
+> Regards,
+> -Sedat-
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Damien Le Moal <dlemoal@kernel.org>
-Reviewed-by: Hannes Reinecke <hare@suse.de>
-Acked-by: Miklos Szeredi <mszeredi@redhat.com>
----
- fs/fuse/file.c | 11 +++++------
- 1 file changed, 5 insertions(+), 6 deletions(-)
+Hi Sedat,
 
-diff --git a/fs/fuse/file.c b/fs/fuse/file.c
-index e60e48bf392d49..025973ad813e05 100644
---- a/fs/fuse/file.c
-+++ b/fs/fuse/file.c
-@@ -1280,13 +1280,13 @@ static inline unsigned int fuse_wr_pages(loff_t pos, size_t len,
- 		     max_pages);
- }
- 
--static ssize_t fuse_perform_write(struct kiocb *iocb,
--				  struct address_space *mapping,
--				  struct iov_iter *ii, loff_t pos)
-+static ssize_t fuse_perform_write(struct kiocb *iocb, struct iov_iter *ii)
- {
-+	struct address_space *mapping = iocb->ki_filp->f_mapping;
- 	struct inode *inode = mapping->host;
- 	struct fuse_conn *fc = get_fuse_conn(inode);
- 	struct fuse_inode *fi = get_fuse_inode(inode);
-+	loff_t pos = iocb->ki_pos;
- 	int err = 0;
- 	ssize_t res = 0;
- 
-@@ -1383,8 +1383,7 @@ static ssize_t fuse_cache_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 		if (written < 0 || !iov_iter_count(from))
- 			goto out;
- 
--		written_buffered = fuse_perform_write(iocb, mapping, from,
--						      iocb->ki_pos);
-+		written_buffered = fuse_perform_write(iocb, from);
- 		if (written_buffered < 0) {
- 			err = written_buffered;
- 			goto out;
-@@ -1403,7 +1402,7 @@ static ssize_t fuse_cache_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 
- 		written += written_buffered;
- 	} else {
--		written = fuse_perform_write(iocb, mapping, from, iocb->ki_pos);
-+		written = fuse_perform_write(iocb, from);
- 	}
- out:
- 	inode_unlock(inode);
--- 
-2.39.2
+Since this patch fixes a regression I think it should ideally go in
+Linux 6.4
 
+Regards,
+ojaswin
+> 
+> 
+> > Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+> > Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+> > Reviewed-by: Kemeng Shi <shikemeng@huaweicloud.com>
+> > ---
+> >  fs/ext4/mballoc.c | 16 +++++++++++++++-
+> >  1 file changed, 15 insertions(+), 1 deletion(-)
+> >
+> > diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> > index d4b6a2c1881d..7ac6d3524f29 100644
+> > --- a/fs/ext4/mballoc.c
+> > +++ b/fs/ext4/mballoc.c
+> > @@ -2063,7 +2063,7 @@ static void ext4_mb_check_limits(struct ext4_allocation_context *ac,
+> >         if (bex->fe_len < gex->fe_len)
+> >                 return;
+> >
+> > -       if (finish_group)
+> > +       if (finish_group || ac->ac_found > sbi->s_mb_min_to_scan)
+> >                 ext4_mb_use_best_found(ac, e4b);
+> >  }
+> >
+> > @@ -2075,6 +2075,20 @@ static void ext4_mb_check_limits(struct ext4_allocation_context *ac,
+> >   * in the context. Later, the best found extent will be used, if
+> >   * mballoc can't find good enough extent.
+> >   *
+> > + * The algorithm used is roughly as follows:
+> > + *
+> > + * * If free extent found is exactly as big as goal, then
+> > + *   stop the scan and use it immediately
+> > + *
+> > + * * If free extent found is smaller than goal, then keep retrying
+> > + *   upto a max of sbi->s_mb_max_to_scan times (default 200). After
+> > + *   that stop scanning and use whatever we have.
+> > + *
+> > + * * If free extent found is bigger than goal, then keep retrying
+> > + *   upto a max of sbi->s_mb_min_to_scan times (default 10) before
+> > + *   stopping the scan and using the extent.
+> > + *
+> > + *
+> >   * FIXME: real allocation policy is to be designed yet!
+> >   */
+> >  static void ext4_mb_measure_extent(struct ext4_allocation_context *ac,
+> > --
+> > 2.31.1
+> >
