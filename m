@@ -2,51 +2,54 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B979CC77B7C
-	for <linux-ext4@archiver.kernel.org>; Wed, 31 May 2023 11:51:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 514DCC7EE31
+	for <linux-ext4@archiver.kernel.org>; Wed, 31 May 2023 11:51:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235634AbjEaLvT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 31 May 2023 07:51:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49054 "EHLO
+        id S235668AbjEaLvV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 31 May 2023 07:51:21 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49048 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235591AbjEaLvQ (ORCPT
+        with ESMTP id S235599AbjEaLvQ (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 May 2023 07:51:16 -0400
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 21B80184
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8D07B186
         for <linux-ext4@vger.kernel.org>; Wed, 31 May 2023 04:51:11 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4QWSJq0X3bz4f3kKt
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4QWSJq5dzhz4f3kKX
         for <linux-ext4@vger.kernel.org>; Wed, 31 May 2023 19:51:07 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.170])
-        by APP2 (Coremail) with SMTP id Syh0CgA33eqkNHdkE8UXKg--.13786S4;
-        Wed, 31 May 2023 19:51:06 +0800 (CST)
+        by APP2 (Coremail) with SMTP id Syh0CgA33eqkNHdkE8UXKg--.13786S6;
+        Wed, 31 May 2023 19:51:08 +0800 (CST)
 From:   Zhang Yi <yi.zhang@huaweicloud.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
         yi.zhang@huawei.com, yi.zhang@huaweicloud.com, yukuai3@huawei.com,
         chengzhihao1@huawei.com
-Subject: [PATCH 0/5] jbd2: fix several checkpoint inconsistent issues
-Date:   Wed, 31 May 2023 19:50:55 +0800
-Message-Id: <20230531115100.2779605-1-yi.zhang@huaweicloud.com>
+Subject: [PATCH 2/5] jbd2: remove t_checkpoint_io_list
+Date:   Wed, 31 May 2023 19:50:57 +0800
+Message-Id: <20230531115100.2779605-3-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20230531115100.2779605-1-yi.zhang@huaweicloud.com>
+References: <20230531115100.2779605-1-yi.zhang@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: Syh0CgA33eqkNHdkE8UXKg--.13786S4
-X-Coremail-Antispam: 1UD129KBjvdXoW7Xr47Xr1kGF1kAr1UZw4Dtwb_yoWfurX_Ca
-        y8tFZ8G3s2qF1UAFs3Ar17JrnrCa1fGF15ZF1ktrW7Crn3Ar4UG3Z5ArsIqw1xXayq9ryD
-        JryrCrWFqrnFqjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-        9fnUUIcSsGvfJTRUUUbz8FF20E14v26r4j6ryUM7CY07I20VC2zVCF04k26cxKx2IYs7xG
-        6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8w
-        A2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j
-        6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oV
-        Cq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0
-        I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r
-        4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20xvY0x0EwIxG
-        rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
-        vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IY
-        x2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Jr0_Gr1lIxAIcVCF04k26c
-        xKx2IYs7xG6rW3Jr0E3s1lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x02
-        67AKxVWUJVW8JbIYCTnIWIevJa73UjIFyTuYvjfUoOJ5UUUUU
+X-CM-TRANSID: Syh0CgA33eqkNHdkE8UXKg--.13786S6
+X-Coremail-Antispam: 1UD129KBjvJXoWxAFyfGw1kCw48Wr4rZFW3trb_yoWrtw4rpr
+        93uw1xtrWkuryUCr10qF4UArW0qF48uryUGryY93Z3Aa17twn2gas7tr1IyFyqyrZ5ua45
+        XF15Crn8GF4jka7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUU9m14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
+        x26xkF7I0E14v26r4j6ryUM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+        Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+        A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+        0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+        IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+        Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20xvY0x0EwIxGrwCFx2
+        IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v2
+        6r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67
+        AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IY
+        s7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr
+        0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUc6pPUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 X-CFilter-Loop: Reflected
 Precedence: bulk
@@ -55,34 +58,136 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Hello,
+Since t_checkpoint_io_list was stop using in jbd2_log_do_checkpoint()
+now, it's time to remove the whole t_checkpoint_io_list logic.
 
-The first three patches are from [1] and are not changed, appending
-another two (it depends on the first three) to fix another three race
-issues in the checkpoint procedure which could also lead to inconsistent
-results.
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd2/checkpoint.c | 42 ++----------------------------------------
+ fs/jbd2/commit.c     |  3 +--
+ include/linux/jbd2.h |  6 ------
+ 3 files changed, 3 insertions(+), 48 deletions(-)
 
-[1] https://lore.kernel.org/linux-ext4/20230516020226.2813588-1-yi.zhang@huaweicloud.com/
-
-Thanks,
-Yi.
-
-Zhang Yi (4):
-  jbd2: recheck chechpointing non-dirty buffer
-  jbd2: remove t_checkpoint_io_list
-  jbd2: remove released parameter in journal_shrink_one_cp_list()
-  jbd2: fix a race when checking checkpoint buffer busy
-
-Zhihao Cheng (1):
-  jbd2: Fix wrongly judgement for buffer head removing while doing
-    checkpoint
-
- fs/jbd2/checkpoint.c  | 186 +++++++++++-------------------------------
- fs/jbd2/commit.c      |   3 +-
- fs/jbd2/transaction.c |   4 +-
- include/linux/jbd2.h  |   9 +-
- 4 files changed, 55 insertions(+), 147 deletions(-)
-
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 25e3c20eb19f..55d6efdbea64 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -27,7 +27,7 @@
+  *
+  * Called with j_list_lock held.
+  */
+-static inline void __buffer_unlink_first(struct journal_head *jh)
++static inline void __buffer_unlink(struct journal_head *jh)
+ {
+ 	transaction_t *transaction = jh->b_cp_transaction;
+ 
+@@ -40,23 +40,6 @@ static inline void __buffer_unlink_first(struct journal_head *jh)
+ 	}
+ }
+ 
+-/*
+- * Unlink a buffer from a transaction checkpoint(io) list.
+- *
+- * Called with j_list_lock held.
+- */
+-static inline void __buffer_unlink(struct journal_head *jh)
+-{
+-	transaction_t *transaction = jh->b_cp_transaction;
+-
+-	__buffer_unlink_first(jh);
+-	if (transaction->t_checkpoint_io_list == jh) {
+-		transaction->t_checkpoint_io_list = jh->b_cpnext;
+-		if (transaction->t_checkpoint_io_list == jh)
+-			transaction->t_checkpoint_io_list = NULL;
+-	}
+-}
+-
+ /*
+  * Check a checkpoint buffer could be release or not.
+  *
+@@ -503,15 +486,6 @@ unsigned long jbd2_journal_shrink_checkpoint_list(journal_t *journal,
+ 			break;
+ 		if (need_resched() || spin_needbreak(&journal->j_list_lock))
+ 			break;
+-		if (released)
+-			continue;
+-
+-		nr_freed += journal_shrink_one_cp_list(transaction->t_checkpoint_io_list,
+-						       nr_to_scan, &released);
+-		if (*nr_to_scan == 0)
+-			break;
+-		if (need_resched() || spin_needbreak(&journal->j_list_lock))
+-			break;
+ 	} while (transaction != last_transaction);
+ 
+ 	if (transaction != last_transaction) {
+@@ -566,17 +540,6 @@ void __jbd2_journal_clean_checkpoint_list(journal_t *journal, bool destroy)
+ 		 */
+ 		if (need_resched())
+ 			return;
+-		if (ret)
+-			continue;
+-		/*
+-		 * It is essential that we are as careful as in the case of
+-		 * t_checkpoint_list with removing the buffer from the list as
+-		 * we can possibly see not yet submitted buffers on io_list
+-		 */
+-		ret = journal_clean_one_cp_list(transaction->
+-				t_checkpoint_io_list, destroy);
+-		if (need_resched())
+-			return;
+ 		/*
+ 		 * Stop scanning if we couldn't free the transaction. This
+ 		 * avoids pointless scanning of transactions which still
+@@ -661,7 +624,7 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
+ 	jbd2_journal_put_journal_head(jh);
+ 
+ 	/* Is this transaction empty? */
+-	if (transaction->t_checkpoint_list || transaction->t_checkpoint_io_list)
++	if (transaction->t_checkpoint_list)
+ 		return 0;
+ 
+ 	/*
+@@ -753,7 +716,6 @@ void __jbd2_journal_drop_transaction(journal_t *journal, transaction_t *transact
+ 	J_ASSERT(transaction->t_forget == NULL);
+ 	J_ASSERT(transaction->t_shadow_list == NULL);
+ 	J_ASSERT(transaction->t_checkpoint_list == NULL);
+-	J_ASSERT(transaction->t_checkpoint_io_list == NULL);
+ 	J_ASSERT(atomic_read(&transaction->t_updates) == 0);
+ 	J_ASSERT(journal->j_committing_transaction != transaction);
+ 	J_ASSERT(journal->j_running_transaction != transaction);
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index b33155dd7001..1073259902a6 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -1141,8 +1141,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	spin_lock(&journal->j_list_lock);
+ 	commit_transaction->t_state = T_FINISHED;
+ 	/* Check if the transaction can be dropped now that we are finished */
+-	if (commit_transaction->t_checkpoint_list == NULL &&
+-	    commit_transaction->t_checkpoint_io_list == NULL) {
++	if (commit_transaction->t_checkpoint_list == NULL) {
+ 		__jbd2_journal_drop_transaction(journal, commit_transaction);
+ 		jbd2_journal_free_transaction(commit_transaction);
+ 	}
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index f619bae1dcc5..91a2cf4bc575 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -622,12 +622,6 @@ struct transaction_s
+ 	 */
+ 	struct journal_head	*t_checkpoint_list;
+ 
+-	/*
+-	 * Doubly-linked circular list of all buffers submitted for IO while
+-	 * checkpointing. [j_list_lock]
+-	 */
+-	struct journal_head	*t_checkpoint_io_list;
+-
+ 	/*
+ 	 * Doubly-linked circular list of metadata buffers being
+ 	 * shadowed by log IO.  The IO buffers on the iobuf list and
 -- 
 2.31.1
 
