@@ -2,153 +2,127 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 62701C77B7E
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Jun 2023 09:42:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 21507C7EE31
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Jun 2023 10:58:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231901AbjFAJmR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 1 Jun 2023 05:42:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56538 "EHLO
+        id S233238AbjFAK6h (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 1 Jun 2023 06:58:37 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52964 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231732AbjFAJmQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Jun 2023 05:42:16 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2D504134
-        for <linux-ext4@vger.kernel.org>; Thu,  1 Jun 2023 02:41:58 -0700 (PDT)
+        with ESMTP id S232439AbjFAK6d (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Jun 2023 06:58:33 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F3D1F119;
+        Thu,  1 Jun 2023 03:58:31 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id D9D912190C;
-        Thu,  1 Jun 2023 09:41:56 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id ABCB91FDA4;
+        Thu,  1 Jun 2023 10:58:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1685612516; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+        t=1685617110; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=9BgKzdQxiE2MjPikzt5RxWBbmh+7r/G2sV0ec5gBkm8=;
-        b=cDes27wNnYi/IEPXSpDLTAskIFZvW27N46APrySivGn3tCHesQFqzdqfMpgcOGYsESbsRu
-        HbTH3v4EKGOEznWKaqgaaHGE+95W+/FsAXlh2+UQo5btACPiGcIn3AbCurNExpkqprlONl
-        9uLmLk91K3oXuxZu3itZiy/06TG7OUU=
+        bh=AOBPab5sBc+U602a0bs2SOLbJwxohD0hSk5muDSlfQg=;
+        b=m0aixr+dCqe3K9QfB6/idjG/MQKrA1uRsE+ODOhIApPE30Yn+1bCdVPlWc3cAE0BYLcbNt
+        KYF9tnNVKUVnVbCxM28ExF1cZ7pc76e6siluMzm3z/44yM1iP9hFSCstJcYMPzkGq9HQ3k
+        G4nRfODLjVS1sXAPocRGR/wz1CnnahY=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1685612516;
+        s=susede2_ed25519; t=1685617110;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=9BgKzdQxiE2MjPikzt5RxWBbmh+7r/G2sV0ec5gBkm8=;
-        b=BdULwq1mi9HzxPuohJf2l/vpEd17t02TKaD6+FVVz/UnnukyogGQxKJXvbRD94Rx6B7QuZ
-        vr93Mg4asPsfQ1DA==
+        bh=AOBPab5sBc+U602a0bs2SOLbJwxohD0hSk5muDSlfQg=;
+        b=ZjXPEfA/Z6p0tD0pWba6YYhkH+ZxhOKi8Tv7saBw2dmqzSbTDfaZE5tO7b8+il6b40v5bY
+        tmKqIcU1kwtFu2Bw==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id CA46A139B7;
-        Thu,  1 Jun 2023 09:41:56 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 9757313A34;
+        Thu,  1 Jun 2023 10:58:30 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id DHdsMeRneGTILQAAMHmgww
-        (envelope-from <jack@suse.cz>); Thu, 01 Jun 2023 09:41:56 +0000
+        id WjdTJNZ5eGRvWAAAMHmgww
+        (envelope-from <jack@suse.cz>); Thu, 01 Jun 2023 10:58:30 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 5E104A0754; Thu,  1 Jun 2023 11:41:56 +0200 (CEST)
-Date:   Thu, 1 Jun 2023 11:41:56 +0200
+        id 127C7A06F2; Thu,  1 Jun 2023 12:58:30 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
-To:     Zhang Yi <yi.zhang@huaweicloud.com>
-Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, jack@suse.cz, yi.zhang@huawei.com,
-        yukuai3@huawei.com, chengzhihao1@huawei.com
-Subject: Re: [PATCH 4/5] jbd2: Fix wrongly judgement for buffer head removing
- while doing checkpoint
-Message-ID: <20230601094156.m4b7rxntmaxc5zy7@quack3>
-References: <20230531115100.2779605-1-yi.zhang@huaweicloud.com>
- <20230531115100.2779605-5-yi.zhang@huaweicloud.com>
+To:     Al Viro <viro@ZenIV.linux.org.uk>
+Cc:     <linux-fsdevel@vger.kernel.org>,
+        Christian Brauner <brauner@kernel.org>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        "Darrick J. Wong" <djwong@kernel.org>, Ted Tso <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, <linux-ext4@vger.kernel.org>,
+        <linux-xfs@vger.kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net, Jan Kara <jack@suse.cz>,
+        stable@vger.kernel.org
+Subject: [PATCH v2 1/6] ext4: Remove ext4 locking of moved directory
+Date:   Thu,  1 Jun 2023 12:58:21 +0200
+Message-Id: <20230601105830.13168-1-jack@suse.cz>
+X-Mailer: git-send-email 2.35.3
+In-Reply-To: <20230601104525.27897-1-jack@suse.cz>
+References: <20230601104525.27897-1-jack@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20230531115100.2779605-5-yi.zhang@huaweicloud.com>
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1467; i=jack@suse.cz; h=from:subject; bh=XV5CJdcSgiBkW1x4p8thTfL0TVuanLRiOHdfMG5wLnM=; b=owGbwMvMwME4Z+4qdvsUh5uMp9WSGFIqKs8qZLmlpvw48TWHpdA694OFxWeVaLv2zZwfJjl4Hzj9 Ne5aJ6MxCwMjB4OsmCLL6siL2tfmGXVtDdWQgRnEygQyhYGLUwAmwsDH/k/X8e7htO0Jitt7fN9Nbv TO+Z9oc7PXwOSov8BXnTima2z8heFKVlyyGr3ZDFzWDhYWWVsvW5/osepYKtf7f+qeL+2iXDW6PHl/ BJe4FApfulAz+VFo/28bwyiOltbZUsu/F73dsUDVlfceS/PXqbXTc/7Jz4j7IN4W9lF5s77Mmc0CRn eD699+b5rwIO7By67vRpuFF9/WCLr1MrnaXW+Vo8zUHfxum5/MmiJjFLLxRNTFjU92sy9d5VlS1rmI V1E38gt76rL95UtsE6ZMcsjxWrd/cbFb9KQDS5eVn0iZuXQTb7Wg1KMA1dd7+g47T4h11IluPa6Q1l ARMPl6hU2PbNGaPHe5kr7CeFshAA==
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed 31-05-23 19:50:59, Zhang Yi wrote:
-> From: Zhihao Cheng <chengzhihao1@huawei.com>
-> 
-> Following process,
-> 
-> jbd2_journal_commit_transaction
-> // there are several dirty buffer heads in transaction->t_checkpoint_list
->           P1                   wb_workfn
-> jbd2_log_do_checkpoint
->  if (buffer_locked(bh)) // false
->                             __block_write_full_page
->                              trylock_buffer(bh)
->                              test_clear_buffer_dirty(bh)
->  if (!buffer_dirty(bh))
->   __jbd2_journal_remove_checkpoint(jh)
->    if (buffer_write_io_error(bh)) // false
->                              >> bh IO error occurs <<
->  jbd2_cleanup_journal_tail
->   __jbd2_update_log_tail
->    jbd2_write_superblock
->    // The bh won't be replayed in next mount.
-> , which could corrupt the ext4 image, fetch a reproducer in [Link].
-> 
-> Since writeback process clears buffer dirty after locking buffer head,
-> we can fix it by checking buffer dirty firstly and then checking buffer
-> locked, the buffer head can be removed if it is neither dirty nor locked.
-> 
-> Link: https://bugzilla.kernel.org/show_bug.cgi?id=217490
-> Fixes: 470decc613ab ("[PATCH] jbd2: initial copy of files from jbd")
-> Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Remove locking of moved directory in ext4_rename2(). We will take care
+of it in VFS instead. This effectively reverts commit 0813299c586b
+("ext4: Fix possible corruption when moving a directory") and followup
+fixes.
 
-OK, the analysis is correct but I'm afraid the fix won't be that easy.  The
-reordering of tests you did below doesn't really help because CPU or the
-compiler are free to order the loads (and stores) in whatever way they
-wish. You'd have to use memory barriers when reading and modifying bh flags
-(although the modification side is implicitely handled by the bitlock
-code) to make this work reliably. But that is IMHO too subtle for this
-code.
+CC: Ted Tso <tytso@mit.edu>
+CC: stable@vger.kernel.org
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/namei.c | 17 ++---------------
+ 1 file changed, 2 insertions(+), 15 deletions(-)
 
-What we should be doing to avoid these races is to lock the bh. So
-something like:
-
-	if (jh->b_transaction != NULL) {
-		do stuff
-	}
-	if (!trylock_buffer(bh)) {
-		buffer_locked() branch
-	}
-	... Now we have the buffer locked and can safely check for dirtyness
-
-And we need to do a similar treatment for journal_clean_one_cp_list() and
-journal_shrink_one_cp_list().
-
-BTW, I think we could merge journal_clean_one_cp_list() and
-journal_shrink_one_cp_list() into a single common function. I think we can
-drop the nr_to_scan argument and just always cleanup the whole checkpoint
-list and return the number of freed buffers. That way we have one less
-function to deal with checkpoint list cleaning.
-
-Thinking about it some more maybe we can have a function like:
-
-int jbd2_try_remove_checkpoint(struct journal_head *jh)
-{
-	struct buffer_head *bh = jh2bh(jh);
-
-	if (!trylock_buffer(bh) || buffer_dirty(bh))
-		return -EBUSY;
-	/*
-	 * Buffer is clean and the IO has finished (we hold the buffer lock) so
-	 * the checkpoint is done. We can safely remove the buffer from this
-	 * transaction.
-	 */
-	unlock_buffer(bh);
-	return __jbd2_journal_remove_checkpoint(jh);
-}
-
-and that can be used with a bit of care in the checkpointing functions as
-well as in jbd2_journal_forget(), __journal_try_to_free_buffer(),
-journal_unmap_buffer().
-
-								Honza
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 45b579805c95..0caf6c730ce3 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3834,19 +3834,10 @@ static int ext4_rename(struct mnt_idmap *idmap, struct inode *old_dir,
+ 			return retval;
+ 	}
+ 
+-	/*
+-	 * We need to protect against old.inode directory getting converted
+-	 * from inline directory format into a normal one.
+-	 */
+-	if (S_ISDIR(old.inode->i_mode))
+-		inode_lock_nested(old.inode, I_MUTEX_NONDIR2);
+-
+ 	old.bh = ext4_find_entry(old.dir, &old.dentry->d_name, &old.de,
+ 				 &old.inlined);
+-	if (IS_ERR(old.bh)) {
+-		retval = PTR_ERR(old.bh);
+-		goto unlock_moved_dir;
+-	}
++	if (IS_ERR(old.bh))
++		return PTR_ERR(old.bh);
+ 
+ 	/*
+ 	 *  Check for inode number is _not_ due to possible IO errors.
+@@ -4043,10 +4034,6 @@ static int ext4_rename(struct mnt_idmap *idmap, struct inode *old_dir,
+ 	brelse(old.bh);
+ 	brelse(new.bh);
+ 
+-unlock_moved_dir:
+-	if (S_ISDIR(old.inode->i_mode))
+-		inode_unlock(old.inode);
+-
+ 	return retval;
+ }
+ 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.35.3
+
