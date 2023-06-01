@@ -2,196 +2,158 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 285C3C7EE23
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Jun 2023 10:58:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1DB1CC77B7E
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Jun 2023 13:45:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233024AbjFAK6q (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 1 Jun 2023 06:58:46 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52988 "EHLO
+        id S233897AbjFANpH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 1 Jun 2023 09:45:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46062 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233128AbjFAK6f (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Jun 2023 06:58:35 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 73FE2129;
-        Thu,  1 Jun 2023 03:58:32 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 180AF2197E;
-        Thu,  1 Jun 2023 10:58:31 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1685617111; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=WVCS2NXBW5ZH4HJiDG94f7/my/nZc/t1gaXommKhNSs=;
-        b=sk8CUrc5W8W+ATmUeBoPtRVc2tLcmAeBXR1SKEKOL49RIImPQ2l8GCKekmntDiWQ1S01Ol
-        x54+S6D7tJs6K+3+W/W78Wk95ZdRxqQncjP7g1bn9yzeOCmRmxmlDEh757NsaZ7VdX9tVa
-        +5BBgseIuW58hljimTAc28c8g2lt1nc=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1685617111;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=WVCS2NXBW5ZH4HJiDG94f7/my/nZc/t1gaXommKhNSs=;
-        b=s2Ncj+jC+LWCSSYtcD2/hbX1MZeKwUEnf5kIdxKy9neWgXvER8vXh4BvHoC7nLPnGfbPsT
-        G09K2PkXlnZg9vDg==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 0A35613441;
-        Thu,  1 Jun 2023 10:58:31 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id BpuIAtd5eGSAWAAAMHmgww
-        (envelope-from <jack@suse.cz>); Thu, 01 Jun 2023 10:58:31 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 27813A0763; Thu,  1 Jun 2023 12:58:30 +0200 (CEST)
-From:   Jan Kara <jack@suse.cz>
-To:     Al Viro <viro@ZenIV.linux.org.uk>
-Cc:     <linux-fsdevel@vger.kernel.org>,
-        Christian Brauner <brauner@kernel.org>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        "Darrick J. Wong" <djwong@kernel.org>, Ted Tso <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, <linux-ext4@vger.kernel.org>,
-        <linux-xfs@vger.kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net, Jan Kara <jack@suse.cz>,
-        stable@vger.kernel.org
-Subject: [PATCH v2 5/6] fs: Lock moved directories
-Date:   Thu,  1 Jun 2023 12:58:25 +0200
-Message-Id: <20230601105830.13168-5-jack@suse.cz>
-X-Mailer: git-send-email 2.35.3
-In-Reply-To: <20230601104525.27897-1-jack@suse.cz>
-References: <20230601104525.27897-1-jack@suse.cz>
+        with ESMTP id S233948AbjFANpF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Jun 2023 09:45:05 -0400
+Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D6C4318F
+        for <linux-ext4@vger.kernel.org>; Thu,  1 Jun 2023 06:45:00 -0700 (PDT)
+Received: from kwepemm600013.china.huawei.com (unknown [172.30.72.54])
+        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4QX6hJ3dVYz18LXB;
+        Thu,  1 Jun 2023 21:40:16 +0800 (CST)
+Received: from [10.174.178.46] (10.174.178.46) by
+ kwepemm600013.china.huawei.com (7.193.23.68) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.23; Thu, 1 Jun 2023 21:44:55 +0800
+Subject: Re: [PATCH 4/5] jbd2: Fix wrongly judgement for buffer head removing
+ while doing checkpoint
+To:     Jan Kara <jack@suse.cz>, Zhang Yi <yi.zhang@huaweicloud.com>
+CC:     <linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
+        <adilger.kernel@dilger.ca>, <yi.zhang@huawei.com>,
+        <yukuai3@huawei.com>
+References: <20230531115100.2779605-1-yi.zhang@huaweicloud.com>
+ <20230531115100.2779605-5-yi.zhang@huaweicloud.com>
+ <20230601094156.m4b7rxntmaxc5zy7@quack3>
+From:   Zhihao Cheng <chengzhihao1@huawei.com>
+Message-ID: <d73ecd71-cb4f-921f-2284-d756c68e084c@huawei.com>
+Date:   Thu, 1 Jun 2023 21:44:44 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101
+ Thunderbird/68.5.0
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5467; i=jack@suse.cz; h=from:subject; bh=x4FZJj19EKHfl9vXc7blu9EGaRK3J4g/IYXgMMiRgsg=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBkeHnQOagY8JFtxmxrH4yOG15iOHj85ARzmW1mO6z6 m4CoTtqJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCZHh50AAKCRCcnaoHP2RA2fOmCA CGZ/60qBrc6mq5kJuPlRk9zqrA938OweaDejgjB5rj/+wPTCG423XQxEjq785RwCe9imbIcJywyI89 A0pan5qcfnH3LTQfSvu8g6Jnn/hUJIc/ZMpljEw2EQVWXfo3gjmfNtu2Nv80yeCWEt+RhRaifk2PpA FLUIaavbPKYMxQ68HJ0IAdihcEEjPMCnTBQNJYwjkR9+2RDhPtxB05Dxbx7SoLrQG4CyCnR0UNvBFu VouTBcwwyqv4irtxgwlnroN7k242fLUWgmWkRIlxkPK3MjdN2wTxLC4YYJ1BQ6HnnVZewXTrQEWlUP Sx2kjy7KuoAPi36BlrAAF2PUdusf8G
-X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+In-Reply-To: <20230601094156.m4b7rxntmaxc5zy7@quack3>
+Content-Type: text/plain; charset="gbk"; format=flowed
 Content-Transfer-Encoding: 8bit
+X-Originating-IP: [10.174.178.46]
+X-ClientProxiedBy: dggems703-chm.china.huawei.com (10.3.19.180) To
+ kwepemm600013.china.huawei.com (7.193.23.68)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-When a directory is moved to a different directory, some filesystems
-(udf, ext4, ocfs2, f2fs, and likely gfs2, reiserfs, and others) need to
-update their pointer to the parent and this must not race with other
-operations on the directory. Lock the directories when they are moved.
-Although not all filesystems need this locking, we perform it in
-vfs_rename() because getting the lock ordering right is really difficult
-and we don't want to expose these locking details to filesystems.
+ÔÚ 2023/6/1 17:41, Jan Kara Ð´µÀ:
 
-CC: stable@vger.kernel.org
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- .../filesystems/directory-locking.rst         | 26 ++++++++++---------
- fs/namei.c                                    | 22 ++++++++++------
- 2 files changed, 28 insertions(+), 20 deletions(-)
+Hi, Jan
+> On Wed 31-05-23 19:50:59, Zhang Yi wrote:
+>> From: Zhihao Cheng <chengzhihao1@huawei.com>
+>>
+>> Following process,
+>>
+>> jbd2_journal_commit_transaction
+>> // there are several dirty buffer heads in transaction->t_checkpoint_list
+>>            P1                   wb_workfn
+>> jbd2_log_do_checkpoint
+>>   if (buffer_locked(bh)) // false
+>>                              __block_write_full_page
+>>                               trylock_buffer(bh)
+>>                               test_clear_buffer_dirty(bh)
+>>   if (!buffer_dirty(bh))
+>>    __jbd2_journal_remove_checkpoint(jh)
+>>     if (buffer_write_io_error(bh)) // false
+>>                               >> bh IO error occurs <<
+>>   jbd2_cleanup_journal_tail
+>>    __jbd2_update_log_tail
+>>     jbd2_write_superblock
+>>     // The bh won't be replayed in next mount.
+>> , which could corrupt the ext4 image, fetch a reproducer in [Link].
+>>
+>> Since writeback process clears buffer dirty after locking buffer head,
+>> we can fix it by checking buffer dirty firstly and then checking buffer
+>> locked, the buffer head can be removed if it is neither dirty nor locked.
+>>
+>> Link: https://bugzilla.kernel.org/show_bug.cgi?id=217490
+>> Fixes: 470decc613ab ("[PATCH] jbd2: initial copy of files from jbd")
+>> Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
+>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> 
+> OK, the analysis is correct but I'm afraid the fix won't be that easy.  The
+> reordering of tests you did below doesn't really help because CPU or the
+> compiler are free to order the loads (and stores) in whatever way they
+> wish. You'd have to use memory barriers when reading and modifying bh flags
+> (although the modification side is implicitely handled by the bitlock
+> code) to make this work reliably. But that is IMHO too subtle for this
+> code.
+> 
 
-diff --git a/Documentation/filesystems/directory-locking.rst b/Documentation/filesystems/directory-locking.rst
-index 504ba940c36c..dccd61c7c5c3 100644
---- a/Documentation/filesystems/directory-locking.rst
-+++ b/Documentation/filesystems/directory-locking.rst
-@@ -22,12 +22,11 @@ exclusive.
- 3) object removal.  Locking rules: caller locks parent, finds victim,
- locks victim and calls the method.  Locks are exclusive.
- 
--4) rename() that is _not_ cross-directory.  Locking rules: caller locks
--the parent and finds source and target.  In case of exchange (with
--RENAME_EXCHANGE in flags argument) lock both.  In any case,
--if the target already exists, lock it.  If the source is a non-directory,
--lock it.  If we need to lock both, lock them in inode pointer order.
--Then call the method.  All locks are exclusive.
-+4) rename() that is _not_ cross-directory.  Locking rules: caller locks the
-+parent and finds source and target.  We lock both (provided they exist).  If we
-+need to lock two inodes of different type (dir vs non-dir), we lock directory
-+first.  If we need to lock two inodes of the same type, lock them in inode
-+pointer order.  Then call the method.  All locks are exclusive.
- NB: we might get away with locking the source (and target in exchange
- case) shared.
- 
-@@ -44,15 +43,17 @@ All locks are exclusive.
- rules:
- 
- 	* lock the filesystem
--	* lock parents in "ancestors first" order.
-+	* lock parents in "ancestors first" order. If one is not ancestor of
-+	  the other, lock them in inode pointer order.
- 	* find source and target.
- 	* if old parent is equal to or is a descendent of target
- 	  fail with -ENOTEMPTY
- 	* if new parent is equal to or is a descendent of source
- 	  fail with -ELOOP
--	* If it's an exchange, lock both the source and the target.
--	* If the target exists, lock it.  If the source is a non-directory,
--	  lock it.  If we need to lock both, do so in inode pointer order.
-+	* Lock both the source and the target provided they exist. If we
-+	  need to lock two inodes of different type (dir vs non-dir), we lock
-+	  the directory first. If we need to lock two inodes of the same type,
-+	  lock them in inode pointer order.
- 	* call the method.
- 
- All ->i_rwsem are taken exclusive.  Again, we might get away with locking
-@@ -66,8 +67,9 @@ If no directory is its own ancestor, the scheme above is deadlock-free.
- 
- Proof:
- 
--	First of all, at any moment we have a partial ordering of the
--	objects - A < B iff A is an ancestor of B.
-+	First of all, at any moment we have a linear ordering of the
-+	objects - A < B iff (A is an ancestor of B) or (B is not an ancestor
-+        of A and ptr(A) < ptr(B)).
- 
- 	That ordering can change.  However, the following is true:
- 
-diff --git a/fs/namei.c b/fs/namei.c
-index 148570aabe74..6a5e26a529e1 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -4731,7 +4731,7 @@ SYSCALL_DEFINE2(link, const char __user *, oldname, const char __user *, newname
-  *	   sb->s_vfs_rename_mutex. We might be more accurate, but that's another
-  *	   story.
-  *	c) we have to lock _four_ objects - parents and victim (if it exists),
-- *	   and source (if it is not a directory).
-+ *	   and source.
-  *	   And that - after we got ->i_mutex on parents (until then we don't know
-  *	   whether the target exists).  Solution: try to be smart with locking
-  *	   order for inodes.  We rely on the fact that tree topology may change
-@@ -4815,10 +4815,16 @@ int vfs_rename(struct renamedata *rd)
- 
- 	take_dentry_name_snapshot(&old_name, old_dentry);
- 	dget(new_dentry);
--	if (!is_dir || (flags & RENAME_EXCHANGE))
--		lock_two_nondirectories(source, target);
--	else if (target)
--		inode_lock(target);
-+	/*
-+	 * Lock all moved children. Moved directories may need to change parent
-+	 * pointer so they need the lock to prevent against concurrent
-+	 * directory changes moving parent pointer. For regular files we've
-+	 * historically always done this. The lockdep locking subclasses are
-+	 * somewhat arbitrary but RENAME_EXCHANGE in particular can swap
-+	 * regular files and directories so it's difficult to tell which
-+	 * subclasses to use.
-+	 */
-+	lock_two_inodes(source, target, I_MUTEX_NORMAL, I_MUTEX_NONDIR2);
- 
- 	error = -EPERM;
- 	if (IS_SWAPFILE(source) || (target && IS_SWAPFILE(target)))
-@@ -4866,9 +4872,9 @@ int vfs_rename(struct renamedata *rd)
- 			d_exchange(old_dentry, new_dentry);
- 	}
- out:
--	if (!is_dir || (flags & RENAME_EXCHANGE))
--		unlock_two_nondirectories(source, target);
--	else if (target)
-+	if (source)
-+		inode_unlock(source);
-+	if (target)
- 		inode_unlock(target);
- 	dput(new_dentry);
- 	if (!error) {
--- 
-2.35.3
+Do you mean there might be a sequence like following:
+
+jbd2_log_do_checkpoint
+  if (buffer_dirty(bh))
+  else if (buffer_locked(bh))
+  else
+    __jbd2_journal_remove_checkpoint(jh)
+
+CPU re-arranges the order of getting buffer state.
+reg_1 = buffer_locked(bh)  // false
+                            lock_buffer(bh)
+                            clear_buffer(bh)
+reg_2 = buffer_dirty(bh)   // false
+
+Then, jbd2_log_do_checkpoint() could become:
+if (reg_2)
+else if (reg_1)
+else
+   __jbd2_journal_remove_checkpoint(jh)  // enter !
+
+Am I understanding right?
+
+> What we should be doing to avoid these races is to lock the bh. So
+> something like:
+> 
+> 	if (jh->b_transaction != NULL) {
+> 		do stuff
+> 	}
+> 	if (!trylock_buffer(bh)) {
+> 		buffer_locked() branch
+> 	}
+> 	... Now we have the buffer locked and can safely check for dirtyness
+> 
+> And we need to do a similar treatment for journal_clean_one_cp_list() and
+> journal_shrink_one_cp_list().
+> 
+> BTW, I think we could merge journal_clean_one_cp_list() and
+> journal_shrink_one_cp_list() into a single common function. I think we can
+> drop the nr_to_scan argument and just always cleanup the whole checkpoint
+> list and return the number of freed buffers. That way we have one less
+> function to deal with checkpoint list cleaning.
+> 
+> Thinking about it some more maybe we can have a function like:
+> 
+> int jbd2_try_remove_checkpoint(struct journal_head *jh)
+> {
+> 	struct buffer_head *bh = jh2bh(jh);
+> 
+> 	if (!trylock_buffer(bh) || buffer_dirty(bh))
+> 		return -EBUSY;
+> 	/*
+> 	 * Buffer is clean and the IO has finished (we hold the buffer lock) so
+> 	 * the checkpoint is done. We can safely remove the buffer from this
+> 	 * transaction.
+> 	 */
+> 	unlock_buffer(bh);
+> 	return __jbd2_journal_remove_checkpoint(jh);
+> }
+> 
+> and that can be used with a bit of care in the checkpointing functions as
+> well as in jbd2_journal_forget(), __journal_try_to_free_buffer(),
+> journal_unmap_buffer().
+> 
+> 								Honza
+> 
 
