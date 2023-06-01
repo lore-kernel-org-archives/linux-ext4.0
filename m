@@ -2,54 +2,54 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E8DB6C7EE29
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Jun 2023 10:58:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7170EC7EE31
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Jun 2023 10:58:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233183AbjFAK6j (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 1 Jun 2023 06:58:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52978 "EHLO
+        id S233205AbjFAK6g (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 1 Jun 2023 06:58:36 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52950 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233075AbjFAK6f (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Jun 2023 06:58:35 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4F459128;
-        Thu,  1 Jun 2023 03:58:32 -0700 (PDT)
+        with ESMTP id S231605AbjFAK6c (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Jun 2023 06:58:32 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E1D7E107;
+        Thu,  1 Jun 2023 03:58:31 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id BED651FDA8;
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 9CA741FDA3;
         Thu,  1 Jun 2023 10:58:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1685617110; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=9GkePM4DubixxF/Togl9EDjSplXJHzVlt1TjjubXI6U=;
-        b=slatgofTC1FAmauPjXvaRavFj1ucK0rmX6U3pkMK7g8nnmx0Jo/kPtINHqLNXw7GUbwb1w
-        /ztD5ytaQnOXlejb0d4lmm7cfRqFIKFN7+b1BzZ+hSlyw6VPDv8T6ZTn0jHFKTjUi32r0b
-        HyxQ2KcxqucQD2QVIBQ6/adQk9TM9Wc=
+        bh=ioHF3wJZOEdK9Zi2g8x0HxHqMAZdyIP3moICR5/W8ZM=;
+        b=AMqfoQG+Oqjn4ZqNhHx+B0BDjqiyhV8yIbX3yzJbvq3FNyYQfdfufCQFRg0anXY2Czp8Ld
+        LJNCdivx4JGpOmLRTntSNnx7L/a2XoSCRJekq15ccyjFrvAaNCf0tp05GBPty7EcyJ4HvC
+        2UWijpfiNW2KRbcLlH62o62KCQXB2ZE=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1685617110;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=9GkePM4DubixxF/Togl9EDjSplXJHzVlt1TjjubXI6U=;
-        b=+PZusY3/jcoS/JUtfNuVliL6Ytt+jkK3M6rPOZB1ovGNIOIvQy1cZP0jFs/SQOjbk2U4cW
-        fRa4ig8VkCobYsBw==
+        bh=ioHF3wJZOEdK9Zi2g8x0HxHqMAZdyIP3moICR5/W8ZM=;
+        b=g6E4r15cOMFlrWtQmecf7LGmqF15nLLRfnb0JE+2kjFsYt+vJumZnB9H3ENlitVeHBAXQT
+        BuySk7STrx6wPXDw==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id B060513A34;
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 8E09F13441;
         Thu,  1 Jun 2023 10:58:30 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id kqQMK9Z5eGRzWAAAMHmgww
+        id uUi2ItZ5eGRuWAAAMHmgww
         (envelope-from <jack@suse.cz>); Thu, 01 Jun 2023 10:58:30 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 23FB1A0762; Thu,  1 Jun 2023 12:58:30 +0200 (CEST)
+        id 17082A075C; Thu,  1 Jun 2023 12:58:30 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Al Viro <viro@ZenIV.linux.org.uk>
 Cc:     <linux-fsdevel@vger.kernel.org>,
@@ -60,118 +60,78 @@ Cc:     <linux-fsdevel@vger.kernel.org>,
         <linux-xfs@vger.kernel.org>,
         linux-f2fs-devel@lists.sourceforge.net, Jan Kara <jack@suse.cz>,
         stable@vger.kernel.org
-Subject: [PATCH v2 4/6] fs: Establish locking order for unrelated directories
-Date:   Thu,  1 Jun 2023 12:58:24 +0200
-Message-Id: <20230601105830.13168-4-jack@suse.cz>
+Subject: [PATCH v2 2/6] Revert "udf: Protect rename against modification of moved directory"
+Date:   Thu,  1 Jun 2023 12:58:22 +0200
+Message-Id: <20230601105830.13168-2-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20230601104525.27897-1-jack@suse.cz>
 References: <20230601104525.27897-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3496; i=jack@suse.cz; h=from:subject; bh=5xE40J+PulDN9eVzw5lw6aBn+txq+yIpzvhj12wC0EY=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBkeHnPY8LB6Lx7l0td+dFkItKAtx61uKArJSscpjR8 raeoUD2JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCZHh5zwAKCRCcnaoHP2RA2cjOB/ 9DhZsLwCaOA84pjyOo2bXNwruEQ6X3HjIwB8zJp9WHd8TLG9ud81Oc6FDDNJmY35Ub7hou0NB8b9XN /1hOOJvVjjumxLrI62LrSHiDVlHogm1aiZ0qEjxLGfQkNA/sl4m21EKgnm6IXMsRjFUo3Vo/zq6Qar jFG5pq7ToYOY79cf3zAMe5D3eiEXxC/OlE0ykzstffroAMZwmxvhuKnw1Mn1g1VUfJ4EV7PvLyiA5Z 2eHvwxOzoVxM6fgw9IRhS5REEZdXLLJcSf2vYbBqinmAHS019XRmm9DoY4cNFd/pDOs2GeKKHCrARV ylAmHIYNsLlC/8HMRTjuuMkI8unfU5
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1840; i=jack@suse.cz; h=from:subject; bh=cUFu/3mUBi4bt/K+j6IZ3Ng8iPItrjlJa92MM2nlCwY=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBkeHnOIPd8xE0p+HpULv7ZaonyuahLzBKAgbz88fay PJv6AsKJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCZHh5zgAKCRCcnaoHP2RA2QysCA CTIL3by4FVm7WFw+onDgoqu8NeITyZA2OomlK2x/zMpGpAxU2bz3Ofz3PeZubavF2I9MoQWxdk+pWa RYbSbJui5ntaXx5C0j16m552h7dRKKOxBW7gb9xde7hP5jMPO7WYgLo+5d8ZcBUWHBlCfWmIa33Ux+ fCNk4AbSKt01GVTTdUV47s++JoTwJC1SFAM7YYNlIMbS/zMO1Q6QCH8neqeNaL2wTcPZD9CvXB4vYI q42iN5IBmGVsEoKZURp+YLUyXMETAn6Jn/yAptPq+hiSjg79nvYaEzukgMynxraFCSD4q1r28ZjcMW jzWw6gfSHe3ui3HXZ0VDAoaQ1F7rjY
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Currently the locking order of inode locks for directories that are not
-in ancestor relationship is not defined because all operations that
-needed to lock two directories like this were serialized by
-sb->s_vfs_rename_mutex. However some filesystems need to lock two
-subdirectories for RENAME_EXCHANGE operations and for this we need the
-locking order established even for two tree-unrelated directories.
-Provide a helper function lock_two_inodes() that establishes lock
-ordering for any two inodes and use it in lock_two_directories().
+This reverts commit f950fd0529130a617b3da526da9fb6a896ce87c2. The
+locking is going to be provided by vfs_rename() in the following
+patches.
 
 CC: stable@vger.kernel.org
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/inode.c    | 42 ++++++++++++++++++++++++++++++++++++++++++
- fs/internal.h |  2 ++
- fs/namei.c    |  4 ++--
- 3 files changed, 46 insertions(+), 2 deletions(-)
+ fs/udf/namei.c | 14 ++------------
+ 1 file changed, 2 insertions(+), 12 deletions(-)
 
-diff --git a/fs/inode.c b/fs/inode.c
-index 577799b7855f..4000ab08bbc0 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -1103,6 +1103,48 @@ void discard_new_inode(struct inode *inode)
- }
- EXPORT_SYMBOL(discard_new_inode);
+diff --git a/fs/udf/namei.c b/fs/udf/namei.c
+index fd20423d3ed2..fd29a66e7241 100644
+--- a/fs/udf/namei.c
++++ b/fs/udf/namei.c
+@@ -793,11 +793,6 @@ static int udf_rename(struct mnt_idmap *idmap, struct inode *old_dir,
+ 			if (!empty_dir(new_inode))
+ 				goto out_oiter;
+ 		}
+-		/*
+-		 * We need to protect against old_inode getting converted from
+-		 * ICB to normal directory.
+-		 */
+-		inode_lock_nested(old_inode, I_MUTEX_NONDIR2);
+ 		retval = udf_fiiter_find_entry(old_inode, &dotdot_name,
+ 					       &diriter);
+ 		if (retval == -ENOENT) {
+@@ -806,10 +801,8 @@ static int udf_rename(struct mnt_idmap *idmap, struct inode *old_dir,
+ 				old_inode->i_ino);
+ 			retval = -EFSCORRUPTED;
+ 		}
+-		if (retval) {
+-			inode_unlock(old_inode);
++		if (retval)
+ 			goto out_oiter;
+-		}
+ 		has_diriter = true;
+ 		tloc = lelb_to_cpu(diriter.fi.icb.extLocation);
+ 		if (udf_get_lb_pblock(old_inode->i_sb, &tloc, 0) !=
+@@ -889,7 +882,6 @@ static int udf_rename(struct mnt_idmap *idmap, struct inode *old_dir,
+ 			       udf_dir_entry_len(&diriter.fi));
+ 		udf_fiiter_write_fi(&diriter, NULL);
+ 		udf_fiiter_release(&diriter);
+-		inode_unlock(old_inode);
  
-+/**
-+ * lock_two_inodes - lock two inodes (may be regular files but also dirs)
-+ *
-+ * Lock any non-NULL argument. The caller must make sure that if he is passing
-+ * in two directories, one is not ancestor of the other.  Zero, one or two
-+ * objects may be locked by this function.
-+ *
-+ * @inode1: first inode to lock
-+ * @inode2: second inode to lock
-+ * @subclass1: inode lock subclass for the first lock obtained
-+ * @subclass2: inode lock subclass for the second lock obtained
-+ */
-+void lock_two_inodes(struct inode *inode1, struct inode *inode2,
-+		     unsigned subclass1, unsigned subclass2)
-+{
-+	if (!inode1 || !inode2)
-+		/*
-+		 * Make sure @subclass1 will be used for the acquired lock.
-+		 * This is not strictly necessary (no current caller cares) but
-+		 * let's keep things consistent.
-+		 */
-+		if (!inode1)
-+			swap(inode1, inode2);
-+		goto lock;
-+	}
-+
-+	/*
-+	 * If one object is directory and the other is not, we must make sure
-+	 * to lock directory first as the other object may be its child.
-+	 */
-+	if (S_ISDIR(inode2->i_mode) == S_ISDIR(inode1->i_mode)) {
-+		if (inode1 > inode2)
-+			swap(inode1, inode2);
-+	} else if (!S_ISDIR(inode1->i_mode))
-+		swap(inode1, inode2);
-+lock:
-+	if (inode1)
-+		inode_lock_nested(inode1, subclass1);
-+	if (inode2 && inode2 != inode1)
-+		inode_lock_nested(inode2, subclass2);
-+}
-+
- /**
-  * lock_two_nondirectories - take two i_mutexes on non-directory objects
-  *
-diff --git a/fs/internal.h b/fs/internal.h
-index bd3b2810a36b..377030a50aca 100644
---- a/fs/internal.h
-+++ b/fs/internal.h
-@@ -152,6 +152,8 @@ extern long prune_icache_sb(struct super_block *sb, struct shrink_control *sc);
- int dentry_needs_remove_privs(struct mnt_idmap *, struct dentry *dentry);
- bool in_group_or_capable(struct mnt_idmap *idmap,
- 			 const struct inode *inode, vfsgid_t vfsgid);
-+void lock_two_inodes(struct inode *inode1, struct inode *inode2,
-+		     unsigned subclass1, unsigned subclass2);
- 
- /*
-  * fs-writeback.c
-diff --git a/fs/namei.c b/fs/namei.c
-index e4fe0879ae55..148570aabe74 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3028,8 +3028,8 @@ static struct dentry *lock_two_directories(struct dentry *p1, struct dentry *p2)
- 		return p;
+ 		inode_dec_link_count(old_dir);
+ 		if (new_inode)
+@@ -901,10 +893,8 @@ static int udf_rename(struct mnt_idmap *idmap, struct inode *old_dir,
  	}
+ 	return 0;
+ out_oiter:
+-	if (has_diriter) {
++	if (has_diriter)
+ 		udf_fiiter_release(&diriter);
+-		inode_unlock(old_inode);
+-	}
+ 	udf_fiiter_release(&oiter);
  
--	inode_lock_nested(p1->d_inode, I_MUTEX_PARENT);
--	inode_lock_nested(p2->d_inode, I_MUTEX_PARENT2);
-+	lock_two_inodes(p1->d_inode, p2->d_inode,
-+			I_MUTEX_PARENT, I_MUTEX_PARENT2);
- 	return NULL;
- }
- 
+ 	return retval;
 -- 
 2.35.3
 
