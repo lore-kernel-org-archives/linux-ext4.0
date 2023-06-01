@@ -2,32 +2,32 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D83D5C7EE39
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Jun 2023 15:00:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B03E6C7EE45
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Jun 2023 15:00:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234716AbjFAPAM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 1 Jun 2023 11:00:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41794 "EHLO
+        id S234754AbjFAPAO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 1 Jun 2023 11:00:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41806 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234771AbjFAO7u (ORCPT
+        with ESMTP id S234775AbjFAO7u (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Jun 2023 10:59:50 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4B40010E3;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CE3C010E5;
         Thu,  1 Jun 2023 07:59:29 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-        MIME-Version:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:
-        Content-ID:Content-Description:In-Reply-To:References;
-        bh=XbbWN9vPp1Xk6I5ta8jq/xbBcX0bF+DntmFOOCcIAP8=; b=TPdEsrmYwQDcbibO2u6xuPEn+F
-        cVqnIFAGztBdzvqIg4dgzXeaGWODyzx/nMQJGSLcpbm/FYzckDj7ONjDiFbguAGwm1Edz1ErTv5Xq
-        dmUfwy6z9Mm278yt2cBQIO3TEjO41LezfuQ+hI0Uoq85CDA65HTJ8oUZMRDVOGbhUFQaPasrNKcZ9
-        Eu32hX3WLCij9TzhijOx9RcgOZEJx4LRtJG3IzRBzVMPWMTYkmpqf58tHPY2g6rZs7Ffjk2zLEgkE
-        xFLBvv0gVJvkzvSmP7yzapeyAfNI1nHgBrDGo52sGrhFJUoFO1j2LLleoHnmhrG4pQCdtQgXyXQuu
-        kGAxXLCQ==;
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description;
+        bh=1AhsMC0b8Le+Qj8+/F9cJR6e5GLVWYekas+17NCVqqI=; b=wiZK9iqy2Q2DgmztCycdzZFJYV
+        +f+Z1EUaPp/WxVng7hKAlTugkvoijJtdaCd0abPoIux8/9iobGyPP3C6ZdxSo+5MDjs+QVxSsZ3Yw
+        3H/pO+bF6DsK8j6VvoAk02XyxLpv8r9mchlt36SS/V9hKI45pU8u3aID3Cuyz6NRbbOYhfrEEm6b1
+        NNHoLMnhvwSNrDWABgK8ExwUWqr924HfRyejUtySvIZe/Xw5vgaGGms+mTqdLK9GBRSnpE9VluHzD
+        Eeh8qQMBY9tUVU6xoJPSMjm7g2W4rjDN+CjEc3/cLcIsyBTtm2CIz0MxYanPENl5SoUy/NTEUsg2H
+        qg0aEunA==;
 Received: from [2001:4bb8:182:6d06:eacb:c751:971:73eb] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1q4jla-003w1Z-1c;
-        Thu, 01 Jun 2023 14:59:06 +0000
+        id 1q4jlf-003w32-1z;
+        Thu, 01 Jun 2023 14:59:12 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Matthew Wilcox <willy@infradead.org>
 Cc:     Jens Axboe <axboe@kernel.dk>, Xiubo Li <xiubli@redhat.com>,
@@ -46,11 +46,13 @@ Cc:     Jens Axboe <axboe@kernel.dk>, Xiubo Li <xiubli@redhat.com>,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
         linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org
-Subject: cleanup the filemap / direct I/O interaction v4
-Date:   Thu,  1 Jun 2023 16:58:52 +0200
-Message-Id: <20230601145904.1385409-1-hch@lst.de>
+        linux-mm@kvack.org, Hannes Reinecke <hare@suse.de>
+Subject: [PATCH 02/12] iomap: update ki_pos a little later in iomap_dio_complete
+Date:   Thu,  1 Jun 2023 16:58:54 +0200
+Message-Id: <20230601145904.1385409-3-hch@lst.de>
 X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20230601145904.1385409-1-hch@lst.de>
+References: <20230601145904.1385409-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
@@ -58,50 +60,60 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi all,
+Move the ki_pos update down a bit to prepare for a better common
+helper that invalidates pages based of an iocb.
 
-this series cleans up some of the generic write helper calling
-conventions and the page cache writeback / invalidation for
-direct I/O.  This is a spinoff from the no-bufferhead kernel
-project, for which we'll want to an use iomap based buffered
-write path in the block layer.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Damien Le Moal <dlemoal@kernel.org>
+Reviewed-by: Hannes Reinecke <hare@suse.de>
+Reviewed-by: Darrick J. Wong <djwong@kernel.org>
+---
+ fs/iomap/direct-io.c | 21 +++++++++++----------
+ 1 file changed, 11 insertions(+), 10 deletions(-)
 
-Changes since v3:
- - fix a generic_sync_file that got lost in fuse
- - fix fuse to call fuse_perform_write and not generic_perform_write
+diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
+index 019cc87d0fb339..6207a59d2162e1 100644
+--- a/fs/iomap/direct-io.c
++++ b/fs/iomap/direct-io.c
+@@ -94,7 +94,6 @@ ssize_t iomap_dio_complete(struct iomap_dio *dio)
+ 		if (offset + ret > dio->i_size &&
+ 		    !(dio->flags & IOMAP_DIO_WRITE))
+ 			ret = dio->i_size - offset;
+-		iocb->ki_pos += ret;
+ 	}
+ 
+ 	/*
+@@ -120,19 +119,21 @@ ssize_t iomap_dio_complete(struct iomap_dio *dio)
+ 	}
+ 
+ 	inode_dio_end(file_inode(iocb->ki_filp));
+-	/*
+-	 * If this is a DSYNC write, make sure we push it to stable storage now
+-	 * that we've written data.
+-	 */
+-	if (ret > 0 && (dio->flags & IOMAP_DIO_NEED_SYNC))
+-		ret = generic_write_sync(iocb, ret);
+ 
+-	if (ret > 0)
+-		ret += dio->done_before;
++	if (ret > 0) {
++		iocb->ki_pos += ret;
+ 
++		/*
++		 * If this is a DSYNC write, make sure we push it to stable
++		 * storage now that we've written data.
++		 */
++		if (dio->flags & IOMAP_DIO_NEED_SYNC)
++			ret = generic_write_sync(iocb, ret);
++		if (ret > 0)
++			ret += dio->done_before;
++	}
+ 	trace_iomap_dio_complete(iocb, dio->error, ret);
+ 	kfree(dio);
+-
+ 	return ret;
+ }
+ EXPORT_SYMBOL_GPL(iomap_dio_complete);
+-- 
+2.39.2
 
-Changes since v2:
- - stick to the existing behavior of returning a short write
-   if the buffer fallback write or sync fails
- - bring back "fuse: use direct_write_fallback" which accidentally
-   got lost in v2
-
-Changes since v1:
- - remove current->backing_dev_info entirely
- - fix the pos/end calculation in direct_write_fallback
- - rename kiocb_invalidate_post_write to
-   kiocb_invalidate_post_direct_write
- - typo fixes
-
-diffstat:
- block/fops.c            |   18 ----
- fs/btrfs/file.c         |    6 -
- fs/ceph/file.c          |    6 -
- fs/direct-io.c          |   10 --
- fs/ext4/file.c          |   11 --
- fs/f2fs/file.c          |    3 
- fs/fuse/file.c          |   45 ++---------
- fs/gfs2/file.c          |    6 -
- fs/iomap/buffered-io.c  |    9 +-
- fs/iomap/direct-io.c    |   88 ++++++++-------------
- fs/libfs.c              |   41 ++++++++++
- fs/nfs/file.c           |    6 -
- fs/ntfs/file.c          |    2 
- fs/ntfs3/file.c         |    3 
- fs/xfs/xfs_file.c       |    6 -
- fs/zonefs/file.c        |    4 
- include/linux/fs.h      |    7 -
- include/linux/pagemap.h |    4 
- include/linux/sched.h   |    3 
- mm/filemap.c            |  194 +++++++++++++++++++++---------------------------
- 20 files changed, 194 insertions(+), 278 deletions(-)
