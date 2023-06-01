@@ -2,77 +2,92 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 39B7EC77B73
-	for <linux-ext4@archiver.kernel.org>; Wed, 31 May 2023 15:46:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1C347C77B7A
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Jun 2023 02:09:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231268AbjEaPqA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 31 May 2023 11:46:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33652 "EHLO
+        id S230405AbjFACJA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 31 May 2023 22:09:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49748 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229993AbjEaPp7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 May 2023 11:45:59 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E83568E
-        for <linux-ext4@vger.kernel.org>; Wed, 31 May 2023 08:45:57 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-173-48-119-27.bstnma.fios.verizon.net [173.48.119.27])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 34VFjriK025092
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 31 May 2023 11:45:54 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1685547954; bh=FpUO1HuGrYYO/m7lFjVgSypydmhgS0qjV/wEA4tclMY=;
-        h=Date:From:To:Cc:Subject;
-        b=UOS7k3fvT82P+loJuN52Z42w3KlPinRckHgfXaM0nWtpeBIcm1BKceu39pzui6wFn
-         vF7wz2QnXsjsIcKSPdeRP4tXwwgO7lt8EunwN4tW4dnLwXLUgp2yeZ3nvip/xUQp9v
-         7mS7Ej+jLtxa0SjQsv133Z7FvuwA9V3fBpD0TQ3nlLs8ls8MUfnwlV0Zd+UkLjG1Dv
-         tMV1ipkRhnOW3NXybcnm/xLwTjw9/3S3sQ86BLGUF2ilffIOqSyHAJFQpPGb5ufLMW
-         X02iyzQ4xv5bZs1sBvJ5Jdwe9ZLx9hba6eqNYOKk4a8TxGNWPVuMDYV1CQU3OficuP
-         lKXG8czP5+dyw==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 0227715C02EE; Wed, 31 May 2023 11:45:52 -0400 (EDT)
-Date:   Wed, 31 May 2023 11:45:52 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [GIT PULL] ext4 fixes for 6.4-rc5
-Message-ID: <20230531154552.GA814122@mit.edu>
+        with ESMTP id S229851AbjFACI5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 May 2023 22:08:57 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BC3E0123;
+        Wed, 31 May 2023 19:08:55 -0700 (PDT)
+Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.54])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4QWqF94Sn8zqTb3;
+        Thu,  1 Jun 2023 10:04:13 +0800 (CST)
+Received: from [10.174.177.174] (10.174.177.174) by
+ dggpeml500021.china.huawei.com (7.185.36.21) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.23; Thu, 1 Jun 2023 10:08:53 +0800
+Message-ID: <df5e7e7d-875c-8e5d-1423-82ec58299b1b@huawei.com>
+Date:   Thu, 1 Jun 2023 10:08:53 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101
+ Thunderbird/102.1.2
+From:   Baokun Li <libaokun1@huawei.com>
+Subject: Re: [syzbot] Monthly ext4 report (May 2023)
+To:     syzbot <syzbot+list5ea887c46d22b2acf805@syzkaller.appspotmail.com>,
+        <adilger.kernel@dilger.ca>, <linux-ext4@vger.kernel.org>,
+        <linux-fsdevel@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <syzkaller-bugs@googlegroups.com>, <tytso@mit.edu>
+CC:     Baokun Li <libaokun1@huawei.com>, yangerkun <yangerkun@huawei.com>
+References: <000000000000834af205fce87c00@google.com>
+Content-Language: en-US
+In-Reply-To: <000000000000834af205fce87c00@google.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Transfer-Encoding: 8bit
+X-Originating-IP: [10.174.177.174]
+X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
+ dggpeml500021.china.huawei.com (7.185.36.21)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The following changes since commit 7877cb91f1081754a1487c144d85dc0d2e2e7fc4:
+On 2023/5/30 20:38, syzbot wrote:
+> Hello ext4 maintainers/developers,
+>
+> This is a 31-day syzbot report for the ext4 subsystem.
+> All related reports/information can be found at:
+> https://syzkaller.appspot.com/upstream/s/ext4
+>
+> During the period, 3 new issues were detected and 10 were fixed.
+> In total, 46 issues are still open and 106 have been fixed so far.
+>
+> Some of the still happening issues:
+>
+> Ref Crashes Repro Title
+> <1> 124     Yes   kernel BUG in ext4_do_writepages
+>                    https://syzkaller.appspot.com/bug?extid=d1da16f03614058fdc48
+> <2> 48      No    WARNING in ext4_write_inode (2)
+>                    https://syzkaller.appspot.com/bug?extid=748cc361874fca7d33cc
+> <3> 8       Yes   WARNING in ext4_da_update_reserve_space (2)
+>                    https://syzkaller.appspot.com/bug?extid=a1232eabd7a3d43d4fb5
+> <4> 8       Yes   kernel BUG in __ext4_journal_stop
+>                    https://syzkaller.appspot.com/bug?extid=bdab24d5bf96d57c50b0
+> <5> 7       Yes   kernel BUG in ext4_write_inline_data
+>                    https://syzkaller.appspot.com/bug?extid=f4582777a19ec422b517
+>
+> ---
+>
 
-  Linux 6.4-rc4 (2023-05-28 07:49:00 -0400)
+Hello, Theodore!
 
-are available in the Git repository at:
+Patch "[PATCH v2] ext4: fix race condition between buffer write and 
+page_mkwrite​"
+in maillist fixes issues <1>,<4>,<5>.
 
-  https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
+Patch set "[PATCH v4 00/12] ext4: fix WARNING in 
+ext4_da_update_reserve_space"
+in maillist fixes issues <3>.
 
-for you to fetch changes up to eb1f822c76beeaa76ab8b6737ab9dc9f9798408c:
+These patches have been reviewed, could you have time to merge them in?
+I would appreciate it if you could.
 
-  ext4: enable the lazy init thread when remounting read/write (2023-05-30 15:33:57 -0400)
-
-----------------------------------------------------------------
-Fix two regressions in ext4 and a number of issues reported by syzbot.
-
-----------------------------------------------------------------
-Jan Kara (1):
-      ext4: fix fsync for non-directories
-
-Theodore Ts'o (5):
-      ext4: add EA_INODE checking to ext4_iget()
-      ext4: set lockdep subclass for the ea_inode in ext4_xattr_inode_cache_find()
-      ext4: disallow ea_inodes with extended attributes
-      ext4: add lockdep annotations for i_data_sem for ea_inode's
-      ext4: enable the lazy init thread when remounting read/write
-
- fs/ext4/ext4.h  |  5 ++++-
- fs/ext4/fsync.c |  7 +++++++
- fs/ext4/inode.c | 34 +++++++++++++++++++++++++++++-----
- fs/ext4/super.c | 24 ++++++++++++------------
- fs/ext4/xattr.c | 41 ++++++++++++-----------------------------
- 5 files changed, 64 insertions(+), 47 deletions(-)
+Thanks!
+-- 
+With Best Regards,
+Baokun Li
+.
