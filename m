@@ -2,111 +2,84 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9DA7BC7EE24
-	for <linux-ext4@archiver.kernel.org>; Sat,  3 Jun 2023 07:02:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C921AC7EE2E
+	for <linux-ext4@archiver.kernel.org>; Sat,  3 Jun 2023 07:02:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232671AbjFCHCN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 3 Jun 2023 03:02:13 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42306 "EHLO
+        id S233641AbjFCHCU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 3 Jun 2023 03:02:20 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42302 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232282AbjFCHCK (ORCPT
+        with ESMTP id S232259AbjFCHCK (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Jun 2023 03:02:10 -0400
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AB3D1E5A;
-        Sat,  3 Jun 2023 00:02:06 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AF20E180;
+        Sat,  3 Jun 2023 00:02:05 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.153])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4QY9ls1WYWz4f3lKr;
-        Sat,  3 Jun 2023 15:02:01 +0800 (CST)
+        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4QY9lq74kZz4f3npx;
+        Sat,  3 Jun 2023 15:01:59 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgCHOKxk5Xpk+MxPKw--.30174S9;
-        Sat, 03 Jun 2023 15:02:02 +0800 (CST)
+        by APP4 (Coremail) with SMTP id gCh0CgCHOKxk5Xpk+MxPKw--.30174S5;
+        Sat, 03 Jun 2023 15:02:01 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
         shikemeng@huaweicloud.com
-Subject: [PATCH v4 07/19] ext4: try all groups in ext4_mb_new_blocks_simple
-Date:   Sat,  3 Jun 2023 23:03:15 +0800
-Message-Id: <20230603150327.3596033-8-shikemeng@huaweicloud.com>
+Subject: [PATCH v4 03/19] ext4: fix wrong unit use in ext4_mb_find_by_goal
+Date:   Sat,  3 Jun 2023 23:03:11 +0800
+Message-Id: <20230603150327.3596033-4-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230603150327.3596033-1-shikemeng@huaweicloud.com>
 References: <20230603150327.3596033-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgCHOKxk5Xpk+MxPKw--.30174S9
-X-Coremail-Antispam: 1UD129KBjvJXoW7ur13Kry7uF1DAFyDZw15XFb_yoW8AF4Dpw
-        sxCF18Gr1fWrnFgFZFg34SqF1xJw1xuFyUWryfC34rGrZrJryfJFsrKF1Fv3WYyFZ3X3ZI
-        vr4YvryrA3WjgaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUPY14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
-        0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
-        rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6x
-        IIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xv
-        wVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFc
-        xC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_
-        Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2
-        IErcIFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
-        14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIx
-        kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAF
-        wI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r
-        4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0pRvJPtU
-        UUUU=
+X-CM-TRANSID: gCh0CgCHOKxk5Xpk+MxPKw--.30174S5
+X-Coremail-Antispam: 1UD129KBjvdXoWrZFWUCw4UZF4rCr4Duw43trb_yoWftwc_J3
+        WqyrykGFWrJr1fC3WFyw4rtrnaga1rJr1YgFWrtr15WF1qgrWFk3Wvkr4fZw4xWa1UXa9x
+        KrnxXrZ7GF1F9jkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUbqAYFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
+        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl82
+        xGYIkIc2x26280x7IE14v26r1rM28IrcIa0xkI8VCY1x0267AKxVW8JVW5JwA2ocxC64kI
+        II0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7
+        xvwVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2
+        z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4
+        xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v2
+        6r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6I
+        AqYI8I648v4I1l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAq
+        x4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r
+        1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF
+        7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxV
+        WUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjTR
+        HMKAUUUUU
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-ext4_mb_new_blocks_simple ignores the group before goal, so it will fail
-if free blocks reside in group before goal. Try all groups to avoid
-unexpected failure.
-Search finishes either if any free block is found or if no available
-blocks are found. Simpliy check "i >= max" to distinguish the above
-cases.
+We need start in block unit while fe_start is in cluster unit. Use
+ext4_grp_offs_to_block helper to convert fe_start to get start in
+block unit.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-Suggested-by: Theodore Ts'o <tytso@mit.edu>
 Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/mballoc.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+ fs/ext4/mballoc.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 839db9c46aea..bcc9622daa4a 100644
+index d8caef7cd9d0..f6dc4f276ca4 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -6047,7 +6047,7 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
- 	struct buffer_head *bitmap_bh;
- 	struct super_block *sb = ar->inode->i_sb;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	ext4_group_t group;
-+	ext4_group_t group, nr;
- 	ext4_grpblk_t blkoff;
- 	ext4_grpblk_t max = EXT4_CLUSTERS_PER_GROUP(sb);
- 	ext4_grpblk_t i = 0;
-@@ -6061,7 +6061,7 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
+@@ -2210,8 +2210,7 @@ int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
+ 	if (max >= ac->ac_g_ex.fe_len && ac->ac_g_ex.fe_len == sbi->s_stripe) {
+ 		ext4_fsblk_t start;
  
- 	ar->len = 0;
- 	ext4_get_group_no_and_offset(sb, goal, &group, &blkoff);
--	for (; group < ext4_get_groups_count(sb); group++) {
-+	for (nr = ext4_get_groups_count(sb); nr > 0; nr--) {
- 		bitmap_bh = ext4_read_block_bitmap(sb, group);
- 		if (IS_ERR(bitmap_bh)) {
- 			*errp = PTR_ERR(bitmap_bh);
-@@ -6085,10 +6085,13 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
- 		if (i < max)
- 			break;
- 
-+		if (++group >= ext4_get_groups_count(sb))
-+			group = 0;
-+
- 		blkoff = 0;
- 	}
- 
--	if (group >= ext4_get_groups_count(sb) || i >= max) {
-+	if (i >= max) {
- 		*errp = -ENOSPC;
- 		return 0;
- 	}
+-		start = ext4_group_first_block_no(ac->ac_sb, e4b->bd_group) +
+-			ex.fe_start;
++		start = ext4_grp_offs_to_block(ac->ac_sb, &ex);
+ 		/* use do_div to get remainder (would be 64-bit modulo) */
+ 		if (do_div(start, sbi->s_stripe) == 0) {
+ 			ac->ac_found++;
 -- 
 2.30.0
 
