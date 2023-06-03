@@ -2,101 +2,126 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A70CCC7EE24
-	for <linux-ext4@archiver.kernel.org>; Sat,  3 Jun 2023 07:02:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 72314C7EE29
+	for <linux-ext4@archiver.kernel.org>; Sat,  3 Jun 2023 07:02:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229617AbjFCHCK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 3 Jun 2023 03:02:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42304 "EHLO
+        id S232369AbjFCHCL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 3 Jun 2023 03:02:11 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42308 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232267AbjFCHCK (ORCPT
+        with ESMTP id S232281AbjFCHCK (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Jun 2023 03:02:10 -0400
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B832F1B7;
-        Sat,  3 Jun 2023 00:02:05 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AB4E5E5B;
+        Sat,  3 Jun 2023 00:02:06 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.153])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4QY9lq4jXqz4f3npn;
-        Sat,  3 Jun 2023 15:01:59 +0800 (CST)
+        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4QY9lr4D63z4f3nq4;
+        Sat,  3 Jun 2023 15:02:00 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgCHOKxk5Xpk+MxPKw--.30174S4;
-        Sat, 03 Jun 2023 15:02:01 +0800 (CST)
+        by APP4 (Coremail) with SMTP id gCh0CgCHOKxk5Xpk+MxPKw--.30174S7;
+        Sat, 03 Jun 2023 15:02:02 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
         shikemeng@huaweicloud.com
-Subject: [PATCH v4 02/19] ext4: fix unit mismatch in ext4_mb_new_blocks_simple
-Date:   Sat,  3 Jun 2023 23:03:10 +0800
-Message-Id: <20230603150327.3596033-3-shikemeng@huaweicloud.com>
+Subject: [PATCH v4 05/19] ext4: add EXT4_MB_HINT_GOAL_ONLY test in ext4_mb_use_preallocated
+Date:   Sat,  3 Jun 2023 23:03:13 +0800
+Message-Id: <20230603150327.3596033-6-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230603150327.3596033-1-shikemeng@huaweicloud.com>
 References: <20230603150327.3596033-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgCHOKxk5Xpk+MxPKw--.30174S4
-X-Coremail-Antispam: 1UD129KBjvJXoW7tw1DGFW3GrWkZw18uw1kAFb_yoW8Gw4rpw
-        sxAF10kr1xWw1Dua1xu3yFqw1fZw1xur17XrW5A34rGryxtryfGFnxtF1FyF1FyFZxX3ZI
-        qr15ZrWfua18G3DanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUPSb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
-        8IrcIa0xkI8VA2jI8067AKxVWUXwA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK
-        0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4
-        x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l
-        84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I
-        8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AK
-        xVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zV
-        CS5cI20VAGYxC7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E
-        5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAV
-        WUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY
-        1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI
-        0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7s
-        RNVbyUUUUUU==
+X-CM-TRANSID: gCh0CgCHOKxk5Xpk+MxPKw--.30174S7
+X-Coremail-Antispam: 1UD129KBjvJXoW7tr18JFy3uFy5ur1rtr1DJrb_yoW8KrWUpF
+        ZxJF1YkrnIgwn7u39xWw15Cw1fKw48K348JrWSgr1rArWxGr43Canxt348uFyqkrWrXFn8
+        ZF45Zay7Gr4xu3DanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUPY14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
+        0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
+        rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6x
+        IIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xv
+        wVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFc
+        xC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_
+        Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2
+        IErcIFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
+        14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIx
+        kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAF
+        wI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r
+        4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0pRvJPtU
+        UUUU=
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The "i" returned from mb_find_next_zero_bit is in cluster unit and we
-need offset "block" corresponding to "i" in block unit. Convert "i" to
-block unit to fix the unit mismatch.
+ext4_mb_use_preallocated will ignore the demand to alloc goal blocks,
+although the EXT4_MB_HINT_GOAL_ONLY is requested.
+For group pa, ext4_mb_group_or_file will not set EXT4_MB_HINT_GROUP_ALLOC
+if EXT4_MB_HINT_GOAL_ONLY is set. So we will not alloc goal blocks from
+group pa if EXT4_MB_HINT_GOAL_ONLY is set.
+For inode pa, ext4_mb_pa_goal_check is added to check if free extent in
+found inode pa meets goal blocks when EXT4_MB_HINT_GOAL_ONLY is set.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Suggested-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/mballoc.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ fs/ext4/mballoc.c | 34 +++++++++++++++++++++++++++++++++-
+ 1 file changed, 33 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 7d88f76070be..d8caef7cd9d0 100644
+index 7ef95bdde91d..839db9c46aea 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -6011,6 +6011,7 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
- {
- 	struct buffer_head *bitmap_bh;
- 	struct super_block *sb = ar->inode->i_sb;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	ext4_group_t group;
- 	ext4_grpblk_t blkoff;
- 	ext4_grpblk_t max = EXT4_CLUSTERS_PER_GROUP(sb);
-@@ -6039,7 +6040,8 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
- 			if (i >= max)
- 				break;
- 			if (ext4_fc_replay_check_excluded(sb,
--				ext4_group_first_block_no(sb, group) + i)) {
-+				ext4_group_first_block_no(sb, group) +
-+				EXT4_C2B(sbi, i))) {
- 				blkoff = i + 1;
- 			} else
- 				break;
-@@ -6056,7 +6058,7 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
- 		return 0;
- 	}
+@@ -4531,6 +4531,37 @@ ext4_mb_check_group_pa(ext4_fsblk_t goal_block,
+ 	return pa;
+ }
  
--	block = ext4_group_first_block_no(sb, group) + i;
-+	block = ext4_group_first_block_no(sb, group) + EXT4_C2B(sbi, i);
- 	ext4_mb_mark_bb(sb, block, 1, 1);
- 	ar->len = 1;
++/*
++ * check if found pa meets EXT4_MB_HINT_GOAL_ONLY
++ */
++static bool
++ext4_mb_pa_goal_check(struct ext4_allocation_context *ac,
++		      struct ext4_prealloc_space *pa)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
++	ext4_fsblk_t start;
++
++	if (likely(!(ac->ac_flags & EXT4_MB_HINT_GOAL_ONLY)))
++		return true;
++
++	/*
++	 * If EXT4_MB_HINT_GOAL_ONLY is set, ac_g_ex will not be adjusted
++	 * in ext4_mb_normalize_request and will keep same with ac_o_ex
++	 * from ext4_mb_initialize_context. Choose ac_g_ex here to keep
++	 * consistent with ext4_mb_find_by_goal.
++	 */
++	start = pa->pa_pstart +
++		(ac->ac_g_ex.fe_logical - pa->pa_lstart);
++	if (ext4_grp_offs_to_block(ac->ac_sb, &ac->ac_g_ex) != start)
++		return false;
++
++	if (ac->ac_g_ex.fe_len > pa->pa_len -
++	    EXT4_B2C(sbi, ac->ac_g_ex.fe_logical - pa->pa_lstart))
++		return false;
++
++	return true;
++}
++
+ /*
+  * search goal blocks in preallocated space
+  */
+@@ -4581,7 +4612,8 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
  
+ 		/* found preallocated blocks, use them */
+ 		spin_lock(&tmp_pa->pa_lock);
+-		if (tmp_pa->pa_deleted == 0 && tmp_pa->pa_free) {
++		if (tmp_pa->pa_deleted == 0 && tmp_pa->pa_free &&
++		    likely(ext4_mb_pa_goal_check(ac, tmp_pa))) {
+ 			atomic_inc(&tmp_pa->pa_count);
+ 			ext4_mb_use_inode_pa(ac, tmp_pa);
+ 			spin_unlock(&tmp_pa->pa_lock);
 -- 
 2.30.0
 
