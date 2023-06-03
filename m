@@ -2,88 +2,101 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 33244C77B73
-	for <linux-ext4@archiver.kernel.org>; Sat,  3 Jun 2023 06:20:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A70CCC7EE24
+	for <linux-ext4@archiver.kernel.org>; Sat,  3 Jun 2023 07:02:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231452AbjFCGUn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 3 Jun 2023 02:20:43 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35600 "EHLO
+        id S229617AbjFCHCK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 3 Jun 2023 03:02:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42304 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229523AbjFCGUm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Jun 2023 02:20:42 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 41C9DE58;
-        Fri,  2 Jun 2023 23:20:40 -0700 (PDT)
-Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.56])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4QY8qn0xkpzTkkG;
-        Sat,  3 Jun 2023 14:20:21 +0800 (CST)
-Received: from [10.174.177.174] (10.174.177.174) by
- dggpeml500021.china.huawei.com (7.185.36.21) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2507.23; Sat, 3 Jun 2023 14:20:35 +0800
-Message-ID: <eb35999d-dc81-44d1-fbe2-a7aa6d5f01b3@huawei.com>
-Date:   Sat, 3 Jun 2023 14:20:34 +0800
+        with ESMTP id S232267AbjFCHCK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Jun 2023 03:02:10 -0400
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B832F1B7;
+        Sat,  3 Jun 2023 00:02:05 -0700 (PDT)
+Received: from mail02.huawei.com (unknown [172.30.67.153])
+        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4QY9lq4jXqz4f3npn;
+        Sat,  3 Jun 2023 15:01:59 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.124.27])
+        by APP4 (Coremail) with SMTP id gCh0CgCHOKxk5Xpk+MxPKw--.30174S4;
+        Sat, 03 Jun 2023 15:02:01 +0800 (CST)
+From:   Kemeng Shi <shikemeng@huaweicloud.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        shikemeng@huaweicloud.com
+Subject: [PATCH v4 02/19] ext4: fix unit mismatch in ext4_mb_new_blocks_simple
+Date:   Sat,  3 Jun 2023 23:03:10 +0800
+Message-Id: <20230603150327.3596033-3-shikemeng@huaweicloud.com>
+X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20230603150327.3596033-1-shikemeng@huaweicloud.com>
+References: <20230603150327.3596033-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101
- Thunderbird/102.1.2
-Subject: Re: [syzbot] Monthly ext4 report (May 2023)
-Content-Language: en-US
-To:     Theodore Ts'o <tytso@mit.edu>
-CC:     syzbot <syzbot+list5ea887c46d22b2acf805@syzkaller.appspotmail.com>,
-        <adilger.kernel@dilger.ca>, <linux-ext4@vger.kernel.org>,
-        <linux-fsdevel@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <syzkaller-bugs@googlegroups.com>,
-        yangerkun <yangerkun@huawei.com>,
-        Baokun Li <libaokun1@huawei.com>
-References: <000000000000834af205fce87c00@google.com>
- <df5e7e7d-875c-8e5d-1423-82ec58299b1b@huawei.com>
- <20230602210639.GA1154817@mit.edu>
- <d9be3fbf-023c-ac55-5097-ea3f43a946b4@huawei.com>
- <20230603043028.GE1128875@mit.edu>
-From:   Baokun Li <libaokun1@huawei.com>
-In-Reply-To: <20230603043028.GE1128875@mit.edu>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.174.177.174]
-X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
- dggpeml500021.china.huawei.com (7.185.36.21)
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID: gCh0CgCHOKxk5Xpk+MxPKw--.30174S4
+X-Coremail-Antispam: 1UD129KBjvJXoW7tw1DGFW3GrWkZw18uw1kAFb_yoW8Gw4rpw
+        sxAF10kr1xWw1Dua1xu3yFqw1fZw1xur17XrW5A34rGryxtryfGFnxtF1FyF1FyFZxX3ZI
+        qr15ZrWfua18G3DanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUPSb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
+        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
+        8IrcIa0xkI8VA2jI8067AKxVWUXwA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK
+        0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4
+        x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l
+        84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I
+        8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AK
+        xVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zV
+        CS5cI20VAGYxC7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E
+        5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAV
+        WUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY
+        1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI
+        0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7s
+        RNVbyUUUUUU==
+X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 2023/6/3 12:30, Theodore Ts'o wrote:
-> On Sat, Jun 03, 2023 at 10:05:44AM +0800, Baokun Li wrote:
->> There are many sources of syzkaller issues, and the patches I send out
->> to fix syzkaller issues add Reported-by to all but the ones that fix issues
->> reported by our internal syzbot.
->> However, there may be multiple syzbot reports for the same issue.
-> Yes, that happens a lot especially for Lockdep reports; depending on
-> how the reproducer triggers the locks in which order, there can often
-> be multiple different lockdep signatures, and Syzkaller can't tell
-> that they are all the same thing.
->
-> I tend to focus on syzbot reproducers on the upstream Linux instance,
-> rather than the Android-5.15 syzkaller instance.  And that allows me
-> to use the ext4 subsystem dashboard available at:
->
-> 	https://syzkaller.appspot.com/upstream/s/ext4
->
-> It's against this list of reports that the Monthly ext4 report is
-> generated.  So if people who are submitting fixes against syzkaller
-> reports, it would be nice if they were to check the ext4 dashboard
-> above to look for syzbot reports that might be also relevant to your
-> patch.
->
-> Thanks,
->
-> 					- Ted
->
-OK, later to fix any ext4 issue, I will check if the issue is in the ext4
-subsystem dashboard.
+The "i" returned from mb_find_next_zero_bit is in cluster unit and we
+need offset "block" corresponding to "i" in block unit. Convert "i" to
+block unit to fix the unit mismatch.
 
-Thanks!
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+---
+ fs/ext4/mballoc.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 7d88f76070be..d8caef7cd9d0 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -6011,6 +6011,7 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
+ {
+ 	struct buffer_head *bitmap_bh;
+ 	struct super_block *sb = ar->inode->i_sb;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	ext4_group_t group;
+ 	ext4_grpblk_t blkoff;
+ 	ext4_grpblk_t max = EXT4_CLUSTERS_PER_GROUP(sb);
+@@ -6039,7 +6040,8 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
+ 			if (i >= max)
+ 				break;
+ 			if (ext4_fc_replay_check_excluded(sb,
+-				ext4_group_first_block_no(sb, group) + i)) {
++				ext4_group_first_block_no(sb, group) +
++				EXT4_C2B(sbi, i))) {
+ 				blkoff = i + 1;
+ 			} else
+ 				break;
+@@ -6056,7 +6058,7 @@ static ext4_fsblk_t ext4_mb_new_blocks_simple(handle_t *handle,
+ 		return 0;
+ 	}
+ 
+-	block = ext4_group_first_block_no(sb, group) + i;
++	block = ext4_group_first_block_no(sb, group) + EXT4_C2B(sbi, i);
+ 	ext4_mb_mark_bb(sb, block, 1, 1);
+ 	ar->len = 1;
+ 
 -- 
-With Best Regards,
-Baokun Li
-.
+2.30.0
+
