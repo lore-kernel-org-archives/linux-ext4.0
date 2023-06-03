@@ -2,267 +2,290 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D035FC7EE24
-	for <linux-ext4@archiver.kernel.org>; Sat,  3 Jun 2023 07:02:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F008C7EE24
+	for <linux-ext4@archiver.kernel.org>; Sat,  3 Jun 2023 08:07:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233911AbjFCHCu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 3 Jun 2023 03:02:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42360 "EHLO
+        id S234105AbjFCIHf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 3 Jun 2023 04:07:35 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56954 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233645AbjFCHCU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Jun 2023 03:02:20 -0400
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3907DC0;
-        Sat,  3 Jun 2023 00:02:14 -0700 (PDT)
-Received: from mail02.huawei.com (unknown [172.30.67.153])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4QY9lw5B6tz4f3pr4;
-        Sat,  3 Jun 2023 15:02:04 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgCHOKxk5Xpk+MxPKw--.30174S18;
-        Sat, 03 Jun 2023 15:02:05 +0800 (CST)
-From:   Kemeng Shi <shikemeng@huaweicloud.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com
-Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        shikemeng@huaweicloud.com
-Subject: [PATCH v4 16/19] ext4: call ext4_mb_mark_group_bb in ext4_mb_clear_bb
-Date:   Sat,  3 Jun 2023 23:03:24 +0800
-Message-Id: <20230603150327.3596033-17-shikemeng@huaweicloud.com>
-X-Mailer: git-send-email 2.30.0
-In-Reply-To: <20230603150327.3596033-1-shikemeng@huaweicloud.com>
-References: <20230603150327.3596033-1-shikemeng@huaweicloud.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgCHOKxk5Xpk+MxPKw--.30174S18
-X-Coremail-Antispam: 1UD129KBjvJXoWxtFWUJw4UWrWUtFWxGw4fAFb_yoWxAw48pr
-        yDAFnFkr15GwnF9F40k345XF1ftw18Way7JrWfCryfCr1avr93KFWktFn3AF4UtFZ7X3WD
-        XF1Y9r4Uur4xW37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUPI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
-        0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
-        rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6x
-        IIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xv
-        wVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFc
-        xC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_
-        Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2
-        IErcIFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
-        14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIx
-        kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAF
-        wI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr
-        0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0pRv
-        JPtUUUUU=
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
-X-CFilter-Loop: Reflected
+        with ESMTP id S229539AbjFCIHe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Jun 2023 04:07:34 -0400
+Received: from mga05.intel.com (mga05.intel.com [192.55.52.43])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 05CA81B3
+        for <linux-ext4@vger.kernel.org>; Sat,  3 Jun 2023 01:07:33 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1685779652; x=1717315652;
+  h=date:from:to:cc:subject:message-id;
+  bh=BMUg/K8S5brvxAJz15eewf5ISMWPLfJEvoH7NNKBEOQ=;
+  b=MmPyl9zbyhrU1cN66E9bnxs5ngELCZrgtIsXAgmaJHNEkEMWLHs4l7ku
+   ZLpjSKbisT75B8JnfJQriZt6BiqEnwQRKVZE3Q3CALIZqbOn37p3DXBGS
+   gqx73tHfkjpX8jqSie1weDYdkQC1LbClidbrRZGV4A6mQotirrUlNWklq
+   4nOhlmAnd6xN9w3MF5bUx2r/ihpTQjC6KkZyaAFqborO9pbX/OZTAvba2
+   ZV1c0raZgo0Xi7Sftjn8Ch7bw7GbLOvE7TAq4lguTxsCH8AS8x7uwJfRe
+   t5HOC8GpWGUi7jLlUpIRxxgXwVQ3An0QdqVdavjIsCVj8KzGL/PmKi2fO
+   Q==;
+X-IronPort-AV: E=McAfee;i="6600,9927,10729"; a="442423967"
+X-IronPort-AV: E=Sophos;i="6.00,215,1681196400"; 
+   d="scan'208";a="442423967"
+Received: from fmsmga004.fm.intel.com ([10.253.24.48])
+  by fmsmga105.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 03 Jun 2023 01:07:29 -0700
+X-ExtLoop1: 1
+X-IronPort-AV: E=McAfee;i="6600,9927,10729"; a="777966983"
+X-IronPort-AV: E=Sophos;i="6.00,215,1681196400"; 
+   d="scan'208";a="777966983"
+Received: from lkp-server01.sh.intel.com (HELO 15ab08e44a81) ([10.239.97.150])
+  by fmsmga004.fm.intel.com with ESMTP; 03 Jun 2023 01:07:26 -0700
+Received: from kbuild by 15ab08e44a81 with local (Exim 4.96)
+        (envelope-from <lkp@intel.com>)
+        id 1q5MII-0001Rf-0u;
+        Sat, 03 Jun 2023 08:07:26 +0000
+Date:   Sat, 03 Jun 2023 16:06:26 +0800
+From:   kernel test robot <lkp@intel.com>
+To:     "Theodore Ts'o" <tytso@mit.edu>
+Cc:     linux-ext4@vger.kernel.org
+Subject: [tytso-ext4:dev] BUILD SUCCESS
+ 571bc93d3e2e298fccba7146ae2dc1144692a419
+Message-ID: <20230603080626.FoEfU%lkp@intel.com>
+User-Agent: s-nail v14.9.24
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-call ext4_mb_mark_group_bb in ext4_mb_clear_bb to remove repeat code
-to update block bitmap and group descriptor on disk.
+tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
+branch HEAD: 571bc93d3e2e298fccba7146ae2dc1144692a419  ext4: Give symbolic names to mballoc criterias
 
-Note: ext4_mb_clear_bb will update buddy and bitmap in two critical sections
-instead of update in the same critical section.
+elapsed time: 721m
 
-Original lock behavior introduced in 7a2fcbf7f857 ("ext4: don't use
-blocks freed but not yet committed in buddy cache init") to avoid
-race betwwen ext4_mb_free_blocks and ext4_mb_init_cache:
-ext4_mb_load_buddy_gfp
-ext4_lock_group
-mb_clear_bits(bitmap_bh, ...)
-mb_free_blocks/ext4_mb_free_metadata
-ext4_unlock_group
-ext4_mb_unload_buddy
+configs tested: 220
+configs skipped: 16
 
-New lock behavior in this patch:
-ext4_mb_load_buddy_gfp
-ext4_lock_group
-mb_clear_bits(bitmap_bh, ...)
-ext4_unlock_group
+The following configs have been built successfully.
+More configs may be tested in the coming days.
 
-/* no ext4_mb_init_cache for the same group will be called as
-ext4_mb_load_buddy_gfp will ensure buddy page is update-to-date */
+tested configs:
+alpha                            allyesconfig   gcc  
+alpha        buildonly-randconfig-r001-20230531   gcc  
+alpha                               defconfig   gcc  
+alpha                randconfig-r004-20230531   gcc  
+alpha                randconfig-r011-20230602   gcc  
+alpha                randconfig-r015-20230601   gcc  
+alpha                randconfig-r021-20230531   gcc  
+alpha                randconfig-r024-20230531   gcc  
+alpha                randconfig-r025-20230531   gcc  
+alpha                randconfig-r033-20230602   gcc  
+arc                              allyesconfig   gcc  
+arc                          axs101_defconfig   gcc  
+arc          buildonly-randconfig-r005-20230531   gcc  
+arc                                 defconfig   gcc  
+arc                 nsimosci_hs_smp_defconfig   gcc  
+arc                  randconfig-r015-20230601   gcc  
+arc                           tb10x_defconfig   gcc  
+arm                              allmodconfig   gcc  
+arm                              allyesconfig   gcc  
+arm                          collie_defconfig   clang
+arm                     davinci_all_defconfig   clang
+arm                                 defconfig   gcc  
+arm                      integrator_defconfig   gcc  
+arm                  randconfig-r003-20230602   clang
+arm                  randconfig-r024-20230531   gcc  
+arm                  randconfig-r026-20230531   gcc  
+arm                             rpc_defconfig   gcc  
+arm                           sama7_defconfig   clang
+arm                           spitz_defconfig   clang
+arm                           sunxi_defconfig   gcc  
+arm64                            allyesconfig   gcc  
+arm64                               defconfig   gcc  
+arm64                randconfig-r031-20230531   gcc  
+arm64                randconfig-r031-20230602   gcc  
+arm64                randconfig-r036-20230602   gcc  
+csky                                defconfig   gcc  
+csky                 randconfig-r005-20230531   gcc  
+csky                 randconfig-r023-20230531   gcc  
+csky                 randconfig-r035-20230602   gcc  
+hexagon              randconfig-r014-20230602   clang
+hexagon              randconfig-r041-20230531   clang
+hexagon              randconfig-r045-20230531   clang
+i386                             allyesconfig   gcc  
+i386         buildonly-randconfig-r001-20230602   gcc  
+i386                              debian-10.3   gcc  
+i386                                defconfig   gcc  
+i386                 randconfig-i001-20230531   gcc  
+i386                 randconfig-i001-20230602   gcc  
+i386                 randconfig-i002-20230531   gcc  
+i386                 randconfig-i002-20230602   gcc  
+i386                 randconfig-i003-20230531   gcc  
+i386                 randconfig-i003-20230602   gcc  
+i386                 randconfig-i004-20230531   gcc  
+i386                 randconfig-i004-20230602   gcc  
+i386                 randconfig-i005-20230531   gcc  
+i386                 randconfig-i005-20230602   gcc  
+i386                 randconfig-i006-20230531   gcc  
+i386                 randconfig-i006-20230602   gcc  
+i386                 randconfig-i051-20230531   gcc  
+i386                 randconfig-i051-20230602   gcc  
+i386                 randconfig-i052-20230531   gcc  
+i386                 randconfig-i052-20230602   gcc  
+i386                 randconfig-i053-20230531   gcc  
+i386                 randconfig-i053-20230602   gcc  
+i386                 randconfig-i054-20230531   gcc  
+i386                 randconfig-i054-20230602   gcc  
+i386                 randconfig-i055-20230531   gcc  
+i386                 randconfig-i055-20230602   gcc  
+i386                 randconfig-i056-20230531   gcc  
+i386                 randconfig-i056-20230602   gcc  
+i386                 randconfig-i061-20230531   gcc  
+i386                 randconfig-i061-20230602   gcc  
+i386                 randconfig-i062-20230531   gcc  
+i386                 randconfig-i062-20230602   gcc  
+i386                 randconfig-i063-20230531   gcc  
+i386                 randconfig-i063-20230602   gcc  
+i386                 randconfig-i064-20230531   gcc  
+i386                 randconfig-i064-20230602   gcc  
+i386                 randconfig-i065-20230531   gcc  
+i386                 randconfig-i065-20230602   gcc  
+i386                 randconfig-i066-20230531   gcc  
+i386                 randconfig-i066-20230602   gcc  
+i386                 randconfig-r004-20230602   gcc  
+i386                 randconfig-r012-20230601   gcc  
+i386                 randconfig-r035-20230531   gcc  
+i386                 randconfig-r035-20230602   gcc  
+loongarch                        allmodconfig   gcc  
+loongarch                         allnoconfig   gcc  
+loongarch    buildonly-randconfig-r004-20230531   gcc  
+loongarch    buildonly-randconfig-r006-20230602   gcc  
+loongarch                           defconfig   gcc  
+loongarch            randconfig-r011-20230601   gcc  
+loongarch            randconfig-r016-20230601   gcc  
+loongarch            randconfig-r021-20230531   gcc  
+m68k                             allmodconfig   gcc  
+m68k                         amcore_defconfig   gcc  
+m68k                          atari_defconfig   gcc  
+m68k         buildonly-randconfig-r006-20230531   gcc  
+m68k                                defconfig   gcc  
+m68k                       m5249evb_defconfig   gcc  
+m68k                        m5307c3_defconfig   gcc  
+m68k                 randconfig-r016-20230601   gcc  
+m68k                 randconfig-r023-20230531   gcc  
+m68k                 randconfig-r034-20230602   gcc  
+m68k                        stmark2_defconfig   gcc  
+m68k                          sun3x_defconfig   gcc  
+microblaze                      mmu_defconfig   gcc  
+microblaze           randconfig-r013-20230601   gcc  
+microblaze           randconfig-r021-20230531   gcc  
+microblaze           randconfig-r022-20230531   gcc  
+microblaze           randconfig-r024-20230531   gcc  
+microblaze           randconfig-r025-20230531   gcc  
+mips                             allmodconfig   gcc  
+mips                             allyesconfig   gcc  
+mips                          ath79_defconfig   clang
+mips                           ci20_defconfig   gcc  
+mips                     decstation_defconfig   gcc  
+mips                       lemote2f_defconfig   clang
+mips                        maltaup_defconfig   clang
+mips                 randconfig-r013-20230602   gcc  
+mips                 randconfig-r015-20230602   gcc  
+mips                 randconfig-r022-20230531   gcc  
+mips                          rm200_defconfig   clang
+nios2                         3c120_defconfig   gcc  
+nios2                            alldefconfig   gcc  
+nios2        buildonly-randconfig-r002-20230531   gcc  
+nios2        buildonly-randconfig-r004-20230531   gcc  
+nios2                               defconfig   gcc  
+nios2                randconfig-r001-20230531   gcc  
+nios2                randconfig-r012-20230601   gcc  
+openrisc     buildonly-randconfig-r003-20230531   gcc  
+openrisc             randconfig-r011-20230601   gcc  
+parisc                              defconfig   gcc  
+parisc               randconfig-r032-20230531   gcc  
+parisc64                            defconfig   gcc  
+powerpc                    adder875_defconfig   gcc  
+powerpc                          allmodconfig   gcc  
+powerpc                           allnoconfig   gcc  
+powerpc                   bluestone_defconfig   clang
+powerpc                      ep88xc_defconfig   gcc  
+powerpc                    ge_imp3a_defconfig   clang
+powerpc                        icon_defconfig   clang
+powerpc                      mgcoge_defconfig   gcc  
+powerpc                   motionpro_defconfig   gcc  
+powerpc                 mpc836x_rdk_defconfig   clang
+powerpc                      pcm030_defconfig   gcc  
+powerpc                      ppc44x_defconfig   clang
+powerpc              randconfig-r006-20230531   gcc  
+powerpc              randconfig-r032-20230602   gcc  
+powerpc                     tqm8560_defconfig   clang
+powerpc                        warp_defconfig   gcc  
+riscv                            allmodconfig   gcc  
+riscv                             allnoconfig   gcc  
+riscv                               defconfig   gcc  
+riscv                randconfig-r034-20230602   gcc  
+riscv                randconfig-r042-20230531   clang
+riscv                          rv32_defconfig   gcc  
+s390                             allmodconfig   gcc  
+s390                             allyesconfig   gcc  
+s390                                defconfig   gcc  
+s390                 randconfig-r011-20230601   gcc  
+s390                 randconfig-r044-20230531   clang
+sh                               allmodconfig   gcc  
+sh           buildonly-randconfig-r005-20230531   gcc  
+sh                        edosk7760_defconfig   gcc  
+sh                             espt_defconfig   gcc  
+sh                            hp6xx_defconfig   gcc  
+sh                 kfr2r09-romimage_defconfig   gcc  
+sh                            migor_defconfig   gcc  
+sh                   randconfig-r002-20230602   gcc  
+sh                   randconfig-r003-20230531   gcc  
+sh                          rsk7264_defconfig   gcc  
+sh                          rsk7269_defconfig   gcc  
+sh                           se7722_defconfig   gcc  
+sh                             sh03_defconfig   gcc  
+sh                          urquell_defconfig   gcc  
+sparc        buildonly-randconfig-r002-20230531   gcc  
+sparc        buildonly-randconfig-r002-20230602   gcc  
+sparc        buildonly-randconfig-r006-20230531   gcc  
+sparc                               defconfig   gcc  
+sparc                randconfig-r006-20230602   gcc  
+sparc                randconfig-r013-20230601   gcc  
+sparc                randconfig-r015-20230601   gcc  
+sparc64      buildonly-randconfig-r002-20230531   gcc  
+sparc64      buildonly-randconfig-r004-20230531   gcc  
+sparc64              randconfig-r002-20230531   gcc  
+sparc64              randconfig-r022-20230531   gcc  
+sparc64              randconfig-r025-20230531   gcc  
+um                             i386_defconfig   gcc  
+um                           x86_64_defconfig   gcc  
+x86_64                           allyesconfig   gcc  
+x86_64       buildonly-randconfig-r005-20230602   gcc  
+x86_64                              defconfig   gcc  
+x86_64                                  kexec   gcc  
+x86_64               randconfig-a001-20230531   gcc  
+x86_64               randconfig-a002-20230531   gcc  
+x86_64               randconfig-a003-20230531   gcc  
+x86_64               randconfig-a004-20230531   gcc  
+x86_64               randconfig-a005-20230531   gcc  
+x86_64               randconfig-a006-20230531   gcc  
+x86_64               randconfig-a011-20230603   gcc  
+x86_64               randconfig-a012-20230603   gcc  
+x86_64               randconfig-a013-20230603   gcc  
+x86_64               randconfig-a014-20230603   gcc  
+x86_64               randconfig-a015-20230603   gcc  
+x86_64               randconfig-a016-20230603   gcc  
+x86_64               randconfig-r001-20230602   gcc  
+x86_64               randconfig-x051-20230603   gcc  
+x86_64               randconfig-x052-20230603   gcc  
+x86_64               randconfig-x053-20230603   gcc  
+x86_64               randconfig-x054-20230603   gcc  
+x86_64               randconfig-x055-20230603   gcc  
+x86_64               randconfig-x056-20230603   gcc  
+x86_64                          rhel-8.3-func   gcc  
+x86_64                    rhel-8.3-kselftests   gcc  
+x86_64                           rhel-8.3-ltp   gcc  
+x86_64                               rhel-8.3   gcc  
+xtensa               randconfig-r033-20230602   gcc  
+xtensa               randconfig-r036-20230531   gcc  
+xtensa                    xip_kc705_defconfig   gcc  
 
-ext4_lock_group
-mb_free_blocks/ext4_mb_free_metadata
-ext4_unlock_group
-ext4_mb_unload_buddy
-
-As buddy page for group is always update-to-date between
-ext4_mb_load_buddy_gfp and ext4_mb_unload_buddy. Then no
-ext4_mb_init_cache will be called for the same group concurrentlly when
-we update bitmap and buddy page betwwen buddy load and unload.
-
-Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
----
- fs/ext4/mballoc.c | 90 ++++++++++++-----------------------------------
- 1 file changed, 23 insertions(+), 67 deletions(-)
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 46b37f5c9223..e4f1b34448e3 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -6135,19 +6135,21 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
- 			       ext4_fsblk_t block, unsigned long count,
- 			       int flags)
- {
--	struct buffer_head *bitmap_bh = NULL;
-+	struct ext4_mark_context mc = {
-+		.handle = handle,
-+		.sb = inode->i_sb,
-+		.state = 0,
-+	};
- 	struct super_block *sb = inode->i_sb;
--	struct ext4_group_desc *gdp;
- 	struct ext4_group_info *grp;
- 	unsigned int overflow;
- 	ext4_grpblk_t bit;
--	struct buffer_head *gd_bh;
- 	ext4_group_t block_group;
- 	struct ext4_sb_info *sbi;
- 	struct ext4_buddy e4b;
- 	unsigned int count_clusters;
- 	int err = 0;
--	int ret;
-+	int mark_flags = 0;
- 
- 	sbi = EXT4_SB(sb);
- 
-@@ -6179,18 +6181,6 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
- 		/* The range changed so it's no longer validated */
- 		flags &= ~EXT4_FREE_BLOCKS_VALIDATED;
- 	}
--	count_clusters = EXT4_NUM_B2C(sbi, count);
--	bitmap_bh = ext4_read_block_bitmap(sb, block_group);
--	if (IS_ERR(bitmap_bh)) {
--		err = PTR_ERR(bitmap_bh);
--		bitmap_bh = NULL;
--		goto error_return;
--	}
--	gdp = ext4_get_group_desc(sb, block_group, &gd_bh);
--	if (!gdp) {
--		err = -EIO;
--		goto error_return;
--	}
- 
- 	if (!(flags & EXT4_FREE_BLOCKS_VALIDATED) &&
- 	    !ext4_inode_block_valid(inode, block, count)) {
-@@ -6200,28 +6190,7 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
- 		goto error_return;
- 	}
- 
--	BUFFER_TRACE(bitmap_bh, "getting write access");
--	err = ext4_journal_get_write_access(handle, sb, bitmap_bh,
--					    EXT4_JTR_NONE);
--	if (err)
--		goto error_return;
--
--	/*
--	 * We are about to modify some metadata.  Call the journal APIs
--	 * to unshare ->b_data if a currently-committing transaction is
--	 * using it
--	 */
--	BUFFER_TRACE(gd_bh, "get_write_access");
--	err = ext4_journal_get_write_access(handle, sb, gd_bh, EXT4_JTR_NONE);
--	if (err)
--		goto error_return;
--#ifdef AGGRESSIVE_CHECK
--	{
--		int i;
--		for (i = 0; i < count_clusters; i++)
--			BUG_ON(!mb_test_bit(bit + i, bitmap_bh->b_data));
--	}
--#endif
-+	count_clusters = EXT4_NUM_B2C(sbi, count);
- 	trace_ext4_mballoc_free(sb, inode, block_group, bit, count_clusters);
- 
- 	/* __GFP_NOFAIL: retry infinitely, ignore TIF_MEMDIE and memcg limit. */
-@@ -6230,6 +6199,22 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
- 	if (err)
- 		goto error_return;
- 
-+#ifdef AGGRESSIVE_CHECK
-+	mark_flags |= EXT4_MB_BITMAP_MARKED_CHECK;
-+#endif
-+	err = ext4_mb_mark_group_bb(&mc, block_group, bit, count_clusters,
-+				    mark_flags);
-+
-+
-+	if (err && mc.changed == 0) {
-+		ext4_mb_unload_buddy(&e4b);
-+		goto error_return;
-+	}
-+
-+#ifdef AGGRESSIVE_CHECK
-+	BUG_ON(mc.changed != count_clusters);
-+#endif
-+
- 	/*
- 	 * We need to make sure we don't reuse the freed block until after the
- 	 * transaction is committed. We make an exception if the inode is to be
-@@ -6252,13 +6237,8 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
- 		new_entry->efd_tid = handle->h_transaction->t_tid;
- 
- 		ext4_lock_group(sb, block_group);
--		mb_clear_bits(bitmap_bh->b_data, bit, count_clusters);
- 		ext4_mb_free_metadata(handle, &e4b, new_entry);
- 	} else {
--		/* need to update group_info->bb_free and bitmap
--		 * with group lock held. generate_buddy look at
--		 * them with group lock_held
--		 */
- 		if (test_opt(sb, DISCARD)) {
- 			err = ext4_issue_discard(sb, block_group, bit,
- 						 count_clusters, NULL);
-@@ -6271,23 +6251,11 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
- 			EXT4_MB_GRP_CLEAR_TRIMMED(e4b.bd_info);
- 
- 		ext4_lock_group(sb, block_group);
--		mb_clear_bits(bitmap_bh->b_data, bit, count_clusters);
- 		mb_free_blocks(inode, &e4b, bit, count_clusters);
- 	}
- 
--	ret = ext4_free_group_clusters(sb, gdp) + count_clusters;
--	ext4_free_group_clusters_set(sb, gdp, ret);
--	ext4_block_bitmap_csum_set(sb, gdp, bitmap_bh);
--	ext4_group_desc_csum_set(sb, block_group, gdp);
- 	ext4_unlock_group(sb, block_group);
- 
--	if (sbi->s_log_groups_per_flex) {
--		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
--		atomic64_add(count_clusters,
--			     &sbi_array_rcu_deref(sbi, s_flex_groups,
--						  flex_group)->free_clusters);
--	}
--
- 	/*
- 	 * on a bigalloc file system, defer the s_freeclusters_counter
- 	 * update to the caller (ext4_remove_space and friends) so they
-@@ -6302,26 +6270,14 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
- 
- 	ext4_mb_unload_buddy(&e4b);
- 
--	/* We dirtied the bitmap block */
--	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
--	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
--
--	/* And the group descriptor block */
--	BUFFER_TRACE(gd_bh, "dirtied group descriptor block");
--	ret = ext4_handle_dirty_metadata(handle, NULL, gd_bh);
--	if (!err)
--		err = ret;
--
- 	if (overflow && !err) {
- 		block += count;
- 		count = overflow;
--		put_bh(bitmap_bh);
- 		/* The range changed so it's no longer validated */
- 		flags &= ~EXT4_FREE_BLOCKS_VALIDATED;
- 		goto do_more;
- 	}
- error_return:
--	brelse(bitmap_bh);
- 	ext4_std_error(sb, err);
- 	return;
- }
 -- 
-2.30.0
-
+0-DAY CI Kernel Test Service
+https://github.com/intel/lkp-tests/wiki
