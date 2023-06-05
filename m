@@ -2,84 +2,87 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 395B2C7EE23
-	for <linux-ext4@archiver.kernel.org>; Mon,  5 Jun 2023 16:57:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B34D2C7EE23
+	for <linux-ext4@archiver.kernel.org>; Mon,  5 Jun 2023 17:06:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232448AbjFEQ5y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 5 Jun 2023 12:57:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60032 "EHLO
+        id S235110AbjFERF7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 5 Jun 2023 13:05:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36140 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229974AbjFEQ5x (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Jun 2023 12:57:53 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CFA259C;
-        Mon,  5 Jun 2023 09:57:52 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 6271862068;
-        Mon,  5 Jun 2023 16:57:52 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6CEB0C433EF;
-        Mon,  5 Jun 2023 16:57:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
-        s=korg; t=1685984271;
-        bh=re8vMj+8xGpFUnAC2qBW/q3FgGQY32jtNqeKye4SRao=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=IXhUxdRNyC6UMJxCVft4NRBnEOZTHK2wAfxyoF+tdC1yQRSLpgmvWTfuNx0aYWQG5
-         Q5hDsG3KmllDXQJC5WpbRH5mwWhOWRWGqE/mDs4RtGDEQcG0H6mOtaaT+jfQ8ti+oo
-         NXJ/IOtHaNLvzx/xQf7+U5Hc6dLAQUW81sZoSjLE=
-Date:   Mon, 5 Jun 2023 18:57:48 +0200
-From:   Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-To:     Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Cc:     Kees Cook <kees@kernel.org>, Kees Cook <keescook@chromium.org>,
+        with ESMTP id S232289AbjFERF6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Jun 2023 13:05:58 -0400
+Received: from mga14.intel.com (mga14.intel.com [192.55.52.115])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 90D9EF1;
+        Mon,  5 Jun 2023 10:05:53 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1685984753; x=1717520753;
+  h=from:to:cc:subject:date:message-id:in-reply-to:
+   references:mime-version:content-transfer-encoding;
+  bh=Uqba7KW+LSTrR6KDuN+F/tgiTmPx6AhRcJexGJYfzL0=;
+  b=gZnt7i7S5RAKnCKhWoOseINM9UweFOim683+c0tM4l+IvhnrTiEsvNsw
+   JAbAU1C6zGh/Jgx/2ys2TRPKu32shLHlX47KJdo9lEMBGzeqdPFOutF6E
+   sXVfRKyebWO6uAl1SSnvYo2BJLsEGI2CyZNgM23CdLIWozuWyhe7pHjfY
+   l9Nxg6UnQShrJF8Q7HpHEZB+EtoN5++Oz4mwgOXik1k7dVyxUHOZIqEDC
+   eU/oQPvR4mY32FA+j5qW6AJJtHJwXa5CPKCnY9K/cT2jPhSqrirF88/rR
+   s3YfBWRqAuPdYQ4yjKUwKZbtbhqMVxwOqK5YTIKOdCtUO9LfCAyauBLRi
+   Q==;
+X-IronPort-AV: E=McAfee;i="6600,9927,10732"; a="356431378"
+X-IronPort-AV: E=Sophos;i="6.00,218,1681196400"; 
+   d="scan'208";a="356431378"
+Received: from fmsmga008.fm.intel.com ([10.253.24.58])
+  by fmsmga103.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 05 Jun 2023 10:05:52 -0700
+X-ExtLoop1: 1
+X-IronPort-AV: E=McAfee;i="6600,9927,10732"; a="773807505"
+X-IronPort-AV: E=Sophos;i="6.00,218,1681196400"; 
+   d="scan'208";a="773807505"
+Received: from black.fi.intel.com ([10.237.72.28])
+  by fmsmga008.fm.intel.com with ESMTP; 05 Jun 2023 10:05:49 -0700
+Received: by black.fi.intel.com (Postfix, from userid 1003)
+        id AE297379; Mon,  5 Jun 2023 20:05:56 +0300 (EEST)
+From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+To:     Kees Cook <keescook@chromium.org>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
         Cezary Rojewski <cezary.rojewski@intel.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        Andy Shevchenko <andy@kernel.org>,
         "Rafael J. Wysocki" <rafael@kernel.org>
-Subject: Re: [PATCH v2 0/3] lib/string_helpers et al.: Change return value of
- strreplace()
-Message-ID: <2023060537-espionage-comfort-3e56@gregkh>
-References: <20230323123704.37983-1-andriy.shevchenko@linux.intel.com>
- <ZC1454AwRUNFTbIW@smile.fi.intel.com>
- <2023040523-unworthy-uncured-1eab@gregkh>
- <ZC2H8ODMwoO5hzZG@smile.fi.intel.com>
- <47D8878A-1108-4AC3-BF7F-507F90F6970A@kernel.org>
- <ZH3rezDApUro84HB@smile.fi.intel.com>
+Subject: [PATCH v3 3/3] kobject: Use return value of strreplace()
+Date:   Mon,  5 Jun 2023 20:05:53 +0300
+Message-Id: <20230605170553.7835-4-andriy.shevchenko@linux.intel.com>
+X-Mailer: git-send-email 2.40.0.1.gaa8946217a0b
+In-Reply-To: <20230605170553.7835-1-andriy.shevchenko@linux.intel.com>
+References: <20230605170553.7835-1-andriy.shevchenko@linux.intel.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <ZH3rezDApUro84HB@smile.fi.intel.com>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Jun 05, 2023 at 05:04:43PM +0300, Andy Shevchenko wrote:
-> On Wed, Apr 05, 2023 at 07:58:40PM -0700, Kees Cook wrote:
-> > On April 5, 2023 7:38:40 AM PDT, Andy Shevchenko <andriy.shevchenko@linux.intel.com> wrote:
-> > >On Wed, Apr 05, 2023 at 04:24:42PM +0200, Greg Kroah-Hartman wrote:
-> > >> On Wed, Apr 05, 2023 at 04:34:31PM +0300, Andy Shevchenko wrote:
-> > >> > On Thu, Mar 23, 2023 at 02:37:01PM +0200, Andy Shevchenko wrote:
-> > >> > > It's more convenient to have strreplace() to return the pointer to
-> > >> > >  the string itself. This will help users to make their code better.
-> > >> > > 
-> > >> > > The patch 1 kills the only user of the returned value of strreplace(),
-> > >> > > Patch 2 converts the return value of strreplace(). And patch 3 shows
-> > >> > > how it may be useful. That said, the series can be routed via fs tree,
-> > >> > > with or without the last patch.
-> > >> > 
-> > >> > Since there are no comments, who can apply this (patches 1 and 2)?
-> > >> > Greg, are you fine with the kobject change?
-> > >> 
-> > >> Sure, want me to take them all through my driver-core tree?
-> > >
-> > >Fine by me! Dunno about others. Kees?
-> > 
-> > Yeah, that's cool by me. :)
-> 
-> Greg, does this slip through the cracks?
+Since strreplace() returns the pointer to the string itself,
+we may use it directly in the code.
 
-It did.  Can someone resend this?
+Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+---
+ lib/kobject.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-thanks,
+diff --git a/lib/kobject.c b/lib/kobject.c
+index f79a434e1231..16d530f9c174 100644
+--- a/lib/kobject.c
++++ b/lib/kobject.c
+@@ -281,8 +281,7 @@ int kobject_set_name_vargs(struct kobject *kobj, const char *fmt,
+ 		kfree_const(s);
+ 		if (!t)
+ 			return -ENOMEM;
+-		strreplace(t, '/', '!');
+-		s = t;
++		s = strreplace(t, '/', '!');
+ 	}
+ 	kfree_const(kobj->name);
+ 	kobj->name = s;
+-- 
+2.40.0.1.gaa8946217a0b
 
-greg k-h
