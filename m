@@ -2,102 +2,106 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 155B0C7EE2D
-	for <linux-ext4@archiver.kernel.org>; Mon,  5 Jun 2023 17:06:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3DD97C7EE23
+	for <linux-ext4@archiver.kernel.org>; Mon,  5 Jun 2023 17:07:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235257AbjFERGF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 5 Jun 2023 13:06:05 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36186 "EHLO
+        id S235297AbjFERHS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 5 Jun 2023 13:07:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37310 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235187AbjFERGB (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Jun 2023 13:06:01 -0400
-Received: from mga14.intel.com (mga14.intel.com [192.55.52.115])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 515FDED;
-        Mon,  5 Jun 2023 10:06:00 -0700 (PDT)
+        with ESMTP id S235308AbjFERHO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Jun 2023 13:07:14 -0400
+Received: from mga04.intel.com (mga04.intel.com [192.55.52.120])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DED1B11B;
+        Mon,  5 Jun 2023 10:07:07 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
   d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1685984760; x=1717520760;
-  h=from:to:cc:subject:date:message-id:in-reply-to:
-   references:mime-version:content-transfer-encoding;
-  bh=KBLjfFtbsCdNjxRprw9OiUI+007+Q0Bv6edzE8t+Abo=;
-  b=fLlLmNLk7EN2fFWVHDienboKYrMJTdfYjtWSnZW81E3ulMkfI/1ldwdU
-   TTuZ5+cADGB7YgIPt6DoRtQV+vHDew6Y1xbYhM4YA709JHONoiNVKIYva
-   hBMZDtgjKx2+ANcFZFjot6biQxwz5F41tAdiQKFNUWUichxnfkWCcLcJN
-   0uxj/BKh/IkjcZ7kAQgkPwJI6rFPS3ZEeGHfglAhaw3m4psLIWyebc2gA
-   YpC030bVDDBHsfaC3h/1LeL0VGCwVZ+W/N86p5kPWq8lNb+w+rlRAOf4c
-   sSQKc3MxRT1/ntgpdjcVl5OviCBlzT+h3h5ihTa3eBWBOR7dTIqvnaSxu
-   g==;
-X-IronPort-AV: E=McAfee;i="6600,9927,10732"; a="356431401"
+  t=1685984827; x=1717520827;
+  h=date:from:to:cc:subject:message-id:references:
+   mime-version:in-reply-to;
+  bh=orhtIbFdFJ/vZtw5mqPX0sVVvIYZvmqrT7bkUFf8ebI=;
+  b=Byp+CeMnFA9VY7bdcF3ROuq0ZLbt1vltCHqgBsTnzk/ESGhmZWwGwozX
+   n2G9hVk/nLWhv3XP4Y/v2pNST6wSwoELjXfcjjjyF3CQFUiYCCRCVbtjC
+   zj2oZKEUIcPlVFUF/mINJC2YNCSePUZiJeZFCL1WAa8tl4qsxbmMLBonN
+   HHQILWFdZFoLfir+85URn+oe9sY48FR8QU9YufR2sU127kXjKkCDN39uE
+   WejodDTQTZexCUQm5T1hSZoTi3WGly/utuSrlEf7/MlTuXj3NRugLnp7j
+   1BvUEbB9nEgL2TBKrdLuAgNTU9U+CctdIV8acXTrp4vVpsOGkpPdv8vzc
+   w==;
+X-IronPort-AV: E=McAfee;i="6600,9927,10732"; a="355275870"
 X-IronPort-AV: E=Sophos;i="6.00,218,1681196400"; 
-   d="scan'208";a="356431401"
-Received: from fmsmga008.fm.intel.com ([10.253.24.58])
-  by fmsmga103.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 05 Jun 2023 10:05:52 -0700
+   d="scan'208";a="355275870"
+Received: from orsmga001.jf.intel.com ([10.7.209.18])
+  by fmsmga104.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 05 Jun 2023 10:07:07 -0700
 X-ExtLoop1: 1
-X-IronPort-AV: E=McAfee;i="6600,9927,10732"; a="773807508"
+X-IronPort-AV: E=McAfee;i="6600,9927,10732"; a="741785902"
 X-IronPort-AV: E=Sophos;i="6.00,218,1681196400"; 
-   d="scan'208";a="773807508"
-Received: from black.fi.intel.com ([10.237.72.28])
-  by fmsmga008.fm.intel.com with ESMTP; 05 Jun 2023 10:05:50 -0700
-Received: by black.fi.intel.com (Postfix, from userid 1003)
-        id 93C65FD; Mon,  5 Jun 2023 20:05:56 +0300 (EEST)
+   d="scan'208";a="741785902"
+Received: from smile.fi.intel.com ([10.237.72.54])
+  by orsmga001.jf.intel.com with ESMTP; 05 Jun 2023 10:06:30 -0700
+Received: from andy by smile.fi.intel.com with local (Exim 4.96)
+        (envelope-from <andriy.shevchenko@linux.intel.com>)
+        id 1q6Df2-001QZ0-2M;
+        Mon, 05 Jun 2023 20:06:28 +0300
+Date:   Mon, 5 Jun 2023 20:06:28 +0300
 From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-To:     Kees Cook <keescook@chromium.org>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
+To:     Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc:     Kees Cook <kees@kernel.org>, Kees Cook <keescook@chromium.org>,
         Cezary Rojewski <cezary.rojewski@intel.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-        Andy Shevchenko <andy@kernel.org>,
-        "Rafael J. Wysocki" <rafael@kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH v3 1/3] jbd2: Avoid printing outside the boundary of the buffer
-Date:   Mon,  5 Jun 2023 20:05:51 +0300
-Message-Id: <20230605170553.7835-2-andriy.shevchenko@linux.intel.com>
-X-Mailer: git-send-email 2.40.0.1.gaa8946217a0b
-In-Reply-To: <20230605170553.7835-1-andriy.shevchenko@linux.intel.com>
-References: <20230605170553.7835-1-andriy.shevchenko@linux.intel.com>
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        "Rafael J. Wysocki" <rafael@kernel.org>
+Subject: Re: [PATCH v2 0/3] lib/string_helpers et al.: Change return value of
+ strreplace()
+Message-ID: <ZH4WFCgq7kUwHLgl@smile.fi.intel.com>
+References: <20230323123704.37983-1-andriy.shevchenko@linux.intel.com>
+ <ZC1454AwRUNFTbIW@smile.fi.intel.com>
+ <2023040523-unworthy-uncured-1eab@gregkh>
+ <ZC2H8ODMwoO5hzZG@smile.fi.intel.com>
+ <47D8878A-1108-4AC3-BF7F-507F90F6970A@kernel.org>
+ <ZH3rezDApUro84HB@smile.fi.intel.com>
+ <2023060537-espionage-comfort-3e56@gregkh>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <2023060537-espionage-comfort-3e56@gregkh>
+Organization: Intel Finland Oy - BIC 0357606-4 - Westendinkatu 7, 02160 Espoo
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Theoretically possible that "%pg" will take all room for the j_devname
-and hence the "-%lu" will go outside the boundary due to unconditional
-sprintf() in use. To make this code more robust, replace two sequential
-s*printf():s by a single call and then replace forbidden character.
-It's possible to do this way, because '/' won't ever be in the result
-of "-%lu".
+On Mon, Jun 05, 2023 at 06:57:48PM +0200, Greg Kroah-Hartman wrote:
+> On Mon, Jun 05, 2023 at 05:04:43PM +0300, Andy Shevchenko wrote:
+> > On Wed, Apr 05, 2023 at 07:58:40PM -0700, Kees Cook wrote:
+> > > On April 5, 2023 7:38:40 AM PDT, Andy Shevchenko <andriy.shevchenko@linux.intel.com> wrote:
+> > > >On Wed, Apr 05, 2023 at 04:24:42PM +0200, Greg Kroah-Hartman wrote:
+> > > >> On Wed, Apr 05, 2023 at 04:34:31PM +0300, Andy Shevchenko wrote:
+> > > >> > On Thu, Mar 23, 2023 at 02:37:01PM +0200, Andy Shevchenko wrote:
+> > > >> > > It's more convenient to have strreplace() to return the pointer to
+> > > >> > >  the string itself. This will help users to make their code better.
+> > > >> > > 
+> > > >> > > The patch 1 kills the only user of the returned value of strreplace(),
+> > > >> > > Patch 2 converts the return value of strreplace(). And patch 3 shows
+> > > >> > > how it may be useful. That said, the series can be routed via fs tree,
+> > > >> > > with or without the last patch.
+> > > >> > 
+> > > >> > Since there are no comments, who can apply this (patches 1 and 2)?
+> > > >> > Greg, are you fine with the kobject change?
+> > > >> 
+> > > >> Sure, want me to take them all through my driver-core tree?
+> > > >
+> > > >Fine by me! Dunno about others. Kees?
+> > > 
+> > > Yeah, that's cool by me. :)
+> > 
+> > Greg, does this slip through the cracks?
+> 
+> It did.  Can someone resend this?
 
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
----
- fs/jbd2/journal.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+Done as v3.
+20230605170553.7835-1-andriy.shevchenko@linux.intel.com
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 8ae419152ff6..6e17f8f94dfd 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1491,7 +1491,6 @@ journal_t *jbd2_journal_init_inode(struct inode *inode)
- {
- 	journal_t *journal;
- 	sector_t blocknr;
--	char *p;
- 	int err = 0;
- 
- 	blocknr = 0;
-@@ -1515,9 +1514,8 @@ journal_t *jbd2_journal_init_inode(struct inode *inode)
- 
- 	journal->j_inode = inode;
- 	snprintf(journal->j_devname, sizeof(journal->j_devname),
--		 "%pg", journal->j_dev);
--	p = strreplace(journal->j_devname, '/', '!');
--	sprintf(p, "-%lu", journal->j_inode->i_ino);
-+		 "%pg-%lu", journal->j_dev, journal->j_inode->i_ino);
-+	strreplace(journal->j_devname, '/', '!');
- 	jbd2_stats_proc_init(journal);
- 
- 	return journal;
 -- 
-2.40.0.1.gaa8946217a0b
+With Best Regards,
+Andy Shevchenko
+
 
