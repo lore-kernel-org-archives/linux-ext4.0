@@ -2,120 +2,129 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DD20AC8300C
-	for <linux-ext4@archiver.kernel.org>; Wed,  7 Jun 2023 18:50:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EFF72C7EE43
+	for <linux-ext4@archiver.kernel.org>; Wed,  7 Jun 2023 23:28:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233035AbjFGSut (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 7 Jun 2023 14:50:49 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58948 "EHLO
+        id S231843AbjFGX2Q (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 7 Jun 2023 19:28:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40792 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232786AbjFGSus (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Jun 2023 14:50:48 -0400
-Received: from bee.birch.relay.mailchannels.net (bee.birch.relay.mailchannels.net [23.83.209.14])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 14C4418F
-        for <linux-ext4@vger.kernel.org>; Wed,  7 Jun 2023 11:50:45 -0700 (PDT)
-X-Sender-Id: dreamhost|x-authsender|kjlx@templeofstupid.com
-Received: from relay.mailchannels.net (localhost [127.0.0.1])
-        by relay.mailchannels.net (Postfix) with ESMTP id 1B0F1540FEF
-        for <linux-ext4@vger.kernel.org>; Wed,  7 Jun 2023 18:50:45 +0000 (UTC)
-Received: from pdx1-sub0-mail-a264.dreamhost.com (unknown [127.0.0.6])
-        (Authenticated sender: dreamhost)
-        by relay.mailchannels.net (Postfix) with ESMTPA id A7A025401D0
-        for <linux-ext4@vger.kernel.org>; Wed,  7 Jun 2023 18:50:44 +0000 (UTC)
-ARC-Seal: i=1; s=arc-2022; d=mailchannels.net; t=1686163844; a=rsa-sha256;
-        cv=none;
-        b=E4TAU5l7t/140nA7tDaob8tV76I8TNCYWv6P9Oqy+6Gy2ssaoy9Y0VrULMSMoHrcC2402q
-        Pm7ZlYTo+e2KcIl+mMqzmZoj5+M1QhyutuGZJbaT6WjjJCCTLz7mUJ9wo5W5pMlIE4BGCR
-        ZjDL6Op+RL+bBtU7aRcTEnkBxkS69KjTxuPWd8BKsMzNj8h1zjBt5HaCKA1haQIKclPnIU
-        TLOJpjE5GI9GLuxvV0yRjNVjRFpGu/CfZV02LkPUO2GWOSOpqU6j5QZ759LqBMNzKwhHmW
-        tUahqht37ZVKrap7EyBsGjbU44hWtz62BNlK+RFuaizonrC3sbPCMAvnUBkU4Q==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed;
- d=mailchannels.net;
-        s=arc-2022; t=1686163844;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references:dkim-signature;
-        bh=WDt3+4i1DINQL5h5kVpxR4Ds/PxbHCAHGI5JHcsXfcA=;
-        b=qqVS0I5R3WeOGGciXYPOQXBR8tg1JWvGvzYBQE2na+UtiAZfMGvteqQ/aGqOPfVTBu0+eJ
-        s77POuyy3renELroC1v1+GFnWqDdJKx3wSKaoG43jVtzDXesmfUPoXQzAjxgE1DyuzFgRy
-        M64t1NKnk/rl14HX94YZfNicVIp2JzTFeMR//JnGGN1Vh7C664OAatia4VEySE29e/36uk
-        onumO5GKVBlbWEtVW0vRrkLVO4uL4eFyBNuDYqNy0i2M32CXvpwNu34Jq5sJOVw45+GlY4
-        LX+sQBUsWDZuvXsJKHhm1ewqmtLeiBsNlAfMveqCzEoMvDfajEygCOsGuwGn6g==
-ARC-Authentication-Results: i=1;
-        rspamd-6f5cfd578c-md99n;
-        auth=pass smtp.auth=dreamhost smtp.mailfrom=kjlx@templeofstupid.com
-X-Sender-Id: dreamhost|x-authsender|kjlx@templeofstupid.com
-X-MC-Relay: Neutral
-X-MailChannels-SenderId: dreamhost|x-authsender|kjlx@templeofstupid.com
-X-MailChannels-Auth-Id: dreamhost
-X-Stretch-Cure: 7904f6ec66e790e0_1686163844904_540563933
-X-MC-Loop-Signature: 1686163844904:2728772384
-X-MC-Ingress-Time: 1686163844904
-Received: from pdx1-sub0-mail-a264.dreamhost.com (pop.dreamhost.com
- [64.90.62.162])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384)
-        by 100.120.163.30 (trex/6.8.1);
-        Wed, 07 Jun 2023 18:50:44 +0000
-Received: from kmjvbox (c-73-93-64-36.hsd1.ca.comcast.net [73.93.64.36])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-        (No client certificate requested)
-        (Authenticated sender: kjlx@templeofstupid.com)
-        by pdx1-sub0-mail-a264.dreamhost.com (Postfix) with ESMTPSA id 4QbxHm3C43z2p
-        for <linux-ext4@vger.kernel.org>; Wed,  7 Jun 2023 11:50:44 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=templeofstupid.com;
-        s=dreamhost; t=1686163844;
-        bh=WDt3+4i1DINQL5h5kVpxR4Ds/PxbHCAHGI5JHcsXfcA=;
-        h=Date:From:To:Cc:Subject:Content-Type;
-        b=rd6aVzLwiglCNjgK/9XmFuNq0/iDT7vxBIMvjcoST+kBvca0qr9P7nLHtIVeM99ev
-         HA4rv6vXRoP+tA0bgf+rbmi3abbWKwuh4JOqnYgKZCk8+M8Mf1KjaNj6OKeAAUhK/5
-         pvKLhplM/bVgrZ4R8+S7dRHC6ECklb9NeN8hOAOc=
-Received: from johansen (uid 1000)
-        (envelope-from kjlx@templeofstupid.com)
-        id e0042
-        by kmjvbox (DragonFly Mail Agent v0.12);
-        Wed, 07 Jun 2023 11:50:41 -0700
-Date:   Wed, 7 Jun 2023 11:50:41 -0700
-From:   Krister Johansen <kjlx@templeofstupid.com>
-To:     Theodore Ts'o <tytso@mit.edu>
-Cc:     Krister Johansen <kjlx@templeofstupid.com>,
-        linux-ext4@vger.kernel.org
-Subject: Re: [e2fsprogs PATCH] resize2fs: use directio when reading superblock
-Message-ID: <20230607185041.GA2023@templeofstupid.com>
-References: <20230605225221.GA5737@templeofstupid.com>
- <20230607133909.GA1309044@mit.edu>
+        with ESMTP id S231659AbjFGX2O (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Jun 2023 19:28:14 -0400
+Received: from mail-qt1-f176.google.com (mail-qt1-f176.google.com [209.85.160.176])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 33BDB2684
+        for <linux-ext4@vger.kernel.org>; Wed,  7 Jun 2023 16:27:27 -0700 (PDT)
+Received: by mail-qt1-f176.google.com with SMTP id d75a77b69052e-3f7a546efb1so7631cf.2
+        for <linux-ext4@vger.kernel.org>; Wed, 07 Jun 2023 16:27:27 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1686180446; x=1688772446;
+        h=in-reply-to:content-transfer-encoding:content-disposition
+         :mime-version:references:message-id:subject:cc:to:from:date
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=voj5Mda8Zfoqf83eL6TpEP6bEfS34qzT4ho4GEckRy8=;
+        b=ixDN5bYNQ1YVF4uYcfMnP9az5vVMlruwnopCnBYoV7O0wZpkAv8IuyLE2q035UPus9
+         mkPljT7YH9XxwO1LKJOh5SoiWW725SqaejkOKSLvHANBJCl+uJs549NsCV860j8fwSti
+         D/DzKWshwiacumwfzLHlwLsxbivWnIkPIe9kGk0rE5T41idzjRnUWZHpWmKSp0KWGlLm
+         mnM8Iw0AC5ljHTPzhO6uQ16my8QQqoMdVwAxHCHX3cwEEIiTbriPLJC2WFdszpX0vmB+
+         AS+q4Sw+fKE5DV61DS8YZhggBI4MWR7InYepHVZM43JJaB2U0pxrWYbpL2YAl8H62FUJ
+         MYEw==
+X-Gm-Message-State: AC+VfDwtWjLQUpZF8nCTCXPw3iVVA6q3LIWyDmaQeYxVqVkTsK4k6tyN
+        5MCbxuv4WMkR8lQ5l74WKeYx
+X-Google-Smtp-Source: ACHHUZ6bssYu3BmODSfk7D3JoJ9AovgnvY3uNrvFLLvCnNUVf2dqD8Ue69PPoyqRe4HMmDod3/Cmnw==
+X-Received: by 2002:ac8:5c16:0:b0:3d8:2352:a661 with SMTP id i22-20020ac85c16000000b003d82352a661mr6003241qti.3.1686180446161;
+        Wed, 07 Jun 2023 16:27:26 -0700 (PDT)
+Received: from localhost (pool-68-160-166-30.bstnma.fios.verizon.net. [68.160.166.30])
+        by smtp.gmail.com with ESMTPSA id i9-20020ac84f49000000b003f018e18c35sm286121qtw.27.2023.06.07.16.27.25
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 07 Jun 2023 16:27:25 -0700 (PDT)
+Date:   Wed, 7 Jun 2023 19:27:24 -0400
+From:   Mike Snitzer <snitzer@kernel.org>
+To:     Sarthak Kukreti <sarthakkukreti@chromium.org>
+Cc:     Jens Axboe <axboe@kernel.dk>,
+        Christoph Hellwig <hch@infradead.org>,
+        Joe Thornber <thornber@redhat.com>,
+        "Michael S. Tsirkin" <mst@redhat.com>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        Jason Wang <jasowang@redhat.com>,
+        Bart Van Assche <bvanassche@google.com>,
+        Dave Chinner <david@fromorbit.com>,
+        linux-kernel@vger.kernel.org, Joe Thornber <ejt@redhat.com>,
+        linux-block@vger.kernel.org, dm-devel@redhat.com,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Stefan Hajnoczi <stefanha@redhat.com>,
+        linux-fsdevel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, Brian Foster <bfoster@redhat.com>,
+        Alasdair Kergon <agk@redhat.com>
+Subject: Re: [PATCH v7 0/5] Introduce provisioning primitives
+Message-ID: <ZIESXNF5anyvJEjm@redhat.com>
+References: <CAJ0trDbspRaDKzTzTjFdPHdB9n0Q9unfu1cEk8giTWoNu3jP8g@mail.gmail.com>
+ <ZHFEfngPyUOqlthr@dread.disaster.area>
+ <CAJ0trDZJQwvAzngZLBJ1hB0XkQ1HRHQOdNQNTw9nK-U5i-0bLA@mail.gmail.com>
+ <ZHYB/6l5Wi+xwkbQ@redhat.com>
+ <CAJ0trDaUOevfiEpXasOESrLHTCcr=oz28ywJU+s+YOiuh7iWow@mail.gmail.com>
+ <ZHYWAGmKhwwmTjW/@redhat.com>
+ <CAG9=OMMnDfN++-bJP3jLmUD6O=Q_ApV5Dr392_5GqsPAi_dDkg@mail.gmail.com>
+ <ZHqOvq3ORETQB31m@dread.disaster.area>
+ <ZHti/MLnX5xGw9b7@redhat.com>
+ <CAG9=OMNv80fOyVixEY01XESnOFzYyfj9j8etHMq_Ap52z4UWNQ@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20230607133909.GA1309044@mit.edu>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <CAG9=OMNv80fOyVixEY01XESnOFzYyfj9j8etHMq_Ap52z4UWNQ@mail.gmail.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Jun 07, 2023 at 09:39:09AM -0400, Theodore Ts'o wrote:
-> On Mon, Jun 05, 2023 at 03:52:21PM -0700, Krister Johansen wrote:
-> > Invocations of resize2fs intermittently report failure due to superblock
-> > checksum mismatches in this author's environment.  This might happen a few
-> > times a week.  The following script can make this happen within minutes.
-> > (It assumes /dev/nvme1n1 is available and not in use by anything else).
-> 
-> What version of e2fsprogs are you using, and what is your environment?
+On Mon, Jun 05 2023 at  5:14P -0400,
+Sarthak Kukreti <sarthakkukreti@chromium.org> wrote:
 
-I hit this originally using e2fsprogs 1.45.5.  That didn't have your
-patch for retrying the superblock read on checksum failure.  I pulled
-that patch in initially, but it did not fully resolve the checksum
-mismatch error.  The test provided in the report was using an EBS volume
-attached to an EC2 instance.  (Let me know what additional environment
-details would be useful, if these are not).
+> On Sat, Jun 3, 2023 at 8:57 AM Mike Snitzer <snitzer@kernel.org> wrote:
+> >
+> > We all just need to focus on your proposal and Joe's dm-thin
+> > reservation design...
+> >
+> > [Sarthak: FYI, this implies that it doesn't really make sense to add
+> > dm-thinp support before Joe's design is implemented.  Otherwise we'll
+> > have 2 different responses to REQ_OP_PROVISION.  The one that is
+> > captured in your patchset isn't adequate to properly handle ensuring
+> > upper layer (like XFS) can depend on the space being available across
+> > snapshot boundaries.]
+> >
+> Ack. Would it be premature for the rest of the series to go through
+> (REQ_OP_PROVISION + support for loop and non-dm-thinp device-mapper
+> targets)? I'd like to start using this as a reference to suggest
+> additions to the virtio-spec for virtio-blk support and start looking
+> at what an ext4 implementation would look like.
 
-> Are you perhaps trying to change the UUID of the file system (for
-> example, in a cloud image environment) in parallel with resizing the
-> file system to fit the size of the block device?
+Please drop the dm-thin.c and dm-snap.c changes.  dm-snap.c would need
+more work to provide the type of guarantee XFS requires across
+snapshot boundaries. I'm inclined to _not_ add dm-snap.c support
+because it is best to just use dm-thin.
 
-The growpart / resize2fs in the reproducer are essentially verbatim from
-our system provisioning scripts.  Unless those modify the UUID, we're
-not taking any explicit action to do so.
+And FYI even your dm-thin patch will be the starting point for the
+dm-thin support (we'll keep attribution to you for all the code in a
+separate patch).
 
-Thanks,
+> Fair points, I certainly don't want to derail this conversation; I'd
+> be happy to see this work merged sooner rather than later.
 
--K
+Once those dm target changes are dropped I think the rest of the
+series is fine to go upstream now.  Feel free to post a v8.
+
+> For posterity, I'll distill what I said above into the following: I'd like
+> a capability for userspace to create thin snapshots that ignore the
+> thin volume's provisioned areas. IOW, an opt-in flag which makes
+> snapshots fallback to what they do today to provide flexibility to
+> userspace to decide the space requirements for the above mentioned
+> scenarios, and at the same time, not adding separate corner case
+> handling for filesystems. But to reiterate, my intent isn't to pile
+> this onto the work you, Mike and Joe have planned; just some insight
+> into why I'm in favor of ideas that reduce the snapshot size.
+
+I think it'd be useful to ignore a thin device's reservation for
+read-only snapshots.  Adding the ability to create read-only thin
+snapshots could make sense (later activations don't necessarily need
+to impose read-only, doing so would require some additional work).
+
+Mike
