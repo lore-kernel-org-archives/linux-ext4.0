@@ -2,90 +2,203 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BB9A7C7EE37
-	for <linux-ext4@archiver.kernel.org>; Thu,  8 Jun 2023 14:18:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 408C1C7EE25
+	for <linux-ext4@archiver.kernel.org>; Thu,  8 Jun 2023 14:45:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236977AbjFHOSV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 8 Jun 2023 10:18:21 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52112 "EHLO
+        id S236585AbjFHOp1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 8 Jun 2023 10:45:27 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39616 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229848AbjFHOSU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Jun 2023 10:18:20 -0400
+        with ESMTP id S236527AbjFHOpZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Jun 2023 10:45:25 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 909462D4A
-        for <linux-ext4@vger.kernel.org>; Thu,  8 Jun 2023 07:18:18 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 816E9273A
+        for <linux-ext4@vger.kernel.org>; Thu,  8 Jun 2023 07:45:23 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-82-39.bstnma.fios.verizon.net [173.48.82.39])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 358EI9HW005452
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 358Ej5Kk022272
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 8 Jun 2023 10:18:10 -0400
+        Thu, 8 Jun 2023 10:45:06 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1686233891; bh=jSoyec+gCpH/ydpZcYnudTmn09deraaUS/IBv+lGVsI=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=eexyniHPxwfcbs9hAwRkkCa3+xb7xnODxkhccPzcSbDOsqw6GWoni6fkUjdnb3a3y
-         r2q1743mg86ZWTqK7pj5M5gOPi0jxgrkJGNwlA/s/IIbXwIO7kITSDVtgPZF0EfKnA
-         UoaU4/AYxD4WRr5klxk532HCv1BQ1Q7Z0zA4yBuybe7ArOQNRHNV2rWbJAc2J68Pu6
-         nnJ1jjCXnDK4IKuK/QAunLEvfd1wTRC4dNv0k9n1V2ADFhTvVSjuRzICdkpCP37rN1
-         ed+QSJgu3VcVPQqkaEpDjwmLJ3MAJMkbenRq8E0CeSOe/6nFcVAdbXKEk9Cmfnh4Yu
-         JMvTY+2hwJGAQ==
+        t=1686235508; bh=7D3ONS90tBxtxvVFSuJRpXjTA614AstPIznp0J//6Eg=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To;
+        b=LVoKt6KagPGCwFswtD8PBQ3oYWmm9gQbfn0r34MLUmolqI00rVzn8tHCqQdzeQbNw
+         joxBhitCDopKhXv0/t+tFwRwrqCLJX8zuTGxn2wqkuN8thxRcE3PpxXrXkxgMtBN2u
+         ra2vytRQNtiW928txOvbfXBgcBLRnJUwEU0zR3s7JMt7Zis+hx6Hw7p34HrEa5vO2q
+         SBK4FZTBTsX6cLNehT+55+xx37StnBrWzV+eTfBpi2iygu3QvIjUqXgGrbLf+sr8iD
+         JIrYSdHcwnoQTo9Z0eN0kNIjLH3c9DHlnymAXmfQME26NAj0v+bb5LT5Va002Yh9SV
+         YHbRC8iR46A/g==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id D841E15C04C3; Thu,  8 Jun 2023 10:18:09 -0400 (EDT)
+        id 53E3615C04C3; Thu,  8 Jun 2023 10:45:05 -0400 (EDT)
+Date:   Thu, 8 Jun 2023 10:45:05 -0400
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc:     bagasdotme@gmail.com, nikolas.kraetzschmar@sap.com, jack@suse.cz,
-        "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 1/2] Revert "ext4: don't clear SB_RDONLY when remounting r/w until quota is re-enabled"
-Date:   Thu,  8 Jun 2023 10:18:04 -0400
-Message-Id: <20230608141805.1434230-1-tytso@mit.edu>
-X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230608044056.GA1418535@mit.edu>
-References: <20230608044056.GA1418535@mit.edu>
+To:     Jan Kara <jack@suse.cz>
+Cc:     Ojaswin Mujoo <ojaswin@linux.ibm.com>, linux-ext4@vger.kernel.org,
+        Ritesh Harjani <riteshh@linux.ibm.com>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Kemeng Shi <shikemeng@huaweicloud.com>,
+        Ritesh Harjani <ritesh.list@gmail.com>
+Subject: Re: [PATCH v2 11/12] ext4: Add allocation criteria 1.5 (CR1_5)
+Message-ID: <20230608144505.GA1422249@mit.edu>
+References: <cover.1685449706.git.ojaswin@linux.ibm.com>
+ <150fdf65c8e4cc4dba71e020ce0859bcf636a5ff.1685449706.git.ojaswin@linux.ibm.com>
+ <20230607102103.gavbiywdudx54opk@quack3>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230607102103.gavbiywdudx54opk@quack3>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This reverts commit a44be64bbecb15a452496f60db6eacfee2b59c79.
+Jan, thanks for the comments to Ojaswin's patch series.  Since I had
+already landed his patch series in my tree and have been testing it,
+I've fixed the obvious issues you've raised in a fixup patch
+(attached).
 
-Link: https://lore.kernel.org/r/653b3359-2005-21b1-039d-c55ca4cffdcc@gmail.com
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/super.c | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+There is one issue which I have not fixed:
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 56a5d1c469fc..05fcecc36244 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -6388,7 +6388,6 @@ static int __ext4_remount(struct fs_context *fc, struct super_block *sb)
- 	struct ext4_mount_options old_opts;
- 	ext4_group_t g;
- 	int err = 0;
--	int enable_rw = 0;
- #ifdef CONFIG_QUOTA
- 	int enable_quota = 0;
- 	int i, j;
-@@ -6575,7 +6574,7 @@ static int __ext4_remount(struct fs_context *fc, struct super_block *sb)
- 			if (err)
- 				goto restore_opts;
+On Wed, Jun 07, 2023 at 12:21:03PM +0200, Jan Kara wrote:
+> > +	for (i = order; i >= min_order; i--) {
+> > +		int frag_order;
+> > +		/*
+> > +		 * Scale down goal len to make sure we find something
+> > +		 * in the free fragments list. Basically, reduce
+> > +		 * preallocations.
+> > +		 */
+> > +		ac->ac_g_ex.fe_len = 1 << i;
+> 
+> I smell some off-by-one issues here. Look fls(1) == 1 so (1 << fls(n)) > n.
+> Hence this loop will actually *grow* the goal allocation length. Also I'm
+> not sure why you have +1 in min_order = fls(ac->ac_o_ex.fe_len) + 1.
+
+Ojaswin, could you take a look this?  Thanks!!
+
+	       	   	       	      - Ted
+
+commit 182d2d90a180838789ed5a19e08c333043d1617a
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Thu Jun 8 10:39:35 2023 -0400
+
+    ext4: clean up mballoc criteria comments
+    
+    Line wrap and slightly clarify the comments describing mballoc's
+    cirtiera.
+    
+    Define EXT4_MB_NUM_CRS as part of the enum, so that it will
+    automatically get updated when criteria is added or removed.
+    
+    Also fix a potential unitialized use of 'cr' variable if
+    CONFIG_EXT4_DEBUG is enabled.
+    
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6a1f013d23f7..45a531446ea2 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -128,47 +128,52 @@ enum SHIFT_DIRECTION {
+ };
  
--			enable_rw = 1;
-+			sb->s_flags &= ~SB_RDONLY;
- 			if (ext4_has_feature_mmp(sb)) {
- 				err = ext4_multi_mount_protect(sb,
- 						le64_to_cpu(es->s_mmp_block));
-@@ -6622,9 +6621,6 @@ static int __ext4_remount(struct fs_context *fc, struct super_block *sb)
- 	if (!test_opt(sb, BLOCK_VALIDITY) && sbi->s_system_blks)
- 		ext4_release_system_zone(sb);
- 
--	if (enable_rw)
--		sb->s_flags &= ~SB_RDONLY;
--
+ /*
+- * Number of criterias defined. For each criteria, mballoc has slightly
+- * different way of finding the required blocks nad usually, higher the
+- * criteria the slower the allocation. We start at lower criterias and keep
+- * falling back to higher ones if we are not able to find any blocks.
+- */
+-#define EXT4_MB_NUM_CRS 5
+-/*
+- * All possible allocation criterias for mballoc. Lower are faster.
++ * For each criteria, mballoc has slightly different way of finding
++ * the required blocks nad usually, higher the criteria the slower the
++ * allocation.  We start at lower criterias and keep falling back to
++ * higher ones if we are not able to find any blocks.  Lower (earlier)
++ * criteria are faster.
+  */
+ enum criteria {
  	/*
- 	 * Reinitialize lazy itable initialization thread based on
- 	 * current settings
--- 
-2.31.0
-
+-	 * Used when number of blocks needed is a power of 2. This doesn't
+-	 * trigger any disk IO except prefetch and is the fastest criteria.
++	 * Used when number of blocks needed is a power of 2. This
++	 * doesn't trigger any disk IO except prefetch and is the
++	 * fastest criteria.
+ 	 */
+ 	CR_POWER2_ALIGNED,
+ 
+ 	/*
+-	 * Tries to lookup in-memory data structures to find the most suitable
+-	 * group that satisfies goal request. No disk IO except block prefetch.
++	 * Tries to lookup in-memory data structures to find the most
++	 * suitable group that satisfies goal request. No disk IO
++	 * except block prefetch.
+ 	 */
+ 	CR_GOAL_LEN_FAST,
+ 
+         /*
+-	 * Same as CR_GOAL_LEN_FAST but is allowed to reduce the goal length to
+-         * the best available length for faster allocation.
++	 * Same as CR_GOAL_LEN_FAST but is allowed to reduce the goal
++         * length to the best available length for faster allocation.
+ 	 */
+ 	CR_BEST_AVAIL_LEN,
+ 
+ 	/*
+-	 * Reads each block group sequentially, performing disk IO if necessary, to
+-	 * find find_suitable block group. Tries to allocate goal length but might trim
+-	 * the request if nothing is found after enough tries.
++	 * Reads each block group sequentially, performing disk IO if
++	 * necessary, to find find_suitable block group. Tries to
++	 * allocate goal length but might trim the request if nothing
++	 * is found after enough tries.
+ 	 */
+ 	CR_GOAL_LEN_SLOW,
+ 
+ 	/*
+-	 * Finds the first free set of blocks and allocates those. This is only
+-	 * used in rare cases when CR_GOAL_LEN_SLOW also fails to allocate
+-	 * anything.
++	 * Finds the first free set of blocks and allocates
++	 * those. This is only used in rare cases when
++	 * CR_GOAL_LEN_SLOW also fails to allocate anything.
+ 	 */
+ 	CR_ANY_FREE,
++
++	/*
++	 * Number of criterias defined.
++	 */
++	EXT4_MB_NUM_CRS
+ };
+ 
+ /* criteria below which we use fast block scanning and avoid unnecessary IO */
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 8a6896d4e9b0..2f9f5dc720cc 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2759,7 +2759,7 @@ static noinline_for_stack int
+ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ {
+ 	ext4_group_t prefetch_grp = 0, ngroups, group, i;
+-	enum criteria cr, new_cr;
++	enum criteria new_cr, cr = CR_GOAL_LEN_FAST;
+ 	int err = 0, first_err = 0;
+ 	unsigned int nr = 0, prefetch_ios = 0;
+ 	struct ext4_sb_info *sbi;
+@@ -2816,12 +2816,13 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 		spin_unlock(&sbi->s_md_lock);
+ 	}
+ 
+-	/* Let's just scan groups to find more-less suitable blocks */
+-	cr = ac->ac_2order ? CR_POWER2_ALIGNED : CR_GOAL_LEN_FAST;
+ 	/*
+-	 * cr == CR_POWER2_ALIGNED try to get exact allocation,
+-	 * cr == CR_ANY_FREE try to get anything
++	 * Let's just scan groups to find more-less suitable blocks We
++	 * start with CR_GOAL_LEN_FAST, unless it is power of 2
++	 * aligned, in which case let's do that faster approach first.
+ 	 */
++	if (ac->ac_2order)
++		cr = CR_POWER2_ALIGNED;
+ repeat:
+ 	for (; cr < EXT4_MB_NUM_CRS && ac->ac_status == AC_STATUS_CONTINUE; cr++) {
+ 		ac->ac_criteria = cr;
