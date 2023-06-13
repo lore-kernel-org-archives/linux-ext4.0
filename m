@@ -2,112 +2,78 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EC9FEC7EE2E
-	for <linux-ext4@archiver.kernel.org>; Tue, 13 Jun 2023 08:13:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 81AE2C88CB6
+	for <linux-ext4@archiver.kernel.org>; Tue, 13 Jun 2023 08:32:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238909AbjFMINN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 13 Jun 2023 04:13:13 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32858 "EHLO
+        id S241232AbjFMIcH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 13 Jun 2023 04:32:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42814 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231517AbjFMINM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Jun 2023 04:13:12 -0400
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6745C126
-        for <linux-ext4@vger.kernel.org>; Tue, 13 Jun 2023 01:13:10 -0700 (PDT)
-Received: from kwepemm600013.china.huawei.com (unknown [172.30.72.57])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4QgLpR4KjHzqTFk;
-        Tue, 13 Jun 2023 16:10:39 +0800 (CST)
-Received: from [10.174.178.46] (10.174.178.46) by
- kwepemm600013.china.huawei.com (7.193.23.68) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2507.23; Tue, 13 Jun 2023 16:13:07 +0800
-Subject: Re: [PATCH v3 4/6] jbd2: Fix wrongly judgement for buffer head
- removing while doing checkpoint
-To:     Theodore Ts'o <tytso@mit.edu>, Zhang Yi <yi.zhang@huaweicloud.com>
-CC:     <linux-ext4@vger.kernel.org>, <adilger.kernel@dilger.ca>,
-        <jack@suse.cz>, <yi.zhang@huawei.com>, <yukuai3@huawei.com>
-References: <20230606135928.434610-1-yi.zhang@huaweicloud.com>
- <20230606135928.434610-5-yi.zhang@huaweicloud.com>
- <20230613043120.GB1584772@mit.edu>
-From:   Zhihao Cheng <chengzhihao1@huawei.com>
-Message-ID: <20002902-39c5-914b-75b0-5a21b5cee25c@huawei.com>
-Date:   Tue, 13 Jun 2023 16:13:06 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101
- Thunderbird/68.5.0
-MIME-Version: 1.0
-In-Reply-To: <20230613043120.GB1584772@mit.edu>
-Content-Type: text/plain; charset="gbk"; format=flowed
-Content-Transfer-Encoding: 8bit
-X-Originating-IP: [10.174.178.46]
-X-ClientProxiedBy: dggems701-chm.china.huawei.com (10.3.19.178) To
- kwepemm600013.china.huawei.com (7.193.23.68)
-X-CFilter-Loop: Reflected
+        with ESMTP id S241263AbjFMIcG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Jun 2023 04:32:06 -0400
+Received: from mail-pl1-x629.google.com (mail-pl1-x629.google.com [IPv6:2607:f8b0:4864:20::629])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7082E188
+        for <linux-ext4@vger.kernel.org>; Tue, 13 Jun 2023 01:31:59 -0700 (PDT)
+Received: by mail-pl1-x629.google.com with SMTP id d9443c01a7336-1b3c0c476d1so19990985ad.1
+        for <linux-ext4@vger.kernel.org>; Tue, 13 Jun 2023 01:31:59 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20221208; t=1686645118; x=1689237118;
+        h=in-reply-to:subject:cc:to:from:message-id:date:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=fAWSkGYmCWKL5bXYvk6CuiJFkQfPXw1vMINiicyg49U=;
+        b=L3JDIHCQLc/kKPQ7RVpu8TO+yLZtzIb+z4Lsb/I1AMVjDhghGweWBGqEyf4rENg0iN
+         nMun24JAlxBaDIJmkyOoIvBpDQUgUWSF/kD/D6SQrkLn23tALsz/SOZJBRmeZ1qFGfjc
+         xODY3EsrD3BavVKhTODyXuoQYwqUNYnjACl07UcSnVJoInE4lTMSlhQP6xVQoaW/qEpm
+         QQQeg24YsBFXKWy8emfuIdsV+9tzl95SIqJDeiZUtae3AWWi6Z3JHOxN0yCm/s+jUW+X
+         Jb5fACuGXHJg0cp0KOF3n0b7JJHR4y9NkYp/bvMNcqsKS5+b+C2KYgAd6gxxTIF/VXOf
+         aMjQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1686645118; x=1689237118;
+        h=in-reply-to:subject:cc:to:from:message-id:date:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=fAWSkGYmCWKL5bXYvk6CuiJFkQfPXw1vMINiicyg49U=;
+        b=Jw4qgvy4Moa09W1IRcc/KKsqhP4bw67mUVmOw0EVXTrgQ8qqFl7fVlSeDrc/CZYjVC
+         +Z1tGHf+zv5s+B6RRF0TeTYpVq55zRpMVUU1NKo8xB9T2g2SwxA7aZ9gFJVdDqU3qqa/
+         xV+mLbJY0v7iMAdP07FMiTt/dDIecuTKEmu6U2wsGSqEXTn2fHtin6pWhbtfkuVPgmvR
+         inb/8oWLYAYoux3ZC69r+1ZQZrgkuv0UdCbfvW5Eirs7Oa5Wv3a+Qf7N0vG/BWsQBGpb
+         nyseUWuf4DspnDsSdXKkXbY2a5OyeRQLgi+ygWJen74n24JnD+KMaNa+tmtOOV1AaaTe
+         ivIQ==
+X-Gm-Message-State: AC+VfDzMAdJnXZt3dPNupuSaL/yNSMLy6cJN1wHJqt6+I2jULkMEfWVF
+        hvK9fS8jBgxUKTJnLn3GtHHCfnSe/YI=
+X-Google-Smtp-Source: ACHHUZ5GhjAb2nQsY9imH9PlskIZGrkImeP7O5SouKtoTau4bmv/MtOsJLctmWKziDbS6JTfZaXdMQ==
+X-Received: by 2002:a17:902:8544:b0:1b3:7def:3754 with SMTP id d4-20020a170902854400b001b37def3754mr8645186plo.28.1686645118473;
+        Tue, 13 Jun 2023 01:31:58 -0700 (PDT)
+Received: from dw-tp ([129.41.58.19])
+        by smtp.gmail.com with ESMTPSA id j3-20020a170902da8300b001ab01598f40sm9589295plx.173.2023.06.13.01.31.56
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 13 Jun 2023 01:31:57 -0700 (PDT)
+Date:   Tue, 13 Jun 2023 19:27:23 +0530
+Message-Id: <87ttvb5ut8.fsf@doe.com>
+From:   Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+To:     Christoph Hellwig <hch@lst.de>
+Cc:     Christoph Hellwig <hch@lst.de>, tytso@mit.edu,
+        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: set FMODE_CAN_ODIRECT instead of a dummy direct_IO method
+In-Reply-To: <20230613054700.GA14648@lst.de>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-ÔÚ 2023/6/13 12:31, Theodore Ts'o Ð´µÀ:
-> There is something about this patch which is causing test runs to hang
-> when running "gce-xfstests -c ext4/adv -C 10 generic/475" at least
-> 60-70% of the time.
-> 
-> When I took a closer look, the problem seems to be e2fsck is hanging
-> after a SEGV when running e2fsck -nf on the block device.  This then
-> causes the check script to hang, until the test appliance's safety
-> timer triggers and forces a shutdown of the test VM and aborts the
-> test run.
-> 
-> The cause of the hang is clearly an e2fsprogs bug --- no matter how
-> corrupted the file system is, e2fsck should never crash or hang.  So
-> something is clearly going wrong with e2fsck:
-> 
->      ...
->      Symlink /p1/dc/d14/dee/l154 (inode #2898) is invalid.
->      Clear? no
-> 
->      Entry 'l154' in /p1/dc/d14/dee (2753) has an incorrect filetype (was 7, should be 0).
->      Fix? no
-> 
->      corrupted size vs. prev_size
->      Signal (6) SIGABRT si_code=SI_TKILL
-> 
->      (Note: "corrutped size vs prev_size" is issued by glibc when
->      malloc's internal data structures have been corrupted.  So
->      there is definitely something going very wrong with e2fsck.)
->      
-> That being said, if I run the same test on the parent commit (patch
-> 3/6, jbd2: remove journal_clean_one_cp_list()), e2fsck does *not* hang
-> or crash, and the regression tests complete.  So this patch is
-> changing the behavior of the kernel in terms of the file system that
-> is left behind after a large number of injected I/O errors.
-> 
-> My plan therefore is to drop patches 4/6 through 6/6 of this patch
-> series.  This will allow at least the "long standing metadata
-> corruption issue that happens from to time" to be addressed, and it
-> will give us time study what's going on here in more detail.  I've
-> captured the compressed file system image which is causing e2fsck
-> (version 1.47.0) to corrupt malloc's data structure, and I'll try see
-> what using Address Sanitizer or valgrind show about what's going on.
-> 
+Christoph Hellwig <hch@lst.de> writes:
 
-Hi Ted, I tried to run './check generic/475' many rounds(1.47.0, 
-5-Feb-2023), and I cannot reproduce the problem with this patch. Could 
-you send me a compressed image which can trigger the problem with 'fsck 
--fn'?
+> On Tue, Jun 13, 2023 at 11:00:19AM +0530, Ritesh Harjani wrote:
+>> why do we require .direct_IO function op for any of the dax_aops?
+>> IIUC, any inode if it supports DAX i.e. IS_DAX(inode), then it takes the
+>> separate path in file read/write iter path.
+>>
+>> so it should never do ->direct_IO on an inode which supports DAX right?
+>
+> do_dentry_open rejects opens with O_DIRECT if FMODE_CAN_ODIRECT is
+> not set.  So we either needs to set that manually or because there is a
+> ->direct_IO if we want to keep supporting O_DIRECT opens for DAX
+> files, which we've traditionally supported.
 
-I agree to make clear the problem first before applying this patch.
+Ok, so for DAX it was mainly to support file opens with O_DIRECT semantics.
 
-> Looking at the patch, it looks pretty innocuous, and I don't
-> understand how this could be making a significant enough difference
-> that it's causing e2fsck, which had previously been working fine, to
-> now start tossing its cookies.  If you could double check the patch
-> and see you see anything that I might have missed in my code review,
-> I'd really appreciate it.
-> 
-> Thanks,
-> 
-> 					- Ted
-> 
-> .
-> 
-
+Thanks
+-ritesh
