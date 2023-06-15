@@ -2,123 +2,70 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 97599EB64DB
-	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jun 2023 11:43:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 89924EB64DC
+	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jun 2023 15:00:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1344438AbjFOLnP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 15 Jun 2023 07:43:15 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53182 "EHLO
+        id S240387AbjFOPAY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 15 Jun 2023 11:00:24 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41732 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1344373AbjFOLme (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Jun 2023 07:42:34 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 22132448A;
-        Thu, 15 Jun 2023 04:39:50 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 24ED863A0B;
-        Thu, 15 Jun 2023 11:39:17 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EB2BAC433CB;
-        Thu, 15 Jun 2023 11:39:15 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1686829156;
-        bh=WV/1Qmhz1L4Aa5wT8rBkJJICwmIUKm7sp8KSy9uZycs=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=BvbQoKFD7g0yTacI01LsuIbwLmnS7XhcrGpedKp7mERqpSxxehmo2LBuN/otXo8kU
-         TZEDWLDDLEuoeKrKLhvgmSjkg/iajF+WUEwcwpK9wubyeQw2l3fAhFJppmMbUETZly
-         66SQ4iaWOdmD5JjVrel8jQOl2zpem+z7Hxmflo4fRynqA2ksdzixxayp2A1gylazPJ
-         pG/5AJchS8yMx/03pdxxTTssg1ura+x+9PvAFOzi3zP89DEX40R1PgcBAGw4Lic0p7
-         DGtELicb8FoE/jHNLiboTQw2fdH5iGGLp/28ghFR888/LKjaAFWQBcMPj8z4kIB+U+
-         Ktykg72+SPGWw==
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.15 10/10] ext4: enable the lazy init thread when remounting read/write
-Date:   Thu, 15 Jun 2023 07:38:54 -0400
-Message-Id: <20230615113854.649370-10-sashal@kernel.org>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230615113854.649370-1-sashal@kernel.org>
-References: <20230615113854.649370-1-sashal@kernel.org>
+        with ESMTP id S1345203AbjFOPAJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Jun 2023 11:00:09 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9E04E2943
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Jun 2023 08:00:06 -0700 (PDT)
+Received: from cwcc.thunk.org (pool-173-48-128-67.bstnma.fios.verizon.net [173.48.128.67])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 35FExxcY026885
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 15 Jun 2023 11:00:00 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1686841201; bh=qC8NN7fxuUhWVEK//rGqo7hDx93g+QEST3XI0PJlCX8=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References;
+        b=aGyFglYYM63OuQIWyB497lOyC9/RksmWL9lKbUnwjD3VPvKT3ampziYm2zb/SsR33
+         fsu0S/44Og6tVXtiTQfRlYtcp7fXc0J+RsUPqydl0Li5/zuW32+d/socbCuBaqiE2K
+         7k4sTg9EUDByTa1Rng3E3KkGFKNCPalCcCDb2TG7hkcXKjQwv0k8IZGL2jxFd5jrju
+         YH+1PQX35qHZdZzEiXsZ4PDw8ov4ZefrQ0iXh1GyAPyzMrPfeEUbbN1D0fnlTUukS4
+         8A+Ks9ZdUp+iEizMTGJVUBFYQIT9USM4eUrV5SUmnx1fGhPMI6NWW1hFFBiVnEObcU
+         4PzUjxS9gV/oQ==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id D153E15C02DD; Thu, 15 Jun 2023 10:59:59 -0400 (EDT)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        "Fabio M. De Francesco" <fmdefrancesco@gmail.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>,
+        syzbot+4acc7d910e617b360859@syzkaller.appspotmail.com
+Subject: Re: [PATCH] ext4: Drop the call to ext4_error() from ext4_get_group_info()
+Date:   Thu, 15 Jun 2023 10:59:54 -0400
+Message-Id: <168683994079.282246.8360074850989025705.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <20230614100446.14337-1-fmdefrancesco@gmail.com>
+References: <20230614100446.14337-1-fmdefrancesco@gmail.com>
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-X-stable-base: Linux 5.15.117
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Theodore Ts'o <tytso@mit.edu>
 
-[ Upstream commit eb1f822c76beeaa76ab8b6737ab9dc9f9798408c ]
+On Wed, 14 Jun 2023 12:02:55 +0200, Fabio M. De Francesco wrote:
+> A recent patch added a call to ext4_error() which is problematic since
+> some callers of the ext4_get_group_info() function may be holding a
+> spinlock, whereas ext4_error() must never be called in atomic context.
+> 
+> This triggered a report from Syzbot: "BUG: sleeping function called from
+> invalid context in ext4_update_super" (see the link below).
+> 
+> [...]
 
-In commit a44be64bbecb ("ext4: don't clear SB_RDONLY when remounting
-r/w until quota is re-enabled") we defer clearing tyhe SB_RDONLY flag
-in struct super.  However, we didn't defer when we checked sb_rdonly()
-to determine the lazy itable init thread should be enabled, with the
-next result that the lazy inode table initialization would not be
-properly started.  This can cause generic/231 to fail in ext4's
-nojournal mode.
+Applied, thanks!
 
-Fix this by moving when we decide to start or stop the lazy itable
-init thread to after we clear the SB_RDONLY flag when we are
-remounting the file system read/write.
+[1/1] ext4: Drop the call to ext4_error() from ext4_get_group_info()
+      commit: f451fd97dd2b78f286379203a47d9d295c467255
 
-Fixes a44be64bbecb ("ext4: don't clear SB_RDONLY when remounting r/w until...")
-
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Link: https://lore.kernel.org/r/20230527035729.1001605-1-tytso@mit.edu
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/ext4/super.c | 24 ++++++++++++------------
- 1 file changed, 12 insertions(+), 12 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index bf8a780cd69b6..ebe2abc064e7b 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5962,18 +5962,6 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 		}
- 	}
- 
--	/*
--	 * Reinitialize lazy itable initialization thread based on
--	 * current settings
--	 */
--	if (sb_rdonly(sb) || !test_opt(sb, INIT_INODE_TABLE))
--		ext4_unregister_li_request(sb);
--	else {
--		ext4_group_t first_not_zeroed;
--		first_not_zeroed = ext4_has_uninit_itable(sb);
--		ext4_register_li_request(sb, first_not_zeroed);
--	}
--
- 	/*
- 	 * Handle creation of system zone data early because it can fail.
- 	 * Releasing of existing data is done when we are sure remount will
-@@ -6011,6 +5999,18 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	if (enable_rw)
- 		sb->s_flags &= ~SB_RDONLY;
- 
-+	/*
-+	 * Reinitialize lazy itable initialization thread based on
-+	 * current settings
-+	 */
-+	if (sb_rdonly(sb) || !test_opt(sb, INIT_INODE_TABLE))
-+		ext4_unregister_li_request(sb);
-+	else {
-+		ext4_group_t first_not_zeroed;
-+		first_not_zeroed = ext4_has_uninit_itable(sb);
-+		ext4_register_li_request(sb, first_not_zeroed);
-+	}
-+
- 	if (!ext4_has_feature_mmp(sb) || sb_rdonly(sb))
- 		ext4_stop_mmpd(sbi);
- 
+Best regards,
 -- 
-2.39.2
-
+Theodore Ts'o <tytso@mit.edu>
