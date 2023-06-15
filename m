@@ -2,46 +2,45 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 22F6CEB64DA
-	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jun 2023 15:00:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4EEEEEB64DA
+	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jun 2023 15:01:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1344021AbjFOPAg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 15 Jun 2023 11:00:36 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41858 "EHLO
+        id S240542AbjFOPA7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 15 Jun 2023 11:00:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41948 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244879AbjFOPA3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Jun 2023 11:00:29 -0400
+        with ESMTP id S1344708AbjFOPAe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Jun 2023 11:00:34 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EC681273C
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Jun 2023 08:00:27 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DC0812960
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Jun 2023 08:00:31 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-128-67.bstnma.fios.verizon.net [173.48.128.67])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 35FExxAe026886
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 35FF00hu026909
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 15 Jun 2023 11:00:00 -0400
+        Thu, 15 Jun 2023 11:00:01 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1686841202; bh=tgle4UqVECPLWQfg/ZwxNkNJR442spWrhIwFYeeKZCY=;
+        t=1686841202; bh=4/TATINxJcGIc+5Qft9NYQhj4JIYqsumuVH6M49lT8k=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=Ikc+QaXQlvQ3x3NFjmeKou5uxhvqZkJ1q1Zn0r1YZw8av5OTMZUNM2ci7frlFJCDR
-         3C7u33pbPL5N+ZwCyQiODtXUqUDg9nMxaBQBGvoVmjgZaXwnzeMaC6rOm9a04dBjs/
-         x8myv+eERKdyBvtH+iDjkmarhviwCkvYZlSkxp5TPk1NQxSdxItup4bxBAXb74YVIi
-         A3IaaAshV4XqgwJqnczbRSAMBiUjx4O93uHe03gNI8TpmMYdIDiCboo0Qh3QuVbQMi
-         RNgEXbQvqoyhJxi+DfOXD+bZdBbloXizAocYX31GnxivcbZS4jiUWE/T/p80/+qrXE
-         01F7Q1b9OxKLA==
+        b=I/42DkFibUOu0eh9CCMUihY4OoOiLw/kUUN28hHtH2nNIZBt+y7B+VTob009nunpw
+         D7PbXOt3IMf6CGp2oFHKzyQtLd4Jll77dWmzb8xNU2lPaty6BmwDiPnz4wLofQaT4+
+         NrKvt6oB10jU7c5clkqkbn8yClNZfqF/cABQWchMcc46sV4bWu13SYe4uiJP9lG0zI
+         HVAKq34/9c0fDQfnWlGhlkqrUf1ItRErbBc5LeKpo+oqQeAn35CP0IIqDg2Pj74WFN
+         KHfVDZRKwJxojn+CXLRBfGBeapep/LwxdWG6JS++cm2EgDvOw9WCb55CzJD0h70nxw
+         H970Vfi6opgDQ==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id CF96215C02DC; Thu, 15 Jun 2023 10:59:59 -0400 (EDT)
+        id D703C15C02E1; Thu, 15 Jun 2023 10:59:59 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     adilger.kernel@dilger.ca, jack@suse.com, tudor.ambarus@linaro.org,
-        Zhihao Cheng <chengzhihao1@huawei.com>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, yi.zhang@huawei.com
-Subject: Re: [PATCH v3 0/6] ext4: Fix stale buffer loading from last failed
-Date:   Thu, 15 Jun 2023 10:59:53 -0400
-Message-Id: <168683994076.282246.1635937592564086219.b4-ty@mit.edu>
+To:     linux-ext4@vger.kernel.org, Zhang Yi <yi.zhang@huaweicloud.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
+        jack@suse.cz, yi.zhang@huawei.com, yukuai3@huawei.com
+Subject: Re: [PATCH v5 0/3] ext4, jbd2: journal cycled record transactions between each mount
+Date:   Thu, 15 Jun 2023 10:59:57 -0400
+Message-Id: <168683994076.282246.11277662662888331081.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230315013128.3911115-1-chengzhihao1@huawei.com>
-References: <20230315013128.3911115-1-chengzhihao1@huawei.com>
+In-Reply-To: <20230322013353.1843306-1-yi.zhang@huaweicloud.com>
+References: <20230322013353.1843306-1-yi.zhang@huaweicloud.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -50,35 +49,28 @@ List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
 
-On Wed, 15 Mar 2023 09:31:22 +0800, Zhihao Cheng wrote:
-> Patch 1 fixes reusing stale buffer heads from last failed mounting.
-> Patch 2~4 reconstructs 'j_format_version' initialization and checking
-> in loading process.
-> 
-> v1->v2:
->   Adopt suggestions from Tudor, add fix tag and corrupt 'stable' field
->   in patch 1.
->   Reserve empty lines in patch 4.
+On Wed, 22 Mar 2023 09:33:50 +0800, Zhang Yi wrote:
+> v4->v5:
+>  - Update doc about journal superblock in journal.rst.
+> v3->v4:
+>  - Remove journal_cycle_record mount option, always enable it on ext4.
 > v2->v3:
->   Split block device checking cleanup into a new patch (2th).
->   Add 'Reviewed-by' tag in patch 3-6.
+>  - Prevent warning if mount old image with journal_cycle_record enabled.
+>  - Limit this mount option into ext4 iamge only.
+> v1->v2:
+>  - Fix the format type warning.
+>  - Add more check of journal_cycle_record mount options in remount.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/6] ext4: Fix reusing stale buffer heads from last failed mounting
-      commit: ffea255f4052e6416a4b5738925337afbccd795a
-[2/6] ext4: ext4_put_super: Remove redundant checking for 'sbi->s_journal_bdev'
-      commit: a8f17d78525adf325c80f9dd1db469d337a5ce49
-[3/6] jbd2: remove unused feature macros
-      commit: 870a42846c1055c4ff9dfd492a0929c52a367d63
-[4/6] jbd2: switch to check format version in superblock directly
-      commit: 6014c2204f10b1199e15ab61aa30274a14999b1d
-[5/6] jbd2: factor out journal initialization from journal_get_superblock()
-      commit: 51bacdba23d85af2a9a145d97bfb77e6e85c98ad
-[6/6] jbd2: remove j_format_version
-      commit: 1f15ee267c0498016cc4aee2cdcc18e56ff42bae
+[1/3] jbd2: continue to record log between each mount
+      commit: 0311c8729c0a35114d64a64f8977e7d9bec926df
+[2/3] ext4: add journal cycled recording support
+      commit: b956fe38a26861bfe13e7e83fbeadf9d2e159366
+[3/3] ext4: update doc about journal superblock description
+      commit: ecdae6e9d63414b263ab2848ba3835e727eef2f9
 
 Best regards,
 -- 
