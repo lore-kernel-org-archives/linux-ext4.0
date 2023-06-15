@@ -2,47 +2,45 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 89924EB64DC
-	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jun 2023 15:00:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4FB34EB64D9
+	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jun 2023 15:00:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240387AbjFOPAY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 15 Jun 2023 11:00:24 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41732 "EHLO
+        id S241397AbjFOPAZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 15 Jun 2023 11:00:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41790 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1345203AbjFOPAJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Jun 2023 11:00:09 -0400
+        with ESMTP id S1345230AbjFOPAP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Jun 2023 11:00:15 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9E04E2943
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Jun 2023 08:00:06 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 882AF1FFA
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Jun 2023 08:00:13 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-128-67.bstnma.fios.verizon.net [173.48.128.67])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 35FExxcY026885
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 35FExwFv026872
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 15 Jun 2023 11:00:00 -0400
+        Thu, 15 Jun 2023 10:59:59 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1686841201; bh=qC8NN7fxuUhWVEK//rGqo7hDx93g+QEST3XI0PJlCX8=;
+        t=1686841200; bh=R3yQqPbmF4x4qIyyK84rjCG1jL5pRDSBd4Q9G4EQuuE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=aGyFglYYM63OuQIWyB497lOyC9/RksmWL9lKbUnwjD3VPvKT3ampziYm2zb/SsR33
-         fsu0S/44Og6tVXtiTQfRlYtcp7fXc0J+RsUPqydl0Li5/zuW32+d/socbCuBaqiE2K
-         7k4sTg9EUDByTa1Rng3E3KkGFKNCPalCcCDb2TG7hkcXKjQwv0k8IZGL2jxFd5jrju
-         YH+1PQX35qHZdZzEiXsZ4PDw8ov4ZefrQ0iXh1GyAPyzMrPfeEUbbN1D0fnlTUukS4
-         8A+Ks9ZdUp+iEizMTGJVUBFYQIT9USM4eUrV5SUmnx1fGhPMI6NWW1hFFBiVnEObcU
-         4PzUjxS9gV/oQ==
+        b=Cf38PjhfJwaLL+2rOAuIGAgYQchpZjimnL6brOmWY8SuEDU2DrUU4KdTp8vIKVA+t
+         VAtuZ31uyPeOgCJWjmSI6J5oofT7zlOfrUfL9c08bSm4bjb/hXHXYQSygiITbj4lYZ
+         Fu7Il1/DZ6Uzkq1mg7Yin66QjbwbeWl6t9JSPmuhIb262AwvP4KBVFg2Hvn6cViqlx
+         VlmBt1DA5fvUdbBNpUH60q0eVw8an8+IrnQCQp31/IDuTwzdcVMKjUNYOIutlSjPU9
+         p2/3enXitMVL4kjDW0pXwda/OPYmis7s6BxRUMSjszDj2oia0syQO7842uat1CB3/e
+         r+pIwCung02Kg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id D153E15C02DD; Thu, 15 Jun 2023 10:59:59 -0400 (EDT)
+        id A75CC15C00B0; Thu, 15 Jun 2023 10:59:58 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        "Fabio M. De Francesco" <fmdefrancesco@gmail.com>
+To:     linux-ext4@vger.kernel.org, Brian Foster <bfoster@redhat.com>
 Cc:     "Theodore Ts'o" <tytso@mit.edu>,
-        syzbot+4acc7d910e617b360859@syzkaller.appspotmail.com
-Subject: Re: [PATCH] ext4: Drop the call to ext4_error() from ext4_get_group_info()
-Date:   Thu, 15 Jun 2023 10:59:54 -0400
-Message-Id: <168683994079.282246.8360074850989025705.b4-ty@mit.edu>
+        Ritesh Harjani <ritesh.list@gmail.com>, Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2] ext4: allow concurrent unaligned dio overwrites
+Date:   Thu, 15 Jun 2023 10:59:52 -0400
+Message-Id: <168683994075.282246.17689753653419770593.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230614100446.14337-1-fmdefrancesco@gmail.com>
-References: <20230614100446.14337-1-fmdefrancesco@gmail.com>
+In-Reply-To: <20230314130759.642710-1-bfoster@redhat.com>
+References: <20230314130759.642710-1-bfoster@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -51,20 +49,20 @@ List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
 
-On Wed, 14 Jun 2023 12:02:55 +0200, Fabio M. De Francesco wrote:
-> A recent patch added a call to ext4_error() which is problematic since
-> some callers of the ext4_get_group_info() function may be holding a
-> spinlock, whereas ext4_error() must never be called in atomic context.
-> 
-> This triggered a report from Syzbot: "BUG: sleeping function called from
-> invalid context in ext4_update_super" (see the link below).
+On Tue, 14 Mar 2023 09:07:59 -0400, Brian Foster wrote:
+> We've had reports of significant performance regression of sub-block
+> (unaligned) direct writes due to the added exclusivity restrictions
+> in ext4. The purpose of the exclusivity requirement for unaligned
+> direct writes is to avoid data corruption caused by unserialized
+> partial block zeroing in the iomap dio layer across overlapping
+> writes.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: Drop the call to ext4_error() from ext4_get_group_info()
-      commit: f451fd97dd2b78f286379203a47d9d295c467255
+[1/1] ext4: allow concurrent unaligned dio overwrites
+      commit: d3dfa834d0c6c6a168a745185fe6a64c901c186f
 
 Best regards,
 -- 
