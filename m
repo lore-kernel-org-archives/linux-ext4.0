@@ -2,45 +2,46 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4EEEEEB64DA
-	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jun 2023 15:01:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 40CBBEB64D9
+	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jun 2023 15:01:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240542AbjFOPA7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 15 Jun 2023 11:00:59 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41948 "EHLO
+        id S241371AbjFOPBA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 15 Jun 2023 11:01:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42084 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1344708AbjFOPAe (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Jun 2023 11:00:34 -0400
+        with ESMTP id S1344392AbjFOPAo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Jun 2023 11:00:44 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DC0812960
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Jun 2023 08:00:31 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C763F2944
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Jun 2023 08:00:34 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-128-67.bstnma.fios.verizon.net [173.48.128.67])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 35FF00hu026909
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 35FExxWP026895
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 15 Jun 2023 11:00:01 -0400
+        Thu, 15 Jun 2023 11:00:00 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1686841202; bh=4/TATINxJcGIc+5Qft9NYQhj4JIYqsumuVH6M49lT8k=;
+        t=1686841202; bh=bqsSWsv2FgVt7A/NVFwu5x20dKwoSJZHizGcwbcBX6g=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=I/42DkFibUOu0eh9CCMUihY4OoOiLw/kUUN28hHtH2nNIZBt+y7B+VTob009nunpw
-         D7PbXOt3IMf6CGp2oFHKzyQtLd4Jll77dWmzb8xNU2lPaty6BmwDiPnz4wLofQaT4+
-         NrKvt6oB10jU7c5clkqkbn8yClNZfqF/cABQWchMcc46sV4bWu13SYe4uiJP9lG0zI
-         HVAKq34/9c0fDQfnWlGhlkqrUf1ItRErbBc5LeKpo+oqQeAn35CP0IIqDg2Pj74WFN
-         KHfVDZRKwJxojn+CXLRBfGBeapep/LwxdWG6JS++cm2EgDvOw9WCb55CzJD0h70nxw
-         H970Vfi6opgDQ==
+        b=iqDPo8W9mMYI61Hl2BS738tm5WDV7yRC3GfuDBSkFzHKFYbS5YGGSW+6uszkEC8EF
+         uzv78BkkyCujPCQxJTmZ/N8rz+pJuiFOuOgW9mpIV4qcx7+xAbFHhWE8TIoRo8uQze
+         MWAD7ZN9mwCYtNZoZ17YNB528hMT3vFhP3JcpEliNNoSK9BhmFVr2dy3vs6vaNrhnK
+         pNx5+EcVp2pjta7NimPyQs9Wew4n8bam7y6wnMXE2xDLeic3rzsLbQ4ReCKRmSpao1
+         j+ChPXV5T13bmz30pke56NIgT5TUA97N4y4l6ydlE++GeLjcuFNChi/72qzKNRcbsp
+         cRg5GepOTow3Q==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id D703C15C02E1; Thu, 15 Jun 2023 10:59:59 -0400 (EDT)
+        id D365515C02DF; Thu, 15 Jun 2023 10:59:59 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org, Zhang Yi <yi.zhang@huaweicloud.com>
+To:     linux-ext4@vger.kernel.org, Baokun Li <libaokun1@huawei.com>
 Cc:     "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
-        jack@suse.cz, yi.zhang@huawei.com, yukuai3@huawei.com
-Subject: Re: [PATCH v5 0/3] ext4, jbd2: journal cycled record transactions between each mount
-Date:   Thu, 15 Jun 2023 10:59:57 -0400
-Message-Id: <168683994076.282246.11277662662888331081.b4-ty@mit.edu>
+        jack@suse.cz, ritesh.list@gmail.com, linux-kernel@vger.kernel.org,
+        yi.zhang@huawei.com, yangerkun@huawei.com, yukuai3@huawei.com
+Subject: Re: [PATCH v3 0/2] ext4: fix quotas leak in __ext4_fill_super()
+Date:   Thu, 15 Jun 2023 10:59:55 -0400
+Message-Id: <168683994077.282246.1824040252108506473.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230322013353.1843306-1-yi.zhang@huaweicloud.com>
-References: <20230322013353.1843306-1-yi.zhang@huaweicloud.com>
+In-Reply-To: <20230327141630.156875-1-libaokun1@huawei.com>
+References: <20230327141630.156875-1-libaokun1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -49,28 +50,24 @@ List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
 
-On Wed, 22 Mar 2023 09:33:50 +0800, Zhang Yi wrote:
-> v4->v5:
->  - Update doc about journal superblock in journal.rst.
-> v3->v4:
->  - Remove journal_cycle_record mount option, always enable it on ext4.
-> v2->v3:
->  - Prevent warning if mount old image with journal_cycle_record enabled.
->  - Limit this mount option into ext4 iamge only.
-> v1->v2:
->  - Fix the format type warning.
->  - Add more check of journal_cycle_record mount options in remount.
+On Mon, 27 Mar 2023 22:16:28 +0800, Baokun Li wrote:
+> V1->V2:
+> 	Add judgment for CONFIG_QUOTA to avoid warning
+> 	"label 'failed_mount9' defined but not used".
+> 	(Reported-by: kernel test robot <lkp@intel.com>)
+> V2->V3:
+> 	By adding __maybe_unused to silence possible compilation
+> 	complain in patch one, instead of adding the judgment.
+> 	(Suggested by Jan Kara).
 > 
 > [...]
 
 Applied, thanks!
 
-[1/3] jbd2: continue to record log between each mount
-      commit: 0311c8729c0a35114d64a64f8977e7d9bec926df
-[2/3] ext4: add journal cycled recording support
-      commit: b956fe38a26861bfe13e7e83fbeadf9d2e159366
-[3/3] ext4: update doc about journal superblock description
-      commit: ecdae6e9d63414b263ab2848ba3835e727eef2f9
+[1/2] ext4: turning quotas off if mount failed after enable quotas
+      commit: e39a0c8d9cc298c5a4afdeb416441091ae3f1fcb
+[2/2] ext4: refactoring to use the unified helper ext4_quotas_off()
+      commit: 63ec000b35a3c6cbb42b2e545c7c18f3d36159d6
 
 Best regards,
 -- 
