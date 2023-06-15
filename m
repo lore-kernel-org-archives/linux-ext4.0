@@ -2,73 +2,176 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 40CBBEB64D9
-	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jun 2023 15:01:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1E62DEB64D9
+	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jun 2023 17:20:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241371AbjFOPBA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 15 Jun 2023 11:01:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42084 "EHLO
+        id S231852AbjFORUH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 15 Jun 2023 13:20:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38504 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1344392AbjFOPAo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Jun 2023 11:00:44 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C763F2944
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Jun 2023 08:00:34 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-173-48-128-67.bstnma.fios.verizon.net [173.48.128.67])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 35FExxWP026895
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 15 Jun 2023 11:00:00 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1686841202; bh=bqsSWsv2FgVt7A/NVFwu5x20dKwoSJZHizGcwbcBX6g=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=iqDPo8W9mMYI61Hl2BS738tm5WDV7yRC3GfuDBSkFzHKFYbS5YGGSW+6uszkEC8EF
-         uzv78BkkyCujPCQxJTmZ/N8rz+pJuiFOuOgW9mpIV4qcx7+xAbFHhWE8TIoRo8uQze
-         MWAD7ZN9mwCYtNZoZ17YNB528hMT3vFhP3JcpEliNNoSK9BhmFVr2dy3vs6vaNrhnK
-         pNx5+EcVp2pjta7NimPyQs9Wew4n8bam7y6wnMXE2xDLeic3rzsLbQ4ReCKRmSpao1
-         j+ChPXV5T13bmz30pke56NIgT5TUA97N4y4l6ydlE++GeLjcuFNChi/72qzKNRcbsp
-         cRg5GepOTow3Q==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id D365515C02DF; Thu, 15 Jun 2023 10:59:59 -0400 (EDT)
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org, Baokun Li <libaokun1@huawei.com>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
-        jack@suse.cz, ritesh.list@gmail.com, linux-kernel@vger.kernel.org,
-        yi.zhang@huawei.com, yangerkun@huawei.com, yukuai3@huawei.com
-Subject: Re: [PATCH v3 0/2] ext4: fix quotas leak in __ext4_fill_super()
-Date:   Thu, 15 Jun 2023 10:59:55 -0400
-Message-Id: <168683994077.282246.1824040252108506473.b4-ty@mit.edu>
-X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230327141630.156875-1-libaokun1@huawei.com>
-References: <20230327141630.156875-1-libaokun1@huawei.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+        with ESMTP id S238896AbjFORTz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Jun 2023 13:19:55 -0400
+Received: from mga14.intel.com (mga14.intel.com [192.55.52.115])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A05A02710
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Jun 2023 10:19:54 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1686849594; x=1718385594;
+  h=date:from:to:cc:subject:message-id;
+  bh=eh1vA6L1/F/ej7wg56IoXQc3YHvAcaIMKtLA0JNh33g=;
+  b=J8+m421ULqdSgz8CD+NiakS+W93jCkFSTapmyXvmFdnVAN1I7JhHso8B
+   kIPz6nzB3StMK1ZcoWRe43ExtF1c6+1mlQRTr4nI/9NvGAG/YBjxwr2Hl
+   KtNmO19Q6v1z9KFmeDhm9DSD94z1iXV1o99Q05bTA1zLx9BQ27OnetAOy
+   oMLRLKRlcPildXjUeSEIb8TXQm6kY9cBWpSeAB1Du4eZRcGyoqMFQLxI7
+   yq5sjAPhicjuezrgcSMYiy91mIX5F5DW1xMi/rUpGYmU9mZ352pESbocO
+   q3FyVziyhQ7gTuxJ8LDn/cXvlzsxgLwFMbk7SobIKI8A5iPIZqTtfigIY
+   A==;
+X-IronPort-AV: E=McAfee;i="6600,9927,10742"; a="358981192"
+X-IronPort-AV: E=Sophos;i="6.00,245,1681196400"; 
+   d="scan'208";a="358981192"
+Received: from orsmga006.jf.intel.com ([10.7.209.51])
+  by fmsmga103.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 15 Jun 2023 10:17:42 -0700
+X-ExtLoop1: 1
+X-IronPort-AV: E=McAfee;i="6600,9927,10742"; a="689856419"
+X-IronPort-AV: E=Sophos;i="6.00,245,1681196400"; 
+   d="scan'208";a="689856419"
+Received: from lkp-server01.sh.intel.com (HELO 783282924a45) ([10.239.97.150])
+  by orsmga006.jf.intel.com with ESMTP; 15 Jun 2023 10:17:40 -0700
+Received: from kbuild by 783282924a45 with local (Exim 4.96)
+        (envelope-from <lkp@intel.com>)
+        id 1q9qbM-0000CK-13;
+        Thu, 15 Jun 2023 17:17:40 +0000
+Date:   Fri, 16 Jun 2023 01:16:52 +0800
+From:   kernel test robot <lkp@intel.com>
+To:     "Theodore Ts'o" <tytso@mit.edu>
+Cc:     linux-ext4@vger.kernel.org
+Subject: [tytso-ext4:dev] BUILD SUCCESS
+ 63ec000b35a3c6cbb42b2e545c7c18f3d36159d6
+Message-ID: <202306160150.q5xJ0sWl-lkp@intel.com>
+User-Agent: s-nail v14.9.24
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
+branch HEAD: 63ec000b35a3c6cbb42b2e545c7c18f3d36159d6  ext4: refactoring to use the unified helper ext4_quotas_off()
 
-On Mon, 27 Mar 2023 22:16:28 +0800, Baokun Li wrote:
-> V1->V2:
-> 	Add judgment for CONFIG_QUOTA to avoid warning
-> 	"label 'failed_mount9' defined but not used".
-> 	(Reported-by: kernel test robot <lkp@intel.com>)
-> V2->V3:
-> 	By adding __maybe_unused to silence possible compilation
-> 	complain in patch one, instead of adding the judgment.
-> 	(Suggested by Jan Kara).
-> 
-> [...]
+elapsed time: 728m
 
-Applied, thanks!
+configs tested: 105
+configs skipped: 2
 
-[1/2] ext4: turning quotas off if mount failed after enable quotas
-      commit: e39a0c8d9cc298c5a4afdeb416441091ae3f1fcb
-[2/2] ext4: refactoring to use the unified helper ext4_quotas_off()
-      commit: 63ec000b35a3c6cbb42b2e545c7c18f3d36159d6
+The following configs have been built successfully.
+More configs may be tested in the coming days.
 
-Best regards,
+tested configs:
+alpha                            allyesconfig   gcc  
+alpha                               defconfig   gcc  
+alpha                randconfig-r023-20230615   gcc  
+arc                              allyesconfig   gcc  
+arc          buildonly-randconfig-r006-20230614   gcc  
+arc                                 defconfig   gcc  
+arc                  randconfig-r036-20230615   gcc  
+arc                  randconfig-r043-20230615   gcc  
+arm                              allmodconfig   gcc  
+arm                              allyesconfig   gcc  
+arm                                 defconfig   gcc  
+arm                  randconfig-r031-20230615   clang
+arm                  randconfig-r046-20230615   gcc  
+arm64                            allyesconfig   gcc  
+arm64                               defconfig   gcc  
+csky                                defconfig   gcc  
+csky                 randconfig-r003-20230615   gcc  
+csky                 randconfig-r034-20230615   gcc  
+hexagon      buildonly-randconfig-r004-20230614   clang
+hexagon              randconfig-r041-20230615   clang
+hexagon              randconfig-r045-20230615   clang
+i386                             allyesconfig   gcc  
+i386         buildonly-randconfig-r005-20230614   clang
+i386                              debian-10.3   gcc  
+i386                                defconfig   gcc  
+i386                 randconfig-i001-20230615   gcc  
+i386                 randconfig-i002-20230615   gcc  
+i386                 randconfig-i003-20230615   gcc  
+i386                 randconfig-i004-20230615   gcc  
+i386                 randconfig-i005-20230615   gcc  
+i386                 randconfig-i006-20230615   gcc  
+i386                 randconfig-i011-20230615   clang
+i386                 randconfig-i012-20230615   clang
+i386                 randconfig-i013-20230615   clang
+i386                 randconfig-i014-20230615   clang
+i386                 randconfig-i015-20230615   clang
+i386                 randconfig-i016-20230615   clang
+i386                 randconfig-r024-20230615   clang
+loongarch                        allmodconfig   gcc  
+loongarch                         allnoconfig   gcc  
+loongarch                           defconfig   gcc  
+loongarch            randconfig-r002-20230615   gcc  
+m68k                             allmodconfig   gcc  
+m68k                             allyesconfig   gcc  
+m68k                                defconfig   gcc  
+m68k                 randconfig-r012-20230614   gcc  
+m68k                 randconfig-r013-20230614   gcc  
+microblaze           randconfig-r016-20230614   gcc  
+microblaze           randconfig-r033-20230615   gcc  
+microblaze           randconfig-r035-20230615   gcc  
+mips                             allmodconfig   gcc  
+mips                             allyesconfig   gcc  
+mips                 randconfig-r006-20230615   clang
+nios2                               defconfig   gcc  
+nios2                randconfig-r005-20230615   gcc  
+parisc                           allyesconfig   gcc  
+parisc       buildonly-randconfig-r003-20230614   gcc  
+parisc                              defconfig   gcc  
+parisc               randconfig-r004-20230615   gcc  
+parisc               randconfig-r025-20230615   gcc  
+parisc64                            defconfig   gcc  
+powerpc                          allmodconfig   gcc  
+powerpc                           allnoconfig   gcc  
+powerpc              randconfig-r015-20230614   gcc  
+riscv                            allmodconfig   gcc  
+riscv                             allnoconfig   gcc  
+riscv                            allyesconfig   gcc  
+riscv                               defconfig   gcc  
+riscv                randconfig-r042-20230615   clang
+riscv                          rv32_defconfig   gcc  
+s390                             allmodconfig   gcc  
+s390                             allyesconfig   gcc  
+s390         buildonly-randconfig-r001-20230614   gcc  
+s390                                defconfig   gcc  
+s390                 randconfig-r021-20230615   clang
+s390                 randconfig-r026-20230615   clang
+s390                 randconfig-r044-20230615   clang
+sh                               allmodconfig   gcc  
+sparc                            allyesconfig   gcc  
+sparc                               defconfig   gcc  
+sparc                randconfig-r011-20230614   gcc  
+sparc64              randconfig-r001-20230615   gcc  
+um                             i386_defconfig   gcc  
+um                           x86_64_defconfig   clang
+um                           x86_64_defconfig   gcc  
+x86_64                           allyesconfig   gcc  
+x86_64                              defconfig   gcc  
+x86_64                                  kexec   gcc  
+x86_64               randconfig-a001-20230615   gcc  
+x86_64               randconfig-a002-20230615   gcc  
+x86_64               randconfig-a003-20230615   gcc  
+x86_64               randconfig-a004-20230615   gcc  
+x86_64               randconfig-a005-20230615   gcc  
+x86_64               randconfig-a006-20230615   gcc  
+x86_64               randconfig-a011-20230615   clang
+x86_64               randconfig-a012-20230615   clang
+x86_64               randconfig-a013-20230615   clang
+x86_64               randconfig-a014-20230615   clang
+x86_64               randconfig-a015-20230615   clang
+x86_64               randconfig-a016-20230615   clang
+x86_64               randconfig-r022-20230615   clang
+x86_64               randconfig-r032-20230615   gcc  
+x86_64                          rhel-8.3-rust   clang
+x86_64                               rhel-8.3   gcc  
+xtensa       buildonly-randconfig-r002-20230614   gcc  
+xtensa               randconfig-r014-20230614   gcc  
+
 -- 
-Theodore Ts'o <tytso@mit.edu>
+0-DAY CI Kernel Test Service
+https://github.com/intel/lkp-tests/wiki
