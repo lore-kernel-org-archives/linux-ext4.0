@@ -2,126 +2,107 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D62C0EB64D8
-	for <linux-ext4@archiver.kernel.org>; Fri, 16 Jun 2023 15:49:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 68E68EB64D7
+	for <linux-ext4@archiver.kernel.org>; Fri, 16 Jun 2023 16:51:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232163AbjFPPt5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 16 Jun 2023 11:49:57 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58006 "EHLO
+        id S1345871AbjFPQvx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 16 Jun 2023 12:51:53 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37524 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231208AbjFPPt4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Jun 2023 11:49:56 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 845682967
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Jun 2023 08:49:55 -0700 (PDT)
+        with ESMTP id S1345809AbjFPQvR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Jun 2023 12:51:17 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 644453AA9
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Jun 2023 09:51:11 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 3BEDF1F749;
-        Fri, 16 Jun 2023 15:49:54 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 11ECB21C2C;
+        Fri, 16 Jun 2023 16:51:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1686930594; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+        t=1686934270; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=hicNHehwltG1cUZJBmiwYK9Ajkuzo+7q9132g1mRXFQ=;
-        b=jhW//RGAfR92YJm4X1CxCOlFuiiWeXkS4QSdsR2Zbg+2Hd338CEnXl+SJ9iwtY9rHZzn8m
-        yYc8cQRvZBywat0fITGthmPuwwCg91hJ1WbstH236aWqMRnHHQ5lko4YN5S68WlUrPsrtO
-        JMvSNJcvpUGcW+ofG1UbxC4XSJPusaM=
+        bh=sPPoq7BWNEYmKUdVuNJC643nwmffEPPxpbN4JBDnHWU=;
+        b=gy1exNMIvQmO5nSt7l/UcGrTr99e0pnSEvXLI9FiShW55UVe82QnQ7E0jk5UzBggCB4a61
+        3p7m0ZDhMlOmi3HWk1kgepa4cvWhEH6OJli1/L6Q8KIec76coVhavyHc0yB0nbW1pWQ+Nm
+        WX0v8jXgTLNfc7cdqG15EH85yoyiKpk=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1686930594;
+        s=susede2_ed25519; t=1686934270;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=hicNHehwltG1cUZJBmiwYK9Ajkuzo+7q9132g1mRXFQ=;
-        b=Clz8lH0+vTC6uNdRjbrksGNS4qAIK4eNF5u9qmMKMCU9JYxkrvapKyJdjm17Be+drKPVyO
-        Z+wr+V+4QI0PDlBQ==
+        bh=sPPoq7BWNEYmKUdVuNJC643nwmffEPPxpbN4JBDnHWU=;
+        b=3jMvLEHl/4Y24KI7cLIW1I/ZVlyJ1EQsAQ8Bf/nzSLA4rlUG/mCxtHo7tFJ4PPvy57orNm
+        9fVFQWhnQXb8R2Dg==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 29F0E138E8;
-        Fri, 16 Jun 2023 15:49:54 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 0188D1330B;
+        Fri, 16 Jun 2023 16:51:10 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id Vt03CqKEjGTYCgAAMHmgww
-        (envelope-from <jack@suse.cz>); Fri, 16 Jun 2023 15:49:54 +0000
+        id xoNZAP6SjGQkIwAAMHmgww
+        (envelope-from <jack@suse.cz>); Fri, 16 Jun 2023 16:51:10 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 788C7A0755; Fri, 16 Jun 2023 17:49:53 +0200 (CEST)
-Date:   Fri, 16 Jun 2023 17:49:53 +0200
+        id 715D2A0626; Fri, 16 Jun 2023 18:51:09 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
-To:     Dave Chinner <david@fromorbit.com>
-Cc:     Theodore Ts'o <tytso@mit.edu>,
-        Aleksandr Nogikh <nogikh@google.com>, adilger.kernel@dilger.ca,
-        jack@suse.com, linux-ext4@vger.kernel.org,
-        syzkaller-bugs@googlegroups.com,
-        syzbot <syzbot+af5e10f73dbff48f70af@syzkaller.appspotmail.com>
-Subject: Re: [syzbot] [ext4?] UBSAN: shift-out-of-bounds in ext2_fill_super
- (2)
-Message-ID: <20230616154953.etu5cg3se3sucem6@quack3>
-References: <00000000000079134b05fdf78048@google.com>
- <20230613180103.GC18303@mit.edu>
- <ZIudnDI5JZU+4w42@dread.disaster.area>
+To:     Ted Tso <tytso@mit.edu>
+Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
+Subject: [PATCH 01/11] ext4: Remove pointless sb_rdonly() checks from freezing code
+Date:   Fri, 16 Jun 2023 18:50:47 +0200
+Message-Id: <20230616165109.21695-1-jack@suse.cz>
+X-Mailer: git-send-email 2.35.3
+In-Reply-To: <20230616164553.1090-1-jack@suse.cz>
+References: <20230616164553.1090-1-jack@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <ZIudnDI5JZU+4w42@dread.disaster.area>
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1143; i=jack@suse.cz; h=from:subject; bh=wgEILQQw3TNf73J+iVDhoFrUsnE/Y4j3BObZjZX/AXg=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBkjJLn+S8svWP6ZWVVlkZsQ/tD3MWzFot5HmL8YTZn tJYSkLCJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCZIyS5wAKCRCcnaoHP2RA2QDDCA DPKuWaizap1l9yaqlg2j/VgXK3dh3Ko2z41x7U5e7vY/RvkWGT9jc9PpgjiydR9c5O1OMiOFixOhjA UZSewNWTQ6O9xBaashr3p0ozBgPXW+xPnh5aiyOf9joPu7mdVwra45000l5DuqpGWtatdVIi18/FPp ne1jY3kZ9QVrUCN/niQFsmYkoYbdlvTF/aY+GEskbn5UjZfKyz/U4hRKl8QMfyOi/uv85ZfupFvoPY hQK6rX01ksmy57MlOkNQx6iLTEFKKVQRHc067focP0N9X3CXQ9UXHCmm4zCQLLa3Kp30+20n0jzuGb rEZ5vNa85naE80kUl/0jv2MubZsIgP
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri 16-06-23 09:24:12, Dave Chinner wrote:
-> On Tue, Jun 13, 2023 at 02:01:03PM -0400, Theodore Ts'o wrote:
-> > I wonder if we should have a separate syzkaller subsystem for ext2 (as
-> > distinct from ext4)?  The syz reproducer seems to know that it should
-> > be mounting using ext2, but also calls it an ext4 file system, which
-> > is a bit weird.  I'm guessing there is something specific about the
-> > syzkaller internals which might not make this be practical, but I
-> > thought I should ask.
-> > 
-> > From the syz reproducer:
-> > 
-> > syz_mount_image$ext4(&(0x7f0000000100)='ext2\x00', ...)
-> > 
-> > More generally, there are a series of changes that were made to make
-> > ext4 to make it more robust against maliciously fuzzed superblocks,
-> > but we haven't necessarily made sure the same analogous changes have
-> > been made to ext2.  I'm not sure how critical this is in practice,
-> > since most distributions don't actually compile fs/ext2 and instead
-> > use CONFIG_EXT4_USE_FOR_EXT2 instead.  However, while we maintain ext2
-> > as a sample "simple" modern file system, I guess we should try to make
-> > sure we do carry those fixes over.
-> 
-> Hmmmm.
-> 
-> Modern filesystems are crash resilient, based on extents and are
-> using/moving to folios+iomap - calling a non-journalled, indirect
-> block indexed, bufferhead based code base (that nobody is really
-> using in production) "modern" seems like a real stretch.
+ext4_freeze() and ext4_unfreeze() checks for sb_rdonly(). However this
+check is pointless as VFS already checks for read-only filesystem before
+calling filesystem specific methods. Remove the pointless checks.
 
-Yeah, modern is a stretch. But I guess what Ted meant is that we try to
-keep ext2 reasonably uptodate with various infrastructure changes. We have
-now queued conversion of ext2 direct IO path to iomap and are looking into
-converting buffered IO path to iomap as a sample to get experience for ext4
-conversion and also conversion of other "simple" filesystems.
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/super.c | 9 ++-------
+ 1 file changed, 2 insertions(+), 7 deletions(-)
 
-> I have my doubts that maintaining fs/ext2 is providing much benefit
-> to anyone.  The code base is in the git history if anyone wants to
-> study it, so it's not like we have to keep it active in the tree for
-> it to remain a code base that people can learn from.
-> 
-> Therefore, given the current push to sideline/remove bufferheads
-> from the kernel, should we simply deprecate fs/ext2 and then remove
-> it in a year or two like we're doing with reiser to reduce our
-> future maintenance and/or conversion burden?
-
-That's a fair remark and if there is a general sentiment that ext2 codebase
-is not really useful, I certainly won't mind having one less fs to
-maintain. I'd just note that having ext2 in git history will not provide
-very useful insight into how various current infrastructure changes could
-be implemented for simple filesystems.
-
-								Honza
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 05fcecc36244..f24a7919a328 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -6310,12 +6310,7 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
+ static int ext4_freeze(struct super_block *sb)
+ {
+ 	int error = 0;
+-	journal_t *journal;
+-
+-	if (sb_rdonly(sb))
+-		return 0;
+-
+-	journal = EXT4_SB(sb)->s_journal;
++	journal_t *journal = EXT4_SB(sb)->s_journal;
+ 
+ 	if (journal) {
+ 		/* Now we set up the journal barrier. */
+@@ -6349,7 +6344,7 @@ static int ext4_freeze(struct super_block *sb)
+  */
+ static int ext4_unfreeze(struct super_block *sb)
+ {
+-	if (sb_rdonly(sb) || ext4_forced_shutdown(EXT4_SB(sb)))
++	if (ext4_forced_shutdown(EXT4_SB(sb)))
+ 		return 0;
+ 
+ 	if (EXT4_SB(sb)->s_journal) {
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.35.3
+
