@@ -2,96 +2,96 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 36756EB64D7
-	for <linux-ext4@archiver.kernel.org>; Fri, 16 Jun 2023 16:52:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6F3A2EB64D7
+	for <linux-ext4@archiver.kernel.org>; Fri, 16 Jun 2023 16:52:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345872AbjFPQwX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 16 Jun 2023 12:52:23 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37262 "EHLO
+        id S1345881AbjFPQw1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 16 Jun 2023 12:52:27 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37574 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1345826AbjFPQv1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Jun 2023 12:51:27 -0400
+        with ESMTP id S1345778AbjFPQv3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Jun 2023 12:51:29 -0400
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 951BB3ABB
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CCED93C05
         for <linux-ext4@vger.kernel.org>; Fri, 16 Jun 2023 09:51:12 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id C0AF421E06;
+        by smtp-out1.suse.de (Postfix) with ESMTPS id C679721E07;
         Fri, 16 Jun 2023 16:51:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1686934270; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=1dSA8jB4R9SGcdQ4c0A4MwJQa9nZZr8//eERI14/DZM=;
-        b=xWddxTXkHYCxZtVlhGhXhgNufjgEkVkzG7zY7Pu8Fs5fX2BHAAqIlfQBEe2gsTKRn2Gl1n
-        JpPyzUh6IX9mGH1PTPeQXjyI3VvSxyGIBDezB8xxZlbPZgCd3bZKOfthHxcLIwN/2SlJya
-        Udj62Cdz3ofTnP1HJhlvE1Kj3beDcGo=
+        bh=zqo1BWdIMuWqLjLVLNkMlU4hmo4qb6IRcGcBPlYUVzk=;
+        b=cS56+6AhMR36wBceHD4JIbwXqQw1WGF4Ojr0vWmz/8dtiaYm7uWZ6yIjzapdsMmUyrT3sm
+        XwKzdHLpKmSgP8JuQahBQMbvKquddSpqslyr7shglbv/lJEXZZIvH8qMIRsSh0AeTXCkcf
+        rWm4k260tEf2EM0Wv+ZsMz961ABmht0=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1686934270;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=1dSA8jB4R9SGcdQ4c0A4MwJQa9nZZr8//eERI14/DZM=;
-        b=lYhZE8CnSKyW7NHPIncZDOWdlay6z93dExb1sTVVzn75UfZB9zMw/OVhsqDwirtdPk3Nzr
-        9Vj+UaJjI6mm9uCg==
+        bh=zqo1BWdIMuWqLjLVLNkMlU4hmo4qb6IRcGcBPlYUVzk=;
+        b=C0pOJQOvV9Sap/bcBWqxnjYJOeYAEw7omtOcd0DFAjbWuc9c1uDzhAbaTZrLvxAaOdm87i
+        vYp8BDnvA7jmpQAw==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id AEA4913A8D;
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id B3C6B1330B;
         Fri, 16 Jun 2023 16:51:10 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id sJSiKv6SjGRGIwAAMHmgww
+        id WlXiK/6SjGRSIwAAMHmgww
         (envelope-from <jack@suse.cz>); Fri, 16 Jun 2023 16:51:10 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 90C00A0766; Fri, 16 Jun 2023 18:51:09 +0200 (CEST)
+        id A698CA076A; Fri, 16 Jun 2023 18:51:09 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 07/11] ext4: Warn on read-only filesystem in ext4_journal_check_start()
-Date:   Fri, 16 Jun 2023 18:50:53 +0200
-Message-Id: <20230616165109.21695-7-jack@suse.cz>
+Subject: [PATCH 11/11] ext4: Replace read-only check for shutdown check in mmp code
+Date:   Fri, 16 Jun 2023 18:50:57 +0200
+Message-Id: <20230616165109.21695-11-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20230616164553.1090-1-jack@suse.cz>
 References: <20230616164553.1090-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=889; i=jack@suse.cz; h=from:subject; bh=FUMTIeNNszHoGRDFEZLaNAmGP5V2s+kq7zNf+imVRTM=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBkjJLsXm+SQiX93iiX60RdrAROR5kVgSlG0JAW2X8h 4hBqhO6JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCZIyS7AAKCRCcnaoHP2RA2SvPB/ 9gzC+FDWQOl2tAYrCGGQH2dtCpA+S3w74W8J8xlDgF5RMXtvNY/Cjpjr8MtcBjl+TUFfsnLLhm4IZN n7XKWpqh1jklbmIHkHGRy2noBm9TCc9iD2o8NLvS0vyl9g5t/A0sKUIkEMMcxLTL4Qj0GIV2u2dfzy 6MiQlXg9AHEvHBlRKCEbHoUI7iI2DZuYyX5JDs0eGPPNEm3y8pZO22CrLgzgSSj2/u4pcsTtjj8+L6 Xn6qvpRddz+xJoiA0Xg4WoG0msvaHePGHdDsSSM7WMlwiG+T4hbKnilWaYii3tnx+1BiDjKtuMKVzp wyrmFbe64q/KxBsRfciIlu4rM7rBEl
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1077; i=jack@suse.cz; h=from:subject; bh=3Rmi1/kB/VPpTRYcvKl9dnicjcpKuG2JKV/QRG3MXAU=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBkjJLw9n04JTv/OFqUH6x3RskByibQ2FLfA2s6GsYk bg6dGBKJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCZIyS8AAKCRCcnaoHP2RA2QQrCA DRfG7HsLpK/JJBRNwkVqwrXkZOr2vflli4qgMOSbhYDCGSoC5YvhoXCP+7sZIer1QVbgak5u9ePnv3 bmIlIb8cvSmyFng7tZtW56LMrmo9+4KZxdKxfcaxIFmHQ946sVDwtWtIz4Z9acXUILgRDJIpWuA740 0eY6Wk7+HA6H1UEhEDnCrYremq9sfn6czPSSG/Pb3WC4/jESji6S9s5UY+XKaP1E899qJW1HJjnmwf 0l08qmI2hqWmwNej1sq6/q4JIs+iDWadQsVVcqlmwWSilWW37zR0ADY7lSV2h/jlemjwfDW4AxFnRS L0A48pgQLBe9Xmkdos/m+hgBn1we0A
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now that filesystem abort marks the filesystem as shutdown, we shouldn't
-be ever hitting the sb_rdonly() check in ext4_journal_check_start().
-Since this is a suitable place for catching all sorts of programming
-errors, convert the check to WARN_ON instead of dropping it.
+The multi-mount protection kthread checks for read-only filesystem and
+aborts in that case. The remount code actually handles stopping of the
+kthread on remount so the only purpose of the check is in case of
+emergency remount read-only. Replace the check for read-only filesystem
+with a check for shutdown filesystem as running MMP on such is risky
+anyway and it makes ordering of things during remount simpler.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4_jbd2.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/ext4/mmp.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index b72a22a57d20..ca0eaf2147b0 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -70,8 +70,9 @@ static int ext4_journal_check_start(struct super_block *sb)
- 	if (unlikely(ext4_forced_shutdown(sb)))
- 		return -EIO;
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index 0aaf38ffcb6e..bd946d0c71b7 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -162,7 +162,7 @@ static int kmmpd(void *data)
+ 	memcpy(mmp->mmp_nodename, init_utsname()->nodename,
+ 	       sizeof(mmp->mmp_nodename));
  
--	if (sb_rdonly(sb))
-+	if (WARN_ON_ONCE(sb_rdonly(sb)))
- 		return -EROFS;
-+
- 	WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
- 	journal = EXT4_SB(sb)->s_journal;
- 	/*
+-	while (!kthread_should_stop() && !sb_rdonly(sb)) {
++	while (!kthread_should_stop() && !ext4_forced_shutdown(sb)) {
+ 		if (!ext4_has_feature_mmp(sb)) {
+ 			ext4_warning(sb, "kmmpd being stopped since MMP feature"
+ 				     " has been disabled.");
 -- 
 2.35.3
 
