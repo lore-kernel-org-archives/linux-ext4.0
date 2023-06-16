@@ -2,210 +2,455 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F2903EB64D8
-	for <linux-ext4@archiver.kernel.org>; Fri, 16 Jun 2023 16:52:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D3581EB64DA
+	for <linux-ext4@archiver.kernel.org>; Fri, 16 Jun 2023 16:52:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345809AbjFPQwR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 16 Jun 2023 12:52:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37342 "EHLO
+        id S1345818AbjFPQwS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 16 Jun 2023 12:52:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37814 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1344192AbjFPQvX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Jun 2023 12:51:23 -0400
+        with ESMTP id S1345822AbjFPQvZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Jun 2023 12:51:25 -0400
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4083D3AB6
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Jun 2023 09:51:12 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BDFCC3AAE
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Jun 2023 09:51:11 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id B60201F8D7;
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 53AD51F8D5;
         Fri, 16 Jun 2023 16:51:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1686934270; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=8bUnbunwCGijXqe0VRSM9RTLCmM3q7K2J14avJSKTUo=;
-        b=NukdnnuKxkYLewGAElwvYfTKRqoV4gatG9BDGD4w0dV/RdOliJJ+SvPIOl4xO2EJxW4dCw
-        AscDMSYLpus3xqNGTe8i9D92ElzsF/FZMGC2W54zNRe+2clQDt0LzHm8k+ROF6BVJEK+Sn
-        skRwh9SWZAjaDvKKi3x5WKQpCyzIINA=
+        bh=Dv38hIiui9R2M+axjGOZQcJ7Wc6VZk62M7wqM+8lDxM=;
+        b=gzJjWPDb4PqeyYTzzS2amQaANSuwuvvbR9LIlC8YXGyaUkHycnwjEXbwuGIX/R5LX+MRJ/
+        ZsVR+cdGxjcy6Sng2WRGhe21T5f4WOPv3rXUqc9diLiA02akpDwpKJqw+LE8oWYBrane/x
+        AFHfvfX0tQMpkO0weKmCJDVYEo14YZE=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1686934270;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=8bUnbunwCGijXqe0VRSM9RTLCmM3q7K2J14avJSKTUo=;
-        b=ga4DL8Ht6AOiMJZH1sKNKdKTs5dBTTnndkfQDYR+et650klgR0o4fw14w6HZQ37q51IJvL
-        PfszvWDEALXRkrDw==
+        bh=Dv38hIiui9R2M+axjGOZQcJ7Wc6VZk62M7wqM+8lDxM=;
+        b=AZ0g322+RH5W1QTBuDbxIDH7nmAJXK4zHg+wjBeQLo/zvC8LKRcIzo9Sd5qXRye7fB2WST
+        jMaz7DU3R5JzuJBw==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id A6FCD1391E;
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 2C1F71391E;
         Fri, 16 Jun 2023 16:51:10 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id G8zGKP6SjGQ/IwAAMHmgww
+        id IBnOCf6SjGQtIwAAMHmgww
         (envelope-from <jack@suse.cz>); Fri, 16 Jun 2023 16:51:10 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 86F59A0764; Fri, 16 Jun 2023 18:51:09 +0200 (CEST)
+        id 7C856A0762; Fri, 16 Jun 2023 18:51:09 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 05/11] ext4: Drop EXT4_MF_FS_ABORTED flag
-Date:   Fri, 16 Jun 2023 18:50:51 +0200
-Message-Id: <20230616165109.21695-5-jack@suse.cz>
+Subject: [PATCH 03/11] ext4: Make ext4_forced_shutdown() take struct super_block
+Date:   Fri, 16 Jun 2023 18:50:49 +0200
+Message-Id: <20230616165109.21695-3-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20230616164553.1090-1-jack@suse.cz>
 References: <20230616164553.1090-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5352; i=jack@suse.cz; h=from:subject; bh=BqkH9H98A5x9i/yAzxim0Rw2hDEOSo546fQGnUWRtqI=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBkjJLrQPCp1fg0FNKNIdO0hZ6WWG75z6lCtPTMszsv V4W9DzmJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCZIyS6wAKCRCcnaoHP2RA2bJrB/ 9BJfGAG7qIdAPEdpWK2tm/pTdBrjmErFT1t/LtGAo16+Lh5440FugrW1wrGEsf+uEixqnLvTtvbO/A fgEagmLXe0Sv20BtB/tBfwKs1bTopXn1OyrY385A77/aNwLidzopWFkFWD2+CXnFIBo6p2R9iBSK18 2CgZZUi68mtZAlVpjqjiAc7ywcG5/LDjHGJY7DDxkfxzPIWvJW3wpYrJfxl+j8VcO9+oCBprYP2oI4 wjcMPl8Qej5RCHYzWiipH8Efsk4c4ur4r4NbsQe4ACScYRC9GJjYmL0AkFS76HmxnKH2V3dTk5dje0 OxPNrYP8VkLT3oG4/djf1+Cn8KqyDK
+X-Developer-Signature: v=1; a=openpgp-sha256; l=13457; i=jack@suse.cz; h=from:subject; bh=WpiWyva0cfuJKpzwgvufPgHEzvQPR1J9ovuEtlzSvsg=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBkjJLpmfCOqW40p5QYWPPixjsyVWKkJmMlyaEQnTE7 FD4OW2eJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCZIyS6QAKCRCcnaoHP2RA2dmjCA DA6CRg6TWcglar/ijW9ON0k652YomMctpIIvrYeoKEovxa3tu8mQ2W8wejP5oFdPd9fgFws7URrNWn 62XSb4Qw8i4EQTyVTND7eV31TjYks2zDKImuUbkXkRQU/OKMcKnzFu8Z3PjgMUo9ZlGINlMUcSgbIU keikBz4UX+0paKniL//8za7RRhdBQzKDCLnnFkkDRjKIPAxtu47AOzcWEn+8rcQcBhwbCTmx4eB+Q5 /CMtXQnL8upaFSL/8j3YbFk2wpisTi2fgb4Hglh6OQ0TeXYtEMMSne0p1huPaNGXFw4TOYYnQOXgfn s07NbYvkDZgLkWM+j+KpdBEqoeRZL4
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-EXT4_MF_FS_ABORTED flag has practically the same intent as
-EXT4_FLAGS_SHUTDOWN flag. The shutdown flag is checked in many more
-places than the aborted flag which is mostly the historical artifact
-where we were relying on SB_RDONLY checks instead of the aborted flag
-checks. There are only three places - ext4_sync_file(),
-__ext4_remount(), and mballoc debug code - which check aborted flag and
-not shutdown flag and this is arguably a bug. Avoid these
-inconsistencies by removing EXT4_MF_FS_ABORTED flag and using
-EXT4_FLAGS_SHUTDOWN everywhere.
+Currently ext4_forced_shutdown() takes struct ext4_sb_info but most
+callers need to get it from struct super_block anyway. So just pass in
+struct super_block to save all callers from some boilerplate code. No
+functional changes.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h    | 1 -
- fs/ext4/fsync.c   | 7 +++----
- fs/ext4/inode.c   | 8 +++-----
- fs/ext4/mballoc.c | 4 ++--
- fs/ext4/super.c   | 4 ++--
- 5 files changed, 10 insertions(+), 14 deletions(-)
+ fs/ext4/ext4.h      |  4 ++--
+ fs/ext4/ext4_jbd2.c |  2 +-
+ fs/ext4/file.c      | 11 +++++------
+ fs/ext4/fsync.c     |  2 +-
+ fs/ext4/ialloc.c    |  2 +-
+ fs/ext4/inline.c    |  2 +-
+ fs/ext4/inode.c     | 24 ++++++++++++------------
+ fs/ext4/ioctl.c     |  2 +-
+ fs/ext4/namei.c     |  8 ++++----
+ fs/ext4/page-io.c   |  2 +-
+ fs/ext4/super.c     | 14 +++++++-------
+ fs/ext4/xattr.c     |  2 +-
+ 12 files changed, 37 insertions(+), 38 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ae0c3a148c7b..46d359f5615d 100644
+index 8104a21b001a..f0b6aa79dcc4 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1740,7 +1740,6 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
-  */
- enum {
- 	EXT4_MF_MNTDIR_SAMPLED,
--	EXT4_MF_FS_ABORTED,	/* Fatal error detected */
- 	EXT4_MF_FC_INELIGIBLE	/* Fast commit ineligible */
- };
+@@ -2163,9 +2163,9 @@ extern int ext4_feature_set_ok(struct super_block *sb, int readonly);
+ #define EXT4_FLAGS_SHUTDOWN	1
+ #define EXT4_FLAGS_BDEV_IS_DAX	2
  
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index 958bcaedcff6..b8e15b9f86c8 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -138,7 +138,6 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 	int ret = 0, err;
- 	bool needs_barrier = false;
+-static inline int ext4_forced_shutdown(struct ext4_sb_info *sbi)
++static inline int ext4_forced_shutdown(struct super_block *sb)
+ {
+-	return test_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
++	return test_bit(EXT4_FLAGS_SHUTDOWN, &EXT4_SB(sb)->s_ext4_flags);
+ }
+ 
+ /*
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 77f318ec8abb..b72a22a57d20 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -67,7 +67,7 @@ static int ext4_journal_check_start(struct super_block *sb)
+ 
+ 	might_sleep();
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
++	if (unlikely(ext4_forced_shutdown(sb)))
+ 		return -EIO;
+ 
+ 	if (sb_rdonly(sb))
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index d101b3b0c7da..2a8a780c856b 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -131,7 +131,7 @@ static ssize_t ext4_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ {
+ 	struct inode *inode = file_inode(iocb->ki_filp);
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
++	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
+ 		return -EIO;
+ 
+ 	if (!iov_iter_count(to))
+@@ -697,7 +697,7 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ {
+ 	struct inode *inode = file_inode(iocb->ki_filp);
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
++	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
+ 		return -EIO;
+ 
+ #ifdef CONFIG_FS_DAX
+@@ -795,10 +795,9 @@ static const struct vm_operations_struct ext4_file_vm_ops = {
+ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
+ {
  	struct inode *inode = file->f_mapping->host;
 -	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+-	struct dax_device *dax_dev = sbi->s_daxdev;
++	struct dax_device *dax_dev = EXT4_SB(inode->i_sb)->s_daxdev;
  
- 	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
+-	if (unlikely(ext4_forced_shutdown(sbi)))
++	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
  		return -EIO;
-@@ -148,9 +147,9 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 	trace_ext4_sync_file_enter(file, datasync);
  
- 	if (sb_rdonly(inode->i_sb)) {
--		/* Make sure that we read updated s_mount_flags value */
-+		/* Make sure that we read updated s_ext4_flags value */
- 		smp_rmb();
--		if (ext4_test_mount_flag(inode->i_sb, EXT4_MF_FS_ABORTED))
-+		if (ext4_forced_shutdown(inode->i_sb))
- 			ret = -EROFS;
- 		goto out;
- 	}
-@@ -164,7 +163,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 	 *  Metadata is in the journal, we wait for proper transaction to
- 	 *  commit here.
- 	 */
--	if (!sbi->s_journal)
-+	if (!EXT4_SB(inode->i_sb)->s_journal)
- 		ret = ext4_fsync_nojournal(inode, datasync, &needs_barrier);
- 	else
- 		ret = ext4_fsync_journal(inode, datasync, &needs_barrier);
+ 	/*
+@@ -874,7 +873,7 @@ static int ext4_file_open(struct inode *inode, struct file *filp)
+ {
+ 	int ret;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
++	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
+ 		return -EIO;
+ 
+ 	ret = ext4_sample_last_mounted(inode->i_sb, filp->f_path.mnt);
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 2a143209aa0c..958bcaedcff6 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -140,7 +140,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ 	struct inode *inode = file->f_mapping->host;
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 
+-	if (unlikely(ext4_forced_shutdown(sbi)))
++	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
+ 		return -EIO;
+ 
+ 	ASSERT(ext4_journal_current_handle() == NULL);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 754f961cd9fd..060630c0b0ca 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -950,7 +950,7 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
+ 	sb = dir->i_sb;
+ 	sbi = EXT4_SB(sb);
+ 
+-	if (unlikely(ext4_forced_shutdown(sbi)))
++	if (unlikely(ext4_forced_shutdown(sb)))
+ 		return ERR_PTR(-EIO);
+ 
+ 	ngroups = ext4_get_groups_count(sb);
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 5854bd5a3352..2aa3ecbdbb9f 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -228,7 +228,7 @@ static void ext4_write_inline_data(struct inode *inode, struct ext4_iloc *iloc,
+ 	struct ext4_inode *raw_inode;
+ 	int cp_len = 0;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
++	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
+ 		return;
+ 
+ 	BUG_ON(!EXT4_I(inode)->i_inline_off);
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index da3aaaea5f1c..fc6abafcc3fc 100644
+index 02de439bf1f0..da3aaaea5f1c 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2237,8 +2237,7 @@ static int mpage_map_and_submit_extent(handle_t *handle,
+@@ -1130,7 +1130,7 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+ 	pgoff_t index;
+ 	unsigned from, to;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
++	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
+ 		return -EIO;
+ 
+ 	trace_ext4_write_begin(inode, pos, len);
+@@ -2237,7 +2237,7 @@ static int mpage_map_and_submit_extent(handle_t *handle,
  		if (err < 0) {
  			struct super_block *sb = inode->i_sb;
  
--			if (ext4_forced_shutdown(sb) ||
--			    ext4_test_mount_flag(sb, EXT4_MF_FS_ABORTED))
-+			if (ext4_forced_shutdown(sb))
+-			if (ext4_forced_shutdown(EXT4_SB(sb)) ||
++			if (ext4_forced_shutdown(sb) ||
+ 			    ext4_test_mount_flag(sb, EXT4_MF_FS_ABORTED))
  				goto invalidate_dirty_pages;
  			/*
- 			 * Let the uper layers retry transient errors.
-@@ -2560,14 +2559,13 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
- 	 * If the filesystem has aborted, it is read-only, so return
- 	 * right away instead of dumping stack traces later on that
- 	 * will obscure the real source of the problem.  We test
--	 * EXT4_MF_FS_ABORTED instead of sb->s_flag's SB_RDONLY because
-+	 * fs shutdown state instead of sb->s_flag's SB_RDONLY because
- 	 * the latter could be true if the filesystem is mounted
- 	 * read-only, and in that case, ext4_writepages should
+@@ -2566,7 +2566,7 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
  	 * *never* be called, so if that ever happens, we would want
  	 * the stack trace.
  	 */
--	if (unlikely(ext4_forced_shutdown(mapping->host->i_sb) ||
--		     ext4_test_mount_flag(inode->i_sb, EXT4_MF_FS_ABORTED))) {
-+	if (unlikely(ext4_forced_shutdown(mapping->host->i_sb))) {
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(mapping->host->i_sb)) ||
++	if (unlikely(ext4_forced_shutdown(mapping->host->i_sb) ||
+ 		     ext4_test_mount_flag(inode->i_sb, EXT4_MF_FS_ABORTED))) {
  		ret = -EROFS;
  		goto out_writepages;
+@@ -2785,7 +2785,7 @@ static int ext4_writepages(struct address_space *mapping,
+ 	int ret;
+ 	int alloc_ctx;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
++	if (unlikely(ext4_forced_shutdown(sb)))
+ 		return -EIO;
+ 
+ 	alloc_ctx = ext4_writepages_down_read(sb);
+@@ -2824,16 +2824,16 @@ static int ext4_dax_writepages(struct address_space *mapping,
+ 	int ret;
+ 	long nr_to_write = wbc->nr_to_write;
+ 	struct inode *inode = mapping->host;
+-	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
+ 	int alloc_ctx;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
++	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
+ 		return -EIO;
+ 
+ 	alloc_ctx = ext4_writepages_down_read(inode->i_sb);
+ 	trace_ext4_writepages(inode, wbc);
+ 
+-	ret = dax_writeback_mapping_range(mapping, sbi->s_daxdev, wbc);
++	ret = dax_writeback_mapping_range(mapping,
++					  EXT4_SB(inode->i_sb)->s_daxdev, wbc);
+ 	trace_ext4_writepages_result(inode, wbc, ret,
+ 				     nr_to_write - wbc->nr_to_write);
+ 	ext4_writepages_up_read(inode->i_sb, alloc_ctx);
+@@ -2883,7 +2883,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+ 	pgoff_t index;
+ 	struct inode *inode = mapping->host;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
++	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
+ 		return -EIO;
+ 
+ 	index = pos >> PAGE_SHIFT;
+@@ -5161,7 +5161,7 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 	    sb_rdonly(inode->i_sb))
+ 		return 0;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
++	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
+ 		return -EIO;
+ 
+ 	if (EXT4_SB(inode->i_sb)->s_journal) {
+@@ -5281,7 +5281,7 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 	const unsigned int ia_valid = attr->ia_valid;
+ 	bool inc_ivers = true;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
++	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
+ 		return -EIO;
+ 
+ 	if (unlikely(IS_IMMUTABLE(inode)))
+@@ -5702,7 +5702,7 @@ int ext4_mark_iloc_dirty(handle_t *handle,
+ {
+ 	int err = 0;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb)))) {
++	if (unlikely(ext4_forced_shutdown(inode->i_sb))) {
+ 		put_bh(iloc->bh);
+ 		return -EIO;
  	}
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 20f67a260df5..5bcccf6908ea 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -5341,7 +5341,7 @@ static inline void ext4_mb_show_pa(struct super_block *sb)
+@@ -5728,7 +5728,7 @@ ext4_reserve_inode_write(handle_t *handle, struct inode *inode,
  {
- 	ext4_group_t i, ngroups;
+ 	int err;
  
--	if (ext4_test_mount_flag(sb, EXT4_MF_FS_ABORTED))
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
++	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
+ 		return -EIO;
+ 
+ 	err = ext4_get_inode_loc(inode, iloc);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index f9a430152063..c07417986ed6 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -807,7 +807,7 @@ static int ext4_shutdown(struct super_block *sb, unsigned long arg)
+ 	if (flags > EXT4_GOING_FLAGS_NOLOGFLUSH)
+ 		return -EINVAL;
+ 
+-	if (ext4_forced_shutdown(sbi))
 +	if (ext4_forced_shutdown(sb))
- 		return;
+ 		return 0;
  
- 	ngroups = ext4_get_groups_count(sb);
-@@ -5375,7 +5375,7 @@ static void ext4_mb_show_ac(struct ext4_allocation_context *ac)
+ 	ext4_msg(sb, KERN_ALERT, "shut down requested (%d)", flags);
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 45b579805c95..437d76e98c0a 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3142,7 +3142,7 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 	struct ext4_dir_entry_2 *de;
+ 	handle_t *handle = NULL;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
++	if (unlikely(ext4_forced_shutdown(dir->i_sb)))
+ 		return -EIO;
+ 
+ 	/* Initialize quotas before so that eventual writes go in
+@@ -3301,7 +3301,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
  {
- 	struct super_block *sb = ac->ac_sb;
+ 	int retval;
  
--	if (ext4_test_mount_flag(sb, EXT4_MF_FS_ABORTED))
-+	if (ext4_forced_shutdown(sb))
- 		return;
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
++	if (unlikely(ext4_forced_shutdown(dir->i_sb)))
+ 		return -EIO;
  
- 	mb_debug(sb, "Can't allocate:"
+ 	trace_ext4_unlink_enter(dir, dentry);
+@@ -3369,7 +3369,7 @@ static int ext4_symlink(struct mnt_idmap *idmap, struct inode *dir,
+ 	struct fscrypt_str disk_link;
+ 	int retries = 0;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
++	if (unlikely(ext4_forced_shutdown(dir->i_sb)))
+ 		return -EIO;
+ 
+ 	err = fscrypt_prepare_symlink(dir, symname, len, dir->i_sb->s_blocksize,
+@@ -4202,7 +4202,7 @@ static int ext4_rename2(struct mnt_idmap *idmap,
+ {
+ 	int err;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(old_dir->i_sb))))
++	if (unlikely(ext4_forced_shutdown(old_dir->i_sb)))
+ 		return -EIO;
+ 
+ 	if (flags & ~(RENAME_NOREPLACE | RENAME_EXCHANGE | RENAME_WHITEOUT))
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 3621f29ec671..dfdd7e5cf038 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -184,7 +184,7 @@ static int ext4_end_io_end(ext4_io_end_t *io_end)
+ 
+ 	io_end->handle = NULL;	/* Following call will use up the handle */
+ 	ret = ext4_convert_unwritten_io_end_vec(handle, io_end);
+-	if (ret < 0 && !ext4_forced_shutdown(EXT4_SB(inode->i_sb))) {
++	if (ret < 0 && !ext4_forced_shutdown(inode->i_sb)) {
+ 		ext4_msg(inode->i_sb, KERN_EMERG,
+ 			 "failed to convert unwritten extents to written "
+ 			 "extents -- potential data loss!  "
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d57b135c8e54..f883f3fce066 100644
+index 8c843ceb3cbb..d4978e705718 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -657,7 +657,7 @@ static void ext4_handle_error(struct super_block *sb, bool force_ro, int error,
- 		WARN_ON_ONCE(1);
+@@ -758,7 +758,7 @@ void __ext4_error(struct super_block *sb, const char *function,
+ 	struct va_format vaf;
+ 	va_list args;
  
- 	if (!continue_fs && !sb_rdonly(sb)) {
--		ext4_set_mount_flag(sb, EXT4_MF_FS_ABORTED);
-+		set_bit(EXT4_FLAGS_SHUTDOWN, &EXT4_SB(sb)->s_ext4_flags);
- 		if (journal)
- 			jbd2_journal_abort(journal, -EIO);
- 	}
-@@ -6465,7 +6465,7 @@ static int __ext4_remount(struct fs_context *fc, struct super_block *sb)
- 	flush_work(&sbi->s_error_work);
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
++	if (unlikely(ext4_forced_shutdown(sb)))
+ 		return;
  
- 	if ((bool)(fc->sb_flags & SB_RDONLY) != sb_rdonly(sb)) {
--		if (ext4_test_mount_flag(sb, EXT4_MF_FS_ABORTED)) {
-+		if (ext4_forced_shutdown(sb)) {
- 			err = -EROFS;
- 			goto restore_opts;
- 		}
+ 	trace_ext4_error(sb, function, line);
+@@ -783,7 +783,7 @@ void __ext4_error_inode(struct inode *inode, const char *function,
+ 	va_list args;
+ 	struct va_format vaf;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
++	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
+ 		return;
+ 
+ 	trace_ext4_error(inode->i_sb, function, line);
+@@ -818,7 +818,7 @@ void __ext4_error_file(struct file *file, const char *function,
+ 	struct inode *inode = file_inode(file);
+ 	char pathname[80], *path;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
++	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
+ 		return;
+ 
+ 	trace_ext4_error(inode->i_sb, function, line);
+@@ -898,7 +898,7 @@ void __ext4_std_error(struct super_block *sb, const char *function,
+ 	char nbuf[16];
+ 	const char *errstr;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
++	if (unlikely(ext4_forced_shutdown(sb)))
+ 		return;
+ 
+ 	/* Special case: if the error is EROFS, and we're not already
+@@ -992,7 +992,7 @@ __acquires(bitlock)
+ 	struct va_format vaf;
+ 	va_list args;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
++	if (unlikely(ext4_forced_shutdown(sb)))
+ 		return;
+ 
+ 	trace_ext4_error(sb, function, line);
+@@ -6261,7 +6261,7 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
+ 	bool needs_barrier = false;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
+-	if (unlikely(ext4_forced_shutdown(sbi)))
++	if (unlikely(ext4_forced_shutdown(sb)))
+ 		return 0;
+ 
+ 	trace_ext4_sync_fs(sb, wait);
+@@ -6344,7 +6344,7 @@ static int ext4_freeze(struct super_block *sb)
+  */
+ static int ext4_unfreeze(struct super_block *sb)
+ {
+-	if (ext4_forced_shutdown(EXT4_SB(sb)))
++	if (ext4_forced_shutdown(sb))
+ 		return 0;
+ 
+ 	if (EXT4_SB(sb)->s_journal) {
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 321e3a888c20..5ba42b1a3d46 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -701,7 +701,7 @@ ext4_xattr_get(struct inode *inode, int name_index, const char *name,
+ {
+ 	int error;
+ 
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
++	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
+ 		return -EIO;
+ 
+ 	if (strlen(name) > 255)
 -- 
 2.35.3
 
