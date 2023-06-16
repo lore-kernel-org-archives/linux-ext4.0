@@ -2,99 +2,167 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 978F3C001DE
-	for <linux-ext4@archiver.kernel.org>; Fri, 16 Jun 2023 10:37:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 86BF6EB64D7
+	for <linux-ext4@archiver.kernel.org>; Fri, 16 Jun 2023 13:27:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345275AbjFPKhW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 16 Jun 2023 06:37:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58096 "EHLO
+        id S1345655AbjFPN1x (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 16 Jun 2023 09:27:53 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34784 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1345455AbjFPKfB (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Jun 2023 06:35:01 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 939615BBF;
-        Fri, 16 Jun 2023 03:29:10 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        with ESMTP id S1345403AbjFPN1s (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Jun 2023 09:27:48 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C46B22721
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Jun 2023 06:27:47 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id D16B8636CF;
-        Fri, 16 Jun 2023 10:28:18 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 92C01C433CB;
-        Fri, 16 Jun 2023 10:28:17 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1686911298;
-        bh=o57FQvm2+7yG6jHoyGOwjcTQiG9Ut7wL1viELa5UJwM=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=bLUfg4fAg/EIDOF2RtTDiCOMRi2i459wBq4+QAhjxLMVIOYjgzFUoakQ5ftoCnOwC
-         EmryX+YtDyQl0niA6NzOXpkbKKvPju+pzyzGTyJBEkLV8qrsh7jUtgKlmqDc2PRiqS
-         TCCIuOO+FFpGf6WwG03/5vNPG/WzA/JM+5YdGwyFHpSB3XjK7Lzl2hfQG2MSdUEbMd
-         BOzrGI78Kmj1dym5cBG4Z+2T0nDvGuY9CBDK0VkKizFzatRBCtsDwEx2NeZwasLEOD
-         4oRVgXtD46o+Sf6hE96rXjHxjPyqEJLxlCLEI2OZsU2OYWCS/S7m61tfFZTN/8oTNz
-         uIkF1l/FIltSA==
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.10 12/14] Revert "ext4: don't clear SB_RDONLY when remounting r/w until quota is re-enabled"
-Date:   Fri, 16 Jun 2023 06:27:49 -0400
-Message-Id: <20230616102753.673975-12-sashal@kernel.org>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230616102753.673975-1-sashal@kernel.org>
-References: <20230616102753.673975-1-sashal@kernel.org>
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 7F13021AEA;
+        Fri, 16 Jun 2023 13:27:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1686922066; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=RQG9SvLCYT5CdQHbsIt/j1559mVkDuYjYOnXa/ktwp8=;
+        b=gVzaRLDyVe2g0d7M3W0ZDf5dxnGMt815C/DBNrs1VXnWMRPYJ378rHD+iw01aoLCSzuH5t
+        D52oBQ7upCXvZBFYKDAlYs0pV2QDR6hp7QygWYbIkBetorsU7UVKhQLbFL78KTKDGdN9cs
+        4OgTzRJlkxaS8LrJoQumK4f/cUp1EBE=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1686922066;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=RQG9SvLCYT5CdQHbsIt/j1559mVkDuYjYOnXa/ktwp8=;
+        b=NTtBIgyOaxkcpsCTYkvN+cOeIRhyyg5sD0MmH86705V8iHTl6brCQEellN1fc1fKGyH+uD
+        ThgUqXOchwNjEVDQ==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 6A766138E8;
+        Fri, 16 Jun 2023 13:27:46 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id 1pb7GVJjjGQPRwAAMHmgww
+        (envelope-from <jack@suse.cz>); Fri, 16 Jun 2023 13:27:46 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id CC862A0755; Fri, 16 Jun 2023 15:27:45 +0200 (CEST)
+Date:   Fri, 16 Jun 2023 15:27:45 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Zhang Yi <yi.zhang@huaweicloud.com>
+Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jack@suse.cz, yi.zhang@huawei.com,
+        chengzhihao1@huawei.com, yukuai3@huawei.com
+Subject: Re: [PATCH v2] jbd2: skip reading super block if it has been verified
+Message-ID: <20230616132745.d3enqs4uni55abrj@quack3>
+References: <20230616015547.3155195-1-yi.zhang@huaweicloud.com>
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-X-stable-base: Linux 5.10.184
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230616015547.3155195-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Theodore Ts'o <tytso@mit.edu>
+On Fri 16-06-23 09:55:47, Zhang Yi wrote:
+> From: Zhang Yi <yi.zhang@huawei.com>
+> 
+> We got a NULL pointer dereference issue below while running generic/475
+> I/O failure pressure test.
+> 
+>  BUG: kernel NULL pointer dereference, address: 0000000000000000
+>  #PF: supervisor write access in kernel mode
+>  #PF: error_code(0x0002) - not-present page
+>  PGD 0 P4D 0
+>  Oops: 0002 [#1] PREEMPT SMP PTI
+>  CPU: 1 PID: 15600 Comm: fsstress Not tainted 6.4.0-rc5-xfstests-00055-gd3ab1bca26b4 #190
+>  RIP: 0010:jbd2_journal_set_features+0x13d/0x430
+>  ...
+>  Call Trace:
+>   <TASK>
+>   ? __die+0x23/0x60
+>   ? page_fault_oops+0xa4/0x170
+>   ? exc_page_fault+0x67/0x170
+>   ? asm_exc_page_fault+0x26/0x30
+>   ? jbd2_journal_set_features+0x13d/0x430
+>   jbd2_journal_revoke+0x47/0x1e0
+>   __ext4_forget+0xc3/0x1b0
+>   ext4_free_blocks+0x214/0x2f0
+>   ext4_free_branches+0xeb/0x270
+>   ext4_ind_truncate+0x2bf/0x320
+>   ext4_truncate+0x1e4/0x490
+>   ext4_handle_inode_extension+0x1bd/0x2a0
+>   ? iomap_dio_complete+0xaf/0x1d0
+> 
+> The root cause is the journal super block had been failed to write out
+> due to I/O fault injection, it's uptodate bit was cleared by
+> end_buffer_write_sync() and didn't reset yet in jbd2_write_superblock().
+> And it raced by journal_get_superblock()->bh_read(), unfortunately, the
+> read IO is also failed, so the error handling in
+> journal_fail_superblock() unexpectedly clear the journal->j_sb_buffer,
+> finally lead to above NULL pointer dereference issue.
+> 
+> If the journal super block had been read and verified, there is no need
+> to call bh_read() read it again even if it has been failed to written
+> out. So the fix could be simply move buffer_verified(bh) in front of
+> bh_read(). Also remove a stale comment left in
+> jbd2_journal_check_used_features().
+> 
+> Fixes: 51bacdba23d8 ("jbd2: factor out journal initialization from journal_get_superblock()")
+> Reported-by: Theodore Ts'o <tytso@mit.edu>
+> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
-[ Upstream commit 1b29243933098cdbc31b579b5616e183b4275e2f ]
+This works as a workaround. It is a bit kludgy but for now I guess it is
+good enough. Thanks for the fix and feel free to add:
 
-This reverts commit a44be64bbecb15a452496f60db6eacfee2b59c79.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Link: https://lore.kernel.org/r/653b3359-2005-21b1-039d-c55ca4cffdcc@gmail.com
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/ext4/super.c | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+								Honza
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f72896384dbc9..84b4fc9833e38 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5799,7 +5799,6 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	ext4_group_t g;
- 	unsigned int journal_ioprio = DEFAULT_JOURNAL_IOPRIO;
- 	int err = 0;
--	int enable_rw = 0;
- #ifdef CONFIG_QUOTA
- 	int enable_quota = 0;
- 	int i, j;
-@@ -5992,7 +5991,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 			if (err)
- 				goto restore_opts;
- 
--			enable_rw = 1;
-+			sb->s_flags &= ~SB_RDONLY;
- 			if (ext4_has_feature_mmp(sb)) {
- 				err = ext4_multi_mount_protect(sb,
- 						le64_to_cpu(es->s_mmp_block));
-@@ -6039,9 +6038,6 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	if (!test_opt(sb, BLOCK_VALIDITY) && sbi->s_system_blks)
- 		ext4_release_system_zone(sb);
- 
--	if (enable_rw)
--		sb->s_flags &= ~SB_RDONLY;
--
- 	/*
- 	 * Reinitialize lazy itable initialization thread based on
- 	 * current settings
+
+> ---
+> v1->v2:
+>  - Remove a stale comment left in jbd2_journal_check_used_features().
+> 
+>  fs/jbd2/journal.c | 7 +++----
+>  1 file changed, 3 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index b5e57735ab3f..559242df0f9a 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -1919,6 +1919,9 @@ static int journal_get_superblock(journal_t *journal)
+>  	bh = journal->j_sb_buffer;
+>  
+>  	J_ASSERT(bh != NULL);
+> +	if (buffer_verified(bh))
+> +		return 0;
+> +
+>  	err = bh_read(bh, 0);
+>  	if (err < 0) {
+>  		printk(KERN_ERR
+> @@ -1926,9 +1929,6 @@ static int journal_get_superblock(journal_t *journal)
+>  		goto out;
+>  	}
+>  
+> -	if (buffer_verified(bh))
+> -		return 0;
+> -
+>  	sb = journal->j_superblock;
+>  
+>  	err = -EINVAL;
+> @@ -2229,7 +2229,6 @@ int jbd2_journal_check_used_features(journal_t *journal, unsigned long compat,
+>  
+>  	if (!compat && !ro && !incompat)
+>  		return 1;
+> -	/* Load journal superblock if it is not loaded yet. */
+>  	if (journal_get_superblock(journal))
+>  		return 0;
+>  	if (!jbd2_format_support_feature(journal))
+> -- 
+> 2.39.2
+> 
 -- 
-2.39.2
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
