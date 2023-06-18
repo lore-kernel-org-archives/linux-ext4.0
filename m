@@ -2,66 +2,66 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 271DAEB64D7
-	for <linux-ext4@archiver.kernel.org>; Sun, 18 Jun 2023 21:36:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2A357EB64DA
+	for <linux-ext4@archiver.kernel.org>; Sun, 18 Jun 2023 21:36:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229773AbjFRVgM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 18 Jun 2023 17:36:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36620 "EHLO
+        id S229798AbjFRVgQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 18 Jun 2023 17:36:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36630 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229754AbjFRVgI (ORCPT
+        with ESMTP id S229762AbjFRVgI (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Jun 2023 17:36:08 -0400
-Received: from mo4-p02-ob.smtp.rzone.de (mo4-p02-ob.smtp.rzone.de [85.215.255.83])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BF51FE47;
-        Sun, 18 Jun 2023 14:36:05 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1687123985; cv=none;
+Received: from mo4-p03-ob.smtp.rzone.de (mo4-p03-ob.smtp.rzone.de [85.215.255.104])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BD35DE49;
+        Sun, 18 Jun 2023 14:36:06 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1687123988; cv=none;
     d=strato.com; s=strato-dkim-0002;
-    b=LAE7q86rzAmU2pmXqjpSY5LwGTLo9P9aKtp2cfOqbFI7RHUOCTI1MF8XsU9Xo1JDhB
-    x0VW2OQuZbbIMP+ZN0+3pA5GjoydH5L1RIvFShJdJEy4b7CGTKYCR6jFoKDOk11jrXZA
-    gt7bkgHWcCWa7txlU32h5nil+W8SXK5ICLKy5RZ5AsKthjcYLuvhFl5JV1AvWGzkMx1j
-    hVxh/DWjuM8m2y+JNcU3ulC+yELs1eCViYbY7BKrvhbLo0bI0iXYEhnmUOH/1R/E3B8U
-    FtVhrMYMxm4Tzr8OyTwl0UWD9NZez1bAbH91ZbcNoP7QV2ZZ0LB+HY1uY6PdTfy7QRrB
-    61Hw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; t=1687123985;
+    b=tEdXkdk7eABTemTjAU3iVebaYm3Bzh3MWbiQBoyEfdn2aJ2yeIRsy40d61YZQMufmE
+    gqAjOYupLuO2sQ7v0KLbNqbFBG78din/tYVrvJ224Tqx10k4g8WWbn3SbOs8CcopWs0l
+    pbMHLb23pfZT9K9Xl9XQKoyrtlDWQfrOWmbdO6vpEpSalm6Kz3ZdlLDiJPW0/xzHHR6d
+    fNZoZOEKvQ9ITPPJGvcVwYPS5jhXS/91xafwSu0K1IQbA/4ckyi1/iQndKROuK5P4R2j
+    xga3ZGIHDKSyepMGAx+n9OWOfKttP8ye/ZHWu/MtADofar2WEFRTVILO3MTH/SFU7C87
+    EUqA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; t=1687123988;
     s=strato-dkim-0002; d=strato.com;
     h=References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Cc:Date:
     From:Subject:Sender;
-    bh=5B5W+5M4yQ6bKG+vVuzoT4Vp+ARdlHL0dQxj+aWT0y4=;
-    b=EkKDqpIujVv3I9++MhPh7JUlKKRJ0pywsM2CI93xwU/UvZDUWISWNdraw42ycr1XV6
-    s4n5FghXNYSo6FE0C4bAtzHTCkxqyB/GGm6mZs/FmS2IEYw6pmYcDYsCTRA/i17Z8sZ4
-    ACN4NQhvgXJV2zGPCbsgVKQ/6zCQOHsigwk3nwUsf63ZUl5Bxz1A8KSELEMsC19dFafT
-    IBXoY5RDjbdYcdoYHFBSBAXXW09I1mvZI4e2USLcxhyRCtafdnBkhtGKDY4oR+ftOkYO
-    OtRjyRH0jMnq1ZNUTH9BPlkyj87JUOfRKilqHUFVNTyE9H6uFNGfW9/u4kGIWQ25UxMy
-    dluA==
+    bh=f2kgEMuIUUrHM5gBc5Sm8qQWNSiMWwhC4tlGu4p/URc=;
+    b=mf4ehWkiTNgGioBCJaewTZnI1CdsXpb+P0qZdNlZ5uExOHHr/sHp7Zxxr1HJHRMxsR
+    UpyBn8CHIdbcr2GvduRetEJBlLVVz0kIMCoa3yrPnggf5pPtI3hkgw8c4B/zvB5cHH+p
+    3WoLtOWkjrPjnvrG1yCS1r9oRveLq8owWXIgI26EuNa0sIrkh1a3X5qIPEcRuUAlWBiP
+    PSy1ynNnPl/i5KD5612T3HyUkpOS/re+MtQXCMyHPtKawIs9ItiMovYSY75AjK8RKr1U
+    LdIJpXk1G40ViTZsZ8YEqNjVMPSntbzT6nhbgB633z/Ve5LrDl34fhD8F0HQ0d/AexPL
+    WtyQ==
 ARC-Authentication-Results: i=1; strato.com;
     arc=none;
     dkim=none
-X-RZG-CLASS-ID: mo02
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; t=1687123985;
+X-RZG-CLASS-ID: mo03
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; t=1687123988;
     s=strato-dkim-0002; d=iokpp.de;
     h=References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Cc:Date:
     From:Subject:Sender;
-    bh=5B5W+5M4yQ6bKG+vVuzoT4Vp+ARdlHL0dQxj+aWT0y4=;
-    b=URFyVNhQkk1WjaPApLrqX+adaZWYjOiIlbBXdl5kGUI1gANR/SZnEzs0y7UwoLUMyz
-    2CaLiyiOFD21kVRK4dj+u4WgDsU7x/8t4/a2tX+vB0v8b8VSaS+9fFzh/beuQlggg1Kq
-    2FOYq9d0EJJT4OaD21oNgY/KXWHuExtzJnG3ir73wn/H1yHplydNUlu5FoM5KZC7w+3e
-    ngGjAcdydG/4fvpL0Rfv7QZxi3EBnbdw9rBtXN3XPV2vn15NRvNCJVDO7Q9JFOC5vpDT
-    sfFBhipbowiV+iE9Tg0Xu7lf8cgTz8FDJ78kpOnSPsVPnf9H1KQ/1F/3mK7fgw2Hav3y
-    XyLg==
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; t=1687123985;
+    bh=f2kgEMuIUUrHM5gBc5Sm8qQWNSiMWwhC4tlGu4p/URc=;
+    b=bahHsnk+VQ49NmAqeLTyYIKH088rJ1bhhGqTig2deRUwdhreH04FLhPBSzPS8x+yfp
+    uPB5yunDDa7hg9ZbQ4mb61q+tnqM851gEjy3lnlnRJUS424IqyqHMEiTXsdCxNksB8C+
+    7PQ8fHHwSf/G7IvOFUB5x1BV8pz83J7MBKIr7W24WN3HedKW6h5GEcXW9Ex1CLJfMKA7
+    XaLTi1mpIRR36fVGHm/DCtarnG2G6ohYongfl0I62htqcG+jwkOL2D0cZeZVM9aFruMI
+    8b1zfnqRKjrul1Zw+r2MTm+s4VdW+cQat0njR4Xf8YG6RUmOrnxn8LzxLN/GWFJrT/ax
+    X1TQ==
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; t=1687123988;
     s=strato-dkim-0003; d=iokpp.de;
     h=References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Cc:Date:
     From:Subject:Sender;
-    bh=5B5W+5M4yQ6bKG+vVuzoT4Vp+ARdlHL0dQxj+aWT0y4=;
-    b=rXH0HnCIuKZMAhQT/dfven9avZ8tIBFI/MJ5WxYXnufXmubYzYnocg+OMHaFyQiJjL
-    zL5crck9utfsfqmr1GAA==
+    bh=f2kgEMuIUUrHM5gBc5Sm8qQWNSiMWwhC4tlGu4p/URc=;
+    b=dBt5lKWS8dqmRtY3qC7MaiFJqdMJFpEDTtsjzVMd/Pp8QsibX0A12xfWvfoG/iAKeA
+    R8g9/41dk9kwuat6UcAg==
 X-RZG-AUTH: ":LmkFe0i9dN8c2t4QQyGBB/NDXvjDB6pBSedrgBzPc9DUyubU4DD1EQ33bneoxgmq5ARfEwes1hW/CxwfjqKzP/cKnUXGNs35zouFQhI="
 Received: from blinux.speedport.ip
     by smtp.strato.de (RZmta 49.6.0 AUTH)
-    with ESMTPSA id zb0c8bz5ILX4AHK
+    with ESMTPSA id zb0c8bz5ILX7AHN
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256 bits))
         (Client did not present a certificate);
-    Sun, 18 Jun 2023 23:33:04 +0200 (CEST)
+    Sun, 18 Jun 2023 23:33:07 +0200 (CEST)
 From:   Bean Huo <beanhuo@iokpp.de>
 To:     viro@zeniv.linux.org.uk, brauner@kernel.org,
         akpm@linux-foundation.org, jack@suse.cz, jack@suse.com,
@@ -70,9 +70,9 @@ To:     viro@zeniv.linux.org.uk, brauner@kernel.org,
 Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
         beanhuo@micron.com
-Subject: [PATCH v1 2/5] fs/buffer.c: convert block_commit_write to return void
-Date:   Sun, 18 Jun 2023 23:32:47 +0200
-Message-Id: <20230618213250.694110-3-beanhuo@iokpp.de>
+Subject: [PATCH v1 5/5] udf: No need to check return value of block_commit_write()
+Date:   Sun, 18 Jun 2023 23:32:50 +0200
+Message-Id: <20230618213250.694110-6-beanhuo@iokpp.de>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20230618213250.694110-1-beanhuo@iokpp.de>
 References: <20230618213250.694110-1-beanhuo@iokpp.de>
@@ -85,65 +85,34 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Bean Huo <beanhuo@micron.com>
 
-block_commit_write() always returns 0, this patch changes it to
-return void.
+Remove unnecessary check on the return value of block_commit_write().
 
 Signed-off-by: Bean Huo <beanhuo@micron.com>
 ---
- fs/buffer.c                 | 11 +++++------
- include/linux/buffer_head.h |  2 +-
- 2 files changed, 6 insertions(+), 7 deletions(-)
+ fs/udf/file.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index b88bb7ec38be..fa09cf94f771 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -2116,7 +2116,7 @@ int __block_write_begin(struct page *page, loff_t pos, unsigned len,
- }
- EXPORT_SYMBOL(__block_write_begin);
- 
--int block_commit_write(struct page *page, unsigned int from, unsigned int to)
-+void block_commit_write(struct page *page, unsigned int from, unsigned int to)
- {
- 	unsigned block_start, block_end;
- 	int partial = 0;
-@@ -2151,7 +2151,6 @@ int block_commit_write(struct page *page, unsigned int from, unsigned int to)
- 	 */
- 	if (!partial)
- 		SetPageUptodate(page);
--	return 0;
- }
- EXPORT_SYMBOL(block_commit_write);
- 
-@@ -2577,11 +2576,11 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+diff --git a/fs/udf/file.c b/fs/udf/file.c
+index 8238f742377b..b1a062922a24 100644
+--- a/fs/udf/file.c
++++ b/fs/udf/file.c
+@@ -67,13 +67,13 @@ static vm_fault_t udf_page_mkwrite(struct vm_fault *vmf)
+ 	else
  		end = PAGE_SIZE;
- 
- 	ret = __block_write_begin(page, 0, end, get_block);
--	if (!ret)
--		ret = block_commit_write(page, 0, end);
--
--	if (unlikely(ret < 0))
-+	if (unlikely(ret))
+ 	err = __block_write_begin(page, 0, end, udf_get_block);
+-	if (!err)
+-		err = block_commit_write(page, 0, end);
+-	if (err < 0) {
++	if (err) {
+ 		unlock_page(page);
+ 		ret = block_page_mkwrite_return(err);
  		goto out_unlock;
+ 	}
 +
 +	block_commit_write(page, 0, end);
-+
+ out_dirty:
  	set_page_dirty(page);
  	wait_for_stable_page(page);
- 	return 0;
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index 1520793c72da..873653d2f1aa 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -284,7 +284,7 @@ int cont_write_begin(struct file *, struct address_space *, loff_t,
- 			unsigned, struct page **, void **,
- 			get_block_t *, loff_t *);
- int generic_cont_expand_simple(struct inode *inode, loff_t size);
--int block_commit_write(struct page *page, unsigned from, unsigned to);
-+void block_commit_write(struct page *page, unsigned int from, unsigned int to);
- int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
- 				get_block_t get_block);
- /* Convert errno to return value from ->page_mkwrite() call */
 -- 
 2.34.1
 
