@@ -2,66 +2,67 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E1E40EB64D7
-	for <linux-ext4@archiver.kernel.org>; Sun, 18 Jun 2023 21:33:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 30F05EB64DA
+	for <linux-ext4@archiver.kernel.org>; Sun, 18 Jun 2023 21:36:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229665AbjFRVdW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 18 Jun 2023 17:33:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35670 "EHLO
+        id S229739AbjFRVgG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 18 Jun 2023 17:36:06 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36606 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229456AbjFRVdV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Jun 2023 17:33:21 -0400
-Received: from mo4-p02-ob.smtp.rzone.de (mo4-p02-ob.smtp.rzone.de [85.215.255.80])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DB9FCE1;
-        Sun, 18 Jun 2023 14:33:13 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1687123987; cv=none;
+        with ESMTP id S229456AbjFRVgF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Jun 2023 17:36:05 -0400
+X-Greylist: delayed 174 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Sun, 18 Jun 2023 14:36:04 PDT
+Received: from mo4-p02-ob.smtp.rzone.de (mo4-p02-ob.smtp.rzone.de [85.215.255.84])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2AD67E1;
+        Sun, 18 Jun 2023 14:36:03 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1687123986; cv=none;
     d=strato.com; s=strato-dkim-0002;
-    b=pLEHJ/bKY0zR7WfVem2YJX11hI5zcyydSYNrxDhLqLUbG2eh5hktn73AF1yxlwqMpY
-    g/ARQjKIM9Lry5xsVby9JTIq4HbhPhyyh2bBtLKJYbUt/CvLVCe7zNdGaWF/TSkISzOw
-    HqDwsUuBXDn4ahcCZqQ576hepzZRQYD6feXBbkVO49mZBNZti/lxcGjBC9YPT/4v/D3B
-    9GSsOc7VPjYQ7dgyWlukJCLLh++tza2j5IrxgDhrqq+7g86Av4rkvHpsko32TxJ3WclB
-    4CSTeJw7QSK6fgZs6bh/rfV5idezwMvQ/semvtQtCs+dp0eAOHYbnMW1JSbpoAJmHA3f
-    /9eg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; t=1687123987;
+    b=VM4BVadLBxSmWrHdO2AnIMFg3ThohSaWQHyt8CN0gGgrgT5Efki2XHTvsdgrx1ulnu
+    gi1cVRMSfGGBnxqq3Up+SVlG+6HLgZhTJ+pEKilpmwR2A4+BFS9DoFhf3z0sgA8O+SmS
+    +nEEpKuMAaL+L7rzmqyg8GpEFroyX8gqjmMCjftc6+gE0I4cP5FKwRB/GIUme3aNGAjQ
+    Mu9f5JPR+wgaBVmKO0LuS1DA5hLKntZTsVoTvEhI9tQ7B/+gmj9Fq7j6CU+xz3RdGfm7
+    x01gQu+hPEqCr5fg+ETD82JFu/XYJAIf2k3ebb2hjNJqje57KvmfnK9wwbX2M7wYVRLR
+    fReg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; t=1687123986;
     s=strato-dkim-0002; d=strato.com;
     h=References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Cc:Date:
     From:Subject:Sender;
-    bh=ByE+GUzwLDG5usz6jIof8CLTzZ6sYXPxh+V91S3i84U=;
-    b=W8l2heUn/qa9X6uxx9qZLX8bsfkjD1TyNpx7NIlB8Gnmr90fhd4c1Sl6boZCyjfeR5
-    kAD8fr51l2ZvCr2g/uxT6XHmnbgB3TmwkHbzh3fgtHvp23vz23ySCVm7VIQYYVJKll36
-    ZPKytI+0d0mwhlUcX9UOWBJGM+cTUiSOGAfoLprazJMlzQS3JwnpcFdrfC1R+Fxdsjsu
-    gbjhn+oXinSlWJngIq2ITgzVZh+2VWPCdw/nPgnQOQ6fto20AuNtXnZmxtJ4cmFtULXH
-    x9l+aryDOaA6fKejukojxwupuNGDUw/3dUQx4NC52LyQ8DmwwBSQjiLGrGjYGszvY32r
-    naNg==
+    bh=6ppbOx/Qif038c3YguD4sRfoT+KAp+bNCu/5t81cezc=;
+    b=Ne0eZfHTFUALLrUFdk+Mulsr50qZ7017Hu6VyizDLMjGT45FpEu8baz/jcu33NlyhR
+    kNT0gTjYuWT5l7lxhTATOY+4uQnJqU4xPyKBmq3d8g895uLh1PuSwXlXH59hZB6Hj/kV
+    /RPpksFyRS9tHYP7tQb2F2wWF39Kay4SpNY2QYV+2SvbGyFx49NKr2KTpco9f5R2erVZ
+    tA38sJhLXJaNmQYypvIRVUgg58TFeSyG3qelpcWjbSpGHLxYWDo1JDk4GopqXW6KvaaJ
+    dJXTHLmnMQCbKYsgWTwtcW9nND/cnQ4Jm8zr6ihU8EY8iQUacB3nzWzq6twRa4qNiZdG
+    7NnA==
 ARC-Authentication-Results: i=1; strato.com;
     arc=none;
     dkim=none
 X-RZG-CLASS-ID: mo02
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; t=1687123987;
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; t=1687123986;
     s=strato-dkim-0002; d=iokpp.de;
     h=References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Cc:Date:
     From:Subject:Sender;
-    bh=ByE+GUzwLDG5usz6jIof8CLTzZ6sYXPxh+V91S3i84U=;
-    b=I/Sam9ubiVNWnsYHM4Uz6c4kDnTzvMysr+UiOj6HJZIkBo+wMoVNH5A/vTf9eYMLoM
-    13Mqc3UasIbqYpxQ+iuJDkoHvWuKaCy0y765bFXo7cts4FPXEcLIDlATt/O8AVvvtm8+
-    4xASk8jV2skvOTGJ2/FFH2MaYWmXGMEcFImuOAuyYx3jitdFoFSXc2V5sYsINEFltzg+
-    yK3Y14rSsN27mg1HG9aL/iUKcsMD/mNqMY+hWDgz81uxsoxYA/m2FKrk2te4DzI+WWfg
-    3wtLLUgMcIm1W8pxknPaTRJuaDh5P3T9liRplpwq5UN947Fi6Js8ewuAdNdXmYRPKUki
-    GF7Q==
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; t=1687123987;
+    bh=6ppbOx/Qif038c3YguD4sRfoT+KAp+bNCu/5t81cezc=;
+    b=rm1C4aDn5s8p0jiPCSQS5e33N+QMhMYX/pDLrHunRRLY82ZzC79ofe7ts6o6S9db1m
+    Lv7Y5hzySS8uRR66xnJLkU2Sjeyuj8Adcq48IFxbNoq03zd70IyYvmu0Pkd/JfsZhHio
+    2JMb7GZaAA3fGeds4hxUJieADdqHEeB3ehdTQinwcA3J82eiAGQUgpWU/6speQS27RgD
+    wCMRuwmubaVUc159E62Bm6I9RmJUR5MoHjQLTv2f9hqsvHVNCaKLw8e8ro+CLkRSir1+
+    Pt6a1MhtQExsqm+6T6TVUNbTmw+FqRMdzeJfiN6csLCKWsVaGLvAEJJwvy097UnGynCk
+    cfIg==
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; t=1687123986;
     s=strato-dkim-0003; d=iokpp.de;
     h=References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Cc:Date:
     From:Subject:Sender;
-    bh=ByE+GUzwLDG5usz6jIof8CLTzZ6sYXPxh+V91S3i84U=;
-    b=R2J1VAchfVBP7IiVOUW+S6F/wiHWLIMM2xxuk2gf6Ug7a0Z5LFWJyXUGOKBW+C16Xy
-    pE9ZAu31RN7r+LTMBFCA==
+    bh=6ppbOx/Qif038c3YguD4sRfoT+KAp+bNCu/5t81cezc=;
+    b=NvePtc2m2+fdgfTJNzrxCVuc1a5tkuX9Juc9ovSF6j+el0TNLXge5NTjT7AAYUd0kv
+    N5FeFsHWiyo5iEgg0QDg==
 X-RZG-AUTH: ":LmkFe0i9dN8c2t4QQyGBB/NDXvjDB6pBSedrgBzPc9DUyubU4DD1EQ33bneoxgmq5ARfEwes1hW/CxwfjqKzP/cKnUXGNs35zouFQhI="
 Received: from blinux.speedport.ip
     by smtp.strato.de (RZmta 49.6.0 AUTH)
-    with ESMTPSA id zb0c8bz5ILX6AHM
+    with ESMTPSA id zb0c8bz5ILX5AHL
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256 bits))
         (Client did not present a certificate);
-    Sun, 18 Jun 2023 23:33:06 +0200 (CEST)
+    Sun, 18 Jun 2023 23:33:05 +0200 (CEST)
 From:   Bean Huo <beanhuo@iokpp.de>
 To:     viro@zeniv.linux.org.uk, brauner@kernel.org,
         akpm@linux-foundation.org, jack@suse.cz, jack@suse.com,
@@ -70,9 +71,9 @@ To:     viro@zeniv.linux.org.uk, brauner@kernel.org,
 Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
         beanhuo@micron.com
-Subject: [PATCH v1 4/5] fs/ocfs2: No need to check return value of block_commit_write()
-Date:   Sun, 18 Jun 2023 23:32:49 +0200
-Message-Id: <20230618213250.694110-5-beanhuo@iokpp.de>
+Subject: [PATCH v1 3/5] ext4: No need to check return value of block_commit_write()
+Date:   Sun, 18 Jun 2023 23:32:48 +0200
+Message-Id: <20230618213250.694110-4-beanhuo@iokpp.de>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20230618213250.694110-1-beanhuo@iokpp.de>
 References: <20230618213250.694110-1-beanhuo@iokpp.de>
@@ -89,27 +90,30 @@ Remove unnecessary check on the return value of block_commit_write().
 
 Signed-off-by: Bean Huo <beanhuo@micron.com>
 ---
- fs/ocfs2/file.c | 7 +------
- 1 file changed, 1 insertion(+), 6 deletions(-)
+ fs/ext4/move_extent.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
-index efb09de4343d..39d8dbb26bb3 100644
---- a/fs/ocfs2/file.c
-+++ b/fs/ocfs2/file.c
-@@ -808,12 +808,7 @@ static int ocfs2_write_zero_page(struct inode *inode, u64 abs_from,
- 
- 
- 		/* must not update i_size! */
--		ret = block_commit_write(page, block_start + 1,
--					 block_start + 1);
--		if (ret < 0)
--			mlog_errno(ret);
--		else
--			ret = 0;
-+		block_commit_write(page, block_start + 1, block_start + 1);
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index b5af2fc03b2f..f4b4861a74ee 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -392,14 +392,11 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 	for (i = 0; i < block_len_in_page; i++) {
+ 		*err = ext4_get_block(orig_inode, orig_blk_offset + i, bh, 0);
+ 		if (*err < 0)
+-			break;
++			goto repair_branches;
+ 		bh = bh->b_this_page;
  	}
+-	if (!*err)
+-		*err = block_commit_write(&folio[0]->page, from, from + replaced_size);
  
- 	/*
+-	if (unlikely(*err < 0))
+-		goto repair_branches;
++	block_commit_write(&folio[0]->page, from, from + replaced_size);
+ 
+ 	/* Even in case of data=writeback it is reasonable to pin
+ 	 * inode to transaction, to prevent unexpected data loss */
 -- 
 2.34.1
 
