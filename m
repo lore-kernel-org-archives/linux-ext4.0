@@ -2,67 +2,66 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 30F05EB64DA
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DFD95EB64D8
 	for <linux-ext4@archiver.kernel.org>; Sun, 18 Jun 2023 21:36:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229739AbjFRVgG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 18 Jun 2023 17:36:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36606 "EHLO
+        id S229767AbjFRVgK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 18 Jun 2023 17:36:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36616 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229456AbjFRVgF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Jun 2023 17:36:05 -0400
-X-Greylist: delayed 174 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Sun, 18 Jun 2023 14:36:04 PDT
+        with ESMTP id S229752AbjFRVgI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Jun 2023 17:36:08 -0400
 Received: from mo4-p02-ob.smtp.rzone.de (mo4-p02-ob.smtp.rzone.de [85.215.255.84])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2AD67E1;
-        Sun, 18 Jun 2023 14:36:03 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1687123986; cv=none;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9EA42E44;
+        Sun, 18 Jun 2023 14:36:05 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1687123984; cv=none;
     d=strato.com; s=strato-dkim-0002;
-    b=VM4BVadLBxSmWrHdO2AnIMFg3ThohSaWQHyt8CN0gGgrgT5Efki2XHTvsdgrx1ulnu
-    gi1cVRMSfGGBnxqq3Up+SVlG+6HLgZhTJ+pEKilpmwR2A4+BFS9DoFhf3z0sgA8O+SmS
-    +nEEpKuMAaL+L7rzmqyg8GpEFroyX8gqjmMCjftc6+gE0I4cP5FKwRB/GIUme3aNGAjQ
-    Mu9f5JPR+wgaBVmKO0LuS1DA5hLKntZTsVoTvEhI9tQ7B/+gmj9Fq7j6CU+xz3RdGfm7
-    x01gQu+hPEqCr5fg+ETD82JFu/XYJAIf2k3ebb2hjNJqje57KvmfnK9wwbX2M7wYVRLR
-    fReg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; t=1687123986;
+    b=nWSvTOOnO8ugSK6+/H307s3L5N4uQG5KOysBX2IgampHzUt/e1M7vWIgYdM3yVn8L6
+    mF36Wi9H8fUj11MVYKe9B3JL/hDoWwgnzOa3dvcISkQQDSb2WEO0SpuCxbpl9ulC48VA
+    6OTnqS/TmHNy3oQ4R2DtbjIhU7Nohg+aSNxXIW/hxT2ZMWnTYP5q+8lRRwhkjZdu7w8l
+    M4LdL+lzkB6WNMIUSREXZKPuCvrGYQZzoo743PqH5qMBYNux3lLCwnXbWxglyfCgKp9d
+    JjMRY3fdgtxXhCanLp8cu/y+YDIQJYd/ZKZOPMXDY0KPjjpxCPe64ikJHtlBMzm9mmqZ
+    c3oA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; t=1687123984;
     s=strato-dkim-0002; d=strato.com;
     h=References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Cc:Date:
     From:Subject:Sender;
-    bh=6ppbOx/Qif038c3YguD4sRfoT+KAp+bNCu/5t81cezc=;
-    b=Ne0eZfHTFUALLrUFdk+Mulsr50qZ7017Hu6VyizDLMjGT45FpEu8baz/jcu33NlyhR
-    kNT0gTjYuWT5l7lxhTATOY+4uQnJqU4xPyKBmq3d8g895uLh1PuSwXlXH59hZB6Hj/kV
-    /RPpksFyRS9tHYP7tQb2F2wWF39Kay4SpNY2QYV+2SvbGyFx49NKr2KTpco9f5R2erVZ
-    tA38sJhLXJaNmQYypvIRVUgg58TFeSyG3qelpcWjbSpGHLxYWDo1JDk4GopqXW6KvaaJ
-    dJXTHLmnMQCbKYsgWTwtcW9nND/cnQ4Jm8zr6ihU8EY8iQUacB3nzWzq6twRa4qNiZdG
-    7NnA==
+    bh=FiS5DxAChRRX4k3Ho2cvADBUbEW2Co/dwGRsyJUkQbY=;
+    b=F1UqAkcdL/glDaJ1655WMMKUY52RDJgVOqcvh+cD7JNw7DLTJekAmQP9YVLy8YWOBF
+    guSVfoSeB8n1uU731qyZ+2YC7+WmUd1aoBptm75em2DG7A0I9YV9NJuGRMXnCNnXU294
+    CmwqbHfbRSHFnlCjWqWsUA4Re7ELTkbddNyG3e3F5zHhnCOKvViEuF728C4h3kfIP49z
+    ceyU8ATRHqXtto6Jx7yx/Q4/a+0El45664DLB5wW80ELr1N0KPFG7lCoJLDTbf+1GuWJ
+    bW5Tks8uPB7H4X+tPVl3XNjIVDIDbVkrwfOqq5JPKciLf00llz8zYQ8HIq0h2A0FypH/
+    mlmA==
 ARC-Authentication-Results: i=1; strato.com;
     arc=none;
     dkim=none
 X-RZG-CLASS-ID: mo02
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; t=1687123986;
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; t=1687123984;
     s=strato-dkim-0002; d=iokpp.de;
     h=References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Cc:Date:
     From:Subject:Sender;
-    bh=6ppbOx/Qif038c3YguD4sRfoT+KAp+bNCu/5t81cezc=;
-    b=rm1C4aDn5s8p0jiPCSQS5e33N+QMhMYX/pDLrHunRRLY82ZzC79ofe7ts6o6S9db1m
-    Lv7Y5hzySS8uRR66xnJLkU2Sjeyuj8Adcq48IFxbNoq03zd70IyYvmu0Pkd/JfsZhHio
-    2JMb7GZaAA3fGeds4hxUJieADdqHEeB3ehdTQinwcA3J82eiAGQUgpWU/6speQS27RgD
-    wCMRuwmubaVUc159E62Bm6I9RmJUR5MoHjQLTv2f9hqsvHVNCaKLw8e8ro+CLkRSir1+
-    Pt6a1MhtQExsqm+6T6TVUNbTmw+FqRMdzeJfiN6csLCKWsVaGLvAEJJwvy097UnGynCk
-    cfIg==
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; t=1687123986;
+    bh=FiS5DxAChRRX4k3Ho2cvADBUbEW2Co/dwGRsyJUkQbY=;
+    b=PRWXw8CAKoV3Zc0FbJ0k+sd2UEx2mwQS5sPlJ1IMvyUGGrk2/AECJxgw8T9H60V+iT
+    kf2EVFWyYPiH5njS6Yr90PInkPm3bbiSsQOqbEO3o/gQzIMpb4DzqVJRw1SE5b/I2uAx
+    GSla28BN0VEmJRltrEOtfGQvTP6/b2mojhwgA0OmUOhsbDzMpCc4A+/k5f6NOjxIhOLF
+    Yi7snDkMa2CTQrMtS6p8Q0vIAV7Bp+2QT1be6BQJY8RJX9ie+m1vSjmzrnqH2QF5a1vo
+    KuOIRvcXk1STDH86GatVeyNvviTymJ46nAkmGMH1fwNUrLcbDWtT2GXSU5bV+yN964xt
+    5s8w==
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; t=1687123984;
     s=strato-dkim-0003; d=iokpp.de;
     h=References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Cc:Date:
     From:Subject:Sender;
-    bh=6ppbOx/Qif038c3YguD4sRfoT+KAp+bNCu/5t81cezc=;
-    b=NvePtc2m2+fdgfTJNzrxCVuc1a5tkuX9Juc9ovSF6j+el0TNLXge5NTjT7AAYUd0kv
-    N5FeFsHWiyo5iEgg0QDg==
+    bh=FiS5DxAChRRX4k3Ho2cvADBUbEW2Co/dwGRsyJUkQbY=;
+    b=t62gJy/K2AlLeFVlbN8g/Eh1wVR4obWhlmtyT/E4D34lZw5GOWaD5/PPUg52sfahSL
+    IphcxhR520CJ6vjmIdAw==
 X-RZG-AUTH: ":LmkFe0i9dN8c2t4QQyGBB/NDXvjDB6pBSedrgBzPc9DUyubU4DD1EQ33bneoxgmq5ARfEwes1hW/CxwfjqKzP/cKnUXGNs35zouFQhI="
 Received: from blinux.speedport.ip
     by smtp.strato.de (RZmta 49.6.0 AUTH)
-    with ESMTPSA id zb0c8bz5ILX5AHL
+    with ESMTPSA id zb0c8bz5ILX2AHJ
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256 bits))
         (Client did not present a certificate);
-    Sun, 18 Jun 2023 23:33:05 +0200 (CEST)
+    Sun, 18 Jun 2023 23:33:02 +0200 (CEST)
 From:   Bean Huo <beanhuo@iokpp.de>
 To:     viro@zeniv.linux.org.uk, brauner@kernel.org,
         akpm@linux-foundation.org, jack@suse.cz, jack@suse.com,
@@ -71,9 +70,9 @@ To:     viro@zeniv.linux.org.uk, brauner@kernel.org,
 Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
         beanhuo@micron.com
-Subject: [PATCH v1 3/5] ext4: No need to check return value of block_commit_write()
-Date:   Sun, 18 Jun 2023 23:32:48 +0200
-Message-Id: <20230618213250.694110-4-beanhuo@iokpp.de>
+Subject: [PATCH v1 1/5] fs/buffer: clean up block_commit_write
+Date:   Sun, 18 Jun 2023 23:32:46 +0200
+Message-Id: <20230618213250.694110-2-beanhuo@iokpp.de>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20230618213250.694110-1-beanhuo@iokpp.de>
 References: <20230618213250.694110-1-beanhuo@iokpp.de>
@@ -86,34 +85,70 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Bean Huo <beanhuo@micron.com>
 
-Remove unnecessary check on the return value of block_commit_write().
+Originally inode is used to get blksize, after commit 45bce8f3e343
+("fs/buffer.c: make block-size be per-page and protected by the page lock"),
+__block_commit_write no longer uses this parameter inode, this patch is to
+remove inode and clean up block_commit_write.
 
 Signed-off-by: Bean Huo <beanhuo@micron.com>
 ---
- fs/ext4/move_extent.c | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
+ fs/buffer.c | 15 +++------------
+ 1 file changed, 3 insertions(+), 12 deletions(-)
 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index b5af2fc03b2f..f4b4861a74ee 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -392,14 +392,11 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
- 	for (i = 0; i < block_len_in_page; i++) {
- 		*err = ext4_get_block(orig_inode, orig_blk_offset + i, bh, 0);
- 		if (*err < 0)
--			break;
-+			goto repair_branches;
- 		bh = bh->b_this_page;
- 	}
--	if (!*err)
--		*err = block_commit_write(&folio[0]->page, from, from + replaced_size);
+diff --git a/fs/buffer.c b/fs/buffer.c
+index a7fc561758b1..b88bb7ec38be 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2116,8 +2116,7 @@ int __block_write_begin(struct page *page, loff_t pos, unsigned len,
+ }
+ EXPORT_SYMBOL(__block_write_begin);
  
--	if (unlikely(*err < 0))
--		goto repair_branches;
-+	block_commit_write(&folio[0]->page, from, from + replaced_size);
+-static int __block_commit_write(struct inode *inode, struct page *page,
+-		unsigned from, unsigned to)
++int block_commit_write(struct page *page, unsigned int from, unsigned int to)
+ {
+ 	unsigned block_start, block_end;
+ 	int partial = 0;
+@@ -2154,6 +2153,7 @@ static int __block_commit_write(struct inode *inode, struct page *page,
+ 		SetPageUptodate(page);
+ 	return 0;
+ }
++EXPORT_SYMBOL(block_commit_write);
  
- 	/* Even in case of data=writeback it is reasonable to pin
- 	 * inode to transaction, to prevent unexpected data loss */
+ /*
+  * block_write_begin takes care of the basic task of block allocation and
+@@ -2188,7 +2188,6 @@ int block_write_end(struct file *file, struct address_space *mapping,
+ 			loff_t pos, unsigned len, unsigned copied,
+ 			struct page *page, void *fsdata)
+ {
+-	struct inode *inode = mapping->host;
+ 	unsigned start;
+ 
+ 	start = pos & (PAGE_SIZE - 1);
+@@ -2214,7 +2213,7 @@ int block_write_end(struct file *file, struct address_space *mapping,
+ 	flush_dcache_page(page);
+ 
+ 	/* This could be a short (even 0-length) commit */
+-	__block_commit_write(inode, page, start, start+copied);
++	block_commit_write(page, start, start+copied);
+ 
+ 	return copied;
+ }
+@@ -2535,14 +2534,6 @@ int cont_write_begin(struct file *file, struct address_space *mapping,
+ }
+ EXPORT_SYMBOL(cont_write_begin);
+ 
+-int block_commit_write(struct page *page, unsigned from, unsigned to)
+-{
+-	struct inode *inode = page->mapping->host;
+-	__block_commit_write(inode,page,from,to);
+-	return 0;
+-}
+-EXPORT_SYMBOL(block_commit_write);
+-
+ /*
+  * block_page_mkwrite() is not allowed to change the file size as it gets
+  * called from a page fault handler when a page is first dirtied. Hence we must
 -- 
 2.34.1
 
