@@ -2,92 +2,64 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 895C8EB64D8
-	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jun 2023 11:00:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 67C60EB64D7
+	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jun 2023 12:19:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231501AbjFTK7s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 20 Jun 2023 06:59:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40570 "EHLO
+        id S231857AbjFTMTW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 20 Jun 2023 08:19:22 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48672 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230341AbjFTK7q (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jun 2023 06:59:46 -0400
-Received: from mail-ej1-x62a.google.com (mail-ej1-x62a.google.com [IPv6:2a00:1450:4864:20::62a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 00B06100;
-        Tue, 20 Jun 2023 03:59:45 -0700 (PDT)
-Received: by mail-ej1-x62a.google.com with SMTP id a640c23a62f3a-988c495f35fso234791366b.1;
-        Tue, 20 Jun 2023 03:59:45 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1687258784; x=1689850784;
-        h=mime-version:user-agent:content-transfer-encoding:references
-         :in-reply-to:date:cc:to:from:subject:message-id:from:to:cc:subject
-         :date:message-id:reply-to;
-        bh=UsfpIs8ZbY4FsxMJVdC8ReyTwzdMIzbHG6xjYSNsBro=;
-        b=cqx5XtAdAHDm10rjNY3fqjctrT7/AqesiOAO/ipraUwqmaTXxnPHxC+JRlYXU/Aoi2
-         67417T9YwBQ7KtG6rvQ8KthI9LPo7T4poZsF5O+hNeU4E6NYhQ1QnGwxvFWF9vjJRWwG
-         OBVTH7hgDU/IWyNQ00AnfxFnquSK6YZiNeLKCJ3PuDDKzl5BL40q3UM+Fj3risL5fAJs
-         jFKbnizVa4Z7DQgVqNlTGrweW9efdJfmFjUU6plPGU4Mhf8Pr4g44J//OkTbetyD2DPf
-         LkyrBduU6eoWEW0CtDCts3etVx/UlLNd4KneOrVcn25eYw2j4d1hzTLtC5swf+wOGb5g
-         UOxw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1687258784; x=1689850784;
-        h=mime-version:user-agent:content-transfer-encoding:references
-         :in-reply-to:date:cc:to:from:subject:message-id:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=UsfpIs8ZbY4FsxMJVdC8ReyTwzdMIzbHG6xjYSNsBro=;
-        b=bEtcJ5Tzwzc98b5akK5zIHyFE8uoGE5WMdcImMFl8QFqcsWv5tH8rzjTFrBxHXEC1a
-         rjnVLuERrz1vCDUsAP+qXkvDgYrp4DT807FVxuWFMxek2signdsKT7v1e13CF+vjRBIy
-         AS3j86yc9Gl9ZKOvAGVlpNrygSHGW9mG6TqEn41WuVTX1mAoakLPlEU93OT88E3k/YZt
-         LI2eUOaBuDZYHMR42DiEXIw0NNd0KYl6/uzlXu0u0tiFhwyKMVi8SOSSrvnpSRxqsXVY
-         5ozNLCgSxmABeLTW6x75RGp0nglNtmUdDchJXblU34Ry67xjB2bVnHaKUiZl8wtkkJwA
-         TiwQ==
-X-Gm-Message-State: AC+VfDxvB2224Op2HJ47bC+J4JnoULpEhuWgBGYLwXHMKVQ7vmbUVdAK
-        mds7k1tnLXsLakRtlSpzF8g=
-X-Google-Smtp-Source: ACHHUZ6nF0pp2ZRQkRSb1xXUWjmnMShWCcQHsA6Pbc+opfbPi2zM8yuaVjNg5nq9XYpkTu2Xx6QaAw==
-X-Received: by 2002:a17:907:36c5:b0:978:acec:36b1 with SMTP id bj5-20020a17090736c500b00978acec36b1mr10764445ejc.17.1687258784226;
-        Tue, 20 Jun 2023 03:59:44 -0700 (PDT)
-Received: from [10.176.234.233] ([147.161.245.31])
-        by smtp.gmail.com with ESMTPSA id z9-20020a1709063a0900b00988c0c175c6sm1151954eje.189.2023.06.20.03.59.42
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 20 Jun 2023 03:59:43 -0700 (PDT)
-Message-ID: <e30082535f1d7e92692718f1d25a08508f04fe0a.camel@gmail.com>
-Subject: Re: [PATCH v2 2/5] ext4: No need to check return value of
- block_commit_write()
-From:   Bean Huo <huobean@gmail.com>
-To:     Christoph Hellwig <hch@infradead.org>, Bean Huo <beanhuo@iokpp.de>
-Cc:     viro@zeniv.linux.org.uk, brauner@kernel.org,
-        akpm@linux-foundation.org, jack@suse.cz, jack@suse.com,
-        tytso@mit.edu, adilger.kernel@dilger.ca, mark@fasheh.com,
-        jlbec@evilplan.org, joseph.qi@linux.alibaba.com,
+        with ESMTP id S231363AbjFTMTU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jun 2023 08:19:20 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 81917128;
+        Tue, 20 Jun 2023 05:19:18 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Transfer-Encoding:
+        Content-Type:MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:
+        Sender:Reply-To:Content-ID:Content-Description;
+        bh=E5QUUBOujBKv+gztbLya39h7W7rLwvJjpjCrvA62fL4=; b=q8pPW/CMb3NPPRXd2htA4UuS5y
+        ORv47SxAac/b008gU7UOTJSUHz6GNsDktaLvZdBjtYGyvQf1qCJHQ1D13KQRyhl3jXXCSnUzSJ9e7
+        v/XlVE5EPNMthDD3tNm0b5WO7yFo6hIXfgREbx9redDW9VbbJvohyhFmg7D3DC41P1MjxbyAarlUg
+        VcQONfFztZNqUSpyFbQFknU7kCE2bQkLqLVrPdcXgDFBoSpQ/8eH6BxX+7wZCS/HnRMxgmrLz/e26
+        pCz16eRyByMQ/btJ6S/6A8A37hD/AVGA/XXhAQL0Z+L3JVXIDMNMiO2b28Pu3tGtTIk46r61tRg79
+        9IfM+kZg==;
+Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1qBaK4-00D489-Np; Tue, 20 Jun 2023 12:19:00 +0000
+Date:   Tue, 20 Jun 2023 13:19:00 +0100
+From:   Matthew Wilcox <willy@infradead.org>
+To:     Bean Huo <huobean@gmail.com>
+Cc:     Bean Huo <beanhuo@iokpp.de>, viro@zeniv.linux.org.uk,
+        brauner@kernel.org, akpm@linux-foundation.org, jack@suse.cz,
+        jack@suse.com, tytso@mit.edu, adilger.kernel@dilger.ca,
+        mark@fasheh.com, jlbec@evilplan.org, joseph.qi@linux.alibaba.com,
         linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
         beanhuo@micron.com
-Date:   Tue, 20 Jun 2023 12:59:42 +0200
-In-Reply-To: <ZJEvi8CJddmpeluC@infradead.org>
+Subject: Re: [PATCH v2 1/5] fs/buffer: clean up block_commit_write
+Message-ID: <ZJGZNGyIhJEeYagR@casper.infradead.org>
 References: <20230619211827.707054-1-beanhuo@iokpp.de>
-         <20230619211827.707054-3-beanhuo@iokpp.de> <ZJEvi8CJddmpeluC@infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.44.4-0ubuntu1 
+ <20230619211827.707054-2-beanhuo@iokpp.de>
+ <ZJE6Nf6XmeHIlFJI@casper.infradead.org>
+ <9513017b07522373d9e886478f889867b7cae54d.camel@gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <9513017b07522373d9e886478f889867b7cae54d.camel@gmail.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, 2023-06-19 at 21:48 -0700, Christoph Hellwig wrote:
-> On Mon, Jun 19, 2023 at 11:18:24PM +0200, Bean Huo wrote:
-> > From: Bean Huo <beanhuo@micron.com>
-> >=20
-> > Remove unnecessary check on the return value of
-> > block_commit_write(),
-> > because it always returns 0.
->=20
-> Dropping the error check before the function signature is changes is
-> really odd.=C2=A0 I'd suggest to merge this and the following patches int=
-o
-> a single one.
+On Tue, Jun 20, 2023 at 12:57:11PM +0200, Bean Huo wrote:
+> On Tue, 2023-06-20 at 06:33 +0100, Matthew Wilcox wrote:
+> > You're going to need to redo these patches, I'm afraid.  A series of
+> > patches I wrote just went in that convert __block_commit_write (but
+> > not block_commit_write) to take a folio instead of a page.
+> 
+> Do you know which git repo merged with your patches? 
 
-No problem, I will merge them together, thanks.
-
-Kind regards,
-Bean
+They're in git://git.kernel.org/pub/scm/linux/kernel/git/akpm/mm
+It's usually easiest to just work against
+git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next
 
