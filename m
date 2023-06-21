@@ -2,70 +2,96 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 672B7EB64D7
-	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jun 2023 22:26:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CB830EB64DC
+	for <linux-ext4@archiver.kernel.org>; Wed, 21 Jun 2023 14:48:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229974AbjFTW0O (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 20 Jun 2023 18:26:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40422 "EHLO
+        id S232140AbjFUOsD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 21 Jun 2023 10:48:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56762 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229872AbjFTW0N (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jun 2023 18:26:13 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6E8221738
-        for <linux-ext4@vger.kernel.org>; Tue, 20 Jun 2023 15:26:09 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-173-48-111-196.bstnma.fios.verizon.net [173.48.111.196])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 35KMPu6K008993
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 20 Jun 2023 18:25:58 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1687299959; bh=ghpadrxjlqVYCy4LJIRU/TrBqKyMaaRaj4llxsWJ6+s=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To;
-        b=VuDC3rlsEE2M7nrFX+kdWJ1fqp0cWIxKepJzzZqJdDSXOIC20wCPh50H2zSClOqIi
-         8ENtOUIpjDbq2Cin4CNkI6zzo9f3XrEOjUeUqwfJnHdqMos83pC6vx2MfAHTu/Z3Ao
-         LsbqGfSqKCDoD1LtpXkAI1k26KFJsn2EFUtzqRFsa+uiEQ2TLG9pGePvST28yAQYsV
-         zlzbnUWZjREUtehxnfO0kl/Rxtr/ogt47/NcTmDnBWQEmkFXh0rqvCT0eV/aEavsRd
-         hTNT3VILA7RgYugO11582ujOrLwlzWJldQR+pb2viluOQEqRM2DJfgncrVFYWOvUSR
-         veP01O3mDX1+g==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 1781C15C0266; Tue, 20 Jun 2023 18:25:56 -0400 (EDT)
-Date:   Tue, 20 Jun 2023 18:25:56 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Sasha Levin <sashal@kernel.org>
-Cc:     Pavel Machek <pavel@denx.de>, linux-kernel@vger.kernel.org,
-        stable@vger.kernel.org, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH AUTOSEL 5.10 9/9] ext4: enable the lazy init thread when
- remounting read/write
-Message-ID: <20230620222556.GJ286961@mit.edu>
-References: <20230615113917.649505-1-sashal@kernel.org>
- <20230615113917.649505-9-sashal@kernel.org>
- <ZIy60MUrKxit2tNq@duo.ucw.cz>
- <ZJG7GyeSa2xZ89/H@sashalap>
+        with ESMTP id S232017AbjFUOr4 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jun 2023 10:47:56 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D81E31BC1;
+        Wed, 21 Jun 2023 07:47:46 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 5E7C91FECC;
+        Wed, 21 Jun 2023 14:47:45 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1687358865; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=kv6ExZernbSJWI88DpmmcJXjCzsmSh4Zm3LClIhZLBs=;
+        b=uTLSKksY0r8UEg+1g8Guk7dqOeyat14cg0OjNpwTLUzr8cEyCNgHRveIDX2qfxuX9I5a8O
+        hLscMNKvZGF/uIL6xgU2cLqH1V5eM8liwOYtuT/q/o1ITefV0RUCSCkprNILo3KG1pYwKG
+        rM1DNpMVsmBPvigqeeqK8DazC1qf9ls=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1687358865;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=kv6ExZernbSJWI88DpmmcJXjCzsmSh4Zm3LClIhZLBs=;
+        b=Mo3w+XS3XfnQSCTYCM6KqnWgFu06AKVmYTKTVxpl0bzwm37SQBq1vn6jyYs5ey/cxTif5R
+        FEKYjbEj/bGSOBDw==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 475C213A66;
+        Wed, 21 Jun 2023 14:47:45 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id 4lvSEJENk2T+EAAAMHmgww
+        (envelope-from <jack@suse.cz>); Wed, 21 Jun 2023 14:47:45 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id CF439A0762; Wed, 21 Jun 2023 16:47:44 +0200 (CEST)
+From:   Jan Kara <jack@suse.cz>
+To:     Jens Axboe <axboe@kernel.dk>
+Cc:     <linux-block@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
+        Jan Kara <jack@suse.cz>
+Subject: [PATCH 2/2] xfs: Fix crash in ext4_bdev_mark_dead()
+Date:   Wed, 21 Jun 2023 16:47:43 +0200
+Message-Id: <20230621144744.1580-2-jack@suse.cz>
+X-Mailer: git-send-email 2.35.3
+In-Reply-To: <20230621144354.10915-1-jack@suse.cz>
+References: <20230621144354.10915-1-jack@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <ZJG7GyeSa2xZ89/H@sashalap>
+X-Developer-Signature: v=1; a=openpgp-sha256; l=792; i=jack@suse.cz; h=from:subject; bh=9mvZHv1nuxOrQ7jy+yO1dpp1vobf8ZfRCOPCzoekEhM=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBkkw2O58FKvXZCqoY+XMY4g6hDtZPOPFl/GfUiC1Bg KHkItYSJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCZJMNjgAKCRCcnaoHP2RA2UbvCA C4w8+U/GaomQgaxClF8hYFoz8gIrFJ9yEcmsR4jiuyhD8T1JyS9wX7+KlS3HjsLO0yMpq6Tiu1TLIu rMuFXsEWoTFmzawnh9j8Ym6ryHLu2PnnguqcLul2M7IKrfJuakK7/LrwnKa9BMgIjQebAbI1oUfd97 JOKBnJj2uumSdcan5RnELbs9OPtD643xFk2Wkcq3y5ZMwDO2tRObLNOCAmifbaNcTYLE9PVHV2Szkr KPUtLZFf6f4u++NPZTNoMqwJBANNEQfNBM2rogqGpDPbLFoNsTlpluDjAbns/DW6mnVpVBVOLXrwve XDW/WoZFXW7i3uyCpEXCE3fmJXkuAY
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Jun 20, 2023 at 10:43:39AM -0400, Sasha Levin wrote:
-> > Normally "Fixes" would be "Fixes:" and in the signed-off block. Plus,
-> > two consecutive sign-offs from tytso are probably wrong, too.
-> 
-> I'm really not sure what you want us to do here, or in other places
-> where you've commented about issues with the upstream patch...
+xfs_bdev_mark_dead() passes bdev->bd_holder to ext4_force_shutdown()
+instead of bdev->bd_super leading to crashes. Fix it.
 
-Yeah, those were issues with the upstream commit.  Sorry about that.
+Fixes: 8067ca1dcdfc ("xfs: wire up the ->mark_dead holder operation for log and RT devices")
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/xfs/xfs_super.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-I personally don't care about whether you "clean up" the commit before
-having it land in the LTS kernels or leave it as it as originally
-commited to upstream, but then again, I'm not the kind of person who
-asks whether there's a hyphen in "anal-retentive".  (I'm given to
-understand it depends on whether the phrase is being used as an
-attributive or predicative adjective.  :-)
+diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+index d910b141d52e..3ab188a6fba1 100644
+--- a/fs/xfs/xfs_super.c
++++ b/fs/xfs/xfs_super.c
+@@ -381,7 +381,7 @@ static void
+ xfs_bdev_mark_dead(
+ 	struct block_device	*bdev)
+ {
+-	xfs_force_shutdown(bdev->bd_holder, SHUTDOWN_DEVICE_REMOVED);
++	xfs_force_shutdown(XFS_M(bdev->bd_super), SHUTDOWN_DEVICE_REMOVED);
+ }
+ 
+ static const struct blk_holder_ops xfs_holder_ops = {
+-- 
+2.35.3
 
-						- Ted
