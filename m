@@ -2,54 +2,61 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 06F74EB64DD
-	for <linux-ext4@archiver.kernel.org>; Thu, 22 Jun 2023 09:06:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 959B0EB64D8
+	for <linux-ext4@archiver.kernel.org>; Thu, 22 Jun 2023 09:12:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232031AbjFVJGR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 22 Jun 2023 05:06:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49436 "EHLO
+        id S231765AbjFVJMH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 22 Jun 2023 05:12:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53212 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232107AbjFVJFE (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Jun 2023 05:05:04 -0400
-Received: from mail-pl1-x636.google.com (mail-pl1-x636.google.com [IPv6:2607:f8b0:4864:20::636])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BA1E84C07
-        for <linux-ext4@vger.kernel.org>; Thu, 22 Jun 2023 01:58:21 -0700 (PDT)
-Received: by mail-pl1-x636.google.com with SMTP id d9443c01a7336-1b515ec39feso12624265ad.0
-        for <linux-ext4@vger.kernel.org>; Thu, 22 Jun 2023 01:58:21 -0700 (PDT)
+        with ESMTP id S231790AbjFVJLr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Jun 2023 05:11:47 -0400
+Received: from mail-pf1-x42c.google.com (mail-pf1-x42c.google.com [IPv6:2607:f8b0:4864:20::42c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8735D6580
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Jun 2023 02:02:21 -0700 (PDT)
+Received: by mail-pf1-x42c.google.com with SMTP id d2e1a72fcca58-668842bc50dso867507b3a.1
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Jun 2023 02:02:21 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1687424260; x=1690016260;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=aRQUwtIbFrjRbKaWDWITc6Upds+hXxxlwcQqvFPvJow=;
-        b=Kv6dWh2IIchnBu9RbCVLsx8HZLugRgYdolMOnFdVv/Mze68pcgFvadMFaompRsV/Ii
-         Vr4ahAwXirWdfwADAjPFAtSTivwacduawKzyeKPVnp7cESQMTGYfaqAI7425tQvAdQ85
-         8rLDDpZCwcAbH67+6k+hMmW8Fi1etqH6LYFHkuQfbD+ESFiwPmeSocm5kXqI50kDiSjf
-         PCd9vDumWTECSSKSpOEWhL8aCyPGbcSxO0SaB85LOV7uPD9a5LVIfvAATYV0qgfKCSQQ
-         J+7inf8lDO5dvyUSQTFKKOcNdRaAbUMX2WbzVCHQayCH8tZA09PfVWiof+vKchWmVnWN
-         0e0g==
+        d=bytedance.com; s=google; t=1687424541; x=1690016541;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=zKVeIBLjGDnMEk399X22nqGU5gR+IkjsspTDpWJPksU=;
+        b=HjY0DB39Dcl5lSGLQjq20skrYCeeFmph379iAYLH+Ge7wfAKg53bPqsk6H2fP7EYBS
+         t5DpaPmOpMe9PHj27s46dMLM2Bj/1z5x+ZEL5MvZJuXhJY2H/Zc1d9fn+QrQnej+vVdY
+         vzCZGIIlTPo2rLaoGoYpJ1L3vbMVEY3NdkrXdCuf8JyzXegOrVS1Vjiyr+OQJLWRHhKk
+         EYYaud7eSqVUu6DRfGnsjIklhfOOGSE9DMnkFqVVNxWwjgF6B/w1c5xtOvh0H76XPlTG
+         hJ3GGBNx4/T/av8JLo7MkeEFcvm+/A4v85iddIKGKlUHLAO6ueBAEAbEtaFjl/PvtvxB
+         9ScQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1687424260; x=1690016260;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=aRQUwtIbFrjRbKaWDWITc6Upds+hXxxlwcQqvFPvJow=;
-        b=C/SCG0buu1akneM6v5lQCWsdZWnoo5LZPiAod9j2Ddjb+HlCdRC40+0s1D+kAtBI4H
-         ntTmw+G9U2a6AOZwE5hzcNflQkJFwpvfPU0Cw6cW9auOG6Koxl2br/2TkO0e6087LpS5
-         sFTu4MyvnEEBUXKrqVuywDKuQDRISvCNarLj12pLC13q72gg3lp/5G4SarGmrcsjcQPX
-         IhJCLUnEzJ5i1DmnKN2J1pvlLIof3GOlt7BrGRYxE3vrJ2Y3xQ/8SqBWcfg49NiXJOUj
-         Qt+rgoNqkc4SnI06COyTsNXDPX98ENtuML2AfzM7aMDdJ/kdY+AHCWW1KB2B5kB6x4E4
-         knfg==
-X-Gm-Message-State: AC+VfDwZWln13e5gy2j3zUxm6gx7Mz+J+vIQX8B4zPa5W1Jm5bupqAO4
-        mOuaB8rlSXoZCKQLmcjyX4UEPg==
-X-Google-Smtp-Source: ACHHUZ4KKZ8AXrupsFYw18EsJWvGfL6qm7cyYV/rSPTKOdYWRQ8IhOkLOim7I9s7W96jDohmbJS9Lg==
-X-Received: by 2002:a17:903:41d2:b0:1a6:cf4b:4d7d with SMTP id u18-20020a17090341d200b001a6cf4b4d7dmr21650808ple.2.1687424260203;
-        Thu, 22 Jun 2023 01:57:40 -0700 (PDT)
-Received: from C02DW0BEMD6R.bytedance.net ([139.177.225.254])
-        by smtp.gmail.com with ESMTPSA id h2-20020a170902f7c200b001b549fce345sm4806971plw.230.2023.06.22.01.57.32
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 22 Jun 2023 01:57:39 -0700 (PDT)
-From:   Qi Zheng <zhengqi.arch@bytedance.com>
+        d=1e100.net; s=20221208; t=1687424541; x=1690016541;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=zKVeIBLjGDnMEk399X22nqGU5gR+IkjsspTDpWJPksU=;
+        b=S06AxTeIwZwX1XDWIluGmEp/JsjhLoX7xbtJfWbnIHoiEXMcR77oRa0HjgvIZGcomj
+         nKasjZWigWUL1SmMvR476mTuOjouYJDjlP4bJPM0Lz2XFaqRAIkLkz/kQnNJyxm49RT6
+         5dL/hn3f18uxHSbvxbOGXje13Sn5I4PSoIfSesI5Ri1UIOCByR1Bke45XHHqY6+sEmO+
+         cKbbIPNdMyxoVe5YgePNQ/EyR8nZy4kaAaUgbiNKfuROl8TeCPuawvqNWW4ql4dJx3jP
+         L2GOtv4HIk+5Sywg4zOzvlyTb/BcFEmP6oJEsgHTNEUaykc3ddp/mZmlj50uOc1UxXv0
+         KyAg==
+X-Gm-Message-State: AC+VfDzoHG8TsxoNFLXXeWigYMhIYpPYJb009TV80flhdmRyhgTeyVpJ
+        Vsz4eUzke1Ch5snYaJaccRTMBQ==
+X-Google-Smtp-Source: ACHHUZ7vbwmhYAYkPUIyhZunGrGDutPqIs+afT9QzkvrLydl1MlC9S7gSKJ8cU+dWHpEZBjCPLu5gw==
+X-Received: by 2002:aa7:8556:0:b0:668:728e:64d8 with SMTP id y22-20020aa78556000000b00668728e64d8mr12967640pfn.1.1687424541033;
+        Thu, 22 Jun 2023 02:02:21 -0700 (PDT)
+Received: from [10.4.168.167] ([139.177.225.254])
+        by smtp.gmail.com with ESMTPSA id c12-20020aa78e0c000000b0063f2a5a59d1sm4124268pfr.190.2023.06.22.02.02.13
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 22 Jun 2023 02:02:20 -0700 (PDT)
+Message-ID: <ab40cfba-94c3-bcea-10b0-c2cc20809f3d@bytedance.com>
+Date:   Thu, 22 Jun 2023 17:02:11 +0800
+MIME-Version: 1.0
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0)
+ Gecko/20100101 Thunderbird/102.12.0
+Subject: Re: [PATCH 00/29] use refcount+RCU method to implement lockless slab
+ shrink
+Content-Language: en-US
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
         brauner@kernel.org, paulmck@kernel.org, tytso@mit.edu
@@ -60,54 +67,24 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org,
         virtualization@lists.linux-foundation.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH 27/29] mm: vmscan: hold write lock to reparent shrinker nr_deferred
-Date:   Thu, 22 Jun 2023 16:53:33 +0800
-Message-Id: <20230622085335.77010-28-zhengqi.arch@bytedance.com>
-X-Mailer: git-send-email 2.24.3 (Apple Git-128)
-In-Reply-To: <20230622085335.77010-1-zhengqi.arch@bytedance.com>
+        linux-btrfs@vger.kernel.org
 References: <20230622085335.77010-1-zhengqi.arch@bytedance.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+From:   Qi Zheng <zhengqi.arch@bytedance.com>
+In-Reply-To: <20230622085335.77010-1-zhengqi.arch@bytedance.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-For now, reparent_shrinker_deferred() is the only holder
-of read lock of shrinker_rwsem. And it already holds the
-global cgroup_mutex, so it will not be called in parallel.
+Hi all,
 
-Therefore, in order to convert shrinker_rwsem to shrinker_mutex
-later, here we change to hold the write lock of shrinker_rwsem
-to reparent.
+Well, this one was sent successfully.
 
-Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
----
- mm/vmscan.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Since I always get the following error message, I deleted the original
+cc people and only kept the mailing lists.
 
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 357a1f2ad690..0711b63e68d9 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -433,7 +433,7 @@ void reparent_shrinker_deferred(struct mem_cgroup *memcg)
- 		parent = root_mem_cgroup;
- 
- 	/* Prevent from concurrent shrinker_info expand */
--	down_read(&shrinker_rwsem);
-+	down_write(&shrinker_rwsem);
- 	for_each_node(nid) {
- 		child_info = shrinker_info_protected(memcg, nid);
- 		parent_info = shrinker_info_protected(parent, nid);
-@@ -442,7 +442,7 @@ void reparent_shrinker_deferred(struct mem_cgroup *memcg)
- 			atomic_long_add(nr, &parent_info->nr_deferred[i]);
- 		}
- 	}
--	up_read(&shrinker_rwsem);
-+	up_write(&shrinker_rwsem);
- }
- 
- static bool cgroup_reclaim(struct scan_control *sc)
--- 
-2.30.2
+	4.7.1 Error: too many recipients from 49.7.199.173
 
+Thanks,
+Qi
