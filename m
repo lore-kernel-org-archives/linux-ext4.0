@@ -2,29 +2,29 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BF2D8EB64D8
-	for <linux-ext4@archiver.kernel.org>; Thu, 22 Jun 2023 08:43:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 32C1DEB64DC
+	for <linux-ext4@archiver.kernel.org>; Thu, 22 Jun 2023 08:50:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231336AbjFVIni (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 22 Jun 2023 04:43:38 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56916 "EHLO
+        id S230462AbjFVIu0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 22 Jun 2023 04:50:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35888 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231161AbjFVImk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Jun 2023 04:42:40 -0400
-Received: from out-24.mta1.migadu.com (out-24.mta1.migadu.com [IPv6:2001:41d0:203:375::18])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 67FBBE4B
-        for <linux-ext4@vger.kernel.org>; Thu, 22 Jun 2023 01:41:44 -0700 (PDT)
+        with ESMTP id S230134AbjFVIuY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Jun 2023 04:50:24 -0400
+Received: from out-61.mta1.migadu.com (out-61.mta1.migadu.com [IPv6:2001:41d0:203:375::3d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5B8E21B4
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Jun 2023 01:50:23 -0700 (PDT)
 X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-        t=1687423301;
+        t=1687423250;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=ZLNuxoO8OfzQ143YMlcA0F6NJodxjDO0V9/3OfXvbSM=;
-        b=eaBfLuYlG6JJ2wMMRdNKZV0a4oqFx389/61anHjbefPzDibHOLkGJsZGY3Dw+v+qevkyK3
-        n26AVKRC06swwDMkLHX6VNJZ04EnOeXYs8Wqh3UkaG0D+Uk7NLaSF2pUsBmfBvjexois2k
-        MY254J8+7levLBhOGEbqDhRxPfqcIBs=
+        bh=+vImA33fZeTM1PYF4pdKNYjlIIB9YvJgFHxY2Yd6EgU=;
+        b=XJ2b/f93BCyHxcWaDsebGy2CDaVAa7CPWBXx4c1QEI5VZTDPyp/zp8+Tr/BVaJTW4wXOtq
+        IIZBnQdZZsns0g8Xv0V8GQsEaQgo1jYe7j36H8wsShDt9m5MKBHRcZes1lLxnY0D/KqSYq
+        hjrF1/l+OEZW9z9MquhsKQ9biy+7Xxo=
 From:   Qi Zheng <qi.zheng@linux.dev>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -38,9 +38,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-btrfs@vger.kernel.org, Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH 14/29] jbd2,ext4: dynamically allocate the jbd2-journal shrinker
-Date:   Thu, 22 Jun 2023 08:39:17 +0000
-Message-Id: <20230622083932.4090339-15-qi.zheng@linux.dev>
+Subject: [PATCH 07/29] dm zoned: dynamically allocate the dm-zoned-meta shrinker
+Date:   Thu, 22 Jun 2023 08:39:10 +0000
+Message-Id: <20230622083932.4090339-8-qi.zheng@linux.dev>
 In-Reply-To: <20230622083932.4090339-1-qi.zheng@linux.dev>
 References: <20230622083932.4090339-1-qi.zheng@linux.dev>
 MIME-Version: 1.0
@@ -53,101 +53,93 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 From: Qi Zheng <zhengqi.arch@bytedance.com>
 
 In preparation for implementing lockless slab shrink,
-we need to dynamically allocate the jbd2-journal shrinker,
+we need to dynamically allocate the dm-zoned-meta shrinker,
 so that it can be freed asynchronously using kfree_rcu().
 Then it doesn't need to wait for RCU read-side critical
-section when releasing the struct journal_s.
+section when releasing the struct dmz_metadata.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 ---
- fs/jbd2/journal.c    | 32 +++++++++++++++++++-------------
- include/linux/jbd2.h |  2 +-
- 2 files changed, 20 insertions(+), 14 deletions(-)
+ drivers/md/dm-zoned-metadata.c | 25 ++++++++++++++++---------
+ 1 file changed, 16 insertions(+), 9 deletions(-)
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index eee3c0ae349a..92a2f4360b5f 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1301,7 +1301,7 @@ static int jbd2_min_tag_size(void)
- static unsigned long jbd2_journal_shrink_scan(struct shrinker *shrink,
- 					      struct shrink_control *sc)
- {
--	journal_t *journal = container_of(shrink, journal_t, j_shrinker);
-+	journal_t *journal = shrink->private_data;
- 	unsigned long nr_to_scan = sc->nr_to_scan;
- 	unsigned long nr_shrunk;
- 	unsigned long count;
-@@ -1327,7 +1327,7 @@ static unsigned long jbd2_journal_shrink_scan(struct shrinker *shrink,
- static unsigned long jbd2_journal_shrink_count(struct shrinker *shrink,
+diff --git a/drivers/md/dm-zoned-metadata.c b/drivers/md/dm-zoned-metadata.c
+index 9d3cca8e3dc9..41b10ffb968a 100644
+--- a/drivers/md/dm-zoned-metadata.c
++++ b/drivers/md/dm-zoned-metadata.c
+@@ -187,7 +187,7 @@ struct dmz_metadata {
+ 	struct rb_root		mblk_rbtree;
+ 	struct list_head	mblk_lru_list;
+ 	struct list_head	mblk_dirty_list;
+-	struct shrinker		mblk_shrinker;
++	struct shrinker		*mblk_shrinker;
+ 
+ 	/* Zone allocation management */
+ 	struct mutex		map_lock;
+@@ -615,7 +615,7 @@ static unsigned long dmz_shrink_mblock_cache(struct dmz_metadata *zmd,
+ static unsigned long dmz_mblock_shrinker_count(struct shrinker *shrink,
  					       struct shrink_control *sc)
  {
--	journal_t *journal = container_of(shrink, journal_t, j_shrinker);
-+	journal_t *journal = shrink->private_data;
+-	struct dmz_metadata *zmd = container_of(shrink, struct dmz_metadata, mblk_shrinker);
++	struct dmz_metadata *zmd = shrink->private_data;
+ 
+ 	return atomic_read(&zmd->nr_mblks);
+ }
+@@ -626,7 +626,7 @@ static unsigned long dmz_mblock_shrinker_count(struct shrinker *shrink,
+ static unsigned long dmz_mblock_shrinker_scan(struct shrinker *shrink,
+ 					      struct shrink_control *sc)
+ {
+-	struct dmz_metadata *zmd = container_of(shrink, struct dmz_metadata, mblk_shrinker);
++	struct dmz_metadata *zmd = shrink->private_data;
  	unsigned long count;
  
- 	count = percpu_counter_read_positive(&journal->j_checkpoint_jh_count);
-@@ -1415,21 +1415,27 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 	journal->j_superblock = (journal_superblock_t *)bh->b_data;
- 
- 	journal->j_shrink_transaction = NULL;
--	journal->j_shrinker.scan_objects = jbd2_journal_shrink_scan;
--	journal->j_shrinker.count_objects = jbd2_journal_shrink_count;
--	journal->j_shrinker.seeks = DEFAULT_SEEKS;
--	journal->j_shrinker.batch = journal->j_max_transaction_buffers;
- 
- 	if (percpu_counter_init(&journal->j_checkpoint_jh_count, 0, GFP_KERNEL))
- 		goto err_cleanup;
- 
--	if (register_shrinker(&journal->j_shrinker, "jbd2-journal:(%u:%u)",
--			      MAJOR(bdev->bd_dev), MINOR(bdev->bd_dev))) {
--		percpu_counter_destroy(&journal->j_checkpoint_jh_count);
--		goto err_cleanup;
--	}
-+	journal->j_shrinker = shrinker_alloc_and_init(jbd2_journal_shrink_count,
-+						      jbd2_journal_shrink_scan,
-+						      journal->j_max_transaction_buffers,
-+						      DEFAULT_SEEKS, 0, journal);
-+	if (!journal->j_shrinker)
-+		goto err_shrinker;
-+
-+	if (register_shrinker(journal->j_shrinker, "jbd2-journal:(%u:%u)",
-+			      MAJOR(bdev->bd_dev), MINOR(bdev->bd_dev)))
-+		goto err_register;
-+
- 	return journal;
- 
-+err_register:
-+	shrinker_free(journal->j_shrinker);
-+err_shrinker:
-+	percpu_counter_destroy(&journal->j_checkpoint_jh_count);
- err_cleanup:
- 	brelse(journal->j_sb_buffer);
- 	kfree(journal->j_wbuf);
-@@ -2190,9 +2196,9 @@ int jbd2_journal_destroy(journal_t *journal)
- 		brelse(journal->j_sb_buffer);
- 	}
- 
--	if (journal->j_shrinker.flags & SHRINKER_REGISTERED) {
-+	if (journal->j_shrinker->flags & SHRINKER_REGISTERED) {
- 		percpu_counter_destroy(&journal->j_checkpoint_jh_count);
--		unregister_shrinker(&journal->j_shrinker);
-+		unregister_and_free_shrinker(journal->j_shrinker);
- 	}
- 	if (journal->j_proc_entry)
- 		jbd2_stats_proc_exit(journal);
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 44c298aa58d4..beb4c4586320 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -891,7 +891,7 @@ struct journal_s
- 	 * Journal head shrinker, reclaim buffer's journal head which
- 	 * has been written back.
+ 	spin_lock(&zmd->mblk_lock);
+@@ -2936,17 +2936,22 @@ int dmz_ctr_metadata(struct dmz_dev *dev, int num_dev,
  	 */
--	struct shrinker		j_shrinker;
-+	struct shrinker		*j_shrinker;
+ 	zmd->min_nr_mblks = 2 + zmd->nr_map_blocks + zmd->zone_nr_bitmap_blocks * 16;
+ 	zmd->max_nr_mblks = zmd->min_nr_mblks + 512;
+-	zmd->mblk_shrinker.count_objects = dmz_mblock_shrinker_count;
+-	zmd->mblk_shrinker.scan_objects = dmz_mblock_shrinker_scan;
+-	zmd->mblk_shrinker.seeks = DEFAULT_SEEKS;
++
++	zmd->mblk_shrinker = shrinker_alloc_and_init(dmz_mblock_shrinker_count,
++						     dmz_mblock_shrinker_scan,
++						     0, DEFAULT_SEEKS, 0, zmd);
++	if (!zmd->mblk_shrinker) {
++		dmz_zmd_err(zmd, "allocate metadata cache shrinker failed");
++		goto err;
++	}
  
- 	/**
- 	 * @j_checkpoint_jh_count:
+ 	/* Metadata cache shrinker */
+-	ret = register_shrinker(&zmd->mblk_shrinker, "dm-zoned-meta:(%u:%u)",
++	ret = register_shrinker(zmd->mblk_shrinker, "dm-zoned-meta:(%u:%u)",
+ 				MAJOR(dev->bdev->bd_dev),
+ 				MINOR(dev->bdev->bd_dev));
+ 	if (ret) {
+ 		dmz_zmd_err(zmd, "Register metadata cache shrinker failed");
+-		goto err;
++		goto err_shrinker;
+ 	}
+ 
+ 	dmz_zmd_info(zmd, "DM-Zoned metadata version %d", zmd->sb_version);
+@@ -2982,6 +2987,8 @@ int dmz_ctr_metadata(struct dmz_dev *dev, int num_dev,
+ 	*metadata = zmd;
+ 
+ 	return 0;
++err_shrinker:
++	shrinker_free(zmd->mblk_shrinker);
+ err:
+ 	dmz_cleanup_metadata(zmd);
+ 	kfree(zmd);
+@@ -2995,7 +3002,7 @@ int dmz_ctr_metadata(struct dmz_dev *dev, int num_dev,
+  */
+ void dmz_dtr_metadata(struct dmz_metadata *zmd)
+ {
+-	unregister_shrinker(&zmd->mblk_shrinker);
++	unregister_and_free_shrinker(zmd->mblk_shrinker);
+ 	dmz_cleanup_metadata(zmd);
+ 	kfree(zmd);
+ }
 -- 
 2.30.2
 
