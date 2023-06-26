@@ -2,63 +2,67 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 45ED5EB64D7
-	for <linux-ext4@archiver.kernel.org>; Mon, 26 Jun 2023 05:42:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D6D87EB64D7
+	for <linux-ext4@archiver.kernel.org>; Mon, 26 Jun 2023 05:55:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229788AbjFZFml (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 26 Jun 2023 01:42:41 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58192 "EHLO
+        id S229886AbjFZFzi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 26 Jun 2023 01:55:38 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33234 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229584AbjFZFmk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Jun 2023 01:42:40 -0400
-Received: from mo4-p01-ob.smtp.rzone.de (mo4-p01-ob.smtp.rzone.de [81.169.146.167])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BEE1AE48;
-        Sun, 25 Jun 2023 22:42:34 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1687758122; cv=none;
+        with ESMTP id S229457AbjFZFzh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Jun 2023 01:55:37 -0400
+X-Greylist: delayed 804 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Sun, 25 Jun 2023 22:55:35 PDT
+Received: from mo4-p03-ob.smtp.rzone.de (mo4-p03-ob.smtp.rzone.de [81.169.146.172])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5E905AB;
+        Sun, 25 Jun 2023 22:55:35 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1687758928; cv=none;
     d=strato.com; s=strato-dkim-0002;
-    b=UmdVEWQo0uezW3gzYI8AGYJNrAzST0w0p1m2K4Gy2/HaL3YMKh7dU9JGWY34mJWvao
-    tVZGMtToJJXaBr+FtXfc2Hp+9Q0eTwxER7h4Cirqz6zVdFMLDqc3bq4xy3k4sdcYiGol
-    AYUsMDSdsXz3JeRWShwCtvAzSY7BxUappx0oLIikg5lZFDjhjL5wtEqnDFWQ44xCYbH+
-    F/pbaWPKcsAtGFuT4cDtpqgAIlLq5FL6YD505NS0hQ1I5pjQfEf5rShD8oqXBbc3sAI3
-    M8l0oKQxsYvPvT3V5bSQn2FNYdNaY4ew1RaA7FyZPWCui//6DW4knLYasqq5q7uB5SGs
-    TOCg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; t=1687758122;
+    b=EgqXIH866ELXGq+mpnR4Eo84d907wx4Op+QW5TGOxwRYybbzxwCaqR/QYoo2XHE3sO
+    O8hxtrXLtTHIKU2ZSBQKVXcar1ffNhS9uaOvq5SZcIYgfq066kD30uakd8cgODyZMSWd
+    Ux0ZFlR6CCQ7fQHYdrqA18kl3kkP5qKnhX5pWIrTDCffwGIJkgnmisTiasfVOc7XR/pz
+    wrTKKyIlXdadrwbSTzMXh9GP84vS/ntzDyxuCnw6yI45EdbvJQ9Bvk4S/W3gikyM2yaj
+    oNGWiiMM9bhmILZyjElRBDxqmMeAOJfrDumjbsZ8OHlkl86AV71G5hp7wxpDbgjWrruK
+    l8iQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; t=1687758928;
     s=strato-dkim-0002; d=strato.com;
-    h=Message-Id:Date:Subject:Cc:To:From:Cc:Date:From:Subject:Sender;
-    bh=u84PcML5e480sTa8HkZqNl0cQA2NFsZSaC6NnQ5PLFk=;
-    b=VOecyVDzGmcEar+tZSwaVZyvYyR8xoGyhAQnnqiMsg6OtOOCDfe8UpiXNOB804DSAl
-    EQhcGlisbAy39RKUfSMEQXPk9m34sJNPGbyvwasodeICCBFmfUvkvsylcCCnqu+0veSO
-    llB312bnL9vrAvk0bsxykpgs90VcaiUBEYVStDWAJ1SrJgkL7eZhuQaWKc+2vzaHh9sw
-    7X1GG2IJlMrQNydAsFY8We50jGKdGNWFs9MUDaAk/BDQxrlyhpON/uDpOLSSN7xFCJsh
-    +/oivfnz9nJ3EiS2ojGy4bm2LWKqUTa3w7sD2l2pmvogEEx/WoTDL25qXuuVF03PB07f
-    QRvQ==
+    h=References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Cc:Date:
+    From:Subject:Sender;
+    bh=9JeG8e5YLzIlPXpqO3TJNmd5ODQ+yL/DZJEHg5yXjTE=;
+    b=nWoxz5+A/k/RoHG4mmlMrqdSxOOlepNMU8x2QAvJSBtskui+vKEENoLsTc3YTi0hA1
+    rPHIzgcl4pBcyJ13X8nDzxUVYmQ4TdvR+y/1AfzGE/l0OBTrb46q2yed4ZXXAgoucuKo
+    QttaxXBoGpAweZPDrnQLv1Q14b/XjIrZ7Mqf8Q55pfG3Zs9H8gAll+mZnlzmB4ew5Eif
+    fZ3/sAh0WZcgWc9C4aMZ9WgR8FzY8czcPNOD9Rp4d61jOnSyCL3np43woSxh5VgFXtxz
+    wQV6b1DDGhYPqdVJtF52We3PeLIZEjiFpGmNnnCw1ZbYrJTRrFt6wkB5cQkXeuyjHigx
+    cJqQ==
 ARC-Authentication-Results: i=1; strato.com;
     arc=none;
     dkim=none
-X-RZG-CLASS-ID: mo01
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; t=1687758122;
+X-RZG-CLASS-ID: mo03
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; t=1687758928;
     s=strato-dkim-0002; d=iokpp.de;
-    h=Message-Id:Date:Subject:Cc:To:From:Cc:Date:From:Subject:Sender;
-    bh=u84PcML5e480sTa8HkZqNl0cQA2NFsZSaC6NnQ5PLFk=;
-    b=VWyoD7aBvrrl7+S6R0ytC2ezlnhivupTe/tkyi9bL53i2l0PfntXr5aRcliYRAZHAC
-    C/u1YtTTPFjGTnRllVi98JpknXUgKYkl6D3iWd9nWORos8Jr8UeVafDS2Am4o2rIdH2M
-    UfQX5T7QqKOVF4nAJ8f1y0j0Tzf32cTBu4ALeO0JWZgKxYLZit+/SmR6qn/LmRIBxkg6
-    ZteTTqpM+OOat1t+EKkFO3Reu5u8Nm5RIzAZBIPIVipRGUR3oZ6XCoZQluIImECgTZp6
-    JwHybKNru2Iqz5FepNKxaR3jqFN3EQ44UTzGkaymgAbZf6DluhUJarGI47bxKbt4xYq4
-    Sm6w==
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; t=1687758122;
+    h=References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Cc:Date:
+    From:Subject:Sender;
+    bh=9JeG8e5YLzIlPXpqO3TJNmd5ODQ+yL/DZJEHg5yXjTE=;
+    b=bhHuxVIF+VVHUfX01w2F4AvCX8xSsCAen9xIdGzxz7X79QsodQ+Qe5KOE7Z44hAggk
+    1NyB5d6YbDMuDUBSN0ZrIKqN/yanGQHGKXLGer0DkdgWTqfUiGsQ9t6g4zRRCjp/sdS2
+    6/c1M/z7gswtwjnPVuyRhdYI4CYQbWEnLrNJ8QxHEyoNDSCwiL26X1JJkpwUE8KcL7m0
+    vcMwKFocz7beTTJC+PXYEG8reeORzxxr4uc2Gfy/KH7NwGjvCVbMPc7zIbl13rQd6Q+H
+    xl/OEcL4fwFz7LyLsqmzXbeo7n0ItnBLYDjgDlQ+OYmvkrSTR+iX3lRbMw90sqWguYBM
+    +lKg==
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; t=1687758928;
     s=strato-dkim-0003; d=iokpp.de;
-    h=Message-Id:Date:Subject:Cc:To:From:Cc:Date:From:Subject:Sender;
-    bh=u84PcML5e480sTa8HkZqNl0cQA2NFsZSaC6NnQ5PLFk=;
-    b=4uursAC7+f1zlisTJ7H6N9A601ItGoeMxAgnDzNgxvc7m1glMB5P017maCLOAHDQTA
-    HuKG8Jw+3DqAcCVw8LDw==
+    h=References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Cc:Date:
+    From:Subject:Sender;
+    bh=9JeG8e5YLzIlPXpqO3TJNmd5ODQ+yL/DZJEHg5yXjTE=;
+    b=leG3fCEvi5hPT0fBTmq9D2X7bfNIhUAhanHELXceIBPiOCl+GQkXnfPaQBd83VSROr
+    xP02/5ZSkcyBilmaNbAw==
 X-RZG-AUTH: ":LmkFe0i9dN8c2t4QQyGBB/NDXvjDB6pBSedrgBzPc9DUyubU4DD1QLj68UeUr1+U1RrW5o+P9bSFaHg+gZu+uCjL2b+VQTRnVQrIOQ=="
 Received: from blinux.speedport.ip
     by smtp.strato.de (RZmta 49.6.0 AUTH)
-    with ESMTPSA id zb0c8bz5Q5g1Vv8
+    with ESMTPSA id zb0c8bz5Q5tRVy5
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256 bits))
         (Client did not present a certificate);
-    Mon, 26 Jun 2023 07:42:01 +0200 (CEST)
+    Mon, 26 Jun 2023 07:55:27 +0200 (CEST)
 From:   Bean Huo <beanhuo@iokpp.de>
 To:     viro@zeniv.linux.org.uk, brauner@kernel.org,
         akpm@linux-foundation.org, jack@suse.cz, jack@suse.com,
@@ -67,11 +71,13 @@ To:     viro@zeniv.linux.org.uk, brauner@kernel.org,
         willy@infradead.org, hch@infradead.org
 Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        beanhuo@micron.com, Bean Huo <beanhuo@iokpp.de>
-Subject: [PATCH v3 0/2] clean up block_commit_write
-Date:   Mon, 26 Jun 2023 07:41:51 +0200
-Message-Id: <20230626054153.839672-1-beanhuo@iokpp.de>
+        beanhuo@micron.com
+Subject: [RESEND PATCH v3 1/2] fs/buffer: clean up block_commit_write
+Date:   Mon, 26 Jun 2023 07:55:17 +0200
+Message-Id: <20230626055518.842392-2-beanhuo@iokpp.de>
 X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20230626055518.842392-1-beanhuo@iokpp.de>
+References: <20230626055518.842392-1-beanhuo@iokpp.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Content-Type: text/plain; charset="us-ascii"
@@ -79,24 +85,59 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-change log:
-    v1--v2:
-        1. reordered patches
-    v2-v3:
-        1. rebased patches to git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next
+From: Bean Huo <beanhuo@micron.com>
 
+Originally inode is used to get blksize, after commit 45bce8f3e343
+("fs/buffer.c: make block-size be per-page and protected by the page lock"),
+__block_commit_write no longer uses this parameter inode.
 
-Bean Huo (2):
-  fs/buffer: clean up block_commit_write
-  fs: convert block_commit_write to return void
+Signed-off-by: Bean Huo <beanhuo@micron.com>
+---
+ fs/buffer.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
 
- fs/buffer.c                 | 20 ++++++++------------
- fs/ext4/move_extent.c       |  7 ++-----
- fs/ocfs2/file.c             |  7 +------
- fs/udf/file.c               |  6 +++---
- include/linux/buffer_head.h |  2 +-
- 5 files changed, 15 insertions(+), 27 deletions(-)
-
+diff --git a/fs/buffer.c b/fs/buffer.c
+index bd091329026c..50821dfb02f7 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2180,8 +2180,7 @@ int __block_write_begin(struct page *page, loff_t pos, unsigned len,
+ }
+ EXPORT_SYMBOL(__block_write_begin);
+ 
+-static int __block_commit_write(struct inode *inode, struct folio *folio,
+-		size_t from, size_t to)
++static int __block_commit_write(struct folio *folio, size_t from, size_t to)
+ {
+ 	size_t block_start, block_end;
+ 	bool partial = false;
+@@ -2277,7 +2276,7 @@ int block_write_end(struct file *file, struct address_space *mapping,
+ 	flush_dcache_folio(folio);
+ 
+ 	/* This could be a short (even 0-length) commit */
+-	__block_commit_write(inode, folio, start, start + copied);
++	__block_commit_write(folio, start, start + copied);
+ 
+ 	return copied;
+ }
+@@ -2601,8 +2600,7 @@ EXPORT_SYMBOL(cont_write_begin);
+ int block_commit_write(struct page *page, unsigned from, unsigned to)
+ {
+ 	struct folio *folio = page_folio(page);
+-	struct inode *inode = folio->mapping->host;
+-	__block_commit_write(inode, folio, from, to);
++	__block_commit_write(folio, from, to);
+ 	return 0;
+ }
+ EXPORT_SYMBOL(block_commit_write);
+@@ -2650,7 +2648,7 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 
+ 	ret = __block_write_begin_int(folio, 0, end, get_block, NULL);
+ 	if (!ret)
+-		ret = __block_commit_write(inode, folio, 0, end);
++		ret = __block_commit_write(folio, 0, end);
+ 
+ 	if (unlikely(ret < 0))
+ 		goto out_unlock;
 -- 
 2.34.1
 
