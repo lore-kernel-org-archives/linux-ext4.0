@@ -2,105 +2,229 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 84D2FEB64DC
-	for <linux-ext4@archiver.kernel.org>; Mon, 26 Jun 2023 02:18:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5DE1EEB64D7
+	for <linux-ext4@archiver.kernel.org>; Mon, 26 Jun 2023 05:42:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229619AbjFZCSk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 25 Jun 2023 22:18:40 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34712 "EHLO
+        id S229763AbjFZFmP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 26 Jun 2023 01:42:15 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57970 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229506AbjFZCSk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 25 Jun 2023 22:18:40 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A54C318D
-        for <linux-ext4@vger.kernel.org>; Sun, 25 Jun 2023 19:18:38 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-173-48-119-246.bstnma.fios.verizon.net [173.48.119.246])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 35Q2HxRN006795
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sun, 25 Jun 2023 22:18:00 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1687745880; bh=rEHSJcjvBWLTA0J/CvIhhDB7WDxfHmI7nwgCmPrpbDM=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To;
-        b=SYx/ZYPD3ZomQTFtSmxuuVpj04SUFpKJ7i9trhw/zVBzYXV4uF6sZ6WMj+dvsPwTQ
-         Xc7uK12RfhQZS28ZvgQQFcQZMwfaTtofxhRlOQusvzykh3YbPQzHj4n/QmZdZyMqV+
-         qvTlrmWf9er1WEtvUYZjh1AXS7jYyIVH9AOycLWYPY7N48YuFzgxaECC96d447QskQ
-         yUlRNYrZizv2hQLEOtrmQCtQG22jDEQK9FYRWs07vZF46eJlbY9/T0yRIMVnK4mUna
-         B8mCGJrZ9cD3DaEz7KJ+lPPMSfC2fR3OeprC7qxzbeCMXOeuKpCipuVLFi1rr8PDfY
-         DPRLp8lVAex9Q==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 9648F15C027E; Sun, 25 Jun 2023 22:17:58 -0400 (EDT)
-Date:   Sun, 25 Jun 2023 22:17:58 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     zhanchengbin <zhanchengbin1@huawei.com>
-Cc:     linux-ext4@vger.kernel.org, linfeilong <linfeilong@huawei.com>,
-        louhongxiang@huawei.com, liuzhiqiang26@huawei.com
-Subject: Re: [bug report] tune2fs: filesystem inconsistency occurs by
- concurrent write
-Message-ID: <20230626021758.GF8954@mit.edu>
-References: <29f6134f-ba0a-d601-0a5a-ad2b5e9bbf1d@huawei.com>
+        with ESMTP id S229454AbjFZFmN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Jun 2023 01:42:13 -0400
+Received: from mo4-p02-ob.smtp.rzone.de (mo4-p02-ob.smtp.rzone.de [81.169.146.168])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 68C6D12A
+        for <linux-ext4@vger.kernel.org>; Sun, 25 Jun 2023 22:42:11 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1687758123; cv=none;
+    d=strato.com; s=strato-dkim-0002;
+    b=bnJRzWfzHwjyB7ocNXxbvZ76SzDqFZN/I4n6xQ/j31yApH1TFFzJoqny3ZUswsXekA
+    dEfeYFs0XkDl08jamZyv7Q17VemdpiIe7idJ9r7c7kRMDmRDBspOSdwIRW1d/S9LIa9k
+    EQDLecC+wWw22gX2nDwWCw++AOgqpDvAzThjbuv9fTEhb7yDkHz7TfFjPPSWJl2Sf6e8
+    4cGxoikplIRjy5lQrzuSpSQc0nAV8nk76h+7+s9latytYAd5EJTyU4gz9nP7KtHCsVPl
+    VTSo/N38sS2SB5CkLpm5kIlNz4Y3lNey5Fs4QziOjjkiN272YIQumuuPN+B8aU32l0jm
+    kTUw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; t=1687758123;
+    s=strato-dkim-0002; d=strato.com;
+    h=References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Cc:Date:
+    From:Subject:Sender;
+    bh=A/OYsWzLIZKxnT1gYGuMS7er5Q0yQLzWN1fJj1HH19U=;
+    b=RIl8OAFYRJ7KsB1WkyllCOnDwVeEU/vor31scEtqwExfEomdiUlgO78z0dilwdLgls
+    qo9jMu35Is7LYXO49JsxWy4fK8hYoZEhSH/8oyK7EySOPBqNwz+2ujnLLWDXuIQG8giJ
+    6U56Qwf3UPkJutNlkZ13wskz4bcs5JJg31gDTZ4FtH7cDCDnP12fAB8nmMolrC3f2I1n
+    CMDsfIIwBBTnWLuzekbvzyYpVSuMwJ+s3Dl50VcXxJI00pdb2puaHqA990yPqE0PpBnQ
+    PyH2J1Hu3RoTh/oG/X8DxcvEWChQY/oAqfrvNO1akiRN/QC2BN/LzpRGqiJGG7XPwvEI
+    R79Q==
+ARC-Authentication-Results: i=1; strato.com;
+    arc=none;
+    dkim=none
+X-RZG-CLASS-ID: mo02
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; t=1687758123;
+    s=strato-dkim-0002; d=iokpp.de;
+    h=References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Cc:Date:
+    From:Subject:Sender;
+    bh=A/OYsWzLIZKxnT1gYGuMS7er5Q0yQLzWN1fJj1HH19U=;
+    b=NfcZcgTIIC8nSgDtlQSSa/VC0elwH/QlqHg71C486VKy72d36LtSjg9h1Jj4rHJnYZ
+    QXUVsE30iG4+Qqx/pTlHI8PJdDwWv9S4ylRm2pUujvLRhmKKNlG4kElEbQYvgV+kqBFQ
+    0I/MbWxALI2QqKHmgy3uQVeRd9hbyjUke/3P4DY3qAMFa6vBJP0hai0mqEYZP1++YQc8
+    YMiWMxbiQZz03BatPwROeGyPG3krTB6pPFHdMpSaYmek8ML9RqxrxNI8991xSrtwwJno
+    c5bs6usNL532qxfxnnYxusV3a88v/zAKC7cpTbiM/hoVhE+9nFJJcm2/vvpXcWKJkOrU
+    JQKQ==
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; t=1687758123;
+    s=strato-dkim-0003; d=iokpp.de;
+    h=References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Cc:Date:
+    From:Subject:Sender;
+    bh=A/OYsWzLIZKxnT1gYGuMS7er5Q0yQLzWN1fJj1HH19U=;
+    b=SF1SPiN2eE0txi4FPUdYG5FT1wVWtyEx21AJODjSRBmvV7KGi6Vt+/ekcbZhmVZLju
+    7KjrV69IoWMcH5mtFTBw==
+X-RZG-AUTH: ":LmkFe0i9dN8c2t4QQyGBB/NDXvjDB6pBSedrgBzPc9DUyubU4DD1QLj68UeUr1+U1RrW5o+P9bSFaHg+gZu+uCjL2b+VQTRnVQrIOQ=="
+Received: from blinux.speedport.ip
+    by smtp.strato.de (RZmta 49.6.0 AUTH)
+    with ESMTPSA id zb0c8bz5Q5g3VvA
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256 bits))
+        (Client did not present a certificate);
+    Mon, 26 Jun 2023 07:42:03 +0200 (CEST)
+From:   Bean Huo <beanhuo@iokpp.de>
+To:     viro@zeniv.linux.org.uk, brauner@kernel.org,
+        akpm@linux-foundation.org, jack@suse.cz, jack@suse.com,
+        tytso@mit.edu, adilger.kernel@dilger.ca, mark@fasheh.com,
+        jlbec@evilplan.org, joseph.qi@linux.alibaba.com,
+        willy@infradead.org, hch@infradead.org
+Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+        beanhuo@micron.com, Bean Huo <beanhuo@iokpp.de>
+Subject: [PATCH v3 2/2] fs: convert block_commit_write to return void
+Date:   Mon, 26 Jun 2023 07:41:53 +0200
+Message-Id: <20230626054153.839672-3-beanhuo@iokpp.de>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20230626054153.839672-1-beanhuo@iokpp.de>
+References: <20230626054153.839672-1-beanhuo@iokpp.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <29f6134f-ba0a-d601-0a5a-ad2b5e9bbf1d@huawei.com>
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="us-ascii"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Jun 26, 2023 at 12:00:08AM +0800, zhanchengbin wrote:
-> Tune2fs does not recognize writes to the manipulated filesystem in another
-> namespace, there will be two simultaneous write operations on a
-> block, resulting in filesystem inconsistencies.
+From: Bean Huo <beanhuo@micron.com>
 
-What you are reporting has nothing to do with namespaces, since
-"tune2fs -e remount-ro /dev/sdb" is something which is allowed
-regardless of whether the file system is mounted.  What reproduction
-is effectively doing is trying to set up a race between when tune2fs
-writes a byte to update to update the errors behavior, and when the
-actual unmount of the file system happens (e.g., when the last
-namespace unmounts the file system).  At that point, the kernel is
-going to be updating the superblock as part of the unmount, and then
-it calculates the superblock, and then it writes out the superblock.
+From: Bean Huo <beanhuo@iokpp.de>
 
-If the tune2fs races with the unmount, it's possible for the tune2fs
-update of the error beavhiour bit, and the update of the superblock
-checksum, to race with the kernel's final update of the superblock,
-includinig its attempt to update the checksum.
+block_commit_write() always returns 0, this patch changes it to
+return void.
 
-There are some workarounds to this, but ultimately, we need to replace
-the ad-hoc modification of the block device by tune2fs with some
-ioctls which specifically update superblock when the file system
-mounted.
+Signed-off-by: Bean Huo <beanhuo@iokpp.de>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Acked-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/buffer.c                 | 14 ++++++--------
+ fs/ext4/move_extent.c       |  7 ++-----
+ fs/ocfs2/file.c             |  7 +------
+ fs/udf/file.c               |  6 +++---
+ include/linux/buffer_head.h |  2 +-
+ 5 files changed, 13 insertions(+), 23 deletions(-)
 
-As far as whether or not tune2fs can detect if the file system is
-mounted, what we can do is check to see if the block device is busy.
-If it is mounted in some other namespace, we won't be able to see it
-mounted in /proc/self/mounts, but we can see that it's not possible to
-open the block device with O_EXCL.
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 50821dfb02f7..1568d0c9942d 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2180,7 +2180,7 @@ int __block_write_begin(struct page *page, loff_t pos, unsigned len,
+ }
+ EXPORT_SYMBOL(__block_write_begin);
+ 
+-static int __block_commit_write(struct folio *folio, size_t from, size_t to)
++static void __block_commit_write(struct folio *folio, size_t from, size_t to)
+ {
+ 	size_t block_start, block_end;
+ 	bool partial = false;
+@@ -2215,7 +2215,6 @@ static int __block_commit_write(struct folio *folio, size_t from, size_t to)
+ 	 */
+ 	if (!partial)
+ 		folio_mark_uptodate(folio);
+-	return 0;
+ }
+ 
+ /*
+@@ -2597,11 +2596,10 @@ int cont_write_begin(struct file *file, struct address_space *mapping,
+ }
+ EXPORT_SYMBOL(cont_write_begin);
+ 
+-int block_commit_write(struct page *page, unsigned from, unsigned to)
++void block_commit_write(struct page *page, unsigned from, unsigned to)
+ {
+ 	struct folio *folio = page_folio(page);
+ 	__block_commit_write(folio, from, to);
+-	return 0;
+ }
+ EXPORT_SYMBOL(block_commit_write);
+ 
+@@ -2647,11 +2645,11 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 		end = size - folio_pos(folio);
+ 
+ 	ret = __block_write_begin_int(folio, 0, end, get_block, NULL);
+-	if (!ret)
+-		ret = __block_commit_write(folio, 0, end);
++	if (unlikely(ret))
++		 goto out_unlock;
++
++	__block_commit_write(folio, 0, end);
+ 
+-	if (unlikely(ret < 0))
+-		goto out_unlock;
+ 	folio_mark_dirty(folio);
+ 	folio_wait_stable(folio);
+ 	return 0;
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index b5af2fc03b2f..f4b4861a74ee 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -392,14 +392,11 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 	for (i = 0; i < block_len_in_page; i++) {
+ 		*err = ext4_get_block(orig_inode, orig_blk_offset + i, bh, 0);
+ 		if (*err < 0)
+-			break;
++			goto repair_branches;
+ 		bh = bh->b_this_page;
+ 	}
+-	if (!*err)
+-		*err = block_commit_write(&folio[0]->page, from, from + replaced_size);
+ 
+-	if (unlikely(*err < 0))
+-		goto repair_branches;
++	block_commit_write(&folio[0]->page, from, from + replaced_size);
+ 
+ 	/* Even in case of data=writeback it is reasonable to pin
+ 	 * inode to transaction, to prevent unexpected data loss */
+diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
+index 91a194596552..9e417cd4fd16 100644
+--- a/fs/ocfs2/file.c
++++ b/fs/ocfs2/file.c
+@@ -808,12 +808,7 @@ static int ocfs2_write_zero_page(struct inode *inode, u64 abs_from,
+ 
+ 
+ 		/* must not update i_size! */
+-		ret = block_commit_write(page, block_start + 1,
+-					 block_start + 1);
+-		if (ret < 0)
+-			mlog_errno(ret);
+-		else
+-			ret = 0;
++		block_commit_write(page, block_start + 1, block_start + 1);
+ 	}
+ 
+ 	/*
+diff --git a/fs/udf/file.c b/fs/udf/file.c
+index 243840dc83ad..0292d75e60cc 100644
+--- a/fs/udf/file.c
++++ b/fs/udf/file.c
+@@ -63,13 +63,13 @@ static vm_fault_t udf_page_mkwrite(struct vm_fault *vmf)
+ 	else
+ 		end = PAGE_SIZE;
+ 	err = __block_write_begin(page, 0, end, udf_get_block);
+-	if (!err)
+-		err = block_commit_write(page, 0, end);
+-	if (err < 0) {
++	if (err) {
+ 		unlock_page(page);
+ 		ret = block_page_mkwrite_return(err);
+ 		goto out_unlock;
+ 	}
++
++	block_commit_write(page, 0, end);
+ out_dirty:
+ 	set_page_dirty(page);
+ 	wait_for_stable_page(page);
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 6cb3e9af78c9..a7377877ff4e 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -288,7 +288,7 @@ int cont_write_begin(struct file *, struct address_space *, loff_t,
+ 			unsigned, struct page **, void **,
+ 			get_block_t *, loff_t *);
+ int generic_cont_expand_simple(struct inode *inode, loff_t size);
+-int block_commit_write(struct page *page, unsigned from, unsigned to);
++void block_commit_write(struct page *page, unsigned int from, unsigned int to);
+ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 				get_block_t get_block);
+ /* Convert errno to return value from ->page_mkwrite() call */
+-- 
+2.34.1
 
-Compare:
-
-root@kvm-xfstests:~# /vtmp/tst_ismounted /dev/vdc
-Device /dev/vdc reports flags 31
-        /dev/vdc is apparently in use.
-        /dev/vdc is mounted.
-        /dev/vdc is mounted on /vdc.
-
-and then "unshare -m" in another terminal, followed by umount /dev/vdc
-in the first terminal:
-
-root@kvm-xfstests:~# /vtmp/tst_ismounted /dev/vdc
-Device /dev/vdc reports flags 10
-        /dev/vdc is apparently in use.
-
-... and then after we exit the last mount namespace which was keeping
-/dev/vdc mounted:
-
-root@kvm-xfstests:~# [ 2409.811328] EXT4-fs (vdc): unmounting filesystem bdc026fd-85a8-4ccf-94f8-961487000293.
-root@kvm-xfstests:~# /vtmp/tst_ismounted /dev/vdc
-Device /dev/vdc reports flags 00
-
-Cheers,
-
-						- Ted
