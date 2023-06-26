@@ -2,19 +2,19 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C914DC001B1
-	for <linux-ext4@archiver.kernel.org>; Mon, 26 Jun 2023 12:14:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 52EEFEB64DA
+	for <linux-ext4@archiver.kernel.org>; Mon, 26 Jun 2023 12:15:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230167AbjFZMOI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 26 Jun 2023 08:14:08 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49294 "EHLO
+        id S230321AbjFZMPJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 26 Jun 2023 08:15:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49308 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230087AbjFZMOD (ORCPT
+        with ESMTP id S230044AbjFZMOD (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Jun 2023 08:14:03 -0400
 Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 87E5AE7D;
-        Mon, 26 Jun 2023 05:13:56 -0700 (PDT)
-X-AuditID: a67dfc5b-d85ff70000001748-b7-64997d6b4fa4
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 07A0FE79;
+        Mon, 26 Jun 2023 05:13:55 -0700 (PDT)
+X-AuditID: a67dfc5b-d85ff70000001748-fc-64997d6b187d
 From:   Byungchul Park <byungchul@sk.com>
 To:     linux-kernel@vger.kernel.org
 Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
@@ -41,151 +41,122 @@ Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
         gwan-gyeong.mun@intel.com, max.byungchul.park@gmail.com,
         boqun.feng@gmail.com, longman@redhat.com, hdanton@sina.com,
         her0gyugyu@gmail.com
-Subject: [PATCH v10 03/25] dept: Add single event dependency tracker APIs
-Date:   Mon, 26 Jun 2023 20:56:38 +0900
-Message-Id: <20230626115700.13873-4-byungchul@sk.com>
+Subject: [PATCH v10 07/25] dept: Apply sdt_might_sleep_{start,end}() to wait_for_completion()/complete()
+Date:   Mon, 26 Jun 2023 20:56:42 +0900
+Message-Id: <20230626115700.13873-8-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20230626115700.13873-1-byungchul@sk.com>
 References: <20230626115700.13873-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSf1CLcRzHfZ8f32eN8ZjwiKMbnZOTOD8+0Tn+4XHOHefOH/kjYw+NVSya
-        cp0oLlESNapztZjUYrb8rCVLafJjqcu46TROUukuNpvmxwr/fO51n/fr3p9/PiJSWk+HiJQJ
-        BwR1glwlw2JKPDBOt2Bv2kVFZG2ODM6ejgT3tywKSm4YMNivVyEw1BwloLdpHbzy9CMYfvaC
-        BG2BHUFZ91sSapq7EFgqjmFo/zAeOtyDGGwFpzBklN/A0NbnJ8BZmE9AlWkjtObpCGjw9VCg
-        7cVQrM0gAuMTAT59JQP69DBwVRQx4O9eBLauThosb+bDxUtODHUWGwXNd10EtN8vwdBl+E1D
-        a3MLBfazOTRUf9Fh6PPoSdC7Bxl42VBKgDEzUPTZbyHgxNdfNDzOaQjQ5ZsEdLyuRVCf9Y4A
-        k6ETQ6O7nwCzqYCEH1ebELhyBxg4ftrHQPHRXASnjhdS8OLnYxoynUth2FuCV6/kG/sHST7T
-        rOEtnlKKf6Lj+HtFbxk+s/4Nw5eaDvLminC+vK6X4MuG3DRvqjyJedNQPsNnD3QQvLOzDvNf
-        nj9n+JYLw9SmGTHiaIWgUiYL6oWrtovjrHlF9L5XUw95tLPSUYc0GwWJOHYJ5zrzlfrP72x+
-        NMKYncs5HD5yhIPZUM6c85HORmIRyZaP5XpaHjEjwSR2PdfTaB2VKDaM++hrH2UJu5Trbr7y
-        r3QWV2VsGN0Hscu42qe60QPSgHPMacV/nXNBnOM685encQ8rHFQekpSiMZVIqkxIjpcrVUsi
-        4lISlIcidibGm1Dgq/Rp/m130ZB9ixWxIiQbJ4mceUEhpeXJSSnxVsSJSFmwZIpXq5BKFPKU
-        VEGdGKs+qBKSrGi6iJJNlSz2aBRSdrf8gLBXEPYJ6v8pIQoKSUfzHKppUakWV2Jf1Azjrpjw
-        87He4kQ71XNnTWf+zepV0ZwipHjt7bRH25YbFf2bbiWnr7g0cUJv1q6oW61Tgp86vRmTnRGa
-        2NA57zeEaWziNoxnj0nVSKor9+/3thjnHhloa61tela449u1mh2b93zPNdf9yI4mDI3MPfHW
-        BSsfOA7LqKQ4+aJwUp0k/wNpr8oFUQMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTdxjF/d/X0llz0xG5Y1G0GcOAQ1iGeSKgftK/RhdjTEYWDXT2ZnQU
-        NK10YGJSoRBEqEACRUADFCqBMrA1BpWa2spL5xtKQUcqEbLJUISotFKpYsH45eSXc07O8+UR
-        kdImOlKkzDkhqHPkKhkjpsQ/Jxf+kHXqvCKh5VwYVJYlgG++hIKGLgsDQ391ILBcOU3AdN9u
-        eOyfQbB47wEJxuohBE0TT0m40j+OwN5WwMDwv2vA45tjwF19loFCUxcDD18GCfDWVBHQYd0P
-        dyqaCXAEpigwTjNQbywkQvI/AQFzOwtmXTRMttWxEJxIBPf4KA2uC24a7GNxcP6il4Feu5uC
-        /p5JAoavNzAwblmi4U7/IAVDleU0dM42M/DSbybB7Jtj4ZGjkYBufWjtRdBOQPHbjzQMlDtC
-        1HKZAM8/NxDcLHlGgNUyyoDLN0OAzVpNwvtLfQgmDa9YKCoLsFB/2oDgbFENBQ8+DNCg9ybB
-        4kIDszMFu2bmSKy3/Ynt/kYK/93M42t1T1msvznG4kZrLra1xWJT7zSBm974aGxtP8Ng65sq
-        Fpe+8hDYO9rL4Nn791k8WLtIHVj3qzhFIaiUWkG9ZXuGONNZUUcffxyR5zdG6ZBHWorCRDz3
-        E//MHUTLzHAx/JMnAXKZw7kNvK38OV2KxCKSM33FTw3eZpeDr7k9/JTLuVKiuGj+eWB4hSVc
-        Ej/R30p9Ho3iO7odK34Yt5W/cbd55YA01CnwOpkKJG5Eq9pRuDJHmy1XqpLiNVmZ+TnKvPij
-        x7KtKPQ45lPByh40P7zbiTgRkq2WJKyvVUhpuVaTn+1EvIiUhUvWLhgVUolCnn9SUB9LV+eq
-        BI0TfSuiZBGSvb8IGVLud/kJIUsQjgvqLykhCovUodi0vGtLuTFzNZ0v3g6sNhlHdqSm93Tp
-        Du3TJr7b44n9LxkVbWjTL8UdNHw83HJA67b0FqRs3FTcao2xRbYmrh3Zdj1iNmXsmyO1S7tU
-        aTjuj/KoluiFNIf/+w9lCXeNI7c6CjcZqr5LGtcN1Zzb7BIf4q+GVxiI+tSo34p/fL3ddFJG
-        aTLlibGkWiP/BA+c/uo0AwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0wTWRSAvXdm7kwrxXHQdUSDpgaNbBZxRT3xHU10YlyzCf80Zrexk21D
+        qaZIAY0JVDSKgA+ClYeKZVMQWMWCikKRRXn5oi4EqanNwpqFCkiCFq3go9X45+RLzne+X4ej
+        hCYmktMbD8gmo8agJkpaORpm+8lwuFAb1/FfGJzJiQP/2+M0lFyrJuC6WoWgui4Tg691Gzyb
+        GEEw+biLAmuBC8Hl/hcU1LV5ETgrLAS6X4ZDj3+MQGfBSQJHyq4ReDo8hcFz7iyGKscv8PC0
+        DUNzYJAGq49AsfUIDo4hDAF7JQv2jGgYqChiYap/OXR6exlwPv8RCi96CDQ6O2loqx/A0H2n
+        hIC3+jMDD9s6aHCdyWXgr9c2AsMTdgrs/jEW/mkuxVCTFQy9mnJiOPbmEwPtuc1B+vM6hh53
+        A4Km4/9icFT3ErjnH8FQ6yig4EN5K4KBvFEWjuYEWCjOzENw8ug5Gro+tjOQ5VkJk+9LyKa1
+        0r2RMUrKqk2VnBOltPTAJkq3i16wUlbTc1YqdaRItRUxUlmjD0uXx/2M5Kg8QSTH+FlWyh7t
+        wZKnt5FIr588YaWO85P0r/N3KddpZYPeLJuWbfhdqRt2jrL7785Mu+C6z2aguvBspOBEPl48
+        cdfOfOe8Ri8dYsIvEfv6AlSIZ/ELxdrc/4OOkqP4suniYMd9NhtxXASvE9utiSGk+WjRkrco
+        pKv4lWKxLx9/Sy4Qq2qav2YU/Cqx4ZENhVgIOhZPCwklRT5fIX6cHKS/HcwV/67oo08jVSma
+        VokEvdGcpNEb4mN16UZ9WuzefUkOFPwq++Gp3fVo3JXQgngOqcNUcVHntQKjMSenJ7UgkaPU
+        s1Q/vLdqBZVWk35QNu37zZRikJNb0DyOVs9R/TyRqhX4PzQH5ERZ3i+bvm8xp4jMQGnCou1b
+        r86OX3qqfNOQ111UcyeyIYJ/xM2u3/vWGLMhqnBj4e7M/pkzfN05CbSQeGvbxZrWl3veWHcM
+        da3enhAetTHCycTO2TyQv+TmmiJL30HSv97dZYo0+y7N8+6MXqEIuG+8WydYdqa4dery1MVm
+        7SH87PaNrdmWLSuom1c+pavpZJ1meQxlStZ8AYYYLbRRAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0xTZxzGfd9zpVpzrGQ70+iWGmbCNoRkLP8EYvxgwhsTCS5EE2OinT2x
+        DVBNy3ULCxRQVoUIBst1KcVUhDpYSyJKqwSQy0ToBJmTyoS4YVcuCbOEjoq2Gr88+SXPk9+n
+        h6cUFmYHr9VlS3qdKlPJymhZalLJVxmFdep493QcVF2Kh8CrchoaO+wseH5pR2DvKsbgu58C
+        f6wuIFh/OE6BucaDoHn2GQVdgzMI3K1GFiZebIXJwDILIzUXWShp6WDhd38Ig/dqNYZ2x2F4
+        cNmKoTc4T4PZx0KDuQSH4yWGoK2NA1tRDMy11nMQmk2AkZkpBvqbRhhwP/0C6n72suByj9Aw
+        2D2HYeJOIwsz9jcMPBgcpsFTVcHAzSUrC/5VGwW2wDIHj3otGDpLw7Z/Q24M5//bYGCoojdM
+        137FMPlnD4K75c8xOOxTLPQHFjA4HTUU/H/9PoK5ykUOyi4FOWgorkRwsewqDeOvhxgo9SbC
+        +lojeyCZ9C8sU6TUmUfcqxaa/GYVye36ZxwpvfuUIxZHDnG2xpIWlw+T5pUAQxxtP7HEsVLN
+        EdPiJCbeKRdLlsbGODJcu06n7TouS1ZLmdpcSb9v/ymZxu9e5M7d25bf5BngilDXVhOK4kXh
+        a7HSNUNHmBX2ik+eBKkIRwufic6KfxgTkvGU0LJZnB8e4EyI57cLGnHInBFBWogRjZV7InO5
+        kCg2+K7g98pPxfbO3neaKOEbsWfUiiKsCG+M3j72MpJZ0KY2FK3V5WaptJmJcYYMTYFOmx93
+        +myWA4V/YysMVXWjVxMpfUjgkXKLPH53rVrBqHINBVl9SOQpZbT8ozWzWiFXqwq+l/RnT+pz
+        MiVDH9rJ08qP5YeOSacUwhlVtpQhSeck/YcW81E7ilA2/iTQZFtT5M+lpfr1BX9X9QSNLToy
+        O/Gt74Znant62cnj6ZoX1F+PX36Z0J13PqbrwHzzeHaeufqG1TV2dLTZ9FDv3J3y+U2j/8St
+        nluHpjeX/Di6b4C6Xu9MXklL2mUvzzmi+a7wynNe+XiobuPC9MYPb5JOHBxrV4T2PvK3xaYr
+        aYNGlRBL6Q2qt1umRrEzAwAA
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Wrapped the base APIs for easier annotation on wait and event. Start
-with supporting waiters on each single event. More general support for
-multiple events is a future work. Do more when the need arises.
-
-How to annotate (the simplest way):
-
-1. Initaialize a map for the interesting wait.
-
-   /*
-    * Recommand to place along with the wait instance.
-    */
-   struct dept_map my_wait;
-
-   /*
-    * Recommand to place in the initialization code.
-    */
-   sdt_map_init(&my_wait);
-
-2. Place the following at the wait code.
-
-   sdt_wait(&my_wait);
-
-3. Place the following at the event code.
-
-   sdt_event(&my_wait);
-
-That's it!
+Makes Dept able to track dependencies by
+wait_for_completion()/complete().
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/dept_sdt.h | 62 ++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 62 insertions(+)
- create mode 100644 include/linux/dept_sdt.h
+ include/linux/completion.h | 30 +++++++++++++++++++++++++-----
+ 1 file changed, 25 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/dept_sdt.h b/include/linux/dept_sdt.h
-new file mode 100644
-index 000000000000..12a793b90c7e
---- /dev/null
-+++ b/include/linux/dept_sdt.h
-@@ -0,0 +1,62 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * Single-event Dependency Tracker
-+ *
-+ * Started by Byungchul Park <max.byungchul.park@gmail.com>:
-+ *
-+ *  Copyright (c) 2020 LG Electronics, Inc., Byungchul Park
-+ */
-+
-+#ifndef __LINUX_DEPT_SDT_H
-+#define __LINUX_DEPT_SDT_H
-+
-+#include <linux/kernel.h>
-+#include <linux/dept.h>
-+
-+#ifdef CONFIG_DEPT
-+#define sdt_map_init(m)							\
-+	do {								\
-+		static struct dept_key __key;				\
-+		dept_map_init(m, &__key, 0, #m);			\
-+	} while (0)
-+
-+#define sdt_map_init_key(m, k)		dept_map_init(m, k, 0, #m)
-+
-+#define sdt_wait(m)							\
-+	do {								\
-+		dept_request_event(m);					\
-+		dept_wait(m, 1UL, _THIS_IP_, __func__, 0);		\
-+	} while (0)
+diff --git a/include/linux/completion.h b/include/linux/completion.h
+index 62b32b19e0a8..32d535abebf3 100644
+--- a/include/linux/completion.h
++++ b/include/linux/completion.h
+@@ -10,6 +10,7 @@
+  */
+ 
+ #include <linux/swait.h>
++#include <linux/dept_sdt.h>
+ 
+ /*
+  * struct completion - structure used to maintain state for a "completion"
+@@ -26,14 +27,33 @@
+ struct completion {
+ 	unsigned int done;
+ 	struct swait_queue_head wait;
++	struct dept_map dmap;
+ };
+ 
++#define init_completion(x)				\
++do {							\
++	sdt_map_init(&(x)->dmap);			\
++	__init_completion(x);				\
++} while (0)
 +
 +/*
-+ * sdt_might_sleep() and its family will be committed in __schedule()
-+ * when it actually gets to __schedule(). Both dept_request_event() and
-+ * dept_wait() will be performed on the commit.
++ * XXX: No use cases for now. Fill the body when needed.
 + */
+ #define init_completion_map(x, m) init_completion(x)
+-static inline void complete_acquire(struct completion *x) {}
+-static inline void complete_release(struct completion *x) {}
 +
-+/*
-+ * Use the code location as the class key if an explicit map is not used.
-+ */
-+#define sdt_might_sleep_start(m)					\
-+	do {								\
-+		struct dept_map *__m = m;				\
-+		static struct dept_key __key;				\
-+		dept_stage_wait(__m, __m ? NULL : &__key, _THIS_IP_, __func__);\
-+	} while (0)
++static inline void complete_acquire(struct completion *x)
++{
++	sdt_might_sleep_start(&x->dmap);
++}
 +
-+#define sdt_might_sleep_end()		dept_clean_stage()
-+
-+#define sdt_ecxt_enter(m)		dept_ecxt_enter(m, 1UL, _THIS_IP_, "start", "event", 0)
-+#define sdt_event(m)			dept_event(m, 1UL, _THIS_IP_, __func__)
-+#define sdt_ecxt_exit(m)		dept_ecxt_exit(m, 1UL, _THIS_IP_)
-+#else /* !CONFIG_DEPT */
-+#define sdt_map_init(m)			do { } while (0)
-+#define sdt_map_init_key(m, k)		do { (void)(k); } while (0)
-+#define sdt_wait(m)			do { } while (0)
-+#define sdt_might_sleep_start(m)	do { } while (0)
-+#define sdt_might_sleep_end()		do { } while (0)
-+#define sdt_ecxt_enter(m)		do { } while (0)
-+#define sdt_event(m)			do { } while (0)
-+#define sdt_ecxt_exit(m)		do { } while (0)
-+#endif
-+#endif /* __LINUX_DEPT_SDT_H */
++static inline void complete_release(struct completion *x)
++{
++	sdt_might_sleep_end();
++}
+ 
+ #define COMPLETION_INITIALIZER(work) \
+-	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait) }
++	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait), \
++	  .dmap = DEPT_MAP_INITIALIZER(work, NULL), }
+ 
+ #define COMPLETION_INITIALIZER_ONSTACK_MAP(work, map) \
+ 	(*({ init_completion_map(&(work), &(map)); &(work); }))
+@@ -75,13 +95,13 @@ static inline void complete_release(struct completion *x) {}
+ #endif
+ 
+ /**
+- * init_completion - Initialize a dynamically allocated completion
++ * __init_completion - Initialize a dynamically allocated completion
+  * @x:  pointer to completion structure that is to be initialized
+  *
+  * This inline function will initialize a dynamically created completion
+  * structure.
+  */
+-static inline void init_completion(struct completion *x)
++static inline void __init_completion(struct completion *x)
+ {
+ 	x->done = 0;
+ 	init_swait_queue_head(&x->wait);
 -- 
 2.17.1
 
