@@ -2,102 +2,99 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 51F14EB64DA
-	for <linux-ext4@archiver.kernel.org>; Mon, 26 Jun 2023 13:06:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CF7E0EB64D7
+	for <linux-ext4@archiver.kernel.org>; Mon, 26 Jun 2023 13:10:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230228AbjFZNGS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 26 Jun 2023 09:06:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55624 "EHLO
+        id S230023AbjFZNKG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 26 Jun 2023 09:10:06 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57682 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230361AbjFZNGN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Jun 2023 09:06:13 -0400
-Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A5271E7B
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Jun 2023 06:05:50 -0700 (PDT)
-Received: from mail02.huawei.com (unknown [172.30.67.169])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4QqSLv2CkKz4f3lxD
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Jun 2023 20:48:23 +0800 (CST)
-Received: from [10.174.178.129] (unknown [10.174.178.129])
-        by APP3 (Coremail) with SMTP id _Ch0CgA3LRsYiZlkhiOjLg--.9627S2;
-        Mon, 26 Jun 2023 20:48:25 +0800 (CST)
-To:     tytso@mit.edu, linux-ext4@vger.kernel.org
-From:   Kemeng Shi <shikemeng@huaweicloud.com>
-Subject: mkfs.ext4 failed when orphan_file is enabled
-Message-ID: <3f0c3d5c-3dbf-6e9e-962b-616016c7427e@huaweicloud.com>
-Date:   Mon, 26 Jun 2023 20:48:23 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.5.0
+        with ESMTP id S229481AbjFZNKE (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Jun 2023 09:10:04 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8E699B9;
+        Mon, 26 Jun 2023 06:10:03 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 3A4031F8AB;
+        Mon, 26 Jun 2023 13:10:02 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1687785002; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=p6JfJgn7WigU75C2F7rQV1RIBlnMRsvyrWJCIdw/dCA=;
+        b=eys9iBcHZeEhwoM+4xJcArAsNTJEoZ4F5/JuvySgzA6lig0YQ2tKBwmhJgJeGuTKW0ojic
+        uU6ctK6n8OkxZ1BPLsNhpVVwGfa3dN5NOYQdiORfGNJsaHjXve08g9PgKOjHS89z+XuLtS
+        G20EEJ5kA0P7k0HkW1y/WVHUf7dDKB8=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1687785002;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=p6JfJgn7WigU75C2F7rQV1RIBlnMRsvyrWJCIdw/dCA=;
+        b=VXWH/ebYmCkoxq1Jrdwc3zdPADBQ/c6B+J2fQ2Otd4ECu7PfiGlen3urUdNidZRR7g2tvt
+        zOaSHX36FGPHZwAQ==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 9D9F613483;
+        Mon, 26 Jun 2023 13:10:01 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id hTf9JSmOmWQaXgAAMHmgww
+        (envelope-from <jack@suse.cz>); Mon, 26 Jun 2023 13:10:01 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id 472B1A0754; Mon, 26 Jun 2023 15:09:57 +0200 (CEST)
+Date:   Mon, 26 Jun 2023 15:09:57 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Baokun Li <libaokun1@huawei.com>
+Cc:     Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        yi.zhang@huawei.com, yangerkun@huawei.com, chengzhihao1@huawei.com,
+        yukuai3@huawei.com
+Subject: Re: [PATCH] quota: fix race condition between dqput() and
+ dquot_mark_dquot_dirty()
+Message-ID: <20230626130957.kvfli23djxc2opkq@quack3>
+References: <20230616085608.42435-1-libaokun1@huawei.com>
+ <20230616152824.ndpgvkegvvip2ahh@quack3>
+ <c8daf4a0-769f-f769-50f6-8b7063542499@huawei.com>
+ <20230622145620.hk3bdjxtlr64gtzl@quack3>
+ <b73894fc-0c7a-0503-25ad-ab5a9dfbd852@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=gbk
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID: _Ch0CgA3LRsYiZlkhiOjLg--.9627S2
-X-Coremail-Antispam: 1UD129KBjvJXoW7WF48Kr1rCry8WrWUArWkZwb_yoW8CrWUpw
-        43JFn0gFWkXa4fCa92yw4xWa4Sgr4Iy398X34jg3s7tFy3Gas2ywsxKa4UtFykKrnxAa12
-        9F9Fqryjq3yUtaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUyKb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-        vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7Cj
-        xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I
-        0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
-        x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
-        0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lc7I2V7IY0VAS07AlzVAYIcxG8wCF04k20xvY0x0E
-        wIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E74
-        80Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jrv_JF1lIxkGc2Ij64vIr41lIxAIcVC0
-        I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Jr0_Gr1lIxAIcVCF04
-        k26cxKx2IYs7xG6rW3Jr0E3s1lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY
-        1x0267AKxVWUJVW8JbIYCTnIWIevJa73UjIFyTuYvjxUzsqWUUUUU
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <b73894fc-0c7a-0503-25ad-ab5a9dfbd852@huawei.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi all, I find that "kvm-xfstests -c ext4/1k ext4/049" is failed on
-current dev branch because of mkfs.ext4 failure.
-I can simply reproduce the failure by:
- # kvm-xfstests shell
- # /sbin/mkfs.ext4  -F  -b 4096 -g 8192 -N 1024 -I 4096 /dev/vdc
-mke2fs 1.47.0 (5-Feb-2023)
-Discarding device blocks: done
-Creating filesystem with 1310720 4k blocks and 1280 inodes
-Filesystem UUID: a202296a-c5dd-495c-8aee-4bc92983083a
-Superblock backups stored on blocks:
-        8192, 24576, 40960, 57344, 73728, 204800, 221184, 401408, 663552,
-        1024000
+Hello!
 
-Allocating group tables: done
-Writing inode tables: done
-Creating journal (16384 blocks): done
-*mkfs.ext4: Inode checksum does not match inode while creating orphan file*
+On Sun 25-06-23 15:56:10, Baokun Li wrote:
+> > > I think we can simply focus on the race between the DQ_ACTIVE_B flag and
+> > > the DQ_MOD_B flag, which is the core problem, because the same quota
+> > > should not have both flags. These two flags are protected by dq_list_lock
+> > > and dquot->dq_lock respectively, so it makes sense to add a
+> > > wait_on_dquot() to ensure the accuracy of DQ_ACTIVE_B.
+> > But the fundamental problem is not only the race with DQ_MOD_B setting. The
+> > dquot structure can be completely freed by the time
+> > dquot_claim_space_nodirty() calls dquot_mark_dquot_dirty() on it. That's
+> > why I think making __dquot_transfer() obey dquot_srcu rules is the right
+> > solution.
+> Yes, now I also think that making __dquot_transfer() obey dquot_srcu
+> rules is a better solution. But with inode->i_lock protection, why would
+> the dquot structure be completely freed?
 
-I also try this on my host machine with old version mke2fs. The orphan_file
-feature is not set in old version /etc/mke2fs.conf and the mkfs.ext4 works
-fine. After orphan_file added to /etc/mke2fs.conf, mkfs.ext4 failed as
-following:
- # mkfs.ext4  -F  -b 4096 -g 8192 -N 1024 -I 4096 /dev/sda1
-mke2fs 1.45.6 (20-Mar-2020)
-/dev/sda1 contains a ext4 file system
-        created on Tue Jun 27 03:49:19 2023
-Invalid filesystem option set: has_journal,extent,huge_file,
-flex_bg,metadata_csum,64bit,dir_nlink,extra_isize,orphan_file
+Well, when dquot_claim_space_nodirty() calls mark_all_dquot_dirty() it does
+not hold any locks (only dquot_srcu). So nothing prevents dquot_transfer()
+to go, swap dquot structure pointers and drop dquot references and after
+that mark_all_dquot_dirty() can use a stale pointer to call
+mark_dquot_dirty() on already freed memory.
 
-It's likely orphan_file is not supported by old version.
-
-After install new version mke2fs on my host machine. The checksum failure
-appears again:
-mkfs.ext4  -F  -b 4096 -g 8192 -N 1024 -I 4096 /dev/sda1
-mke2fs 1.47.0 (5-Feb-2023)
-/dev/sda1 contains a ext4 file system
-        created on Tue Jun 27 03:49:19 2023
-Creating filesystem with 1310720 4k blocks and 1280 inodes
-Filesystem UUID: 6ea06e27-5d56-4389-afaf-a99055fa85fd
-Superblock backups stored on blocks:
-        8192, 24576, 40960, 57344, 73728, 204800, 221184, 401408, 663552,
-        1024000
-
-Can anyone help with this?
-
+								Honza
 -- 
-Best wishes
-Kemeng Shi
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
