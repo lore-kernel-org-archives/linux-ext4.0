@@ -2,19 +2,19 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 52EEFEB64DA
-	for <linux-ext4@archiver.kernel.org>; Mon, 26 Jun 2023 12:15:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 66DA9EB64DD
+	for <linux-ext4@archiver.kernel.org>; Mon, 26 Jun 2023 12:15:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230321AbjFZMPJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 26 Jun 2023 08:15:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49308 "EHLO
+        id S230266AbjFZMPI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 26 Jun 2023 08:15:08 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49300 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230044AbjFZMOD (ORCPT
+        with ESMTP id S230109AbjFZMOD (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Jun 2023 08:14:03 -0400
-Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 07A0FE79;
+Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 07868E75;
         Mon, 26 Jun 2023 05:13:55 -0700 (PDT)
-X-AuditID: a67dfc5b-d85ff70000001748-fc-64997d6b187d
+X-AuditID: a67dfc5b-d85ff70000001748-c8-64997d6b8990
 From:   Byungchul Park <byungchul@sk.com>
 To:     linux-kernel@vger.kernel.org
 Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
@@ -41,122 +41,140 @@ Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
         gwan-gyeong.mun@intel.com, max.byungchul.park@gmail.com,
         boqun.feng@gmail.com, longman@redhat.com, hdanton@sina.com,
         her0gyugyu@gmail.com
-Subject: [PATCH v10 07/25] dept: Apply sdt_might_sleep_{start,end}() to wait_for_completion()/complete()
-Date:   Mon, 26 Jun 2023 20:56:42 +0900
-Message-Id: <20230626115700.13873-8-byungchul@sk.com>
+Subject: [PATCH v10 04/25] dept: Add lock dependency tracker APIs
+Date:   Mon, 26 Jun 2023 20:56:39 +0900
+Message-Id: <20230626115700.13873-5-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20230626115700.13873-1-byungchul@sk.com>
 References: <20230626115700.13873-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0wTWRSAvXdm7kwrxXHQdUSDpgaNbBZxRT3xHU10YlyzCf80Zrexk21D
-        qaZIAY0JVDSKgA+ClYeKZVMQWMWCikKRRXn5oi4EqanNwpqFCkiCFq3go9X45+RLzne+X4ej
-        hCYmktMbD8gmo8agJkpaORpm+8lwuFAb1/FfGJzJiQP/2+M0lFyrJuC6WoWgui4Tg691Gzyb
-        GEEw+biLAmuBC8Hl/hcU1LV5ETgrLAS6X4ZDj3+MQGfBSQJHyq4ReDo8hcFz7iyGKscv8PC0
-        DUNzYJAGq49AsfUIDo4hDAF7JQv2jGgYqChiYap/OXR6exlwPv8RCi96CDQ6O2loqx/A0H2n
-        hIC3+jMDD9s6aHCdyWXgr9c2AsMTdgrs/jEW/mkuxVCTFQy9mnJiOPbmEwPtuc1B+vM6hh53
-        A4Km4/9icFT3ErjnH8FQ6yig4EN5K4KBvFEWjuYEWCjOzENw8ug5Gro+tjOQ5VkJk+9LyKa1
-        0r2RMUrKqk2VnBOltPTAJkq3i16wUlbTc1YqdaRItRUxUlmjD0uXx/2M5Kg8QSTH+FlWyh7t
-        wZKnt5FIr588YaWO85P0r/N3KddpZYPeLJuWbfhdqRt2jrL7785Mu+C6z2aguvBspOBEPl48
-        cdfOfOe8Ri8dYsIvEfv6AlSIZ/ELxdrc/4OOkqP4suniYMd9NhtxXASvE9utiSGk+WjRkrco
-        pKv4lWKxLx9/Sy4Qq2qav2YU/Cqx4ZENhVgIOhZPCwklRT5fIX6cHKS/HcwV/67oo08jVSma
-        VokEvdGcpNEb4mN16UZ9WuzefUkOFPwq++Gp3fVo3JXQgngOqcNUcVHntQKjMSenJ7UgkaPU
-        s1Q/vLdqBZVWk35QNu37zZRikJNb0DyOVs9R/TyRqhX4PzQH5ERZ3i+bvm8xp4jMQGnCou1b
-        r86OX3qqfNOQ111UcyeyIYJ/xM2u3/vWGLMhqnBj4e7M/pkzfN05CbSQeGvbxZrWl3veWHcM
-        da3enhAetTHCycTO2TyQv+TmmiJL30HSv97dZYo0+y7N8+6MXqEIuG+8WydYdqa4dery1MVm
-        7SH87PaNrdmWLSuom1c+pavpZJ1meQxlStZ8AYYYLbRRAwAA
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0xTZxzGfd9zpVpzrGQ70+iWGmbCNoRkLP8EYvxgwhsTCS5EE2OinT2x
-        DVBNy3ULCxRQVoUIBst1KcVUhDpYSyJKqwSQy0ToBJmTyoS4YVcuCbOEjoq2Gr88+SXPk9+n
-        h6cUFmYHr9VlS3qdKlPJymhZalLJVxmFdep493QcVF2Kh8CrchoaO+wseH5pR2DvKsbgu58C
-        f6wuIFh/OE6BucaDoHn2GQVdgzMI3K1GFiZebIXJwDILIzUXWShp6WDhd38Ig/dqNYZ2x2F4
-        cNmKoTc4T4PZx0KDuQSH4yWGoK2NA1tRDMy11nMQmk2AkZkpBvqbRhhwP/0C6n72suByj9Aw
-        2D2HYeJOIwsz9jcMPBgcpsFTVcHAzSUrC/5VGwW2wDIHj3otGDpLw7Z/Q24M5//bYGCoojdM
-        137FMPlnD4K75c8xOOxTLPQHFjA4HTUU/H/9PoK5ykUOyi4FOWgorkRwsewqDeOvhxgo9SbC
-        +lojeyCZ9C8sU6TUmUfcqxaa/GYVye36ZxwpvfuUIxZHDnG2xpIWlw+T5pUAQxxtP7HEsVLN
-        EdPiJCbeKRdLlsbGODJcu06n7TouS1ZLmdpcSb9v/ymZxu9e5M7d25bf5BngilDXVhOK4kXh
-        a7HSNUNHmBX2ik+eBKkIRwufic6KfxgTkvGU0LJZnB8e4EyI57cLGnHInBFBWogRjZV7InO5
-        kCg2+K7g98pPxfbO3neaKOEbsWfUiiKsCG+M3j72MpJZ0KY2FK3V5WaptJmJcYYMTYFOmx93
-        +myWA4V/YysMVXWjVxMpfUjgkXKLPH53rVrBqHINBVl9SOQpZbT8ozWzWiFXqwq+l/RnT+pz
-        MiVDH9rJ08qP5YeOSacUwhlVtpQhSeck/YcW81E7ilA2/iTQZFtT5M+lpfr1BX9X9QSNLToy
-        O/Gt74Znant62cnj6ZoX1F+PX36Z0J13PqbrwHzzeHaeufqG1TV2dLTZ9FDv3J3y+U2j/8St
-        nluHpjeX/Di6b4C6Xu9MXklL2mUvzzmi+a7wynNe+XiobuPC9MYPb5JOHBxrV4T2PvK3xaYr
-        aYNGlRBL6Q2qt1umRrEzAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0xTZxjHfc/lPaeV6knH5IhGXRMz1MDQeHkSL9Ho4vtFY+JijM5oZ89G
+        BYppFcFoUqGaWsABykVLTC1aCcVbYRsCdRUEQSaXSSpKS4R4oUolQYsieCkYvzz5Jf//88vz
+        4eFp5b9sNK/VHZD0OnWSCssZeTDCHpt49Kwm3uKPg7zseAi9NTNQcq0CQ8dVJ4KKqmMUBBo3
+        wsORQQRj99tpKCroQHChz09DVVMvAndZBoYHT6dBV2gIQ0tBFobM0msYOl+NU+ArzKfA6doE
+        rbl2CjyjLxgoCmCwFmVS4TFAwaijnAOHcT70l53jYLxvMbT0ellwP14EZ8/7MNS5Wxhoqu6n
+        4EFNCYbeis8stDY1M9CRl8PCldd2DK9GHDQ4QkMc/O+xUXDdFBa9HHdTcOLNJxbu5njCdPEG
+        BV2PahHcMj+hwFXhxdAQGqSg0lVAw4fLjQj6TwU5OJ49yoH12CkEWccLGWj/eJcFk28ZjL0v
+        wWtXkobBIZqYKg8R94iNIffsIrl5zs8R063HHLG5DpLKsoWktC5AkQvDIZa4yk9i4hrO54gl
+        2EURn7cOk9dtbRxpLh5jtszeIV+lkZK0qZL+pzV75Amm8HX7B6LSLnmMyIicSguS8aKwVOzJ
+        O818Y7P/PD3BWPhR7O4eneRIYZ5YmfOctSA5TwulU8UXzXe4ieA7YZ3Y422YZEaYL973/hUW
+        8bxCWCZmB1Z/dc4Vndc9kx6ZsFys/c+OJlgZrmT46vGEUxSyZKJjoJb+ujBTvF3WzeQihQ1N
+        KUdKrS41Wa1NWhqXkK7TpsXtTUl2ofBbOY6O76xGwx1b65HAI1WEIn5OsUbJqlMN6cn1SORp
+        VaRixvsijVKhUacflvQpu/UHkyRDPZrFM6ooxZKRQxql8If6gJQoSfsl/beU4mXRRoQiY/p3
+        vkx2/Ba1qw3P/TWmyhK7O5jovLnNaqpZsS96w7yM3yOarI0xueZsa/GUjYObV3Rfrf1THd1q
+        MKdd2nDGNuPi9sOLin9YV3O7Mz3zSFDWXt284J/pP1tzdVH5M6fJxfWFz4wkEPxlpT+2J9LK
+        3ev8nHBjQd9ex9/fp7z7dKZliYoxJKgXL6T1BvUX5oVgh1IDAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0hTcRjG+5/L/xxXs8NmerCLMZJAyexivVJZ0YdOQRL0IehDdWiHHN5i
+        K3OVNHWFmUZKc1ZmOmuJrrJpYOlieF9aWpN1m1IS1cqSLluZdplGXx5+8Lz8eD88LKmopiNZ
+        TcZBSZshpqmwjJIlr8lfkppzXh1vsSmhpCge/N8KKKi4acMwcKMega0plwBf52Z4EhhFMPGg
+        nwSzaQBB9ashEpq6hhE4avMwuF+HwqB/DIPLdBpDfs1NDI8+TBLgLSsloN6+DXrPWghwjr+l
+        wOzDcNGcTwTjHQHj1joGrIZoGKm9wMDkq2XgGvbQ0H7JRYPjeSycr/RiaHW4KOhqHiHAfbcC
+        w7DtDw29XT0UDJQU03D9kwXDh4CVBKt/jIHHzioCGoxB2/tJBwEnv/6mobvYGaQrtwgYfNaC
+        4F7BSwLsNg+Gdv8oAY12Ewk/r3UiGDnzkYETReMMXMw9g+D0iTIK+n9102D0JsDEjwq8Ya3Q
+        PjpGCsbGw4IjUEUJ9y28cOfCECMY7z1nhCr7IaGxNkaoafURQvUXPy3Y605hwf6llBEKPw4S
+        gtfTioVPDx8yQk/5BLV9/i7ZWrWUpsmStEuT9spSjMHvDryLyL7qNCADqlcUohCW51byBUOV
+        5BRjbjH/9On4NIdxC/nG4jd0IZKxJFczk3/b08FMFUpuI//C0z7NFBfNP/DcpgoRy8q5BL7I
+        t+6fM4qvb3BOe0K4VXxLnwVNsSJ4kudtw2eRrArNqENhmoysdFGTlhCnS03RZ2iy4/ZlpttR
+        cDjWnMmSZvTNvbkNcSxSzZLHLyhXK2gxS6dPb0M8S6rC5OE/zGqFXC3qj0jazD3aQ2mSrg3N
+        ZSlVhHzrTmmvgtsvHpRSJemApP3fEmxIpAFVz98t9eXnWsUdSeETWXm2RGPH0dW3O22Lw719
+        s/p9XatD7yqPR/UpyYJHYTGfx+40+5dnig5F2ewVI5c3HTM3aCO2JSVWph81FUV9b1L2l5qu
+        17gPm0K66UDn7Dnu0NSc0eRywznqdbZjy/rE6N7SQOR+vMj3xrWxR/9yXuxlvYrSpYjLYkit
+        TvwLwSrfujQDAAA=
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Makes Dept able to track dependencies by
-wait_for_completion()/complete().
+Wrapped the base APIs for easier annotation on typical lock.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/completion.h | 30 +++++++++++++++++++++++++-----
- 1 file changed, 25 insertions(+), 5 deletions(-)
+ include/linux/dept_ldt.h | 77 ++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 77 insertions(+)
+ create mode 100644 include/linux/dept_ldt.h
 
-diff --git a/include/linux/completion.h b/include/linux/completion.h
-index 62b32b19e0a8..32d535abebf3 100644
---- a/include/linux/completion.h
-+++ b/include/linux/completion.h
-@@ -10,6 +10,7 @@
-  */
- 
- #include <linux/swait.h>
-+#include <linux/dept_sdt.h>
- 
- /*
-  * struct completion - structure used to maintain state for a "completion"
-@@ -26,14 +27,33 @@
- struct completion {
- 	unsigned int done;
- 	struct swait_queue_head wait;
-+	struct dept_map dmap;
- };
- 
-+#define init_completion(x)				\
-+do {							\
-+	sdt_map_init(&(x)->dmap);			\
-+	__init_completion(x);				\
-+} while (0)
-+
+diff --git a/include/linux/dept_ldt.h b/include/linux/dept_ldt.h
+new file mode 100644
+index 000000000000..062613e89fc3
+--- /dev/null
++++ b/include/linux/dept_ldt.h
+@@ -0,0 +1,77 @@
++/* SPDX-License-Identifier: GPL-2.0 */
 +/*
-+ * XXX: No use cases for now. Fill the body when needed.
++ * Lock Dependency Tracker
++ *
++ * Started by Byungchul Park <max.byungchul.park@gmail.com>:
++ *
++ *  Copyright (c) 2020 LG Electronics, Inc., Byungchul Park
 + */
- #define init_completion_map(x, m) init_completion(x)
--static inline void complete_acquire(struct completion *x) {}
--static inline void complete_release(struct completion *x) {}
 +
-+static inline void complete_acquire(struct completion *x)
-+{
-+	sdt_might_sleep_start(&x->dmap);
-+}
++#ifndef __LINUX_DEPT_LDT_H
++#define __LINUX_DEPT_LDT_H
 +
-+static inline void complete_release(struct completion *x)
-+{
-+	sdt_might_sleep_end();
-+}
- 
- #define COMPLETION_INITIALIZER(work) \
--	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait) }
-+	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait), \
-+	  .dmap = DEPT_MAP_INITIALIZER(work, NULL), }
- 
- #define COMPLETION_INITIALIZER_ONSTACK_MAP(work, map) \
- 	(*({ init_completion_map(&(work), &(map)); &(work); }))
-@@ -75,13 +95,13 @@ static inline void complete_release(struct completion *x) {}
- #endif
- 
- /**
-- * init_completion - Initialize a dynamically allocated completion
-+ * __init_completion - Initialize a dynamically allocated completion
-  * @x:  pointer to completion structure that is to be initialized
-  *
-  * This inline function will initialize a dynamically created completion
-  * structure.
-  */
--static inline void init_completion(struct completion *x)
-+static inline void __init_completion(struct completion *x)
- {
- 	x->done = 0;
- 	init_swait_queue_head(&x->wait);
++#include <linux/dept.h>
++
++#ifdef CONFIG_DEPT
++#define LDT_EVT_L			1UL
++#define LDT_EVT_R			2UL
++#define LDT_EVT_W			1UL
++#define LDT_EVT_RW			(LDT_EVT_R | LDT_EVT_W)
++#define LDT_EVT_ALL			(LDT_EVT_L | LDT_EVT_RW)
++
++#define ldt_init(m, k, su, n)		dept_map_init(m, k, su, n)
++#define ldt_lock(m, sl, t, n, i)					\
++	do {								\
++		if (n)							\
++			dept_ecxt_enter_nokeep(m);			\
++		else if (t)						\
++			dept_ecxt_enter(m, LDT_EVT_L, i, "trylock", "unlock", sl);\
++		else {							\
++			dept_wait(m, LDT_EVT_L, i, "lock", sl);		\
++			dept_ecxt_enter(m, LDT_EVT_L, i, "lock", "unlock", sl);\
++		}							\
++	} while (0)
++
++#define ldt_rlock(m, sl, t, n, i, q)					\
++	do {								\
++		if (n)							\
++			dept_ecxt_enter_nokeep(m);			\
++		else if (t)						\
++			dept_ecxt_enter(m, LDT_EVT_R, i, "read_trylock", "read_unlock", sl);\
++		else {							\
++			dept_wait(m, q ? LDT_EVT_RW : LDT_EVT_W, i, "read_lock", sl);\
++			dept_ecxt_enter(m, LDT_EVT_R, i, "read_lock", "read_unlock", sl);\
++		}							\
++	} while (0)
++
++#define ldt_wlock(m, sl, t, n, i)					\
++	do {								\
++		if (n)							\
++			dept_ecxt_enter_nokeep(m);			\
++		else if (t)						\
++			dept_ecxt_enter(m, LDT_EVT_W, i, "write_trylock", "write_unlock", sl);\
++		else {							\
++			dept_wait(m, LDT_EVT_RW, i, "write_lock", sl);	\
++			dept_ecxt_enter(m, LDT_EVT_W, i, "write_lock", "write_unlock", sl);\
++		}							\
++	} while (0)
++
++#define ldt_unlock(m, i)		dept_ecxt_exit(m, LDT_EVT_ALL, i)
++
++#define ldt_downgrade(m, i)						\
++	do {								\
++		if (dept_ecxt_holding(m, LDT_EVT_W))			\
++			dept_map_ecxt_modify(m, LDT_EVT_W, NULL, LDT_EVT_R, i, "downgrade", "read_unlock", -1);\
++	} while (0)
++
++#define ldt_set_class(m, n, k, sl, i)	dept_map_ecxt_modify(m, LDT_EVT_ALL, k, 0UL, i, "lock_set_class", "(any)unlock", sl)
++#else /* !CONFIG_DEPT */
++#define ldt_init(m, k, su, n)		do { (void)(k); } while (0)
++#define ldt_lock(m, sl, t, n, i)	do { } while (0)
++#define ldt_rlock(m, sl, t, n, i, q)	do { } while (0)
++#define ldt_wlock(m, sl, t, n, i)	do { } while (0)
++#define ldt_unlock(m, i)		do { } while (0)
++#define ldt_downgrade(m, i)		do { } while (0)
++#define ldt_set_class(m, n, k, sl, i)	do { } while (0)
++#endif
++#endif /* __LINUX_DEPT_LDT_H */
 -- 
 2.17.1
 
