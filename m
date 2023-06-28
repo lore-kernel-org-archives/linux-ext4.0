@@ -2,103 +2,179 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C586FEB64DA
-	for <linux-ext4@archiver.kernel.org>; Wed, 28 Jun 2023 15:45:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B23CEB64DD
+	for <linux-ext4@archiver.kernel.org>; Wed, 28 Jun 2023 19:01:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232081AbjF1PpA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 28 Jun 2023 11:45:00 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:56873 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S231890AbjF1Por (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Jun 2023 11:44:47 -0400
-Received: from cwcc.thunk.org (pool-173-48-117-150.bstnma.fios.verizon.net [173.48.117.150])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 35SFifHJ003118
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 28 Jun 2023 11:44:42 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1687967082; bh=Wg8OOOcDkhMjjfEJxhQSQX+UxB2Da3wt7DFRGX6V3ig=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To;
-        b=SF9+BXRcv2UPlzrATkLT2rkTXrH0DbRlkADiYpEVabSsakxaSQLRlWTUlhYJwwQoM
-         Nlg1KX4NQxRWEgMKWrupNr8ZXj+qYwn2SCnibd1hBbd8rRfIFJ/ObncIDCozDpc0TQ
-         R0l5cxhlT25PP853G7tYTU3+NPk6WZtaig0kRFVuJ4OWZmwMZmItbymbxi0fUAcmfj
-         d6Qe9mzM6pFgIpFXlvIlSY51FlKHZEIlunxEizWmnQxK7T4BHPcdfdK4EJXuJak6vp
-         CbPgYu08ONgptlZbX3eGCm4Wy1oSTkCVkIrdP/ur7k+TemV6uSrRXF71afLTpWSyiP
-         qj+IzmB6wWXUw==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 6200815C027E; Wed, 28 Jun 2023 11:44:41 -0400 (EDT)
-Date:   Wed, 28 Jun 2023 11:44:41 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Roberto Ragusa <mail@robertoragusa.it>
-Cc:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Subject: Re: packed_meta_blocks=1 incompatible with resize2fs?
-Message-ID: <20230628154441.GA383202@mit.edu>
-References: <49752bf2-71ec-7fbf-dcdf-93940cfa92c9@robertoragusa.it>
- <20230628000327.GG8954@mit.edu>
- <8b1464cf-833d-de2b-9c71-7732d65fc23f@robertoragusa.it>
+        id S231823AbjF1TAw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 28 Jun 2023 15:00:52 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53954 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S232644AbjF1S7V (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Jun 2023 14:59:21 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 74F8D294B
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Jun 2023 11:58:35 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 0C1D96143F
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Jun 2023 18:58:35 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6581AC433C0;
+        Wed, 28 Jun 2023 18:58:34 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1687978714;
+        bh=qc1movIO0616oNEo4ZSioGKFcx/B1Mv71Zy9VS0PFfc=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=aOqsL7x0E6liFZErQwN2zoJ1jsJqwPhPorPnK53lM1hRKCs75yVWYWO7X0LR8Nd7b
+         qIthAxfuigqpbEM/aWHiokhhT2J8mU0f0MpDeXNEQsNCGtnlf2IvIXRVCnDu5IiKPP
+         vuCQPrYaAuKkn0bROzyk2466pU7ZesdFs2Z85ZYys8Co/Ta80bB49vXcMvp9ZKzovP
+         l68DxY1ZS1puV8WXojzc/hFfbSRG0+MbvsBcEVn1IuOqAduOQsG4j/FzSjodQTirxX
+         hW4IE/34gAnJua6fKjc9z7lrlc+H5z3tkNsHSLe25hwPyQk6lMy5mwH+vDsQ38gxgl
+         uVuwutsJ05t+A==
+Date:   Wed, 28 Jun 2023 11:58:32 -0700
+From:   "Darrick J. Wong" <djwong@kernel.org>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     Pedro Falcato <pedro.falcato@gmail.com>, linux-ext4@vger.kernel.org
+Subject: Re: Question regarding the use of CRC32c for checksumming
+Message-ID: <20230628185832.GK11467@frogsfrogsfrogs>
+References: <CAKbZUD01uR5kfP4=SSfQ111jKsfKi8ojfDZs5CStLD_h5qb5GQ@mail.gmail.com>
+ <20230628045206.GA1908@sol.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <8b1464cf-833d-de2b-9c71-7732d65fc23f@robertoragusa.it>
+In-Reply-To: <20230628045206.GA1908@sol.localdomain>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Jun 28, 2023 at 04:35:50PM +0200, Roberto Ragusa wrote:
-> On 6/28/23 02:03, Theodore Ts'o wrote:
+On Tue, Jun 27, 2023 at 09:52:06PM -0700, Eric Biggers wrote:
+> Hi Pedro,
 > 
-> > Unfortunately, (a) there is no place where the fact that the file
-> > system was created with this mkfs option is recorded in the
-> > superblock, and (b) once the file system starts getting used, the
-> > blocks where the metadata would need to be allocated at the start of
-> > the disk will get used for directory and data blocks.
+> On Mon, Jun 26, 2023 at 09:17:10PM +0100, Pedro Falcato wrote:
+> > Hi,
+> > 
+> > (+CC the original author, Darrick)
+> > I've been investigating (in the context of my EFI ext4 driver) why all
+> > ext4 checksums appear inverted. After making sure my CRC32c
+> > implementation was correct and up-to-par with other ones, I looked at
+> > the fs/ext4 checksumming code, which took me to the implementation of
+> > ext4_chksum in ext4.h (excuse the gmail whitespace damage):
+> > 
+> > >static inline u32 ext4_chksum(struct ext4_sb_info *sbi, u32 crc,
+> > >       const void *address, unsigned int length)
+> > >{
+> > > struct {
+> > > struct shash_desc shash;
+> > > char ctx[4];
+> > > } desc;
+> > 
+> > Open coding the crc32c crypto driver's internal state, seemingly to save a call?
+> > >
+> > > BUG_ON(crypto_shash_descsize(sbi->s_chksum_driver)!=sizeof(desc.ctx));
+> > >
+> > > desc.shash.tfm = sbi->s_chksum_driver;
+> > > *(u32 *)desc.ctx = crc;
+> > 
+> > ...we set the starting CRC
+> > >
+> > > BUG_ON(crypto_shash_update(&desc.shash, address, length));
+> > 
+> > then call update, which keeps the current internal state in ctx[4]
+> > >
+> > > return *(u32 *)desc.ctx;
+> > 
+> > and then we never call ->final() (nor ->finup()), which for crc32c would do:
+> > > put_unaligned_le32(~ctx->crc, out);
+> > 
+> > and as such get me the properly "inverted" crc32c I would expect.
+> > FreeBSD never found this issue as their calculate_crc32c seems borked
+> > too, and never inverts the result.
+> > 
+> > Is my assessment correct? Was ->final() never called on purpose, or is
+> > it an accident? Or is this merely a CRC32c variation I'm unaware of?
+> > 
+> > I'd like to make sure I get all the context on this, before sending
+> > any kind of documentation patch :)
+> > 
+> > Thanks,
+> > Pedro
 > 
-> Isn't resize2fs already capable of migrating directory and data blocks
-> away? According to the comments at the beginning of resize2fs.c, I mean.
+> As far as I can tell, you are correct that ext4's CRC32C is just a raw CRC.  It
+> doesn't do the bitwise inversion at either the beginning or end.
 
-Yes, but (a) that can only be done off-line (while the file system is
-unmounted), and (b) migrating directory and data blocks is quite slow
-and inefficient, and it doesn't necessarily leave the data file in the
-most optimal way (it didn't do as much as it could to minimize file
-fragmentation during the mirgation process).  It was intended for
-moving a very small number of blocks, and while it could be improved,
-that would be additional software engineering investment.
+Yep.  
 
-> 1. reserve the bitmaps and inode table space since the beginning (with mke2fs
-> option resize, for example)
-> 3. do not add new inodes when expanding (impossible by design, right?)
+> IMO, this is a mistake.  In the design of CRCs, doing these inversions is
+> recommended to strengthen the CRC slightly.
 
-This would require file system format changes in the kernel, the
-kernel on-line resizing code, e2fsck, and the resized2fs for off-line
-resizing.  And while we've considered doing (3) for other reasons,
-that's not sufficient for this use case, because when we add new block
-groups, we have to add block and inode allocation bitmaps, the inode
-table, and the block group descriptor blocks.  It's not just the inode
-table.
+Yep.  I wondered about that too back in the day (see below).
 
-> 2. push things out of the way when the expansion is done
+> However, it's also a common "mistake" to leave them out, and not too important,
+> especially if many of the messages checksummed are fixed-length structures.
 > 
-> I could attempt to code something to do 2., but I would either have to
-> study resize2fs code, which is not trivial, or write something from scratch,
-> based only on the layout docs, which would be also complex and not easily
-> mergeable in resize2fs.
-> 
-> 4. have an offline way (custom tool, or detecting conflicting files and
-> temporarily removing them, ...) to free the needed blocks
-> 
-> At the moment the best option I have is to continue doing what I've been
-> doing for years already: use dumpe2fs and debugfs to discover which bg
-> contain metadata+journal and selectively use "pvmove" to migrate
-> those extents (PE) to the fast PV. Automatable, but still messy.
-> Discovering "packed_meta_blocks" turned out not a so great finding as I was
-> hoping, if then you can't resize.
+> Yes, if ext4 had used the kernel crypto API "properly", with crypto_shash_init()
+> + crypto_shash_update() + crypto_shash_final(), it would have gotten the
+> inversion at the beginning and end.  (Note, this is true for "crc32c" but not
+> "crc32".  The crypto API isn't consistent about its CRC conventions.)
 
-Honestly, suspect automating the code to determine which are the block
-group descriptors, inode table blocks, and allocation bitmap blocks
-represent the PE's that should be migrated to the fast PV is probably
-the simplest thing to do.  You should be able to do this using just
-dumpe2fs; the journal is generally not going to move while during a
-migration.
+15 years ago when Ted and I first started talking about adding checksums
+to metadata blocks, we looked at what other parts of the kernel did, and
+stumbled upon lib/libcrc32c.c:
 
-						- Ted
+u32 crc32c(u32 crc, const void *address, unsigned int length)
+{
+        SHASH_DESC_ON_STACK(shash, tfm);
+        u32 ret, *ctx = (u32 *)shash_desc_ctx(shash);
+        int err;
+
+        shash->tfm = tfm;
+        *ctx = crc;
+
+        err = crypto_shash_update(shash, address, length);
+        BUG_ON(err);
+
+        ret = *ctx;
+        barrier_data(ctx);
+        return ret;
+}
+EXPORT_SYMBOL(crc32c);
+
+This looked like a handy crc32c library function that we could use to
+avoid dealing with the crypto api.  I noticed way back then that it
+didn't invert the outcome, but Ted and I decided it wasn't a big deal.
+btrfs and XFS both used this library function in the same way.
+
+Eventually someone else (Andreas, maybe?) piped up to suggest that
+ext4/jbd2 should load the crc32{,c} driver dynamically to avoid a hard
+dependency on crc32 if the user is only running old filesystems, so we
+did end up using the crypto api directly.  Unfortunately, ext4 can't
+call the shash finalizer to invert the crc because that'll break the
+ondisk format.
+
+> But I'd also think of ext4's direct use of crypto_shash_update() as less of ext4
+> taking a shortcut or hack, and more of ext4 just having to work around the
+> kernel crypto API being very clunky and inefficient for use cases like this...
+
+At the time I thought that libcrc32c.c was a convenient shim for anyone
+who didn't want to deal with the clunky crypto api.  It would have
+really helped me to have had documentation of the preconditions (start
+with ~0) and postconditions (invert the return value of the last call)
+to nudge me into using this function correctly, because expecting
+callers also to be really smart about crc32c as an alternative to
+written guidelines is ... idiotic^WLKML.
+
+An example of how to do a buffer would have helped:
+
+static inline u32 crc32c_buffer(const void *address, unsigned int length)
+{
+	return ~crc32c(~0U, address, length);
+}
+
+This misuse could be fixed, but you'd have to burn an incompat flag to
+do it.  I'm less smart about crc32* than I was back in 2008, so I also
+don't have the skills to figure out if the correction is worth the cost.
+
+--D
+
+> - Eric
