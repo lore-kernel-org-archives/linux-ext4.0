@@ -2,40 +2,43 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EBC14EB64D7
-	for <linux-ext4@archiver.kernel.org>; Wed, 28 Jun 2023 13:20:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E7394EB64DA
+	for <linux-ext4@archiver.kernel.org>; Wed, 28 Jun 2023 13:20:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231733AbjF1NUZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 28 Jun 2023 09:20:25 -0400
-Received: from dfw.source.kernel.org ([139.178.84.217]:36110 "EHLO
-        dfw.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231888AbjF1NUN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Jun 2023 09:20:13 -0400
+        id S231830AbjF1NU0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 28 Jun 2023 09:20:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45816 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S231834AbjF1NUC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Jun 2023 09:20:02 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 98BADFC
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Jun 2023 06:20:01 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id B5EB5612A5
-        for <linux-ext4@vger.kernel.org>; Wed, 28 Jun 2023 13:20:12 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 2A831C433C0
-        for <linux-ext4@vger.kernel.org>; Wed, 28 Jun 2023 13:20:12 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 2DEB96131A
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Jun 2023 13:20:01 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 95B8AC433C9
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Jun 2023 13:20:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1687958412;
-        bh=/a3HIDW/w+ZBED9IK/HtGHMSnCFZknup4fB3zSHWgoQ=;
+        s=k20201202; t=1687958400;
+        bh=jLczwUpqE+uZC/azBnm9N6Rx4Q+9fJLmwxRUYAgqlWk=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=Vwm+8KXWU6zeoSOza+hmq0Bj8bS7e/b4c1co42vD1U9qd1d/9uqOZk2b/+gHnKmhF
-         wF42eUSRpN2T0DMjPtOg8Q8+avL1bLXOq+v6iETMtPM5HqF9dDnO6//2kPh5Fh7uWX
-         1D23AcmZ00g+Go5d2HHib1vApMdBAFzpPiTZrxiYwd89y/ac3k7UV0PeUQW2Q8bXjd
-         vYFYnuJtBvav/Ls/tSKeoM6d1Kj8jg26RQLA/sBBP3bNrJBbv/Tl921VzA0BBIDb8C
-         2F0kwqB2w3bOCWVWMoYlhyavyKcZ4tS2do3l+uxYSXvPiVm5YAu5j62B9WoeVROsHw
-         DRl0xRC5bXcrQ==
+        b=ROiUx8WiMlCqGSd2blomNjQn9IrGSohPMX4+q/0gHAUY7b0qx5kaz/plz8sgF/adA
+         43s/3kUDfMv7uwAddu0B95IePV6Joic1fSvM2YqrTLDAbB1HZGc4yo7Vv5Yh79xRiT
+         CNwKHTCLG7TUZ8WcxEXlhgR5JsaKIgDBdWayRn8K3jaXg8T3L9vGJh9GXFK2voyuzM
+         whdutmZo3cv84yxTZahO2o+xa8UxEaXdJD/T/QCpONGsT4GECHg0xxm1LQe7PnrCe/
+         jIB3ZwtcYxFgCozclpsHHXZzWSS/C9Qvtlwx4w0lzlU8wpmem6KH19YK9ZX8hchArC
+         EYzN/aWGWL9cg==
 Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
-        id 1A3B9C53BD0; Wed, 28 Jun 2023 13:20:12 +0000 (UTC)
+        id 865BCC53BC6; Wed, 28 Jun 2023 13:20:00 +0000 (UTC)
 From:   bugzilla-daemon@kernel.org
 To:     linux-ext4@vger.kernel.org
 Subject: [Bug 217605] unttached inode after power cut with orphan file
  feature enabled
-Date:   Wed, 28 Jun 2023 13:20:11 +0000
+Date:   Wed, 28 Jun 2023 13:20:00 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -51,7 +54,7 @@ X-Bugzilla-Priority: P3
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
 X-Bugzilla-Changed-Fields: attachments.created
-Message-ID: <bug-217605-13602-5p2cb7PXuY@https.bugzilla.kernel.org/>
+Message-ID: <bug-217605-13602-E8F0Lh75SW@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-217605-13602@https.bugzilla.kernel.org/>
 References: <bug-217605-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -65,10 +68,10 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=3D217605
 
---- Comment #3 from Zhihao Cheng (chengzhihao1@huawei.com) ---
-Created attachment 304498
-  --> https://bugzilla.kernel.org/attachment.cgi?id=3D304498&action=3Dedit
-test.sh
+--- Comment #2 from Zhihao Cheng (chengzhihao1@huawei.com) ---
+Created attachment 304497
+  --> https://bugzilla.kernel.org/attachment.cgi?id=3D304497&action=3Dedit
+diff
 
 --=20
 You may reply to this email to add a comment.
