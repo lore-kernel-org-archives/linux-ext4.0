@@ -2,43 +2,43 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E7394EB64DA
-	for <linux-ext4@archiver.kernel.org>; Wed, 28 Jun 2023 13:20:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C24B1EB64D7
+	for <linux-ext4@archiver.kernel.org>; Wed, 28 Jun 2023 13:20:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231830AbjF1NU0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 28 Jun 2023 09:20:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45816 "EHLO
+        id S231828AbjF1NUf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 28 Jun 2023 09:20:35 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45840 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231834AbjF1NUC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Jun 2023 09:20:02 -0400
+        with ESMTP id S231622AbjF1NUd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Jun 2023 09:20:33 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 98BADFC
-        for <linux-ext4@vger.kernel.org>; Wed, 28 Jun 2023 06:20:01 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 989141705
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Jun 2023 06:20:32 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 2DEB96131A
-        for <linux-ext4@vger.kernel.org>; Wed, 28 Jun 2023 13:20:01 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 95B8AC433C9
-        for <linux-ext4@vger.kernel.org>; Wed, 28 Jun 2023 13:20:00 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 2E0B46131A
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Jun 2023 13:20:32 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 96712C433C9
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Jun 2023 13:20:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1687958400;
-        bh=jLczwUpqE+uZC/azBnm9N6Rx4Q+9fJLmwxRUYAgqlWk=;
+        s=k20201202; t=1687958431;
+        bh=w/BKxEulecA5yOiuE2gpo8Oy4HZHAaZamkgk9h0yavc=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=ROiUx8WiMlCqGSd2blomNjQn9IrGSohPMX4+q/0gHAUY7b0qx5kaz/plz8sgF/adA
-         43s/3kUDfMv7uwAddu0B95IePV6Joic1fSvM2YqrTLDAbB1HZGc4yo7Vv5Yh79xRiT
-         CNwKHTCLG7TUZ8WcxEXlhgR5JsaKIgDBdWayRn8K3jaXg8T3L9vGJh9GXFK2voyuzM
-         whdutmZo3cv84yxTZahO2o+xa8UxEaXdJD/T/QCpONGsT4GECHg0xxm1LQe7PnrCe/
-         jIB3ZwtcYxFgCozclpsHHXZzWSS/C9Qvtlwx4w0lzlU8wpmem6KH19YK9ZX8hchArC
-         EYzN/aWGWL9cg==
+        b=YnHSTDEkCbfGCXNSlPhGMgeOvlYm8LNH2aVxfiswVz3b4C6DfoJH7ZbquAyoaitoi
+         wBkCv8ly7+7s4RO9VDMPX3G4cPCiFdfP9k7INuZMQOIljUbyk5Q8c4BTJa2TVRILu/
+         UkghkILWA9GTDuIRiEArJUprYS9+fW5baAiDT/0BTXj75z9zN4RQwZa8xlFzbxP43q
+         Vl3pQ6ZyKfa70NfZTqgcPIms5v773t+Q9YoE0USI2R8y2KS/XoUYHALsS8LXDA8cao
+         +fRJeAXrcKksIXrpkZnKkj5mKXobAsO33LtHIXzhZZeA9i9yth9l00Kk4WublI5kXm
+         VcOOe4bi1p++w==
 Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
-        id 865BCC53BC6; Wed, 28 Jun 2023 13:20:00 +0000 (UTC)
+        id 862FDC53BD0; Wed, 28 Jun 2023 13:20:31 +0000 (UTC)
 From:   bugzilla-daemon@kernel.org
 To:     linux-ext4@vger.kernel.org
 Subject: [Bug 217605] unttached inode after power cut with orphan file
  feature enabled
-Date:   Wed, 28 Jun 2023 13:20:00 +0000
+Date:   Wed, 28 Jun 2023 13:20:31 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -53,8 +53,8 @@ X-Bugzilla-Resolution:
 X-Bugzilla-Priority: P3
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: attachments.created
-Message-ID: <bug-217605-13602-E8F0Lh75SW@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: 
+Message-ID: <bug-217605-13602-7HW7rl0nTR@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-217605-13602@https.bugzilla.kernel.org/>
 References: <bug-217605-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -68,10 +68,38 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=3D217605
 
---- Comment #2 from Zhihao Cheng (chengzhihao1@huawei.com) ---
-Created attachment 304497
-  --> https://bugzilla.kernel.org/attachment.cgi?id=3D304497&action=3Dedit
-diff
+--- Comment #4 from Zhihao Cheng (chengzhihao1@huawei.com) ---
+(In reply to Zhihao Cheng from comment #1)
+
+Apply diff first of all
+
+> reproducer:
+> 1. ./test.sh
+> [   73.704796] inject err for ino 13 creation
+> [   73.705523] wait commit journal
+> [   75.741472] commit trans
+> [   76.550550] reboot: Restarting system
+>=20
+> 2. mount /dev/sda temp
+>    umount temp
+> [   82.683096] orphan replay: reserve 13
+>=20
+> 3. fsck.ext4 -fn /dev/sda
+> e2fsck 1.47.0 (5-Feb-2023)
+> Pass 1: Checking inodes, blocks, and sizes
+> Pass 2: Checking directory structure
+> Pass 3: Checking directory connectivity
+> Pass 4: Checking reference counts
+> Unattached zero-length inode 13.  Clear? no
+>=20
+> Unattached inode 13
+> Connect to /lost+found? no
+>=20
+> Pass 5: Checking group summary information
+>=20
+> /dev/sda: ********** WARNING: Filesystem still has errors **********
+>=20
+> /dev/sda: 13/25584 files (0.0% non-contiguous), 12113/102400 block
 
 --=20
 You may reply to this email to add a comment.
