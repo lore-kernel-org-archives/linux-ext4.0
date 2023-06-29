@@ -2,94 +2,137 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 70E1AEB64DC
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Jun 2023 04:00:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8C2CAEB64DD
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Jun 2023 04:00:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232039AbjF2EAV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 29 Jun 2023 00:00:21 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44320 "EHLO
+        id S229987AbjF2EAX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 29 Jun 2023 00:00:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44336 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231637AbjF2D7y (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Jun 2023 23:59:54 -0400
-Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E37322D52;
+        with ESMTP id S231915AbjF2D7z (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Jun 2023 23:59:55 -0400
+Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BD19A2D4A;
         Wed, 28 Jun 2023 20:59:51 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4Qs4Tb2mmQz4f3s5v;
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Qs4Tb15wDz4f3kpf;
         Thu, 29 Jun 2023 11:59:47 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP2 (Coremail) with SMTP id Syh0CgC3quiwAZ1kw6DMMg--.26995S8;
-        Thu, 29 Jun 2023 11:59:49 +0800 (CST)
+        by APP2 (Coremail) with SMTP id Syh0CgC3quiwAZ1kw6DMMg--.26995S2;
+        Thu, 29 Jun 2023 11:59:46 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH 06/13] ext4: remove redundant check of count
-Date:   Thu, 29 Jun 2023 20:00:37 +0800
-Message-Id: <20230629120044.1261968-7-shikemeng@huaweicloud.com>
+Subject: [PATCH 00/13] fixes and cleanups to ext4 resize
+Date:   Thu, 29 Jun 2023 20:00:31 +0800
+Message-Id: <20230629120044.1261968-1-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
-In-Reply-To: <20230629120044.1261968-1-shikemeng@huaweicloud.com>
-References: <20230629120044.1261968-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: Syh0CgC3quiwAZ1kw6DMMg--.26995S8
-X-Coremail-Antispam: 1UD129KBjvdXoWrZw45Xw18Zr4DKFWDCry7GFg_yoW3Crc_Ka
-        47Cr1kurWfJrySkF9rtw1Fyw4FyF4vyr1rGFWfJFW8uF15A3y8X3yqqrW8ur48Wa1UJasx
-        u3s5tr1fK3WFqjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-        9fnUUIcSsGvfJTRUUUbS8YFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
-        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl82
-        xGYIkIc2x26280x7IE14v26r126s0DM28IrcIa0xkI8VCY1x0267AKxVW5JVCq3wA2ocxC
-        64kIII0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM2
-        8EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq
-        3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8w
-        Aqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE
-        14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x
-        0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E
-        7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcV
-        C0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF
-        04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7
-        CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07jstxDUUUUU=
+X-CM-TRANSID: Syh0CgC3quiwAZ1kw6DMMg--.26995S2
+X-Coremail-Antispam: 1UD129KBjvJXoWxGr18Zw48JFy8GF18Cr43trb_yoWrGw18pa
+        1Sgw13Kr95Xw13Cw47t3sxWF95Xws7GF4UWr13G3Z7KF1UZw18WF9xWan5AFW5KFWrZ3W0
+        q3s7Xrs8WF18ZaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUkFb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
+        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
+        8lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_
+        tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26r
+        xl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv
+        0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z2
+        80aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JMxAIw28I
+        cxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2
+        IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI
+        42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42
+        IY6xAIw20EY4v20xvaj40_WFyUJVCq3wCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E
+        87Iv6xkF7I0E14v26r1j6r4UYxBIdaVFxhVjvjDU0xZFpf9x07j-6pPUUUUU=
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Remove zero check of count which is always non-zero.
+This series contains some random cleanups and a few fixes to correct gdb
+backup copy, fix buffer_head leak and so on. More details can be found
+in respective log messages.
+I run kvm-xfstest with config "ext4/all" and "-g auto" together with
+mballoc patchset I sent before.
 
-Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
----
- fs/ext4/resize.c | 18 ++++++++----------
- 1 file changed, 8 insertions(+), 10 deletions(-)
+-------------------- Summary report
+KERNEL:    kernel 6.4.0-rc5-xfstests-g90158dd3c06b #23 SMP PREEMPT_DYNAMIC
+Wed Jun 28 17:19:32 CST 2023 x86_64
+CPUS:      2
+MEM:       1975.36
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index f2a8c24a6fbb..c14b09d48679 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -699,16 +699,14 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
- 			block = start;
- 		}
- 
--		if (count) {
--			err = set_flexbg_block_bitmap(sb, handle,
--						      flex_gd,
--						      EXT4_B2C(sbi, start),
--						      EXT4_B2C(sbi,
--							       start + count
--							       - 1));
--			if (err)
--				goto out;
--		}
-+		err = set_flexbg_block_bitmap(sb, handle,
-+				flex_gd,
-+				EXT4_B2C(sbi, start),
-+				EXT4_B2C(sbi,
-+					start + count
-+					- 1));
-+		if (err)
-+			goto out;
- 	}
- 
- out:
+ext4/4k: 531 tests, 31 skipped, 3421 seconds
+ext4/1k: 527 tests, 33 skipped, 4638 seconds
+ext4/ext3: 523 tests, 119 skipped, 3289 seconds
+ext4/encrypt: 509 tests, 3 failures, 138 skipped, 2163 seconds
+  Failures: generic/681 generic/682 generic/691
+ext4/nojournal: 526 tests, 5 failures, 98 skipped, 3469 seconds
+  Failures: ext4/301 ext4/304 generic/455 generic/459 generic/581
+ext4/ext3conv: 528 tests, 31 skipped, 3877 seconds
+ext4/adv: 528 tests, 4 failures, 38 skipped, 4170 seconds
+  Failures: generic/475 generic/477
+  Flaky: generic/455: 80% (4/5)   generic/482: 80% (4/5)
+ext4/dioread_nolock: 529 tests, 31 skipped, 3825 seconds
+ext4/data_journal: 527 tests, 3 failures, 99 skipped, 3307 seconds
+  Failures: generic/455 generic/484
+  Flaky: generic/068: 40% (2/5)
+ext4/bigalloc_4k: 503 tests, 35 skipped, 3286 seconds
+ext4/bigalloc_1k: 503 tests, 1 failures, 43 skipped, 4421 seconds
+  Failures: shared/298
+Totals: 5798 tests, 696 skipped, 75 failures, 0 errors, 39645s
+
+FSTESTVER: blktests 676d42c (Thu, 2 Mar 2023 15:25:44 +0900)
+FSTESTVER: e2fsprogs archive/debian/1.47.0-1 (Mon, 6 Feb 2023 22:36:16 -0500)
+FSTESTVER: fio  fio-3.31 (Tue, 9 Aug 2022 14:41:25 -0600)
+FSTESTVER: fsverity v1.5-6-g5d6f7c4 (Mon, 30 Jan 2023 23:22:45 -0800)
+FSTESTVER: ima-evm-utils v1.3.2 (Wed, 28 Oct 2020 13:18:08 -0400)
+FSTESTVER: nvme-cli v1.16 (Thu, 11 Nov 2021 13:09:06 -0800)
+FSTESTVER: quota  v4.05-53-gd90b7d5 (Tue, 6 Dec 2022 12:59:03 +0100)
+FSTESTVER: util-linux v2.38.1 (Thu, 4 Aug 2022 11:06:21 +0200)
+FSTESTVER: xfsprogs v6.1.1 (Fri, 13 Jan 2023 19:06:37 +0100)
+FSTESTVER: xfstests v2023.02.26-8-g821ef488 (Thu, 2 Mar 2023 10:23:51 -0500)
+FSTESTVER: xfstests-bld 35650073 (Mon, 6 Mar 2023 20:48:08 -0500)
+FSTESTVER: zz_build-distro bullseye
+FSTESTCFG: ext4/all
+FSTESTSET: -g auto
+FSTESTOPT: aex
+
+There more failures compared with "good" report in reply from Ted [1] as
+following:
+ext4/nojournal: generic/459 generic/581
+ext4/adv: Flaky: generic/455: 80% (4/5)   generic/482: 80% (4/5)
+ext4/data_journal: Flaky: generic/068: 40% (2/5)
+It seems still a "good" test run according to rules listed in [1].
+Please let me know if more tests to run. Thanks!
+
+[1] https://lore.kernel.org/linux-ext4/db478a24-39f5-3cef-8814-89406ce4d2ca@huawei.com/T/#ma9de3f355f0300291d32fe1f0b32c5660c9bd191
+
+Kemeng Shi (13):
+  ext4: correct offset of gdb backup in non meta_bg group to
+    update_backups
+  ext4: add missed brelse in update_backups
+  ext4: correct return value of ext4_convert_meta_bg
+  ext4: remove gdb backup copy for meta bg in
+    setup_new_flex_group_blocks
+  ext4: fix typo in setup_new_flex_group_blocks
+  ext4: remove redundant check of count
+  ext4: remove commented code in reserve_backup_gdb
+  ext4: calculate free_clusters_count in cluster unit in
+    verify_group_input
+  ext4: remove EXT4FS_DEBUG defination in resize.c
+  ext4: use saved local variable sbi instead of EXT4_SB(sb)
+  ext4: correct gdblock calculation in add_new_gdb_meta_bg to support
+    non first group
+  ext4: remove unnecessary check for avoiding multiple update_backups in
+    ext4_flex_group_add
+  ext4: remove unnecessary initialization of count2 in
+    set_flexbg_block_bitmap
+
+ fs/ext4/resize.c | 81 +++++++++++++++++++-----------------------------
+ 1 file changed, 32 insertions(+), 49 deletions(-)
+
 -- 
 2.30.0
 
