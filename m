@@ -2,77 +2,79 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 142EBEB64DC
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Jun 2023 04:00:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E972EB64D9
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Jun 2023 04:00:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231961AbjF2EAR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 29 Jun 2023 00:00:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44318 "EHLO
+        id S232033AbjF2EAU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 29 Jun 2023 00:00:20 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44322 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231615AbjF2D7y (ORCPT
+        with ESMTP id S231731AbjF2D7y (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Jun 2023 23:59:54 -0400
 Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D12812D51;
-        Wed, 28 Jun 2023 20:59:51 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7A28A2D55;
+        Wed, 28 Jun 2023 20:59:52 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Qs4Tc377kz4f3vrC;
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Qs4Tc6ssVz4f48kM;
         Thu, 29 Jun 2023 11:59:48 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP2 (Coremail) with SMTP id Syh0CgC3quiwAZ1kw6DMMg--.26995S7;
+        by APP2 (Coremail) with SMTP id Syh0CgC3quiwAZ1kw6DMMg--.26995S9;
         Thu, 29 Jun 2023 11:59:49 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca
 Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH 05/13] ext4: fix typo in setup_new_flex_group_blocks
-Date:   Thu, 29 Jun 2023 20:00:36 +0800
-Message-Id: <20230629120044.1261968-6-shikemeng@huaweicloud.com>
+Subject: [PATCH 07/13] ext4: remove commented code in reserve_backup_gdb
+Date:   Thu, 29 Jun 2023 20:00:38 +0800
+Message-Id: <20230629120044.1261968-8-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230629120044.1261968-1-shikemeng@huaweicloud.com>
 References: <20230629120044.1261968-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: Syh0CgC3quiwAZ1kw6DMMg--.26995S7
-X-Coremail-Antispam: 1UD129KBjDUn29KB7ZKAUJUUUUU529EdanIXcx71UUUUU7v73
-        VFW2AGmfu7bjvjm3AaLaJ3UjIYCTnIWjp_UUUYA7kC6x804xWl14x267AKxVWrJVCq3wAF
-        c2x0x2IEx4CE42xK8VAvwI8IcIk0rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62
-        vIxIIY0VWUZVW8XwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E
-        14v26r4j6ryUM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI
-        8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vE
-        x4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzx
-        vE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWU
-        JVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7V
-        AKI48JMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAF
-        wI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc4
-        0Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1I6r4UMIIF0xvE2Ix0cI8IcVCY1x0267AK
-        xVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr
-        1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IUnr9NDUU
-        UUU==
+X-CM-TRANSID: Syh0CgC3quiwAZ1kw6DMMg--.26995S9
+X-Coremail-Antispam: 1UD129KBjvdXoWrZF4Uur1rtr4Dur1fJFWkZwb_yoW3ArXEqa
+        srCr4kX3yrurn5CFyxWr1Sy3yv9r1Fyrn5uay3trn3u3W0yFZ5A3yDXwsxCryUuF4ayw45
+        uF1vv3sIyay0gjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUbS8YFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
+        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl82
+        xGYIkIc2x26280x7IE14v26r126s0DM28IrcIa0xkI8VCY1x0267AKxVW5JVCq3wA2ocxC
+        64kIII0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM2
+        8EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq
+        3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8w
+        Aqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE
+        14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x
+        0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E
+        7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcV
+        C0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF
+        04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7
+        CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07jstxDUUUUU=
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-grop -> group
+Remove commented code in reserve_backup_gdb
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 ---
- fs/ext4/resize.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/resize.c | 3 ---
+ 1 file changed, 3 deletions(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 0e83b3f91545..f2a8c24a6fbb 100644
+index c14b09d48679..07828903b818 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -609,7 +609,7 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
- 		}
- 
- handle_itb:
--		/* Initialize group tables of the grop @group */
-+		/* Initialize group tables of the group @group */
- 		if (!(bg_flags[i] & EXT4_BG_INODE_ZEROED))
- 			goto handle_bb;
- 
+@@ -1080,9 +1080,6 @@ static int reserve_backup_gdb(handle_t *handle, struct inode *inode,
+ 	for (i = 0; i < reserved_gdb; i++) {
+ 		int err2;
+ 		data = (__le32 *)primary[i]->b_data;
+-		/* printk("reserving backup %lu[%u] = %lu\n",
+-		       primary[i]->b_blocknr, gdbackups,
+-		       blk + primary[i]->b_blocknr); */
+ 		data[gdbackups] = cpu_to_le32(blk + primary[i]->b_blocknr);
+ 		err2 = ext4_handle_dirty_metadata(handle, NULL, primary[i]);
+ 		if (!err)
 -- 
 2.30.0
 
