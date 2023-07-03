@@ -2,19 +2,19 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 217B9C001E0
-	for <linux-ext4@archiver.kernel.org>; Mon,  3 Jul 2023 09:50:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F989C001DD
+	for <linux-ext4@archiver.kernel.org>; Mon,  3 Jul 2023 09:50:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231840AbjGCJuw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 3 Jul 2023 05:50:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50128 "EHLO
+        id S230500AbjGCJtr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 3 Jul 2023 05:49:47 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50040 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231255AbjGCJtu (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Jul 2023 05:49:50 -0400
+        with ESMTP id S229709AbjGCJtq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Jul 2023 05:49:46 -0400
 Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 369E8196;
-        Mon,  3 Jul 2023 02:49:47 -0700 (PDT)
-X-AuditID: a67dfc5b-d85ff70000001748-76-64a299b33678
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 649B518D;
+        Mon,  3 Jul 2023 02:49:40 -0700 (PDT)
+X-AuditID: a67dfc5b-d85ff70000001748-e5-64a299b173bd
 From:   Byungchul Park <byungchul@sk.com>
 To:     linux-kernel@vger.kernel.org
 Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
@@ -40,84 +40,97 @@ Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
         gwan-gyeong.mun@intel.com, max.byungchul.park@gmail.com,
         boqun.feng@gmail.com, longman@redhat.com, hdanton@sina.com,
         her0gyugyu@gmail.com
-Subject: [PATCH v10 rebased on v6.4 10/25] dept: Apply sdt_might_sleep_{start,end}() to waitqueue wait
-Date:   Mon,  3 Jul 2023 18:47:37 +0900
-Message-Id: <20230703094752.79269-11-byungchul@sk.com>
+Subject: [PATCH v10 rebased on v6.4 01/25] llist: Move llist_{head,node} definition to types.h
+Date:   Mon,  3 Jul 2023 18:47:28 +0900
+Message-Id: <20230703094752.79269-2-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20230703094752.79269-1-byungchul@sk.com>
 References: <20230703094752.79269-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSXUxTZxjH977nnPecdnY5qWyc6cVME6NBUXS4PNnMsgsS35slRrzSRNfQ
-        M2kslLRSRMYE+RD5UkgAUVTaulKhDG3dRBCCEEDEDxCiXYOdZTrHpGJw7ewAJ0W9efLL/5//
-        7+oRGHUHt0LQpx+QTelag4YoWWVwmTXeU2/TJfz+UyxUlSdA6J8SFhraXARGfm5B4Lqcj2Gq
-        fxs8CE8jmLt9l4G6mhEE1sBDBi4P+BF0OY8QGHv8EYyHZggM1ZQRKLC3ERh9No9horYaQ4v7
-        Wxg+YcPQE3nKQt0UgdN1BXjx/IUh4mjmwZG3Giadp3iYD2yCIf99Drp866D+7ASBa11DLAy0
-        T2IY62gg4Hf9z8HwwA0WRqoqOGh9biPwLOxgwBGa4eFeTyOGi4WLouKXrzkYrOjBUHz+Eobx
-        3zoRdJc8wuB23SfQF5rG4HHXMPBfUz+CycogD0XlER5O51ciKCuqZeHuwiAHhRNbYO5VA/nm
-        S9o3PcPQQk8W7Qo3svSmTaJXTz3kaWG3j6eN7kzqccZR+7UpTK2zIY66m48R6p6t5mlpcBzT
-        53fu8PTGyTmWPh6vw9tX7lJu1ckGvUU2bfz6O2XqUGdOxgXFwe7jPpSHmvhSpBAkMVFq7e7D
-        73msLZ+JMhHXSF5vZIljxFWSp+JPrhQpBUY8+qHkfHGbRIvl4vfSrTNVbJRZcbV0vjq8JFKJ
-        X0hP/QPvpJ9JLRd7lkSKxfzJq0oUZbW4RZqo95OoVBKPK6RQ5A/u7eBT6brTy55Aqkb0QTNS
-        69MtaVq9IXFDana6/uCGFGOaGy1+lCN3fnc7mh1J7kWigDTLVN4cq07NaS3m7LReJAmMJkZV
-        EDinU6t02uxDssm415RpkM29aKXAamJVm8NZOrW4T3tA3i/LGbLpfYsFxYo8lNT/xMgdK0ke
-        /NHSkfDyX5+948Jw3tEaY9aqQVvkRdlXvvwjsVealr8uyw3uWxvgF3J2B6c/2frxA/fhzrmx
-        uKQfdmby69fabc2Rz63lM0KuYY9jNDkladS7Lm2H8aZFDtBfqxZ8ife8e//e8cvGItcjza5D
-        s0kKC7EX18YfNpl9Gtacqt0Ux5jM2jepiRhWTQMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0xTdxyG/f/PlUqXk4rxBMlkVeKim0IC+lPI1H3hhERnTIyZX6RZj9Jw
-        0bSCojGCrUyhgCViBUELmNJBBXYwjItljIZivRZoFElphKhIQFCkCINdqMu+vHnyvsnz6WUJ
-        RQUVzmoyToraDFWakpaRsn3x+m+lsmp19IuCBDAZoyEwe4mEikY7DZ6GegT2u7kYxnsS4fnc
-        JILFx08JMJd6EFSNDBNw1+VH4LBdoGHg1RfgDUzT4C4toEFf00hD38QSBt+1Egz10l54eKUa
-        Q9fCGAnmcRpumPV4Od5iWLDWMWDNiYJRWzkDSyMx4PY/o8BZ6abAMbQZym76aLjncJPgah3F
-        MNBeQYPf/g8FD133SfCYCim4M1VNw8SclQBrYJqB/i4LhibDsi3v498U9BZ2Yci7/SsG74sO
-        BJ2XXmKQ7M9ocAYmMTRLpQT8WduDYLToHQMXjQsM3MgtQlBw8RoJT//qpcDgi4PF+Qp6d7zg
-        nJwmBEPzKcExZyGFB9W80FY+zAiGziFGsEiZQrNtk1BzbxwLVTMBSpDqLtOCNFPCCPnvvFiY
-        evKEEe5fXySFV14z3h9xWJagFtM0WaJ263fJshR3x9kTv4Sc7iweQjmolslHISzPxfIDjblE
-        kGluIz84uPCZw7hIvrnwDZWPZCzB/bySt71/TAeHVdxR/lGliQwyyUXxt0vmcJDl3DZ+zO/C
-        /0nX8fVNXZ9FIcv96/kiFGQFF8f7yvz0FSSzoBV1KEyTkZWu0qTFbdGlpmRnaE5v+el4uoSW
-        P2M9t2RqRbMDid2IY5EyVD54tkqtoFRZuuz0bsSzhDJMrh+5pVbI1arsM6L2+BFtZpqo60Zr
-        WVK5Rp50SExWcMdUJ8VUUTwhav9fMRsSnoN+m2lIighb9fv2LPbB16Er+nr2loeu7/9yj/3H
-        pu+Hd5ijfbolV3FPa/KsZyo+taMtPOHCxC5T0vnR+V0tBrmldip0LHVnlTHR9j5pfW9TrDfy
-        g6P4mx/ObV5TVGCMdFb2n1rdrgmXth5wug9uUJbl61s+5Vzefd2YfpVoOXhV8dUfHiWpS1HF
-        bCK0OtW/ZFm/Ti8DAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTZxiGec/He04rnSediWdinKvBLZqhLLo9Mc6YYeLrjzkN0R+QqJ09
+        kUZatCgCkwRWREVAIYEKIpSKtWlR8KCbAyGIEUFiqdowZkoHCJsoX0OLdiBKNf65cyX381y/
+        bp5WN7CLeL3xkGQyahM1WMkoR8OrvpZLbbrVLycUUJi3GgIvTzBQXluDwXPFhaDmWhYFw3c2
+        w59TIwim73fRYCn2IKjq76XhWpsfQZPjVwyPBj8Bb2AcQ0fxKQzmC7UYHjyfocBXUkSBS/4R
+        Os/YKGgJ/suAZRjDOYuZmounFATtTg7smZEw4CjjYKY/Gjr83Sw0PV4JpRU+DDebOhhouzFA
+        waOGcgz+mrcsdLa1M+ApzGfh8pgNw/MpOw32wDgHD1usFNRlz4lyXsyycDe/hYKc6qsUeP9q
+        RNB8oo8CuaYbw+3ACAX1cjEN/1+6g2CgYJSDY3lBDs5lFSA4dayEga43d1nI9q2F6dfleOM6
+        cntknCbZ9UdI05SVIfdsIvmjrJcj2c2POWKVD5N6xwpy4eYwRaomAyyRnScxkSeLOJI76qXI
+        mNvNkfaz0wwZ9FqobRFxyvU6KVGfIplWbdijTMh7+IQ9cF6ZOnQFMlEzn4sUvCisEZ91zTIf
+        2f7Ez4UYC1+KPT1BOsQLhKViff4/bC5S8rRwfJ7omLiPQ8Wnwi6x2uljQ8wIkeJIZ857Vglr
+        xcpgO/4g/Vx01bW8FymEb8Wh1wUoxOq5G1+pH4ekomBWiI5XFejDw2fiLUcPcwaprCjMidR6
+        Y4pBq09cE5WQZtSnRu1NMshoblH2jJn4G2jSE9uKBB5pwlU9v1Tp1Kw2JTnN0IpEntYsUJn7
+        K3VqlU6bli6ZknabDidKya0ogmc0C1XfTB3RqYV92kPSfkk6IJk+thSvWJSJzFuXfBHWvefV
+        06wle13blymtqVtjazW5TsvgaXtDmTu6z9U7+3PrdW9dxOjBq0xh386hhTsevIk1zM/4ziDE
+        xE9mbbx+sYCtbkzS/u3+KRD3n21T5PrFF6c3J7nTPVu+Ot4Y9cNveTJZrjoalhG+rNu9IYb7
+        /ft049Cm0t3Pdsbsz2/QMMkJ2ugVtClZ+w4jw7xDTQMAAA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0hTYRzGe99zznuOxxaHJXSooFhEYGRWGv8wJOhDx6KIIroQ6WqHNnIW
+        m5p2AWtm3slKTV3lJaaopW0F3RRRvCxpmYppraWWlXkLdebSLq7oy8MPnoffp4ejlGZmMaeL
+        ipYNUepIFeFpfleIac39vGJNYMnnAMhKDwT3ZDIN5qpKAm33KhBUPriAYbBxG7yeGkYw8+Il
+        BbnZbQiK+t5R8KDJhaCm7CKBjo8LoNM9RsCenUbAVFJF4NXQLAZnzlUMFdad0HqlGEOd5zMN
+        uYMECnJNeC6+YPBYylmwJKyE/rJ8Fmb71oHd1cVAw007AzVvVkPeLSeBZzV2Gpoe9WPoeGIm
+        4Kr8zUBrUwsNbVkZDNwdLSYwNGWhwOIeY6G9rhBDdeKcLWniFwPNGXUYku7cx9DZ8xRBbXIv
+        BmtlF4EG9zAGmzWbgh+ljQj6M0dYuJTuYaHgQiaCtEs5NLz82cxAojMYZqbNZEuI1DA8RkmJ
+        ttNSzVQhLT0vFqXH+e9YKbH2DSsVWmMkW5m/VPJsEEtF425GspanEMk6fpWVUkc6sTTqcLBS
+        y40ZWvrYmYt3Lz3Eb9bIkbpY2bA2NILXprd/YE7d5OMG7kECquVSkQ8nCkGi5YOL9TIRVond
+        3R7Ky37CctGW8YlJRTxHCZd9xbJvL4i3WCgcEe+UOxkv08JKcbg16S8rhGDxtqeF/JMuEyuq
+        6/6KfISN4sB0JvKycm7jzHORK4gvRPPKkZ8uKlav1kUGBxhPaOOjdHEBx07qrWjuM5bzs1mP
+        0GTHtnokcEg1X9F9tkijZNSxxnh9PRI5SuWnMPXd1igVGnX8GdlwMtwQEykb69ESjlYtUmzf
+        L0cohePqaPmELJ+SDf9bzPksTkB90Qv4tyNhSdrmLJIibz207HBBqWLTufGlVct7Nuzssc+M
+        Ps8fWu/4NbkiLZRvfMj76bcc2JEW/mUo8NNEjr9HuB42ookBfFQbZH6/uSks4sd3R0pQmH7S
+        kWEP+v1tT7rTpj1t0p7dXr3vScDANd/A61MTmw6GJn/tXejJV+81hqhoo1a9zp8yGNV/AArV
+        ij0vAwAA
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Makes Dept able to track dependencies by waitqueue waits.
+llist_head and llist_node can be used by very primitives. For example,
+Dept for tracking dependency uses llist things in its header. To avoid
+header dependency, move those to types.h.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/wait.h | 3 +++
- 1 file changed, 3 insertions(+)
+ include/linux/llist.h | 8 --------
+ include/linux/types.h | 8 ++++++++
+ 2 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/wait.h b/include/linux/wait.h
-index a0307b516b09..ff349e609da7 100644
---- a/include/linux/wait.h
-+++ b/include/linux/wait.h
-@@ -7,6 +7,7 @@
- #include <linux/list.h>
+diff --git a/include/linux/llist.h b/include/linux/llist.h
+index 85bda2d02d65..99cc3c30f79c 100644
+--- a/include/linux/llist.h
++++ b/include/linux/llist.h
+@@ -53,14 +53,6 @@
  #include <linux/stddef.h>
- #include <linux/spinlock.h>
-+#include <linux/dept_sdt.h>
+ #include <linux/types.h>
  
- #include <asm/current.h>
- #include <uapi/linux/wait.h>
-@@ -303,6 +304,7 @@ extern void init_wait_entry(struct wait_queue_entry *wq_entry, int flags);
- 	struct wait_queue_entry __wq_entry;					\
- 	long __ret = ret;	/* explicit shadow */				\
- 										\
-+	sdt_might_sleep_start(NULL);						\
- 	init_wait_entry(&__wq_entry, exclusive ? WQ_FLAG_EXCLUSIVE : 0);	\
- 	for (;;) {								\
- 		long __int = prepare_to_wait_event(&wq_head, &__wq_entry, state);\
-@@ -318,6 +320,7 @@ extern void init_wait_entry(struct wait_queue_entry *wq_entry, int flags);
- 		cmd;								\
- 	}									\
- 	finish_wait(&wq_head, &__wq_entry);					\
-+	sdt_might_sleep_end();							\
- __out:	__ret;									\
- })
+-struct llist_head {
+-	struct llist_node *first;
+-};
+-
+-struct llist_node {
+-	struct llist_node *next;
+-};
+-
+ #define LLIST_HEAD_INIT(name)	{ NULL }
+ #define LLIST_HEAD(name)	struct llist_head name = LLIST_HEAD_INIT(name)
  
+diff --git a/include/linux/types.h b/include/linux/types.h
+index 688fb943556a..0ddb0d722b3d 100644
+--- a/include/linux/types.h
++++ b/include/linux/types.h
+@@ -193,6 +193,14 @@ struct hlist_node {
+ 	struct hlist_node *next, **pprev;
+ };
+ 
++struct llist_head {
++	struct llist_node *first;
++};
++
++struct llist_node {
++	struct llist_node *next;
++};
++
+ struct ustat {
+ 	__kernel_daddr_t	f_tfree;
+ #ifdef CONFIG_ARCH_32BIT_USTAT_F_TINODE
 -- 
 2.17.1
 
