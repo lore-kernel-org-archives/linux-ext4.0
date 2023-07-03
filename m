@@ -2,19 +2,19 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D67C8C04A94
-	for <linux-ext4@archiver.kernel.org>; Mon,  3 Jul 2023 09:50:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D6C79C25B5E
+	for <linux-ext4@archiver.kernel.org>; Mon,  3 Jul 2023 09:50:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231510AbjGCJuA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 3 Jul 2023 05:50:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50164 "EHLO
+        id S231416AbjGCJt5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 3 Jul 2023 05:49:57 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50092 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231281AbjGCJtv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Jul 2023 05:49:51 -0400
+        with ESMTP id S231234AbjGCJtt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Jul 2023 05:49:49 -0400
 Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id BD15212C;
-        Mon,  3 Jul 2023 02:49:48 -0700 (PDT)
-X-AuditID: a67dfc5b-d85ff70000001748-86-64a299b34ffc
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 4A4E918D;
+        Mon,  3 Jul 2023 02:49:47 -0700 (PDT)
+X-AuditID: a67dfc5b-d85ff70000001748-66-64a299b232c5
 From:   Byungchul Park <byungchul@sk.com>
 To:     linux-kernel@vger.kernel.org
 Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
@@ -40,80 +40,80 @@ Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
         gwan-gyeong.mun@intel.com, max.byungchul.park@gmail.com,
         boqun.feng@gmail.com, longman@redhat.com, hdanton@sina.com,
         her0gyugyu@gmail.com
-Subject: [PATCH v10 rebased on v6.4 11/25] dept: Apply sdt_might_sleep_{start,end}() to hashed-waitqueue wait
-Date:   Mon,  3 Jul 2023 18:47:38 +0900
-Message-Id: <20230703094752.79269-12-byungchul@sk.com>
+Subject: [PATCH v10 rebased on v6.4 09/25] dept: Apply sdt_might_sleep_{start,end}() to swait
+Date:   Mon,  3 Jul 2023 18:47:36 +0900
+Message-Id: <20230703094752.79269-10-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20230703094752.79269-1-byungchul@sk.com>
 References: <20230703094752.79269-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSfUzMcRzHfb+/x05nvx2bH23YbcbymInPDMsf1s9Dxox5+IOb+9FxXbn0
-        aKaUpEe15fSA6+LcuvN0h4mylFKUosahjlooelrczbmKK/XPZ6+9P+/Pe+8/Piwhe0TNZlWa
-        E6JWo1DLaQkp6fM1LLHlG5TLe/PmQU7GcnD+SiWh6LaFhuZbZgSWe4kYemqC4Z2rF4GnsYkA
-        XV4zguKOdgLu1ToQVJjO0NDSNQ1anQM01Oel05BUcpuG1z+GMbRdzMVgtobAywsGDJXubyTo
-        emgo1CVh7+jG4DaWMmBMmA+dpgIGhjsCoN7xloKKD4sg/0obDeUV9STUPuzE0PKoiAaH5S8F
-        L2vrSGjOyaTgZr+Bhh8uIwFG5wADbyr1GO4ke4NSfo5S8DyzEkPKtbsYWt8/RvAk9TMGq+Ut
-        DdXOXgw2ax4Bf27UIOjM6mPgbIabgcLELATpZy+S0DTynILktkDw/C6ig9YI1b0DhJBsixEq
-        XHpSeGHghbKCdkZIfvKBEfTWKMFm8hdKynuwUDzkpARr6XlasA7lMkJaXysW+l+9YoS6Sx5S
-        6GrV4e1++yRrlaJaFS1ql60/KAn91p5DRdjZ2JFnZUwCstNpyIfluZW8W5/NTHLT9z/UGNPc
-        At5udxNjPIObx9syv3p1CUtw56bypsHG8ePpXBiflpgybiK5+fz5S/3jupRbxY86cyZC5/Lm
-        O5XjHh+v/uV3FhpjGRfIt+U7Jkpk+/Ddgzv+8yz+qclOXkBSPZpSimQqTXSYQqVeuTQ0TqOK
-        XXooPMyKvB9lPDW8/yEaat5ZhTgWyX2l9pPFShmliI6MC6tCPEvIZ0iTOq4qZVKlIi5e1IYf
-        0Eapxcgq5MeS8pnSFa4YpYw7ojghHhPFCFE7ucWsz+wEtO1TbUBaQqAuvaFOdi3mQFD1rg2f
-        UNnezY3HozUbcL7ar7jGvDveUdBV+HFOKd1R1bRVe3/x4Z0W39XhR9ZkHOxueeB556HmhC8M
-        jj0TvC5VIupCzLK+FVsbWIcyZeP16ljHEld50abLp3F2w6zACKUiaosuPmJ7SQY6+npB157L
-        cjIyVBHgT2gjFf8AEZjQbE0DAAA=
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTZxTH99yX516qXW4qZndoMtdpTDQqhqFnQsw+4TO3OT+YzOzDpLE3
-        UoFaW4uiYfIuoBBLggUFhbrUBvCFls3XmgoIFgIUS6Qa2ghBHMqLAYpAUVdY9uXkl9/5n/+n
-        w9OKKjaK12iPSXqtKkWJZYxsT1zOJkeFRR39/hEG07loCE4XMFB5sx6D50YdgvrGLApGHu+C
-        vplRBKHObhrMZR4ENQN+GhpbAwictmwM3qHPoTc4gcFddhZDztWbGHreLlDQf6GUgjr7z9Bx
-        3kKBa+41A+YRDJfMOVR4/EPBnLWWA2vmOhi0XeRgYWAruAPPWGiucrPgfLERKi73Y3jgdDPQ
-        emeQAu+9SgyB+k8sdLQ+YcBjKmbh+rgFw9sZKw3W4AQHT13VFNzKDbflT31koa3YRUH+nw0U
-        9D6/j+BhwUsK7PXPMDQHRylw2MtomL/2GMFgyRgHeefmOLiUVYLgbN4FBro/tLGQ2x8LodlK
-        /H0caR6doEmu4zhxzlQzpN0ikrsX/RzJffiCI9V2I3HYNpCrD0YoUjMZZIm9thAT+2QpR4rG
-        eiky3tXFkSflIYYM9Zqpvat/k8WrpRRNmqTfsjNRlvTab2J1Pv7Eh5a7XCby4SIUwYvCt2L3
-        m3l2kbGwXvT55uhFjhTWiI7i4bCX8bRwZploe9e5dLBCSBWLsvKXQoywTiwsH1/ycmGb+DFo
-        4v4r/Uqsu+VaykSE/avZErTICiFW7K8I4PNIVo0+q0WRGm1aqkqTErvZkJyUrtWc2HzwSKod
-        hZ/GmrFguoOmvbuakMAj5XK571SNWsGq0gzpqU1I5GllpDxn4IpaIVer0k9K+iMH9MYUydCE
-        VvGM8gv57l+lRIVwSHVMSpYknaT/f0vxEVGZqCUUlefVbNSFGnTlv3zXZVtLjiZ4HGXb9s3/
-        8fRQQkys5Sd/jNEvvHL9/U3L6ss/Ru6HtTHtiTr51+4+o9BTWJo1tcO5s3Py9309a4ZGdw+b
-        Gz3t3tuWwS+r1KGMlXkDZriS3TDb98MN7fbh+GijdnnGHr4jeSLjr5OnA21Few/LlIwhSbV1
-        A603qP4FQqFgYTADAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTZxTH9zz33udeOrvdFBMfX5KxRrNMFFHRnZhlMWbGuyxmxA0/aJat
+        896MZryYVqp1L0FeHCsvqTrsUKK0klqhTLg1EV/qGMwqI0DRqkiwCFGxArKwtRNhutbNLye/
+        /M85v5wPR2B057kFgjFvl2LKM+ToiYbVTMxxLvfVuOT09q7X4UBFOkT/KmOh9rSXQPDnRgTe
+        M/swRC5vgluxcQQz3b0MOKqDCJzDdxg4Ewgj8HuKCFy/9xqEopMEOqvLCRSfOE2gb2wWw+Dh
+        gxga1c3QZXdhaJseZcERIXDUUYzj5SGGaXcDD+7CJTDiOcLD7PBK6Azf5MA/kAo1xwYJXPR3
+        shBoHcFw/XwtgbD3OQddgassBA9UctD02EVgLOZmwB2d5OFaWx2G5pK4aP+fzzi4UtmGYX99
+        C4bQ7QsILpXdxaB6bxLoiI5j8KnVDDw9eRnBSNUED6UV0zwc3VeFoLz0MAu9/1zhoGRwDcw8
+        qSXr10kd45OMVOLbLfljdaz0u4tK547c4aWSSwO8VKcWSD7PUunExQiWnFNRTlIbfiCSOnWQ
+        l2wTISw97unhpas/zbDSvZADZy7cpnlXVnKMFsW04r3PNdk9FUF+Z0DYc9Y/wBWiXmJDSQIV
+        M6i91cu85AZbB5tgIr5F+/unX+RzxRTqq3zA2ZBGYMTvX6WeP7rjy4KQLH5KH45sTcyw4hL6
+        KHwXJ1grrqUD9nr2P+cbtLG57YUnKZ7ff1KFEqwT19DBmjBJOKl4KIkW20P/HzSf/urpZ+1I
+        W4deaUA6Y54l12DMyUjLtuYZ96TtyM9VUfyj3N/Obm9FU8GP25EoIP0cbf/XTlnHGSxma247
+        ogKjn6stHj4u67SywbpXMeV/ZirIUcztaKHA6udpV8V2yzrxS8Mu5StF2amYXnaxkLSgEH3U
+        /M7JrExt5EP/aDTVsb1oRYu/QM5IWVSkdm+0Wk6lfVeWu3bLN11ZT1c3oRa6LnmZ5f3I0NbM
+        t/veTP0ReT5omb1hTNm8+G9YNFTfTYOPbJs+canPanqUZcSeXx74pQ/ONqY3LY7Jkd/GXFmZ
+        G7Kc1lHiNJd+sX4o+TbodbKeNWcbVi5lTGbDv3+aBwVNAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTZxTHfZ5773Mv1bqbjsiNGueaGRPcnCSwnKgxxky5LG76wYExMdqs
+        N9AJhbTIRMMCFhny0hQT7JCqpWW1od3Q1mXqrCBMtBgpGy9Cg400voCALGiJCFpbl305+eV/
+        zv/36XCUwsIs5zTaQkmnVeUqiYyWfbPJ8JmnwabecD+QCnU1GyDyspIGS6ubQO9vLgTuy2UY
+        xm+lw/3ZSQTz9wIUmOt7ETSNPqDgclcIgc95nEDfo6XQH5km4K+vJmCwtxL4e2IBw8jpUxhc
+        nq/hrsmGoX3uKQ3mcQKNZgOOjTEMc44WFhylayDsPMPCwmgK+EODDHSe9TPgC66DhnMjBK77
+        /DR0XQlj6LtmIRByRxm423WHht66WgZ+fW4jMDHroMARmWbhn3YrhovlMVvFi7cM3K5tx1DR
+        fAlD//CfCG5UPsTgcQ8S6IxMYvB66il4feEWgrBxioUTNXMsNJYZEVSfOE1D4M1tBspH0mD+
+        lYVs3SR2Tk5TYrn3B9E3a6XFbpsgXj3zgBXLbwRZ0eo5LHqdyaL9+jgWm2YijOhpOUlEz8wp
+        Vqya6sfi854eVrzz8zwtPuo3490r98k2q6VcTZGk+3zLQVlOT00vW9DFHfnDF2RKUYBUoQRO
+        4FOFlqpOOs6EXysMDc1RcU7kVwve2idMFZJxFP/TYsH5771YgeM+5PcLY+HM+A3NrxGehR7i
+        OMv5L4SgqZn+z/mR4LrY/t6TEMsfvzKiOCv4NGGkIURMSGZFi1pQokZblKfS5Kat1x/KKdZq
+        jqz/Lj/Pg2I/4yhZqLuCXvaldyCeQ8ol8qFjTWoFoyrSF+d1IIGjlIlyw+h5tUKuVhUflXT5
+        B3SHcyV9B1rB0cok+VdZ0kEFn60qlA5JUoGk+3+LuYTlpQimo5+69mW9iJa0qV8vk4dMO/dy
+        F56SHSklA9lfRjO+7zak+5K6Vw/8ldmYOqXcvuPmMu8H1ZWM10DP7zk7GG0umPlk47Nw6Nsh
+        i32sOMuabyr7fSK4WftLZtJOPzTBHlcgI4M3Ok2uHz9uk++yG23D9ifGmwMVeqt5caV71TYl
+        rc9RpSRTOr3qHWmXBMkvAwAA
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Makes Dept able to track dependencies by hashed-waitqueue waits.
+Makes Dept able to track dependencies by swaits.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/wait_bit.h | 3 +++
+ include/linux/swait.h | 3 +++
  1 file changed, 3 insertions(+)
 
-diff --git a/include/linux/wait_bit.h b/include/linux/wait_bit.h
-index 7725b7579b78..fe89282c3e96 100644
---- a/include/linux/wait_bit.h
-+++ b/include/linux/wait_bit.h
+diff --git a/include/linux/swait.h b/include/linux/swait.h
+index 6a8c22b8c2a5..02848211cef5 100644
+--- a/include/linux/swait.h
++++ b/include/linux/swait.h
 @@ -6,6 +6,7 @@
-  * Linux wait-bit related types and methods:
-  */
+ #include <linux/stddef.h>
+ #include <linux/spinlock.h>
  #include <linux/wait.h>
 +#include <linux/dept_sdt.h>
+ #include <asm/current.h>
  
- struct wait_bit_key {
- 	void			*flags;
-@@ -246,6 +247,7 @@ extern wait_queue_head_t *__var_waitqueue(void *p);
- 	struct wait_bit_queue_entry __wbq_entry;			\
- 	long __ret = ret; /* explicit shadow */				\
+ /*
+@@ -161,6 +162,7 @@ extern void finish_swait(struct swait_queue_head *q, struct swait_queue *wait);
+ 	struct swait_queue __wait;					\
+ 	long __ret = ret;						\
  									\
 +	sdt_might_sleep_start(NULL);					\
- 	init_wait_var_entry(&__wbq_entry, var,				\
- 			    exclusive ? WQ_FLAG_EXCLUSIVE : 0);		\
+ 	INIT_LIST_HEAD(&__wait.task_list);				\
  	for (;;) {							\
-@@ -263,6 +265,7 @@ extern wait_queue_head_t *__var_waitqueue(void *p);
+ 		long __int = prepare_to_swait_event(&wq, &__wait, state);\
+@@ -176,6 +178,7 @@ extern void finish_swait(struct swait_queue_head *q, struct swait_queue *wait);
  		cmd;							\
  	}								\
- 	finish_wait(__wq_head, &__wbq_entry.wq_entry);			\
+ 	finish_swait(&wq, &__wait);					\
 +	sdt_might_sleep_end();						\
  __out:	__ret;								\
  })
