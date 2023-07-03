@@ -2,19 +2,19 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 01D44C04FE1
-	for <linux-ext4@archiver.kernel.org>; Mon,  3 Jul 2023 09:50:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 26B66C04FE0
+	for <linux-ext4@archiver.kernel.org>; Mon,  3 Jul 2023 09:50:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231545AbjGCJuB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 3 Jul 2023 05:50:01 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50184 "EHLO
+        id S231596AbjGCJuD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 3 Jul 2023 05:50:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50164 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231310AbjGCJtx (ORCPT
+        with ESMTP id S231313AbjGCJtx (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Jul 2023 05:49:53 -0400
-Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id C0B00BE;
-        Mon,  3 Jul 2023 02:49:49 -0700 (PDT)
-X-AuditID: a67dfc5b-d85ff70000001748-a6-64a299b3d23d
+Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 450B11B4;
+        Mon,  3 Jul 2023 02:49:50 -0700 (PDT)
+X-AuditID: a67dfc5b-d85ff70000001748-c7-64a299b31a63
 From:   Byungchul Park <byungchul@sk.com>
 To:     linux-kernel@vger.kernel.org
 Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
@@ -40,124 +40,76 @@ Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
         gwan-gyeong.mun@intel.com, max.byungchul.park@gmail.com,
         boqun.feng@gmail.com, longman@redhat.com, hdanton@sina.com,
         her0gyugyu@gmail.com
-Subject: [PATCH v10 rebased on v6.4 13/25] dept: Distinguish each work from another
-Date:   Mon,  3 Jul 2023 18:47:40 +0900
-Message-Id: <20230703094752.79269-14-byungchul@sk.com>
+Subject: [PATCH v10 rebased on v6.4 15/25] locking/lockdep, cpu/hotplus: Use a weaker annotation in AP thread
+Date:   Mon,  3 Jul 2023 18:47:42 +0900
+Message-Id: <20230703094752.79269-16-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20230703094752.79269-1-byungchul@sk.com>
 References: <20230703094752.79269-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzXSbUxTZxQHcJ/n3vvcS6XmpmK8ajKXJsbMF9T5dlzmy/yyu8QtTdgHM0xm
-        Y6/S2CIpiKCS4aji0EvQiIiWScF0DXSAt8QgUkUYICJYtUoltZGKYkMRxyyBwWTUzS8nv5xz
-        8s/5cDhKc51ZyBlTMyRLqt6kJSpaNRxvX+kurTCsDjckwpnTqyH67iQNtloXAW9NNQJX/TEM
-        4bavoXcsgmCy+z4FJcVeBPb+ZxTUtwcReJw/E3g0MAd80RECncWnCORV1hJ4MDSFIXD+LIZq
-        5VvoKqrA0DwxSENJmMClkjw8U15jmHBUseDIXQIh50UWpvrXQGfwCQOevuVQ+muAQJOnk4b2
-        hhCGR402AkHXNANd7Xdo8J6RGfj9TQWBoTEHBY7oCAsPm8sx1Flngk789Z6BDrkZw4krVzH4
-        nt5AcPPkcwyK6wmB1mgEg1sppuDv39oQhAqHWTh+eoKFS8cKEZw6fp6G+/90MGANrIfJcRvZ
-        9oXYGhmhRKv7kOgZK6fFuxWCeP3iM1a03uxjxXLloOh2LhMrm8JYtI9GGVGp+oWIyuhZViwY
-        9mHxTU8PK965MEmLA74SrFv0g+pLg2QyZkqWVVt2q1JqXT4q7e3crN76eblI4QtQHCfw64Se
-        1mn80da+Iipmwi8V/P6JD07gPxXc8iumAKk4is+fLTjfdpMCxHFz+SQhMKqJ7dD8EuFesI7E
-        rOY3CPfkMuq/zMVCdV3zB8fN9F+OF6KYNfx6IVAaJLFMgc+PEy44nP8fsUC47fTTRUhdjmZV
-        IY0xNdOsN5rWJaZkpxqzEvccMCto5qEcOVPJDWjUm9SCeA5p49X+I3aDhtFnpmebW5DAUdoE
-        dV7/ZYNGbdBnH5YsB360HDRJ6S1oEUdr56s/Hztk0PD79BnSfklKkywfp5iLW5iLyjZcOzKU
-        ti3UkPTCP7W0K3/+4/jBb7YavVfN/ue2to7tyY2Rz74LfZWhQ59Y92bvf51XI3fvXiFbdf3T
-        8h6ZTTbpQ13D4caE0pxNkd4/R+TNT8eP+qzmnGjNw6adAybdOe+tn8q+r1e2eDYOrvCudQvv
-        dPY/zIPxu+DcjrtZth1aOj1Fv2YZZUnX/wuCRdYFTAMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzXSf0yMcRwHcN/v8zzf5+k4e3bCM0x2m5ksMuKzMTP+8Gh++4PxB8/cMx2V
-        dlcpP7bokHStIukH+rXT6ijPNb9Lrl11hOiW5NyU/LgpJS7l8qOYfz577fP+7P3Xh6M0+cw0
-        Th8dKxuipUgtUdGqDcuSQ2y5xbpQx/MpkJkWCr5vKTQUVFoJtFyrQGCtPobB61gDLwZ7EPgf
-        P6UgJ7sFQVHnawqqGzwIasqOE2jtngguXx8BZ/YZAskllQSefRrB4D6fhaFCWQ+PMoox1A1/
-        oCHHSyA/JxmPjo8Yhi3lLFiSZkNXWR4LI50LwelpY6D+opOBmo55kHvJTeBejZOGhltdGFrv
-        FBDwWH8z8KihiYaWTDMDVz8XE/g0aKHA4utj4XldIYYq02jbya+/GGg012E4WXodg+vlXQS1
-        KW8wKNY2AvW+Hgw2JZuCH1ccCLrSe1k4kTbMQv6xdARnTpyn4enPRgZM7jDwDxWQlcvE+p4+
-        SjTZDoo1g4W0+LBYEG/nvWZFU20HKxYqcaKtLFgsuefFYtGAjxGV8tNEVAayWDG114XFz0+e
-        sGLTBT8tdrty8KYZO1TLdXKkPl42LFixWxVRaXVRMf2TEl5UT05CCp+KAjiBXyyYOjKoMRN+
-        jtDePvzXgfwswWZ+z6QiFUfxp8YLZf2PSSriuEn8VsE9oBm7ofnZQrOnioxZzS8Rms0XqX+d
-        QUJFVd1fB4zu3w2lozFr+DDBneshGUhViMaVo0B9dHyUpI8Mm2/cH5EYrU+Yv+dAlIJGX8Zy
-        dCTzFvrWusaOeA5pJ6jbDxfpNIwUb0yMsiOBo7SB6uTOyzqNWiclHpINB3YZ4iJlox1N52jt
-        VHX4Nnm3ht8rxcr7ZTlGNvxPMRcwLQnZpoecqxKCG2/gbrI2LVBf1Ptl/SKFHr/y1PagnQ57
-        f0rczO+umJBmc2f5jY1LH6wuCfLffNvkP12aN9MZvsoy93tFn96/etHygq/VFx5cjr17fZCT
-        t3gd0pDgv9QWOnTEd1Z6F+q1t9xvvLl5X0NWtxcn2Kh4T23GOms4++pqhJY2RkgLgymDUfoD
-        Zj/+/y4DAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTZxiG977nnPecVstOKtuO8GOmC1ExIi66PDFmIdmSnS0xMfGPw2Ta
+        rCejSkGLFtlHhit+lUKACB20uFKW0rRVpMVEhpAKEUSDVCRYK54Ic04CCGEWrYDaYvbnyZX7
+        yX39ujlK3cGkcfqCo5KxQJuvIUpaObO6aXOw3qXLDg3uhGprNsSen6HB0eonEL7oQ+BvP4Fh
+        8vpXcG9hGsHi4BAFttowgqbxhxS098kIujy/Ebj7OAVGYrMEBmrLCZibWwncmVrCMFZXg8EX
+        2AW3qlwYQvF/abBNErDbzDhxnmKIu70suEszYMLTwMLS+FYYkEcZ6IpugvrzYwSudg3Q0Hdl
+        AsPdvxwEZP8bBm713aAhXF3BwIVnLgJTC24K3LFZFoZDTgyXyhKiU/+9ZqC/IoTh1J9tGEbu
+        dyLoPvMIQ8A/SqA3No0hGKil4FXLdQQTlTMsnLTGWbCfqERQfrKOhqHlfgbKxrbD4ksHydkh
+        9k7PUmJZsFjsWnDS4k2XIHY0PGTFsu4oKzoDx8SgJ1NsvjqJxab5GCMGvGeJGJivYUXLzAgW
+        n92+zYo3fl+kxccjNrw7PVe5Uyfl602SccvnB5R55+4v48Mt7PG5v+1sKaogFqTgBH6bMHth
+        nLUgboV9tRnJmPDrhUgkTiU5lV8nBCueMBak5Cj+9CrBMze40l3DG4TuHplNMs1nCJGhy3TS
+        o+I/E2Rr8Tv9x4LvUmjFo0jE/7ysRElW89uFsXqZJJ0Cb1MInc9b6HeFtcI1T4SuQiones+L
+        1PoCk0Grz9+WlVdSoD+e9X2hIYASg3L/srTvCpoP7+lBPIc0q1WRn5p0akZrKiox9CCBozSp
+        KvP4Hzq1Sqct+VEyFu43HsuXinpQOkdrPlJ9ulCsU/M/aI9KhyTpsGT8/4s5RVopMqTlmuJr
+        yZeJfSJriRMrvrP79fIna6yNc42p/aacnO4tv0r727znpuOtma/C5lyU5Z4x762L2pt7L0fT
+        czsf1ES+FvZ0TA0PV73/hepnOdr25MNIzr3O0UJux67MNy5HytN9siPF98GEu/Hshm+WU1+0
+        H2l4UV3uvWjZmH3wWw1dlKfdmkkZi7RvAbLwAENMAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTVxzGd86999xLpdu1ot6oi1sTMuMrGDH/6TTGLx4xM/PDMsdisNqb
+        0QDFtFBlZglIdVopAxQRClpgqw2wqbea4EYJQijiW5kQrKY2wpxIADHONnS8OGrilye/PE/y
+        +/QIjMbBLREMxlzZZNRlaYmKVe3eXLTGU1WvT6qNJEJZcRKE35xkoeZyM4He35sQNF8rxDDS
+        tQMeRsYQTN3zM1BZ0YugbvAJA9d8IQRe9zECfc8+hP7wBIGeitMEihouE/hrdBpD8Fw5hibl
+        S7hTWo+hPTrMQuUIAUdlEZ6LFxiirkYeXAWJMOSu5mF6MBl6QgMcdNb2cOB9vAqqLgQJtHp7
+        WPC1DGHo+6OGQKj5LQd3fLdY6C2zc/Dby3oCoxEXA67wBA8P2p0YrljnbCf+neWg296O4cQv
+        VzH0P/oTQdvJpxiU5gECneExDB6lgoH/LnUhGCoZ5+F4cZQHR2EJgtPHz7Hgn+nmwBpMganJ
+        GrJtM+0cm2Co1XOYeiNOlt6ul+iN6ic8tbY95qlTyaMe90ra0DqCad3rMEeVxlOEKq/LeWob
+        78f05f37PL11foqlz/or8VfL0lRf6OUsg0U2rdu6X5Vx9tEMPnSJP/LqbwdfgOzEhgRBEjdI
+        TRWJNhQnEPEzKRCIMjFOED+RPPbnnA2pBEb8aZ7kfnWPxIYFYrbU1hHiY8yKiVLAf52NedTi
+        RilUfDhWS+JyqelK+ztP3Fz9z2QJirFGTJGCVSFSilRO9EEjSjAYLdk6Q1bKWnNmRr7RcGTt
+        wZxsBc1dxvXjdFkLetO3owOJAtLGqwNH6/QaTmcx52d3IElgtAnqosGLeo1ar8v/QTblpJvy
+        smRzB1oqsNrF6tRv5P0a8Xtdrpwpy4dk0/sVC3FLChD1tu1ar3y6rHyvQXc0krZgZsO6uwdW
+        vZ1dfSHV0lKV617jvxmfvzC9c6ez++riYJT2LWrYRSw+33rH7i3eyfmLbGc2/nw7fWCFdbvS
+        OuEfNQ+b6/bZk6ozC7+bOrb329T4j2a6lNk91w8Y0j42GEu/9teO5wU+T/71zKac4YKbs3d9
+        WtacoUteyZjMuv8Bvvgvmy4DAAA=
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Workqueue already provides concurrency control. By that, any wait in a
-work doesn't prevents events in other works with the control enabled.
-Thus, each work would better be considered a different context.
+cb92173d1f0 ("locking/lockdep, cpu/hotplug: Annotate AP thread") was
+introduced to make lockdep_assert_cpus_held() work in AP thread.
 
-So let Dept assign a different context id to each work.
+However, the annotation is too strong for that purpose. We don't have to
+use more than try lock annotation for that.
+
+Furthermore, now that Dept was introduced, false positive alarms was
+reported by that. Replaced it with try lock annotation.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/dept.h     |  2 ++
- kernel/dependency/dept.c | 10 ++++++++++
- kernel/workqueue.c       |  3 +++
- 3 files changed, 15 insertions(+)
+ kernel/cpu.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/dept.h b/include/linux/dept.h
-index f62c7b6f42c6..d9ca9dd50219 100644
---- a/include/linux/dept.h
-+++ b/include/linux/dept.h
-@@ -515,6 +515,7 @@ extern void dept_ecxt_exit(struct dept_map *m, unsigned long e_f, unsigned long
- extern void dept_sched_enter(void);
- extern void dept_sched_exit(void);
- extern void dept_kernel_enter(void);
-+extern void dept_work_enter(void);
+diff --git a/kernel/cpu.c b/kernel/cpu.c
+index f4a2c5845bcb..19076f798b34 100644
+--- a/kernel/cpu.c
++++ b/kernel/cpu.c
+@@ -356,7 +356,7 @@ int lockdep_is_cpus_held(void)
  
- static inline void dept_ecxt_enter_nokeep(struct dept_map *m)
+ static void lockdep_acquire_cpus_lock(void)
  {
-@@ -567,6 +568,7 @@ struct dept_task { };
- #define dept_sched_enter()				do { } while (0)
- #define dept_sched_exit()				do { } while (0)
- #define dept_kernel_enter()				do { } while (0)
-+#define dept_work_enter()				do { } while (0)
- #define dept_ecxt_enter_nokeep(m)			do { } while (0)
- #define dept_key_init(k)				do { (void)(k); } while (0)
- #define dept_key_destroy(k)				do { (void)(k); } while (0)
-diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index 4165cacf4ebb..6cf17f206b78 100644
---- a/kernel/dependency/dept.c
-+++ b/kernel/dependency/dept.c
-@@ -1977,6 +1977,16 @@ void dept_hardirqs_off_ip(unsigned long ip)
+-	rwsem_acquire(&cpu_hotplug_lock.dep_map, 0, 0, _THIS_IP_);
++	rwsem_acquire(&cpu_hotplug_lock.dep_map, 0, 1, _THIS_IP_);
  }
- EXPORT_SYMBOL_GPL(dept_hardirqs_off_ip);
  
-+/*
-+ * Assign a different context id to each work.
-+ */
-+void dept_work_enter(void)
-+{
-+	struct dept_task *dt = dept_task();
-+
-+	dt->cxt_id[DEPT_CXT_PROCESS] += 1UL << DEPT_CXTS_NR;
-+}
-+
- void dept_kernel_enter(void)
- {
- 	struct dept_task *dt = dept_task();
-diff --git a/kernel/workqueue.c b/kernel/workqueue.c
-index c913e333cce8..fa23d876a8b5 100644
---- a/kernel/workqueue.c
-+++ b/kernel/workqueue.c
-@@ -52,6 +52,7 @@
- #include <linux/sched/debug.h>
- #include <linux/nmi.h>
- #include <linux/kvm_para.h>
-+#include <linux/dept.h>
- 
- #include "workqueue_internal.h"
- 
-@@ -2318,6 +2319,8 @@ __acquires(&pool->lock)
- 
- 	lockdep_copy_map(&lockdep_map, &work->lockdep_map);
- #endif
-+	dept_work_enter();
-+
- 	/* ensure we're on the correct CPU */
- 	WARN_ON_ONCE(!(pool->flags & POOL_DISASSOCIATED) &&
- 		     raw_smp_processor_id() != pool->cpu);
+ static void lockdep_release_cpus_lock(void)
 -- 
 2.17.1
 
