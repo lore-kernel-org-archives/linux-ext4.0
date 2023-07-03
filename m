@@ -2,19 +2,19 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4DD74C04A94
-	for <linux-ext4@archiver.kernel.org>; Mon,  3 Jul 2023 09:50:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E7E5C18E72
+	for <linux-ext4@archiver.kernel.org>; Mon,  3 Jul 2023 09:50:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231624AbjGCJuQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 3 Jul 2023 05:50:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50288 "EHLO
+        id S231266AbjGCJuR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 3 Jul 2023 05:50:17 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50340 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231395AbjGCJt5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Jul 2023 05:49:57 -0400
+        with ESMTP id S229888AbjGCJt6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Jul 2023 05:49:58 -0400
 Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 402041B6;
-        Mon,  3 Jul 2023 02:49:53 -0700 (PDT)
-X-AuditID: a67dfc5b-d85ff70000001748-0b-64a299b42e6c
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 89B26E58;
+        Mon,  3 Jul 2023 02:49:55 -0700 (PDT)
+X-AuditID: a67dfc5b-d85ff70000001748-4b-64a299b4b568
 From:   Byungchul Park <byungchul@sk.com>
 To:     linux-kernel@vger.kernel.org
 Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
@@ -40,71 +40,97 @@ Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
         gwan-gyeong.mun@intel.com, max.byungchul.park@gmail.com,
         boqun.feng@gmail.com, longman@redhat.com, hdanton@sina.com,
         her0gyugyu@gmail.com
-Subject: [PATCH v10 rebased on v6.4 19/25] dept: Apply timeout consideration to swait
-Date:   Mon,  3 Jul 2023 18:47:46 +0900
-Message-Id: <20230703094752.79269-20-byungchul@sk.com>
+Subject: [PATCH v10 rebased on v6.4 23/25] dept: Record the latest one out of consecutive waits of the same class
+Date:   Mon,  3 Jul 2023 18:47:50 +0900
+Message-Id: <20230703094752.79269-24-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20230703094752.79269-1-byungchul@sk.com>
 References: <20230703094752.79269-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0hTcRjG+5/L/8zl6rQunooujKIosowubxIVfajzoUKICKyo0Q65nFO2
-        XJlFmlt201Iwr9S2ai1dWZuEXRRTNHV5KUeusKXSzbzFbKM5u0yjLy8Pv+d5n0+PiJQ+oeeI
-        lOpjgkYtV8mwmBIPhptWVBSaFas6G+dDzuVV4PtxnoKSchuG9vtlCGwV6QT01W+HTv8AgmBL
-        Gwn5ee0ITD3vSaho8CCosp7F0PFxCrh8wxia8i5hyLhZjuFV/xgBXddyCSiz7wTnVTMBNYEv
-        FOT3YSjOzyBC5ysBAUspA5a0xdBrLWJgrCcKmjxvaKh6txwKr3dheFbVREFDZS8BHU9KMHhs
-        f2hwNjRS0J6TRcO9ITOGfr+FBItvmIHXNUYCHuhDRedGftPwIquGgHO3HhLgevsUQfX5bgLs
-        tjcY6nwDBDjseSSM3qlH0Js9yIDhcoCB4vRsBJcM1yho+/WCBn3XWgj+LMFbovm6gWGS1zuO
-        81V+I8U3mzn+cdF7htdXv2N4oz2Zd1iX8Tef9RG8yeujeXvpBczbvbkMf3HQRfBDra0M31gQ
-        pPiPrnwiZm6seKNCUCl1gmblpkPiuK/dO5NG8In06u9UGmqmL6IwEceu4Rwlt8n/2tk/MsEx
-        u4RzuwMTfAa7kHNkfQ5xsYhkMydz1u8teNyYzu7hOoOZEyGKXcyNGIuZcS1h13G+Nj31r3QB
-        V/agZiITFuKffmajcS1l13JdhR48XsqxV8K4zG/dzL+H2dxzq5u6iiRGNKkUSZVqXYJcqVoT
-        GZeiVp6IPJyYYEehRVlOj+2rRN723bWIFSFZuMSdalJIablOm5JQizgRKZshyei5oZBKFPKU
-        k4Im8aAmWSVoa9FcESWLkKz2H1dI2SPyY0K8ICQJmv8uIQqbk4aS/NHpfY3r21arClKHyNSg
-        OifStXU09/UHw5mB5s2q7gj3/tScu/Uxs3SSe/GBDebwmK0mr011Zku2yTndM5o875f4pXKW
-        NiHx1I7YukXRR7dVTlp6INNbuGHRh2JdvDZt+/qKiJiZBUX7DI+iY/frfVF7DYFpU10dd3fl
-        NpvLFzpllDZOHrWM1GjlfwG8LgDSTQMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTZxiGed9zzntKtebYsXimJmoT48fiB3G4J9EYoz98o4H4xxH3Rxt7
-        HJ2laCsM1EWwFUWEiAYrH85STUdKVTwlmXOWMIhIqUKVCswgAvGLgaKUVrH4UTD+eXLlvu9c
-        vx4Fo67kZiv0xv2Syag1aIiSVaassSyrK3PoVgZGCJScXAnhseMsVF51EwhcqUHgrsvDMHhr
-        E3RFhhFE77YzYCsNIKjqf8RAXXMvAm/1EQIdT2ZAMBxT+EoLCVguXiVwb2gCQ8/Z0xhq5GTw
-        n3JgaBh/zoJtkECFzYJj5wWGcaeLB2fuQhioLudhoj8RfL2dHDSd93Hgffg9lP3RQ+Cm18dC
-        8/UBDB03Kgn0uj9x4G9uYSFQUsTB5VcOAkMRJwPO8AgP9xvsGGqtMVt+6CMHt4saMORfuoYh
-        +N8/COqP92GQ3Z0EmsLDGDxyKQPv/7yFYKD4JQ9HT47zUJFXjKDw6FkW2j/c5sDakwTRd5Vk
-        /RraNDzCUKvnN+qN2Fna6hDp3+WPeGqtf8hTu5xJPdVL6cWbg5hWjYY5KrsKCJVHT/P0xMsg
-        pq/a2njaci7K0idBG94692flWp1k0GdJphXrdirTXvQl7w2R7Lz612wuauVOoHiFKPwg+odC
-        U0yERWJ39zgzyQnCfNFT9CyWKxWMcGyaWP36LpksvhG2iV3RY1MjVlgohuwV/CSrhNViuN3K
-        fpHOE2tqG6Y28bH86btiNMlqIUnsKeslp5DSjuJcKEFvzErX6g1Jy8170nKM+uzluzLSZRT7
-        GefvEyXX0VjHpkYkKJBmuqr7YJVOzWmzzDnpjUhUMJoElaX/gk6t0mlzDkimjB2mTINkbkRz
-        FKxmlmpzqrRTLfyi3S/tkaS9kulrixXxs3PR7ju1HxKWuf6yrQvc6zx86H3J+u1zpxe6C8rO
-        7LtiWZUv290RHKno8jQt2P3WZ1hM/PRB0v+LzwxuPKL/7ttZvz5bknkw23u+ZXvKqDG1IIUU
-        /dh3//CiaNyWunzHjA3FGQUzbcn/hqIGZ7zc6nrTtqH8bdzET8FyP3shPLzixtjjRA1rTtMm
-        LmVMZu1n8BLdTi8DAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSe0xTdxTH+d3H77aVLjeVZFc0sjQxJm46WdCc4EJAk3ElWXwsMb6SebVX
+        aFaqK4KgWcKjMnkqbFBQslEwtaNFasEMUUhFBZEoVSoi1k4IyLC8RFul4CbF+M/JJ+d8z+ev
+        r4RUXKPDJWrtMVGnFTRKLKNkE6HGtU2VNar1vf9sgpLC9eB7c5qCqgYrBuclCwJrUxYBY7fj
+        4bF/HMHcvR4SDGVOBMbBZyQ0dXgQtJqzMfQOfwYu3xSGrrICDDm1DRgeeOcJcJeXEmCxfw/d
+        Z2sIcMyOUmAYw3DekEMsjH8JmDXVMWDKXAVD5nMMzA9GQpenj4bWgS+h8g83huutXRR0NA8R
+        0NtShcFj/Z+G7o47FDhLimion6zB4PWbSDD5phh46KgmwKZfEOW+/o+GziIHAbkXLhPgenIN
+        Qdvp5wTYrX0YbvrGCWi0l5EQuHgbwVDxBAOnCmcZOJ9VjKDgVDkFPe87adC7N8DcuyocG83f
+        HJ8ieX3jcb7VX03xd2s4/uq5Zwyvbxtg+Gp7Kt9oXsPXXh8jeOOMj+btdXmYt8+UMnz+hIvg
+        J+/fZ/g7FXMUP+wyENuX75V9qxI16jRR93XMAVnSi6oK+ujbJelFD9qoTNQrzUdSCcdGcS3N
+        ncwnHv7rbxxkzK7m+vtnySCHsV9wjUUv6Hwkk5Dsr0s48/S9xdBS9mfueXeACjLFruLyvOUo
+        yHJ2I9fS4aA/SiM4i82xKJIu7EfeFS9mFOwGzl3pwUEpx56RcvorbvLjwzLuhrmfOovk1Sik
+        DinU2rRkQa2JWpeUoVWnrzt0JNmOFipl+mV+XzOacf7QjlgJUobK+08aVQpaSEvJSG5HnIRU
+        hslzBv9UKeQqIeOEqDvyoy5VI6a0o+USSvm5/Bv/cZWCTRSOiT+J4lFR9+lKSKThmWhj9IrI
+        0fhpzAYeekfEkaSelY67jnDNeOyeuLDVoY+uNkTsCFg216f/VuD86jubt/biU2tYoWDofto5
+        2XPrcJ8rM+DZlphtPzgadTBRKD3kt+2Pdp0pjvl995udV2Qxr6Jstw7U+xJePuZeJRjjjXup
+        2JFL87lx2q2H91t27QvdEqKkUpKEyDWkLkX4AG/pntpOAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTZxiG977nnPe0dV2OlcwTNJnpJBjmVJLVPAnGEBP1zYxsIVGT/cHG
+        noxOQGkVZcQIa0UFS8CFTyuDoh1CBW2JHyCkKREthA8tcQyPBEhlNCBszqJ8KALL/jy5ct93
+        rl+PgtFc5SIVxrQTkilNn6IlKlaVEGf5uqncYdh2x7cRii5tg/CbCyzYG10E+hrqEbiacjCE
+        Hu6FP2YmEcx39zJQWtyHoHrkBQNNHUMIWmt/IRAIfgb94WkC/uJ8ApaaRgJPJhYwyCWXMdS7
+        90NXoQODd/YvFkpDBK6UWvDSGccw66zjwZkdBaO1FTwsjMSCf+gZB+1X/Ry0Dn4F5ZUygQet
+        fhY67o1iCDTbCQy5Fjno6njMQl+RjYObUw4CEzNOBpzhaR6eeqsw3LIu2XL//cDBI5sXQ+61
+        2xj6/2xB0HZhGIPb9YxAe3gSg8ddzMDc7w8RjBa84uHcpVkeruQUIMg/V8JC7/tHHFhlHcy/
+        s5P4ONo+Oc1Qq+cUbZ2pYmmnQ6T3K17w1No2yNMq90nqqY2hNQ9CmFa/DnPUXXeRUPfryzzN
+        e9WP6VRPD08fl82zNNhfir9f/4Nqh0FKMWZIpq07D6uSx+xl3PG3q07bnrSx2SigzENKhSh8
+        IwZv3CXLTIRocWBgllnmCGGD6LGNcXlIpWCE86vE2r+7V0ZrhHRxuGuOXWZWiBIvTpSgZVYL
+        28XmDi/3n/QLsf6Wd0WkXMpfvitY2WgEnSiXD5FCpKpCn9ShCGNaRqremKLbYj6anJlmPL3l
+        yLFUN1p6GueZhaJ76E1grw8JCqT9VD2QVW3QcPoMc2aqD4kKRhuhtoz8ZtCoDfrMnyXTsSTT
+        yRTJ7EPrFKx2rfrbQ9JhjfCj/oR0VJKOS6b/W6xQRmYj+55Nm6NaxtWxNQk5eHW3vDMrWohE
+        Olf8KYdvPmYx8Z/hRtvLs8rvps6SXxsS5c0Lu1s6Nx0IBUP7749VymavRkfXr/kp3vJ53K6K
+        wYaQ5+5iel5qcKThy2ZlTmFFtMzJuc+vJ+VHdM7J7Nr39aJ/pld/MC4wtU/qDbt9k1Yta07W
+        x8YwJrP+I9840PEwAwAA
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now that CONFIG_DEPT_AGGRESSIVE_TIMEOUT_WAIT was introduced, apply the
-consideration to swait, assuming an input 'ret' in ___swait_event()
-macro is used as a timeout value.
+The current code records all the waits for later use to track relation
+between waits and events in each context. However, since the same class
+is handled the same way, it'd be okay to record only one on behalf of
+the others if they all have the same class.
+
+Even though it's the ideal to search the whole history buffer for that,
+since it'd cost too high, alternatively, let's keep the latest one at
+least when the same class'ed waits consecutively appear.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/swait.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ kernel/dependency/dept.c | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/swait.h b/include/linux/swait.h
-index 02848211cef5..def1e47bb678 100644
---- a/include/linux/swait.h
-+++ b/include/linux/swait.h
-@@ -162,7 +162,7 @@ extern void finish_swait(struct swait_queue_head *q, struct swait_queue *wait);
- 	struct swait_queue __wait;					\
- 	long __ret = ret;						\
- 									\
--	sdt_might_sleep_start(NULL);					\
-+	sdt_might_sleep_start_timeout(NULL, __ret);			\
- 	INIT_LIST_HEAD(&__wait.task_list);				\
- 	for (;;) {							\
- 		long __int = prepare_to_swait_event(&wq, &__wait, state);\
+diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
+index 52537c099b68..cdfda4acff58 100644
+--- a/kernel/dependency/dept.c
++++ b/kernel/dependency/dept.c
+@@ -1522,9 +1522,28 @@ static inline struct dept_wait_hist *new_hist(void)
+ 	return wh;
+ }
+ 
++static inline struct dept_wait_hist *last_hist(void)
++{
++	int pos_n = hist_pos_next();
++	struct dept_wait_hist *wh_n = hist(pos_n);
++
++	/*
++	 * This is the first try.
++	 */
++	if (!pos_n && !wh_n->wait)
++		return NULL;
++
++	return hist(pos_n + DEPT_MAX_WAIT_HIST - 1);
++}
++
+ static void add_hist(struct dept_wait *w, unsigned int wg, unsigned int ctxt_id)
+ {
+-	struct dept_wait_hist *wh = new_hist();
++	struct dept_wait_hist *wh;
++
++	wh = last_hist();
++
++	if (!wh || wh->wait->class != w->class || wh->ctxt_id != ctxt_id)
++		wh = new_hist();
+ 
+ 	if (likely(wh->wait))
+ 		put_wait(wh->wait);
 -- 
 2.17.1
 
