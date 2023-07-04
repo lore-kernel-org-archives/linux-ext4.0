@@ -2,268 +2,105 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4CA5CC001B0
-	for <linux-ext4@archiver.kernel.org>; Tue,  4 Jul 2023 13:44:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ADB82C001DF
+	for <linux-ext4@archiver.kernel.org>; Tue,  4 Jul 2023 14:06:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231626AbjGDNoV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 4 Jul 2023 09:44:21 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54218 "EHLO
+        id S231189AbjGDOGc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 4 Jul 2023 10:06:32 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37116 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231642AbjGDNoL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Jul 2023 09:44:11 -0400
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AA38910A
-        for <linux-ext4@vger.kernel.org>; Tue,  4 Jul 2023 06:44:09 -0700 (PDT)
-Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4QwPCR3GHFz4f3nTf
-        for <linux-ext4@vger.kernel.org>; Tue,  4 Jul 2023 21:44:03 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.104.67])
-        by APP4 (Coremail) with SMTP id gCh0CgD3rLASIqRk9WjENA--.31120S15;
-        Tue, 04 Jul 2023 21:44:04 +0800 (CST)
-From:   Zhang Yi <yi.zhang@huaweicloud.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
-        yi.zhang@huawei.com, yi.zhang@huaweicloud.com,
-        chengzhihao1@huawei.com, yukuai3@huawei.com
-Subject: [PATCH 11/12] ext4: cleanup ext4_get_dev_journal() and ext4_get_journal()
-Date:   Tue,  4 Jul 2023 21:42:32 +0800
-Message-Id: <20230704134233.110812-12-yi.zhang@huaweicloud.com>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230704134233.110812-1-yi.zhang@huaweicloud.com>
-References: <20230704134233.110812-1-yi.zhang@huaweicloud.com>
+        with ESMTP id S230197AbjGDOGb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Jul 2023 10:06:31 -0400
+Received: from mail-pl1-f169.google.com (mail-pl1-f169.google.com [209.85.214.169])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6CB9BF7;
+        Tue,  4 Jul 2023 07:06:30 -0700 (PDT)
+Received: by mail-pl1-f169.google.com with SMTP id d9443c01a7336-1b8303cd32aso44543055ad.2;
+        Tue, 04 Jul 2023 07:06:30 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1688479590; x=1691071590;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=JV2SCOEdB9t0w6tigDexjJMYhGF54ZwsLlYmJ1gE7wU=;
+        b=bMICWCFC1W076H+YN1lR/nCQau0HbgCI0H4vl8vZYXgociPXrYyV5p2vJwJSn4IvXw
+         X0VdLEzWRujDjUle97qp5ejyEiOTvK9cEwtJF9fXchWUeZ3V4uQSdYUun19YJ76vkPzg
+         EZ1VW7i4f34rBtELVeYa/NvSt/WWf8EGkE3xgRc0FNndIJufTeQZZj1KiqF78g6Qv4BO
+         0X8PwY5ee/rPn2rjRArQ76JDuSpgQ/4XYckAc/yuSHkTasvw/OegnkRz43f6yLq3W0e3
+         rRA6atJmAtXopQDEq1HSeWbL6ASsixUt+la82hfgmJxFH2y2NJEwaZhVIkeu3mm+1ick
+         EadQ==
+X-Gm-Message-State: ABy/qLaMBNDn1rNBaXGQB2u/UKIklMPTeUzdebm00ZhMy9QxeJpBvQHH
+        tDxcOHS51TLWDp/ELdGfDOY=
+X-Google-Smtp-Source: APBJJlEESj5502hCCjnCrW5aNdhMviGxH5NXIz8SFwBF+614aVB6e0+1hJtWMTw8TJzZNuQy8olTNg==
+X-Received: by 2002:a17:903:447:b0:1b8:a31b:ac85 with SMTP id iw7-20020a170903044700b001b8a31bac85mr2719760plb.41.1688479589749;
+        Tue, 04 Jul 2023 07:06:29 -0700 (PDT)
+Received: from [192.168.50.14] ([98.51.102.78])
+        by smtp.gmail.com with ESMTPSA id jk4-20020a170903330400b001b672af624esm13083569plb.164.2023.07.04.07.06.26
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 04 Jul 2023 07:06:29 -0700 (PDT)
+Message-ID: <bb91e76b-0bd8-a949-f8b9-868f919ebcb9@acm.org>
+Date:   Tue, 4 Jul 2023 07:06:26 -0700
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgD3rLASIqRk9WjENA--.31120S15
-X-Coremail-Antispam: 1UD129KBjvJXoW3WrWDtFWfZFy8tryDJr18Xwb_yoWxGFWUpF
-        17CFyfZryUur1Uua18Xw4UJFWYg3W0yayUGr97uwnYyayDtrn7t3WkJF1UtFy8tFWUWw1r
-        XF4UK347Cw17K3DanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUU9K14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-        kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-        z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-        4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
-        3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
-        IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
-        M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20xvY0x0EwIxGrw
-        CFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE
-        14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2
-        IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAv
-        wI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14
-        v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjfUoxhLUUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
-X-CFilter-Loop: Reflected
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
+ Thunderbird/102.11.0
+Subject: Re: [PATCH 01/32] block: Provide blkdev_get_handle_* functions
+Content-Language: en-US
+To:     Jan Kara <jack@suse.cz>, linux-block@vger.kernel.org
+Cc:     linux-fsdevel@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
+        Christoph Hellwig <hch@infradead.org>,
+        Alasdair Kergon <agk@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Anna Schumaker <anna@kernel.org>, Chao Yu <chao@kernel.org>,
+        Christian Borntraeger <borntraeger@linux.ibm.com>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        Dave Kleikamp <shaggy@kernel.org>,
+        David Sterba <dsterba@suse.com>, dm-devel@redhat.com,
+        drbd-dev@lists.linbit.com, Gao Xiang <xiang@kernel.org>,
+        Jack Wang <jinpu.wang@ionos.com>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        jfs-discussion@lists.sourceforge.net,
+        Joern Engel <joern@lazybastard.org>,
+        Joseph Qi <joseph.qi@linux.alibaba.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        linux-bcache@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mm@kvack.org,
+        linux-mtd@lists.infradead.org, linux-nfs@vger.kernel.org,
+        linux-nilfs@vger.kernel.org, linux-nvme@lists.infradead.org,
+        linux-pm@vger.kernel.org, linux-raid@vger.kernel.org,
+        linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org,
+        linux-xfs@vger.kernel.org,
+        "Md. Haris Iqbal" <haris.iqbal@ionos.com>,
+        Mike Snitzer <snitzer@kernel.org>,
+        Minchan Kim <minchan@kernel.org>, ocfs2-devel@oss.oracle.com,
+        reiserfs-devel@vger.kernel.org,
+        Sergey Senozhatsky <senozhatsky@chromium.org>,
+        Song Liu <song@kernel.org>,
+        Sven Schnelle <svens@linux.ibm.com>,
+        target-devel@vger.kernel.org, Ted Tso <tytso@mit.edu>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        xen-devel@lists.xenproject.org
+References: <20230629165206.383-1-jack@suse.cz>
+ <20230704122224.16257-1-jack@suse.cz>
+From:   Bart Van Assche <bvanassche@acm.org>
+In-Reply-To: <20230704122224.16257-1-jack@suse.cz>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Zhang Yi <yi.zhang@huawei.com>
+On 7/4/23 05:21, Jan Kara wrote:
+> +struct bdev_handle {
+> +	struct block_device *bdev;
+> +	void *holder;
+> +};
 
-Factor out a new helper form ext4_get_dev_journal() to get external
-journal bdev and check validation of this device, drop ext4_blkdev_get()
-helper, and also remove duplicate check of journal feature. It makes
-ext4_get_dev_journal() more clear than before.
+Please explain in the patch description why a holder pointer is 
+introduced in struct bdev_handle and how it relates to the bd_holder 
+pointer in struct block_device. Is one of the purposes of this patch 
+series perhaps to add support for multiple holders per block device?
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
----
- fs/ext4/super.c | 109 ++++++++++++++++++++++--------------------------
- 1 file changed, 49 insertions(+), 60 deletions(-)
+Thanks,
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index ce2e02b139af..25ae536a370f 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1105,26 +1105,6 @@ static const struct blk_holder_ops ext4_holder_ops = {
- 	.mark_dead		= ext4_bdev_mark_dead,
- };
- 
--/*
-- * Open the external journal device
-- */
--static struct block_device *ext4_blkdev_get(dev_t dev, struct super_block *sb)
--{
--	struct block_device *bdev;
--
--	bdev = blkdev_get_by_dev(dev, BLK_OPEN_READ | BLK_OPEN_WRITE, sb,
--				 &ext4_holder_ops);
--	if (IS_ERR(bdev))
--		goto fail;
--	return bdev;
--
--fail:
--	ext4_msg(sb, KERN_ERR,
--		 "failed to open journal device unknown-block(%u,%u) %ld",
--		 MAJOR(dev), MINOR(dev), PTR_ERR(bdev));
--	return NULL;
--}
--
- /*
-  * Release the journal device
-  */
-@@ -5780,14 +5760,14 @@ static struct inode *ext4_get_journal_inode(struct super_block *sb,
- 		ext4_msg(sb, KERN_ERR, "journal inode is deleted");
- 		return NULL;
- 	}
--
--	ext4_debug("Journal inode found at %p: %lld bytes\n",
--		  journal_inode, journal_inode->i_size);
- 	if (!S_ISREG(journal_inode->i_mode) || IS_ENCRYPTED(journal_inode)) {
- 		ext4_msg(sb, KERN_ERR, "invalid journal inode");
- 		iput(journal_inode);
- 		return NULL;
- 	}
-+
-+	ext4_debug("Journal inode found at %p: %lld bytes\n",
-+		  journal_inode, journal_inode->i_size);
- 	return journal_inode;
- }
- 
-@@ -5819,9 +5799,6 @@ static journal_t *ext4_get_journal(struct super_block *sb,
- 	struct inode *journal_inode;
- 	journal_t *journal;
- 
--	if (WARN_ON_ONCE(!ext4_has_feature_journal(sb)))
--		return NULL;
--
- 	journal_inode = ext4_get_journal_inode(sb, journal_inum);
- 	if (!journal_inode)
- 		return NULL;
-@@ -5838,25 +5815,25 @@ static journal_t *ext4_get_journal(struct super_block *sb,
- 	return journal;
- }
- 
--static journal_t *ext4_get_dev_journal(struct super_block *sb,
--				       dev_t j_dev)
-+static struct block_device *ext4_get_journal_dev(struct super_block *sb,
-+					dev_t j_dev, ext4_fsblk_t *j_start,
-+					ext4_fsblk_t *j_len)
- {
- 	struct buffer_head *bh;
--	journal_t *journal;
--	ext4_fsblk_t start;
--	ext4_fsblk_t len;
-+	struct block_device *bdev;
- 	int hblock, blocksize;
- 	ext4_fsblk_t sb_block;
- 	unsigned long offset;
- 	struct ext4_super_block *es;
--	struct block_device *bdev;
- 
--	if (WARN_ON_ONCE(!ext4_has_feature_journal(sb)))
--		return NULL;
--
--	bdev = ext4_blkdev_get(j_dev, sb);
--	if (bdev == NULL)
-+	bdev = blkdev_get_by_dev(j_dev, BLK_OPEN_READ | BLK_OPEN_WRITE, sb,
-+				 &ext4_holder_ops);
-+	if (IS_ERR(bdev)) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "failed to open journal device unknown-block(%u,%u) %ld",
-+			 MAJOR(j_dev), MINOR(j_dev), PTR_ERR(bdev));
- 		return NULL;
-+	}
- 
- 	blocksize = sb->s_blocksize;
- 	hblock = bdev_logical_block_size(bdev);
-@@ -5869,7 +5846,8 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
- 	sb_block = EXT4_MIN_BLOCK_SIZE / blocksize;
- 	offset = EXT4_MIN_BLOCK_SIZE % blocksize;
- 	set_blocksize(bdev, blocksize);
--	if (!(bh = __bread(bdev, sb_block, blocksize))) {
-+	bh = __bread(bdev, sb_block, blocksize);
-+	if (!bh) {
- 		ext4_msg(sb, KERN_ERR, "couldn't read superblock of "
- 		       "external journal");
- 		goto out_bdev;
-@@ -5879,56 +5857,67 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
- 	if ((le16_to_cpu(es->s_magic) != EXT4_SUPER_MAGIC) ||
- 	    !(le32_to_cpu(es->s_feature_incompat) &
- 	      EXT4_FEATURE_INCOMPAT_JOURNAL_DEV)) {
--		ext4_msg(sb, KERN_ERR, "external journal has "
--					"bad superblock");
--		brelse(bh);
--		goto out_bdev;
-+		ext4_msg(sb, KERN_ERR, "external journal has bad superblock");
-+		goto out_bh;
- 	}
- 
- 	if ((le32_to_cpu(es->s_feature_ro_compat) &
- 	     EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
- 	    es->s_checksum != ext4_superblock_csum(sb, es)) {
--		ext4_msg(sb, KERN_ERR, "external journal has "
--				       "corrupt superblock");
--		brelse(bh);
--		goto out_bdev;
-+		ext4_msg(sb, KERN_ERR, "external journal has corrupt superblock");
-+		goto out_bh;
- 	}
- 
- 	if (memcmp(EXT4_SB(sb)->s_es->s_journal_uuid, es->s_uuid, 16)) {
- 		ext4_msg(sb, KERN_ERR, "journal UUID does not match");
--		brelse(bh);
--		goto out_bdev;
-+		goto out_bh;
- 	}
- 
--	len = ext4_blocks_count(es);
--	start = sb_block + 1;
--	brelse(bh);	/* we're done with the superblock */
-+	brelse(bh);
-+	*j_start = sb_block + 1;
-+	*j_len = ext4_blocks_count(es);
-+	return bdev;
-+
-+out_bh:
-+	brelse(bh);
-+out_bdev:
-+	blkdev_put(bdev, sb);
-+	return NULL;
-+}
-+
-+static journal_t *ext4_get_dev_journal(struct super_block *sb,
-+				       dev_t j_dev)
-+{
-+	journal_t *journal;
-+	ext4_fsblk_t j_start;
-+	ext4_fsblk_t j_len;
-+	struct block_device *journal_bdev;
-+
-+	journal_bdev = ext4_get_journal_dev(sb, j_dev, &j_start, &j_len);
-+	if (!journal_bdev)
-+		return NULL;
- 
--	journal = jbd2_journal_init_dev(bdev, sb->s_bdev,
--					start, len, blocksize);
-+	journal = jbd2_journal_init_dev(journal_bdev, sb->s_bdev, j_start,
-+					j_len, sb->s_blocksize);
- 	if (IS_ERR(journal)) {
- 		ext4_msg(sb, KERN_ERR, "failed to create device journal");
- 		goto out_bdev;
- 	}
--	journal->j_private = sb;
--	if (ext4_read_bh_lock(journal->j_sb_buffer, REQ_META | REQ_PRIO, true)) {
--		ext4_msg(sb, KERN_ERR, "I/O error on journal device");
--		goto out_journal;
--	}
- 	if (be32_to_cpu(journal->j_superblock->s_nr_users) != 1) {
- 		ext4_msg(sb, KERN_ERR, "External journal has more than one "
- 					"user (unsupported) - %d",
- 			be32_to_cpu(journal->j_superblock->s_nr_users));
- 		goto out_journal;
- 	}
--	EXT4_SB(sb)->s_journal_bdev = bdev;
-+	journal->j_private = sb;
-+	EXT4_SB(sb)->s_journal_bdev = journal_bdev;
- 	ext4_init_journal_params(sb, journal);
- 	return journal;
- 
- out_journal:
- 	jbd2_journal_destroy(journal);
- out_bdev:
--	blkdev_put(bdev, sb);
-+	blkdev_put(journal_bdev, sb);
- 	return NULL;
- }
- 
--- 
-2.39.2
+Bart.
 
