@@ -2,41 +2,41 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8AB6DC001B0
-	for <linux-ext4@archiver.kernel.org>; Tue,  4 Jul 2023 13:44:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EF5F6EB64D9
+	for <linux-ext4@archiver.kernel.org>; Tue,  4 Jul 2023 13:44:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231648AbjGDNoL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 4 Jul 2023 09:44:11 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54204 "EHLO
+        id S231660AbjGDNoM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 4 Jul 2023 09:44:12 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54182 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231565AbjGDNoI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Jul 2023 09:44:08 -0400
-Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C516DE76
-        for <linux-ext4@vger.kernel.org>; Tue,  4 Jul 2023 06:44:06 -0700 (PDT)
+        with ESMTP id S231534AbjGDNoH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Jul 2023 09:44:07 -0400
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DD1EFE6B
+        for <linux-ext4@vger.kernel.org>; Tue,  4 Jul 2023 06:44:05 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4QwPCP52h7z4f48Zr
-        for <linux-ext4@vger.kernel.org>; Tue,  4 Jul 2023 21:44:01 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4QwPCQ2Svmz4f3nJt
+        for <linux-ext4@vger.kernel.org>; Tue,  4 Jul 2023 21:44:02 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-        by APP4 (Coremail) with SMTP id gCh0CgD3rLASIqRk9WjENA--.31120S14;
+        by APP4 (Coremail) with SMTP id gCh0CgD3rLASIqRk9WjENA--.31120S12;
         Tue, 04 Jul 2023 21:44:03 +0800 (CST)
 From:   Zhang Yi <yi.zhang@huaweicloud.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
         yi.zhang@huawei.com, yi.zhang@huaweicloud.com,
         chengzhihao1@huawei.com, yukuai3@huawei.com
-Subject: [PATCH 10/12] jbd2: jbd2_journal_init_{dev,inode} return proper error return value
-Date:   Tue,  4 Jul 2023 21:42:31 +0800
-Message-Id: <20230704134233.110812-11-yi.zhang@huaweicloud.com>
+Subject: [PATCH 08/12] jbd2: cleanup journal_init_common()
+Date:   Tue,  4 Jul 2023 21:42:29 +0800
+Message-Id: <20230704134233.110812-9-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20230704134233.110812-1-yi.zhang@huaweicloud.com>
 References: <20230704134233.110812-1-yi.zhang@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgD3rLASIqRk9WjENA--.31120S14
-X-Coremail-Antispam: 1UD129KBjvJXoWxurWxKr4xKw45ZFWfKF4kZwb_yoWrAFW7pF
-        yUGa4rAryjvr4UZr1Ivr4UXFWj9a4Ikay7Gr1kCw1vqayUJrn7tw1Utr1UZFy0yFWUGw4r
-        XF1UGa1xCwnrKw7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID: gCh0CgD3rLASIqRk9WjENA--.31120S12
+X-Coremail-Antispam: 1UD129KBjvJXoWxXrW5Jw13XF4DWw13try3XFb_yoWrXw18pr
+        y7KasxArW8Zr47Xr1fJF4kJrWjq3y09FyUGr9ruwn5ta1UtrnxXw1Utw1xJayqvFW8W3Wr
+        XFyfC34xCw1UKaUanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
         9KBjDU0xBIdaVrnRJUUU9K14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
         rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
         kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -47,8 +47,8 @@ X-Coremail-Antispam: 1UD129KBjvJXoWxurWxKr4xKw45ZFWfKF4kZwb_yoWrAFW7pF
         M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20xvY0x0EwIxGrw
         CFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE
         14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2
-        IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAv
-        wI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14
+        IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAv
+        wI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14
         v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjfUoxhLUUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 X-CFilter-Loop: Reflected
@@ -58,132 +58,111 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Current jbd2_journal_init_{dev,inode} return NULL if some error
-happens, make them to pass out proper error return value.
+Adjust the initialization sequence and error handle of journal_t, moving
+load superblock to the begin, and classify others initialization.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/super.c    |  4 ++--
- fs/jbd2/journal.c  | 19 +++++++++----------
- fs/ocfs2/journal.c |  8 ++++----
- 3 files changed, 15 insertions(+), 16 deletions(-)
+ fs/jbd2/journal.c | 45 ++++++++++++++++++++++++---------------------
+ 1 file changed, 24 insertions(+), 21 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c94ebf704616..ce2e02b139af 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5827,7 +5827,7 @@ static journal_t *ext4_get_journal(struct super_block *sb,
- 		return NULL;
- 
- 	journal = jbd2_journal_init_inode(journal_inode);
--	if (!journal) {
-+	if (IS_ERR(journal)) {
- 		ext4_msg(sb, KERN_ERR, "Could not load journal inode");
- 		iput(journal_inode);
- 		return NULL;
-@@ -5906,7 +5906,7 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
- 
- 	journal = jbd2_journal_init_dev(bdev, sb->s_bdev,
- 					start, len, blocksize);
--	if (!journal) {
-+	if (IS_ERR(journal)) {
- 		ext4_msg(sb, KERN_ERR, "failed to create device journal");
- 		goto out_bdev;
- 	}
 diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index cc344b8d7476..34dd65aa9f61 100644
+index 210b532a3673..065b5e789299 100644
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
-@@ -1539,7 +1539,7 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 
- 	journal = kzalloc(sizeof(*journal), GFP_KERNEL);
+@@ -1541,6 +1541,16 @@ static journal_t *journal_init_common(struct block_device *bdev,
  	if (!journal)
--		return NULL;
-+		return ERR_PTR(-ENOMEM);
+ 		return NULL;
  
- 	journal->j_blocksize = blocksize;
- 	journal->j_dev = bdev;
-@@ -1584,6 +1584,7 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 	 * journal descriptor can store up to n blocks, we need enough
- 	 * buffers to write out full descriptor block.
- 	 */
-+	err = -ENOMEM;
++	journal->j_blocksize = blocksize;
++	journal->j_dev = bdev;
++	journal->j_fs_dev = fs_dev;
++	journal->j_blk_offset = start;
++	journal->j_total_len = len;
++
++	err = journal_load_superblock(journal);
++	if (err)
++		goto err_cleanup;
++
+ 	init_waitqueue_head(&journal->j_wait_transaction_locked);
+ 	init_waitqueue_head(&journal->j_wait_done_commit);
+ 	init_waitqueue_head(&journal->j_wait_commit);
+@@ -1552,12 +1562,15 @@ static journal_t *journal_init_common(struct block_device *bdev,
+ 	mutex_init(&journal->j_checkpoint_mutex);
+ 	spin_lock_init(&journal->j_revoke_lock);
+ 	spin_lock_init(&journal->j_list_lock);
++	spin_lock_init(&journal->j_history_lock);
+ 	rwlock_init(&journal->j_state_lock);
+ 
+ 	journal->j_commit_interval = (HZ * JBD2_DEFAULT_MAX_COMMIT_AGE);
+ 	journal->j_min_batch_time = 0;
+ 	journal->j_max_batch_time = 15000; /* 15ms */
+ 	atomic_set(&journal->j_reserved_credits, 0);
++	lockdep_init_map(&journal->j_trans_commit_map, "jbd2_handle",
++			 &jbd2_trans_commit_key, 0);
+ 
+ 	/* The journal is marked for error until we succeed with recovery! */
+ 	journal->j_flags = JBD2_ABORT;
+@@ -1567,18 +1580,10 @@ static journal_t *journal_init_common(struct block_device *bdev,
+ 	if (err)
+ 		goto err_cleanup;
+ 
+-	spin_lock_init(&journal->j_history_lock);
+-
+-	lockdep_init_map(&journal->j_trans_commit_map, "jbd2_handle",
+-			 &jbd2_trans_commit_key, 0);
+-
+-	/* journal descriptor can store up to n blocks -bzzz */
+-	journal->j_blocksize = blocksize;
+-	journal->j_dev = bdev;
+-	journal->j_fs_dev = fs_dev;
+-	journal->j_blk_offset = start;
+-	journal->j_total_len = len;
+-	/* We need enough buffers to write out full descriptor block. */
++	/*
++	 * journal descriptor can store up to n blocks, we need enough
++	 * buffers to write out full descriptor block.
++	 */
  	n = journal->j_blocksize / jbd2_min_tag_size();
  	journal->j_wbufsize = n;
  	journal->j_fc_wbuf = NULL;
-@@ -1615,7 +1616,7 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 	jbd2_journal_destroy_revoke(journal);
- 	journal_fail_superblock(journal);
- 	kfree(journal);
--	return NULL;
-+	return ERR_PTR(err);
- }
+@@ -1587,7 +1592,8 @@ static journal_t *journal_init_common(struct block_device *bdev,
+ 	if (!journal->j_wbuf)
+ 		goto err_cleanup;
  
- /* jbd2_journal_init_dev and jbd2_journal_init_inode:
-@@ -1648,8 +1649,8 @@ journal_t *jbd2_journal_init_dev(struct block_device *bdev,
- 	journal_t *journal;
+-	err = journal_load_superblock(journal);
++	err = percpu_counter_init(&journal->j_checkpoint_jh_count, 0,
++				  GFP_KERNEL);
+ 	if (err)
+ 		goto err_cleanup;
  
- 	journal = journal_init_common(bdev, fs_dev, start, len, blocksize);
--	if (!journal)
--		return NULL;
-+	if (IS_ERR(journal))
-+		return ERR_CAST(journal);
- 
- 	snprintf(journal->j_devname, sizeof(journal->j_devname),
- 		 "%pg", journal->j_dev);
-@@ -1675,11 +1676,9 @@ journal_t *jbd2_journal_init_inode(struct inode *inode)
- 
- 	blocknr = 0;
- 	err = bmap(inode, &blocknr);
+@@ -1596,21 +1602,18 @@ static journal_t *journal_init_common(struct block_device *bdev,
+ 	journal->j_shrinker.count_objects = jbd2_journal_shrink_count;
+ 	journal->j_shrinker.seeks = DEFAULT_SEEKS;
+ 	journal->j_shrinker.batch = journal->j_max_transaction_buffers;
 -
- 	if (err || !blocknr) {
--		pr_err("%s: Cannot locate journal superblock\n",
--			__func__);
--		return NULL;
-+		pr_err("%s: Cannot locate journal superblock\n", __func__);
-+		return err ? ERR_PTR(err) : ERR_PTR(-EINVAL);
- 	}
+-	if (percpu_counter_init(&journal->j_checkpoint_jh_count, 0, GFP_KERNEL))
++	err = register_shrinker(&journal->j_shrinker, "jbd2-journal:(%u:%u)",
++				MAJOR(bdev->bd_dev), MINOR(bdev->bd_dev));
++	if (err)
+ 		goto err_cleanup;
  
- 	jbd2_debug(1, "JBD2: inode %s/%ld, size %lld, bits %d, blksize %ld\n",
-@@ -1689,8 +1688,8 @@ journal_t *jbd2_journal_init_inode(struct inode *inode)
- 	journal = journal_init_common(inode->i_sb->s_bdev, inode->i_sb->s_bdev,
- 			blocknr, inode->i_size >> inode->i_sb->s_blocksize_bits,
- 			inode->i_sb->s_blocksize);
--	if (!journal)
--		return NULL;
-+	if (IS_ERR(journal))
-+		return ERR_CAST(journal);
+-	if (register_shrinker(&journal->j_shrinker, "jbd2-journal:(%u:%u)",
+-			      MAJOR(bdev->bd_dev), MINOR(bdev->bd_dev))) {
+-		percpu_counter_destroy(&journal->j_checkpoint_jh_count);
+-		goto err_cleanup;
+-	}
+ 	return journal;
  
- 	journal->j_inode = inode;
- 	snprintf(journal->j_devname, sizeof(journal->j_devname),
-diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
-index 25d8072ccfce..f35a1bbf52e2 100644
---- a/fs/ocfs2/journal.c
-+++ b/fs/ocfs2/journal.c
-@@ -911,9 +911,9 @@ int ocfs2_journal_init(struct ocfs2_super *osb, int *dirty)
- 
- 	/* call the kernels journal init function now */
- 	j_journal = jbd2_journal_init_inode(inode);
--	if (j_journal == NULL) {
-+	if (IS_ERR(j_journal)) {
- 		mlog(ML_ERROR, "Linux journal layer error\n");
--		status = -EINVAL;
-+		status = PTR_ERR(journal);
- 		goto done;
- 	}
- 
-@@ -1687,9 +1687,9 @@ static int ocfs2_replay_journal(struct ocfs2_super *osb,
- 	}
- 
- 	journal = jbd2_journal_init_inode(inode);
--	if (journal == NULL) {
-+	if (IS_ERR(journal)) {
- 		mlog(ML_ERROR, "Linux journal layer error\n");
--		status = -EIO;
-+		status = PTR_ERR(journal);
- 		goto done;
- 	}
- 
+ err_cleanup:
+-	brelse(journal->j_sb_buffer);
++	percpu_counter_destroy(&journal->j_checkpoint_jh_count);
+ 	kfree(journal->j_wbuf);
+ 	jbd2_journal_destroy_revoke(journal);
++	journal_fail_superblock(journal);
+ 	kfree(journal);
+ 	return NULL;
+ }
 -- 
 2.39.2
 
