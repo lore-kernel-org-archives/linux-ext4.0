@@ -2,79 +2,79 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 57220C001DE
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 Jul 2023 15:03:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 32D69EB64DA
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 Jul 2023 15:32:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232135AbjGLPDF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Jul 2023 11:03:05 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51866 "EHLO
+        id S232830AbjGLPcp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Jul 2023 11:32:45 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48842 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233014AbjGLPC4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jul 2023 11:02:56 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 54C66BB;
-        Wed, 12 Jul 2023 08:02:55 -0700 (PDT)
+        with ESMTP id S232772AbjGLPco (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jul 2023 11:32:44 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1D165C2;
+        Wed, 12 Jul 2023 08:32:44 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id C049B61830;
-        Wed, 12 Jul 2023 15:02:54 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 85FD7C433C9;
-        Wed, 12 Jul 2023 15:02:53 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id A6DBD6185F;
+        Wed, 12 Jul 2023 15:32:43 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 537FDC433C8;
+        Wed, 12 Jul 2023 15:32:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1689174174;
-        bh=S1pegj1qL8CVQOEK2cfiVJMp8lPq/SPQs4CNL9BiRFA=;
-        h=From:To:Cc:Subject:Date:From;
-        b=ZUnYHTDJSUDnL5/k82eolh32DV9zKzMvnsTlBrXPu+hQeX6CHzCz+cSvhJimVipd/
-         FqCUvMZ7t4FjCm5M+i90mDYMzSyPXCfOPhpsu42G1Jjhy48Ou6f/ra7czYpMgvJXtC
-         1RjGbP19OiULk8twbfGC7tQlISlAjnQyQsDczsPFoTmCHoSjJDZu3+EWfAX8gAywxV
-         iX6ysP8WteLer5B4u6ONjtmLfNAKMjtPoftDrlrkBzJql2XyCp5yoMEf0ONbSF+et9
-         w0W9XFikfyhfI5fTXKAaTSqIOuFH27WdDS7BkqGNdc5qUOufjkja7p7/dVKe9Z0p6E
-         lGyPtK2LjX/4Q==
-From:   Jeff Layton <jlayton@kernel.org>
-To:     brauner@kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+        s=k20201202; t=1689175963;
+        bh=xfa7h3Klsd00AJ8ejRF/z4YHp1gLDwV0HIcoBg7YmMw=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=OzVRD1zTuDP9kS+eUuUh3E9d/4rYmhAYAKCJTKjGZi6zuBpWXLJrjO7JCHv63UPAa
+         sKC0agJ1z2nkCwga5Lbgynzz8yf2FMpeygqiI8Ozmuy7C6Ppi6iBjpxd7P33cmcSmp
+         bJ74G65u11SGIwEY2zGNzBgh1w9GQdDTvQotQg5myCF5P6LYw2iiTXBLTNjlg3pwEd
+         3u0f3BMR670eD8xDj/JsYqRP7Zd1VhxioKCeHQ5z+n7/A8+8NNPFYkYDZr6ZjANNrs
+         LH65XZU0tOQXy0ttT/AV8qoeGTIy0IkjOG1ZAbemtTe5DHIDtP06YD84YFQIABRpRj
+         +25tAvqOj64Lw==
+From:   Christian Brauner <brauner@kernel.org>
+To:     Jeff Layton <jlayton@kernel.org>
+Cc:     Christian Brauner <brauner@kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         Jan Kara <jack@suse.cz>
-Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH] ext4: fix decoding of raw_inode timestamps
-Date:   Wed, 12 Jul 2023 11:02:49 -0400
-Message-ID: <20230712150251.163790-1-jlayton@kernel.org>
-X-Mailer: git-send-email 2.41.0
+Subject: Re: [PATCH] ext4: fix decoding of raw_inode timestamps
+Date:   Wed, 12 Jul 2023 17:32:37 +0200
+Message-Id: <20230712-wohnzimmer-gelaufen-a8d663a1e566@brauner>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20230712150251.163790-1-jlayton@kernel.org>
+References: <20230712150251.163790-1-jlayton@kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1007; i=brauner@kernel.org; h=from:subject:message-id; bh=xfa7h3Klsd00AJ8ejRF/z4YHp1gLDwV0HIcoBg7YmMw=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMaSsO96T4Cy6tJe7+gLHh27HQ3K9XXayZ2WTTR2lJrVY9eRv cF7RUcrCIMbFICumyOLQbhIut5ynYrNRpgbMHFYmkCEMXJwCMJElnxkZ9nSJGqRwb1S9dHraBp8LMr WnuyQ/y12zPHp34Z+vyzn2aTIyTMgz8F529NV97nxByT42l5QFLaxSR1Z6Zp2I3R9a8dmFCQA=
+X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-When we covert a timestamp from raw disk format, we need to consider it
-to be signed, as the value may represent a date earlier than 1970. This
-fixes generic/258 on ext4.
+On Wed, 12 Jul 2023 11:02:49 -0400, Jeff Layton wrote:
+> When we covert a timestamp from raw disk format, we need to consider it
+> to be signed, as the value may represent a date earlier than 1970. This
+> fixes generic/258 on ext4.
+> 
+> 
 
-Cc: Jan Kara <jack@suse.cz>
-Fixes: f2ddb05870fb ("ext4: convert to ctime accessor functions")
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- fs/ext4/ext4.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Applied to the vfs.ctime branch of the vfs/vfs.git tree.
+Patches in the vfs.ctime branch should appear in linux-next soon.
 
-It might be best to just squash this fix in with the ext4 conversion in
-the vfs tree.
+Please report any outstanding bugs that were missed during review in a
+new review to the original patch series allowing us to drop it.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index d63543187359..2af347669db7 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -877,7 +877,7 @@ static inline __le32 ext4_encode_extra_time(struct timespec64 ts)
- static inline struct timespec64 ext4_decode_extra_time(__le32 base,
- 						       __le32 extra)
- {
--	struct timespec64 ts = { .tv_sec = le32_to_cpu(base) };
-+	struct timespec64 ts = { .tv_sec = (signed)le32_to_cpu(base) };
- 
- 	if (unlikely(extra & cpu_to_le32(EXT4_EPOCH_MASK)))
- 		ts.tv_sec += (u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK) << 32;
--- 
-2.41.0
+It's encouraged to provide Acked-bys and Reviewed-bys even though the
+patch has now been applied. If possible patch trailers will be updated.
 
+Note that commit hashes shown below are subject to change due to rebase,
+trailer updates or similar. If in doubt, please check the listed branch.
+
+tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
+branch: vfs.ctime
+
+[1/1 FOLDED] ext4: convert to ctime accessor functions
+      https://git.kernel.org/vfs/vfs/c/f65cb009d449
