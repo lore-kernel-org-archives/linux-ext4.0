@@ -2,30 +2,30 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 33E07C04A6A
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jul 2023 03:55:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B3AEEB64DD
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jul 2023 03:55:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233756AbjGMDz2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Jul 2023 23:55:28 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53818 "EHLO
+        id S233765AbjGMDzf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Jul 2023 23:55:35 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53830 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232167AbjGMDzZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jul 2023 23:55:25 -0400
+        with ESMTP id S233760AbjGMDz3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jul 2023 23:55:29 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6FF941BF2;
-        Wed, 12 Jul 2023 20:55:24 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 873401BF2;
+        Wed, 12 Jul 2023 20:55:27 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=KarKDnAdc5ICiKgriHUs+5HIqBDCfuIyL8uoPMfdtgg=; b=ur4gJ0F4o1/TWO3SHQnYnth3Yi
-        zibcyPEy9vabUq9Bi7uSwmrb5LEhyXMLqQBHOPcEhnMdb1df+8ue1EV1/S0LivBGHEzvrjh1bmQfO
-        WY7Hx6D0GILcyJWTHNMC6Bwp1i2zJUCwtEGYIVbbA777fGlsZyuRqFw96x9koSqlMmPXtL/zUzXUE
-        OSJITXRpnTgZv19m7/9aigyvZamxYnHeKARFvjV+mQsBai0Gr2YtlZok1NtsZO95bx/GjzYD5k1KK
-        mN1DID+3DD8SxcRU2pyiiFnLN7PoZfz0wY5Y4u8aaw4GxdHc7Mk5dqsQwUCi2Th4SnqlPYHkReDIZ
-        2SlqcDLw==;
+        bh=dJKZzviGYlfiGYN+f/pIQkUos4W3rI9n2ymwoSwEN4E=; b=O8wuDQaNnlTjc1xtfxNp+u8rnS
+        Ap0eYMhkM967U5HZdWTHyw9vqDYUSM1YXM6dXL7PDULiwGZyXgTNUuq20ah7k8RpTu2V3Y3Yb7KxP
+        3BPPsSUZAoDFil2dDgaLEKI28kZU5lm6PL/C9fSTnIhsGuNvt9c+nsAR7LYUGmUOt0m1t8WnhXny6
+        /gL8+3hrg3NbDijiSmztoUEzENKXaxhO/F/7M+zgh4i7e51x4V7G53dgRW7qsSF91Sj+4dGKCXiWZ
+        MgypbL7Dz0Fgms3laHpwK4wCk13rQHseo/6VYw2dbuGNshjlyw1mDcH4iHHmyV40rt/bB8K5007ha
+        AURiAvkw==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qJnQA-00HMre-81; Thu, 13 Jul 2023 03:55:14 +0000
+        id 1qJnQA-00HMro-Mn; Thu, 13 Jul 2023 03:55:14 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -34,9 +34,9 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
         ntfs3@lists.linux.dev, "Theodore Tso" <tytso@mit.edu>,
         Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org
-Subject: [PATCH 1/7] highmem: Add memcpy_to_folio() and memcpy_from_folio()
-Date:   Thu, 13 Jul 2023 04:55:06 +0100
-Message-Id: <20230713035512.4139457-2-willy@infradead.org>
+Subject: [PATCH 6/7] jbd2: Use a folio in jbd2_journal_write_metadata_buffer()
+Date:   Thu, 13 Jul 2023 04:55:11 +0100
+Message-Id: <20230713035512.4139457-7-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230713035512.4139457-1-willy@infradead.org>
 References: <20230713035512.4139457-1-willy@infradead.org>
@@ -46,68 +46,104 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-These are the folio equivalent of memcpy_to_page() and memcpy_from_page().
+The primary goal here is removing the use of set_bh_page().
+Take the opportunity to switch from kmap_atomic() to kmap_local().
+This simplifies the function as the offset is already added to
+the pointer.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- include/linux/highmem.h | 44 +++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 44 insertions(+)
+ fs/jbd2/journal.c | 35 ++++++++++++++++-------------------
+ 1 file changed, 16 insertions(+), 19 deletions(-)
 
-diff --git a/include/linux/highmem.h b/include/linux/highmem.h
-index 68da30625a6c..0280f57d4744 100644
---- a/include/linux/highmem.h
-+++ b/include/linux/highmem.h
-@@ -439,6 +439,50 @@ static inline void memzero_page(struct page *page, size_t offset, size_t len)
- 	kunmap_local(addr);
- }
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index fbce16fedaa4..1b5a45ab62b0 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -341,7 +341,7 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ 	int do_escape = 0;
+ 	char *mapped_data;
+ 	struct buffer_head *new_bh;
+-	struct page *new_page;
++	struct folio *new_folio;
+ 	unsigned int new_offset;
+ 	struct buffer_head *bh_in = jh2bh(jh_in);
+ 	journal_t *journal = transaction->t_journal;
+@@ -370,14 +370,14 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ 	 */
+ 	if (jh_in->b_frozen_data) {
+ 		done_copy_out = 1;
+-		new_page = virt_to_page(jh_in->b_frozen_data);
+-		new_offset = offset_in_page(jh_in->b_frozen_data);
++		new_folio = virt_to_folio(jh_in->b_frozen_data);
++		new_offset = offset_in_folio(new_folio, jh_in->b_frozen_data);
+ 	} else {
+-		new_page = jh2bh(jh_in)->b_page;
+-		new_offset = offset_in_page(jh2bh(jh_in)->b_data);
++		new_folio = jh2bh(jh_in)->b_folio;
++		new_offset = offset_in_folio(new_folio, jh2bh(jh_in)->b_data);
+ 	}
  
-+static inline void memcpy_from_folio(char *to, struct folio *folio,
-+		size_t offset, size_t len)
-+{
-+	VM_BUG_ON(offset + len > folio_size(folio));
-+
-+	do {
-+		char *from = kmap_local_folio(folio, offset);
-+		size_t chunk = len;
-+
-+		if (folio_test_highmem(folio) &&
-+		    (chunk > (PAGE_SIZE - offset_in_page(offset))))
-+			chunk = PAGE_SIZE - offset_in_page(offset);
-+		memcpy(to, from, len);
-+		kunmap_local(from);
-+
-+		from += chunk;
-+		offset += chunk;
-+		len -= chunk;
-+	} while (len > 0);
-+}
-+
-+static inline void memcpy_to_folio(struct folio *folio, size_t offset,
-+		const char *from, size_t len)
-+{
-+	VM_BUG_ON(offset + len > folio_size(folio));
-+
-+	do {
-+		char *to = kmap_local_folio(folio, offset);
-+		size_t chunk = len;
-+
-+		if (folio_test_highmem(folio) &&
-+		    (chunk > (PAGE_SIZE - offset_in_page(offset))))
-+			chunk = PAGE_SIZE - offset_in_page(offset);
-+		memcpy(to, from, len);
-+		kunmap_local(to);
-+
-+		from += chunk;
-+		offset += chunk;
-+		len -= chunk;
-+	} while (len > 0);
-+
-+	flush_dcache_folio(folio);
-+}
-+
- /**
-  * memcpy_from_file_folio - Copy some bytes from a file folio.
-  * @to: The destination buffer.
+-	mapped_data = kmap_atomic(new_page);
++	mapped_data = kmap_local_folio(new_folio, new_offset);
+ 	/*
+ 	 * Fire data frozen trigger if data already wasn't frozen.  Do this
+ 	 * before checking for escaping, as the trigger may modify the magic
+@@ -385,18 +385,17 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ 	 * data in the buffer.
+ 	 */
+ 	if (!done_copy_out)
+-		jbd2_buffer_frozen_trigger(jh_in, mapped_data + new_offset,
++		jbd2_buffer_frozen_trigger(jh_in, mapped_data,
+ 					   jh_in->b_triggers);
+ 
+ 	/*
+ 	 * Check for escaping
+ 	 */
+-	if (*((__be32 *)(mapped_data + new_offset)) ==
+-				cpu_to_be32(JBD2_MAGIC_NUMBER)) {
++	if (*((__be32 *)mapped_data) == cpu_to_be32(JBD2_MAGIC_NUMBER)) {
+ 		need_copy_out = 1;
+ 		do_escape = 1;
+ 	}
+-	kunmap_atomic(mapped_data);
++	kunmap_local(mapped_data);
+ 
+ 	/*
+ 	 * Do we need to do a data copy?
+@@ -417,12 +416,10 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ 		}
+ 
+ 		jh_in->b_frozen_data = tmp;
+-		mapped_data = kmap_atomic(new_page);
+-		memcpy(tmp, mapped_data + new_offset, bh_in->b_size);
+-		kunmap_atomic(mapped_data);
++		memcpy_from_folio(tmp, new_folio, new_offset, bh_in->b_size);
+ 
+-		new_page = virt_to_page(tmp);
+-		new_offset = offset_in_page(tmp);
++		new_folio = virt_to_folio(tmp);
++		new_offset = offset_in_folio(new_folio, tmp);
+ 		done_copy_out = 1;
+ 
+ 		/*
+@@ -438,12 +435,12 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ 	 * copying, we can finally do so.
+ 	 */
+ 	if (do_escape) {
+-		mapped_data = kmap_atomic(new_page);
+-		*((unsigned int *)(mapped_data + new_offset)) = 0;
+-		kunmap_atomic(mapped_data);
++		mapped_data = kmap_local_folio(new_folio, new_offset);
++		*((unsigned int *)mapped_data) = 0;
++		kunmap_local(mapped_data);
+ 	}
+ 
+-	set_bh_page(new_bh, new_page, new_offset);
++	folio_set_bh(new_bh, new_folio, new_offset);
+ 	new_bh->b_size = bh_in->b_size;
+ 	new_bh->b_bdev = journal->j_dev;
+ 	new_bh->b_blocknr = blocknr;
 -- 
 2.39.2
 
