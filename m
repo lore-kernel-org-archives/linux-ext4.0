@@ -2,30 +2,30 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F376C001E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jul 2023 03:55:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2046FC001DF
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jul 2023 03:55:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233762AbjGMDzi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Jul 2023 23:55:38 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53864 "EHLO
+        id S233769AbjGMDzh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Jul 2023 23:55:37 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53836 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232036AbjGMDze (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jul 2023 23:55:34 -0400
+        with ESMTP id S232167AbjGMDzb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jul 2023 23:55:31 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6C9611FEE;
-        Wed, 12 Jul 2023 20:55:33 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BC7EF1FD7;
+        Wed, 12 Jul 2023 20:55:30 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-        Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:Content-ID:
-        Content-Description:In-Reply-To:References;
-        bh=jhgPtDmYYOVv+edSxa1VnGYvAPEvu+uXYOqgq3fjTTY=; b=mT6ncVRduE6uK+2JV6NnGf9oby
-        hkBuLFodEFApteZyC11j/xmfVGsn6iGS+DxvH2rHW9Os1KznCMCPTdEgr3sX7UkQWzEp21NPYmIbX
-        K6hmv9UIp+OaFOnzrAGAagOdAjQ2Ttg1CHbR7Xjx2G5Blv5lMR0ictbeRdjRRqafNQtl8ACvltNCA
-        1blLSWPKKXy628i3Llp9v5Tgs1Nrj1zQnFMOSVr5/0xzfW06HVeKqblGX1d25ikvVqLEwJi8L8UiB
-        yvTldA8MC4r8gW2Yj4JM47U8jl4F5aHlbgFm1EKiFbjmb14JoCJckT2iwPKm6uMoxwzFFZ2fJXEXf
-        /6+vzZ3g==;
+        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
+        Content-Type:Content-ID:Content-Description;
+        bh=elFZct2zLYsO/DhALW8T/PkTJ32hYfvGI0lmoYqZOm8=; b=fCiRDDQ0vsrg84r3mAsPC/UJja
+        5X9ojaJStev+XTF+eZJYbr17rKhQEEX9Ks9wL4MCB6e7OI6ojgep5XBSuh/DBw8cfgfEvy2BmKc6u
+        Li69Ba8gh1z058APNhZq5Aim+JeSvfn8oczbZ4uMvAO4v7izUuF/mdeN/YyX/c+/D3ShMIyWMhaHy
+        t7H/nzZ29DsCV9n+Duqfz91bmWB+fVjVvJVRGMp+cqXowLegsfEb7Q9RgjYONN/HJhfmvQwB4DFzh
+        AK67mENltmR7LSdQ2RuuBlSfxaQqWnviR/iXAJKzBqP6VDC98loO+gHarV82dAFbYyh5TW3hzlwdr
+        Fwca4Cew==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qJnQA-00HMrc-52; Thu, 13 Jul 2023 03:55:14 +0000
+        id 1qJnQA-00HMrq-Qg; Thu, 13 Jul 2023 03:55:14 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -34,41 +34,65 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
         ntfs3@lists.linux.dev, "Theodore Tso" <tytso@mit.edu>,
         Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org
-Subject: [PATCH 0/7] More filesystem folio conversions for 6.6
-Date:   Thu, 13 Jul 2023 04:55:05 +0100
-Message-Id: <20230713035512.4139457-1-willy@infradead.org>
+Subject: [PATCH 7/7] buffer: Remove set_bh_page()
+Date:   Thu, 13 Jul 2023 04:55:12 +0100
+Message-Id: <20230713035512.4139457-8-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
+In-Reply-To: <20230713035512.4139457-1-willy@infradead.org>
+References: <20230713035512.4139457-1-willy@infradead.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Remove the only spots in affs which actually use a struct page; there
-are a few places where one is mentioned, but it's part of the interface.
+With all users converted to folio_set_bh(), remove this function.
 
-The rest of this is removing the remaining calls to set_bh_page(),
-and then removing the function before any new users show up.
+Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+---
+ fs/buffer.c                 | 15 ---------------
+ include/linux/buffer_head.h |  2 --
+ 2 files changed, 17 deletions(-)
 
-Matthew Wilcox (Oracle) (7):
-  highmem: Add memcpy_to_folio() and memcpy_from_folio()
-  affs: Convert affs_symlink_read_folio() to use the folio
-  affs: Convert data read and write to use folios
-  migrate: Use folio_set_bh() instead of set_bh_page()
-  ntfs3: Convert ntfs_get_block_vbo() to use a folio
-  jbd2: Use a folio in jbd2_journal_write_metadata_buffer()
-  buffer: Remove set_bh_page()
-
- fs/affs/file.c              | 77 ++++++++++++++++++-------------------
- fs/affs/symlink.c           | 12 +++---
- fs/buffer.c                 | 15 --------
- fs/jbd2/journal.c           | 35 ++++++++---------
- fs/ntfs3/inode.c            | 10 ++---
- include/linux/buffer_head.h |  2 -
- include/linux/highmem.h     | 44 +++++++++++++++++++++
- mm/migrate.c                |  2 +-
- 8 files changed, 109 insertions(+), 88 deletions(-)
-
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 587e4d4af9de..f0563ebae75f 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -1539,21 +1539,6 @@ void invalidate_bh_lrus_cpu(void)
+ 	bh_lru_unlock();
+ }
+ 
+-void set_bh_page(struct buffer_head *bh,
+-		struct page *page, unsigned long offset)
+-{
+-	bh->b_page = page;
+-	BUG_ON(offset >= PAGE_SIZE);
+-	if (PageHighMem(page))
+-		/*
+-		 * This catches illegal uses and preserves the offset:
+-		 */
+-		bh->b_data = (char *)(0 + offset);
+-	else
+-		bh->b_data = page_address(page) + offset;
+-}
+-EXPORT_SYMBOL(set_bh_page);
+-
+ void folio_set_bh(struct buffer_head *bh, struct folio *folio,
+ 		  unsigned long offset)
+ {
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index a7377877ff4e..06566aee94ca 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -194,8 +194,6 @@ void buffer_check_dirty_writeback(struct folio *folio,
+ void mark_buffer_dirty(struct buffer_head *bh);
+ void mark_buffer_write_io_error(struct buffer_head *bh);
+ void touch_buffer(struct buffer_head *bh);
+-void set_bh_page(struct buffer_head *bh,
+-		struct page *page, unsigned long offset);
+ void folio_set_bh(struct buffer_head *bh, struct folio *folio,
+ 		  unsigned long offset);
+ bool try_to_free_buffers(struct folio *);
 -- 
 2.39.2
 
