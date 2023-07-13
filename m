@@ -2,89 +2,71 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E41BEB64DD
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 Jul 2023 21:26:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F682EB64DD
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jul 2023 03:55:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229636AbjGLV0N (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Jul 2023 17:26:13 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48542 "EHLO
+        id S233520AbjGMDzX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Jul 2023 23:55:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53810 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229473AbjGLV0M (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jul 2023 17:26:12 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B153CCF
-        for <linux-ext4@vger.kernel.org>; Wed, 12 Jul 2023 14:26:10 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-173-48-82-193.bstnma.fios.verizon.net [173.48.82.193])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 36CLPva0018858
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 12 Jul 2023 17:25:58 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1689197159; bh=RwWQLMaX2MoBOl5ry57wnXU6qCPKEzTD7QWyoGJjf6M=;
-        h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-        b=JXBTYpBZR/xRt+J1w2Upg2lBNAb/N/0JTRg1zn2jcwInGczg2J6abjd0oYvOVhbXR
-         XfgiwFUicXcNZUtGq0MDEBA0SheA8lEGnyAnbQIAcGaKk2pFRQD2FxoE2XTslF8441
-         nrhyKDolLWXMfs1OIxICAvmzVdjWVrhYjMCb7oHzsAL6soluidgB90f72OIMQrSyLH
-         8xjVOX/9T+ICZSqObGj8K1iuL1S0FaV9pnZRWTkiRd863frMtzDWv/ddCTMwILmz7B
-         RNaup0laRbdrSO4apL9kVnINzs54NnCW3/MEJMb+HMFUWSXPW0g4uFllj6dXv5KJ3Q
-         ZALvjxzKZUykg==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 1180915C0280; Wed, 12 Jul 2023 17:25:57 -0400 (EDT)
-Date:   Wed, 12 Jul 2023 17:25:57 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Jeff Layton <jlayton@kernel.org>
-Cc:     brauner@kernel.org, Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: fix decoding of raw_inode timestamps
-Message-ID: <20230712212557.GE3432379@mit.edu>
-References: <20230712150251.163790-1-jlayton@kernel.org>
- <20230712175258.GB3677745@mit.edu>
- <4c29c4e8f88509b2f8e8c08197dba8cfeb07c045.camel@kernel.org>
+        with ESMTP id S232133AbjGMDzW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jul 2023 23:55:22 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7F5BB1BF2;
+        Wed, 12 Jul 2023 20:55:20 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
+        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
+        Content-Type:Content-ID:Content-Description;
+        bh=W0UYXwWjWGda5omCDxw1jAlh390Lk5TbGcfd3nEU6uE=; b=LRqHvclw5T4FaH8TRmIhenQus/
+        ki6KdHGC98/kq7B7fdscjEH+dx/6NClTrk+nPnZo2txh+X0ura3Z57FPxOmRqZYaKu1IBBgBp3Stj
+        udId/40CzjMN71gdsy9O489V0KjWEY3t+BDw6lWN2LSPPCsm63yiP3XRiIPA+tlDmsQy0B4CJ8sQA
+        lErTqVmfPayPxj6jzEE1IkakDLp+7G/JhdTBnJ+4ErBpIGFFt78zD34/oRemUcsvy8HOKVxiEXnc8
+        V8WL/M/E3P4RUIJU69kXS5jJRFWQe4iTfyPOqPenlw+PtcmmnAQICVsH3UnAfg4Ool8Na71sQyvDm
+        NmA+BO0Q==;
+Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1qJnQA-00HMrk-Gp; Thu, 13 Jul 2023 03:55:14 +0000
+From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
+To:     Andrew Morton <akpm@linux-foundation.org>
+Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        David Sterba <dsterba@suse.com>, linux-fsdevel@vger.kernel.org,
+        Pankaj Raghav <p.raghav@samsung.com>,
+        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+        ntfs3@lists.linux.dev, "Theodore Tso" <tytso@mit.edu>,
+        Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org
+Subject: [PATCH 4/7] migrate: Use folio_set_bh() instead of set_bh_page()
+Date:   Thu, 13 Jul 2023 04:55:09 +0100
+Message-Id: <20230713035512.4139457-5-willy@infradead.org>
+X-Mailer: git-send-email 2.37.1
+In-Reply-To: <20230713035512.4139457-1-willy@infradead.org>
+References: <20230713035512.4139457-1-willy@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <4c29c4e8f88509b2f8e8c08197dba8cfeb07c045.camel@kernel.org>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Jul 12, 2023 at 02:09:59PM -0400, Jeff Layton wrote:
-> 
-> No, I haven't. I'm running fstests on it now. Is there a quickstart for
-> running those tests?
+This function was converted before folio_set_bh() existed.  Catch
+up to the new API.
 
-At the top level kernel sources:
+Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+---
+ mm/migrate.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-./tools/testing/kunit/kunit.py  run --kunitconfig ./fs/ext4/.kunitconfig
+diff --git a/mm/migrate.c b/mm/migrate.c
+index af8557d78549..1363053894ce 100644
+--- a/mm/migrate.c
++++ b/mm/migrate.c
+@@ -773,7 +773,7 @@ static int __buffer_migrate_folio(struct address_space *mapping,
+ 
+ 	bh = head;
+ 	do {
+-		set_bh_page(bh, &dst->page, bh_offset(bh));
++		folio_set_bh(bh, dst, bh_offset(bh));
+ 		bh = bh->b_this_page;
+ 	} while (bh != head);
+ 
+-- 
+2.39.2
 
-You should get:
-
-[17:23:09] Starting KUnit Kernel (1/1)...
-[17:23:09] ============================================================
-[17:23:09] =============== ext4_inode_test (1 subtest) ================
-[17:23:09] ============= inode_test_xtimestamp_decoding  ==============
-[17:23:09] [PASSED] 1901-12-13 Lower bound of 32bit < 0 timestamp, no extra bits
-[17:23:09] [PASSED] 1969-12-31 Upper bound of 32bit < 0 timestamp, no extra bits
-[17:23:09] [PASSED] 1970-01-01 Lower bound of 32bit >=0 timestamp, no extra bits
-[17:23:09] [PASSED] 2038-01-19 Upper bound of 32bit >=0 timestamp, no extra bits
-[17:23:09] [PASSED] 2038-01-19 Lower bound of 32bit <0 timestamp, lo extra sec bit on
-[17:23:09] [PASSED] 2106-02-07 Upper bound of 32bit <0 timestamp, lo extra sec bit on
-[17:23:09] [PASSED] 2106-02-07 Lower bound of 32bit >=0 timestamp, lo extra sec bit on
-[17:23:09] [PASSED] 2174-02-25 Upper bound of 32bit >=0 timestamp, lo extra sec bit on
-[17:23:09] [PASSED] 2174-02-25 Lower bound of 32bit <0 timestamp, hi extra sec bit on
-[17:23:09] [PASSED] 2242-03-16 Upper bound of 32bit <0 timestamp, hi extra sec bit on
-[17:23:09] [PASSED] 2242-03-16 Lower bound of 32bit >=0 timestamp, hi extra sec bit on
-[17:23:09] [PASSED] 2310-04-04 Upper bound of 32bit >=0 timestamp, hi extra sec bit on
-[17:23:09] [PASSED] 2310-04-04 Upper bound of 32bit>=0 timestamp, hi extra sec bit 1. 1 ns
-[17:23:09] [PASSED] 2378-04-22 Lower bound of 32bit>= timestamp. Extra sec bits 1. Max ns
-[17:23:09] [PASSED] 2378-04-22 Lower bound of 32bit >=0 timestamp. All extra sec bits on
-[17:23:09] [PASSED] 2446-05-10 Upper bound of 32bit >=0 timestamp. All extra sec bits on
-[17:23:09] ========= [PASSED] inode_test_xtimestamp_decoding ==========
-[17:23:09] ================= [PASSED] ext4_inode_test =================
-[17:23:09] ============================================================
-[17:23:09] Testing complete. Ran 16 tests: passed: 16
-[17:23:09] Elapsed time: 1.943s total, 0.001s configuring, 1.777s building, 0.123s running
-
-	   	   	 	       	      		   - Ted
