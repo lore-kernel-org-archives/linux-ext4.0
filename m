@@ -2,65 +2,75 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 33DF9EB64DD
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jul 2023 13:11:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8DAB1EB64DD
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jul 2023 13:20:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235053AbjGMNLP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 13 Jul 2023 09:11:15 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47362 "EHLO
+        id S234797AbjGMNUL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 13 Jul 2023 09:20:11 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51426 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235030AbjGMNLE (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jul 2023 09:11:04 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 75FB626B7
-        for <linux-ext4@vger.kernel.org>; Thu, 13 Jul 2023 06:10:45 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-173-48-82-193.bstnma.fios.verizon.net [173.48.82.193])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 36DD4Yae032398
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 13 Jul 2023 09:04:35 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1689253477; bh=PGVfdLiaNeKOXqYS5SmpsfHRuIUBYAsAVs4H4eKxHjo=;
-        h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-        b=qVBOD2Pg/gEM3y272JLVo2EM58aIUkX0eb1bATEh11Pw97tdxd0l7Zwg1GEvRx9cs
-         8QXJdio8RkTj5bWqzs3rkheYIpJJt9n7TQeftRNQjCar8iWTjw3M4LWe4PQpd0kUSy
-         s7yC00OUKAZSpac6oclkyNu+EPOMN4+LVHrbHFhq7OebbOt4JBmfLnvURe1fqf0Qei
-         +W8fmCfk9rYw7TG+fh25lr5um+mmk+pUDjMHMx5fql/3lctkx59LvbFaw6DIWINihZ
-         FVbUoO3zPqwf9nHgHR5QXNLGQeLoalcKy7l0mv5W3rF5+pZKlJ4OWVZUh0eXVyiwmd
-         AW61Za+UGV3qQ==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 9F7B315C0280; Thu, 13 Jul 2023 09:04:34 -0400 (EDT)
-Date:   Thu, 13 Jul 2023 09:04:34 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Jeff Layton <jlayton@kernel.org>
+        with ESMTP id S234147AbjGMNT5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jul 2023 09:19:57 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D06943A92;
+        Thu, 13 Jul 2023 06:19:23 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 75B12612FC;
+        Thu, 13 Jul 2023 13:19:06 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 30BDBC433C9;
+        Thu, 13 Jul 2023 13:19:05 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1689254345;
+        bh=u+5xkBeFRP9d+V4EON2W5LWepmKPQK26vIycq1UicY8=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=SSucd0pvRsFGNDCth1I7okGhuxvslol13Ph+SYHwpCQPigK2ghsxDQZKN9exJOkCA
+         ZHunCUppQcELNUs7VCTOJXtSBUvDYB6SzSZDlT1ab1gsvTHCfizcYr9kYIJ7z79pIw
+         F+De+4y/7GmH4N9egMGBM98x4ndWJ+rWbLbHTCeHgnI3B/vQmlyaKu5a9JSXfh37z+
+         LStZelGsKSLvDgjiTpxwbUkgc+bJNsF4LNkcJr7r/K/56wgFuG55mt/sDiaDnlKLmv
+         0EmBFVBXZiEIQ1YMFE1NWEq7vlowL8BVdvA2azLbxtbqf5MfaKj9ZouX9tP2UVSZSi
+         JLITbtARJV1Hg==
+Message-ID: <6097b2118e820af8d9ffee6b663c4e260158d62a.camel@kernel.org>
+Subject: Re: [PATCH] ext4: fix decoding of raw_inode timestamps
+From:   Jeff Layton <jlayton@kernel.org>
+To:     Theodore Ts'o <tytso@mit.edu>
 Cc:     brauner@kernel.org, Andreas Dilger <adilger.kernel@dilger.ca>,
         Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: fix decoding of raw_inode timestamps
-Message-ID: <20230713130434.GA3724752@mit.edu>
+Date:   Thu, 13 Jul 2023 09:19:03 -0400
+In-Reply-To: <20230713130434.GA3724752@mit.edu>
 References: <20230712150251.163790-1-jlayton@kernel.org>
- <20230712175258.GB3677745@mit.edu>
- <4c29c4e8f88509b2f8e8c08197dba8cfeb07c045.camel@kernel.org>
- <20230712212557.GE3432379@mit.edu>
- <11bef51bf7fed6082f41a9ecde341b46c0c3e0ec.camel@kernel.org>
+         <20230712175258.GB3677745@mit.edu>
+         <4c29c4e8f88509b2f8e8c08197dba8cfeb07c045.camel@kernel.org>
+         <20230712212557.GE3432379@mit.edu>
+         <11bef51bf7fed6082f41a9ecde341b46c0c3e0ec.camel@kernel.org>
+         <20230713130434.GA3724752@mit.edu>
+Content-Type: text/plain; charset="ISO-8859-15"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.48.4 (3.48.4-1.fc38) 
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <11bef51bf7fed6082f41a9ecde341b46c0c3e0ec.camel@kernel.org>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Jul 13, 2023 at 06:48:04AM -0400, Jeff Layton wrote:
-> 
-> The above output is what I get with the fix in place. Without this
-> patch, I get: ...
+On Thu, 2023-07-13 at 09:04 -0400, Theodore Ts'o wrote:
+> On Thu, Jul 13, 2023 at 06:48:04AM -0400, Jeff Layton wrote:
+> >=20
+> > The above output is what I get with the fix in place. Without this
+> > patch, I get: ...
+>=20
+> Thanks!!  It's good to know the _one_ kunit test we have is capable of
+> detecting this.  We have a patch series lined up to add our *second*
+> unit test (for the block allocator) for the next merge window, and
+> while our unit test coverage is still quite small, it's nice to know
+> that it can detect problems --- and much faster than running xfstests.  :=
+-}
+>=20
 
-Thanks!!  It's good to know the _one_ kunit test we have is capable of
-detecting this.  We have a patch series lined up to add our *second*
-unit test (for the block allocator) for the next merge window, and
-while our unit test coverage is still quite small, it's nice to know
-that it can detect problems --- and much faster than running xfstests.  :-}
-
-     	    	   	    	    	 	- Ted
+Yeah, it's pretty quick! I need to consider adding some tests for some
+other areas that are difficult to view outside the kernel (the errseq_t
+infrastructure comes to mind).
+--=20
+Jeff Layton <jlayton@kernel.org>
