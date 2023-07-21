@@ -2,95 +2,217 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C6979EB64DC
-	for <linux-ext4@archiver.kernel.org>; Fri, 21 Jul 2023 09:09:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 799BCEB64DC
+	for <linux-ext4@archiver.kernel.org>; Fri, 21 Jul 2023 09:13:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231631AbjGUJJw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 21 Jul 2023 05:09:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34442 "EHLO
+        id S231304AbjGUJNm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 21 Jul 2023 05:13:42 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38954 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231441AbjGUJJo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Jul 2023 05:09:44 -0400
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A8F1D1984;
-        Fri, 21 Jul 2023 02:09:43 -0700 (PDT)
-Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4R6kJx5GS3z4f3s6V;
-        Fri, 21 Jul 2023 17:09:37 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgAHvrFPS7pkqi7fOQ--.527S12;
-        Fri, 21 Jul 2023 17:09:40 +0800 (CST)
-From:   Kemeng Shi <shikemeng@huaweicloud.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, ritesh.list@gmail.com,
-        ojaswin@linux.ibm.com, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Cc:     shikemeng@huaweicloud.com
-Subject: [PATCH 10/10] ext4: correct some stale comment of criteria
-Date:   Sat, 22 Jul 2023 01:10:07 +0800
-Message-Id: <20230721171007.2065423-11-shikemeng@huaweicloud.com>
-X-Mailer: git-send-email 2.30.0
-In-Reply-To: <20230721171007.2065423-1-shikemeng@huaweicloud.com>
-References: <20230721171007.2065423-1-shikemeng@huaweicloud.com>
+        with ESMTP id S230465AbjGUJNl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Jul 2023 05:13:41 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B47EA30E2;
+        Fri, 21 Jul 2023 02:13:16 -0700 (PDT)
+Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.53])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4R6kNC2nwXzrRrv;
+        Fri, 21 Jul 2023 17:12:27 +0800 (CST)
+Received: from [10.174.177.174] (10.174.177.174) by
+ dggpeml500021.china.huawei.com (7.185.36.21) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.27; Fri, 21 Jul 2023 17:13:13 +0800
+Message-ID: <c9cde644-f757-2d72-6ac6-d5cfb1e43da5@huawei.com>
+Date:   Fri, 21 Jul 2023 17:13:13 +0800
 MIME-Version: 1.0
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101
+ Thunderbird/102.1.2
+Subject: Re: [PATCH 2/4] ext4: fix BUG in ext4_mb_new_inode_pa() due to
+ overflow
+Content-Language: en-US
+To:     <tytso@mit.edu>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+        <linux-ext4@vger.kernel.org>
+CC:     <adilger.kernel@dilger.ca>, <jack@suse.cz>,
+        <ojaswin@linux.ibm.com>, <linux-kernel@vger.kernel.org>,
+        <yi.zhang@huawei.com>, <yangerkun@huawei.com>, <yukuai3@huawei.com>
+References: <87lef9lljt.fsf@doe.com>
+From:   Baokun Li <libaokun1@huawei.com>
+In-Reply-To: <87lef9lljt.fsf@doe.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgAHvrFPS7pkqi7fOQ--.527S12
-X-Coremail-Antispam: 1UD129KBjvJXoWrury8Xr1rGF17Aw4DWFWDXFb_yoW8JrW5pr
-        13KFyxGF1fXw15ua1Du3WkWw4Dua1xWFyUJrySvr4FvFy3JFWfuayDtFykZry8AFs3Xw1Y
-        yrW5ZFW7G3WUu37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUPF14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
-        0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
-        rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6x
-        IIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xv
-        wVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFc
-        xC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_
-        Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2
-        IErcIFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
-        14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIx
-        kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAF
-        wI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JV
-        WxJwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjTRKfOw
-        UUUUU
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
+X-Originating-IP: [10.174.177.174]
+X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
+ dggpeml500021.china.huawei.com (7.185.36.21)
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-We named criteria with CR_XXX, correct stale comment to criteria with
-raw number.
+On 2023/7/21 16:24, Ritesh Harjani (IBM) wrote:
+> Baokun Li <libaokun1@huawei.com> writes:
+>
+>> On 2023/7/21 3:30, Ritesh Harjani (IBM) wrote:
+>>>>> I would like to carefully review all such paths. I will soon review and
+>>>>> get back.
+>>>> Okay, thank you very much for your careful review.
+>>>> The 2nd and 3rd cases of adjusting the best extent are impossible to
+>>>> overflow,
+>>>> so only the first case is converted here.
+>>> I noticed them too during review. I think it would be safe to make the
+>>> changes in other two places as well such that in future we never
+>>> trip over such overlooked overflow bugs.
+>>>
+>>>>>> +		BUG_ON(new_bex_end >
+>>>>>> +			fex_end(sbi, &ac->ac_g_ex, &ac->ac_orig_goal_len));
+>>>>> I am not sure whether using fex_end or pa_end is any helpful.
+>>>>> I think we can just typecast if needed and keep it simple rather
+>>>>> than adding helpers functions for addition operation.
+>>>>> (because of the fact that fex_end() can take a third parameter which
+>>>>> sometimes you pass as NULL. Hence it doesn't look clean, IMO)
+>>>> I added the helper functions here for two reasons:
+>>>> 1. restricting the type of the return value.
+>>>> 2. This avoids the ugly line breaks in most cases.
+>>>>
+>>>> The fex_end() indeed doesn't look as clean as the pa_end(), because we
+>>>> might use
+>>>> the start of the free extent plus some other length to get a new end,
+>>>> like right in
+>>>> ext4_mb_new_inode_pa(), which makes me have to add another extra length
+>>>> argument, but I think it's worth it, and even with the addition of a
+>>>> parameter
+>>>> that will probably be unused, it still looks a lot shorter than the
+>>>> original code.
+>>> IMO, we don't need pa_end() and fex_end() at all. In several places in
+>>> ext4 we always have taken care by directly typecasting to avoid
+>>> overflows. Also it reads much simpler rather to typecast in place than
+>>> having a helper function which is also not very elegant due to a third
+>>> parameter. Hence I think we should drop those helpers.
+>> I still think helper is useful, but my previous thinking is problematic.
+>> I shouldn't
+>> make fex_end() adapt to ext4_mb_new_inode_pa(), but should make
+>> ext4_mb_new_inode_pa() adapt to fex_end(). After dropping the third argument
+>> of fex_end(), modify the ext4_mb_new_inode_pa() function as follows:
+> No. I think we are overly complicating it by doing this. IMHO we don't need
+> fex_end and pa_end at all here. With fex_end, pa_end, we are passing pointers,
+> updating it's members before and after sending it to these functions,
+> dereferencing them within those helpers.
+>
+> e.g. with your change it will look like
+> <snip>
+> 		struct ext4_free_extent ex = {
+> 			.fe_logical = ac->ac_g_ex.fe_logical;
+> 			.fe_len = ac->ac_orig_goal_len;
+> 		}
+>
+>          loff_t orig_goal_end = fex_end(sbi, &ex);
+> 		ex.fe_len = ac->ac_b_ex.fe_len;
+> 		ex.fe_logical = orig_goal_end - EXT4_C2B(sbi, ex.fe_len);
+> 		if (ac->ac_o_ex.fe_logical >= ex.fe_logical)
+> 			goto adjust_bex;
+> </snip>
+>
+> In above snip we introduced ex variable, updated it with
+> orig_goal_len, then called fex_end() to get orig_goal_end, then we again
+> updated ex.fe_len, but this time we didn't call fex_end instead we
+> needed it for getting ex.fe_logical. All of this is not needed at all.
+>
+> e.g. we should use just use (loff_t) wherever it was missed in the code.
+> <snip>
+> 		ext4_lblk_t new_bex_start;
+> 		loff_t new_bex_end;
+>
+> 		new_bex_end = (loff_t)ac->ac_g_ex.fe_logical +
+> 			EXT4_C2B(sbi, ac->ac_orig_goal_len);
+> 		new_bex_start = new_bex_end - EXT4_C2B(sbi, ac->ac_b_ex.fe_len);
+> 		if (ac->ac_o_ex.fe_logical >= new_bex_start)
+> 			goto adjust_bex;
+> </snip>
+>
+>
+> In this we just update (loff_t) and it reads better in my opinion then
+> using ex, fex_end() etc.
+>
+> In my opinion we should simply drop the helpers. It should be obvious
+> that while calculating logical end block for an inode in ext4 by doing
+> lstart + len, we should use loff_t.
+> Since it can be 1 more than the last block which a u32 can hold.
+> So wherever such calculations are made we should ensure the data
+> type of left hand operand should be loff_t and we should typecast the
+> right hand side operands such that there should not be any overflow
+> happening. We do at several places in ext4 already (also while doing
+> left-shifting (loff_t)map.m_lblk).
+>
+> Doing this with helpers, IMO is not useful as we also saw above.
 
-Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
----
- fs/ext4/mballoc.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+I still think it is necessary to add a helper to make the code more concise.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index b04eceeab967..e30494f3d289 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2778,8 +2778,8 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 
- 	/*
- 	 * ac->ac_2order is set only if the fe_len is a power of 2
--	 * if ac->ac_2order is set we also set criteria to 0 so that we
--	 * try exact allocation using buddy.
-+	 * if ac->ac_2order is set we also set criteria to CR_POWER2_ALIGNED
-+	 * so that we try exact allocation using buddy.
- 	 */
- 	i = fls(ac->ac_g_ex.fe_len);
- 	ac->ac_2order = 0;
-@@ -2836,8 +2836,8 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 			/*
- 			 * Batch reads of the block allocation bitmaps
- 			 * to get multiple READs in flight; limit
--			 * prefetching at cr=0/1, otherwise mballoc can
--			 * spend a lot of time loading imperfect groups
-+			 * prefetching at cr below CR_FAST, otherwise mballoc
-+			 * can spend a lot of time loading imperfect groups
- 			 */
- 			if ((prefetch_grp == group) &&
- 			    (cr >= CR_FAST ||
+
+Ted, do you think the fex_end() helper function is needed here?
+
+I think we might need your advice to end this discussion. 😅
+
+>>
+>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+>> index a2475b8c9fb5..7492ba9062f4 100644
+>> --- a/fs/ext4/mballoc.c
+>> +++ b/fs/ext4/mballoc.c
+>> @@ -5072,8 +5072,11 @@ ext4_mb_new_inode_pa(struct
+>> ext4_allocation_context *ac)
+>>           pa = ac->ac_pa;
+>>
+>>           if (ac->ac_b_ex.fe_len < ac->ac_orig_goal_len) {
+>> -               int new_bex_start;
+>> -               int new_bex_end;
+>> +               struct ext4_free_extent ex = {
+>> +                       .fe_logical = ac->ac_g_ex.fe_logical;
+>> +                       .fe_len = ac->ac_orig_goal_len;
+>> +               }
+>> +               loff_t orig_goal_end = fex_end(sbi, &ex);
+>>
+>>                   /* we can't allocate as much as normalizer wants.
+>>                    * so, found space must get proper lstart
+>> @@ -5092,29 +5095,23 @@ ext4_mb_new_inode_pa(struct
+>> ext4_allocation_context *ac)
+>>                    *    still cover original start
+>>                    * 3. Else, keep the best ex at start of original request.
+>>                    */
+>> -               new_bex_end = ac->ac_g_ex.fe_logical +
+>> -                       EXT4_C2B(sbi, ac->ac_orig_goal_len);
+>> -               new_bex_start = new_bex_end - EXT4_C2B(sbi,
+>> ac->ac_b_ex.fe_len);
+>> -               if (ac->ac_o_ex.fe_logical >= new_bex_start)
+>> -                       goto adjust_bex;
+>> +               ex.fe_len = ac->ac_b_ex.fe_len;
+>>
+>> -               new_bex_start = ac->ac_g_ex.fe_logical;
+>> -               new_bex_end =
+>> -                       new_bex_start + EXT4_C2B(sbi, ac->ac_b_ex.fe_len);
+>> -               if (ac->ac_o_ex.fe_logical < new_bex_end)
+>> +               ex.fe_logical = orig_goal_end - EXT4_C2B(sbi, ex.fe_len);
+>> +               if (ac->ac_o_ex.fe_logical >= ex.fe_logical)
+>>                           goto adjust_bex;
+>>
+>> -               new_bex_start = ac->ac_o_ex.fe_logical;
+>> -               new_bex_end =
+>> -                       new_bex_start + EXT4_C2B(sbi, ac->ac_b_ex.fe_len);
+>> +               ex.fe_logical = ac->ac_g_ex.fe_logical;
+>> +               if (ac->ac_o_ex.fe_logical < fex_end(sbi, &ex))
+>> +                       goto adjust_bex;
+>>
+>> +               ex.fe_logical = ac->ac_o_ex.fe_logical;
+>>    adjust_bex:
+>> -               ac->ac_b_ex.fe_logical = new_bex_start;
+>> +               ac->ac_b_ex.fe_logical = ex.fe_logical;
+>>
+>>                   BUG_ON(ac->ac_o_ex.fe_logical < ac->ac_b_ex.fe_logical);
+>>                   BUG_ON(ac->ac_o_ex.fe_len > ac->ac_b_ex.fe_len);
+>> -               BUG_ON(new_bex_end > (ac->ac_g_ex.fe_logical +
+>> -                                     EXT4_C2B(sbi, ac->ac_orig_goal_len)));
+>> +               BUG_ON(fex_end(sbi, &ex) > orig_goal_end);
+>>           }
+>>
+>>           pa->pa_lstart = ac->ac_b_ex.fe_logical;
+Thanks!
 -- 
-2.30.0
-
+With Best Regards,
+Baokun Li
+.
