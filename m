@@ -2,134 +2,96 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CD87DEB64DD
-	for <linux-ext4@archiver.kernel.org>; Fri, 21 Jul 2023 09:48:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D7FE8EB64DC
+	for <linux-ext4@archiver.kernel.org>; Fri, 21 Jul 2023 13:35:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231931AbjGUJsp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 21 Jul 2023 05:48:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59734 "EHLO
+        id S229518AbjGUNfs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 21 Jul 2023 09:35:48 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41596 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231810AbjGUJsT (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Jul 2023 05:48:19 -0400
-Received: from mail-wm1-x329.google.com (mail-wm1-x329.google.com [IPv6:2a00:1450:4864:20::329])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EF3D5E75
-        for <linux-ext4@vger.kernel.org>; Fri, 21 Jul 2023 02:47:42 -0700 (PDT)
-Received: by mail-wm1-x329.google.com with SMTP id 5b1f17b1804b1-3fbd200d354so46185e9.1
-        for <linux-ext4@vger.kernel.org>; Fri, 21 Jul 2023 02:47:42 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20221208; t=1689932852; x=1690537652;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=ZqfvFf9xIhxpdVCPq68g9SUDSB4UZpj++bvp7P1BZ+M=;
-        b=Rs/QeoKiPi4hI3mKDDNyqjtTECFzRbRAtgkIYuyw9ixHJOdVio+yxrf83nTF2gAyxw
-         Mn4U/4XE+ibLUJDVjxPPj9JzuzYCCUvpVPWBl5wNuxQ1hKHQm1ZNkrkTsco3hNPy1vVL
-         ecFupbNxTVnUOhNwTHoy0AniHF48zdL+AMtMBoAV1WW8IjNXSdlXlpqjrhlWhBLyhbPj
-         ssih0eyEjDhq69ySJTRp9wCOBj9Yku6JWLRZ7zjf9w0pl34VBADWz1KM4Fx+cEvC/sH+
-         +W7OcPzbeDxTPEw/wJN4K44HaBM0iD8XNU6lXuR+iT/X1pyXnLdyIEUSzeyKvkuVcrlz
-         ItfQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1689932852; x=1690537652;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=ZqfvFf9xIhxpdVCPq68g9SUDSB4UZpj++bvp7P1BZ+M=;
-        b=gKqpriRo8UvbfIQs9eq8GwZI8KzdB1QVuj2VAp7RM/UE1nFV/q1owuJ4dy027GDwGi
-         mmCV2SYLsl7JkTfk/ifszyiiQqEecjRWDbv08cVYBkn6N9GCIIuRKjy70YbHzg152gjQ
-         kaL64ptvlVqUQcrjSNKCmDbZmkNRtVRjGyx/HHSJTLD5szbLUzp4KwJPS8EaICNs7Rck
-         nyeUUxaqPhfWl0kcx3jpea88FhY7rRdsHCWtA3OeEHhXZjrk6bi0Z58OCSf5tU277qxL
-         ateuoBtfOf4TdYxAf3sDrlH3vdRCUSGN8BuPUsgGKMp7d1NKjufAe3HWoRMLhToILU3k
-         3nVg==
-X-Gm-Message-State: ABy/qLYF0YFNaqZFB5UUzRBXEUmWOuZr5Nm8scW6TIKruwIioyO8XANC
-        nKCLZ2W2r2uUlQI063dPKeqhmTpVAI07eLOB8CFdTk8gRe+LOGhklAwnAA==
-X-Google-Smtp-Source: APBJJlHsTNBMf/W59rloGf70oxm11BF5D1J5sg1xVvbOIBYTaXaLWanJ/vxpttr+FKfAALI+vCr16+8yKjCvMFsXcE8=
-X-Received: by 2002:a05:600c:1e08:b0:3f4:2736:b5eb with SMTP id
- ay8-20020a05600c1e0800b003f42736b5ebmr59334wmb.1.1689932852605; Fri, 21 Jul
- 2023 02:47:32 -0700 (PDT)
+        with ESMTP id S229752AbjGUNfq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Jul 2023 09:35:46 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 61F3C121
+        for <linux-ext4@vger.kernel.org>; Fri, 21 Jul 2023 06:35:45 -0700 (PDT)
+Received: from cwcc.thunk.org (pool-173-48-116-181.bstnma.fios.verizon.net [173.48.116.181])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 36LDZQFo003755
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 21 Jul 2023 09:35:27 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1689946529; bh=3EEcRPkd0RCJgKJqBYpNX5ax1tKBce8rGF0BzEn1KwQ=;
+        h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+        b=dSTyo3TGo/N35nO/x9E6UB7x3seRAOer+S+iTYCruoY06Gwmb8xfuZAzljAKh8iWN
+         lCDA6TM0fULhCMh+ORrUqmY5ZXZMK4hevVIFW3G/YE8en35h7kJIzNJwPGzjwQWMh9
+         ge6oUJvH9EWISfyVu95AFJns1BTTtLNjI7w135gZF/gd+P6bCyjyXhOgG+tU0Z+Ml8
+         7j2ZGT9SRLLHuNChYceW4S1LtU1hm2KcSQy4u/AJXyx1gtbInmUJgf05nGwgbBSMOr
+         BBVabsdgg3NY6L2QrsNiBTbkoNZjKVAyxxH7HTcAigCyWD7liEvB6Z3ik+JrOTV4TF
+         8CiRm6K3iw+zQ==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 8CD6A15C04D6; Fri, 21 Jul 2023 09:35:26 -0400 (EDT)
+Date:   Fri, 21 Jul 2023 09:35:26 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Martin Steigerwald <martin@lichtvoll.de>
+Cc:     "Alan C. Assis" <acassis@gmail.com>,
+        =?iso-8859-1?Q?Bj=F8rn?= Forsman <bjorn.forsman@gmail.com>,
+        Kai Tomerius <kai@tomerius.de>, linux-embedded@vger.kernel.org,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        dm-devel@redhat.com
+Subject: Re: Nobarrier mount option (was: Re: File system robustness)
+Message-ID: <20230721133526.GF5764@mit.edu>
+References: <20230717075035.GA9549@tomerius.de>
+ <4835096.GXAFRqVoOG@lichtvoll.de>
+ <20230720042034.GA5764@mit.edu>
+ <38426448.10thIPus4b@lichtvoll.de>
 MIME-Version: 1.0
-References: <000000000000c11ed40600e994b1@google.com> <000000000000d96eec0600fbea8f@google.com>
-In-Reply-To: <000000000000d96eec0600fbea8f@google.com>
-From:   Aleksandr Nogikh <nogikh@google.com>
-Date:   Fri, 21 Jul 2023 11:47:20 +0200
-Message-ID: <CANp29Y7Sgbfa5u-wSe1rTJiyKQb7d1GWcnTm+GZBvTcYdjvx-g@mail.gmail.com>
-Subject: Re: [syzbot] [ext4?] general protection fault in ep_poll_callback
-To:     syzbot <syzbot+c2b68bdf76e442836443@syzkaller.appspotmail.com>
-Cc:     adilger.kernel@dilger.ca, brauner@kernel.org, bvanassche@acm.org,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, mingo@kernel.org,
-        peterz@infradead.org, syzkaller-bugs@googlegroups.com,
-        tytso@mit.edu, viro@zeniv.linux.org.uk,
-        Dmitry Vyukov <dvyukov@google.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <38426448.10thIPus4b@lichtvoll.de>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Jul 21, 2023 at 11:30=E2=80=AFAM syzbot
-<syzbot+c2b68bdf76e442836443@syzkaller.appspotmail.com> wrote:
->
-> syzbot has bisected this issue to:
->
-> commit a0b0fd53e1e67639b303b15939b9c653dbe7a8c4
-> Author: Bart Van Assche <bvanassche@acm.org>
-> Date:   Thu Feb 14 23:00:46 2019 +0000
->
->     locking/lockdep: Free lock classes that are no longer in use
+On Thu, Jul 20, 2023 at 09:55:22AM +0200, Martin Steigerwald wrote:
+> 
+> I thought that nowadays a cache flush would be (almost) a no-op in the 
+> case the storage receiving it is backed by such reliability measures. 
+> I.e. that the hardware just says "I am ready" when having the I/O 
+> request in stable storage whatever that would be, even in case that 
+> would be battery backed NVRAM and/or temporary flash.
 
-No, that doesn't seem like a real cause commit.
+That *can* be true if the storage subsystem has the reliability
+measures.  For example, if have a $$$ EMC storage array, then sure, it
+has an internal UPS backup and it will know that it can ignore that
+CACHE FLUSH request.
 
->
-> bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=3D16c0c84ea8=
-0000
+However, if you have *building* a storage system, the storage device
+might be a HDD who has no idea that that it doesn't need to worry
+about power drops.  Consider if you will, a rack of servers, each with
+a dozen or more HDD's.  There is a rack-level battery backup, and the
+rack is located in a data center with diesel generators with enough
+fuel supply to keep the entire data center, plus cooling, going for
+days.  The rack of servers is part of a cluster file system.  So when
+a file write to a cluster file system is performed, the cluster file
+system will pick three servers, each in a different rack, and each
+rack is in a different power distribution domain.  That way, even the
+entry-level switch on the rack dies, or the Power Distribution Unit
+(PDU) servicing a group of racks blows up, the data will be available
+on the other two servers.
 
-The reproducer actually causes a lot of different crashes, which
-apparently confused the bisector.
+> At least that is what I thought was the background for not doing the 
+> "nobarrier" thing anymore: Let the storage below decide whether it is 
+> safe to basically ignore cache flushes by answering them (almost) 
+> immediately.
 
-run #0: crashed: general protection fault in ext4_finish_bio
-run #1: crashed: general protection fault in ext4_finish_bio
-run #2: crashed: KASAN: wild-memory-access Read in force_sig_info_to_task
-run #3: crashed: KASAN: wild-memory-access Read in force_sig_info_to_task
-run #4: crashed: BUG: unable to handle kernel paging request in __run_timer=
-s
-run #5: crashed: BUG: unable to handle kernel paging request in __run_timer=
-s
-run #6: crashed: general protection fault in mac80211_hwsim_netlink_notify
-run #7: crashed: general protection fault in mac80211_hwsim_netlink_notify
-run #8: crashed: general protection fault in __run_timers
-run #9: crashed: general protection fault in __run_timers
-run #10: crashed: KASAN: wild-memory-access Read in process_one_work
-run #11: crashed: KASAN: wild-memory-access Read in process_one_work
-run #12: crashed: general protection fault in timerqueue_del
-run #13: crashed: general protection fault in timerqueue_del
-run #14: crashed: kernel BUG in corrupted
-run #15: crashed: kernel BUG in corrupted
-run #16: crashed: general protection fault in mm_update_next_owner
-run #17: crashed: general protection fault in mm_update_next_owner
+The problem is that the storage below (e.g., the HDD) has no idea that
+all of this redundancy exists.  Only the system adminsitrator who is
+configuring the file sysetm will know.  And if you are runninig a
+hyper-scale cloud system, this kind of custom made system will be
+much, MUCH, cheaper than buying a huge number of $$$ EMC storage
+arrays.
 
-Isn't it a sign of a severe memory corruption caused by the reproducer?
+Cheers,
 
-
-> start commit:   bfa3037d8280 Merge tag 'fuse-update-6.5' of git://git.ker=
-n..
-> git tree:       upstream
-> final oops:     https://syzkaller.appspot.com/x/report.txt?x=3D15c0c84ea8=
-0000
-> console output: https://syzkaller.appspot.com/x/log.txt?x=3D11c0c84ea8000=
-0
-> kernel config:  https://syzkaller.appspot.com/x/.config?x=3D27e33fd2346a5=
-4b
-> dashboard link: https://syzkaller.appspot.com/bug?extid=3Dc2b68bdf76e4428=
-36443
-> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=3D111c904ea80=
-000
-> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=3D116b0faaa8000=
-0
->
-> Reported-by: syzbot+c2b68bdf76e442836443@syzkaller.appspotmail.com
-> Fixes: a0b0fd53e1e6 ("locking/lockdep: Free lock classes that are no long=
-er in use")
->
-> For information about bisection process see: https://goo.gl/tpsmEJ#bisect=
-ion
->
+					- Ted
