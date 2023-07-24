@@ -2,53 +2,53 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F3BA6C04E69
-	for <linux-ext4@archiver.kernel.org>; Mon, 24 Jul 2023 09:52:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2A054C0015E
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Jul 2023 09:54:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232640AbjGXJwi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 24 Jul 2023 05:52:38 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52886 "EHLO
+        id S232308AbjGXJyM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 24 Jul 2023 05:54:12 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52930 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232011AbjGXJwU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jul 2023 05:52:20 -0400
-Received: from mail-pg1-x531.google.com (mail-pg1-x531.google.com [IPv6:2607:f8b0:4864:20::531])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BFCF93C06
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Jul 2023 02:48:37 -0700 (PDT)
-Received: by mail-pg1-x531.google.com with SMTP id 41be03b00d2f7-51f64817809so327782a12.1
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Jul 2023 02:48:37 -0700 (PDT)
+        with ESMTP id S232758AbjGXJxJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jul 2023 05:53:09 -0400
+Received: from mail-pl1-x62a.google.com (mail-pl1-x62a.google.com [IPv6:2607:f8b0:4864:20::62a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1CCCF49C7
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Jul 2023 02:49:34 -0700 (PDT)
+Received: by mail-pl1-x62a.google.com with SMTP id d9443c01a7336-1b8c364ad3bso8860545ad.1
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Jul 2023 02:49:34 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1690192086; x=1690796886;
+        d=bytedance.com; s=google; t=1690192134; x=1690796934;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=ztwb9n/1dXh113w/8xubUIoix8VXd/5rqVT4RvFn/tw=;
-        b=Am7FnjS3Cpm4I6+unn47wV0WInP35j7cWyw7YSHmXYddBbEndaPLIOhBD501lhuXhz
-         ziS0uq23cHOpl1MZygPYTe8AuNvoAdPlGK8k32I3Ef9lRu2tiO1YjBbYZCD1R2rMLxT1
-         sbS7mgch7/EfOaLRKT3V6tvhfJSY21ngFnqMEHN8grEnjoqg0M6Q11qf7CVQTrHQJzW3
-         E1Q+qRl3oeLAaumIkMGruzrANQhf6ocLGFa54JS2CwGaWbDUA2Re4gbZJ2jDKM9ntSrw
-         dCSeZvHulgVnMl/ivIn59gXFxJS3Mnbl4ERIMhlA37amtawTgx9ciEfDapqLjZzr2ZBw
-         AsLQ==
+        bh=hg2vi+2AAPCRuQsciRtLylYUMTgaXzyfBXLGSnv8etw=;
+        b=aydgK7bn0QggjlQydoxB8/wzzA4TXTh5kAH1HczgG5x53kEUfwsZTHfAy7Oll8B5Eb
+         /u8m2Fx+yVNF796ZZc3s2XmC1YIubtCHa+WaPaj49PGcqhNB+vofNP25+pjGYzLsUBey
+         s8mU5+/TbPuzYxlgD12Kt4jsZqhjhd4Zmfvq3eYOMY75uxvK9h6vyhatsfe9xzUUvBHR
+         65A0XriwgvV356EN5StwdT8HNZN8xypzwNZbI9gp5ddxZgA9hT9j3WwIFAc65w94K4S5
+         JlPP5IHsQz3xceBVdVld1V5OEs83EDOwKVmAaZghdPj/BNMPCYQ+scOGPe5A3YPCuRcv
+         ewxg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1690192086; x=1690796886;
+        d=1e100.net; s=20221208; t=1690192134; x=1690796934;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=ztwb9n/1dXh113w/8xubUIoix8VXd/5rqVT4RvFn/tw=;
-        b=RzRYGVTtx9P8IF5yGzSwNdy/26PwXEkBU5w0RiHN0fnYdtRPAWko1JyqS/6PePchPA
-         YYcF4vLLBg3Wyk0+dxkDTaV3Y53exvmsRjJu83FOA4dZd0orq3fnrzdsudIibT2rnMTS
-         nD9Y+5zLLIc7D9zz6Rf0LRJJBlGeHYmZph/W/TQxTlfZxtr3wmv7y4mbqwd+Qk/NMN/e
-         3vpNwf/DUn0VtDoUulV4Gr9oLO802X5EsQVwx/DZaNMBT9zPTZOyy/v0Kp82g68t3Scv
-         HYqWK31LpnFhf4is4Cz5MuWV9KrktMwA0KaNp4LOb4yrr6yYu0Ls5Hr5E+m7H3E+bXvY
-         7F5Q==
-X-Gm-Message-State: ABy/qLZQMS4rIlT07z88tEIHtaBZSKlvhKxXKbVfX2hiM9qSQkRFNEKB
-        4Syd3wmhLLxr7doBdKKi4rmnCg==
-X-Google-Smtp-Source: APBJJlHRxCFTSeAmJPIiRwzXlrngv0y6n5gqphR6YCBFCcMRvGq0CtVM2WuFHUMj7p5y6QUWxkmpXA==
-X-Received: by 2002:a17:902:dad1:b0:1b8:aded:524c with SMTP id q17-20020a170902dad100b001b8aded524cmr12538511plx.1.1690192086608;
-        Mon, 24 Jul 2023 02:48:06 -0700 (PDT)
+        bh=hg2vi+2AAPCRuQsciRtLylYUMTgaXzyfBXLGSnv8etw=;
+        b=iNywQ+t3Si8Pw9H3J+/V2oUZLxNbwowhiboyIzT3P5F7C+/k3u3TiQA0TAtwwrZvb1
+         E6tMMpSERPVPKuQnp8hZBatfYgmpfR+cRoRcv+58DIqLnYNmf269tEs+B5t2qlIvBMAi
+         oWowocUAWozSDCBZ+t/F6myzysCdStGx4Ogs0+IH6txC3UQI+onm96Sl/pyPY6zSCfT9
+         7Mh5E3DA0izkR4GB3x/5Y5X5p4v8zaVWKZBeg98ZlhFCMgQYOaX2ThJdSzpGuDPS/Djs
+         3LicMHqVuz+Dt819A1dmlG6rVuPcPXnHy/N+Ge1pFdhVN0b2TLRGHY9E+Cg8wFAaUbKy
+         73ZQ==
+X-Gm-Message-State: ABy/qLbOFNAbq+x5rST93+jYXGnvVCsa2lNwSpHtTWIZmzAlpDk8KEIv
+        rrAnyad3UjCroesWhq3NVc60IA==
+X-Google-Smtp-Source: APBJJlFlbX7MjF6Gs1NiwvX/ojXDY5CFLHX7jflUqBVL6eloGiFWEtkN1YdVHiZpjmt9ZeBQxK8/kg==
+X-Received: by 2002:a17:902:ecd2:b0:1b8:b4f6:1327 with SMTP id a18-20020a170902ecd200b001b8b4f61327mr12294253plh.6.1690192134533;
+        Mon, 24 Jul 2023 02:48:54 -0700 (PDT)
 Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.147])
-        by smtp.gmail.com with ESMTPSA id d5-20020a170902c18500b001bb20380bf2sm8467233pld.13.2023.07.24.02.47.54
+        by smtp.gmail.com with ESMTPSA id d5-20020a170902c18500b001bb20380bf2sm8467233pld.13.2023.07.24.02.48.42
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 24 Jul 2023 02:48:06 -0700 (PDT)
+        Mon, 24 Jul 2023 02:48:54 -0700 (PDT)
 From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -69,9 +69,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
         Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH v2 15/47] quota: dynamically allocate the dquota-cache shrinker
-Date:   Mon, 24 Jul 2023 17:43:22 +0800
-Message-Id: <20230724094354.90817-16-zhengqi.arch@bytedance.com>
+Subject: [PATCH v2 19/47] mm: thp: dynamically allocate the thp-related shrinkers
+Date:   Mon, 24 Jul 2023 17:43:26 +0800
+Message-Id: <20230724094354.90817-20-zhengqi.arch@bytedance.com>
 X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 In-Reply-To: <20230724094354.90817-1-zhengqi.arch@bytedance.com>
 References: <20230724094354.90817-1-zhengqi.arch@bytedance.com>
@@ -81,48 +81,137 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Use new APIs to dynamically allocate the dquota-cache shrinker.
+Use new APIs to dynamically allocate the thp-zero and thp-deferred_split
+shrinkers.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 ---
- fs/quota/dquot.c | 17 ++++++++++-------
- 1 file changed, 10 insertions(+), 7 deletions(-)
+ mm/huge_memory.c | 69 +++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 45 insertions(+), 24 deletions(-)
 
-diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index e8232242dd34..6cb2d8911bc3 100644
---- a/fs/quota/dquot.c
-+++ b/fs/quota/dquot.c
-@@ -791,11 +791,7 @@ dqcache_shrink_count(struct shrinker *shrink, struct shrink_control *sc)
- 	percpu_counter_read_positive(&dqstats.counter[DQST_FREE_DQUOTS]));
- }
+diff --git a/mm/huge_memory.c b/mm/huge_memory.c
+index 8c94b34024a2..4db5a1834d81 100644
+--- a/mm/huge_memory.c
++++ b/mm/huge_memory.c
+@@ -65,7 +65,11 @@ unsigned long transparent_hugepage_flags __read_mostly =
+ 	(1<<TRANSPARENT_HUGEPAGE_DEFRAG_KHUGEPAGED_FLAG)|
+ 	(1<<TRANSPARENT_HUGEPAGE_USE_ZERO_PAGE_FLAG);
  
--static struct shrinker dqcache_shrinker = {
--	.count_objects = dqcache_shrink_count,
--	.scan_objects = dqcache_shrink_scan,
--	.seeks = DEFAULT_SEEKS,
--};
-+static struct shrinker *dqcache_shrinker;
+-static struct shrinker deferred_split_shrinker;
++static struct shrinker *deferred_split_shrinker;
++static unsigned long deferred_split_count(struct shrinker *shrink,
++					  struct shrink_control *sc);
++static unsigned long deferred_split_scan(struct shrinker *shrink,
++					 struct shrink_control *sc);
  
- /*
-  * Safely release dquot and put reference to dquot.
-@@ -2991,8 +2987,15 @@ static int __init dquot_init(void)
- 	pr_info("VFS: Dquot-cache hash table entries: %ld (order %ld,"
- 		" %ld bytes)\n", nr_hash, order, (PAGE_SIZE << order));
- 
--	if (register_shrinker(&dqcache_shrinker, "dquota-cache"))
--		panic("Cannot register dquot shrinker");
-+	dqcache_shrinker = shrinker_alloc(0, "dquota-cache");
-+	if (!dqcache_shrinker)
-+		panic("Cannot allocate dquot shrinker");
-+
-+	dqcache_shrinker->count_objects = dqcache_shrink_count;
-+	dqcache_shrinker->scan_objects = dqcache_shrink_scan;
-+	dqcache_shrinker->seeks = DEFAULT_SEEKS;
-+
-+	shrinker_register(dqcache_shrinker);
- 
+ static atomic_t huge_zero_refcount;
+ struct page *huge_zero_page __read_mostly;
+@@ -229,11 +233,7 @@ static unsigned long shrink_huge_zero_page_scan(struct shrinker *shrink,
  	return 0;
  }
+ 
+-static struct shrinker huge_zero_page_shrinker = {
+-	.count_objects = shrink_huge_zero_page_count,
+-	.scan_objects = shrink_huge_zero_page_scan,
+-	.seeks = DEFAULT_SEEKS,
+-};
++static struct shrinker *huge_zero_page_shrinker;
+ 
+ #ifdef CONFIG_SYSFS
+ static ssize_t enabled_show(struct kobject *kobj,
+@@ -454,6 +454,40 @@ static inline void hugepage_exit_sysfs(struct kobject *hugepage_kobj)
+ }
+ #endif /* CONFIG_SYSFS */
+ 
++static int thp_shrinker_init(void)
++{
++	huge_zero_page_shrinker = shrinker_alloc(0, "thp-zero");
++	if (!huge_zero_page_shrinker)
++		return -ENOMEM;
++
++	deferred_split_shrinker = shrinker_alloc(SHRINKER_NUMA_AWARE |
++						 SHRINKER_MEMCG_AWARE |
++						 SHRINKER_NONSLAB,
++						 "thp-deferred_split");
++	if (!deferred_split_shrinker) {
++		shrinker_free_non_registered(huge_zero_page_shrinker);
++		return -ENOMEM;
++	}
++
++	huge_zero_page_shrinker->count_objects = shrink_huge_zero_page_count;
++	huge_zero_page_shrinker->scan_objects = shrink_huge_zero_page_scan;
++	huge_zero_page_shrinker->seeks = DEFAULT_SEEKS;
++	shrinker_register(huge_zero_page_shrinker);
++
++	deferred_split_shrinker->count_objects = deferred_split_count;
++	deferred_split_shrinker->scan_objects = deferred_split_scan;
++	deferred_split_shrinker->seeks = DEFAULT_SEEKS;
++	shrinker_register(deferred_split_shrinker);
++
++	return 0;
++}
++
++static void thp_shrinker_exit(void)
++{
++	shrinker_unregister(huge_zero_page_shrinker);
++	shrinker_unregister(deferred_split_shrinker);
++}
++
+ static int __init hugepage_init(void)
+ {
+ 	int err;
+@@ -482,12 +516,9 @@ static int __init hugepage_init(void)
+ 	if (err)
+ 		goto err_slab;
+ 
+-	err = register_shrinker(&huge_zero_page_shrinker, "thp-zero");
+-	if (err)
+-		goto err_hzp_shrinker;
+-	err = register_shrinker(&deferred_split_shrinker, "thp-deferred_split");
++	err = thp_shrinker_init();
+ 	if (err)
+-		goto err_split_shrinker;
++		goto err_shrinker;
+ 
+ 	/*
+ 	 * By default disable transparent hugepages on smaller systems,
+@@ -505,10 +536,8 @@ static int __init hugepage_init(void)
+ 
+ 	return 0;
+ err_khugepaged:
+-	unregister_shrinker(&deferred_split_shrinker);
+-err_split_shrinker:
+-	unregister_shrinker(&huge_zero_page_shrinker);
+-err_hzp_shrinker:
++	thp_shrinker_exit();
++err_shrinker:
+ 	khugepaged_destroy();
+ err_slab:
+ 	hugepage_exit_sysfs(hugepage_kobj);
+@@ -2851,7 +2880,7 @@ void deferred_split_folio(struct folio *folio)
+ #ifdef CONFIG_MEMCG
+ 		if (memcg)
+ 			set_shrinker_bit(memcg, folio_nid(folio),
+-					 deferred_split_shrinker.id);
++					 deferred_split_shrinker->id);
+ #endif
+ 	}
+ 	spin_unlock_irqrestore(&ds_queue->split_queue_lock, flags);
+@@ -2925,14 +2954,6 @@ static unsigned long deferred_split_scan(struct shrinker *shrink,
+ 	return split;
+ }
+ 
+-static struct shrinker deferred_split_shrinker = {
+-	.count_objects = deferred_split_count,
+-	.scan_objects = deferred_split_scan,
+-	.seeks = DEFAULT_SEEKS,
+-	.flags = SHRINKER_NUMA_AWARE | SHRINKER_MEMCG_AWARE |
+-		 SHRINKER_NONSLAB,
+-};
+-
+ #ifdef CONFIG_DEBUG_FS
+ static void split_huge_pages_all(void)
+ {
 -- 
 2.30.2
 
