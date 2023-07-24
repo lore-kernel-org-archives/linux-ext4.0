@@ -2,53 +2,53 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6838EC04FE0
-	for <linux-ext4@archiver.kernel.org>; Mon, 24 Jul 2023 09:46:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 96295C001DF
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Jul 2023 09:47:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232281AbjGXJqJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 24 Jul 2023 05:46:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46630 "EHLO
+        id S231245AbjGXJrQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 24 Jul 2023 05:47:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45862 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232284AbjGXJqA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jul 2023 05:46:00 -0400
-Received: from mail-pl1-x629.google.com (mail-pl1-x629.google.com [IPv6:2607:f8b0:4864:20::629])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5B54E10C2
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Jul 2023 02:45:43 -0700 (PDT)
-Received: by mail-pl1-x629.google.com with SMTP id d9443c01a7336-1bba9539a23so639995ad.1
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Jul 2023 02:45:43 -0700 (PDT)
+        with ESMTP id S232011AbjGXJqo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jul 2023 05:46:44 -0400
+Received: from mail-pl1-x62e.google.com (mail-pl1-x62e.google.com [IPv6:2607:f8b0:4864:20::62e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5700AE7E
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Jul 2023 02:46:07 -0700 (PDT)
+Received: by mail-pl1-x62e.google.com with SMTP id d9443c01a7336-1b867f9198dso8894015ad.0
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Jul 2023 02:46:07 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1690191943; x=1690796743;
+        d=bytedance.com; s=google; t=1690191967; x=1690796767;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=DaxJS65ntPERL7le+nmtmDDoPHIKL7Svp/IgETL6ZeE=;
-        b=bsUNhBCXwNUzkDR0ZBYGRWY6QU8jf6SXW0GNGt2FOx6GMmf4JYDUwOhZCN0a9aNwPh
-         pTka7+wy4J6SiQlycedqXCWLDNsWz3aJioSMhFKKX+Cimy7bU+oF7hjqxyvShR8A2yEG
-         Bu7LESrzTJZCH9TPtc2I9FzALspZlYdCLyw0Gn9itfPl/wiIrNjf25JL50bsQdJ04tcL
-         SlbyOamKluDXUz4pmzuKSCdYj+rqtmnfikA7iqukCNA9GBpbd9F7GXY8//WwnDt8lif7
-         VBbsqb4LU2WF81b1loSTallposIksCkIrM7zY2O8grvdOy/OC2xy9l8uFRAuNMFBjkRJ
-         /Eug==
+        bh=vu9DfqGDIkVtY7CS+mn/8y6VlhAfp+/Q2ofuaCWar5Q=;
+        b=ZITiOrrWh+FheWM3chZFCAM8bc3YrsEgqzfm5Am/axy3dDhyTEHWaCIE6CxJlUheOx
+         RF45EA9aOXE5By7kx/OP7STghpSD/KEB/oF3GrXK+Myxe/+Fwg6k+PP3FURA3cxLYMYy
+         QPmEGcQxgz/g2uZ3I+YFETVsDVpSfeGJ/6AYCWm2OW7IkIAxCPa+wrGdNlr2psYdQiso
+         l4rMdXxvPMn1WtqWv/dfO7wx6DqTx5ztQcgxaNLtyw9DkIVWCy3gu8FnfH++DQ/RAVD5
+         IA2z6EzP9oeF3tWiBWkf5RokEJVb120E1SPLRv9Xx8rFVupecJKnGVj8I/3khxvVhjBZ
+         QV2A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1690191943; x=1690796743;
+        d=1e100.net; s=20221208; t=1690191967; x=1690796767;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=DaxJS65ntPERL7le+nmtmDDoPHIKL7Svp/IgETL6ZeE=;
-        b=UV+1aFNk1Ayv9cagPfcP/GtCR7c743+r9jN6BDYDhAfAPUjhJVmycIOJpkQKhQbWAr
-         jmDb2TJYgq0I6/gyhbaEgJmfyYZqrIlxJChLhEoiZDeAxDPjTaPPan/jUe9CFSOjo4/T
-         n6SLlBHep/2C0faOSstLzL0JGmabRpIml5uMwDetGDHtBtDoIDoD41UbCXAPZRIJ0pUC
-         Tv8GLjt9kep8jKz15NJcc78sp0WGCdiG5kjeWUEBHuGuqtTx07XYApmIPIM2Y9MPQnpl
-         ZXFjcibHU+M/zJclqQbr6ZnuV7cYNPN1Ywems9GNCenOCC6KhmPt1+nmgFdO7UBlfXWF
-         SgfA==
-X-Gm-Message-State: ABy/qLZtvox9m2aieeWydtYlsvZidWchgPIBe5wWF0CXn8v79NQp9pYN
-        pS9qBcmhtVLUguCyQB3JlWJpZw==
-X-Google-Smtp-Source: APBJJlGWwe+Wn5SAE9CC225imGBvK3oJNP2MQHqUiC6fnoUxBGqj3ofPftHC2Yw9p8SUIC56L+2IOQ==
-X-Received: by 2002:a17:903:2305:b0:1b8:b0c4:2e3d with SMTP id d5-20020a170903230500b001b8b0c42e3dmr12236473plh.4.1690191942806;
-        Mon, 24 Jul 2023 02:45:42 -0700 (PDT)
+        bh=vu9DfqGDIkVtY7CS+mn/8y6VlhAfp+/Q2ofuaCWar5Q=;
+        b=h23gfQ06ZCQ/Wojhnvn/kAlO7R+XxRCpwgZWVG39k9HbtiJ45FKMqWdLMkvCUh8df5
+         ZDQwiu+Y3ldIvIf4BQxmVxVv/E4OX5Wk+NOHFF36+ZRXrF1MZggctVY5ZZB1h4Im/wtH
+         WRZdYiqjiqKpthXce9GPr1yqRe02kM3ZTozpD10tBgHWT0+GGQpYLjir4EJwIqcC+o/D
+         XcR/uti4Tia+8pBvlU8PN+z/hpwYK4RiJB6xWGVl+R4bBHcxLrYTdzlnSQn28is2CXEv
+         KF/tOXhnc64Opj/P3ex31QnLfcIJiwPz4T87WVvzoZuolWGzdsDPhWfEOQNUUBCBiiKz
+         XdsQ==
+X-Gm-Message-State: ABy/qLbSRToOgui08J+X2u2j13tsgVzp/jxt7gnk1tnyB9Sdq17pCJr8
+        BSNuuBVbUmx7uyehK7NuLfQumg==
+X-Google-Smtp-Source: APBJJlGrsdFKJ71ukJT79kDa1W+M4ztJszdSUa3mf2ArYfnWEb5YwD/wtpSbLXe4wEi7ibAUftTBwg==
+X-Received: by 2002:a17:902:ecd2:b0:1b8:b4f6:1327 with SMTP id a18-20020a170902ecd200b001b8b4f61327mr12288935plh.6.1690191966684;
+        Mon, 24 Jul 2023 02:46:06 -0700 (PDT)
 Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.147])
-        by smtp.gmail.com with ESMTPSA id d5-20020a170902c18500b001bb20380bf2sm8467233pld.13.2023.07.24.02.45.31
+        by smtp.gmail.com with ESMTPSA id d5-20020a170902c18500b001bb20380bf2sm8467233pld.13.2023.07.24.02.45.55
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 24 Jul 2023 02:45:42 -0700 (PDT)
+        Mon, 24 Jul 2023 02:46:06 -0700 (PDT)
 From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -69,9 +69,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
         Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH v2 03/47] mm: shrinker: add infrastructure for dynamically allocating shrinker
-Date:   Mon, 24 Jul 2023 17:43:10 +0800
-Message-Id: <20230724094354.90817-4-zhengqi.arch@bytedance.com>
+Subject: [PATCH v2 05/47] binder: dynamically allocate the android-binder shrinker
+Date:   Mon, 24 Jul 2023 17:43:12 +0800
+Message-Id: <20230724094354.90817-6-zhengqi.arch@bytedance.com>
 X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 In-Reply-To: <20230724094354.90817-1-zhengqi.arch@bytedance.com>
 References: <20230724094354.90817-1-zhengqi.arch@bytedance.com>
@@ -81,218 +81,68 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Currently, the shrinker instances can be divided into the following three
-types:
-
-a) global shrinker instance statically defined in the kernel, such as
-   workingset_shadow_shrinker.
-
-b) global shrinker instance statically defined in the kernel modules, such
-   as mmu_shrinker in x86.
-
-c) shrinker instance embedded in other structures.
-
-For case a, the memory of shrinker instance is never freed. For case b,
-the memory of shrinker instance will be freed after synchronize_rcu() when
-the module is unloaded. For case c, the memory of shrinker instance will
-be freed along with the structure it is embedded in.
-
-In preparation for implementing lockless slab shrink, we need to
-dynamically allocate those shrinker instances in case c, then the memory
-can be dynamically freed alone by calling kfree_rcu().
-
-So this commit adds the following new APIs for dynamically allocating
-shrinker, and add a private_data field to struct shrinker to record and
-get the original embedded structure.
-
-1. shrinker_alloc()
-
-Used to allocate shrinker instance itself and related memory, it will
-return a pointer to the shrinker instance on success and NULL on failure.
-
-2. shrinker_free_non_registered()
-
-Used to destroy the non-registered shrinker instance.
-
-3. shrinker_register()
-
-Used to register the shrinker instance, which is same as the current
-register_shrinker_prepared().
-
-4. shrinker_unregister()
-
-Used to unregister and free the shrinker instance.
-
-In order to simplify shrinker-related APIs and make shrinker more
-independent of other kernel mechanisms, subsequent submissions will use
-the above API to convert all shrinkers (including case a and b) to
-dynamically allocated, and then remove all existing APIs.
-
-This will also have another advantage mentioned by Dave Chinner:
-
-```
-The other advantage of this is that it will break all the existing
-out of tree code and third party modules using the old API and will
-no longer work with a kernel using lockless slab shrinkers. They
-need to break (both at the source and binary levels) to stop bad
-things from happening due to using uncoverted shrinkers in the new
-setup.
-```
+Use new APIs to dynamically allocate the android-binder shrinker.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 ---
- include/linux/shrinker.h |   6 +++
- mm/shrinker.c            | 113 +++++++++++++++++++++++++++++++++++++++
- 2 files changed, 119 insertions(+)
+ drivers/android/binder_alloc.c | 31 +++++++++++++++++++------------
+ 1 file changed, 19 insertions(+), 12 deletions(-)
 
-diff --git a/include/linux/shrinker.h b/include/linux/shrinker.h
-index 961cb84e51f5..296f5e163861 100644
---- a/include/linux/shrinker.h
-+++ b/include/linux/shrinker.h
-@@ -70,6 +70,8 @@ struct shrinker {
- 	int seeks;	/* seeks to recreate an obj */
- 	unsigned flags;
- 
-+	void *private_data;
-+
- 	/* These are for internal use */
- 	struct list_head list;
- #ifdef CONFIG_MEMCG
-@@ -98,6 +100,10 @@ struct shrinker {
- 
- unsigned long shrink_slab(gfp_t gfp_mask, int nid, struct mem_cgroup *memcg,
- 			  int priority);
-+struct shrinker *shrinker_alloc(unsigned int flags, const char *fmt, ...);
-+void shrinker_free_non_registered(struct shrinker *shrinker);
-+void shrinker_register(struct shrinker *shrinker);
-+void shrinker_unregister(struct shrinker *shrinker);
- 
- extern int __printf(2, 3) prealloc_shrinker(struct shrinker *shrinker,
- 					    const char *fmt, ...);
-diff --git a/mm/shrinker.c b/mm/shrinker.c
-index 0a32ef42f2a7..d820e4cc5806 100644
---- a/mm/shrinker.c
-+++ b/mm/shrinker.c
-@@ -548,6 +548,119 @@ unsigned long shrink_slab(gfp_t gfp_mask, int nid, struct mem_cgroup *memcg,
- 	return freed;
+diff --git a/drivers/android/binder_alloc.c b/drivers/android/binder_alloc.c
+index e3db8297095a..019981d65e1e 100644
+--- a/drivers/android/binder_alloc.c
++++ b/drivers/android/binder_alloc.c
+@@ -1053,11 +1053,7 @@ binder_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
+ 			    NULL, sc->nr_to_scan);
  }
  
-+struct shrinker *shrinker_alloc(unsigned int flags, const char *fmt, ...)
-+{
-+	struct shrinker *shrinker;
-+	unsigned int size;
-+	va_list __maybe_unused ap;
-+	int err;
+-static struct shrinker binder_shrinker = {
+-	.count_objects = binder_shrink_count,
+-	.scan_objects = binder_shrink_scan,
+-	.seeks = DEFAULT_SEEKS,
+-};
++static struct shrinker *binder_shrinker;
+ 
+ /**
+  * binder_alloc_init() - called by binder_open() for per-proc initialization
+@@ -1077,19 +1073,30 @@ void binder_alloc_init(struct binder_alloc *alloc)
+ 
+ int binder_alloc_shrinker_init(void)
+ {
+-	int ret = list_lru_init(&binder_alloc_lru);
++	int ret;
+ 
+-	if (ret == 0) {
+-		ret = register_shrinker(&binder_shrinker, "android-binder");
+-		if (ret)
+-			list_lru_destroy(&binder_alloc_lru);
++	ret = list_lru_init(&binder_alloc_lru);
++	if (ret)
++		return ret;
 +
-+	shrinker = kzalloc(sizeof(struct shrinker), GFP_KERNEL);
-+	if (!shrinker)
-+		return NULL;
++	binder_shrinker = shrinker_alloc(0, "android-binder");
++	if (!binder_shrinker) {
++		list_lru_destroy(&binder_alloc_lru);
++		return -ENOMEM;
+ 	}
+-	return ret;
 +
-+#ifdef CONFIG_SHRINKER_DEBUG
-+	va_start(ap, fmt);
-+	shrinker->name = kvasprintf_const(GFP_KERNEL, fmt, ap);
-+	va_end(ap);
-+	if (!shrinker->name)
-+		goto err_name;
-+#endif
-+	shrinker->flags = flags;
++	binder_shrinker->count_objects = binder_shrink_count;
++	binder_shrinker->scan_objects = binder_shrink_scan;
++	binder_shrinker->seeks = DEFAULT_SEEKS;
 +
-+	if (flags & SHRINKER_MEMCG_AWARE) {
-+		err = prealloc_memcg_shrinker(shrinker);
-+		if (err == -ENOSYS)
-+			shrinker->flags &= ~SHRINKER_MEMCG_AWARE;
-+		else if (err == 0)
-+			goto done;
-+		else
-+			goto err_flags;
-+	}
++	shrinker_register(binder_shrinker);
 +
-+	/*
-+	 * The nr_deferred is available on per memcg level for memcg aware
-+	 * shrinkers, so only allocate nr_deferred in the following cases:
-+	 *  - non memcg aware shrinkers
-+	 *  - !CONFIG_MEMCG
-+	 *  - memcg is disabled by kernel command line
-+	 */
-+	size = sizeof(*shrinker->nr_deferred);
-+	if (flags & SHRINKER_NUMA_AWARE)
-+		size *= nr_node_ids;
-+
-+	shrinker->nr_deferred = kzalloc(size, GFP_KERNEL);
-+	if (!shrinker->nr_deferred)
-+		goto err_flags;
-+
-+done:
-+	return shrinker;
-+
-+err_flags:
-+#ifdef CONFIG_SHRINKER_DEBUG
-+	kfree_const(shrinker->name);
-+	shrinker->name = NULL;
-+err_name:
-+#endif
-+	kfree(shrinker);
-+	return NULL;
-+}
-+EXPORT_SYMBOL(shrinker_alloc);
-+
-+void shrinker_free_non_registered(struct shrinker *shrinker)
-+{
-+#ifdef CONFIG_SHRINKER_DEBUG
-+	kfree_const(shrinker->name);
-+	shrinker->name = NULL;
-+#endif
-+	if (shrinker->flags & SHRINKER_MEMCG_AWARE) {
-+		down_write(&shrinker_rwsem);
-+		unregister_memcg_shrinker(shrinker);
-+		up_write(&shrinker_rwsem);
-+	}
-+
-+	kfree(shrinker->nr_deferred);
-+	shrinker->nr_deferred = NULL;
-+
-+	kfree(shrinker);
-+}
-+EXPORT_SYMBOL(shrinker_free_non_registered);
-+
-+void shrinker_register(struct shrinker *shrinker)
-+{
-+	down_write(&shrinker_rwsem);
-+	list_add_tail(&shrinker->list, &shrinker_list);
-+	shrinker->flags |= SHRINKER_REGISTERED;
-+	shrinker_debugfs_add(shrinker);
-+	up_write(&shrinker_rwsem);
-+}
-+EXPORT_SYMBOL(shrinker_register);
-+
-+void shrinker_unregister(struct shrinker *shrinker)
-+{
-+	struct dentry *debugfs_entry;
-+	int debugfs_id;
-+
-+	if (!shrinker || !(shrinker->flags & SHRINKER_REGISTERED))
-+		return;
-+
-+	down_write(&shrinker_rwsem);
-+	list_del(&shrinker->list);
-+	shrinker->flags &= ~SHRINKER_REGISTERED;
-+	if (shrinker->flags & SHRINKER_MEMCG_AWARE)
-+		unregister_memcg_shrinker(shrinker);
-+	debugfs_entry = shrinker_debugfs_detach(shrinker, &debugfs_id);
-+	up_write(&shrinker_rwsem);
-+
-+	shrinker_debugfs_remove(debugfs_entry, debugfs_id);
-+
-+	kfree(shrinker->nr_deferred);
-+	shrinker->nr_deferred = NULL;
-+
-+	kfree(shrinker);
-+}
-+EXPORT_SYMBOL(shrinker_unregister);
-+
- /*
-  * Add a shrinker callback to be called from the vm.
-  */
++	return 0;
+ }
+ 
+ void binder_alloc_shrinker_exit(void)
+ {
+-	unregister_shrinker(&binder_shrinker);
++	shrinker_unregister(binder_shrinker);
+ 	list_lru_destroy(&binder_alloc_lru);
+ }
+ 
 -- 
 2.30.2
 
