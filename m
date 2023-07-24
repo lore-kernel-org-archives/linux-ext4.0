@@ -2,61 +2,54 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 98434C001DE
-	for <linux-ext4@archiver.kernel.org>; Mon, 24 Jul 2023 10:05:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 29E82C001B0
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Jul 2023 10:07:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232969AbjGXKF4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 24 Jul 2023 06:05:56 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36138 "EHLO
+        id S232927AbjGXKHJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 24 Jul 2023 06:07:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36808 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232489AbjGXKFg (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jul 2023 06:05:36 -0400
-Received: from mail-pf1-x430.google.com (mail-pf1-x430.google.com [IPv6:2607:f8b0:4864:20::430])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 521347EE2
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Jul 2023 02:57:46 -0700 (PDT)
-Received: by mail-pf1-x430.google.com with SMTP id d2e1a72fcca58-682ae5d4184so1051753b3a.1
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Jul 2023 02:57:46 -0700 (PDT)
+        with ESMTP id S232989AbjGXKGp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jul 2023 06:06:45 -0400
+Received: from mail-pg1-f179.google.com (mail-pg1-f179.google.com [209.85.215.179])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A81EB83C8
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Jul 2023 02:59:16 -0700 (PDT)
+Received: by mail-pg1-f179.google.com with SMTP id 41be03b00d2f7-55b5a37acb6so327346a12.0
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Jul 2023 02:59:16 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1690192601; x=1690797401;
-        h=content-transfer-encoding:in-reply-to:from:references:cc:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=am2eIoStEhYj6reS+R983QZxh6h3W0xYr71gNNToCQ8=;
-        b=OlJHj1/yO42yQ42YyfDdqtfuDdXGGV/WQ0GpL38YIfO5RJZmkcdCx+PepLtkyGVzEN
-         bTK4LhGsJI+OJKO7VuvlEDj/aPd3bZAexndKWivptO/xeLBD7J/JCOubjicjaVNWXLQ5
-         H6fB+0YsEx63uc5TiCs20sSEjZ3JxRWkjZHG3LQbatv3J9k4pmh0VpqAg7R562nbzzly
-         s71ebLgHH+wdbZuHYfqIuXfOS4H3wCLtxZ6Rqc556hBiF9jLddR68NJcthdMi5JsNo9F
-         fUAZvFHEDsznNwsCMgykOwv5P0YMuteT/vvRsXd6nvRv9Clc/Ic3a7YeuRAtFe+vPCu7
-         EZug==
+        d=bytedance.com; s=google; t=1690192409; x=1690797209;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=tgz3Agis5n4s/WxjwmGNRU8p70ZOSlVCE9Y6IFYv5Fc=;
+        b=eiUPUGpded6z/EEpZ8kcBg2OU6CGo1gYbzczLwywLM+tiNX7NfxZ/UX56b+ECXWGVH
+         v0+fBr9ZR2zpMAlXtEMsjJ0CP0T6ghJOZlIp4XvJRpj8mBoc0pWtxFqlQOAd5pU8ho3C
+         /ZF88/qParVm3q/t2C5C9G6TKSIcK6iTaJcqE2ic3WbFUt7IFInWBxxki/5fOt9V+TbB
+         A3A3KxQQy8HhELpvIDxSXQyR+9LFYaXi6y1sjrAoM0XnjPHdW4Yjr/fiDUUV6qlqOpNO
+         kBdOBkmF9qj5RcGgCCau8brZhsZui1mwOYvY6Yl7YB6A8sVwNtEK8JeAfRs7jSuBenIO
+         iXvw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1690192601; x=1690797401;
-        h=content-transfer-encoding:in-reply-to:from:references:cc:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=am2eIoStEhYj6reS+R983QZxh6h3W0xYr71gNNToCQ8=;
-        b=K4bD7xoPAOq7Yt8/umoQVG6xRdzk7EYE7iyuCpV3BA7n9ue8vXlXeoPzX5G0gwmmBZ
-         gkTiBcnUp4ny3+66ALdyEYizB/S8gLkO+zloz64uyVPJVFgFSHJE9ch3Cx/19baINYof
-         O6hOPqM5rOjQ5ciBKDAhduCrCPZCqgvm1or+721GndyDil4lKoAcbmGvwb12qPk5JNv0
-         12Eh4HrL72zD8ctx/fVHY6U+kTOO4z8NXj0X10IgB9D3RREnHUNXJTpe48lGRChXnb/8
-         WCSghXp0AkQ77dicl1V7MwN3OlBH9zZILWbhLLKonrc+btsL7wngKnUpP4/NEdUD4r+A
-         RI0A==
-X-Gm-Message-State: ABy/qLaSlwp0+YgOnsYtlQQQFJzaokBE/6llTyWMr550oSRHqiW0dGmF
-        YUcD9sNMeWzB7PRzWFDtbdgfiw==
-X-Google-Smtp-Source: APBJJlEtnCzvJ6I1rkWEELadVXHfZtUE/plpWIuGp/MFKpOvTS509ssN84iHDxA1POdeL3+D21rKQg==
-X-Received: by 2002:a05:6a20:8e04:b0:137:3941:17b3 with SMTP id y4-20020a056a208e0400b00137394117b3mr14532126pzj.6.1690192601020;
-        Mon, 24 Jul 2023 02:56:41 -0700 (PDT)
-Received: from [10.70.252.135] ([203.208.167.147])
-        by smtp.gmail.com with ESMTPSA id y1-20020aa78541000000b00682aac1e2b8sm7356787pfn.60.2023.07.24.02.56.29
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 24 Jul 2023 02:56:40 -0700 (PDT)
-Message-ID: <7b4eb3fa-1ebd-de07-1a16-9533b069a66e@bytedance.com>
-Date:   Mon, 24 Jul 2023 17:56:27 +0800
-MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0)
- Gecko/20100101 Thunderbird/102.12.0
-Subject: Re: [PATCH v2 05/47] binder: dynamically allocate the android-binder
- shrinker
-Content-Language: en-US
+        d=1e100.net; s=20221208; t=1690192409; x=1690797209;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=tgz3Agis5n4s/WxjwmGNRU8p70ZOSlVCE9Y6IFYv5Fc=;
+        b=NtNrXrWZ4pkfSY2+A3LqyopLCeavPkIBIxdNhTgKoEG7eHtFKopjypWnNvlIAwatRX
+         1KE2zJ2uFr79wPaDFOOl5ltakl7eV/09DfmEXhc7t2XfHXMaTIzWd36HV4oTxWZRCaAX
+         Lxi2clisWTd5jWRk96o8Dz4fY052j/QZqO9h/JuDwUdd0D2fszEELBt1x0194SxhRUc2
+         c0dsIVHwj1HRCxiAhRWfTarbkAyRUJKjP9z+h8vtK+ZxLs5CSWtfcgimrszQXVwHbH8C
+         hVGPY/yyilC/cowCsTjqFE42uYdvTuF+Pev7fyOmd4Jg5Obwmh96K1BsNC89OP6OlQlq
+         FKFw==
+X-Gm-Message-State: ABy/qLbQYjz6bqL24deTcJUQ2UyKhIQ/TqXivXSwZFiKASfuX/27BdA9
+        +9vcoR4jL567+NXC3JyRRd3Vsg==
+X-Google-Smtp-Source: APBJJlGQECD+YmQyidx3CbYp8mtos2ukz3b+adApuBRwpx+yQP4R50i+1wYRdDRgYwf/0cvAmnpMMg==
+X-Received: by 2002:a17:902:f681:b0:1b8:a469:53d8 with SMTP id l1-20020a170902f68100b001b8a46953d8mr12732513plg.0.1690192409468;
+        Mon, 24 Jul 2023 02:53:29 -0700 (PDT)
+Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.147])
+        by smtp.gmail.com with ESMTPSA id d5-20020a170902c18500b001bb20380bf2sm8467233pld.13.2023.07.24.02.53.18
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 24 Jul 2023 02:53:29 -0700 (PDT)
+From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
         brauner@kernel.org, paulmck@kernel.org, tytso@mit.edu,
@@ -74,18 +67,120 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         linux-bcache@vger.kernel.org,
         virtualization@lists.linux-foundation.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org
+        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        Qi Zheng <zhengqi.arch@bytedance.com>
+Subject: [PATCH v2 42/47] drm/ttm: introduce pool_shrink_rwsem
+Date:   Mon, 24 Jul 2023 17:43:49 +0800
+Message-Id: <20230724094354.90817-43-zhengqi.arch@bytedance.com>
+X-Mailer: git-send-email 2.24.3 (Apple Git-128)
+In-Reply-To: <20230724094354.90817-1-zhengqi.arch@bytedance.com>
 References: <20230724094354.90817-1-zhengqi.arch@bytedance.com>
- <20230724094354.90817-6-zhengqi.arch@bytedance.com>
-From:   Qi Zheng <zhengqi.arch@bytedance.com>
-In-Reply-To: <20230724094354.90817-6-zhengqi.arch@bytedance.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+Currently, the synchronize_shrinkers() is only used by TTM pool. It only
+requires that no shrinkers run in parallel.
 
-This patch depends on the patch: 
-https://lore.kernel.org/lkml/20230625154937.64316-1-qi.zheng@linux.dev/
+After we use RCU+refcount method to implement the lockless slab shrink,
+we can not use shrinker_rwsem or synchronize_rcu() to guarantee that all
+shrinker invocations have seen an update before freeing memory.
+
+So we introduce a new pool_shrink_rwsem to implement a private
+synchronize_shrinkers(), so as to achieve the same purpose.
+
+Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
+---
+ drivers/gpu/drm/ttm/ttm_pool.c | 15 +++++++++++++++
+ include/linux/shrinker.h       |  2 --
+ mm/shrinker.c                  | 15 ---------------
+ 3 files changed, 15 insertions(+), 17 deletions(-)
+
+diff --git a/drivers/gpu/drm/ttm/ttm_pool.c b/drivers/gpu/drm/ttm/ttm_pool.c
+index e1eb73d0b72a..8a35fd48ec46 100644
+--- a/drivers/gpu/drm/ttm/ttm_pool.c
++++ b/drivers/gpu/drm/ttm/ttm_pool.c
+@@ -74,6 +74,7 @@ static struct ttm_pool_type global_dma32_uncached[MAX_ORDER + 1];
+ static spinlock_t shrinker_lock;
+ static struct list_head shrinker_list;
+ static struct shrinker *mm_shrinker;
++static DECLARE_RWSEM(pool_shrink_rwsem);
+ 
+ /* Allocate pages of size 1 << order with the given gfp_flags */
+ static struct page *ttm_pool_alloc_page(struct ttm_pool *pool, gfp_t gfp_flags,
+@@ -317,6 +318,7 @@ static unsigned int ttm_pool_shrink(void)
+ 	unsigned int num_pages;
+ 	struct page *p;
+ 
++	down_read(&pool_shrink_rwsem);
+ 	spin_lock(&shrinker_lock);
+ 	pt = list_first_entry(&shrinker_list, typeof(*pt), shrinker_list);
+ 	list_move_tail(&pt->shrinker_list, &shrinker_list);
+@@ -329,6 +331,7 @@ static unsigned int ttm_pool_shrink(void)
+ 	} else {
+ 		num_pages = 0;
+ 	}
++	up_read(&pool_shrink_rwsem);
+ 
+ 	return num_pages;
+ }
+@@ -572,6 +575,18 @@ void ttm_pool_init(struct ttm_pool *pool, struct device *dev,
+ }
+ EXPORT_SYMBOL(ttm_pool_init);
+ 
++/**
++ * synchronize_shrinkers - Wait for all running shrinkers to complete.
++ *
++ * This is useful to guarantee that all shrinker invocations have seen an
++ * update, before freeing memory, similar to rcu.
++ */
++static void synchronize_shrinkers(void)
++{
++	down_write(&pool_shrink_rwsem);
++	up_write(&pool_shrink_rwsem);
++}
++
+ /**
+  * ttm_pool_fini - Cleanup a pool
+  *
+diff --git a/include/linux/shrinker.h b/include/linux/shrinker.h
+index e464b4e9be0e..23ea9360c5d8 100644
+--- a/include/linux/shrinker.h
++++ b/include/linux/shrinker.h
+@@ -105,8 +105,6 @@ void shrinker_free_non_registered(struct shrinker *shrinker);
+ void shrinker_register(struct shrinker *shrinker);
+ void shrinker_unregister(struct shrinker *shrinker);
+ 
+-extern void synchronize_shrinkers(void);
+-
+ #ifdef CONFIG_SHRINKER_DEBUG
+ extern int shrinker_debugfs_add(struct shrinker *shrinker);
+ extern struct dentry *shrinker_debugfs_detach(struct shrinker *shrinker,
+diff --git a/mm/shrinker.c b/mm/shrinker.c
+index 2f3635ad1b45..3c4d3fe2fa17 100644
+--- a/mm/shrinker.c
++++ b/mm/shrinker.c
+@@ -660,18 +660,3 @@ void shrinker_unregister(struct shrinker *shrinker)
+ 	kfree(shrinker);
+ }
+ EXPORT_SYMBOL(shrinker_unregister);
+-
+-/**
+- * synchronize_shrinkers - Wait for all running shrinkers to complete.
+- *
+- * This is equivalent to calling unregister_shrink() and register_shrinker(),
+- * but atomically and with less overhead. This is useful to guarantee that all
+- * shrinker invocations have seen an update, before freeing memory, similar to
+- * rcu.
+- */
+-void synchronize_shrinkers(void)
+-{
+-	down_write(&shrinker_rwsem);
+-	up_write(&shrinker_rwsem);
+-}
+-EXPORT_SYMBOL(synchronize_shrinkers);
+-- 
+2.30.2
 
