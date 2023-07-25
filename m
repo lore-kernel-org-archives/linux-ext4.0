@@ -2,69 +2,90 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 04058C001E0
-	for <linux-ext4@archiver.kernel.org>; Tue, 25 Jul 2023 10:00:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DFD94C04A6A
+	for <linux-ext4@archiver.kernel.org>; Tue, 25 Jul 2023 10:51:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232288AbjGYKA1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 25 Jul 2023 06:00:27 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59118 "EHLO
+        id S232225AbjGYKva (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 25 Jul 2023 06:51:30 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59212 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231630AbjGYKAV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Jul 2023 06:00:21 -0400
-Received: from mail-wr1-x42c.google.com (mail-wr1-x42c.google.com [IPv6:2a00:1450:4864:20::42c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9208810E2
-        for <linux-ext4@vger.kernel.org>; Tue, 25 Jul 2023 03:00:20 -0700 (PDT)
-Received: by mail-wr1-x42c.google.com with SMTP id ffacd0b85a97d-307d58b3efbso4041243f8f.0
-        for <linux-ext4@vger.kernel.org>; Tue, 25 Jul 2023 03:00:20 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1690279219; x=1690884019;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:to
-         :from:from:to:cc:subject:date:message-id:reply-to;
-        bh=WWdk5t2R7llazZurwmu8BVsYGp0tl7yfBCSxk+CkYJs=;
-        b=XoapnJCNCsnV1JzdA4+FFv6nqQneE7i+5TVEI27tBcwqTgS5orHLfIRrJ3PdBlpHfb
-         Ltw2tWj/PwmMQO5oBuvkcdLjka67tjptk8EKgdB7cXUoTsHhQpQhj7nHTVQ1nXDyCGpm
-         bPgwvzUavuBn35SjU5d7XWjPiEkgAg51B7zO5hpV5uWQDk08I0FZAsD7EynImy+eydpg
-         Xd0VW9JG1XLqZkEgSa+RSU89EbSLfQtcj4icUoh3mgaLzjmyPHZguNLOkmxXPmtYs25/
-         mY9j/DaIG5lMc0lHkEZ2Cs8CGbYBlthBtbwYHezAOxLPRiE1GVBBDv54VAfK7l4EkXPe
-         Xoug==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1690279219; x=1690884019;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:to
-         :from:x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=WWdk5t2R7llazZurwmu8BVsYGp0tl7yfBCSxk+CkYJs=;
-        b=hJzD+NpRNWOrse6oP9VDUQL4nPdE3smskpz9xvuR/eTkyTAYK+L2gs9wv3vYIIdqpA
-         RFBoD2P7QTfYhuc7WK3DWRrCO/TV3uAMZC9BXn/74Z+HwI08r4seQ7OxAW6trWTAKBoZ
-         CRqx5F3FZ0wNzg9Wv9qahn3hNzKUYkohTqzrh4gSzTYffJok7aYgHZsabvW1YHK3PEph
-         UACghU25MQl1hzXkJr2bDjzmDdQwr7Ge4naLbx25/5ka8Uiw7LTfWu9mvdxuO43AHKd0
-         o2/Xmi2YYkb8zJi3jfNolxEusCXnC17zDQHakvHWaJy5/qb1/T4MZy96dYknUkEAtdTs
-         vvIw==
-X-Gm-Message-State: ABy/qLaYD8PdpxLjHr/sAeejvD4WkGAolQFmtbp4Ng7W9E9hk16Tl1r6
-        uebUsYzlRd36gMinIVdd1UqNuQKVoXY4Aw==
-X-Google-Smtp-Source: APBJJlE0CzuafnoJ/6Gb0uHbzwV5lgAdqmOqyRFr0HBwWn8hhXInzkBFNf2dtWkatVIvyHkBEbnCXQ==
-X-Received: by 2002:adf:ef48:0:b0:312:74a9:8262 with SMTP id c8-20020adfef48000000b0031274a98262mr9938819wrp.62.1690279218711;
-        Tue, 25 Jul 2023 03:00:18 -0700 (PDT)
-Received: from torreasustufgamingpro (209.pool90-77-130.dynamic.orange.es. [90.77.130.209])
-        by smtp.gmail.com with ESMTPSA id h17-20020adffd51000000b0030fa3567541sm15848463wrs.48.2023.07.25.03.00.18
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 25 Jul 2023 03:00:18 -0700 (PDT)
-From:   =?utf-8?Q?Oscar_Megia_L=C3=B3pez?= <megia.oscar@gmail.com>
-To:     linux-ext4@vger.kernel.org
-Subject: I know you are busy, but have you found time to look at my patch?
-Date:   Tue, 25 Jul 2023 12:00:17 +0200
-Message-ID: <871qgwpaz2.fsf@gmail.com>
+        with ESMTP id S233748AbjGYKvJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Jul 2023 06:51:09 -0400
+Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C4F381FE5;
+        Tue, 25 Jul 2023 03:50:43 -0700 (PDT)
+Received: from mail02.huawei.com (unknown [172.30.67.143])
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4R9DMg5jjTz4f3sjT;
+        Tue, 25 Jul 2023 18:50:39 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.124.27])
+        by APP2 (Coremail) with SMTP id Syh0CgC3quj+qL9kl7XQOg--.17520S4;
+        Tue, 25 Jul 2023 18:50:40 +0800 (CST)
+From:   Kemeng Shi <shikemeng@huaweicloud.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, ritesh.list@gmail.com,
+        ojaswin@linux.ibm.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Cc:     shikemeng@huaweicloud.com
+Subject: [PATCH v2 02/10] ext4: avoid potential data overflow in next_linear_group
+Date:   Wed, 26 Jul 2023 02:50:58 +0800
+Message-Id: <20230725185106.2147273-3-shikemeng@huaweicloud.com>
+X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20230725185106.2147273-1-shikemeng@huaweicloud.com>
+References: <20230725185106.2147273-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID: Syh0CgC3quj+qL9kl7XQOg--.17520S4
+X-Coremail-Antispam: 1UD129KBjvJXoW7Ww1fAw1xWr45Gw17Ww48Zwb_yoW8JFy5pr
+        s7Ga48urWaqr1DGa9xGayvg3WrK3yxW3WUJryfuw12vFyxJry8GFZrtr10vFy3GF4UAF15
+        Xa15AF1Uu3W3uaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUPSb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
+        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
+        8IrcIa0xkI8VA2jI8067AKxVWUXwA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK
+        0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4
+        x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l
+        84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I
+        8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AK
+        xVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zV
+        CS5cI20VAGYxC7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E
+        5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAV
+        WUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY
+        1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI
+        0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7s
+        RNVbyUUUUUU==
+X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi,
+ngroups is ext4_group_t (unsigned int) while next_linear_group treat it
+in int. If ngroups is bigger than max number described by int, it will
+be treat as a negative number. Then "return group + 1 >= ngroups ? 0 :
+group + 1;" may keep returning 0.
+Switch int to ext4_group_t in next_linear_group to fix the overflow.
 
-My patch was: e2fsck: Add percent to files and blocks feature.
+Fixes: 196e402adf2e ("ext4: improve cr 0 / cr 1 group scanning")
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+---
+ fs/ext4/mballoc.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-Do I need to change something or it is not accepted?
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 62e7a045ad79..3cd795e98008 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1080,8 +1080,9 @@ static inline int should_optimize_scan(struct ext4_allocation_context *ac)
+  * Return next linear group for allocation. If linear traversal should not be
+  * performed, this function just returns the same group
+  */
+-static int
+-next_linear_group(struct ext4_allocation_context *ac, int group, int ngroups)
++static ext4_group_t
++next_linear_group(struct ext4_allocation_context *ac, ext4_group_t group,
++		  ext4_group_t ngroups)
+ {
+ 	if (!should_optimize_scan(ac))
+ 		goto inc_and_return;
+-- 
+2.30.0
 
-Regards
-Oscar Megia L=C3=B3pez
