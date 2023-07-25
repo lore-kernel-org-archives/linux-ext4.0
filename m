@@ -2,91 +2,97 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4D490C001DE
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DB40AC001DF
 	for <linux-ext4@archiver.kernel.org>; Tue, 25 Jul 2023 10:52:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232327AbjGYKwC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 25 Jul 2023 06:52:02 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58504 "EHLO
+        id S233374AbjGYKwH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 25 Jul 2023 06:52:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58714 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233792AbjGYKvM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Jul 2023 06:51:12 -0400
-Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2829F2723;
-        Tue, 25 Jul 2023 03:50:45 -0700 (PDT)
+        with ESMTP id S233802AbjGYKvP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Jul 2023 06:51:15 -0400
+Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 77C192728;
+        Tue, 25 Jul 2023 03:50:46 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4R9DMd2zBcz4f3p0M;
-        Tue, 25 Jul 2023 18:50:37 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4R9DMl0hJSz4f4VkP;
+        Tue, 25 Jul 2023 18:50:43 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP2 (Coremail) with SMTP id Syh0CgC3quj+qL9kl7XQOg--.17520S2;
-        Tue, 25 Jul 2023 18:50:39 +0800 (CST)
+        by APP2 (Coremail) with SMTP id Syh0CgC3quj+qL9kl7XQOg--.17520S12;
+        Tue, 25 Jul 2023 18:50:43 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, ritesh.list@gmail.com,
         ojaswin@linux.ibm.com, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org
 Cc:     shikemeng@huaweicloud.com
-Subject: [PATCH v2 00/10] A few fixes and cleanups to mballoc
-Date:   Wed, 26 Jul 2023 02:50:56 +0800
-Message-Id: <20230725185106.2147273-1-shikemeng@huaweicloud.com>
+Subject: [PATCH v2 10/10] ext4: correct some stale comment of criteria
+Date:   Wed, 26 Jul 2023 02:51:06 +0800
+Message-Id: <20230725185106.2147273-11-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20230725185106.2147273-1-shikemeng@huaweicloud.com>
+References: <20230725185106.2147273-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: Syh0CgC3quj+qL9kl7XQOg--.17520S2
-X-Coremail-Antispam: 1UD129KBjvJXoW7AF4xAr1xAw18Kr1xXFy7ZFb_yoW8Jw4xpr
-        ZxGry3t34fKr17JFZxAayFq3WrWws7Ar47XF1a934kGry7Cr92v3ZrKF18ZFyUAFWDGFn8
-        Xr9xZF45Ga17CaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUvF14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2ocxC64kIII
-        0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xv
-        wVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4
-        x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG
-        64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r
-        1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAq
-        YI8I648v4I1l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4
-        xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1D
-        MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I
-        0E14v26r1j6r4UMIIF0xvE42xK8VAvwI8IcIk0rVWrJr0_WFyUJwCI42IY6I8E87Iv67AK
-        xVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvj
-        TRNgAwUUUUU
+X-CM-TRANSID: Syh0CgC3quj+qL9kl7XQOg--.17520S12
+X-Coremail-Antispam: 1UD129KBjvJXoW7Ww1xWrWxXrykCF47trW3Awb_yoW8GF1fpr
+        4aka4xGF1fXr1UCa1Du3WkWw4Dua1xWFy7Xr929r4FvFy3JFyfuF4Dta4kXFy8Ars3X3WY
+        yrW5ZFW7G3WUua7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUP214x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
+        0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
+        rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6x
+        IIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xv
+        wVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFc
+        xC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_
+        Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2
+        IErcIFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
+        14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIx
+        kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAF
+        wI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JV
+        WxJwCI42IY6I8E87Iv6xkF7I0E14v26r4UJVWxJrUvcSsGvfC2KfnxnUUI43ZEXa7sRiVb
+        yDUUUUU==
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-v1->v2:
-Collect review-by from Ritesh and do improve as Ritesh suggested:
--Keep checks inside unlikely() in patch 1
--Add missed fixes tags in patch 1, 2 and 10
--Fix typo, fix conflic and kill one more return in patch 5
+We named criteria with CR_XXX, correct stale comment to criteria with
+raw number.
+
+Fixes: f52f3d2b9fba ("ext4: Give symbolic names to mballoc criterias")
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+---
+ fs/ext4/mballoc.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 36eea63eaace..de5da76e6748 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2777,8 +2777,8 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
  
-Hi all, this series contains some random fixes and cleanups to mballoc
-which include correct grp validation, fix data overflow and so on.
-More details can be found in respective patches.
-Besides, 'kvm-xfstest smoke' runs successfully without error.
-
-Thanks!
-
-Kemeng Shi (10):
-  ext4: correct grp validation in ext4_mb_good_group
-  ext4: avoid potential data overflow in next_linear_group
-  ext4: return found group directly in
-    ext4_mb_choose_next_group_p2_aligned
-  ext4: use is_power_of_2 helper in ext4_mb_regular_allocator
-  ext4: remove unnecessary return for void function
-  ext4: replace the traditional ternary conditional operator with with
-    max()/min()
-  ext4: remove unused ext4_{set}/{clear}_bit_atomic
-  ext4: return found group directly in
-    ext4_mb_choose_next_group_goal_fast
-  ext4: return found group directly in
-    ext4_mb_choose_next_group_best_avail
-  ext4: correct some stale comment of criteria
-
- fs/ext4/ext4.h    |  2 --
- fs/ext4/mballoc.c | 89 ++++++++++++++++++-----------------------------
- 2 files changed, 33 insertions(+), 58 deletions(-)
-
+ 	/*
+ 	 * ac->ac_2order is set only if the fe_len is a power of 2
+-	 * if ac->ac_2order is set we also set criteria to 0 so that we
+-	 * try exact allocation using buddy.
++	 * if ac->ac_2order is set we also set criteria to CR_POWER2_ALIGNED
++	 * so that we try exact allocation using buddy.
+ 	 */
+ 	i = fls(ac->ac_g_ex.fe_len);
+ 	ac->ac_2order = 0;
+@@ -2835,8 +2835,8 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 			/*
+ 			 * Batch reads of the block allocation bitmaps
+ 			 * to get multiple READs in flight; limit
+-			 * prefetching at cr=0/1, otherwise mballoc can
+-			 * spend a lot of time loading imperfect groups
++			 * prefetching at cr below CR_FAST, otherwise mballoc
++			 * can spend a lot of time loading imperfect groups
+ 			 */
+ 			if ((prefetch_grp == group) &&
+ 			    (cr >= CR_FAST ||
 -- 
 2.30.0
 
