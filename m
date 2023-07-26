@@ -2,30 +2,29 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2FBC3C0015E
-	for <linux-ext4@archiver.kernel.org>; Wed, 26 Jul 2023 10:28:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8B2DDC0015E
+	for <linux-ext4@archiver.kernel.org>; Wed, 26 Jul 2023 10:28:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231892AbjGZK2E (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 26 Jul 2023 06:28:04 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54902 "EHLO
+        id S233867AbjGZK2H (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 26 Jul 2023 06:28:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54578 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233864AbjGZK1Y (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Jul 2023 06:27:24 -0400
-X-Greylist: delayed 69 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Wed, 26 Jul 2023 03:27:23 PDT
-Received: from out-47.mta1.migadu.com (out-47.mta1.migadu.com [95.215.58.47])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 476A51FEC
-        for <linux-ext4@vger.kernel.org>; Wed, 26 Jul 2023 03:27:22 -0700 (PDT)
+        with ESMTP id S233977AbjGZK1x (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Jul 2023 06:27:53 -0400
+X-Greylist: delayed 88 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Wed, 26 Jul 2023 03:27:44 PDT
+Received: from out-21.mta1.migadu.com (out-21.mta1.migadu.com [IPv6:2001:41d0:203:375::15])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1FAE630E9
+        for <linux-ext4@vger.kernel.org>; Wed, 26 Jul 2023 03:27:43 -0700 (PDT)
 X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-        t=1690367194;
+        t=1690367171;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=Lwy1bya8EhY/7tZ1lMXE+4zXJK9aZUCgnxudXlZKm68=;
-        b=ux551U6nhVvd09Fj1FVNymeGKcLT6zQsEBqhk225f+PUyMSHGeN5cY/do/fviplQGSDyEa
-        wDLTA/5zkhT7BGUXE02iGDI3c9FhGSpI38RqZnn4nJtV4JEUJxp+DqWLdBDnHBPMLV6JSm
-        NwF24t3Iddnn29aDeFdB1045RF83B/k=
+         content-transfer-encoding:content-transfer-encoding;
+        bh=WsCnoMov9KDBT3PhGLWO6x2CSRgl6EOcF1M0mVnuJoA=;
+        b=lcBUOokl1NEFQcA/qOXrUhWrnZOieB2pmdi7iWA+QZAlVRy5B4DaYBklnEkM1h0bSZ/LEB
+        /fuKqviwZ8q5o1NI4wS83FD7gDb+5D1xQ+tMvb73Q5vOByFgrhRp7dynXXPI+Z52HiInvL
+        h2XoljZyjo8CxsWNWMx1AtC+pAhjFCc=
 From:   Hao Xu <hao.xu@linux.dev>
 To:     io-uring@vger.kernel.org, Jens Axboe <axboe@kernel.dk>
 Cc:     Dominique Martinet <asmadeus@codewreck.org>,
@@ -37,11 +36,9 @@ Cc:     Dominique Martinet <asmadeus@codewreck.org>,
         "Darrick J . Wong" <djwong@kernel.org>,
         linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-ext4@vger.kernel.org, Wanpeng Li <wanpengli@tencent.com>
-Subject: [PATCH 4/7] add llseek_nowait() for struct file_operations
-Date:   Wed, 26 Jul 2023 18:26:00 +0800
-Message-Id: <20230726102603.155522-5-hao.xu@linux.dev>
-In-Reply-To: <20230726102603.155522-1-hao.xu@linux.dev>
-References: <20230726102603.155522-1-hao.xu@linux.dev>
+Subject: [RFC 0/7] io_uring lseek
+Date:   Wed, 26 Jul 2023 18:25:56 +0800
+Message-Id: <20230726102603.155522-1-hao.xu@linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Migadu-Flow: FLOW_OUT
@@ -51,28 +48,94 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Hao Xu <howeyxu@tencent.com>
 
-Add a new function member llseek_nowait() in struct file_operations for
-nowait llseek. It act just like llseek() but has an extra boolean
-parameter called nowait to indicate if it's a nowait try, avoid IO and
-locks if so.
+This series adds lseek for io_uring, the motivation to import this
+syscall is in previous io_uring getdents patchset, we lack a way to
+rewind the file cursor when it goes to the end of file. Another reason
+is lseek is a common syscall, it's good for coding consistency when
+users use io_uring as their main loop.
 
-Signed-off-by: Hao Xu <howeyxu@tencent.com>
----
- include/linux/fs.h | 1 +
- 1 file changed, 1 insertion(+)
+Patch 1 is code clean for iomap
+Patch 2 adds IOMAP_NOWAIT logic for iomap lseek
+Patch 3 adds a nowait parameter to for IOMAP_NOWAIT control
+Patch 4 adds llseek_nowait() for file_operations so that specific
+        filesystem can implement it for nowait lseek
+Patch 5 adds llseek_nowait() implementation for xfs
+Patch 6 adds a new vfs wrapper for io_uring use
+Patch 7 is the main io_uring lseek implementation
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index f3e315e8efdd..d37290da2d7e 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1823,6 +1823,7 @@ struct file_operations {
- 	int (*uring_cmd)(struct io_uring_cmd *ioucmd, unsigned int issue_flags);
- 	int (*uring_cmd_iopoll)(struct io_uring_cmd *, struct io_comp_batch *,
- 				unsigned int poll_flags);
-+	loff_t (*llseek_nowait)(struct file *, loff_t, int, bool);
- } __randomize_layout;
+Note, this series depends on the previous io_uring getdents series.
+
+This is marked RFC since there is (at least) an issue to be discussed:
+The work in this series is mainly to reslove a problem that the current
+llseek() in struct file_operations doesn't have a place to deliver
+nowait info, and adding an argument to it results in update for llseek
+implementation of all filesystems (35 functions), so here I introduce
+a new llseek_nowait() as a workaround.
+
+For performance, it has about 20%~30% improvement on iops.
+The test program is just like the one for io_uring getdents, here is the
+link to it: https://github.com/HowHsu/liburing/blob/llseek/test/lseek.c
+- Each test runs about 30000 async requests/sync syscalls
+- Each test runs 100 times and get the average value.
+- offset is randomly generated value
+- the file is a 1M all zero file
+
+[howeyxu@~]$ python3 run_lseek.py
+test args:  seek mode:SEEK_SET, offset: 334772
+Average of  sync :  0.012300650000000002
+Average of  iouring :  0.008528009999999999
+30.67%
+
+[howeyxu@~]$ python3 run_lseek.py
+test args:  seek mode:SEEK_CUR, offset: 389292
+Average of  sync :  0.012736129999999995
+Average of  iouring :  0.00928725
+27.08%
+
+[howeyxu@~]$ python3 run_lseek.py
+test args:  seek mode:SEEK_END, offset: 281141
+Average of  sync :  0.01221595
+Average of  iouring :  0.008442890000000003
+30.89%
+
+[howeyxu@~]$ python3 run_lseek.py
+test args:  seek mode:SEEK_DATA, offset: 931103
+Average of  sync :  0.015496230000000005
+Average of  iouring :  0.012341509999999998
+20.36%
+
+[howeyxu@~]$ python3 run_lseek.py
+test args:  seek mode:SEEK_HOLE, offset: 430194
+Average of  sync :  0.01555663000000001
+Average of  iouring :  0.012064940000000003
+22.45%
  
- struct inode_operations {
+
+Hao Xu (7):
+  iomap: merge iomap_seek_hole() and iomap_seek_data()
+  xfs: add nowait support for xfs_seek_iomap_begin()
+  add nowait parameter for iomap_seek()
+  add llseek_nowait() for struct file_operations
+  add llseek_nowait support for xfs
+  add vfs_lseek_nowait()
+  add lseek for io_uring
+
+ fs/ext4/file.c                |  9 ++---
+ fs/gfs2/inode.c               |  4 +--
+ fs/iomap/seek.c               | 42 ++++++-----------------
+ fs/read_write.c               | 18 ++++++++++
+ fs/xfs/xfs_file.c             | 34 ++++++++++++++++---
+ fs/xfs/xfs_iomap.c            |  4 ++-
+ include/linux/fs.h            |  4 +++
+ include/linux/iomap.h         |  6 ++--
+ include/uapi/linux/io_uring.h |  1 +
+ io_uring/fs.c                 | 63 +++++++++++++++++++++++++++++++++++
+ io_uring/fs.h                 |  3 ++
+ io_uring/opdef.c              |  8 +++++
+ 12 files changed, 145 insertions(+), 51 deletions(-)
+
+
+base-commit: 4a4b046082eca8ae90b654d772fccc30e9f23f4d
 -- 
 2.25.1
 
