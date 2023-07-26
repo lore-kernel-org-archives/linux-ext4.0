@@ -2,29 +2,29 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4EF9AC001DE
-	for <linux-ext4@archiver.kernel.org>; Wed, 26 Jul 2023 10:32:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2BB40C0015E
+	for <linux-ext4@archiver.kernel.org>; Wed, 26 Jul 2023 10:32:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233889AbjGZKcW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 26 Jul 2023 06:32:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57094 "EHLO
+        id S233890AbjGZKcX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 26 Jul 2023 06:32:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57122 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232670AbjGZKcT (ORCPT
+        with ESMTP id S233877AbjGZKcT (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Jul 2023 06:32:19 -0400
-Received: from out-13.mta1.migadu.com (out-13.mta1.migadu.com [95.215.58.13])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 72A66212B
+Received: from out-13.mta1.migadu.com (out-13.mta1.migadu.com [IPv6:2001:41d0:203:375::d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 72B4E212F
         for <linux-ext4@vger.kernel.org>; Wed, 26 Jul 2023 03:32:17 -0700 (PDT)
 X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-        t=1690367199;
+        t=1690367177;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=7e4RDFDm8jz3Kb6NZqecvXg19GC0WTDfvDBloY02gI4=;
-        b=QYlhmmBwxtEiNsNPpGdT6VCwV0vXW9/eKFMcdHDqJiJzkKleyVrWcM+oS9lyM12dW3+GB6
-        Qx9bj4mCGDTyOvFg9zbPkndM62ZYNqhSN8X9ATCD6MtlHAbtw6zUJ/NimZ1V3t7+vga7PH
-        OfFuDepZCG8K1oI21pkY+Tv3dNRBB1Y=
+        bh=5sGF3aDp5Ab6VJPIZgqoGrsmM2RUgLWSdrVdkpi2z8c=;
+        b=xcrply0XV2HDyJsf7BcCe6bc9g/ddY1PH2ZmusoHEDQPxefX63K1P+9Tj0UN0hQij7rnz8
+        cdGMIIM/s1NT7GLPngIqMjtLXWsb3vtqurFwjVh1T4zyqSCKl2W6O9xjKmTYE5Ds+NLjn9
+        buPEIspqWwmb6CZmEVsFLk81/CHu2Zc=
 From:   Hao Xu <hao.xu@linux.dev>
 To:     io-uring@vger.kernel.org, Jens Axboe <axboe@kernel.dk>
 Cc:     Dominique Martinet <asmadeus@codewreck.org>,
@@ -36,9 +36,9 @@ Cc:     Dominique Martinet <asmadeus@codewreck.org>,
         "Darrick J . Wong" <djwong@kernel.org>,
         linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-ext4@vger.kernel.org, Wanpeng Li <wanpengli@tencent.com>
-Subject: [PATCH 5/7] add llseek_nowait support for xfs
-Date:   Wed, 26 Jul 2023 18:26:01 +0800
-Message-Id: <20230726102603.155522-6-hao.xu@linux.dev>
+Subject: [PATCH 1/7] iomap: merge iomap_seek_hole() and iomap_seek_data()
+Date:   Wed, 26 Jul 2023 18:25:57 +0800
+Message-Id: <20230726102603.155522-2-hao.xu@linux.dev>
 In-Reply-To: <20230726102603.155522-1-hao.xu@linux.dev>
 References: <20230726102603.155522-1-hao.xu@linux.dev>
 MIME-Version: 1.0
@@ -50,77 +50,162 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Hao Xu <howeyxu@tencent.com>
 
-Add llseek_nowait() operation for xfs, it acts just like llseek(). The
-thing different is it delivers nowait parameter to iomap layer.
+The two functions share almost same code, merge them together.
+No functional change in this patch.
 
 Signed-off-by: Hao Xu <howeyxu@tencent.com>
 ---
- fs/xfs/xfs_file.c | 29 +++++++++++++++++++++++++++--
- 1 file changed, 27 insertions(+), 2 deletions(-)
+ fs/ext4/file.c        |  9 ++-------
+ fs/gfs2/inode.c       |  4 ++--
+ fs/iomap/seek.c       | 40 ++++++++--------------------------------
+ fs/xfs/xfs_file.c     |  5 ++---
+ include/linux/iomap.h |  6 ++----
+ 5 files changed, 16 insertions(+), 48 deletions(-)
 
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index c457c8517f0f..3d59993bce56 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -936,15 +936,10 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int whence)
+ 		return generic_file_llseek_size(file, offset, whence,
+ 						maxbytes, i_size_read(inode));
+ 	case SEEK_HOLE:
+-		inode_lock_shared(inode);
+-		offset = iomap_seek_hole(inode, offset,
+-					 &ext4_iomap_report_ops);
+-		inode_unlock_shared(inode);
+-		break;
+ 	case SEEK_DATA:
+ 		inode_lock_shared(inode);
+-		offset = iomap_seek_data(inode, offset,
+-					 &ext4_iomap_report_ops);
++		offset = iomap_seek(inode, offset, &ext4_iomap_report_ops,
++				    whence == SEEK_HOLE);
+ 		inode_unlock_shared(inode);
+ 		break;
+ 	}
+diff --git a/fs/gfs2/inode.c b/fs/gfs2/inode.c
+index 17c994a0c0d0..628f9d014491 100644
+--- a/fs/gfs2/inode.c
++++ b/fs/gfs2/inode.c
+@@ -2111,7 +2111,7 @@ loff_t gfs2_seek_data(struct file *file, loff_t offset)
+ 	inode_lock_shared(inode);
+ 	ret = gfs2_glock_nq_init(ip->i_gl, LM_ST_SHARED, 0, &gh);
+ 	if (!ret)
+-		ret = iomap_seek_data(inode, offset, &gfs2_iomap_ops);
++		ret = iomap_seek(inode, offset, &gfs2_iomap_ops, false);
+ 	gfs2_glock_dq_uninit(&gh);
+ 	inode_unlock_shared(inode);
+ 
+@@ -2130,7 +2130,7 @@ loff_t gfs2_seek_hole(struct file *file, loff_t offset)
+ 	inode_lock_shared(inode);
+ 	ret = gfs2_glock_nq_init(ip->i_gl, LM_ST_SHARED, 0, &gh);
+ 	if (!ret)
+-		ret = iomap_seek_hole(inode, offset, &gfs2_iomap_ops);
++		ret = iomap_seek(inode, offset, &gfs2_iomap_ops, true);
+ 	gfs2_glock_dq_uninit(&gh);
+ 	inode_unlock_shared(inode);
+ 
+diff --git a/fs/iomap/seek.c b/fs/iomap/seek.c
+index a845c012b50c..5e8641c5f0da 100644
+--- a/fs/iomap/seek.c
++++ b/fs/iomap/seek.c
+@@ -30,32 +30,6 @@ static loff_t iomap_seek_hole_iter(const struct iomap_iter *iter,
+ 	}
+ }
+ 
+-loff_t
+-iomap_seek_hole(struct inode *inode, loff_t pos, const struct iomap_ops *ops)
+-{
+-	loff_t size = i_size_read(inode);
+-	struct iomap_iter iter = {
+-		.inode	= inode,
+-		.pos	= pos,
+-		.flags	= IOMAP_REPORT,
+-	};
+-	int ret;
+-
+-	/* Nothing to be found before or beyond the end of the file. */
+-	if (pos < 0 || pos >= size)
+-		return -ENXIO;
+-
+-	iter.len = size - pos;
+-	while ((ret = iomap_iter(&iter, ops)) > 0)
+-		iter.processed = iomap_seek_hole_iter(&iter, &pos);
+-	if (ret < 0)
+-		return ret;
+-	if (iter.len) /* found hole before EOF */
+-		return pos;
+-	return size;
+-}
+-EXPORT_SYMBOL_GPL(iomap_seek_hole);
+-
+ static loff_t iomap_seek_data_iter(const struct iomap_iter *iter,
+ 		loff_t *hole_pos)
+ {
+@@ -77,7 +51,8 @@ static loff_t iomap_seek_data_iter(const struct iomap_iter *iter,
+ }
+ 
+ loff_t
+-iomap_seek_data(struct inode *inode, loff_t pos, const struct iomap_ops *ops)
++iomap_seek(struct inode *inode, loff_t pos, const struct iomap_ops *ops,
++	   bool hole)
+ {
+ 	loff_t size = i_size_read(inode);
+ 	struct iomap_iter iter = {
+@@ -93,12 +68,13 @@ iomap_seek_data(struct inode *inode, loff_t pos, const struct iomap_ops *ops)
+ 
+ 	iter.len = size - pos;
+ 	while ((ret = iomap_iter(&iter, ops)) > 0)
+-		iter.processed = iomap_seek_data_iter(&iter, &pos);
++		iter.processed = hole ? iomap_seek_hole_iter(&iter, &pos) :
++				 iomap_seek_data_iter(&iter, &pos);
+ 	if (ret < 0)
+ 		return ret;
+-	if (iter.len) /* found data before EOF */
++	if (iter.len) /* found hole/data before EOF */
+ 		return pos;
+-	/* We've reached the end of the file without finding data */
+-	return -ENXIO;
++	/* We've reached the end of the file without finding hole/data */
++	return hole ? size : -ENXIO;
+ }
+-EXPORT_SYMBOL_GPL(iomap_seek_data);
++EXPORT_SYMBOL_GPL(iomap_seek);
 diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 73adc0aee2ff..cba82264221d 100644
+index 4f502219ae4f..d7d37f8fb6bc 100644
 --- a/fs/xfs/xfs_file.c
 +++ b/fs/xfs/xfs_file.c
-@@ -1257,10 +1257,11 @@ xfs_file_readdir(
- }
+@@ -1271,10 +1271,9 @@ xfs_file_llseek(
+ 	default:
+ 		return generic_file_llseek(file, offset, whence);
+ 	case SEEK_HOLE:
+-		offset = iomap_seek_hole(inode, offset, &xfs_seek_iomap_ops);
+-		break;
+ 	case SEEK_DATA:
+-		offset = iomap_seek_data(inode, offset, &xfs_seek_iomap_ops);
++		offset = iomap_seek(inode, offset, &xfs_seek_iomap_ops,
++				    whence == SEEK_HOLE);
+ 		break;
+ 	}
  
- STATIC loff_t
--xfs_file_llseek(
-+__xfs_file_llseek(
- 	struct file	*file,
- 	loff_t		offset,
--	int		whence)
-+	int		whence,
-+	bool		nowait)
- {
- 	struct inode		*inode = file->f_mapping->host;
+diff --git a/include/linux/iomap.h b/include/linux/iomap.h
+index e2b836c2e119..22d5f9b19a22 100644
+--- a/include/linux/iomap.h
++++ b/include/linux/iomap.h
+@@ -274,10 +274,8 @@ vm_fault_t iomap_page_mkwrite(struct vm_fault *vmf,
+ 			const struct iomap_ops *ops);
+ int iomap_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 		u64 start, u64 len, const struct iomap_ops *ops);
+-loff_t iomap_seek_hole(struct inode *inode, loff_t offset,
+-		const struct iomap_ops *ops);
+-loff_t iomap_seek_data(struct inode *inode, loff_t offset,
+-		const struct iomap_ops *ops);
++loff_t iomap_seek(struct inode *inode, loff_t offset,
++		  const struct iomap_ops *ops, bool hole);
+ sector_t iomap_bmap(struct address_space *mapping, sector_t bno,
+ 		const struct iomap_ops *ops);
  
-@@ -1282,6 +1283,28 @@ xfs_file_llseek(
- 	return vfs_setpos(file, offset, inode->i_sb->s_maxbytes);
- }
- 
-+STATIC loff_t
-+xfs_file_llseek(
-+	struct file	*file,
-+	loff_t		offset,
-+	int		whence)
-+{
-+	return __xfs_file_llseek(file, offset, whence, false);
-+}
-+
-+STATIC loff_t
-+xfs_file_llseek_nowait(
-+	struct file	*file,
-+	loff_t		offset,
-+	int		whence,
-+	bool		nowait)
-+{
-+	if (file->f_op == &xfs_file_operations)
-+		return __xfs_file_llseek(file, offset, whence, nowait);
-+	else
-+		return generic_file_llseek(file, offset, whence);
-+}
-+
- #ifdef CONFIG_FS_DAX
- static inline vm_fault_t
- xfs_dax_fault(
-@@ -1442,6 +1465,7 @@ xfs_file_mmap(
- 
- const struct file_operations xfs_file_operations = {
- 	.llseek		= xfs_file_llseek,
-+	.llseek_nowait	= xfs_file_llseek_nowait,
- 	.read_iter	= xfs_file_read_iter,
- 	.write_iter	= xfs_file_write_iter,
- 	.splice_read	= xfs_file_splice_read,
-@@ -1467,6 +1491,7 @@ const struct file_operations xfs_dir_file_operations = {
- 	.read		= generic_read_dir,
- 	.iterate_shared	= xfs_file_readdir,
- 	.llseek		= generic_file_llseek,
-+	.llseek_nowait	= xfs_file_llseek_nowait,
- 	.unlocked_ioctl	= xfs_file_ioctl,
- #ifdef CONFIG_COMPAT
- 	.compat_ioctl	= xfs_file_compat_ioctl,
 -- 
 2.25.1
 
