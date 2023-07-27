@@ -2,53 +2,53 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6CB89C001E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 27 Jul 2023 08:11:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C32ABC0015E
+	for <linux-ext4@archiver.kernel.org>; Thu, 27 Jul 2023 08:12:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232892AbjG0ILm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 27 Jul 2023 04:11:42 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44064 "EHLO
+        id S233837AbjG0IMk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 27 Jul 2023 04:12:40 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48100 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233804AbjG0IKh (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Jul 2023 04:10:37 -0400
-Received: from mail-pf1-x429.google.com (mail-pf1-x429.google.com [IPv6:2607:f8b0:4864:20::429])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8AB0B422B
-        for <linux-ext4@vger.kernel.org>; Thu, 27 Jul 2023 01:07:16 -0700 (PDT)
-Received: by mail-pf1-x429.google.com with SMTP id d2e1a72fcca58-6748a616e17so182236b3a.1
-        for <linux-ext4@vger.kernel.org>; Thu, 27 Jul 2023 01:07:16 -0700 (PDT)
+        with ESMTP id S233901AbjG0ILd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Jul 2023 04:11:33 -0400
+Received: from mail-pf1-x431.google.com (mail-pf1-x431.google.com [IPv6:2607:f8b0:4864:20::431])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6348C3598
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Jul 2023 01:07:53 -0700 (PDT)
+Received: by mail-pf1-x431.google.com with SMTP id d2e1a72fcca58-6862d4a1376so188385b3a.0
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Jul 2023 01:07:53 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1690445172; x=1691049972;
+        d=bytedance.com; s=google; t=1690445222; x=1691050022;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=hMz0NiXWW4aad/y0uXjwCFa/Ag/H17CXQFU4sIH/+zs=;
-        b=AHxGvLfHLl40j8B2JJRU5s4VfBVIfkKAsI0cQEyx34RUKm+kvHJrB2iQzGzRnBcS3v
-         6USwrAVD49Q91VdWL412Beuc1lh9luLsvseTAfwZXNQFTlfXj/44XL3QSDLO3kE477UK
-         PuQisTQDtaTenLhmz9UxJrWIk76t/9C2sGl3AoIFTG0F/GG2DtEXlZsFxPta58HNNxGh
-         nuotqk/EcRuGp6B6DpQqHvzB1OaU8/LVfrpsdfcpoHM2+LjVOOXNlq+MDZzMAY0XeOby
-         XoS1N9oa25ZJEGOvTPLqpEaa/2bkazEZHcopiam72Y0TXS5KlF1vjQrUn3lGIfR4Oiwn
-         FzZg==
+        bh=hJ9OcOwqZEZhIoLNGrov7as0vMS5t1dTfm2Sm9qefJI=;
+        b=AioCATUlkHfrdNMX26y5cMG8yiZzcrqJVPo4kMJoo0a/SPBGZMItYxbURGlfK0qQ3U
+         pdquqHjvBnBibcfcPa96/7pchRYEBHxyNnf24E8fTswl7dwSe4DIa81z6/ovJRcM58gW
+         OCn1XGDPuwokH00bwAsXcK1Gr5D3vpz/ZXjhjYJknWBgLZAbQPwFGeGyEdzXyVgOqH5z
+         Y8WwL8gpftvasBEeZpl0cei4t7+d2ZCdr5qxpBrrzaVJwzr8lwB/25SUTyxKcTGn9xox
+         E7xpcSMCUuenHibKLxGm6dPJne0R4y90eWbLKKoQI9m29dm8UqZ2/hC+L12FcXTeAlus
+         bdTQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1690445172; x=1691049972;
+        d=1e100.net; s=20221208; t=1690445222; x=1691050022;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=hMz0NiXWW4aad/y0uXjwCFa/Ag/H17CXQFU4sIH/+zs=;
-        b=IoQgaR4g0RIEkont53oy9oqqWMEQOfTUTnKu6S4vIwoZhkpioXDgv6xxf15eKOgNcR
-         x9mDiOS7dnDm4vCIyuX9jNQX3JZZlIULkpVhir36vjxgNo5Oi6S0RzD6k4mhLt5Gni82
-         FvZuWCQ9fwzdEmiQQCVrmlCOT/VFE5bSWf0e/5LrjukilSTHKsq7+L+De1eG5S4POzSA
-         KiW2Hg+xpAyTiMTcOgcYCbK0ZcH7vcqAD2uOqxr88/56yi4T+Ol5+x0fWg5cWlt+cDJm
-         0ZacwW9eloURJb8I1yvKPUhP9uHjS/v8E+ty6J1JqIfyCQ+tymmQKMny07C1lkd283aW
-         Sitg==
-X-Gm-Message-State: ABy/qLaFv/6eEnir7HH7y6+Udo4KyMRvWjWws83crQYLfuI6mCIet5m5
-        Y4JF1rL2FJZAX7oj7t1GVbz7GA==
-X-Google-Smtp-Source: APBJJlELtr5cWJQ0To//AtRPEOYgFBMbhSo+p4MsXdX0IoPp5bJSVuIL2HKgeywTxbzsVW+qtVe8tQ==
-X-Received: by 2002:a05:6a00:4792:b0:668:834d:4bd with SMTP id dh18-20020a056a00479200b00668834d04bdmr4674312pfb.0.1690445172123;
-        Thu, 27 Jul 2023 01:06:12 -0700 (PDT)
+        bh=hJ9OcOwqZEZhIoLNGrov7as0vMS5t1dTfm2Sm9qefJI=;
+        b=l+voM2nIXQOaXxeM+95bRa+lYFae4SNtL6s7FVv5DPr6suKIFa/i2RBhV1gUhMTdA5
+         HyEg3E9liu+DkBbU96MrdduyLMY46P6TEZcn//Mt1/wfULvdqXhWYKbCmxHDWurVO0Mv
+         cCc85MGJk2FpNscGjEX2FRTyLVaGUk1jgvk41eFBzIyof0+ZYiIUmLpgs0N0dD2PeS1y
+         N1588oxVIHTUpzeOg2R9PDNIT5kQ8Fv3zKp4D2fHoWrnCxlH3J2USLzA1YVxHoKrmudw
+         pihTSPGMPJGiESSgM4YPM5mxy0JzBOBwoetE/F+vdful4smaFOBMOJNvSJkoOqq+EaC9
+         VZtw==
+X-Gm-Message-State: ABy/qLb6j1R/8maQgkyevghqRdwh2lXnSIpoQ1UtiXL2LJ3Y1XON/pYh
+        s/fvCZcvHciA33zHwwhESrXskA==
+X-Google-Smtp-Source: APBJJlEQjBlPfpR5V6JAfBPtQGnM4uH9f200On7b1qJi/VneGv5RiS5uPlFi7ClY0YXsCiY0kjcbBw==
+X-Received: by 2002:aa7:8615:0:b0:681:9fe0:b543 with SMTP id p21-20020aa78615000000b006819fe0b543mr4619538pfn.2.1690445222261;
+        Thu, 27 Jul 2023 01:07:02 -0700 (PDT)
 Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.147])
-        by smtp.gmail.com with ESMTPSA id j8-20020aa78d08000000b006828e49c04csm885872pfe.75.2023.07.27.01.06.00
+        by smtp.gmail.com with ESMTPSA id j8-20020aa78d08000000b006828e49c04csm885872pfe.75.2023.07.27.01.06.50
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 27 Jul 2023 01:06:11 -0700 (PDT)
+        Thu, 27 Jul 2023 01:07:01 -0700 (PDT)
 From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -68,10 +68,11 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         virtualization@lists.linux-foundation.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH v3 02/49] mm: move some shrinker-related function declarations to mm/internal.h
-Date:   Thu, 27 Jul 2023 16:04:15 +0800
-Message-Id: <20230727080502.77895-3-zhengqi.arch@bytedance.com>
+        Qi Zheng <zhengqi.arch@bytedance.com>,
+        Muchun Song <songmuchun@bytedance.com>
+Subject: [PATCH v3 06/49] kvm: mmu: dynamically allocate the x86-mmu shrinker
+Date:   Thu, 27 Jul 2023 16:04:19 +0800
+Message-Id: <20230727080502.77895-7-zhengqi.arch@bytedance.com>
 X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 In-Reply-To: <20230727080502.77895-1-zhengqi.arch@bytedance.com>
 References: <20230727080502.77895-1-zhengqi.arch@bytedance.com>
@@ -81,89 +82,59 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The following functions are only used inside the mm subsystem, so it's
-better to move their declarations to the mm/internal.h file.
-
-1. shrinker_debugfs_add()
-2. shrinker_debugfs_detach()
-3. shrinker_debugfs_remove()
+Use new APIs to dynamically allocate the x86-mmu shrinker.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
+Reviewed-by: Muchun Song <songmuchun@bytedance.com>
 ---
- include/linux/shrinker.h | 19 -------------------
- mm/internal.h            | 28 ++++++++++++++++++++++++++++
- 2 files changed, 28 insertions(+), 19 deletions(-)
+ arch/x86/kvm/mmu/mmu.c | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/shrinker.h b/include/linux/shrinker.h
-index 224293b2dd06..8dc15aa37410 100644
---- a/include/linux/shrinker.h
-+++ b/include/linux/shrinker.h
-@@ -106,28 +106,9 @@ extern void free_prealloced_shrinker(struct shrinker *shrinker);
- extern void synchronize_shrinkers(void);
+diff --git a/arch/x86/kvm/mmu/mmu.c b/arch/x86/kvm/mmu/mmu.c
+index ec169f5c7dce..15fc92a24a26 100644
+--- a/arch/x86/kvm/mmu/mmu.c
++++ b/arch/x86/kvm/mmu/mmu.c
+@@ -6847,11 +6847,7 @@ static unsigned long mmu_shrink_count(struct shrinker *shrink,
+ 	return percpu_counter_read_positive(&kvm_total_used_mmu_pages);
+ }
  
- #ifdef CONFIG_SHRINKER_DEBUG
--extern int shrinker_debugfs_add(struct shrinker *shrinker);
--extern struct dentry *shrinker_debugfs_detach(struct shrinker *shrinker,
--					      int *debugfs_id);
--extern void shrinker_debugfs_remove(struct dentry *debugfs_entry,
--				    int debugfs_id);
- extern int __printf(2, 3) shrinker_debugfs_rename(struct shrinker *shrinker,
- 						  const char *fmt, ...);
- #else /* CONFIG_SHRINKER_DEBUG */
--static inline int shrinker_debugfs_add(struct shrinker *shrinker)
--{
--	return 0;
--}
--static inline struct dentry *shrinker_debugfs_detach(struct shrinker *shrinker,
--						     int *debugfs_id)
--{
--	*debugfs_id = -1;
--	return NULL;
--}
--static inline void shrinker_debugfs_remove(struct dentry *debugfs_entry,
--					   int debugfs_id)
--{
--}
- static inline __printf(2, 3)
- int shrinker_debugfs_rename(struct shrinker *shrinker, const char *fmt, ...)
+-static struct shrinker mmu_shrinker = {
+-	.count_objects = mmu_shrink_count,
+-	.scan_objects = mmu_shrink_scan,
+-	.seeks = DEFAULT_SEEKS * 10,
+-};
++static struct shrinker *mmu_shrinker;
+ 
+ static void mmu_destroy_caches(void)
  {
-diff --git a/mm/internal.h b/mm/internal.h
-index 5a03bc4782a2..8aeaf16ae039 100644
---- a/mm/internal.h
-+++ b/mm/internal.h
-@@ -1135,4 +1135,32 @@ struct vma_prepare {
- 	struct vm_area_struct *remove;
- 	struct vm_area_struct *remove2;
- };
+@@ -6984,10 +6980,16 @@ int kvm_mmu_vendor_module_init(void)
+ 	if (percpu_counter_init(&kvm_total_used_mmu_pages, 0, GFP_KERNEL))
+ 		goto out;
+ 
+-	ret = register_shrinker(&mmu_shrinker, "x86-mmu");
+-	if (ret)
++	mmu_shrinker = shrinker_alloc(0, "x86-mmu");
++	if (!mmu_shrinker)
+ 		goto out_shrinker;
+ 
++	mmu_shrinker->count_objects = mmu_shrink_count;
++	mmu_shrinker->scan_objects = mmu_shrink_scan;
++	mmu_shrinker->seeks = DEFAULT_SEEKS * 10;
 +
-+/*
-+ * shrinker related functions
-+ */
++	shrinker_register(mmu_shrinker);
 +
-+#ifdef CONFIG_SHRINKER_DEBUG
-+extern int shrinker_debugfs_add(struct shrinker *shrinker);
-+extern struct dentry *shrinker_debugfs_detach(struct shrinker *shrinker,
-+					      int *debugfs_id);
-+extern void shrinker_debugfs_remove(struct dentry *debugfs_entry,
-+				    int debugfs_id);
-+#else /* CONFIG_SHRINKER_DEBUG */
-+static inline int shrinker_debugfs_add(struct shrinker *shrinker)
-+{
-+	return 0;
-+}
-+static inline struct dentry *shrinker_debugfs_detach(struct shrinker *shrinker,
-+						     int *debugfs_id)
-+{
-+	*debugfs_id = -1;
-+	return NULL;
-+}
-+static inline void shrinker_debugfs_remove(struct dentry *debugfs_entry,
-+					   int debugfs_id)
-+{
-+}
-+#endif /* CONFIG_SHRINKER_DEBUG */
-+
- #endif	/* __MM_INTERNAL_H */
+ 	return 0;
+ 
+ out_shrinker:
+@@ -7009,7 +7011,7 @@ void kvm_mmu_vendor_module_exit(void)
+ {
+ 	mmu_destroy_caches();
+ 	percpu_counter_destroy(&kvm_total_used_mmu_pages);
+-	unregister_shrinker(&mmu_shrinker);
++	shrinker_free(mmu_shrinker);
+ }
+ 
+ /*
 -- 
 2.30.2
 
