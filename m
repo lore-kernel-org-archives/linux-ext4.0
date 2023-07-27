@@ -2,53 +2,53 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 597F1C001E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 27 Jul 2023 08:35:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F35F1C001E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 27 Jul 2023 08:36:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234373AbjG0Ifb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 27 Jul 2023 04:35:31 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44358 "EHLO
+        id S234286AbjG0Igf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 27 Jul 2023 04:36:35 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44252 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234370AbjG0IfL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Jul 2023 04:35:11 -0400
-Received: from mail-pf1-f172.google.com (mail-pf1-f172.google.com [209.85.210.172])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8A77A61A7
-        for <linux-ext4@vger.kernel.org>; Thu, 27 Jul 2023 01:18:43 -0700 (PDT)
-Received: by mail-pf1-f172.google.com with SMTP id d2e1a72fcca58-682b1768a0bso175649b3a.0
-        for <linux-ext4@vger.kernel.org>; Thu, 27 Jul 2023 01:18:43 -0700 (PDT)
+        with ESMTP id S234478AbjG0IgP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Jul 2023 04:36:15 -0400
+Received: from mail-oi1-x229.google.com (mail-oi1-x229.google.com [IPv6:2607:f8b0:4864:20::229])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4B270E69
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Jul 2023 01:19:18 -0700 (PDT)
+Received: by mail-oi1-x229.google.com with SMTP id 5614622812f47-3a5c9b81a7cso149716b6e.1
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Jul 2023 01:19:18 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1690445576; x=1691050376;
+        d=bytedance.com; s=google; t=1690445957; x=1691050757;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=48waxWZGd1WUnLYaDrTSxvJywKXLcopaiUkWgt7j5Rg=;
-        b=h7BzAXWMeO6q413o2q8QBGFyYtSJJQDVtscFkPudih7uYq32KqAohX6ko7JdrT58zZ
-         jQesZevPWI16RJ584HoFfkctqZliFhC+Sy5DmGf4/p07EAXTPpKceV5c/mFhCQtFe2kc
-         GT00j/8cVqT7gjAO9UrE6yMmEVq+vAOowivD6U/C54ThBKsCCzPpN8b7GVd2fZWCigOk
-         vXp6v9qkHcNnCSidh0rHnK6MCacYxO0sYof9O+5/aUkm0GolyNtTHq/urdLytozqbZlU
-         y5SGivZA8rDsT4B1CBykaduW0zvqtcacoHqzhUYbcvZiZaKGJdqILCFM7NZx5HG0wVY2
-         fpkw==
+        bh=bO4yc6b0222dRNj48HoFyPuU9QjRVolFKKVhhMGpLKw=;
+        b=F7dqP15Tv4Tl+sI3J3zUVQhB6iGXwHy/m5t94DXy2SD+E8utSXB6MfpH3I/LtewZUH
+         cKi8LDDm7yiCfY8cB4It9PDTxDUypcjNubLjzhM4if4ow99oIX5g1BLk+mLrjCHwSRRN
+         oV+PflJMqYqyABcmmdFrUd6q+8o+uKniGX9XLBl+mF11erNxaWCiDdw8NEdda9U2uRYp
+         1fYE6T8VnqyrjZ+WEukOe9Fd9m0OgKku5NA8+5ArtIt5gxT/SgT89cEujm/dWizp+cxv
+         Xfsa8QTO2/SKBGSC2AnDc9XW2zDgRtatFlonldtLwxXIeFEwN7qGORTKLJaaI+1/sGEb
+         t/CA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1690445576; x=1691050376;
+        d=1e100.net; s=20221208; t=1690445957; x=1691050757;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=48waxWZGd1WUnLYaDrTSxvJywKXLcopaiUkWgt7j5Rg=;
-        b=FVxXYlmO8cq8/oT3O8z0ghiDmVr97+YuZIce4vLsGrYxZpU2uwbi8GuMuDS/vAn+Vw
-         2Ap9jB9dXWNatfPNivbplBA3hJoBUNFpNAs35asy+0faTlhaZlPVNZJPXiLUZeUNTsZK
-         N5n11r9NGwjxiRZPj4uSDHbfek4As6qm4xkNZSLE+jL7x1J8dkLJlJ/K7CYrFGK32jmp
-         pq3dvVlbLi96qiNXWN+VaCdNBpZMCZQ/HsGTzFxY953+dPtH7x+sfiRpkWEg3iGgCcUJ
-         cMJFRzlMHItFSTpaVFVT/HCy45Kyu0rWvbhEQt208JSfXl+EmI0IQFEOf62YJZ/j5Zv6
-         MLoQ==
-X-Gm-Message-State: ABy/qLYf1ZCWmVorCPmcRib3Pa+q+RVpjotgL8IXHHj5Zk1Dag2h7+o7
-        RcxOdYUUer9Jz5ZKE21Q3QNEXQ==
-X-Google-Smtp-Source: APBJJlGlNC1VbP/jxEyWXSRyFxMRuhVQW95Y9Ngz7T3+dCe8qyleorovPEoXgtcixk5kZ4l7rZv1Dg==
-X-Received: by 2002:a05:6a00:4a10:b0:686:b990:560f with SMTP id do16-20020a056a004a1000b00686b990560fmr4386534pfb.2.1690445576006;
-        Thu, 27 Jul 2023 01:12:56 -0700 (PDT)
+        bh=bO4yc6b0222dRNj48HoFyPuU9QjRVolFKKVhhMGpLKw=;
+        b=Yj8KA/xdlyqfL/iajf6DT0wJz/M36QFqexsV4Ud/OpsM1obhQDNY9pOK/aHPpsiiSt
+         1glgKMvj/saMnxty+ChpzNYAYhU6Av4OC+gj1iT2b9N7Xw+hzq5y4E/IOB+H3+lg0HQE
+         ioxorGwKp2db1bxiijWj7R5L89FgKNBKPkido2xJIWAELSPXLw0K40JNVpxwg4CERCMR
+         +6dR5hwkFfEcKXFCCKmMokEEex70Gvg8f1gbhDB+hXdFf74E4D3kGYqDPygQIvPzsTtI
+         uqNXj8ZKpZfFbH8jaUwiEtsTtM0ICU4H/4XwtloF5Pp5ZV/fYFmfdlEecK4gWasm8Evz
+         Cdjw==
+X-Gm-Message-State: ABy/qLYQJqNRJVLRS12X8URePlM3ktIa9+fQtAcHHMbWobKYqGHXb13M
+        /C2Fo+1fRYnc7ZPEKnBXzXmp4FmKOZx70pAz5dQ=
+X-Google-Smtp-Source: APBJJlEtjuu7JvMViG/zI1+BRK6QgnXajX34xFKdSMMqB1WswZOW9mIhLIlLvIrLtx031P4ulw5hGg==
+X-Received: by 2002:a05:6a20:9381:b0:137:8f19:1de7 with SMTP id x1-20020a056a20938100b001378f191de7mr6160325pzh.0.1690445259706;
+        Thu, 27 Jul 2023 01:07:39 -0700 (PDT)
 Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.147])
-        by smtp.gmail.com with ESMTPSA id j8-20020aa78d08000000b006828e49c04csm885872pfe.75.2023.07.27.01.12.43
+        by smtp.gmail.com with ESMTPSA id j8-20020aa78d08000000b006828e49c04csm885872pfe.75.2023.07.27.01.07.26
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 27 Jul 2023 01:12:55 -0700 (PDT)
+        Thu, 27 Jul 2023 01:07:39 -0700 (PDT)
 From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -70,9 +70,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
         Qi Zheng <zhengqi.arch@bytedance.com>,
         Muchun Song <songmuchun@bytedance.com>
-Subject: [PATCH v3 35/49] jbd2,ext4: dynamically allocate the jbd2-journal shrinker
-Date:   Thu, 27 Jul 2023 16:04:48 +0800
-Message-Id: <20230727080502.77895-36-zhengqi.arch@bytedance.com>
+Subject: [PATCH v3 09/49] xenbus/backend: dynamically allocate the xen-backend shrinker
+Date:   Thu, 27 Jul 2023 16:04:22 +0800
+Message-Id: <20230727080502.77895-10-zhengqi.arch@bytedance.com>
 X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 In-Reply-To: <20230727080502.77895-1-zhengqi.arch@bytedance.com>
 References: <20230727080502.77895-1-zhengqi.arch@bytedance.com>
@@ -82,98 +82,52 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-In preparation for implementing lockless slab shrink, use new APIs to
-dynamically allocate the jbd2-journal shrinker, so that it can be freed
-asynchronously using kfree_rcu(). Then it doesn't need to wait for RCU
-read-side critical section when releasing the struct journal_s.
+Use new APIs to dynamically allocate the xen-backend shrinker.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 Reviewed-by: Muchun Song <songmuchun@bytedance.com>
 ---
- fs/jbd2/journal.c    | 27 +++++++++++++++++----------
- include/linux/jbd2.h |  2 +-
- 2 files changed, 18 insertions(+), 11 deletions(-)
+ drivers/xen/xenbus/xenbus_probe_backend.c | 18 +++++++++++-------
+ 1 file changed, 11 insertions(+), 7 deletions(-)
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 1b5a45ab62b0..4c421da03fee 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1298,7 +1298,7 @@ static int jbd2_min_tag_size(void)
- static unsigned long jbd2_journal_shrink_scan(struct shrinker *shrink,
- 					      struct shrink_control *sc)
+diff --git a/drivers/xen/xenbus/xenbus_probe_backend.c b/drivers/xen/xenbus/xenbus_probe_backend.c
+index da96c260e26b..929c41a5ccee 100644
+--- a/drivers/xen/xenbus/xenbus_probe_backend.c
++++ b/drivers/xen/xenbus/xenbus_probe_backend.c
+@@ -284,13 +284,9 @@ static unsigned long backend_shrink_memory_count(struct shrinker *shrinker,
+ 	return 0;
+ }
+ 
+-static struct shrinker backend_memory_shrinker = {
+-	.count_objects = backend_shrink_memory_count,
+-	.seeks = DEFAULT_SEEKS,
+-};
+-
+ static int __init xenbus_probe_backend_init(void)
  {
--	journal_t *journal = container_of(shrink, journal_t, j_shrinker);
-+	journal_t *journal = shrink->private_data;
- 	unsigned long nr_to_scan = sc->nr_to_scan;
- 	unsigned long nr_shrunk;
- 	unsigned long count;
-@@ -1324,7 +1324,7 @@ static unsigned long jbd2_journal_shrink_scan(struct shrinker *shrink,
- static unsigned long jbd2_journal_shrink_count(struct shrinker *shrink,
- 					       struct shrink_control *sc)
- {
--	journal_t *journal = container_of(shrink, journal_t, j_shrinker);
-+	journal_t *journal = shrink->private_data;
- 	unsigned long count;
++	struct shrinker *backend_memory_shrinker;
+ 	static struct notifier_block xenstore_notifier = {
+ 		.notifier_call = backend_probe_and_watch
+ 	};
+@@ -305,8 +301,16 @@ static int __init xenbus_probe_backend_init(void)
  
- 	count = percpu_counter_read_positive(&journal->j_checkpoint_jh_count);
-@@ -1412,19 +1412,26 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 	journal->j_superblock = (journal_superblock_t *)bh->b_data;
+ 	register_xenstore_notifier(&xenstore_notifier);
  
- 	journal->j_shrink_transaction = NULL;
--	journal->j_shrinker.scan_objects = jbd2_journal_shrink_scan;
--	journal->j_shrinker.count_objects = jbd2_journal_shrink_count;
--	journal->j_shrinker.seeks = DEFAULT_SEEKS;
--	journal->j_shrinker.batch = journal->j_max_transaction_buffers;
- 
- 	if (percpu_counter_init(&journal->j_checkpoint_jh_count, 0, GFP_KERNEL))
- 		goto err_cleanup;
- 
--	if (register_shrinker(&journal->j_shrinker, "jbd2-journal:(%u:%u)",
--			      MAJOR(bdev->bd_dev), MINOR(bdev->bd_dev))) {
-+	journal->j_shrinker = shrinker_alloc(0, "jbd2-journal:(%u:%u)",
-+					     MAJOR(bdev->bd_dev),
-+					     MINOR(bdev->bd_dev));
-+	if (!journal->j_shrinker) {
- 		percpu_counter_destroy(&journal->j_checkpoint_jh_count);
- 		goto err_cleanup;
- 	}
+-	if (register_shrinker(&backend_memory_shrinker, "xen-backend"))
+-		pr_warn("shrinker registration failed\n");
++	backend_memory_shrinker = shrinker_alloc(0, "xen-backend");
++	if (!backend_memory_shrinker) {
++		pr_warn("shrinker allocation failed\n");
++		return 0;
++	}
 +
-+	journal->j_shrinker->scan_objects = jbd2_journal_shrink_scan;
-+	journal->j_shrinker->count_objects = jbd2_journal_shrink_count;
-+	journal->j_shrinker->seeks = DEFAULT_SEEKS;
-+	journal->j_shrinker->batch = journal->j_max_transaction_buffers;
-+	journal->j_shrinker->private_data = journal;
++	backend_memory_shrinker->count_objects = backend_shrink_memory_count;
++	backend_memory_shrinker->seeks = DEFAULT_SEEKS;
 +
-+	shrinker_register(journal->j_shrinker);
-+
- 	return journal;
++	shrinker_register(backend_memory_shrinker);
  
- err_cleanup:
-@@ -2187,9 +2194,9 @@ int jbd2_journal_destroy(journal_t *journal)
- 		brelse(journal->j_sb_buffer);
- 	}
- 
--	if (journal->j_shrinker.flags & SHRINKER_REGISTERED) {
-+	if (journal->j_shrinker) {
- 		percpu_counter_destroy(&journal->j_checkpoint_jh_count);
--		unregister_shrinker(&journal->j_shrinker);
-+		shrinker_free(journal->j_shrinker);
- 	}
- 	if (journal->j_proc_entry)
- 		jbd2_stats_proc_exit(journal);
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 44c298aa58d4..beb4c4586320 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -891,7 +891,7 @@ struct journal_s
- 	 * Journal head shrinker, reclaim buffer's journal head which
- 	 * has been written back.
- 	 */
--	struct shrinker		j_shrinker;
-+	struct shrinker		*j_shrinker;
- 
- 	/**
- 	 * @j_checkpoint_jh_count:
+ 	return 0;
+ }
 -- 
 2.30.2
 
