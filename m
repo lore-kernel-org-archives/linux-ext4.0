@@ -2,184 +2,141 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 99324C001E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 27 Jul 2023 07:26:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 95272C0015E
+	for <linux-ext4@archiver.kernel.org>; Thu, 27 Jul 2023 08:11:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233384AbjG0H0s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 27 Jul 2023 03:26:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41244 "EHLO
+        id S233854AbjG0ILA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 27 Jul 2023 04:11:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42614 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233345AbjG0HZi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Jul 2023 03:25:38 -0400
-Received: from mail-lj1-x230.google.com (mail-lj1-x230.google.com [IPv6:2a00:1450:4864:20::230])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 237A26A58
-        for <linux-ext4@vger.kernel.org>; Thu, 27 Jul 2023 00:15:45 -0700 (PDT)
-Received: by mail-lj1-x230.google.com with SMTP id 38308e7fff4ca-2b93fba1f62so8743751fa.1
-        for <linux-ext4@vger.kernel.org>; Thu, 27 Jul 2023 00:15:45 -0700 (PDT)
+        with ESMTP id S233747AbjG0IK0 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Jul 2023 04:10:26 -0400
+Received: from mail-pf1-x429.google.com (mail-pf1-x429.google.com [IPv6:2607:f8b0:4864:20::429])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A25F0271F
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Jul 2023 01:06:59 -0700 (PDT)
+Received: by mail-pf1-x429.google.com with SMTP id d2e1a72fcca58-682eef7d752so203229b3a.0
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Jul 2023 01:06:59 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1690442143; x=1691046943;
-        h=content-transfer-encoding:mime-version:user-agent:message-id
-         :in-reply-to:date:references:subject:cc:to:from:from:to:cc:subject
-         :date:message-id:reply-to;
-        bh=zPB0nHDKB2MY9/V0kyarS8eAvSvUMRhf8sIhD0usjI4=;
-        b=qo4tqhEspDDtjnCz32t8XTrfteKhrIlZBunjCAvzvfGDL20CXoQPabvFXcVt6OST9q
-         PlAF9/fQWWDDr9ueU0l4Qis6wTJRDUGkwcERVoh6Y00Y4AHWeiBUZvwwv30dVk0ZT5nr
-         42K+WtJfzyC15kttd6S4iJS5JlvFX11OKKmT5AnLxbNbOvNeqXUGS+Yutmt6uWzRqsQF
-         5WRiTW/j4xOdSLXS4RYBERrs58uAxET3k4BWLUsK1cEJHSsn0gFync2kofM/rhwK4eKu
-         fWPWYUaexiCyCXDhd0hRtO22p4JHpGMLowRyLNae2idAmE2EIhEkVSo7xatSsUbBZfSw
-         4gog==
+        d=bytedance.com; s=google; t=1690445160; x=1691049960;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=CmSKD1W4o1llBpukOwDAPdWOg+LYzWoL67ya0UPwqvg=;
+        b=bWsdCjXI/QTCbfrXnl1D1RHs1UzV532bO1xy0F2QKWdmxdeZNg1bc8fwYppoEa2Sii
+         fv3Dw05OLiEoJFGdDqA0cK2BR0yissZW0QGh0p8G2jYOCo1VM3qmhhRKOuDu3Ld44+HC
+         IlU/6E6PL7OGmulpkRgvQIFGvR7K7vSKmFATJlzNsM5VU0kfb+Q9ux9XLDln9HSGLjNa
+         erFo50JbYYva+gdlhuASAFmcGCxJk1UklUElA3OcQq/NsulVXFSALP8x8A3jEL8k5O2s
+         pAuqLDXkBW250K5e8xHlcez81V5k+DmAOms7sfdEUrryxL8JhS9LUOK5EJtF0pDaEYI9
+         8JWQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1690442143; x=1691046943;
-        h=content-transfer-encoding:mime-version:user-agent:message-id
-         :in-reply-to:date:references:subject:cc:to:from:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=zPB0nHDKB2MY9/V0kyarS8eAvSvUMRhf8sIhD0usjI4=;
-        b=OA01dtLVd4PSuynM6E2HTG7seDp4UZbUIvEp0QOJxvtwbqxlzGIeguZrJushSY25uC
-         hrqNooXzJFh5VE7YzxqBqRNBsCl9UIb78DjmXXSvwulUUNzytqErCovgO7B6RamtZ9zL
-         LIh7xxsUgWfpVfoyoBGm5m2IFCV6o0qs1xARV3bKjXQYGRJh1pCs936WfDVfO+ludBTZ
-         HqHmIEeskK+R5iY4U0f5bGvgC5NJKjuj/n8Fse0W0vRtvxGa3tjnbpJrs4qYkUxwbi8y
-         yTWc8R2sPfbb2BRHi1u2Nz4LN6yfKpd/PTwgYOj8L0h5qWnop0DB0RlHbYRXFkHItWW4
-         y4Bg==
-X-Gm-Message-State: ABy/qLaFF7LQO9jiSNaw+TraoxruWljq2WAjhfzj73Vt4+6wYxy6+wcu
-        qA1HjV5t9UTXWd35IAAGzh3+NKBY3Kgljg==
-X-Google-Smtp-Source: APBJJlGAtHAJpwvQ2Q6sWZhS2HJ7sxaFR3aW3a/aFAwU8b7c9hPbaKvm+npe/N2KtYOMgOfmlZX1zA==
-X-Received: by 2002:a2e:99c7:0:b0:2b6:e9e6:b50b with SMTP id l7-20020a2e99c7000000b002b6e9e6b50bmr1075313ljj.25.1690442142502;
-        Thu, 27 Jul 2023 00:15:42 -0700 (PDT)
-Received: from torreasustufgamingpro (209.pool90-77-130.dynamic.orange.es. [90.77.130.209])
-        by smtp.gmail.com with ESMTPSA id a20-20020a05600c225400b003fbe791a0e8sm1080053wmm.0.2023.07.27.00.15.41
+        d=1e100.net; s=20221208; t=1690445160; x=1691049960;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=CmSKD1W4o1llBpukOwDAPdWOg+LYzWoL67ya0UPwqvg=;
+        b=ecEJHJ5Et8EVzyy3kqAetlVglR/sc7n2yTo3PLrSqM1fptjCHtL3GeqAzbxrXrAXlU
+         dY9Wou7WgYb3unNK3LkEuVfphfn3BzPwceXKrWjJjpWUR52gLPbWzYmcBkDYHvO37ed9
+         f8uMAxp/LDYH5ucgq+6yJishawpknGfgjd1Zud68zOSBA8JEhpK3Xpvuk4LWFtMMvMC6
+         heJX9gETN5RnQdyuvSozzpvqNSJc+zBrYXWLTZj5Nl52lFkQJ6WN5GHOnK4d51NOhGhd
+         8ZvONHnqQh5GDLdkhRRpbqlcXV2qUlBZaZkgTfgP92ALZzc2LLOqmQNQ0TukdJ88Eow7
+         gx+A==
+X-Gm-Message-State: ABy/qLYEZvIVJ+CG+svwkWHFptYg4XI2mQZG0x0Z3kYIYpfKIJK+hlcl
+        RlgQ2A53otcgt2/FB9e/16GL1w==
+X-Google-Smtp-Source: APBJJlGsBl3klUilUFzaktHEHOMbkNlcOB/1K8g6HjcIbYlgfdxi92AgDTolw1HjCRkDLU6/tzA6hQ==
+X-Received: by 2002:a05:6a21:78a8:b0:137:3eba:b81f with SMTP id bf40-20020a056a2178a800b001373ebab81fmr6002609pzc.3.1690445159927;
+        Thu, 27 Jul 2023 01:05:59 -0700 (PDT)
+Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.147])
+        by smtp.gmail.com with ESMTPSA id j8-20020aa78d08000000b006828e49c04csm885872pfe.75.2023.07.27.01.05.48
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 27 Jul 2023 00:15:41 -0700 (PDT)
-From:   =?utf-8?Q?Oscar_Megia_L=C3=B3pez?= <megia.oscar@gmail.com>
-To:     Andreas Dilger <adilger@dilger.ca>
-Cc:     linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 1/1] e2fsck: Add percent to files and blocks feature
-References: <20230423082349.53474-2-megia.oscar@gmail.com>
-        <7023297C-8D10-4903-A0E2-7ED8B8BFA043@dilger.ca>
-Date:   Thu, 27 Jul 2023 09:15:14 +0200
-In-Reply-To: <7023297C-8D10-4903-A0E2-7ED8B8BFA043@dilger.ca> (Andreas
-        Dilger's message of "Wed, 26 Jul 2023 10:15:26 -0600")
-Message-ID: <878rb17rlp.fsf@gmail.com>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/28.2 (gnu/linux)
+        Thu, 27 Jul 2023 01:05:59 -0700 (PDT)
+From:   Qi Zheng <zhengqi.arch@bytedance.com>
+To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
+        vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
+        brauner@kernel.org, paulmck@kernel.org, tytso@mit.edu,
+        steven.price@arm.com, cel@kernel.org, senozhatsky@chromium.org,
+        yujie.liu@intel.com, gregkh@linuxfoundation.org,
+        muchun.song@linux.dev
+Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
+        kvm@vger.kernel.org, xen-devel@lists.xenproject.org,
+        linux-erofs@lists.ozlabs.org,
+        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+        rcu@vger.kernel.org, netdev@vger.kernel.org,
+        dri-devel@lists.freedesktop.org, linux-arm-msm@vger.kernel.org,
+        dm-devel@redhat.com, linux-raid@vger.kernel.org,
+        linux-bcache@vger.kernel.org,
+        virtualization@lists.linux-foundation.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        Qi Zheng <zhengqi.arch@bytedance.com>,
+        Carlos Llamas <cmllamas@google.com>
+Subject: [PATCH v3 01/49] binder: fix memory leak in binder_init()
+Date:   Thu, 27 Jul 2023 16:04:14 +0800
+Message-Id: <20230727080502.77895-2-zhengqi.arch@bytedance.com>
+X-Mailer: git-send-email 2.24.3 (Apple Git-128)
+In-Reply-To: <20230727080502.77895-1-zhengqi.arch@bytedance.com>
+References: <20230727080502.77895-1-zhengqi.arch@bytedance.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Andreas Dilger <adilger@dilger.ca> writes:
+In binder_init(), the destruction of binder_alloc_shrinker_init() is not
+performed in the wrong path, which will cause memory leaks. So this commit
+introduces binder_alloc_shrinker_exit() and calls it in the wrong path to
+fix that.
 
-> On Apr 23, 2023, at 02:25, Oscar Megia L=C3=B3pez <megia.oscar@gmail.com>=
- wrote:
->>=20
->> =EF=BB=BFI need percentages to see how disk is occupied.
->> Used and maximum are good, but humans work better with percentages.
->>=20
->> When my linux boots,
->> I haven't enough time to remember numbers and calculate.
->>=20
->> My PC is very fast. I can only see the message for one or two seconds.
->>=20
->> If also I would see percentages for me would be perfect.
->>=20
->> I think that this feature is going to be good for everyone.
->>=20
->> Signed-off-by: Oscar Megia L=C3=B3pez <megia.oscar@gmail.com>
->> ---
->> e2fsck/unix.c | 25 +++++++++++++++++++++++--
->> 1 file changed, 23 insertions(+), 2 deletions(-)
->>=20
->> diff --git a/e2fsck/unix.c b/e2fsck/unix.c
->> index e5b672a2..b820ca8d 100644
->> --- a/e2fsck/unix.c
->> +++ b/e2fsck/unix.c
->> @@ -350,6 +350,8 @@ static void check_if_skip(e2fsck_t ctx)
->>    int defer_check_on_battery;
->>    int broken_system_clock;
->>    time_t lastcheck;
->> +    char percent_files[9];
->> +    char percent_blocks[9];
->>=20
->>    if (ctx->flags & E2F_FLAG_PROBLEMS_FIXED)
->>        return;
->> @@ -442,14 +444,33 @@ static void check_if_skip(e2fsck_t ctx)
->>        ext2fs_mark_super_dirty(fs);
->>    }
->>=20
->> +    /* Calculate percentages */
->> +    if (fs->super->s_inodes_count > 0) {
->> +        snprintf(percent_files, sizeof(percent_files), " (%u%%) ",
->> +        ((fs->super->s_inodes_count - fs->super->s_free_inodes_count) *=
- 100) /
->> +        fs->super->s_inodes_count);
->> +    } else {
->> +        snprintf(percent_files, sizeof(percent_files), " ");
->> +    }
->
-> Instead of snprintf() this could just be initialized at variable declarat=
-ion time:
->
->         char percent_files[8] =3D "";
->
-> That avoids extra runtime overhead and is no less safe. (This is adjusted=
- to compensate
-> for the format change below.)
->
+Fixes: f2517eb76f1f ("android: binder: Add global lru shrinker to binder")
+Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
+Acked-by: Carlos Llamas <cmllamas@google.com>
+---
+ drivers/android/binder.c       | 1 +
+ drivers/android/binder_alloc.c | 6 ++++++
+ drivers/android/binder_alloc.h | 1 +
+ 3 files changed, 8 insertions(+)
 
-Thanks for your advice, I will apply it.
+diff --git a/drivers/android/binder.c b/drivers/android/binder.c
+index 486c8271cab7..d720f93d8b19 100644
+--- a/drivers/android/binder.c
++++ b/drivers/android/binder.c
+@@ -6617,6 +6617,7 @@ static int __init binder_init(void)
+ 
+ err_alloc_device_names_failed:
+ 	debugfs_remove_recursive(binder_debugfs_dir_entry_root);
++	binder_alloc_shrinker_exit();
+ 
+ 	return ret;
+ }
+diff --git a/drivers/android/binder_alloc.c b/drivers/android/binder_alloc.c
+index 662a2a2e2e84..e3db8297095a 100644
+--- a/drivers/android/binder_alloc.c
++++ b/drivers/android/binder_alloc.c
+@@ -1087,6 +1087,12 @@ int binder_alloc_shrinker_init(void)
+ 	return ret;
+ }
+ 
++void binder_alloc_shrinker_exit(void)
++{
++	unregister_shrinker(&binder_shrinker);
++	list_lru_destroy(&binder_alloc_lru);
++}
++
+ /**
+  * check_buffer() - verify that buffer/offset is safe to access
+  * @alloc: binder_alloc for this proc
+diff --git a/drivers/android/binder_alloc.h b/drivers/android/binder_alloc.h
+index 138d1d5af9ce..dc1e2b01dd64 100644
+--- a/drivers/android/binder_alloc.h
++++ b/drivers/android/binder_alloc.h
+@@ -129,6 +129,7 @@ extern struct binder_buffer *binder_alloc_new_buf(struct binder_alloc *alloc,
+ 						  int pid);
+ extern void binder_alloc_init(struct binder_alloc *alloc);
+ extern int binder_alloc_shrinker_init(void);
++extern void binder_alloc_shrinker_exit(void);
+ extern void binder_alloc_vma_close(struct binder_alloc *alloc);
+ extern struct binder_buffer *
+ binder_alloc_prepare_to_free(struct binder_alloc *alloc,
+-- 
+2.30.2
 
->> +    if (ext2fs_blocks_count(fs->super) > 0) {
->> +        snprintf(percent_blocks, sizeof(percent_blocks), " (%llu%%) ",
->> +        (unsigned long long) ((ext2fs_blocks_count(fs->super) -
->> +        ext2fs_free_blocks_count(fs->super)) * 100) / ext2fs_blocks_cou=
-nt(fs->super));
->> +    } else {
->> +        snprintf(percent_blocks, sizeof(percent_blocks), " ");
->> +    }
->
-> This could similarly be set at initialization:
->
->         char percent_blocks[8] =3D "";
->
-
-Thanks for your advice, I will apply it.
-
->>    /* Print the summary message when we're skipping a full check */
->> -    log_out(ctx, _("%s: clean, %u/%u files, %llu/%llu blocks"),
->> +    log_out(ctx, _("%s: clean, %u/%u%sfiles, %llu/%llu%sblocks"),
->
-> This would be more readable if it left one space after each "%s" and then=
- didn't
-> include the trailing space in each string:
->
->     log_out(ctx, _("%s: clean, %u/%u%s files, %llu/%llu%s blocks"),
->
-
-You are right. I will apply it.
-
-> Cheers, Andreas
->
-
-Very thanks Andreas for your advices and your time.
-
-I will apply these changes to my patch.
-
-Regards
-Oscar
-
->>        ctx->device_name,
->>        fs->super->s_inodes_count - fs->super->s_free_inodes_count,
->>        fs->super->s_inodes_count,
->> +        percent_files,
->>        (unsigned long long) ext2fs_blocks_count(fs->super) -
->>        ext2fs_free_blocks_count(fs->super),
->> -        (unsigned long long) ext2fs_blocks_count(fs->super));
->> +        (unsigned long long) ext2fs_blocks_count(fs->super),
->> +        percent_blocks);
->>    next_check =3D 100000;
->>    if (fs->super->s_max_mnt_count > 0) {
->>        next_check =3D fs->super->s_max_mnt_count - fs->super->s_mnt_coun=
-t;
->> --=20
->> 2.40.0
->>=20
