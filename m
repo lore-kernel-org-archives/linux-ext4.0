@@ -2,61 +2,86 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 57215C0015E
-	for <linux-ext4@archiver.kernel.org>; Tue,  1 Aug 2023 11:56:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C5BAAC001DF
+	for <linux-ext4@archiver.kernel.org>; Tue,  1 Aug 2023 14:41:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232489AbjHAL4c (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 1 Aug 2023 07:56:32 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48504 "EHLO
+        id S234859AbjHAOlo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 1 Aug 2023 10:41:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57998 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232356AbjHAL43 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Aug 2023 07:56:29 -0400
-Received: from mail.cothiafon.pl (mail.cothiafon.pl [217.61.106.23])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 066D61729
-        for <linux-ext4@vger.kernel.org>; Tue,  1 Aug 2023 04:56:29 -0700 (PDT)
-Received: by mail.cothiafon.pl (Postfix, from userid 1002)
-        id 057828304B; Mon, 31 Jul 2023 10:36:00 +0200 (CEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=cothiafon.pl; s=mail;
-        t=1690792564; bh=dwoca0X6C9VXklO/zRgFQCPapTk5LFz4tKaENdvy6Po=;
-        h=Date:From:To:Subject:From;
-        b=eatMO1pbdpycCokBPIQbdfarYpGsTzHbc3co2X8gjea1rFeFWFP2gKLlKOKrwoenK
-         JKDgNlRt417wkd2IFc8hJWCgYkpHBnW+mmZ6wl/7QQjOJ/H9q+CTRPBetI+iKgxmwr
-         LtqIRlH5MeQcNuXSEvfUmUTnArDMJ2QPjGS81o/+wAIGoGxEDy/gzVOpJkXpIQCiDD
-         qbMazszt/716z3+lAsTwRQChIfaad46z1Ow3fveVHzmpIQegJwcNVxQxa7vKaHPOEF
-         tGxqHVuINwVLS1IhSoD/GpoWt7JLO+qMTJekUN9cmiUKpBxnA34uut8rZ/OsgO/rer
-         wrWCMONOzqEYw==
-Received: by mail.cothiafon.pl for <linux-ext4@vger.kernel.org>; Mon, 31 Jul 2023 08:35:48 GMT
-Message-ID: <20230731095940-0.1.28.ompu.0.5oq3trmjm6@cothiafon.pl>
-Date:   Mon, 31 Jul 2023 08:35:48 GMT
-From:   =?UTF-8?Q? "Rados=C5=82aw_Grabowski" ?= 
-        <radoslaw.grabowski@cothiafon.pl>
-To:     <linux-ext4@vger.kernel.org>
-Subject: W sprawie samochodu
-X-Mailer: mail.cothiafon.pl
+        with ESMTP id S234590AbjHAOll (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Aug 2023 10:41:41 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7D7DF9C;
+        Tue,  1 Aug 2023 07:41:40 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 398301F45A;
+        Tue,  1 Aug 2023 14:41:39 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1690900899; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=L4scspEofNFZsqaoPa/uagvn9jfb5SNDwDcPebxybj8=;
+        b=wbpIQRBA4leKtrWq52bsLBPy3dasXNlM83tBFXuy6DKfjbbfTiHo+axech1TR9YcAjNFxm
+        rruFVUXEQoNC/kW3TJ9jrT4seEJpEv75/6nSGYF7FSYR7vzHmoB1sl/CZWr5a5BTiUG5Sj
+        0PBJqhyyRCZJsfr0YQPhrvRKReLjLMQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1690900899;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=L4scspEofNFZsqaoPa/uagvn9jfb5SNDwDcPebxybj8=;
+        b=3suknXgZXNbb7oxlw6YY9Gz9wN78Da5aPmMCq+EIw5P0h66ZrtxdI+PODTd1UhKripPE6m
+        m03MKfp5kmaluABg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id C7F8A139BD;
+        Tue,  1 Aug 2023 14:41:38 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id 8CbhLaIZyWSOawAAMHmgww
+        (envelope-from <lhenriques@suse.de>); Tue, 01 Aug 2023 14:41:38 +0000
+Received: from localhost (brahms.olymp [local])
+        by brahms.olymp (OpenSMTPD) with ESMTPA id 3bec45b3;
+        Tue, 1 Aug 2023 14:41:37 +0000 (UTC)
+From:   =?UTF-8?q?Lu=C3=ADs=20Henriques?= <lhenriques@suse.de>
+To:     "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        =?UTF-8?q?Lu=C3=ADs=20Henriques?= <lhenriques@suse.de>
+Subject: [PATCH] ext4: fix memory leak in ext4_fname_setup_filename() error path
+Date:   Tue,  1 Aug 2023 15:41:36 +0100
+Message-Id: <20230801144136.23565-1-lhenriques@suse.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Dzie=C5=84 dobry,
+If casefolding the filename fails, we'll be leaking fscrypt_buf name.
+Make sure we free it in the error path.
 
-chcieliby=C5=9Bmy zapewni=C4=87 Pa=C5=84stwu kompleksowe rozwi=C4=85zania=
-, je=C5=9Bli chodzi o system monitoringu GPS.
+Signed-off-by: Luís Henriques <lhenriques@suse.de>
+---
+ fs/ext4/crypto.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-Precyzyjne monitorowanie pojazd=C3=B3w na mapach cyfrowych, =C5=9Bledzeni=
-e ich parametr=C3=B3w eksploatacyjnych w czasie rzeczywistym oraz kontrol=
-a paliwa to kluczowe funkcjonalno=C5=9Bci naszego systemu.=20
-
-Organizowanie pracy pracownik=C3=B3w jest dzi=C4=99ki temu prostsze i bar=
-dziej efektywne, a oszcz=C4=99dno=C5=9Bci i optymalizacja w zakresie pono=
-szonych koszt=C3=B3w, maj=C4=85 dla ka=C5=BCdego przedsi=C4=99biorcy ogro=
-mne znaczenie.
-
-Dopasujemy nasz=C4=85 ofert=C4=99 do Pa=C5=84stwa oczekiwa=C5=84 i potrze=
-b organizacji. Czy mogliby=C5=9Bmy porozmawia=C4=87 o naszej propozycji?
-
-
-Pozdrawiam
-Rados=C5=82aw Grabowski
+diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
+index e20ac0654b3f..9e4503b051c4 100644
+--- a/fs/ext4/crypto.c
++++ b/fs/ext4/crypto.c
+@@ -33,6 +33,8 @@ int ext4_fname_setup_filename(struct inode *dir, const struct qstr *iname,
+ 
+ #if IS_ENABLED(CONFIG_UNICODE)
+ 	err = ext4_fname_setup_ci_filename(dir, iname, fname);
++	if (err)
++		fscrypt_free_filename(&name);
+ #endif
+ 	return err;
+ }
