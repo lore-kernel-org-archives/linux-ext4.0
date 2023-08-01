@@ -2,126 +2,124 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D32DBC04FDF
-	for <linux-ext4@archiver.kernel.org>; Tue,  1 Aug 2023 06:31:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BC011C001E0
+	for <linux-ext4@archiver.kernel.org>; Tue,  1 Aug 2023 06:31:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231529AbjHAGbz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 1 Aug 2023 02:31:55 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44652 "EHLO
+        id S231584AbjHAGb4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 1 Aug 2023 02:31:56 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44660 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231378AbjHAGbx (ORCPT
+        with ESMTP id S231404AbjHAGbx (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Aug 2023 02:31:53 -0400
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 829B0133;
-        Mon, 31 Jul 2023 23:31:51 -0700 (PDT)
+Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0F23F1AD;
+        Mon, 31 Jul 2023 23:31:52 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4RFQHm0qBMz4f3l8s;
-        Tue,  1 Aug 2023 14:31:48 +0800 (CST)
+        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4RFQHk4P2Fz4f3lY3;
+        Tue,  1 Aug 2023 14:31:46 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP2 (Coremail) with SMTP id Syh0CgDnjOrQpshkMcvqPA--.21719S5;
-        Tue, 01 Aug 2023 14:31:48 +0800 (CST)
+        by APP2 (Coremail) with SMTP id Syh0CgDnjOrQpshkMcvqPA--.21719S7;
+        Tue, 01 Aug 2023 14:31:49 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, ritesh.list@gmail.com,
         ojaswin@linux.ibm.com, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org
 Cc:     shikemeng@huaweicloud.com
-Subject: [PATCH v3 03/10] ext4: return found group directly in ext4_mb_choose_next_group_p2_aligned
-Date:   Tue,  1 Aug 2023 22:31:57 +0800
-Message-Id: <20230801143204.2284343-4-shikemeng@huaweicloud.com>
+Subject: [PATCH v3 05/10] ext4: remove unnecessary return for void function
+Date:   Tue,  1 Aug 2023 22:31:59 +0800
+Message-Id: <20230801143204.2284343-6-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230801143204.2284343-1-shikemeng@huaweicloud.com>
 References: <20230801143204.2284343-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: Syh0CgDnjOrQpshkMcvqPA--.21719S5
-X-Coremail-Antispam: 1UD129KBjvJXoW7CFW8CFyktw4UKr45XF1rXrb_yoW8KrWrpa
-        nxXF10kFWfWw15Ww4UGayqq3Wvgw48KayUJryxX3WrX343AryvyanrtFy8ZF9rCFZ7CFn5
-        W3Z0v3y5Cryxua7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUBK14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+X-CM-TRANSID: Syh0CgDnjOrQpshkMcvqPA--.21719S7
+X-Coremail-Antispam: 1UD129KBjvJXoW7KF17ZFWrJrW8XF4kCw47XFb_yoW8WFW7pr
+        13JF18uFs5XF1Uua12gws8Gw1ayw1xWF1DJrWIgwnY9rZxJrZakFWDtF10gFyrtrZ5u3Z0
+        vr4qvF4UCa1fu37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUP014x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
         rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
-        0E87I2jVAFwI0_JrWl82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2
-        F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjx
-        v20xvEc7CjxVAFwI0_Cr1j6rxdM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E
-        87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64
-        kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm
-        72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYx
-        C7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_
-        Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x
-        0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8
-        JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIx
-        AIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7sRiyCJDUUUUU=
-        =
+        0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
+        rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6x
+        IIjxv20xvEc7CjxVAFwI0_Cr1j6rxdM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK
+        6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4
+        xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8
+        JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20V
+        AGYxC7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAF
+        wI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc4
+        0Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1I6r4UMIIF0xvE2Ix0cI8IcVCY1x0267AK
+        xVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr
+        1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7sRiVbyDUU
+        UUU==
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Return good group when it's found in loop to remove unnecessary NULL
-initialization of grp and futher check if good group is found after loop.
+The return at end of void function is unnecessary, just remove it.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 ---
- fs/ext4/mballoc.c | 21 +++++++--------------
- 1 file changed, 7 insertions(+), 14 deletions(-)
+ fs/ext4/mballoc.c | 10 +---------
+ 1 file changed, 1 insertion(+), 9 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index a6635cba291a..4cbbe930e010 100644
+index acf8e3183e47..2f26a91595ca 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -874,7 +874,7 @@ static void ext4_mb_choose_next_group_p2_aligned(struct ext4_allocation_context
- 			enum criteria *new_cr, ext4_group_t *group, ext4_group_t ngroups)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
--	struct ext4_group_info *iter, *grp;
-+	struct ext4_group_info *iter;
- 	int i;
- 
- 	if (ac->ac_status == AC_STATUS_FOUND)
-@@ -883,7 +883,6 @@ static void ext4_mb_choose_next_group_p2_aligned(struct ext4_allocation_context
- 	if (unlikely(sbi->s_mb_stats && ac->ac_flags & EXT4_MB_CR_POWER2_ALIGNED_OPTIMIZED))
- 		atomic_inc(&sbi->s_bal_p2_aligned_bad_suggestions);
- 
--	grp = NULL;
- 	for (i = ac->ac_2order; i < MB_NUM_ORDERS(ac->ac_sb); i++) {
- 		if (list_empty(&sbi->s_mb_largest_free_orders[i]))
- 			continue;
-@@ -892,28 +891,22 @@ static void ext4_mb_choose_next_group_p2_aligned(struct ext4_allocation_context
- 			read_unlock(&sbi->s_mb_largest_free_orders_locks[i]);
- 			continue;
- 		}
--		grp = NULL;
- 		list_for_each_entry(iter, &sbi->s_mb_largest_free_orders[i],
- 				    bb_largest_free_order_node) {
- 			if (sbi->s_mb_stats)
- 				atomic64_inc(&sbi->s_bal_cX_groups_considered[CR_POWER2_ALIGNED]);
- 			if (likely(ext4_mb_good_group(ac, iter->bb_group, CR_POWER2_ALIGNED))) {
--				grp = iter;
--				break;
-+				*group = iter->bb_group;
-+				ac->ac_flags |= EXT4_MB_CR_POWER2_ALIGNED_OPTIMIZED;
-+				read_unlock(&sbi->s_mb_largest_free_orders_locks[i]);
-+				return;
- 			}
- 		}
- 		read_unlock(&sbi->s_mb_largest_free_orders_locks[i]);
--		if (grp)
--			break;
+@@ -4876,7 +4876,6 @@ static void ext4_mb_generate_from_freelist(struct super_block *sb, void *bitmap,
+ 		mb_set_bits(bitmap, entry->efd_start_cluster, entry->efd_count);
+ 		n = rb_next(n);
  	}
- 
--	if (!grp) {
--		/* Increment cr and search again */
--		*new_cr = CR_GOAL_LEN_FAST;
--	} else {
--		*group = grp->bb_group;
--		ac->ac_flags |= EXT4_MB_CR_POWER2_ALIGNED_OPTIMIZED;
--	}
-+	/* Increment cr and search again if no group is found */
-+	*new_cr = CR_GOAL_LEN_FAST;
+-	return;
  }
  
  /*
+@@ -5630,12 +5629,10 @@ static void ext4_mb_show_ac(struct ext4_allocation_context *ac)
+ #else
+ static inline void ext4_mb_show_pa(struct super_block *sb)
+ {
+-	return;
+ }
+ static inline void ext4_mb_show_ac(struct ext4_allocation_context *ac)
+ {
+ 	ext4_mb_show_pa(ac->ac_sb);
+-	return;
+ }
+ #endif
+ 
+@@ -5876,12 +5873,9 @@ static void ext4_mb_add_n_trim(struct ext4_allocation_context *ac)
+ 	spin_unlock(&lg->lg_prealloc_lock);
+ 
+ 	/* Now trim the list to be not more than 8 elements */
+-	if (lg_prealloc_count > 8) {
++	if (lg_prealloc_count > 8)
+ 		ext4_mb_discard_lg_preallocations(sb, lg,
+ 						  order, lg_prealloc_count);
+-		return;
+-	}
+-	return ;
+ }
+ 
+ /*
+@@ -6535,7 +6529,6 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
+ error_return:
+ 	brelse(bitmap_bh);
+ 	ext4_std_error(sb, err);
+-	return;
+ }
+ 
+ /**
+@@ -6638,7 +6631,6 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 	}
+ 
+ 	ext4_mb_clear_bb(handle, inode, block, count, flags);
+-	return;
+ }
+ 
+ /**
 -- 
 2.30.0
 
