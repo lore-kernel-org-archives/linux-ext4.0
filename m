@@ -2,110 +2,98 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3DF4BC41513
-	for <linux-ext4@archiver.kernel.org>; Wed,  2 Aug 2023 15:44:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C4807C04A6A
+	for <linux-ext4@archiver.kernel.org>; Wed,  2 Aug 2023 16:29:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234115AbjHBPou (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 2 Aug 2023 11:44:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34968 "EHLO
+        id S231426AbjHBQ3L (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 2 Aug 2023 12:29:11 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35466 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235312AbjHBPmf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Aug 2023 11:42:35 -0400
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4627D2695;
-        Wed,  2 Aug 2023 08:42:23 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
-        :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=i4RVxh7cqcfhStKnrFuIVUqPlurNIlyMZ1NDN212nv0=; b=m9OaeC94Czmbb5hPBahN8SXBqI
-        HNi7Mt4xq8QD0KfNROKtIz4cWo24dWSBz7X8e50X0RB4sQ5tkio4jz+r4r8ZXafkW2ww175yxfozT
-        NCUZO2qzsSFjl3BFFlIRN3Wfa2mzIAi3PGZkD8Cd957ycv8VcxS6B+Gl86ETq6tCRKfhACSRqvwK7
-        ZdYNXIQB/XHcCPAEwZsU/ppTsd8l/Kd7bPks6ODFCghe5WMh0L9iLVh6NfcG8q01AnZzhLKiyX/4B
-        4MY4Wr/7eVJVJE1UTa4EMeC4cbXZti0JxzrFZGHMr43Ix5mWyHHev/cZbWwF9pp4HCsk18N+iH6el
-        wjXcrqPw==;
-Received: from 2a02-8389-2341-5b80-39d3-4735-9a3c-88d8.cable.dynamic.v6.surfer.at ([2a02:8389:2341:5b80:39d3:4735:9a3c:88d8] helo=localhost)
-        by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1qRDzN-005GOT-0f;
-        Wed, 02 Aug 2023 15:42:17 +0000
-From:   Christoph Hellwig <hch@lst.de>
-To:     Al Viro <viro@zeniv.linux.org.uk>,
-        Christian Brauner <brauner@kernel.org>
-Cc:     Jan Kara <jack@suse.cz>, Chris Mason <clm@fb.com>,
-        Josef Bacik <josef@toxicpanda.com>,
-        David Sterba <dsterba@suse.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        Jens Axboe <axboe@kernel.dk>, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-nilfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-block@vger.kernel.org
-Subject: [PATCH 12/12] xfs use fs_holder_ops for the log and RT devices
-Date:   Wed,  2 Aug 2023 17:41:31 +0200
-Message-Id: <20230802154131.2221419-13-hch@lst.de>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230802154131.2221419-1-hch@lst.de>
-References: <20230802154131.2221419-1-hch@lst.de>
+        with ESMTP id S231265AbjHBQ3K (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Aug 2023 12:29:10 -0400
+X-Greylist: delayed 6193 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Wed, 02 Aug 2023 09:29:09 PDT
+Received: from out203-205-251-60.mail.qq.com (out203-205-251-60.mail.qq.com [203.205.251.60])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 069F91FFA
+        for <linux-ext4@vger.kernel.org>; Wed,  2 Aug 2023 09:29:08 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=foxmail.com;
+        s=s201512; t=1690993746;
+        bh=UR+9s2ZLz4CSRCTls3vdBBk3AwwdEi6/lRJ4wKvY0GQ=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References;
+        b=jU17kqwOE6rkhTPJvpdhY3WYIw2GsQx6dXzpPW7/Md4e0sYySonkcRfs0RQ7PFXCr
+         18ZFGp2pWLLhTfWE3d7Mxe8IZxxL6ASrgqgM2trPvynIB6ywZm6TfCa/o6mrZ9uj83
+         fHnSdY602g2kpDv+Esf8kncLtzDJNj3Z/lWbVtn8=
+Received: from fedora.. ([2409:8a00:2577:9740:9ca5:5f74:38db:4c67])
+        by newxmesmtplogicsvrsza10-0.qq.com (NewEsmtp) with SMTP
+        id 72B1AE0F; Thu, 03 Aug 2023 00:28:43 +0800
+X-QQ-mid: xmsmtpt1690993724tczbsrwph
+Message-ID: <tencent_D744D1450CC169AEA77FCF0A64719909ED05@qq.com>
+X-QQ-XMAILINFO: NOIkHYnr7VzdZ+GOzbPiwidcfm1yMskvpXhchdU/5acvMKoXNa/7HT3eCVSR1U
+         9TidFEmCOK8S4f9WiInZ3Q5rSGPxRonIzTuhomRA5vSHX8/VkMsJEiM3NwdEpVXKvZ0pD5eoHfLr
+         RCEQ8e4lburO2VNvxvkLG/lpq3vqdWtUI3qecZ+Lvdy7W+CfAmnI7D4QXRyb7o1ASmkxmfIH4DNg
+         bj0APCktbhhI74QusFGsCJFvaHTEUdRdwnP5gCISjx/4aOH8pHiVBN1RCL1fPyzlmq+LV4I3mllB
+         J8aVpbAUpBLkmS+ukDurBHDdxrwa8eBG+WncLxmwSVJqT3bTVYn7NvzeGmVjzIbcErYQ+7ipQsB4
+         aap3FQOTDWsJ91fMSPuhYIuzA+GdDw4C5OjMVFKwDJJZEX7q9zwcPDJlpT944ch9lnM+FYq8iOOX
+         8IiuONDadyMmGJlJMd9PfLx2XVzslR+qeVdX+y77w3yxK2hbY29waNh3sxljmY67rWmsROiDvigt
+         3C79TmIfP4VJLcwhTUeeKbnD/jHpKGySwvDwHIfX4WObnWDt0lA+ie9bS5SycdBWKnVqRwdBCXpD
+         R5YRGKP9TMQwDUseANMqv5qWBPNPzTZlhWPvCzMPA3VAUUQnzbk19EUXQVrQTx9tH+8RRL5/Qx1K
+         MB9AZANGfpmPkWut4qlme+lrp9UVlHzmo3z/rtXSznajUl+mpaDO0TXXizpQR3GoQw7a/giTy4NV
+         mBmDXAs8yNttKxV4VdP2Dmy3xWL+BivNpJP4AhDI5VqEuGstneXnZbPZ2nfwEQjnxF0kBbBnsC9G
+         oKXi1fp60Aoc7IMZ5NzHHo5YOm5I+YBXQad/QTeTC8Q6W+OPtn/gSU9IXdpyHGVclPK2WbTdrd+8
+         Yf3Cogaz3kP0Nf847kwGQqvsbVTgn6zzF42jQL3w66vp2unHUG6qC6EP2zUVfYs1Cx1ZAcSwqe53
+         qZXHrvZEkdBGVHSMPnEId2Y+YTGHEtjK55Bxr66L5GhN/TptVw3LQgzjKSj9Eq9jxTBO3ZAd3MEb
+         wR9i+Kw4uVepWCJNnHa2vitaJaBx/ogEvcDYiu2+T8vgjqIqhX
+X-QQ-XMRINFO: NyFYKkN4Ny6FSmKK/uo/jdU=
+From:   Wang Jianjian <wangjianjian0@foxmail.com>
+To:     linux-ext4@vger.kernel.org
+Cc:     Wang Jianjian <wangjianjian0@foxmail.com>
+Subject: [PATCH 2/2] ext4: Add correct group descriptors and reserved GDT blocks to system zone
+Date:   Thu,  3 Aug 2023 00:28:40 +0800
+X-OQ-MSGID: <20230802162840.331385-2-wangjianjian0@foxmail.com>
+X-Mailer: git-send-email 2.34.3
+In-Reply-To: <20230802162840.331385-1-wangjianjian0@foxmail.com>
+References: <20230802162840.331385-1-wangjianjian0@foxmail.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Use the generic fs_holder_ops to shut down the file system when the
-log or RT device goes away instead of duplicating the logic.
+When setup_system_zone, flex_bg is not initialzied so it is always 1.
+ext4_num_base_meta_blocks() returns the meta blocks in this group
+including reserved GDT blocks, so let's use this helper.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Wang Jianjian <wangjianjian0@foxmail.com>
 ---
- fs/xfs/xfs_super.c | 17 +++--------------
- 1 file changed, 3 insertions(+), 14 deletions(-)
+ fs/ext4/block_validity.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-index d5042419ed9997..338eba71ff8667 100644
---- a/fs/xfs/xfs_super.c
-+++ b/fs/xfs/xfs_super.c
-@@ -377,17 +377,6 @@ xfs_setup_dax_always(
- 	return 0;
- }
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index 5504f72bbbbe..558e487a0b53 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -215,7 +215,6 @@ int ext4_setup_system_zone(struct super_block *sb)
+ 	struct ext4_system_blocks *system_blks;
+ 	struct ext4_group_desc *gdp;
+ 	ext4_group_t i;
+-	int flex_size = ext4_flex_bg_size(sbi);
+ 	int ret;
  
--static void
--xfs_bdev_mark_dead(
--	struct block_device	*bdev)
--{
--	xfs_force_shutdown(bdev->bd_holder, SHUTDOWN_DEVICE_REMOVED);
--}
--
--static const struct blk_holder_ops xfs_holder_ops = {
--	.mark_dead		= xfs_bdev_mark_dead,
--};
--
- STATIC int
- xfs_blkdev_get(
- 	xfs_mount_t		*mp,
-@@ -396,8 +385,8 @@ xfs_blkdev_get(
- {
- 	int			error = 0;
+ 	system_blks = kzalloc(sizeof(*system_blks), GFP_KERNEL);
+@@ -224,11 +223,11 @@ int ext4_setup_system_zone(struct super_block *sb)
  
--	*bdevp = blkdev_get_by_path(name, BLK_OPEN_READ | BLK_OPEN_WRITE, mp,
--				    &xfs_holder_ops);
-+	*bdevp = blkdev_get_by_path(name, BLK_OPEN_READ | BLK_OPEN_WRITE,
-+				    mp->m_super, &fs_holder_ops);
- 	if (IS_ERR(*bdevp)) {
- 		error = PTR_ERR(*bdevp);
- 		xfs_warn(mp, "Invalid device [%s], error=%d", name, error);
-@@ -412,7 +401,7 @@ xfs_blkdev_put(
- 	struct block_device	*bdev)
- {
- 	if (bdev)
--		blkdev_put(bdev, mp);
-+		blkdev_put(bdev, mp->m_super);
- }
- 
- STATIC void
+ 	for (i=0; i < ngroups; i++) {
+ 		cond_resched();
+-		if (ext4_bg_has_super(sb, i) &&
+-		    ((i < 5) || ((i % flex_size) == 0))) {
++		unsigned int meta_blks = ext4_num_base_meta_blocks(sb, i);
++		if (meta_blks != 0) {
+ 			ret = add_system_zone(system_blks,
+ 					ext4_group_first_block_no(sb, i),
+-					ext4_bg_num_gdb(sb, i) + 1, 0);
++					meta_blks, 0);
+ 			if (ret)
+ 				goto err;
+ 		}
 -- 
-2.39.2
+2.34.3
 
