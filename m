@@ -2,88 +2,103 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 29834C00528
-	for <linux-ext4@archiver.kernel.org>; Wed,  2 Aug 2023 08:37:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 49847C001DF
+	for <linux-ext4@archiver.kernel.org>; Wed,  2 Aug 2023 09:49:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232468AbjHBIhR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 2 Aug 2023 04:37:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47594 "EHLO
+        id S231815AbjHBJti (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 2 Aug 2023 05:49:38 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53100 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232346AbjHBIhP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Aug 2023 04:37:15 -0400
-Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2928C173F
-        for <linux-ext4@vger.kernel.org>; Wed,  2 Aug 2023 01:37:13 -0700 (PDT)
-Received: from dggpeml500016.china.huawei.com (unknown [172.30.72.57])
-        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4RG50m5QwJz1GDQ3;
-        Wed,  2 Aug 2023 16:36:08 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by dggpeml500016.china.huawei.com
- (7.185.36.70) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.27; Wed, 2 Aug
- 2023 16:37:10 +0800
-From:   zhanchengbin <zhanchengbin1@huawei.com>
-To:     <tytso@mit.edu>
-CC:     <linux-ext4@vger.kernel.org>, <louhongxiang@huawei.com>,
-        <linfeilong@huawei.com>, <yi.zhang@huawei.com>,
-        <yebin10@huawei.com>, <liuzhiqiang26@huawei.com>,
-        zhanchengbin <zhanchengbin1@huawei.com>
-Subject: [RFC PATCH 0/2] ext4: Fix the conflict between modifying the superblock in user mode and kernel mode
-Date:   Wed, 2 Aug 2023 16:34:00 +0800
-Message-ID: <20230802083402.515570-1-zhanchengbin1@huawei.com>
-X-Mailer: git-send-email 2.31.1
+        with ESMTP id S230396AbjHBJth (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Aug 2023 05:49:37 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ACF8FE57;
+        Wed,  2 Aug 2023 02:49:36 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 5F9C51F749;
+        Wed,  2 Aug 2023 09:49:35 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1690969775; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=oG99N9wn1Zwsv4UxpgLJDybTYUZ52WwqDECex34X2Ok=;
+        b=1jYsc+Xy79TkLiVn8FyhO/kCudhhFlmkevXic8bQl4pI+sEVJzTa3j5QpCtwOF4vWXNci5
+        ycr/pF6rZEggWoev1UZWk4lp8ZVcy7hRYujImA6kHsfHNkNMfUiGAiWdwMdtUiYjlW5374
+        JWL1c+dngQvLpEOHaydpH+yOrfT03j0=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1690969775;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=oG99N9wn1Zwsv4UxpgLJDybTYUZ52WwqDECex34X2Ok=;
+        b=53er0okG6zAS0kRbBncgS1qtXng3Y93tUmR9bxJXqjXIilpziX+PEA5fSnqfQ/b+DnPjcS
+        ckvf68sWHKpFBACw==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id E48FB13909;
+        Wed,  2 Aug 2023 09:49:34 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id fpPoNK4mymRycAAAMHmgww
+        (envelope-from <lhenriques@suse.de>); Wed, 02 Aug 2023 09:49:34 +0000
+Received: from localhost (brahms.olymp [local])
+        by brahms.olymp (OpenSMTPD) with ESMTPA id a355a2d3;
+        Wed, 2 Aug 2023 09:49:34 +0000 (UTC)
+From:   =?UTF-8?q?Lu=C3=ADs=20Henriques?= <lhenriques@suse.de>
+To:     Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Daniel Rosenberg <drosen@google.com>,
+        Eric Biggers <ebiggers@kernel.org>
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        =?UTF-8?q?Lu=C3=ADs=20Henriques?= <lhenriques@suse.de>
+Subject: [PATCH v2] ext4: fix memory leaks in ext4_fname_{setup_filename,prepare_lookup}
+Date:   Wed,  2 Aug 2023 10:49:31 +0100
+Message-Id: <20230802094931.18215-1-lhenriques@suse.de>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
- dggpeml500016.china.huawei.com (7.185.36.70)
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Tune2fs does not recognize writes to filesystems in another namespace. Two
-simultaneous write operations on a block will lead to file system
-inconsistency, because there is no lock protection between userland and
-kernelland.
+If casefolding the filename fails, we'll be leaking fscrypt_buf name.
+Make sure we free it in the error paths of ext4_fname_setup_filename() and
+ext4_fname_prepare_lookup() functions.
 
-The operation is as follows:
-first terminal                                      second terminal
-mkfs.ext4 /dev/sdb;
-mount /dev/sdb /test-sdb;
-dd if=/dev/zero of=/test-sdb/test1 bs=1M count=100;
-                                                    unshare -m;
-umount;
-gdb tune2fs;
-b io_channel_write_byte
-r -e remount-ro /dev/sdb
-c(Write a byte of old data into the cache)
-                                                    exit;
-(gdb finish)
-tune2fs -l /dev/sdb;
-tune2fs 1.46.4 (18-Aug-2021)
-tune2fs: Superblock checksum does not match superblock while trying to
-open /dev/sdb
-Couldn't find valid filesystem superblock. 
+Fixes: 1ae98e295fa2 ("ext4: optimize match for casefolded encrypted dirs")
+Signed-off-by: Luís Henriques <lhenriques@suse.de>
+---
+Changes since v1:
+- Include fix to ext4_fname_prepare_lookup() as well
+- Add 'Fixes:' tag
 
-Link: https://lore.kernel.org/linux-ext4/29f6134f-ba0a-d601-0a5a-ad2b5e9bbf1d@huawei.com/
+ fs/ext4/crypto.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-After discussing with Tytso, I decided to use ioctl to solve the above
-problems. These patches are an example I wrote to complete the modification
-of the s_errors variable in the super block.
-
-Finally, if you have any good ideas, welcome to communicate with me by
-email.
-
-zhanchengbin (2):
-  ext4: ioctl adds a framework for modifying superblock parameters
-  ext4: ioctl add EXT4_IOC_SUPERBLOCK_KEY_S_ERRORS
-
- fs/ext4/ext4.h            |  12 +++
- fs/ext4/ioctl.c           | 149 ++++++++++++++++++++++++++++++++++++++
- include/uapi/linux/ext4.h |  28 +++++++
- 3 files changed, 189 insertions(+)
-
--- 
-2.31.1
-
+diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
+index e20ac0654b3f..3c05c7f3415b 100644
+--- a/fs/ext4/crypto.c
++++ b/fs/ext4/crypto.c
+@@ -33,6 +33,8 @@ int ext4_fname_setup_filename(struct inode *dir, const struct qstr *iname,
+ 
+ #if IS_ENABLED(CONFIG_UNICODE)
+ 	err = ext4_fname_setup_ci_filename(dir, iname, fname);
++	if (err)
++		fscrypt_free_filename(&name);
+ #endif
+ 	return err;
+ }
+@@ -51,6 +53,8 @@ int ext4_fname_prepare_lookup(struct inode *dir, struct dentry *dentry,
+ 
+ #if IS_ENABLED(CONFIG_UNICODE)
+ 	err = ext4_fname_setup_ci_filename(dir, &dentry->d_name, fname);
++	if (err)
++		fscrypt_free_filename(&name);
+ #endif
+ 	return err;
+ }
