@@ -2,116 +2,102 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B0E5EC04E69
-	for <linux-ext4@archiver.kernel.org>; Wed,  2 Aug 2023 16:29:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B8CA3C001E0
+	for <linux-ext4@archiver.kernel.org>; Wed,  2 Aug 2023 16:30:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231706AbjHBQ3w (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 2 Aug 2023 12:29:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35586 "EHLO
+        id S231998AbjHBQaP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 2 Aug 2023 12:30:15 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35944 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229892AbjHBQ3v (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Aug 2023 12:29:51 -0400
-Received: from out203-205-251-60.mail.qq.com (out203-205-251-60.mail.qq.com [203.205.251.60])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0EFC11FFA
-        for <linux-ext4@vger.kernel.org>; Wed,  2 Aug 2023 09:29:49 -0700 (PDT)
+        with ESMTP id S231830AbjHBQaN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Aug 2023 12:30:13 -0400
+X-Greylist: delayed 78 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Wed, 02 Aug 2023 09:30:07 PDT
+Received: from out203-205-221-231.mail.qq.com (out203-205-221-231.mail.qq.com [203.205.221.231])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 36A31210D
+        for <linux-ext4@vger.kernel.org>; Wed,  2 Aug 2023 09:30:06 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=foxmail.com;
-        s=s201512; t=1690993788;
-        bh=CDRekWm6pd30PmXsiJ3YCcP2YoiZynmJooiM6qXd9ZQ=;
-        h=From:To:Cc:Subject:Date;
-        b=kCxmLk8x0dkMeXzq+NVfJxr3vJrPp82L7eREd2N8CBW5OLpG/xsTUR/kUikHs691s
-         EdKv6L+AD5k3/LXI4wQk85/ASYhEUXfBG/JhzsCxG8DCpsg4ginUR0OWmSYYTTMbAP
-         aM30CJpQPwzOZZ80IUEDV+VUop8ekwdb6zxrWCJ0=
-Received: from fedora.. ([2409:8a00:2577:9740:9ca5:5f74:38db:4c67])
-        by newxmesmtplogicsvrsza10-0.qq.com (NewEsmtp) with SMTP
-        id 72B1AE0F; Thu, 03 Aug 2023 00:28:43 +0800
-X-QQ-mid: xmsmtpt1690993723tmh2kf69l
-Message-ID: <tencent_21AF0D446A9916ED5C51492CC6C9A0A77B05@qq.com>
-X-QQ-XMAILINFO: NnYhxYSyuBnLO8hH8FyElRv9gO97SjxRlUY4JItgBYfGvblIkJbQHv9DqJFCId
-         ci021TXSWY24vG9CvxYHLxKkgXaA4UCYwqYZV0wxEy0nG2LZ6Ngrt1zDtRXQXWnBCGaIN13SIy2s
-         DJ6jsJBF1xSrparQCu/LIb5MfkkNrwLdbYNtn2HTnFd7b1cPw0eDEd0FX1bg2QgI+kwk4CK6/oU5
-         HtlLBvHdcgdZrD8fgdiw0L6Pm8biJiQvRxHkRnTM4R3u5QpF4C0ocn/l7yiZHPDjZHhCm21/wOw8
-         mD6/5ZMmReHxL/phdjZ5inm+Xo0cV/bhNZqTT3bNS4ukYBTi3lUc33GEEpHpeuE8FdNChnrW8afd
-         P/RYOnNbg5IUUviFxOvG/V/E3k3gC86Wo6GZpujAax3GAx981/xSqo0yik67MUC5VD1dT70+KcW4
-         zwSoDlHGscR6tADKw3kQuMVWtguljs5OW0xNz1mNcRBCdITLZG3NHJnTID4+51k11pv7vXcb5wZo
-         5BMlydpcxzqkjXLupkO7l95T7abOEVFXjygShEVgJd1KgfHDz5PeOqr68QqtDBYyA9B2qAuMvmTL
-         TlWEBkdUg2gfQj5NZmDR8n9JgWQPICG+mFgQ5Enpe1uqFZ1gM/90J041nyg64GN/Ce77i4RNGBez
-         pQjOXqWLqeuSFBpi4knvB/EeMm6sqTfYXXipKo1GG00g8cGbJiL0RJSBTmkaEoqYsc3n3Fs9oK/t
-         RdP01i0f960zc2B/j/+wzJVEApkhJPRAqbD2C4hEmMdn9dlp3+IhagF2pILGZvxP82ANs2Pqsvsp
-         U8dKkuA6fDAjmn595WtWeQuOyJ4uK+7HxKuA7VYEs/beIrJU0TNIYv+BYV4ZVi0Ak/+TmBBX1mKP
-         7uj6KEy1fnYhwzSV4FULy0YtujBF9afeFc2udzufHpzaF/qKLzJVQPiBxwba+zKczNjvBL2DGFV0
-         v2R42r7eB81Q6AUNjWjT1yN/YstDSW4RLH5kriKyfmFKEjY2urF67JhfrXl0qB7RIV5AE5IgQEtJ
-         q0vXBOwsUiVIDb2ke/6vvSrpdic9QaVEwwnAhQ/lyfb7wlY5vV
+        s=s201512; t=1690993800;
+        bh=WzOjdU1RA1VtzD8KEuZ4qGc1a8nuyxKg2Tq2LgQLeCI=;
+        h=Date:Subject:To:Cc:References:From:In-Reply-To;
+        b=wy6KRDwGIMEleXAp5ZWSNZORE9koqkasufv50LaMULyYVsPyT3R0AZ+dy6rC1aE8N
+         whIqJJ70u6p2/gQETQwL37g6/8ZTSHzob6s6vyL6NHh++R/LHVAJHxMmQh/Hj4MDME
+         zvXWZ3KB3WNT911Hq4/GlutNhTmfgaTWmpM5m7hM=
+Received: from [IPV6:2409:8a00:2577:9740:9ca5:5f74:38db:4c67] ([2409:8a00:2577:9740:9ca5:5f74:38db:4c67])
+        by newxmesmtplogicsvrszb6-0.qq.com (NewEsmtp) with SMTP
+        id 77A9BC8C; Thu, 03 Aug 2023 00:29:58 +0800
+X-QQ-mid: xmsmtpt1690993798t9c1m2sqn
+Message-ID: <tencent_798118A8D3600FCC5E0E08EEB2341A8EE206@qq.com>
+X-QQ-XMAILINFO: NQR8mRxMnur9/9vdW8nlMOLtAjutKo/PA6BuwwIMYAkD4PZDOt/pWrh5YICi3b
+         I++WSJ2U+EYT4UVj78HiLVF84EOprpr63cGQns31N1miU5Ra3Crvwvvr40gaF9sAzkfwi549Cr4c
+         JmBUSILzILQ/+CfgLTThfCEnibTrdy2zNYYTTuJj1ki77fek4a4l2+M+3G0cTl37P8qCP/uicMi7
+         E25G6kTM9yzGn071hTAtTQ0VojK6BC2E8WT8s6cyHq/dSOuuRvOLzmnRmsRnEkuTl37H5guLU3Xv
+         G8xZ7EPe9EiCYNycUlCiIRI3PncDhSy7YkCL1K42Pc0UUtpUvDSpFkVEApAQn3SSRhdNq9M7oC/f
+         vGRcsCCZs5k7LL137cNirvZ/SHfQVOaY1C6UEdJGgd8QYxK9c5ogOlBTwEvReLcntZc7hdbK/Zka
+         A44j3q4dAmASlxLCwuo6h67jJWp4UP5NEVrYtPMEA7B82UibP5Zk78s8XGo3hnjmWtbm/zO8497C
+         l1vDkM1w+y1FXhDorCtdq1WLCkJiUWNHAyXuJBqqtTG+1fUjsaZnEiRRSyZ/7/WJvNWeF69oYh+e
+         bFUWbcC1mSEX6cIHgTPo0yAFcpc2WtUwrOv+vABhQEpbIqmshtOeR5NqNmf18G3K3vj3RQEvYpd4
+         J9t62Lf3+0KTAiwwL0TjqYIuZqn0QcdUDsgTR1xaE2wG/Sx+Ilg7DjWjCGjKf3ehEQ24PeOHnEx+
+         D0dEDv24LKXbg46Y7y8USkT08UiEp3YpHG8d0IRLqrs4t+ybI4XwOTh8X7OsX4xk2JHU/K2F54HA
+         Ep9rI+TLVwYHYUoZQDp4SoVcvnRxWL1/JrWspDFy+Q6SSy9R10JnqNPN/bx5tuQNuFoilVi3GQ/2
+         yAYyRfgnfsT0htJR+Goy4Xz4iimGlP1DVEHx2+W54jduwJtrOe8L/NJLxCe8PkALrwoNLluqXLSm
+         MLSZ8iO9TNV4DIXfjzNo/rV9b9Z3cyuh24cnwteaq4lPEU+EJcIQ==
 X-QQ-XMRINFO: NyFYKkN4Ny6FSmKK/uo/jdU=
-From:   Wang Jianjian <wangjianjian0@foxmail.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     Wang Jianjian <wangjianjian0@foxmail.com>
-Subject: [PATCH 1/2] ext4: Ractor one helper ext4_num_base_meta_blocks
-Date:   Thu,  3 Aug 2023 00:28:39 +0800
-X-OQ-MSGID: <20230802162840.331385-1-wangjianjian0@foxmail.com>
-X-Mailer: git-send-email 2.34.3
+X-OQ-MSGID: <fd44a224-3c86-a8ac-2696-830f9b473d3d@foxmail.com>
+Date:   Thu, 3 Aug 2023 00:29:58 +0800
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
+ Thunderbird/91.3.0
+Subject: Re: [PATCH] ext4: Add correct group descriptors and reserved GDT
+ blocks to system zone
+Content-Language: en-US
+To:     Theodore Ts'o <tytso@mit.edu>
+Cc:     linux-ext4@vger.kernel.org
+References: <tencent_4A474CC049B9E77D0F172468991EED5B9105@qq.com>
+ <20230604034559.GG1128744@mit.edu>
+From:   Wang Jianjian <wangjianjian0@foxmail.com>
+In-Reply-To: <20230604034559.GG1128744@mit.edu>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Factor one helper ext4_num_base_meta_blocks and use it in next change.
+Thanks Ted, I send a new fix. Please help review.
 
-Signed-off-by: Wang Jianjian <wangjianjian0@foxmail.com>
----
- fs/ext4/balloc.c | 15 +++++++++++----
- fs/ext4/ext4.h   |  2 ++
- 2 files changed, 13 insertions(+), 4 deletions(-)
-
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 1f72f977c6db..000056d05ce4 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -913,11 +913,11 @@ unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
- }
- 
- /*
-- * This function returns the number of file system metadata clusters at
-+ * This function returns the number of file system metadata blocks at
-  * the beginning of a block group, including the reserved gdt blocks.
-  */
--static unsigned ext4_num_base_meta_clusters(struct super_block *sb,
--				     ext4_group_t block_group)
-+unsigned ext4_num_base_meta_blocks(struct super_block *sb,
-+				   ext4_group_t block_group)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	unsigned num;
-@@ -935,8 +935,15 @@ static unsigned ext4_num_base_meta_clusters(struct super_block *sb,
- 	} else { /* For META_BG_BLOCK_GROUPS */
- 		num += ext4_bg_num_gdb_meta(sb, block_group);
- 	}
--	return EXT4_NUM_B2C(sbi, num);
-+	return num;
-+}
-+
-+static unsigned ext4_num_base_meta_clusters(struct super_block *sb,
-+					    ext4_group_t block_group)
-+{
-+	return EXT4_NUM_B2C(EXT4_SB(sb), ext4_num_base_meta_blocks(sb, block_group));
- }
-+
- /**
-  *	ext4_inode_to_goal_block - return a hint for block allocation
-  *	@inode: inode for block allocation
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0a2d55faa095..f9f329e1118e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3084,6 +3084,8 @@ extern const char *ext4_decode_error(struct super_block *sb, int errno,
- extern void ext4_mark_group_bitmap_corrupted(struct super_block *sb,
- 					     ext4_group_t block_group,
- 					     unsigned int flags);
-+unsigned ext4_num_base_meta_blocks(struct super_block *sb,
-+				   ext4_group_t block_group);
- 
- extern __printf(7, 8)
- void __ext4_error(struct super_block *, const char *, unsigned int, bool,
--- 
-2.34.3
+On 6/4/23 11:45, Theodore Ts'o wrote:
+>> diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+>> index 5504f72bbbbe..5df357763975 100644
+>> --- a/fs/ext4/block_validity.c
+>> +++ b/fs/ext4/block_validity.c
+>> @@ -224,11 +223,14 @@ int ext4_setup_system_zone(struct super_block *sb)
+>>   
+>>   	for (i=0; i < ngroups; i++) {
+>>   		cond_resched();
+>> -		if (ext4_bg_has_super(sb, i) &&
+>> -		    ((i < 5) || ((i % flex_size) == 0))) {
+>> +		unsigned int sb_num = ext4_bg_has_super(sb, i);
+>> +		unsigned long gdb_num = ext4_bg_num_gdb(sb, i);
+>> +		unsigned int rsvd_gdt = le16_to_cpu(sbi->es->s_reserved_gdt_blocks);
+>> +
+>> +		if (sb_num != 0 || gdb_num != 0) {
+>>   			ret = add_system_zone(system_blks,
+>>   					ext4_group_first_block_no(sb, i),
+>> -					ext4_bg_num_gdb(sb, i) + 1, 0);
+>> +					sb_num + gdb_num + rsvd_gdt, 0);
+>>   			if (ret)
+>>   				goto err;
+>>   		}
+> 
+> 
+> How the reserved GDT blocks should be added to the system zone are not
+> handled correctly in this patch.   It can't be unconditionally added to
+> all block groups.
+> 
+> See the logic in ext4_num_base_meta_clusters() in fs/ext4/balloc.c ---
+> without the EXT4_NUM_B2C() at the end of the function, since the
+> system zone tracking is done at the block level, not the cluster
+> level.
+> 
+> 					- Ted
+> 
 
