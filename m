@@ -2,100 +2,71 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 36A2EC41513
-	for <linux-ext4@archiver.kernel.org>; Sat,  5 Aug 2023 10:39:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0E009C001DB
+	for <linux-ext4@archiver.kernel.org>; Sat,  5 Aug 2023 12:20:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229714AbjHEKj2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 5 Aug 2023 06:39:28 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48584 "EHLO
+        id S229741AbjHEMUm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 5 Aug 2023 08:20:42 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59622 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229450AbjHEKj0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Aug 2023 06:39:26 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EDF2A10C4;
-        Sat,  5 Aug 2023 03:39:25 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 7A6B060C63;
-        Sat,  5 Aug 2023 10:39:25 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E9DD0C433C7;
-        Sat,  5 Aug 2023 10:39:20 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1691231964;
-        bh=uXGWtXBnq0nfa/jBhSY841c7zuCmhgyQEv0tqvbShRw=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=gcYazOn/niIWgO8RAq86Wd0rf6mY5HFyG8HgKYgI+uBhiJcOa1iN7eHEwWVbAcqFb
-         5XIJBVbVVoMXgQkQiYsI582grCtIP5eESCBkMFP2HJtSXo84sAac2RzSv75h991bTw
-         DlhvR7swkECQCUNJ0aVzgU1Y6/CLhGJcMtH+agnVqKKciIHJRKsst4uRWzNWqfcH/S
-         4Z5gPIEd6TmqOwMkNTU2g/kveG9q6Rla8oYlgbxLN/F6Ht72xR0/n8EjkY0FHeNts+
-         T/IgH7Tx7FR6m1gG2NYvDi0EBc0UAhmoFZi7m3tQ+5R3RXve3Uu+iNx/GDcEcrNUGm
-         nFhvs+f54VGWQ==
-Date:   Sat, 5 Aug 2023 12:39:12 +0200
-From:   Christian Brauner <brauner@kernel.org>
-To:     Christoph Hellwig <hch@lst.de>
-Cc:     "Darrick J. Wong" <djwong@kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>,
-        Chris Mason <clm@fb.com>, Josef Bacik <josef@toxicpanda.com>,
-        David Sterba <dsterba@suse.com>, Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-        Jens Axboe <axboe@kernel.dk>, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-nilfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-block@vger.kernel.org
-Subject: Re: [PATCH 11/12] xfs: drop s_umount over opening the log and RT
- devices
-Message-ID: <20230805-galaabend-diskreditieren-27943ea3c10e@brauner>
-References: <20230802154131.2221419-1-hch@lst.de>
- <20230802154131.2221419-12-hch@lst.de>
- <20230802163219.GW11352@frogsfrogsfrogs>
- <20230805083239.GA29780@lst.de>
+        with ESMTP id S229599AbjHEMUl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Aug 2023 08:20:41 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EE20244BE
+        for <linux-ext4@vger.kernel.org>; Sat,  5 Aug 2023 05:20:39 -0700 (PDT)
+Received: from cwcc.thunk.org (pool-173-48-112-100.bstnma.fios.verizon.net [173.48.112.100])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 375CKV5N027554
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sat, 5 Aug 2023 08:20:32 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1691238033; bh=/5OQsuvO8EFAtW28naZltrWyp9MTJKzUfAozLxzSpVo=;
+        h=From:Subject:Date:Message-Id:MIME-Version:Content-Type;
+        b=H8fXBmdwWi0D/RONRjWCczx10L5vMLEjaC+HyHKveGxMB8kAsV4bD+Sl7Wey8pWMX
+         obFeiUmsZavSGhbIXG/LrsYkaDR4/BeuC+CmgczvYAbUmcj0WrH67Vo3KvBWRQJ60d
+         sI9S8sPRGBu1q60h5e98YSQXu3r+iS5B1HnYmEJV3+2wKdqfxY7zKjkO3Cghh9veHq
+         bTTqioZsnxdLKBvCi4iBs3ri7/YD99WAKFLC6a2wIwZdpXO4+n1HTO/tLTVww5mMxK
+         08PMNfD8loVqZ/QftFRMVXJV9chEETUmNiR48Y40uTtJO/ffXIhOhMJHcwCjviv/43
+         jtg7fRyCrnrTw==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 53C8315C04F2; Sat,  5 Aug 2023 08:20:31 -0400 (EDT)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     linux-ext4@vger.kernel.org,
+        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>,
+        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+        Eric Whitney <enwlinux@gmail.com>
+Subject: Re: [PATCH] ext4: Don't use CR_BEST_AVAIL_LEN for non-regular files
+Date:   Sat,  5 Aug 2023 08:20:25 -0400
+Message-Id: <169123801882.1434487.3791634089100240584.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <2a694c748ff8b8c4b416995a24f06f07b55047a8.1689516047.git.ritesh.list@gmail.com>
+References: <2a694c748ff8b8c4b416995a24f06f07b55047a8.1689516047.git.ritesh.list@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <20230805083239.GA29780@lst.de>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, Aug 05, 2023 at 10:32:39AM +0200, Christoph Hellwig wrote:
-> On Wed, Aug 02, 2023 at 09:32:19AM -0700, Darrick J. Wong wrote:
-> > > +	/* see get_tree_bdev why this is needed and safe */
-> > 
-> > Which part of get_tree_bdev?  Is it this?
-> > 
-> > 		/*
-> > 		 * s_umount nests inside open_mutex during
-> > 		 * __invalidate_device().  blkdev_put() acquires
-> > 		 * open_mutex and can't be called under s_umount.  Drop
-> > 		 * s_umount temporarily.  This is safe as we're
-> > 		 * holding an active reference.
-> > 		 */
-> > 		up_write(&s->s_umount);
-> > 		blkdev_put(bdev, fc->fs_type);
-> > 		down_write(&s->s_umount);
-> 
-> Yes.  With the refactoring earlier in the series get_tree_bdev should
-> be trivial enough to not need a more specific reference.  If you
-> think there's a better way to refer to it I can update the comment,
-> though.
-> 
-> > >  		mp->m_logdev_targp = mp->m_ddev_targp;
-> > >  	}
-> > >  
-> > > -	return 0;
-> > > +	error = 0;
-> > > +out_unlock:
-> > > +	down_write(&sb->s_umount);
-> > 
-> > Isn't down_write taking s_umount?  I think the label should be
-> > out_relock or something less misleading.
-> 
-> Agreed.  Christian, can you just change this in your branch, or should
-> I send an incremental patch?
 
-No need to send an incremental patch. I just s/out_unlock/out_relock/g
-in-tree. Thanks!
+On Sun, 16 Jul 2023 19:33:34 +0530, Ritesh Harjani (IBM) wrote:
+> Using CR_BEST_AVAIL_LEN only make sense for regular files, as for
+> non-regular files we never normalize the allocation request length i.e.
+> goal len is same as original length (ac_g_ex.fe_len == ac_o_ex.fe_len).
+> 
+> Hence there is no scope of trimming the goal length to make it
+> satisfy original request len. Thus this patch avoids using
+> CR_BEST_AVAIL_LEN criteria for non-regular files request.
+> 
+> [...]
+
+Applied, thanks!
+
+[1/1] ext4: Don't use CR_BEST_AVAIL_LEN for non-regular files
+      commit: 772c9f691dcf3a487f29ddb90a5a15c78d7328e1
+
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
