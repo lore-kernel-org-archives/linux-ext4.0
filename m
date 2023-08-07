@@ -2,53 +2,53 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 138D1C04E69
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Aug 2023 11:15:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B3329C04E69
+	for <linux-ext4@archiver.kernel.org>; Mon,  7 Aug 2023 11:16:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232013AbjHGLPG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 7 Aug 2023 07:15:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49348 "EHLO
+        id S232108AbjHGLQO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Aug 2023 07:16:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48356 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231951AbjHGLOf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Aug 2023 07:14:35 -0400
-Received: from mail-pj1-x102e.google.com (mail-pj1-x102e.google.com [IPv6:2607:f8b0:4864:20::102e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3CEB61FDC
-        for <linux-ext4@vger.kernel.org>; Mon,  7 Aug 2023 04:13:18 -0700 (PDT)
-Received: by mail-pj1-x102e.google.com with SMTP id 98e67ed59e1d1-268f6ba57b5so624098a91.1
-        for <linux-ext4@vger.kernel.org>; Mon, 07 Aug 2023 04:13:18 -0700 (PDT)
+        with ESMTP id S232057AbjHGLPm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Aug 2023 07:15:42 -0400
+Received: from mail-io1-xd2a.google.com (mail-io1-xd2a.google.com [IPv6:2607:f8b0:4864:20::d2a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 46F40A4
+        for <linux-ext4@vger.kernel.org>; Mon,  7 Aug 2023 04:14:37 -0700 (PDT)
+Received: by mail-io1-xd2a.google.com with SMTP id ca18e2360f4ac-790b6761117so45036939f.0
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Aug 2023 04:14:37 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1691406751; x=1692011551;
+        d=bytedance.com; s=google; t=1691406804; x=1692011604;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=y2Zq84YPu5W9umXtWflPPzaPyFOqe/t1tbhlrQuOI+E=;
-        b=Y3Gw/8I9wjDIixxDLIQ9R5eAEihH4V5EOGMa/tEQP2UVJcVR6XKMsoq0kNQA9Anemf
-         f07XdP3K3VTdRiql0M+klRK3bCLbXjjp+xplnI9SAQQIK1LQ+ZTQ4iN7KAzzTyuvBW+2
-         22vOneIjM2lcCre/t1Mc8DL07qt3h0LYO3V6dBXrNJ+ZsacS8/3b5gEWrOt6ylq3sp75
-         +tN/NsYby1EhnscHKGVaTQLZ5Bd9+GL+XZMM1MIKbWLpVeAc6COrlmvCwmGvjTVu68WR
-         OgVgTRpqhZcRZgjQYAuUYTgXANtTE72/EYkbNkp+iXkkiBUoh7hJkggb0sVF4vx/kVZQ
-         USbQ==
+        bh=4VJlLpDqVGiuvI83ez+3bl7yR5bVuWalBgtTU2vfBLE=;
+        b=i2oZ2Se5RaRdFd0q9t3NqBTv/dUkxD/p2SyHpAjMjg/XHGqyx1ejwAfepurqt3olXd
+         4JrDoh1Y9dLDoFntnleeQjfq8XZjg4nTjOSD4Duga+gvfwhzkhg3QVfdrOJlicPQaYUD
+         v5DwTanMH6RhkvK4rWOetuDFETnSCGxcV41PCfrrWGGU2b+vPg8IYLTIauqtUI6qQnyf
+         JDKJFxqA5C/eh/Oo8gwkHqwPIIO1pJg4e68ItW2uJIdbbavFER6b/PwVILGTxzeWrF6b
+         lEtQmpfrwSnO090W7cEUPihusqog8pTCjc32QMYuqZWzqkk8YiBOx308Pfsd+2Yt04OK
+         T2NQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1691406751; x=1692011551;
+        d=1e100.net; s=20221208; t=1691406804; x=1692011604;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=y2Zq84YPu5W9umXtWflPPzaPyFOqe/t1tbhlrQuOI+E=;
-        b=Tsgmu3kqtBJRd57+bF+Y2HpJ4dQeT1pqumau9zEvzVk5htxnXeg860t57cLwgAjdw2
-         aoAlEg2viR+aoChggXyHo1e6QfjGSutf4sX3ETuOIawiQlUCRKnVqX4Wa1G6+Oi6RhCL
-         X4TqZDxNg3ESAxTNpjEewmRJ9exCTzj9ERIPmq8+Sp21vjXtx/5oT0a/5H1/UcFch0aX
-         aoh8wpQrjMvj6vsZDqqNfMOU0E8iVHEwzY/jR9rJJexVbTPuOt9MVeOjpK0viT9LQp5+
-         v5hMwBF9Mj7p8kM0+2drXUu/bOnRNeI+um3oDxEKJorhYNni31nH+cB0DwY2mmCgnZ3V
-         JRPg==
-X-Gm-Message-State: ABy/qLYdm+UcRKQJ4Yd2pKKLr3AlRWDJoVm+7jjF46HBpjxkgRklk0aD
-        Nicw0cd/7esneLwtq8ZoNLfMQw==
-X-Google-Smtp-Source: APBJJlFA47zqmiKwpfw7q81pKFEqmAkA29wiqRNlMoLoIZqzioc4qMsA62pUfPaD7HBA/F0aUxQzvA==
-X-Received: by 2002:a17:90a:6c97:b0:263:730b:f568 with SMTP id y23-20020a17090a6c9700b00263730bf568mr23062652pjj.3.1691406750926;
-        Mon, 07 Aug 2023 04:12:30 -0700 (PDT)
+        bh=4VJlLpDqVGiuvI83ez+3bl7yR5bVuWalBgtTU2vfBLE=;
+        b=YeMsDdic4jDEcQ5qloNbmjtMOecK5MDU1keaFls+4yF3dOl03Wa5L1tumG5oeU4uut
+         BEpop8CsdUxDsAjRo2T4kcstECpSnKHZFmbhewsP3flQCaV30OMjn4KUOpl5SGlWd7ZW
+         cDAhUEOYizC2GjFdEaH+vxzE1d43tye7T/n7+Fky7ohOF6t270C8hi/moy5PrE0jRdp/
+         02XdALZ6l0GmJKdA1LBe9JxjavgzMmoxzaMuI6j9m289Sd7BO35BCYwRGeNp5rSXStr7
+         4FCUkHeSyMUw1tTejS2Zu70t0cIy4Ye0+BVe5PBevnxmZIhneK0jUOwQFpqJfqqCri3d
+         lWjQ==
+X-Gm-Message-State: ABy/qLYCD8aRDIR5hi3SnfZXoKePFpmhoTYo0McEvSO6vOSn5HEohXHL
+        NBS4DVXmnomdNbAc39vUiPf/hw==
+X-Google-Smtp-Source: APBJJlG6KxjpSP18cuDMGPLwCal+2Q6XOYkRmOlR+93TSEU+QOz0TNU1VRvfHZPrdEq648UTFq+gsw==
+X-Received: by 2002:a92:d944:0:b0:349:3c78:fd14 with SMTP id l4-20020a92d944000000b003493c78fd14mr13499018ilq.1.1691406803912;
+        Mon, 07 Aug 2023 04:13:23 -0700 (PDT)
 Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.146])
-        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.12.18
+        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.13.11
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 07 Aug 2023 04:12:30 -0700 (PDT)
+        Mon, 07 Aug 2023 04:13:23 -0700 (PDT)
 From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -69,10 +69,11 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         virtualization@lists.linux-foundation.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH v4 12/48] gfs2: dynamically allocate the gfs2-qd shrinker
-Date:   Mon,  7 Aug 2023 19:09:00 +0800
-Message-Id: <20230807110936.21819-13-zhengqi.arch@bytedance.com>
+        Qi Zheng <zhengqi.arch@bytedance.com>,
+        Muchun Song <songmuchun@bytedance.com>
+Subject: [PATCH v4 16/48] quota: dynamically allocate the dquota-cache shrinker
+Date:   Mon,  7 Aug 2023 19:09:04 +0800
+Message-Id: <20230807110936.21819-17-zhengqi.arch@bytedance.com>
 X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 In-Reply-To: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
 References: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
@@ -82,98 +83,57 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Use new APIs to dynamically allocate the gfs2-qd shrinker.
+Use new APIs to dynamically allocate the dquota-cache shrinker.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
+Reviewed-by: Muchun Song <songmuchun@bytedance.com>
 ---
- fs/gfs2/main.c  |  6 +++---
- fs/gfs2/quota.c | 26 ++++++++++++++++++++------
- fs/gfs2/quota.h |  3 ++-
- 3 files changed, 25 insertions(+), 10 deletions(-)
+ fs/quota/dquot.c | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
 
-diff --git a/fs/gfs2/main.c b/fs/gfs2/main.c
-index afcb32854f14..e47b1cc79f59 100644
---- a/fs/gfs2/main.c
-+++ b/fs/gfs2/main.c
-@@ -147,7 +147,7 @@ static int __init init_gfs2_fs(void)
- 	if (!gfs2_trans_cachep)
- 		goto fail_cachep8;
- 
--	error = register_shrinker(&gfs2_qd_shrinker, "gfs2-qd");
-+	error = gfs2_qd_shrinker_init();
- 	if (error)
- 		goto fail_shrinker;
- 
-@@ -196,7 +196,7 @@ static int __init init_gfs2_fs(void)
- fail_wq2:
- 	destroy_workqueue(gfs_recovery_wq);
- fail_wq1:
--	unregister_shrinker(&gfs2_qd_shrinker);
-+	gfs2_qd_shrinker_exit();
- fail_shrinker:
- 	kmem_cache_destroy(gfs2_trans_cachep);
- fail_cachep8:
-@@ -229,7 +229,7 @@ static int __init init_gfs2_fs(void)
- 
- static void __exit exit_gfs2_fs(void)
- {
--	unregister_shrinker(&gfs2_qd_shrinker);
-+	gfs2_qd_shrinker_exit();
- 	gfs2_glock_exit();
- 	gfs2_unregister_debugfs();
- 	unregister_filesystem(&gfs2_fs_type);
-diff --git a/fs/gfs2/quota.c b/fs/gfs2/quota.c
-index 632806c5ed67..d1e4d8ab8fa1 100644
---- a/fs/gfs2/quota.c
-+++ b/fs/gfs2/quota.c
-@@ -186,13 +186,27 @@ static unsigned long gfs2_qd_shrink_count(struct shrinker *shrink,
- 	return vfs_pressure_ratio(list_lru_shrink_count(&gfs2_qd_lru, sc));
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index 9e72bfe8bbad..c303cffdf433 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -791,12 +791,6 @@ dqcache_shrink_count(struct shrinker *shrink, struct shrink_control *sc)
+ 	percpu_counter_read_positive(&dqstats.counter[DQST_FREE_DQUOTS]));
  }
  
--struct shrinker gfs2_qd_shrinker = {
--	.count_objects = gfs2_qd_shrink_count,
--	.scan_objects = gfs2_qd_shrink_scan,
+-static struct shrinker dqcache_shrinker = {
+-	.count_objects = dqcache_shrink_count,
+-	.scan_objects = dqcache_shrink_scan,
 -	.seeks = DEFAULT_SEEKS,
--	.flags = SHRINKER_NUMA_AWARE,
 -};
-+static struct shrinker *gfs2_qd_shrinker;
-+
-+int __init gfs2_qd_shrinker_init(void)
-+{
-+	gfs2_qd_shrinker = shrinker_alloc(SHRINKER_NUMA_AWARE, "gfs2-qd");
-+	if (!gfs2_qd_shrinker)
-+		return -ENOMEM;
-+
-+	gfs2_qd_shrinker->count_objects = gfs2_qd_shrink_count;
-+	gfs2_qd_shrinker->scan_objects = gfs2_qd_shrink_scan;
-+	gfs2_qd_shrinker->seeks = DEFAULT_SEEKS;
-+
-+	shrinker_register(gfs2_qd_shrinker);
- 
-+	return 0;
-+}
-+
-+void gfs2_qd_shrinker_exit(void)
-+{
-+	shrinker_free(gfs2_qd_shrinker);
-+}
- 
- static u64 qd2index(struct gfs2_quota_data *qd)
+-
+ /*
+  * Safely release dquot and put reference to dquot.
+  */
+@@ -2956,6 +2950,7 @@ static int __init dquot_init(void)
  {
-diff --git a/fs/gfs2/quota.h b/fs/gfs2/quota.h
-index 21ada332d555..f0d54dcbbc75 100644
---- a/fs/gfs2/quota.h
-+++ b/fs/gfs2/quota.h
-@@ -59,7 +59,8 @@ static inline int gfs2_quota_lock_check(struct gfs2_inode *ip,
+ 	int i, ret;
+ 	unsigned long nr_hash, order;
++	struct shrinker *dqcache_shrinker;
+ 
+ 	printk(KERN_NOTICE "VFS: Disk quotas %s\n", __DQUOT_VERSION__);
+ 
+@@ -2990,8 +2985,15 @@ static int __init dquot_init(void)
+ 	pr_info("VFS: Dquot-cache hash table entries: %ld (order %ld,"
+ 		" %ld bytes)\n", nr_hash, order, (PAGE_SIZE << order));
+ 
+-	if (register_shrinker(&dqcache_shrinker, "dquota-cache"))
+-		panic("Cannot register dquot shrinker");
++	dqcache_shrinker = shrinker_alloc(0, "dquota-cache");
++	if (!dqcache_shrinker)
++		panic("Cannot allocate dquot shrinker");
++
++	dqcache_shrinker->count_objects = dqcache_shrink_count;
++	dqcache_shrinker->scan_objects = dqcache_shrink_scan;
++	dqcache_shrinker->seeks = DEFAULT_SEEKS;
++
++	shrinker_register(dqcache_shrinker);
+ 
+ 	return 0;
  }
- 
- extern const struct quotactl_ops gfs2_quotactl_ops;
--extern struct shrinker gfs2_qd_shrinker;
-+int __init gfs2_qd_shrinker_init(void);
-+void gfs2_qd_shrinker_exit(void);
- extern struct list_lru gfs2_qd_lru;
- extern void __init gfs2_quota_hash_init(void);
- 
 -- 
 2.30.2
 
