@@ -2,53 +2,53 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 837BAC41513
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Aug 2023 11:13:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0E612EB64DD
+	for <linux-ext4@archiver.kernel.org>; Mon,  7 Aug 2023 11:14:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231737AbjHGLNl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 7 Aug 2023 07:13:41 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47716 "EHLO
+        id S232090AbjHGLOP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Aug 2023 07:14:15 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48356 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231865AbjHGLNO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Aug 2023 07:13:14 -0400
-Received: from mail-pg1-x52e.google.com (mail-pg1-x52e.google.com [IPv6:2607:f8b0:4864:20::52e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 47548213C
-        for <linux-ext4@vger.kernel.org>; Mon,  7 Aug 2023 04:12:11 -0700 (PDT)
-Received: by mail-pg1-x52e.google.com with SMTP id 41be03b00d2f7-56462258cdeso525481a12.1
-        for <linux-ext4@vger.kernel.org>; Mon, 07 Aug 2023 04:12:11 -0700 (PDT)
+        with ESMTP id S229877AbjHGLNy (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Aug 2023 07:13:54 -0400
+Received: from mail-pg1-x536.google.com (mail-pg1-x536.google.com [IPv6:2607:f8b0:4864:20::536])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 557991FFB
+        for <linux-ext4@vger.kernel.org>; Mon,  7 Aug 2023 04:12:59 -0700 (PDT)
+Received: by mail-pg1-x536.google.com with SMTP id 41be03b00d2f7-55b5a37acb6so362000a12.0
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Aug 2023 04:12:59 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1691406698; x=1692011498;
+        d=bytedance.com; s=google; t=1691406737; x=1692011537;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=bO4yc6b0222dRNj48HoFyPuU9QjRVolFKKVhhMGpLKw=;
-        b=V+0c3qPhJ3OvHdRK0zt0jjicV8eIk4mcEJBfZa3lpQkwu54lWNVPIEieS4PtRydxoC
-         SOQosWaNmtA5ijvBvBTHzjmbD0d0j9BAeGMmaW/jH6uvD6Ej2n/njXM3uIqGlzrBkh1f
-         4pNHqPhVUKAnLp7tAzH1vcGObvmfuMOiL8NrO6wDjhRhzYUa1svLTbbXU3r4juxNC7M+
-         zvZ3SM7T/9w0Je9dQGJ4Z6qlkuAYn1bir+6JxlC1Qr6arztdDyFiMoqBolNxM3VBbd9i
-         jsX4xXrnwmvTP/fkwCWNcOiK6G4rP96fjoeNSyiOnE04LmSKfInS+5dfsRm42DUoM8bY
-         LffQ==
+        bh=XAY9+N2BbVQBjCT3MmFWkPxUR/2vf6o4m+CtMBoAzag=;
+        b=Owhbp+vjTX9LgSb8kQ7MIhVXGKwDLhR+Ce+1Ax0621Bs9MrN8XWMe5+Ejw9lnwM3Ap
+         IYUW911/vhmnbFJp/stmhIc489u8MPAzdlnhNeoJi8rBqpYOKUrjixaEdD0XprSya4Vj
+         PDunDNjaDu16T3tMnzjFT3t7h/oKuuaUvjmMy7sBXTr5KsxElViOqZ7/5M9dmikw8+EO
+         wMQGbexE8DINXXSrzaCt4DliIlnjdofAsiKIz1t/gb0CaZI+4t4MLa+CBQGQ2Bhdx8d2
+         /xQiP0jkFYD6YIUPc+4v26SX8VshwmbMbumt9peptq8jkLOVQze1kYBLFAMAnfkePzJe
+         dicw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1691406698; x=1692011498;
+        d=1e100.net; s=20221208; t=1691406737; x=1692011537;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=bO4yc6b0222dRNj48HoFyPuU9QjRVolFKKVhhMGpLKw=;
-        b=NKiQv9tXfkX4uav8V7CG+fjS30AW7y5LGis23lar2Sgv59NEuQ7Z2wiNoSCBkqWEW/
-         G988Blg53yu2k/0wBA8YEH2jnuyaiVj3dDFkWf0T2dhIanbb3q2rdSwXdwvIhqhBXpuF
-         J/ogk0lgvkpYfqqxO2nJJ8fMFJAtsI6RANvMjAIB9MvFebInCDWwFN55cm8NPg8bGjy6
-         D9WWqHG9rKfzEPFLoZlVDkEJ2rWPxlKQKtb/ZFrX1xrUojQxB4sw30dNjCcnlNVnURjF
-         R5U35lHnlJiomfAtX+IRzqROIVthfaMNGE4ikRAoPRpgwHAUZBF920MhJUrPerpBmNf1
-         O1Zg==
-X-Gm-Message-State: ABy/qLaVLK3rMTsWLXkD2vG0s4eFUfiLm+GGrqmcM/b0td7RobOAgYn9
-        nG7PNN64hhuU3VS+gJ4pUcNWNA==
-X-Google-Smtp-Source: APBJJlHTPEiI4d70NxX2nHst3XkAfiDRggXx1NmGRpA10Zf8iDezZWW8ih32EzxQIqpHPiYHvUOM5w==
-X-Received: by 2002:a17:90a:1f83:b0:268:3dc6:f0c5 with SMTP id x3-20020a17090a1f8300b002683dc6f0c5mr25027705pja.0.1691406698603;
-        Mon, 07 Aug 2023 04:11:38 -0700 (PDT)
+        bh=XAY9+N2BbVQBjCT3MmFWkPxUR/2vf6o4m+CtMBoAzag=;
+        b=etW8dqEKfJ17nlzv9o6Y22+1a9zuFqNqAgN1N0rZtvfrTI/t4mjKLJFawqJnbvHPPo
+         3UBO4LHWUqBvyO3/Orozb58QQ+Rv3uLPU9iUVRDPYGJ0GlNC+Qr7pOAFwKwMTOxf8DA+
+         R4ZhfQdCcLu/q4OW2sVw687zzYXc2pVjpSYo2zNtWRTpAo/DaOdA5A6Ruofm+asssINF
+         B7f5C1LTT2BNB/QdrdPJ9Z7XwrtfQOmKyc/auhUaqsIsklp1dlvFbty/96uFFTDI4znM
+         ycEbOn30s+I59Utspbn3qqVfsRWEtzzR182EFrq6RPLTiAT6SQkSapsEMGhwXKaoR/ch
+         /ocw==
+X-Gm-Message-State: ABy/qLYfHGlwmYQqvDjSilEUtGL7aGWzxdQL952n7R1sTggWHVNPOAg3
+        MOelmgh7OoRiO6zkUOYvaL28mg==
+X-Google-Smtp-Source: APBJJlGzkEm3Uqt9ffvJXbz1uvSm9jYeOQTwgnDKGaV/IZVLtdfAA6YtivYmWFIriEmVEE/lzsK+Ow==
+X-Received: by 2002:a17:90a:faf:b0:268:abc:83d5 with SMTP id 44-20020a17090a0faf00b002680abc83d5mr23476433pjz.4.1691406737630;
+        Mon, 07 Aug 2023 04:12:17 -0700 (PDT)
 Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.146])
-        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.11.26
+        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.12.05
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 07 Aug 2023 04:11:38 -0700 (PDT)
+        Mon, 07 Aug 2023 04:12:17 -0700 (PDT)
 From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -71,9 +71,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
         Qi Zheng <zhengqi.arch@bytedance.com>,
         Muchun Song <songmuchun@bytedance.com>
-Subject: [PATCH v4 08/48] xenbus/backend: dynamically allocate the xen-backend shrinker
-Date:   Mon,  7 Aug 2023 19:08:56 +0800
-Message-Id: <20230807110936.21819-9-zhengqi.arch@bytedance.com>
+Subject: [PATCH v4 11/48] gfs2: dynamically allocate the gfs2-glock shrinker
+Date:   Mon,  7 Aug 2023 19:08:59 +0800
+Message-Id: <20230807110936.21819-12-zhengqi.arch@bytedance.com>
 X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 In-Reply-To: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
 References: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
@@ -83,51 +83,62 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Use new APIs to dynamically allocate the xen-backend shrinker.
+Use new APIs to dynamically allocate the gfs2-glock shrinker.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 Reviewed-by: Muchun Song <songmuchun@bytedance.com>
 ---
- drivers/xen/xenbus/xenbus_probe_backend.c | 18 +++++++++++-------
- 1 file changed, 11 insertions(+), 7 deletions(-)
+ fs/gfs2/glock.c | 20 +++++++++++---------
+ 1 file changed, 11 insertions(+), 9 deletions(-)
 
-diff --git a/drivers/xen/xenbus/xenbus_probe_backend.c b/drivers/xen/xenbus/xenbus_probe_backend.c
-index da96c260e26b..929c41a5ccee 100644
---- a/drivers/xen/xenbus/xenbus_probe_backend.c
-+++ b/drivers/xen/xenbus/xenbus_probe_backend.c
-@@ -284,13 +284,9 @@ static unsigned long backend_shrink_memory_count(struct shrinker *shrinker,
- 	return 0;
+diff --git a/fs/gfs2/glock.c b/fs/gfs2/glock.c
+index 1438e7465e30..8d582ba7514f 100644
+--- a/fs/gfs2/glock.c
++++ b/fs/gfs2/glock.c
+@@ -2046,11 +2046,7 @@ static unsigned long gfs2_glock_shrink_count(struct shrinker *shrink,
+ 	return vfs_pressure_ratio(atomic_read(&lru_count));
  }
  
--static struct shrinker backend_memory_shrinker = {
--	.count_objects = backend_shrink_memory_count,
+-static struct shrinker glock_shrinker = {
 -	.seeks = DEFAULT_SEEKS,
+-	.count_objects = gfs2_glock_shrink_count,
+-	.scan_objects = gfs2_glock_shrink_scan,
 -};
--
- static int __init xenbus_probe_backend_init(void)
++static struct shrinker *glock_shrinker;
+ 
+ /**
+  * glock_hash_walk - Call a function for glock in a hash bucket
+@@ -2472,13 +2468,19 @@ int __init gfs2_glock_init(void)
+ 		return -ENOMEM;
+ 	}
+ 
+-	ret = register_shrinker(&glock_shrinker, "gfs2-glock");
+-	if (ret) {
++	glock_shrinker = shrinker_alloc(0, "gfs2-glock");
++	if (!glock_shrinker) {
+ 		destroy_workqueue(glock_workqueue);
+ 		rhashtable_destroy(&gl_hash_table);
+-		return ret;
++		return -ENOMEM;
+ 	}
+ 
++	glock_shrinker->count_objects = gfs2_glock_shrink_count;
++	glock_shrinker->scan_objects = gfs2_glock_shrink_scan;
++	glock_shrinker->seeks = DEFAULT_SEEKS;
++
++	shrinker_register(glock_shrinker);
++
+ 	for (i = 0; i < GLOCK_WAIT_TABLE_SIZE; i++)
+ 		init_waitqueue_head(glock_wait_table + i);
+ 
+@@ -2487,7 +2489,7 @@ int __init gfs2_glock_init(void)
+ 
+ void gfs2_glock_exit(void)
  {
-+	struct shrinker *backend_memory_shrinker;
- 	static struct notifier_block xenstore_notifier = {
- 		.notifier_call = backend_probe_and_watch
- 	};
-@@ -305,8 +301,16 @@ static int __init xenbus_probe_backend_init(void)
- 
- 	register_xenstore_notifier(&xenstore_notifier);
- 
--	if (register_shrinker(&backend_memory_shrinker, "xen-backend"))
--		pr_warn("shrinker registration failed\n");
-+	backend_memory_shrinker = shrinker_alloc(0, "xen-backend");
-+	if (!backend_memory_shrinker) {
-+		pr_warn("shrinker allocation failed\n");
-+		return 0;
-+	}
-+
-+	backend_memory_shrinker->count_objects = backend_shrink_memory_count;
-+	backend_memory_shrinker->seeks = DEFAULT_SEEKS;
-+
-+	shrinker_register(backend_memory_shrinker);
- 
- 	return 0;
+-	unregister_shrinker(&glock_shrinker);
++	shrinker_free(glock_shrinker);
+ 	rhashtable_destroy(&gl_hash_table);
+ 	destroy_workqueue(glock_workqueue);
  }
 -- 
 2.30.2
