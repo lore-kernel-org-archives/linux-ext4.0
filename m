@@ -2,140 +2,168 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8699AEB64DD
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Aug 2023 11:51:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F0E8DC001B0
+	for <linux-ext4@archiver.kernel.org>; Mon,  7 Aug 2023 11:54:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231760AbjHGLvw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 7 Aug 2023 07:51:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58982 "EHLO
+        id S231221AbjHGLy0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Aug 2023 07:54:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60312 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231209AbjHGLvv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Aug 2023 07:51:51 -0400
-Received: from mail-ot1-x32e.google.com (mail-ot1-x32e.google.com [IPv6:2607:f8b0:4864:20::32e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DCD8C99
-        for <linux-ext4@vger.kernel.org>; Mon,  7 Aug 2023 04:51:50 -0700 (PDT)
-Received: by mail-ot1-x32e.google.com with SMTP id 46e09a7af769-6bcde3d8657so136546a34.0
-        for <linux-ext4@vger.kernel.org>; Mon, 07 Aug 2023 04:51:50 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1691409110; x=1692013910;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=a0ijFA9s9bGVMHT4vLgTYS12L8yx2Rc7o6TjM9ZoJx8=;
-        b=FeCu93qTpF1qtp5/t7v4fSScD8mml/t8ZIMLPLatsMOIZb9KxAX9CtRCNtsmzPzjBS
-         zWoHNR9jr+4t33pVkKOnvCA/N3dPMVZNmdVgfNlJrIspwdNkEIAD5de9A0g2tfoF0ipX
-         dlltHYSEzbq4HeFm3CL0mz/2NEb29SmUzUPeBQU5874cFGWRGKMpIg+Nt0oGeETJVvuf
-         MkbkruFaK3MTg6KL0w9kfYnjb4oRzL8XUK/5wbBhY2jXeZIIBhRWnNX+1IOsmZnk+/eM
-         agNmDal75VQdkIVbdtrDGz4O4fg2+Bay395fSKJWKlRezhb/Wt3/heYZ4cRc/1g685XZ
-         1b0A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1691409110; x=1692013910;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=a0ijFA9s9bGVMHT4vLgTYS12L8yx2Rc7o6TjM9ZoJx8=;
-        b=k+80hilRaHkHjPIS45p8dSxoMuaRQ5t69XkBnC8AVqRfRHYuusQQDB6Co2byJEL0w7
-         CcCn25chzkCdo/LfNmHbDj/g0CR0ubeAvU4uGYp3JetmQf3mHa0T6KEWNQr7HM+Y6Lmu
-         Crd3tdFpBneZCVxnco1cCaIZk+l7dul9UCRRnzQm7Fu7N7PYtiaMACYJIOSyVRWwKjmI
-         chJPohF15XGmAHRyPbUeuEzQKVB9mMg0ooUJossl5bk+MJCRn8aiptj/AEqbL9nR/HGP
-         6txv2rTz6imPORV3dckJCjC6ZqHfKLQKA2Sz2rdm2rLvkrElU86T4/7svpyETpnNibGt
-         ccRA==
-X-Gm-Message-State: ABy/qLb1Z5ah3lJYcDVwMELCNRzJCsd/kjt+RtIdiew+R3EXier8LqWN
-        ksVZDekO7Rzy3UQ+K1ZQ91ABZQmvBwPc/b8RGcI=
-X-Google-Smtp-Source: AGHT+IELWLhV4Bj40lkko/D2F7gtSRcHKPclt9k8JlXsq8dyT7OdoG/0VZRRAUzfMJnehzLNwTS/oA==
-X-Received: by 2002:a17:90a:2909:b0:269:5bf7:d79c with SMTP id g9-20020a17090a290900b002695bf7d79cmr2214416pjd.1.1691406841328;
-        Mon, 07 Aug 2023 04:14:01 -0700 (PDT)
-Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.146])
-        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.13.49
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 07 Aug 2023 04:14:01 -0700 (PDT)
-From:   Qi Zheng <zhengqi.arch@bytedance.com>
-To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
-        vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
-        brauner@kernel.org, paulmck@kernel.org, tytso@mit.edu,
-        steven.price@arm.com, cel@kernel.org, senozhatsky@chromium.org,
-        yujie.liu@intel.com, gregkh@linuxfoundation.org,
-        muchun.song@linux.dev, simon.horman@corigine.com,
-        dlemoal@kernel.org
-Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
-        kvm@vger.kernel.org, xen-devel@lists.xenproject.org,
-        linux-erofs@lists.ozlabs.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-        rcu@vger.kernel.org, netdev@vger.kernel.org,
-        dri-devel@lists.freedesktop.org, linux-arm-msm@vger.kernel.org,
-        dm-devel@redhat.com, linux-raid@vger.kernel.org,
-        linux-bcache@vger.kernel.org,
-        virtualization@lists.linux-foundation.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH v4 19/48] rcu: dynamically allocate the rcu-kfree shrinker
-Date:   Mon,  7 Aug 2023 19:09:07 +0800
-Message-Id: <20230807110936.21819-20-zhengqi.arch@bytedance.com>
-X-Mailer: git-send-email 2.24.3 (Apple Git-128)
-In-Reply-To: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
-References: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
+        with ESMTP id S229990AbjHGLyZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Aug 2023 07:54:25 -0400
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B310B92
+        for <linux-ext4@vger.kernel.org>; Mon,  7 Aug 2023 04:54:23 -0700 (PDT)
+Received: from mail02.huawei.com (unknown [172.30.67.143])
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4RKDmt2z3pz4f47RP
+        for <linux-ext4@vger.kernel.org>; Mon,  7 Aug 2023 19:36:46 +0800 (CST)
+Received: from [10.174.176.34] (unknown [10.174.176.34])
+        by APP4 (Coremail) with SMTP id gCh0CgAHl6lN19BkslWWAA--.57095S3;
+        Mon, 07 Aug 2023 19:36:46 +0800 (CST)
+Subject: Re: [PATCH 11/12] ext4: cleanup ext4_get_dev_journal() and
+ ext4_get_journal()
+To:     Jan Kara <jack@suse.cz>
+Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, yi.zhang@huawei.com,
+        chengzhihao1@huawei.com, yukuai3@huawei.com
+References: <20230704134233.110812-1-yi.zhang@huaweicloud.com>
+ <20230704134233.110812-12-yi.zhang@huaweicloud.com>
+ <20230803161446.6ac3ffhvfihmpyr6@quack3>
+From:   Zhang Yi <yi.zhang@huaweicloud.com>
+Message-ID: <1dcada9b-77ba-504e-b2dd-b0437afa9962@huaweicloud.com>
+Date:   Mon, 7 Aug 2023 19:36:45 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
+ Thunderbird/78.12.0
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <20230803161446.6ac3ffhvfihmpyr6@quack3>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID: gCh0CgAHl6lN19BkslWWAA--.57095S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxJFWUCFyDGw1xCr4xCr47twb_yoW5tw18pF
+        4UAFy7uFWUuF1Uua1IqanrXFy29w40yay8GrZru3ZYyayDtrn3CF9xGF4UJa4jyrW7G397
+        XF4jqF9Fkw1xKa7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUkjb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+        vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Xr0_Ar1l84ACjcxK6xIIjxv20xvEc7Cj
+        xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I
+        0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
+        x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
+        0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lc7I2V7IY0VAS07AlzVAYIcxG8wCF04k20xvY0x0E
+        wIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E74
+        80Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0
+        I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Jr0_Gr1lIxAIcVCF04
+        k26cxKx2IYs7xG6rWUJVWrZr1UMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIE
+        c7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07UWE__UUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Use new APIs to dynamically allocate the rcu-kfree shrinker.
+On 2023/8/4 0:14, Jan Kara wrote:
+> On Tue 04-07-23 21:42:32, Zhang Yi wrote:
+>> From: Zhang Yi <yi.zhang@huawei.com>
+>>
+>> Factor out a new helper form ext4_get_dev_journal() to get external
+>> journal bdev and check validation of this device, drop ext4_blkdev_get()
+>> helper, and also remove duplicate check of journal feature. It makes
+>> ext4_get_dev_journal() more clear than before.
+>>
+>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> 
+> One comment below:
+> 
+>> @@ -5838,25 +5815,25 @@ static journal_t *ext4_get_journal(struct super_block *sb,
+>>  	return journal;
+>>  }
+>>  
+>> -static journal_t *ext4_get_dev_journal(struct super_block *sb,
+>> -				       dev_t j_dev)
+>> +static struct block_device *ext4_get_journal_dev(struct super_block *sb,
+>> +					dev_t j_dev, ext4_fsblk_t *j_start,
+>> +					ext4_fsblk_t *j_len)
+>>  {
+>>  	struct buffer_head *bh;
+>> -	journal_t *journal;
+>> -	ext4_fsblk_t start;
+>> -	ext4_fsblk_t len;
+>> +	struct block_device *bdev;
+>>  	int hblock, blocksize;
+>>  	ext4_fsblk_t sb_block;
+>>  	unsigned long offset;
+>>  	struct ext4_super_block *es;
+>> -	struct block_device *bdev;
+>>  
+>> -	if (WARN_ON_ONCE(!ext4_has_feature_journal(sb)))
+>> -		return NULL;
+>> -
+>> -	bdev = ext4_blkdev_get(j_dev, sb);
+>> -	if (bdev == NULL)
+>> +	bdev = blkdev_get_by_dev(j_dev, BLK_OPEN_READ | BLK_OPEN_WRITE, sb,
+>> +				 &ext4_holder_ops);
+>> +	if (IS_ERR(bdev)) {
+>> +		ext4_msg(sb, KERN_ERR,
+>> +			 "failed to open journal device unknown-block(%u,%u) %ld",
+>> +			 MAJOR(j_dev), MINOR(j_dev), PTR_ERR(bdev));
+>>  		return NULL;
+>> +	}
+>>  
+>>  	blocksize = sb->s_blocksize;
+>>  	hblock = bdev_logical_block_size(bdev);
+>> @@ -5869,7 +5846,8 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
+>>  	sb_block = EXT4_MIN_BLOCK_SIZE / blocksize;
+>>  	offset = EXT4_MIN_BLOCK_SIZE % blocksize;
+>>  	set_blocksize(bdev, blocksize);
+>> -	if (!(bh = __bread(bdev, sb_block, blocksize))) {
+>> +	bh = __bread(bdev, sb_block, blocksize);
+>> +	if (!bh) {
+>>  		ext4_msg(sb, KERN_ERR, "couldn't read superblock of "
+>>  		       "external journal");
+>>  		goto out_bdev;
+>> @@ -5879,56 +5857,67 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
+>>  	if ((le16_to_cpu(es->s_magic) != EXT4_SUPER_MAGIC) ||
+>>  	    !(le32_to_cpu(es->s_feature_incompat) &
+>>  	      EXT4_FEATURE_INCOMPAT_JOURNAL_DEV)) {
+>> -		ext4_msg(sb, KERN_ERR, "external journal has "
+>> -					"bad superblock");
+>> -		brelse(bh);
+>> -		goto out_bdev;
+>> +		ext4_msg(sb, KERN_ERR, "external journal has bad superblock");
+>> +		goto out_bh;
+>>  	}
+>>  
+>>  	if ((le32_to_cpu(es->s_feature_ro_compat) &
+>>  	     EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
+>>  	    es->s_checksum != ext4_superblock_csum(sb, es)) {
+>> -		ext4_msg(sb, KERN_ERR, "external journal has "
+>> -				       "corrupt superblock");
+>> -		brelse(bh);
+>> -		goto out_bdev;
+>> +		ext4_msg(sb, KERN_ERR, "external journal has corrupt superblock");
+>> +		goto out_bh;
+>>  	}
+>>  
+>>  	if (memcmp(EXT4_SB(sb)->s_es->s_journal_uuid, es->s_uuid, 16)) {
+>>  		ext4_msg(sb, KERN_ERR, "journal UUID does not match");
+>> -		brelse(bh);
+>> -		goto out_bdev;
+>> +		goto out_bh;
+>>  	}
+>>  
+>> -	len = ext4_blocks_count(es);
+>> -	start = sb_block + 1;
+>> -	brelse(bh);	/* we're done with the superblock */
+>> +	brelse(bh);
+>> +	*j_start = sb_block + 1;
+>> +	*j_len = ext4_blocks_count(es);
+> 
+> Here the ext4_blocks_count() is a use-after-free since you've released the
+> bh a few lines above.
+> 
 
-Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
----
- kernel/rcu/tree.c | 22 +++++++++++++---------
- 1 file changed, 13 insertions(+), 9 deletions(-)
+Indeed, will move it before the brelse(bh).
 
-diff --git a/kernel/rcu/tree.c b/kernel/rcu/tree.c
-index 7c79480bfaa0..3b20fc46c514 100644
---- a/kernel/rcu/tree.c
-+++ b/kernel/rcu/tree.c
-@@ -3449,13 +3449,6 @@ kfree_rcu_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
- 	return freed == 0 ? SHRINK_STOP : freed;
- }
- 
--static struct shrinker kfree_rcu_shrinker = {
--	.count_objects = kfree_rcu_shrink_count,
--	.scan_objects = kfree_rcu_shrink_scan,
--	.batch = 0,
--	.seeks = DEFAULT_SEEKS,
--};
--
- void __init kfree_rcu_scheduler_running(void)
- {
- 	int cpu;
-@@ -4931,6 +4924,7 @@ static void __init kfree_rcu_batch_init(void)
- {
- 	int cpu;
- 	int i, j;
-+	struct shrinker *kfree_rcu_shrinker;
- 
- 	/* Clamp it to [0:100] seconds interval. */
- 	if (rcu_delay_page_cache_fill_msec < 0 ||
-@@ -4962,8 +4956,18 @@ static void __init kfree_rcu_batch_init(void)
- 		INIT_DELAYED_WORK(&krcp->page_cache_work, fill_page_cache_func);
- 		krcp->initialized = true;
- 	}
--	if (register_shrinker(&kfree_rcu_shrinker, "rcu-kfree"))
--		pr_err("Failed to register kfree_rcu() shrinker!\n");
-+
-+	kfree_rcu_shrinker = shrinker_alloc(0, "rcu-kfree");
-+	if (!kfree_rcu_shrinker) {
-+		pr_err("Failed to allocate kfree_rcu() shrinker!\n");
-+		return;
-+	}
-+
-+	kfree_rcu_shrinker->count_objects = kfree_rcu_shrink_count;
-+	kfree_rcu_shrinker->scan_objects = kfree_rcu_shrink_scan;
-+	kfree_rcu_shrinker->seeks = DEFAULT_SEEKS;
-+
-+	shrinker_register(kfree_rcu_shrinker);
- }
- 
- void __init rcu_init(void)
--- 
-2.30.2
+Thanks,
+Yi.
 
