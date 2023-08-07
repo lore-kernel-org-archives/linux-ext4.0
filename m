@@ -2,143 +2,165 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 84EC8C41513
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Aug 2023 11:30:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A3AB7C001B0
+	for <linux-ext4@archiver.kernel.org>; Mon,  7 Aug 2023 11:32:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232756AbjHGLan (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 7 Aug 2023 07:30:43 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36168 "EHLO
+        id S232874AbjHGLco (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Aug 2023 07:32:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36572 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232362AbjHGLa3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Aug 2023 07:30:29 -0400
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DA4846184;
-        Mon,  7 Aug 2023 04:27:51 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
-        :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=C2Ha4CsVUfelPjS394inJjcDyMnuCGSgGsAEG2TLFOs=; b=1JpZRRVnoWMAthkvQEzrv4+W4k
-        xkFCTyVcxJDWwlC63fh8wIWbqCLTYf3/iHohEet5ZOt33F1KmnMKK82SrQibH0vaYyZv78MrqtBMu
-        Vte7FzIZzcLSJBjsNXgQUUSxS51eeH4/Kx1uPx3G7OPGSfrWgboGGEFxsxOMvaiReSZLcJ9AdW8bY
-        SIp/99YnQin5dcgBpW3gG7CKl4HnBBmc3RT2flRY8iFJm6Eh/Nb4yzrXNFQwkJqtU3fZUcgiOtoRm
-        lapJ19X4mbexsR0JXMq7L4ILuSROxgiE4n7qJzF5UGCm4jsnpr1TRMfGPyzl7LAl8rNRjf3za3UrZ
-        sPXh2Crg==;
-Received: from [82.33.212.90] (helo=localhost)
-        by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1qSyNr-00H59X-2k;
-        Mon, 07 Aug 2023 11:26:48 +0000
-From:   Christoph Hellwig <hch@lst.de>
-To:     Al Viro <viro@zeniv.linux.org.uk>,
-        Christian Brauner <brauner@kernel.org>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Mark Fasheh <mark@fasheh.com>,
-        Joel Becker <jlbec@evilplan.org>,
-        Joseph Qi <joseph.qi@linux.alibaba.com>,
-        Jens Axboe <axboe@kernel.dk>, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, ocfs2-devel@lists.linux.dev,
-        linux-block@vger.kernel.org
-Subject: [PATCH 4/4] fs, block: remove bdev->bd_super
-Date:   Mon,  7 Aug 2023 12:26:25 +0100
-Message-Id: <20230807112625.652089-5-hch@lst.de>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230807112625.652089-1-hch@lst.de>
-References: <20230807112625.652089-1-hch@lst.de>
+        with ESMTP id S232753AbjHGLcS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Aug 2023 07:32:18 -0400
+Received: from mail-il1-x12c.google.com (mail-il1-x12c.google.com [IPv6:2607:f8b0:4864:20::12c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EE70259CA
+        for <linux-ext4@vger.kernel.org>; Mon,  7 Aug 2023 04:29:09 -0700 (PDT)
+Received: by mail-il1-x12c.google.com with SMTP id e9e14a558f8ab-3492971f72fso3216325ab.1
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Aug 2023 04:29:09 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=bytedance.com; s=google; t=1691407691; x=1692012491;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=xVRvDV5EwClRaurogoo7jeCmWiPiam6NNimoVigpYsU=;
+        b=Ay5q1howAJ2C90Wcvq9wwSCEztyS2VRzbr+q2GPAdoUwojO5a1kM3uC5J9NSJ2Irdy
+         UfUEB26ZXwCowZSA7QHn+Cg3vvkNvX+2kVfY9GIL29gj4kIgWvbrztED9FftGZLesCrh
+         P9JS1Y2rQ9f6l2PiXSH2seoHXE4oVgL3gcuUCckHFcdVkzq1OPjU3KNJgIoyYB+mJs8W
+         asYw5xv7k4+phz5cCVrArrzzuv9doyJRyz8GdoqAdCDzfE0RNxx/G7xLqKyTb1SoxobU
+         8A9etOfUeMRgXOk0H3IgW1UgRsM2wddlTQVdNKk0F3VVhsY0wgPGhMQCwm7//kl1ANGL
+         nG9w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1691407691; x=1692012491;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=xVRvDV5EwClRaurogoo7jeCmWiPiam6NNimoVigpYsU=;
+        b=jpbhafzaC4hMrOKAp+BtpXOEySbtgJdvouv5oqkfqV/nBctODXzAkaT+G2NMK7QiDx
+         UBQcFuSR5SiyLYFaD+e2DOk7EC53LDhzbnCpq+AH6oSUDaruB8btz9iCBWDXBNt30kUG
+         M+Jngarpbny6umUzVxOtxVGbmWFlXbU8VRbaIkXws+2vUSwYYgkEnVYLjRVaBKPkFYW2
+         6P7CrK5i9WgMPVmiY1vjDjkpF74y7uFORqw2amFGLvkHrWhu42GsCyUmMch47SnQ2I9i
+         i8dQTK4ijIuRExF7wWQLxsoXDoHTNPx2QMVrJoGmS8m8oF+oS0lOqGTleoRA1DEHz0fV
+         HYyg==
+X-Gm-Message-State: AOJu0Ywmd86TH5ZK7YNYToZlHfsNeUu8SpQLEXDAhVclejJwqot6LkAC
+        SRo9YUxJ3K1S+GyOpxUqo8dj9LiBfDnEGLLcqG8=
+X-Google-Smtp-Source: APBJJlGBV531Fc0h3gGTcYh+GrDchiBvn4r3DyO1GlE79UVq2Tiyx2gaPN4S9h+mnuBR5bsUMtGvYQ==
+X-Received: by 2002:a17:90a:ac2:b0:268:f977:848c with SMTP id r2-20020a17090a0ac200b00268f977848cmr15219032pje.2.1691407007341;
+        Mon, 07 Aug 2023 04:16:47 -0700 (PDT)
+Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.146])
+        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.16.35
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 07 Aug 2023 04:16:47 -0700 (PDT)
+From:   Qi Zheng <zhengqi.arch@bytedance.com>
+To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
+        vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
+        brauner@kernel.org, paulmck@kernel.org, tytso@mit.edu,
+        steven.price@arm.com, cel@kernel.org, senozhatsky@chromium.org,
+        yujie.liu@intel.com, gregkh@linuxfoundation.org,
+        muchun.song@linux.dev, simon.horman@corigine.com,
+        dlemoal@kernel.org
+Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
+        kvm@vger.kernel.org, xen-devel@lists.xenproject.org,
+        linux-erofs@lists.ozlabs.org,
+        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+        rcu@vger.kernel.org, netdev@vger.kernel.org,
+        dri-devel@lists.freedesktop.org, linux-arm-msm@vger.kernel.org,
+        dm-devel@redhat.com, linux-raid@vger.kernel.org,
+        linux-bcache@vger.kernel.org,
+        virtualization@lists.linux-foundation.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        Qi Zheng <zhengqi.arch@bytedance.com>,
+        Muchun Song <songmuchun@bytedance.com>
+Subject: [PATCH v4 32/48] mbcache: dynamically allocate the mbcache shrinker
+Date:   Mon,  7 Aug 2023 19:09:20 +0800
+Message-Id: <20230807110936.21819-33-zhengqi.arch@bytedance.com>
+X-Mailer: git-send-email 2.24.3 (Apple Git-128)
+In-Reply-To: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
+References: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-bdev->bd_super is unused now, remove it.
+In preparation for implementing lockless slab shrink, use new APIs to
+dynamically allocate the mbcache shrinker, so that it can be freed
+asynchronously using kfree_rcu(). Then it doesn't need to wait for RCU
+read-side critical section when releasing the struct mb_cache.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
+Reviewed-by: Muchun Song <songmuchun@bytedance.com>
 ---
- fs/cramfs/inode.c         | 1 -
- fs/ext4/super.c           | 1 -
- fs/romfs/super.c          | 1 -
- fs/super.c                | 3 ---
- include/linux/blk_types.h | 1 -
- 5 files changed, 7 deletions(-)
+ fs/mbcache.c | 23 +++++++++++++----------
+ 1 file changed, 13 insertions(+), 10 deletions(-)
 
-diff --git a/fs/cramfs/inode.c b/fs/cramfs/inode.c
-index d2eea2e4807c4f..569f88dcb2f12c 100644
---- a/fs/cramfs/inode.c
-+++ b/fs/cramfs/inode.c
-@@ -493,7 +493,6 @@ static void cramfs_kill_sb(struct super_block *sb)
- 		put_mtd_device(sb->s_mtd);
- 		sb->s_mtd = NULL;
- 	} else if (IS_ENABLED(CONFIG_CRAMFS_BLOCKDEV) && sb->s_bdev) {
--		sb->s_bdev->bd_super = NULL;
- 		sync_blockdev(sb->s_bdev);
- 		blkdev_put(sb->s_bdev, sb);
- 	}
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 063832e2d12a8e..e6384782b4d036 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5563,7 +5563,6 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 	spin_lock_init(&sbi->s_bdev_wb_lock);
- 	errseq_check_and_advance(&sb->s_bdev->bd_inode->i_mapping->wb_err,
- 				 &sbi->s_bdev_wb_err);
--	sb->s_bdev->bd_super = sb;
- 	EXT4_SB(sb)->s_mount_state |= EXT4_ORPHAN_FS;
- 	ext4_orphan_cleanup(sb, es);
- 	EXT4_SB(sb)->s_mount_state &= ~EXT4_ORPHAN_FS;
-diff --git a/fs/romfs/super.c b/fs/romfs/super.c
-index b9eded546259bc..22cdb9a86a5748 100644
---- a/fs/romfs/super.c
-+++ b/fs/romfs/super.c
-@@ -593,7 +593,6 @@ static void romfs_kill_sb(struct super_block *sb)
- #endif
- #ifdef CONFIG_ROMFS_ON_BLOCK
- 	if (sb->s_bdev) {
--		sb->s_bdev->bd_super = NULL;
- 		sync_blockdev(sb->s_bdev);
- 		blkdev_put(sb->s_bdev, sb);
- 	}
-diff --git a/fs/super.c b/fs/super.c
-index efa28679e3e5b3..0023685815fda0 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -1369,7 +1369,6 @@ int get_tree_bdev(struct fs_context *fc,
- 			return error;
- 		}
- 		s->s_flags |= SB_ACTIVE;
--		s->s_bdev->bd_super = s;
+diff --git a/fs/mbcache.c b/fs/mbcache.c
+index 2a4b8b549e93..0d1e24e9a5e3 100644
+--- a/fs/mbcache.c
++++ b/fs/mbcache.c
+@@ -37,7 +37,7 @@ struct mb_cache {
+ 	struct list_head	c_list;
+ 	/* Number of entries in cache */
+ 	unsigned long		c_entry_count;
+-	struct shrinker		c_shrink;
++	struct shrinker		*c_shrink;
+ 	/* Work for shrinking when the cache has too many entries */
+ 	struct work_struct	c_shrink_work;
+ };
+@@ -293,8 +293,7 @@ EXPORT_SYMBOL(mb_cache_entry_touch);
+ static unsigned long mb_cache_count(struct shrinker *shrink,
+ 				    struct shrink_control *sc)
+ {
+-	struct mb_cache *cache = container_of(shrink, struct mb_cache,
+-					      c_shrink);
++	struct mb_cache *cache = shrink->private_data;
+ 
+ 	return cache->c_entry_count;
+ }
+@@ -333,8 +332,7 @@ static unsigned long mb_cache_shrink(struct mb_cache *cache,
+ static unsigned long mb_cache_scan(struct shrinker *shrink,
+ 				   struct shrink_control *sc)
+ {
+-	struct mb_cache *cache = container_of(shrink, struct mb_cache,
+-					      c_shrink);
++	struct mb_cache *cache = shrink->private_data;
+ 	return mb_cache_shrink(cache, sc->nr_to_scan);
+ }
+ 
+@@ -377,15 +375,20 @@ struct mb_cache *mb_cache_create(int bucket_bits)
+ 	for (i = 0; i < bucket_count; i++)
+ 		INIT_HLIST_BL_HEAD(&cache->c_hash[i]);
+ 
+-	cache->c_shrink.count_objects = mb_cache_count;
+-	cache->c_shrink.scan_objects = mb_cache_scan;
+-	cache->c_shrink.seeks = DEFAULT_SEEKS;
+-	if (register_shrinker(&cache->c_shrink, "mbcache-shrinker")) {
++	cache->c_shrink = shrinker_alloc(0, "mbcache-shrinker");
++	if (!cache->c_shrink) {
+ 		kfree(cache->c_hash);
+ 		kfree(cache);
+ 		goto err_out;
  	}
  
- 	BUG_ON(fc->root);
-@@ -1423,7 +1422,6 @@ struct dentry *mount_bdev(struct file_system_type *fs_type,
- 		}
++	cache->c_shrink->count_objects = mb_cache_count;
++	cache->c_shrink->scan_objects = mb_cache_scan;
++	cache->c_shrink->seeks = DEFAULT_SEEKS;
++	cache->c_shrink->private_data = cache;
++
++	shrinker_register(cache->c_shrink);
++
+ 	INIT_WORK(&cache->c_shrink_work, mb_cache_shrink_worker);
  
- 		s->s_flags |= SB_ACTIVE;
--		s->s_bdev->bd_super = s;
- 	}
+ 	return cache;
+@@ -406,7 +409,7 @@ void mb_cache_destroy(struct mb_cache *cache)
+ {
+ 	struct mb_cache_entry *entry, *next;
  
- 	return dget(s->s_root);
-@@ -1436,7 +1434,6 @@ void kill_block_super(struct super_block *sb)
+-	unregister_shrinker(&cache->c_shrink);
++	shrinker_free(cache->c_shrink);
  
- 	generic_shutdown_super(sb);
- 	if (bdev) {
--		bdev->bd_super = NULL;
- 		sync_blockdev(bdev);
- 		blkdev_put(bdev, sb);
- 	}
-diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
-index 0bad62cca3d025..d5c5e59ddbd25a 100644
---- a/include/linux/blk_types.h
-+++ b/include/linux/blk_types.h
-@@ -52,7 +52,6 @@ struct block_device {
- 	atomic_t		bd_openers;
- 	spinlock_t		bd_size_lock; /* for bd_inode->i_size updates */
- 	struct inode *		bd_inode;	/* will die */
--	struct super_block *	bd_super;
- 	void *			bd_claiming;
- 	void *			bd_holder;
- 	const struct blk_holder_ops *bd_holder_ops;
+ 	/*
+ 	 * We don't bother with any locking. Cache must not be used at this
 -- 
-2.39.2
+2.30.2
 
