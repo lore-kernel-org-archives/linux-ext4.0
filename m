@@ -2,53 +2,53 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3BBEDC001DF
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Aug 2023 11:20:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E5091EB64DD
+	for <linux-ext4@archiver.kernel.org>; Mon,  7 Aug 2023 11:21:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232351AbjHGLUj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 7 Aug 2023 07:20:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53640 "EHLO
+        id S232385AbjHGLVI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Aug 2023 07:21:08 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53504 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230362AbjHGLUX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Aug 2023 07:20:23 -0400
-Received: from mail-qk1-x733.google.com (mail-qk1-x733.google.com [IPv6:2607:f8b0:4864:20::733])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 13F3C272A
-        for <linux-ext4@vger.kernel.org>; Mon,  7 Aug 2023 04:18:24 -0700 (PDT)
-Received: by mail-qk1-x733.google.com with SMTP id af79cd13be357-767e87b7199so37492385a.1
-        for <linux-ext4@vger.kernel.org>; Mon, 07 Aug 2023 04:18:24 -0700 (PDT)
+        with ESMTP id S232346AbjHGLUh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Aug 2023 07:20:37 -0400
+Received: from mail-pg1-f173.google.com (mail-pg1-f173.google.com [209.85.215.173])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CD2CE2697
+        for <linux-ext4@vger.kernel.org>; Mon,  7 Aug 2023 04:18:39 -0700 (PDT)
+Received: by mail-pg1-f173.google.com with SMTP id 41be03b00d2f7-56462258cdeso525763a12.1
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Aug 2023 04:18:39 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1691407054; x=1692011854;
+        d=bytedance.com; s=google; t=1691406764; x=1692011564;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=48waxWZGd1WUnLYaDrTSxvJywKXLcopaiUkWgt7j5Rg=;
-        b=dJAR25LFagJvybThvn3moLeTqkwyT4vq4Urf1jM9EbH4ksXmARUG4K54l21kuCSkD4
-         Y973AYcYf/BzIBcPnY7/MH0FVjR35zHj8p24yNMzjtLRMfs2kQu/m6ebxDkCcS6tIsyV
-         k8ZjTxIO00OE6Olfy5qBWe5YL+tqlR6MYUJG9INbpCZgrgj4dWBNkzv956kZaB2gZi0P
-         7U8XLWnzmGPtpDM1dcAhchXcxlfRHu/StXIPfljrUYUXfPxqRvKzyJvv6MZrqk0ugYWm
-         Vl3cUqvTm/NsG/Wm5ZbP6+r74Uv357QrKObmf3RgHNZf+2095EXp1BsRuJL5w1fWDw9B
-         pm+Q==
+        bh=XXAG7UeexodYStcT1Y2gz+/6q+0E2xrK+D1h2eKApUE=;
+        b=aL2IlnUybxJBSaUyx5/2hb4H2bp/OBgBmpkvxoB1jU+rSMlmYgotW9aghIyS5IGFTu
+         jFnKPHdHImGCYC2E/ABE0MKtaUZM35JefrItnSynMzWwfh9y6Muq0ow4RXH7tUjQQfcP
+         Mb/jNbJTqI64OH5TZAbe/9B64ipZHwjSbqJcPzS81ONTFfdvn1WQf8A1oxt4tY2+xFm3
+         qLJTVdHdHHLy/H07ztqOBHi1YT6PCSLEiwm3BmVRH+v8KbcNGmsDXIWIkoSvX1jpUSeE
+         +aIaBM9zmcPun7sjvVC0D+UUovECfFdX/YnWZ3U8UI2BqXU1g5ckeiBNnyvyn5q9jj5E
+         E1iw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1691407054; x=1692011854;
+        d=1e100.net; s=20221208; t=1691406764; x=1692011564;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=48waxWZGd1WUnLYaDrTSxvJywKXLcopaiUkWgt7j5Rg=;
-        b=gvnSCLpHBkhwnFEa9bkv6EXDemT6MugSwAAMlqVuOzxfp2OEJNlZUzA4BCgR5/n/IU
-         7gq0xhcifeOqSBp7AgQ1jXKdBTseOjozK3QUF/2xVGAtyGKaQzE/BGQ5K1nipTBEaVOq
-         4PlqSFZq89J/kEDWWrH0Jp65Poco/tLbKWlg3JtUwjbUaAiGVLxoJf///0Zswulp0/mZ
-         qXW8AeeATbEGoWSF8jXTdRqbqHAKiyzHKY29+xoUIEwSFtOL403qaOA15i+duv15zRBN
-         OjV8DJ3fMqFpPfwDhgmXNarF0M+kXv/P+R4K7BVvoyJa1Z9h97dr7QhwXiFG/IOtdoAC
-         O7iQ==
-X-Gm-Message-State: AOJu0YwkliYhYeye8mP2ERADgKjGN6Pp2Z3jQP0msj/FhmGk7qX7mvIP
-        Cc0iV/zpXxBLKZhdIAHTux2Te9biK3Ta/mU7mCg=
-X-Google-Smtp-Source: APBJJlHbn14CvO5TR8loNSEkHloCg3xrbjPIwtza5v7TtzUnsc09AI3fvHMVCyYd3DTpdbD1pcNBzw==
-X-Received: by 2002:a17:90a:4104:b0:25c:1ad3:a4a1 with SMTP id u4-20020a17090a410400b0025c1ad3a4a1mr24600948pjf.1.1691407032801;
-        Mon, 07 Aug 2023 04:17:12 -0700 (PDT)
+        bh=XXAG7UeexodYStcT1Y2gz+/6q+0E2xrK+D1h2eKApUE=;
+        b=XniNxGACtyw6ATOEQ/Ce7ODJqViP2K1bqChpeJ2GEzzteuvjDoqQGoUCgjK/BtTZWX
+         2y0jy318MvSZ3ywFSOrmooTMd5fEq9KeC/f6pxOBmMNG8VEUX7mKZLF2d3nOO1aRPJEV
+         FULHHRKdvAg7vS2p9VHmnML53q64duI5OKy9OAtBFLgF2Z0HVts2syat75mJh5r4hpF6
+         IHGb4TPpfQ9bewrCc0VW3aTMqAMomtLhHpZ7JtX5cutDr8/14TM1xZjYWVMJEl2kcLf+
+         Zry+/KP8cBRpiy2mymDq1DO1HtkSMVADbGfK5CloSfDNZSB2IAhliB/luWVBmaqq8XO4
+         InbQ==
+X-Gm-Message-State: AOJu0YzNfKPXBPx/k3jbVk9YL2OAPWGG+CqlOd/sjTxMu3Oejkbh84ZZ
+        LsO5VvsqIU6+wVqpJvS5jY0Law==
+X-Google-Smtp-Source: AGHT+IE0EldDhRUbVC2QQ5qQQy0UrFFq3L83zUgt+LShkd8AG+beTExy84fPX5FeRRz/rZ+raVP35g==
+X-Received: by 2002:a17:90a:9c3:b0:269:41cf:7212 with SMTP id 61-20020a17090a09c300b0026941cf7212mr4959141pjo.4.1691406764622;
+        Mon, 07 Aug 2023 04:12:44 -0700 (PDT)
 Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.146])
-        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.17.00
+        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.12.31
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 07 Aug 2023 04:17:12 -0700 (PDT)
+        Mon, 07 Aug 2023 04:12:44 -0700 (PDT)
 From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -71,9 +71,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
         Qi Zheng <zhengqi.arch@bytedance.com>,
         Muchun Song <songmuchun@bytedance.com>
-Subject: [PATCH v4 34/48] jbd2,ext4: dynamically allocate the jbd2-journal shrinker
-Date:   Mon,  7 Aug 2023 19:09:22 +0800
-Message-Id: <20230807110936.21819-35-zhengqi.arch@bytedance.com>
+Subject: [PATCH v4 13/48] NFSv4.2: dynamically allocate the nfs-xattr shrinkers
+Date:   Mon,  7 Aug 2023 19:09:01 +0800
+Message-Id: <20230807110936.21819-14-zhengqi.arch@bytedance.com>
 X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 In-Reply-To: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
 References: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
@@ -83,98 +83,174 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-In preparation for implementing lockless slab shrink, use new APIs to
-dynamically allocate the jbd2-journal shrinker, so that it can be freed
-asynchronously using kfree_rcu(). Then it doesn't need to wait for RCU
-read-side critical section when releasing the struct journal_s.
+Use new APIs to dynamically allocate the nfs-xattr shrinkers.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 Reviewed-by: Muchun Song <songmuchun@bytedance.com>
 ---
- fs/jbd2/journal.c    | 27 +++++++++++++++++----------
- include/linux/jbd2.h |  2 +-
- 2 files changed, 18 insertions(+), 11 deletions(-)
+ fs/nfs/nfs42xattr.c | 87 +++++++++++++++++++++++----------------------
+ 1 file changed, 44 insertions(+), 43 deletions(-)
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 1b5a45ab62b0..4c421da03fee 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1298,7 +1298,7 @@ static int jbd2_min_tag_size(void)
- static unsigned long jbd2_journal_shrink_scan(struct shrinker *shrink,
- 					      struct shrink_control *sc)
- {
--	journal_t *journal = container_of(shrink, journal_t, j_shrinker);
-+	journal_t *journal = shrink->private_data;
- 	unsigned long nr_to_scan = sc->nr_to_scan;
- 	unsigned long nr_shrunk;
+diff --git a/fs/nfs/nfs42xattr.c b/fs/nfs/nfs42xattr.c
+index 911f634ba3da..2ad66a8922f4 100644
+--- a/fs/nfs/nfs42xattr.c
++++ b/fs/nfs/nfs42xattr.c
+@@ -796,28 +796,9 @@ static unsigned long nfs4_xattr_cache_scan(struct shrinker *shrink,
+ static unsigned long nfs4_xattr_entry_scan(struct shrinker *shrink,
+ 					   struct shrink_control *sc);
+ 
+-static struct shrinker nfs4_xattr_cache_shrinker = {
+-	.count_objects	= nfs4_xattr_cache_count,
+-	.scan_objects	= nfs4_xattr_cache_scan,
+-	.seeks		= DEFAULT_SEEKS,
+-	.flags		= SHRINKER_MEMCG_AWARE,
+-};
+-
+-static struct shrinker nfs4_xattr_entry_shrinker = {
+-	.count_objects	= nfs4_xattr_entry_count,
+-	.scan_objects	= nfs4_xattr_entry_scan,
+-	.seeks		= DEFAULT_SEEKS,
+-	.batch		= 512,
+-	.flags		= SHRINKER_MEMCG_AWARE,
+-};
+-
+-static struct shrinker nfs4_xattr_large_entry_shrinker = {
+-	.count_objects	= nfs4_xattr_entry_count,
+-	.scan_objects	= nfs4_xattr_entry_scan,
+-	.seeks		= 1,
+-	.batch		= 512,
+-	.flags		= SHRINKER_MEMCG_AWARE,
+-};
++static struct shrinker *nfs4_xattr_cache_shrinker;
++static struct shrinker *nfs4_xattr_entry_shrinker;
++static struct shrinker *nfs4_xattr_large_entry_shrinker;
+ 
+ static enum lru_status
+ cache_lru_isolate(struct list_head *item,
+@@ -943,7 +924,7 @@ nfs4_xattr_entry_scan(struct shrinker *shrink, struct shrink_control *sc)
+ 	struct nfs4_xattr_entry *entry;
+ 	struct list_lru *lru;
+ 
+-	lru = (shrink == &nfs4_xattr_large_entry_shrinker) ?
++	lru = (shrink == nfs4_xattr_large_entry_shrinker) ?
+ 	    &nfs4_xattr_large_entry_lru : &nfs4_xattr_entry_lru;
+ 
+ 	freed = list_lru_shrink_walk(lru, sc, entry_lru_isolate, &dispose);
+@@ -971,7 +952,7 @@ nfs4_xattr_entry_count(struct shrinker *shrink, struct shrink_control *sc)
  	unsigned long count;
-@@ -1324,7 +1324,7 @@ static unsigned long jbd2_journal_shrink_scan(struct shrinker *shrink,
- static unsigned long jbd2_journal_shrink_count(struct shrinker *shrink,
- 					       struct shrink_control *sc)
+ 	struct list_lru *lru;
+ 
+-	lru = (shrink == &nfs4_xattr_large_entry_shrinker) ?
++	lru = (shrink == nfs4_xattr_large_entry_shrinker) ?
+ 	    &nfs4_xattr_large_entry_lru : &nfs4_xattr_entry_lru;
+ 
+ 	count = list_lru_shrink_count(lru, sc);
+@@ -991,18 +972,34 @@ static void nfs4_xattr_cache_init_once(void *p)
+ 	INIT_LIST_HEAD(&cache->dispose);
+ }
+ 
+-static int nfs4_xattr_shrinker_init(struct shrinker *shrinker,
+-				    struct list_lru *lru, const char *name)
++typedef unsigned long (*count_objects_cb)(struct shrinker *s,
++					  struct shrink_control *sc);
++typedef unsigned long (*scan_objects_cb)(struct shrinker *s,
++					 struct shrink_control *sc);
++
++static int __init nfs4_xattr_shrinker_init(struct shrinker **shrinker,
++					   struct list_lru *lru, const char *name,
++					   count_objects_cb count,
++					   scan_objects_cb scan, long batch, int seeks)
  {
--	journal_t *journal = container_of(shrink, journal_t, j_shrinker);
-+	journal_t *journal = shrink->private_data;
- 	unsigned long count;
+-	int ret = 0;
++	int ret;
  
- 	count = percpu_counter_read_positive(&journal->j_checkpoint_jh_count);
-@@ -1412,19 +1412,26 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 	journal->j_superblock = (journal_superblock_t *)bh->b_data;
- 
- 	journal->j_shrink_transaction = NULL;
--	journal->j_shrinker.scan_objects = jbd2_journal_shrink_scan;
--	journal->j_shrinker.count_objects = jbd2_journal_shrink_count;
--	journal->j_shrinker.seeks = DEFAULT_SEEKS;
--	journal->j_shrinker.batch = journal->j_max_transaction_buffers;
- 
- 	if (percpu_counter_init(&journal->j_checkpoint_jh_count, 0, GFP_KERNEL))
- 		goto err_cleanup;
- 
--	if (register_shrinker(&journal->j_shrinker, "jbd2-journal:(%u:%u)",
--			      MAJOR(bdev->bd_dev), MINOR(bdev->bd_dev))) {
-+	journal->j_shrinker = shrinker_alloc(0, "jbd2-journal:(%u:%u)",
-+					     MAJOR(bdev->bd_dev),
-+					     MINOR(bdev->bd_dev));
-+	if (!journal->j_shrinker) {
- 		percpu_counter_destroy(&journal->j_checkpoint_jh_count);
- 		goto err_cleanup;
- 	}
+-	ret = register_shrinker(shrinker, name);
+-	if (ret)
++	*shrinker = shrinker_alloc(SHRINKER_MEMCG_AWARE, name);
++	if (!*shrinker)
++		return -ENOMEM;
 +
-+	journal->j_shrinker->scan_objects = jbd2_journal_shrink_scan;
-+	journal->j_shrinker->count_objects = jbd2_journal_shrink_count;
-+	journal->j_shrinker->seeks = DEFAULT_SEEKS;
-+	journal->j_shrinker->batch = journal->j_max_transaction_buffers;
-+	journal->j_shrinker->private_data = journal;
++	ret = list_lru_init_memcg(lru, *shrinker);
++	if (ret) {
++		shrinker_free(*shrinker);
+ 		return ret;
++	}
+ 
+-	ret = list_lru_init_memcg(lru, shrinker);
+-	if (ret)
+-		unregister_shrinker(shrinker);
++	(*shrinker)->count_objects = count;
++	(*shrinker)->scan_objects = scan;
++	(*shrinker)->batch = batch;
++	(*shrinker)->seeks = seeks;
 +
-+	shrinker_register(journal->j_shrinker);
-+
- 	return journal;
++	shrinker_register(*shrinker);
  
- err_cleanup:
-@@ -2187,9 +2194,9 @@ int jbd2_journal_destroy(journal_t *journal)
- 		brelse(journal->j_sb_buffer);
- 	}
+ 	return ret;
+ }
+@@ -1010,7 +1007,7 @@ static int nfs4_xattr_shrinker_init(struct shrinker *shrinker,
+ static void nfs4_xattr_shrinker_destroy(struct shrinker *shrinker,
+ 					struct list_lru *lru)
+ {
+-	unregister_shrinker(shrinker);
++	shrinker_free(shrinker);
+ 	list_lru_destroy(lru);
+ }
  
--	if (journal->j_shrinker.flags & SHRINKER_REGISTERED) {
-+	if (journal->j_shrinker) {
- 		percpu_counter_destroy(&journal->j_checkpoint_jh_count);
--		unregister_shrinker(&journal->j_shrinker);
-+		shrinker_free(journal->j_shrinker);
- 	}
- 	if (journal->j_proc_entry)
- 		jbd2_stats_proc_exit(journal);
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 44c298aa58d4..beb4c4586320 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -891,7 +891,7 @@ struct journal_s
- 	 * Journal head shrinker, reclaim buffer's journal head which
- 	 * has been written back.
- 	 */
--	struct shrinker		j_shrinker;
-+	struct shrinker		*j_shrinker;
+@@ -1026,27 +1023,31 @@ int __init nfs4_xattr_cache_init(void)
+ 		return -ENOMEM;
  
- 	/**
- 	 * @j_checkpoint_jh_count:
+ 	ret = nfs4_xattr_shrinker_init(&nfs4_xattr_cache_shrinker,
+-				       &nfs4_xattr_cache_lru,
+-				       "nfs-xattr_cache");
++				       &nfs4_xattr_cache_lru, "nfs-xattr_cache",
++				       nfs4_xattr_cache_count,
++				       nfs4_xattr_cache_scan, 0, DEFAULT_SEEKS);
+ 	if (ret)
+ 		goto out1;
+ 
+ 	ret = nfs4_xattr_shrinker_init(&nfs4_xattr_entry_shrinker,
+-				       &nfs4_xattr_entry_lru,
+-				       "nfs-xattr_entry");
++				       &nfs4_xattr_entry_lru, "nfs-xattr_entry",
++				       nfs4_xattr_entry_count,
++				       nfs4_xattr_entry_scan, 512, DEFAULT_SEEKS);
+ 	if (ret)
+ 		goto out2;
+ 
+ 	ret = nfs4_xattr_shrinker_init(&nfs4_xattr_large_entry_shrinker,
+ 				       &nfs4_xattr_large_entry_lru,
+-				       "nfs-xattr_large_entry");
++				       "nfs-xattr_large_entry",
++				       nfs4_xattr_entry_count,
++				       nfs4_xattr_entry_scan, 512, 1);
+ 	if (!ret)
+ 		return 0;
+ 
+-	nfs4_xattr_shrinker_destroy(&nfs4_xattr_entry_shrinker,
++	nfs4_xattr_shrinker_destroy(nfs4_xattr_entry_shrinker,
+ 				    &nfs4_xattr_entry_lru);
+ out2:
+-	nfs4_xattr_shrinker_destroy(&nfs4_xattr_cache_shrinker,
++	nfs4_xattr_shrinker_destroy(nfs4_xattr_cache_shrinker,
+ 				    &nfs4_xattr_cache_lru);
+ out1:
+ 	kmem_cache_destroy(nfs4_xattr_cache_cachep);
+@@ -1056,11 +1057,11 @@ int __init nfs4_xattr_cache_init(void)
+ 
+ void nfs4_xattr_cache_exit(void)
+ {
+-	nfs4_xattr_shrinker_destroy(&nfs4_xattr_large_entry_shrinker,
++	nfs4_xattr_shrinker_destroy(nfs4_xattr_large_entry_shrinker,
+ 				    &nfs4_xattr_large_entry_lru);
+-	nfs4_xattr_shrinker_destroy(&nfs4_xattr_entry_shrinker,
++	nfs4_xattr_shrinker_destroy(nfs4_xattr_entry_shrinker,
+ 				    &nfs4_xattr_entry_lru);
+-	nfs4_xattr_shrinker_destroy(&nfs4_xattr_cache_shrinker,
++	nfs4_xattr_shrinker_destroy(nfs4_xattr_cache_shrinker,
+ 				    &nfs4_xattr_cache_lru);
+ 	kmem_cache_destroy(nfs4_xattr_cache_cachep);
+ }
 -- 
 2.30.2
 
