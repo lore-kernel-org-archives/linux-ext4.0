@@ -2,32 +2,32 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AA088C001DB
-	for <linux-ext4@archiver.kernel.org>; Tue,  8 Aug 2023 19:55:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 07C26C001B0
+	for <linux-ext4@archiver.kernel.org>; Tue,  8 Aug 2023 19:57:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233521AbjHHTzd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 8 Aug 2023 15:55:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46590 "EHLO
+        id S231254AbjHHT5p (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 8 Aug 2023 15:57:45 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45592 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233473AbjHHTzQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Aug 2023 15:55:16 -0400
+        with ESMTP id S234636AbjHHT5D (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Aug 2023 15:57:03 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EAA8562D31;
-        Tue,  8 Aug 2023 11:08:07 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DF23E1BAD4;
+        Tue,  8 Aug 2023 11:11:03 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=tpISbOIlVot9F9U1RNc64fDb/+3/Ds6+lWu+Mwkvzdw=; b=El3mxO87GYV8usnOyCxQQx0kP4
-        97652Jjf00cv0Jc7CYPJYWVtwCRZer14tOk+uGQbXzJo85Kmq2iVIaETR8PLaF/hzP8AHhfin4b7K
-        1axfm+detn4BLknnjJm+aQzZh4eq6LLaJ94WjkgNmpso4rRGd5AHHgNQlj2q8x/UUMd35T3yozYk5
-        dHBv4hQAKiIo13G98SSejgl4FWzTrBOraCgaZZ+7RcJkIeJYSAGDX1jnCbxjIDhFbKsHWAnVqu4kh
-        mzpEF/MynV7qM2C29sFHeh+cELLDrt7uPHMcXSB8daE7pcItf/GuhIhZhFvVDMQBvd4I9aphH54Bs
-        JCh7hhcA==;
+        bh=uTtkmb1P3F6V6kZi49uGtNjhGEsYIbFhDnDhSq0eXdo=; b=TTJ+J5IZJXh15DaI89d/wkIacK
+        ZqFMky+b77pGGHwsKy0MKm4BaU6JKjmncaXkoG51mdUwjaMzh3f3a+cSIc9AOWiODQvoQYXkLE5WL
+        qmpqtPdty2R8pT3dLzXAP9B2Mrh60VHdcytyEnZW9nWWXeY9JR0A7Sn1TBPvXZgixSqL2xrpWsuJl
+        tFhwirSU07OTYBMJy/uSG2x5hSI/7+0n+GYAd8zBCkzOCAlX6Bd5va65Cj9u/ltcLbGFkx0XmxSrN
+        mkZXXAIRh22SwMpUY/E/tIyObMmUXeRdTRSRd5X0ZIRtfqduRn72dNL+t6HIIuo/NGFdVnj/1VF+J
+        mxpJmZXw==;
 Received: from [4.28.11.157] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1qTPNN-002vfe-0P;
-        Tue, 08 Aug 2023 16:16:05 +0000
+        id 1qTPNJ-002vcp-32;
+        Tue, 08 Aug 2023 16:16:01 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Al Viro <viro@zeniv.linux.org.uk>,
         Christian Brauner <brauner@kernel.org>
@@ -39,9 +39,9 @@ Cc:     Namjae Jeon <linkinjeon@kernel.org>,
         "Darrick J. Wong" <djwong@kernel.org>,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         ntfs3@lists.linux.dev, linux-xfs@vger.kernel.org
-Subject: [PATCH 11/13] ntfs3: rename put_ntfs ntfs3_free_sbi
-Date:   Tue,  8 Aug 2023 09:15:58 -0700
-Message-Id: <20230808161600.1099516-12-hch@lst.de>
+Subject: [PATCH 02/13] xfs: remove a superflous s_fs_info NULL check in xfs_fs_put_super
+Date:   Tue,  8 Aug 2023 09:15:49 -0700
+Message-Id: <20230808161600.1099516-3-hch@lst.de>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20230808161600.1099516-1-hch@lst.de>
 References: <20230808161600.1099516-1-hch@lst.de>
@@ -52,58 +52,30 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-put_ntfs is a rather unconventional name for a function that frees the
-sbi and associated resources.  Give it a more descriptive name and drop
-the duplicate name in the top of the function comment.
+->put_super is only called when sb->s_root is set, and thus when
+fill_super succeeds.  Thus drop the NULL check that can't happen in
+xfs_fs_put_super.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/ntfs3/super.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ fs/xfs/xfs_super.c | 4 ----
+ 1 file changed, 4 deletions(-)
 
-diff --git a/fs/ntfs3/super.c b/fs/ntfs3/super.c
-index 1a02072b6b0e16..bb985d3756d949 100644
---- a/fs/ntfs3/super.c
-+++ b/fs/ntfs3/super.c
-@@ -569,9 +569,9 @@ static void init_once(void *foo)
- }
- 
- /*
-- * put_ntfs - Noinline to reduce binary size.
-+ * Noinline to reduce binary size.
-  */
--static noinline void put_ntfs(struct ntfs_sb_info *sbi)
-+static noinline void ntfs3_free_sbi(struct ntfs_sb_info *sbi)
+diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+index 0a294659c18972..128f4a2924d49c 100644
+--- a/fs/xfs/xfs_super.c
++++ b/fs/xfs/xfs_super.c
+@@ -1132,10 +1132,6 @@ xfs_fs_put_super(
  {
- 	kfree(sbi->new_rec);
- 	kvfree(ntfs_put_shared(sbi->upcase));
-@@ -627,7 +627,7 @@ static void ntfs_put_super(struct super_block *sb)
- 	ntfs_set_state(sbi, NTFS_DIRTY_CLEAR);
+ 	struct xfs_mount	*mp = XFS_M(sb);
  
- 	put_mount_options(sbi->options);
--	put_ntfs(sbi);
-+	ntfs3_free_sbi(sbi);
- 	sb->s_fs_info = NULL;
- 
- 	sync_blockdev(sb->s_bdev);
-@@ -1569,7 +1569,7 @@ static int ntfs_fill_super(struct super_block *sb, struct fs_context *fc)
- 	 * ntfs_fs_free will be called with fc->s_fs_info = NULL
- 	 */
- 	put_mount_options(sbi->options);
--	put_ntfs(sbi);
-+	ntfs3_free_sbi(sbi);
- 	sb->s_fs_info = NULL;
- 	kfree(boot2);
- 
-@@ -1659,7 +1659,7 @@ static void ntfs_fs_free(struct fs_context *fc)
- 	struct ntfs_sb_info *sbi = fc->s_fs_info;
- 
- 	if (sbi)
--		put_ntfs(sbi);
-+		ntfs3_free_sbi(sbi);
- 
- 	if (opts)
- 		put_mount_options(opts);
+-	/* if ->fill_super failed, we have no mount to tear down */
+-	if (!sb->s_fs_info)
+-		return;
+-
+ 	xfs_notice(mp, "Unmounting Filesystem %pU", &mp->m_sb.sb_uuid);
+ 	xfs_filestream_unmount(mp);
+ 	xfs_unmountfs(mp);
 -- 
 2.39.2
 
