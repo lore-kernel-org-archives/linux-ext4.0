@@ -2,92 +2,146 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 61D79EB64DD
-	for <linux-ext4@archiver.kernel.org>; Tue,  8 Aug 2023 00:54:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B7DCDC001DB
+	for <linux-ext4@archiver.kernel.org>; Tue,  8 Aug 2023 01:34:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229844AbjHHAyt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 7 Aug 2023 20:54:49 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50088 "EHLO
+        id S229977AbjHHBd7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Aug 2023 21:33:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34758 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229566AbjHHAyr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Aug 2023 20:54:47 -0400
-Received: from out30-97.freemail.mail.aliyun.com (out30-97.freemail.mail.aliyun.com [115.124.30.97])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2777FE9;
-        Mon,  7 Aug 2023 17:54:45 -0700 (PDT)
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R501e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=ay29a033018045170;MF=joseph.qi@linux.alibaba.com;NM=1;PH=DS;RN=12;SR=0;TI=SMTPD_---0VpIkifi_1691456082;
-Received: from 30.221.128.117(mailfrom:joseph.qi@linux.alibaba.com fp:SMTPD_---0VpIkifi_1691456082)
-          by smtp.aliyun-inc.com;
-          Tue, 08 Aug 2023 08:54:43 +0800
-Message-ID: <259ff3c4-4d9c-aaf4-c7be-205615c00125@linux.alibaba.com>
-Date:   Tue, 8 Aug 2023 08:54:42 +0800
+        with ESMTP id S229681AbjHHBd6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Aug 2023 21:33:58 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1E6F4E67;
+        Mon,  7 Aug 2023 18:33:32 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 72DB02227F;
+        Tue,  8 Aug 2023 01:33:30 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1691458410; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=xHD25iwqZs5SHKNGey/680tL/xqtANxzcX1lQhpSHQA=;
+        b=aSuwIC3zNESn8CqSZW+DUH817cAdB56MwV9eq0KzG161RXrY7+AGfBlKUvFM6bPUvD3ob8
+        c2vK3JpafoF6joXSd6XV56s8Mbd32g+0eD0A7b7YHDGZf1mQDpXphDlaS1qE9BhpXxcFYW
+        /I7hhO2maLBKdzkatBhn3uRXYBxk4Ek=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1691458410;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=xHD25iwqZs5SHKNGey/680tL/xqtANxzcX1lQhpSHQA=;
+        b=oipWzIuyuy6LSE3GEMoMTWhklVkw3hvM7j2MF51x1iQNOzpJJZPvSj3hIp5KKn2zIR5rA5
+        KDs/dWzZvjszB0Cw==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 3330713910;
+        Tue,  8 Aug 2023 01:33:30 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id dVvrBmqb0WSBVwAAMHmgww
+        (envelope-from <krisman@suse.de>); Tue, 08 Aug 2023 01:33:30 +0000
+From:   Gabriel Krisman Bertazi <krisman@suse.de>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     viro@zeniv.linux.org.uk, brauner@kernel.org, tytso@mit.edu,
+        jaegeuk@kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        Gabriel Krisman Bertazi <krisman@collabora.com>
+Subject: Re: [PATCH v4 3/7] libfs: Validate negative dentries in
+ case-insensitive directories
+In-Reply-To: <20230804044156.GB1954@sol.localdomain> (Eric Biggers's message
+        of "Thu, 3 Aug 2023 21:41:56 -0700")
+Organization: SUSE
+References: <20230727172843.20542-1-krisman@suse.de>
+        <20230727172843.20542-4-krisman@suse.de>
+        <20230729042048.GB4171@sol.localdomain> <875y5w10ye.fsf@suse.de>
+        <20230804044156.GB1954@sol.localdomain>
+Date:   Mon, 07 Aug 2023 21:33:28 -0400
+Message-ID: <87msz29v2v.fsf@suse.de>
+User-Agent: Gnus/5.13 (Gnus v5.13)
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0)
- Gecko/20100101 Thunderbird/102.14.0
-Subject: Re: [PATCH 3/4] ocfs2: stop using bdev->bd_super for journal error
- logging
-To:     Christoph Hellwig <hch@lst.de>, Al Viro <viro@zeniv.linux.org.uk>,
-        Christian Brauner <brauner@kernel.org>
-Cc:     Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Mark Fasheh <mark@fasheh.com>,
-        Joel Becker <jlbec@evilplan.org>, Jens Axboe <axboe@kernel.dk>,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        ocfs2-devel@lists.linux.dev, linux-block@vger.kernel.org
-References: <20230807112625.652089-1-hch@lst.de>
- <20230807112625.652089-4-hch@lst.de>
-Content-Language: en-US
-From:   Joseph Qi <joseph.qi@linux.alibaba.com>
-In-Reply-To: <20230807112625.652089-4-hch@lst.de>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+Eric Biggers <ebiggers@kernel.org> writes:
 
+> On Thu, Aug 03, 2023 at 01:37:45PM -0400, Gabriel Krisman Bertazi wrote:
+>> Eric Biggers <ebiggers@kernel.org> writes:
+>> 
+>> > On Thu, Jul 27, 2023 at 01:28:39PM -0400, Gabriel Krisman Bertazi wrote:
+>> >>   - In __lookup_slow, either the parent inode is read locked by the
+>> >>     caller (lookup_slow), or it is called with no flags (lookup_one*).
+>> >>     The read lock suffices to prevent ->d_name modifications, with the
+>> >>     exception of one case: __d_unalias, will call __d_move to fix a
+>> >>     directory accessible from multiple dentries, which effectively swaps
+>> >>     ->d_name while holding only the shared read lock.  This happens
+>> >>     through this flow:
+>> >> 
+>> >>     lookup_slow()  //LOOKUP_CREATE
+>> >>       d_lookup()
+>> >>         ->d_lookup()
+>> >>           d_splice_alias()
+>> >>             __d_unalias()
+>> >>               __d_move()
+>> >> 
+>> >>     Nevertheless, this case is not a problem because negative dentries
+>> >>     are not allowed to be moved with __d_move.
+>> >
+>> > Isn't it possible for a negative dentry to become a positive one concurrently?
+>> 
+>> Do you mean d_splice_alias racing with a dentry instantiation and
+>> __d_move being called on a negative dentry that is turning positive?
+>> 
+>> It is not possible for __d_move to be called with a negative dentry for
+>> d_splice_alias, since the inode->i_lock is locked during __d_find_alias,
+>> so it can't race with __d_instantiate or d_add. Then, __d_find_alias
+>> can't find negative dentries in the first place, so we either have a
+>> positive dentry, in which case __d_move is fine with regard to
+>> d_revalidate_name, or we don't have any aliases and don't call
+>> __d_move.
+>> 
+>> Can you clarify what problem you see here?
+>> 
+>
+> I agree that negative dentries can't be moved --- I pointed this out earlier
+> (https://lore.kernel.org/linux-fsdevel/20230720060657.GB2607@sol.localdomain).
+> The question is whether if ->d_revalidate sees a negative dentry, when can it
+> assume that it remains a negative dentry for the remainder of ->d_revalidate.
+> I'm not sure there is a problem, I just don't understand your
+> explanation.
 
-On 8/7/23 7:26 PM, Christoph Hellwig wrote:
-> All ocfs2 journal error handling and logging is based on buffer_heads,
-> and the owning inode and thus super_block can be retrieved through
-> bh->b_assoc_map->host.  Switch to using that to remove the last users
-> of bdev->bd_super.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
+I see. Thanks for clarifying, as I had previously misunderstood your
+point.
 
-Looks fine.
-Acked-by: Joseph Qi <joseph.qi@linux.alibaba.com>
+So, first of all, if d_revalidate itself is not a creation, it doesn't
+matter, because we won't touch ->d_name. We might invalidate a valid
+dentry, but that is ok.  The problem would be limited to d_revalidate
+being on the creation path, where the parent (read-)lock is held.  The
+problem would be doing the memcmp(), while the dentry is turned positive
+(d_instantiate), while someone else moves the name.
 
-> ---
->  fs/ocfs2/journal.c | 6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
-> index 25d8072ccfce46..c19c730c26e270 100644
-> --- a/fs/ocfs2/journal.c
-> +++ b/fs/ocfs2/journal.c
-> @@ -557,7 +557,7 @@ static void ocfs2_abort_trigger(struct jbd2_buffer_trigger_type *triggers,
->  	     (unsigned long)bh,
->  	     (unsigned long long)bh->b_blocknr);
->  
-> -	ocfs2_error(bh->b_bdev->bd_super,
-> +	ocfs2_error(bh->b_assoc_map->host->i_sb,
->  		    "JBD2 has aborted our journal, ocfs2 cannot continue\n");
->  }
->  
-> @@ -780,14 +780,14 @@ void ocfs2_journal_dirty(handle_t *handle, struct buffer_head *bh)
->  		mlog_errno(status);
->  		if (!is_handle_aborted(handle)) {
->  			journal_t *journal = handle->h_transaction->t_journal;
-> -			struct super_block *sb = bh->b_bdev->bd_super;
->  
->  			mlog(ML_ERROR, "jbd2_journal_dirty_metadata failed. "
->  					"Aborting transaction and journal.\n");
->  			handle->h_err = status;
->  			jbd2_journal_abort_handle(handle);
->  			jbd2_journal_abort(journal, status);
-> -			ocfs2_abort(sb, "Journal already aborted.\n");
-> +			ocfs2_abort(bh->b_assoc_map->host->i_sb,
-> +				    "Journal already aborted.\n");
->  		}
->  	}
->  }
+For the dentry to be turned positive during a d_revalidate, it would
+then have to race with d_add or with d_instantiate.  d_add shouldn't be
+possible since we are holding the parent inode lock (at least
+read-side), which will serialize file creation.
+
+From my understanding of the code, d_instantiate also can't race with
+d_revalidate for the same reason - is also serialized by the parent
+inode lock, which is acquired in filename_create. At least for all paths
+in ext4/f2fs. In fact, I'm failing to find a case where the lock is not
+taken when instantiating a dentry, but I'm unsure if this is a guarantee
+or just an artifact of the code.
+
+It seems to be safe in the current code, but I don't know if it is a
+guarantee.  Can anyone comment on this?
+
+-- 
+Gabriel Krisman Bertazi
+ 
