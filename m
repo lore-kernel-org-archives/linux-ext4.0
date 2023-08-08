@@ -2,32 +2,32 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A1691C001B0
-	for <linux-ext4@archiver.kernel.org>; Tue,  8 Aug 2023 19:58:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 793FCC04FE1
+	for <linux-ext4@archiver.kernel.org>; Tue,  8 Aug 2023 19:58:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231833AbjHHT6z (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S233224AbjHHT6z (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Tue, 8 Aug 2023 15:58:55 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45622 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46418 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234601AbjHHT5C (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Aug 2023 15:57:02 -0400
+        with ESMTP id S234291AbjHHT6a (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Aug 2023 15:58:30 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 028DC1BACA;
-        Tue,  8 Aug 2023 11:11:03 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 54FA81D462;
+        Tue,  8 Aug 2023 11:13:18 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-        MIME-Version:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:
-        Content-ID:Content-Description:In-Reply-To:References;
-        bh=bJxgIoR4mJQUg5rLnZqrYlT5xT1x+GwLxo5eAVskIAQ=; b=OHuO8Wh/1Q0P/1nF6gcUMbFQod
-        5LDs5mgcANOxNCq0J3IZZlQoDbqurokslJv5aV7vgb5wdZXBYUqawpWm00FUa/uPb02aaSVb4wI5g
-        rnCkGWvpHMwutgEFJIyE5/sBuoiFVhJo7NyGL9dOIDqkQAzPlSG1hJ0nKYjwWmAzgUHr8WKbj6YPL
-        SqOrhQza8PU1DgJrj+sXMT3/PrNpObo8Q2k8AC0XixhL1WHDOUqVAWIktwgfmggi1B9Ka3wYnfIL5
-        UU7mPiBIs3lje/6PilCNjLgTb5WM4BFOuiJzPfWVzS6/3Qwt7X4FAqkSozzcDNGTUOsRMKVnmbjYB
-        4x5fl+PQ==;
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description;
+        bh=lMZjGmk9h743/vCRz7ALqu87zkGuLF1PQOhL9ZSvlGg=; b=Lt5MHPhXqy5ZqBlxSjrqolLm6V
+        77J2Dqu1dHaMYxZhxYqqrAGI1XDXdYkUvuXeDMx03d3r7kRvts4+MtCf8a1ooNVcPEn5Zx9NdXbPT
+        yD18EWhTTajNHN4eAMx8cdr2Fjf8F2O+7JeQXtAH1WqMlLQ9sFDD/mQpbMO6C5VGcznrUk4Bq9zAf
+        KwW/CT1tq/MtlVAgVprHw2pAqgjHm6Lx/uNY/HR6VpxSLpZ6Axn4ZJ4nELG6hBfhm81imCEU0O9ZG
+        5ZOLMsnMW6Rnal+thY9VblzaencC0uyZgk8EYfcjGbnMKvexDuCWaiionKX+2YfLQYI0kzacbNelA
+        zJp5VYKA==;
 Received: from [4.28.11.157] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1qTPNJ-002vao-0x;
-        Tue, 08 Aug 2023 16:16:01 +0000
+        id 1qTPNM-002vfB-2W;
+        Tue, 08 Aug 2023 16:16:04 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Al Viro <viro@zeniv.linux.org.uk>,
         Christian Brauner <brauner@kernel.org>
@@ -39,10 +39,12 @@ Cc:     Namjae Jeon <linkinjeon@kernel.org>,
         "Darrick J. Wong" <djwong@kernel.org>,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         ntfs3@lists.linux.dev, linux-xfs@vger.kernel.org
-Subject: s_fs_info and ->kill_sb revisited
-Date:   Tue,  8 Aug 2023 09:15:47 -0700
-Message-Id: <20230808161600.1099516-1-hch@lst.de>
+Subject: [PATCH 10/13] exfat: free the sbi and iocharset in ->kill_sb
+Date:   Tue,  8 Aug 2023 09:15:57 -0700
+Message-Id: <20230808161600.1099516-11-hch@lst.de>
 X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20230808161600.1099516-1-hch@lst.de>
+References: <20230808161600.1099516-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
@@ -50,24 +52,88 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi all,
+As a rule of thumb everything allocated to the fs_context and moved into
+the super_block should be freed by ->kill_sb so that the teardown
+handling doesn't need to be duplicated between the fill_super error
+path and put_super.  Implement an exfat-specific kill_sb method to do
+that and share the code with the mount contex free helper for the
+mount error handling case.
 
-this series is against the VFS vfs.super branch does two slightly
-related things:
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/exfat/super.c | 28 ++++++++++++++++++----------
+ 1 file changed, 18 insertions(+), 10 deletions(-)
 
- - move closing of the external devices in ext4 and xfs from ->put_super
-   into ->kill_sb so that this isn't done under s_umount which creates
-   lock ordere reversal
- - move freeing the private dta in s_fs_info into ->kill_sb for file systems
-   that pass it in through the fs_context, as otherwise we could leak it
-   before fill_super is called (this is something new on the vfs.super
-   branch because of the changed place where blkdev_get is called)
+diff --git a/fs/exfat/super.c b/fs/exfat/super.c
+index 3c6aec96d0dc85..85b04a4064af1e 100644
+--- a/fs/exfat/super.c
++++ b/fs/exfat/super.c
+@@ -41,9 +41,7 @@ static void exfat_put_super(struct super_block *sb)
+ 	mutex_unlock(&sbi->s_lock);
+ 
+ 	unload_nls(sbi->nls_io);
+-	exfat_free_iocharset(sbi);
+ 	exfat_free_upcase_table(sbi);
+-	kfree(sbi);
+ }
+ 
+ static int exfat_sync_fs(struct super_block *sb, int wait)
+@@ -703,9 +701,6 @@ static int exfat_fill_super(struct super_block *sb, struct fs_context *fc)
+ 
+ check_nls_io:
+ 	unload_nls(sbi->nls_io);
+-	exfat_free_iocharset(sbi);
+-	sb->s_fs_info = NULL;
+-	kfree(sbi);
+ 	return err;
+ }
+ 
+@@ -714,14 +709,18 @@ static int exfat_get_tree(struct fs_context *fc)
+ 	return get_tree_bdev(fc, exfat_fill_super);
+ }
+ 
++static void exfat_free_sbi(struct exfat_sb_info *sbi)
++{
++	exfat_free_iocharset(sbi);
++	kfree(sbi);
++}
++
+ static void exfat_free(struct fs_context *fc)
+ {
+ 	struct exfat_sb_info *sbi = fc->s_fs_info;
+ 
+-	if (sbi) {
+-		exfat_free_iocharset(sbi);
+-		kfree(sbi);
+-	}
++	if (sbi)
++		exfat_free_sbi(sbi);
+ }
+ 
+ static int exfat_reconfigure(struct fs_context *fc)
+@@ -766,12 +765,21 @@ static int exfat_init_fs_context(struct fs_context *fc)
+ 	return 0;
+ }
+ 
++static void exfat_kill_sb(struct super_block *sb)
++{
++	struct exfat_sb_info *sbi = sb->s_fs_info;
++
++	kill_block_super(sb);
++	if (sbi)
++		exfat_free_sbi(sbi);
++}
++
+ static struct file_system_type exfat_fs_type = {
+ 	.owner			= THIS_MODULE,
+ 	.name			= "exfat",
+ 	.init_fs_context	= exfat_init_fs_context,
+ 	.parameters		= exfat_parameters,
+-	.kill_sb		= kill_block_super,
++	.kill_sb		= exfat_kill_sb,
+ 	.fs_flags		= FS_REQUIRES_DEV,
+ };
+ 
+-- 
+2.39.2
 
-Diffstat:
- exfat/exfat_fs.h |    2 -
- exfat/super.c    |   39 +++++++++++++-------------
- ext4/super.c     |   50 +++++++++++++++++-----------------
- ntfs3/super.c    |   33 ++++++++++------------
- xfs/xfs_buf.c    |    7 +++-
- xfs/xfs_super.c  |   80 +++++++++++++++++++++++++------------------------------
- 6 files changed, 102 insertions(+), 109 deletions(-)
