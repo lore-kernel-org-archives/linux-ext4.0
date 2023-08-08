@@ -2,32 +2,32 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 07C26C001B0
-	for <linux-ext4@archiver.kernel.org>; Tue,  8 Aug 2023 19:57:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B5F02C41513
+	for <linux-ext4@archiver.kernel.org>; Tue,  8 Aug 2023 19:57:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231254AbjHHT5p (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 8 Aug 2023 15:57:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45592 "EHLO
+        id S231804AbjHHT5s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 8 Aug 2023 15:57:48 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45706 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234636AbjHHT5D (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Aug 2023 15:57:03 -0400
+        with ESMTP id S234747AbjHHT5E (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Aug 2023 15:57:04 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DF23E1BAD4;
-        Tue,  8 Aug 2023 11:11:03 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9F2C41BAF3;
+        Tue,  8 Aug 2023 11:11:15 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=uTtkmb1P3F6V6kZi49uGtNjhGEsYIbFhDnDhSq0eXdo=; b=TTJ+J5IZJXh15DaI89d/wkIacK
-        ZqFMky+b77pGGHwsKy0MKm4BaU6JKjmncaXkoG51mdUwjaMzh3f3a+cSIc9AOWiODQvoQYXkLE5WL
-        qmpqtPdty2R8pT3dLzXAP9B2Mrh60VHdcytyEnZW9nWWXeY9JR0A7Sn1TBPvXZgixSqL2xrpWsuJl
-        tFhwirSU07OTYBMJy/uSG2x5hSI/7+0n+GYAd8zBCkzOCAlX6Bd5va65Cj9u/ltcLbGFkx0XmxSrN
-        mkZXXAIRh22SwMpUY/E/tIyObMmUXeRdTRSRd5X0ZIRtfqduRn72dNL+t6HIIuo/NGFdVnj/1VF+J
-        mxpJmZXw==;
+        bh=4Gmi7NQ4cWpnwXd5QcgMexL1Vy5+7879nSEVUejb6Ic=; b=LQLiegZchhHy4ENng9JwERdTe+
+        bQZB0EkPRtSh+NvzRmrLCx8GX1iwh+jFKVNuxBQboLdIi9CuMmR0nqBhGmJypNkfVBvf9CflRRg6o
+        3p8egHAkO9QoZpqOcmha+rALa3aH5ZwOqCXCbCqoGb3Ry2MKehlCCSxBSSpq9lckPNfvB1Y33DbAl
+        pWCO+60W7zv5KWG657UTy0r55CxY/jq4oa/cO0c4Dx24IU7o/hRpxnyLbieV/6zns6teZiI8XroSB
+        5aq9x7FFtRNhsIfiDfPMn881G/3HdRHvrCsSgnsQVlLvobZxM9SioH9E2+qrcq3kF00ZC/EKzJUlg
+        MkO09apw==;
 Received: from [4.28.11.157] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1qTPNJ-002vcp-32;
-        Tue, 08 Aug 2023 16:16:01 +0000
+        id 1qTPNL-002veK-2Q;
+        Tue, 08 Aug 2023 16:16:03 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Al Viro <viro@zeniv.linux.org.uk>,
         Christian Brauner <brauner@kernel.org>
@@ -39,9 +39,9 @@ Cc:     Namjae Jeon <linkinjeon@kernel.org>,
         "Darrick J. Wong" <djwong@kernel.org>,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         ntfs3@lists.linux.dev, linux-xfs@vger.kernel.org
-Subject: [PATCH 02/13] xfs: remove a superflous s_fs_info NULL check in xfs_fs_put_super
-Date:   Tue,  8 Aug 2023 09:15:49 -0700
-Message-Id: <20230808161600.1099516-3-hch@lst.de>
+Subject: [PATCH 07/13] xfs: close the external block devices in xfs_mount_free
+Date:   Tue,  8 Aug 2023 09:15:54 -0700
+Message-Id: <20230808161600.1099516-8-hch@lst.de>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20230808161600.1099516-1-hch@lst.de>
 References: <20230808161600.1099516-1-hch@lst.de>
@@ -52,30 +52,100 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-->put_super is only called when sb->s_root is set, and thus when
-fill_super succeeds.  Thus drop the NULL check that can't happen in
-xfs_fs_put_super.
+blkdev_put must not be called under sb->s_umount to avoid a lock order
+reversal with disk->open_mutex.  Move closing the buftargs into ->kill_sb
+to archive that.  Note that the flushing of the disk caches needs to be
+kept in ->put_super as the main block device is closed in
+kill_block_super already.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/xfs/xfs_super.c | 4 ----
- 1 file changed, 4 deletions(-)
+ fs/xfs/xfs_buf.c   |  1 -
+ fs/xfs/xfs_super.c | 27 +++++++++++++++++++--------
+ 2 files changed, 19 insertions(+), 9 deletions(-)
 
+diff --git a/fs/xfs/xfs_buf.c b/fs/xfs/xfs_buf.c
+index c57e6e03dfa80c..3b903f6bce98d8 100644
+--- a/fs/xfs/xfs_buf.c
++++ b/fs/xfs/xfs_buf.c
+@@ -1945,7 +1945,6 @@ xfs_free_buftarg(
+ 	percpu_counter_destroy(&btp->bt_io_count);
+ 	list_lru_destroy(&btp->bt_lru);
+ 
+-	blkdev_issue_flush(btp->bt_bdev);
+ 	fs_put_dax(btp->bt_daxdev, btp->bt_mount);
+ 	/* the main block device is closed by kill_block_super */
+ 	if (bdev != btp->bt_mount->m_super->s_bdev)
 diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-index 0a294659c18972..128f4a2924d49c 100644
+index 37b1b763a0bef0..67343364ac66e9 100644
 --- a/fs/xfs/xfs_super.c
 +++ b/fs/xfs/xfs_super.c
-@@ -1132,10 +1132,6 @@ xfs_fs_put_super(
- {
- 	struct xfs_mount	*mp = XFS_M(sb);
+@@ -396,14 +396,14 @@ xfs_blkdev_get(
+ }
  
--	/* if ->fill_super failed, we have no mount to tear down */
--	if (!sb->s_fs_info)
--		return;
--
- 	xfs_notice(mp, "Unmounting Filesystem %pU", &mp->m_sb.sb_uuid);
- 	xfs_filestream_unmount(mp);
- 	xfs_unmountfs(mp);
+ STATIC void
+-xfs_close_devices(
++xfs_flush_disk_caches(
+ 	struct xfs_mount	*mp)
+ {
+ 	if (mp->m_logdev_targp && mp->m_logdev_targp != mp->m_ddev_targp)
+-		xfs_free_buftarg(mp->m_logdev_targp);
++		blkdev_issue_flush(mp->m_logdev_targp->bt_bdev);
+ 	if (mp->m_rtdev_targp)
+-		xfs_free_buftarg(mp->m_rtdev_targp);
+-	xfs_free_buftarg(mp->m_ddev_targp);
++		blkdev_issue_flush(mp->m_rtdev_targp->bt_bdev);
++	blkdev_issue_flush(mp->m_ddev_targp->bt_bdev);
+ }
+ 
+ /*
+@@ -741,6 +741,17 @@ static void
+ xfs_mount_free(
+ 	struct xfs_mount	*mp)
+ {
++	/*
++	 * Free the buftargs here because blkdev_put needs to be called outside
++	 * of sb->s_umount, which is held around the call to ->put_super.
++	 */
++	if (mp->m_logdev_targp && mp->m_logdev_targp != mp->m_ddev_targp)
++		xfs_free_buftarg(mp->m_logdev_targp);
++	if (mp->m_rtdev_targp)
++		xfs_free_buftarg(mp->m_rtdev_targp);
++	if (mp->m_ddev_targp)
++		xfs_free_buftarg(mp->m_ddev_targp);
++
+ 	kfree(mp->m_rtname);
+ 	kfree(mp->m_logname);
+ 	kmem_free(mp);
+@@ -1126,7 +1137,7 @@ xfs_fs_put_super(
+ 	xfs_inodegc_free_percpu(mp);
+ 	xfs_destroy_percpu_counters(mp);
+ 	xfs_destroy_mount_workqueues(mp);
+-	xfs_close_devices(mp);
++	xfs_flush_disk_caches(mp);
+ }
+ 
+ static long
+@@ -1499,7 +1510,7 @@ xfs_fs_fill_super(
+ 
+ 	error = xfs_init_mount_workqueues(mp);
+ 	if (error)
+-		goto out_close_devices;
++		goto out_flush_caches;
+ 
+ 	error = xfs_init_percpu_counters(mp);
+ 	if (error)
+@@ -1713,8 +1724,8 @@ xfs_fs_fill_super(
+ 	xfs_destroy_percpu_counters(mp);
+  out_destroy_workqueues:
+ 	xfs_destroy_mount_workqueues(mp);
+- out_close_devices:
+-	xfs_close_devices(mp);
++ out_flush_caches:
++	xfs_flush_disk_caches(mp);
+ 	return error;
+ 
+  out_unmount:
 -- 
 2.39.2
 
