@@ -2,32 +2,32 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A8CAC04FDF
-	for <linux-ext4@archiver.kernel.org>; Wed,  9 Aug 2023 22:06:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C021C19F4F
+	for <linux-ext4@archiver.kernel.org>; Wed,  9 Aug 2023 22:06:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233194AbjHIWGD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 9 Aug 2023 18:06:03 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33694 "EHLO
+        id S233230AbjHIWGE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 9 Aug 2023 18:06:04 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33752 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229672AbjHIWF5 (ORCPT
+        with ESMTP id S233043AbjHIWF5 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Aug 2023 18:05:57 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7985D1729;
-        Wed,  9 Aug 2023 15:05:56 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0B81C212A;
+        Wed,  9 Aug 2023 15:05:54 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=Y8HEOWYHzd0yCITy4kwbsWwLvmGD2QTzJ/9iJjb6YmY=; b=j8bvS4sUYS4qUpAB/lm3BrTobv
-        GCKVKIo1DSa+vFR/zC1mKEZfeYEVWdoVqWIj5g/k0oTmXbDAMVtSlJMeWld2t0e/5fQEMumsy0vgE
-        pIpT8foOhWGfBycPltACrZpWCTGbzpMi2AMSRj1HhR57fGW9atqu0PRHuNGnEug3tXSQ73K0lMrgY
-        2EcPaFysS/jvLG0ZPBBtvgYu0X9t02g+QJJdm6ZvvP0c8auU8PojpHZ9tnSrbUS9w4Vk711vuYM7B
-        x9v4ZUn4UMXxeG34dr1aJ3E44ZYH9XYk3NWLEcjoa5h44rI3lewq6kYxPi/rYpKLSC13bo+PPsee7
-        DlMzJwQQ==;
+        bh=xK+hj1hEYeZWT3M55/B6bE7sbXHBn8KbDjMjOOEHDF0=; b=4ZnuSNHinXvVhvWuz8x0n0kaA0
+        jGNBdR3F5YwmW6TXCIkkFevmVBDSipJ9X7m31kswlqafmNkiK0tg7biZq/XtKLqJk4V4w6oCP2kFT
+        tN2p7l0c/UciVAfrlnwUl29Kbu4xHjelWWqpx2B9XxkYBBO/Ohug4xUfy4gJLkg6S+xSIGiEqu7DT
+        cufsTMZAoT73lP6chubHkr4IpbaeokvUQjGKxjkNyGlGoavJ0/aIAwS3j6qivHvKFW1GnPnTYxgma
+        bSybWN2h5TJI8UhEU6/C77vBgrj0lzAcKBGtMeg4Rl7q+l7q6URNEclaSW1W0A0xmonYv9zRXwC0I
+        XIryUxVQ==;
 Received: from [4.28.11.157] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1qTrJO-005xpD-3D;
-        Wed, 09 Aug 2023 22:05:51 +0000
+        id 1qTrJO-005xp3-0e;
+        Wed, 09 Aug 2023 22:05:50 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Al Viro <viro@zeniv.linux.org.uk>,
         Christian Brauner <brauner@kernel.org>
@@ -39,9 +39,9 @@ Cc:     Namjae Jeon <linkinjeon@kernel.org>,
         "Darrick J. Wong" <djwong@kernel.org>,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         ntfs3@lists.linux.dev, linux-xfs@vger.kernel.org
-Subject: [PATCH 13/13] ntfs3: free the sbi in ->kill_sb
-Date:   Wed,  9 Aug 2023 15:05:45 -0700
-Message-Id: <20230809220545.1308228-14-hch@lst.de>
+Subject: [PATCH 12/13] ntfs3: don't call sync_blockdev in ntfs_put_super
+Date:   Wed,  9 Aug 2023 15:05:44 -0700
+Message-Id: <20230809220545.1308228-13-hch@lst.de>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20230809220545.1308228-1-hch@lst.de>
 References: <20230809220545.1308228-1-hch@lst.de>
@@ -52,75 +52,27 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-As a rule of thumb everything allocated to the fs_context and moved into
-the super_block should be freed by ->kill_sb so that the teardown
-handling doesn't need to be duplicated between the fill_super error
-path and put_super.  Implement an ntfs3-specific kill_sb method to do
-that.
+kill_block_super will call sync_blockdev just a tad later already.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Christian Brauner <brauner@kernel.org>
 ---
- fs/ntfs3/super.c | 25 ++++++++++++-------------
- 1 file changed, 12 insertions(+), 13 deletions(-)
+ fs/ntfs3/super.c | 2 --
+ 1 file changed, 2 deletions(-)
 
 diff --git a/fs/ntfs3/super.c b/fs/ntfs3/super.c
-index 727138933a9324..5fffddea554f18 100644
+index bb985d3756d949..727138933a9324 100644
 --- a/fs/ntfs3/super.c
 +++ b/fs/ntfs3/super.c
-@@ -625,10 +625,6 @@ static void ntfs_put_super(struct super_block *sb)
- 
- 	/* Mark rw ntfs as clear, if possible. */
- 	ntfs_set_state(sbi, NTFS_DIRTY_CLEAR);
+@@ -629,8 +629,6 @@ static void ntfs_put_super(struct super_block *sb)
+ 	put_mount_options(sbi->options);
+ 	ntfs3_free_sbi(sbi);
+ 	sb->s_fs_info = NULL;
 -
--	put_mount_options(sbi->options);
--	ntfs3_free_sbi(sbi);
--	sb->s_fs_info = NULL;
+-	sync_blockdev(sb->s_bdev);
  }
  
  static int ntfs_statfs(struct dentry *dentry, struct kstatfs *buf)
-@@ -1562,15 +1558,7 @@ static int ntfs_fill_super(struct super_block *sb, struct fs_context *fc)
- put_inode_out:
- 	iput(inode);
- out:
--	/*
--	 * Free resources here.
--	 * ntfs_fs_free will be called with fc->s_fs_info = NULL
--	 */
--	put_mount_options(sbi->options);
--	ntfs3_free_sbi(sbi);
--	sb->s_fs_info = NULL;
- 	kfree(boot2);
--
- 	return err;
- }
- 
-@@ -1726,13 +1714,24 @@ static int ntfs_init_fs_context(struct fs_context *fc)
- 	return -ENOMEM;
- }
- 
-+static void ntfs3_kill_sb(struct super_block *sb)
-+{
-+	struct ntfs_sb_info *sbi = sb->s_fs_info;
-+
-+	kill_block_super(sb);
-+
-+	if (sbi->options)
-+		put_mount_options(sbi->options);
-+	ntfs3_free_sbi(sbi);
-+}
-+
- // clang-format off
- static struct file_system_type ntfs_fs_type = {
- 	.owner			= THIS_MODULE,
- 	.name			= "ntfs3",
- 	.init_fs_context	= ntfs_init_fs_context,
- 	.parameters		= ntfs_fs_parameters,
--	.kill_sb		= kill_block_super,
-+	.kill_sb		= ntfs3_kill_sb,
- 	.fs_flags		= FS_REQUIRES_DEV | FS_ALLOW_IDMAP,
- };
- // clang-format on
 -- 
 2.39.2
 
