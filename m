@@ -2,32 +2,32 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C021C19F4F
-	for <linux-ext4@archiver.kernel.org>; Wed,  9 Aug 2023 22:06:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2598EC25B5E
+	for <linux-ext4@archiver.kernel.org>; Wed,  9 Aug 2023 22:06:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233230AbjHIWGE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 9 Aug 2023 18:06:04 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33752 "EHLO
+        id S230330AbjHIWGF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 9 Aug 2023 18:06:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33738 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233043AbjHIWF5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Aug 2023 18:05:57 -0400
+        with ESMTP id S232992AbjHIWF4 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Aug 2023 18:05:56 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0B81C212A;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7F29D2126;
         Wed,  9 Aug 2023 15:05:54 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=xK+hj1hEYeZWT3M55/B6bE7sbXHBn8KbDjMjOOEHDF0=; b=4ZnuSNHinXvVhvWuz8x0n0kaA0
-        jGNBdR3F5YwmW6TXCIkkFevmVBDSipJ9X7m31kswlqafmNkiK0tg7biZq/XtKLqJk4V4w6oCP2kFT
-        tN2p7l0c/UciVAfrlnwUl29Kbu4xHjelWWqpx2B9XxkYBBO/Ohug4xUfy4gJLkg6S+xSIGiEqu7DT
-        cufsTMZAoT73lP6chubHkr4IpbaeokvUQjGKxjkNyGlGoavJ0/aIAwS3j6qivHvKFW1GnPnTYxgma
-        bSybWN2h5TJI8UhEU6/C77vBgrj0lzAcKBGtMeg4Rl7q+l7q6URNEclaSW1W0A0xmonYv9zRXwC0I
-        XIryUxVQ==;
+        bh=kB68DmZwK80MitdBPMr8zbkuh+bDZpl9ET1tnFndqgs=; b=cMlbj/NmcItbD7S8XxA1JTZHY/
+        /5HIxu65VJSGivrddkgc6edRjc5J4G7lcR9wv+EOcogyn2zqtP8X4NVYh/hSJGcK0wzYlpq+vOO7j
+        FkusVCHZnUe5WFBkPOX1ZygMIzNdq3gSA7CIt6dQk2NIz32SuYLiAUraPm7a+SH1b/D9v/kb0fxtz
+        s7jFEr1hQaga2FsQXhLt/tUfD/ETlvm9XSnUmvBB8ERoiz1zEUvbBG01d42yrR2h52PumboUfH4k4
+        8xV0wbAEykSPS8aJg7/v06S9rCT7L6NB2Vm7mU2DZqq8iuQw6aZ5ZzgWvZ2fP9fRMUcSdlwZMDRet
+        /UCz4P8A==;
 Received: from [4.28.11.157] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1qTrJO-005xp3-0e;
-        Wed, 09 Aug 2023 22:05:50 +0000
+        id 1qTrJM-005xoS-1p;
+        Wed, 09 Aug 2023 22:05:48 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Al Viro <viro@zeniv.linux.org.uk>,
         Christian Brauner <brauner@kernel.org>
@@ -39,9 +39,9 @@ Cc:     Namjae Jeon <linkinjeon@kernel.org>,
         "Darrick J. Wong" <djwong@kernel.org>,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         ntfs3@lists.linux.dev, linux-xfs@vger.kernel.org
-Subject: [PATCH 12/13] ntfs3: don't call sync_blockdev in ntfs_put_super
-Date:   Wed,  9 Aug 2023 15:05:44 -0700
-Message-Id: <20230809220545.1308228-13-hch@lst.de>
+Subject: [PATCH 07/13] xfs: document the invalidate_bdev call in invalidate_bdev
+Date:   Wed,  9 Aug 2023 15:05:39 -0700
+Message-Id: <20230809220545.1308228-8-hch@lst.de>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20230809220545.1308228-1-hch@lst.de>
 References: <20230809220545.1308228-1-hch@lst.de>
@@ -52,27 +52,51 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-kill_block_super will call sync_blockdev just a tad later already.
+Copy and paste the commit message from Darrick into a comment to explain
+the seemly odd invalidate_bdev in xfs_shutdown_devices.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Christian Brauner <brauner@kernel.org>
 ---
- fs/ntfs3/super.c | 2 --
- 1 file changed, 2 deletions(-)
+ fs/xfs/xfs_super.c | 26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
 
-diff --git a/fs/ntfs3/super.c b/fs/ntfs3/super.c
-index bb985d3756d949..727138933a9324 100644
---- a/fs/ntfs3/super.c
-+++ b/fs/ntfs3/super.c
-@@ -629,8 +629,6 @@ static void ntfs_put_super(struct super_block *sb)
- 	put_mount_options(sbi->options);
- 	ntfs3_free_sbi(sbi);
- 	sb->s_fs_info = NULL;
--
--	sync_blockdev(sb->s_bdev);
- }
- 
- static int ntfs_statfs(struct dentry *dentry, struct kstatfs *buf)
+diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+index 4ae3b01ed038c7..c169beb0d8cab3 100644
+--- a/fs/xfs/xfs_super.c
++++ b/fs/xfs/xfs_super.c
+@@ -399,6 +399,32 @@ STATIC void
+ xfs_shutdown_devices(
+ 	struct xfs_mount	*mp)
+ {
++	/*
++	 * Udev is triggered whenever anyone closes a block device or unmounts
++	 * a file systemm on a block device.
++	 * The default udev rules invoke blkid to read the fs super and create
++	 * symlinks to the bdev under /dev/disk.  For this, it uses buffered
++	 * reads through the page cache.
++	 *
++	 * xfs_db also uses buffered reads to examine metadata.  There is no
++	 * coordination between xfs_db and udev, which means that they can run
++	 * concurrently.  Note there is no coordination between the kernel and
++	 * blkid either.
++	 *
++	 * On a system with 64k pages, the page cache can cache the superblock
++	 * and the root inode (and hence the root directory) with the same 64k
++	 * page.  If udev spawns blkid after the mkfs and the system is busy
++	 * enough that it is still running when xfs_db starts up, they'll both
++	 * read from the same page in the pagecache.
++	 *
++	 * The unmount writes updated inode metadata to disk directly.  The XFS
++	 * buffer cache does not use the bdev pagecache, nor does it invalidate
++	 * the pagecache on umount.  If the above scenario occurs, the pagecache
++	 * no longer reflects what's on disk, xfs_db reads the stale metadata,
++	 * and fails to find /a.  Most of the time this succeeds because closing
++	 * a bdev invalidates the page cache, but when processes race, everyone
++	 * loses.
++	 */
+ 	if (mp->m_logdev_targp && mp->m_logdev_targp != mp->m_ddev_targp) {
+ 		blkdev_issue_flush(mp->m_logdev_targp->bt_bdev);
+ 		invalidate_bdev(mp->m_logdev_targp->bt_bdev);
 -- 
 2.39.2
 
