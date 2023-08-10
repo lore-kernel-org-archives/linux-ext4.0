@@ -2,53 +2,53 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B8EFEC001DE
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Aug 2023 08:54:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 85F88C41513
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Aug 2023 08:54:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232230AbjHJIym (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 10 Aug 2023 04:54:42 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43096 "EHLO
+        id S233983AbjHJIyn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 10 Aug 2023 04:54:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43122 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232087AbjHJIyf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Aug 2023 04:54:35 -0400
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F3786211E
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Aug 2023 01:54:34 -0700 (PDT)
+        with ESMTP id S232186AbjHJIyg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Aug 2023 04:54:36 -0400
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7C4FE213C
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Aug 2023 01:54:35 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4RM12H1PDPz4f41Gs
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Aug 2023 16:54:31 +0800 (CST)
+        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4RM12C6wf2z4f3tCn
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Aug 2023 16:54:27 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.170])
-        by APP4 (Coremail) with SMTP id gCh0CgD3hqm6pdRkGjJ7AQ--.1500S10;
-        Thu, 10 Aug 2023 16:54:32 +0800 (CST)
+        by APP4 (Coremail) with SMTP id gCh0CgD3hqm6pdRkGjJ7AQ--.1500S6;
+        Thu, 10 Aug 2023 16:54:30 +0800 (CST)
 From:   Zhang Yi <yi.zhang@huaweicloud.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
         yi.zhang@huawei.com, yi.zhang@huaweicloud.com, yukuai3@huawei.com
-Subject: [PATCH v2 06/12] jbd2: cleanup load_superblock()
-Date:   Thu, 10 Aug 2023 16:54:11 +0800
-Message-Id: <20230810085417.1501293-7-yi.zhang@huaweicloud.com>
+Subject: [PATCH v2 02/12] jbd2: move load_superblock() into journal_init_common()
+Date:   Thu, 10 Aug 2023 16:54:07 +0800
+Message-Id: <20230810085417.1501293-3-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.34.3
 In-Reply-To: <20230810085417.1501293-1-yi.zhang@huaweicloud.com>
 References: <20230810085417.1501293-1-yi.zhang@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgD3hqm6pdRkGjJ7AQ--.1500S10
-X-Coremail-Antispam: 1UD129KBjvJXoW3WF1rXF1UWFy7XF47AFy3CFg_yoW7KrWxp3
-        WakryrArWqvr1UZ3Z7tF4kJFWYg3y0yFy7Gr1DC3Z2kayUtrnrt34Dtr1rtFyvvFWUG348
-        XF15C3ZxCa10q3JanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUU9C14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-        kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-        z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-        4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
-        3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
-        IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
-        M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20xvY0x0EwIxGrw
-        CFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE
-        14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2
-        IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxK
-        x2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI
-        0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUArcfUUUUU=
+X-CM-TRANSID: gCh0CgD3hqm6pdRkGjJ7AQ--.1500S6
+X-Coremail-Antispam: 1UD129KBjvJXoWxJrWfAw1xZr4xAr4DZr1rCrg_yoW8AFyxpr
+        y3C348ZrWvvrWUZ3W8XFW8GFWUX3yIkFW7Gr4Duw1ktayrJrnxtw1Dtrn5JFy8ZFWUGw18
+        JF1UCasrCw1qqa7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUU9m14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
+        x26xkF7I0E14v26r4j6ryUM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+        Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+        A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+        0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+        IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+        Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20xvY0x0EwIxGrwCFx2
+        IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v2
+        6r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67
+        AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IY
+        s7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr
+        0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUfwIDUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 X-CFilter-Loop: Reflected
 Precedence: bulk
@@ -57,204 +57,58 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Rename load_superblock() to journal_load_superblock(), move getting and
-reading superblock from journal_init_common() and
-journal_get_superblock() to this function, and also rename
-journal_get_superblock() to journal_check_superblock(), make it a pure
-check helper to check superblock validity from disk.
+Move the call to load_superblock() from jbd2_journal_load() and
+jbd2_journal_wipe() early into journal_init_common(), the journal
+superblock gets read and the in-memory journal_t structure gets
+initialised after calling jbd2_journal_init_{dev,inode}, it's safe to
+do following initialization according to it.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/journal.c | 85 +++++++++++++++++++----------------------------
- 1 file changed, 35 insertions(+), 50 deletions(-)
+ fs/jbd2/journal.c | 16 +++++-----------
+ 1 file changed, 5 insertions(+), 11 deletions(-)
 
 diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 46ab47b4439e..a8d17070073b 100644
+index 48c44c7fccf4..b247d374e7a6 100644
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
-@@ -1341,45 +1341,29 @@ static void journal_fail_superblock(journal_t *journal)
- }
+@@ -1582,6 +1582,10 @@ static journal_t *journal_init_common(struct block_device *bdev,
+ 	journal->j_sb_buffer = bh;
+ 	journal->j_superblock = (journal_superblock_t *)bh->b_data;
  
- /*
-- * Read the superblock for a given journal, performing initial
-+ * Check the superblock for a given journal, performing initial
-  * validation of the format.
-  */
--static int journal_get_superblock(journal_t *journal)
-+static int journal_check_superblock(journal_t *journal)
++	err = load_superblock(journal);
++	if (err)
++		goto err_cleanup;
++
+ 	journal->j_shrink_transaction = NULL;
+ 	journal->j_shrinker.scan_objects = jbd2_journal_shrink_scan;
+ 	journal->j_shrinker.count_objects = jbd2_journal_shrink_count;
+@@ -2056,13 +2060,7 @@ EXPORT_SYMBOL(jbd2_journal_update_sb_errno);
+ int jbd2_journal_load(journal_t *journal)
  {
--	struct buffer_head *bh;
+ 	int err;
 -	journal_superblock_t *sb;
--	int err;
--
--	bh = journal->j_sb_buffer;
--
--	J_ASSERT(bh != NULL);
--
--	err = bh_read(bh, 0);
--	if (err < 0) {
--		printk(KERN_ERR
--			"JBD2: IO error reading journal superblock\n");
--		goto out;
--	}
--
--	sb = journal->j_superblock;
--
--	err = -EINVAL;
-+	journal_superblock_t *sb = journal->j_superblock;
-+	int err = -EINVAL;
- 
- 	if (sb->s_header.h_magic != cpu_to_be32(JBD2_MAGIC_NUMBER) ||
- 	    sb->s_blocksize != cpu_to_be32(journal->j_blocksize)) {
- 		printk(KERN_WARNING "JBD2: no valid journal superblock found\n");
--		goto out;
-+		return err;
- 	}
- 
- 	if (be32_to_cpu(sb->s_header.h_blocktype) != JBD2_SUPERBLOCK_V1 &&
- 	    be32_to_cpu(sb->s_header.h_blocktype) != JBD2_SUPERBLOCK_V2) {
- 		printk(KERN_WARNING "JBD2: unrecognised superblock format ID\n");
--		goto out;
-+		return err;
- 	}
- 
- 	if (be32_to_cpu(sb->s_maxlen) > journal->j_total_len) {
- 		printk(KERN_WARNING "JBD2: journal file too short\n");
--		goto out;
-+		return err;
- 	}
- 
- 	if (be32_to_cpu(sb->s_first) == 0 ||
-@@ -1387,7 +1371,7 @@ static int journal_get_superblock(journal_t *journal)
- 		printk(KERN_WARNING
- 			"JBD2: Invalid start block of journal: %u\n",
- 			be32_to_cpu(sb->s_first));
--		goto out;
-+		return err;
- 	}
- 
- 	/*
-@@ -1402,7 +1386,7 @@ static int journal_get_superblock(journal_t *journal)
- 	    (sb->s_feature_incompat &
- 			~cpu_to_be32(JBD2_KNOWN_INCOMPAT_FEATURES))) {
- 		printk(KERN_WARNING "JBD2: Unrecognised features on journal\n");
--		goto out;
-+		return err;
- 	}
- 
- 	if (jbd2_has_feature_csum2(journal) &&
-@@ -1410,7 +1394,7 @@ static int journal_get_superblock(journal_t *journal)
- 		/* Can't have checksum v2 and v3 at the same time! */
- 		printk(KERN_ERR "JBD2: Can't enable checksumming v2 and v3 "
- 		       "at the same time!\n");
--		goto out;
-+		return err;
- 	}
- 
- 	if (jbd2_journal_has_csum_v2or3_feature(journal) &&
-@@ -1418,14 +1402,14 @@ static int journal_get_superblock(journal_t *journal)
- 		/* Can't have checksum v1 and v2 on at the same time! */
- 		printk(KERN_ERR "JBD2: Can't enable checksumming v1 and v2/3 "
- 		       "at the same time!\n");
--		goto out;
-+		return err;
- 	}
- 
- 	/* Load the checksum driver */
- 	if (jbd2_journal_has_csum_v2or3_feature(journal)) {
- 		if (sb->s_checksum_type != JBD2_CRC32C_CHKSUM) {
- 			printk(KERN_ERR "JBD2: Unknown checksum type\n");
--			goto out;
-+			return err;
- 		}
- 
- 		journal->j_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
-@@ -1433,20 +1417,17 @@ static int journal_get_superblock(journal_t *journal)
- 			printk(KERN_ERR "JBD2: Cannot load crc32c driver.\n");
- 			err = PTR_ERR(journal->j_chksum_driver);
- 			journal->j_chksum_driver = NULL;
--			goto out;
-+			return err;
- 		}
- 		/* Check superblock checksum */
- 		if (sb->s_checksum != jbd2_superblock_csum(journal, sb)) {
- 			printk(KERN_ERR "JBD2: journal checksum error\n");
- 			err = -EFSBADCRC;
--			goto out;
-+			return err;
- 		}
- 	}
--	return 0;
- 
--out:
--	journal_fail_superblock(journal);
--	return err;
-+	return 0;
- }
- 
- static int journal_revoke_records_per_block(journal_t *journal)
-@@ -1468,17 +1449,31 @@ static int journal_revoke_records_per_block(journal_t *journal)
-  * Load the on-disk journal superblock and read the key fields into the
-  * journal_t.
-  */
--static int load_superblock(journal_t *journal)
-+static int journal_load_superblock(journal_t *journal)
- {
- 	int err;
-+	struct buffer_head *bh;
- 	journal_superblock_t *sb;
- 	int num_fc_blocks;
- 
--	err = journal_get_superblock(journal);
--	if (err)
--		return err;
-+	bh = getblk_unmovable(journal->j_dev, journal->j_blk_offset,
-+			      journal->j_blocksize);
-+	if (bh)
-+		err = bh_read(bh, 0);
-+	if (!bh || err < 0) {
-+		pr_err("%s: Cannot read journal superblock\n", __func__);
-+		brelse(bh);
-+		return -EIO;
-+	}
- 
--	sb = journal->j_superblock;
-+	journal->j_sb_buffer = bh;
-+	sb = (journal_superblock_t *)bh->b_data;
-+	journal->j_superblock = sb;
-+	err = journal_check_superblock(journal);
-+	if (err) {
-+		journal_fail_superblock(journal);
-+		return err;
-+	}
- 
- 	journal->j_tail_sequence = be32_to_cpu(sb->s_sequence);
- 	journal->j_tail = be32_to_cpu(sb->s_start);
-@@ -1524,7 +1519,6 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 	static struct lock_class_key jbd2_trans_commit_key;
- 	journal_t *journal;
- 	int err;
--	struct buffer_head *bh;
- 	int n;
- 
- 	journal = kzalloc(sizeof(*journal), GFP_KERNEL);
-@@ -1577,16 +1571,7 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 	if (!journal->j_wbuf)
- 		goto err_cleanup;
- 
--	bh = getblk_unmovable(journal->j_dev, start, journal->j_blocksize);
--	if (!bh) {
--		pr_err("%s: Cannot get buffer for journal superblock\n",
--			__func__);
--		goto err_cleanup;
--	}
--	journal->j_sb_buffer = bh;
--	journal->j_superblock = (journal_superblock_t *)bh->b_data;
 -
 -	err = load_superblock(journal);
-+	err = journal_load_superblock(journal);
- 	if (err)
- 		goto err_cleanup;
+-	if (err)
+-		return err;
+-
+-	sb = journal->j_superblock;
++	journal_superblock_t *sb = journal->j_superblock;
+ 
+ 	/*
+ 	 * If this is a V2 superblock, then we have to check the
+@@ -2521,10 +2519,6 @@ int jbd2_journal_wipe(journal_t *journal, int write)
+ 
+ 	J_ASSERT (!(journal->j_flags & JBD2_LOADED));
+ 
+-	err = load_superblock(journal);
+-	if (err)
+-		return err;
+-
+ 	if (!journal->j_tail)
+ 		goto no_recovery;
  
 -- 
 2.34.3
