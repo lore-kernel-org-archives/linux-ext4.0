@@ -2,50 +2,53 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 95869C41513
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Aug 2023 08:54:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 24293C001DE
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Aug 2023 08:54:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231400AbjHJIyf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 10 Aug 2023 04:54:35 -0400
+        id S233190AbjHJIyg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 10 Aug 2023 04:54:36 -0400
 Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43096 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229604AbjHJIye (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Aug 2023 04:54:34 -0400
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 839F6211E
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Aug 2023 01:54:33 -0700 (PDT)
+        with ESMTP id S231659AbjHJIyf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Aug 2023 04:54:35 -0400
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B4CAF212A
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Aug 2023 01:54:34 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4RM12F5Yjhz4f3jqc
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Aug 2023 16:54:29 +0800 (CST)
+        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4RM12D2Hbnz4f3jHs
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Aug 2023 16:54:28 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.170])
-        by APP4 (Coremail) with SMTP id gCh0CgD3hqm6pdRkGjJ7AQ--.1500S4;
-        Thu, 10 Aug 2023 16:54:28 +0800 (CST)
+        by APP4 (Coremail) with SMTP id gCh0CgD3hqm6pdRkGjJ7AQ--.1500S7;
+        Thu, 10 Aug 2023 16:54:31 +0800 (CST)
 From:   Zhang Yi <yi.zhang@huaweicloud.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
         yi.zhang@huawei.com, yi.zhang@huaweicloud.com, yukuai3@huawei.com
-Subject: [PATCH v2 00/12] ext4,jbd2: cleanup journal load and initialization process
-Date:   Thu, 10 Aug 2023 16:54:05 +0800
-Message-Id: <20230810085417.1501293-1-yi.zhang@huaweicloud.com>
+Subject: [PATCH v2 03/12] jbd2: don't load superblock in jbd2_journal_check_used_features()
+Date:   Thu, 10 Aug 2023 16:54:08 +0800
+Message-Id: <20230810085417.1501293-4-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.34.3
+In-Reply-To: <20230810085417.1501293-1-yi.zhang@huaweicloud.com>
+References: <20230810085417.1501293-1-yi.zhang@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgD3hqm6pdRkGjJ7AQ--.1500S4
-X-Coremail-Antispam: 1UD129KBjvJXoW7uF4DKFy7Cw13XF43JF4Dtwb_yoW8Cw1fpF
-        43Ka4furWUC34xAF4IqF4xJFWfWw1IkFW7GrnrCwn7Aw4rZFnFqr4ktr1rJFyUGrWru3W2
-        gF4UGanxKwnYk37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUyG14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-        1l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
-        JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
-        CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
-        2Ix0cI8IcVAFwI0_JrI_JrylYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
-        W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1l42xK82IYc2Ij64vI
-        r41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8Gjc
-        xK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0
-        cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8V
-        AvwI8IcIk0rVWrZr1j6s0DMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7Cj
-        xVAFwI0_Jr0_GrUvcSsGvfC2KfnxnUUI43ZEXa7VU1a9aPUUUUU==
+X-CM-TRANSID: gCh0CgD3hqm6pdRkGjJ7AQ--.1500S7
+X-Coremail-Antispam: 1UD129KBjvJXoW7ZFWkKrW7ArWDGr1xJr43Wrg_yoW8GrWUpa
+        yfKFy8CrZYvr1UAF1ktFs5JFWY9ay0yFWUGr4kuw1vy3yUXrnIqry7tr1rtFyvyFZ7uw18
+        JF1kCws3Gws0qrDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUU9m14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JrWl82xGYIkIc2
+        x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+        Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+        A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+        0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+        IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+        Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20xvY0x0EwIxGrwCFx2
+        IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v2
+        6r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67
+        AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IY
+        s7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr
+        0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUCXdbUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 X-CFilter-Loop: Reflected
 Precedence: bulk
@@ -54,49 +57,49 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-v1->v2:
- - Fix the changelog in patch 1 and 2.
- - Simplify the comments for local functions in patch 6.
- - Remove the incorrect zero fast_commit blocks check in patch 7.
- - Fix a UAF problem in patch 11.
+Since load_superblock() has been moved to journal_init_common(), the
+in-memory superblock structure is initialized and contains valid data
+once the file system has a journal_t object, so it's safe to access it,
+let's drop the call to journal_get_superblock() from
+jbd2_journal_check_used_features() and also drop the setting/clearing of
+the veirfy bit of the superblock buffer.
 
-Hello,
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd2/journal.c | 5 -----
+ 1 file changed, 5 deletions(-)
 
-This patch set cleanup the journal load and initialization process
-(discussed and suggested by Ted in [1]). Firstly, move reading of the
-journal superblock from jbd2_journal_load() and jbd2_journal_wipe()
-early to journal_init_common(), and completely drop the kludgy call of
-journal_get_superblock() in jbd2_journal_check_used_features(). Then
-cleanup the ext4_get_journal() and ext4_get_dev_journal(), making their
-initialization process and error handling process more clear, and return
-proper errno if some bad happens. Finally rename those two functions to
-jbd2_open_{dev,inode}_journal. This patch set has passed
-'kvm-xfstests -g auto'.
-
-[1] https://lore.kernel.org/linux-ext4/20230617185057.GA343628@mit.edu/
-
-Thanks,
-Yi.
-
-Zhang Yi (12):
-  jbd2: move load_superblock() dependent functions
-  jbd2: move load_superblock() into journal_init_common()
-  jbd2: don't load superblock in jbd2_journal_check_used_features()
-  jbd2: checking valid features early in journal_get_superblock()
-  jbd2: open code jbd2_verify_csum_type() helper
-  jbd2: cleanup load_superblock()
-  jbd2: add fast_commit space check
-  jbd2: cleanup journal_init_common()
-  jbd2: drop useless error tag in jbd2_journal_wipe()
-  jbd2: jbd2_journal_init_{dev,inode} return proper error return value
-  ext4: cleanup ext4_get_dev_journal() and ext4_get_journal()
-  ext4: ext4_get_{dev}_journal return proper error value
-
- fs/ext4/super.c    | 154 ++++++++-------
- fs/jbd2/journal.c  | 465 +++++++++++++++++++++------------------------
- fs/ocfs2/journal.c |   8 +-
- 3 files changed, 299 insertions(+), 328 deletions(-)
-
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index b247d374e7a6..c7cdb434966f 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1361,8 +1361,6 @@ static int journal_get_superblock(journal_t *journal)
+ 	bh = journal->j_sb_buffer;
+ 
+ 	J_ASSERT(bh != NULL);
+-	if (buffer_verified(bh))
+-		return 0;
+ 
+ 	err = bh_read(bh, 0);
+ 	if (err < 0) {
+@@ -1437,7 +1435,6 @@ static int journal_get_superblock(journal_t *journal)
+ 			goto out;
+ 		}
+ 	}
+-	set_buffer_verified(bh);
+ 	return 0;
+ 
+ out:
+@@ -2224,8 +2221,6 @@ int jbd2_journal_check_used_features(journal_t *journal, unsigned long compat,
+ 
+ 	if (!compat && !ro && !incompat)
+ 		return 1;
+-	if (journal_get_superblock(journal))
+-		return 0;
+ 	if (!jbd2_format_support_feature(journal))
+ 		return 0;
+ 
 -- 
 2.34.3
 
