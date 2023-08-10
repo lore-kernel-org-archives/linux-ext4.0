@@ -2,41 +2,41 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C633C001DE
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Aug 2023 08:54:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 65124C04A94
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Aug 2023 08:54:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232117AbjHJIyq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 10 Aug 2023 04:54:46 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43114 "EHLO
+        id S234206AbjHJIyr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 10 Aug 2023 04:54:47 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43126 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229604AbjHJIyl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Aug 2023 04:54:41 -0400
+        with ESMTP id S232324AbjHJIyg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Aug 2023 04:54:36 -0400
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 92257212A
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A54D0213F
         for <linux-ext4@vger.kernel.org>; Thu, 10 Aug 2023 01:54:35 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4RM12J3ry1z4f4MRx
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Aug 2023 16:54:32 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4RM12G5vZSz4f41Gd
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Aug 2023 16:54:30 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.170])
-        by APP4 (Coremail) with SMTP id gCh0CgD3hqm6pdRkGjJ7AQ--.1500S12;
-        Thu, 10 Aug 2023 16:54:32 +0800 (CST)
+        by APP4 (Coremail) with SMTP id gCh0CgD3hqm6pdRkGjJ7AQ--.1500S9;
+        Thu, 10 Aug 2023 16:54:31 +0800 (CST)
 From:   Zhang Yi <yi.zhang@huaweicloud.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
         yi.zhang@huawei.com, yi.zhang@huaweicloud.com, yukuai3@huawei.com
-Subject: [PATCH v2 08/12] jbd2: cleanup journal_init_common()
-Date:   Thu, 10 Aug 2023 16:54:13 +0800
-Message-Id: <20230810085417.1501293-9-yi.zhang@huaweicloud.com>
+Subject: [PATCH v2 05/12] jbd2: open code jbd2_verify_csum_type() helper
+Date:   Thu, 10 Aug 2023 16:54:10 +0800
+Message-Id: <20230810085417.1501293-6-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.34.3
 In-Reply-To: <20230810085417.1501293-1-yi.zhang@huaweicloud.com>
 References: <20230810085417.1501293-1-yi.zhang@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgD3hqm6pdRkGjJ7AQ--.1500S12
-X-Coremail-Antispam: 1UD129KBjvJXoWxXr13uF1kZr4kKr4xWFyDKFg_yoWrWr47pr
-        y7Ka4ayrW8Zr47Xr1fJF4kJrWjqay09FyUGr9ruwn5tw4UtrnxXw1Utw1xJayqvFW8W3Wr
-        XF1xC34xCw1UKaUanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUU9K14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+X-CM-TRANSID: gCh0CgD3hqm6pdRkGjJ7AQ--.1500S9
+X-Coremail-Antispam: 1UD129KBjvJXoW7trWxXry3Cr4UZF4xuF43trb_yoW8WFyUpr
+        W3Ga48uryv9ry7A3W0yF4kAFWrZa1YkFWUWFsF93Z2vay7ZwnrJ345tr1rXa4FyFy8C3y0
+        qF1rKws2k3Wjva7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUU9C14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
         rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
         kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
         z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
@@ -46,9 +46,9 @@ X-Coremail-Antispam: 1UD129KBjvJXoWxXr13uF1kZr4kKr4xWFyDKFg_yoWrWr47pr
         M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20xvY0x0EwIxGrw
         CFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE
         14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2
-        IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAv
-        wI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14
-        v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjfUF18BUUUUU
+        IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxK
+        x2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI
+        0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUArcfUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 X-CFilter-Loop: Reflected
 Precedence: bulk
@@ -57,112 +57,54 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Adjust the initialization sequence and error handle of journal_t, moving
-load superblock to the begin, and classify others initialization.
+jbd2_verify_csum_type() helper check checksum type in the superblock for
+v2 or v3 checksum feature, it always return true if these features are
+not enabled, and it has only one user, so open code it is more clear.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/journal.c | 45 ++++++++++++++++++++++++---------------------
- 1 file changed, 24 insertions(+), 21 deletions(-)
+ fs/jbd2/journal.c | 18 +++++-------------
+ 1 file changed, 5 insertions(+), 13 deletions(-)
 
 diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 5e2206e7a5ba..e2bf6f260500 100644
+index d84f26b08315..46ab47b4439e 100644
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
-@@ -1532,6 +1532,16 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 	if (!journal)
- 		return NULL;
+@@ -115,14 +115,6 @@ void __jbd2_debug(int level, const char *file, const char *func,
+ #endif
  
-+	journal->j_blocksize = blocksize;
-+	journal->j_dev = bdev;
-+	journal->j_fs_dev = fs_dev;
-+	journal->j_blk_offset = start;
-+	journal->j_total_len = len;
-+
-+	err = journal_load_superblock(journal);
-+	if (err)
-+		goto err_cleanup;
-+
- 	init_waitqueue_head(&journal->j_wait_transaction_locked);
- 	init_waitqueue_head(&journal->j_wait_done_commit);
- 	init_waitqueue_head(&journal->j_wait_commit);
-@@ -1543,12 +1553,15 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 	mutex_init(&journal->j_checkpoint_mutex);
- 	spin_lock_init(&journal->j_revoke_lock);
- 	spin_lock_init(&journal->j_list_lock);
-+	spin_lock_init(&journal->j_history_lock);
- 	rwlock_init(&journal->j_state_lock);
- 
- 	journal->j_commit_interval = (HZ * JBD2_DEFAULT_MAX_COMMIT_AGE);
- 	journal->j_min_batch_time = 0;
- 	journal->j_max_batch_time = 15000; /* 15ms */
- 	atomic_set(&journal->j_reserved_credits, 0);
-+	lockdep_init_map(&journal->j_trans_commit_map, "jbd2_handle",
-+			 &jbd2_trans_commit_key, 0);
- 
- 	/* The journal is marked for error until we succeed with recovery! */
- 	journal->j_flags = JBD2_ABORT;
-@@ -1558,18 +1571,10 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 	if (err)
- 		goto err_cleanup;
- 
--	spin_lock_init(&journal->j_history_lock);
+ /* Checksumming functions */
+-static int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
+-{
+-	if (!jbd2_journal_has_csum_v2or3_feature(j))
+-		return 1;
 -
--	lockdep_init_map(&journal->j_trans_commit_map, "jbd2_handle",
--			 &jbd2_trans_commit_key, 0);
+-	return sb->s_checksum_type == JBD2_CRC32C_CHKSUM;
+-}
 -
--	/* journal descriptor can store up to n blocks -bzzz */
--	journal->j_blocksize = blocksize;
--	journal->j_dev = bdev;
--	journal->j_fs_dev = fs_dev;
--	journal->j_blk_offset = start;
--	journal->j_total_len = len;
--	/* We need enough buffers to write out full descriptor block. */
-+	/*
-+	 * journal descriptor can store up to n blocks, we need enough
-+	 * buffers to write out full descriptor block.
-+	 */
- 	n = journal->j_blocksize / jbd2_min_tag_size();
- 	journal->j_wbufsize = n;
- 	journal->j_fc_wbuf = NULL;
-@@ -1578,7 +1583,8 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 	if (!journal->j_wbuf)
- 		goto err_cleanup;
+ static __be32 jbd2_superblock_csum(journal_t *j, journal_superblock_t *sb)
+ {
+ 	__u32 csum;
+@@ -1429,13 +1421,13 @@ static int journal_get_superblock(journal_t *journal)
+ 		goto out;
+ 	}
  
--	err = journal_load_superblock(journal);
-+	err = percpu_counter_init(&journal->j_checkpoint_jh_count, 0,
-+				  GFP_KERNEL);
- 	if (err)
- 		goto err_cleanup;
- 
-@@ -1587,21 +1593,18 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 	journal->j_shrinker.count_objects = jbd2_journal_shrink_count;
- 	journal->j_shrinker.seeks = DEFAULT_SEEKS;
- 	journal->j_shrinker.batch = journal->j_max_transaction_buffers;
--
--	if (percpu_counter_init(&journal->j_checkpoint_jh_count, 0, GFP_KERNEL))
-+	err = register_shrinker(&journal->j_shrinker, "jbd2-journal:(%u:%u)",
-+				MAJOR(bdev->bd_dev), MINOR(bdev->bd_dev));
-+	if (err)
- 		goto err_cleanup;
- 
--	if (register_shrinker(&journal->j_shrinker, "jbd2-journal:(%u:%u)",
--			      MAJOR(bdev->bd_dev), MINOR(bdev->bd_dev))) {
--		percpu_counter_destroy(&journal->j_checkpoint_jh_count);
--		goto err_cleanup;
+-	if (!jbd2_verify_csum_type(journal, sb)) {
+-		printk(KERN_ERR "JBD2: Unknown checksum type\n");
+-		goto out;
 -	}
- 	return journal;
- 
- err_cleanup:
--	brelse(journal->j_sb_buffer);
-+	percpu_counter_destroy(&journal->j_checkpoint_jh_count);
- 	kfree(journal->j_wbuf);
- 	jbd2_journal_destroy_revoke(journal);
-+	journal_fail_superblock(journal);
- 	kfree(journal);
- 	return NULL;
- }
+-
+ 	/* Load the checksum driver */
+ 	if (jbd2_journal_has_csum_v2or3_feature(journal)) {
++		if (sb->s_checksum_type != JBD2_CRC32C_CHKSUM) {
++			printk(KERN_ERR "JBD2: Unknown checksum type\n");
++			goto out;
++		}
++
+ 		journal->j_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
+ 		if (IS_ERR(journal->j_chksum_driver)) {
+ 			printk(KERN_ERR "JBD2: Cannot load crc32c driver.\n");
 -- 
 2.34.3
 
