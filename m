@@ -2,38 +2,38 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 959DEC0015E
-	for <linux-ext4@archiver.kernel.org>; Fri, 11 Aug 2023 16:15:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D0E06C0015E
+	for <linux-ext4@archiver.kernel.org>; Fri, 11 Aug 2023 16:15:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234859AbjHKQPn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 11 Aug 2023 12:15:43 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58184 "EHLO
+        id S235322AbjHKQPq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 11 Aug 2023 12:15:46 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58212 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232046AbjHKQPl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Aug 2023 12:15:41 -0400
+        with ESMTP id S234275AbjHKQPm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Aug 2023 12:15:42 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 554542694;
-        Fri, 11 Aug 2023 09:15:41 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 57D5C273E;
+        Fri, 11 Aug 2023 09:15:42 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=TtnsL4i1WDoruwjihR7ho5E4T0YVgEIZCD8hWU4Po38=; b=Hk9/6EzKfW6Tas2SkqzCYnGlqY
-        iIwVxlAicMgGum0LcucsvrJ2hXGVeC9GSLJLx//IoSjl3dd9G6O7DBlNCtMxUMj6x/TrYlCy7IApx
-        FApal6jU0O0dDTmmHkH4Wb8E+lFP25+jLGpCJxAJ6Ow8Yd/A3rTxDVOxkUCeGQVgwOf1Y0rE3958G
-        2p8lgRV2Ivbq/xKQWVvp0zEj1RfF2kLrGz+2UZ/iTda59lqiAUidk+cpPLDgU2H43VLJWtN7oIy/X
-        KdTvxVjwfJDUz58OWvcffBaXV+LzLGfns3lTAPPMIN1ZxVBmFhKV5aczuafCdnlYq7bQ/7wOEIQJS
-        MjmNlqPg==;
+        bh=mGLxLmLqoMtqKqObPpHvI58V/LNR6g3q9ebkb1KeSj4=; b=qovPmxo6vngNv6zu0MhFQMQVHu
+        JY/vfqtADdsSKY48Foze9fiVOUY3EU3/VEqkPES+ALe5cZIxWHqsapi6R9IED0OuShRmmW4PkvOvp
+        Kf9j7PWrHUhPDOVezbqHIXon6GD+UAvTOtuFgvJYqqm6j82cL+oz2fq3uk98sN8msmz1cEPUO0nBc
+        zHl+CIGgWFQ3wfAIA1IGVYBGERRuhswJjYLxSpu5X8MnF/+wQBbrAKNCpJW/KYa3RTVNdUCPDreXm
+        eXsPvj/6KL/F6q8Q0rrBFNWrCr8VxSY4taIg3tqe/hzCTW3OTtexFfCjslQP/k4qYAB8oSEwV+k4D
+        P7Kr/r0w==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qUUnT-0027ka-6Y; Fri, 11 Aug 2023 16:15:31 +0000
+        id 1qUUnT-0027kW-0A; Fri, 11 Aug 2023 16:15:31 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     akpm@linux-foundation.org
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         Hui Zhu <teawater@antgroup.com>, linux-fsdevel@vger.kernel.org,
         linux-ext4@vger.kernel.org
-Subject: [PATCH 3/3] ext4: Use bdev_getblk() to avoid memory reclaim in readahead path
-Date:   Fri, 11 Aug 2023 17:15:28 +0100
-Message-Id: <20230811161528.506437-4-willy@infradead.org>
+Subject: [PATCH 1/3] buffer: Pass GFP flags to folio_alloc_buffers()
+Date:   Fri, 11 Aug 2023 17:15:26 +0100
+Message-Id: <20230811161528.506437-2-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230811161528.506437-1-willy@infradead.org>
 References: <20230811161528.506437-1-willy@infradead.org>
@@ -43,31 +43,83 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-sb_getblk_gfp adds __GFP_NOFAIL, which is unnecessary for readahead;
-we're quite comfortable with the possibility that we may not get a bh
-back.  Switch to bdev_getblk() which does not include __GFP_NOFAIL.
+Instead of creating entirely new flags, inherit them from grow_dev_page().
+The other callers create the same flags that this function used to create.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-Reported-by: Hui Zhu <teawater@antgroup.com>
-Link: https://lore.kernel.org/linux-fsdevel/20230811035705.3296-1-teawaterz@linux.alibaba.com/
 ---
- fs/ext4/super.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/buffer.c                 | 17 +++++++++--------
+ include/linux/buffer_head.h |  2 +-
+ 2 files changed, 10 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c94ebf704616..48524314be97 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -254,7 +254,8 @@ struct buffer_head *ext4_sb_bread_unmovable(struct super_block *sb,
- 
- void ext4_sb_breadahead_unmovable(struct super_block *sb, sector_t block)
+diff --git a/fs/buffer.c b/fs/buffer.c
+index bd091329026c..7326acc29541 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -920,16 +920,12 @@ int remove_inode_buffers(struct inode *inode)
+  * which may not fail from ordinary buffer allocations.
+  */
+ struct buffer_head *folio_alloc_buffers(struct folio *folio, unsigned long size,
+-					bool retry)
++					gfp_t gfp)
  {
--	struct buffer_head *bh = sb_getblk_gfp(sb, block, 0);
-+	struct buffer_head *bh = bdev_getblk(sb->s_bdev, block,
-+			sb->s_blocksize, GFP_NOWAIT);
+ 	struct buffer_head *bh, *head;
+-	gfp_t gfp = GFP_NOFS | __GFP_ACCOUNT;
+ 	long offset;
+ 	struct mem_cgroup *memcg, *old_memcg;
  
- 	if (likely(bh)) {
- 		if (trylock_buffer(bh))
+-	if (retry)
+-		gfp |= __GFP_NOFAIL;
+-
+ 	/* The folio lock pins the memcg */
+ 	memcg = folio_memcg(folio);
+ 	old_memcg = set_active_memcg(memcg);
+@@ -972,7 +968,11 @@ EXPORT_SYMBOL_GPL(folio_alloc_buffers);
+ struct buffer_head *alloc_page_buffers(struct page *page, unsigned long size,
+ 				       bool retry)
+ {
+-	return folio_alloc_buffers(page_folio(page), size, retry);
++	gfp_t gfp = GFP_NOFS | __GFP_ACCOUNT;
++	if (retry)
++		gfp |= __GFP_NOFAIL;
++
++	return folio_alloc_buffers(page_folio(page), size, gfp);
+ }
+ EXPORT_SYMBOL_GPL(alloc_page_buffers);
+ 
+@@ -1074,7 +1074,7 @@ grow_dev_page(struct block_device *bdev, sector_t block,
+ 			goto failed;
+ 	}
+ 
+-	bh = folio_alloc_buffers(folio, size, true);
++	bh = folio_alloc_buffers(folio, size, gfp_mask);
+ 
+ 	/*
+ 	 * Link the folio to the buffers and initialise them.  Take the
+@@ -1665,8 +1665,9 @@ void folio_create_empty_buffers(struct folio *folio, unsigned long blocksize,
+ 				unsigned long b_state)
+ {
+ 	struct buffer_head *bh, *head, *tail;
++	gfp_t gfp = GFP_NOFS | __GFP_ACCOUNT | __GFP_NOFAIL;
+ 
+-	head = folio_alloc_buffers(folio, blocksize, true);
++	head = folio_alloc_buffers(folio, blocksize, gfp);
+ 	bh = head;
+ 	do {
+ 		bh->b_state |= b_state;
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 6cb3e9af78c9..d17efb8b7976 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -200,7 +200,7 @@ void folio_set_bh(struct buffer_head *bh, struct folio *folio,
+ 		  unsigned long offset);
+ bool try_to_free_buffers(struct folio *);
+ struct buffer_head *folio_alloc_buffers(struct folio *folio, unsigned long size,
+-					bool retry);
++					gfp_t gfp);
+ struct buffer_head *alloc_page_buffers(struct page *page, unsigned long size,
+ 		bool retry);
+ void create_empty_buffers(struct page *, unsigned long,
 -- 
 2.40.1
 
