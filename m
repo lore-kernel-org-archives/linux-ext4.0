@@ -2,52 +2,52 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8FEE3C04E69
-	for <linux-ext4@archiver.kernel.org>; Sat, 12 Aug 2023 00:42:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 018C3C04A6A
+	for <linux-ext4@archiver.kernel.org>; Sat, 12 Aug 2023 00:42:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237072AbjHLAma (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 11 Aug 2023 20:42:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58342 "EHLO
+        id S237216AbjHLAm3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 11 Aug 2023 20:42:29 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33072 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237108AbjHLAm0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Aug 2023 20:42:26 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5E85D359C;
-        Fri, 11 Aug 2023 17:42:12 -0700 (PDT)
+        with ESMTP id S234588AbjHLAmU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Aug 2023 20:42:20 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E4F3D3582;
+        Fri, 11 Aug 2023 17:42:08 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 08BE71F8A8;
-        Sat, 12 Aug 2023 00:42:11 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id A7AE91F38A;
+        Sat, 12 Aug 2023 00:42:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1691800931; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1691800927; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=L5yvPO73LzaHqBcXpBIAiP4zUC13otTzpIxPlCrbM0w=;
-        b=EC5YeMNQ/omLqYo3av20mJjbh2k9LNK3IowuC5aGboOKni0JgVY0XdN+JsXculijkeU6AQ
-        wFrmg9U/6BtZtKHE1Fm/3j5VGcQcnmSsNOAFDyJiRJrKm+cNyE83HrLKFXC2r/S0nsG5Hk
-        kYDPkWCHU/IbvMOHcdK6+QRXeFSmh5w=
+        bh=sTxhaqF5sRXfD/Sz/tp3d/xhC2rVXOn+t3d6w8E4rAo=;
+        b=X8tB+eKLTTO897QOvQSA84RZHzPqH9/rqG0UZPdDtiaDP7unm/zP2xCocNDYKUbwpbfsTe
+        Cp5Kzt3MQnBuvdPcAgwy8jaRWuaBG/EXL9V4LJbLhUJit6Ojr4p2qnJAGzSFRBMkpK1SIG
+        mAq5HMRJiKBD4Vwo4DgbJ8+5ww6m08I=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1691800931;
+        s=susede2_ed25519; t=1691800927;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=L5yvPO73LzaHqBcXpBIAiP4zUC13otTzpIxPlCrbM0w=;
-        b=srTz7A4/LrUIT2+9dba0oswQ9yiNsW3LG/0YeGeNvlnbmh1sVQ5IQe1qftybeASOvqgoKI
-        V+g8b9b/bPhCymDg==
+        bh=sTxhaqF5sRXfD/Sz/tp3d/xhC2rVXOn+t3d6w8E4rAo=;
+        b=WgVIEOryp4HKOjylausdq6/ZDFC+LngfMkSsLq62KITN3Vx3He6okdRjHVstf/tRXvDrZy
+        ZzklrOajizMRl0Cg==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id BA50113592;
-        Sat, 12 Aug 2023 00:42:10 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 7232013592;
+        Sat, 12 Aug 2023 00:42:07 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id duukJ2LV1mQ1EAAAMHmgww
-        (envelope-from <krisman@suse.de>); Sat, 12 Aug 2023 00:42:10 +0000
+        id 6vxRFl/V1mQsEAAAMHmgww
+        (envelope-from <krisman@suse.de>); Sat, 12 Aug 2023 00:42:07 +0000
 From:   Gabriel Krisman Bertazi <krisman@suse.de>
 To:     viro@zeniv.linux.org.uk, brauner@kernel.org, tytso@mit.edu,
         ebiggers@kernel.org, jaegeuk@kernel.org
@@ -55,9 +55,9 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
         Gabriel Krisman Bertazi <krisman@suse.de>,
         Gabriel Krisman Bertazi <krisman@collabora.com>
-Subject: [PATCH v5 10/10] f2fs: Enable negative dentries on case-insensitive lookup
-Date:   Fri, 11 Aug 2023 20:41:46 -0400
-Message-ID: <20230812004146.30980-11-krisman@suse.de>
+Subject: [PATCH v5 08/10] libfs: Merge encrypted_ci_dentry_ops and ci_dentry_ops
+Date:   Fri, 11 Aug 2023 20:41:44 -0400
+Message-ID: <20230812004146.30980-9-krisman@suse.de>
 X-Mailer: git-send-email 2.41.0
 In-Reply-To: <20230812004146.30980-1-krisman@suse.de>
 References: <20230812004146.30980-1-krisman@suse.de>
@@ -69,73 +69,106 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Gabriel Krisman Bertazi <krisman@collabora.com>
 
-Instead of invalidating negative dentries during case-insensitive
-lookups, mark them as such and let them be added to the dcache.
-d_ci_revalidate is able to properly filter them out if necessary based
-on the dentry casefold flag.
+Now that casefold needs d_revalidate and calls fscrypt_d_revalidate
+itself, generic_encrypt_ci_dentry_ops and generic_ci_dentry_ops are now
+equivalent.  Merge them together and simplify the setup code.
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
 
 ---
-Changes since v4:
-  - Use helper to decide if should set dentry flag.
-
-Changes since v2:
-  - Move dentry flag set closer to fscrypt code (Eric)
+changes since v2:
+  - reword comment for clarity (Eric)
 ---
- fs/f2fs/namei.c | 25 ++++---------------------
- 1 file changed, 4 insertions(+), 21 deletions(-)
+ fs/libfs.c | 45 +++++++++++++--------------------------------
+ 1 file changed, 13 insertions(+), 32 deletions(-)
 
-diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
-index bee0568888da..8b8fd4cdf62d 100644
---- a/fs/f2fs/namei.c
-+++ b/fs/f2fs/namei.c
-@@ -533,6 +533,10 @@ static struct dentry *f2fs_lookup(struct inode *dir, struct dentry *dentry,
+diff --git a/fs/libfs.c b/fs/libfs.c
+index efb245118d10..6b15a4f0312f 100644
+--- a/fs/libfs.c
++++ b/fs/libfs.c
+@@ -1516,7 +1516,7 @@ static int generic_ci_d_revalidate(struct dentry *dentry,
+ 	return fscrypt_d_revalidate(dentry, name, flags);
+ }
  
- 	err = f2fs_prepare_lookup(dir, dentry, &fname);
- 	generic_set_encrypted_ci_d_ops(dentry);
-+
-+	if (dir_is_casefolded(dir))
-+		d_set_casefolded_name(dentry);
-+
- 	if (err == -ENOENT)
- 		goto out_splice;
- 	if (err)
-@@ -578,17 +582,6 @@ static struct dentry *f2fs_lookup(struct inode *dir, struct dentry *dentry,
- 		goto out_iput;
+-static const struct dentry_operations generic_ci_dentry_ops = {
++static const struct dentry_operations generic_encrypted_ci_dentry_ops = {
+ 	.d_hash = generic_ci_d_hash,
+ 	.d_compare = generic_ci_d_compare,
+ 	.d_revalidate = generic_ci_d_revalidate,
+@@ -1529,26 +1529,19 @@ static const struct dentry_operations generic_encrypted_dentry_ops = {
+ };
+ #endif
+ 
+-#if defined(CONFIG_FS_ENCRYPTION) && IS_ENABLED(CONFIG_UNICODE)
+-static const struct dentry_operations generic_encrypted_ci_dentry_ops = {
+-	.d_hash = generic_ci_d_hash,
+-	.d_compare = generic_ci_d_compare,
+-	.d_revalidate = generic_ci_d_revalidate,
+-};
+-#endif
+-
+ /**
+  * generic_set_encrypted_ci_d_ops - helper for setting d_ops for given dentry
+  * @dentry:	dentry to set ops on
+  *
+- * Casefolded directories need d_hash and d_compare set, so that the dentries
+- * contained in them are handled case-insensitively.  Note that these operations
+- * are needed on the parent directory rather than on the dentries in it, and
+- * while the casefolding flag can be toggled on and off on an empty directory,
+- * dentry_operations can't be changed later.  As a result, if the filesystem has
+- * casefolding support enabled at all, we have to give all dentries the
+- * casefolding operations even if their inode doesn't have the casefolding flag
+- * currently (and thus the casefolding ops would be no-ops for now).
++ * Casefolded directories need some dentry_operations set, so that the dentries
++ * contained in them are handled case-insensitively.  Note that d_hash and
++ * d_compare are needed on the parent directory rather than on the dentries in
++ * it, and while the casefolding flag can be toggled on and off on an empty
++ * directory, dentry_operations can't be changed later.  As a result, if the
++ * filesystem has casefolding support enabled at all, we have to give all
++ * dentries the casefolding operations even if their inode doesn't have the
++ * casefolding flag currently (and thus the casefolding ops would be no-ops for
++ * now).
+  *
+  * Encryption works differently in that the only dentry operation it needs is
+  * d_revalidate, which it only needs on dentries that have the no-key name flag.
+@@ -1557,34 +1550,22 @@ static const struct dentry_operations generic_encrypted_ci_dentry_ops = {
+  * Finally, to maximize compatibility with overlayfs (which isn't compatible
+  * with certain dentry operations) and to avoid taking an unnecessary
+  * performance hit, we use custom dentry_operations for each possible
+- * combination rather than always installing all operations.
++ * combination of operations rather than always installing them.
+  */
+ void generic_set_encrypted_ci_d_ops(struct dentry *dentry)
+ {
+-#ifdef CONFIG_FS_ENCRYPTION
+-	bool needs_encrypt_ops = dentry->d_flags & DCACHE_NOKEY_NAME;
+-#endif
+ #if IS_ENABLED(CONFIG_UNICODE)
+-	bool needs_ci_ops = dentry->d_sb->s_encoding;
+-#endif
+-#if defined(CONFIG_FS_ENCRYPTION) && IS_ENABLED(CONFIG_UNICODE)
+-	if (needs_encrypt_ops && needs_ci_ops) {
++	if (dentry->d_sb->s_encoding) {
+ 		d_set_d_op(dentry, &generic_encrypted_ci_dentry_ops);
+ 		return;
  	}
- out_splice:
+ #endif
+ #ifdef CONFIG_FS_ENCRYPTION
+-	if (needs_encrypt_ops) {
++	if (dentry->d_flags & DCACHE_NOKEY_NAME) {
+ 		d_set_d_op(dentry, &generic_encrypted_dentry_ops);
+ 		return;
+ 	}
+ #endif
 -#if IS_ENABLED(CONFIG_UNICODE)
--	if (!inode && IS_CASEFOLDED(dir)) {
--		/* Eventually we want to call d_add_ci(dentry, NULL)
--		 * for negative dentries in the encoding case as
--		 * well.  For now, prevent the negative dentry
--		 * from being cached.
--		 */
--		trace_f2fs_lookup_end(dir, dentry, ino, err);
--		return NULL;
+-	if (needs_ci_ops) {
+-		d_set_d_op(dentry, &generic_ci_dentry_ops);
+-		return;
 -	}
 -#endif
- 	new = d_splice_alias(inode, dentry);
- 	trace_f2fs_lookup_end(dir, !IS_ERR_OR_NULL(new) ? new : dentry,
- 				ino, IS_ERR(new) ? PTR_ERR(new) : err);
-@@ -641,16 +634,6 @@ static int f2fs_unlink(struct inode *dir, struct dentry *dentry)
- 	f2fs_delete_entry(de, page, dir, inode);
- 	f2fs_unlock_op(sbi);
+ }
+ EXPORT_SYMBOL(generic_set_encrypted_ci_d_ops);
  
--#if IS_ENABLED(CONFIG_UNICODE)
--	/* VFS negative dentries are incompatible with Encoding and
--	 * Case-insensitiveness. Eventually we'll want avoid
--	 * invalidating the dentries here, alongside with returning the
--	 * negative dentries at f2fs_lookup(), when it is better
--	 * supported by the VFS for the CI case.
--	 */
--	if (IS_CASEFOLDED(dir))
--		d_invalidate(dentry);
--#endif
- 	if (IS_DIRSYNC(dir))
- 		f2fs_sync_fs(sbi->sb, 1);
- fail:
 -- 
 2.41.0
 
