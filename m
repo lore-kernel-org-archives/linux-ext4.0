@@ -2,157 +2,154 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F4D3C04FDF
-	for <linux-ext4@archiver.kernel.org>; Sat, 12 Aug 2023 00:42:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A97B8EB64DD
+	for <linux-ext4@archiver.kernel.org>; Sat, 12 Aug 2023 01:59:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237280AbjHLAmc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 11 Aug 2023 20:42:32 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58334 "EHLO
+        id S235419AbjHLB7T (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 11 Aug 2023 21:59:19 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42054 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237219AbjHLAmX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Aug 2023 20:42:23 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8D4103594;
-        Fri, 11 Aug 2023 17:42:10 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        with ESMTP id S229793AbjHLB7T (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Aug 2023 21:59:19 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5277630F8;
+        Fri, 11 Aug 2023 18:59:18 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 50A761F86B;
-        Sat, 12 Aug 2023 00:42:09 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1691800929; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=TE/HGdYR1lb+QiAqtg8r3AFyzs792iP/bU+OaFIj2IY=;
-        b=nWA/sjxapi2GZJn3/QC5/3t/4hHthVqC6cUKCcCBiegjU1IkXT0V64FGmTSt2QY8KCQmvy
-        N2QIdW3uAvFlBozL+gr3IYa7vikSlyvZPtFDMefndZpEfvzQ0e8suieRHwxGHncPEBlVft
-        BoORmxz8TvwfOo46/FlUlhEfEH/5Z80=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1691800929;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=TE/HGdYR1lb+QiAqtg8r3AFyzs792iP/bU+OaFIj2IY=;
-        b=mMFVH/KAXrntuYy873XfFNz7tQcw4/W0W5EjKOzR1w1oSev9/c3/SFjyAZwHdTPI3Z9T3g
-        v1bM2TbAp1sdLDDw==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 1AE4D13592;
-        Sat, 12 Aug 2023 00:42:09 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id qc7VAGHV1mQxEAAAMHmgww
-        (envelope-from <krisman@suse.de>); Sat, 12 Aug 2023 00:42:09 +0000
-From:   Gabriel Krisman Bertazi <krisman@suse.de>
-To:     viro@zeniv.linux.org.uk, brauner@kernel.org, tytso@mit.edu,
-        ebiggers@kernel.org, jaegeuk@kernel.org
-Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        Gabriel Krisman Bertazi <krisman@suse.de>,
-        Gabriel Krisman Bertazi <krisman@collabora.com>
-Subject: [PATCH v5 09/10] ext4: Enable negative dentries on case-insensitive lookup
-Date:   Fri, 11 Aug 2023 20:41:45 -0400
-Message-ID: <20230812004146.30980-10-krisman@suse.de>
-X-Mailer: git-send-email 2.41.0
-In-Reply-To: <20230812004146.30980-1-krisman@suse.de>
+        by dfw.source.kernel.org (Postfix) with ESMTPS id DB224629E9;
+        Sat, 12 Aug 2023 01:59:17 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 06E97C433C7;
+        Sat, 12 Aug 2023 01:59:16 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1691805557;
+        bh=nAJmbpwTFQg79wN1L8Hwf7i2NhG4ry3JrZqe/1RgP6Q=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=uo+6bf47lZ6FIDB/B6UeLXM9d5L7Wkv8oX/AwcApqynO7J5p1UBnfMdR91KELqHqc
+         F1QL7ifceNwBQmF6ny1QzGIbHPdZvQIfEj53kJ3QOhKHCRz/S/eEBo6AhpDLpwDiVE
+         xDKzrW766UaBxMsBJ5IDiaSuwwnSC6+FgDFrER5i2Th+1WVD6tGy7ca1sYVl2ZZHl4
+         C5tyTThejdiELIai1/gNPgpHDzLE0cFycvpifjF2db5MREBAPdIJ415qdvmHvgBq9k
+         aLOh1GK+dTbQW2H80fWrWTbAbq0kU3AG/ZC07Y47Yx/hvtbQde1GdDGxdVmzDXSLrL
+         4qME5GREFAxLg==
+Date:   Fri, 11 Aug 2023 18:59:15 -0700
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Gabriel Krisman Bertazi <krisman@suse.de>
+Cc:     viro@zeniv.linux.org.uk, brauner@kernel.org, tytso@mit.edu,
+        jaegeuk@kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net
+Subject: Re: [PATCH v5 01/10] fs: Expose helper to check if a directory needs
+ casefolding
+Message-ID: <20230812015915.GA971@sol.localdomain>
 References: <20230812004146.30980-1-krisman@suse.de>
+ <20230812004146.30980-2-krisman@suse.de>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230812004146.30980-2-krisman@suse.de>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
+On Fri, Aug 11, 2023 at 08:41:37PM -0400, Gabriel Krisman Bertazi wrote:
+> In preparation to use it in ecryptfs, move needs_casefolding into a
+> public header and give it a namespaced name.
+> 
+> Signed-off-by: Gabriel Krisman Bertazi <krisman@suse.de>
+> ---
+>  fs/libfs.c         | 14 ++------------
+>  include/linux/fs.h | 21 +++++++++++++++++++++
+>  2 files changed, 23 insertions(+), 12 deletions(-)
+> 
+> diff --git a/fs/libfs.c b/fs/libfs.c
+> index 5b851315eeed..8d0b64cfd5da 100644
+> --- a/fs/libfs.c
+> +++ b/fs/libfs.c
+> @@ -1381,16 +1381,6 @@ bool is_empty_dir_inode(struct inode *inode)
+>  }
+>  
+>  #if IS_ENABLED(CONFIG_UNICODE)
+> -/*
+> - * Determine if the name of a dentry should be casefolded.
+> - *
+> - * Return: if names will need casefolding
+> - */
+> -static bool needs_casefold(const struct inode *dir)
+> -{
+> -	return IS_CASEFOLDED(dir) && dir->i_sb->s_encoding;
+> -}
+> -
+>  /**
+>   * generic_ci_d_compare - generic d_compare implementation for casefolding filesystems
+>   * @dentry:	dentry whose name we are checking against
+> @@ -1411,7 +1401,7 @@ static int generic_ci_d_compare(const struct dentry *dentry, unsigned int len,
+>  	char strbuf[DNAME_INLINE_LEN];
+>  	int ret;
+>  
+> -	if (!dir || !needs_casefold(dir))
+> +	if (!dir || !dir_is_casefolded(dir))
+>  		goto fallback;
+>  	/*
+>  	 * If the dentry name is stored in-line, then it may be concurrently
+> @@ -1453,7 +1443,7 @@ static int generic_ci_d_hash(const struct dentry *dentry, struct qstr *str)
+>  	const struct unicode_map *um = sb->s_encoding;
+>  	int ret = 0;
+>  
+> -	if (!dir || !needs_casefold(dir))
+> +	if (!dir || !dir_is_casefolded(dir))
+>  		return 0;
+>  
+>  	ret = utf8_casefold_hash(um, dentry, str);
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 6867512907d6..e3b631c6d24a 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -3213,6 +3213,27 @@ static inline bool dir_relax_shared(struct inode *inode)
+>  	return !IS_DEADDIR(inode);
+>  }
+>  
+> +/**
+> + * dir_is_casefolded - Safely determine if filenames inside of a
+> + * directory should be casefolded.
+> + * @dir: The directory inode to be checked
+> + *
+> + * Filesystems should usually rely on this instead of checking the
+> + * S_CASEFOLD flag directly when handling inodes, to avoid surprises
+> + * with corrupted volumes.  Checking i_sb->s_encoding ensures the
+> + * filesystem knows how to deal with case-insensitiveness.
+> + *
+> + * Return: if names will need casefolding
+> + */
+> +static inline bool dir_is_casefolded(const struct inode *dir)
+> +{
+> +#if IS_ENABLED(CONFIG_UNICODE)
+> +	return IS_CASEFOLDED(dir) && dir->i_sb->s_encoding;
+> +#else
+> +	return false;
+> +#endif
+> +}
 
-Instead of invalidating negative dentries during case-insensitive
-lookups, mark them as such and let them be added to the dcache.
-d_ci_revalidate is able to properly filter them out if necessary based
-on the dentry casefold flag.
+To be honest I've always been confused about why the ->s_encoding check is
+there.  It looks like Ted added it in 6456ca6520ab ("ext4: fix kernel oops
+caused by spurious casefold flag") to address a fuzzing report for a filesystem
+that had a casefolded directory but didn't have the casefold feature flag set.
+It seems like an unnecessarily complex fix, though.  The filesystem should just
+reject the inode earlier, in __ext4_iget().  And likewise for f2fs.  Then no
+other code has to worry about this problem.
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
+Actually, f2fs already does it, as I added it in commit f6322f3f1212:
 
----
-Changes since v4:
-  - Use helper to decide if should set dentry flag.
-Changes since v2:
+        if ((fi->i_flags & F2FS_CASEFOLD_FL) && !f2fs_sb_has_casefold(sbi)) {
+                set_sbi_flag(sbi, SBI_NEED_FSCK);
+                f2fs_warn(sbi, "%s: inode (ino=%lx) has casefold flag, but casefold feature is off",
+                          __func__, inode->i_ino);
+                return false;
+        }
 
-  - Move dentry flag set closer to fscrypt code (Eric)
----
- fs/ext4/namei.c | 35 ++++-------------------------------
- 1 file changed, 4 insertions(+), 31 deletions(-)
+So just __ext4_iget() needs to be fixed.  I think we should consider doing that
+before further entrenching all the extra ->s_encoding checks.
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 0caf6c730ce3..8d33a74bcc95 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1759,6 +1759,10 @@ static struct buffer_head *ext4_lookup_entry(struct inode *dir,
- 
- 	err = ext4_fname_prepare_lookup(dir, dentry, &fname);
- 	generic_set_encrypted_ci_d_ops(dentry);
-+
-+	if (dir_is_casefolded(dir))
-+		d_set_casefolded_name(dentry);
-+
- 	if (err == -ENOENT)
- 		return NULL;
- 	if (err)
-@@ -1866,16 +1870,6 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
- 		}
- 	}
- 
--#if IS_ENABLED(CONFIG_UNICODE)
--	if (!inode && IS_CASEFOLDED(dir)) {
--		/* Eventually we want to call d_add_ci(dentry, NULL)
--		 * for negative dentries in the encoding case as
--		 * well.  For now, prevent the negative dentry
--		 * from being cached.
--		 */
--		return NULL;
--	}
--#endif
- 	return d_splice_alias(inode, dentry);
- }
- 
-@@ -3206,17 +3200,6 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
- 	ext4_fc_track_unlink(handle, dentry);
- 	retval = ext4_mark_inode_dirty(handle, dir);
- 
--#if IS_ENABLED(CONFIG_UNICODE)
--	/* VFS negative dentries are incompatible with Encoding and
--	 * Case-insensitiveness. Eventually we'll want avoid
--	 * invalidating the dentries here, alongside with returning the
--	 * negative dentries at ext4_lookup(), when it is better
--	 * supported by the VFS for the CI case.
--	 */
--	if (IS_CASEFOLDED(dir))
--		d_invalidate(dentry);
--#endif
--
- end_rmdir:
- 	brelse(bh);
- 	if (handle)
-@@ -3317,16 +3300,6 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 		goto out_trace;
- 
- 	retval = __ext4_unlink(dir, &dentry->d_name, d_inode(dentry), dentry);
--#if IS_ENABLED(CONFIG_UNICODE)
--	/* VFS negative dentries are incompatible with Encoding and
--	 * Case-insensitiveness. Eventually we'll want avoid
--	 * invalidating the dentries here, alongside with returning the
--	 * negative dentries at ext4_lookup(), when it is  better
--	 * supported by the VFS for the CI case.
--	 */
--	if (IS_CASEFOLDED(dir))
--		d_invalidate(dentry);
--#endif
- 
- out_trace:
- 	trace_ext4_unlink_exit(dentry, retval);
--- 
-2.41.0
+Also I don't understand why this needs to be part of your patch series anyway.
+Shouldn't eCryptfs check IS_CASEFOLDED() anyway?
 
+- Eric
