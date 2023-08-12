@@ -2,154 +2,102 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FD7BC001DB
-	for <linux-ext4@archiver.kernel.org>; Sat, 12 Aug 2023 00:42:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4601DC04E69
+	for <linux-ext4@archiver.kernel.org>; Sat, 12 Aug 2023 00:42:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237108AbjHLAl7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 11 Aug 2023 20:41:59 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52298 "EHLO
+        id S237154AbjHLAmA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 11 Aug 2023 20:42:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52312 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236946AbjHLAl5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Aug 2023 20:41:57 -0400
+        with ESMTP id S237149AbjHLAl6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Aug 2023 20:41:58 -0400
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C45A7A6;
-        Fri, 11 Aug 2023 17:41:56 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AFEA6A6;
+        Fri, 11 Aug 2023 17:41:58 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 4D913218E0;
-        Sat, 12 Aug 2023 00:41:54 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 74A9321885;
+        Sat, 12 Aug 2023 00:41:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1691800914; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=Xrrpw3+HUsiXWHTjXG7RJBvNwihn1GUBNy+js8Leqss=;
-        b=xZte8DD6iXDn04AdGNE5WpVyjAnG3v60jjUBMm2KJXecrvUkNEalSpFu2CN8AO5ZjzEtI2
-        vFChXHP3Jnb1jIzk8peU70MsY5p/o6LLouUHce1CLZDTUKh4Tpz/cizVwwhRCyuLpzQjDe
-        EuBiq95BCBTRMTR2sxg20LAMNEGVhBI=
+        t=1691800917; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=QeHgxjk4qHnUIIhBwhEx6gXjURKH4sMFZ4pmLOe7O5w=;
+        b=M6lRGsatagECls+mo8KGm78FfdQNZ0/jdVBKAP2Rjx38U8NAhTPq35gZsf3OG0BXO5lhBe
+        AZV09l4MIYo9KIIWjfZlETOF2FOth0F0Py0OnBenFTEap296C6KgSW2/n1z8YVPoUlqPnh
+        FZ1V/i4WF3IiucfCmuz+3CXKxAVdeJk=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1691800914;
+        s=susede2_ed25519; t=1691800917;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=Xrrpw3+HUsiXWHTjXG7RJBvNwihn1GUBNy+js8Leqss=;
-        b=oYAsTjgtsHVDwEXGreH2/pXTVq6R0/U9/EYlX9xHjsi2gQ1kx2w8ymLSVDJYKClJNT/jHM
-        oKP9h5RpYzaOchCg==
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=QeHgxjk4qHnUIIhBwhEx6gXjURKH4sMFZ4pmLOe7O5w=;
+        b=jdAiTm5V8dYFS+EC0KOhewhYD6Pnb2AOJIKuth5oWk5h01Az2PxQv7mF9t1gVmCY+vIo+i
+        PNq6DtbNGaHLGQDA==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 1214A13592;
-        Sat, 12 Aug 2023 00:41:53 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 4031313592;
+        Sat, 12 Aug 2023 00:41:57 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id io6fOlHV1mT/DwAAMHmgww
-        (envelope-from <krisman@suse.de>); Sat, 12 Aug 2023 00:41:53 +0000
+        id 95cQClXV1mQNEAAAMHmgww
+        (envelope-from <krisman@suse.de>); Sat, 12 Aug 2023 00:41:57 +0000
 From:   Gabriel Krisman Bertazi <krisman@suse.de>
 To:     viro@zeniv.linux.org.uk, brauner@kernel.org, tytso@mit.edu,
         ebiggers@kernel.org, jaegeuk@kernel.org
 Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
         Gabriel Krisman Bertazi <krisman@suse.de>
-Subject: [PATCH v5 00/10] Support negative dentries on case-insensitive ext4 and f2fs
-Date:   Fri, 11 Aug 2023 20:41:36 -0400
-Message-ID: <20230812004146.30980-1-krisman@suse.de>
+Subject: [PATCH v5 02/10] ecryptfs: Reject casefold directory inodes
+Date:   Fri, 11 Aug 2023 20:41:38 -0400
+Message-ID: <20230812004146.30980-3-krisman@suse.de>
 X-Mailer: git-send-email 2.41.0
+In-Reply-To: <20230812004146.30980-1-krisman@suse.de>
+References: <20230812004146.30980-1-krisman@suse.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi,
+Even though it seems to be able to resolve some names of
+case-insensitive directories, the lack of d_hash and d_compare means we
+end up with a broken state in the d_cache.  Considering it was never a
+goal to support these two together, and we are preparing to use
+d_revalidate in case-insensitive filesystems, which would make the
+combination even more broken, reject any attempt to get a casefolded
+inode from ecryptfs.
 
-This is the v5 of this patchset.  Thanks Christian and Eric for you
-review.
+Signed-off-by: Gabriel Krisman Bertazi <krisman@suse.de>
+---
+ fs/ecryptfs/inode.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-In this version, the patchset grew a bit because it adds:
-
-  - a preparation patch to merge d_revalidate_name and d_revalidate,
-  attending Christian's request.  The original patch is now touching
-  several filesystems to update the hook signature, so it has grown
-  quite a bit. But, all of that was autogenerated with coccinelle and
-  tested with allyesconfig only.
-
-  - A new patch to expose a helper from libfs that I use in ecryptfs.
-
-  - Code to prevent ecryptfs from mounting on top of casefolded
-  directories. Also following on Christian's review.
-
-Other than these, there are some minor fixes, listed in each patch
-changelog, and more clarifications on the locking, thanks to the
-excellent feedback from Eric.
-
-Eric, I believe I have covered the cases where instantiation can happen
-and I don't think it is possible for a dentry to become positive amidst
-the d_revalidation, since we are holding the inode parent lock to
-synchronize with creations.  Please let me know if you find anything
-else.
-
-Finally, I've dropped the r-b tags from patch "fs: Expose name under
-lookup to d_revalidate hooks", because it changed too much since
-the time of review.
-
-Regarding testing, I verified it doesn't regress fstests for f2fs and
-ext4, verified building all filesystems work fine with allyesconfig,
-even with variation of CONFIG_FS_ENCRYPTION and CONFIG_UNICODE, and,
-finally, I checked I wasn't able to mount or lookup casefolded
-directories with ecryptfs and overlayfs.
-
-Thanks,
-
-Gabriel Krisman Bertazi (10):
-  fs: Expose helper to check if a directory needs casefolding
-  ecryptfs: Reject casefold directory inodes
-  9p: Split ->weak_revalidate from ->revalidate
-  fs: Expose name under lookup to d_revalidate hooks
-  fs: Add DCACHE_CASEFOLDED_NAME flag
-  libfs: Validate negative dentries in case-insensitive directories
-  libfs: Chain encryption checks after case-insensitive revalidation
-  libfs: Merge encrypted_ci_dentry_ops and ci_dentry_ops
-  ext4: Enable negative dentries on case-insensitive lookup
-  f2fs: Enable negative dentries on case-insensitive lookup
-
- Documentation/filesystems/locking.rst |   3 +-
- Documentation/filesystems/vfs.rst     |  11 ++-
- fs/9p/vfs_dentry.c                    |  11 ++-
- fs/afs/dir.c                          |   6 +-
- fs/afs/dynroot.c                      |   4 +-
- fs/ceph/dir.c                         |   3 +-
- fs/coda/dir.c                         |   3 +-
- fs/crypto/fname.c                     |   3 +-
- fs/dcache.c                           |   8 ++
- fs/ecryptfs/dentry.c                  |   5 +-
- fs/ecryptfs/inode.c                   |   8 ++
- fs/exfat/namei.c                      |   3 +-
- fs/ext4/namei.c                       |  35 +-------
- fs/f2fs/namei.c                       |  25 +-----
- fs/fat/namei_vfat.c                   |   6 +-
- fs/fuse/dir.c                         |   3 +-
- fs/gfs2/dentry.c                      |   3 +-
- fs/hfs/sysdep.c                       |   3 +-
- fs/jfs/namei.c                        |   3 +-
- fs/kernfs/dir.c                       |   3 +-
- fs/libfs.c                            | 124 +++++++++++++++++---------
- fs/namei.c                            |  18 ++--
- fs/nfs/dir.c                          |   9 +-
- fs/ocfs2/dcache.c                     |   4 +-
- fs/orangefs/dcache.c                  |   3 +-
- fs/overlayfs/super.c                  |  20 +++--
- fs/proc/base.c                        |   6 +-
- fs/proc/fd.c                          |   3 +-
- fs/proc/generic.c                     |   6 +-
- fs/proc/proc_sysctl.c                 |   3 +-
- fs/reiserfs/xattr.c                   |   3 +-
- fs/smb/client/dir.c                   |   3 +-
- fs/vboxsf/dir.c                       |   4 +-
- include/linux/dcache.h                |  10 ++-
- include/linux/fs.h                    |  21 +++++
- include/linux/fscrypt.h               |   4 +-
- 36 files changed, 242 insertions(+), 148 deletions(-)
-
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index 83274915ba6d..1305dc49df78 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -78,6 +78,14 @@ static struct inode *__ecryptfs_get_inode(struct inode *lower_inode,
+ 
+ 	if (lower_inode->i_sb != ecryptfs_superblock_to_lower(sb))
+ 		return ERR_PTR(-EXDEV);
++
++	/* Reject dealing with casefold directories. */
++	if (S_ISDIR(lower_inode->i_mode) && dir_is_casefolded(lower_inode)) {
++		pr_err_ratelimited("%s: Can't handle casefolded directory.\n",
++				   __func__);
++		return ERR_PTR(-EREMOTE);
++	}
++
+ 	if (!igrab(lower_inode))
+ 		return ERR_PTR(-ESTALE);
+ 	inode = iget5_locked(sb, (unsigned long)lower_inode,
 -- 
 2.41.0
 
