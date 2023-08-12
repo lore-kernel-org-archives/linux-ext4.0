@@ -2,65 +2,150 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3BC66C0015E
-	for <linux-ext4@archiver.kernel.org>; Fri, 11 Aug 2023 19:23:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DA3AFC0015E
+	for <linux-ext4@archiver.kernel.org>; Sat, 12 Aug 2023 00:41:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235777AbjHKTXT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 11 Aug 2023 15:23:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51774 "EHLO
+        id S234588AbjHLAl7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 11 Aug 2023 20:41:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52308 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229959AbjHKTXS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Aug 2023 15:23:18 -0400
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 280C0120;
-        Fri, 11 Aug 2023 12:23:18 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=SCjfE0ihVcOKQWLIcU8GEL15xW0kjppT5rqoPuDlnqU=; b=GzoTSGKJWneXfmwmwJytS9bRLm
-        yuwJ6wSD5oilzUyqu9EYqjwALMw3krzY9689khfPDLvDqU8cdWrTWkcwzU6+/ghc4sp/5ZTrrwke6
-        I8EaRWP3PJKgKNw0BDEur913Z0/1OAWthjSBwj0jcCPHN3elDWqiVmt2129ugispTm+GTPjdMsN/A
-        gE16a1FOese/e1VWbqNfd1Qk+jmCXtehmwtNnyAsRaULoNOwBRux8lAvxptPOaRxMtAzvpscsIMDz
-        o1lMBoysZ53LM9o1znL/Beq4BjsS+wyFdk65021lvKyjORnouttYzMgwZihSqfsZpsNZsfQ/Nm9SM
-        2+oJAZzw==;
-Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qUXj7-002vvW-41; Fri, 11 Aug 2023 19:23:13 +0000
-Date:   Fri, 11 Aug 2023 20:23:13 +0100
-From:   Matthew Wilcox <willy@infradead.org>
-To:     akpm@linux-foundation.org
-Cc:     Hui Zhu <teawater@antgroup.com>, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Subject: [PATCH 4/3] buffer: Use bdev_getblk() in __breadahead()
-Message-ID: <ZNaKoWbYyOveesVc@casper.infradead.org>
-References: <20230811161528.506437-1-willy@infradead.org>
+        with ESMTP id S237108AbjHLAl6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Aug 2023 20:41:58 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4A8CC3581;
+        Fri, 11 Aug 2023 17:41:57 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id EFB4D1F385;
+        Sat, 12 Aug 2023 00:41:55 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1691800915; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=gc3ImIlvvNAlNv89w2x2DqtkUeFquTvzH0e1HxxlakQ=;
+        b=WPNMe74pRP9y1F4AfbMzA7v1wLaAk+rqQH4j7Fc2IBMN/lncSw4YpqM716vOqVqmsL7zjC
+        AELb8iIU2hVGEdbcS6eTnI4op/H7W2sNkgx3DZnAXSs3b+rQnvpI0LT10+cr/UoQdkIIUP
+        928H4kORANFovpX4ZSoZPfMpbAgCLKU=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1691800915;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=gc3ImIlvvNAlNv89w2x2DqtkUeFquTvzH0e1HxxlakQ=;
+        b=7bO/NmKNxiJ/5BFD5zAPqsdas9fCtjTJzsBfJlhynDqUada/lYz9mNV5xKH3cMHPZTSPUK
+        9jxi+CQumQORzSDA==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id B712213592;
+        Sat, 12 Aug 2023 00:41:55 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id TcJ7JlPV1mQLEAAAMHmgww
+        (envelope-from <krisman@suse.de>); Sat, 12 Aug 2023 00:41:55 +0000
+From:   Gabriel Krisman Bertazi <krisman@suse.de>
+To:     viro@zeniv.linux.org.uk, brauner@kernel.org, tytso@mit.edu,
+        ebiggers@kernel.org, jaegeuk@kernel.org
+Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        Gabriel Krisman Bertazi <krisman@suse.de>
+Subject: [PATCH v5 01/10] fs: Expose helper to check if a directory needs casefolding
+Date:   Fri, 11 Aug 2023 20:41:37 -0400
+Message-ID: <20230812004146.30980-2-krisman@suse.de>
+X-Mailer: git-send-email 2.41.0
+In-Reply-To: <20230812004146.30980-1-krisman@suse.de>
+References: <20230812004146.30980-1-krisman@suse.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20230811161528.506437-1-willy@infradead.org>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+In preparation to use it in ecryptfs, move needs_casefolding into a
+public header and give it a namespaced name.
 
-It occurs to me that this would also be useful and I'll include it in
-the next version:
+Signed-off-by: Gabriel Krisman Bertazi <krisman@suse.de>
+---
+ fs/libfs.c         | 14 ++------------
+ include/linux/fs.h | 21 +++++++++++++++++++++
+ 2 files changed, 23 insertions(+), 12 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 122b7d16befb..b551a5b1196b 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -1470,7 +1470,9 @@ EXPORT_SYMBOL(__getblk_gfp);
-  */
- void __breadahead(struct block_device *bdev, sector_t block, unsigned size)
- {
--       struct buffer_head *bh = __getblk(bdev, block, size);
-+       struct buffer_head *bh = bdev_getblk(bdev, block, size,
-+                       GFP_NOWAIT | __GFP_MOVABLE | __GFP_ACCOUNT);
+diff --git a/fs/libfs.c b/fs/libfs.c
+index 5b851315eeed..8d0b64cfd5da 100644
+--- a/fs/libfs.c
++++ b/fs/libfs.c
+@@ -1381,16 +1381,6 @@ bool is_empty_dir_inode(struct inode *inode)
+ }
+ 
+ #if IS_ENABLED(CONFIG_UNICODE)
+-/*
+- * Determine if the name of a dentry should be casefolded.
+- *
+- * Return: if names will need casefolding
+- */
+-static bool needs_casefold(const struct inode *dir)
+-{
+-	return IS_CASEFOLDED(dir) && dir->i_sb->s_encoding;
+-}
+-
+ /**
+  * generic_ci_d_compare - generic d_compare implementation for casefolding filesystems
+  * @dentry:	dentry whose name we are checking against
+@@ -1411,7 +1401,7 @@ static int generic_ci_d_compare(const struct dentry *dentry, unsigned int len,
+ 	char strbuf[DNAME_INLINE_LEN];
+ 	int ret;
+ 
+-	if (!dir || !needs_casefold(dir))
++	if (!dir || !dir_is_casefolded(dir))
+ 		goto fallback;
+ 	/*
+ 	 * If the dentry name is stored in-line, then it may be concurrently
+@@ -1453,7 +1443,7 @@ static int generic_ci_d_hash(const struct dentry *dentry, struct qstr *str)
+ 	const struct unicode_map *um = sb->s_encoding;
+ 	int ret = 0;
+ 
+-	if (!dir || !needs_casefold(dir))
++	if (!dir || !dir_is_casefolded(dir))
+ 		return 0;
+ 
+ 	ret = utf8_casefold_hash(um, dentry, str);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 6867512907d6..e3b631c6d24a 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -3213,6 +3213,27 @@ static inline bool dir_relax_shared(struct inode *inode)
+ 	return !IS_DEADDIR(inode);
+ }
+ 
++/**
++ * dir_is_casefolded - Safely determine if filenames inside of a
++ * directory should be casefolded.
++ * @dir: The directory inode to be checked
++ *
++ * Filesystems should usually rely on this instead of checking the
++ * S_CASEFOLD flag directly when handling inodes, to avoid surprises
++ * with corrupted volumes.  Checking i_sb->s_encoding ensures the
++ * filesystem knows how to deal with case-insensitiveness.
++ *
++ * Return: if names will need casefolding
++ */
++static inline bool dir_is_casefolded(const struct inode *dir)
++{
++#if IS_ENABLED(CONFIG_UNICODE)
++	return IS_CASEFOLDED(dir) && dir->i_sb->s_encoding;
++#else
++	return false;
++#endif
++}
 +
-        if (likely(bh)) {
-                bh_readahead(bh, REQ_RAHEAD);
-                brelse(bh);
-
-
+ extern bool path_noexec(const struct path *path);
+ extern void inode_nohighmem(struct inode *inode);
+ 
+-- 
+2.41.0
 
