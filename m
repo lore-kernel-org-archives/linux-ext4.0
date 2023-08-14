@@ -2,72 +2,109 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D5D2EB64DD
-	for <linux-ext4@archiver.kernel.org>; Mon, 14 Aug 2023 18:30:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A91DC001DB
+	for <linux-ext4@archiver.kernel.org>; Mon, 14 Aug 2023 18:30:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231513AbjHNS3t (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 14 Aug 2023 14:29:49 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33040 "EHLO
+        id S231543AbjHNS3u (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 14 Aug 2023 14:29:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33054 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231666AbjHNS3i (ORCPT
+        with ESMTP id S231668AbjHNS3i (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Aug 2023 14:29:38 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4963DE6E;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E7FB7E73;
         Mon, 14 Aug 2023 11:29:37 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id DBF08617B5;
-        Mon, 14 Aug 2023 18:29:36 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1E5FEC433C8;
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 856176577C;
+        Mon, 14 Aug 2023 18:29:37 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C4E8DC433CA;
         Mon, 14 Aug 2023 18:29:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1692037776;
-        bh=uVYR89LUMO78W0VjDkqutMqUi2s1NDJcRATsUgnL4s0=;
-        h=From:To:Cc:Subject:Date:From;
-        b=ZwvgHI6vwkmlHBBx4WcXoMviO24OlBy7Z5cuSa+qxtYZOp878FhM3EK9pO7T355Dh
-         SCXTJUF5wK/mC50r3jun/n5+2gEuTgixGwlJocA2kptuuld1sDDNm0EKfoTRdAusEg
-         Yn+vGGEIx1hv3qbCr7msdkNvYLNe+KQJef6USeD+TOlXyG6JocFHyyI4i7f+KmszTS
-         8qBYH25ngGeEeuaE9XLcN0co1wKA6WF4Eh7oNF5KHxphMeg/WUinY82m9TF3xT5s5N
-         JNPccRxQoOftx6FW6v24sf8aTwCibDK7SL2nbezyI8MSqRBFmmkXqrAz2O6k6Oxkor
-         ToYEhz9Q5YY4g==
+        s=k20201202; t=1692037777;
+        bh=TwLV5UwTulr/DDiB634rcf+NgwfPvOt5lHyqVyHUL/o=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=IJAA8GczDBa0f8X2Pqv9nyTEui8jCtPFWj0e9Ple1qHue9uONq19sLDMI17uyO07+
+         TXHjb90lEzczne07U5ml1GpJRfcN/NuF7kygZgI32FsFkZ8zp5e3ZwJQvQhK5MSNcQ
+         unbS7+Bi6Tj97vMm1gviMijGdn+cPMkmWj/9NQYo49PWLgirKuescuU2PvlkOsfA95
+         8sx/kgDgan/zz7juyAhnjjtmupZMR78e9AkCFXkX1pKuvAQEAltroGj5p6Hpl+D2C6
+         sDjjeIkULyfYncQaAIuwiMj3+xZ42lbv6kgsQzbOTfkwCNAFE+/ePXqWWxh7H39Tq5
+         q8HEhvLosPZWA==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 Cc:     linux-fsdevel@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
         Gabriel Krisman Bertazi <krisman@suse.de>
-Subject: [PATCH 0/3] Simplify rejection of unexpected casefold inode flag
-Date:   Mon, 14 Aug 2023 11:29:00 -0700
-Message-ID: <20230814182903.37267-1-ebiggers@kernel.org>
+Subject: [PATCH 2/3] ext4: remove redundant checks of s_encoding
+Date:   Mon, 14 Aug 2023 11:29:02 -0700
+Message-ID: <20230814182903.37267-3-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.41.0
+In-Reply-To: <20230814182903.37267-1-ebiggers@kernel.org>
+References: <20230814182903.37267-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This series makes unexpected casefold flags on inodes be consistently
-rejected early on so that additional validation isn't needed later on
-during random filesystem operations.  For additional context, refer to
-the discussion on patch 1 of
-https://lore.kernel.org/linux-fsdevel/20230812004146.30980-1-krisman@suse.de/T/#u
+From: Eric Biggers <ebiggers@google.com>
 
-Applies to v6.5-rc6
+Now that ext4 does not allow inodes with the casefold flag to be
+instantiated when unsupported, it's unnecessary to repeatedly check for
+support later on during random filesystem operations.
 
-Eric Biggers (3):
-  ext4: reject casefold inode flag without casefold feature
-  ext4: remove redundant checks of s_encoding
-  libfs: remove redundant checks of s_encoding
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/ext4/hash.c  | 2 +-
+ fs/ext4/namei.c | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
- fs/ext4/hash.c  |  2 +-
- fs/ext4/inode.c |  5 ++++-
- fs/ext4/namei.c |  6 +++---
- fs/libfs.c      | 14 ++------------
- 4 files changed, 10 insertions(+), 17 deletions(-)
-
-
-base-commit: 2ccdd1b13c591d306f0401d98dedc4bdcd02b421
+diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+index 46c3423ddfa1..deabe29da7fb 100644
+--- a/fs/ext4/hash.c
++++ b/fs/ext4/hash.c
+@@ -300,7 +300,7 @@ int ext4fs_dirhash(const struct inode *dir, const char *name, int len,
+ 	unsigned char *buff;
+ 	struct qstr qstr = {.name = name, .len = len };
+ 
+-	if (len && IS_CASEFOLDED(dir) && um &&
++	if (len && IS_CASEFOLDED(dir) &&
+ 	   (!IS_ENCRYPTED(dir) || fscrypt_has_encryption_key(dir))) {
+ 		buff = kzalloc(sizeof(char) * PATH_MAX, GFP_KERNEL);
+ 		if (!buff)
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 0caf6c730ce3..f9a5663b9d23 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1445,7 +1445,7 @@ int ext4_fname_setup_ci_filename(struct inode *dir, const struct qstr *iname,
+ 	struct dx_hash_info *hinfo = &name->hinfo;
+ 	int len;
+ 
+-	if (!IS_CASEFOLDED(dir) || !dir->i_sb->s_encoding ||
++	if (!IS_CASEFOLDED(dir) ||
+ 	    (IS_ENCRYPTED(dir) && !fscrypt_has_encryption_key(dir))) {
+ 		cf_name->name = NULL;
+ 		return 0;
+@@ -1496,7 +1496,7 @@ static bool ext4_match(struct inode *parent,
+ #endif
+ 
+ #if IS_ENABLED(CONFIG_UNICODE)
+-	if (parent->i_sb->s_encoding && IS_CASEFOLDED(parent) &&
++	if (IS_CASEFOLDED(parent) &&
+ 	    (!IS_ENCRYPTED(parent) || fscrypt_has_encryption_key(parent))) {
+ 		if (fname->cf_name.name) {
+ 			struct qstr cf = {.name = fname->cf_name.name,
+@@ -2393,7 +2393,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 
+ #if IS_ENABLED(CONFIG_UNICODE)
+ 	if (sb_has_strict_encoding(sb) && IS_CASEFOLDED(dir) &&
+-	    sb->s_encoding && utf8_validate(sb->s_encoding, &dentry->d_name))
++	    utf8_validate(sb->s_encoding, &dentry->d_name))
+ 		return -EINVAL;
+ #endif
+ 
 -- 
 2.41.0
 
