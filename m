@@ -2,31 +2,31 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E7489C001E0
-	for <linux-ext4@archiver.kernel.org>; Tue, 15 Aug 2023 11:30:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 43B4EC04A94
+	for <linux-ext4@archiver.kernel.org>; Tue, 15 Aug 2023 11:30:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236811AbjHOLaC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 15 Aug 2023 07:30:02 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49264 "EHLO
+        id S236717AbjHOLaH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 15 Aug 2023 07:30:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49176 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236775AbjHOL3v (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Aug 2023 07:29:51 -0400
+        with ESMTP id S236771AbjHOL3u (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Aug 2023 07:29:50 -0400
 Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1E7FB1BEA;
-        Tue, 15 Aug 2023 04:29:41 -0700 (PDT)
-Received: from canpemm500010.china.huawei.com (unknown [172.30.72.55])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4RQ88w1GTdzNmq5;
-        Tue, 15 Aug 2023 19:26:08 +0800 (CST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 079361BE7;
+        Tue, 15 Aug 2023 04:29:39 -0700 (PDT)
+Received: from canpemm500010.china.huawei.com (unknown [172.30.72.57])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4RQ8BZ1jJhzVk1g;
+        Tue, 15 Aug 2023 19:27:34 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm500010.china.huawei.com
  (7.192.105.118) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.31; Tue, 15 Aug
- 2023 19:29:39 +0800
+ 2023 19:29:37 +0800
 From:   Ye Bin <yebin10@huawei.com>
 To:     <jack@suse.cz>, <linux-ext4@vger.kernel.org>
 CC:     <linux-kernel@vger.kernel.org>, Ye Bin <yebin10@huawei.com>
-Subject: [PATCH v2 4/4] ext2: dump current reservation window info
-Date:   Tue, 15 Aug 2023 19:26:12 +0800
-Message-ID: <20230815112612.221145-5-yebin10@huawei.com>
+Subject: [PATCH v2 1/4] ext2: remove ext2_new_block()
+Date:   Tue, 15 Aug 2023 19:26:09 +0800
+Message-ID: <20230815112612.221145-2-yebin10@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20230815112612.221145-1-yebin10@huawei.com>
 References: <20230815112612.221145-1-yebin10@huawei.com>
@@ -41,36 +41,61 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-There's report BUG in 'ext2_try_to_allocate_with_rsv()', although there's
-now dump of all reservation windows information. But there's unknown which
-window is being processed.So this is not helpful for locating the issue.
-To better analyze the problem, dump the information about reservation window
-that is being processed. And just bail with error instead of BUG here.
+Now, only xattr allocate block use ext2_new_block(), so just opencode it in
+the xattr code.
 
 Signed-off-by: Ye Bin <yebin10@huawei.com>
 ---
- fs/ext2/balloc.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ fs/ext2/balloc.c | 7 -------
+ fs/ext2/ext2.h   | 1 -
+ fs/ext2/xattr.c  | 4 +++-
+ 3 files changed, 3 insertions(+), 9 deletions(-)
 
 diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-index 4ff1d831bb80..f09f413030a5 100644
+index c8049c90323d..c8515fc501ec 100644
 --- a/fs/ext2/balloc.c
 +++ b/fs/ext2/balloc.c
-@@ -1131,8 +1131,13 @@ ext2_try_to_allocate_with_rsv(struct super_block *sb, unsigned int group,
+@@ -1429,13 +1429,6 @@ ext2_fsblk_t ext2_new_blocks(struct inode *inode, ext2_fsblk_t goal,
+ 	return 0;
+ }
  
- 		if ((my_rsv->rsv_start > group_last_block) ||
- 				(my_rsv->rsv_end < group_first_block)) {
-+			ext2_error(sb, __func__,
-+				   "Reservation out of group %u range goal %d fsb[%lu,%lu] rsv[%lu, %lu]",
-+				   group, grp_goal, group_first_block,
-+				   group_last_block, my_rsv->rsv_start,
-+				   my_rsv->rsv_end);
- 			rsv_window_dump(&EXT2_SB(sb)->s_rsv_window_root, 1);
--			BUG();
-+			return -1;
- 		}
- 		ret = ext2_try_to_allocate(sb, group, bitmap_bh, grp_goal,
- 					   &num, &my_rsv->rsv_window);
+-ext2_fsblk_t ext2_new_block(struct inode *inode, unsigned long goal, int *errp)
+-{
+-	unsigned long count = 1;
+-
+-	return ext2_new_blocks(inode, goal, &count, errp);
+-}
+-
+ #ifdef EXT2FS_DEBUG
+ 
+ unsigned long ext2_count_free(struct buffer_head *map, unsigned int numchars)
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index 35a041c47c38..954fb82ab22c 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -695,7 +695,6 @@ static inline struct ext2_inode_info *EXT2_I(struct inode *inode)
+ /* balloc.c */
+ extern int ext2_bg_has_super(struct super_block *sb, int group);
+ extern unsigned long ext2_bg_num_gdb(struct super_block *sb, int group);
+-extern ext2_fsblk_t ext2_new_block(struct inode *, unsigned long, int *);
+ extern ext2_fsblk_t ext2_new_blocks(struct inode *, unsigned long,
+ 				unsigned long *, int *);
+ extern int ext2_data_block_valid(struct ext2_sb_info *sbi, ext2_fsblk_t start_blk,
+diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+index 1c9187188d68..e9546cc65db2 100644
+--- a/fs/ext2/xattr.c
++++ b/fs/ext2/xattr.c
+@@ -742,7 +742,9 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
+ 			/* We need to allocate a new block */
+ 			ext2_fsblk_t goal = ext2_group_first_block_no(sb,
+ 						EXT2_I(inode)->i_block_group);
+-			int block = ext2_new_block(inode, goal, &error);
++			unsigned long count = 1;
++			int block = ext2_new_blocks(inode, goal, &count,
++						    &error);
+ 			if (error)
+ 				goto cleanup;
+ 			ea_idebug(inode, "creating block %d", block);
 -- 
 2.31.1
 
