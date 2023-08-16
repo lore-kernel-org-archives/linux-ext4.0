@@ -2,105 +2,244 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 62469C04FE1
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Aug 2023 05:32:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1BA9BC41513
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Aug 2023 10:10:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241837AbjHPFV3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 16 Aug 2023 01:21:29 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38576 "EHLO
+        id S243736AbjHPKKA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 16 Aug 2023 06:10:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43872 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241888AbjHPFVS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Aug 2023 01:21:18 -0400
-Received: from mout.gmx.net (mout.gmx.net [212.227.15.18])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 552EA268F;
-        Tue, 15 Aug 2023 22:21:13 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=gmx.at;
- s=s31663417; t=1692163270; x=1692768070; i=g.ottinger@gmx.at;
- bh=zihyiJ73ADx+UuuJMxXFt7FINHQFNKkDIYeeeLl7Gys=;
- h=X-UI-Sender-Class:From:To:Cc:Subject:Date;
- b=UB4rcAlBDsyX9MH45FrGgCo+stOeOOX4CWb98Pk71ahkFzsQB1AupLaa5U9qdWk7+pB0Wi+
- CG8nLi3O5TtgY5FqaEJ6SCAMs5P/U0SHfzJg72iVqAO4UHRQ8ns+N/qPPtTd4WbBT18tteUVL
- wAs0JJ7l9tcxSdk/HHAN0oIDsGcx/09fqo52/d7Szwu8InO/3bzIJSBadVwfQ6zf/KMMtc2sw
- 6uVOsNE2M9qvx/VePvWjSr8V6rSa2kRGwvLy5TpyN4u5qRNyCn8cPKpMN82ISYUpmxWv9sDS7
- PyTzpdwY41uaXpSSW9Hv9lDeWOipEzKjqvRh+TXxMsqJ329HPUsA==
-X-UI-Sender-Class: 724b4f7f-cbec-4199-ad4e-598c01a50d3a
-Received: from f15h-Latitude-E5450.lan ([89.144.221.196]) by mail.gmx.net
- (mrgmx005 [212.227.17.190]) with ESMTPSA (Nemesis) id
- 1N9Mta-1pijBa1eDs-015JeV; Wed, 16 Aug 2023 07:21:10 +0200
-From:   Georg Ottinger <g.ottinger@gmx.at>
-To:     jack@suse.com
-Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        g.ottinger@gmx.at
-Subject: [PATCH v2] ext2: fix datatype of block number in ext2_xattr_set2()
-Date:   Wed, 16 Aug 2023 07:21:04 +0200
-Message-Id: <20230816052104.3374-1-g.ottinger@gmx.at>
-X-Mailer: git-send-email 2.17.1
-MIME-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
-X-Provags-ID: V03:K1:JxcYQOoSRCKJNW9jHezvOnUVv5Ym/zSkRwGa+ShBlFSn5EuyRq+
- HHtTeFJV5mzJaTx9tWW+iILGsDHlU4tBWYX/nLm18TWU/v8sohjdFnGnGUuzqu6iF2N+Ski
- piShylxLm8wArlH0tNgZF3bMMjzVksgjzeXRG0KkpnUbveH7Omi7OwsOIT8/ro0h95w/1Pe
- oJ7wtYSFtBo6afeyEws2g==
-UI-OutboundReport: notjunk:1;M01:P0:yrwRBMUQpHg=;2r7qejm93REDKt+vnWRsxn722Ll
- p41N0Of2yg9cWvGR1ZO74+FvzL+1h+HODR1/HXjhy72w6DObRSCxiW/X0rYnsVaE4eukud6gS
- QRob0R03Ip7tRR/dwfKF4QXxKG6VPyw2xIsz3pDTFtipTKVyLIM6vXSeK731y1GqfhteViLwe
- 45fDp3KZ6AhHgz1cNSYfThHn+xSQYBLMkL2enwq5N5pqR2dQAbcOtvdC5oW0IwkHY7ogTlfU4
- ioNdfszsA2k/7kIWk0eOGDKlNkU42DNpWL4WV2Xp5k0rpxpYvW1xhMQ0q5oMd4hsIn081JFS6
- Dt1zvKIJU5u9de1NU3bDR2cwqIVLsDzLOH9hgUol58aXbJV1cByO80JFyzxxJSHRuc2d6x7sg
- IPk0uyS+PCnGCn03Ing2+/57xF45d7aCoVP3U5naEVHipmxfCsyrZg/GETdgZVin6sTN+02MU
- dneVNpYr4ILQ7M2YYZOCjTyRcM+HKo9AAG9BDC+T7897gN2GwotZ0eU9E+Fnf+EVgWZC/74OE
- FY6uHtBI7uoFZuqDHHlCh8nUy0ClcsABA9uKZ9vUIXeXX4kYi2+wHYB2qjXB6HWrgbFkRxqGZ
- qkMki6BpkVCP3EnVRjydMWyrvDZDYHO8lRFcLgfOYlzmwAknICwIy0L6Qx3rMi2443km9H3hx
- nsUorEnXiz4x/CCRNE1/2ob59cCIHJTDbHdQIrtP1Y+WdFCRabBS4hQE8utp2hbP5kIHXpboc
- RWlKQhrKzx0W0JiOU9tYmVZUHDnPpOuPUuX6yfwKPuwXMmrXKCzwUK1xrn066pcqvBeIrbn1F
- mgNwYgLsw1SxZLrUijQi6WyNiJMmPUYKIpuLzeOt1BMB3eTFoThSl7wQuvRHNMQbx2gy+bCzZ
- TJ85Isc51tkvBEtRZaKxYX/g8BGDNFRxW4KuHMNkAhUAq/JHEIAoYPi+gnT/S33rPZcWI+hzl
- 2yyRn2SGwKB+E9XlAkmZEGjH98w=
+        with ESMTP id S243732AbjHPKJe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Aug 2023 06:09:34 -0400
+Received: from mail-pf1-x42d.google.com (mail-pf1-x42d.google.com [IPv6:2607:f8b0:4864:20::42d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 85B8DE3
+        for <linux-ext4@vger.kernel.org>; Wed, 16 Aug 2023 03:09:32 -0700 (PDT)
+Received: by mail-pf1-x42d.google.com with SMTP id d2e1a72fcca58-6887c3aac15so534110b3a.2
+        for <linux-ext4@vger.kernel.org>; Wed, 16 Aug 2023 03:09:32 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20221208; t=1692180571; x=1692785371;
+        h=in-reply-to:subject:cc:to:from:message-id:date:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=sXMJQEoCc4hk0HZNb1uhVXwafZRVLZPgHSpvbsQMLvs=;
+        b=P7M83prttWXiZUjw/+K3yezQZYMWYA+pHOuyqeDyaKp3glYcSJY3bSdD/UnKj+H82Q
+         aCefNl5txW6vDR/6ffJ8b5DF6boYPLmVXLyR/eUurYZnV/IpANBhFRv27cAJFHpeM6/I
+         T1fMtNheglwFtKiMkDpf2ohxdhwFC8BXmBLHqIHQkwk+yWNHbMtvvNhso8ub1zU/0qP/
+         jwtwHw6Y4H+CeZpKjNEUVv9WoQM4qvuMlkgPIcw+7A/Oq+ejL+F8kbBEdnKK7gxK9dMK
+         OMZ2i8Qq2ikCpIbRFgPHJI3Qw/Vtp9kHF5bciYnn7Csa4fPQb5714gi/N3s2v4pZVAzW
+         zsxQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1692180571; x=1692785371;
+        h=in-reply-to:subject:cc:to:from:message-id:date:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=sXMJQEoCc4hk0HZNb1uhVXwafZRVLZPgHSpvbsQMLvs=;
+        b=F25uVVhVsyqQw/m1vrMQhAEIPhmEuW+0LTxPKrHNq+AECe/Vs/86NTh1jYCuHTMylq
+         b85tu1j0dvhcu4GNNOC2WlWyPxpg+A4HHNtuvBd66mBpwV9Hz3KB5/F4mAxBVo4Ok/+T
+         LVHOu18jbxVqNiKFkkiUt1LyAwvHWL5hjCwZaYt5g/gVSD/VW96JmuQxYjLPuDxNGn8f
+         Kn9q3Tuaj47VV5nyP1i7MPiA4PWcbjc9f1sB6LShoROmInivKCt1oU3rvU0HU6zSqxJb
+         kGl/IGeW7v0gLSl2Olwd3pcV1Mcj2uwRFBr4rbJDO4g0fWXG2lsLSjTPDZWKdxF2TKAR
+         5jow==
+X-Gm-Message-State: AOJu0YyDe2zq3ZFC9Ur7lfh9Zt8dG2CRvxUqk5pKf0yhvNkGvdg7GMuF
+        8FJAOxiKWMknJACPJgPXgb68TRRp0q4=
+X-Google-Smtp-Source: AGHT+IEohv9HMSbOje9eaun+oEDgLxPI2leg3Mc7uVbvE1i3rjwWfzNHHsr9iwLBdLyjXJIhkQuoIA==
+X-Received: by 2002:a05:6a00:248e:b0:687:22ce:365f with SMTP id c14-20020a056a00248e00b0068722ce365fmr1925942pfv.29.1692180571204;
+        Wed, 16 Aug 2023 03:09:31 -0700 (PDT)
+Received: from dw-tp ([49.207.232.207])
+        by smtp.gmail.com with ESMTPSA id n26-20020a638f1a000000b00565009a97f0sm11467027pgd.17.2023.08.16.03.09.29
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 16 Aug 2023 03:09:30 -0700 (PDT)
+Date:   Wed, 16 Aug 2023 15:39:21 +0530
+Message-Id: <871qg347u6.fsf@doe.com>
+From:   Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+To:     Andreas Dilger <adilger@dilger.ca>
+Cc:     Bobi Jam <bobijam@hotmail.com>, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 1/2] ext4: optimize metadata allocation for hybrid LUNs
+In-Reply-To: <8AF0F706-B25F-4365-B9F2-8CA1BB336EC3@dilger.ca>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-I run a small server that uses external hard drives for backups. The
-backup software I use uses ext2 filesystems with 4KiB block size and
-the server is running SELinux and therefore relies on xattr. I recently
-upgraded the hard drives from 4TB to 12TB models. I noticed that after
-transferring some TBs I got a filesystem error "Freeing blocks not in
-datazone - block =3D 18446744071529317386, count =3D 1" and the backup
-process stopped. Trying to fix the fs with e2fsck resulted in a
-completely corrupted fs. The error probably came from ext2_free_blocks(),
-and because of the large number 18e19 this problem immediately looked
-like some kind of integer overflow. Whereas the 4TB fs was about 1e9
-blocks, the new 12TB is about 3e9 blocks. So, searching the ext2 code,
-I came across the line in fs/ext2/xattr.c:745 where ext2_new_block()
-is called and the resulting block number is stored in the variable block
-as an int datatype. If a block with a block number greater than
-INT32_MAX is returned, this variable overflows and the call to
-sb_getblk() at line fs/ext2/xattr.c:750 fails, then the call to
-ext2_free_blocks() produces the error.
+Andreas Dilger <adilger@dilger.ca> writes:
 
-Signed-off-by: Georg Ottinger <g.ottinger@gmx.at>
-=2D--
- fs/ext2/xattr.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+> On Aug 3, 2023, at 6:10 AM, Ritesh Harjani (IBM) <ritesh.list@gmail.com> wrote:
+>> 
+>> Bobi Jam <bobijam@hotmail.com> writes:
+>> 
+>>> With LVM it is possible to create an LV with SSD storage at the
+>>> beginning of the LV and HDD storage at the end of the LV, and use that
+>>> to separate ext4 metadata allocations (that need small random IOs)
+>>> from data allocations (that are better suited for large sequential
+>>> IOs) depending on the type of underlying storage.  Between 0.5-1.0% of
+>>> the filesystem capacity would need to be high-IOPS storage in order to
+>>> hold all of the internal metadata.
+>>> 
+>>> This would improve performance for inode and other metadata access,
+>>> such as ls, find, e2fsck, and in general improve file access latency,
+>>> modification, truncate, unlink, transaction commit, etc.
+>>> 
+>>> This patch split largest free order group lists and average fragment
+>>> size lists into other two lists for IOPS/fast storage groups, and
+>>> cr 0 / cr 1 group scanning for metadata block allocation in following
+>>> order:
+>>> 
+>>> cr 0 on largest free order IOPS group list
+>>> cr 1 on average fragment size IOPS group list
+>>> cr 0 on largest free order non-IOPS group list
+>>> cr 1 on average fragment size non-IOPS group list
+>>> cr >= 2 perform the linear search as before
+>
+> Hi Ritesh,
+> thanks for the review and the discussion about the patch.
+>
+>> Yes. The implementation looks straight forward to me.
+>> 
+>
+>>> Non-metadata block allocation does not allocate from the IOPS groups.
+>>> 
+>>> Add for mke2fs an option to mark which blocks are in the IOPS region
+>>> of storage at format time:
+>>> 
+>>>  -E iops=0-1024G,4096-8192G
+>> 
+>
+>> However few things to discuss here are -
+>
+> As Ted requested on the call, this should be done as two separate calls
+> to the allocator, rather than embedding the policy in mballoc group
+> selection itself.  Presumably this would be in ext4_mb_new_blocks()
+> calling ext4_mb_regular_allocator() twice with different allocation
+> flags (first with EXT4_MB_HINT_METADATA, then without, though I don't
+> actually see this was used anywhere in the code before this patch?)
+>
+> Metadata allocations should try only IOPS groups on the first call,
+> but would go through all allocation phases.  If IOPS allocation fails,
+> then the allocator should do a full second pass to allocate from the
+> non-IOPS groups. Non-metadata allocations would only allocate from
+> non-IOPS groups.
+>
+>> 1. What happens when the hdd space for data gets fully exhausted? AFAICS,
+>> the allocation for data blocks will still succeed, however we won't be
+>> able to make use of optimized scanning any more. Because we search within
+>> iops lists only when EXT4_MB_HINT_METADATA is set in ac->ac_flags.
+>
+> The intention for our usage is that data allocations should *only* come
+> from the HDD region of the device, and *not* from the IOPS (flash) region
+> of the device.  The IOPS region will be comparatively small (0.5-1.0% of
+> the total device size) so using or not using this space will be mostly
+> meaningless to the overall filesystem usage, especially with a 1-5%
+> reserved blocks percentage that is the default for new filesystems.
+>
 
-diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index 8906ba479..89517937d 100644
-=2D-- a/fs/ext2/xattr.c
-+++ b/fs/ext2/xattr.c
-@@ -742,10 +742,10 @@ ext2_xattr_set2(struct inode *inode, struct buffer_h=
-ead *old_bh,
- 			/* We need to allocate a new block */
- 			ext2_fsblk_t goal =3D ext2_group_first_block_no(sb,
- 						EXT2_I(inode)->i_block_group);
--			int block =3D ext2_new_block(inode, goal, &error);
-+			ext2_fsblk_t block =3D ext2_new_block(inode, goal, &error);
- 			if (error)
- 				goto cleanup;
--			ea_idebug(inode, "creating block %d", block);
-+			ea_idebug(inode, "creating block %lu", block);
+Yes, but when we give this functionality to non-enterprise users,
+everyone would like to take advantage of a faster performing ext4 using
+1 ssd and few hdds or a smaller spare ssd and larger hdds. Then it could
+be that the space of iops region might not strictly be less than 1-2%
+and could be anywhere between 10-50% ;)  
 
- 			new_bh =3D sb_getblk(sb, block);
- 			if (unlikely(!new_bh)) {
-=2D-
-2.17.1
+Shouldn't we still support this class of usecase as well? ^^^ 
+So if the HDD gets full then the allocation should fallback to ssd for
+data blocks no?
 
+Or we can have a policy knob i.e. fallback_data_to_iops_region_thresh.
+So if the free space %age in the iops region is above 1% (can be changed
+by user) then the data allocations can fallback to iops region if it is
+unable to allocate data blocks from hdd region.
+
+      echo %age_threshold > fallback_data_to_iops_region_thresh (default 1%)
+
+        Fallback data allocations to iops region as long as we have free space
+        %age of iops region above %age_threshold.
+
+> As you mentioned on the call, it seems this is a defect in the current
+> patch, that non-metadata allocations may eventually fall back to scan
+> all block groups for free space including IOPS groups.  They need to
+> explicitly skip groups that have the IOPS flags set.
+>
+>> 2. Similarly what happens when the ssd space for metadata gets full?
+>> In this case we keep falling back to cr2 for allocation and we don't
+>> utilize optimize_scanning to find the block groups from hdd space to
+>> allocate from.
+>
+> In the case when the IOPS groups are full then the metadata allocations
+> should fall back to using non-IOPS groups.  That avoids ENOSPC when the
+> metadata space is accidentally formatted too small, or unexpected usage
+> such as large xattrs or many directories are consuming more IOPS space.
+>
+>> 3. So it seems after a period of time, these iops lists can have block
+>> groups belonging to differnt ssds. Could this cause the metadata
+>> allocation of related inodes to come from different ssds.
+>> Will this be optimal? Checking on this...
+>>     ...On checking further on this, we start with a goal group and we
+>> at least scan s_mb_max_linear_groups (4) linearly. So it's unlikely that
+>> we frequently allocate metadata blocks from different SSDs.
+>
+> In our usage will typically be only a single IOPS region at the start of
+> the device, but the ability to allow multiple IOPS regions was added for
+> completeness and flexibility in the future (e.g. resize of filesystem).
+
+I am interested in knowing what do you think will be challenges in
+supporting resize with hybrid devices? Like if someone would like to add
+an additional ssd and do a resize, do you think all later metadata
+allocations can be fullfilled from this iops region?
+
+And what happens when someone adds hdds to existing ssds.
+I guess adding an hdd followed by resize operation can still allocate, bgdt, block/inode
+bitmaps and inode tables etc for these block groups to sit on the resized hdd right. 
+Are there any other challenges as well for such usecase? 
+
+
+> In our case, the IOPS region would itself be RAIDed, so "different SSDs"
+> is not really a concern.
+>
+>> 4. Ok looking into this, do we even require the iops lists for metadata
+>> allocations? Do we allocate more than 1 blocks for metadata? If not then
+>> maintaining these iops lists for metadata allocation isn't really
+>> helpful. On the other hand it does make sense to maintain it when we
+>> allow data allocations from these ssds when hdds gets full.
+>
+> I don't think we *need* to use the same mballoc code for IOPS allocation
+> in most cases, though large xattr inode allocations should also be using
+> the IOPS groups for allocating blocks, and these might be up to 64KB.
+> I don't think that is actually implemented properly in this patch yet.
+>
+> Also, the mballoc list/array make it easy to find groups with free space
+> in a full filesystem instead of having to scan for them, even if we
+> don't need the full "allocate order-N" functionality.  Having one list
+> of free groups or order-N lists doesn't make it more expensive (and it
+> actually improves scalability to have multiple list heads).
+>
+> One of the future enhancements might be to allow small files (of some
+> configurable size) to also be allocated from the IOPS groups, so it is
+> probably easier IMHO to just stick with the same allocator for both.
+>
+>> 5. Did we run any benchmarks with this yet? What kind of gains we are
+>> looking for? Do we have any numbers for this?
+>
+> We're working on that.  I just wanted to get the initial patches out for
+> review sooner rather than later, both to get feedback on implementation
+> (like this, thanks), and also to reserve the EXT4_BG_IOPS field so it
+> doesn't get used in a conflicting manner.
+>
+>> 6. I couldn't stop but start to think of...
+>> Should there also be a provision from the user to pass hot/cold data
+>> types which we can use as a hint within the filesystem to allocate from
+>> ssd v/s hdd? Does it even make sense to think in this direction?
+>
+> Yes, I also had the same idea, but then left it out of my email to avoid
+> getting distracted from the initial goal.  There are a number of possible
+> improvements that could be done with a mechanism like this:
+> - have fast/slow regions within a single HDD (i.e. last 20% of spindle is
+>   in "slow" region due to reduced linear velocity/bandwidth on inner tracks)
+>   to avoid using the slow region unless the fast region is (mostly) full
+> - have several regions across an HDD to *intentionally* allocate some
+>   extents in the "slow" groups to reduce *peak* bandwidth but keep
+>   *average* bandwidth higher as the disk becomes more full since there
+>   would still be free space in the faster groups.
+>
+
+Interesting! 
+
+> Cheers, Andreas
+>
+
+Thanks
+-ritesh
