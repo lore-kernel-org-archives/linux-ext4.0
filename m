@@ -2,52 +2,52 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 16150C07E8A
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7DC98C07E8F
 	for <linux-ext4@archiver.kernel.org>; Wed, 16 Aug 2023 05:09:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241809AbjHPFIr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 16 Aug 2023 01:08:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42372 "EHLO
+        id S241837AbjHPFIv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 16 Aug 2023 01:08:51 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41396 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241811AbjHPFIR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Aug 2023 01:08:17 -0400
+        with ESMTP id S241815AbjHPFIW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Aug 2023 01:08:22 -0400
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9EF36138;
-        Tue, 15 Aug 2023 22:08:15 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B3D2719A7;
+        Tue, 15 Aug 2023 22:08:21 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 5FECA2197D;
-        Wed, 16 Aug 2023 05:08:14 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 6743C21986;
+        Wed, 16 Aug 2023 05:08:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1692162494; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1692162500; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=uvR8t/YzHMWvpnpSVARUorIz3ynKvoiahBpzw9vzaYc=;
-        b=Zux8ymEN6jYAuvL/c0gVYquNa1mE2Kro7dZzxPAgeaseIOXV81x3dmwudiFAGaNSwZgnZK
-        7UJo/0tuYsA6uFuAmuSWAQ/KnwGz6jnBoECdEpU8o6fAYxqMtKZpl/vPiW9NwM/iQZuJ14
-        FxJU0iV0i0iTsUhm3uBDz3T73VHg+mw=
+        bh=Ehnf18iu1deNm9AabVYRHsdZHZ02hj7n56Bq22dAtO8=;
+        b=GbNgen/hRsDX9IZ8RH0qzqs5uKMg4Gepes6vWDh8LsI4R+5lT3/twRtWPV6Shm/GDCDgkZ
+        s8u0/D19qiPrrYNoy6U4ILkB+rQZHXJO4kHEIcsj7iTEhDYPbR+VBET6QNd/d3z1iZW7Mx
+        sT7O6lEyuwpQQi98MOvmMG4Hmsuwe9o=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1692162494;
+        s=susede2_ed25519; t=1692162500;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=uvR8t/YzHMWvpnpSVARUorIz3ynKvoiahBpzw9vzaYc=;
-        b=A9Fj6h94KbZ2qaU4v8Qg1JupqENww/dmMXlFCKpDigVEqd0ByOd0Gku+v1Z1fq1qeuLmGg
-        e5UDav/UuGob1fAA==
+        bh=Ehnf18iu1deNm9AabVYRHsdZHZ02hj7n56Bq22dAtO8=;
+        b=5eeZRMyZ2jSuuFBHWYvSSsXD7lKUP77HewzRruJ0gJXppmbbYQ7PIbtubXiP5uMAUW/Rl1
+        BZBykHdhFcMA4aDA==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 287D0133F2;
-        Wed, 16 Aug 2023 05:08:14 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 31062133F2;
+        Wed, 16 Aug 2023 05:08:20 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id hflUBL5Z3GTkTgAAMHmgww
-        (envelope-from <krisman@suse.de>); Wed, 16 Aug 2023 05:08:14 +0000
+        id mgJWBsRZ3GQNTwAAMHmgww
+        (envelope-from <krisman@suse.de>); Wed, 16 Aug 2023 05:08:20 +0000
 From:   Gabriel Krisman Bertazi <krisman@suse.de>
 To:     viro@zeniv.linux.org.uk, brauner@kernel.org, tytso@mit.edu,
         ebiggers@kernel.org, jaegeuk@kernel.org
@@ -55,9 +55,9 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
         Gabriel Krisman Bertazi <krisman@suse.de>,
         Gabriel Krisman Bertazi <krisman@collabora.com>
-Subject: [PATCH v6 4/9] fs: Add DCACHE_CASEFOLDED_NAME flag
-Date:   Wed, 16 Aug 2023 01:07:58 -0400
-Message-ID: <20230816050803.15660-5-krisman@suse.de>
+Subject: [PATCH v6 8/9] ext4: Enable negative dentries on case-insensitive lookup
+Date:   Wed, 16 Aug 2023 01:08:02 -0400
+Message-ID: <20230816050803.15660-9-krisman@suse.de>
 X-Mailer: git-send-email 2.41.0
 In-Reply-To: <20230816050803.15660-1-krisman@suse.de>
 References: <20230816050803.15660-1-krisman@suse.de>
@@ -69,72 +69,92 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Gabriel Krisman Bertazi <krisman@collabora.com>
 
-This flag marks a negative or positive dentry as being created after a
-case-insensitive lookup operation.  It is useful to differentiate
-dentries this way to detect whether the negative dentry can be trusted
-during a case-insensitive lookup.
+Instead of invalidating negative dentries during case-insensitive
+lookups, mark them as such and let them be added to the dcache.
+d_ci_revalidate is able to properly filter them out if necessary based
+on the dentry casefold flag.
 
-Reviewed-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
 
 ---
 Changes since v5:
-  - Fix EXPORT_SYMBOL (Eric, kernel test bot)
+  - Use IS_CASEFOLDED directly (Eric)
 Changes since v4:
-  - Fixup names of functions to reflect flag name change (Eric)
-
+  - Use helper to decide if should set dentry flag.
 Changes since v2:
-  -  Rename DCACHE_CASEFOLD_LOOKUP -> DCACHE_CASEFOLDED_NAME (Eric)
----
- fs/dcache.c            | 8 ++++++++
- include/linux/dcache.h | 8 ++++++++
- 2 files changed, 16 insertions(+)
 
-diff --git a/fs/dcache.c b/fs/dcache.c
-index 52e6d5fdab6b..91e5cd4c4237 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -1958,6 +1958,14 @@ void d_set_fallthru(struct dentry *dentry)
+  - Move dentry flag set closer to fscrypt code (Eric)
+---
+ fs/ext4/namei.c | 35 ++++-------------------------------
+ 1 file changed, 4 insertions(+), 31 deletions(-)
+
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 0caf6c730ce3..d8a1c59eeae1 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1759,6 +1759,10 @@ static struct buffer_head *ext4_lookup_entry(struct inode *dir,
+ 
+ 	err = ext4_fname_prepare_lookup(dir, dentry, &fname);
+ 	generic_set_encrypted_ci_d_ops(dentry);
++
++	if (IS_CASEFOLDED(dir))
++		d_set_casefolded_name(dentry);
++
+ 	if (err == -ENOENT)
+ 		return NULL;
+ 	if (err)
+@@ -1866,16 +1870,6 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
+ 		}
+ 	}
+ 
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	if (!inode && IS_CASEFOLDED(dir)) {
+-		/* Eventually we want to call d_add_ci(dentry, NULL)
+-		 * for negative dentries in the encoding case as
+-		 * well.  For now, prevent the negative dentry
+-		 * from being cached.
+-		 */
+-		return NULL;
+-	}
+-#endif
+ 	return d_splice_alias(inode, dentry);
  }
- EXPORT_SYMBOL(d_set_fallthru);
  
-+void d_set_casefolded_name(struct dentry *dentry)
-+{
-+	spin_lock(&dentry->d_lock);
-+	dentry->d_flags |= DCACHE_CASEFOLDED_NAME;
-+	spin_unlock(&dentry->d_lock);
-+}
-+EXPORT_SYMBOL(d_set_casefolded_name);
-+
- static unsigned d_flags_for_inode(struct inode *inode)
- {
- 	unsigned add_flags = DCACHE_REGULAR_TYPE;
-diff --git a/include/linux/dcache.h b/include/linux/dcache.h
-index 9362e4ef0bad..ccbb5c4db7ce 100644
---- a/include/linux/dcache.h
-+++ b/include/linux/dcache.h
-@@ -208,6 +208,7 @@ struct dentry_operations {
- #define DCACHE_FALLTHRU			0x01000000 /* Fall through to lower layer */
- #define DCACHE_NOKEY_NAME		0x02000000 /* Encrypted name encoded without key */
- #define DCACHE_OP_REAL			0x04000000
-+#define DCACHE_CASEFOLDED_NAME		0x08000000 /* Dentry comes from a casefold directory */
+@@ -3206,17 +3200,6 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 	ext4_fc_track_unlink(handle, dentry);
+ 	retval = ext4_mark_inode_dirty(handle, dir);
  
- #define DCACHE_PAR_LOOKUP		0x10000000 /* being looked up (with parent locked shared) */
- #define DCACHE_DENTRY_CURSOR		0x20000000
-@@ -496,6 +497,13 @@ static inline bool d_is_fallthru(const struct dentry *dentry)
- 	return dentry->d_flags & DCACHE_FALLTHRU;
- }
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	/* VFS negative dentries are incompatible with Encoding and
+-	 * Case-insensitiveness. Eventually we'll want avoid
+-	 * invalidating the dentries here, alongside with returning the
+-	 * negative dentries at ext4_lookup(), when it is better
+-	 * supported by the VFS for the CI case.
+-	 */
+-	if (IS_CASEFOLDED(dir))
+-		d_invalidate(dentry);
+-#endif
+-
+ end_rmdir:
+ 	brelse(bh);
+ 	if (handle)
+@@ -3317,16 +3300,6 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 		goto out_trace;
  
-+extern void d_set_casefolded_name(struct dentry *dentry);
-+
-+static inline bool d_is_casefolded_name(const struct dentry *dentry)
-+{
-+	return dentry->d_flags & DCACHE_CASEFOLDED_NAME;
-+}
-+
+ 	retval = __ext4_unlink(dir, &dentry->d_name, d_inode(dentry), dentry);
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	/* VFS negative dentries are incompatible with Encoding and
+-	 * Case-insensitiveness. Eventually we'll want avoid
+-	 * invalidating the dentries here, alongside with returning the
+-	 * negative dentries at ext4_lookup(), when it is  better
+-	 * supported by the VFS for the CI case.
+-	 */
+-	if (IS_CASEFOLDED(dir))
+-		d_invalidate(dentry);
+-#endif
  
- extern int sysctl_vfs_cache_pressure;
- 
+ out_trace:
+ 	trace_ext4_unlink_exit(dentry, retval);
 -- 
 2.41.0
 
