@@ -2,220 +2,130 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 39C24C07E8C
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Aug 2023 05:09:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EB796C001B0
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Aug 2023 05:32:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241830AbjHPFIs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 16 Aug 2023 01:08:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42372 "EHLO
+        id S241877AbjHPFcL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 16 Aug 2023 01:32:11 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43856 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241812AbjHPFIS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Aug 2023 01:08:18 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 24377123;
-        Tue, 15 Aug 2023 22:08:17 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id D1C1F1F85D;
-        Wed, 16 Aug 2023 05:08:15 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1692162495; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=o7BnRrZj/BGeCpY2Eau7Peq32o7FSQuNiLArj6jqWIo=;
-        b=q+nIByajPNGdCgxwjTHcLgAcAAE3vo30+GSTTYImLwz+LrBlsadIBIdtJJzpGVjC8TX+nl
-        UgdLS9nV2sQ94Mk1eqJ15RlrylbuwzmbdIwsX18ke7XNSgO5U70hWHCLUBzm8HNE9d5LQL
-        wKCyWapwZWLv+WHv+QLulCV8clwKKUI=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1692162495;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=o7BnRrZj/BGeCpY2Eau7Peq32o7FSQuNiLArj6jqWIo=;
-        b=FX/3mY0BqMtV9jaM2LR1JG0RlWYXG2jiexMxBdbGEsHVgQxelSZGCBNPbBTH2wWdzy6poC
-        +2WHUIrDFrUZj6Dw==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 9D139133F2;
-        Wed, 16 Aug 2023 05:08:15 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id 4A70IL9Z3GTwTgAAMHmgww
-        (envelope-from <krisman@suse.de>); Wed, 16 Aug 2023 05:08:15 +0000
-From:   Gabriel Krisman Bertazi <krisman@suse.de>
-To:     viro@zeniv.linux.org.uk, brauner@kernel.org, tytso@mit.edu,
-        ebiggers@kernel.org, jaegeuk@kernel.org
-Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        Gabriel Krisman Bertazi <krisman@suse.de>,
-        Gabriel Krisman Bertazi <krisman@collabora.com>
-Subject: [PATCH v6 5/9] libfs: Validate negative dentries in case-insensitive directories
-Date:   Wed, 16 Aug 2023 01:07:59 -0400
-Message-ID: <20230816050803.15660-6-krisman@suse.de>
-X-Mailer: git-send-email 2.41.0
-In-Reply-To: <20230816050803.15660-1-krisman@suse.de>
-References: <20230816050803.15660-1-krisman@suse.de>
+        with ESMTP id S241840AbjHPFbl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Aug 2023 01:31:41 -0400
+Received: from mout.gmx.net (mout.gmx.net [212.227.15.19])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5057B1FC7;
+        Tue, 15 Aug 2023 22:31:37 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=gmx.at;
+ s=s31663417; t=1692163895; x=1692768695; i=g.ottinger@gmx.at;
+ bh=qxO18DwXZii86eJnCMKp0O3O9rqlhobuQS8bj+UVmZo=;
+ h=X-UI-Sender-Class:Date:Subject:To:Cc:References:From:In-Reply-To;
+ b=RW8m7fdfMGVyv35MzItb6puntOQz9APD2dSJvVr5VxW0qcDgeZRjK+KPUoQzB/VGmzOqB9t
+ 66OqrSsGKkHxC2LIeSH+Yt1oJwQWBYe1YDQb5RvPJboOpbAWE4Dq6IV04QN0e99A5AAGywyPc
+ 1KMc68Xy2hVRGzvijKUU0otyppqEVCGqGixvHREYsSEPosYnEnBwSMoKTYAOcyzuLotmBDUG4
+ k97PeUjLdxYF9WBYyXhE/wggN+xHv1ioZepXsT0RyegT7oFL+nhnifBlhrcf0YraPhuL8ry1T
+ kvIYgmHO7IpOHJ8SSPSZ3ZfO17HPPtl89EPe2goY6BXOhAUP7ZZg==
+X-UI-Sender-Class: 724b4f7f-cbec-4199-ad4e-598c01a50d3a
+Received: from [192.168.153.228] ([89.144.221.196]) by mail.gmx.net (mrgmx004
+ [212.227.17.190]) with ESMTPSA (Nemesis) id 1MD9X9-1qfFnb3Maf-009Adu; Wed, 16
+ Aug 2023 07:31:34 +0200
+Message-ID: <e6dff0e9-9f08-2684-2bba-74570c3655a8@gmx.at>
+Date:   Wed, 16 Aug 2023 07:31:34 +0200
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
+ Thunderbird/102.11.0
+Subject: Re: [PATCH v2] ext2: fix datatype of block number in
+ ext2_xattr_set2()
+To:     jack@suse.com
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+References: <20230816052104.3374-1-g.ottinger@gmx.at>
+Content-Language: en-US
+From:   Georg Ottinger <g.ottinger@gmx.at>
+In-Reply-To: <20230816052104.3374-1-g.ottinger@gmx.at>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: quoted-printable
+X-Provags-ID: V03:K1:VXnnEnRGVIpDmN2hJI7YTzvkW1mwt/58ECZMtrdD5Ln8tMY1LTf
+ +sWQC40kI/PGiLZTfaYoxhUhYqd+GajnrSVwbM1zikzbrv9pfbuJMAj41YK4OyBw2i6hdkA
+ /4oV2q1zb5/OSUpzWaeSIaCtvQl6Ta3+p7BnsJ2vwNKKiyARLAkOvHtKMDJvYTjy89Pr0iH
+ SzUW2QadJtV2pDSFyCjkQ==
+UI-OutboundReport: notjunk:1;M01:P0:1bzbiHE/zOQ=;rnBHGKcUeZ9ab0gYdKNJjhNv6fP
+ fm188aaH9esLg8K8ZANmNCIk0h0/SNDRZZiqhTv1giBqIgQWdnDGNcBy7bF6lYE9p4vOAllV7
+ rKjakE7u/57CiKwrPpEYPEkSadO9B3d/f/o5Izov/d4u5E1mvnY/aE8EY/3dhoiUmV3NO/D9j
+ MdeMixwNVdumZsWeYZdLN2v1gXPKcKwxFXzZvPaaIeOSxp63dWUr+sYajUV/PV4bfUjIQzPRc
+ xkpESrbZYo1vjkSC8dH1dnSoGGw1VlPG+Hb6d30/epGFFD+8jeXHwG/AhCX/JJQ4KI2gQ90fp
+ 9pxpk2aHK1Zf8PceygasuGY4PXFvQDDiv9XDWcJgRy64i/CrKVGKHQS5Rj13XH9RoRjoLLW/W
+ jwgowk5VhSwVgfuTrGv8cuz08zSWCM3sOFoSvnWrM9Ic7BwfeNpbBr9g4rw0J8TPIIA5xoxux
+ mEOGIIbcrxwmFd6x7yHvqMwDRv+vIh2aMKJtZ80t4w4+dGRTcIuYubHJX1FTPFNZDRYmGSEEa
+ N9xLWo3FeU9T2msXAej1ZzC9TT0l1m1VxftdtIq0/j/cMdkb3752gpkBGLSI8tlyQW8dcZYLh
+ 7eo4j1XNf7fCnReamlix09POTbAdnjFYZimwDbWjeSijxEjBy9llcvRcSC89gd3rfAGkm6LhG
+ f22Sv+NS+ADFZ/zBQ0j11hxeUIMENoRWNooX1do1ZRYUYkXLXA8DHHxrZttgrNKavP+l2Y9zE
+ OBXchj9JYVFNH942nkINjs8L6Q+1daa2W1QoJaFmyH9lXD3Sp58CozAumagxPoAI1M/U8TXf/
+ gQ4SNzk7tRhS4sIwYO8UkkxiG7roVIqpalQdDwgKGYEE0tsouX6NQy5q92fM4elShM+4qlC7b
+ 3sOzJcTlL2AVCjVFj7ALNj5Gthp9dC5jSSQdj7W0PqggPYMoAaWB4jF+4cpwRC/HNBrexnG4R
+ NpDH2zK6O/GsiIW/WGhDm9okfOk=
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
+I missed the proper format string for the debug message.
 
-Introduce a dentry revalidation helper to check the negative dentries of
-case-insensitive filesystems.  This helper is based on the fact that a
-negative dentry might safe to be reused on a casefolded directory if it
-was created during a case-insensitive lookup, because that kind of
-lookup verifies not only the exact name doesn't exist in a directory,
-but also that *any* case-equivalent name also doesn't exist.  The sole
-exception is during file creation, in which case we also need to make
-sure the name matches case-sensitively, in order to assure the disk
-name-preserving semantics.
+answering Andreas question - I did check the remaining calls to
+ext2_new_block(), ext2_new_blocks() and ext2_free_blocks() within the
+ext2 directory - here the block argument is either unsigned long or
+ext2_fsblk_t (which is a typedef to unsigend long) - However I want to
+mention that the use of unsigned long / ext2_fsblk_t is inconsistent. I
+guess that ext2_fsblk_t should be the prefered data type.
 
-We cover most creations by checking LOOKUP_CREATE|LOOKUP_RENAME_TARGET
-flags.  But, while most creations use those flags, there are filesystem
-helpers that call lookup for creation with flags==0.  Since we can't
-know whether those are for creation, just reject the negative dentries
-if there are no flags to check.
+Concerning the fs corruption - thanks Jan for your input.
 
-Note that we avoid taking the ->d_lock while accessing ->d_name, because
-it isn't really necessary for the LOOKUP_CREATE/LOOKUP_RENAME_TARGET
-case. That is because in every creation path with these flags, we know
-the parent inode lock is acquired, at least for reading, thus
-stabilizing the d_name, since it prevents the dentry from being
-instantiated and negative dentries cannot be moved.
+The server is an old Centos6 / RHEL6 Machine, and as a workaround - i
+resized the partition to 8180GB - Unfortunately I am unsure if I find
+time to investigate this issue further - I just did a quick look at the
+kernel source and the Bug was kind of obvious ...
 
-See also the comment in the code.
 
-* Discussion on the ->d_name stability
-
-d_revalidate can only be reached from 4 code paths: lookup_dcache,
-__lookup_slow, lookup_open and lookup_fast:
-
-  - lookup_dcache only reaches d_revalidate with creation flags when
-  coming from __lookup_hash, which needs the parent locked already.
-
-  - In __lookup_slow, either the parent inode is read-locked by the
-  caller (lookup_slow), or it is called with no flags (lookup_one*).  A
-  read lock suffices to prevent concurrent ->d_name modifications, with
-  the exception of a modification inside __d_unalias, which is not a
-  problem because negative dentries are not allowed to be moved with
-  __d_move.  In addition, d_instantiate shouldn't race with this case
-  because its callers also acquire the parent inode lock, preventing it
-  from racing with lookup creation.
-
-  - lookup_open also requires the parent to be locked in the creation
-  case, which is done in open_last_lookups.
-
-  - lookup_fast will indeed be called with the parent unlocked, but it
-  shouldn never be called with LOOKUP_CREATE.  Either it is called in the
-  link_path_walk, where nd->flags doesn't have LOOKUP_CREATE yet or in
-  open_last_lookups. But, in this case, it also never has LOOKUP_CREATE,
-  because it is only called on the !O_CREAT case, which means op->intent
-  doesn't have LOOKUP_CREAT (set in build_open_flags only if O_CREAT is
-  set).
-
-In addition, for the LOOKUP_RENAME_TARGET, we are doing a rename, so the
-parents inodes are also locked.
-
-Reviewed-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-
----
-Changes since v5:
-  - Use IS_CASEFOLDED directly (Eric)
-  - Reword commit message and comment in the code (Eric)
-Changes since v4:
-  - Drop useless inline declaration (eric)
-  - Refactor to drop extra identation (Christian)
-  - Discuss d_instantiate
-Changes since v3:
-  - Add comment regarding creation (Eric)
-  - Reorder checks to clarify !flags meaning (Eric)
-  - Add commit message explanaton of the inode read lock wrt.
-    __d_move. (Eric)
-Changes since v2:
-  - Add comments to all rejection cases (Eric)
-  - safeguard against filesystem creating dentries without LOOKUP flags
----
- fs/libfs.c | 54 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 54 insertions(+)
-
-diff --git a/fs/libfs.c b/fs/libfs.c
-index 5b851315eeed..26bf1b832b0a 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -1462,9 +1462,63 @@ static int generic_ci_d_hash(const struct dentry *dentry, struct qstr *str)
- 	return 0;
- }
- 
-+static int generic_ci_d_revalidate(struct dentry *dentry,
-+				   const struct qstr *name,
-+				   unsigned int flags)
-+{
-+	const struct dentry *parent;
-+	const struct inode *dir;
-+
-+	if (!d_is_negative(dentry))
-+		return 1;
-+
-+	parent = READ_ONCE(dentry->d_parent);
-+	dir = READ_ONCE(parent->d_inode);
-+
-+	if (!dir || !IS_CASEFOLDED(dir))
-+		return 1;
-+
-+	/*
-+	 * Negative dentries created prior to turning the directory
-+	 * case-insensitive cannot be trusted, since they don't ensure
-+	 * any possible case version of the filename doesn't exist.
-+	 */
-+	if (!d_is_casefolded_name(dentry))
-+		return 0;
-+
-+	/*
-+	 * If the lookup is for creation, then a negative dentry can only be
-+	 * reused if it's a case-sensitive match, not just a case-insensitive
-+	 * one.  This is needed to make the new file be created with the name
-+	 * the user specified, preserving case.
-+	 *
-+	 * LOOKUP_CREATE or LOOKUP_RENAME_TARGET cover most creations.  In these
-+	 * cases, ->d_name is stable and can be compared to 'name' without
-+	 * taking ->d_lock because the caller must hold dir->i_rwsem.  (This
-+	 * is because the directory lock blocks the dentry from being
-+	 * concurrently instantiated, and negative dentries are never moved.)
-+	 *
-+	 * All other creations actually use flags==0.  These come from the edge
-+	 * case of filesystems calling functions like lookup_one() that do a
-+	 * lookup without setting the lookup flags at all.  Such lookups might
-+	 * or might not be for creation, and if not don't guarantee stable
-+	 * ->d_name.  Therefore, invalidate all negative dentries when flags==0.
-+	 */
-+	if (flags & (LOOKUP_CREATE | LOOKUP_RENAME_TARGET)) {
-+		if (dentry->d_name.len != name->len ||
-+		    memcmp(dentry->d_name.name, name->name, name->len))
-+			return 0;
-+	} else if (!flags) {
-+		return 0;
-+	}
-+
-+	return 1;
-+}
-+
- static const struct dentry_operations generic_ci_dentry_ops = {
- 	.d_hash = generic_ci_d_hash,
- 	.d_compare = generic_ci_d_compare,
-+	.d_revalidate = generic_ci_d_revalidate,
- };
- #endif
- 
--- 
-2.41.0
+On 16.08.23 07:21, Georg Ottinger wrote:
+> I run a small server that uses external hard drives for backups. The
+> backup software I use uses ext2 filesystems with 4KiB block size and
+> the server is running SELinux and therefore relies on xattr. I recently
+> upgraded the hard drives from 4TB to 12TB models. I noticed that after
+> transferring some TBs I got a filesystem error "Freeing blocks not in
+> datazone - block =3D 18446744071529317386, count =3D 1" and the backup
+> process stopped. Trying to fix the fs with e2fsck resulted in a
+> completely corrupted fs. The error probably came from ext2_free_blocks()=
+,
+> and because of the large number 18e19 this problem immediately looked
+> like some kind of integer overflow. Whereas the 4TB fs was about 1e9
+> blocks, the new 12TB is about 3e9 blocks. So, searching the ext2 code,
+> I came across the line in fs/ext2/xattr.c:745 where ext2_new_block()
+> is called and the resulting block number is stored in the variable block
+> as an int datatype. If a block with a block number greater than
+> INT32_MAX is returned, this variable overflows and the call to
+> sb_getblk() at line fs/ext2/xattr.c:750 fails, then the call to
+> ext2_free_blocks() produces the error.
+>
+> Signed-off-by: Georg Ottinger <g.ottinger@gmx.at>
+> ---
+>   fs/ext2/xattr.c | 4 ++--
+>   1 file changed, 2 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+> index 8906ba479..89517937d 100644
+> --- a/fs/ext2/xattr.c
+> +++ b/fs/ext2/xattr.c
+> @@ -742,10 +742,10 @@ ext2_xattr_set2(struct inode *inode, struct buffer=
+_head *old_bh,
+>   			/* We need to allocate a new block */
+>   			ext2_fsblk_t goal =3D ext2_group_first_block_no(sb,
+>   						EXT2_I(inode)->i_block_group);
+> -			int block =3D ext2_new_block(inode, goal, &error);
+> +			ext2_fsblk_t block =3D ext2_new_block(inode, goal, &error);
+>   			if (error)
+>   				goto cleanup;
+> -			ea_idebug(inode, "creating block %d", block);
+> +			ea_idebug(inode, "creating block %lu", block);
+>
+>   			new_bh =3D sb_getblk(sb, block);
+>   			if (unlikely(!new_bh)) {
+> --
+> 2.17.1
+>
 
