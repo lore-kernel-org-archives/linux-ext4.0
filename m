@@ -2,81 +2,92 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 52EB2C41513
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Aug 2023 14:46:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2DC15C3062E
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Aug 2023 14:49:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1352192AbjHQOpk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 17 Aug 2023 10:45:40 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36774 "EHLO
+        id S1352250AbjHQOsu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 17 Aug 2023 10:48:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42186 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1352234AbjHQOpg (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Aug 2023 10:45:36 -0400
+        with ESMTP id S1352367AbjHQOsk (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Aug 2023 10:48:40 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2D33A30E9
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Aug 2023 07:45:26 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 27F4A10E
+        for <linux-ext4@vger.kernel.org>; Thu, 17 Aug 2023 07:48:25 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-102-95.bstnma.fios.verizon.net [173.48.102.95])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 37HEj5ra010416
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 37HEltQp012291
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 17 Aug 2023 10:45:07 -0400
+        Thu, 17 Aug 2023 10:47:56 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1692283508; bh=gqsQDXWAnHGIA5wHjYhwbJKrvhNPOC3ihUy4KEVsRbg=;
-        h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-        b=VCLuFhlGxpiG5q5PKk9rfLuahkD+JTe4C8shieNnJ+qEvLQFZ5MD7sARRyYRIUIh1
-         t6xYC9YZ/wG/LMGz770Pe3iSn0XOAGGcgKGzV+pYrfz6blivZRSeispcufwVXEswZj
-         xyAOPJEiym13NldRb6wmoLug5KhV0rqU5BoAv0MUyiVBuzC3ZNPPDTLYBk5JtPtbBj
-         YGkP7SbdQriEmBWs1jFIwpEI+IYqyZMVkcX5tihxzOhoeVNl4u5mPh7ErJUewMn2tT
-         tGO499QHqGlLi8BHiznCT13uO46P6AjauaoUUNGW71RshxHhBBz6l6P1P5895YcUF7
-         uZvjcskeFMW8w==
+        t=1692283677; bh=HJTer2z5/DnhmsdkIuJxf9HaKJdfL78gXkI1LxMt2B0=;
+        h=From:Subject:Date:Message-Id:MIME-Version:Content-Type;
+        b=S/PlR6beFqEr5kCdv01hpCgQ3usl3XGm2FgyMHuvBmpYr98UhXCvznsF/Bgmjbrbl
+         YsfiNJ32d0VKTVs/k8V7H+DCegn3BESXT9Sf3FKEzJfU2WmfMCXlip4ELx8gPzYOTu
+         Tn25+vPBwA9+CaKTiHoVkMSFKa3T6uM9h2abFW1yoaSvhI5sC49ONGg2wptU37fY3N
+         z6lbjDeDExPQ2XdaE3h2gEbVbh49H8wYB/4M3mKhE53piWSwwZ0wr8g+FIYY6QU/fp
+         yNusmqJyzwQdvtJbeoRSu6yFvr0CuzgI96TGo5RKVbt7YCRumwO1C4AZ4Yj1pch6JW
+         TtWX13GEbHy3w==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 3D6B115C0501; Thu, 17 Aug 2023 10:45:05 -0400 (EDT)
-Date:   Thu, 17 Aug 2023 10:45:05 -0400
+        id 267D915C0502; Thu, 17 Aug 2023 10:47:55 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Aleksandr Nogikh <nogikh@google.com>
-Cc:     syzbot <syzbot+27eece6916b914a49ce7@syzkaller.appspotmail.com>,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        llvm@lists.linux.dev, nathan@kernel.org, ndesaulniers@google.com,
-        syzkaller-bugs@googlegroups.com, trix@redhat.com
-Subject: Re: [syzbot] [ext4?] kernel panic: EXT4-fs (device loop0): panic
- forced after error (3)
-Message-ID: <20230817144505.GB2247938@mit.edu>
-References: <000000000000530e0d060312199e@google.com>
- <20230817142103.GA2247938@mit.edu>
- <CANp29Y7jbcOw_rS5vbfWNo7Y+ySYhYS-AWC356QN=JRVOm9B8w@mail.gmail.com>
+To:     linux-ext4@vger.kernel.org, Zhang Yi <yi.zhang@huaweicloud.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
+        jack@suse.cz, yi.zhang@huawei.com, yukuai3@huawei.com
+Subject: Re: [PATCH v3 00/12] ext4,jbd2: cleanup journal load and initialization process
+Date:   Thu, 17 Aug 2023 10:47:53 -0400
+Message-Id: <169228359792.3428939.4459127626146442938.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <20230811063610.2980059-1-yi.zhang@huaweicloud.com>
+References: <20230811063610.2980059-1-yi.zhang@huaweicloud.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CANp29Y7jbcOw_rS5vbfWNo7Y+ySYhYS-AWC356QN=JRVOm9B8w@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Aug 17, 2023 at 04:28:33PM +0200, Aleksandr Nogikh wrote:
-> The console log has the following line:
+
+On Fri, 11 Aug 2023 14:35:58 +0800, Zhang Yi wrote:
+> v2->v3:
+>  - Fix the potential overflow on journal space check in patch 7.
+>  - Rename ext4_get_journal_dev() to ext4_get_journal_blkdev() in patch 11.
+> v1->v2:
+>  - Fix the changelog in patch 1 and 2.
+>  - Simplify the comments for local functions in patch 6.
+>  - Remove the incorrect zero fast_commit blocks check in patch 7.
+>  - Fix a UAF problem in patch 11.
 > 
-> [   60.708717][ T5061] Kernel panic - not syncing: EXT4-fs (device
-> loop0): panic forced after error
-> 
-> Can we consider a "panic forced after error" line to be a reliable
-> indicator that syzbot must ignore the report?
+> [...]
 
-Yes.  And the file system image that generated this bug should be
-discarded, because otherwise successive mutations will generate a
-large number of crashes that syzbot will then need to ignore, thus
-consuming syzbot resources.
+Applied, thanks!
 
-Alternatively, you can do the moral equivalent of "tune2fs -e continue
-foo.img" on any mutated file system seed, which will clear the "panic
-on error".
+[01/12] jbd2: move load_superblock() dependent functions
+        commit: 29a511e49f33426c8d24700db4842234a84678b2
+[02/12] jbd2: move load_superblock() into journal_init_common()
+        commit: c30713084ba5b6fa343129613ec349ea91f0c458
+[03/12] jbd2: don't load superblock in jbd2_journal_check_used_features()
+        commit: 9600f3e5cfd0360b10c271149032c77917baedc5
+[04/12] jbd2: checking valid features early in journal_get_superblock()
+        commit: e4adf8b837087b5bb57fff6827e10ec877a50f64
+[05/12] jbd2: open code jbd2_verify_csum_type() helper
+        commit: 18dad509e7bd3189ac1e7f7904faf1561a908871
+[06/12] jbd2: cleanup load_superblock()
+        commit: 054d9c8fef14d476f1a9c6434de86813c5990052
+[07/12] jbd2: add fast_commit space check
+        commit: 0dbc759ae9971568af24def1b01d5b1aa87bd546
+[08/12] jbd2: cleanup journal_init_common()
+        commit: 49887e47a5262cc7b87d547de57a21a072c6ea5e
+[09/12] jbd2: drop useless error tag in jbd2_journal_wipe()
+        commit: d9a45496019a73c240bd22912ae18a04b8496364
+[10/12] jbd2: jbd2_journal_init_{dev,inode} return proper error return value
+        commit: c279913275eb9fcab79fe713925dcf9b037070cf
+[11/12] ext4: cleanup ext4_get_dev_journal() and ext4_get_journal()
+        commit: e89c6fc9b191318238c2e211ee02be2fe943a69d
+[12/12] ext4: ext4_get_{dev}_journal return proper error value
+        commit: 99d6c5d892bfff3be40f83ec34d91d562125afd4
 
-(The other alternative is "tune2fs -e remount-ro", but given syzbot's
-desire to find kernel crashes, "tune2fs -e continue" is more likely
-find ways in which the kernel will find itself into trouble.  Some
-sysadmins will want to chose "remount-ro", however, since that is more
-likely to limit file system damage once the file system is discovered
-to be corrupted.)
-
-					- Ted
-					
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
