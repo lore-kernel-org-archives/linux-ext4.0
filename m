@@ -2,135 +2,80 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 76352C3062E
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Aug 2023 14:49:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D36DDC3DA4E
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Aug 2023 16:12:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1352254AbjHQOtZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 17 Aug 2023 10:49:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54224 "EHLO
+        id S1351805AbjHQQMJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 17 Aug 2023 12:12:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41796 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1352340AbjHQOtK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Aug 2023 10:49:10 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 72BF235A7
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Aug 2023 07:48:01 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1692283672;
-        h=from:from:reply-to:reply-to:subject:subject:date:date:
-         message-id:message-id:to:to:cc:cc:mime-version:mime-version:
-         content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=9oGZA/sseErZDodfZN5CQ2lHc0bZoWdbDZNY06uW8a8=;
-        b=bFfgoJQic3ILauNMDs+YZl5UmvP/OZZXFLjWzRaOlXtDR2aq4LKLs+iHXEbXskMa3Tv+7z
-        pVcAl5MwwH8/4ev+eO0xdP0VEw2zm4iufNisrQyC4xFeMz8kKkq0C3i6iYEnuWtYgLxfDt
-        Jm+nHz9sPdYgs4vamqHDZPL6naihHAc=
-Received: from mail-il1-f199.google.com (mail-il1-f199.google.com
- [209.85.166.199]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-361-gng_JVJEO5GTnxnW-IjH9A-1; Thu, 17 Aug 2023 10:47:51 -0400
-X-MC-Unique: gng_JVJEO5GTnxnW-IjH9A-1
-Received: by mail-il1-f199.google.com with SMTP id e9e14a558f8ab-349783c5ccbso69039035ab.2
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Aug 2023 07:47:51 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1692283670; x=1692888470;
-        h=content-transfer-encoding:in-reply-to:from:references:cc:to
-         :content-language:subject:reply-to:user-agent:mime-version:date
-         :message-id:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=9oGZA/sseErZDodfZN5CQ2lHc0bZoWdbDZNY06uW8a8=;
-        b=WbQVyQdQRSp4MWWawQCEkB7n6mkfNCgNlmrlRmP32JJL+qZmD2wbAJ21VkWs9ve38u
-         e7XD/4FqMIY19ShQGkWVRGMef3Km38GwDGVjf7LQjREiLw6JdXT15L3Dw9Mh9bN+YOX3
-         4qq4YE9j+QByObbv7rwh6IZ/+TYarv7w1MkB2MinINpuingbP8BWdpkyHjgUWw+C784d
-         uI2k4AXqsG80R4lNbti+QZNXJ3lkFkkEt/OBFTiCLYMUHboamubCCMXiprBw+i8qXZB2
-         9uKT6MIlbtrtJ4U/hsz7zBjlSiDibx7v8FGGiHuQDsg3Y+p6PNdXYPGE5oRdogwXaJZ9
-         RHDg==
-X-Gm-Message-State: AOJu0YzSx4ZYBb+VYCMEcbM4Q6jWbpU2PrHGrv6ft7N9I9P2RprvWHo8
-        dH6RKR4XUAcJsBoM5/rusfu0WQ75qiuKoT0DurFxlt4bOMqEFJRB1ZK70D9mnfg+mN661e/211T
-        L1jXd8wsvtRpgmMGOa+aNDw==
-X-Received: by 2002:a05:6e02:1253:b0:34b:f3b:77b5 with SMTP id j19-20020a056e02125300b0034b0f3b77b5mr2475662ilq.30.1692283670610;
-        Thu, 17 Aug 2023 07:47:50 -0700 (PDT)
-X-Google-Smtp-Source: AGHT+IGrQH+8rKQJl51yXYMvIpUQalzEERVfGo2BzoJLpqamdYa+T7EHfujOKoGDdR3fZK6apXThIA==
-X-Received: by 2002:a05:6e02:1253:b0:34b:f3b:77b5 with SMTP id j19-20020a056e02125300b0034b0f3b77b5mr2475650ilq.30.1692283670364;
-        Thu, 17 Aug 2023 07:47:50 -0700 (PDT)
-Received: from [10.0.0.71] (sandeen.net. [63.231.237.45])
-        by smtp.gmail.com with ESMTPSA id l28-20020a02cd9c000000b0042acf389ac8sm4783835jap.130.2023.08.17.07.47.49
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 17 Aug 2023 07:47:49 -0700 (PDT)
-Message-ID: <81f96763-51fe-8ea1-bf81-cd67deed9087@redhat.com>
-Date:   Thu, 17 Aug 2023 09:47:48 -0500
-MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0)
- Gecko/20100101 Thunderbird/102.14.0
-Reply-To: sandeen@redhat.com
-Subject: Re: [syzbot] [ext4?] kernel panic: EXT4-fs (device loop0): panic
- forced after error (3)
-Content-Language: en-US
-To:     Theodore Ts'o <tytso@mit.edu>,
-        syzbot <syzbot+27eece6916b914a49ce7@syzkaller.appspotmail.com>
-Cc:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        with ESMTP id S1353613AbjHQQLt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Aug 2023 12:11:49 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1AB8E30FE
+        for <linux-ext4@vger.kernel.org>; Thu, 17 Aug 2023 09:11:36 -0700 (PDT)
+Received: from cwcc.thunk.org (pool-173-48-102-95.bstnma.fios.verizon.net [173.48.102.95])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 37HGBITO024446
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 17 Aug 2023 12:11:19 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1692288680; bh=fHPwV6TxvRwbeuDja45CNkKtsuGepircRHRBRc+9VD0=;
+        h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+        b=k//JNo1Dto08rEtdMfX3xvu+Q84a+tcpM7rjCcVEZCZ/4bJAp37FiUVVd5W9RCF9U
+         sIldjWLdoh9rNe0k0f9Ub9a2zTWfPqbzfqIAA+n8FDlJpEaMe5W+sjwR2W+81bluaH
+         dKL2iJHt28/zBZUs+8KwVe1Ptg7dSXIbKpJpTmQHTS1p0Dha8MOiqZB/mjqDjkgF4f
+         dZ7A9XiHtuZGdE3Xp6mkUKAGMab7oMPaYrlHE3qWDJK9N2x+4tvp4QuXVRwDeOwWVi
+         3yyNZOlBCaynD30v42Lxjh2jTu9gRVWOXhcLj2Hv3PdoExGooJDQBKEq3K7OslVP8H
+         zSD37HkvPfHUA==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 0CB9515C0501; Thu, 17 Aug 2023 12:11:18 -0400 (EDT)
+Date:   Thu, 17 Aug 2023 12:11:18 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     sandeen@redhat.com
+Cc:     syzbot <syzbot+27eece6916b914a49ce7@syzkaller.appspotmail.com>,
+        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         llvm@lists.linux.dev, nathan@kernel.org, ndesaulniers@google.com,
         syzkaller-bugs@googlegroups.com, trix@redhat.com
+Subject: Re: [syzbot] [ext4?] kernel panic: EXT4-fs (device loop0): panic
+ forced after error (3)
+Message-ID: <20230817161118.GC2247938@mit.edu>
 References: <000000000000530e0d060312199e@google.com>
  <20230817142103.GA2247938@mit.edu>
-From:   Eric Sandeen <esandeen@redhat.com>
-In-Reply-To: <20230817142103.GA2247938@mit.edu>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+ <81f96763-51fe-8ea1-bf81-cd67deed9087@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <81f96763-51fe-8ea1-bf81-cd67deed9087@redhat.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 8/17/23 9:21 AM, Theodore Ts'o wrote:
-> On Wed, Aug 16, 2023 at 03:48:49PM -0700, syzbot wrote:
->> Hello,
->>
->> syzbot found the following issue on:
->>
->> HEAD commit:    ae545c3283dc Merge tag 'gpio-fixes-for-v6.5-rc6' of git://..
->> git tree:       upstream
->> console+strace: https://syzkaller.appspot.com/x/log.txt?x=13e5d553a80000
->> kernel config:  https://syzkaller.appspot.com/x/.config?x=171b698bc2e613cf
->> dashboard link: https://syzkaller.appspot.com/bug?extid=27eece6916b914a49ce7
->> compiler:       Debian clang version 15.0.6, GNU ld (GNU Binutils for Debian) 2.40
->> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=13433207a80000
->> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=109cd837a80000
->>
->> EXT4-fs error (device loop0): ext4_validate_block_bitmap:430: comm syz-executor211: bg 0: block 46: invalid block bitmap
->> Kernel panic - not syncing: EXT4-fs (device loop0): panic forced after error
+On Thu, Aug 17, 2023 at 09:47:48AM -0500, Eric Sandeen wrote:
 > 
-> #syz invalid
+> Just to play devil's advocate here - (sorry) - I don't see this as any
+> different from any other "malicious" filesystem image.
 > 
-> This is fundamentally a syzbot bug.  The file system is horrifically
-> corrupted, *and* the superblock has the "panic on error" (aka "panic
-> onfile system corruption") bit set.
+> I've never been a fan of the idea that malicious images are real security
+> threats, but whether the parking lot USB stick paniced the box in an
+> unexpected way or "on purpose," the result is the same ...
 > 
-> This can be desireable because in a failover situation, if the file
-> system is found to be corrupted, you *want* the primary server to
-> fail, and let the secondary server to take over.  This is a technique
-> which is decades old.
+> I wonder if it might make sense to put EXT4_MOUNT_ERRORS_PANIC under a
+> sysctl or something, so that admins can enable it only when needed.
 
-Just to play devil's advocate here - (sorry) - I don't see this as any 
-different from any other "malicious" filesystem image.
+Well, if someone is stupid enough to plug in a parking lot USB stick
+into their system, they get everything they deserve.  And a forced
+panic isn't going to lead a more privilege escalation attack, so I
+really don't see a problem if a file system which is marked "panic on
+error", well, causes a panic.  It's a good way of (harmlessly)
+punishing stupid user tricks.  :-)
 
-I've never been a fan of the idea that malicious images are real 
-security threats, but whether the parking lot USB stick paniced the box 
-in an unexpected way or "on purpose," the result is the same ...
+The other way of thinking about it is that if your threat model
+includes an attacker with physical access to the server with a USB
+port, attacks include a cable which has a USB port on one side, and a
+120V/240V AC mains plug on the the other.  This will very likely cause
+a system shutdown, even if they don't have automount enabled.   :-)
 
-I wonder if it might make sense to put EXT4_MOUNT_ERRORS_PANIC under a 
-sysctl or something, so that admins can enable it only when needed.
-
-Sorry for stealing another 5 minutes of your life.
-
--Eric
-
-> So this is Working As Intended, and is a classic example of (a) if you
-> are root, you can force the file system to crash, and (b) a classic
-> example of syzbot noise.  (Five minutes of my life that I'm never
-> getting back.  :-)
-> 
-> 						- Ted
-> 
-> 
-
+							- Ted
