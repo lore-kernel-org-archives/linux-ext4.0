@@ -2,29 +2,41 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D951FEE49AC
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E8E3AEE49B0
 	for <linux-ext4@archiver.kernel.org>; Mon, 21 Aug 2023 04:11:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232849AbjHUELJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 21 Aug 2023 00:11:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57914 "EHLO
+        id S232884AbjHUELK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 21 Aug 2023 00:11:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57900 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230490AbjHUELI (ORCPT
+        with ESMTP id S232120AbjHUELI (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Aug 2023 00:11:08 -0400
-Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id BC383F2;
-        Sun, 20 Aug 2023 21:10:31 -0700 (PDT)
-X-AuditID: a67dfc5b-d6dff70000001748-0b-64e2ded6ddcf
-From:   Byungchul Park <byungchul@sk.com>
-To:     linux-kernel@vger.kernel.org
-Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
-        damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        mingo@redhat.com, peterz@infradead.org, will@kernel.org,
-        tglx@linutronix.de, rostedt@goodmis.org, joel@joelfernandes.org,
-        sashal@kernel.org, daniel.vetter@ffwll.ch, duyuyang@gmail.com,
-        johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
-        willy@infradead.org, david@fromorbit.com, amir73il@gmail.com,
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D64BD11D;
+        Sun, 20 Aug 2023 21:10:33 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=sTOdBFeZC0ZITAjiSCC8ryUnVRY9Lhk36Ip26KjeYr4=; b=ICymlCyLpaJ6lmuyoMFR5kttyw
+        UBm9C082xuk3Z6hhwZEKWSF+ox3NgccEuO8Z/43fptOWwRZsWum/7FRoRaW1UQbyW1qJwMW+RtTE5
+        LuYT1pNyy0SaxkHsTTkacsbgLDntlcgS1wSJqQvwXrvlQeAEdAYSdM61NzEaEm48NI/eOnoim4ojj
+        8vV9ewOGSLgUh2r2vGs4nVL8ZJ4gZ46GXf8M9SfbYoQvZdxJbeNQKkzbyh3E1MLZutAHTaZUuOqIq
+        1S/Hr371deuhKGgzMbb+5HqLyRiiOPcO8oCTUXpithV1sUUXjoat+U6z6h/eBmQhpwA7bLdvom+us
+        SUX4CjPw==;
+Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1qXwEa-0081su-Uu; Mon, 21 Aug 2023 04:09:45 +0000
+Date:   Mon, 21 Aug 2023 05:09:44 +0100
+From:   Matthew Wilcox <willy@infradead.org>
+To:     Byungchul Park <byungchul@sk.com>
+Cc:     linux-kernel@vger.kernel.org, kernel_team@skhynix.com,
+        torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
+        linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, mingo@redhat.com, peterz@infradead.org,
+        will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
+        joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
+        duyuyang@gmail.com, johannes.berg@intel.com, tj@kernel.org,
+        tytso@mit.edu, david@fromorbit.com, amir73il@gmail.com,
         gregkh@linuxfoundation.org, kernel-team@lge.com,
         linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
         minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com,
@@ -40,87 +52,43 @@ Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
         gwan-gyeong.mun@intel.com, max.byungchul.park@gmail.com,
         boqun.feng@gmail.com, longman@redhat.com, hdanton@sina.com,
         her0gyugyu@gmail.com
-Subject: [RESEND PATCH v10 18/25] dept: Apply timeout consideration to wait_for_completion()/complete()
-Date:   Mon, 21 Aug 2023 12:46:30 +0900
-Message-Id: <20230821034637.34630-19-byungchul@sk.com>
-X-Mailer: git-send-email 2.17.1
-In-Reply-To: <20230821034637.34630-1-byungchul@sk.com>
+Subject: Re: [RESEND PATCH v10 08/25] dept: Apply
+ sdt_might_sleep_{start,end}() to PG_{locked,writeback} wait
+Message-ID: <ZOLjiF2oKxBvVzyw@casper.infradead.org>
 References: <20230821034637.34630-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0hTcRjG/f/PdavJYQUdMygGERRphuVbRERRHYqgG9EN2mgnHXlr3jKI
-        nGkXy7BwrUzMS8ylM/VMuplhipqaaSlLTVeuqKypZW21tMxZfXn58Tzv+/B8eFlCWU3NZnXR
-        8aI+WhOpouWkfGh6wWK7w6ld8r0f4OL5JeD+doaE3HIrDR23ShFYqwwYBhs2wguPC8FYWzsB
-        JmMHgoKBfgKqGh0IaiypNHS+9Ycu9wgNzcZzNJwsKqfh2adxDH2XL2EolbZAa1YhhlrvexJM
-        gzRcM53Ek+MDBq+5hAFzynxwWnIYGB8IgWaHnYKa3kVwNa+Phgc1zSQ03nVi6LyfS4PDOkFB
-        a+NjEjouZlJQNlxIwyePmQCze4SB57X5GCrSJoNOff1NQVNmLYZTNyoxdPVUI3h45jUGyWqn
-        od7twmCTjAT8LG5A4LwwxED6eS8D1wwXEJxLv0xC+68mCtL6lsHYj1x6zUqh3jVCCGm2JKHG
-        k08KLYW8cC+nnxHSHvYyQr6UINgsC4WiB4NYKBh1U4JUcpYWpNFLjJAx1IWF4adPGeHxlTFS
-        eNtlwlsD98pXacVIXaKoD16tlkfkTJiY2Dz50R5DJU5Br9kMJGN5LpT3VlUw//lXVgvpY5pb
-        wHd3ewkfz+Tm8bbMd1QGkrMEd3oab/ncRvuMGVw4b390G/mY5Obz49XFUwcKbjl/57oB/w2d
-        y5dW1E7pskldqr4/ta/klvFfBt6QvlCeOy3jpZsj/1oE8I8s3WQWUuQjvxKk1EUnRml0kaFB
-        EcnRuqNBB2OiJDT5Uubj4/vuotGOHXWIY5FqukI9x6lVUprEuOSoOsSzhGqmIvD7gFap0GqS
-        j4n6mAP6hEgxrg4FsqRqlmKpJ0mr5MI18eJhUYwV9f9dzMpmp6B1sa+aDwwyxz/uD16750SZ
-        qSFqUy+3jm58og6o96S6epMVTUZ39s7Y8O22ednyeLM9IqBNPdwuX7t6g7S51fX5yHqZrGW3
-        7YfR47fd0xMa3JMUlq3aaHQUxRR9sbwsK967ybnfmtgZts0gO7TCL33Cb1dqeqvaX/ns47R3
-        UkjlDhUZF6EJWUjo4zR/AP+kE2lOAwAA
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSfUzMcRzHfb+/x47j12nzG4bdZsiQh/h4mIdhfccyNptms/rN/dTpit0p
-        YrZOF4laoY5UerCTKz1cTenBUquUpaiFpLljaF3loYt0Hirzz3uvvd+f9/uvD0+pMpjZvDb8
-        hKwPl3RqVkEr9myMWdbV69D49KTNh+TLPuAajqMhvaiAhfbCfAQFZUYMfQ1+8GLEiWCstY0C
-        c0o7gmz7GwrKGnsR1OSdY6Hj/XTodA2x0JxyiYWY3CIWnvW7MfSkXsGQb/OHJ0k5GGpHP9Jg
-        7mPhpjkGj8snDKMWKweW6IXgyEvjwG1fCc29XQzUZzQzUNO9FG5k9rBQXdNMQ2OFA0NHZToL
-        vQV/GHjS+JiG9uQEBu4N5rDQP2KhwOIa4uB5bRaGYtP42vlvvxloSqjFcP52CYbOV1UIHsa9
-        xWAr6GKh3uXEUGpLoeDnnQYEjsQBDmIvj3Jw05iI4FJsKg1tv5oYMPX4wtiPdHbrRlLvHKKI
-        qfQkqRnJoklLjkgepL3hiOlhN0eybBGkNM+b5Fb3YZL91cUQm/UiS2xfr3AkfqATk8GnTzny
-        +PoYTd53mvHeuQcVmzSyThsp61dsDlKEpP0xc8czFadeGUtwNHrLxyMPXhTWiL+SWugJZoVF
-        4suXo9QEewkLxNKED0w8UvCUcGGqmPe5lZ0IZgrBYtej+2iCaWGh6K66M1lQCmvF8ltG/G90
-        vphfXDvpe4z7tqrKyXuV4Ct+sb+jk5AiC02xIi9teGSYpNX5LjeEhkSFa08tP3wszIbGn8Zy
-        1p1cgYY7/OqQwCP1NGXQXIdGxUiRhqiwOiTylNpLOee7XaNSaqSo07L+WKA+Qicb6tAcnlbP
-        Uu46IAephGDphBwqy8dl/f8U8x6zo1FA+QZti49Tf3/3mWzn/rvvGvwPHV0tltNF9hkRq+Rl
-        O7ZsS+pLVS2OXesZZ52nWfLjav+RQv/W4nXOwpP1YK1srF6nGfgQKu1Uia71t7sjJF3F4A1P
-        Y3cT7At+vbXttbhrWGUKWBLo57U9LlHLkGtfLBbnquSMwqFt7pCGfRdy1bQhRFrpTekN0l+b
-        Zs2cMAMAAA==
-X-CFilter-Loop: Reflected
+ <20230821034637.34630-9-byungchul@sk.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230821034637.34630-9-byungchul@sk.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now that CONFIG_DEPT_AGGRESSIVE_TIMEOUT_WAIT was introduced, apply the
-consideration to wait_for_completion()/complete().
+On Mon, Aug 21, 2023 at 12:46:20PM +0900, Byungchul Park wrote:
+> @@ -1219,6 +1220,9 @@ static inline bool folio_trylock_flag(struct folio *folio, int bit_nr,
+>  /* How many times do we accept lock stealing from under a waiter? */
+>  int sysctl_page_lock_unfairness = 5;
+>  
+> +static struct dept_map __maybe_unused PG_locked_map = DEPT_MAP_INITIALIZER(PG_locked_map, NULL);
+> +static struct dept_map __maybe_unused PG_writeback_map = DEPT_MAP_INITIALIZER(PG_writeback_map, NULL);
 
-Signed-off-by: Byungchul Park <byungchul@sk.com>
----
- include/linux/completion.h | 4 ++--
- kernel/sched/completion.c  | 2 +-
- 2 files changed, 3 insertions(+), 3 deletions(-)
+Hmm, why are these "maybe unused"?  *digs*.  Ah.  Because
+sdt_might_sleep_start() becomes a no-op macro if DEPT is disabled.
 
-diff --git a/include/linux/completion.h b/include/linux/completion.h
-index 32d535abebf3..15eede01a451 100644
---- a/include/linux/completion.h
-+++ b/include/linux/completion.h
-@@ -41,9 +41,9 @@ do {							\
-  */
- #define init_completion_map(x, m) init_completion(x)
- 
--static inline void complete_acquire(struct completion *x)
-+static inline void complete_acquire(struct completion *x, long timeout)
- {
--	sdt_might_sleep_start(&x->dmap);
-+	sdt_might_sleep_start_timeout(&x->dmap, timeout);
- }
- 
- static inline void complete_release(struct completion *x)
-diff --git a/kernel/sched/completion.c b/kernel/sched/completion.c
-index d57a5c1c1cd9..261807fa7118 100644
---- a/kernel/sched/completion.c
-+++ b/kernel/sched/completion.c
-@@ -100,7 +100,7 @@ __wait_for_common(struct completion *x,
- {
- 	might_sleep();
- 
--	complete_acquire(x);
-+	complete_acquire(x, timeout);
- 
- 	raw_spin_lock_irq(&x->wait.lock);
- 	timeout = do_wait_for_common(x, action, timeout, state);
--- 
-2.17.1
+OK, the right way to handle this is
+
+#ifdef CONFIG_DEPT
+#define DEPT_MAP(name)	static struct dept_map name = \
+		DEPT_MAP_INITIALIZER(name, NULL)
+#else
+#define DEPT_MAP(name)	/* */
+#endif
+
+And now DEPT takes up no space if disabled.
+
+/* */; is a somewhat unusual thing to see, but since this must work at
+top level, we can't use "do { } while (0)" like we usually do.  Given
+where else this is likely to be used, i don't think it's going to be
+a problem ...
 
