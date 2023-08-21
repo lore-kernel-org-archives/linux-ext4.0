@@ -2,29 +2,30 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1770AEE49A5
-	for <linux-ext4@archiver.kernel.org>; Mon, 21 Aug 2023 04:36:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 00A56EE49A0
+	for <linux-ext4@archiver.kernel.org>; Mon, 21 Aug 2023 04:40:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233046AbjHUEg2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 21 Aug 2023 00:36:28 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45402 "EHLO
+        id S233061AbjHUEkz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 21 Aug 2023 00:40:55 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37056 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229679AbjHUEg1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Aug 2023 00:36:27 -0400
+        with ESMTP id S233056AbjHUEky (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Aug 2023 00:40:54 -0400
 Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id E9E43F3;
-        Sun, 20 Aug 2023 21:36:12 -0700 (PDT)
-X-AuditID: a67dfc5b-d6dff70000001748-2b-64e2ded49cc7
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 93114A8;
+        Sun, 20 Aug 2023 21:40:48 -0700 (PDT)
+X-AuditID: a67dfc5b-d6dff70000001748-09-64e2eacf1ef5
+Date:   Mon, 21 Aug 2023 13:37:44 +0900
 From:   Byungchul Park <byungchul@sk.com>
-To:     linux-kernel@vger.kernel.org
-Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
-        damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        mingo@redhat.com, peterz@infradead.org, will@kernel.org,
-        tglx@linutronix.de, rostedt@goodmis.org, joel@joelfernandes.org,
-        sashal@kernel.org, daniel.vetter@ffwll.ch, duyuyang@gmail.com,
-        johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
-        willy@infradead.org, david@fromorbit.com, amir73il@gmail.com,
+To:     Matthew Wilcox <willy@infradead.org>
+Cc:     linux-kernel@vger.kernel.org, kernel_team@skhynix.com,
+        torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
+        linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, mingo@redhat.com, peterz@infradead.org,
+        will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
+        joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
+        duyuyang@gmail.com, johannes.berg@intel.com, tj@kernel.org,
+        tytso@mit.edu, david@fromorbit.com, amir73il@gmail.com,
         gregkh@linuxfoundation.org, kernel-team@lge.com,
         linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
         minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com,
@@ -40,140 +41,90 @@ Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
         gwan-gyeong.mun@intel.com, max.byungchul.park@gmail.com,
         boqun.feng@gmail.com, longman@redhat.com, hdanton@sina.com,
         her0gyugyu@gmail.com
-Subject: [RESEND PATCH v10 04/25] dept: Add lock dependency tracker APIs
-Date:   Mon, 21 Aug 2023 12:46:16 +0900
-Message-Id: <20230821034637.34630-5-byungchul@sk.com>
-X-Mailer: git-send-email 2.17.1
-In-Reply-To: <20230821034637.34630-1-byungchul@sk.com>
+Subject: Re: [RESEND PATCH v10 08/25] dept: Apply
+ sdt_might_sleep_{start,end}() to PG_{locked,writeback} wait
+Message-ID: <20230821043744.GA73328@system.software.com>
 References: <20230821034637.34630-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSf0zMcRjHfb6/77j2dVhfspWb2KL8mHhmGDPzYWNt/jCZ6bjvdFyHK6eY
-        iQ4pmZoTCRXO6Y5yZ36Ua1foh5ToJC3NHUOrRFy6Oj+u8M+z1/Z69n6eP94cKS+jJ3FqbZKo
-        0yo1CkZKSXvGFEa+7PCoZlcfIyH7xGzwfk+nIL/EykDTTQsC6+1DBHQ+Xgmv+rsRDDU8IyHX
-        2ISg0P2GhNvVHQgc5sMMNL8PApe3l4E6YyYDaZdLGHje5Seg/UwOARbbGqg/VUSA0/eRgtxO
-        Bs7nphGB8YkAn6mYBVNqOHjMeSz43XOgrqOFBkfbDDh3sZ2BB446CqrveQhoLstnoMP6m4b6
-        6loKmrKzaLjxuYiBrn4TCSZvLwsvnAUElBoCQUe//aKhJstJwNErtwhwvS5HUJH+lgCbtYWB
-        h95uAuw2IwmD1x4j8JzsYeHICR8L5w+dRJB55AwFz37W0GBoj4ahgXxm6UL8sLuXxAb7Xuzo
-        L6DwkyIB3897w2JDRRuLC2x7sN0cgS8/6CRwYZ+Xxrbi4wy29eWwOKPHReDPjY0srj07ROH3
-        rlwiJiRWukglatR6UTdrSZw03hD4bten4OSrzlSUiizyDCThBH6e4B+soP5zZVsJOcwMP11o
-        bfWN8Hg+TLBnfaAzkJQj+WOjBfOXBmZYjOOxcKdoWEg4ig8Xsn85R4JkfLRgL31K/g0NFSyl
-        zhGW8PMFW3kZGmZ5YOer+92/w2kS4WXl2r88Uag0t1KnkKwAjSpGcrVWn6BUa+ZFxado1clR
-        W3cm2FCgUaYD/o33UF/TuirEc0gxRhY32aOS00p9YkpCFRI4UjFeFvLDrZLLVMqUfaJu52bd
-        Ho2YWIVCOEoRLJvbv1cl57cpk8QdorhL1P23BCeZlIrU/usOe3Roc/r6gdgpvv0NrrFX+U0X
-        I0MUr/VRmw363U9mdm1dsOntfc2tR3enrYw5ffq3PqzRnTM1crA29EKSV2/94PBYVvmWD7T7
-        t7TUPD9o0uZtGLW6pFaZ/JSKMhnDdmyPDTLmpyUHrZ+wYpG2fEPopYhlDZnGseEvghe3LK2P
-        U1CJ8co5EaQuUfkHnxlnZ00DAAA=
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSfUzMcRzHfX/Pdxw/p82PMrkpW0iZ8jFm/vP1kIkN8zDd3G861ZU7ImNK
-        h1RnZRI9kKNz66LcYZ5qp6YnD5VuHlJNJ3Sr5KGLlHLH/PPZa3u99977jw9Hygvp6Zxas0/U
-        apSxCkZKSdctTZ3v6HCqQpoNgZCdGQLugTQKCspKGWi6YUFQeiuFANfjlfBqsBfB8LNGEnJz
-        mhBc7mwn4VZNB4IK8zEGWromgsPdz0B9TgYDqVfKGGjuGSGg7dwZAizWCHiSZSTAPvSJglwX
-        A/m5qYTndBMwZCphwZQcAE5zHgsjnaFQ3/GShurCehoqWufChYttDDysqKeg5q6TgJb7BQx0
-        lI7R8KSmjoKmbAMN1z8bGegZNJFgcvez8MJeREC53tN24vsoDbUGOwEnrt4kwPHmAYLKtHcE
-        WEtfMlDt7iXAZs0h4de1xwicp/tYOJ45xEJ+ymkEGcfPUdD4u5YGfVsYDP8sYFYsxdW9/STW
-        2w7gisEiCjcYBXwvr53F+spWFhdZ92ObOQhfeegi8OVvbhpbS04x2PrtDIvT+xwE/vz8OYvr
-        zg9TuMuRS6z32ypdphJj1YmidsHyKGm03rMuoXvqwWJ7MkpGFnk6knACv0h41FpGepnh5wiv
-        Xw/9ZR/eX7AZPtLpSMqR/MnxgvnLM8YrpvBYuGP0CglH8QFC9qid8rKMDxNs5U/Jf6UzBUu5
-        /S9L+HDB+uA+8rLck/na+Z7KQtIiNK4E+ag1iXFKdWxYsC4mOkmjPhi8Kz7OijxPYzoykn0X
-        DbSsrEI8hxQTZFF+TpWcVibqkuKqkMCRCh+Z749OlVymUiYdErXxO7X7Y0VdFfLlKMVU2erN
-        YpSc363cJ8aIYoKo/W8JTjI9GW20h0bOD0w7LFE3g4v/8H3X5EnqkJ6R9siju2cmVYr2S0ve
-        7vGPHBhdrlnVXtXdMGGheV7DQM3a1SuCdxiw+U1wbWF4RPimNXUbEmaPRqwRzu4dCzmalbFl
-        WlBe6tUYXwMeMxXP6BJ7LNUNszOR36ztt1v9t5U9PZyCFn85/6PA6FJQumhlaBCp1Sn/AHiA
-        ENIwAwAA
+ <20230821034637.34630-9-byungchul@sk.com>
+ <ZOLjiF2oKxBvVzyw@casper.infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <ZOLjiF2oKxBvVzyw@casper.infradead.org>
+User-Agent: Mutt/1.9.4 (2018-02-28)
+X-Brightmail-Tracker: H4sIAAAAAAAAA02SbUxTZxTH8zz3lWrnpZP4SBenXcgWFpwyDCebMUu2yE0WExM1cfoBm/Vm
+        NFIgrYD4FphFWxAGmtJZiULB2mDV7YKuY+AYRKCSSafMdYhEauNAeUmY7caKZXTEzC8nv5yX
+        X/4fDk+pFphkXp93QDLmaXM1rIJWTC13pg0+Deo2XPe+D7WnNkD4uYWG+mseFvxXLyPwtJVh
+        mLiVBb9FJhFEfx6kwG7zI2gce0hBW+8ogk73lyzcC70GQ+EZFny2ShaON11j4Zdn8xhG6k5j
+        uCxvg4EaJ4auuT9osE+wcM5+HC+WcQxzrhYOXKUpEHQ7OJgf2wi+0fsMdA6/C2fPj7DQ0emj
+        odcbxHCvvZ6FUc8CAwO9/TT4a6sYuDLtZOFZxEWBKzzDwd2uBgzfmBdFJ/6MMdBX1YXhRPO3
+        GIZ+/wHBTcsjDLLnPgs94UkMrbKNgn8u3UIQrJ7ioPzUHAfnyqoRVJbX0TD4oo8B88gmiP5d
+        z370gdgzOUOJ5tZisTPSQIu3nUT83vGQE803hzmxQS4UW92pYlPHBBYbZ8OMKLdYWVGePc2J
+        FVNDWJy+c4cT+7+O0mJoyI63q/coNuukXH2RZHxvyz5FzsIZF1NgW3bQed2PS9E4X4ESeCJk
+        kMrwc/olB0K1KM60kEKuTv/4H7PC2yQQmKMqEM+vFN4hk23p8TYl9CvIV/WH4vy6kE8CNXVU
+        nJUCEIttnK1ACl4lVCJir75BLw0Sie9siF46TiWB2ASOOylBTS7F+DgmLEZ4IhfHN5KEt0jX
+        jT4c1xChJ4E0mcu4pZiryU/uAF2DBMcrVscrVsf/1gZEtSCVPq/IoNXnZqzPKcnTH1z/eb5B
+        Rotv6To6v9eLZv07upHAI81y5b43gjoVoy0ylRi6EeEpzUql+q8xnUqp05Yckoz52cbCXMnU
+        jdQ8rVmlTI8U61TCF9oD0n5JKpCML6eYT0guRUmqgoHD9geJR5PhceRu7aO6C+FW7yp5RVm3
+        J5M9aazaneXZuoJe3Uzah73R8pD5Y3U0p3nti2NPvmvM2Gk1RT/b2dG+69O9+z/MzvzVkJh2
+        clZT8klqtu7YRV12e6HVYjlyxprmc1ulp6pYeWwQ39785o6ZlPTMNVnrmpJco1sMGtqUo92Y
+        ShlN2n8BhnS87JIDAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAA02Sa0yTZxTH9zzvlY7qS4f6BlxiuhiVecPM5MTLLlmmT1w0274s3iKNfZXG
+        AqZVEBINSm2Qm6CUQkWD1RUCKFrQ4LTagFw6olQh2hlA2zRCtYIyC3YgjM4s88vJL+d/fifn
+        w+EphZeJ4zWpByRdqkqrZGW0bMvanGXdL3zqlb/5Y6CkYCWE3ubSUNlQz4L7ch2C+qajGAJt
+        G+HxWBDBxL1uCswmN4Lz3n4KmtoHEDhqjrHQ458FvaERFlymfBZyLjSw8ODlJIa+slMY6uyb
+        oavYisEZHqTBHGDhjDkHz5QhDGFbLQe27IXgq7FwMOlNBNfAIwZaz7oYcDz5EirO9bFwy+Gi
+        ob3Zh6Hn90oWBuqnGehq76TBXVLIwKVhKwsvx2wU2EIjHDx0VmG4YpjZZvxrioGOQicG48Wr
+        GHr/vIngdu4zDPb6Ryy0hoIYGu0mCv6ubkPgK3rFwfGCMAdnjhYhyD9eRkP3+w4GDH2rYeJd
+        JfvtWtIaHKGIoTGDOMaqaPKHVSQ3LP0cMdx+wpEq+0HSWJNALtwKYHJ+NMQQe+0JlthHT3Ek
+        71UvJsP373Oks3yCJv5eM/5p/jbZOrWk1aRLuhVfJ8mSp0/bmP2mTw9Zr7lxNhri81AULwpf
+        iR5/CYowLSwULw/f+ZdZYZHo8YSpPMTzscJiMdi0KtKmhE6ZeLIyK8KfCWmip7iMirBcADHX
+        NMTmIRmvEPKRaC66Tn8IYkRXhZ/+ICeInqkAjuykhHixeoqPYNTMCc/tGZGJOcIXovN6By5G
+        cstHsuUj2fK/XIWoWhSrSU1PUWm0q5fr9yVnpmoOLd+dlmJHM49nOzxZ0oze9mxsQQKPlNHy
+        pPk+tYJRpeszU1qQyFPKWHn8uFetkKtVmVmSLm2X7qBW0regeJ5WzpNv+lVKUgh7VQekfZK0
+        X9L9l2I+Ki4bFW6PCWjftyZ6v/9l9pK42J8rjtyZNj60ij9QBaUvvpsoX7rmRuZOxY6x7NHB
+        Je+efeL+PDh7gWf9+CqT87F7q/DNyd13l5ZmvfnxQWlGc8OGuW0xr/d4jTv5dZsdmxJed8Fe
+        W13AHDaoPesHo/sHNuwoP5afcU89q7q6jzydvBg9fsKopPXJqsQESqdX/QMZ9r0hdAMAAA==
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Wrapped the base APIs for easier annotation on typical lock.
+On Mon, Aug 21, 2023 at 05:09:44AM +0100, Matthew Wilcox wrote:
+> On Mon, Aug 21, 2023 at 12:46:20PM +0900, Byungchul Park wrote:
+> > @@ -1219,6 +1220,9 @@ static inline bool folio_trylock_flag(struct folio *folio, int bit_nr,
+> >  /* How many times do we accept lock stealing from under a waiter? */
+> >  int sysctl_page_lock_unfairness = 5;
+> >  
+> > +static struct dept_map __maybe_unused PG_locked_map = DEPT_MAP_INITIALIZER(PG_locked_map, NULL);
+> > +static struct dept_map __maybe_unused PG_writeback_map = DEPT_MAP_INITIALIZER(PG_writeback_map, NULL);
+> 
+> Hmm, why are these "maybe unused"?  *digs*.  Ah.  Because
+> sdt_might_sleep_start() becomes a no-op macro if DEPT is disabled.
+> 
+> OK, the right way to handle this is
+> 
+> #ifdef CONFIG_DEPT
+> #define DEPT_MAP(name)	static struct dept_map name = \
+> 		DEPT_MAP_INITIALIZER(name, NULL)
+> #else
+> #define DEPT_MAP(name)	/* */
+> #endif
+> 
+> And now DEPT takes up no space if disabled.
 
-Signed-off-by: Byungchul Park <byungchul@sk.com>
----
- include/linux/dept_ldt.h | 77 ++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 77 insertions(+)
- create mode 100644 include/linux/dept_ldt.h
+Currently:
 
-diff --git a/include/linux/dept_ldt.h b/include/linux/dept_ldt.h
-new file mode 100644
-index 000000000000..062613e89fc3
---- /dev/null
-+++ b/include/linux/dept_ldt.h
-@@ -0,0 +1,77 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * Lock Dependency Tracker
-+ *
-+ * Started by Byungchul Park <max.byungchul.park@gmail.com>:
-+ *
-+ *  Copyright (c) 2020 LG Electronics, Inc., Byungchul Park
-+ */
-+
-+#ifndef __LINUX_DEPT_LDT_H
-+#define __LINUX_DEPT_LDT_H
-+
-+#include <linux/dept.h>
-+
-+#ifdef CONFIG_DEPT
-+#define LDT_EVT_L			1UL
-+#define LDT_EVT_R			2UL
-+#define LDT_EVT_W			1UL
-+#define LDT_EVT_RW			(LDT_EVT_R | LDT_EVT_W)
-+#define LDT_EVT_ALL			(LDT_EVT_L | LDT_EVT_RW)
-+
-+#define ldt_init(m, k, su, n)		dept_map_init(m, k, su, n)
-+#define ldt_lock(m, sl, t, n, i)					\
-+	do {								\
-+		if (n)							\
-+			dept_ecxt_enter_nokeep(m);			\
-+		else if (t)						\
-+			dept_ecxt_enter(m, LDT_EVT_L, i, "trylock", "unlock", sl);\
-+		else {							\
-+			dept_wait(m, LDT_EVT_L, i, "lock", sl);		\
-+			dept_ecxt_enter(m, LDT_EVT_L, i, "lock", "unlock", sl);\
-+		}							\
-+	} while (0)
-+
-+#define ldt_rlock(m, sl, t, n, i, q)					\
-+	do {								\
-+		if (n)							\
-+			dept_ecxt_enter_nokeep(m);			\
-+		else if (t)						\
-+			dept_ecxt_enter(m, LDT_EVT_R, i, "read_trylock", "read_unlock", sl);\
-+		else {							\
-+			dept_wait(m, q ? LDT_EVT_RW : LDT_EVT_W, i, "read_lock", sl);\
-+			dept_ecxt_enter(m, LDT_EVT_R, i, "read_lock", "read_unlock", sl);\
-+		}							\
-+	} while (0)
-+
-+#define ldt_wlock(m, sl, t, n, i)					\
-+	do {								\
-+		if (n)							\
-+			dept_ecxt_enter_nokeep(m);			\
-+		else if (t)						\
-+			dept_ecxt_enter(m, LDT_EVT_W, i, "write_trylock", "write_unlock", sl);\
-+		else {							\
-+			dept_wait(m, LDT_EVT_RW, i, "write_lock", sl);	\
-+			dept_ecxt_enter(m, LDT_EVT_W, i, "write_lock", "write_unlock", sl);\
-+		}							\
-+	} while (0)
-+
-+#define ldt_unlock(m, i)		dept_ecxt_exit(m, LDT_EVT_ALL, i)
-+
-+#define ldt_downgrade(m, i)						\
-+	do {								\
-+		if (dept_ecxt_holding(m, LDT_EVT_W))			\
-+			dept_map_ecxt_modify(m, LDT_EVT_W, NULL, LDT_EVT_R, i, "downgrade", "read_unlock", -1);\
-+	} while (0)
-+
-+#define ldt_set_class(m, n, k, sl, i)	dept_map_ecxt_modify(m, LDT_EVT_ALL, k, 0UL, i, "lock_set_class", "(any)unlock", sl)
-+#else /* !CONFIG_DEPT */
-+#define ldt_init(m, k, su, n)		do { (void)(k); } while (0)
-+#define ldt_lock(m, sl, t, n, i)	do { } while (0)
-+#define ldt_rlock(m, sl, t, n, i, q)	do { } while (0)
-+#define ldt_wlock(m, sl, t, n, i)	do { } while (0)
-+#define ldt_unlock(m, i)		do { } while (0)
-+#define ldt_downgrade(m, i)		do { } while (0)
-+#define ldt_set_class(m, n, k, sl, i)	do { } while (0)
-+#endif
-+#endif /* __LINUX_DEPT_LDT_H */
--- 
-2.17.1
+   #if !defined(CONFIG_DEPT)
+   struct dept_map { }; 
+   #endif
 
+So I think it doesn't take space at all. Do you think I still need to
+introduce e.g. DEPT_MAP()? Then I will. Thank you!
+
+	Byungchul
+
+> /* */; is a somewhat unusual thing to see, but since this must work at
+> top level, we can't use "do { } while (0)" like we usually do.  Given
+> where else this is likely to be used, i don't think it's going to be
+> a problem ...
