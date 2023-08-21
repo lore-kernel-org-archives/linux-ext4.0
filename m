@@ -2,41 +2,29 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E8E3AEE49B0
-	for <linux-ext4@archiver.kernel.org>; Mon, 21 Aug 2023 04:11:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CB906EE49AC
+	for <linux-ext4@archiver.kernel.org>; Mon, 21 Aug 2023 04:11:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232884AbjHUELK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 21 Aug 2023 00:11:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57900 "EHLO
+        id S232887AbjHUELf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 21 Aug 2023 00:11:35 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38090 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232120AbjHUELI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Aug 2023 00:11:08 -0400
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D64BD11D;
-        Sun, 20 Aug 2023 21:10:33 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=sTOdBFeZC0ZITAjiSCC8ryUnVRY9Lhk36Ip26KjeYr4=; b=ICymlCyLpaJ6lmuyoMFR5kttyw
-        UBm9C082xuk3Z6hhwZEKWSF+ox3NgccEuO8Z/43fptOWwRZsWum/7FRoRaW1UQbyW1qJwMW+RtTE5
-        LuYT1pNyy0SaxkHsTTkacsbgLDntlcgS1wSJqQvwXrvlQeAEdAYSdM61NzEaEm48NI/eOnoim4ojj
-        8vV9ewOGSLgUh2r2vGs4nVL8ZJ4gZ46GXf8M9SfbYoQvZdxJbeNQKkzbyh3E1MLZutAHTaZUuOqIq
-        1S/Hr371deuhKGgzMbb+5HqLyRiiOPcO8oCTUXpithV1sUUXjoat+U6z6h/eBmQhpwA7bLdvom+us
-        SUX4CjPw==;
-Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qXwEa-0081su-Uu; Mon, 21 Aug 2023 04:09:45 +0000
-Date:   Mon, 21 Aug 2023 05:09:44 +0100
-From:   Matthew Wilcox <willy@infradead.org>
-To:     Byungchul Park <byungchul@sk.com>
-Cc:     linux-kernel@vger.kernel.org, kernel_team@skhynix.com,
-        torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
-        linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, mingo@redhat.com, peterz@infradead.org,
-        will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
-        joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
-        duyuyang@gmail.com, johannes.berg@intel.com, tj@kernel.org,
-        tytso@mit.edu, david@fromorbit.com, amir73il@gmail.com,
+        with ESMTP id S232755AbjHUELe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Aug 2023 00:11:34 -0400
+Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 04624ED;
+        Sun, 20 Aug 2023 21:11:07 -0700 (PDT)
+X-AuditID: a67dfc5b-d6dff70000001748-1b-64e2ded6ac26
+From:   Byungchul Park <byungchul@sk.com>
+To:     linux-kernel@vger.kernel.org
+Cc:     kernel_team@skhynix.com, torvalds@linux-foundation.org,
+        damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
+        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        mingo@redhat.com, peterz@infradead.org, will@kernel.org,
+        tglx@linutronix.de, rostedt@goodmis.org, joel@joelfernandes.org,
+        sashal@kernel.org, daniel.vetter@ffwll.ch, duyuyang@gmail.com,
+        johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
+        willy@infradead.org, david@fromorbit.com, amir73il@gmail.com,
         gregkh@linuxfoundation.org, kernel-team@lge.com,
         linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
         minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com,
@@ -52,43 +40,71 @@ Cc:     linux-kernel@vger.kernel.org, kernel_team@skhynix.com,
         gwan-gyeong.mun@intel.com, max.byungchul.park@gmail.com,
         boqun.feng@gmail.com, longman@redhat.com, hdanton@sina.com,
         her0gyugyu@gmail.com
-Subject: Re: [RESEND PATCH v10 08/25] dept: Apply
- sdt_might_sleep_{start,end}() to PG_{locked,writeback} wait
-Message-ID: <ZOLjiF2oKxBvVzyw@casper.infradead.org>
+Subject: [RESEND PATCH v10 19/25] dept: Apply timeout consideration to swait
+Date:   Mon, 21 Aug 2023 12:46:31 +0900
+Message-Id: <20230821034637.34630-20-byungchul@sk.com>
+X-Mailer: git-send-email 2.17.1
+In-Reply-To: <20230821034637.34630-1-byungchul@sk.com>
 References: <20230821034637.34630-1-byungchul@sk.com>
- <20230821034637.34630-9-byungchul@sk.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20230821034637.34630-9-byungchul@sk.com>
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSfUzMcRzHfb+/xzud/Xba/Iix27BleWafYcbGfDcamxmL4eZ+03FduVLO
+        ZrtTkp5UWw9oVrHrekB+2RCXU4pKiW4JaTp5SE+Ui1Me7sI/n732eX8+r33++PCU+jYzg9cb
+        YySTUWvQsEpaORBQGPK8y61bnLUBMlMXg+drEg3518pZaL1ahqD8hhVDb90meD7aj2Cs+QkF
+        udmtCAq7X1Nwo74LgcN+koW2ning8gyx0JCdwkL8pWssPO0bx9CZk4WhTA6FpowiDE7vBxpy
+        e1m4kBuPfeUjBq+tlAObZS647ec5GO9eAg1d7Qw4Xi6Acxc7WbjraKCh/pYbQ1tVPgtd5b8Z
+        aKp/RENrZhoDVwaLWOgbtVFg8wxx8MxZgKEiwSdKHPnFwMM0J4bEy9cxuF7cQVCd9AaDXN7O
+        Qq2nH0OlnE3Bj+I6BO70AQ5OpXo5uGBNR5ByKoeGJz8fMpDQuQLGvuez61aR2v4hiiRUxhHH
+        aAFNGotEcvv8a44kVL/kSIF8lFTag8mlu72YFA57GCKXnmGJPJzFkeQBFyaDLS0ceZQ3RpMe
+        Vy7eFhSmXKOTDPpYybRo7X5l+Mc3oVEj7DFr9WfaghqZZKTgRWG5mJflpP/zg2dJlJ9ZYb7Y
+        0eGd4EBhjliZ9t43r+Qp4fRk0f65mfUHU4Ut4oOrI5yfaWGu2CgPTSyohJXi/bMt1F/pbLGs
+        wjnBCl9fvlOF/KwWVohfut/SfqkonFaI77yN/66YLt63d9AZSFWAJpUitd4YG6HVG5YvDDcb
+        9ccWHoiMkJHvoWwnxnffQsOt22uQwCNNgGr/TLdOzWhjo80RNUjkKU2gKuhbt06t0mnNxyVT
+        5D7TUYMUXYOCeFozTbV0NE6nFg5qY6TDkhQlmf6nmFfMsKCwI4a2KSGWUO8cxhxIr7aHcOun
+        625+iH0HUenXA1aRijXjuKrBPCtnfeayn5/mReW9aiaH9rzYXB+f5qhrexyy2mF53DkrZjCj
+        pK+9uDYopYnfaw0eDru4yHzosLAjskR173dgyd5daNpavWhL3al4lWM9YIwrTkzu2aDa6BrY
+        qqGjw7VLgilTtPYPTYEwIEwDAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSfUzMcRzHfX8P3991XPs5mR8y3CQLiSmfYWYz853J/OH5H93cb7p1pd2R
+        ylinQx56MokKJ5xWp/K7kIdrp4jLeqAW2Wk6hVsl5CIVrsw/7732fn8+77/eMlpZwE6TaeP2
+        ifo4tU6F5Yx844rUha3tbk1Yhn0uZJ8OA+/3NAYKyqwYmkpLEFgrjBR4nqyDVwM9CIbqG2nI
+        zWlCcKXjLQ0Vte0I7EVHMDR3+kOLtw+DM+cUhtSrZRhedA9T4Dp3hoISKRKeZxVS4Bj8yECu
+        B0N+birlk08UDFqKObCkBIG7KI+D4Y7F4GxvZaHmopMF+5v5cOGSC8NDu5OB2ko3Bc33CzC0
+        W/+w8Lz2GQNN2eks3PxciKF7wEKDxdvHwUuHmYJyk6/tWP9vFp6mOyg4du0WBS1tDxBUpb2j
+        QLK2Yqjx9lBgk3Jo+HXjCQJ3Ri8HR08PcpBvzEBw6ug5BhpHnrJgcoXD0M8CvHoFqenpo4nJ
+        doDYB8wMqSsUyL28txwxVb3hiFnaT2xFIeTqQw9FrnzzskQqPoGJ9O0MR072tlDkc0MDR56d
+        H2JIZ0sutSlwp3ylRtRpE0T9olVR8uhP7yLj+3GiseoLk4Lq2JPITybwS4XHL9PoUcZ8sPD6
+        9eAYB/CzBFv6B9+NXEbzx8cLRV/q8Wgwid8gPC7t50aZ4YOEOqlv7EHBRwiPMhvof6UzhZJy
+        xxj7+XzpwX00yko+XPja8Z7JQnIzGleMArRxCbFqrS481BATnRSnTQzdvTdWQr7NWA4NZ1ei
+        783rqhEvQ6oJiqhAt0bJqhMMSbHVSJDRqgDF9B8dGqVCo05KFvV7d+n360RDNZouY1RTFOu3
+        iVFKfo96nxgjivGi/n9KyfympaCuRDEItmRNrmuMyUgODntf4tCFkx9TlgVGdM+5tbs8cOeO
+        S4eMnuV+zbd3zB1Y8qFybdCf0DvnI4I9m9eY2BnbuytcOJl1tdWv+sjG/3bmHe4ZaYscb3Vs
+        Pbs083bmgsl3R+QO4/YXbb1dExWKnFfZXQendl6+Ps9xQrRPnW0L8WdVjCFavTiE1hvUfwHo
+        Dif3LwMAAA==
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Aug 21, 2023 at 12:46:20PM +0900, Byungchul Park wrote:
-> @@ -1219,6 +1220,9 @@ static inline bool folio_trylock_flag(struct folio *folio, int bit_nr,
->  /* How many times do we accept lock stealing from under a waiter? */
->  int sysctl_page_lock_unfairness = 5;
->  
-> +static struct dept_map __maybe_unused PG_locked_map = DEPT_MAP_INITIALIZER(PG_locked_map, NULL);
-> +static struct dept_map __maybe_unused PG_writeback_map = DEPT_MAP_INITIALIZER(PG_writeback_map, NULL);
+Now that CONFIG_DEPT_AGGRESSIVE_TIMEOUT_WAIT was introduced, apply the
+consideration to swait, assuming an input 'ret' in ___swait_event()
+macro is used as a timeout value.
 
-Hmm, why are these "maybe unused"?  *digs*.  Ah.  Because
-sdt_might_sleep_start() becomes a no-op macro if DEPT is disabled.
+Signed-off-by: Byungchul Park <byungchul@sk.com>
+---
+ include/linux/swait.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-OK, the right way to handle this is
-
-#ifdef CONFIG_DEPT
-#define DEPT_MAP(name)	static struct dept_map name = \
-		DEPT_MAP_INITIALIZER(name, NULL)
-#else
-#define DEPT_MAP(name)	/* */
-#endif
-
-And now DEPT takes up no space if disabled.
-
-/* */; is a somewhat unusual thing to see, but since this must work at
-top level, we can't use "do { } while (0)" like we usually do.  Given
-where else this is likely to be used, i don't think it's going to be
-a problem ...
+diff --git a/include/linux/swait.h b/include/linux/swait.h
+index 02848211cef5..def1e47bb678 100644
+--- a/include/linux/swait.h
++++ b/include/linux/swait.h
+@@ -162,7 +162,7 @@ extern void finish_swait(struct swait_queue_head *q, struct swait_queue *wait);
+ 	struct swait_queue __wait;					\
+ 	long __ret = ret;						\
+ 									\
+-	sdt_might_sleep_start(NULL);					\
++	sdt_might_sleep_start_timeout(NULL, __ret);			\
+ 	INIT_LIST_HEAD(&__wait.task_list);				\
+ 	for (;;) {							\
+ 		long __int = prepare_to_swait_event(&wq, &__wait, state);\
+-- 
+2.17.1
 
