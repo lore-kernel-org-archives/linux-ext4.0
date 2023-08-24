@@ -2,42 +2,42 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 796A7C71145
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A84F9C83003
 	for <linux-ext4@archiver.kernel.org>; Thu, 24 Aug 2023 09:31:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233569AbjHXJbA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 24 Aug 2023 05:31:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59042 "EHLO
+        id S240707AbjHXJbF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 24 Aug 2023 05:31:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59104 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240785AbjHXJas (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Aug 2023 05:30:48 -0400
+        with ESMTP id S240790AbjHXJat (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Aug 2023 05:30:49 -0400
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7B433199E
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Aug 2023 02:30:45 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8921D10F9
+        for <linux-ext4@vger.kernel.org>; Thu, 24 Aug 2023 02:30:47 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.169])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4RWd9Y6l9Rz4f3prH
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Aug 2023 17:30:41 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4RWd9c12Vsz4f3q39
+        for <linux-ext4@vger.kernel.org>; Thu, 24 Aug 2023 17:30:44 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-        by APP4 (Coremail) with SMTP id gCh0CgAHl6kzI+dkL1rbBQ--.46575S9;
-        Thu, 24 Aug 2023 17:30:42 +0800 (CST)
+        by APP4 (Coremail) with SMTP id gCh0CgAHl6kzI+dkL1rbBQ--.46575S15;
+        Thu, 24 Aug 2023 17:30:44 +0800 (CST)
 From:   Zhang Yi <yi.zhang@huaweicloud.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
         yi.zhang@huawei.com, yi.zhang@huaweicloud.com,
         chengzhihao1@huawei.com, yukuai3@huawei.com
-Subject: [RFC PATCH 05/16] ext4: pass real delayed status into ext4_es_insert_extent()
-Date:   Thu, 24 Aug 2023 17:26:08 +0800
-Message-Id: <20230824092619.1327976-6-yi.zhang@huaweicloud.com>
+Subject: [RFC PATCH 11/16] ext4: factor out common part of ext4_da_{release|update_reserve}_space()
+Date:   Thu, 24 Aug 2023 17:26:14 +0800
+Message-Id: <20230824092619.1327976-12-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20230824092619.1327976-1-yi.zhang@huaweicloud.com>
 References: <20230824092619.1327976-1-yi.zhang@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgAHl6kzI+dkL1rbBQ--.46575S9
-X-Coremail-Antispam: 1UD129KBjvJXoWxWr15Jry8Kr4Dur1rWrykXwb_yoW5GF13p3
-        sxAw1rWF4UWw4j934S9r40gr15KayqkrWDCrs5JryrtayfGr1SkF1DtFW8ZFyqgrW8Aa1Y
-        qFWru3srCay5CFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUU9G14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+X-CM-TRANSID: gCh0CgAHl6kzI+dkL1rbBQ--.46575S15
+X-Coremail-Antispam: 1UD129KBjvJXoWxZrWrXF1xJryxtry3Cr1rZwb_yoW5tF17pr
+        y3CFW3Wa48WrykuFWfXr4UZr1F9aySqFWUtrZ7WFnrZrW5Ga4Sgr18tF1FvF1YkrZ3Jr4j
+        qa45G34ru3WDArJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUU9K14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
         rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
         kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
         z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Cr1j6r
@@ -47,9 +47,9 @@ X-Coremail-Antispam: 1UD129KBjvJXoWxWr15Jry8Kr4Dur1rWrykXwb_yoW5GF13p3
         F7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7MxAIw28IcxkI7VAKI48JMx
         C20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAF
         wI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20x
-        vE14v26r1I6r4UMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v2
-        0xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxV
-        W8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7VUbmZX7UUUUU==
+        vE14v26r4j6ryUMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWxJVW8Jr1lIxAIcVCF04k26cxK
+        x2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI
+        0_Gr1j6F4UJbIYCTnIWIevJa73UjIFyTuYvjfUOBTYUUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 X-CFilter-Loop: Reflected
 Precedence: bulk
@@ -58,66 +58,101 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Commit 'd2dc317d564a ("ext4: fix data corruption caused by unwritten and
-delayed extents")' fix a data corruption issue by stop passing delayed
-status into ext4_es_insert_extent() if the mapping range has been
-written. This patch change it to still pass the real delayed status and
-deal with the 'delayed && written' case in ext4_es_insert_extent(). If
-the status have delayed bit is set, it means that the path of delayed
-allocation is still running, and this insert process is not allocating
-delayed allocated blocks.
+The reserve blocks updating part in ext4_da_release_space() and
+ext4_da_update_reserve_space() are almost the same, so factor them out
+to a common helper.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/extents_status.c | 13 +++++++------
- fs/ext4/inode.c          |  2 --
- 2 files changed, 7 insertions(+), 8 deletions(-)
+ fs/ext4/inode.c | 60 +++++++++++++++++++++----------------------------
+ 1 file changed, 25 insertions(+), 35 deletions(-)
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 3a004ed04570..62191c772b82 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -873,13 +873,14 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 
- 	BUG_ON(end < lblk);
- 
-+	/*
-+	 * Insert extent as delayed and written which can potentially cause
-+	 * data lose, and the extent has been written, it's safe to remove
-+	 * the delayed flag even it's still delayed.
-+	 */
- 	if ((status & EXTENT_STATUS_DELAYED) &&
--	    (status & EXTENT_STATUS_WRITTEN)) {
--		ext4_warning(inode->i_sb, "Inserting extent [%u/%u] as "
--				" delayed and written which can potentially "
--				" cause data loss.", lblk, len);
--		WARN_ON(1);
--	}
-+	    (status & EXTENT_STATUS_WRITTEN))
-+		status &= ~EXTENT_STATUS_DELAYED;
- 
- 	newes.es_lblk = lblk;
- 	newes.es_len = len;
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 6c490f05e2ba..82115d6656d3 100644
+index a189009d20fa..13036cecbcc0 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -563,7 +563,6 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
- 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
- 		if (!(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
--		    !(status & EXTENT_STATUS_WRITTEN) &&
- 		    ext4_es_scan_range(inode, &ext4_es_is_delayed, map->m_lblk,
- 				       map->m_lblk + map->m_len - 1))
- 			status |= EXTENT_STATUS_DELAYED;
-@@ -673,7 +672,6 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
- 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
- 		if (!(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
--		    !(status & EXTENT_STATUS_WRITTEN) &&
- 		    ext4_es_scan_range(inode, &ext4_es_is_delayed, map->m_lblk,
- 				       map->m_lblk + map->m_len - 1))
- 			status |= EXTENT_STATUS_DELAYED;
+@@ -325,6 +325,27 @@ qsize_t *ext4_get_reserved_space(struct inode *inode)
+ }
+ #endif
+ 
++static void __ext4_da_update_reserve_space(const char *where,
++					   struct inode *inode,
++					   int data_len)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	struct ext4_inode_info *ei = EXT4_I(inode);
++
++	if (unlikely(data_len > ei->i_reserved_data_blocks)) {
++		ext4_warning(inode->i_sb, "%s: ino %lu, clear %d "
++			     "with only %d reserved data blocks",
++			     where, inode->i_ino, data_len,
++			     ei->i_reserved_data_blocks);
++		WARN_ON(1);
++		data_len = ei->i_reserved_data_blocks;
++	}
++
++	/* Update per-inode reservations */
++	ei->i_reserved_data_blocks -= data_len;
++	percpu_counter_sub(&sbi->s_dirtyclusters_counter, data_len);
++}
++
+ /*
+  * Called with i_data_sem down, which is important since we can call
+  * ext4_discard_preallocations() from here.
+@@ -340,19 +361,7 @@ void ext4_da_update_reserve_space(struct inode *inode,
+ 
+ 	spin_lock(&ei->i_block_reservation_lock);
+ 	trace_ext4_da_update_reserve_space(inode, used, quota_claim);
+-	if (unlikely(used > ei->i_reserved_data_blocks)) {
+-		ext4_warning(inode->i_sb, "%s: ino %lu, used %d "
+-			 "with only %d reserved data blocks",
+-			 __func__, inode->i_ino, used,
+-			 ei->i_reserved_data_blocks);
+-		WARN_ON(1);
+-		used = ei->i_reserved_data_blocks;
+-	}
+-
+-	/* Update per-inode reservations */
+-	ei->i_reserved_data_blocks -= used;
+-	percpu_counter_sub(&sbi->s_dirtyclusters_counter, used);
+-
++	__ext4_da_update_reserve_space(__func__, inode, used);
+ 	spin_unlock(&ei->i_block_reservation_lock);
+ 
+ 	/* Update quota subsystem for data blocks */
+@@ -1483,29 +1492,10 @@ void ext4_da_release_space(struct inode *inode, int to_free)
+ 	if (!to_free)
+ 		return;		/* Nothing to release, exit */
+ 
+-	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+-
++	spin_lock(&ei->i_block_reservation_lock);
+ 	trace_ext4_da_release_space(inode, to_free);
+-	if (unlikely(to_free > ei->i_reserved_data_blocks)) {
+-		/*
+-		 * if there aren't enough reserved blocks, then the
+-		 * counter is messed up somewhere.  Since this
+-		 * function is called from invalidate page, it's
+-		 * harmless to return without any action.
+-		 */
+-		ext4_warning(inode->i_sb, "ext4_da_release_space: "
+-			 "ino %lu, to_free %d with only %d reserved "
+-			 "data blocks", inode->i_ino, to_free,
+-			 ei->i_reserved_data_blocks);
+-		WARN_ON(1);
+-		to_free = ei->i_reserved_data_blocks;
+-	}
+-	ei->i_reserved_data_blocks -= to_free;
+-
+-	/* update fs dirty data blocks counter */
+-	percpu_counter_sub(&sbi->s_dirtyclusters_counter, to_free);
+-
+-	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
++	__ext4_da_update_reserve_space(__func__, inode, to_free);
++	spin_unlock(&ei->i_block_reservation_lock);
+ 
+ 	dquot_release_reservation_block(inode, EXT4_C2B(sbi, to_free));
+ }
 -- 
 2.39.2
 
