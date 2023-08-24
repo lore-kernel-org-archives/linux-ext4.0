@@ -2,54 +2,51 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 94B63EE49B2
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 64A73EE49B0
 	for <linux-ext4@archiver.kernel.org>; Thu, 24 Aug 2023 09:31:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240774AbjHXJbJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S240765AbjHXJbJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Thu, 24 Aug 2023 05:31:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59022 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58984 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240782AbjHXJar (ORCPT
+        with ESMTP id S240775AbjHXJar (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Aug 2023 05:30:47 -0400
-Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8C9FE10F9
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 67FE1E67
         for <linux-ext4@vger.kernel.org>; Thu, 24 Aug 2023 02:30:44 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.169])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4RWd9V0R2rz4f3kFY
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Aug 2023 17:30:38 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4RWd9W2wtHz4f41Gs
+        for <linux-ext4@vger.kernel.org>; Thu, 24 Aug 2023 17:30:39 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-        by APP4 (Coremail) with SMTP id gCh0CgAHl6kzI+dkL1rbBQ--.46575S6;
-        Thu, 24 Aug 2023 17:30:41 +0800 (CST)
+        by APP4 (Coremail) with SMTP id gCh0CgAHl6kzI+dkL1rbBQ--.46575S4;
+        Thu, 24 Aug 2023 17:30:40 +0800 (CST)
 From:   Zhang Yi <yi.zhang@huaweicloud.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
         yi.zhang@huawei.com, yi.zhang@huaweicloud.com,
         chengzhihao1@huawei.com, yukuai3@huawei.com
-Subject: [RFC PATCH 02/16] ext4: make sure allocate pending entry not fail
-Date:   Thu, 24 Aug 2023 17:26:05 +0800
-Message-Id: <20230824092619.1327976-3-yi.zhang@huaweicloud.com>
+Subject: [RFC PATCH 00/16] ext4: more accurate metadata reservaion for delalloc mount option
+Date:   Thu, 24 Aug 2023 17:26:03 +0800
+Message-Id: <20230824092619.1327976-1-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230824092619.1327976-1-yi.zhang@huaweicloud.com>
-References: <20230824092619.1327976-1-yi.zhang@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgAHl6kzI+dkL1rbBQ--.46575S6
-X-Coremail-Antispam: 1UD129KBjvJXoW3WFW3tF4UJr45Wr1kZF45Awb_yoWfCry7pF
-        W3Xrn8Ar18Xw1DWFWftF4UZr1Yg3W8tFWjyrZIkryfZF1rXFyftF10kF1YvF1FyrWxXw1a
-        qrWjk34Uua1j9a7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUU9v14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
-        x26xkF7I0E14v26r4j6ryUM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-        Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Cr1j6rxdM2
-        8EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AI
-        xVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20x
-        vE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xv
-        r2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7MxAIw28IcxkI7VAKI48JMxC20s
-        026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_
-        JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14
-        v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xva
-        j40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8JV
-        W8JrUvcSsGvfC2KfnxnUUI43ZEXa7VUjYiiDUUUUU==
+X-CM-TRANSID: gCh0CgAHl6kzI+dkL1rbBQ--.46575S4
+X-Coremail-Antispam: 1UD129KBjvJXoW3JFy7JF1xCryUZr4kJw1kKrg_yoW7Kw45pr
+        y3JF1fXr1jgry8WFsrZw1UJr1rW3WxZF47Jr1aqr95uF1rCF1fWFsrtry0vFW3trZxJF1U
+        XFy5Za48uFykAa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUyC14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+        rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
+        1l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26F4U
+        JVW0owA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oV
+        Cq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0
+        I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r
+        4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20xvY0x0EwIxG
+        rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
+        vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IY
+        x2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Jr0_Gr1lIxAIcVCF04k26c
+        xKx2IYs7xG6rWUJVWrZr1UMIIF0xvEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7Cj
+        xVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUdHUDUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 X-CFilter-Loop: Reflected
 Precedence: bulk
@@ -58,294 +55,149 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-__insert_pending() allocate memory in atomic context, so the allocation
-could fail, but we are not handling that failure now. It could lead
-ext4_es_remove_extent() to get wrong reserved clusters, and the global
-data blocks reservation count will be incorrect. The same to
-extents_status entry preallocation, preallocate pending entry out of the
-i_es_lock with __GFP_NOFAIL, make sure __insert_pending() and
-__revise_pending() always succeeds.
+Hello,
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
----
- fs/ext4/extents_status.c | 123 ++++++++++++++++++++++++++++-----------
- 1 file changed, 89 insertions(+), 34 deletions(-)
+The delayed allocation method allocates blocks during page writeback in
+ext4_writepages(), which cannot handle block allocation failures due to
+e.g. ENOSPC if acquires more extent blocks. In order to deal with this,
+commit '79f0be8d2e6e ("ext4: Switch to non delalloc mode when we are low
+on free blocks count.")' introduce ext4_nonda_switch() to convert to no
+delalloc mode if the space if the free blocks is less than 150% of dirty
+blocks or the watermark. In the meantime, '27dd43854227 ("ext4:
+introduce reserved space")' reserve some of the file system space (2% or
+4096 clusters, whichever is smaller). Both of those to solutions can
+make sure that space is not exhausted when mapping delalloc blocks in
+most cases, but cannot guarantee work in all cases, which could lead to
+infinite loop or data loss (please see patch 14 for details).
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 5e625ea4545d..f4b50652f0cc 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -152,8 +152,9 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- static int es_reclaim_extents(struct ext4_inode_info *ei, int *nr_to_scan);
- static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
- 		       struct ext4_inode_info *locked_ei);
--static void __revise_pending(struct inode *inode, ext4_lblk_t lblk,
--			     ext4_lblk_t len);
-+static int __revise_pending(struct inode *inode, ext4_lblk_t lblk,
-+			    ext4_lblk_t len,
-+			    struct pending_reservation **prealloc);
- 
- int __init ext4_init_es(void)
- {
-@@ -448,6 +449,19 @@ static void ext4_es_list_del(struct inode *inode)
- 	spin_unlock(&sbi->s_es_lock);
- }
- 
-+static inline struct pending_reservation *__alloc_pending(bool nofail)
-+{
-+	if (!nofail)
-+		return kmem_cache_alloc(ext4_pending_cachep, GFP_ATOMIC);
-+
-+	return kmem_cache_zalloc(ext4_pending_cachep, GFP_KERNEL | __GFP_NOFAIL);
-+}
-+
-+static inline void __free_pending(struct pending_reservation *pr)
-+{
-+	kmem_cache_free(ext4_pending_cachep, pr);
-+}
-+
- /*
-  * Returns true if we cannot fail to allocate memory for this extent_status
-  * entry and cannot reclaim it until its status changes.
-@@ -836,11 +850,12 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- {
- 	struct extent_status newes;
- 	ext4_lblk_t end = lblk + len - 1;
--	int err1 = 0;
--	int err2 = 0;
-+	int err1 = 0, err2 = 0, err3 = 0;
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	struct extent_status *es1 = NULL;
- 	struct extent_status *es2 = NULL;
-+	struct pending_reservation *pr = NULL;
-+	bool revise_pending = false;
- 
- 	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
- 		return;
-@@ -868,11 +883,17 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 
- 	ext4_es_insert_extent_check(inode, &newes);
- 
-+	revise_pending = sbi->s_cluster_ratio > 1 &&
-+			 test_opt(inode->i_sb, DELALLOC) &&
-+			 (status & (EXTENT_STATUS_WRITTEN |
-+				    EXTENT_STATUS_UNWRITTEN));
- retry:
- 	if (err1 && !es1)
- 		es1 = __es_alloc_extent(true);
- 	if ((err1 || err2) && !es2)
- 		es2 = __es_alloc_extent(true);
-+	if ((err1 || err2 || err3) && revise_pending && !pr)
-+		pr = __alloc_pending(true);
- 	write_lock(&EXT4_I(inode)->i_es_lock);
- 
- 	err1 = __es_remove_extent(inode, lblk, end, NULL, es1);
-@@ -897,13 +918,18 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 		es2 = NULL;
- 	}
- 
--	if (sbi->s_cluster_ratio > 1 && test_opt(inode->i_sb, DELALLOC) &&
--	    (status & EXTENT_STATUS_WRITTEN ||
--	     status & EXTENT_STATUS_UNWRITTEN))
--		__revise_pending(inode, lblk, len);
-+	if (revise_pending) {
-+		err3 = __revise_pending(inode, lblk, len, &pr);
-+		if (err3 != 0)
-+			goto error;
-+		if (pr) {
-+			__free_pending(pr);
-+			pr = NULL;
-+		}
-+	}
- error:
- 	write_unlock(&EXT4_I(inode)->i_es_lock);
--	if (err1 || err2)
-+	if (err1 || err2 || err3)
- 		goto retry;
- 
- 	ext4_es_print_tree(inode);
-@@ -1311,7 +1337,7 @@ static unsigned int get_rsvd(struct inode *inode, ext4_lblk_t end,
- 				rc->ndelonly--;
- 				node = rb_next(&pr->rb_node);
- 				rb_erase(&pr->rb_node, &tree->root);
--				kmem_cache_free(ext4_pending_cachep, pr);
-+				__free_pending(pr);
- 				if (!node)
- 					break;
- 				pr = rb_entry(node, struct pending_reservation,
-@@ -1907,11 +1933,13 @@ static struct pending_reservation *__get_pending(struct inode *inode,
-  *
-  * @inode - file containing the cluster
-  * @lblk - logical block in the cluster to be added
-+ * @prealloc - preallocated pending entry
-  *
-  * Returns 0 on successful insertion and -ENOMEM on failure.  If the
-  * pending reservation is already in the set, returns successfully.
-  */
--static int __insert_pending(struct inode *inode, ext4_lblk_t lblk)
-+static int __insert_pending(struct inode *inode, ext4_lblk_t lblk,
-+			    struct pending_reservation **prealloc)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	struct ext4_pending_tree *tree = &EXT4_I(inode)->i_pending_tree;
-@@ -1937,10 +1965,15 @@ static int __insert_pending(struct inode *inode, ext4_lblk_t lblk)
- 		}
- 	}
- 
--	pr = kmem_cache_alloc(ext4_pending_cachep, GFP_ATOMIC);
--	if (pr == NULL) {
--		ret = -ENOMEM;
--		goto out;
-+	if (likely(*prealloc == NULL)) {
-+		pr = __alloc_pending(false);
-+		if (!pr) {
-+			ret = -ENOMEM;
-+			goto out;
-+		}
-+	} else {
-+		pr = *prealloc;
-+		*prealloc = NULL;
- 	}
- 	pr->lclu = lclu;
- 
-@@ -1970,7 +2003,7 @@ static void __remove_pending(struct inode *inode, ext4_lblk_t lblk)
- 	if (pr != NULL) {
- 		tree = &EXT4_I(inode)->i_pending_tree;
- 		rb_erase(&pr->rb_node, &tree->root);
--		kmem_cache_free(ext4_pending_cachep, pr);
-+		__free_pending(pr);
- 	}
- }
- 
-@@ -2029,10 +2062,10 @@ void ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
- 				  bool allocated)
- {
- 	struct extent_status newes;
--	int err1 = 0;
--	int err2 = 0;
-+	int err1 = 0, err2 = 0, err3 = 0;
- 	struct extent_status *es1 = NULL;
- 	struct extent_status *es2 = NULL;
-+	struct pending_reservation *pr = NULL;
- 
- 	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
- 		return;
-@@ -2052,6 +2085,8 @@ void ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
- 		es1 = __es_alloc_extent(true);
- 	if ((err1 || err2) && !es2)
- 		es2 = __es_alloc_extent(true);
-+	if ((err1 || err2 || err3) && allocated && !pr)
-+		pr = __alloc_pending(true);
- 	write_lock(&EXT4_I(inode)->i_es_lock);
- 
- 	err1 = __es_remove_extent(inode, lblk, lblk, NULL, es1);
-@@ -2074,11 +2109,18 @@ void ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
- 		es2 = NULL;
- 	}
- 
--	if (allocated)
--		__insert_pending(inode, lblk);
-+	if (allocated) {
-+		err3 = __insert_pending(inode, lblk, &pr);
-+		if (err3 != 0)
-+			goto error;
-+		if (pr) {
-+			__free_pending(pr);
-+			pr = NULL;
-+		}
-+	}
- error:
- 	write_unlock(&EXT4_I(inode)->i_es_lock);
--	if (err1 || err2)
-+	if (err1 || err2 || err3)
- 		goto retry;
- 
- 	ext4_es_print_tree(inode);
-@@ -2184,21 +2226,24 @@ unsigned int ext4_es_delayed_clu(struct inode *inode, ext4_lblk_t lblk,
-  * @inode - file containing the range
-  * @lblk - logical block defining the start of range
-  * @len  - length of range in blocks
-+ * @prealloc - preallocated pending entry
-  *
-  * Used after a newly allocated extent is added to the extents status tree.
-  * Requires that the extents in the range have either written or unwritten
-  * status.  Must be called while holding i_es_lock.
-  */
--static void __revise_pending(struct inode *inode, ext4_lblk_t lblk,
--			     ext4_lblk_t len)
-+static int __revise_pending(struct inode *inode, ext4_lblk_t lblk,
-+			    ext4_lblk_t len,
-+			    struct pending_reservation **prealloc)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	ext4_lblk_t end = lblk + len - 1;
- 	ext4_lblk_t first, last;
- 	bool f_del = false, l_del = false;
-+	int ret = 0;
- 
- 	if (len == 0)
--		return;
-+		return 0;
- 
- 	/*
- 	 * Two cases - block range within single cluster and block range
-@@ -2219,7 +2264,9 @@ static void __revise_pending(struct inode *inode, ext4_lblk_t lblk,
- 			f_del = __es_scan_range(inode, &ext4_es_is_delonly,
- 						first, lblk - 1);
- 		if (f_del) {
--			__insert_pending(inode, first);
-+			ret = __insert_pending(inode, first, prealloc);
-+			if (ret < 0)
-+				goto out;
- 		} else {
- 			last = EXT4_LBLK_CMASK(sbi, end) +
- 			       sbi->s_cluster_ratio - 1;
-@@ -2227,9 +2274,11 @@ static void __revise_pending(struct inode *inode, ext4_lblk_t lblk,
- 				l_del = __es_scan_range(inode,
- 							&ext4_es_is_delonly,
- 							end + 1, last);
--			if (l_del)
--				__insert_pending(inode, last);
--			else
-+			if (l_del) {
-+				ret = __insert_pending(inode, last, prealloc);
-+				if (ret < 0)
-+					goto out;
-+			} else
- 				__remove_pending(inode, last);
- 		}
- 	} else {
-@@ -2237,18 +2286,24 @@ static void __revise_pending(struct inode *inode, ext4_lblk_t lblk,
- 		if (first != lblk)
- 			f_del = __es_scan_range(inode, &ext4_es_is_delonly,
- 						first, lblk - 1);
--		if (f_del)
--			__insert_pending(inode, first);
--		else
-+		if (f_del) {
-+			ret = __insert_pending(inode, first, prealloc);
-+			if (ret < 0)
-+				goto out;
-+		} else
- 			__remove_pending(inode, first);
- 
- 		last = EXT4_LBLK_CMASK(sbi, end) + sbi->s_cluster_ratio - 1;
- 		if (last != end)
- 			l_del = __es_scan_range(inode, &ext4_es_is_delonly,
- 						end + 1, last);
--		if (l_del)
--			__insert_pending(inode, last);
--		else
-+		if (l_del) {
-+			ret = __insert_pending(inode, last, prealloc);
-+			if (ret < 0)
-+				goto out;
-+		} else
- 			__remove_pending(inode, last);
- 	}
-+out:
-+	return ret;
- }
+This patch set wants to reserve metadata space more accurate for
+delalloc mount option. The metadata blocks reservation is very tricky
+and is also related to the continuity of physical blocks, an effective
+way is to reserve as the worst case, which means that every data block
+is discontinuous and one data block costs an extent entry. Reserve
+metadata space as the worst case can make sure enough blocks reserved
+during data writeback, the unused reservaion space can be released after
+mapping data blocks. After doing this, add a worker to submit delayed
+allocations to prevent excessive reservations. Finally, we could
+completely drop the policy of switching back to non-delayed allocation.
+
+The patch set is based on the latest ext4 dev branch.
+Patch 1-2:   Fix two reserved data blocks problems triggered when
+             bigalloc feature is enabled.
+Patch 3-6:   Move reserved data blocks updating from
+             ext4_{ext|ind}_map_blocks() to ext4_es_insert_extent(),
+             preparing for reserving metadata.
+Patch 7-14:  Reserve metadata blocks for delayed allocation as the worst
+             case, and update count after allocating or releasing.
+Patch 15-16: In order to prevent too many reserved metadata blocks that
+             could running false positive out of space (doesn't take
+             that much after allocating data blocks), add a worker to
+             submit IO if the reservation is too big.
+
+About tests:
+1. This patch set has passed 'kvm-xfstests -g auto' many times.
+2. The performance looks not significantly affected after doing the
+   following tests on my virtual machine with 4 CPU core and 32GB
+   memory, which based on Kunpeng-920 arm64 CPU and 1.5TB nvme ssd.
+
+ fio -directory=/test -direct=0 -iodepth=10 -fsync=$sync -rw=$rw \
+     -numjobs=${numjobs} -bs=${bs}k -ioengine=libaio -size=10G \
+     -ramp_time=10 -runtime=60 -norandommap=0 -group_reportin \
+     -name=tests
+
+ Disable bigalloc:
+                               | Before           | After
+ rw         fsync jobs  bs(kB) | iops   bw(MiB/s) | iops   bw(MiB/s)
+ ------------------------------|------------------|-----------------
+ write      0     1     4      | 27500  107       | 27100  106
+ write      0     4     4      | 33900  132       | 35300  138
+ write      0     1     1024   | 134    135       | 149    150
+ write      0     4     1024   | 172    174       | 199    200
+ write      1     1     4      | 1530   6.1       | 1651   6.6
+ write      1     4     4      | 3139   12.3      | 3131   12.2
+ write      1     1     1024   | 184    185       | 195    196
+ write      1     4     1024   | 117    119       | 114    115
+ randwrite  0     1     4      | 17900  69.7      | 17600  68.9
+ randwrite  0     4     4      | 32700  128       | 34600  135
+ randwrite  0     1     1024   | 145    146       | 155    155
+ randwrite  0     4     1024   | 193    194       | 207    209
+ randwrite  1     1     4      | 1335   5.3       | 1444   5.7
+ randwrite  1     4     4      | 3364   13.1      | 3428   13.4
+ randwrite  1     1     1024   | 180    180       | 171    172
+ randwrite  1     4     1024   | 132    134       | 141    142
+
+ Enable bigalloc:
+                               | Before           | After
+ rw         fsync jobs  bs(kB) | iops   bw(MiB/s) | iops   bw(MiB/s)
+ ------------------------------|------------------|-----------------
+ write      0     1     4      | 27500  107       | 30300  118
+ write      0     4     4      | 28800  112       | 34000  137
+ write      0     1     1024   | 141    142       | 162    162
+ write      0     4     1024   | 172    173       | 195    196
+ write      1     1     4      | 1410   5.6       | 1302   5.2
+ write      1     4     4      | 3052   11.9      | 3002   11.7
+ write      1     1     1024   | 153    153       | 163    164
+ write      1     4     1024   | 113    114       | 110    111
+ randwrite  0     1     4      | 17500  68.5      | 18400  72
+ randwrite  0     4     4      | 26600  104       | 24800  96
+ randwrite  0     1     1024   | 170    171       | 165    165
+ randwrite  0     4     1024   | 168    169       | 152    153
+ randwrite  1     1     4      | 1281   5.1       | 1335   5.3
+ randwrite  1     4     4      | 3115   12.2      | 3315   12
+ randwrite  1     1     1024   | 150    150       | 151    152
+ randwrite  1     4     1024   | 134    135       | 132    133
+
+ Tests on ramdisk:
+
+ Disable bigalloc
+                               | Before           | After
+ rw         fsync jobs  bs(kB) | iops   bw(MiB/s) | iops   bw(MiB/s)
+ ------------------------------|------------------|-----------------
+ write      1     1     4      | 4699   18.4      | 4858   18
+ write      1     1     1024   | 245    246       | 247    248
+
+ Enable bigalloc 
+                               | Before           | After
+ rw         fsync jobs  bs(kB) | iops   bw(MiB/s) | iops   bw(MiB/s)
+ ------------------------------|------------------|-----------------
+ write      1     1     4      | 4634   18.1      | 5073   19.8
+ write      1     1     1024   | 246    247       | 268    269
+
+Thanks,
+Yi.
+
+Zhang Yi (16):
+  ext4: correct the start block of counting reserved clusters
+  ext4: make sure allocate pending entry not fail
+  ext4: let __revise_pending() return the number of new inserts pendings
+  ext4: count removed reserved blocks for delalloc only es entry
+  ext4: pass real delayed status into ext4_es_insert_extent()
+  ext4: move delalloc data reserve spcae updating into
+    ext4_es_insert_extent()
+  ext4: count inode's total delalloc data blocks into ext4_es_tree
+  ext4: refactor delalloc space reservation
+  ext4: count reserved metadata blocks for delalloc per inode
+  ext4: reserve meta blocks in ext4_da_reserve_space()
+  ext4: factor out common part of
+    ext4_da_{release|update_reserve}_space()
+  ext4: update reserved meta blocks in
+    ext4_da_{release|update_reserve}_space()
+  ext4: calculate the worst extent blocks needed of a delalloc es entry
+  ext4: reserve extent blocks for delalloc
+  ext4: flush delalloc blocks if no free space
+  ext4: drop ext4_nonda_switch()
+
+ fs/ext4/balloc.c            |  47 ++++-
+ fs/ext4/ext4.h              |  14 +-
+ fs/ext4/extents.c           |  65 +++----
+ fs/ext4/extents_status.c    | 340 +++++++++++++++++++++---------------
+ fs/ext4/extents_status.h    |   3 +-
+ fs/ext4/indirect.c          |   7 -
+ fs/ext4/inode.c             | 191 ++++++++++----------
+ fs/ext4/super.c             |  22 ++-
+ include/trace/events/ext4.h |  70 ++++++--
+ 9 files changed, 439 insertions(+), 320 deletions(-)
+
 -- 
 2.39.2
 
