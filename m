@@ -2,35 +2,32 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F3ACEE49AD
-	for <linux-ext4@archiver.kernel.org>; Fri, 25 Aug 2023 14:11:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 696C7C7EE2C
+	for <linux-ext4@archiver.kernel.org>; Fri, 25 Aug 2023 14:13:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242076AbjHYOKw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 25 Aug 2023 10:10:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51586 "EHLO
+        id S1343502AbjHYOMY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 25 Aug 2023 10:12:24 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51258 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1343759AbjHYOKo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Aug 2023 10:10:44 -0400
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 624F12D49;
-        Fri, 25 Aug 2023 07:10:20 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=EU4c+QvmUrzx56YT6HV/cCIR2Pjqx+IXpn7k2GV7Q+c=; b=sXnwInRucx8CcJKwrlTfZ031er
-        LEY7y8jsL9Hib5zZnhCnKvqEBOaupx8CYhaoOaWj/VYF41GGvSOMwZwP7gnqnUjyUY5nybhBoSrxT
-        cix5TlGhcoCY3jjdx5/eXfy7PSYCUWLL6z2ZL1LRTqjCJLf619sI6Mfr/SSckV734m8GK683QEHy+
-        aF/xKkJIUvAhE/VXofyvjMKZ4LYU11OPTfozENym+/mg5hUGQWADpmiwU301hOx3e6IcpV8ta4h3y
-        7U3MMVZnd623qdMqd3D0FkVtdSaK+AiLgU+Qa7F9jQSRFB1EUCUT2iSVWxr49S72DAzkgcEx6R3cM
-        2mytwuWw==;
-Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qZXUl-00HWBm-5H; Fri, 25 Aug 2023 14:09:03 +0000
-Date:   Fri, 25 Aug 2023 15:09:03 +0100
-From:   Matthew Wilcox <willy@infradead.org>
-To:     Hao Xu <hao.xu@linux.dev>
-Cc:     io-uring@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
-        Dominique Martinet <asmadeus@codewreck.org>,
+        with ESMTP id S1343641AbjHYOL5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Aug 2023 10:11:57 -0400
+Received: from out-245.mta1.migadu.com (out-245.mta1.migadu.com [IPv6:2001:41d0:203:375::f5])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5A4A22D69;
+        Fri, 25 Aug 2023 07:11:31 -0700 (PDT)
+X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
+        t=1692972337;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=mjhC+caj2gJRQH+sSsUlDYCC/6KksdCJUKl454sdMkA=;
+        b=O2I4LuIVYgSn+nmzJUq/UHofHubEntakWSPFjqloiwwujETAFgWOGN3xteSPe9gSVMqAFq
+        d8hRn0Wa7uhhjg2GTvasuKf8CHjMi2bI9Lkmg+s4bspXsO5Xaxy412PPH/FB0SLGDG9CfT
+        9ayHr7HUCratE15Bg5Ihc+obof/8RuQ=
+From:   Hao Xu <hao.xu@linux.dev>
+To:     io-uring@vger.kernel.org, Jens Axboe <axboe@kernel.dk>
+Cc:     Dominique Martinet <asmadeus@codewreck.org>,
         Pavel Begunkov <asml.silence@gmail.com>,
         Christian Brauner <brauner@kernel.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
@@ -49,27 +46,58 @@ Cc:     io-uring@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
         devel@lists.orangefs.org, linux-cifs@vger.kernel.org,
         samba-technical@lists.samba.org, linux-mtd@lists.infradead.org,
         Wanpeng Li <wanpengli@tencent.com>
-Subject: Re: [PATCH 22/29] xfs: comment page allocation for nowait case in
- xfs_buf_find_insert()
-Message-ID: <ZOi1/yafn3HQFWnW@casper.infradead.org>
+Subject: [PATCH 26/29] xfs: return -EAGAIN when nowait meets sync in transaction commit
+Date:   Fri, 25 Aug 2023 21:54:28 +0800
+Message-Id: <20230825135431.1317785-27-hao.xu@linux.dev>
+In-Reply-To: <20230825135431.1317785-1-hao.xu@linux.dev>
 References: <20230825135431.1317785-1-hao.xu@linux.dev>
- <20230825135431.1317785-23-hao.xu@linux.dev>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20230825135431.1317785-23-hao.xu@linux.dev>
+Content-Transfer-Encoding: 8bit
+X-Migadu-Flow: FLOW_OUT
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Aug 25, 2023 at 09:54:24PM +0800, Hao Xu wrote:
-> @@ -633,6 +633,8 @@ xfs_buf_find_insert(
->  	 * allocate the memory from the heap to minimise memory usage. If we
->  	 * can't get heap memory for these small buffers, we fall back to using
->  	 * the page allocator.
-> +	 * xfs_buf_alloc_kmem may return -EAGAIN, let's not return it but turn
-> +	 * to page allocator as well.
+From: Hao Xu <howeyxu@tencent.com>
 
-This new sentence seems like it says exactly the same thing as the
-previous sentence.  What am I missing?
+if the log transaction is a sync one, let's fail the nowait try and
+return -EAGAIN directly since sync transaction means blocked by IO.
+
+Signed-off-by: Hao Xu <howeyxu@tencent.com>
+---
+ fs/xfs/xfs_trans.c | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/fs/xfs/xfs_trans.c b/fs/xfs/xfs_trans.c
+index 7988b4c7f36e..f1f84a3dd456 100644
+--- a/fs/xfs/xfs_trans.c
++++ b/fs/xfs/xfs_trans.c
+@@ -968,12 +968,24 @@ __xfs_trans_commit(
+ 	xfs_csn_t		commit_seq = 0;
+ 	int			error = 0;
+ 	int			sync = tp->t_flags & XFS_TRANS_SYNC;
++	bool			nowait = tp->t_flags & XFS_TRANS_NOWAIT;
++	bool			perm_log = tp->t_flags & XFS_TRANS_PERM_LOG_RES;
+ 
+ 	trace_xfs_trans_commit(tp, _RET_IP_);
+ 
++	if (nowait && sync) {
++		/*
++		 * Currently nowait is only from xfs_vn_update_time()
++		 * so perm_log is always false here, but let's make
++		 * code general.
++		 */
++		if (perm_log)
++			xfs_defer_cancel(tp);
++		goto out_unreserve;
++	}
+ 	error = xfs_trans_run_precommits(tp);
+ 	if (error) {
+-		if (tp->t_flags & XFS_TRANS_PERM_LOG_RES)
++		if (perm_log)
+ 			xfs_defer_cancel(tp);
+ 		goto out_unreserve;
+ 	}
+-- 
+2.25.1
 
