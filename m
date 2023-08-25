@@ -2,29 +2,29 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 01C0DC79F70
-	for <linux-ext4@archiver.kernel.org>; Fri, 25 Aug 2023 14:05:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9109EC79F66
+	for <linux-ext4@archiver.kernel.org>; Fri, 25 Aug 2023 14:05:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S245714AbjHYOEo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 25 Aug 2023 10:04:44 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34550 "EHLO
+        id S245597AbjHYOFG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 25 Aug 2023 10:05:06 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38770 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S245713AbjHYOET (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Aug 2023 10:04:19 -0400
-Received: from out-246.mta1.migadu.com (out-246.mta1.migadu.com [IPv6:2001:41d0:203:375::f6])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8445426B8;
-        Fri, 25 Aug 2023 07:03:54 -0700 (PDT)
+        with ESMTP id S245759AbjHYOEs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Aug 2023 10:04:48 -0400
+Received: from out-248.mta1.migadu.com (out-248.mta1.migadu.com [IPv6:2001:41d0:203:375::f8])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 057342722;
+        Fri, 25 Aug 2023 07:04:23 -0700 (PDT)
 X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-        t=1692972214;
+        t=1692972248;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=T6ViUZBPx7ad0ZahN3iXc6h6e/WwSaru8OskP5bAugQ=;
-        b=ES2TiCn948OXPBoEBgWTcBO0RS4z23ivDrdXlTdAtaw6PThdxWDWOdUDMqwN5Zn7WD+dyR
-        mB9Bpqj2y+SXbSPXBOj6qNtlf9PRruM/6AA9li5Lcnl6yPomOz6TlD4q7SN/nyqOvAgxMU
-        ufKXd8FiPwyCFvbnzPL8RetLQf6iEEM=
+        bh=ZAHRQkTlH3B9Ayy3ByDVW6IFO8x4JKviNIiMKvNnRxw=;
+        b=rqq9t63T1b93nHdvHPb4iPnifbVgNhCPhaGA0/+lVUtdq72oLevGN3oePkSOWgj4tFeMJO
+        883BuPqR+igY5LuYYZDHjdap5mSmKgc54EL0giqHkQRTPmks0t1/1oKfHQU1t1pMyd2ThX
+        7baCMPgFPzeqpA42kG/A+w1RFMlPw/c=
 From:   Hao Xu <hao.xu@linux.dev>
 To:     io-uring@vger.kernel.org, Jens Axboe <axboe@kernel.dk>
 Cc:     Dominique Martinet <asmadeus@codewreck.org>,
@@ -46,9 +46,9 @@ Cc:     Dominique Martinet <asmadeus@codewreck.org>,
         devel@lists.orangefs.org, linux-cifs@vger.kernel.org,
         samba-technical@lists.samba.org, linux-mtd@lists.infradead.org,
         Wanpeng Li <wanpengli@tencent.com>
-Subject: [PATCH 20/29] xfs: distinguish error type of memory allocation failure for nowait case
-Date:   Fri, 25 Aug 2023 21:54:22 +0800
-Message-Id: <20230825135431.1317785-21-hao.xu@linux.dev>
+Subject: [PATCH 22/29] xfs: comment page allocation for nowait case in xfs_buf_find_insert()
+Date:   Fri, 25 Aug 2023 21:54:24 +0800
+Message-Id: <20230825135431.1317785-23-hao.xu@linux.dev>
 In-Reply-To: <20230825135431.1317785-1-hao.xu@linux.dev>
 References: <20230825135431.1317785-1-hao.xu@linux.dev>
 MIME-Version: 1.0
@@ -60,64 +60,26 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Hao Xu <howeyxu@tencent.com>
 
-Previously, if we fail to get the memory we need, -ENOMEM is returned.
-It can be -EAGAIN now since we support nowait now. Return the latter
-when it is the case. Involved functions are:  _xfs_buf_map_pages(),
-xfs_buf_get_maps(), xfs_buf_alloc_kmem() and xfs_buf_alloc_pages().
+Add comments for page allocation in nowait case in xfs_buf_find_insert()
 
 Signed-off-by: Hao Xu <howeyxu@tencent.com>
 ---
- fs/xfs/xfs_buf.c | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+ fs/xfs/xfs_buf.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/fs/xfs/xfs_buf.c b/fs/xfs/xfs_buf.c
-index 8b800ce28996..a6e6e64ff940 100644
+index eb3cd7702545..57bdc4c5dde1 100644
 --- a/fs/xfs/xfs_buf.c
 +++ b/fs/xfs/xfs_buf.c
-@@ -192,7 +192,7 @@ xfs_buf_get_maps(
- 	bp->b_maps = kmem_zalloc(map_count * sizeof(struct xfs_buf_map),
- 				KM_NOFS);
- 	if (!bp->b_maps)
--		return -ENOMEM;
-+		return bp->b_flags & XBF_NOWAIT ? -EAGAIN : -ENOMEM;
- 	return 0;
- }
- 
-@@ -339,7 +339,7 @@ xfs_buf_alloc_kmem(
- 
- 	bp->b_addr = kmem_alloc(size, kmflag_mask);
- 	if (!bp->b_addr)
--		return -ENOMEM;
-+		return flags & XBF_NOWAIT ? -EAGAIN : -ENOMEM;
- 
- 	if (((unsigned long)(bp->b_addr + size - 1) & PAGE_MASK) !=
- 	    ((unsigned long)bp->b_addr & PAGE_MASK)) {
-@@ -363,6 +363,7 @@ xfs_buf_alloc_pages(
- {
- 	gfp_t		gfp_mask = __GFP_NOWARN;
- 	long		filled = 0;
-+	bool		nowait = flags & XBF_NOWAIT;
- 
- 	if (flags & XBF_READ_AHEAD)
- 		gfp_mask |= __GFP_NORETRY;
-@@ -377,7 +378,7 @@ xfs_buf_alloc_pages(
- 		bp->b_pages = kzalloc(sizeof(struct page *) * bp->b_page_count,
- 					gfp_mask);
- 		if (!bp->b_pages)
--			return -ENOMEM;
-+			return nowait ? -EAGAIN : -ENOMEM;
- 	}
- 	bp->b_flags |= _XBF_PAGES;
- 
-@@ -451,7 +452,7 @@ _xfs_buf_map_pages(
- 		memalloc_nofs_restore(nofs_flag);
- 
- 		if (!bp->b_addr)
--			return -ENOMEM;
-+			return flags & XBF_NOWAIT ? -EAGAIN : -ENOMEM;
- 	}
- 
- 	return 0;
+@@ -633,6 +633,8 @@ xfs_buf_find_insert(
+ 	 * allocate the memory from the heap to minimise memory usage. If we
+ 	 * can't get heap memory for these small buffers, we fall back to using
+ 	 * the page allocator.
++	 * xfs_buf_alloc_kmem may return -EAGAIN, let's not return it but turn
++	 * to page allocator as well.
+ 	 */
+ 	if (BBTOB(new_bp->b_length) >= PAGE_SIZE ||
+ 	    xfs_buf_alloc_kmem(new_bp, flags) < 0) {
 -- 
 2.25.1
 
