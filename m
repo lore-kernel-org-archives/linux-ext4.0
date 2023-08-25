@@ -2,29 +2,29 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A080FC3DA6F
-	for <linux-ext4@archiver.kernel.org>; Fri, 25 Aug 2023 14:08:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DC58EC79F62
+	for <linux-ext4@archiver.kernel.org>; Fri, 25 Aug 2023 14:08:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S245577AbjHYOHM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 25 Aug 2023 10:07:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50128 "EHLO
+        id S1343533AbjHYOIS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 25 Aug 2023 10:08:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34412 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S245693AbjHYOGu (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Aug 2023 10:06:50 -0400
-Received: from out-244.mta1.migadu.com (out-244.mta1.migadu.com [95.215.58.244])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ECC8A273D;
-        Fri, 25 Aug 2023 07:06:20 -0700 (PDT)
+        with ESMTP id S1343589AbjHYOHb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Aug 2023 10:07:31 -0400
+Received: from out-244.mta1.migadu.com (out-244.mta1.migadu.com [IPv6:2001:41d0:203:375::f4])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B84C82706;
+        Fri, 25 Aug 2023 07:07:04 -0700 (PDT)
 X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-        t=1692972321;
+        t=1692972368;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=6/Nd9xxoGpB2Y5m9xwXDJRTcGKza/1aMnRr8dKaa6VQ=;
-        b=KEbezTf0obDqS0d0+ZY03Au9A3+XAlHMaifao/gSyVuoHlKJlTUkwmI81DvHZmrTrUQaLF
-        sGTDWP5rChj2LFxWYHnJBky5ZudbW2OzCc+00JgxX/lbJXlYqo7/5HQVTOk8DmfuG/wY54
-        UCC6hfeA7Mu6K3Y30dgBdV885aCoMfc=
+        bh=o5eD4gq5Ypmv7xNjaJcQB3ZOSw79lNA3YgufxQ7kbUU=;
+        b=IDkI/8FcKGXMrBLpAzKCujyKyUIvnRClPZG+PDDA+Kg6Ww/HgNrG0d8/UaYBPttRvdNV2G
+        ImRsaH6EObyEWgQtf31bAS82oxf65cz7kpZXIj7D5nH1V4igKHLmt2T1OZkYhVy9UsI8OJ
+        u9rq7LaZ7EE10dyazZwRdVBs5aqDaMI=
 From:   Hao Xu <hao.xu@linux.dev>
 To:     io-uring@vger.kernel.org, Jens Axboe <axboe@kernel.dk>
 Cc:     Dominique Martinet <asmadeus@codewreck.org>,
@@ -46,9 +46,9 @@ Cc:     Dominique Martinet <asmadeus@codewreck.org>,
         devel@lists.orangefs.org, linux-cifs@vger.kernel.org,
         samba-technical@lists.samba.org, linux-mtd@lists.infradead.org,
         Wanpeng Li <wanpengli@tencent.com>
-Subject: [PATCH 25/29] xfs: support nowait for xfs_buf_item_init()
-Date:   Fri, 25 Aug 2023 21:54:27 +0800
-Message-Id: <20230825135431.1317785-26-hao.xu@linux.dev>
+Subject: [PATCH 28/29] xfs: support nowait semantics for xc_ctx_lock in xlog_cil_commit()
+Date:   Fri, 25 Aug 2023 21:54:30 +0800
+Message-Id: <20230825135431.1317785-29-hao.xu@linux.dev>
 In-Reply-To: <20230825135431.1317785-1-hao.xu@linux.dev>
 References: <20230825135431.1317785-1-hao.xu@linux.dev>
 MIME-Version: 1.0
@@ -60,124 +60,88 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Hao Xu <howeyxu@tencent.com>
 
-support nowait for xfs_buf_item_init() and error out -EAGAIN to
-_xfs_trans_bjoin() when it would block.
+Apply trylock logic for xc_ctx_lock in xlog_cil_commit() in nowait
+case and error out -EAGAIN for xlog_cil_commit().
 
 Signed-off-by: Hao Xu <howeyxu@tencent.com>
 ---
- fs/xfs/xfs_buf_item.c         |  9 +++++++--
- fs/xfs/xfs_buf_item.h         |  2 +-
- fs/xfs/xfs_buf_item_recover.c |  2 +-
- fs/xfs/xfs_trans_buf.c        | 16 +++++++++++++---
- 4 files changed, 22 insertions(+), 7 deletions(-)
+ fs/xfs/xfs_log_cil.c  | 12 ++++++++++--
+ fs/xfs/xfs_log_priv.h |  2 +-
+ fs/xfs/xfs_trans.c    |  4 +++-
+ 3 files changed, 14 insertions(+), 4 deletions(-)
 
-diff --git a/fs/xfs/xfs_buf_item.c b/fs/xfs/xfs_buf_item.c
-index 023d4e0385dd..b1e63137d65b 100644
---- a/fs/xfs/xfs_buf_item.c
-+++ b/fs/xfs/xfs_buf_item.c
-@@ -827,7 +827,8 @@ xfs_buf_item_free_format(
- int
- xfs_buf_item_init(
- 	struct xfs_buf	*bp,
--	struct xfs_mount *mp)
-+	struct xfs_mount *mp,
-+	bool   nowait)
- {
- 	struct xfs_buf_log_item	*bip = bp->b_log_item;
- 	int			chunks;
-@@ -847,7 +848,11 @@ xfs_buf_item_init(
- 		return 0;
- 	}
- 
--	bip = kmem_cache_zalloc(xfs_buf_item_cache, GFP_KERNEL | __GFP_NOFAIL);
-+	bip = kmem_cache_zalloc(xfs_buf_item_cache,
-+				GFP_KERNEL | (nowait ? 0 : __GFP_NOFAIL));
-+	if (!bip)
-+		return -EAGAIN;
-+
- 	xfs_log_item_init(mp, &bip->bli_item, XFS_LI_BUF, &xfs_buf_item_ops);
- 	bip->bli_buf = bp;
- 
-diff --git a/fs/xfs/xfs_buf_item.h b/fs/xfs/xfs_buf_item.h
-index 4d8a6aece995..b1daf8988280 100644
---- a/fs/xfs/xfs_buf_item.h
-+++ b/fs/xfs/xfs_buf_item.h
-@@ -47,7 +47,7 @@ struct xfs_buf_log_item {
- 	struct xfs_buf_log_format __bli_format;	/* embedded in-log header */
- };
- 
--int	xfs_buf_item_init(struct xfs_buf *, struct xfs_mount *);
-+int	xfs_buf_item_init(struct xfs_buf *bp, struct xfs_mount *mp, bool nowait);
- void	xfs_buf_item_done(struct xfs_buf *bp);
- void	xfs_buf_item_relse(struct xfs_buf *);
- bool	xfs_buf_item_put(struct xfs_buf_log_item *);
-diff --git a/fs/xfs/xfs_buf_item_recover.c b/fs/xfs/xfs_buf_item_recover.c
-index 43167f543afc..aa64d5a499d6 100644
---- a/fs/xfs/xfs_buf_item_recover.c
-+++ b/fs/xfs/xfs_buf_item_recover.c
-@@ -429,7 +429,7 @@ xlog_recover_validate_buf_type(
- 		struct xfs_buf_log_item	*bip;
- 
- 		bp->b_flags |= _XBF_LOGRECOVERY;
--		xfs_buf_item_init(bp, mp);
-+		xfs_buf_item_init(bp, mp, false);
- 		bip = bp->b_log_item;
- 		bip->bli_item.li_lsn = current_lsn;
- 	}
-diff --git a/fs/xfs/xfs_trans_buf.c b/fs/xfs/xfs_trans_buf.c
-index 016371f58f26..a1e4f2e8629a 100644
---- a/fs/xfs/xfs_trans_buf.c
-+++ b/fs/xfs/xfs_trans_buf.c
-@@ -57,13 +57,14 @@ xfs_trans_buf_item_match(
-  * If the buffer does not yet have a buf log item associated with it,
-  * then allocate one for it.  Then add the buf item to the transaction.
+diff --git a/fs/xfs/xfs_log_cil.c b/fs/xfs/xfs_log_cil.c
+index b31830ee36dd..6d054359bbb5 100644
+--- a/fs/xfs/xfs_log_cil.c
++++ b/fs/xfs/xfs_log_cil.c
+@@ -1613,7 +1613,7 @@ xlog_cil_process_intents(
+  * background commit, returns without it held once background commits are
+  * allowed again.
   */
--STATIC void
-+STATIC int
- _xfs_trans_bjoin(
+-void
++int
+ xlog_cil_commit(
+ 	struct xlog		*log,
  	struct xfs_trans	*tp,
- 	struct xfs_buf		*bp,
- 	int			reset_recur)
- {
- 	struct xfs_buf_log_item	*bip;
-+	int ret;
+@@ -1623,6 +1623,7 @@ xlog_cil_commit(
+ 	struct xfs_cil		*cil = log->l_cilp;
+ 	struct xfs_log_item	*lip, *next;
+ 	uint32_t		released_space = 0;
++	bool			nowait = tp->t_flags & XFS_TRANS_NOWAIT;
  
- 	ASSERT(bp->b_transp == NULL);
+ 	/*
+ 	 * Do all necessary memory allocation before we lock the CIL.
+@@ -1632,7 +1633,12 @@ xlog_cil_commit(
+ 	xlog_cil_alloc_shadow_bufs(log, tp);
  
-@@ -72,7 +73,11 @@ _xfs_trans_bjoin(
- 	 * it doesn't have one yet, then allocate one and initialize it.
- 	 * The checks to see if one is there are in xfs_buf_item_init().
- 	 */
--	xfs_buf_item_init(bp, tp->t_mountp);
-+	ret = xfs_buf_item_init(bp, tp->t_mountp,
-+				tp->t_flags & XFS_TRANS_NOWAIT);
-+	if (ret < 0)
-+		return ret;
+ 	/* lock out background commit */
+-	down_read(&cil->xc_ctx_lock);
++	if (nowait) {
++		if (!down_read_trylock(&cil->xc_ctx_lock))
++			return -EAGAIN;
++	} else {
++		down_read(&cil->xc_ctx_lock);
++	}
+ 
+ 	if (tp->t_flags & XFS_TRANS_HAS_INTENT_DONE)
+ 		released_space = xlog_cil_process_intents(cil, tp);
+@@ -1668,6 +1674,8 @@ xlog_cil_commit(
+ 
+ 	/* xlog_cil_push_background() releases cil->xc_ctx_lock */
+ 	xlog_cil_push_background(log);
 +
- 	bip = bp->b_log_item;
- 	ASSERT(!(bip->bli_flags & XFS_BLI_STALE));
- 	ASSERT(!(bip->__bli_format.blf_flags & XFS_BLF_CANCEL));
-@@ -92,6 +97,7 @@ _xfs_trans_bjoin(
- 	xfs_trans_add_item(tp, &bip->bli_item);
- 	bp->b_transp = tp;
- 
 +	return 0;
  }
  
- void
-@@ -309,7 +315,11 @@ xfs_trans_read_buf_map(
- 	}
+ /*
+diff --git a/fs/xfs/xfs_log_priv.h b/fs/xfs/xfs_log_priv.h
+index 41edaa0ae869..eb7a1241deab 100644
+--- a/fs/xfs/xfs_log_priv.h
++++ b/fs/xfs/xfs_log_priv.h
+@@ -580,7 +580,7 @@ int	xlog_cil_init(struct xlog *log);
+ void	xlog_cil_init_post_recovery(struct xlog *log);
+ void	xlog_cil_destroy(struct xlog *log);
+ bool	xlog_cil_empty(struct xlog *log);
+-void	xlog_cil_commit(struct xlog *log, struct xfs_trans *tp,
++int	xlog_cil_commit(struct xlog *log, struct xfs_trans *tp,
+ 			xfs_csn_t *commit_seq, bool regrant);
+ void	xlog_cil_set_ctx_write_state(struct xfs_cil_ctx *ctx,
+ 			struct xlog_in_core *iclog);
+diff --git a/fs/xfs/xfs_trans.c b/fs/xfs/xfs_trans.c
+index f1f84a3dd456..e5beda636a37 100644
+--- a/fs/xfs/xfs_trans.c
++++ b/fs/xfs/xfs_trans.c
+@@ -1037,7 +1037,9 @@ __xfs_trans_commit(
+ 		xfs_trans_apply_sb_deltas(tp);
+ 	xfs_trans_apply_dquot_deltas(tp);
  
- 	if (tp) {
--		_xfs_trans_bjoin(tp, bp, 1);
-+		error = _xfs_trans_bjoin(tp, bp, 1);
-+		if (error) {
-+			xfs_buf_relse(bp);
-+			return error;
-+		}
- 		trace_xfs_trans_read_buf(bp->b_log_item);
- 	}
- 	ASSERT(bp->b_ops != NULL || ops == NULL);
+-	xlog_cil_commit(log, tp, &commit_seq, regrant);
++	error = xlog_cil_commit(log, tp, &commit_seq, regrant);
++	if (error)
++		goto out_unreserve;
+ 
+ 	xfs_trans_free(tp);
+ 
 -- 
 2.25.1
 
