@@ -2,29 +2,29 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7B7B0C79F6D
-	for <linux-ext4@archiver.kernel.org>; Fri, 25 Aug 2023 14:02:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B2147EE49A5
+	for <linux-ext4@archiver.kernel.org>; Fri, 25 Aug 2023 14:03:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S245502AbjHYOBx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 25 Aug 2023 10:01:53 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42332 "EHLO
+        id S245544AbjHYOC6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 25 Aug 2023 10:02:58 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45162 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S245550AbjHYOBk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Aug 2023 10:01:40 -0400
+        with ESMTP id S245645AbjHYOCo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Aug 2023 10:02:44 -0400
 Received: from out-249.mta1.migadu.com (out-249.mta1.migadu.com [95.215.58.249])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AD6D72713;
-        Fri, 25 Aug 2023 07:01:10 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 13F541BC9;
+        Fri, 25 Aug 2023 07:02:17 -0700 (PDT)
 X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-        t=1692972064;
+        t=1692972134;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=8gDZUIYfeApELVxpIbTdhBYkuCUYVAI89qfTIaKdMRE=;
-        b=T5TsYuTvtADJBxiHqsewoSqqKK2UBuXMKNSoxaDNp/NJgc7Q8+g8JEetIByTzkVFCGvNzG
-        tWnxRnfXklKMFPsrmWvd4eLQKArJQqjl9a4PVTfDC36l8fZblJzTpI0+nRJbIbwH5cYBhh
-        1gSrwgjCBl1L9hu8cUoTezmUDMAfEak=
+        bh=KWqxpxLv+BWdZ1zPLCWWiPjW3gW3QR8GdaNCgbqB+rA=;
+        b=W3mJ9hHH5VKigloC5U9bTjeZXL1WzXE+if57PbkgslJR/vwxXv7urAz03rnLzn8z8erL5h
+        VCpx6iOsBDC23kpw8k8XGE0qr0cLxvBRgKj1NfrV6YtEtntJMub0qfyQ1aHr3mZsH0O0dL
+        P836PFFsTuNux9i0jwQOVu5ehTDOpZM=
 From:   Hao Xu <hao.xu@linux.dev>
 To:     io-uring@vger.kernel.org, Jens Axboe <axboe@kernel.dk>
 Cc:     Dominique Martinet <asmadeus@codewreck.org>,
@@ -46,9 +46,9 @@ Cc:     Dominique Martinet <asmadeus@codewreck.org>,
         devel@lists.orangefs.org, linux-cifs@vger.kernel.org,
         samba-technical@lists.samba.org, linux-mtd@lists.infradead.org,
         Wanpeng Li <wanpengli@tencent.com>
-Subject: [PATCH 13/29] xfs: make xfs_trans_alloc() support nowait semantics
-Date:   Fri, 25 Aug 2023 21:54:15 +0800
-Message-Id: <20230825135431.1317785-14-hao.xu@linux.dev>
+Subject: [PATCH 16/29] xfs: add nowait parameter for xfs_inode_item_init()
+Date:   Fri, 25 Aug 2023 21:54:18 +0800
+Message-Id: <20230825135431.1317785-17-hao.xu@linux.dev>
 In-Reply-To: <20230825135431.1317785-1-hao.xu@linux.dev>
 References: <20230825135431.1317785-1-hao.xu@linux.dev>
 MIME-Version: 1.0
@@ -60,84 +60,78 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Hao Xu <howeyxu@tencent.com>
 
-There are locks in xfs_trans_alloc(), spot them and apply trylock logic.
-Make them return -EAGAIN when it would block. To achieve this, add
-nowait parameter for those functions in the path. Besides, add a generic
-transaction flag XFS_TRANS_NOWAIT to deliver nowait info.
+Add nowait parameter for xfs_inode_item_init() to support nowait
+semantics.
 
 Signed-off-by: Hao Xu <howeyxu@tencent.com>
 ---
- fs/xfs/libxfs/xfs_shared.h |  2 ++
- fs/xfs/xfs_iops.c          |  3 ++-
- fs/xfs/xfs_trans.c         | 21 ++++++++++++++++++---
- 3 files changed, 22 insertions(+), 4 deletions(-)
+ fs/xfs/libxfs/xfs_trans_inode.c |  3 ++-
+ fs/xfs/xfs_inode_item.c         | 12 ++++++++----
+ fs/xfs/xfs_inode_item.h         |  3 ++-
+ 3 files changed, 12 insertions(+), 6 deletions(-)
 
-diff --git a/fs/xfs/libxfs/xfs_shared.h b/fs/xfs/libxfs/xfs_shared.h
-index c4381388c0c1..0ba3d6f53405 100644
---- a/fs/xfs/libxfs/xfs_shared.h
-+++ b/fs/xfs/libxfs/xfs_shared.h
-@@ -83,6 +83,8 @@ void	xfs_log_get_max_trans_res(struct xfs_mount *mp,
-  * made then this algorithm will eventually find all the space it needs.
+diff --git a/fs/xfs/libxfs/xfs_trans_inode.c b/fs/xfs/libxfs/xfs_trans_inode.c
+index cb4796b6e693..e7a8f63c8975 100644
+--- a/fs/xfs/libxfs/xfs_trans_inode.c
++++ b/fs/xfs/libxfs/xfs_trans_inode.c
+@@ -33,7 +33,8 @@ xfs_trans_ijoin(
+ 
+ 	ASSERT(xfs_isilocked(ip, XFS_ILOCK_EXCL));
+ 	if (ip->i_itemp == NULL)
+-		xfs_inode_item_init(ip, ip->i_mount);
++		xfs_inode_item_init(ip, ip->i_mount,
++				    tp->t_flags & XFS_TRANS_NOWAIT);
+ 	iip = ip->i_itemp;
+ 
+ 	ASSERT(iip->ili_lock_flags == 0);
+diff --git a/fs/xfs/xfs_inode_item.c b/fs/xfs/xfs_inode_item.c
+index 91c847a84e10..1742920bb4ce 100644
+--- a/fs/xfs/xfs_inode_item.c
++++ b/fs/xfs/xfs_inode_item.c
+@@ -825,21 +825,25 @@ static const struct xfs_item_ops xfs_inode_item_ops = {
+ /*
+  * Initialize the inode log item for a newly allocated (in-core) inode.
   */
- #define XFS_TRANS_LOWMODE	0x100	/* allocate in low space mode */
-+/* Transaction should follow nowait semantics */
-+#define XFS_TRANS_NOWAIT		(1u << 9)
+-void
++int
+ xfs_inode_item_init(
+ 	struct xfs_inode	*ip,
+-	struct xfs_mount	*mp)
++	struct xfs_mount	*mp,
++	bool			nowait)
+ {
+ 	struct xfs_inode_log_item *iip;
++	gfp_t gfp_flags = GFP_KERNEL | (nowait ? 0 : __GFP_NOFAIL);
+ 
+ 	ASSERT(ip->i_itemp == NULL);
+-	iip = ip->i_itemp = kmem_cache_zalloc(xfs_ili_cache,
+-					      GFP_KERNEL | __GFP_NOFAIL);
++	iip = ip->i_itemp = kmem_cache_zalloc(xfs_ili_cache, gfp_flags);
++	if (!iip)
++		return -EAGAIN;
+ 
+ 	iip->ili_inode = ip;
+ 	spin_lock_init(&iip->ili_lock);
+ 	xfs_log_item_init(mp, &iip->ili_item, XFS_LI_INODE,
+ 						&xfs_inode_item_ops);
++	return 0;
+ }
  
  /*
-  * Field values for xfs_trans_mod_sb.
-diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
-index 5fa391083de9..47b4fd5f8f5c 100644
---- a/fs/xfs/xfs_iops.c
-+++ b/fs/xfs/xfs_iops.c
-@@ -1054,7 +1054,8 @@ xfs_vn_update_time(
- 	if (nowait)
- 		old_pflags = memalloc_noio_save();
+diff --git a/fs/xfs/xfs_inode_item.h b/fs/xfs/xfs_inode_item.h
+index 377e06007804..7ba6f8a6b243 100644
+--- a/fs/xfs/xfs_inode_item.h
++++ b/fs/xfs/xfs_inode_item.h
+@@ -42,7 +42,8 @@ static inline int xfs_inode_clean(struct xfs_inode *ip)
+ 	return !ip->i_itemp || !(ip->i_itemp->ili_fields & XFS_ILOG_ALL);
+ }
  
--	error = xfs_trans_alloc(mp, &M_RES(mp)->tr_fsyncts, 0, 0, 0, &tp);
-+	error = xfs_trans_alloc(mp, &M_RES(mp)->tr_fsyncts, 0, 0,
-+				nowait ? XFS_TRANS_NOWAIT : 0, &tp);
- 	if (error)
- 		goto out;
- 
-diff --git a/fs/xfs/xfs_trans.c b/fs/xfs/xfs_trans.c
-index 8c0bfc9a33b1..dbec685f4f4a 100644
---- a/fs/xfs/xfs_trans.c
-+++ b/fs/xfs/xfs_trans.c
-@@ -251,6 +251,9 @@ xfs_trans_alloc(
- 	struct xfs_trans	*tp;
- 	bool			want_retry = true;
- 	int			error;
-+	bool			nowait = flags & XFS_TRANS_NOWAIT;
-+	gfp_t			gfp_flags = GFP_KERNEL |
-+					    (nowait ? 0 : __GFP_NOFAIL);
- 
- 	/*
- 	 * Allocate the handle before we do our freeze accounting and setting up
-@@ -258,9 +261,21 @@ xfs_trans_alloc(
- 	 * by doing GFP_KERNEL allocations inside sb_start_intwrite().
- 	 */
- retry:
--	tp = kmem_cache_zalloc(xfs_trans_cache, GFP_KERNEL | __GFP_NOFAIL);
--	if (!(flags & XFS_TRANS_NO_WRITECOUNT))
--		sb_start_intwrite(mp->m_super);
-+	tp = kmem_cache_zalloc(xfs_trans_cache, gfp_flags);
-+	if (!tp)
-+		return -EAGAIN;
-+	if (!(flags & XFS_TRANS_NO_WRITECOUNT)) {
-+		if (nowait) {
-+			bool locked = sb_start_intwrite_trylock(mp->m_super);
-+
-+			if (!locked) {
-+				xfs_trans_cancel(tp);
-+				return -EAGAIN;
-+			}
-+		} else {
-+			sb_start_intwrite(mp->m_super);
-+		}
-+	}
- 	xfs_trans_set_context(tp);
- 
- 	/*
+-extern void xfs_inode_item_init(struct xfs_inode *, struct xfs_mount *);
++extern int xfs_inode_item_init(struct xfs_inode *ip, struct xfs_mount *mp,
++			       bool nowait);
+ extern void xfs_inode_item_destroy(struct xfs_inode *);
+ extern void xfs_iflush_abort(struct xfs_inode *);
+ extern void xfs_iflush_shutdown_abort(struct xfs_inode *);
 -- 
 2.25.1
 
