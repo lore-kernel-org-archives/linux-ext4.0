@@ -2,85 +2,82 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F131C83F11
-	for <linux-ext4@archiver.kernel.org>; Sat, 26 Aug 2023 09:05:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CDA2BC83F01
+	for <linux-ext4@archiver.kernel.org>; Sat, 26 Aug 2023 09:39:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231741AbjHZJFC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 26 Aug 2023 05:05:02 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57048 "EHLO
+        id S232281AbjHZJia (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 26 Aug 2023 05:38:30 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57558 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232181AbjHZJEj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Aug 2023 05:04:39 -0400
-X-Greylist: delayed 425 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Sat, 26 Aug 2023 02:04:35 PDT
-Received: from ustc.edu.cn (email.ustc.edu.cn [IPv6:2001:da8:d800::8])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 0814C2691
-        for <linux-ext4@vger.kernel.org>; Sat, 26 Aug 2023 02:04:34 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=mail.ustc.edu.cn; s=dkim; h=Received:From:To:Cc:Subject:Date:
-        Message-Id:MIME-Version:Content-Transfer-Encoding; bh=1+UCs/nnni
-        U7jXVcF6LiZNTfYZQMr6ipgF1Av6/S/XA=; b=Uonaz6vkM38mpEiZ1uArF8rQIF
-        /Nsb9paDJZIR8lUKQF5Ck5Ylo3JuYrLjowyiLdhmOD8TlN3GLq7hWnsFWPsUs8Ih
-        V1W3LBTInWS6NsFI2U9x8MTId4TVRviqg5PusaUrINMnOSwCyclW8hkR9tAKeHux
-        2uukOb02jDuhdy69U=
-Received: from localhost.localdomain (unknown [101.88.124.132])
-        by newmailweb.ustc.edu.cn (Coremail) with SMTP id LkAmygCXcUhuvulkKdcYAQ--.2901S2;
-        Sat, 26 Aug 2023 16:57:29 +0800 (CST)
-From:   Chunhui He <hchunhui@mail.ustc.edu.cn>
-To:     "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Chunhui He <hchunhui@mail.ustc.edu.cn>
-Subject: [PATCH 2/2] ext4: trivial: add semicolon after label attributes
-Date:   Sat, 26 Aug 2023 08:56:58 +0000
-Message-Id: <20230826085658.69769-1-hchunhui@mail.ustc.edu.cn>
-X-Mailer: git-send-email 2.39.2
+        with ESMTP id S232307AbjHZJiE (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Aug 2023 05:38:04 -0400
+Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1F70C2717;
+        Sat, 26 Aug 2023 02:37:52 -0700 (PDT)
+Received: from mail02.huawei.com (unknown [172.30.67.169])
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4RXsDr6zsPz4f3jqr;
+        Sat, 26 Aug 2023 17:37:48 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.124.27])
+        by APP4 (Coremail) with SMTP id gCh0CgA3E6bqx+lkNx57Bg--.59420S4;
+        Sat, 26 Aug 2023 17:37:49 +0800 (CST)
+From:   Kemeng Shi <shikemeng@huaweicloud.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH v2 02/13] ext4: add missed brelse in update_backups
+Date:   Sun, 27 Aug 2023 01:37:24 +0800
+Message-Id: <20230826173735.4023594-3-shikemeng@huaweicloud.com>
+X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20230826173735.4023594-1-shikemeng@huaweicloud.com>
+References: <20230826173735.4023594-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: LkAmygCXcUhuvulkKdcYAQ--.2901S2
-X-Coremail-Antispam: 1UD129KBjvdXoWrZF43AFy5uF1UWr13Aw1DWrg_yoWfWFgE9a
-        1xJrZrWrZxGFyS9a48Ca9xtw4Yv3s2vr18uFsYywn5W3Z0qa15Wr1DGr97uF9xWrWrZ3s8
-        Ar1kJFy0vrWfWjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-        9fnUUIcSsGvfJTRUUUbz8FF20E14v26r1j6r4UM7CY07I20VC2zVCF04k26cxKx2IYs7xG
-        6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8w
-        A2z4x0Y4vE2Ix0cI8IcVAFwI0_Xr0_Ar1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr0_
-        Cr1l84ACjcxK6I8E87Iv67AKxVWxJr0_GcWl84ACjcxK6I8E87Iv6xkF7I0E14v26F4UJV
-        W0owAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0
-        I7IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r
-        4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20xvY0x0EwIxG
-        rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
-        vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IY
-        x2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26c
-        xKx2IYs7xG6Fyj6rWUJwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E
-        14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjfUozVbDUUUU
-X-CM-SenderInfo: pkfk30xkxlqzxdloh3xvwfhvlgxou0/
+X-CM-TRANSID: gCh0CgA3E6bqx+lkNx57Bg--.59420S4
+X-Coremail-Antispam: 1UD129KBjvdXoWrZr43XF13ZryDZr1rGr45KFg_yoW3Arb_WF
+        y8Zr4kXrs3Jr1SkF15Z3WFyr4rKw48XF1ruFWUtFyrWF15tayrZF4qq39xCrnF9a4jqF45
+        CFn7XryxJ3ySgjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUbf8YFVCjjxCrM7AC8VAFwI0_Gr0_Xr1l1xkIjI8I6I8E6xAIw20E
+        Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl82
+        xGYIkIc2x26280x7IE14v26r15M28IrcIa0xkI8VCY1x0267AKxVWUCVW8JwA2ocxC64kI
+        II0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26r4j6ryUM28EF7
+        xvwVC0I7IYx2IY6xkF7I0E14v26r4j6F4UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84AC
+        jcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrV
+        ACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWU
+        JVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr4
+        1l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK
+        67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI
+        8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAv
+        wI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14
+        v26r4UJVWxJrUvcSsGvfC2KfnxnUUI43ZEXa7IU0Q6pPUUUUU==
+X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The gcc document says label attributes are ambiguous if they are
-not immediately followed by a semicolon. Although the ambiguity
-does not arise in C90/99, it would be better to add it.
+add missed brelse in update_backups
 
-Link: https://gcc.gnu.org/onlinedocs/gcc/Attribute-Syntax.html#Label-Attributes-2
-Signed-off-by: Chunhui He <hchunhui@mail.ustc.edu.cn>
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+Reviewed-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/super.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/resize.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c94ebf704616..f5fa9815a86e 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5609,7 +5609,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 
- failed_mount10:
- 	ext4_quotas_off(sb, EXT4_MAXQUOTAS);
--failed_mount9: __maybe_unused
-+failed_mount9: __maybe_unused;
- 	ext4_release_orphan_info(sb);
- failed_mount8:
- 	ext4_unregister_sysfs(sb);
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 87cd5b07a970..7cbc695b7005 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -1191,8 +1191,10 @@ static void update_backups(struct super_block *sb, sector_t blk_off, char *data,
+ 			   ext4_group_first_block_no(sb, group));
+ 		BUFFER_TRACE(bh, "get_write_access");
+ 		if ((err = ext4_journal_get_write_access(handle, sb, bh,
+-							 EXT4_JTR_NONE)))
++							 EXT4_JTR_NONE))) {
++			brelse(bh);
+ 			break;
++		}
+ 		lock_buffer(bh);
+ 		memcpy(bh->b_data, data, size);
+ 		if (rest)
 -- 
-2.39.2
-
+2.30.0
 
