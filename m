@@ -2,211 +2,241 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F3844C83F1E
-	for <linux-ext4@archiver.kernel.org>; Sat, 26 Aug 2023 07:51:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FC24C83F22
+	for <linux-ext4@archiver.kernel.org>; Sat, 26 Aug 2023 07:51:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232081AbjHZHvY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 26 Aug 2023 03:51:24 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58760 "EHLO
+        id S232045AbjHZHvU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 26 Aug 2023 03:51:20 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58806 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230246AbjHZHus (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Aug 2023 03:50:48 -0400
+        with ESMTP id S231454AbjHZHut (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Aug 2023 03:50:49 -0400
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E60191991;
-        Sat, 26 Aug 2023 00:50:44 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 527E42137;
+        Sat, 26 Aug 2023 00:50:45 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.169])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4RXpsB2fftz4f3jM6;
-        Sat, 26 Aug 2023 15:50:38 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgDXZajPrulkChN1Bg--.43571S2;
+        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4RXpsC11T5z4f3jMZ;
         Sat, 26 Aug 2023 15:50:39 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.124.27])
+        by APP4 (Coremail) with SMTP id gCh0CgDXZajPrulkChN1Bg--.43571S5;
+        Sat, 26 Aug 2023 15:50:42 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, ritesh.list@gmail.com,
         linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH v6 00/11] cleanups and unit test for mballoc
-Date:   Sat, 26 Aug 2023 23:50:17 +0800
-Message-Id: <20230826155028.4019470-1-shikemeng@huaweicloud.com>
+Subject: [PATCH v6 03/11] ext4: extent ext4_mb_mark_context to support allocation under journal
+Date:   Sat, 26 Aug 2023 23:50:20 +0800
+Message-Id: <20230826155028.4019470-4-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20230826155028.4019470-1-shikemeng@huaweicloud.com>
+References: <20230826155028.4019470-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgDXZajPrulkChN1Bg--.43571S2
-X-Coremail-Antispam: 1UD129KBjvJXoW3Jw4UJw17tF15uryDtF4fZrb_yoW3JrWxpr
-        sFkFn8Kr1xJr1qvan3C3y7Wr1xKw48AF4UGryfK34fuFW3Wrn7CFs7KFWY9a4DKr4DZFyY
-        vF15CFWUC3Z2vaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUk2b4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
+X-CM-TRANSID: gCh0CgDXZajPrulkChN1Bg--.43571S5
+X-Coremail-Antispam: 1UD129KBjvJXoW3Jr4DtF4rZw4xtF4DAFyxXwb_yoW7KrykpF
+        yDAr1qkr4fJFnI9FsFk342qF1fKw18C3WUGrWfGryFkryxtryrZF4xKFyFyFWYyF47ZFn8
+        Zr1Yy3y7Wa1fK37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUB2b4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
         6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
-        8lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E
-        3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26r
-        xl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv
-        0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUXVWUAwAv7VC2z2
-        80aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JMxAIw28I
-        cxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2
-        IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI
-        42IY6xIIjxv20xvE14v26r4j6ryUMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWxJVW8Jr1lIx
-        AIcVCF04k26cxKx2IYs7xG6Fyj6rWUJwCI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E
-        87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUs2-eUUUUU
+        8IrcIa0xkI8VA2jI8067AKxVWUWwA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK
+        0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4
+        x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l
+        84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I
+        8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1Y6r17McIj6I8E87Iv67AK
+        xVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64
+        vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8G
+        jcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2I
+        x0cI8IcVAFwI0_Gr0_Xr1lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1lIxAIcVCF
+        04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7
+        CjxVAFwI0_Gr1j6F4UJbIYCTnIWIevJa73UjIFyTuYvjxU3-txDUUUU
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-v5-v6:
-1. Separate block bitmap and buddy bitmap freeing in individual patch
-and rewrite the descriptions.
-2. Remove #ifdef around KUNIT_STATIC_STUB_REDIRECT which should be
-only defined when CONFIG_KUNIT is enabled after fix [7] which was merged
-into kunit-next/kunit
-3. Use mbt prefix to distiguish test APIs from actual kernel APIs.
-4. Add prepare function for ext4_mark_context and rename
-ext4_mb_mark_group_bb to ext4_mb_mark_context
-5. Support to run mballoc test with different layouts setting and
-different block size is tested.
+Previously, ext4_mb_mark_context is only called under fast commit
+replay path, so there is no valid handle when we update block bitmap
+and group descriptor. This patch try to extent ext4_mb_mark_context
+to be used by code under journal. There are several improves:
+1. add "handle_t *handle" to struct ext4_mark_context to accept handle
+to journal block bitmap and group descriptor update inside
+ext4_mb_mark_context (the added journal caode is based on journal
+code in ext4_mb_mark_diskspace_used where ext4_mb_mark_context
+is going to be used.)
+2. add EXT4_MB_BITMAP_MARKED_CHECK flag to control check if bits in block
+bitmap are already marked as allocation code under journal asserts that
+all bits to be changed are not marked before.
+3. add "ext4_grpblk_t changed" to struct ext4_mark_context to notify number
+of bits in block bitmap has changed.
 
-v4->v5:
-1. WARN on free blocks to uninitialized group is removed as normal
-fast commit route may triggers this, see [1] for details. The review
-tag from Ojaswin of changed patch is also removed and a futher review
-is needed.
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+---
+ fs/ext4/mballoc.c | 65 +++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 49 insertions(+), 16 deletions(-)
 
-v3->v4:
-1. Collect Reviewed-by from Ojaswin
-2. Do improve as Ojaswin kindly suggested: Fix typo in commit,
-WARN if try to clear bit of uninitialized group and improve
-refactoring of AGGRESSIVE_CHECK code.
-3. Fix conflic on patch 16
-4. Improve git log in patch 16,17
-
-v2->v3:
-1. Fix build warnings on "ext4: add some kunit stub for mballoc kunit
-test" and "ext4: add first unit test for ext4_mb_new_blocks_simple in
-mballoc"
-
-This series is a new version of unmerged patches from [1]. The first 6
-patches of this series factor out codes to mark blocks used or freed
-which will update on disk block bitmap and group descriptor. Several
-reasons to do this:
-1. pair behavior of alloc/free bits. For example,
-ext4_mb_new_blocks_simple will update free_clusters in struct flex_groups
-in ext4_mb_mark_bb while ext4_free_blocks_simple forgets this.
-2. remove repeat code to read from disk, update and write back to disk.
-3. reduce future unit test mocks to avoid real IO to update structure
-on disk.
-
-The last 2 patches add a unit test for mballoc. Before more unit tests
-are added, there are something should be discussed:
-1. How to test static function in mballoc.c
-Currently, include mballoc-test.c in mballoc.c to test static function
-in mballoc.c from mballoc-test.c which is one way suggested in [2].
-Not sure if there is any more elegant way to test static function without
-touch mballoc.c.
-2. How to add mocks to function in mballoc.c which may issue IO to disk
-Currently, KUNIT_STATIC_STUB_REDIRECT is added to functions as suggested
-in kunit document [3].
-3. How to simulate a block bitmap.
-Currently, a fake buffer_head with bitmap data is returned, then no
-futher change is needed.
-If we simulate a block bitmap with an array of data structure like:
-struct test_bitmap {
-       unsigned int	start;
-       unsigned int	len;
-}
-which is suggested by Theodore in [4], then we need to add mocks to
-function which expected bitmap from bitmap_bh->b_data, like
-mb_find_next_bit, mb_find_next_zero_bit and maybe more.
-
-Would like to hear any suggestion! Thanks!
-
-I run kvm-xfstest with config "ext4/all" and "-g auto" together with
-patchset for resize, you can see detail report in [6].
-
-Unit test result is as followings:
-# ./tools/testing/kunit/kunit.py run --kunitconfig=fs/ext4/.kunitconfig --raw_output
-[18:23:36] Configuring KUnit Kernel ...
-[18:23:36] Building KUnit Kernel ...
-Populating config with:
-$ make ARCH=um O=.kunit olddefconfig
-Building with:
-$ make ARCH=um O=.kunit --jobs=88
-[18:23:40] Starting KUnit Kernel (1/1)...
-KTAP version 1
-1..2
-    KTAP version 1
-    # Subtest: ext4_mballoc_test
-    1..1
-        KTAP version 1
-        # Subtest: test_new_blocks_simple
-        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-        ok 3 block_bits=18 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-    # test_new_blocks_simple: pass:3 fail:0 skip:0 total:3
-    ok 1 test_new_blocks_simple
-# Totals: pass:3 fail:0 skip:0 total:3
-ok 1 ext4_mballoc_test
-    KTAP version 1
-    # Subtest: ext4_inode_test
-    1..1
-        KTAP version 1
-        # Subtest: inode_test_xtimestamp_decoding
-        ok 1 1901-12-13 Lower bound of 32bit < 0 timestamp, no extra bits
-        ok 2 1969-12-31 Upper bound of 32bit < 0 timestamp, no extra bits
-        ok 3 1970-01-01 Lower bound of 32bit >=0 timestamp, no extra bits
-        ok 4 2038-01-19 Upper bound of 32bit >=0 timestamp, no extra bits
-        ok 5 2038-01-19 Lower bound of 32bit <0 timestamp, lo extra sec bit on
-        ok 6 2106-02-07 Upper bound of 32bit <0 timestamp, lo extra sec bit on
-        ok 7 2106-02-07 Lower bound of 32bit >=0 timestamp, lo extra sec bit on
-        ok 8 2174-02-25 Upper bound of 32bit >=0 timestamp, lo extra sec bit on
-        ok 9 2174-02-25 Lower bound of 32bit <0 timestamp, hi extra sec bit on
-        ok 10 2242-03-16 Upper bound of 32bit <0 timestamp, hi extra sec bit on
-        ok 11 2242-03-16 Lower bound of 32bit >=0 timestamp, hi extra sec bit on
-        ok 12 2310-04-04 Upper bound of 32bit >=0 timestamp, hi extra sec bit on
-        ok 13 2310-04-04 Upper bound of 32bit>=0 timestamp, hi extra sec bit 1. 1 ns
-        ok 14 2378-04-22 Lower bound of 32bit>= timestamp. Extra sec bits 1. Max ns
-        ok 15 2378-04-22 Lower bound of 32bit >=0 timestamp. All extra sec bits on
-        ok 16 2446-05-10 Upper bound of 32bit >=0 timestamp. All extra sec bits on
-    # inode_test_xtimestamp_decoding: pass:16 fail:0 skip:0 total:16
-    ok 1 inode_test_xtimestamp_decoding
-# Totals: pass:16 fail:0 skip:0 total:16
-ok 2 ext4_inode_test
-[18:23:41] Elapsed time: 4.960s total, 0.001s configuring, 4.842s building, 0.072s running
-
-[1]
-https://lore.kernel.org/linux-ext4/20230603150327.3596033-1-shikemeng@huaweicloud.com/T/#m5ff8e3a058ce1cb272dfef3262cd3202ce6e4358
-[2]
-https://lore.kernel.org/linux-ext4/ZC3MoWn2UO6p+Swp@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com/
-[3]
-https://docs.kernel.org/dev-tools/kunit/usage.html#testing-static-functions
-[4]
-https://docs.kernel.org/dev-tools/kunit/api/functionredirection.html#c.KUNIT_STATIC_STUB_REDIRECT
-[5]
-https://lore.kernel.org/linux-ext4/20230317155047.GB3270589@mit.edu/
-[6]
-https://lore.kernel.org/linux-ext4/20230629120044.1261968-1-shikemeng@huaweicloud.com/T/#mcc8fb0697fd54d9267c02c027e1eb3468026ae56
-[7]
-https://lore.kernel.org/lkml/20230725172051.2142641-1-shikemeng@huaweicloud.com/
-
-Kemeng Shi (11):
-  ext4: factor out codes to update block bitmap and group descriptor on
-    disk from ext4_mb_mark_bb
-  ext4: call ext4_mb_mark_context in ext4_free_blocks_simple
-  ext4: extent ext4_mb_mark_context to support allocation under journal
-  ext4: call ext4_mb_mark_context in ext4_mb_mark_diskspace_used
-  ext4: Separate block bitmap and buddy bitmap freeing in
-    ext4_mb_clear_bb()
-  ext4: call ext4_mb_mark_context in ext4_mb_clear_bb
-  ext4: Separate block bitmap and buddy bitmap freeing in
-    ext4_group_add_blocks()
-  ext4: call ext4_mb_mark_context in ext4_group_add_blocks()
-  ext4: add some kunit stub for mballoc kunit test
-  ext4: add first unit test for ext4_mb_new_blocks_simple in mballoc
-  ext4: run mballoc test with different layouts setting
-
- fs/ext4/balloc.c       |  10 +
- fs/ext4/mballoc-test.c | 351 ++++++++++++++++++++++++++++
- fs/ext4/mballoc.c      | 505 ++++++++++++++++-------------------------
- 3 files changed, 557 insertions(+), 309 deletions(-)
- create mode 100644 fs/ext4/mballoc-test.c
-
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index c803f74aaf63..b066ee018cdb 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3952,6 +3952,8 @@ void ext4_exit_mballoc(void)
+ 	ext4_groupinfo_destroy_slabs();
+ }
+ 
++#define EXT4_MB_BITMAP_MARKED_CHECK 0x0001
++#define EXT4_MB_SYNC_UPDATE 0x0002
+ /*
+  * Collect global setting to reduce the number of variable passing to
+  * ext4_mb_mark_context. Pass target group blocks range directly to
+@@ -3959,39 +3961,61 @@ void ext4_exit_mballoc(void)
+  * to show clearly the specific block range will be marked.
+  */
+ struct ext4_mark_context {
++	handle_t *handle;
+ 	struct super_block *sb;
+ 	int state;
++	ext4_grpblk_t changed;
+ };
+ 
+ static inline void ext4_mb_prepare_mark_context(struct ext4_mark_context *mc,
++						handle_t *handle,
+ 						struct super_block *sb,
+ 						int state)
+ {
++	mc->handle = handle;
+ 	mc->sb = sb;
+ 	mc->state = state;
+ }
+ 
+ static int
+ ext4_mb_mark_context(struct ext4_mark_context *mc, ext4_group_t group,
+-		     ext4_grpblk_t blkoff, ext4_grpblk_t len)
++		     ext4_grpblk_t blkoff, ext4_grpblk_t len, int flags)
+ {
++	handle_t *handle = mc->handle;
+ 	struct super_block *sb = mc->sb;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct buffer_head *bitmap_bh = NULL;
+ 	struct ext4_group_desc *gdp;
+ 	struct buffer_head *gdp_bh;
+ 	int err;
+-	unsigned int i, already, changed;
++	unsigned int i, already, changed = len;
+ 
++	mc->changed = 0;
+ 	bitmap_bh = ext4_read_block_bitmap(sb, group);
+ 	if (IS_ERR(bitmap_bh))
+ 		return PTR_ERR(bitmap_bh);
+ 
++	if (handle) {
++		BUFFER_TRACE(bitmap_bh, "getting write access");
++		err = ext4_journal_get_write_access(handle, sb, bitmap_bh,
++						    EXT4_JTR_NONE);
++		if (err)
++			goto out_err;
++	}
++
+ 	err = -EIO;
+ 	gdp = ext4_get_group_desc(sb, group, &gdp_bh);
+ 	if (!gdp)
+ 		goto out_err;
+ 
++	if (handle) {
++		BUFFER_TRACE(gdp_bh, "get_write_access");
++		err = ext4_journal_get_write_access(handle, sb, gdp_bh,
++						    EXT4_JTR_NONE);
++		if (err)
++			goto out_err;
++	}
++
+ 	ext4_lock_group(sb, group);
+ 	if (ext4_has_group_desc_csum(sb) &&
+ 	    (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))) {
+@@ -4000,12 +4024,14 @@ ext4_mb_mark_context(struct ext4_mark_context *mc, ext4_group_t group,
+ 			ext4_free_clusters_after_init(sb, group, gdp));
+ 	}
+ 
+-	already = 0;
+-	for (i = 0; i < len; i++)
+-		if (mb_test_bit(blkoff + i, bitmap_bh->b_data) ==
+-				mc->state)
+-			already++;
+-	changed = len - already;
++	if (flags & EXT4_MB_BITMAP_MARKED_CHECK) {
++		already = 0;
++		for (i = 0; i < len; i++)
++			if (mb_test_bit(blkoff + i, bitmap_bh->b_data) ==
++					mc->state)
++				already++;
++		changed = len - already;
++	}
+ 
+ 	if (mc->state) {
+ 		mb_set_bits(bitmap_bh->b_data, blkoff, len);
+@@ -4020,6 +4046,7 @@ ext4_mb_mark_context(struct ext4_mark_context *mc, ext4_group_t group,
+ 	ext4_block_bitmap_csum_set(sb, gdp, bitmap_bh);
+ 	ext4_group_desc_csum_set(sb, group, gdp);
+ 	ext4_unlock_group(sb, group);
++	mc->changed = changed;
+ 
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi, group);
+@@ -4032,15 +4059,17 @@ ext4_mb_mark_context(struct ext4_mark_context *mc, ext4_group_t group,
+ 			atomic64_add(changed, &fg->free_clusters);
+ 	}
+ 
+-	err = ext4_handle_dirty_metadata(NULL, NULL, bitmap_bh);
++	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
+ 	if (err)
+ 		goto out_err;
+-	err = ext4_handle_dirty_metadata(NULL, NULL, gdp_bh);
++	err = ext4_handle_dirty_metadata(handle, NULL, gdp_bh);
+ 	if (err)
+ 		goto out_err;
+ 
+-	sync_dirty_buffer(bitmap_bh);
+-	sync_dirty_buffer(gdp_bh);
++	if (flags & EXT4_MB_SYNC_UPDATE) {
++		sync_dirty_buffer(bitmap_bh);
++		sync_dirty_buffer(gdp_bh);
++	}
+ 
+ out_err:
+ 	brelse(bitmap_bh);
+@@ -4179,7 +4208,7 @@ void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
+ 	int err = 0;
+ 	unsigned int clen, thisgrp_len;
+ 
+-	ext4_mb_prepare_mark_context(&mc, sb, state);
++	ext4_mb_prepare_mark_context(&mc, NULL, sb, state);
+ 	while (len > 0) {
+ 		ext4_get_group_no_and_offset(sb, block, &group, &blkoff);
+ 
+@@ -4202,7 +4231,9 @@ void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
+ 			break;
+ 		}
+ 
+-		err = ext4_mb_mark_context(&mc, group, blkoff, clen);
++		err = ext4_mb_mark_context(&mc, group, blkoff, clen,
++					   EXT4_MB_BITMAP_MARKED_CHECK |
++					   EXT4_MB_SYNC_UPDATE);
+ 		if (err)
+ 			break;
+ 
+@@ -6419,9 +6450,11 @@ static void ext4_free_blocks_simple(struct inode *inode, ext4_fsblk_t block,
+ 	ext4_group_t group;
+ 	ext4_grpblk_t blkoff;
+ 
+-	ext4_mb_prepare_mark_context(&mc, sb, 0);
++	ext4_mb_prepare_mark_context(&mc, NULL, sb, 0);
+ 	ext4_get_group_no_and_offset(sb, block, &group, &blkoff);
+-	ext4_mb_mark_context(&mc, group, blkoff, count);
++	ext4_mb_mark_context(&mc, group, blkoff, count,
++			     EXT4_MB_BITMAP_MARKED_CHECK |
++			     EXT4_MB_SYNC_UPDATE);
+ }
+ 
+ /**
 -- 
 2.30.0
 
