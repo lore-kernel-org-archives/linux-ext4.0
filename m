@@ -2,225 +2,147 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E8AFC83F16
-	for <linux-ext4@archiver.kernel.org>; Sat, 26 Aug 2023 06:13:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 44CD0C83F11
+	for <linux-ext4@archiver.kernel.org>; Sat, 26 Aug 2023 07:51:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231706AbjHZGJu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 26 Aug 2023 02:09:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43018 "EHLO
+        id S232027AbjHZHvT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 26 Aug 2023 03:51:19 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58854 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229747AbjHZGJn (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Aug 2023 02:09:43 -0400
-Received: from mgamail.intel.com (mgamail.intel.com [192.55.52.93])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6D77310D7
-        for <linux-ext4@vger.kernel.org>; Fri, 25 Aug 2023 23:09:41 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1693030181; x=1724566181;
-  h=date:from:to:cc:subject:message-id;
-  bh=qX8cFIJ3GRFyIRrmigUeQ6OUoq4+kgSOEESMQ3zsjM8=;
-  b=gYuNaePjb1+XKELrgigR24KxRj0CsuYLyPEDPzwUFASmGgwQN0c59laG
-   ShGHG2zqQaLwUepfgvmpl1Bv07uBlnd4fDbb3oGq5oiJWTREFjtqDNLcF
-   yX0nhsXCB9dLLxY86uhSWM3YSiSyk92qyPEFTlJgCyuVERKdgpGBpNnh3
-   lvVRxV/T4gA5hsRWUt/qNkE/Rp0+8Xc/MDpSdahnV19kp88sSgnp1YGUh
-   NJDdMUT04Szt3MVnFFv3thl3JVHOfE6Y0a9LAHnedUwYiQFzvewPWf0L4
-   cM2MMtT5q/02NJRpCCPDdgf8nlsEltcYLMNeQ0aYUM/RTdBMP7G80rdoC
-   A==;
-X-IronPort-AV: E=McAfee;i="6600,9927,10813"; a="372255914"
-X-IronPort-AV: E=Sophos;i="6.02,203,1688454000"; 
-   d="scan'208";a="372255914"
-Received: from orsmga008.jf.intel.com ([10.7.209.65])
-  by fmsmga102.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 25 Aug 2023 23:09:40 -0700
-X-ExtLoop1: 1
-X-IronPort-AV: E=McAfee;i="6600,9927,10813"; a="767136395"
-X-IronPort-AV: E=Sophos;i="6.02,203,1688454000"; 
-   d="scan'208";a="767136395"
-Received: from lkp-server02.sh.intel.com (HELO daf8bb0a381d) ([10.239.97.151])
-  by orsmga008.jf.intel.com with ESMTP; 25 Aug 2023 23:09:38 -0700
-Received: from kbuild by daf8bb0a381d with local (Exim 4.96)
-        (envelope-from <lkp@intel.com>)
-        id 1qZmUL-0004PT-2Q;
-        Sat, 26 Aug 2023 06:09:37 +0000
-Date:   Sat, 26 Aug 2023 14:08:33 +0800
-From:   kernel test robot <lkp@intel.com>
-To:     "Theodore Ts'o" <tytso@mit.edu>
-Cc:     linux-ext4@vger.kernel.org
-Subject: [tytso-ext4:dev] BUILD SUCCESS
- 91c66ddfd2dfa4c622c45a3ed0908b36c1adfa28
-Message-ID: <202308261431.0t2jzwsM-lkp@intel.com>
-User-Agent: s-nail v14.9.24
+        with ESMTP id S231920AbjHZHut (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Aug 2023 03:50:49 -0400
+Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0BACF1FD7;
+        Sat, 26 Aug 2023 00:50:47 -0700 (PDT)
+Received: from mail02.huawei.com (unknown [172.30.67.169])
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4RXpsH25Prz4f3lDW;
+        Sat, 26 Aug 2023 15:50:43 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.124.27])
+        by APP4 (Coremail) with SMTP id gCh0CgDXZajPrulkChN1Bg--.43571S13;
+        Sat, 26 Aug 2023 15:50:44 +0800 (CST)
+From:   Kemeng Shi <shikemeng@huaweicloud.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, ritesh.list@gmail.com,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH v6 11/11] ext4: run mballoc test with different layouts setting
+Date:   Sat, 26 Aug 2023 23:50:28 +0800
+Message-Id: <20230826155028.4019470-12-shikemeng@huaweicloud.com>
+X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20230826155028.4019470-1-shikemeng@huaweicloud.com>
+References: <20230826155028.4019470-1-shikemeng@huaweicloud.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID: gCh0CgDXZajPrulkChN1Bg--.43571S13
+X-Coremail-Antispam: 1UD129KBjvJXoWxAF43KFWUCr47tr4xWw1DGFg_yoW5GFy7pa
+        nIkF1Fkr1UWFsF9w4fK397Zw13Kw1kur48JryxW34FkF1xAws7GFs7tryYya4qqrWkZFn0
+        vF1Y9w17u3y8Cw7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUBSb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
+        8IrcIa0xkI8VA2jI8067AKxVWUAVCq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAv
+        FVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3w
+        A2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE
+        3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr2
+        1l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1Y6r17McIj6I8E87Iv
+        67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2
+        Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s02
+        6x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0x
+        vE2Ix0cI8IcVAFwI0_Xr0_Ar1lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1lIxAI
+        cVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2js
+        IEc7CjxVAFwI0_Gr1j6F4UJbIYCTnIWIevJa73UjIFyTuYvjxUIVyIUUUUU
+X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-branch HEAD: 91c66ddfd2dfa4c622c45a3ed0908b36c1adfa28  ext4: fix slab-use-after-free in ext4_es_insert_extent()
+Use KUNIT_CASE_PARAM to run mbalaloc test with different layouts setting.
 
-elapsed time: 3065m
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+---
+ fs/ext4/mballoc-test.c | 52 ++++++++++++++++++++++++++++++------------
+ 1 file changed, 38 insertions(+), 14 deletions(-)
 
-configs tested: 155
-configs skipped: 2
-
-The following configs have been built successfully.
-More configs may be tested in the coming days.
-
-tested configs:
-alpha                             allnoconfig   gcc  
-alpha                            allyesconfig   gcc  
-alpha                               defconfig   gcc  
-arc                              allmodconfig   gcc  
-arc                               allnoconfig   gcc  
-arc                              allyesconfig   gcc  
-arc                                 defconfig   gcc  
-arc                   randconfig-001-20230824   gcc  
-arm                              allmodconfig   gcc  
-arm                               allnoconfig   gcc  
-arm                              allyesconfig   gcc  
-arm                                 defconfig   gcc  
-arm                      footbridge_defconfig   gcc  
-arm                   randconfig-001-20230824   gcc  
-arm                  randconfig-r013-20230824   gcc  
-arm                  randconfig-r031-20230824   clang
-arm64                            allmodconfig   gcc  
-arm64                             allnoconfig   gcc  
-arm64                            allyesconfig   gcc  
-arm64                               defconfig   gcc  
-arm64                randconfig-r033-20230824   gcc  
-csky                             allmodconfig   gcc  
-csky                              allnoconfig   gcc  
-csky                             allyesconfig   gcc  
-csky                                defconfig   gcc  
-csky                 randconfig-r011-20230824   gcc  
-hexagon               randconfig-001-20230824   clang
-hexagon               randconfig-002-20230824   clang
-i386         buildonly-randconfig-001-20230824   gcc  
-i386         buildonly-randconfig-002-20230824   gcc  
-i386         buildonly-randconfig-003-20230824   gcc  
-i386         buildonly-randconfig-004-20230824   gcc  
-i386         buildonly-randconfig-005-20230824   gcc  
-i386         buildonly-randconfig-006-20230824   gcc  
-i386                                defconfig   gcc  
-i386                  randconfig-001-20230824   gcc  
-i386                  randconfig-002-20230824   gcc  
-i386                  randconfig-003-20230824   gcc  
-i386                  randconfig-004-20230824   gcc  
-i386                  randconfig-005-20230824   gcc  
-i386                  randconfig-006-20230824   gcc  
-i386                  randconfig-011-20230825   gcc  
-i386                  randconfig-012-20230825   gcc  
-i386                  randconfig-013-20230825   gcc  
-i386                  randconfig-014-20230825   gcc  
-i386                  randconfig-015-20230825   gcc  
-i386                  randconfig-016-20230825   gcc  
-i386                 randconfig-r034-20230824   gcc  
-loongarch                        allmodconfig   gcc  
-loongarch                         allnoconfig   gcc  
-loongarch                        allyesconfig   gcc  
-loongarch                           defconfig   gcc  
-loongarch             randconfig-001-20230824   gcc  
-loongarch            randconfig-r002-20230824   gcc  
-loongarch            randconfig-r026-20230824   gcc  
-m68k                             allmodconfig   gcc  
-m68k                              allnoconfig   gcc  
-m68k                             allyesconfig   gcc  
-m68k                                defconfig   gcc  
-m68k                          hp300_defconfig   gcc  
-m68k                 randconfig-r032-20230824   gcc  
-microblaze                       allmodconfig   gcc  
-microblaze                        allnoconfig   gcc  
-microblaze                       allyesconfig   gcc  
-microblaze                          defconfig   gcc  
-mips                             allmodconfig   gcc  
-mips                              allnoconfig   gcc  
-mips                             allyesconfig   gcc  
-mips                 randconfig-r005-20230824   clang
-mips                 randconfig-r036-20230824   clang
-nios2                            allmodconfig   gcc  
-nios2                             allnoconfig   gcc  
-nios2                            allyesconfig   gcc  
-nios2                               defconfig   gcc  
-nios2                randconfig-r021-20230824   gcc  
-nios2                randconfig-r023-20230824   gcc  
-openrisc                         allmodconfig   gcc  
-openrisc                          allnoconfig   gcc  
-openrisc                         allyesconfig   gcc  
-openrisc                            defconfig   gcc  
-parisc                           allmodconfig   gcc  
-parisc                            allnoconfig   gcc  
-parisc                           allyesconfig   gcc  
-parisc                              defconfig   gcc  
-parisc               randconfig-r022-20230824   gcc  
-parisc64                            defconfig   gcc  
-powerpc                          allmodconfig   gcc  
-powerpc                           allnoconfig   gcc  
-powerpc                          allyesconfig   gcc  
-powerpc                    ge_imp3a_defconfig   clang
-powerpc                     ppa8548_defconfig   clang
-powerpc              randconfig-r016-20230824   clang
-powerpc              randconfig-r025-20230824   clang
-powerpc              randconfig-r032-20230824   gcc  
-powerpc64            randconfig-r004-20230824   gcc  
-riscv                            allmodconfig   gcc  
-riscv                             allnoconfig   gcc  
-riscv                            allyesconfig   gcc  
-riscv                               defconfig   gcc  
-riscv                 randconfig-001-20230824   gcc  
-riscv                randconfig-r014-20230824   clang
-riscv                randconfig-r033-20230824   gcc  
-riscv                          rv32_defconfig   gcc  
-s390                             allmodconfig   gcc  
-s390                              allnoconfig   gcc  
-s390                             allyesconfig   gcc  
-s390                                defconfig   gcc  
-s390                  randconfig-001-20230824   clang
-sh                               allmodconfig   gcc  
-sh                                allnoconfig   gcc  
-sh                               allyesconfig   gcc  
-sh                                  defconfig   gcc  
-sh                        sh7757lcr_defconfig   gcc  
-sparc                            alldefconfig   gcc  
-sparc                            allmodconfig   gcc  
-sparc                             allnoconfig   gcc  
-sparc                            allyesconfig   gcc  
-sparc                               defconfig   gcc  
-sparc                randconfig-r035-20230824   gcc  
-sparc64                          allmodconfig   gcc  
-sparc64                          allyesconfig   gcc  
-sparc64                             defconfig   gcc  
-sparc64              randconfig-r001-20230824   gcc  
-um                               allmodconfig   clang
-um                                allnoconfig   clang
-um                               allyesconfig   clang
-um                                  defconfig   gcc  
-um                             i386_defconfig   gcc  
-um                           x86_64_defconfig   gcc  
-x86_64                            allnoconfig   gcc  
-x86_64                           allyesconfig   gcc  
-x86_64       buildonly-randconfig-001-20230824   gcc  
-x86_64       buildonly-randconfig-002-20230824   gcc  
-x86_64       buildonly-randconfig-003-20230824   gcc  
-x86_64       buildonly-randconfig-004-20230824   gcc  
-x86_64       buildonly-randconfig-005-20230824   gcc  
-x86_64       buildonly-randconfig-006-20230824   gcc  
-x86_64                              defconfig   gcc  
-x86_64                randconfig-006-20230824   clang
-x86_64                randconfig-011-20230825   clang
-x86_64                randconfig-012-20230824   gcc  
-x86_64                randconfig-012-20230825   clang
-x86_64                randconfig-013-20230825   clang
-x86_64                randconfig-014-20230825   clang
-x86_64                randconfig-015-20230825   clang
-x86_64                randconfig-016-20230825   clang
-x86_64                randconfig-076-20230824   gcc  
-x86_64               randconfig-r006-20230824   gcc  
-x86_64               randconfig-r024-20230824   clang
-x86_64                          rhel-8.3-rust   clang
-x86_64                               rhel-8.3   gcc  
-xtensa                            allnoconfig   gcc  
-xtensa                           allyesconfig   gcc  
-xtensa               randconfig-r003-20230824   gcc  
-xtensa               randconfig-r012-20230824   gcc  
-
+diff --git a/fs/ext4/mballoc-test.c b/fs/ext4/mballoc-test.c
+index d643c56ac003..af48a39c8ba2 100644
+--- a/fs/ext4/mballoc-test.c
++++ b/fs/ext4/mballoc-test.c
+@@ -196,21 +196,11 @@ static int ext4_mb_mark_context_stub(struct ext4_mark_context *mc,
+ 	return 0;
+ }
+ 
+-#define TEST_BLOCKSIZE_BITS 10
+-#define TEST_CLUSTER_BITS 3
+-#define TEST_BLOCKS_PER_GROUP 8192
+-#define TEST_GROUP_COUNT 4
+-#define TEST_DESC_SIZE 64
+ #define TEST_GOAL_GROUP 1
+ static int mbt_kunit_init(struct kunit *test)
+ {
+-	struct mbt_ext4_block_layout layout = {
+-		.blocksize_bits = TEST_BLOCKSIZE_BITS,
+-		.cluster_bits = TEST_CLUSTER_BITS,
+-		.blocks_per_group = TEST_BLOCKS_PER_GROUP,
+-		.group_count = TEST_GROUP_COUNT,
+-		.desc_size = TEST_DESC_SIZE,
+-	};
++	struct mbt_ext4_block_layout *layout =
++		(struct mbt_ext4_block_layout *)(test->param_value);
+ 	struct super_block *sb;
+ 	int ret;
+ 
+@@ -218,7 +208,7 @@ static int mbt_kunit_init(struct kunit *test)
+ 	if (sb == NULL)
+ 		return -ENOMEM;
+ 
+-	mbt_init_sb_layout(sb, &layout);
++	mbt_init_sb_layout(sb, layout);
+ 
+ 	ret = mbt_ctx_init(sb);
+ 	if (ret != 0) {
+@@ -304,9 +294,43 @@ static void test_new_blocks_simple(struct kunit *test)
+ 		"unexpectedly get block when no block is available");
+ }
+ 
++static const struct mbt_ext4_block_layout mbt_test_layouts[] = {
++	{
++		.blocksize_bits = 10,
++		.cluster_bits = 3,
++		.blocks_per_group = 8192,
++		.group_count = 4,
++		.desc_size = 64,
++	},
++	{
++		.blocksize_bits = 12,
++		.cluster_bits = 3,
++		.blocks_per_group = 8192,
++		.group_count = 4,
++		.desc_size = 64,
++	},
++	{
++		.blocksize_bits = 18,
++		.cluster_bits = 3,
++		.blocks_per_group = 8192,
++		.group_count = 4,
++		.desc_size = 64,
++	},
++};
++
++static void mbt_show_layout(const struct mbt_ext4_block_layout *layout,
++			    char *desc)
++{
++	snprintf(desc, KUNIT_PARAM_DESC_SIZE, "block_bits=%d cluster_bits=%d "
++			"blocks_per_group=%d group_count=%d desc_size=%d\n",
++			layout->blocksize_bits, layout->cluster_bits,
++			layout->blocks_per_group, layout->group_count,
++			layout->desc_size);
++}
++KUNIT_ARRAY_PARAM(mbt_layouts, mbt_test_layouts, mbt_show_layout);
+ 
+ static struct kunit_case mbt_test_cases[] = {
+-	KUNIT_CASE(test_new_blocks_simple),
++	KUNIT_CASE_PARAM(test_new_blocks_simple, mbt_layouts_gen_params),
+ 	{}
+ };
+ 
 -- 
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
+2.30.0
+
