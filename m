@@ -2,40 +2,40 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 77C5FC83F20
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DC43FC83F22
 	for <linux-ext4@archiver.kernel.org>; Sat, 26 Aug 2023 09:39:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232347AbjHZJif (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 26 Aug 2023 05:38:35 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57622 "EHLO
+        id S232372AbjHZJii (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 26 Aug 2023 05:38:38 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57600 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232320AbjHZJiG (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Aug 2023 05:38:06 -0400
+        with ESMTP id S232343AbjHZJiI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Aug 2023 05:38:08 -0400
 Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A9450271B;
-        Sat, 26 Aug 2023 02:37:54 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4EA33E7A;
+        Sat, 26 Aug 2023 02:38:04 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.169])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4RXsDv4hrFz4f3k6W;
-        Sat, 26 Aug 2023 17:37:51 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4RXsDt31R9z4f3lfv;
+        Sat, 26 Aug 2023 17:37:50 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgA3E6bqx+lkNx57Bg--.59420S14;
-        Sat, 26 Aug 2023 17:37:52 +0800 (CST)
+        by APP4 (Coremail) with SMTP id gCh0CgA3E6bqx+lkNx57Bg--.59420S12;
+        Sat, 26 Aug 2023 17:37:51 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca,
         linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH v2 12/13] ext4: remove unnecessary check to avoid repeat update_backups for the same gdb
-Date:   Sun, 27 Aug 2023 01:37:34 +0800
-Message-Id: <20230826173735.4023594-13-shikemeng@huaweicloud.com>
+Subject: [PATCH v2 10/13] ext4: use saved local variable sbi instead of EXT4_SB(sb)
+Date:   Sun, 27 Aug 2023 01:37:32 +0800
+Message-Id: <20230826173735.4023594-11-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230826173735.4023594-1-shikemeng@huaweicloud.com>
 References: <20230826173735.4023594-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgA3E6bqx+lkNx57Bg--.59420S14
-X-Coremail-Antispam: 1UD129KBjvJXoW7ur15XryrZryUKF1xWF13CFg_yoW8urWfpw
-        n0y3W8CrWjgr1DuF47G3WYq34Ska1xJa4UZrW7tw1jkrZxJ3Z7XF97tF1FyFWYqFZrAwn2
-        qF1jvryUAw1S9aDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUBIb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+X-CM-TRANSID: gCh0CgA3E6bqx+lkNx57Bg--.59420S12
+X-Coremail-Antispam: 1UD129KBjvJXoW7WFW3Jr17XF43Wr45AFyrWFg_yoW8ZFWrpF
+        W3AF15GFWIkF1DuF43Gr4DXr109w40y3WjgFWfZFyUXrW5J3ZxCF97ta45WF4UKrW5Jw1f
+        Xa9xKrWUAr1DX37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUB2b4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
         6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
         8IrcIa0xkI8VA2jI8067AKxVWUAVCq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAv
         FVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW5JVW7Jw
@@ -45,67 +45,68 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7ur15XryrZryUKF1xWF13CFg_yoW8urWfpw
         14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x
         0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E
         7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcV
-        C0I7IYx2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE
-        42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6x
-        kF7I0E14v26r4UJVWxJrUvcSsGvfC2KfnxnUUI43ZEXa7IU0TqcUUUUUU==
+        C0I7IYx2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF
+        04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7
+        CjxVAFwI0_Gr1j6F4UJbIYCTnIWIevJa73UjIFyTuYvjxUIL05UUUUU
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The sbi->s_group_desc contains array of bh's for block group descriptors
-and continuous EXT4_DESC_PER_BLOCK(sb) bg descriptors in single block
-share the same bh.
-Simply call update_backups for each gdb_bh in sbi->s_group_desc will not
-update same group descriptors block for multiple times.
-
-Commit 0acdb8876fead ("ext4: don't call update_backups() multiple times for
-the same bg") wrongly assumed each block group descriptor in the same block
-has a individual bh and unnecessary check was added.
+We save EXT4_SB(sb) to local variable sbi at beginning of function
+ext4_resize_begin. Use sbi directly instead of EXT4_SB(sb) to
+remove unnecessary pointer dereference.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+Reviewed-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/ext4.h   | 1 +
- fs/ext4/resize.c | 4 ----
- 2 files changed, 1 insertion(+), 4 deletions(-)
+ fs/ext4/resize.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 84618c46f239..37ac39711cd1 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1488,6 +1488,7 @@ struct ext4_sb_info {
- 	loff_t s_bitmap_maxbytes;	/* max bytes for bitmap files */
- 	struct buffer_head * s_sbh;	/* Buffer containing the super block */
- 	struct ext4_super_block *s_es;	/* Pointer to the super block in the buffer */
-+	/* Array of bh's for the block group descriptors */
- 	struct buffer_head * __rcu *s_group_desc;
- 	unsigned int s_mount_opt;
- 	unsigned int s_mount_opt2;
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 4dc68400ba19..b35bfd4573f0 100644
+index d4ab2cde0a03..e2c81b589de8 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -1594,7 +1594,6 @@ static int ext4_flex_group_add(struct super_block *sb,
- 		int meta_bg = ext4_has_feature_meta_bg(sb);
- 		sector_t padding_blocks = meta_bg ? 0 : sbi->s_sbh->b_blocknr -
- 					 ext4_group_first_block_no(sb, 0);
--		sector_t old_gdb = 0;
- 
- 		update_backups(sb, ext4_group_first_block_no(sb, 0),
- 			       (char *)es, sizeof(struct ext4_super_block), 0);
-@@ -1603,11 +1602,8 @@ static int ext4_flex_group_add(struct super_block *sb,
- 
- 			gdb_bh = sbi_array_rcu_deref(sbi, s_group_desc,
- 						     gdb_num);
--			if (old_gdb == gdb_bh->b_blocknr)
--				continue;
- 			update_backups(sb, gdb_bh->b_blocknr - padding_blocks,
- 				       gdb_bh->b_data, gdb_bh->b_size, meta_bg);
--			old_gdb = gdb_bh->b_blocknr;
- 		}
+@@ -55,7 +55,7 @@ int ext4_resize_begin(struct super_block *sb)
+ 	 * If the reserved GDT blocks is non-zero, the resize_inode feature
+ 	 * should always be set.
+ 	 */
+-	if (EXT4_SB(sb)->s_es->s_reserved_gdt_blocks &&
++	if (sbi->s_es->s_reserved_gdt_blocks &&
+ 	    !ext4_has_feature_resize_inode(sb)) {
+ 		ext4_error(sb, "resize_inode disabled but reserved GDT blocks non-zero");
+ 		return -EFSCORRUPTED;
+@@ -67,9 +67,9 @@ int ext4_resize_begin(struct super_block *sb)
+          * bad time to do it anyways.
+          */
+ 	if (EXT4_B2C(sbi, sbi->s_sbh->b_blocknr) !=
+-	    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block)) {
++	    le32_to_cpu(sbi->s_es->s_first_data_block)) {
+ 		ext4_warning(sb, "won't resize using backup superblock at %llu",
+-			(unsigned long long)EXT4_SB(sb)->s_sbh->b_blocknr);
++			(unsigned long long)sbi->s_sbh->b_blocknr);
+ 		return -EPERM;
  	}
- exit:
+ 
+@@ -77,7 +77,7 @@ int ext4_resize_begin(struct super_block *sb)
+ 	 * We are not allowed to do online-resizing on a filesystem mounted
+ 	 * with error, because it can destroy the filesystem easily.
+ 	 */
+-	if (EXT4_SB(sb)->s_mount_state & EXT4_ERROR_FS) {
++	if (sbi->s_mount_state & EXT4_ERROR_FS) {
+ 		ext4_warning(sb, "There are errors in the filesystem, "
+ 			     "so online resizing is not allowed");
+ 		return -EPERM;
+@@ -89,7 +89,7 @@ int ext4_resize_begin(struct super_block *sb)
+ 	}
+ 
+ 	if (test_and_set_bit_lock(EXT4_FLAGS_RESIZING,
+-				  &EXT4_SB(sb)->s_ext4_flags))
++				  &sbi->s_ext4_flags))
+ 		ret = -EBUSY;
+ 
+ 	return ret;
 -- 
 2.30.0
 
