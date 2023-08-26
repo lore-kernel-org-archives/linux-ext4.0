@@ -2,39 +2,39 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E756BC83F1F
-	for <linux-ext4@archiver.kernel.org>; Sat, 26 Aug 2023 09:39:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D960C83F15
+	for <linux-ext4@archiver.kernel.org>; Sat, 26 Aug 2023 09:39:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232326AbjHZJid (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 26 Aug 2023 05:38:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57652 "EHLO
+        id S232353AbjHZJig (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 26 Aug 2023 05:38:36 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57664 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232321AbjHZJiG (ORCPT
+        with ESMTP id S232322AbjHZJiG (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Aug 2023 05:38:06 -0400
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9C84D2702;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E551B2704;
         Sat, 26 Aug 2023 02:37:53 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.169])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4RXsDq3Vmbz4f3jXm;
-        Sat, 26 Aug 2023 17:37:47 +0800 (CST)
+        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4RXsDr0LRPz4f3jXw;
+        Sat, 26 Aug 2023 17:37:48 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgA3E6bqx+lkNx57Bg--.59420S9;
-        Sat, 26 Aug 2023 17:37:50 +0800 (CST)
+        by APP4 (Coremail) with SMTP id gCh0CgA3E6bqx+lkNx57Bg--.59420S11;
+        Sat, 26 Aug 2023 17:37:51 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca,
         linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH v2 07/13] ext4: remove commented code in reserve_backup_gdb
-Date:   Sun, 27 Aug 2023 01:37:29 +0800
-Message-Id: <20230826173735.4023594-8-shikemeng@huaweicloud.com>
+Subject: [PATCH v2 09/13] ext4: remove EXT4FS_DEBUG defination in resize.c
+Date:   Sun, 27 Aug 2023 01:37:31 +0800
+Message-Id: <20230826173735.4023594-10-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230826173735.4023594-1-shikemeng@huaweicloud.com>
 References: <20230826173735.4023594-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgA3E6bqx+lkNx57Bg--.59420S9
-X-Coremail-Antispam: 1UD129KBjvdXoWrZF4Uur1rtr4DZF43Wr4fAFb_yoW3trgEqa
-        srCr4kZrWfGrn5CFyxCr1fArWv9r1rtrn5ury7trn5W3WUtFZ5AayDXwsxCryDuF4Yy3W5
-        ZF1vq3sFyay0gjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+X-CM-TRANSID: gCh0CgA3E6bqx+lkNx57Bg--.59420S11
+X-Coremail-Antispam: 1UD129KBjvdXoW7Jr1fAF17XF47XryUtr4UXFb_yoW3ZFc_Kw
+        s2yr4kWFW3Jw1xKa4xAr4kta1FgF18Gr15ZayfGw1rW3Wjya1rGw4kXw4DCwn8uF4UtrnY
+        ka4kJFnxXFySgjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
         9fnUUIcSsGvfJTRUUUbS8YFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
         Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl82
         xGYIkIc2x26280x7IE14v26r126s0DM28IrcIa0xkI8VCY1x0267AKxVW5JVCq3wA2ocxC
@@ -54,28 +54,32 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Remove commented code in reserve_backup_gdb
+Remove EXT4FS_DEBUG defination in resize.c for following reasons:
+1. EXT4FS_DEBUG will enable debug messages, it should only be defined
+when debugging.
+2. ext4.h included from ext4_jbd2.h after EXT4FS_DEBUG defination will
+"#undef EXT4FS_DEBUG", then EXT4FS_DEBUG defination in resize.c can't
+actually turn on ext4_debug messages.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 Reviewed-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/resize.c | 3 ---
- 1 file changed, 3 deletions(-)
+ fs/ext4/resize.c | 2 --
+ 1 file changed, 2 deletions(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index c51994e22af5..a370ca1a2bd6 100644
+index 3ad2b1a900ad..d4ab2cde0a03 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -1080,9 +1080,6 @@ static int reserve_backup_gdb(handle_t *handle, struct inode *inode,
- 	for (i = 0; i < reserved_gdb; i++) {
- 		int err2;
- 		data = (__le32 *)primary[i]->b_data;
--		/* printk("reserving backup %lu[%u] = %lu\n",
--		       primary[i]->b_blocknr, gdbackups,
--		       blk + primary[i]->b_blocknr); */
- 		data[gdbackups] = cpu_to_le32(blk + primary[i]->b_blocknr);
- 		err2 = ext4_handle_dirty_metadata(handle, NULL, primary[i]);
- 		if (!err)
+@@ -10,8 +10,6 @@
+  */
+ 
+ 
+-#define EXT4FS_DEBUG
+-
+ #include <linux/errno.h>
+ #include <linux/slab.h>
+ #include <linux/jiffies.h>
 -- 
 2.30.0
 
