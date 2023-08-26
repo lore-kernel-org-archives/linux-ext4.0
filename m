@@ -2,148 +2,188 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3CB9DC83F11
-	for <linux-ext4@archiver.kernel.org>; Sat, 26 Aug 2023 09:50:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EF0CBC83F11
+	for <linux-ext4@archiver.kernel.org>; Sat, 26 Aug 2023 20:00:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229646AbjHZJtl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 26 Aug 2023 05:49:41 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55268 "EHLO
+        id S229678AbjHZT73 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 26 Aug 2023 15:59:29 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50922 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231377AbjHZJtO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Aug 2023 05:49:14 -0400
-Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 91C2230F4;
-        Sat, 26 Aug 2023 02:48:45 -0700 (PDT)
-Received: from mail02.huawei.com (unknown [172.30.67.169])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4RXsTH0Fjvz4f3k6j;
-        Sat, 26 Aug 2023 17:48:35 +0800 (CST)
-Received: from [10.174.178.129] (unknown [10.174.178.129])
-        by APP4 (Coremail) with SMTP id gCh0CgDnvaBwyulkCLt7Bg--.33483S2;
-        Sat, 26 Aug 2023 17:48:33 +0800 (CST)
-Subject: Re: [PATCH v2 00/13] fixes and cleanups to ext4 resize
-From:   Kemeng Shi <shikemeng@huaweicloud.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-References: <20230826173735.4023594-1-shikemeng@huaweicloud.com>
-Message-ID: <ba9f7a44-f389-885a-5de1-079a58424939@huaweicloud.com>
-Date:   Sat, 26 Aug 2023 17:48:32 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.5.0
+        with ESMTP id S229531AbjHZT7R (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Aug 2023 15:59:17 -0400
+Received: from mail-lf1-x131.google.com (mail-lf1-x131.google.com [IPv6:2a00:1450:4864:20::131])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3D053D8
+        for <linux-ext4@vger.kernel.org>; Sat, 26 Aug 2023 12:59:15 -0700 (PDT)
+Received: by mail-lf1-x131.google.com with SMTP id 2adb3069b0e04-500aed06ffcso1508723e87.0
+        for <linux-ext4@vger.kernel.org>; Sat, 26 Aug 2023 12:59:15 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20221208; t=1693079953; x=1693684753;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=DnOZE00pB2nwztisFXMJukO46jcAlky4I2vTrBMI9LA=;
+        b=a0i5W/ymRa63AVlvqYlfJbcgQ6oNSlKyKBS4/4ljOcG+cqnhzJpg5rWefB4mpUPQJ0
+         9kOw/DEU94M6tpAzFwquCg/KjEghJpK85J/3T4W01OTg6HLWUxoT98N+lAcb6ffOK6Zq
+         9Z/wvlIIFXoQGtKa+bKcDhLEn4ziJRLEjyRmQp8xzZFTzTI51eDptNn5qlxndC2g7mdl
+         vreLGGOtz0XDmB6LkOt/kJHuZ8MNy5tCHh90uShzAaXALyy7sIKXRQYJybJ6/LopajyB
+         GqFKTOLsCiDKvYBEOllL5XMhP+5HF77NbB0HF2VbseSF6jdHL3j3HMGgkjaNM/xBPtgB
+         Rquw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1693079953; x=1693684753;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=DnOZE00pB2nwztisFXMJukO46jcAlky4I2vTrBMI9LA=;
+        b=WW/s5Wd9816cgs7GC3UUZSoSI3CxX94GZ3CVZJ1MI/TGIbMsn+pbsMz17EVPDM+Hpv
+         ibtByx9UPvth4DVpaHn3ONKb3oAxepX4F0S/Qlu3WTP4uL8ZpmnRtGN3BxW2HbfdYM7O
+         jObOxY2S7e3AOcp1wX2n95HriXqikaeoaxEifdPDNk8uLqnEP6pN7iAJwRfsmyem24kt
+         26h5Fk8fFsrrLKOcQDrpKS+qcsYY9z+ZMdYwgXFY0e6fJ0nxGeDjqgcFgB+7XNMUMCV1
+         D7jlnZHqo+/TKRNUUP4dl2BYEYh0yiA5d7t6Rprncke41hREl6vttK1msTN6nToFyOGB
+         NXHQ==
+X-Gm-Message-State: AOJu0YzQHpdGF15BQf1XLeQOPVhjzkzMCZfZaI5PB6n0xrzxSK58wO17
+        odmbJ5iYBAr9GA3jRl7gZL0rlmrkuGy6irhG
+X-Google-Smtp-Source: AGHT+IFFIgwpRh4aAeWAHWFPxuNdWaJ9D+5wEzjC0VYwCCYe19K0FX/UiQnPFbY2k2uZ8wwDjREfoA==
+X-Received: by 2002:a05:6512:1296:b0:4fe:993:2218 with SMTP id u22-20020a056512129600b004fe09932218mr18857250lfs.31.1693079952801;
+        Sat, 26 Aug 2023 12:59:12 -0700 (PDT)
+Received: from localhost.localdomain ([188.123.154.217])
+        by smtp.gmail.com with ESMTPSA id k6-20020aa7c386000000b0052889d090bfsm2511713edq.79.2023.08.26.12.59.11
+        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
+        Sat, 26 Aug 2023 12:59:12 -0700 (PDT)
+From:   vk.en.mail@gmail.com
+To:     linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz
+Cc:     adilger@dilger.ca, Vitaliy Kuznetsov <vk.en.mail@gmail.com>
+Subject: [PATCH v3] ext4: Add periodic superblock update check
+Date:   Sat, 26 Aug 2023 23:58:41 +0400
+Message-Id: <20230826195841.12496-1-vk.en.mail@gmail.com>
+X-Mailer: git-send-email 2.39.2 (Apple Git-143)
+In-Reply-To: <169285281338.4146427.4994363470834118959.b4-ty@mit.edu>
+References: <169285281338.4146427.4994363470834118959.b4-ty@mit.edu>
 MIME-Version: 1.0
-In-Reply-To: <20230826173735.4023594-1-shikemeng@huaweicloud.com>
-Content-Type: text/plain; charset=gbk
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID: gCh0CgDnvaBwyulkCLt7Bg--.33483S2
-X-Coremail-Antispam: 1UD129KBjvJXoWxGr15XF4rGF4kKw15CF43GFg_yoWrAw1Up3
-        WS9rnrKrZ5Xw13Cwsrt343uF98Z397Jr45XF15G3Z2qF1UZr1rWF9agan3AFZIkFWfZw18
-        Xa97Xr15GF1UZaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUkFb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-        vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
-        xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-        0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-        6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-        Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JMxk0xIA0c2IEe2xFo4CEbIxvr21l42xK82IYc2Ij
-        64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x
-        8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE
-        2Ix0cI8IcVAFwI0_Xr0_Ar1lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1lIxAIcV
-        CF04k26cxKx2IYs7xG6Fyj6rWUJwCI42IY6I8E87Iv67AKxVWxJVW8Jr1lIxAIcVC2z280
-        aVCY1x0267AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x07UE-erUUUUU=
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
-X-CFilter-Loop: Reflected
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Please ignore this version and sorry for the noise...
+From: Vitaliy Kuznetsov <vk.en.mail@gmail.com>
 
-on 8/27/2023 1:37 AM, Kemeng Shi wrote:
-> This series contains some random cleanups and a few fixes to correct gdb
-> backup copy, fix buffer_head leak and so on. More details can be found
-> in respective log messages.
-> I run kvm-xfstest with config "ext4/all" and "-g auto" together with
-> mballoc patchset I sent before.
-> 
-> v1->v2:
-> -Prioritize returning error in "err" in patch 3
-> -Rewrite patch 11
-> -Improve description and add comment to sbi->s_group_desc in patch 12
-> -Collect RVB from Ted for rest patches
-> 
-> -------------------- Summary report
-> KERNEL:    kernel 6.4.0-rc5-xfstests-g90158dd3c06b #23 SMP PREEMPT_DYNAMIC
-> Wed Jun 28 17:19:32 CST 2023 x86_64
-> CPUS:      2
-> MEM:       1975.36
-> 
-> ext4/4k: 531 tests, 31 skipped, 3421 seconds
-> ext4/1k: 527 tests, 33 skipped, 4638 seconds
-> ext4/ext3: 523 tests, 119 skipped, 3289 seconds
-> ext4/encrypt: 509 tests, 3 failures, 138 skipped, 2163 seconds
->   Failures: generic/681 generic/682 generic/691
-> ext4/nojournal: 526 tests, 5 failures, 98 skipped, 3469 seconds
->   Failures: ext4/301 ext4/304 generic/455 generic/459 generic/581
-> ext4/ext3conv: 528 tests, 31 skipped, 3877 seconds
-> ext4/adv: 528 tests, 4 failures, 38 skipped, 4170 seconds
->   Failures: generic/475 generic/477
->   Flaky: generic/455: 80% (4/5)   generic/482: 80% (4/5)
-> ext4/dioread_nolock: 529 tests, 31 skipped, 3825 seconds
-> ext4/data_journal: 527 tests, 3 failures, 99 skipped, 3307 seconds
->   Failures: generic/455 generic/484
->   Flaky: generic/068: 40% (2/5)
-> ext4/bigalloc_4k: 503 tests, 35 skipped, 3286 seconds
-> ext4/bigalloc_1k: 503 tests, 1 failures, 43 skipped, 4421 seconds
->   Failures: shared/298
-> Totals: 5798 tests, 696 skipped, 75 failures, 0 errors, 39645s
-> 
-> FSTESTVER: blktests 676d42c (Thu, 2 Mar 2023 15:25:44 +0900)
-> FSTESTVER: e2fsprogs archive/debian/1.47.0-1 (Mon, 6 Feb 2023 22:36:16 -0500)
-> FSTESTVER: fio  fio-3.31 (Tue, 9 Aug 2022 14:41:25 -0600)
-> FSTESTVER: fsverity v1.5-6-g5d6f7c4 (Mon, 30 Jan 2023 23:22:45 -0800)
-> FSTESTVER: ima-evm-utils v1.3.2 (Wed, 28 Oct 2020 13:18:08 -0400)
-> FSTESTVER: nvme-cli v1.16 (Thu, 11 Nov 2021 13:09:06 -0800)
-> FSTESTVER: quota  v4.05-53-gd90b7d5 (Tue, 6 Dec 2022 12:59:03 +0100)
-> FSTESTVER: util-linux v2.38.1 (Thu, 4 Aug 2022 11:06:21 +0200)
-> FSTESTVER: xfsprogs v6.1.1 (Fri, 13 Jan 2023 19:06:37 +0100)
-> FSTESTVER: xfstests v2023.02.26-8-g821ef488 (Thu, 2 Mar 2023 10:23:51 -0500)
-> FSTESTVER: xfstests-bld 35650073 (Mon, 6 Mar 2023 20:48:08 -0500)
-> FSTESTVER: zz_build-distro bullseye
-> FSTESTCFG: ext4/all
-> FSTESTSET: -g auto
-> FSTESTOPT: aex
-> 
-> There more failures compared with "good" report in reply from Ted [1] as
-> following:
-> ext4/nojournal: generic/459 generic/581
-> ext4/adv: Flaky: generic/455: 80% (4/5)   generic/482: 80% (4/5)
-> ext4/data_journal: Flaky: generic/068: 40% (2/5)
-> It seems still a "good" test run according to rules listed in [1].
-> Please let me know if more tests to run. Thanks!
-> 
-> [1] https://lore.kernel.org/linux-ext4/db478a24-39f5-3cef-8814-89406ce4d2ca@huawei.com/T/#ma9de3f355f0300291d32fe1f0b32c5660c9bd191
-> 
-> Kemeng Shi (13):
->   ext4: correct offset of gdb backup in non meta_bg group to
->     update_backups
->   ext4: add missed brelse in update_backups
->   ext4: correct return value of ext4_convert_meta_bg
->   ext4: remove gdb backup copy for meta bg in
->     setup_new_flex_group_blocks
->   ext4: fix typo in setup_new_flex_group_blocks
->   ext4: remove redundant check of count
->   ext4: remove commented code in reserve_backup_gdb
->   ext4: calculate free_clusters_count in cluster unit in
->     verify_group_input
->   ext4: remove EXT4FS_DEBUG defination in resize.c
->   ext4: use saved local variable sbi instead of EXT4_SB(sb)
->   ext4: simplify the gdbblock calculation in add_new_gdb_meta_bg
->   ext4: remove unnecessary check to avoid repeat update_backups for the
->     same gdb
->   ext4: remove unnecessary initialization of count2 in
->     set_flexbg_block_bitmap
-> 
->  fs/ext4/ext4.h   |  1 +
->  fs/ext4/resize.c | 88 ++++++++++++++++++++----------------------------
->  2 files changed, 38 insertions(+), 51 deletions(-)
-> 
+This patch introduces a mechanism to periodically check and update
+the superblock within the ext4 file system. The main purpose of this
+patch is to keep the disk superblock up to date. The update will be
+performed if more than one hour has passed since the last update, and
+if more than 16MB of data have been written to disk.
 
+This check and update is performed within the ext4_journal_commit_callback
+function, ensuring that the superblock is written while the disk is
+active, rather than based on a timer that may trigger during disk idle
+periods.
+
+Discussion https://www.spinics.net/lists/linux-ext4/msg85865.html
+
+Signed-off-by: Vitaliy Kuznetsov <vk.en.mail@gmail.com>
+---
+ fs/ext4/super.c | 62 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 61 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index c94ebf704616..8bee05118c7a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -433,6 +433,57 @@ static time64_t __ext4_get_tstamp(__le32 *lo, __u8 *hi)
+ #define ext4_get_tstamp(es, tstamp) \
+ 	__ext4_get_tstamp(&(es)->tstamp, &(es)->tstamp ## _hi)
+
++#define EXT4_SB_REFRESH_INTERVAL_SEC (3600) /* seconds (1 hour) */
++#define EXT4_SB_REFRESH_INTERVAL_KB (16384) /* kilobytes (16MB) */
++
++/*
++ * The ext4_maybe_update_superblock() function checks and updates the
++ * superblock if needed.
++ *
++ * This function is designed to update the on-disk superblock only under
++ * certain conditions to prevent excessive disk writes and unnecessary
++ * waking of the disk from sleep. The superblock will be updated if:
++ * 1. More than an hour has passed since the last superblock update, and
++ * 2. More than 16MB have been written since the last superblock update.
++ *
++ * @sb: The superblock
++ */
++static void ext4_maybe_update_superblock(struct super_block *sb)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_super_block *es = sbi->s_es;
++	journal_t *journal = sbi->s_journal;
++	time64_t now;
++	__u64 last_update;
++	__u64 lifetime_write_kbytes;
++	__u64 diff_size;
++
++	if (sb_rdonly(sb) || !(sb->s_flags & SB_ACTIVE) ||
++	    !journal || (journal->j_flags & JBD2_UNMOUNT))
++		return;
++
++	now = ktime_get_real_seconds();
++	last_update = ext4_get_tstamp(es, s_wtime);
++
++	if (likely(now - last_update < EXT4_SB_REFRESH_INTERVAL_SEC))
++		return;
++
++	lifetime_write_kbytes = sbi->s_kbytes_written +
++		((part_stat_read(sb->s_bdev, sectors[STAT_WRITE]) -
++		  sbi->s_sectors_written_start) >> 1);
++
++	/* Get the number of kilobytes not written to disk to account
++	 * for statistics and compare with a multiple of 16 MB. This
++	 * is used to determine when the next superblock commit should
++	 * occur (i.e. not more often than once per 16MB if there was
++	 * less written in an hour).
++	 */
++	diff_size = lifetime_write_kbytes - le64_to_cpu(es->s_kbytes_written);
++
++	if (diff_size > EXT4_SB_REFRESH_INTERVAL_KB)
++		schedule_work(&EXT4_SB(sb)->s_error_work);
++}
++
+ /*
+  * The del_gendisk() function uninitializes the disk-specific data
+  * structures, including the bdi structure, without telling anyone
+@@ -459,6 +510,7 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
+ 	BUG_ON(txn->t_state == T_FINISHED);
+
+ 	ext4_process_freed_data(sb, txn->t_tid);
++	ext4_maybe_update_superblock(sb);
+
+ 	spin_lock(&sbi->s_md_lock);
+ 	while (!list_empty(&txn->t_private_list)) {
+@@ -715,6 +767,7 @@ static void flush_stashed_error_work(struct work_struct *work)
+ 	 */
+ 	if (!sb_rdonly(sbi->s_sb) && journal) {
+ 		struct buffer_head *sbh = sbi->s_sbh;
++		bool call_notify_err = false;
+ 		handle = jbd2_journal_start(journal, 1);
+ 		if (IS_ERR(handle))
+ 			goto write_directly;
+@@ -722,6 +775,10 @@ static void flush_stashed_error_work(struct work_struct *work)
+ 			jbd2_journal_stop(handle);
+ 			goto write_directly;
+ 		}
++
++		if (sbi->s_add_error_count > 0)
++			call_notify_err = true;
++
+ 		ext4_update_super(sbi->s_sb);
+ 		if (buffer_write_io_error(sbh) || !buffer_uptodate(sbh)) {
+ 			ext4_msg(sbi->s_sb, KERN_ERR, "previous I/O error to "
+@@ -735,7 +792,10 @@ static void flush_stashed_error_work(struct work_struct *work)
+ 			goto write_directly;
+ 		}
+ 		jbd2_journal_stop(handle);
+-		ext4_notify_error_sysfs(sbi);
++
++		if (call_notify_err)
++			ext4_notify_error_sysfs(sbi);
++
+ 		return;
+ 	}
+ write_directly:
+--
+2.39.2
