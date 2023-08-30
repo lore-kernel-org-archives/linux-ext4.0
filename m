@@ -2,107 +2,131 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A0288C83F1A
-	for <linux-ext4@archiver.kernel.org>; Wed, 30 Aug 2023 06:13:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 474CDC83F26
+	for <linux-ext4@archiver.kernel.org>; Wed, 30 Aug 2023 18:36:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239561AbjH3GMi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 30 Aug 2023 02:12:38 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36132 "EHLO
+        id S237783AbjH3Sgv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 30 Aug 2023 14:36:51 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35742 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239797AbjH3GMM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Aug 2023 02:12:12 -0400
-Received: from out-244.mta0.migadu.com (out-244.mta0.migadu.com [IPv6:2001:41d0:1004:224b::f4])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A7A5ACD2
-        for <linux-ext4@vger.kernel.org>; Tue, 29 Aug 2023 23:12:01 -0700 (PDT)
-Message-ID: <642de4e6-801d-fcad-a7ce-bfc6dec3b6e5@linux.dev>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-        t=1693375918;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
+        with ESMTP id S245538AbjH3Pak (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Aug 2023 11:30:40 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D13CBFB
+        for <linux-ext4@vger.kernel.org>; Wed, 30 Aug 2023 08:30:36 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 88D3421862;
+        Wed, 30 Aug 2023 15:30:35 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1693409435; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=JMzOvVHk770qYz+7D4bRM3eiaC0WBb12Z/fuZleaQ2g=;
-        b=n8qZNKHDJ8ZkQN8s6YCFhUc5vlrIehXvAzssrfT4lOFAEgM70y7j9ccF+kTN544/il9mhv
-        /Qwyv0zoAHdwAPeCdmanHqcxV7A/7XcL4G5u9c/o5+tWUqR2xZIKUSlHotdEAwwwHhjWvg
-        KLK2CGyPGmGk32bcLUct3rbhOUMJhk8=
-Date:   Wed, 30 Aug 2023 14:11:31 +0800
+        bh=bi71MMVEilS9quQAdkruVBGYafEq5/wHIkSexy+eEME=;
+        b=hu6GLl+lZAL2BbCQ3plsYhwz03RORZPfBx6ns9W9ZK9mZN0h+YnA91U0zs6Uje6AL88Jlo
+        EGo2OaEGlxSyckWsIpAGNzsCyfyNy417sRt8T0Q2ylt1A7coWy38nQGfH4SuX3qAikZeme
+        h4nhZvZiYjhK/ajmLDBHMKUNxbtcPx4=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1693409435;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=bi71MMVEilS9quQAdkruVBGYafEq5/wHIkSexy+eEME=;
+        b=29rV619m91X790LmEmUhP1tHdv+rrrKoqhAWtuFozcNms/V76twFrybr1v2u75lQbVhMUs
+        iBn4qquGo9grIkBA==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 7C24113441;
+        Wed, 30 Aug 2023 15:30:35 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id Cz9DHptg72QqMAAAMHmgww
+        (envelope-from <jack@suse.cz>); Wed, 30 Aug 2023 15:30:35 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id 14F52A0774; Wed, 30 Aug 2023 17:30:35 +0200 (CEST)
+Date:   Wed, 30 Aug 2023 17:30:35 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Zhang Yi <yi.zhang@huaweicloud.com>
+Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jack@suse.cz, yi.zhang@huawei.com,
+        chengzhihao1@huawei.com, yukuai3@huawei.com
+Subject: Re: [RFC PATCH 00/16] ext4: more accurate metadata reservaion for
+ delalloc mount option
+Message-ID: <20230830153035.pnkmbuu5ra5xngp3@quack3>
+References: <20230824092619.1327976-1-yi.zhang@huaweicloud.com>
 MIME-Version: 1.0
-Subject: Re: [PATCH 07/11] vfs: add nowait parameter for file_accessed()
-Content-Language: en-US
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     io-uring@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Pavel Begunkov <asml.silence@gmail.com>,
-        Christian Brauner <brauner@kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Stefan Roesch <shr@fb.com>, Clay Harris <bugs@claycon.org>,
-        Dave Chinner <david@fromorbit.com>,
-        "Darrick J . Wong" <djwong@kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-cachefs@redhat.com,
-        ecryptfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-unionfs@vger.kernel.org, bpf@vger.kernel.org,
-        netdev@vger.kernel.org, linux-s390@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, codalist@coda.cs.cmu.edu,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-mm@kvack.org, linux-nilfs@vger.kernel.org,
-        devel@lists.orangefs.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-mtd@lists.infradead.org,
-        Wanpeng Li <wanpengli@tencent.com>
-References: <20230827132835.1373581-1-hao.xu@linux.dev>
- <20230827132835.1373581-8-hao.xu@linux.dev>
- <ZOvA5DJDZN0FRymp@casper.infradead.org>
- <c728bf3f-d9db-4865-8473-058b26c11c06@linux.dev>
- <ZO3cI+DkotHQo3md@casper.infradead.org>
-X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
-From:   Hao Xu <hao.xu@linux.dev>
-In-Reply-To: <ZO3cI+DkotHQo3md@casper.infradead.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-X-Migadu-Flow: FLOW_OUT
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230824092619.1327976-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 8/29/23 19:53, Matthew Wilcox wrote:
-> On Tue, Aug 29, 2023 at 03:46:13PM +0800, Hao Xu wrote:
->> On 8/28/23 05:32, Matthew Wilcox wrote:
->>> On Sun, Aug 27, 2023 at 09:28:31PM +0800, Hao Xu wrote:
->>>> From: Hao Xu <howeyxu@tencent.com>
->>>>
->>>> Add a boolean parameter for file_accessed() to support nowait semantics.
->>>> Currently it is true only with io_uring as its initial caller.
->>>
->>> So why do we need to do this as part of this series?  Apparently it
->>> hasn't caused any problems for filemap_read().
->>>
->>
->> We need this parameter to indicate if nowait semantics should be enforced in
->> touch_atime(), There are locks and maybe IOs in it.
-> 
-> That's not my point.  We currently call file_accessed() and
-> touch_atime() for nowait reads and nowait writes.  You haven't done
-> anything to fix those.
-> 
-> I suspect you can trim this patchset down significantly by avoiding
-> fixing the file_accessed() problem.  And then come back with a later
-> patchset that fixes it for all nowait i/o.  Or do a separate prep series
+Hello!
 
-I'm ok to do that.
+On Thu 24-08-23 17:26:03, Zhang Yi wrote:
+> The delayed allocation method allocates blocks during page writeback in
+> ext4_writepages(), which cannot handle block allocation failures due to
+> e.g. ENOSPC if acquires more extent blocks. In order to deal with this,
+> commit '79f0be8d2e6e ("ext4: Switch to non delalloc mode when we are low
+> on free blocks count.")' introduce ext4_nonda_switch() to convert to no
+> delalloc mode if the space if the free blocks is less than 150% of dirty
+> blocks or the watermark.
 
-> first that fixes it for the existing nowait users, and then a second
-> series to do all the directory stuff.
-> 
-> I'd do the first thing.  Just ignore the problem.  Directory atime
-> updates cause I/O so rarely that you can afford to ignore it.  Almost
-> everyone uses relatime or nodiratime.
+Well, that functionality is there mainly so that we can really allocate all
+blocks available in the filesystem. But you are right that since we are not
+reserving metadata blocks explicitely anymore, it is questionable whether
+we really still need this.
 
-Hi Matthew,
-The previous discussion shows this does cause issues in real
-producations: 
-https://lore.kernel.org/io-uring/2785f009-2ebb-028d-8250-d5f3a30510f0@gmail.com/#:~:text=fwiw%2C%20we%27ve%20just%20recently%20had%20similar%20problems%20with%20io_uring%20read/write
+> In the meantime, '27dd43854227 ("ext4:
+> introduce reserved space")' reserve some of the file system space (2% or
+> 4096 clusters, whichever is smaller). Both of those to solutions can
+> make sure that space is not exhausted when mapping delalloc blocks in
+> most cases, but cannot guarantee work in all cases, which could lead to
+> infinite loop or data loss (please see patch 14 for details).
 
+OK, I agree that in principle there could be problems due to percpu
+counters inaccuracy etc. but were you able to reproduce the problem under
+some at least somewhat realistic conditions? We were discussing making
+free space percpu counters switch to exact counting in case we are running
+tight on space to avoid these problems but it never proved to be a problem
+in practice so we never bothered to actually implement it.
 
+> This patch set wants to reserve metadata space more accurate for
+> delalloc mount option. The metadata blocks reservation is very tricky
+> and is also related to the continuity of physical blocks, an effective
+> way is to reserve as the worst case, which means that every data block
+> is discontinuous and one data block costs an extent entry. Reserve
+> metadata space as the worst case can make sure enough blocks reserved
+> during data writeback, the unused reservaion space can be released after
+> mapping data blocks.
 
+Well, as you say, there is a problem with the worst case estimates - either
+you *heavily* overestimate the number of needed metadata blocks or the code
+to estimate the number of needed metadata blocks is really complex. We used
+to have estimates of needed metadata and we ditched that code (in favor of
+reserved clusters) exactly because it was complex and suffered from
+cornercases that were hard to fix. I haven't quite digested the other
+patches in this series to judge which case is it but it seems to lean on
+the "complex" side :).
 
+So I'm somewhat skeptical this complexity is really needed but I can be
+convinced :).
+
+> After doing this, add a worker to submit delayed
+> allocations to prevent excessive reservations. Finally, we could
+> completely drop the policy of switching back to non-delayed allocation.
+
+BTW the worker there in patch 15 seems really pointless. If you do:
+queue_work(), flush_work() then you could just directly do the work inline
+and get as a bonus more efficiency and proper lockdep tracking of
+dependencies. But that's just a minor issue I have noticed.
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
