@@ -2,247 +2,371 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0C724C83F19
-	for <linux-ext4@archiver.kernel.org>; Wed, 30 Aug 2023 18:37:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1611DC83F1A
+	for <linux-ext4@archiver.kernel.org>; Wed, 30 Aug 2023 18:37:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237806AbjH3Sgy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 30 Aug 2023 14:36:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32922 "EHLO
+        id S237854AbjH3ShA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 30 Aug 2023 14:37:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35588 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242180AbjH3HWx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Aug 2023 03:22:53 -0400
-Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3A1FB1BB;
-        Wed, 30 Aug 2023 00:22:50 -0700 (PDT)
-Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4RbG373tXHz4f3nq2;
-        Wed, 30 Aug 2023 15:22:43 +0800 (CST)
-Received: from [10.174.178.129] (unknown [10.174.178.129])
-        by APP4 (Coremail) with SMTP id gCh0CgCHYaRB7u5ktJa1Bw--.25701S2;
-        Wed, 30 Aug 2023 15:22:43 +0800 (CST)
-Subject: Re: [PATCH v6 00/11] cleanups and unit test for mballoc
-To:     Ritesh Harjani <ritesh.list@gmail.com>, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-References: <87v8cx8yee.fsf@doe.com>
-From:   Kemeng Shi <shikemeng@huaweicloud.com>
-Message-ID: <c92574b5-1441-645c-4824-723545e45845@huaweicloud.com>
-Date:   Wed, 30 Aug 2023 15:22:41 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.5.0
+        with ESMTP id S244595AbjH3NZK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Aug 2023 09:25:10 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D71C61A3
+        for <linux-ext4@vger.kernel.org>; Wed, 30 Aug 2023 06:25:05 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 8381921854;
+        Wed, 30 Aug 2023 13:25:04 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1693401904; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=S0gAwfdiz2ST9pjtu/IWBx8WGqoW7x+yOXF4e3ouAFg=;
+        b=ohjNjO2v66QVOXMJBqI00to2KkolcKgGlbs4v0yInpSy4dO+uSuIK8GJvPv0c/AovLjs+6
+        tfzIRmmPDCYPdcsStAKZ5wF7bv56J5+Lz/o+ZOextZhx5WZIV7geFI334GHzq8IcYbj28x
+        3+bts6PYwRpePsm1gknVcFPrIYJJ3eM=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1693401904;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=S0gAwfdiz2ST9pjtu/IWBx8WGqoW7x+yOXF4e3ouAFg=;
+        b=bQ3ORtDuVovO7BDCzcz7IJTPgo8KqpKjGTVWhMA9VQqp5soS+Q+cywZCZl/OikqZe7M4Nw
+        1+5llbLsNJWTZKCQ==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 75F3B13441;
+        Wed, 30 Aug 2023 13:25:04 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id /SzDHDBD72TQZwAAMHmgww
+        (envelope-from <jack@suse.cz>); Wed, 30 Aug 2023 13:25:04 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id F4087A0774; Wed, 30 Aug 2023 15:25:03 +0200 (CEST)
+Date:   Wed, 30 Aug 2023 15:25:03 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Zhang Yi <yi.zhang@huaweicloud.com>
+Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jack@suse.cz, yi.zhang@huawei.com,
+        chengzhihao1@huawei.com, yukuai3@huawei.com
+Subject: Re: [RFC PATCH 02/16] ext4: make sure allocate pending entry not fail
+Message-ID: <20230830132503.6xxgb4g7xi7n6lbr@quack3>
+References: <20230824092619.1327976-1-yi.zhang@huaweicloud.com>
+ <20230824092619.1327976-3-yi.zhang@huaweicloud.com>
 MIME-Version: 1.0
-In-Reply-To: <87v8cx8yee.fsf@doe.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgCHYaRB7u5ktJa1Bw--.25701S2
-X-Coremail-Antispam: 1UD129KBjvJXoW3Gr47Gry8CF48KF4fXF1xAFb_yoWfGrW8pr
-        Z2kF4DKr1xJr1qvan3C347ur1xKw4xta17GF1fK34xuFy3Wr97CFsrKFWY9a4DKr4DZFyY
-        vF15CFy5uw1v9aDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUkjb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-        vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
-        xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I
-        0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
-        x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
-        0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lc7I2V7IY0VAS07AlzVAYIcxG8wCF04k20xvY0x0E
-        wIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E74
-        80Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0
-        I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Jr0_Gr1lIxAIcVCF04
-        k26cxKx2IYs7xG6rWUJVWrZr1UMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIE
-        c7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07UE-erUUUUU=
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230824092619.1327976-3-yi.zhang@huaweicloud.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+On Thu 24-08-23 17:26:05, Zhang Yi wrote:
+> From: Zhang Yi <yi.zhang@huawei.com>
+> 
+> __insert_pending() allocate memory in atomic context, so the allocation
+> could fail, but we are not handling that failure now. It could lead
+> ext4_es_remove_extent() to get wrong reserved clusters, and the global
+> data blocks reservation count will be incorrect. The same to
+> extents_status entry preallocation, preallocate pending entry out of the
+> i_es_lock with __GFP_NOFAIL, make sure __insert_pending() and
+> __revise_pending() always succeeds.
+> 
+> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
+Looks sensible. Feel free to add:
 
-on 8/30/2023 3:02 AM, Ritesh Harjani wrote:
-> Kemeng Shi <shikemeng@huaweicloud.com> writes:
-> 
->> v5-v6:
->>
-> 
-> Hi Kemeng,
-> 
-> Sorry for the delay in getting started on this. I am going through the
-> series now.
-> 
->> 1. Separate block bitmap and buddy bitmap freeing in individual patch
->> and rewrite the descriptions.
->> 2. Remove #ifdef around KUNIT_STATIC_STUB_REDIRECT which should be
->> only defined when CONFIG_KUNIT is enabled after fix [7] which was merged
->> into kunit-next/kunit
-Hi ritesh, thanks for feedback. I think the compilation problem below is
-relevant to this change which relie on fix [7]. I'm not sure if I need to
-include fix [7] in this set to fix the compilation error. Would like to
-hear any advise!
+Reviewed-by: Jan Kara <jack@suse.cz>
 
->> 3. Use mbt prefix to distiguish test APIs from actual kernel APIs.
->> 4. Add prepare function for ext4_mark_context and rename
->> ext4_mb_mark_group_bb to ext4_mb_mark_context
->> 5. Support to run mballoc test with different layouts setting and
->> different block size is tested.
->>
->> v4->v5:
->> 1. WARN on free blocks to uninitialized group is removed as normal
->> fast commit route may triggers this, see [1] for details. The review
->> tag from Ojaswin of changed patch is also removed and a futher review
->> is needed.
->>
->> v3->v4:
->> 1. Collect Reviewed-by from Ojaswin
->> 2. Do improve as Ojaswin kindly suggested: Fix typo in commit,
->> WARN if try to clear bit of uninitialized group and improve
->> refactoring of AGGRESSIVE_CHECK code.
->> 3. Fix conflic on patch 16
->> 4. Improve git log in patch 16,17
->>
->> v2->v3:
->> 1. Fix build warnings on "ext4: add some kunit stub for mballoc kunit
->> test" and "ext4: add first unit test for ext4_mb_new_blocks_simple in
->> mballoc"
->>
->> This series is a new version of unmerged patches from [1]. The first 6
->> patches of this series factor out codes to mark blocks used or freed
->> which will update on disk block bitmap and group descriptor. Several
->> reasons to do this:
->> 1. pair behavior of alloc/free bits. For example,
->> ext4_mb_new_blocks_simple will update free_clusters in struct flex_groups
->> in ext4_mb_mark_bb while ext4_free_blocks_simple forgets this.
->> 2. remove repeat code to read from disk, update and write back to disk.
->> 3. reduce future unit test mocks to avoid real IO to update structure
->> on disk.
->>
->> The last 2 patches add a unit test for mballoc. Before more unit tests
->> are added, there are something should be discussed:
->> 1. How to test static function in mballoc.c
->> Currently, include mballoc-test.c in mballoc.c to test static function
->> in mballoc.c from mballoc-test.c which is one way suggested in [2].
->> Not sure if there is any more elegant way to test static function without
->> touch mballoc.c.
->> 2. How to add mocks to function in mballoc.c which may issue IO to disk
->> Currently, KUNIT_STATIC_STUB_REDIRECT is added to functions as suggested
->> in kunit document [3].
-> 
-> I will get back to this, after reviwing some of the initial few
-> refactoring patches.
-> 
-> But FYI - I noticed some compilation errors, when building w/o
-> CONFIG_KUNIT.
-> 
-> ../fs/ext4/balloc.c: In function ‘ext4_get_group_desc’:
-> ../fs/ext4/balloc.c:278:2: error: implicit declaration of function ‘KUNIT_STATIC_STUB_REDIRECT’ [-Werror=implicit-function-declaration]
->   278 |  KUNIT_STATIC_STUB_REDIRECT(ext4_get_group_desc,
->       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~
->> -ritesh
-> 
->> 3. How to simulate a block bitmap.
->> Currently, a fake buffer_head with bitmap data is returned, then no
->> futher change is needed.
->> If we simulate a block bitmap with an array of data structure like:
->> struct test_bitmap {
->>        unsigned int	start;
->>        unsigned int	len;
->> }
->> which is suggested by Theodore in [4], then we need to add mocks to
->> function which expected bitmap from bitmap_bh->b_data, like
->> mb_find_next_bit, mb_find_next_zero_bit and maybe more.
->>
->> Would like to hear any suggestion! Thanks!
->>
->> I run kvm-xfstest with config "ext4/all" and "-g auto" together with
->> patchset for resize, you can see detail report in [6].
->>
->> Unit test result is as followings:
->> # ./tools/testing/kunit/kunit.py run --kunitconfig=fs/ext4/.kunitconfig --raw_output
->> [18:23:36] Configuring KUnit Kernel ...
->> [18:23:36] Building KUnit Kernel ...
->> Populating config with:
->> $ make ARCH=um O=.kunit olddefconfig
->> Building with:
->> $ make ARCH=um O=.kunit --jobs=88
->> [18:23:40] Starting KUnit Kernel (1/1)...
->> KTAP version 1
->> 1..2
->>     KTAP version 1
->>     # Subtest: ext4_mballoc_test
->>     1..1
->>         KTAP version 1
->>         # Subtest: test_new_blocks_simple
->>         ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
->>         ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
->>         ok 3 block_bits=18 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
->>     # test_new_blocks_simple: pass:3 fail:0 skip:0 total:3
->>     ok 1 test_new_blocks_simple
->> # Totals: pass:3 fail:0 skip:0 total:3
->> ok 1 ext4_mballoc_test
->>     KTAP version 1
->>     # Subtest: ext4_inode_test
->>     1..1
->>         KTAP version 1
->>         # Subtest: inode_test_xtimestamp_decoding
->>         ok 1 1901-12-13 Lower bound of 32bit < 0 timestamp, no extra bits
->>         ok 2 1969-12-31 Upper bound of 32bit < 0 timestamp, no extra bits
->>         ok 3 1970-01-01 Lower bound of 32bit >=0 timestamp, no extra bits
->>         ok 4 2038-01-19 Upper bound of 32bit >=0 timestamp, no extra bits
->>         ok 5 2038-01-19 Lower bound of 32bit <0 timestamp, lo extra sec bit on
->>         ok 6 2106-02-07 Upper bound of 32bit <0 timestamp, lo extra sec bit on
->>         ok 7 2106-02-07 Lower bound of 32bit >=0 timestamp, lo extra sec bit on
->>         ok 8 2174-02-25 Upper bound of 32bit >=0 timestamp, lo extra sec bit on
->>         ok 9 2174-02-25 Lower bound of 32bit <0 timestamp, hi extra sec bit on
->>         ok 10 2242-03-16 Upper bound of 32bit <0 timestamp, hi extra sec bit on
->>         ok 11 2242-03-16 Lower bound of 32bit >=0 timestamp, hi extra sec bit on
->>         ok 12 2310-04-04 Upper bound of 32bit >=0 timestamp, hi extra sec bit on
->>         ok 13 2310-04-04 Upper bound of 32bit>=0 timestamp, hi extra sec bit 1. 1 ns
->>         ok 14 2378-04-22 Lower bound of 32bit>= timestamp. Extra sec bits 1. Max ns
->>         ok 15 2378-04-22 Lower bound of 32bit >=0 timestamp. All extra sec bits on
->>         ok 16 2446-05-10 Upper bound of 32bit >=0 timestamp. All extra sec bits on
->>     # inode_test_xtimestamp_decoding: pass:16 fail:0 skip:0 total:16
->>     ok 1 inode_test_xtimestamp_decoding
->> # Totals: pass:16 fail:0 skip:0 total:16
->> ok 2 ext4_inode_test
->> [18:23:41] Elapsed time: 4.960s total, 0.001s configuring, 4.842s building, 0.072s running
->>
->> [1]
->> https://lore.kernel.org/linux-ext4/20230603150327.3596033-1-shikemeng@huaweicloud.com/T/#m5ff8e3a058ce1cb272dfef3262cd3202ce6e4358
->> [2]
->> https://lore.kernel.org/linux-ext4/ZC3MoWn2UO6p+Swp@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com/
->> [3]
->> https://docs.kernel.org/dev-tools/kunit/usage.html#testing-static-functions
->> [4]
->> https://docs.kernel.org/dev-tools/kunit/api/functionredirection.html#c.KUNIT_STATIC_STUB_REDIRECT
->> [5]
->> https://lore.kernel.org/linux-ext4/20230317155047.GB3270589@mit.edu/
->> [6]
->> https://lore.kernel.org/linux-ext4/20230629120044.1261968-1-shikemeng@huaweicloud.com/T/#mcc8fb0697fd54d9267c02c027e1eb3468026ae56
->> [7]
->> https://lore.kernel.org/lkml/20230725172051.2142641-1-shikemeng@huaweicloud.com/
->>
->> Kemeng Shi (11):
->>   ext4: factor out codes to update block bitmap and group descriptor on
->>     disk from ext4_mb_mark_bb
->>   ext4: call ext4_mb_mark_context in ext4_free_blocks_simple
->>   ext4: extent ext4_mb_mark_context to support allocation under journal
->>   ext4: call ext4_mb_mark_context in ext4_mb_mark_diskspace_used
->>   ext4: Separate block bitmap and buddy bitmap freeing in
->>     ext4_mb_clear_bb()
->>   ext4: call ext4_mb_mark_context in ext4_mb_clear_bb
->>   ext4: Separate block bitmap and buddy bitmap freeing in
->>     ext4_group_add_blocks()
->>   ext4: call ext4_mb_mark_context in ext4_group_add_blocks()
->>   ext4: add some kunit stub for mballoc kunit test
->>   ext4: add first unit test for ext4_mb_new_blocks_simple in mballoc
->>   ext4: run mballoc test with different layouts setting
->>
->>  fs/ext4/balloc.c       |  10 +
->>  fs/ext4/mballoc-test.c | 351 ++++++++++++++++++++++++++++
->>  fs/ext4/mballoc.c      | 505 ++++++++++++++++-------------------------
->>  3 files changed, 557 insertions(+), 309 deletions(-)
->>  create mode 100644 fs/ext4/mballoc-test.c
->>
->> -- 
->> 2.30.0
-> 
+								Honza
 
+> ---
+>  fs/ext4/extents_status.c | 123 ++++++++++++++++++++++++++++-----------
+>  1 file changed, 89 insertions(+), 34 deletions(-)
+> 
+> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+> index 5e625ea4545d..f4b50652f0cc 100644
+> --- a/fs/ext4/extents_status.c
+> +++ b/fs/ext4/extents_status.c
+> @@ -152,8 +152,9 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+>  static int es_reclaim_extents(struct ext4_inode_info *ei, int *nr_to_scan);
+>  static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
+>  		       struct ext4_inode_info *locked_ei);
+> -static void __revise_pending(struct inode *inode, ext4_lblk_t lblk,
+> -			     ext4_lblk_t len);
+> +static int __revise_pending(struct inode *inode, ext4_lblk_t lblk,
+> +			    ext4_lblk_t len,
+> +			    struct pending_reservation **prealloc);
+>  
+>  int __init ext4_init_es(void)
+>  {
+> @@ -448,6 +449,19 @@ static void ext4_es_list_del(struct inode *inode)
+>  	spin_unlock(&sbi->s_es_lock);
+>  }
+>  
+> +static inline struct pending_reservation *__alloc_pending(bool nofail)
+> +{
+> +	if (!nofail)
+> +		return kmem_cache_alloc(ext4_pending_cachep, GFP_ATOMIC);
+> +
+> +	return kmem_cache_zalloc(ext4_pending_cachep, GFP_KERNEL | __GFP_NOFAIL);
+> +}
+> +
+> +static inline void __free_pending(struct pending_reservation *pr)
+> +{
+> +	kmem_cache_free(ext4_pending_cachep, pr);
+> +}
+> +
+>  /*
+>   * Returns true if we cannot fail to allocate memory for this extent_status
+>   * entry and cannot reclaim it until its status changes.
+> @@ -836,11 +850,12 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+>  {
+>  	struct extent_status newes;
+>  	ext4_lblk_t end = lblk + len - 1;
+> -	int err1 = 0;
+> -	int err2 = 0;
+> +	int err1 = 0, err2 = 0, err3 = 0;
+>  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+>  	struct extent_status *es1 = NULL;
+>  	struct extent_status *es2 = NULL;
+> +	struct pending_reservation *pr = NULL;
+> +	bool revise_pending = false;
+>  
+>  	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
+>  		return;
+> @@ -868,11 +883,17 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+>  
+>  	ext4_es_insert_extent_check(inode, &newes);
+>  
+> +	revise_pending = sbi->s_cluster_ratio > 1 &&
+> +			 test_opt(inode->i_sb, DELALLOC) &&
+> +			 (status & (EXTENT_STATUS_WRITTEN |
+> +				    EXTENT_STATUS_UNWRITTEN));
+>  retry:
+>  	if (err1 && !es1)
+>  		es1 = __es_alloc_extent(true);
+>  	if ((err1 || err2) && !es2)
+>  		es2 = __es_alloc_extent(true);
+> +	if ((err1 || err2 || err3) && revise_pending && !pr)
+> +		pr = __alloc_pending(true);
+>  	write_lock(&EXT4_I(inode)->i_es_lock);
+>  
+>  	err1 = __es_remove_extent(inode, lblk, end, NULL, es1);
+> @@ -897,13 +918,18 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+>  		es2 = NULL;
+>  	}
+>  
+> -	if (sbi->s_cluster_ratio > 1 && test_opt(inode->i_sb, DELALLOC) &&
+> -	    (status & EXTENT_STATUS_WRITTEN ||
+> -	     status & EXTENT_STATUS_UNWRITTEN))
+> -		__revise_pending(inode, lblk, len);
+> +	if (revise_pending) {
+> +		err3 = __revise_pending(inode, lblk, len, &pr);
+> +		if (err3 != 0)
+> +			goto error;
+> +		if (pr) {
+> +			__free_pending(pr);
+> +			pr = NULL;
+> +		}
+> +	}
+>  error:
+>  	write_unlock(&EXT4_I(inode)->i_es_lock);
+> -	if (err1 || err2)
+> +	if (err1 || err2 || err3)
+>  		goto retry;
+>  
+>  	ext4_es_print_tree(inode);
+> @@ -1311,7 +1337,7 @@ static unsigned int get_rsvd(struct inode *inode, ext4_lblk_t end,
+>  				rc->ndelonly--;
+>  				node = rb_next(&pr->rb_node);
+>  				rb_erase(&pr->rb_node, &tree->root);
+> -				kmem_cache_free(ext4_pending_cachep, pr);
+> +				__free_pending(pr);
+>  				if (!node)
+>  					break;
+>  				pr = rb_entry(node, struct pending_reservation,
+> @@ -1907,11 +1933,13 @@ static struct pending_reservation *__get_pending(struct inode *inode,
+>   *
+>   * @inode - file containing the cluster
+>   * @lblk - logical block in the cluster to be added
+> + * @prealloc - preallocated pending entry
+>   *
+>   * Returns 0 on successful insertion and -ENOMEM on failure.  If the
+>   * pending reservation is already in the set, returns successfully.
+>   */
+> -static int __insert_pending(struct inode *inode, ext4_lblk_t lblk)
+> +static int __insert_pending(struct inode *inode, ext4_lblk_t lblk,
+> +			    struct pending_reservation **prealloc)
+>  {
+>  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+>  	struct ext4_pending_tree *tree = &EXT4_I(inode)->i_pending_tree;
+> @@ -1937,10 +1965,15 @@ static int __insert_pending(struct inode *inode, ext4_lblk_t lblk)
+>  		}
+>  	}
+>  
+> -	pr = kmem_cache_alloc(ext4_pending_cachep, GFP_ATOMIC);
+> -	if (pr == NULL) {
+> -		ret = -ENOMEM;
+> -		goto out;
+> +	if (likely(*prealloc == NULL)) {
+> +		pr = __alloc_pending(false);
+> +		if (!pr) {
+> +			ret = -ENOMEM;
+> +			goto out;
+> +		}
+> +	} else {
+> +		pr = *prealloc;
+> +		*prealloc = NULL;
+>  	}
+>  	pr->lclu = lclu;
+>  
+> @@ -1970,7 +2003,7 @@ static void __remove_pending(struct inode *inode, ext4_lblk_t lblk)
+>  	if (pr != NULL) {
+>  		tree = &EXT4_I(inode)->i_pending_tree;
+>  		rb_erase(&pr->rb_node, &tree->root);
+> -		kmem_cache_free(ext4_pending_cachep, pr);
+> +		__free_pending(pr);
+>  	}
+>  }
+>  
+> @@ -2029,10 +2062,10 @@ void ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
+>  				  bool allocated)
+>  {
+>  	struct extent_status newes;
+> -	int err1 = 0;
+> -	int err2 = 0;
+> +	int err1 = 0, err2 = 0, err3 = 0;
+>  	struct extent_status *es1 = NULL;
+>  	struct extent_status *es2 = NULL;
+> +	struct pending_reservation *pr = NULL;
+>  
+>  	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
+>  		return;
+> @@ -2052,6 +2085,8 @@ void ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
+>  		es1 = __es_alloc_extent(true);
+>  	if ((err1 || err2) && !es2)
+>  		es2 = __es_alloc_extent(true);
+> +	if ((err1 || err2 || err3) && allocated && !pr)
+> +		pr = __alloc_pending(true);
+>  	write_lock(&EXT4_I(inode)->i_es_lock);
+>  
+>  	err1 = __es_remove_extent(inode, lblk, lblk, NULL, es1);
+> @@ -2074,11 +2109,18 @@ void ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
+>  		es2 = NULL;
+>  	}
+>  
+> -	if (allocated)
+> -		__insert_pending(inode, lblk);
+> +	if (allocated) {
+> +		err3 = __insert_pending(inode, lblk, &pr);
+> +		if (err3 != 0)
+> +			goto error;
+> +		if (pr) {
+> +			__free_pending(pr);
+> +			pr = NULL;
+> +		}
+> +	}
+>  error:
+>  	write_unlock(&EXT4_I(inode)->i_es_lock);
+> -	if (err1 || err2)
+> +	if (err1 || err2 || err3)
+>  		goto retry;
+>  
+>  	ext4_es_print_tree(inode);
+> @@ -2184,21 +2226,24 @@ unsigned int ext4_es_delayed_clu(struct inode *inode, ext4_lblk_t lblk,
+>   * @inode - file containing the range
+>   * @lblk - logical block defining the start of range
+>   * @len  - length of range in blocks
+> + * @prealloc - preallocated pending entry
+>   *
+>   * Used after a newly allocated extent is added to the extents status tree.
+>   * Requires that the extents in the range have either written or unwritten
+>   * status.  Must be called while holding i_es_lock.
+>   */
+> -static void __revise_pending(struct inode *inode, ext4_lblk_t lblk,
+> -			     ext4_lblk_t len)
+> +static int __revise_pending(struct inode *inode, ext4_lblk_t lblk,
+> +			    ext4_lblk_t len,
+> +			    struct pending_reservation **prealloc)
+>  {
+>  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+>  	ext4_lblk_t end = lblk + len - 1;
+>  	ext4_lblk_t first, last;
+>  	bool f_del = false, l_del = false;
+> +	int ret = 0;
+>  
+>  	if (len == 0)
+> -		return;
+> +		return 0;
+>  
+>  	/*
+>  	 * Two cases - block range within single cluster and block range
+> @@ -2219,7 +2264,9 @@ static void __revise_pending(struct inode *inode, ext4_lblk_t lblk,
+>  			f_del = __es_scan_range(inode, &ext4_es_is_delonly,
+>  						first, lblk - 1);
+>  		if (f_del) {
+> -			__insert_pending(inode, first);
+> +			ret = __insert_pending(inode, first, prealloc);
+> +			if (ret < 0)
+> +				goto out;
+>  		} else {
+>  			last = EXT4_LBLK_CMASK(sbi, end) +
+>  			       sbi->s_cluster_ratio - 1;
+> @@ -2227,9 +2274,11 @@ static void __revise_pending(struct inode *inode, ext4_lblk_t lblk,
+>  				l_del = __es_scan_range(inode,
+>  							&ext4_es_is_delonly,
+>  							end + 1, last);
+> -			if (l_del)
+> -				__insert_pending(inode, last);
+> -			else
+> +			if (l_del) {
+> +				ret = __insert_pending(inode, last, prealloc);
+> +				if (ret < 0)
+> +					goto out;
+> +			} else
+>  				__remove_pending(inode, last);
+>  		}
+>  	} else {
+> @@ -2237,18 +2286,24 @@ static void __revise_pending(struct inode *inode, ext4_lblk_t lblk,
+>  		if (first != lblk)
+>  			f_del = __es_scan_range(inode, &ext4_es_is_delonly,
+>  						first, lblk - 1);
+> -		if (f_del)
+> -			__insert_pending(inode, first);
+> -		else
+> +		if (f_del) {
+> +			ret = __insert_pending(inode, first, prealloc);
+> +			if (ret < 0)
+> +				goto out;
+> +		} else
+>  			__remove_pending(inode, first);
+>  
+>  		last = EXT4_LBLK_CMASK(sbi, end) + sbi->s_cluster_ratio - 1;
+>  		if (last != end)
+>  			l_del = __es_scan_range(inode, &ext4_es_is_delonly,
+>  						end + 1, last);
+> -		if (l_del)
+> -			__insert_pending(inode, last);
+> -		else
+> +		if (l_del) {
+> +			ret = __insert_pending(inode, last, prealloc);
+> +			if (ret < 0)
+> +				goto out;
+> +		} else
+>  			__remove_pending(inode, last);
+>  	}
+> +out:
+> +	return ret;
+>  }
+> -- 
+> 2.39.2
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
