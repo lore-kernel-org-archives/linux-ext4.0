@@ -2,34 +2,36 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3EDEAC83F2D
-	for <linux-ext4@archiver.kernel.org>; Mon,  4 Sep 2023 01:14:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DF9CFC71153
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Sep 2023 01:14:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235306AbjIDBOT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 3 Sep 2023 21:14:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36604 "EHLO
+        id S1350165AbjIDBOY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 3 Sep 2023 21:14:24 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36028 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231252AbjIDBOT (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Sep 2023 21:14:19 -0400
-Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2D54FC6;
+        with ESMTP id S231252AbjIDBOY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Sep 2023 21:14:24 -0400
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AC38BED;
         Sun,  3 Sep 2023 18:14:15 -0700 (PDT)
-Received: from canpemm500010.china.huawei.com (unknown [172.30.72.53])
-        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4Rf9bc5gXcz1M93g;
-        Mon,  4 Sep 2023 09:12:28 +0800 (CST)
+Received: from canpemm500010.china.huawei.com (unknown [172.30.72.54])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4Rf9YQ4d4pzNmdG;
+        Mon,  4 Sep 2023 09:10:34 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm500010.china.huawei.com
  (7.192.105.118) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.31; Mon, 4 Sep
- 2023 09:14:12 +0800
+ 2023 09:14:13 +0800
 From:   Ye Bin <yebin10@huawei.com>
 To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
         <linux-ext4@vger.kernel.org>
 CC:     <linux-kernel@vger.kernel.org>, <jack@suse.cz>,
         Ye Bin <yebin10@huawei.com>
-Subject: [PATCH 0/2] JBD2: print io_block if check data block checksum failed when do recovery
-Date:   Mon, 4 Sep 2023 09:10:19 +0800
-Message-ID: <20230904011021.3884879-1-yebin10@huawei.com>
+Subject: [PATCH 2/2] JBD2: fix printk format type for 'io_block' in do_one_pass()
+Date:   Mon, 4 Sep 2023 09:10:21 +0800
+Message-ID: <20230904011021.3884879-3-yebin10@huawei.com>
 X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20230904011021.3884879-1-yebin10@huawei.com>
+References: <20230904011021.3884879-1-yebin10@huawei.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7BIT
 Content-Type:   text/plain; charset=US-ASCII
@@ -41,14 +43,26 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Ye Bin (2):
-  JBD2: print io_block if check data block checksum failed when do
-    recovery
-  JBD2: fix printk format type for 'io_block' in do_one_pass()
+'io_block' is unsinged long but print it by '%ld'.
 
- fs/jbd2/recovery.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+Signed-off-by: Ye Bin <yebin10@huawei.com>
+---
+ fs/jbd2/recovery.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index a2e2bdaed9f8..d10dc7f64301 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -632,7 +632,7 @@ static int do_one_pass(journal_t *journal,
+ 					success = err;
+ 					printk(KERN_ERR
+ 						"JBD2: IO error %d recovering "
+-						"block %ld in log\n",
++						"block %lu in log\n",
+ 						err, io_block);
+ 				} else {
+ 					unsigned long long blocknr;
 -- 
 2.31.1
 
