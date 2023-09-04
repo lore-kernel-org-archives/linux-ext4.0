@@ -2,21 +2,21 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 74458C83F3F
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E24B6C71153
 	for <linux-ext4@archiver.kernel.org>; Mon,  4 Sep 2023 11:02:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1352732AbjIDLCQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 4 Sep 2023 07:02:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52160 "EHLO
+        id S1352742AbjIDLCR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 4 Sep 2023 07:02:17 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52156 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S243138AbjIDLCQ (ORCPT
+        with ESMTP id S236860AbjIDLCQ (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Sep 2023 07:02:16 -0400
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E8780191;
+Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A4151C6;
         Mon,  4 Sep 2023 04:02:11 -0700 (PDT)
-Received: from canpemm500010.china.huawei.com (unknown [172.30.72.56])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4RfQdz72RtzrSWw;
-        Mon,  4 Sep 2023 19:00:23 +0800 (CST)
+Received: from canpemm500010.china.huawei.com (unknown [172.30.72.55])
+        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4RfQcD1YFDz1DDZK;
+        Mon,  4 Sep 2023 18:58:52 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by canpemm500010.china.huawei.com
  (7.192.105.118) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.31; Mon, 4 Sep
@@ -26,9 +26,9 @@ To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
         <linux-ext4@vger.kernel.org>
 CC:     <linux-kernel@vger.kernel.org>, <jack@suse.cz>,
         Ye Bin <yebin10@huawei.com>
-Subject: [PATCH v2 1/2] JBD2: print io_block if check data block checksum failed when do recovery
-Date:   Mon, 4 Sep 2023 18:58:16 +0800
-Message-ID: <20230904105817.1728356-2-yebin10@huawei.com>
+Subject: [PATCH v2 2/2] JBD2: fix printk format type for 'io_block' in do_one_pass()
+Date:   Mon, 4 Sep 2023 18:58:17 +0800
+Message-ID: <20230904105817.1728356-3-yebin10@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20230904105817.1728356-1-yebin10@huawei.com>
 References: <20230904105817.1728356-1-yebin10@huawei.com>
@@ -43,32 +43,27 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now, if check data block checksum failed only print data's block number
-then skip write data. However, one data block may in more than one transaction.
-In some scenarios, offline analysis is inconvenient. As a result, it is
-difficult to locate the areas where data is faulty.
-So print 'io_block' if check data block checksum failed.
+'io_block' is unsinged long but print it by '%ld'.
 
 Signed-off-by: Ye Bin <yebin10@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/recovery.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/jbd2/recovery.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index c269a7d29a46..11380ff1fe51 100644
+index 11380ff1fe51..0567f1aa189b 100644
 --- a/fs/jbd2/recovery.c
 +++ b/fs/jbd2/recovery.c
-@@ -661,7 +661,8 @@ static int do_one_pass(journal_t *journal,
- 						printk(KERN_ERR "JBD2: Invalid "
- 						       "checksum recovering "
- 						       "data block %llu in "
--						       "log\n", blocknr);
-+						       "journal block %lu\n",
-+						       blocknr, io_block);
- 						block_error = 1;
- 						goto skip_write;
- 					}
+@@ -632,7 +632,7 @@ static int do_one_pass(journal_t *journal,
+ 					success = err;
+ 					printk(KERN_ERR
+ 						"JBD2: IO error %d recovering "
+-						"block %ld in log\n",
++						"block %lu in log\n",
+ 						err, io_block);
+ 				} else {
+ 					unsigned long long blocknr;
 -- 
 2.31.1
 
