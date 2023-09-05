@@ -2,105 +2,49 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 43383C83F2C
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Sep 2023 15:59:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C2230CA0FFA
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Sep 2023 15:59:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231684AbjIEP7J (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 5 Sep 2023 11:59:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40032 "EHLO
+        id S231658AbjIEP7I (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 5 Sep 2023 11:59:08 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50998 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1354261AbjIEK2T (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Sep 2023 06:28:19 -0400
-Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 93F1FDB;
-        Tue,  5 Sep 2023 03:28:15 -0700 (PDT)
-Received: from pps.filterd (m0356516.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 385A87qV001076;
-        Tue, 5 Sep 2023 10:28:07 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
- : date : message-id : mime-version : content-transfer-encoding; s=pp1;
- bh=Oh40OS0X+fK3/Z/1pwq5gInvd9fxd3XwJwnbR8khFQM=;
- b=jz78yk6hEI7V5HkLYFIavH9SqreOkOYdpIVtl+XbdSsyVzBExQvEchfiqzXZzkgYUl2h
- 1Gt6AKiDQ1s+ZWFGS+HyuWHCg8HhL5j/GQ+rn8oc/Wb/gwTBpnP8C8xUfk3I4+fp+Dj6
- ZOSwBlw9afLdoxd80mm5InAeQCqQea4ze2yYRGbUzh2HULaiAoWUb6B1rqjnUFIdcDm5
- ZoGT5Ys6TCP9bc4FtVqpDXshRZK3r/Ds8rPm9SigV38jEgUz5GgDMBz9HcBCTVzMgiQL
- Xc+2t5W1jj5LCYpzFQIRMWUvluSmCaBbrMzrXK3cTUxuIjpFdtu3M4JRu8Ksm8Cxo76z 2w== 
-Received: from ppma11.dal12v.mail.ibm.com (db.9e.1632.ip4.static.sl-reverse.com [50.22.158.219])
-        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3swxyd59pb-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 05 Sep 2023 10:28:07 +0000
-Received: from pps.filterd (ppma11.dal12v.mail.ibm.com [127.0.0.1])
-        by ppma11.dal12v.mail.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 3858ohYY011121;
-        Tue, 5 Sep 2023 10:28:06 GMT
-Received: from smtprelay06.fra02v.mail.ibm.com ([9.218.2.230])
-        by ppma11.dal12v.mail.ibm.com (PPS) with ESMTPS id 3svj31h80w-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 05 Sep 2023 10:28:06 +0000
-Received: from smtpav03.fra02v.mail.ibm.com (smtpav03.fra02v.mail.ibm.com [10.20.54.102])
-        by smtprelay06.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 385AS40L44827104
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 5 Sep 2023 10:28:04 GMT
-Received: from smtpav03.fra02v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 8AFF120043;
-        Tue,  5 Sep 2023 10:28:04 +0000 (GMT)
-Received: from smtpav03.fra02v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id C367C20040;
-        Tue,  5 Sep 2023 10:28:02 +0000 (GMT)
-Received: from li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.in.ibm.com (unknown [9.109.253.169])
-        by smtpav03.fra02v.mail.ibm.com (Postfix) with ESMTP;
-        Tue,  5 Sep 2023 10:28:02 +0000 (GMT)
-From:   Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To:     linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-Cc:     Ritesh Harjani <riteshh@linux.ibm.com>,
-        linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christian Brauner <brauner@kernel.org>,
-        linux-fsdevel@vger.kernel.org
-Subject: [PATCH 0/1] ext4: Fix stale data exposure caused with dioread_nolock 
-Date:   Tue,  5 Sep 2023 15:58:00 +0530
-Message-Id: <cover.1693909504.git.ojaswin@linux.ibm.com>
-X-Mailer: git-send-email 2.31.1
+        with ESMTP id S1353735AbjIEHpH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Sep 2023 03:45:07 -0400
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9F8F11A8;
+        Tue,  5 Sep 2023 00:45:01 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=I2yPyO8KwTzZJAloQMQFXyE6w4H4gDLyPF/VUjujH9w=; b=D6ocNZPrq6CZLc+BgM93gNO0a8
+        +mhp354GNUvRRmHjR/LyrZO531zXKlzD3Ut94MIzFGnbvX5Rlr8ukph2bMJ9ooyR1kRg0twVcIlpU
+        XTK6YQRP8yN5ZBbRekcLCOt2ohx7zIzlu93T6I2YuGx7h8RV4Ycjf+ZJPe0vbE6HHK5QrxDwvy0Ww
+        i6WF8aTlk/rV/ksu1KK6BWJhaGeFm1bQrspk9AFYQuq7t/P4tpXygb1Qpioqh00uet/Yq9qTt50XU
+        V+Zu+DVfx9y1VVyhiaEAtxuH+az+MJnaMptBB28lZU4LWGd0FgqlIHM2POmpv8YLObDxEBufjNjiO
+        7Fo2FXFg==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.96 #2 (Red Hat Linux))
+        id 1qdQk1-005SWK-33;
+        Tue, 05 Sep 2023 07:44:53 +0000
+Date:   Tue, 5 Sep 2023 00:44:53 -0700
+From:   Christoph Hellwig <hch@infradead.org>
+To:     syzbot <syzbot+4a08ffdf3667b36650a1@syzkaller.appspotmail.com>
+Cc:     adilger.kernel@dilger.ca, djwong@kernel.org,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        song@kernel.org, syzkaller-bugs@googlegroups.com, tytso@mit.edu,
+        yukuai3@huawei.com, zhang_shurong@foxmail.com
+Subject: Re: [syzbot] [xfs?] [ext4?] kernel BUG in __block_write_begin_int
+Message-ID: <ZPbcdagjHgbBE6A8@infradead.org>
+References: <000000000000e76944060483798d@google.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-TM-AS-GCONF: 00
-X-Proofpoint-GUID: OphxttHMQJgk-YaQiRkaXClZQIGeBmvd
-X-Proofpoint-ORIG-GUID: OphxttHMQJgk-YaQiRkaXClZQIGeBmvd
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.267,Aquarius:18.0.957,Hydra:6.0.601,FMLib:17.11.176.26
- definitions=2023-09-05_07,2023-08-31_01,2023-05-22_02
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 phishscore=0 spamscore=0
- impostorscore=0 mlxscore=0 lowpriorityscore=0 suspectscore=0
- mlxlogscore=828 clxscore=1011 bulkscore=0 adultscore=0 malwarescore=0
- priorityscore=1501 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2308100000 definitions=main-2309050089
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <000000000000e76944060483798d@google.com>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The detailed report on the issues faced and the root cause can be found
-in the commit message. I've intentionally added all the details to
-commit message so that it can be tracked in the future, let me know if
-its too long and I can try stripping some info.
-
-For this particular fix, I've tested these patches with xfstests -g
-quick with:
-
-- 64k block size, 64k pagesize 
-- 4k blocksize 64k pagesize
-- both with and without nodelalloc 
-
-and I don't see any regressions. I'll plan to run more tests on this and
-report back if I notice anything. Suggestions or ideas are welcome.
-
-Regards,
-ojaswin
-
-Ojaswin Mujoo (1):
-  ext4: Mark buffer new if it is unwritten to avoid stale data exposure
-
- fs/ext4/inode.c | 4 ++++
- 1 file changed, 4 insertions(+)
-
--- 
-2.31.1
-
+syz test: git://git.infradead.org/users/hch/misc.git bdev-iomap-fix
