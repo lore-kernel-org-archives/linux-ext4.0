@@ -2,157 +2,62 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 06B31C83F2C
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5815CCA0FFE
 	for <linux-ext4@archiver.kernel.org>; Tue,  5 Sep 2023 15:58:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230525AbjIEP65 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 5 Sep 2023 11:58:57 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48358 "EHLO
+        id S231175AbjIEP67 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 5 Sep 2023 11:58:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46470 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S243911AbjIEBEb (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Sep 2023 21:04:31 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A72FE1B8;
-        Mon,  4 Sep 2023 18:04:27 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 2DE0560ED6;
-        Tue,  5 Sep 2023 01:04:27 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 63FBEC433CA;
-        Tue,  5 Sep 2023 01:04:26 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1693875866;
-        bh=G/v2LTjl9mO7BgSolxUEpe0QgWSe5wHmD/t2lQSPLFs=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=eAaa1vgqTwUBhkcf3bq5obFu3WlI0xHPpHTAW5xZp/ieUWxjrUb+G05lbBkU/21DZ
-         vOnDduL44PNOgPH2hryqSPdljyAIAMxxDkQL0bZHXTePAgOKQydVyn6ssf83/Gv680
-         fV8gHX6wLtXhDQ0bcIzAErmNy/CR69OHK+4WCbvDSYCxyCVMPmbhAGH50lSejpSxQA
-         3njqXdS1nnLX0JlfvpA0b7R/x1DUqh80GnNfLFotCoMYdqRzJxSJkWJQS6gSR5n8Bj
-         h4uyuWJETlxxYGANT2OtR2oNEWie7Ht2luUv3KhYRubleqbhPvdkRTiMD+q/A8YuFg
-         cFuoP2ZcO3Qmg==
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fscrypt@vger.kernel.org
-Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-btrfs@vger.kernel.org
-Subject: [PATCH 1/5] fscrypt: make it extra clear that key_prefix is deprecated
-Date:   Mon,  4 Sep 2023 17:58:26 -0700
-Message-ID: <20230905005830.365985-2-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.42.0
-In-Reply-To: <20230905005830.365985-1-ebiggers@kernel.org>
-References: <20230905005830.365985-1-ebiggers@kernel.org>
+        with ESMTP id S1354541AbjIEM1G (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Sep 2023 08:27:06 -0400
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 158081A8;
+        Tue,  5 Sep 2023 05:27:01 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=eVxmERvkhRQsWzv7hKcub8nBL8Ebk3iyCYi7oJyr1Qk=; b=y1nZcAesjx2xv+SqYWukES/nxx
+        qxVnUugSjtZ7Rv+bkJJ6GZIdmJGlCLcs8CZEB+opdncPZkN8ySSXTFFA9n3825sRirzrtgHedCb6Y
+        xVaJXXjwPg3j1NrmFUhs2YDq66bVYir9KESsctaZ/K7zI5iJ/7/Syy9Tjm4oJ53hAypHgRYapUnBI
+        Du1mmz4gZGYHfNXUaeRFE1/vD4OBuZO6WRSug9LrHMCZd+Fxeo+r5eEjX0DEnDHXqjQn/VtktT/OS
+        lT97QzO09PtP3N5ZNy00mxVHFBt85fKdar8/4wc/er2Bx8o3t5+AcoVG2flc6LAz8j2jfr7gmohWf
+        LJKCN9qg==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.96 #2 (Red Hat Linux))
+        id 1qdV8x-0060Oq-0K;
+        Tue, 05 Sep 2023 12:26:55 +0000
+Date:   Tue, 5 Sep 2023 05:26:55 -0700
+From:   Christoph Hellwig <hch@infradead.org>
+To:     syzbot <syzbot+4a08ffdf3667b36650a1@syzkaller.appspotmail.com>
+Cc:     adilger.kernel@dilger.ca, djwong@kernel.org, hch@infradead.org,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        nogikh@google.com, song@kernel.org,
+        syzkaller-bugs@googlegroups.com, tytso@mit.edu, yukuai3@huawei.com,
+        zhang_shurong@foxmail.com
+Subject: Re: [syzbot] [block] kernel BUG in __block_write_begin_int
+Message-ID: <ZPcej+rJjg+6SgzK@infradead.org>
+References: <CANp29Y65sCETzq3CttPHww40W_tQ2S=0HockV-aSUi9dE8HGow@mail.gmail.com>
+ <000000000000d9daf4060499c0c9@google.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <000000000000d9daf4060499c0c9@google.com>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+On Tue, Sep 05, 2023 at 03:04:32AM -0700, syzbot wrote:
+> Hello,
+> 
+> syzbot has tested the proposed patch but the reproducer is still triggering an issue:
+> WARNING in __kthread_create_on_node
 
-fscrypt_operations::key_prefix should not be set by any filesystems that
-aren't setting it already.  This is already documented, but apparently
-it's not sufficiently clear, as both ceph and btrfs have tried to set
-it.  Rename the field to 'legacy_key_prefix_for_backcompat' and improve
-the documentation to hopefully make it clearer.
+Well, that is
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/crypto/keysetup_v1.c |  5 +++--
- fs/ext4/crypto.c        |  2 +-
- fs/f2fs/super.c         |  2 +-
- fs/ubifs/crypto.c       |  2 +-
- include/linux/fscrypt.h | 14 +++++++++-----
- 5 files changed, 15 insertions(+), 10 deletions(-)
 
-diff --git a/fs/crypto/keysetup_v1.c b/fs/crypto/keysetup_v1.c
-index 75dabd9b27f9b..df44d0d2d44ea 100644
---- a/fs/crypto/keysetup_v1.c
-+++ b/fs/crypto/keysetup_v1.c
-@@ -299,6 +299,7 @@ int fscrypt_setup_v1_file_key(struct fscrypt_info *ci, const u8 *raw_master_key)
- 
- int fscrypt_setup_v1_file_key_via_subscribed_keyrings(struct fscrypt_info *ci)
- {
-+	const struct super_block *sb = ci->ci_inode->i_sb;
- 	struct key *key;
- 	const struct fscrypt_key *payload;
- 	int err;
-@@ -306,8 +307,8 @@ int fscrypt_setup_v1_file_key_via_subscribed_keyrings(struct fscrypt_info *ci)
- 	key = find_and_lock_process_key(FSCRYPT_KEY_DESC_PREFIX,
- 					ci->ci_policy.v1.master_key_descriptor,
- 					ci->ci_mode->keysize, &payload);
--	if (key == ERR_PTR(-ENOKEY) && ci->ci_inode->i_sb->s_cop->key_prefix) {
--		key = find_and_lock_process_key(ci->ci_inode->i_sb->s_cop->key_prefix,
-+	if (key == ERR_PTR(-ENOKEY) && sb->s_cop->legacy_key_prefix_for_backcompat) {
-+		key = find_and_lock_process_key(sb->s_cop->legacy_key_prefix_for_backcompat,
- 						ci->ci_policy.v1.master_key_descriptor,
- 						ci->ci_mode->keysize, &payload);
- 	}
-diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-index 453d4da5de520..8cdb7bbc655b0 100644
---- a/fs/ext4/crypto.c
-+++ b/fs/ext4/crypto.c
-@@ -240,7 +240,7 @@ static void ext4_get_ino_and_lblk_bits(struct super_block *sb,
- }
- 
- const struct fscrypt_operations ext4_cryptops = {
--	.key_prefix		= "ext4:",
-+	.legacy_key_prefix_for_backcompat = "ext4:",
- 	.get_context		= ext4_get_context,
- 	.set_context		= ext4_set_context,
- 	.get_dummy_policy	= ext4_get_dummy_policy,
-diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
-index a8c8232852bb1..8de799a8bad04 100644
---- a/fs/f2fs/super.c
-+++ b/fs/f2fs/super.c
-@@ -3231,7 +3231,7 @@ static struct block_device **f2fs_get_devices(struct super_block *sb,
- }
- 
- static const struct fscrypt_operations f2fs_cryptops = {
--	.key_prefix		= "f2fs:",
-+	.legacy_key_prefix_for_backcompat = "f2fs:",
- 	.get_context		= f2fs_get_context,
- 	.set_context		= f2fs_set_context,
- 	.get_dummy_policy	= f2fs_get_dummy_policy,
-diff --git a/fs/ubifs/crypto.c b/fs/ubifs/crypto.c
-index 3125e76376ee6..fab90f9a8eaff 100644
---- a/fs/ubifs/crypto.c
-+++ b/fs/ubifs/crypto.c
-@@ -89,7 +89,7 @@ int ubifs_decrypt(const struct inode *inode, struct ubifs_data_node *dn,
- 
- const struct fscrypt_operations ubifs_crypt_operations = {
- 	.flags			= FS_CFLG_OWN_PAGES,
--	.key_prefix		= "ubifs:",
-+	.legacy_key_prefix_for_backcompat = "ubifs:",
- 	.get_context		= ubifs_crypt_get_context,
- 	.set_context		= ubifs_crypt_set_context,
- 	.empty_dir		= ubifs_crypt_empty_dir,
-diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-index c895b12737a19..85574282c7e52 100644
---- a/include/linux/fscrypt.h
-+++ b/include/linux/fscrypt.h
-@@ -73,12 +73,16 @@ struct fscrypt_operations {
- 	unsigned int flags;
- 
- 	/*
--	 * If set, this is a filesystem-specific key description prefix that
--	 * will be accepted for "logon" keys for v1 fscrypt policies, in
--	 * addition to the generic prefix "fscrypt:".  This functionality is
--	 * deprecated, so new filesystems shouldn't set this field.
-+	 * This field exists only for backwards compatibility reasons and should
-+	 * only be set by the filesystems that are setting it already.  It
-+	 * contains the filesystem-specific key description prefix that is
-+	 * accepted for "logon" keys for v1 fscrypt policies, in addition to the
-+	 * generic prefix "fscrypt:".  This functionality is deprecated in favor
-+	 * of "fscrypt:", which itself is deprecated in favor of the filesystem
-+	 * keyring ioctls such as FS_IOC_ADD_ENCRYPTION_KEY.  Filesystems that
-+	 * are newly adding fscrypt support should not set this field.
- 	 */
--	const char *key_prefix;
-+	const char *legacy_key_prefix_for_backcompat;
- 
- 	/*
- 	 * Get the fscrypt context of the given inode.
--- 
-2.42.0
+ a) a different issue in ext4
+ b) just a warning
 
