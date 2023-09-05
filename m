@@ -2,175 +2,137 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3495FCA0FFB
-	for <linux-ext4@archiver.kernel.org>; Mon,  4 Sep 2023 18:11:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A57AFCA0FE2
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Sep 2023 15:58:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1353420AbjIDSLP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 4 Sep 2023 14:11:15 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41122 "EHLO
+        id S230044AbjIEP6p (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 5 Sep 2023 11:58:45 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49460 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229697AbjIDSLN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Sep 2023 14:11:13 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3722AE6;
-        Mon,  4 Sep 2023 11:11:10 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id C3CDC61572;
-        Mon,  4 Sep 2023 18:11:09 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 1F1A9C433B9;
-        Mon,  4 Sep 2023 18:11:09 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1693851069;
-        bh=XLoa47KxRcps38wwidPhLGQHNoTClCg5nlSU2UvnxSI=;
-        h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
-        b=XZUD/xT7QAeS9CwkDxlRqT/gRWQx0TmxhnpK0eSpl5TdmWje1tq2yvGH+3vZ2+BCT
-         jCeZ3PliMwtj4PI/YG14pbxznaZzZiLpm9dwOITxs9QimCVLsdgcY+tXdL8VHHo6Xo
-         yN1Gfw9YZmIyD8m43UuRL17+XTyHWk7a5WXn6oF5ggWXw6RS9S101xrDjQsPd+ZkCx
-         1CnWWAtQSCxTFtksNwHsJ+bzmvgeWVNV2ZHBFMah4WlUviOzbSHDkb9JT06sfaty1l
-         sU4YI09Bt9xI2xASG0RHXL6Mglihp9xk051QekITKNbwSi+f4qbVFzWkXoKrsHAJfp
-         TL/wsjYXrOQBg==
-Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
-        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id C90EDC2BBD7;
-        Mon,  4 Sep 2023 18:11:08 +0000 (UTC)
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+        with ESMTP id S1354364AbjIELBR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Sep 2023 07:01:17 -0400
+Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D71381AB;
+        Tue,  5 Sep 2023 04:01:13 -0700 (PDT)
+Received: from pps.filterd (m0353725.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 385Ad8lr009106;
+        Tue, 5 Sep 2023 11:01:09 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
+ : date : message-id : content-transfer-encoding : mime-version; s=pp1;
+ bh=9toUWMnBTPzr30H7hB+mEnlmhwveyOLT5sLs6DzuLeo=;
+ b=T+UhntOhkUzkiYjpA8VSB699dd+/A36IfnRgrXS8qbXQOdEO3u5jXIgrI5YcEDQ8DVNC
+ 5kazg3qlfXyRjU/WcyWp/lobqb7o0wL5Mv4CAhYqGaNkLyjSq20bzn+mScZG6M4Vhep+
+ 38eFcRFSr30XMEnPwytxJrdPcOZ3Sd2UL0DJ+gWYdfEGfyRYlYkup0Lf9YgS7nl9JbEb
+ vL6dTMOde2BmVOpldBHaG0kAugvp373GEQiVALRxBWNC8aClI2CZQUTFMSz++0ScUQdm
+ jAh487VUtkmjqOH3UaklK7raPubef5YTrTpcNPGvXXCLfIEP4ZAISsTMcqyMat+h2PMJ ag== 
+Received: from ppma12.dal12v.mail.ibm.com (dc.9e.1632.ip4.static.sl-reverse.com [50.22.158.220])
+        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3sx0aqvh3b-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Tue, 05 Sep 2023 11:01:09 +0000
+Received: from pps.filterd (ppma12.dal12v.mail.ibm.com [127.0.0.1])
+        by ppma12.dal12v.mail.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 38596Psw001615;
+        Tue, 5 Sep 2023 11:01:08 GMT
+Received: from smtprelay02.fra02v.mail.ibm.com ([9.218.2.226])
+        by ppma12.dal12v.mail.ibm.com (PPS) with ESMTPS id 3svfcsjbn1-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Tue, 05 Sep 2023 11:01:08 +0000
+Received: from smtpav03.fra02v.mail.ibm.com (smtpav03.fra02v.mail.ibm.com [10.20.54.102])
+        by smtprelay02.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 385B163s23265792
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 5 Sep 2023 11:01:06 GMT
+Received: from smtpav03.fra02v.mail.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 7A96F20040;
+        Tue,  5 Sep 2023 11:01:06 +0000 (GMT)
+Received: from smtpav03.fra02v.mail.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 41FD720043;
+        Tue,  5 Sep 2023 11:01:05 +0000 (GMT)
+Received: from li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.in.ibm.com (unknown [9.109.253.169])
+        by smtpav03.fra02v.mail.ibm.com (Postfix) with ESMTP;
+        Tue,  5 Sep 2023 11:01:05 +0000 (GMT)
+From:   Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To:     linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
+Cc:     Ritesh Harjani <riteshh@linux.ibm.com>,
+        linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>
+Subject: [RFC 0/1] ext4: Replace linear search with array of lists in CR_GOAL_LEN_SLOW
+Date:   Tue,  5 Sep 2023 16:31:03 +0530
+Message-Id: <cover.1693911548.git.ojaswin@linux.ibm.com>
+X-Mailer: git-send-email 2.31.1
+X-TM-AS-GCONF: 00
+X-Proofpoint-GUID: L--kFvG2LdAobeduF2Rmo56y8h3q0heM
+X-Proofpoint-ORIG-GUID: L--kFvG2LdAobeduF2Rmo56y8h3q0heM
 Content-Transfer-Encoding: 8bit
-Subject: Re: [f2fs-dev] [PATCH v2 00/89] fs: new accessors for inode->i_ctime
-From:   patchwork-bot+f2fs@kernel.org
-Message-Id: <169385106881.19669.3510550425397118597.git-patchwork-notify@kernel.org>
-Date:   Mon, 04 Sep 2023 18:11:08 +0000
-References: <20230705185812.579118-1-jlayton@kernel.org>
-In-Reply-To: <20230705185812.579118-1-jlayton@kernel.org>
-To:     Jeff Layton <jlayton@kernel.org>
-Cc:     jk@ozlabs.org, arnd@arndb.de, mpe@ellerman.id.au,
-        npiggin@gmail.com, christophe.leroy@csgroup.eu, hca@linux.ibm.com,
-        gor@linux.ibm.com, agordeev@linux.ibm.com,
-        borntraeger@linux.ibm.com, svens@linux.ibm.com,
-        gregkh@linuxfoundation.org, arve@android.com, tkjos@android.com,
-        maco@android.com, joel@joelfernandes.org, brauner@kernel.org,
-        cmllamas@google.com, surenb@google.com,
-        dennis.dalessandro@cornelisnetworks.com, jgg@ziepe.ca,
-        leon@kernel.org, bwarrum@linux.ibm.com, rituagar@linux.ibm.com,
-        ericvh@kernel.org, lucho@ionkov.net, asmadeus@codewreck.org,
-        linux_oss@crudebyte.com, dsterba@suse.com, dhowells@redhat.com,
-        marc.dionne@auristor.com, viro@zeniv.linux.org.uk,
-        raven@themaw.net, luisbg@kernel.org, salah.triki@gmail.com,
-        aivazian.tigran@gmail.com, ebiederm@xmission.com,
-        keescook@chromium.org, clm@fb.com, josef@toxicpanda.com,
-        xiubli@redhat.com, idryomov@gmail.com, jaharkes@cs.cmu.edu,
-        coda@cs.cmu.edu, jlbec@evilplan.org, hch@lst.de, nico@fluxnic.net,
-        rafael@kernel.org, code@tyhicks.com, ardb@kernel.org,
-        xiang@kernel.org, chao@kernel.org, huyue2@coolpad.com,
-        jefflexu@linux.alibaba.com, linkinjeon@kernel.org,
-        sj1557.seo@samsung.com, jack@suse.com, tytso@mit.edu,
-        adilger.kernel@dilger.ca, jaegeuk@kernel.org,
-        hirofumi@mail.parknet.co.jp, miklos@szeredi.hu,
-        rpeterso@redhat.com, agruenba@redhat.com, richard@nod.at,
-        anton.ivanov@cambridgegreys.com, johannes@sipsolutions.net,
-        mikulas@artax.karlin.mff.cuni.cz, mike.kravetz@oracle.com,
-        muchun.song@linux.dev, dwmw2@infradead.org, shaggy@kernel.org,
-        tj@kernel.org, trond.myklebust@hammerspace.com, anna@kernel.org,
-        chuck.lever@oracle.com, neilb@suse.de, kolga@netapp.com,
-        Dai.Ngo@oracle.com, tom@talpey.com, konishi.ryusuke@gmail.com,
-        anton@tuxera.com, almaz.alexandrovich@paragon-software.com,
-        mark@fasheh.com, joseph.qi@linux.alibaba.com, me@bobcopeland.com,
-        hubcap@omnibond.com, martin@omnibond.com, amir73il@gmail.com,
-        mcgrof@kernel.org, yzaikin@google.com, tony.luck@intel.com,
-        gpiccoli@igalia.com, al@alarsen.net, sfrench@samba.org,
-        pc@manguebit.com, lsahlber@redhat.com, sprasad@microsoft.com,
-        senozhatsky@chromium.org, phillip@squashfs.org.uk,
-        rostedt@goodmis.org, mhiramat@kernel.org, dushistov@mail.ru,
-        hdegoede@redhat.com, djwong@kernel.org, dlemoal@kernel.org,
-        naohiro.aota@wdc.com, jth@kernel.org, ast@kernel.org,
-        daniel@iogearbox.net, andrii@kernel.org, martin.lau@linux.dev,
-        song@kernel.org, yhs@fb.com, john.fastabend@gmail.com,
-        kpsingh@kernel.org, sdf@google.com, haoluo@google.com,
-        jolsa@kernel.org, hughd@google.com, akpm@linux-foundation.org,
-        davem@davemloft.net, edumazet@google.com, kuba@kernel.org,
-        pabeni@redhat.com, john.johansen@canonical.com,
-        paul@paul-moore.com, jmorris@namei.org, serge@hallyn.com,
-        stephen.smalley.work@gmail.com, eparis@parisplace.org,
-        jgross@suse.com, stern@rowland.harvard.edu, lrh2000@pku.edu.cn,
-        sebastian.reichel@collabora.com, wsa+renesas@sang-engineering.com,
-        quic_ugoswami@quicinc.com, quic_linyyuan@quicinc.com,
-        john@keeping.me.uk, error27@gmail.com, quic_uaggarwa@quicinc.com,
-        hayama@lineo.co.jp, jomajm@gmail.com, axboe@kernel.dk,
-        dhavale@google.com, dchinner@redhat.com, hannes@cmpxchg.org,
-        zhangpeng362@huawei.com, slava@dubeyko.com, gargaditya08@live.com,
-        penguin-kernel@I-love.SAKURA.ne.jp, yifeliu@cs.stonybrook.edu,
-        madkar@cs.stonybrook.edu, ezk@cs.stonybrook.edu,
-        yuzhe@nfschina.com, willy@infradead.org, okanatov@gmail.com,
-        jeffxu@chromium.org, linux@treblig.org, mirimmad17@gmail.com,
-        yijiangshan@kylinos.cn, yang.yang29@zte.com.cn,
-        xu.xin16@zte.com.cn, chengzhihao1@huawei.com, shr@devkernel.io,
-        Liam.Howlett@Oracle.com, adobriyan@gmail.com,
-        chi.minghao@zte.com.cn, roberto.sassu@huawei.com,
-        linuszeng@tencent.com, bvanassche@acm.org, zohar@linux.ibm.com,
-        yi.zhang@huawei.com, trix@redhat.com, fmdefrancesco@gmail.com,
-        ebiggers@google.com, princekumarmaurya06@gmail.com,
-        chenzhongjin@huawei.com, riel@surriel.com,
-        shaozhengchao@huawei.com, jingyuwang_vip@163.com,
-        linuxppc-dev@lists.ozlabs.org, linux-kernel@vger.kernel.org,
-        linux-s390@vger.kernel.org, linux-rdma@vger.kernel.org,
-        linux-usb@vger.kernel.org, v9fs@lists.linux.dev,
-        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-        autofs@vger.kernel.org, linux-mm@kvack.org,
-        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        codalist@coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
-        linux-efi@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-um@lists.infradead.org,
-        linux-mtd@lists.infradead.org,
-        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
-        linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        ntfs3@lists.linux.dev, ocfs2-devel@lists.linux.dev,
-        linux-karma-devel@lists.sourceforge.net, devel@lists.orangefs.org,
-        linux-unionfs@vger.kernel.org, linux-hardening@vger.kernel.org,
-        reiserfs-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org,
-        linux-trace-kernel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        bpf@vger.kernel.org, netdev@vger.kernel.org,
-        apparmor@lists.ubuntu.com, linux-security-module@vger.kernel.org,
-        selinux@vger.kernel.org
+X-Proofpoint-UnRewURL: 0 URL was un-rewritten
+MIME-Version: 1.0
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.267,Aquarius:18.0.957,Hydra:6.0.601,FMLib:17.11.176.26
+ definitions=2023-09-05_08,2023-09-05_01,2023-05-22_02
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 spamscore=0 adultscore=0
+ impostorscore=0 malwarescore=0 mlxscore=0 mlxlogscore=999 bulkscore=0
+ suspectscore=0 clxscore=1015 phishscore=0 priorityscore=1501
+ lowpriorityscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2308100000 definitions=main-2309050094
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello:
+Hello all!
 
-This series was applied to jaegeuk/f2fs.git (dev)
-by Christian Brauner <brauner@kernel.org>:
+This patch changes the linear searching in CR_GOAL_LEN_SLOW to use an array of
+lists based on the order of requested length. The list array itself holds one
+list for each possible order of free blocks in a block group.
 
-On Wed,  5 Jul 2023 14:58:09 -0400 you wrote:
-> v2:
-> - prepend patches to add missing ctime updates
-> - add simple_rename_timestamp helper function
-> - rename ctime accessor functions as inode_get_ctime/inode_set_ctime_*
-> - drop individual inode_ctime_set_{sec,nsec} helpers
-> 
-> I've been working on a patchset to change how the inode->i_ctime is
-> accessed in order to give us conditional, high-res timestamps for the
-> ctime and mtime. struct timespec64 has unused bits in it that we can use
-> to implement this. In order to do that however, we need to wrap all
-> accesses of inode->i_ctime to ensure that bits used as flags are
-> appropriately handled.
-> 
-> [...]
+While running some performance tests on my setup, I noticed that although the
+groups we were considering before finding a good group in CR_GOAL_LEN_SLOW did
+improve however there was not much improvement (or regression) in performance
+as such, which I believe could be partly because my test disk was not
+big enough to highlight the issues of linear traversal in
+CR_GOAL_LEN_SLOW.  Unfortunately, I currently don't have a disk that
+might be big enough for this however I think theoretically we should see
+improvement when we have a very large disk and most of the BGs are near
+full. Suggestions on alternate ways to test this or help in getting some
+performance numbers is welcome.
 
-Here is the summary with links:
-  - [f2fs-dev,v2,07/92] fs: add ctime accessors infrastructure
-    https://git.kernel.org/jaegeuk/f2fs/c/9b6304c1d537
-  - [f2fs-dev,v2,08/92] fs: new helper: simple_rename_timestamp
-    https://git.kernel.org/jaegeuk/f2fs/c/0c4767923ed6
-  - [f2fs-dev,v2,92/92] fs: rename i_ctime field to __i_ctime
-    https://git.kernel.org/jaegeuk/f2fs/c/13bc24457850
+That being said, I do believe that other than performance, having such a design
+in CR_GOAL_LEN_SLOW is beneficial because:
 
-You are awesome, thank you!
+1. We'll be able to select a BG whose free block order matches our goal length
+and hence we won't be filling up bigger holes for small requests. This can
+improve fragmentation in the longer run.
+
+2. We'll have more control in what block groups we want to allocate from,
+making CR_GOAL_LEN_SLOW more flexible. For example, the ongoing discussions
+around introducing new types of BGs marked w/ IOPS flag [1]  which we only want
+to use for metadata allocation. With the current design of linear search, we'll
+have to check for this flag everytime and skip the BG if we have a data
+allocation.  However, with the proposed design, we can easily set up our
+freelist to ignore IOPS BGs, which is much more inline with how that patch
+handles other criterias.
+
+Now, with this patch, we'll no longer look for BGs linearly and hence this has a
+chance of increasing the spread of allocation however I think that shouldn't be
+a problem since we still have the MB_DEFAULT_LINEAR_LIMIT for rotational devices
+combined with Jan's (merged) patchset that fixed several issues related to
+allocation spread [2].
+
+This seems to pass quick xfstests and several iterations for the generic/269
+test that stresses the mballoc code. However, there's still some todos in the
+patchset eg more testing, refactoring code, bug hunting etc. I wanted to
+get the RFC out to check what the community feels about this and for any
+suggestions and ideas.
+
+Thanks!
+
+[1] https://lore.kernel.org/linux-ext4/OS3P286MB056789DF4EBAA7363A4346B5AF06A@OS3P286MB0567.JPNP286.PROD.OUTLOOK.COM/
+[2] https://lore.kernel.org/all/20220908091301.147-1-jack@suse.cz/
+
+Ojaswin Mujoo (1):
+  ext4: Replace linear search with array of lists in CR_GOAL_LEN_SLOW
+
+ fs/ext4/ext4.h    |  25 +++++++--
+ fs/ext4/mballoc.c | 134 ++++++++++++++++++++++++++++++++++++++++++++--
+ fs/ext4/mballoc.h |   5 ++
+ 3 files changed, 156 insertions(+), 8 deletions(-)
+
 -- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/patchwork/pwbot.html
-
+2.31.1
 
