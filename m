@@ -2,137 +2,108 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A57AFCA0FE2
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Sep 2023 15:58:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2291DCA0FFE
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Sep 2023 15:58:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230044AbjIEP6p (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 5 Sep 2023 11:58:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49460 "EHLO
+        id S230096AbjIEP6q (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 5 Sep 2023 11:58:46 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58352 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1354364AbjIELBR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Sep 2023 07:01:17 -0400
-Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D71381AB;
-        Tue,  5 Sep 2023 04:01:13 -0700 (PDT)
-Received: from pps.filterd (m0353725.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 385Ad8lr009106;
-        Tue, 5 Sep 2023 11:01:09 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
- : date : message-id : content-transfer-encoding : mime-version; s=pp1;
- bh=9toUWMnBTPzr30H7hB+mEnlmhwveyOLT5sLs6DzuLeo=;
- b=T+UhntOhkUzkiYjpA8VSB699dd+/A36IfnRgrXS8qbXQOdEO3u5jXIgrI5YcEDQ8DVNC
- 5kazg3qlfXyRjU/WcyWp/lobqb7o0wL5Mv4CAhYqGaNkLyjSq20bzn+mScZG6M4Vhep+
- 38eFcRFSr30XMEnPwytxJrdPcOZ3Sd2UL0DJ+gWYdfEGfyRYlYkup0Lf9YgS7nl9JbEb
- vL6dTMOde2BmVOpldBHaG0kAugvp373GEQiVALRxBWNC8aClI2CZQUTFMSz++0ScUQdm
- jAh487VUtkmjqOH3UaklK7raPubef5YTrTpcNPGvXXCLfIEP4ZAISsTMcqyMat+h2PMJ ag== 
-Received: from ppma12.dal12v.mail.ibm.com (dc.9e.1632.ip4.static.sl-reverse.com [50.22.158.220])
-        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3sx0aqvh3b-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 05 Sep 2023 11:01:09 +0000
-Received: from pps.filterd (ppma12.dal12v.mail.ibm.com [127.0.0.1])
-        by ppma12.dal12v.mail.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 38596Psw001615;
-        Tue, 5 Sep 2023 11:01:08 GMT
-Received: from smtprelay02.fra02v.mail.ibm.com ([9.218.2.226])
-        by ppma12.dal12v.mail.ibm.com (PPS) with ESMTPS id 3svfcsjbn1-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 05 Sep 2023 11:01:08 +0000
-Received: from smtpav03.fra02v.mail.ibm.com (smtpav03.fra02v.mail.ibm.com [10.20.54.102])
-        by smtprelay02.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 385B163s23265792
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 5 Sep 2023 11:01:06 GMT
-Received: from smtpav03.fra02v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 7A96F20040;
-        Tue,  5 Sep 2023 11:01:06 +0000 (GMT)
-Received: from smtpav03.fra02v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 41FD720043;
-        Tue,  5 Sep 2023 11:01:05 +0000 (GMT)
-Received: from li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.in.ibm.com (unknown [9.109.253.169])
-        by smtpav03.fra02v.mail.ibm.com (Postfix) with ESMTP;
-        Tue,  5 Sep 2023 11:01:05 +0000 (GMT)
-From:   Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To:     linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-Cc:     Ritesh Harjani <riteshh@linux.ibm.com>,
-        linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>
-Subject: [RFC 0/1] ext4: Replace linear search with array of lists in CR_GOAL_LEN_SLOW
-Date:   Tue,  5 Sep 2023 16:31:03 +0530
-Message-Id: <cover.1693911548.git.ojaswin@linux.ibm.com>
-X-Mailer: git-send-email 2.31.1
-X-TM-AS-GCONF: 00
-X-Proofpoint-GUID: L--kFvG2LdAobeduF2Rmo56y8h3q0heM
-X-Proofpoint-ORIG-GUID: L--kFvG2LdAobeduF2Rmo56y8h3q0heM
-Content-Transfer-Encoding: 8bit
-X-Proofpoint-UnRewURL: 0 URL was un-rewritten
+        with ESMTP id S242972AbjIEAdr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Sep 2023 20:33:47 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8277A197;
+        Mon,  4 Sep 2023 17:33:43 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 1BF08612B4;
+        Tue,  5 Sep 2023 00:33:43 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 43F39C433C7;
+        Tue,  5 Sep 2023 00:33:42 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1693874022;
+        bh=JUO7xE/c+1mjaLvxjmNdDZXOHT1tOz7iofriQG5oJNw=;
+        h=From:To:Cc:Subject:Date:From;
+        b=c/3Fo3AyhEldHIMOuXzoXgBkuXy6FNQV1zWaV1EXbsNHqgJEkqxqhz6A+uwueu6Sg
+         9nnKKCU864zD1JUxT7xuR+3YVskJVwJx2Jyqe7j6jWMlfWbbIcKkKERT2VL6MUV3Gt
+         1t0EbW2ta+NI78z/BBN3aKgjmhMjuhGwZpjdU6ALxK7czlyMo/hxN2LoMH7BvcZOmL
+         aUqEO9IpWNhXyr1fmbth13UKikUetvpyg5kMAdevcYtZs3yMOh64mNO6qcgZl+j2WI
+         B3X5mpPmIdb9o+wIh0NP/LjeU8LoWHITSDOSSwWqpyViCMUJWS4K7ea7urzn+NCTuw
+         ji+rFVGK+8kAg==
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Jan Kara <jack@suse.com>, linux-fscrypt@vger.kernel.org
+Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, stable@vger.kernel.org
+Subject: [PATCH] quota: explicitly forbid quota files from being encrypted
+Date:   Mon,  4 Sep 2023 17:32:27 -0700
+Message-ID: <20230905003227.326998-1-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.42.0
 MIME-Version: 1.0
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.267,Aquarius:18.0.957,Hydra:6.0.601,FMLib:17.11.176.26
- definitions=2023-09-05_08,2023-09-05_01,2023-05-22_02
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 spamscore=0 adultscore=0
- impostorscore=0 malwarescore=0 mlxscore=0 mlxlogscore=999 bulkscore=0
- suspectscore=0 clxscore=1015 phishscore=0 priorityscore=1501
- lowpriorityscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2308100000 definitions=main-2309050094
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello all!
+From: Eric Biggers <ebiggers@google.com>
 
-This patch changes the linear searching in CR_GOAL_LEN_SLOW to use an array of
-lists based on the order of requested length. The list array itself holds one
-list for each possible order of free blocks in a block group.
+Since commit d7e7b9af104c ("fscrypt: stop using keyrings subsystem for
+fscrypt_master_key"), xfstest generic/270 causes a WARNING when run on
+f2fs with test_dummy_encryption in the mount options:
 
-While running some performance tests on my setup, I noticed that although the
-groups we were considering before finding a good group in CR_GOAL_LEN_SLOW did
-improve however there was not much improvement (or regression) in performance
-as such, which I believe could be partly because my test disk was not
-big enough to highlight the issues of linear traversal in
-CR_GOAL_LEN_SLOW.  Unfortunately, I currently don't have a disk that
-might be big enough for this however I think theoretically we should see
-improvement when we have a very large disk and most of the BGs are near
-full. Suggestions on alternate ways to test this or help in getting some
-performance numbers is welcome.
+$ kvm-xfstests -c f2fs/encrypt generic/270
+[...]
+WARNING: CPU: 1 PID: 2453 at fs/crypto/keyring.c:240 fscrypt_destroy_keyring+0x1f5/0x260
 
-That being said, I do believe that other than performance, having such a design
-in CR_GOAL_LEN_SLOW is beneficial because:
+The cause of the WARNING is that not all encrypted inodes have been
+evicted before fscrypt_destroy_keyring() is called, which violates an
+assumption.  This happens because the test uses an external quota file,
+which gets automatically encrypted due to test_dummy_encryption.
 
-1. We'll be able to select a BG whose free block order matches our goal length
-and hence we won't be filling up bigger holes for small requests. This can
-improve fragmentation in the longer run.
+Encryption of quota files has never really been supported.  On ext4,
+ext4_quota_read() does not decrypt the data, so encrypted quota files
+are always considered invalid on ext4.  On f2fs, f2fs_quota_read() uses
+the pagecache, so trying to use an encrypted quota file gets farther,
+resulting in the issue described above being possible.  But this was
+never intended to be possible, and there is no use case for it.
 
-2. We'll have more control in what block groups we want to allocate from,
-making CR_GOAL_LEN_SLOW more flexible. For example, the ongoing discussions
-around introducing new types of BGs marked w/ IOPS flag [1]  which we only want
-to use for metadata allocation. With the current design of linear search, we'll
-have to check for this flag everytime and skip the BG if we have a data
-allocation.  However, with the proposed design, we can easily set up our
-freelist to ignore IOPS BGs, which is much more inline with how that patch
-handles other criterias.
+Therefore, make the quota support layer explicitly reject using
+IS_ENCRYPTED inodes when quotaon is attempted.
 
-Now, with this patch, we'll no longer look for BGs linearly and hence this has a
-chance of increasing the spread of allocation however I think that shouldn't be
-a problem since we still have the MB_DEFAULT_LINEAR_LIMIT for rotational devices
-combined with Jan's (merged) patchset that fixed several issues related to
-allocation spread [2].
+Cc: stable@vger.kernel.org
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/quota/dquot.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
-This seems to pass quick xfstests and several iterations for the generic/269
-test that stresses the mballoc code. However, there's still some todos in the
-patchset eg more testing, refactoring code, bug hunting etc. I wanted to
-get the RFC out to check what the community feels about this and for any
-suggestions and ideas.
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index 9e72bfe8bbad9..7e268cd2727cc 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -2339,6 +2339,20 @@ static int vfs_setup_quota_inode(struct inode *inode, int type)
+ 	if (sb_has_quota_loaded(sb, type))
+ 		return -EBUSY;
+ 
++	/*
++	 * Quota files should never be encrypted.  They should be thought of as
++	 * filesystem metadata, not user data.  New-style internal quota files
++	 * cannot be encrypted by users anyway, but old-style external quota
++	 * files could potentially be incorrectly created in an encrypted
++	 * directory, hence this explicit check.  Some reasons why encrypted
++	 * quota files don't work include: (1) some filesystems that support
++	 * encryption don't handle it in their quota_read and quota_write, and
++	 * (2) cleaning up encrypted quota files at unmount would need special
++	 * consideration, as quota files are cleaned up later than user files.
++	 */
++	if (IS_ENCRYPTED(inode))
++		return -EINVAL;
++
+ 	dqopt->files[type] = igrab(inode);
+ 	if (!dqopt->files[type])
+ 		return -EIO;
 
-Thanks!
-
-[1] https://lore.kernel.org/linux-ext4/OS3P286MB056789DF4EBAA7363A4346B5AF06A@OS3P286MB0567.JPNP286.PROD.OUTLOOK.COM/
-[2] https://lore.kernel.org/all/20220908091301.147-1-jack@suse.cz/
-
-Ojaswin Mujoo (1):
-  ext4: Replace linear search with array of lists in CR_GOAL_LEN_SLOW
-
- fs/ext4/ext4.h    |  25 +++++++--
- fs/ext4/mballoc.c | 134 ++++++++++++++++++++++++++++++++++++++++++++--
- fs/ext4/mballoc.h |   5 ++
- 3 files changed, 156 insertions(+), 8 deletions(-)
-
+base-commit: 708283abf896dd4853e673cc8cba70acaf9bf4ea
 -- 
-2.31.1
+2.42.0
 
