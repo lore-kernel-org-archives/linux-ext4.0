@@ -2,215 +2,157 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 749E0CA0FFC
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Sep 2023 15:58:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 06B31C83F2C
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Sep 2023 15:58:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230451AbjIEP6z (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 5 Sep 2023 11:58:55 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49012 "EHLO
+        id S230525AbjIEP65 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 5 Sep 2023 11:58:57 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48358 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1354739AbjIEN4f (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Sep 2023 09:56:35 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A1C67197;
-        Tue,  5 Sep 2023 06:56:31 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        with ESMTP id S243911AbjIEBEb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Sep 2023 21:04:31 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A72FE1B8;
+        Mon,  4 Sep 2023 18:04:27 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 540EA21AD2;
-        Tue,  5 Sep 2023 13:56:30 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1693922190; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=BnNbZmpVxIuS2BOlgd/tEGnEIeSQoFZTx2iHFPSc4mI=;
-        b=ciKXi3l1Ha5z2PZ2BDnzEiMWhD+C4bNAB+qBTTH3fC+FFngmzNOIMGtiD5PmUMQcx4sBAj
-        kt9TA3xsCecAHmBpO0EB4uuHHLusmW8qbC8SFIBvcxg6JEB15jBYi1CKtqVg8X44+GPxGr
-        1gnl1gOS1MsIaZoalDedSXXUlWOJtLc=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1693922190;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=BnNbZmpVxIuS2BOlgd/tEGnEIeSQoFZTx2iHFPSc4mI=;
-        b=Wn2hz/d85qD1aEc4S49DpeqS6I93TPG1dFMtvinHW2gVqTgZc6e3IfbdCR17bGfFD45QKl
-        fcl03+/4Ple1XNDQ==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 44F8513499;
-        Tue,  5 Sep 2023 13:56:30 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id 8EayEI4z92QcRgAAMHmgww
-        (envelope-from <jack@suse.cz>); Tue, 05 Sep 2023 13:56:30 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id AF555A0776; Tue,  5 Sep 2023 15:56:29 +0200 (CEST)
-Date:   Tue, 5 Sep 2023 15:56:29 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Cc:     linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Ritesh Harjani <riteshh@linux.ibm.com>,
-        linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christian Brauner <brauner@kernel.org>,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 1/1] ext4: Mark buffer new if it is unwritten to avoid
- stale data exposure
-Message-ID: <20230905135629.wdjl2b6s3pzh7idg@quack3>
-References: <cover.1693909504.git.ojaswin@linux.ibm.com>
- <c307579df7e109eb4eedaaf07ebdc98b15d8b7ff.1693909504.git.ojaswin@linux.ibm.com>
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 2DE0560ED6;
+        Tue,  5 Sep 2023 01:04:27 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 63FBEC433CA;
+        Tue,  5 Sep 2023 01:04:26 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1693875866;
+        bh=G/v2LTjl9mO7BgSolxUEpe0QgWSe5wHmD/t2lQSPLFs=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=eAaa1vgqTwUBhkcf3bq5obFu3WlI0xHPpHTAW5xZp/ieUWxjrUb+G05lbBkU/21DZ
+         vOnDduL44PNOgPH2hryqSPdljyAIAMxxDkQL0bZHXTePAgOKQydVyn6ssf83/Gv680
+         fV8gHX6wLtXhDQ0bcIzAErmNy/CR69OHK+4WCbvDSYCxyCVMPmbhAGH50lSejpSxQA
+         3njqXdS1nnLX0JlfvpA0b7R/x1DUqh80GnNfLFotCoMYdqRzJxSJkWJQS6gSR5n8Bj
+         h4uyuWJETlxxYGANT2OtR2oNEWie7Ht2luUv3KhYRubleqbhPvdkRTiMD+q/A8YuFg
+         cFuoP2ZcO3Qmg==
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-fscrypt@vger.kernel.org
+Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-btrfs@vger.kernel.org
+Subject: [PATCH 1/5] fscrypt: make it extra clear that key_prefix is deprecated
+Date:   Mon,  4 Sep 2023 17:58:26 -0700
+Message-ID: <20230905005830.365985-2-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.42.0
+In-Reply-To: <20230905005830.365985-1-ebiggers@kernel.org>
+References: <20230905005830.365985-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <c307579df7e109eb4eedaaf07ebdc98b15d8b7ff.1693909504.git.ojaswin@linux.ibm.com>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue 05-09-23 15:58:01, Ojaswin Mujoo wrote:
-> ** Short Version **
-> 
-> In ext4 with dioread_nolock, we could have a scenario where the bh returned by
-> get_blocks (ext4_get_block_unwritten()) in __block_write_begin_int() has
-> UNWRITTEN and MAPPED flag set. Since such a bh does not have NEW flag set we
-> never zero out the range of bh that is not under write, causing whatever stale
-> data is present in the folio at that time to be written out to disk. To fix this
-> mark the buffer as new in _ext4_get_block(), in case it is unwritten.
-> 
-> -----
-> ** Long Version **
-> 
-> The issue mentioned above was resulting in two different bugs:
-> 
-> 1. On block size < page size case in ext4, generic/269 was reliably
-> failing with dioread_nolock. The state of the write was as follows:
-> 
->   * The write was extending i_size.
->   * The last block of the file was fallocated and had an unwritten extent
->   * We were near ENOSPC and hence we were switching to non-delayed alloc
->     allocation.
-> 
-> In this case, the back trace that triggers the bug is as follows:
-> 
->   ext4_da_write_begin()
->     /* switch to nodelalloc due to low space */
->     ext4_write_begin()
->       ext4_should_dioread_nolock() // true since mount flags still have delalloc
->       __block_write_begin(..., ext4_get_block_unwritten)
->         __block_write_begin_int()
->           for(each buffer head in page) {
->             /* first iteration, this is bh1 which contains i_size */
->             if (!buffer_mapped)
->               get_block() /* returns bh with only UNWRITTEN and MAPPED */
->             /* second iteration, bh2 */
->               if (!buffer_mapped)
->                 get_block() /* we fail here, could be ENOSPC */
->           }
->           if (err)
->             /*
->              * this would zero out all new buffers and mark them uptodate.
->              * Since bh1 was never marked new, we skip it here which causes
->              * the bug later.
->              */
->             folio_zero_new_buffers();
->       /* ext4_wrte_begin() error handling */
->       ext4_truncate_failed_write()
->         ext4_truncate()
->           ext4_block_truncate_page()
->             __ext4_block_zero_page_range()
-	>               if(!buffer_uptodate())
->                 ext4_read_bh_lock()
->                   ext4_read_bh() -> ... ext4_submit_bh_wbc()
->                     BUG_ON(buffer_unwritten(bh)); /* !!! */
-> 
-> 2. The second issue is stale data exposure with page size >= blocksize
-> with dioread_nolock. The conditions needed for it to happen are same as
-> the previous issue ie dioread_nolock around ENOSPC condition. The issue
-> is also similar where in __block_write_begin_int() when we call
-> ext4_get_block_unwritten() on the buffer_head and the underlying extent
-> is unwritten, we get an unwritten and mapped buffer head. Since it is
-> not new, we never zero out the partial range which is not under write,
-> thus writing stale data to disk. This can be easily observed with the
-> following reporducer:
-> 
->  fallocate -l 4k testfile
->  xfs_io -c "pwrite 2k 2k" testfile
->  # hexdump output will have stale data in from byte 0 to 2k in testfile
->  hexdump -C testfile
-> 
-> NOTE: To trigger this, we need dioread_nolock enabled and write
-> happening via ext4_write_begin(), which is usually used when we have -o
-> nodealloc. Since dioread_nolock is disabled with nodelalloc, the only
-> alternate way to call ext4_write_begin() is to fill make sure dellayed
-> alloc switches to nodelalloc (ext4_da_write_begin() calls
-> ext4_write_begin()).  This will usually happen when FS is almost full
-> like the way generic/269 was triggering it in Issue 1 above. This might
-> make this issue harder to replicate hence for reliable replicate, I used
-> the below patch to temporarily allow dioread_nolock with nodelalloc and
-> then mount the disk with -o nodealloc,dioread_nolock. With this you can
-> hit the stale data issue 100% of times:
-> 
-> @@ -508,8 +508,8 @@ static inline int ext4_should_dioread_nolock(struct inode *inode)
->   if (ext4_should_journal_data(inode))
->     return 0;
->   /* temporary fix to prevent generic/422 test failures */
-> - if (!test_opt(inode->i_sb, DELALLOC))
-> -   return 0;
-> + // if (!test_opt(inode->i_sb, DELALLOC))
-> + //  return 0;
->   return 1;
->  }
-> 
-> -------
-> 
-> After applying this patch to mark buffer as NEW, both the above issues are
-> fixed.
-> 
-> Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+From: Eric Biggers <ebiggers@google.com>
 
-Good catch! But I'm wondering whether this is really the right fix. For
-example in ext4_block_truncate_page() shouldn't we rather be checking
-whether the buffer isn't unwritten and if yes then bail because there's
-nothing to zero out in the block? That would seem like a more logical
-and robust solution of the first problem to me.
+fscrypt_operations::key_prefix should not be set by any filesystems that
+aren't setting it already.  This is already documented, but apparently
+it's not sufficiently clear, as both ceph and btrfs have tried to set
+it.  Rename the field to 'legacy_key_prefix_for_backcompat' and improve
+the documentation to hopefully make it clearer.
 
-Regarding the second issue I agree that using buffer_new flag makes the
-most sense. But it would make most sense to me to put this special logic
-directly into ext4_get_block_unwritten() because it is really special logic
-when preparing buffered write via unwritten extent (and it relies on
-__block_write_begin_int() logic to interpret buffer_new flag in the right
-way). Putting in _ext4_get_block() seems confusing to me because it raises
-questions like why should we set it for reads? And why not set it already
-in ext4_map_blocks() which is also used by iomap?
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/crypto/keysetup_v1.c |  5 +++--
+ fs/ext4/crypto.c        |  2 +-
+ fs/f2fs/super.c         |  2 +-
+ fs/ubifs/crypto.c       |  2 +-
+ include/linux/fscrypt.h | 14 +++++++++-----
+ 5 files changed, 15 insertions(+), 10 deletions(-)
 
-								Honza
-
-
-> ---
->  fs/ext4/inode.c | 4 ++++
->  1 file changed, 4 insertions(+)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 6c490f05e2ba..a30bfec0b525 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -765,6 +765,10 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
->  	if (ret > 0) {
->  		map_bh(bh, inode->i_sb, map.m_pblk);
->  		ext4_update_bh_state(bh, map.m_flags);
-> +
-> +		if (buffer_unwritten(bh))
-> +			set_buffer_new(bh);
-> +
->  		bh->b_size = inode->i_sb->s_blocksize * map.m_len;
->  		ret = 0;
->  	} else if (ret == 0) {
-> -- 
-> 2.31.1
-> 
+diff --git a/fs/crypto/keysetup_v1.c b/fs/crypto/keysetup_v1.c
+index 75dabd9b27f9b..df44d0d2d44ea 100644
+--- a/fs/crypto/keysetup_v1.c
++++ b/fs/crypto/keysetup_v1.c
+@@ -299,6 +299,7 @@ int fscrypt_setup_v1_file_key(struct fscrypt_info *ci, const u8 *raw_master_key)
+ 
+ int fscrypt_setup_v1_file_key_via_subscribed_keyrings(struct fscrypt_info *ci)
+ {
++	const struct super_block *sb = ci->ci_inode->i_sb;
+ 	struct key *key;
+ 	const struct fscrypt_key *payload;
+ 	int err;
+@@ -306,8 +307,8 @@ int fscrypt_setup_v1_file_key_via_subscribed_keyrings(struct fscrypt_info *ci)
+ 	key = find_and_lock_process_key(FSCRYPT_KEY_DESC_PREFIX,
+ 					ci->ci_policy.v1.master_key_descriptor,
+ 					ci->ci_mode->keysize, &payload);
+-	if (key == ERR_PTR(-ENOKEY) && ci->ci_inode->i_sb->s_cop->key_prefix) {
+-		key = find_and_lock_process_key(ci->ci_inode->i_sb->s_cop->key_prefix,
++	if (key == ERR_PTR(-ENOKEY) && sb->s_cop->legacy_key_prefix_for_backcompat) {
++		key = find_and_lock_process_key(sb->s_cop->legacy_key_prefix_for_backcompat,
+ 						ci->ci_policy.v1.master_key_descriptor,
+ 						ci->ci_mode->keysize, &payload);
+ 	}
+diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
+index 453d4da5de520..8cdb7bbc655b0 100644
+--- a/fs/ext4/crypto.c
++++ b/fs/ext4/crypto.c
+@@ -240,7 +240,7 @@ static void ext4_get_ino_and_lblk_bits(struct super_block *sb,
+ }
+ 
+ const struct fscrypt_operations ext4_cryptops = {
+-	.key_prefix		= "ext4:",
++	.legacy_key_prefix_for_backcompat = "ext4:",
+ 	.get_context		= ext4_get_context,
+ 	.set_context		= ext4_set_context,
+ 	.get_dummy_policy	= ext4_get_dummy_policy,
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index a8c8232852bb1..8de799a8bad04 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -3231,7 +3231,7 @@ static struct block_device **f2fs_get_devices(struct super_block *sb,
+ }
+ 
+ static const struct fscrypt_operations f2fs_cryptops = {
+-	.key_prefix		= "f2fs:",
++	.legacy_key_prefix_for_backcompat = "f2fs:",
+ 	.get_context		= f2fs_get_context,
+ 	.set_context		= f2fs_set_context,
+ 	.get_dummy_policy	= f2fs_get_dummy_policy,
+diff --git a/fs/ubifs/crypto.c b/fs/ubifs/crypto.c
+index 3125e76376ee6..fab90f9a8eaff 100644
+--- a/fs/ubifs/crypto.c
++++ b/fs/ubifs/crypto.c
+@@ -89,7 +89,7 @@ int ubifs_decrypt(const struct inode *inode, struct ubifs_data_node *dn,
+ 
+ const struct fscrypt_operations ubifs_crypt_operations = {
+ 	.flags			= FS_CFLG_OWN_PAGES,
+-	.key_prefix		= "ubifs:",
++	.legacy_key_prefix_for_backcompat = "ubifs:",
+ 	.get_context		= ubifs_crypt_get_context,
+ 	.set_context		= ubifs_crypt_set_context,
+ 	.empty_dir		= ubifs_crypt_empty_dir,
+diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
+index c895b12737a19..85574282c7e52 100644
+--- a/include/linux/fscrypt.h
++++ b/include/linux/fscrypt.h
+@@ -73,12 +73,16 @@ struct fscrypt_operations {
+ 	unsigned int flags;
+ 
+ 	/*
+-	 * If set, this is a filesystem-specific key description prefix that
+-	 * will be accepted for "logon" keys for v1 fscrypt policies, in
+-	 * addition to the generic prefix "fscrypt:".  This functionality is
+-	 * deprecated, so new filesystems shouldn't set this field.
++	 * This field exists only for backwards compatibility reasons and should
++	 * only be set by the filesystems that are setting it already.  It
++	 * contains the filesystem-specific key description prefix that is
++	 * accepted for "logon" keys for v1 fscrypt policies, in addition to the
++	 * generic prefix "fscrypt:".  This functionality is deprecated in favor
++	 * of "fscrypt:", which itself is deprecated in favor of the filesystem
++	 * keyring ioctls such as FS_IOC_ADD_ENCRYPTION_KEY.  Filesystems that
++	 * are newly adding fscrypt support should not set this field.
+ 	 */
+-	const char *key_prefix;
++	const char *legacy_key_prefix_for_backcompat;
+ 
+ 	/*
+ 	 * Get the fscrypt context of the given inode.
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.42.0
+
