@@ -2,94 +2,86 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 74EF0EC873D
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A5871EC873F
 	for <linux-ext4@archiver.kernel.org>; Thu,  7 Sep 2023 15:42:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233270AbjIGPl7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 7 Sep 2023 11:41:59 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59588 "EHLO
+        id S229614AbjIGPmC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 7 Sep 2023 11:42:02 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55468 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235108AbjIGPXj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Sep 2023 11:23:39 -0400
-Received: from mail-oa1-f72.google.com (mail-oa1-f72.google.com [209.85.160.72])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 76C0E197
-        for <linux-ext4@vger.kernel.org>; Thu,  7 Sep 2023 08:23:34 -0700 (PDT)
-Received: by mail-oa1-f72.google.com with SMTP id 586e51a60fabf-1cc4d62dd0cso1235486fac.3
-        for <linux-ext4@vger.kernel.org>; Thu, 07 Sep 2023 08:23:34 -0700 (PDT)
+        with ESMTP id S1345344AbjIGPf3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Sep 2023 11:35:29 -0400
+Received: from mail-qv1-xf2d.google.com (mail-qv1-xf2d.google.com [IPv6:2607:f8b0:4864:20::f2d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D6592CF;
+        Thu,  7 Sep 2023 08:35:06 -0700 (PDT)
+Received: by mail-qv1-xf2d.google.com with SMTP id 6a1803df08f44-64a0176b1easo6252116d6.3;
+        Thu, 07 Sep 2023 08:35:06 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20221208; t=1694100900; x=1694705700; darn=vger.kernel.org;
+        h=in-reply-to:subject:cc:to:from:message-id:date:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=urjDqpz6JCoVdXTCwnSCnDwjuGCc92hRjBH5AnvNVH0=;
+        b=mnuwwGz2URgktyAmiN4wYjmBXfLhzd3xWnH+EtMtKbHGEntqjlZYSEXi27G4cTM/o6
+         d2i2eTRAmoS2wLwv1aRON+x1ZLX7AwF2weWMq0lgaBlexW48LJ8eZc75rio2FQkQ/J8G
+         QIc1+/W4kaKtbh2pOGhkHeP2aJayQCYGmJOgqNJhdkGT5Bp8xgq9MpT0KpC1W7SCvrdf
+         5nvfzrEKcsg6LZZfVhisLdDpBDN/o/y99FPgS9nlwD4GqeIYssg/oMDuk5rNpPXr/wWV
+         28Ry4jTR6vJrc0QGMsRlYhML22XOe3uwFdu8kadeeTk8L4OMYDULdbjNBbZMH65FhjqY
+         wxvA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1694100214; x=1694705014;
-        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
+        d=1e100.net; s=20221208; t=1694100900; x=1694705700;
+        h=in-reply-to:subject:cc:to:from:message-id:date:x-gm-message-state
          :from:to:cc:subject:date:message-id:reply-to;
-        bh=54RnD0/eaUNNcZhsg2FpPlchnXTxP0bbQAOVgGCedQA=;
-        b=XdPKVHrJANL3Q0fyK3hLKSdPPbOHYJqB5qpHjn3zfK/fqlVU2EQEiMhbd/hBac9RYO
-         VUkUFbjoD2Hm/ydzirCI3KErQFbOOWIyyqMqNafCrGwqDtGxEYIQSiPU6AHAhvheuu51
-         CA9m4+bGGIgkAupZ8XavDPfUXRM6Mtsz5kYhV3qzm1RdiFuHlFkWPd5kGk/f4lefbwEn
-         h5oimJK/ms7HDNM4K3rtZ4OZJzQKQhZctyKJgfsBJFk1A/xIdmr3VdVKdX3zjmCIz6FR
-         PRqRVA0vmwBpl3E9pj9UfkkPPAPGjYXKLzUPgjryd5whybR7aV8YDi0VjCUJq6F5l8aL
-         fgOQ==
-X-Gm-Message-State: AOJu0YxaQCRQheKxEaGuJXDqXdNkYTv9xfaY5RJ5BuSYI0/ptr2OyvAh
-        K8sjStLR46ssln/kaYsOhNlkx6fbYDGslPUl2uIR3s9ik4bG
-X-Google-Smtp-Source: AGHT+IF7nJp7WfGi/JuZ3Xso9VmPQE+Eu5dyn+9jnS4PZNmBcTODjnhA1xHWBvLIq3kc3jCCDDcd8W091tI9+51MmrUx3l8NWUou
-MIME-Version: 1.0
-X-Received: by 2002:a17:90a:c286:b0:263:317f:7ca4 with SMTP id
- f6-20020a17090ac28600b00263317f7ca4mr4271411pjt.9.1694078750527; Thu, 07 Sep
- 2023 02:25:50 -0700 (PDT)
-Date:   Thu, 07 Sep 2023 02:25:50 -0700
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <0000000000002598420604c1721a@google.com>
-Subject: [syzbot] Monthly ext4 report (Sep 2023)
-From:   syzbot <syzbot+list8aecbc15d3f04988df93@syzkaller.appspotmail.com>
-To:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        syzkaller-bugs@googlegroups.com, tytso@mit.edu
-Content-Type: text/plain; charset="UTF-8"
+        bh=urjDqpz6JCoVdXTCwnSCnDwjuGCc92hRjBH5AnvNVH0=;
+        b=IryToAciffmRNBFrfrBvu2Cb4yhUNLTytHQ1YMceSScJFc/4CJOSxuPxSTWkranUCk
+         Ioil0WvtJqFmQC3jt3S/jtpnukZr6gPgzEIpU29eFnPH6v/AAtsaA+hVdVcK0yiSldlv
+         IxsUKcELAhBHSywkBJTQYMxv3IOfQT8c9G67YO1bwFZM4uOvs+ceBdBP5GwpAbbdcVM0
+         c3x/pN8LUxywC8SIWt/GNSxeW169wXRlYIA8txmZuzvAaWONtkShwcIC2hzs3z/zSLLe
+         mD8yxJYopq6vZA+uN5i+Lx6OEnowIQpYwC+oMgNf8h4wsUpcqNdErXn2vXMB9IcjTGLt
+         SQ1g==
+X-Gm-Message-State: AOJu0Yycy89D9C8Ctll9s+APqfkGxPIPwOdP1vvDkcHv1SbC2F0r5Gjb
+        txWZI3eZYUkS5Jl1mfazgidQHlYQcdg=
+X-Google-Smtp-Source: AGHT+IERPfSLD6z/hrsGzfaFdF27geuZZvH21GXJbPEkTHeARJYKwphV4IEmCtpatJ5OII53dYfvZQ==
+X-Received: by 2002:a17:902:b490:b0:1c1:e52e:49e3 with SMTP id y16-20020a170902b49000b001c1e52e49e3mr15980676plr.36.1694098790523;
+        Thu, 07 Sep 2023 07:59:50 -0700 (PDT)
+Received: from dw-tp ([49.207.223.191])
+        by smtp.gmail.com with ESMTPSA id n11-20020a170902e54b00b001ba066c589dsm12850300plf.137.2023.09.07.07.59.47
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 07 Sep 2023 07:59:49 -0700 (PDT)
+Date:   Thu, 07 Sep 2023 20:29:45 +0530
+Message-Id: <87o7ie2fmm.fsf@doe.com>
+From:   Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+To:     Matthew Wilcox <willy@infradead.org>
+Cc:     Theodore Ts'o <tytso@mit.edu>, Zorro Lang <zlang@kernel.org>,
+        linux-ext4@vger.kernel.org, fstests@vger.kernel.org,
+        regressions@lists.linux.dev,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>
+Subject: Re: [fstests generic/388, 455, 475, 482 ...] Ext4 journal recovery test fails
+In-Reply-To: <ZPnbHhUDkmUQ5906@casper.infradead.org>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello ext4 maintainers/developers,
+Matthew Wilcox <willy@infradead.org> writes:
 
-This is a 31-day syzbot report for the ext4 subsystem.
-All related reports/information can be found at:
-https://syzkaller.appspot.com/upstream/s/ext4
+> On Thu, Sep 07, 2023 at 07:05:38PM +0530, Ritesh Harjani wrote:
+>> Thanks Matthew for proposing the final changes using folio.
+>> (there were just some minor change required for fs/reiserfs/ for unused variables)
+>> Pasting the final patch below (you as the author with my Signed-off-by &
+>> Tested-by), which I have tested it on my system with "ext4/1k -g auto"
+>
+> I'd rather split that patch up a bit -- I don't think the reiserfs
+> part fixes any actual problem.  I've pushed out
+> https://git.infradead.org/users/willy/pagecache.git/shortlog/refs/heads/bh-fixes
+>
+> or git clone git://git.infradead.org/users/willy/pagecache.git
+>
+> I credited you as the author on the second two since I just tidied up
+> your proposed fixes.
+>
+> I've also checked ocfs2 as the other user of JBD2 and I don't see any
+> problems there.
 
-During the period, 3 new issues were detected and 2 were fixed.
-In total, 40 issues are still open and 118 have been fixed so far.
+Thanks Matthew! :) 
 
-Some of the still happening issues:
-
-Ref  Crashes Repro Title
-<1>  2826    Yes   WARNING: locking bug in ext4_move_extents
-                   https://syzkaller.appspot.com/bug?extid=7f4a6f7f7051474e40ad
-<2>  221     Yes   WARNING: locking bug in __ext4_ioctl
-                   https://syzkaller.appspot.com/bug?extid=a537ff48a9cb940d314c
-<3>  138     No    possible deadlock in evict (3)
-                   https://syzkaller.appspot.com/bug?extid=dd426ae4af71f1e74729
-<4>  117     Yes   WARNING: locking bug in ext4_ioctl
-                   https://syzkaller.appspot.com/bug?extid=a3c8e9ac9f9d77240afd
-<5>  73      Yes   INFO: task hung in sync_inodes_sb (5)
-                   https://syzkaller.appspot.com/bug?extid=30476ec1b6dc84471133
-<6>  28      Yes   kernel BUG in ext4_write_inline_data_end
-                   https://syzkaller.appspot.com/bug?extid=198e7455f3a4f38b838a
-<7>  14      No    KASAN: slab-use-after-free Read in check_igot_inode
-                   https://syzkaller.appspot.com/bug?extid=741810aea4ac24243b2f
-<8>  7       Yes   KASAN: slab-use-after-free Read in ext4_convert_inline_data_nolock
-                   https://syzkaller.appspot.com/bug?extid=db6caad9ebd2c8022b41
-<9>  6       Yes   INFO: task hung in ext4_evict_ea_inode
-                   https://syzkaller.appspot.com/bug?extid=38e6635a03c83c76297a
-<10> 6       Yes   KASAN: out-of-bounds Read in ext4_ext_remove_space
-                   https://syzkaller.appspot.com/bug?extid=6e5f2db05775244c73b7
-
----
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
-
-To disable reminders for individual bugs, reply with the following command:
-#syz set <Ref> no-reminders
-
-To change bug's subsystems, reply with:
-#syz set <Ref> subsystems: new-subsystem
-
-You may send multiple commands in a single email message.
+-ritesh 
