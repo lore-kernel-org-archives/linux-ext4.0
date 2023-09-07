@@ -2,260 +2,236 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 533E3EC8726
-	for <linux-ext4@archiver.kernel.org>; Thu,  7 Sep 2023 17:28:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6C2BFEC8726
+	for <linux-ext4@archiver.kernel.org>; Thu,  7 Sep 2023 17:45:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243837AbjIGR2k (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 7 Sep 2023 13:28:40 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57656 "EHLO
+        id S237144AbjIGRpR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 7 Sep 2023 13:45:17 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46732 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242131AbjIGR2i (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Sep 2023 13:28:38 -0400
-Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 86181BC;
-        Thu,  7 Sep 2023 10:28:11 -0700 (PDT)
-Received: from pps.filterd (m0353726.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 3877C0BA008822;
-        Thu, 7 Sep 2023 07:37:11 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=date : from : to : cc :
- subject : message-id : references : mime-version : content-type :
- in-reply-to; s=pp1; bh=6wEW6rUbawVbn6n2wTq18oowgf0dFNp2rdpqNQSG58Q=;
- b=mDGYooDF1wkTeDhxXUtzjvZDYL34lj9xFhAPiGKWuDsxs0lA5UP/5geQEJ1iM3y0L9G1
- gRLwTXOAUiwqmMizSKUHZkGUP3Gghc5TFOlbooc90/GknPK3Vma2/eUEiIMHgieCCwpo
- ttISv69eNu7XJmnNlWJPwKisMDBipWDHt7WgEKmNdksYOPxlTYOYavxcKauBJARx7CPS
- XxSKIxRADaWGsZStmCwGfXP47wJ+D0+eN4xpdoIk7jhHpnTTfeep/E6QhGjEYYGaM80z
- 5giDPcSY9hECjHtF1zbRzML7aN3R3s25qM8c753qhSnSAz+C9Qxg3xZux3ZKrfbE9uie aQ== 
-Received: from ppma12.dal12v.mail.ibm.com (dc.9e.1632.ip4.static.sl-reverse.com [50.22.158.220])
-        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3sy9wx0sda-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 07 Sep 2023 07:37:10 +0000
-Received: from pps.filterd (ppma12.dal12v.mail.ibm.com [127.0.0.1])
-        by ppma12.dal12v.mail.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 387507qp001691;
-        Thu, 7 Sep 2023 07:37:03 GMT
-Received: from smtprelay07.fra02v.mail.ibm.com ([9.218.2.229])
-        by ppma12.dal12v.mail.ibm.com (PPS) with ESMTPS id 3svfct28bt-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 07 Sep 2023 07:37:03 +0000
-Received: from smtpav07.fra02v.mail.ibm.com (smtpav07.fra02v.mail.ibm.com [10.20.54.106])
-        by smtprelay07.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 3877b1lv61735256
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 7 Sep 2023 07:37:01 GMT
-Received: from smtpav07.fra02v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id C48F72004B;
-        Thu,  7 Sep 2023 07:37:01 +0000 (GMT)
-Received: from smtpav07.fra02v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 9C17B20040;
-        Thu,  7 Sep 2023 07:36:59 +0000 (GMT)
-Received: from li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com (unknown [9.43.80.205])
-        by smtpav07.fra02v.mail.ibm.com (Postfix) with ESMTPS;
-        Thu,  7 Sep 2023 07:36:59 +0000 (GMT)
-Date:   Thu, 7 Sep 2023 13:06:56 +0530
-From:   Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To:     Jan Kara <jack@suse.cz>
-Cc:     linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-        Ritesh Harjani <riteshh@linux.ibm.com>,
-        linux-kernel@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christian Brauner <brauner@kernel.org>,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 1/1] ext4: Mark buffer new if it is unwritten to avoid
- stale data exposure
-Message-ID: <ZPl9gAImu85zEbXP@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
-References: <cover.1693909504.git.ojaswin@linux.ibm.com>
- <c307579df7e109eb4eedaaf07ebdc98b15d8b7ff.1693909504.git.ojaswin@linux.ibm.com>
- <20230905135629.wdjl2b6s3pzh7idg@quack3>
+        with ESMTP id S245334AbjIGRpP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Sep 2023 13:45:15 -0400
+Received: from madras.collabora.co.uk (madras.collabora.co.uk [46.235.227.172])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E23CB1FFF;
+        Thu,  7 Sep 2023 10:44:41 -0700 (PDT)
+Received: from [192.168.100.7] (unknown [59.103.216.208])
+        (using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+         key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+        (No client certificate requested)
+        (Authenticated sender: usama.anjum)
+        by madras.collabora.co.uk (Postfix) with ESMTPSA id 6F6DB6607319;
+        Thu,  7 Sep 2023 14:27:07 +0100 (BST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=collabora.com;
+        s=mail; t=1694093230;
+        bh=REs2DNGFiCm5/AVIghq+7/N3ZjJya/IAmP8eQoX2nKs=;
+        h=Date:Cc:Subject:To:References:From:In-Reply-To:From;
+        b=KHmU34lP7AqZpAP0iIorjlZU57FxvSdOaWQklrSO1LvZ6l3wRXJ6lWzIiU7c9+8S5
+         pWcuSU0nB2YyhMMtMZr/LySjem4sHT9XapMmPgRqqvmpjILYrAL1yMl4rQU2twf5IL
+         sDQF4dg+QctGGjTFbXrTaRZ+Lv8kmqW08abEUmMOIic/4sW7SQ/jAsgqTH3VCHxV7g
+         KdAzTsDaQihHG3d5ybiC6uqNAKiej01kEMJxT/cam1VMoi/pTYKZxBIYTn6bPAs6Rw
+         UxVMYcRrPsIqVwfv+ipYrhJVz/TzZ1R6kVZgtW7aeGYKiNx5ObsVGTJgXvTT0r4ZG4
+         MUE1+4lVU+R+g==
+Message-ID: <104766d8-7429-4ba5-8b3b-bbbd0244c6e3@collabora.com>
+Date:   Thu, 7 Sep 2023 18:27:03 +0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20230905135629.wdjl2b6s3pzh7idg@quack3>
-X-TM-AS-GCONF: 00
-X-Proofpoint-ORIG-GUID: ue752K_Y0_dS1vsuqCf4V4Bpo2s4j7Os
-X-Proofpoint-GUID: ue752K_Y0_dS1vsuqCf4V4Bpo2s4j7Os
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.267,Aquarius:18.0.957,Hydra:6.0.601,FMLib:17.11.176.26
- definitions=2023-09-06_12,2023-09-05_01,2023-05-22_02
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 mlxscore=0 impostorscore=0
- lowpriorityscore=0 suspectscore=0 malwarescore=0 phishscore=0 spamscore=0
- priorityscore=1501 adultscore=0 clxscore=1015 mlxlogscore=999 bulkscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2308100000
- definitions=main-2309070065
+User-Agent: Mozilla Thunderbird
+Cc:     Muhammad Usama Anjum <usama.anjum@collabora.com>,
+        linux-fsdevel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [syzbot] [ext4?] KASAN: out-of-bounds Read in
+ ext4_ext_remove_space
+Content-Language: en-US
+To:     syzbot <syzbot+6e5f2db05775244c73b7@syzkaller.appspotmail.com>,
+        adilger.kernel@dilger.ca, Theodore Ts'o <tytso@mit.edu>,
+        Allison Henderson <achender@us.ibm.com>,
+        Alex Tomas <alex@clusterfs.com>
+References: <0000000000001655710600710dd0@google.com>
+ <7965cc78-941f-480f-9222-f5131b1f9191@collabora.com>
+From:   Muhammad Usama Anjum <usama.anjum@collabora.com>
+In-Reply-To: <7965cc78-941f-480f-9222-f5131b1f9191@collabora.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Sep 05, 2023 at 03:56:29PM +0200, Jan Kara wrote:
-> On Tue 05-09-23 15:58:01, Ojaswin Mujoo wrote:
-> > ** Short Version **
-> > 
-> > In ext4 with dioread_nolock, we could have a scenario where the bh returned by
-> > get_blocks (ext4_get_block_unwritten()) in __block_write_begin_int() has
-> > UNWRITTEN and MAPPED flag set. Since such a bh does not have NEW flag set we
-> > never zero out the range of bh that is not under write, causing whatever stale
-> > data is present in the folio at that time to be written out to disk. To fix this
-> > mark the buffer as new in _ext4_get_block(), in case it is unwritten.
-> > 
-> > -----
-> > ** Long Version **
-> > 
-> > The issue mentioned above was resulting in two different bugs:
-> > 
-> > 1. On block size < page size case in ext4, generic/269 was reliably
-> > failing with dioread_nolock. The state of the write was as follows:
-> > 
-> >   * The write was extending i_size.
-> >   * The last block of the file was fallocated and had an unwritten extent
-> >   * We were near ENOSPC and hence we were switching to non-delayed alloc
-> >     allocation.
-> > 
-> > In this case, the back trace that triggers the bug is as follows:
-> > 
-> >   ext4_da_write_begin()
-> >     /* switch to nodelalloc due to low space */
-> >     ext4_write_begin()
-> >       ext4_should_dioread_nolock() // true since mount flags still have delalloc
-> >       __block_write_begin(..., ext4_get_block_unwritten)
-> >         __block_write_begin_int()
-> >           for(each buffer head in page) {
-> >             /* first iteration, this is bh1 which contains i_size */
-> >             if (!buffer_mapped)
-> >               get_block() /* returns bh with only UNWRITTEN and MAPPED */
-> >             /* second iteration, bh2 */
-> >               if (!buffer_mapped)
-> >                 get_block() /* we fail here, could be ENOSPC */
-> >           }
-> >           if (err)
-> >             /*
-> >              * this would zero out all new buffers and mark them uptodate.
-> >              * Since bh1 was never marked new, we skip it here which causes
-> >              * the bug later.
-> >              */
-> >             folio_zero_new_buffers();
-> >       /* ext4_wrte_begin() error handling */
-> >       ext4_truncate_failed_write()
-> >         ext4_truncate()
-> >           ext4_block_truncate_page()
-> >             __ext4_block_zero_page_range()
-> 	>               if(!buffer_uptodate())
-> >                 ext4_read_bh_lock()
-> >                   ext4_read_bh() -> ... ext4_submit_bh_wbc()
-> >                     BUG_ON(buffer_unwritten(bh)); /* !!! */
-> > 
-> > 2. The second issue is stale data exposure with page size >= blocksize
-> > with dioread_nolock. The conditions needed for it to happen are same as
-> > the previous issue ie dioread_nolock around ENOSPC condition. The issue
-> > is also similar where in __block_write_begin_int() when we call
-> > ext4_get_block_unwritten() on the buffer_head and the underlying extent
-> > is unwritten, we get an unwritten and mapped buffer head. Since it is
-> > not new, we never zero out the partial range which is not under write,
-> > thus writing stale data to disk. This can be easily observed with the
-> > following reporducer:
-> > 
-> >  fallocate -l 4k testfile
-> >  xfs_io -c "pwrite 2k 2k" testfile
-> >  # hexdump output will have stale data in from byte 0 to 2k in testfile
-> >  hexdump -C testfile
-> > 
-> > NOTE: To trigger this, we need dioread_nolock enabled and write
-> > happening via ext4_write_begin(), which is usually used when we have -o
-> > nodealloc. Since dioread_nolock is disabled with nodelalloc, the only
-> > alternate way to call ext4_write_begin() is to fill make sure dellayed
-> > alloc switches to nodelalloc (ext4_da_write_begin() calls
-> > ext4_write_begin()).  This will usually happen when FS is almost full
-> > like the way generic/269 was triggering it in Issue 1 above. This might
-> > make this issue harder to replicate hence for reliable replicate, I used
-> > the below patch to temporarily allow dioread_nolock with nodelalloc and
-> > then mount the disk with -o nodealloc,dioread_nolock. With this you can
-> > hit the stale data issue 100% of times:
-> > 
-> > @@ -508,8 +508,8 @@ static inline int ext4_should_dioread_nolock(struct inode *inode)
-> >   if (ext4_should_journal_data(inode))
-> >     return 0;
-> >   /* temporary fix to prevent generic/422 test failures */
-> > - if (!test_opt(inode->i_sb, DELALLOC))
-> > -   return 0;
-> > + // if (!test_opt(inode->i_sb, DELALLOC))
-> > + //  return 0;
-> >   return 1;
-> >  }
-> > 
-> > -------
-> > 
-> > After applying this patch to mark buffer as NEW, both the above issues are
-> > fixed.
-> > 
-> > Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+On 9/7/23 5:56 PM, Muhammad Usama Anjum wrote:
+> On 7/14/23 4:50 PM, syzbot wrote:
+>> Hello,
+>>
+>> syzbot found the following issue on:
+>>
+>> HEAD commit: 06c2afb862f9 Linux 6.5-rc1
+>> git tree: upstream
+>> console output: https://syzkaller.appspot.com/x/log.txt?x=13d550a2a80000
+>> kernel config: https://syzkaller.appspot.com/x/.config?x=29fd3392a08741ef
+>> dashboard link: https://syzkaller.appspot.com/bug?extid=6e5f2db05775244c73b7
+>> compiler: Debian clang version 15.0.7, GNU ld (GNU Binutils for Debian) 2.35.2
+>> syz repro: https://syzkaller.appspot.com/x/repro.syz?x=11fc4702a80000
+>> C reproducer: https://syzkaller.appspot.com/x/repro.c?x=172a98eca80000
+> The last crash on upstream/mainline happened at e6fda526d9db. On the latest
+> mainline 7ba2090ca64ea, there is no crash. I've searched on mailing lists
+Just tested mainline with syzbot, the issue got triggered:
+https://groups.google.com/g/syzkaller-bugs/c/G6zS-LKgDW0/m/wwiAavVlBQAJ
 
-Hi Jan, thanks for the review.
+There must be some race condition which wasn't triggering on mainline for me.
 
+> if some fix has been merged. I've not found anything. The same bug is
+> present on LTS kernels.
 > 
-> Good catch! But I'm wondering whether this is really the right fix. For
-> example in ext4_block_truncate_page() shouldn't we rather be checking
-> whether the buffer isn't unwritten and if yes then bail because there's
-> nothing to zero out in the block? That would seem like a more logical
-> and robust solution of the first problem to me.
-
-Right, I agree. I will look into it and prepare a patch for this in v2.
-
+> In fs/ext4/extents.c:
 > 
-> Regarding the second issue I agree that using buffer_new flag makes the
-> most sense. But it would make most sense to me to put this special logic
-> directly into ext4_get_block_unwritten() because it is really special logic
-> when preparing buffered write via unwritten extent (and it relies on
-> __block_write_begin_int() logic to interpret buffer_new flag in the right
-> way). Putting in _ext4_get_block() seems confusing to me because it raises
-> questions like why should we set it for reads? And why not set it already
-> in ext4_map_blocks() which is also used by iomap?
-
-Originally I had kept it there because it didn't seem to affect any read
-related paths, and marking an unwritten buffer as new for zero'ing out
-seemed like the right thing to do irrespective of which code path we
-were coming from. However, I think its okay to move it
-ext4_get_block_unwritten() it seems to be the only place where we need
-to explicitly mark it as such.
-
-That being said, I also had an alternate solution that marked the map
-flag as NEW in ext4_map_blocks() -> ext4_ext4_map_blocks() ->
-ext4_ext_handle_unwritten_extents(). Do you think it makes more
-sense to handle this issue in ext4 map layer instead of relying on special
-handling of buffer head?
-
-Yesterday I looked into this a bit more and it seems that all the other
-code paths in ext4, except ext4_da_get_block_prep(), rely on
-ext4_map_blocks() setting the NEW flag correctly in map->m_flags
-whenever the buffer might need to be zeroed out (this is true for dio
-write via iomap as well). Now this makes me incline towards fixing the
-issue in ext4_map_blocks layer, which might be better in the longer for
-eg when we eventually move to iomap.
-
-Regards,
-ojaswin
-
+> memmove(ex, ex+1,
+> 	(EXT_LAST_EXTENT(eh) - ex) * sizeof(struct ext4_extent));
 > 
-> 								Honza
+> When crash happens:
+> EXT_LAST_EXTENT(eh) = 0xFFFF888130260000
+> ex = 0xFFFF88813026006C
 > 
+> These are wrong values. EXT_LAST_EXTENT(eh) - ex results in negative value
+> as ex is bigger. The bigger ex is bug in itself. ex is the member of this
+> list with header eh. Any help would be much appreciated.
 > 
-> > ---
-> >  fs/ext4/inode.c | 4 ++++
-> >  1 file changed, 4 insertions(+)
-> > 
-> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > index 6c490f05e2ba..a30bfec0b525 100644
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -765,6 +765,10 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
-> >  	if (ret > 0) {
-> >  		map_bh(bh, inode->i_sb, map.m_pblk);
-> >  		ext4_update_bh_state(bh, map.m_flags);
-> > +
-> > +		if (buffer_unwritten(bh))
-> > +			set_buffer_new(bh);
-> > +
-> >  		bh->b_size = inode->i_sb->s_blocksize * map.m_len;
-> >  		ret = 0;
-> >  	} else if (ret == 0) {
-> > -- 
-> > 2.31.1
-> > 
-> -- 
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
+>>
+>> Downloadable assets:
+>> disk image: https://storage.googleapis.com/syzbot-assets/b66ebf11f3d4/disk-06c2afb8.raw.xz
+>> vmlinux: https://storage.googleapis.com/syzbot-assets/e277ce7d54f6/vmlinux-06c2afb8.xz
+>> kernel image: https://storage.googleapis.com/syzbot-assets/5d0b981e9278/bzImage-06c2afb8.xz
+>> mounted in repro: https://storage.googleapis.com/syzbot-assets/c48fda4748ae/mount_0.gz
+>>
+>> IMPORTANT: if you fix the issue, please add the following tag to the commit:
+>> Reported-by: syzbot+6e5f2db05775244c73b7@syzkaller.appspotmail.com
+>>
+>> EXT4-fs error (device loop0) in ext4_mb_clear_bb:6537: Corrupt filesystem
+>> ==================================================================
+>> BUG: KASAN: out-of-bounds in ext4_ext_rm_leaf fs/ext4/extents.c:2736 [inline]
+>> BUG: KASAN: out-of-bounds in ext4_ext_remove_space+0x2482/0x4d90 fs/ext4/extents.c:2958
+>> Read of size 18446744073709551508 at addr ffff888073aea078 by task syz-executor420/6443
+>>
+>> CPU: 1 PID: 6443 Comm: syz-executor420 Not tainted 6.5.0-rc1-syzkaller #0
+>> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/03/2023
+>> Call Trace:
+>> <TASK>
+>> __dump_stack lib/dump_stack.c:88 [inline]
+>> dump_stack_lvl+0x1e7/0x2d0 lib/dump_stack.c:106
+>> print_address_description mm/kasan/report.c:364 [inline]
+>> print_report+0x163/0x540 mm/kasan/report.c:475
+>> kasan_report+0x175/0x1b0 mm/kasan/report.c:588
+>> kasan_check_range+0x27e/0x290 mm/kasan/generic.c:187
+>> __asan_memmove+0x29/0x70 mm/kasan/shadow.c:94
+>> ext4_ext_rm_leaf fs/ext4/extents.c:2736 [inline]
+>> ext4_ext_remove_space+0x2482/0x4d90 fs/ext4/extents.c:2958
+>> ext4_punch_hole+0x7a0/0xc10 fs/ext4/inode.c:3977
+>> ext4_fallocate+0x311/0x1f90 fs/ext4/extents.c:4706
+>> vfs_fallocate+0x551/0x6b0 fs/open.c:324
+>> do_vfs_ioctl+0x22cb/0x2b30 fs/ioctl.c:849
+>> __do_sys_ioctl fs/ioctl.c:868 [inline]
+>> __se_sys_ioctl+0x81/0x170 fs/ioctl.c:856
+>> do_syscall_x64 arch/x86/entry/common.c:50 [inline]
+>> do_syscall_64+0x41/0xc0 arch/x86/entry/common.c:80
+>> entry_SYSCALL_64_after_hwframe+0x63/0xcd
+>> RIP: 0033:0x7ff03605dce9
+>> Code: 28 00 00 00 75 05 48 83 c4 28 c3 e8 a1 15 00 00 90 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 b8 ff ff ff f7 d8 64 89 01 48
+>> RSP: 002b:00007ff02dc072f8 EFLAGS: 00000246 ORIG_RAX: 0000000000000010
+>> RAX: ffffffffffffffda RBX: 00007ff0360e27c0 RCX: 00007ff03605dce9
+>> RDX: 0000000020000080 RSI: 000000004030582b RDI: 0000000000000004
+>> RBP: 00007ff0360af678 R08: 00007ff02dc07700 R09: 0000000000000000
+>> R10: 00007ff02dc07700 R11: 0000000000000246 R12: 65766f6365726f6e
+>> R13: 0031656c69662f2e R14: 6f6f6c2f7665642f R15: 00007ff0360e27c8
+>> </TASK>
+>>
+>> The buggy address belongs to the physical page:
+>> page:ffffea0001ceba80 refcount:2 mapcount:0 mapping:ffff88801e21cd80 index:0x2b pfn:0x73aea
+>> memcg:ffff888141652000
+>> aops:def_blk_aops ino:700000
+>> flags: 0xfff00000002036(referenced|uptodate|lru|active|private|node=0|zone=1|lastcpupid=0x7ff)
+>> page_type: 0xffffffff()
+>> raw: 00fff00000002036 ffffea0001c164c8 ffffea0001f600c8 ffff88801e21cd80
+>> raw: 000000000000002b ffff8880729c1d98 00000002ffffffff ffff888141652000
+>> page dumped because: kasan: bad access detected
+>> page_owner tracks the page as allocated
+>> page last allocated via order 0, migratetype Movable, gfp_mask 0x148c48(GFP_NOFS|__GFP_NOFAIL|__GFP_COMP|__GFP_HARDWALL|__GFP_MOVABLE), pid 6428, tgid 6426 (syz-executor420), ts 165572616396, free_ts 165556735464
+>> set_page_owner include/linux/page_owner.h:31 [inline]
+>> post_alloc_hook+0x1e6/0x210 mm/page_alloc.c:1570
+>> prep_new_page mm/page_alloc.c:1577 [inline]
+>> get_page_from_freelist+0x31e8/0x3370 mm/page_alloc.c:3221
+>> __alloc_pages+0x255/0x670 mm/page_alloc.c:4477
+>> folio_alloc+0x1e/0x60 mm/mempolicy.c:2289
+>> filemap_alloc_folio+0xde/0x500 mm/filemap.c:979
+>> __filemap_get_folio+0x323/0xa00 mm/filemap.c:1933
+>> grow_dev_page fs/buffer.c:1063 [inline]
+>> grow_buffers fs/buffer.c:1123 [inline]
+>> __getblk_slow fs/buffer.c:1150 [inline]
+>> __getblk_gfp+0x218/0x630 fs/buffer.c:1445
+>> sb_getblk_gfp include/linux/buffer_head.h:376 [inline]
+>> ext4_ext_grow_indepth fs/ext4/extents.c:1334 [inline]
+>> ext4_ext_create_new_leaf fs/ext4/extents.c:1435 [inline]
+>> ext4_ext_insert_extent+0xfe3/0x4e60 fs/ext4/extents.c:2102
+>> ext4_ext_map_blocks+0x1bdc/0x71d0 fs/ext4/extents.c:4306
+>> ext4_map_blocks+0xa2f/0x1cb0 fs/ext4/inode.c:621
+>> _ext4_get_block+0x238/0x6a0 fs/ext4/inode.c:763
+>> ext4_block_write_begin+0x53d/0x1570 fs/ext4/inode.c:1043
+>> ext4_write_begin+0x619/0x10b0
+>> ext4_da_write_begin+0x300/0xa40 fs/ext4/inode.c:2867
+>> generic_perform_write+0x31b/0x630 mm/filemap.c:3923
+>> ext4_buffered_write_iter+0xc6/0x350 fs/ext4/file.c:299
+>> page last free stack trace:
+>> reset_page_owner include/linux/page_owner.h:24 [inline]
+>> free_pages_prepare mm/page_alloc.c:1161 [inline]
+>> free_unref_page_prepare+0x903/0xa30 mm/page_alloc.c:2348
+>> free_unref_page_list+0x596/0x830 mm/page_alloc.c:2489
+>> release_pages+0x2193/0x2470 mm/swap.c:1042
+>> tlb_batch_pages_flush mm/mmu_gather.c:97 [inline]
+>> tlb_flush_mmu_free mm/mmu_gather.c:292 [inline]
+>> tlb_flush_mmu+0x100/0x210 mm/mmu_gather.c:299
+>> tlb_finish_mmu+0xd4/0x1f0 mm/mmu_gather.c:391
+>> unmap_region+0x258/0x2a0 mm/mmap.c:2317
+>> do_vmi_align_munmap+0x135d/0x1630 mm/mmap.c:2556
+>> do_vmi_munmap+0x24d/0x2d0 mm/mmap.c:2623
+>> __vm_munmap+0x230/0x450 mm/mmap.c:2905
+>> __do_sys_munmap mm/mmap.c:2922 [inline]
+>> __se_sys_munmap mm/mmap.c:2919 [inline]
+>> __x64_sys_munmap+0x69/0x80 mm/mmap.c:2919
+>> do_syscall_x64 arch/x86/entry/common.c:50 [inline]
+>> do_syscall_64+0x41/0xc0 arch/x86/entry/common.c:80
+>> entry_SYSCALL_64_after_hwframe+0x63/0xcd
+>>
+>> Memory state around the buggy address:
+>> ffff888073ae9f00: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+>> ffff888073ae9f80: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+>>> ffff888073aea000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+>> ^
+>> ffff888073aea080: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+>> ffff888073aea100: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+>> ==================================================================
+>>
+>>
+>> ---
+>> This report is generated by a bot. It may contain errors.
+>> See https://goo.gl/tpsmEJ for more information about syzbot.
+>> syzbot engineers can be reached at syzkaller@googlegroups.com.
+>>
+>> syzbot will keep track of this issue. See:
+>> https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+>>
+>> If the bug is already fixed, let syzbot know by replying with:
+>> #syz fix: exact-commit-title
+>>
+>> If you want syzbot to run the reproducer, reply with:
+>> #syz test: git://repo/address.git branch-or-commit-hash
+>> If you attach or paste a git patch, syzbot will apply it before testing.
+>>
+>> If you want to change bug's subsystems, reply with:
+>> #syz set subsystems: new-subsystem
+>> (See the list of subsystem names on the web dashboard)
+>>
+>> If the bug is a duplicate of another bug, reply with:
+>> #syz dup: exact-subject-of-another-report
+>>
+>> If you want to undo deduplication, reply with:
+>> #syz undup
+> 
+
+-- 
+BR,
+Muhammad Usama Anjum
