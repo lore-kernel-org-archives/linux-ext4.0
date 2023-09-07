@@ -2,117 +2,109 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B8ACEE14D4
-	for <linux-ext4@archiver.kernel.org>; Thu,  7 Sep 2023 04:12:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D5AABEC8742
+	for <linux-ext4@archiver.kernel.org>; Thu,  7 Sep 2023 15:41:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240078AbjIGEMQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 7 Sep 2023 00:12:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47728 "EHLO
+        id S231587AbjIGPlt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 7 Sep 2023 11:41:49 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57626 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236128AbjIGEMP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Sep 2023 00:12:15 -0400
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A9EFA199F;
-        Wed,  6 Sep 2023 21:12:11 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2592AC433C7;
-        Thu,  7 Sep 2023 04:12:11 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1694059931;
-        bh=p2L0hXlRPRMndQiTAhXGSapDao/Jejkqds1JRecNyMw=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=kYyGCcAk/buIL48VKm9WFGqsAa/jXyI8kcaudUqP28atmub5aIkExAC/C+MBstnFS
-         a745AhoxRHt1aQr7RqxcJvxCb0YY1t/FkndSNsQEeQz+aUAQXhgRYBNCYLOIUH/97A
-         Iq1LFwbyduLmmxmtg7L2W6NXshPlRg2HiwDig8GvHbQ+J7Vm2oqx/M5p06VmyOBZQ7
-         77R1pboRr4ASFygkiPsYkxK75wQkzFCMgl7W0USlb6E4VqU5GprbiIG+9pZP/Wfute
-         6Lqn/BTW/YEcVF4xLQ/PcDPu8E/nqgAqaT8boYi0g/iP5eRG8r2J5/0p8UpWx6Hg8E
-         PsaJbBmZFDy+Q==
-Date:   Wed, 6 Sep 2023 21:12:09 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Joel Granados <j.granados@samsung.com>
-Cc:     fsverity@lists.linux.dev, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-btrfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] fsverity: move sysctl registration out of signature.c
-Message-ID: <20230907041209.GA37146@sol.localdomain>
-References: <20230705212743.42180-1-ebiggers@kernel.org>
- <20230705212743.42180-3-ebiggers@kernel.org>
- <CGME20230906134906eucas1p18f20ec4bd1aa89ce9c8c6495255d442f@eucas1p1.samsung.com>
- <20230906134904.4zbqdldrq2k4rqfn@localhost>
+        with ESMTP id S235970AbjIGPXS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Sep 2023 11:23:18 -0400
+Received: from mail-pj1-x1032.google.com (mail-pj1-x1032.google.com [IPv6:2607:f8b0:4864:20::1032])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 30EFA197;
+        Thu,  7 Sep 2023 08:23:13 -0700 (PDT)
+Received: by mail-pj1-x1032.google.com with SMTP id 98e67ed59e1d1-26f3975ddd4so833304a91.1;
+        Thu, 07 Sep 2023 08:23:13 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20221208; t=1694100192; x=1694704992; darn=vger.kernel.org;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :sender:from:to:cc:subject:date:message-id:reply-to;
+        bh=OZ0CpUOcPuxcuBRABu/k9kg3Q8DjApWrdkW9McQp5wM=;
+        b=p2vudTLuncPRSqqNwbqQ/SsZJgMWJLDsCdiC4qlc9+z27cAoYRrl76lW0ct53nB8uB
+         s0y6ujrhdTwUh8Shcf5KwdOFv/gDYiNEBWCmXWRJ7t5zFB971AD2zq37ZtzLqHhu/Ofq
+         5qNCAmwuBNe7z9mj+UGyARurEJxSZZyqIra0NtPM3jHnA13AyVn1mrQpi/2Z5aBER+ys
+         zCKHX3tvZPUnnjNBJNJB14yBC2MO+3GyW1+9hP/P3ERJBWYqpAD2aS2JtEMA5gtp87iD
+         I5XAb86bbCUC1e4+hUU6B7hueawiRc1CmKIFuarG5zAC7w/7uY0C+CXdPcgpdoo8y2OZ
+         wpWQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1694100192; x=1694704992;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :sender:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=OZ0CpUOcPuxcuBRABu/k9kg3Q8DjApWrdkW9McQp5wM=;
+        b=BiPA9QsY+k2rYB0PQ03VWOhmj7v8Ac9MupD9GeRM+qJ2LJcPtLeS7PvYc6hHur5law
+         IF+N25bzlDr1oJcta4oGleD6N0hM2SreweVLtCAyHHAIM+Z3pp5P9P7cGpfgPb2pzDgo
+         6EU0lp8/IeUicFTV5ohrSDeJk/AvJI2N7YNRPVZqSSis0npeTsk/d+kterqo1iR0Cy2i
+         5OoPQOaYW0HHSv+wFEh7D9sx+hs94znu7nrUBHe0FljBXFlr1Mopi1djokDqNYclUPWN
+         /Wwx72yDjXRucUd/hrAxkcvKqXtF+uJteRfncsWDmLOECPzaX0TYtDRGS+TPmYu642fi
+         jcFA==
+X-Gm-Message-State: AOJu0YysWe+05Lg4A3WwoqQuFWmt9zPIOCdrqoqso5A20ovXTKxCHEGW
+        uabGZqelzjHoLB9nvbv19PNaLUTSwM4=
+X-Google-Smtp-Source: AGHT+IFwNcs9Ljydqg3D8vQKhkC795cu5TrIekXRsrD/qAZOZq6eizQDLVHH9eoXr/ABjeBeoLRMHw==
+X-Received: by 2002:a17:90a:5d0b:b0:273:4944:2eba with SMTP id s11-20020a17090a5d0b00b0027349442ebamr17410965pji.40.1694100192395;
+        Thu, 07 Sep 2023 08:23:12 -0700 (PDT)
+Received: from ?IPV6:2600:1700:e321:62f0:329c:23ff:fee3:9d7c? ([2600:1700:e321:62f0:329c:23ff:fee3:9d7c])
+        by smtp.gmail.com with ESMTPSA id ga18-20020a17090b039200b00262eb0d141esm1611029pjb.28.2023.09.07.08.23.10
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 07 Sep 2023 08:23:11 -0700 (PDT)
+Sender: Guenter Roeck <groeck7@gmail.com>
+Message-ID: <dc4b7b2c-89c0-d16f-43e2-0aec5c9b8e1b@roeck-us.net>
+Date:   Thu, 7 Sep 2023 08:23:09 -0700
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20230906134904.4zbqdldrq2k4rqfn@localhost>
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
+ Thunderbird/102.13.0
+Subject: Re: [PATCH 13/13] ntfs3: free the sbi in ->kill_sb
+Content-Language: en-US
+To:     Christian Brauner <brauner@kernel.org>
+Cc:     Christoph Hellwig <hch@lst.de>, Al Viro <viro@zeniv.linux.org.uk>,
+        Namjae Jeon <linkinjeon@kernel.org>,
+        Sungjong Seo <sj1557.seo@samsung.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        ntfs3@lists.linux.dev, linux-xfs@vger.kernel.org
+References: <20230809220545.1308228-1-hch@lst.de>
+ <20230809220545.1308228-14-hch@lst.de>
+ <56f72849-178a-4cb7-b2e1-b7fc6695a6ef@roeck-us.net>
+ <20230907-lektion-organismus-f223e15828d9@brauner>
+From:   Guenter Roeck <linux@roeck-us.net>
+In-Reply-To: <20230907-lektion-organismus-f223e15828d9@brauner>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Sep 06, 2023 at 03:49:04PM +0200, Joel Granados wrote:
-> On Wed, Jul 05, 2023 at 02:27:43PM -0700, Eric Biggers wrote:
-> > From: Eric Biggers <ebiggers@google.com>
-> > 
-> > Currently the registration of the fsverity sysctls happens in
-> > signature.c, which couples it to CONFIG_FS_VERITY_BUILTIN_SIGNATURES.
-> > 
-> > This makes it hard to add new sysctls unrelated to builtin signatures.
-> > 
-> > Also, some users have started checking whether the directory
-> > /proc/sys/fs/verity exists as a way to tell whether fsverity is
-> > supported.  This isn't the intended method; instead, the existence of
-> > /sys/fs/$fstype/features/verity should be checked, or users should just
-> > try to use the fsverity ioctls.  Regardlesss, it should be made to work
-> > as expected without a dependency on CONFIG_FS_VERITY_BUILTIN_SIGNATURES.
-> > 
-> > Therefore, move the sysctl registration into init.c.  With
-> > CONFIG_FS_VERITY_BUILTIN_SIGNATURES, nothing changes.  Without it, but
-> > with CONFIG_FS_VERITY, an empty list of sysctls is now registered.
-> > 
-> > Signed-off-by: Eric Biggers <ebiggers@google.com>
-> > ---
-> >  fs/verity/fsverity_private.h |  1 +
-> >  fs/verity/init.c             | 32 ++++++++++++++++++++++++++++++++
-> >  fs/verity/signature.c        | 33 +--------------------------------
-> >  3 files changed, 34 insertions(+), 32 deletions(-)
-> > 
-> > diff --git a/fs/verity/fsverity_private.h b/fs/verity/fsverity_private.h
-> > index c5ab9023dd2d3..d071a6e32581e 100644
-> > --- a/fs/verity/fsverity_private.h
-> > +++ b/fs/verity/fsverity_private.h
-> > @@ -123,6 +123,7 @@ void __init fsverity_init_info_cache(void);
-> >  /* signature.c */
-> >  
-> >  #ifdef CONFIG_FS_VERITY_BUILTIN_SIGNATURES
-> > +extern int fsverity_require_signatures;
-> >  int fsverity_verify_signature(const struct fsverity_info *vi,
-> >  			      const u8 *signature, size_t sig_size);
-> >  
-> > diff --git a/fs/verity/init.c b/fs/verity/init.c
-> > index bcd11d63eb1ca..a29f062f6047b 100644
-> > --- a/fs/verity/init.c
-> > +++ b/fs/verity/init.c
-> > @@ -9,6 +9,37 @@
-> >  
-> >  #include <linux/ratelimit.h>
-> >  
-> > +#ifdef CONFIG_SYSCTL
-> > +static struct ctl_table_header *fsverity_sysctl_header;
-> > +
-> > +static struct ctl_table fsverity_sysctl_table[] = {
-> > +#ifdef CONFIG_FS_VERITY_BUILTIN_SIGNATURES
-> > +	{
-> > +		.procname       = "require_signatures",
-> > +		.data           = &fsverity_require_signatures,
-> > +		.maxlen         = sizeof(int),
-> > +		.mode           = 0644,
-> > +		.proc_handler   = proc_dointvec_minmax,
-> > +		.extra1         = SYSCTL_ZERO,
-> > +		.extra2         = SYSCTL_ONE,
-> > +	},
-> > +#endif
-> > +	{ }
-> > +};
-> > +
-> Just to double check: When CONFIG_FS_VERITY_BUILTIN_SIGNATURES is not
-> defined then you expect an empty directory under "fs/verity". right?
+On 9/7/23 06:54, Christian Brauner wrote:
+> On Thu, Sep 07, 2023 at 06:05:40AM -0700, Guenter Roeck wrote:
+>> On Wed, Aug 09, 2023 at 03:05:45PM -0700, Christoph Hellwig wrote:
+>>> As a rule of thumb everything allocated to the fs_context and moved into
+>>> the super_block should be freed by ->kill_sb so that the teardown
+>>> handling doesn't need to be duplicated between the fill_super error
+>>> path and put_super.  Implement an ntfs3-specific kill_sb method to do
+>>> that.
+>>>
+>>> Signed-off-by: Christoph Hellwig <hch@lst.de>
+>>> Reviewed-by: Christian Brauner <brauner@kernel.org>
+>>
+>> This patch results in:
+> 
+> The appended patch should fix this. Are you able to test it?
+> I will as well.
 
-Yes, that's correct.
+Yes, this patch restores the previous behavior (no more backtrace or crash).
 
-- Eric
+Tested-by: Guenter Roeck <linux@roeck-us.net>
+
+I say "restore previous behavior" because my simple "recursive copy; partially
+remove copied files" test still fails. That problem apparently existed since
+ntfs3 has been introduced (I see it as far back as v5.15).
+
+Thanks,
+Guenter
+
