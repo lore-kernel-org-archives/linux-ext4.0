@@ -2,45 +2,45 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1306DEEB56B
-	for <linux-ext4@archiver.kernel.org>; Fri,  8 Sep 2023 19:38:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 05ECBEEB566
+	for <linux-ext4@archiver.kernel.org>; Fri,  8 Sep 2023 19:39:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233884AbjIHTih (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 8 Sep 2023 15:38:37 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39510 "EHLO
+        id S241479AbjIHTjI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 8 Sep 2023 15:39:08 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42226 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235311AbjIHTiN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Sep 2023 15:38:13 -0400
+        with ESMTP id S237553AbjIHTiw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Sep 2023 15:38:52 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 89CB419C;
-        Fri,  8 Sep 2023 12:37:49 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 268F4C116B2;
-        Fri,  8 Sep 2023 19:36:39 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 10AE61FFF;
+        Fri,  8 Sep 2023 12:38:18 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 62765C116AA;
+        Fri,  8 Sep 2023 19:37:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1694201799;
-        bh=BKko6t0Gp5lfbnkQjFzPwy/lDdNXxhszLpjXgkWVJPI=;
+        s=k20201202; t=1694201822;
+        bh=YYapb1OHBBNErDKXvjx0ajU9+gbVJbCE6tiNSdzw2uU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=b8p/5IgmOw2A0IU9tXmqaApRzcA1QcUBRXmNmHj/A4xynU/SWBd35LkXPiEuzPTWS
-         bOoJlKRbzSHZhcsrppD/5UaOMm3bYtIs3gYdvuEJsb54FjEl/zkRZV3jQp9WHgWfTW
-         14bDqNx2sY8sUM2jrLLWDcp3RtbkBK9E/Rig2dzgyEspOLeJ+B4e5oOTbLsogYZgPw
-         PCJIFjLotDe+TmdhptSpZOtEFMBcl0DnPuL2hcsh0xw5Os+I6RWM8HFgspUw8fa6kV
-         HDGbI1XhpgpZdzfMeNtAKD0MLrFAMzMhPPs6lw3LtCj1ehRR1+0kUH26I+1WPtW8Yz
-         Os0DSC+EeMSDQ==
+        b=mehsvgOTc2y9ntTFrmT1Rfm+H8U6A706a8vJ+xPY/nMjq1ZL0HQoLOoulfbeVGS1t
+         3T5Q2GCwDpDSMDpHPrHldMbd2OjCx9d6MxSeP+Ede5KQXyCpJDdswAWhM2IpzMPUjs
+         zSGTGf1NhEscuQ8zj63lTn953rKXxquKCqK8dns2PBer9x0TeZcQebyhB+xgcf37DW
+         RmE7Pd5ayaZCWXbiUKn0fvnR8T3awCsWY1jOEHZCb0dtnRbmzX7DM16cJ27WdDoUkd
+         dB023SRiYpCAANPqtrpIYLTQHnNepbl9l5Q2bCaEQ0goQQ0ivb8YKsPlKZb70+jfJA
+         7uhBmtD4n+waw==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Georg Ottinger <g.ottinger@gmx.at>, Jan Kara <jack@suse.cz>,
         Sasha Levin <sashal@kernel.org>, jack@suse.com,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.10 9/9] ext2: fix datatype of block number in ext2_xattr_set2()
-Date:   Fri,  8 Sep 2023 15:36:10 -0400
-Message-Id: <20230908193611.3463821-9-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 3/3] ext2: fix datatype of block number in ext2_xattr_set2()
+Date:   Fri,  8 Sep 2023 15:36:55 -0400
+Message-Id: <20230908193656.3464052-3-sashal@kernel.org>
 X-Mailer: git-send-email 2.40.1
-In-Reply-To: <20230908193611.3463821-1-sashal@kernel.org>
-References: <20230908193611.3463821-1-sashal@kernel.org>
+In-Reply-To: <20230908193656.3464052-1-sashal@kernel.org>
+References: <20230908193656.3464052-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
-X-stable-base: Linux 5.10.194
+X-stable-base: Linux 4.14.325
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
@@ -77,10 +77,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index 841fa6d9d744b..f1dc11dab0d88 100644
+index bd1d68ff3a9f8..437175bce22e8 100644
 --- a/fs/ext2/xattr.c
 +++ b/fs/ext2/xattr.c
-@@ -694,10 +694,10 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
+@@ -664,10 +664,10 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
  			/* We need to allocate a new block */
  			ext2_fsblk_t goal = ext2_group_first_block_no(sb,
  						EXT2_I(inode)->i_block_group);
