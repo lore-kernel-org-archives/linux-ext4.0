@@ -2,251 +2,100 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AB868CA0EC3
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 Sep 2023 21:29:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B6414CA0EC5
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 Sep 2023 21:29:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345449AbjIKVUj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 11 Sep 2023 17:20:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38692 "EHLO
+        id S1345468AbjIKVUp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 11 Sep 2023 17:20:45 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37514 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242578AbjIKPvZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Sep 2023 11:51:25 -0400
-Received: from mgamail.intel.com (mgamail.intel.com [192.55.52.151])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6F6C9E6
-        for <linux-ext4@vger.kernel.org>; Mon, 11 Sep 2023 08:51:21 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1694447481; x=1725983481;
-  h=date:from:to:cc:subject:message-id;
-  bh=7xZ+nH/WbvYHFVkLXK2RXi3EI37Cy4AcwhINorZFyTc=;
-  b=nNGjn19AraT3Dg4lbljCKJjR2C7YXZU0L2/TBMESDQxRorRoFq1jB2Ni
-   aWRSxjdFsggczs+inE1lv8KZbul3UDbABPgVTmlgIcLOxLB+YFGe6Mj0k
-   JOeHnJTqOcXvy7hFhXPB2w3ZcGkh1r+LD1bAjpePcB8H7FtaWhQTKzCT/
-   TKapyfOhEnmCOXNobtygpwmNb6CvFFOUD6HDDImlFiKErZwzITcI8LQS4
-   hHPDF94930k3hUYkh9OA+YugmtsE+rAHeSQiLeP4jwuyvfBwbjugImP4f
-   L35fFe31IPgwZyeHJSikJDRB2ioVGAo3+pPwT7tRtrPRl9nSM/yJO/pqT
-   w==;
-X-IronPort-AV: E=McAfee;i="6600,9927,10830"; a="358414487"
-X-IronPort-AV: E=Sophos;i="6.02,244,1688454000"; 
-   d="scan'208";a="358414487"
-Received: from fmsmga006.fm.intel.com ([10.253.24.20])
-  by fmsmga107.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 11 Sep 2023 08:51:21 -0700
-X-ExtLoop1: 1
-X-IronPort-AV: E=McAfee;i="6600,9927,10830"; a="990129107"
-X-IronPort-AV: E=Sophos;i="6.02,244,1688454000"; 
-   d="scan'208";a="990129107"
-Received: from lkp-server01.sh.intel.com (HELO 59b3c6e06877) ([10.239.97.150])
-  by fmsmga006.fm.intel.com with ESMTP; 11 Sep 2023 08:51:19 -0700
-Received: from kbuild by 59b3c6e06877 with local (Exim 4.96)
-        (envelope-from <lkp@intel.com>)
-        id 1qfjC1-0006Pq-1z;
-        Mon, 11 Sep 2023 15:51:17 +0000
-Date:   Mon, 11 Sep 2023 23:51:16 +0800
-From:   kernel test robot <lkp@intel.com>
-To:     "Theodore Ts'o" <tytso@mit.edu>
-Cc:     linux-ext4@vger.kernel.org
-Subject: [tytso-ext4:dev] BUILD SUCCESS
- 147d4a092e9a726ce706dbf0d329d2b96a025459
-Message-ID: <202309112315.e4lGBu1R-lkp@intel.com>
-User-Agent: s-nail v14.9.24
+        with ESMTP id S235833AbjIKJlO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Sep 2023 05:41:14 -0400
+Received: from madras.collabora.co.uk (madras.collabora.co.uk [46.235.227.172])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1542CFD;
+        Mon, 11 Sep 2023 02:41:10 -0700 (PDT)
+Received: from localhost.localdomain (unknown [182.191.133.203])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+        (No client certificate requested)
+        (Authenticated sender: usama.anjum)
+        by madras.collabora.co.uk (Postfix) with ESMTPSA id 7909A66072F0;
+        Mon, 11 Sep 2023 10:41:04 +0100 (BST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=collabora.com;
+        s=mail; t=1694425268;
+        bh=9wEA6kj/8qL09liKb87plaPguZEAHq2kFG8kWKL8ugk=;
+        h=From:To:Cc:Subject:Date:From;
+        b=DhtJtmzWiw8Fi7P+MP4ojUpOFllFd8fOg2UoZs78eL9SZh0RXWN68+cJXRIvRrnC5
+         iDKtwK/fqJmhIWe1NrAQpnH0Q4GOxKCCo1sPKR0+IGx7u6JQIuP5rjw6R9W8qPI0fF
+         QFPjsFDjespYIqxmDpUlA9BKicprkRZidyZ70bwC2Tj4axMrbVLtCOFHv6gfhO4dTb
+         NRCknuyXbf31N+++x/kpcuJqDuef1zZYsIzv247JFM28jTozOqFY6ibzy3LndoYbvu
+         gi/4uI6YWSijekDqnrVWNc2d0yzG/p324ZaYC86UWpI9ZOW8uR1gSLARK9WBinWsYu
+         oSjhGtEGhv2uQ==
+From:   Muhammad Usama Anjum <usama.anjum@collabora.com>
+To:     "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Allison Henderson <achender@linux.vnet.ibm.com>
+Cc:     Muhammad Usama Anjum <usama.anjum@collabora.com>,
+        kernel@collabora.com, stable@vger.kernel.org,
+        syzbot+6e5f2db05775244c73b7@syzkaller.appspotmail.com,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [RFC] ext4: don't remove already removed extent
+Date:   Mon, 11 Sep 2023 14:40:38 +0500
+Message-Id: <20230911094038.3602508-1-usama.anjum@collabora.com>
+X-Mailer: git-send-email 2.40.1
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-branch HEAD: 147d4a092e9a726ce706dbf0d329d2b96a025459  jbd2: Remove page size assumptions
+Syzbot has hit the following bug on current and all older kernels:
+BUG: KASAN: out-of-bounds in ext4_ext_rm_leaf fs/ext4/extents.c:2736 [inline]
+BUG: KASAN: out-of-bounds in ext4_ext_remove_space+0x2482/0x4d90 fs/ext4/extents.c:2958
+Read of size 18446744073709551508 at addr ffff888073aea078 by task syz-executor420/6443
 
-elapsed time: 720m
+On investigation, I've found that eh->eh_entries is zero, ex is
+referring to last entry and EXT_LAST_EXTENT(eh) is referring to first.
+Hence EXT_LAST_EXTENT(eh) - ex becomes negative and causes the wrong
+buffer read.
 
-configs tested: 180
-configs skipped: 2
+element: FFFF8882F8F0D06C       <----- ex
+element: FFFF8882F8F0D060
+element: FFFF8882F8F0D054
+element: FFFF8882F8F0D048
+element: FFFF8882F8F0D03C
+element: FFFF8882F8F0D030
+element: FFFF8882F8F0D024
+element: FFFF8882F8F0D018
+element: FFFF8882F8F0D00C	<------  EXT_FIRST_EXTENT(eh)
+header:  FFFF8882F8F0D000	<------  EXT_LAST_EXTENT(eh) and eh
 
-The following configs have been built successfully.
-More configs may be tested in the coming days.
+Cc: stable@vger.kernel.org
+Reported-by: syzbot+6e5f2db05775244c73b7@syzkaller.appspotmail.com
+Closes: https://groups.google.com/g/syzkaller-bugs/c/G6zS-LKgDW0/m/63MgF6V7BAAJ
+Fixes: d583fb87a3ff ("ext4: punch out extents")
+Signed-off-by: Muhammad Usama Anjum <usama.anjum@collabora.com>
+---
+This patch is only fixing the local issue. There may be bigger bug. Why
+is ex set to last entry if the eh->eh_entries is 0. If any ext4
+developer want to look at the bug, please don't hesitate.
+---
+ fs/ext4/extents.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-tested configs:
-alpha                             allnoconfig   gcc  
-alpha                            allyesconfig   gcc  
-alpha                               defconfig   gcc  
-alpha                randconfig-r001-20230911   gcc  
-alpha                randconfig-r013-20230911   gcc  
-alpha                randconfig-r026-20230911   gcc  
-arc                              allmodconfig   gcc  
-arc                               allnoconfig   gcc  
-arc                              allyesconfig   gcc  
-arc                      axs103_smp_defconfig   gcc  
-arc                                 defconfig   gcc  
-arc                 nsimosci_hs_smp_defconfig   gcc  
-arc                   randconfig-001-20230911   gcc  
-arc                  randconfig-r032-20230911   gcc  
-arm                              allmodconfig   gcc  
-arm                               allnoconfig   gcc  
-arm                              allyesconfig   gcc  
-arm                         axm55xx_defconfig   gcc  
-arm                                 defconfig   gcc  
-arm                            mps2_defconfig   gcc  
-arm                   randconfig-001-20230911   gcc  
-arm                  randconfig-r015-20230911   gcc  
-arm                          sp7021_defconfig   clang
-arm                           sunxi_defconfig   gcc  
-arm                           u8500_defconfig   gcc  
-arm64                            allmodconfig   gcc  
-arm64                             allnoconfig   gcc  
-arm64                            allyesconfig   gcc  
-arm64                               defconfig   gcc  
-csky                             allmodconfig   gcc  
-csky                              allnoconfig   gcc  
-csky                             allyesconfig   gcc  
-csky                                defconfig   gcc  
-csky                 randconfig-r014-20230911   gcc  
-hexagon               randconfig-001-20230911   clang
-hexagon               randconfig-002-20230911   clang
-hexagon              randconfig-r023-20230911   clang
-i386                             allmodconfig   gcc  
-i386                              allnoconfig   gcc  
-i386                             allyesconfig   gcc  
-i386         buildonly-randconfig-001-20230911   gcc  
-i386         buildonly-randconfig-002-20230911   gcc  
-i386         buildonly-randconfig-003-20230911   gcc  
-i386         buildonly-randconfig-004-20230911   gcc  
-i386         buildonly-randconfig-005-20230911   gcc  
-i386         buildonly-randconfig-006-20230911   gcc  
-i386                              debian-10.3   gcc  
-i386                                defconfig   gcc  
-i386                  randconfig-001-20230911   gcc  
-i386                  randconfig-002-20230911   gcc  
-i386                  randconfig-003-20230911   gcc  
-i386                  randconfig-004-20230911   gcc  
-i386                  randconfig-005-20230911   gcc  
-i386                  randconfig-006-20230911   gcc  
-i386                  randconfig-011-20230911   clang
-i386                  randconfig-012-20230911   clang
-i386                  randconfig-013-20230911   clang
-i386                  randconfig-014-20230911   clang
-i386                  randconfig-015-20230911   clang
-i386                  randconfig-016-20230911   clang
-loongarch                        alldefconfig   gcc  
-loongarch                        allmodconfig   gcc  
-loongarch                         allnoconfig   gcc  
-loongarch                        allyesconfig   gcc  
-loongarch                           defconfig   gcc  
-loongarch             randconfig-001-20230911   gcc  
-loongarch            randconfig-r023-20230911   gcc  
-m68k                             allmodconfig   gcc  
-m68k                              allnoconfig   gcc  
-m68k                             allyesconfig   gcc  
-m68k                                defconfig   gcc  
-m68k                 randconfig-r006-20230911   gcc  
-microblaze                       allmodconfig   gcc  
-microblaze                        allnoconfig   gcc  
-microblaze                       allyesconfig   gcc  
-microblaze                          defconfig   gcc  
-mips                             allmodconfig   gcc  
-mips                              allnoconfig   gcc  
-mips                             allyesconfig   gcc  
-mips                        qi_lb60_defconfig   clang
-mips                 randconfig-r011-20230911   gcc  
-mips                 randconfig-r036-20230911   clang
-mips                   sb1250_swarm_defconfig   clang
-nios2                            allmodconfig   gcc  
-nios2                             allnoconfig   gcc  
-nios2                            allyesconfig   gcc  
-nios2                               defconfig   gcc  
-nios2                randconfig-r001-20230911   gcc  
-nios2                randconfig-r024-20230911   gcc  
-openrisc                         allmodconfig   gcc  
-openrisc                          allnoconfig   gcc  
-openrisc                         allyesconfig   gcc  
-openrisc                            defconfig   gcc  
-openrisc             randconfig-r035-20230911   gcc  
-parisc                           allmodconfig   gcc  
-parisc                            allnoconfig   gcc  
-parisc                           allyesconfig   gcc  
-parisc                              defconfig   gcc  
-parisc               randconfig-r022-20230911   gcc  
-parisc64                            defconfig   gcc  
-powerpc                          allmodconfig   gcc  
-powerpc                           allnoconfig   gcc  
-powerpc                          allyesconfig   gcc  
-powerpc                      ep88xc_defconfig   gcc  
-powerpc                     tqm5200_defconfig   clang
-powerpc64            randconfig-r005-20230911   gcc  
-powerpc64            randconfig-r012-20230911   clang
-powerpc64            randconfig-r016-20230911   clang
-riscv                            allmodconfig   gcc  
-riscv                             allnoconfig   gcc  
-riscv                            allyesconfig   gcc  
-riscv                               defconfig   gcc  
-riscv                 randconfig-001-20230911   gcc  
-riscv                randconfig-r003-20230911   gcc  
-riscv                randconfig-r005-20230911   gcc  
-riscv                randconfig-r021-20230911   clang
-riscv                randconfig-r033-20230911   gcc  
-riscv                          rv32_defconfig   clang
-riscv                          rv32_defconfig   gcc  
-s390                             allmodconfig   gcc  
-s390                              allnoconfig   gcc  
-s390                             allyesconfig   gcc  
-s390                                defconfig   gcc  
-s390                  randconfig-001-20230911   clang
-s390                 randconfig-r002-20230911   gcc  
-sh                               allmodconfig   gcc  
-sh                                allnoconfig   gcc  
-sh                               allyesconfig   gcc  
-sh                                  defconfig   gcc  
-sh                            shmin_defconfig   gcc  
-sparc                            allmodconfig   gcc  
-sparc                             allnoconfig   gcc  
-sparc                            allyesconfig   gcc  
-sparc                               defconfig   gcc  
-sparc                randconfig-r004-20230911   gcc  
-sparc64                          allmodconfig   gcc  
-sparc64                          allyesconfig   gcc  
-sparc64                             defconfig   gcc  
-um                               allmodconfig   clang
-um                                allnoconfig   clang
-um                               allyesconfig   clang
-um                                  defconfig   gcc  
-um                             i386_defconfig   gcc  
-um                           x86_64_defconfig   gcc  
-x86_64                            allnoconfig   gcc  
-x86_64                           allyesconfig   gcc  
-x86_64       buildonly-randconfig-001-20230911   gcc  
-x86_64       buildonly-randconfig-002-20230911   gcc  
-x86_64       buildonly-randconfig-003-20230911   gcc  
-x86_64       buildonly-randconfig-004-20230911   gcc  
-x86_64       buildonly-randconfig-005-20230911   gcc  
-x86_64       buildonly-randconfig-006-20230911   gcc  
-x86_64                              defconfig   gcc  
-x86_64                randconfig-001-20230911   clang
-x86_64                randconfig-002-20230911   clang
-x86_64                randconfig-003-20230911   clang
-x86_64                randconfig-004-20230911   clang
-x86_64                randconfig-005-20230911   clang
-x86_64                randconfig-006-20230911   clang
-x86_64                randconfig-011-20230911   gcc  
-x86_64                randconfig-012-20230911   gcc  
-x86_64                randconfig-013-20230911   gcc  
-x86_64                randconfig-014-20230911   gcc  
-x86_64                randconfig-015-20230911   gcc  
-x86_64                randconfig-016-20230911   gcc  
-x86_64                randconfig-071-20230911   gcc  
-x86_64                randconfig-072-20230911   gcc  
-x86_64                randconfig-073-20230911   gcc  
-x86_64                randconfig-074-20230911   gcc  
-x86_64                randconfig-075-20230911   gcc  
-x86_64                randconfig-076-20230911   gcc  
-x86_64               randconfig-r003-20230911   gcc  
-x86_64               randconfig-r006-20230911   gcc  
-x86_64               randconfig-r031-20230911   gcc  
-x86_64               randconfig-r034-20230911   gcc  
-x86_64                          rhel-8.3-rust   clang
-x86_64                               rhel-8.3   gcc  
-xtensa                            allnoconfig   gcc  
-xtensa                           allyesconfig   gcc  
-xtensa                  cadence_csp_defconfig   gcc  
-xtensa               randconfig-r025-20230911   gcc  
-
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index e4115d338f101..7b7779b4cb87f 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2726,7 +2726,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 		 * If the extent was completely released,
+ 		 * we need to remove it from the leaf
+ 		 */
+-		if (num == 0) {
++		if (num == 0 && eh->eh_entries) {
+ 			if (end != EXT_MAX_BLOCKS - 1) {
+ 				/*
+ 				 * For hole punching, we need to scoot all the
 -- 
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
+2.40.1
+
