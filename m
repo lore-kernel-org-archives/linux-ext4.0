@@ -2,164 +2,150 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 44A52CA0EC1
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 757B8CA0EC2
 	for <linux-ext4@archiver.kernel.org>; Mon, 11 Sep 2023 21:29:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345488AbjIKVU5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 11 Sep 2023 17:20:57 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48712 "EHLO
+        id S1345489AbjIKVU7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 11 Sep 2023 17:20:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35540 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242629AbjIKP63 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Sep 2023 11:58:29 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 37A451AE
-        for <linux-ext4@vger.kernel.org>; Mon, 11 Sep 2023 08:58:24 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id E02DA1F88C;
-        Mon, 11 Sep 2023 15:58:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1694447902; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=yV6I6wB5q3JoF1XA0a96ZkfIMmQM2zYLFU/YvDwgkKw=;
-        b=WAVQc//RREqgNZOAn0KyvNVWOBxrC4dBl6MJpfKlRpKNKq89M/jT0bUoXFv0yqa+CAM2sX
-        TA6IGKExFvPbpspb62iB2p8zr9aEhAQNiRB8NTcXK3GPJx86Vvn0EnCG4KbzvqLmTTu/Bv
-        hxnoqYY4Xgn8vHtjvBd3AJ+V1F2H5pw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1694447902;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=yV6I6wB5q3JoF1XA0a96ZkfIMmQM2zYLFU/YvDwgkKw=;
-        b=DHS1C2OjpMxQHNVQRhB/oj7ASfGNxCT2RzHdWTn5omcfszG209j2L99IfuUiYfY8GLEkdX
-        dz9pF++YXsCBAzCA==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id D209C13780;
-        Mon, 11 Sep 2023 15:58:22 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id sPg9Mx45/2QHegAAMHmgww
-        (envelope-from <jack@suse.cz>); Mon, 11 Sep 2023 15:58:22 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 7251BA077E; Mon, 11 Sep 2023 17:58:22 +0200 (CEST)
-Date:   Mon, 11 Sep 2023 17:58:22 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Zhihao Cheng <chengzhihao1@huawei.com>
-Cc:     tytso@mit.edu, jack@suse.com, linux-ext4@vger.kernel.org,
-        yi.zhang@huawei.com
-Subject: Re: [PATCH] jbd2: Fix potential data lost in recovering journal
- raced with synchronizing fs bdev
-Message-ID: <20230911155822.kbg2xayc7ys24kay@quack3>
-References: <20230908092808.2929317-1-chengzhihao1@huawei.com>
+        with ESMTP id S238042AbjIKNgB (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Sep 2023 09:36:01 -0400
+Received: from mail-pf1-f207.google.com (mail-pf1-f207.google.com [209.85.210.207])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 81E81106
+        for <linux-ext4@vger.kernel.org>; Mon, 11 Sep 2023 06:35:55 -0700 (PDT)
+Received: by mail-pf1-f207.google.com with SMTP id d2e1a72fcca58-68fb6e50531so2173078b3a.3
+        for <linux-ext4@vger.kernel.org>; Mon, 11 Sep 2023 06:35:55 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1694439355; x=1695044155;
+        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=jG8GLm4LJITu6qfLgrhEclmMHIdvfy21Md/htW4Vrhk=;
+        b=M3EDl7yZoHIJn57FmwFPeuRlUl+ST6agkwrG67etv41yC/UJG+pNpUZW2XiFdLHxcL
+         goTI7oHe3uvANR+ZbIkKFxJ/pvOmTdLB9oThqkWkqwEg9bgPf8Yp8ErbHI7eP5jNZCMj
+         lIbcYf4raNJKtD5PXN6ig8OJwwtWIExn/rtPRxr8xTy+cki8OHUge+zE2ss6gt4Ltp0P
+         pEzMTZi9ddGT9bOvmslQjWUIrsM8bzaraz3K74g3HcKpcO5EkSK0SwwyIJF4pZKuniqy
+         gmDbaBiHf+W4U8iQwBo9cNq6BCiVFjXhVMrukDIAsjox+dtYAMqYH6xi4O4nheDmvnTV
+         FBCg==
+X-Gm-Message-State: AOJu0YzLLDH/51N5En6NMl2DpX2AcnqLNsh28uZe3QDqYZPelbOX8ZBb
+        hDb0TzBjHKZv2+tHGAor5xOZoI4YeAXtzPYzDhdFkatPq1go
+X-Google-Smtp-Source: AGHT+IHs6ZwBRbUuEEc+sLMqD5UAs/el/JozhWYmP6Ilt6TRADV0OhYbHwX8Ct52NLMFntlyUUmRE62eGklvQhl3vBQc7uupjOCA
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20230908092808.2929317-1-chengzhihao1@huawei.com>
+X-Received: by 2002:a05:6a00:cd1:b0:68e:3b0b:819e with SMTP id
+ b17-20020a056a000cd100b0068e3b0b819emr3924392pfv.5.1694439354986; Mon, 11 Sep
+ 2023 06:35:54 -0700 (PDT)
+Date:   Mon, 11 Sep 2023 06:35:54 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <000000000000d8f8c20605156732@google.com>
+Subject: [syzbot] [ext4?] WARNING in ext4_discard_allocated_blocks
+From:   syzbot <syzbot+628e71e1cb809306030f@syzkaller.appspotmail.com>
+To:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        syzkaller-bugs@googlegroups.com, tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri 08-09-23 17:28:08, Zhihao Cheng wrote:
-> JBD2 makes sure journal data is fallen on fs device by sync_blockdev(),
-> however, other process could intercept the EIO information from bdev's
-> mapping, which leads journal recovering successful even EIO occurs during
-> data written back to fs device.
-> 
-> We found this problem in our product, iscsi + multipath is chosen for block
-> device of ext4. Unstable network may trigger kpartx to rescan partitions in
-> device mapper layer. Detailed process is shown as following:
-> 
->   mount          kpartx          irq
-> jbd2_journal_recover
->  do_one_pass
->   memcpy(nbh->b_data, obh->b_data) // copy data to fs dev from journal
->   mark_buffer_dirty // mark bh dirty
->          vfs_read
-> 	  generic_file_read_iter // dio
-> 	   filemap_write_and_wait_range
-> 	    __filemap_fdatawrite_range
-> 	     do_writepages
-> 	      block_write_full_folio
-> 	       submit_bh_wbc
-> 	            >>  EIO occurs in disk  <<
-> 	                     end_buffer_async_write
-> 			      mark_buffer_write_io_error
-> 			       mapping_set_error
-> 			        set_bit(AS_EIO, &mapping->flags) // set!
-> 	    filemap_check_errors
-> 	     test_and_clear_bit(AS_EIO, &mapping->flags) // clear!
->  err2 = sync_blockdev
->   filemap_write_and_wait
->    filemap_check_errors
->     test_and_clear_bit(AS_EIO, &mapping->flags) // false
->  err2 = 0
-> 
-> Filesystem is mounted successfully even data from journal is failed written
-> into disk, and ext4/ocfs2 could become corrupted.
-> 
-> Fix it by comparing the wb_err state in fs block device before recovering
-> and after recovering.
-> 
-> Fetch a reproducer in [Link].
-> 
-> Link: https://bugzilla.kernel.org/show_bug.cgi?id=217888
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Hello,
 
-After discussion about v2 this version is the better option. Feel free to
-add:
+syzbot found the following issue on:
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+HEAD commit:    7ba2090ca64e Merge tag 'ceph-for-6.6-rc1' of https://githu..
+git tree:       upstream
+console+strace: https://syzkaller.appspot.com/x/log.txt?x=12c57f2fa80000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=ed626705db308b2d
+dashboard link: https://syzkaller.appspot.com/bug?extid=628e71e1cb809306030f
+compiler:       Debian clang version 15.0.6, GNU ld (GNU Binutils for Debian) 2.40
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=111acb20680000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=112d9f34680000
 
-								Honza
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/7abbf7618c3a/disk-7ba2090c.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/694adc723518/vmlinux-7ba2090c.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/3c5d9addc4e4/bzImage-7ba2090c.xz
+mounted in repro: https://storage.googleapis.com/syzbot-assets/a4604150b51d/mount_0.gz
+
+Bisection is inconclusive: the issue happens on the oldest tested release.
+
+bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=13e3dba8680000
+final oops:     https://syzkaller.appspot.com/x/report.txt?x=1013dba8680000
+console output: https://syzkaller.appspot.com/x/log.txt?x=17e3dba8680000
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+628e71e1cb809306030f@syzkaller.appspotmail.com
+
+ext4: mb_load_buddy failed (-117)
+WARNING: CPU: 0 PID: 5538 at fs/ext4/mballoc.c:4620 ext4_discard_allocated_blocks+0x5d4/0x750 fs/ext4/mballoc.c:4619
+Modules linked in:
+CPU: 0 PID: 5538 Comm: syz-executor264 Not tainted 6.5.0-syzkaller-12107-g7ba2090ca64e #0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/26/2023
+RIP: 0010:ext4_discard_allocated_blocks+0x5d4/0x750 fs/ext4/mballoc.c:4619
+Code: 00 0f 85 9a 01 00 00 48 8d 65 d8 5b 41 5c 41 5d 41 5e 41 5f 5d c3 e8 eb 99 48 ff 48 c7 c7 00 42 1d 8b 44 89 fe e8 8c 14 0f ff <0f> 0b 49 bf 00 00 00 00 00 fc ff df eb 98 e8 c9 99 48 ff e9 19 fe
+RSP: 0018:ffffc90005006cc0 EFLAGS: 00010246
+RAX: da27be545f79de00 RBX: 0000000000000001 RCX: ffff888026741dc0
+RDX: 0000000000000000 RSI: 0000000000000001 RDI: 0000000000000000
+RBP: ffffc90005006dd0 R08: ffffffff81541672 R09: 1ffff1101730516a
+R10: dffffc0000000000 R11: ffffed101730516b R12: ffff888076b7a124
+R13: 1ffff92000a00da0 R14: ffff888076b7a0d8 R15: 00000000ffffff8b
+FS:  00007f095582f6c0(0000) GS:ffff8880b9800000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000000020100000 CR3: 000000001c40b000 CR4: 00000000003506f0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+Call Trace:
+ <TASK>
+ ext4_mb_new_blocks+0x148f/0x4b30 fs/ext4/mballoc.c:6244
+ ext4_ext_map_blocks+0x1e13/0x7150 fs/ext4/extents.c:4285
+ ext4_map_blocks+0xa2f/0x1cb0 fs/ext4/inode.c:621
+ _ext4_get_block+0x238/0x6a0 fs/ext4/inode.c:763
+ ext4_block_write_begin+0x53d/0x1550 fs/ext4/inode.c:1043
+ ext4_write_begin+0x619/0x10b0
+ ext4_da_write_begin+0x300/0xa40 fs/ext4/inode.c:2865
+ generic_perform_write+0x31b/0x630 mm/filemap.c:3942
+ ext4_buffered_write_iter+0xc6/0x350 fs/ext4/file.c:299
+ ext4_file_write_iter+0x1d3/0x1ad0 fs/ext4/file.c:717
+ call_write_iter include/linux/fs.h:1985 [inline]
+ new_sync_write fs/read_write.c:491 [inline]
+ vfs_write+0x782/0xaf0 fs/read_write.c:584
+ ksys_write+0x1a0/0x2c0 fs/read_write.c:637
+ do_syscall_x64 arch/x86/entry/common.c:50 [inline]
+ do_syscall_64+0x41/0xc0 arch/x86/entry/common.c:80
+ entry_SYSCALL_64_after_hwframe+0x63/0xcd
+RIP: 0033:0x7f0955872bd9
+Code: 28 00 00 00 75 05 48 83 c4 28 c3 e8 b1 18 00 00 90 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 b0 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007f095582f218 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+RAX: ffffffffffffffda RBX: 00007f09558fc6c8 RCX: 00007f0955872bd9
+RDX: 000000000000a000 RSI: 0000000020000780 RDI: 0000000000000005
+RBP: 00007f09558fc6c0 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 00007f09558c8a38
+R13: 0000000000000000 R14: 6f6f6c2f7665642f R15: 0032656c69662f2e
+ </TASK>
 
 
-> ---
->  fs/jbd2/recovery.c | 7 +++++++
->  1 file changed, 7 insertions(+)
-> 
-> diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-> index c269a7d29a46..0fecaa6a3ac6 100644
-> --- a/fs/jbd2/recovery.c
-> +++ b/fs/jbd2/recovery.c
-> @@ -289,6 +289,8 @@ int jbd2_journal_recover(journal_t *journal)
->  	journal_superblock_t *	sb;
->  
->  	struct recovery_info	info;
-> +	errseq_t		wb_err;
-> +	struct address_space	*mapping;
->  
->  	memset(&info, 0, sizeof(info));
->  	sb = journal->j_superblock;
-> @@ -306,6 +308,8 @@ int jbd2_journal_recover(journal_t *journal)
->  		return 0;
->  	}
->  
-> +	mapping = journal->j_fs_dev->bd_inode->i_mapping;
-> +	errseq_check_and_advance(&mapping->wb_err, &wb_err);
->  	err = do_one_pass(journal, &info, PASS_SCAN);
->  	if (!err)
->  		err = do_one_pass(journal, &info, PASS_REVOKE);
-> @@ -327,6 +331,9 @@ int jbd2_journal_recover(journal_t *journal)
->  
->  	jbd2_journal_clear_revoke(journal);
->  	err2 = sync_blockdev(journal->j_fs_dev);
-> +	if (!err)
-> +		err = err2;
-> +	err2 = errseq_check_and_advance(&mapping->wb_err, &wb_err);
->  	if (!err)
->  		err = err2;
->  	/* Make sure all replayed data is on permanent storage */
-> -- 
-> 2.39.2
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+For information about bisection process see: https://goo.gl/tpsmEJ#bisection
+
+If the bug is already fixed, let syzbot know by replying with:
+#syz fix: exact-commit-title
+
+If you want syzbot to run the reproducer, reply with:
+#syz test: git://repo/address.git branch-or-commit-hash
+If you attach or paste a git patch, syzbot will apply it before testing.
+
+If you want to overwrite bug's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
+
+If the bug is a duplicate of another bug, reply with:
+#syz dup: exact-subject-of-another-report
+
+If you want to undo deduplication, reply with:
+#syz undup
