@@ -2,168 +2,164 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E858FCA0EC4
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 Sep 2023 21:29:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 44A52CA0EC1
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 Sep 2023 21:29:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242578AbjIKVUv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 11 Sep 2023 17:20:51 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36256 "EHLO
+        id S1345488AbjIKVU5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 11 Sep 2023 17:20:57 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48712 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236068AbjIKJuV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Sep 2023 05:50:21 -0400
-Received: from mail-pl1-x629.google.com (mail-pl1-x629.google.com [IPv6:2607:f8b0:4864:20::629])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 41EACE4F
-        for <linux-ext4@vger.kernel.org>; Mon, 11 Sep 2023 02:49:53 -0700 (PDT)
-Received: by mail-pl1-x629.google.com with SMTP id d9443c01a7336-1befe39630bso9368785ad.0
-        for <linux-ext4@vger.kernel.org>; Mon, 11 Sep 2023 02:49:53 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1694425793; x=1695030593; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=vZpBnX4Z9eqEuCcIq983vZteHkZX7uUM6cDHYd9irL8=;
-        b=WTl7QxEdalYnW2SrShiVlmdwwFN+PosQHXFFjzkmbKshIgvY/Qq8VHEO7hyfaK6vum
-         K8Rq5pxCYbxjvUIycBBB358ZDcgkFmD0asbURnuL1e3xIVkFkVTwGMrjurD8SY6IUasD
-         PI9ZRFK+gxSNtDdM7BQHvwZs/tcfa2o5Hzaiujs5SOEUGxn55vIdxiPXoJYAqTVkooti
-         PnrzX4J8xyw93eZEHns2FkUBaSj+h+2RRzDDqYfdG/R6Hg0539zjJSY4g1+3uu4Juk8x
-         prlD2GZXWrjT4o8tIsOIjk+HqqmshTWL2yyBRSmRndDK0YSqWKq6fJFCqzKDj7mU7+3s
-         7o1A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1694425793; x=1695030593;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=vZpBnX4Z9eqEuCcIq983vZteHkZX7uUM6cDHYd9irL8=;
-        b=l+D88XDRhom/3RvrUMNqGVez2+mnSylxtpJg7shQCHKMuINT6Q0b3Ym0MejthL2N5n
-         +V8hh5SYTfHHyq7TnO8XHgA0kPMGNe7CtC5jnEuKI/eJHfaUQYP1L4ZiXnQHh5f576qL
-         q5n/jPlneIYsZ4MAYdMXj2jORB9tu5jBhPKnnD+/LLgjHaEn9NTZ0EiJGKEaFvF3vALO
-         G2qlBVWSYeGmNmA2HJDnI7vV5xHwWfU6MXQvTGS6gkUj6xneYSIA2gvj/3ueqcKIgYSA
-         xb42u0/1llubIqF6W/jaoKU+RBYFkhjbxxajpyja4BJhRoLPo2FNA4UtOGdrWrPPtlNn
-         RZrw==
-X-Gm-Message-State: AOJu0Yz7ukIa2ZJ5AUBUF/ZGfBecoHWK0M9sy+Im1YVUflTzNXLIaDsq
-        BG+beD61ZaRv+16CwP3ECAh6BA==
-X-Google-Smtp-Source: AGHT+IFvqXY+jnOST4BZIc6AyFCejSJWSQ6rLQGam1YrCI9mLJF9ktChTLGkYjxBiW6SC49Zt3tINQ==
-X-Received: by 2002:a17:902:ced1:b0:1b8:a469:53d8 with SMTP id d17-20020a170902ced100b001b8a46953d8mr11187928plg.0.1694425792768;
-        Mon, 11 Sep 2023 02:49:52 -0700 (PDT)
-Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.146])
-        by smtp.gmail.com with ESMTPSA id az7-20020a170902a58700b001bdc2fdcf7esm5988188plb.129.2023.09.11.02.49.44
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 11 Sep 2023 02:49:52 -0700 (PDT)
-From:   Qi Zheng <zhengqi.arch@bytedance.com>
-To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
-        vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
-        brauner@kernel.org, paulmck@kernel.org, tytso@mit.edu,
-        steven.price@arm.com, cel@kernel.org, senozhatsky@chromium.org,
-        yujie.liu@intel.com, gregkh@linuxfoundation.org,
-        muchun.song@linux.dev
-Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-fsdevel@vger.kernel.org,
-        Qi Zheng <zhengqi.arch@bytedance.com>,
-        Muchun Song <songmuchun@bytedance.com>,
-        Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-Subject: [PATCH v6 31/45] jbd2,ext4: dynamically allocate the jbd2-journal shrinker
-Date:   Mon, 11 Sep 2023 17:44:30 +0800
-Message-Id: <20230911094444.68966-32-zhengqi.arch@bytedance.com>
-X-Mailer: git-send-email 2.24.3 (Apple Git-128)
-In-Reply-To: <20230911094444.68966-1-zhengqi.arch@bytedance.com>
-References: <20230911094444.68966-1-zhengqi.arch@bytedance.com>
+        with ESMTP id S242629AbjIKP63 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Sep 2023 11:58:29 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 37A451AE
+        for <linux-ext4@vger.kernel.org>; Mon, 11 Sep 2023 08:58:24 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id E02DA1F88C;
+        Mon, 11 Sep 2023 15:58:22 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1694447902; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=yV6I6wB5q3JoF1XA0a96ZkfIMmQM2zYLFU/YvDwgkKw=;
+        b=WAVQc//RREqgNZOAn0KyvNVWOBxrC4dBl6MJpfKlRpKNKq89M/jT0bUoXFv0yqa+CAM2sX
+        TA6IGKExFvPbpspb62iB2p8zr9aEhAQNiRB8NTcXK3GPJx86Vvn0EnCG4KbzvqLmTTu/Bv
+        hxnoqYY4Xgn8vHtjvBd3AJ+V1F2H5pw=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1694447902;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=yV6I6wB5q3JoF1XA0a96ZkfIMmQM2zYLFU/YvDwgkKw=;
+        b=DHS1C2OjpMxQHNVQRhB/oj7ASfGNxCT2RzHdWTn5omcfszG209j2L99IfuUiYfY8GLEkdX
+        dz9pF++YXsCBAzCA==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id D209C13780;
+        Mon, 11 Sep 2023 15:58:22 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id sPg9Mx45/2QHegAAMHmgww
+        (envelope-from <jack@suse.cz>); Mon, 11 Sep 2023 15:58:22 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id 7251BA077E; Mon, 11 Sep 2023 17:58:22 +0200 (CEST)
+Date:   Mon, 11 Sep 2023 17:58:22 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Zhihao Cheng <chengzhihao1@huawei.com>
+Cc:     tytso@mit.edu, jack@suse.com, linux-ext4@vger.kernel.org,
+        yi.zhang@huawei.com
+Subject: Re: [PATCH] jbd2: Fix potential data lost in recovering journal
+ raced with synchronizing fs bdev
+Message-ID: <20230911155822.kbg2xayc7ys24kay@quack3>
+References: <20230908092808.2929317-1-chengzhihao1@huawei.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230908092808.2929317-1-chengzhihao1@huawei.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-In preparation for implementing lockless slab shrink, use new APIs to
-dynamically allocate the jbd2-journal shrinker, so that it can be freed
-asynchronously via RCU. Then it doesn't need to wait for RCU read-side
-critical section when releasing the struct journal_s.
+On Fri 08-09-23 17:28:08, Zhihao Cheng wrote:
+> JBD2 makes sure journal data is fallen on fs device by sync_blockdev(),
+> however, other process could intercept the EIO information from bdev's
+> mapping, which leads journal recovering successful even EIO occurs during
+> data written back to fs device.
+> 
+> We found this problem in our product, iscsi + multipath is chosen for block
+> device of ext4. Unstable network may trigger kpartx to rescan partitions in
+> device mapper layer. Detailed process is shown as following:
+> 
+>   mount          kpartx          irq
+> jbd2_journal_recover
+>  do_one_pass
+>   memcpy(nbh->b_data, obh->b_data) // copy data to fs dev from journal
+>   mark_buffer_dirty // mark bh dirty
+>          vfs_read
+> 	  generic_file_read_iter // dio
+> 	   filemap_write_and_wait_range
+> 	    __filemap_fdatawrite_range
+> 	     do_writepages
+> 	      block_write_full_folio
+> 	       submit_bh_wbc
+> 	            >>  EIO occurs in disk  <<
+> 	                     end_buffer_async_write
+> 			      mark_buffer_write_io_error
+> 			       mapping_set_error
+> 			        set_bit(AS_EIO, &mapping->flags) // set!
+> 	    filemap_check_errors
+> 	     test_and_clear_bit(AS_EIO, &mapping->flags) // clear!
+>  err2 = sync_blockdev
+>   filemap_write_and_wait
+>    filemap_check_errors
+>     test_and_clear_bit(AS_EIO, &mapping->flags) // false
+>  err2 = 0
+> 
+> Filesystem is mounted successfully even data from journal is failed written
+> into disk, and ext4/ocfs2 could become corrupted.
+> 
+> Fix it by comparing the wb_err state in fs block device before recovering
+> and after recovering.
+> 
+> Fetch a reproducer in [Link].
+> 
+> Link: https://bugzilla.kernel.org/show_bug.cgi?id=217888
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
+> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
-Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
-Reviewed-by: Muchun Song <songmuchun@bytedance.com>
-Acked-by: Jan Kara <jack@suse.cz>
-CC: "Theodore Ts'o" <tytso@mit.edu>
-CC: linux-ext4@vger.kernel.org
----
- fs/jbd2/journal.c    | 29 ++++++++++++++++++-----------
- include/linux/jbd2.h |  2 +-
- 2 files changed, 19 insertions(+), 12 deletions(-)
+After discussion about v2 this version is the better option. Feel free to
+add:
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 768fa05bcbed..0ae19d527b22 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1290,7 +1290,7 @@ static int jbd2_min_tag_size(void)
- static unsigned long jbd2_journal_shrink_scan(struct shrinker *shrink,
- 					      struct shrink_control *sc)
- {
--	journal_t *journal = container_of(shrink, journal_t, j_shrinker);
-+	journal_t *journal = shrink->private_data;
- 	unsigned long nr_to_scan = sc->nr_to_scan;
- 	unsigned long nr_shrunk;
- 	unsigned long count;
-@@ -1316,7 +1316,7 @@ static unsigned long jbd2_journal_shrink_scan(struct shrinker *shrink,
- static unsigned long jbd2_journal_shrink_count(struct shrinker *shrink,
- 					       struct shrink_control *sc)
- {
--	journal_t *journal = container_of(shrink, journal_t, j_shrinker);
-+	journal_t *journal = shrink->private_data;
- 	unsigned long count;
- 
- 	count = percpu_counter_read_positive(&journal->j_checkpoint_jh_count);
-@@ -1588,14 +1588,21 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 		goto err_cleanup;
- 
- 	journal->j_shrink_transaction = NULL;
--	journal->j_shrinker.scan_objects = jbd2_journal_shrink_scan;
--	journal->j_shrinker.count_objects = jbd2_journal_shrink_count;
--	journal->j_shrinker.seeks = DEFAULT_SEEKS;
--	journal->j_shrinker.batch = journal->j_max_transaction_buffers;
--	err = register_shrinker(&journal->j_shrinker, "jbd2-journal:(%u:%u)",
--				MAJOR(bdev->bd_dev), MINOR(bdev->bd_dev));
--	if (err)
-+
-+	journal->j_shrinker = shrinker_alloc(0, "jbd2-journal:(%u:%u)",
-+					     MAJOR(bdev->bd_dev),
-+					     MINOR(bdev->bd_dev));
-+	if (!journal->j_shrinker) {
-+		err = -ENOMEM;
- 		goto err_cleanup;
-+	}
-+
-+	journal->j_shrinker->scan_objects = jbd2_journal_shrink_scan;
-+	journal->j_shrinker->count_objects = jbd2_journal_shrink_count;
-+	journal->j_shrinker->batch = journal->j_max_transaction_buffers;
-+	journal->j_shrinker->private_data = journal;
-+
-+	shrinker_register(journal->j_shrinker);
- 
- 	return journal;
- 
-@@ -2170,9 +2177,9 @@ int jbd2_journal_destroy(journal_t *journal)
- 		brelse(journal->j_sb_buffer);
- 	}
- 
--	if (journal->j_shrinker.flags & SHRINKER_REGISTERED) {
-+	if (journal->j_shrinker) {
- 		percpu_counter_destroy(&journal->j_checkpoint_jh_count);
--		unregister_shrinker(&journal->j_shrinker);
-+		shrinker_free(journal->j_shrinker);
- 	}
- 	if (journal->j_proc_entry)
- 		jbd2_stats_proc_exit(journal);
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 52772c826c86..6dcbb4eb80fb 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -886,7 +886,7 @@ struct journal_s
- 	 * Journal head shrinker, reclaim buffer's journal head which
- 	 * has been written back.
- 	 */
--	struct shrinker		j_shrinker;
-+	struct shrinker		*j_shrinker;
- 
- 	/**
- 	 * @j_checkpoint_jh_count:
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
+
+> ---
+>  fs/jbd2/recovery.c | 7 +++++++
+>  1 file changed, 7 insertions(+)
+> 
+> diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+> index c269a7d29a46..0fecaa6a3ac6 100644
+> --- a/fs/jbd2/recovery.c
+> +++ b/fs/jbd2/recovery.c
+> @@ -289,6 +289,8 @@ int jbd2_journal_recover(journal_t *journal)
+>  	journal_superblock_t *	sb;
+>  
+>  	struct recovery_info	info;
+> +	errseq_t		wb_err;
+> +	struct address_space	*mapping;
+>  
+>  	memset(&info, 0, sizeof(info));
+>  	sb = journal->j_superblock;
+> @@ -306,6 +308,8 @@ int jbd2_journal_recover(journal_t *journal)
+>  		return 0;
+>  	}
+>  
+> +	mapping = journal->j_fs_dev->bd_inode->i_mapping;
+> +	errseq_check_and_advance(&mapping->wb_err, &wb_err);
+>  	err = do_one_pass(journal, &info, PASS_SCAN);
+>  	if (!err)
+>  		err = do_one_pass(journal, &info, PASS_REVOKE);
+> @@ -327,6 +331,9 @@ int jbd2_journal_recover(journal_t *journal)
+>  
+>  	jbd2_journal_clear_revoke(journal);
+>  	err2 = sync_blockdev(journal->j_fs_dev);
+> +	if (!err)
+> +		err = err2;
+> +	err2 = errseq_check_and_advance(&mapping->wb_err, &wb_err);
+>  	if (!err)
+>  		err = err2;
+>  	/* Make sure all replayed data is on permanent storage */
+> -- 
+> 2.39.2
+> 
 -- 
-2.30.2
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
