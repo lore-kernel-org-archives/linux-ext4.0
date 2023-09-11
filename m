@@ -2,100 +2,168 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B6414CA0EC5
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 Sep 2023 21:29:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E858FCA0EC4
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 Sep 2023 21:29:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345468AbjIKVUp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 11 Sep 2023 17:20:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37514 "EHLO
+        id S242578AbjIKVUv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 11 Sep 2023 17:20:51 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36256 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235833AbjIKJlO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Sep 2023 05:41:14 -0400
-Received: from madras.collabora.co.uk (madras.collabora.co.uk [46.235.227.172])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1542CFD;
-        Mon, 11 Sep 2023 02:41:10 -0700 (PDT)
-Received: from localhost.localdomain (unknown [182.191.133.203])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-        (No client certificate requested)
-        (Authenticated sender: usama.anjum)
-        by madras.collabora.co.uk (Postfix) with ESMTPSA id 7909A66072F0;
-        Mon, 11 Sep 2023 10:41:04 +0100 (BST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=collabora.com;
-        s=mail; t=1694425268;
-        bh=9wEA6kj/8qL09liKb87plaPguZEAHq2kFG8kWKL8ugk=;
-        h=From:To:Cc:Subject:Date:From;
-        b=DhtJtmzWiw8Fi7P+MP4ojUpOFllFd8fOg2UoZs78eL9SZh0RXWN68+cJXRIvRrnC5
-         iDKtwK/fqJmhIWe1NrAQpnH0Q4GOxKCCo1sPKR0+IGx7u6JQIuP5rjw6R9W8qPI0fF
-         QFPjsFDjespYIqxmDpUlA9BKicprkRZidyZ70bwC2Tj4axMrbVLtCOFHv6gfhO4dTb
-         NRCknuyXbf31N+++x/kpcuJqDuef1zZYsIzv247JFM28jTozOqFY6ibzy3LndoYbvu
-         gi/4uI6YWSijekDqnrVWNc2d0yzG/p324ZaYC86UWpI9ZOW8uR1gSLARK9WBinWsYu
-         oSjhGtEGhv2uQ==
-From:   Muhammad Usama Anjum <usama.anjum@collabora.com>
-To:     "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Allison Henderson <achender@linux.vnet.ibm.com>
-Cc:     Muhammad Usama Anjum <usama.anjum@collabora.com>,
-        kernel@collabora.com, stable@vger.kernel.org,
-        syzbot+6e5f2db05775244c73b7@syzkaller.appspotmail.com,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [RFC] ext4: don't remove already removed extent
-Date:   Mon, 11 Sep 2023 14:40:38 +0500
-Message-Id: <20230911094038.3602508-1-usama.anjum@collabora.com>
-X-Mailer: git-send-email 2.40.1
+        with ESMTP id S236068AbjIKJuV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Sep 2023 05:50:21 -0400
+Received: from mail-pl1-x629.google.com (mail-pl1-x629.google.com [IPv6:2607:f8b0:4864:20::629])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 41EACE4F
+        for <linux-ext4@vger.kernel.org>; Mon, 11 Sep 2023 02:49:53 -0700 (PDT)
+Received: by mail-pl1-x629.google.com with SMTP id d9443c01a7336-1befe39630bso9368785ad.0
+        for <linux-ext4@vger.kernel.org>; Mon, 11 Sep 2023 02:49:53 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=bytedance.com; s=google; t=1694425793; x=1695030593; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=vZpBnX4Z9eqEuCcIq983vZteHkZX7uUM6cDHYd9irL8=;
+        b=WTl7QxEdalYnW2SrShiVlmdwwFN+PosQHXFFjzkmbKshIgvY/Qq8VHEO7hyfaK6vum
+         K8Rq5pxCYbxjvUIycBBB358ZDcgkFmD0asbURnuL1e3xIVkFkVTwGMrjurD8SY6IUasD
+         PI9ZRFK+gxSNtDdM7BQHvwZs/tcfa2o5Hzaiujs5SOEUGxn55vIdxiPXoJYAqTVkooti
+         PnrzX4J8xyw93eZEHns2FkUBaSj+h+2RRzDDqYfdG/R6Hg0539zjJSY4g1+3uu4Juk8x
+         prlD2GZXWrjT4o8tIsOIjk+HqqmshTWL2yyBRSmRndDK0YSqWKq6fJFCqzKDj7mU7+3s
+         7o1A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1694425793; x=1695030593;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=vZpBnX4Z9eqEuCcIq983vZteHkZX7uUM6cDHYd9irL8=;
+        b=l+D88XDRhom/3RvrUMNqGVez2+mnSylxtpJg7shQCHKMuINT6Q0b3Ym0MejthL2N5n
+         +V8hh5SYTfHHyq7TnO8XHgA0kPMGNe7CtC5jnEuKI/eJHfaUQYP1L4ZiXnQHh5f576qL
+         q5n/jPlneIYsZ4MAYdMXj2jORB9tu5jBhPKnnD+/LLgjHaEn9NTZ0EiJGKEaFvF3vALO
+         G2qlBVWSYeGmNmA2HJDnI7vV5xHwWfU6MXQvTGS6gkUj6xneYSIA2gvj/3ueqcKIgYSA
+         xb42u0/1llubIqF6W/jaoKU+RBYFkhjbxxajpyja4BJhRoLPo2FNA4UtOGdrWrPPtlNn
+         RZrw==
+X-Gm-Message-State: AOJu0Yz7ukIa2ZJ5AUBUF/ZGfBecoHWK0M9sy+Im1YVUflTzNXLIaDsq
+        BG+beD61ZaRv+16CwP3ECAh6BA==
+X-Google-Smtp-Source: AGHT+IFvqXY+jnOST4BZIc6AyFCejSJWSQ6rLQGam1YrCI9mLJF9ktChTLGkYjxBiW6SC49Zt3tINQ==
+X-Received: by 2002:a17:902:ced1:b0:1b8:a469:53d8 with SMTP id d17-20020a170902ced100b001b8a46953d8mr11187928plg.0.1694425792768;
+        Mon, 11 Sep 2023 02:49:52 -0700 (PDT)
+Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.146])
+        by smtp.gmail.com with ESMTPSA id az7-20020a170902a58700b001bdc2fdcf7esm5988188plb.129.2023.09.11.02.49.44
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 11 Sep 2023 02:49:52 -0700 (PDT)
+From:   Qi Zheng <zhengqi.arch@bytedance.com>
+To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
+        vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
+        brauner@kernel.org, paulmck@kernel.org, tytso@mit.edu,
+        steven.price@arm.com, cel@kernel.org, senozhatsky@chromium.org,
+        yujie.liu@intel.com, gregkh@linuxfoundation.org,
+        muchun.song@linux.dev
+Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-fsdevel@vger.kernel.org,
+        Qi Zheng <zhengqi.arch@bytedance.com>,
+        Muchun Song <songmuchun@bytedance.com>,
+        Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+Subject: [PATCH v6 31/45] jbd2,ext4: dynamically allocate the jbd2-journal shrinker
+Date:   Mon, 11 Sep 2023 17:44:30 +0800
+Message-Id: <20230911094444.68966-32-zhengqi.arch@bytedance.com>
+X-Mailer: git-send-email 2.24.3 (Apple Git-128)
+In-Reply-To: <20230911094444.68966-1-zhengqi.arch@bytedance.com>
+References: <20230911094444.68966-1-zhengqi.arch@bytedance.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Syzbot has hit the following bug on current and all older kernels:
-BUG: KASAN: out-of-bounds in ext4_ext_rm_leaf fs/ext4/extents.c:2736 [inline]
-BUG: KASAN: out-of-bounds in ext4_ext_remove_space+0x2482/0x4d90 fs/ext4/extents.c:2958
-Read of size 18446744073709551508 at addr ffff888073aea078 by task syz-executor420/6443
+In preparation for implementing lockless slab shrink, use new APIs to
+dynamically allocate the jbd2-journal shrinker, so that it can be freed
+asynchronously via RCU. Then it doesn't need to wait for RCU read-side
+critical section when releasing the struct journal_s.
 
-On investigation, I've found that eh->eh_entries is zero, ex is
-referring to last entry and EXT_LAST_EXTENT(eh) is referring to first.
-Hence EXT_LAST_EXTENT(eh) - ex becomes negative and causes the wrong
-buffer read.
-
-element: FFFF8882F8F0D06C       <----- ex
-element: FFFF8882F8F0D060
-element: FFFF8882F8F0D054
-element: FFFF8882F8F0D048
-element: FFFF8882F8F0D03C
-element: FFFF8882F8F0D030
-element: FFFF8882F8F0D024
-element: FFFF8882F8F0D018
-element: FFFF8882F8F0D00C	<------  EXT_FIRST_EXTENT(eh)
-header:  FFFF8882F8F0D000	<------  EXT_LAST_EXTENT(eh) and eh
-
-Cc: stable@vger.kernel.org
-Reported-by: syzbot+6e5f2db05775244c73b7@syzkaller.appspotmail.com
-Closes: https://groups.google.com/g/syzkaller-bugs/c/G6zS-LKgDW0/m/63MgF6V7BAAJ
-Fixes: d583fb87a3ff ("ext4: punch out extents")
-Signed-off-by: Muhammad Usama Anjum <usama.anjum@collabora.com>
+Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
+Reviewed-by: Muchun Song <songmuchun@bytedance.com>
+Acked-by: Jan Kara <jack@suse.cz>
+CC: "Theodore Ts'o" <tytso@mit.edu>
+CC: linux-ext4@vger.kernel.org
 ---
-This patch is only fixing the local issue. There may be bigger bug. Why
-is ex set to last entry if the eh->eh_entries is 0. If any ext4
-developer want to look at the bug, please don't hesitate.
----
- fs/ext4/extents.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/jbd2/journal.c    | 29 ++++++++++++++++++-----------
+ include/linux/jbd2.h |  2 +-
+ 2 files changed, 19 insertions(+), 12 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index e4115d338f101..7b7779b4cb87f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2726,7 +2726,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 		 * If the extent was completely released,
- 		 * we need to remove it from the leaf
- 		 */
--		if (num == 0) {
-+		if (num == 0 && eh->eh_entries) {
- 			if (end != EXT_MAX_BLOCKS - 1) {
- 				/*
- 				 * For hole punching, we need to scoot all the
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 768fa05bcbed..0ae19d527b22 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1290,7 +1290,7 @@ static int jbd2_min_tag_size(void)
+ static unsigned long jbd2_journal_shrink_scan(struct shrinker *shrink,
+ 					      struct shrink_control *sc)
+ {
+-	journal_t *journal = container_of(shrink, journal_t, j_shrinker);
++	journal_t *journal = shrink->private_data;
+ 	unsigned long nr_to_scan = sc->nr_to_scan;
+ 	unsigned long nr_shrunk;
+ 	unsigned long count;
+@@ -1316,7 +1316,7 @@ static unsigned long jbd2_journal_shrink_scan(struct shrinker *shrink,
+ static unsigned long jbd2_journal_shrink_count(struct shrinker *shrink,
+ 					       struct shrink_control *sc)
+ {
+-	journal_t *journal = container_of(shrink, journal_t, j_shrinker);
++	journal_t *journal = shrink->private_data;
+ 	unsigned long count;
+ 
+ 	count = percpu_counter_read_positive(&journal->j_checkpoint_jh_count);
+@@ -1588,14 +1588,21 @@ static journal_t *journal_init_common(struct block_device *bdev,
+ 		goto err_cleanup;
+ 
+ 	journal->j_shrink_transaction = NULL;
+-	journal->j_shrinker.scan_objects = jbd2_journal_shrink_scan;
+-	journal->j_shrinker.count_objects = jbd2_journal_shrink_count;
+-	journal->j_shrinker.seeks = DEFAULT_SEEKS;
+-	journal->j_shrinker.batch = journal->j_max_transaction_buffers;
+-	err = register_shrinker(&journal->j_shrinker, "jbd2-journal:(%u:%u)",
+-				MAJOR(bdev->bd_dev), MINOR(bdev->bd_dev));
+-	if (err)
++
++	journal->j_shrinker = shrinker_alloc(0, "jbd2-journal:(%u:%u)",
++					     MAJOR(bdev->bd_dev),
++					     MINOR(bdev->bd_dev));
++	if (!journal->j_shrinker) {
++		err = -ENOMEM;
+ 		goto err_cleanup;
++	}
++
++	journal->j_shrinker->scan_objects = jbd2_journal_shrink_scan;
++	journal->j_shrinker->count_objects = jbd2_journal_shrink_count;
++	journal->j_shrinker->batch = journal->j_max_transaction_buffers;
++	journal->j_shrinker->private_data = journal;
++
++	shrinker_register(journal->j_shrinker);
+ 
+ 	return journal;
+ 
+@@ -2170,9 +2177,9 @@ int jbd2_journal_destroy(journal_t *journal)
+ 		brelse(journal->j_sb_buffer);
+ 	}
+ 
+-	if (journal->j_shrinker.flags & SHRINKER_REGISTERED) {
++	if (journal->j_shrinker) {
+ 		percpu_counter_destroy(&journal->j_checkpoint_jh_count);
+-		unregister_shrinker(&journal->j_shrinker);
++		shrinker_free(journal->j_shrinker);
+ 	}
+ 	if (journal->j_proc_entry)
+ 		jbd2_stats_proc_exit(journal);
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 52772c826c86..6dcbb4eb80fb 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -886,7 +886,7 @@ struct journal_s
+ 	 * Journal head shrinker, reclaim buffer's journal head which
+ 	 * has been written back.
+ 	 */
+-	struct shrinker		j_shrinker;
++	struct shrinker		*j_shrinker;
+ 
+ 	/**
+ 	 * @j_checkpoint_jh_count:
 -- 
-2.40.1
+2.30.2
 
