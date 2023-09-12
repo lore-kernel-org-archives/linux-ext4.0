@@ -2,125 +2,75 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2040CCA0EC8
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 Sep 2023 21:29:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 838D4CA0ECD
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Sep 2023 03:15:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345550AbjIKVVQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 11 Sep 2023 17:21:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40890 "EHLO
+        id S242339AbjILDQB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 11 Sep 2023 23:16:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43878 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235510AbjIKIts (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Sep 2023 04:49:48 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2C3741A1;
-        Mon, 11 Sep 2023 01:49:43 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id CF7B71F8A3;
-        Mon, 11 Sep 2023 08:49:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1694422181; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=xmYheAFnFcMTM/McW9Ep/uL3q2cEMPpomtvxbGF+EAI=;
-        b=WtVdusmZ7JUt3hyqzvuM5ictCVmCriRbf5spYlWQ8ys+cGL5f0dTUxFRHV8JoOrEp9cqd1
-        DlU2z2El4p4hVL5yjBk5s629I7cc/0Fyl6AsHUQhiJ+dm4x0SZtZHDfa0dp7L308wzadL0
-        DcSo18hnLALwv9oXa9O/ureE8A3Ay1o=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1694422181;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=xmYheAFnFcMTM/McW9Ep/uL3q2cEMPpomtvxbGF+EAI=;
-        b=/dqQO7uUGy1v5Yq7eIUjnqripMEXCxV3NGPKcGHZ/sy7FcebjbIlPRV7N1Ylg/mkBBskFE
-        OgrI/7WmGOVf0wBA==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id C074B13780;
-        Mon, 11 Sep 2023 08:49:41 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id az3sLqXU/mShEwAAMHmgww
-        (envelope-from <jack@suse.cz>); Mon, 11 Sep 2023 08:49:41 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 4576AA077E; Mon, 11 Sep 2023 10:49:41 +0200 (CEST)
-Date:   Mon, 11 Sep 2023 10:49:41 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Li Zetao <lizetao1@huawei.com>
-Cc:     tytso@mit.edu, jack@suse.com, yi.zhang@huawei.com,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] jbd2: Fix memory leak in journal_init_common()
-Message-ID: <20230911084941.hlptflu2d3s3gjle@quack3>
-References: <20230911025138.983101-1-lizetao1@huawei.com>
+        with ESMTP id S242372AbjILDPr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Sep 2023 23:15:47 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BF0BB9C0A7
+        for <linux-ext4@vger.kernel.org>; Mon, 11 Sep 2023 18:50:06 -0700 (PDT)
+Received: from cwcc.thunk.org (pool-173-48-113-225.bstnma.fios.verizon.net [173.48.113.225])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 38C1nuOT011233
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Mon, 11 Sep 2023 21:49:57 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1694483399; bh=s/sNfzwYevk+Y0pvlAXrndruCaAI/NMq2RHWu1p5lv0=;
+        h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+        b=FCbGFjdTCqBv1956viEFvp2wv86UD1iScNuz6Q63doqVjOLJ3zpQP/sC4hpqG5SmH
+         nmPbYmlTMOvOKtQYbQwPKnk7NMTlECWJ5x/aYm1853ZmTW0wAvhB4EtNcRMPZVoC8X
+         3d5kq+7g6K2QOQZkXPhI0Wy//cIXCfIojEd5I6DY8D/kwcl9UtNZk00+HVjRfhBfkp
+         aSHloMt2Sg85HW54Re4oiyc8LD9YHVJbtfh/a8gyK3fHNxR+/kQ2o2OIABv4G2WOlj
+         etSRCZu5Eg8lwZz5N53EhGeAdjy1iS8EyZLwPc9NmTSlfFHXMirIx8Xv2P+rjbcIeY
+         uvcw7Pi5bwjGA==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 855F615C023F; Mon, 11 Sep 2023 21:49:56 -0400 (EDT)
+Date:   Mon, 11 Sep 2023 21:49:56 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Christophe JAILLET <christophe.jaillet@wanadoo.fr>
+Cc:     Andreas Dilger <adilger.kernel@dilger.ca>,
+        Dave Kleikamp <shaggy@austin.ibm.com>,
+        Andrew Morton <akpm@osdl.org>, linux-kernel@vger.kernel.org,
+        kernel-janitors@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: Fix a test in ext4_decode_error()
+Message-ID: <20230912014956.GB1182921@mit.edu>
+References: <2c0edffd8557807c6cd6d55111482c5cad7c8f2f.1694275603.git.christophe.jaillet@wanadoo.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20230911025138.983101-1-lizetao1@huawei.com>
+In-Reply-To: <2c0edffd8557807c6cd6d55111482c5cad7c8f2f.1694275603.git.christophe.jaillet@wanadoo.fr>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon 11-09-23 10:51:38, Li Zetao wrote:
-> There is a memory leak reported by kmemleak:
+On Sat, Sep 09, 2023 at 06:07:02PM +0200, Christophe JAILLET wrote:
+> The doc of snprintf() states that "If the return is greater than or equal
+> to @size, the resulting string is truncated".
 > 
->   unreferenced object 0xff11000105903b80 (size 64):
->     comm "mount", pid 3382, jiffies 4295032021 (age 27.826s)
->     hex dump (first 32 bytes):
->       04 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00  ................
->       ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00  ................
->     backtrace:
->       [<ffffffffae86ac40>] __kmalloc_node+0x50/0x160
->       [<ffffffffaf2486d8>] crypto_alloc_tfmmem.isra.0+0x38/0x110
->       [<ffffffffaf2498e5>] crypto_create_tfm_node+0x85/0x2f0
->       [<ffffffffaf24a92c>] crypto_alloc_tfm_node+0xfc/0x210
->       [<ffffffffaedde777>] journal_init_common+0x727/0x1ad0
->       [<ffffffffaede1715>] jbd2_journal_init_inode+0x2b5/0x500
->       [<ffffffffaed786b5>] ext4_load_and_init_journal+0x255/0x2440
->       [<ffffffffaed8b423>] ext4_fill_super+0x8823/0xa330
->       ...
+> So in order to "Check for truncated error codes...", we must check that the
+> returned value is < 16.
 > 
-> The root cause was traced to an error handing path in journal_init_common()
-> when malloc memory failed in register_shrinker(). The checksum driver is
-> used to reference to checksum algorithm via cryptoapi and the user should
-> release the memory when the driver is no longer needed or the journal
-> initialization failed.
-> 
-> Fix it by calling crypto_free_shash() on the "err_cleanup" error handing
-> path in journal_init_common().
-> 
-> Fixes: c30713084ba5 ("jbd2: move load_superblock() into journal_init_common()")
-> Signed-off-by: Li Zetao <lizetao1@huawei.com>
+> Fixes: ac27a0ec112a ("[PATCH] ext4: initial copy of files from ext3")
+> Signed-off-by: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
 
-Thanks for the fixup! Looks good to me. Feel free to add:
+This patch is not needed.  It's fine if snprintf truncates the string,
+since it will still be null terminated.  This was checking for the
+case where snprintf() returns an error, and the comment was
+misleading.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+Looking that the current implementation of the kernel snprintf, it
+will never return a negative number, and nbuf is always passed in from
+the callers, so it could be changed to
 
-								Honza
+		snprintf(nbuf, 16, "error %d", -errno);
+		errstr = nbuf;
+		
+But what is currently there is certainly valid.
 
-> ---
->  fs/jbd2/journal.c | 2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 768fa05bcbed..30dec2bd2ecc 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -1601,6 +1601,8 @@ static journal_t *journal_init_common(struct block_device *bdev,
->  
->  err_cleanup:
->  	percpu_counter_destroy(&journal->j_checkpoint_jh_count);
-> +	if (journal->j_chksum_driver)
-> +		crypto_free_shash(journal->j_chksum_driver);
->  	kfree(journal->j_wbuf);
->  	jbd2_journal_destroy_revoke(journal);
->  	journal_fail_superblock(journal);
-> -- 
-> 2.34.1
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+						- Ted
