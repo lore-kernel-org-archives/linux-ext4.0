@@ -2,103 +2,139 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E1C6CD3421
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Sep 2023 15:33:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F0183CD37B0
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Sep 2023 15:42:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229570AbjIRPcn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 18 Sep 2023 11:32:43 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58086 "EHLO
+        id S229715AbjIRPmT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 18 Sep 2023 11:42:19 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58074 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229638AbjIRPc1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Sep 2023 11:32:27 -0400
+        with ESMTP id S229512AbjIRPmM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Sep 2023 11:42:12 -0400
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 961FE12B;
-        Mon, 18 Sep 2023 08:30:29 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6E8C8114
+        for <linux-ext4@vger.kernel.org>; Mon, 18 Sep 2023 08:40:39 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id EA1B621D71;
-        Mon, 18 Sep 2023 14:47:08 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 5706021DE8;
+        Mon, 18 Sep 2023 15:36:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1695048428; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1695051380; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=MiFl31+UGD6aDpGF4GuaYmsTJ9E5cBA01T0ksKE6gMU=;
-        b=Qv9SqzI2u9WyQTkioGDIoLEQSLqFz0sgXgQGSKuMEBM4EpRxCMf2++yAVW7M7cPPnf+W5S
-        Grc2gagVJWyoBP9K+xeartPuTBcTkN3JJSzXmBDvDNJ33Lz/rt0/Cn6zzSg/x79gP+kkBU
-        vMzA1BP2IDRHC4eG7fUWPJ2kgXaMDBo=
+        bh=wRRq3QBzHoyyDabxX2fOpYWedZIBCX58hRDwD2SKGsE=;
+        b=pC07D0ypNc14vp5vJ/bRR9zET7HFzxs0iYszAJW4Cprmkr6bLfUkBLNDx3XllZP5JS616H
+        KiuGlN+HScGJYBzenuIimVtj07dN2DPcl4v+GVf/1trLB7DJIq5lLUFQUL6Ee6JI3iFbfd
+        5Xc5cFHbFnDwtEmhtGfGXpImV5KcWp4=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1695048428;
+        s=susede2_ed25519; t=1695051380;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=MiFl31+UGD6aDpGF4GuaYmsTJ9E5cBA01T0ksKE6gMU=;
-        b=zd8dFmLW3XkCnWrSNjEnxsaYmCa/VRQNnIWI8JjLnIOwA1cnCtvI3l8t74h9Y/ZXmHE7AC
-        gd7+ulV0Qr9dX5AQ==
+        bh=wRRq3QBzHoyyDabxX2fOpYWedZIBCX58hRDwD2SKGsE=;
+        b=2c/xj3OvFpCA+ZHbq9hrXP/OXx3rurEmR0hWCUtvL2WX0l7FCKKVLivrhswk34pCM42AsK
+        jBkj9umR6DIUe4DA==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id DB24E1358A;
-        Mon, 18 Sep 2023 14:47:08 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 4B22A1358A;
+        Mon, 18 Sep 2023 15:36:20 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id WDh2NexiCGUkQwAAMHmgww
-        (envelope-from <jack@suse.cz>); Mon, 18 Sep 2023 14:47:08 +0000
+        id Oh1NEnRuCGUeYAAAMHmgww
+        (envelope-from <jack@suse.cz>); Mon, 18 Sep 2023 15:36:20 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 66CBDA0759; Mon, 18 Sep 2023 16:47:08 +0200 (CEST)
-Date:   Mon, 18 Sep 2023 16:47:08 +0200
+        id D0A3CA0759; Mon, 18 Sep 2023 17:36:19 +0200 (CEST)
+Date:   Mon, 18 Sep 2023 17:36:19 +0200
 From:   Jan Kara <jack@suse.cz>
-To:     Chunhui He <hchunhui@mail.ustc.edu.cn>
-Cc:     Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 2/2] ext4: trivial: add semicolon after label attributes
-Message-ID: <20230918144708.cntjdjjomj7oy5f5@quack3>
-References: <20230826085658.69769-1-hchunhui@mail.ustc.edu.cn>
+To:     Wang Jianjian <wangjianjian0@foxmail.com>
+Cc:     linux-ext4@vger.kernel.org, aneesh.kumar@linux.vnet.ibm.com
+Subject: Re: [PATCH] ext4/mballoc: No need to generate from free list
+Message-ID: <20230918153619.tku6d4556os5tvzj@quack3>
+References: <tencent_53CBCB1668358AE862684E453DF37B722008@qq.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20230826085658.69769-1-hchunhui@mail.ustc.edu.cn>
+In-Reply-To: <tencent_53CBCB1668358AE862684E453DF37B722008@qq.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat 26-08-23 08:56:58, Chunhui He wrote:
-> The gcc document says label attributes are ambiguous if they are
-> not immediately followed by a semicolon. Although the ambiguity
-> does not arise in C90/99, it would be better to add it.
-> 
-> Link: https://gcc.gnu.org/onlinedocs/gcc/Attribute-Syntax.html#Label-Attributes-2
-> Signed-off-by: Chunhui He <hchunhui@mail.ustc.edu.cn>
+On Thu 24-08-23 23:56:31, Wang Jianjian wrote:
+> Commit 7a2fcbf7f85('ext4: don't use blocks freed but
+> not yet committed in buddy cache init) walk the rbtree of
+> freed data and mark them free in buddy to avoid reuse them
+> before journal committing them, However, it is unnecessary to
+> do that, because we have extra page references to buddy and bitmap
+> pages, they will be released iff journal has committed and after
+> process freed data.
 
-Fair enough. Feel free to add:
+So do you mean that buddy bitmap cannot be freed until the transaction that
+frees the blocks in it commits? Indeed ext4_mb_free_metadata() grabs buddy
+page references and ext4_free_data_in_buddy() drops them. 
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+Perhaps I'd rephrase the changelog as:
+
+Commit 7a2fcbf7f85 ("ext4: don't use blocks freed but not yet committed in
+buddy cache init") added a code to mark as used blocks in the list of not yet
+committed freed blocks during initialization of a buddy page. However
+ext4_mb_free_metadata() makes sure buddy page is already loaded and takes a
+reference to it so it cannot happen that ext4_mb_init_cache() is called
+when efd list is non-empty. Just remove the
+ext4_mb_generate_from_freelist() call.
+
+> @@ -1274,7 +1272,6 @@ static int ext4_mb_init_cache(struct page *page, char *incore, gfp_t gfp)
+>  
+>  			/* mark all preallocated blks used in in-core bitmap */
+>  			ext4_mb_generate_from_pa(sb, data, group);
+> -			ext4_mb_generate_from_freelist(sb, data, group);
+
+And just to be sure I'd add here:
+
+			WARN_ON_ONCE(!RB_EMPTY_ROOT(&grp->bb_free_root));
 
 								Honza
 
-> ---
->  fs/ext4/super.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index c94ebf704616..f5fa9815a86e 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -5609,7 +5609,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+
+>  			ext4_unlock_group(sb, group);
 >  
->  failed_mount10:
->  	ext4_quotas_off(sb, EXT4_MAXQUOTAS);
-> -failed_mount9: __maybe_unused
-> +failed_mount9: __maybe_unused;
->  	ext4_release_orphan_info(sb);
->  failed_mount8:
->  	ext4_unregister_sysfs(sb);
+>  			/* set incore so that the buddy information can be
+> @@ -4440,30 +4437,6 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
+>  	return false;
+>  }
+>  
+> -/*
+> - * the function goes through all block freed in the group
+> - * but not yet committed and marks them used in in-core bitmap.
+> - * buddy must be generated from this bitmap
+> - * Need to be called with the ext4 group lock held
+> - */
+> -static void ext4_mb_generate_from_freelist(struct super_block *sb, void *bitmap,
+> -						ext4_group_t group)
+> -{
+> -	struct rb_node *n;
+> -	struct ext4_group_info *grp;
+> -	struct ext4_free_data *entry;
+> -
+> -	grp = ext4_get_group_info(sb, group);
+> -	n = rb_first(&(grp->bb_free_root));
+> -
+> -	while (n) {
+> -		entry = rb_entry(n, struct ext4_free_data, efd_node);
+> -		mb_set_bits(bitmap, entry->efd_start_cluster, entry->efd_count);
+> -		n = rb_next(n);
+> -	}
+> -	return;
+> -}
+> -
+>  /*
+>   * the function goes through all preallocation in this group and marks them
+>   * used in in-core bitmap. buddy must be generated from this bitmap
 > -- 
-> 2.39.2
-> 
+> 2.34.3
 > 
 -- 
 Jan Kara <jack@suse.com>
