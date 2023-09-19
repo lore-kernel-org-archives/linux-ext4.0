@@ -2,165 +2,126 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 75F78CD3439
-	for <linux-ext4@archiver.kernel.org>; Tue, 19 Sep 2023 04:53:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EAA3ACD343F
+	for <linux-ext4@archiver.kernel.org>; Tue, 19 Sep 2023 06:00:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231593AbjISEx3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 19 Sep 2023 00:53:29 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33832 "EHLO
+        id S229960AbjISGAS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 19 Sep 2023 02:00:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53720 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231710AbjISEwe (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Sep 2023 00:52:34 -0400
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8B92C8F;
-        Mon, 18 Sep 2023 21:51:58 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
-        Content-Type:Content-ID:Content-Description;
-        bh=L+I9DvSof6rF0/+WfFEflzRDNGmPAVF9Uq3AN/O81lI=; b=ZoolnVe9feCT2roK+dhk59/hXY
-        cLI5lMgwQqWFbGiz9gIVEo4N4j6jhdyd6QmFIGOnzhoqFR7+/lQXH9aqYzakU0QQ5iJE7isb//mwr
-        6QPxcIpH7vIbJc5WWq659v5+WaJWEMGjbQY8Jb3devyaanuVVW1I9jdEqRFuo1cK1WbJw/Z2P4dYe
-        b1JJTAoBgefsiiZD5lyAvr+OSD1s30EXeaDKfZOO/S7TQ23el7XPbweZDrNaEtcUglnIu4baYOV0g
-        di5K5ozKnSP3g5HoCVIvCZCDFqf54XIxoTP7qBccZbF9s0aCMTj5r0hmqO6LbIGKuCMvuYrUE6FSH
-        iwZCXvQA==;
-Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qiSi2-00FFkP-EH; Tue, 19 Sep 2023 04:51:38 +0000
-From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
-To:     Andrew Morton <akpm@linux-foundation.org>
-Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        linux-fsdevel@vger.kernel.org, gfs2@lists.linux.dev,
-        linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        ntfs3@lists.linux.dev, ocfs2-devel@lists.linux.dev,
-        reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Pankaj Raghav <p.raghav@samsung.com>
-Subject: [PATCH 05/26] gfs2: Convert inode unstuffing to use a folio
-Date:   Tue, 19 Sep 2023 05:51:14 +0100
-Message-Id: <20230919045135.3635437-6-willy@infradead.org>
-X-Mailer: git-send-email 2.37.1
-In-Reply-To: <20230919045135.3635437-1-willy@infradead.org>
-References: <20230919045135.3635437-1-willy@infradead.org>
+        with ESMTP id S231503AbjISGAS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Sep 2023 02:00:18 -0400
+Received: from out30-97.freemail.mail.aliyun.com (out30-97.freemail.mail.aliyun.com [115.124.30.97])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C50A5FC
+        for <linux-ext4@vger.kernel.org>; Mon, 18 Sep 2023 23:00:09 -0700 (PDT)
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R111e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=ay29a033018046049;MF=hsiangkao@linux.alibaba.com;NM=1;PH=DS;RN=6;SR=0;TI=SMTPD_---0VsQ8FCm_1695103205;
+Received: from 30.221.134.16(mailfrom:hsiangkao@linux.alibaba.com fp:SMTPD_---0VsQ8FCm_1695103205)
+          by smtp.aliyun-inc.com;
+          Tue, 19 Sep 2023 14:00:05 +0800
+Content-Type: multipart/mixed; boundary="------------0BvfEJZiAkTkop5u0YqIxKE0"
+Message-ID: <02d18236-26ef-09b0-90ad-030c4fe3ee20@linux.alibaba.com>
+Date:   Tue, 19 Sep 2023 14:00:04 +0800
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0)
+ Gecko/20100101 Thunderbird/102.15.0
+To:     linux-ext4@vger.kernel.org
+Cc:     Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+        Matthew Bobrowski <mbobrowski@mbobrowski.org>,
+        Christoph Hellwig <hch@lst.de>,
+        Joseph Qi <joseph.qi@linux.alibaba.com>
+From:   Gao Xiang <hsiangkao@linux.alibaba.com>
+Subject: [bug report] ext4 misses final i_size meta sync under O_DIRECT |
+ O_SYNC semantics after iomap DIO conversion
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Use the folio APIs, removing numerous hidden calls to compound_head().
-Also remove the stale comment about the page being looked up if it's NULL.
+This is a multi-part message in MIME format.
+--------------0BvfEJZiAkTkop5u0YqIxKE0
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
----
- fs/gfs2/bmap.c | 48 +++++++++++++++++++++++-------------------------
- 1 file changed, 23 insertions(+), 25 deletions(-)
+Hi folks,
 
-diff --git a/fs/gfs2/bmap.c b/fs/gfs2/bmap.c
-index ef7017fb6951..247d2c16593c 100644
---- a/fs/gfs2/bmap.c
-+++ b/fs/gfs2/bmap.c
-@@ -43,53 +43,51 @@ struct metapath {
- static int punch_hole(struct gfs2_inode *ip, u64 offset, u64 length);
- 
- /**
-- * gfs2_unstuffer_page - unstuff a stuffed inode into a block cached by a page
-+ * gfs2_unstuffer_folio - unstuff a stuffed inode into a block cached by a folio
-  * @ip: the inode
-  * @dibh: the dinode buffer
-  * @block: the block number that was allocated
-- * @page: The (optional) page. This is looked up if @page is NULL
-+ * @folio: The folio.
-  *
-  * Returns: errno
-  */
--
--static int gfs2_unstuffer_page(struct gfs2_inode *ip, struct buffer_head *dibh,
--			       u64 block, struct page *page)
-+static int gfs2_unstuffer_folio(struct gfs2_inode *ip, struct buffer_head *dibh,
-+			       u64 block, struct folio *folio)
- {
- 	struct inode *inode = &ip->i_inode;
- 
--	if (!PageUptodate(page)) {
--		void *kaddr = kmap(page);
-+	if (!folio_test_uptodate(folio)) {
-+		void *kaddr = kmap_local_folio(folio, 0);
- 		u64 dsize = i_size_read(inode);
-  
- 		memcpy(kaddr, dibh->b_data + sizeof(struct gfs2_dinode), dsize);
--		memset(kaddr + dsize, 0, PAGE_SIZE - dsize);
--		kunmap(page);
-+		memset(kaddr + dsize, 0, folio_size(folio) - dsize);
-+		kunmap_local(kaddr);
- 
--		SetPageUptodate(page);
-+		folio_mark_uptodate(folio);
- 	}
- 
- 	if (gfs2_is_jdata(ip)) {
--		struct buffer_head *bh;
-+		struct buffer_head *bh = folio_buffers(folio);
- 
--		if (!page_has_buffers(page))
--			create_empty_buffers(page, BIT(inode->i_blkbits),
--					     BIT(BH_Uptodate));
-+		if (!bh)
-+			bh = folio_create_empty_buffers(folio,
-+				BIT(inode->i_blkbits), BIT(BH_Uptodate));
- 
--		bh = page_buffers(page);
- 		if (!buffer_mapped(bh))
- 			map_bh(bh, inode->i_sb, block);
- 
- 		set_buffer_uptodate(bh);
- 		gfs2_trans_add_data(ip->i_gl, bh);
- 	} else {
--		set_page_dirty(page);
-+		folio_mark_dirty(folio);
- 		gfs2_ordered_add_inode(ip);
- 	}
- 
- 	return 0;
- }
- 
--static int __gfs2_unstuff_inode(struct gfs2_inode *ip, struct page *page)
-+static int __gfs2_unstuff_inode(struct gfs2_inode *ip, struct folio *folio)
- {
- 	struct buffer_head *bh, *dibh;
- 	struct gfs2_dinode *di;
-@@ -118,7 +116,7 @@ static int __gfs2_unstuff_inode(struct gfs2_inode *ip, struct page *page)
- 					      dibh, sizeof(struct gfs2_dinode));
- 			brelse(bh);
- 		} else {
--			error = gfs2_unstuffer_page(ip, dibh, block, page);
-+			error = gfs2_unstuffer_folio(ip, dibh, block, folio);
- 			if (error)
- 				goto out_brelse;
- 		}
-@@ -157,17 +155,17 @@ static int __gfs2_unstuff_inode(struct gfs2_inode *ip, struct page *page)
- int gfs2_unstuff_dinode(struct gfs2_inode *ip)
- {
- 	struct inode *inode = &ip->i_inode;
--	struct page *page;
-+	struct folio *folio;
- 	int error;
- 
- 	down_write(&ip->i_rw_mutex);
--	page = grab_cache_page(inode->i_mapping, 0);
--	error = -ENOMEM;
--	if (!page)
-+	folio = filemap_grab_folio(inode->i_mapping, 0);
-+	error = PTR_ERR(folio);
-+	if (IS_ERR(folio))
- 		goto out;
--	error = __gfs2_unstuff_inode(ip, page);
--	unlock_page(page);
--	put_page(page);
-+	error = __gfs2_unstuff_inode(ip, folio);
-+	folio_unlock(folio);
-+	folio_put(folio);
- out:
- 	up_write(&ip->i_rw_mutex);
- 	return error;
--- 
-2.40.1
+Our consumer reports a behavior change between pre-iomap and iomap
+direct io conversion:
 
+If the system crashes after an appending write to a file open with
+O_DIRECT | O_SYNC flag set, file i_size won't be updated even if
+O_SYNC was marked before.
+
+It can be reproduced by a test program in the attachment with
+gcc -o repro repro.c && ./repro testfile && echo c > /proc/sysrq-trigger
+
+After some analysis, we found that before iomap direct I/O conversion,
+the timing was roughly (taking Linux 3.10 codebase as an example):
+
+	..
+	- ext4_file_dio_write
+	  - __generic_file_aio_write
+	      ..
+	    - ext4_direct_IO  # generic_file_direct_write
+	      - ext4_ext_direct_IO
+	        - ext4_ind_direct_IO  # final_size > inode->i_size
+	          - ..
+	          - ret = blockdev_direct_IO()
+	          - i_size_write(inode, end) # orphan && ret > 0 &&
+	                                   # end > inode->i_size
+	          - ext4_mark_inode_dirty()
+	          - ...
+	  - generic_write_sync  # handling O_SYNC
+
+So the dirty inode meta will be committed into journal immediately
+if O_SYNC is set.  However, After commit 569342dc2485 ("ext4: move
+inode extension/truncate code out from ->iomap_end() callback"),
+the new behavior seems as below:
+
+	..
+	- ext4_dio_write_iter
+	  - ext4_dio_write_checks  # extend = 1
+	  - iomap_dio_rw
+	      - __iomap_dio_rw
+	      - iomap_dio_complete
+	        - generic_write_sync
+	  - ext4_handle_inode_extension  # extend = 1
+
+So that i_size will be recorded only after generic_write_sync() is
+called.  So O_SYNC won't flush the update i_size to the disk.
+
+On the other side, after a quick look of XFS side, it will record
+i_size changes in xfs_dio_write_end_io() so it seems that it doesn't
+have this problem.
+
+Thanks,
+Gao Xiang
+--------------0BvfEJZiAkTkop5u0YqIxKE0
+Content-Type: text/plain; charset=UTF-8; name="repro.c"
+Content-Disposition: attachment; filename="repro.c"
+Content-Transfer-Encoding: base64
+
+I2RlZmluZSBfR05VX1NPVVJDRQojaW5jbHVkZSA8dW5pc3RkLmg+CiNpbmNsdWRlIDxzdGRp
+by5oPgojaW5jbHVkZSA8c3lzL3N0YXQuaD4KI2luY2x1ZGUgPHN5cy9pb2N0bC5oPgojaW5j
+bHVkZSA8c3lzL3R5cGVzLmg+CiNpbmNsdWRlIDxsaW51eC9mcy5oPgojaW5jbHVkZSA8ZmNu
+dGwuaD4KI2luY2x1ZGUgPHN0ZGxpYi5oPgojaW5jbHVkZSA8ZXJybm8uaD4KI2luY2x1ZGUg
+PHN0cmluZy5oPgoKI2RlZmluZSBQQUdFX1NJWkUgNDA5NgoKaW50IHRlc3QoY2hhciogZmls
+ZSkKewogICAgY2hhciogYnVmID0gTlVMTDsKICAgIGludCByZXQgPSAwOwogICAgaW50IGkg
+PSAwOwogICAgcG9zaXhfbWVtYWxpZ24oKHZvaWQqKikoJmJ1ZiksIFBBR0VfU0laRSwgUEFH
+RV9TSVpFKTsKICAgIG1lbXNldChidWYsIDAsIFBBR0VfU0laRSk7CiAgICBmb3IgKGkgPSAw
+IDsgaSA8IFBBR0VfU0laRSA7ICsraSkgYnVmW2ldID0gaTsKICAgIGludCBmZCA9IG9wZW4o
+ZmlsZSwgT19XUk9OTFl8T19DUkVBVHxPX0RJUkVDVHxPX1NZTkMpOwogICAgaWYgKGZkID09
+IC0xKQogICAgewogICAgICAgIGZwcmludGYoc3RkZXJyLCAiJXM6ICVzXG4iLCBmaWxlLCBz
+dHJlcnJvcihlcnJubykpOwogICAgICAgIGV4aXQoMSk7CiAgICB9CiAgICBzdHJ1Y3Qgc3Rh
+dCBzdDsKICAgIHJldCA9IGZzdGF0KGZkLCAmc3QpOwogICAgaWYgKHJldCAhPSAwKQogICAg
+ewogICAgICAgIGZwcmludGYoc3RkZXJyLCAiJXM6ICVzXG4iLCBmaWxlLCBzdHJlcnJvcihl
+cnJubykpOwogICAgICAgIGV4aXQoMSk7CiAgICB9CiAgICBpbnQgb2Zmc2V0ID0gc3Quc3Rf
+c2l6ZTsKICAgIHJldCA9IHB3cml0ZShmZCwgYnVmLCBQQUdFX1NJWkUsIG9mZnNldCk7CiAg
+ICBpZiAocmV0ICE9IFBBR0VfU0laRSkKICAgIHsKICAgICAgICBmcHJpbnRmKHN0ZGVyciwg
+IndyaXRlIGZhaWw6IHJldCAlZCAlc1xuIiwgcmV0LCBzdHJlcnJvcihlcnJubykpOwogICAg
+fQogICAgY2xvc2UoZmQpOwogICAgcmV0dXJuIDA7Cn0KCmludCBtYWluKGludCBhcmdjLCBj
+aGFyICoqIGFyZ3YpCnsKICAgIGludCByZXQgPSAwOwogICAgY2hhciBmaWxlWzEwMjRdID0g
+e307CiAgICBpZiAoYXJnYyAhPSAyKQogICAgewogICAgICAgIGZwcmludGYoc3RkZXJyLCAi
+dXNhZ2U6ICVzIHBhdGgtdG8td3JpdGVcbiIsIGFyZ3ZbMF0pOwogICAgICAgIGV4aXQoMik7
+CiAgICB9CiAgICBzbnByaW50ZihmaWxlLCBzaXplb2YoZmlsZSksICIlc18lZCIsIGFyZ3Zb
+MV0sIDApOwogICAgdGVzdChmaWxlKTsKICAgIHJldHVybiAwOwp9Cg==
+
+--------------0BvfEJZiAkTkop5u0YqIxKE0--
