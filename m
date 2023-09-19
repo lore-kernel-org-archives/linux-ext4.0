@@ -2,30 +2,30 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 33CC7CD343C
-	for <linux-ext4@archiver.kernel.org>; Tue, 19 Sep 2023 04:51:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6D7F9CD3439
+	for <linux-ext4@archiver.kernel.org>; Tue, 19 Sep 2023 04:51:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231610AbjISEv4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 19 Sep 2023 00:51:56 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42014 "EHLO
+        id S231613AbjISEv5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 19 Sep 2023 00:51:57 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42002 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231537AbjISEvr (ORCPT
+        with ESMTP id S231553AbjISEvr (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Sep 2023 00:51:47 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9638610F;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 078DA12A;
         Mon, 18 Sep 2023 21:51:41 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=1TQFktAQGh0zDqA+GJQVLyWb3smQ1H0QN8aDeY770F0=; b=PxHiF6cktFd/+CJWwFu4VfrtIM
-        PU0/626kh0C0ccZjcHWLIbaeSrDKQSavppRX9DRoE01nHmzI0HlowA9/DqHak5U+KPUXKjQOdJsMs
-        ZdwfK6M84AaKO9czXr1z7XfamvIK16jDsF+5FVERFeDeCp8meD7EpMpnB1ZpZfBurluqv/wWqIQ9i
-        QrQ+B/blKNm3erh45AQnHTEWTOxqp2w0H0iFhdgfFEPkO9daOJuNfy5L7uoCrQdv+ULCTdbsbDSn0
-        VsYB0iwbBHo3ho/jG4t1edo/ibYE4JPT0lVSSVCNpJvJ4DFaYIkEKiH/kWvwbRREVnyH8qtiMOMoD
-        4z+k4GNw==;
+        bh=PtzeHJtzB8Xd695+Qb2V5yYYQNsOpQ3Yl0mwaGuBV/4=; b=QTFrpw3bHURLE6EYb/R+wluNva
+        FnBtPTD1w+5XMNC7zEhc9bao72bgXNpxKd9qDjhuUyi1OuP6S2MMpTObEptvPQkhWhifCbXvosRRU
+        e8lQf84HnBxa1MgfnDbHOnH/NdKVSKXT9I1ZfvD/Yk4oywa3zMeniEGFTRzWVl47KpSohjCj0nWeQ
+        KMTRaC5Exg3bFQFNKJH7wxQjQzaewJnEQmEGfJuzU4j/MZpiupUYbK/JOi51oS+Otgux4g8Yb+Qav
+        1tTYnMC0HU19LUaCIHSlX1Doe6hKM9E7DF14ZicqYzh3cMxcMxgkZBmcxG54de+EwiKG/t7IMORtB
+        5T5MdMFw==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qiSi3-00FFl8-RD; Tue, 19 Sep 2023 04:51:39 +0000
+        id 1qiSi3-00FFki-6d; Tue, 19 Sep 2023 04:51:39 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -34,9 +34,9 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         ntfs3@lists.linux.dev, ocfs2-devel@lists.linux.dev,
         reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Pankaj Raghav <p.raghav@samsung.com>
-Subject: [PATCH 13/26] nilfs2: Convert nilfs_mdt_get_frozen_buffer to use a folio
-Date:   Tue, 19 Sep 2023 05:51:22 +0100
-Message-Id: <20230919045135.3635437-14-willy@infradead.org>
+Subject: [PATCH 09/26] nilfs2: Convert nilfs_mdt_freeze_buffer to use a folio
+Date:   Tue, 19 Sep 2023 05:51:18 +0100
+Message-Id: <20230919045135.3635437-10-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230919045135.3635437-1-willy@infradead.org>
 References: <20230919045135.3635437-1-willy@infradead.org>
@@ -50,40 +50,51 @@ Remove a number of folio->page->folio conversions.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/nilfs2/mdt.c | 16 +++++++++-------
- 1 file changed, 9 insertions(+), 7 deletions(-)
+ fs/nilfs2/mdt.c | 20 +++++++++++---------
+ 1 file changed, 11 insertions(+), 9 deletions(-)
 
 diff --git a/fs/nilfs2/mdt.c b/fs/nilfs2/mdt.c
-index 11b7cf4acc92..7b754e6494d7 100644
+index 19c8158605ed..db2260d6e44d 100644
 --- a/fs/nilfs2/mdt.c
 +++ b/fs/nilfs2/mdt.c
-@@ -592,17 +592,19 @@ nilfs_mdt_get_frozen_buffer(struct inode *inode, struct buffer_head *bh)
+@@ -560,17 +560,19 @@ int nilfs_mdt_freeze_buffer(struct inode *inode, struct buffer_head *bh)
  {
  	struct nilfs_shadow_map *shadow = NILFS_MDT(inode)->mi_shadow;
- 	struct buffer_head *bh_frozen = NULL;
+ 	struct buffer_head *bh_frozen;
 -	struct page *page;
 +	struct folio *folio;
- 	int n;
+ 	int blkbits = inode->i_blkbits;
  
--	page = find_lock_page(shadow->inode->i_mapping, bh->b_folio->index);
--	if (page) {
--		if (page_has_buffers(page)) {
-+	folio = filemap_lock_folio(shadow->inode->i_mapping,
+-	page = grab_cache_page(shadow->inode->i_mapping, bh->b_folio->index);
+-	if (!page)
+-		return -ENOMEM;
++	folio = filemap_grab_folio(shadow->inode->i_mapping,
 +			bh->b_folio->index);
-+	if (!IS_ERR(folio)) {
-+		bh_frozen = folio_buffers(folio);
-+		if (bh_frozen) {
- 			n = bh_offset(bh) >> inode->i_blkbits;
--			bh_frozen = nilfs_page_get_nth_block(page, n);
-+			bh_frozen = get_nth_bh(bh_frozen, n);
- 		}
--		unlock_page(page);
--		put_page(page);
-+		folio_unlock(folio);
-+		folio_put(folio);
++	if (IS_ERR(folio))
++		return PTR_ERR(folio);
+ 
+-	if (!page_has_buffers(page))
+-		create_empty_buffers(page, 1 << blkbits, 0);
++	bh_frozen = folio_buffers(folio);
++	if (!bh_frozen)
++		bh_frozen = folio_create_empty_buffers(folio, 1 << blkbits, 0);
+ 
+-	bh_frozen = nilfs_page_get_nth_block(page, bh_offset(bh) >> blkbits);
++	bh_frozen = get_nth_bh(bh_frozen, bh_offset(bh) >> blkbits);
+ 
+ 	if (!buffer_uptodate(bh_frozen))
+ 		nilfs_copy_buffer(bh_frozen, bh);
+@@ -582,8 +584,8 @@ int nilfs_mdt_freeze_buffer(struct inode *inode, struct buffer_head *bh)
+ 		brelse(bh_frozen); /* already frozen */
  	}
- 	return bh_frozen;
+ 
+-	unlock_page(page);
+-	put_page(page);
++	folio_unlock(folio);
++	folio_put(folio);
+ 	return 0;
  }
+ 
 -- 
 2.40.1
 
