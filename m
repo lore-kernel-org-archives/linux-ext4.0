@@ -2,30 +2,30 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A8ECACD343B
-	for <linux-ext4@archiver.kernel.org>; Tue, 19 Sep 2023 04:51:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 67893CD343D
+	for <linux-ext4@archiver.kernel.org>; Tue, 19 Sep 2023 04:52:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231626AbjISEwD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 19 Sep 2023 00:52:03 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42022 "EHLO
+        id S231633AbjISEwE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 19 Sep 2023 00:52:04 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41948 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231562AbjISEvs (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Sep 2023 00:51:48 -0400
+        with ESMTP id S231563AbjISEvt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Sep 2023 00:51:49 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 95FDB12F;
-        Mon, 18 Sep 2023 21:51:41 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 753C8138;
+        Mon, 18 Sep 2023 21:51:42 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=kMS4yLjT+MvyIpz+8c4RceJl7Cq4cP3Nn5r0TL01AkM=; b=Gna+Nrs1iPcm3EFwmrZCisgDxF
-        l/i6DX/38hzEhDl9on1LFmpXrAhYPkJ5V68yiyuA6l9UXILvc1gxtibKrQVGRHVjtcJ7wlOPBIjF/
-        RB863lpp0nbBCdecrYesQv5ZVNHxIbcU4YA93VliccoRmRKwHiwSVU/2W7GWOwSnoUv87Wf/Fu+QB
-        0Pazbp+1rvyhhansi50qiEWNHRJjK+BlvES+cklfcW7GFI2NZrJn3ltjIvvYHY48plSGJXXuCfbc1
-        WvU6ahflCYXK976m0N50npcMtfyQ9uXq7UW4cKM2QBUoxvrPS9TW3v+mLG7WppG4FIu6/uwVYWiQL
-        CJe5pF5g==;
+        bh=ls5QcLT4iw9HwtdteFtFIYm/lsPpx02xEwWSdEB7w9A=; b=v/s0YAYridL5AWm2wYWPZkGzsB
+        K9clHYJMlcJOaX+NmKb7HW9F2eDrR9hnEfFhe6YOq/YMCptTWYV3mUL+G2wUZGCpLuLp0qpTeuzgI
+        tfpqOXserkhg/kyyX467Dysruzd3eSm3vC0glEAeMMY65rYuin/KFRuS0Lsm8EzJZCmpYoky31QWW
+        yeFE0mR+6iFAOMdA38W8yDlIG1gMZUZEaZpturMo+/2erCJzbJ4Un6ZNsjv4H8NyPK4ef/kgPaHCh
+        mbJX2zDqicJe9xcLmKePQpOVdc2efB17nrycatRVsH+bWRoVmcgvJ+9lCUkxoi7Ky4qPa1vl5H4DH
+        AFTza2Gg==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qiSi3-00FFl0-Jt; Tue, 19 Sep 2023 04:51:39 +0000
+        id 1qiSi4-00FFlu-M6; Tue, 19 Sep 2023 04:51:40 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -34,9 +34,9 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         ntfs3@lists.linux.dev, ocfs2-devel@lists.linux.dev,
         reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Pankaj Raghav <p.raghav@samsung.com>
-Subject: [PATCH 12/26] nilfs2: Convert nilfs_mdt_forget_block() to use a folio
-Date:   Tue, 19 Sep 2023 05:51:21 +0100
-Message-Id: <20230919045135.3635437-13-willy@infradead.org>
+Subject: [PATCH 19/26] ntfs3: Convert ntfs_zero_range() to use a folio
+Date:   Tue, 19 Sep 2023 05:51:28 +0100
+Message-Id: <20230919045135.3635437-20-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230919045135.3635437-1-willy@infradead.org>
 References: <20230919045135.3635437-1-willy@infradead.org>
@@ -46,62 +46,84 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Remove a number of folio->page->folio conversions.
+Use the folio API throughout, saving six hidden calls to compound_head().
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/nilfs2/mdt.c | 30 ++++++++++++++----------------
- 1 file changed, 14 insertions(+), 16 deletions(-)
+ fs/ntfs3/file.c | 31 ++++++++++++++++---------------
+ 1 file changed, 16 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nilfs2/mdt.c b/fs/nilfs2/mdt.c
-index db2260d6e44d..11b7cf4acc92 100644
---- a/fs/nilfs2/mdt.c
-+++ b/fs/nilfs2/mdt.c
-@@ -356,30 +356,28 @@ int nilfs_mdt_delete_block(struct inode *inode, unsigned long block)
-  */
- int nilfs_mdt_forget_block(struct inode *inode, unsigned long block)
- {
--	pgoff_t index = (pgoff_t)block >>
--		(PAGE_SHIFT - inode->i_blkbits);
+diff --git a/fs/ntfs3/file.c b/fs/ntfs3/file.c
+index 962f12ce6c0a..a003a69091a2 100644
+--- a/fs/ntfs3/file.c
++++ b/fs/ntfs3/file.c
+@@ -187,7 +187,7 @@ static int ntfs_zero_range(struct inode *inode, u64 vbo, u64 vbo_to)
+ 	struct buffer_head *head, *bh;
+ 	u32 bh_next, bh_off, to;
+ 	sector_t iblock;
 -	struct page *page;
--	unsigned long first_block;
-+	pgoff_t index = block >> (PAGE_SHIFT - inode->i_blkbits);
 +	struct folio *folio;
-+	struct buffer_head *bh;
- 	int ret = 0;
- 	int still_dirty;
  
--	page = find_lock_page(inode->i_mapping, index);
--	if (!page)
-+	folio = filemap_lock_folio(inode->i_mapping, index);
-+	if (IS_ERR(folio))
- 		return -ENOENT;
+ 	for (; idx < idx_end; idx += 1, from = 0) {
+ 		page_off = (loff_t)idx << PAGE_SHIFT;
+@@ -195,16 +195,17 @@ static int ntfs_zero_range(struct inode *inode, u64 vbo, u64 vbo_to)
+ 						       PAGE_SIZE;
+ 		iblock = page_off >> inode->i_blkbits;
  
--	wait_on_page_writeback(page);
-+	folio_wait_writeback(folio);
+-		page = find_or_create_page(mapping, idx,
+-					   mapping_gfp_constraint(mapping,
+-								  ~__GFP_FS));
+-		if (!page)
+-			return -ENOMEM;
++		folio = __filemap_get_folio(mapping, idx,
++				FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
++				mapping_gfp_constraint(mapping, ~__GFP_FS));
++		if (IS_ERR(folio))
++			return PTR_ERR(folio);
  
--	first_block = (unsigned long)index <<
--		(PAGE_SHIFT - inode->i_blkbits);
--	if (page_has_buffers(page)) {
--		struct buffer_head *bh;
--
--		bh = nilfs_page_get_nth_block(page, block - first_block);
-+	bh = folio_buffers(folio);
-+	if (bh) {
-+		unsigned long first_block = index <<
-+				(PAGE_SHIFT - inode->i_blkbits);
-+		bh = get_nth_bh(bh, block - first_block);
- 		nilfs_forget_buffer(bh);
+-		if (!page_has_buffers(page))
+-			create_empty_buffers(page, blocksize, 0);
++		head = folio_buffers(folio);
++		if (!head)
++			head = folio_create_empty_buffers(folio, blocksize, 0);
+ 
+-		bh = head = page_buffers(page);
++		bh = head;
+ 		bh_off = 0;
+ 		do {
+ 			bh_next = bh_off + blocksize;
+@@ -220,14 +221,14 @@ static int ntfs_zero_range(struct inode *inode, u64 vbo, u64 vbo_to)
+ 			}
+ 
+ 			/* Ok, it's mapped. Make sure it's up-to-date. */
+-			if (PageUptodate(page))
++			if (folio_test_uptodate(folio))
+ 				set_buffer_uptodate(bh);
+ 
+ 			if (!buffer_uptodate(bh)) {
+ 				err = bh_read(bh, 0);
+ 				if (err < 0) {
+-					unlock_page(page);
+-					put_page(page);
++					folio_unlock(folio);
++					folio_put(folio);
+ 					goto out;
+ 				}
+ 			}
+@@ -237,10 +238,10 @@ static int ntfs_zero_range(struct inode *inode, u64 vbo, u64 vbo_to)
+ 		} while (bh_off = bh_next, iblock += 1,
+ 			 head != (bh = bh->b_this_page));
+ 
+-		zero_user_segment(page, from, to);
++		folio_zero_segment(folio, from, to);
+ 
+-		unlock_page(page);
+-		put_page(page);
++		folio_unlock(folio);
++		folio_put(folio);
+ 		cond_resched();
  	}
--	still_dirty = PageDirty(page);
--	unlock_page(page);
--	put_page(page);
-+	still_dirty = folio_test_dirty(folio);
-+	folio_unlock(folio);
-+	folio_put(folio);
- 
- 	if (still_dirty ||
- 	    invalidate_inode_pages2_range(inode->i_mapping, index, index) != 0)
+ out:
 -- 
 2.40.1
 
