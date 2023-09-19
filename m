@@ -2,64 +2,124 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EF7B0CD5BB3
-	for <linux-ext4@archiver.kernel.org>; Tue, 19 Sep 2023 13:06:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B65BCD5BC0
+	for <linux-ext4@archiver.kernel.org>; Tue, 19 Sep 2023 13:47:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231868AbjISNGr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 19 Sep 2023 09:06:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54860 "EHLO
+        id S232420AbjISNru (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 19 Sep 2023 09:47:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60044 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231360AbjISNGq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Sep 2023 09:06:46 -0400
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 438A1EC;
-        Tue, 19 Sep 2023 06:06:41 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=vG4Tzf8kO0LcYLw+cZi1qYlZspJjy+O6YTZUkpkEyuI=; b=CIE0ya6ucqYQAvryNkDuSTAm9k
-        NPgkr3zmhN8Hban2XWHPThsg9/nlIp/ZAtOQIz4Fvp5UOCY8y8q3jv0twkC/5m8C3icPQZxCaFhuw
-        aYuHM8P8bwzXylhGBHqoh48NXEt3+0zyDlDxbZq4vJTH1AWpS+0PiivpHN5lyNtpkL1ib7zU/Q6kj
-        khYJAPWBVNSzhlkoZlqQwpyBYZwRtybWua479pBO6mACsk43W5DcjN1kPcpusDM956b0LAMqnQYc9
-        nm3C4rann0EzGNbm9waRDU9NV/S7jfcHa1zapYylXuZQ5YxiU3iI23KOQowBjNVLjVQFKhaVCPTjj
-        oXJZFWfA==;
-Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qiaR3-00HMAE-Fa; Tue, 19 Sep 2023 13:06:37 +0000
-Date:   Tue, 19 Sep 2023 14:06:37 +0100
-From:   Matthew Wilcox <willy@infradead.org>
-To:     Ryusuke Konishi <konishi.ryusuke@gmail.com>
-Cc:     Andrew Morton <akpm@linux-foundation.org>,
-        linux-fsdevel@vger.kernel.org, gfs2@lists.linux.dev,
-        linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        ntfs3@lists.linux.dev, ocfs2-devel@lists.linux.dev,
-        reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Pankaj Raghav <p.raghav@samsung.com>
-Subject: Re: [PATCH 11/26] nilfs2: Convert nilfs_copy_page() to
- nilfs_copy_folio()
-Message-ID: <ZQmc3VHOIh3jOG8Z@casper.infradead.org>
-References: <20230919045135.3635437-1-willy@infradead.org>
- <20230919045135.3635437-12-willy@infradead.org>
- <CAKFNMonjfsWBageg6vfWok9vvNEzjhXiqCCb+=cDFuwnTER95A@mail.gmail.com>
+        with ESMTP id S232414AbjISNrt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Sep 2023 09:47:49 -0400
+Received: from out30-131.freemail.mail.aliyun.com (out30-131.freemail.mail.aliyun.com [115.124.30.131])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 702F89E
+        for <linux-ext4@vger.kernel.org>; Tue, 19 Sep 2023 06:47:42 -0700 (PDT)
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R181e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=ay29a033018045168;MF=hsiangkao@linux.alibaba.com;NM=1;PH=DS;RN=7;SR=0;TI=SMTPD_---0VsRnxVo_1695131257;
+Received: from 192.168.3.4(mailfrom:hsiangkao@linux.alibaba.com fp:SMTPD_---0VsRnxVo_1695131257)
+          by smtp.aliyun-inc.com;
+          Tue, 19 Sep 2023 21:47:38 +0800
+Message-ID: <9fccc0e4-8f51-d3e7-21de-f85f8837be7f@linux.alibaba.com>
+Date:   Tue, 19 Sep 2023 21:47:34 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAKFNMonjfsWBageg6vfWok9vvNEzjhXiqCCb+=cDFuwnTER95A@mail.gmail.com>
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0)
+ Gecko/20100101 Thunderbird/102.15.0
+Subject: Re: [bug report] ext4 misses final i_size meta sync under O_DIRECT |
+ O_SYNC semantics after iomap DIO conversion
+To:     Jan Kara <jack@suse.cz>
+Cc:     linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        Matthew Bobrowski <mbobrowski@mbobrowski.org>,
+        Christoph Hellwig <hch@lst.de>,
+        Joseph Qi <joseph.qi@linux.alibaba.com>,
+        "Darrick J. Wong" <djwong@kernel.org>
+References: <02d18236-26ef-09b0-90ad-030c4fe3ee20@linux.alibaba.com>
+ <20230919120532.5dg7mgdnwd5lezgz@quack3>
+From:   Gao Xiang <hsiangkao@linux.alibaba.com>
+In-Reply-To: <20230919120532.5dg7mgdnwd5lezgz@quack3>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Sep 19, 2023 at 10:01:27PM +0900, Ryusuke Konishi wrote:
-> When I tried to test the patchset against 6.6-rc2, I encountered the
-> following error during the build:
-> 
->  ERROR: modpost: "folio_copy" [fs/nilfs2/nilfs2.ko] undefined!
-> 
-> It looks like "folio_copy" is not exported to modules.
-> 
-> I'll correct this manually for now and proceed with the review and
-> testing, but could you please fix this build issue in some way ?
 
-Thanks!  I'll export the symbol.  I did build nilfs2 as a module, but I
-just did it with "make fs/" which doesn't run modpost.  Appreciate the
-testing.
+(sorry... add Darrick here...)
+
+Hi Jan,
+
+On 2023/9/19 20:05, Jan Kara wrote:
+> Hello!
+> 
+> On Tue 19-09-23 14:00:04, Gao Xiang wrote:
+>> Our consumer reports a behavior change between pre-iomap and iomap
+>> direct io conversion:
+>>
+>> If the system crashes after an appending write to a file open with
+>> O_DIRECT | O_SYNC flag set, file i_size won't be updated even if
+>> O_SYNC was marked before.
+>>
+>> It can be reproduced by a test program in the attachment with
+>> gcc -o repro repro.c && ./repro testfile && echo c > /proc/sysrq-trigger
+>>
+>> After some analysis, we found that before iomap direct I/O conversion,
+>> the timing was roughly (taking Linux 3.10 codebase as an example):
+>>
+>> 	..
+>> 	- ext4_file_dio_write
+>> 	  - __generic_file_aio_write
+>> 	      ..
+>> 	    - ext4_direct_IO  # generic_file_direct_write
+>> 	      - ext4_ext_direct_IO
+>> 	        - ext4_ind_direct_IO  # final_size > inode->i_size
+>> 	          - ..
+>> 	          - ret = blockdev_direct_IO()
+>> 	          - i_size_write(inode, end) # orphan && ret > 0 &&
+>> 	                                   # end > inode->i_size
+>> 	          - ext4_mark_inode_dirty()
+>> 	          - ...
+>> 	  - generic_write_sync  # handling O_SYNC
+>>
+>> So the dirty inode meta will be committed into journal immediately
+>> if O_SYNC is set.  However, After commit 569342dc2485 ("ext4: move
+>> inode extension/truncate code out from ->iomap_end() callback"),
+>> the new behavior seems as below:
+>>
+>> 	..
+>> 	- ext4_dio_write_iter
+>> 	  - ext4_dio_write_checks  # extend = 1
+>> 	  - iomap_dio_rw
+>> 	      - __iomap_dio_rw
+>> 	      - iomap_dio_complete
+>> 	        - generic_write_sync
+>> 	  - ext4_handle_inode_extension  # extend = 1
+>>
+>> So that i_size will be recorded only after generic_write_sync() is
+>> called.  So O_SYNC won't flush the update i_size to the disk.
+> 
+> Indeed, that looks like a bug. Thanks for report!
+
+Thanks for the confirmation!
+
+> 
+>> On the other side, after a quick look of XFS side, it will record
+>> i_size changes in xfs_dio_write_end_io() so it seems that it doesn't
+>> have this problem.
+> 
+> Yes, I'm a bit hazy on the details but I think we've decided to call
+> ext4_handle_inode_extension() directly from ext4_dio_write_iter() because
+> from ext4_dio_write_end_io() it was difficult to test in a race-free way
+> whether extending i_size (and i_disksize) is needed or not (we don't
+> necessarily hold i_rwsem there). I'll think how we could fix the problem
+> you've reported.
+
+Yes, another concern is O_DSYNC, I'm quite not sure if the behavior
+is changed too.
+
+I had a rough feeling that currently iomap DIO behaviors on these are
+too strict and might not fit in each specific fs detailed
+implementation, tho.
+
+Thanks,
+Gao Xiang
+
+> 
+> 								Honza
