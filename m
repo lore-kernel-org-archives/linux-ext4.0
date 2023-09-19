@@ -2,280 +2,291 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 24D05CD54A9
-	for <linux-ext4@archiver.kernel.org>; Tue, 19 Sep 2023 08:57:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8DBB5CD54A9
+	for <linux-ext4@archiver.kernel.org>; Tue, 19 Sep 2023 08:57:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231157AbjISI5s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 19 Sep 2023 04:57:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51798 "EHLO
+        id S230395AbjISI5z (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 19 Sep 2023 04:57:55 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51842 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230462AbjISI5o (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Sep 2023 04:57:44 -0400
+        with ESMTP id S231135AbjISI5r (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Sep 2023 04:57:47 -0400
 Received: from omta002.cacentral1.a.cloudfilter.net (omta002.cacentral1.a.cloudfilter.net [3.97.99.33])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BEFF8122
-        for <linux-ext4@vger.kernel.org>; Tue, 19 Sep 2023 01:57:36 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 43187116
+        for <linux-ext4@vger.kernel.org>; Tue, 19 Sep 2023 01:57:40 -0700 (PDT)
 Received: from shw-obgw-4001a.ext.cloudfilter.net ([10.228.9.142])
         by cmsmtp with ESMTP
-        id iE0mqXQGp6NwhiWWcqy4L1; Tue, 19 Sep 2023 08:56:06 +0000
+        id iE0mqXQH06NwhiWWfqy4L9; Tue, 19 Sep 2023 08:56:09 +0000
 Received: from webber.adilger.int ([70.77.221.9])
         by cmsmtp with ESMTP
-        id iWWVqDGNWHFsOiWWbqzyz8; Tue, 19 Sep 2023 08:56:06 +0000
-X-Authority-Analysis: v=2.4 cv=XZqaca15 c=1 sm=1 tr=0 ts=65096226
+        id iWWVqDGNWHFsOiWWfqzyzP; Tue, 19 Sep 2023 08:56:09 +0000
+X-Authority-Analysis: v=2.4 cv=XZqaca15 c=1 sm=1 tr=0 ts=65096229
  a=2Y6h5+ypAxmHcsumz2f7Og==:117 a=2Y6h5+ypAxmHcsumz2f7Og==:17 a=pGLkceISAAAA:8
- a=RPJ6JBhKAAAA:8 a=dfo8dvEvvyXEL6sKrXEA:9 a=fa_un-3J20JGBB2Tu-mn:22
+ a=RPJ6JBhKAAAA:8 a=r0t2UcEzMhTVQyylJSYA:9 a=fa_un-3J20JGBB2Tu-mn:22
 From:   Andreas Dilger <adilger@dilger.ca>
 To:     tytso@mit.edu
 Cc:     linux-ext4@vger.kernel.org,
         Alexey Lyashkov <alexey.lyashkov@gmail.com>,
         Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH 2/7] [v2] lib: move journal checksum code to libsupport
-Date:   Tue, 19 Sep 2023 02:55:47 -0600
-Message-Id: <20230919085552.25262-2-adilger@dilger.ca>
+Subject: [PATCH 4/7] [v2] lib: remove e2fsck context from bh emulation
+Date:   Tue, 19 Sep 2023 02:55:49 -0600
+Message-Id: <20230919085552.25262-4-adilger@dilger.ca>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20230919085552.25262-1-adilger@dilger.ca>
 References: <20230919085552.25262-1-adilger@dilger.ca>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CMAE-Envelope: MS4xfLC4dHEObSP63h++Qr8g/jaiKR45dYgx/kGo5CWq+EdWvNtPWrpEJdjDrnCRUrSA8KgDGCbc6uAqnFdQbzFUPnaBOlrlw9qHF1jbde3Avfv0RgOUYz+C
- a4097tCs99mC8280UlpirojiPxcff7pvb0VaHo+0BWqMSVbrHPfzVV/LLzVUX9FvcO0gfuwyUxYisiqFhMxjZcPIR0JJDGTTRmFjl0SQ7zEQFHF3JswoSGej
- dq1cs8w9Zf/UgO+tktZ7Q3bel0GCmgXw7EGLnKuaz2wkJrQRTj014f+B9MbRd66d
+X-CMAE-Envelope: MS4xfJKltDuyek5a8XRZtbby1oqzZAm3ybKVr+qHC7w9/fWC3oyKBh6aVVguNfd3g+HTE9uNregyVVE90ZBQDSSH8TseE2bCF+mU/2GFEfBs40pZyFU1pU5Q
+ yZj7p336MnsBo+bY4PiYMlFKnBYK7m9Df3UVQFlE8w7sNMtHUi76QPrMUzMpMUwW9l+DIapgJELwf/5goupws5cwFgWmNJdzyn8FuEij+UKvTwvd7RSx+Wgc
+ D0UPS580Ltv+ul2kORI2mPN35bLXK39rbGjwmaX+gKff0VwpJ4yKBmf8uZ9grLyY
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Alexey Lyashkov <alexey.lyashkov@gmail.com>
 
-e2fsck and debugfs have their own copy journal checksum
-functions, kill duplicates and move into support library.
+In order to generalize journal handing, remove the e2fsck
+context from generic structures like buffer_head, and device.
+But fast commit code wants an e2fsck context as well, so move
+the context pointer to journal struct.
 
 Signed-off-by: Alexey Lyashkov <alexey.lyashkov@gmail.com>
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- debugfs/journal.c       | 50 ----------------------------------
- e2fsck/journal.c        | 60 ++++-------------------------------------
- lib/support/Android.bp  |  1 +
- lib/support/Makefile.in |  4 +++
- lib/support/jbd2_user.h |  6 +++++
- 5 files changed, 16 insertions(+), 105 deletions(-)
+ e2fsck/journal.c        | 46 ++++++++++++++++++++---------------------
+ lib/ext2fs/jfs_compat.h |  2 ++
+ lib/support/jbd2_user.h | 12 -----------
+ 3 files changed, 25 insertions(+), 35 deletions(-)
 
-diff --git a/debugfs/journal.c b/debugfs/journal.c
-index 5bac0d3b..bf199699 100644
---- a/debugfs/journal.c
-+++ b/debugfs/journal.c
-@@ -43,56 +43,6 @@ static int bh_count = 0;
-  */
- #undef USE_INODE_IO
- 
--/* Checksumming functions */
--static int ext2fs_journal_verify_csum_type(journal_t *j,
--					   journal_superblock_t *jsb)
--{
--	if (!jbd2_journal_has_csum_v2or3(j))
--		return 1;
--
--	return jsb->s_checksum_type == JBD2_CRC32C_CHKSUM;
--}
--
--static __u32 ext2fs_journal_sb_csum(journal_superblock_t *jsb)
--{
--	__u32 crc, old_crc;
--
--	old_crc = jsb->s_checksum;
--	jsb->s_checksum = 0;
--	crc = ext2fs_crc32c_le(~0, (unsigned char *)jsb,
--			       sizeof(journal_superblock_t));
--	jsb->s_checksum = old_crc;
--
--	return crc;
--}
--
--static int ext2fs_journal_sb_csum_verify(journal_t *j,
--					 journal_superblock_t *jsb)
--{
--	__u32 provided, calculated;
--
--	if (!jbd2_journal_has_csum_v2or3(j))
--		return 1;
--
--	provided = ext2fs_be32_to_cpu(jsb->s_checksum);
--	calculated = ext2fs_journal_sb_csum(jsb);
--
--	return provided == calculated;
--}
--
--static errcode_t ext2fs_journal_sb_csum_set(journal_t *j,
--					    journal_superblock_t *jsb)
--{
--	__u32 crc;
--
--	if (!jbd2_journal_has_csum_v2or3(j))
--		return 0;
--
--	crc = ext2fs_journal_sb_csum(jsb);
--	jsb->s_checksum = ext2fs_cpu_to_be32(crc);
--	return 0;
--}
--
- /* Kernel compatibility functions for handling the journal.  These allow us
-  * to use the recovery.c file virtually unchanged from the kernel, so we
-  * don't have to do much to keep kernel and user recovery in sync.
 diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-index 26927cde..bc3c699a 100644
+index 367ec31d..d6129ed1 100644
 --- a/e2fsck/journal.c
 +++ b/e2fsck/journal.c
-@@ -38,56 +38,6 @@ static int bh_count = 0;
-  */
- #undef USE_INODE_IO
- 
--/* Checksumming functions */
--static int e2fsck_journal_verify_csum_type(journal_t *j,
--					   journal_superblock_t *jsb)
--{
--	if (!jbd2_journal_has_csum_v2or3(j))
--		return 1;
--
--	return jsb->s_checksum_type == JBD2_CRC32C_CHKSUM;
--}
--
--static __u32 e2fsck_journal_sb_csum(journal_superblock_t *jsb)
--{
--	__u32 crc, old_crc;
--
--	old_crc = jsb->s_checksum;
--	jsb->s_checksum = 0;
--	crc = ext2fs_crc32c_le(~0, (unsigned char *)jsb,
--			       sizeof(journal_superblock_t));
--	jsb->s_checksum = old_crc;
--
--	return crc;
--}
--
--static int e2fsck_journal_sb_csum_verify(journal_t *j,
--					 journal_superblock_t *jsb)
--{
--	__u32 provided, calculated;
--
--	if (!jbd2_journal_has_csum_v2or3(j))
--		return 1;
--
--	provided = ext2fs_be32_to_cpu(jsb->s_checksum);
--	calculated = e2fsck_journal_sb_csum(jsb);
--
--	return provided == calculated;
--}
--
--static errcode_t e2fsck_journal_sb_csum_set(journal_t *j,
--					    journal_superblock_t *jsb)
--{
--	__u32 crc;
--
--	if (!jbd2_journal_has_csum_v2or3(j))
--		return 0;
--
--	crc = e2fsck_journal_sb_csum(jsb);
--	jsb->s_checksum = ext2fs_cpu_to_be32(crc);
--	return 0;
--}
--
- /* Kernel compatibility functions for handling the journal.  These allow us
-  * to use the recovery.c file virtually unchanged from the kernel, so we
-  * don't have to do much to keep kernel and user recovery in sync.
-@@ -1347,8 +1297,8 @@ static errcode_t e2fsck_journal_load(journal_t *journal)
- 	    jbd2_has_feature_checksum(journal))
- 		return EXT2_ET_CORRUPT_JOURNAL_SB;
- 
--	if (!e2fsck_journal_verify_csum_type(journal, jsb) ||
--	    !e2fsck_journal_sb_csum_verify(journal, jsb))
-+	if (!ext2fs_journal_verify_csum_type(journal, jsb) ||
-+	    !ext2fs_journal_sb_csum_verify(journal, jsb))
- 		return EXT2_ET_CORRUPT_JOURNAL_SB;
- 
- 	if (jbd2_journal_has_csum_v2or3(journal))
-@@ -1436,7 +1386,7 @@ static void e2fsck_journal_reset_super(e2fsck_t ctx, journal_superblock_t *jsb,
- 	for (i = 0; i < 4; i ++)
- 		new_seq ^= u.val[i];
- 	jsb->s_sequence = htonl(new_seq);
--	e2fsck_journal_sb_csum_set(journal, jsb);
-+	ext2fs_journal_sb_csum_set(journal, jsb);
- 
- 	mark_buffer_dirty(journal->j_sb_buffer);
- 	ll_rw_block(REQ_OP_WRITE, 0, 1, &journal->j_sb_buffer);
-@@ -1476,7 +1426,7 @@ static void e2fsck_journal_release(e2fsck_t ctx, journal_t *journal,
- 		jsb->s_sequence = htonl(journal->j_tail_sequence);
- 		if (reset)
- 			jsb->s_start = 0; /* this marks the journal as empty */
--		e2fsck_journal_sb_csum_set(journal, jsb);
-+		ext2fs_journal_sb_csum_set(journal, jsb);
- 		mark_buffer_dirty(journal->j_sb_buffer);
- 	}
- 	brelse(journal->j_sb_buffer);
-@@ -1619,7 +1569,7 @@ no_has_journal:
- 		ctx->fs->super->s_state |= EXT2_ERROR_FS;
- 		ext2fs_mark_super_dirty(ctx->fs);
- 		journal->j_superblock->s_errno = 0;
--		e2fsck_journal_sb_csum_set(journal, journal->j_superblock);
-+		ext2fs_journal_sb_csum_set(journal, journal->j_superblock);
- 		mark_buffer_dirty(journal->j_sb_buffer);
+@@ -58,7 +58,7 @@ int jbd2_journal_bmap(journal_t *journal, unsigned long block,
+ 		return 0;
  	}
  
-diff --git a/lib/support/Android.bp b/lib/support/Android.bp
-index af9b28df..260f4b31 100644
---- a/lib/support/Android.bp
-+++ b/lib/support/Android.bp
-@@ -30,6 +30,7 @@ cc_library {
-         "quotaio.c",
-         "quotaio_tree.c",
-         "quotaio_v2.c",
-+        "jbd2_user.c"
-     ],
-     shared_libs: [
-         "libext2fs",
-diff --git a/lib/support/Makefile.in b/lib/support/Makefile.in
-index b6229091..284fde85 100644
---- a/lib/support/Makefile.in
-+++ b/lib/support/Makefile.in
-@@ -14,6 +14,7 @@ MKDIR_P = @MKDIR_P@
- all::
+-	retval= ext2fs_bmap2(inode->i_ctx->fs, inode->i_ino,
++	retval= ext2fs_bmap2(inode->i_fs, inode->i_ino,
+ 			     &inode->i_ext2, NULL, 0, (blk64_t) block,
+ 			     0, &pblk);
+ 	*phys = pblk;
+@@ -70,11 +70,12 @@ struct buffer_head *getblk(kdev_t kdev, unsigned long long blocknr,
+ 			   int blocksize)
+ {
+ 	struct buffer_head *bh;
+-	int bufsize = sizeof(*bh) + kdev->k_ctx->fs->blocksize -
++	int bufsize = sizeof(*bh) + kdev->k_fs->blocksize -
+ 		sizeof(bh->b_data);
++	errcode_t retval;
  
- OBJS=		cstring.o \
-+		jbd2_user.o \
- 		mkquota.o \
- 		plausible.o \
- 		profile.o \
-@@ -29,6 +30,7 @@ OBJS=		cstring.o \
+-	bh = e2fsck_allocate_memory(kdev->k_ctx, bufsize, "block buffer");
+-	if (!bh)
++	retval = ext2fs_get_memzero(bufsize, &bh);
++	if (retval)
+ 		return NULL;
  
- SRCS=		$(srcdir)/argv_parse.c \
- 		$(srcdir)/cstring.c \
-+		$(srcdir)/jbd2_user.c \
- 		$(srcdir)/mkquota.c \
- 		$(srcdir)/parse_qtype.c \
- 		$(srcdir)/plausible.c \
-@@ -110,6 +112,8 @@ argv_parse.o: $(srcdir)/argv_parse.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(srcdir)/argv_parse.h
- cstring.o: $(srcdir)/cstring.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(srcdir)/cstring.h
-+jbd2_user.o: $(srcdir)/jbd2_user.c $(top_builddir)/lib/config.h \
-+ $(srcdir)/jbd2_user.h
- mkquota.o: $(srcdir)/mkquota.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
-  $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
+ 	if (journal_enable_debug >= 3)
+@@ -82,11 +83,11 @@ struct buffer_head *getblk(kdev_t kdev, unsigned long long blocknr,
+ 	jfs_debug(4, "getblk for block %llu (%d bytes)(total %d)\n",
+ 		  blocknr, blocksize, bh_count);
+ 
+-	bh->b_ctx = kdev->k_ctx;
++	bh->b_fs = kdev->k_fs;
+ 	if (kdev->k_dev == K_DEV_FS)
+-		bh->b_io = kdev->k_ctx->fs->io;
++		bh->b_io = kdev->k_fs->io;
+ 	else
+-		bh->b_io = kdev->k_ctx->fs->journal_io;
++		bh->b_io = kdev->k_fs->journal_io;
+ 	bh->b_size = blocksize;
+ 	bh->b_blocknr = blocknr;
+ 
+@@ -98,9 +99,9 @@ int sync_blockdev(kdev_t kdev)
+ 	io_channel	io;
+ 
+ 	if (kdev->k_dev == K_DEV_FS)
+-		io = kdev->k_ctx->fs->io;
++		io = kdev->k_fs->io;
+ 	else
+-		io = kdev->k_ctx->fs->journal_io;
++		io = kdev->k_fs->journal_io;
+ 
+ 	return io_channel_flush(io) ? -EIO : 0;
+ }
+@@ -120,7 +121,7 @@ void ll_rw_block(int rw, int op_flags EXT2FS_ATTR((unused)), int nr,
+ 						     bh->b_blocknr,
+ 						     1, bh->b_data);
+ 			if (retval) {
+-				com_err(bh->b_ctx->device_name, retval,
++				com_err(bh->b_fs->device_name, retval,
+ 					"while reading block %llu\n",
+ 					bh->b_blocknr);
+ 				bh->b_err = (int) retval;
+@@ -135,7 +136,7 @@ void ll_rw_block(int rw, int op_flags EXT2FS_ATTR((unused)), int nr,
+ 						      bh->b_blocknr,
+ 						      1, bh->b_data);
+ 			if (retval) {
+-				com_err(bh->b_ctx->device_name, retval,
++				com_err(bh->b_fs->device_name, retval,
+ 					"while writing block %llu\n",
+ 					bh->b_blocknr);
+ 				bh->b_err = (int) retval;
+@@ -223,7 +224,7 @@ static int process_journal_block(ext2_filsys fs,
+ static int ext4_fc_replay_scan(journal_t *j, struct buffer_head *bh,
+ 				int off, tid_t expected_tid)
+ {
+-	e2fsck_t ctx = j->j_fs_dev->k_ctx;
++	e2fsck_t ctx = j->j_ctx;
+ 	struct e2fsck_fc_replay_state *state;
+ 	int ret = JBD2_FC_REPLAY_CONTINUE;
+ 	struct ext4_fc_add_range ext;
+@@ -805,7 +806,7 @@ static int ext4_fc_handle_del_range(e2fsck_t ctx, __u8 *val)
+ static int ext4_fc_replay(journal_t *journal, struct buffer_head *bh,
+ 				enum passtype pass, int off, tid_t expected_tid)
+ {
+-	e2fsck_t ctx = journal->j_fs_dev->k_ctx;
++	e2fsck_t ctx = journal->j_ctx;
+ 	struct e2fsck_fc_replay_state *state = &ctx->fc_replay_state;
+ 	int ret = JBD2_FC_REPLAY_CONTINUE;
+ 	struct ext4_fc_tl tl;
+@@ -933,10 +934,11 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
+ 	}
+ 	dev_journal = dev_fs+1;
+ 
+-	dev_fs->k_ctx = dev_journal->k_ctx = ctx;
++	dev_fs->k_fs = dev_journal->k_fs = ctx->fs;
+ 	dev_fs->k_dev = K_DEV_FS;
+ 	dev_journal->k_dev = K_DEV_JOURNAL;
+ 
++	journal->j_ctx = ctx;
+ 	journal->j_dev = dev_journal;
+ 	journal->j_fs_dev = dev_fs;
+ 	journal->j_inode = NULL;
+@@ -961,7 +963,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
+ 			goto errout;
+ 		}
+ 
+-		j_inode->i_ctx = ctx;
++		j_inode->i_fs = ctx->fs;
+ 		j_inode->i_ino = sb->s_journal_inum;
+ 
+ 		if ((retval = ext2fs_read_inode(ctx->fs,
+@@ -1203,9 +1205,8 @@ static errcode_t e2fsck_journal_fix_bad_inode(e2fsck_t ctx,
+ }
+ 
+ #define V1_SB_SIZE	0x0024
+-static void clear_v2_journal_fields(journal_t *journal)
++static void clear_v2_journal_fields(e2fsck_t ctx, journal_t *journal)
+ {
+-	e2fsck_t ctx = journal->j_dev->k_ctx;
+ 	struct problem_context pctx;
+ 
+ 	clear_problem_context(&pctx);
+@@ -1220,9 +1221,8 @@ static void clear_v2_journal_fields(journal_t *journal)
+ }
+ 
+ 
+-static errcode_t e2fsck_journal_load(journal_t *journal)
++static errcode_t e2fsck_journal_load(e2fsck_t ctx, journal_t *journal)
+ {
+-	e2fsck_t ctx = journal->j_dev->k_ctx;
+ 	journal_superblock_t *jsb;
+ 	struct buffer_head *jbh = journal->j_sb_buffer;
+ 	struct problem_context pctx;
+@@ -1248,14 +1248,14 @@ static errcode_t e2fsck_journal_load(journal_t *journal)
+ 		    jsb->s_feature_incompat ||
+ 		    jsb->s_feature_ro_compat ||
+ 		    jsb->s_nr_users)
+-			clear_v2_journal_fields(journal);
++			clear_v2_journal_fields(ctx, journal);
+ 		break;
+ 
+ 	case JBD2_SUPERBLOCK_V2:
+ 		journal->j_format_version = 2;
+ 		if (ntohl(jsb->s_nr_users) > 1 &&
+ 		    uuid_is_null(ctx->fs->super->s_journal_uuid))
+-			clear_v2_journal_fields(journal);
++			clear_v2_journal_fields(ctx, journal);
+ 		if (ntohl(jsb->s_nr_users) > 1) {
+ 			fix_problem(ctx, PR_0_JOURNAL_UNSUPP_MULTIFS, &pctx);
+ 			return EXT2_ET_JOURNAL_UNSUPP_VERSION;
+@@ -1442,7 +1442,7 @@ errcode_t e2fsck_check_ext3_journal(e2fsck_t ctx)
+ 		return retval;
+ 	}
+ 
+-	retval = e2fsck_journal_load(journal);
++	retval = e2fsck_journal_load(ctx, journal);
+ 	if (retval) {
+ 		if ((retval == EXT2_ET_CORRUPT_JOURNAL_SB) ||
+ 		    ((retval == EXT2_ET_UNSUPP_FEATURE) &&
+@@ -1560,7 +1560,7 @@ static errcode_t recover_ext3_journal(e2fsck_t ctx)
+ 	if (retval)
+ 		return retval;
+ 
+-	retval = e2fsck_journal_load(journal);
++	retval = e2fsck_journal_load(ctx, journal);
+ 	if (retval)
+ 		goto errout;
+ 
+diff --git a/lib/ext2fs/jfs_compat.h b/lib/ext2fs/jfs_compat.h
+index 0e96b56c..938ee600 100644
+--- a/lib/ext2fs/jfs_compat.h
++++ b/lib/ext2fs/jfs_compat.h
+@@ -37,6 +37,7 @@ typedef struct kdev_s *kdev_t;
+ 
+ struct buffer_head;
+ struct inode;
++struct e2fsck_struct;
+ 
+ typedef unsigned int gfp_t;
+ #define GFP_KERNEL	0
+@@ -94,6 +95,7 @@ struct journal_s
+ 	struct jbd2_revoke_table_s *j_revoke_table[2];
+ 	tid_t			j_failed_commit;
+ 	__u32			j_csum_seed;
++	struct e2fsck_struct *	j_ctx;
+ 	int (*j_fc_replay_callback)(struct journal_s *journal,
+ 				    struct buffer_head *bh,
+ 				    enum passtype pass, int off,
 diff --git a/lib/support/jbd2_user.h b/lib/support/jbd2_user.h
-index 5928a8a8..22f8cb7e 100644
+index e4316f58..73473663 100644
 --- a/lib/support/jbd2_user.h
 +++ b/lib/support/jbd2_user.h
-@@ -251,6 +251,12 @@ _INLINE_ void jbd2_descriptor_block_csum_set(journal_t *j,
- #undef _INLINE_
+@@ -41,11 +41,7 @@
  #endif
  
-+/* Checksumming functions */
-+int ext2fs_journal_verify_csum_type(journal_t *j, journal_superblock_t *jsb);
-+__u32 ext2fs_journal_sb_csum(journal_superblock_t *jsb);
-+int ext2fs_journal_sb_csum_verify(journal_t *j, journal_superblock_t *jsb);
-+errcode_t ext2fs_journal_sb_csum_set(journal_t *j, journal_superblock_t *jsb);
-+
- /*
-  * Kernel compatibility functions are defined in journal.c
-  */
+ struct buffer_head {
+-#ifdef DEBUGFS
+ 	ext2_filsys	b_fs;
+-#else
+-	e2fsck_t	b_ctx;
+-#endif
+ 	io_channel	b_io;
+ 	int		b_size;
+ 	int		b_err;
+@@ -56,21 +52,13 @@ struct buffer_head {
+ };
+ 
+ struct inode {
+-#ifdef DEBUGFS
+ 	ext2_filsys	i_fs;
+-#else
+-	e2fsck_t	i_ctx;
+-#endif
+ 	ext2_ino_t	i_ino;
+ 	struct ext2_inode i_ext2;
+ };
+ 
+ struct kdev_s {
+-#ifdef DEBUGFS
+ 	ext2_filsys	k_fs;
+-#else
+-	e2fsck_t	k_ctx;
+-#endif
+ 	int		k_dev;
+ };
+ 
 -- 
 2.25.1
 
