@@ -2,94 +2,84 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9F73AE7D0A2
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Sep 2023 20:28:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 913C8E7D0AB
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Sep 2023 20:28:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232051AbjIUU2q (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Sep 2023 16:28:46 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38470 "EHLO
+        id S232017AbjIUU2r (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Sep 2023 16:28:47 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38118 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232052AbjIUU2X (ORCPT
+        with ESMTP id S232064AbjIUU2X (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Sep 2023 16:28:23 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E3F6E2D51F;
-        Thu, 21 Sep 2023 13:08:01 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 580BD3BE19;
+        Thu, 21 Sep 2023 13:08:05 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
-        Content-Type:Content-ID:Content-Description;
-        bh=o3WA9VWfKtc+QA0R8dkgUvuS8cRUOwuJgLVOfSfVzjc=; b=oL5FMM2cmhJpJ96VKnqw0Jq+V4
-        TsZHrBM/C7MM+hNS0Aac0C/rk/B0lnCnzf+YB40dRI4yIT6EOLh9310RnT/arOygFFLY9h6MULjIm
-        0w8UTXmXt7xd04TgP2cOtl7epaXJYkVkPpfbFlJ/FWSWzf94Fj0ipbcMq6sz8YeK47Q/sU/30DVhI
-        uoz3QHP7cCtLumJCO4uvjpt8H/rop74pI7PD5LeOCj1SrcN8e3MSsHfzR6B4Bz6/HOPpcstS6ybly
-        Sv3Ik/NUo9U/Lvq4o5O1xqsoXNyMFJ6pW6s0u5KXIFChwqp6mOTyuntXGqWzu9tH4FPNSTWOB00bg
-        inV62J0w==;
+        Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:Content-ID:
+        Content-Description:In-Reply-To:References;
+        bh=MrSoluGCY0RkfJ7LMGD8f0s00qedWA5ibN1YzRdIqeI=; b=thOt56isfl93if/g9mytqyCLeG
+        Ks9Q8qpnuGmXXpOYg7aIodR53wVzOrYnra38jO6RgPpUodwuqCD6a+YUfKvwauMqkSQMsZQYhR18R
+        8GCH/scc39BK4hOrPryEg+F37SdIEfGfjMF7uRKwzFbsV+KhWONI1nQXVqzF4QOxzPKIotN7iCrqJ
+        BxMPwV1r3qa6U13aco8KyRsYA7eQDR1dh9S7ro21hiIV+mo8rAyZJCAhrqri4bRZowxJ/Xvtph4K2
+        B1nQcGz55t2358gHKXqg91qoeu87BLmhR9fTAOBWeEpyTpU545R/udqWm1L2EClCBLIBQUEeZ0US+
+        WO1K7nNw==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qjPxj-00DrVm-S6; Thu, 21 Sep 2023 20:07:47 +0000
+        id 1qjPxj-00DrVg-KT; Thu, 21 Sep 2023 20:07:47 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     Jan Kara <jack@suse.com>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         "Fabio M . De Francesco" <fmdefrancesco@gmail.com>
-Subject: [PATCH 04/10] ext2: Convert ext2_readdir to use a folio
-Date:   Thu, 21 Sep 2023 21:07:41 +0100
-Message-Id: <20230921200746.3303942-4-willy@infradead.org>
+Subject: [PATCH 01/10] highmem: Add folio_release_kmap()
+Date:   Thu, 21 Sep 2023 21:07:38 +0100
+Message-Id: <20230921200746.3303942-1-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
-In-Reply-To: <20230921200746.3303942-1-willy@infradead.org>
-References: <20230921200746.3303942-1-willy@infradead.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Saves a hidden call to compound_head().
+This is the folio equivalent of unmap_and_put_page(), which remains as
+a wrapper for it.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/ext2/dir.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ include/linux/highmem.h | 18 ++++++++++++++++--
+ 1 file changed, 16 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 5c1b7bded535..5a8a02d6be9a 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -286,8 +286,8 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
- 
- 	for ( ; n < npages; n++, offset = 0) {
- 		ext2_dirent *de;
--		struct page *page;
--		char *kaddr = ext2_get_page(inode, n, 0, &page);
-+		struct folio *folio;
-+		char *kaddr = ext2_get_folio(inode, n, 0, &folio);
- 		char *limit;
- 
- 		if (IS_ERR(kaddr)) {
-@@ -311,7 +311,7 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
- 			if (de->rec_len == 0) {
- 				ext2_error(sb, __func__,
- 					"zero-length directory entry");
--				ext2_put_page(page, de);
-+				folio_release_kmap(folio, de);
- 				return -EIO;
- 			}
- 			if (de->inode) {
-@@ -323,13 +323,13 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
- 				if (!dir_emit(ctx, de->name, de->name_len,
- 						le32_to_cpu(de->inode),
- 						d_type)) {
--					ext2_put_page(page, de);
-+					folio_release_kmap(folio, de);
- 					return 0;
- 				}
- 			}
- 			ctx->pos += ext2_rec_len_from_disk(de->rec_len);
- 		}
--		ext2_put_page(page, kaddr);
-+		folio_release_kmap(folio, kaddr);
- 	}
- 	return 0;
+diff --git a/include/linux/highmem.h b/include/linux/highmem.h
+index 99c474de800d..4cacc0e43b51 100644
+--- a/include/linux/highmem.h
++++ b/include/linux/highmem.h
+@@ -551,10 +551,24 @@ static inline void folio_zero_range(struct folio *folio,
+ 	zero_user_segments(&folio->page, start, start + length, 0, 0);
  }
+ 
+-static inline void unmap_and_put_page(struct page *page, void *addr)
++/**
++ * folio_release_kmap - Unmap a folio and drop a refcount.
++ * @folio: The folio to release.
++ * @addr: The address previously returned by a call to kmap_local_folio().
++ *
++ * It is common, eg in directory handling to kmap a folio.  This function
++ * unmaps the folio and drops the refcount that was being held to keep the
++ * folio alive while we accessed it.
++ */
++static inline void folio_release_kmap(struct folio *folio, void *addr)
+ {
+ 	kunmap_local(addr);
+-	put_page(page);
++	folio_put(folio);
++}
++
++static inline void unmap_and_put_page(struct page *page, void *addr)
++{
++	folio_release_kmap(page_folio(page), addr);
+ }
+ 
+ #endif /* _LINUX_HIGHMEM_H */
 -- 
 2.40.1
 
