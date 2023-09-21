@@ -2,38 +2,38 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A1596E7D0AC
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Sep 2023 20:28:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 342BEE7D0A8
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Sep 2023 20:28:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231574AbjIUU2o (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Sep 2023 16:28:44 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38052 "EHLO
+        id S231963AbjIUU2p (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Sep 2023 16:28:45 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38442 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231881AbjIUU2V (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Sep 2023 16:28:21 -0400
+        with ESMTP id S231965AbjIUU2W (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Sep 2023 16:28:22 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CF7F6659D;
-        Thu, 21 Sep 2023 13:07:49 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 078A41BD2;
+        Thu, 21 Sep 2023 13:07:53 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=sOagZNuf5a1AJuwVUYKOAYZ0jbYyZkDR5exYYeeQdZg=; b=qhUuPhLgO1AQC/FRuI8FDpalpa
-        6+IRwXybfxE/U3BYnVUngAMdIhjgiVf7/6P/Fr3DbZiEBShREgJLlb3bGcy+n9LDvFJ/4JlDN9Aib
-        yF7SHkBwOv1WBq0amITgy44JLwhX4tznPvdn06ByeKFqS5XDsWG7ImAb4UDe6pqZBRWDn6plYi5kg
-        Pu88DODgFJg2Ksxznpkq5txxHnjVyNCAiWQgcSHTD2Vd3hqE8c/QAZe3d73hXO1g7pfJLdMjaZBRl
-        aWexwUnI0s+UWnQbJatRBsGMNHzSzqH81Z1yvfsdIr9V/E8Ypr1JZT8+gXG36yDZOEaf9bQJ4L7ky
-        f6mKqP+g==;
+        bh=gtOgVtPNNezeOOLRmkyVuxJoCCJKpeE8vQ+YG/Md84M=; b=sKtNSRPfQU/7zpwYkvIktptbwR
+        RBADHF+phFGuL1VHlDwY5huLCyLFz0SocfDDk7cNI6Wnbfs1q1SmoL0NIaXwVOgD+BiijAa+lj5Df
+        5Hc7ZkX2816GWoG34J1X0EieS9upenpo+fndZC29VeFCPE3q/vOGQjyE/cTYTvJx1g05ufp6mvEhH
+        GocL78U7ZRlZ5xPhmDcchbbJYRuDspKNIugnXEKOCYihaDwQWcfOA8VEMeuFpfFK40qzXKrjQp6Mt
+        5/WSiClAAADJlrUHFZlIJj6xuoxigDO/FJPKUIMrL6h0+akOI1hdK67X3MyQb9wSqTYaJ8VtR7wvd
+        B+6yztMg==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qjPxk-00DrVt-3z; Thu, 21 Sep 2023 20:07:48 +0000
+        id 1qjPxj-00DrVo-Up; Thu, 21 Sep 2023 20:07:47 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     Jan Kara <jack@suse.com>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         "Fabio M . De Francesco" <fmdefrancesco@gmail.com>
-Subject: [PATCH 07/10] ext2: Handle large block size directories in ext2_delete_entry()
-Date:   Thu, 21 Sep 2023 21:07:44 +0100
-Message-Id: <20230921200746.3303942-7-willy@infradead.org>
+Subject: [PATCH 05/10] ext2: Convert ext2_add_link() to use a folio
+Date:   Thu, 21 Sep 2023 21:07:42 +0100
+Message-Id: <20230921200746.3303942-5-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230921200746.3303942-1-willy@infradead.org>
 References: <20230921200746.3303942-1-willy@infradead.org>
@@ -43,71 +43,92 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-If the block size is > PAGE_SIZE, we need to calculate these offsets
-relative to the start of the folio, not the page.
+Remove five hidden calls to compound_head() and fix a couple of
+places that assumed PAGE_SIZE.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/ext2/dir.c | 30 +++++++++++++++++-------------
- 1 file changed, 17 insertions(+), 13 deletions(-)
+ fs/ext2/dir.c | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
 
 diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 2fc910e99234..7e75cfaa709c 100644
+index 5a8a02d6be9a..31333b23adf3 100644
 --- a/fs/ext2/dir.c
 +++ b/fs/ext2/dir.c
-@@ -586,16 +586,20 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
-  */
- int ext2_delete_entry(struct ext2_dir_entry_2 *dir, struct page *page)
- {
--	struct inode *inode = page->mapping->host;
--	char *kaddr = (char *)((unsigned long)dir & PAGE_MASK);
--	unsigned from = offset_in_page(dir) & ~(ext2_chunk_size(inode)-1);
--	unsigned to = offset_in_page(dir) +
--				ext2_rec_len_from_disk(dir->rec_len);
-+	struct folio *folio = page_folio(page);
-+	struct inode *inode = folio->mapping->host;
-+	size_t from, to;
-+	char *kaddr;
- 	loff_t pos;
--	ext2_dirent *pde = NULL;
--	ext2_dirent *de = (ext2_dirent *)(kaddr + from);
-+	ext2_dirent *de, *pde = NULL;
- 	int err;
+@@ -497,7 +497,7 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
+ 	unsigned chunk_size = ext2_chunk_size(dir);
+ 	unsigned reclen = EXT2_DIR_REC_LEN(namelen);
+ 	unsigned short rec_len, name_len;
+-	struct page *page = NULL;
++	struct folio *folio = NULL;
+ 	ext2_dirent * de;
+ 	unsigned long npages = dir_pages(dir);
+ 	unsigned long n;
+@@ -506,19 +506,19 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
  
-+	from = offset_in_folio(folio, dir);
-+	to = from + ext2_rec_len_from_disk(dir->rec_len);
-+	kaddr = (char *)dir - from;
-+	from &= ~(ext2_chunk_size(inode)-1);
-+	de = (ext2_dirent *)(kaddr + from);
-+
- 	while ((char*)de < (char*)dir) {
- 		if (de->rec_len == 0) {
- 			ext2_error(inode->i_sb, __func__,
-@@ -606,18 +610,18 @@ int ext2_delete_entry(struct ext2_dir_entry_2 *dir, struct page *page)
- 		de = ext2_next_entry(de);
- 	}
- 	if (pde)
--		from = offset_in_page(pde);
--	pos = page_offset(page) + from;
--	lock_page(page);
--	err = ext2_prepare_chunk(page, pos, to - from);
-+		from = offset_in_folio(folio, pde);
-+	pos = folio_pos(folio) + from;
-+	folio_lock(folio);
-+	err = ext2_prepare_chunk(&folio->page, pos, to - from);
- 	if (err) {
+ 	/*
+ 	 * We take care of directory expansion in the same loop.
+-	 * This code plays outside i_size, so it locks the page
++	 * This code plays outside i_size, so it locks the folio
+ 	 * to protect that region.
+ 	 */
+ 	for (n = 0; n <= npages; n++) {
+-		char *kaddr = ext2_get_page(dir, n, 0, &page);
++		char *kaddr = ext2_get_folio(dir, n, 0, &folio);
+ 		char *dir_end;
+ 
+ 		if (IS_ERR(kaddr))
+ 			return PTR_ERR(kaddr);
+-		lock_page(page);
++		folio_lock(folio);
+ 		dir_end = kaddr + ext2_last_byte(dir, n);
+ 		de = (ext2_dirent *)kaddr;
+-		kaddr += PAGE_SIZE - reclen;
++		kaddr += folio_size(folio) - reclen;
+ 		while ((char *)de <= kaddr) {
+ 			if ((char *)de == dir_end) {
+ 				/* We hit i_size */
+@@ -545,15 +545,15 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
+ 				goto got_it;
+ 			de = (ext2_dirent *) ((char *) de + rec_len);
+ 		}
 -		unlock_page(page);
+-		ext2_put_page(page, kaddr);
 +		folio_unlock(folio);
- 		return err;
++		folio_release_kmap(folio, kaddr);
  	}
- 	if (pde)
- 		pde->rec_len = ext2_rec_len_to_disk(to - from);
- 	dir->inode = 0;
--	ext2_commit_chunk(page, pos, to - from);
-+	ext2_commit_chunk(&folio->page, pos, to - from);
- 	inode->i_mtime = inode_set_ctime_current(inode);
- 	EXT2_I(inode)->i_flags &= ~EXT2_BTREE_FL;
- 	mark_inode_dirty(inode);
+ 	BUG();
+ 	return -EINVAL;
+ 
+ got_it:
+-	pos = page_offset(page) + offset_in_page(de);
+-	err = ext2_prepare_chunk(page, pos, rec_len);
++	pos = folio_pos(folio) + offset_in_folio(folio, de);
++	err = ext2_prepare_chunk(&folio->page, pos, rec_len);
+ 	if (err)
+ 		goto out_unlock;
+ 	if (de->inode) {
+@@ -566,17 +566,17 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
+ 	memcpy(de->name, name, namelen);
+ 	de->inode = cpu_to_le32(inode->i_ino);
+ 	ext2_set_de_type (de, inode);
+-	ext2_commit_chunk(page, pos, rec_len);
++	ext2_commit_chunk(&folio->page, pos, rec_len);
+ 	dir->i_mtime = inode_set_ctime_current(dir);
+ 	EXT2_I(dir)->i_flags &= ~EXT2_BTREE_FL;
+ 	mark_inode_dirty(dir);
+ 	err = ext2_handle_dirsync(dir);
+ 	/* OFFSET_CACHE */
+ out_put:
+-	ext2_put_page(page, de);
++	folio_release_kmap(folio, de);
+ 	return err;
+ out_unlock:
+-	unlock_page(page);
++	folio_unlock(folio);
+ 	goto out_put;
+ }
+ 
 -- 
 2.40.1
 
