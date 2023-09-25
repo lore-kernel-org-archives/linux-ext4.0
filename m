@@ -2,176 +2,216 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 53593CE7A8F
-	for <linux-ext4@archiver.kernel.org>; Sat, 23 Sep 2023 12:00:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 66757CE7A8C
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Sep 2023 05:59:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231396AbjIWMAs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 23 Sep 2023 08:00:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58090 "EHLO
+        id S232068AbjIYF7S (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 25 Sep 2023 01:59:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41800 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230458AbjIWMAs (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Sep 2023 08:00:48 -0400
-Received: from mail-pl1-x62e.google.com (mail-pl1-x62e.google.com [IPv6:2607:f8b0:4864:20::62e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6D375136;
-        Sat, 23 Sep 2023 05:00:42 -0700 (PDT)
-Received: by mail-pl1-x62e.google.com with SMTP id d9443c01a7336-1c60a514f3aso249945ad.3;
-        Sat, 23 Sep 2023 05:00:42 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1695470441; x=1696075241; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=xdXXc+qT4ixe29aMOuCXUa7Ah3I7AYTAZ1f1/pEfbvA=;
-        b=fkXefUzCxcfqdF+zLKRD8qYPLzwPeJ8ufSz/G1Zw7YEeZTkabKK6ql0Tj8G469fIRB
-         OmovuEzeMbKtriyX+pr49ixoIlH0RRsijM1I6Z1LUmsot/fyWwqQpqfbSliVSRq/+pIK
-         jZ1u8R47RvzX3NhxBtIU/9acBSZOlGx+QA7RiY+RufMuxTZ0kBC/kpcwgvggpvSh2asA
-         6nxOCPnbz0MgusWU8BOHXEzbJDZGaENlCP9DVtzGqiE+HMIJkh0lpk2uGjL8NU7Lenbe
-         NIylKr/9365q3XilhFDVGMBpxl1G4PKMlLO99caCmn+sC53DM6R65lKgHM/qC+GEgiQx
-         UywQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1695470441; x=1696075241;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=xdXXc+qT4ixe29aMOuCXUa7Ah3I7AYTAZ1f1/pEfbvA=;
-        b=CcIwPgu5X5RMMpuSe8ZONdYJOIjxkk8hhlWjVkFEKtQwjRm36RM1BRGImDkQUsDzGi
-         8EkJhd7mrEiZmRVeSn9gbXYiqKZmRT11Ig5kFgk3bvuiYHX2JllUwIm+ByIOKt7XQ+0r
-         KUAigd9MhrI04VpW9nq1TWOMIV1E4cSBFc2eQKBgYZvUUBgQp9ReUB89ar15xRxUg5k1
-         oqvG+7I3qnC29C4rcBzfW9uoI0LXrO1rYLTO1TB+jkQQpMf/8YvrQYT2QJC5gTb5JDhh
-         moUGTvyYOC2cXW9uGVSqnVzlZ5L3Xp9VPTpjXP0fjD3/Gjolzj8l0BNNUYldbD14FmBL
-         E1gQ==
-X-Gm-Message-State: AOJu0YxuLeBD3e50Skh8oSTEgAZBukVObZ8+1JevArvWJX8VH8XjqVKi
-        AoUVuavqZEPQiqXIj7D9Kz4b3X6gouE=
-X-Google-Smtp-Source: AGHT+IH9mv4znL90H67WUwuTPrcfQvsBjZj34kUno4h2Z0wnbfHAVX6B6KO5S2Hx1nBfr8jFhomA7g==
-X-Received: by 2002:a17:902:c947:b0:1c5:e060:c4d5 with SMTP id i7-20020a170902c94700b001c5e060c4d5mr2353453pla.69.1695470441196;
-        Sat, 23 Sep 2023 05:00:41 -0700 (PDT)
-Received: from dw-tp.ihost.com ([49.207.223.191])
-        by smtp.gmail.com with ESMTPSA id jg13-20020a17090326cd00b001bba669a7eesm5194981plb.52.2023.09.23.05.00.38
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 23 Sep 2023 05:00:40 -0700 (PDT)
-From:   "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
-To:     fstests@vger.kernel.org
-Cc:     linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        Theodore Ts'o <tytso@mit.edu>,
-        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-        Gao Xiang <hsiangkao@linux.alibaba.com>
-Subject: [PATCHv2 2/2] generic: Add integrity tests with synchronous directio
-Date:   Sat, 23 Sep 2023 17:30:24 +0530
-Message-ID: <3c21207848460ffe8aab734b32c1c2464049296c.1695469920.git.ritesh.list@gmail.com>
-X-Mailer: git-send-email 2.41.0
-In-Reply-To: <3b86ab1f1447f0b6db88d4dfafe304fd04ae2b11.1695469920.git.ritesh.list@gmail.com>
-References: <3b86ab1f1447f0b6db88d4dfafe304fd04ae2b11.1695469920.git.ritesh.list@gmail.com>
+        with ESMTP id S232063AbjIYF7K (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Sep 2023 01:59:10 -0400
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 325FF112;
+        Sun, 24 Sep 2023 22:58:59 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8020DC433C8;
+        Mon, 25 Sep 2023 05:58:58 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1695621538;
+        bh=idiVzlkasc6EOKYjPFwNaxxpxVhmkIQdbuE4cRL0Tzs=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=qd9ipEV70X7+ByaaCBd7HAb+BHhngMqY7dpRA/jPvTYup4xniVJ91BMtXoo5Sr35f
+         6ONvHB4Yw2HGU9DRLYDTcdhq033DvfAPl4w90ommQ9+5w0dZRhTR0+3DMQ9vB7hue5
+         8wo/OJb2lAf0B0Jp74s8nVrYNXjTqWO3vXQ/IxIIaKyR5WsTK4BTo88HrCyxXDwapK
+         T6FMGs+vM0hSUM/LF4ERbrlSapj8atL5o1cLkPg6BUG5dVKN26Wg7TMz36/D/c6Xhm
+         S4QVUJAR5/Fu8d/OlogAZo5LmHB6l0P2tqTRZ0GTMeKgaP8gwJtkaN+IpgFSAJ7knu
+         Qy72UYYc6vkoQ==
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-fscrypt@vger.kernel.org
+Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-btrfs@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>
+Subject: [PATCH v3 1/5] fscrypt: make it clearer that key_prefix is deprecated
+Date:   Sun, 24 Sep 2023 22:54:47 -0700
+Message-ID: <20230925055451.59499-2-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.42.0
+In-Reply-To: <20230925055451.59499-1-ebiggers@kernel.org>
+References: <20230925055451.59499-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This test covers data & metadata integrity check with directio with
-o_sync flag and checks the file contents & size after sudden fileystem
-shutdown once the directio write is completed. ext4 directio after iomap
-conversion was broken in the sense that if the FS crashes after
-synchronous directio write, it's file size is not properly updated.
-This test adds a testcase to cover such scenario.
+From: Eric Biggers <ebiggers@google.com>
 
-Man page of open says that -
-O_SYNC provides synchronized I/O file integrity completion, meaning write
-operations will flush data and all associated metadata to the underlying
-hardware
+fscrypt_operations::key_prefix should not be set by any filesystems that
+aren't setting it already.  This is already documented, but apparently
+it's not sufficiently clear, as both ceph and btrfs have tried to set
+it.  Rename the field to legacy_key_prefix and improve the documentation
+to hopefully make it clearer.
 
-Reported-by: Gao Xiang <hsiangkao@linux.alibaba.com>
-Signed-off-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- tests/generic/471     | 50 +++++++++++++++++++++++++++++++++++++++++++
- tests/generic/471.out | 22 +++++++++++++++++++
- 2 files changed, 72 insertions(+)
- create mode 100755 tests/generic/471
- create mode 100644 tests/generic/471.out
+ fs/crypto/keysetup_v1.c |  5 +++--
+ fs/ext4/crypto.c        |  2 +-
+ fs/f2fs/super.c         |  2 +-
+ fs/ubifs/crypto.c       |  2 +-
+ include/linux/fscrypt.h | 14 +++++++++-----
+ 5 files changed, 15 insertions(+), 10 deletions(-)
 
-diff --git a/tests/generic/471 b/tests/generic/471
-new file mode 100755
-index 00000000..218e6676
---- /dev/null
-+++ b/tests/generic/471
-@@ -0,0 +1,50 @@
-+#! /bin/bash
-+# SPDX-License-Identifier: GPL-2.0
-+# Copyright (c) 2023 IBM Corporation.  All Rights Reserved.
-+#
-+# FS QA Test 471
-+#
-+# Integrity test for O_SYNC with buff-io, dio, aio-dio with sudden shutdown
-+#
-+. ./common/preamble
-+_begin_fstest auto quick shutdown aio
-+
-+# real QA test starts here
-+_supported_fs generic
-+_require_scratch
-+_require_scratch_shutdown
-+_require_odirect
-+_require_aiodio aio-dio-write-verify
-+
-+_scratch_mkfs > $seqres.full 2>&1
-+_scratch_mount
-+
-+echo "T-1: Create a 1M file using buff-io & O_SYNC"
-+$XFS_IO_PROG -fs -c "pwrite -S 0x5a 0 1M" $SCRATCH_MNT/testfile.t1 > /dev/null 2>&1
-+echo "T-1: Shutdown the fs suddenly"
-+_scratch_shutdown
-+echo "T-1: Cycle mount"
-+_scratch_cycle_mount
-+echo "T-1: File contents after cycle mount"
-+_hexdump $SCRATCH_MNT/testfile.t1
-+
-+echo "T-2: Create a 1M file using O_DIRECT & O_SYNC"
-+$XFS_IO_PROG -fsd -c "pwrite -S 0x5a 0 1M" $SCRATCH_MNT/testfile.t2 > /dev/null 2>&1
-+echo "T-2: Shutdown the fs suddenly"
-+_scratch_shutdown
-+echo "T-2: Cycle mount"
-+_scratch_cycle_mount
-+echo "T-2: File contents after cycle mount"
-+_hexdump $SCRATCH_MNT/testfile.t2
-+
-+echo "T-3: Create a 1M file using AIO-DIO & O_SYNC"
-+$AIO_TEST -a size=1048576 -S -N $SCRATCH_MNT/testfile.t3 > /dev/null 2>&1
-+echo "T-3: Shutdown the fs suddenly"
-+_scratch_shutdown
-+echo "T-3: Cycle mount"
-+_scratch_cycle_mount
-+echo "T-3: File contents after cycle mount"
-+_hexdump $SCRATCH_MNT/testfile.t3
-+
-+status=0
-+exit
-diff --git a/tests/generic/471.out b/tests/generic/471.out
-new file mode 100644
-index 00000000..2bfb033d
---- /dev/null
-+++ b/tests/generic/471.out
-@@ -0,0 +1,22 @@
-+QA output created by 471
-+T-1: Create a 1M file using buff-io & O_SYNC
-+T-1: Shutdown the fs suddenly
-+T-1: Cycle mount
-+T-1: File contents after cycle mount
-+000000 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a  >ZZZZZZZZZZZZZZZZ<
-+*
-+100000
-+T-2: Create a 1M file using O_DIRECT & O_SYNC
-+T-2: Shutdown the fs suddenly
-+T-2: Cycle mount
-+T-2: File contents after cycle mount
-+000000 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a  >ZZZZZZZZZZZZZZZZ<
-+*
-+100000
-+T-3: Create a 1M file using AIO-DIO & O_SYNC
-+T-3: Shutdown the fs suddenly
-+T-3: Cycle mount
-+T-3: File contents after cycle mount
-+000000 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a  >ZZZZZZZZZZZZZZZZ<
-+*
-+100000
+diff --git a/fs/crypto/keysetup_v1.c b/fs/crypto/keysetup_v1.c
+index 75dabd9b27f9b..86b48a2b47d1b 100644
+--- a/fs/crypto/keysetup_v1.c
++++ b/fs/crypto/keysetup_v1.c
+@@ -292,29 +292,30 @@ static int setup_v1_file_key_derived(struct fscrypt_info *ci,
+ int fscrypt_setup_v1_file_key(struct fscrypt_info *ci, const u8 *raw_master_key)
+ {
+ 	if (ci->ci_policy.v1.flags & FSCRYPT_POLICY_FLAG_DIRECT_KEY)
+ 		return setup_v1_file_key_direct(ci, raw_master_key);
+ 	else
+ 		return setup_v1_file_key_derived(ci, raw_master_key);
+ }
+ 
+ int fscrypt_setup_v1_file_key_via_subscribed_keyrings(struct fscrypt_info *ci)
+ {
++	const struct super_block *sb = ci->ci_inode->i_sb;
+ 	struct key *key;
+ 	const struct fscrypt_key *payload;
+ 	int err;
+ 
+ 	key = find_and_lock_process_key(FSCRYPT_KEY_DESC_PREFIX,
+ 					ci->ci_policy.v1.master_key_descriptor,
+ 					ci->ci_mode->keysize, &payload);
+-	if (key == ERR_PTR(-ENOKEY) && ci->ci_inode->i_sb->s_cop->key_prefix) {
+-		key = find_and_lock_process_key(ci->ci_inode->i_sb->s_cop->key_prefix,
++	if (key == ERR_PTR(-ENOKEY) && sb->s_cop->legacy_key_prefix) {
++		key = find_and_lock_process_key(sb->s_cop->legacy_key_prefix,
+ 						ci->ci_policy.v1.master_key_descriptor,
+ 						ci->ci_mode->keysize, &payload);
+ 	}
+ 	if (IS_ERR(key))
+ 		return PTR_ERR(key);
+ 
+ 	err = fscrypt_setup_v1_file_key(ci, payload->raw);
+ 	up_read(&key->sem);
+ 	key_put(key);
+ 	return err;
+diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
+index 453d4da5de520..99a4769a53f63 100644
+--- a/fs/ext4/crypto.c
++++ b/fs/ext4/crypto.c
+@@ -233,18 +233,18 @@ static bool ext4_has_stable_inodes(struct super_block *sb)
+ }
+ 
+ static void ext4_get_ino_and_lblk_bits(struct super_block *sb,
+ 				       int *ino_bits_ret, int *lblk_bits_ret)
+ {
+ 	*ino_bits_ret = 8 * sizeof(EXT4_SB(sb)->s_es->s_inodes_count);
+ 	*lblk_bits_ret = 8 * sizeof(ext4_lblk_t);
+ }
+ 
+ const struct fscrypt_operations ext4_cryptops = {
+-	.key_prefix		= "ext4:",
++	.legacy_key_prefix	= "ext4:",
+ 	.get_context		= ext4_get_context,
+ 	.set_context		= ext4_set_context,
+ 	.get_dummy_policy	= ext4_get_dummy_policy,
+ 	.empty_dir		= ext4_empty_dir,
+ 	.has_stable_inodes	= ext4_has_stable_inodes,
+ 	.get_ino_and_lblk_bits	= ext4_get_ino_and_lblk_bits,
+ };
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index a8c8232852bb1..f60062b558fd1 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -3224,21 +3224,21 @@ static struct block_device **f2fs_get_devices(struct super_block *sb,
+ 	if (!devs)
+ 		return ERR_PTR(-ENOMEM);
+ 
+ 	for (i = 0; i < sbi->s_ndevs; i++)
+ 		devs[i] = FDEV(i).bdev;
+ 	*num_devs = sbi->s_ndevs;
+ 	return devs;
+ }
+ 
+ static const struct fscrypt_operations f2fs_cryptops = {
+-	.key_prefix		= "f2fs:",
++	.legacy_key_prefix	= "f2fs:",
+ 	.get_context		= f2fs_get_context,
+ 	.set_context		= f2fs_set_context,
+ 	.get_dummy_policy	= f2fs_get_dummy_policy,
+ 	.empty_dir		= f2fs_empty_dir,
+ 	.has_stable_inodes	= f2fs_has_stable_inodes,
+ 	.get_ino_and_lblk_bits	= f2fs_get_ino_and_lblk_bits,
+ 	.get_devices		= f2fs_get_devices,
+ };
+ #endif
+ 
+diff --git a/fs/ubifs/crypto.c b/fs/ubifs/crypto.c
+index 3125e76376ee6..1be3e11da3b3e 100644
+--- a/fs/ubifs/crypto.c
++++ b/fs/ubifs/crypto.c
+@@ -82,15 +82,15 @@ int ubifs_decrypt(const struct inode *inode, struct ubifs_data_node *dn,
+ 		ubifs_err(c, "fscrypt_decrypt_block_inplace() failed: %d", err);
+ 		return err;
+ 	}
+ 	*out_len = clen;
+ 
+ 	return 0;
+ }
+ 
+ const struct fscrypt_operations ubifs_crypt_operations = {
+ 	.flags			= FS_CFLG_OWN_PAGES,
+-	.key_prefix		= "ubifs:",
++	.legacy_key_prefix	= "ubifs:",
+ 	.get_context		= ubifs_crypt_get_context,
+ 	.set_context		= ubifs_crypt_set_context,
+ 	.empty_dir		= ubifs_crypt_empty_dir,
+ };
+diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
+index c895b12737a19..b0037566ce308 100644
+--- a/include/linux/fscrypt.h
++++ b/include/linux/fscrypt.h
+@@ -66,26 +66,30 @@ struct fscrypt_name {
+  */
+ #define FS_CFLG_OWN_PAGES (1U << 1)
+ 
+ /* Crypto operations for filesystems */
+ struct fscrypt_operations {
+ 
+ 	/* Set of optional flags; see above for allowed flags */
+ 	unsigned int flags;
+ 
+ 	/*
+-	 * If set, this is a filesystem-specific key description prefix that
+-	 * will be accepted for "logon" keys for v1 fscrypt policies, in
+-	 * addition to the generic prefix "fscrypt:".  This functionality is
+-	 * deprecated, so new filesystems shouldn't set this field.
++	 * This field exists only for backwards compatibility reasons and should
++	 * only be set by the filesystems that are setting it already.  It
++	 * contains the filesystem-specific key description prefix that is
++	 * accepted for "logon" keys for v1 fscrypt policies.  This
++	 * functionality is deprecated in favor of the generic prefix
++	 * "fscrypt:", which itself is deprecated in favor of the filesystem
++	 * keyring ioctls such as FS_IOC_ADD_ENCRYPTION_KEY.  Filesystems that
++	 * are newly adding fscrypt support should not set this field.
+ 	 */
+-	const char *key_prefix;
++	const char *legacy_key_prefix;
+ 
+ 	/*
+ 	 * Get the fscrypt context of the given inode.
+ 	 *
+ 	 * @inode: the inode whose context to get
+ 	 * @ctx: the buffer into which to get the context
+ 	 * @len: length of the @ctx buffer in bytes
+ 	 *
+ 	 * Return: On success, returns the length of the context in bytes; this
+ 	 *	   may be less than @len.  On failure, returns -ENODATA if the
+
+base-commit: 6465e260f48790807eef06b583b38ca9789b6072
 -- 
-2.41.0
+2.42.0
 
