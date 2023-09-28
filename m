@@ -2,43 +2,43 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8971ACE7B05
-	for <linux-ext4@archiver.kernel.org>; Thu, 28 Sep 2023 08:04:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A9B0CE7B09
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 Sep 2023 08:04:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230481AbjI1IE4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 28 Sep 2023 04:04:56 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40712 "EHLO
+        id S230494AbjI1IE6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 28 Sep 2023 04:04:58 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40706 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229605AbjI1IEy (ORCPT
+        with ESMTP id S229648AbjI1IEy (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Sep 2023 04:04:54 -0400
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 361C795;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 31B7692;
         Thu, 28 Sep 2023 01:04:53 -0700 (PDT)
 Received: from mail02.huawei.com (unknown [172.30.67.143])
-        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Rx5cH6MVJz4f3n6c;
-        Thu, 28 Sep 2023 16:04:47 +0800 (CST)
+        by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Rx5cJ3M29z4f3n6m;
+        Thu, 28 Sep 2023 16:04:48 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-        by APP4 (Coremail) with SMTP id gCh0CgC3Td2eMxVlgAtdBg--.36922S3;
+        by APP4 (Coremail) with SMTP id gCh0CgC3Td2eMxVlgAtdBg--.36922S5;
         Thu, 28 Sep 2023 16:04:50 +0800 (CST)
 From:   Kemeng Shi <shikemeng@huaweicloud.com>
 To:     ritesh.list@gmail.com, tytso@mit.edu, adilger.kernel@dilger.ca
 Cc:     ojaswin@linux.ibm.com, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Subject: [PATCH v8 01/12] ext4: make state in ext4_mb_mark_bb to be bool
-Date:   Fri, 29 Sep 2023 00:03:56 +0800
-Message-Id: <20230928160407.142069-2-shikemeng@huaweicloud.com>
+Subject: [PATCH v8 03/12] ext4: call ext4_mb_mark_context in ext4_free_blocks_simple
+Date:   Fri, 29 Sep 2023 00:03:58 +0800
+Message-Id: <20230928160407.142069-4-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20230928160407.142069-1-shikemeng@huaweicloud.com>
 References: <20230928160407.142069-1-shikemeng@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: gCh0CgC3Td2eMxVlgAtdBg--.36922S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxWw43Ww4kJr1DJF4rJFWkJFb_yoW5KFy7pa
-        sxAF1rCrs5XF1Dua17Kw4UAw1jk348Kr1jyryrC3yF9FZ7JryIqFn8tFyjy3W5tFWku3Zx
-        XF4jkryUCr4fG37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUB0b4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+X-CM-TRANSID: gCh0CgC3Td2eMxVlgAtdBg--.36922S5
+X-Coremail-Antispam: 1UD129KBjvJXoW7ury5trWDKFWxuFWUuF1kAFb_yoW8ZFW5pr
+        ZIyr1xCr1fGr1DuF4xJ34xX3W8Kw18W3WDGrWfW34rCF43Ar9agF48KF1Fva4YkFZrZ3ZI
+        vF1Y9rW7uw15W37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUB0b4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
         6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
-        8IrcIa0xkI8VA2jI8067AKxVWUGwA2048vs2IY020Ec7CjxVAFwI0_JFI_Gr1l8cAvFVAK
+        8IrcIa0xkI8VA2jI8067AKxVWUWwA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK
         0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4
         x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l
         84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I
@@ -48,115 +48,73 @@ X-Coremail-Antispam: 1UD129KBjvJXoWxWw43Ww4kJr1DJF4rJFWkJFb_yoW5KFy7pa
         jcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2I
         x0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK
         8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I
-        0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUsgyZUUUUU
+        0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxU3vPSUUUUU
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-As state could only be either 0 or 1, just make it bool.
+call ext4_mb_mark_context in ext4_free_blocks_simple to:
+1. remove repeat code
+2. pair update of free_clusters in ext4_mb_new_blocks_simple.
+3. add missing ext4_lock_group/ext4_unlock_group protection.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 ---
- fs/ext4/ext4.h        | 2 +-
- fs/ext4/extents.c     | 4 ++--
- fs/ext4/fast_commit.c | 8 ++++----
- fs/ext4/mballoc.c     | 4 ++--
- 4 files changed, 9 insertions(+), 9 deletions(-)
+ fs/ext4/mballoc.c | 33 +--------------------------------
+ 1 file changed, 1 insertion(+), 32 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 84618c46f239..88186ea2322f 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2918,7 +2918,7 @@ extern int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
- extern int ext4_trim_fs(struct super_block *, struct fstrim_range *);
- extern void ext4_process_freed_data(struct super_block *sb, tid_t commit_tid);
- extern void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
--		       int len, int state);
-+			    int len, bool state);
- static inline bool ext4_mb_cr_expensive(enum criteria cr)
- {
- 	return cr >= CR_GOAL_LEN_SLOW;
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index e4115d338f10..6338a5a2c315 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -6080,13 +6080,13 @@ int ext4_ext_clear_bb(struct inode *inode)
- 				for (j = 0; j < path->p_depth; j++) {
- 
- 					ext4_mb_mark_bb(inode->i_sb,
--							path[j].p_block, 1, 0);
-+							path[j].p_block, 1, false);
- 					ext4_fc_record_regions(inode->i_sb, inode->i_ino,
- 							0, path[j].p_block, 1, 1);
- 				}
- 				ext4_free_ext_path(path);
- 			}
--			ext4_mb_mark_bb(inode->i_sb, map.m_pblk, map.m_len, 0);
-+			ext4_mb_mark_bb(inode->i_sb, map.m_pblk, map.m_len, false);
- 			ext4_fc_record_regions(inode->i_sb, inode->i_ino,
- 					map.m_lblk, map.m_pblk, map.m_len, 1);
- 		}
-diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index b06de728b3b6..87c009e0c59a 100644
---- a/fs/ext4/fast_commit.c
-+++ b/fs/ext4/fast_commit.c
-@@ -1806,7 +1806,7 @@ static int ext4_fc_replay_add_range(struct super_block *sb,
- 			 * at the end of the FC replay using our array of
- 			 * modified inodes.
- 			 */
--			ext4_mb_mark_bb(inode->i_sb, map.m_pblk, map.m_len, 0);
-+			ext4_mb_mark_bb(inode->i_sb, map.m_pblk, map.m_len, false);
- 			goto next;
- 		}
- 
-@@ -1875,7 +1875,7 @@ ext4_fc_replay_del_range(struct super_block *sb,
- 		if (ret > 0) {
- 			remaining -= ret;
- 			cur += ret;
--			ext4_mb_mark_bb(inode->i_sb, map.m_pblk, map.m_len, 0);
-+			ext4_mb_mark_bb(inode->i_sb, map.m_pblk, map.m_len, false);
- 		} else {
- 			remaining -= map.m_len;
- 			cur += map.m_len;
-@@ -1934,12 +1934,12 @@ static void ext4_fc_set_bitmaps_and_counters(struct super_block *sb)
- 				if (!IS_ERR(path)) {
- 					for (j = 0; j < path->p_depth; j++)
- 						ext4_mb_mark_bb(inode->i_sb,
--							path[j].p_block, 1, 1);
-+							path[j].p_block, 1, true);
- 					ext4_free_ext_path(path);
- 				}
- 				cur += ret;
- 				ext4_mb_mark_bb(inode->i_sb, map.m_pblk,
--							map.m_len, 1);
-+							map.m_len, true);
- 			} else {
- 				cur = cur + (map.m_len ? map.m_len : 1);
- 			}
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 1e599305d85f..d7c79217f39c 100644
+index 8b04856eda2d..f50f6fa5e65c 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -4077,7 +4077,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
-  * blocks in bitmaps and update counters.
-  */
- void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
--			int len, int state)
-+		     int len, bool state)
+@@ -6393,43 +6393,12 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ static void ext4_free_blocks_simple(struct inode *inode, ext4_fsblk_t block,
+ 					unsigned long count)
  {
- 	struct buffer_head *bitmap_bh = NULL;
- 	struct ext4_group_desc *gdp;
-@@ -6130,7 +6130,7 @@ ext4_mb_new_blocks_simple(struct ext4_allocation_request *ar, int *errp)
- 	}
+-	struct buffer_head *bitmap_bh;
+ 	struct super_block *sb = inode->i_sb;
+-	struct ext4_group_desc *gdp;
+-	struct buffer_head *gdp_bh;
+ 	ext4_group_t group;
+ 	ext4_grpblk_t blkoff;
+-	int already_freed = 0, err, i;
  
- 	block = ext4_group_first_block_no(sb, group) + EXT4_C2B(sbi, i);
--	ext4_mb_mark_bb(sb, block, 1, 1);
-+	ext4_mb_mark_bb(sb, block, 1, true);
- 	ar->len = 1;
+ 	ext4_get_group_no_and_offset(sb, block, &group, &blkoff);
+-	bitmap_bh = ext4_read_block_bitmap(sb, group);
+-	if (IS_ERR(bitmap_bh)) {
+-		pr_warn("Failed to read block bitmap\n");
+-		return;
+-	}
+-	gdp = ext4_get_group_desc(sb, group, &gdp_bh);
+-	if (!gdp)
+-		goto err_out;
+-
+-	for (i = 0; i < count; i++) {
+-		if (!mb_test_bit(blkoff + i, bitmap_bh->b_data))
+-			already_freed++;
+-	}
+-	mb_clear_bits(bitmap_bh->b_data, blkoff, count);
+-	err = ext4_handle_dirty_metadata(NULL, NULL, bitmap_bh);
+-	if (err)
+-		goto err_out;
+-	ext4_free_group_clusters_set(
+-		sb, gdp, ext4_free_group_clusters(sb, gdp) +
+-		count - already_freed);
+-	ext4_block_bitmap_csum_set(sb, gdp, bitmap_bh);
+-	ext4_group_desc_csum_set(sb, group, gdp);
+-	ext4_handle_dirty_metadata(NULL, NULL, gdp_bh);
+-	sync_dirty_buffer(bitmap_bh);
+-	sync_dirty_buffer(gdp_bh);
+-
+-err_out:
+-	brelse(bitmap_bh);
++	ext4_mb_mark_context(sb, false, group, blkoff, count);
+ }
  
- 	return block;
+ /**
 -- 
 2.30.0
 
