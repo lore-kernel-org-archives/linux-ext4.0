@@ -2,383 +2,273 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 866BEE7C4ED
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 Oct 2023 18:55:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 658FBE7C4F3
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 Oct 2023 19:04:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244885AbjJDSzr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 4 Oct 2023 14:55:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44824 "EHLO
+        id S245129AbjJDTE3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 Oct 2023 15:04:29 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37882 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244830AbjJDSyw (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Oct 2023 14:54:52 -0400
+        with ESMTP id S245333AbjJDTBA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Oct 2023 15:01:00 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6194B10D7;
-        Wed,  4 Oct 2023 11:54:27 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 78D4AC433C8;
-        Wed,  4 Oct 2023 18:54:26 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5E1F12130;
+        Wed,  4 Oct 2023 11:55:47 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3BD6BC433C9;
+        Wed,  4 Oct 2023 18:55:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1696445667;
-        bh=kFTNQpEU+Pu8tNfESD938BnBRfFvEHWpO/AqQh7tvYo=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=k/bnXjIAGc5J+vGl6YIHLBdDLBGZ+K8FEuAOXJbv0299dxULTaQhJCI/D5bPKsO8R
-         4VN/f4ifF6L1l2xN5WjvvbcdMnyFvqvP+eTzMe5s0uZRAuTC7VR8pkMAqbYQRhd+AJ
-         2vUtTn+nvaulkjfqczhSbg7iME2sl99itUilBr3zltNdJjEIuWYu3bld6NZvOdy+p9
-         OCZwmvKHxPE7lulRghIYCdVgMBufMd1NqIqtoTslyN67wd0KkEUafWqLkTBg21Of4g
-         xNZ7zYcljP/kN3imcElBURln+fXpGaVr4D9oIvjuUh6GQhw0uKfPywsAvxeThQr6Ud
-         AVty2UjF6nIpQ==
+        s=k20201202; t=1696445746;
+        bh=g/yzBkH2Lp29tPfDBqNp+9Elc+zqCeoJYNIVCamPD2Q=;
+        h=From:To:Cc:Subject:Date:From;
+        b=U4cHhSwb0LbjLA0qPOmmG7XGfwhLrdUKNdOP6jb0JmroYvkDlGxxFYbdBHNbhzXNH
+         iovfoJxTxBNF3fgWoxKD5rhfozOY+7XT8L1cOwcimaEFAuQea9kFSm7ljzuINveJng
+         8O/TRaYWLsMFAu0WZqR+Ej7+BaviQVOBsP8mffc2SqReX6OXjtiZTmCmLoR9/saHwB
+         c5rjkuCRPMb/Q55YD3oJLDC2dFLpMza5Y6vaUnEAxOls8VOQTB4gdTGSQ3fEJfeL1x
+         KMOBQbkmXFBlyX1vgIb23wb+t56+wSAOGwpJ/lOlOTTFlZfD0AdwHSMDPWo5mfkyr4
+         HgGj4IVfBzhTQ==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Christian Brauner <brauner@kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc:     linux-ext4@vger.kernel.org
-Subject: [PATCH v2 35/89] ext4: convert to new timestamp accessors
-Date:   Wed,  4 Oct 2023 14:52:20 -0400
-Message-ID: <20231004185347.80880-33-jlayton@kernel.org>
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        David Sterba <dsterba@suse.cz>,
+        Amir Goldstein <amir73il@gmail.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Eric Biederman <ebiederm@xmission.com>,
+        Kees Cook <keescook@chromium.org>, Jeremy Kerr <jk@ozlabs.org>,
+        Arnd Bergmann <arnd@arndb.de>,
+        Michael Ellerman <mpe@ellerman.id.au>,
+        Nicholas Piggin <npiggin@gmail.com>,
+        Christophe Leroy <christophe.leroy@csgroup.eu>,
+        Heiko Carstens <hca@linux.ibm.com>,
+        Vasily Gorbik <gor@linux.ibm.com>,
+        Alexander Gordeev <agordeev@linux.ibm.com>,
+        Christian Borntraeger <borntraeger@linux.ibm.com>,
+        Sven Schnelle <svens@linux.ibm.com>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        =?UTF-8?q?Arve=20Hj=C3=B8nnev=C3=A5g?= <arve@android.com>,
+        Todd Kjos <tkjos@android.com>,
+        Martijn Coenen <maco@android.com>,
+        Joel Fernandes <joel@joelfernandes.org>,
+        Carlos Llamas <cmllamas@google.com>,
+        Suren Baghdasaryan <surenb@google.com>,
+        Mattia Dongili <malattia@linux.it>,
+        Dennis Dalessandro <dennis.dalessandro@cornelisnetworks.com>,
+        Jason Gunthorpe <jgg@ziepe.ca>,
+        Leon Romanovsky <leon@kernel.org>,
+        Brad Warrum <bwarrum@linux.ibm.com>,
+        Ritu Agarwal <rituagar@linux.ibm.com>,
+        Hans de Goede <hdegoede@redhat.com>,
+        =?UTF-8?q?Ilpo=20J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>,
+        Mark Gross <markgross@kernel.org>,
+        Jiri Slaby <jirislaby@kernel.org>,
+        Eric Van Hensbergen <ericvh@kernel.org>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Christian Schoenebeck <linux_oss@crudebyte.com>,
+        David Sterba <dsterba@suse.com>,
+        David Howells <dhowells@redhat.com>,
+        Marc Dionne <marc.dionne@auristor.com>,
+        Ian Kent <raven@themaw.net>,
+        Luis de Bethencourt <luisbg@kernel.org>,
+        Salah Triki <salah.triki@gmail.com>,
+        "Tigran A. Aivazian" <aivazian.tigran@gmail.com>,
+        Chris Mason <clm@fb.com>, Josef Bacik <josef@toxicpanda.com>,
+        Xiubo Li <xiubli@redhat.com>,
+        Ilya Dryomov <idryomov@gmail.com>,
+        Jan Harkes <jaharkes@cs.cmu.edu>, coda@cs.cmu.edu,
+        Joel Becker <jlbec@evilplan.org>,
+        Christoph Hellwig <hch@lst.de>,
+        Nicolas Pitre <nico@fluxnic.net>,
+        "Rafael J. Wysocki" <rafael@kernel.org>,
+        Ard Biesheuvel <ardb@kernel.org>, Gao Xiang <xiang@kernel.org>,
+        Chao Yu <chao@kernel.org>, Yue Hu <huyue2@coolpad.com>,
+        Jeffle Xu <jefflexu@linux.alibaba.com>,
+        Namjae Jeon <linkinjeon@kernel.org>,
+        Sungjong Seo <sj1557.seo@samsung.com>,
+        Jan Kara <jack@suse.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Christoph Hellwig <hch@infradead.org>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Bob Peterson <rpeterso@redhat.com>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Richard Weinberger <richard@nod.at>,
+        Anton Ivanov <anton.ivanov@cambridgegreys.com>,
+        Johannes Berg <johannes@sipsolutions.net>,
+        Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
+        Mike Kravetz <mike.kravetz@oracle.com>,
+        Muchun Song <muchun.song@linux.dev>, Jan Kara <jack@suse.cz>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Dave Kleikamp <shaggy@kernel.org>, Tejun Heo <tj@kernel.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna@kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Neil Brown <neilb@suse.de>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
+        Anton Altaparmakov <anton@tuxera.com>,
+        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+        Mark Fasheh <mark@fasheh.com>,
+        Joseph Qi <joseph.qi@linux.alibaba.com>,
+        Bob Copeland <me@bobcopeland.com>,
+        Mike Marshall <hubcap@omnibond.com>,
+        Martin Brandenburg <martin@omnibond.com>,
+        Luis Chamberlain <mcgrof@kernel.org>,
+        Iurii Zaikin <yzaikin@google.com>,
+        Tony Luck <tony.luck@intel.com>,
+        "Guilherme G. Piccoli" <gpiccoli@igalia.com>,
+        Anders Larsen <al@alarsen.net>,
+        Steve French <sfrench@samba.org>,
+        Paulo Alcantara <pc@manguebit.com>,
+        Ronnie Sahlberg <lsahlber@redhat.com>,
+        Shyam Prasad N <sprasad@microsoft.com>,
+        Sergey Senozhatsky <senozhatsky@chromium.org>,
+        Phillip Lougher <phillip@squashfs.org.uk>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Masami Hiramatsu <mhiramat@kernel.org>,
+        Evgeniy Dushistov <dushistov@mail.ru>,
+        Chandan Babu R <chandan.babu@oracle.com>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        Damien Le Moal <dlemoal@kernel.org>,
+        Naohiro Aota <naohiro.aota@wdc.com>,
+        Johannes Thumshirn <jth@kernel.org>,
+        Alexei Starovoitov <ast@kernel.org>,
+        Daniel Borkmann <daniel@iogearbox.net>,
+        Andrii Nakryiko <andrii@kernel.org>,
+        Martin KaFai Lau <martin.lau@linux.dev>,
+        Song Liu <song@kernel.org>,
+        Yonghong Song <yonghong.song@linux.dev>,
+        John Fastabend <john.fastabend@gmail.com>,
+        KP Singh <kpsingh@kernel.org>,
+        Stanislav Fomichev <sdf@google.com>,
+        Hao Luo <haoluo@google.com>, Jiri Olsa <jolsa@kernel.org>,
+        Hugh Dickins <hughd@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Eric Dumazet <edumazet@google.com>,
+        Jakub Kicinski <kuba@kernel.org>,
+        Paolo Abeni <pabeni@redhat.com>,
+        John Johansen <john.johansen@canonical.com>,
+        Paul Moore <paul@paul-moore.com>,
+        James Morris <jmorris@namei.org>,
+        "Serge E. Hallyn" <serge@hallyn.com>,
+        Stephen Smalley <stephen.smalley.work@gmail.com>,
+        Eric Paris <eparis@parisplace.org>,
+        Kent Overstreet <kent.overstreet@linux.dev>,
+        Brian Foster <bfoster@redhat.com>
+Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, linuxppc-dev@lists.ozlabs.org,
+        linux-s390@vger.kernel.org, platform-driver-x86@vger.kernel.org,
+        linux-rdma@vger.kernel.org, linux-serial@vger.kernel.org,
+        linux-usb@vger.kernel.org, v9fs@lists.linux.dev,
+        linux-afs@lists.infradead.org, autofs@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        codalist@coda.cs.cmu.edu, linux-efi@vger.kernel.org,
+        linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, gfs2@lists.linux.dev,
+        linux-um@lists.infradead.org, linux-mtd@lists.infradead.org,
+        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
+        linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        ntfs3@lists.linux.dev, ocfs2-devel@lists.linux.dev,
+        linux-karma-devel@lists.sourceforge.net, devel@lists.orangefs.org,
+        linux-unionfs@vger.kernel.org, linux-hardening@vger.kernel.org,
+        reiserfs-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org,
+        linux-trace-kernel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        bpf@vger.kernel.org, netdev@vger.kernel.org,
+        apparmor@lists.ubuntu.com, linux-security-module@vger.kernel.org,
+        selinux@vger.kernel.org, linux-bcachefs@vger.kernel.org
+Subject: [PATCH v2 87/89] fs: rename inode i_atime and i_mtime fields
+Date:   Wed,  4 Oct 2023 14:55:28 -0400
+Message-ID: <20231004185530.82088-1-jlayton@kernel.org>
 X-Mailer: git-send-email 2.41.0
-In-Reply-To: <20231004185347.80880-1-jlayton@kernel.org>
-References: <20231004185221.80802-1-jlayton@kernel.org>
- <20231004185347.80880-1-jlayton@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Convert to using the new inode timestamp accessor functions.
+Rename these two fields to discourage direct access (and to help ensure
+that we mop up any leftover direct accesses).
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/ext4/ext4.h    | 20 +++++++++++++++-----
- fs/ext4/extents.c | 11 ++++++-----
- fs/ext4/ialloc.c  |  4 ++--
- fs/ext4/inline.c  |  4 ++--
- fs/ext4/inode.c   | 19 ++++++++++---------
- fs/ext4/ioctl.c   | 13 +++++++++++--
- fs/ext4/namei.c   | 10 +++++-----
- fs/ext4/super.c   |  2 +-
- fs/ext4/xattr.c   |  8 ++++----
- 9 files changed, 56 insertions(+), 35 deletions(-)
+ include/linux/fs.h | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 380c5a267d27..180b8c5fe021 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -891,10 +891,13 @@ do {										\
- 		(raw_inode)->xtime = cpu_to_le32(clamp_t(int32_t, (ts).tv_sec, S32_MIN, S32_MAX));	\
- } while (0)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 3ca610d42176..84fdaf399fbe 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -671,8 +671,8 @@ struct inode {
+ 	};
+ 	dev_t			i_rdev;
+ 	loff_t			i_size;
+-	struct timespec64	i_atime;
+-	struct timespec64	i_mtime;
++	struct timespec64	__i_atime;
++	struct timespec64	__i_mtime;
+ 	struct timespec64	__i_ctime; /* use inode_*_ctime accessors! */
+ 	spinlock_t		i_lock;	/* i_blocks, i_bytes, maybe i_size */
+ 	unsigned short          i_bytes;
+@@ -1517,23 +1517,23 @@ struct timespec64 inode_set_ctime_current(struct inode *inode);
  
--#define EXT4_INODE_SET_XTIME(xtime, inode, raw_inode)				\
--	EXT4_INODE_SET_XTIME_VAL(xtime, inode, raw_inode, (inode)->xtime)
-+#define EXT4_INODE_SET_ATIME(inode, raw_inode)						\
-+	EXT4_INODE_SET_XTIME_VAL(i_atime, inode, raw_inode, inode_get_atime(inode))
- 
--#define EXT4_INODE_SET_CTIME(inode, raw_inode)					\
-+#define EXT4_INODE_SET_MTIME(inode, raw_inode)						\
-+	EXT4_INODE_SET_XTIME_VAL(i_mtime, inode, raw_inode, inode_get_mtime(inode))
-+
-+#define EXT4_INODE_SET_CTIME(inode, raw_inode)						\
- 	EXT4_INODE_SET_XTIME_VAL(i_ctime, inode, raw_inode, inode_get_ctime(inode))
- 
- #define EXT4_EINODE_SET_XTIME(xtime, einode, raw_inode)				\
-@@ -910,9 +913,16 @@ do {										\
- 			.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime)	\
- 		})
- 
--#define EXT4_INODE_GET_XTIME(xtime, inode, raw_inode)				\
-+#define EXT4_INODE_GET_ATIME(inode, raw_inode)					\
-+do {										\
-+	inode_set_atime_to_ts(inode,						\
-+		EXT4_INODE_GET_XTIME_VAL(i_atime, inode, raw_inode));		\
-+} while (0)
-+
-+#define EXT4_INODE_GET_MTIME(inode, raw_inode)					\
- do {										\
--	(inode)->xtime = EXT4_INODE_GET_XTIME_VAL(xtime, inode, raw_inode);	\
-+	inode_set_mtime_to_ts(inode,						\
-+		EXT4_INODE_GET_XTIME_VAL(i_mtime, inode, raw_inode));		\
- } while (0)
- 
- #define EXT4_INODE_GET_CTIME(inode, raw_inode)					\
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 202c76996b62..4c4176ee1749 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4481,7 +4481,8 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
- 			if (epos > new_size)
- 				epos = new_size;
- 			if (ext4_update_inode_size(inode, epos) & 0x1)
--				inode->i_mtime = inode_get_ctime(inode);
-+				inode_set_mtime_to_ts(inode,
-+						      inode_get_ctime(inode));
- 		}
- 		ret2 = ext4_mark_inode_dirty(handle, inode);
- 		ext4_update_inode_fsync_trans(handle, inode, 1);
-@@ -4617,7 +4618,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 
- 		/* Now release the pages and zero block aligned part of pages */
- 		truncate_pagecache_range(inode, start, end - 1);
--		inode->i_mtime = inode_set_ctime_current(inode);
-+		inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
- 
- 		ret = ext4_alloc_file_blocks(file, lblk, max_blocks, new_size,
- 					     flags);
-@@ -4642,7 +4643,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 		goto out_mutex;
- 	}
- 
--	inode->i_mtime = inode_set_ctime_current(inode);
-+	inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
- 	if (new_size)
- 		ext4_update_inode_size(inode, new_size);
- 	ret = ext4_mark_inode_dirty(handle, inode);
-@@ -5378,7 +5379,7 @@ static int ext4_collapse_range(struct file *file, loff_t offset, loff_t len)
- 	up_write(&EXT4_I(inode)->i_data_sem);
- 	if (IS_SYNC(inode))
- 		ext4_handle_sync(handle);
--	inode->i_mtime = inode_set_ctime_current(inode);
-+	inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
- 	ret = ext4_mark_inode_dirty(handle, inode);
- 	ext4_update_inode_fsync_trans(handle, inode, 1);
- 
-@@ -5488,7 +5489,7 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
- 	/* Expand file to avoid data loss if there is error while shifting */
- 	inode->i_size += len;
- 	EXT4_I(inode)->i_disksize += len;
--	inode->i_mtime = inode_set_ctime_current(inode);
-+	inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
- 	ret = ext4_mark_inode_dirty(handle, inode);
- 	if (ret)
- 		goto out_stop;
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index b65058d972f9..e9bbb1da2d0a 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -1250,8 +1250,8 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
- 	inode->i_ino = ino + group * EXT4_INODES_PER_GROUP(sb);
- 	/* This is the optimal IO size (for stat), not the fs block size */
- 	inode->i_blocks = 0;
--	inode->i_mtime = inode->i_atime = inode_set_ctime_current(inode);
--	ei->i_crtime = inode->i_mtime;
-+	simple_inode_init_ts(inode);
-+	ei->i_crtime = inode_get_mtime(inode);
- 
- 	memset(ei->i_data, 0, sizeof(ei->i_data));
- 	ei->i_dir_start_lookup = 0;
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 012d9259ff53..9a84a5f9fef4 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1037,7 +1037,7 @@ static int ext4_add_dirent_to_inline(handle_t *handle,
- 	 * happen is that the times are slightly out of date
- 	 * and/or different from the directory change time.
- 	 */
--	dir->i_mtime = inode_set_ctime_current(dir);
-+	inode_set_mtime_to_ts(dir, inode_set_ctime_current(dir));
- 	ext4_update_dx_flag(dir);
- 	inode_inc_iversion(dir);
- 	return 1;
-@@ -1991,7 +1991,7 @@ int ext4_inline_data_truncate(struct inode *inode, int *has_inline)
- 		ext4_orphan_del(handle, inode);
- 
- 	if (err == 0) {
--		inode->i_mtime = inode_set_ctime_current(inode);
-+		inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
- 		err = ext4_mark_inode_dirty(handle, inode);
- 		if (IS_SYNC(inode))
- 			ext4_handle_sync(handle);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4ce35f1c8b0a..08cb5c0e0d51 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4020,7 +4020,7 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
- 	if (IS_SYNC(inode))
- 		ext4_handle_sync(handle);
- 
--	inode->i_mtime = inode_set_ctime_current(inode);
-+	inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
- 	ret2 = ext4_mark_inode_dirty(handle, inode);
- 	if (unlikely(ret2))
- 		ret = ret2;
-@@ -4180,7 +4180,7 @@ int ext4_truncate(struct inode *inode)
- 	if (inode->i_nlink)
- 		ext4_orphan_del(handle, inode);
- 
--	inode->i_mtime = inode_set_ctime_current(inode);
-+	inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
- 	err2 = ext4_mark_inode_dirty(handle, inode);
- 	if (unlikely(err2 && !err))
- 		err = err2;
-@@ -4284,8 +4284,8 @@ static int ext4_fill_raw_inode(struct inode *inode, struct ext4_inode *raw_inode
- 	raw_inode->i_links_count = cpu_to_le16(inode->i_nlink);
- 
- 	EXT4_INODE_SET_CTIME(inode, raw_inode);
--	EXT4_INODE_SET_XTIME(i_mtime, inode, raw_inode);
--	EXT4_INODE_SET_XTIME(i_atime, inode, raw_inode);
-+	EXT4_INODE_SET_MTIME(inode, raw_inode);
-+	EXT4_INODE_SET_ATIME(inode, raw_inode);
- 	EXT4_EINODE_SET_XTIME(i_crtime, ei, raw_inode);
- 
- 	raw_inode->i_dtime = cpu_to_le32(ei->i_dtime);
-@@ -4893,8 +4893,8 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 	}
- 
- 	EXT4_INODE_GET_CTIME(inode, raw_inode);
--	EXT4_INODE_GET_XTIME(i_mtime, inode, raw_inode);
--	EXT4_INODE_GET_XTIME(i_atime, inode, raw_inode);
-+	EXT4_INODE_GET_ATIME(inode, raw_inode);
-+	EXT4_INODE_GET_MTIME(inode, raw_inode);
- 	EXT4_EINODE_GET_XTIME(i_crtime, ei, raw_inode);
- 
- 	if (likely(!test_opt2(inode->i_sb, HURD_COMPAT))) {
-@@ -5019,8 +5019,8 @@ static void __ext4_update_other_inode_time(struct super_block *sb,
- 
- 		spin_lock(&ei->i_raw_lock);
- 		EXT4_INODE_SET_CTIME(inode, raw_inode);
--		EXT4_INODE_SET_XTIME(i_mtime, inode, raw_inode);
--		EXT4_INODE_SET_XTIME(i_atime, inode, raw_inode);
-+		EXT4_INODE_SET_MTIME(inode, raw_inode);
-+		EXT4_INODE_SET_ATIME(inode, raw_inode);
- 		ext4_inode_csum_set(inode, raw_inode, ei);
- 		spin_unlock(&ei->i_raw_lock);
- 		trace_ext4_other_inode_update_time(inode, orig_ino);
-@@ -5413,7 +5413,8 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 			 * update c/mtime in shrink case below
- 			 */
- 			if (!shrink)
--				inode->i_mtime = inode_set_ctime_current(inode);
-+				inode_set_mtime_to_ts(inode,
-+						      inode_set_ctime_current(inode));
- 
- 			if (shrink)
- 				ext4_fc_track_range(handle, inode,
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 0bfe2ce589e2..4f931f80cb34 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -312,13 +312,22 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
- 	struct ext4_inode_info *ei1;
- 	struct ext4_inode_info *ei2;
- 	unsigned long tmp;
-+	struct timespec64 ts1, ts2;
- 
- 	ei1 = EXT4_I(inode1);
- 	ei2 = EXT4_I(inode2);
- 
- 	swap(inode1->i_version, inode2->i_version);
--	swap(inode1->i_atime, inode2->i_atime);
--	swap(inode1->i_mtime, inode2->i_mtime);
-+
-+	ts1 = inode_get_atime(inode1);
-+	ts2 = inode_get_atime(inode2);
-+	inode_set_atime_to_ts(inode1, ts2);
-+	inode_set_atime_to_ts(inode2, ts1);
-+
-+	ts1 = inode_get_mtime(inode1);
-+	ts2 = inode_get_mtime(inode2);
-+	inode_set_mtime_to_ts(inode1, ts2);
-+	inode_set_mtime_to_ts(inode2, ts1);
- 
- 	memswap(ei1->i_data, ei2->i_data, sizeof(ei1->i_data));
- 	tmp = ei1->i_flags & EXT4_FL_SHOULD_SWAP;
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index bbda587f76b8..057d74467293 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2207,7 +2207,7 @@ static int add_dirent_to_buf(handle_t *handle, struct ext4_filename *fname,
- 	 * happen is that the times are slightly out of date
- 	 * and/or different from the directory change time.
- 	 */
--	dir->i_mtime = inode_set_ctime_current(dir);
-+	inode_set_mtime_to_ts(dir, inode_set_ctime_current(dir));
- 	ext4_update_dx_flag(dir);
- 	inode_inc_iversion(dir);
- 	err2 = ext4_mark_inode_dirty(handle, dir);
-@@ -3202,7 +3202,7 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
- 	 * recovery. */
- 	inode->i_size = 0;
- 	ext4_orphan_add(handle, inode);
--	dir->i_mtime = inode_set_ctime_current(dir);
-+	inode_set_mtime_to_ts(dir, inode_set_ctime_current(dir));
- 	inode_set_ctime_current(inode);
- 	retval = ext4_mark_inode_dirty(handle, inode);
- 	if (retval)
-@@ -3277,7 +3277,7 @@ int __ext4_unlink(struct inode *dir, const struct qstr *d_name,
- 		retval = ext4_delete_entry(handle, dir, de, bh);
- 		if (retval)
- 			goto out_handle;
--		dir->i_mtime = inode_set_ctime_current(dir);
-+		inode_set_mtime_to_ts(dir, inode_set_ctime_current(dir));
- 		ext4_update_dx_flag(dir);
- 		retval = ext4_mark_inode_dirty(handle, dir);
- 		if (retval)
-@@ -3648,7 +3648,7 @@ static int ext4_setent(handle_t *handle, struct ext4_renament *ent,
- 	if (ext4_has_feature_filetype(ent->dir->i_sb))
- 		ent->de->file_type = file_type;
- 	inode_inc_iversion(ent->dir);
--	ent->dir->i_mtime = inode_set_ctime_current(ent->dir);
-+	inode_set_mtime_to_ts(ent->dir, inode_set_ctime_current(ent->dir));
- 	retval = ext4_mark_inode_dirty(handle, ent->dir);
- 	BUFFER_TRACE(ent->bh, "call ext4_handle_dirty_metadata");
- 	if (!ent->inlined) {
-@@ -3963,7 +3963,7 @@ static int ext4_rename(struct mnt_idmap *idmap, struct inode *old_dir,
- 		ext4_dec_count(new.inode);
- 		inode_set_ctime_current(new.inode);
- 	}
--	old.dir->i_mtime = inode_set_ctime_current(old.dir);
-+	inode_set_mtime_to_ts(old.dir, inode_set_ctime_current(old.dir));
- 	ext4_update_dx_flag(old.dir);
- 	if (old.dir_bh) {
- 		retval = ext4_rename_dir_finish(handle, &old, new.dir->i_ino);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f37fb009bd99..3165426784a9 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -7136,7 +7136,7 @@ static int ext4_quota_off(struct super_block *sb, int type)
- 	}
- 	EXT4_I(inode)->i_flags &= ~(EXT4_NOATIME_FL | EXT4_IMMUTABLE_FL);
- 	inode_set_flags(inode, 0, S_NOATIME | S_IMMUTABLE);
--	inode->i_mtime = inode_set_ctime_current(inode);
-+	inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
- 	err = ext4_mark_inode_dirty(handle, inode);
- 	ext4_journal_stop(handle);
- out_unlock:
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 92ba28cebac6..b9467ff8d4e9 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -356,7 +356,7 @@ ext4_xattr_inode_hash(struct ext4_sb_info *sbi, const void *buffer, size_t size)
- 
- static u64 ext4_xattr_inode_get_ref(struct inode *ea_inode)
+ static inline time64_t inode_get_atime_sec(const struct inode *inode)
  {
--	return ((u64) inode_get_ctime(ea_inode).tv_sec << 32) |
-+	return ((u64) inode_get_ctime_sec(ea_inode) << 32) |
- 		(u32) inode_peek_iversion_raw(ea_inode);
+-	return inode->i_atime.tv_sec;
++	return inode->__i_atime.tv_sec;
  }
  
-@@ -368,12 +368,12 @@ static void ext4_xattr_inode_set_ref(struct inode *ea_inode, u64 ref_count)
- 
- static u32 ext4_xattr_inode_get_hash(struct inode *ea_inode)
+ static inline long inode_get_atime_nsec(const struct inode *inode)
  {
--	return (u32)ea_inode->i_atime.tv_sec;
-+	return (u32) inode_get_atime_sec(ea_inode);
+-	return inode->i_atime.tv_nsec;
++	return inode->__i_atime.tv_nsec;
  }
  
- static void ext4_xattr_inode_set_hash(struct inode *ea_inode, u32 hash)
+ static inline struct timespec64 inode_get_atime(const struct inode *inode)
  {
--	ea_inode->i_atime.tv_sec = hash;
-+	inode_set_atime(ea_inode, hash, 0);
+-	return inode->i_atime;
++	return inode->__i_atime;
  }
  
- /*
-@@ -418,7 +418,7 @@ static int ext4_xattr_inode_read(struct inode *ea_inode, void *buf, size_t size)
- 	return ret;
+ static inline struct timespec64 inode_set_atime_to_ts(struct inode *inode,
+ 						      struct timespec64 ts)
+ {
+-	inode->i_atime = ts;
++	inode->__i_atime = ts;
+ 	return ts;
  }
  
--#define EXT4_XATTR_INODE_GET_PARENT(inode) ((__u32)(inode)->i_mtime.tv_sec)
-+#define EXT4_XATTR_INODE_GET_PARENT(inode) ((__u32)(inode_get_mtime_sec(inode)))
+@@ -1547,23 +1547,23 @@ static inline struct timespec64 inode_set_atime(struct inode *inode,
  
- static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
- 				 u32 ea_inode_hash, struct inode **ea_inode)
+ static inline time64_t inode_get_mtime_sec(const struct inode *inode)
+ {
+-	return inode->i_mtime.tv_sec;
++	return inode->__i_mtime.tv_sec;
+ }
+ 
+ static inline long inode_get_mtime_nsec(const struct inode *inode)
+ {
+-	return inode->i_mtime.tv_nsec;
++	return inode->__i_mtime.tv_nsec;
+ }
+ 
+ static inline struct timespec64 inode_get_mtime(const struct inode *inode)
+ {
+-	return inode->i_mtime;
++	return inode->__i_mtime;
+ }
+ 
+ static inline struct timespec64 inode_set_mtime_to_ts(struct inode *inode,
+ 						      struct timespec64 ts)
+ {
+-	inode->i_mtime = ts;
++	inode->__i_mtime = ts;
+ 	return ts;
+ }
+ 
 -- 
 2.41.0
 
