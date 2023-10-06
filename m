@@ -2,45 +2,47 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 44E5BE81E1E
-	for <linux-ext4@archiver.kernel.org>; Fri,  6 Oct 2023 18:07:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 29FBDE81E1F
+	for <linux-ext4@archiver.kernel.org>; Fri,  6 Oct 2023 18:07:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233337AbjJFSHa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 6 Oct 2023 14:07:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43024 "EHLO
+        id S233350AbjJFSHv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 6 Oct 2023 14:07:51 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43646 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233202AbjJFSHS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Oct 2023 14:07:18 -0400
+        with ESMTP id S233302AbjJFSHj (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Oct 2023 14:07:39 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B216A125
-        for <linux-ext4@vger.kernel.org>; Fri,  6 Oct 2023 11:06:57 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9AA891BB
+        for <linux-ext4@vger.kernel.org>; Fri,  6 Oct 2023 11:07:04 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-111-143.bstnma.fios.verizon.net [173.48.111.143])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 396I6Xvx008025
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 396I6XEG008026
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Fri, 6 Oct 2023 14:06:34 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1696615595; bh=VGRWUwHRgP91PReilTCylthGnxI5CCHvzxny0Mq8Kmk=;
+        t=1696615596; bh=m+yB3jScn5m6LC2cflCigiOrKZ4dD+EbkukH0p8nn6w=;
         h=From:Subject:Date:Message-Id:MIME-Version:Content-Type;
-        b=aMyDpXd5znTt4uu54VYHVDfl8yg9MxcN1BPhH3+Q0LJOcreEc4UfIKJuM2/qOSOjC
-         dQONlN20VCHV9pTERKdwBHdRbODiRYcP1nYbHxaMgwxvtXJHxX+0aM2T/wBSQEt1ve
-         k751ddNbe1L1eDpy1sarQZOGnIIIfaCmZuYbOq6TZcgmVnVMXSrXSbkXJBLtYZm7qd
-         3HcYVqi2tfnRHCD/gT5KvCjpx5JySGwT4STKjiiDvlasmnaLaIRs7pOeSwzSCnff4c
-         Pj67qH3kDRxYjhesIrOSIxiWRmg/QVoik28ZD2ICapJwpBfptbtDM5OqLLf0w+M4ta
-         dCN/cOFUOBM9Q==
+        b=BXUZgtuH6KL1RXh3XwE4N9ibCHLOVbF2A59Qq6YTYf0DOKrEpyahzpsOvzf5FSgo4
+         YLHRzAImLY3DTH4r9WN87Zz805jw/r6wxApSM7wHPdd9z3bEO0jPLqy2mp8I3P9AwF
+         1qkKQuBbXZsyktX/Pzrla9R4TV0f/MmLTyhfEASPLaK5rw0wRl8wGw8s1jdJOENtQL
+         jTgMzVmL//QkRnubiHWK+piE9WvRz88/dxGN8gIY3olf8NAs6aseRDTr3f8mDM4F9I
+         hpCkwVOLXElSZkRVcMb/XeKulmNsqGiJDGcC1AyIeliYbBbBCAq2XZBdeXAUjkCsMC
+         /DAk3I7JDxvPg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 1B43915C0251; Fri,  6 Oct 2023 14:06:33 -0400 (EDT)
+        id 20EE515C0259; Fri,  6 Oct 2023 14:06:33 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     jack@suse.com, Zhihao Cheng <chengzhihao1@huawei.com>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, yi.zhang@huawei.com
-Subject: Re: [PATCH v3] jbd2: Fix potential data lost in recovering journal raced with synchronizing fs bdev
-Date:   Fri,  6 Oct 2023 14:06:17 -0400
-Message-Id: <169661554697.173366.17984924984447813917.b4-ty@mit.edu>
+To:     linux-ext4@vger.kernel.org, Baokun Li <libaokun1@huawei.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
+        jack@suse.cz, ritesh.list@gmail.com, linux-kernel@vger.kernel.org,
+        yi.zhang@huawei.com, yangerkun@huawei.com, yukuai3@huawei.com,
+        stable@vger.kernel.org
+Subject: Re: [PATCH v4] ext4: fix race between writepages and remount
+Date:   Fri,  6 Oct 2023 14:06:20 -0400
+Message-Id: <169661554694.173366.12709933957063678175.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20230919012525.1783108-1-chengzhihao1@huawei.com>
-References: <20230919012525.1783108-1-chengzhihao1@huawei.com>
+In-Reply-To: <20230524072538.2883391-1-libaokun1@huawei.com>
+References: <20230524072538.2883391-1-libaokun1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -49,22 +51,37 @@ List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
 
-On Tue, 19 Sep 2023 09:25:25 +0800, Zhihao Cheng wrote:
-> JBD2 makes sure journal data is fallen on fs device by sync_blockdev(),
-> however, other process could intercept the EIO information from bdev's
-> mapping, which leads journal recovering successful even EIO occurs during
-> data written back to fs device.
-> 
-> We found this problem in our product, iscsi + multipath is chosen for block
-> device of ext4. Unstable network may trigger kpartx to rescan partitions in
-> device mapper layer. Detailed process is shown as following:
+On Wed, 24 May 2023 15:25:38 +0800, Baokun Li wrote:
+> We got a WARNING in ext4_add_complete_io:
+> ==================================================================
+>  WARNING: at fs/ext4/page-io.c:231 ext4_put_io_end_defer+0x182/0x250
+>  CPU: 10 PID: 77 Comm: ksoftirqd/10 Tainted: 6.3.0-rc2 #85
+>  RIP: 0010:ext4_put_io_end_defer+0x182/0x250 [ext4]
+>  [...]
+>  Call Trace:
+>   <TASK>
+>   ext4_end_bio+0xa8/0x240 [ext4]
+>   bio_endio+0x195/0x310
+>   blk_update_request+0x184/0x770
+>   scsi_end_request+0x2f/0x240
+>   scsi_io_completion+0x75/0x450
+>   scsi_finish_command+0xef/0x160
+>   scsi_complete+0xa3/0x180
+>   blk_complete_reqs+0x60/0x80
+>   blk_done_softirq+0x25/0x40
+>   __do_softirq+0x119/0x4c8
+>   run_ksoftirqd+0x42/0x70
+>   smpboot_thread_fn+0x136/0x3c0
+>   kthread+0x140/0x1a0
+>   ret_from_fork+0x2c/0x50
+> ==================================================================
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] jbd2: Fix potential data lost in recovering journal raced with synchronizing fs bdev
-      commit: 61187fce8600e8ef90e601be84f9d0f3222c1206
+[1/1] ext4: fix race between writepages and remount
+      commit: 745f17a4166e79315e4b7f33ce89d03e75a76983
 
 Best regards,
 -- 
