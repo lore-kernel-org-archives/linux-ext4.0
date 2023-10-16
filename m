@@ -2,30 +2,30 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3B445CDB483
-	for <linux-ext4@archiver.kernel.org>; Mon, 16 Oct 2023 20:11:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7847CCDB486
+	for <linux-ext4@archiver.kernel.org>; Mon, 16 Oct 2023 20:11:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234277AbjJPULt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 16 Oct 2023 16:11:49 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38224 "EHLO
+        id S234124AbjJPULv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 16 Oct 2023 16:11:51 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38244 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234061AbjJPUL1 (ORCPT
+        with ESMTP id S234091AbjJPUL1 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Oct 2023 16:11:27 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C620C101;
-        Mon, 16 Oct 2023 13:11:20 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 764DE109;
+        Mon, 16 Oct 2023 13:11:21 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=gXwo5POojlfzHGFPYZRyYtvPtwVY0DoWyticsN4hNno=; b=jvapso4hnLBZ129A2I9r/MGoKu
-        +fqKNQfCcpXIuIuyTQQNA+A36skRya7TK5BhzgF8xsazEhoyKTQqOaUTkA3PHxYt9xEmUWPN2Pl3T
-        Rzphl65eC1qmrCQsUtYaKLgpH25fAoALpbfd2Swh62Qz3t5hWRp9x6vPgV01VaLbI8tbsiHLyyqhM
-        xJxTwsMq5E+AdLHZ04jSpHMVyEq8PU2sokmJlU1JPiUxBMe53V5cNv8V+hHMfdMmTqP1ptNECh4YF
-        KO2+TwroNrv/AzDzSw8KUZVVf5CaQqLFyG0Hii58+7Z5n6Utg/rnELb4an9J19N+65kHVvCg0fMca
-        +AATcieA==;
+        bh=mUIK9nBwhAI9Ryy/+0vVqkN8LwxEIln+yTemaK9zJBo=; b=B+GlRioYNmeYvG4yzAvGbAV781
+        F+G7VQqsop6vEVTkB2N/9IRAC+b3I9QGtXyU3FDR6O7Op1I7/FV5sir1YuPG8ox133s3C6PYNc+Fu
+        2TS1jzq3LSyq29zz12aDl+3LZfQS++8IkDcNOo1IznSF+6OigiahHw8yFL7Zwg3zZz6YuWDaGiOPJ
+        DHg/Qy6Nq/Ajn9BVTw7QpDWYDJRi8Ev03+h9K1z4pGFqvUwuJFy08imY/iFoWk9PyLlasGh+5/226
+        +dfNLVu37Js+UunnA87mo1Jg6qmIlj8ST7V1xEpHcBDhQ1i00gGkiy8nxNjkqAFUM6nFeC4tMR3+M
+        QIAWS5bQ==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qsTvr-0085cL-1I; Mon, 16 Oct 2023 20:11:19 +0000
+        id 1qsTvr-0085d0-Ne; Mon, 16 Oct 2023 20:11:19 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -34,9 +34,9 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         ntfs3@lists.linux.dev, ocfs2-devel@lists.linux.dev,
         reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Pankaj Raghav <p.raghav@samsung.com>
-Subject: [PATCH v2 20/27] ntfs3: Convert ntfs_zero_range() to use a folio
-Date:   Mon, 16 Oct 2023 21:11:07 +0100
-Message-Id: <20231016201114.1928083-21-willy@infradead.org>
+Subject: [PATCH v2 25/27] ufs; Convert ufs_change_blocknr() to use folios
+Date:   Mon, 16 Oct 2023 21:11:12 +0100
+Message-Id: <20231016201114.1928083-26-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20231016201114.1928083-1-willy@infradead.org>
 References: <20231016201114.1928083-1-willy@infradead.org>
@@ -46,84 +46,85 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Use the folio API throughout, saving six hidden calls to compound_head().
+Convert the locked_page argument to a folio, then use folios throughout.
+Saves three hidden calls to compound_head().
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/ntfs3/file.c | 31 ++++++++++++++++---------------
- 1 file changed, 16 insertions(+), 15 deletions(-)
+ fs/ufs/balloc.c | 20 +++++++++-----------
+ 1 file changed, 9 insertions(+), 11 deletions(-)
 
-diff --git a/fs/ntfs3/file.c b/fs/ntfs3/file.c
-index ad4a70b5d432..135af3340a19 100644
---- a/fs/ntfs3/file.c
-+++ b/fs/ntfs3/file.c
-@@ -187,7 +187,7 @@ static int ntfs_zero_range(struct inode *inode, u64 vbo, u64 vbo_to)
- 	struct buffer_head *head, *bh;
- 	u32 bh_next, bh_off, to;
- 	sector_t iblock;
+diff --git a/fs/ufs/balloc.c b/fs/ufs/balloc.c
+index 2436e3f82147..53c11be2b2c1 100644
+--- a/fs/ufs/balloc.c
++++ b/fs/ufs/balloc.c
+@@ -240,6 +240,7 @@ static void ufs_change_blocknr(struct inode *inode, sector_t beg,
+ 			       unsigned int count, sector_t oldb,
+ 			       sector_t newb, struct page *locked_page)
+ {
++	struct folio *folio, *locked_folio = page_folio(locked_page);
+ 	const unsigned blks_per_page =
+ 		1 << (PAGE_SHIFT - inode->i_blkbits);
+ 	const unsigned mask = blks_per_page - 1;
+@@ -247,42 +248,39 @@ static void ufs_change_blocknr(struct inode *inode, sector_t beg,
+ 	pgoff_t index, cur_index, last_index;
+ 	unsigned pos, j, lblock;
+ 	sector_t end, i;
 -	struct page *page;
-+	struct folio *folio;
+ 	struct buffer_head *head, *bh;
  
- 	for (; idx < idx_end; idx += 1, from = 0) {
- 		page_off = (loff_t)idx << PAGE_SHIFT;
-@@ -195,16 +195,17 @@ static int ntfs_zero_range(struct inode *inode, u64 vbo, u64 vbo_to)
- 						       PAGE_SIZE;
- 		iblock = page_off >> inode->i_blkbits;
+ 	UFSD("ENTER, ino %lu, count %u, oldb %llu, newb %llu\n",
+ 	      inode->i_ino, count,
+ 	     (unsigned long long)oldb, (unsigned long long)newb);
  
--		page = find_or_create_page(mapping, idx,
--					   mapping_gfp_constraint(mapping,
--								  ~__GFP_FS));
--		if (!page)
--			return -ENOMEM;
-+		folio = __filemap_get_folio(mapping, idx,
-+				FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
-+				mapping_gfp_constraint(mapping, ~__GFP_FS));
-+		if (IS_ERR(folio))
-+			return PTR_ERR(folio);
+-	BUG_ON(!locked_page);
+-	BUG_ON(!PageLocked(locked_page));
++	BUG_ON(!folio_test_locked(locked_folio));
  
--		if (!page_has_buffers(page))
--			create_empty_buffers(page, blocksize, 0);
+-	cur_index = locked_page->index;
++	cur_index = locked_folio->index;
+ 	end = count + beg;
+ 	last_index = end >> (PAGE_SHIFT - inode->i_blkbits);
+ 	for (i = beg; i < end; i = (i | mask) + 1) {
+ 		index = i >> (PAGE_SHIFT - inode->i_blkbits);
+ 
+ 		if (likely(cur_index != index)) {
+-			page = ufs_get_locked_page(mapping, index);
+-			if (!page)/* it was truncated */
++			folio = ufs_get_locked_folio(mapping, index);
++			if (!folio) /* it was truncated */
+ 				continue;
+-			if (IS_ERR(page)) {/* or EIO */
++			if (IS_ERR(folio)) {/* or EIO */
+ 				ufs_error(inode->i_sb, __func__,
+ 					  "read of page %llu failed\n",
+ 					  (unsigned long long)index);
+ 				continue;
+ 			}
+ 		} else
+-			page = locked_page;
++			folio = locked_folio;
+ 
+-		head = page_buffers(page);
 +		head = folio_buffers(folio);
-+		if (!head)
-+			head = folio_create_empty_buffers(folio, blocksize, 0);
+ 		bh = head;
+ 		pos = i & mask;
+ 		for (j = 0; j < pos; ++j)
+ 			bh = bh->b_this_page;
  
--		bh = head = page_buffers(page);
-+		bh = head;
- 		bh_off = 0;
- 		do {
- 			bh_next = bh_off + blocksize;
-@@ -220,14 +221,14 @@ static int ntfs_zero_range(struct inode *inode, u64 vbo, u64 vbo_to)
- 			}
+-
+ 		if (unlikely(index == last_index))
+ 			lblock = end & mask;
+ 		else
+@@ -313,7 +311,7 @@ static void ufs_change_blocknr(struct inode *inode, sector_t beg,
+ 		} while (bh != head);
  
- 			/* Ok, it's mapped. Make sure it's up-to-date. */
--			if (PageUptodate(page))
-+			if (folio_test_uptodate(folio))
- 				set_buffer_uptodate(bh);
- 
- 			if (!buffer_uptodate(bh)) {
- 				err = bh_read(bh, 0);
- 				if (err < 0) {
--					unlock_page(page);
--					put_page(page);
-+					folio_unlock(folio);
-+					folio_put(folio);
- 					goto out;
- 				}
- 			}
-@@ -237,10 +238,10 @@ static int ntfs_zero_range(struct inode *inode, u64 vbo, u64 vbo_to)
- 		} while (bh_off = bh_next, iblock += 1,
- 			 head != (bh = bh->b_this_page));
- 
--		zero_user_segment(page, from, to);
-+		folio_zero_segment(folio, from, to);
- 
--		unlock_page(page);
--		put_page(page);
-+		folio_unlock(folio);
-+		folio_put(folio);
- 		cond_resched();
- 	}
- out:
+ 		if (likely(cur_index != index))
+-			ufs_put_locked_page(page);
++			ufs_put_locked_folio(folio);
+  	}
+ 	UFSD("EXIT\n");
+ }
 -- 
 2.40.1
 
