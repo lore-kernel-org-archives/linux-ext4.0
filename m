@@ -2,30 +2,30 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F603CDB484
-	for <linux-ext4@archiver.kernel.org>; Mon, 16 Oct 2023 20:11:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C860ECDB488
+	for <linux-ext4@archiver.kernel.org>; Mon, 16 Oct 2023 20:11:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234236AbjJPULl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 16 Oct 2023 16:11:41 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38176 "EHLO
+        id S234250AbjJPULo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 16 Oct 2023 16:11:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38200 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232570AbjJPUL0 (ORCPT
+        with ESMTP id S234050AbjJPUL0 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Oct 2023 16:11:26 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2F60FFE;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 43B3CFF;
         Mon, 16 Oct 2023 13:11:20 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=1Qmaj5woCknpqJNFRJKv0P5B8IW/icZejqOhxCQNhr0=; b=Ff3w/lmZD39hmW/uMppRtz2aDk
-        JmhIApYj0wIh0qa9OgFFBAsoszVNIh+zOILxo35m0POZnjdkK3/Y8S4VxeD8GrZTaIW8KQJeFi/73
-        QbqKknupzVLjAVAJZ5qWUpTJTnYHeLeeieI0S52apbLidzDj7XCKKRfuqONYx6eRkNKVw1b715ZFJ
-        IfL7S9sgDSI8PqWJPe4PDggP/oAbn6bmjpdvC4rSz4ff8QnbEezQpkRrVnM57OUCM4NNpboXXZ+cJ
-        fpvrUTe1OyXftZWPsn8CIzlmADkDiDTx+ZDMzz/cZeSq0JQlRppDEzlYOiQV0cDPOQNjjBiQJEXhv
-        FLJ8mMmw==;
+        bh=o2OXHpu4bV7SwS3QFGapfGfV2oXZOrEccMoa02Z5eig=; b=aIdJ8DKODFcr9EKo6DuRHl8Qx/
+        a7MQ5FImQVq3IzIbfzG/gHhNKXtwSp4UR3tln2o2YYFkK6B4psH3ReRFmnCr+s/ySubrqjQD/hca/
+        PkqHFHJ5l+c9E5QfuI5E0E2LCMcrnkTIf++fx2UuD6Jk0DLziicnDe1xeNRIqSt+EVguEA3JNB3xz
+        RdwHudSubqKp0nHXmYT45sssjSnzzwxx66wNGTr7S4fR4KZLrWMKvyRJzZZUR3p3WcwVd9r+x6Od2
+        nZ33RnvVvh+pojvnhSPpOlb8Sp8GXF9MA0DP5YrzbmCXKIyfjw6P/+5ETqO4M3vjlxK4p4OyDThR+
+        eOK4EM9A==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qsTvp-0085ag-8T; Mon, 16 Oct 2023 20:11:17 +0000
+        id 1qsTvq-0085bi-Eu; Mon, 16 Oct 2023 20:11:18 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -34,10 +34,10 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         ntfs3@lists.linux.dev, ocfs2-devel@lists.linux.dev,
         reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Pankaj Raghav <p.raghav@samsung.com>,
-        Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v2 07/27] gfs2: Convert gfs2_getbuf() to folios
-Date:   Mon, 16 Oct 2023 21:10:54 +0100
-Message-Id: <20231016201114.1928083-8-willy@infradead.org>
+        Ryusuke Konishi <konishi.ryusuke@gmail.com>
+Subject: [PATCH v2 16/27] nilfs2: Convert nilfs_lookup_dirty_data_buffers to use folio_create_empty_buffers
+Date:   Mon, 16 Oct 2023 21:11:03 +0100
+Message-Id: <20231016201114.1928083-17-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20231016201114.1928083-1-willy@infradead.org>
 References: <20231016201114.1928083-1-willy@infradead.org>
@@ -47,81 +47,33 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Remove several folio->page->folio conversions.  Also use __GFP_NOFAIL
-instead of calling yield() and the new get_nth_bh().
+This function was already using a folio, so this update to the new API
+removes a single folio->page->folio conversion.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-Reviewed-by: Andreas Gruenbacher <agruenba@redhat.com>
+Acked-by: Ryusuke Konishi <konishi.ryusuke@gmail.com>
 ---
- fs/gfs2/meta_io.c | 39 +++++++++++++++++----------------------
- 1 file changed, 17 insertions(+), 22 deletions(-)
+ fs/nilfs2/segment.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/fs/gfs2/meta_io.c b/fs/gfs2/meta_io.c
-index 924361fa510b..f1fac1b45059 100644
---- a/fs/gfs2/meta_io.c
-+++ b/fs/gfs2/meta_io.c
-@@ -115,7 +115,7 @@ struct buffer_head *gfs2_getbuf(struct gfs2_glock *gl, u64 blkno, int create)
- {
- 	struct address_space *mapping = gfs2_glock2aspace(gl);
- 	struct gfs2_sbd *sdp = gl->gl_name.ln_sbd;
--	struct page *page;
-+	struct folio *folio;
- 	struct buffer_head *bh;
- 	unsigned int shift;
- 	unsigned long index;
-@@ -129,36 +129,31 @@ struct buffer_head *gfs2_getbuf(struct gfs2_glock *gl, u64 blkno, int create)
- 	bufnum = blkno - (index << shift);  /* block buf index within page */
- 
- 	if (create) {
--		for (;;) {
--			page = grab_cache_page(mapping, index);
--			if (page)
--				break;
--			yield();
+diff --git a/fs/nilfs2/segment.c b/fs/nilfs2/segment.c
+index 7ec16879756e..94388fe83cf8 100644
+--- a/fs/nilfs2/segment.c
++++ b/fs/nilfs2/segment.c
+@@ -731,10 +731,9 @@ static size_t nilfs_lookup_dirty_data_buffers(struct inode *inode,
+ 			continue;
+ 		}
+ 		head = folio_buffers(folio);
+-		if (!head) {
+-			create_empty_buffers(&folio->page, i_blocksize(inode), 0);
+-			head = folio_buffers(folio);
 -		}
--		if (!page_has_buffers(page))
--			create_empty_buffers(page, sdp->sd_sb.sb_bsize, 0);
-+		folio = __filemap_get_folio(mapping, index,
-+				FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
-+				mapping_gfp_mask(mapping) | __GFP_NOFAIL);
-+		bh = folio_buffers(folio);
-+		if (!bh)
-+			bh = folio_create_empty_buffers(folio,
-+				sdp->sd_sb.sb_bsize, 0);
- 	} else {
--		page = find_get_page_flags(mapping, index,
--						FGP_LOCK|FGP_ACCESSED);
--		if (!page)
-+		folio = __filemap_get_folio(mapping, index,
-+				FGP_LOCK | FGP_ACCESSED, 0);
-+		if (IS_ERR(folio))
- 			return NULL;
--		if (!page_has_buffers(page)) {
--			bh = NULL;
--			goto out_unlock;
--		}
-+		bh = folio_buffers(folio);
- 	}
++		if (!head)
++			head = folio_create_empty_buffers(folio,
++					i_blocksize(inode), 0);
+ 		folio_unlock(folio);
  
--	/* Locate header for our buffer within our page */
--	for (bh = page_buffers(page); bufnum--; bh = bh->b_this_page)
--		/* Do nothing */;
--	get_bh(bh);
-+	if (!bh)
-+		goto out_unlock;
- 
-+	bh = get_nth_bh(bh, bufnum);
- 	if (!buffer_mapped(bh))
- 		map_bh(bh, sdp->sd_vfs, blkno);
- 
- out_unlock:
--	unlock_page(page);
--	put_page(page);
-+	folio_unlock(folio);
-+	folio_put(folio);
- 
- 	return bh;
- }
+ 		bh = head;
 -- 
 2.40.1
 
