@@ -2,30 +2,30 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8A53BCDB482
-	for <linux-ext4@archiver.kernel.org>; Mon, 16 Oct 2023 20:11:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F50ECDB465
+	for <linux-ext4@archiver.kernel.org>; Mon, 16 Oct 2023 20:11:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234074AbjJPUL5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 16 Oct 2023 16:11:57 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38264 "EHLO
+        id S234289AbjJPUL6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 16 Oct 2023 16:11:58 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38270 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234122AbjJPUL2 (ORCPT
+        with ESMTP id S234133AbjJPUL2 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Oct 2023 16:11:28 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D54AF112;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D1D56111;
         Mon, 16 Oct 2023 13:11:21 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=Xp+QE9Qcwim0j3A98602n64hzJhTuI1lZnbxuA3ltu8=; b=UbjQZhUzGx3SVWyIAzGnFiSQ5j
-        NNLH61o+0k+7P/Om5MbcDWJ7VfV/fC7iHeeot68tO/juqfA46/E6VGeUepq6nH9LlA0EMOpxrY6Ch
-        q1Xd5j/slPHNAOYiNODikfDPCaQDdHol0IZHrwpKa4AiypNV+xRuP1GAx5yz7o7bnpkwxcphwnukl
-        0qYed34mK5kcdS6sMBjfuxNDhqEm77DJjFvjP2zYqptF0mrbLDvr+hsRfYHjr9pte275Av+RWbsXL
-        UPqS9cJNHE8qgMeVQli9oPkbHEGpe98CLyayKHoyOOQEdnguvQVTIzJCV4cwXGS05XGNrt597TvyM
-        xbw0c1Hg==;
+        bh=X8mRrCWoh60tJHvgFEfEUpm9OOOoUDDQzSoWoHIX+sI=; b=YJNZePtnwpOliTGHJjTYiDjQnO
+        /Ct6vciHeOCLCPFN2eWcPXY3DA3MgRqhp/B6xBo+dPxJPMw7uGZlGUwe3/AAAIAXwLWVEGr7k1Yri
+        leUp19SvPUTBn9tRDbN4rcM6QBgDTDIs5XZphkr7gcxFhwN81UqpRgqWEOLrkiwGZvkqfHnfpu+ZQ
+        l9HJBStapxIcWZa2ogmyZAs3T2J2But1mpRrTa9o7ktZxAtMH4N8v9e7P20EDrKWjkkfsYvJU3dlX
+        mPT2c1y2p+DPodVn0kTht6EVx7bLtLiFn9mbZx0I8qlaThmHPjM+B7pSDwbo/Zak8vgVOu6vfEQ1A
+        Zoe7pgyg==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qsTvr-0085ca-AF; Mon, 16 Oct 2023 20:11:19 +0000
+        id 1qsTvs-0085dG-0C; Mon, 16 Oct 2023 20:11:20 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -34,9 +34,9 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         ntfs3@lists.linux.dev, ocfs2-devel@lists.linux.dev,
         reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Pankaj Raghav <p.raghav@samsung.com>
-Subject: [PATCH v2 22/27] reiserfs: Convert writepage to use a folio
-Date:   Mon, 16 Oct 2023 21:11:09 +0100
-Message-Id: <20231016201114.1928083-23-willy@infradead.org>
+Subject: [PATCH v2 27/27] buffer: Remove folio_create_empty_buffers()
+Date:   Mon, 16 Oct 2023 21:11:14 +0100
+Message-Id: <20231016201114.1928083-28-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20231016201114.1928083-1-willy@infradead.org>
 References: <20231016201114.1928083-1-willy@infradead.org>
@@ -46,221 +46,343 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Convert the incoming page to a folio and then use it throughout the
-writeback path.  This definitely isn't enough to support large folios, but
-I don't expect reiserfs to gain support for those before it is removed.
+With all users converted, remove the old create_empty_buffers() and
+rename folio_create_empty_buffers() to create_empty_buffers().
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/reiserfs/inode.c | 80 ++++++++++++++++++++++-----------------------
- 1 file changed, 40 insertions(+), 40 deletions(-)
+ fs/buffer.c                 | 13 +++----------
+ fs/ext4/inode.c             |  6 +++---
+ fs/ext4/move_extent.c       |  4 ++--
+ fs/gfs2/aops.c              |  2 +-
+ fs/gfs2/bmap.c              |  2 +-
+ fs/gfs2/meta_io.c           |  2 +-
+ fs/gfs2/quota.c             |  2 +-
+ fs/mpage.c                  |  2 +-
+ fs/nilfs2/mdt.c             |  2 +-
+ fs/nilfs2/page.c            |  4 ++--
+ fs/nilfs2/segment.c         |  2 +-
+ fs/ntfs/aops.c              |  4 ++--
+ fs/ntfs/file.c              |  2 +-
+ fs/ntfs3/file.c             |  2 +-
+ fs/ocfs2/aops.c             |  2 +-
+ fs/reiserfs/inode.c         |  2 +-
+ fs/ufs/util.c               |  2 +-
+ include/linux/buffer_head.h |  4 +---
+ 18 files changed, 25 insertions(+), 34 deletions(-)
 
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 81cdf36e5196..bf76b7a27bfa 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -1646,7 +1646,7 @@ EXPORT_SYMBOL(block_invalidate_folio);
+  * block_dirty_folio() via private_lock.  try_to_free_buffers
+  * is already excluded via the folio lock.
+  */
+-struct buffer_head *folio_create_empty_buffers(struct folio *folio,
++struct buffer_head *create_empty_buffers(struct folio *folio,
+ 		unsigned long blocksize, unsigned long b_state)
+ {
+ 	struct buffer_head *bh, *head, *tail;
+@@ -1677,13 +1677,6 @@ struct buffer_head *folio_create_empty_buffers(struct folio *folio,
+ 
+ 	return head;
+ }
+-EXPORT_SYMBOL(folio_create_empty_buffers);
+-
+-void create_empty_buffers(struct page *page,
+-			unsigned long blocksize, unsigned long b_state)
+-{
+-	folio_create_empty_buffers(page_folio(page), blocksize, b_state);
+-}
+ EXPORT_SYMBOL(create_empty_buffers);
+ 
+ /**
+@@ -1783,7 +1776,7 @@ static struct buffer_head *folio_create_buffers(struct folio *folio,
+ 
+ 	bh = folio_buffers(folio);
+ 	if (!bh)
+-		bh = folio_create_empty_buffers(folio,
++		bh = create_empty_buffers(folio,
+ 				1 << READ_ONCE(inode->i_blkbits), b_state);
+ 	return bh;
+ }
+@@ -2686,7 +2679,7 @@ int block_truncate_page(struct address_space *mapping,
+ 
+ 	bh = folio_buffers(folio);
+ 	if (!bh)
+-		bh = folio_create_empty_buffers(folio, blocksize, 0);
++		bh = create_empty_buffers(folio, blocksize, 0);
+ 
+ 	/* Find the buffer that contains "offset" */
+ 	offset = offset_in_folio(folio, from);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 31c8f2641870..61277f7f8722 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1033,7 +1033,7 @@ static int ext4_block_write_begin(struct folio *folio, loff_t pos, unsigned len,
+ 
+ 	head = folio_buffers(folio);
+ 	if (!head)
+-		head = folio_create_empty_buffers(folio, blocksize, 0);
++		head = create_empty_buffers(folio, blocksize, 0);
+ 	bbits = ilog2(blocksize);
+ 	block = (sector_t)folio->index << (PAGE_SHIFT - bbits);
+ 
+@@ -1163,7 +1163,7 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+ 	 * starting the handle.
+ 	 */
+ 	if (!folio_buffers(folio))
+-		folio_create_empty_buffers(folio, inode->i_sb->s_blocksize, 0);
++		create_empty_buffers(folio, inode->i_sb->s_blocksize, 0);
+ 
+ 	folio_unlock(folio);
+ 
+@@ -3654,7 +3654,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 
+ 	bh = folio_buffers(folio);
+ 	if (!bh)
+-		bh = folio_create_empty_buffers(folio, blocksize, 0);
++		bh = create_empty_buffers(folio, blocksize, 0);
+ 
+ 	/* Find the buffer that contains "offset" */
+ 	pos = blocksize;
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 7fe448fb948b..3aa57376d9c2 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -184,7 +184,7 @@ mext_page_mkuptodate(struct folio *folio, unsigned from, unsigned to)
+ 	blocksize = i_blocksize(inode);
+ 	head = folio_buffers(folio);
+ 	if (!head)
+-		head = folio_create_empty_buffers(folio, blocksize, 0);
++		head = create_empty_buffers(folio, blocksize, 0);
+ 
+ 	block = (sector_t)folio->index << (PAGE_SHIFT - inode->i_blkbits);
+ 	for (bh = head, block_start = 0; bh != head || !block_start;
+@@ -380,7 +380,7 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 	 * but keeping in mind that i_size will not change */
+ 	bh = folio_buffers(folio[0]);
+ 	if (!bh)
+-		bh = folio_create_empty_buffers(folio[0],
++		bh = create_empty_buffers(folio[0],
+ 				1 << orig_inode->i_blkbits, 0);
+ 	for (i = 0; i < data_offset_in_page; i++)
+ 		bh = bh->b_this_page;
+diff --git a/fs/gfs2/aops.c b/fs/gfs2/aops.c
+index 52fad5bcb047..74f3302348a5 100644
+--- a/fs/gfs2/aops.c
++++ b/fs/gfs2/aops.c
+@@ -130,7 +130,7 @@ static int __gfs2_jdata_write_folio(struct folio *folio,
+ 	if (folio_test_checked(folio)) {
+ 		folio_clear_checked(folio);
+ 		if (!folio_buffers(folio)) {
+-			folio_create_empty_buffers(folio,
++			create_empty_buffers(folio,
+ 					inode->i_sb->s_blocksize,
+ 					BIT(BH_Dirty)|BIT(BH_Uptodate));
+ 		}
+diff --git a/fs/gfs2/bmap.c b/fs/gfs2/bmap.c
+index f7ea1af9d842..398db80cb9c6 100644
+--- a/fs/gfs2/bmap.c
++++ b/fs/gfs2/bmap.c
+@@ -71,7 +71,7 @@ static int gfs2_unstuffer_folio(struct gfs2_inode *ip, struct buffer_head *dibh,
+ 		struct buffer_head *bh = folio_buffers(folio);
+ 
+ 		if (!bh)
+-			bh = folio_create_empty_buffers(folio,
++			bh = create_empty_buffers(folio,
+ 				BIT(inode->i_blkbits), BIT(BH_Uptodate));
+ 
+ 		if (!buffer_mapped(bh))
+diff --git a/fs/gfs2/meta_io.c b/fs/gfs2/meta_io.c
+index f6d40d51f5ed..25ceb0805df2 100644
+--- a/fs/gfs2/meta_io.c
++++ b/fs/gfs2/meta_io.c
+@@ -134,7 +134,7 @@ struct buffer_head *gfs2_getbuf(struct gfs2_glock *gl, u64 blkno, int create)
+ 				mapping_gfp_mask(mapping) | __GFP_NOFAIL);
+ 		bh = folio_buffers(folio);
+ 		if (!bh)
+-			bh = folio_create_empty_buffers(folio,
++			bh = create_empty_buffers(folio,
+ 				sdp->sd_sb.sb_bsize, 0);
+ 	} else {
+ 		folio = __filemap_get_folio(mapping, index,
+diff --git a/fs/gfs2/quota.c b/fs/gfs2/quota.c
+index e45654ee4f4d..570a60aa3480 100644
+--- a/fs/gfs2/quota.c
++++ b/fs/gfs2/quota.c
+@@ -774,7 +774,7 @@ static int gfs2_write_buf_to_page(struct gfs2_sbd *sdp, unsigned long index,
+ 		return PTR_ERR(folio);
+ 	bh = folio_buffers(folio);
+ 	if (!bh)
+-		bh = folio_create_empty_buffers(folio, bsize, 0);
++		bh = create_empty_buffers(folio, bsize, 0);
+ 
+ 	for (;;) {
+ 		/* Find the beginning block within the folio */
+diff --git a/fs/mpage.c b/fs/mpage.c
+index 964a6efe594d..ffb064ed9d04 100644
+--- a/fs/mpage.c
++++ b/fs/mpage.c
+@@ -119,7 +119,7 @@ static void map_buffer_to_folio(struct folio *folio, struct buffer_head *bh,
+ 			folio_mark_uptodate(folio);
+ 			return;
+ 		}
+-		head = folio_create_empty_buffers(folio, i_blocksize(inode), 0);
++		head = create_empty_buffers(folio, i_blocksize(inode), 0);
+ 	}
+ 
+ 	page_bh = head;
+diff --git a/fs/nilfs2/mdt.c b/fs/nilfs2/mdt.c
+index 7b754e6494d7..c97c77a39668 100644
+--- a/fs/nilfs2/mdt.c
++++ b/fs/nilfs2/mdt.c
+@@ -568,7 +568,7 @@ int nilfs_mdt_freeze_buffer(struct inode *inode, struct buffer_head *bh)
+ 
+ 	bh_frozen = folio_buffers(folio);
+ 	if (!bh_frozen)
+-		bh_frozen = folio_create_empty_buffers(folio, 1 << blkbits, 0);
++		bh_frozen = create_empty_buffers(folio, 1 << blkbits, 0);
+ 
+ 	bh_frozen = get_nth_bh(bh_frozen, bh_offset(bh) >> blkbits);
+ 
+diff --git a/fs/nilfs2/page.c b/fs/nilfs2/page.c
+index 696215d899bf..06b04758f289 100644
+--- a/fs/nilfs2/page.c
++++ b/fs/nilfs2/page.c
+@@ -34,7 +34,7 @@ static struct buffer_head *__nilfs_get_folio_block(struct folio *folio,
+ 	struct buffer_head *bh = folio_buffers(folio);
+ 
+ 	if (!bh)
+-		bh = folio_create_empty_buffers(folio, 1 << blkbits, b_state);
++		bh = create_empty_buffers(folio, 1 << blkbits, b_state);
+ 
+ 	first_block = (unsigned long)index << (PAGE_SHIFT - blkbits);
+ 	bh = get_nth_bh(bh, block - first_block);
+@@ -204,7 +204,7 @@ static void nilfs_copy_folio(struct folio *dst, struct folio *src,
+ 	sbh = folio_buffers(src);
+ 	dbh = folio_buffers(dst);
+ 	if (!dbh)
+-		dbh = folio_create_empty_buffers(dst, sbh->b_size, 0);
++		dbh = create_empty_buffers(dst, sbh->b_size, 0);
+ 
+ 	if (copy_dirty)
+ 		mask |= BIT(BH_Dirty);
+diff --git a/fs/nilfs2/segment.c b/fs/nilfs2/segment.c
+index 94388fe83cf8..55e31cc903d1 100644
+--- a/fs/nilfs2/segment.c
++++ b/fs/nilfs2/segment.c
+@@ -732,7 +732,7 @@ static size_t nilfs_lookup_dirty_data_buffers(struct inode *inode,
+ 		}
+ 		head = folio_buffers(folio);
+ 		if (!head)
+-			head = folio_create_empty_buffers(folio,
++			head = create_empty_buffers(folio,
+ 					i_blocksize(inode), 0);
+ 		folio_unlock(folio);
+ 
+diff --git a/fs/ntfs/aops.c b/fs/ntfs/aops.c
+index c4426992a2ee..71e31e789b29 100644
+--- a/fs/ntfs/aops.c
++++ b/fs/ntfs/aops.c
+@@ -189,7 +189,7 @@ static int ntfs_read_block(struct folio *folio)
+ 
+ 	head = folio_buffers(folio);
+ 	if (!head)
+-		head = folio_create_empty_buffers(folio, blocksize, 0);
++		head = create_empty_buffers(folio, blocksize, 0);
+ 	bh = head;
+ 
+ 	/*
+@@ -555,7 +555,7 @@ static int ntfs_write_block(struct folio *folio, struct writeback_control *wbc)
+ 	head = folio_buffers(folio);
+ 	if (!head) {
+ 		BUG_ON(!folio_test_uptodate(folio));
+-		head = folio_create_empty_buffers(folio, blocksize,
++		head = create_empty_buffers(folio, blocksize,
+ 				(1 << BH_Uptodate) | (1 << BH_Dirty));
+ 	}
+ 	bh = head;
+diff --git a/fs/ntfs/file.c b/fs/ntfs/file.c
+index 099141d20db6..297c0b9db621 100644
+--- a/fs/ntfs/file.c
++++ b/fs/ntfs/file.c
+@@ -625,7 +625,7 @@ static int ntfs_prepare_pages_for_non_resident_write(struct page **pages,
+ 		 * create_empty_buffers() will create uptodate/dirty
+ 		 * buffers if the folio is uptodate/dirty.
+ 		 */
+-		head = folio_create_empty_buffers(folio, blocksize, 0);
++		head = create_empty_buffers(folio, blocksize, 0);
+ 	bh = head;
+ 	do {
+ 		VCN cdelta;
+diff --git a/fs/ntfs3/file.c b/fs/ntfs3/file.c
+index 135af3340a19..a5a30a24ce5d 100644
+--- a/fs/ntfs3/file.c
++++ b/fs/ntfs3/file.c
+@@ -203,7 +203,7 @@ static int ntfs_zero_range(struct inode *inode, u64 vbo, u64 vbo_to)
+ 
+ 		head = folio_buffers(folio);
+ 		if (!head)
+-			head = folio_create_empty_buffers(folio, blocksize, 0);
++			head = create_empty_buffers(folio, blocksize, 0);
+ 
+ 		bh = head;
+ 		bh_off = 0;
+diff --git a/fs/ocfs2/aops.c b/fs/ocfs2/aops.c
+index 001ad1d288ec..ba790219d528 100644
+--- a/fs/ocfs2/aops.c
++++ b/fs/ocfs2/aops.c
+@@ -601,7 +601,7 @@ int ocfs2_map_page_blocks(struct page *page, u64 *p_blkno,
+ 
+ 	head = folio_buffers(folio);
+ 	if (!head)
+-		head = folio_create_empty_buffers(folio, bsize, 0);
++		head = create_empty_buffers(folio, bsize, 0);
+ 
+ 	for (bh = head, block_start = 0; bh != head || !block_start;
+ 	     bh = bh->b_this_page, block_start += bsize) {
 diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c
-index c8572346556f..d7df556220a4 100644
+index d7df556220a4..1d825459ee6e 100644
 --- a/fs/reiserfs/inode.c
 +++ b/fs/reiserfs/inode.c
-@@ -2503,10 +2503,10 @@ static int map_block_for_writepage(struct inode *inode,
-  * start/recovery path as __block_write_full_folio, along with special
-  * code to handle reiserfs tails.
-  */
--static int reiserfs_write_full_page(struct page *page,
-+static int reiserfs_write_full_folio(struct folio *folio,
- 				    struct writeback_control *wbc)
- {
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = folio->mapping->host;
- 	unsigned long end_index = inode->i_size >> PAGE_SHIFT;
- 	int error = 0;
- 	unsigned long block;
-@@ -2514,7 +2514,7 @@ static int reiserfs_write_full_page(struct page *page,
- 	struct buffer_head *head, *bh;
- 	int partial = 0;
- 	int nr = 0;
--	int checked = PageChecked(page);
-+	int checked = folio_test_checked(folio);
- 	struct reiserfs_transaction_handle th;
- 	struct super_block *s = inode->i_sb;
- 	int bh_per_page = PAGE_SIZE / s->s_blocksize;
-@@ -2522,47 +2522,46 @@ static int reiserfs_write_full_page(struct page *page,
- 
- 	/* no logging allowed when nonblocking or from PF_MEMALLOC */
- 	if (checked && (current->flags & PF_MEMALLOC)) {
--		redirty_page_for_writepage(wbc, page);
--		unlock_page(page);
-+		folio_redirty_for_writepage(wbc, folio);
-+		folio_unlock(folio);
- 		return 0;
- 	}
- 
- 	/*
--	 * The page dirty bit is cleared before writepage is called, which
-+	 * The folio dirty bit is cleared before writepage is called, which
- 	 * means we have to tell create_empty_buffers to make dirty buffers
--	 * The page really should be up to date at this point, so tossing
-+	 * The folio really should be up to date at this point, so tossing
- 	 * in the BH_Uptodate is just a sanity check.
+@@ -2535,7 +2535,7 @@ static int reiserfs_write_full_folio(struct folio *folio,
  	 */
--	if (!page_has_buffers(page)) {
--		create_empty_buffers(page, s->s_blocksize,
-+	head = folio_buffers(folio);
-+	if (!head)
-+		head = folio_create_empty_buffers(folio, s->s_blocksize,
+ 	head = folio_buffers(folio);
+ 	if (!head)
+-		head = folio_create_empty_buffers(folio, s->s_blocksize,
++		head = create_empty_buffers(folio, s->s_blocksize,
  				     (1 << BH_Dirty) | (1 << BH_Uptodate));
--	}
--	head = page_buffers(page);
  
  	/*
--	 * last page in the file, zero out any contents past the
-+	 * last folio in the file, zero out any contents past the
- 	 * last byte in the file
- 	 */
--	if (page->index >= end_index) {
-+	if (folio->index >= end_index) {
- 		unsigned last_offset;
- 
- 		last_offset = inode->i_size & (PAGE_SIZE - 1);
--		/* no file contents in this page */
--		if (page->index >= end_index + 1 || !last_offset) {
--			unlock_page(page);
-+		/* no file contents in this folio */
-+		if (folio->index >= end_index + 1 || !last_offset) {
-+			folio_unlock(folio);
- 			return 0;
+diff --git a/fs/ufs/util.c b/fs/ufs/util.c
+index d32de30009a0..13ba34e6d64f 100644
+--- a/fs/ufs/util.c
++++ b/fs/ufs/util.c
+@@ -264,6 +264,6 @@ struct folio *ufs_get_locked_folio(struct address_space *mapping,
  		}
--		zero_user_segment(page, last_offset, PAGE_SIZE);
-+		folio_zero_segment(folio, last_offset, folio_size(folio));
  	}
- 	bh = head;
--	block = page->index << (PAGE_SHIFT - s->s_blocksize_bits);
-+	block = folio->index << (PAGE_SHIFT - s->s_blocksize_bits);
- 	last_block = (i_size_read(inode) - 1) >> inode->i_blkbits;
- 	/* first map all the buffers, logging any direct items we find */
- 	do {
- 		if (block > last_block) {
- 			/*
- 			 * This can happen when the block size is less than
--			 * the page size.  The corresponding bytes in the page
-+			 * the folio size.  The corresponding bytes in the folio
- 			 * were zero filled above
- 			 */
- 			clear_buffer_dirty(bh);
-@@ -2589,7 +2588,7 @@ static int reiserfs_write_full_page(struct page *page,
- 	 * blocks we're going to log
- 	 */
- 	if (checked) {
--		ClearPageChecked(page);
-+		folio_clear_checked(folio);
- 		reiserfs_write_lock(s);
- 		error = journal_begin(&th, s, bh_per_page + 1);
- 		if (error) {
-@@ -2598,7 +2597,7 @@ static int reiserfs_write_full_page(struct page *page,
- 		}
- 		reiserfs_update_inode_transaction(inode);
- 	}
--	/* now go through and lock any dirty buffers on the page */
-+	/* now go through and lock any dirty buffers on the folio */
- 	do {
- 		get_bh(bh);
- 		if (!buffer_mapped(bh))
-@@ -2619,7 +2618,7 @@ static int reiserfs_write_full_page(struct page *page,
- 			lock_buffer(bh);
- 		} else {
- 			if (!trylock_buffer(bh)) {
--				redirty_page_for_writepage(wbc, page);
-+				folio_redirty_for_writepage(wbc, folio);
- 				continue;
- 			}
- 		}
-@@ -2636,13 +2635,13 @@ static int reiserfs_write_full_page(struct page *page,
- 		if (error)
- 			goto fail;
- 	}
--	BUG_ON(PageWriteback(page));
--	set_page_writeback(page);
--	unlock_page(page);
-+	BUG_ON(folio_test_writeback(folio));
-+	folio_start_writeback(folio);
-+	folio_unlock(folio);
- 
- 	/*
--	 * since any buffer might be the only dirty buffer on the page,
--	 * the first submit_bh can bring the page out of writeback.
-+	 * since any buffer might be the only dirty buffer on the folio,
-+	 * the first submit_bh can bring the folio out of writeback.
- 	 * be careful with the buffers.
- 	 */
- 	do {
-@@ -2659,10 +2658,10 @@ static int reiserfs_write_full_page(struct page *page,
- done:
- 	if (nr == 0) {
- 		/*
--		 * if this page only had a direct item, it is very possible for
-+		 * if this folio only had a direct item, it is very possible for
- 		 * no io to be required without there being an error.  Or,
- 		 * someone else could have locked them and sent them down the
--		 * pipe without locking the page
-+		 * pipe without locking the folio
- 		 */
- 		bh = head;
- 		do {
-@@ -2673,18 +2672,18 @@ static int reiserfs_write_full_page(struct page *page,
- 			bh = bh->b_this_page;
- 		} while (bh != head);
- 		if (!partial)
--			SetPageUptodate(page);
--		end_page_writeback(page);
-+			folio_mark_uptodate(folio);
-+		folio_end_writeback(folio);
- 	}
- 	return error;
- 
- fail:
- 	/*
- 	 * catches various errors, we need to make sure any valid dirty blocks
--	 * get to the media.  The page is currently locked and not marked for
-+	 * get to the media.  The folio is currently locked and not marked for
- 	 * writeback
- 	 */
--	ClearPageUptodate(page);
-+	folio_clear_uptodate(folio);
- 	bh = head;
- 	do {
- 		get_bh(bh);
-@@ -2694,16 +2693,16 @@ static int reiserfs_write_full_page(struct page *page,
- 		} else {
- 			/*
- 			 * clear any dirty bits that might have come from
--			 * getting attached to a dirty page
-+			 * getting attached to a dirty folio
- 			 */
- 			clear_buffer_dirty(bh);
- 		}
- 		bh = bh->b_this_page;
- 	} while (bh != head);
--	SetPageError(page);
--	BUG_ON(PageWriteback(page));
--	set_page_writeback(page);
--	unlock_page(page);
-+	folio_set_error(folio);
-+	BUG_ON(folio_test_writeback(folio));
-+	folio_start_writeback(folio);
-+	folio_unlock(folio);
- 	do {
- 		struct buffer_head *next = bh->b_this_page;
- 		if (buffer_async_write(bh)) {
-@@ -2724,9 +2723,10 @@ static int reiserfs_read_folio(struct file *f, struct folio *folio)
- 
- static int reiserfs_writepage(struct page *page, struct writeback_control *wbc)
- {
--	struct inode *inode = page->mapping->host;
-+	struct folio *folio = page_folio(page);
-+	struct inode *inode = folio->mapping->host;
- 	reiserfs_wait_on_write_block(inode->i_sb);
--	return reiserfs_write_full_page(page, wbc);
-+	return reiserfs_write_full_folio(folio, wbc);
+ 	if (!folio_buffers(folio))
+-		folio_create_empty_buffers(folio, 1 << inode->i_blkbits, 0);
++		create_empty_buffers(folio, 1 << inode->i_blkbits, 0);
+ 	return folio;
  }
- 
- static void reiserfs_truncate_failed_write(struct inode *inode)
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 3d85a0cf0ca5..5f23ee599889 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -201,9 +201,7 @@ struct buffer_head *folio_alloc_buffers(struct folio *folio, unsigned long size,
+ 					gfp_t gfp);
+ struct buffer_head *alloc_page_buffers(struct page *page, unsigned long size,
+ 		bool retry);
+-void create_empty_buffers(struct page *, unsigned long,
+-			unsigned long b_state);
+-struct buffer_head *folio_create_empty_buffers(struct folio *folio,
++struct buffer_head *create_empty_buffers(struct folio *folio,
+ 		unsigned long blocksize, unsigned long b_state);
+ void end_buffer_read_sync(struct buffer_head *bh, int uptodate);
+ void end_buffer_write_sync(struct buffer_head *bh, int uptodate);
 -- 
 2.40.1
 
