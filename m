@@ -2,30 +2,30 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A19ECDB482
-	for <linux-ext4@archiver.kernel.org>; Mon, 16 Oct 2023 20:11:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 68294CDB484
+	for <linux-ext4@archiver.kernel.org>; Mon, 16 Oct 2023 20:11:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234116AbjJPUL2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 16 Oct 2023 16:11:28 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55330 "EHLO
+        id S234178AbjJPUL3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 16 Oct 2023 16:11:29 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55348 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234007AbjJPULZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Oct 2023 16:11:25 -0400
+        with ESMTP id S233889AbjJPUL0 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Oct 2023 16:11:26 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2E2A4F5;
-        Mon, 16 Oct 2023 13:11:20 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2E5EFF9;
+        Mon, 16 Oct 2023 13:11:19 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=7mXlnt1yRIMT4o+dXNcAaQaKhOKfQBuaGyVOIxKhilk=; b=mLOzLL1MAsvOzcF2Nfxy8DlEW9
-        KqVXhXbvURDI6XFJEenJqK0xoOqPMXJEMTTYt/w7KPuNhXf7hgVbqU/yzVTnj8xqbKKYZ848lsrsp
-        sWgSDaoVJ2u8Anm+cyMry3h+5JJKok7IPEz8XLRLV4sfjpfbCNMgvhKxmhNb4iPeOmLfw8HqfPCo+
-        GaJeKn092L2S/NhRc+Y2qApEy0Pjv+69uUInXENTG1ES3OdYfpt8uiWZNcUBxnCXVKwyn1Qdwglc0
-        dbUvBa4yfk0P8B0Pb4n9DSwIp/QZfxMHVsF52xzmuXxasjuojFnh6avfilIZeDJZt3kFLNOw1jzpj
-        k7rRI1sg==;
+        bh=eaiCDWjet90GQNy1+yChdRMV1jDPIZJLwvtj63jJ5Tg=; b=IPeWfE1a6pKBalmfulbCgDbLgg
+        naLgWrsTqg99WBPVv0Q/JmcFdOaWg7RiFZpXT1cOMbq+kj9bfUSJckIFLDnZt5vgqFTPPkZJ/bFmi
+        kgDL2YNFlqp4BVZaCKESR/jzRc0krGNFv3EtNSfKxaw2AhGVu48YgrC7eNEzCPvaPmXylnPBaslG4
+        lD+pkR0VvDZN0716ag7k3r9tJl4vPJYzLkqOge7IUbtFFhaY5RfLEhkvsZ5jT4aKnqcs/oX+OnJFh
+        eybeC+CJE0K3Dk9WTIVz53Eg/jBPggPxuHtAUMq5e+r4XzuJ5idWf5UpiqQT5IWTnoKd2hDO8ivVO
+        ay39jQyg==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qsTvp-0085bA-PH; Mon, 16 Oct 2023 20:11:17 +0000
+        id 1qsTvq-0085bS-5a; Mon, 16 Oct 2023 20:11:18 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -35,9 +35,9 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Pankaj Raghav <p.raghav@samsung.com>,
         Ryusuke Konishi <konishi.ryusuke@gmail.com>
-Subject: [PATCH v2 11/27] nilfs2: Convert nilfs_grab_buffer() to use a folio
-Date:   Mon, 16 Oct 2023 21:10:58 +0100
-Message-Id: <20231016201114.1928083-12-willy@infradead.org>
+Subject: [PATCH v2 14/27] nilfs2: Convert nilfs_mdt_get_frozen_buffer to use a folio
+Date:   Mon, 16 Oct 2023 21:11:01 +0100
+Message-Id: <20231016201114.1928083-15-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20231016201114.1928083-1-willy@infradead.org>
 References: <20231016201114.1928083-1-willy@infradead.org>
@@ -52,64 +52,40 @@ Remove a number of folio->page->folio conversions.
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 Acked-by: Ryusuke Konishi <konishi.ryusuke@gmail.com>
 ---
- fs/nilfs2/page.c | 26 +++++++++++++-------------
- 1 file changed, 13 insertions(+), 13 deletions(-)
+ fs/nilfs2/mdt.c | 16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nilfs2/page.c b/fs/nilfs2/page.c
-index b4e54d079b7d..1c075bd906c9 100644
---- a/fs/nilfs2/page.c
-+++ b/fs/nilfs2/page.c
-@@ -25,19 +25,19 @@
- 	(BIT(BH_Uptodate) | BIT(BH_Mapped) | BIT(BH_NILFS_Node) |	\
- 	 BIT(BH_NILFS_Volatile) | BIT(BH_NILFS_Checked))
- 
--static struct buffer_head *
--__nilfs_get_page_block(struct page *page, unsigned long block, pgoff_t index,
--		       int blkbits, unsigned long b_state)
-+static struct buffer_head *__nilfs_get_folio_block(struct folio *folio,
-+		unsigned long block, pgoff_t index, int blkbits,
-+		unsigned long b_state)
- 
+diff --git a/fs/nilfs2/mdt.c b/fs/nilfs2/mdt.c
+index 11b7cf4acc92..7b754e6494d7 100644
+--- a/fs/nilfs2/mdt.c
++++ b/fs/nilfs2/mdt.c
+@@ -592,17 +592,19 @@ nilfs_mdt_get_frozen_buffer(struct inode *inode, struct buffer_head *bh)
  {
- 	unsigned long first_block;
--	struct buffer_head *bh;
-+	struct buffer_head *bh = folio_buffers(folio);
- 
--	if (!page_has_buffers(page))
--		create_empty_buffers(page, 1 << blkbits, b_state);
-+	if (!bh)
-+		bh = folio_create_empty_buffers(folio, 1 << blkbits, b_state);
- 
- 	first_block = (unsigned long)index << (PAGE_SHIFT - blkbits);
--	bh = nilfs_page_get_nth_block(page, block - first_block);
-+	bh = get_nth_bh(bh, block - first_block);
- 
- 	touch_buffer(bh);
- 	wait_on_buffer(bh);
-@@ -51,17 +51,17 @@ struct buffer_head *nilfs_grab_buffer(struct inode *inode,
- {
- 	int blkbits = inode->i_blkbits;
- 	pgoff_t index = blkoff >> (PAGE_SHIFT - blkbits);
+ 	struct nilfs_shadow_map *shadow = NILFS_MDT(inode)->mi_shadow;
+ 	struct buffer_head *bh_frozen = NULL;
 -	struct page *page;
 +	struct folio *folio;
- 	struct buffer_head *bh;
+ 	int n;
  
--	page = grab_cache_page(mapping, index);
--	if (unlikely(!page))
-+	folio = filemap_grab_folio(mapping, index);
-+	if (IS_ERR(folio))
- 		return NULL;
- 
--	bh = __nilfs_get_page_block(page, blkoff, index, blkbits, b_state);
-+	bh = __nilfs_get_folio_block(folio, blkoff, index, blkbits, b_state);
- 	if (unlikely(!bh)) {
+-	page = find_lock_page(shadow->inode->i_mapping, bh->b_folio->index);
+-	if (page) {
+-		if (page_has_buffers(page)) {
++	folio = filemap_lock_folio(shadow->inode->i_mapping,
++			bh->b_folio->index);
++	if (!IS_ERR(folio)) {
++		bh_frozen = folio_buffers(folio);
++		if (bh_frozen) {
+ 			n = bh_offset(bh) >> inode->i_blkbits;
+-			bh_frozen = nilfs_page_get_nth_block(page, n);
++			bh_frozen = get_nth_bh(bh_frozen, n);
+ 		}
 -		unlock_page(page);
 -		put_page(page);
 +		folio_unlock(folio);
 +		folio_put(folio);
- 		return NULL;
  	}
- 	return bh;
+ 	return bh_frozen;
+ }
 -- 
 2.40.1
 
