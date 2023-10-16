@@ -2,30 +2,30 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F289CDB488
-	for <linux-ext4@archiver.kernel.org>; Mon, 16 Oct 2023 20:11:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 05F4DCDB485
+	for <linux-ext4@archiver.kernel.org>; Mon, 16 Oct 2023 20:11:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234196AbjJPULc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 16 Oct 2023 16:11:32 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55342 "EHLO
+        id S234226AbjJPULe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 16 Oct 2023 16:11:34 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55364 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234006AbjJPUL0 (ORCPT
+        with ESMTP id S234027AbjJPUL0 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Oct 2023 16:11:26 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2E02DD9;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2E43BF7;
         Mon, 16 Oct 2023 13:11:20 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=fHCsSWRUgDBNiwaJwQche5AKchlaxIaHTN5XktltH8A=; b=ldsGSnfH8krk8MAnKmgCzBDhIt
-        xlw0zw05IgJ1MjU0N/FlXSalhrKzPcCDZ2IM1mjF9rwPS47kR+Pl2dCNRPiPh6/+k49SBFoyG5S/g
-        ssrZr4uqgQLTP/0Xqf13vulo7Y3R5z4HBEySLjbJMTHghtc3gsSBDtaWah79sdtXqJ3ItCMwOMkK/
-        QMDo/UVx4shqGWFSTOa3W9ZglknNXgUL9Pp8MwP68136sgksh8HJMvZhc2KFUKTKmu3uwl+MJEj0q
-        jtGCG0Xk7LBRYg60wInVzNmFmGbrckEyydxXHXsykZq8UTWZf2Ds9hQHNFwQ5Rh+nCev+V6UMzl7J
-        vqvy7rVQ==;
+        bh=DldHNSAIwDA0NK3BnRq3sFTgOXsGThrmmCtWcfiCecQ=; b=LbBGYz3ijw9HZLmYD1FK68VsKn
+        9lkLcjfnwOxts9sRe1eiKLwhR2mVK93Zj2K1mav4r+wBDgOk5zZLpUUlAMhjNvd6yZuXMn5TlW9e7
+        D1ZebvowctrS+pZpuJNbA7zRydEzzy9IKk3LCaSEqiksqBwoiCoQx6RhoJ4BRw76ioWqa/u1E6vkz
+        2Ch3mL/2sutgWka/bGlWAebVaOd4DPfEWuM9sradV7is6XRwNHhD+acJvExVQuAoaeo5xIqas2rhu
+        r6M3OjNjzfqlYmX5ukaU+SVDne4XUv3J3zK7HzCQAJAjwEyz2CtyNvwE8W1UYwMf/u2H9Zf1Egw67
+        3EsN2r9w==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qsTvp-0085bG-U8; Mon, 16 Oct 2023 20:11:17 +0000
+        id 1qsTvo-0085aS-LS; Mon, 16 Oct 2023 20:11:16 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -33,11 +33,10 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
         ntfs3@lists.linux.dev, ocfs2-devel@lists.linux.dev,
         reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Pankaj Raghav <p.raghav@samsung.com>,
-        Ryusuke Konishi <konishi.ryusuke@gmail.com>
-Subject: [PATCH v2 12/27] nilfs2: Convert nilfs_copy_page() to nilfs_copy_folio()
-Date:   Mon, 16 Oct 2023 21:10:59 +0100
-Message-Id: <20231016201114.1928083-13-willy@infradead.org>
+        Pankaj Raghav <p.raghav@samsung.com>
+Subject: [PATCH v2 01/27] buffer: Return bool from grow_dev_folio()
+Date:   Mon, 16 Oct 2023 21:10:48 +0100
+Message-Id: <20231016201114.1928083-2-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20231016201114.1928083-1-willy@infradead.org>
 References: <20231016201114.1928083-1-willy@infradead.org>
@@ -47,122 +46,114 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Both callers already have a folio, so pass it in and use it directly.
-Removes a lot of hidden calls to compound_head().
+Rename grow_dev_page() to grow_dev_folio() and make it return a bool.
+Document what that bool means; it's more subtle than it first appears.
+Also rename the 'failed' label to 'unlock' beacuse it's not exactly
+'failed'.  It just hasn't succeeded.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-Acked-by: Ryusuke Konishi <konishi.ryusuke@gmail.com>
 ---
- fs/nilfs2/page.c | 50 +++++++++++++++++++++++++-----------------------
- mm/util.c        |  1 +
- 2 files changed, 27 insertions(+), 24 deletions(-)
+ fs/buffer.c | 39 ++++++++++++++++++++++-----------------
+ 1 file changed, 22 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nilfs2/page.c b/fs/nilfs2/page.c
-index 1c075bd906c9..696215d899bf 100644
---- a/fs/nilfs2/page.c
-+++ b/fs/nilfs2/page.c
-@@ -184,30 +184,32 @@ void nilfs_page_bug(struct page *page)
+diff --git a/fs/buffer.c b/fs/buffer.c
+index b33cc74e9649..dec41d84044b 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -1024,24 +1024,26 @@ static sector_t folio_init_buffers(struct folio *folio,
  }
  
- /**
-- * nilfs_copy_page -- copy the page with buffers
-- * @dst: destination page
-- * @src: source page
-- * @copy_dirty: flag whether to copy dirty states on the page's buffer heads.
-+ * nilfs_copy_folio -- copy the folio with buffers
-+ * @dst: destination folio
-+ * @src: source folio
-+ * @copy_dirty: flag whether to copy dirty states on the folio's buffer heads.
+ /*
+- * Create the page-cache page that contains the requested block.
++ * Create the page-cache folio that contains the requested block.
   *
-- * This function is for both data pages and btnode pages.  The dirty flag
-- * should be treated by caller.  The page must not be under i/o.
-- * Both src and dst page must be locked
-+ * This function is for both data folios and btnode folios.  The dirty flag
-+ * should be treated by caller.  The folio must not be under i/o.
-+ * Both src and dst folio must be locked
+  * This is used purely for blockdev mappings.
++ *
++ * Returns false if we have a 'permanent' failure.  Returns true if
++ * we succeeded, or the caller should retry.
   */
--static void nilfs_copy_page(struct page *dst, struct page *src, int copy_dirty)
-+static void nilfs_copy_folio(struct folio *dst, struct folio *src,
-+		bool copy_dirty)
+-static int
+-grow_dev_page(struct block_device *bdev, sector_t block,
++static bool grow_dev_folio(struct block_device *bdev, sector_t block,
+ 	      pgoff_t index, int size, int sizebits, gfp_t gfp)
  {
- 	struct buffer_head *dbh, *dbufs, *sbh;
- 	unsigned long mask = NILFS_BUFFER_INHERENT_BITS;
+ 	struct inode *inode = bdev->bd_inode;
+ 	struct folio *folio;
+ 	struct buffer_head *bh;
+ 	sector_t end_block;
+-	int ret = 0;
++	bool ret;
  
--	BUG_ON(PageWriteback(dst));
-+	BUG_ON(folio_test_writeback(dst));
+ 	folio = __filemap_get_folio(inode->i_mapping, index,
+ 			FGP_LOCK | FGP_ACCESSED | FGP_CREAT, gfp);
+ 	if (IS_ERR(folio))
+-		return PTR_ERR(folio);
++		return false;
  
--	sbh = page_buffers(src);
--	if (!page_has_buffers(dst))
--		create_empty_buffers(dst, sbh->b_size, 0);
-+	sbh = folio_buffers(src);
-+	dbh = folio_buffers(dst);
-+	if (!dbh)
-+		dbh = folio_create_empty_buffers(dst, sbh->b_size, 0);
- 
- 	if (copy_dirty)
- 		mask |= BIT(BH_Dirty);
- 
--	dbh = dbufs = page_buffers(dst);
-+	dbufs = dbh;
- 	do {
- 		lock_buffer(sbh);
- 		lock_buffer(dbh);
-@@ -218,16 +220,16 @@ static void nilfs_copy_page(struct page *dst, struct page *src, int copy_dirty)
- 		dbh = dbh->b_this_page;
- 	} while (dbh != dbufs);
- 
--	copy_highpage(dst, src);
-+	folio_copy(dst, src);
- 
--	if (PageUptodate(src) && !PageUptodate(dst))
--		SetPageUptodate(dst);
--	else if (!PageUptodate(src) && PageUptodate(dst))
--		ClearPageUptodate(dst);
--	if (PageMappedToDisk(src) && !PageMappedToDisk(dst))
--		SetPageMappedToDisk(dst);
--	else if (!PageMappedToDisk(src) && PageMappedToDisk(dst))
--		ClearPageMappedToDisk(dst);
-+	if (folio_test_uptodate(src) && !folio_test_uptodate(dst))
-+		folio_mark_uptodate(dst);
-+	else if (!folio_test_uptodate(src) && folio_test_uptodate(dst))
-+		folio_clear_uptodate(dst);
-+	if (folio_test_mappedtodisk(src) && !folio_test_mappedtodisk(dst))
-+		folio_set_mappedtodisk(dst);
-+	else if (!folio_test_mappedtodisk(src) && folio_test_mappedtodisk(dst))
-+		folio_clear_mappedtodisk(dst);
- 
- 	do {
- 		unlock_buffer(sbh);
-@@ -269,7 +271,7 @@ int nilfs_copy_dirty_pages(struct address_space *dmap,
- 			NILFS_PAGE_BUG(&folio->page,
- 				       "found empty page in dat page cache");
- 
--		nilfs_copy_page(&dfolio->page, &folio->page, 1);
-+		nilfs_copy_folio(dfolio, folio, true);
- 		filemap_dirty_folio(folio_mapping(dfolio), dfolio);
- 
- 		folio_unlock(dfolio);
-@@ -314,7 +316,7 @@ void nilfs_copy_back_pages(struct address_space *dmap,
- 		if (!IS_ERR(dfolio)) {
- 			/* overwrite existing folio in the destination cache */
- 			WARN_ON(folio_test_dirty(dfolio));
--			nilfs_copy_page(&dfolio->page, &folio->page, 0);
-+			nilfs_copy_folio(dfolio, folio, false);
- 			folio_unlock(dfolio);
- 			folio_put(dfolio);
- 			/* Do we not need to remove folio from smap here? */
-diff --git a/mm/util.c b/mm/util.c
-index 6eddd891198e..aa01f6ea5a75 100644
---- a/mm/util.c
-+++ b/mm/util.c
-@@ -799,6 +799,7 @@ void folio_copy(struct folio *dst, struct folio *src)
- 		cond_resched();
+ 	bh = folio_buffers(folio);
+ 	if (bh) {
+@@ -1050,14 +1052,17 @@ grow_dev_page(struct block_device *bdev, sector_t block,
+ 					(sector_t)index << sizebits, size);
+ 			goto done;
+ 		}
++
++		/* Caller should retry if this call fails */
++		ret = true;
+ 		if (!try_to_free_buffers(folio))
+-			goto failed;
++			goto unlock;
  	}
- }
-+EXPORT_SYMBOL(folio_copy);
  
- int sysctl_overcommit_memory __read_mostly = OVERCOMMIT_GUESS;
- int sysctl_overcommit_ratio __read_mostly = 50;
+-	ret = -ENOMEM;
++	ret = false;
+ 	bh = folio_alloc_buffers(folio, size, gfp | __GFP_ACCOUNT);
+ 	if (!bh)
+-		goto failed;
++		goto unlock;
+ 
+ 	/*
+ 	 * Link the folio to the buffers and initialise them.  Take the
+@@ -1070,19 +1075,19 @@ grow_dev_page(struct block_device *bdev, sector_t block,
+ 			(sector_t)index << sizebits, size);
+ 	spin_unlock(&inode->i_mapping->private_lock);
+ done:
+-	ret = (block < end_block) ? 1 : -ENXIO;
+-failed:
++	ret = block < end_block;
++unlock:
+ 	folio_unlock(folio);
+ 	folio_put(folio);
+ 	return ret;
+ }
+ 
+ /*
+- * Create buffers for the specified block device block's page.  If
+- * that page was dirty, the buffers are set dirty also.
++ * Create buffers for the specified block device block's folio.  If
++ * that folio was dirty, the buffers are set dirty also.
+  */
+-static int
+-grow_buffers(struct block_device *bdev, sector_t block, int size, gfp_t gfp)
++static bool grow_buffers(struct block_device *bdev, sector_t block,
++		int size, gfp_t gfp)
+ {
+ 	pgoff_t index;
+ 	int sizebits;
+@@ -1099,11 +1104,11 @@ grow_buffers(struct block_device *bdev, sector_t block, int size, gfp_t gfp)
+ 			"device %pg\n",
+ 			__func__, (unsigned long long)block,
+ 			bdev);
+-		return -EIO;
++		return false;
+ 	}
+ 
+-	/* Create a page with the proper size buffers.. */
+-	return grow_dev_page(bdev, block, index, size, sizebits, gfp);
++	/* Create a folio with the proper size buffers.. */
++	return grow_dev_folio(bdev, block, index, size, sizebits, gfp);
+ }
+ 
+ static struct buffer_head *
 -- 
 2.40.1
 
