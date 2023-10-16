@@ -2,30 +2,30 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7847CCDB486
-	for <linux-ext4@archiver.kernel.org>; Mon, 16 Oct 2023 20:11:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C4D18CDB484
+	for <linux-ext4@archiver.kernel.org>; Mon, 16 Oct 2023 20:11:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234124AbjJPULv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 16 Oct 2023 16:11:51 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38244 "EHLO
+        id S234279AbjJPULw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 16 Oct 2023 16:11:52 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55342 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234091AbjJPUL1 (ORCPT
+        with ESMTP id S234060AbjJPUL1 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Oct 2023 16:11:27 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 764DE109;
-        Mon, 16 Oct 2023 13:11:21 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 095CF102;
+        Mon, 16 Oct 2023 13:11:20 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=mUIK9nBwhAI9Ryy/+0vVqkN8LwxEIln+yTemaK9zJBo=; b=B+GlRioYNmeYvG4yzAvGbAV781
-        F+G7VQqsop6vEVTkB2N/9IRAC+b3I9QGtXyU3FDR6O7Op1I7/FV5sir1YuPG8ox133s3C6PYNc+Fu
-        2TS1jzq3LSyq29zz12aDl+3LZfQS++8IkDcNOo1IznSF+6OigiahHw8yFL7Zwg3zZz6YuWDaGiOPJ
-        DHg/Qy6Nq/Ajn9BVTw7QpDWYDJRi8Ev03+h9K1z4pGFqvUwuJFy08imY/iFoWk9PyLlasGh+5/226
-        +dfNLVu37Js+UunnA87mo1Jg6qmIlj8ST7V1xEpHcBDhQ1i00gGkiy8nxNjkqAFUM6nFeC4tMR3+M
-        QIAWS5bQ==;
+        bh=uRYwye2tS2VKcBuJRmgCvN2KUM2u4JgvivY1TEOS98E=; b=IvedTuBNDiadfAJVjuQlYJbb4B
+        KmeqvJPgZuAUxOvSLTvscBsaOsG1BrvGiX+0gd2qH0H1eC/O6Bv4xu5d5HdSdg0xqTce4I2jrxpSb
+        hlAW4f+qsw9TA5ump6FTVG28aNbp2EGxy5W+DpaHt+aWqvjyMuDC+F7FEUEBVF12N/UObw5aJFbL+
+        x8ILnbo8oVMNp/6FKkjCFtdu0kmxeDfzHweamKvMF1mYMBMHj24QgsaTkiWALjcV+BSyZRXd5zHny
+        ZS+kalvqG5pYR9p+nRRSBPpOpyccaX77Gdto7mHFtMkdoubqdFj1kAz1unMSv4Zj262LCGIYJRgL+
+        fmFLWTEg==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qsTvr-0085d0-Ne; Mon, 16 Oct 2023 20:11:19 +0000
+        id 1qsTvr-0085cR-5C; Mon, 16 Oct 2023 20:11:19 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -34,9 +34,9 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         ntfs3@lists.linux.dev, ocfs2-devel@lists.linux.dev,
         reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Pankaj Raghav <p.raghav@samsung.com>
-Subject: [PATCH v2 25/27] ufs; Convert ufs_change_blocknr() to use folios
-Date:   Mon, 16 Oct 2023 21:11:12 +0100
-Message-Id: <20231016201114.1928083-26-willy@infradead.org>
+Subject: [PATCH v2 21/27] ocfs2: Convert ocfs2_map_page_blocks to use a folio
+Date:   Mon, 16 Oct 2023 21:11:08 +0100
+Message-Id: <20231016201114.1928083-22-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20231016201114.1928083-1-willy@infradead.org>
 References: <20231016201114.1928083-1-willy@infradead.org>
@@ -46,85 +46,84 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Convert the locked_page argument to a folio, then use folios throughout.
-Saves three hidden calls to compound_head().
+Convert the page argument to a folio and then use the folio APIs
+throughout.  Replaces three hidden calls to compound_head() with one
+explicit one.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/ufs/balloc.c | 20 +++++++++-----------
- 1 file changed, 9 insertions(+), 11 deletions(-)
+ fs/ocfs2/aops.c | 19 ++++++++++---------
+ 1 file changed, 10 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ufs/balloc.c b/fs/ufs/balloc.c
-index 2436e3f82147..53c11be2b2c1 100644
---- a/fs/ufs/balloc.c
-+++ b/fs/ufs/balloc.c
-@@ -240,6 +240,7 @@ static void ufs_change_blocknr(struct inode *inode, sector_t beg,
- 			       unsigned int count, sector_t oldb,
- 			       sector_t newb, struct page *locked_page)
+diff --git a/fs/ocfs2/aops.c b/fs/ocfs2/aops.c
+index 6ab03494fc6e..001ad1d288ec 100644
+--- a/fs/ocfs2/aops.c
++++ b/fs/ocfs2/aops.c
+@@ -568,10 +568,10 @@ static void ocfs2_clear_page_regions(struct page *page,
+  * read-in the blocks at the tail of our file. Avoid reading them by
+  * testing i_size against each block offset.
+  */
+-static int ocfs2_should_read_blk(struct inode *inode, struct page *page,
++static int ocfs2_should_read_blk(struct inode *inode, struct folio *folio,
+ 				 unsigned int block_start)
  {
-+	struct folio *folio, *locked_folio = page_folio(locked_page);
- 	const unsigned blks_per_page =
- 		1 << (PAGE_SHIFT - inode->i_blkbits);
- 	const unsigned mask = blks_per_page - 1;
-@@ -247,42 +248,39 @@ static void ufs_change_blocknr(struct inode *inode, sector_t beg,
- 	pgoff_t index, cur_index, last_index;
- 	unsigned pos, j, lblock;
- 	sector_t end, i;
--	struct page *page;
- 	struct buffer_head *head, *bh;
+-	u64 offset = page_offset(page) + block_start;
++	u64 offset = folio_pos(folio) + block_start;
  
- 	UFSD("ENTER, ino %lu, count %u, oldb %llu, newb %llu\n",
- 	      inode->i_ino, count,
- 	     (unsigned long long)oldb, (unsigned long long)newb);
+ 	if (ocfs2_sparse_alloc(OCFS2_SB(inode->i_sb)))
+ 		return 1;
+@@ -593,15 +593,16 @@ int ocfs2_map_page_blocks(struct page *page, u64 *p_blkno,
+ 			  struct inode *inode, unsigned int from,
+ 			  unsigned int to, int new)
+ {
++	struct folio *folio = page_folio(page);
+ 	int ret = 0;
+ 	struct buffer_head *head, *bh, *wait[2], **wait_bh = wait;
+ 	unsigned int block_end, block_start;
+ 	unsigned int bsize = i_blocksize(inode);
  
--	BUG_ON(!locked_page);
--	BUG_ON(!PageLocked(locked_page));
-+	BUG_ON(!folio_test_locked(locked_folio));
+-	if (!page_has_buffers(page))
+-		create_empty_buffers(page, bsize, 0);
++	head = folio_buffers(folio);
++	if (!head)
++		head = folio_create_empty_buffers(folio, bsize, 0);
  
--	cur_index = locked_page->index;
-+	cur_index = locked_folio->index;
- 	end = count + beg;
- 	last_index = end >> (PAGE_SHIFT - inode->i_blkbits);
- 	for (i = beg; i < end; i = (i | mask) + 1) {
- 		index = i >> (PAGE_SHIFT - inode->i_blkbits);
+-	head = page_buffers(page);
+ 	for (bh = head, block_start = 0; bh != head || !block_start;
+ 	     bh = bh->b_this_page, block_start += bsize) {
+ 		block_end = block_start + bsize;
+@@ -613,7 +614,7 @@ int ocfs2_map_page_blocks(struct page *page, u64 *p_blkno,
+ 		 * they may belong to unallocated clusters.
+ 		 */
+ 		if (block_start >= to || block_end <= from) {
+-			if (PageUptodate(page))
++			if (folio_test_uptodate(folio))
+ 				set_buffer_uptodate(bh);
+ 			continue;
+ 		}
+@@ -630,11 +631,11 @@ int ocfs2_map_page_blocks(struct page *page, u64 *p_blkno,
+ 			clean_bdev_bh_alias(bh);
+ 		}
  
- 		if (likely(cur_index != index)) {
--			page = ufs_get_locked_page(mapping, index);
--			if (!page)/* it was truncated */
-+			folio = ufs_get_locked_folio(mapping, index);
-+			if (!folio) /* it was truncated */
- 				continue;
--			if (IS_ERR(page)) {/* or EIO */
-+			if (IS_ERR(folio)) {/* or EIO */
- 				ufs_error(inode->i_sb, __func__,
- 					  "read of page %llu failed\n",
- 					  (unsigned long long)index);
- 				continue;
- 			}
- 		} else
--			page = locked_page;
-+			folio = locked_folio;
+-		if (PageUptodate(page)) {
++		if (folio_test_uptodate(folio)) {
+ 			set_buffer_uptodate(bh);
+ 		} else if (!buffer_uptodate(bh) && !buffer_delay(bh) &&
+ 			   !buffer_new(bh) &&
+-			   ocfs2_should_read_blk(inode, page, block_start) &&
++			   ocfs2_should_read_blk(inode, folio, block_start) &&
+ 			   (block_start < from || block_end > to)) {
+ 			bh_read_nowait(bh, 0);
+ 			*wait_bh++=bh;
+@@ -668,7 +669,7 @@ int ocfs2_map_page_blocks(struct page *page, u64 *p_blkno,
+ 		if (block_start >= to)
+ 			break;
  
--		head = page_buffers(page);
-+		head = folio_buffers(folio);
- 		bh = head;
- 		pos = i & mask;
- 		for (j = 0; j < pos; ++j)
- 			bh = bh->b_this_page;
+-		zero_user(page, block_start, bh->b_size);
++		folio_zero_range(folio, block_start, bh->b_size);
+ 		set_buffer_uptodate(bh);
+ 		mark_buffer_dirty(bh);
  
--
- 		if (unlikely(index == last_index))
- 			lblock = end & mask;
- 		else
-@@ -313,7 +311,7 @@ static void ufs_change_blocknr(struct inode *inode, sector_t beg,
- 		} while (bh != head);
- 
- 		if (likely(cur_index != index))
--			ufs_put_locked_page(page);
-+			ufs_put_locked_folio(folio);
-  	}
- 	UFSD("EXIT\n");
- }
 -- 
 2.40.1
 
