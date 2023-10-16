@@ -2,102 +2,114 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A46CCDB465
-	for <linux-ext4@archiver.kernel.org>; Mon, 16 Oct 2023 15:41:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A19ECDB482
+	for <linux-ext4@archiver.kernel.org>; Mon, 16 Oct 2023 20:11:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232744AbjJPPlz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 16 Oct 2023 11:41:55 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39648 "EHLO
+        id S234116AbjJPUL2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 16 Oct 2023 16:11:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55330 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232802AbjJPPly (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Oct 2023 11:41:54 -0400
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 24DFCE6
-        for <linux-ext4@vger.kernel.org>; Mon, 16 Oct 2023 08:41:53 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id AE823C433C9
-        for <linux-ext4@vger.kernel.org>; Mon, 16 Oct 2023 15:41:52 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1697470912;
-        bh=ZsX80heBbysEVNGJ+OQ1NuOA0ui7IX7oek66jN5msXw=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=NWb4JVBwBdJW/bmcjxpTlUUBwza19YNvt+X52c00sbE0XmrLSZ3IDptsDWWQWYuNx
-         PpNIarYCs9+NW7kxvZYS+WSKopo5C7R4Uhlh3gW0OkH9+1tISzehMPO3UB8UtcHRlf
-         GXxlpEIGmzolmplUOTlUUoBOIDX0vZuo6/mG9s5g1DkdDOFwBgJm/kvSSKUCBIVjpk
-         A/PU5k0u3u3wVGpeWOAuY2x34KiTAHfDTVxowlVAVKnJeP7v717PbLOP9rd8MJ9iPx
-         2/1UMzApdpXnvIAltZP0JUsT0emVYuhb/jdHpHx+PyORMuGkOEVMCju66OBTavfxOE
-         bg6+O6Nmy/Gjw==
-Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
-        id 96C53C4332E; Mon, 16 Oct 2023 15:41:52 +0000 (UTC)
-From:   bugzilla-daemon@kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 218006] [ext4] system panic when ext4_writepages:2918: Journal
- has aborted
-Date:   Mon, 16 Oct 2023 15:41:52 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: high
-X-Bugzilla-Who: tytso@mit.edu
-X-Bugzilla-Status: RESOLVED
-X-Bugzilla-Resolution: INVALID
-X-Bugzilla-Priority: P3
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-218006-13602-nUfOMrHVPE@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-218006-13602@https.bugzilla.kernel.org/>
-References: <bug-218006-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+        with ESMTP id S234007AbjJPULZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Oct 2023 16:11:25 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2E2A4F5;
+        Mon, 16 Oct 2023 13:11:20 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
+        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
+        Content-Type:Content-ID:Content-Description;
+        bh=7mXlnt1yRIMT4o+dXNcAaQaKhOKfQBuaGyVOIxKhilk=; b=mLOzLL1MAsvOzcF2Nfxy8DlEW9
+        KqVXhXbvURDI6XFJEenJqK0xoOqPMXJEMTTYt/w7KPuNhXf7hgVbqU/yzVTnj8xqbKKYZ848lsrsp
+        sWgSDaoVJ2u8Anm+cyMry3h+5JJKok7IPEz8XLRLV4sfjpfbCNMgvhKxmhNb4iPeOmLfw8HqfPCo+
+        GaJeKn092L2S/NhRc+Y2qApEy0Pjv+69uUInXENTG1ES3OdYfpt8uiWZNcUBxnCXVKwyn1Qdwglc0
+        dbUvBa4yfk0P8B0Pb4n9DSwIp/QZfxMHVsF52xzmuXxasjuojFnh6avfilIZeDJZt3kFLNOw1jzpj
+        k7rRI1sg==;
+Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1qsTvp-0085bA-PH; Mon, 16 Oct 2023 20:11:17 +0000
+From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
+To:     Andrew Morton <akpm@linux-foundation.org>
+Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        linux-fsdevel@vger.kernel.org, gfs2@lists.linux.dev,
+        linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        ntfs3@lists.linux.dev, ocfs2-devel@lists.linux.dev,
+        reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Pankaj Raghav <p.raghav@samsung.com>,
+        Ryusuke Konishi <konishi.ryusuke@gmail.com>
+Subject: [PATCH v2 11/27] nilfs2: Convert nilfs_grab_buffer() to use a folio
+Date:   Mon, 16 Oct 2023 21:10:58 +0100
+Message-Id: <20231016201114.1928083-12-willy@infradead.org>
+X-Mailer: git-send-email 2.37.1
+In-Reply-To: <20231016201114.1928083-1-willy@infradead.org>
+References: <20231016201114.1928083-1-willy@infradead.org>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D218006
+Remove a number of folio->page->folio conversions.
 
---- Comment #6 from Theodore Tso (tytso@mit.edu) ---
-Unfortunately the 4.14 kernel was released in 2017, which is over six years
-ago.   Most companies where you can pay $$$ to get support for Linux
-distributions based on 4.14 are EOL'ing products based on 4.14.   As far
-upstream kernel developers who are essentially volunteers when people ask t=
-hem
-for free help, in general, upstream kernel developers do not support LTS
-kernels, and certainly not an LTS kernel as old as 4.14.
+Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+Acked-by: Ryusuke Konishi <konishi.ryusuke@gmail.com>
+---
+ fs/nilfs2/page.c | 26 +++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
 
-If there is someone is willing to be the ext4 upstream stable backports
-maintainer, then that person might be willing to provide limited support for
-LTS kernels --- but the 4.14 LTS upstream kernel is planned to be EOL'ed in
-January 2024, and I had stopped running gce-xfstests on 4.14 LTS kernels ab=
-out
-a year or so ago.  I barely have time to run gce-xfststs on LTS kernels for
-6.1, 5.15 and 5.10 every quarter or two, and if someone were to volunteer to
-become ext4 stable backports maintainer, I'd encourage them to focus on 6.6=
- and
-6.1 LTS kernels, with 5.10 and 5.15 LTS kernels as a lower priority (because
-most commercial companies are going to be moving off of 5.10 LTS in the near
-future).   But volunteer support for 4.14 LTS?  TO be honest, that's extrem=
-ely
-unlikely.
+diff --git a/fs/nilfs2/page.c b/fs/nilfs2/page.c
+index b4e54d079b7d..1c075bd906c9 100644
+--- a/fs/nilfs2/page.c
++++ b/fs/nilfs2/page.c
+@@ -25,19 +25,19 @@
+ 	(BIT(BH_Uptodate) | BIT(BH_Mapped) | BIT(BH_NILFS_Node) |	\
+ 	 BIT(BH_NILFS_Volatile) | BIT(BH_NILFS_Checked))
+ 
+-static struct buffer_head *
+-__nilfs_get_page_block(struct page *page, unsigned long block, pgoff_t index,
+-		       int blkbits, unsigned long b_state)
++static struct buffer_head *__nilfs_get_folio_block(struct folio *folio,
++		unsigned long block, pgoff_t index, int blkbits,
++		unsigned long b_state)
+ 
+ {
+ 	unsigned long first_block;
+-	struct buffer_head *bh;
++	struct buffer_head *bh = folio_buffers(folio);
+ 
+-	if (!page_has_buffers(page))
+-		create_empty_buffers(page, 1 << blkbits, b_state);
++	if (!bh)
++		bh = folio_create_empty_buffers(folio, 1 << blkbits, b_state);
+ 
+ 	first_block = (unsigned long)index << (PAGE_SHIFT - blkbits);
+-	bh = nilfs_page_get_nth_block(page, block - first_block);
++	bh = get_nth_bh(bh, block - first_block);
+ 
+ 	touch_buffer(bh);
+ 	wait_on_buffer(bh);
+@@ -51,17 +51,17 @@ struct buffer_head *nilfs_grab_buffer(struct inode *inode,
+ {
+ 	int blkbits = inode->i_blkbits;
+ 	pgoff_t index = blkoff >> (PAGE_SHIFT - blkbits);
+-	struct page *page;
++	struct folio *folio;
+ 	struct buffer_head *bh;
+ 
+-	page = grab_cache_page(mapping, index);
+-	if (unlikely(!page))
++	folio = filemap_grab_folio(mapping, index);
++	if (IS_ERR(folio))
+ 		return NULL;
+ 
+-	bh = __nilfs_get_page_block(page, blkoff, index, blkbits, b_state);
++	bh = __nilfs_get_folio_block(folio, blkoff, index, blkbits, b_state);
+ 	if (unlikely(!bh)) {
+-		unlock_page(page);
+-		put_page(page);
++		folio_unlock(folio);
++		folio_put(folio);
+ 		return NULL;
+ 	}
+ 	return bh;
+-- 
+2.40.1
 
-*If* there is a company that has a misguided business reason to support the
-4.14 LTS kernel, then of course an employee of that company can certainly f=
-und
-an engineer to to do all of the support that they need.  But quite frankly,=
- I'd
-be encouraging that company to rethink their business case for supporting t=
-he
-4.14 kernel.   It would be probably far more cost effective to migrate their
-customers to a non-pre-historic kernel such as the 6.6 LTS kernel.
-
---=20
-You may reply to this email to add a comment.
-
-You are receiving this mail because:
-You are watching the assignee of the bug.=
