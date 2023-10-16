@@ -2,30 +2,30 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B64CCDB485
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 83393CDB487
 	for <linux-ext4@archiver.kernel.org>; Mon, 16 Oct 2023 20:12:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234112AbjJPUMX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 16 Oct 2023 16:12:23 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55348 "EHLO
+        id S234107AbjJPUMZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 16 Oct 2023 16:12:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38244 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234165AbjJPUL3 (ORCPT
+        with ESMTP id S234181AbjJPUL3 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Oct 2023 16:11:29 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0A95B122;
-        Mon, 16 Oct 2023 13:11:24 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EBEBB137;
+        Mon, 16 Oct 2023 13:11:27 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=cRIJK0L477qKsa1RgyOitdDzKo1JzlVVyIWmDMpqQlE=; b=LjMtLS0ERzR4VCVVkxcf6vJ6LF
-        Px6ulMUEkd6ZzHya8NiEL8edOoEoQJS8UZaUMcRwm8/nxOrAgs8OInub+7LrICNMHwVoLkrKiLDeL
-        WdPjzpRvQOduk3ZJ9Wmd6SM/9p9ijGVC0fPPgI3XzMrLB9cZTLWcsnxnMkZ513AZLCsHS4PDRRXuw
-        iOhiosd1Fn/3UFBJRKKc/ZGH5PyR9rYwGeowOhAE72JA5BGVqC+NR4WHjeGfRegkTPt5GnIaVH+kr
-        hVRJwvb+ezVoszgMrk+Z71lO+vnB7FOy2vsaFbg0BJ4Y2pbucq4kYMHJDgqLcPwrqP3JpAtOs43VA
-        d79x7hXw==;
+        bh=KwH8rvn6FHkzqJHIRCAABfbz3hM6PITuwJk7Xz8AOjo=; b=aQ/L5W+vtpaMF0GGxEFnpR9QFR
+        Rg6gX5J1DlKurWsOfi/JUaqJSjKzMRHed4mWE7xvRljEtuBpd9iDFmk/6iTLA5BW1A2SUA9xfmDbO
+        npA1DDHW82J+bHwrAtiLu0S+b4JybN/6YR1mISEXeN6Z1keZOYQ+HLEeUUNDrt5OF28c7Sdq0UgXH
+        w9/3OjQodRKiWHKE/tYOWm/Glrxz1c3d4h58kFqQo9h+DSI/V8gspltcD44suVtpf0DPYPi7S73G7
+        FQV/9/o8Chtpx3YiLtOXzo13MqtJoOsLRP5e1NIndafj9/RnIVfOBrb2LkTe53YY1r3Zb8nTCb4g2
+        1uXx6r6Q==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qsTvp-0085ae-58; Mon, 16 Oct 2023 20:11:17 +0000
+        id 1qsTvo-0085aU-OP; Mon, 16 Oct 2023 20:11:16 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -33,11 +33,10 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
         ntfs3@lists.linux.dev, ocfs2-devel@lists.linux.dev,
         reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Pankaj Raghav <p.raghav@samsung.com>,
-        Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v2 06/27] gfs2: Convert inode unstuffing to use a folio
-Date:   Mon, 16 Oct 2023 21:10:53 +0100
-Message-Id: <20231016201114.1928083-7-willy@infradead.org>
+        Pankaj Raghav <p.raghav@samsung.com>
+Subject: [PATCH v2 02/27] buffer: Make folio_create_empty_buffers() return a buffer_head
+Date:   Mon, 16 Oct 2023 21:10:49 +0100
+Message-Id: <20231016201114.1928083-3-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20231016201114.1928083-1-willy@infradead.org>
 References: <20231016201114.1928083-1-willy@infradead.org>
@@ -47,122 +46,89 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Use the folio APIs, removing numerous hidden calls to compound_head().
-Also remove the stale comment about the page being looked up if it's NULL.
+Almost all callers want to know the first BH that was allocated
+for this folio.  We already have that handy, so return it.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-Reviewed-by: Andreas Gruenbacher <agruenba@redhat.com>
+Reviewed-by: Pankaj Raghav <p.raghav@samsung.com>
 ---
- fs/gfs2/bmap.c | 48 +++++++++++++++++++++++-------------------------
- 1 file changed, 23 insertions(+), 25 deletions(-)
+ fs/buffer.c                 | 24 +++++++++++++-----------
+ include/linux/buffer_head.h |  4 ++--
+ 2 files changed, 15 insertions(+), 13 deletions(-)
 
-diff --git a/fs/gfs2/bmap.c b/fs/gfs2/bmap.c
-index f1d92e4d1538..f7ea1af9d842 100644
---- a/fs/gfs2/bmap.c
-+++ b/fs/gfs2/bmap.c
-@@ -43,53 +43,51 @@ struct metapath {
- static int punch_hole(struct gfs2_inode *ip, u64 offset, u64 length);
- 
- /**
-- * gfs2_unstuffer_page - unstuff a stuffed inode into a block cached by a page
-+ * gfs2_unstuffer_folio - unstuff a stuffed inode into a block cached by a folio
-  * @ip: the inode
-  * @dibh: the dinode buffer
-  * @block: the block number that was allocated
-- * @page: The (optional) page. This is looked up if @page is NULL
-+ * @folio: The folio.
-  *
-  * Returns: errno
+diff --git a/fs/buffer.c b/fs/buffer.c
+index dec41d84044b..81cdf36e5196 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -1646,8 +1646,8 @@ EXPORT_SYMBOL(block_invalidate_folio);
+  * block_dirty_folio() via private_lock.  try_to_free_buffers
+  * is already excluded via the folio lock.
   */
--
--static int gfs2_unstuffer_page(struct gfs2_inode *ip, struct buffer_head *dibh,
--			       u64 block, struct page *page)
-+static int gfs2_unstuffer_folio(struct gfs2_inode *ip, struct buffer_head *dibh,
-+			       u64 block, struct folio *folio)
+-void folio_create_empty_buffers(struct folio *folio, unsigned long blocksize,
+-				unsigned long b_state)
++struct buffer_head *folio_create_empty_buffers(struct folio *folio,
++		unsigned long blocksize, unsigned long b_state)
  {
- 	struct inode *inode = &ip->i_inode;
- 
--	if (!PageUptodate(page)) {
--		void *kaddr = kmap(page);
-+	if (!folio_test_uptodate(folio)) {
-+		void *kaddr = kmap_local_folio(folio, 0);
- 		u64 dsize = i_size_read(inode);
-  
- 		memcpy(kaddr, dibh->b_data + sizeof(struct gfs2_dinode), dsize);
--		memset(kaddr + dsize, 0, PAGE_SIZE - dsize);
--		kunmap(page);
-+		memset(kaddr + dsize, 0, folio_size(folio) - dsize);
-+		kunmap_local(kaddr);
- 
--		SetPageUptodate(page);
-+		folio_mark_uptodate(folio);
+ 	struct buffer_head *bh, *head, *tail;
+ 	gfp_t gfp = GFP_NOFS | __GFP_ACCOUNT | __GFP_NOFAIL;
+@@ -1674,6 +1674,8 @@ void folio_create_empty_buffers(struct folio *folio, unsigned long blocksize,
  	}
+ 	folio_attach_private(folio, head);
+ 	spin_unlock(&folio->mapping->private_lock);
++
++	return head;
+ }
+ EXPORT_SYMBOL(folio_create_empty_buffers);
  
- 	if (gfs2_is_jdata(ip)) {
--		struct buffer_head *bh;
-+		struct buffer_head *bh = folio_buffers(folio);
+@@ -1775,13 +1777,15 @@ static struct buffer_head *folio_create_buffers(struct folio *folio,
+ 						struct inode *inode,
+ 						unsigned int b_state)
+ {
++	struct buffer_head *bh;
++
+ 	BUG_ON(!folio_test_locked(folio));
  
--		if (!page_has_buffers(page))
--			create_empty_buffers(page, BIT(inode->i_blkbits),
--					     BIT(BH_Uptodate));
-+		if (!bh)
-+			bh = folio_create_empty_buffers(folio,
-+				BIT(inode->i_blkbits), BIT(BH_Uptodate));
- 
--		bh = page_buffers(page);
- 		if (!buffer_mapped(bh))
- 			map_bh(bh, inode->i_sb, block);
- 
- 		set_buffer_uptodate(bh);
- 		gfs2_trans_add_data(ip->i_gl, bh);
- 	} else {
--		set_page_dirty(page);
-+		folio_mark_dirty(folio);
- 		gfs2_ordered_add_inode(ip);
- 	}
- 
- 	return 0;
+-	if (!folio_buffers(folio))
+-		folio_create_empty_buffers(folio,
+-					   1 << READ_ONCE(inode->i_blkbits),
+-					   b_state);
+-	return folio_buffers(folio);
++	bh = folio_buffers(folio);
++	if (!bh)
++		bh = folio_create_empty_buffers(folio,
++				1 << READ_ONCE(inode->i_blkbits), b_state);
++	return bh;
  }
  
--static int __gfs2_unstuff_inode(struct gfs2_inode *ip, struct page *page)
-+static int __gfs2_unstuff_inode(struct gfs2_inode *ip, struct folio *folio)
- {
- 	struct buffer_head *bh, *dibh;
- 	struct gfs2_dinode *di;
-@@ -118,7 +116,7 @@ static int __gfs2_unstuff_inode(struct gfs2_inode *ip, struct page *page)
- 					      dibh, sizeof(struct gfs2_dinode));
- 			brelse(bh);
- 		} else {
--			error = gfs2_unstuffer_page(ip, dibh, block, page);
-+			error = gfs2_unstuffer_folio(ip, dibh, block, folio);
- 			if (error)
- 				goto out_brelse;
- 		}
-@@ -157,17 +155,17 @@ static int __gfs2_unstuff_inode(struct gfs2_inode *ip, struct page *page)
- int gfs2_unstuff_dinode(struct gfs2_inode *ip)
- {
- 	struct inode *inode = &ip->i_inode;
--	struct page *page;
-+	struct folio *folio;
- 	int error;
+ /*
+@@ -2681,10 +2685,8 @@ int block_truncate_page(struct address_space *mapping,
+ 		return PTR_ERR(folio);
  
- 	down_write(&ip->i_rw_mutex);
--	page = grab_cache_page(inode->i_mapping, 0);
--	error = -ENOMEM;
--	if (!page)
-+	folio = filemap_grab_folio(inode->i_mapping, 0);
-+	error = PTR_ERR(folio);
-+	if (IS_ERR(folio))
- 		goto out;
--	error = __gfs2_unstuff_inode(ip, page);
--	unlock_page(page);
--	put_page(page);
-+	error = __gfs2_unstuff_inode(ip, folio);
-+	folio_unlock(folio);
-+	folio_put(folio);
- out:
- 	up_write(&ip->i_rw_mutex);
- 	return error;
+ 	bh = folio_buffers(folio);
+-	if (!bh) {
+-		folio_create_empty_buffers(folio, blocksize, 0);
+-		bh = folio_buffers(folio);
+-	}
++	if (!bh)
++		bh = folio_create_empty_buffers(folio, blocksize, 0);
+ 
+ 	/* Find the buffer that contains "offset" */
+ 	offset = offset_in_folio(folio, from);
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 3dc4720e4773..1001244a8941 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -203,8 +203,8 @@ struct buffer_head *alloc_page_buffers(struct page *page, unsigned long size,
+ 		bool retry);
+ void create_empty_buffers(struct page *, unsigned long,
+ 			unsigned long b_state);
+-void folio_create_empty_buffers(struct folio *folio, unsigned long blocksize,
+-				unsigned long b_state);
++struct buffer_head *folio_create_empty_buffers(struct folio *folio,
++		unsigned long blocksize, unsigned long b_state);
+ void end_buffer_read_sync(struct buffer_head *bh, int uptodate);
+ void end_buffer_write_sync(struct buffer_head *bh, int uptodate);
+ void end_buffer_async_write(struct buffer_head *bh, int uptodate);
 -- 
 2.40.1
 
