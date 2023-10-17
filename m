@@ -2,72 +2,123 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DCFF8CDB484
-	for <linux-ext4@archiver.kernel.org>; Mon, 16 Oct 2023 20:12:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2A85FCDB465
+	for <linux-ext4@archiver.kernel.org>; Tue, 17 Oct 2023 01:41:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234328AbjJPUMf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 16 Oct 2023 16:12:35 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44386 "EHLO
+        id S232873AbjJQBlY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 16 Oct 2023 21:41:24 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56180 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234256AbjJPULo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Oct 2023 16:11:44 -0400
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EDD9AF7;
-        Mon, 16 Oct 2023 13:11:33 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
-        Content-Type:Content-ID:Content-Description;
-        bh=fi8Eq6tU4+7e9/mXSea+NKjhkEdSISChyP52Lf5yEEA=; b=AtFTdGQ4o7OhxTEzHtog4nTY2s
-        Czbj4V3RFqns4xEx2QtWuyeAPYvlbrv2EkTmoe+YqvgbHn7bkTxc9Dlu3UepTZ0fhwMKh5IAPpEBU
-        eenTAv9RPASKjXekhb65QbKhjEfcGTIIGd9BsXSOyZOImKZY8GbaFxWj784tnAeC/9fzDTKUV5bq/
-        /T+7/2eNdv7bS7256cWCmIOja+6QXmkQJR03TkzwwSpq5PJB0P8SWRwYG5Mmpn6GCmv62sYKNhGWq
-        sbbiLNEdiVMVnJxQvoM6Cb9t54mQuF8YhRDyQlhDEsRG9CVSxNYfB/JRj8xEqscF41zFU9EMYO4Ib
-        UPxlizag==;
-Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qsTvo-0085aW-Rw; Mon, 16 Oct 2023 20:11:16 +0000
-From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
-To:     Andrew Morton <akpm@linux-foundation.org>
-Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        linux-fsdevel@vger.kernel.org, gfs2@lists.linux.dev,
-        linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        ntfs3@lists.linux.dev, ocfs2-devel@lists.linux.dev,
-        reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Pankaj Raghav <p.raghav@samsung.com>
-Subject: [PATCH v2 03/27] mpage: Convert map_buffer_to_folio() to folio_create_empty_buffers()
-Date:   Mon, 16 Oct 2023 21:10:50 +0100
-Message-Id: <20231016201114.1928083-4-willy@infradead.org>
-X-Mailer: git-send-email 2.37.1
-In-Reply-To: <20231016201114.1928083-1-willy@infradead.org>
-References: <20231016201114.1928083-1-willy@infradead.org>
+        with ESMTP id S231955AbjJQBlX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Oct 2023 21:41:23 -0400
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5E7359B
+        for <linux-ext4@vger.kernel.org>; Mon, 16 Oct 2023 18:41:22 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 06CC3C433CA
+        for <linux-ext4@vger.kernel.org>; Tue, 17 Oct 2023 01:41:22 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1697506882;
+        bh=k3dA0eYbqkqMaExw8g922BIgpf/g5lUWZ/HYDxhenR4=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=r7yaJ03NUk/5E6x9Dc5ONMleoyBnNCtcg73PvOXBTvNjIt5jMPg0vGld6QiIf8dQl
+         yyVwzyYTG2aDOmRUU1rjp1By1zwQ583TrXy6Z1Ww47yQNaxGGsl95H3Y/gsxZll3zn
+         d7TqgX7oQUJ34vG+wRTmNJHi/hs5aIVO+W2GJJn58EHLMSdJBEr+pcC41XhhGdH3fE
+         RUsb8KGVgSV9NXj7W7AIrDgBN9B/yqyeZfe3WUwCmlkb4hDJdlDEFGwf7pJgvDXdAJ
+         aZizzYcJrxIj1HUc8XeYL4YTMoprZiUeIn4cHD9qQdGzligjPtXINU0WqqL33xnCy8
+         E0X9yca4noBJQ==
+Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
+        id E94D2C53BD0; Tue, 17 Oct 2023 01:41:21 +0000 (UTC)
+From:   bugzilla-daemon@kernel.org
+To:     linux-ext4@vger.kernel.org
+Subject: [Bug 218006] [ext4] system panic when ext4_writepages:2918: Journal
+ has aborted
+Date:   Tue, 17 Oct 2023 01:41:21 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: high
+X-Bugzilla-Who: fengchunguo@126.com
+X-Bugzilla-Status: RESOLVED
+X-Bugzilla-Resolution: INVALID
+X-Bugzilla-Priority: P3
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: 
+Message-ID: <bug-218006-13602-sySzU4Xe1v@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-218006-13602@https.bugzilla.kernel.org/>
+References: <bug-218006-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Saves a folio->page->folio conversion.
+https://bugzilla.kernel.org/show_bug.cgi?id=3D218006
 
-Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-Reviewed-by: Pankaj Raghav <p.raghav@samsung.com>
----
- fs/mpage.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+--- Comment #7 from Gary (fengchunguo@126.com) ---
+(In reply to Theodore Tso from comment #6)
+> Unfortunately the 4.14 kernel was released in 2017, which is over six yea=
+rs
+> ago.   Most companies where you can pay $$$ to get support for Linux
+> distributions based on 4.14 are EOL'ing products based on 4.14.   As far
+> upstream kernel developers who are essentially volunteers when people ask
+> them for free help, in general, upstream kernel developers do not support
+> LTS kernels, and certainly not an LTS kernel as old as 4.14.
+>=20
+> If there is someone is willing to be the ext4 upstream stable backports
+> maintainer, then that person might be willing to provide limited support =
+for
+> LTS kernels --- but the 4.14 LTS upstream kernel is planned to be EOL'ed =
+in
+> January 2024, and I had stopped running gce-xfstests on 4.14 LTS kernels
+> about a year or so ago.  I barely have time to run gce-xfststs on LTS
+> kernels for 6.1, 5.15 and 5.10 every quarter or two, and if someone were =
+to
+> volunteer to become ext4 stable backports maintainer, I'd encourage them =
+to
+> focus on 6.6 and 6.1 LTS kernels, with 5.10 and 5.15 LTS kernels as a low=
+er
+> priority (because most commercial companies are going to be moving off of
+> 5.10 LTS in the near future).   But volunteer support for 4.14 LTS?  TO be
+> honest, that's extremely unlikely.
+>=20
+> *If* there is a company that has a misguided business reason to support t=
+he
+> 4.14 LTS kernel, then of course an employee of that company can certainly
+> fund an engineer to to do all of the support that they need.  But quite
+> frankly, I'd be encouraging that company to rethink their business case f=
+or
+> supporting the 4.14 kernel.   It would be probably far more cost effective
+> to migrate their customers to a non-pre-historic kernel such as the 6.6 L=
+TS
+> kernel.
 
-diff --git a/fs/mpage.c b/fs/mpage.c
-index 242e213ee064..964a6efe594d 100644
---- a/fs/mpage.c
-+++ b/fs/mpage.c
-@@ -119,8 +119,7 @@ static void map_buffer_to_folio(struct folio *folio, struct buffer_head *bh,
- 			folio_mark_uptodate(folio);
- 			return;
- 		}
--		create_empty_buffers(&folio->page, i_blocksize(inode), 0);
--		head = folio_buffers(folio);
-+		head = folio_create_empty_buffers(folio, i_blocksize(inode), 0);
- 	}
- 
- 	page_bh = head;
--- 
-2.40.1
+Thanks for your reply.
 
+We will try to debug this issue. For this issue, I think that we should foc=
+us
+on the below infromation. Emmc error should be one side effect.
+
+[2023-10-13 02:51:08]  [60086.731357] EXT4-fs error (device mmcblk0p44) in
+ext4_da_write_end:3210: IO failure
+[2023-10-13 02:51:09]  [60086.739386] EXT4-fs (mmcblk0p44): Delayed block
+allocation failed for inode 155757 at logical offset 438 with max blocks 25
+with error 30
+[2023-10-13 02:51:09]  [60086.739388] EXT4-fs (mmcblk0p44): This should not
+happen!! Data will be lost
+[2023-10-13 02:51:09]  [60086.739388]
+[2023-10-13 02:51:09]  [60086.739399] EXT4-fs error (device mmcblk0p44) in
+ext4_writepages:2918: Journal has aborted
+
+--=20
+You may reply to this email to add a comment.
+
+You are receiving this mail because:
+You are watching the assignee of the bug.=
