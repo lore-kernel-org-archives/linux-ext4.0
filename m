@@ -2,63 +2,65 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F57BC4167D
-	for <linux-ext4@archiver.kernel.org>; Thu,  2 Nov 2023 18:38:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E2280C4332F
+	for <linux-ext4@archiver.kernel.org>; Fri,  3 Nov 2023 06:58:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1347541AbjKBSiB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 2 Nov 2023 14:38:01 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54312 "EHLO
+        id S232679AbjKCG6G (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 3 Nov 2023 02:58:06 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53862 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234446AbjKBSh4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Nov 2023 14:37:56 -0400
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E2B1F137;
-        Thu,  2 Nov 2023 11:37:53 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 8F487C433C8;
-        Thu,  2 Nov 2023 18:37:53 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1698950273;
-        bh=TiWD264Zcb85ey+LQGvjJjN1B9Ts8cFbIIHXPwfsSsc=;
-        h=Subject:From:In-Reply-To:References:Date:To:Cc:From;
-        b=AFUEQT2vWxO6Gm7PPi2JxjWETmdESOV9f6ZULRi5hZVxV/02zATyqGo6M6rnOS5fH
-         +D2knram9toxzMbpBpgVeXYQVD9GSazpLz2rSWEBaB+vDmLorHbNYdr8qR/51O0X0f
-         gGIgZPB95bdiSpjPn/aqjfKQOtNnMxBa/hneZ6Hsw33u7/krOxCUBY5T2PIEUyGh0K
-         etxEVX1u0745ncrLuvP9w+0bDVu0fCBPURa7cRrJpOsucfAZ4pukKDeTsktxWPf4LD
-         sf4+8e+z5UmDlHUNU4JAoGAh/zJe5gSyOSJLUe5yeZI4Va7BFXSs5Wzfi13UIVI4Zd
-         H/+69Ca4/ePWw==
-Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
-        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id 7C32EC4316B;
-        Thu,  2 Nov 2023 18:37:53 +0000 (UTC)
-Subject: Re: [GIT PULL] ext4 update for v6.7-rc1
-From:   pr-tracker-bot@kernel.org
-In-Reply-To: <20231101022818.GA108790@mit.edu>
-References: <20231101022818.GA108790@mit.edu>
-X-PR-Tracked-List-Id: <linux-ext4.vger.kernel.org>
-X-PR-Tracked-Message-Id: <20231101022818.GA108790@mit.edu>
-X-PR-Tracked-Remote: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus-6.7-rc1
-X-PR-Tracked-Commit-Id: 91562895f8030cb9a0470b1db49de79346a69f91
-X-PR-Merge-Tree: torvalds/linux.git
-X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: 57aff997450420b8a7da6a72f45c3677ac1c2f86
-Message-Id: <169895027350.19486.1542030475959231084.pr-tracker-bot@kernel.org>
-Date:   Thu, 02 Nov 2023 18:37:53 +0000
-To:     Theodore Ts'o <tytso@mit.edu>
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
+        with ESMTP id S232633AbjKCG6F (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Nov 2023 02:58:05 -0400
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 698CEE3
+        for <linux-ext4@vger.kernel.org>; Thu,  2 Nov 2023 23:58:02 -0700 (PDT)
+Received: from kwepemm000013.china.huawei.com (unknown [172.30.72.55])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4SMBM35HmFzrTjT;
+        Fri,  3 Nov 2023 14:54:55 +0800 (CST)
+Received: from huawei.com (10.175.104.67) by kwepemm000013.china.huawei.com
+ (7.193.23.81) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.31; Fri, 3 Nov
+ 2023 14:57:59 +0800
+From:   Zhihao Cheng <chengzhihao1@huawei.com>
+To:     <tytso@mit.edu>, <jack@suse.com>
+CC:     <linux-ext4@vger.kernel.org>, <chengzhihao1@huawei.com>,
+        <yi.zhang@huawei.com>
+Subject: [PATCH 0/5] jbd2: Add errseq to detect writeback
+Date:   Fri, 3 Nov 2023 22:52:45 +0800
+Message-ID: <20231103145250.2995746-1-chengzhihao1@huawei.com>
+X-Mailer: git-send-email 2.39.2
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.104.67]
+X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
+ kwepemm000013.china.huawei.com (7.193.23.81)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The pull request you sent on Tue, 31 Oct 2023 22:28:18 -0400:
+According to discussions in [1], this patchset adds errseq in journal to
+enable JDB2 detecting meatadata writeback error of fs dev. Then, orginal
+checking mechanism could be removed.
 
-> https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus-6.7-rc1
+[1] https://lore.kernel.org/all/20230908124317.2955345-1-chengzhihao1@huawei.com/T/
 
-has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/57aff997450420b8a7da6a72f45c3677ac1c2f86
+Zhihao Cheng (5):
+  jbd2: Add errseq to detect client fs's bdev writeback error
+  jbd2: Replace journal state flag by checking errseq
+  jbd2: Remove unused 'JBD2_CHECKPOINT_IO_ERROR' and 'j_atomic_flags'
+  jbd2: Abort journal when detecting metadata writeback error of fs dev
+  ext4: Move ext4_check_bdev_write_error() into nojournal mode
 
-Thank you!
+ fs/ext4/ext4_jbd2.c   |  5 ++---
+ fs/jbd2/checkpoint.c  | 11 -----------
+ fs/jbd2/journal.c     | 11 ++++++-----
+ fs/jbd2/recovery.c    |  7 +------
+ fs/jbd2/transaction.c | 14 ++++++++++++++
+ include/linux/jbd2.h  | 37 ++++++++++++++++++++++++++-----------
+ 6 files changed, 49 insertions(+), 36 deletions(-)
 
 -- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/prtracker.html
+2.39.2
+
