@@ -2,145 +2,66 @@ Return-Path: <linux-ext4-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2BFEEC4167B
-	for <linux-ext4@archiver.kernel.org>; Tue,  7 Nov 2023 23:34:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 910D5C4332F
+	for <linux-ext4@archiver.kernel.org>; Tue,  7 Nov 2023 23:41:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1343772AbjKGXeY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 7 Nov 2023 18:34:24 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45180 "EHLO
+        id S235629AbjKGXlb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 7 Nov 2023 18:41:31 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53512 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1344740AbjKGXeK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Nov 2023 18:34:10 -0500
-Received: from smtp.gentoo.org (mail.gentoo.org [IPv6:2001:470:ea4a:1:5054:ff:fec7:86e4])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E7B0425B3
-        for <linux-ext4@vger.kernel.org>; Tue,  7 Nov 2023 15:33:31 -0800 (PST)
+        with ESMTP id S235478AbjKGXlX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Nov 2023 18:41:23 -0500
+Received: from smtp.gentoo.org (dev.gentoo.org [IPv6:2001:470:ea4a:1:5054:ff:fec7:86e4])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5BC30526F
+        for <linux-ext4@vger.kernel.org>; Tue,  7 Nov 2023 15:31:35 -0800 (PST)
 From:   Sam James <sam@gentoo.org>
 To:     linux-ext4@vger.kernel.org
-Cc:     Mike Gilbert <floppym@gentoo.org>, Sam James <sam@gentoo.org>
-Subject: [PATCH e2fsprogs 2/2] lib/ext2fs: llseek: simplify linux section
-Date:   Tue,  7 Nov 2023 23:33:22 +0000
-Message-ID: <20231107233323.2013334-2-sam@gentoo.org>
+Cc:     Sam James <sam@gentoo.org>
+Subject: [PATCH e2fsprogs] ext2fs: Fix -Walloc-size
+Date:   Tue,  7 Nov 2023 23:31:20 +0000
+Message-ID: <20231107233122.2013191-1-sam@gentoo.org>
 X-Mailer: git-send-email 2.42.1
-In-Reply-To: <20231107233323.2013334-1-sam@gentoo.org>
-References: <20231107233323.2013334-1-sam@gentoo.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Mike Gilbert <floppym@gentoo.org>
+GCC 14 introduces a new -Walloc-size included in -Wextra which gives:
+```
+lib/ext2fs/hashmap.c:37:36: warning: allocation of insufficient size ‘1’ for type ‘struct ext2fs_hashmap’ with size ‘20’ [-Walloc-size]
+```
 
-On 32-bit musl systems, off_t is always 8 bytes regardless of
-_FILE_OFFSET_BITS. The previous code did not cover this case.
+The calloc prototype is:
+```
+void *calloc(size_t nmemb, size_t size);
+```
 
-The previous #ifdef logic was rather confusing, so I reworked it into a
-more understandable form.
+So, just swap the number of members and size arguments to match the prototype, as
+we're initialising 1 struct of size `sizeof(...)`. GCC then sees we're not
+doing anything wrong.
 
-Bug: https://bugs.gentoo.org/908892
-Signed-off-by: Mike Gilbert <floppym@gentoo.org>
-Closes: https://github.com/tytso/e2fsprogs/pull/150
 Signed-off-by: Sam James <sam@gentoo.org>
 ---
- lib/ext2fs/llseek.c | 67 ++++++++++-----------------------------------
- 1 file changed, 15 insertions(+), 52 deletions(-)
+ lib/ext2fs/hashmap.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/lib/ext2fs/llseek.c b/lib/ext2fs/llseek.c
-index 45f21d09..9118b23f 100644
---- a/lib/ext2fs/llseek.c
-+++ b/lib/ext2fs/llseek.c
-@@ -35,68 +35,32 @@
- 
- #ifdef __linux__
- 
--#if defined(HAVE_LSEEK64) && defined(HAVE_LSEEK64_PROTOTYPE)
--
--#define my_llseek lseek64
--
--#else
--#if defined(HAVE_LLSEEK)
--#include <sys/syscall.h>
--
--#ifndef HAVE_LLSEEK_PROTOTYPE
--extern long long llseek (int fd, long long offset, int origin);
--#endif
--
--#define my_llseek llseek
--
--#else	/* ! HAVE_LLSEEK */
--
--#if SIZEOF_LONG == SIZEOF_LONG_LONG || _FILE_OFFSET_BITS+0 == 64
--
--#define my_llseek lseek
--
--#else /* SIZEOF_LONG != SIZEOF_LONG_LONG */
--
- #include <linux/unistd.h>
- 
--#ifndef __NR__llseek
--#define __NR__llseek            140
--#endif
--
--#ifndef __i386__
--static int _llseek (unsigned int, unsigned long,
--		   unsigned long, ext2_loff_t *, unsigned int);
--
--static _syscall5(int,_llseek,unsigned int,fd,unsigned long,offset_high,
--		 unsigned long, offset_low,ext2_loff_t *,result,
--		 unsigned int, origin);
--#endif
--
- static ext2_loff_t my_llseek (int fd, ext2_loff_t offset, int origin)
+diff --git a/lib/ext2fs/hashmap.c b/lib/ext2fs/hashmap.c
+index 697b2bcc..15794673 100644
+--- a/lib/ext2fs/hashmap.c
++++ b/lib/ext2fs/hashmap.c
+@@ -34,8 +34,8 @@ struct ext2fs_hashmap *ext2fs_hashmap_create(
+ 				uint32_t(*hash_fct)(const void*, size_t),
+ 				void(*free_fct)(void*), size_t size)
  {
--	ext2_loff_t result;
-+#if SIZEOF_OFF_T >= 8
-+	return lseek(fd, offset, origin);
-+#elif HAVE_LSEEK64_PROTOTYPE
-+	return lseek64(fd, offset, origin);
-+#elif HAVE_LLSEEK_PROTOTYPE
-+	return llseek(fd, offset, origin);
-+#elif defined(__NR__llseek)
-+	loff_t result;
- 	int retval;
--
--#ifndef __i386__
--	retval = _llseek(fd, ((unsigned long long) offset) >> 32,
-+	retval = syscall(__NR__llseek, fd,
-+		(unsigned long)(offset >> 32),
-+		(unsigned long)(offset & 0xffffffff),
-+		&result, origin);
-+	return (retval == -1 ? retval : result);
- #else
--	retval = syscall(__NR__llseek, fd, (unsigned long long) (offset >> 32),
-+	errno = ENOSYS;
-+	return -1;
- #endif
--			  ((unsigned long long) offset) & 0xffffffff,
--			&result, origin);
--	return (retval == -1 ? (ext2_loff_t) retval : result);
- }
+-	struct ext2fs_hashmap *h = calloc(sizeof(struct ext2fs_hashmap) +
+-				sizeof(struct ext2fs_hashmap_entry) * size, 1);
++	struct ext2fs_hashmap *h = calloc(1, sizeof(struct ext2fs_hashmap) +
++				sizeof(struct ext2fs_hashmap_entry) * size);
+ 	if (!h)
+ 		return NULL;
  
--#endif	/* SIZE_LONG == SIZEOF_LONG_LONG */
--
--#endif /* HAVE_LLSEEK */
--#endif /* defined(HAVE_LSEEK64) && defined(HAVE_LSEEK64_PROTOTYPE) */
--
- ext2_loff_t ext2fs_llseek (int fd, ext2_loff_t offset, int origin)
- {
--#if SIZEOF_OFF_T >= SIZEOF_LONG_LONG
--	return my_llseek (fd, offset, origin);
--#else
- 	ext2_loff_t result;
- 	static int do_compat = 0;
- 
-@@ -117,7 +81,6 @@ ext2_loff_t ext2fs_llseek (int fd, ext2_loff_t offset, int origin)
- 		return -1;
- 	}
- 	return result;
--#endif
- }
- 
- #else /* !linux */
 -- 
 2.42.1
 
