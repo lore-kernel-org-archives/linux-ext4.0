@@ -1,55 +1,78 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from lindbergh.monkeyblade.net (lindbergh.monkeyblade.net [23.128.96.19])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7E0783B28F;
-	Fri, 10 Nov 2023 19:35:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 197E8EDB
+	for <linux-ext4@vger.kernel.org>; Sat, 11 Nov 2023 00:55:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b="QWIAULOH"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A15FFC433CA;
-	Fri, 10 Nov 2023 19:35:10 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
-	s=korg; t=1699644910;
-	bh=a8twNFEKjGrKBxbdq191jaAma5+5cbZZWFE+Q6SHfO4=;
-	h=Date:From:To:Subject:References:In-Reply-To:From;
-	b=QWIAULOHfuC4ewTV3HG2pnrPYVTcQmHYctffbQR65o8lGEafhP0RAYM3fCRSz3VWw
-	 j3ZPD3GePpQS36hL6HkQa1TKqTCL/mCNrYH3Lj3P6TSLxNDktFoc/fMvZzWXnn4RGa
-	 MsHKSj90uf6JkRds+DIZYTZqnsoLyFU3BriaM6sE=
-Date: Fri, 10 Nov 2023 14:35:09 -0500
-From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
-To: linux-embedded@vger.kernel.org, linux-ext4@vger.kernel.org, 
-	linux-fbdev@vger.kernel.org, linux-fpga@vger.kernel.org, linux-fscrypt@vger.kernel.org, 
-	linux-gcc@vger.kernel.org, linux-gpio@vger.kernel.org, linux-hams@vger.kernel.org, 
-	linux-hexagon@vger.kernel.org, linux-hotplug@vger.kernel.org, linux-hwmon@vger.kernel.org, 
-	linux-i2c@vger.kernel.org, linux-ia64@vger.kernel.org, linux-ide@vger.kernel.org, 
-	linux-iio@vger.kernel.org, linux-input@vger.kernel.org, linux-integrity@vger.kernel.org, 
-	linux-kbuild@vger.kernel.org, linux-kselftest@vger.kernel.org, linux-leds@vger.kernel.org, 
-	linux-m68k@vger.kernel.org, linux-man@vger.kernel.org, linux-media@vger.kernel.org, 
-	linux-mips@vger.kernel.org, linux-mmc@vger.kernel.org, linux-msdos@vger.kernel.org
-Subject: Re: PSA: This list is being migrated (no action required)
-Message-ID: <3dfzeofvzxqk4yuyoancdanbxzpw5udmvbdz3b2mdwejwbnhk2@7y56nwlj3rgp>
-References: <cfriwrxovqzcrptf74ccq52lcqj2nsergucufsz6wlh45fdnz3@z5e5y2lowbq2>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="AYRe7Uyd"
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A4F2744B8
+	for <linux-ext4@vger.kernel.org>; Fri, 10 Nov 2023 16:55:25 -0800 (PST)
+Received: from letrec.thunk.org ([172.59.192.143])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 3AB0t1E0028402
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 10 Nov 2023 19:55:04 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1699664106; bh=KGrCo0EAEmidC19jfpkh83o8LjlI6ymESMr0sKB5j0A=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=AYRe7UydBBubaW7sb4UEwm3rmq27RLIsAOoGYn0bEqX7/1DTOMjg7JEYiRuecpWUu
+	 7joHrfDoCZgZ+z0fM+sK4zbQEbH0/f5MSfb/7Od0HMKHh+iMIh/q1v27UC+YzDH3Ku
+	 sOUC7BVviAOJ3CkkKDHQ34vjxSEPgA4FCQ34q/lKT8G8KlaXP3X8rL83TD+W05shQ6
+	 ZZTJGugsZMvxTe8DJ6gEjYxKX747cZtJvG0LmKMVe8vJvoi3w5X5jVIYJoM4nqnVM7
+	 eD7+9XtwgkTZaKdI2ktkABOkLQeAQrxvPzYxjUGJBfXimRv0qEnLimiqivcIqkNhPL
+	 yUcpVyTbKG9ZA==
+Received: by letrec.thunk.org (Postfix, from userid 15806)
+	id B4E848C02FA; Fri, 10 Nov 2023 12:08:35 -0500 (EST)
+Date: Fri, 10 Nov 2023 12:08:35 -0500
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Aleksandr Nogikh <nogikh@google.com>
+Cc: Thomas Gleixner <tglx@linutronix.de>,
+        syzbot <syzbot+b408cd9b40ec25380ee1@syzkaller.appspotmail.com>,
+        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        syzkaller-bugs@googlegroups.com
+Subject: Re: [syzbot] [ext4?] general protection fault in hrtimer_nanosleep
+Message-ID: <ZU5jkxVyudIiciNX@mit.edu>
+References: <000000000000cfd180060910a687@google.com>
+ <875y2lmxys.ffs@tglx>
+ <CANp29Y7EQ0cLf23coqFLLRHbA5rJjq0q1-6G7nnhxqBOUA7apw@mail.gmail.com>
+ <87r0l8kv1s.ffs@tglx>
+ <CANp29Y5BnnYBauXyHmUKrgrn5LZpz8nDuZFTwLLB7WHq4DS6Wg@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <cfriwrxovqzcrptf74ccq52lcqj2nsergucufsz6wlh45fdnz3@z5e5y2lowbq2>
+In-Reply-To: <CANp29Y5BnnYBauXyHmUKrgrn5LZpz8nDuZFTwLLB7WHq4DS6Wg@mail.gmail.com>
 
-On Fri, Nov 10, 2023 at 01:51:44PM -0500, Konstantin Ryabitsev wrote:
-> This list is being migrated to new vger infrastructure. No action is required
-> on your part and there will be no change in how you interact with this list
-> after the migration is completed.
+On Thu, Nov 09, 2023 at 09:00:18PM -0800, Aleksandr Nogikh wrote:
 > 
-> There will be a short 30-minute delay to the list archives on lore.kernel.org.
-> Once the backend work is done, I will follow up with another message.
+> The reproducer does work on the attached disk image, but definitely
+> not very often. I've just run it 10 times or so and got interleaved
+> BUG/KFENCE bug reports like this (twice):
+> https://pastebin.com/W0TkRsnw
+> 
+> These seem to be related to ext4 rather than hrtimers though.
 
-This work is completed now. This message acts as a test to make sure archives
-are working at their new place.
+So what would be nice is if there was a way to ask the syzkaller
+tester to use a different config or to change the reproducer somehow
+--- for example, is it *really* necessary to twiddle the bluetooth
+subsystem, as demonstrated by the spew in the console?
 
-If anything is not working or looking right, please reach out to
-helpdesk@kernel.org.
+I've certainly spent hours cutting down the reproducer to a simple C
+program which is readable by humans, which makes it *clear* the syzbot
+minimizer doesn't do a good job.  Why should a time-limited maintainer
+spend hours trying to cut down the reproducer, when a robot should be
+able to do that for us?  And when often it doesn't reproduce on
+anything via syzbot test, but not when run using KVM, this is why we
+need to have a simple way of trigger a test where things are as close
+as possible to whatever syzbot is using.
 
--K
+Cheers,
+
+						- Ted
