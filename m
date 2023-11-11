@@ -1,78 +1,84 @@
 Received: from lindbergh.monkeyblade.net (lindbergh.monkeyblade.net [23.128.96.19])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 197E8EDB
-	for <linux-ext4@vger.kernel.org>; Sat, 11 Nov 2023 00:55:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="AYRe7Uyd"
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A4F2744B8
-	for <linux-ext4@vger.kernel.org>; Fri, 10 Nov 2023 16:55:25 -0800 (PST)
-Received: from letrec.thunk.org ([172.59.192.143])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 3AB0t1E0028402
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 10 Nov 2023 19:55:04 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1699664106; bh=KGrCo0EAEmidC19jfpkh83o8LjlI6ymESMr0sKB5j0A=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=AYRe7UydBBubaW7sb4UEwm3rmq27RLIsAOoGYn0bEqX7/1DTOMjg7JEYiRuecpWUu
-	 7joHrfDoCZgZ+z0fM+sK4zbQEbH0/f5MSfb/7Od0HMKHh+iMIh/q1v27UC+YzDH3Ku
-	 sOUC7BVviAOJ3CkkKDHQ34vjxSEPgA4FCQ34q/lKT8G8KlaXP3X8rL83TD+W05shQ6
-	 ZZTJGugsZMvxTe8DJ6gEjYxKX747cZtJvG0LmKMVe8vJvoi3w5X5jVIYJoM4nqnVM7
-	 eD7+9XtwgkTZaKdI2ktkABOkLQeAQrxvPzYxjUGJBfXimRv0qEnLimiqivcIqkNhPL
-	 yUcpVyTbKG9ZA==
-Received: by letrec.thunk.org (Postfix, from userid 15806)
-	id B4E848C02FA; Fri, 10 Nov 2023 12:08:35 -0500 (EST)
-Date: Fri, 10 Nov 2023 12:08:35 -0500
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Aleksandr Nogikh <nogikh@google.com>
-Cc: Thomas Gleixner <tglx@linutronix.de>,
-        syzbot <syzbot+b408cd9b40ec25380ee1@syzkaller.appspotmail.com>,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        syzkaller-bugs@googlegroups.com
-Subject: Re: [syzbot] [ext4?] general protection fault in hrtimer_nanosleep
-Message-ID: <ZU5jkxVyudIiciNX@mit.edu>
-References: <000000000000cfd180060910a687@google.com>
- <875y2lmxys.ffs@tglx>
- <CANp29Y7EQ0cLf23coqFLLRHbA5rJjq0q1-6G7nnhxqBOUA7apw@mail.gmail.com>
- <87r0l8kv1s.ffs@tglx>
- <CANp29Y5BnnYBauXyHmUKrgrn5LZpz8nDuZFTwLLB7WHq4DS6Wg@mail.gmail.com>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 711C563AF;
+	Sat, 11 Nov 2023 04:02:55 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; dkim=none
+Received: from out30-118.freemail.mail.aliyun.com (out30-118.freemail.mail.aliyun.com [115.124.30.118])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CCF4D3868;
+	Fri, 10 Nov 2023 20:02:51 -0800 (PST)
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R481e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=ay29a033018046060;MF=hsiangkao@linux.alibaba.com;NM=1;PH=DS;RN=11;SR=0;TI=SMTPD_---0Vw6AFnB_1699675368;
+Received: from 172.17.2.246(mailfrom:hsiangkao@linux.alibaba.com fp:SMTPD_---0Vw6AFnB_1699675368)
+          by smtp.aliyun-inc.com;
+          Sat, 11 Nov 2023 12:02:49 +0800
+Message-ID: <33d6a487-5913-fefd-2a45-d8d397e6f6ba@linux.alibaba.com>
+Date: Sat, 11 Nov 2023 12:02:47 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CANp29Y5BnnYBauXyHmUKrgrn5LZpz8nDuZFTwLLB7WHq4DS6Wg@mail.gmail.com>
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0)
+ Gecko/20100101 Thunderbird/102.15.0
+Subject: Re: [PATCH 2/3] mm: Add folio_fill_tail() and use it in iomap
+To: Matthew Wilcox <willy@infradead.org>,
+ Andreas Gruenbacher <agruenba@redhat.com>
+Cc: linux-xfs@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+ "Darrick J . Wong" <djwong@kernel.org>, gfs2@lists.linux.dev,
+ Andreas Dilger <adilger.kernel@dilger.ca>, linux-fsdevel@vger.kernel.org,
+ Andrew Morton <akpm@linux-foundation.org>, linux-ext4@vger.kernel.org,
+ linux-erofs@lists.ozlabs.org
+References: <20231107212643.3490372-1-willy@infradead.org>
+ <20231107212643.3490372-3-willy@infradead.org>
+ <CAHc6FU550j_AYgWz5JgRu84mw5HqrSwd+hYZiHVArnget3gb4w@mail.gmail.com>
+ <ZU5jx2QeujE+868t@casper.infradead.org>
+From: Gao Xiang <hsiangkao@linux.alibaba.com>
+In-Reply-To: <ZU5jx2QeujE+868t@casper.infradead.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
 
-On Thu, Nov 09, 2023 at 09:00:18PM -0800, Aleksandr Nogikh wrote:
+
+
+On 2023/11/11 01:09, Matthew Wilcox wrote:
+> On Thu, Nov 09, 2023 at 10:50:45PM +0100, Andreas Gruenbacher wrote:
+>> On Tue, Nov 7, 2023 at 10:27 PM Matthew Wilcox (Oracle)
+>> <willy@infradead.org> wrote:
+>>> +static inline void folio_fill_tail(struct folio *folio, size_t offset,
+>>> +               const char *from, size_t len)
+>>> +{
+>>> +       char *to = kmap_local_folio(folio, offset);
+>>> +
+>>> +       VM_BUG_ON(offset + len > folio_size(folio));
+>>> +
+>>> +       if (folio_test_highmem(folio)) {
+>>> +               size_t max = PAGE_SIZE - offset_in_page(offset);
+>>> +
+>>> +               while (len > max) {
+>>> +                       memcpy(to, from, max);
+>>> +                       kunmap_local(to);
+>>> +                       len -= max;
+>>> +                       from += max;
+>>> +                       offset += max;
+>>> +                       max = PAGE_SIZE;
+>>> +                       to = kmap_local_folio(folio, offset);
+>>> +               }
+>>> +       }
+>>> +
+>>> +       memcpy(to, from, len);
+>>> +       to = folio_zero_tail(folio, offset, to);
+>>
+>> This needs to be:
+>>
+>> to = folio_zero_tail(folio, offset  + len, to + len);
 > 
-> The reproducer does work on the attached disk image, but definitely
-> not very often. I've just run it 10 times or so and got interleaved
-> BUG/KFENCE bug reports like this (twice):
-> https://pastebin.com/W0TkRsnw
-> 
-> These seem to be related to ext4 rather than hrtimers though.
+> Oh, wow, that was stupid of me.  I only ran an xfstests against ext4,
+> which doesn't exercise this code, not gfs2 or erofs.  Thanks for
+> fixing this up.
 
-So what would be nice is if there was a way to ask the syzkaller
-tester to use a different config or to change the reproducer somehow
---- for example, is it *really* necessary to twiddle the bluetooth
-subsystem, as demonstrated by the spew in the console?
+Assuming that is for the next cycle (no rush), I will also test
+this patch and feedback later since I'm now working on other
+stuffs.
 
-I've certainly spent hours cutting down the reproducer to a simple C
-program which is readable by humans, which makes it *clear* the syzbot
-minimizer doesn't do a good job.  Why should a time-limited maintainer
-spend hours trying to cut down the reproducer, when a robot should be
-able to do that for us?  And when often it doesn't reproduce on
-anything via syzbot test, but not when run using KVM, this is why we
-need to have a simple way of trigger a test where things are as close
-as possible to whatever syzbot is using.
-
-Cheers,
-
-						- Ted
+Thanks,
+Gao Xiang
