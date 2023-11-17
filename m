@@ -1,28 +1,28 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6719C384
-	for <linux-ext4@vger.kernel.org>; Fri, 17 Nov 2023 00:44:39 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A91EA1370
+	for <linux-ext4@vger.kernel.org>; Fri, 17 Nov 2023 01:39:22 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="aAx+vuFz"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id E13FCC433CB
-	for <linux-ext4@vger.kernel.org>; Fri, 17 Nov 2023 00:44:38 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="io2PVvcp"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 23C10C433CC
+	for <linux-ext4@vger.kernel.org>; Fri, 17 Nov 2023 01:39:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1700181878;
-	bh=uLrAbs3AEGOjDqKEzy7y+66sXfdsqHH+Wmj2JrC9K0I=;
+	s=k20201202; t=1700185162;
+	bh=0AfJeJyZqwML831cw8bTSWf9lvj0La0kjD3ifDcIHEI=;
 	h=From:To:Subject:Date:In-Reply-To:References:From;
-	b=aAx+vuFzz/Jxo3NhDdnZLjwgLDhh77Ant9HWCa20nU8w44kGx0hPBq6Bmtjg3IjUM
-	 InBDe6Wy0qKDisGofv5vnkSceBlRl+60Ski+fOpWZgVuWwHf5PrRgbObH0MmXy9ekt
-	 QvM6K94rCVdOvNI+EYHe3zxyKPynPrM9eEiJK1Bkhpxy+15MhUenQvnsoTLCH5tpLm
-	 2HjjB+QoKYU957dtzbZesbgjCDk4b1eJCxjFiZSd94Y0CG6UwXiRFobf8nNHpbRcAc
-	 C4V97aXuc/yKm9dwnSmgURddc1snp16QHpXx/lq90/JwFwXPMFiWmB2s46WpisjL4V
-	 ZDnDE+rBvi0hQ==
+	b=io2PVvcpLVzXI4xwdGQ5WMayvv805GkO4mWHN34YFUsqHJISKZnec46xcUez4Mp/0
+	 AvDPPaeuLNAXNVTFrgpvs1nVF2IS3BDu24hchPGxklzrATk7O6a4IOcUgSPgZ4/gCp
+	 YuWCQVxuiwksld1ANXxyVyoaeQPpQslDt+PtfV//vHHyu6HCfZpe1j90OszogREH4x
+	 XMxf+XBrV/O3Ch4NhiDBqFxXGbQvcglxhiIIUg8vySNQrpZyt+dA+bw4RXecPyBu20
+	 rBoGZpuIP8PklskWnyDvvrtMCIYIosYGxM8WgrS6hk/YyIMmt22KCUX7Y6U3c4z+iq
+	 kIKy4LWi8F9sw==
 Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
-	id C53D2C53BD0; Fri, 17 Nov 2023 00:44:38 +0000 (UTC)
+	id 110C9C53BD4; Fri, 17 Nov 2023 01:39:22 +0000 (UTC)
 From: bugzilla-daemon@kernel.org
 To: linux-ext4@vger.kernel.org
 Subject: [Bug 217965] ext4(?) regression since 6.5.0 on sata hdd
-Date: Fri, 17 Nov 2023 00:44:38 +0000
+Date: Fri, 17 Nov 2023 01:39:21 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -31,14 +31,14 @@ X-Bugzilla-Component: ext4
 X-Bugzilla-Version: 2.5
 X-Bugzilla-Keywords: 
 X-Bugzilla-Severity: normal
-X-Bugzilla-Who: ojaswin.mujoo@ibm.com
+X-Bugzilla-Who: bugzilla@eyal.emu.id.au
 X-Bugzilla-Status: NEW
 X-Bugzilla-Resolution: 
 X-Bugzilla-Priority: P3
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-217965-13602-1kgEExRHtB@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: attachments.created
+Message-ID: <bug-217965-13602-fco7Ox0Wt5@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-217965-13602@https.bugzilla.kernel.org/>
 References: <bug-217965-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -54,30 +54,12 @@ MIME-Version: 1.0
 
 https://bugzilla.kernel.org/show_bug.cgi?id=3D217965
 
---- Comment #33 from Ojaswin Mujoo (ojaswin.mujoo@ibm.com) ---
-Hey Eyal,
+--- Comment #34 from Eyal Lebedinsky (bugzilla@eyal.emu.id.au) ---
+Created attachment 305414
+  --> https://bugzilla.kernel.org/attachment.cgi?id=3D305414&action=3Dedit
+detailed perf log
 
-Yes you are right, it is not able to find the vmlinux with debug symbols. Y=
-ou
-can either download the debuginfo package of the corresponding kernel which
-should place the vmlinux in  the required place or even having the "vmlinux"
-with debug symbols in the same directory as where you are running perf probe
-shall do.
-
-Also, once this error is resolved you *might* encounter something like " Er=
-ror:
-Failed to show lines." To fix it you can install the kernel source code pac=
-kage
-or just use the -s flag to point to the source code. (Example of how I use =
-it):
-
-sudo perf probe -s ~/workspace/9p -a "ext4_mb_find_good_group_avg_frag_lists
-order"
-
-Let me know if it still doesn't work.
-
-Thanks!
-Ojaswin
+Attachment for comment #34
 
 --=20
 You may reply to this email to add a comment.
