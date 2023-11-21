@@ -1,16 +1,16 @@
 Authentication-Results: smtp.subspace.kernel.org; dkim=none
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CB6ADF5
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CB408ED
 	for <linux-ext4@vger.kernel.org>; Mon, 20 Nov 2023 17:40:41 -0800 (PST)
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4SZ6X41kyDz4f3k5x
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Nov 2023 09:40:36 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4SZ6X33R9Tz4f3k5s
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Nov 2023 09:40:35 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id E1F631A070D
+	by mail.maildlp.com (Postfix) with ESMTP id 289881A0774
 	for <linux-ext4@vger.kernel.org>; Tue, 21 Nov 2023 09:40:38 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgA3iA6MClxlGMf4BQ--.64879S6;
-	Tue, 21 Nov 2023 09:40:38 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgA3iA6MClxlGMf4BQ--.64879S4;
+	Tue, 21 Nov 2023 09:40:37 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -21,12 +21,10 @@ Cc: tytso@mit.edu,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [RFC PATCH 2/6] ext4: make ext4_es_lookup_extent() return the next extent if not found
-Date: Tue, 21 Nov 2023 17:34:25 +0800
-Message-Id: <20231121093429.1827390-3-yi.zhang@huaweicloud.com>
+Subject: [RFC PATCH 0/6] ext4: make ext4_map_blocks() recognize delayed only extent
+Date: Tue, 21 Nov 2023 17:34:23 +0800
+Message-Id: <20231121093429.1827390-1-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20231121093429.1827390-1-yi.zhang@huaweicloud.com>
-References: <20231121093429.1827390-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -34,76 +32,59 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgA3iA6MClxlGMf4BQ--.64879S6
-X-Coremail-Antispam: 1UD129KBjvJXoW7Wryxuw1rtw15CFW7XrW8JFb_yoW8GFWfp3
-	sxZ34UKrW8uw10ka1xKr1UXr1Yg3W8KFWxGry3Kr1fG3Z3J34SkF1YyFy2va4kWrW8Gw4Y
-	qay8KrZrGayjvrDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUPSb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
-	8IrcIa0xkI8VA2jI8067AKxVWUXwA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK
-	0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4
-	x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l
-	84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I
-	8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1Y6r17McIj6I8E87Iv67AK
-	xVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zV
-	CS5cI20VAGYxC7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E
-	5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtV
-	W8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY
-	1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI
-	0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7s
-	RMTmhUUUUUU==
+X-CM-TRANSID:cCh0CgA3iA6MClxlGMf4BQ--.64879S4
+X-Coremail-Antispam: 1UD129KBjvJXoW7uF43AFW8ury8Wry7CF4kWFg_yoW8XrW8pr
+	9xCFyfKw1kX342gFZ3Xw47Jr1Fgws7CF4UGry7Gw18uFyrAFy8GF4DKF10vFyrKrWxtr47
+	ua1jkryUG3W7C3DanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUv014x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2ocxC64kIII
+	0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xv
+	wVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4
+	x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG
+	64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jrv_JF1lYx0Ex4A2jsIE14v26r
+	1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAq
+	YI8I648v4I1l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4
+	xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43
+	MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I
+	0E14v26r1j6r4UMIIF0xvE42xK8VAvwI8IcIk0rVWrZr1j6s0DMIIF0xvEx4A2jsIE14v2
+	6r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Jr0_GrUvcSsGvfC2KfnxnUUI43ZEXa7sRi
+	RwZDUUUUU==
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Make ext4_es_lookup_extent() return the next extent entry if we can't
-find the extent that lblk belongs to, it's useful to estimate and limit
-the length of a potential hole in ext4_map_blocks().
+Hello, guys.
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
----
- fs/ext4/extents_status.c | 21 ++++++++-------------
- 1 file changed, 8 insertions(+), 13 deletions(-)
+I'm working on switching ext4 buffer IO from buffer_head to iomap
+and enable large folio on regular file recently, this patch set is one
+of a preparation of this work. It first correct the hole length returned
+by ext4_map_blocks() when user query mapping type and blocks range, and
+then make this function and ext4_set_iomap() are able to distinguish
+delayed allocated only mapping from hole, finally cleanup the
+ext4_iomap_begin_report() by the way. This preparation patch set changes
+the ext4 map -> iomap converting logic in ext4_set_iomap(), so that the
+later buffer IO conversion can use it. This patch set is already passed
+'kvm-xfstests -g auto' tests.
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 1b1b1a8848a8..19a0cc904cd8 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -1012,19 +1012,9 @@ int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
- 		goto out;
- 	}
- 
--	node = tree->root.rb_node;
--	while (node) {
--		es1 = rb_entry(node, struct extent_status, rb_node);
--		if (lblk < es1->es_lblk)
--			node = node->rb_left;
--		else if (lblk > ext4_es_end(es1))
--			node = node->rb_right;
--		else {
--			found = 1;
--			break;
--		}
--	}
--
-+	es1 = __es_tree_search(&tree->root, lblk);
-+	if (es1 && in_range(lblk, es1->es_lblk, es1->es_len))
-+		found = 1;
- out:
- 	stats = &EXT4_SB(inode->i_sb)->s_es_stats;
- 	if (found) {
-@@ -1045,6 +1035,11 @@ int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
- 				*next_lblk = 0;
- 		}
- 	} else {
-+		if (es1) {
-+			es->es_lblk = es1->es_lblk;
-+			es->es_len = es1->es_len;
-+			es->es_pblk = es1->es_pblk;
-+		}
- 		percpu_counter_inc(&stats->es_stats_cache_misses);
- 	}
- 
+Thanks,
+Yi.
+
+Zhang Yi (6):
+  ext4: introduce ext4_es_skip_hole_extent() to skip hole extents
+  ext4: make ext4_es_lookup_extent() return the next extent if not found
+  ext4: correct the hole length returned by ext4_map_blocks()
+  ext4: add a hole extent entry in cache after punch
+  ext4: make ext4_map_blocks() distinguish delayed only mapping
+  ext4: make ext4_set_iomap() recognize IOMAP_DELALLOC mapping type
+
+ fs/ext4/ext4.h              |  7 ++++-
+ fs/ext4/extents.c           |  5 ++--
+ fs/ext4/extents_status.c    | 53 ++++++++++++++++++++++++--------
+ fs/ext4/extents_status.h    |  2 ++
+ fs/ext4/inode.c             | 60 ++++++++++++++++++-------------------
+ include/trace/events/ext4.h | 28 +++++++++++++++++
+ 6 files changed, 107 insertions(+), 48 deletions(-)
+
 -- 
 2.39.2
 
