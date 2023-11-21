@@ -1,16 +1,16 @@
 Authentication-Results: smtp.subspace.kernel.org; dkim=none
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 503B8CC
-	for <linux-ext4@vger.kernel.org>; Mon, 20 Nov 2023 17:40:42 -0800 (PST)
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4SZ6X50CC9z4f3k6J
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Nov 2023 09:40:37 +0800 (CST)
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CA90CE7
+	for <linux-ext4@vger.kernel.org>; Mon, 20 Nov 2023 17:40:41 -0800 (PST)
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4SZ6X22PwQz4f3lV9
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Nov 2023 09:40:34 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id AC90F1A0637
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Nov 2023 09:40:39 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 890CD1A070A
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Nov 2023 09:40:38 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgA3iA6MClxlGMf4BQ--.64879S8;
-	Tue, 21 Nov 2023 09:40:39 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgA3iA6MClxlGMf4BQ--.64879S5;
+	Tue, 21 Nov 2023 09:40:38 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -21,9 +21,9 @@ Cc: tytso@mit.edu,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [RFC PATCH 4/6] ext4: add a hole extent entry in cache after punch
-Date: Tue, 21 Nov 2023 17:34:27 +0800
-Message-Id: <20231121093429.1827390-5-yi.zhang@huaweicloud.com>
+Subject: [RFC PATCH 1/6] ext4: introduce ext4_es_skip_hole_extent() to skip hole extents
+Date: Tue, 21 Nov 2023 17:34:24 +0800
+Message-Id: <20231121093429.1827390-2-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20231121093429.1827390-1-yi.zhang@huaweicloud.com>
 References: <20231121093429.1827390-1-yi.zhang@huaweicloud.com>
@@ -34,83 +34,135 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgA3iA6MClxlGMf4BQ--.64879S8
-X-Coremail-Antispam: 1UD129KBjvJXoW7CF4fWF47JF1xAr1rGr1UGFg_yoW8tr17pa
-	sxAFy8Gr45W34q93yIgF4UZr12ya47G3yUXrWfKw10gry8Xr10yF1UtF13ZFy5tFW8Ja1Y
-	vF4UKryUXa13ArJanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUPY14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+X-CM-TRANSID:cCh0CgA3iA6MClxlGMf4BQ--.64879S5
+X-Coremail-Antispam: 1UD129KBjvJXoWxXF15ZFykZFyUurWfCF13XFb_yoWrJrWfpF
+	9xZ345K3yrWwsF9ayfGw17Xr1Yqa48CrW7Jr9xKr1rK3WIqr9akF1UtFy2vF9YqrW8tr1Y
+	qFW0k34DGa12ga7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUBE14x267AKxVW5JVWrJwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
-	0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
-	rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6x
-	IIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xv
-	wVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFc
-	xC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_
-	Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2
-	IErcIFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
-	14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIx
-	kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAF
-	wI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r
-	4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0pRHa0PU
-	UUUU=
+	0E87I2jVAFwI0_Jr4l82xGYIkIc2x26xkF7I0E14v26r1I6r4UM28lY4IEw2IIxxk0rwA2
+	F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjx
+	v20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2
+	z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0V
+	AKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_Gr1l
+	Ox8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErc
+	IFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v2
+	6r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2
+	Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_
+	Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMI
+	IF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0pR-eOJUUUUU
+	=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-In order to cache hole extents in the extent status tree and keep the
-hole continuity as much as possible, add a hole entry to the cache after
-punching a hole. It can reduce the 'hole' in some continuous hole extent
-entries.
+Introduce a new helper ext4_es_skip_hole_extent() to skip all hole
+extents in a search range, return the valid lblk of next not hole extent
+entry. It's useful to estimate and limit the length of a potential hole
+returned when querying mapping status in ext4_map_blocks().
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/ext4.h    | 3 +++
- fs/ext4/extents.c | 5 ++---
- fs/ext4/inode.c   | 2 ++
- 3 files changed, 7 insertions(+), 3 deletions(-)
+ fs/ext4/extents_status.c    | 32 ++++++++++++++++++++++++++++++++
+ fs/ext4/extents_status.h    |  2 ++
+ include/trace/events/ext4.h | 28 ++++++++++++++++++++++++++++
+ 3 files changed, 62 insertions(+)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9418359b1d9d..c2ca28c6ec38 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3681,6 +3681,9 @@ extern int ext4_convert_unwritten_io_end_vec(handle_t *handle,
- 					     ext4_io_end_t *io_end);
- extern int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 			   struct ext4_map_blocks *map, int flags);
-+extern void ext4_ext_put_gap_in_cache(struct inode *inode,
-+				      ext4_lblk_t hole_start,
-+				      ext4_lblk_t hole_len);
- extern int ext4_ext_calc_credits_for_single_extent(struct inode *inode,
- 						   int num,
- 						   struct ext4_ext_path *path);
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 202c76996b62..52bad225e3c8 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2275,9 +2275,8 @@ static ext4_lblk_t ext4_ext_determine_hole(struct inode *inode,
-  * calculate boundaries of the gap that the requested block fits into
-  * and cache this gap
-  */
--static void
--ext4_ext_put_gap_in_cache(struct inode *inode, ext4_lblk_t hole_start,
--			  ext4_lblk_t hole_len)
-+void ext4_ext_put_gap_in_cache(struct inode *inode, ext4_lblk_t hole_start,
-+			       ext4_lblk_t hole_len)
- {
- 	struct extent_status es;
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 6f7de14c0fa8..1b1b1a8848a8 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -944,6 +944,38 @@ void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	write_unlock(&EXT4_I(inode)->i_es_lock);
+ }
  
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 94e7b8500878..3908ce7f6fb8 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4034,6 +4034,8 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
- 			ret = ext4_ind_remove_space(handle, inode, first_block,
- 						    stop_block);
++/*
++ * ext4_es_skip_hole_extent() skip hole extents and loops up the next
++ * delayed/unwritten/mapped extent in extent status tree from lblk to
++ * end.
++ */
++ext4_lblk_t ext4_es_skip_hole_extent(struct inode *inode, ext4_lblk_t lblk,
++				     ext4_lblk_t len)
++{
++	struct extent_status *es = NULL;
++	ext4_lblk_t next_lblk;
++	struct rb_node *node;
++
++	read_lock(&EXT4_I(inode)->i_es_lock);
++	es = __es_tree_search(&EXT4_I(inode)->i_es_tree.root, lblk);
++
++	while (es && es->es_lblk < lblk + len) {
++		if (!ext4_es_is_hole(es))
++			break;
++		node = rb_next(&es->rb_node);
++		es = rb_entry(node, struct extent_status, rb_node);
++	}
++	if (!es || es->es_lblk >= lblk + len)
++		next_lblk = lblk + len;
++	else
++		next_lblk = es->es_lblk;
++
++	trace_ext4_es_skip_hole_extent(inode, lblk, len, next_lblk);
++	read_unlock(&EXT4_I(inode)->i_es_lock);
++
++	return next_lblk;
++}
++
+ /*
+  * ext4_es_lookup_extent() looks up an extent in extent status tree.
+  *
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+index d9847a4a25db..4f69322dd626 100644
+--- a/fs/ext4/extents_status.h
++++ b/fs/ext4/extents_status.h
+@@ -139,6 +139,8 @@ extern void ext4_es_find_extent_range(struct inode *inode,
+ 				      int (*match_fn)(struct extent_status *es),
+ 				      ext4_lblk_t lblk, ext4_lblk_t end,
+ 				      struct extent_status *es);
++ext4_lblk_t ext4_es_skip_hole_extent(struct inode *inode, ext4_lblk_t lblk,
++				     ext4_lblk_t len);
+ extern int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				 ext4_lblk_t *next_lblk,
+ 				 struct extent_status *es);
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 65029dfb92fb..84421cecec0b 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -2291,6 +2291,34 @@ TRACE_EVENT(ext4_es_find_extent_range_exit,
+ 		  __entry->pblk, show_extent_status(__entry->status))
+ );
  
-+		ext4_ext_put_gap_in_cache(inode, first_block,
-+					  stop_block - first_block);
- 		up_write(&EXT4_I(inode)->i_data_sem);
- 	}
- 	ext4_fc_track_range(handle, inode, first_block, stop_block);
++TRACE_EVENT(ext4_es_skip_hole_extent,
++	TP_PROTO(struct inode *inode, ext4_lblk_t lblk,
++		 ext4_lblk_t len, ext4_lblk_t next_lblk),
++
++	TP_ARGS(inode, lblk, len, next_lblk),
++
++	TP_STRUCT__entry(
++		__field(	dev_t,		dev		)
++		__field(	ino_t,		ino		)
++		__field(	ext4_lblk_t,	lblk		)
++		__field(	ext4_lblk_t,	len		)
++		__field(	ext4_lblk_t,	next		)
++	),
++
++	TP_fast_assign(
++		__entry->dev	= inode->i_sb->s_dev;
++		__entry->ino	= inode->i_ino;
++		__entry->lblk	= lblk;
++		__entry->len	= len;
++		__entry->next	= next_lblk;
++	),
++
++	TP_printk("dev %d,%d ino %lu [%u/%u) next_lblk %u",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long) __entry->ino, __entry->lblk,
++		  __entry->len, __entry->next)
++);
++
+ TRACE_EVENT(ext4_es_lookup_extent_enter,
+ 	TP_PROTO(struct inode *inode, ext4_lblk_t lblk),
+ 
 -- 
 2.39.2
 
