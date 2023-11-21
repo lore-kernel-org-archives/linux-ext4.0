@@ -1,134 +1,78 @@
-Authentication-Results: smtp.subspace.kernel.org; dkim=none
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 09D2FD8
-	for <linux-ext4@vger.kernel.org>; Mon, 20 Nov 2023 17:40:43 -0800 (PST)
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4SZ6X55mVpz4f3kkF
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Nov 2023 09:40:37 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 779911A0897
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Nov 2023 09:40:40 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgA3iA6MClxlGMf4BQ--.64879S10;
-	Tue, 21 Nov 2023 09:40:40 +0800 (CST)
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	jack@suse.cz,
-	ritesh.list@gmail.com,
-	yi.zhang@huawei.com,
-	yi.zhang@huaweicloud.com,
-	chengzhihao1@huawei.com,
-	yukuai3@huawei.com
-Subject: [RFC PATCH 6/6] ext4: make ext4_set_iomap() recognize IOMAP_DELALLOC mapping type
-Date: Tue, 21 Nov 2023 17:34:29 +0800
-Message-Id: <20231121093429.1827390-7-yi.zhang@huaweicloud.com>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20231121093429.1827390-1-yi.zhang@huaweicloud.com>
-References: <20231121093429.1827390-1-yi.zhang@huaweicloud.com>
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="fh+Iz59m"
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7652ACF
+	for <linux-ext4@vger.kernel.org>; Mon, 20 Nov 2023 18:03:29 -0800 (PST)
+Received: from cwcc.thunk.org (pool-173-48-82-21.bstnma.fios.verizon.net [173.48.82.21])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 3AL22s5b004315
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 20 Nov 2023 21:02:55 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1700532178; bh=RI/R/dL+OK3InX9FiqKDXHPEN021Sx3jNB6FQIcl/vA=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=fh+Iz59mAaEhYI6Rnl1Ws5eNRCdm8wGGiPBNrtSex6iEN3evmaEE4VQ38o7HziJIX
+	 1oE53Yx5gx4QD+4kGuf0DRlqTlOmzTWeEI2U3lwozuid2nmQUf3gYQ2cFfVX58ObIS
+	 AOF5SVofHZTGGj/d41vBKcNaXkE103Uvrh87PK5pi0LdMGHs5Xqj6zMO4rTyX9usd9
+	 drGCCLumglHiyBKsUPqRzlaLSTktuNh3kOnfULa7loj6SCmki5AcJ9s3b1I/ItdyGj
+	 OJ8dmIFQVzZuLCX6BAwNAawsKR4kbHK+H0hmI1SBGThTTmsfe2NgCjRISca5zfG2+N
+	 +bR7dioZFi29A==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+	id A86F715C02B0; Mon, 20 Nov 2023 21:02:54 -0500 (EST)
+Date: Mon, 20 Nov 2023 21:02:54 -0500
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Christian Brauner <brauner@kernel.org>,
+        Gabriel Krisman Bertazi <krisman@suse.de>, viro@zeniv.linux.org.uk,
+        linux-f2fs-devel@lists.sourceforge.net, ebiggers@kernel.org,
+        linux-fsdevel@vger.kernel.org, jaegeuk@kernel.org,
+        linux-ext4@vger.kernel.org
+Subject: Re: [f2fs-dev] [PATCH v6 0/9] Support negative dentries on
+ case-insensitive ext4 and f2fs
+Message-ID: <20231121020254.GB291888@mit.edu>
+References: <20230816050803.15660-1-krisman@suse.de>
+ <20231025-selektiert-leibarzt-5d0070d85d93@brauner>
+ <655a9634.630a0220.d50d7.5063SMTPIN_ADDED_BROKEN@mx.google.com>
+ <20231120-nihilismus-verehren-f2b932b799e0@brauner>
+ <CAHk-=whTCWwfmSzv3uVLN286_WZ6coN-GNw=4DWja7NZzp5ytg@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgA3iA6MClxlGMf4BQ--.64879S10
-X-Coremail-Antispam: 1UD129KBjvJXoW7Aw1kKFWkAr45AF4UZr43Wrg_yoW8tFW8pa
-	9xKFy7GF43Xr1qgr48trWUZr1Yk3WUK3y7WrWfG3s5Cr10yry8tF48CF1ayF90qrWxZw1S
-	qF4UKr18ua1SyFDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUPF14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
-	0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
-	rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6x
-	IIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xv
-	wVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFc
-	xC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_
-	Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2
-	IErcIFxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
-	14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIx
-	kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAF
-	wI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJV
-	W8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjTRNZ2-
-	UUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+In-Reply-To: <CAHk-=whTCWwfmSzv3uVLN286_WZ6coN-GNw=4DWja7NZzp5ytg@mail.gmail.com>
 
-From: Zhang Yi <yi.zhang@huawei.com>
+On Mon, Nov 20, 2023 at 10:07:51AM -0800, Linus Torvalds wrote:
+> Of course, "do it in shared generic code" doesn't tend to really fix
+> the braindamage, but at least it's now shared braindamage and not
+> spread out all over. I'm looking at things like
+> generic_ci_d_compare(), and it hurts to see the mindless "let's do
+> lookups and compares one utf8 character at a time". What a disgrace.
+> Somebody either *really* didn't care, or was a Unicode person who
+> didn't understand the point of UTF-8.
 
-Since ext4_map_blocks() can recognize a delayed allocated only extent,
-make ext4_set_iomap() can also recognize it, and remove the useless
-separate check in ext4_iomap_begin_report().
+This isn't because of case-folding brain damage, but rather Unicode
+brain damage.  We compare one character at a time because it's
+possible for some character like é to either be encoded as 0x0089 (aka
+"Latin Small Letter E with Acute") OR as 0x0065 0x0301 ("Latin Small
+Letter E" plus "Combining Acute Accent").
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
----
- fs/ext4/inode.c | 32 +++-----------------------------
- 1 file changed, 3 insertions(+), 29 deletions(-)
+Typically, we pretend that UTF-8 means that we can just encode é, or
+0x0089 as 0xC3 0xA9 and then call it a day and just use strcmp(3) on
+the sucker.  But Unicode is a lot more insane than that.  Technically,
+0x65 0xCC 0x81 is the same character as 0xC3 0xA9.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 74b41566d31a..17fe2bd83617 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3279,6 +3279,9 @@ static void ext4_set_iomap(struct inode *inode, struct iomap *iomap,
- 		iomap->addr = (u64) map->m_pblk << blkbits;
- 		if (flags & IOMAP_DAX)
- 			iomap->addr += EXT4_SB(inode->i_sb)->s_dax_part_off;
-+	} else if (map->m_flags & EXT4_MAP_DELAYED) {
-+		iomap->type = IOMAP_DELALLOC;
-+		iomap->addr = IOMAP_NULL_ADDR;
- 	} else {
- 		iomap->type = IOMAP_HOLE;
- 		iomap->addr = IOMAP_NULL_ADDR;
-@@ -3441,35 +3444,11 @@ const struct iomap_ops ext4_iomap_overwrite_ops = {
- 	.iomap_end		= ext4_iomap_end,
- };
- 
--static bool ext4_iomap_is_delalloc(struct inode *inode,
--				   struct ext4_map_blocks *map)
--{
--	struct extent_status es;
--	ext4_lblk_t offset = 0, end = map->m_lblk + map->m_len - 1;
--
--	ext4_es_find_extent_range(inode, &ext4_es_is_delayed,
--				  map->m_lblk, end, &es);
--
--	if (!es.es_len || es.es_lblk > end)
--		return false;
--
--	if (es.es_lblk > map->m_lblk) {
--		map->m_len = es.es_lblk - map->m_lblk;
--		return false;
--	}
--
--	offset = map->m_lblk - es.es_lblk;
--	map->m_len = es.es_len - offset;
--
--	return true;
--}
--
- static int ext4_iomap_begin_report(struct inode *inode, loff_t offset,
- 				   loff_t length, unsigned int flags,
- 				   struct iomap *iomap, struct iomap *srcmap)
- {
- 	int ret;
--	bool delalloc = false;
- 	struct ext4_map_blocks map;
- 	u8 blkbits = inode->i_blkbits;
- 
-@@ -3510,13 +3489,8 @@ static int ext4_iomap_begin_report(struct inode *inode, loff_t offset,
- 	ret = ext4_map_blocks(NULL, inode, &map, 0);
- 	if (ret < 0)
- 		return ret;
--	if (ret == 0)
--		delalloc = ext4_iomap_is_delalloc(inode, &map);
--
- set_iomap:
- 	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
--	if (delalloc && iomap->type == IOMAP_HOLE)
--		iomap->type = IOMAP_DELALLOC;
- 
- 	return 0;
- }
--- 
-2.39.2
+> Oh well. I guess people went "this is going to suck anyway, so let's
+> make sure it *really* sucks".
 
+It's more like, "this is going to suck, but if it's going to suck
+anyway, let's implement the full Unicode spec in all its gory^H^H^H^H
+glory, whether or not it's sane".
+
+
+					- Ted
