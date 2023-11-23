@@ -1,16 +1,16 @@
 Authentication-Results: smtp.subspace.kernel.org; dkim=none
-Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5D275D50;
-	Thu, 23 Nov 2023 04:52:07 -0800 (PST)
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4SbdKs3pZqz4f3kFX;
-	Thu, 23 Nov 2023 20:52:01 +0800 (CST)
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 02CECD40;
+	Thu, 23 Nov 2023 04:52:09 -0800 (PST)
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4SbdKt15vKz4f3m7T;
+	Thu, 23 Nov 2023 20:52:02 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 3B2B71A0557;
-	Thu, 23 Nov 2023 20:52:03 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 6E38C1A0734;
+	Thu, 23 Nov 2023 20:52:06 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgDn6xHdSl9lSfnfBg--.20473S13;
-	Thu, 23 Nov 2023 20:52:03 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgDn6xHdSl9lSfnfBg--.20473S20;
+	Thu, 23 Nov 2023 20:52:06 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -24,9 +24,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [RFC PATCH 09/18] ext4: implement buffered read iomap path
-Date: Thu, 23 Nov 2023 20:51:11 +0800
-Message-Id: <20231123125121.4064694-10-yi.zhang@huaweicloud.com>
+Subject: [RFC PATCH 16/18] ext4: impliment mmap iomap path
+Date: Thu, 23 Nov 2023 20:51:18 +0800
+Message-Id: <20231123125121.4064694-17-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20231123125121.4064694-1-yi.zhang@huaweicloud.com>
 References: <20231123125121.4064694-1-yi.zhang@huaweicloud.com>
@@ -37,10 +37,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgDn6xHdSl9lSfnfBg--.20473S13
-X-Coremail-Antispam: 1UD129KBjvJXoW7KF17CF4fuF45Ww1kXFyrWFg_yoW8ur1xpF
-	98KFy5GF47XrnI9a1SqFZrAr1ak3Wxta1UZrWfWasxCFyYkrW7Kay0gFyYyF15X3y8Ary8
-	XF4jkr18GF4UArDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:cCh0CgDn6xHdSl9lSfnfBg--.20473S20
+X-Coremail-Antispam: 1UD129KBjvJXoWxJFyUAr4kCFyfuF4rCF4kJFb_yoW5WFyfpF
+	9xAF1rGr43W3sI9rs3WF4DZw15Ka4xKr4UWryfWw1Yq39FqryxtF48KFn8ZF15t3yrAF47
+	WF4jkryUu3Wa9rDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUPI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -51,77 +51,92 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7KF17CF4fuF45Ww1kXFyrWFg_yoW8ur1xpF
 	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
 	kIc2xKxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
 	14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIx
-	kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAF
-	wI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr
-	0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUQ
+	kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAF
+	wI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr
+	0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUQ
 	SdkUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Implement ext4_iomap_buffered_io_begin() blocks mapping helper, it query
-block mapping and use ext4_set_iomap() convert ext4 map to iomap, then
-the buffered read path can be supported by iomap frame.
+Impliment mmap iomap path, direct use iomap_page_mkwrite() for the
+.page_mkwrite() callback.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/inode.c | 37 +++++++++++++++++++++++++++++++++++--
- 1 file changed, 35 insertions(+), 2 deletions(-)
+ fs/ext4/ext4.h  |  1 +
+ fs/ext4/file.c  |  6 ++++++
+ fs/ext4/inode.c | 24 ++++++++++++++++++++++++
+ 3 files changed, 31 insertions(+)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4eef3828d5fd..4c206cf37a49 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3525,14 +3525,47 @@ const struct iomap_ops ext4_iomap_report_ops = {
- 	.iomap_begin = ext4_iomap_begin_report,
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 65373d53ba6a..6b3e34ea58ad 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3006,6 +3006,7 @@ extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
+ extern int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
+ 			     loff_t lstart, loff_t lend);
+ extern vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf);
++extern vm_fault_t ext4_iomap_page_mkwrite(struct vm_fault *vmf);
+ extern qsize_t *ext4_get_reserved_space(struct inode *inode);
+ extern int ext4_get_projid(struct inode *inode, kprojid_t *projid);
+ extern void ext4_da_release_space(struct inode *inode, int to_free);
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 6830ea3a6c59..15fe65744cba 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -798,6 +798,12 @@ static const struct vm_operations_struct ext4_file_vm_ops = {
+ 	.page_mkwrite   = ext4_page_mkwrite,
  };
  
--static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
-+static int ext4_iomap_buffered_io_begin(struct inode *inode, loff_t offset,
-+				loff_t length, unsigned int flags,
-+				struct iomap *iomap, struct iomap *srcmap)
++static const struct vm_operations_struct ext4_iomap_file_vm_ops = {
++	.fault		= filemap_fault,
++	.map_pages	= filemap_map_pages,
++	.page_mkwrite   = ext4_iomap_page_mkwrite,
++};
++
+ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
  {
-+	int ret;
-+	struct ext4_map_blocks map;
-+	u8 blkbits = inode->i_blkbits;
-+
-+	if ((offset >> blkbits) > EXT4_MAX_LOGICAL_BLOCK)
-+		return -EINVAL;
-+
-+	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
-+		return -ERANGE;
-+
-+	/*
-+	 * Calculate the first and last logical blocks respectively.
-+	 */
-+	map.m_lblk = offset >> blkbits;
-+	map.m_len = min_t(loff_t, (offset + length - 1) >> blkbits,
-+			  EXT4_MAX_LOGICAL_BLOCK) - map.m_lblk + 1;
-+
-+	ret = ext4_map_blocks(NULL, inode, &map, 0);
-+	if (ret < 0)
-+		return ret;
-+
-+	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
- 	return 0;
- }
+ 	struct inode *inode = file->f_mapping->host;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ca66afd61fb3..2efa898403f7 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3748,6 +3748,10 @@ const struct iomap_ops ext4_iomap_read_ops = {
+ 	.iomap_begin = ext4_iomap_buffered_io_begin,
+ };
  
--static void ext4_iomap_readahead(struct readahead_control *rac)
-+const struct iomap_ops ext4_iomap_read_ops = {
++const struct iomap_ops ext4_iomap_page_mkwrite_ops = {
 +	.iomap_begin = ext4_iomap_buffered_io_begin,
 +};
 +
-+static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
+ static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
  {
-+	return iomap_read_folio(folio, &ext4_iomap_read_ops);
-+}
- 
-+static void ext4_iomap_readahead(struct readahead_control *rac)
-+{
-+	iomap_readahead(rac, &ext4_iomap_read_ops);
+ 	return iomap_read_folio(folio, &ext4_iomap_read_ops);
+@@ -6698,3 +6702,23 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+ 	ext4_journal_stop(handle);
+ 	goto out;
  }
- 
- static int ext4_iomap_writepages(struct address_space *mapping,
++
++vm_fault_t ext4_iomap_page_mkwrite(struct vm_fault *vmf)
++{
++	struct inode *inode = file_inode(vmf->vma->vm_file);
++	struct address_space *mapping = inode->i_mapping;
++	vm_fault_t ret;
++
++	if (unlikely(IS_IMMUTABLE(inode)))
++		return VM_FAULT_SIGBUS;
++
++	sb_start_pagefault(inode->i_sb);
++	file_update_time(vmf->vma->vm_file);
++
++	filemap_invalidate_lock_shared(mapping);
++	ret = iomap_page_mkwrite(vmf, &ext4_iomap_page_mkwrite_ops);
++	filemap_invalidate_unlock_shared(mapping);
++
++	sb_end_pagefault(inode->i_sb);
++	return ret;
++}
 -- 
 2.39.2
 
