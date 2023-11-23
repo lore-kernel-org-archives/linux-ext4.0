@@ -1,16 +1,16 @@
 Authentication-Results: smtp.subspace.kernel.org; dkim=none
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ABA2E1A8;
-	Thu, 23 Nov 2023 04:52:06 -0800 (PST)
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4SbdKs2yRcz4f3kkH;
-	Thu, 23 Nov 2023 20:52:01 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 256811A050A;
-	Thu, 23 Nov 2023 20:52:04 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgDn6xHdSl9lSfnfBg--.20473S15;
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8BDEBD56;
+	Thu, 23 Nov 2023 04:52:08 -0800 (PST)
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4SbdKv1qm3z4f3kkN;
 	Thu, 23 Nov 2023 20:52:03 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id F2B2F1A056E;
+	Thu, 23 Nov 2023 20:52:05 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.104.67])
+	by APP1 (Coremail) with SMTP id cCh0CgDn6xHdSl9lSfnfBg--.20473S19;
+	Thu, 23 Nov 2023 20:52:05 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -24,9 +24,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [RFC PATCH 11/18] iomap: add a fs private parameter to iomap_ioend
-Date: Thu, 23 Nov 2023 20:51:13 +0800
-Message-Id: <20231123125121.4064694-12-yi.zhang@huaweicloud.com>
+Subject: [RFC PATCH 15/18] ext4: writeback partial blocks before zero range
+Date: Thu, 23 Nov 2023 20:51:17 +0800
+Message-Id: <20231123125121.4064694-16-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20231123125121.4064694-1-yi.zhang@huaweicloud.com>
 References: <20231123125121.4064694-1-yi.zhang@huaweicloud.com>
@@ -37,10 +37,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgDn6xHdSl9lSfnfBg--.20473S15
-X-Coremail-Antispam: 1UD129KBjvdXoW7Xw4fKrWDur4fKFW7Ar1xGrg_yoWkZwb_Aa
-	yvgr4kur4rJF1S9w1I9r4xXFZrC348Gr18WryrtryfGFnxJan5AwnakrW3Aw4fG3WxGFn3
-	Jw4kXr1ftry7WjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+X-CM-TRANSID:cCh0CgDn6xHdSl9lSfnfBg--.20473S19
+X-Coremail-Antispam: 1UD129KBjvdXoW7JrW5Aw4UCw1kAw4rKw4DJwb_yoWkCFg_Za
+	4rJrn5JrWftr97uas7CFy3ZrWIyw4vkr1xuFyFq3s8ZFW2gws29wn5Ar18ZrZ8WF429ry3
+	Cr4qqF4xGFy7ujkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
 	9fnUUIcSsGvfJTRUUUbqxFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
 	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAVCq3wA2048vs2
 	IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28E
@@ -59,39 +59,38 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Add a private parameter to iomap_ioend structure, letting filesystems
-can pass something they needed from .prepare_ioend() to IO end.
+If we zero partial blocks, iomap_zero_iter() will skip zeroing out if
+the srcmap is IOMAP_UNWRITTEN, it works fine in xfs because this type
+means the block is pure unwritten, doesn't contain any delayed data,
+but in ext4, IOMAP_UNWRITTEN may contain delayed data, it may hard to
+change the definition of this flag in ext4, so just writeback partial
+blocks firstly, make sure it becomes IOMAP_MAPPED.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/iomap/buffered-io.c | 1 +
- include/linux/iomap.h  | 1 +
- 2 files changed, 2 insertions(+)
+ fs/ext4/extents.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
-index 2bc0aa23fde3..fd4d43bafd1b 100644
---- a/fs/iomap/buffered-io.c
-+++ b/fs/iomap/buffered-io.c
-@@ -1676,6 +1676,7 @@ iomap_alloc_ioend(struct inode *inode, struct iomap_writepage_ctx *wpc,
- 	ioend->io_offset = offset;
- 	ioend->io_bio = bio;
- 	ioend->io_sector = sector;
-+	ioend->io_private = NULL;
- 	return ioend;
- }
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 52bad225e3c8..b502edcf014b 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4576,6 +4576,15 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+ 		if (ret)
+ 			goto out_mutex;
  
-diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-index 96dd0acbba44..8b3296a5474d 100644
---- a/include/linux/iomap.h
-+++ b/include/linux/iomap.h
-@@ -300,6 +300,7 @@ struct iomap_ioend {
- 	sector_t		io_sector;	/* start sector of ioend */
- 	struct bio		*io_bio;	/* bio being built */
- 	struct bio		io_inline_bio;	/* MUST BE LAST! */
-+	void			*io_private;	/* fs private pointer */
- };
++		ret = filemap_write_and_wait_range(mapping,
++				round_down(offset, 1 << blkbits), offset);
++		if (ret)
++			goto out_mutex;
++
++		ret = filemap_write_and_wait_range(mapping, offset + len,
++				round_up((offset + len), 1 << blkbits));
++		if (ret)
++			goto out_mutex;
+ 	}
  
- struct iomap_writeback_ops {
+ 	/* Zero range excluding the unaligned edges */
 -- 
 2.39.2
 
