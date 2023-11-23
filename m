@@ -1,16 +1,16 @@
 Authentication-Results: smtp.subspace.kernel.org; dkim=none
-Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 59123D4E;
-	Thu, 23 Nov 2023 04:52:07 -0800 (PST)
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4SbdKs75ZFz4f3kFq;
-	Thu, 23 Nov 2023 20:52:01 +0800 (CST)
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D25B01AE;
+	Thu, 23 Nov 2023 04:52:09 -0800 (PST)
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4SbdKv0ZFJz4f3m7Z;
+	Thu, 23 Nov 2023 20:52:03 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id AB4811A01E8;
-	Thu, 23 Nov 2023 20:52:03 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 5C3EF1A0729;
+	Thu, 23 Nov 2023 20:52:07 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgDn6xHdSl9lSfnfBg--.20473S14;
-	Thu, 23 Nov 2023 20:52:03 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgDn6xHdSl9lSfnfBg--.20473S22;
+	Thu, 23 Nov 2023 20:52:07 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -24,9 +24,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [RFC PATCH 10/18] ext4: implement buffered write iomap path
-Date: Thu, 23 Nov 2023 20:51:12 +0800
-Message-Id: <20231123125121.4064694-11-yi.zhang@huaweicloud.com>
+Subject: [RFC PATCH 17/18] ext4: partial enable iomap for regular file's buffered IO path
+Date: Thu, 23 Nov 2023 20:51:20 +0800
+Message-Id: <20231123125121.4064694-19-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20231123125121.4064694-1-yi.zhang@huaweicloud.com>
 References: <20231123125121.4064694-1-yi.zhang@huaweicloud.com>
@@ -37,11 +37,11 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgDn6xHdSl9lSfnfBg--.20473S14
-X-Coremail-Antispam: 1UD129KBjvJXoW3WF1UJF4xXF1xXr17Xw1DJrb_yoW3Jw43pa
-	93CFy5Ga15W3s29F4ftr4UZF15K3W0yw47CrWfWr98Aa4Utry3KF10kFyavFy5trWxZF4j
-	gF4rKry8Ca1UC37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUPI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+X-CM-TRANSID:cCh0CgDn6xHdSl9lSfnfBg--.20473S22
+X-Coremail-Antispam: 1UD129KBjvJXoW3XF4UAryxCw1fCw47AF17trb_yoWxAr4rpr
+	ZIkr1rGw4Du3sF9a1ftF4UZr1Yk3WxKw4UWryS9r1fXFyDX34SqF18tF15A3W5trW8uw1S
+	qF4jkr1UWw43CrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
 	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
@@ -49,274 +49,187 @@ X-Coremail-Antispam: 1UD129KBjvJXoW3WF1UJF4xXF1xXr17Xw1DJrb_yoW3Jw43pa
 	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
 	IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
 	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
-	kIc2xKxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
-	14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIx
-	kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAF
-	wI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr
-	0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUQ
-	SdkUUUUU=
+	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
+	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
+	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
+	daVFxhVjvjDU0xZFpf9x0JUQFxUUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Implement both buffer write path with/without delayed allocation
-feature, also inherit the fallback to nodelalloc logic from buffer_head
-path when the free space is about to run out. After switching to iomap,
-we support mapping multi-blocks once a time, which could bring a lot of
-performance gains.
+Partial enable iomap for regular file's buffered IO path on default
+mount option and default filesystem features. Does not support inline
+data, fs_verity, fs_crypt, bigalloc, dax and data=journal mode yet,
+those will be supported in the future.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/inode.c | 209 +++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 207 insertions(+), 2 deletions(-)
+ fs/ext4/ext4.h        |  2 ++
+ fs/ext4/ext4_jbd2.c   |  3 ++-
+ fs/ext4/file.c        |  8 +++++++-
+ fs/ext4/ialloc.c      |  3 +++
+ fs/ext4/inode.c       | 31 +++++++++++++++++++++++++++++++
+ fs/ext4/move_extent.c |  8 ++++++++
+ 6 files changed, 53 insertions(+), 2 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6b3e34ea58ad..7ce688cb1b07 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2959,6 +2959,7 @@ int ext4_walk_page_buffers(handle_t *handle,
+ 				     struct buffer_head *bh));
+ int do_journal_get_write_access(handle_t *handle, struct inode *inode,
+ 				struct buffer_head *bh);
++extern bool ext4_should_use_buffered_iomap(struct inode *inode);
+ #define FALL_BACK_TO_NONDELALLOC 1
+ #define CONVERT_INLINE_DATA	 2
+ 
+@@ -3822,6 +3823,7 @@ static inline void ext4_clear_io_unwritten_flag(ext4_io_end_t *io_end)
+ extern const struct iomap_ops ext4_iomap_ops;
+ extern const struct iomap_ops ext4_iomap_overwrite_ops;
+ extern const struct iomap_ops ext4_iomap_report_ops;
++extern const struct iomap_ops ext4_iomap_buffered_write_ops;
+ 
+ static inline int ext4_buffer_uptodate(struct buffer_head *bh)
+ {
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index d1a2e6624401..cf25cdda7234 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -16,7 +16,8 @@ int ext4_inode_journal_mode(struct inode *inode)
+ 	    ext4_test_inode_flag(inode, EXT4_INODE_EA_INODE) ||
+ 	    test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA ||
+ 	    (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
+-	    !test_opt(inode->i_sb, DELALLOC))) {
++	     !ext4_test_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP) &&
++	     !test_opt(inode->i_sb, DELALLOC))) {
+ 		/* We do not support data journalling for encrypted data */
+ 		if (S_ISREG(inode->i_mode) && IS_ENCRYPTED(inode))
+ 			return EXT4_INODE_ORDERED_DATA_MODE;  /* ordered */
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 15fe65744cba..7e3352b3b752 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -296,7 +296,11 @@ static ssize_t ext4_buffered_write_iter(struct kiocb *iocb,
+ 	if (ret <= 0)
+ 		goto out;
+ 
+-	ret = generic_perform_write(iocb, from);
++	if (ext4_test_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP))
++		ret = iomap_file_buffered_write(iocb, from,
++						&ext4_iomap_buffered_write_ops);
++	else
++		ret = generic_perform_write(iocb, from);
+ 
+ out:
+ 	inode_unlock(inode);
+@@ -823,6 +827,8 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
+ 	if (IS_DAX(file_inode(file))) {
+ 		vma->vm_ops = &ext4_dax_vm_ops;
+ 		vm_flags_set(vma, VM_HUGEPAGE);
++	} else if (ext4_test_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP)) {
++		vma->vm_ops = &ext4_iomap_file_vm_ops;
+ 	} else {
+ 		vma->vm_ops = &ext4_file_vm_ops;
+ 	}
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index b65058d972f9..0aae2810dbf6 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -1336,6 +1336,9 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
+ 		}
+ 	}
+ 
++	if (ext4_should_use_buffered_iomap(inode))
++		ext4_set_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP);
++
+ 	if (ext4_handle_valid(handle)) {
+ 		ei->i_sync_tid = handle->h_transaction->t_tid;
+ 		ei->i_datasync_tid = handle->h_transaction->t_tid;
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4c206cf37a49..9229297e1efc 100644
+index 2efa898403f7..33920dc461a8 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -3525,13 +3525,154 @@ const struct iomap_ops ext4_iomap_report_ops = {
- 	.iomap_begin = ext4_iomap_begin_report,
- };
+@@ -779,6 +779,8 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
  
-+static int ext4_iomap_da_map_blocks(struct inode *inode,
-+				    struct ext4_map_blocks *map)
-+{
-+	struct extent_status es;
-+	unsigned int status;
-+	ext4_lblk_t next;
-+	int mapped_len;
-+	int ret = 0;
-+#ifdef ES_AGGRESSIVE_TEST
-+	struct ext4_map_blocks orig_map;
-+
-+	memcpy(&orig_map, map, sizeof(*map));
-+#endif
-+
-+	map->m_flags = 0;
-+	ext_debug(inode, "max_blocks %u, logical block %llu\n", map->m_len,
-+		  (unsigned long long)map->m_lblk);
-+
-+	/* Lookup extent status tree firstly */
-+	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
-+		int es_len = es.es_len - (map->m_lblk - es.es_lblk);
-+
-+		map->m_len = min_t(unsigned int, map->m_len, es_len);
-+		if (ext4_es_is_delonly(&es)) {
-+			map->m_pblk = 0;
-+			map->m_flags |= EXT4_MAP_DELAYED;
-+			return 0;
-+		}
-+		if (ext4_es_is_hole(&es)) {
-+			down_read(&EXT4_I(inode)->i_data_sem);
-+			goto add_delayed;
-+		}
-+
-+		map->m_pblk = ext4_es_pblock(&es) + map->m_lblk - es.es_lblk;
-+		if (ext4_es_is_written(&es))
-+			map->m_flags |= EXT4_MAP_MAPPED;
-+		else if (ext4_es_is_unwritten(&es))
-+			map->m_flags |= EXT4_MAP_UNWRITTEN;
-+		else
-+			BUG();
-+
-+#ifdef ES_AGGRESSIVE_TEST
-+		ext4_map_blocks_es_recheck(NULL, inode, map, &orig_map, 0);
-+#endif
-+		/* Already delayed */
-+		if (ext4_es_is_delayed(&es))
-+			return 0;
-+
-+		down_read(&EXT4_I(inode)->i_data_sem);
-+		goto insert_extent;
-+	}
-+
-+	/*
-+	 * Not found cached extents, adjust the length if it has been
-+	 * partially allocated.
-+	 */
-+	if (es.es_lblk > map->m_lblk &&
-+	    es.es_lblk < map->m_lblk + map->m_len) {
-+		next = es.es_lblk;
-+		if (ext4_es_is_hole(&es))
-+			next = ext4_es_skip_hole_extent(inode, map->m_lblk,
-+							map->m_len);
-+		map->m_len = next - map->m_lblk;
-+	}
-+
-+	/*
-+	 * Try to see if we can get blocks without requesting new file
-+	 * system blocks.
-+	 */
-+	down_read(&EXT4_I(inode)->i_data_sem);
-+	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-+		mapped_len = ext4_ext_map_blocks(NULL, inode, map, 0);
-+	else
-+		mapped_len = ext4_ind_map_blocks(NULL, inode, map, 0);
-+	if (mapped_len < 0) {
-+		ret = mapped_len;
-+		goto out_unlock;
-+	}
-+	if (mapped_len == 0)
-+		goto add_delayed;
-+
-+	if (unlikely(mapped_len != map->m_len)) {
-+		ext4_warning(inode->i_sb,
-+			     "ES len assertion failed for inode %lu: "
-+			     "retval %d != map->m_len %d",
-+			     inode->i_ino, mapped_len, map->m_len);
-+		WARN_ON(1);
-+	}
-+
-+insert_extent:
-+	status = map->m_flags & EXT4_MAP_UNWRITTEN ?
-+			EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
-+	if (status == EXTENT_STATUS_UNWRITTEN)
-+		status |= EXTENT_STATUS_DELAYED;
-+	ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
-+			      map->m_pblk, status);
-+	goto out_unlock;
-+add_delayed:
-+	ret = ext4_insert_delayed_blocks(inode, map->m_lblk, map->m_len);
-+out_unlock:
-+	up_read((&EXT4_I(inode)->i_data_sem));
-+	return ret;
-+}
-+
-+static int ext4_iomap_noda_map_blocks(struct inode *inode,
-+				      struct ext4_map_blocks *map)
-+{
-+	handle_t *handle;
-+	int ret, needed_blocks;
-+	int flags;
-+
-+	/*
-+	 * Reserve one block more for addition to orphan list in case
-+	 * we allocate blocks but write fails for some reason.
-+	 */
-+	needed_blocks = ext4_writepage_trans_blocks(inode) + 1;
-+	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, needed_blocks);
-+	if (IS_ERR(handle))
-+		return PTR_ERR(handle);
-+
-+	if (ext4_should_dioread_nolock(inode))
-+		flags = EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT;
-+	else
-+		flags = EXT4_GET_BLOCKS_CREATE;
-+
-+	ret = ext4_map_blocks(handle, inode, map, flags);
-+	if (ret < 0) {
-+		ext4_journal_stop(handle);
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+#define IOMAP_F_EXT4_NONDELALLOC IOMAP_F_PRIVATE
-+
- static int ext4_iomap_buffered_io_begin(struct inode *inode, loff_t offset,
- 				loff_t length, unsigned int flags,
- 				struct iomap *iomap, struct iomap *srcmap)
- {
--	int ret;
-+	int ret, retries = 0;
- 	struct ext4_map_blocks map;
- 	u8 blkbits = inode->i_blkbits;
-+	bool no_delalloc = false;
-+
-+	if ((flags & IOMAP_WRITE) &&
-+	    unlikely(ext4_forced_shutdown(inode->i_sb)))
-+		return -EIO;
- 
- 	if ((offset >> blkbits) > EXT4_MAX_LOGICAL_BLOCK)
- 		return -EINVAL;
-@@ -3539,6 +3680,7 @@ static int ext4_iomap_buffered_io_begin(struct inode *inode, loff_t offset,
- 	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
+ 	if (ext4_has_inline_data(inode))
  		return -ERANGE;
++	if (WARN_ON(ext4_test_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP)))
++		return -EINVAL;
  
-+retry:
- 	/*
- 	 * Calculate the first and last logical blocks respectively.
- 	 */
-@@ -3546,14 +3688,77 @@ static int ext4_iomap_buffered_io_begin(struct inode *inode, loff_t offset,
- 	map.m_len = min_t(loff_t, (offset + length - 1) >> blkbits,
- 			  EXT4_MAX_LOGICAL_BLOCK) - map.m_lblk + 1;
- 
--	ret = ext4_map_blocks(NULL, inode, &map, 0);
-+	if (flags & IOMAP_WRITE) {
-+		if (test_opt(inode->i_sb, DELALLOC) &&
-+		    !ext4_nonda_switch(inode->i_sb)) {
-+			ret = ext4_iomap_da_map_blocks(inode, &map);
-+		} else {
-+			ret = ext4_iomap_noda_map_blocks(inode, &map);
-+			no_delalloc = true;
-+		}
-+		if (ret == -ENOSPC &&
-+		    ext4_should_retry_alloc(inode->i_sb, &retries))
-+			goto retry;
-+	} else {
-+		ret = ext4_map_blocks(NULL, inode, &map, 0);
-+	}
- 	if (ret < 0)
- 		return ret;
- 
- 	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
-+	if (no_delalloc)
-+		iomap->flags |= IOMAP_F_EXT4_NONDELALLOC;
-+
- 	return 0;
+ 	map.m_lblk = iblock;
+ 	map.m_len = bh->b_size >> inode->i_blkbits;
+@@ -4121,6 +4123,8 @@ void ext4_set_aops(struct inode *inode)
+ 	}
+ 	if (IS_DAX(inode))
+ 		inode->i_mapping->a_ops = &ext4_dax_aops;
++	else if (ext4_test_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP))
++		inode->i_mapping->a_ops = &ext4_iomap_aops;
+ 	else if (test_opt(inode->i_sb, DELALLOC))
+ 		inode->i_mapping->a_ops = &ext4_da_aops;
+ 	else
+@@ -5185,6 +5189,30 @@ static const char *check_igot_inode(struct inode *inode, ext4_iget_flags flags)
+ 	return NULL;
  }
  
-+static int ext4_iomap_buffered_write_end(struct inode *inode, loff_t offset,
-+					 loff_t length, ssize_t written,
-+					 unsigned flags, struct iomap *iomap)
++bool ext4_should_use_buffered_iomap(struct inode *inode)
 +{
-+	handle_t *handle;
-+	int ret = 0, ret2;
++	struct super_block *sb = inode->i_sb;
 +
-+	if (!(flags & IOMAP_WRITE))
-+		return 0;
-+	if (!(iomap->flags & IOMAP_F_EXT4_NONDELALLOC))
-+		return 0;
++	if (ext4_has_feature_inline_data(sb))
++		return false;
++	if (ext4_has_feature_verity(sb))
++		return false;
++	if (ext4_has_feature_bigalloc(sb))
++		return false;
++	if (IS_DAX(inode))
++		return false;
++	if (!S_ISREG(inode->i_mode))
++		return false;
++	if (ext4_should_journal_data(inode))
++		return false;
++	if (ext4_test_inode_flag(inode, EXT4_INODE_EA_INODE))
++		return false;
++	if (ext4_test_inode_flag(inode, EXT4_INODE_ENCRYPT))
++		return false;
 +
-+	handle = ext4_journal_current_handle();
-+	if (iomap->flags & IOMAP_F_SIZE_CHANGED) {
-+		ext4_update_i_disksize(inode, inode->i_size);
-+		ret = ext4_mark_inode_dirty(handle, inode);
-+	}
-+
-+	/*
-+	 * If we have allocated more blocks and copied less.
-+	 * We will have blocks allocated outside inode->i_size,
-+	 * so truncate them.
-+	 */
-+	if (offset + length > inode->i_size)
-+		ext4_orphan_add(handle, inode);
-+
-+	ret2 = ext4_journal_stop(handle);
-+	ret = ret ? ret : ret2;
-+
-+	if (offset + length > inode->i_size) {
-+		ext4_truncate_failed_write(inode);
-+		/*
-+		 * If truncate failed early the inode might still be
-+		 * on the orphan list; we need to make sure the inode
-+		 * is removed from the orphan list in that case.
-+		 */
-+		if (inode->i_nlink)
-+			ext4_orphan_del(NULL, inode);
-+	}
-+	return ret;
++	return true;
 +}
 +
-+const struct iomap_ops ext4_iomap_buffered_write_ops = {
-+	.iomap_begin = ext4_iomap_buffered_io_begin,
-+	.iomap_end = ext4_iomap_buffered_write_end,
-+};
+ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+ 			  ext4_iget_flags flags, const char *function,
+ 			  unsigned int line)
+@@ -5449,6 +5477,9 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+ 	if (ret)
+ 		goto bad_inode;
+ 
++	if (ext4_should_use_buffered_iomap(inode))
++		ext4_set_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP);
 +
- const struct iomap_ops ext4_iomap_read_ops = {
- 	.iomap_begin = ext4_iomap_buffered_io_begin,
- };
+ 	if (S_ISREG(inode->i_mode)) {
+ 		inode->i_op = &ext4_file_inode_operations;
+ 		inode->i_fop = &ext4_file_operations;
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 18a9e7c47975..23b4b77c5af8 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -597,6 +597,14 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp, __u64 orig_blk,
+ 		return -EOPNOTSUPP;
+ 	}
+ 
++	/* TODO: not supported since block getting function is not switched */
++	if (ext4_test_inode_state(orig_inode, EXT4_STATE_BUFFERED_IOMAP) ||
++	    ext4_test_inode_state(donor_inode, EXT4_STATE_BUFFERED_IOMAP)) {
++		ext4_msg(orig_inode->i_sb, KERN_ERR,
++			 "Online defrag not supported with buffered iomap");
++		return -EOPNOTSUPP;
++	}
++
+ 	if (IS_ENCRYPTED(orig_inode) || IS_ENCRYPTED(donor_inode)) {
+ 		ext4_msg(orig_inode->i_sb, KERN_ERR,
+ 			 "Online defrag not supported for encrypted files");
 -- 
 2.39.2
 
