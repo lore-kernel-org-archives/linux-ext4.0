@@ -1,16 +1,16 @@
 Authentication-Results: smtp.subspace.kernel.org; dkim=none
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8BDEBD56;
-	Thu, 23 Nov 2023 04:52:08 -0800 (PST)
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 24C52D4A;
+	Thu, 23 Nov 2023 04:52:07 -0800 (PST)
 Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4SbdKv1qm3z4f3kkN;
-	Thu, 23 Nov 2023 20:52:03 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4SbdKs6CLBz4f3kK0;
+	Thu, 23 Nov 2023 20:52:01 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id F2B2F1A056E;
-	Thu, 23 Nov 2023 20:52:05 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 950711A017D;
+	Thu, 23 Nov 2023 20:52:04 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgDn6xHdSl9lSfnfBg--.20473S19;
-	Thu, 23 Nov 2023 20:52:05 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgDn6xHdSl9lSfnfBg--.20473S16;
+	Thu, 23 Nov 2023 20:52:04 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -24,9 +24,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [RFC PATCH 15/18] ext4: writeback partial blocks before zero range
-Date: Thu, 23 Nov 2023 20:51:17 +0800
-Message-Id: <20231123125121.4064694-16-yi.zhang@huaweicloud.com>
+Subject: [RFC PATCH 12/18] iomap: don't increase i_size if it's not a write operation
+Date: Thu, 23 Nov 2023 20:51:14 +0800
+Message-Id: <20231123125121.4064694-13-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20231123125121.4064694-1-yi.zhang@huaweicloud.com>
 References: <20231123125121.4064694-1-yi.zhang@huaweicloud.com>
@@ -37,60 +37,61 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgDn6xHdSl9lSfnfBg--.20473S19
-X-Coremail-Antispam: 1UD129KBjvdXoW7JrW5Aw4UCw1kAw4rKw4DJwb_yoWkCFg_Za
-	4rJrn5JrWftr97uas7CFy3ZrWIyw4vkr1xuFyFq3s8ZFW2gws29wn5Ar18ZrZ8WF429ry3
-	Cr4qqF4xGFy7ujkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUbqxFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
-	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAVCq3wA2048vs2
-	IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28E
-	F7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr
-	1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0D
-	M2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjx
-	v20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1l
-	F7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8cxan2
-	IY04v7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAF
-	wI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc4
-	0Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r4j6ryUMIIF0xvE2Ix0cI8IcVCY1x0267AK
-	xVW8Jr0_Cr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JV
-	WxJwCI42IY6I8E87Iv6xkF7I0E14v26r4UJVWxJrUvcSsGvfC2KfnxnUUI43ZEXa7VUbmZ
-	X7UUUUU==
+X-CM-TRANSID:cCh0CgDn6xHdSl9lSfnfBg--.20473S16
+X-Coremail-Antispam: 1UD129KBjvJXoW7Kr15ZFWfGFyfAw48ZrWfuFg_yoW8Xr4fpr
+	Waka10kF9Yqr1qgr4kGF95Xa4jkan5Zr18CrW5Kry3uws8Ar13KrnYgay5uFW8JrnxAr4Y
+	vr4kKayFq3W3CrJanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUPI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
+	14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIx
+	kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAF
+	wI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr
+	0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUQ
+	SdkUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-If we zero partial blocks, iomap_zero_iter() will skip zeroing out if
-the srcmap is IOMAP_UNWRITTEN, it works fine in xfs because this type
-means the block is pure unwritten, doesn't contain any delayed data,
-but in ext4, IOMAP_UNWRITTEN may contain delayed data, it may hard to
-change the definition of this flag in ext4, so just writeback partial
-blocks firstly, make sure it becomes IOMAP_MAPPED.
+Increase i_size in iomap_zero_range() looks not needed, the caller
+should handle it. Especially, when truncate partial block, we should
+not increase i_size beyond the new EOF here. It dosn't affect xfs and
+gfs2 now because they reset the new file size after zero out, it doesn't
+matter that a brief increase in i_size. But it will affect ext4 because
+it set file size before truncate, so avoid increasing if it's not a
+write path.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/extents.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ fs/iomap/buffered-io.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 52bad225e3c8..b502edcf014b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4576,6 +4576,15 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 		if (ret)
- 			goto out_mutex;
- 
-+		ret = filemap_write_and_wait_range(mapping,
-+				round_down(offset, 1 << blkbits), offset);
-+		if (ret)
-+			goto out_mutex;
-+
-+		ret = filemap_write_and_wait_range(mapping, offset + len,
-+				round_up((offset + len), 1 << blkbits));
-+		if (ret)
-+			goto out_mutex;
+diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
+index fd4d43bafd1b..3b9ba390dd1b 100644
+--- a/fs/iomap/buffered-io.c
++++ b/fs/iomap/buffered-io.c
+@@ -852,13 +852,13 @@ static size_t iomap_write_end(struct iomap_iter *iter, loff_t pos, size_t len,
+ 	 * cache.  It's up to the file system to write the updated size to disk,
+ 	 * preferably after I/O completion so that no stale data is exposed.
+ 	 */
+-	if (pos + ret > old_size) {
++	if ((iter->flags & IOMAP_WRITE) && pos + ret > old_size) {
+ 		i_size_write(iter->inode, pos + ret);
+ 		iter->iomap.flags |= IOMAP_F_SIZE_CHANGED;
  	}
+ 	__iomap_put_folio(iter, pos, ret, folio);
  
- 	/* Zero range excluding the unaligned edges */
+-	if (old_size < pos)
++	if ((iter->flags & IOMAP_WRITE) && old_size < pos)
+ 		pagecache_isize_extended(iter->inode, old_size, pos);
+ 	if (ret < len)
+ 		iomap_write_failed(iter->inode, pos + ret, len - ret);
 -- 
 2.39.2
 
