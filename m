@@ -1,16 +1,16 @@
 Authentication-Results: smtp.subspace.kernel.org; dkim=none
 Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 392ACD54;
-	Thu, 23 Nov 2023 04:52:08 -0800 (PST)
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5D275D50;
+	Thu, 23 Nov 2023 04:52:07 -0800 (PST)
 Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4SbdKv5x6xz4f3kp1;
-	Thu, 23 Nov 2023 20:52:03 +0800 (CST)
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4SbdKs3pZqz4f3kFX;
+	Thu, 23 Nov 2023 20:52:01 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 838021A055F;
-	Thu, 23 Nov 2023 20:52:05 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 3B2B71A0557;
+	Thu, 23 Nov 2023 20:52:03 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgDn6xHdSl9lSfnfBg--.20473S18;
-	Thu, 23 Nov 2023 20:52:05 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgDn6xHdSl9lSfnfBg--.20473S13;
+	Thu, 23 Nov 2023 20:52:03 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -24,9 +24,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [RFC PATCH 14/18] ext4: impliment zero_range iomap path
-Date: Thu, 23 Nov 2023 20:51:16 +0800
-Message-Id: <20231123125121.4064694-15-yi.zhang@huaweicloud.com>
+Subject: [RFC PATCH 09/18] ext4: implement buffered read iomap path
+Date: Thu, 23 Nov 2023 20:51:11 +0800
+Message-Id: <20231123125121.4064694-10-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20231123125121.4064694-1-yi.zhang@huaweicloud.com>
 References: <20231123125121.4064694-1-yi.zhang@huaweicloud.com>
@@ -37,10 +37,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgDn6xHdSl9lSfnfBg--.20473S18
-X-Coremail-Antispam: 1UD129KBjvJXoWrtry3tF4xJFWfur17Zr13urg_yoW8JF1xpr
-	n5Gry8ur47Wr9a9F4xtF9rZrySy3W3Wr48WryfGrn8Z3y3WayxKFWrK3ZY93WYg3y7A3yj
-	qF45trWIgw17Aa7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:cCh0CgDn6xHdSl9lSfnfBg--.20473S13
+X-Coremail-Antispam: 1UD129KBjvJXoW7KF17CF4fuF45Ww1kXFyrWFg_yoW8ur1xpF
+	98KFy5GF47XrnI9a1SqFZrAr1ak3Wxta1UZrWfWasxCFyYkrW7Kay0gFyYyF15X3y8Ary8
+	XF4jkr18GF4UArDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUPI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -51,49 +51,77 @@ X-Coremail-Antispam: 1UD129KBjvJXoWrtry3tF4xJFWfur17Zr13urg_yoW8JF1xpr
 	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
 	kIc2xKxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
 	14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIx
-	kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAF
-	wI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr
-	0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUQ
+	kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAF
+	wI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr
+	0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUQ
 	SdkUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Impliment zero_range iomap path, direct use iomap_zero_range() and add a
-branch in ext4_block_zero_page_range().
+Implement ext4_iomap_buffered_io_begin() blocks mapping helper, it query
+block mapping and use ext4_set_iomap() convert ext4 map to iomap, then
+the buffered read path can be supported by iomap frame.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/inode.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ fs/ext4/inode.c | 37 +++++++++++++++++++++++++++++++++++--
+ 1 file changed, 35 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f72864b9a6b3..ca66afd61fb3 100644
+index 4eef3828d5fd..4c206cf37a49 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4218,6 +4218,13 @@ static int __ext4_block_zero_page_range(handle_t *handle,
- 	return err;
+@@ -3525,14 +3525,47 @@ const struct iomap_ops ext4_iomap_report_ops = {
+ 	.iomap_begin = ext4_iomap_begin_report,
+ };
+ 
+-static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
++static int ext4_iomap_buffered_io_begin(struct inode *inode, loff_t offset,
++				loff_t length, unsigned int flags,
++				struct iomap *iomap, struct iomap *srcmap)
+ {
++	int ret;
++	struct ext4_map_blocks map;
++	u8 blkbits = inode->i_blkbits;
++
++	if ((offset >> blkbits) > EXT4_MAX_LOGICAL_BLOCK)
++		return -EINVAL;
++
++	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
++		return -ERANGE;
++
++	/*
++	 * Calculate the first and last logical blocks respectively.
++	 */
++	map.m_lblk = offset >> blkbits;
++	map.m_len = min_t(loff_t, (offset + length - 1) >> blkbits,
++			  EXT4_MAX_LOGICAL_BLOCK) - map.m_lblk + 1;
++
++	ret = ext4_map_blocks(NULL, inode, &map, 0);
++	if (ret < 0)
++		return ret;
++
++	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
+ 	return 0;
  }
  
-+static int ext4_iomap_zero_range(struct inode *inode,
-+				 loff_t from, loff_t length)
-+{
-+	return iomap_zero_range(inode, from, length, NULL,
-+				&ext4_iomap_buffered_write_ops);
-+}
+-static void ext4_iomap_readahead(struct readahead_control *rac)
++const struct iomap_ops ext4_iomap_read_ops = {
++	.iomap_begin = ext4_iomap_buffered_io_begin,
++};
 +
- /*
-  * ext4_block_zero_page_range() zeros out a mapping of length 'length'
-  * starting from file offset 'from'.  The range to be zero'd must
-@@ -4243,6 +4250,8 @@ static int ext4_block_zero_page_range(handle_t *handle,
- 	if (IS_DAX(inode)) {
- 		return dax_zero_range(inode, from, length, NULL,
- 				      &ext4_iomap_ops);
-+	} else if (ext4_test_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP)) {
-+		return ext4_iomap_zero_range(inode, from, length);
- 	}
- 	return __ext4_block_zero_page_range(handle, mapping, from, length);
++static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
+ {
++	return iomap_read_folio(folio, &ext4_iomap_read_ops);
++}
+ 
++static void ext4_iomap_readahead(struct readahead_control *rac)
++{
++	iomap_readahead(rac, &ext4_iomap_read_ops);
  }
+ 
+ static int ext4_iomap_writepages(struct address_space *mapping,
 -- 
 2.39.2
 
