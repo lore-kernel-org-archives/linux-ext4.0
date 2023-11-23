@@ -1,16 +1,16 @@
 Authentication-Results: smtp.subspace.kernel.org; dkim=none
 Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3AC3FD42;
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AA6C81BF;
 	Thu, 23 Nov 2023 04:52:04 -0800 (PST)
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4SbdKq1W3Jz4f3jrh;
-	Thu, 23 Nov 2023 20:51:59 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4SbdKr17V6z4f3js8;
+	Thu, 23 Nov 2023 20:52:00 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id E0D471A06B8;
-	Thu, 23 Nov 2023 20:52:00 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id D5D551A03B8;
+	Thu, 23 Nov 2023 20:52:01 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgDn6xHdSl9lSfnfBg--.20473S8;
-	Thu, 23 Nov 2023 20:52:00 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgDn6xHdSl9lSfnfBg--.20473S10;
+	Thu, 23 Nov 2023 20:52:01 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -24,9 +24,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [RFC PATCH 04/18] ext4: add a hole extent entry in cache after punch
-Date: Thu, 23 Nov 2023 20:51:06 +0800
-Message-Id: <20231123125121.4064694-5-yi.zhang@huaweicloud.com>
+Subject: [RFC PATCH 06/18] ext4: make ext4_set_iomap() recognize IOMAP_DELALLOC mapping type
+Date: Thu, 23 Nov 2023 20:51:08 +0800
+Message-Id: <20231123125121.4064694-7-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20231123125121.4064694-1-yi.zhang@huaweicloud.com>
 References: <20231123125121.4064694-1-yi.zhang@huaweicloud.com>
@@ -37,10 +37,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgDn6xHdSl9lSfnfBg--.20473S8
-X-Coremail-Antispam: 1UD129KBjvJXoW7CF4fWF47JF1xAr1rGr1UGFg_yoW8tr17pa
-	sxAFy8Gr45W34q93yIgF4UZr12ya47G3yUXrWfKw10gry8Xr10yF1UtF13ZFy5tFW8Ja1Y
-	vF4UKryUXa13ArJanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:cCh0CgDn6xHdSl9lSfnfBg--.20473S10
+X-Coremail-Antispam: 1UD129KBjvJXoW7Aw1kKFWkAr45AF4UZr43Wrg_yoW8tFW8pa
+	9xKFy7GF43Xr1qgr48trWUZr1Yk3WUK3y7WrWfG3s5Cr10yry8tF48CF1ayF90qrWxZw1S
+	qF4UKr18ua1SyFDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUPF14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -51,7 +51,7 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7CF4fWF47JF1xAr1rGr1UGFg_yoW8tr17pa
 	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
 	kIc2xKxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
 	14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIx
-	kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAF
+	kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAF
 	wI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJV
 	W8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjfUOBTY
 	UUUUU
@@ -59,61 +59,79 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-In order to cache hole extents in the extent status tree and keep the
-hole continuity as much as possible, add a hole entry to the cache after
-punching a hole. It can reduce the 'hole' in some continuous hole extent
-entries.
+Since ext4_map_blocks() can recognize a delayed allocated only extent,
+make ext4_set_iomap() can also recognize it, and remove the useless
+separate check in ext4_iomap_begin_report().
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/ext4.h    | 3 +++
- fs/ext4/extents.c | 5 ++---
- fs/ext4/inode.c   | 2 ++
- 3 files changed, 7 insertions(+), 3 deletions(-)
+ fs/ext4/inode.c | 32 +++-----------------------------
+ 1 file changed, 3 insertions(+), 29 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9418359b1d9d..c2ca28c6ec38 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3681,6 +3681,9 @@ extern int ext4_convert_unwritten_io_end_vec(handle_t *handle,
- 					     ext4_io_end_t *io_end);
- extern int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 			   struct ext4_map_blocks *map, int flags);
-+extern void ext4_ext_put_gap_in_cache(struct inode *inode,
-+				      ext4_lblk_t hole_start,
-+				      ext4_lblk_t hole_len);
- extern int ext4_ext_calc_credits_for_single_extent(struct inode *inode,
- 						   int num,
- 						   struct ext4_ext_path *path);
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 202c76996b62..52bad225e3c8 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2275,9 +2275,8 @@ static ext4_lblk_t ext4_ext_determine_hole(struct inode *inode,
-  * calculate boundaries of the gap that the requested block fits into
-  * and cache this gap
-  */
--static void
--ext4_ext_put_gap_in_cache(struct inode *inode, ext4_lblk_t hole_start,
--			  ext4_lblk_t hole_len)
-+void ext4_ext_put_gap_in_cache(struct inode *inode, ext4_lblk_t hole_start,
-+			       ext4_lblk_t hole_len)
- {
- 	struct extent_status es;
- 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 94e7b8500878..3908ce7f6fb8 100644
+index 74b41566d31a..17fe2bd83617 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4034,6 +4034,8 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
- 			ret = ext4_ind_remove_space(handle, inode, first_block,
- 						    stop_block);
+@@ -3279,6 +3279,9 @@ static void ext4_set_iomap(struct inode *inode, struct iomap *iomap,
+ 		iomap->addr = (u64) map->m_pblk << blkbits;
+ 		if (flags & IOMAP_DAX)
+ 			iomap->addr += EXT4_SB(inode->i_sb)->s_dax_part_off;
++	} else if (map->m_flags & EXT4_MAP_DELAYED) {
++		iomap->type = IOMAP_DELALLOC;
++		iomap->addr = IOMAP_NULL_ADDR;
+ 	} else {
+ 		iomap->type = IOMAP_HOLE;
+ 		iomap->addr = IOMAP_NULL_ADDR;
+@@ -3441,35 +3444,11 @@ const struct iomap_ops ext4_iomap_overwrite_ops = {
+ 	.iomap_end		= ext4_iomap_end,
+ };
  
-+		ext4_ext_put_gap_in_cache(inode, first_block,
-+					  stop_block - first_block);
- 		up_write(&EXT4_I(inode)->i_data_sem);
- 	}
- 	ext4_fc_track_range(handle, inode, first_block, stop_block);
+-static bool ext4_iomap_is_delalloc(struct inode *inode,
+-				   struct ext4_map_blocks *map)
+-{
+-	struct extent_status es;
+-	ext4_lblk_t offset = 0, end = map->m_lblk + map->m_len - 1;
+-
+-	ext4_es_find_extent_range(inode, &ext4_es_is_delayed,
+-				  map->m_lblk, end, &es);
+-
+-	if (!es.es_len || es.es_lblk > end)
+-		return false;
+-
+-	if (es.es_lblk > map->m_lblk) {
+-		map->m_len = es.es_lblk - map->m_lblk;
+-		return false;
+-	}
+-
+-	offset = map->m_lblk - es.es_lblk;
+-	map->m_len = es.es_len - offset;
+-
+-	return true;
+-}
+-
+ static int ext4_iomap_begin_report(struct inode *inode, loff_t offset,
+ 				   loff_t length, unsigned int flags,
+ 				   struct iomap *iomap, struct iomap *srcmap)
+ {
+ 	int ret;
+-	bool delalloc = false;
+ 	struct ext4_map_blocks map;
+ 	u8 blkbits = inode->i_blkbits;
+ 
+@@ -3510,13 +3489,8 @@ static int ext4_iomap_begin_report(struct inode *inode, loff_t offset,
+ 	ret = ext4_map_blocks(NULL, inode, &map, 0);
+ 	if (ret < 0)
+ 		return ret;
+-	if (ret == 0)
+-		delalloc = ext4_iomap_is_delalloc(inode, &map);
+-
+ set_iomap:
+ 	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
+-	if (delalloc && iomap->type == IOMAP_HOLE)
+-		iomap->type = IOMAP_DELALLOC;
+ 
+ 	return 0;
+ }
 -- 
 2.39.2
 
