@@ -1,16 +1,16 @@
 Authentication-Results: smtp.subspace.kernel.org; dkim=none
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 24C52D4A;
-	Thu, 23 Nov 2023 04:52:07 -0800 (PST)
+Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 392ACD54;
+	Thu, 23 Nov 2023 04:52:08 -0800 (PST)
 Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4SbdKs6CLBz4f3kK0;
-	Thu, 23 Nov 2023 20:52:01 +0800 (CST)
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4SbdKv5x6xz4f3kp1;
+	Thu, 23 Nov 2023 20:52:03 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 950711A017D;
-	Thu, 23 Nov 2023 20:52:04 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 838021A055F;
+	Thu, 23 Nov 2023 20:52:05 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgDn6xHdSl9lSfnfBg--.20473S16;
-	Thu, 23 Nov 2023 20:52:04 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgDn6xHdSl9lSfnfBg--.20473S18;
+	Thu, 23 Nov 2023 20:52:05 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -24,9 +24,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [RFC PATCH 12/18] iomap: don't increase i_size if it's not a write operation
-Date: Thu, 23 Nov 2023 20:51:14 +0800
-Message-Id: <20231123125121.4064694-13-yi.zhang@huaweicloud.com>
+Subject: [RFC PATCH 14/18] ext4: impliment zero_range iomap path
+Date: Thu, 23 Nov 2023 20:51:16 +0800
+Message-Id: <20231123125121.4064694-15-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20231123125121.4064694-1-yi.zhang@huaweicloud.com>
 References: <20231123125121.4064694-1-yi.zhang@huaweicloud.com>
@@ -37,10 +37,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgDn6xHdSl9lSfnfBg--.20473S16
-X-Coremail-Antispam: 1UD129KBjvJXoW7Kr15ZFWfGFyfAw48ZrWfuFg_yoW8Xr4fpr
-	Waka10kF9Yqr1qgr4kGF95Xa4jkan5Zr18CrW5Kry3uws8Ar13KrnYgay5uFW8JrnxAr4Y
-	vr4kKayFq3W3CrJanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:cCh0CgDn6xHdSl9lSfnfBg--.20473S18
+X-Coremail-Antispam: 1UD129KBjvJXoWrtry3tF4xJFWfur17Zr13urg_yoW8JF1xpr
+	n5Gry8ur47Wr9a9F4xtF9rZrySy3W3Wr48WryfGrn8Z3y3WayxKFWrK3ZY93WYg3y7A3yj
+	qF45trWIgw17Aa7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUPI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -59,39 +59,41 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Increase i_size in iomap_zero_range() looks not needed, the caller
-should handle it. Especially, when truncate partial block, we should
-not increase i_size beyond the new EOF here. It dosn't affect xfs and
-gfs2 now because they reset the new file size after zero out, it doesn't
-matter that a brief increase in i_size. But it will affect ext4 because
-it set file size before truncate, so avoid increasing if it's not a
-write path.
+Impliment zero_range iomap path, direct use iomap_zero_range() and add a
+branch in ext4_block_zero_page_range().
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/iomap/buffered-io.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
-index fd4d43bafd1b..3b9ba390dd1b 100644
---- a/fs/iomap/buffered-io.c
-+++ b/fs/iomap/buffered-io.c
-@@ -852,13 +852,13 @@ static size_t iomap_write_end(struct iomap_iter *iter, loff_t pos, size_t len,
- 	 * cache.  It's up to the file system to write the updated size to disk,
- 	 * preferably after I/O completion so that no stale data is exposed.
- 	 */
--	if (pos + ret > old_size) {
-+	if ((iter->flags & IOMAP_WRITE) && pos + ret > old_size) {
- 		i_size_write(iter->inode, pos + ret);
- 		iter->iomap.flags |= IOMAP_F_SIZE_CHANGED;
- 	}
- 	__iomap_put_folio(iter, pos, ret, folio);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f72864b9a6b3..ca66afd61fb3 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4218,6 +4218,13 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 	return err;
+ }
  
--	if (old_size < pos)
-+	if ((iter->flags & IOMAP_WRITE) && old_size < pos)
- 		pagecache_isize_extended(iter->inode, old_size, pos);
- 	if (ret < len)
- 		iomap_write_failed(iter->inode, pos + ret, len - ret);
++static int ext4_iomap_zero_range(struct inode *inode,
++				 loff_t from, loff_t length)
++{
++	return iomap_zero_range(inode, from, length, NULL,
++				&ext4_iomap_buffered_write_ops);
++}
++
+ /*
+  * ext4_block_zero_page_range() zeros out a mapping of length 'length'
+  * starting from file offset 'from'.  The range to be zero'd must
+@@ -4243,6 +4250,8 @@ static int ext4_block_zero_page_range(handle_t *handle,
+ 	if (IS_DAX(inode)) {
+ 		return dax_zero_range(inode, from, length, NULL,
+ 				      &ext4_iomap_ops);
++	} else if (ext4_test_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP)) {
++		return ext4_iomap_zero_range(inode, from, length);
+ 	}
+ 	return __ext4_block_zero_page_range(handle, mapping, from, length);
+ }
 -- 
 2.39.2
 
