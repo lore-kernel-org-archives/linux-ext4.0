@@ -1,25 +1,27 @@
 Authentication-Results: smtp.subspace.kernel.org; dkim=none
 Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 768E110E4;
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BBAC710FB;
 	Sat, 25 Nov 2023 00:12:55 -0800 (PST)
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Scl2l5QWPz4f3m7R;
-	Sat, 25 Nov 2023 16:12:47 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Scl2p33SSz4f3kjh;
+	Sat, 25 Nov 2023 16:12:50 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 2066C1A02C2;
-	Sat, 25 Nov 2023 16:12:52 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 345241A01A1;
+	Sat, 25 Nov 2023 16:12:53 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-	by APP2 (Coremail) with SMTP id Syh0CgCnSkmCrGFlWcLEBw--.36822S2;
-	Sat, 25 Nov 2023 16:12:51 +0800 (CST)
+	by APP2 (Coremail) with SMTP id Syh0CgCnSkmCrGFlWcLEBw--.36822S6;
+	Sat, 25 Nov 2023 16:12:53 +0800 (CST)
 From: Kemeng Shi <shikemeng@huaweicloud.com>
 To: tytso@mit.edu,
 	adilger.kernel@dilger.ca
 Cc: linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH 0/8] Some random cleanups to mballoc
-Date: Sun, 26 Nov 2023 00:11:35 +0800
-Message-Id: <20231125161143.3945726-1-shikemeng@huaweicloud.com>
+Subject: [PATCH 4/8] ext4: remove unused ext4_allocation_context::ac_groups_considered
+Date: Sun, 26 Nov 2023 00:11:39 +0800
+Message-Id: <20231125161143.3945726-5-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20231125161143.3945726-1-shikemeng@huaweicloud.com>
+References: <20231125161143.3945726-1-shikemeng@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -27,52 +29,43 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgCnSkmCrGFlWcLEBw--.36822S2
-X-Coremail-Antispam: 1UD129KBjvdXoWruF1rtryUAF4xWF4DWryUZFb_yoWkKrc_Ga
-	4xWF95tr43JFyfC3W8Kw45tFW8tF4xuF1YyFZ3ta15ZFy3ZrW8C3WDCrWfur45urZ5Aa4a
-	krnrJry8tF4IvjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUb2xYFVCjjxCrM7AC8VAFwI0_Jr0_Gr1l1xkIjI8I6I8E6xAIw20E
-	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl8c
-	AvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq
-	3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_Gc
-	CE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxI
-	r21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87
-	Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IY
-	c2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s
-	026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF
-	0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0x
-	vE42xK8VAvwI8IcIk0rVWrJr0_WFyUJwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E
-	87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUsBMNUUUUU
+X-CM-TRANSID:Syh0CgCnSkmCrGFlWcLEBw--.36822S6
+X-Coremail-Antispam: 1UD129KBjDUn29KB7ZKAUJUUUUU529EdanIXcx71UUUUU7v73
+	VFW2AGmfu7bjvjm3AaLaJ3UjIYCTnIWjp_UUUYA7kC6x804xWl14x267AKxVWrJVCq3wAF
+	c2x0x2IEx4CE42xK8VAvwI8IcIk0rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62
+	vIxIIY0VWUZVW8XwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E
+	14v26r4j6ryUM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI
+	8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vE
+	x4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzx
+	vE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWU
+	JVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7V
+	AKI48JMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAF
+	wI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc4
+	0Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AK
+	xVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr
+	1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IUnr9NDUU
+	UUU==
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
-This series contains some random cleanups to mballoc. No function change
-is intended except patch 8 may fix a potential memleak if non-used
-preallocation spaces of inode could be greater than UNIT_MAX.
-More details can be found in respective patches. Thanks!
+Remove unused ext4_allocation_context::ac_groups_considered
 
-Kemeng Shi (8):
-  ext4: remove unused return value of __mb_check_buddy
-  ext4: remove unused parameter group in ext4_mb_choose_next_group_*()
-  ext4: remove unneeded return value of ext4_mb_release_context
-  ext4: remove unused ext4_allocation_context::ac_groups_considered
-  ext4: remove unused return value of ext4_mb_release
-  ext4: remove unused return value of ext4_mb_release_inode_pa
-  ext4: remove unused return value of ext4_mb_release_group_pa
-  ext4: remove unnecessary parameter "needed" in
-    ext4_discard_preallocations
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+---
+ fs/ext4/mballoc.h | 1 -
+ 1 file changed, 1 deletion(-)
 
- fs/ext4/ext4.h        |  4 ++--
- fs/ext4/extents.c     | 10 +++++-----
- fs/ext4/file.c        |  2 +-
- fs/ext4/indirect.c    |  2 +-
- fs/ext4/inode.c       |  6 +++---
- fs/ext4/ioctl.c       |  2 +-
- fs/ext4/mballoc.c     | 46 ++++++++++++++++---------------------------
- fs/ext4/mballoc.h     |  1 -
- fs/ext4/move_extent.c |  4 ++--
- fs/ext4/super.c       |  2 +-
- 10 files changed, 33 insertions(+), 46 deletions(-)
-
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index d7aeb5da7..56938532b 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -192,7 +192,6 @@ struct ext4_allocation_context {
+ 	 */
+ 	ext4_grpblk_t	ac_orig_goal_len;
+ 
+-	__u32 ac_groups_considered;
+ 	__u32 ac_flags;		/* allocation hints */
+ 	__u16 ac_groups_scanned;
+ 	__u16 ac_groups_linear_remaining;
 -- 
 2.30.0
 
