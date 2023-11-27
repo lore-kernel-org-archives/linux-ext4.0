@@ -1,76 +1,102 @@
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="X33IAizB"
-Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [IPv6:2a03:a000:7:0:5054:ff:fe1c:15ff])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BA800133;
-	Sun, 26 Nov 2023 22:48:32 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=linux.org.uk; s=zeniv-20220401; h=Sender:In-Reply-To:Content-Type:
-	MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=PRdjsHwBJnTnCFJ6KWMNGkw3R1XwKUQdbL+BMJT0K70=; b=X33IAizBXxOu44K+tKNOQcX6aN
-	L3R58WnMzMuH49yXIvG7omqQGa3O2DELuiG9T0RDZfJfL9RxoTFv7kUL42tZGssHxvodfBhu53zAl
-	oziCAbD1I4rfcGgYF7+pmO1j4z7VlfcJSt54k/bu5RznWMw8UGAKzI85OeNE+/rj2cbLblF4OE6VJ
-	eTO7WwvbpkhSAH2j8YC9xxeFsHPww+97YyGIXXbr6H0E8B8/2bjSezQMUryHuqSaucYpxVB9Oms42
-	fJOuOXLDq1bOpbdO9PADT2+G/2FCegqrb+HsEfhKX3cA8yGKyYkW0zp9+6loKz3FcpZ/JElMbJsDK
-	wQbg0j1Q==;
-Received: from viro by zeniv.linux.org.uk with local (Exim 4.96 #2 (Red Hat Linux))
-	id 1r7VP7-003r7k-26;
-	Mon, 27 Nov 2023 06:47:37 +0000
-Date: Mon, 27 Nov 2023 06:47:37 +0000
-From: Al Viro <viro@zeniv.linux.org.uk>
-To: Yu Kuai <yukuai1@huaweicloud.com>
-Cc: hch@infradead.org, ming.lei@redhat.com, axboe@kernel.dk,
-	roger.pau@citrix.com, colyli@suse.de, kent.overstreet@gmail.com,
-	joern@lazybastard.org, miquel.raynal@bootlin.com, richard@nod.at,
-	vigneshr@ti.com, sth@linux.ibm.com, hoeppner@linux.ibm.com,
-	hca@linux.ibm.com, gor@linux.ibm.com, agordeev@linux.ibm.com,
-	jejb@linux.ibm.com, martin.petersen@oracle.com, clm@fb.com,
-	josef@toxicpanda.com, dsterba@suse.com, brauner@kernel.org,
-	nico@fluxnic.net, xiang@kernel.org, chao@kernel.org, tytso@mit.edu,
-	adilger.kernel@dilger.ca, agruenba@redhat.com, jack@suse.com,
-	konishi.ryusuke@gmail.com, dchinner@redhat.com,
-	linux@weissschuh.net, min15.li@samsung.com, yukuai3@huawei.com,
-	dlemoal@kernel.org, willy@infradead.org, akpm@linux-foundation.org,
-	hare@suse.de, p.raghav@samsung.com, linux-block@vger.kernel.org,
-	linux-kernel@vger.kernel.org, xen-devel@lists.xenproject.org,
-	linux-bcache@vger.kernel.org, linux-mtd@lists.infradead.org,
-	linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org,
-	linux-bcachefs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-	linux-ext4@vger.kernel.org, gfs2@lists.linux.dev,
-	linux-nilfs@vger.kernel.org, yi.zhang@huawei.com,
-	yangerkun@huawei.com
-Subject: Re: [PATCH block/for-next v2 00/16] block: remove field 'bd_inode'
- from block_device
-Message-ID: <20231127064737.GH38156@ZenIV>
-References: <20231127062116.2355129-1-yukuai1@huaweicloud.com>
+Authentication-Results: smtp.subspace.kernel.org; dkim=none
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3A4A6139
+	for <linux-ext4@vger.kernel.org>; Sun, 26 Nov 2023 22:54:09 -0800 (PST)
+Received: from kwepemm000012.china.huawei.com (unknown [172.30.72.55])
+	by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4Sdx652kc5zShQ4;
+	Mon, 27 Nov 2023 14:49:49 +0800 (CST)
+Received: from [10.174.178.220] (10.174.178.220) by
+ kwepemm000012.china.huawei.com (7.193.23.142) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.35; Mon, 27 Nov 2023 14:54:06 +0800
+Message-ID: <38c05f45-a2c7-071b-692a-ba757d5344d1@huawei.com>
+Date: Mon, 27 Nov 2023 14:54:05 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20231127062116.2355129-1-yukuai1@huaweicloud.com>
-Sender: Al Viro <viro@ftp.linux.org.uk>
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101
+ Thunderbird/102.8.0
+Subject: Re: [PATCH] debugfs: Fix infinite loop when dump log
+To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+	<linux-ext4@vger.kernel.org>
+CC: <louhongxiang@huawei.com>
+References: <20231117102315.2431846-1-haowenchao2@huawei.com>
+Content-Language: en-US
+From: Wenchao Hao <haowenchao2@huawei.com>
+In-Reply-To: <20231117102315.2431846-1-haowenchao2@huawei.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Transfer-Encoding: 7bit
+X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
+ kwepemm000012.china.huawei.com (7.193.23.142)
+X-CFilter-Loop: Reflected
 
-On Mon, Nov 27, 2023 at 02:21:00PM +0800, Yu Kuai wrote:
-> From: Yu Kuai <yukuai3@huawei.com>
+On 2023/11/17 18:23, Wenchao Hao wrote:
+> There are 2 scenarios which would trigger infinite loop:
 > 
-> Changes in v2:
->  - split different portions into different patches, as greg k-h
->  suggested.
->  - use container_of() instead of "bdev + 1" to get the address of
->  bd_inode in the new helper, as grep k-h suggested.
+> 1. None log is recorded, then dumplog with "-n", for example:
+>     debugfs -R "logdump -O -n 10" /dev/xxx
+>     while /dev/xxx has no valid log recorded.
+> 2. The log area is full and cycle write is triggered, then dumplog with
+>     debugfs -R "logdump -aOS" /dev/xxx
+> 
+> This patch add a new flag "reverse_flag" to mark if logdump has reached
+> to tail of logarea, it is default false, and set in macro WRAP().
+> 
+> If reverse_flag is true, and we comes to first_transaction_blocknr
+> again, just break the logdump loop.
 
-You might have misinterpreted gregkh - in your place I would rather
-do a one-patch never-rebased branch (introduction of bdev_inode() in
-form that returns bdev->bd_inode), with followup in your branch that
-switches it to your variant.  Then conversions of ->bd_inode users,
-to be either picked by individual filesystems of staying in your branch.
-Any filesystem tree could merge from your never-rebased branch, after
-which they could switch their ->bd_inode uses to the new helper, without
-introducing any bisection hazards or interdependencies.
-After the next -rc1, once all ->bd_inode users are gone from the tree -
-remove the field.
+Friendly ping...
+
+> 
+> Signed-off-by: Wenchao Hao <haowenchao2@huawei.com>
+> ---
+>   debugfs/logdump.c | 11 +++++++----
+>   1 file changed, 7 insertions(+), 4 deletions(-)
+> 
+> diff --git a/debugfs/logdump.c b/debugfs/logdump.c
+> index b600228e..05ea839a 100644
+> --- a/debugfs/logdump.c
+> +++ b/debugfs/logdump.c
+> @@ -52,6 +52,7 @@ static int64_t		dump_counts;
+>   static blk64_t		block_to_dump, bitmap_to_dump, inode_block_to_dump;
+>   static unsigned int	group_to_dump, inode_offset_to_dump;
+>   static ext2_ino_t	inode_to_dump;
+> +static bool		reverse_flag;
+>   
+>   struct journal_source
+>   {
+> @@ -80,8 +81,10 @@ static void dump_fc_block(FILE *out_file, char *buf, int blocksize,
+>   static void do_hexdump (FILE *, char *, int);
+>   
+>   #define WRAP(jsb, blocknr, maxlen)					\
+> -	if (blocknr >= (maxlen))					\
+> -	    blocknr -= (maxlen - be32_to_cpu((jsb)->s_first));
+> +	if (blocknr >= (maxlen)) {					\
+> +		blocknr -= (maxlen - be32_to_cpu((jsb)->s_first));	\
+> +		reverse_flag = true;					\
+> +	}
+>   
+>   void do_logdump(int argc, char **argv, int sci_idx EXT2FS_ATTR((unused)),
+>   		    void *infop EXT2FS_ATTR((unused)))
+> @@ -115,6 +118,7 @@ void do_logdump(int argc, char **argv, int sci_idx EXT2FS_ATTR((unused)),
+>   	inode_block_to_dump = ANY_BLOCK;
+>   	inode_to_dump = -1;
+>   	dump_counts = -1;
+> +	reverse_flag = false;
+>   
+>   	reset_getopt();
+>   	while ((c = getopt (argc, argv, "ab:ci:f:OsSn:")) != EOF) {
+> @@ -477,8 +481,7 @@ static void dump_journal(char *cmdname, FILE *out_file,
+>   		if (dump_old && (dump_counts != -1) && (cur_counts >= dump_counts))
+>   			break;
+>   
+> -		if ((blocknr == first_transaction_blocknr) &&
+> -		    (cur_counts != 0) && dump_old && (dump_counts != -1)) {
+> +		if ((blocknr == first_transaction_blocknr) && dump_old && reverse_flag) {
+>   			fprintf(out_file, "Dump all %lld journal records.\n",
+>   				(long long) cur_counts);
+>   			break;
+
