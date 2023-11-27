@@ -1,224 +1,114 @@
 Authentication-Results: smtp.subspace.kernel.org; dkim=none
-X-Greylist: delayed 1056 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Mon, 27 Nov 2023 08:05:54 PST
-Received: from out03.mta.xmission.com (out03.mta.xmission.com [166.70.13.233])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CB405BF
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Nov 2023 08:05:54 -0800 (PST)
-Received: from in02.mta.xmission.com ([166.70.13.52]:45924)
-	by out03.mta.xmission.com with esmtps  (TLS1.3) tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-	(Exim 4.93)
-	(envelope-from <ebiederm@xmission.com>)
-	id 1r7dqH-0037sg-6R; Mon, 27 Nov 2023 08:48:13 -0700
-Received: from ip68-227-168-167.om.om.cox.net ([68.227.168.167]:47674 helo=email.froward.int.ebiederm.org.xmission.com)
-	by in02.mta.xmission.com with esmtpsa  (TLS1.3) tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-	(Exim 4.93)
-	(envelope-from <ebiederm@xmission.com>)
-	id 1r7dqF-001Jou-Tb; Mon, 27 Nov 2023 08:48:12 -0700
-From: "Eric W. Biederman" <ebiederm@xmission.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: Gabriel Krisman Bertazi <gabriel@krisman.be>,  Linus Torvalds
- <torvalds@linux-foundation.org>,  Christian Brauner <brauner@kernel.org>,
-  tytso@mit.edu,  linux-f2fs-devel@lists.sourceforge.net,
-  ebiggers@kernel.org,  linux-fsdevel@vger.kernel.org,  jaegeuk@kernel.org,
-  linux-ext4@vger.kernel.org,  Miklos Szeredi <miklos@szeredi.hu>
-References: <20231121022734.GC38156@ZenIV> <20231122211901.GJ38156@ZenIV>
-	<CAHk-=wh5WYPN7BLSUjUr_VBsPTxHOcMHo1gOH2P4+5NuXAsCKA@mail.gmail.com>
-	<20231123171255.GN38156@ZenIV> <20231123182426.GO38156@ZenIV>
-	<20231123215234.GQ38156@ZenIV> <20231125220136.GB38156@ZenIV>
-	<20231126045219.GD38156@ZenIV> <20231126184141.GF38156@ZenIV>
-	<20231127063842.GG38156@ZenIV>
-Date: Mon, 27 Nov 2023 09:47:47 -0600
-In-Reply-To: <20231127063842.GG38156@ZenIV> (Al Viro's message of "Mon, 27 Nov
-	2023 06:38:42 +0000")
-Message-ID: <87jzq3nqos.fsf@email.froward.int.ebiederm.org>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/28.2 (gnu/linux)
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 99B1F1BB
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Nov 2023 08:11:52 -0800 (PST)
+Received: from imap2.dmz-prg2.suse.org (imap2.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:98])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id E7CA11FB4A;
+	Mon, 27 Nov 2023 16:11:49 +0000 (UTC)
+Received: from imap2.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap2.dmz-prg2.suse.org (Postfix) with ESMTPS id DBEB613440;
+	Mon, 27 Nov 2023 16:11:49 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([10.150.64.162])
+	by imap2.dmz-prg2.suse.org with ESMTPSA
+	id 5ICsNcW/ZGXxXgAAn2gu4w
+	(envelope-from <jack@suse.cz>); Mon, 27 Nov 2023 16:11:49 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 6B895A07CB; Mon, 27 Nov 2023 17:11:49 +0100 (CET)
+Date: Mon, 27 Nov 2023 17:11:49 +0100
+From: Jan Kara <jack@suse.cz>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+	jack@suse.cz, yi.zhang@huawei.com, chengzhihao1@huawei.com,
+	yukuai3@huawei.com
+Subject: Re: [PATCH 2/2] jbd2: increase the journal IO's priority
+Message-ID: <20231127161149.2s7yizu72gw332s2@quack3>
+References: <20231125121740.1035816-1-yi.zhang@huaweicloud.com>
+ <20231125121740.1035816-2-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain
-X-XM-SPF: eid=1r7dqF-001Jou-Tb;;;mid=<87jzq3nqos.fsf@email.froward.int.ebiederm.org>;;;hst=in02.mta.xmission.com;;;ip=68.227.168.167;;;frm=ebiederm@xmission.com;;;spf=pass
-X-XM-AID: U2FsdGVkX19Ivoqmgj6NYRmk04vHCeMgMvlWWNyi8uM=
-X-SA-Exim-Connect-IP: 68.227.168.167
-X-SA-Exim-Mail-From: ebiederm@xmission.com
-X-Spam-Virus: No
-X-Spam-DCC: XMission; sa02 1397; Body=1 Fuz1=1 Fuz2=1 
-X-Spam-Combo: **;Al Viro <viro@zeniv.linux.org.uk>
-X-Spam-Relay-Country: 
-X-Spam-Timing: total 655 ms - load_scoreonly_sql: 0.04 (0.0%),
-	signal_user_changed: 4.8 (0.7%), b_tie_ro: 3.4 (0.5%), parse: 1.41
-	(0.2%), extract_message_metadata: 15 (2.2%), get_uri_detail_list: 5
-	(0.8%), tests_pri_-2000: 8 (1.2%), tests_pri_-1000: 1.97 (0.3%),
-	tests_pri_-950: 0.94 (0.1%), tests_pri_-900: 0.79 (0.1%),
-	tests_pri_-90: 70 (10.8%), check_bayes: 69 (10.5%), b_tokenize: 11
-	(1.6%), b_tok_get_all: 14 (2.1%), b_comp_prob: 4.7 (0.7%),
-	b_tok_touch_all: 37 (5.6%), b_finish: 0.77 (0.1%), tests_pri_0: 540
-	(82.4%), check_dkim_signature: 0.45 (0.1%), check_dkim_adsp: 7 (1.1%),
-	poll_dns_idle: 6 (0.9%), tests_pri_10: 1.82 (0.3%), tests_pri_500: 7
-	(1.1%), rewrite_mail: 0.00 (0.0%)
-Subject: Re: fun with d_invalidate() vs. d_splice_alias() was Re: [f2fs-dev]
- [PATCH v6 0/9] Support negative dentries on case-insensitive ext4 and f2fs
-X-SA-Exim-Version: 4.2.1 (built Sat, 08 Feb 2020 21:53:50 +0000)
-X-SA-Exim-Scanned: Yes (on in02.mta.xmission.com)
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20231125121740.1035816-2-yi.zhang@huaweicloud.com>
+X-Spamd-Bar: +++++
+Authentication-Results: smtp-out2.suse.de;
+	dkim=none;
+	dmarc=none;
+	spf=softfail (smtp-out2.suse.de: 2a07:de40:b281:104:10:150:64:98 is neither permitted nor denied by domain of jack@suse.cz) smtp.mailfrom=jack@suse.cz
+X-Rspamd-Server: rspamd2
+X-Spamd-Result: default: False [5.39 / 50.00];
+	 RCVD_VIA_SMTP_AUTH(0.00)[];
+	 SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:98:from];
+	 TO_DN_SOME(0.00)[];
+	 R_SPF_SOFTFAIL(4.60)[~all];
+	 RCVD_COUNT_THREE(0.00)[3];
+	 MX_GOOD(-0.01)[];
+	 RCPT_COUNT_SEVEN(0.00)[8];
+	 FROM_EQ_ENVFROM(0.00)[];
+	 R_DKIM_NA(2.20)[];
+	 MIME_TRACE(0.00)[0:+];
+	 BAYES_HAM(-3.00)[100.00%];
+	 ARC_NA(0.00)[];
+	 FROM_HAS_DN(0.00)[];
+	 TO_MATCH_ENVRCPT_ALL(0.00)[];
+	 MIME_GOOD(-0.10)[text/plain];
+	 DMARC_NA(1.20)[suse.cz];
+	 DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,huawei.com:email,suse.com:email];
+	 FUZZY_BLOCKED(0.00)[rspamd.com];
+	 MID_RHS_NOT_FQDN(0.50)[];
+	 RCVD_TLS_ALL(0.00)[];
+	 RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:98:from]
+X-Spam-Score: 5.39
+X-Rspamd-Queue-Id: E7CA11FB4A
 
-Al Viro <viro@zeniv.linux.org.uk> writes:
+Hello!
 
-> On Sun, Nov 26, 2023 at 06:41:41PM +0000, Al Viro wrote:
->
->> d_invalidate() situation is more subtle - we need to sort out its interplay
->> with d_splice_alias().
->> 
->> More concise variant of the scenario in question:
->> * we have /mnt/foo/bar and a lot of its descendents in dcache on client
->> * server does a rename, after which what used to be /mnt/foo/bar is /mnt/foo/baz
->> * somebody on the client does a lookup of /mnt/foo/bar and gets told by
->> the server that there's no directory with that name anymore.
->> * that somebody hits d_invalidate(), unhashes /mnt/foo/bar and starts
->> evicting its descendents
->> * We try to mount something on /mnt/foo/baz/blah.  We look up baz, get
->> an fhandle and notice that there's a directory inode for it (/mnt/foo/bar).
->> d_splice_alias() picks the bugger and moves it to /mnt/foo/baz, rehashing
->> it in process, as it ought to.  Then we find /mnt/foo/baz/blah in dcache and 
->> mount on top of it.
->> * d_invalidate() finishes shrink_dcache_parent() and starts hunting for
->> submounts to dissolve.  And finds the mount we'd done.  Which mount quietly
->> disappears.
->> 
->> Note that from the server POV the thing had been moved quite a while ago.
->> No server-side races involved - all it seeem is a couple of LOOKUP in the
->> same directory, one for the old name, one for the new.
->> 
->> On the client on the mounter side we have an uneventful mount on /mnt/foo/baz,
->> which had been there on server at the time we started and which remains in
->> place after mount we'd created suddenly disappears.
->> 
->> For the thread that ended up calling d_invalidate(), they'd been doing e.g.
->> stat on a pathname that used to be there a while ago, but currently isn't.
->> They get -ENOENT and no indication that something odd might have happened.
->> 
->> >From ->d_revalidate() point of view there's also nothing odd happening -
->> dentry is not a mountpoint, it stays in place until we return and there's
->> no directory entry with that name on in its parent.  It's as clear-cut
->> as it gets - dentry is stale.
->> 
->> The only overlap happening there is d_splice_alias() hitting in the middle
->> of already started d_invalidate().
->> 
->> For a while I thought that ff17fa561a04 "d_invalidate(): unhash immediately"
->> and 3a8e3611e0ba "d_walk(): kill 'finish' callback" might have something
->> to do with it, but the same problem existed prior to that.
->> 
->> FWIW, I suspect that the right answer would be along the lines of
->> 	* if d_splice_alias() does move an exsiting (attached) alias in
->> place, it ought to dissolve all mountpoints in subtree being moved.
->> There might be subtleties, but in case when that __d_unalias() happens
->> due to rename on server this is definitely the right thing to do.
->> 	* d_invalidate() should *NOT* do anything with dentry that
->> got moved (including moved by d_splice_alias()) from the place we'd
->> found it in dcache.  At least d_invalidate() done due to having
->> ->d_revalidate() return 0.
->> 	* d_invalidate() should dissolve all mountpoints in the
->> subtree that existed when it got started (and found the victim
->> still unmoved, that is).  It should (as it does) prevent any
->> new mountpoints added in that subtree, unless the mountpoint
->> to be had been moved (spliced) out.  What it really shouldn't
->> do is touch the mountpoints that are currently outside of it
->> due to moves.
->> 
->> I'm going to look around and see if we have any weird cases where
->> d_splice_alias() is used for things like "correct the case of
->> dentry name on a case-mangled filesystem" - that would presumably
->> not want to dissolve any submounts.  I seem to recall seeing
->> some shite of that sort, but that was a long time ago.
->> 
->> Eric, Miklos - it might be a good idea if you at least took a
->> look at whatever comes out of that (sub)thread; I'm trying to
->> reconstruct the picture, but the last round of serious reworking
->> of that area had been almost 10 years ago and your recollections
->> of the considerations back then might help.  I realize that they
->> are probably rather fragmentary (mine definitely are) and any
->> analysis will need to be redone on the current tree, but...
+On Sat 25-11-23 20:17:39, Zhang Yi wrote:
+> From: Zhang Yi <yi.zhang@huawei.com>
+> 
+> Current jbd2 only add REQ_SYNC for descriptor block, metadata log
+> buffer, commit buffer and superblock buffer, the submitted IO could be
+> throttled by writeback throttle in block layer, that could lead to
+> priority inversion in some cases. The log IO looks like a kind of high
+> priority metadata IO, so it should not be throttled by WBT like QOS
+> policies in block layer, let's add REQ_SYNC | REQ_IDLE to exempt from
+> writeback throttle, and also add REQ_META together indicates it's a
+> metadata IO.
 
-By subthread I assume you are referring to the work to that generalized
-check_submounts_and_drop into the current d_invalidate.
+So I agree about REQ_META but with REQ_IDLE I'm not so sure. __REQ_IDLE is
+documented as "anticipate more IO after this one" so that is a good fit for
+normal transaction writes but not so much for journal superblock writes.
+OTOH as far as I'm checking XFS uses REQ_IDLE as well for its log IO and
+the only places where REQ_IDLE is really checked is in blk-wbt... So I
+guess this makes sense.
 
-My memory is that there were deliberate restrictions on where
-d_revalidate could be called so as not to mess with mounts.
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index 52772c826c86..f7e8274b46ae 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -1374,6 +1374,9 @@ JBD2_FEATURE_INCOMPAT_FUNCS(csum2,		CSUM_V2)
+>  JBD2_FEATURE_INCOMPAT_FUNCS(csum3,		CSUM_V3)
+>  JBD2_FEATURE_INCOMPAT_FUNCS(fast_commit,	FAST_COMMIT)
+>  
+> +/* Journal high priority write IO operation flags */
+> +#define JBD2_REQ_HIPRIO		(REQ_META | REQ_SYNC | REQ_IDLE)
 
-I believe those restrictions either prevented or convinced us it
-prevented nasty interactions between d_invalidate and d_splice_alias.
+Since all journal IO is submitted with these flags I'd maybe name this
+JBD2_JOURNAL_REQ_FLAGS? Otherwise the patch looks good to me so feel free
+to add:
 
-There is a lot going on there.  I remember one of the relevant
-restrictions was marking dentries dont_mount, and inodes S_DEAD
-in unlink and rmdir.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-But even without out that marking if d_invalidate is called
-from d_revalidate the inode and all of it's dentries must be
-dead because the inode is stale and most go.  There should
-be no resurrecting it at that point.
-
-I suspect the most fruitful way to think of the d_invalidate vs
-d_splice_alias races is an unlink vs rename race.
-
-
-I don't think the mechanism matters, but deeply and fundamentally
-if we detect a directory inode is dead we need to stick with
-that decision and not attempt to resurrect it with d_splice_alias.
-
-
-Looking at ext4 and f2fs it appears when case folding they are calling
-d_invalidate before the generic code can, and before marking like
-dont_mount happen.  Is that the tie in with where the current
-conversation comes in?
-
-
-> TBH, I wonder if we ought to have d_invalidate() variant that would
-> unhash the dentry in question,
-
-You mean like the current d_invalidate does?  It calls __d_drop which
-unhashes the thing and prevent lookups.  You even pointed to the change
-that added that in the previous email.  The only thing that does not
-happen currently is marking the dentry as unhashed.
-
-Looking the rmdir code uses not only dont_mount but marks the
-inode S_DEAD as well.
-
-Right now we can't even get to d_splice_alias unless the original
-dentry is unhashed.
-
-So I suspect it isn't d_invalidate you are fighting.
-
-> do a variant of shrink_dcache_parent()
-> that would report if there had been any mountpoints and if there
-> had been any, do namespace_lock() and go hunting for mounts in that
-> subtree, moving corresponding struct mountpoint to a private list
-> as we go (removing them from mountpoint hash chains, that it).  Then
-> have them all evicted after we'd finished walking the subtree...
-
->
-> The tricky part will be lock ordering - right now we have the
-> mountpoint hash protected by mount_lock (same as mount hash, probably
-> worth splitting anyway) and that nests outside of ->d_lock.
-
-I don't get get it.
-
-All we have to do is to prevent the inode lookup from succeeding
-if we have decided the inode has been deleted.  It may be a little
-more subtle the path of the inode we are connecting goes through
-a dentry that is being invalidated.
-
-But either need to prevent it in the lookup that leads to d_alloc,
-or prevent the new dentry from being attached.
-
-I know d_splice_alias takes the rename_lock to prevent some of those
-races.
-
-
-I hope that helps on the recollection front.
-
-
-I am confused what is going on with ext4 and f2fs.  I think they
-are calling d_invalidate when all they need to call is d_drop.
-
-Eric
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
