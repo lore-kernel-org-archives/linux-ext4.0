@@ -1,34 +1,34 @@
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="gmeyRRi/"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="dmxiDsyC"
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 63CA2A3
-	for <linux-ext4@vger.kernel.org>; Thu,  7 Dec 2023 08:06:04 -0800 (PST)
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 72ECB10F3
+	for <linux-ext4@vger.kernel.org>; Thu,  7 Dec 2023 08:06:17 -0800 (PST)
 Received: from cwcc.thunk.org (pool-173-48-130-174.bstnma.fios.verizon.net [173.48.130.174])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 3B7G5wYw030813
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 3B7G5wrw030812
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Thu, 7 Dec 2023 11:05:59 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1701965159; bh=8BdDr1D3xUuDvfKV4qPcVeU4Ul2r9TwrsoOPCjJK3AM=;
+	t=1701965160; bh=zFtaW5LH8EX4QLGGXG1PoIgJhq1PLNfJuYpXNiR/Ko8=;
 	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type;
-	b=gmeyRRi/kLLUS3YirVKsvfDLfT3P1/v02NfZWE69A9I2LtQNy9rYsoLZ+INPH9iEY
-	 XaoSbWqPHylOvrZVyXGP8f+nLjiXF+O2+0Krn24HUs4xbNU+S+3YEqFBri79zsC2TJ
-	 de/VQEla2vwac+Vk/gtvTeAFrTiwbVVCWx+0tW+eBkCSsTo8s085aoBSDs2sAPjXes
-	 BBr3XF5vLzEv5mRUo3qbqkpliHLbhOa16AZEr6ynlsgW1WRJzpcaJ2VO+jcQlrXgw1
-	 5bvRMXJaT7j6JQkxRJjD5JLtEMoy5u43bMFpUBA+WqUromucekmoOzjieLbcWPBijM
-	 tB5Muzeh8T8Gg==
+	b=dmxiDsyCSlvGASmtgND511HwO6I91M4rQbevfKYZK4MT9uR6AUYWWaFy0uny442+q
+	 rbCZ3nBxuTCF5kQ0I4bdnBIToyslu+lz/9nCbV+T8Ser5G7xrqhkaGLiwByQo67o5w
+	 VSElsYLeVNCBWWFN1s39HE7o9J+x7q9R3p2kmzm5/9tbMVARbJTQF76m8+A25ORp+z
+	 u5eKu2aeSox+tBc3NDSEvjsF2L8qUdm1imWKjCnHwkmUGyFQG/ZLpNHQUHkpBxjuwc
+	 R+qJREbSZXnrVsTbzyI+DX9C7Hul3J/5zSCxo/pbfsuHrODq+kQc2tBA8zsWamzb4C
+	 LKFilviR1rvTg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id 59A7115C057B; Thu,  7 Dec 2023 11:05:58 -0500 (EST)
+	id 5CC8F15C057D; Thu,  7 Dec 2023 11:05:58 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext2fs: don't retry discard/zeroout repeatedly
-Date: Thu,  7 Dec 2023 11:05:53 -0500
-Message-Id: <170196512708.16594.7215006522173799558.b4-ty@mit.edu>
+To: linux-ext4@vger.kernel.org, Li Dongyang <dongyangli@ddn.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger@dilger.ca, lczerner@redhat.com
+Subject: Re: [PATCH] tune2fs: fall back to old get/set fs label on error
+Date: Thu,  7 Dec 2023 11:05:55 -0500
+Message-Id: <170196512708.16594.3926731283312351722.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <1683695929-26972-1-git-send-email-adilger@dilger.ca>
-References: <1683695929-26972-1-git-send-email-adilger@dilger.ca>
+In-Reply-To: <20230520104329.2402182-1-dongyangli@ddn.com>
+References: <20230520104329.2402182-1-dongyangli@ddn.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -39,20 +39,17 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Tue, 09 May 2023 23:18:49 -0600, Andreas Dilger wrote:
-> Call safe_getenv(UNIX_IO_NOZEROOUT) once when the device is
-> opened and set CHANNEL_FLAG_NOZEROOUT if present instead of
-> getting uid/euid/getenv every time unix_zeroout() is called.
+On Sat, 20 May 2023 20:43:29 +1000, Li Dongyang wrote:
+> If we fail to get/open the mount point for get/set
+> fs label ioctl, just fall back to old method and
+> silence the error messages.
 > 
-> For unix_discard() and unix_zeroout() don't continue to call
-> them if the block device doesn't support these operations.
 > 
-> [...]
 
 Applied, thanks!
 
-[1/1] ext2fs: don't retry discard/zeroout repeatedly
-      commit: cc20e3c4320ae34dd06ec4d6a71d07aa7d6599d7
+[1/1] tune2fs: fall back to old get/set fs label on error
+      commit: 569074c65d7b3a2022e53f0d6abd405dbe5320a3
 
 Best regards,
 -- 
