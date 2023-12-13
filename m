@@ -1,25 +1,46 @@
-Received: from szxga04-in.huawei.com (szxga04-in.huawei.com [45.249.212.190])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6A74BB0
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Dec 2023 17:55:28 -0800 (PST)
-Received: from mail.maildlp.com (unknown [172.19.88.163])
-	by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4SqdLB1NCkz1wngB;
-	Wed, 13 Dec 2023 09:33:54 +0800 (CST)
-Received: from kwepemm000013.china.huawei.com (unknown [7.193.23.81])
-	by mail.maildlp.com (Postfix) with ESMTPS id CF2F01800C9;
-	Wed, 13 Dec 2023 09:34:00 +0800 (CST)
-Received: from huawei.com (10.175.104.67) by kwepemm000013.china.huawei.com
- (7.193.23.81) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.35; Wed, 13 Dec
- 2023 09:33:58 +0800
-From: Zhihao Cheng <chengzhihao1@huawei.com>
-To: <tytso@mit.edu>, <jack@suse.com>
-CC: <linux-ext4@vger.kernel.org>, <yi.zhang@huawei.com>
-Subject: [PATCH v2 3/5] jbd2: Remove unused 'JBD2_CHECKPOINT_IO_ERROR' and 'j_atomic_flags'
-Date: Wed, 13 Dec 2023 09:32:22 +0800
-Message-ID: <20231213013224.2100050-4-chengzhihao1@huawei.com>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20231213013224.2100050-1-chengzhihao1@huawei.com>
-References: <20231213013224.2100050-1-chengzhihao1@huawei.com>
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="eSm+mNYY"
+Received: from smtp-fw-6002.amazon.com (smtp-fw-6002.amazon.com [52.95.49.90])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E59EECD;
+	Tue, 12 Dec 2023 21:17:08 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
+  t=1702444629; x=1733980629;
+  h=from:to:cc:subject:date:message-id:mime-version:
+   content-transfer-encoding;
+  bh=H/EH6tQoOujC8sN9THaYTQOj3Fa4ltukpYjXl3eXRIQ=;
+  b=eSm+mNYYEP97DVsEDuPT9rL5SBEODiDy3rD1qKaHb2wYejU6rwiZ+BKI
+   td0U4uqlA43sicaDKILskgtnYGQN3vibR92d8hu9pbejrKAKRhKBZpqK9
+   P3HPAUoElx87PT/QxgUg+xtl1kYKTGga9PngpeQF61MH+LQnutxUbJhhT
+   U=;
+X-IronPort-AV: E=Sophos;i="6.04,272,1695686400"; 
+   d="scan'208";a="373447902"
+Received: from iad12-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-iad-1e-m6i4x-9694bb9e.us-east-1.amazon.com) ([10.43.8.6])
+  by smtp-border-fw-6002.iad6.amazon.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 13 Dec 2023 05:17:08 +0000
+Received: from smtpout.prod.us-west-2.prod.farcaster.email.amazon.dev (iad7-ws-svc-p70-lb3-vlan2.iad.amazon.com [10.32.235.34])
+	by email-inbound-relay-iad-1e-m6i4x-9694bb9e.us-east-1.amazon.com (Postfix) with ESMTPS id 2ABD4806BB;
+	Wed, 13 Dec 2023 05:17:05 +0000 (UTC)
+Received: from EX19MTAUWA001.ant.amazon.com [10.0.21.151:23380]
+ by smtpin.naws.us-west-2.prod.farcaster.email.amazon.dev [10.0.27.95:2525] with esmtp (Farcaster)
+ id 650e561f-6b55-43b2-8323-f20778c0f1b5; Wed, 13 Dec 2023 05:17:05 +0000 (UTC)
+X-Farcaster-Flow-ID: 650e561f-6b55-43b2-8323-f20778c0f1b5
+Received: from EX19D030UWB002.ant.amazon.com (10.13.139.182) by
+ EX19MTAUWA001.ant.amazon.com (10.250.64.217) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.1118.40; Wed, 13 Dec 2023 05:17:04 +0000
+Received: from u1e958862c3245e.ant.amazon.com (10.43.143.133) by
+ EX19D030UWB002.ant.amazon.com (10.13.139.182) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.1118.40; Wed, 13 Dec 2023 05:17:02 +0000
+From: Suraj Jitindar Singh <surajjs@amazon.com>
+To: <tytso@mit.edu>
+CC: <adilger.kernel@dilger.ca>, <jack@suse.cz>, <linux-ext4@vger.kernel.org>,
+	<linux-kernel@vger.kernel.org>, <sjitindarsingh@smail.com>, "Suraj Jitindar
+ Singh" <surajjs@amazon.com>, <stable@vger.kernel.org>
+Subject: [PATCH] fs/ext4: Allow for the last group to be marked as trimmed
+Date: Wed, 13 Dec 2023 16:16:35 +1100
+Message-ID: <20231213051635.37731-1-surajjs@amazon.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -28,77 +49,82 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Content-Type: text/plain
-X-ClientProxiedBy: dggems701-chm.china.huawei.com (10.3.19.178) To
- kwepemm000013.china.huawei.com (7.193.23.81)
+X-ClientProxiedBy: EX19D045UWA003.ant.amazon.com (10.13.139.46) To
+ EX19D030UWB002.ant.amazon.com (10.13.139.182)
 
-Since 'JBD2_CHECKPOINT_IO_ERROR' and j_atomic_flags' are not useful
-anymore after fs dev's errseq is imported into jbd2, just remove them.
+The ext4 filesystem tracks the trim status of blocks at the group level.
+When an entire group has been trimmed then it is marked as such and subsequent
+trim invocations with the same minimum trim size will not be attempted on that
+group unless it is marked as able to be trimmed again such as when a block is
+freed.
 
-Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
+Currently the last group can't be marked as trimmed due to incorrect logic
+in ext4_last_grp_cluster(). ext4_last_grp_cluster() is supposed to return the
+zero based index of the last cluster in a group. This is then used by
+ext4_try_to_trim_range() to determine if the trim operation spans the entire
+group and as such if the trim status of the group should be recorded.
+
+ext4_last_grp_cluster() takes a 0 based group index, thus the valid values
+for grp are 0..(ext4_get_groups_count - 1). Any group index less than
+(ext4_get_groups_count - 1) is not the last group and must have
+EXT4_CLUSTERS_PER_GROUP(sb) clusters. For the last group we need to calculate
+the number of clusters based on the number of blocks in the group. Finally
+subtract 1 from the number of clusters as zero based indexing is expected.
+Rearrange the function slightly to make it clear what we are calculating
+and returning.
+
+Reproducer:
+// Create file system where the last group has fewer blocks than blocks per group
+$ mkfs.ext4 -b 4096 -g 8192 /dev/nvme0n1 8191
+$ mount /dev/nvme0n1 /mnt
+
+Before Patch:
+$ fstrim -v /mnt
+/mnt: 25.9 MiB (27156480 bytes) trimmed
+// Group not marked as trimmed so second invocation still discards blocks
+$ fstrim -v /mnt
+/mnt: 25.9 MiB (27156480 bytes) trimmed
+
+After Patch:
+fstrim -v /mnt
+/mnt: 25.9 MiB (27156480 bytes) trimmed
+// Group marked as trimmed so second invocation DOESN'T discard any blocks
+fstrim -v /mnt
+/mnt: 0 B (0 bytes) trimmed
+
+Fixes: 45e4ab320c9b ("ext4: move setting of trimmed bit into ext4_try_to_trim_range()")
+Cc: stable@vger.kernel.org # 4.19+
+Signed-off-by: Suraj Jitindar Singh <surajjs@amazon.com>
 ---
- fs/jbd2/checkpoint.c | 11 -----------
- include/linux/jbd2.h | 11 -----------
- 2 files changed, 22 deletions(-)
+ fs/ext4/mballoc.c | 15 ++++++++++-----
+ 1 file changed, 10 insertions(+), 5 deletions(-)
 
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index 118699fff2f9..1c97e64c4784 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -556,7 +556,6 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
- 	struct transaction_chp_stats_s *stats;
- 	transaction_t *transaction;
- 	journal_t *journal;
--	struct buffer_head *bh = jh2bh(jh);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 454d5612641ee..c15d8b6f887dd 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -6731,11 +6731,16 @@ __acquires(bitlock)
+ static ext4_grpblk_t ext4_last_grp_cluster(struct super_block *sb,
+ 					   ext4_group_t grp)
+ {
+-	if (grp < ext4_get_groups_count(sb))
+-		return EXT4_CLUSTERS_PER_GROUP(sb) - 1;
+-	return (ext4_blocks_count(EXT4_SB(sb)->s_es) -
+-		ext4_group_first_block_no(sb, grp) - 1) >>
+-					EXT4_CLUSTER_BITS(sb);
++	unsigned long nr_clusters_in_group;
++
++	if (grp < (ext4_get_groups_count(sb) - 1))
++		nr_clusters_in_group = EXT4_CLUSTERS_PER_GROUP(sb);
++	else
++		nr_clusters_in_group = (ext4_blocks_count(EXT4_SB(sb)->s_es) -
++					ext4_group_first_block_no(sb, grp))
++				       >> EXT4_CLUSTER_BITS(sb);
++
++	return nr_clusters_in_group - 1;
+ }
  
- 	JBUFFER_TRACE(jh, "entry");
- 
-@@ -569,16 +568,6 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
- 
- 	JBUFFER_TRACE(jh, "removing from transaction");
- 
--	/*
--	 * If we have failed to write the buffer out to disk, the filesystem
--	 * may become inconsistent. We cannot abort the journal here since
--	 * we hold j_list_lock and we have to be careful about races with
--	 * jbd2_journal_destroy(). So mark the writeback IO error in the
--	 * journal here and we abort the journal later from a better context.
--	 */
--	if (buffer_write_io_error(bh))
--		set_bit(JBD2_CHECKPOINT_IO_ERROR, &journal->j_atomic_flags);
--
- 	__buffer_unlink(jh);
- 	jh->b_cp_transaction = NULL;
- 	percpu_counter_dec(&journal->j_checkpoint_jh_count);
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index cea1aa70ae36..971f3e826e15 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -755,11 +755,6 @@ struct journal_s
- 	 */
- 	unsigned long		j_flags;
- 
--	/**
--	 * @j_atomic_flags: Atomic journaling state flags.
--	 */
--	unsigned long		j_atomic_flags;
--
- 	/**
- 	 * @j_errno:
- 	 *
-@@ -1406,12 +1401,6 @@ JBD2_FEATURE_INCOMPAT_FUNCS(fast_commit,	FAST_COMMIT)
- #define JBD2_JOURNAL_FLUSH_VALID	(JBD2_JOURNAL_FLUSH_DISCARD | \
- 					JBD2_JOURNAL_FLUSH_ZEROOUT)
- 
--/*
-- * Journal atomic flag definitions
-- */
--#define JBD2_CHECKPOINT_IO_ERROR	0x001	/* Detect io error while writing
--						 * buffer back to disk */
--
- /*
-  * Function declarations for the journaling transaction and buffer
-  * management
+ static bool ext4_trim_interrupted(void)
 -- 
-2.39.2
+2.34.1
 
