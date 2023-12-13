@@ -1,55 +1,22 @@
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="lBwXMd1E";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="/jFoUx2k";
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="lBwXMd1E";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="/jFoUx2k"
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 69A652122;
-	Wed, 13 Dec 2023 15:40:57 -0800 (PST)
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [10.150.64.97])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CF7FA326C;
+	Wed, 13 Dec 2023 15:41:02 -0800 (PST)
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 923242230E;
-	Wed, 13 Dec 2023 23:40:39 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1702510839; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-	bh=Ob8CvgVrk1WZbkIoZ6UBNnmSgu3zulSWfLiJK83jOqA=;
-	b=lBwXMd1EPmnGnA8+k3bo5cw3oNB545PNRt2oXQ2MSwXJTDndMTZOmOd2ttgQ80s1sQibOS
-	oepcveTHzebyEc5MYn1U/Igq0lEr+9McqN2v6vd99wQwZ7aA2YeGDeUIim24X+MCmU/s/a
-	8trlKpAsdITnHkLCYBYFTQJic6UD1QA=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1702510839;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-	bh=Ob8CvgVrk1WZbkIoZ6UBNnmSgu3zulSWfLiJK83jOqA=;
-	b=/jFoUx2kLod1hZkAlOySsxr7piDjHRpp764THDP20gBnCz7XvevHBSZDXL7Mcd8+FM+2MX
-	6ZliT/DI8Q4qmXAA==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1702510839; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-	bh=Ob8CvgVrk1WZbkIoZ6UBNnmSgu3zulSWfLiJK83jOqA=;
-	b=lBwXMd1EPmnGnA8+k3bo5cw3oNB545PNRt2oXQ2MSwXJTDndMTZOmOd2ttgQ80s1sQibOS
-	oepcveTHzebyEc5MYn1U/Igq0lEr+9McqN2v6vd99wQwZ7aA2YeGDeUIim24X+MCmU/s/a
-	8trlKpAsdITnHkLCYBYFTQJic6UD1QA=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1702510839;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-	bh=Ob8CvgVrk1WZbkIoZ6UBNnmSgu3zulSWfLiJK83jOqA=;
-	b=/jFoUx2kLod1hZkAlOySsxr7piDjHRpp764THDP20gBnCz7XvevHBSZDXL7Mcd8+FM+2MX
-	6ZliT/DI8Q4qmXAA==
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 7F4B322315;
+	Wed, 13 Dec 2023 23:40:53 +0000 (UTC)
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 4AAA11377F;
-	Wed, 13 Dec 2023 23:40:39 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 4532B1377F;
+	Wed, 13 Dec 2023 23:40:53 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id fLf5C/dAemVXPgAAD6G6ig
-	(envelope-from <krisman@suse.de>); Wed, 13 Dec 2023 23:40:39 +0000
+	id 7iDFCgVBemVzPgAAD6G6ig
+	(envelope-from <krisman@suse.de>); Wed, 13 Dec 2023 23:40:53 +0000
 From: Gabriel Krisman Bertazi <krisman@suse.de>
 To: viro@zeniv.linux.org.uk,
 	ebiggers@kernel.org,
@@ -59,10 +26,12 @@ Cc: linux-f2fs-devel@lists.sourceforge.net,
 	linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org,
 	Gabriel Krisman Bertazi <krisman@suse.de>
-Subject: [PATCH 0/8] Revert setting casefolding dentry operations through s_d_op
-Date: Wed, 13 Dec 2023 18:40:23 -0500
-Message-ID: <20231213234031.1081-1-krisman@suse.de>
+Subject: [PATCH 6/8] f2fs: Set the case-insensitive dentry operations through ->s_d_op
+Date: Wed, 13 Dec 2023 18:40:29 -0500
+Message-ID: <20231213234031.1081-7-krisman@suse.de>
 X-Mailer: git-send-email 2.43.0
+In-Reply-To: <20231213234031.1081-1-krisman@suse.de>
+References: <20231213234031.1081-1-krisman@suse.de>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -70,79 +39,67 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Spam-Score: 3.44
+X-Spam-Level: 
+X-Spam-Score: -4.00
+X-Spam-Level: 
 Authentication-Results: smtp-out1.suse.de;
 	none
-X-Spam-Score: 3.44
-X-Spamd-Result: default: False [3.44 / 50.00];
-	 ARC_NA(0.00)[];
-	 RCVD_VIA_SMTP_AUTH(0.00)[];
-	 FROM_HAS_DN(0.00)[];
-	 TO_DN_SOME(0.00)[];
-	 R_MISSING_CHARSET(2.50)[];
-	 TO_MATCH_ENVRCPT_ALL(0.00)[];
-	 MIME_GOOD(-0.10)[text/plain];
-	 BROKEN_CONTENT_TYPE(1.50)[];
-	 NEURAL_HAM_LONG(-1.00)[-1.000];
-	 RCVD_COUNT_THREE(0.00)[3];
-	 DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	 NEURAL_HAM_SHORT(-0.20)[-1.000];
-	 RCPT_COUNT_SEVEN(0.00)[8];
-	 MID_CONTAINS_FROM(1.00)[];
-	 FUZZY_BLOCKED(0.00)[rspamd.com];
-	 FROM_EQ_ENVFROM(0.00)[];
-	 MIME_TRACE(0.00)[0:+];
-	 RCVD_TLS_ALL(0.00)[];
-	 BAYES_HAM(-0.26)[73.73%]
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Spamd-Result: default: False [-4.00 / 50.00];
+	 REPLY(-4.00)[]
+X-Spam-Score: -4.00
+X-Rspamd-Queue-Id: 7F4B322315
 X-Spam-Flag: NO
 
-When case-insensitive and fscrypt were adapted to work together, we moved the
-code that sets the dentry operations for case-insensitive dentries(d_hash and
-d_compare) to happen from a helper inside ->lookup.  This is because fscrypt
-wants to set d_revalidate only on some dentries, so it does it only for them in
-d_revalidate.
+All dentries in a case-insensitive filesystem have the same set of
+dentry operations.  Therefore, we should let VFS propagate them from
+sb->s_d_op d_alloc instead of setting at lookup time.
 
-But, case-insensitive hooks are actually set on all dentries in the filesystem,
-so the natural place to do it is through s_d_op and let d_alloc handle it [1].
-In addition, doing it inside the ->lookup is a problem for case-insensitive
-dentries that are not created through ->lookup, like those coming
-open-by-fhandle[2], which will not see the required d_ops.
+This was already the case before commit bb9cd9106b22 ("fscrypt: Have
+filesystems handle their d_ops"), but it was changed to set at
+lookup-time to facilitate the integration with fscrypt.  But it's a
+problem because dentries that don't get created through ->lookup() won't
+have any visibility of the operations.  Let's revert to the previous
+implementation.
 
-This patchset therefore reverts to using sb->s_d_op to set the dentry operations
-for case-insensitive filesystems.  In order to set case-insensitive hooks early
-and not require every dentry to have d_revalidate in case-insensitive
-filesystems, it introduces a patch suggested by Al Viro to disable d_revalidate
-on some dentries on the fly.
+Suggested-by: Al Viro <viro@zeniv.linux.org.uk>
+Signed-off-by: Gabriel Krisman Bertazi <krisman@suse.de>
+---
+ fs/f2fs/namei.c | 6 +++++-
+ fs/f2fs/super.c | 3 +++
+ 2 files changed, 8 insertions(+), 1 deletion(-)
 
-It survives fstests encrypt and quick groups without regressions.  Based on v6.7-rc1.
-
-[1] https://lore.kernel.org/linux-fsdevel/20231123195327.GP38156@ZenIV/
-[2] https://lore.kernel.org/linux-fsdevel/20231123171255.GN38156@ZenIV/
-
-Gabriel Krisman Bertazi (8):
-  dcache: Add helper to disable d_revalidate for a specific dentry
-  fscrypt: Drop d_revalidate if key is available
-  libfs: Merge encrypted_ci_dentry_ops and ci_dentry_ops
-  libfs: Expose generic_ci_dentry_ops outside of libfs
-  ext4: Set the case-insensitive dentry operations through ->s_d_op
-  f2fs: Set the case-insensitive dentry operations through ->s_d_op
-  libfs: Don't support setting casefold operations during lookup
-  fscrypt: Move d_revalidate configuration back into fscrypt
-
- fs/crypto/fname.c       |  9 +++++-
- fs/crypto/hooks.c       |  8 ++++++
- fs/dcache.c             | 10 +++++++
- fs/ext4/namei.c         |  1 -
- fs/ext4/super.c         |  3 ++
- fs/f2fs/namei.c         |  1 -
- fs/f2fs/super.c         |  3 ++
- fs/libfs.c              | 64 +++--------------------------------------
- fs/ubifs/dir.c          |  1 -
- include/linux/dcache.h  |  1 +
- include/linux/fs.h      |  2 +-
- include/linux/fscrypt.h | 10 +++----
- 12 files changed, 43 insertions(+), 70 deletions(-)
-
+diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
+index d0053b0284d8..4053846e2cd3 100644
+--- a/fs/f2fs/namei.c
++++ b/fs/f2fs/namei.c
+@@ -532,7 +532,11 @@ static struct dentry *f2fs_lookup(struct inode *dir, struct dentry *dentry,
+ 	}
+ 
+ 	err = f2fs_prepare_lookup(dir, dentry, &fname);
+-	generic_set_encrypted_ci_d_ops(dentry);
++
++	/* Case-insensitive volumes set dentry ops through sb->s_d_op. */
++	if (!dir->i_sb->s_encoding)
++		generic_set_encrypted_ci_d_ops(dentry);
++
+ 	if (err == -ENOENT)
+ 		goto out_splice;
+ 	if (err)
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 033af907c3b1..0a199eb5b01e 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -4663,6 +4663,9 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto free_node_inode;
+ 	}
+ 
++	if (sb->s_encoding)
++		sb->s_d_op = &generic_ci_dentry_ops;
++
+ 	sb->s_root = d_make_root(root); /* allocate root dentry */
+ 	if (!sb->s_root) {
+ 		err = -ENOMEM;
 -- 
 2.43.0
 
