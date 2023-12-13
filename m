@@ -1,22 +1,22 @@
-Received: from szxga07-in.huawei.com (szxga07-in.huawei.com [45.249.212.35])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 60CB0AF
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Dec 2023 17:51:01 -0800 (PST)
+Received: from szxga04-in.huawei.com (szxga04-in.huawei.com [45.249.212.190])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CEA7BD5
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Dec 2023 17:51:24 -0800 (PST)
 Received: from mail.maildlp.com (unknown [172.19.88.163])
-	by szxga07-in.huawei.com (SkyGuard) with ESMTP id 4SqdK11h0Nz1L9lh;
+	by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4SqdK15pQfz29frN;
 	Wed, 13 Dec 2023 09:32:53 +0800 (CST)
 Received: from kwepemm000013.china.huawei.com (unknown [7.193.23.81])
-	by mail.maildlp.com (Postfix) with ESMTPS id 597E21800C9;
-	Wed, 13 Dec 2023 09:33:58 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id ED8D31800C9;
+	Wed, 13 Dec 2023 09:34:00 +0800 (CST)
 Received: from huawei.com (10.175.104.67) by kwepemm000013.china.huawei.com
  (7.193.23.81) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.35; Wed, 13 Dec
- 2023 09:33:57 +0800
+ 2023 09:33:59 +0800
 From: Zhihao Cheng <chengzhihao1@huawei.com>
 To: <tytso@mit.edu>, <jack@suse.com>
 CC: <linux-ext4@vger.kernel.org>, <yi.zhang@huawei.com>
-Subject: [PATCH v2 1/5] jbd2: Add errseq to detect client fs's bdev writeback error
-Date: Wed, 13 Dec 2023 09:32:20 +0800
-Message-ID: <20231213013224.2100050-2-chengzhihao1@huawei.com>
+Subject: [PATCH v2 5/5] ext4: Move ext4_check_bdev_write_error() into nojournal mode
+Date: Wed, 13 Dec 2023 09:32:24 +0800
+Message-ID: <20231213013224.2100050-6-chengzhihao1@huawei.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20231213013224.2100050-1-chengzhihao1@huawei.com>
 References: <20231213013224.2100050-1-chengzhihao1@huawei.com>
@@ -31,107 +31,40 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems701-chm.china.huawei.com (10.3.19.178) To
  kwepemm000013.china.huawei.com (7.193.23.81)
 
-Add errseq in journal, so that JBD2 can detect whether metadata is
-successfully written to fs bdev. This patch adds detection in recovery
-process to replace original solution(using local variable wb_err).
+Since JBD2 takes care of all metadata writeback errors of fs dev,
+ext4_check_bdev_write_error() is useful only in nojournal mode.
+Move it into '!ext4_handle_valid(handle)' branch.
 
 Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
 Suggested-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/journal.c    |  1 +
- fs/jbd2/recovery.c   |  7 +------
- include/linux/jbd2.h | 26 ++++++++++++++++++++++++++
- 3 files changed, 28 insertions(+), 6 deletions(-)
+ fs/ext4/ext4_jbd2.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 206cb53ef2b0..559938a82379 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1534,6 +1534,7 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 	journal->j_fs_dev = fs_dev;
- 	journal->j_blk_offset = start;
- 	journal->j_total_len = len;
-+	jbd2_init_fs_dev_write_error(journal);
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index d1a2e6624401..5d8055161acd 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -235,8 +235,6 @@ int __ext4_journal_get_write_access(const char *where, unsigned int line,
  
- 	err = journal_load_superblock(journal);
- 	if (err)
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index 01f744cb97a4..1f7664984d6e 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -289,8 +289,6 @@ int jbd2_journal_recover(journal_t *journal)
- 	journal_superblock_t *	sb;
+ 	might_sleep();
  
- 	struct recovery_info	info;
--	errseq_t		wb_err;
--	struct address_space	*mapping;
- 
- 	memset(&info, 0, sizeof(info));
- 	sb = journal->j_superblock;
-@@ -308,9 +306,6 @@ int jbd2_journal_recover(journal_t *journal)
+-	ext4_check_bdev_write_error(sb);
+-
+ 	if (ext4_handle_valid(handle)) {
+ 		err = jbd2_journal_get_write_access(handle, bh);
+ 		if (err) {
+@@ -244,7 +242,8 @@ int __ext4_journal_get_write_access(const char *where, unsigned int line,
+ 						  handle, err);
+ 			return err;
+ 		}
+-	}
++	} else
++		ext4_check_bdev_write_error(sb);
+ 	if (trigger_type == EXT4_JTR_NONE || !ext4_has_metadata_csum(sb))
  		return 0;
- 	}
- 
--	wb_err = 0;
--	mapping = journal->j_fs_dev->bd_inode->i_mapping;
--	errseq_check_and_advance(&mapping->wb_err, &wb_err);
- 	err = do_one_pass(journal, &info, PASS_SCAN);
- 	if (!err)
- 		err = do_one_pass(journal, &info, PASS_REVOKE);
-@@ -334,7 +329,7 @@ int jbd2_journal_recover(journal_t *journal)
- 	err2 = sync_blockdev(journal->j_fs_dev);
- 	if (!err)
- 		err = err2;
--	err2 = errseq_check_and_advance(&mapping->wb_err, &wb_err);
-+	err2 = jbd2_check_fs_dev_write_error(journal);
- 	if (!err)
- 		err = err2;
- 	/* Make sure all replayed data is on permanent storage */
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index beb30719ee16..cea1aa70ae36 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -998,6 +998,13 @@ struct journal_s
- 	 */
- 	struct block_device	*j_fs_dev;
- 
-+	/**
-+	 * @j_fs_dev_wb_err:
-+	 *
-+	 * Records the errseq of the client fs's backing block device.
-+	 */
-+	errseq_t		j_fs_dev_wb_err;
-+
- 	/**
- 	 * @j_total_len: Total maximum capacity of the journal region on disk.
- 	 */
-@@ -1698,6 +1705,25 @@ static inline void jbd2_journal_abort_handle(handle_t *handle)
- 	handle->h_aborted = 1;
- }
- 
-+static inline void jbd2_init_fs_dev_write_error(journal_t *journal)
-+{
-+	struct address_space *mapping = journal->j_fs_dev->bd_inode->i_mapping;
-+
-+	/*
-+	 * Save the original wb_err value of client fs's bdev mapping which
-+	 * could be used to detect the client fs's metadata async write error.
-+	 */
-+	errseq_check_and_advance(&mapping->wb_err, &journal->j_fs_dev_wb_err);
-+}
-+
-+static inline int jbd2_check_fs_dev_write_error(journal_t *journal)
-+{
-+	struct address_space *mapping = journal->j_fs_dev->bd_inode->i_mapping;
-+
-+	return errseq_check(&mapping->wb_err,
-+			    READ_ONCE(journal->j_fs_dev_wb_err));
-+}
-+
- #endif /* __KERNEL__   */
- 
- /* Comparison functions for transaction IDs: perform comparisons using
+ 	BUG_ON(trigger_type >= EXT4_JOURNAL_TRIGGER_COUNT);
 -- 
 2.39.2
 
