@@ -1,186 +1,135 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from mail-il1-f198.google.com (mail-il1-f198.google.com [209.85.166.198])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 579DF24B57;
-	Fri, 15 Dec 2023 11:41:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="zKGXE7Yk";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="i6kaN94H";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="zKGXE7Yk";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="i6kaN94H"
-Received: from imap2.dmz-prg2.suse.org (imap2.dmz-prg2.suse.org [10.150.64.98])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 34A251F82D;
-	Fri, 15 Dec 2023 11:41:36 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1702640496; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=JZJ1QN2rr+Sep44VgaUfVWlxXl5m28S3S0Bhpavi/Wk=;
-	b=zKGXE7YkFPRIXPvYfsmsz7OyIlcXiQwyh1q9Rd/gzmq5cet2D3+kySt8yh1Q4hT3fgXSww
-	fU+c5LYZER94cZT7jrilQ1dkWhHobOTKN5mtYNl4nTVAP6KaNbbo4ljhLTnlLCGP7tyZz1
-	8m298ehvzbmVP9ag23szA0sjnm1J2EI=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1702640496;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=JZJ1QN2rr+Sep44VgaUfVWlxXl5m28S3S0Bhpavi/Wk=;
-	b=i6kaN94H3x+t36bTBxPXK7R8p3ed6IuDLDvz1fFPhr7pxF3cjBsuQro1832qU6fk/Ztweq
-	TXT2sfGFrfeFyaAA==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1702640496; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=JZJ1QN2rr+Sep44VgaUfVWlxXl5m28S3S0Bhpavi/Wk=;
-	b=zKGXE7YkFPRIXPvYfsmsz7OyIlcXiQwyh1q9Rd/gzmq5cet2D3+kySt8yh1Q4hT3fgXSww
-	fU+c5LYZER94cZT7jrilQ1dkWhHobOTKN5mtYNl4nTVAP6KaNbbo4ljhLTnlLCGP7tyZz1
-	8m298ehvzbmVP9ag23szA0sjnm1J2EI=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1702640496;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=JZJ1QN2rr+Sep44VgaUfVWlxXl5m28S3S0Bhpavi/Wk=;
-	b=i6kaN94H3x+t36bTBxPXK7R8p3ed6IuDLDvz1fFPhr7pxF3cjBsuQro1832qU6fk/Ztweq
-	TXT2sfGFrfeFyaAA==
-Received: from imap2.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap2.dmz-prg2.suse.org (Postfix) with ESMTPS id 2390C13912;
-	Fri, 15 Dec 2023 11:41:36 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([10.150.64.162])
-	by imap2.dmz-prg2.suse.org with ESMTPSA
-	id AuWsCHA7fGUQOgAAn2gu4w
-	(envelope-from <jack@suse.cz>); Fri, 15 Dec 2023 11:41:36 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 895DDA07E0; Fri, 15 Dec 2023 12:41:35 +0100 (CET)
-Date: Fri, 15 Dec 2023 12:41:35 +0100
-From: Jan Kara <jack@suse.cz>
-To: Ye Bin <yebin10@huawei.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, jack@suse.cz
-Subject: Re: [PATCH] ext4: fix inconsistent between segment fstrim and full
- fstrim
-Message-ID: <20231215114135.qwdoscxg7myw3r6x@quack3>
-References: <20231214064635.4128391-1-yebin10@huawei.com>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D1F012F854
+	for <linux-ext4@vger.kernel.org>; Fri, 15 Dec 2023 13:49:22 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-il1-f198.google.com with SMTP id e9e14a558f8ab-35d7d0a1605so7292015ab.2
+        for <linux-ext4@vger.kernel.org>; Fri, 15 Dec 2023 05:49:22 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1702648162; x=1703252962;
+        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=6fcg6YeQhWzXnquq1qC1+RR7NbEHfog/+Gy6jNbdBe8=;
+        b=vk8W0fqe+mkmFewbXju+3yGkIML70iWwuZymjiRssXoMGWVNfRpe1hSwcCQo7T+uit
+         1vyHdBocbTbqKgzPl/a3/NX19kIv7CHsbv1E8x0IaFtTYGoijsg9GRvLkV7fzHhMaAiX
+         TNrSlWl/xjWiP2jPsZrrEs5mO0Jvg48kKaK2F8ZKsjVOGVY+MSVzDY7dWC24x8tvPK4L
+         NV9oc52uSAAymVAQW9or2F3U2RkjAnU4SMkMdBKxmSzm7Z2EypW2ybnPOs+nIJ+y/KdS
+         yW3pr8hO9MO+lpbtVlQE5RMsMaAdhNcTbkCrkTlfIFR0uCtbUKoPGsSSlpFpz/vyqdxP
+         Ixkw==
+X-Gm-Message-State: AOJu0YwvIN1oaoYTVALG00vqSVIWY1oEd6/9VBKU5dzHeWm1i9e4KGmK
+	2yhvrljxGgRy9wLOD9Q+I71wPS5l82eUWNg5Gcm86lVzZVCT
+X-Google-Smtp-Source: AGHT+IE4vO15ZYfkyVn2/O0gwJCpcuVogA0/cGDEc5Yg252LmSHz/Dzl61AP4aoxWSetvkwcp6afVp+ysEH9Esx/3ZL3kFqe2Lq2
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20231214064635.4128391-1-yebin10@huawei.com>
-X-Spam-Level: 
-X-Spam-Score: -3.79
-X-Spam-Flag: NO
-Authentication-Results: smtp-out2.suse.de;
-	none
-X-Spam-Level: 
-X-Spam-Score: -3.79
-X-Spamd-Result: default: False [-3.79 / 50.00];
-	 ARC_NA(0.00)[];
-	 RCVD_VIA_SMTP_AUTH(0.00)[];
-	 FROM_HAS_DN(0.00)[];
-	 TO_DN_SOME(0.00)[];
-	 TO_MATCH_ENVRCPT_ALL(0.00)[];
-	 NEURAL_HAM_LONG(-1.00)[-1.000];
-	 MIME_GOOD(-0.10)[text/plain];
-	 RCPT_COUNT_FIVE(0.00)[6];
-	 RCVD_COUNT_THREE(0.00)[3];
-	 DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	 NEURAL_HAM_SHORT(-0.19)[-0.962];
-	 DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email];
-	 FUZZY_BLOCKED(0.00)[rspamd.com];
-	 FROM_EQ_ENVFROM(0.00)[];
-	 MIME_TRACE(0.00)[0:+];
-	 MID_RHS_NOT_FQDN(0.50)[];
-	 RCVD_TLS_ALL(0.00)[];
-	 BAYES_HAM(-3.00)[100.00%]
-X-Spam-Flag: NO
+X-Received: by 2002:a05:6e02:1d0b:b0:35f:98ba:ace2 with SMTP id
+ i11-20020a056e021d0b00b0035f98baace2mr11741ila.4.1702648162117; Fri, 15 Dec
+ 2023 05:49:22 -0800 (PST)
+Date: Fri, 15 Dec 2023 05:49:22 -0800
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <000000000000e17185060c8caaad@google.com>
+Subject: [syzbot] [ext4?] WARNING in lock_two_nondirectories
+From: syzbot <syzbot+2c4a3b922a860084cc7f@syzkaller.appspotmail.com>
+To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, 
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	syzkaller-bugs@googlegroups.com, tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
 
-On Thu 14-12-23 14:46:35, Ye Bin wrote:
-> There will not issue discard cmd when do segment fstrim for ext4 fs, however,
-> if full fstrim for the same fs will issue discard cmd.
-> Above issue may happens as follows:
-> Precondition:
-> 1. Fstrim range [0, 15] and [16, 31];
-> 2. Discard granularity is 16;
->             Range1          Range2
->       1111000000000000 0000111010101011
-> There's no free space length large or equal than 16 in 'Range1' or 'Range2'.
-> As ext4_try_to_trim_range() only search free space among range which user
-> specified. However, there's maximum free space length 16 in 'Range1'+ 'Range2'.
-> To solve above issue, we need to find the longest free space to discard.
+Hello,
 
-The patch looks good so feel free to add:
+syzbot found the following issue on:
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+HEAD commit:    a39b6ac3781d Linux 6.7-rc5
+git tree:       upstream
+console+strace: https://syzkaller.appspot.com/x/log.txt?x=12c3a112e80000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=e043d554f0a5f852
+dashboard link: https://syzkaller.appspot.com/bug?extid=2c4a3b922a860084cc7f
+compiler:       gcc (Debian 12.2.0-14) 12.2.0, GNU ld (GNU Binutils for Debian) 2.40
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=1687292ee80000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=16d8adbce80000
 
-I'd just rephrase the changelog to make it a bit easier to read:
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/67fd20dff9bc/disk-a39b6ac3.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/778677113ec4/vmlinux-a39b6ac3.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/fd69b2e7d493/bzImage-a39b6ac3.xz
+mounted in repro: https://storage.googleapis.com/syzbot-assets/28ab13ef564b/mount_0.gz
 
-Suppose we issue two FITRIM ioctls for ranges [0,15] and [16,31] with
-mininum length of trimmed range set to 8 blocks. If we have say a range of
-blocks 10-22 free, this range will not be trimmed because it straddles the
-boundary of the two FITRIM ranges and neither part is big enough. This is a
-bit surprising to some users that call FITRIM on smaller ranges of blocks
-to limit impact on the system. Also XFS trims all free space extents that
-overlap with the specified range so we are inconsistent among filesystems.
-Let's change ext4_try_to_trim_range() to consider for trimming the whole
-free space extent that straddles the end of specified range, not just the
-part of it within the range.
+Bisection is inconclusive: the issue happens on the oldest tested release.
 
-								Honza
- 
-> Signed-off-by: Ye Bin <yebin10@huawei.com>
-> ---
->  fs/ext4/mballoc.c | 11 ++++++++---
->  1 file changed, 8 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index d72b5e3c92ec..d195461123d8 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -6753,13 +6753,15 @@ static int ext4_try_to_trim_range(struct super_block *sb,
->  __acquires(ext4_group_lock_ptr(sb, e4b->bd_group))
->  __releases(ext4_group_lock_ptr(sb, e4b->bd_group))
->  {
-> -	ext4_grpblk_t next, count, free_count;
-> +	ext4_grpblk_t next, count, free_count, last, origin_start;
->  	bool set_trimmed = false;
->  	void *bitmap;
->  
-> +	last = ext4_last_grp_cluster(sb, e4b->bd_group);
->  	bitmap = e4b->bd_bitmap;
-> -	if (start == 0 && max >= ext4_last_grp_cluster(sb, e4b->bd_group))
-> +	if (start == 0 && max >= last)
->  		set_trimmed = true;
-> +	origin_start = start;
->  	start = max(e4b->bd_info->bb_first_free, start);
->  	count = 0;
->  	free_count = 0;
-> @@ -6768,7 +6770,10 @@ __releases(ext4_group_lock_ptr(sb, e4b->bd_group))
->  		start = mb_find_next_zero_bit(bitmap, max + 1, start);
->  		if (start > max)
->  			break;
-> -		next = mb_find_next_bit(bitmap, max + 1, start);
-> +
-> +		next = mb_find_next_bit(bitmap, last + 1, start);
-> +		if (origin_start == 0 && next >= last)
-> +			set_trimmed = true;
->  
->  		if ((next - start) >= minblocks) {
->  			int ret = ext4_trim_extent(sb, start, next - start, e4b);
-> -- 
-> 2.31.1
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=1286a2b2e80000
+final oops:     https://syzkaller.appspot.com/x/report.txt?x=1186a2b2e80000
+console output: https://syzkaller.appspot.com/x/log.txt?x=1686a2b2e80000
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+2c4a3b922a860084cc7f@syzkaller.appspotmail.com
+
+EXT4-fs (loop0): mounted filesystem 00000000-0000-0000-0000-000000000000 r/w without journal. Quota mode: none.
+------------[ cut here ]------------
+WARNING: CPU: 1 PID: 5067 at fs/inode.c:1148 lock_two_nondirectories+0xca/0x100 fs/inode.c:1148
+Modules linked in:
+CPU: 1 PID: 5067 Comm: syz-executor207 Not tainted 6.7.0-rc5-syzkaller #0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 11/10/2023
+RIP: 0010:lock_two_nondirectories+0xca/0x100 fs/inode.c:1148
+Code: ff 66 41 81 fc 00 40 74 1b e8 c2 3d 92 ff 48 89 ee 48 89 df 5b 5d b9 04 00 00 00 31 d2 41 5c e9 5c fd ff ff e8 a7 3d 92 ff 90 <0f> 0b 90 eb da e8 9c 3d 92 ff 90 0f 0b 90 eb 83 48 89 df e8 5e e4
+RSP: 0018:ffffc90003a4fc38 EFLAGS: 00010293
+RAX: 0000000000000000 RBX: ffff88807cf82ab0 RCX: ffffffff81f55031
+RDX: ffff888078b21dc0 RSI: ffffffff81f55059 RDI: 0000000000000003
+RBP: ffff88807cfe66b0 R08: 0000000000000003 R09: 0000000000004000
+R10: 0000000000004000 R11: ffffffff915fc8a0 R12: 0000000000004000
+R13: ffff8880298d2c80 R14: ffff88807cfe66b0 R15: ffffffff8d195740
+FS:  0000555555d51380(0000) GS:ffff8880b9900000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000000000000000 CR3: 0000000056e5a000 CR4: 0000000000350ef0
+Call Trace:
+ <TASK>
+ swap_inode_boot_loader fs/ext4/ioctl.c:391 [inline]
+ __ext4_ioctl+0x118d/0x4570 fs/ext4/ioctl.c:1437
+ vfs_ioctl fs/ioctl.c:51 [inline]
+ __do_sys_ioctl fs/ioctl.c:871 [inline]
+ __se_sys_ioctl fs/ioctl.c:857 [inline]
+ __x64_sys_ioctl+0x18f/0x210 fs/ioctl.c:857
+ do_syscall_x64 arch/x86/entry/common.c:52 [inline]
+ do_syscall_64+0x40/0x110 arch/x86/entry/common.c:83
+ entry_SYSCALL_64_after_hwframe+0x63/0x6b
+RIP: 0033:0x7f61c40c4af9
+Code: 28 00 00 00 75 05 48 83 c4 28 c3 e8 61 17 00 00 90 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 b8 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007ffe0eaa3fb8 EFLAGS: 00000246 ORIG_RAX: 0000000000000010
+RAX: ffffffffffffffda RBX: 00007ffe0eaa4198 RCX: 00007f61c40c4af9
+RDX: 0000000000000000 RSI: 0000000000006611 RDI: 0000000000000004
+RBP: 00007f61c4138610 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000001
+R13: 00007ffe0eaa4188 R14: 0000000000000001 R15: 0000000000000001
+ </TASK>
+
+
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+For information about bisection process see: https://goo.gl/tpsmEJ#bisection
+
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
+
+If you want syzbot to run the reproducer, reply with:
+#syz test: git://repo/address.git branch-or-commit-hash
+If you attach or paste a git patch, syzbot will apply it before testing.
+
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
+
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
+
+If you want to undo deduplication, reply with:
+#syz undup
