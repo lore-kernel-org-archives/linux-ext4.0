@@ -1,22 +1,22 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8611680595;
-	Mon, 18 Dec 2023 12:47:01 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3DE2E1279BD;
+	Mon, 18 Dec 2023 12:47:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Yjnk2a2n"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2D45EC433C8;
-	Mon, 18 Dec 2023 12:47:00 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="B/azbmi5"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D642CC433CB;
+	Mon, 18 Dec 2023 12:47:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1702903621;
-	bh=fPk9nWOEQwrLDz9tsexOez9iKGfoNwqwy3zhKY2+ESQ=;
+	s=k20201202; t=1702903637;
+	bh=k/GEFKTVR7h3frK8EcIPRpXjQT0XS1niBQpNi0uyN/8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=Yjnk2a2nebAwzCmPEIw1Dlo9q6+Jib7Mz5EiNb4Dbhb60PoGDU1HkMf1LIVveTEPA
-	 oCazG9tCKklfqX3Jn1d7d7weZMVUKZgovlndp2UuakFd1hKjsVqBlmNc7jr/vsKM29
-	 bi/35fhWPFoBh9xAIDN6/krm+BdE0CznOQFI2W/6hqcnDAlHAC2Ki5y5x+QGesEZGw
-	 5rowB98R8ziKdB8T812TfpO27rEaeACapBscFgMhyN8ygY/W7ZSAkV36iBO/E6lFrK
-	 fLk8BPNXVb37BbnSOgjkGhlTO7c5rgY+br2JQW0jy5/r8FKrdRf3WqBPruwxn90ElV
-	 J0mQZpJVysGtg==
+	b=B/azbmi5ck9mSdsnFYXe6OVyZ6pddMiOI3B8A3PKDg1EYQVpdbSZexXqYuv+I1HEU
+	 9xI6TAZE3YadIo6yV3umNeoixWLXoRaUvCnQCMrDyPgjv39TxBL3NmG+Dz3n5kCdHx
+	 TMaKj70X7YOhork/AR/q+dQ0zUrfMMdsmU8cDqSIODav8+u1SlcDqyrbSabeh7lFzW
+	 aHPN3T1Mw7wYMq7F/6p6MT/imPRRFOHUgxMZ3243qkGENFBD7Q/+wRqM7nP3xkKle9
+	 oj8VaHqrtxZVuW/x1S3wkmqn8yZa3aX9Gd41G5tQ4f4HrVAHuymemKsQ0PEIDc9YfF
+	 8nEB89w6N0wfA==
 From: Sasha Levin <sashal@kernel.org>
 To: linux-kernel@vger.kernel.org,
 	stable@vger.kernel.org
@@ -26,12 +26,12 @@ Cc: Zhang Yi <yi.zhang@huawei.com>,
 	Sasha Levin <sashal@kernel.org>,
 	jack@suse.com,
 	linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 2/7] jbd2: correct the printing of write_flags in jbd2_write_superblock()
-Date: Mon, 18 Dec 2023 07:46:47 -0500
-Message-ID: <20231218124656.1381949-2-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 2/6] jbd2: correct the printing of write_flags in jbd2_write_superblock()
+Date: Mon, 18 Dec 2023 07:47:07 -0500
+Message-ID: <20231218124713.1382373-2-sashal@kernel.org>
 X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20231218124656.1381949-1-sashal@kernel.org>
-References: <20231218124656.1381949-1-sashal@kernel.org>
+In-Reply-To: <20231218124713.1382373-1-sashal@kernel.org>
+References: <20231218124713.1382373-1-sashal@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -40,7 +40,7 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
-X-stable-base: Linux 5.4.264
+X-stable-base: Linux 4.19.302
 Content-Transfer-Encoding: 8bit
 
 From: Zhang Yi <yi.zhang@huawei.com>
@@ -60,10 +60,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index eeebe64b7c543..81bd7b29a10b6 100644
+index 8a50722bca29e..629928b19e487 100644
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
-@@ -1355,9 +1355,11 @@ static int jbd2_write_superblock(journal_t *journal, int write_flags)
+@@ -1375,9 +1375,11 @@ static int jbd2_write_superblock(journal_t *journal, int write_flags)
  		return -EIO;
  	}
  
