@@ -1,30 +1,32 @@
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+Received: from szxga07-in.huawei.com (szxga07-in.huawei.com [45.249.212.35])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A701955E4B;
-	Thu, 21 Dec 2023 15:02:45 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8EC3C55E5E;
+	Thu, 21 Dec 2023 15:02:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.162.254])
-	by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4SwttY6RLXzvSQw;
-	Thu, 21 Dec 2023 23:01:41 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.17])
+	by szxga07-in.huawei.com (SkyGuard) with ESMTP id 4SwttF1t6Nz1R5cK;
+	Thu, 21 Dec 2023 23:01:25 +0800 (CST)
 Received: from dggpeml500021.china.huawei.com (unknown [7.185.36.21])
-	by mail.maildlp.com (Postfix) with ESMTPS id 8FFA118001D;
-	Thu, 21 Dec 2023 23:02:37 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 3D98B1A0172;
+	Thu, 21 Dec 2023 23:02:40 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
  (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.35; Thu, 21 Dec
- 2023 23:02:37 +0800
+ 2023 23:02:39 +0800
 From: Baokun Li <libaokun1@huawei.com>
 To: <linux-ext4@vger.kernel.org>
 CC: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
 	<ritesh.list@gmail.com>, <linux-kernel@vger.kernel.org>,
 	<yi.zhang@huawei.com>, <yangerkun@huawei.com>, <yukuai3@huawei.com>,
 	<libaokun1@huawei.com>
-Subject: [PATCH v2 0/8] ext4: fix divide error in mb_update_avg_fragment_size()
-Date: Thu, 21 Dec 2023 23:05:50 +0800
-Message-ID: <20231221150558.2740823-1-libaokun1@huawei.com>
+Subject: [PATCH v2 5/8] ext4: avoid dividing by 0 in mb_update_avg_fragment_size() when block bitmap corrupt
+Date: Thu, 21 Dec 2023 23:05:55 +0800
+Message-ID: <20231221150558.2740823-6-libaokun1@huawei.com>
 X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20231221150558.2740823-1-libaokun1@huawei.com>
+References: <20231221150558.2740823-1-libaokun1@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -36,30 +38,27 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
  dggpeml500021.china.huawei.com (7.185.36.21)
 
-V1->V2:
-  Fixed some things pointed out by Jan Kara.
-  Fixed more cases where blocks could be allocated from corrupted groups.
+Determine if bb_fragments is 0 instead of determining bb_free to eliminate
+the risk of dividing by zero when the block bitmap is corrupted.
 
-[V1]: https://lore.kernel.org/all/20231218141814.1477338-1-libaokun1@huawei.com/
+Signed-off-by: Baokun Li <libaokun1@huawei.com>
+---
+ fs/ext4/mballoc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Baokun Li (8):
-  ext4: fix double-free of blocks due to wrong extents moved_len
-  ext4: do not trim the group with corrupted block bitmap
-  ext4: regenerate buddy after block freeing failed if under fc replay
-  ext4: avoid bb_free and bb_fragments inconsistency in mb_free_blocks()
-  ext4: avoid dividing by 0 in mb_update_avg_fragment_size() when block
-    bitmap corrupt
-  ext4: avoid allocating blocks from corrupted group in
-    ext4_mb_try_best_found()
-  ext4: avoid allocating blocks from corrupted group in
-    ext4_mb_find_by_goal()
-  ext4: mark the group block bitmap as corrupted before reporting an
-    error
-
- fs/ext4/mballoc.c     | 76 +++++++++++++++++++++++++++++--------------
- fs/ext4/move_extent.c |  6 ++--
- 2 files changed, 53 insertions(+), 29 deletions(-)
-
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 1f15774971d7..03500aec43ac 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -842,7 +842,7 @@ mb_update_avg_fragment_size(struct super_block *sb, struct ext4_group_info *grp)
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	int new_order;
+ 
+-	if (!test_opt2(sb, MB_OPTIMIZE_SCAN) || grp->bb_free == 0)
++	if (!test_opt2(sb, MB_OPTIMIZE_SCAN) || grp->bb_fragments == 0)
+ 		return;
+ 
+ 	new_order = mb_avg_fragment_size_order(sb,
 -- 
 2.31.1
 
