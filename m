@@ -1,19 +1,19 @@
-Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AC26ECA6C
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9DAE9CA63
 	for <linux-ext4@vger.kernel.org>; Sat, 23 Dec 2023 11:04:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Sy1X32PHPz4f3jpq
-	for <linux-ext4@vger.kernel.org>; Sat, 23 Dec 2023 19:04:35 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Sy1X01XxKz4f3l22
+	for <linux-ext4@vger.kernel.org>; Sat, 23 Dec 2023 19:04:32 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id C1DF81A0497
-	for <linux-ext4@vger.kernel.org>; Sat, 23 Dec 2023 19:04:36 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 818581A01C1
+	for <linux-ext4@vger.kernel.org>; Sat, 23 Dec 2023 19:04:37 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP4 (Coremail) with SMTP id gCh0CgDX5UW6voZlWeceEg--.27538S4;
-	Sat, 23 Dec 2023 19:04:34 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgDX5UW6voZlWeceEg--.27538S6;
+	Sat, 23 Dec 2023 19:04:37 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -23,10 +23,12 @@ Cc: tytso@mit.edu,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [RFC PATCH v2 0/6] ext4: make ext4_map_blocks() recognize delalloc only extent
-Date: Sat, 23 Dec 2023 19:02:17 +0800
-Message-Id: <20231223110223.3650717-1-yi.zhang@huaweicloud.com>
+Subject: [RFC PATCH v2 2/6] ext4: convert to exclusive lock while inserting delalloc extents
+Date: Sat, 23 Dec 2023 19:02:19 +0800
+Message-Id: <20231223110223.3650717-3-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20231223110223.3650717-1-yi.zhang@huaweicloud.com>
+References: <20231223110223.3650717-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -34,70 +36,124 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgDX5UW6voZlWeceEg--.27538S4
-X-Coremail-Antispam: 1UD129KBjvJXoW7ZryUur18Kw1kCw4rtr4fZrb_yoW8Zw1UpF
-	Z3Cw43Gw1kW347Wan3uw4fJr1Fga18CF4UGr47Jr1kWrW8Ary8Grs7K3W09FyfArWxAr12
-	qF1Utr1DCa48C37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUyl14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26F4j
-	6r4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oV
-	Cq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0
-	I7IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r
-	4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20xvY0x0EwIxG
-	rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
-	vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IY
-	x2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Jr0_Gr1lIxAIcVCF04k26c
-	xKx2IYs7xG6rW3Jr0E3s1lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x02
-	67AKxVWUJVW8JbIYCTnIWIevJa73UjIFyTuYvjfUouWlDUUUU
+X-CM-TRANSID:gCh0CgDX5UW6voZlWeceEg--.27538S6
+X-Coremail-Antispam: 1UD129KBjvJXoWxJw4DZFy8uF4kXr1fZry3XFb_yoW5Cw13pr
+	ZIkFyfCr15Ww4kuayIqr17XF1xG3WUJFWUGFZxGF4UZFyUAFnaqF1jyF1aqFyftrWxAF4Y
+	qFW0qry5uayUCrDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9v14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
+	x26xkF7I0E14v26r4j6ryUM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UM2
+	8EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AI
+	xVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20x
+	vE14v26r1Y6r17McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xv
+	r2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7MxAIw28IcxkI7VAKI48JMxC20s
+	026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_
+	JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14
+	v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xva
+	j40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JV
+	W8JrUvcSsGvfC2KfnxnUUI43ZEXa7VUjIzuJUUUUU==
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-v1->v2:
- - Fix a long standing race issue between determine hole and inserting
-   new delalloc extent analyzed by Jan Kara.
- - Change method of adjusting hole length, instead of skip holes in
-   ext4_map_blocks(), now we find delalloc and correct length and type
-   in ext4_ext_determine_hole().
+ext4_da_map_blocks() only hold i_data_sem in shared mode and i_rwsem
+when inserting delalloc extents, it could be raced by another querying
+path of ext4_map_blocks() without i_rwsem, .e.g buffered read path.
+Suppose we buffered read a file containing just a hole, and without any
+cached extents tree, then it is raced by another delayed buffered write
+to the same area or the near area belongs to the same hole, and the new
+delalloc extent could be overwritten to a hole extent.
 
-v1: https://lore.kernel.org/linux-ext4/20231121093429.1827390-1-yi.zhang@huaweicloud.com/
+ pread()                           pwrite()
+  filemap_read_folio()
+   ext4_mpage_readpages()
+    ext4_map_blocks()
+     down_read(i_data_sem)
+     ext4_ext_determine_hole()
+     //find hole
+     ext4_ext_put_gap_in_cache()
+      ext4_es_find_extent_range()
+      //no delalloc extent
+                                    ext4_da_map_blocks()
+                                     down_read(i_data_sem)
+                                     ext4_insert_delayed_block()
+                                     //insert delalloc extent
+      ext4_es_insert_extent()
+      //overwrite delalloc extent to hole
 
-Hello, all!
+This race could lead to inconsistent delalloc extents tree and
+incorrect reserved space counter. Fix this by converting to hold
+i_data_sem in exclusive mode when adding a new delalloc extent in
+ext4_da_map_blocks().
 
-I'm working on switching ext4 buffer IO from buffer_head to iomap
-and enable large folio on regular file recently [1] (I've been fixing a
-lot of issues and should be able to send out v2 soon), this patch set
-is one of a preparation of this work. It first fix a long standing race
-issue between bmap querying and adding new delalloc extents, then
-correct the hole length returned by ext4_map_blocks() when user querying
-map type and blocks range, after that, make this function and
-ext4_set_iomap() are able to distinguish delayed allocated only mapping
-from hole, finally BTW cleanup the ext4_iomap_begin_report().
+Cc: stable@vger.kernel.org
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Suggested-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c | 25 +++++++++++--------------
+ 1 file changed, 11 insertions(+), 14 deletions(-)
 
-This preparation patch set changes the ext4 map -> iomap converting logic
-in ext4_set_iomap(), so that the later buffer IO conversion can use this
-helper to connect iomap frame. This patch set is already passed
-'kvm-xfstests -g auto' tests.
-
-Thanks,
-Yi.
-
-[1] https://lore.kernel.org/linux-ext4/20231123125121.4064694-1-yi.zhang@huaweicloud.com/
-
-Zhang Yi (6):
-  ext4: refactor ext4_da_map_blocks()
-  ext4: convert to exclusive lock while inserting delalloc extents
-  ext4: correct the hole length returned by ext4_map_blocks()
-  ext4: add a hole extent entry in cache after punch
-  ext4: make ext4_map_blocks() distinguish delalloc only extent
-  ext4: make ext4_set_iomap() recognize IOMAP_DELALLOC map type
-
- fs/ext4/ext4.h    |   4 +-
- fs/ext4/extents.c | 110 +++++++++++++++++++++++++++-------------------
- fs/ext4/inode.c   |  84 ++++++++++++-----------------------
- 3 files changed, 96 insertions(+), 102 deletions(-)
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5b0d3075be12..142c67f5c7fc 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1703,10 +1703,8 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 
+ 	/* Lookup extent status tree firstly */
+ 	if (ext4_es_lookup_extent(inode, iblock, NULL, &es)) {
+-		if (ext4_es_is_hole(&es)) {
+-			down_read(&EXT4_I(inode)->i_data_sem);
++		if (ext4_es_is_hole(&es))
+ 			goto add_delayed;
+-		}
+ 
+ 		/*
+ 		 * Delayed extent could be allocated by fallocate.
+@@ -1748,8 +1746,10 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 		retval = ext4_ext_map_blocks(NULL, inode, map, 0);
+ 	else
+ 		retval = ext4_ind_map_blocks(NULL, inode, map, 0);
+-	if (retval < 0)
+-		goto out_unlock;
++	if (retval < 0) {
++		up_read(&EXT4_I(inode)->i_data_sem);
++		return retval;
++	}
+ 	if (retval > 0) {
+ 		unsigned int status;
+ 
+@@ -1765,24 +1765,21 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+ 		ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+ 				      map->m_pblk, status);
+-		goto out_unlock;
++		up_read(&EXT4_I(inode)->i_data_sem);
++		return retval;
+ 	}
++	up_read(&EXT4_I(inode)->i_data_sem);
+ 
+ add_delayed:
+-	/*
+-	 * XXX: __block_prepare_write() unmaps passed block,
+-	 * is it OK?
+-	 */
++	down_write(&EXT4_I(inode)->i_data_sem);
+ 	retval = ext4_insert_delayed_block(inode, map->m_lblk);
++	up_write(&EXT4_I(inode)->i_data_sem);
+ 	if (retval)
+-		goto out_unlock;
++		return retval;
+ 
+ 	map_bh(bh, inode->i_sb, invalid_block);
+ 	set_buffer_new(bh);
+ 	set_buffer_delay(bh);
+-
+-out_unlock:
+-	up_read((&EXT4_I(inode)->i_data_sem));
+ 	return retval;
+ }
+ 
 -- 
 2.39.2
 
