@@ -1,31 +1,28 @@
-Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AEB8C18054;
-	Wed,  3 Jan 2024 02:30:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6CA3417984;
+	Wed,  3 Jan 2024 02:51:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4T4YbW1LMFz4f3mLn;
-	Wed,  3 Jan 2024 10:30:15 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 711081A017A;
-	Wed,  3 Jan 2024 10:30:18 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4T4Z3M276Lz4f3mW9;
+	Wed,  3 Jan 2024 10:50:55 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 0AF2F1A01CA;
+	Wed,  3 Jan 2024 10:50:57 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-	by APP1 (Coremail) with SMTP id cCh0CgDX2A62xpRlYWmAFQ--.14269S10;
-	Wed, 03 Jan 2024 10:30:18 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgD3U0SNy5RlDGn8FQ--.36935S2;
+	Wed, 03 Jan 2024 10:50:55 +0800 (CST)
 From: Kemeng Shi <shikemeng@huaweicloud.com>
 To: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	jack@suse.cz
+	adilger.kernel@dilger.ca
 Cc: linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v2 8/9] ext4: remove unnecessary parameter "needed" in ext4_discard_preallocations
-Date: Wed,  3 Jan 2024 18:28:20 +0800
-Message-Id: <20240103102821.448134-9-shikemeng@huaweicloud.com>
+Subject: [PATCH v2 0/5] More unit test for mballoc
+Date: Wed,  3 Jan 2024 18:48:55 +0800
+Message-Id: <20240103104900.464789-1-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
-In-Reply-To: <20240103102821.448134-1-shikemeng@huaweicloud.com>
-References: <20240103102821.448134-1-shikemeng@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -33,250 +30,136 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgDX2A62xpRlYWmAFQ--.14269S10
-X-Coremail-Antispam: 1UD129KBjvJXoW3Gr4xJw1fWFW3KFW8KFWxZwb_yoWfWFW3pr
-	Z8Aa18Ww13X34kuws2qr4UZr1Yga18Ka1UJrWS9w4qvFZxJrn3KF1DtF1ayF1YqFWkXF4Y
-	vF10kry7Xw1I937anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUB2b4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+X-CM-TRANSID:gCh0CgD3U0SNy5RlDGn8FQ--.36935S2
+X-Coremail-Antispam: 1UD129KBjvJXoWxKF47Wr4rKF1fZF1kGw4DJwb_yoW7Cr43pa
+	9Fkrn8Kr1UGrnFvan3C3sruw1ftw10ya1UXryrtry2gF93W3sFyF1qgryYk34vgF1kZw1q
+	vF18uFW7ua9FqFJanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUkIb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
 	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
-	8IrcIa0xkI8VA2jI8067AKxVWUAVCq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAv
-	FVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3w
-	A2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE
-	3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr2
-	1l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv
-	67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2
-	Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s02
-	6x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0x
-	vE2Ix0cI8IcVAFwI0_JFI_Gr1lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE
-	42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6x
-	kF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUIL05UUUUU
+	8lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E
+	3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26r
+	xl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv
+	0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z2
+	80aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JMxAIw28I
+	cxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2
+	IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI
+	42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42
+	IY6xAIw20EY4v20xvaj40_Wr1j6rW3Jr1lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2
+	z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU0miiDUUUUU==
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
-The "needed" controls the number of ext4_prealloc_space to discard in
-ext4_discard_preallocations. Function ext4_discard_preallocations is
-supposed to discard all non-used preallocated blocks when "needed"
-is 0 and now ext4_discard_preallocations is always called with "needed"
-= 0. Remove unnecessary parameter "needed" and remove all non-used
-preallocated spaces in ext4_discard_preallocations to simplify the
-code.
+This series covers more function to mark on-disk bitmap. Besides, some
+code which is relevant to buddy cache is also tested.
+Before more work is done, I want to be sure I'm not on a wrong
+direction!
 
-Note: If count of non-used preallocated spaces could be more than
-UINT_MAX, there was a memory leak as some non-used preallocated
-spaces are left ununsed and this commit will fix it. Otherwise,
-there is no behavior change.
+v1->v2:
+-Fix unused variable warning which is reported at
+https://lore.kernel.org/lkml/202311260042.kMxL6DnL-lkp@intel.com/T/
 
-Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
----
- fs/ext4/ext4.h        |  2 +-
- fs/ext4/extents.c     | 10 +++++-----
- fs/ext4/file.c        |  2 +-
- fs/ext4/indirect.c    |  2 +-
- fs/ext4/inode.c       |  6 +++---
- fs/ext4/ioctl.c       |  2 +-
- fs/ext4/mballoc.c     | 10 +++-------
- fs/ext4/move_extent.c |  4 ++--
- fs/ext4/super.c       |  2 +-
- 9 files changed, 18 insertions(+), 22 deletions(-)
+Kunit test result is as following:
+# ./tools/testing/kunit/kunit.py run --kunitconfig=fs/ext4/.kunitconfig --raw_output
+[18:39:42] Configuring KUnit Kernel ...
+Regenerating .config ...
+Populating config with:
+$ make ARCH=um O=.kunit olddefconfig
+[18:39:45] Building KUnit Kernel ...
+Populating config with:
+$ make ARCH=um O=.kunit olddefconfig
+Building with:
+$ make ARCH=um O=.kunit --jobs=88
+[18:39:57] Starting KUnit Kernel (1/1)...
+KTAP version 1
+1..2
+    KTAP version 1
+    # Subtest: ext4_mballoc_test
+    # module: ext4
+    1..6
+        KTAP version 1
+        # Subtest: test_new_blocks_simple
+        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+    # test_new_blocks_simple: pass:3 fail:0 skip:0 total:3
+    ok 1 test_new_blocks_simple
+        KTAP version 1
+        # Subtest: test_free_blocks_simple
+        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+    # test_free_blocks_simple: pass:3 fail:0 skip:0 total:3
+    ok 2 test_free_blocks_simple
+        KTAP version 1
+        # Subtest: test_mb_generate_buddy
+        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+    # test_mb_generate_buddy: pass:3 fail:0 skip:0 total:3
+    ok 3 test_mb_generate_buddy
+        KTAP version 1
+        # Subtest: test_mb_mark_used
+        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+ # SKIP blocksize exceeds pagesize
+    # test_mb_mark_used: pass:2 fail:0 skip:1 total:3
+    ok 4 test_mb_mark_used
+        KTAP version 1
+        # Subtest: test_mb_free_blocks
+        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+ # SKIP blocksize exceeds pagesize
+    # test_mb_free_blocks: pass:2 fail:0 skip:1 total:3
+    ok 5 test_mb_free_blocks
+        KTAP version 1
+        # Subtest: test_mark_diskspace_used
+        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+    # test_mark_diskspace_used: pass:3 fail:0 skip:0 total:3
+    ok 6 test_mark_diskspace_used
+# ext4_mballoc_test: pass:6 fail:0 skip:0 total:6
+# Totals: pass:16 fail:0 skip:2 total:18
+ok 1 ext4_mballoc_test
+    KTAP version 1
+    # Subtest: ext4_inode_test
+    # module: ext4_inode_test
+    1..1
+        KTAP version 1
+        # Subtest: inode_test_xtimestamp_decoding
+        ok 1 1901-12-13 Lower bound of 32bit < 0 timestamp, no extra bits
+        ok 2 1969-12-31 Upper bound of 32bit < 0 timestamp, no extra bits
+        ok 3 1970-01-01 Lower bound of 32bit >=0 timestamp, no extra bits
+        ok 4 2038-01-19 Upper bound of 32bit >=0 timestamp, no extra bits
+        ok 5 2038-01-19 Lower bound of 32bit <0 timestamp, lo extra sec bit on
+        ok 6 2106-02-07 Upper bound of 32bit <0 timestamp, lo extra sec bit on
+        ok 7 2106-02-07 Lower bound of 32bit >=0 timestamp, lo extra sec bit on
+        ok 8 2174-02-25 Upper bound of 32bit >=0 timestamp, lo extra sec bit on
+        ok 9 2174-02-25 Lower bound of 32bit <0 timestamp, hi extra sec bit on
+        ok 10 2242-03-16 Upper bound of 32bit <0 timestamp, hi extra sec bit on
+        ok 11 2242-03-16 Lower bound of 32bit >=0 timestamp, hi extra sec bit on
+        ok 12 2310-04-04 Upper bound of 32bit >=0 timestamp, hi extra sec bit on
+        ok 13 2310-04-04 Upper bound of 32bit>=0 timestamp, hi extra sec bit 1. 1 ns
+        ok 14 2378-04-22 Lower bound of 32bit>= timestamp. Extra sec bits 1. Max ns
+        ok 15 2378-04-22 Lower bound of 32bit >=0 timestamp. All extra sec bits on
+        ok 16 2446-05-10 Upper bound of 32bit >=0 timestamp. All extra sec bits on
+    # inode_test_xtimestamp_decoding: pass:16 fail:0 skip:0 total:16
+    ok 1 inode_test_xtimestamp_decoding
+# Totals: pass:16 fail:0 skip:0 total:16
+ok 2 ext4_inode_test
+[18:39:57] Elapsed time: 14.400s total, 2.940s configuring, 11.343s building, 0.074s running
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index fb35cae16..2fd444034 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2905,7 +2905,7 @@ extern int ext4_mb_init(struct super_block *);
- extern void ext4_mb_release(struct super_block *);
- extern ext4_fsblk_t ext4_mb_new_blocks(handle_t *,
- 				struct ext4_allocation_request *, int *);
--extern void ext4_discard_preallocations(struct inode *, unsigned int);
-+extern void ext4_discard_preallocations(struct inode *);
- extern int __init ext4_init_mballoc(void);
- extern void ext4_exit_mballoc(void);
- extern ext4_group_t ext4_mb_prefetch(struct super_block *sb,
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 880f383df..fd350889a 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -100,7 +100,7 @@ static int ext4_ext_trunc_restart_fn(struct inode *inode, int *dropped)
- 	 * i_rwsem. So we can safely drop the i_data_sem here.
- 	 */
- 	BUG_ON(EXT4_JOURNAL(inode) == NULL);
--	ext4_discard_preallocations(inode, 0);
-+	ext4_discard_preallocations(inode);
- 	up_write(&EXT4_I(inode)->i_data_sem);
- 	*dropped = 1;
- 	return 0;
-@@ -4313,7 +4313,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 			 * not a good idea to call discard here directly,
- 			 * but otherwise we'd need to call it every free().
- 			 */
--			ext4_discard_preallocations(inode, 0);
-+			ext4_discard_preallocations(inode);
- 			if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
- 				fb_flags = EXT4_FREE_BLOCKS_NO_QUOT_UPDATE;
- 			ext4_free_blocks(handle, inode, NULL, newblock,
-@@ -5354,7 +5354,7 @@ static int ext4_collapse_range(struct file *file, loff_t offset, loff_t len)
- 	ext4_fc_mark_ineligible(sb, EXT4_FC_REASON_FALLOC_RANGE, handle);
- 
- 	down_write(&EXT4_I(inode)->i_data_sem);
--	ext4_discard_preallocations(inode, 0);
-+	ext4_discard_preallocations(inode);
- 	ext4_es_remove_extent(inode, punch_start, EXT_MAX_BLOCKS - punch_start);
- 
- 	ret = ext4_ext_remove_space(inode, punch_start, punch_stop - 1);
-@@ -5362,7 +5362,7 @@ static int ext4_collapse_range(struct file *file, loff_t offset, loff_t len)
- 		up_write(&EXT4_I(inode)->i_data_sem);
- 		goto out_stop;
- 	}
--	ext4_discard_preallocations(inode, 0);
-+	ext4_discard_preallocations(inode);
- 
- 	ret = ext4_ext_shift_extents(inode, handle, punch_stop,
- 				     punch_stop - punch_start, SHIFT_LEFT);
-@@ -5494,7 +5494,7 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
- 		goto out_stop;
- 
- 	down_write(&EXT4_I(inode)->i_data_sem);
--	ext4_discard_preallocations(inode, 0);
-+	ext4_discard_preallocations(inode);
- 
- 	path = ext4_find_extent(inode, offset_lblk, NULL, 0);
- 	if (IS_ERR(path)) {
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 0166bb9ca..89cb28da8 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -174,7 +174,7 @@ static int ext4_release_file(struct inode *inode, struct file *filp)
- 			(atomic_read(&inode->i_writecount) == 1) &&
- 			!EXT4_I(inode)->i_reserved_data_blocks) {
- 		down_write(&EXT4_I(inode)->i_data_sem);
--		ext4_discard_preallocations(inode, 0);
-+		ext4_discard_preallocations(inode);
- 		up_write(&EXT4_I(inode)->i_data_sem);
- 	}
- 	if (is_dx(inode) && filp->private_data)
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index a9f371611..d8ca7f64f 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -714,7 +714,7 @@ static int ext4_ind_trunc_restart_fn(handle_t *handle, struct inode *inode,
- 	 * i_rwsem. So we can safely drop the i_data_sem here.
- 	 */
- 	BUG_ON(EXT4_JOURNAL(inode) == NULL);
--	ext4_discard_preallocations(inode, 0);
-+	ext4_discard_preallocations(inode);
- 	up_write(&EXT4_I(inode)->i_data_sem);
- 	*dropped = 1;
- 	return 0;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d77323204..53ed4a0ad 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -371,7 +371,7 @@ void ext4_da_update_reserve_space(struct inode *inode,
- 	 */
- 	if ((ei->i_reserved_data_blocks == 0) &&
- 	    !inode_is_open_for_write(inode))
--		ext4_discard_preallocations(inode, 0);
-+		ext4_discard_preallocations(inode);
- }
- 
- static int __check_block_validity(struct inode *inode, const char *func,
-@@ -4014,7 +4014,7 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
- 	if (stop_block > first_block) {
- 
- 		down_write(&EXT4_I(inode)->i_data_sem);
--		ext4_discard_preallocations(inode, 0);
-+		ext4_discard_preallocations(inode);
- 
- 		ext4_es_remove_extent(inode, first_block,
- 				      stop_block - first_block);
-@@ -4167,7 +4167,7 @@ int ext4_truncate(struct inode *inode)
- 
- 	down_write(&EXT4_I(inode)->i_data_sem);
- 
--	ext4_discard_preallocations(inode, 0);
-+	ext4_discard_preallocations(inode);
- 
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
- 		err = ext4_ext_truncate(handle, inode);
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 0bfe2ce58..2e2bcd22b 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -458,7 +458,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 	ext4_reset_inode_seed(inode);
- 	ext4_reset_inode_seed(inode_bl);
- 
--	ext4_discard_preallocations(inode, 0);
-+	ext4_discard_preallocations(inode);
- 
- 	err = ext4_mark_inode_dirty(handle, inode);
- 	if (err < 0) {
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index e6561a09d..0e6beb3b4 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -5469,7 +5469,7 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
-  *
-  * FIXME!! Make sure it is valid at all the call sites
-  */
--void ext4_discard_preallocations(struct inode *inode, unsigned int needed)
-+void ext4_discard_preallocations(struct inode *inode)
- {
- 	struct ext4_inode_info *ei = EXT4_I(inode);
- 	struct super_block *sb = inode->i_sb;
-@@ -5491,15 +5491,12 @@ void ext4_discard_preallocations(struct inode *inode, unsigned int needed)
- 	mb_debug(sb, "discard preallocation for inode %lu\n",
- 		 inode->i_ino);
- 	trace_ext4_discard_preallocations(inode,
--			atomic_read(&ei->i_prealloc_active), needed);
--
--	if (needed == 0)
--		needed = UINT_MAX;
-+			atomic_read(&ei->i_prealloc_active), 0);
- 
- repeat:
- 	/* first, collect all pa's in the inode */
- 	write_lock(&ei->i_prealloc_lock);
--	for (iter = rb_first(&ei->i_prealloc_node); iter && needed;
-+	for (iter = rb_first(&ei->i_prealloc_node); iter;
- 	     iter = rb_next(iter)) {
- 		pa = rb_entry(iter, struct ext4_prealloc_space,
- 			      pa_node.inode_node);
-@@ -5523,7 +5520,6 @@ void ext4_discard_preallocations(struct inode *inode, unsigned int needed)
- 			spin_unlock(&pa->pa_lock);
- 			rb_erase(&pa->pa_node.inode_node, &ei->i_prealloc_node);
- 			list_add(&pa->u.pa_tmp_list, &list);
--			needed--;
- 			continue;
- 		}
- 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 18a9e7c47..0abfc104a 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -689,8 +689,8 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp, __u64 orig_blk,
- 
- out:
- 	if (*moved_len) {
--		ext4_discard_preallocations(orig_inode, 0);
--		ext4_discard_preallocations(donor_inode, 0);
-+		ext4_discard_preallocations(orig_inode);
-+		ext4_discard_preallocations(donor_inode);
- 	}
- 
- 	ext4_free_ext_path(path);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d062383ea..c0cfc3e46 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1518,7 +1518,7 @@ void ext4_clear_inode(struct inode *inode)
- 	ext4_fc_del(inode);
- 	invalidate_inode_buffers(inode);
- 	clear_inode(inode);
--	ext4_discard_preallocations(inode, 0);
-+	ext4_discard_preallocations(inode);
- 	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
- 	dquot_drop(inode);
- 	if (EXT4_I(inode)->jinode) {
+Kemeng Shi (5):
+  ext4: Add unit test for test_free_blocks_simple
+  ext4: Add unit test of ext4_mb_generate_buddy
+  ext4: Add unit test for mb_mark_used
+  ext4: Add unit test for mb_free_blocks
+  ext4: Add unit test for ext4_mb_mark_diskspace_used
+
+ fs/ext4/mballoc-test.c | 502 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 502 insertions(+)
+
 -- 
 2.30.0
 
