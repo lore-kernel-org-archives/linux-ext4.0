@@ -1,95 +1,88 @@
-Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 01345136B;
-	Wed,  3 Jan 2024 01:27:34 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D1FC9186B;
+	Wed,  3 Jan 2024 02:30:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4T4XC13vzDz4f3p0h;
-	Wed,  3 Jan 2024 09:27:25 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 34D5A1A0980;
-	Wed,  3 Jan 2024 09:27:31 +0800 (CST)
-Received: from [10.174.178.129] (unknown [10.174.178.129])
-	by APP2 (Coremail) with SMTP id Syh0CgDHaEcCuJRlaO8AFg--.64435S2;
-	Wed, 03 Jan 2024 09:27:31 +0800 (CST)
-Subject: Re: [PATCH 8/8] ext4: remove unnecessary parameter "needed" in
- ext4_discard_preallocations
-To: Jan Kara <jack@suse.cz>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org
-References: <20231125161143.3945726-1-shikemeng@huaweicloud.com>
- <20231125161143.3945726-9-shikemeng@huaweicloud.com>
- <20240102131058.3ue6phafczjezlic@quack3>
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4T4YbT063Hz4f3l7R;
+	Wed,  3 Jan 2024 10:30:13 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id 457B71A088B;
+	Wed,  3 Jan 2024 10:30:16 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.124.27])
+	by APP1 (Coremail) with SMTP id cCh0CgDX2A62xpRlYWmAFQ--.14269S2;
+	Wed, 03 Jan 2024 10:30:16 +0800 (CST)
 From: Kemeng Shi <shikemeng@huaweicloud.com>
-Message-ID: <48611a18-004f-7721-cc1f-104a5980b6cf@huaweicloud.com>
-Date: Wed, 3 Jan 2024 09:27:29 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.5.0
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v2 0/9] Some random cleanups to mballoc
+Date: Wed,  3 Jan 2024 18:28:12 +0800
+Message-Id: <20240103102821.448134-1-shikemeng@huaweicloud.com>
+X-Mailer: git-send-email 2.30.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-In-Reply-To: <20240102131058.3ue6phafczjezlic@quack3>
-Content-Type: text/plain; charset=gbk
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:Syh0CgDHaEcCuJRlaO8AFg--.64435S2
-X-Coremail-Antispam: 1UD129KBjvJXoW7ur4fWFWUJF4kCrWrAw48Xrb_yoW8XF1rp3
-	yUAa1UWw13Xr1fCFnxXw4DGFW3Cay0ya1UJ39aqw4UZFsxGFn3Krnrta1YqFy8ZryrZayY
-	vFy0v3srXr1xZ37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUyEb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JMxk0xIA0c2IEe2xFo4CEbIxvr21l42xK82IYc2Ij
-	64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x
-	8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE
-	2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42
-	xK8VAvwI8IcIk0rVWrZr1j6s0DMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIE
-	c7CjxVAFwI0_Jr0_GrUvcSsGvfC2KfnxnUUI43ZEXa7IU1CPfJUUUUU==
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:cCh0CgDX2A62xpRlYWmAFQ--.14269S2
+X-Coremail-Antispam: 1UD129KBjvJXoW7Ww4xWrWrAr4xAF1DKr4rKrg_yoW8GF4Upr
+	sxCr43Ww18Z345uFsrWw4vqw1fGw1xCFWUX3WSgwn7XFy3ZF1fGFsrtF4F9FyrXFW0qFnx
+	Za12yr15Gr1xua7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUkFb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
+	8lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E
+	3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26r
+	xl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv
+	0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z2
+	80aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JMxAIw28I
+	cxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2
+	IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI
+	42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42
+	IY6xAIw20EY4v20xvaj40_WFyUJVCq3wCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E
+	87Iv6xkF7I0E14v26r1j6r4UYxBIdaVFxhVjvjDU0xZFpf9x07j-6pPUUUUU=
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
+This series contains some random cleanups to mballoc. No function change
+is intended except patch 8 may fix a potential memleak if non-used
+preallocation spaces of inode could be greater than UNIT_MAX.
+More details can be found in respective patches. Thanks!
 
+v1->v2:
+-Collect RVB from Jan.
+-Remove 'needed' in trace_ext4_discard_preallocations.
 
-on 1/2/2024 9:10 PM, Jan Kara wrote:
-> On Sun 26-11-23 00:11:43, Kemeng Shi wrote:
->> The "needed" controls the number of ext4_prealloc_space to discard in
->> ext4_discard_preallocations. Function ext4_discard_preallocations is
->> supposed to discard all non-used preallocated blocks when "needed"
->> is 0 and now ext4_discard_preallocations is always called with "needed"
->> = 0. Remove unnecessary parameter "needed" and remove all non-used
->> preallocated spaces in ext4_discard_preallocations to simplify the
->> code.
->>
->> Note: If count of non-used preallocated spaces could be more than
->> UINT_MAX, there was a memory leak as some non-used preallocated
->> spaces are left unused and this commit will fix it. Otherwise,
->> there is no behavior change.
->>
->> Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-> 
-> Looks good, just one nit:
-> 
->> @@ -5491,15 +5491,12 @@ void ext4_discard_preallocations(struct inode *inode, unsigned int needed)
->>  	mb_debug(sb, "discard preallocation for inode %lu\n",
->>  		 inode->i_ino);
->>  	trace_ext4_discard_preallocations(inode,
->> -			atomic_read(&ei->i_prealloc_active), needed);
->> -
->> -	if (needed == 0)
->> -		needed = UINT_MAX;
->> +			atomic_read(&ei->i_prealloc_active), 0);
-> 
-> There's no point in always returning 0 in the tracepoint so I'd just update
-> it to not print the 'needed' value as well.
-Thanks for review! Sure, 'needed' looks meaningless to the tracepoint. I
-will remove it in next version.
-> 
-> 								Honza
-> 
+Kemeng Shi (9):
+  ext4: remove unused return value of __mb_check_buddy
+  ext4: remove unused parameter group in ext4_mb_choose_next_group_*()
+  ext4: remove unneeded return value of ext4_mb_release_context
+  ext4: remove unused ext4_allocation_context::ac_groups_considered
+  ext4: remove unused return value of ext4_mb_release
+  ext4: remove unused return value of ext4_mb_release_inode_pa
+  ext4: remove unused return value of ext4_mb_release_group_pa
+  ext4: remove unnecessary parameter "needed" in
+    ext4_discard_preallocations
+  ext4: remove 'needed' in trace_ext4_discard_preallocations
+
+ fs/ext4/ext4.h              |  4 +--
+ fs/ext4/extents.c           | 10 ++++----
+ fs/ext4/file.c              |  2 +-
+ fs/ext4/indirect.c          |  2 +-
+ fs/ext4/inode.c             |  6 ++---
+ fs/ext4/ioctl.c             |  2 +-
+ fs/ext4/mballoc.c           | 49 ++++++++++++++-----------------------
+ fs/ext4/mballoc.h           |  1 -
+ fs/ext4/move_extent.c       |  4 +--
+ fs/ext4/super.c             |  2 +-
+ include/trace/events/ext4.h | 11 +++------
+ 11 files changed, 38 insertions(+), 55 deletions(-)
+
+-- 
+2.30.0
 
