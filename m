@@ -1,28 +1,30 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6CA3417984;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9753017980;
 	Wed,  3 Jan 2024 02:51:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4T4Z3M276Lz4f3mW9;
-	Wed,  3 Jan 2024 10:50:55 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4T4Z3H69zjz4f3n6J;
+	Wed,  3 Jan 2024 10:50:51 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 0AF2F1A01CA;
+	by mail.maildlp.com (Postfix) with ESMTP id 815AA1A017D;
 	Wed,  3 Jan 2024 10:50:57 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-	by APP4 (Coremail) with SMTP id gCh0CgD3U0SNy5RlDGn8FQ--.36935S2;
-	Wed, 03 Jan 2024 10:50:55 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgD3U0SNy5RlDGn8FQ--.36935S4;
+	Wed, 03 Jan 2024 10:50:57 +0800 (CST)
 From: Kemeng Shi <shikemeng@huaweicloud.com>
 To: tytso@mit.edu,
 	adilger.kernel@dilger.ca
 Cc: linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v2 0/5] More unit test for mballoc
-Date: Wed,  3 Jan 2024 18:48:55 +0800
-Message-Id: <20240103104900.464789-1-shikemeng@huaweicloud.com>
+Subject: [PATCH v2 2/5] ext4: Add unit test of ext4_mb_generate_buddy
+Date: Wed,  3 Jan 2024 18:48:57 +0800
+Message-Id: <20240103104900.464789-3-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20240103104900.464789-1-shikemeng@huaweicloud.com>
+References: <20240103104900.464789-1-shikemeng@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -30,136 +32,301 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgD3U0SNy5RlDGn8FQ--.36935S2
-X-Coremail-Antispam: 1UD129KBjvJXoWxKF47Wr4rKF1fZF1kGw4DJwb_yoW7Cr43pa
-	9Fkrn8Kr1UGrnFvan3C3sruw1ftw10ya1UXryrtry2gF93W3sFyF1qgryYk34vgF1kZw1q
-	vF18uFW7ua9FqFJanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUkIb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
+X-CM-TRANSID:gCh0CgD3U0SNy5RlDGn8FQ--.36935S4
+X-Coremail-Antispam: 1UD129KBjvJXoWxtryUCrWUJFy3GrWDtr1xuFg_yoW3KFWrpa
+	s0kF1F9r4UCr4kWw47GrWkZ3WS9w4v9rWrKryxWF15ArWSyas5A3Z5GFyYyFsYyFWxXFs3
+	Z3Wjga47CrW2k37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUB0b4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
 	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
-	8lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E
-	3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26r
-	xl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv
-	0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z2
-	80aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JMxAIw28I
-	cxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2
-	IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI
-	42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42
-	IY6xAIw20EY4v20xvaj40_Wr1j6rW3Jr1lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2
-	z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU0miiDUUUUU==
+	8IrcIa0xkI8VA2jI8067AKxVWUXwA2048vs2IY020Ec7CjxVAFwI0_JFI_Gr1l8cAvFVAK
+	0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4
+	x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l
+	84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I
+	8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AK
+	xVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64
+	vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8G
+	jcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2I
+	x0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK
+	8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I
+	0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUsmiiDUUUU
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
-This series covers more function to mark on-disk bitmap. Besides, some
-code which is relevant to buddy cache is also tested.
-Before more work is done, I want to be sure I'm not on a wrong
-direction!
+Add unit test of ext4_mb_generate_buddy
 
-v1->v2:
--Fix unused variable warning which is reported at
-https://lore.kernel.org/lkml/202311260042.kMxL6DnL-lkp@intel.com/T/
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+---
+ fs/ext4/mballoc-test.c | 207 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 207 insertions(+)
 
-Kunit test result is as following:
-# ./tools/testing/kunit/kunit.py run --kunitconfig=fs/ext4/.kunitconfig --raw_output
-[18:39:42] Configuring KUnit Kernel ...
-Regenerating .config ...
-Populating config with:
-$ make ARCH=um O=.kunit olddefconfig
-[18:39:45] Building KUnit Kernel ...
-Populating config with:
-$ make ARCH=um O=.kunit olddefconfig
-Building with:
-$ make ARCH=um O=.kunit --jobs=88
-[18:39:57] Starting KUnit Kernel (1/1)...
-KTAP version 1
-1..2
-    KTAP version 1
-    # Subtest: ext4_mballoc_test
-    # module: ext4
-    1..6
-        KTAP version 1
-        # Subtest: test_new_blocks_simple
-        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-    # test_new_blocks_simple: pass:3 fail:0 skip:0 total:3
-    ok 1 test_new_blocks_simple
-        KTAP version 1
-        # Subtest: test_free_blocks_simple
-        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-    # test_free_blocks_simple: pass:3 fail:0 skip:0 total:3
-    ok 2 test_free_blocks_simple
-        KTAP version 1
-        # Subtest: test_mb_generate_buddy
-        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-    # test_mb_generate_buddy: pass:3 fail:0 skip:0 total:3
-    ok 3 test_mb_generate_buddy
-        KTAP version 1
-        # Subtest: test_mb_mark_used
-        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
- # SKIP blocksize exceeds pagesize
-    # test_mb_mark_used: pass:2 fail:0 skip:1 total:3
-    ok 4 test_mb_mark_used
-        KTAP version 1
-        # Subtest: test_mb_free_blocks
-        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
- # SKIP blocksize exceeds pagesize
-    # test_mb_free_blocks: pass:2 fail:0 skip:1 total:3
-    ok 5 test_mb_free_blocks
-        KTAP version 1
-        # Subtest: test_mark_diskspace_used
-        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
-    # test_mark_diskspace_used: pass:3 fail:0 skip:0 total:3
-    ok 6 test_mark_diskspace_used
-# ext4_mballoc_test: pass:6 fail:0 skip:0 total:6
-# Totals: pass:16 fail:0 skip:2 total:18
-ok 1 ext4_mballoc_test
-    KTAP version 1
-    # Subtest: ext4_inode_test
-    # module: ext4_inode_test
-    1..1
-        KTAP version 1
-        # Subtest: inode_test_xtimestamp_decoding
-        ok 1 1901-12-13 Lower bound of 32bit < 0 timestamp, no extra bits
-        ok 2 1969-12-31 Upper bound of 32bit < 0 timestamp, no extra bits
-        ok 3 1970-01-01 Lower bound of 32bit >=0 timestamp, no extra bits
-        ok 4 2038-01-19 Upper bound of 32bit >=0 timestamp, no extra bits
-        ok 5 2038-01-19 Lower bound of 32bit <0 timestamp, lo extra sec bit on
-        ok 6 2106-02-07 Upper bound of 32bit <0 timestamp, lo extra sec bit on
-        ok 7 2106-02-07 Lower bound of 32bit >=0 timestamp, lo extra sec bit on
-        ok 8 2174-02-25 Upper bound of 32bit >=0 timestamp, lo extra sec bit on
-        ok 9 2174-02-25 Lower bound of 32bit <0 timestamp, hi extra sec bit on
-        ok 10 2242-03-16 Upper bound of 32bit <0 timestamp, hi extra sec bit on
-        ok 11 2242-03-16 Lower bound of 32bit >=0 timestamp, hi extra sec bit on
-        ok 12 2310-04-04 Upper bound of 32bit >=0 timestamp, hi extra sec bit on
-        ok 13 2310-04-04 Upper bound of 32bit>=0 timestamp, hi extra sec bit 1. 1 ns
-        ok 14 2378-04-22 Lower bound of 32bit>= timestamp. Extra sec bits 1. Max ns
-        ok 15 2378-04-22 Lower bound of 32bit >=0 timestamp. All extra sec bits on
-        ok 16 2446-05-10 Upper bound of 32bit >=0 timestamp. All extra sec bits on
-    # inode_test_xtimestamp_decoding: pass:16 fail:0 skip:0 total:16
-    ok 1 inode_test_xtimestamp_decoding
-# Totals: pass:16 fail:0 skip:0 total:16
-ok 2 ext4_inode_test
-[18:39:57] Elapsed time: 14.400s total, 2.940s configuring, 11.343s building, 0.074s running
-
-Kemeng Shi (5):
-  ext4: Add unit test for test_free_blocks_simple
-  ext4: Add unit test of ext4_mb_generate_buddy
-  ext4: Add unit test for mb_mark_used
-  ext4: Add unit test for mb_free_blocks
-  ext4: Add unit test for ext4_mb_mark_diskspace_used
-
- fs/ext4/mballoc-test.c | 502 +++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 502 insertions(+)
-
+diff --git a/fs/ext4/mballoc-test.c b/fs/ext4/mballoc-test.c
+index 3aac42ea6..6964974fa 100644
+--- a/fs/ext4/mballoc-test.c
++++ b/fs/ext4/mballoc-test.c
+@@ -28,6 +28,50 @@ struct mbt_ext4_super_block {
+ #define MBT_CTX(_sb) (&(container_of((_sb), struct mbt_ext4_super_block, sb)->mbt_ctx))
+ #define MBT_GRP_CTX(_sb, _group) (&MBT_CTX(_sb)->grp_ctx[_group])
+ 
++static const struct super_operations mbt_sops = {
++};
++
++static int mbt_mb_init(struct super_block *sb)
++{
++	int ret;
++
++	/* needed by ext4_mb_init->bdev_nonrot(sb->s_bdev) */
++	sb->s_bdev = kzalloc(sizeof(*sb->s_bdev), GFP_KERNEL);
++	if (sb->s_bdev == NULL)
++		return -ENOMEM;
++
++	sb->s_bdev->bd_queue = kzalloc(sizeof(struct request_queue), GFP_KERNEL);
++	if (sb->s_bdev->bd_queue == NULL) {
++		kfree(sb->s_bdev);
++		return -ENOMEM;
++	}
++
++	/*
++	 * needed by ext4_mb_init->ext4_mb_init_backend-> sbi->s_buddy_cache =
++	 * new_inode(sb);
++	 */
++	INIT_LIST_HEAD(&sb->s_inodes);
++	sb->s_op = &mbt_sops;
++
++	ret = ext4_mb_init(sb);
++	if (ret != 0)
++		goto err_out;
++
++	return 0;
++
++err_out:
++	kfree(sb->s_bdev->bd_queue);
++	kfree(sb->s_bdev);
++	return ret;
++}
++
++static void mbt_mb_release(struct super_block *sb)
++{
++	ext4_mb_release(sb);
++	kfree(sb->s_bdev->bd_queue);
++	kfree(sb->s_bdev);
++}
++
+ static struct super_block *mbt_ext4_alloc_super_block(void)
+ {
+ 	struct ext4_super_block *es = kzalloc(sizeof(*es), GFP_KERNEL);
+@@ -37,8 +81,16 @@ static struct super_block *mbt_ext4_alloc_super_block(void)
+ 	if (fsb == NULL || sbi == NULL || es == NULL)
+ 		goto out;
+ 
++	sbi->s_blockgroup_lock =
++		kzalloc(sizeof(struct blockgroup_lock), GFP_KERNEL);
++	if (!sbi->s_blockgroup_lock)
++		goto out;
++
++	bgl_lock_init(sbi->s_blockgroup_lock);
++
+ 	sbi->s_es = es;
+ 	fsb->sb.s_fs_info = sbi;
++
+ 	return &fsb->sb;
+ 
+ out:
+@@ -54,6 +106,7 @@ static void mbt_ext4_free_super_block(struct super_block *sb)
+ 		container_of(sb, struct mbt_ext4_super_block, sb);
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
++	kfree(sbi->s_blockgroup_lock);
+ 	kfree(sbi->s_es);
+ 	kfree(sbi);
+ 	kfree(fsb);
+@@ -83,6 +136,9 @@ static void mbt_init_sb_layout(struct super_block *sb,
+ 	sbi->s_clusters_per_group = layout->blocks_per_group >>
+ 				    layout->cluster_bits;
+ 	sbi->s_desc_size = layout->desc_size;
++	sbi->s_desc_per_block_bits =
++		sb->s_blocksize_bits - (fls(layout->desc_size) - 1);
++	sbi->s_desc_per_block = 1 << sbi->s_desc_per_block_bits;
+ 
+ 	es->s_first_data_block = cpu_to_le32(0);
+ 	es->s_blocks_count_lo = cpu_to_le32(layout->blocks_per_group *
+@@ -240,6 +296,14 @@ static int mbt_kunit_init(struct kunit *test)
+ 	kunit_activate_static_stub(test,
+ 				   ext4_mb_mark_context,
+ 				   ext4_mb_mark_context_stub);
++
++	/* stub function will be called in mt_mb_init->ext4_mb_init */
++	if (mbt_mb_init(sb) != 0) {
++		mbt_ctx_release(sb);
++		mbt_ext4_free_super_block(sb);
++		return -ENOMEM;
++	}
++
+ 	return 0;
+ }
+ 
+@@ -247,6 +311,7 @@ static void mbt_kunit_exit(struct kunit *test)
+ {
+ 	struct super_block *sb = (struct super_block *)test->priv;
+ 
++	mbt_mb_release(sb);
+ 	mbt_ctx_release(sb);
+ 	mbt_ext4_free_super_block(sb);
+ }
+@@ -392,6 +457,147 @@ static void test_free_blocks_simple(struct kunit *test)
+ 			ranges[i].start, ranges[i].len);
+ }
+ 
++static void mbt_generate_buddy(struct super_block *sb, void *buddy,
++			       void *bitmap, struct ext4_group_info *grp)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	uint32_t order, off;
++	void *bb, *bb_h;
++	int max;
++
++	memset(buddy, 0xff, sb->s_blocksize);
++	memset(grp, 0, offsetof(struct ext4_group_info,
++				 bb_counters[MB_NUM_ORDERS(sb)]));
++
++	bb = bitmap;
++	max = EXT4_CLUSTERS_PER_GROUP(sb);
++	bb_h = buddy + sbi->s_mb_offsets[1];
++
++	off = mb_find_next_zero_bit(bb, max, 0);
++	grp->bb_first_free = off;
++	while (off < max) {
++		grp->bb_counters[0]++;
++		grp->bb_free++;
++
++		if (!(off & 1) && !mb_test_bit(off + 1, bb)) {
++			grp->bb_free++;
++			grp->bb_counters[0]--;
++			mb_clear_bit(off >> 1, bb_h);
++			grp->bb_counters[1]++;
++			grp->bb_largest_free_order = 1;
++			off++;
++		}
++
++		off = mb_find_next_zero_bit(bb, max, off + 1);
++	}
++
++	for (order = 1; order < MB_NUM_ORDERS(sb) - 1; order++) {
++		bb = buddy + sbi->s_mb_offsets[order];
++		bb_h = buddy + sbi->s_mb_offsets[order + 1];
++		max = max >> 1;
++		off = mb_find_next_zero_bit(bb, max, 0);
++
++		while (off < max) {
++			if (!(off & 1) && !mb_test_bit(off + 1, bb)) {
++				mb_set_bits(bb, off, 2);
++				grp->bb_counters[order] -= 2;
++				mb_clear_bit(off >> 1, bb_h);
++				grp->bb_counters[order + 1]++;
++				grp->bb_largest_free_order = order + 1;
++				off++;
++			}
++
++			off = mb_find_next_zero_bit(bb, max, off + 1);
++		}
++	}
++
++	max = EXT4_CLUSTERS_PER_GROUP(sb);
++	off = mb_find_next_zero_bit(bitmap, max, 0);
++	while (off < max) {
++		grp->bb_fragments++;
++
++		off = mb_find_next_bit(bitmap, max, off + 1);
++		if (off + 1 >= max)
++			break;
++
++		off = mb_find_next_zero_bit(bitmap, max, off + 1);
++	}
++}
++
++static void
++mbt_validate_group_info(struct kunit *test, struct ext4_group_info *grp1,
++			struct ext4_group_info *grp2)
++{
++	struct super_block *sb = (struct super_block *)test->priv;
++	int i;
++
++	KUNIT_ASSERT_EQ(test, grp1->bb_first_free,
++			grp2->bb_first_free);
++	KUNIT_ASSERT_EQ(test, grp1->bb_fragments,
++			grp2->bb_fragments);
++	KUNIT_ASSERT_EQ(test, grp1->bb_free, grp2->bb_free);
++	KUNIT_ASSERT_EQ(test, grp1->bb_largest_free_order,
++			grp2->bb_largest_free_order);
++
++	for (i = 1; i < MB_NUM_ORDERS(sb); i++) {
++		KUNIT_ASSERT_EQ_MSG(test, grp1->bb_counters[i],
++				    grp2->bb_counters[i],
++				    "bb_counters[%d] diffs, expected %d, generated %d",
++				    i, grp1->bb_counters[i],
++				    grp2->bb_counters[i]);
++	}
++}
++
++static void
++do_test_generate_buddy(struct kunit *test, struct super_block *sb, void *bitmap,
++			   void *mbt_buddy, struct ext4_group_info *mbt_grp,
++			   void *ext4_buddy, struct ext4_group_info *ext4_grp)
++{
++	int i;
++
++	mbt_generate_buddy(sb, mbt_buddy, bitmap, mbt_grp);
++
++	for (i = 0; i < MB_NUM_ORDERS(sb); i++)
++		ext4_grp->bb_counters[i] = 0;
++	/* needed by validation in ext4_mb_generate_buddy */
++	ext4_grp->bb_free = mbt_grp->bb_free;
++	memset(ext4_buddy, 0xff, sb->s_blocksize);
++	ext4_mb_generate_buddy(sb, ext4_buddy, bitmap, TEST_GOAL_GROUP,
++			       ext4_grp);
++
++	KUNIT_ASSERT_EQ(test, memcmp(mbt_buddy, ext4_buddy, sb->s_blocksize),
++			0);
++	mbt_validate_group_info(test, mbt_grp, ext4_grp);
++}
++
++static void test_mb_generate_buddy(struct kunit *test)
++{
++	struct super_block *sb = (struct super_block *)test->priv;
++	void *bitmap, *expected_bb, *generate_bb;
++	struct ext4_group_info *expected_grp, *generate_grp;
++	struct test_range ranges[TEST_RANGE_COUNT];
++	int i;
++
++	bitmap = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bitmap);
++	expected_bb = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, expected_bb);
++	generate_bb = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, generate_bb);
++	expected_grp = kunit_kzalloc(test, offsetof(struct ext4_group_info,
++				bb_counters[MB_NUM_ORDERS(sb)]), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, expected_grp);
++	generate_grp = ext4_get_group_info(sb, TEST_GOAL_GROUP);
++	KUNIT_ASSERT_NOT_NULL(test, generate_grp);
++
++	mbt_generate_test_ranges(sb, ranges, TEST_RANGE_COUNT);
++	for (i = 0; i < TEST_RANGE_COUNT; i++) {
++		mb_set_bits(bitmap, ranges[i].start, ranges[i].len);
++		do_test_generate_buddy(test, sb, bitmap, expected_bb,
++				       expected_grp, generate_bb, generate_grp);
++	}
++}
++
+ static const struct mbt_ext4_block_layout mbt_test_layouts[] = {
+ 	{
+ 		.blocksize_bits = 10,
+@@ -430,6 +636,7 @@ KUNIT_ARRAY_PARAM(mbt_layouts, mbt_test_layouts, mbt_show_layout);
+ static struct kunit_case mbt_test_cases[] = {
+ 	KUNIT_CASE_PARAM(test_new_blocks_simple, mbt_layouts_gen_params),
+ 	KUNIT_CASE_PARAM(test_free_blocks_simple, mbt_layouts_gen_params),
++	KUNIT_CASE_PARAM(test_mb_generate_buddy, mbt_layouts_gen_params),
+ 	{}
+ };
+ 
 -- 
 2.30.0
 
