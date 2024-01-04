@@ -1,29 +1,29 @@
-Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
+Received: from szxga07-in.huawei.com (szxga07-in.huawei.com [45.249.212.35])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BBD6E225D1;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7E5E524219;
 	Thu,  4 Jan 2024 14:17:49 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.163.48])
-	by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4T5TDk57zmzMqcg;
-	Thu,  4 Jan 2024 22:17:10 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.88.163])
+	by szxga07-in.huawei.com (SkyGuard) with ESMTP id 4T5TCj0H0Mz1Q77L;
+	Thu,  4 Jan 2024 22:16:17 +0800 (CST)
 Received: from dggpeml500021.china.huawei.com (unknown [7.185.36.21])
-	by mail.maildlp.com (Postfix) with ESMTPS id 29E9218005E;
-	Thu,  4 Jan 2024 22:17:42 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 358F11800AB;
+	Thu,  4 Jan 2024 22:17:44 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
  (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.35; Thu, 4 Jan
- 2024 22:17:41 +0800
+ 2024 22:17:43 +0800
 From: Baokun Li <libaokun1@huawei.com>
 To: <linux-ext4@vger.kernel.org>
 CC: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
 	<ritesh.list@gmail.com>, <linux-kernel@vger.kernel.org>,
 	<yi.zhang@huawei.com>, <yangerkun@huawei.com>, <yukuai3@huawei.com>,
 	<libaokun1@huawei.com>
-Subject: [PATCH v3 3/8] ext4: regenerate buddy after block freeing failed if under fc replay
-Date: Thu, 4 Jan 2024 22:20:35 +0800
-Message-ID: <20240104142040.2835097-4-libaokun1@huawei.com>
+Subject: [PATCH v3 7/8] ext4: avoid allocating blocks from corrupted group in ext4_mb_find_by_goal()
+Date: Thu, 4 Jan 2024 22:20:39 +0800
+Message-ID: <20240104142040.2835097-8-libaokun1@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20240104142040.2835097-1-libaokun1@huawei.com>
 References: <20240104142040.2835097-1-libaokun1@huawei.com>
@@ -38,58 +38,44 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems701-chm.china.huawei.com (10.3.19.178) To
  dggpeml500021.china.huawei.com (7.185.36.21)
 
-This mostly reverts commit 6bd97bf273bd ("ext4: remove redundant
-mb_regenerate_buddy()") and reintroduces mb_regenerate_buddy(). Based on
-code in mb_free_blocks(), fast commit replay can end up marking as free
-blocks that are already marked as such. This causes corruption of the
-buddy bitmap so we need to regenerate it in that case.
+Places the logic for checking if the group's block bitmap is corrupt under
+the protection of the group lock to avoid allocating blocks from the group
+with a corrupted block bitmap.
 
-Reported-by: Jan Kara <jack@suse.cz>
-Fixes: 6bd97bf273bd ("ext4: remove redundant mb_regenerate_buddy()")
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/mballoc.c | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+ fs/ext4/mballoc.c | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index a95fa6e2b0f9..f6131ba514c8 100644
+index 2cba94520961..90fcf22db098 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -1233,6 +1233,24 @@ void ext4_mb_generate_buddy(struct super_block *sb,
- 	atomic64_add(period, &sbi->s_mb_generation_time);
- }
+@@ -2342,12 +2342,10 @@ int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
+ 	if (err)
+ 		return err;
  
-+static void mb_regenerate_buddy(struct ext4_buddy *e4b)
-+{
-+	int count;
-+	int order = 1;
-+	void *buddy;
+-	if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(e4b->bd_info))) {
+-		ext4_mb_unload_buddy(e4b);
+-		return 0;
+-	}
+-
+ 	ext4_lock_group(ac->ac_sb, group);
++	if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(e4b->bd_info)))
++		goto out;
 +
-+	while ((buddy = mb_find_buddy(e4b, order++, &count)))
-+		mb_set_bits(buddy, 0, count);
-+
-+	e4b->bd_info->bb_fragments = 0;
-+	memset(e4b->bd_info->bb_counters, 0,
-+		sizeof(*e4b->bd_info->bb_counters) *
-+		(e4b->bd_sb->s_blocksize_bits + 2));
-+
-+	ext4_mb_generate_buddy(e4b->bd_sb, e4b->bd_buddy,
-+		e4b->bd_bitmap, e4b->bd_group, e4b->bd_info);
-+}
-+
- /* The buddy information is attached the buddy cache inode
-  * for convenience. The information regarding each group
-  * is loaded via ext4_mb_load_buddy. The information involve
-@@ -1921,6 +1939,8 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
- 			ext4_mark_group_bitmap_corrupted(
- 				sb, e4b->bd_group,
- 				EXT4_GROUP_INFO_BBITMAP_CORRUPT);
-+		} else {
-+			mb_regenerate_buddy(e4b);
- 		}
- 		goto done;
+ 	max = mb_find_extent(e4b, ac->ac_g_ex.fe_start,
+ 			     ac->ac_g_ex.fe_len, &ex);
+ 	ex.fe_logical = 0xDEADFA11; /* debug value */
+@@ -2380,6 +2378,7 @@ int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
+ 		ac->ac_b_ex = ex;
+ 		ext4_mb_use_best_found(ac, e4b);
  	}
++out:
+ 	ext4_unlock_group(ac->ac_sb, group);
+ 	ext4_mb_unload_buddy(e4b);
+ 
 -- 
 2.31.1
 
