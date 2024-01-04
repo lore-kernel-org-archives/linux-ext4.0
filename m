@@ -1,29 +1,29 @@
-Received: from szxga07-in.huawei.com (szxga07-in.huawei.com [45.249.212.35])
+Received: from szxga06-in.huawei.com (szxga06-in.huawei.com [45.249.212.32])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7E5E524219;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D8EE7225D4;
 	Thu,  4 Jan 2024 14:17:49 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.88.163])
-	by szxga07-in.huawei.com (SkyGuard) with ESMTP id 4T5TCj0H0Mz1Q77L;
-	Thu,  4 Jan 2024 22:16:17 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.88.234])
+	by szxga06-in.huawei.com (SkyGuard) with ESMTP id 4T5TF40tVfz1vrPK;
+	Thu,  4 Jan 2024 22:17:28 +0800 (CST)
 Received: from dggpeml500021.china.huawei.com (unknown [7.185.36.21])
-	by mail.maildlp.com (Postfix) with ESMTPS id 358F11800AB;
-	Thu,  4 Jan 2024 22:17:44 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 9F2B1140133;
+	Thu,  4 Jan 2024 22:17:41 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
  (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.35; Thu, 4 Jan
- 2024 22:17:43 +0800
+ 2024 22:17:41 +0800
 From: Baokun Li <libaokun1@huawei.com>
 To: <linux-ext4@vger.kernel.org>
 CC: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
 	<ritesh.list@gmail.com>, <linux-kernel@vger.kernel.org>,
 	<yi.zhang@huawei.com>, <yangerkun@huawei.com>, <yukuai3@huawei.com>,
 	<libaokun1@huawei.com>
-Subject: [PATCH v3 7/8] ext4: avoid allocating blocks from corrupted group in ext4_mb_find_by_goal()
-Date: Thu, 4 Jan 2024 22:20:39 +0800
-Message-ID: <20240104142040.2835097-8-libaokun1@huawei.com>
+Subject: [PATCH v3 2/8] ext4: do not trim the group with corrupted block bitmap
+Date: Thu, 4 Jan 2024 22:20:34 +0800
+Message-ID: <20240104142040.2835097-3-libaokun1@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20240104142040.2835097-1-libaokun1@huawei.com>
 References: <20240104142040.2835097-1-libaokun1@huawei.com>
@@ -38,44 +38,29 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems701-chm.china.huawei.com (10.3.19.178) To
  dggpeml500021.china.huawei.com (7.185.36.21)
 
-Places the logic for checking if the group's block bitmap is corrupt under
-the protection of the group lock to avoid allocating blocks from the group
-with a corrupted block bitmap.
+Otherwise operating on an incorrupted block bitmap can lead to all sorts
+of unknown problems.
 
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/mballoc.c | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+ fs/ext4/mballoc.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 2cba94520961..90fcf22db098 100644
+index d72b5e3c92ec..a95fa6e2b0f9 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -2342,12 +2342,10 @@ int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
- 	if (err)
- 		return err;
+@@ -6757,6 +6757,9 @@ __releases(ext4_group_lock_ptr(sb, e4b->bd_group))
+ 	bool set_trimmed = false;
+ 	void *bitmap;
  
--	if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(e4b->bd_info))) {
--		ext4_mb_unload_buddy(e4b);
--		return 0;
--	}
--
- 	ext4_lock_group(ac->ac_sb, group);
 +	if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(e4b->bd_info)))
-+		goto out;
++		return 0;
 +
- 	max = mb_find_extent(e4b, ac->ac_g_ex.fe_start,
- 			     ac->ac_g_ex.fe_len, &ex);
- 	ex.fe_logical = 0xDEADFA11; /* debug value */
-@@ -2380,6 +2378,7 @@ int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
- 		ac->ac_b_ex = ex;
- 		ext4_mb_use_best_found(ac, e4b);
- 	}
-+out:
- 	ext4_unlock_group(ac->ac_sb, group);
- 	ext4_mb_unload_buddy(e4b);
- 
+ 	bitmap = e4b->bd_bitmap;
+ 	if (start == 0 && max >= ext4_last_grp_cluster(sb, e4b->bd_group))
+ 		set_trimmed = true;
 -- 
 2.31.1
 
