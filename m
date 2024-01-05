@@ -1,18 +1,18 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8D27F4403;
-	Fri,  5 Jan 2024 01:23:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0F8674428;
+	Fri,  5 Jan 2024 01:23:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4T5m0z2VlSz4f3lXr;
-	Fri,  5 Jan 2024 09:22:59 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4T5m0t5Mtgz4f3lW9;
+	Fri,  5 Jan 2024 09:22:54 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 2637A1A08DB;
-	Fri,  5 Jan 2024 09:23:01 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 762001A08B6;
+	Fri,  5 Jan 2024 09:23:00 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-	by APP4 (Coremail) with SMTP id gCh0CgBXZUXyWZdl68i0Fg--.35140S6;
+	by APP4 (Coremail) with SMTP id gCh0CgBXZUXyWZdl68i0Fg--.35140S4;
 	Fri, 05 Jan 2024 09:23:00 +0800 (CST)
 From: Kemeng Shi <shikemeng@huaweicloud.com>
 To: tytso@mit.edu,
@@ -21,9 +21,9 @@ To: tytso@mit.edu,
 	ojaswin@linux.ibm.com
 Cc: linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v3 4/9] ext4: remove unused ext4_allocation_context::ac_groups_considered
-Date: Fri,  5 Jan 2024 17:20:57 +0800
-Message-Id: <20240105092102.496631-5-shikemeng@huaweicloud.com>
+Subject: [PATCH v3 2/9] ext4: remove unused parameter ngroup in ext4_mb_choose_next_group_*()
+Date: Fri,  5 Jan 2024 17:20:55 +0800
+Message-Id: <20240105092102.496631-3-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20240105092102.496631-1-shikemeng@huaweicloud.com>
 References: <20240105092102.496631-1-shikemeng@huaweicloud.com>
@@ -34,44 +34,80 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgBXZUXyWZdl68i0Fg--.35140S6
-X-Coremail-Antispam: 1UD129KBjDUn29KB7ZKAUJUUUUU529EdanIXcx71UUUUU7v73
-	VFW2AGmfu7bjvjm3AaLaJ3UjIYCTnIWjp_UUUYA7kC6x804xWl14x267AKxVWrJVCq3wAF
-	c2x0x2IEx4CE42xK8VAvwI8IcIk0rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62
-	vIxIIY0VWUZVW8XwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E
-	14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI
-	8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vE
-	x4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzx
-	vE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWU
-	JVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7V
-	AKI48JMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAF
-	wI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc4
-	0Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AK
-	xVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr
-	1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU0TqcUUU
-	UUU==
+X-CM-TRANSID:gCh0CgBXZUXyWZdl68i0Fg--.35140S4
+X-Coremail-Antispam: 1UD129KBjvJXoWxAr13Cr47Zr47ArWxAr45Awb_yoW5GF15pF
+	4DtF1Uu3yfGF1DuF4xW39Fg3WxKw18uryUAry3Wa4F9ryxJrykJF47tF40yF1UCFs7urnx
+	Xas0v348Ca17C3DanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUB0b4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
+	8IrcIa0xkI8VA2jI8067AKxVWUXwA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK
+	0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4
+	x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l
+	84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I
+	8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AK
+	xVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64
+	vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8G
+	jcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2I
+	x0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK
+	8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I
+	0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxU3K9-UUUUU
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
-Remove unused ext4_allocation_context::ac_groups_considered
+Remove unused parameter ngroup in ext4_mb_choose_next_group_*().
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/mballoc.h | 1 -
- 1 file changed, 1 deletion(-)
+ fs/ext4/mballoc.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-index d7aeb5da7..56938532b 100644
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -192,7 +192,6 @@ struct ext4_allocation_context {
- 	 */
- 	ext4_grpblk_t	ac_orig_goal_len;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 9f9b8dd06..765b62729 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -870,7 +870,7 @@ mb_update_avg_fragment_size(struct super_block *sb, struct ext4_group_info *grp)
+  * cr level needs an update.
+  */
+ static void ext4_mb_choose_next_group_p2_aligned(struct ext4_allocation_context *ac,
+-			enum criteria *new_cr, ext4_group_t *group, ext4_group_t ngroups)
++			enum criteria *new_cr, ext4_group_t *group)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
+ 	struct ext4_group_info *iter;
+@@ -944,7 +944,7 @@ ext4_mb_find_good_group_avg_frag_lists(struct ext4_allocation_context *ac, int o
+  * order. Updates *new_cr if cr level needs an update.
+  */
+ static void ext4_mb_choose_next_group_goal_fast(struct ext4_allocation_context *ac,
+-		enum criteria *new_cr, ext4_group_t *group, ext4_group_t ngroups)
++		enum criteria *new_cr, ext4_group_t *group)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
+ 	struct ext4_group_info *grp = NULL;
+@@ -989,7 +989,7 @@ static void ext4_mb_choose_next_group_goal_fast(struct ext4_allocation_context *
+  * much and fall to CR_GOAL_LEN_SLOW in that case.
+  */
+ static void ext4_mb_choose_next_group_best_avail(struct ext4_allocation_context *ac,
+-		enum criteria *new_cr, ext4_group_t *group, ext4_group_t ngroups)
++		enum criteria *new_cr, ext4_group_t *group)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
+ 	struct ext4_group_info *grp = NULL;
+@@ -1124,11 +1124,11 @@ static void ext4_mb_choose_next_group(struct ext4_allocation_context *ac,
+ 	}
  
--	__u32 ac_groups_considered;
- 	__u32 ac_flags;		/* allocation hints */
- 	__u16 ac_groups_scanned;
- 	__u16 ac_groups_linear_remaining;
+ 	if (*new_cr == CR_POWER2_ALIGNED) {
+-		ext4_mb_choose_next_group_p2_aligned(ac, new_cr, group, ngroups);
++		ext4_mb_choose_next_group_p2_aligned(ac, new_cr, group);
+ 	} else if (*new_cr == CR_GOAL_LEN_FAST) {
+-		ext4_mb_choose_next_group_goal_fast(ac, new_cr, group, ngroups);
++		ext4_mb_choose_next_group_goal_fast(ac, new_cr, group);
+ 	} else if (*new_cr == CR_BEST_AVAIL_LEN) {
+-		ext4_mb_choose_next_group_best_avail(ac, new_cr, group, ngroups);
++		ext4_mb_choose_next_group_best_avail(ac, new_cr, group);
+ 	} else {
+ 		/*
+ 		 * TODO: For CR=2, we can arrange groups in an rb tree sorted by
 -- 
 2.30.0
 
