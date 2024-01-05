@@ -1,19 +1,19 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7472B46B8;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C96346B3;
 	Fri,  5 Jan 2024 01:23:05 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4T5m0z2XrNz4f3mHv;
-	Fri,  5 Jan 2024 09:22:59 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4T5m0y5WZgz4f3lwP;
+	Fri,  5 Jan 2024 09:22:58 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id AA78A1A0A41;
+	by mail.maildlp.com (Postfix) with ESMTP id 1B12E1A0531;
 	Fri,  5 Jan 2024 09:23:02 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-	by APP4 (Coremail) with SMTP id gCh0CgBXZUXyWZdl68i0Fg--.35140S11;
-	Fri, 05 Jan 2024 09:23:02 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgBXZUXyWZdl68i0Fg--.35140S9;
+	Fri, 05 Jan 2024 09:23:01 +0800 (CST)
 From: Kemeng Shi <shikemeng@huaweicloud.com>
 To: tytso@mit.edu,
 	adilger.kernel@dilger.ca,
@@ -21,9 +21,9 @@ To: tytso@mit.edu,
 	ojaswin@linux.ibm.com
 Cc: linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v3 9/9] ext4: remove 'needed' in trace_ext4_discard_preallocations
-Date: Fri,  5 Jan 2024 17:21:02 +0800
-Message-Id: <20240105092102.496631-10-shikemeng@huaweicloud.com>
+Subject: [PATCH v3 7/9] ext4: remove unused return value of ext4_mb_release_group_pa
+Date: Fri,  5 Jan 2024 17:21:00 +0800
+Message-Id: <20240105092102.496631-8-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20240105092102.496631-1-shikemeng@huaweicloud.com>
 References: <20240105092102.496631-1-shikemeng@huaweicloud.com>
@@ -34,98 +34,61 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgBXZUXyWZdl68i0Fg--.35140S11
-X-Coremail-Antispam: 1UD129KBjvJXoW7Kr43tF4fZrykCw4fAw13Jwb_yoW8tw1rpr
-	nrA3W8Ww43Z39Y9a1xZw18Zr45Zay09anrJrWSgw1UZF9rJF93KrnFqr1jyFyrArZYkFWS
-	va4a9Fy5Zw18W37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUBIb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
-	8IrcIa0xkI8VA2jI8067AKxVWUAVCq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAv
-	FVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3w
-	A2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE
-	3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr2
-	1l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv
-	67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2
-	Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s02
-	6x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0x
-	vE2Ix0cI8IcVAFwI0_JFI_Gr1lIxAIcVC0I7IYx2IY6xkF7I0E14v26F4j6r4UJwCI42IY
-	6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aV
-	CY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU0TqcUUUUUU==
+X-CM-TRANSID:gCh0CgBXZUXyWZdl68i0Fg--.35140S9
+X-Coremail-Antispam: 1UD129KBjvdXoWrtr4fGF45tF4UXFWxZF1xAFb_yoWkKFb_Ca
+	4UXr4kA343A3s293WrJry3t3yqkan2vr9rur4rKrZ3AF1rW3ZxAw1DZrsxA397ua10ka43
+	GF93Zry8GFZYqjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUbS8YFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
+	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl82
+	xGYIkIc2x26280x7IE14v26r126s0DM28IrcIa0xkI8VCY1x0267AKxVW5JVCq3wA2ocxC
+	64kIII0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM2
+	8EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq
+	3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8w
+	Aqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE
+	14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x
+	0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E
+	7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcV
+	C0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF
+	04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7
+	CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07jstxDUUUUU=
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
-As 'needed' to trace_ext4_discard_preallocations is always 0 which
-is meaningless. Just remove it.
+Remove unused return value of ext4_mb_release_group_pa.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-Suggested-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/mballoc.c           |  5 ++---
- include/trace/events/ext4.h | 11 ++++-------
- 2 files changed, 6 insertions(+), 10 deletions(-)
+ fs/ext4/mballoc.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 0e6beb3b4..091a832a8 100644
+index 1ed6d1d5a..e6561a09d 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -5481,9 +5481,8 @@ void ext4_discard_preallocations(struct inode *inode)
- 	struct rb_node *iter;
- 	int err;
+@@ -5330,7 +5330,7 @@ ext4_mb_release_inode_pa(struct ext4_buddy *e4b, struct buffer_head *bitmap_bh,
+ 	atomic_add(free, &sbi->s_mb_discarded);
+ }
  
--	if (!S_ISREG(inode->i_mode)) {
-+	if (!S_ISREG(inode->i_mode))
- 		return;
--	}
+-static noinline_for_stack int
++static noinline_for_stack void
+ ext4_mb_release_group_pa(struct ext4_buddy *e4b,
+ 				struct ext4_prealloc_space *pa)
+ {
+@@ -5344,13 +5344,11 @@ ext4_mb_release_group_pa(struct ext4_buddy *e4b,
+ 	if (unlikely(group != e4b->bd_group && pa->pa_len != 0)) {
+ 		ext4_warning(sb, "bad group: expected %u, group %u, pa_start %llu",
+ 			     e4b->bd_group, group, pa->pa_pstart);
+-		return 0;
++		return;
+ 	}
+ 	mb_free_blocks(pa->pa_inode, e4b, bit, pa->pa_len);
+ 	atomic_add(pa->pa_len, &EXT4_SB(sb)->s_mb_discarded);
+ 	trace_ext4_mballoc_discard(sb, NULL, group, bit, pa->pa_len);
+-
+-	return 0;
+ }
  
- 	if (EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY)
- 		return;
-@@ -5491,7 +5490,7 @@ void ext4_discard_preallocations(struct inode *inode)
- 	mb_debug(sb, "discard preallocation for inode %lu\n",
- 		 inode->i_ino);
- 	trace_ext4_discard_preallocations(inode,
--			atomic_read(&ei->i_prealloc_active), 0);
-+			atomic_read(&ei->i_prealloc_active));
- 
- repeat:
- 	/* first, collect all pa's in the inode */
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 65029dfb9..a697f4b77 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -772,15 +772,14 @@ TRACE_EVENT(ext4_mb_release_group_pa,
- );
- 
- TRACE_EVENT(ext4_discard_preallocations,
--	TP_PROTO(struct inode *inode, unsigned int len, unsigned int needed),
-+	TP_PROTO(struct inode *inode, unsigned int len),
- 
--	TP_ARGS(inode, len, needed),
-+	TP_ARGS(inode, len),
- 
- 	TP_STRUCT__entry(
- 		__field(	dev_t,		dev		)
- 		__field(	ino_t,		ino		)
- 		__field(	unsigned int,	len		)
--		__field(	unsigned int,	needed		)
- 
- 	),
- 
-@@ -788,13 +787,11 @@ TRACE_EVENT(ext4_discard_preallocations,
- 		__entry->dev	= inode->i_sb->s_dev;
- 		__entry->ino	= inode->i_ino;
- 		__entry->len	= len;
--		__entry->needed	= needed;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu len: %u needed %u",
-+	TP_printk("dev %d,%d ino %lu len: %u",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
--		  (unsigned long) __entry->ino, __entry->len,
--		  __entry->needed)
-+		  (unsigned long) __entry->ino, __entry->len)
- );
- 
- TRACE_EVENT(ext4_mb_discard_preallocations,
+ /*
 -- 
 2.30.0
 
