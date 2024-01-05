@@ -1,120 +1,84 @@
-Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+Received: from out30-110.freemail.mail.aliyun.com (out30-110.freemail.mail.aliyun.com [115.124.30.110])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2E89B4C81
-	for <linux-ext4@vger.kernel.org>; Fri,  5 Jan 2024 03:33:22 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4T5pvL12kZz4f3mWM
-	for <linux-ext4@vger.kernel.org>; Fri,  5 Jan 2024 11:33:18 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id E95DF1A0A2B
-	for <linux-ext4@vger.kernel.org>; Fri,  5 Jan 2024 11:33:19 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgDn6hByeJdlyaRBFg--.23173S9;
-	Fri, 05 Jan 2024 11:33:19 +0800 (CST)
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	jack@suse.cz,
-	yi.zhang@huawei.com,
-	yi.zhang@huaweicloud.com,
-	chengzhihao1@huawei.com,
-	yukuai3@huawei.com
-Subject: [PATCH v3 5/6] ext4: make ext4_map_blocks() distinguish delalloc only extent
-Date: Fri,  5 Jan 2024 11:30:17 +0800
-Message-Id: <20240105033018.1665752-6-yi.zhang@huaweicloud.com>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20240105033018.1665752-1-yi.zhang@huaweicloud.com>
-References: <20240105033018.1665752-1-yi.zhang@huaweicloud.com>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 21CAE5228;
+	Fri,  5 Jan 2024 04:44:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R881e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=ay29a033018046060;MF=hsiangkao@linux.alibaba.com;NM=1;PH=DS;RN=49;SR=0;TI=SMTPD_---0VzzUQHt_1704429833;
+Received: from 30.222.33.160(mailfrom:hsiangkao@linux.alibaba.com fp:SMTPD_---0VzzUQHt_1704429833)
+          by smtp.aliyun-inc.com;
+          Fri, 05 Jan 2024 12:43:56 +0800
+Message-ID: <a2c7910c-4c2f-4290-a895-1c4255b2ee62@linux.alibaba.com>
+Date: Fri, 5 Jan 2024 12:43:52 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH RFC v3 for-6.8/block 11/17] erofs: use bdev api
+To: Yu Kuai <yukuai1@huaweicloud.com>, Jan Kara <jack@suse.cz>
+Cc: axboe@kernel.dk, roger.pau@citrix.com, colyli@suse.de,
+ kent.overstreet@gmail.com, joern@lazybastard.org, miquel.raynal@bootlin.com,
+ richard@nod.at, vigneshr@ti.com, sth@linux.ibm.com, hoeppner@linux.ibm.com,
+ hca@linux.ibm.com, gor@linux.ibm.com, agordeev@linux.ibm.com,
+ jejb@linux.ibm.com, martin.petersen@oracle.com, clm@fb.com,
+ josef@toxicpanda.com, dsterba@suse.com, viro@zeniv.linux.org.uk,
+ brauner@kernel.org, nico@fluxnic.net, xiang@kernel.org, chao@kernel.org,
+ tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.com,
+ konishi.ryusuke@gmail.com, willy@infradead.org, akpm@linux-foundation.org,
+ hare@suse.de, p.raghav@samsung.com, linux-block@vger.kernel.org,
+ linux-kernel@vger.kernel.org, xen-devel@lists.xenproject.org,
+ linux-bcache@vger.kernel.org, linux-mtd@lists.infradead.org,
+ linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org,
+ linux-bcachefs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+ linux-ext4@vger.kernel.org, linux-nilfs@vger.kernel.org,
+ yi.zhang@huawei.com, yangerkun@huawei.com, "yukuai (C)" <yukuai3@huawei.com>
+References: <20231221085712.1766333-1-yukuai1@huaweicloud.com>
+ <20231221085826.1768395-1-yukuai1@huaweicloud.com>
+ <20240104120207.ig7tfc3mgckwkp2n@quack3>
+ <7f868579-f993-aaa1-b7d7-eccbe0b0173c@huaweicloud.com>
+From: Gao Xiang <hsiangkao@linux.alibaba.com>
+In-Reply-To: <7f868579-f993-aaa1-b7d7-eccbe0b0173c@huaweicloud.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgDn6hByeJdlyaRBFg--.23173S9
-X-Coremail-Antispam: 1UD129KBjvJXoW7Zw47Xw1xGw1DAFy8tr4Dtwb_yoW8tw4Dpa
-	95GFyUGFs09w1q93yxGa1UJr1UKa48C3y7Cr4Yqr4F9F9xJr1ftF1q9F1fZFyYgrWxXFy5
-	XF4Utw1UCa9IkrDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUU9C14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
-	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
-	IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
-	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20xvY0x0EwIxGrw
-	CFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE
-	14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2
-	IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxK
-	x2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI
-	0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUl2NtUUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-From: Zhang Yi <yi.zhang@huawei.com>
 
-Add a new map flag EXT4_MAP_DELAYED to indicate the mapping range is a
-delayed allocated only (not unwritten) one, and making
-ext4_map_blocks() can distinguish it, no longer mixing it with holes.
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
----
- fs/ext4/ext4.h    | 4 +++-
- fs/ext4/extents.c | 7 +++++--
- fs/ext4/inode.c   | 2 ++
- 3 files changed, 10 insertions(+), 3 deletions(-)
+On 2024/1/4 20:32, Yu Kuai wrote:
+> Hi, Jan!
+> 
+> 在 2024/01/04 20:02, Jan Kara 写道:
+>> On Thu 21-12-23 16:58:26, Yu Kuai wrote:
+>>> From: Yu Kuai <yukuai3@huawei.com>
+>>>
+>>> Avoid to access bd_inode directly, prepare to remove bd_inode from
+>>> block_device.
+>>>
+>>> Signed-off-by: Yu Kuai <yukuai3@huawei.com>
+>>
+>> I'm not erofs maintainer but IMO this is quite ugly and grows erofs_buf
+>> unnecessarily. I'd rather store 'sb' pointer in erofs_buf and then do the
+>> right thing in erofs_bread() which is the only place that seems to care
+>> about the erofs_is_fscache_mode() distinction... Also blkszbits is then
+>> trivially sb->s_blocksize_bits so it would all seem much more
+>> straightforward.
+> 
+> Thanks for your suggestion, I'll follow this unless Gao Xiang has other
+> suggestions.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index a5d784872303..55195909d32f 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -252,8 +252,10 @@ struct ext4_allocation_request {
- #define EXT4_MAP_MAPPED		BIT(BH_Mapped)
- #define EXT4_MAP_UNWRITTEN	BIT(BH_Unwritten)
- #define EXT4_MAP_BOUNDARY	BIT(BH_Boundary)
-+#define EXT4_MAP_DELAYED	BIT(BH_Delay)
- #define EXT4_MAP_FLAGS		(EXT4_MAP_NEW | EXT4_MAP_MAPPED |\
--				 EXT4_MAP_UNWRITTEN | EXT4_MAP_BOUNDARY)
-+				 EXT4_MAP_UNWRITTEN | EXT4_MAP_BOUNDARY |\
-+				 EXT4_MAP_DELAYED)
- 
- struct ext4_map_blocks {
- 	ext4_fsblk_t m_pblk;
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index e0b7e48c4c67..6b64319a7df8 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4076,8 +4076,11 @@ static ext4_lblk_t ext4_ext_determine_insert_hole(struct inode *inode,
- 		/*
- 		 * The delalloc extent containing lblk, it must have been
- 		 * added after ext4_map_blocks() checked the extent status
--		 * tree, adjust the length to the delalloc extent's after
--		 * lblk.
-+		 * tree so we are not holding i_rwsem and delalloc info is
-+		 * only stabilized by i_data_sem we are going to release
-+		 * soon. Don't modify the extent status tree and report
-+		 * extent as a hole, just adjust the length to the delalloc
-+		 * extent's after lblk.
- 		 */
- 		len = es.es_lblk + es.es_len - lblk;
- 		return len;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 1b5e6409f958..c141bf6d8db2 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -515,6 +515,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 			map->m_len = retval;
- 		} else if (ext4_es_is_delayed(&es) || ext4_es_is_hole(&es)) {
- 			map->m_pblk = 0;
-+			map->m_flags |= ext4_es_is_delayed(&es) ?
-+					EXT4_MAP_DELAYED : 0;
- 			retval = es.es_len - (map->m_lblk - es.es_lblk);
- 			if (retval > map->m_len)
- 				retval = map->m_len;
--- 
-2.39.2
+Yes, that would be better, I'm fine with that.  Yet in the future we
+may support a seperate large dirblocksize more than block size, but
+we could revisit later.
 
+Thanks,
+Gao Xiang
+
+> 
+> Kuai
+>>
+>>                                 Honza
+>>
