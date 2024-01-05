@@ -1,19 +1,19 @@
-Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CF2714410
-	for <linux-ext4@vger.kernel.org>; Fri,  5 Jan 2024 03:33:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3ECA44C9F
+	for <linux-ext4@vger.kernel.org>; Fri,  5 Jan 2024 03:33:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4T5pvD2YW3z4f3pJ7
-	for <linux-ext4@vger.kernel.org>; Fri,  5 Jan 2024 11:33:12 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4T5pvG46thz4f3pJZ
+	for <linux-ext4@vger.kernel.org>; Fri,  5 Jan 2024 11:33:14 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 18D041A08E1
-	for <linux-ext4@vger.kernel.org>; Fri,  5 Jan 2024 11:33:18 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 4D9AC1A08D8
+	for <linux-ext4@vger.kernel.org>; Fri,  5 Jan 2024 11:33:20 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgDn6hByeJdlyaRBFg--.23173S4;
-	Fri, 05 Jan 2024 11:33:15 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgDn6hByeJdlyaRBFg--.23173S10;
+	Fri, 05 Jan 2024 11:33:20 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -23,10 +23,12 @@ Cc: tytso@mit.edu,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [PATCH v3 0/6] ext4: make ext4_map_blocks() recognize delalloc only extent
-Date: Fri,  5 Jan 2024 11:30:12 +0800
-Message-Id: <20240105033018.1665752-1-yi.zhang@huaweicloud.com>
+Subject: [PATCH v3 6/6] ext4: make ext4_set_iomap() recognize IOMAP_DELALLOC map type
+Date: Fri,  5 Jan 2024 11:30:18 +0800
+Message-Id: <20240105033018.1665752-7-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20240105033018.1665752-1-yi.zhang@huaweicloud.com>
+References: <20240105033018.1665752-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -34,73 +36,101 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgDn6hByeJdlyaRBFg--.23173S4
-X-Coremail-Antispam: 1UD129KBjvJXoW7WF4xCrWfCw4kGFyxAr18Zrb_yoW8tw4kpF
-	Z3Cr13Gws0gw17Wa9xZw47Gr1F9an7GF4UGry7Gr1kJrWUAry8WFs7K3WF9Fy3ArWxJF1a
-	qF4Ut34kua4rC37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUyG14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
-	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
-	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
-	2Ix0cI8IcVAFwI0_Jrv_JF1lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
-	W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1l42xK82IYc2Ij64vI
-	r41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8Gjc
-	xK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0
-	cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8V
-	AvwI8IcIk0rVWrZr1j6s0DMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7Cj
-	xVAFwI0_Jr0_GrUvcSsGvfC2KfnxnUUI43ZEXa7VUbE_M3UUUUU==
+X-CM-TRANSID:cCh0CgDn6hByeJdlyaRBFg--.23173S10
+X-Coremail-Antispam: 1UD129KBjvJXoW7Aw1kKFWkAr4DGw43GrW7Arb_yoW8Kr17pa
+	9xKFy7GF43Xr1qgr48trW7Zr1Yk3WUK3y7WrWfG3s5Cr10yry8tF48CF1SyF90qrWxZw1I
+	qF4jkr18ua1SyFDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9K14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20xvY0x0EwIxGrw
+	CFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE
+	14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2
+	IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAv
+	wI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14
+	v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjfUoxhLUUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-v2->v3:
- - Rename ext4_ext_determine_hole() to ext4_ext_determine_insert_hole()
-   and keep setting of 'map' inside ext4_ext_map_blocks().
- - Don't set EXT4_MAP_DELAYED in ext4_ext_determine_insert_hole()
-   because it's unreliable, and revise the comments.
-v1->v2:
- - Fix a long standing race issue between determine hole and inserting
-   new delalloc extent analyzed by Jan Kara.
- - Change method of adjusting hole length, instead of skip holes in
-   ext4_map_blocks(), now we find delalloc and correct length and type
-   in ext4_ext_determine_hole().
+From: Zhang Yi <yi.zhang@huawei.com>
 
-v2: https://lore.kernel.org/linux-ext4/20231223110223.3650717-1-yi.zhang@huaweicloud.com/
-v1: https://lore.kernel.org/linux-ext4/20231121093429.1827390-1-yi.zhang@huaweicloud.com/
+Since ext4_map_blocks() can recognize a delayed allocated only extent,
+make ext4_set_iomap() can also recognize it, and remove the useless
+separate check in ext4_iomap_begin_report().
 
-Hello, all!
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c | 32 +++-----------------------------
+ 1 file changed, 3 insertions(+), 29 deletions(-)
 
-I'm working on switching ext4 buffer IO from buffer_head to iomap
-and enable large folio on regular file recently [1], this patch set
-is one of a preparation of this work. It first fix a long standing race
-issue between bmap querying and adding new delalloc extents, then
-correct the hole length returned by ext4_map_blocks() when user querying
-map type and blocks range, after that, make this function and
-ext4_set_iomap() are able to distinguish delayed allocated only mapping
-from hole, finally BTW cleanup the ext4_iomap_begin_report().
-
-This preparation patch set changes the ext4 map -> iomap converting logic
-in ext4_set_iomap(), so that the later buffer IO conversion can use this
-helper to connect iomap frame. This patch set is already passed
-'kvm-xfstests -g auto' tests.
-
-Thanks,
-Yi.
-
-[1] https://lore.kernel.org/linux-ext4/20240102123918.799062-1-yi.zhang@huaweicloud.com/
-
-Zhang Yi (6):
-  ext4: refactor ext4_da_map_blocks()
-  ext4: convert to exclusive lock while inserting delalloc extents
-  ext4: correct the hole length returned by ext4_map_blocks()
-  ext4: add a hole extent entry in cache after punch
-  ext4: make ext4_map_blocks() distinguish delalloc only extent
-  ext4: make ext4_set_iomap() recognize IOMAP_DELALLOC map type
-
- fs/ext4/ext4.h    |   4 +-
- fs/ext4/extents.c | 114 +++++++++++++++++++++++++++++-----------------
- fs/ext4/inode.c   |  84 +++++++++++-----------------------
- 3 files changed, 103 insertions(+), 99 deletions(-)
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c141bf6d8db2..0458d7f0c059 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3261,6 +3261,9 @@ static void ext4_set_iomap(struct inode *inode, struct iomap *iomap,
+ 		iomap->addr = (u64) map->m_pblk << blkbits;
+ 		if (flags & IOMAP_DAX)
+ 			iomap->addr += EXT4_SB(inode->i_sb)->s_dax_part_off;
++	} else if (map->m_flags & EXT4_MAP_DELAYED) {
++		iomap->type = IOMAP_DELALLOC;
++		iomap->addr = IOMAP_NULL_ADDR;
+ 	} else {
+ 		iomap->type = IOMAP_HOLE;
+ 		iomap->addr = IOMAP_NULL_ADDR;
+@@ -3423,35 +3426,11 @@ const struct iomap_ops ext4_iomap_overwrite_ops = {
+ 	.iomap_end		= ext4_iomap_end,
+ };
+ 
+-static bool ext4_iomap_is_delalloc(struct inode *inode,
+-				   struct ext4_map_blocks *map)
+-{
+-	struct extent_status es;
+-	ext4_lblk_t offset = 0, end = map->m_lblk + map->m_len - 1;
+-
+-	ext4_es_find_extent_range(inode, &ext4_es_is_delayed,
+-				  map->m_lblk, end, &es);
+-
+-	if (!es.es_len || es.es_lblk > end)
+-		return false;
+-
+-	if (es.es_lblk > map->m_lblk) {
+-		map->m_len = es.es_lblk - map->m_lblk;
+-		return false;
+-	}
+-
+-	offset = map->m_lblk - es.es_lblk;
+-	map->m_len = es.es_len - offset;
+-
+-	return true;
+-}
+-
+ static int ext4_iomap_begin_report(struct inode *inode, loff_t offset,
+ 				   loff_t length, unsigned int flags,
+ 				   struct iomap *iomap, struct iomap *srcmap)
+ {
+ 	int ret;
+-	bool delalloc = false;
+ 	struct ext4_map_blocks map;
+ 	u8 blkbits = inode->i_blkbits;
+ 
+@@ -3492,13 +3471,8 @@ static int ext4_iomap_begin_report(struct inode *inode, loff_t offset,
+ 	ret = ext4_map_blocks(NULL, inode, &map, 0);
+ 	if (ret < 0)
+ 		return ret;
+-	if (ret == 0)
+-		delalloc = ext4_iomap_is_delalloc(inode, &map);
+-
+ set_iomap:
+ 	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
+-	if (delalloc && iomap->type == IOMAP_HOLE)
+-		iomap->type = IOMAP_DELALLOC;
+ 
+ 	return 0;
+ }
 -- 
 2.39.2
 
