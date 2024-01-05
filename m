@@ -1,32 +1,34 @@
-Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C96346B3;
-	Fri,  5 Jan 2024 01:23:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CF252440E
+	for <linux-ext4@vger.kernel.org>; Fri,  5 Jan 2024 03:33:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4T5m0y5WZgz4f3lwP;
-	Fri,  5 Jan 2024 09:22:58 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 1B12E1A0531;
-	Fri,  5 Jan 2024 09:23:02 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.124.27])
-	by APP4 (Coremail) with SMTP id gCh0CgBXZUXyWZdl68i0Fg--.35140S9;
-	Fri, 05 Jan 2024 09:23:01 +0800 (CST)
-From: Kemeng Shi <shikemeng@huaweicloud.com>
-To: tytso@mit.edu,
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4T5pvD5DYpz4f3pJJ
+	for <linux-ext4@vger.kernel.org>; Fri,  5 Jan 2024 11:33:12 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id 741B31A0A77
+	for <linux-ext4@vger.kernel.org>; Fri,  5 Jan 2024 11:33:18 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.104.67])
+	by APP1 (Coremail) with SMTP id cCh0CgDn6hByeJdlyaRBFg--.23173S5;
+	Fri, 05 Jan 2024 11:33:18 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu,
 	adilger.kernel@dilger.ca,
 	jack@suse.cz,
-	ojaswin@linux.ibm.com
-Cc: linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH v3 7/9] ext4: remove unused return value of ext4_mb_release_group_pa
-Date: Fri,  5 Jan 2024 17:21:00 +0800
-Message-Id: <20240105092102.496631-8-shikemeng@huaweicloud.com>
-X-Mailer: git-send-email 2.30.0
-In-Reply-To: <20240105092102.496631-1-shikemeng@huaweicloud.com>
-References: <20240105092102.496631-1-shikemeng@huaweicloud.com>
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	chengzhihao1@huawei.com,
+	yukuai3@huawei.com
+Subject: [PATCH v3 1/6] ext4: refactor ext4_da_map_blocks()
+Date: Fri,  5 Jan 2024 11:30:13 +0800
+Message-Id: <20240105033018.1665752-2-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20240105033018.1665752-1-yi.zhang@huaweicloud.com>
+References: <20240105033018.1665752-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -34,61 +36,104 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgBXZUXyWZdl68i0Fg--.35140S9
-X-Coremail-Antispam: 1UD129KBjvdXoWrtr4fGF45tF4UXFWxZF1xAFb_yoWkKFb_Ca
-	4UXr4kA343A3s293WrJry3t3yqkan2vr9rur4rKrZ3AF1rW3ZxAw1DZrsxA397ua10ka43
-	GF93Zry8GFZYqjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUbS8YFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
-	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl82
-	xGYIkIc2x26280x7IE14v26r126s0DM28IrcIa0xkI8VCY1x0267AKxVW5JVCq3wA2ocxC
-	64kIII0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM2
-	8EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq
-	3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8w
-	Aqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE
-	14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x
-	0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E
-	7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcV
-	C0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF
-	04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7
-	CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07jstxDUUUUU=
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
+X-CM-TRANSID:cCh0CgDn6hByeJdlyaRBFg--.23173S5
+X-Coremail-Antispam: 1UD129KBjvJXoWxJr17JF15uw4DuryfZr4rAFb_yoW8uFy7pr
+	9IkF93Wr1UXwnYgF4Iqr1UXF1fKa4YqrWDGrZ3Ww18Ary8AwnagFn8tF1fKa4rtrZ7ZF1Y
+	qF4rKry5uw15GrDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9m14x267AKxVW5JVWrJwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jr4l82xGYIkIc2
+	x26xkF7I0E14v26r1I6r4UM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20xvY0x0EwIxGrwCFx2
+	IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v2
+	6r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67
+	AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IY
+	s7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr
+	0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUkPEfUUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-Remove unused return value of ext4_mb_release_group_pa.
+From: Zhang Yi <yi.zhang@huawei.com>
 
-Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+Refactor and cleanup ext4_da_map_blocks(), reduce some unnecessary
+parameters and branches, no logic changes.
+
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/mballoc.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ fs/ext4/inode.c | 39 +++++++++++++++++----------------------
+ 1 file changed, 17 insertions(+), 22 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 1ed6d1d5a..e6561a09d 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -5330,7 +5330,7 @@ ext4_mb_release_inode_pa(struct ext4_buddy *e4b, struct buffer_head *bitmap_bh,
- 	atomic_add(free, &sbi->s_mb_discarded);
- }
- 
--static noinline_for_stack int
-+static noinline_for_stack void
- ext4_mb_release_group_pa(struct ext4_buddy *e4b,
- 				struct ext4_prealloc_space *pa)
- {
-@@ -5344,13 +5344,11 @@ ext4_mb_release_group_pa(struct ext4_buddy *e4b,
- 	if (unlikely(group != e4b->bd_group && pa->pa_len != 0)) {
- 		ext4_warning(sb, "bad group: expected %u, group %u, pa_start %llu",
- 			     e4b->bd_group, group, pa->pa_pstart);
--		return 0;
-+		return;
- 	}
- 	mb_free_blocks(pa->pa_inode, e4b, bit, pa->pa_len);
- 	atomic_add(pa->pa_len, &EXT4_SB(sb)->s_mb_discarded);
- 	trace_ext4_mballoc_discard(sb, NULL, group, bit, pa->pa_len);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 61277f7f8722..5b0d3075be12 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1704,7 +1704,6 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 	/* Lookup extent status tree firstly */
+ 	if (ext4_es_lookup_extent(inode, iblock, NULL, &es)) {
+ 		if (ext4_es_is_hole(&es)) {
+-			retval = 0;
+ 			down_read(&EXT4_I(inode)->i_data_sem);
+ 			goto add_delayed;
+ 		}
+@@ -1749,26 +1748,9 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 		retval = ext4_ext_map_blocks(NULL, inode, map, 0);
+ 	else
+ 		retval = ext4_ind_map_blocks(NULL, inode, map, 0);
 -
--	return 0;
+-add_delayed:
+-	if (retval == 0) {
+-		int ret;
+-
+-		/*
+-		 * XXX: __block_prepare_write() unmaps passed block,
+-		 * is it OK?
+-		 */
+-
+-		ret = ext4_insert_delayed_block(inode, map->m_lblk);
+-		if (ret != 0) {
+-			retval = ret;
+-			goto out_unlock;
+-		}
+-
+-		map_bh(bh, inode->i_sb, invalid_block);
+-		set_buffer_new(bh);
+-		set_buffer_delay(bh);
+-	} else if (retval > 0) {
++	if (retval < 0)
++		goto out_unlock;
++	if (retval > 0) {
+ 		unsigned int status;
+ 
+ 		if (unlikely(retval != map->m_len)) {
+@@ -1783,11 +1765,24 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+ 		ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+ 				      map->m_pblk, status);
++		goto out_unlock;
+ 	}
+ 
++add_delayed:
++	/*
++	 * XXX: __block_prepare_write() unmaps passed block,
++	 * is it OK?
++	 */
++	retval = ext4_insert_delayed_block(inode, map->m_lblk);
++	if (retval)
++		goto out_unlock;
++
++	map_bh(bh, inode->i_sb, invalid_block);
++	set_buffer_new(bh);
++	set_buffer_delay(bh);
++
+ out_unlock:
+ 	up_read((&EXT4_I(inode)->i_data_sem));
+-
+ 	return retval;
  }
  
- /*
 -- 
-2.30.0
+2.39.2
 
