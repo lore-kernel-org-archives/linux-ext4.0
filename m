@@ -1,71 +1,64 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3188326AD1;
-	Mon,  8 Jan 2024 22:48:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BAAAA6103
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jan 2024 02:53:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="j++Ya042"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 65B9DC433C7;
-	Mon,  8 Jan 2024 22:48:13 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1704754093;
-	bh=2dn01Ck7l9ZSNneq0vNQpDyByDGDn8pwsyKXUDoZh+8=;
-	h=Date:From:To:Cc:Subject:From;
-	b=j++Ya042narb+knTvJOY2epSK5WKovJhRVG8Vi6o/sRSdUtMt03nYFrJPl/JiagIK
-	 XLOncxosj2WCkpcULAnF+5nVHvt9tiBLog7bT1m0n8uo6E+MN8Mug9n0x1z4k5yDNO
-	 KnZYEFGTjv/+BNxk3e5t9SlipKhl6o1q7A/EJEbfq4ELeL7kqZYj90HCkwKmoLCuu0
-	 0dYrM+MRnywQumVZ4/vnaJFxNC0/3jQPIdGJAkm/lb2ErmkQKPkS46D2U7+M+3hNT1
-	 OyRQbRWQomXojWRZbHa0peIv5gnuKNCXDj57bwOh7XpA70E4eJeFYHL/Ec8CHHDlEH
-	 xPsI2ZYxYZCWg==
-Date: Mon, 8 Jan 2024 14:48:11 -0800
-From: Eric Biggers <ebiggers@kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-	ceph-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Jaegeuk Kim <jaegeuk@kernel.org>
-Subject: [GIT PULL] fscrypt updates for 6.8
-Message-ID: <20240108224811.GA94550@sol.localdomain>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="M+aqyL8e"
+Received: from cwcc.thunk.org (pool-173-48-82-211.bstnma.fios.verizon.net [173.48.82.211])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 4092rU3n010609
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 8 Jan 2024 21:53:31 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1704768811; bh=e6Bdj4eeS1KZbXCBUjpjqXTwySDhngDpbU49zk+wONw=;
+	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
+	b=M+aqyL8eDqHzH2lS6RzE5vCUuacZS26gUJGqDIU4E/PJhAJW9WqVXlCBbkNSkUdFW
+	 1rdV0Rp3nettncIwNZkVqi0GnIqNAnpiW+1hub096z3myKdJc/6KRqhIX0AoGH4JWV
+	 Uxbvkzh+WbgzUfSYgBFCDJql2+emeLHdVn9IkBKkgYgp8FCnVzWCx1lj4UQzh4BZeZ
+	 /GEHPT/TecZMdiou6+SGVR05w+1pYAbaya1rzghH7vXsQLKtT6LHYWiX4D5+4v4ONE
+	 kWqOAHN+YyF9eJxLCQLfPPwzcxhss/lzo9AOOKitUheDNtuzDVpuX41H3nVTkXX2pW
+	 YhwbFKRscTYJg==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+	id 239E915C030B; Mon,  8 Jan 2024 21:53:28 -0500 (EST)
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org, Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Ritesh Harjani <ritesh.list@gmail.com>,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: Enable dioread_nolock as default for bs < ps case
+Date: Mon,  8 Jan 2024 21:53:19 -0500
+Message-ID: <170476879010.637731.8792821246041124123.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <20231101154717.531865-1-ojaswin@linux.ibm.com>
+References: <20231101154717.531865-1-ojaswin@linux.ibm.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 
-The following changes since commit 33cc938e65a98f1d29d0a18403dbbee050dcad9a:
 
-  Linux 6.7-rc4 (2023-12-03 18:52:56 +0900)
+On Wed, 01 Nov 2023 21:17:17 +0530, Ojaswin Mujoo wrote:
+> dioread_nolock was originally disabled as a default option for bs < ps
+> scenarios due to a data corruption issue. Since then, we've had some
+> fixes in this area which address such issues. Enable dioread_nolock by
+> default and remove the experimental warning message for bs < ps path.
+> 
+> dioread for bs < ps has been tested on a 64k pagesize machine using:
+> 
+> [...]
 
-are available in the Git repository at:
+Applied, thanks!
 
-  https://git.kernel.org/pub/scm/fs/fscrypt/linux.git tags/fscrypt-for-linus
+[1/1] ext4: Enable dioread_nolock as default for bs < ps case
+      commit: e89fdcc425b6feea4dfb33877e9256757905d763
 
-for you to fetch changes up to 2a0e85719892a1d63f8f287563e2c1778a77879e:
-
-  fs: move fscrypt keyring destruction to after ->put_super (2023-12-27 21:56:01 -0600)
-
-----------------------------------------------------------------
-
-Adjust the timing of the fscrypt keyring destruction, to prepare for
-btrfs's fscrypt support. Also document that CephFS supports fscrypt now.
-
-----------------------------------------------------------------
-Eric Biggers (4):
-      fscrypt.rst: update definition of struct fscrypt_context_v2
-      fscrypt: update comment for do_remove_key()
-      fscrypt: document that CephFS supports fscrypt now
-      f2fs: move release of block devices to after kill_block_super()
-
-Josef Bacik (1):
-      fs: move fscrypt keyring destruction to after ->put_super
-
- Documentation/filesystems/fscrypt.rst | 21 +++++++++++----------
- fs/crypto/Kconfig                     |  2 +-
- fs/crypto/keyring.c                   |  6 +++---
- fs/f2fs/super.c                       | 13 ++++++++-----
- fs/super.c                            | 12 ++++++------
- 5 files changed, 29 insertions(+), 25 deletions(-)
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
