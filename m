@@ -1,95 +1,101 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 48556611A
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2024 05:28:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 781821DFD7
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2024 11:56:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1705469323; cv=none; b=ucmWt7yKLVS6snkT6Cne5UVxZG3LxwVCkOJde7EpB3pGQ39ot9yb9D96KmehbAusogIah1O+64GExhyjhxGamIs+A9fkPVZ0oNd4F9TvvTc3DxYB1nUfCVnO91hl8/M0TSVbk6ww3L7FsOJbU8ddEsfshlZXrQemux8qSsEoplU=
+	t=1705492565; cv=none; b=hsQIqPAy8uclb7qwiPmyztfih1+1Naj2rvOfv14IfQfP9iTffAfsceeZLF4N1ai/cdlXXi5oO4D8u0K7Qga0u0y9S6xPxzucILl9EH1zi3HyXLQ843P9aFzRZrJvw9OrCA87i28l3vGFXSLey4jBjw4R9xP6NfdiMbJ7N9BIpyg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1705469323; c=relaxed/simple;
-	bh=dJdfnjCYIHQvovHWk7nGZ4qUL1Z6hZWzTRPmsxja+3o=;
-	h=Received:DKIM-Signature:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:
-	 Content-Disposition:In-Reply-To; b=HT6HfT1poULpQuIjsQmRCq23z0z7TGOaOVOPQD1UxOOGhcUE5DBO5kkG49SFYIkQwCRt8C53hJdL8V891MD5ZXtVSqR2JgxCA2jfRde9MCLxtun9lJU9WEeX67lSfDVo16NFRJwVM47MZbihSo4yZ2Oj8TZkOjoaTiFhlkq8w6w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Y/8u8NK/; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Y/8u8NK/"
-Received: from cwcc.thunk.org (pool-173-48-112-211.bstnma.fios.verizon.net [173.48.112.211])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 40H5SLlT005871
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 17 Jan 2024 00:28:24 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1705469304; bh=I0rFGlBN3UecdQ8QGELeVe4qCm5v9+9UkvSYQC4qiJ0=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=Y/8u8NK/+E1GFfr8Vd8YjJdSAbfV7/RHey2EHT0hDdfaQXTLSFVEFRFPkg/kyXAQS
-	 Ivx79yKlehsZDhWhdVMxEutKyympswpX4rbqyeC6VnEg+PRtN8fkR0UIXY5apJj1XU
-	 +4e28lIFAD7BP4plqtIQ1RLtJz0imVMW0L6SwxK9LETGkrHj5TIbNZnKv2rceSiZfC
-	 gG0ePFlHufvYelwcYKQqhQMAHLBpCpSo+YBhTNkOyYai/JOka2Jrg1el9dBn7F3htM
-	 btuPyvJKO6AcvZzULq6HmZFgap7UKIaLUJ2N6z30Zj8oE5AkmUZC4y1GN1om+MAupi
-	 b+3tAooQJ3SLg==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id 9002415C0278; Wed, 17 Jan 2024 00:28:21 -0500 (EST)
-Date: Wed, 17 Jan 2024 00:28:21 -0500
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: "Brian J. Murrell" <brian@interlinx.bc.ca>
-Cc: linux-ext4@vger.kernel.org
-Subject: Re: Protecting lost+found from rmdir by directory owner?
-Message-ID: <20240117052821.GK911245@mit.edu>
-References: <42bc44533e997531baa79c73867a942504122886.camel@interlinx.bc.ca>
+	s=arc-20240116; t=1705492565; c=relaxed/simple;
+	bh=fO+CdmqzzLBkKSbF5xikZu01+uPD2hJYat4Dz596Bqk=;
+	h=Received:Received:Received:From:To:Cc:Subject:Date:Message-Id:
+	 X-Mailer:In-Reply-To:References:MIME-Version:
+	 Content-Transfer-Encoding:X-CM-TRANSID:X-Coremail-Antispam:Sender:
+	 X-CM-SenderInfo; b=AT+4lkohjsUA6oUaDhfF8Ma0Zf1ya6lY+XT/SXf6SMJiqq2WAX1TmEjCe3Y7Hpq4bnvA2wTVsak1hOSFTPIDcc5BCG/cWyUZRo0VyB1mB/LNwIg9KY3z2dO9zoG0+xZAOTXDe4waZE8vBGhL2QVcut9RKNI/Jky8u0g7EDxDMlI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4TFPTj6rPPz4f3lg6
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2024 19:55:53 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id 156391A0171
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2024 19:56:00 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.104.67])
+	by APP1 (Coremail) with SMTP id cCh0CgAn9g5JwKdlTAVxBA--.18229S5;
+	Wed, 17 Jan 2024 19:55:59 +0800 (CST)
+From: yangerkun <yangerkun@huawei.com>
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz
+Cc: linux-ext4@vger.kernel.org,
+	yangerkun@huawei.com,
+	yangerkun@huaweicloud.com
+Subject: [PATCH 2/2] ext4: distinguish different error in ext4_mb_seq_groups_show
+Date: Wed, 17 Jan 2024 19:52:23 +0800
+Message-Id: <20240117115223.80253-2-yangerkun@huawei.com>
+X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20240117115223.80253-1-yangerkun@huawei.com>
+References: <20240117115223.80253-1-yangerkun@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <42bc44533e997531baa79c73867a942504122886.camel@interlinx.bc.ca>
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:cCh0CgAn9g5JwKdlTAVxBA--.18229S5
+X-Coremail-Antispam: 1UD129KBjvJXoW7GF43JryDJrW3XF13Gr1UAwb_yoW8JrW3pF
+	sxAFnrGr4agr1UCr48ua4jgasaq34xu34xG3sxWw1rZFy7XryxWFnrtF1j9F18CFWrX3Wa
+	v3s09r15Jr1xGw7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUPlb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUGw
+	A2048vs2IY020Ec7CjxVAFwI0_JFI_Gr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
+	w2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
+	W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
+	6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
+	Ij6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
+	Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7Iv64x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20x
+	vY0x0EwIxGrwCF04k20xvEw4C26cxK6c8Ij28IcwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC2
+	0s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI
+	0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv2
+	0xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2js
+	IE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZF
+	pf9x07U_ucNUUUUU=
+Sender: yangerkun@huaweicloud.com
+X-CM-SenderInfo: 51dqwvhunx0q5kxd4v5lfo033gof0z/
 
-On Tue, Jan 16, 2024 at 08:26:14AM -0500, Brian J. Murrell wrote:
-> Let's say I create a new ext4 filesystem for exclusive use by alice and
-> when I mount it, say, on /mnt/alice I set the permissions so that alice
-> can work in that directory:
-> 
-> # mkfs.ext4 /dev/foo
-> # mount /dev/foo /mnt/alice
-> # chown alice:alice /mnt/alice
-> # chmod 775 /mnt/alice
-> 
-> But now /mnt/alice/lost+found is at the mercy of alice since she has
-> write permission for /mnt/alice.
-> 
-> [How] can I protect /mnt/alice/lost+found from removal by alice?
+While cat mb_groups for a mounted ext4 image which has some corrupted
+group, the string return to userspace was just "I/O error" which confuse
+me a lot. Use ext4_decode_error to help distinguish different error.
 
-You can't.  Note that if /lost+found is missing, e2fsck will try to
-recreate it if it finds orphaned inodes (e.g., inodes that aren't
-connected to the the directory tree).  The reason why mke2fs
-pre-creates the lost+found directory is adds a bit more reliability,
-in the case where there are no free inodes or free blocks to create
-the lost+found directory.  There's also a very tiny risk where if the
-file system is horrendously corrupted, asking e2fsck to recreate
-lost+found is one more thing that could potentially go wrong.
+Signed-off-by: yangerkun <yangerkun@huawei.com>
+---
+ fs/ext4/mballoc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-On the other hand, if the file system is created exclusively for
-alice, and she remotes lost+found, in the rare case where something
-goes horrendously wrong, she's the only person who would suffer.
-Ultimately, just like we can't protect users from yanking out USB
-drives before unounting them and waiting for the writes to complete,
-sometimes asking users to take personal responsibility is the best
-policy.
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 139f232bdbb5..77d6113e2822 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2991,6 +2991,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+ 	struct super_block *sb = pde_data(file_inode(seq->file));
+ 	ext4_group_t group = (ext4_group_t) ((unsigned long) v);
+ 	int i, err;
++	char nbuf[16];
+ 	struct ext4_buddy e4b;
+ 	struct ext4_group_info *grinfo;
+ 	unsigned char blocksize_bits = min_t(unsigned char,
+@@ -3017,7 +3018,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+ 	if (unlikely(EXT4_MB_GRP_NEED_INIT(grinfo))) {
+ 		err = ext4_mb_load_buddy(sb, group, &e4b);
+ 		if (err) {
+-			seq_printf(seq, "#%-5u: I/O error\n", group);
++			seq_printf(seq, "#%-5u: %s\n", group, ext4_decode_error(NULL, err, nbuf));
+ 			return 0;
+ 		}
+ 		ext4_mb_unload_buddy(&e4b);
+-- 
+2.39.2
 
-And for most users, the case that they might accidentally type a
-command like "rm * -i" or someone who believes advice from irc that
-"rm -rf ~/" is a way to "Read Mail Really Fast", is probably much more
-likely than the file system gets so badly corrupted that /lost+found
-is going to make that much of a difference.  And that's what backups
-are for in any case, right?  :-)
-
-Cheers,
-
-					- Ted
