@@ -1,86 +1,86 @@
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C12345FDB2;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5EEF05FDA8;
 	Tue, 23 Jan 2024 15:25:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1706023529; cv=none; b=RHCt8Zfj4a999GzxJ+V8v2YDksQ2KNh/aPMcnup+Qg4ElXfjJtGHI1/Z0fV2iS5hbIx/L0lOL2MZ/CCH3dgc1ZXHrLRUB1tpAX26Kf7/0ijbDJ1+oYYpsKZs+k8M8r8szHV5ySltNfEt/r6hiOW2RPc+mQ9XHOd4mne+8JmzXR8=
+	t=1706023529; cv=none; b=h+KRcmWIg/szh20slZz/At5Nk2Z1kj6w3NacSCmsdA71CYYxWRHbxhHAKViJUYQsO+R5nRBXF900C7vaQTPo9nxS2ozc6+j7mO+sy+OVZerBxmach2V+bogL4tP23SnlyLveX/18OGINFdjh4FfBOFLeYG0OzOCceZ9p4rUFBfk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1706023529; c=relaxed/simple;
-	bh=J6batrQ0krqqS6Fk9nHO3yuHQO2UEbFRTqBXwfpdoQM=;
+	bh=d1tqk9pM/ddtJvyj9S6dFod5AyFAwtJGbDdV1UWXreU=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=QGoFIe60EULyyHGLiF944nNF6XWU2yEiBgye1GkO0Q0zXnuorI/xtHSgjHeNJrbDgz9n+kbNlXiV0Dw5wl2FTChVrWzw+xOMB/LQJWFeE0noX3w//HzQ1GsGD4C7s0zUSslVhqNIwdAPURdA0RoiK9RGLuJr+AA+l6UYwZvDHFE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=GI0xtpY4; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=4tISDxo2; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=GI0xtpY4; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=4tISDxo2; arc=none smtp.client-ip=195.135.223.130
+	 MIME-Version; b=Pz6InYsUZ/XEOSUO81QMyB4oBUiH+kWSCW59n7/lJKrZ+ct/4W4kykAEbI6pZ1rW7puQp2F1dlXNOxwPo4iqasffIBIJrLx5yH0aqOtdmyA9Xscf3KqsvtgDD+Zc3EXQ5YGvDCXMKdCuB7yEioF/w27PjZnPS6McEiKwuRwzw6g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=F0XCj4sn; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Img9Ukus; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=F0XCj4sn; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Img9Ukus; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="GI0xtpY4";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="4tISDxo2";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="GI0xtpY4";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="4tISDxo2"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="F0XCj4sn";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Img9Ukus";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="F0XCj4sn";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Img9Ukus"
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 080D2222C8;
-	Tue, 23 Jan 2024 15:25:26 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 88433222AE;
+	Tue, 23 Jan 2024 15:25:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1706023526; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1706023525; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=k3YN/c637qj7Lt2r37Dh2rIefGzzIThCgolWTCRWesc=;
-	b=GI0xtpY4Y3YSUiVHFPylw9enuHjR7fVot1pMtCCOkSqgNGi89ooC1hf7cga7gQ5UN8o8uy
-	8A8WuIFH3CjZmWcbNgz+t0cZcDdxpZIuzz5XLxSp0HnBSmZPWk+8o0Fzys6hABorLBS324
-	enMFxxewvtU6GEkmTnQOxVaY/VwcLdU=
+	bh=hSaRDDQDwsiD1Y1foF20EzTyh/dfdKCx53Nrh9WiiTA=;
+	b=F0XCj4snRe3c0hkpj+Q3uQmtJawfuvGiQ3V8pxM5ocvXPINeYPwMdbS75pJqAeOWDnCciF
+	TEnNcnYF01JV/DkBenW3lRYs2N77zqRQEsboyfJfH3FAF4ZI7E3ob3EJcXva6m7d47nH2R
+	poZMhpv7oaipi6hSHFqTIclhCvKOQ3E=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1706023526;
+	s=susede2_ed25519; t=1706023525;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=k3YN/c637qj7Lt2r37Dh2rIefGzzIThCgolWTCRWesc=;
-	b=4tISDxo2eJTyuLrJ/2fuBbjo9dqAKx9IouOLufi7YivppdXuxtkd6+JXZLUGeR1xsOMVm2
-	4RHJpGedBzd4ICBg==
+	bh=hSaRDDQDwsiD1Y1foF20EzTyh/dfdKCx53Nrh9WiiTA=;
+	b=Img9UkushSZCt4ySdZPIHADfAA8gGoo5Sjv4p9WA15SaH3vkZNRQgCRF4OLCjM8cwVH8GF
+	ezqRfRTPE/RldJDg==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1706023526; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1706023525; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=k3YN/c637qj7Lt2r37Dh2rIefGzzIThCgolWTCRWesc=;
-	b=GI0xtpY4Y3YSUiVHFPylw9enuHjR7fVot1pMtCCOkSqgNGi89ooC1hf7cga7gQ5UN8o8uy
-	8A8WuIFH3CjZmWcbNgz+t0cZcDdxpZIuzz5XLxSp0HnBSmZPWk+8o0Fzys6hABorLBS324
-	enMFxxewvtU6GEkmTnQOxVaY/VwcLdU=
+	bh=hSaRDDQDwsiD1Y1foF20EzTyh/dfdKCx53Nrh9WiiTA=;
+	b=F0XCj4snRe3c0hkpj+Q3uQmtJawfuvGiQ3V8pxM5ocvXPINeYPwMdbS75pJqAeOWDnCciF
+	TEnNcnYF01JV/DkBenW3lRYs2N77zqRQEsboyfJfH3FAF4ZI7E3ob3EJcXva6m7d47nH2R
+	poZMhpv7oaipi6hSHFqTIclhCvKOQ3E=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1706023526;
+	s=susede2_ed25519; t=1706023525;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=k3YN/c637qj7Lt2r37Dh2rIefGzzIThCgolWTCRWesc=;
-	b=4tISDxo2eJTyuLrJ/2fuBbjo9dqAKx9IouOLufi7YivppdXuxtkd6+JXZLUGeR1xsOMVm2
-	4RHJpGedBzd4ICBg==
+	bh=hSaRDDQDwsiD1Y1foF20EzTyh/dfdKCx53Nrh9WiiTA=;
+	b=Img9UkushSZCt4ySdZPIHADfAA8gGoo5Sjv4p9WA15SaH3vkZNRQgCRF4OLCjM8cwVH8GF
+	ezqRfRTPE/RldJDg==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id EA867139B1;
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 7563E139CB;
 	Tue, 23 Jan 2024 15:25:25 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id aS9FOWXar2WndQAAD6G6ig
+	id GNUtHGXar2WddQAAD6G6ig
 	(envelope-from <jack@suse.cz>); Tue, 23 Jan 2024 15:25:25 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 03C6CA080A; Tue, 23 Jan 2024 16:25:21 +0100 (CET)
+	id DD6E1A0806; Tue, 23 Jan 2024 16:25:20 +0100 (CET)
 From: Jan Kara <jack@suse.cz>
 To: <linux-fsdevel@vger.kernel.org>
 Cc: <linux-ext4@vger.kernel.org>,
 	Matthew Wilcox <willy@infradead.org>,
 	Jan Kara <jack@suse.cz>
-Subject: [PATCH 6/9] ext2: Drop GFP_NOFS use in ext2_get_blocks()
-Date: Tue, 23 Jan 2024 16:25:05 +0100
-Message-Id: <20240123152520.4294-6-jack@suse.cz>
+Subject: [PATCH 2/9] udf: Avoid GFP_NOFS allocation in udf_symlink()
+Date: Tue, 23 Jan 2024 16:25:01 +0100
+Message-Id: <20240123152520.4294-2-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20240123152113.13352-1-jack@suse.cz>
 References: <20240123152113.13352-1-jack@suse.cz>
@@ -90,12 +90,14 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=804; i=jack@suse.cz; h=from:subject; bh=J6batrQ0krqqS6Fk9nHO3yuHQO2UEbFRTqBXwfpdoQM=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBlr9pRcAJhWL9Yd1B4ryk1zgZ4/OuDFJah29KjD0Cj uWQkta+JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCZa/aUQAKCRCcnaoHP2RA2S6WB/ 43NolxDby68EdfJk2yQZP275rtgSk3436SdWfUGLBYfUUGB7qnisVVtoevyP44Coj5wdy1pK7/uXbg raIXQ86LfHK0v6qxBcC/uxbpzxVA1pFxRs7jVGPjskRQREh4TBYPvIwMjAxIw5MgilCZndCbGW4Why 5g1sv2L8vTwq8mGzua+Kn3nERCC8tNzILv93SxlFpZ5iM2Yl0f9oJgvF40ILhJXRd8NjmY/NA9dH3H PUTO7XHC2DgFTmyjLosUDSEEuQegfA93hcMYCsSpOTWdRF+PSxtraj85ZscPAO84M8FzXpMFAuT03v ZYqQmbPLtm1kWkQvkP25M9uPq5N+8a
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1725; i=jack@suse.cz; h=from:subject; bh=d1tqk9pM/ddtJvyj9S6dFod5AyFAwtJGbDdV1UWXreU=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBlr9pN1M/IoDrUnaLEy2dVLYKzQOGfyAWa7EzgmbM/ Dzkex1mJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCZa/aTQAKCRCcnaoHP2RA2R0zCA C2vZ09if9/v0XAh0E9R8G1ImutG9EDcD8FdUfp8wP6fVOxaOmMsDuYvugXF6gHotOxnR+k7W+OTvGI 8b2HqX8cJ/vDEE9UG3LoOWeRYMkCh71TW58NycW/U9hQx6dN73jH7ml/pNZuwI5NMu3HRVKehXi3hi xM0ESE+37kGW0cRb0BE02iCgweQHA7s0d886yOGFk5jyc9KSUxNo4S5ZlrFNPovt+50X9cHd4zO3Zs 2EigiG9G3jW1H5HaQSqsvDiVQJox1RjAiFKI4kh2SzRd90euGiYssRNd6p5EkYhv+R1R+VlgoqrpEj e5biv5iptzxR/B8M1g40DYITSC5M2T
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Authentication-Results: smtp-out1.suse.de;
 	none
-X-Spamd-Result: default: False [4.90 / 50.00];
+X-Spam-Level: ***
+X-Spam-Score: 3.70
+X-Spamd-Result: default: False [3.70 / 50.00];
 	 ARC_NA(0.00)[];
 	 RCVD_VIA_SMTP_AUTH(0.00)[];
 	 FROM_HAS_DN(0.00)[];
@@ -105,41 +107,69 @@ X-Spamd-Result: default: False [4.90 / 50.00];
 	 MIME_GOOD(-0.10)[text/plain];
 	 BROKEN_CONTENT_TYPE(1.50)[];
 	 TO_DN_SOME(0.00)[];
+	 NEURAL_HAM_LONG(-1.00)[-0.998];
 	 RCVD_COUNT_THREE(0.00)[3];
 	 DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	 NEURAL_HAM_SHORT(-0.20)[-1.000];
 	 MID_CONTAINS_FROM(1.00)[];
 	 FUZZY_BLOCKED(0.00)[rspamd.com];
 	 FROM_EQ_ENVFROM(0.00)[];
 	 MIME_TRACE(0.00)[0:+];
-	 RCVD_TLS_ALL(0.00)[];
-	 BAYES_HAM(-0.00)[37.21%]
-X-Spam-Level: ****
-X-Spam-Score: 4.90
+	 RCVD_TLS_ALL(0.00)[]
 X-Spam-Flag: NO
 
-ext2_get_blocks() calls sb_issue_zeroout() with GFP_NOFS flag. However
-the call is performed under inode->i_rwsem and
-EXT2_I(inode)->i_truncate_mutex neither of which is acquired during
-direct fs reclaim. So it is safe to change the gfp mask to GFP_KERNEL.
+The GFP_NOFS allocation in udf_symlink() is called only under
+inode->i_rwsem and UDF_I(inode)->i_data_sem. The first is safe wrt
+reclaim, the second should be as well but allocating unde this lock is
+actually unnecessary. Move the allocation from under i_data_sem and
+change it to GFP_KERNEL.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext2/inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/udf/namei.c | 19 +++++++++++--------
+ 1 file changed, 11 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 5a4272b2c6b0..f3d570a9302b 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -754,7 +754,7 @@ static int ext2_get_blocks(struct inode *inode,
- 		 */
- 		err = sb_issue_zeroout(inode->i_sb,
- 				le32_to_cpu(chain[depth-1].key), count,
--				GFP_NOFS);
-+				GFP_KERNEL);
- 		if (err) {
- 			mutex_unlock(&ei->truncate_mutex);
- 			goto cleanup;
+diff --git a/fs/udf/namei.c b/fs/udf/namei.c
+index 1f14a0621a91..1308109fd42d 100644
+--- a/fs/udf/namei.c
++++ b/fs/udf/namei.c
+@@ -566,7 +566,7 @@ static int udf_unlink(struct inode *dir, struct dentry *dentry)
+ static int udf_symlink(struct mnt_idmap *idmap, struct inode *dir,
+ 		       struct dentry *dentry, const char *symname)
+ {
+-	struct inode *inode = udf_new_inode(dir, S_IFLNK | 0777);
++	struct inode *inode;
+ 	struct pathComponent *pc;
+ 	const char *compstart;
+ 	struct extent_position epos = {};
+@@ -579,17 +579,20 @@ static int udf_symlink(struct mnt_idmap *idmap, struct inode *dir,
+ 	struct udf_inode_info *iinfo;
+ 	struct super_block *sb = dir->i_sb;
+ 
+-	if (IS_ERR(inode))
+-		return PTR_ERR(inode);
+-
+-	iinfo = UDF_I(inode);
+-	down_write(&iinfo->i_data_sem);
+-	name = kmalloc(UDF_NAME_LEN_CS0, GFP_NOFS);
++	name = kmalloc(UDF_NAME_LEN_CS0, GFP_KERNEL);
+ 	if (!name) {
+ 		err = -ENOMEM;
+-		goto out_no_entry;
++		goto out;
++	}
++
++	inode = udf_new_inode(dir, S_IFLNK | 0777);
++	if (IS_ERR(inode)) {
++		err = PTR_ERR(inode);
++		goto out;
+ 	}
+ 
++	iinfo = UDF_I(inode);
++	down_write(&iinfo->i_data_sem);
+ 	inode->i_data.a_ops = &udf_symlink_aops;
+ 	inode->i_op = &udf_symlink_inode_operations;
+ 	inode_nohighmem(inode);
 -- 
 2.35.3
 
