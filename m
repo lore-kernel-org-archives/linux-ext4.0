@@ -1,339 +1,191 @@
-Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 9F42B67747;
-	Wed, 24 Jan 2024 12:00:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 206197E58B;
+	Wed, 24 Jan 2024 17:13:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1706097618; cv=none; b=ewRHgfm0PRB2BecFnIph+vjDN/NEivDhyPqsqLbkXcf/nEgzusgQLz0fhayRXoGVJ90m0g2+zAxWh1K+N6cPhFkLIR0MwRm/dn9C2tvArV41wcJ0/SuaDpvFzStVKVoP6vwSqzircG9AlWSSYbEKpTlIhvYdXCM/ckMQqtWJDb4=
+	t=1706116403; cv=none; b=FDcfhDlXz5vcAdcDmnqM8RZY+LcJXxFZHYQBiDc7++2cEePnwbf9nK6RT/UXTMnfbV4mtoHKDy2ghLU9vYVWyfE8dlV9+7fRmyyGCOzL5LzbTMm2cClqLYlgCkC5LM2Y4ORLH2LcC1qOoYEYImUg4IA6ZjMGEZhVz0syPA26nkM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1706097618; c=relaxed/simple;
-	bh=Zg3dPmxAeZfdPCpe0eFW6kAfwZet+/NUlIS50hmLxGs=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=bhxDkRfYIcsEEdz4VjJhdsngxj+QcHP9/cQKOOhRyE4wMHERr9XCg+7PTMZeqM3bAC2eAP8rbIxLNgN12uOBM0HgbcTSKUxGyU6HnLNcrXCCNLRa6GvmRTmbMzstFw6nKsDcCqHvnlsmefjuElP2Id2+gLeK7P913flqw4Jxh14=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-d85ff70000001748-a6-65b0fbb7d9da
-From: Byungchul Park <byungchul@sk.com>
-To: linux-kernel@vger.kernel.org
-Cc: kernel_team@skhynix.com,
-	torvalds@linux-foundation.org,
-	damien.lemoal@opensource.wdc.com,
-	linux-ide@vger.kernel.org,
-	adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org,
-	mingo@redhat.com,
-	peterz@infradead.org,
-	will@kernel.org,
-	tglx@linutronix.de,
-	rostedt@goodmis.org,
-	joel@joelfernandes.org,
-	sashal@kernel.org,
-	daniel.vetter@ffwll.ch,
-	duyuyang@gmail.com,
-	johannes.berg@intel.com,
-	tj@kernel.org,
-	tytso@mit.edu,
-	willy@infradead.org,
-	david@fromorbit.com,
-	amir73il@gmail.com,
-	gregkh@linuxfoundation.org,
-	kernel-team@lge.com,
-	linux-mm@kvack.org,
-	akpm@linux-foundation.org,
-	mhocko@kernel.org,
-	minchan@kernel.org,
-	hannes@cmpxchg.org,
-	vdavydov.dev@gmail.com,
-	sj@kernel.org,
-	jglisse@redhat.com,
-	dennis@kernel.org,
-	cl@linux.com,
-	penberg@kernel.org,
-	rientjes@google.com,
-	vbabka@suse.cz,
-	ngupta@vflare.org,
-	linux-block@vger.kernel.org,
-	josef@toxicpanda.com,
-	linux-fsdevel@vger.kernel.org,
-	viro@zeniv.linux.org.uk,
-	jack@suse.cz,
-	jlayton@kernel.org,
-	dan.j.williams@intel.com,
-	hch@infradead.org,
-	djwong@kernel.org,
-	dri-devel@lists.freedesktop.org,
-	rodrigosiqueiramelo@gmail.com,
-	melissa.srw@gmail.com,
-	hamohammed.sa@gmail.com,
-	42.hyeyoo@gmail.com,
-	chris.p.wilson@intel.com,
-	gwan-gyeong.mun@intel.com,
-	max.byungchul.park@gmail.com,
-	boqun.feng@gmail.com,
-	longman@redhat.com,
-	hdanton@sina.com,
-	her0gyugyu@gmail.com
-Subject: [PATCH v11 23/26] dept: Make Dept able to work with an external wgen
-Date: Wed, 24 Jan 2024 20:59:34 +0900
-Message-Id: <20240124115938.80132-24-byungchul@sk.com>
-X-Mailer: git-send-email 2.17.1
-In-Reply-To: <20240124115938.80132-1-byungchul@sk.com>
-References: <20240124115938.80132-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0iTYRTHe573NlfLl3V7MqJYiGCkJhmHCJOieguMoA9FGTXyRYe62bwH
-	gaV20UwT1rpITI21pqltoyybTUdeKmvlLBMVNamkmWVNtFmmVl8OP/7n/H+fjoSS1zMBEpU6
-	VdSqlYkKVkpLRxaUrbvvqxXDSj5shksXwsD74xwNpTVVLLiqKxFU2U5hGH6yE96OexD42l9S
-	oNe5EJQN9FJga+5DYDedZqFjaCG4vaMstOkKWMipqGHh1ecpDD2XSzBUWqLhWXE5BsfkRxr0
-	wyxc1+fgmfEJw6TRzIExOxAGTdc4mBpYD219bxiwd6+Fqzd6WHhkb6OhuW4QQ8fDUhb6qqYZ
-	eNbcSoPrUiEDd76Us/B53EiB0TvKwWuHAUNt7ozozPffDLQUOjCcuXkXg/tdPYKGc/0YLFVv
-	WHB6PRisFh0FP289QTB4cYSDvAuTHFw/dRFBQd5lGl7+amEgtycCfBOlbNQmwekZpYRca4Zg
-	HzfQwtNyIjy41ssJuQ3dnGCwpAlWU7BQ8WgYC2VjXkawmM+zgmWshBPyR9xY+PLiBSe0XvHR
-	wpBbj/euOCjdHCsmqtJFbWjkUWm87VMnlZy/JdNWfJvKRp7wfOQnIfwGMtI6wf5nd8XbOWb5
-	INLVNUnN8mJ+NbEWfmDykVRC8WfnE9PX9rmjRXw0sXY+RrNM84GkNKdyriDjN5K6e9X/pKtI
-	Za1jLvebye9c7aZnWc5HkH5zETcrJXyOH+mcqGf+FpaTRlMXXYxkBjTPjOQqdXqSUpW4ISQ+
-	S63KDDmmSbKgmZcynpw6VIfGXPuaEC9BigWyKHONKGeU6SlZSU2ISCjFYlnX8mpRLotVZp0Q
-	tZoj2rREMaUJrZDQimWy8PGMWDkfp0wVE0QxWdT+32KJX0A2mne6oP0wCVa6ArO0g4HTmrrt
-	xq21/RkhPvy+R91aFB0eE9WY+c23csku+3TM3qP3B55r9uh0OxLMRfzA7tD9+7c6DqQ6ncdG
-	TftiP0oNcYvOE3/9keQk5/GHQ4reVZqigKiDfXv8rwTnpccFmXsjb/uvMaxb2r67wxNpu9u5
-	bYwo6JR45fpgSpui/ANk+Ha5TgMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0hTcRjG+5+7q9VhCZ1KqFYiGJVWyxeMkvrgITAkiC4EOfKQKzdlM9NA
-	sNS11Jkz1C4rvLF02rRtlOYlm+U1L+WyJU7LpJQ0w5xk2kWNvjz8eJ73fT49DC65S65jFKo4
-	Qa2SR0spESE6HJyy7fFclRAwbdgChswA8EzrCDBWVlDQYylHUGG/jMHYi1B4OzOOYK6zG4f8
-	3B4EhR/cONibBxHUl16hoHdkJTg9kxS05WZQkFJcScGrL/MYDOTlYFBuDYOO7CIMGmc/E5A/
-	RsGd/BRsQUYxmDWZaTAl+8Jw6W0a5j8EQttgHwlNd9tIqO/fCrfuDVBQV99GQHP1MAa9T4wU
-	DFb8IaGjuZWAHoOehAdfiyj4MmPCweSZpOF1YwEGVakLbdrvv0lo0TdioC15iIHzXS2CBt17
-	DKwVfRQ0ecYxsFlzcfh5/wWC4awJGtIyZ2m4czkLQUZaHgHdv1pISB2QwdwPIxUSzDeNT+J8
-	qu0iXz9TQPDtRRxfc9tN86kN/TRfYL3A20r9+eK6MYwvnPKQvNV8jeKtUzk0nz7hxPivXV00
-	33pzjuBHnPlYuM9J0d5IIVoRL6h37IsQRdlH3+Cx6fsT7NlleDIa35mOvBiO3c05i99Si0yx
-	fpzLNYsvsje7kbPpP5HpSMTg7NXlXOm3zqWj1WwYZ3vzFC0ywfpyxpTypQcxu4erfmSh/pVu
-	4MqrGpd8rwX/wa1+YpElrIx7b75OZyNRAVpmRt4KVbxSroiWbdecj0pUKRK2n4lRWtHCaExJ
-	84ZqNN0b6kAsg6QrxCHmSkFCyuM1iUoH4hhc6i12rbUIEnGkPPGSoI45rb4QLWgcaD1DSNeI
-	Dx0TIiTsWXmccF4QYgX1/xRjvNYlo1NhSqnFflW2NjyvpmRT0EHtK+U5iaU29PsRvGSgy91t
-	aWD89h9sv3gkyOD2PeqIK/70s2zXgSHXy5hVkqP6ZzVBKGQiq2My0aXXuZJy7OpCFxf/o0au
-	VWU0bdZ2tu416q4cKjpwQ5bl2Bl+fPRjhPvbUP+JLrpveHOLz3PdpjIpoYmSB/rjao38L2WF
-	VicwAwAA
-X-CFilter-Loop: Reflected
+	s=arc-20240116; t=1706116403; c=relaxed/simple;
+	bh=TyPYUkJyBfhdoXcBp7fX8Dv0v6n6zc8eG9tu1EguJdA=;
+	h=From:To:Cc:Subject:In-Reply-To:References:Date:Message-ID:
+	 MIME-Version:Content-Type; b=qIX1fX0wFVirwD+AJyTJpHljbILtQEQ0CaI/eoDtMgecD/BowYD0yx4juZe8U6inV292RAANEKw6V+Fz34DubMJPdo4yU6NdwCp5C9mCM0YbLgf7w/EX1DSQzNRfqSnWEPjFbZDh3JOCMnJ9wovh/sbB3SGMyXI6//IjPo2VPK4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=ec8UD5Hw; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=CB52rHIm; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=ec8UD5Hw; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=CB52rHIm; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="ec8UD5Hw";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="CB52rHIm";
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="ec8UD5Hw";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="CB52rHIm"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 2287921FC1;
+	Wed, 24 Jan 2024 17:13:20 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1706116400; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=5QaqKCnd27EgswOXHEhXMSs8o2BKLLDke5WWj9l+tZY=;
+	b=ec8UD5Hwx52eHjEJP20nWpWgDOO2ofQJoSdXu1Lgh9kyWkFThT8XvAD5xKMeXb1F+HVUnB
+	4t8ADZgTHR0B2Opf3tmRjEhM4ePEafCvz7soPJByq/aM/Pp9w+aUoXBZQwiGFBXfdOT/7Z
+	ZOh3NZntB1TDdP/dq05v6GpePRJjM+I=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1706116400;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=5QaqKCnd27EgswOXHEhXMSs8o2BKLLDke5WWj9l+tZY=;
+	b=CB52rHImXyOrWEGZAsI8DR8LCTuun41np5RHXrU2Aym4qMDV1tgHSIbA/Zdggej6qn3NMR
+	Ktnxq+Qn8OR13mDQ==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1706116400; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=5QaqKCnd27EgswOXHEhXMSs8o2BKLLDke5WWj9l+tZY=;
+	b=ec8UD5Hwx52eHjEJP20nWpWgDOO2ofQJoSdXu1Lgh9kyWkFThT8XvAD5xKMeXb1F+HVUnB
+	4t8ADZgTHR0B2Opf3tmRjEhM4ePEafCvz7soPJByq/aM/Pp9w+aUoXBZQwiGFBXfdOT/7Z
+	ZOh3NZntB1TDdP/dq05v6GpePRJjM+I=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1706116400;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=5QaqKCnd27EgswOXHEhXMSs8o2BKLLDke5WWj9l+tZY=;
+	b=CB52rHImXyOrWEGZAsI8DR8LCTuun41np5RHXrU2Aym4qMDV1tgHSIbA/Zdggej6qn3NMR
+	Ktnxq+Qn8OR13mDQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id B06CC13786;
+	Wed, 24 Jan 2024 17:13:19 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id GyarJy9FsWU3MgAAD6G6ig
+	(envelope-from <lhenriques@suse.de>); Wed, 24 Jan 2024 17:13:19 +0000
+Received: from localhost (brahms.olymp [local])
+	by brahms.olymp (OpenSMTPD) with ESMTPA id cfede600;
+	Wed, 24 Jan 2024 17:13:18 +0000 (UTC)
+From: Luis Henriques <lhenriques@suse.de>
+To: Daniel Dawson <danielcdawson@gmail.com>
+Cc: Theodore Ts'o <tytso@mit.edu>,  Andreas Dilger
+ <adilger.kernel@dilger.ca>,  linux-ext4@vger.kernel.org,
+  linux-kernel@vger.kernel.org
+Subject: Re: [inline_data] ext4: Stale flags before sync when convert to
+ non-inline
+In-Reply-To: <358aaf68-0618-41e6-9adf-04e211eb690e@gmail.com> (Daniel Dawson's
+	message of "Mon, 22 Jan 2024 21:56:28 -0800")
+References: <5189fe60-c3e3-4bc6-89d4-1033cf4337c3@gmail.com>
+	<358aaf68-0618-41e6-9adf-04e211eb690e@gmail.com>
+Date: Wed, 24 Jan 2024 17:13:18 +0000
+Message-ID: <87jznyr6xd.fsf@suse.de>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=ec8UD5Hw;
+	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=CB52rHIm
+X-Spamd-Result: default: False [-3.31 / 50.00];
+	 ARC_NA(0.00)[];
+	 RCVD_VIA_SMTP_AUTH(0.00)[];
+	 R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	 SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	 FROM_HAS_DN(0.00)[];
+	 TO_DN_SOME(0.00)[];
+	 FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	 TO_MATCH_ENVRCPT_ALL(0.00)[];
+	 MIME_GOOD(-0.10)[text/plain];
+	 RCPT_COUNT_FIVE(0.00)[5];
+	 RCVD_COUNT_THREE(0.00)[4];
+	 DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	 DKIM_TRACE(0.00)[suse.de:+];
+	 MX_GOOD(-0.01)[];
+	 DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:dkim];
+	 FREEMAIL_TO(0.00)[gmail.com];
+	 FUZZY_BLOCKED(0.00)[rspamd.com];
+	 FROM_EQ_ENVFROM(0.00)[];
+	 MIME_TRACE(0.00)[0:+];
+	 RCVD_TLS_LAST(0.00)[];
+	 MID_RHS_MATCH_FROM(0.00)[];
+	 BAYES_HAM(-3.00)[100.00%]
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Rspamd-Queue-Id: 2287921FC1
+X-Spam-Level: 
+X-Spam-Score: -3.31
+X-Spam-Flag: NO
 
-There is a case where total maps for its wait/event is so large in size.
-For instance, struct page for PG_locked and PG_writeback is the case.
-The additional memory size for the maps would be 'the # of pages *
-sizeof(struct dept_map)' if each struct page keeps its map all the way,
-which might be too big to accept.
+Daniel Dawson <danielcdawson@gmail.com> writes:
 
-It'd be better to keep the minimum data in the case, which is timestamp
-called 'wgen' that Dept makes use of. So made Dept able to work with an
-external wgen when needed.
+> On 11/28/23 10:15 PM, Daniel Dawson wrote:
+>> When a file is converted from inline to non-inline, it has stale flags u=
+ntil
+>> sync.
+>
+>> Why is this a problem? Because some code will fail under such a conditio=
+n, for
+>> example, lseek(..., SEEK_HOLE) will result in ENOENT.
+>
+>
+> Just tested. Still happening on 6.8-rc1.
 
-Signed-off-by: Byungchul Park <byungchul@sk.com>
----
- include/linux/dept.h     | 18 ++++++++++++++----
- include/linux/dept_sdt.h |  4 ++--
- kernel/dependency/dept.c | 30 +++++++++++++++++++++---------
- 3 files changed, 37 insertions(+), 15 deletions(-)
+FWIW, I've been looking into a similar issue related with inline-data and
+delayed allocation.  It may however be quite different because it seems to
+add small block sizes into the mix:
 
-diff --git a/include/linux/dept.h b/include/linux/dept.h
-index 0280e45cc2af..dea53ad5b356 100644
---- a/include/linux/dept.h
-+++ b/include/linux/dept.h
-@@ -482,6 +482,13 @@ struct dept_task {
- 	bool				in_sched;
- };
- 
-+/*
-+ * for subsystems that requires compact use of memory e.g. struct page
-+ */
-+struct dept_ext_wgen{
-+	unsigned int wgen;
-+};
+  https://bugzilla.kernel.org/show_bug.cgi?id=3D200681
+
+Unfortunately, I'm still trying to find my way around all this code and I
+can't say I fully understand the whole flow using the reproducer provided
+in that bugzilla.
+
+Bellow, I'm inlining a patch that started as debug patch that I've used to
+try to understand what was going on.  It seems to workaround that bug, but
+I know it's not a real fix -- I don't yet understand what's going on.
+
+Regarding your specific usecase, I can reproduce it and, unfortunately, I
+don't thing Ted's suggestion will fix it as I don't even see
+ext4_iomap_begin_report() being executed at all.  Anyway, just my 2
+cents... let's see if I can come up with something.
+
+Cheers,
+--=20
+Lu=C3=ADs
+
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index d5bd1e3a5d36..d0c3d6fd48de 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -528,7 +528,19 @@ int ext4_readpage_inline(struct inode *inode, struct f=
+olio *folio)
+ 	if (!folio->index)
+ 		ret =3D ext4_read_inline_folio(inode, folio);
+ 	else if (!folio_test_uptodate(folio)) {
+-		folio_zero_segment(folio, 0, folio_size(folio));
++		struct buffer_head *bh, *head;
++		size_t start =3D 0;
 +
- #define DEPT_TASK_INITIALIZER(t)				\
- {								\
- 	.wait_hist = { { .wait = NULL, } },			\
-@@ -512,6 +519,7 @@ extern void dept_task_exit(struct task_struct *t);
- extern void dept_free_range(void *start, unsigned int sz);
- extern void dept_map_init(struct dept_map *m, struct dept_key *k, int sub_u, const char *n);
- extern void dept_map_reinit(struct dept_map *m, struct dept_key *k, int sub_u, const char *n);
-+extern void dept_ext_wgen_init(struct dept_ext_wgen *ewg);
- extern void dept_map_copy(struct dept_map *to, struct dept_map *from);
- 
- extern void dept_wait(struct dept_map *m, unsigned long w_f, unsigned long ip, const char *w_fn, int sub_l, long timeout);
-@@ -521,8 +529,8 @@ extern void dept_clean_stage(void);
- extern void dept_stage_event(struct task_struct *t, unsigned long ip);
- extern void dept_ecxt_enter(struct dept_map *m, unsigned long e_f, unsigned long ip, const char *c_fn, const char *e_fn, int sub_l);
- extern bool dept_ecxt_holding(struct dept_map *m, unsigned long e_f);
--extern void dept_request_event(struct dept_map *m);
--extern void dept_event(struct dept_map *m, unsigned long e_f, unsigned long ip, const char *e_fn);
-+extern void dept_request_event(struct dept_map *m, struct dept_ext_wgen *ewg);
-+extern void dept_event(struct dept_map *m, unsigned long e_f, unsigned long ip, const char *e_fn, struct dept_ext_wgen *ewg);
- extern void dept_ecxt_exit(struct dept_map *m, unsigned long e_f, unsigned long ip);
- extern void dept_sched_enter(void);
- extern void dept_sched_exit(void);
-@@ -551,6 +559,7 @@ extern void dept_hardirqs_off(void);
- struct dept_key  { };
- struct dept_map  { };
- struct dept_task { };
-+struct dept_ext_wgen { };
- 
- #define DEPT_MAP_INITIALIZER(n, k) { }
- #define DEPT_TASK_INITIALIZER(t)   { }
-@@ -563,6 +572,7 @@ struct dept_task { };
- #define dept_free_range(s, sz)				do { } while (0)
- #define dept_map_init(m, k, su, n)			do { (void)(n); (void)(k); } while (0)
- #define dept_map_reinit(m, k, su, n)			do { (void)(n); (void)(k); } while (0)
-+#define dept_ext_wgen_init(wg)				do { } while (0)
- #define dept_map_copy(t, f)				do { } while (0)
- 
- #define dept_wait(m, w_f, ip, w_fn, sl, t)		do { (void)(w_fn); } while (0)
-@@ -572,8 +582,8 @@ struct dept_task { };
- #define dept_stage_event(t, ip)				do { } while (0)
- #define dept_ecxt_enter(m, e_f, ip, c_fn, e_fn, sl)	do { (void)(c_fn); (void)(e_fn); } while (0)
- #define dept_ecxt_holding(m, e_f)			false
--#define dept_request_event(m)				do { } while (0)
--#define dept_event(m, e_f, ip, e_fn)			do { (void)(e_fn); } while (0)
-+#define dept_request_event(m, wg)			do { } while (0)
-+#define dept_event(m, e_f, ip, e_fn, wg)		do { (void)(e_fn); } while (0)
- #define dept_ecxt_exit(m, e_f, ip)			do { } while (0)
- #define dept_sched_enter()				do { } while (0)
- #define dept_sched_exit()				do { } while (0)
-diff --git a/include/linux/dept_sdt.h b/include/linux/dept_sdt.h
-index 21fce525f031..8cdac7982036 100644
---- a/include/linux/dept_sdt.h
-+++ b/include/linux/dept_sdt.h
-@@ -24,7 +24,7 @@
- 
- #define sdt_wait_timeout(m, t)						\
- 	do {								\
--		dept_request_event(m);					\
-+		dept_request_event(m, NULL);				\
- 		dept_wait(m, 1UL, _THIS_IP_, __func__, 0, t);		\
- 	} while (0)
- #define sdt_wait(m) sdt_wait_timeout(m, -1L)
-@@ -49,7 +49,7 @@
- #define sdt_might_sleep_end()		dept_clean_stage()
- 
- #define sdt_ecxt_enter(m)		dept_ecxt_enter(m, 1UL, _THIS_IP_, "start", "event", 0)
--#define sdt_event(m)			dept_event(m, 1UL, _THIS_IP_, __func__)
-+#define sdt_event(m)			dept_event(m, 1UL, _THIS_IP_, __func__, NULL)
- #define sdt_ecxt_exit(m)		dept_ecxt_exit(m, 1UL, _THIS_IP_)
- #else /* !CONFIG_DEPT */
- #define sdt_map_init(m)			do { } while (0)
-diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index 5c996f11abd5..fb33c3758c25 100644
---- a/kernel/dependency/dept.c
-+++ b/kernel/dependency/dept.c
-@@ -2186,6 +2186,11 @@ void dept_map_reinit(struct dept_map *m, struct dept_key *k, int sub_u,
- }
- EXPORT_SYMBOL_GPL(dept_map_reinit);
- 
-+void dept_ext_wgen_init(struct dept_ext_wgen *ewg)
-+{
-+	ewg->wgen = 0U;
-+}
-+
- void dept_map_copy(struct dept_map *to, struct dept_map *from)
- {
- 	if (unlikely(!dept_working())) {
-@@ -2371,7 +2376,7 @@ static void __dept_wait(struct dept_map *m, unsigned long w_f,
-  */
- static void __dept_event(struct dept_map *m, unsigned long e_f,
- 			 unsigned long ip, const char *e_fn,
--			 bool sched_map)
-+			 bool sched_map, unsigned int wg)
- {
- 	struct dept_class *c;
- 	struct dept_key *k;
-@@ -2393,7 +2398,7 @@ static void __dept_event(struct dept_map *m, unsigned long e_f,
- 	c = check_new_class(&m->map_key, k, sub_id(m, e), m->name, sched_map);
- 
- 	if (c && add_ecxt(m, c, 0UL, NULL, e_fn, 0)) {
--		do_event(m, c, READ_ONCE(m->wgen), ip);
-+		do_event(m, c, wg, ip);
- 		pop_ecxt(m, c);
++		head =3D folio_buffers(folio);
++		if (head) {
++			bh =3D head;
++			do {
++				if (!buffer_uptodate(bh))
++					break;
++				start +=3D inode->i_sb->s_blocksize;
++			} while ((bh =3D bh->b_this_page) !=3D head);
++		}
++		folio_zero_segment(folio, start, folio_size(folio));
+ 		folio_mark_uptodate(folio);
  	}
- }
-@@ -2606,7 +2611,7 @@ void dept_stage_event(struct task_struct *requestor, unsigned long ip)
- 	if (!m.keys)
- 		goto exit;
- 
--	__dept_event(&m, 1UL, ip, "try_to_wake_up", sched_map);
-+	__dept_event(&m, 1UL, ip, "try_to_wake_up", sched_map, m.wgen);
- exit:
- 	dept_exit(flags);
- }
-@@ -2785,10 +2790,11 @@ bool dept_ecxt_holding(struct dept_map *m, unsigned long e_f)
- }
- EXPORT_SYMBOL_GPL(dept_ecxt_holding);
- 
--void dept_request_event(struct dept_map *m)
-+void dept_request_event(struct dept_map *m, struct dept_ext_wgen *ewg)
- {
- 	unsigned long flags;
- 	unsigned int wg;
-+	unsigned int *wg_p;
- 
- 	if (unlikely(!dept_working()))
- 		return;
-@@ -2801,21 +2807,25 @@ void dept_request_event(struct dept_map *m)
- 	 */
- 	flags = dept_enter_recursive();
- 
-+	wg_p = ewg ? &ewg->wgen : &m->wgen;
-+
- 	/*
- 	 * Avoid zero wgen.
- 	 */
- 	wg = atomic_inc_return(&wgen) ?: atomic_inc_return(&wgen);
--	WRITE_ONCE(m->wgen, wg);
-+	WRITE_ONCE(*wg_p, wg);
- 
- 	dept_exit_recursive(flags);
- }
- EXPORT_SYMBOL_GPL(dept_request_event);
- 
- void dept_event(struct dept_map *m, unsigned long e_f,
--		unsigned long ip, const char *e_fn)
-+		unsigned long ip, const char *e_fn,
-+		struct dept_ext_wgen *ewg)
- {
- 	struct dept_task *dt = dept_task();
- 	unsigned long flags;
-+	unsigned int *wg_p;
- 
- 	if (unlikely(!dept_working()))
- 		return;
-@@ -2823,24 +2833,26 @@ void dept_event(struct dept_map *m, unsigned long e_f,
- 	if (m->nocheck)
- 		return;
- 
-+	wg_p = ewg ? &ewg->wgen : &m->wgen;
-+
- 	if (dt->recursive) {
- 		/*
- 		 * Dept won't work with this even though an event
- 		 * context has been asked. Don't make it confused at
- 		 * handling the event. Disable it until the next.
- 		 */
--		WRITE_ONCE(m->wgen, 0U);
-+		WRITE_ONCE(*wg_p, 0U);
- 		return;
- 	}
- 
- 	flags = dept_enter();
- 
--	__dept_event(m, e_f, ip, e_fn, false);
-+	__dept_event(m, e_f, ip, e_fn, false, READ_ONCE(*wg_p));
- 
- 	/*
- 	 * Keep the map diabled until the next sleep.
- 	 */
--	WRITE_ONCE(m->wgen, 0U);
-+	WRITE_ONCE(*wg_p, 0U);
- 
- 	dept_exit(flags);
- }
--- 
-2.17.1
-
