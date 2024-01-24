@@ -1,17 +1,17 @@
 Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 4DFAB60DE6;
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 25CA561689;
 	Wed, 24 Jan 2024 12:00:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1706097605; cv=none; b=da1xFJ/ScpQq5NvbNC9K/Cye/mwlJH6YoKSXC65lIrIoVUJcHguJU+54AJOjhdTdfrOIKSR/lM4Ruur4p/Z2ucRUxY3U10Pros3bfWAZnJXFAbnWD+8HgqB2j4NjXptNQkVpsVhFPdVnT2ixuE8BBY3bpSqhI1l/NMooPgWEctM=
+	t=1706097606; cv=none; b=gWtQ/8TTRLUuCiL2wQMHe/8bkOL0XmEUwuKxVD8TYzfOiBnuQIOOwdCrsJH3iCdmPZHY7tX5xoImIAJ9+dr2pbxlSAAgsCvO9unkMuAqQsaamy/9r8clvNXa1JoywG+k6/8Wt7me/ZuO0z9eWLeIxtqUqhbUeM3HUjjs01I5ApU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1706097605; c=relaxed/simple;
-	bh=37cSYW8WA/TnfUxZD66nhjfMFS+Rdxdh6OVt7EPfSog=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=Ceuc/+MoKjvHxTrY15a4sHiPfgSUvUHskcEl/5JNm0MzNUkD+guikEm9bREyDtLUN+X74yddiuAy+rg6kM/Dx3bidL8Lw1SmD55cQ6VxqGFtyhZ3GAuE83pCbT5qIsvRUNMTAMLewF0FkF5n3pO/0e05hSMhcEZ/r4nKiVnkbyo=
+	s=arc-20240116; t=1706097606; c=relaxed/simple;
+	bh=tg0pA2ZlUNywKtzMfrdbwkG7GYbhIVlK2HrCAbcpiMY=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=Hj+u0yPTySOtfvFv4PV2MHBT6TLQLoPnOznZkhgLhOvtLpH3jPzvFVs+NcPt3C4YloUelNOf/yRkZHCcCvmJm9nyAVGhQLlInVs2qi/LbYqhBCHjKc7Uk8UST6ebKRUhbcCobSLHOW1WDg3zBocTjPrrTFe3wktGd/9ODyfiAE0=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-d85ff70000001748-a5-65b0fbb529a6
+X-AuditID: a67dfc5b-d85ff70000001748-c5-65b0fbb52f43
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -72,44 +72,44 @@ Cc: kernel_team@skhynix.com,
 	longman@redhat.com,
 	hdanton@sina.com,
 	her0gyugyu@gmail.com
-Subject: [PATCH v11 06/26] dept: Add proc knobs to show stats and dependency graph
-Date: Wed, 24 Jan 2024 20:59:17 +0900
-Message-Id: <20240124115938.80132-7-byungchul@sk.com>
+Subject: [PATCH v11 08/26] dept: Apply sdt_might_sleep_{start,end}() to swait
+Date: Wed, 24 Jan 2024 20:59:19 +0900
+Message-Id: <20240124115938.80132-9-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20240124115938.80132-1-byungchul@sk.com>
 References: <20240124115938.80132-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0iTYRTHe573uuXkbV18S6IYWNHVbnKKiL5ED0QURX3oPvRFR15iK8si
-	07Tb1HKBLsvCS6wxl9qmpKWyjDQLzXLVsrnKtBS1lTlraRdn9OXw4/z/5/fp8JSympnBa+IP
-	Sdp4dayKldPygaDCRZUj5VJ4d0cYGDLDwTd0job8MisLraUlCKwVqRh6H26AV8P9CEaan1Jg
-	zGlFUPi+g4KKBg+CWvMpFtq6gsHp87LQlJPBQlpxGQvP+kYxuHMvYSixbYIn2UUYHP5PNBh7
-	WbhqTMNjoweD32ThwJQSBp3mKxyMvl8KTZ6XDNS2L4C8624WamqbaGio6sTQdjefBY/1DwNP
-	Gh7R0GrIYuDW5yIW+oZNFJh8Xg6eOwowlKePic58+81AY5YDw5kbtzE4X99DUHfuHQab9SUL
-	D3z9GOy2HAp+3nyIoPPCAAenM/0cXE29gCDjdC4NT381MpDuXgkjP/LZdavJg34vRdLtR0jt
-	cAFNHheJpPpKB0fS69o5UmA7TOzm+aS4pheTwkEfQ2yW8yyxDV7iiH7AicnnlhaOPLo8QpMu
-	pxFvCd0pXxMlxWoSJe2StfvlMf43xw8+jjiaXVnPpqCShXok40Vhhdid8hHrET/O3/XBgTUr
-	zBVdLj8V4CnCbNGe9ZHRIzlPCWcniuYvzWwgmCxsFXMbr9MBpoUw0dlbiQKsEFaKaXXd1D//
-	LLGk3DHOMiFCvJXXPt5XjnXeWS5yAakonJWJ9uJr6N/BdPG+2UVnI0UBmmBBSk18YpxaE7ti
-	cUxSvObo4siEOBsaeyjTidFdVWiwdVs9EnikClKss5RJSkadqEuKq0ciT6mmKFzTSyWlIkqd
-	dEzSJuzTHo6VdPUolKdVIYplw0eilEK0+pB0QJIOStr/KeZlM1LQ5eomQ2nIxuWLVK+i28I3
-	Skalh9zRaaa+qJkEzV2RQnDPedlJa0OIO395cqZM803Ys3vq0GbbnOSetZm+AyeGNNPytq+v
-	+pVjmBMkT92cseOrN9lz3923d2bUh8TyuxN2Od7O7NpZtyo6+GKLKnSNYZ7rGp6o3R3R/2Lr
-	bHp1tjdBReti1EvnU1qd+i/8N+rITAMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSfUzMcRzHfb+/xzsuv502v/K422JCysRnsvAHfmPM+MOG0S2/1aku3VWE
-	tijhVMpW0VWrcM4VnUtb9OBWlGo90C1Jtcpjczriyrk8VJt/3ntt74e/3iwh11PerEodK2rU
-	ykgFLSWle4KSV1e6zaK/tVsGWWn+4PxxiYT88jIaOu+XIih7eA7DyLMd8GrcjsDd1kFAbnYn
-	guKhfgIeNg4gqDWep6HrnQfYnA4amrOv0JB8s5yGF58nMfTlXMNQatkNrZklGKyujyTkjtCg
-	z03GU/IJg8tgYsCQ5APDxjwGJocCoHmgm4KGgmYKantXwo3CPhpqaptJaKwaxtD1OJ+GgbK/
-	FLQ2PiehMyudgnujJTR8HjcQYHA6GHhpLcJgTplaS/3+h4KmdCuG1FsPMNheVyOouzSIwVLW
-	TUOD046hwpJNwK87zxAMZ3xh4EKaiwH9uQwEVy7kkNDxu4mClL5AcP/Mp7cECQ12ByGkVJwU
-	aseLSKGlhBce5fUzQkpdLyMUWeKECqOvcLNmBAvFY05KsJgu04Jl7Boj6L7YsDDa3s4Iz6+7
-	SeGdLRfvXXhQuumYGKmKFzVrgkOk4a43Z060rD+VWVlPJ6HSVTrEsjy3jp/QeeiQhKW55XxP
-	j4uYZk9uKV+R/oHSISlLcBdn88avbfS0MY/bx+c0FZLTTHI+vG2kEk2zjAvkk+vez5R5bglf
-	arbOsIRbz9+70TuTl09lBk1XmUwkLUKzTMhTpY6PUqoiA/20EeEJatUpv9DoKAuauowhcTKr
-	Cv3o2lGPOBYp5si2mMpFOaWM1yZE1SOeJRSesh6v+6JcdkyZcFrURB/VxEWK2nq0gCUV82U7
-	D4ghci5MGStGiOIJUfPfxazEOwktwAW7ur8t2rlbmrpxbUjQhgh9TRe5uNCr82neeEP73OFl
-	XP/t/ca24xNvQwNWbg9+khgzVG6Xhp2s3jdbJzntl17tYZ/wuVt1qG/bGVHtdphXmF84YnHx
-	27HDEtORsKWHvhn+xB3OTPS+e0s9qgs+G7Onv2PO3tB5MXrdo+Wbt/b6KkhtuDLAl9Bolf8A
-	egzQ2y4DAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0iTcRSH/b93Z6uXJfRmRDKwe6ZlcjANoQ+9fQiioKAIXfmSq6k10zKI
+	vKbNvIat8tLUmGuarq1ArdlSsky8S5qYqJlp3nK5kTorZ/Tl8ON3zvN8OgwuqSE9GHnkFUEZ
+	KVNIKREhmlpVvOvFokHwGf3hDzl3fMA2l0ZAQVUFBe2V5QgqnidgMP72EPTYJxEstrThoM5r
+	R1A89BmH540DCMy6RAq6RlZDt22Ggqa8dAqSSqso6JhwYNB/LxeDcuMRaM4uwcAy/40A9TgF
+	+eokbHmMYTCv1dOgjfeCYd1DGhxDvtA08JEEc98OeFDUT8ErcxMBjdXDGHTVFlAwUPGHhObG
+	9wS052SQ8HS6hIIJuxYHrW2Ghk6LBgND8rLo1s/fJLzLsGBw6/EzDLo/vURQlzaIgbHiIwUN
+	tkkMTMY8HBbK3iIYzpyiIeXOPA35CZkI0lPuEdC29I6E5P59sPirgAoO4BsmZ3A+2XSVN9s1
+	BP+hhONrHn6m+eS6PprXGGN4k247X/pqHOOLrTaSN+pvU7zRmkvzqqlujJ9ubaX59/cXCX6k
+	W40d3XBKFBgmKOSxgnL3gVBReGaajbrUyFwzx08S8aiNUiFXhmP9uNSeWVqFmJX8yIacNcVu
+	4Xp753Fndmc9OVPGKKlCIgZnU9043Y+WFXYte4Qb7RkinCzBenE1po3OWszu44a/lhL/9Ju4
+	coNlxePK+nNPH/St9JLlm0F9Fu10cmyqK9fpSMT/Aeu5N7peIhuJNchFjyTyyNgImVzh5x0e
+	Fym/5n0uKsKIlh9Ke8NxuhpZ24/XI5ZB0lXiYH2VICFlsdFxEfWIY3Cpu7h3faUgEYfJ4q4L
+	yqgQZYxCiK5HGxhCuk68x341TMKel10RLgrCJUH5f4sxrh7x6PbmgKWF7xbN2P3dE9UuDs+s
+	g8cvezUEgHjN5aDg07Vbz41su1sYFmS9cWyv4+zNM4WzmwIV38VF6W5lRaEZrVZ11hMX93VD
+	ZRHoROXSG2vpVP3+EM/X/sw3Q4HCpbjWcYEl/VVjdzNj6r6ktZoGT+bVSe2BHb9jD3/JnfMz
+	eLvtlBLR4TLf7bgyWvYXhYsroUwDAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzVSfUyMcRz3+z3P83uejuPZuc3jbezMGPPe2dcy/OHlN6NYf9i8TEcPHZXc
+	kTKslFSUioSSFKddx9Udm3DWatKxFN16k6ZWkiJL15yLdDb/fPbZ5+2vj8Cocrlpgj7ymGyI
+	1IVriIJVBAYkLHrkLZWXOq2zIPPiUnAPJbOQZ7UQqH9QgsDyMB5D74tN0DTcj8BbW8dATnY9
+	gtsdHxh4WN2OwFF8lkBD10RwuQcIOLMvEEgoshJ42zeCoe1qFoYS21Z4nVGIocLTw0JOL4Hc
+	nAQ8Bp8xeExmHkxxc6Gz+AYPIx3LwNneyEHVTScHjtaFcD2/jcAzh5OF6sedGBqe5BFot4xy
+	8Lq6hoX6zDQO7n8rJNA3bGLA5B7g4V1FAYbSxLG1pB9/OHiZVoEh6U4ZBlfLUwTPkz9isFka
+	CVS5+zHYbdkM/Lr3AkFn+lcezl308JAbn47gwrmrLNT9fslBYpsWvD/zyLoAWtU/wNBE+wnq
+	GC5g6atCiZbf+MDTxOetPC2wHaf24gW06FkvprcH3Ry1mVMItQ1m8TT1qwvTb2/e8LTmmpel
+	Xa4cvG3GTsXqUDlcHy0blqwJUYSlJ7tJVLUQ44jrZ+NQHUlFgiCJ/tItN0pFfgIR50nNzR7G
+	x9XibMme9olLRQqBEc+Pl4q/1xKfMVncKn1q6mB9XVacK5XbZ/pkpaiVOruLWB+XxFlSSWnF
+	vx0/caV0/3rrP101lvlovsRnIEUBGmdGan1kdIROH65dbDwcFhupj1m8/0iEDY1dxnR6JPMx
+	GmrYVIlEAWkmKNeZrbKK00UbYyMqkSQwGrWyeeoDWaUM1cWelA1H9hqOh8vGSjRdYDVTlJt3
+	yCEq8aDumHxYlqNkw38XC37T4tCj0ffDizKcV5SvXO/OBAbOcZfOrFKrA7LmrxqNvxRUtHuz
+	K9TjFXf3hfRtH0j5Tpsua4OeLFye1Hx3wqD/5bUb1h9V+Q8GBbeX2coP3DnVOOnsii35OzcE
+	H5ojSWXBu8hvHDN/9p6hlEouu8XRfTPfKtbkaVfXnu7p3tjTvWaf5UuXhjWG6ZYtYAxG3V8+
+	1AJ4LgMAAA==
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -117,251 +117,41 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-It'd be useful to show Dept internal stats and dependency graph on
-runtime via proc for better information. Introduced the knobs.
+Makes Dept able to track dependencies by swaits.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- kernel/dependency/Makefile        |  1 +
- kernel/dependency/dept.c          | 24 +++-----
- kernel/dependency/dept_internal.h | 26 +++++++++
- kernel/dependency/dept_proc.c     | 95 +++++++++++++++++++++++++++++++
- 4 files changed, 131 insertions(+), 15 deletions(-)
- create mode 100644 kernel/dependency/dept_internal.h
- create mode 100644 kernel/dependency/dept_proc.c
+ include/linux/swait.h | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/kernel/dependency/Makefile b/kernel/dependency/Makefile
-index b5cfb8a03c0c..92f165400187 100644
---- a/kernel/dependency/Makefile
-+++ b/kernel/dependency/Makefile
-@@ -1,3 +1,4 @@
- # SPDX-License-Identifier: GPL-2.0
+diff --git a/include/linux/swait.h b/include/linux/swait.h
+index d324419482a0..277ac74f61c3 100644
+--- a/include/linux/swait.h
++++ b/include/linux/swait.h
+@@ -6,6 +6,7 @@
+ #include <linux/stddef.h>
+ #include <linux/spinlock.h>
+ #include <linux/wait.h>
++#include <linux/dept_sdt.h>
+ #include <asm/current.h>
  
- obj-$(CONFIG_DEPT) += dept.o
-+obj-$(CONFIG_DEPT) += dept_proc.o
-diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index 7e12e46dc4b7..19406093103e 100644
---- a/kernel/dependency/dept.c
-+++ b/kernel/dependency/dept.c
-@@ -74,6 +74,7 @@
- #include <linux/dept.h>
- #include <linux/utsname.h>
- #include <linux/kernel.h>
-+#include "dept_internal.h"
+ /*
+@@ -161,6 +162,7 @@ extern void finish_swait(struct swait_queue_head *q, struct swait_queue *wait);
+ 	struct swait_queue __wait;					\
+ 	long __ret = ret;						\
+ 									\
++	sdt_might_sleep_start(NULL);					\
+ 	INIT_LIST_HEAD(&__wait.task_list);				\
+ 	for (;;) {							\
+ 		long __int = prepare_to_swait_event(&wq, &__wait, state);\
+@@ -176,6 +178,7 @@ extern void finish_swait(struct swait_queue_head *q, struct swait_queue *wait);
+ 		cmd;							\
+ 	}								\
+ 	finish_swait(&wq, &__wait);					\
++	sdt_might_sleep_end();						\
+ __out:	__ret;								\
+ })
  
- static int dept_stop;
- static int dept_per_cpu_ready;
-@@ -260,20 +261,13 @@ static bool valid_key(struct dept_key *k)
-  *       have been freed will be placed.
-  */
- 
--enum object_t {
--#define OBJECT(id, nr) OBJECT_##id,
--	#include "dept_object.h"
--#undef  OBJECT
--	OBJECT_NR,
--};
--
- #define OBJECT(id, nr)							\
- static struct dept_##id spool_##id[nr];					\
- static DEFINE_PER_CPU(struct llist_head, lpool_##id);
- 	#include "dept_object.h"
- #undef  OBJECT
- 
--static struct dept_pool pool[OBJECT_NR] = {
-+struct dept_pool dept_pool[OBJECT_NR] = {
- #define OBJECT(id, nr) {						\
- 	.name = #id,							\
- 	.obj_sz = sizeof(struct dept_##id),				\
-@@ -303,7 +297,7 @@ static void *from_pool(enum object_t t)
- 	if (DEPT_WARN_ON(!irqs_disabled()))
- 		return NULL;
- 
--	p = &pool[t];
-+	p = &dept_pool[t];
- 
- 	/*
- 	 * Try local pool first.
-@@ -338,7 +332,7 @@ static void *from_pool(enum object_t t)
- 
- static void to_pool(void *o, enum object_t t)
- {
--	struct dept_pool *p = &pool[t];
-+	struct dept_pool *p = &dept_pool[t];
- 	struct llist_head *h;
- 
- 	preempt_disable();
-@@ -2092,7 +2086,7 @@ void dept_map_copy(struct dept_map *to, struct dept_map *from)
- 	clean_classes_cache(&to->map_key);
- }
- 
--static LIST_HEAD(classes);
-+LIST_HEAD(dept_classes);
- 
- static bool within(const void *addr, void *start, unsigned long size)
- {
-@@ -2124,7 +2118,7 @@ void dept_free_range(void *start, unsigned int sz)
- 	while (unlikely(!dept_lock()))
- 		cpu_relax();
- 
--	list_for_each_entry_safe(c, n, &classes, all_node) {
-+	list_for_each_entry_safe(c, n, &dept_classes, all_node) {
- 		if (!within((void *)c->key, start, sz) &&
- 		    !within(c->name, start, sz))
- 			continue;
-@@ -2200,7 +2194,7 @@ static struct dept_class *check_new_class(struct dept_key *local,
- 	c->sub_id = sub_id;
- 	c->key = (unsigned long)(k->base + sub_id);
- 	hash_add_class(c);
--	list_add(&c->all_node, &classes);
-+	list_add(&c->all_node, &dept_classes);
- unlock:
- 	dept_unlock();
- caching:
-@@ -2915,8 +2909,8 @@ static void migrate_per_cpu_pool(void)
- 		struct llist_head *from;
- 		struct llist_head *to;
- 
--		from = &pool[i].boot_pool;
--		to = per_cpu_ptr(pool[i].lpool, boot_cpu);
-+		from = &dept_pool[i].boot_pool;
-+		to = per_cpu_ptr(dept_pool[i].lpool, boot_cpu);
- 		move_llist(to, from);
- 	}
- }
-diff --git a/kernel/dependency/dept_internal.h b/kernel/dependency/dept_internal.h
-new file mode 100644
-index 000000000000..007c1eec6bab
---- /dev/null
-+++ b/kernel/dependency/dept_internal.h
-@@ -0,0 +1,26 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * Dept(DEPendency Tracker) - runtime dependency tracker internal header
-+ *
-+ * Started by Byungchul Park <max.byungchul.park@gmail.com>:
-+ *
-+ *  Copyright (c) 2020 LG Electronics, Inc., Byungchul Park
-+ */
-+
-+#ifndef __DEPT_INTERNAL_H
-+#define __DEPT_INTERNAL_H
-+
-+#ifdef CONFIG_DEPT
-+
-+enum object_t {
-+#define OBJECT(id, nr) OBJECT_##id,
-+	#include "dept_object.h"
-+#undef  OBJECT
-+	OBJECT_NR,
-+};
-+
-+extern struct list_head dept_classes;
-+extern struct dept_pool dept_pool[];
-+
-+#endif
-+#endif /* __DEPT_INTERNAL_H */
-diff --git a/kernel/dependency/dept_proc.c b/kernel/dependency/dept_proc.c
-new file mode 100644
-index 000000000000..7d61dfbc5865
---- /dev/null
-+++ b/kernel/dependency/dept_proc.c
-@@ -0,0 +1,95 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Procfs knobs for Dept(DEPendency Tracker)
-+ *
-+ * Started by Byungchul Park <max.byungchul.park@gmail.com>:
-+ *
-+ *  Copyright (C) 2021 LG Electronics, Inc. , Byungchul Park
-+ */
-+#include <linux/proc_fs.h>
-+#include <linux/seq_file.h>
-+#include <linux/dept.h>
-+#include "dept_internal.h"
-+
-+static void *l_next(struct seq_file *m, void *v, loff_t *pos)
-+{
-+	/*
-+	 * XXX: Serialize list traversal if needed. The following might
-+	 * give a wrong information on contention.
-+	 */
-+	return seq_list_next(v, &dept_classes, pos);
-+}
-+
-+static void *l_start(struct seq_file *m, loff_t *pos)
-+{
-+	/*
-+	 * XXX: Serialize list traversal if needed. The following might
-+	 * give a wrong information on contention.
-+	 */
-+	return seq_list_start_head(&dept_classes, *pos);
-+}
-+
-+static void l_stop(struct seq_file *m, void *v)
-+{
-+}
-+
-+static int l_show(struct seq_file *m, void *v)
-+{
-+	struct dept_class *fc = list_entry(v, struct dept_class, all_node);
-+	struct dept_dep *d;
-+	const char *prefix;
-+
-+	if (v == &dept_classes) {
-+		seq_puts(m, "All classes:\n\n");
-+		return 0;
-+	}
-+
-+	prefix = fc->sched_map ? "<sched> " : "";
-+	seq_printf(m, "[%p] %s%s\n", (void *)fc->key, prefix, fc->name);
-+
-+	/*
-+	 * XXX: Serialize list traversal if needed. The following might
-+	 * give a wrong information on contention.
-+	 */
-+	list_for_each_entry(d, &fc->dep_head, dep_node) {
-+		struct dept_class *tc = d->wait->class;
-+
-+		prefix = tc->sched_map ? "<sched> " : "";
-+		seq_printf(m, " -> [%p] %s%s\n", (void *)tc->key, prefix, tc->name);
-+	}
-+	seq_puts(m, "\n");
-+
-+	return 0;
-+}
-+
-+static const struct seq_operations dept_deps_ops = {
-+	.start	= l_start,
-+	.next	= l_next,
-+	.stop	= l_stop,
-+	.show	= l_show,
-+};
-+
-+static int dept_stats_show(struct seq_file *m, void *v)
-+{
-+	int r;
-+
-+	seq_puts(m, "Availability in the static pools:\n\n");
-+#define OBJECT(id, nr)							\
-+	r = atomic_read(&dept_pool[OBJECT_##id].obj_nr);		\
-+	if (r < 0)							\
-+		r = 0;							\
-+	seq_printf(m, "%s\t%d/%d(%d%%)\n", #id, r, nr, (r * 100) / (nr));
-+	#include "dept_object.h"
-+#undef  OBJECT
-+
-+	return 0;
-+}
-+
-+static int __init dept_proc_init(void)
-+{
-+	proc_create_seq("dept_deps", S_IRUSR, NULL, &dept_deps_ops);
-+	proc_create_single("dept_stats", S_IRUSR, NULL, dept_stats_show);
-+	return 0;
-+}
-+
-+__initcall(dept_proc_init);
 -- 
 2.17.1
 
