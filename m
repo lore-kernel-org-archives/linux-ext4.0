@@ -1,17 +1,17 @@
 Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id D0B89651B4;
-	Wed, 24 Jan 2024 12:00:09 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 8D513657DC;
+	Wed, 24 Jan 2024 12:00:10 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1706097613; cv=none; b=nzP06r1SMvG9N3s2bN4pW7E/IV5DR2W6uVDdqTqgyXwo/Z1RL4QOVCsYJ07X2c9KH1CtcWPv0TC7vwH4eZZM2kkRnzv3pM7ZBfu9zeqp10rOaC8GX4xgu3/gUNFOPof4flwB3snioY2tlsM5vSYXPZfjBLoFRJrhcE67feWS5b4=
+	t=1706097614; cv=none; b=I4p5mvKjRzkXZk89N+Oe5J1jSmx1g1lfBb9HBTEQOcd7Haq96WkVpLK9WQ4d/wnYIK1oVwq0QROESsTrv/7Nctk+/gsLe6534Vfi50d6dFTouv9V3y+9lFne4x5JLm9bqNyfEGFjdUECQqNaZFr3qpoe5E37felDr6R3yBI7Z8w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1706097613; c=relaxed/simple;
-	bh=TSPxdh3H9mjhA/wDLLlJUz6YZTY7hYg5ulgpaHBJJSM=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=rOIsM/71uUjetYmoCoQKnWY2JxuXZQnf0JkZA8WpsiPMxkmffANMf+veXKOc7FZcRDkuXIBk/DeAK4JHn7d5HKbmiiIpxVf3LgYHUHpzbLTvffT/4UkBtIAvuFm/nbrWmBI0KT8rQQ7f90wT1CpPGGYODXz8FE0/AKLmMnKTkiY=
+	s=arc-20240116; t=1706097614; c=relaxed/simple;
+	bh=oVu1M/z+Be6zJoonqEicwRg8jn1j0IbzUk3u5AE/er0=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=jIA7ZM+mXFXOGsLXQxdWEGtXusxDqnLY6pPze3NirweKx//ndNoU+DtvZTdGfPuCE27YI6B4rcVfR/vaQLIBlV/fmWJ+/97fMofmliv+iEzxmPEtUSfBhzgth/WUzP2T+o6GrgpZN0Kho9i97dAhiecnHm8p+hzvqxC293/wUfs=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-d85ff70000001748-55-65b0fbb68577
+X-AuditID: a67dfc5b-d85ff70000001748-85-65b0fbb7a24d
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -72,44 +72,44 @@ Cc: kernel_team@skhynix.com,
 	longman@redhat.com,
 	hdanton@sina.com,
 	her0gyugyu@gmail.com
-Subject: [PATCH v11 17/26] dept: Apply timeout consideration to wait_for_completion()/complete()
-Date: Wed, 24 Jan 2024 20:59:28 +0900
-Message-Id: <20240124115938.80132-18-byungchul@sk.com>
+Subject: [PATCH v11 20/26] dept: Apply timeout consideration to hashed-waitqueue wait
+Date: Wed, 24 Jan 2024 20:59:31 +0900
+Message-Id: <20240124115938.80132-21-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20240124115938.80132-1-byungchul@sk.com>
 References: <20240124115938.80132-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSf0zMcRjH+3y+P+84++4wX8VwkywrP+bH48eMjfmOhY2/+EM3fem4O+2i
-	kw3h9EslbTmltbrs3K5LdWdz6JJrlTQ5aSRJP25I5TiuyeVHhX+evfZ+nue154+HJeT3qVBW
-	pT0u6rRKtYKWktLhqaVRd4JV4rL+B1K4krUMAt/SSSiqtNHguVWOwHb7HIaBhm3wcmQIQfDJ
-	UwKM+R4Epb1vCLjd2I3AZTlPw3PvNGgP+Ghozr9Ew4WyShqeDY5h6Lqah6HcHgMtuSYMdaPv
-	STAO0HDdeAGPlw8YRs1WBswp4dBnKWRgrHc5NHe/oMDVuQQKirtoqHE1k9Do7MPw/F4RDd22
-	3xS0ND4iwXMlm4KKTyYaBkfMBJgDPgba6kowVBnGRalff1HQlF2HIfVGNYb2V/cR1Kb3YLDb
-	XtBQHxjC4LDnE/DjZgOCvpxhBi5mjTJw/VwOgksXr5Lw9GcTBYauVRD8XkRvWifUD/kIweDQ
-	C66RElJ4bOKFu4VvGMFQ28kIJfYTgsMSKZTVDGCh1B+gBLs1gxbs/jxGyBxux8Kn1lZGeHQt
-	SArediPeHbZPuiFOVKuSRN3SjbHSeFtbAZNQLD3pyHiGU1APm4kkLM+t5D3eeuY/l3ls9ATT
-	XATf0TFKTPAMbj7vyH5HZSIpS3BpU3jL5yeTQ9O5WL6h3jnJJBfO56S6Jhdk3Gq+9ss99Fc6
-	jy+vqpvMJeN5RUEnOcFybhXfY73MTEh5Lk3C15x3/rtiNv/Q0kHmIlkJCrEiuUqbpFGq1Cuj
-	45O1qpPRB49p7Gj8pcynx/Y7kd+zx404FimmyjZZK0U5pUxKTNa4Ec8Sihmyjtm3RLksTpl8
-	StQdO6A7oRYT3SiMJRWzZCtG9HFy7rDyuHhUFBNE3f8uZiWhKSjC9H14occZsyCkf592h+lL
-	cZHPOXAmqikrc9fcvRnFeWuJCM3O8tiWiN2a0hC3aM+W6Be36fsPtXpkwZictu3Rg/5XRxcs
-	jhzqPeXzZq3P4Mb6mDW1izaHu9+Gna2o3p+eoJ97JNebOsc80+A3Vn+8MceyV701qnNPaHTh
-	lrTX6xVkYrxyeSShS1T+AVmDrvVOAwAA
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0hTcRjG+//P1dXitKxOFpgjKYzKKOOt7PKh8iAkEYTQ1ZGHXF6SLTWL
-	aOa0WmkqqVkaXmKNubxsItOcDZemSWU5zERFzS6SaRc3MjVToy8PP57nfZ9PD0vICigvVhlz
-	TlTFKKLktISUhOxIXl89USH6ZzX7Q+ZNf3CNXSMhv9xEQ1tZKQJTVRKGocYgeOseRjDx4hUB
-	udltCIr6ewioaupFYDNcoaF9cCE4XaM0tGTfoCG5pJyG118mMXTnZGEoNR+A1oxiDPbxTyTk
-	DtFwLzcZz8hnDON6IwN6jS8MGO4yMNm/CVp6OyhwFLRQYOtaB3n3u2mos7WQ0GQdwNBem09D
-	r2magtamZhLaMtMoeDRSTMMXt54AvWuUgTf2QgwV2pm21J9/KHiWZseQ+qASg/PdYwT11/ow
-	mE0dNDhcwxgs5mwCfj9sRDCQ/pWBlJvjDNxLSkdwIyWHhFdTzyjQdgfAxK98es8OwTE8Sgha
-	S4JgcxeSwvNiXqi528MI2vouRig0xwkWg59QUjeEhaIfLkowG6/TgvlHFiPovjqxMPLyJSM0
-	35kghUFnLj648ogkMFyMUsaLqo27wiQRpjd5TOx9yXnL9ddYg/pYHfJgeW4LX9JmomeZ5tbw
-	nZ3jxCx7cqt4S9pHSockLMFdnc8bvr2YO1rMhfGNDusck5wvn55qm3uQclv5+u+16F+pN19a
-	YZ/zPWb8R3ld5CzLuAC+z3iLyUCSQjTPiDyVMfHRCmVUwAZ1ZERijPL8hlNno81oZjT6S5OZ
-	VjTWHtSAOBbJF0j3GMtFGaWIVydGNyCeJeSe0s7lZaJMGq5IvCCqzp5UxUWJ6ga0giXly6TB
-	oWKYjDutOCdGimKsqPqfYtbDS4OarEuTccK+xuDProt47+/NzvbF07EjdzqO9aqf9CcssYeX
-	H9B8uLzIe9vHnsDK4E9TPkWJfiFO9swJc3Z1RqxV0xPk3r19dYHWc3tHfPplnUGj2/nU2/jO
-	58np/Vyg44yx7P38iLUeu46GHr6U4u0TrL7t7g6Zd9x6YXNWzqGawOm9clIdodjkR6jUir/I
-	npxQMAMAAA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAz2SW0xTWRSG3ftc26HmTNXMEWM0NUanRgcVzZoZo/hgPF5DML7ogzbDybQZ
+	qKZFBJPBKsULUlSSggiaFrQ2BSm0GhltlYHIRQVRqhamkILEkQBC0CK1eCkYfVn5sta/vqef
+	JeS3qVhWo00TdVpVioKWktLhGOvyW5FqMc4TWA3n8+Ig9O4UCaXOShraqyoQVN44hmHg/mZ4
+	MT6EINL6mIAiczsCa283ATcaexB47cdp6OifCb7QCA0t5jM0ZJc7aXgyOIkhUFiAocK1Ax6e
+	K8NQF/6fhKIBGkqKsnF0vMYQtjkYsBkWQ5/9IgOTvSuhpec5Bd6uZVB8OUCDx9tCQmNtH4aO
+	26U09FR+puBhYzMJ7edNFFx/U0bD4LiNAFtohIGndRYM1cao6MTbTxQ0meownLhSg8HXeQfB
+	3VNBDK7K5zQ0hIYwuF1mAj5cu4+gL3+YgZy8MAMlx/IRnMkpJOHxxyYKjIE1EJkopRN+ExqG
+	RgjB6D4seMctpPCgjBf+udjNCMa7XYxgcR0S3HalUO4ZwIJ1LEQJLsdpWnCNFTBC7rAPC2/a
+	2hih+UKEFPp9RThx3h7pumQxRZMu6n5Zv1+qfpTtRAfzmYzRgAkbUC+ViyQsz8XzZkvkO78c
+	u0lMMc0t4f3+8DTP5hbybtOraEbKEtzJH3j7aCudi1h2Frebfx9WTmVIbjH/6n0xOcUybi3/
+	YfIS89W5gK+orpv2SKL768Vd0xk5t4YPOs4yU06ey5bwDQED8fVhLv+v3U+eQzILmuFAco02
+	PVWlSYlfoc7UajJW/HEg1YWijbL9Pbm3Fo2176pHHIsUMbIEh1OUU6p0fWZqPeJZQjFb5p9b
+	JcplyarMI6LuwD7doRRRX4/msaTiJ9mq8cPJcu5PVZr4lygeFHXfrpiVxBpQgu6/R+qZknVZ
+	2nJRaeNHg5uumRKzjm696r4cszPfqdqfNkPZXLPdKnMGkzr8Cb5yZXDk9x3mz9bWm53LjHHJ
+	/fPvSCc8hZ7RpLzurC07Z71UFjTlWDa602t/vhcfm6r+tXPbHL2rZNCb+SzDkLQkbfuPx9sW
+	SiY2LDItYhOXmrCC1KtVK5WETq/6Ajv6e5lNAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSfUyMcRzA/X7Pa4+OZ6fm8W63GcvkZeI7Gf1hPGNizJgxPePhbip2RznG
+	okNdLmpLSuiFq11XlyvvrqV2KXkphbSTiiFSLa6cOy9X5p/vPvt+P/v89WUJZQ41kdXEHpC1
+	sVK0iuZILjI8cc4tb5k8r26Ag7Qz88D9PYmEHJuVhsbSYgTWiuMYup2r4NVgDwLvk2cEZGY0
+	IsjrfENARW07AkfRCRqa34+BFncfDfUZKTQkFthoaPriw+A6n46h2L4WGs7lY6jyfCQhs5uG
+	i5mJ2D8+YfCYLQyYE2ZAV1E2A77O+VDf/pKCmkv1FDjaZkPWZRcN9x31JNTe7sLQfDeHhnbr
+	HwoaautIaEwzUVDSm0/Dl0EzAWZ3HwPPq3IxlBn8tVPfflPw0FSF4dTV6xhaXt9DUJnUgcFu
+	fUlDjbsHQ7k9g4CfhU4EXalfGTh5xsPAxeOpCFJOnifh2a+HFBhcYeD9kUNHhIs1PX2EaCiP
+	Fx2DuaT4KF8Q72S/YURDZRsj5toPiuVFIWLB/W4s5g24KdFuSaZF+0A6Ixq/tmCx9+lTRqy7
+	4CXF9y2ZeP3krdzSXXK0Jk7Wzl0WxakfJ9rQ/lTmUL/LhBNQJ2VEAazALxTeDdwghpnmZwqt
+	rZ4RDuKnC+WmD36HYwn+9GihqP8JbUQsO47fJAx5QoYdkp8hfBjKIodZwS8SfvouMf+a04Ti
+	sqqRToB/X5LVNuIo+TChw3KWOYe4XDTKgoI0sXExkiY6LFS3V62P1RwK3bkvxo78P2M+6ku7
+	jb43r6pGPItUgYoIi01WUlKcTh9TjQSWUAUpWieUykrFLkl/WNbu26E9GC3rqtEkllSNV6ze
+	LEcp+T3SAXmvLO+Xtf+vmA2YmICcHflT2/vzSusWOHxJ8ZW9Vo0+eEXkixIwLj+WfGT9NdPN
+	wikfietqi5p7UBgpeTca1J2h4VuTUUTK88B1Y7dJcVxD3prAWWN2f9Z5fhd03HMkbTCmpx7O
+	2tMU/DY7Unkl+NsWve3T0Fnf0CLL3MUPrPHbXYuXLHBuHuectGRa00oVqVNL80MIrU76C1s9
+	GEgvAwAA
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -118,43 +118,27 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
 Now that CONFIG_DEPT_AGGRESSIVE_TIMEOUT_WAIT was introduced, apply the
-consideration to wait_for_completion()/complete().
+consideration to hashed-waitqueue wait, assuming an input 'ret' in
+___wait_var_event() macro is used as a timeout value.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/completion.h | 4 ++--
- kernel/sched/completion.c  | 2 +-
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ include/linux/wait_bit.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/completion.h b/include/linux/completion.h
-index bd2c207481d6..3200b741de28 100644
---- a/include/linux/completion.h
-+++ b/include/linux/completion.h
-@@ -41,9 +41,9 @@ do {							\
-  */
- #define init_completion_map(x, m) init_completion(x)
- 
--static inline void complete_acquire(struct completion *x)
-+static inline void complete_acquire(struct completion *x, long timeout)
- {
--	sdt_might_sleep_start(&x->dmap);
-+	sdt_might_sleep_start_timeout(&x->dmap, timeout);
- }
- 
- static inline void complete_release(struct completion *x)
-diff --git a/kernel/sched/completion.c b/kernel/sched/completion.c
-index 3561ab533dd4..499b1fee9dc1 100644
---- a/kernel/sched/completion.c
-+++ b/kernel/sched/completion.c
-@@ -110,7 +110,7 @@ __wait_for_common(struct completion *x,
- {
- 	might_sleep();
- 
--	complete_acquire(x);
-+	complete_acquire(x, timeout);
- 
- 	raw_spin_lock_irq(&x->wait.lock);
- 	timeout = do_wait_for_common(x, action, timeout, state);
+diff --git a/include/linux/wait_bit.h b/include/linux/wait_bit.h
+index fe89282c3e96..3ef450d9a7c5 100644
+--- a/include/linux/wait_bit.h
++++ b/include/linux/wait_bit.h
+@@ -247,7 +247,7 @@ extern wait_queue_head_t *__var_waitqueue(void *p);
+ 	struct wait_bit_queue_entry __wbq_entry;			\
+ 	long __ret = ret; /* explicit shadow */				\
+ 									\
+-	sdt_might_sleep_start(NULL);					\
++	sdt_might_sleep_start_timeout(NULL, __ret);			\
+ 	init_wait_var_entry(&__wbq_entry, var,				\
+ 			    exclusive ? WQ_FLAG_EXCLUSIVE : 0);		\
+ 	for (;;) {							\
 -- 
 2.17.1
 
