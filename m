@@ -1,92 +1,52 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5D41A8F42;
-	Sat, 27 Jan 2024 00:11:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 103B0B669;
+	Sat, 27 Jan 2024 02:02:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1706314268; cv=none; b=O5NpNIhctE0RImdP4C6vbwb5SxVZMA6r9G+Hp9LgupNVU8B8dChNXegeFmf9YI7GP+KR+2egY4qRfFgesqO8KJcsf9yaaandq0UCcuOUAKOQ95xdjHB7J32GBAvUsAV/gGWaxkukh2cxuGM9iOmJ+sBVfGj9YYq77aUCuHXiPQk=
+	t=1706320965; cv=none; b=SocxD92mAofSS5iZYTQMCHmr+Ych8eKd7wPbkZFYRxMryYAsQF87G8HbZ72fQuT2kVwaqVb+9V9XYrFe/uL/80VopjxGK/gZ0OBA6WdifMRMvAwUjW73XoecyMLCobk4eB7kSXQl2mz1IGEzVY+eYs7uXI6UKvkf0gEOK3unXuA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1706314268; c=relaxed/simple;
-	bh=S9Le+RDOZE+/jyLKuh6bypOJf7kdPy6re1UaYeEIlBU=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=OHOkmh3+902RkfhorrZNMfwkxjMZgv39oPiJmQ3hQDaBE3MeMC8mNV0G4ijtk1qTbHmL0V1PVzIvz3oxveePPjJPFNIdmwbhVds3haM6PU06HqH7G4Ug9Kk00V2fF/FcoCjS4Li0Y67dzzLGS07RZc/PAeBgx4P34JYg6dv6b70=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=h8iFeVUU; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=7GFSu66W; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=h8iFeVUU; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=7GFSu66W; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="h8iFeVUU";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="7GFSu66W";
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="h8iFeVUU";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="7GFSu66W"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 9024A2239F;
-	Sat, 27 Jan 2024 00:11:04 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1706314264; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=xqFo+NbC+4N+nbk/+SEqgEGx6mP0Hq6kIaXRoErZ8as=;
-	b=h8iFeVUUvH4RAxVwM0JI/+x9dsw/JEoOjH0IFNebxdRbTRRU+wscf21xIxS1mspeZRznsp
-	gu43O7Nvp5wTnIGAwH7NdWGcbav+O+nM4tbmbdQfCYYQIvdPtwNqm/FPK5MCaYYYq4/RwV
-	yL5OlaJzPI0D50jb4hEgpISHHuV8/hg=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1706314264;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=xqFo+NbC+4N+nbk/+SEqgEGx6mP0Hq6kIaXRoErZ8as=;
-	b=7GFSu66WuFBqwaZq3waq1r+UvbzRMqcjW9BrGg/ZRqPh6plJe1mriBRe+7cEUa2Y2oBJzp
-	tNnc4Xewq7BphZBg==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1706314264; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=xqFo+NbC+4N+nbk/+SEqgEGx6mP0Hq6kIaXRoErZ8as=;
-	b=h8iFeVUUvH4RAxVwM0JI/+x9dsw/JEoOjH0IFNebxdRbTRRU+wscf21xIxS1mspeZRznsp
-	gu43O7Nvp5wTnIGAwH7NdWGcbav+O+nM4tbmbdQfCYYQIvdPtwNqm/FPK5MCaYYYq4/RwV
-	yL5OlaJzPI0D50jb4hEgpISHHuV8/hg=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1706314264;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=xqFo+NbC+4N+nbk/+SEqgEGx6mP0Hq6kIaXRoErZ8as=;
-	b=7GFSu66WuFBqwaZq3waq1r+UvbzRMqcjW9BrGg/ZRqPh6plJe1mriBRe+7cEUa2Y2oBJzp
-	tNnc4Xewq7BphZBg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id EC6F913998;
-	Sat, 27 Jan 2024 00:11:03 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id EhOnLBdKtGWQEQAAD6G6ig
-	(envelope-from <krisman@suse.de>); Sat, 27 Jan 2024 00:11:03 +0000
-From: Gabriel Krisman Bertazi <krisman@suse.de>
-To: ebiggers@kernel.org,
-	viro@zeniv.linux.org.uk,
-	jaegeuk@kernel.org,
-	tytso@mit.edu
-Cc: amir73il@gmail.com,
-	linux-ext4@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-fsdevel@vger.kernel.org,
-	Gabriel Krisman Bertazi <krisman@suse.de>
-Subject: [PATCH v4 12/12] libfs: Drop generic_set_encrypted_ci_d_ops
-Date: Fri, 26 Jan 2024 21:10:12 -0300
-Message-ID: <20240127001013.2845-13-krisman@suse.de>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20240127001013.2845-1-krisman@suse.de>
-References: <20240127001013.2845-1-krisman@suse.de>
+	s=arc-20240116; t=1706320965; c=relaxed/simple;
+	bh=24h+WuRGoN7wqwm49NhRNdDYEjBE64ZbJQubfRhaAQk=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=sSZjQ62crEOSG8OhVDfa06fWxW/0kZq00VcpuF9DWpWXQp7X/7QtICD1OgA7UxHQeK6KrHK85/7R5f+UEpgjRNcZafo1KjpSgSVVktDfmeh46ZMvGcAJP/EoA371mdIgZW0EUHHSqcUjiWTchFTBbyrTWnqywaLacdKNmxYmajs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4TMHrY4XFVz4f3jqF;
+	Sat, 27 Jan 2024 10:02:37 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id 0F0BE1A0272;
+	Sat, 27 Jan 2024 10:02:40 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.104.67])
+	by APP1 (Coremail) with SMTP id cCh0CgAX5g40ZLRlGJtmCA--.7377S5;
+	Sat, 27 Jan 2024 10:02:39 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	ritesh.list@gmail.com,
+	hch@infradead.org,
+	djwong@kernel.org,
+	willy@infradead.org,
+	zokeefe@google.com,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	chengzhihao1@huawei.com,
+	yukuai3@huawei.com,
+	wangkefeng.wang@huawei.com
+Subject: [PATCH v3 01/26] ext4: refactor ext4_da_map_blocks()
+Date: Sat, 27 Jan 2024 09:58:00 +0800
+Message-Id: <20240127015825.1608160-2-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20240127015825.1608160-1-yi.zhang@huaweicloud.com>
+References: <20240127015825.1608160-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -94,110 +54,105 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Spam-Level: *
-X-Spamd-Bar: +
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=h8iFeVUU;
-	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=7GFSu66W
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Spamd-Result: default: False [1.49 / 50.00];
-	 RCVD_VIA_SMTP_AUTH(0.00)[];
-	 SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	 TO_DN_SOME(0.00)[];
-	 R_MISSING_CHARSET(2.50)[];
-	 BROKEN_CONTENT_TYPE(1.50)[];
-	 RCVD_COUNT_THREE(0.00)[3];
-	 DKIM_TRACE(0.00)[suse.de:+];
-	 MX_GOOD(-0.01)[];
-	 RCPT_COUNT_SEVEN(0.00)[9];
-	 NEURAL_HAM_SHORT(-0.20)[-1.000];
-	 FROM_EQ_ENVFROM(0.00)[];
-	 MIME_TRACE(0.00)[0:+];
-	 ARC_NA(0.00)[];
-	 R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	 FROM_HAS_DN(0.00)[];
-	 DWL_DNSWL_MED(-2.00)[suse.de:dkim];
-	 FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	 TO_MATCH_ENVRCPT_ALL(0.00)[];
-	 MIME_GOOD(-0.10)[text/plain];
-	 NEURAL_HAM_LONG(-1.00)[-1.000];
-	 DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	 MID_CONTAINS_FROM(1.00)[];
-	 DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:dkim,suse.de:email];
-	 FUZZY_BLOCKED(0.00)[rspamd.com];
-	 FREEMAIL_CC(0.00)[gmail.com,vger.kernel.org,lists.sourceforge.net,suse.de];
-	 RCVD_TLS_ALL(0.00)[]
-X-Spam-Score: 1.49
-X-Rspamd-Queue-Id: 9024A2239F
-X-Spam-Flag: NO
+X-CM-TRANSID:cCh0CgAX5g40ZLRlGJtmCA--.7377S5
+X-Coremail-Antispam: 1UD129KBjvJXoWxJr17JF15uw4DuryfZr4rAFb_yoW8uFy7pr
+	9IkF93Wr1UXwnYgF4Iqr1UXF1fKa4YqrWDGrZ3Ww18Ary8AwnagFn8tF1fKa4rtrZ7ZF1Y
+	qF4rKry5uw15GrDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUBE14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jr4l82xGYIkIc2
+	x26xkF7I0E14v26r4j6ryUM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
+	xKxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v2
+	6r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_GFv_WrylIxkGc2
+	Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_
+	Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMI
+	IF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUszV8UUUUU
+	=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-No filesystems depend on it anymore, and it is generally a bad idea.
-Since all dentries should have the same set of dentry operations in
-case-insensitive filesystems, it should be propagated through ->s_d_op.
+From: Zhang Yi <yi.zhang@huawei.com>
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@suse.de>
+Refactor and cleanup ext4_da_map_blocks(), reduce some unnecessary
+parameters and branches, no logic changes.
+
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/libfs.c         | 34 ----------------------------------
- include/linux/fs.h |  1 -
- 2 files changed, 35 deletions(-)
+ fs/ext4/inode.c | 39 +++++++++++++++++----------------------
+ 1 file changed, 17 insertions(+), 22 deletions(-)
 
-diff --git a/fs/libfs.c b/fs/libfs.c
-index 0aa388ee82ff..35124987f162 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -1788,40 +1788,6 @@ static const struct dentry_operations generic_encrypted_dentry_ops = {
- };
- #endif
- 
--/**
-- * generic_set_encrypted_ci_d_ops - helper for setting d_ops for given dentry
-- * @dentry:	dentry to set ops on
-- *
-- * Casefolded directories need d_hash and d_compare set, so that the dentries
-- * contained in them are handled case-insensitively.  Note that these operations
-- * are needed on the parent directory rather than on the dentries in it, and
-- * while the casefolding flag can be toggled on and off on an empty directory,
-- * dentry_operations can't be changed later.  As a result, if the filesystem has
-- * casefolding support enabled at all, we have to give all dentries the
-- * casefolding operations even if their inode doesn't have the casefolding flag
-- * currently (and thus the casefolding ops would be no-ops for now).
-- *
-- * Encryption works differently in that the only dentry operation it needs is
-- * d_revalidate, which it only needs on dentries that have the no-key name flag.
-- * The no-key flag can't be set "later", so we don't have to worry about that.
-- */
--void generic_set_encrypted_ci_d_ops(struct dentry *dentry)
--{
--#if IS_ENABLED(CONFIG_UNICODE)
--	if (dentry->d_sb->s_encoding) {
--		d_set_d_op(dentry, &generic_ci_dentry_ops);
--		return;
--	}
--#endif
--#ifdef CONFIG_FS_ENCRYPTION
--	if (dentry->d_flags & DCACHE_NOKEY_NAME) {
--		d_set_d_op(dentry, &generic_encrypted_dentry_ops);
--		return;
--	}
--#endif
--}
--EXPORT_SYMBOL(generic_set_encrypted_ci_d_ops);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 61277f7f8722..5b0d3075be12 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1704,7 +1704,6 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 	/* Lookup extent status tree firstly */
+ 	if (ext4_es_lookup_extent(inode, iblock, NULL, &es)) {
+ 		if (ext4_es_is_hole(&es)) {
+-			retval = 0;
+ 			down_read(&EXT4_I(inode)->i_data_sem);
+ 			goto add_delayed;
+ 		}
+@@ -1749,26 +1748,9 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 		retval = ext4_ext_map_blocks(NULL, inode, map, 0);
+ 	else
+ 		retval = ext4_ind_map_blocks(NULL, inode, map, 0);
 -
- /**
-  * generic_set_sb_d_ops - helper for choosing the set of
-  * filesystem-wide dentry operations for the enabled features
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index c985d9392b61..c0cfc53f95bb 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -3201,7 +3201,6 @@ extern int generic_file_fsync(struct file *, loff_t, loff_t, int);
+-add_delayed:
+-	if (retval == 0) {
+-		int ret;
+-
+-		/*
+-		 * XXX: __block_prepare_write() unmaps passed block,
+-		 * is it OK?
+-		 */
+-
+-		ret = ext4_insert_delayed_block(inode, map->m_lblk);
+-		if (ret != 0) {
+-			retval = ret;
+-			goto out_unlock;
+-		}
+-
+-		map_bh(bh, inode->i_sb, invalid_block);
+-		set_buffer_new(bh);
+-		set_buffer_delay(bh);
+-	} else if (retval > 0) {
++	if (retval < 0)
++		goto out_unlock;
++	if (retval > 0) {
+ 		unsigned int status;
  
- extern int generic_check_addressable(unsigned, u64);
+ 		if (unlikely(retval != map->m_len)) {
+@@ -1783,11 +1765,24 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+ 		ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+ 				      map->m_pblk, status);
++		goto out_unlock;
+ 	}
  
--extern void generic_set_encrypted_ci_d_ops(struct dentry *dentry);
- extern void generic_set_sb_d_ops(struct super_block *sb);
++add_delayed:
++	/*
++	 * XXX: __block_prepare_write() unmaps passed block,
++	 * is it OK?
++	 */
++	retval = ext4_insert_delayed_block(inode, map->m_lblk);
++	if (retval)
++		goto out_unlock;
++
++	map_bh(bh, inode->i_sb, invalid_block);
++	set_buffer_new(bh);
++	set_buffer_delay(bh);
++
+ out_unlock:
+ 	up_read((&EXT4_I(inode)->i_data_sem));
+-
+ 	return retval;
+ }
  
- static inline bool sb_has_encoding(const struct super_block *sb)
 -- 
-2.43.0
+2.39.2
 
