@@ -1,28 +1,28 @@
 Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 948BD1F93C;
-	Sat, 27 Jan 2024 02:02:49 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8D8FA2110F;
+	Sat, 27 Jan 2024 02:02:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1706320971; cv=none; b=uw/WhfxGd6fHinJlmlAdrtWviB4xjRhqh7tvhCss7HSSdU/+NRCVyJ1cEbaHVVeBDkWo7/u9vjlbt+Mv6/MV6cr/X6dryIAH9yVtoDnEVof/5eQXHOqEaKaeqcNK8kHsQ0Y9m7DWOLDa98UomTMXy4R0quQFvYU5TtIi+kr7WxM=
+	t=1706320972; cv=none; b=gIfB3no91v22l9h5xIRvrLeq39tvj/M/jqG2hfzf80OA7hie6SuDpZalK0NUxpzKHmSyef2+Mtuzwrc7A9R38HHdhPcu/y8bP0HK9O0OaW4DNLTJc6wLqswM+iCeMYqezSjhvXd6pqAAczZaKOjEmVoZtceUJcbZPT7mNxoakT8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1706320971; c=relaxed/simple;
-	bh=OhxFV0efwTaZaL++22MbUE521mynGuX4NZYGl3tt6zQ=;
+	s=arc-20240116; t=1706320972; c=relaxed/simple;
+	bh=Djzt3gG9VGFpPyJJtELMB+1UlRsfxWfHCTLPbGz+oKk=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=kkVaMvMZw19Dd0GRfFjyYQ+endOs9/n7HAb77VwEdYOmwjXsavAeaKEog1oeCbSAgOTWFtoE8ZVC8yu6TovdlWxy/jFfTcIiW0ecn7Q13Po7znGDkDiTdV+fjSEsRWJlB80Qp81adXMxuMROhgPTwWFuyyqs8XQjT91CPVA3+a4=
+	 MIME-Version; b=P8xGD4hZnNGfQRewzHOV1c3uqPwqheOjWuBIddA3IlwKMJ/0qywMqZj3nXajyL2hPFWbJ4IyojsabLLfM4n53xn4UwsiU3VNAEDYDEjMhUXkr6ORpLqHEMvzjEsMPixr3htmqEHokibmnrjuK0OR1w/09L5H+Ov1jmLnsCVEc+s=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4TMHrh1nLXz4f3k67;
-	Sat, 27 Jan 2024 10:02:44 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4TMHrj47R7z4f3k6D;
+	Sat, 27 Jan 2024 10:02:45 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id A69671A017A;
-	Sat, 27 Jan 2024 10:02:46 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 01B511A016E;
+	Sat, 27 Jan 2024 10:02:48 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgAX5g40ZLRlGJtmCA--.7377S15;
-	Sat, 27 Jan 2024 10:02:46 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgAX5g40ZLRlGJtmCA--.7377S17;
+	Sat, 27 Jan 2024 10:02:47 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -41,9 +41,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com,
 	wangkefeng.wang@huawei.com
-Subject: [RFC PATCH v3 11/26] ext4: also mark extent as delalloc if it's been unwritten
-Date: Sat, 27 Jan 2024 09:58:10 +0800
-Message-Id: <20240127015825.1608160-12-yi.zhang@huaweicloud.com>
+Subject: [RFC PATCH v3 13/26] ext4: use reserved metadata blocks when splitting extent in endio
+Date: Sat, 27 Jan 2024 09:58:12 +0800
+Message-Id: <20240127015825.1608160-14-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20240127015825.1608160-1-yi.zhang@huaweicloud.com>
 References: <20240127015825.1608160-1-yi.zhang@huaweicloud.com>
@@ -54,10 +54,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgAX5g40ZLRlGJtmCA--.7377S15
-X-Coremail-Antispam: 1UD129KBjvJXoW7AF1xtFW8Ww48JrWxur4fGrg_yoW8GFWUpa
-	97C34rGr4UX348uayIyF1UZr1rKa4UKrWUtFs8uF1jya4fGF9a9F10yFyI9FyxKrWrJ3yF
-	qF48Kry8Cay8A37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:cCh0CgAX5g40ZLRlGJtmCA--.7377S17
+X-Coremail-Antispam: 1UD129KBjvJXoW7CF4rtw18JFykGr1kKw1xXwb_yoW8CrWUpr
+	93Ar18Gr409a409aykZ3WUG34rua43WF47GrZ0q3y29FWUCFyFgr47tFyrZFyrtrWxX3Wj
+	vF40v348AwnxAa7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUPI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -76,46 +76,44 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Mark extent as delalloc if it's been unwritten, this delalloc flag will
-last until write back. It would be useful to indicate the map length
-when writing data back after converting regular file's buffered write
-path to iomap.
+Now ext4 only reserved space for delalloc for data blocks in
+ext4_da_reserve_space(), not reserve space for meta blocks when
+allocating data blocks. Besides, if we enable dioread_nolock mount
+option, it also not reserve meta blocks for the unwritten extents to
+written extents conversion. In order to prevent data loss due to failed
+to allocate meta blocks when writing data back, we reserve 2% space or
+4096 blocks for meta data, and use EXT4_GET_BLOCKS_PRE_IO to do the
+potential split in advance. But all these two methods are just best
+efforts, if it's really running out of sapce, there is no difference
+between splitting extent when writing data back and when I/Os are
+completed, both will result in data loss.
+
+The best way is to reserve enough space for metadata. Before that, we
+can at least make sure that things will not get worse if we postpone
+splitting extent in endio. Plus, after converting regular file's
+buffered write path from buffer_head to iomap, splitting extents in
+endio becomes mandatory. Now, in preparation for the future conversion,
+let's use reserved sapce in endio too.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/inode.c | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
+ fs/ext4/extents.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 44033828db44..9ac9bb548a4c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1742,7 +1742,11 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
- #ifdef ES_AGGRESSIVE_TEST
- 		ext4_map_blocks_es_recheck(NULL, inode, map, &orig_map, 0);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 6b64319a7df8..48d6d125ec37 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3722,7 +3722,8 @@ static int ext4_convert_unwritten_extents_endio(handle_t *handle,
+ 			     (unsigned long long)map->m_lblk, map->m_len);
  #endif
--		return retval;
-+		if (ext4_es_is_delayed(&es) || ext4_es_is_written(&es))
-+			return retval;
-+
-+		down_read(&EXT4_I(inode)->i_data_sem);
-+		goto insert_extent;
- 	}
- 
- 	/*
-@@ -1770,9 +1774,11 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
- 				     inode->i_ino, retval, map->m_len);
- 			WARN_ON(1);
- 		}
--
-+insert_extent:
- 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
- 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
-+		if (status == EXTENT_STATUS_UNWRITTEN)
-+			status |= EXTENT_STATUS_DELAYED;
- 		ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
- 				      map->m_pblk, status);
- 		up_read(&EXT4_I(inode)->i_data_sem);
+ 		err = ext4_split_convert_extents(handle, inode, map, ppath,
+-						 EXT4_GET_BLOCKS_CONVERT);
++					EXT4_GET_BLOCKS_CONVERT |
++					EXT4_GET_BLOCKS_METADATA_NOFAIL);
+ 		if (err < 0)
+ 			return err;
+ 		path = ext4_find_extent(inode, map->m_lblk, ppath, 0);
 -- 
 2.39.2
 
