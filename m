@@ -1,48 +1,51 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6215B154C15
-	for <linux-ext4@vger.kernel.org>; Thu, 22 Feb 2024 15:55:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A4F4D14E2EE
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Feb 2024 15:55:18 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1708617313; cv=none; b=R2tN4UEZybl3x5HyLa0Wm8QIZ5y6JSWqFL8w0/H8qcBHU0weZXloPGOXe5ePjZJzhKggYHmuansMEwXA3pRh++YkrsCg4DzJ48liptLgCK1P4zKP2o0oFNGMCgJRX1H0aE+JeZyR79nVYfzTLJ8AK8h7U6AD63k1uSm2LiQbW3M=
+	t=1708617320; cv=none; b=NOzznFeIgiFYIp4TQcRZWO4ed5TJHVTrWrlID0iBo9NyqCbaeN92qcEs6Rya9a30Dii+I/VkP5Kkl2y95xcCqfBNJSMjp9y4dr/iN6cHHkfaiwbvYRijIQMoCyeiHR/LfwPuanPWuSjZp8Yp+zk7h97X7wrR9Lb8Fm5cdgCRLvk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1708617313; c=relaxed/simple;
-	bh=hspY6RH3t+LGEJg8cjSeq222SIA1BCVbAIFaMEKIwYA=;
+	s=arc-20240116; t=1708617320; c=relaxed/simple;
+	bh=/sAuWoxygbHnz3bPYEk5pc98OZZN/efFuyFbLWL+ycI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=fvTFy7atEmu7OtskcKzfjyG6JQo8cz6EwuHM9A/VRer7NGlVfqMfDHz9nTn6J5yjRzaPPcfMuQxQxRyvYY5zMl+l+xlNX8NJFs7LTeqMRn4EjdgHKhz8lSkdrvgwZjtna4JaraetyvwtWqkUEx+pSpG6sxsRsoYCnHSSi1uEERY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=XEWO5WzO; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=rpA9mgbSSB4omzBc22Sp3PUayyrzZfAf0j6kDqXBV2tQNNEVTZFrsW8YMciaRoivFGvF9DCxBGj8w3zivROyrkqpQbGZ2L/fEigXpcIIADALztQaIZ4+NV/GLRnzPjI1oF/VMNcvzPXou3YZ1oVj3PIfBZ8z0Dd6xnbu5cABnX8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=PxY2RfhA; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="XEWO5WzO"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="PxY2RfhA"
 Received: from cwcc.thunk.org (pool-173-48-102-198.bstnma.fios.verizon.net [173.48.102.198])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 41MFsgsx030846
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 41MFseXX030787
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 22 Feb 2024 10:54:43 -0500
+	Thu, 22 Feb 2024 10:54:41 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1708617284; bh=RsU6dWPMTxtwXU+swsq0FRs5IS4Rl+7HRm70Qkf2hj8=;
+	t=1708617283; bh=Tw39zUJjdOXe0uc8tGlhBxpYxPbuviy9TTm3QaYl5P4=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=XEWO5WzOrJD4P3WTr+0iAwiP5oa3eULhymabj6h6MebNMwLHpWAdSYWKyawEiEvQq
-	 2CNsAd78kuRrjvJ4abVjvg8IbRVuw2hhinnIteptVGNlQJw9AKeUcW0mtaek7MjwvU
-	 /MAMmcab75V8BAX68+ac1soaADmqrwCs3bsQcHC4h85GohUgLqUULt0BirYZUt+vq2
-	 tTVx2twSEln2ncgCn1iThhSoE7dVzopvlE9Di3HrXw13Nk/8wtyQFDrvfs0m1ohvhg
-	 FXR7bfwBR1pFHv3N/3YEbD+/mWYkK4r+AVLYm1tZRdj7JrofGCEZ6notT+lia7ebBi
-	 ufDYzjIl0RWgg==
+	b=PxY2RfhAxGuhzUwdu0P3DJ6S97aV0dSUEXsmJ7GlKiVF21cUmtEwPyWvz2y4hnDiG
+	 bvOh4O2+YQbraST+paOtrw4GDht926QQ04i/OgeT/7vHJmluJdsbtCoX/9A9Z90r68
+	 yMTcQHjRL1QIOktmobcK3rClwOy7DSgH+tuxthOmmwmvg9+jdWdj1AZegYAXSXSIO9
+	 SGGTdo1+4kOOQqwnpb3FLCa2HOE9T/7excuepn4mBEs7EKLkDNCqsyMuY1Y5awNqmy
+	 PU+PJhS4Xfuu+l+qFD89in/j+aPydLrT3K4cRCFdI65MEZC1cUvl+8V4RIXzTO3H9R
+	 wJzKafkwl/ayQ==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id 42DCE15C14B5; Thu, 22 Feb 2024 10:54:40 -0500 (EST)
+	id 3887415C1414; Thu, 22 Feb 2024 10:54:40 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org, Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org, Baokun Li <libaokun1@huawei.com>
 Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca, jack@suse.cz,
-        yi.zhang@huawei.com, chengzhihao1@huawei.com, yukuai3@huawei.com
-Subject: Re: [PATCH] ext4: add a hint for block bitmap corrupt state in mb_groups
-Date: Thu, 22 Feb 2024 10:54:36 -0500
-Message-ID: <170861726752.823885.5003769926749986066.b4-ty@mit.edu>
+        ritesh.list@gmail.com, ojaswin@linux.ibm.com,
+        linux-kernel@vger.kernel.org, yi.zhang@huawei.com,
+        yangerkun@huawei.com, chengzhihao1@huawei.com, yukuai3@huawei.com,
+        stable@kernel.org
+Subject: Re: [PATCH v2] ext4: correct best extent lstart adjustment logic
+Date: Thu, 22 Feb 2024 10:54:31 -0500
+Message-ID: <170861726753.823885.11358303915766853695.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20240119061154.1525781-1-yi.zhang@huaweicloud.com>
-References: <20240119061154.1525781-1-yi.zhang@huaweicloud.com>
+In-Reply-To: <20240201141845.1879253-1-libaokun1@huawei.com>
+References: <20240201141845.1879253-1-libaokun1@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,20 +56,22 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Fri, 19 Jan 2024 14:11:54 +0800, Zhang Yi wrote:
-> If one group is marked as block bitmap corrupted, its free blocks cannot
-> be used and its free count is also deducted from the global
-> sbi->s_freeclusters_counter. User might be confused about the absent
-> free space because we can't query the information about corrupted block
-> groups except unreliable error messages in syslog. So add a hint to show
-> block bitmap corrupted groups in mb_groups.
+On Thu, 01 Feb 2024 22:18:45 +0800, Baokun Li wrote:
+> When yangerkun review commit 93cdf49f6eca ("ext4: Fix best extent lstart
+> adjustment logic in ext4_mb_new_inode_pa()"), it was found that the best
+> extent did not completely cover the original request after adjusting the
+> best extent lstart in ext4_mb_new_inode_pa() as follows:
+> 
+>   original request: 2/10(8)
+>   normalized request: 0/64(64)
+>   best extent: 0/9(9)
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: add a hint for block bitmap corrupt state in mb_groups
-      commit: 68ee261fb15457ecb17e3683cb4e6a4792ca5b71
+[1/1] ext4: correct best extent lstart adjustment logic
+      commit: 4fbf8bc733d14bceb16dda46a3f5e19c6a9621c5
 
 Best regards,
 -- 
