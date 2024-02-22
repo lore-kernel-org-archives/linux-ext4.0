@@ -1,48 +1,47 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B19A14E2EC
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B22614E2F5
 	for <linux-ext4@vger.kernel.org>; Thu, 22 Feb 2024 15:54:51 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1708617293; cv=none; b=SbsodO96KMPcxVVtVwC54XDTEUFXt8ODrPkJQMsSf5u1WRhvR1jl4H4ydh63OUxAHzV2+ip5nDq5ZJg/D63t7c2ZISFCLDngQl4+d4Wttp+Z5SxLLeJYW2Is0UKGEDJ755kqO6agQ0CtYU8tyH7/W9O8FfvJbGfHjekF6ZQYrE4=
+	t=1708617293; cv=none; b=hgEPorkgLa7XZ/hfkYeDrq6bFS2m3dm7+N0QjhPnq2bULqy/5nT5OL5HP/IJLf2oFQ/P36LJdbovKwQmHxX5gBUwP0vF6kuGnhq+7RkgAja4AvRyj8igHmx/9ZGvcvdLdcdpA3nmZh1dvMA+Tj+docq0+1WcbdHFrcS/dIZNVrs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1708617293; c=relaxed/simple;
-	bh=j3ogpyh0GN0FFe2AaErEZEHmLcenYybX5HdtQJ3EA0M=;
+	bh=vh3ySbrlpw9hAwtgM3UcTxVpEpvYM1fkdRySX3Socwc=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=hdegru8bAYI+jmoiGgimu5QFch/S7XfsVGn3drXYOe0NXR12EIoTMyqtVSN9ka2DjIuCMTksd9D4y5BhS8GOr5UXnn0eXX9ALnSFSCaLkl+KfSQJE+2yxfV4Sif4aM2RUBPEw4yG8goy+KHi9uydjht22UnZ2Yq1Ps7mjWzMzbw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=YokgSkvb; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=GhzfanuDh+MnIaJxFU7KaV2DGqDWe7VHKIw1ThpyMmQLeIPs9XjtIKA189nbCCQ8TmRGkEQyNjZQECj3X6NdPqKykhYKs8884TWD+Pu1nxAKb72dfz7r2iBMJzHNvtKrLRHwoTVi3gGPS/TMu+3CT7r4t1agJkRLySXRvUydnUQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=hOoYk0Iq; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="YokgSkvb"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="hOoYk0Iq"
 Received: from cwcc.thunk.org (pool-173-48-102-198.bstnma.fios.verizon.net [173.48.102.198])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 41MFsgLs030833
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 41MFseCg030786
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 22 Feb 2024 10:54:43 -0500
+	Thu, 22 Feb 2024 10:54:41 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1708617284; bh=WRJ57KloqdhFQgn9Su2/MtOaFC3xCBvzRZgGq6/Sstk=;
+	t=1708617282; bh=JXtydpAxqdnK/7VL2sFHyIioph6Yglnc57QLs6ufLCM=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=YokgSkvb6rKjKJBxc/NVxD2Dn/MRrCzt0r26Y0/SC7m+1NIvAMMapkaBzA+Zif9Fv
-	 BSJvR4nTXdZCzlcncUNPINWzgAWzSaf/HbBxig7VWexp9Hffz1Uo/09TAZ0sJjlRET
-	 cNuTjxOqiZKABsMn6q8O80HetdPZg80aUc67NVUcpG6OwjY0aOkqyGR7ygdCYQggHF
-	 2dnWm84w+DbD7J3V2MCs8AcUIcuQOmH2yynU71knWDAyke2TAwB9174UjHZ29oC6Mx
-	 wn7inw6aIV5dc1a0tqE74cgsSYbHqLd4Q20XLgkH+IneBXs0rIKdmwIKf7OAUDcbeu
-	 4qSQKby/F1DFQ==
+	b=hOoYk0IqHjow9q8Mj5ThgNG6fI1GNoWv+8VHaj4A5SjyYuVVksw4yhwQ3H+u3HbtZ
+	 nHtqcAK3nc2oaXQnxIQbQb3APu5UyhHrjUcw/EISCS7t0hXc8F2egQbh63eQGetm+V
+	 ec3trUwpWCCEBym1chwmcl5vdChfTATFwxf2vXyq+VLWMBjO9+Tan+7z/q9pzPyumk
+	 YouhVfc+xdK9T6qgYMkAkr5Bg8YKpfgKKKLdvrgIbQTyQydj3A5LMDZHfuNhEFWnoq
+	 ZyhUt1LLPDRLIMoTlmzXzGLBkSq91w0v9DFTyf+4WYD982/XULAb0jo2iMrJsYRXFi
+	 /LKVCl9o5t6bg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id 3CC6D15C145A; Thu, 22 Feb 2024 10:54:40 -0500 (EST)
+	id 3434A15C0337; Thu, 22 Feb 2024 10:54:40 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: adilger.kernel@dilger.ca, Cheng Nie <niecheng1@uniontech.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: fix the comment of ext4_map_blocks()/ext4_ext_map_blocks()
-Date: Thu, 22 Feb 2024 10:54:33 -0500
-Message-ID: <170861726751.823885.13414859909628867406.b4-ty@mit.edu>
+To: Jan Kara <jack@suse.cz>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: Don't report EOPNOTSUPP errors from discard
+Date: Thu, 22 Feb 2024 10:54:29 -0500
+Message-ID: <170861726753.823885.4373903569687360726.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20240118062511.28276-1-niecheng1@uniontech.com>
-References: <20240118062511.28276-1-niecheng1@uniontech.com>
+In-Reply-To: <20240213101601.17463-1-jack@suse.cz>
+References: <20240213101601.17463-1-jack@suse.cz>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,17 +52,20 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Thu, 18 Jan 2024 14:25:11 +0800, Cheng Nie wrote:
-> this comment of ext4_map_blocks()/ext4_ext_map_blocks() need
-> update after commit c21770573319("ext4: Define a new set of
-> flags for ext4_get_blocks()").
+On Tue, 13 Feb 2024 11:16:01 +0100, Jan Kara wrote:
+> When ext4 is mounted without journal, with discard mount option, and on
+> a device not supporting trim, we print error for each and every freed
+> extent. This is not only useless but actively harmful. Instead ignore
+> the EOPNOTSUPP error. Trim is only advisory anyway and when the
+> filesystem has journal we silently ignore trim error as well.
 > 
 > 
+> [...]
 
 Applied, thanks!
 
-[1/1] ext4: fix the comment of ext4_map_blocks()/ext4_ext_map_blocks()
-      commit: 547e64bda9c7bd6bda2d20a329bb0f60258fe19b
+[1/1] ext4: Don't report EOPNOTSUPP errors from discard
+      commit: f3edd83e2e71dd393c0f485be103a4b35f9ef41a
 
 Best regards,
 -- 
