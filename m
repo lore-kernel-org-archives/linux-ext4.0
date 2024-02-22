@@ -1,50 +1,49 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 06AA514E2EC
-	for <linux-ext4@vger.kernel.org>; Thu, 22 Feb 2024 15:54:54 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5976C14E2EC
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Feb 2024 15:54:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1708617296; cv=none; b=gaheqNQ9RfKyqjRoZWPMFIrykfYgsttZk/onn35cPmrLRpOwhEZwg8i4QqSNvc8xuCjgtgtVEVMKLUd4JzuyvtwDh4hUxm3BSN6+cYRNWW1+AhyjeRpPzJUY3ch23iywDid1bZ9+jwZbQ4h6SLT/CT/VJu5gq3+Nk2ProYMGG7Y=
+	t=1708617299; cv=none; b=sN0AWPy8VwlgCy/88hI+ifhrdw8RHZUDIsZgjiRwAFYecgvQL4P/FmfXGPAN82qqbrXP4XiBtuTMc49Ppy/2iVtKe6O0X0+HtQCsnaQwM5sCpEKym3Ef6hjD0ZQdgxybeESZZIze9GwOmg5PhjWcOKw+SgZ2/suuwOE7FP0ykMc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1708617296; c=relaxed/simple;
-	bh=3gudls+qOVnJJ2Z6I9k9ViRZ5gG6pFI5d3hFmaBqiQk=;
+	s=arc-20240116; t=1708617299; c=relaxed/simple;
+	bh=JfkoAz50awV0qbSc4V8fA6NAcDNFyoem9HJGiEOJz1I=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=pUSsBF8lCD927lkqJtc+hF/a0Fli7Nyb6nmwNJFGv//Bc/kmAmiZOyrRWV38odRdalwPYTnBNVLOiN6uXhBjankotyLtFpKeCp9PR42EKCHw7tFD6PiX0Ajf3accIYh+8cISx7Jj5VG8ngs4OmONe0hlSXFQE7DKOzIT6TmHIHY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=nB0CSrmR; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=HEC3wPvkoLQoSoWxEIFWIthjSaxXGK1+2an2lZsg88fiUKpiveFEIVDSrWh/6pBEZte22wZ1J4+1Gr4tWJfFhGxMcNqsYBdF+iiwh8ODuGrJX6nkGBUs9a1u/zvRo81l9JqOAM2AfW5UDjq8prv7D3RdlX/OEJhRPLcbf59CC10=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=MNaqjWLp; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="nB0CSrmR"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="MNaqjWLp"
 Received: from cwcc.thunk.org (pool-173-48-102-198.bstnma.fios.verizon.net [173.48.102.198])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 41MFsecV030805
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 41MFsgVA030847
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 22 Feb 2024 10:54:41 -0500
+	Thu, 22 Feb 2024 10:54:43 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1708617282; bh=4KEodA6HsyUJpOvCLWhuiNIE3cmXsNuj9MIhHoVGIbg=;
+	t=1708617284; bh=va26ubDfjVqf3AasDsVt7PlhmdIYT6yVBEJCl7RCZ30=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=nB0CSrmRqnuPeJ6MRMK9Lmu+KQ1kiW6i+QPDCS9EHP61D74dRvAl7ReMpf4OGR+ru
-	 llQPE/s8QafEMOwvPx8PvsnPzYJBlYo3KGWa+sj1u6HKvMoUwwNHCv9HkaTZZ3bAm0
-	 Sc7S30hAxxAakHQkj8Cwwj7lb9S8khafxxA0t7QKzP7jOkff70DOpFx9uVqUX+q6rv
-	 q3UG3UZQaxXwuYq9D/OlD3qzC5SyBjccYz+8t+mHRzqgTAXQZ5cHbv+nQNiiZe0/Y+
-	 pKHwQU8ThMPnPQkoXdE05idJjyCov2r54JFTF5w0bZJBmOru75B0pIEgojIqxaX5SW
-	 pc0XEKO1Nu8bw==
+	b=MNaqjWLpudSxaj/AaFOC0P7YTx4DaEB9lUWtJ3bsQpzmFPpTc8hk5Ls1gHY3ECQK8
+	 rRwsrKFot3+in98amj+uWbVshXUHdDJemZztPzallI9sPZRRYvmC/TZYMuCwkgUj1E
+	 segZ5B/e0HUAprShlmxk0U8aGUHPKEDCwcnpSSPqfP0BN7Qc+EpOT5joJ+2bHLMbCJ
+	 21jhUKZsQtMdecOkhy/PIIATYkDYxc7kRA9LUG/riPsSDlYD+V0Z3zdpGcmQJGwcuW
+	 BT6iXzAXBLv1Krn1gFR/ieEF353VA1+SupSoa0/+Emto3+Aztn9tjGm3/PJ7IV/yfD
+	 60Ye/VLMWg5MA==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id 3A90F15C1443; Thu, 22 Feb 2024 10:54:40 -0500 (EST)
+	id 40DD215C1489; Thu, 22 Feb 2024 10:54:40 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Maximilian Heyne <mheyne@amazon.de>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, ravib@amazon.com, stable@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Yongqiang Yang <xiaoqiangnk@gmail.com>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] ext4: fix corruption during on-line resize
-Date: Thu, 22 Feb 2024 10:54:32 -0500
-Message-ID: <170861726754.823885.5472128846628604301.b4-ty@mit.edu>
+To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        Ye Bin <yebin10@huawei.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+        jack@suse.cz
+Subject: Re: [PATCH] ext4: forbid commit inconsistent quota data when errors=remount-ro
+Date: Thu, 22 Feb 2024 10:54:35 -0500
+Message-ID: <170861726752.823885.428276685390671750.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20240215155009.94493-1-mheyne@amazon.de>
-References: <20240215155009.94493-1-mheyne@amazon.de>
+In-Reply-To: <20240119062908.3598806-1-yebin10@huawei.com>
+References: <20240119062908.3598806-1-yebin10@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -55,20 +54,25 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Thu, 15 Feb 2024 15:50:09 +0000, Maximilian Heyne wrote:
-> We observed a corruption during on-line resize of a file system that is
-> larger than 16 TiB with 4k block size. With having more then 2^32 blocks
-> resize_inode is turned off by default by mke2fs. The issue can be
-> reproduced on a smaller file system for convenience by explicitly
-> turning off resize_inode. An on-line resize across an 8 GiB boundary (the
-> size of a meta block group in this setup) then leads to a corruption:
+On Fri, 19 Jan 2024 14:29:08 +0800, Ye Bin wrote:
+> There's issue as follows When do IO fault injection test:
+> Quota error (device dm-3): find_block_dqentry: Quota for id 101 referenced but not present
+> Quota error (device dm-3): qtree_read_dquot: Can't read quota structure for id 101
+> Quota error (device dm-3): do_check_range: Getting block 2021161007 out of range 1-186
+> Quota error (device dm-3): qtree_read_dquot: Can't read quota structure for id 661
+> 
+> Now, ext4_write_dquot()/ext4_acquire_dquot()/ext4_release_dquot() may commit
+> inconsistent quota data even if process failed. This may lead to filesystem
+> corruption.
+> To ensure filesystem consistent when errors=remount-ro there is need to call
+> ext4_handle_error() to abort journal.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: fix corruption during on-line resize
-      commit: 3a944549dd26ccaf1f898a4be952e75a42bf37dd
+[1/1] ext4: forbid commit inconsistent quota data when errors=remount-ro
+      commit: d8b945fa475f13d787df00c26a6dc45a3e2e1d1d
 
 Best regards,
 -- 
