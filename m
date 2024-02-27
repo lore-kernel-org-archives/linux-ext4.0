@@ -1,142 +1,194 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0F8B31474B0;
-	Tue, 27 Feb 2024 16:16:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE73D153BEF;
+	Tue, 27 Feb 2024 21:28:26 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1709050562; cv=none; b=Qoqt+3b9FXXZiDzqfttLPhjJi5kRKEDZ33z5+rEdSyEX825qV+uKf4wFAJXaxwinadPYbWNO0i3f06kXwfnb1VPwmN0afUW8hq4ayMpDt3iXDZCWV2LnUNQ7ABvVDMwbvC18CML03BjZJlCvZzcSMn50BM0QgBC2yuZc5MwHPhY=
+	t=1709069308; cv=none; b=oT3WEqBOVCJFHYJCacmOqR9iAMIwtBJ9wSNV+Gmc8VAdOtaiB+Cji7gx3XxbH0gIEd7rJtxTJDKLxXqYC1NMyf4Bx7Xo7ac1yz9uL7cjVx3uL5Xl8+Iati1t/QszeZrw6INnEse0xbakOIIemcmgC9mo+N3xO6JtLBkIIJLuoPE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1709050562; c=relaxed/simple;
-	bh=rAUcFZjcQztUVMKvFPprvfUZ+DjGOWduITQ7I1pUtvM=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=cN2EaP3CUHmHuT3ypwmEsLJci7WZJcUlyt+fesNeoMLcuTJBUVzzqsmKT7LAgnOx5CXJHqlf/cVf3QTC8QJxHOy5cas0HtHQ6Ru/TrTFyBXqnTe1eFvBqAE3xBKM0roiKrvqkLdvw3gZ37VFzjYRrP3zl6X6hiDP1u72tMgEySI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Ef3Jo3Li; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1709069308; c=relaxed/simple;
+	bh=Q2Y6vBk1Le9pCisVKdF1YWPazcSd0f9HIiA0VPoszYs=;
+	h=From:To:Cc:Subject:In-Reply-To:References:Date:Message-ID:
+	 MIME-Version:Content-Type; b=Z2/vFFaTkyI06RvCdfx70QK9W5AV6gK9mam91T4999rNuEzDd6hZ8MlWmrT5/KV+ot981bVS9TWL6Bhq5j9CgcdV5fPcmQLpdP75W+SA/W+3sL02uYptjKa6OcOIGvpRxWQzVSl73nV6hNiAY1/HrweDqFFr/S8cdJZITCcv5UA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=l4vBZT7i; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=zmtl8qHB; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=l4vBZT7i; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=zmtl8qHB; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Ef3Jo3Li"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5EEFCC433C7;
-	Tue, 27 Feb 2024 16:15:52 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1709050560;
-	bh=rAUcFZjcQztUVMKvFPprvfUZ+DjGOWduITQ7I1pUtvM=;
-	h=From:To:Cc:Subject:Date:From;
-	b=Ef3Jo3LiGmBxEmLRS8oa+hTrClXtsgp2WW1PQEQPevSva8so4N+zEbyUT/2yVDpSh
-	 5aAb3gQHgmrtbqXrVmw8IXJTlNkgtNBPZiOztf11xNwbYeLjVUPBarg/hEg6isFpcG
-	 FuF7OltHj13mo7rXMuLASrqP49K6B70U0MydPwG7VhCEqJcf/1Nn9/wpU6xPVc/fj8
-	 qZRpvNxgoqwny7lqmC8J0rVvuPHOlG8zfCVxoLjfsO/reQQ+TXJzcCAEUbPf2E7t8h
-	 /JzVMQKTS7VKRqFG7f0hDyt9VjJJjVPZcsMdAsqY1yIe7tvt9Lfk+KI12Npu2Gjur3
-	 sxuYunja7y9jg==
-From: Arnd Bergmann <arnd@kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Kemeng Shi <shikemeng@huaweicloud.com>
-Cc: Arnd Bergmann <arnd@arndb.de>,
-	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH] ext4: kunit: use dynamic inode allocation
-Date: Tue, 27 Feb 2024 17:15:39 +0100
-Message-Id: <20240227161548.2929881-1-arnd@kernel.org>
-X-Mailer: git-send-email 2.39.2
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="l4vBZT7i";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="zmtl8qHB";
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="l4vBZT7i";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="zmtl8qHB"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id BBE171FD92;
+	Tue, 27 Feb 2024 21:28:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1709069304; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=idN97xqKgdpGpjCD/ggWuEREFt+8JtJCxbC+SceKShg=;
+	b=l4vBZT7i8u70lV2TrPudoBzr/q0TNxKxaaG3sHE2uANRrCToECWXrI/7+OEbjJXTODGMy8
+	fy414AJcAON8u+pE30eQOcUCd4RDl0t43bURTOrtCM3qw7gzXs+WOIjg8vj7nsZiZ3Rygz
+	p3BonInGGKqE/iE8pwTZ9LCxSiNCZ6E=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1709069304;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=idN97xqKgdpGpjCD/ggWuEREFt+8JtJCxbC+SceKShg=;
+	b=zmtl8qHB06Ce+bk6C6JIQwJ2knV4oay5i8p7wz6/mzwXnD4Oa9mJWsRSGQhYnMfgFnbmaq
+	+GwNLTAaUOmvLOCA==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1709069304; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=idN97xqKgdpGpjCD/ggWuEREFt+8JtJCxbC+SceKShg=;
+	b=l4vBZT7i8u70lV2TrPudoBzr/q0TNxKxaaG3sHE2uANRrCToECWXrI/7+OEbjJXTODGMy8
+	fy414AJcAON8u+pE30eQOcUCd4RDl0t43bURTOrtCM3qw7gzXs+WOIjg8vj7nsZiZ3Rygz
+	p3BonInGGKqE/iE8pwTZ9LCxSiNCZ6E=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1709069304;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=idN97xqKgdpGpjCD/ggWuEREFt+8JtJCxbC+SceKShg=;
+	b=zmtl8qHB06Ce+bk6C6JIQwJ2knV4oay5i8p7wz6/mzwXnD4Oa9mJWsRSGQhYnMfgFnbmaq
+	+GwNLTAaUOmvLOCA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 80C0713ABA;
+	Tue, 27 Feb 2024 21:28:24 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id MfkhGfhT3mXQHAAAD6G6ig
+	(envelope-from <krisman@suse.de>); Tue, 27 Feb 2024 21:28:24 +0000
+From: Gabriel Krisman Bertazi <krisman@suse.de>
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: viro@zeniv.linux.org.uk,  jaegeuk@kernel.org,  tytso@mit.edu,
+  amir73il@gmail.com,  linux-ext4@vger.kernel.org,
+  linux-f2fs-devel@lists.sourceforge.net,  linux-fsdevel@vger.kernel.org,
+  brauner@kernel.org
+Subject: Re: [PATCH v7 00/10] Set casefold/fscrypt dentry operations through
+ sb->s_d_op
+In-Reply-To: <20240227063614.GB1126@sol.localdomain> (Eric Biggers's message
+	of "Mon, 26 Feb 2024 22:36:14 -0800")
+Organization: SUSE
+References: <20240221171412.10710-1-krisman@suse.de>
+	<20240227063614.GB1126@sol.localdomain>
+Date: Tue, 27 Feb 2024 16:28:23 -0500
+Message-ID: <87o7c161hk.fsf@mailhost.krisman.be>
+User-Agent: Gnus/5.13 (Gnus v5.13)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=l4vBZT7i;
+	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=zmtl8qHB
+X-Spamd-Result: default: False [-4.81 / 50.00];
+	 ARC_NA(0.00)[];
+	 RCVD_VIA_SMTP_AUTH(0.00)[];
+	 R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	 SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	 FROM_HAS_DN(0.00)[];
+	 TO_DN_SOME(0.00)[];
+	 FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	 TO_MATCH_ENVRCPT_ALL(0.00)[];
+	 MIME_GOOD(-0.10)[text/plain];
+	 RCVD_DKIM_ARC_DNSWL_HI(-1.00)[];
+	 HAS_ORG_HEADER(0.00)[];
+	 RCVD_COUNT_THREE(0.00)[3];
+	 DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	 DKIM_TRACE(0.00)[suse.de:+];
+	 MX_GOOD(-0.01)[];
+	 RCPT_COUNT_SEVEN(0.00)[9];
+	 DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:dkim];
+	 FUZZY_BLOCKED(0.00)[rspamd.com];
+	 FROM_EQ_ENVFROM(0.00)[];
+	 MIME_TRACE(0.00)[0:+];
+	 FREEMAIL_CC(0.00)[zeniv.linux.org.uk,kernel.org,mit.edu,gmail.com,vger.kernel.org,lists.sourceforge.net];
+	 RCVD_TLS_ALL(0.00)[];
+	 BAYES_HAM(-3.00)[100.00%];
+	 RCVD_IN_DNSWL_HI(-0.50)[2a07:de40:b281:106:10:150:64:167:received]
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Rspamd-Queue-Id: BBE171FD92
+X-Spam-Level: 
+X-Spam-Score: -4.81
+X-Spam-Flag: NO
 
-From: Arnd Bergmann <arnd@arndb.de>
+Eric Biggers <ebiggers@kernel.org> writes:
 
-Storing an inode structure on the stack pushes some functions over the warning
-limit for stack frame size:
+> On Wed, Feb 21, 2024 at 12:14:02PM -0500, Gabriel Krisman Bertazi wrote:
+>> 
+>> When case-insensitive and fscrypt were adapted to work together, we moved the
+>> code that sets the dentry operations for case-insensitive dentries(d_hash and
+>> d_compare) to happen from a helper inside ->lookup.  This is because fscrypt
+>> wants to set d_revalidate only on some dentries, so it does it only for them in
+>> d_revalidate.
+>> 
+>> But, case-insensitive hooks are actually set on all dentries in the filesystem,
+>> so the natural place to do it is through s_d_op and let d_alloc handle it [1].
+>> In addition, doing it inside the ->lookup is a problem for case-insensitive
+>> dentries that are not created through ->lookup, like those coming
+>> open-by-fhandle[2], which will not see the required d_ops.
+>> 
+>> This patchset therefore reverts to using sb->s_d_op to set the dentry operations
+>> for case-insensitive filesystems.  In order to set case-insensitive hooks early
+>> and not require every dentry to have d_revalidate in case-insensitive
+>> filesystems, it introduces a patch suggested by Al Viro to disable d_revalidate
+>> on some dentries on the fly.
+>> 
+>> It survives fstests encrypt and quick groups without regressions.  Based on
+>> v6.7-rc1.
+>> 
+>> [1] https://lore.kernel.org/linux-fsdevel/20231123195327.GP38156@ZenIV/
+>> [2] https://lore.kernel.org/linux-fsdevel/20231123171255.GN38156@ZenIV/
+>> 
+>> Gabriel Krisman Bertazi (10):
+>>   ovl: Always reject mounting over case-insensitive directories
+>>   fscrypt: Factor out a helper to configure the lookup dentry
+>>   fscrypt: Drop d_revalidate for valid dentries during lookup
+>>   fscrypt: Drop d_revalidate once the key is added
+>>   libfs: Merge encrypted_ci_dentry_ops and ci_dentry_ops
+>>   libfs: Add helper to choose dentry operations at mount-time
+>>   ext4: Configure dentry operations at dentry-creation time
+>>   f2fs: Configure dentry operations at dentry-creation time
+>>   ubifs: Configure dentry operations at dentry-creation time
+>>   libfs: Drop generic_set_encrypted_ci_d_ops
+>> 
+>>  fs/crypto/hooks.c       | 15 ++++------
+>>  fs/ext4/namei.c         |  1 -
+>>  fs/ext4/super.c         |  1 +
+>>  fs/f2fs/namei.c         |  1 -
+>>  fs/f2fs/super.c         |  1 +
+>>  fs/libfs.c              | 62 +++++++++++---------------------------
+>>  fs/overlayfs/params.c   | 14 +++++++--
+>>  fs/ubifs/dir.c          |  1 -
+>>  fs/ubifs/super.c        |  1 +
+>>  include/linux/fs.h      | 11 ++++++-
+>>  include/linux/fscrypt.h | 66 ++++++++++++++++++++++++++++++++++++-----
+>>  11 files changed, 105 insertions(+), 69 deletions(-)
+>> 
+>
+> Looks good,
+>
+> Reviewed-by: Eric Biggers <ebiggers@google.com>
 
-In file included from fs/ext4/mballoc.c:7039:
-fs/ext4/mballoc-test.c:506:13: error: stack frame size (1032) exceeds limit (1024) in 'test_mark_diskspace_used' [-Werror,-Wframe-larger-than]
-  506 | static void test_mark_diskspace_used(struct kunit *test)
-      |             ^
+Thank you for you reviews, Eric. I really appreciate them.
 
-Use kunit_kzalloc() for all inodes. There may be a better way to do it by
-preallocating the inode, which would result in a larger rework.
+Since this been on the list for a while, I pushed it to get some
+linux-next testing and, should nothing arise or no one else comments,
+will get to Linus soon.
 
-Fixes: 2b81493f8eb6 ("ext4: Add unit test for ext4_mb_mark_diskspace_used")
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
----
- fs/ext4/mballoc-test.c | 27 +++++++++++++++++++++------
- 1 file changed, 21 insertions(+), 6 deletions(-)
+Thanks,
 
-diff --git a/fs/ext4/mballoc-test.c b/fs/ext4/mballoc-test.c
-index 12d0b22cabe1..3b43301054b6 100644
---- a/fs/ext4/mballoc-test.c
-+++ b/fs/ext4/mballoc-test.c
-@@ -332,14 +332,19 @@ static void mbt_kunit_exit(struct kunit *test)
- static void test_new_blocks_simple(struct kunit *test)
- {
- 	struct super_block *sb = (struct super_block *)test->priv;
--	struct inode inode = { .i_sb = sb, };
-+	struct inode *inode;
- 	struct ext4_allocation_request ar;
- 	ext4_group_t i, goal_group = TEST_GOAL_GROUP;
- 	int err = 0;
- 	ext4_fsblk_t found;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
--	ar.inode = &inode;
-+	inode = kunit_kzalloc(test, sizeof(*inode), GFP_KERNEL);
-+	if (!inode)
-+		return;
-+
-+	inode->i_sb = sb;
-+	ar.inode = inode;
- 
- 	/* get block at goal */
- 	ar.goal = ext4_group_first_block_no(sb, goal_group);
-@@ -441,15 +446,20 @@ test_free_blocks_simple_range(struct kunit *test, ext4_group_t goal_group,
- {
- 	struct super_block *sb = (struct super_block *)test->priv;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	struct inode inode = { .i_sb = sb, };
-+	struct inode *inode;
- 	ext4_fsblk_t block;
- 
-+	inode = kunit_kzalloc(test, sizeof(*inode), GFP_KERNEL);
-+	if (!inode)
-+		return;
-+	inode->i_sb = sb;
-+
- 	if (len == 0)
- 		return;
- 
- 	block = ext4_group_first_block_no(sb, goal_group) +
- 		EXT4_C2B(sbi, start);
--	ext4_free_blocks_simple(&inode, block, len);
-+	ext4_free_blocks_simple(inode, block, len);
- 	validate_free_blocks_simple(test, sb, goal_group, start, len);
- 	mbt_ctx_mark_used(sb, goal_group, 0, EXT4_CLUSTERS_PER_GROUP(sb));
- }
-@@ -506,16 +516,21 @@ test_mark_diskspace_used_range(struct kunit *test,
- static void test_mark_diskspace_used(struct kunit *test)
- {
- 	struct super_block *sb = (struct super_block *)test->priv;
--	struct inode inode = { .i_sb = sb, };
-+	struct inode *inode;
- 	struct ext4_allocation_context ac;
- 	struct test_range ranges[TEST_RANGE_COUNT];
- 	int i;
- 
- 	mbt_generate_test_ranges(sb, ranges, TEST_RANGE_COUNT);
- 
-+	inode = kunit_kzalloc(test, sizeof(*inode), GFP_KERNEL);
-+	if (!inode)
-+		return;
-+	inode->i_sb = sb;
-+
- 	ac.ac_status = AC_STATUS_FOUND;
- 	ac.ac_sb = sb;
--	ac.ac_inode = &inode;
-+	ac.ac_inode = inode;
- 	for (i = 0; i < TEST_RANGE_COUNT; i++)
- 		test_mark_diskspace_used_range(test, &ac, ranges[i].start,
- 					       ranges[i].len);
 -- 
-2.39.2
-
+Gabriel Krisman Bertazi
