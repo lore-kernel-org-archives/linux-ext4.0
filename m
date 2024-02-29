@@ -1,156 +1,102 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from szxga07-in.huawei.com (szxga07-in.huawei.com [45.249.212.35])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ED85E7AE63;
-	Thu, 29 Feb 2024 11:35:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 206917C6D2;
+	Thu, 29 Feb 2024 11:45:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.35
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1709206541; cv=none; b=SA+oW2/Xs9r786K6bJ6/aLuBgatqL0UqaEHrcBeVaggS1YKsFiCBufh/rHI2YrAw1LFghOcVHdu+dtrmIuV20SsJM0IR3l9NmAAROKZdNmbtz+AgcgGENmpNBTYeFxdaY1+z7qL1R+20AQzLD9yR+O9RPlT47Nky4LQzfeTb0js=
+	t=1709207137; cv=none; b=FkwW9lJP2IkkEs2JpH/KlataUMMQuMAxX5At28vnfOjXvdTF95uIv5dA4+1l9vUVzU/86h3DApvlNzmy+z5eC181oB5hQLF3nnBNdmcDzMmjwu/09iuPEizAQWJ0TQJDU0AmpW+HCa+p2LcUeY+Pc3Xvf1CVIhrSdK28Nv0c4XY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1709206541; c=relaxed/simple;
-	bh=l8JNhnbr78XR0At/pJ0cw6TjsbveTynqFyEJUCTM6Xw=;
-	h=Subject:To:Cc:References:From:Message-ID:Date:MIME-Version:
-	 In-Reply-To:Content-Type; b=tHMfk9Y87HnHwR0fkW/j0xsm4YWwq6hzAP5mEbGM83sygQaJDV+uZI7mTZW2MltfRqI2haV2Ct1L+E+19CSYa8PVxisVvHeCdAt86+KcZ6NMEnosEJvF6PHePV6PGiVibZvApTW/4V51/P56JktOp1wRjlB8RtcIi8T4iUBP9vk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4Tlq0K1FJhz4f3jrl;
-	Thu, 29 Feb 2024 19:35:29 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 6B0E91A0232;
-	Thu, 29 Feb 2024 19:35:34 +0800 (CST)
-Received: from [10.174.178.129] (unknown [10.174.178.129])
-	by APP1 (Coremail) with SMTP id cCh0CgB3lQ4EbOBlh0wOFg--.6135S2;
-	Thu, 29 Feb 2024 19:35:34 +0800 (CST)
-Subject: Re: ext4_mballoc_test: Internal error: Oops: map_id_range_down
- (kernel/user_namespace.c:318)
-To: Christian Brauner <brauner@kernel.org>, Guenter Roeck <linux@roeck-us.net>
-Cc: =?UTF-8?Q?Daniel_D=c3=adaz?= <daniel.diaz@linaro.org>,
- Naresh Kamboju <naresh.kamboju@linaro.org>,
- open list <linux-kernel@vger.kernel.org>,
- linux-ext4 <linux-ext4@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
- lkft-triage@lists.linaro.org, Jan Kara <jack@suse.cz>,
- Andreas Dilger <adilger.kernel@dilger.ca>, Theodore Ts'o <tytso@mit.edu>,
- Randy Dunlap <rdunlap@infradead.org>, Arnd Bergmann <arnd@arndb.de>,
- Dan Carpenter <dan.carpenter@linaro.org>
-References: <CA+G9fYvnjDcmVBPwbPwhFDMewPiFj6z69iiPJrjjCP4Z7Q4AbQ@mail.gmail.com>
- <CAEUSe79PhGgg4-3ucMAzSE4fgXqgynAY_t8Xp+yiuZsw4Aj1jg@mail.gmail.com>
- <7e1c18e3-7523-4fe6-affe-d3f143ad79e3@roeck-us.net>
- <20240229-stapfen-eistee-9d946b4a3a9d@brauner>
-From: Kemeng Shi <shikemeng@huaweicloud.com>
-Message-ID: <7c4f502e-0198-b941-39dc-90281564665b@huaweicloud.com>
-Date: Thu, 29 Feb 2024 19:35:32 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.5.0
+	s=arc-20240116; t=1709207137; c=relaxed/simple;
+	bh=jsKCtJRRKaJUiyg4hQpnl4lXKjzxpQzJM96ZLAswM1U=;
+	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=nTJk4a7ox/Ysm5+VTRp66E6CKzWiemB1swaS/Comtsy6GX8qN7jhGJNTsTGBDAIBsGvm1ASv7MaG3wyqth0mLE+yKSt3kuPJMJQYDFVF9OnHYQGV0DHhuyhP32TdWHp8ZMvFQmQKP7FKYEhlTv7X6mG9rP6JO6qi7QfUKb0mtsw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.35
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+Received: from mail.maildlp.com (unknown [172.19.88.234])
+	by szxga07-in.huawei.com (SkyGuard) with ESMTP id 4Tlq9J2Zkdz1Q9Mp;
+	Thu, 29 Feb 2024 19:43:16 +0800 (CST)
+Received: from kwepemm600013.china.huawei.com (unknown [7.193.23.68])
+	by mail.maildlp.com (Postfix) with ESMTPS id 9670D140390;
+	Thu, 29 Feb 2024 19:45:32 +0800 (CST)
+Received: from huawei.com (10.175.104.67) by kwepemm600013.china.huawei.com
+ (7.193.23.68) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.1.2507.35; Thu, 29 Feb
+ 2024 19:45:31 +0800
+From: Zhihao Cheng <chengzhihao1@huawei.com>
+To: <brauner@kernel.org>, <david@fromorbit.com>, <djwong@kernel.org>,
+	<jack@suse.cz>, <tytso@mit.edu>
+CC: <linux-xfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
+	<linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
+	<yi.zhang@huawei.com>
+Subject: [PATCH RFC 2/2] ext4: Optimize endio process for DIO overwrites
+Date: Thu, 29 Feb 2024 19:38:49 +0800
+Message-ID: <20240229113849.2222577-3-chengzhihao1@huawei.com>
+X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20240229113849.2222577-1-chengzhihao1@huawei.com>
+References: <20240229113849.2222577-1-chengzhihao1@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-In-Reply-To: <20240229-stapfen-eistee-9d946b4a3a9d@brauner>
-Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgB3lQ4EbOBlh0wOFg--.6135S2
-X-Coremail-Antispam: 1UD129KBjvJXoW7Kw48tFyrArWkuw1xXFy7ZFb_yoW5Jr18pF
-	WSy3WrWF4ktr1kWasFqr1fZryI9w4UJFyUur97X3Z8Aas09r18Ja98tFyY9rZYvrWxCr4k
-	ZF1Utay3WrWDGa7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvFb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Xr0_Ar1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxV
-	AFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2
-	j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7x
-	kEbVWUJVW8JwACjcxG0xvEwIxGrwACI402YVCY1x02628vn2kIc2xKxwCYjI0SjxkI62AI
-	1cAE67vIY487MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
-	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8
-	ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
-	0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_WFyUJVCq3wCI42IY6I8E87Iv67AK
-	xVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvj
-	xUrR6zUUUUU
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
+Content-Type: text/plain
+X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
+ kwepemm600013.china.huawei.com (7.193.23.68)
 
+In DIO overwriting case, there is no need to convert unwritten exntents
+and ext4_handle_inode_extension() can be ignored, which means that endio
+process can be executed under irq context. Since commit 240930fb7e6b5
+("ext4: dio take shared inode lock when overwriting preallocated blocks")
+has provided a method to judge whether overwriting is happening, just do
+nothing in endio process if DIO overwriting happens.
+This patch enables ext4 processing endio under irq context in DIO
+overwriting case, which brings a performance improvement in the
+following fio test on a x86 physical machine with nvme when irq
+and fio run on the same cpu:
 
+Test: fio -direct=1 -iodepth=128 -rw=randwrite -ioengine=libaio -bs=4k
+-size=2G -numjobs=1 -overwrite=1 -time_based -runtime=60 -group_reporting
+-filename=/test/test -name=Rand_write_Testing --cpus_allowed=1
 
-on 2/29/2024 6:09 PM, Christian Brauner wrote:
-> On Wed, Feb 28, 2024 at 11:33:36AM -0800, Guenter Roeck wrote:
->> On 2/28/24 11:26, Daniel Díaz wrote:
->>> Hello!
->>>
->>> On Wed, 28 Feb 2024 at 12:19, Naresh Kamboju <naresh.kamboju@linaro.org> wrote:
->>>> Kunit ext4_mballoc_test tests found following kernel oops on Linux next.
->>>> All ways reproducible on all the architectures and steps to reproduce shared
->>>> in the bottom of this email.
->>>>
->>>> Reported-by: Linux Kernel Functional Testing <lkft@linaro.org>
->>>>
->>
->> [ ... ]
->>
->>> +Guenter. Just the thing we were talking about, at about the same time.
->>>
->>
->> Good that others see the same problem. Thanks a lot for reporting!
-> 
-> Hm...
-> 
-> static struct super_block *mbt_ext4_alloc_super_block(void)
-> {                                                                                                                                                                                                       struct ext4_super_block *es = kzalloc(sizeof(*es), GFP_KERNEL);
->         struct ext4_sb_info *sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
->         struct mbt_ext4_super_block *fsb = kzalloc(sizeof(*fsb), GFP_KERNEL);
-> 
->         if (fsb == NULL || sbi == NULL || es == NULL)
->                 goto out;
-> 
->         sbi->s_es = es;
->         fsb->sb.s_fs_info = sbi;
->         return &fsb->sb;
-> 
-> out:
->         kfree(fsb);
->         kfree(sbi);
->         kfree(es);
->         return NULL;
-> }
-> 
-> That VFS level struct super_block that is returned from this function is
-> never really initialized afaict? Therefore, sb->s_user_ns == NULL:
-> 
-> i_uid_write(sb, ...)
-> -> NULL = i_user_ns(sb)
->    -> make_kuid(NULL)
->       -> map_id_range_down(NULL)
-> 
-> Outside of this test this can never be the case. See alloc_super() in
-> fs/super.c. So to stop the bleeding this needs something like:
-> 
-> static struct super_block *mbt_ext4_alloc_super_block(void)
-> {
->         struct ext4_super_block *es = kzalloc(sizeof(*es), GFP_KERNEL);
->         struct ext4_sb_info *sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
->         struct mbt_ext4_super_block *fsb = kzalloc(sizeof(*fsb), GFP_KERNEL);
-> 
->         if (fsb == NULL || sbi == NULL || es == NULL)
->                 goto out;
-> 
->         sbi->s_es = es;
->         fsb->sb.s_fs_info = sbi;
-> +       fsb.sb.s_user_ns = &init_user_ns;
->         return &fsb->sb;
-> 
-> out:
->         kfree(fsb);
->         kfree(sbi);
->         kfree(es);
->         return NULL;
-> }
-> 
-Hi Christian,
-Thanks for the information. I'm looking at this too and I also found
-root cause is sb.s_user_ns is NULL. I'm considering to get a
-super_block with VFS level api sget_fc to fix this to avoid similar
-problem when new unit tests are added or new member is added to
-super_block.
-Would like to hear more from you. Thanks!
+before: 953 MiB/s  after: 1350 MiB/s, ~41% perf improvement.
+
+Suggested-by: Zhang Yi <yi.zhang@huawei.com>
+Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
+---
+ fs/ext4/file.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 54d6ff22585c..411a05c6b96e 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -503,6 +503,7 @@ static ssize_t ext4_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	loff_t offset = iocb->ki_pos;
+ 	size_t count = iov_iter_count(from);
+ 	const struct iomap_ops *iomap_ops = &ext4_iomap_ops;
++	const struct iomap_dio_ops *iomap_dops = &ext4_dio_write_ops;
+ 	bool extend = false, unwritten = false;
+ 	bool ilock_shared = true;
+ 	int dio_flags = 0;
+@@ -572,9 +573,12 @@ static ssize_t ext4_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 		ext4_journal_stop(handle);
+ 	}
+ 
+-	if (ilock_shared && !unwritten)
++	if (ilock_shared && !unwritten) {
+ 		iomap_ops = &ext4_iomap_overwrite_ops;
+-	ret = iomap_dio_rw(iocb, from, iomap_ops, &ext4_dio_write_ops,
++		iomap_dops = NULL;
++		dio_flags = IOMAP_DIO_MAY_INLINE_COMP;
++	}
++	ret = iomap_dio_rw(iocb, from, iomap_ops, iomap_dops,
+ 			   dio_flags, NULL, 0);
+ 	if (ret == -ENOTBLK)
+ 		ret = 0;
+-- 
+2.39.2
 
