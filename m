@@ -1,98 +1,131 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 759D041C93;
-	Fri,  1 Mar 2024 03:26:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BC32F69317;
+	Fri,  1 Mar 2024 08:25:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1709263609; cv=none; b=i0AwXvK79ugmf6iU4MGCeRVehj3yuSl8cQMt7vdgveUSn4WxkgdM3lzYin6oWDvzL9SnNumC5AyMuRloe7dnpNDiFhjz+t8nTIL7T38oV/oKV2oGNkWIbo7okk5j0tb8+hFj5P6Wv3tiqrsxHmfNddC4vwBirOZZUpcozR6Rh4Q=
+	t=1709281559; cv=none; b=Fbag1IHwRAqvMFnhyuov0csgLBYzK7ataZ3SdbkqZ/U//wgqUNrbrLn8HGqfmbn3OEyGJYqVxyPBkA/lGWMnebbaonaSCOwiWZLPJ+N2sLCcBLweTC0Zg7ZuztI5zgZ7qhfbEEHzrY4p+iJ33xckBLFZboReJE7GadgWY5vTafw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1709263609; c=relaxed/simple;
-	bh=fW9YFLy50+y8EU/W46CfJW7150cPRI8UIXLaa/73BB0=;
-	h=Subject:To:Cc:References:From:Message-ID:Date:MIME-Version:
-	 In-Reply-To:Content-Type; b=jTETChI0qMyy9KWjruMO71GCx06UdEPDzPvM14/4atweN2mHkjlxf1W0NqLJ4+fD5XVOA2EZQpoGlxdcZs3XkuUBT5q9nx/tfXB7a1VQPO2uD6H+rLJL+QOs3bynMuTEoar2dnKILSow7HphT0aRLqD0vQ8m09nQH+OuKDU2eGQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4TmD5n336rz4f3jdH;
-	Fri,  1 Mar 2024 11:26:37 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id AE8E11A0838;
-	Fri,  1 Mar 2024 11:26:42 +0800 (CST)
-Received: from [10.174.176.34] (unknown [10.174.176.34])
-	by APP1 (Coremail) with SMTP id cCh0CgBHZQ7wSuFlmyFSFg--.41524S3;
-	Fri, 01 Mar 2024 11:26:42 +0800 (CST)
-Subject: Re: [RFC PATCH v3 07/26] iomap: don't increase i_size if it's not a
- write operation
-To: Dave Chinner <david@fromorbit.com>
-Cc: Christoph Hellwig <hch@infradead.org>, djwong@kernel.org,
- linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-mm@kvack.org, linux-kernel@vger.kernel.org, linux-xfs@vger.kernel.org,
- tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
- ritesh.list@gmail.com, willy@infradead.org, zokeefe@google.com,
- yi.zhang@huawei.com, chengzhihao1@huawei.com, yukuai3@huawei.com,
- wangkefeng.wang@huawei.com
-References: <20240127015825.1608160-1-yi.zhang@huaweicloud.com>
- <20240127015825.1608160-8-yi.zhang@huaweicloud.com>
- <ZcsCP4h-ExNOcdD6@infradead.org>
- <9b0040ef-3d9d-6246-4bdd-82b9a8f55fa2@huaweicloud.com>
- <Zd+y2VP8HpbkDu41@dread.disaster.area>
- <45c1607a-805d-e7a2-a5ca-3fd7e507a664@huaweicloud.com>
- <ZeERAob9Imwh01bG@dread.disaster.area>
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-Message-ID: <0b316c9a-b2d7-af02-854e-31430d4f53cd@huaweicloud.com>
-Date: Fri, 1 Mar 2024 11:26:40 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
- Thunderbird/78.12.0
+	s=arc-20240116; t=1709281559; c=relaxed/simple;
+	bh=B5b9ibF+22tppvs5WWOhUY+3DjIPr1oOBhj58DmZtbE=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=QNLGsos6Wk2B1E7PCOxnNa7y5vKf5jNcovMFlfUsqlcTTJt0ZdrU1Lb8TzVJydQ2aSXr0TGZrIgNMwfDVTVatoDLaHkGU9EIDy3S40Zee0isHPW4IHeCJlfFMsiBZl0EYdJ8EtGCLLKaCwVHhsC5bVlaH+dZOT/zsFjbAgeKLz8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OxWIk5EJ; arc=none smtp.client-ip=10.30.226.201
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OxWIk5EJ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 03281C433F1;
+	Fri,  1 Mar 2024 08:25:56 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1709281559;
+	bh=B5b9ibF+22tppvs5WWOhUY+3DjIPr1oOBhj58DmZtbE=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=OxWIk5EJjuXl1oHzZNiHNOKTSMhcclIzMwYzBocd5pqOCLDWgIryGu1UWsPwm7VNH
+	 qdxzYMa5hnw8Vcn7EH6DkBJoIiyJFxNyawPUS+1V6JBvyvkX4JYBFF16kE1aM7nCxI
+	 07MHuXIf+ULQlbcDyE5Eju7bluK6bUp8ReZk3oxVTXJ05SbO0xHwOC6/EWCvI1Igbe
+	 zoMLNoWwxvmeKL81Xq8P0JYR90A/itsrMDIKkxmQBhrF8T4+01niWgrO+WZ7RecTvW
+	 5ElvfBNVOrvi8DIGEx788rG0YlRiUedr4EGPXsVAVYPpsO2RDCwGYKPLPcWmJW/pu3
+	 oEaDu5w2f2jbg==
+Date: Fri, 1 Mar 2024 09:25:54 +0100
+From: Christian Brauner <brauner@kernel.org>
+To: Kemeng Shi <shikemeng@huaweicloud.com>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, naresh.kamboju@linaro.org, daniel.diaz@linaro.org, 
+	linux@roeck-us.net
+Subject: Re: [PATCH 1/2] ext4: alloc test super block from sget
+Message-ID: <20240301-neuland-zoomen-4152b34c6fba@brauner>
+References: <20240301120816.22581-1-shikemeng@huaweicloud.com>
+ <20240301120816.22581-2-shikemeng@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-In-Reply-To: <ZeERAob9Imwh01bG@dread.disaster.area>
 Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:cCh0CgBHZQ7wSuFlmyFSFg--.41524S3
-X-Coremail-Antispam: 1UD129KBjvdXoW7Gw48KF15uw15Jw1rKw1DAwb_yoWxAFgE9F
-	srAr48Kw4DGw47uw42ka1ktrsFgFWUWa12qrW5Xr4vkrZ8JFWDWr13Gr93Z3sakFsakFnI
-	9F9Y9347ZrnIvjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUbIxYFVCjjxCrM7AC8VAFwI0_Xr0_Wr1l1xkIjI8I6I8E6xAIw20E
-	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l8cAvFVAK0II2c7xJM28CjxkF64kEwV
-	A0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x02
-	67AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I
-	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
-	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
-	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lFIxGxcIEc7CjxVA2Y2ka0xkIwI1lc7I2V7IY0VAS
-	07AlzVAYIcxG8wCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c
-	02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_GFv_
-	WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7
-	CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6rW3Jr0E3s1lIxAIcVC2z280aVAF
-	wI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa
-	7IU13rcDUUUUU==
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Disposition: inline
+In-Reply-To: <20240301120816.22581-2-shikemeng@huaweicloud.com>
 
-On 2024/3/1 7:19, Dave Chinner wrote:
-> On Thu, Feb 29, 2024 at 04:59:34PM +0800, Zhang Yi wrote:
->> Hello, Dave!
->>
->> On 2024/2/29 6:25, Dave Chinner wrote:
->>> On Wed, Feb 28, 2024 at 04:53:32PM +0800, Zhang Yi wrote:
->>>> On 2024/2/13 13:46, Christoph Hellwig wrote:
-...
+On Fri, Mar 01, 2024 at 08:08:15PM +0800, Kemeng Shi wrote:
+> This fix the oops in ext4 unit test which is cuased by NULL sb.s_user_ns
+> as following:
+> <4>[ 14.344565] map_id_range_down (kernel/user_namespace.c:318)
+> <4>[ 14.345378] make_kuid (kernel/user_namespace.c:415)
+> <4>[ 14.345998] inode_init_always (include/linux/fs.h:1375 fs/inode.c:174)
+> <4>[ 14.346696] alloc_inode (fs/inode.c:268)
+> <4>[ 14.347353] new_inode_pseudo (fs/inode.c:1007)
+> <4>[ 14.348016] new_inode (fs/inode.c:1033)
+> <4>[ 14.348644] ext4_mb_init (fs/ext4/mballoc.c:3404 fs/ext4/mballoc.c:3719)
+> <4>[ 14.349312] mbt_kunit_init (fs/ext4/mballoc-test.c:57
+> fs/ext4/mballoc-test.c:314)
+> <4>[ 14.349983] kunit_try_run_case (lib/kunit/test.c:388 lib/kunit/test.c:443)
+> <4>[ 14.350696] kunit_generic_run_threadfn_adapter (lib/kunit/try-catch.c:30)
+> <4>[ 14.351530] kthread (kernel/kthread.c:388)
+> <4>[ 14.352168] ret_from_fork (arch/arm64/kernel/entry.S:861)
+> <0>[ 14.353385] Code: 52808004 b8236ae7 72be5e44 b90004c4 (38e368a1)
 > 
-> The general solution is to have zeroing of speculative prealloc
-> extents beyond EOF simply convert the range to unwritten and then
-> invalidate any cached pages over that range. At this point, we are
-> guaranteed to have zeroes across that range, all without needing to
-> do any IO at all...
+> Alloc test super block from sget to properly initialize test super block
+> to fix the issue.
 > 
+> Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+> Reported-by: Linux Kernel Functional Testing <lkft@linaro.org>
+> Reported-by: Guenter Roeck <linux@roeck-us.net>
+> ---
+>  fs/ext4/mballoc-test.c | 46 ++++++++++++++++++++++++++++--------------
+>  1 file changed, 31 insertions(+), 15 deletions(-)
+> 
+> diff --git a/fs/ext4/mballoc-test.c b/fs/ext4/mballoc-test.c
+> index 12d0b22cabe1..1da52bbf4599 100644
+> --- a/fs/ext4/mballoc-test.c
+> +++ b/fs/ext4/mballoc-test.c
+> @@ -21,16 +21,27 @@ struct mbt_ctx {
+>  };
+>  
+>  struct mbt_ext4_super_block {
+> -	struct super_block sb;
+> +	struct ext4_super_block es;
+> +	struct ext4_sb_info sbi;
+>  	struct mbt_ctx mbt_ctx;
+>  };
+>  
+> -#define MBT_CTX(_sb) (&(container_of((_sb), struct mbt_ext4_super_block, sb)->mbt_ctx))
+> +#define MBT_SB(_sb) (container_of((_sb)->s_fs_info, struct mbt_ext4_super_block, sbi))
+> +#define MBT_CTX(_sb) (&MBT_SB(_sb)->mbt_ctx)
+>  #define MBT_GRP_CTX(_sb, _group) (&MBT_CTX(_sb)->grp_ctx[_group])
+>  
+>  static const struct super_operations mbt_sops = {
+>  };
+>  
+> +static void mbt_kill_sb(struct super_block *sb)
+> +{
+> +}
+> +
+> +static struct file_system_type mbt_fs_type = {
+> +	.name			= "mballoc test",
+> +	.kill_sb		= mbt_kill_sb,
+> +};
+> +
+>  static int mbt_mb_init(struct super_block *sb)
+>  {
+>  	int ret;
+> @@ -72,43 +83,48 @@ static void mbt_mb_release(struct super_block *sb)
+>  	kfree(sb->s_bdev);
+>  }
+>  
+> +static int mbt_set(struct super_block *sb, void *data)
+> +{
+> +	return 0;
+> +}
+> +
+>  static struct super_block *mbt_ext4_alloc_super_block(void)
+>  {
+> -	struct ext4_super_block *es = kzalloc(sizeof(*es), GFP_KERNEL);
+> -	struct ext4_sb_info *sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
+>  	struct mbt_ext4_super_block *fsb = kzalloc(sizeof(*fsb), GFP_KERNEL);
+> +	struct super_block *sb = sget(&mbt_fs_type, NULL, mbt_set, 0, NULL);
+> +	struct ext4_sb_info *sbi;
+>  
+> -	if (fsb == NULL || sbi == NULL || es == NULL)
+> +	if (fsb == NULL || sb == NULL)
 
-Sure, thanks for the explanation, I will try to solve this problem
-for xfs first.
-
-Thanks,
-Yi.
-
+sget() returns error pointer on failure. So you should check for IS_ERR(sb).
