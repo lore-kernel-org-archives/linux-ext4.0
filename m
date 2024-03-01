@@ -1,154 +1,254 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D52B367E7A;
-	Fri,  1 Mar 2024 09:03:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 11D516A028;
+	Fri,  1 Mar 2024 09:07:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1709283813; cv=none; b=eKW/x4g9Z1xOeoZHhHGDVnXS8hXrTQaAXRscqc2ztBQf/41FzfvN8Aa1hkl1SQ+5vsqZy7eaeVRZKPPfORDRaP2FTzTIVPlqb3YpvyiDte4xp+0PBHPXx1HTza4qLvOCBrf0sOjtS+exdCPhfQYgaP7f2MEM2aqquzqjCD+H9f8=
+	t=1709284037; cv=none; b=Gnm/canGBt2BGTWujOPnfOVS/Lr5ySMCZ/TDi5tV/obTEhikG41Q/vNtRu7xAlsmZE6EMsP1a1VRaRm9yBO2BBJz8m3bCPrZBhpdRvkjtawS3r2MFfeSbkKPlfqRj3hxOR4fswnG3UFsnRGJrgea38NKFaENkPDPnnHASh8xnHs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1709283813; c=relaxed/simple;
-	bh=oD3NmHcE+EZtd+/bsX+K5LPApFpsLvZKYdyavBZQE0c=;
-	h=Subject:To:Cc:References:From:Message-ID:Date:MIME-Version:
-	 In-Reply-To:Content-Type; b=aXQQeM0HjLyoMU/5CrDEQl9P9OkdlBhpH/I+EPFxlghW/uRvdRtih5nansecv6nPWboyKP9tmAKKs90m+P2yqpn7i4bTrq5/GgkXfmTMca0XzvsuZTVK5GxOgPam0+Uh1nHvWNI4NAZ7m5qq2KSBY3mOUjDxr6HiJ1EHIxYMHFc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	s=arc-20240116; t=1709284037; c=relaxed/simple;
+	bh=INczfli9mCB9EWMvMfJ7ok4W1d+L3cB92kAAs2kowrI=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=nqJrov/VxhfjwNuakA69+Q/ay0WmAZX2dxQGr4FFiacLgRETE/FqeT45aMGKbxNMn2lYBeCz/nzTDgYPL0AYdlGwdakgrzE+Q8ouAAF1yT/cmfn/5QOBWL97M+MYaxoQjJAaiN/S4bmUHXmQnEee9rs4HyBmfGOxAm0db0Fy8pw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4TmMZJ0Ngcz4f3mJg;
-	Fri,  1 Mar 2024 17:03:20 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4TmMfX0HYlz4f3kkW;
+	Fri,  1 Mar 2024 17:07:00 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 5520A1A2266;
-	Fri,  1 Mar 2024 17:03:25 +0800 (CST)
-Received: from [10.174.178.129] (unknown [10.174.178.129])
-	by APP1 (Coremail) with SMTP id cCh0CgCHogvbmeFlgjJqFg--.48146S2;
-	Fri, 01 Mar 2024 17:03:25 +0800 (CST)
-Subject: Re: [PATCH 1/2] ext4: alloc test super block from sget
-To: Christian Brauner <brauner@kernel.org>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org, naresh.kamboju@linaro.org,
- daniel.diaz@linaro.org, linux@roeck-us.net
-References: <20240301120816.22581-1-shikemeng@huaweicloud.com>
- <20240301120816.22581-2-shikemeng@huaweicloud.com>
- <20240301-neuland-zoomen-4152b34c6fba@brauner>
+	by mail.maildlp.com (Postfix) with ESMTP id 6BA641A0838;
+	Fri,  1 Mar 2024 17:07:03 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.101.6])
+	by APP1 (Coremail) with SMTP id cCh0CgC31A2umuFl63FqFg--.2523S2;
+	Fri, 01 Mar 2024 17:06:55 +0800 (CST)
 From: Kemeng Shi <shikemeng@huaweicloud.com>
-Message-ID: <48d4b5a1-8f2a-454e-7455-fb1184e576dc@huaweicloud.com>
-Date: Fri, 1 Mar 2024 17:03:23 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.5.0
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	naresh.kamboju@linaro.org,
+	daniel.diaz@linaro.org,
+	linux@roeck-us.net,
+	brauner@kernel.org
+Subject: [PATCH v2 0/2] Fix crashes in ext4 unit test
+Date: Sat,  2 Mar 2024 02:03:40 +0800
+Message-Id: <20240301180342.6232-1-shikemeng@huaweicloud.com>
+X-Mailer: git-send-email 2.30.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-In-Reply-To: <20240301-neuland-zoomen-4152b34c6fba@brauner>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:cCh0CgCHogvbmeFlgjJqFg--.48146S2
-X-Coremail-Antispam: 1UD129KBjvJXoWxAFW5Zr18uryfCF1DZw1fWFg_yoW5tFW5pF
-	y3ZFyFkr48WrWqga1IqFykZrySq3WxWFykGry29w1rJF90gry8GFWktF1rury8urWxGFs5
-	ZF1DKrW7ur15Ga7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUkjb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JMxk0xIA0c2IEe2xFo4CEbIxvr21l42xK82IYc2Ij
-	64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x
-	8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE
-	2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42
-	xK8VAvwI8IcIk0rVWrZr1j6s0DMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIE
-	c7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07UWE__UUUUU=
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:cCh0CgC31A2umuFl63FqFg--.2523S2
+X-Coremail-Antispam: 1UD129KBjvAXoWfGw1DAF1DJF13Jr45CryUKFg_yoW8JFWfAo
+	WftF1jqr4ktr4DJ3s29rs8AFZ8CwnrG3WxXr45u3WfJ3yYkrZFvay2qay3Ja98tw47tFyU
+	ta43tFW3AFs7uas5n29KB7ZKAUJUUUUU529EdanIXcx71UUUUU7v73VFW2AGmfu7bjvjm3
+	AaLaJ3UjIYCTnIWjp_UUUY17kC6x804xWl14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK
+	8VAvwI8IcIk0rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8Xw
+	A2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26w1j
+	6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxV
+	W0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAa
+	Y2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4
+	A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k2
+	0xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI
+	8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41l
+	IxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIx
+	AIcVCF04k26cxKx2IYs7xG6Fyj6rWUJwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E
+	87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUIf-PUUUUU
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
+v1->v2:
+-properly handle error from sget()
+
+Previously, the new mballoc unit tests are only tested by running
+"./tools/testing/kunit/kunit.py run ..." in which case only rare configs
+are enabled.
+This series fixes the reported issue and changes are tested with and
+without kunit_tool [1].
+
+Result with kunit_tool:
+./tools/testing/kunit/kunit.py run --kunitconfig=fs/ext4/.kunitconfig --raw_output
+[17:40:24] Configuring KUnit Kernel ...
+[17:40:24] Building KUnit Kernel ...
+Populating config with:
+$ make ARCH=um O=.kunit olddefconfig
+Building with:
+$ make ARCH=um O=.kunit --jobs=88
+[17:40:28] Starting KUnit Kernel (1/1)...
+KTAP version 1
+1..2
+    KTAP version 1
+    # Subtest: ext4_mballoc_test
+    # module: ext4
+    1..6
+        KTAP version 1
+        # Subtest: test_new_blocks_simple
+        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+    # test_new_blocks_simple: pass:3 fail:0 skip:0 total:3
+    ok 1 test_new_blocks_simple
+        KTAP version 1
+        # Subtest: test_free_blocks_simple
+        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+    # test_free_blocks_simple: pass:3 fail:0 skip:0 total:3
+    ok 2 test_free_blocks_simple
+        KTAP version 1
+        # Subtest: test_mb_generate_buddy
+        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+    # test_mb_generate_buddy: pass:3 fail:0 skip:0 total:3
+    ok 3 test_mb_generate_buddy
+        KTAP version 1
+        # Subtest: test_mb_mark_used
+        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+ # SKIP blocksize exceeds pagesize
+    # test_mb_mark_used: pass:2 fail:0 skip:1 total:3
+    ok 4 test_mb_mark_used
+        KTAP version 1
+        # Subtest: test_mb_free_blocks
+        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+ # SKIP blocksize exceeds pagesize
+    # test_mb_free_blocks: pass:2 fail:0 skip:1 total:3
+    ok 5 test_mb_free_blocks
+        KTAP version 1
+        # Subtest: test_mark_diskspace_used
+        ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+        ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+    # test_mark_diskspace_used: pass:3 fail:0 skip:0 total:3
+    ok 6 test_mark_diskspace_used
+# ext4_mballoc_test: pass:6 fail:0 skip:0 total:6
+# Totals: pass:16 fail:0 skip:2 total:18
+ok 1 ext4_mballoc_test
+    KTAP version 1
+    # Subtest: ext4_inode_test
+    # module: ext4_inode_test
+    1..1
+        KTAP version 1
+        # Subtest: inode_test_xtimestamp_decoding
+        ok 1 1901-12-13 Lower bound of 32bit < 0 timestamp, no extra bits
+        ok 2 1969-12-31 Upper bound of 32bit < 0 timestamp, no extra bits
+        ok 3 1970-01-01 Lower bound of 32bit >=0 timestamp, no extra bits
+        ok 4 2038-01-19 Upper bound of 32bit >=0 timestamp, no extra bits
+        ok 5 2038-01-19 Lower bound of 32bit <0 timestamp, lo extra sec bit on
+        ok 6 2106-02-07 Upper bound of 32bit <0 timestamp, lo extra sec bit on
+        ok 7 2106-02-07 Lower bound of 32bit >=0 timestamp, lo extra sec bit on
+        ok 8 2174-02-25 Upper bound of 32bit >=0 timestamp, lo extra sec bit on
+        ok 9 2174-02-25 Lower bound of 32bit <0 timestamp, hi extra sec bit on
+        ok 10 2242-03-16 Upper bound of 32bit <0 timestamp, hi extra sec bit on
+        ok 11 2242-03-16 Lower bound of 32bit >=0 timestamp, hi extra sec bit on
+        ok 12 2310-04-04 Upper bound of 32bit >=0 timestamp, hi extra sec bit on
+        ok 13 2310-04-04 Upper bound of 32bit>=0 timestamp, hi extra sec bit 1. 1 ns
+        ok 14 2378-04-22 Lower bound of 32bit>= timestamp. Extra sec bits 1. Max ns
+        ok 15 2378-04-22 Lower bound of 32bit >=0 timestamp. All extra sec bits on
+        ok 16 2446-05-10 Upper bound of 32bit >=0 timestamp. All extra sec bits on
+    # inode_test_xtimestamp_decoding: pass:16 fail:0 skip:0 total:16
+    ok 1 inode_test_xtimestamp_decoding
+# Totals: pass:16 fail:0 skip:0 total:16
+ok 2 ext4_inode_test
+[17:40:28] Elapsed time: 3.990s total, 0.001s configuring, 3.823s building, 0.123s running
 
 
-on 3/1/2024 4:25 PM, Christian Brauner wrote:
-> On Fri, Mar 01, 2024 at 08:08:15PM +0800, Kemeng Shi wrote:
->> This fix the oops in ext4 unit test which is cuased by NULL sb.s_user_ns
->> as following:
->> <4>[ 14.344565] map_id_range_down (kernel/user_namespace.c:318)
->> <4>[ 14.345378] make_kuid (kernel/user_namespace.c:415)
->> <4>[ 14.345998] inode_init_always (include/linux/fs.h:1375 fs/inode.c:174)
->> <4>[ 14.346696] alloc_inode (fs/inode.c:268)
->> <4>[ 14.347353] new_inode_pseudo (fs/inode.c:1007)
->> <4>[ 14.348016] new_inode (fs/inode.c:1033)
->> <4>[ 14.348644] ext4_mb_init (fs/ext4/mballoc.c:3404 fs/ext4/mballoc.c:3719)
->> <4>[ 14.349312] mbt_kunit_init (fs/ext4/mballoc-test.c:57
->> fs/ext4/mballoc-test.c:314)
->> <4>[ 14.349983] kunit_try_run_case (lib/kunit/test.c:388 lib/kunit/test.c:443)
->> <4>[ 14.350696] kunit_generic_run_threadfn_adapter (lib/kunit/try-catch.c:30)
->> <4>[ 14.351530] kthread (kernel/kthread.c:388)
->> <4>[ 14.352168] ret_from_fork (arch/arm64/kernel/entry.S:861)
->> <0>[ 14.353385] Code: 52808004 b8236ae7 72be5e44 b90004c4 (38e368a1)
->>
->> Alloc test super block from sget to properly initialize test super block
->> to fix the issue.
->>
->> Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
->> Reported-by: Linux Kernel Functional Testing <lkft@linaro.org>
->> Reported-by: Guenter Roeck <linux@roeck-us.net>
->> ---
->>  fs/ext4/mballoc-test.c | 46 ++++++++++++++++++++++++++++--------------
->>  1 file changed, 31 insertions(+), 15 deletions(-)
->>
->> diff --git a/fs/ext4/mballoc-test.c b/fs/ext4/mballoc-test.c
->> index 12d0b22cabe1..1da52bbf4599 100644
->> --- a/fs/ext4/mballoc-test.c
->> +++ b/fs/ext4/mballoc-test.c
->> @@ -21,16 +21,27 @@ struct mbt_ctx {
->>  };
->>  
->>  struct mbt_ext4_super_block {
->> -	struct super_block sb;
->> +	struct ext4_super_block es;
->> +	struct ext4_sb_info sbi;
->>  	struct mbt_ctx mbt_ctx;
->>  };
->>  
->> -#define MBT_CTX(_sb) (&(container_of((_sb), struct mbt_ext4_super_block, sb)->mbt_ctx))
->> +#define MBT_SB(_sb) (container_of((_sb)->s_fs_info, struct mbt_ext4_super_block, sbi))
->> +#define MBT_CTX(_sb) (&MBT_SB(_sb)->mbt_ctx)
->>  #define MBT_GRP_CTX(_sb, _group) (&MBT_CTX(_sb)->grp_ctx[_group])
->>  
->>  static const struct super_operations mbt_sops = {
->>  };
->>  
->> +static void mbt_kill_sb(struct super_block *sb)
->> +{
->> +}
->> +
->> +static struct file_system_type mbt_fs_type = {
->> +	.name			= "mballoc test",
->> +	.kill_sb		= mbt_kill_sb,
->> +};
->> +
->>  static int mbt_mb_init(struct super_block *sb)
->>  {
->>  	int ret;
->> @@ -72,43 +83,48 @@ static void mbt_mb_release(struct super_block *sb)
->>  	kfree(sb->s_bdev);
->>  }
->>  
->> +static int mbt_set(struct super_block *sb, void *data)
->> +{
->> +	return 0;
->> +}
->> +
->>  static struct super_block *mbt_ext4_alloc_super_block(void)
->>  {
->> -	struct ext4_super_block *es = kzalloc(sizeof(*es), GFP_KERNEL);
->> -	struct ext4_sb_info *sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
->>  	struct mbt_ext4_super_block *fsb = kzalloc(sizeof(*fsb), GFP_KERNEL);
->> +	struct super_block *sb = sget(&mbt_fs_type, NULL, mbt_set, 0, NULL);
->> +	struct ext4_sb_info *sbi;
->>  
->> -	if (fsb == NULL || sbi == NULL || es == NULL)
->> +	if (fsb == NULL || sb == NULL)
-> 
-> sget() returns error pointer on failure. So you should check for IS_ERR(sb).
-> 
-Thanks a lot for review. I will fix it in next version.
+Result without kunit_tool (built-in):
+Mar  1 18:24:36 localhost kernel: [    5.260386] KTAP version 1
+Mar  1 18:24:36 localhost kernel: [    5.260558] 1..2
+Mar  1 18:24:36 localhost kernel: [    5.261225]     KTAP version 1
+Mar  1 18:24:36 localhost kernel: [    5.261387]     # Subtest: ext4_mballoc_test
+Mar  1 18:24:36 localhost kernel: [    5.261581]     # module: ext4
+Mar  1 18:24:36 localhost kernel: [    5.261583]     1..6
+Mar  1 18:24:36 localhost kernel: [    5.261886]         KTAP version 1
+Mar  1 18:24:36 localhost kernel: [    5.262050]         # Subtest: test_new_blocks_simple
+Mar  1 18:24:36 localhost kernel: [    5.262409]         ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+Mar  1 18:24:36 localhost kernel: [    5.263342]         ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+Mar  1 18:24:36 localhost kernel: [    5.264334]         ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+Mar  1 18:24:36 localhost kernel: [    5.264664]     # test_new_blocks_simple: pass:3 fail:0 skip:0 total:3
+Mar  1 18:24:36 localhost kernel: [    5.264669]     ok 1 test_new_blocks_simple
+Mar  1 18:24:36 localhost kernel: [    5.264893]         KTAP version 1
+Mar  1 18:24:36 localhost kernel: [    5.265230]         # Subtest: test_free_blocks_simple
+Mar  1 18:24:36 localhost kernel: [    5.265552]         ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+Mar  1 18:24:36 localhost kernel: [    5.266451]         ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+Mar  1 18:24:36 localhost kernel: [    5.267183]         ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+Mar  1 18:24:36 localhost kernel: [    5.267508]     # test_free_blocks_simple: pass:3 fail:0 skip:0 total:3
+Mar  1 18:24:36 localhost kernel: [    5.267510]     ok 2 test_free_blocks_simple
+Mar  1 18:24:36 localhost kernel: [    5.267748]         KTAP version 1
+Mar  1 18:24:36 localhost kernel: [    5.268087]         # Subtest: test_mb_generate_buddy
+Mar  1 18:24:36 localhost kernel: [    5.268493]         ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+Mar  1 18:24:36 localhost kernel: [    5.269542]         ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+Mar  1 18:24:36 localhost kernel: [    5.270824]         ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+Mar  1 18:24:36 localhost kernel: [    5.271287]     # test_mb_generate_buddy: pass:3 fail:0 skip:0 total:3
+Mar  1 18:24:36 localhost kernel: [    5.271288]     ok 3 test_mb_generate_buddy
+Mar  1 18:24:36 localhost kernel: [    5.271512]         KTAP version 1
+Mar  1 18:24:36 localhost kernel: [    5.271873]         # Subtest: test_mb_mark_used
+Mar  1 18:24:36 localhost kernel: [    5.272194]         ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+Mar  1 18:24:36 localhost kernel: [    5.273105]         ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+Mar  1 18:24:36 localhost kernel: [    5.273855]         ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64#012 # SKIP blocksize exceeds pagesize
+Mar  1 18:24:36 localhost kernel: [    5.273857]     # test_mb_mark_used: pass:2 fail:0 skip:1 total:3
+Mar  1 18:24:36 localhost kernel: [    5.274306]     ok 4 test_mb_mark_used
+Mar  1 18:24:36 localhost kernel: [    5.274526]         KTAP version 1
+Mar  1 18:24:36 localhost kernel: [    5.274863]         # Subtest: test_mb_free_blocks
+Mar  1 18:24:36 localhost kernel: [    5.275146]         ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+Mar  1 18:24:36 localhost kernel: [    5.275935]         ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+Mar  1 18:24:36 localhost kernel: [    5.276706]         ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64#012 # SKIP blocksize exceeds pagesize
+Mar  1 18:24:36 localhost kernel: [    5.276708]     # test_mb_free_blocks: pass:2 fail:0 skip:1 total:3
+Mar  1 18:24:36 localhost kernel: [    5.277155]     ok 5 test_mb_free_blocks
+Mar  1 18:24:36 localhost kernel: [    5.277370]         KTAP version 1
+Mar  1 18:24:36 localhost kernel: [    5.277711]         # Subtest: test_mark_diskspace_used
+Mar  1 18:24:36 localhost kernel: [    5.277936]         ok 1 block_bits=10 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+Mar  1 18:24:36 localhost kernel: [    5.278825]         ok 2 block_bits=12 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+Mar  1 18:24:36 localhost kernel: [    5.279712]         ok 3 block_bits=16 cluster_bits=3 blocks_per_group=8192 group_count=4 desc_size=64
+Mar  1 18:24:36 localhost kernel: [    5.280039]     # test_mark_diskspace_used: pass:3 fail:0 skip:0 total:3
+Mar  1 18:24:36 localhost kernel: [    5.280041]     ok 6 test_mark_diskspace_used
+Mar  1 18:24:36 localhost kernel: [    5.280262] # ext4_mballoc_test: pass:6 fail:0 skip:0 total:6
+Mar  1 18:24:36 localhost kernel: [    5.280438] # Totals: pass:16 fail:0 skip:2 total:18
+Mar  1 18:24:36 localhost kernel: [    5.280661] ok 1 ext4_mballoc_test
+Mar  1 18:24:36 localhost kernel: [    5.281017]     KTAP version 1
+Mar  1 18:24:36 localhost kernel: [    5.281168]     # Subtest: ext4_inode_test
+Mar  1 18:24:36 localhost kernel: [    5.281347]     # module: ext4_inode_test
+Mar  1 18:24:36 localhost kernel: [    5.281349]     1..1
+Mar  1 18:24:36 localhost kernel: [    5.281698]         KTAP version 1
+Mar  1 18:24:36 localhost kernel: [    5.281863]         # Subtest: inode_test_xtimestamp_decoding
+Mar  1 18:24:36 localhost kernel: [    5.282082]         ok 1 1901-12-13 Lower bound of 32bit < 0 timestamp, no extra bits
+Mar  1 18:24:36 localhost kernel: [    5.282463]         ok 2 1969-12-31 Upper bound of 32bit < 0 timestamp, no extra bits
+Mar  1 18:24:36 localhost kernel: [    5.282936]         ok 3 1970-01-01 Lower bound of 32bit >=0 timestamp, no extra bits
+Mar  1 18:24:36 localhost kernel: [    5.283425]         ok 4 2038-01-19 Upper bound of 32bit >=0 timestamp, no extra bits
+Mar  1 18:24:36 localhost kernel: [    5.283909]         ok 5 2038-01-19 Lower bound of 32bit <0 timestamp, lo extra sec bit on
+Mar  1 18:24:36 localhost kernel: [    5.284398]         ok 6 2106-02-07 Upper bound of 32bit <0 timestamp, lo extra sec bit on
+Mar  1 18:24:36 localhost kernel: [    5.284895]         ok 7 2106-02-07 Lower bound of 32bit >=0 timestamp, lo extra sec bit on
+Mar  1 18:24:36 localhost kernel: [    5.285360]         ok 8 2174-02-25 Upper bound of 32bit >=0 timestamp, lo extra sec bit on
+Mar  1 18:24:36 localhost kernel: [    5.285849]         ok 9 2174-02-25 Lower bound of 32bit <0 timestamp, hi extra sec bit on
+Mar  1 18:24:36 localhost kernel: [    5.286307]         ok 10 2242-03-16 Upper bound of 32bit <0 timestamp, hi extra sec bit on
+Mar  1 18:24:36 localhost kernel: [    5.287497]         ok 11 2242-03-16 Lower bound of 32bit >=0 timestamp, hi extra sec bit on
+Mar  1 18:24:36 localhost kernel: [    5.288002]         ok 12 2310-04-04 Upper bound of 32bit >=0 timestamp, hi extra sec bit on
+Mar  1 18:24:36 localhost kernel: [    5.288469]         ok 13 2310-04-04 Upper bound of 32bit>=0 timestamp, hi extra sec bit 1. 1 ns
+Mar  1 18:24:36 localhost kernel: [    5.288971]         ok 14 2378-04-22 Lower bound of 32bit>= timestamp. Extra sec bits 1. Max ns
+Mar  1 18:24:36 localhost kernel: [    5.289479]         ok 15 2378-04-22 Lower bound of 32bit >=0 timestamp. All extra sec bits on
+Mar  1 18:24:36 localhost kernel: [    5.290023]         ok 16 2446-05-10 Upper bound of 32bit >=0 timestamp. All extra sec bits on
+Mar  1 18:24:36 localhost kernel: [    5.290326]     # inode_test_xtimestamp_decoding: pass:16 fail:0 skip:0 total:16
+Mar  1 18:24:36 localhost kernel: [    5.290651]     ok 1 inode_test_xtimestamp_decoding
+Mar  1 18:24:36 localhost kernel: [    5.290930] # Totals: pass:16 fail:0 skip:0 total:16
+Mar  1 18:24:36 localhost kernel: [    5.291123] ok 2 ext4_inode_test
+
+[1] https://docs.kernel.org/dev-tools/kunit/run_manual.html
+
+
+Kemeng Shi (2):
+  ext4: alloc test super block from sget
+  ext4: hold group lock in ext4 kunit test
+
+ fs/ext4/mballoc-test.c | 62 +++++++++++++++++++++++++++++++-----------
+ 1 file changed, 46 insertions(+), 16 deletions(-)
+
+-- 
+2.30.0
 
