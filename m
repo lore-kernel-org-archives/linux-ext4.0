@@ -1,220 +1,117 @@
-Received: from mail-pf1-f170.google.com (mail-pf1-f170.google.com [209.85.210.170])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2D9A54C99
-	for <linux-ext4@vger.kernel.org>; Fri,  1 Mar 2024 00:40:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.170
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A9C6F2BAE7;
+	Fri,  1 Mar 2024 03:11:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1709253659; cv=none; b=YGn9qQy7UCn9zx84+7kp+nFDwwCMOOrL46bAD1M4Xe6EZOldzCPHWdQi8KPgqr9j4o0uGbTummbY9s43IyjShatXCUSa1E418wSGiwKtxrHFEsT7bxGIK4rCUhwbg8A31khAr9sSsrncy3iAs/RDvBZbCnp5T53nGu4a7QmpRRk=
+	t=1709262695; cv=none; b=hIwkVZLrdVLAKUEmxCqq8aNNBRu/RguPVAr4A+1CMa+nvBBu3o+Mz+whIzyShN8eSxwbn17agUIEqKhYFT8OZQq1JNJqR1WkzuAuE0mWlRVu/lVkW5i4RSQ9w5EqF+FVXawrfiIaZLf3NsQ2BuzA02JCw0gqrueUxVgFIyycvEU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1709253659; c=relaxed/simple;
-	bh=Jd55ktx7sIvEBT3eIFkfgxP4nZ+VdQo972+ClU6asOM=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Lbc+VLef1c3b2s55SzZBBv6ABD6Wh19dEa9jaLAIsJSEZszYwk3/lg4Fv7Wk7DUcxjUn5cKYJWeqW9Ur7tKPdw4CVdSGCdws7vF9Yg26kTclcMq3INyf/ncC9ZG9cRfpZf6f30GKpiE2DcHbyjpUgLZvE01qcvO99Lw02cbsvzw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=fromorbit.com; spf=pass smtp.mailfrom=fromorbit.com; dkim=pass (2048-bit key) header.d=fromorbit-com.20230601.gappssmtp.com header.i=@fromorbit-com.20230601.gappssmtp.com header.b=RUc4p1qK; arc=none smtp.client-ip=209.85.210.170
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=fromorbit.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=fromorbit.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=fromorbit-com.20230601.gappssmtp.com header.i=@fromorbit-com.20230601.gappssmtp.com header.b="RUc4p1qK"
-Received: by mail-pf1-f170.google.com with SMTP id d2e1a72fcca58-6e5a50d91b4so937995b3a.2
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Feb 2024 16:40:56 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=fromorbit-com.20230601.gappssmtp.com; s=20230601; t=1709253656; x=1709858456; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
-        bh=kfSdJtng8toNd1HcgJhNo8INQxZO5f83GRD0aHxNifg=;
-        b=RUc4p1qKmj962PYnox1SZNSUSj04bVdEguBT5lWMAAeHx7mLna89MVimkGihnnwevq
-         jbX0lNdIilTcfxbkGrnwUGGMbrKNrz7T/UGyNt3/Sm4Ee1l6CizK9IDuPIcvyt+58wVK
-         ecR7/VbKL4IaHEg7JgxjdpKTusOHtwMN9xINjoRaWz0o6EiwExSnNE/nRloezuzi8auo
-         PG4K+EGGnbSgq74Y9/g6wTxCBfTpbIxS3zGEDpCh1S19Z0cpyoeXSw66XSD4iy3XN8DL
-         F0bSZPdDQzC6aXIoJOyTD043jONo9zWrVsdRdPRnCNvPnAPpPmhLOClXbYCF9HWrmVp5
-         sNLg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1709253656; x=1709858456;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=kfSdJtng8toNd1HcgJhNo8INQxZO5f83GRD0aHxNifg=;
-        b=s3EIP45v2ybKLphVQOSo+wHgH6u2rrhn7Q5A9htl86/PguwC6bpmBTvCpkH9h8xmVN
-         mlsqXfancrgLS9GGCvZCpR/mHzT2Tr+/vXBMYLq8fROWC9NLU4q+zL9CYtoqyq9CTb3F
-         LswVUJf6l7Qz70VgADrK+AX1IQmOMt7oHjjn06srOYK3Tm5AP7g3aV9Bap3/Zb6qIoVZ
-         eCfNeeEaOAOUac5amxPIoVEqayUB16l+5d0s3RjsZTQxQ9I2m4nTrtFTbAyyTCv92CKb
-         lux8mFNhYjekSPOeKCsRzWncbjpVTJMGZErcPPUIrkzbS4ilnyVwHg8IIf3CinvnFw0G
-         6Jyg==
-X-Forwarded-Encrypted: i=1; AJvYcCUyYEcLb+6lDKpMb5t2APZ+c+D8d2eTG5DOcwHkmWsbGVLUj4tjXYb+SQYT1314RDtbWaAk29JEE9OnmPSskejW0N509zbtN8P+Mw==
-X-Gm-Message-State: AOJu0YwtW5ggD/bEm8mZc+jsRo8sbFAiY2thj1NvB4vESBm804JEim3N
-	8ZNW9Eh5Bv0eZ3vjQ6XhU9nE3FI57d1oALvLrIh+yDa9wpGegQYFghOJstGAwbU=
-X-Google-Smtp-Source: AGHT+IG9nkRVk+NgGLMyPlKdjw+Y3IsswCmGwjGEj2FO0wwKgpYsp4rScEINGBD3rE4r1rC3yAQIBg==
-X-Received: by 2002:a05:6a00:4f94:b0:6e4:ea68:633f with SMTP id ld20-20020a056a004f9400b006e4ea68633fmr366985pfb.20.1709253656373;
-        Thu, 29 Feb 2024 16:40:56 -0800 (PST)
-Received: from dread.disaster.area (pa49-181-247-196.pa.nsw.optusnet.com.au. [49.181.247.196])
-        by smtp.gmail.com with ESMTPSA id y13-20020aa7854d000000b006e56cc934b8sm1837363pfn.154.2024.02.29.16.40.55
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 29 Feb 2024 16:40:55 -0800 (PST)
-Received: from dave by dread.disaster.area with local (Exim 4.96)
-	(envelope-from <david@fromorbit.com>)
-	id 1rfqxJ-00DKr4-1Q;
-	Fri, 01 Mar 2024 11:40:53 +1100
-Date: Fri, 1 Mar 2024 11:40:53 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Zhihao Cheng <chengzhihao1@huawei.com>
-Cc: brauner@kernel.org, djwong@kernel.org, jack@suse.cz, tytso@mit.edu,
-	linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	yi.zhang@huawei.com
-Subject: Re: [PATCH RFC 1/2] iomap: Add a IOMAP_DIO_MAY_INLINE_COMP flag
-Message-ID: <ZeEkFUCUQ4eR7AlX@dread.disaster.area>
-References: <20240229113849.2222577-1-chengzhihao1@huawei.com>
- <20240229113849.2222577-2-chengzhihao1@huawei.com>
+	s=arc-20240116; t=1709262695; c=relaxed/simple;
+	bh=96tB+Xmo5ORVupaJgaPgwluk5vwPC5H/0KEdzzg62i0=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=H14Q1UxbsH3DKvE0rEkTdnu7cWtcuJpPGMe5iPCfPr3xV44yj353aLRkTXDy82AGi6GHKOdBEY/6kNXEH0MtUAyWMEB6xlUlpGlSiCDIf5Jo+Lgyn6qqefVIqOlwzJSMRlAyC6Gs+4AinnXTTmkMlpEOOqK7bNlSPmBNn+CrZWM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4TmCmG53B8z4f3kKt;
+	Fri,  1 Mar 2024 11:11:26 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 1B7CD1A0838;
+	Fri,  1 Mar 2024 11:11:30 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.101.6])
+	by APP4 (Coremail) with SMTP id gCh0CgD3SGtfR+FlBJ6mFg--.42023S4;
+	Fri, 01 Mar 2024 11:11:29 +0800 (CST)
+From: Kemeng Shi <shikemeng@huaweicloud.com>
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	naresh.kamboju@linaro.org,
+	daniel.diaz@linaro.org,
+	linux@roeck-us.net,
+	brauner@kernel.org
+Subject: [PATCH 2/2] ext4: hold group lock in ext4 kunit test
+Date: Fri,  1 Mar 2024 20:08:16 +0800
+Message-Id: <20240301120816.22581-3-shikemeng@huaweicloud.com>
+X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20240301120816.22581-1-shikemeng@huaweicloud.com>
+References: <20240301120816.22581-1-shikemeng@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20240229113849.2222577-2-chengzhihao1@huawei.com>
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:gCh0CgD3SGtfR+FlBJ6mFg--.42023S4
+X-Coremail-Antispam: 1UD129KBjvJXoW7tw1UuFyUArWrur17KFyUJrb_yoW8ArW8pF
+	sIkrn0kF45Wr1kuw47G3y0q3Z7K3ykuw1UGrWfC345ArWfJr9rCF98twnxKr48tFs7XF45
+	Z3Z0vry3Crs7uaUanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUBjb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
+	8IrcIa0xkI8VA2jI8067AKxVWUXwA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK
+	0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4
+	x0Y4vE2Ix0cI8IcVCY1x0267AKxVWxJr0_GcWl84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2
+	z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4
+	xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_JrI_JrylYx0Ex4A2jsIE14v2
+	6r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwI
+	xGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480
+	Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7
+	IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k2
+	6cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxV
+	AFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07jhUUbUUUUU=
+X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
-On Thu, Feb 29, 2024 at 07:38:48PM +0800, Zhihao Cheng wrote:
-> It will be more efficient to execute quick endio process(eg. non-sync
-> overwriting case) under irq process rather than starting a worker to
-> do it.
-> Add a flag to control DIO to be finished inline(under irq context), which
-> can be used for non-sync overwriting case.
-> Besides, skip invalidating pages if DIO is finished inline, which will
-> keep the same logic with dio_bio_end_aio in non-sync overwriting case.
-> 
-> Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
+Although there is no concurrent block allocation/free in unit test,
+internal functions mb_mark_used and mb_free_blocks assert group
+lock is always held. Acquire group before calling mb_mark_used and
+mb_free_blocks in unit test to avoid the assertion.
 
-A nice idea, but I don't think an ext4 specific API flag is the
-right way to go about enabling this. The iomap dio code knows if
-the write is pure overwrite already - we have the IOMAP_F_DIRTY flag
-for that, and we combine this with IOMAP_DIO_WRITE_THROUGH to do the
-pure overwrite FUA optimisations.
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+Reported-by: Guenter Roeck <linux@roeck-us.net>
+---
+ fs/ext4/mballoc-test.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-That is:
-
-		/*
-                 * Use a FUA write if we need datasync semantics, this is a pure
-                 * data IO that doesn't require any metadata updates (including
-                 * after IO completion such as unwritten extent conversion) and
-                 * the underlying device either supports FUA or doesn't have
-                 * a volatile write cache. This allows us to avoid cache flushes
-                 * on IO completion. If we can't use writethrough and need to
-                 * sync, disable in-task completions as dio completion will
-                 * need to call generic_write_sync() which will do a blocking
-                 * fsync / cache flush call.
-                 */
-                if (!(iomap->flags & (IOMAP_F_SHARED|IOMAP_F_DIRTY)) &&
-                    (dio->flags & IOMAP_DIO_WRITE_THROUGH) &&
-                    (bdev_fua(iomap->bdev) || !bdev_write_cache(iomap->bdev)))
-                        use_fua = true;
-
-Hence if we want to optimise pure overwrites that have no data sync
-requirements, we already have the detection and triggers in place to
-do this. We just need to change the way we set up the IO flags to
-allow write-through (i.e. non-blocking IO completions) to use inline
-completions.
-
-In __iomap_dio_rw():
-
-+	/* Always try to complete inline. */
-+	dio->flags |= IOMAP_DIO_INLINE_COMP;
-	if (iov_iter_rw(iter) == READ) {                                         
--               /* reads can always complete inline */                           
--               dio->flags |= IOMAP_DIO_INLINE_COMP;
-....
-
-	} else {
-+		/* Always try write-through semantics. If we can't
-+		 * use writethough, it will be disabled along with
-+		 * IOMAP_DIO_INLINE_COMP before dio completion is run
-+		 * so it can be deferred to a task completion context
-+		 * appropriately.
-+		 */
-+               dio->flags |= IOMAP_DIO_WRITE | IOMAP_DIO_WRITE_THROUGH;
-		iomi.flags |= IOMAP_WRITE;
--               dio->flags |= IOMAP_DIO_WRITE;
-.....
-		/* for data sync or sync, we need sync completion processing */
-                if (iocb_is_dsync(iocb)) {
-                        dio->flags |= IOMAP_DIO_NEED_SYNC;
-
--                      /*
--                       * For datasync only writes, we optimistically try using
--                       * WRITE_THROUGH for this IO. This flag requires either
--                       * FUA writes through the device's write cache, or a
--                       * normal write to a device without a volatile write
--                       * cache. For the former, Any non-FUA write that occurs
--                       * will clear this flag, hence we know before completion
--                       * whether a cache flush is necessary.
--                       */
--                       if (!(iocb->ki_flags & IOCB_SYNC))
--                               dio->flags |= IOMAP_DIO_WRITE_THROUGH;
-+			* For sync writes we know we are going to need
-+			* blocking completion processing, so turn off
-+			* writethrough now.
-+			*/
-			if (iocb->ki_flags & IOCB_SYNC) {
-				dio->flags &= ~(IOMAP_DIO_WRITE_THROUGH |
-						IOMAP_DIO_INLINE_COMP);
-			}
-                }
-
-This then sets up iomap_dio_bio_iter() to be able to determine if
-the iomap returned is for a pure overwrite and allow for the use of
-inline write completions.
-
-	/*
-	 * If we have a pure overwrite, we know that IO completion
-	 * will not block and so we can use write through completion
-	 * semantics and complete the write inline. If it's not a
-	 * pure overwrite, make sure that we always defer
-	 * completions to a task context.
-	 */
-	if (dio->flags & IOMAP_DIO_WRITE_THROUGH) {
-		if (iomap->flags & (IOMAP_F_SHARED|IOMAP_F_DIRTY)) {
-			dio->flags &= ~(IOMAP_DIO_WRITE_THROUGH |
-					IOMAP_DIO_INLINE_COMP);
-		} else if ((dio->flags & IOMAP_DIO_NEED_SYNC) &&
-			   (bdev_fua(iomap->bdev) ||
-			    !bdev_write_cache(iomap->bdev))) {
-			/*
-			 * Use REQ_FUA for datasync overwrites to
-			 * avoid cache flushes on IO completion on
-			 * devices that support FUA or don't have
-			 * volatile caches.
-			 */
-			use_fua = true;
-		}
-	}
-
-
-and iomap_dio_bio_opflags() gets changed to also clear
-IOMAP_DIO_INLINE_COMP when it clears IOMAP_DIO_WRITE_THROUGH....
-
-That then makes all pure overwrites for every filesystem do inline
-completions without changing calling conventions. i.e. it's up to
-the filesystem ->iomap_begin callouts to indicate whether the write
-mapping returned requires blocking operations to be done in IO
-completion (i.e. set the IOMAP_F_DIRTY flag) appropriately.
-
-However, this does mean that any spinlock taken in the ->end_io()
-callbacks now needs to be irq safe. e.g. in xfs_dio_write_end_io()
-the spinlock protection around inode size updates will need to use
-an irq safe locking, as will the locking in the DIO submission path
-that it serialises against in xfs_file_write_checks(). That probably
-is best implemented as a separate spinlock.
-
-There will also be other filesystems that need to set IOMAP_F_DIRTY
-unconditionally (e.g. zonefs) because they always take blocking
-locks in their ->end_io callbacks and so must always run in task
-context...
-
-Cheers,
-
-Dave.
+diff --git a/fs/ext4/mballoc-test.c b/fs/ext4/mballoc-test.c
+index 1da52bbf4599..40e878ea8258 100644
+--- a/fs/ext4/mballoc-test.c
++++ b/fs/ext4/mballoc-test.c
+@@ -694,7 +694,10 @@ test_mb_mark_used_range(struct kunit *test, struct ext4_buddy *e4b,
+ 	ex.fe_start = start;
+ 	ex.fe_len = len;
+ 	ex.fe_group = TEST_GOAL_GROUP;
++
++	ext4_lock_group(sb, TEST_GOAL_GROUP);
+ 	mb_mark_used(e4b, &ex);
++	ext4_unlock_group(sb, TEST_GOAL_GROUP);
+ 
+ 	mb_set_bits(bitmap, start, len);
+ 	/* bypass bb_free validatoin in ext4_mb_generate_buddy */
+@@ -754,7 +757,9 @@ test_mb_free_blocks_range(struct kunit *test, struct ext4_buddy *e4b,
+ 	if (len == 0)
+ 		return;
+ 
++	ext4_lock_group(sb, e4b->bd_group);
+ 	mb_free_blocks(NULL, e4b, start, len);
++	ext4_unlock_group(sb, e4b->bd_group);
+ 
+ 	mb_clear_bits(bitmap, start, len);
+ 	/* bypass bb_free validatoin in ext4_mb_generate_buddy */
+@@ -798,7 +803,11 @@ static void test_mb_free_blocks(struct kunit *test)
+ 	ex.fe_start = 0;
+ 	ex.fe_len = EXT4_CLUSTERS_PER_GROUP(sb);
+ 	ex.fe_group = TEST_GOAL_GROUP;
++
++	ext4_lock_group(sb, TEST_GOAL_GROUP);
+ 	mb_mark_used(&e4b, &ex);
++	ext4_unlock_group(sb, TEST_GOAL_GROUP);
++
+ 	grp->bb_free = 0;
+ 	memset(bitmap, 0xff, sb->s_blocksize);
+ 
 -- 
-Dave Chinner
-david@fromorbit.com
+2.30.0
+
