@@ -1,117 +1,174 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D3791134DE;
-	Sat,  2 Mar 2024 09:21:21 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 23436171BF;
+	Sat,  2 Mar 2024 11:46:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1709371285; cv=none; b=l+SEGhq/4SLaVGu1/Na6BHVoPSbCCBGVcN7TttrzAjjx9Fw2O4z6OwJ3tBA5gxU2h6WNavuWmgm6BIjgc1XScuYb3X5Z44Z9clgT6lkgyO6OxeNt7fyzWnoLAqlIp2vRgBRITlKtDTELvDs0r1xZjtBkcxdsaS239tKjUASx8n8=
+	t=1709380008; cv=none; b=XN9ResLvqMm4Lo1fntqb8x6+4WydDF+XYjpmWeyabBKinN5J3VeVvInFVjB1mt/dhZ/VXVbCAl5dVSVEa6dy9KwjcP84lW5hTxg7vQhUGDc058YEng2swVNIvC+1DgUx+G90k3UBcr0BDfneAU55rAv7pNfcMPt1HrZTayapFFQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1709371285; c=relaxed/simple;
-	bh=5hzRnUh34nUYKLiZt7NaTdrTOrhwlApFtHI+0BahY4k=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=TbqrehMGgtf3o62Ifr5K+7uZdCBapqug8KgNgOJstE/dIZZtR+YVQN/PaRyLyKedaThy2AI9SVUkg4EFf+k4OR9zADI6rcVHQtofuezJHTN26qXGqGKEcSUFdjY+JF5nFrR2nMoNwbW6wj1XpLEwhyX4kmnhQxzLOZ28bxiKB/Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4TmzwP2TfCz4f3jqt;
-	Sat,  2 Mar 2024 17:21:09 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id C001C1A0175;
-	Sat,  2 Mar 2024 17:21:12 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.101.6])
-	by APP4 (Coremail) with SMTP id gCh0CgA3imyE7+Jld1cqFw--.52350S4;
-	Sat, 02 Mar 2024 17:21:12 +0800 (CST)
-From: Kemeng Shi <shikemeng@huaweicloud.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca
-Cc: linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	naresh.kamboju@linaro.org,
-	daniel.diaz@linaro.org,
-	linux@roeck-us.net,
-	brauner@kernel.org
-Subject: [PATCH v3 2/3] ext4: hold group lock in ext4 kunit test
-Date: Sun,  3 Mar 2024 02:17:54 +0800
-Message-Id: <20240302181755.9192-3-shikemeng@huaweicloud.com>
-X-Mailer: git-send-email 2.30.0
-In-Reply-To: <20240302181755.9192-1-shikemeng@huaweicloud.com>
-References: <20240302181755.9192-1-shikemeng@huaweicloud.com>
+	s=arc-20240116; t=1709380008; c=relaxed/simple;
+	bh=6ybbMazjaeBS8YeBDGv/Cm5reWpCfIW0IWKWohJFMZo=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=Y4XaGO742MEBw9qxHOudVocV3Vxdv8RpwJ6fwPYKW9ijR3hcJaoifXtYEMMz5Z6yN6oGsyDUs++I1Rhaq0odDgdNvalDXWVeK6b/IM1UQDN7apNm+BRAF/Pntt1Q7B8n07Mb2VR9C/lqKBO2A+s8N+FV0cZGsShkrXunlpaLGWk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=I4tMOrHK; arc=none smtp.client-ip=10.30.226.201
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="I4tMOrHK"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C5DB5C433F1;
+	Sat,  2 Mar 2024 11:46:44 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1709380007;
+	bh=6ybbMazjaeBS8YeBDGv/Cm5reWpCfIW0IWKWohJFMZo=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=I4tMOrHK23Pkkn1kDxMqBt0gfVxve00K9dk6+AN7WC3lM5MEh6L9QJj2Ghj7A42fz
+	 k93yrwr8rXsSvSP7EkDVl5Epmtup3GeBjC35GAxnbDpu4xLUFBf9uAvkn2feBhZwIQ
+	 muSESoyxAg6humaLYqA2iY/RR92SFJB0HRUeKGgI7bhSEQHvvVcG051dpZnvAwyCUr
+	 AI6G/4ttXvFbcbRF7sT1CFgpDv0ZakY1kyXw6MdB9AbWnf/MmYP8eIHzRNgELWV2L7
+	 /0amtXNG6C1bOELcdUltZ73hN3XPrrhoViHwgQ6vlV9l5z5mjdVwwtaZK4MOUDiNvp
+	 nxPXRM9P3mpEQ==
+Date: Sat, 2 Mar 2024 12:46:41 +0100
+From: Christian Brauner <brauner@kernel.org>
+To: Luis Henriques <lhenriques@suse.de>, 
+	Eric Sandeen <sandeen@sandeen.net>
+Cc: Theodore Ts'o <tytso@mit.edu>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Alexander Viro <viro@zeniv.linux.org.uk>, 
+	Jan Kara <jack@suse.cz>, Miklos Szeredi <miklos@szeredi.hu>, 
+	Amir Goldstein <amir73il@gmail.com>, linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+	linux-unionfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 1/3] fs_parser: handle parameters that can be empty and
+ don't have a value
+Message-ID: <20240302-avancieren-sehtest-90eb364bfcd5@brauner>
+References: <20240229163011.16248-1-lhenriques@suse.de>
+ <20240229163011.16248-2-lhenriques@suse.de>
+ <20240301-gegossen-seestern-683681ea75d1@brauner>
+ <87il269crs.fsf@suse.de>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgA3imyE7+Jld1cqFw--.52350S4
-X-Coremail-Antispam: 1UD129KBjvJXoW7tw1UuFyUArWrur17KFyUJrb_yoW8ArW8pa
-	nxCrn0kF45Wr1kuw47G3y0q3Z7Kw4kuw18GrWfCw1fArWfJr9rCF98twnIgr48tF4xXF45
-	A3Z0vry3Crs7uaUanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUBjb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
-	8IrcIa0xkI8VA2jI8067AKxVWUXwA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK
-	0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4
-	x0Y4vE2Ix0cI8IcVCY1x0267AKxVWxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2
-	z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4
-	xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v2
-	6r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwI
-	xGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480
-	Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7
-	IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k2
-	6cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxV
-	AFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07jguciUUUUU=
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <87il269crs.fsf@suse.de>
 
-Although there is no concurrent block allocation/free in unit test,
-internal functions mb_mark_used and mb_free_blocks assert group
-lock is always held. Acquire group before calling mb_mark_used and
-mb_free_blocks in unit test to avoid the assertion.
+On Fri, Mar 01, 2024 at 03:45:27PM +0000, Luis Henriques wrote:
+> Christian Brauner <brauner@kernel.org> writes:
+> 
+> > On Thu, Feb 29, 2024 at 04:30:08PM +0000, Luis Henriques wrote:
+> >> Currently, only parameters that have the fs_parameter_spec 'type' set to
+> >> NULL are handled as 'flag' types.  However, parameters that have the
+> >> 'fs_param_can_be_empty' flag set and their value is NULL should also be
+> >> handled as 'flag' type, as their type is set to 'fs_value_is_flag'.
+> >> 
+> >> Signed-off-by: Luis Henriques <lhenriques@suse.de>
+> >> ---
+> >>  fs/fs_parser.c | 3 ++-
+> >>  1 file changed, 2 insertions(+), 1 deletion(-)
+> >> 
+> >> diff --git a/fs/fs_parser.c b/fs/fs_parser.c
+> >> index edb3712dcfa5..53f6cb98a3e0 100644
+> >> --- a/fs/fs_parser.c
+> >> +++ b/fs/fs_parser.c
+> >> @@ -119,7 +119,8 @@ int __fs_parse(struct p_log *log,
+> >>  	/* Try to turn the type we were given into the type desired by the
+> >>  	 * parameter and give an error if we can't.
+> >>  	 */
+> >> -	if (is_flag(p)) {
+> >> +	if (is_flag(p) ||
+> >> +	    (!param->string && (p->flags & fs_param_can_be_empty))) {
+> >>  		if (param->type != fs_value_is_flag)
+> >>  			return inval_plog(log, "Unexpected value for '%s'",
+> >>  				      param->key);
+> >
+> > If the parameter was derived from FSCONFIG_SET_STRING in fsconfig() then
+> > param->string is guaranteed to not be NULL. So really this is only
+> > about:
+> >
+> > FSCONFIG_SET_FD
+> > FSCONFIG_SET_BINARY
+> > FSCONFIG_SET_PATH
+> > FSCONFIG_SET_PATH_EMPTY
+> >
+> > and those values being used without a value. What filesystem does this?
+> > I don't see any.
+> >
+> > The tempting thing to do here is to to just remove fs_param_can_be_empty
+> > from every helper that isn't fs_param_is_string() until we actually have
+> > a filesystem that wants to use any of the above as flags. Will lose a
+> > lot of code that isn't currently used.
+> 
+> Right, I find it quite confusing and I may be fixing the issue in the
+> wrong place.  What I'm seeing with ext4 when I mount a filesystem using
+> the option '-o usrjquota' is that fs_parse() will get:
+> 
+>  * p->type is set to fs_param_is_string
+>    ('p' is a struct fs_parameter_spec, ->type is a function)
+>  * param->type is set to fs_value_is_flag
+>    ('param' is a struct fs_parameter, ->type is an enum)
+> 
+> This is because ext4 will use the __fsparam macro to set define a
+> fs_param_spec as a fs_param_is_string but will also set the
+> fs_param_can_be_empty; and the fsconfig() syscall will get that parameter
+> as a flag.  That's why param->string will be NULL in this case.
 
-Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-Reported-by: Guenter Roeck <linux@roeck-us.net>
----
- fs/ext4/mballoc-test.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+Thanks for the details. Let me see if I get this right. So you're saying that
+someone is doing:
 
-diff --git a/fs/ext4/mballoc-test.c b/fs/ext4/mballoc-test.c
-index 9d061f80f150..4d9eb4807c98 100644
---- a/fs/ext4/mballoc-test.c
-+++ b/fs/ext4/mballoc-test.c
-@@ -701,7 +701,10 @@ test_mb_mark_used_range(struct kunit *test, struct ext4_buddy *e4b,
- 	ex.fe_start = start;
- 	ex.fe_len = len;
- 	ex.fe_group = TEST_GOAL_GROUP;
-+
-+	ext4_lock_group(sb, TEST_GOAL_GROUP);
- 	mb_mark_used(e4b, &ex);
-+	ext4_unlock_group(sb, TEST_GOAL_GROUP);
- 
- 	mb_set_bits(bitmap, start, len);
- 	/* bypass bb_free validatoin in ext4_mb_generate_buddy */
-@@ -761,7 +764,9 @@ test_mb_free_blocks_range(struct kunit *test, struct ext4_buddy *e4b,
- 	if (len == 0)
- 		return;
- 
-+	ext4_lock_group(sb, e4b->bd_group);
- 	mb_free_blocks(NULL, e4b, start, len);
-+	ext4_unlock_group(sb, e4b->bd_group);
- 
- 	mb_clear_bits(bitmap, start, len);
- 	/* bypass bb_free validatoin in ext4_mb_generate_buddy */
-@@ -805,7 +810,11 @@ static void test_mb_free_blocks(struct kunit *test)
- 	ex.fe_start = 0;
- 	ex.fe_len = EXT4_CLUSTERS_PER_GROUP(sb);
- 	ex.fe_group = TEST_GOAL_GROUP;
-+
-+	ext4_lock_group(sb, TEST_GOAL_GROUP);
- 	mb_mark_used(&e4b, &ex);
-+	ext4_unlock_group(sb, TEST_GOAL_GROUP);
-+
- 	grp->bb_free = 0;
- 	memset(bitmap, 0xff, sb->s_blocksize);
- 
--- 
-2.30.0
+fsconfig(..., FSCONFIG_SET_FLAG, "usrjquota", NULL, 0); // [1]
 
+? Is so that is a vital part of the explanation. So please put that in the
+commit message.
+
+Then ext4 defines:
+
+	fsparam_string_empty ("usrjquota",		Opt_usrjquota),
+
+So [1] gets us:
+
+        param->type == fs_value_is_flag
+        param->string == NULL
+
+Now we enter into
+fs_parse()
+-> __fs_parse()
+   -> fs_lookup_key() for @param and that does:
+
+        bool want_flag = param->type == fs_value_is_flag;
+
+        *negated = false;
+        for (p = desc; p->name; p++) {
+                if (strcmp(p->name, name) != 0)
+                        continue;
+                if (likely(is_flag(p) == want_flag))
+                        return p;
+                other = p;
+        }
+
+So we don't have a flag parameter defined so the only real match we get is
+@other for:
+
+        fsparam_string_empty ("usrjquota",		Opt_usrjquota),
+
+What happens now is that you call p->type == fs_param_is_string() and that
+rejects it as bad parameter because param->type == fs_value_is_flag !=
+fs_value_is_string as required. So you dont end up getting Opt_userjquota
+called with param->string NULL, right? So there's not NULL deref or anything,
+right?
+
+You just fail to set usrjquota. Ok, so I think the correct fix is to do
+something like the following in ext4:
+
+        fsparam_string_empty ("usrjquota",      Opt_usrjquota),
+        fs_param_flag        ("usrjquota",      Opt_usrjquota_flag),
+
+and then in the switch you can do:
+
+switch (opt)
+case Opt_usrjquota:
+        // string thing
+case Opt_usrjquota_flag:
+        // flag thing
+
+And I really think we should kill all empty handling for non-string types and
+only add that when there's a filesystem that actually needs it.
