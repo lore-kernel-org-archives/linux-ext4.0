@@ -1,75 +1,43 @@
-Received: from mail-pf1-f178.google.com (mail-pf1-f178.google.com [209.85.210.178])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 10A3B24A0E;
-	Sat,  2 Mar 2024 07:43:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.178
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D3763134AB;
+	Sat,  2 Mar 2024 09:21:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1709365382; cv=none; b=Sl1EU2gNlYpVyZ4vv98ffrFr1xrbhqkp5SP5sDjIAWZX8lMvtDZ9drRgslnKL1dV02rBjWDpQmmB9hKAPjmwkUopHopRm2fvxRNQYQsnC5cJAhRUtBvqbqZTabdXcgC2shDuDKuRKdLvUL11tXzuLoIzvz3Zjr1Q5+zvOg8N/H0=
+	t=1709371283; cv=none; b=QwqgPo3ZwV0Bpve1qOn1bIc/Vd3T/pkhaIP0MVmCigejxPn0LfOSKEwY627erwY2C1zOpRGeTEn2//SxhgNByh663ta1Zdekw03YkKwMXhZZycuE7JoiJpMUwIHsHTm15vt5Hpl0kw2yEjgoqIINJfGEb7K+60HFaIKbC58SUKU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1709365382; c=relaxed/simple;
-	bh=4GgXxZs/mglWIRYd9/bl71jA6REtfHyAlcztG0gdRX8=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=CudLb6oUBEuYQ+8IoXDgfdMs4qGYUgKR+IixDJQyEZ4d9HIgaIl/fRzIp3D+pngXwQkdxW2JA/Gk/CxLZ9eZus+SxM5v+Q0Eup/qAVgqKxlTK9oSn30kpcw1Mr+EybkW73tWvtiM0JocFCUnlCtYyRO6WBOdHqR1wBB/LcILUYY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=fm123pWv; arc=none smtp.client-ip=209.85.210.178
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="fm123pWv"
-Received: by mail-pf1-f178.google.com with SMTP id d2e1a72fcca58-6e5d7f1f15bso863636b3a.2;
-        Fri, 01 Mar 2024 23:43:00 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1709365379; x=1709970179; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=iROnnUQAIrn8DnCE9YGkqkSmP3qnk0ncEloJYBFiPVY=;
-        b=fm123pWvIxbYCJCah26aQGuboZ93+hVunMqnSIXQ4lr3fLAEi6Yn+uKS64CA80Z/dO
-         PoBV0+p088i8HXpKkKMWoA04fTRYDMivD8n+U7VeMCJj0vTIBg4540Nxz3tBjf7amHlQ
-         bOeOudMdAbGR92DdyVf+KhRXetd2yULG5rIRYfovLLemSgYrxxoiL1XpDQMaXZbUa9pT
-         Mh8Iq1MMkYU9tSsPVzjw5o5lLzVIWmDVhMWY1OVxk39FGnwA4+NwwkYk6fDcEnUjqovW
-         88ZBbGJmP+YDBcSSWqxA2Vl3eVUYniLJAMt552l93nAuwBVot/C5GTxEpjquvBc+41jn
-         6LZg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1709365379; x=1709970179;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=iROnnUQAIrn8DnCE9YGkqkSmP3qnk0ncEloJYBFiPVY=;
-        b=V8XgKrkDOpE7qP8xwGrQortvzhIj/QMeCBP3cq2HI0WXm+2URaeeSR+D2h2QXHOwPd
-         ngP65cpSWfTKpLn8F11gVWdTbVKEKjNXQFghYLIO3J7mOrmMAvIS9ZxXby1gYWn2e+w4
-         CmjKk9yoApZLI0mDbKnuPcygOiOUpAQR6e3no8MKnj7EaHyT4P0MfO6Rk2N9fWOAEgKj
-         hC3MR5bAgJTU5ZxmpercpbherJFyYD4v7doGJbePwIjhGsajPjjrWjHWJilm/tx/DCuK
-         U07kcmWFrWXVPKyWujvQ4CBUVTIxiB2EVDSgzO7WAbPEsWVdNdjMP1tMzH1En4WOiIi0
-         eOkQ==
-X-Forwarded-Encrypted: i=1; AJvYcCVl1Ncu8T9rDMt7mqpgGvUf9DjWSi1tI1g+wSSEiNfaNZiyhVSdGRAWG2NoD/WcD9UkdWU3PnhbxVXPf/Q2sZ8m3Mvbpee2tCzJEkhpM56U5oOTL2yscaswgFZawX2OvivcZRJvtjH+vw==
-X-Gm-Message-State: AOJu0YzS74zH2fqTuR5WGeM2i7p+bAisXjOjENEowzQoL6vj09+pXCir
-	znGXN59lK89zyUadzIM276PMCjxmoK0ADuif4Gygl0rP0cBZLPlaa9dBQ1K4
-X-Google-Smtp-Source: AGHT+IFPpIE1yMNr/ZCVoN5pvHpYmcwWC5rH1/HSKdLic7af17QTNikWfEa+xeGlN1Lyzwgs/tWXjA==
-X-Received: by 2002:a05:6a00:852:b0:6e5:736e:cc8 with SMTP id q18-20020a056a00085200b006e5736e0cc8mr4513372pfk.33.1709365379431;
-        Fri, 01 Mar 2024 23:42:59 -0800 (PST)
-Received: from dw-tp.. ([49.205.218.89])
-        by smtp.gmail.com with ESMTPSA id x11-20020aa784cb000000b006e45c5d7720sm4138206pfn.93.2024.03.01.23.42.55
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 01 Mar 2024 23:42:58 -0800 (PST)
-From: "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
-To: linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-Cc: Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	Jan Kara <jack@suse.cz>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Matthew Wilcox <willy@infradead.org>,
-	"Darrick J . Wong" <djwong@kernel.org>,
-	Luis Chamberlain <mcgrof@kernel.org>,
-	John Garry <john.g.garry@oracle.com>,
+	s=arc-20240116; t=1709371283; c=relaxed/simple;
+	bh=yuDnORTLBMtabOdEUTJzo3+JPFXKoysV58A6NG+lOyE=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=brX9kxKvkZ1qLz00tHRdnJ2BdGwj18QJmIvcDZL4xvs/d3UlGMDRTB9yA+tEP1xJBMml+06U5gfn6F0n9/djcPWmij3Tu3gtHyn1YZ3NI3J5MJQohjhn/pGVG3c5lxUDFOKO7W57Gkit/X7Y/A3y5K7anfxpU3AqIRB/LB3a2Vo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4TmzwP54xXz4f3k69;
+	Sat,  2 Mar 2024 17:21:09 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 2562E1A0BDF;
+	Sat,  2 Mar 2024 17:21:13 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.101.6])
+	by APP4 (Coremail) with SMTP id gCh0CgA3imyE7+Jld1cqFw--.52350S5;
+	Sat, 02 Mar 2024 17:21:12 +0800 (CST)
+From: Kemeng Shi <shikemeng@huaweicloud.com>
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca
+Cc: linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
-	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
-Subject: [RFC 9/9] e2fsprogs/chattr: Supports atomic writes attribute
-Date: Sat,  2 Mar 2024 13:12:06 +0530
-Message-ID: <646de2f0f9ba8fb8a486dc388ae0748999d1ed2d.1709356319.git.ritesh.list@gmail.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <cover.1709356594.git.ritesh.list@gmail.com>
-References: <cover.1709356594.git.ritesh.list@gmail.com>
+	naresh.kamboju@linaro.org,
+	daniel.diaz@linaro.org,
+	linux@roeck-us.net,
+	brauner@kernel.org
+Subject: [PATCH v3 3/3] ext4: initialize sbi->s_freeclusters_counter before use in kunit test
+Date: Sun,  3 Mar 2024 02:17:55 +0800
+Message-Id: <20240302181755.9192-4-shikemeng@huaweicloud.com>
+X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20240302181755.9192-1-shikemeng@huaweicloud.com>
+References: <20240302181755.9192-1-shikemeng@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -77,113 +45,87 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:gCh0CgA3imyE7+Jld1cqFw--.52350S5
+X-Coremail-Antispam: 1UD129KBjvJXoW7Kw1xZr1xGw1fJry8KrW3ZFb_yoW8CFW7pF
+	yjkF10kr48Crs7WanrJrZ8Xw12gw4v9ryfKryxuryrAFW3Jry8AF1kKF1Ykr4FgrW8XFn5
+	ZF1qgryUWr4rC37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUBjb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
+	8IrcIa0xkI8VA2jI8067AKxVWUWwA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK
+	0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4
+	x0Y4vE2Ix0cI8IcVCY1x0267AKxVWxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2
+	z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4
+	xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v2
+	6r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwI
+	xGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480
+	Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7
+	IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k2
+	6cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxV
+	AFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07js0edUUUUU=
+X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
-This adds 'W' which is atomic write attribute to chattr.
+Fix warnning that sbi->s_freeclusters_counter is used before
+initialization.
 
-Signed-off-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 ---
- lib/e2p/pf.c         |  1 +
- lib/ext2fs/ext2_fs.h |  2 +-
- misc/chattr.1.in     | 18 ++++++++++++++----
- misc/chattr.c        |  3 ++-
- 4 files changed, 18 insertions(+), 6 deletions(-)
+ fs/ext4/mballoc-test.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
 
-diff --git a/lib/e2p/pf.c b/lib/e2p/pf.c
-index 81e3bb26..9b311477 100644
---- a/lib/e2p/pf.c
-+++ b/lib/e2p/pf.c
-@@ -45,6 +45,7 @@ static struct flags_name flags_array[] = {
- 	{ EXT4_EXTENTS_FL, "e", "Extents" },
- 	{ FS_NOCOW_FL, "C", "No_COW" },
- 	{ FS_DAX_FL, "x", "DAX" },
-+	{ FS_ATOMICWRITES_FL, "W", "ATOMIC_WRITES" },
- 	{ EXT4_CASEFOLD_FL, "F", "Casefold" },
- 	{ EXT4_INLINE_DATA_FL, "N", "Inline_Data" },
- 	{ EXT4_PROJINHERIT_FL, "P", "Project_Hierarchy" },
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index 0fc9c09a..f9dcf71f 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -346,7 +346,7 @@ struct ext2_dx_tail {
- #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
- /* EXT4_EOFBLOCKS_FL 0x00400000 was here */
- #define FS_NOCOW_FL			0x00800000 /* Do not cow file */
--#define EXT4_SNAPFILE_FL		0x01000000  /* Inode is a snapshot */
-+#define FS_ATOMICWRITES_FL		0x01000000  /* Inode can do atomic writes */
- #define FS_DAX_FL			0x02000000 /* Inode is DAX */
- #define EXT4_SNAPFILE_DELETED_FL	0x04000000  /* Snapshot is being deleted */
- #define EXT4_SNAPFILE_SHRUNK_FL		0x08000000  /* Snapshot shrink has completed */
-diff --git a/misc/chattr.1.in b/misc/chattr.1.in
-index 50c54e7d..22757123 100644
---- a/misc/chattr.1.in
-+++ b/misc/chattr.1.in
-@@ -26,7 +26,7 @@ changes the file attributes on a Linux file system.
- The format of a symbolic
- .I mode
- is
--.BR +-= [ aAcCdDeFijmPsStTux ].
-+.BR +-= [ aAcCdDeFijmPsStTuxW ].
- .PP
- The operator
- .RB ' + '
-@@ -38,7 +38,7 @@ causes them to be removed; and
- causes them to be the only attributes that the files have.
- .PP
- The letters
--.RB ' aAcCdDeFijmPsStTux '
-+.RB ' aAcCdDeFijmPsStTuxW '
- select the new attributes for the files:
- append only
- .RB ( a ),
-@@ -74,8 +74,10 @@ top of directory hierarchy
- .RB ( T ),
- undeletable
- .RB ( u ),
--and direct access for files
--.RB ( x ).
-+direct access for files
-+.RB ( x ),
-+and atomic writes for files.
-+.RB ( W ).
- .PP
- The following attributes are read-only, and may be listed by
- .BR lsattr (1)
-@@ -263,6 +265,14 @@ directory.  If an existing directory has contained some files and
- subdirectories, modifying the attribute on the parent directory doesn't
- change the attributes on these files and subdirectories.
- .TP
-+.B W
-+The 'W' attribute can only be set on a regular file. A file which has this
-+attribute set can do untorn writes i.e. if an atomic write is requested by
-+user with proper alignment and atomic flags set (such as RWF_ATOMIC), then
-+a subsequent read to that block(s) will either read entire new data or entire
-+old data (in case of a power failure). The block(s) written can never contain
-+mix of both.
-+.TP
- .B V
- A file with the 'V' attribute set has fs-verity enabled.  It cannot be
- written to, and the file system will automatically verify all data read
-diff --git a/misc/chattr.c b/misc/chattr.c
-index c7382a37..24db790e 100644
---- a/misc/chattr.c
-+++ b/misc/chattr.c
-@@ -86,7 +86,7 @@ static unsigned long sf;
- static void usage(void)
+diff --git a/fs/ext4/mballoc-test.c b/fs/ext4/mballoc-test.c
+index 4d9eb4807c98..00fc0f8b3809 100644
+--- a/fs/ext4/mballoc-test.c
++++ b/fs/ext4/mballoc-test.c
+@@ -45,6 +45,7 @@ static struct file_system_type mbt_fs_type = {
+ 
+ static int mbt_mb_init(struct super_block *sb)
  {
- 	fprintf(stderr,
--		_("Usage: %s [-RVf] [-+=aAcCdDeijPsStTuFx] [-p project] [-v version] files...\n"),
-+		_("Usage: %s [-RVf] [-+=aAcCdDeijPsStTuFxW] [-p project] [-v version] files...\n"),
- 		program_name);
- 	exit(1);
- }
-@@ -114,6 +114,7 @@ static const struct flags_char flags_array[] = {
- 	{ EXT2_TOPDIR_FL, 'T' },
- 	{ FS_NOCOW_FL, 'C' },
- 	{ FS_DAX_FL, 'x' },
-+	{ FS_ATOMICWRITES_FL, 'W' },
- 	{ EXT4_CASEFOLD_FL, 'F' },
- 	{ 0, 0 }
- };
---
-2.39.2
++	ext4_fsblk_t block;
+ 	int ret;
+ 
+ 	/* needed by ext4_mb_init->bdev_nonrot(sb->s_bdev) */
+@@ -69,8 +70,16 @@ static int mbt_mb_init(struct super_block *sb)
+ 	if (ret != 0)
+ 		goto err_out;
+ 
++	block = ext4_count_free_clusters(sb);
++	ret = percpu_counter_init(&EXT4_SB(sb)->s_freeclusters_counter, block,
++				  GFP_KERNEL);
++	if (ret != 0)
++		goto err_mb_release;
++
+ 	return 0;
+ 
++err_mb_release:
++	ext4_mb_release(sb);
+ err_out:
+ 	kfree(sb->s_bdev->bd_queue);
+ 	kfree(sb->s_bdev);
+@@ -79,6 +88,7 @@ static int mbt_mb_init(struct super_block *sb)
+ 
+ static void mbt_mb_release(struct super_block *sb)
+ {
++	percpu_counter_destroy(&EXT4_SB(sb)->s_freeclusters_counter);
+ 	ext4_mb_release(sb);
+ 	kfree(sb->s_bdev->bd_queue);
+ 	kfree(sb->s_bdev);
+@@ -333,7 +343,7 @@ static int mbt_kunit_init(struct kunit *test)
+ 				   ext4_mb_mark_context,
+ 				   ext4_mb_mark_context_stub);
+ 
+-	/* stub function will be called in mt_mb_init->ext4_mb_init */
++	/* stub function will be called in mbt_mb_init->ext4_mb_init */
+ 	if (mbt_mb_init(sb) != 0) {
+ 		mbt_ctx_release(sb);
+ 		mbt_ext4_free_super_block(sb);
+@@ -534,6 +544,7 @@ static void test_mark_diskspace_used(struct kunit *test)
+ 	struct test_range ranges[TEST_RANGE_COUNT];
+ 	int i;
+ 
++
+ 	mbt_generate_test_ranges(sb, ranges, TEST_RANGE_COUNT);
+ 
+ 	ac.ac_status = AC_STATUS_FOUND;
+-- 
+2.30.0
 
