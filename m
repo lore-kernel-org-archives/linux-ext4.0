@@ -1,102 +1,168 @@
-Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7FAC75C90C
-	for <linux-ext4@vger.kernel.org>; Wed,  6 Mar 2024 07:39:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.165.32
+Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id EA3FE5DF13;
+	Wed,  6 Mar 2024 08:55:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1709710795; cv=none; b=dpk0KjsjcKQxidORkb0+CJy6Cvw9Tjd68K0HhKEawosfexp7QfEjfuONSsyZ3R2astw5B2Xj1G2nw9eRizkwM/Kn5bMi+/g4VgcOU9ULTC2EUTDa+NSkaNsahm5cadBO2+777/oYRvrc+rCBBUQolumAMt+x60Clhifv/E7zcBE=
+	t=1709715337; cv=none; b=CMjEGW/ygG3DJa+NqAFiVCpU29C5qmpgbXt87wcCTWfkrMGFN26NYjsqwimq3dOwr30ZqIpbWkKXzqkHmNgD5XouYCxDGr4IezQB/7g4vHoAsn7VB3x186lDGSFPOz9fRIFFd0ITohVrSePALpEgLTIF3WAVT+wAltZcTx1oXoY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1709710795; c=relaxed/simple;
-	bh=LXO3v+TrSu6JFBxpSZDPPqGo6+3BUpY1z+H3WMoQhXk=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=fxV8Klgt/ilDdiQ0QlvRARXtQEXYxgdDoIgj9JujBRqsqYuQLe8O7PSZm2fBA921dNyHYmXc53AEYZuO1a0XObIaq5r3QtnfTF0Xzsel0kc+jCLkj7xIk9n5haR7W3oPqcHJRxSUo6cEQ3cEFOsfrARyMtANjM0H7g/WdMusF74=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=CVLDUMb3; arc=none smtp.client-ip=205.220.165.32
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=oracle.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="CVLDUMb3"
-Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
-	by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 4261EKTX026766;
-	Wed, 6 Mar 2024 07:39:48 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : mime-version : content-transfer-encoding;
- s=corp-2023-11-20; bh=eEphe5MX325kVO5k2hYl2xfpJZQs/tVN/U09mN35BsI=;
- b=CVLDUMb3H6hS0KXV3xORB9hLOeDbB843QNCFziNlJD2iG/YOWXwV98THY6Ww8BxduSUo
- BCeOKoJ3RZBRivA2ggY5QLg0yw7d+epnu2w0HPrb9R+lhxk5ER0R80wVlu8Ih4iJKWlC
- B+xN/pedgOfH4P4TMqIE32Lk2eU/Q62giGXk68n0uWfvf28LTUfG/qH7qtWIhkt3FwPx
- 2ZMiuEHykcuf7EhU8NwOR0wXxXT037h33WYIVmMcz/2molI22pdGMgv3QTr9sZbH5Je7
- wSmkwbUOuVZ+EJhKrHpiDIEtVfrtn+rOzzSPxc08rU7hrsAmu6+9OFXfQr7pXBjAMv5z yQ== 
-Received: from iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta01.appoci.oracle.com [130.35.100.223])
-	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3wkvnv09f5-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Wed, 06 Mar 2024 07:39:48 +0000
-Received: from pps.filterd (iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (8.17.1.19/8.17.1.19) with ESMTP id 4266clW1005260;
-	Wed, 6 Mar 2024 07:39:46 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 3wp7nrp2na-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Wed, 06 Mar 2024 07:39:46 +0000
-Received: from iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-	by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 4267dkAO036280;
-	Wed, 6 Mar 2024 07:39:46 GMT
-Received: from sridara-s.osdevelopmeniad.oraclevcn.com (sridara-s.allregionaliads.osdevelopmeniad.oraclevcn.com [100.100.252.75])
-	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTP id 3wp7nrp2n2-1;
-	Wed, 06 Mar 2024 07:39:46 +0000
-From: Srivathsa Dara <srivathsa.d.dara@oracle.com>
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
-        rajesh.sivaramasubramaniom@oracle.com, junxiao.bi@oracle.com,
-        ritesh.list@gmail.com
-Subject: [PATCH v2] ext4: Enable meta_bg only when new desc blocks are needed
-Date: Wed,  6 Mar 2024 07:39:23 +0000
-Message-Id: <20240306073923.333086-1-srivathsa.d.dara@oracle.com>
-X-Mailer: git-send-email 2.39.3
+	s=arc-20240116; t=1709715337; c=relaxed/simple;
+	bh=3z6wcnzZigmy1AnwKW6EWYXgb3eqsvFGY6rKaYlxPHE=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=uVGNqhyMifgx+jLPRRr4X8o5EB8IC8Cv+IkGW2bwWbHugjjsGvFCDRik2ralUXslF7/nTe+Fq9KEgDaTgKBTOHUJVPMTQQz11e/drIsgWeoLtoR8uKs2WSay79qyWHTHfwr0A97stSKhrM+Sy9jq2Rk+PRvWdk6E2A4ATr/3tiM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
+X-AuditID: a67dfc5b-d85ff70000001748-38-65e82f7c082d
+From: Byungchul Park <byungchul@sk.com>
+To: linux-kernel@vger.kernel.org
+Cc: kernel_team@skhynix.com,
+	torvalds@linux-foundation.org,
+	damien.lemoal@opensource.wdc.com,
+	linux-ide@vger.kernel.org,
+	adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org,
+	mingo@redhat.com,
+	peterz@infradead.org,
+	will@kernel.org,
+	tglx@linutronix.de,
+	rostedt@goodmis.org,
+	joel@joelfernandes.org,
+	sashal@kernel.org,
+	daniel.vetter@ffwll.ch,
+	duyuyang@gmail.com,
+	johannes.berg@intel.com,
+	tj@kernel.org,
+	tytso@mit.edu,
+	willy@infradead.org,
+	david@fromorbit.com,
+	amir73il@gmail.com,
+	gregkh@linuxfoundation.org,
+	kernel-team@lge.com,
+	linux-mm@kvack.org,
+	akpm@linux-foundation.org,
+	mhocko@kernel.org,
+	minchan@kernel.org,
+	hannes@cmpxchg.org,
+	vdavydov.dev@gmail.com,
+	sj@kernel.org,
+	jglisse@redhat.com,
+	dennis@kernel.org,
+	cl@linux.com,
+	penberg@kernel.org,
+	rientjes@google.com,
+	vbabka@suse.cz,
+	ngupta@vflare.org,
+	linux-block@vger.kernel.org,
+	josef@toxicpanda.com,
+	linux-fsdevel@vger.kernel.org,
+	jack@suse.cz,
+	jlayton@kernel.org,
+	dan.j.williams@intel.com,
+	hch@infradead.org,
+	djwong@kernel.org,
+	dri-devel@lists.freedesktop.org,
+	rodrigosiqueiramelo@gmail.com,
+	melissa.srw@gmail.com,
+	hamohammed.sa@gmail.com,
+	42.hyeyoo@gmail.com,
+	chris.p.wilson@intel.com,
+	gwan-gyeong.mun@intel.com,
+	max.byungchul.park@gmail.com,
+	boqun.feng@gmail.com,
+	longman@redhat.com,
+	hdanton@sina.com,
+	her0gyugyu@gmail.com
+Subject: [PATCH v13 01/27] llist: Move llist_{head,node} definition to types.h
+Date: Wed,  6 Mar 2024 17:54:47 +0900
+Message-Id: <20240306085513.41482-2-byungchul@sk.com>
+X-Mailer: git-send-email 2.17.1
+In-Reply-To: <20240306085513.41482-1-byungchul@sk.com>
+References: <20240306085513.41482-1-byungchul@sk.com>
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSf0zMcRjHfT7fn3dz9t2x+cqIM7/ph8kem9H8wfcPrMk/+IObvtNRx+5U
+	smxxlZ+VkMg5d1dOKpWrJtTtZMpJV3LqUI00aq6yuOiH4y788+y153k/rz1/PCwhr6aCWJX6
+	iKhRK+MUtJSUDkw1rUwJ7RPD0vuWQs75MPB+P02CvryUhtayEgSlVScw9D/dDB0jHgTjzS0E
+	5OW2IjB96CKgqqEbQV3RSRpe9U4Dl3eIBkfuORp0BeU0vPwygaHzykUMJdat0HTBjME++pmE
+	vH4arufpsL/0YRi1FDNgSV0IPUX5DEx8CAdHdzsFdW+XwzVDJw21dQ4SGmp6MLx6qKehu/Q3
+	BU0Nz0hozcmk4O6gmYYvIxYCLN4hBtrsRgwVaX5RxjcfBY2ZdgwZhfcwuN48QmA7/R6DtbSd
+	hideD4ZKay4BY7efIujJGmAg/fwoA9dPZCE4l36FhLTOCBj/qacj1wpPPEOEkFaZJNSNGEnh
+	uZkXHuR3MUKa7S0jGK0JQmXRMqGgth8LpmEvJViLz9CCdfgiI5wdcGFh0OlkhGdXx0mh15WH
+	o4J2SdfFiHGqRFETun6vNDbDaWAO35AeNd6qplORjT2LJCzPreabcrqY/3y3rYAKMM0t5t3u
+	USLAM7h5fGXmp8k+wXmkfKFzU4Cnc9t4Z+6byV2SW8i/KDOjAMu4CN5w34P/OoP5kgr7pEfC
+	reGzB7PpAMv9mWadyc9Sf+Yny5vtLf+OmMU/LnKTF5DMiKYUI7lKnRivVMWtDolNVquOhuw7
+	FG9F/meyHJ/YXYOGW6PrEccixVRZpOSzKKeUidrk+HrEs4RihixlrFeUy2KUycdEzaE9moQ4
+	UVuPZrOkYqZs1UhSjJzbrzwiHhTFw6Lm/xSzkqBUJAlll/yOd3y1Xf5xM6Ukq1zbsaisW/da
+	krTv1m5fVNeWOYamtWEbfmUHGwoz5Y13DhRH5+/95HxXtcDXQQ3pdwZXu+eeyh9bUBv9+nZE
+	SMNWn06vvhkud0Xe275xPmFzG8/UmDpXNF+61ubYEeKLUqf3i96v69ujG2+c+jieoGmpUJDa
+	WGX4MkKjVf4BXK6NJEgDAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzXSa0hTYRgH8N73nPOe42hxmlKH+lAsJLJSuxgPdiWiDlERQVRC1KGOuZqr
+	NrOMEu+UOs1orovK1Fqmlja1q5poWitblsMurFEmLXEqmLNMqVzRl4cfz//h/+nhKJWZmcFp
+	dHGyXidp1URBK7YsT114KuyrHF5xQQV52eHgGz5DQ0FVJYGOWxUIKmuTMfS2boA3I14EYy9e
+	UmA2dSAo/vSBgto2N4KGshQCnT1TwOkbJGA3ZRFILa0i8KpvHIMr/zyGCttmeH6uBEPTqIcG
+	cy+BK+ZUPDG+Yhi1lrNgTQqG7rLLLIx/WgR2dxcDLYV2Bhrez4dLRS4C9Q12GtrudWPofFBA
+	wF35m4HnbU9p6MgzMnBzoIRA34iVAqtvkIXXTRYM1WkTbRnffjHwxNiEIePqbQzOdw8RNJ75
+	iMFW2UWgxefFUGMzUfDzeiuC7px+FtKzR1m4kpyDICs9n4Y0VwSM/SggayLFFu8gJabVHBcb
+	Riy0+KxEEO9f/sCKaY3vWdFiOybWlIWIpfW9WCwe8jGirfwsEW1D51kxs9+JxQGHgxWfXhyj
+	xR6nGW+dGaVYsV/WauJlfdiqvYqYDEcRe6RQccJyrY4koUYuEwVwAr9UuPm6lPGb8HOFt29H
+	Kb+D+NlCjfHL3z3FexXCVcd6vwP5LYLD9I71m+aDhfZbJchvJR8hFN314n+ds4SK6qa/PQH8
+	MiF3IJf4rZq4eZFaTM4hhQVNKkdBGl18rKTRRoQaDsUk6DQnQvcdjrWhiXexnh7Pu4eGOzc0
+	I55D6snKNQEeWcVI8YaE2GYkcJQ6SHnqZ4+sUu6XEk7K+sN79Me0sqEZzeRo9XTlxh3yXhV/
+	QIqTD8nyEVn/P8VcwIwk5L6z2zCttSinw7vrV2RidF92VLUHO92bLO3Xt//gIzqjjVTstMdC
+	+sl1L135VnvX4sIbkWvrAo/Wrs5NmX86dImkO/jRE8lqjVGthsxHgceFRFPgPOwa2bY9LDEd
+	L7iYklg2uZ2bY26XZu2M84Tos6Z+7mkOVVUFb7w/aeX3nClq2hAjLQqh9AbpD3/EcVYqAwAA
+X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.272,Aquarius:18.0.1011,Hydra:6.0.619,FMLib:17.11.176.26
- definitions=2024-03-06_04,2024-03-05_01,2023-05-22_02
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 mlxscore=0
- mlxlogscore=999 spamscore=0 adultscore=0 malwarescore=0 phishscore=0
- bulkscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2311290000 definitions=main-2403060059
-X-Proofpoint-ORIG-GUID: GDZFcG94PdCPSVCvd9VO3YYqdETLt1k-
-X-Proofpoint-GUID: GDZFcG94PdCPSVCvd9VO3YYqdETLt1k-
 
-This patch addresses an issue observed when resize_inode is disabled
-and an online extension of a filesysyem is performed. When a filesystem
-is expanded to a size that does not require a addition of a new
-descriptor block, the meta_bg feature is being enabled even though no
-part of the filesystem uses this layout.
+llist_head and llist_node can be used by very primitives. For example,
+Dept for tracking dependency uses llist things in its header. To avoid
+header dependency, move those to types.h.
 
-This patch ensures that the meta_bg feature is only enabled if
-any of the added block groups utilize meta_bg layout.
-
-Signed-off-by: Srivathsa Dara <srivathsa.d.dara@oracle.com>
+Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- fs/ext4/resize.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ include/linux/llist.h | 8 --------
+ include/linux/types.h | 8 ++++++++
+ 2 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 928700d57eb6..b46a1c492c3f 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1996,7 +1996,8 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
- 		}
- 	}
+diff --git a/include/linux/llist.h b/include/linux/llist.h
+index 2c982ff7475a..3ac071857612 100644
+--- a/include/linux/llist.h
++++ b/include/linux/llist.h
+@@ -53,14 +53,6 @@
+ #include <linux/stddef.h>
+ #include <linux/types.h>
  
--	if ((!resize_inode && !meta_bg) || n_blocks_count == o_blocks_count) {
-+	if ((!resize_inode && !meta_bg && n_desc_blocks > o_desc_blocks) || 
-+			n_blocks_count == o_blocks_count) {
- 		err = ext4_convert_meta_bg(sb, resize_inode);
- 		if (err)
- 			goto out;
+-struct llist_head {
+-	struct llist_node *first;
+-};
+-
+-struct llist_node {
+-	struct llist_node *next;
+-};
+-
+ #define LLIST_HEAD_INIT(name)	{ NULL }
+ #define LLIST_HEAD(name)	struct llist_head name = LLIST_HEAD_INIT(name)
+ 
+diff --git a/include/linux/types.h b/include/linux/types.h
+index 253168bb3fe1..10d94b7f9e5d 100644
+--- a/include/linux/types.h
++++ b/include/linux/types.h
+@@ -199,6 +199,14 @@ struct hlist_node {
+ 	struct hlist_node *next, **pprev;
+ };
+ 
++struct llist_head {
++	struct llist_node *first;
++};
++
++struct llist_node {
++	struct llist_node *next;
++};
++
+ struct ustat {
+ 	__kernel_daddr_t	f_tfree;
+ #ifdef CONFIG_ARCH_32BIT_USTAT_F_TINODE
 -- 
-2.39.3
+2.17.1
 
