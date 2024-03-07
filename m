@@ -1,78 +1,78 @@
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 01CF012DDBE;
-	Thu,  7 Mar 2024 17:10:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6CA8412FB3E;
+	Thu,  7 Mar 2024 18:17:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1709831438; cv=none; b=OsCTNYx8sEZK42zBfV+JuBmOQbdJUk4uQL/iNjo/Km3+CU/Q2l3b9h61hatHoAe74Y8Uuh+k2RgSXBItXpxSO8slZeyb7WJgUwcKGtMN2LKD8UoCdrcwzrfkP51Nl5X61zEoZyXPcLK4TaMKQOc1mcv3rdvydOhJluxBUmQM2jk=
+	t=1709835425; cv=none; b=u2+tibIpPEbxa8LPVEzTksX+mutFIT/N+jmaK8Chcht5femmwrSbX77N/uYPdK6OFJRhRlIvZ0vb70a48nJxioaNHb4wCVfZItfIJkNOl1+Trw2EPsdMPGRIG4s1FHu8VSB05OWA3U8vJ8/kbG96pfYxGbqLQaKKb0a5JrPnaDk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1709831438; c=relaxed/simple;
-	bh=ePRxzCU8k8EGnokZBB4+4ln+F7jpIw9Pac4V0NZBhg8=;
+	s=arc-20240116; t=1709835425; c=relaxed/simple;
+	bh=wPNhnbjYtr8nNf0xfcvCWhf/R2zeOK/14UW2AOf6LHA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=eugG1rpA4GUOu2FVG6dL/jklqMz+rcoVq85qjNeM5n5aVs/l1fG6VxNP7rvHXVPK5bIpCkCFy8BY3doUaExCssdzyFqV12QoWu8c1gapE83RLPggNChqmHFHC4at/722InQAE4BsP6z5CknfcGJweZ1YOeOxqoEz2Sz2w592NCo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=0VDieRCE; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=KmbEfxau; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=0VDieRCE; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=KmbEfxau; arc=none smtp.client-ip=195.135.223.131
+	 MIME-Version; b=O+sqotT21QBRuHeDKtmaU1C1c+IfOSvJDl5Id14qZp04R5DTj0dsPQPHHCiKAZir8ber56QUK4tsaky+6RiaU/fEnEeFQ6+GCm0yNJwD1IRO4JxLbHAQNDFi54UajD/DucLYcw/RIGJltR4h5yTkQETqIotckUU1pgGuEsny2JA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=C/djWXY9; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=mbzQuoAW; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=C/djWXY9; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=mbzQuoAW; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="0VDieRCE";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="KmbEfxau";
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="0VDieRCE";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="KmbEfxau"
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="C/djWXY9";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="mbzQuoAW";
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="C/djWXY9";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="mbzQuoAW"
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id A4AB45C6DB;
-	Thu,  7 Mar 2024 16:02:31 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 841905D00A;
+	Thu,  7 Mar 2024 16:02:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1709827351; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1709827353; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=vjrVxieXuRhTZiWnKCpH9d/jIcN0kC0d2yC48QLOibA=;
-	b=0VDieRCEz8N+eqziEuOrjkmp9rwnlUU6RmpL8KKW9YTtMiK4Pet04wWoVV/M9JWLdHf7/F
-	5YDfyx4RrhAjsaygNRf43qQzl0ZY7Ss7ueyPa8s5F+Big6p+BewIHJHDJb7ftcML9TeWO5
-	l6fcfT/OSoLdmEXNm8xbiMcUyFI9C3Q=
+	bh=cMNJbshkkARiLJa25Qz/aZkoMSzYIEZDxAvRw1s71Sw=;
+	b=C/djWXY94UZf8tSS//GXm9k2HLaDnognY2Th4qwfzL+5lFOZ6eDg/lfRfFZk/YXK0bYbV8
+	1w4Wh6i9nB18Fp0P/vcAdYDwmqUYaFFtr0LI4PTcwUDwLY2sAaMHvDtrxuKLLZ1eYW1Qoc
+	XSvF+dXuaD4HDIkyAfW3DDbhxJsAEaY=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1709827351;
+	s=susede2_ed25519; t=1709827353;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=vjrVxieXuRhTZiWnKCpH9d/jIcN0kC0d2yC48QLOibA=;
-	b=KmbEfxauWpnJYO0HstETm2VVp1i90gxDf8EetM7+IV5rNErjCxflVV6iWl0+6bTCLQjt32
-	OwHm1cEBa2y8LkDQ==
+	bh=cMNJbshkkARiLJa25Qz/aZkoMSzYIEZDxAvRw1s71Sw=;
+	b=mbzQuoAWb39WAt4VKnGIq4DtAR+T2dNJTMMBXhhSrBhsc1zDOqHWQ45M69a8STV4keZxsZ
+	68KFqYUFkZHd6XAA==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1709827351; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1709827353; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=vjrVxieXuRhTZiWnKCpH9d/jIcN0kC0d2yC48QLOibA=;
-	b=0VDieRCEz8N+eqziEuOrjkmp9rwnlUU6RmpL8KKW9YTtMiK4Pet04wWoVV/M9JWLdHf7/F
-	5YDfyx4RrhAjsaygNRf43qQzl0ZY7Ss7ueyPa8s5F+Big6p+BewIHJHDJb7ftcML9TeWO5
-	l6fcfT/OSoLdmEXNm8xbiMcUyFI9C3Q=
+	bh=cMNJbshkkARiLJa25Qz/aZkoMSzYIEZDxAvRw1s71Sw=;
+	b=C/djWXY94UZf8tSS//GXm9k2HLaDnognY2Th4qwfzL+5lFOZ6eDg/lfRfFZk/YXK0bYbV8
+	1w4Wh6i9nB18Fp0P/vcAdYDwmqUYaFFtr0LI4PTcwUDwLY2sAaMHvDtrxuKLLZ1eYW1Qoc
+	XSvF+dXuaD4HDIkyAfW3DDbhxJsAEaY=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1709827351;
+	s=susede2_ed25519; t=1709827353;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=vjrVxieXuRhTZiWnKCpH9d/jIcN0kC0d2yC48QLOibA=;
-	b=KmbEfxauWpnJYO0HstETm2VVp1i90gxDf8EetM7+IV5rNErjCxflVV6iWl0+6bTCLQjt32
-	OwHm1cEBa2y8LkDQ==
+	bh=cMNJbshkkARiLJa25Qz/aZkoMSzYIEZDxAvRw1s71Sw=;
+	b=mbzQuoAWb39WAt4VKnGIq4DtAR+T2dNJTMMBXhhSrBhsc1zDOqHWQ45M69a8STV4keZxsZ
+	68KFqYUFkZHd6XAA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id D6B3A136CB;
-	Thu,  7 Mar 2024 16:02:30 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id AB8DB12FC5;
+	Thu,  7 Mar 2024 16:02:32 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id aG4gMRbl6WXtcwAAD6G6ig
-	(envelope-from <lhenriques@suse.de>); Thu, 07 Mar 2024 16:02:30 +0000
+	id eOCUJhjl6WXtcwAAD6G6ig
+	(envelope-from <lhenriques@suse.de>); Thu, 07 Mar 2024 16:02:32 +0000
 Received: from localhost (brahms.olymp [local])
-	by brahms.olymp (OpenSMTPD) with ESMTPA id 48155153;
+	by brahms.olymp (OpenSMTPD) with ESMTPA id f65e79f4;
 	Thu, 7 Mar 2024 16:02:29 +0000 (UTC)
 From: Luis Henriques <lhenriques@suse.de>
 To: Theodore Ts'o <tytso@mit.edu>,
@@ -87,9 +87,9 @@ Cc: linux-ext4@vger.kernel.org,
 	linux-unionfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
 	Luis Henriques <lhenriques@suse.de>
-Subject: [PATCH v2 1/3] fs_parser: add helper to define parameters with string and flag types
-Date: Thu,  7 Mar 2024 16:02:23 +0000
-Message-ID: <20240307160225.23841-2-lhenriques@suse.de>
+Subject: [PATCH v2 3/3] ovl: fix the parsing of empty string mount parameters
+Date: Thu,  7 Mar 2024 16:02:25 +0000
+Message-ID: <20240307160225.23841-4-lhenriques@suse.de>
 In-Reply-To: <20240307160225.23841-1-lhenriques@suse.de>
 References: <20240307160225.23841-1-lhenriques@suse.de>
 Precedence: bulk
@@ -126,36 +126,74 @@ X-Spamd-Result: default: False [-0.30 / 50.00];
 	 FROM_EQ_ENVFROM(0.00)[];
 	 MIME_TRACE(0.00)[0:+];
 	 RCVD_TLS_LAST(0.00)[];
-	 BAYES_HAM(-0.00)[27.00%]
+	 BAYES_HAM(-0.00)[44.69%]
 X-Spam-Flag: NO
 
-Add a new helper macro that defines two new parameters, both with the same
-name, but one of type 'string' and another of type 'flag'.  The 'string'
-parameter may also be empty (i.e. without value).  In practice this helper
-allows a filesystem to easily define a parameter that can be empty (flag)
-or have a value (string).
+This patch fixes the usage of mount parameters that are defined as strings
+but which can be empty.  Currently, only 'lowerdir' parameter is in this
+situation for overlayfs.  But since userspace can pass it in as 'flag'
+type (when it doesn't have a value), the parsing will fail because a
+'string' type is assumed.
+
+This issue is fixed by using the new helper fsparam_string_or_flag() and by
+also taking the parameter type into account.
+
+While there, also remove the now unused fsparam_string_empty() macro.
 
 Suggested-by: Christian Brauner <brauner@kernel.org>
 Signed-off-by: Luis Henriques <lhenriques@suse.de>
 ---
- include/linux/fs_parser.h | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ fs/overlayfs/params.c | 13 +++++--------
+ 1 file changed, 5 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/fs_parser.h b/include/linux/fs_parser.h
-index 01542c4b87a2..f582fb7bdc22 100644
---- a/include/linux/fs_parser.h
-+++ b/include/linux/fs_parser.h
-@@ -131,5 +131,13 @@ static inline bool fs_validate_description(const char *name,
- #define fsparam_bdev(NAME, OPT)	__fsparam(fs_param_is_blockdev, NAME, OPT, 0, NULL)
- #define fsparam_path(NAME, OPT)	__fsparam(fs_param_is_path, NAME, OPT, 0, NULL)
- #define fsparam_fd(NAME, OPT)	__fsparam(fs_param_is_fd, NAME, OPT, 0, NULL)
-+/*
-+ * Define two parameters with the same name, with types string and flag.  The
-+ * string parameter can be empty, and thus it effectively allows the parameter
-+ * to have a value or to be empty.
-+ */
-+#define fsparam_string_or_flag(NAME, OPT)				\
-+	__fsparam(fs_param_is_string, NAME, OPT, fs_param_can_be_empty, NULL), \
-+	fsparam_flag(NAME, OPT)
+diff --git a/fs/overlayfs/params.c b/fs/overlayfs/params.c
+index 112b4b12f825..6eb163ca4b92 100644
+--- a/fs/overlayfs/params.c
++++ b/fs/overlayfs/params.c
+@@ -139,12 +139,8 @@ static int ovl_verity_mode_def(void)
+ 	return OVL_VERITY_OFF;
+ }
  
- #endif /* _LINUX_FS_PARSER_H */
+-#define fsparam_string_empty(NAME, OPT) \
+-	__fsparam(fs_param_is_string, NAME, OPT, fs_param_can_be_empty, NULL)
+-
+-
+ const struct fs_parameter_spec ovl_parameter_spec[] = {
+-	fsparam_string_empty("lowerdir",    Opt_lowerdir),
++	fsparam_string_or_flag("lowerdir",    Opt_lowerdir),
+ 	fsparam_string("lowerdir+",         Opt_lowerdir_add),
+ 	fsparam_string("datadir+",          Opt_datadir_add),
+ 	fsparam_string("upperdir",          Opt_upperdir),
+@@ -424,12 +420,13 @@ static void ovl_reset_lowerdirs(struct ovl_fs_context *ctx)
+  *     "/data1" and "/data2" as data lower layers. Any existing lower
+  *     layers are replaced.
+  */
+-static int ovl_parse_param_lowerdir(const char *name, struct fs_context *fc)
++static int ovl_parse_param_lowerdir(struct fs_context *fc, struct fs_parameter *param)
+ {
+ 	int err;
+ 	struct ovl_fs_context *ctx = fc->fs_private;
+ 	struct ovl_fs_context_layer *l;
+ 	char *dup = NULL, *iter;
++	const char *name = param->string;
+ 	ssize_t nr_lower, nr;
+ 	bool data_layer = false;
+ 
+@@ -441,7 +438,7 @@ static int ovl_parse_param_lowerdir(const char *name, struct fs_context *fc)
+ 	/* drop all existing lower layers */
+ 	ovl_reset_lowerdirs(ctx);
+ 
+-	if (!*name)
++	if ((param->type == fs_value_is_flag) || (!*name))
+ 		return 0;
+ 
+ 	if (*name == ':') {
+@@ -572,7 +569,7 @@ static int ovl_parse_param(struct fs_context *fc, struct fs_parameter *param)
+ 
+ 	switch (opt) {
+ 	case Opt_lowerdir:
+-		err = ovl_parse_param_lowerdir(param->string, fc);
++		err = ovl_parse_param_lowerdir(fc, param);
+ 		break;
+ 	case Opt_lowerdir_add:
+ 	case Opt_datadir_add:
