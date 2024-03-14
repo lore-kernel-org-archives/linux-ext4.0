@@ -1,48 +1,48 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4E4968F58
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Mar 2024 03:55:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 69EEE9441
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Mar 2024 03:55:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1710388507; cv=none; b=sqceWbwsWIWfjHUXSVentuMaaJByX/uYNExmzAZkRe5yaorEvHggMGDlMIZ7Uz/MPNBi1yMUBpTWCHGdZP5Kz4CTa9poYEhEiiXlc8gqWMsZ3DKuhIQGi+8NXBXMUctulc4+rUZ1LqK3peQ70zf23h9UeY3G7XxwFN2KnkT9zZw=
+	t=1710388511; cv=none; b=pa+CLH+Y5CxoFXXhm1q2ujk/36K6r9p7Yofe47fNTTOUelVQRXxYQmVksQOjHjnNDF04sk2yKdxNgO8moryS45QzpufpY9+fGgih4zBi8IFuU6kAH4Pfw0oJ4dbqAkCI7z2lRowhwowa29AaObsRfvfIeThutEyVpRtrG1Kt8ww=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1710388507; c=relaxed/simple;
-	bh=p09XKBtdqS+za3+1COV64+Xpd7STAuhwdhO+BsZUVC0=;
+	s=arc-20240116; t=1710388511; c=relaxed/simple;
+	bh=cnowjd+g1/lhYd4a3gDndVTQ3z066ZB3OLRHAiHIK6k=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=tzLyYnPKltU/1sbmbB+yt3Sf9Jd2CkHzHFfcRLCmWpRWIEgBV9PCB0mcEGvfDdv76xdM+Ti8ijAlcA1ljpEvQHzHJxsr722DGzfudqYT+FRv1kRPg+UV1r4y107qI/9rDzCRrt5aOdLtd0RMri5KkAIOV6f0Wxfeok2hihCrcR8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=gXfYII/W; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=X9teb0bZ7YrwtYpQ7p2pxUCPofs2ScWNwUe4g+uzcPOAgci34h1zZo+hj0HVUnKUE5qmwtfzrtXbVgQof8JKL3Uqfy4rH40AUEqt26R39HDBvODrPsQ9FDK7Mhbt6hTGmXgL0fDQW143G5KguySPzChbyQaQSGhMwF5Adv3T2vk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=dw/AcaWB; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="gXfYII/W"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="dw/AcaWB"
 Received: from cwcc.thunk.org (pool-173-48-116-252.bstnma.fios.verizon.net [173.48.116.252])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 42E3snHk003033
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 42E3snBJ003035
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Wed, 13 Mar 2024 23:54:50 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1710388491; bh=0wlQm3vPPezMzf0GNStZXh57M0cYu8DjSgY1T0rQNac=;
+	t=1710388491; bh=kFeL3FwNojsbT7MVre4oV9xu3BLSFmfHbJAwwk8zl4I=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=gXfYII/WytgFCQYY2ZgltdhC1+gWbi84RgEeP31Hky9yaQJ4O4HcwulxM8yyugJkn
-	 4pPLi2B6FXge39Uzw4c/w/T83+pI5EAymEJfrIi+OWCXwOZs0GyTr/7tZCL+sOF/zs
-	 z0ED31YmMqWjjIP+E6fRYe/vAPmnuCvic2JfhZV4YRRfwgyM5zKI8dvXDX7fvTBonV
-	 IEbgrDVGytFJprZRKDWKCRy8PoK7Wph+MMj6+dpyNJw1TBZx/xRQMESTtBtxzkehj+
-	 KMfZ5bBQwaRM33VrMVt5Ux6eS0KYBiGT0drCOiouVNNxyb4Zi20H8Kuw1ORgPitRem
-	 2YW0u5QxWZZEg==
+	b=dw/AcaWBFjCouyvhm/BUkiRI1rCFQ0LZ5bqNxVnFGUtpKOfOUHboBLSwZSic3ixoY
+	 DU+ywpVSlnwPLgvUegl39JKjwDyeEq9N0kc1N8tL4dzmkqVIp0NUDVmM1tWQgS3FAW
+	 w6JCpQqyCcvmjZbj4KCSBV3AZLYhTZKI37jsSJxxvVlLIGbHKyQqFtSpFmqpvFIWzi
+	 ffdRqH+lIOvEJ0QAlxhcdZCBS62g6mgky2TKTmir0oS5Mwi51lhiHJKhzdiOwCIUn9
+	 ErpLdGvPfIxhezXGWAtXFYDMAx/ashI+WHzxKTiASzMjjpNGwx1/6voXQ9E3469ZXL
+	 3Z/9RXkT30Mig==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id F1FBB15C0288; Wed, 13 Mar 2024 23:54:48 -0400 (EDT)
+	id EDF7A15C027D; Wed, 13 Mar 2024 23:54:48 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org, Srivathsa Dara <srivathsa.d.dara@oracle.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
-        rajesh.sivaramasubramaniom@oracle.com, junxiao.bi@oracle.com
-Subject: Re: [PATCH] ext4: Enable meta_bg only when new desc blocks are needed
-Date: Wed, 13 Mar 2024 23:54:45 -0400
-Message-ID: <171038847841.855927.1707863077916756800.b4-ty@mit.edu>
+To: Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Wenchao Hao <haowenchao2@huawei.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, louhongxiang@huawei.com
+Subject: Re: [PATCH] ext4: remove unused parameter biop in ext4_issue_discard()
+Date: Wed, 13 Mar 2024 23:54:43 -0400
+Message-ID: <171038847842.855927.7814623611820545715.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20240227131329.2608466-1-srivathsa.d.dara@oracle.com>
-References: <20240227131329.2608466-1-srivathsa.d.dara@oracle.com>
+In-Reply-To: <20240226081731.3224470-1-haowenchao2@huawei.com>
+References: <20240226081731.3224470-1-haowenchao2@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,22 +53,17 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Tue, 27 Feb 2024 13:13:29 +0000, Srivathsa Dara wrote:
-> This patch addresses an issue observed when resize_inode is disabled
-> and an online extension of a filesysyem is performed. When a filesystem
-> is expanded to a size that does not require a addition of a new
-> descriptor block, the meta_bg feature is being enabled even though no
-> part of the filesystem uses this layout.
+On Mon, 26 Feb 2024 16:17:31 +0800, Wenchao Hao wrote:
+> all caller of ext4_issue_discard() would set biop to NULL since
+> 'commit 55cdd0af2bc5 ("ext4: get discard out of jbd2 commit kthread
+> contex")', it's unnecessary to keep this parameter any more.
 > 
-> This patch ensures that the meta_bg feature is only enabled if
-> any of the added block groups utilize meta_bg layout.
 > 
-> [...]
 
 Applied, thanks!
 
-[1/1] ext4: Enable meta_bg only when new desc blocks are needed
-      commit: 07be778c70149321f785611a9c50125b904b0508
+[1/1] ext4: remove unused parameter biop in ext4_issue_discard()
+      commit: 0efcd739fc07cefd5c54e202f66b4ea5def4776b
 
 Best regards,
 -- 
