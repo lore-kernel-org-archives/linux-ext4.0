@@ -1,38 +1,38 @@
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+Received: from szxga04-in.huawei.com (szxga04-in.huawei.com [45.249.212.190])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 708437FBDA;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C29197FBA2;
 	Tue, 19 Mar 2024 11:32:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.187
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.190
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1710847942; cv=none; b=aIr5HVP4tb/ynGrovYQ5+uOmcWlz/Ri2MKTlZS6EzN67iM4ehOawjgYSSpuKvOVhbwu4L0ANe0MiiByi0zV/2R0Jm+8m3I6656Cg3qqBMVZYYNnqhMtPcPVp090OvDfV7SsmY2Juy6MUKazwHMxjDqpW8TP+9E3Ftd7hvluoZN0=
+	t=1710847943; cv=none; b=P5Q4/NXWDOi7sIYGnGfHHCn6vmHKe7stGGbxXmdOQePtqLI6VDXvado32tQgamgK4t+xtb1i2xe3AVFT40eZFqXVwglcqZkix1A7v4ZQNQpyC4ciEaZ/+JZboU1qpYhiPh1CAy764lWuVP6E97y6cOqOny8AP+xGg8TeqqaPsW0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1710847942; c=relaxed/simple;
-	bh=PG8dxu2wmb6J4SvE44TEF7QKq15BiMIinNoTBc5u7gI=;
+	s=arc-20240116; t=1710847943; c=relaxed/simple;
+	bh=Z1PfTQCHqpaHAw0hjUIVt4fpmIlFDfWjpJ3N+/nqPNo=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=AclWtG8ipTC0n4SFSkQ5DpuMwvfonNxl34GqsfiU3y6ydOO38h8rHXE1cl72FLGNbF6nFn1D2Lxw2+3KOgsvTSRgRIwhDUYNJkyI6O8dYRxP1vGZUxpUcPGK9H0JlHAiEu5dkvPYdbzg7/xvJ2YDTEjsEZSaL04tC+lik3Flpew=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.187
+	 MIME-Version:Content-Type; b=FXN9mUVuYaXTG5Zgfkm6qPKbZKNwXkTvCC8IkuAuPaW7HAU/7dvVvoZ4wcfTMnl9npg82yYcVqD0fasvmAedibp5VRoweCZS2h/OC4/UYFBcerXZbcPHXD9OiKZpz+BhNC5jnqan8fCTHWCOxqRHTND3hXOB7tiD0z0OT92V4xw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.190
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.162.254])
-	by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4TzTz92F1jztQb4;
-	Tue, 19 Mar 2024 19:29:57 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.44])
+	by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4TzTyr5jtfz2Bgq0;
+	Tue, 19 Mar 2024 19:29:40 +0800 (CST)
 Received: from dggpeml500021.china.huawei.com (unknown [7.185.36.21])
-	by mail.maildlp.com (Postfix) with ESMTPS id 40B3B18007B;
-	Tue, 19 Mar 2024 19:32:12 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 61175140124;
+	Tue, 19 Mar 2024 19:32:13 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
  (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.1.2507.35; Tue, 19 Mar
- 2024 19:32:11 +0800
+ 2024 19:32:12 +0800
 From: Baokun Li <libaokun1@huawei.com>
 To: <linux-ext4@vger.kernel.org>
 CC: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
 	<ritesh.list@gmail.com>, <ojaswin@linux.ibm.com>, <adobriyan@gmail.com>,
 	<linux-kernel@vger.kernel.org>, <yi.zhang@huawei.com>,
-	<yangerkun@huawei.com>, <libaokun1@huawei.com>
-Subject: [PATCH v4 5/9] ext4: add new attr pointer attr_mb_order
-Date: Tue, 19 Mar 2024 19:33:21 +0800
-Message-ID: <20240319113325.3110393-6-libaokun1@huawei.com>
+	<yangerkun@huawei.com>, <libaokun1@huawei.com>, <stable@kernel.org>
+Subject: [PATCH v4 7/9] ext4: set type of ac_groups_linear_remaining to __u32 to avoid overflow
+Date: Tue, 19 Mar 2024 19:33:23 +0800
+Message-ID: <20240319113325.3110393-8-libaokun1@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20240319113325.3110393-1-libaokun1@huawei.com>
 References: <20240319113325.3110393-1-libaokun1@huawei.com>
@@ -47,73 +47,34 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
  dggpeml500021.china.huawei.com (7.185.36.21)
 
-The s_mb_best_avail_max_trim_order is of type unsigned int, and has a
-range of values well beyond the normal use of the mb_order. Although the
-mballoc code is careful enough that large numbers don't matter there, but
-this can mislead the sysadmin into thinking that it's normal to set such
-values. Hence add a new attr_id attr_mb_order with values in the range
-[0, 64] to avoid storing garbage values and make us more resilient to
-surprises in the future.
+Now ac_groups_linear_remaining is of type __u16 and s_mb_max_linear_groups
+is of type unsigned int, so an overflow occurs when setting a value above
+65535 through the mb_max_linear_groups sysfs interface. Therefore, the
+type of ac_groups_linear_remaining is set to __u32 to avoid overflow.
 
-Suggested-by: Jan Kara <jack@suse.cz>
+Fixes: 196e402adf2e ("ext4: improve cr 0 / cr 1 group scanning")
+CC: stable@kernel.org
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/sysfs.c | 13 ++++++++++++-
- 1 file changed, 12 insertions(+), 1 deletion(-)
+ fs/ext4/mballoc.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index ddd71673176c..8e0473169458 100644
---- a/fs/ext4/sysfs.c
-+++ b/fs/ext4/sysfs.c
-@@ -30,6 +30,7 @@ typedef enum {
- 	attr_first_error_time,
- 	attr_last_error_time,
- 	attr_clusters_in_group,
-+	attr_mb_order,
- 	attr_feature,
- 	attr_pointer_ui,
- 	attr_pointer_ul,
-@@ -210,6 +211,8 @@ EXT4_ATTR_OFFSET(inode_readahead_blks, 0644, inode_readahead,
- 		 ext4_sb_info, s_inode_readahead_blks);
- EXT4_ATTR_OFFSET(mb_group_prealloc, 0644, clusters_in_group,
- 		 ext4_sb_info, s_mb_group_prealloc);
-+EXT4_ATTR_OFFSET(mb_best_avail_max_trim_order, 0644, mb_order,
-+		 ext4_sb_info, s_mb_best_avail_max_trim_order);
- EXT4_RW_ATTR_SBI_UI(inode_goal, s_inode_goal);
- EXT4_RW_ATTR_SBI_UI(mb_stats, s_mb_stats);
- EXT4_RW_ATTR_SBI_UI(mb_max_to_scan, s_mb_max_to_scan);
-@@ -225,7 +228,6 @@ EXT4_RW_ATTR_SBI_UI(warning_ratelimit_interval_ms, s_warning_ratelimit_state.int
- EXT4_RW_ATTR_SBI_UI(warning_ratelimit_burst, s_warning_ratelimit_state.burst);
- EXT4_RW_ATTR_SBI_UI(msg_ratelimit_interval_ms, s_msg_ratelimit_state.interval);
- EXT4_RW_ATTR_SBI_UI(msg_ratelimit_burst, s_msg_ratelimit_state.burst);
--EXT4_RW_ATTR_SBI_UI(mb_best_avail_max_trim_order, s_mb_best_avail_max_trim_order);
- #ifdef CONFIG_EXT4_DEBUG
- EXT4_RW_ATTR_SBI_UL(simulate_fail, s_simulate_fail);
- #endif
-@@ -379,6 +381,7 @@ static ssize_t ext4_generic_attr_show(struct ext4_attr *a,
- 	switch (a->attr_id) {
- 	case attr_inode_readahead:
- 	case attr_clusters_in_group:
-+	case attr_mb_order:
- 	case attr_pointer_ui:
- 		if (a->attr_ptr == ptr_ext4_super_block_offset)
- 			return sysfs_emit(buf, "%u\n", le32_to_cpup(ptr));
-@@ -458,6 +461,14 @@ static ssize_t ext4_generic_attr_store(struct ext4_attr *a,
- 		else
- 			*((unsigned int *) ptr) = t;
- 		return len;
-+	case attr_mb_order:
-+		ret = kstrtouint(skip_spaces(buf), 0, &t);
-+		if (ret)
-+			return ret;
-+		if (t > 64)
-+			return -EINVAL;
-+		*((unsigned int *) ptr) = t;
-+		return len;
- 	case attr_clusters_in_group:
- 		ret = kstrtouint(skip_spaces(buf), 0, &t);
- 		if (ret)
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index 56938532b4ce..7bfc5fb5a128 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -193,8 +193,8 @@ struct ext4_allocation_context {
+ 	ext4_grpblk_t	ac_orig_goal_len;
+ 
+ 	__u32 ac_flags;		/* allocation hints */
++	__u32 ac_groups_linear_remaining;
+ 	__u16 ac_groups_scanned;
+-	__u16 ac_groups_linear_remaining;
+ 	__u16 ac_found;
+ 	__u16 ac_cX_found[EXT4_MB_NUM_CRS];
+ 	__u16 ac_tail;
 -- 
 2.31.1
 
