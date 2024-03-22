@@ -1,115 +1,154 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3C63E134A3;
-	Fri, 22 Mar 2024 07:59:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B5BCB8830;
+	Fri, 22 Mar 2024 08:31:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1711094348; cv=none; b=hnI+aTTZsLX4VeazKbM5po41sRKyOKSkFzqnW0BL4klnMiOnWklKdjixIQVGLyeAoYylCqUEMliDb5jOICV8ru2ROsEGSj2G1JjEvJAVy+/YXvD84xUNsMGA3d3M8ZgVdgJF85spx5oVSxNQ5wcJoavknBpgePrmGMz1qdc/y/0=
+	t=1711096299; cv=none; b=D6HBMM6h9YjzmgkPalLRwlZ9sHrhOEH3NU4tRYZ9VrrRyagd1ucIXXsuAaD4hdpRzqZAuW5mJxM84VcfVaBiDYrtaxsjT2yvy/DLAEtLosG0ybOQ556TOXGsK3gULu9vIFM6WgtxcLsVUrMOP5YrdN3eWFwdTMihJVBZVb/r/n0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1711094348; c=relaxed/simple;
-	bh=UzGKJnZTJL1hg3BZWLblMPlF3l/gSCV6CLIGlIgt5UQ=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=oIaxmNf9lue52IgfqES2GoOSBAvp8Xh4E26Gp+rN0LeVwcyVaGS8yd6UFqrarrVRxSmTYXwQWHQeulsWdMpaUxCUD9kLAFqISFIUAfp3xsHT2fOWOXuk/Lz6S+n8rvdTaOtg95WBkMuHisUmKS5J++IfSRJhLPoSxjLlE3etEtQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4V1F8M0Xjxz4f3k6h;
-	Fri, 22 Mar 2024 15:58:59 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id F33911A0B59;
-	Fri, 22 Mar 2024 15:59:02 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.101.6])
-	by APP1 (Coremail) with SMTP id cCh0CgDXpxBFOv1l+23fHg--.60357S2;
-	Fri, 22 Mar 2024 15:59:02 +0800 (CST)
-From: Kemeng Shi <shikemeng@huaweicloud.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	linux@roeck-us.net
-Cc: linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH] ext4: implement filesystem specific alloc_inode in unit test
-Date: Sat, 23 Mar 2024 00:55:18 +0800
-Message-Id: <20240322165518.8147-1-shikemeng@huaweicloud.com>
-X-Mailer: git-send-email 2.30.0
+	s=arc-20240116; t=1711096299; c=relaxed/simple;
+	bh=eHe9zDfIr5wP83EpR+ZDJ3x9229GvW/zs00EBspiMKE=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=Cu/4ujT3Y5JT6l/MMnmJ1cTi9/903SaFQ+h/kIowXF3qp8TjSu2tN40x+KwKa9E2bwEYhdclvL7Gf3eEhsZ9Fb79LbiMEDmJpaxIY4BqiO8K/RkKIst/SlnznWYP/ITOeRFslHHWxlOJOMxYZ6xfoUpL7FsifXYbjqF6/YTcXYw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=hn0WYqOz; arc=none smtp.client-ip=148.163.156.1
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="hn0WYqOz"
+Received: from pps.filterd (m0353728.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 42M7FtZi030082;
+	Fri, 22 Mar 2024 08:31:28 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=date : from : to : cc :
+ subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=pp1; bh=+q4qti6zuThwqHyOnyddfu8tq7886ArbT3m1RqvkUrs=;
+ b=hn0WYqOzHa2rGTYLcjwT1rS/1/ur6GiT0I4FthlhgwVQgSiBAJIQB9IIs6KlcagybXyH
+ Mjt9ukiXeG++SUwIxliVtzfZFvQgTS/CQgcXfW/MFAE/SRVk5cG4dr1QWvM69tudKWnf
+ 7rJhJCAOsOdXtVQqLSxeea555XjjeG8+KVGii1WJ/kaqFdsKYl5nm2cw+wbmZsmTblze
+ VVF9iJUNeZx0u19ZOShJ+ztI4wR0J3QfuDReqY+le9IWutRLzU4Iu+HjdiVpA22EF72P
+ 7nERD6hykq8czCYpoZgIqVYm44Bsb1I68EJ+WmyNg8GuJcuSfDCP69mQdnl9Ft9Uq1JN wA== 
+Received: from pps.reinject (localhost [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3x155w067f-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 22 Mar 2024 08:31:28 +0000
+Received: from m0353728.ppops.net (m0353728.ppops.net [127.0.0.1])
+	by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 42M8VR1B002551;
+	Fri, 22 Mar 2024 08:31:27 GMT
+Received: from ppma21.wdc07v.mail.ibm.com (5b.69.3da9.ip4.static.sl-reverse.com [169.61.105.91])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3x155w067a-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 22 Mar 2024 08:31:27 +0000
+Received: from pps.filterd (ppma21.wdc07v.mail.ibm.com [127.0.0.1])
+	by ppma21.wdc07v.mail.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 42M5TH5g023286;
+	Fri, 22 Mar 2024 08:31:26 GMT
+Received: from smtprelay02.fra02v.mail.ibm.com ([9.218.2.226])
+	by ppma21.wdc07v.mail.ibm.com (PPS) with ESMTPS id 3x0x14jjgg-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 22 Mar 2024 08:31:26 +0000
+Received: from smtpav06.fra02v.mail.ibm.com (smtpav06.fra02v.mail.ibm.com [10.20.54.105])
+	by smtprelay02.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 42M8VM8l45941242
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Fri, 22 Mar 2024 08:31:24 GMT
+Received: from smtpav06.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 39CC720049;
+	Fri, 22 Mar 2024 08:31:22 +0000 (GMT)
+Received: from smtpav06.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 2704620040;
+	Fri, 22 Mar 2024 08:31:20 +0000 (GMT)
+Received: from li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com (unknown [9.43.0.231])
+	by smtpav06.fra02v.mail.ibm.com (Postfix) with ESMTPS;
+	Fri, 22 Mar 2024 08:31:19 +0000 (GMT)
+Date: Fri, 22 Mar 2024 14:01:17 +0530
+From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To: Frederick Lawler <fred@cloudflare.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Ritesh Harjani <ritesh.list@gmail.com>, linux-kernel@vger.kernel.org,
+        Jan Kara <jack@suse.cz>, glandvador@yahoo.com, bugzilla@eyal.emu.id.au,
+        kernel-team@cloudflare.com
+Subject: Re: [PATCH 0/1] Fix for recent bugzilla reports related to long
+ halts during block allocation
+Message-ID: <Zf1B1cPj/aO21pjZ@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
+References: <cover.1702455010.git.ojaswin@linux.ibm.com>
+ <170476879011.637731.13228432208887255974.b4-ty@mit.edu>
+ <ZfsUaicHDpOtkkVv@CMGLRV3>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgDXpxBFOv1l+23fHg--.60357S2
-X-Coremail-Antispam: 1UD129KBjvJXoW7WFWDXr4UKr1UAr1rXF43Wrg_yoW8Xw1Dpr
-	sxCryYkFs8WFZFga1fKry5Zw1fKa1Ig3yUJrWSgw1Sqry3GFy8tFn8tr17AF18JrW8JayF
-	vF4qkF47ur4xGaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUkIb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
-	8lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_
-	tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26r
-	xl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv
-	0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z2
-	80aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JMxAIw28I
-	cxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2
-	IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI
-	42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42
-	IY6xAIw20EY4v20xvaj40_Wr1j6rW3Jr1lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2
-	z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU0miiDUUUUU==
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <ZfsUaicHDpOtkkVv@CMGLRV3>
+X-TM-AS-GCONF: 00
+X-Proofpoint-ORIG-GUID: pDfVLUMb_l8o_s8_IasYDkMP05vUFJax
+X-Proofpoint-GUID: XiPpAx2Lj5o9BGRQ5rb7wowVYbOfMA0B
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.272,Aquarius:18.0.1011,Hydra:6.0.619,FMLib:17.11.176.26
+ definitions=2024-03-22_05,2024-03-21_02,2023-05-22_02
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 mlxscore=0 suspectscore=0
+ spamscore=0 adultscore=0 bulkscore=0 phishscore=0 priorityscore=1501
+ mlxlogscore=999 clxscore=1011 impostorscore=0 lowpriorityscore=0
+ malwarescore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2403210000 definitions=main-2403220061
 
-We expect inode with ext4_info_info type as following:
-mbt_kunit_init
-  mbt_mb_init
-    ext4_mb_init
-      ext4_mb_init_backend
-        sbi->s_buddy_cache = new_inode(sb);
-        EXT4_I(sbi->s_buddy_cache)->i_disksize = 0;
+On Wed, Mar 20, 2024 at 11:52:58AM -0500, Frederick Lawler wrote:
+> Hi Theodore and Ojaswin,
+> 
+> On Mon, Jan 08, 2024 at 09:53:18PM -0500, Theodore Ts'o wrote:
+> > 
+> > On Fri, 15 Dec 2023 16:49:49 +0530, Ojaswin Mujoo wrote:
+> > > This patch intends to fix the recent bugzilla [1] report where the
+> > > kworker flush thread seemed to be taking 100% CPU utilizationa and was
+> > > slowing down the whole system. The backtrace indicated that we were
+> > > stuck in mballoc allocation path. The issue was only seen kernel 6.5+
+> > > and when ext4 was mounted with -o stripe (or stripe option was
+> > > implicitly added due us mkfs flags used).
+> > > 
+> > > [...]
+> > 
+> > Applied, thanks!
+> 
+> I backported this patch to at least 6.6 and tested on our fleet of
+> software RAID 0 NVME SSD nodes. This change worked very nicely
+> for us. We're interested in backporting this to at least 6.6.
+> 
+> I tried looking at xfstests, and didn't really see a good match
+> (user error?) to validate the fix via that. So I'm a little unclear what
+> the path forward here is.
+> 
+> Although we experienced this issue in 6.1, I didn't backport to 6.1 and
+> test to verify this also works there, however, setting stripe to 0 did in
+> the 6.1 case.
+> 
+> Best,
+> Fred
 
-Implement alloc_inode ionde with ext4_inode_info type to avoid
-out-of-bounds write.
+Hi Fred,
 
-Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-Reported-by: Guenter Roeck <linux@roeck-us.net>
----
- fs/ext4/mballoc-test.c | 24 ++++++++++++++++++++++++
- 1 file changed, 24 insertions(+)
+If I understand correctly, you are looking for a test case which you
+could use to confirm if the issue exists and if the backport is solving
+it, right?
 
-diff --git a/fs/ext4/mballoc-test.c b/fs/ext4/mballoc-test.c
-index 044ca5238f41..49aabcfe6b46 100644
---- a/fs/ext4/mballoc-test.c
-+++ b/fs/ext4/mballoc-test.c
-@@ -30,7 +30,31 @@ struct mbt_ext4_super_block {
- #define MBT_CTX(_sb) (&MBT_SB(_sb)->mbt_ctx)
- #define MBT_GRP_CTX(_sb, _group) (&MBT_CTX(_sb)->grp_ctx[_group])
- 
-+static struct inode *mbt_alloc_inode(struct super_block *sb)
-+{
-+	struct ext4_inode_info *ei;
-+
-+	ei = kmalloc(sizeof(struct ext4_inode_info), GFP_KERNEL);
-+	if (!ei)
-+		return NULL;
-+
-+	INIT_LIST_HEAD(&ei->i_orphan);
-+	init_rwsem(&ei->xattr_sem);
-+	init_rwsem(&ei->i_data_sem);
-+	inode_init_once(&ei->vfs_inode);
-+	ext4_fc_init_inode(&ei->vfs_inode);
-+
-+	return &ei->vfs_inode;
-+}
-+
-+static void mbt_free_inode(struct inode *inode)
-+{
-+	kfree(EXT4_I(inode));
-+}
-+
- static const struct super_operations mbt_sops = {
-+	.alloc_inode	= mbt_alloc_inode,
-+	.free_inode	= mbt_free_inode,
- };
- 
- static void mbt_kill_sb(struct super_block *sb)
--- 
-2.30.0
+Actually, I was never able to replicate this at my end so I had to rely
+on people hitting the bug to confirm if it works. I did set out to write
+a testcase that could help us reliably replicate this issue but it needs
+a very specially crafted FS that is a bit difficult to achieve from user
+space. I was using debugfs to create an FS that could hit it but I kept 
+running into issues where it won't mount etc. Maybe there's a better 
+way to craft such an FS that I'm not aware of.
 
+One more option is that maybe we can have KUnit test for this in the
+mballoc code but I'd need to read some more about the kunit
+infrastructure to see if it's possible/feasible.
+
+Regards,
+ojaswin
+> 
+> > 
+> > [1/1] ext4: fallback to complex scan if aligned scan doesn't work
+> >       commit: a26b6faf7f1c9c1ba6edb3fea9d1390201f2ed50
+> > 
+> > Best regards,
+> > -- 
+> > Theodore Ts'o <tytso@mit.edu>
