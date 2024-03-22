@@ -1,118 +1,86 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from mail-io1-f72.google.com (mail-io1-f72.google.com [209.85.166.72])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5B5AD12CD98
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Mar 2024 16:27:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C9FD4A3E
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Mar 2024 03:43:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.166.72
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1711038423; cv=none; b=gWY4PFCuaJsCcM8cbTNm0qzd3OGgkBX0qea+Jiu8RRc7PS6VkMdcD2tM/mXmtBgLpj0i/9a6h6ihArQrC2SeHsoNCoieX0PYwA37UNAfRAhJq3yrUC3MB2UKAp4VrP3iZSRUO0xE6QG3VMuflbNOKKmbcoBJc0RW3Jlh3HhkHmA=
+	t=1711078992; cv=none; b=J8NLdwj8bNYZIeawMBOPoYibsQHRE4PkmUQTo/1HzIJgCF8DRT1zoU/vFf74/3w4cpwYMN44r6e7CrxKDlw/3fhVdRwADEesyWZsr3hrKj6gPlDVVbd5LNqMv9ZcKD+1c+aeJXGloLsND6U98h0Xw7Wx255wUnPKsGw9+lVO3OQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1711038423; c=relaxed/simple;
-	bh=UZHj9XNcXaTmklSR/AIinK6Iy7OvYagbPS3mKBpmG0w=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=DG1EXMeh8b0/EogZBzfb/AIkay2ZtErdXuAe+prNtXizxhnztXFc/YEhlqkvGMWHZ+iyrkfCtMFK7opIuuneDkuEVS0fMiChIh9fvD9Lo1M750DXZHbarAvFQGeSr8Hm4oIWmvG4EVv8Fp3y5QNDFty126/xY2Tu5IFMI3TY2tE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=f1R0fp9z; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=1OzO8CBR; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="f1R0fp9z";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="1OzO8CBR"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 3B7935D12A;
-	Thu, 21 Mar 2024 16:26:58 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1711038418; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=lNDwYy8q7k5nfMJQt3W2N8aT3pxFWbMxuOHZJXqTovc=;
-	b=f1R0fp9zFKNsCImFrml5OelOqFFP2Ffx2QyDeKj/87i7wMUgiRdgUK/3uq21VLdpe68de5
-	/BKSpUN6fcQO76IwjFi4CN0TewMj1RPC7NvpEzea9pEPPlv1nchaPzkuLlVfbCVFbm+ZtA
-	o7dj5lfP2YX8EVXYeC/tH8VLm2Y4Ntw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1711038418;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=lNDwYy8q7k5nfMJQt3W2N8aT3pxFWbMxuOHZJXqTovc=;
-	b=1OzO8CBR6qy/NIZj84EqdwCC4wRXN97z1Za455REwEnmAobw/009Oj93ma3JUt/yEeQp4K
-	25mYyxdOnMz/icAg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 30EE8138A7;
-	Thu, 21 Mar 2024 16:26:58 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id YIGoC9Jf/GWzGQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 21 Mar 2024 16:26:58 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id C7AC4A080F; Thu, 21 Mar 2024 17:26:57 +0100 (CET)
-From: Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Cc: <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/2] Revert "ext4: drop duplicate ea_inode handling in ext4_xattr_block_set()"
-Date: Thu, 21 Mar 2024 17:26:49 +0100
-Message-Id: <20240321162657.27420-1-jack@suse.cz>
-X-Mailer: git-send-email 2.35.3
-In-Reply-To: <20240209111418.22308-1-jack@suse.cz>
-References: <20240209111418.22308-1-jack@suse.cz>
+	s=arc-20240116; t=1711078992; c=relaxed/simple;
+	bh=DC68Fan9U1mDvvm9HS7/KL5cq/tCfXtYDl7pvERFoFo=;
+	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:
+	 Content-Type; b=Liyjp2DMgSWMELwchD2YyN3jyX3SPnvzMmgTG9AJ826dTuDxFIbak8TCqBLKHMo/umsLOp/VFSpxqLEp3/XU1YICDHCiKaXPuxyb5eIjKRFJeLuFlPfbzKr0RXq4ysOvD/9hy8zdDcY+Kx5rk30ZXMD2it1C39Sfmv4gpVH6W4I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.166.72
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-io1-f72.google.com with SMTP id ca18e2360f4ac-7c9aa481ce4so157893039f.3
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Mar 2024 20:43:11 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1711078990; x=1711683790;
+        h=to:from:subject:message-id:in-reply-to:date:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=DC68Fan9U1mDvvm9HS7/KL5cq/tCfXtYDl7pvERFoFo=;
+        b=i1+BSG+yf77aRDBFYfOl+kxcNQOym5D/L1KiqL31XWoyZHEc3k2z/lhHogG9frmLnf
+         /YKnZTDH13s72JxmPb8FdaPR3PCtKgmW2M0vsEaUQaiY1msw3O1xWYG+Y7u2AHBl8kwJ
+         4WWULkhW2u5GsRuKuwlLRdl8i7tV4UQOI0XSSkzZUC701ScLe4Mgtsd9IZbcW6K1FR/m
+         +IUpVyO0751gQcWPvOa6ZFeb4WiEm1ge5P635oBw/H6Qb/7oByydWttSJdV2mpOS8Itq
+         j7mHcZS6NDZJY9RtsnycpQul/UBEIFYXRZz2zB6q452MzJc4+UV6W9KqmtLpRrvIf7U7
+         D9Sw==
+X-Forwarded-Encrypted: i=1; AJvYcCV/uvaUM6+h4NDzeJUoYwPktyAkD0ywhlkrPei2x0ZrWj3oGDlq9uSI3iNzb6sYZR6it+KVQq57wzi3EdHjk9lcK7S7dscZJz0j0A==
+X-Gm-Message-State: AOJu0YyOeX5nCmcQCO4RmgxcFXax8418BC1wAujKPPkL7lPiAnJ2ETVA
+	2Ft8dTZJ+ZIFoAoYyrFavgis7PdSX7ivwFGFP0KWlkQK0pcZshRl7FWMUQsOpdhTW8yKtQuJscl
+	ME+MwzsF4kT6AIP0Qt+qnhztjpFLdxuCdAdxaqd6LEa5LRe0m2TnbpaY=
+X-Google-Smtp-Source: AGHT+IEHxk8xSCWHhcDoCB7Keif1EAn8Bc3Wm7anJiX6s4lQ7mGl+EfpLANtSBAw8oWfeCh6UDat/0XrKUqX/usRC3mv5voXUGuX
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1004; i=jack@suse.cz; h=from:subject; bh=UZHj9XNcXaTmklSR/AIinK6Iy7OvYagbPS3mKBpmG0w=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBl/F/JEQpASIrBmgIl1yadrmeSM4FCW9tUmqOj2GNU pFjln02JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCZfxfyQAKCRCcnaoHP2RA2QNqCA CITa2f+DB0anFA51G2+L4Z/AM/NmbqYOJ55HukNCVRF8xE1AGg6dVc7t/oMAgG+8X+07jd9pVog+B4 JrU6KYkm0DspAm1NWZhykabdblKVBv8z51ehlxkmI+3mmWgS7jJtu5do2u8p1vsaZ6R/JM9/S8LWOd XamY9kDhSsIbHjqNVP9CpcWaZaREhBi14XSoptY0u3sYAd9e4GUUAkh1mLvEqkSv6WG1FyuQEIQUjI ZvAA21VGY1FJcNzMFQXTFeNbzNC7ApiGj1cshHyTiRncpQgOGPxDIr21lJn7Cnqv73yolHSSTbCYPV 6EN//cyI0wi/XvIRwmngmKuvbWx9hA
-X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
-Content-Transfer-Encoding: 8bit
-X-Spam-Score: -4.00
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-4.00 / 50.00];
-	 REPLY(-4.00)[]
-X-Spam-Level: 
-Authentication-Results: smtp-out2.suse.de;
-	none
-X-Rspamd-Queue-Id: 3B7935D12A
+X-Received: by 2002:a05:6638:270b:b0:474:c3b5:a8b7 with SMTP id
+ m11-20020a056638270b00b00474c3b5a8b7mr68265jav.6.1711078990482; Thu, 21 Mar
+ 2024 20:43:10 -0700 (PDT)
+Date: Thu, 21 Mar 2024 20:43:10 -0700
+In-Reply-To: <000000000000dfd6a105f71001d7@google.com>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <00000000000069222e0614379f1f@google.com>
+Subject: Re: [syzbot] kernel BUG in ext4_write_inline_data
+From: syzbot <syzbot+f4582777a19ec422b517@syzkaller.appspotmail.com>
+To: adilger.kernel@dilger.ca, eadavis@qq.com, linux-ext4@vger.kernel.org, 
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	nogikh@google.com, syzkaller-bugs@googlegroups.com, tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
 
-This reverts commit 7f48212678e91a057259b3e281701f7feb1ee397. We will
-need the special cleanup handling once we move allocation of EA inode
-outside of the buffer lock in the following patch.
+This bug is marked as fixed by commit:
+ext4: fix race condition between buffer write and page_mkwrite
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+But I can't find it in the tested trees[1] for more than 90 days.
+Is it a correct commit? Please update it by replying:
+
+#syz fix: exact-commit-title
+
+Until then the bug is still considered open and new crashes with
+the same signature are ignored.
+
+Kernel: Linux
+Dashboard link: https://syzkaller.appspot.com/bug?extid=f4582777a19ec422b517
+
 ---
- fs/ext4/xattr.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+[1] I expect the commit to be present in:
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index b67a176bfcf9..146690c10c73 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -2158,6 +2158,17 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 						      ENTRY(header(s->base)+1));
- 			if (error)
- 				goto getblk_failed;
-+			if (ea_inode) {
-+				/* Drop the extra ref on ea_inode. */
-+				error = ext4_xattr_inode_dec_ref(handle,
-+								 ea_inode);
-+				if (error)
-+					ext4_warning_inode(ea_inode,
-+							   "dec ref error=%d",
-+							   error);
-+				iput(ea_inode);
-+				ea_inode = NULL;
-+			}
- 
- 			lock_buffer(new_bh);
- 			error = ext4_journal_get_create_access(handle, sb,
--- 
-2.35.3
+1. for-kernelci branch of
+git://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux.git
 
+2. master branch of
+git://git.kernel.org/pub/scm/linux/kernel/git/bpf/bpf-next.git
+
+3. master branch of
+git://git.kernel.org/pub/scm/linux/kernel/git/bpf/bpf.git
+
+4. main branch of
+git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+
+The full list of 9 trees can be found at
+https://syzkaller.appspot.com/upstream/repos
