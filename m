@@ -1,122 +1,111 @@
-Received: from szxga07-in.huawei.com (szxga07-in.huawei.com [45.249.212.35])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 15E141C0DE5
-	for <linux-ext4@vger.kernel.org>; Sat, 30 Mar 2024 08:04:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.35
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DFF55376F1;
+	Sat, 30 Mar 2024 12:10:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1711785858; cv=none; b=iK8EB34F+fwUDHaUTYBkBg88ITg0qU0pJj6zB+H08EOPYNOsiio5emlvF82g3W72Xc4ihv2jpQ3IucCmNYNrEo0NrfzNVYViqFGpNQfGB/dm8g9IxtlxjAVd3O+wFc0EXDt5y4LlZ1BK3uTtLXX40ep0d9XgsIPlfX5mxEdtE8c=
+	t=1711800640; cv=none; b=r5FAfmRMbNEgg+tykiVHArYEAiDevfbrkHSX9cw5XCIUsLuZH32IC8HMISIY6loT4AuCVAS5NFs9KvUoFdxRs+oFmzcj20eEXSWKR8W2U9B3AT55QMjQFbpgcwmrNcG3DheJrzFj2uhjSpPYS/iZy7OGOl9oajEOpEroslI4ISk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1711785858; c=relaxed/simple;
-	bh=aNNgKrlB9TLwdmUDHleqTAzZkpPBKhO1F1BOcLb73Aw=;
-	h=Message-ID:Date:MIME-Version:Subject:To:CC:References:From:
-	 In-Reply-To:Content-Type; b=R4YJxo2bsjlLORxtoQTgh7rE0Z8EvZfOAQy2OVMbza1Q5t4VJsRkvJaybUzheGkL1Mgq0nys8/sX7hu98lxzq60YBRxGq8chtdirrbVjoJ2X6PTSxs7EDmGjHWSyOJVXN0viOLsrnUQROjjEdkQS8K8VLYkeBHm7w3aYE9pYOaE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.35
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.163.17])
-	by szxga07-in.huawei.com (SkyGuard) with ESMTP id 4V68qQ5m6yz1R92k;
-	Sat, 30 Mar 2024 16:01:22 +0800 (CST)
-Received: from kwepemd200008.china.huawei.com (unknown [7.221.188.40])
-	by mail.maildlp.com (Postfix) with ESMTPS id 3947D1A0172;
-	Sat, 30 Mar 2024 16:04:05 +0800 (CST)
-Received: from [10.174.177.210] (10.174.177.210) by
- kwepemd200008.china.huawei.com (7.221.188.40) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.1258.28; Sat, 30 Mar 2024 16:04:04 +0800
-Message-ID: <7953c617-2f74-faa4-2aa4-c6ef9de2c28e@huawei.com>
-Date: Sat, 30 Mar 2024 16:04:03 +0800
+	s=arc-20240116; t=1711800640; c=relaxed/simple;
+	bh=11+SGCiUJDvBIX8i0MUftVdWpPzxfUmBF5mjBNtiZNQ=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=j8vp6BLd9pWA/hEJLoCvv8UPlB+ASqbdDE0iYzGZt15YrHRyhBevycMNQlNaqTnUc4f/f21d3tQKud8ARV7jQgPhYMdYwb8OS5nVlGpss9iAwd7M3doH6jqQ8V47I6plelrRsC4Xy9bJ4eS9t77ISuqahE6saWVpe9weiAQ92zY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4V6GLl54gwz4f3m78;
+	Sat, 30 Mar 2024 20:10:23 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id EC9AE1A0232;
+	Sat, 30 Mar 2024 20:10:31 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.104.67])
+	by APP1 (Coremail) with SMTP id cCh0CgAn+REsAQhmkPEjIg--.10652S5;
+	Sat, 30 Mar 2024 20:10:31 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	chengzhihao1@huawei.com,
+	yukuai3@huawei.com
+Subject: [PATCH 1/7] ext4: trim delalloc extent
+Date: Sat, 30 Mar 2024 20:02:30 +0800
+Message-Id: <20240330120236.3789589-2-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20240330120236.3789589-1-yi.zhang@huaweicloud.com>
+References: <20240330120236.3789589-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101
- Thunderbird/102.5.1
-Subject: Re: [PATCH] ext4: clear EXT4_GROUP_INFO_WAS_TRIMMED_BIT even mount
- with discard
-To: Jan Kara <jack@suse.cz>, yangerkun <yangerkun@huaweicloud.com>, "Theodore
- Y . Ts'o" <tytso@mit.edu>
-CC: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <boyu.mt@taobao.com>,
-	<linux-ext4@vger.kernel.org>
-References: <20231230070654.178638-1-yangerkun@huaweicloud.com>
- <20240221111852.olo7jeycctz7xntj@quack3>
-From: yangerkun <yangerkun@huawei.com>
-In-Reply-To: <20240221111852.olo7jeycctz7xntj@quack3>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
 Content-Transfer-Encoding: 8bit
-X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
- kwepemd200008.china.huawei.com (7.221.188.40)
+X-CM-TRANSID:cCh0CgAn+REsAQhmkPEjIg--.10652S5
+X-Coremail-Antispam: 1UD129KBjvJXoW7uF1xWF1Dtr17tF18Kw1kGrg_yoW8Xr4xp3
+	93CFn5Gr4fWw18uayxtF13XF1rK3W5KrW7WrWfKw1ruas8Gw1fKa1kA3W7ta48trZ3Jr4F
+	qFWUtw18Aa1SyrJanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9m14x267AKxVW5JVWrJwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jr4l82xGYIkIc2
+	x26xkF7I0E14v26r1I6r4UM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwCF04k20xvY0x0EwIxGrwCFx2
+	IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v2
+	6r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67
+	AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IY
+	s7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr
+	0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUqAp5UUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-Hi, Ted,
+From: Zhang Yi <yi.zhang@huawei.com>
 
-Ping for this patch.
+The cached delalloc or hole extent should be trimed to the map->map_len
+if we map delalloc blocks in ext4_da_map_blocks(). But it doesn't
+trigger any issue now because the map->m_len is always set to one and we
+always insert one delayed block once a time. Fix this by trim the extent
+once we get one from the cached extent tree, prearing for mapping a
+extent with multiple delalloc blocks.
 
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/inode.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-在 2024/2/21 19:18, Jan Kara 写道:
-> On Sat 30-12-23 15:06:54, yangerkun wrote:
->> Commit 3d56b8d2c74c ("ext4: Speed up FITRIM by recording flags in
->> ext4_group_info") speed up fstrim by skipping trim trimmed group. We
->> also has the chance to clear trimmed once there exists some block free
->> for this group(mount without discard), and the next trim for this group
->> will work well too.
->>
->> For mount with discard, we will issue dicard when we free blocks, so
->> leave trimmed flag keep alive to skip useless trim trigger from
->> userspace seems reasonable. But for some case like ext4 build on
->> dm-thinpool(ext4 blocksize 4K, pool blocksize 128K), discard from ext4
->> maybe unaligned for dm thinpool, and thinpool will just finish this
->> discard(see process_discard_bio when begein equals to end) without
->> actually process discard. For this case, trim from userspace can really
->> help us to free some thinpool block.
->>
->> So convert to clear trimmed flag for all case no matter mounted with
->> discard or not.
->>
->> Fixes: 3d56b8d2c74c ("ext4: Speed up FITRIM by recording flags in ext4_group_info")
->> Signed-off-by: yangerkun <yangerkun@huaweicloud.com>
-> 
-> Thanks for the fix. It looks good. Feel free to add:
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> 
-> 								Honza
-> 
->> ---
->>   fs/ext4/mballoc.c | 10 ++++------
->>   1 file changed, 4 insertions(+), 6 deletions(-)
->>
->> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
->> index d72b5e3c92ec..69240ae775f1 100644
->> --- a/fs/ext4/mballoc.c
->> +++ b/fs/ext4/mballoc.c
->> @@ -3855,11 +3855,8 @@ static void ext4_free_data_in_buddy(struct super_block *sb,
->>   	/*
->>   	 * Clear the trimmed flag for the group so that the next
->>   	 * ext4_trim_fs can trim it.
->> -	 * If the volume is mounted with -o discard, online discard
->> -	 * is supported and the free blocks will be trimmed online.
->>   	 */
->> -	if (!test_opt(sb, DISCARD))
->> -		EXT4_MB_GRP_CLEAR_TRIMMED(db);
->> +	EXT4_MB_GRP_CLEAR_TRIMMED(db);
->>   
->>   	if (!db->bb_free_root.rb_node) {
->>   		/* No more items in the per group rb tree
->> @@ -6481,8 +6478,9 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
->>   					 " group:%u block:%d count:%lu failed"
->>   					 " with %d", block_group, bit, count,
->>   					 err);
->> -		} else
->> -			EXT4_MB_GRP_CLEAR_TRIMMED(e4b.bd_info);
->> +		}
->> +
->> +		EXT4_MB_GRP_CLEAR_TRIMMED(e4b.bd_info);
->>   
->>   		ext4_lock_group(sb, block_group);
->>   		mb_free_blocks(inode, &e4b, bit, count_clusters);
->> -- 
->> 2.39.2
->>
->>
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 537803250ca9..b98f92622442 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1705,6 +1705,11 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 
+ 	/* Lookup extent status tree firstly */
+ 	if (ext4_es_lookup_extent(inode, iblock, NULL, &es)) {
++		retval = es.es_len - (iblock - es.es_lblk);
++		if (retval > map->m_len)
++			retval = map->m_len;
++		map->m_len = retval;
++
+ 		if (ext4_es_is_hole(&es))
+ 			goto add_delayed;
+ 
+@@ -1720,10 +1725,6 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 		}
+ 
+ 		map->m_pblk = ext4_es_pblock(&es) + iblock - es.es_lblk;
+-		retval = es.es_len - (iblock - es.es_lblk);
+-		if (retval > map->m_len)
+-			retval = map->m_len;
+-		map->m_len = retval;
+ 		if (ext4_es_is_written(&es))
+ 			map->m_flags |= EXT4_MAP_MAPPED;
+ 		else if (ext4_es_is_unwritten(&es))
+-- 
+2.39.2
+
