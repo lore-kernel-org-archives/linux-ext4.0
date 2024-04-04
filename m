@@ -1,40 +1,40 @@
-Received: from out-187.mta1.migadu.com (out-187.mta1.migadu.com [95.215.58.187])
+Received: from out-186.mta1.migadu.com (out-186.mta1.migadu.com [95.215.58.186])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 49FDA811FF
-	for <linux-ext4@vger.kernel.org>; Thu,  4 Apr 2024 11:10:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=95.215.58.187
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CC74180C09
+	for <linux-ext4@vger.kernel.org>; Thu,  4 Apr 2024 11:10:39 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=95.215.58.186
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1712229042; cv=none; b=ntJbEcNEObVjgGz7dNPV+O0J+EnKDpEo/PbO99ZTzUU5FgpliCcIAl2j4qV7GTC4azOfvy9+6RKLp/nQb1P+MfRUq+fTJPsTL3YMNliSgndJrTr+U1jO2Fen8rp2NJPhhxg0DyGSIEgTei6hB7Sk1iWTNGvlqaznH97VUjK/DhQ=
+	t=1712229042; cv=none; b=Q5CxjL2H2Fnamwf4Co1SvJa7GmkO34PgDo6/vi089hWRNZRsqW8u5Z9dr7i2bbe34nXB5TrIwzdOARrtJ3npyfvLME7ZVZso2v0GkBjwjrhN38Du/C8KQmGv4ZjkaY+EXLk/xooXJAOA/LPdSYUGOCTT2Jr0RiJ5PBDv6cKwcDc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1712229042; c=relaxed/simple;
-	bh=wKemBMY8CuyogRcNlPvt0OFO7viiLuThmcGKiyyXoxE=;
+	bh=2R4bn6h/V9QwnqF8wFmKHZ/kWIHOLLv5epWCfrESK1A=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=l1vrgoGdco6Xza5ENukOXg48sepkuOF/qjjQnf5j7wBcBzO5Y0fBewjkuSVkoTlVo4K8Vex70uHkBPFu9Q+P6bv7oQCQTXdKQecelT5NhaoY14kvgr1dYGG6ekbpRq7JwioASNRK2LUo9kNqUTmv1+pohfo9gI4q46Fq72GqRbA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=DvglpV1K; arc=none smtp.client-ip=95.215.58.187
+	 MIME-Version; b=UIC1KrkCq03OywTNd9R4cjVyDsFRU7o0M7KRGXCcl1XhPHDK3Vo7R7oBuGQqmadEgPXcmnzfVjgQ1foc603wqWqK68uUqD5olbuVFDjnO++DULbvb1AMi5iyjBLrGZX+Te/Rgia7+VEzizzL5XEkbAEYQ+3qKmCiffPugq371l4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=R+XT2UJr; arc=none smtp.client-ip=95.215.58.186
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="DvglpV1K"
+	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="R+XT2UJr"
 X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-	t=1712229038;
+	t=1712229037;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=uu4jMZtAqF2jfhYct7x3/bM+bfcCRqhTVsT6Ei2gC34=;
-	b=DvglpV1KnITUoyZ9zgK0zQx9kcoUu60mjPDoxqaShkf+CptMsa/TrnXh/OMNL5OvPb4VXT
-	c3WNaMPxkGW9hV1UsyKlqnxAPEekwO9d1thcdo+MfOup53t26/Fw0lyIKa8fwbXZqtn/sC
-	9uSkZ7KAgjeiPfFD8U19lkANAg3/txs=
+	bh=WhnFM4FfFSVqaDsm4zl/Ss6PMlAqm2ARJf8bLZnxGKQ=;
+	b=R+XT2UJrlT1SgB6NUS8ecnjT/4+lVqhAR8gEHCP/zVWizN75DFL4hrdcOHUgkkuec4LAN2
+	TXVUCC7ucrbEiUsoB2U5H+sPEH005QFigAULENsoCa/DJ8pVfHDxWN6ZZ3o5u3jyLFQKmd
+	7wmtb/R7sIKgcvyTUAy0xHXBWr6npCs=
 From: "Luis Henriques (SUSE)" <luis.henriques@linux.dev>
 To: Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger@dilger.ca>
 Cc: linux-ext4@vger.kernel.org,
 	"Luis Henriques (SUSE)" <luis.henriques@linux.dev>
-Subject: [PATCH v2 3/4] tests: new test to check quota after directory optimization
-Date: Thu,  4 Apr 2024 12:10:31 +0100
-Message-ID: <20240404111032.10427-4-luis.henriques@linux.dev>
+Subject: [PATCH v2 1/4] e2fsck: update quota accounting after directory optimization
+Date: Thu,  4 Apr 2024 12:10:29 +0100
+Message-ID: <20240404111032.10427-2-luis.henriques@linux.dev>
 In-Reply-To: <20240404111032.10427-1-luis.henriques@linux.dev>
 References: <20240404111032.10427-1-luis.henriques@linux.dev>
 Precedence: bulk
@@ -46,121 +46,80 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Migadu-Flow: FLOW_OUT
 
-This new test validates e2fsck by verifying that quota data is updated after a
-directory optimization is performed.  This issue was initially found by fstest
-ext4/014, and this test was based on it.  It includes a filesystem image where
-the lost+found directory is unlinked after a new link to it is created:
+In "Pass 3A: Optimizing directories", a directory may have it's size reduced.
+If that happens and quota is enabled in the filesystem, the quota information
+will be incorrect because it doesn't take the rehash into account.  This issue
+was detected by running fstest ext4/014.
 
-  # debugfs -w -R "ln lost+found foo" f_testnew/image
-  # debugfs -w -R "unlink lost+found" f_testnew/image
+This patch simply updates the quota data accordingly, after the directory is
+written and it's size has been updated.
 
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=218626
 Signed-off-by: Luis Henriques (SUSE) <luis.henriques@linux.dev>
 ---
- tests/f_quota_shrinkdir/expect.1 |  18 ++++++++++++++++++
- tests/f_quota_shrinkdir/expect.2 |   7 +++++++
- tests/f_quota_shrinkdir/image.gz | Bin 0 -> 10761 bytes
- tests/f_quota_shrinkdir/name     |   1 +
- 4 files changed, 26 insertions(+)
- create mode 100644 tests/f_quota_shrinkdir/expect.1
- create mode 100644 tests/f_quota_shrinkdir/expect.2
- create mode 100644 tests/f_quota_shrinkdir/image.gz
- create mode 100644 tests/f_quota_shrinkdir/name
+ e2fsck/rehash.c | 27 +++++++++++++++++++++------
+ 1 file changed, 21 insertions(+), 6 deletions(-)
 
-diff --git a/tests/f_quota_shrinkdir/expect.1 b/tests/f_quota_shrinkdir/expect.1
-new file mode 100644
-index 000000000000..e4fc48ea6f90
---- /dev/null
-+++ b/tests/f_quota_shrinkdir/expect.1
-@@ -0,0 +1,18 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+/lost+found not found.  Create? yes
+diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
+index c1da7d52724e..4847d172e5fe 100644
+--- a/e2fsck/rehash.c
++++ b/e2fsck/rehash.c
+@@ -987,14 +987,18 @@ errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino,
+ {
+ 	ext2_filsys 		fs = ctx->fs;
+ 	errcode_t		retval;
+-	struct ext2_inode 	inode;
++	struct ext2_inode_large	inode;
+ 	char			*dir_buf = 0;
+ 	struct fill_dir_struct	fd = { NULL, NULL, 0, 0, 0, NULL,
+ 				       0, 0, 0, 0, 0, 0 };
+ 	struct out_dir		outdir = { 0, 0, 0, 0 };
+-	struct name_cmp_ctx name_cmp_ctx = {0, NULL};
++	struct name_cmp_ctx	name_cmp_ctx = {0, NULL};
++	__u64			osize;
+ 
+-	e2fsck_read_inode(ctx, ino, &inode, "rehash_dir");
++	e2fsck_read_inode_full(ctx, ino, EXT2_INODE(&inode),
++			       sizeof(inode), "rehash_dir");
 +
-+Pass 3A: Optimizing directories
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+[QUOTA WARNING] Usage inconsistent for ID 0:actual (3072, 3) != expected (13312, 2)
-+Update quota info for quota type 0? yes
++	osize = EXT2_I_SIZE(&inode);
+ 
+ 	if (ext2fs_has_feature_inline_data(fs->super) &&
+ 	   (inode.i_flags & EXT4_INLINE_DATA_FL))
+@@ -1013,7 +1017,7 @@ errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino,
+ 	fd.ino = ino;
+ 	fd.ctx = ctx;
+ 	fd.buf = dir_buf;
+-	fd.inode = &inode;
++	fd.inode = EXT2_INODE(&inode);
+ 	fd.dir = ino;
+ 	if (!ext2fs_has_feature_dir_index(fs->super) ||
+ 	    (inode.i_size / fs->blocksize) < 2)
+@@ -1092,14 +1096,25 @@ resort:
+ 			goto errout;
+ 	}
+ 
+-	retval = write_directory(ctx, fs, &outdir, ino, &inode, fd.compress);
++	retval = write_directory(ctx, fs, &outdir, ino, EXT2_INODE(&inode),
++				 fd.compress);
+ 	if (retval)
+ 		goto errout;
+ 
++	if ((osize > EXT2_I_SIZE(&inode)) &&
++	    (ino != quota_type2inum(PRJQUOTA, fs->super)) &&
++	    (ino != fs->super->s_orphan_file_inum) &&
++	    (ino == EXT2_ROOT_INO || ino >= EXT2_FIRST_INODE(ctx->fs->super)) &&
++	    !(inode.i_flags & EXT4_EA_INODE_FL)) {
++		quota_data_sub(ctx->qctx, &inode,
++			       ino, osize - EXT2_I_SIZE(&inode));
++	}
 +
-+[QUOTA WARNING] Usage inconsistent for ID 0:actual (3072, 3) != expected (13312, 2)
-+Update quota info for quota type 1? yes
-+
-+
-+test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-+test_filesys: 12/256 files (16.7% non-contiguous), 1145/8192 blocks
-+Exit status is 1
-diff --git a/tests/f_quota_shrinkdir/expect.2 b/tests/f_quota_shrinkdir/expect.2
-new file mode 100644
-index 000000000000..fcb2cb81441e
---- /dev/null
-+++ b/tests/f_quota_shrinkdir/expect.2
-@@ -0,0 +1,7 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 12/256 files (16.7% non-contiguous), 1145/8192 blocks
-+Exit status is 0
-diff --git a/tests/f_quota_shrinkdir/image.gz b/tests/f_quota_shrinkdir/image.gz
-new file mode 100644
-index 0000000000000000000000000000000000000000..1fee3ca9c9b4cb61974be54b063c8f9e1ba49da1
-GIT binary patch
-literal 10761
-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
-
-literal 0
-HcmV?d00001
-
-diff --git a/tests/f_quota_shrinkdir/name b/tests/f_quota_shrinkdir/name
-new file mode 100644
-index 000000000000..8772ae5c814b
---- /dev/null
-+++ b/tests/f_quota_shrinkdir/name
-@@ -0,0 +1 @@
-+update quota on directory optimization
+ 	if (ctx->options & E2F_OPT_CONVERT_BMAP)
+ 		retval = e2fsck_rebuild_extents_later(ctx, ino);
+ 	else
+-		retval = e2fsck_check_rebuild_extents(ctx, ino, &inode, pctx);
++		retval = e2fsck_check_rebuild_extents(ctx, ino,
++						      EXT2_INODE(&inode), pctx);
+ errout:
+ 	ext2fs_free_mem(&dir_buf);
+ 	ext2fs_free_mem(&fd.harray);
