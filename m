@@ -1,38 +1,38 @@
 Received: from madrid.collaboradmins.com (madrid.collaboradmins.com [46.235.227.194])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8318416D328;
-	Fri,  5 Apr 2024 12:14:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 89FEE16D9AC;
+	Fri,  5 Apr 2024 12:14:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=46.235.227.194
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1712319249; cv=none; b=cGYTUb86PHn+vp2EDwvo6hufost6+S6LvL9vs6eoWH7wN3qR5aY32Az5QOpkNcTS+9fsu+myQ11lme6aUrc74GvjV7l9AWPaazl+HHi3v7KjpavdKXwwdXZYGP0otAp136tYBs8ZuIOO8f8TjR0NMgL3SslfrJQsaw9un4DTk+0=
+	t=1712319251; cv=none; b=m3BKTt7iwfxmiAZgEYrgMtj7hlIqmKFoDnVCXUgt9stjcruqLmC+gWNzsXu5JtRHfYhnPuG6dmcnZ8+xpb6GWZ84LCU4/2JKW802brbSvRIqk65AMbx5d1ie+VMchaFRInpVCH4KzP9LNo9brRcYNmz+8xck/TT2sMHpD/xqN+s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1712319249; c=relaxed/simple;
-	bh=swtZ6BKu+FGmiqRjglGL90hSAB3JlB+upSuAXL/TJpA=;
+	s=arc-20240116; t=1712319251; c=relaxed/simple;
+	bh=3qqbmy6OIcOoO07cO28FmCqjE206p+74Pkl9CCe0L8Q=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=MP+Y4IZK4pNljc/uuwedLApfB/hjNHdb0o7zsh/m/FyXKHi49txspa0Y0ZHoze5vI42gBnMF5tWLyfZ6UX8rv3uYeTai0q5DHt0iVM+hst/SkbgF7mlLwSF3rBhWuUh5oMJtfi2LOkmFa+cWyv7xrCGJ/usO7+J3HwEWHrV46B4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=collabora.com; spf=pass smtp.mailfrom=collabora.com; dkim=pass (2048-bit key) header.d=collabora.com header.i=@collabora.com header.b=LeamS+So; arc=none smtp.client-ip=46.235.227.194
+	 MIME-Version; b=Qqm5Wn9ew1LlNKUEVyBKNbAjpx1olkG/T7JvXZhPIGtc4GH7L/a+9PRlBHVNptIU2JF8UnRHOVmwh7JXWAFWi/uz0eWf9TxsGzqGvuUyJW17BT6kIee6fMuH3Qr6aHWBSPliC+Y0F15Mp38hXFnESpD6R6TdNHXIW5c/NXBgTE0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=collabora.com; spf=pass smtp.mailfrom=collabora.com; dkim=pass (2048-bit key) header.d=collabora.com header.i=@collabora.com header.b=TKDOJxOE; arc=none smtp.client-ip=46.235.227.194
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=collabora.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=collabora.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=collabora.com header.i=@collabora.com header.b="LeamS+So"
+	dkim=pass (2048-bit key) header.d=collabora.com header.i=@collabora.com header.b="TKDOJxOE"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=collabora.com;
-	s=mail; t=1712319245;
-	bh=swtZ6BKu+FGmiqRjglGL90hSAB3JlB+upSuAXL/TJpA=;
+	s=mail; t=1712319248;
+	bh=3qqbmy6OIcOoO07cO28FmCqjE206p+74Pkl9CCe0L8Q=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=LeamS+SotQsJpfKSCnUeuxt8Br9jyLEZm/Oc4Fdf61ABZ3mc4VL304RbXIFEtCkeR
-	 JYxBeVgFsCJzLqMa5IqSF2ZK0MzIDm8C729n0aqoLmXu0rbmWIAkpTvoLx1CJBzbfx
-	 rda9j9UBrt5qJ+5WB3xuDfM+rTKK+mUxL/3B8JMaobZtTB/967CD9SuuWhzhqRQc/2
-	 19AYHVTMDxFXo36IaWAuVEw4jiZohKW3c6dB/58mcM6ubmX1zy4HYwGefqWHR3ilaI
-	 BV0Qq5AyYQl/GsVKY0R5JcCKJCqrztVWK+nV0uYTvuH9WExXQSqoHb9ao14NzWBPDd
-	 Gkanvxpl+ny5Q==
+	b=TKDOJxOER7MirF21hVhlJQygRmK3/cJqX67xIv56OiHAy+8ouFLN8Y6MoZIeZQr5U
+	 gKEX2b9K15sZy9+GBZ5VAAd6GKpxvEtgt1iY8IO47IB2Gze+5MDekZvgpveB2GyG6x
+	 LNGantlVyvkzvkODN1PXwCuEDdlHax/3eCJLn5OT2wVHpWe16Af4a9/Pjgistv+my2
+	 L99lBBpVAW/4p4xOhSqzNSEuA9P9vS/m2fnRgFtI5a8OBNhBOQPz8DCeITHkwotFTs
+	 TUOc9wHNQNQY7H1FvAo3RaxedEuZxNziGZH5t4GHqnaZMGt2KjAK7ynt+aT8NiIv1O
+	 3evyYq2Hw6Q9w==
 Received: from eugen-station.. (cola.collaboradmins.com [195.201.22.229])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
 	(Authenticated sender: ehristev)
-	by madrid.collaboradmins.com (Postfix) with ESMTPSA id CD38E3782133;
-	Fri,  5 Apr 2024 12:14:04 +0000 (UTC)
+	by madrid.collaboradmins.com (Postfix) with ESMTPSA id 289F53782134;
+	Fri,  5 Apr 2024 12:14:07 +0000 (UTC)
 From: Eugen Hristev <eugen.hristev@collabora.com>
 To: tytso@mit.edu,
 	adilger.kernel@dilger.ca,
@@ -50,9 +50,9 @@ Cc: linux-kernel@vger.kernel.org,
 	krisman@suse.de,
 	ebiggers@kernel.org,
 	Gabriel Krisman Bertazi <krisman@collabora.com>
-Subject: [PATCH v16 4/9] ext4: Reuse generic_ci_match for ci comparisons
-Date: Fri,  5 Apr 2024 15:13:27 +0300
-Message-Id: <20240405121332.689228-5-eugen.hristev@collabora.com>
+Subject: [PATCH v16 6/9] ext4: Log error when lookup of encoded dentry fails
+Date: Fri,  5 Apr 2024 15:13:29 +0300
+Message-Id: <20240405121332.689228-7-eugen.hristev@collabora.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20240405121332.689228-1-eugen.hristev@collabora.com>
 References: <20240405121332.689228-1-eugen.hristev@collabora.com>
@@ -66,129 +66,30 @@ Content-Transfer-Encoding: 8bit
 
 From: Gabriel Krisman Bertazi <krisman@collabora.com>
 
-Instead of reimplementing ext4_match_ci, use the new libfs helper.
-
-It also adds a comment explaining why fname->cf_name.name must be
-checked prior to the encryption hash optimization, because that tripped
-me before.
+If the volume is in strict mode, ext4_ci_compare can report a broken
+encoding name.  This will not trigger on a bad lookup, which is caught
+earlier, only if the actual disk name is bad.
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
 Signed-off-by: Eugen Hristev <eugen.hristev@collabora.com>
 ---
- fs/ext4/namei.c | 91 +++++++++++++++----------------------------------
- 1 file changed, 27 insertions(+), 64 deletions(-)
+ fs/ext4/namei.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index b96983a4c185..2d0ee232fbe7 100644
+index 2d0ee232fbe7..3268cf45d9db 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -1390,58 +1390,6 @@ static void dx_insert_block(struct dx_frame *frame, u32 hash, ext4_lblk_t block)
- }
- 
- #if IS_ENABLED(CONFIG_UNICODE)
--/*
-- * Test whether a case-insensitive directory entry matches the filename
-- * being searched for.  If quick is set, assume the name being looked up
-- * is already in the casefolded form.
-- *
-- * Returns: 0 if the directory entry matches, more than 0 if it
-- * doesn't match or less than zero on error.
-- */
--static int ext4_ci_compare(const struct inode *parent, const struct qstr *name,
--			   u8 *de_name, size_t de_name_len, bool quick)
--{
--	const struct super_block *sb = parent->i_sb;
--	const struct unicode_map *um = sb->s_encoding;
--	struct fscrypt_str decrypted_name = FSTR_INIT(NULL, de_name_len);
--	struct qstr entry = QSTR_INIT(de_name, de_name_len);
--	int ret;
--
--	if (IS_ENCRYPTED(parent)) {
--		const struct fscrypt_str encrypted_name =
--				FSTR_INIT(de_name, de_name_len);
--
--		decrypted_name.name = kmalloc(de_name_len, GFP_KERNEL);
--		if (!decrypted_name.name)
--			return -ENOMEM;
--		ret = fscrypt_fname_disk_to_usr(parent, 0, 0, &encrypted_name,
--						&decrypted_name);
--		if (ret < 0)
--			goto out;
--		entry.name = decrypted_name.name;
--		entry.len = decrypted_name.len;
--	}
--
--	if (quick)
--		ret = utf8_strncasecmp_folded(um, name, &entry);
--	else
--		ret = utf8_strncasecmp(um, name, &entry);
--	if (ret < 0) {
--		/* Handle invalid character sequence as either an error
--		 * or as an opaque byte sequence.
--		 */
--		if (sb_has_strict_encoding(sb))
--			ret = -EINVAL;
--		else if (name->len != entry.len)
--			ret = 1;
--		else
--			ret = !!memcmp(name->name, entry.name, entry.len);
--	}
--out:
--	kfree(decrypted_name.name);
--	return ret;
--}
--
- int ext4_fname_setup_ci_filename(struct inode *dir, const struct qstr *iname,
- 				  struct ext4_filename *name)
- {
-@@ -1503,20 +1451,35 @@ static bool ext4_match(struct inode *parent,
- #if IS_ENABLED(CONFIG_UNICODE)
- 	if (IS_CASEFOLDED(parent) &&
- 	    (!IS_ENCRYPTED(parent) || fscrypt_has_encryption_key(parent))) {
--		if (fname->cf_name.name) {
--			if (IS_ENCRYPTED(parent)) {
--				if (fname->hinfo.hash != EXT4_DIRENT_HASH(de) ||
--					fname->hinfo.minor_hash !=
--						EXT4_DIRENT_MINOR_HASH(de)) {
-+		int ret;
- 
--					return false;
--				}
--			}
--			return !ext4_ci_compare(parent, &fname->cf_name,
--						de->name, de->name_len, true);
-+		/*
-+		 * Just checking IS_ENCRYPTED(parent) below is not
-+		 * sufficient to decide whether one can use the hash for
-+		 * skipping the string comparison, because the key might
-+		 * have been added right after
-+		 * ext4_fname_setup_ci_filename().  In this case, a hash
-+		 * mismatch will be a false negative.  Therefore, make
-+		 * sure cf_name was properly initialized before
-+		 * considering the calculated hash.
-+		 */
-+		if (IS_ENCRYPTED(parent) && fname->cf_name.name &&
-+		    (fname->hinfo.hash != EXT4_DIRENT_HASH(de) ||
-+		     fname->hinfo.minor_hash != EXT4_DIRENT_MINOR_HASH(de)))
-+			return false;
-+
-+		ret = generic_ci_match(parent, fname->usr_fname,
-+				       &fname->cf_name, de->name,
-+				       de->name_len);
-+		if (ret < 0) {
-+			/*
-+			 * Treat comparison errors as not a match.  The
-+			 * only case where it happens is on a disk
-+			 * corruption or ENOMEM.
-+			 */
-+			return false;
+@@ -1477,6 +1477,9 @@ static bool ext4_match(struct inode *parent,
+ 			 * only case where it happens is on a disk
+ 			 * corruption or ENOMEM.
+ 			 */
++			if (ret == -EINVAL)
++				EXT4_ERROR_INODE(parent,
++					"Directory contains filename that is invalid UTF-8");
+ 			return false;
  		}
--		return !ext4_ci_compare(parent, fname->usr_fname, de->name,
--						de->name_len, false);
-+		return ret;
- 	}
- #endif
- 
+ 		return ret;
 -- 
 2.34.1
 
