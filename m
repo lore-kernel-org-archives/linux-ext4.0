@@ -1,28 +1,28 @@
 Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C9E74177984;
-	Wed, 10 Apr 2024 14:38:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E43D8180A7F;
+	Wed, 10 Apr 2024 14:38:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1712759926; cv=none; b=niHd6H3Rm6QIX256JXjJNfsDEcMzRlaaYytknOvJTgW1jHGH0eDctnEBqmeM8BauthryW1ZcZUTE8gJteYkGNxQDLpxJUqRfvBEJvHG/1xsWgYBEQH6VqiPje00hwGYM0tDzm2TM9/bt6Qkb4KylD++rofMce9xuwZk8UqnjWUM=
+	t=1712759928; cv=none; b=FzEfkuMfgSj/+uXJV7c5K4HsuBG9Ar6APWeJuLZqLjYXxHTG1AS/t9QtPQIMEDkgUEzz0XtfJqlNQOGmKyili2fytSaUMcPVumCEWE0Z4ozCa7hjeGuNymH0ImsuAksepwq86hMAnpLOFcINwFAQ+2oEGqd8AWbweSGpPOaHS7I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1712759926; c=relaxed/simple;
-	bh=T4TB4BlTlfvVUzY1La73B6Y/zTjSnI4NYR/8BDSwrc8=;
+	s=arc-20240116; t=1712759928; c=relaxed/simple;
+	bh=SxdNjyBOuGqpoN+UGepx1nlXvYSeOVFXJrruxO4uecY=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=TaiLupBW7af84jnHceb9U/UmQ4Z8/iljWKhUOBCn5SRy2WEvz3puZWO8Dr7rzTauPMwCTijJtdPnKrx5xxNKK6Vf0nFDiblWbdfIw7Ba1hb7/sCI4yfKQqUNU1o8vbZp2ddloNvp2AlR2Bh2DZMJ9lAsAyf9hKP29BBlFE/vaew=
+	 MIME-Version; b=pA+t6RV4FLpOaqSSfBDaRAQEuK+taFyezekELQ/In6CX4l+9Od84TIToTkvwH3YzgooTnKmCAcfveF9j0eOqkLxEFiEOU67PMkILfEZFvjcuhuh+d58wcqAS74aWJn+DnhnpB8Aespc07QzR5ib8HL4cI4mlVWz+w8clGe3RTDA=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4VF56h25dqz4f3k6L;
-	Wed, 10 Apr 2024 22:38:36 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4VF56k1cnPz4f3kJs;
+	Wed, 10 Apr 2024 22:38:38 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id ACF081A0568;
-	Wed, 10 Apr 2024 22:38:40 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 9D2181A0175;
+	Wed, 10 Apr 2024 22:38:42 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgAX6RFSpBZmcwR8Jg--.63000S27;
-	Wed, 10 Apr 2024 22:38:40 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgAX6RFSpBZmcwR8Jg--.63000S30;
+	Wed, 10 Apr 2024 22:38:42 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -42,9 +42,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com,
 	wangkefeng.wang@huawei.com
-Subject: [RFC PATCH v4 23/34] ext4: implement buffered read iomap path
-Date: Wed, 10 Apr 2024 22:29:37 +0800
-Message-Id: <20240410142948.2817554-24-yi.zhang@huaweicloud.com>
+Subject: [RFC PATCH v4 26/34] ext4: implement mmap iomap path
+Date: Wed, 10 Apr 2024 22:29:40 +0800
+Message-Id: <20240410142948.2817554-27-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20240410142948.2817554-1-yi.zhang@huaweicloud.com>
 References: <20240410142948.2817554-1-yi.zhang@huaweicloud.com>
@@ -55,10 +55,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgAX6RFSpBZmcwR8Jg--.63000S27
-X-Coremail-Antispam: 1UD129KBjvJXoW7urW3XF4fAFy7KF1UXrW7XFb_yoW8uFy3pF
-	98KFy5GF47XrnI9F4SgFZrJr1Yk3Wxtr4UZrWfWasxGFyYkrW2gayjgFyYyF1Yq3y7Ary8
-	WF1jkr18GF4UArDanT9S1TB71UUUUUJqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:cCh0CgAX6RFSpBZmcwR8Jg--.63000S30
+X-Coremail-Antispam: 1UD129KBjvJXoW7urW3tr48Kr4rGryUWrWxWFg_yoW8Ar48pF
+	9akrWrGr4xXwnI9FsagFn8ZFyYy3WrWr4UXrW3CFn5Zrnruw45Ka18WFn5ZF45J3yxZw4U
+	Jr45Cry8u34a9rDanT9S1TB71UUUUUJqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUH214x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -78,68 +78,58 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Add ext4_iomap_buffered_io_begin() for the iomap read path, it call
-ext4_map_blocks() to query map status and call ext4_set_iomap() to
-convert ext4 map to iomap.
+Add ext4_iomap_page_mkwrite() for the mmap iomap path. It dirty folio
+and map blocks, almost all work have been done in iomap_page_mkwrite(),
+so call it directly.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/inode.c | 36 ++++++++++++++++++++++++++++++++++--
- 1 file changed, 34 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4c1fed516d9e..20eb772f4f62 100644
+index 55a4d293177d..9d694c780007 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -3523,14 +3523,46 @@ const struct iomap_ops ext4_iomap_report_ops = {
- 	.iomap_begin = ext4_iomap_begin_report,
- };
- 
--static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
-+static int ext4_iomap_buffered_io_begin(struct inode *inode, loff_t offset,
-+				loff_t length, unsigned int iomap_flags,
-+				struct iomap *iomap, struct iomap *srcmap)
- {
-+	int ret;
-+	struct ext4_map_blocks map;
-+	u8 blkbits = inode->i_blkbits;
-+
-+	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
-+		return -EIO;
-+	if ((offset >> blkbits) > EXT4_MAX_LOGICAL_BLOCK)
-+		return -EINVAL;
-+	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
-+		return -ERANGE;
-+
-+	/* Calculate the first and last logical blocks respectively. */
-+	map.m_lblk = offset >> blkbits;
-+	map.m_len = min_t(loff_t, (offset + length - 1) >> blkbits,
-+			  EXT4_MAX_LOGICAL_BLOCK) - map.m_lblk + 1;
-+
-+	ret = ext4_map_blocks(NULL, inode, &map, 0);
-+	if (ret < 0)
-+		return ret;
-+
-+	ext4_set_iomap(inode, iomap, &map, offset, length, iomap_flags);
- 	return 0;
+@@ -6484,6 +6484,26 @@ static int ext4_bh_unmapped(handle_t *handle, struct inode *inode,
+ 	return !buffer_mapped(bh);
  }
  
--static void ext4_iomap_readahead(struct readahead_control *rac)
-+const struct iomap_ops ext4_iomap_buffered_read_ops = {
-+	.iomap_begin = ext4_iomap_buffered_io_begin,
-+};
-+
-+static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
- {
-+	return iomap_read_folio(folio, &ext4_iomap_buffered_read_ops);
-+}
- 
-+static void ext4_iomap_readahead(struct readahead_control *rac)
++static vm_fault_t ext4_iomap_page_mkwrite(struct vm_fault *vmf)
 +{
-+	iomap_readahead(rac, &ext4_iomap_buffered_read_ops);
- }
++	struct inode *inode = file_inode(vmf->vma->vm_file);
++	const struct iomap_ops *iomap_ops;
++
++	/*
++	 * ext4_nonda_switch() could writeback this folio, so have to
++	 * call it before lock folio.
++	 *
++	 * TODO: drop ext4_nonda_switch() after reserving enough sapce
++	 * for metadata and merge delalloc and nodelalloc operations.
++	 */
++	if (test_opt(inode->i_sb, DELALLOC) && !ext4_nonda_switch(inode->i_sb))
++		iomap_ops = &ext4_iomap_buffered_da_write_ops;
++	else
++		iomap_ops = &ext4_iomap_buffered_write_ops;
++
++	return iomap_page_mkwrite(vmf, iomap_ops);
++}
++
+ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+ {
+ 	struct vm_area_struct *vma = vmf->vma;
+@@ -6507,6 +6527,11 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
  
- static int ext4_iomap_writepages(struct address_space *mapping,
+ 	filemap_invalidate_lock_shared(mapping);
+ 
++	if (ext4_test_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP)) {
++		ret = ext4_iomap_page_mkwrite(vmf);
++		goto out;
++	}
++
+ 	err = ext4_convert_inline_data(inode);
+ 	if (err)
+ 		goto out_ret;
 -- 
 2.39.2
 
