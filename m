@@ -1,28 +1,28 @@
-Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24F9716E889;
-	Wed, 10 Apr 2024 13:37:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B55F916EC1D;
+	Wed, 10 Apr 2024 13:37:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1712756224; cv=none; b=ZmhQi7J6s8kx39hek+CoxxjvL9e0WZXZi9/yoG/kJN8/U+XJGavGmus2jZGTUxOL8NcP9DhLdpAv59o7bXr/lkxNXN/UpbNNCku2aULeocFpyvDatjU71OoYe3xly3GP5SCEb9HzBGRdH0VpMM6jNVICaiMBQE6FmKMJ7+ZspDU=
+	t=1712756225; cv=none; b=sUIBSaSj8g7eL/H9lPciRS+UT/xgRiNCTvgbHarhN+PMFE7Nkf4fwo62irx4jz86gi+zBPh/+uzDRkiH1mnIg09t1LkJuTGzkdZvffS/WhAWESGnUH5uGBrolE8OEzCqdETZzx1x2PTtxE4m1wVzTx3FU3yqhU5TOViADDSKhL4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1712756224; c=relaxed/simple;
-	bh=/tzLFxZiQKM1o33YOWMcHkn39HY4IsDvc4ej8fHwAzI=;
+	s=arc-20240116; t=1712756225; c=relaxed/simple;
+	bh=B8HmUiBBrmS2xnG69j0ang3+DAGeB23kQsLMIpcC7H4=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=Ubt6mK0sB4tYZzIImdB+96HgJ3uazIiSAp5lG7DeazE/GXKecgk4n858Y2y4kpWaareHaz7TcNng+aqwtwbmgxDRgUDDpwfYCzkhXVYZs1wnzZG7yCKRs7fdb0R1THmd+I6Z2wbqUFBEwazQLYQDg99TBrw5aqyp/z+yPIcOYN4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=cFZ51DpRRQFQQqM1M+xFZbmNvyKiGvdP9W0hAVlZk5bcEanvq3wCdwfsXT5B8T0dMhBREJ7b61mGI/MmSN76LUxwialpeGY3vmBKOg0R2sTTpIL9fD/hqMnGetP9KJK4ZxvA4M194uaWnpCYCq4fXbVakDVtqiU3jnE5I0gZMxk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4VF3lQ3XLtz4f3m7f;
-	Wed, 10 Apr 2024 21:36:50 +0800 (CST)
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4VF3lM2Zb0z4f3khY;
+	Wed, 10 Apr 2024 21:36:47 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 2597B1A0568;
-	Wed, 10 Apr 2024 21:36:59 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 335F51A0572;
+	Wed, 10 Apr 2024 21:36:54 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgAn+RHolRZmeCl4Jg--.8806S22;
-	Wed, 10 Apr 2024 21:36:58 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgAn+RHolRZmeCl4Jg--.8806S14;
+	Wed, 10 Apr 2024 21:36:53 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -41,9 +41,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com,
 	wangkefeng.wang@huawei.com
-Subject: [RFC PATCH v4 18/34] ext4: drop ext4_es_is_delonly()
-Date: Wed, 10 Apr 2024 21:28:02 +0800
-Message-Id: <20240410132818.2812377-19-yi.zhang@huaweicloud.com>
+Subject: [RFC PATCH v4 10/34] ext4: factor out ext4_map_create_blocks() to allocate new blocks
+Date: Wed, 10 Apr 2024 21:27:54 +0800
+Message-Id: <20240410132818.2812377-11-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20240410132818.2812377-1-yi.zhang@huaweicloud.com>
 References: <20240410132818.2812377-1-yi.zhang@huaweicloud.com>
@@ -54,10 +54,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgAn+RHolRZmeCl4Jg--.8806S22
-X-Coremail-Antispam: 1UD129KBjvJXoWxXF18AFWxKrW3CrWUJr17Awb_yoWrKryfpF
-	Z8JF18Gr43u34DW3yxtw1UXr1rKa10qFWjgrySkF1fWFyrXryS9F10yFyrAFyrKrW8ZF13
-	XFWjy34jka17Ka7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:cCh0CgAn+RHolRZmeCl4Jg--.8806S14
+X-Coremail-Antispam: 1UD129KBjvJXoW3XF17GrWUWFy8Jw4kJryxKrg_yoW7Kr47pr
+	WfCFyrGr4jgw1qg3ySyr48XF1Yk3WFkrWUC3yfWryrZ345CrySyF15AFy3JF9rKrWxZw1Y
+	qFWFy348Ca95GrDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUPI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -76,133 +76,197 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Since we don't add delayed flag in unwritten extent status entry, so
-there is no difference between ext4_es_is_delayed() and
-ext4_es_is_delonly(), just drop ext4_es_is_delonly().
+Factor out a common helper ext4_map_create_blocks() from
+ext4_map_blocks(), it allocate new blocks and create a new extent, no
+logic changes.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/extents_status.c | 18 +++++++++---------
- fs/ext4/extents_status.h |  5 -----
- fs/ext4/inode.c          |  4 ++--
- 3 files changed, 11 insertions(+), 16 deletions(-)
+ fs/ext4/inode.c | 157 +++++++++++++++++++++++++-----------------------
+ 1 file changed, 81 insertions(+), 76 deletions(-)
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 9cac4ea57b73..062293e739cc 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -561,8 +561,8 @@ static int ext4_es_can_be_merged(struct extent_status *es1,
- 	if (ext4_es_is_hole(es1))
- 		return 1;
- 
--	/* we need to check delayed extent is without unwritten status */
--	if (ext4_es_is_delayed(es1) && !ext4_es_is_unwritten(es1))
-+	/* we need to check delayed extent */
-+	if (ext4_es_is_delayed(es1))
- 		return 1;
- 
- 	return 0;
-@@ -1137,7 +1137,7 @@ static void count_rsvd(struct inode *inode, ext4_lblk_t lblk, long len,
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	ext4_lblk_t i, end, nclu;
- 
--	if (!ext4_es_is_delonly(es))
-+	if (!ext4_es_is_delayed(es))
- 		return;
- 
- 	WARN_ON(len <= 0);
-@@ -1289,7 +1289,7 @@ static unsigned int get_rsvd(struct inode *inode, ext4_lblk_t end,
- 		es = rc->left_es;
- 		while (es && ext4_es_end(es) >=
- 		       EXT4_LBLK_CMASK(sbi, rc->first_do_lblk)) {
--			if (ext4_es_is_delonly(es)) {
-+			if (ext4_es_is_delayed(es)) {
- 				rc->ndelonly_cluster--;
- 				left_delonly = true;
- 				break;
-@@ -1309,7 +1309,7 @@ static unsigned int get_rsvd(struct inode *inode, ext4_lblk_t end,
- 			}
- 			while (es && es->es_lblk <=
- 			       EXT4_LBLK_CFILL(sbi, rc->last_do_lblk)) {
--				if (ext4_es_is_delonly(es)) {
-+				if (ext4_es_is_delayed(es)) {
- 					rc->ndelonly_cluster--;
- 					right_delonly = true;
- 					break;
-@@ -2230,7 +2230,7 @@ static int __revise_pending(struct inode *inode, ext4_lblk_t lblk,
- 	if (EXT4_B2C(sbi, lblk) == EXT4_B2C(sbi, end)) {
- 		first = EXT4_LBLK_CMASK(sbi, lblk);
- 		if (first != lblk)
--			f_del = __es_scan_range(inode, &ext4_es_is_delonly,
-+			f_del = __es_scan_range(inode, &ext4_es_is_delayed,
- 						first, lblk - 1);
- 		if (f_del) {
- 			ret = __insert_pending(inode, first, prealloc);
-@@ -2242,7 +2242,7 @@ static int __revise_pending(struct inode *inode, ext4_lblk_t lblk,
- 			       sbi->s_cluster_ratio - 1;
- 			if (last != end)
- 				l_del = __es_scan_range(inode,
--							&ext4_es_is_delonly,
-+							&ext4_es_is_delayed,
- 							end + 1, last);
- 			if (l_del) {
- 				ret = __insert_pending(inode, last, prealloc);
-@@ -2255,7 +2255,7 @@ static int __revise_pending(struct inode *inode, ext4_lblk_t lblk,
- 	} else {
- 		first = EXT4_LBLK_CMASK(sbi, lblk);
- 		if (first != lblk)
--			f_del = __es_scan_range(inode, &ext4_es_is_delonly,
-+			f_del = __es_scan_range(inode, &ext4_es_is_delayed,
- 						first, lblk - 1);
- 		if (f_del) {
- 			ret = __insert_pending(inode, first, prealloc);
-@@ -2267,7 +2267,7 @@ static int __revise_pending(struct inode *inode, ext4_lblk_t lblk,
- 
- 		last = EXT4_LBLK_CMASK(sbi, end) + sbi->s_cluster_ratio - 1;
- 		if (last != end)
--			l_del = __es_scan_range(inode, &ext4_es_is_delonly,
-+			l_del = __es_scan_range(inode, &ext4_es_is_delayed,
- 						end + 1, last);
- 		if (l_del) {
- 			ret = __insert_pending(inode, last, prealloc);
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index 5b49cb3b9aff..e484c60e55e3 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -184,11 +184,6 @@ static inline int ext4_es_is_mapped(struct extent_status *es)
- 	return (ext4_es_is_written(es) || ext4_es_is_unwritten(es));
- }
- 
--static inline int ext4_es_is_delonly(struct extent_status *es)
--{
--	return (ext4_es_is_delayed(es) && !ext4_es_is_unwritten(es));
--}
--
- static inline void ext4_es_set_referenced(struct extent_status *es)
- {
- 	es->es_pblk |= ((ext4_fsblk_t)EXTENT_STATUS_REFERENCED) << ES_SHIFT;
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 64bdfa9e06b2..2704dca96ee7 100644
+index 1731c1d24362..10a256cfcaa1 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1643,7 +1643,7 @@ static int ext4_da_check_clu_allocated(struct inode *inode, ext4_lblk_t lblk,
- 	int ret;
+@@ -482,6 +482,86 @@ static int ext4_map_query_blocks(handle_t *handle, struct inode *inode,
+ 	return retval;
+ }
  
- 	*allocated = false;
--	if (ext4_es_scan_clu(inode, &ext4_es_is_delonly, lblk))
-+	if (ext4_es_scan_clu(inode, &ext4_es_is_delayed, lblk))
- 		return 0;
++static int ext4_map_create_blocks(handle_t *handle, struct inode *inode,
++				  struct ext4_map_blocks *map, int flags)
++{
++	struct extent_status es;
++	unsigned int status;
++	int err, retval = 0;
++
++	/*
++	 * Here we clear m_flags because after allocating an new extent,
++	 * it will be set again.
++	 */
++	map->m_flags &= ~EXT4_MAP_FLAGS;
++
++	/*
++	 * We need to check for EXT4 here because migrate could have
++	 * changed the inode type in between.
++	 */
++	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
++		retval = ext4_ext_map_blocks(handle, inode, map, flags);
++	} else {
++		retval = ext4_ind_map_blocks(handle, inode, map, flags);
++
++		/*
++		 * We allocated new blocks which will result in i_data's
++		 * format changing. Force the migrate to fail by clearing
++		 * migrate flags.
++		 */
++		if (retval > 0 && map->m_flags & EXT4_MAP_NEW)
++			ext4_clear_inode_state(inode, EXT4_STATE_EXT_MIGRATE);
++	}
++	if (retval <= 0)
++		return retval;
++
++	if (unlikely(retval != map->m_len)) {
++		ext4_warning(inode->i_sb,
++			     "ES len assertion failed for inode %lu: "
++			     "retval %d != map->m_len %d",
++			     inode->i_ino, retval, map->m_len);
++		WARN_ON(1);
++	}
++
++	/*
++	 * We have to zeroout blocks before inserting them into extent
++	 * status tree. Otherwise someone could look them up there and
++	 * use them before they are really zeroed. We also have to
++	 * unmap metadata before zeroing as otherwise writeback can
++	 * overwrite zeros with stale data from block device.
++	 */
++	if (flags & EXT4_GET_BLOCKS_ZERO &&
++	    map->m_flags & EXT4_MAP_MAPPED && map->m_flags & EXT4_MAP_NEW) {
++		err = ext4_issue_zeroout(inode, map->m_lblk, map->m_pblk,
++					 map->m_len);
++		if (err)
++			return err;
++	}
++
++	/*
++	 * If the extent has been zeroed out, we don't need to update
++	 * extent status tree.
++	 */
++	if (flags & EXT4_GET_BLOCKS_PRE_IO &&
++	    ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
++		if (ext4_es_is_written(&es))
++			return retval;
++	}
++
++	status = map->m_flags & EXT4_MAP_UNWRITTEN ?
++			EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
++	if (!(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
++	    !(status & EXTENT_STATUS_WRITTEN) &&
++	    ext4_es_scan_range(inode, &ext4_es_is_delayed, map->m_lblk,
++			       map->m_lblk + map->m_len - 1))
++		status |= EXTENT_STATUS_DELAYED;
++
++	ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
++			      map->m_pblk, status);
++
++	return retval;
++}
++
+ /*
+  * The ext4_map_blocks() function tries to look up the requested blocks,
+  * and returns if the blocks are already mapped.
+@@ -630,12 +710,6 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		if (!(flags & EXT4_GET_BLOCKS_CONVERT_UNWRITTEN))
+ 			return retval;
  
- 	if (ext4_es_scan_clu(inode, &ext4_es_is_mapped, lblk))
-@@ -1760,7 +1760,7 @@ static int ext4_da_map_blocks(struct inode *inode, struct ext4_map_blocks *map)
- 		 * Delayed extent could be allocated by fallocate.
- 		 * So we need to check it.
- 		 */
--		if (ext4_es_is_delonly(&es)) {
-+		if (ext4_es_is_delayed(&es)) {
- 			map->m_flags |= EXT4_MAP_DELAYED;
- 			return 0;
- 		}
+-	/*
+-	 * Here we clear m_flags because after allocating an new extent,
+-	 * it will be set again.
+-	 */
+-	map->m_flags &= ~EXT4_MAP_FLAGS;
+-
+ 	/*
+ 	 * New blocks allocate and/or writing to unwritten extent
+ 	 * will possibly result in updating i_data, so we take
+@@ -643,76 +717,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	 * with create == 1 flag.
+ 	 */
+ 	down_write(&EXT4_I(inode)->i_data_sem);
+-
+-	/*
+-	 * We need to check for EXT4 here because migrate
+-	 * could have changed the inode type in between
+-	 */
+-	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
+-		retval = ext4_ext_map_blocks(handle, inode, map, flags);
+-	} else {
+-		retval = ext4_ind_map_blocks(handle, inode, map, flags);
+-
+-		if (retval > 0 && map->m_flags & EXT4_MAP_NEW) {
+-			/*
+-			 * We allocated new blocks which will result in
+-			 * i_data's format changing.  Force the migrate
+-			 * to fail by clearing migrate flags
+-			 */
+-			ext4_clear_inode_state(inode, EXT4_STATE_EXT_MIGRATE);
+-		}
+-	}
+-
+-	if (retval > 0) {
+-		unsigned int status;
+-
+-		if (unlikely(retval != map->m_len)) {
+-			ext4_warning(inode->i_sb,
+-				     "ES len assertion failed for inode "
+-				     "%lu: retval %d != map->m_len %d",
+-				     inode->i_ino, retval, map->m_len);
+-			WARN_ON(1);
+-		}
+-
+-		/*
+-		 * We have to zeroout blocks before inserting them into extent
+-		 * status tree. Otherwise someone could look them up there and
+-		 * use them before they are really zeroed. We also have to
+-		 * unmap metadata before zeroing as otherwise writeback can
+-		 * overwrite zeros with stale data from block device.
+-		 */
+-		if (flags & EXT4_GET_BLOCKS_ZERO &&
+-		    map->m_flags & EXT4_MAP_MAPPED &&
+-		    map->m_flags & EXT4_MAP_NEW) {
+-			ret = ext4_issue_zeroout(inode, map->m_lblk,
+-						 map->m_pblk, map->m_len);
+-			if (ret) {
+-				retval = ret;
+-				goto out_sem;
+-			}
+-		}
+-
+-		/*
+-		 * If the extent has been zeroed out, we don't need to update
+-		 * extent status tree.
+-		 */
+-		if ((flags & EXT4_GET_BLOCKS_PRE_IO) &&
+-		    ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
+-			if (ext4_es_is_written(&es))
+-				goto out_sem;
+-		}
+-		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+-				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+-		if (!(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
+-		    !(status & EXTENT_STATUS_WRITTEN) &&
+-		    ext4_es_scan_range(inode, &ext4_es_is_delayed, map->m_lblk,
+-				       map->m_lblk + map->m_len - 1))
+-			status |= EXTENT_STATUS_DELAYED;
+-		ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+-				      map->m_pblk, status);
+-	}
+-
+-out_sem:
++	retval = ext4_map_create_blocks(handle, inode, map, flags);
+ 	up_write((&EXT4_I(inode)->i_data_sem));
+ 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+ 		ret = check_block_validity(inode, map);
 -- 
 2.39.2
 
