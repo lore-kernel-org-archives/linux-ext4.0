@@ -1,28 +1,28 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 666E717BB03;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3E5D517BB3E;
 	Wed, 10 Apr 2024 14:38:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1712759925; cv=none; b=ZEX7Y9uDnAGtVGsWXB3X3jkUED9NDgJVWd901dkKIX20fukOr3TMFld4VQIBRCVrVdLu1JMpFWJ89yfCk8cLjd/Ws21zsU0RmCmad7Vg7qFgdiRa5LFx0HoCkFPQ1qhGXeBPxPOa7oR8nHG01+agk3nqTzp24tegJQrTYFVBPas=
+	t=1712759925; cv=none; b=OHpV7maWwVoU/AwGu8rFNkWvSvhoSF4W8vQboY/3TZLeHpeWFdAtE0yXn+w6HZUPvxzxe1qF567SntVAaTsy/6eKrCmuYO6wCMqM8r8zMok8WaGFvahirmhvTL1BbiGTwmt7MOOF79vvV9ZVw//0GdlktlVA2no3SHVJmjlhq+I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1712759925; c=relaxed/simple;
-	bh=JWQTKQedlIi1E/NjDL/wLCHl3liLTmK84z71/PKoHDE=;
+	bh=KM32SNb41b4Lg9S0iKRUmn1qiuXmKsCzoFcVq1tt5Q4=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=Kd9xnfbXSsGklYUaRYUnHVwEisrW3qdfevrvQA9n3PH56yf8ZAoy8QYYxNnRA1RuCIlPEEAJ+xr2/x9hNZN2Sp0+wcaCtXXsNzjScSI5C3dWoor621PdO/GQA7C0YQvItWr5UNUha026cpxRefwFKSOi75Iw0xj7vYqS3Gi+Ol4=
+	 MIME-Version; b=LfbRM6UsfKcV0atmVtZsPog6LzYnHo6dN2H762qkPozz6cxmP5kQiwlxdcqptRe6DXdVsjo2X82yns95TVydjBrryPdmD+jMYKHUJYczUAsOVaACTII48wsedrv4j/R6ZF1ygNPtOUHowhb/rMk8QOhghTOFYsHRPcmSTYQ3CTs=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4VF56b1tN9z4f3knj;
-	Wed, 10 Apr 2024 22:38:31 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4VF56d1RbWz4f3kny;
+	Wed, 10 Apr 2024 22:38:33 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 1DB401A0CBC;
-	Wed, 10 Apr 2024 22:38:38 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 0BCAD1A0568;
+	Wed, 10 Apr 2024 22:38:40 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgAX6RFSpBZmcwR8Jg--.63000S23;
-	Wed, 10 Apr 2024 22:38:37 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgAX6RFSpBZmcwR8Jg--.63000S26;
+	Wed, 10 Apr 2024 22:38:39 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -42,9 +42,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com,
 	wangkefeng.wang@huawei.com
-Subject: [RFC PATCH v4 19/34] ext4: drop all delonly descriptions
-Date: Wed, 10 Apr 2024 22:29:33 +0800
-Message-Id: <20240410142948.2817554-20-yi.zhang@huaweicloud.com>
+Subject: [RFC PATCH v4 22/34] ext4: add a new iomap aops for regular file's buffered IO path
+Date: Wed, 10 Apr 2024 22:29:36 +0800
+Message-Id: <20240410142948.2817554-23-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20240410142948.2817554-1-yi.zhang@huaweicloud.com>
 References: <20240410142948.2817554-1-yi.zhang@huaweicloud.com>
@@ -55,10 +55,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgAX6RFSpBZmcwR8Jg--.63000S23
-X-Coremail-Antispam: 1UD129KBjvJXoW3WFW8Cw43JrykWw4ftFyfCrg_yoWDXr1Upr
-	W5KF13twn8Xryv9r4ftwn7Xr1fWa4vqFWUt34fJFyFkFn5Jr1S9F1qkryFvFy8GrWxAw1q
-	qF45u34Uua1qgFDanT9S1TB71UUUUUJqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:cCh0CgAX6RFSpBZmcwR8Jg--.63000S26
+X-Coremail-Antispam: 1UD129KBjvJXoWxCryDCFWrXrWrZr17Kr17KFg_yoW5CF17pF
+	Z8Kas3Gr18Zr9F9a1fXayDZF4Yya4fGw4UKFW3G3WavFyrGrW7KFWvk3WjkFy5t3y8Ar17
+	XF4jkry7WF17CrDanT9S1TB71UUUUUJqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUHI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -78,293 +78,89 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Drop all delonly descriptions in parameters and comments.
+Introduce a new iomap address space operations ext4_iomap_aops to
+support regular file's buffered IO path, also add an inode state flag
+EXT4_STATE_BUFFERED_IOMAP, if it was set on an inode, it means that
+inode use the iomap path instead of buffer_head path for buffered IO.
+Most of their callbacks can use generic implementations, the left over
+read_folio, readahead and writepages will be implemented later.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/extents_status.c | 92 ++++++++++++++++++++--------------------
- 1 file changed, 45 insertions(+), 47 deletions(-)
+ fs/ext4/ext4.h  |  1 +
+ fs/ext4/inode.c | 33 +++++++++++++++++++++++++++++++++
+ 2 files changed, 34 insertions(+)
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 062293e739cc..926669d8eb3e 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -142,8 +142,8 @@
-  */
- 
- struct rsvd_info {
--	int delonly_cluster;	/* reserved clusters for delalloc es entry */
--	int delonly_block;	/* reserved blocks for delalloc es entry */
-+	int delayed_cluster;	/* reserved clusters for delalloc es entry */
-+	int delayed_block;	/* reserved blocks for delalloc es entry */
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 7e27e1e7c579..05949a8136ae 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1913,6 +1913,7 @@ enum {
+ 	EXT4_STATE_VERITY_IN_PROGRESS,	/* building fs-verity Merkle tree */
+ 	EXT4_STATE_FC_COMMITTING,	/* Fast commit ongoing */
+ 	EXT4_STATE_ORPHAN_FILE,		/* Inode orphaned in orphan file */
++	EXT4_STATE_BUFFERED_IOMAP,	/* Inode use iomap for buffered IO */
  };
  
- static struct kmem_cache *ext4_es_cachep;
-@@ -943,10 +943,10 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 	 * so release the quota reservations made for any previously delayed
- 	 * allocated clusters.
- 	 */
--	resv_used = rinfo.delonly_cluster + pending;
-+	resv_used = rinfo.delayed_cluster + pending;
- 	if (resv_used)
- 		ext4_da_update_reserve_space(inode, resv_used,
--					     rinfo.delonly_block);
-+					     rinfo.delayed_block);
- 	if (err1 || err2 || err3 < 0)
- 		goto retry;
+ #define EXT4_INODE_BIT_FNS(name, field, offset)				\
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 2704dca96ee7..4c1fed516d9e 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3523,6 +3523,22 @@ const struct iomap_ops ext4_iomap_report_ops = {
+ 	.iomap_begin = ext4_iomap_begin_report,
+ };
  
-@@ -1067,8 +1067,8 @@ int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
- }
- 
- struct rsvd_count {
--	int ndelonly_cluster;
--	int ndelonly_block;
-+	int ndelayed_cluster;
-+	int ndelayed_block;
- 	bool first_do_lblk_found;
- 	ext4_lblk_t first_do_lblk;
- 	ext4_lblk_t last_do_lblk;
-@@ -1094,11 +1094,11 @@ static void init_rsvd(struct inode *inode, ext4_lblk_t lblk,
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	struct rb_node *node;
- 
--	rc->ndelonly_cluster = 0;
--	rc->ndelonly_block = 0;
-+	rc->ndelayed_cluster = 0;
-+	rc->ndelayed_block = 0;
- 
- 	/*
--	 * for bigalloc, note the first delonly block in the range has not
-+	 * for bigalloc, note the first delayed block in the range has not
- 	 * been found, record the extent containing the block to the left of
- 	 * the region to be removed, if any, and note that there's no partial
- 	 * cluster to track
-@@ -1118,9 +1118,8 @@ static void init_rsvd(struct inode *inode, ext4_lblk_t lblk,
- }
- 
++static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
++{
++	return 0;
++}
++
++static void ext4_iomap_readahead(struct readahead_control *rac)
++{
++
++}
++
++static int ext4_iomap_writepages(struct address_space *mapping,
++				 struct writeback_control *wbc)
++{
++	return 0;
++}
++
  /*
-- * count_rsvd - count the clusters containing delayed and not unwritten
-- *		(delonly) blocks in a range within an extent and add to
-- *	        the running tally in rsvd_count
-+ * count_rsvd - count the clusters containing delayed blocks in a range
-+ *	        within an extent and add to the running tally in rsvd_count
-  *
-  * @inode - file containing extent
-  * @lblk - first block in range
-@@ -1143,19 +1142,19 @@ static void count_rsvd(struct inode *inode, ext4_lblk_t lblk, long len,
- 	WARN_ON(len <= 0);
+  * For data=journal mode, folio should be marked dirty only when it was
+  * writeably mapped. When that happens, it was already attached to the
+@@ -3612,6 +3628,21 @@ static const struct address_space_operations ext4_da_aops = {
+ 	.swap_activate		= ext4_iomap_swap_activate,
+ };
  
- 	if (sbi->s_cluster_ratio == 1) {
--		rc->ndelonly_cluster += (int) len;
--		rc->ndelonly_block = rc->ndelonly_cluster;
-+		rc->ndelayed_cluster += (int) len;
-+		rc->ndelayed_block = rc->ndelayed_cluster;
- 		return;
++static const struct address_space_operations ext4_iomap_aops = {
++	.read_folio		= ext4_iomap_read_folio,
++	.readahead		= ext4_iomap_readahead,
++	.writepages		= ext4_iomap_writepages,
++	.dirty_folio		= iomap_dirty_folio,
++	.bmap			= ext4_bmap,
++	.invalidate_folio	= iomap_invalidate_folio,
++	.release_folio		= iomap_release_folio,
++	.direct_IO		= noop_direct_IO,
++	.migrate_folio		= filemap_migrate_folio,
++	.is_partially_uptodate  = iomap_is_partially_uptodate,
++	.error_remove_folio	= generic_error_remove_folio,
++	.swap_activate		= ext4_iomap_swap_activate,
++};
++
+ static const struct address_space_operations ext4_dax_aops = {
+ 	.writepages		= ext4_dax_writepages,
+ 	.direct_IO		= noop_direct_IO,
+@@ -3634,6 +3665,8 @@ void ext4_set_aops(struct inode *inode)
  	}
- 
- 	/* bigalloc */
--	rc->ndelonly_block += (int)len;
-+	rc->ndelayed_block += (int)len;
- 
- 	i = (lblk < es->es_lblk) ? es->es_lblk : lblk;
- 	end = lblk + (ext4_lblk_t) len - 1;
- 	end = (end > ext4_es_end(es)) ? ext4_es_end(es) : end;
- 
--	/* record the first block of the first delonly extent seen */
-+	/* record the first block of the first delayed extent seen */
- 	if (!rc->first_do_lblk_found) {
- 		rc->first_do_lblk = i;
- 		rc->first_do_lblk_found = true;
-@@ -1169,7 +1168,7 @@ static void count_rsvd(struct inode *inode, ext4_lblk_t lblk, long len,
- 	 * doesn't start with it, count it and stop tracking
- 	 */
- 	if (rc->partial && (rc->lclu != EXT4_B2C(sbi, i))) {
--		rc->ndelonly_cluster++;
-+		rc->ndelayed_cluster++;
- 		rc->partial = false;
- 	}
- 
-@@ -1179,7 +1178,7 @@ static void count_rsvd(struct inode *inode, ext4_lblk_t lblk, long len,
- 	 */
- 	if (EXT4_LBLK_COFF(sbi, i) != 0) {
- 		if (end >= EXT4_LBLK_CFILL(sbi, i)) {
--			rc->ndelonly_cluster++;
-+			rc->ndelayed_cluster++;
- 			rc->partial = false;
- 			i = EXT4_LBLK_CFILL(sbi, i) + 1;
- 		}
-@@ -1187,11 +1186,11 @@ static void count_rsvd(struct inode *inode, ext4_lblk_t lblk, long len,
- 
- 	/*
- 	 * if the current cluster starts on a cluster boundary, count the
--	 * number of whole delonly clusters in the extent
-+	 * number of whole delayed clusters in the extent
- 	 */
- 	if ((i + sbi->s_cluster_ratio - 1) <= end) {
- 		nclu = (end - i + 1) >> sbi->s_cluster_bits;
--		rc->ndelonly_cluster += nclu;
-+		rc->ndelayed_cluster += nclu;
- 		i += nclu << sbi->s_cluster_bits;
- 	}
- 
-@@ -1251,10 +1250,9 @@ static struct pending_reservation *__pr_tree_search(struct rb_root *root,
-  * @rc - pointer to reserved count data
-  *
-  * The number of reservations to be released is equal to the number of
-- * clusters containing delayed and not unwritten (delonly) blocks within
-- * the range, minus the number of clusters still containing delonly blocks
-- * at the ends of the range, and minus the number of pending reservations
-- * within the range.
-+ * clusters containing delayed blocks within the range, minus the number of
-+ * clusters still containing delayed blocks at the ends of the range, and
-+ * minus the number of pending reservations within the range.
-  */
- static unsigned int get_rsvd(struct inode *inode, ext4_lblk_t end,
- 			     struct extent_status *right_es,
-@@ -1265,33 +1263,33 @@ static unsigned int get_rsvd(struct inode *inode, ext4_lblk_t end,
- 	struct ext4_pending_tree *tree = &EXT4_I(inode)->i_pending_tree;
- 	struct rb_node *node;
- 	ext4_lblk_t first_lclu, last_lclu;
--	bool left_delonly, right_delonly, count_pending;
-+	bool left_delayed, right_delayed, count_pending;
- 	struct extent_status *es;
- 
- 	if (sbi->s_cluster_ratio > 1) {
- 		/* count any remaining partial cluster */
- 		if (rc->partial)
--			rc->ndelonly_cluster++;
-+			rc->ndelayed_cluster++;
- 
--		if (rc->ndelonly_cluster == 0)
-+		if (rc->ndelayed_cluster == 0)
- 			return 0;
- 
- 		first_lclu = EXT4_B2C(sbi, rc->first_do_lblk);
- 		last_lclu = EXT4_B2C(sbi, rc->last_do_lblk);
- 
- 		/*
--		 * decrease the delonly count by the number of clusters at the
--		 * ends of the range that still contain delonly blocks -
-+		 * decrease the delayed count by the number of clusters at the
-+		 * ends of the range that still contain delayed blocks -
- 		 * these clusters still need to be reserved
- 		 */
--		left_delonly = right_delonly = false;
-+		left_delayed = right_delayed = false;
- 
- 		es = rc->left_es;
- 		while (es && ext4_es_end(es) >=
- 		       EXT4_LBLK_CMASK(sbi, rc->first_do_lblk)) {
- 			if (ext4_es_is_delayed(es)) {
--				rc->ndelonly_cluster--;
--				left_delonly = true;
-+				rc->ndelayed_cluster--;
-+				left_delayed = true;
- 				break;
- 			}
- 			node = rb_prev(&es->rb_node);
-@@ -1299,7 +1297,7 @@ static unsigned int get_rsvd(struct inode *inode, ext4_lblk_t end,
- 				break;
- 			es = rb_entry(node, struct extent_status, rb_node);
- 		}
--		if (right_es && (!left_delonly || first_lclu != last_lclu)) {
-+		if (right_es && (!left_delayed || first_lclu != last_lclu)) {
- 			if (end < ext4_es_end(right_es)) {
- 				es = right_es;
- 			} else {
-@@ -1310,8 +1308,8 @@ static unsigned int get_rsvd(struct inode *inode, ext4_lblk_t end,
- 			while (es && es->es_lblk <=
- 			       EXT4_LBLK_CFILL(sbi, rc->last_do_lblk)) {
- 				if (ext4_es_is_delayed(es)) {
--					rc->ndelonly_cluster--;
--					right_delonly = true;
-+					rc->ndelayed_cluster--;
-+					right_delayed = true;
- 					break;
- 				}
- 				node = rb_next(&es->rb_node);
-@@ -1325,21 +1323,21 @@ static unsigned int get_rsvd(struct inode *inode, ext4_lblk_t end,
- 		/*
- 		 * Determine the block range that should be searched for
- 		 * pending reservations, if any.  Clusters on the ends of the
--		 * original removed range containing delonly blocks are
-+		 * original removed range containing delayed blocks are
- 		 * excluded.  They've already been accounted for and it's not
- 		 * possible to determine if an associated pending reservation
- 		 * should be released with the information available in the
- 		 * extents status tree.
- 		 */
- 		if (first_lclu == last_lclu) {
--			if (left_delonly | right_delonly)
-+			if (left_delayed | right_delayed)
- 				count_pending = false;
- 			else
- 				count_pending = true;
- 		} else {
--			if (left_delonly)
-+			if (left_delayed)
- 				first_lclu++;
--			if (right_delonly)
-+			if (right_delayed)
- 				last_lclu--;
- 			if (first_lclu <= last_lclu)
- 				count_pending = true;
-@@ -1350,13 +1348,13 @@ static unsigned int get_rsvd(struct inode *inode, ext4_lblk_t end,
- 		/*
- 		 * a pending reservation found between first_lclu and last_lclu
- 		 * represents an allocated cluster that contained at least one
--		 * delonly block, so the delonly total must be reduced by one
-+		 * delayed block, so the delayed total must be reduced by one
- 		 * for each pending reservation found and released
- 		 */
- 		if (count_pending) {
- 			pr = __pr_tree_search(&tree->root, first_lclu);
- 			while (pr && pr->lclu <= last_lclu) {
--				rc->ndelonly_cluster--;
-+				rc->ndelayed_cluster--;
- 				node = rb_next(&pr->rb_node);
- 				rb_erase(&pr->rb_node, &tree->root);
- 				__free_pending(pr);
-@@ -1367,7 +1365,7 @@ static unsigned int get_rsvd(struct inode *inode, ext4_lblk_t end,
- 			}
- 		}
- 	}
--	return rc->ndelonly_cluster;
-+	return rc->ndelayed_cluster;
- }
- 
- 
-@@ -1401,8 +1399,8 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- 	struct rsvd_count rc;
- 
- 	if (rinfo) {
--		rinfo->delonly_cluster = 0;
--		rinfo->delonly_block = 0;
-+		rinfo->delayed_cluster = 0;
-+		rinfo->delayed_block = 0;
- 		if (test_opt(inode->i_sb, DELALLOC))
- 			count_reserved = true;
- 	}
-@@ -1504,8 +1502,8 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- 
- out_get_reserved:
- 	if (count_reserved) {
--		rinfo->delonly_cluster = get_rsvd(inode, end, es, &rc);
--		rinfo->delonly_block = rc.ndelonly_block;
-+		rinfo->delayed_cluster = get_rsvd(inode, end, es, &rc);
-+		rinfo->delayed_block = rc.ndelayed_block;
- 	}
- out:
- 	return err;
-@@ -1563,7 +1561,7 @@ void ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- 		goto retry;
- 
- 	ext4_es_print_tree(inode);
--	ext4_da_release_space(inode, rinfo.delonly_cluster);
-+	ext4_da_release_space(inode, rinfo.delayed_cluster);
- 	return;
- }
- 
+ 	if (IS_DAX(inode))
+ 		inode->i_mapping->a_ops = &ext4_dax_aops;
++	else if (ext4_test_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP))
++		inode->i_mapping->a_ops = &ext4_iomap_aops;
+ 	else if (test_opt(inode->i_sb, DELALLOC))
+ 		inode->i_mapping->a_ops = &ext4_da_aops;
+ 	else
 -- 
 2.39.2
 
