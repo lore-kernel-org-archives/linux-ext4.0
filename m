@@ -1,51 +1,51 @@
-Received: from mail-io1-f69.google.com (mail-io1-f69.google.com [209.85.166.69])
+Received: from mail-io1-f70.google.com (mail-io1-f70.google.com [209.85.166.70])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E90C713FD66
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Apr 2024 08:11:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.166.69
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6DE80145342
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Apr 2024 09:48:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.166.70
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1712823082; cv=none; b=VznhOso6vXKrrDRX+XnLTuMXwStWfW/3ptNuDvQfANs/Hlggbkz3KRt02tpBvQJHap0tS2ufY0PUMZofFlVrrNZpUHkjDFBJDZ/2/h/4F1Ausuug1W/B8v4kZ2tRUuLrHe+riIh6g+CeLDnNXttsAyFwDS8uPSOSuH2GCvdFTQI=
+	t=1712828910; cv=none; b=RdIOheIS6Mij/cXuK3X6rhW84rSO9pOHzNBfiowUxJg1vk6HZwQMT9FVAqZAofCI/n77OSe4wfpC0YCZZg/GgSOyRcQ/ht3j//pCURw9oNfmMb1x13UBG55zwP0INRmOtcq0VhT0FQJmvAgNmMjPh91bq1vtJSesC2qbKUjR00A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1712823082; c=relaxed/simple;
-	bh=pZu0N2XO4m9MHx9l8HNZ+0vsQUhszG81SH813IQDbUU=;
-	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=NOCLWAfIO4X6EENZKf76h7FfE82w/b20Ca5Vea+J0Jc8+8ZG6d3HjuzrqT3D55njn5KtdzMJdA+DrSejrkO3Y2eQfGh79LS0SJhn9O6gm+/oj3PAJ045BzNW4ZbbaZ+qQqnsy2TbZlvw1knlpv1wgTiTvMC2lfbfaaUPfa4wZsw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.166.69
+	s=arc-20240116; t=1712828910; c=relaxed/simple;
+	bh=ETAy9kydqxrg8N+usjcKuIuww3eYpAwTXNNz7laF/18=;
+	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=OrYufobdmKj2+566/kla5jbrk3S0NDgGjiseexYv/ojIBB7ryk24XAfeXL62reQVYQUDp+AdElEAb600UmsiJln2YYE4WOAAMvo207bHfo7txexuzgTzIscD0B0j6chZy7xhG1LILgGgqcVodg2BwuMWkp9kkB6QvtzNGinS6lU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.166.70
 Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-io1-f69.google.com with SMTP id ca18e2360f4ac-7d5da88bb06so534259139f.0
-        for <linux-ext4@vger.kernel.org>; Thu, 11 Apr 2024 01:11:20 -0700 (PDT)
+Received: by mail-io1-f70.google.com with SMTP id ca18e2360f4ac-7d5db4db530so547062039f.3
+        for <linux-ext4@vger.kernel.org>; Thu, 11 Apr 2024 02:48:28 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1712823080; x=1713427880;
+        d=1e100.net; s=20230601; t=1712828907; x=1713433707;
         h=to:from:subject:message-id:date:mime-version:x-gm-message-state
          :from:to:cc:subject:date:message-id:reply-to;
-        bh=aCYd2YyY9UcvJKM4skbKQMv9OLK5ufAlgPy/FgAoJp4=;
-        b=hY5feA80QrONCBwD4ldeCf1dV+V0n3XaPlMqtPv2wcwRRUp4jLdlgah2tN4RJmhuze
-         z9cIYSyU7gvLwWOfvNxnHe4PKxGubAmK+f6d0w7EFeq0LbQ1jt7akuMctC7JYcTDnAda
-         2rCjzlSJZWDq8EATcat/XsCZomd71w5O0fKOLn8o6QC3oYyWwDSRJB/QZJZkH1sDxPvW
-         hWYTVCQXInj3/BB7IQehVZMaY+aFgvVfLlMaW+EuVbzHdrvevEjhih+G+Y9ElYyVLBID
-         f3021ZDocJ2k3/sdcxcbr0ZVeaMJiIzfGHOzcgKPCF+4Drdjvm9jy6cooiUa2+cp25XV
-         rJbA==
-X-Forwarded-Encrypted: i=1; AJvYcCWtXty5ElVXIW9RHS38XfGXBnwT0okmTz94QYTMj5rN/sVFmPaYUa9xCDIcfRTOK0JEzS7gBTZrpQoccG13fy4R3Zpel0RL86GZoA==
-X-Gm-Message-State: AOJu0Yx9M5lQwx5U3DnIi+UYQ4AhFV8HjqnLIUIr3FHb6YjU356kSX7E
-	RaxIkGUelO4ltuQw0wiQAvh8POZ3h65lGtnEPRLJ23GCnxo41pJETfCQcMjtLR9PKKaf52klzWw
-	Hk0Be0UPg1m971xTEsM04QpuAg5MCNeyxP1BnY/R/v36PZZToLlOaumo=
-X-Google-Smtp-Source: AGHT+IFXTSyLHOul+mPcd6KJzapopBciz8vsTqGwZwdkGrd8FHPC5Tc3EVg/RyZ8i8Jt7heTTxaaW8O9zUUFhN0esrsUXSPNXkvs
+        bh=IxY3ThfzTOVgLza0iD4fys5v3cj7IHGn+rCsgDPuuvI=;
+        b=i4E4I49pjpi912KcUTxcrPf1j5qkLkepQjayC2/oQFshaG/tDXPjO7930nQyxKSNWa
+         Smt2sw3D3SJY+k4f9JTLCUlsRisSZldNGCvPOYDyNOQqRQXIJUwq0mQHG/OcIlZnMde9
+         B45T/2AXbllOT/oZPVaETECBWDUZpkDgaHpP9poF6Wj/MI7Wpc0WOKR2ZHZnPAacV0a+
+         XRL0eAVIaTD/MBtf0+125OLdyUGCr+364qCR5m87McE9/IaT8YKCg3DJ4xtYD8kl0kOR
+         MAyKPG2c2jjf5/b4gguYzO7cVZiRMsYQ+9h8eN20BBs7JL2mh5Ka+ooL2Mxbza7an+wG
+         b7rg==
+X-Forwarded-Encrypted: i=1; AJvYcCWa40/Em1Ivvo05LMPtHYUC9KZpyRo3lQsE77bRdTlJ2RmlbobZOswN/17i97S0HbUKnnT7ueuXdzZggQBl0SN/MaOMs3yVZtB3QQ==
+X-Gm-Message-State: AOJu0Ywsd3cW51koU9csZr11sRNglHyV+RSVqWFKzKBectqfF23yCyce
+	wYc5j0+6Ftp8ft5AztSn+2F/u2biw+JHaAj+9dsX7PPm1W6v2Rb+6Y8rG3QtSZbcuYLqMSd69yh
+	re83GfghIJC4f5+em2oHfdL5BCopXzUA99Pa1tw9xzkq4rfl0wtMJvZk=
+X-Google-Smtp-Source: AGHT+IG9y+tUNYbixenLBF5gILNrr6MCXPVDw7JA+yzgAcOC0AlCI2oyis12hTaJhCFovjhCo8EArlcfCZJsKjZxOUX2NlaO9Is8
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6638:379f:b0:482:83aa:16be with SMTP id
- w31-20020a056638379f00b0048283aa16bemr260856jal.5.1712823079975; Thu, 11 Apr
- 2024 01:11:19 -0700 (PDT)
-Date: Thu, 11 Apr 2024 01:11:19 -0700
+X-Received: by 2002:a05:6638:8329:b0:482:d033:89c5 with SMTP id
+ io41-20020a056638832900b00482d03389c5mr9259jab.6.1712828907702; Thu, 11 Apr
+ 2024 02:48:27 -0700 (PDT)
+Date: Thu, 11 Apr 2024 02:48:27 -0700
 X-Google-Appengine-App-Id: s~syzkaller
 X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <0000000000003ecb1a0615cdb35c@google.com>
-Subject: [syzbot] [ext4?] WARNING in ext4_xattr_set_entry (2)
-From: syzbot <syzbot+4b03894b6ec5753ddf24@syzkaller.appspotmail.com>
+Message-ID: <0000000000009adc640615cf0ef7@google.com>
+Subject: [syzbot] [ext4?] WARNING: locking bug in ext4_xattr_inode_update_ref (3)
+From: syzbot <syzbot+3ca210b2c10e57015b3c@syzkaller.appspotmail.com>
 To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, 
 	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
 	syzkaller-bugs@googlegroups.com, tytso@mit.edu
@@ -55,89 +55,79 @@ Hello,
 
 syzbot found the following issue on:
 
-HEAD commit:    a053fd3ca5d1 Add linux-next specific files for 20240409
-git tree:       linux-next
-console+strace: https://syzkaller.appspot.com/x/log.txt?x=15b0af03180000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=cef4d00cd7fe38ca
-dashboard link: https://syzkaller.appspot.com/bug?extid=4b03894b6ec5753ddf24
-compiler:       Debian clang version 15.0.6, GNU ld (GNU Binutils for Debian) 2.40
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=143cd79d180000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=152e5d9d180000
+HEAD commit:    f2f80ac80987 Merge tag 'nfsd-6.9-2' of git://git.kernel.or..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=1734efc5180000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=411644804960f423
+dashboard link: https://syzkaller.appspot.com/bug?extid=3ca210b2c10e57015b3c
+compiler:       gcc (Debian 12.2.0-14) 12.2.0, GNU ld (GNU Binutils for Debian) 2.40
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=11e7f79d180000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=1614c105180000
 
 Downloadable assets:
-disk image: https://storage.googleapis.com/syzbot-assets/16fbf27c5977/disk-a053fd3c.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/cac2847d6c46/vmlinux-a053fd3c.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/c4f6c7891071/bzImage-a053fd3c.xz
-mounted in repro: https://storage.googleapis.com/syzbot-assets/134052cf6b8b/mount_0.gz
+disk image (non-bootable): https://storage.googleapis.com/syzbot-assets/7bc7510fe41f/non_bootable_disk-f2f80ac8.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/226f497bcbfb/vmlinux-f2f80ac8.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/6cae4ca2cad5/bzImage-f2f80ac8.xz
+mounted in repro: https://storage.googleapis.com/syzbot-assets/2780392925e4/mount_0.gz
 
 IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+4b03894b6ec5753ddf24@syzkaller.appspotmail.com
+Reported-by: syzbot+3ca210b2c10e57015b3c@syzkaller.appspotmail.com
 
-process 'syz-executor225' launched '/dev/fd/4/./file1' with NULL argv: empty string added
-EXT4-fs warning (device loop0): ext4_xattr_inode_create:1471: refuse to create EA inode when umounting
 ------------[ cut here ]------------
-WARNING: CPU: 1 PID: 5089 at fs/ext4/xattr.c:1472 ext4_xattr_inode_create fs/ext4/xattr.c:1472 [inline]
-WARNING: CPU: 1 PID: 5089 at fs/ext4/xattr.c:1472 ext4_xattr_inode_lookup_create fs/ext4/xattr.c:1590 [inline]
-WARNING: CPU: 1 PID: 5089 at fs/ext4/xattr.c:1472 ext4_xattr_set_entry+0x162c/0x4330 fs/ext4/xattr.c:1718
+Looking for class "&ea_inode->i_rwsem" with key ext4_fs_type, but found a different class "&sb->s_type->i_mutex_key" with the same key
+WARNING: CPU: 0 PID: 5434 at kernel/locking/lockdep.c:932 look_up_lock_class+0x133/0x140 kernel/locking/lockdep.c:932
 Modules linked in:
-CPU: 1 PID: 5089 Comm: syz-executor225 Not tainted 6.9.0-rc3-next-20240409-syzkaller #0
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 03/27/2024
-RIP: 0010:ext4_xattr_inode_create fs/ext4/xattr.c:1472 [inline]
-RIP: 0010:ext4_xattr_inode_lookup_create fs/ext4/xattr.c:1590 [inline]
-RIP: 0010:ext4_xattr_set_entry+0x162c/0x4330 fs/ext4/xattr.c:1718
-Code: 00 00 e8 57 50 2a ff eb 30 e8 50 50 2a ff 4c 89 ff 48 c7 c6 e9 5d b7 8d ba bf 05 00 00 48 c7 c1 00 aa df 8b e8 75 12 fc ff 90 <0f> 0b 90 49 c7 c4 ea ff ff ff 4c 8b 7c 24 70 48 8b 44 24 40 42 80
-RSP: 0018:ffffc9000337efa0 EFLAGS: 00010246
-RAX: aa755dc17bf17f00 RBX: 0000000000000000 RCX: aa755dc17bf17f00
-RDX: 0000000000000000 RSI: 0000000080000000 RDI: 0000000000000000
-RBP: ffffc9000337f230 R08: ffffffff8176bb7c R09: 1ffff9200066fd6c
-R10: dffffc0000000000 R11: fffff5200066fd6d R12: ffff88807a280cd8
-R13: dffffc0000000000 R14: ffffc9000337f150 R15: ffff888060b68000
-FS:  0000000000000000(0000) GS:ffff8880b9500000(0000) knlGS:0000000000000000
+CPU: 0 PID: 5434 Comm: syz-executor760 Not tainted 6.9.0-rc2-syzkaller-00413-gf2f80ac80987 #0
+Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.2-debian-1.16.2-1 04/01/2014
+RIP: 0010:look_up_lock_class+0x133/0x140 kernel/locking/lockdep.c:932
+Code: c7 c7 20 ca 2c 8b e8 dc 76 70 f6 90 0f 0b 90 90 90 31 db eb be c6 05 02 67 eb 04 01 90 48 c7 c7 40 cd 2c 8b e8 be 76 70 f6 90 <0f> 0b 90 90 e9 62 ff ff ff 0f 1f 40 00 90 90 90 90 90 90 90 90 90
+RSP: 0018:ffffc90003ef6ea0 EFLAGS: 00010082
+RAX: 0000000000000000 RBX: ffffffff942543e8 RCX: ffffffff814fe349
+RDX: ffff8880259da440 RSI: ffffffff814fe356 RDI: 0000000000000001
+RBP: ffffffff8de72ed8 R08: 0000000000000001 R09: 0000000000000000
+R10: 0000000000000000 R11: 000000006b6f6f4c R12: ffff8880329db600
+R13: 0000000000000000 R14: 0000000000000000 R15: ffffffff94af1aa0
+FS:  00007fb2680336c0(0000) GS:ffff88806b000000(0000) knlGS:0000000000000000
 CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00000000005fdeb8 CR3: 0000000060608000 CR4: 00000000003506f0
+CR2: 0000555582e00778 CR3: 0000000019d34000 CR4: 0000000000350ef0
 DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
 DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
 Call Trace:
  <TASK>
- ext4_xattr_block_set+0x6a2/0x3480 fs/ext4/xattr.c:1968
- ext4_xattr_move_to_block fs/ext4/xattr.c:2654 [inline]
- ext4_xattr_make_inode_space fs/ext4/xattr.c:2729 [inline]
- ext4_expand_extra_isize_ea+0x12d7/0x1cf0 fs/ext4/xattr.c:2821
- __ext4_expand_extra_isize+0x2fb/0x3e0 fs/ext4/inode.c:5789
- ext4_try_to_expand_extra_isize fs/ext4/inode.c:5832 [inline]
- __ext4_mark_inode_dirty+0x524/0x880 fs/ext4/inode.c:5910
- ext4_dirty_inode+0xce/0x110 fs/ext4/inode.c:5942
- __mark_inode_dirty+0x325/0xe20 fs/fs-writeback.c:2486
- mark_inode_dirty_sync include/linux/fs.h:2406 [inline]
- iput+0x1fe/0x930 fs/inode.c:1764
- __dentry_kill+0x20d/0x630 fs/dcache.c:603
- shrink_kill+0xa9/0x2c0 fs/dcache.c:1048
- shrink_dentry_list+0x2c0/0x5b0 fs/dcache.c:1075
- shrink_dcache_parent+0xcb/0x3b0
- do_one_tree+0x23/0xe0 fs/dcache.c:1538
- shrink_dcache_for_umount+0x7d/0x130 fs/dcache.c:1555
- generic_shutdown_super+0x6a/0x2d0 fs/super.c:619
- kill_block_super+0x44/0x90 fs/super.c:1675
- ext4_kill_sb+0x68/0xa0 fs/ext4/super.c:7323
- deactivate_locked_super+0xc4/0x130 fs/super.c:472
- cleanup_mnt+0x426/0x4c0 fs/namespace.c:1267
- task_work_run+0x24f/0x310 kernel/task_work.c:180
- exit_task_work include/linux/task_work.h:38 [inline]
- do_exit+0xa1b/0x27e0 kernel/exit.c:878
- do_group_exit+0x207/0x2c0 kernel/exit.c:1027
- __do_sys_exit_group kernel/exit.c:1038 [inline]
- __se_sys_exit_group kernel/exit.c:1036 [inline]
- __x64_sys_exit_group+0x3f/0x40 kernel/exit.c:1036
- do_syscall_64+0xfb/0x240
+ register_lock_class+0xb1/0x1230 kernel/locking/lockdep.c:1284
+ __lock_acquire+0x111/0x3b30 kernel/locking/lockdep.c:5014
+ lock_acquire kernel/locking/lockdep.c:5754 [inline]
+ lock_acquire+0x1b1/0x560 kernel/locking/lockdep.c:5719
+ down_write+0x3a/0x50 kernel/locking/rwsem.c:1579
+ inode_lock include/linux/fs.h:795 [inline]
+ ext4_xattr_inode_update_ref+0xa6/0x5e0 fs/ext4/xattr.c:1042
+ ext4_xattr_inode_inc_ref fs/ext4/xattr.c:1088 [inline]
+ ext4_xattr_inode_lookup_create fs/ext4/xattr.c:1583 [inline]
+ ext4_xattr_set_entry+0x125f/0x3c70 fs/ext4/xattr.c:1718
+ ext4_xattr_block_set+0xcc3/0x3100 fs/ext4/xattr.c:2037
+ ext4_xattr_set_handle+0xdb6/0x1480 fs/ext4/xattr.c:2443
+ ext4_xattr_set+0x149/0x380 fs/ext4/xattr.c:2545
+ __vfs_setxattr+0x173/0x1e0 fs/xattr.c:200
+ __vfs_setxattr_noperm+0x127/0x5e0 fs/xattr.c:234
+ __vfs_setxattr_locked+0x182/0x260 fs/xattr.c:295
+ vfs_setxattr+0x146/0x350 fs/xattr.c:321
+ do_setxattr+0x146/0x170 fs/xattr.c:629
+ setxattr+0x15d/0x180 fs/xattr.c:652
+ path_setxattr+0x179/0x1e0 fs/xattr.c:671
+ __do_sys_setxattr fs/xattr.c:687 [inline]
+ __se_sys_setxattr fs/xattr.c:683 [inline]
+ __x64_sys_setxattr+0xc4/0x160 fs/xattr.c:683
+ do_syscall_x64 arch/x86/entry/common.c:52 [inline]
+ do_syscall_64+0xd2/0x260 arch/x86/entry/common.c:83
  entry_SYSCALL_64_after_hwframe+0x72/0x7a
-RIP: 0033:0x7f0fe6f95c49
-Code: Unable to access opcode bytes at 0x7f0fe6f95c1f.
-RSP: 002b:00007ffc0a1edef8 EFLAGS: 00000246 ORIG_RAX: 00000000000000e7
-RAX: ffffffffffffffda RBX: 0000000000000001 RCX: 00007f0fe6f95c49
-RDX: 000000000000003c RSI: 00000000000000e7 RDI: 0000000000000001
-RBP: 00007f0fe7012390 R08: ffffffffffffffb8 R09: 00007ffc0a1edfd0
-R10: 0000000000000381 R11: 0000000000000246 R12: 00007f0fe7012390
-R13: 0000000000000000 R14: 00007f0fe7013100 R15: 00007f0fe6f63f20
+RIP: 0033:0x7fb26807cf79
+Code: 28 00 00 00 75 05 48 83 c4 28 c3 e8 e1 18 00 00 90 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 b0 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007fb268033218 EFLAGS: 00000246 ORIG_RAX: 00000000000000bc
+RAX: ffffffffffffffda RBX: 0000000000000004 RCX: 00007fb26807cf79
+RDX: 00000000200005c0 RSI: 0000000020000180 RDI: 0000000020000080
+RBP: 00007fb2681056a8 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000002000 R11: 0000000000000246 R12: 00007fb2681056a0
+R13: 0072657070752e79 R14: 0030656c69662f2e R15: 2f30656c69662f2e
  </TASK>
 
 
