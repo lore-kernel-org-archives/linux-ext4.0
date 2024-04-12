@@ -1,45 +1,54 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9E57D6AB8
-	for <linux-ext4@vger.kernel.org>; Fri, 12 Apr 2024 02:16:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 59F7628FC
+	for <linux-ext4@vger.kernel.org>; Fri, 12 Apr 2024 03:55:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1712888198; cv=none; b=cvtIHqBxzN00hEhUvL3/dZ8r2t7fX5ybZU55nBmkn3o7t1bDuE7kBh7+nGcDR82N7sWfWvxyJ21Kyqry3Oz6vRpDTGuteVi0krLHAAJXVxi+73E4mcN1lUDYZQ/geJ1T20Avl8uZTNE9BEifRfBv4V9R5Tl7XmDbocLPLYmtIcI=
+	t=1712894162; cv=none; b=VVvm0EbWK3la6cIBdSnOHDnv6p3d0ebXs+PqqaFtG+Yeg1GK2bPHgFHEzeoX1CqF5MsKQcyEjiqUYZLtSLSLFVv6b5xO6oUuhPrD4rHoju66c6t/mUwbIhanMQklF5NeqE/6zcmZJl5p6W9RIeyMmoP14cqW0I3dtpyKL0dKpos=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1712888198; c=relaxed/simple;
-	bh=LdZvbIlw5MRsSAR+EZDfhnDss46ddfS0ppAR9+RcgGA=;
+	s=arc-20240116; t=1712894162; c=relaxed/simple;
+	bh=jgsySEBfBr2yKswNUwikz+FITKjJFHnZo959lH69wCc=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=HfFTFYlGBEDI8YQLNx3CC5z+2bdyFZgyvalkZBGRCUKpc7RYLOiYbZ4TD9gnv/ggBEHwWtwujTAjUMGH+SrXGvlInHCcjJkqidS98wrqP6Iog8IwD0wtKAxDZmV9fU3CkgBFNArYvPd4Bs/df84MGah8YexORySHenWqFYnbyQY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=peEPYlCf; arc=none smtp.client-ip=18.9.28.11
+	 Content-Type:Content-Disposition:In-Reply-To; b=K3iQGp93tQp+891wLiX0v2BFV1GQ0RDeufnTJknW3xmdyITCYIBHgNHhcyz0DY8531tws0XMkf8eBtJkR5NvxVOQueZyVlKkpG5bLsCi7bzMsDhjtd1KMLJ3wf74Sl47QGbZ3ovPqyTTk5P+LE6/v/DDQYXsvjvwP4wvasqcG9g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=dOfhEEQ9; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="peEPYlCf"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="dOfhEEQ9"
 Received: from cwcc.thunk.org (pool-173-48-113-60.bstnma.fios.verizon.net [173.48.113.60])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 43C2GKwI031233
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 43C3taCf022568
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 11 Apr 2024 22:16:21 -0400
+	Thu, 11 Apr 2024 23:55:37 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1712888188; bh=ksG9y6pkzHtdIInkxHKyFhaaHLh7ng8phA0myE0db3M=;
+	t=1712894139; bh=3y/worbB/UJgc5iThuhYF+NXbVCCGkZo3/cJ22BJobY=;
 	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=peEPYlCfc3adqXxI4tgJ2P3r5gNtGBRA8D8YgDfoQ10RyiokKDRivfKp0wjkpR4LC
-	 z8aWocZNjfsQS8rxt4Z8RK40nD1+UHMjioBghLqqKX7oTPYhaQR0cJ7MkuPdUxTktU
-	 u64/CWhe949ku9nYUgI6Z9Nbasa+Fqsq15z3nlqsPHFtMbhs9gTQ/yVZOslbTxeef5
-	 vBn0qwnIgOpPYLq6x8NmB3dlApHbOu058nUIZfl7/DrAk2S0/o/agoRDOL++tW6/nN
-	 EkQkFTmpWR7XDy2ivuCRkuv5cI6SjkHdESJouFt2ELw+a4+gjGfwxD8lyv+hUbcczK
-	 RIC5vG+UNcL3Q==
+	b=dOfhEEQ9qq2eBitbPxPjKxnkbJWSMYIq1Rs9v8s7FZrm/N+xrL/FeLtG4Xhco4aa+
+	 9KjnG+3c+QEho2i8qjlsc0/V877gOB3E8JgjYiqA57Y2vbPvf49slCx5MILUZxHBmx
+	 M/uyW4qTo6mLzYZ6Rbl+m/tuv6ctdgKrStE5y97R99R2NZ4FMnpyVdqs+OENXLL/Xs
+	 2upBA/iKiGG6BwvhxfYFaA9uZbibTNfkoMhR55UJhrrzdpJGr5FIqVbuICSZAgZaXd
+	 4K5o0QgrJuXwth+ijJ0iMDwdxYa/OUnBU04kgq6AtFtWJDfbwpyKwI4SCxTPujQcUW
+	 5Gk1v01opiBUw==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id 8455615C00DE; Thu, 11 Apr 2024 22:16:20 -0400 (EDT)
-Date: Thu, 11 Apr 2024 22:16:20 -0400
+	id 7761F15C00DE; Thu, 11 Apr 2024 23:55:36 -0400 (EDT)
+Date: Thu, 11 Apr 2024 23:55:36 -0400
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] kvm-xfstests: Add 1k config for ext2
-Message-ID: <20240412021620.GC187181@mit.edu>
-References: <c5dea04b0e955402258835f2c880ceaf3b1f0ab5.1709721921.git.ritesh.list@gmail.com>
+To: "yebin (H)" <yebin10@huawei.com>
+Cc: Jan Kara <jack@suse.cz>, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] jbd2: avoid mount failed when commit block is partial
+ submitted
+Message-ID: <20240412035536.GD187181@mit.edu>
+References: <20240402090951.527619-1-yebin10@huawei.com>
+ <20240402134240.5he4mxei3nvzolb3@quack3>
+ <20240403033742.GE1189142@mit.edu>
+ <20240403101122.rmffivvvf4a33qis@quack3>
+ <6611F8D5.3030403@huawei.com>
+ <20240411133718.tq74yorf6odpla4r@quack3>
+ <20240411145559.GB187181@mit.edu>
+ <66188E1B.6070209@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -48,16 +57,30 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <c5dea04b0e955402258835f2c880ceaf3b1f0ab5.1709721921.git.ritesh.list@gmail.com>
+In-Reply-To: <66188E1B.6070209@huawei.com>
 
-On Wed, Mar 06, 2024 at 04:29:05PM +0530, Ritesh Harjani (IBM) wrote:
-> This adds 1k config option in test-appliance for ext2.
-> This will come in handy for testing bs < ps path for ext2
-> for e.g. it's useful in testing iomap bufferd-io work going 
-> on for ext2.
-> 
-> Signed-off-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+On Fri, Apr 12, 2024 at 09:27:55AM +0800, yebin (H) wrote:
+> I thought of a solution that when the commit block checksum is
+> incorrect, retain the first 512 bytes of data, clear the subsequent
+> data, and then calculate the checksum to see if it is correct. This
+> solution can distinguish whether the commit is complete for
+> components that can ensure the atomicity of 512 bytes or more. But
+> for HDD, it may not be able to distinguish, but it should be
+> alleviated to some extent.
 
-Thanks, applied.
+Yeah, we discussed something similar at the weekly ext4 call; the idea
+was to change the kernel to zero out the jbd2 block before we fill in
+any jbd2 tags (including in the commit block) when writing the
+journal.  Then in the journal replay path, if the checksum doesn't
+match, we can try zeroing out everything beyond the size in the header
+struct, and then retry the the checksum and see if it matches.
 
-					- Ted
+This also has the benefit of making sure that we aren't leaking stale
+(uninitialized) kernel memory to disk, which could be considered a
+security vulnerability in some cases --- although the likelihood that
+something truly sensitive could be leaked is quite low; the attack
+requires raw access to the storate device; and exposure similar to
+what gets written to the swap device.  Still there are people who do
+worry about such things.
+
+						- Ted
