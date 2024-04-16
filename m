@@ -1,99 +1,101 @@
 Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 20F6112AAE3;
-	Tue, 16 Apr 2024 17:00:32 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E12BD1332A0;
+	Tue, 16 Apr 2024 17:29:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1713286834; cv=none; b=AwYV2HB1lRHn0SvCCuHpZXnl3nCZTKIkxmKHDIi6rEy3ZkTe4Ov5+N4mx2oO6ypjUcctm3t8SCmctXS3J0PSfNtIwWcE6PiU/RisEqE3MYdVjQx7TytL3Mmrn6n51HDQiyOcbCxsmAqGeplGL6aJSYzub6TtyKhnSdmXq54hhMU=
+	t=1713288551; cv=none; b=dDouXG1SjxI7NEXD1nAxbf9IkKkw+/15OXbO/+WmjuB9D/VW6gVGU6/4rF88GpbBer8A36UGQ51jXd0vLowF+t5Eh0MQaqc3ztcbHlih7loTk5K0BJq7igXImtSj725sNJ+cwpKt+6ktJlci77+0l6vk/wLMmADOOTxfc2zRaFw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1713286834; c=relaxed/simple;
-	bh=+eKfqkqGNqkcZA+3CL0j3nQn92dxN0Kh6lLW/1pOGwk=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=b73xnWD2C8HNFDyQPm8n6TECcBbUTUi416YzV5zvtBmMFGTLex6IFEHi+sJqiPffF9GBi60O6R3M1JVSs1c1cZLtV54svYtnVkF3qeMTdABcb5EXZqRt4c8a9Vgu6FwIa1iGenrBDUtN0wje2Y8+fJPiLp6URnMxLEDHkjpzuak=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=nt9mrA1v; arc=none smtp.client-ip=90.155.50.34
+	s=arc-20240116; t=1713288551; c=relaxed/simple;
+	bh=H574Zsr0MZosOT6hyKFGR5bSMswexcNmBemC6uLNAkU=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=tHSHjqvBlVuv0d4vJ2pt2S4cSGeCVJpzayXXTMi+e9aoSYc+MFVZwV0Ol0wpDMHUFU5yHZWnDRRY6h3vvxbNpnJ0B711zL5AQJZdit7aTpd/Fj+HoDnbOWDFYwcPawUlmcPurQYL6kw5DBflnOpczeWyChYnB6/CDV/JqsvVBSA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=uiCh4Pph; arc=none smtp.client-ip=90.155.50.34
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="nt9mrA1v"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="uiCh4Pph"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=KRNBS/nNdDiPqgsHkyKzXY05QuyaoZshBLw+Rc9FXMA=; b=nt9mrA1vsAaOvdbNnhltvUwu9v
-	eWZR64hdT0sHaVKkAKmAe02tetl0haDxBjBnAHLphqFzp/yy5osgH3yZyN6EMx70yH1d9DLHOvVrz
-	dlRSWUeki4/Q/6FdINSaH5XHgpn18Dmc7bkQlSk/Sg9c13cunns8wBOiCeumO9xQ5x0BAtn5G/uU/
-	xnQs8dh9gnYgu2MH0woQlj+GOoe6kRJfmSNBff0Hup94JBNpjrNs0La/eiMr7DSYEkpv1GiMYVo3T
-	yqk61h9eHqECcuvHQGIgfFsTqPQCz0ZDqgjczHx4LBks0gwP9I1Os4OQf9wpGT5Ee1lDF7iiYEL7s
-	zChMYYyQ==;
+	d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
+	References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:
+	Content-Type:Content-ID:Content-Description;
+	bh=58GZ0UFMSEj04qfovRQSksm+sDW121lz+7cFxd0L12g=; b=uiCh4PphS3OTuRcYqUwkUz8BZO
+	d8CjYcUicmgKH1gihu1HeMLy214H0JwZc2bTl9kQICy2Szd+7Tj8guxzIWRTa6cTjKy0IYIOcLyfc
+	QMQ6bOfUDuBjBHHsfgvw9YjG/V7aPgIXEKEvNQ+8AX4sGTt6du3YzhriLeQ05HC+nNzpDuuOynXV/
+	bgKakbLQHIQqoSfqtv0xQBflyx/anGSoDwdqTvekmXq2d+g+LhscEEnT/zdlZ5suv3KKIOl1211hz
+	8FrZumXy4u/XWD4hu+CZK4UIon78Iw+WYrMuJIPAqu0dyp2Ng+hLpYTYCyzLEWhdRFNiHt7Jta6Wd
+	j6ubyYwQ==;
 Received: from willy by casper.infradead.org with local (Exim 4.97.1 #2 (Red Hat Linux))
-	id 1rwmAX-00000000yWu-3TaB;
-	Tue, 16 Apr 2024 17:00:29 +0000
-Date: Tue, 16 Apr 2024 18:00:29 +0100
-From: Matthew Wilcox <willy@infradead.org>
-To: Mike Rapoport <rppt@kernel.org>
-Cc: Nam Cao <namcao@linutronix.de>,
-	=?iso-8859-1?Q?Bj=F6rn_T=F6pel?= <bjorn@kernel.org>,
-	Christian Brauner <brauner@kernel.org>,
-	Andreas Dilger <adilger@dilger.ca>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-riscv@lists.infradead.org, Theodore Ts'o <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Conor Dooley <conor@kernel.org>,
-	Anders Roxell <anders.roxell@linaro.org>,
-	Alexandre Ghiti <alex@ghiti.fr>
-Subject: Re: riscv32 EXT4 splat, 6.8 regression?
-Message-ID: <Zh6urRin2-wVxNeq@casper.infradead.org>
-References: <20240416-deppen-gasleitung-8098fcfd6bbd@brauner>
- <8734rlo9j7.fsf@all.your.base.are.belong.to.us>
- <Zh6KNglOu8mpTPHE@kernel.org>
- <20240416171713.7d76fe7d@namcao>
- <20240416173030.257f0807@namcao>
- <87v84h2tee.fsf@all.your.base.are.belong.to.us>
- <20240416181944.23af44ee@namcao>
- <Zh6n-nvnQbL-0xss@kernel.org>
+	id 1rwmcF-000000011ea-0Wlq;
+	Tue, 16 Apr 2024 17:29:07 +0000
+From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+Subject: [PATCH 5/5] ext4: Convert ac_buddy_page to ac_buddy_folio
+Date: Tue, 16 Apr 2024 18:28:58 +0100
+Message-ID: <20240416172900.244637-6-willy@infradead.org>
+X-Mailer: git-send-email 2.44.0
+In-Reply-To: <20240416172900.244637-1-willy@infradead.org>
+References: <20240416172900.244637-1-willy@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <Zh6n-nvnQbL-0xss@kernel.org>
+Content-Transfer-Encoding: 8bit
 
-On Tue, Apr 16, 2024 at 07:31:54PM +0300, Mike Rapoport wrote:
-> > @@ -238,17 +237,9 @@ static void __init setup_bootmem(void)
-> >  	/*
-> >  	 * memblock allocator is not aware of the fact that last 4K bytes of
-> >  	 * the addressable memory can not be mapped because of IS_ERR_VALUE
-> > -	 * macro. Make sure that last 4k bytes are not usable by memblock
-> > -	 * if end of dram is equal to maximum addressable memory.  For 64-bit
-> > -	 * kernel, this problem can't happen here as the end of the virtual
-> > -	 * address space is occupied by the kernel mapping then this check must
-> > -	 * be done as soon as the kernel mapping base address is determined.
-> > +	 * macro. Make sure that last 4k bytes are not usable by memblock.
-> >  	 */
-> 
-> It's not only memblock, but buddy as well, so maybe
-> 
-> 	/*
-> 	 * The last 4K bytes of the addressable memory can not be used
-> 	 * because of IS_ERR_VALUE macro. Make sure that last 4K bytes are
-> 	 * not usable by kernel memory allocators.
-> 	 */
-> 
-> > -	if (!IS_ENABLED(CONFIG_64BIT)) {
-> > -		max_mapped_addr = __pa(~(ulong)0);
-> > -		if (max_mapped_addr == (phys_ram_end - 1))
-> > -			memblock_set_current_limit(max_mapped_addr - 4096);
-> > -	}
-> > +	memblock_reserve(__pa(-PAGE_SIZE), PAGE_SIZE);
-> 
-> Ack.
+This just carries around the bd_buddy_folio so should also be a folio.
 
-Can this go to generic code instead of letting architecture maintainers
-fall over it?
+Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+---
+ fs/ext4/mballoc.c | 8 ++++----
+ fs/ext4/mballoc.h | 2 +-
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index b2ea016f259d..e63f7365ede3 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2155,8 +2155,8 @@ static void ext4_mb_use_best_found(struct ext4_allocation_context *ac,
+ 	 */
+ 	ac->ac_bitmap_folio = e4b->bd_bitmap_folio;
+ 	folio_get(ac->ac_bitmap_folio);
+-	ac->ac_buddy_page = &e4b->bd_buddy_folio->page;
+-	get_page(ac->ac_buddy_page);
++	ac->ac_buddy_folio = e4b->bd_buddy_folio;
++	folio_get(ac->ac_buddy_folio);
+ 	/* store last allocated for subsequent stream allocation */
+ 	if (ac->ac_flags & EXT4_MB_STREAM_ALLOC) {
+ 		spin_lock(&sbi->s_md_lock);
+@@ -5995,8 +5995,8 @@ static void ext4_mb_release_context(struct ext4_allocation_context *ac)
+ 	}
+ 	if (ac->ac_bitmap_folio)
+ 		folio_put(ac->ac_bitmap_folio);
+-	if (ac->ac_buddy_page)
+-		put_page(ac->ac_buddy_page);
++	if (ac->ac_buddy_folio)
++		folio_put(ac->ac_buddy_folio);
+ 	if (ac->ac_flags & EXT4_MB_HINT_GROUP_ALLOC)
+ 		mutex_unlock(&ac->ac_lg->lg_mutex);
+ 	ext4_mb_collect_stats(ac);
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index ec1348fe1c04..728b2d77b03f 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -205,7 +205,7 @@ struct ext4_allocation_context {
+ 				 * N > 0, the field stores N, otherwise 0 */
+ 	__u8 ac_op;		/* operation, for history only */
+ 	struct folio *ac_bitmap_folio;
+-	struct page *ac_buddy_page;
++	struct folio *ac_buddy_folio;
+ 	struct ext4_prealloc_space *ac_pa;
+ 	struct ext4_locality_group *ac_lg;
+ };
+-- 
+2.43.0
+
