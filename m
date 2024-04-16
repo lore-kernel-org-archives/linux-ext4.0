@@ -1,310 +1,98 @@
-Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EE70913342F;
-	Tue, 16 Apr 2024 17:29:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BD4AD134405;
+	Tue, 16 Apr 2024 18:05:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1713288566; cv=none; b=geSfW6HZOlg+rk7Y3dzvOlkXh9XO38kZwttdsq7l88llJ36lyQxDtr82D+z5gS8KEwvEhcZRcxVYUErywpGV1lm9sWVdQIQGyW2F+Of1WDEE/J2vC4LeF4CnbFwqF5sn2SxcSxBTdMXswHONg38qA65bvCz7sUxF5ZRfmJgVFvs=
+	t=1713290742; cv=none; b=DAzxnTW1OaZ5IwJ3CeOHUg9vuiSisnJUMNLdYxare0GWFBnqGD2PpRgxOc4gMzVERz45HQTpE8/KLulug8eFG8Q3w6UL34T1xPVNTK04h1sGVjxMNhJFQbFxxes9fXHSHUSUOc3naU9ea0d81+BkrBcLKOsJQuHfzLUTbfLLNjs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1713288566; c=relaxed/simple;
-	bh=Q7LFYGfdkEtm4IKg/rWzhUSmZUz1xqwbkQVOliIuHQg=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=YQwn3LfW+mitzaNtjjDJgiMTAgS8xkoUAcsylwpMkOCaXMOYCtFOKzocA847Xpy0J9JAel7jzBfeVdIJe4K1oVduG0e3r9huUUoFyAP8611ljX20R2Yd1LKR++kbnxXjzdSxZVYT7RwzmpdKpnL+ERbtW6PDrmKAg4eeX8Ca1xI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=UHAhT7sw; arc=none smtp.client-ip=90.155.50.34
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
+	s=arc-20240116; t=1713290742; c=relaxed/simple;
+	bh=ofwzRbETYmRwC0pS8n9dd+EPWVyzyXzVpzRfaZ5N3ro=;
+	h=From:To:Cc:Subject:In-Reply-To:References:Date:Message-ID:
+	 MIME-Version:Content-Type; b=TBDIWM73injrFYZ2wu+ERtNZnz+C3e9CBNCJ0dprvBsfsFmV/S7ZzPuy0VEyv5tONGehuXKBoo6PQp720a6bpz6l3AqFsERz8TK8EW3kM2phYRrk9+BO3BANum4eJqtR6jEVoZEB02DmKVkL4/R5zv3XJu2/Q+oK1Ya1V4NDVK0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=tgo4Q4p1; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="UHAhT7sw"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-	References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:
-	Content-Type:Content-ID:Content-Description;
-	bh=i4WVB0COrHyZf+iaDfjKL2JcPSSz6U9I5wWrwxTqUXQ=; b=UHAhT7swZqeWvegZd1LSKlgSHr
-	/ErGFvVN/hDRcXzjiQ0mCNJoFAoIEnJian43NGJSP8TuyF3piUzl2txrAhEzvme6kVegtICezNWAf
-	oBdXm6KtP+lGjRAuSsNFtdR5kLwRJ+V+huyBwX/yYZGBVVyXEY9GZI9fBUQ3agjQTde62kLoUaufs
-	BjF1wT5dLfO5fazkUxmyb6aqC0v/f46Vf2P8Q6aGD98+ZEja9DBZkINpTSpiZBY2vpwDE+rGg6Poh
-	ZzRUYYlHKze/LWHXcF1wL1fk3j9oBB3p1A9sdmG+NrNjfeMiLvND+LFCFU5gLKLaU6dwGy1ZIqcCj
-	NoSJaqow==;
-Received: from willy by casper.infradead.org with local (Exim 4.97.1 #2 (Red Hat Linux))
-	id 1rwmcE-000000011eT-3Zdb;
-	Tue, 16 Apr 2024 17:29:06 +0000
-From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-Subject: [PATCH 2/5] ext4: Convert bd_buddy_page to bd_buddy_folio
-Date: Tue, 16 Apr 2024 18:28:55 +0100
-Message-ID: <20240416172900.244637-3-willy@infradead.org>
-X-Mailer: git-send-email 2.44.0
-In-Reply-To: <20240416172900.244637-1-willy@infradead.org>
-References: <20240416172900.244637-1-willy@infradead.org>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="tgo4Q4p1"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B5310C2BD11;
+	Tue, 16 Apr 2024 18:05:41 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1713290742;
+	bh=ofwzRbETYmRwC0pS8n9dd+EPWVyzyXzVpzRfaZ5N3ro=;
+	h=From:To:Cc:Subject:In-Reply-To:References:Date:From;
+	b=tgo4Q4p1d1p9T0puSKluE1QgYZa7w62lj9a8aH0yC4TeNdxnVmji8JSX+Bf4sgn3F
+	 eYMgcoM9yOR5Io4NBynQVzUaTT5/syfShwg0UNBIeW9Id0U/kQIk1qqH9NmV+Cj27a
+	 47gIOUAsyoLBzsU9COXbsbFn1GO3RC2GZ+QMPJCkj+GRIZcHD5QiP1sZHlr5rcYZyu
+	 3sbr6n5gIMkjenovcrb8ogVhK+KO+0eOpTBDQupNx+h9Np8tLGSUoTo1SVGUKPB/2H
+	 6I5hzm3QznH1igAiCrfCZF0kdZB+r6veXZb0qnoa5YV/lMOwj0v4wWRJrbHVsd0O2i
+	 Xawofm9TvBNGQ==
+From: =?utf-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn@kernel.org>
+To: Nam Cao <namcao@linutronix.de>
+Cc: Mike Rapoport <rppt@kernel.org>, Christian Brauner <brauner@kernel.org>,
+ Andreas Dilger <adilger@dilger.ca>, Al Viro <viro@zeniv.linux.org.uk>,
+ linux-fsdevel <linux-fsdevel@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+ Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+ linux-riscv@lists.infradead.org, Theodore Ts'o <tytso@mit.edu>, Ext4
+ Developers List <linux-ext4@vger.kernel.org>, Conor Dooley
+ <conor@kernel.org>, "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+ Anders
+ Roxell <anders.roxell@linaro.org>, Alexandre Ghiti <alex@ghiti.fr>
+Subject: Re: riscv32 EXT4 splat, 6.8 regression?
+In-Reply-To: <20240416181944.23af44ee@namcao>
+References: <20240416-deppen-gasleitung-8098fcfd6bbd@brauner>
+ <8734rlo9j7.fsf@all.your.base.are.belong.to.us>
+ <Zh6KNglOu8mpTPHE@kernel.org> <20240416171713.7d76fe7d@namcao>
+ <20240416173030.257f0807@namcao>
+ <87v84h2tee.fsf@all.your.base.are.belong.to.us>
+ <20240416181944.23af44ee@namcao>
+Date: Tue, 16 Apr 2024 20:05:38 +0200
+Message-ID: <875xwhuqrx.fsf@all.your.base.are.belong.to.us>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-There is no need to make this a multi-page folio, so leave all the
-infrastructure around it in pages.  But since we're locking it, playing
-with its refcount and checking whether it's uptodate, it needs to move
-to the folio API.
+Nam Cao <namcao@linutronix.de> writes:
 
-Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
----
- fs/ext4/mballoc.c | 91 +++++++++++++++++++++++------------------------
- fs/ext4/mballoc.h |  2 +-
- 2 files changed, 46 insertions(+), 47 deletions(-)
+> diff --git a/arch/riscv/mm/init.c b/arch/riscv/mm/init.c
+> index fa34cf55037b..f600cfee0aef 100644
+> --- a/arch/riscv/mm/init.c
+> +++ b/arch/riscv/mm/init.c
+> @@ -197,7 +197,6 @@ early_param("mem", early_mem);
+>  static void __init setup_bootmem(void)
+>  {
+>  	phys_addr_t vmlinux_end =3D __pa_symbol(&_end);
+> -	phys_addr_t max_mapped_addr;
+>  	phys_addr_t phys_ram_end, vmlinux_start;
+>=20=20
+>  	if (IS_ENABLED(CONFIG_XIP_KERNEL))
+> @@ -238,17 +237,9 @@ static void __init setup_bootmem(void)
+>  	/*
+>  	 * memblock allocator is not aware of the fact that last 4K bytes of
+>  	 * the addressable memory can not be mapped because of IS_ERR_VALUE
+> -	 * macro. Make sure that last 4k bytes are not usable by memblock
+> -	 * if end of dram is equal to maximum addressable memory.  For 64-bit
+> -	 * kernel, this problem can't happen here as the end of the virtual
+> -	 * address space is occupied by the kernel mapping then this check must
+> -	 * be done as soon as the kernel mapping base address is determined.
+> +	 * macro. Make sure that last 4k bytes are not usable by memblock.
+>  	 */
+> -	if (!IS_ENABLED(CONFIG_64BIT)) {
+> -		max_mapped_addr =3D __pa(~(ulong)0);
+> -		if (max_mapped_addr =3D=3D (phys_ram_end - 1))
+> -			memblock_set_current_limit(max_mapped_addr - 4096);
+> -	}
+> +	memblock_reserve(__pa(-PAGE_SIZE), PAGE_SIZE);
+>=20=20
+>  	min_low_pfn =3D PFN_UP(phys_ram_base);
+>  	max_low_pfn =3D max_pfn =3D PFN_DOWN(phys_ram_end);
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 91c015fda370..761d8d15b205 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1439,7 +1439,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore, gfp_t gfp)
-  * Lock the buddy and bitmap pages. This make sure other parallel init_group
-  * on the same buddy page doesn't happen whild holding the buddy page lock.
-  * Return locked buddy and bitmap pages on e4b struct. If buddy and bitmap
-- * are on the same page e4b->bd_buddy_page is NULL and return value is 0.
-+ * are on the same page e4b->bd_buddy_folio is NULL and return value is 0.
-  */
- static int ext4_mb_get_buddy_page_lock(struct super_block *sb,
- 		ext4_group_t group, struct ext4_buddy *e4b, gfp_t gfp)
-@@ -1447,10 +1447,9 @@ static int ext4_mb_get_buddy_page_lock(struct super_block *sb,
- 	struct inode *inode = EXT4_SB(sb)->s_buddy_cache;
- 	int block, pnum, poff;
- 	int blocks_per_page;
--	struct page *page;
- 	struct folio *folio;
- 
--	e4b->bd_buddy_page = NULL;
-+	e4b->bd_buddy_folio = NULL;
- 	e4b->bd_bitmap_folio = NULL;
- 
- 	blocks_per_page = PAGE_SIZE / sb->s_blocksize;
-@@ -1476,11 +1475,12 @@ static int ext4_mb_get_buddy_page_lock(struct super_block *sb,
- 	}
- 
- 	/* blocks_per_page == 1, hence we need another page for the buddy */
--	page = find_or_create_page(inode->i_mapping, block + 1, gfp);
--	if (!page)
--		return -ENOMEM;
--	BUG_ON(page->mapping != inode->i_mapping);
--	e4b->bd_buddy_page = page;
-+	folio = __filemap_get_folio(inode->i_mapping, block + 1,
-+			FGP_LOCK | FGP_ACCESSED | FGP_CREAT, gfp);
-+	if (IS_ERR(folio))
-+		return PTR_ERR(folio);
-+	BUG_ON(folio->mapping != inode->i_mapping);
-+	e4b->bd_buddy_folio = folio;
- 	return 0;
- }
- 
-@@ -1490,9 +1490,9 @@ static void ext4_mb_put_buddy_page_lock(struct ext4_buddy *e4b)
- 		folio_unlock(e4b->bd_bitmap_folio);
- 		folio_put(e4b->bd_bitmap_folio);
- 	}
--	if (e4b->bd_buddy_page) {
--		unlock_page(e4b->bd_buddy_page);
--		put_page(e4b->bd_buddy_page);
-+	if (e4b->bd_buddy_folio) {
-+		folio_unlock(e4b->bd_buddy_folio);
-+		folio_put(e4b->bd_buddy_folio);
- 	}
- }
- 
-@@ -1507,7 +1507,6 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group, gfp_t gfp)
- 
- 	struct ext4_group_info *this_grp;
- 	struct ext4_buddy e4b;
--	struct page *page;
- 	struct folio *folio;
- 	int ret = 0;
- 
-@@ -1544,7 +1543,7 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group, gfp_t gfp)
- 		goto err;
- 	}
- 
--	if (e4b.bd_buddy_page == NULL) {
-+	if (e4b.bd_buddy_folio == NULL) {
- 		/*
- 		 * If both the bitmap and buddy are in
- 		 * the same page we don't need to force
-@@ -1554,11 +1553,11 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group, gfp_t gfp)
- 		goto err;
- 	}
- 	/* init buddy cache */
--	page = e4b.bd_buddy_page;
--	ret = ext4_mb_init_cache(page, e4b.bd_bitmap, gfp);
-+	folio = e4b.bd_buddy_folio;
-+	ret = ext4_mb_init_cache(&folio->page, e4b.bd_bitmap, gfp);
- 	if (ret)
- 		goto err;
--	if (!PageUptodate(page)) {
-+	if (!folio_test_uptodate(folio)) {
- 		ret = -EIO;
- 		goto err;
- 	}
-@@ -1580,7 +1579,6 @@ ext4_mb_load_buddy_gfp(struct super_block *sb, ext4_group_t group,
- 	int block;
- 	int pnum;
- 	int poff;
--	struct page *page;
- 	struct folio *folio;
- 	int ret;
- 	struct ext4_group_info *grp;
-@@ -1599,7 +1597,7 @@ ext4_mb_load_buddy_gfp(struct super_block *sb, ext4_group_t group,
- 	e4b->bd_info = grp;
- 	e4b->bd_sb = sb;
- 	e4b->bd_group = group;
--	e4b->bd_buddy_page = NULL;
-+	e4b->bd_buddy_folio = NULL;
- 	e4b->bd_bitmap_folio = NULL;
- 
- 	if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
-@@ -1665,7 +1663,7 @@ ext4_mb_load_buddy_gfp(struct super_block *sb, ext4_group_t group,
- 		goto err;
- 	}
- 
--	/* Pages marked accessed already */
-+	/* Folios marked accessed already */
- 	e4b->bd_bitmap_folio = folio;
- 	e4b->bd_bitmap = folio_address(folio) + (poff * sb->s_blocksize);
- 
-@@ -1673,48 +1671,49 @@ ext4_mb_load_buddy_gfp(struct super_block *sb, ext4_group_t group,
- 	pnum = block / blocks_per_page;
- 	poff = block % blocks_per_page;
- 
--	page = find_get_page_flags(inode->i_mapping, pnum, FGP_ACCESSED);
--	if (page == NULL || !PageUptodate(page)) {
--		if (page)
--			put_page(page);
--		page = find_or_create_page(inode->i_mapping, pnum, gfp);
--		if (page) {
--			if (WARN_RATELIMIT(page->mapping != inode->i_mapping,
--	"ext4: buddy bitmap's page->mapping != inode->i_mapping\n")) {
-+	folio = __filemap_get_folio(inode->i_mapping, pnum, FGP_ACCESSED, 0);
-+	if (IS_ERR(folio) || !folio_test_uptodate(folio)) {
-+		if (!IS_ERR(folio))
-+			folio_put(folio);
-+		folio = __filemap_get_folio(inode->i_mapping, pnum,
-+				FGP_LOCK | FGP_ACCESSED | FGP_CREAT, gfp);
-+		if (!IS_ERR(folio)) {
-+			if (WARN_RATELIMIT(folio->mapping != inode->i_mapping,
-+	"ext4: buddy bitmap's mapping != inode->i_mapping\n")) {
- 				/* should never happen */
--				unlock_page(page);
-+				folio_unlock(folio);
- 				ret = -EINVAL;
- 				goto err;
- 			}
--			if (!PageUptodate(page)) {
--				ret = ext4_mb_init_cache(page, e4b->bd_bitmap,
-+			if (!folio_test_uptodate(folio)) {
-+				ret = ext4_mb_init_cache(&folio->page, e4b->bd_bitmap,
- 							 gfp);
- 				if (ret) {
--					unlock_page(page);
-+					folio_unlock(folio);
- 					goto err;
- 				}
- 			}
--			unlock_page(page);
-+			folio_unlock(folio);
- 		}
- 	}
--	if (page == NULL) {
--		ret = -ENOMEM;
-+	if (IS_ERR(folio)) {
-+		ret = PTR_ERR(folio);
- 		goto err;
- 	}
--	if (!PageUptodate(page)) {
-+	if (!folio_test_uptodate(folio)) {
- 		ret = -EIO;
- 		goto err;
- 	}
- 
--	/* Pages marked accessed already */
--	e4b->bd_buddy_page = page;
--	e4b->bd_buddy = page_address(page) + (poff * sb->s_blocksize);
-+	/* Folios marked accessed already */
-+	e4b->bd_buddy_folio = folio;
-+	e4b->bd_buddy = folio_address(folio) + (poff * sb->s_blocksize);
- 
- 	return 0;
- 
- err:
--	if (page)
--		put_page(page);
-+	if (folio)
-+		folio_put(folio);
- 	if (e4b->bd_bitmap_folio)
- 		folio_put(e4b->bd_bitmap_folio);
- 
-@@ -1733,8 +1732,8 @@ static void ext4_mb_unload_buddy(struct ext4_buddy *e4b)
- {
- 	if (e4b->bd_bitmap_folio)
- 		folio_put(e4b->bd_bitmap_folio);
--	if (e4b->bd_buddy_page)
--		put_page(e4b->bd_buddy_page);
-+	if (e4b->bd_buddy_folio)
-+		folio_put(e4b->bd_buddy_folio);
- }
- 
- 
-@@ -2155,7 +2154,7 @@ static void ext4_mb_use_best_found(struct ext4_allocation_context *ac,
- 	 */
- 	ac->ac_bitmap_page = &e4b->bd_bitmap_folio->page;
- 	get_page(ac->ac_bitmap_page);
--	ac->ac_buddy_page = e4b->bd_buddy_page;
-+	ac->ac_buddy_page = &e4b->bd_buddy_folio->page;
- 	get_page(ac->ac_buddy_page);
- 	/* store last allocated for subsequent stream allocation */
- 	if (ac->ac_flags & EXT4_MB_STREAM_ALLOC) {
-@@ -3888,7 +3887,7 @@ static void ext4_free_data_in_buddy(struct super_block *sb,
- 		/* No more items in the per group rb tree
- 		 * balance refcounts from ext4_mb_free_metadata()
- 		 */
--		put_page(e4b.bd_buddy_page);
-+		folio_put(e4b.bd_buddy_folio);
- 		folio_put(e4b.bd_bitmap_folio);
- 	}
- 	ext4_unlock_group(sb, entry->efd_group);
-@@ -6312,7 +6311,7 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
- 
- 	BUG_ON(!ext4_handle_valid(handle));
- 	BUG_ON(e4b->bd_bitmap_folio == NULL);
--	BUG_ON(e4b->bd_buddy_page == NULL);
-+	BUG_ON(e4b->bd_buddy_folio == NULL);
- 
- 	new_node = &new_entry->efd_node;
- 	cluster = new_entry->efd_start_cluster;
-@@ -6323,7 +6322,7 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
- 		 * otherwise we'll refresh it from
- 		 * on-disk bitmap and lose not-yet-available
- 		 * blocks */
--		get_page(e4b->bd_buddy_page);
-+		folio_get(e4b->bd_buddy_folio);
- 		folio_get(e4b->bd_bitmap_folio);
- 	}
- 	while (*n) {
-diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-index 4725e5c9e482..720fb277abd2 100644
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -215,7 +215,7 @@ struct ext4_allocation_context {
- #define AC_STATUS_BREAK		3
- 
- struct ext4_buddy {
--	struct page *bd_buddy_page;
-+	struct folio *bd_buddy_folio;
- 	void *bd_buddy;
- 	struct folio *bd_bitmap_folio;
- 	void *bd_bitmap;
--- 
-2.43.0
+Nice! Would you mind submitting this as a proper fix (unless there's a
+way to do it non-arch specific like Matthew pointed out).
 
+
+Bj=C3=B6rn
