@@ -1,47 +1,47 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B587184F
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Apr 2024 02:03:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4DE8B1878
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Apr 2024 02:03:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1713319437; cv=none; b=E1dKjCiUXHO1aJSbjHJNKp5cInpDVj4qByFT+kTFw8eD9o2vErMGjLtHN247hs/LAugAlxpMSv8DW4menRLy31hEXF1V1OZLDJ/WY4ezg7V8V4HY31Q+/kmETI8T4bxc63yQxq3sexER4MDSWbsNPZWkGlPX9isVlLlcK/SOkds=
+	t=1713319438; cv=none; b=dklErhm67TmaJWW6Ro1g03wKS+oJU5uU/2r7Cng1G/mO8aT+jaUnrFAVaVuqrjHMB2P/sheSw/04jvxCES3Dcxyjz7XqLFhbv8QSIEP9o+jG6YjeHd7Gb+gtC4jfQjnQ57Tf2DqAeHyEWDbNDc5PzAGvuQUonSW0lr+p5kTikyk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1713319437; c=relaxed/simple;
-	bh=1XzjegvPAYAR/PeCCef+KBVLIhN1N8p1kZsqnJnrdEo=;
+	s=arc-20240116; t=1713319438; c=relaxed/simple;
+	bh=CJcB2yYFPCUtdGUA7sI3ibDMEdbxkOF7WMxpr25AaVg=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=ZZPqRcAEkkTyU+UtB8WVgfTK6ZWPSNhmLdMyyhQ4GkE85IjEfWKOXzyM7rkoAsWUOSdIrm/UcjeaprYAdqfjR7L3RzZjc5EqjOuLlHK2tVOAM1iVnoo4ipmd3aVOrsxLXpECC7+04vy2xa/e8hMoyGx1o8Fv+fx/x5ypYHFHlCM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=VNoW96Sx; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=owxHnoVC+SaCt0GlBn57izEOhyctRHO3SE+hl8j8Ks7QupgAjvkN8ODDSAPjJUB/YMueWonIjwQNJxGkLlcUJgMT5w/Xewy95+wgT/FKbDNtSMgKG0sWIus86cdc/jUBYvbdt2aZHZedRzNPACPM52DvWc0nce9hOqUEVocaipQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=RGBBqRZY; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="VNoW96Sx"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="RGBBqRZY"
 Received: from cwcc.thunk.org (pool-173-48-113-2.bstnma.fios.verizon.net [173.48.113.2])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 43H23gpR013703
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 43H23gp9013704
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Tue, 16 Apr 2024 22:03:43 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1713319424; bh=W3lSvbwG0bHzMp6ogtXSABzTIiRXFz7a638i511ln6w=;
+	t=1713319424; bh=ulhNAbbg1avzlTDJgRonGtmchAbTH5TZW0mliFQJhZI=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=VNoW96SxdsmsD8LaTs3DthcDpPv0EMtM5DJpU04G8vgYWDzSCKXlJ5WYa4B/1JBJ+
-	 MaWHnLTT8LXRL7Ql1CwLBvUNiJzkJA8F5T6DPRt7DbzgCZ+3r/fxfYGNoB5OthJDaf
-	 t68lRdeJq+5FyRqbYwubqIdYsoDss4icV0tVzKjptn30rv5GyZpGzcqzq52nz8Kui2
-	 7R56j1aeFYJ9QbWmsHmow5uoMQGmk5iL6OzF/xXM+F3eSwuyHRRvlm8Xm7jEBCR1oj
-	 qm8yVFZGQy0iMs2uAWLUlRcYQe/DskpfNLbC1EgEq3ykwC9TULC4Um3PkXOoYwbFTy
-	 FWHqD9N5EBJqQ==
+	b=RGBBqRZYOjE9ms5XRE4eJ4Y4eMGUQ+LqWumU1KWWoIQKS5AbhBtCRk8vWnbi+w4Ez
+	 SLtKJ7ZL3AEcFk+mH+IkcMAi4h17PlsnrVnepU5YsevZQemrb1ImtfZ3GokE6DAG6c
+	 XLtlSuxdvWYifAxt/1ynQ4xT/tXtmV4tVCZEew9k3lYNoHIJ1uIzWoBsCr/ckWKgfn
+	 vJoPNthLsjxFOZAPnMu3DqcduH6viKSv1gUq7Ev8brzAx7bPfJKTSHCb51PFajFwBj
+	 Ls2IVjnr8Jwd5N67R7IfKcotzNE3v1zq7fd7dRmS57EW31FzYkf4d9MRQR6cqmmgy0
+	 hDM+hsgOs5xZQ==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id B9C3C15C0CBA; Tue, 16 Apr 2024 22:03:41 -0400 (EDT)
+	id C12F315C0CD2; Tue, 16 Apr 2024 22:03:41 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] misc: add 2038 timestamp support
-Date: Tue, 16 Apr 2024 22:03:30 -0400
-Message-ID: <171328638215.2734906.13266270872317257455.b4-ty@mit.edu>
+To: linux-ext4@vger.kernel.org, Li Dongyang <dongyangli@ddn.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger@dilger.ca
+Subject: Re: [PATCH] mke2fs: batch zeroing inode table
+Date: Tue, 16 Apr 2024 22:03:33 -0400
+Message-ID: <171328638215.2734906.8018789914145416497.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20230927054016.16645-1-adilger@dilger.ca>
-References: <20230927054016.16645-1-adilger@dilger.ca>
+In-Reply-To: <20230904045806.827621-1-dongyangli@ddn.com>
+References: <20230904045806.827621-1-dongyangli@ddn.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -52,20 +52,24 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Tue, 26 Sep 2023 23:40:16 -0600, Andreas Dilger wrote:
-> The ext4 kernel code implemented support for s_mtime_hi,
-> s_wtime_hi, and related timestamp fields to avoid timestamp
-> overflow in 2038, but similar handling is not in e2fsprogs.
+On Mon, 04 Sep 2023 14:58:06 +1000, Li Dongyang wrote:
+> For flex_bg enabled fs, we could merge the
+> inode table blocks into a contiguous range,
+> this improves mke2fs time on large devices
+> when lazy_itable_init is disabled.
 > 
-> Add helper macros for the superblock _hi timestamp fields
-> ext2fs_super_tstamp_get() and ext2fs_super_tstamp_set().
+> On a 977TB device, unpatched mke2fs was running
+> for 449m10s before getting terminated manually.
+> strace shows huge number of fallocate, given the
+> offset from fallocate it has done 41% of the inode
+> tables, the estimated time needed would be 1082m.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] misc: add post-2038 timestamp support to e2fsprogs
-      commit: ca8bc9240a00665dd4c96de350e610add8543a08
+[1/1] mke2fs: batch zeroing inode table
+      commit: a192f4f344456c2390ce946b4a71db0b85ce5665
 
 Best regards,
 -- 
