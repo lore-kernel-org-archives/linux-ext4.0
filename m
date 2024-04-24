@@ -1,156 +1,224 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7BC05156C5D;
-	Wed, 24 Apr 2024 06:19:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C87A7158A35;
+	Wed, 24 Apr 2024 07:59:38 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.189
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1713939554; cv=none; b=RVPaaeDmDqwn1WLIpZX96hn6TMbMBYuVoJW/pXrscDmVy/bqVjL6qdwOGDYe7YSVeVN1prqYKZohchZgTfyqvpb4gebuRihx8+DwCHha3pwS7zRoLtflwBChaXkTJiCsVXSr10OYcnlFp4dwjz1+JedGht4pQ+RJVE2yYh6EvSg=
+	t=1713945581; cv=none; b=tWR23Wh5pW1Mqh+pUTPkfwFvf9N26vKal9bWdX9u8U2tVAyf9WECQVwCm0/Hsw7dKQU4quHzpMW1rEcvwUPxzOX+rY4jO0ltNt1nyPR3A02sfBv469L1bH9UXJ9HAqiGfrwaYBfOQvnw/YrGTVX1j1pLyic38ermQObg+fzJXZY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1713939554; c=relaxed/simple;
-	bh=zW/J/B5sp0BaTPxRGgaqDVSl1Ae1DCfweYILs40wZbU=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=eC3yIRERdQNn7Q9TXdSAQH/2No/OLCewDXDiJTB6T7E2hl97QiDX5NcDccdjjpRzFcYIIqG4f1Bs6fPilD3c/7DN4xY0r1I1v83LaQW0Jqp6TN/zgPMIelEmbl7dzUUYg2m8Dai/7lvFqsMgAr8Q0t2/JEeEVIiKJ+qa/Ms7en0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4VPTMq5hG1z4f3kkV;
-	Wed, 24 Apr 2024 14:19:03 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 9DD441A017C;
-	Wed, 24 Apr 2024 14:19:08 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.124.27])
-	by APP1 (Coremail) with SMTP id cCh0CgBHGRJZpChmpfZBKw--.32510S6;
-	Wed, 24 Apr 2024 14:19:08 +0800 (CST)
-From: Kemeng Shi <shikemeng@huaweicloud.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Cc: jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com
-Subject: [PATCH v3 4/5] ext4: use correct criteria name instead stale integer number in comment
-Date: Wed, 24 Apr 2024 14:19:03 +0800
-Message-Id: <20240424061904.987525-5-shikemeng@huaweicloud.com>
-X-Mailer: git-send-email 2.30.0
-In-Reply-To: <20240424061904.987525-1-shikemeng@huaweicloud.com>
-References: <20240424061904.987525-1-shikemeng@huaweicloud.com>
+	s=arc-20240116; t=1713945581; c=relaxed/simple;
+	bh=WbWk4n31QeckdqgahpTtUAt10qf6aHsmn+QrC5ik3lE=;
+	h=Subject:To:References:CC:From:Message-ID:Date:MIME-Version:
+	 In-Reply-To:Content-Type; b=Vn0FQNyDwP3G9m6HmNBE3pTivIS0OTSuBl7D2MnE1RBsqT5YMP1zuAZ3A883Rp+dRUtTLe1Ghc9i390jSX/8olUB3sDWYDAl+HYBdOx+s9yKV/d9JeH/FWtdh6n6EjPrIS4TrV2Q40rwhLNcpDuWU15tx5bCptZannYMf4mYe2U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.189
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+Received: from mail.maildlp.com (unknown [172.19.162.254])
+	by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4VPWXq16YRzNtQC;
+	Wed, 24 Apr 2024 15:56:59 +0800 (CST)
+Received: from canpemm500010.china.huawei.com (unknown [7.192.105.118])
+	by mail.maildlp.com (Postfix) with ESMTPS id 6E77E18007D;
+	Wed, 24 Apr 2024 15:59:30 +0800 (CST)
+Received: from [10.174.178.185] (10.174.178.185) by
+ canpemm500010.china.huawei.com (7.192.105.118) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.1.2507.35; Wed, 24 Apr 2024 15:59:30 +0800
+Subject: Re: [PATCH v2] jbd2: avoid mount failed when commit block is partial
+ submitted
+To: Andreas Dilger <adilger@dilger.ca>
+References: <20240413013056.1830515-1-yebin10@huawei.com>
+ <F8B008EE-22F4-4A3C-A80D-545104520D7D@dilger.ca>
+CC: Theodore Ts'o <tytso@mit.edu>, Ext4 Developers List
+	<linux-ext4@vger.kernel.org>, Linux Kernel Mailing List
+	<linux-kernel@vger.kernel.org>, Jan Kara <jack@suse.cz>
+From: "yebin (H)" <yebin10@huawei.com>
+Message-ID: <6628BBE1.7070002@huawei.com>
+Date: Wed, 24 Apr 2024 15:59:29 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:38.0) Gecko/20100101
+ Thunderbird/38.1.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgBHGRJZpChmpfZBKw--.32510S6
-X-Coremail-Antispam: 1UD129KBjvJXoWxZFWrZFyktFWfZFWkCr43GFg_yoWrGryrp3
-	93GF18Kw4SgFy5urZ7Wa1jg3W8Kw409FyUXryF9w1xuFyaqr93tr9xKFW0yFy09r48A3Wr
-	XF12qr48CF1S93DanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvEb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
-	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
-	rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267
-	AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E
-	14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7
-	xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Y
-	z7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7
-	v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF
-	1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIx
-	AIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI
-	42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWI
-	evJa73UjIFyTuYvjxUFgAwUUUUU
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
+In-Reply-To: <F8B008EE-22F4-4A3C-A80D-545104520D7D@dilger.ca>
+Content-Type: text/plain; charset="windows-1252"; format=flowed
+Content-Transfer-Encoding: 7bit
+X-ClientProxiedBy: dggems703-chm.china.huawei.com (10.3.19.180) To
+ canpemm500010.china.huawei.com (7.192.105.118)
 
-Use correct criteria name instead stale integer number in comment
 
-Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
----
- fs/ext4/ext4.h    |  9 ++++++---
- fs/ext4/mballoc.c | 16 +++++++++-------
- fs/ext4/mballoc.h |  4 ++--
- 3 files changed, 17 insertions(+), 12 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 023571f8dd1b..9bd3764d1121 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -213,11 +213,14 @@ enum criteria {
- #define EXT4_MB_USE_RESERVED		0x2000
- /* Do strict check for free blocks while retrying block allocation */
- #define EXT4_MB_STRICT_CHECK		0x4000
--/* Large fragment size list lookup succeeded at least once for cr = 0 */
-+/* Large fragment size list lookup succeeded at least once for
-+ * CR_POWER2_ALIGNED */
- #define EXT4_MB_CR_POWER2_ALIGNED_OPTIMIZED		0x8000
--/* Avg fragment size rb tree lookup succeeded at least once for cr = 1 */
-+/* Avg fragment size rb tree lookup succeeded at least once for
-+ * CR_GOAL_LEN_FAST */
- #define EXT4_MB_CR_GOAL_LEN_FAST_OPTIMIZED		0x00010000
--/* Avg fragment size rb tree lookup succeeded at least once for cr = 1.5 */
-+/* Avg fragment size rb tree lookup succeeded at least once for
-+ * CR_BEST_AVAIL_LEN */
- #define EXT4_MB_CR_BEST_AVAIL_LEN_OPTIMIZED		0x00020000
- 
- struct ext4_allocation_request {
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 5acf413808a2..3d344a21b7f0 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1131,8 +1131,9 @@ static void ext4_mb_choose_next_group(struct ext4_allocation_context *ac,
- 		ext4_mb_choose_next_group_best_avail(ac, new_cr, group);
- 	} else {
- 		/*
--		 * TODO: For CR=2, we can arrange groups in an rb tree sorted by
--		 * bb_free. But until that happens, we should never come here.
-+		 * TODO: For CR_GOAL_LEN_SLOW, we can arrange groups in an
-+		 * rb tree sorted by bb_free. But until that happens, we should
-+		 * never come here.
- 		 */
- 		WARN_ON(1);
- 	}
-@@ -2679,7 +2680,7 @@ static int ext4_mb_good_group_nolock(struct ext4_allocation_context *ac,
- 		int ret;
- 
- 		/*
--		 * cr=CR_POWER2_ALIGNED/CR_GOAL_LEN_FAST is a very optimistic
-+		 * CR_POWER2_ALIGNED/CR_GOAL_LEN_FAST is a very optimistic
- 		 * search to find large good chunks almost for free. If buddy
- 		 * data is not ready, then this optimization makes no sense. But
- 		 * we never skip the first block group in a flex_bg, since this
-@@ -3445,10 +3446,11 @@ static int ext4_mb_init_backend(struct super_block *sb)
- 	}
- 	if (sbi->s_mb_prefetch > ext4_get_groups_count(sb))
- 		sbi->s_mb_prefetch = ext4_get_groups_count(sb);
--	/* now many real IOs to prefetch within a single allocation at cr=0
--	 * given cr=0 is an CPU-related optimization we shouldn't try to
--	 * load too many groups, at some point we should start to use what
--	 * we've got in memory.
-+	/*
-+	 * now many real IOs to prefetch within a single allocation at
-+	 * CR_POWER2_ALIGNED. Given CR_POWER2_ALIGNED is an CPU-related
-+	 * optimization we shouldn't try to load too many groups, at some point
-+	 * we should start to use what we've got in memory.
- 	 * with an average random access time 5ms, it'd take a second to get
- 	 * 200 groups (* N with flex_bg), so let's make this limit 4
- 	 */
-diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-index 56938532b4ce..042437d8860f 100644
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -187,8 +187,8 @@ struct ext4_allocation_context {
- 	struct ext4_free_extent ac_f_ex;
- 
- 	/*
--	 * goal len can change in CR1.5, so save the original len. This is
--	 * used while adjusting the PA window and for accounting.
-+	 * goal len can change in CR_BEST_AVAIL_LEN, so save the original len.
-+	 * This is used while adjusting the PA window and for accounting.
- 	 */
- 	ext4_grpblk_t	ac_orig_goal_len;
- 
--- 
-2.30.0
+On 2024/4/14 7:27, Andreas Dilger wrote:
+> On Apr 12, 2024, at 7:30 PM, Ye Bin <yebin10@huawei.com> wrote:
+>> We encountered a problem that the file system could not be mounted in
+>> the power-off scenario. The analysis of the file system mirror shows that
+>> only part of the data is written to the last commit block.
+>> The valid data of the commit block is concentrated in the first sector.
+>> However, the data of the entire block is involved in the checksum calculation.
+>> For different hardware, the minimum atomic unit may be different.
+>> If the checksum of a committed block is incorrect, clear the data except the
+>> 'commit_header' and then calculate the checksum. If the checkusm is correct,
+>> it is considered that the block is partially committed.
+> I think this is a clever solution to the problem, thanks for submitting
+> the patch.
+>
+>> However, if there are valid description/revoke blocks, it is considered
+>> that the data is abnormal and the log replay is stopped.
+> It would be possible to use the r_count of records in the revoke block
+> to determine how much of the revoke block is unused and could be zeroed
+> out to recompute the partial checksum?  That should be relatively safe
+> to try, as long as r_count is itself checked to fit within the block
+> before the memory is zeroed, to avoid overflowing the temporary buffer size:
+>
+>         r_count <= journal_revoke_records_per_block(journal)
+>
+>
+> It is open for discussion how much corruption should be allowed in the
+> journal, since it can be very destructive to copy corrupted blocks from
+> one place in the journal exactly into important metadata blocks across
+> the whole filesystem.  That said, the checksums *should* avoid this kind
+> of problem, and revoke blocks do not contain "metadata" that is copied
+> into the filesystem but only block numbers to skip.  It is "less bad" if
+> this was wrong, and having an incomplete journal replay due to minor
+> corruption that is causing boot failure is also a problem that should be
+> avoided if it can safely be done.
+>
+>
+> Additional comments inline below:
+>
+>> Signed-off-by: Ye Bin <yebin10@huawei.com>
+>> ---
+>> fs/jbd2/recovery.c | 48 ++++++++++++++++++++++++++++++++++++++++++++++
+>> 1 file changed, 48 insertions(+)
+>>
+>> diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+>> index 1f7664984d6e..eb0e026f3109 100644
+>> --- a/fs/jbd2/recovery.c
+>> +++ b/fs/jbd2/recovery.c
+>> @@ -443,6 +443,27 @@ static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
+>> 	return provided == cpu_to_be32(calculated);
+>> }
+>>
+>> +static bool jbd2_commit_block_csum_partial_verify(journal_t *j, void *buf)
+>> +{
+> (style) if this is named jbd2_commit_block_csum_verify_partial() then
+> it would sort together with jbd2_commit_block_csum_verify() and would
+> be easier to find with tag completion and grep in the future.
+>
+>> +	struct commit_header *h;
+>> +	__be32 provided;
+>> +	__u32 calculated;
+>> +	void *tmpbuf;
+>> +
+>> +	tmpbuf = kzalloc(j->j_blocksize, GFP_KERNEL);
+>> +	if (!tmpbuf)
+>> +		return false;
+>> +
+>> +	memcpy(tmpbuf, buf, sizeof(struct commit_header));
+>> +	h = tmpbuf;
+>> +	provided = h->h_chksum[0];
+>> +	h->h_chksum[0] = 0;
+>> +	calculated = jbd2_chksum(j, j->j_csum_seed, tmpbuf, j->j_blocksize);
+>> +	kfree(tmpbuf);
+>> +
+>> +	return provided == cpu_to_be32(calculated);
+>> +}
+>> +
+>> static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
+>> 				      journal_block_tag3_t *tag3,
+>> 				      void *buf, __u32 sequence)
+>> @@ -479,6 +500,7 @@ static int do_one_pass(journal_t *journal,
+>> 	int			descr_csum_size = 0;
+>> 	int			block_error = 0;
+>> 	bool			need_check_commit_time = false;
+>> +	bool                    has_partial_commit = false;
+>> 	__u64			last_trans_commit_time = 0, commit_time;
+>>
+>> 	/*
+>> @@ -590,6 +612,14 @@ static int do_one_pass(journal_t *journal,
+>> 					next_log_block);
+>> 			}
+>>
+>> +			if (pass == PASS_SCAN && has_partial_commit) {
+>> +				pr_err("JBD2: Detect validate descriptor block %lu after incomplete commit block\n",
+> (minor) it isn't clear to me what this error message is trying to say?
+> Should it be something like "detected invalid descriptor block ..."?
+>
+>> +				       next_log_block);
+>> +				err = -EFSBADCRC;
+>> +				brelse(bh);
+>> +				goto failed;
+>> +			}
+>> +
+>> 			/* If it is a valid descriptor block, replay it
+>> 			 * in pass REPLAY; if journal_checksums enabled, then
+>> 			 * calculate checksums in PASS_SCAN, otherwise,
+>> @@ -810,6 +840,14 @@ static int do_one_pass(journal_t *journal,
+>> 			if (pass == PASS_SCAN &&
+>> 			    !jbd2_commit_block_csum_verify(journal,
+>> 							   bh->b_data)) {
+>> +				if (jbd2_commit_block_csum_partial_verify(
+> If this function was restructured a bit then the code flow would not need
+> to get more complex than it already is.  Something like:
+>
+> 			if (pass == PASS_SCAN &&
+> 			    !(jbd2_commit_block_csum_verify(journal,
+> 							    bh->b_data) ||
+> 			      (has_partial_commit =
+> 			       jbd2_commit_block_csum_verify_partial(journal,
+> 							    bh->b_data))) {
+>
+> The pr_notice() can be printed by jbd2_commit_block_csum_partial_verify()
+> if the partial checksum is valid, so no need for goto and chksum_ok label.
+I modified it according to your idea, and found that the logic will be 
+faulty when the checksum
+is not enabled.
+>
+>> +					pr_notice("JBD2: Find incomplete commit block in transaction %u block %lu\n",
+>> +						  next_commit_ID, next_log_block);
+>> +					has_partial_commit = true;
+>> +					goto chksum_ok;
+>> +				}
+>> 			chksum_error:
+>> 				if (commit_time < last_trans_commit_time)
+>> 					goto ignore_crc_mismatch;
+>> @@ -824,6 +862,7 @@ static int do_one_pass(journal_t *journal,
+>> 				}
+>> 			}
+>> 			if (pass == PASS_SCAN) {
+>> +			chksum_ok:
+>> 				last_trans_commit_time = commit_time;
+>> 				head_block = next_log_block;
+>> 			}
+>> @@ -843,6 +882,15 @@ static int do_one_pass(journal_t *journal,
+>> 					  next_log_block);
+>> 				need_check_commit_time = true;
+>> 			}
+>> +
+>> +			if (pass == PASS_SCAN && has_partial_commit) {
+>> +				pr_err("JBD2: Detect validate revoke block %lu after incomplete commit block\n",
+> Similarly, I find this error message hard to understand.  Maybe "detected invalid revoke block ..."?
+>
+>> +				       next_log_block);
+>> +				err = -EFSBADCRC;
+>> +				brelse(bh);
+>> +				goto failed;
+>> +			}
+>> +
+>> 			/* If we aren't in the REVOKE pass, then we can
+>> 			 * just skip over this block. */
+>> 			if (pass != PASS_REVOKE) {
+>> --
+>> 2.31.1
+>>
+>
+> Cheers, Andreas
+>
+>
+>
+>
+>
 
