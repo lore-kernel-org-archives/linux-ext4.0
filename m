@@ -1,94 +1,94 @@
-Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5537B13CFAD;
-	Mon,  6 May 2024 14:18:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CCF9D1534FC;
+	Mon,  6 May 2024 14:42:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1715005112; cv=none; b=VKArqGe++OAbXH8ZmC7Umr/0hOY43idfKUq/dmE7cICzUvZOARiMK78Tyc5iZn+APm+UQEk2K6sQelt9sBM5TmYTIgEQssRkyOyITBw5mi396QC65KrkFoOpKi3iD6nfWRgzP3jFwcUvHmTW2hdawfZDeFiOkqR2ntQ7u9viuTM=
+	t=1715006530; cv=none; b=h7liOcoCC0xgevAU1HID1d144WkmaYvXZFoD62LrfyhuR9GgVdLBlyYAEMGJv20/ald5NJOSv7o+qdNumIELvSyDZ84Aqk6HS5fa0rjJJShb1zDBNkeMKQRo3On1nau+Pk33cSbu6+AQJgNycdDoG2i9fOsegkbbDjhl7jnQ8rE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1715005112; c=relaxed/simple;
-	bh=Zm86qt6RdF+YDOSKq5gre7uYNIr5q4CDZPa9kGDuJIQ=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=G1X106iIrK501kR8bEB17ktDlskLRMPoHkRojYh49zftV6PKG2dhSNd3Huq23PQ0wun2mSNMoVqnHja47Xr9l0BzMTD26qpWex3xTcsGsYX/jq7VHyERWAsFDGFMi/M3z30iuv5jCWtYNNr7Vy6/XWfz2jxbW4VeWyKcAxQdOaM=
+	s=arc-20240116; t=1715006530; c=relaxed/simple;
+	bh=mpA6pGIU8VJt7O65eli8d//jyThHUXVd66pNKG1SZn8=;
+	h=Subject:To:Cc:References:From:Message-ID:Date:MIME-Version:
+	 In-Reply-To:Content-Type; b=T3f2ZTZaykMe1vKoZgUlWEAyxoKdxAoZ7mlDKF1lYqjCQrXowGDhSq8d/u66ks4/P2UYidSsPRhNTsOU2UufqUg9V0/Ln5/me0rvdlHDFOEwOBQT7Ut8CO3wYqNN/80k6ednVu5Wa3n1fcoYvvZ6rx9KLn9fPR6LmSLvCa/zGqQ=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4VY3RD1Ljhz4f3n6g;
-	Mon,  6 May 2024 22:18:16 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id EA30B1A0568;
-	Mon,  6 May 2024 22:18:25 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.124.27])
-	by APP1 (Coremail) with SMTP id cCh0CgAH2RGu5jhmGgSzLw--.22965S9;
-	Mon, 06 May 2024 22:18:25 +0800 (CST)
-From: Kemeng Shi <shikemeng@huaweicloud.com>
-To: tytso@mit.edu,
-	jack@suse.com
-Cc: linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH 7/9] jbd2: remove dead equality check of j_commit_[sequence/request] in kjournald2
-Date: Mon,  6 May 2024 22:17:59 +0800
-Message-Id: <20240506141801.1165315-8-shikemeng@huaweicloud.com>
-X-Mailer: git-send-email 2.30.0
-In-Reply-To: <20240506141801.1165315-1-shikemeng@huaweicloud.com>
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4VY3yV2GLDz4f3lD4;
+	Mon,  6 May 2024 22:41:54 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.75])
+	by mail.maildlp.com (Postfix) with ESMTP id 11A181A058D;
+	Mon,  6 May 2024 22:42:04 +0800 (CST)
+Received: from [10.174.179.80] (unknown [10.174.179.80])
+	by APP2 (Coremail) with SMTP id Syh0CgC32w467Dhmz6nXMA--.56195S3;
+	Mon, 06 May 2024 22:42:03 +0800 (CST)
+Subject: Re: [PATCH 1/9] jbd2: avoid memleak in
+ jbd2_journal_write_metadata_buffer
+To: Kemeng Shi <shikemeng@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, tytso@mit.edu,
+ jack@suse.com
 References: <20240506141801.1165315-1-shikemeng@huaweicloud.com>
+ <20240506141801.1165315-2-shikemeng@huaweicloud.com>
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+Message-ID: <448062a9-43f8-c7ad-0b4d-ddf892713d9e@huaweicloud.com>
+Date: Mon, 6 May 2024 22:42:02 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
+ Thunderbird/78.12.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgAH2RGu5jhmGgSzLw--.22965S9
-X-Coremail-Antispam: 1UD129KBjvdXoWrur4DKw4kZr17Cr4UCw1kAFb_yoWkKwb_Wr
-	WSyrnF9rWftr15Ja1kCw15ur1aqrn7Zrn5J3Z7ta1UKr1jyan2kFWkJay5Wwnru3yFqr45
-	A39akw48trnavjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUbVkYFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
-	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l82xGYIkIc2x26280x7IE14v26r126s
-	0DM28IrcIa0xkI8VCY1x0267AKxVW5JVCq3wA2ocxC64kIII0Yj41l84x0c7CEw4AK67xG
-	Y2AK021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14
-	v26F4UJVW0owA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AK
-	xVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ew
-	Av7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY
-	6r1j6r4UM4x0Y48IcxkI7VAKI48JMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r
-	1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CE
-	b7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1I6r4UMIIF0x
-	vE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAI
-	cVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2Kf
-	nxnUUI43ZEXa7IU13l1DUUUUU==
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
+In-Reply-To: <20240506141801.1165315-2-shikemeng@huaweicloud.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:Syh0CgC32w467Dhmz6nXMA--.56195S3
+X-Coremail-Antispam: 1UD129KBjvdXoWrKw43Zr18JrWrJFy7ZF1UJrb_yoW3tFg_WF
+	Z7Zrn7X398XFs7Aa1rCa47urn8Krs5Cr1kCa40gw17Gr15t3yrXFnrJw1DtF9ruan2gr4U
+	Cas29F48Kr9xJjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUb7kYFVCjjxCrM7AC8VAFwI0_Jr0_Gr1l1xkIjI8I6I8E6xAIw20E
+	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l8cAvFVAK0II2c7xJM28CjxkF64kEwV
+	A0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x02
+	67AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I
+	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
+	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
+	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lc7I2V7IY0VAS07AlzVAYIcxG8wCF04k20xvY0x0E
+	wIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E74
+	80Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0
+	I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Jr0_Gr1lIxAIcVCF04
+	k26cxKx2IYs7xG6rWUJVWrZr1UMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIE
+	c7CjxVAFwI0_Gr1j6F4UJbIYCTnIWIevJa73UjIFyTuYvjxUzsqWUUUUU
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-In kjournald2, two equality checks of j_commit_[sequence/request] are
-under the same j_state_lock. As j_commit_[sequence/request] are updated
-concurrently with j_state_lock held during runtime, the second check is
-unnecessary.
-The j_commit_sequence is only updated concurrently in
-jbd2_journal_commit_transaction with j_state_lock held.
-The j_commit_request is only updated concurrently in
-__jbd2_log_start_commit with j_state_lock held.
-Also see comment in struct journal_s about lock rule of j_commit_sequence
-and j_commit_request.
+On 2024/5/6 22:17, Kemeng Shi wrote:
+> The new_bh is from alloc_buffer_head, we should call free_buffer_head to
+> free it in error case.
 
-Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
----
- fs/jbd2/journal.c | 2 --
- 1 file changed, 2 deletions(-)
+Oh, yeah, this is a separate bh, so it should be freed explicitly, it
+looks good to me.
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 01e33b643e4d..e8f592fbd6e1 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -224,8 +224,6 @@ static int kjournald2(void *arg)
- 
- 		prepare_to_wait(&journal->j_wait_commit, &wait,
- 				TASK_INTERRUPTIBLE);
--		if (journal->j_commit_sequence != journal->j_commit_request)
--			should_sleep = 0;
- 		transaction = journal->j_running_transaction;
- 		if (transaction && time_after_eq(jiffies,
- 						transaction->t_expires))
--- 
-2.30.0
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+
+> 
+> Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+> ---
+>  fs/jbd2/journal.c | 1 +
+>  1 file changed, 1 insertion(+)
+> 
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index b6c114c11b97..207b24e12ce9 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -399,6 +399,7 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+>  		tmp = jbd2_alloc(bh_in->b_size, GFP_NOFS);
+>  		if (!tmp) {
+>  			brelse(new_bh);
+> +			free_buffer_head(new_bh);
+>  			return -ENOMEM;
+>  		}
+>  		spin_lock(&jh_in->b_state_lock);
+> 
 
