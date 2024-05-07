@@ -1,50 +1,49 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 33C9481ABF
-	for <linux-ext4@vger.kernel.org>; Tue,  7 May 2024 23:04:17 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D44012BF29
+	for <linux-ext4@vger.kernel.org>; Tue,  7 May 2024 23:04:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1715123058; cv=none; b=iOvdqUHHphLgSPTMz0SpyL0MRolbCucuR9UgETJNeVMQrNbcRJ9SCoFkyY73QqbNwNnXnFRFA4Si+wowbgnjlJvgJXofwkTVelPI1T9Fc3JyGtyK6Gnph3w0wa4SKKHKEeye6918M52cGczGTID54pQul9V4KUIPZWIxxpg2GiU=
+	t=1715123064; cv=none; b=ZXBRIYCDuIcSqQRRbP4M57HbV4uWPS13zoRP1LE09KmbxxBlf9qSKM9o5MZeERVivnytXdis4HncZDKhw9Pfu4m8z/TCbJroaXgw891zgixM/k1qkLlnUKFQVJHIykX+mCxBAE62n/QgQ9q7C3EUj6tt7VU8PsRn07PIoQtqb4Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1715123058; c=relaxed/simple;
-	bh=aRJ5eOavtxFoeQm1a6aVCBNYqrvRZt62HRm6bVv8Ny0=;
+	s=arc-20240116; t=1715123064; c=relaxed/simple;
+	bh=2M+KmZprJCApjJb20RXD0Lpgyd9aK69CB+zmwx+ItRM=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=fBtOrmEoFVu24eNWGNGJKH6cRdKKNYL7858F36OCFNZjg7DcaTZi11OdluAns4qkamgBQzen2n0IN22Ahw3Nc7/mh+JP5CRPebHCZ3zv/kwIYsuggODPwkukJNllV+WkRJ3+xfqyyLxKr9aSDs0QcbZsDxbPIHfnYkVlJjAIUIU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=cIynFjfY; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=GCb1RpnfLOLQ6D4mZwoh26B3jfajKX0Wz6hgzTL9C4LALSwpj68bElHq2T3YbLmWz9yvgnOPbOTfmxOo4x+67FleFPMu3YKF/TGmB3un9RJaPmpFiYrGz5aRdsa1YNRAv9oHReqGGfEjPRi2Pr3wvE2N2o6h6Xm8abM7yPhfMkA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=ew1Iw2JF; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="cIynFjfY"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="ew1Iw2JF"
 Received: from cwcc.thunk.org (pool-173-48-113-2.bstnma.fios.verizon.net [173.48.113.2])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 447N40sJ026165
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 447N40OQ026156
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Tue, 7 May 2024 19:04:02 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1715123043; bh=BrnPvZaXuhBO9HN4Y46xIKgyPSVHIWkzEKshZvIldG4=;
+	t=1715123045; bh=lzTTUd9PzF3vgkpDA0XZwUuNlJRtK6e/3MWs0LiCM48=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=cIynFjfYTyECIo2HKBZpMvLi82qvbCKbOalj4zG4fUoLOvq4FDkH4ZCO1Hj6LtBfr
-	 Rq4Hq+acRsdkwHoswLqPL155lqRDqYg1gB25kL76a734MAlduBecQuSsl89LLsHunK
-	 IAtei87uSWL/FyErzv47NmJo14L8nX+8rdLGyfvEy7HzlR9RdHDi/g+B7ABCSN9fbt
-	 2SoWVx9i/mM5CyFCT5rBiTLMAVMe8cLvxYiJPMbB4Ph7TKqykasZ0oE+kAAjTHZLQc
-	 dmEgGmTf6905q2Q36s/QKeSNN+4Oxv3UdCcfCQ7cqjE8S9Dez7cpnPI2yQGzwIj18A
-	 LPex+qo2jLv5w==
+	b=ew1Iw2JFeLEdQwrfvi0xcZfYttH5v4zB2JNSje15Xr1quqv8W/K61uknB6ucFWBPi
+	 2UyVlxfOCt0lFatngMXEdZYritpHCGkxBpLFC2MqvtX3PUIX1K2cvkqzC8kxUnH0gc
+	 O72eLjcdud/MJ/9sBe+PWXQoc09R4O5wtWC/ITgd2vwkV33pCEygYcSIPBGQTjqLaU
+	 g3KuctgPT6jFnm/km3HJGcPSGcggISlq9xq+qV0BLZpOGiB8CYJQvLtgnCBbQa0lSZ
+	 C+ZM8IFGTqoC2rvHYIpKbfBbO+mGWgepqYQJeYP5kFyxnVCdMK+Hb/UxcpTgmgyNBg
+	 HaYEauT4Amn5g==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id 0AE6B15C026F; Tue, 07 May 2024 19:04:00 -0400 (EDT)
+	id 0FDA715C02B8; Tue, 07 May 2024 19:04:00 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
-        Dan Carpenter <dan.carpenter@linaro.org>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        kernel-janitors@vger.kernel.org
-Subject: Re: [PATCH] ext4: fix potential unnitialized variable
-Date: Tue,  7 May 2024 19:03:50 -0400
-Message-ID: <171512302197.3602678.10166283423942285304.b4-ty@mit.edu>
+To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Kemeng Shi <shikemeng@huaweicloud.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, jack@suse.cz, ojaswin@linux.ibm.com,
+        ritesh.list@gmail.com
+Subject: Re: [PATCH v3 0/5] Minor improvements and cleanups to ext4 mballoc
+Date: Tue,  7 May 2024 19:03:52 -0400
+Message-ID: <171512302194.3602678.5608981738614745810.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.43.0
-In-Reply-To: <363a4673-0fb8-4adf-b4fb-90a499077276@moroto.mountain>
-References: <363a4673-0fb8-4adf-b4fb-90a499077276@moroto.mountain>
+In-Reply-To: <20240424061904.987525-1-shikemeng@huaweicloud.com>
+References: <20240424061904.987525-1-shikemeng@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -55,20 +54,33 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Wed, 17 Apr 2024 21:10:40 +0300, Dan Carpenter wrote:
-> Smatch complains "err" can be uninitialized in the caller.
+On Wed, 24 Apr 2024 14:18:59 +0800, Kemeng Shi wrote:
+> v2->v3:
+> -Coleect RVB from Jan
+> -Remove more unneeded "cr =" in comment
 > 
->     fs/ext4/indirect.c:349 ext4_alloc_branch()
->     error: uninitialized symbol 'err'.
-> 
-> Set the error to zero on the success path.
+> v1->v2:
+> -Collect RVB from Jan and Ojaswin
+> -Rewrite changelog of "ext4: call ext4_mb_mark_free_simple to free
+> continuous bits in found chunk"
+> -Remove "cr =" in comment of criteria name as criteria name has CR_
+> prfefix now.
+> -Only open codeing repeated checks in next_linear_group
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: fix potential unnitialized variable
-      commit: 3f4830abd236d0428e50451e1ecb62e14c365e9b
+[1/5] ext4: keep "prefetch_grp" and "nr" consistent
+      commit: 9c97c34a998a01bc0cf970b1685456bc2ea16b64
+[2/5] ext4: add test_mb_mark_used_cost to estimate cost of mb_mark_used
+      commit: d0b88624f81f272626c767f4b715f4b690fcbed2
+[3/5] ext4: call ext4_mb_mark_free_simple to free continuous bits in found chunk
+      commit: d1a3924e43a35860ed7edaeec7f901a1ade2ac37
+[4/5] ext4: use correct criteria name instead stale integer number in comment
+      commit: 2caffb6a277bb0f2a482a2eb824d012d5f45f4d0
+[5/5] ext4: open coding repeated check in next_linear_group
+      commit: da5704eef7037a5bc84a56519729d93d10a0e0a0
 
 Best regards,
 -- 
