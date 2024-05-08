@@ -1,17 +1,17 @@
-Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 631647E772;
+Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 6C3327E78E;
 	Wed,  8 May 2024 10:02:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1715162584; cv=none; b=Hmc2X+bG8Wm9SggWS0mwDMcrD+juZHRMUcsdQ7V04Ki/stiC0TBNf9saf+QGvWAICS7//qr99UGUMPeFB8Qrb95RVtd6TZ0u02sT8n+awZi7XPyI9FtOu731rdpQwTISnkgZdQgE+tDdJQD7VwabHyZDq1BQxZAnVLNX+Baw95o=
+	t=1715162584; cv=none; b=eiPFC9U5tRWfkG0y7IgWtc41IHRbRRvFsU4275jhQmqPEMdPSu2YyOLK7XeHko7a+b1luZ+wAAo87EfcZyGwsqn7PJz0A47yiy4PrqWKGi2vUMNWbyCkn3s1NhxldXh2sqlpMnuFr88K7CXL/kLiypXE7no1uCEEkWlrfFIIqCY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1715162584; c=relaxed/simple;
-	bh=oVu1M/z+Be6zJoonqEicwRg8jn1j0IbzUk3u5AE/er0=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=KMDRq2aC65pMcfNTtVBogiOwIs7u7BpxiTkLdvKR8hc/Oa5M6T5DLARW/CHxNVCnLbIavWKoNxu7Nk11zi7U3KZpswfEU0V8L16dBFSugOm78uQjKX2jTAX5MQerCzUmiTB5HRxNw9OAoZ9Tzg9KO+20MY9knBJo4AkA0x5F7/Y=
+	bh=V7OCY3lZb4xqdegTjDnSiOVOV4Z/UMmQylfaiUY4QDE=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=bsUi4+Oabr4eOoy5GrxHxRXC+qBrNkrNGhLsT2Y1X/Ikv/NyxCzTeSlFdZJQMuQ5tbUlObQOo+gXJ287YGa7f/lbIgJO4S3+G+/3uIfeha18B1wxGdnZt65/9yb8Vl1UdW3DCKnnia30xMMmeOxRyBjXYtzv8BtvSIQljBVzh0s=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-d85ff70000001748-59-663b4a3b5c02
+X-AuditID: a67dfc5b-d85ff70000001748-b9-663b4a3b016a
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -71,43 +71,43 @@ Cc: kernel_team@skhynix.com,
 	longman@redhat.com,
 	hdanton@sina.com,
 	her0gyugyu@gmail.com
-Subject: [PATCH v14 20/28] dept: Apply timeout consideration to hashed-waitqueue wait
-Date: Wed,  8 May 2024 18:47:17 +0900
-Message-Id: <20240508094726.35754-21-byungchul@sk.com>
+Subject: [PATCH v14 26/28] fs/jbd2: Use a weaker annotation in journal handling
+Date: Wed,  8 May 2024 18:47:23 +0900
+Message-Id: <20240508094726.35754-27-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20240508094726.35754-1-byungchul@sk.com>
 References: <20240508094726.35754-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSe0hTcRTH+/3u0+HqtgJvBhmLsCx7iNXpJRGVlyAqoogKdOU1R2oxXxkU
-	lrNMm5Rhmo9SZ2vMtekUqUxZmpZptmqUxRQd9hhODWviUqpp9M/hw+ec7/evwxKyeiqQVSYm
-	i6pERbyclpCSYf+K0M27N8eueWabCzeurQHPz2wSSs1GGmymagTG+osYXG2R8GHcjWDy1WsC
-	CgtsCCoGegmob+9D0KS/RMO7wdlg94zS0FGQS0Om1kzDm6EpDI5b+RiqLXug83olBqv3KwmF
-	LhpKCjOxb3zD4NUZGNBlLAWnvpiBqYG10NH3noKmTyvg9h0HDU+aOkhof+jE8O5xKQ19xj8U
-	dLa/IMF2Q0PBg5FKGobGdQToPKMMvLWWY6hR+4ou//hNwXONFcPlqloM9o+NCJqz+zFYjO9p
-	aPW4MdRZCgj4db8NgTNvmIGsa14GSi7mIcjNukWC2rEOJidK6W0bhVb3KCGo69KEpvFyUnhZ
-	yQuPinsZQd38iRHKLSlCnT5E0D5xYaFizEMJFsNVWrCM5TNCzrAdCyPd3YzwomiSFAbthXhf
-	4BHJlhgxXpkqqlZHREviujLN6Ewec/a7Q4Mz0ACVg/xYngvnb6r1xH9uuHd/xtNcMN/T453x
-	87nFfJ3my4wnOLeEr+reNc3zuIP8qK2FmWaSW8oPPOjDOYhlpdx6vqtL/q8yiK+usc7U+Pn0
-	x68jaJpl3Dq+MbPYF5X4biZY3vGmBP8LLOCf6nvI60hajmYZkEyZmJqgUMaHr4pLT1SeXXXi
-	dIIF+X5Jd37q6EM0ZjvQgjgWyf2l1oBNsTJKkZqUntCCeJaQz5e2XdkQK5PGKNLPiarTUaqU
-	eDGpBS1kSXmANGw8LUbGnVQki6dE8Yyo+r/FrF9gBuL4w4bJYG1DY+uOsm+v8n+GRlU1eJcd
-	7x+KdrEROxc1owufGSo17bv7+Na7Kc7ONL3CdkwcrF25a1bRgQ9hv5ebIpvtMVqTIdhcFKYc
-	LNJ5Ip1fQsuW7Z2jqSwJ2d5JBkz4L6k6ZNzv8j7qXWBSB77OCjJr2QtGzJjU4dVKQk4mxSnW
-	hhCqJMVf/xghQ0cDAAA=
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0hTYRzGe99zdbQ6LKGDBsW6CEaWkfVPK6QP+RIYQUTRBRt2zJE3tjSN
-	LGublaWloJZZqNUSnZlTKvOCzlzespWjUqbkLZVMy5q1tIsafXn48Tzw+/TwlCKL8eDVUSck
-	TZQqQsnKaNmuAN0a/50BYet+tWyG9CvrwPntIg25pSYWbA+KEZgqzmEYaQyCt5OjCKZevKQg
-	O9OGIL+3m4IKaw+CmsLzLHQMLAC7c5yF5szLLOjulLLw6uM0BkdWBoZiczC0XivAUOcaoiF7
-	hIWb2To8E8MYXMYiDoxJK6GvMIeD6V5faO55w0DDrWYGarpWw43bDhaqa5ppsD7pw9DxNJeF
-	HtMfBlqtTTTY0lMZKBkrYOHjpJECo3Ocg9d1eRge6mdsyV9/M/A8tQ5D8t0yDPbOKgS1F99j
-	MJvesNDgHMVQbs6k4Of9RgR9aZ84MFxxcXDzXBqCy4YsGvQOP5j6kcsG+pOG0XGK6MtPkprJ
-	PJq0FIikMqebI/raLo7kmWNJeaE3uVM9gkn+hJMh5qJLLDFPZHAk5ZMdk7H2do40XZ+iyYA9
-	G+/2PCDbclSKUMdJmrXbjsjC23SlKCaNi//sSMVJqJdJQW68KGwQH927P8es4CW+e+eiZtld
-	WCaWp36Y6ylhVCbebd8xy4uEveK4zcLNMi2sFHtLenAK4nm5sFFsa1P+Uy4Vix/WzWncZurO
-	oTE0ywrBT6zS5XDXkCwPzStC7uqouEiVOsLPR3s8PCFKHe8TGh1pRjNvMSZOpz9B3zqCLEjg
-	kXK+3MYGhCkYVZw2IdKCRJ5SussbL2wKU8iPqhJOSZroEE1shKS1IE+eVi6W79wnHVEIx1Qn
-	pOOSFCNp/q+Yd/NIQh5VvnvOFyy5Gpgp5MukwEuLDNMbvZYPEfeDRY7vz7YNSsEtreHV1hAL
-	eAZ3fYlR7kpcf2jKK9Znf2WL5F2Ktvzy7x5cNjzctkczGGSoL1uVb/2RoXgQutVlus1FRr8o
-	0Z4+U5nYFR+b3H+9X1+v0D/eXrZi4nCTwXTWd2GIPX5ASWvDVb7elEar+gs90H2lKQMAAA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSfUxTZxSHfd97e+9tpeamknnHnJIaNcHAxMB2nEaNRn1jQjQxMUaN2sit
+	1EHFVlCMMyAVtXwEMYhAxYJYCCBoa/ymVkgZHwpViQMGRJgRG4E6tA0Vgms1/nPy5Dm/8/vr
+	cJTiliSM02iPijqtKlHJyGjZWEh55Ootq9TL31aycCFnOXg/naPB1FDHgKu+FkHd7QwMbudm
+	+Ns3imDqWRcFRYUuBOVDAxTcbhlE0Fh9moGXb+ZAt9fDQFthNgOZ1xoYeP5+GkP/pQIMtdY4
+	6MivwODwj9BQ5GagtCgTB8Y7DH5LDQuW9MUwXF3CwvRQNLQNvpJAY98yKC7rZ+BRYxsNLfeG
+	Mbx8YGJgsO6LBDpaWmlwXciVwI3xCgbe+ywUWLweFl44zBhuGgJFWR9nJPBXrgNDVuUtDN29
+	DxHYz73GYK17xUCzdxSDzVpIwecqJ4LhvDEWzuT4WSjNyEOQfeYSDYb+WJiaNDHrVpLmUQ9F
+	DLZjpNFnpkl7hUDulwywxGDvY4nZmkJs1RHk2iM3JuUTXgmx1pxniHWigCXGsW5Mxjs7WdJ6
+	eYomb7qL8LawXbLV8WKiJlXU/bJmvyzB//SHZN/s4yNdkI4+S41Iygl8jFBve4aMiPvKHcOn
+	gprhlwo9PX4qyKF8uGDLfSsJMsWPyoTKzk3B+Fx+q1DyemNQ0/xiYbCrDAdZzv8qGOs/0N/a
+	Fwq1Nx1fa6QB3zsyjoKs4GOFh5klrBHJAplJTpg0t6JvBz8KT6p76HwkN6NZNUih0aYmqTSJ
+	MVEJaVrN8agDh5OsKPBIlj+nd99DE67tTYjnkDJE7pj3u1ohUaXq05KakMBRylC58+xvaoU8
+	XpV2QtQd3qdLSRT1TegnjlbOk6/wHYtX8AdVR8U/RDFZ1H3fYk4alo4qZ2bmP2nfK2u+u9O9
+	dqHaEj2iTsm5k7rILi9op45cKY60texwnsruM4Ssi6tactez9MWCyIul/9wwhe+5ahrwLFu1
+	8vGJvKgus519+qG/dPJQ/gFpQ3JWlfvn0PXRLqMvanZTRwzTe7LWqSWHsss/zRTG+q5mnP93
+	e8SG68//O6u3K2l9gio6gtLpVf8DhlJlY0QDAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzXSf0zMcRgHcJ/P92eXs6/T9F0xdmOmlBrxEIYN35noP2Yzbvnmbq5wV1ET
+	5fLrKGIVV5FqV6tIV5vI0UpxlTp1SyWp1kpK19K1rho6m3+evfZ+nr3/elhCdp/yYlWRUaIm
+	UqGW0xJScjBY5xe8Pzg8YNy8DlJvB4Bj8gYJWaUlNFifFSMoqUjEMFy3Dz5PjSKY/dhCQEaa
+	FcGTvq8EVNT3IDAXXqGhbWAR2Bx2Gixpt2jQ5ZXS8GlkDkN3+j0MxaYQaLybi6HaOURCxjAN
+	mRk6PD++Y3AaixgwJqyG/kIDA3N9gWDpaaegNttCgbnLFx4+6qbhtdlCQn1lP4a2V1k09JT8
+	oaCx/gMJ1tRkCp6O5dIwMmUkwOiwM9BanYPhedJ827Vfvyl4n1yN4Vp+GQZbZxWCNzd6MZhK
+	2mmodYxiKDelETBTUIegP+UnA1dvOxnITExBcOtqOglJ3UEwO51F79wq1I7aCSGp/Lxgnsoh
+	hYZcXnhp+MoISW+6GCHHFC2UF/oIea+HsfBkwkEJpqKbtGCauMcI+p82LIw1NzPChwezpDBg
+	y8Ch3kcl206KalWMqFm/44RE6WxaenbK/cJQCySgGTc9Ylme28g39l/SIzeW5tbwHR1OwmUP
+	biVfnjxIuUxwoxI+v3mv63wJd4g39O5xxSS3mu9peYRdlnKbeP2zcdJlnlvBFz+v/lfjNp93
+	Do0hl2VcEF+lMzB3kSQHLShCHqrImAiFSh3krz2tjI1UXfAPOxNhQvOvYoyfS61Ek237ahDH
+	IvlCqZUODpdRihhtbEQN4llC7iGtu745XCY9qYiNEzVnjmui1aK2BnmzpNxTuv+weELGnVJE
+	iadF8ayo+b/FrJtXAtrrfn/JrkHlkQ1elQUjOt8HrcMDoRclg8oDmY5e8tW3vGm/c9KA3bIy
+	+/LFG3807dr+Xs6/rVEb/Ffe7IwOt21ZNb7uS9CkPezURb2lJdu9I9oxk35uVhr2Ln6Zcs2m
+	kMffJPEN7jsLiuQRa/WquMCYO/ZjT62e+t9dKS9CLweGNNfJSa1SEehDaLSKvyPMEcYmAwAA
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -115,28 +115,42 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-Now that CONFIG_DEPT_AGGRESSIVE_TIMEOUT_WAIT was introduced, apply the
-consideration to hashed-waitqueue wait, assuming an input 'ret' in
-___wait_var_event() macro is used as a timeout value.
+jbd2 journal handling code doesn't want jbd2_might_wait_for_commit()
+to be placed between start_this_handle() and stop_this_handle(). So it
+marks the region with rwsem_acquire_read() and rwsem_release().
+
+However, the annotation is too strong for that purpose. We don't have to
+use more than try lock annotation for that.
+
+rwsem_acquire_read() implies:
+
+   1. might be a waiter on contention of the lock.
+   2. enter to the critical section of the lock.
+
+All we need in here is to act 2, not 1. So trylock version of annotation
+is sufficient for that purpose. Now that dept partially relies on
+lockdep annotaions, dept interpets rwsem_acquire_read() as a potential
+wait and might report a deadlock by the wait. So replaced it with
+trylock version of annotation.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/wait_bit.h | 2 +-
+ fs/jbd2/transaction.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/wait_bit.h b/include/linux/wait_bit.h
-index fe89282c3e96..3ef450d9a7c5 100644
---- a/include/linux/wait_bit.h
-+++ b/include/linux/wait_bit.h
-@@ -247,7 +247,7 @@ extern wait_queue_head_t *__var_waitqueue(void *p);
- 	struct wait_bit_queue_entry __wbq_entry;			\
- 	long __ret = ret; /* explicit shadow */				\
- 									\
--	sdt_might_sleep_start(NULL);					\
-+	sdt_might_sleep_start_timeout(NULL, __ret);			\
- 	init_wait_var_entry(&__wbq_entry, var,				\
- 			    exclusive ? WQ_FLAG_EXCLUSIVE : 0);		\
- 	for (;;) {							\
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index cb0b8d6fc0c6..58261621da27 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -460,7 +460,7 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
+ 	read_unlock(&journal->j_state_lock);
+ 	current->journal_info = handle;
+ 
+-	rwsem_acquire_read(&journal->j_trans_commit_map, 0, 0, _THIS_IP_);
++	rwsem_acquire_read(&journal->j_trans_commit_map, 0, 1, _THIS_IP_);
+ 	jbd2_journal_free_transaction(new_transaction);
+ 	/*
+ 	 * Ensure that no allocations done while the transaction is open are
 -- 
 2.17.1
 
