@@ -1,28 +1,28 @@
 Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7F9FF364AA;
-	Wed,  8 May 2024 06:22:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 61A24537EF;
+	Wed,  8 May 2024 06:22:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1715149370; cv=none; b=C01oxeC1rrxdrlHg2G8Ogc5d6XbmbWaYFdrAodTu2yLtsvRMWra3pSW0eL73U/07uz/ePoypLjkGwqC6BXFVhpEAdhIno/uMXl0EE+8X4g0OAprhC5WnOoA+0ac+6FSGNBhlDIaYz0XX8U52ZZr2+G4AaYq1EhMFWdJ4gs51z1U=
+	t=1715149372; cv=none; b=WDltNWqp06LCCHhZ3l6JnlMIq1jSFgq4cnAZJ0UhewpbsfzWScRf3NionR7uolZmH/WNDcgByNzy2zMKNXuSJ7PrQtxGTUN46t0cnCoQ7qDdhOAKbmw75BuO8wQJFRhqdeDAVfo51LAGBw6sF2g2BiTLmQVpyj/0nB8R4gl9ZxI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1715149370; c=relaxed/simple;
-	bh=dP5FthENrhUxyypPohNrXlubPH9wSNs1z1EKZ1Ys6Oo=;
+	s=arc-20240116; t=1715149372; c=relaxed/simple;
+	bh=PmdnB6i4fEmZSr9ssaHJqvAaVMFZoMnoNNmu0bwRztI=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=khmKIIGHJd8z5GBOjovw0VU8nkBXnQ288d1/ZzbnHSusyq7XizgpPi2t2qGGulLZUzK9sJF0iELTEredkXhv58k+gz+AV5TQM3rm922KDJX7yO/KAJ+h5l00OBbCyyFfthKRc5JWX2ZJqxoyGh8VT68iyMlgD9iUWXbenmZnVmE=
+	 MIME-Version; b=WJIVbkAYhyiUPIXgSDaR+D6f8F8XHRWvmlXbd2kUQUbEBg1JKMsK6N65te/5m++5uOrc/ncQDHZcjdhNXIXOBxqw6MLXOg6QkolAixqf9faJyIMzzLz6W61LYHGMxwVsZHHan2gJK466P3+8S4YDO62nnQVf1MxVmL/v3PpJzRE=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4VZ4nL5NLjz4f3l7C;
-	Wed,  8 May 2024 14:22:30 +0800 (CST)
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4VZ4nP36xmz4f3l7B;
+	Wed,  8 May 2024 14:22:33 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 0D3941A017D;
-	Wed,  8 May 2024 14:22:39 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id B11571A0179;
+	Wed,  8 May 2024 14:22:41 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgAX6REbGjtm9_1NMA--.61952S6;
-	Wed, 08 May 2024 14:22:38 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgAX6REbGjtm9_1NMA--.61952S12;
+	Wed, 08 May 2024 14:22:41 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -35,9 +35,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [PATCH v3 02/10] ext4: check the extent status again before inserting delalloc block
-Date: Wed,  8 May 2024 14:12:12 +0800
-Message-Id: <20240508061220.967970-3-yi.zhang@huaweicloud.com>
+Subject: [PATCH v3 08/10] ext4: factor out check for whether a cluster is allocated
+Date: Wed,  8 May 2024 14:12:18 +0800
+Message-Id: <20240508061220.967970-9-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20240508061220.967970-1-yi.zhang@huaweicloud.com>
 References: <20240508061220.967970-1-yi.zhang@huaweicloud.com>
@@ -48,113 +48,107 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgAX6REbGjtm9_1NMA--.61952S6
-X-Coremail-Antispam: 1UD129KBjvJXoWxWryUAw4DtF15Ar4xWr1rZwb_yoW5Aw4UpF
-	9xCrn5Cr10gws7Gan3WF17Zr1rWw4rXrW7GFy3Kr1UZFy3JFySkF12va42va1fKrZ7JF4Y
-	qFWYqryUu3WUtrDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUBE14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
-	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
-	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
-	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
-	IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
-	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
-	xKxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v2
-	6r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2
-	Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_
-	Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMI
-	IF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUAGYLUUUUU
-	=
+X-CM-TRANSID:cCh0CgAX6REbGjtm9_1NMA--.61952S12
+X-Coremail-Antispam: 1UD129KBjvJXoW7urW7CF45JrWUJw1kAr1UWrg_yoW8trWxpr
+	ZxGF4rXr43Wr97WF4Sqw1DXF1Yga18trWUJrWa93W8Zr4fJFy5KF1qyF1rXFyrKrW8A3ZI
+	qFWUAryUCF4jka7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUPF14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
+	14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIx
+	kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAF
+	wI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJV
+	W8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjfUF18B
+	UUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-ext4_da_map_blocks looks up for any extent entry in the extent status
-tree (w/o i_data_sem) and then the looks up for any ondisk extent
-mapping (with i_data_sem in read mode).
+Factor out a common helper ext4_da_check_clu_allocated(), check whether
+the cluster containing a delalloc block to be added has been delayed or
+allocated, no logic changes.
 
-If it finds a hole in the extent status tree or if it couldn't find any
-entry at all, it then takes the i_data_sem in write mode to add a da
-entry into the extent status tree. This can actually race with page
-mkwrite & fallocate path.
-
-Note that this is ok between
-1. ext4 buffered-write path v/s ext4_page_mkwrite(), because of the
-   folio lock
-2. ext4 buffered write path v/s ext4 fallocate because of the inode
-   lock.
-
-But this can race between ext4_page_mkwrite() & ext4 fallocate path
-
-ext4_page_mkwrite()             ext4_fallocate()
- block_page_mkwrite()
-  ext4_da_map_blocks()
-   //find hole in extent status tree
-                                 ext4_alloc_file_blocks()
-                                  ext4_map_blocks()
-                                   //allocate block and unwritten extent
-   ext4_insert_delayed_block()
-    ext4_da_reserve_space()
-     //reserve one more block
-    ext4_es_insert_delayed_block()
-     //drop unwritten extent and add delayed extent by mistake
-
-Then, the delalloc extent is wrong until writeback and the extra
-reserved block can't be released any more and it triggers below warning:
-
- EXT4-fs (pmem2): Inode 13 (00000000bbbd4d23): i_reserved_data_blocks(1) not cleared!
-
-This patch fixes the problem by looking up extent status tree again
-while the i_data_sem is held in write mode. If it still can't find
-any entry, then we insert a new da entry into the extent status tree.
-
-Cc: stable@vger.kernel.org
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 21 +++++++++++++++++++++
- 1 file changed, 21 insertions(+)
+ fs/ext4/inode.c | 52 +++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 35 insertions(+), 17 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 6a41172c06e1..6114ca79f464 100644
+index 0c52969654ac..6e418d3f8e87 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1737,6 +1737,7 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
- 		if (ext4_es_is_hole(&es))
- 			goto add_delayed;
+@@ -1649,6 +1649,34 @@ static void ext4_print_free_blocks(struct inode *inode)
+ 	return;
+ }
  
-+found:
- 		/*
- 		 * Delayed extent could be allocated by fallocate.
- 		 * So we need to check it.
-@@ -1781,6 +1782,26 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
- 
- add_delayed:
- 	down_write(&EXT4_I(inode)->i_data_sem);
-+	/*
-+	 * Page fault path (ext4_page_mkwrite does not take i_rwsem)
-+	 * and fallocate path (no folio lock) can race. Make sure we
-+	 * lookup the extent status tree here again while i_data_sem
-+	 * is held in write mode, before inserting a new da entry in
-+	 * the extent status tree.
-+	 */
-+	if (ext4_es_lookup_extent(inode, iblock, NULL, &es)) {
-+		if (!ext4_es_is_hole(&es)) {
-+			up_write(&EXT4_I(inode)->i_data_sem);
-+			goto found;
-+		}
-+	} else if (!ext4_has_inline_data(inode)) {
-+		retval = ext4_map_query_blocks(NULL, inode, map);
-+		if (retval) {
-+			up_write(&EXT4_I(inode)->i_data_sem);
-+			return retval;
-+		}
-+	}
++/*
++ * Check whether the cluster containing lblk has been delayed or allocated,
++ * if not, it means we should reserve a cluster when add delalloc, return 1,
++ * otherwise return 0 or error code.
++ */
++static int ext4_da_check_clu_allocated(struct inode *inode, ext4_lblk_t lblk,
++				       bool *allocated)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	int ret;
 +
- 	retval = ext4_insert_delayed_block(inode, map->m_lblk);
- 	up_write(&EXT4_I(inode)->i_data_sem);
- 	if (retval)
++	*allocated = false;
++	if (ext4_es_scan_clu(inode, &ext4_es_is_delonly, lblk))
++		return 0;
++
++	if (ext4_es_scan_clu(inode, &ext4_es_is_mapped, lblk))
++		goto allocated;
++
++	ret = ext4_clu_mapped(inode, EXT4_B2C(sbi, lblk));
++	if (ret < 0)
++		return ret;
++	if (ret == 0)
++		return 1;
++allocated:
++	*allocated = true;
++	return 0;
++}
++
+ /*
+  * ext4_insert_delayed_block - adds a delayed block to the extents status
+  *                             tree, incrementing the reserved cluster/block
+@@ -1682,23 +1710,13 @@ static int ext4_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk)
+ 		if (ret != 0)   /* ENOSPC */
+ 			return ret;
+ 	} else {   /* bigalloc */
+-		if (!ext4_es_scan_clu(inode, &ext4_es_is_delonly, lblk)) {
+-			if (!ext4_es_scan_clu(inode,
+-					      &ext4_es_is_mapped, lblk)) {
+-				ret = ext4_clu_mapped(inode,
+-						      EXT4_B2C(sbi, lblk));
+-				if (ret < 0)
+-					return ret;
+-				if (ret == 0) {
+-					ret = ext4_da_reserve_space(inode, 1);
+-					if (ret != 0)   /* ENOSPC */
+-						return ret;
+-				} else {
+-					allocated = true;
+-				}
+-			} else {
+-				allocated = true;
+-			}
++		ret = ext4_da_check_clu_allocated(inode, lblk, &allocated);
++		if (ret < 0)
++			return ret;
++		if (ret > 0) {
++			ret = ext4_da_reserve_space(inode, 1);
++			if (ret != 0)   /* ENOSPC */
++				return ret;
+ 		}
+ 	}
+ 
 -- 
 2.39.2
 
