@@ -1,17 +1,17 @@
-Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 4FCF37E112;
+Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 5AD617E583;
 	Wed,  8 May 2024 10:02:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1715162583; cv=none; b=piBPXgSHtEjyhJvUogaIomr16okazvH8pUeBn0OiAdXG4UsGHPMJ8InArKE/7MUM/pvGj4WyaOA6d2PQl8Y1X7dr+r8Yz6mPlqa2u+Ir9NmAtQy4Z3lFa6+gV6Oxwdnv6Z2yuH1IiYLts+yZVKX9q2jOclGSMY2DfDG7c9w9BdQ=
+	t=1715162583; cv=none; b=H4msbsUj/yWsJ27lSl317ANff1TaM8JIB/BcA9EkvkwYpLEyLeAUCAYwcYvTW33aJ+cG2ACERGO0o7mBHNB8/rj0mBz0vYjuJicL6Wc1u4hLM7mOxg0W9M0CZQLDXNbdg40jhGv7ZCk2sC3r7C5QpoAa2OKYjoEszFLDc5ACuNI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1715162583; c=relaxed/simple;
-	bh=ZLEyWKfOkPzCqlC7ygciF1YyeE2AYJ+O8XuwZUZ166Y=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=jqnorG5oFJkvai4l7DUKGB92hAnYhDty5RHXA2jBVw8t75280aR4u2Tw+Na9jlehlyGNdLoul9pT9U1+fW1rKv7j2s2UpYzhy2EUvezvLMNLaaxvCJMN0U0tWCuzCnqZqZuAa037dXm1XDErsgBJjOeuPkXPNq6lOUsrvGhxTG8=
+	bh=TSPxdh3H9mjhA/wDLLlJUz6YZTY7hYg5ulgpaHBJJSM=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=gLbxsl5g0Gmj/uwaPqmU5X7PR7qPN7aA/aL8ymEKrUbFGL3aympNZE7UU3Fj6JPAcSN96k0da+uo9+VmdygAXHt2ZZH20SNheQSVxzw0KWtExcFOTkMMfQMQxKK9XzB+yQNTrnR0SHzYqMc2yvfHh5gvizIWsqVMbZT7b/qAMsA=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-d85ff70000001748-b5-663b4a39aaa4
+X-AuditID: a67dfc5b-d85ff70000001748-27-663b4a3ac0a8
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -71,44 +71,43 @@ Cc: kernel_team@skhynix.com,
 	longman@redhat.com,
 	hdanton@sina.com,
 	her0gyugyu@gmail.com
-Subject: [PATCH v14 10/28] dept: Record the latest one out of consecutive waits of the same class
-Date: Wed,  8 May 2024 18:47:07 +0900
-Message-Id: <20240508094726.35754-11-byungchul@sk.com>
+Subject: [PATCH v14 17/28] dept: Apply timeout consideration to wait_for_completion()/complete()
+Date: Wed,  8 May 2024 18:47:14 +0900
+Message-Id: <20240508094726.35754-18-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20240508094726.35754-1-byungchul@sk.com>
 References: <20240508094726.35754-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAz2Sf0iTeRzH+36f7/PD5eJhLXzS6LpRCUn2y+pz1kVwdPdQCEV/BN1ZjXxs
-	q/mDbWoWxcppZi0sUC+VUqu11LtsWqipLMOlSbpypJZZSZxnbQp6Gy2lbjPqnw8vPp/35/XX
-	m6MUd+lITptqlPSpap2KkRGZN7xyZfz2TcmrbwwSuHh+Nfj+yydQfruWAdffNQhqG05hGOv4
-	Dfr9HgTTT3opKClyIah8+4qCBucwglbbaQb63s0Dt2+Cga6icwzkXLvNwNMPMxiGii9hqLEn
-	QHdhFQZHYJRAyRgDZSU5ODj+xRCwVrNgNS2DEVspCzNv10DX8HMaWl/EwOUrQwy0tHYRcDaO
-	YOhrLmdguPYLDd3OTgKuixYa/hqvYuCD30qB1TfBwjNHBYY6c1CUN/WZhkcWB4a863cwuAfv
-	I2jLf4PBXvucgYc+D4Z6exEFn252IBi54GUh93yAhbJTFxCcyy0mYB5aD9Mfy5mtP4kPPROU
-	aK7PElv9FUR8XCWITaWvWNHc9oIVK+wZYr1thXitZQyLlZM+WrRXn2VE++QlVizwurE43tPD
-	ip1/ThPxnbsE74zcK9ucJOm0mZJ+1ZYDMk3h+16UPjb36JOmcWJCj8IKUBgn8HHCg+oR8p1v
-	DaAQM3y0MDAQoEKs5JcI9ZZ/6BBTvEcmXO/5NcTzebXQ3OifzRN+mXCz7SMOsZzfIJS/L6O/
-	On8Qauocs56w4H5wdHw2r+DXC/dzStkCJAtmvnBCv7kTfX1YKDywDZBCJK9Ac6qRQpuamaLW
-	6uJiNdmp2qOxB9NS7ChYJuuJmd8b0aRrdzviOaQKlzsi4pMVtDrTkJ3SjgSOUinlHWc2Jivk
-	SersY5I+bb8+QycZ2lEUR1QR8rX+rCQFf0htlI5IUrqk/3bFXFikCSUl5o0uNen2CbYE90vl
-	YWUP1/f66tozUcZ1WJm2eM/xaKfXMOmy/BEzFb7A8zRjW8uJe1JT7C8B1a4dVfDj3cF5cYs0
-	8RnKwMK6GNJLpxQ3rNrU7E3I6ks7mTlFtm1pT8+9UxnuzO8/2705IpD4syXQEWVSaJxFc+uM
-	xiUbl59UEYNGvWYFpTeo/weHkxoESAMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSb0zMcRzHfb+/f3fH8dtp/NSIG2MitRUfiuGBflj+PMDmiX7jl26uw11/
-	ZFi5K0m1zpyjQsqu1FHuPEi5pFacJlFLWjXyt1zXhuuPy58u8+Sz197v916PPhJCYab8JSpN
-	gqjVCGolLSNlOyL0K9dui4gNcRlWgDE7BDw/MkkorLTS0Ha3AoH1fhqGgaYoeD3iQuB9/oIA
-	s6kNwc13vQTcb+5D4Cg7S0P7h5nQ4RmmwWm6QIO+pJKGl18nMPRcvoihwhYNLXnFGOrHP5Ng
-	HqChwKzHk+cLhnFLOQOW1CXQX5bPwMS7UHD2dVLQeM1JgaM7CK5e76HhocNJQnN1P4b2mkIa
-	+qx/KGhpfkpCmzGHgjvuYhq+jlgIsHiGGXhVX4ShyjBpy/j+m4InOfUYMm7dw9DxphZBXeZb
-	DDZrJw2NHhcGu81EwM/SJgT9uUMMpGePM1CQlovgQvplEgw94eAdK6Q3ruMbXcMEb7An846R
-	IpJ/VszxD/J7Gd5Q183wRbZE3l62nC95OID5m988FG8rP0/ztm8XGT5rqAPz7tZWhn96xUvy
-	HzrMeFfAflnkIVGtShK1qzbEyOLyBl+gYwPTTzx/4CZT0RNpFpJKODaMe3y7C/mYZpdyXV3j
-	hI/92IWcPecT5WOCdcm4W61bfDybFbia6pGpPcku4UrrxrCP5exqrnCwgPrnDOQqquqnPNLJ
-	/M1n99RewYZztfp8Jg/JitC0cuSn0iTFCyp1eLDuSFyKRnUi+ODReBuafBfL6QljNfrRHtWA
-	WAlSzpC30RGxCkpI0qXENyBOQij95E3n1sQq5IeElJOi9ugBbaJa1DWgAAmpnCvftk+MUbCH
-	hQTxiCgeE7X/WyyR+qeiTOFMSfCfOKMqa8XonI+nvldR/frF1cmmqMzrbxfE722JDvKwlfcc
-	ge+HNq1d3x5ZWaP+ZXyU4K3NXe8ecuYELly2fdaVyLAM+aWQRaR72SxNZ9jMeZf25Fk97jMh
-	nTV9MVdDpW7T5tGtVfO9ErPn+LOdMbuz/e2lFr/B0AAvdyNISerihNDlhFYn/AXpFhxPKgMA
-	AA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSf0yMcRzHfb/Pz26Ox2E98ofcZkZE5sfH718bDxsamyGTZ3rSzXW4FNlM
+	6YQUYXXUaVfs3OpS7tJCccqlQyk10hJuDc1VpGuXzo8r889nr73fn8/rrw9LKMqoIFalOSJp
+	NaJaSctIWffo/NlLNi6NnpvkWwSX0ueCp/8sCYYSCw2Nt4sQWMqSMXQ51sObATeCofqXBOiz
+	GhHkf3xHQFltB4Iq8ykamjvHQIunlwZn1nkaUm6U0ND01YehPfsyhiLrJnieWYDBPviZBH0X
+	Dbn6FOwfXzAMmgoZMCVNA5c5hwHfxzBwdrymoKotBK7ltdNQWeUkobbChaH5voGGDssfCp7X
+	1pHQeCmDguKeAhq+DpgIMHl6GXhlN2Io1flFqT9+U/A0w44h9eYdDC1vHyB4ePYDBqvlNQ01
+	HjcGmzWLgJ+3HAhcF7oZOJ0+yEBu8gUE509nk6BrXwBDXgO9arFQ4+4lBJ3tqFA1YCSFZwW8
+	cC/nHSPoHrYxgtEaL9jMM4UblV1YyO/zUIK18BwtWPsuM0JadwsWehoaGKHu6hApdLbocXjQ
+	LtmyKEmtSpC0c1bslcVYXl1jDuXJjtnONeEk9IFNQwEsz83ncyy/6f/c/74ODTPNTedbWweJ
+	YZ7ABfO2jE/UMBOcW8bfbFg3zOO5vfy971kjOclN4085L+I0xLJybiHvKk/4p5zCF5XaRzQB
+	/vjt554RvYJbwD9IyWHSkMy/42V5d3069e9gEv/Y3EpmIrkRjSpECpUmIVZUqeeHxiRqVMdC
+	9x2MtSL/L5lO+CIqUF/jtmrEsUg5Wm4PXBKtoMSEuMTYasSzhHKC3HFmUbRCHiUmHpe0ByO1
+	8WoprhpNZklloHzewNEoBbdfPCIdkKRDkvZ/i9mAoCSk0PyKTy/Lvi4mh3fXepfdDfdmvrhO
+	FetWO9Z0NlzZ0X94zwaXV0wxVH5bG+HQTznT1Bm826QL5GvyxtoNBfrC1O3BmzfmRkw02qeW
+	hqxsnr7/if1iZPty8zjnlljfyaFHGQFLR9VP2rM7LGSr5eWGcHqW71lb+YzlU7XqxzuZ9Zov
+	SjIuRgybSWjjxL+bzZlHRwMAAA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSfUzMcRzHfb+/x47jt9PmNy3sLCyrGPGhhs3wlSmPs9lMN/3S0QN3lbLZ
+	4iqKo1ilB7lip9Uhd2ZIudU6nYeUWiU9uSHHqUnXpIbK/PPea+/39vrrzVOKXGYur46NlzSx
+	qmglK6NloUE6v7UhQZHLvo8oIfvCMnAPn6Oh6K6JhaY7FQhM909jcNZvgfYRF4KxV68pyMtp
+	QlDyvpuC+7YeBNVlZ1ho+TATWt2DLNhzzrOgu3GXheav4xi6ci9jqDBvhxdZpRiso/005DlZ
+	KMzT4Yn4jGHUWM6BMcUHHGUFHIy/Xw72njYG6q7ZGajuXAr5xV0sPKm202B76MDQ8riIhR7T
+	HwZe2BpoaMrWM3B7oJSFryNGCozuQQ7eWA0YKlMnbOk/fjPwTG/FkH7zHobWt1UIas71YTCb
+	2lioc7swWMw5FPy6VY/AcfEbB2kXRjkoPH0Rwfm0XBpSuwJh7GcRu2EtqXMNUiTVcoJUjxho
+	8rxUJI8KujmSWtPJEYM5gVjKfMmNJ05MSobcDDGXZ7DEPHSZI5nfWjEZaGzkSMPVMZp8aM3D
+	O7z2y4IjpGh1oqQJWBcuizK9yeeOFcuSLBnNOAX18ZnIgxeFleJwbwOaZFZYLHZ0jFKT7Cks
+	EC36T8wkU4JLJt5s3DzJs4Vw8dH3nKmeFnzEM/ZLOBPxvFxYJToeJP5TzhcrKq1TGo+J+m3/
+	wJReIQSKVboCLgvJDGhaOfJUxybGqNTRgf7ao1HJseok/0NxMWY08RbjqfHsh2i4ZUstEnik
+	nCFvYoMiFYwqUZscU4tEnlJ6yuvPro5UyCNUySclTdxBTUK0pK1FXjytnCMP2SeFK4TDqnjp
+	qCQdkzT/V8x7zE1BaZ0/zbvyXz7esyTrRxGUWBm7fvfODNfHbUnvHFt9AhI2zrRp7+yU7T1y
+	Pb6U7AgTnVWG8DW6AI8I58JF3jXTOv0zpvuejXkaur99aN6wV8Lek1dOBW+bo++7vt62aeUu
+	vy/Eftwz3Y/zTreFiAfiZ62Y79PvrHTMDqtrDi7sDVzlraS1UarlvpRGq/oLHG6EWikDAAA=
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -116,54 +115,44 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-The current code records all the waits for later use to track relation
-between waits and events in each context. However, since the same class
-is handled the same way, it'd be okay to record only one on behalf of
-the others if they all have the same class.
-
-Even though it's the ideal to search the whole history buffer for that,
-since it'd cost too high, alternatively, let's keep the latest one at
-least when the same class'ed waits consecutively appear.
+Now that CONFIG_DEPT_AGGRESSIVE_TIMEOUT_WAIT was introduced, apply the
+consideration to wait_for_completion()/complete().
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- kernel/dependency/dept.c | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
+ include/linux/completion.h | 4 ++--
+ kernel/sched/completion.c  | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index 8ca46ad98e10..2c0f30646652 100644
---- a/kernel/dependency/dept.c
-+++ b/kernel/dependency/dept.c
-@@ -1497,9 +1497,28 @@ static struct dept_wait_hist *new_hist(void)
- 	return wh;
+diff --git a/include/linux/completion.h b/include/linux/completion.h
+index bd2c207481d6..3200b741de28 100644
+--- a/include/linux/completion.h
++++ b/include/linux/completion.h
+@@ -41,9 +41,9 @@ do {							\
+  */
+ #define init_completion_map(x, m) init_completion(x)
+ 
+-static inline void complete_acquire(struct completion *x)
++static inline void complete_acquire(struct completion *x, long timeout)
+ {
+-	sdt_might_sleep_start(&x->dmap);
++	sdt_might_sleep_start_timeout(&x->dmap, timeout);
  }
  
-+static struct dept_wait_hist *last_hist(void)
-+{
-+	int pos_n = hist_pos_next();
-+	struct dept_wait_hist *wh_n = hist(pos_n);
-+
-+	/*
-+	 * This is the first try.
-+	 */
-+	if (!pos_n && !wh_n->wait)
-+		return NULL;
-+
-+	return hist(pos_n + DEPT_MAX_WAIT_HIST - 1);
-+}
-+
- static void add_hist(struct dept_wait *w, unsigned int wg, unsigned int ctxt_id)
+ static inline void complete_release(struct completion *x)
+diff --git a/kernel/sched/completion.c b/kernel/sched/completion.c
+index 3561ab533dd4..499b1fee9dc1 100644
+--- a/kernel/sched/completion.c
++++ b/kernel/sched/completion.c
+@@ -110,7 +110,7 @@ __wait_for_common(struct completion *x,
  {
--	struct dept_wait_hist *wh = new_hist();
-+	struct dept_wait_hist *wh;
-+
-+	wh = last_hist();
-+
-+	if (!wh || wh->wait->class != w->class || wh->ctxt_id != ctxt_id)
-+		wh = new_hist();
+ 	might_sleep();
  
- 	if (likely(wh->wait))
- 		put_wait(wh->wait);
+-	complete_acquire(x);
++	complete_acquire(x, timeout);
+ 
+ 	raw_spin_lock_irq(&x->wait.lock);
+ 	timeout = do_wait_for_common(x, action, timeout, state);
 -- 
 2.17.1
 
