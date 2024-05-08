@@ -1,17 +1,17 @@
 Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 4F1EF7E0F6;
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 597707E57C;
 	Wed,  8 May 2024 10:02:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1715162582; cv=none; b=Qj+pTILydwKp/Gl16jrnvJTMRTL3om5jW+kXrEEC6Krxs48Y9wb0682ogAi9lhbSJ5/SLWpMhSwTDKOQK2CRKIUgZeGFYXoERGeUEoVlFGI9L6+cHwO40X8VnXXJac/RgEOEQ+2391wzhBAHIgQkB9MO8cI5TGcUx1Bpj5mPw8c=
+	t=1715162582; cv=none; b=cJFHO0nJfDLJAgSzIWFbPGBmfLGwAMmn00+Tyq09YVCDOAhgbM1hvtLab98EJQ1+lMZV8dS2KgvbcydUB88SPNCYYEE32DRuIeYw8KPmopAIT8LJIs0Q59/jlhYsPdSu/VJyA2cToXcwp9vVqUrAIFZFklQ7SCLJOCycfoEIiPE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1715162582; c=relaxed/simple;
-	bh=aEiCt6+kTRnmniXgTYSuIBxuz0W3grKxPwQ3JxQgYb8=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=Wl0JEslWFUUyHlf/uvkjU3hrZukgihCyzWV7wQkAWlksw3laBnB7IppOSzyNlRcUYy+gOO19SKah49ZsXArHJXsHBfIdAFN182SEyiXR5jzkuYpvprF70A/uIomWGaSTE3yVkW2m9wdgFLT8BJIW70hAacX6cPGAX/ZV3KvIk+4=
+	bh=9o9SI0ONdb1WbiIWXrCSb5nX53qir4UGX5Gt0IQgpYM=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=O09DQzIyBfQnzDHXmskR6qPmZfE/oGKzirAsbzBOTj68voDNmB6NGTtSeim6JaKPkj6gAS9btekjvPGF1KMeBUMPpEqCSL4ejyYPD5JEcr2g8uopv6K74fNOvwTeX9Lu2KHTp2gvBhG75SEhhvNb8/YF41N2vCjTFzQn2/1rjE4=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-d85ff70000001748-25-663b4a38f818
+X-AuditID: a67dfc5b-d85ff70000001748-38-663b4a3a04a0
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -71,44 +71,43 @@ Cc: kernel_team@skhynix.com,
 	longman@redhat.com,
 	hdanton@sina.com,
 	her0gyugyu@gmail.com
-Subject: [PATCH v14 01/28] llist: Move llist_{head,node} definition to types.h
-Date: Wed,  8 May 2024 18:46:58 +0900
-Message-Id: <20240508094726.35754-2-byungchul@sk.com>
+Subject: [PATCH v14 18/28] dept: Apply timeout consideration to swait
+Date: Wed,  8 May 2024 18:47:15 +0900
+Message-Id: <20240508094726.35754-19-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20240508094726.35754-1-byungchul@sk.com>
 References: <20240508094726.35754-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzXSaUxTaRQGYL/v3t57qZZc68IVjUsTRyNRUUGPa/ilXzQak8lMJmPMTMde
-	pJFWLLIZjSgVFQEFZat1wmI6FapoazKCQAqmCCIISrAii6CiaCkGLLEWF+ry5+TJOW/eX4ej
-	5DZJMKfWHhR1WmW0gpHS0qEpRUth6/rI0P9tYZCVHgqe96doMJZbGGi9VobAcvMYhkHHFng8
-	5kLga35AQV5OK4Kivm4Kbtb3IKg2H2fg0YtAaPcMM9CYc4aBlJJyBtrejmPoys3GUGbdDk3n
-	ijHYva9oyBtk4GJeCp4YrzF4TaUsmJIXQr/ZwMJ43wpo7OmQQHVnCBT828VAVXUjDfW3+jE8
-	qjQy0GP5IoGm+gYaWrMyJHDVXczA2zETBSbPMAsP7YUYrusnilJHP0vgboYdQ+rlGxjan9xG
-	UHPqGQarpYOBOx4XBps1h4KP/zkQ9GcOsXAi3cvCxWOZCM6cyKVB3xUOvg9GJmItueMapoje
-	lkCqxwppcq9YIBWGbpboazpZUmiNIzbzElJSNYhJ0YhHQqylpxliHclmSdpQOybulhaWNOT7
-	aPKiPQ/vDP5TukElRqvjRd3yTX9Lox6a71Mxl6SJHe5KJhnVcGkogBP4MKH2Sib70xfyfZTf
-	DL9IcDq93zydny/YMgYkflO8Sypcbtns9zR+h1BR9RylIY6j+YXCy/Kp/rWMDxd69V0/KucJ
-	Zdft32oC+NXCk1du5Ld8InM7xfAj84UTmg2q754l1Jqd9DkkK0STSpFcrY3XKNXRYcuikrTq
-	xGV79musaOKVTEfGd91CI62/1iGeQ4opMnvQuki5RBkfm6SpQwJHKabLHCfXRMplKmXSIVG3
-	/y9dXLQYW4dmc7QiSLZyLEEl5/cqD4r7RDFG1P28Yi4gOBlFnDdWjFfOnWEJmdUJWxfPX/vU
-	uTNol75396rnkyImOxp58o9mjyHQcrp3QX7J4syzib+7HalHU3uY9w3NMNvk2zfncEn6aEub
-	puYlD3Ha3G2/zMha3/2m3JLQFHjJ+O7x+QM3vJ8KVFcGzmaH/qGOaZs5OvCbc+NU/CHRUeVa
-	8xEr6Ngo5YollC5W+RXFi365RgMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0hTcRjG+5+7q9lpCZ0sKhbR3QtkvaSEfShPUiJEVwJbdczhJdnMMohm
-	W2VeQsOpeQmbskxX1iaSprY0zWmZ5loXlku7mLQmlJPW7OKKvrz8eJ6H36eXwSVFZCAjT0kT
-	FCmyJCklIkQx4eq1EB0eH5JzfxEU5IaAeyKLgPJ6AwX9t+oQGBoyMRjrjIIXk04E3idPcSjW
-	9iO4NvwGh4auIQStNWcpGHzvD1b3OAUWbQ4F6qp6CgY+T2FgL7qMQZ1xB/Tm6zAwe0YJKB6j
-	oKxYjU2fTxh49LU06FXLYKSmlIap4VCwDNlI6KiwkND6ejVcuWqnoKXVQkDX3REMBpvLKRgy
-	/Caht6ubgP6CPBJuunQUfJ7U46B3j9PwzFyJwW3NtO38t18kPMozY3C++g4G1lf3ELRlvcXA
-	aLBR0OF2YmAyanH4cb0TwcilLzScy/XQUJZ5CUHOuSICNPYw8H4vpyI38h3OcZzXmE7wrZOV
-	BN+j4/im0jc0r2l7TfOVxuO8qWYVX9UyhvHXvrpJ3lh7keKNXy/TfPYXK8a7+vpovrvES/Dv
-	rcVY7IL9oogjQpI8XVAEbzooSnhW8xhPrRCdtLmaKRVqY7KRH8Ox67jCEi/uY4pdzr186fnL
-	AewSzpT3kfQxzjpFXHXfVh/PZWO4ppZ3KBsxDMEu4z7Uz/HFYjaMc2js9D/lYq7utvmvxo9d
-	z70adSEfS6Y399SldD4SVaIZtShAnpKeLJMnhQUpExMyUuQngw4fSzai6W/Rn54quIsmBqPa
-	Ecsg6SxxPxUeLyFl6cqM5HbEMbg0QNx5YUO8RHxElnFKUByLUxxPEpTtaAFDSOeJo/cIByXs
-	UVmakCgIqYLif4sxfoEq5PhocXitZueNi/sYQ2aIbehHWuMDrWvziUJ6VtSZiJXzB5/bujXb
-	Fg5En5WOrg6e6rZtz18T0afbGxl6SL0rsCk6TChDYlNu5MasM0F7vMOzK942bvGfmXq0RStt
-	XhHXOxGy0+GV/HYY9u2OTfMUjh/Q9TxU2Zf+VLVFPG/ojJ8tJZQJstBVuEIp+wPFHbV0KQMA
-	AA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSe0hTcRTH+93H715Hi8sMd5uFNYhKKS2sTg8iguoSFEVBLypHXnM0LeY7
+	qDTnKkszQ1emMR8tUUvdIiwfLcU32apRFmplZklOYbXV0rSt6J/Dh/M9389fhyVlFlrBqmPj
+	RW2sSqPEEkrimFm8dN22dVFhmbU0XL0cBq7vFygorK7CYLtXiaDqfhoBI61b4bV7FMHE02ck
+	GPJsCIo/9JNwv20AQWP5OQwvh2aB3TWOoTPvEob00moMz79OEtCXn0tApXk7dOeUEGD1fKbA
+	MILhpiGd8I4vBHhMFQyYUhfCYHkBA5MflkPnwCsaGt+GwI1bfRgaGjspaKsbJODlo0IMA1XT
+	NHS3dVBgu5pFw92xEgxf3SYSTK5xBl5YjQTU6Lwi/bcpGtqzrAToy2oJsL+pR9B04T0B5qpX
+	GFpcowRYzHkk/LrTimAw28FAxmUPAzfTshFcysinQNe3EiZ+FuKNa4SW0XFS0FmShEa3kRK6
+	SnjhYUE/I+ia3jKC0ZwgWMqDhdKGEUIodrpowVxxEQtmZy4jZDrshDDW08MIHdcnKGHIbiB2
+	Kg5I1keKGnWiqA3dECGJrh5KQye/4WRDaxmdirroTMSyPBfOX7txNhP5/cWxB0+wjzG3iO/t
+	9ZA+ns3N5y1Zw7SPSW5Uwpf1bPGxP7eZ1/82Mz6muIV83zk98iml3CrecS3inzKIr6yx/tX4
+	eddvPo8hH8u4lXx9eoG3KvHe/GT5K7VW/K8wh39S3kvlIKkRzahAMnVsYoxKrQlfFp0Sq05e
+	dvREjBl5X8l0evJgHXLadjcjjkXKmVKrfG2UjFYlxqXENCOeJZWzpa3nV0fJpJGqlFOi9sQR
+	bYJGjGtGgSyllEtXuJMiZdwxVbx4XBRPitr/KcH6KVLRXkd9x9S8oIC2jw1Yv2R6j/8h/x+F
+	zhXy/sXZ85uMcpOyPX5HSX5gfbdNHxo0d1I90qXYUBTY3rL/h9O9JOhU6D6m1L67Z+B8Z8Vh
+	9sz06Zze5E8ft3Wr3w3f3sVq1mp+p4QpXeGVAUUBLlnHguE6T35Lul2hk2fUhuUGhmyaeqyk
+	4qJVy4NJbZzqD+MpKRhGAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0hTcRjG+5/L/xxHi8MUOtWHaiCB3RRcvWS3L9VBSkqiO+SqY47mkq0s
+	I0GbmrmMVHRqs7y1RC3rWGHqbDm2UslWmllMM5FM8tJtpmkXV/Tl5cfzPPw+vSypyKPnsxrd
+	CVGvU2uVWEbJIsKMy9eEh0UHf24LgqyLweD9lk6BpaYag/tWFYLqu8kEDDm3wKvxYQRTT5+R
+	YM51Iyh510PCXVcvAlvFOQwdA3Og0zuGoSXXhMFYVoPh+cdpAjx52QRUSdug7XIpAfbJQQrM
+	QxiumI3EzPlAwKS1kgFrUiD0VxQyMP0uBFp6u2hwFLXQYHuzFAquejA02loocNX1E9BRb8HQ
+	W/2bhjbXEwrcWZk03BwtxfBx3EqC1TvGwAt7MQG3U2ZsaV9/0fA4005AWvkdAjpfNyBoSu8j
+	QKruwuDwDhNQK+WS8OOGE0H/pREGUi9OMnAl+RICU2oeBSkeFUxNWPDGNYJjeIwUUmpPCbbx
+	YkpoLeWFB4U9jJDS9IYRiqWTQm1FkFDWOEQIJV+8tCBVXsCC9CWbETJGOglhtL2dEZ7kT1HC
+	QKeZ2L5gn2ztEVGriRf1K9dHyWJqBpJR3Fd82uwsp5NQK52B/FieC+VH7z/CPsbcEr67e5L0
+	cQC3iK/NfP93Q3LDMr68fbOP/blNfNpPifExxQXynnNpKAOxrJxbxY/kRP1TLuSrbtv/avxm
+	4teDo8jHCk7FNxgLmctIVoxmVaIAjS4+Vq3RqlYYjsUk6DSnVxw+HiuhmW+xJk5n1aFvHVua
+	Ecci5Wy5G4dFK2h1vCEhthnxLKkMkDvPr45WyI+oE86I+uMH9Se1oqEZLWAp5Vx5+G4xSsEd
+	VZ8Qj4linKj/3xKs3/wkZCpIDPsRGnjPPhBRsa13YiXvGryefqNn3lmrbjq7qwjfi4vsa6xL
+	3aXdsde8zHHIKFetY6XDiSGefJO79KV8/8YRJyN2601NZVmK+ri94d8jI8/WG3YfKLu2s+Ch
+	a09AnmUhMvjbcuasXvZ2bkFrvkq2uGhig8nhb9na9/RTfbCSMsSoQ4JIvUH9ByryI5cpAwAA
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -116,54 +115,28 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-llist_head and llist_node can be used by very primitives. For example,
-Dept for tracking dependency uses llist things in its header. To avoid
-header dependency, move those to types.h.
+Now that CONFIG_DEPT_AGGRESSIVE_TIMEOUT_WAIT was introduced, apply the
+consideration to swait, assuming an input 'ret' in ___swait_event()
+macro is used as a timeout value.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/llist.h | 8 --------
- include/linux/types.h | 8 ++++++++
- 2 files changed, 8 insertions(+), 8 deletions(-)
+ include/linux/swait.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/llist.h b/include/linux/llist.h
-index 2c982ff7475a..3ac071857612 100644
---- a/include/linux/llist.h
-+++ b/include/linux/llist.h
-@@ -53,14 +53,6 @@
- #include <linux/stddef.h>
- #include <linux/types.h>
- 
--struct llist_head {
--	struct llist_node *first;
--};
--
--struct llist_node {
--	struct llist_node *next;
--};
--
- #define LLIST_HEAD_INIT(name)	{ NULL }
- #define LLIST_HEAD(name)	struct llist_head name = LLIST_HEAD_INIT(name)
- 
-diff --git a/include/linux/types.h b/include/linux/types.h
-index 2bc8766ba20c..a1e4e046cfa5 100644
---- a/include/linux/types.h
-+++ b/include/linux/types.h
-@@ -202,6 +202,14 @@ struct hlist_node {
- 	struct hlist_node *next, **pprev;
- };
- 
-+struct llist_head {
-+	struct llist_node *first;
-+};
-+
-+struct llist_node {
-+	struct llist_node *next;
-+};
-+
- struct ustat {
- 	__kernel_daddr_t	f_tfree;
- #ifdef CONFIG_ARCH_32BIT_USTAT_F_TINODE
+diff --git a/include/linux/swait.h b/include/linux/swait.h
+index 277ac74f61c3..233acdf55e9b 100644
+--- a/include/linux/swait.h
++++ b/include/linux/swait.h
+@@ -162,7 +162,7 @@ extern void finish_swait(struct swait_queue_head *q, struct swait_queue *wait);
+ 	struct swait_queue __wait;					\
+ 	long __ret = ret;						\
+ 									\
+-	sdt_might_sleep_start(NULL);					\
++	sdt_might_sleep_start_timeout(NULL, __ret);			\
+ 	INIT_LIST_HEAD(&__wait.task_list);				\
+ 	for (;;) {							\
+ 		long __int = prepare_to_swait_event(&wq, &__wait, state);\
 -- 
 2.17.1
 
