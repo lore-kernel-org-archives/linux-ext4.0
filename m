@@ -1,220 +1,159 @@
-Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.14])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EFE3A1113
-	for <linux-ext4@vger.kernel.org>; Thu,  9 May 2024 00:29:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=192.198.163.14
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DDE8FD26D
+	for <linux-ext4@vger.kernel.org>; Thu,  9 May 2024 03:35:48 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1715214591; cv=none; b=Vg2dXFjQBKnC3pfJt1j/ZRIoNzFPOxQYMvSOV3UtLfasrpCLLchaxkozPlYLN0pZIF+oenh13IDMUUJaGFFRRG1X+bV1sBJbrBIKocHPbbAt4VBuHMZ/h2lcPd8PzSC0SxPqkgY07RuPzS6cDg2oZvzZn4ImHR0giJk2jaBZNA4=
+	t=1715225748; cv=none; b=q/Yii5IqdEzRk9vYQtwsEd79J+qkyE8jHqoP75gqrqCLOJLbdDG/PFy4BLHmHFpudVFw7DR3V8AtzcXaqf+jWkFi0WnBv1WsYoNjPOwfVHa5kE1F6HYnKh2/nopCBbhQAN0ErDR1JxfT5xHrGS6wseSqSLJl/zrk7RYPr2xUt1E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1715214591; c=relaxed/simple;
-	bh=X5hUiRIm05CZca5NkE8rT/NvAnjOa27dNxwEIhgzDLg=;
-	h=Date:From:To:Cc:Subject:Message-ID; b=Wkv1tInLgRgroPYlftg/L8oLgn+Yl3WY+4NCYRq8xhEzmS6QOFM2xwL9mGGnw3HMYFBUQrH5okaq+SdkGm84rrQFpWJwgu18XA31DKG7sGvCpXXmQVTuJxOCtTdbZkUrmP91YrGE+uuQXTbdO8ipY9Euk/e6DYstV7y3Jpl25i0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=Kwt/scO2; arc=none smtp.client-ip=192.198.163.14
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
+	s=arc-20240116; t=1715225748; c=relaxed/simple;
+	bh=HtmJRVvcl6V9zxl/Ou6jG0dWHGdjloz286t95PB9hI4=;
+	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=GVv34OYKhRNRRj62kjNTbGyESiYX1GK0A7d5GGgIliOur4RnAgQXsl1kP3UBAnN/i87mKRk+zkepTND7TfvUh7TWYIMdtasoKmjcP3vesBtKeoSDGahTol3KZPVcWii47e1VaRKta+v+vvbK5ORoFO8VrAYs3IGWRGr+X3OHkB0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=lGn2vwV7; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="Kwt/scO2"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1715214590; x=1746750590;
-  h=date:from:to:cc:subject:message-id;
-  bh=X5hUiRIm05CZca5NkE8rT/NvAnjOa27dNxwEIhgzDLg=;
-  b=Kwt/scO2gx/P9DurV6MTLPk2bevhbFmqIbLxw6jWjQspzGVw78zKBNXS
-   6dCO5HRukShEmILAev9kA2QIyhi+jme51mo7qvOcnsIGxyLbCfS9JvrJc
-   VonrqXuNFP91RosAle79PCHblAMQz/YE1M8eaEWPqFPz/+U1GBDEWoiwl
-   tXX+z4s6EmvdO3NH6WDyiFgjYc3LWIqKvk1uDLwF7NyGLWKANdy51YSFA
-   fXneQ/xsM3nY1JOli60aHATcgvkFWFmyiaV/Aez3m9bUpxN2I+Ri315Nx
-   +/J7mZtPrkpw5YysfqgT9y9pBVWDeYtiH2PLrjkRi7SKBwQksAGBQvNfj
-   w==;
-X-CSE-ConnectionGUID: ejLm/59FSv6yL4DsYycKJQ==
-X-CSE-MsgGUID: IGPved5VRiSkRAZ/kPULeQ==
-X-IronPort-AV: E=McAfee;i="6600,9927,11067"; a="11321553"
-X-IronPort-AV: E=Sophos;i="6.08,146,1712646000"; 
-   d="scan'208";a="11321553"
-Received: from fmviesa008.fm.intel.com ([10.60.135.148])
-  by fmvoesa108.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 08 May 2024 17:29:49 -0700
-X-CSE-ConnectionGUID: IZ4DOjDjQEq1dFL5kZB1aQ==
-X-CSE-MsgGUID: 0dtWOBQ8SDmtirGHozgtDw==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.08,146,1712646000"; 
-   d="scan'208";a="29003882"
-Received: from lkp-server01.sh.intel.com (HELO f8b243fe6e68) ([10.239.97.150])
-  by fmviesa008.fm.intel.com with ESMTP; 08 May 2024 17:29:49 -0700
-Received: from kbuild by f8b243fe6e68 with local (Exim 4.96)
-	(envelope-from <lkp@intel.com>)
-	id 1s4rfO-0004GL-16;
-	Thu, 09 May 2024 00:29:46 +0000
-Date: Thu, 09 May 2024 08:29:21 +0800
-From: kernel test robot <lkp@intel.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Subject: [tytso-ext4:dev] BUILD SUCCESS
- dc1c4663bc493f323d6b2f9dd55c044ea920dacf
-Message-ID: <202405090819.bei6uBvd-lkp@intel.com>
-User-Agent: s-nail v14.9.24
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="lGn2vwV7"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 736B1C2BD11
+	for <linux-ext4@vger.kernel.org>; Thu,  9 May 2024 03:35:48 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1715225748;
+	bh=HtmJRVvcl6V9zxl/Ou6jG0dWHGdjloz286t95PB9hI4=;
+	h=From:To:Subject:Date:In-Reply-To:References:From;
+	b=lGn2vwV7rx0rISkWLKS6YlOKwluiHtmQZcyBpD4iz83anjaTDzpVcQlfcgm83jEWy
+	 Irnuc+6JlpBVEl4z9kuiTAWPlNQh6WcAbCMctz2KYpA+UuYkY8e4IJSDLq8F84G2Qh
+	 ST/FFleJDkhBTxkeaGw/Q1rgxiYgjh3rTA1uRvfVeCO+rVkqmbWIwKAEKZZAPAIl5q
+	 apCO83n7qRQSRbed4qKOjzjef44M7RzwBPz64C1LSgpsqr7raCR84AwsbVsGvfhSJd
+	 5S3du/sUdbYRe2HGa8J/K9xv9T6b1bSxczJoBEFB2xhqjf1RmE7nHLLL3fzrJRVzod
+	 1ql96dw9imRpg==
+Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
+	id 5DB85C53B6F; Thu,  9 May 2024 03:35:48 +0000 (UTC)
+From: bugzilla-daemon@kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 218820] The empty file occupies incorrect blocks
+Date: Thu, 09 May 2024 03:35:48 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: tytso@mit.edu
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P3
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: 
+Message-ID: <bug-218820-13602-J5dupHZgBt@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-218820-13602@https.bugzilla.kernel.org/>
+References: <bug-218820-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
 
-tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-branch HEAD: dc1c4663bc493f323d6b2f9dd55c044ea920dacf  ext4: propagate errors from ext4_sb_bread() in ext4_xattr_block_cache_find()
+https://bugzilla.kernel.org/show_bug.cgi?id=3D218820
 
-elapsed time: 1469m
+--- Comment #1 from Theodore Tso (tytso@mit.edu) ---
+On Wed, May 08, 2024 at 01:33:56PM +0000, bugzilla-daemon@kernel.org wrote:
+>=20
+> The following is the triggering script:
+> ```
+> dd if=3D/dev/zero of=3Dext4-0.img bs=3D1M count=3D120
+> mkfs.ext4 ext4-0.img
+> g++ -static reproduce.c
+> losetup /dev/loop0 ext4-0.img
+> mkdir /root/mnt
+> ./a.out
+> stat /root/mnt/a
+> ```
+>=20
+> After run the script, you will get the following outputs:
+> ```
+>   File: /root/mnt/a
+>   Size: 0               Blocks: 82         IO Block: 1024   regular empty
+>   file
+> Device: 700h/1792d      Inode: 12          Links: 1
+> Access: (0755/-rwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)
+> Context: system_u:object_r:unlabeled_t:s0
+> Access: 2024-05-08 11:47:48.000000000 +0000
+> Modify: 2024-05-08 11:47:48.000000000 +0000
+> Change: 2024-05-08 11:47:48.000000000 +0000
+>  Birth: -
+> ```
 
-configs tested: 143
-configs skipped: 4
+Thanks for the bug report.  What the reproducer script is doing is
+opening a file for writing, and then remounting the file system to
+disable delayhed allocations.  It then writes 40k to the file, and
+then truncates the file, and close it.
 
-The following configs have been built successfully.
-More configs may be tested in the coming days.
+The reproducer script leaves the file system mounted; if you unmount
+the file system, the kernel will issue a warning message:
 
-tested configs:
-alpha                             allnoconfig   gcc  
-alpha                            allyesconfig   gcc  
-alpha                               defconfig   gcc  
-arc                              allmodconfig   gcc  
-arc                               allnoconfig   gcc  
-arc                              allyesconfig   gcc  
-arc                                 defconfig   gcc  
-arc                   randconfig-001-20240508   gcc  
-arc                   randconfig-002-20240508   gcc  
-arm                              allmodconfig   gcc  
-arm                               allnoconfig   clang
-arm                              allyesconfig   gcc  
-arm                         at91_dt_defconfig   clang
-arm                                 defconfig   clang
-arm                   milbeaut_m10v_defconfig   clang
-arm                          pxa168_defconfig   clang
-arm                   randconfig-001-20240508   gcc  
-arm64                            allmodconfig   clang
-arm64                             allnoconfig   gcc  
-arm64                               defconfig   gcc  
-arm64                 randconfig-001-20240508   gcc  
-arm64                 randconfig-003-20240508   gcc  
-csky                             allmodconfig   gcc  
-csky                              allnoconfig   gcc  
-csky                             allyesconfig   gcc  
-csky                                defconfig   gcc  
-csky                  randconfig-001-20240508   gcc  
-csky                  randconfig-002-20240508   gcc  
-hexagon                          allmodconfig   clang
-hexagon                           allnoconfig   clang
-hexagon                          allyesconfig   clang
-hexagon                             defconfig   clang
-i386                             allmodconfig   gcc  
-i386                              allnoconfig   gcc  
-i386                             allyesconfig   gcc  
-i386         buildonly-randconfig-001-20240508   clang
-i386         buildonly-randconfig-002-20240508   clang
-i386         buildonly-randconfig-005-20240508   clang
-i386                                defconfig   clang
-i386                  randconfig-002-20240508   clang
-i386                  randconfig-003-20240508   clang
-i386                  randconfig-005-20240508   clang
-i386                  randconfig-013-20240508   clang
-i386                  randconfig-014-20240508   clang
-i386                  randconfig-015-20240508   clang
-i386                  randconfig-016-20240508   clang
-loongarch                        allmodconfig   gcc  
-loongarch                         allnoconfig   gcc  
-loongarch                        allyesconfig   gcc  
-loongarch                           defconfig   gcc  
-loongarch             randconfig-001-20240508   gcc  
-loongarch             randconfig-002-20240508   gcc  
-m68k                             allmodconfig   gcc  
-m68k                              allnoconfig   gcc  
-m68k                             allyesconfig   gcc  
-m68k                                defconfig   gcc  
-microblaze                       allmodconfig   gcc  
-microblaze                        allnoconfig   gcc  
-microblaze                       allyesconfig   gcc  
-microblaze                          defconfig   gcc  
-mips                             allmodconfig   gcc  
-mips                              allnoconfig   gcc  
-mips                             allyesconfig   gcc  
-mips                           mtx1_defconfig   clang
-nios2                            allmodconfig   gcc  
-nios2                             allnoconfig   gcc  
-nios2                            allyesconfig   gcc  
-nios2                               defconfig   gcc  
-nios2                 randconfig-001-20240508   gcc  
-nios2                 randconfig-002-20240508   gcc  
-openrisc                         allmodconfig   gcc  
-openrisc                          allnoconfig   gcc  
-openrisc                         allyesconfig   gcc  
-openrisc                            defconfig   gcc  
-parisc                           allmodconfig   gcc  
-parisc                            allnoconfig   gcc  
-parisc                           allyesconfig   gcc  
-parisc                              defconfig   gcc  
-parisc                randconfig-001-20240508   gcc  
-parisc                randconfig-002-20240508   gcc  
-parisc64                            defconfig   gcc  
-powerpc                           allnoconfig   gcc  
-powerpc                          allyesconfig   clang
-powerpc                   lite5200b_defconfig   clang
-powerpc                       ppc64_defconfig   clang
-powerpc               randconfig-002-20240508   gcc  
-powerpc64             randconfig-001-20240508   gcc  
-powerpc64             randconfig-002-20240508   gcc  
-powerpc64             randconfig-003-20240508   gcc  
-riscv                            allmodconfig   clang
-riscv                             allnoconfig   gcc  
-riscv                            allyesconfig   clang
-riscv                               defconfig   clang
-riscv                 randconfig-001-20240508   gcc  
-riscv                 randconfig-002-20240508   gcc  
-s390                             allmodconfig   clang
-s390                              allnoconfig   clang
-s390                             allyesconfig   gcc  
-s390                                defconfig   clang
-s390                  randconfig-002-20240508   gcc  
-sh                               allmodconfig   gcc  
-sh                                allnoconfig   gcc  
-sh                               allyesconfig   gcc  
-sh                                  defconfig   gcc  
-sh                    randconfig-001-20240508   gcc  
-sh                    randconfig-002-20240508   gcc  
-sparc                            allmodconfig   gcc  
-sparc                             allnoconfig   gcc  
-sparc                            allyesconfig   gcc  
-sparc                               defconfig   gcc  
-sparc64                          allmodconfig   gcc  
-sparc64                          allyesconfig   gcc  
-sparc64                             defconfig   gcc  
-sparc64               randconfig-001-20240508   gcc  
-sparc64               randconfig-002-20240508   gcc  
-um                               allmodconfig   clang
-um                                allnoconfig   clang
-um                               allyesconfig   gcc  
-um                                  defconfig   clang
-um                             i386_defconfig   gcc  
-um                    randconfig-001-20240508   gcc  
-um                           x86_64_defconfig   clang
-x86_64                            allnoconfig   clang
-x86_64                           allyesconfig   clang
-x86_64       buildonly-randconfig-001-20240508   clang
-x86_64       buildonly-randconfig-002-20240508   clang
-x86_64       buildonly-randconfig-003-20240508   clang
-x86_64       buildonly-randconfig-004-20240508   clang
-x86_64       buildonly-randconfig-006-20240508   clang
-x86_64                              defconfig   gcc  
-x86_64                randconfig-002-20240508   clang
-x86_64                randconfig-003-20240508   clang
-x86_64                randconfig-011-20240508   clang
-x86_64                randconfig-012-20240508   clang
-x86_64                randconfig-015-20240508   clang
-x86_64                randconfig-073-20240508   clang
-x86_64                randconfig-076-20240508   clang
-x86_64                          rhel-8.3-rust   clang
-x86_64                               rhel-8.3   gcc  
-xtensa                            allnoconfig   gcc  
-xtensa                           allyesconfig   gcc  
-xtensa                randconfig-001-20240508   gcc  
-xtensa                randconfig-002-20240508   gcc  
+EXT4-fs (loop0): Inode 13 (0000000082f8ff6c): i_reserved_data_blocks (40) n=
+ot
+cleared!
 
--- 
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
+... and then if you examine the on-disk image, you'll see that the
+i_blocks field is correct.
+
+
+The root cause is that when the file is open, the address_operations
+which is instaniated is one which is designed for delayed allocation.
+So when 40k is written to the file, although we haven't allocated the
+space yet, we *will* allocate the space, so we update in-memory
+i_blocks to reflect the to-be-allocated disk space (although we don't
+update the on-disk i_blocks until the allocation actually takes place,
+so if we crash, the file system stays consistent).
+
+However, some of the *other* logic is done based on whether the
+delayed allocation flag is set in the struct super (as opposed to the
+address_operations in the struct inode at the time that file is
+opened).  This includes what happens when we truncate the file, where
+in the nodelalloc case, the in-memory and on-disk i_blocks are in
+sync, and when the blocks are delallocated, the i_blocks field is
+dropped.  But since the blocks weren't actually allocated because the
+file descriptor was in delalloc mode, there was nothing to
+delallocate, so the in-memory i_blocks stayed elevanted.
+
+There are a number ways of fixing this.  The simplest is to simply not
+allow the delayed allocation mode to be changed on a remount.  Since
+in the long term, once we fix some performance for some specialized
+use case which has caused people to want to disable delayed
+allocation, this is the one that probably makes the most sense.
+
+The two other approaches involve a lot more complexity.  The first
+alternate approach is to iterate over all open files, and resolve any
+pending delayed allocations, and then update the address_operations to
+use ext4_aops instead of ext4_da_aops, while avoiding the races
+involving writes happening while we are trying to do the remount.
+Yelch.
+
+The second alternate approach is to treat the delayed allocation
+status on a per-inode basis, with a per-inode flag indicating whether
+delayed allocation is active, so that the truncate logic stays
+consistent with the ext4_da_ops active on file descriptors associated
+with the file.  But this gets super messy since subsequent file opens
+on the inode also need to use the same delayed allocation mode until
+the last file descriptor associated with the inode is closed.  Double
+Yelch.
+
+So preventing the "mount -o remount,nodelalloc" in the reproducer
+program is how we'll address this issue.
+
+                                        - Ted
+
+--=20
+You may reply to this email to add a comment.
+
+You are receiving this mail because:
+You are watching the assignee of the bug.=
