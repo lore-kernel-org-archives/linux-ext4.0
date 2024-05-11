@@ -1,28 +1,28 @@
 Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D6D653362;
-	Sat, 11 May 2024 11:37:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CBC1154FAD;
+	Sat, 11 May 2024 11:37:08 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1715427430; cv=none; b=DhLxmwJpRtJImKVe7sx8tqMW9euQkV+QuBM41k09qOdO+U+0oz/kwo+Lv9RCO3sx6567jrhZxtNp2Om2gahOBYydUDP4MOEHRl9Q/+PvLGvccgSrp7PIKyWuD+xh3Ik7H+Jxgbhdo9cylC1Wi4lHaCainxLph/dbHkGj8267FTY=
+	t=1715427431; cv=none; b=KCBTq/w5pq8ICS67EVTCV46C4XIC4t9FmYDaLMu0rDrkB9JgxIjROq3V9GOGGa41o4K60fxMNjv/NlNPCCF2Q5eIShicfSuwEKXkFX6iVcLxLu2DE2QVtPeVP56ZWjLVWsGI0nqcCdmD/4rCW/o5EoG78+hTit+o+qev2htFok4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1715427430; c=relaxed/simple;
-	bh=r3kGCj6p4ccBjVSfW52HjxMspg48PzdX9qXYKJ4T0w8=;
+	s=arc-20240116; t=1715427431; c=relaxed/simple;
+	bh=jdmUxbzlHSWTfdmP9jgdk7cyaKCSoH9U3c70PqabuME=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=VB7QxM3HIcMXOXrL6qaiguuFjFJfRfd4Y6JZjhAxl7LQM6eAYSIa6ensEyrOo2ByCBjNtiq5Nn1yzNc616gLHjDeOM6lxgZKjpQMN7Xtyy2SnbL7UNN+Dhe6mRcdBe1OQ4onh8Q4Ge80lCmR4Q0xWq9wIg+6Hq8u8fUu4lDCaZY=
+	 MIME-Version; b=WPxgtcG65rkTZgCSl9cbOK7te3X97gIitPWoM26mMB7zeDXq16cPf7c2EmJmZhy0mFEUA19cpPIQnREnuWdVuvg1m87NsyA1QngrDK8Gcb9R8V7HoOmwupi3V80QsiyBDzQAVI8Gb/Xky/N/5VniXnkgF5oBbWeSEoQbSjNHKiI=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Vc3ck5Dmhz4f3lVm;
-	Sat, 11 May 2024 19:36:54 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Vc3cl4TNqz4f3lV7;
+	Sat, 11 May 2024 19:36:55 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id B3B421A01D2;
-	Sat, 11 May 2024 19:37:04 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 99A051A1072;
+	Sat, 11 May 2024 19:37:05 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgDHlxA+WD9mG0B4MQ--.22689S5;
-	Sat, 11 May 2024 19:37:04 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgDHlxA+WD9mG0B4MQ--.22689S7;
+	Sat, 11 May 2024 19:37:05 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -35,9 +35,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [PATCH v4 01/10] ext4: factor out a common helper to query extent map
-Date: Sat, 11 May 2024 19:26:10 +0800
-Message-Id: <20240511112619.3656450-2-yi.zhang@huaweicloud.com>
+Subject: [PATCH v4 03/10] ext4: warn if delalloc counters are not zero on inactive
+Date: Sat, 11 May 2024 19:26:12 +0800
+Message-Id: <20240511112619.3656450-4-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20240511112619.3656450-1-yi.zhang@huaweicloud.com>
 References: <20240511112619.3656450-1-yi.zhang@huaweicloud.com>
@@ -48,116 +48,65 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgDHlxA+WD9mG0B4MQ--.22689S5
-X-Coremail-Antispam: 1UD129KBjvJXoWxXr47GrW8uF4UWr1xtF1DWrg_yoW5WF43pr
-	W3CryrCr1UWws2gayftr1UZFyfK3W5trZFq397Wr15A3W5CrnayF15tFySqFyDKrZ7Xw4Y
-	qFWSkryrCw4rGrDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUBK14x267AKxVW5JVWrJwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jr4l82xGYIkIc2
-	x26xkF7I0E14v26r4j6ryUM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UM2
-	8EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AI
-	xVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20x
-	vE14v26r106r15McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xv
-	r2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8cxan2IY04
-	v7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_
-	Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x
-	0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8
-	JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIx
-	AIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7VUjLL07UUUUU=
+X-CM-TRANSID:cCh0CgDHlxA+WD9mG0B4MQ--.22689S7
+X-Coremail-Antispam: 1UD129KBjvJXoWxJr4UZFyDAFW7Kw4UXr4rGrg_yoW8XF47p3
+	srA3W8GF95WrykGan7Xw47Xr10ga1xKF48Gr4xWr1UZF98Ja4Sqr1UtFy5C3WjgrZ3Ar4F
+	qa4rKr17uFyUG37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUBE14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JrWl82xGYIkIc2
+	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
+	xKxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v2
+	6r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2
+	Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_
+	Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMI
+	IF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUCXdbUUUUU
 	=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Factor out a new common helper ext4_map_query_blocks() from the
-ext4_da_map_blocks(), it query and return the extent map status on the
-inode's extent path, no logic changes.
+The per-inode i_reserved_data_blocks count the reserved delalloc blocks
+in a regular file, it should be zero when destroying the file. The
+per-fs s_dirtyclusters_counter count all reserved delalloc blocks in a
+filesystem, it also should be zero when umounting the filesystem. Now we
+have only an error message if the i_reserved_data_blocks is not zero,
+which is unable to be simply captured, so add WARN_ON_ONCE to make it
+more visable.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 ---
- fs/ext4/inode.c | 57 +++++++++++++++++++++++++++----------------------
- 1 file changed, 32 insertions(+), 25 deletions(-)
+ fs/ext4/super.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 537803250ca9..6a41172c06e1 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -453,6 +453,35 @@ static void ext4_map_blocks_es_recheck(handle_t *handle,
- }
- #endif /* ES_AGGRESSIVE_TEST */
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 044135796f2b..440dd54eea25 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1343,6 +1343,9 @@ static void ext4_put_super(struct super_block *sb)
  
-+static int ext4_map_query_blocks(handle_t *handle, struct inode *inode,
-+				 struct ext4_map_blocks *map)
-+{
-+	unsigned int status;
-+	int retval;
+ 	ext4_group_desc_free(sbi);
+ 	ext4_flex_groups_free(sbi);
 +
-+	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-+		retval = ext4_ext_map_blocks(handle, inode, map, 0);
-+	else
-+		retval = ext4_ind_map_blocks(handle, inode, map, 0);
-+
-+	if (retval <= 0)
-+		return retval;
-+
-+	if (unlikely(retval != map->m_len)) {
-+		ext4_warning(inode->i_sb,
-+			     "ES len assertion failed for inode "
-+			     "%lu: retval %d != map->m_len %d",
-+			     inode->i_ino, retval, map->m_len);
-+		WARN_ON(1);
-+	}
-+
-+	status = map->m_flags & EXT4_MAP_UNWRITTEN ?
-+			EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
-+	ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
-+			      map->m_pblk, status);
-+	return retval;
-+}
-+
- /*
-  * The ext4_map_blocks() function tries to look up the requested blocks,
-  * and returns if the blocks are already mapped.
-@@ -1744,33 +1773,11 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
- 	down_read(&EXT4_I(inode)->i_data_sem);
- 	if (ext4_has_inline_data(inode))
- 		retval = 0;
--	else if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
--		retval = ext4_ext_map_blocks(NULL, inode, map, 0);
- 	else
--		retval = ext4_ind_map_blocks(NULL, inode, map, 0);
--	if (retval < 0) {
--		up_read(&EXT4_I(inode)->i_data_sem);
--		return retval;
--	}
--	if (retval > 0) {
--		unsigned int status;
--
--		if (unlikely(retval != map->m_len)) {
--			ext4_warning(inode->i_sb,
--				     "ES len assertion failed for inode "
--				     "%lu: retval %d != map->m_len %d",
--				     inode->i_ino, retval, map->m_len);
--			WARN_ON(1);
--		}
--
--		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
--				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
--		ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
--				      map->m_pblk, status);
--		up_read(&EXT4_I(inode)->i_data_sem);
--		return retval;
--	}
-+		retval = ext4_map_query_blocks(NULL, inode, map);
- 	up_read(&EXT4_I(inode)->i_data_sem);
-+	if (retval)
-+		return retval;
++	WARN_ON_ONCE(!ext4_forced_shutdown(sb) &&
++		     percpu_counter_sum(&sbi->s_dirtyclusters_counter));
+ 	ext4_percpu_param_destroy(sbi);
+ #ifdef CONFIG_QUOTA
+ 	for (int i = 0; i < EXT4_MAXQUOTAS; i++)
+@@ -1473,7 +1476,8 @@ static void ext4_destroy_inode(struct inode *inode)
+ 		dump_stack();
+ 	}
  
- add_delayed:
- 	down_write(&EXT4_I(inode)->i_data_sem);
+-	if (EXT4_I(inode)->i_reserved_data_blocks)
++	if (!ext4_forced_shutdown(inode->i_sb) &&
++	    WARN_ON_ONCE(EXT4_I(inode)->i_reserved_data_blocks))
+ 		ext4_msg(inode->i_sb, KERN_ERR,
+ 			 "Inode %lu (%p): i_reserved_data_blocks (%u) not cleared!",
+ 			 inode->i_ino, EXT4_I(inode),
 -- 
 2.39.2
 
