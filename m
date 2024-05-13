@@ -1,170 +1,127 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 28BE4153BE7;
-	Mon, 13 May 2024 13:41:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 23BE5153BDD;
+	Mon, 13 May 2024 14:17:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1715607702; cv=none; b=esfM9nBZ+wa+sC9hwaSykhE2PrisFCUkvBaSsvId+WmZc4g84HnwL/K1fQXefDlwtZx+0NmZOP2QJmKdyq573Bgk5g9fZb9AgpHjASsz5u6eaMRNolOfinDztbsoww8J6mRAXBEcrRhS87lfEKP9X6gmsf4Icay3JPxIcPpu2yI=
+	t=1715609867; cv=none; b=TGsuh8fqTvQAIKenNj+5iZbxJkU+1p3JYcnknBHDKTvm+/uHLo84hdTVxffGo7pJ85ncOBcUc6NnICQyOeZ+0o5hDG3t9GuT4xQueE4HvVkBTZn7/jcjS/alLKnAetOoHPNUwvfk/A4yMCBuo2RbxH2+PJawoa/0Hdo8YmYrMXY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1715607702; c=relaxed/simple;
-	bh=bnKv9hUuEE6isl5vUdapDAM5AvVUq4o+jPsROipumjY=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=JXeD5mTfizhX015lwB/VaQAQJI1+UzL1JLed9K4n1RJrcxJSVUj9soXXIPpp1gZNhKjBmCxp1AP3JWd09BHyGctdYQ7i5KOpMgdQUcBv+r4HWCZxnoDyA+C8OrfZVeyfOtlAzUyeTyYrZs3fWc5At54g2BVuuAjIZMDeNhpOtIc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=U0SzHXu5; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=7HE3OQMp; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=U0SzHXu5; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=7HE3OQMp; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="U0SzHXu5";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="7HE3OQMp";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="U0SzHXu5";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="7HE3OQMp"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 32E1434A54;
-	Mon, 13 May 2024 13:41:36 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1715607696; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=jv6058otnH+uK/D6TMYgyXy8L3PlzLOlJi3KPN9MW6o=;
-	b=U0SzHXu5ved92dklWliu0gYyGvo2cTWCquM9Y5M3it/6DiwO0i553RnYUqNGTL0YUas9Sp
-	sDnIemX53089ua98IqFMLRCcdp2W9SAUoP8od1L03jaJq2Gtc9S55o7uUaMR0iYmIielbg
-	exL6dH2IU1X8A3OyfshVIAd/9cjnkAs=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1715607696;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=jv6058otnH+uK/D6TMYgyXy8L3PlzLOlJi3KPN9MW6o=;
-	b=7HE3OQMpygvUyUhHq2kzt5qk9OJipVG1QL5pcyuj0by8rzEUcNv4KQLuijCvaIGnki+lvf
-	DPblRSs22o6rkNAA==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1715607696; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=jv6058otnH+uK/D6TMYgyXy8L3PlzLOlJi3KPN9MW6o=;
-	b=U0SzHXu5ved92dklWliu0gYyGvo2cTWCquM9Y5M3it/6DiwO0i553RnYUqNGTL0YUas9Sp
-	sDnIemX53089ua98IqFMLRCcdp2W9SAUoP8od1L03jaJq2Gtc9S55o7uUaMR0iYmIielbg
-	exL6dH2IU1X8A3OyfshVIAd/9cjnkAs=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1715607696;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=jv6058otnH+uK/D6TMYgyXy8L3PlzLOlJi3KPN9MW6o=;
-	b=7HE3OQMpygvUyUhHq2kzt5qk9OJipVG1QL5pcyuj0by8rzEUcNv4KQLuijCvaIGnki+lvf
-	DPblRSs22o6rkNAA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E7E0513A6F;
-	Mon, 13 May 2024 13:41:35 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id unAoOI8YQmZaDwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 13 May 2024 13:41:35 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 31CBAA08DA; Sun, 12 May 2024 13:06:35 +0200 (CEST)
-Date: Sun, 12 May 2024 13:06:35 +0200
-From: Jan Kara <jack@suse.cz>
-To: Kemeng Shi <shikemeng@huaweicloud.com>
-Cc: tytso@mit.edu, jack@suse.com, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 3/9] jbd2: remove unnedded "need_copy_out" in
- jbd2_journal_write_metadata_buffer
-Message-ID: <20240512110635.qqllcn2q4dfyvmzr@quack3>
-References: <20240506141801.1165315-1-shikemeng@huaweicloud.com>
- <20240506141801.1165315-4-shikemeng@huaweicloud.com>
+	s=arc-20240116; t=1715609867; c=relaxed/simple;
+	bh=ZMKJiPvWUMLG/15B8aJK121V4OU+vsa13K9Fm2xgN64=;
+	h=Subject:To:Cc:References:From:Message-ID:Date:MIME-Version:
+	 In-Reply-To:Content-Type; b=qzxyWuFoD63YMl9f5AwweYAlYgrT3sF+mqYKVXHdF9HKME1c7KUQ5B7NR1DSdplrcwBxP1TGfRx+lBqiR37QocwnJNVfmi98t2nI2kYiG4zd03m148oelC+pHcx/msyp88SuWWvRlxTVEmdNldiyGliVp15CwbV8aaMfL5qDd0c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4VdM57146Qz4f3jMH;
+	Mon, 13 May 2024 22:17:31 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.75])
+	by mail.maildlp.com (Postfix) with ESMTP id AF21F1A0568;
+	Mon, 13 May 2024 22:17:39 +0800 (CST)
+Received: from [10.174.179.80] (unknown [10.174.179.80])
+	by APP2 (Coremail) with SMTP id Syh0CgCnyw4BIUJmd_txMw--.55460S3;
+	Mon, 13 May 2024 22:17:39 +0800 (CST)
+Subject: Re: [PATCH v3 03/10] ext4: warn if delalloc counters are not zero on
+ inactive
+To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+ ritesh.list@gmail.com, yi.zhang@huawei.com, chengzhihao1@huawei.com,
+ yukuai3@huawei.com
+References: <20240508061220.967970-1-yi.zhang@huaweicloud.com>
+ <20240508061220.967970-4-yi.zhang@huaweicloud.com>
+ <20240512151038.wdg4g3evfvimr7ul@quack3>
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+Message-ID: <7d8e3e67-a246-2bfd-39ad-663d7d9d8eed@huaweicloud.com>
+Date: Mon, 13 May 2024 22:17:37 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
+ Thunderbird/78.12.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20240506141801.1165315-4-shikemeng@huaweicloud.com>
-X-Spam-Level: 
-X-Spamd-Result: default: False [-2.80 / 50.00];
-	BAYES_HAM(-3.00)[99.99%];
-	DATE_IN_PAST(1.00)[26];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FUZZY_BLOCKED(0.00)[rspamd.com];
-	FROM_HAS_DN(0.00)[];
-	RCPT_COUNT_FIVE(0.00)[5];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email,suse.cz:email]
-X-Spam-Score: -2.80
-X-Spam-Flag: NO
+In-Reply-To: <20240512151038.wdg4g3evfvimr7ul@quack3>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:Syh0CgCnyw4BIUJmd_txMw--.55460S3
+X-Coremail-Antispam: 1UD129KBjvJXoW7ZF1kXw4xWFWrJFW7Zr1DZFb_yoW8ur13pF
+	WkC3W8GF9Ygry8Ga1IqF47Xr1Fqa1xKF4rGrW8Wr1UZF9xGa4ftr17tFyYkF1j9rZxCw4F
+	qa4rWF17urWDJ37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvIb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
+	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7Mxk0xIA0c2IE
+	e2xFo4CEbIxvr21l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxV
+	Aqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q
+	6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6x
+	kF7I0E14v26r1j6r4UMIIF0xvE42xK8VAvwI8IcIk0rVWrZr1j6s0DMIIF0xvEx4A2jsIE
+	14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf
+	9x07UWE__UUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On Mon 06-05-24 22:17:55, Kemeng Shi wrote:
-> As we only need to copy out when we should do escape, need_copy_out
-> could be simply replaced by "do_escape".
+On 2024/5/12 23:10, Jan Kara wrote:
+> On Wed 08-05-24 14:12:13, Zhang Yi wrote:
+>> From: Zhang Yi <yi.zhang@huawei.com>
+>>
+>> The per-inode i_reserved_data_blocks count the reserved delalloc blocks
+>> in a regular file, it should be zero when destroying the file. The
+>> per-fs s_dirtyclusters_counter count all reserved delalloc blocks in a
+>> filesystem, it also should be zero when umounting the filesystem. Now we
+>> have only an error message if the i_reserved_data_blocks is not zero,
+>> which is unable to be simply captured, so add WARN_ON_ONCE to make it
+>> more visable.
+>>
+>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 > 
-> Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-
-Looks good to me. Feel free to add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  fs/jbd2/journal.c | 7 ++-----
->  1 file changed, 2 insertions(+), 5 deletions(-)
+> Well, maybe the warnings could be guarded by !(EXT4_SB(sb)->s_mount_state &
+> EXT4_ERROR_FS)? Because the warning isn't very interesting when the
+> filesystem was corrupted and if somebody runs with errors=continue we would
+> still possibly hit this warning although we don't really care...
 > 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 068031f35aea..9a35d0c5b38c 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -327,7 +327,6 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
->  				  struct buffer_head **bh_out,
->  				  sector_t blocknr)
->  {
-> -	int need_copy_out = 0;
->  	int done_copy_out = 0;
->  	int do_escape = 0;
->  	char *mapped_data;
-> @@ -382,16 +381,14 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
->  	/*
->  	 * Check for escaping
->  	 */
-> -	if (*((__be32 *)mapped_data) == cpu_to_be32(JBD2_MAGIC_NUMBER)) {
-> -		need_copy_out = 1;
-> +	if (*((__be32 *)mapped_data) == cpu_to_be32(JBD2_MAGIC_NUMBER))
->  		do_escape = 1;
-> -	}
->  	kunmap_local(mapped_data);
->  
->  	/*
->  	 * Do we need to do a data copy?
->  	 */
-> -	if (need_copy_out && !done_copy_out) {
-> +	if (do_escape && !done_copy_out) {
->  		char *tmp;
->  
->  		spin_unlock(&jh_in->b_state_lock);
-> -- 
-> 2.30.0
+
+Make sense, I missed the errors=continue mode.
+
+Thanks,
+Yi.
+
 > 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+>> ---
+>>  fs/ext4/super.c | 6 +++++-
+>>  1 file changed, 5 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+>> index 044135796f2b..440dd54eea25 100644
+>> --- a/fs/ext4/super.c
+>> +++ b/fs/ext4/super.c
+>> @@ -1343,6 +1343,9 @@ static void ext4_put_super(struct super_block *sb)
+>>  
+>>  	ext4_group_desc_free(sbi);
+>>  	ext4_flex_groups_free(sbi);
+>> +
+>> +	WARN_ON_ONCE(!ext4_forced_shutdown(sb) &&
+>> +		     percpu_counter_sum(&sbi->s_dirtyclusters_counter));
+>>  	ext4_percpu_param_destroy(sbi);
+>>  #ifdef CONFIG_QUOTA
+>>  	for (int i = 0; i < EXT4_MAXQUOTAS; i++)
+>> @@ -1473,7 +1476,8 @@ static void ext4_destroy_inode(struct inode *inode)
+>>  		dump_stack();
+>>  	}
+>>  
+>> -	if (EXT4_I(inode)->i_reserved_data_blocks)
+>> +	if (!ext4_forced_shutdown(inode->i_sb) &&
+>> +	    WARN_ON_ONCE(EXT4_I(inode)->i_reserved_data_blocks))
+>>  		ext4_msg(inode->i_sb, KERN_ERR,
+>>  			 "Inode %lu (%p): i_reserved_data_blocks (%u) not cleared!",
+>>  			 inode->i_ino, EXT4_I(inode),
+>> -- 
+>> 2.39.2
+>>
+
