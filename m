@@ -1,163 +1,138 @@
-Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (unknown [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 23CEF2031D;
-	Thu, 16 May 2024 07:40:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D3BFE76C76;
+	Thu, 16 May 2024 08:27:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1715845242; cv=none; b=AYmDI7tXpNotnY+ptYo3u4UagPcF/MGfsZKfNNZ+sZfmTR+bvixywqWymfDMoLU6T9P+RQ4e9UNxMfPbRtkiKwHkqxLuWAAfNXFOzoiKKV7ZvzmBY8ivgPwfocHV91PgsnoFPO3+93Z0m5vqf0J+U2nPfh6f4PYXI3+2MqSka5Y=
+	t=1715848055; cv=none; b=k6VBcxmthZa6n8HHxFU/5joIrZwcb04pXZ0vsSaB69CYP9m8rdLlxTBKIgEu5KpgIkEoG5NifCnrE0FbWimNC/1B8jF8VvhL4LpH9OmSvI1wtSvlmaFD2odvFqbu6lqVPDLh77i+ht1wREgACaM+U4lrz1Wq4VH1dELX7yKuTa0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1715845242; c=relaxed/simple;
-	bh=Qzq9lHoKYDCGofPPRE8CXWW/Db7FcpxSOiT5KWlK7Es=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=Lwy3fer/EE4pXbuTHdAU6/JS1IZ+OQJSbvFSv5oxnGjPcfhA0NlV3QYrPPR1aOcah33qyuFMd93EgKsmhaSXwqBFn3k36s1zzGcqqobXPN9TCq9OXsFiykUG1xMLfxtU+/KEsPq9MNRzwCXJ33/+IJ83Ho9Ldxs/3v4bWEmSXCc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	s=arc-20240116; t=1715848055; c=relaxed/simple;
+	bh=Fa3tCa+nHTX5GaUek5DQjejgVE5UyfDOFzTBnbAZZgQ=;
+	h=Subject:To:Cc:References:From:Message-ID:Date:MIME-Version:
+	 In-Reply-To:Content-Type; b=WYd1o5mteRp6hPuHUxqGHvKtTvmibBGabvja/ZMUscaNboOa1GEBO/2wazSZFvdK6MsI6FpFBNE7CKv6YnGzuJRD3OKIXda6L4nsTQXfMNIpDOXLye0lAoB4570oyWx/+c71BR/HEAlKygPT7WnFcj1W9WlrNRMiybkKZ/vJd1M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Vg27Y4kNcz4f3lfY;
-	Thu, 16 May 2024 15:40:25 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id D6D861A1068;
-	Thu, 16 May 2024 15:40:35 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgBXKBFtuEVmQuY4Mw--.31554S6;
-	Thu, 16 May 2024 15:40:35 +0800 (CST)
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4Vg39h3dg3z4f3jYN;
+	Thu, 16 May 2024 16:27:20 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.75])
+	by mail.maildlp.com (Postfix) with ESMTP id 381E41A10BC;
+	Thu, 16 May 2024 16:27:29 +0800 (CST)
+Received: from [10.174.179.80] (unknown [10.174.179.80])
+	by APP2 (Coremail) with SMTP id Syh0CgAnmAttw0VmcIZ6NA--.39916S3;
+	Thu, 16 May 2024 16:27:27 +0800 (CST)
+Subject: Re: [PATCH] ext4/jbd2: drop jbd2_transaction_committed()
+To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+ ritesh.list@gmail.com, yi.zhang@huawei.com, chengzhihao1@huawei.com,
+ yukuai3@huawei.com
+References: <20240513072119.2335346-1-yi.zhang@huaweicloud.com>
+ <20240515002513.yaglghza4i4ldmr5@quack3>
 From: Zhang Yi <yi.zhang@huaweicloud.com>
-To: linux-xfs@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	djwong@kernel.org,
-	hch@infradead.org,
-	brauner@kernel.org,
-	david@fromorbit.com,
-	chandanbabu@kernel.org,
-	jack@suse.cz,
-	yi.zhang@huawei.com,
-	yi.zhang@huaweicloud.com,
-	chengzhihao1@huawei.com,
-	yukuai3@huawei.com
-Subject: [PATCH v2 2/3] fsdax: pass blocksize to dax_truncate_page()
-Date: Thu, 16 May 2024 15:30:00 +0800
-Message-Id: <20240516073001.1066373-3-yi.zhang@huaweicloud.com>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20240516073001.1066373-1-yi.zhang@huaweicloud.com>
-References: <20240516073001.1066373-1-yi.zhang@huaweicloud.com>
+Message-ID: <f0eb115d-dd10-e156-9aed-65b7f479f008@huaweicloud.com>
+Date: Thu, 16 May 2024 16:27:25 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
+ Thunderbird/78.12.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgBXKBFtuEVmQuY4Mw--.31554S6
-X-Coremail-Antispam: 1UD129KBjvJXoWxuFyrKF15GF1kJw45JFyxXwb_yoW5tr48pF
-	1DGa15G397X34j9F1kWF1jvw15t3WkCF409ryxArs3Zr9Fqr1IyF18KF1YkF4UKr4xZ3yj
-	qFZ8K3y7Gr1rAFJanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUBE14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
-	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
-	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
-	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
-	IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
-	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
-	xKxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v2
-	6r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2
-	Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_
-	Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMI
-	IF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUAGYLUUUUU
-	=
+In-Reply-To: <20240515002513.yaglghza4i4ldmr5@quack3>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:Syh0CgAnmAttw0VmcIZ6NA--.39916S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxArWxCw4fAr1xXry8Jw47Arb_yoW5Aw43pF
+	W0k3W2gr4kZ34I9r40qa17ZFW0yws5Ja48XrsxXwsaga1UG3s7KrW7tFyavFyDtFs5Ww4U
+	XF4S9rn7Kryj937anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvab4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
+	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7Mxk0xIA0c2IE
+	e2xFo4CEbIxvr21l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxV
+	Aqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q
+	6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6x
+	kF7I0E14v26r1j6r4UMIIF0xvE42xK8VAvwI8IcIk0rVWrJr0_WFyUJwCI42IY6I8E87Iv
+	67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyT
+	uYvjxUrR6zUUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-From: Zhang Yi <yi.zhang@huawei.com>
+On 2024/5/15 8:25, Jan Kara wrote:
+> On Mon 13-05-24 15:21:19, Zhang Yi wrote:
+>> From: Zhang Yi <yi.zhang@huawei.com>
+>>
+>> jbd2_transaction_committed() is used to check whether a transaction with
+>> the given tid has already committed, it hold j_state_lock in read mode
+>> and check the tid of current running transaction and committing
+>> transaction, but holding the j_state_lock is expensive.
+>>
+>> We have already stored the sequence number of the most recently
+>> committed transaction in journal t->j_commit_sequence, we could do this
+>> check by comparing it with the given tid instead. If the given tid isn't
+>> smaller than j_commit_sequence, we can ensure that the given transaction
+>> has been committed. That way we could drop the expensive lock and
+>> achieve about 10% ~ 20% performance gains in concurrent DIOs on may
+>> virtual machine with 100G ramdisk.
+>>
+>> fio -filename=/mnt/foo -direct=1 -iodepth=10 -rw=$rw -ioengine=libaio \
+>>     -bs=4k -size=10G -numjobs=10 -runtime=60 -overwrite=1 -name=test \
+>>     -group_reporting
+>>
+>> Before:
+>>   overwrite       IOPS=88.2k, BW=344MiB/s
+>>   read            IOPS=95.7k, BW=374MiB/s
+>>   rand overwrite  IOPS=98.7k, BW=386MiB/s
+>>   randread        IOPS=102k, BW=397MiB/s
+>>
+>> After:
+>>   verwrite:       IOPS=105k, BW=410MiB/s
+>>   read:           IOPS=112k, BW=436MiB/s
+>>   rand overwrite: IOPS=104k, BW=404MiB/s
+>>   randread:       IOPS=111k, BW=432MiB/s
+>>
+>> CC: Dave Chinner <david@fromorbit.com>
+>> Suggested-by: Dave Chinner <david@fromorbit.com>
+>> Link: https://lore.kernel.org/linux-ext4/493ab4c5-505c-a351-eefa-7d2677cdf800@huaweicloud.com/T/#m6a14df5d085527a188c5a151191e87a3252dc4e2
+>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> 
+> I agree this is workable solution and the performance benefits are nice. But
+> I have some comments regarding the implementation:
+> 
+>> @@ -3199,8 +3199,8 @@ static bool ext4_inode_datasync_dirty(struct inode *inode)
+>>  	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
+>>  
+>>  	if (journal) {
+>> -		if (jbd2_transaction_committed(journal,
+>> -			EXT4_I(inode)->i_datasync_tid))
+>> +		if (tid_geq(journal->j_commit_sequence,
+>> +			    EXT4_I(inode)->i_datasync_tid))
+> 
+> Please leave the helper jbd2_transaction_committed(), just make the
+> implementation more efficient. 
 
-dax_truncate_page() always assumes the block size of the truncating
-inode is i_blocksize(), this is not always true for some filesystems,
-e.g. XFS does extent size alignment for realtime inodes. Drop this
-assumption and pass the block size for zeroing into dax_truncate_page(),
-allow filesystems to indicate the correct block size.
+Sure.
 
-Suggested-by: Dave Chinner <david@fromorbit.com>
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
----
- fs/dax.c            | 11 ++++++-----
- fs/ext2/inode.c     |  4 ++--
- fs/xfs/xfs_iomap.c  |  2 +-
- include/linux/dax.h |  4 ++--
- 4 files changed, 11 insertions(+), 10 deletions(-)
+> Also accessing j_commit_sequence without any
+> lock is theoretically problematic wrt compiler optimization. You should have
+> READ_ONCE() there and the places modifying j_commit_sequence need to use
+> WRITE_ONCE().
+> 
 
-diff --git a/fs/dax.c b/fs/dax.c
-index 423fc1607dfa..f672c9a663c1 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -1403,16 +1403,17 @@ int dax_zero_range(struct inode *inode, loff_t pos, loff_t len, bool *did_zero,
- }
- EXPORT_SYMBOL_GPL(dax_zero_range);
- 
--int dax_truncate_page(struct inode *inode, loff_t pos, bool *did_zero,
--		const struct iomap_ops *ops)
-+int dax_truncate_page(struct inode *inode, loff_t pos, unsigned int blocksize,
-+		bool *did_zero, const struct iomap_ops *ops)
- {
--	unsigned int blocksize = i_blocksize(inode);
--	unsigned int off = pos & (blocksize - 1);
-+	loff_t start = pos;
-+	unsigned int off = is_power_of_2(blocksize) ? (pos & (blocksize - 1)) :
-+			   do_div(pos, blocksize);
- 
- 	/* Block boundary? Nothing to do */
- 	if (!off)
- 		return 0;
--	return dax_zero_range(inode, pos, blocksize - off, did_zero, ops);
-+	return dax_zero_range(inode, start, blocksize - off, did_zero, ops);
- }
- EXPORT_SYMBOL_GPL(dax_truncate_page);
- 
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index f3d570a9302b..fbbd479f3c4e 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -1278,8 +1278,8 @@ static int ext2_setsize(struct inode *inode, loff_t newsize)
- 	inode_dio_wait(inode);
- 
- 	if (IS_DAX(inode))
--		error = dax_truncate_page(inode, newsize, NULL,
--					  &ext2_iomap_ops);
-+		error = dax_truncate_page(inode, newsize, i_blocksize(inode),
-+					  NULL, &ext2_iomap_ops);
- 	else
- 		error = block_truncate_page(inode->i_mapping,
- 				newsize, ext2_get_block);
-diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
-index 31ac07bb8425..4958cc3337bc 100644
---- a/fs/xfs/xfs_iomap.c
-+++ b/fs/xfs/xfs_iomap.c
-@@ -1470,7 +1470,7 @@ xfs_truncate_page(
- 	unsigned int		blocksize = i_blocksize(inode);
- 
- 	if (IS_DAX(inode))
--		return dax_truncate_page(inode, pos, did_zero,
-+		return dax_truncate_page(inode, pos, blocksize, did_zero,
- 					&xfs_dax_write_iomap_ops);
- 	return iomap_truncate_page(inode, pos, blocksize, did_zero,
- 				   &xfs_buffered_write_iomap_ops);
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index 9d3e3327af4c..4aa8ef7c8fd4 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -210,8 +210,8 @@ int dax_file_unshare(struct inode *inode, loff_t pos, loff_t len,
- 		const struct iomap_ops *ops);
- int dax_zero_range(struct inode *inode, loff_t pos, loff_t len, bool *did_zero,
- 		const struct iomap_ops *ops);
--int dax_truncate_page(struct inode *inode, loff_t pos, bool *did_zero,
--		const struct iomap_ops *ops);
-+int dax_truncate_page(struct inode *inode, loff_t pos, unsigned int blocksize,
-+		bool *did_zero, const struct iomap_ops *ops);
- 
- #if IS_ENABLED(CONFIG_DAX)
- int dax_read_lock(void);
--- 
-2.39.2
+Thanks for pointing this out, but I'm not sure if we have to need READ_ONCE()
+here. IIUC, if we add READ_ONCE(), we could make sure to get the latest
+j_commit_sequence, if not, there is a window (it might becomes larger) that
+we could get the old value and jbd2_transaction_committed() could return false
+even if the given transaction was just committed, but I think the window is
+always there, so it looks like it is not a big problem, is that right?
+
+Thanks,
+Yi.
 
