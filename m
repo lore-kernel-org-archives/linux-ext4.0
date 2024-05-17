@@ -1,27 +1,28 @@
 Received: from dggsgout11.his.huawei.com (unknown [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CA4FB3D97A;
-	Fri, 17 May 2024 12:50:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6D7C74EB36;
+	Fri, 17 May 2024 12:51:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1715950262; cv=none; b=e2u8Kc2vn5w3B3cDtQSTYLZnmn0zIuUb5ih3xuUEZTgdh04FUxGYigaYdQP5lIXP6jhCJ3OhSkJfrFzlYd+biPHNxd/iQVMFClDhj9Ka+Yb8lrNxwBm1Y2Pqm4U75N0Tb/oweFCp4rNnzmYdJ+Q11GBKYeoZ2Q6ibSHy9P7C+vQ=
+	t=1715950262; cv=none; b=Ovffk0LHY9qureBLh8zOEQM2dXTr5lHCj87PUo1gIOPR1BHlaNUDlovDcD2Q4RTnWCtc4j4yAgWx1UPk73NsBzaJuU8dokbDVXmTVAbshVSbu8UOCSnFc6KZZRnteH0GwLUx3xWr4Dy/0gdTvRR1PwXbbRWpQHeDATOWjwT6Ywc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1715950262; c=relaxed/simple;
-	bh=3EQCRuvxHsBDbcUTb197QF5lWUu3o/wXiE93fM+rLPA=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=iJohWIga3gGOkEXbROIVhgkCtFW1WXwHgXgygWNqT2csMdESnnLhEElWO4D/Pn56J61lknVfARv+8YjUP5yQGBwUEm8y3oPj0eJNmhG1ulq5cHpW2PYPl7tKaAPhr7rfVqfHhRQ95x7RPjI7YOG3UE7tdcQGlGUdKttKx2dIvX0=
+	bh=z5dbdQK1P7O99RM08Qo0pGpaYAbIH6tpnlYeWwUdZSA=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=dTmUswNRoPDiNX9pHK3vQP69/P1+oeqCBKKX+nw3wyy6rxpmQwKuRPqnGSUdPSGO9rUYHw1k765dfri4ctAXojSd7mVovdU0dF+BO0zBzuIb+q7jjp2HVZXXl/GZqbaMyUAn1ybfg+A+fHl8UZcoKU8DQkhNGdA2U94tdvsGP/4=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Vgmz83grjz4f3mJP;
-	Fri, 17 May 2024 20:50:44 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4VgmzH3LpFz4f3k6f;
+	Fri, 17 May 2024 20:50:51 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id C084C1A017F;
-	Fri, 17 May 2024 20:50:54 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 17ED71A017F;
+	Fri, 17 May 2024 20:50:57 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP1 (Coremail) with SMTP id cCh0CgBXKBGdUkdmdAmqMw--.14380S4;
-	Fri, 17 May 2024 20:50:52 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgBXKBGdUkdmdAmqMw--.14380S9;
+	Fri, 17 May 2024 20:50:56 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -34,10 +35,12 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [PATCH v5 00/10] ext4: support adding multi-delalloc blocks
-Date: Fri, 17 May 2024 20:39:55 +0800
-Message-Id: <20240517124005.347221-1-yi.zhang@huaweicloud.com>
+Subject: [PATCH v5 05/10] ext4: drop iblock parameter
+Date: Fri, 17 May 2024 20:40:00 +0800
+Message-Id: <20240517124005.347221-6-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20240517124005.347221-1-yi.zhang@huaweicloud.com>
+References: <20240517124005.347221-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -45,96 +48,92 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgBXKBGdUkdmdAmqMw--.14380S4
-X-Coremail-Antispam: 1UD129KBjvJXoWxCF4UXrWDXr4UZr47ur47twb_yoW5CF1fpF
-	WrCF15Jr47tr17Ka97Aws7GF4rW3Z3GFWUG34fXw1UuFWUAFyrXFsrKF1F9FWkXrZagF1Y
-	qF12yF18u3Wqk37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvY14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
-	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
-	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
-	2Ix0cI8IcVAFwI0_JrI_JrylYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
-	W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2
-	Y2ka0xkIwI1l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4
-	xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43
-	MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I
-	0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWrZr1j6s0DMIIF0xvEx4A2jsIE14v2
-	6r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0J
-	UZa9-UUUUU=
+X-CM-TRANSID:cCh0CgBXKBGdUkdmdAmqMw--.14380S9
+X-Coremail-Antispam: 1UD129KBjvJXoWxJFy7KF4UGr47WF47XrW5Wrg_yoW5Gw18p3
+	93CF1rGr4fuw109a1xtF17ZF1rKa1UtrW7Jryftr1Fka4kGF1xtF4DAF12ya4UKrWfXFn0
+	qF4Utr1Uuw4SyrDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUP214x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
+	14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIx
+	kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAF
+	wI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJV
+	W8JwCI42IY6I8E87Iv6xkF7I0E14v26r4UJVWxJrUvcSsGvfC2KfnxnUUI43ZEXa7VU17G
+	YJUUUUU==
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-Changes since v4:
- - In patch 3, switch to check EXT4_ERROR_FS instead of
-   ext4_forced_shutdown() to prevent warning on errors=continue mode as
-   Jan suggested.
- - In patch 8, rename ext4_da_check_clu_allocated() to
-   ext4_clu_alloc_state() and change the return value according to the
-   cluster allocation state as Jan suggested.
- - In patch 9, do some appropriate logic changes since
-   the ext4_clu_alloc_state() has been changed in patch 8, so I remove
-   the reviewed-by tag from Jan, please take a look again.
+From: Zhang Yi <yi.zhang@huawei.com>
 
-Changes since v3:
- - Fix two commit message grammatical issues in patch 2 and 4.
+The start block of the delalloc extent to be inserted is equal to
+map->m_lblk, just drop the duplicate iblock input parameter.
 
-Changes since v2:
- - Improve the commit message in patch 2,4,6 as Ritesh and Jan
-   suggested, makes the changes more clear.
- - Add patch 3, add a warning if the delalloc counters are still not
-   zero on inactive.
- - In patch 6, add a WARN in ext4_es_insert_delayed_extent(), strictly
-   requires the end_allocated parameter to be set to false if the
-   inserting extent belongs to one cluster.
- - In patch 9, modify the reserve blocks math formula as Jan suggested,
-   prevent the count going to be negative.
- - In patch 10, update the stale ext4_da_map_blocks() function comments.
-
-Hello!
-
-This patch series is the part 2 prepartory changes of the buffered IO
-iomap conversion, I picked them out from my buffered IO iomap conversion
-RFC series v3[1], add a fix for an issue found in current ext4 code, and
-also add bigalloc feature support. Please look the following patches for
-details.
-
-The first 3 patches fix an incorrect delalloc reserved blocks count
-issue and add a warning to make it easy to detect, the second 6 patches
-make ext4_insert_delayed_block() call path support inserting
-multi-delalloc blocks once a time, and the last patch makes
-ext4_da_map_blocks() buffer_head unaware, prepared for iomap.
-
-This patch set has been passed 'kvm-xfstests -g auto' tests, I hope it
-could be reviewed and merged first.
-
-[1] https://lore.kernel.org/linux-ext4/20240127015825.1608160-1-yi.zhang@huaweicloud.com/
-
-Thanks,
-Yi.
-
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 ---
-v2: https://lore.kernel.org/linux-ext4/20240410034203.2188357-1-yi.zhang@huaweicloud.com/
-v3: https://lore.kernel.org/linux-ext4/20240508061220.967970-1-yi.zhang@huaweicloud.com/
+ fs/ext4/inode.c | 15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
 
-Zhang Yi (10):
-  ext4: factor out a common helper to query extent map
-  ext4: check the extent status again before inserting delalloc block
-  ext4: warn if delalloc counters are not zero on inactive
-  ext4: trim delalloc extent
-  ext4: drop iblock parameter
-  ext4: make ext4_es_insert_delayed_block() insert multi-blocks
-  ext4: make ext4_da_reserve_space() reserve multi-clusters
-  ext4: factor out a helper to check the cluster allocation state
-  ext4: make ext4_insert_delayed_block() insert multi-blocks
-  ext4: make ext4_da_map_blocks() buffer_head unaware
-
- fs/ext4/extents_status.c    |  70 +++++++---
- fs/ext4/extents_status.h    |   5 +-
- fs/ext4/inode.c             | 250 +++++++++++++++++++++++-------------
- fs/ext4/super.c             |   6 +-
- include/trace/events/ext4.h |  26 ++--
- 5 files changed, 234 insertions(+), 123 deletions(-)
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index fb76016e2ab7..de157aebc306 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1712,8 +1712,7 @@ static int ext4_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk)
+  * time. This function looks up the requested blocks and sets the
+  * buffer delay bit under the protection of i_data_sem.
+  */
+-static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+-			      struct ext4_map_blocks *map,
++static int ext4_da_map_blocks(struct inode *inode, struct ext4_map_blocks *map,
+ 			      struct buffer_head *bh)
+ {
+ 	struct extent_status es;
+@@ -1733,8 +1732,8 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 		  (unsigned long) map->m_lblk);
+ 
+ 	/* Lookup extent status tree firstly */
+-	if (ext4_es_lookup_extent(inode, iblock, NULL, &es)) {
+-		retval = es.es_len - (iblock - es.es_lblk);
++	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
++		retval = es.es_len - (map->m_lblk - es.es_lblk);
+ 		if (retval > map->m_len)
+ 			retval = map->m_len;
+ 		map->m_len = retval;
+@@ -1754,7 +1753,7 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 			return 0;
+ 		}
+ 
+-		map->m_pblk = ext4_es_pblock(&es) + iblock - es.es_lblk;
++		map->m_pblk = ext4_es_pblock(&es) + map->m_lblk - es.es_lblk;
+ 		if (ext4_es_is_written(&es))
+ 			map->m_flags |= EXT4_MAP_MAPPED;
+ 		else if (ext4_es_is_unwritten(&es))
+@@ -1790,8 +1789,8 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 	 * is held in write mode, before inserting a new da entry in
+ 	 * the extent status tree.
+ 	 */
+-	if (ext4_es_lookup_extent(inode, iblock, NULL, &es)) {
+-		retval = es.es_len - (iblock - es.es_lblk);
++	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
++		retval = es.es_len - (map->m_lblk - es.es_lblk);
+ 		if (retval > map->m_len)
+ 			retval = map->m_len;
+ 		map->m_len = retval;
+@@ -1848,7 +1847,7 @@ int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+ 	 * preallocated blocks are unmapped but should treated
+ 	 * the same as allocated blocks.
+ 	 */
+-	ret = ext4_da_map_blocks(inode, iblock, &map, bh);
++	ret = ext4_da_map_blocks(inode, &map, bh);
+ 	if (ret <= 0)
+ 		return ret;
+ 
 -- 
 2.39.2
 
