@@ -1,42 +1,42 @@
 Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 192D4172BD8;
-	Tue, 28 May 2024 16:48:32 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5550617332A;
+	Tue, 28 May 2024 16:48:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1716914914; cv=none; b=PudnwJ2wHQZRsHA2gfYswBeCsZhbrk3S34Crlujzzlw3hDkr2bcxS7brKbyVPCf1hwnxbYRJ2RdT0KXGPyDhYDpITvwuH8jUc1NheXpRD9by4MSsvZyaMpX7f2IvzECKLGxNep5pD/1xFax9N3ZmWB0fhsziBBI6X0WX7Bg3LEA=
+	t=1716914914; cv=none; b=aaj5wgbroJrReAiibYqElaHSeTRBNe5mFYBlZFKRlm17YazNSjjWZ9I4KYARULPoZllw2lxlXmBUFuEFBfOq/cB+tVYuLn0V4hEg4fdV2vAcBCod8tuidvmpMtnDSyXh3nFQbF5EEavQojLCg8t8xkMbsuZnMAEHBt4I/1AGhlc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1716914914; c=relaxed/simple;
-	bh=D2tTlrFnEeMjZECR3JcvOVGURlnNgkYSaHwAoMwrgN8=;
+	bh=3Pjpp2P09PE5rEltCX5jMmUoMU02SiNpRbHgjiGkpzY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=NadMvNtbiv70tSzgRQl4sTWbTlU6gFBWhid2I532tV2IZYxh9IgQd2c4yvAsMdQsv5gGAnxKmSUgbOVMjtZEC0PhYXXPueoQEP3ARNP0IeC9Qivzyvgfl37ZBSs2qspOHeU8lIDSJbBFfBe+fdl5MiPpUnCt23hikho5uOnNfgY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=m5RVL4WV; arc=none smtp.client-ip=90.155.50.34
+	 MIME-Version; b=IwlnrN2ONMg5TipCuw4SOR2CFRf8z8ns5gzbS7182XXOyiEpdxR4nVfOUzKgMFTRLPKo6Oo5/5sGKhgjsCuhDVtr8RsXi6HhVBMmkSqiLW7qTq5e4ym3npL+ja5QM3HJX9nJ0q0M9aXUnLhubl2GPG8od/KSz6O/TqcqDKGrfRo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=edCpatfO; arc=none smtp.client-ip=90.155.50.34
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="m5RVL4WV"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="edCpatfO"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
 	References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:
 	Content-Type:Content-ID:Content-Description;
-	bh=5bqYlK1AE1ExlN3FvyGoPAxrjC2iLLgkrqD73YGe+nc=; b=m5RVL4WVT6K1NZAqVAVTje5J39
-	EqybgNCMsCrX93CZyUyqx5Uo07q3pOiFhUDFk+vu1HvWa62cdV0iO4PUcxZJntOD7D3T3Q6nZlQ9/
-	YEB2Z3NZ7KAE1N1AJHaZHYOmrI4yrb3lsdkDbqyVsfTXYzYu0wh2CLHV0MZm3lSENFMcx/Aa5YxcQ
-	dSXODNXgfF/HVv8deaJJJujYc5hTsOsggiJkmXz4t2yfKs+gsa7NxSqYSAAbtlO2i6I7z/TPZ26Y2
-	Dx0WoS4RBogN3vmZizBjISR8DyITwLEPvlhxE3JcbEmXi6NARoO6fvTOnWRod42hVbP/mU8KHErKP
-	bkDEcuQw==;
+	bh=OM8uDx7VjJ0gwoeodjHhQfGhwJlDV1N5xXOB75yQ0vQ=; b=edCpatfOyuveWnzurf/9dQewBY
+	tSk1iTDUilIJESZsVhA7kPWjsblYQ/UTaoTKfK7aOdA8mhQ4wFFWfOV8/Dq8uRw5KHuoFm4IbWTvN
+	hI/VvO72W6Mm0T4gjRpoTyill8Ho3cmxZ7IKpwwE/VE0SKR0SYHiejj7CCy61yw6so+5bOb0wKomc
+	GKWkOOf1N5lp7n3m+F0EVordxNybfp2LRTg4jKhTn3sY932jXt7pwahZqI4e2FUMZPh1O4s+Nxz4z
+	7y6tbLL13ELfus/7ymp02uIC8zSnBrJyLIRIH9YamtZfyvKH6h+PSNYnOMSlu8s2bADdwYw2/ofLr
+	qMGQgJRA==;
 Received: from willy by casper.infradead.org with local (Exim 4.97.1 #2 (Red Hat Linux))
-	id 1sBzzz-00000008pjF-1pxS;
+	id 1sBzzz-00000008pjR-2rSv;
 	Tue, 28 May 2024 16:48:31 +0000
 From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To: Christoph Hellwig <hch@lst.de>
 Cc: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
 	linux-fsdevel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-Subject: [PATCH 3/7] buffer: Add buffer_write_begin, buffer_write_end and __buffer_write_end
-Date: Tue, 28 May 2024 17:48:24 +0100
-Message-ID: <20240528164829.2105447-4-willy@infradead.org>
+Subject: [PATCH 5/7] ext2: Convert to buffered_write_operations
+Date: Tue, 28 May 2024 17:48:26 +0100
+Message-ID: <20240528164829.2105447-6-willy@infradead.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20240528164829.2105447-1-willy@infradead.org>
 References: <20240528164829.2105447-1-willy@infradead.org>
@@ -48,169 +48,145 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-These functions are to be called from filesystem implementations of
-write_begin and write_end.  They correspond to block_write_begin,
-generic_write_end and block_write_end.  The old functions need to
-be kept around as they're used as function pointers.
+Move write_begin and write_end from the address_space_operations to
+the new buffered_write_operations.  Removes a number of hidden calls
+to compound_head().
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/buffer.c                 | 80 ++++++++++++++++++++++++++-----------
- include/linux/buffer_head.h |  6 +++
- 2 files changed, 63 insertions(+), 23 deletions(-)
+ fs/ext2/ext2.h  |  1 +
+ fs/ext2/file.c  |  4 ++--
+ fs/ext2/inode.c | 55 ++++++++++++++++++++++++++-----------------------
+ fs/ext2/namei.c |  2 +-
+ 4 files changed, 33 insertions(+), 29 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 58ac52f20bf6..4064b21fe499 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -2217,39 +2217,55 @@ static void __block_commit_write(struct folio *folio, size_t from, size_t to)
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index f38bdd46e4f7..89b498c81f18 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -784,6 +784,7 @@ extern const struct file_operations ext2_file_operations;
+ extern void ext2_set_file_ops(struct inode *inode);
+ extern const struct address_space_operations ext2_aops;
+ extern const struct iomap_ops ext2_iomap_ops;
++extern const struct buffered_write_operations ext2_bw_ops;
+ 
+ /* namei.c */
+ extern const struct inode_operations ext2_dir_inode_operations;
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index 10b061ac5bc0..108e8d2e9654 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -252,7 +252,7 @@ static ssize_t ext2_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 
+ 		iocb->ki_flags &= ~IOCB_DIRECT;
+ 		pos = iocb->ki_pos;
+-		status = generic_perform_write(iocb, from);
++		status = filemap_perform_write(iocb, from, &ext2_bw_ops, NULL);
+ 		if (unlikely(status < 0)) {
+ 			ret = status;
+ 			goto out_unlock;
+@@ -299,7 +299,7 @@ static ssize_t ext2_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	if (iocb->ki_flags & IOCB_DIRECT)
+ 		return ext2_dio_write_iter(iocb, from);
+ 
+-	return generic_file_write_iter(iocb, from);
++	return filemap_write_iter(iocb, from, &ext2_bw_ops, NULL);
  }
  
- /*
-- * block_write_begin takes care of the basic task of block allocation and
-+ * buffer_write_begin - Helper for filesystem write_begin implementations
-+ * @mapping: Address space being written to.
-+ * @pos: Position in bytes within the file.
-+ * @len: Number of bytes being written.
-+ * @get_block: How to get buffer_heads for this filesystem.
-+ *
-+ * Take care of the basic task of block allocation and
-  * bringing partial write blocks uptodate first.
-  *
-  * The filesystem needs to handle block truncation upon failure.
-+ *
-+ * Return: The folio to write to, or an ERR_PTR on failure.
-  */
--int block_write_begin(struct address_space *mapping, loff_t pos, unsigned len,
--		struct page **pagep, get_block_t *get_block)
-+struct folio *buffer_write_begin(struct address_space *mapping, loff_t pos,
-+		size_t len, get_block_t *get_block)
- {
--	pgoff_t index = pos >> PAGE_SHIFT;
--	struct page *page;
-+	struct folio *folio = __filemap_get_folio(mapping, pos / PAGE_SIZE,
-+			FGP_WRITEBEGIN, mapping_gfp_mask(mapping));
- 	int status;
- 
--	page = grab_cache_page_write_begin(mapping, index);
--	if (!page)
--		return -ENOMEM;
-+	if (IS_ERR(folio))
-+		return folio;
- 
--	status = __block_write_begin(page, pos, len, get_block);
-+	status = __block_write_begin_int(folio, pos, len, get_block, NULL);
- 	if (unlikely(status)) {
--		unlock_page(page);
--		put_page(page);
--		page = NULL;
-+		folio_unlock(folio);
-+		folio_put(folio);
-+		folio = ERR_PTR(status);
- 	}
- 
--	*pagep = page;
--	return status;
-+	return folio;
-+}
-+EXPORT_SYMBOL(buffer_write_begin);
-+
-+int block_write_begin(struct address_space *mapping, loff_t pos, unsigned len,
-+		struct page **pagep, get_block_t *get_block)
-+{
-+	struct folio *folio = buffer_write_begin(mapping, pos, len, get_block);
-+
-+	if (IS_ERR(folio))
-+		return PTR_ERR(folio);
-+	*pagep = &folio->page;
-+	return 0;
+ static int ext2_file_open(struct inode *inode, struct file *filp)
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index 0caa1650cee8..a89525d08aa3 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -914,30 +914,6 @@ static void ext2_readahead(struct readahead_control *rac)
+ 	mpage_readahead(rac, ext2_get_block);
  }
- EXPORT_SYMBOL(block_write_begin);
  
--int block_write_end(struct file *file, struct address_space *mapping,
+-static int
+-ext2_write_begin(struct file *file, struct address_space *mapping,
+-		loff_t pos, unsigned len, struct page **pagep, void **fsdata)
+-{
+-	int ret;
+-
+-	ret = block_write_begin(mapping, pos, len, pagep, ext2_get_block);
+-	if (ret < 0)
+-		ext2_write_failed(mapping, pos + len);
+-	return ret;
+-}
+-
+-static int ext2_write_end(struct file *file, struct address_space *mapping,
 -			loff_t pos, unsigned len, unsigned copied,
 -			struct page *page, void *fsdata)
-+size_t __buffer_write_end(struct file *file, struct address_space *mapping,
-+		loff_t pos, size_t len, size_t copied, struct folio *folio)
+-{
+-	int ret;
+-
+-	ret = generic_write_end(file, mapping, pos, len, copied, page, fsdata);
+-	if (ret < len)
+-		ext2_write_failed(mapping, pos + len);
+-	return ret;
+-}
+-
+ static sector_t ext2_bmap(struct address_space *mapping, sector_t block)
  {
--	struct folio *folio = page_folio(page);
- 	size_t start = pos - folio_pos(folio);
+ 	return generic_block_bmap(mapping,block,ext2_get_block);
+@@ -962,8 +938,6 @@ const struct address_space_operations ext2_aops = {
+ 	.invalidate_folio	= block_invalidate_folio,
+ 	.read_folio		= ext2_read_folio,
+ 	.readahead		= ext2_readahead,
+-	.write_begin		= ext2_write_begin,
+-	.write_end		= ext2_write_end,
+ 	.bmap			= ext2_bmap,
+ 	.writepages		= ext2_writepages,
+ 	.migrate_folio		= buffer_migrate_folio,
+@@ -976,6 +950,35 @@ static const struct address_space_operations ext2_dax_aops = {
+ 	.dirty_folio		= noop_dirty_folio,
+ };
  
- 	if (unlikely(copied < len)) {
-@@ -2277,17 +2293,26 @@ int block_write_end(struct file *file, struct address_space *mapping,
- 
- 	return copied;
- }
--EXPORT_SYMBOL(block_write_end);
-+EXPORT_SYMBOL(__buffer_write_end);
- 
--int generic_write_end(struct file *file, struct address_space *mapping,
-+int block_write_end(struct file *file, struct address_space *mapping,
- 			loff_t pos, unsigned len, unsigned copied,
- 			struct page *page, void *fsdata)
++static struct folio *ext2_write_begin(struct file *file,
++		struct address_space *mapping, loff_t pos, size_t len,
++		void **fsdata)
 +{
-+	return buffer_write_end(file, mapping, pos, len, copied,
-+			page_folio(page));
++	struct folio *folio;
++
++	folio = buffer_write_begin(mapping, pos, len, ext2_get_block);
++
++	if (IS_ERR(folio))
++		ext2_write_failed(mapping, pos + len);
++	return folio;
 +}
-+EXPORT_SYMBOL(block_write_end);
 +
-+size_t buffer_write_end(struct file *file, struct address_space *mapping,
-+			loff_t pos, size_t len, size_t copied,
-+			struct folio *folio)
- {
- 	struct inode *inode = mapping->host;
- 	loff_t old_size = inode->i_size;
- 	bool i_size_changed = false;
- 
--	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
-+	copied = __buffer_write_end(file, mapping, pos, len, copied, folio);
- 
- 	/*
- 	 * No need to use i_size_read() here, the i_size cannot change under us
-@@ -2301,8 +2326,8 @@ int generic_write_end(struct file *file, struct address_space *mapping,
- 		i_size_changed = true;
- 	}
- 
--	unlock_page(page);
--	put_page(page);
-+	folio_unlock(folio);
-+	folio_put(folio);
- 
- 	if (old_size < pos)
- 		pagecache_isize_extended(inode, old_size, pos);
-@@ -2316,6 +2341,15 @@ int generic_write_end(struct file *file, struct address_space *mapping,
- 		mark_inode_dirty(inode);
- 	return copied;
- }
-+EXPORT_SYMBOL(buffer_write_end);
-+
-+int generic_write_end(struct file *file, struct address_space *mapping,
-+			loff_t pos, unsigned len, unsigned copied,
-+			struct page *page, void *fsdata)
++static size_t ext2_write_end(struct file *file, struct address_space *mapping,
++		loff_t pos, size_t len, size_t copied, struct folio *folio,
++		void **fsdata)
 +{
-+	return buffer_write_end(file, mapping, pos, len, copied,
-+			page_folio(page));
++	size_t ret = buffer_write_end(file, mapping, pos, len, copied, folio);
++
++	if (ret < len)
++		ext2_write_failed(mapping, pos + len);
++	return ret;
 +}
- EXPORT_SYMBOL(generic_write_end);
- 
++
++const struct buffered_write_operations ext2_bw_ops = {
++	.write_begin		= ext2_write_begin,
++	.write_end		= ext2_write_end,
++};
++
  /*
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index 1b7f14e39ab8..44e4b2b18cc0 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -267,6 +267,12 @@ int block_write_end(struct file *, struct address_space *,
- int generic_write_end(struct file *, struct address_space *,
- 				loff_t, unsigned, unsigned,
- 				struct page *, void *);
-+struct folio *buffer_write_begin(struct address_space *mapping, loff_t pos,
-+		size_t len, get_block_t *get_block);
-+size_t buffer_write_end(struct file *, struct address_space *, loff_t pos,
-+		size_t len, size_t copied, struct folio *);
-+size_t __buffer_write_end(struct file *, struct address_space *, loff_t pos,
-+		size_t len, size_t copied, struct folio *);
- void folio_zero_new_buffers(struct folio *folio, size_t from, size_t to);
- int cont_write_begin(struct file *, struct address_space *, loff_t pos,
- 		unsigned len, struct page **, void **fsdata, get_block_t *,
+  * Probably it should be a library function... search for first non-zero word
+  * or memcmp with zero_page, whatever is better for particular architecture.
+diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
+index 8346ab9534c1..a0edb11be826 100644
+--- a/fs/ext2/namei.c
++++ b/fs/ext2/namei.c
+@@ -179,7 +179,7 @@ static int ext2_symlink (struct mnt_idmap * idmap, struct inode * dir,
+ 		inode->i_op = &ext2_symlink_inode_operations;
+ 		inode_nohighmem(inode);
+ 		inode->i_mapping->a_ops = &ext2_aops;
+-		err = page_symlink(inode, symname, l);
++		err = filemap_symlink(inode, symname, l, &ext2_bw_ops, NULL);
+ 		if (err)
+ 			goto out_fail;
+ 	} else {
 -- 
 2.43.0
 
