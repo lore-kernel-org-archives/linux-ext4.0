@@ -1,68 +1,59 @@
-Received: from mail-pg1-f179.google.com (mail-pg1-f179.google.com [209.85.215.179])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from out162-62-58-216.mail.qq.com (out162-62-58-216.mail.qq.com [162.62.58.216])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 612C615AD90
-	for <linux-ext4@vger.kernel.org>; Wed, 29 May 2024 01:20:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.179
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 75AC015A841;
+	Wed, 29 May 2024 01:28:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=162.62.58.216
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1716945651; cv=none; b=mtFBP89jV/K9dFTbj9iFwhYyk7s0QmWjXTGKX44tEDQSUZIqw/aIGoce/WsMKsfjHTE1epG0NN9OgbW1Jhlqd8vSzHTqPw/4qjhZlaocc9oqlgZI/ZKBCDlgwZMG8dLgBs+lFTfnx+C2aoHgnANXPOBTfR3MPE8jf96h19kxrdA=
+	t=1716946122; cv=none; b=N02NJuVDiKBMtrus7u2Sxi4XDhOJUi6mRQSYK6P6XbBVLQwxmLLKYqATe3qQ720RuDtGl6daa1Vlm/lIPanSmDOdRTy3kAL+kj6WNf2Gy1d1o4fS6SNwt+72mCE84d7w/ug0Hv4MFQcnHxs9ur9pW0n6RPRPE5a+L31ISdJvnHY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1716945651; c=relaxed/simple;
-	bh=bwGBMgQbowWGAFfW/cK1IFyBxqCMtPKEyEzNT093x5k=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Gsm1mUICdzDNHwgO2mZwAN036VMKQT0f0Sfb2BvsatyJhrmQWrx+Hi5A+CXE8Q14PPp12M5uZktfOwHxI3qFtylyFcol7B2YsiMgcwP2hdGWQ/Zi5ryxNYSUoHaPzadOAQq5qwYhaYoAbQMj5FTwN/MlSxo8UyVEoDgacfkOiRs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Ix4iOjgN; arc=none smtp.client-ip=209.85.215.179
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1716946122; c=relaxed/simple;
+	bh=j3htC+RmfS/MluEVClfrUS0wbKNXXr8GUemPYhAO0v0=;
+	h=Message-ID:From:To:Cc:Subject:Date:In-Reply-To:References:
+	 MIME-Version; b=NJe+8n9uiODh8P+O2qxXUIkXyQGqnXYYoy7VcYCFZ8KDYctkKI/Ex96EXIk4lDM2jXBDGq+x9LU6HxqJGlyY8eDzqtQ82yJnLTVNNH2hhVmnJtswTTcYxW5UL9dgZqODTwunL4Ku/Fvdq95LBVOHUnMCar0Y1lRvjIRl1iC+e8o=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=fBFPbQ6U; arc=none smtp.client-ip=162.62.58.216
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Ix4iOjgN"
-Received: by mail-pg1-f179.google.com with SMTP id 41be03b00d2f7-6818e31e5baso1289591a12.1
-        for <linux-ext4@vger.kernel.org>; Tue, 28 May 2024 18:20:50 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1716945649; x=1717550449; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=1+/x2/YkXI59JKMsbGunwKDNHOeQj6UDhHq+onbOIj0=;
-        b=Ix4iOjgN6sCDIjWNQXaLKDGHPxwvBh85AYUjYP7YMYA8iv7SXOyACsmTXdXeFJNV9N
-         5tl5xfekxnJuN5nvwyZ9erSbTQeVLndYIe4Z50aFTuqY6xh6vkY4QuOt1dnERnO2syvW
-         BMQf5hVw7vnsZpMYsIz2cw26ehoPaE6MtBAzYJOkwZSRmr4DxyHFGubmIjbrnkP3YL01
-         XRqiMXo8IaIEIsV+hDjF90QvRdh0f4L83LXRFK9H2aJbdw/18OjiuX9fuMGjArjt+2tO
-         tQ+IGSWjYs8ZapkqcFuiWcnzRgBbKWnKe9QsZdqFN9r7Jb1ZeE3inRwPASjY11/MXsR8
-         1wiQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1716945649; x=1717550449;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=1+/x2/YkXI59JKMsbGunwKDNHOeQj6UDhHq+onbOIj0=;
-        b=jHaD8Um7nPFCo5CrkWIAAfunMKGL4YpTjSmXuQVCJyMMtUiAfWnrJIrvbxo0TkJHpu
-         RU4V76lJPuF+cdE52/yBGsyBv/Wvp6zbt6mRncDDB5NwY6Yu6Y07Nz2/KdwF0yJYRKRS
-         4w2bVJ7Z37QStdqaLwQ+Qqyri3SwjhWyrXKipn4Ee746Z8IP8vM76XFeXQDgPmFcYqeF
-         clF1nBlPN84u2hQq9Li83l8wtUpZUeQpMavZVQ+tSPuyQE7TwsDVEmWNfYq7kHb5Z5sl
-         9p7iYn5ginJuxeLhrWRHSBnEiy1FGOxI3hjBq7lfwEXlWmdePqWqeA9aotsVHVTyLk7e
-         6ZsQ==
-X-Gm-Message-State: AOJu0YwMdjlYYEcs8+hUwjL1QVNoCVExNP+kwi7fpdysADPNW2Jsj8wg
-	BKvwCSGlprURD8RANAB/0Rzy4O5elT8RTIXlKLd2zmqw0Wr8Zymzq7V6/q0S
-X-Google-Smtp-Source: AGHT+IF/w5w/yzTa/hb/VnaeYIJK7Y0Z4jS4rioe5FyRPhEIW9xdJKxuQoJGR8YTSI5+9GbT5t0B6w==
-X-Received: by 2002:a05:6a21:2d05:b0:1b0:260e:fe71 with SMTP id adf61e73a8af0-1b212e7fba7mr16600370637.60.1716945649374;
-        Tue, 28 May 2024 18:20:49 -0700 (PDT)
-Received: from harshads.c.googlers.com.com (34.85.168.34.bc.googleusercontent.com. [34.168.85.34])
-        by smtp.googlemail.com with ESMTPSA id 98e67ed59e1d1-2bde008a188sm10139388a91.53.2024.05.28.18.20.49
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 28 May 2024 18:20:49 -0700 (PDT)
-From: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu,
-	saukad@google.com,
-	harshads@google.com,
-	Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH v6 10/10] ext4: make fast commit ineligible on ext4_reserve_inode_write failure
-Date: Wed, 29 May 2024 01:20:03 +0000
-Message-ID: <20240529012003.4006535-11-harshadshirwadkar@gmail.com>
-X-Mailer: git-send-email 2.45.1.288.g0e0cd299f1-goog
-In-Reply-To: <20240529012003.4006535-1-harshadshirwadkar@gmail.com>
-References: <20240529012003.4006535-1-harshadshirwadkar@gmail.com>
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="fBFPbQ6U"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1716946109; bh=OOjVQMK7W8tJWIF171tEGyp2a8xk0aKQ+MIa3W0Xb6s=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=fBFPbQ6UAMbL/dqr0GXJu81N8umE1vc+k/9ZGL5SQQeODA9v2iIO8XHU1jqB+HuDO
+	 iWavkQyDfmJHgn5Gau0YEJ/nFBe4xxJCKPIPMEHXEqzRp/b1bcF8StrVJr+6knuW1D
+	 SMinDgrh41Mn+5j6jyuLS34xgecrnLH2FoYBqLao=
+Received: from pek-lxu-l1.wrs.com ([111.198.228.153])
+	by newxmesmtplogicsvrszc19-0.qq.com (NewEsmtp) with SMTP
+	id 3C1310D4; Wed, 29 May 2024 09:15:01 +0800
+X-QQ-mid: xmsmtpt1716945301tgjycg6rl
+Message-ID: <tencent_72297DA3B4444FF762977666C65361437E05@qq.com>
+X-QQ-XMAILINFO: M/NR0wiIuy70guOsM/HY0pDqYQRhlhcRAMO0baPQfpwTWUVC+XwO2+YZXLXkCd
+	 Ah6koRaVDbU5rMY7FURDqchAGTGzGkBCmgMe8MfydY2uIYFBzk/2WOnWW8gdnxzPbf1/HmnPVnZc
+	 vqFgrJqQye4W4tgTDazT6I0ityKM52D0mryV2A+eVamH8ciEL+OCwCg4+Oi2gAQwAURbk5DARsaS
+	 /kg5HoSn+sNuqkwP1/NACkkHHvYOhOzF/NylHkNJk1P5wDtQxDMcnQ1n+Pmuybdi9Mw6leQhtXDo
+	 VpK3dRWO2QjxQCtS8cSKOyaBN2K+UDQkly23VTjA2avWrATAeH7X/0jbrBsgxOgA/sGomb/LhUlh
+	 tHKW8lNq56zg3s8t29JFMDsumsBcTx8nFHOUF3xy2kLIbwOweUIbTyr9Yi5IYHWVomCM6O84GY9l
+	 0QEN1Q3ff5H9+TewKblnCYgBmRf7SKqRcwesH0YCylGHk6FMD278Dm65FAs5rzbakFQYnUX82bGp
+	 K9YNFRV67GSmBHRVE4AZxPN1aQytbWh14EnMLU0x5EBNvf4rCr7VwoTfXg0nozRvsks+eiB8h0iZ
+	 bLjdDhXUZpBtgzEBNd/1GDbTScGv6OPYNf2jxVZIsr9MCFFplFi2qAnooKACTtnTH+4Lu4Q6lVH0
+	 tYJarfKD3zHh4zXm1rMs4RNM1MeVe5vN+hcL24DZD+nFOxQrTJ3yRGgpk8Ebu4h33lLD2D1OB5WX
+	 p2fOrT/krxe5STcSyxLOAZBLvzfygbmHvmIShFzyPrjqtUqGhATsG8p+B2AWKHX7paQc/4FZ/D4G
+	 DzHwwdk9sD46F4aZ/in7SfJ8tMYzIqSPfD6IdyiHPHNvALPsbY/ulXnuDMTzQMCvEfCAiZB465ti
+	 /xIYWvgSSHIzh/eeOMKtWU42CyV5VVnqP9ouZidC9Sggwg5BiGWewwCcyDVn9eWZBuITLpkXRT
+X-QQ-XMRINFO: MSVp+SPm3vtS1Vd6Y4Mggwc=
+From: Edward Adam Davis <eadavis@qq.com>
+To: syzbot+fe42a669c87e4a980051@syzkaller.appspotmail.com
+Cc: adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	syzkaller-bugs@googlegroups.com,
+	tytso@mit.edu
+Subject: [PATCH] fs/dcache: fix warning in ext4_xattr_inode_lookup_create
+Date: Wed, 29 May 2024 09:15:02 +0800
+X-OQ-MSGID: <20240529011501.2190031-2-eadavis@qq.com>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <0000000000002b03350619853096@google.com>
+References: <0000000000002b03350619853096@google.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -71,124 +62,29 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Fast commit by default makes every inode on which
-ext4_reserve_inode_write() is called. Thus, if that function
-fails for some reason, make the next fast commit ineligible.
+ext4_xattr_inode_lookup_create() will use s_root, so set it to NULL
+after do_one_tree().
 
-Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+Reported-and-tested-by: syzbot+fe42a669c87e4a980051@syzkaller.appspotmail.com
+Signed-off-by: Edward Adam Davis <eadavis@qq.com>
 ---
- fs/ext4/fast_commit.c       |  1 +
- fs/ext4/fast_commit.h       |  1 +
- fs/ext4/inode.c             | 29 ++++++++++++++++++-----------
- include/trace/events/ext4.h |  7 +++++--
- 4 files changed, 25 insertions(+), 13 deletions(-)
+ fs/dcache.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 55a13d3ff681..e7cac190527c 100644
---- a/fs/ext4/fast_commit.c
-+++ b/fs/ext4/fast_commit.c
-@@ -2291,6 +2291,7 @@ static const char * const fc_ineligible_reasons[] = {
- 	[EXT4_FC_REASON_FALLOC_RANGE] = "Falloc range op",
- 	[EXT4_FC_REASON_INODE_JOURNAL_DATA] = "Data journalling",
- 	[EXT4_FC_REASON_ENCRYPTED_FILENAME] = "Encrypted filename",
-+	[EXT4_FC_REASON_INODE_RSV_WRITE_FAIL] = "Inode reserve write failure"
- };
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 407095188f83..e2f1a3f92ce9 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -1551,8 +1551,8 @@ void shrink_dcache_for_umount(struct super_block *sb)
+ 	WARN(down_read_trylock(&sb->s_umount), "s_umount should've been locked");
  
- int ext4_fc_info_show(struct seq_file *seq, void *v)
-diff --git a/fs/ext4/fast_commit.h b/fs/ext4/fast_commit.h
-index 2fadb2c4780c..f7f85c3dd3af 100644
---- a/fs/ext4/fast_commit.h
-+++ b/fs/ext4/fast_commit.h
-@@ -97,6 +97,7 @@ enum {
- 	EXT4_FC_REASON_FALLOC_RANGE,
- 	EXT4_FC_REASON_INODE_JOURNAL_DATA,
- 	EXT4_FC_REASON_ENCRYPTED_FILENAME,
-+	EXT4_FC_REASON_INODE_RSV_WRITE_FAIL,
- 	EXT4_FC_REASON_MAX
- };
+ 	dentry = sb->s_root;
+-	sb->s_root = NULL;
+ 	do_one_tree(dentry);
++	sb->s_root = NULL;
  
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f00408017c7a..8fd6e5637542 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5729,20 +5729,27 @@ ext4_reserve_inode_write(handle_t *handle, struct inode *inode,
- {
- 	int err;
- 
--	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
--		return -EIO;
-+	if (unlikely(ext4_forced_shutdown(inode->i_sb))) {
-+		err = -EIO;
-+		goto out;
-+	}
- 
- 	err = ext4_get_inode_loc(inode, iloc);
--	if (!err) {
--		BUFFER_TRACE(iloc->bh, "get_write_access");
--		err = ext4_journal_get_write_access(handle, inode->i_sb,
--						    iloc->bh, EXT4_JTR_NONE);
--		if (err) {
--			brelse(iloc->bh);
--			iloc->bh = NULL;
--		}
--		ext4_fc_track_inode(handle, inode);
-+	if (err)
-+		goto out;
-+
-+	BUFFER_TRACE(iloc->bh, "get_write_access");
-+	err = ext4_journal_get_write_access(handle, inode->i_sb,
-+						iloc->bh, EXT4_JTR_NONE);
-+	if (err) {
-+		brelse(iloc->bh);
-+		iloc->bh = NULL;
- 	}
-+	ext4_fc_track_inode(handle, inode);
-+out:
-+	if (err)
-+		ext4_fc_mark_ineligible(inode->i_sb,
-+			EXT4_FC_REASON_INODE_RSV_WRITE_FAIL, handle);
- 	ext4_std_error(inode->i_sb, err);
- 	return err;
- }
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index a697f4b77162..597845d5c1e8 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -105,6 +105,7 @@ TRACE_DEFINE_ENUM(EXT4_FC_REASON_RENAME_DIR);
- TRACE_DEFINE_ENUM(EXT4_FC_REASON_FALLOC_RANGE);
- TRACE_DEFINE_ENUM(EXT4_FC_REASON_INODE_JOURNAL_DATA);
- TRACE_DEFINE_ENUM(EXT4_FC_REASON_ENCRYPTED_FILENAME);
-+TRACE_DEFINE_ENUM(EXT4_FC_REASON_INODE_RSV_WRITE_FAIL);
- TRACE_DEFINE_ENUM(EXT4_FC_REASON_MAX);
- 
- #define show_fc_reason(reason)						\
-@@ -118,7 +119,8 @@ TRACE_DEFINE_ENUM(EXT4_FC_REASON_MAX);
- 		{ EXT4_FC_REASON_RENAME_DIR,	"RENAME_DIR"},		\
- 		{ EXT4_FC_REASON_FALLOC_RANGE,	"FALLOC_RANGE"},	\
- 		{ EXT4_FC_REASON_INODE_JOURNAL_DATA,	"INODE_JOURNAL_DATA"}, \
--		{ EXT4_FC_REASON_ENCRYPTED_FILENAME,	"ENCRYPTED_FILENAME"})
-+		{ EXT4_FC_REASON_ENCRYPTED_FILENAME,	"ENCRYPTED_FILENAME"}, \
-+		{ EXT4_FC_REASON_INODE_RSV_WRITE_FAIL,	"INODE_RSV_WRITE_FAIL"})
- 
- TRACE_DEFINE_ENUM(CR_POWER2_ALIGNED);
- TRACE_DEFINE_ENUM(CR_GOAL_LEN_FAST);
-@@ -2805,7 +2807,7 @@ TRACE_EVENT(ext4_fc_stats,
- 	),
- 
- 	TP_printk("dev %d,%d fc ineligible reasons:\n"
--		  "%s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u"
-+		  "%s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u"
- 		  "num_commits:%lu, ineligible: %lu, numblks: %lu",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  FC_REASON_NAME_STAT(EXT4_FC_REASON_XATTR),
-@@ -2818,6 +2820,7 @@ TRACE_EVENT(ext4_fc_stats,
- 		  FC_REASON_NAME_STAT(EXT4_FC_REASON_FALLOC_RANGE),
- 		  FC_REASON_NAME_STAT(EXT4_FC_REASON_INODE_JOURNAL_DATA),
- 		  FC_REASON_NAME_STAT(EXT4_FC_REASON_ENCRYPTED_FILENAME),
-+		  FC_REASON_NAME_STAT(EXT4_FC_REASON_INODE_RSV_WRITE_FAIL),
- 		  __entry->fc_commits, __entry->fc_ineligible_commits,
- 		  __entry->fc_numblks)
- );
+ 	while (!hlist_bl_empty(&sb->s_roots)) {
+ 		dentry = dget(hlist_bl_entry(hlist_bl_first(&sb->s_roots), struct dentry, d_hash));
 -- 
-2.45.1.288.g0e0cd299f1-goog
+2.43.0
 
