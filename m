@@ -1,369 +1,278 @@
-Received: from mail-pl1-f177.google.com (mail-pl1-f177.google.com [209.85.214.177])
+Received: from mail-yw1-f175.google.com (mail-yw1-f175.google.com [209.85.128.175])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1F9DF7F8
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Jun 2024 01:32:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.177
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 25B287346F
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Jun 2024 09:14:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.175
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1718069557; cv=none; b=AmqQMd6NdKqeRZ/2UNva7Vruar2dYUEDdorw3U9UwVpzK7rbQvcKQ23ciXb5CWkfQ9X/YzYq/Sdswc3Iyg2PXHKG+M5kw3QjPqIaqgvygwCi4WZIqbzI+oWJQLWZu/uncWfE+bCAgC2MIQnEqWGX0zq2YYNMxD7F5AZJ42bwCeg=
+	t=1718097262; cv=none; b=MyIXo7bHMDw2oLV1fUx9IhqghxBCppSRzlEMV28wFc/L9zNznK3v+ANwH7Z6mdU7931vjldhrvMEfhuP6B0SXSxyDczpNC1n8OPhG+7NOeuOonJ05FFy2+93AUlDeXBESOFdXHSYv4cGChJaEO1dZvQbWVGYwVpyceDrflGO7Ig=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1718069557; c=relaxed/simple;
-	bh=w6JeLXAlXXn8x0I/h/F0jI6PwYAtj6/H7k7yFqJ7YjQ=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=hPeH/Lqo87XWqvml+F6rMViG/KGhSf9o3ex96khz7y6sF1S3kataUZaK+rz8ctiDOH+L0opwn3js9PHO9XEPq/GtMH+VcDYroozTbdS86fv4VNLeQYMrb9VhKf1RZRIQfp8f0LFpKIEyQRRSkP69bKUnsjPZqqMusFxPyT4ptbc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=fromorbit.com; spf=pass smtp.mailfrom=fromorbit.com; dkim=pass (2048-bit key) header.d=fromorbit-com.20230601.gappssmtp.com header.i=@fromorbit-com.20230601.gappssmtp.com header.b=DnN8F8+V; arc=none smtp.client-ip=209.85.214.177
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=fromorbit.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=fromorbit.com
+	s=arc-20240116; t=1718097262; c=relaxed/simple;
+	bh=HfgAS0KSFZ7V+nAXdxzcCjVbvqyqtkxFmdMkxpbCKXo=;
+	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
+	 MIME-Version:Content-Type; b=hZLCACCEMMt/RzWNBCNtEd2aoUhOPMxSZ0CV+eAw1pQwaLdrfgGtzVo2UR0EjfIJ2Lr2sfwyDRzCri/0zOVz6Ects6dViHW5cgx6gdefNJCAn4ibmUsX9+J7APYTnQBig2Sl/kMkThezlkV4pLqxB+QNacnhbreTG7zRSVqbSGc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=HuVbkQEP; arc=none smtp.client-ip=209.85.128.175
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=fromorbit-com.20230601.gappssmtp.com header.i=@fromorbit-com.20230601.gappssmtp.com header.b="DnN8F8+V"
-Received: by mail-pl1-f177.google.com with SMTP id d9443c01a7336-1f6c7cdec83so40908425ad.0
-        for <linux-ext4@vger.kernel.org>; Mon, 10 Jun 2024 18:32:35 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="HuVbkQEP"
+Received: by mail-yw1-f175.google.com with SMTP id 00721157ae682-62a08091c2bso11186817b3.0
+        for <linux-ext4@vger.kernel.org>; Tue, 11 Jun 2024 02:14:20 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=fromorbit-com.20230601.gappssmtp.com; s=20230601; t=1718069555; x=1718674355; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
-        bh=h17X7yFiA7LnykW5wJDwIAaa/MAlqO5a8WshU7ufiKc=;
-        b=DnN8F8+VYlMh7jHy1akWmhAFustnuMNYmYvO3sQ9vHAK/cPG3624IcvrSjioQpq1Kd
-         te0ckqbVt9Jnkt2SsEJ5M6lIVnfzBYjJdNMdGOZRYZtJcW1T3E1HanvqxgJc3A8pHSaN
-         NhsUtgh3Alo+Gqor7NSGJp1bnLPNzOJZHHb2QLMIJNvr6kUpRQywjDatnTJyXtWGdVvk
-         QnxXdhurK9sRcsxQbIa7QURQ2Yj5Omi/n9EGLMk0ZmazPYashJC3xdWHv5ye8bb3npew
-         FhNo3Ge2a7+VB4I5xXS/iA0euOfXzE7XCtJKJNrKrseh8+k64PAgISM5vVOkIgq7z+jo
-         T5uw==
+        d=google.com; s=20230601; t=1718097260; x=1718702060; darn=vger.kernel.org;
+        h=mime-version:references:message-id:in-reply-to:subject:cc:to:from
+         :date:from:to:cc:subject:date:message-id:reply-to;
+        bh=EqcTAILBWMoM2RnR2kpmmEiseDcW1gScP97iUYXzTvE=;
+        b=HuVbkQEPEiVMw2WJR46uiv1oiAZ+UDMBrtIYTz61egHfDn87WurtkJHTYPdovXtcTe
+         BWi973lUGaCCpjEP3bEVE1pR2oWhP3dhApMzSD2Sc6z7IaFlLi9Mr9ae1pVbewwiambb
+         dgroOmp1GU0+nzmv/bcDtmmR1SXvs6f3dcN7ym67yNDvGTqo6ZH+pUK5rngbGnxPeyb3
+         lGxNccFAunk8Cr04yz8QpGl9zkuv38b8FRYHsxHr3MteytXuT9PWZVgsIOy9BuzasxJ1
+         8xhW4yryWZDVTGrNLXrevkRKDC45ksp2v5oMraNquAAD8EbqiCsAFUZyy/Xg6jE68gGg
+         ED9A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1718069555; x=1718674355;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=h17X7yFiA7LnykW5wJDwIAaa/MAlqO5a8WshU7ufiKc=;
-        b=imAqJ1X2GX+ANNCgpE6Bm4dfMff58z97ujwAJHcVxBq3Cdhk0VFmv+wBWSK8fAVc5j
-         XlGv9zF7GSVSkQ5qDfST85f10EndrxccWvUNNTy+PiP+U390bA9h8mCF24geAX74rwlS
-         c6HV5vC91Q3LRyfUPY8tYyMND8qMESUv52PZ3h5P6gobvDlcWEbP489EzbkMPf8Kpq9z
-         7sq91bcgEI+WZcsXDQiWVgAfPlj1R9Bel1q3kZ11zO/KzVTZkvV+PuzvsdOxNjbNewgE
-         OBZdqbWyw9W68d9NtyKKEq+J54+UAMvXlXVvL80iPVRerF4rzPZte4oj45sLDvAFcE/y
-         KBRQ==
-X-Forwarded-Encrypted: i=1; AJvYcCUA8BDS0TCZE555TF4qz7En7Sq9G2BV8Oekvc4nuXyBGqtMGQVnN2QxPkWdMx74OHkkPfSQl8YTsAAiulZnUrG/hzaSvCxiBWtHbQ==
-X-Gm-Message-State: AOJu0YxLPcikcDZEWkyBK2/RJV4GC4EqXWWofgKhuOFnXM2y2aiIOuGJ
-	YzBYIqta5Q+UnN7mHJ0fy6ptkWg8FqZYfkPGyYZxZrvEisRMFScvJLGffBTOiDQ=
-X-Google-Smtp-Source: AGHT+IERDtR60M7xczNd7e5pwEu/qzE0byLX347qAp6tha8LILEWFJr9CtN/Be+EYKXcIhkJeh7mdw==
-X-Received: by 2002:a17:902:da86:b0:1f6:343f:dc4d with SMTP id d9443c01a7336-1f6d0377702mr124032755ad.49.1718069555029;
-        Mon, 10 Jun 2024 18:32:35 -0700 (PDT)
-Received: from dread.disaster.area (pa49-179-32-121.pa.nsw.optusnet.com.au. [49.179.32.121])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-1f70ed8a2c8sm31372275ad.95.2024.06.10.18.32.33
+        d=1e100.net; s=20230601; t=1718097260; x=1718702060;
+        h=mime-version:references:message-id:in-reply-to:subject:cc:to:from
+         :date:x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=EqcTAILBWMoM2RnR2kpmmEiseDcW1gScP97iUYXzTvE=;
+        b=HWEQGky3pkihg+vYBMVCyjIyKTUFQfCpv27vdiky1MLO/dNwfA8pK4kdpVAoElgjvr
+         SUF5rjxIhZOPL+G3tQ3AsLbuD93IIVg2TDl6TcP8KJ5bKJuaDmyM98X8dvyASwXZzExu
+         FgZmjYPyk2JhfZiKzXJgwvArKRnyHy4uaQ9qWv8x+7Rt/VBau3E0zMdI/p/kfKfSGRiD
+         XZX0DaICcxULmsAJZcY3Y//b7I126zZBwTuzDijA/sB1U3zY8Jk/79QcRLoJRQrKRiYv
+         mW++wjaH3JDW+h9ku2ByROS36w2D+pNlRRMoyNlcxana0Y9VwP7OZ3g21GKdByXKq9Dw
+         Cgbg==
+X-Forwarded-Encrypted: i=1; AJvYcCXW0hOCPwHxa4osTK9MoCrCt10hiH8nTZ+rHcpLKu5NdJzIQKIOIWAj1yvKA75OakFfXXqu4J9XjtqT0n9vvuSrlJPowLqglTeKrQ==
+X-Gm-Message-State: AOJu0YyZvdxN5IizJ+NY+HohTtLo80hO6HJHBr9fJJaWXyLe9jHivpX/
+	p0f/RI9GVNYTchHbdBjOo/31LWBm5ms062OkuILp/keakP4WHnS/ArXns4h38w==
+X-Google-Smtp-Source: AGHT+IFsGRjvigUxgTTtTqGgMnNIg8YFES6i9HDNADq5rjt43maW5TChLkUemeXXADRcsznTywdH0A==
+X-Received: by 2002:a0d:c782:0:b0:62d:a29:5384 with SMTP id 00721157ae682-62d0a2954a3mr52702187b3.43.1718097258846;
+        Tue, 11 Jun 2024 02:14:18 -0700 (PDT)
+Received: from darker.attlocal.net (172-10-233-147.lightspeed.sntcca.sbcglobal.net. [172.10.233.147])
+        by smtp.gmail.com with ESMTPSA id 00721157ae682-62ccacade03sm19192037b3.27.2024.06.11.02.14.16
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 10 Jun 2024 18:32:34 -0700 (PDT)
-Received: from dave by dread.disaster.area with local (Exim 4.96)
-	(envelope-from <david@fromorbit.com>)
-	id 1sGqND-00Bdd0-0O;
-	Tue, 11 Jun 2024 11:32:31 +1000
-Date: Tue, 11 Jun 2024 11:32:31 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: "Darrick J. Wong" <djwong@kernel.org>
-Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
-	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, Matthew Wilcox <willy@infradead.org>,
-	Christian Brauner <brauner@kernel.org>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	Luis Chamberlain <mcgrof@kernel.org>
-Subject: Re: [PATCH] Documentation: document the design of iomap and how to
- port
-Message-ID: <ZmepL9161HEfmBNU@dread.disaster.area>
-References: <20240608001707.GD52973@frogsfrogsfrogs>
- <ZmVNblggFRgR8bnJ@infradead.org>
- <20240609155506.GT52987@frogsfrogsfrogs>
- <20240610141808.vdsflgcbjmgc37dt@quack3>
- <20240610215928.GV52987@frogsfrogsfrogs>
+        Tue, 11 Jun 2024 02:14:18 -0700 (PDT)
+Date: Tue, 11 Jun 2024 02:13:59 -0700 (PDT)
+From: Hugh Dickins <hughd@google.com>
+To: Yosry Ahmed <yosryahmed@google.com>
+cc: syzbot <syzbot+9c1fe13fcb51574b249b@syzkaller.appspotmail.com>, 
+    akpm@linux-foundation.org, chengming.zhou@linux.dev, hannes@cmpxchg.org, 
+    linux-kernel@vger.kernel.org, linux-mm@kvack.org, nphamcs@gmail.com, 
+    syzkaller-bugs@googlegroups.com, Hugh Dickins <hughd@google.com>, 
+    Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+Subject: Re: [syzbot] [mm?] KMSAN: uninit-value in zswap_store
+In-Reply-To: <CAJD7tkaTQU1Kxt935fmq+_BJd-VT6vKFj58o7Aq+QhoyrOtCmw@mail.gmail.com>
+Message-ID: <02a21a55-8fe3-a9eb-f54b-051d75ae8335@google.com>
+References: <000000000000d0f165061a6754c3@google.com> <CAJD7tkaTQU1Kxt935fmq+_BJd-VT6vKFj58o7Aq+QhoyrOtCmw@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20240610215928.GV52987@frogsfrogsfrogs>
+Content-Type: multipart/mixed; boundary="-1463770367-1445972292-1718097257=:2984"
 
-On Mon, Jun 10, 2024 at 02:59:28PM -0700, Darrick J. Wong wrote:
-> On Mon, Jun 10, 2024 at 04:18:08PM +0200, Jan Kara wrote:
-> > On Sun 09-06-24 08:55:06, Darrick J. Wong wrote:
-> > >        * validity_cookie is a magic freshness value set by the
-> > >          filesystem that should be used to detect stale mappings. For
-> > >          pagecache operations this is critical for correct operation
-> > >          because page faults can occur, which implies that filesystem
-> > >          locks should not be held between ->iomap_begin and
-> > >          ->iomap_end. Filesystems with completely static mappings
-> > >          need not set this value. Only pagecache operations
-> > >          revalidate mappings.
-> > > 
-> > >          XXX: Should fsdax revalidate as well?
-> > 
-> > AFAICT no. DAX is more like using direct IO for everything. So no writeback
-> > changing mapping state behind your back (and that's the only thing that is
-> > not serialized with i_rwsem or invalidate_lock). Maybe this fact can be
-> > mentioned somewhere around the discussion of iomap_valid() as a way how
-> > locking usually works out?
-> 
-> <nod> I'll put that in the section about iomap_valid, which documents
-> the whole mechanism more thoroughly:
-> 
-> "iomap_valid: The filesystem may not hold locks between ->iomap_begin
-> and ->iomap_end because pagecache operations can take folio locks, fault
-> on userspace pages, initiate writeback for memory reclamation, or engage
-> in other time-consuming actions.  If a file's space mapping data are
-> mutable, it is possible that the mapping for a particular pagecache
-> folio can change in the time it takes to allocate, install, and lock
-> that folio.
-> 
-> "For the pagecache, races can happen if writeback doesn't take i_rwsem
-> or invalidate_lock and updates mapping information.  Races can also
-> happen if the filesytem allows concurrent writes.  For such files, the
-> mapping *must* be revalidated after the folio lock has been taken so
-> that iomap can manage the folio correctly.
-> 
-> "fsdax does not need this revalidation because there's no writeback and
-> no support for unwritten extents.
-> 
-> "The filesystem's ->iomap_begin function must sample a sequence counter
-> into struct iomap::validity_cookie at the same time that it populates
-> the mapping fields.  It must then provide a ->iomap_valid function to
-> compare the validity cookie against the source counter and return
-> whether or not the mapping is still valid.  If the mapping is not valid,
-> the mapping will be sampled again."
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Everything is fine except for the last paragraph. Filesystems do not
-need to use a sequence counter for the validity cookie - they can
-use any mechanism they want to determine that the extent state has
-changed. If they can track extent status on a fine grained basis
-(e.g. ext4 has individual extent state cache entries) then that
-validity cookie could be a pointer to the filesystem's internal
-extent state cache entry.
+---1463770367-1445972292-1718097257=:2984
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 
-There's also nothing that says the cookie needs to remain a u64;
-I've been toying with replacing it with a pointer to an xfs iext
-btree cursor and checking that the cursor still points to the same
-extent that iomap was made from. Hence we get fine grained extent
-checks and don't have to worry about changes outside the range of
-the iomap causing spurious revalidation failures.
+On Mon, 10 Jun 2024, Yosry Ahmed wrote:
+> On Sat, Jun 8, 2024 at 2:09=E2=80=AFPM syzbot
+> <syzbot+9c1fe13fcb51574b249b@syzkaller.appspotmail.com> wrote:
+> >
+> > Hello,
+> >
+> > syzbot found the following issue on:
+> >
+> > HEAD commit:    614da38e2f7a Merge tag 'hid-for-linus-2024051401' of gi=
+t:/..
+> > git tree:       upstream
+> > console output: https://syzkaller.appspot.com/x/log.txt?x=3D113f3fd6980=
+000
+> > kernel config:  https://syzkaller.appspot.com/x/.config?x=3Df5d2cbf3363=
+3f507
+> > dashboard link: https://syzkaller.appspot.com/bug?extid=3D9c1fe13fcb515=
+74b249b
+> > compiler:       Debian clang version 15.0.6, GNU ld (GNU Binutils for D=
+ebian) 2.40
+> >
+> > Unfortunately, I don't have any reproducer for this issue yet.
+> >
+> > Downloadable assets:
+> > disk image: https://storage.googleapis.com/syzbot-assets/89eafb874b71/d=
+isk-614da38e.raw.xz
+> > vmlinux: https://storage.googleapis.com/syzbot-assets/356000512ad9/vmli=
+nux-614da38e.xz
+> > kernel image: https://storage.googleapis.com/syzbot-assets/839c73939115=
+/bzImage-614da38e.xz
+> >
+> > IMPORTANT: if you fix the issue, please add the following tag to the co=
+mmit:
+> > Reported-by: syzbot+9c1fe13fcb51574b249b@syzkaller.appspotmail.com
+>=20
+> This doesn't look like a zswap bug, and perhaps not a bug at all but I
+> am not sure. Zswap is reading the data in a folio to check if it is
+> filled with a repeated pattern, and it is encountering uninitialized
+> data. I am not sure if this is expected behavior or not.
 
-IOWs, the intention of the cookie is simply an opaque blob that the
-filesystem can keep whatever validity information in it that it
-wants - a sequence counter is just one of many possible
-implementations. hence I think this should be rephrased to reflect
-this.
+I agree, it doesn't look like a zswap bug: zswap is just following orders.
 
-"The filesystem's ->iomap_begin function must write the data it
-needs to validate the iomap into struct iomap::validity_cookie at
-the same time that it populates the mapping fields.  It must then
-provide a ->iomap_valid function to compare the validity cookie
-against the source data and return whether or not the mapping is
-still valid.  If the mapping is not valid, the mapping will be
-sampled again.
+>=20
+> Could it just be that the size of the data written by syzbot is not
+> divisible by PAGE_SIZE, so part of the final page is left
+> uninitialized? Do we keep the unwritten parts of a shmem page
+> uninitialized by any chance?
 
-A simple validation cookie implementation is a sequence counter. If
-the filesystem bumps the sequence counter every time it modifies the
-inode's extent map, it can be placed in the struct
-iomap::validity_cookie during ->iomap_begin. If the value in the
-cookie is found to be different to the value the filesystem holds
-when it is passed back to ->iomap_valid, then the iomap should
-considered stale and the validation failed."
+Shmem can keep uninitialized data pages around, but should be zeroing
+what's still uninitialized before it can reach the outside world -
+in this case being written to swap.  I don't know of a shmem bug here.
 
+>=20
+> Hugh, do you mind taking a quick look at whether this is a real bug?
+>=20
+> If this is expected behavior, perhaps there is some annotation we can
+> use in zswap that it is fine to encounter uninitialized data when
+> reading the folio.
 
-> 
-> > >    These struct kiocb flags are significant for buffered I/O with
-> > >    iomap:
-> > > 
-> > >        * IOCB_NOWAIT: Only proceed with the I/O if mapping data are
-> > >          already in memory, we do not have to initiate other I/O, and
-> > >          we acquire all filesystem locks without blocking. Neither
-> > >          this flag nor its definition RWF_NOWAIT actually define what
-> > >          this flag means, so this is the best the author could come
-> > >          up with.
-> > 
-> > RWF_NOWAIT is a performance feature, not a correctness one, hence the
-> > meaning is somewhat vague. It is meant to mean "do the IO only if it
-> > doesn't involve waiting for other IO or other time expensive operations".
-> > Generally we translate it to "don't wait for i_rwsem, page locks, don't do
-> > block allocation, etc." OTOH we don't bother to specialcase internal
-> > filesystem locks (such as EXT4_I(inode)->i_data_sem)
+I've not been faced with a KMSAN report before, so I might well be
+misunderstanding its language: but this looks like an ext4 "bug" to me.
 
-But we have support for this - the IOMAP_NOWAIT flag tells the
-filesystem iomap methods that it should:
+I think the story that the three KMSAN stacks are telling is this:
+syzbot has an ext4 filesystem on a loop device on a tmpfs file (I do
+exactly that too); ext4 is doing some ext4_xattr_inode_write() business,
+in the course of which it writes back a not-fully-initialized block to
+the loop device; shmem faithfully copies that data into its pagecache,
+then later when under memory pressure that page gets "written" out to
+zswap: where zswap_is_page_same_filled() takes an interest in the data,
+and KMSAN objects because some of it was not originally initialized.
 
-	a) not block on internal mapping operations; and
-	b) fail with -EAGAIN if it can't map the entire range in a
-	   single iomap.
+If that's a correct interpretation, then it's probably not a big deal:
+it's probably the uninitialized end of a buffer that's written out,
+not any part of the "disk" which ext4 would ever show to a user; but
+I do agree with KMSAN that ext4 would do better to clear that area,
+rather than accidentally storing someone else's super-secret info.
 
-XFS implements these semantics for internal locks and operations
-needed for mapping operations, and any filesystem that uses iomap
--should- be doing the same thing.
+Hugh
 
-> > and we get away with
-> > it because blocking on it under constraints we generally perform RWF_NOWAIT
-> > IO is exceedingly rare.
-> 
-> I hate this flag's undocumented nature.  It now makes *documenting*
-> things around it hard.  How about:
-
-But it is documented.
-
-RWF_NOWAIT (since Linux 4.14)
-
-      Do not wait for data which is not immediately available.  If
-      this flag is specified, the preadv2() system call will return
-      instantly if  it  would have  to  read data from the backing
-      storage or wait for a lock. [...]
-
-Yes, not well documented. But the *intent* is clear. It's basically
-the same thing as O_NONBLOCK:
-
-O_NONBLOCK or O_NDELAY
-      When  possible,  the file is opened in nonblocking mode.
-      Neither the open() nor any subsequent I/O operations on the
-      file descriptor which is returned will cause the calling
-      process to wait.
-
-That's what we are supposed to be implementing with IOCB_NOWAIT -
-don't block the submitting task if at all possible.
-
-> "IOCB_NOWAIT: Neither this flag nor its associated definition
-> RWF_NOWAIT actually specify what this flag means.  Community
-> members seem to think that it means only proceed with the I/O if
-> it doesn't involve waiting for expensive operations.  XFS and ext4
-> appear to reject the IO unless the mapping data are already in
-> memory, the filesystem does not have to initiate other I/O, and
-> the kernel can acquire all filesystem locks without blocking."
-
-I think the passive-aggressive nature of this statement doesn't read
-very well. Blaming "community members" for organic code development
-that solved poorly defined, undocumented bleeding edge issues isn't
-a winning strategy. And other developers don't care about this; they
-just want to know what they should be implementing.
-
-So let's just make a clear statement about the intent of
-IOCB_NOWAIT, because that is *always* been very clear right from the
-start, even though there was no way we could implement the intent
-right from the start.
-
-"IOCB_NOWAIT: Perform a best effort attempt to avoid any operation
-that would result in blocking the submitting task. This is similar
-in intent to O_NONBLOCK for network APIs - it is intended for
-asynchronous applications to keep doing other work instead of
-waiting for the specific unavailable filesystem resource to become
-available.
-
-This means the filesystem implementing IOCB_NOWAIT semantics need to
-use trylock algorithms.  They need to be able to satisfy the entire
-IO request range in a single iomap mapping. They need to avoid
-reading or writing metadata synchronously. They need to avoid
-blocking memory allocations. They need to avoid waiting on
-transaction reservations to allow modifications to take place. And
-so on.
-
-If there is any doubt in the filesystem developer's mind as to
-whether any specific IOCB_NOWAIT operation may end up blocking, then
-they should return -EAGAIN as early as possible rather than start
-the operation and force the submitting task to block."
-
-This clearly documents the intent and what the submitters are
-expecting from filesystems when this flag is set. IT also tells
-filesystem implementers the way to handle IOCB_NOWAIT if they
-haven't actually coded any of this - abort at the top of the IO
-stack with -EAGAIN - and applications using this will work
-correctly.
-
-> > >     Direct Writes
-> > > 
-> > >    A direct I/O write initiates a write I/O to the storage device to
-> > >    the caller's buffer. Dirty parts of the pagecache are flushed to
-> > >    storage before initiating the write io. The pagecache is
-> > >    invalidated both before and after the write io. The flags value
-> > >    for ->iomap_begin will be IOMAP_DIRECT | IOMAP_WRITE with any
-> > >    combination of the following enhancements:
-> > > 
-> > >        * IOMAP_NOWAIT: Write if mapping data are already in memory.
-> > >          Does not initiate other I/O or block on filesystem locks.
-
-IOMAP_NOWAIT is not specific to direct IO. It is supported for both
-buffered reads and writes in iomap and XFS.
-
-It also tends to imply "don't allocate new blocks" for journalling
-filesysetms because that requires journal space reservation (which
-blocks), memory allocation, metadata creation and metadata IO.
-
-> > >        * IOMAP_OVERWRITE_ONLY: Allocating blocks and zeroing partial
-> > >          blocks is not allowed. The entire file range must to map to
-> > 							     ^^ extra "to"
-> > 
-> > >          a single written or unwritten extent. The file I/O range
-> > >          must be aligned to the filesystem block size.
-
-
-> > This seems to be XFS specific thing? At least I don't see anything in
-> > generic iomap code depending on this?
-> 
-> Hmm.  XFS bails out if the mapping is unwritten and the directio write
-> range isn't aligned to the fsblock size.
-
-I think that is wrong. IOMAP_OVERWRITE_ONLY is specifically for
-allowing unaligned IO to be performed without triggering allocation
-or sub-block zeroing. It requests a mapping to allow a pure
-overwrite to be performed, otherwise it fails.
-
-XFS first it checks if allocation is required. If so, it bails.
-
-Second it checks if the extent spans the range requested. If not, it
-bails.
-
-Finally, it checks if the extent is IOMAP_WRITTEN. If not, it bails.
-
-> I think the reason for that is
-> because we'd have to zero the unaligned regions outside of the write
-> range, and xfs can't do that without synchronizing.  (Or we didn't think
-
-Right, it enables an optimistic fast path for unaligned direct
-IOs. We take the i_rwsem shared, attempt the fast path, if it is
-rejected with -EAGAIN we drop the shared lock, take it exclusive
-and run the IO again without IOMAP_DIO_OVERWRITE_ONLY being set
-to allow allocation and/or sub-block zeroing to be performed.
-
-I think this needs to be written in terms of what a "pure overwrite"
-is. We use that term repeatedly in the iomap code (e.g. for FUA
-optimisations), and IOMAP_OVERWRITE_ONLY is a mechanism for the
-caller to ask "give me a pure overwrite mapping for this range or
-fail with -EAGAIN". This is the mechanism that provides the required
-IOMAP_DIO_OVERWRITE_ONLY semantics.
-
-
-"Pure Overwrite: A write operation that does not require any
-metadata or zeroing operations to perform during either submission
-or completion. This implies that the fileystem must have already
-allocated space on disk as IOMAP_WRITTEN and the filesystem must not
-place any constaints on IO alignment or size - the only constraints
-on IO alignment are device level (minimum IO size and alignment,
-typically sector size).
-
-IOMAP_DIO_OVERWRITE_ONLY: Perform a pure overwrite for this range or
-fail with -EAGAIN.
-
-This can be used by filesystems with complex unaligned IO
-write paths to provide an optimised fast path for unaligned writes.
-If a pure overwrite can be performed, then serialisation against
-other IOs to the same filesystem block(s) is unnecessary as there is
-no risk of stale data exposure or data loss.
-
-If a pure overwrite cannot be performed, then the filesystem can
-perform the serialisation steps needed to provide exclusive access
-to the unaligned IO range so that it can perform allocation and
-sub-block zeroing safely.
-
-IOMAP_OVERWRITE_ONLY: The caller requires a pure overwrite to be
-performed from this mapping. This requires the filesystem extent
-mapping to already exist as an IOMAP_MAPPED type and span the entire
-range of the write IO request. If the filesystem cannot map this
-request in a way that allows the iomap infrastructure to perform
-a pure overwrite, it must fail the mapping operation with -EAGAIN."
-
--Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+>=20
+> >
+> > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D
+> > BUG: KMSAN: uninit-value in zswap_is_page_same_filled mm/zswap.c:1481 [=
+inline]
+> > BUG: KMSAN: uninit-value in zswap_store+0x1008/0x2ca0 mm/zswap.c:1553
+> >  zswap_is_page_same_filled mm/zswap.c:1481 [inline]
+> >  zswap_store+0x1008/0x2ca0 mm/zswap.c:1553
+> >  swap_writepage+0x126/0x4c0 mm/page_io.c:198
+> >  shmem_writepage+0x1826/0x1f70 mm/shmem.c:1518
+> >  pageout mm/vmscan.c:660 [inline]
+> >  shrink_folio_list+0x4a55/0x7910 mm/vmscan.c:1323
+> >  evict_folios+0x9d7f/0xcc20 mm/vmscan.c:4537
+> >  try_to_shrink_lruvec+0x160e/0x1a50 mm/vmscan.c:4733
+> >  shrink_one+0x66f/0xd40 mm/vmscan.c:4772
+> >  shrink_many mm/vmscan.c:4835 [inline]
+> >  lru_gen_shrink_node mm/vmscan.c:4935 [inline]
+> >  shrink_node+0x4856/0x55f0 mm/vmscan.c:5894
+> >  kswapd_shrink_node mm/vmscan.c:6704 [inline]
+> >  balance_pgdat mm/vmscan.c:6895 [inline]
+> >  kswapd+0x1eba/0x4460 mm/vmscan.c:7164
+> >  kthread+0x3e2/0x540 kernel/kthread.c:389
+> >  ret_from_fork+0x6d/0x90 arch/x86/kernel/process.c:147
+> >  ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:244
+> >
+> > Uninit was stored to memory at:
+> >  memcpy_from_iter lib/iov_iter.c:73 [inline]
+> >  iterate_bvec include/linux/iov_iter.h:122 [inline]
+> >  iterate_and_advance2 include/linux/iov_iter.h:249 [inline]
+> >  iterate_and_advance include/linux/iov_iter.h:271 [inline]
+> >  __copy_from_iter lib/iov_iter.c:249 [inline]
+> >  copy_page_from_iter_atomic+0x12b7/0x2ae0 lib/iov_iter.c:481
+> >  generic_perform_write+0x4c1/0xc60 mm/filemap.c:3982
+> >  shmem_file_write_iter+0x2bd/0x2f0 mm/shmem.c:2920
+> >  do_iter_readv_writev+0x7e6/0x960
+> >  vfs_iter_write+0x459/0xd00 fs/read_write.c:895
+> >  lo_write_bvec drivers/block/loop.c:246 [inline]
+> >  lo_write_simple drivers/block/loop.c:267 [inline]
+> >  do_req_filebacked drivers/block/loop.c:491 [inline]
+> >  loop_handle_cmd drivers/block/loop.c:1907 [inline]
+> >  loop_process_work+0x1502/0x3440 drivers/block/loop.c:1942
+> >  loop_rootcg_workfn+0x2b/0x40 drivers/block/loop.c:1973
+> >  process_one_work kernel/workqueue.c:3267 [inline]
+> >  process_scheduled_works+0xa81/0x1bd0 kernel/workqueue.c:3348
+> >  worker_thread+0xea5/0x1560 kernel/workqueue.c:3429
+> >  kthread+0x3e2/0x540 kernel/kthread.c:389
+> >  ret_from_fork+0x6d/0x90 arch/x86/kernel/process.c:147
+> >  ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:244
+> >
+> > Uninit was created at:
+> >  __alloc_pages+0x9d6/0xe70 mm/page_alloc.c:4598
+> >  alloc_pages_mpol+0x299/0x990 mm/mempolicy.c:2264
+> >  alloc_pages mm/mempolicy.c:2335 [inline]
+> >  folio_alloc+0x1d0/0x230 mm/mempolicy.c:2342
+> >  filemap_alloc_folio+0xa6/0x440 mm/filemap.c:984
+> >  __filemap_get_folio+0xa10/0x14b0 mm/filemap.c:1926
+> >  grow_dev_folio fs/buffer.c:1042 [inline]
+> >  grow_buffers fs/buffer.c:1108 [inline]
+> >  __getblk_slow fs/buffer.c:1134 [inline]
+> >  bdev_getblk+0x39b/0xc80 fs/buffer.c:1429
+> >  __getblk include/linux/buffer_head.h:355 [inline]
+> >  sb_getblk include/linux/buffer_head.h:361 [inline]
+> >  ext4_getblk+0x3da/0xe00 fs/ext4/inode.c:843
+> >  ext4_xattr_inode_write fs/ext4/xattr.c:1421 [inline]
+> >  ext4_xattr_inode_lookup_create fs/ext4/xattr.c:1596 [inline]
+> >  ext4_xattr_set_entry+0x574d/0x6880 fs/ext4/xattr.c:1718
+> >  ext4_xattr_block_set+0xb94/0x4fb0 fs/ext4/xattr.c:2037
+> >  ext4_xattr_move_to_block fs/ext4/xattr.c:2654 [inline]
+> >  ext4_xattr_make_inode_space fs/ext4/xattr.c:2729 [inline]
+> >  ext4_expand_extra_isize_ea+0x20bd/0x3560 fs/ext4/xattr.c:2821
+> >  __ext4_expand_extra_isize+0x5dc/0x680 fs/ext4/inode.c:5789
+> >  ext4_try_to_expand_extra_isize fs/ext4/inode.c:5832 [inline]
+> >  __ext4_mark_inode_dirty+0x70d/0xa10 fs/ext4/inode.c:5910
+> >  ext4_delete_inline_entry+0x650/0x7d0 fs/ext4/inline.c:1753
+> >  ext4_delete_entry+0x13f/0x7d0 fs/ext4/namei.c:2719
+> >  __ext4_unlink+0x9b8/0x11b0 fs/ext4/namei.c:3273
+> >  ext4_unlink+0x226/0x630 fs/ext4/namei.c:3321
+> >  vfs_unlink+0x676/0xa30 fs/namei.c:4343
+> >  do_unlinkat+0x823/0xe10 fs/namei.c:4407
+> >  __do_sys_unlinkat fs/namei.c:4450 [inline]
+> >  __se_sys_unlinkat fs/namei.c:4443 [inline]
+> >  __x64_sys_unlinkat+0x17c/0x230 fs/namei.c:4443
+> >  x64_sys_call+0x846/0x3b50 arch/x86/include/generated/asm/syscalls_64.h=
+:264
+> >  do_syscall_x64 arch/x86/entry/common.c:52 [inline]
+> >  do_syscall_64+0xcf/0x1e0 arch/x86/entry/common.c:83
+> >  entry_SYSCALL_64_after_hwframe+0x77/0x7f
+> >
+> > CPU: 1 PID: 88 Comm: kswapd1 Not tainted 6.9.0-syzkaller-02707-g614da38=
+e2f7a #0
+> > Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS=
+ Google 04/02/2024
+> > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D
+> >
+> >
+> > ---
+> > This report is generated by a bot. It may contain errors.
+> > See https://goo.gl/tpsmEJ for more information about syzbot.
+> > syzbot engineers can be reached at syzkaller@googlegroups.com.
+> >
+> > syzbot will keep track of this issue. See:
+> > https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+> >
+> > If the report is already addressed, let syzbot know by replying with:
+> > #syz fix: exact-commit-title
+> >
+> > If you want to overwrite report's subsystems, reply with:
+> > #syz set subsystems: new-subsystem
+> > (See the list of subsystem names on the web dashboard)
+> >
+> > If the report is a duplicate of another one, reply with:
+> > #syz dup: exact-subject-of-another-report
+> >
+> > If you want to undo deduplication, reply with:
+> > #syz undup
+>=20
+---1463770367-1445972292-1718097257=:2984--
