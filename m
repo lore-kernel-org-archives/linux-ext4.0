@@ -1,48 +1,50 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE44C157A67
-	for <linux-ext4@vger.kernel.org>; Fri, 28 Jun 2024 17:18:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A9A031CD5A5
+	for <linux-ext4@vger.kernel.org>; Fri, 28 Jun 2024 17:18:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1719595089; cv=none; b=lCVTKbeBrW1Ju8lmg+7nFeheIqu8uA0RKqcNhmWVO5sJ5nvANY+i315f2PCX0s6Oxnxeg9rPaWbd7DRYGWQi9bW5upOqlDRr7SwMI2c9ZNzZf+VidHjm7klBj9x3rDnVTIxN/bXSEa8hBHAPlqrGS3HoBfqGdlglJtl+x1+tuXA=
+	t=1719595096; cv=none; b=cvyRSxlRcRN9LxMQEHObzSjZHtqKzHwrZtN0KRwz2zo/eOWBy42pvo27pR1QlxP7J/vIGx01z42RsyU7oQjtfL/5yW64gN28WXhyN7rbTIqEm5atWpxsH3R5q8w/CNNRWxtiKG5fX1t0VwY4M5TR5ehLGp8+quxRE5D0FgPkzdk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1719595089; c=relaxed/simple;
-	bh=vvjuPBBxRjWuO9qbMksuSjap90JxeVrDrY54pzBkrzo=;
+	s=arc-20240116; t=1719595096; c=relaxed/simple;
+	bh=Ll7VDh97eSU4kzvGtZjZQRvp7nqnAh5Ud2rSAUstZJc=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=dCNwVzEzmnR9JeHDfwhivaDMBplhLo6yERL7OMVFovilrh2LCe+4GAy5c6KdYNHPC7HiOxOXAEeCszno6vAzMpT4FGwPlHJ53s3gJ4YQzxNXj+IXBjHyTXQ3toVZmtWnVzmp7oC98D8pAfm7SUAWIMSiuCSDSzFaIppYCAYpxRc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=GswiZf5X; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=df2vye0jAwn/e72VeSvlYSbmclsSYhHiTq6Z2sBr4/JDf27YnSPI8qhxGxujcV54q7aNjXU2rhTa6JEzxkiavL960d0OjKnSaYfm3LUVUduTpi8N9wi34xE41T0ZxFKQnGEEierwID/8QSj1D84Q1iOrjtiJKmPp86f7sAVyrnY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=oybsNbu8; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="GswiZf5X"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="oybsNbu8"
 Received: from cwcc.thunk.org (pool-173-48-120-63.bstnma.fios.verizon.net [173.48.120.63])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 45SHHt3l024130
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 45SHHtls024129
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Fri, 28 Jun 2024 13:17:56 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1719595076; bh=oUns7pp1fHbC3YmPhBTMwnxjZNbAd0kuLwtU37VEgyU=;
+	t=1719595077; bh=KfV/rAv/XQlmF5zcjtWgflEmVb+bUQhJ46QMD8rb6A8=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=GswiZf5XGR/5xpmZZEXy2Rw/J/B3T27KOkU03oZamc9olvqrppvotjNkITdCgrWLz
-	 FWuDkkoDhutRHvSz9CwTfr8QdQsTfQ8+EUtaNu861LGVhMiCt5503x0yoJJyN6nYYD
-	 pAD84ksfvxf5V/BbmrFr25D9GqEmqmfSTFXUWIk9zec+wDs1o4AFWpovcbHjiWTkgc
-	 X2QfWCJK5VMup/zgGZ2Jzfbw/pR41qILObdWbSlDjWyoTav2qUmSWCnqEQAWnPHjS7
-	 +Bn1SlEX62qBCd0OM+P1MDZPvriXAkbSCChbr1FRjYqdeyzNHKQUv0Lh98YPcmeJT6
-	 a2xRBQtgDyCBQ==
+	b=oybsNbu8tI+R3CK5LpIiqCzIx7IKQrMNkQEPRKX2RbocWd+Vn5VeNtt89vRB8gjz+
+	 AEarE6Y9MunTkNpuvnH26Ybuy/kFA3SdVI9ZH9jJfK74rQVFox4bNKESKro6L4ZV5i
+	 Pg6VvWZ4LU/bX2kxCY4EbfmI0X1xi+eqqQXToXMCtCc5Ep0G7aV5P/zNoTp6O3+oK0
+	 JzBzipbw/z/1uLS5u+08PgwoGMCN4JTO7+rEohY1AzTauDe5RHosTGMLxdPZMA2p9c
+	 B4Qjfs0KgoAPXcRgU60WA8uK7+EW0J5O5F1q8neV9URKhNniUVoYjLDI2XY8MLmU6b
+	 crdXjdqERFuqg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id D8AEB15C02D9; Fri, 28 Jun 2024 13:17:54 -0400 (EDT)
+	id D42F515C02C7; Fri, 28 Jun 2024 13:17:54 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.com>, Thorsten Blum <thorsten.blum@toblux.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] jbd2: Use str_plural() to fix Coccinelle warning
-Date: Fri, 28 Jun 2024 13:17:49 -0400
-Message-ID: <171959506215.737463.15134273406614968934.b4-ty@mit.edu>
+To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Xiaxi Shen <shenxiaxi26@gmail.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, skhan@linuxfoundation.org,
+        javier.carrasco.cruz@gmail.com, syzkaller-bugs@googlegroups.com,
+        syzbot+eaba5abe296837a640c0@syzkaller.appspotmail.com
+Subject: Re: [PATCH] Fix uninitialized variable in ext4_inlinedir_to_tree
+Date: Fri, 28 Jun 2024 13:17:47 -0400
+Message-ID: <171959506217.737463.6996650484265246906.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.45.2
-In-Reply-To: <20240402105157.254389-2-thorsten.blum@toblux.com>
-References: <20240402105157.254389-2-thorsten.blum@toblux.com>
+In-Reply-To: <20240501033017.220000-1-shenxiaxi26@gmail.com>
+References: <20240501033017.220000-1-shenxiaxi26@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,18 +55,22 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Tue, 02 Apr 2024 12:51:58 +0200, Thorsten Blum wrote:
-> Fixes the following Coccinelle/coccicheck warning reported by
-> string_choices.cocci:
+On Tue, 30 Apr 2024 20:30:17 -0700, Xiaxi Shen wrote:
+> Syzbot has found an uninit-value bug in ext4_inlinedir_to_tree
 > 
-> 	opportunity for str_plural(dropped)
+> This error happens because ext4_inlinedir_to_tree does not
+> handle the case when ext4fs_dirhash returns an error
 > 
+> This can be avoided by checking the return value of ext4fs_dirhash
+> and propagating the error,
+> similar to how it's done with ext4_htree_store_dirent
 > 
+> [...]
 
 Applied, thanks!
 
-[1/1] jbd2: Use str_plural() to fix Coccinelle warning
-      commit: be210737fe6cef2d0d578e23342261688c9317e1
+[1/1] Fix uninitialized variable in ext4_inlinedir_to_tree
+      commit: 8dc9c3da79c84b13fdb135e2fb0a149a8175bffe
 
 Best regards,
 -- 
