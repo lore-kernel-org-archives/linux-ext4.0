@@ -1,49 +1,50 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8EA8E1C8FAC
-	for <linux-ext4@vger.kernel.org>; Fri, 28 Jun 2024 17:18:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B1121CD5C4
+	for <linux-ext4@vger.kernel.org>; Fri, 28 Jun 2024 17:18:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1719595097; cv=none; b=vGVDJssVU4dUO62sX3gQ4axGM/b9+a7oSwRjKTkEoyejJKAIXWwJ55wqV6vQeQi3i/kOQtTpomkztbU5/o9h0rUtQAS559NkMOzBDwAXf+xCniqzaBEZNJ69oQWM3Emu0/UJlq4GDsixaBUCGEY3AiDsZMLKZK6M4Rv3gkk103w=
+	t=1719595105; cv=none; b=VkjKjZ0+TbuX9f9DDaVw3/+Ej26ESIIZS3B9Fhb2K2rPUtbMAvlRs57tAJggOqypqZXgVyYSRqUpPHDeKwoMqLuG3W3ivK2bX5dB1oKMwb9BW7as7jD+wMCIU4QLP82f5GCSvai2fxix5jYth4XaGKQp17YxoO5DYstRrSwOc4s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1719595097; c=relaxed/simple;
-	bh=9U9k9NSLSB1eaU9tAU7rHEi84QCAIMfQDGygGimoTTY=;
+	s=arc-20240116; t=1719595105; c=relaxed/simple;
+	bh=j6JO8xnyqMthfQl9cUoRuoYJrzy8B24x9G+tgF0oCf4=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=fb3J/vFiFGANy12asenkArC8em+Nfxc5CRc5l/cFR3HgVa7KHLSdSOZCpOX4EOASpZ4GkJoS19TDRoK31N43FsSd4w3WmkPwV9aoFnOnpODQErJKps0MD3N9y1pGrBmRv4rBai/+UuttSqyE24sfjfum10P1Rtx8IJoA9nP9CDk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=gp6vUw2J; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=e4+4F2T2/Tpe/ga4BAqfQth0CMXHXHmKwfdgjTGMrjkOCl/NxS2UGJx1hXE6XI8L8O+Hs3mTOl/MKlTn3feqk07BbPWHYjdrIhbjwY+QffMaZrCV3GEpq0GOchyXVdlW4ykbzYgcBsWvrdzh1ansx2oIEnxij9upH82koOAqTes=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=lbVIy3aE; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="gp6vUw2J"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="lbVIy3aE"
 Received: from cwcc.thunk.org (pool-173-48-120-63.bstnma.fios.verizon.net [173.48.120.63])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 45SHHtdM024132
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 45SHHtj3024133
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Fri, 28 Jun 2024 13:17:56 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1719595076; bh=Fk2dZVoYeN9for80TCHwR5kaMnR/2N5A+vQVBu9xFoQ=;
+	t=1719595077; bh=X1ZgjNTwhvsPZeB1iqG8J+FyPbhfO8IrQNQBkJW9UsM=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=gp6vUw2Jyd32+ukMpFeLhaVktJEa/1LANd4FcDn8XUH2j9Nd24oxrx9VjWIH4k9WS
-	 IZLFWTIGsJT5shBCo97hqiOXeZLBaL85fjzffoVqWxZq48K37wpGhc8T3h29BKRBLy
-	 pps2EGKmFCLxOdWSzcqodhcqXk67wSAh1J+ES0OMcidh+5eXcBmP3qO+UQFbPeDgFc
-	 nv0SJWMGM+bHm28bbL287H0DOLkLt1zm1VKivEmFbymuHkCExjDUKh/JisxVuDvpJx
-	 XbuSlRNae9WDPUdq1qm+ognNq9kCWWiw2V2AOXxnCME4KSDTFcsy50Dqi0aqSLEWTe
-	 tbLMIKn2MzKHw==
+	b=lbVIy3aEgzoDnpDkZQ/0rMvVad4dPzab+VELImZHfTv0k2rQFQdHCxzgaUkAEcp8F
+	 zFVjU9UVxn0hTb06cglFIDW3XziJD3h9H0VDn1KyMAZZ7CbRO4Zv8uygPzuWNPnB24
+	 6PwczJkCVKnM0mYJsdmSImSqhnahGyS41yRQLE9jh1yXMzcJTOjAs4EFMDm7IXnjFl
+	 /X/F9+ZA6WsvD1IDD5CPxra9O32NIrU56Z46+6IpPudu63CRndCdexiw0ByZotCg4z
+	 a1yCMd9Fkfk1r2XWfyhePkmzZh1EiPYwxrO7udiMK0HcFvIz3cRg7vW23Upxb3UdPG
+	 t2wCi6MDNK0LA==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id D6E2515C02D8; Fri, 28 Jun 2024 13:17:54 -0400 (EDT)
+	id D2D8C15C00DC; Fri, 28 Jun 2024 13:17:54 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: jack@suse.com, yi.zhang@huaweicloud.com,
-        Kemeng Shi <shikemeng@huaweicloud.com>
+To: Andreas Dilger <adilger@dilger.ca>, Zhang Yi <yi.zhang@huaweicloud.com>,
+        Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
+        "Luis Henriques (SUSE)" <luis.henriques@linux.dev>
 Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2 0/9] A fix and some cleanups to jbd2
-Date: Fri, 28 Jun 2024 13:17:48 -0400
-Message-ID: <171959506218.737463.5581686485417028321.b4-ty@mit.edu>
+Subject: Re: [PATCH v2] ext4: fix infinite loop when replaying fast_commit
+Date: Fri, 28 Jun 2024 13:17:46 -0400
+Message-ID: <171959506219.737463.11804303304019797243.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.45.2
-In-Reply-To: <20240514112438.1269037-1-shikemeng@huaweicloud.com>
-References: <20240514112438.1269037-1-shikemeng@huaweicloud.com>
+In-Reply-To: <20240515082857.32730-1-luis.henriques@linux.dev>
+References: <20240515082857.32730-1-luis.henriques@linux.dev>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -54,41 +55,21 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Tue, 14 May 2024 19:24:29 +0800, Kemeng Shi wrote:
-> v1->v2:
-> -Collect RVB from Yi and Jan
-> -remove rename "flags" to "escape" in patch 2/9
-> -goto new copy_done tag in patch 4/9
-> -add more comment in patch 5/9
+On Wed, 15 May 2024 09:28:57 +0100, Luis Henriques (SUSE) wrote:
+> When doing fast_commit replay an infinite loop may occur due to an
+> uninitialized extent_status struct.  ext4_ext_determine_insert_hole() does
+> not detect the replay and calls ext4_es_find_extent_range(), which will
+> return immediately without initializing the 'es' variable.
 > 
-> Patch 1 fixes memleak in jbd2_journal_write_metadata_buffer.
-> Patch 2-6 contain some cleanups to jbd2_journal_write_metadata_buffer().
-> Patch 7-9 contain some cleanups to kjournald2()
-> All tests in "kvm-xfstest smoke" survive. Please let me konw if more tests
-> should be ran. Thanks.
+> Because 'es' contains garbage, an integer overflow may happen causing an
+> infinite loop in this function, easily reproducible using fstest generic/039.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/9] jbd2: avoid memleak in jbd2_journal_write_metadata_buffer
-      commit: cc102aa24638b90e04364d64e4f58a1fa91a1976
-[2/9] jbd2: remove unused return info from jbd2_journal_write_metadata_buffer
-      commit: abe48a52250a91f0d1f9b5052a246c63cb845827
-[3/9] jbd2: remove unnedded "need_copy_out" in jbd2_journal_write_metadata_buffer
-      commit: 5dd3e8c0758a7c7a8c8f3002b2632a3c9d31c808
-[4/9] jbd2: jump to new copy_done tag when b_frozen_data is created concurrently
-      commit: 4c15129aaad54af2df4665ddde9245788ee9fa9c
-[5/9] jbd2: remove unneeded kmap to do escape in jbd2_journal_write_metadata_buffer
-      commit: daabedd664021afa9e7e3225489888a4fee99bad
-[6/9] jbd2: use bh_in instead of jh2bh(jh_in) to simplify code
-      commit: 4eb9bd13eba3c168e91460972a76ddd53ac3b2b0
-[7/9] jbd2: remove dead equality check of j_commit_[sequence/request] in kjournald2
-      commit: d5c545735aa0d6443460ac407d35f8fa235d5102
-[8/9] jbd2: remove dead check of JBD2_UNMOUNT in kjournald2
-      commit: 136d3e0703e807b14ed6f9b8a5a544b6ba08d940
-[9/9] jbd2: remove unnecessary "should_sleep" in kjournald2
-      commit: b07855348b305c234d9fabb7ab9b50fa9b3a7759
+[1/1] ext4: fix infinite loop when replaying fast_commit
+      commit: 907c3fe532253a6ef4eb9c4d67efb71fab58c706
 
 Best regards,
 -- 
