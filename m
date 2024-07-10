@@ -1,27 +1,28 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 16EC02BB04;
-	Wed, 10 Jul 2024 04:09:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9F7B53D96D;
+	Wed, 10 Jul 2024 04:09:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1720584558; cv=none; b=aEe9zz5O9N2Q+b0TOJl4vN3hGQbSLWS4K6UbjZfcW9nY7hNHTmuxr/u4w99y2zD8mAMzB6Pu64ZB4H64eAJDo4k8peUqPaRwKfHeyOutsUiQC/FVoLvBS52ooNVcC56kOD1cKuHCn1ch992Aw3RuwaNQhMoX1IyNJLMkvkcdvn8=
+	t=1720584558; cv=none; b=iJzHUEMfdrPFDFMreOXf+vBkNS6/yZJfN0lM2JmNw3CL1D8HjDNJJnDzLAxt//5NX+Wy3pHwFpAxeDuzwxKegqKkGmKbEcOFJNR3petNctbfaVs/yJLcnPDnZMP5tOWMTqECEq1gar4WR2PpU2eljzxlDnTP75VhB1srM7E9HEE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1720584558; c=relaxed/simple;
-	bh=qc4SezDM94JLx0RivPHLn3N6khqf8RIdNCtutKb+Ors=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version:Content-Type; b=KcrHeF2r49uSeQeesnPLp1JZhghTl3ZRM9dRvGh5cqb479S43PQSQe263sS+eaROQFnMbKMgGc7NH4Cr6Hxaxar5eyU4AH1bkHQW6rZUKJUTpYxNFX+6HVBWDiGrYzwlUy54NE7uRShC81HQK+weGmtrjynAGphNSsywvaG4luA=
+	bh=dG9CFH2mnaAi3k/Ik6GZklICo+ygmHf+tl6LKKkgQko=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=nKI+DJjXbnc9pC9mZyU8WlwcsAziVE6mZTRnly3s5ekTpMXObXt0vfIKsGOJg9AMAlN4Jglbtjt80VVWYfm2QFMWVlTPGaQyxW2OGAmUftA/wJQuubtX0TyOPYZE4yOn/Wvqed8bOQV5g6CxhpzC0piEuA9B5Vv67RNGMwFUJZQ=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4WJkr900Vzz4f3kp6;
-	Wed, 10 Jul 2024 12:08:56 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4WJkrB238Lz4f3kp6;
+	Wed, 10 Jul 2024 12:08:58 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 9D0321A016E;
-	Wed, 10 Jul 2024 12:09:04 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id E21C21A0CE8;
+	Wed, 10 Jul 2024 12:09:05 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP2 (Coremail) with SMTP id Syh0CgCXAIZdCY5mkoy3Bg--.14986S4;
-	Wed, 10 Jul 2024 12:09:03 +0800 (CST)
+	by APP2 (Coremail) with SMTP id Syh0CgCXAIZdCY5mkoy3Bg--.14986S7;
+	Wed, 10 Jul 2024 12:09:05 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -32,107 +33,127 @@ Cc: tytso@mit.edu,
 	yi.zhang@huawei.com,
 	yangerkun@huawei.com,
 	libaokun@huaweicloud.com,
-	Baokun Li <libaokun1@huawei.com>
-Subject: [PATCH 00/20] ext4: some bugfixes and cleanups for ext4 extents path
-Date: Wed, 10 Jul 2024 12:06:34 +0800
-Message-Id: <20240710040654.1714672-1-libaokun@huaweicloud.com>
+	Baokun Li <libaokun1@huawei.com>,
+	stable@kernel.org
+Subject: [PATCH 03/20] ext4: fix double brelse() the buffer of the extents path
+Date: Wed, 10 Jul 2024 12:06:37 +0800
+Message-Id: <20240710040654.1714672-4-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20240710040654.1714672-1-libaokun@huaweicloud.com>
+References: <20240710040654.1714672-1-libaokun@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgCXAIZdCY5mkoy3Bg--.14986S4
-X-Coremail-Antispam: 1UD129KBjvJXoWxArWkZw1Utw1UXryfXFW7XFb_yoW5Cry5pF
-	s3Cw1UA34vq3s7u39xJa15ZF15Gw4fG343Ary3Gr1kAF98JryFgFyxKa4YyFW5JFWxCF9I
-	vFW0yr17Cas8Ca7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvK14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
-	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
-	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
-	2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
-	W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2
-	Y2ka0xkIwI1lw4CEc2x0rVAKj4xxMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r
-	1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CE
-	b7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0x
-	vE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_WFyUJVCq3wCI
-	42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r1j6r4UYxBIdaVFxh
-	VjvjDU0xZFpf9x0JUm2NtUUUUU=
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQAPBV1jkIIt0wABsY
+X-CM-TRANSID:Syh0CgCXAIZdCY5mkoy3Bg--.14986S7
+X-Coremail-Antispam: 1UD129KBjvJXoWxWF43AFyfJw1rWr48XFyftFb_yoW5Gw1rpr
+	sIkryxGr1rt3yq9FWDXa1UWr18C3W7Gw47JFWfG3WjkFyDAr4kXFyxt3WFvFyUuFW8uFWY
+	vrW8t34UW3Z8Ga7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUPG14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JrWl82xGYIkIc2
+	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
+	xKxwAKzVCY07xG64k0F24l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1l
+	x2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14
+	v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IY
+	x2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87
+	Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIF
+	yTuYvjfUOOJ5UUUUU
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAABV1jkH7IIgAAs9
 
 From: Baokun Li <libaokun1@huawei.com>
 
-Hi all!
+In ext4_ext_try_to_merge_up(), set path[1].p_bh to NULL after it has been
+released, otherwise it may be released twice.
 
-This patch series is a hardening of ext4 extents path related code.
-The following is a brief overview of the patches, see the patches for
-more details.
+An example of what triggers this is as follows:
 
-Patch 1-2: Refactor ext4_ext_rm_idx() as suggested by Jan, and add
-appropriate error handling branches to ext4_ext_rm_idx() and
-ext4_ext_correct_indexes() to avoid inconsistent extents tree.
- PS: This comes from the previous work of my colleague zhanchengbin
- (see link), who is no longer in charge of these and I have taken over.
- Link: https://lore.kernel.org/r/20230213080514.535568-3-zhanchengbin1@huawei.com/
+  split2    map    split1
+|--------|-------|--------|
 
-Patch 3-4: Fix an issue that caused p_bh to be released twice if it wasn't
-set to NULL after path->p_bh was released. And add a helper function after
-the quick fix to prevent this from happening again.
+ext4_ext_map_blocks
+ ext4_ext_handle_unwritten_extents
+  ext4_split_convert_extents
+   // path->p_depth == 0
+   ext4_split_extent
+     // 1. do split1
+     ext4_split_extent_at
+       ext4_ext_insert_extent
+         ext4_ext_create_new_leaf
+           ext4_ext_grow_indepth
+             le16_add_cpu(&neh->eh_depth, 1)
+           ext4_find_extent
+             path->p_depth = 1
+         ext4_ext_try_to_merge
+           ext4_ext_try_to_merge_up
+             path->p_depth = 0
+             brelse(path[1].p_bh)  ---> not set to NULL here
+     // 2. update path
+     ext4_find_extent
+     // 3. do split2
+     ext4_split_extent_at
+       ext4_ext_insert_extent
+         ext4_ext_create_new_leaf
+           ext4_ext_grow_indepth
+             le16_add_cpu(&neh->eh_depth, 1)
+           ext4_find_extent
+             path[0].p_bh = NULL;
+             path->p_depth = 1
+             read_extent_tree_block  ---> return err
+             // path[1].p_bh is still the old value
+ ext4_free_ext_path
+  ext4_ext_drop_refs
+   // path->p_depth == 1
+   brelse(path[1].p_bh)  ---> brelse a buffer twice
 
-Patch 5-7: Quick fixes for use-after-free and double-free problems caused
-by mixing path(pointer to an extent path) and ppath(pointer to an extent
-path pointer).
+Finally got the following WARRNING when removing the buffer from lru:
 
-Patch 8-19: Now the use of path and ppath is so confusing that we can
-trigger use-after-free or double-free by accessing a stale pointer, or
-we can get a memory leak by forgetting to update ppath. And it's very
-difficult to read the code. So to make the code more readable, get rid
-of ppath and pass path between functions uniformly to avoid these risks.
+============================================
+VFS: brelse: Trying to free free buffer
+WARNING: CPU: 2 PID: 72 at fs/buffer.c:1241 __brelse+0x58/0x90
+CPU: 2 PID: 72 Comm: kworker/u19:1 Not tainted 6.9.0-dirty #716
+RIP: 0010:__brelse+0x58/0x90
+Call Trace:
+ <TASK>
+ __find_get_block+0x6e7/0x810
+ bdev_getblk+0x2b/0x480
+ __ext4_get_inode_loc+0x48a/0x1240
+ ext4_get_inode_loc+0xb2/0x150
+ ext4_reserve_inode_write+0xb7/0x230
+ __ext4_mark_inode_dirty+0x144/0x6a0
+ ext4_ext_insert_extent+0x9c8/0x3230
+ ext4_ext_map_blocks+0xf45/0x2dc0
+ ext4_map_blocks+0x724/0x1700
+ ext4_do_writepages+0x12d6/0x2a70
+[...]
+============================================
 
-Patch 20: Reduces the consumption of unnecessary memory operations by
-avoiding repetitive allocation and release paths.
+Fixes: ecb94f5fdf4b ("ext4: collapse a single extent tree block into the inode if possible")
+Cc: stable@kernel.org
+Signed-off-by: Baokun Li <libaokun1@huawei.com>
+---
+ fs/ext4/extents.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-"kvm-xfstests -c ext4/all -g auto" has been executed with no new failures.
-
-Comments and questions are, as always, welcome.
-Please let me know what you think.
-
-Thanks,
-Baokun
-
-Baokun Li (20):
-  ext4: refactor ext4_ext_rm_idx() to index 'path'
-  ext4: prevent partial update of the extents path
-  ext4: fix double brelse() the buffer of the extents path
-  ext4: add new ext4_ext_path_brelse() helper
-  ext4: fix slab-use-after-free in ext4_split_extent_at()
-  ext4: avoid use-after-free in ext4_ext_show_leaf()
-  ext4: drop ppath from ext4_ext_replay_update_ex() to avoid double-free
-  ext4: get rid of ppath in ext4_find_extent()
-  ext4: get rid of ppath in get_ext_path()
-  ext4: get rid of ppath in ext4_ext_create_new_leaf()
-  ext4: get rid of ppath in ext4_ext_insert_extent()
-  ext4: get rid of ppath in ext4_split_extent_at()
-  ext4: get rid of ppath in ext4_force_split_extent_at()
-  ext4: get rid of ppath in ext4_split_extent()
-  ext4: get rid of ppath in ext4_split_convert_extents()
-  ext4: get rid of ppath in ext4_convert_unwritten_extents_endio()
-  ext4: get rid of ppath in ext4_ext_convert_to_initialized()
-  ext4: get rid of ppath in ext4_ext_handle_unwritten_extents()
-  ext4: get rid of ppath in convert_initialized_extent()
-  ext4: avoid unnecessary extent path frees and allocations
-
- fs/ext4/ext4.h        |   9 +-
- fs/ext4/extents.c     | 746 +++++++++++++++++++++++-------------------
- fs/ext4/fast_commit.c |  17 +-
- fs/ext4/migrate.c     |   5 +-
- fs/ext4/move_extent.c |  36 +-
- 5 files changed, 439 insertions(+), 374 deletions(-)
-
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 4d589d34b30e..657baf3991c1 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1888,6 +1888,7 @@ static void ext4_ext_try_to_merge_up(handle_t *handle,
+ 	path[0].p_hdr->eh_max = cpu_to_le16(max_root);
+ 
+ 	brelse(path[1].p_bh);
++	path[1].p_bh = NULL;
+ 	ext4_free_blocks(handle, inode, NULL, blk, 1,
+ 			 EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
+ }
 -- 
 2.39.2
 
