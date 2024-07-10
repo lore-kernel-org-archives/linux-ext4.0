@@ -1,28 +1,28 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DB6666AFAE;
-	Wed, 10 Jul 2024 04:09:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E23997C6D5;
+	Wed, 10 Jul 2024 04:09:18 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1720584560; cv=none; b=gxEBuIVYUpj3TMyRxmue8leL6XNejz0rnBQw17+kD3lUt37ZmuQyITK8o9Ap6lHnqlwilU94gTCcEbT80WO0aLKunbUCsKmz3yVKiGVufK81Xga9ah6PmNFUatV8fXscB3dTkwWYpGlpJMrSQ3mYxdn6wQZ3RGO8BnUC6DUcg2I=
+	t=1720584561; cv=none; b=jB9m67xW8jLR8wZf5Dhsxq5ktTv+LWcgLfDNJZLfQCuLB1qE3KEvDvrH84AdF6ULwWh/reCQbwD/0Vlx1qcXNlYEVt+VwvxFAGcOIFRBtkGkbhIyfQLSK9FvppNMAMPZVlUi7hLMWWIw9Hp9mvfOW7azKEwYMOildDxsipJfA3A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1720584560; c=relaxed/simple;
-	bh=2d31sUOtKNS+XBVK8uowHH3gbqHRJ+Vinv3y8v4j9/Q=;
+	s=arc-20240116; t=1720584561; c=relaxed/simple;
+	bh=ZCMKuBfPy9Wvd/tQ4dHG74hcjUltOrCTLBgAhdxf5v4=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=nXxbUC9bgRagCEpq5ytseo3XrATY9A+3fWD5cziepGLomgw6LKy+qPRwKALbYQugiyvi1yBWyZDrTnkQrkSH5uYOwwz1WnjVlNzgsWtN6pOHC52wyPBZ+rLz6ll57TrAwauVSkxBcO4hjULuWBHvhlfSE/oZYb2PCv4uw76G3MM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=q7fdiACKuOmmCMTrFqztORJunucVEzu/9KDuW9gaFK1u9S1o0VMizzwolfk/jpUxocoDq0wMZ5pBXc4u14w+WkZcAUn/Y8I0VzUxSX+xG1hqbBYpQyS/9mTwbVMhKrw9T2aEBmPyweM73rG6VyfSSfK0NkLq9FlIQ8iVDUDyp6E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4WJkrB0DGyz4f3mJX;
-	Wed, 10 Jul 2024 12:08:58 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4WJkrK2Ncyz4f3kpG;
+	Wed, 10 Jul 2024 12:09:05 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 9D33C1A016E;
-	Wed, 10 Jul 2024 12:09:09 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id EDF301A01B9;
+	Wed, 10 Jul 2024 12:09:12 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP2 (Coremail) with SMTP id Syh0CgCXAIZdCY5mkoy3Bg--.14986S16;
-	Wed, 10 Jul 2024 12:09:09 +0800 (CST)
+	by APP2 (Coremail) with SMTP id Syh0CgCXAIZdCY5mkoy3Bg--.14986S24;
+	Wed, 10 Jul 2024 12:09:12 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -34,9 +34,9 @@ Cc: tytso@mit.edu,
 	yangerkun@huawei.com,
 	libaokun@huaweicloud.com,
 	Baokun Li <libaokun1@huawei.com>
-Subject: [PATCH 12/20] ext4: get rid of ppath in ext4_split_extent_at()
-Date: Wed, 10 Jul 2024 12:06:46 +0800
-Message-Id: <20240710040654.1714672-13-libaokun@huaweicloud.com>
+Subject: [PATCH 20/20] ext4: avoid unnecessary extent path frees and allocations
+Date: Wed, 10 Jul 2024 12:06:54 +0800
+Message-Id: <20240710040654.1714672-21-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20240710040654.1714672-1-libaokun@huaweicloud.com>
 References: <20240710040654.1714672-1-libaokun@huaweicloud.com>
@@ -47,10 +47,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgCXAIZdCY5mkoy3Bg--.14986S16
-X-Coremail-Antispam: 1UD129KBjvJXoW3Ar45Zr1UKFyDKryftF18Xwb_yoWxZF4xpr
-	sI9F18Grn8GasFgrWxJanrZr1a9a1UG3yUGFW7G3sYk3WjqryYgF1xta45tFW5KrW8Wa43
-	Ar4Fyry5Wa47J37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:Syh0CgCXAIZdCY5mkoy3Bg--.14986S24
+X-Coremail-Antispam: 1UD129KBjvJXoW3Xry7Jw15Xw1Dtr4fGw4UArb_yoW7AF48pF
+	WayF1Ygr15XFsrCrWxKa17Zr13K3W8Gw48GryfW34v9asxXr1SgF17ta1ftFyrKFZ7WFWa
+	qF18Kry8Gry7KFJanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUmY14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -61,238 +61,208 @@ X-Coremail-Antispam: 1UD129KBjvJXoW3Ar45Zr1UKFyDKryftF18Xwb_yoWxZF4xpr
 	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
 	kIc2xKxwAKzVCY07xG64k0F24l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_
 	Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17
-	CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Gr0_Xr1lIxAIcVC0
+	CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Xr0_Ar1lIxAIcVC0
 	I7IYx2IY6xkF7I0E14v26r4UJVWxJr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
 	vEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJbIYCTnIWIev
 	Ja73UjIFyTuYvjfUYGYpUUUUU
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQAABV1jkIPHmgAGsy
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAABV1jkH7ILQABsz
 
 From: Baokun Li <libaokun1@huawei.com>
 
-The use of path and ppath is now very confusing, so to make the code more
-readable, pass path between functions uniformly, and get rid of ppath.
+The ext4_find_extent() can update the extent path so that it does not have
+to allocate and free the path repeatedly, thus reducing the consumption of
+memory allocation and freeing in the following functions:
 
-To get rid of the ppath in ext4_split_extent_at(), the following is done
-here:
+    ext4_ext_clear_bb
+    ext4_ext_replay_set_iblocks
+    ext4_fc_replay_add_range
+    ext4_fc_set_bitmaps_and_counters
 
- * Free the extents path when an error is encountered.
- * Its caller needs to update ppath if it uses ppath.
- * Teach ext4_ext_show_leaf() to skip error pointer.
- * Propagate ext4_find_extent() error return value in ext4_insert_range().
-
-No functional changes.
+No functional changes. Note that ext4_find_extent() does not support error
+pointers, so in this case set path to NULL first.
 
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 ---
- fs/ext4/extents.c | 86 ++++++++++++++++++++++++++---------------------
- 1 file changed, 48 insertions(+), 38 deletions(-)
+ fs/ext4/extents.c     | 51 +++++++++++++++++++------------------------
+ fs/ext4/fast_commit.c | 11 ++++++----
+ 2 files changed, 29 insertions(+), 33 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index fc75390d591a..c86b1bb7720f 100644
+index 737432bb316e..5ff92cd50dc8 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -84,12 +84,11 @@ static void ext4_extent_block_csum_set(struct inode *inode,
- 	et->et_checksum = ext4_extent_block_csum(inode, eh);
- }
- 
--static int ext4_split_extent_at(handle_t *handle,
--			     struct inode *inode,
--			     struct ext4_ext_path **ppath,
--			     ext4_lblk_t split,
--			     int split_flag,
--			     int flags);
-+static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
-+						  struct inode *inode,
-+						  struct ext4_ext_path *path,
-+						  ext4_lblk_t split,
-+						  int split_flag, int flags);
- 
- static int ext4_ext_trunc_restart_fn(struct inode *inode, int *dropped)
- {
-@@ -341,9 +340,15 @@ ext4_force_split_extent_at(handle_t *handle, struct inode *inode,
- 	if (nofail)
- 		flags |= EXT4_GET_BLOCKS_METADATA_NOFAIL | EXT4_EX_NOFAIL;
- 
--	return ext4_split_extent_at(handle, inode, ppath, lblk, unwritten ?
-+	path = ext4_split_extent_at(handle, inode, path, lblk, unwritten ?
- 			EXT4_EXT_MARK_UNWRIT1|EXT4_EXT_MARK_UNWRIT2 : 0,
- 			flags);
-+	if (IS_ERR(path)) {
-+		*ppath = NULL;
-+		return PTR_ERR(path);
-+	}
-+	*ppath = path;
-+	return 0;
- }
- 
- static int
-@@ -694,7 +699,7 @@ static void ext4_ext_show_leaf(struct inode *inode, struct ext4_ext_path *path)
- 	struct ext4_extent *ex;
- 	int i;
- 
--	if (!path)
-+	if (IS_ERR_OR_NULL(path))
- 		return;
- 
- 	eh = path[depth].p_hdr;
-@@ -3174,16 +3179,14 @@ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
-  *  a> the extent are splitted into two extent.
-  *  b> split is not needed, and just mark the extent.
-  *
-- * return 0 on success.
-+ * Return an extent path pointer on success, or an error pointer on failure.
-  */
--static int ext4_split_extent_at(handle_t *handle,
--			     struct inode *inode,
--			     struct ext4_ext_path **ppath,
--			     ext4_lblk_t split,
--			     int split_flag,
--			     int flags)
-+static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
-+						  struct inode *inode,
-+						  struct ext4_ext_path *path,
-+						  ext4_lblk_t split,
-+						  int split_flag, int flags)
- {
--	struct ext4_ext_path *path = *ppath;
- 	ext4_fsblk_t newblock;
- 	ext4_lblk_t ee_block;
- 	struct ext4_extent *ex, newex, orig_ex, zero_ex;
-@@ -3254,14 +3257,12 @@ static int ext4_split_extent_at(handle_t *handle,
- 		ext4_ext_mark_unwritten(ex2);
- 
- 	path = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
--	if (!IS_ERR(path)) {
--		*ppath = path;
-+	if (!IS_ERR(path))
+@@ -6068,12 +6068,9 @@ int ext4_ext_replay_set_iblocks(struct inode *inode)
+ 	if (IS_ERR(path))
+ 		return PTR_ERR(path);
+ 	ex = path[path->p_depth].p_ext;
+-	if (!ex) {
+-		ext4_free_ext_path(path);
++	if (!ex)
  		goto out;
 -	}
--	*ppath = NULL;
+ 	end = le32_to_cpu(ex->ee_block) + ext4_ext_get_actual_len(ex);
+-	ext4_free_ext_path(path);
+ 
+ 	/* Count the number of data blocks */
+ 	cur = 0;
+@@ -6099,32 +6096,28 @@ int ext4_ext_replay_set_iblocks(struct inode *inode)
+ 	ret = skip_hole(inode, &cur);
+ 	if (ret < 0)
+ 		goto out;
+-	path = ext4_find_extent(inode, cur, NULL, 0);
++	path = ext4_find_extent(inode, cur, path, 0);
+ 	if (IS_ERR(path))
+ 		goto out;
+ 	numblks += path->p_depth;
+-	ext4_free_ext_path(path);
+ 	while (cur < end) {
+-		path = ext4_find_extent(inode, cur, NULL, 0);
++		path = ext4_find_extent(inode, cur, path, 0);
+ 		if (IS_ERR(path))
+ 			break;
+ 		ex = path[path->p_depth].p_ext;
+-		if (!ex) {
+-			ext4_free_ext_path(path);
+-			return 0;
+-		}
++		if (!ex)
++			goto cleanup;
 +
- 	err = PTR_ERR(path);
- 	if (err != -ENOSPC && err != -EDQUOT && err != -ENOMEM)
--		return err;
-+		return path;
- 
- 	/*
- 	 * Get a new path to try to zeroout or fix the extent length.
-@@ -3271,16 +3272,14 @@ static int ext4_split_extent_at(handle_t *handle,
- 	 * in ext4_da_update_reserve_space() due to an incorrect
- 	 * ee_len causing the i_reserved_data_blocks exception.
- 	 */
--	path = ext4_find_extent(inode, ee_block, NULL,
--				flags | EXT4_EX_NOFAIL);
-+	path = ext4_find_extent(inode, ee_block, NULL, flags | EXT4_EX_NOFAIL);
- 	if (IS_ERR(path)) {
- 		EXT4_ERROR_INODE(inode, "Failed split extent on %u, err %ld",
- 				 split, PTR_ERR(path));
--		return PTR_ERR(path);
-+		return path;
+ 		cur = max(cur + 1, le32_to_cpu(ex->ee_block) +
+ 					ext4_ext_get_actual_len(ex));
+ 		ret = skip_hole(inode, &cur);
+-		if (ret < 0) {
+-			ext4_free_ext_path(path);
++		if (ret < 0)
+ 			break;
+-		}
+-		path2 = ext4_find_extent(inode, cur, NULL, 0);
+-		if (IS_ERR(path2)) {
+-			ext4_free_ext_path(path);
++
++		path2 = ext4_find_extent(inode, cur, path2, 0);
++		if (IS_ERR(path2))
+ 			break;
+-		}
++
+ 		for (i = 0; i <= max(path->p_depth, path2->p_depth); i++) {
+ 			cmp1 = cmp2 = 0;
+ 			if (i <= path->p_depth)
+@@ -6136,13 +6129,14 @@ int ext4_ext_replay_set_iblocks(struct inode *inode)
+ 			if (cmp1 != cmp2 && cmp2 != 0)
+ 				numblks++;
+ 		}
+-		ext4_free_ext_path(path);
+-		ext4_free_ext_path(path2);
  	}
- 	depth = ext_depth(inode);
- 	ex = path[depth].p_ext;
--	*ppath = path;
  
- 	if (EXT4_EXT_MAY_ZEROOUT & split_flag) {
- 		if (split_flag & (EXT4_EXT_DATA_VALID1|EXT4_EXT_DATA_VALID2)) {
-@@ -3332,10 +3331,13 @@ static int ext4_split_extent_at(handle_t *handle,
- 	 * and err is a non-zero error code.
- 	 */
- 	ext4_ext_dirty(handle, inode, path + path->p_depth);
--	return err;
  out:
-+	if (err) {
-+		ext4_free_ext_path(path);
-+		path = ERR_PTR(err);
-+	}
- 	ext4_ext_show_leaf(inode, path);
--	return err;
-+	return path;
+ 	inode->i_blocks = numblks << (inode->i_sb->s_blocksize_bits - 9);
+ 	ext4_mark_inode_dirty(NULL, inode);
++cleanup:
++	ext4_free_ext_path(path);
++	ext4_free_ext_path(path2);
+ 	return 0;
+ }
+ 
+@@ -6163,12 +6157,9 @@ int ext4_ext_clear_bb(struct inode *inode)
+ 	if (IS_ERR(path))
+ 		return PTR_ERR(path);
+ 	ex = path[path->p_depth].p_ext;
+-	if (!ex) {
+-		ext4_free_ext_path(path);
+-		return 0;
+-	}
++	if (!ex)
++		goto out;
+ 	end = le32_to_cpu(ex->ee_block) + ext4_ext_get_actual_len(ex);
+-	ext4_free_ext_path(path);
+ 
+ 	cur = 0;
+ 	while (cur < end) {
+@@ -6178,16 +6169,16 @@ int ext4_ext_clear_bb(struct inode *inode)
+ 		if (ret < 0)
+ 			break;
+ 		if (ret > 0) {
+-			path = ext4_find_extent(inode, map.m_lblk, NULL, 0);
+-			if (!IS_ERR_OR_NULL(path)) {
++			path = ext4_find_extent(inode, map.m_lblk, path, 0);
++			if (!IS_ERR(path)) {
+ 				for (j = 0; j < path->p_depth; j++) {
+-
+ 					ext4_mb_mark_bb(inode->i_sb,
+ 							path[j].p_block, 1, false);
+ 					ext4_fc_record_regions(inode->i_sb, inode->i_ino,
+ 							0, path[j].p_block, 1, 1);
+ 				}
+-				ext4_free_ext_path(path);
++			} else {
++				path = NULL;
+ 			}
+ 			ext4_mb_mark_bb(inode->i_sb, map.m_pblk, map.m_len, false);
+ 			ext4_fc_record_regions(inode->i_sb, inode->i_ino,
+@@ -6196,5 +6187,7 @@ int ext4_ext_clear_bb(struct inode *inode)
+ 		cur = cur + map.m_len;
+ 	}
+ 
++out:
++	ext4_free_ext_path(path);
+ 	return 0;
+ }
+diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
+index 1dee40477727..1426d595fab7 100644
+--- a/fs/ext4/fast_commit.c
++++ b/fs/ext4/fast_commit.c
+@@ -1766,7 +1766,7 @@ static int ext4_fc_replay_add_range(struct super_block *sb,
+ 
+ 		if (ret == 0) {
+ 			/* Range is not mapped */
+-			path = ext4_find_extent(inode, cur, NULL, 0);
++			path = ext4_find_extent(inode, cur, path, 0);
+ 			if (IS_ERR(path))
+ 				goto out;
+ 			memset(&newex, 0, sizeof(newex));
+@@ -1782,7 +1782,6 @@ static int ext4_fc_replay_add_range(struct super_block *sb,
+ 			up_write((&EXT4_I(inode)->i_data_sem));
+ 			if (IS_ERR(path))
+ 				goto out;
+-			ext4_free_ext_path(path);
+ 			goto next;
+ 		}
+ 
+@@ -1830,6 +1829,7 @@ static int ext4_fc_replay_add_range(struct super_block *sb,
+ 	ext4_ext_replay_shrink_inode(inode, i_size_read(inode) >>
+ 					sb->s_blocksize_bits);
+ out:
++	ext4_free_ext_path(path);
+ 	iput(inode);
+ 	return 0;
+ }
+@@ -1930,12 +1930,13 @@ static void ext4_fc_set_bitmaps_and_counters(struct super_block *sb)
+ 				break;
+ 
+ 			if (ret > 0) {
+-				path = ext4_find_extent(inode, map.m_lblk, NULL, 0);
++				path = ext4_find_extent(inode, map.m_lblk, path, 0);
+ 				if (!IS_ERR(path)) {
+ 					for (j = 0; j < path->p_depth; j++)
+ 						ext4_mb_mark_bb(inode->i_sb,
+ 							path[j].p_block, 1, true);
+-					ext4_free_ext_path(path);
++				} else {
++					path = NULL;
+ 				}
+ 				cur += ret;
+ 				ext4_mb_mark_bb(inode->i_sb, map.m_pblk,
+@@ -1946,6 +1947,8 @@ static void ext4_fc_set_bitmaps_and_counters(struct super_block *sb)
+ 		}
+ 		iput(inode);
+ 	}
++
++	ext4_free_ext_path(path);
  }
  
  /*
-@@ -3379,10 +3381,14 @@ static int ext4_split_extent(handle_t *handle,
- 				       EXT4_EXT_MARK_UNWRIT2;
- 		if (split_flag & EXT4_EXT_DATA_VALID2)
- 			split_flag1 |= EXT4_EXT_DATA_VALID1;
--		err = ext4_split_extent_at(handle, inode, ppath,
-+		path = ext4_split_extent_at(handle, inode, path,
- 				map->m_lblk + map->m_len, split_flag1, flags1);
--		if (err)
-+		if (IS_ERR(path)) {
-+			err = PTR_ERR(path);
-+			*ppath = NULL;
- 			goto out;
-+		}
-+		*ppath = path;
- 	} else {
- 		allocated = ee_len - (map->m_lblk - ee_block);
- 	}
-@@ -3390,7 +3396,7 @@ static int ext4_split_extent(handle_t *handle,
- 	 * Update path is required because previous ext4_split_extent_at() may
- 	 * result in split of original leaf or extent zeroout.
- 	 */
--	path = ext4_find_extent(inode, map->m_lblk, *ppath, flags);
-+	path = ext4_find_extent(inode, map->m_lblk, path, flags);
- 	if (IS_ERR(path)) {
- 		*ppath = NULL;
- 		return PTR_ERR(path);
-@@ -3412,13 +3418,17 @@ static int ext4_split_extent(handle_t *handle,
- 			split_flag1 |= split_flag & (EXT4_EXT_MAY_ZEROOUT |
- 						     EXT4_EXT_MARK_UNWRIT2);
- 		}
--		err = ext4_split_extent_at(handle, inode, ppath,
-+		path = ext4_split_extent_at(handle, inode, path,
- 				map->m_lblk, split_flag1, flags);
--		if (err)
-+		if (IS_ERR(path)) {
-+			err = PTR_ERR(path);
-+			*ppath = NULL;
- 			goto out;
-+		}
-+		*ppath = path;
- 	}
- 
--	ext4_ext_show_leaf(inode, *ppath);
-+	ext4_ext_show_leaf(inode, path);
- out:
- 	return err ? err : allocated;
- }
-@@ -5596,6 +5606,7 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
- 	path = ext4_find_extent(inode, offset_lblk, NULL, 0);
- 	if (IS_ERR(path)) {
- 		up_write(&EXT4_I(inode)->i_data_sem);
-+		ret = PTR_ERR(path);
- 		goto out_stop;
- 	}
- 
-@@ -5614,22 +5625,21 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
- 			if (ext4_ext_is_unwritten(extent))
- 				split_flag = EXT4_EXT_MARK_UNWRIT1 |
- 					EXT4_EXT_MARK_UNWRIT2;
--			ret = ext4_split_extent_at(handle, inode, &path,
-+			path = ext4_split_extent_at(handle, inode, path,
- 					offset_lblk, split_flag,
- 					EXT4_EX_NOCACHE |
- 					EXT4_GET_BLOCKS_PRE_IO |
- 					EXT4_GET_BLOCKS_METADATA_NOFAIL);
- 		}
- 
--		ext4_free_ext_path(path);
--		if (ret < 0) {
-+		if (IS_ERR(path)) {
- 			up_write(&EXT4_I(inode)->i_data_sem);
-+			ret = PTR_ERR(path);
- 			goto out_stop;
- 		}
--	} else {
--		ext4_free_ext_path(path);
- 	}
- 
-+	ext4_free_ext_path(path);
- 	ext4_es_remove_extent(inode, offset_lblk, EXT_MAX_BLOCKS - offset_lblk);
- 
- 	/*
 -- 
 2.39.2
 
