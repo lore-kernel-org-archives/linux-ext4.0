@@ -1,28 +1,28 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D435842076;
-	Wed, 10 Jul 2024 04:09:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B6A84AEF4;
+	Wed, 10 Jul 2024 04:09:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1720584558; cv=none; b=OXbSV+4774Hq5TxUOlOeoLSOYv7bEt2FR1E5gyPKBruubdPqBIl/nii1A5ReP0RYFRiWe5vZqaFrvchft9n45+WyvBtqrxyIKo+gLYq7eVZBbAis0OTkBf3IfSGUW7JNNdT1I+7WkiAWrpXgqHNOij/JQRCGQ6PKTDFBy+E4r/k=
+	t=1720584558; cv=none; b=PTSEENlpIqigMCbuZX75FD0vqJjCjv9ZxVpuIBX714SJ5H41bltLqpBrzIuAIqPj7OhO85TQvieeLKg4XQwZoIGWnjc01p3C56YutKk9WTQj41DbpyQ4/KumrwbVkTt5OMGgS0rlcTgne32z0QntzaelIS81zf3GNQZV7n7tA/k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1720584558; c=relaxed/simple;
-	bh=mQYDFf6JBOTOGC4piSSnkGkF+HocS4v7qN1kwlgBW/c=;
+	bh=kfC6F5VKWvb7rFGpDlMAVkw2sN3aGZ381I6aoHA/4eE=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=IEz0aF+KSCqZixZdcHPuyCYo5tQ8mWXSG8vQw11GJ+06BYX5SwDMd9fW2mbjwMdxyNJ5UVA4KZhcQMEDCE61bP567IYLAAzZRWBIsQ20f3hJY2ZYe9uxjcn++KoFvvjPGbgqnoSpM8yU17epnmBAPHm02taeSVhj77NInsCvwkQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=iXvbc4b5TeBJF/28cGUW2CnbJ9r9hn9cRSaWPOcnLqdV4oQB67mp6Pqp6ElNZlhV3R9qRCVre3LW80bC9ScQ+Fw9Ke426Lg3rIhqHjzUAoXvEcByroMmdBP2Nd9X1f5x1J1qTJhgbD32NVZTOCMVdYzP93n0QbA2zoDriI4QATM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4WJkr56QsXz4f3mHb;
-	Wed, 10 Jul 2024 12:08:53 +0800 (CST)
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4WJkr775c0z4f3mJc;
+	Wed, 10 Jul 2024 12:08:55 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id B7B111A016E;
-	Wed, 10 Jul 2024 12:09:06 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 96EDD1A016E;
+	Wed, 10 Jul 2024 12:09:07 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP2 (Coremail) with SMTP id Syh0CgCXAIZdCY5mkoy3Bg--.14986S9;
-	Wed, 10 Jul 2024 12:09:06 +0800 (CST)
+	by APP2 (Coremail) with SMTP id Syh0CgCXAIZdCY5mkoy3Bg--.14986S11;
+	Wed, 10 Jul 2024 12:09:07 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -35,9 +35,9 @@ Cc: tytso@mit.edu,
 	libaokun@huaweicloud.com,
 	Baokun Li <libaokun1@huawei.com>,
 	stable@kernel.org
-Subject: [PATCH 05/20] ext4: fix slab-use-after-free in ext4_split_extent_at()
-Date: Wed, 10 Jul 2024 12:06:39 +0800
-Message-Id: <20240710040654.1714672-6-libaokun@huaweicloud.com>
+Subject: [PATCH 07/20] ext4: drop ppath from ext4_ext_replay_update_ex() to avoid double-free
+Date: Wed, 10 Jul 2024 12:06:41 +0800
+Message-Id: <20240710040654.1714672-8-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20240710040654.1714672-1-libaokun@huaweicloud.com>
 References: <20240710040654.1714672-1-libaokun@huaweicloud.com>
@@ -48,10 +48,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgCXAIZdCY5mkoy3Bg--.14986S9
-X-Coremail-Antispam: 1UD129KBjvJXoWxZFyftr13Zr47Ary3Gw48WFg_yoWrXF43pr
-	ykCryfGrn8t3srWrZrJ3WDZr1Ika1UGr4UJrWfGw12gFyUJ348WFyvyF15tF98KrW8Za45
-	Zr48tryUGa4qkFDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:Syh0CgCXAIZdCY5mkoy3Bg--.14986S11
+X-Coremail-Antispam: 1UD129KBjvJXoWxGry3Jr1UuFW7uFW3Kry3urg_yoW5AryUpF
+	nrCF1Fgr15Xw1kWrZ7Xa17ZF1Ska1UGr4UGrZ3Cayj9FyUXw109FyIyF1ftFy5XrW8GFya
+	yrW8tr15Ww17K37anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUmj14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -66,124 +66,92 @@ X-Coremail-Antispam: 1UD129KBjvJXoWxZFyftr13Zr47Ary3Gw48WFg_yoWrXF43pr
 	I7IYx2IY6xkF7I0E14v26F4j6r4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcV
 	C2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2Kfnx
 	nUUI43ZEXa7VUbfcTJUUUUU==
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQAABV1jkIPHmAABs3
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQAABV1jkIPHmQAAs3
 
 From: Baokun Li <libaokun1@huawei.com>
 
-We hit the following use-after-free:
+When calling ext4_force_split_extent_at() in ext4_ext_replay_update_ex(),
+the 'ppath' is updated but it is the 'path' that is freed, thus potentially
+triggering a double-free in the following process:
 
-==================================================================
-BUG: KASAN: slab-use-after-free in ext4_split_extent_at+0xba8/0xcc0
-Read of size 2 at addr ffff88810548ed08 by task kworker/u20:0/40
-CPU: 0 PID: 40 Comm: kworker/u20:0 Not tainted 6.9.0-dirty #724
-Call Trace:
- <TASK>
- kasan_report+0x93/0xc0
- ext4_split_extent_at+0xba8/0xcc0
- ext4_split_extent.isra.0+0x18f/0x500
- ext4_split_convert_extents+0x275/0x750
- ext4_ext_handle_unwritten_extents+0x73e/0x1580
- ext4_ext_map_blocks+0xe20/0x2dc0
- ext4_map_blocks+0x724/0x1700
- ext4_do_writepages+0x12d6/0x2a70
-[...]
+ext4_ext_replay_update_ex
+  ppath = path
+  ext4_force_split_extent_at(&ppath)
+    ext4_split_extent_at
+      ext4_ext_insert_extent
+        ext4_ext_create_new_leaf
+          ext4_ext_grow_indepth
+            ext4_find_extent
+              if (depth > path[0].p_maxdepth)
+                kfree(path)                 ---> path First freed
+                *orig_path = path = NULL    ---> null ppath
+  kfree(path)                               ---> path double-free !!!
 
-Allocated by task 40:
- __kmalloc_noprof+0x1ac/0x480
- ext4_find_extent+0xf3b/0x1e70
- ext4_ext_map_blocks+0x188/0x2dc0
- ext4_map_blocks+0x724/0x1700
- ext4_do_writepages+0x12d6/0x2a70
-[...]
+So drop the unnecessary ppath and use path directly to avoid this problem.
+And use ext4_find_extent() directly to update path, avoiding unnecessary
+memory allocation and freeing. Also, propagate the error returned by
+ext4_find_extent() instead of using strange error codes.
 
-Freed by task 40:
- kfree+0xf1/0x2b0
- ext4_find_extent+0xa71/0x1e70
- ext4_ext_insert_extent+0xa22/0x3260
- ext4_split_extent_at+0x3ef/0xcc0
- ext4_split_extent.isra.0+0x18f/0x500
- ext4_split_convert_extents+0x275/0x750
- ext4_ext_handle_unwritten_extents+0x73e/0x1580
- ext4_ext_map_blocks+0xe20/0x2dc0
- ext4_map_blocks+0x724/0x1700
- ext4_do_writepages+0x12d6/0x2a70
-[...]
-==================================================================
-
-The flow of issue triggering is as follows:
-
-ext4_split_extent_at
-  path = *ppath
-  ext4_ext_insert_extent(ppath)
-    ext4_ext_create_new_leaf(ppath)
-      ext4_find_extent(orig_path)
-        path = *orig_path
-        read_extent_tree_block
-          // return -ENOMEM or -EIO
-        ext4_free_ext_path(path)
-          kfree(path)
-        *orig_path = NULL
-  a. If err is -ENOMEM:
-  ext4_ext_dirty(path + path->p_depth)
-  // path use-after-free !!!
-  b. If err is -EIO and we have EXT_DEBUG defined:
-  ext4_ext_show_leaf(path)
-    eh = path[depth].p_hdr
-    // path also use-after-free !!!
-
-So when trying to zeroout or fix the extent length, call ext4_find_extent()
-to update the path.
-
-In addition we use *ppath directly as an ext4_ext_show_leaf() input to
-avoid possible use-after-free when EXT_DEBUG is defined, and to avoid
-unnecessary path updates.
-
-Fixes: dfe5080939ea ("ext4: drop EXT4_EX_NOFREE_ON_ERR from rest of extents handling code")
+Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
 Cc: stable@kernel.org
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 ---
- fs/ext4/extents.c | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
+ fs/ext4/extents.c | 21 ++++++++++-----------
+ 1 file changed, 10 insertions(+), 11 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 6e5b5baf3aa6..3a70a0739af8 100644
+index 1660434fbfc7..b1cfce5b57d2 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -3252,6 +3252,25 @@ static int ext4_split_extent_at(handle_t *handle,
- 	if (err != -ENOSPC && err != -EDQUOT && err != -ENOMEM)
- 		goto out;
+@@ -5920,7 +5920,7 @@ int ext4_clu_mapped(struct inode *inode, ext4_lblk_t lclu)
+ int ext4_ext_replay_update_ex(struct inode *inode, ext4_lblk_t start,
+ 			      int len, int unwritten, ext4_fsblk_t pblk)
+ {
+-	struct ext4_ext_path *path = NULL, *ppath;
++	struct ext4_ext_path *path;
+ 	struct ext4_extent *ex;
+ 	int ret;
  
-+	/*
-+	 * Update path is required because previous ext4_ext_insert_extent()
-+	 * may have freed or reallocated the path. Using EXT4_EX_NOFAIL
-+	 * guarantees that ext4_find_extent() will not return -ENOMEM,
-+	 * otherwise -ENOMEM will cause a retry in do_writepages(), and a
-+	 * WARN_ON may be triggered in ext4_da_update_reserve_space() due to
-+	 * an incorrect ee_len causing the i_reserved_data_blocks exception.
-+	 */
-+	path = ext4_find_extent(inode, ee_block, ppath,
-+				flags | EXT4_EX_NOFAIL);
-+	if (IS_ERR(path)) {
-+		EXT4_ERROR_INODE(inode, "Failed split extent on %u, err %ld",
-+				 split, PTR_ERR(path));
-+		return PTR_ERR(path);
-+	}
-+	depth = ext_depth(inode);
-+	ex = path[depth].p_ext;
-+	*ppath = path;
+@@ -5936,30 +5936,29 @@ int ext4_ext_replay_update_ex(struct inode *inode, ext4_lblk_t start,
+ 	if (le32_to_cpu(ex->ee_block) != start ||
+ 		ext4_ext_get_actual_len(ex) != len) {
+ 		/* We need to split this extent to match our extent first */
+-		ppath = path;
+ 		down_write(&EXT4_I(inode)->i_data_sem);
+-		ret = ext4_force_split_extent_at(NULL, inode, &ppath, start, 1);
++		ret = ext4_force_split_extent_at(NULL, inode, &path, start, 1);
+ 		up_write(&EXT4_I(inode)->i_data_sem);
+ 		if (ret)
+ 			goto out;
+-		kfree(path);
+-		path = ext4_find_extent(inode, start, NULL, 0);
 +
- 	if (EXT4_EXT_MAY_ZEROOUT & split_flag) {
- 		if (split_flag & (EXT4_EXT_DATA_VALID1|EXT4_EXT_DATA_VALID2)) {
- 			if (split_flag & EXT4_EXT_DATA_VALID1) {
-@@ -3304,7 +3323,7 @@ static int ext4_split_extent_at(handle_t *handle,
- 	ext4_ext_dirty(handle, inode, path + path->p_depth);
- 	return err;
- out:
--	ext4_ext_show_leaf(inode, path);
-+	ext4_ext_show_leaf(inode, *ppath);
- 	return err;
- }
- 
++		path = ext4_find_extent(inode, start, &path, 0);
+ 		if (IS_ERR(path))
+-			return -1;
+-		ppath = path;
++			return PTR_ERR(path);
+ 		ex = path[path->p_depth].p_ext;
+ 		WARN_ON(le32_to_cpu(ex->ee_block) != start);
++
+ 		if (ext4_ext_get_actual_len(ex) != len) {
+ 			down_write(&EXT4_I(inode)->i_data_sem);
+-			ret = ext4_force_split_extent_at(NULL, inode, &ppath,
++			ret = ext4_force_split_extent_at(NULL, inode, &path,
+ 							 start + len, 1);
+ 			up_write(&EXT4_I(inode)->i_data_sem);
+ 			if (ret)
+ 				goto out;
+-			kfree(path);
+-			path = ext4_find_extent(inode, start, NULL, 0);
++
++			path = ext4_find_extent(inode, start, &path, 0);
+ 			if (IS_ERR(path))
+-				return -EINVAL;
++				return PTR_ERR(path);
+ 			ex = path[path->p_depth].p_ext;
+ 		}
+ 	}
 -- 
 2.39.2
 
