@@ -1,116 +1,106 @@
-Received: from mout.web.de (mout.web.de [212.227.17.12])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wr1-f45.google.com (mail-wr1-f45.google.com [209.85.221.45])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C9E9F49628;
-	Sat, 13 Jul 2024 18:16:07 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.227.17.12
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E71627F;
+	Sun, 14 Jul 2024 02:17:48 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.45
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1720894572; cv=none; b=j9mqaAJ4IqmuO7sqoQh28N1FFCG8NIlnFcFByBCuTE2vF+V2UKukdD/ME5VEkccEJkcxLNjxIfT5FBe41APmA5xTdohMu9nEQMhgF5+hNydr61dN9YunxTa2DOaCc43NhpxL/W22iXPhyL35qBIN58aZ/KgyMELWryyUObIxB5Q=
+	t=1720923470; cv=none; b=JJF8mOxDi+B1l8ignXu8zRuUjl2MJ6hIkmA36P0OuPzIS7hTEmPfh3+AQ4jVk1OW+Y96c0Jzwl1YcFSEAMS1Sw4Y4kcH56HYUS5G9x3cDIytLyGslP648Xq5TMF87QlGTmDJ1y8wrYBYuQMKdOaOv6mMf1UkGSMFyy4LTUsO0AQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1720894572; c=relaxed/simple;
-	bh=abtA1WlSWwOahxLlGsQr5aL7NXMTChi3xnNxf77tIbI=;
-	h=Message-ID:Date:MIME-Version:To:Cc:From:Subject:Content-Type; b=AWjd/t1LFFDibQgAoH7+GiTAe6dYizClQ37R+wiFkFSqq5384lsbCQ6cwN64u6hcMUDUY9IT3xRNEQRa/Qeb5o4irSlTNus8GEK8abiWnrZoNSLostVGl1jXQaPCtYXFJOqxtKEho9br2bwVFQVTv1ct/hoPhH/soAImbbMAj0U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=web.de; spf=pass smtp.mailfrom=web.de; dkim=pass (2048-bit key) header.d=web.de header.i=markus.elfring@web.de header.b=iHm2hNhO; arc=none smtp.client-ip=212.227.17.12
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=web.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=web.de
+	s=arc-20240116; t=1720923470; c=relaxed/simple;
+	bh=7saIKA8qMpKbEd9wBs8h8mybAWFy2v0tt43dMyJFu6Q=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=DwMO6IMTkaEshnMVyADP7kAE1M9oKK3aP0iOM+Eh3bbPSiIYTN7cTjzptYFAp5/1+uLfrNwIlLk6Ka1N9Z+/DOshB3omdlf9OYQ0bF3q3F56U3G4MQcwjN8IzTprRxK4FZohPXbYLqqemwDX/8kK97YGD9731TxE+kwmOSVVVeg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=FZrsFv5r; arc=none smtp.client-ip=209.85.221.45
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=web.de header.i=markus.elfring@web.de header.b="iHm2hNhO"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=web.de;
-	s=s29768273; t=1720894556; x=1721499356; i=markus.elfring@web.de;
-	bh=XttxvoNiaxIVA1/LMbTGUcLFK9uZmow/zywISsYZatY=;
-	h=X-UI-Sender-Class:Message-ID:Date:MIME-Version:To:Cc:From:
-	 Subject:Content-Type:Content-Transfer-Encoding:cc:
-	 content-transfer-encoding:content-type:date:from:message-id:
-	 mime-version:reply-to:subject:to;
-	b=iHm2hNhOUpVb+ZGoZ3mw/07/F3/GBi6tzDhiMX1qLbhAOeFimEjsJQzbIrC4BMQH
-	 FLnV15Lp+zALTlUwq789RhCjE9KDY4x3YNglSTj6csX+KMUujY9yYiFh5pQOwJSxR
-	 iHWRufM+4VUxPeovsrlYqqPBbXEtbg+sFuW8OxRYbpQ5UQqBEfsaGh0lWX1fOcE7a
-	 FwN0M4nnt5cm0VnskE52/5Ljnvu4H11LKMXjrxYxYENHT08Q2ktTW+0AGI6xycwaU
-	 7xxJ6b+w/RCcdiTIexFYqgpVZYOZeRVEJAy6UaKnXaEl5qDjsUfnSa332oSdrZEUM
-	 Zye5k2ZDmT19LzbOQA==
-X-UI-Sender-Class: 814a7b36-bfc1-4dae-8640-3722d8ec6cd6
-Received: from [192.168.178.21] ([94.31.82.95]) by smtp.web.de (mrweb106
- [213.165.67.124]) with ESMTPSA (Nemesis) id 1M4sXt-1sTWMl0LFH-002aAU; Sat, 13
- Jul 2024 20:15:56 +0200
-Message-ID: <076974ab-4da3-4176-89dc-0514e020c276@web.de>
-Date: Sat, 13 Jul 2024 20:15:44 +0200
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FZrsFv5r"
+Received: by mail-wr1-f45.google.com with SMTP id ffacd0b85a97d-3679f806223so2498869f8f.0;
+        Sat, 13 Jul 2024 19:17:48 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1720923466; x=1721528266; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=gCoKA5BrfWhFEib4kaVyxIYyuyejdXkK7Z8BehM2NAc=;
+        b=FZrsFv5r0WkQGig74vHthNc2Qo7q6mpNhbxoS+3898Ek1RgZuUHpdFif4/JvCAwPIn
+         SmyKB0bqMJcuNAT60YYQzlWTWGwmgfMJgo+f4P7WGVLV8AqwPvxCy32buBYkJW4qzR38
+         GunodH83WyT85mtVAO/1ClqJEQhqKERch3BzYz/E9QrI0rbsNFdm5ZUhiR04oK5bJVYN
+         luwQOZ9V9+QcYMax+TnXUTrTTjyZxMijfhNtWHei45rrJi3mDEXeVNDkiJFVJYxti3GS
+         utoJmndkxRLfDIUFc9B2g36Re0Tbn8rqGS5yRcyWj6YgZ5DtryGy11kgWB5f7ytb/9XA
+         iAQg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1720923466; x=1721528266;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=gCoKA5BrfWhFEib4kaVyxIYyuyejdXkK7Z8BehM2NAc=;
+        b=w9Rp6WBCsFDH/1z7wJBRaKDgfK9OJZJZ4CFzw/stwJWONDZB2CW2jHwm0gIThT8koU
+         rbNOBZcXSofkNM4k57FzYOWwbfD6x+B4VscFC+RdapVpAj1sq4Knp8peXT9YwYFIkhHp
+         JSZPtdl/07+toDJVfwz2s6y7abqYBQH5ncWCOA3eDpvqybM7K2cGXT+dxgFdfGYWVzc0
+         Z4fiS1TyXzWcD0ERQZ6NBMqI/gLLRJKRw462PiEn9qbVTExMOW69gTK8UkqC+h4ZLRsS
+         +bVeM3FeFKmdiUCS4R8sDqU8oG+OWq95WGgLEcws0LAqlVTu749WToiAH13LZ0j/9tqz
+         EBIw==
+X-Forwarded-Encrypted: i=1; AJvYcCXE5mjp/uGH9Z0Nqz8/F8ZJgdL+Ox2DdfoaxgpbGHVx96fvxQWMQ1hJAcDY4DbCf5N/RHTa0Zpsro7YnjCNDmj1S3bHHSxJNVQx82A1L6iyehm2if3FF8lL2RqMeqOIL27B2g==
+X-Gm-Message-State: AOJu0YzSU7G9f5GjBibCM7Ck8/JoVtiCOeQXT9teiohyzWlQ34kbI3Bm
+	u26mj/d/L2cVJ5cQICAGxnCjtToUv5V+GS/h+Zi2e9sk7S9HyHHoNybNW9s4wW4=
+X-Google-Smtp-Source: AGHT+IGng0aKTTKKDJUqgv6okJdzbLOCEt9gvgMrG99Ho+nKg8+Q7fOUTL/vjd0GDDqaH/ulLAvH7g==
+X-Received: by 2002:a05:6000:e02:b0:367:938f:550 with SMTP id ffacd0b85a97d-367ff70537dmr5290238f8f.25.1720923466105;
+        Sat, 13 Jul 2024 19:17:46 -0700 (PDT)
+Received: from localhost.localdomain ([156.197.1.65])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-427a5e774besm38142655e9.5.2024.07.13.19.17.44
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sat, 13 Jul 2024 19:17:45 -0700 (PDT)
+From: botta633 <bottaawesome633@gmail.com>
+To: linux-kernel@vger.kernel.org
+Cc: Peter Zijlstra <peterz@infradead.org>,
+	Ingo Molnar <mingo@redhat.com>,
+	Will Deacon <will@kernel.org>,
+	Waiman Long <longman@redhat.com>,
+	Boqun Feng <boqun.feng@gmail.com>,
+	linux-ext4@vger.kernel.org,
+	syzkaller@googlegroups.com,
+	Ahmed Ehab <bottaawesome633@gmail.com>,
+	syzbot+7f4a6f7f7051474e40ad@syzkaller.appspotmail.com,
+	stable@vger.kernel.org
+Subject: [PATCH v2 1/2] ext4: Forcing subclasses to have same name pointer as their parent class
+Date: Sun, 14 Jul 2024 08:14:26 +0300
+Message-ID: <20240714051427.114044-1-bottaawesome633@gmail.com>
+X-Mailer: git-send-email 2.45.2
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-To: linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org,
- Andreas Dilger <adilger.kernel@dilger.ca>, Theodore Ts'o <tytso@mit.edu>
-Content-Language: en-GB
-Cc: LKML <linux-kernel@vger.kernel.org>
-From: Markus Elfring <Markus.Elfring@web.de>
-Subject: [PATCH] ext4: Use seq_putc() in two functions
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
-X-Provags-ID: V03:K1:mA/biMw9x2cevcu9rqUxz7QuOs6YUA30/RlTyHQ7u04jOV6gwQ0
- Pi9ToAsTYLcmb5p6NJ0jZqSZ/2m68b5Zw8n6zhy6UWh64UGNP+QLDQRwRpD9umHqpTOOGAu
- AgyzQDoPERafNEiYOLyeGnykIW4zFaA6IhDBe7YbNLdbPWXc0lHiiZbMGe7goOpK7+SFyJj
- 9soFVFjUNyJrIs4OPu89g==
-X-Spam-Flag: NO
-UI-OutboundReport: notjunk:1;M01:P0:zPKXLfg+ezo=;+G/iDIXEFugqd+cvAYOe9JHg/9t
- ztwRtOJvuSptQ6kyGgoDbsbmge3hHGHAkgOjUP9HEmS2g9htC9mfiwXrGkWNVfZuLTAFtGAC6
- 3BGJVzhpeNASgugBWo0TFhcpp3XqkhpfyN1AvfzLNwaD1XteaabrFcbgdrOm0f/Zo50lJFzOz
- 6qv5N+7g+qwsvJ/j8yFhSRsS/ktcuhoMgNUnCB5f62B+HRFMa/RelrbDR1mIk64799xYb4/Nh
- 4zLoOQAATYF8DK2klKpbyWVhLwd1ZZ9e06x1Sv0Kh39bv3ifAWCG2Rbp2cWSe2X+eqUP+E3O9
- TdfgKX2rUvNAu9DpJT3xxrchS4zWK5wwMdTaPQic72ty4OLVnPRuMhDLOxKd5yb64rOrvd+ew
- Zl1ebvgGlhrygXYQfEJ78x3xFxLdvK2e9awqMLb74k9mXYVX8CZIWp3OLWJbw8y068GeIgxQP
- npNKw6WvleBmINEbtG14N7t26UEJYfaJt7HkEkxCFjFwq+d6a+OVtgQ3/5Znq5T3upTUSPADQ
- B30O0f5N1Zsl1zB0FDDPV0BxctmcKIP2YVMQuQnRpWV0jXgr8oc/tiygWCCScBwjUeDeaS99r
- SABSKx0/tstZdGaMORXolvKxSZz9T083CJzU/KNoNdM1v8ZSYMSCKFnZvDpBrznYmvrLkLiSJ
- TW8aJiBqlpdLMcS5pnpx+5SvRdZ8R/AFWpBiJzI4cpfW6u+9CQF7UIltBzzJeG1NaD0Ml/g1Z
- MThP3MUTRWvyURTPlIFe0WebculEXkNn9dTC9+bJnng1PKCPkeoxUGEsORfY2os4FhjxQMWiF
- nRos11uvaemmWZmqKChBpEng==
+Content-Transfer-Encoding: 8bit
 
-From: Markus Elfring <elfring@users.sourceforge.net>
-Date: Sat, 13 Jul 2024 17:10:24 +0200
+From: Ahmed Ehab <bottaawesome633@gmail.com>
 
-Single characters (line breaks) should be put into a sequence.
-Thus use the corresponding function =E2=80=9Cseq_putc=E2=80=9D.
+Preventing lockdep_set_subclass from creating a new instance of the 
+string literal. Hence, we will always have the same class->name among
+parent and subclasses. This prevents kernel panics when looking up a 
+lock class while comparing class locks and class names.
 
-This issue was transformed by using the Coccinelle software.
+Reported-by: <syzbot+7f4a6f7f7051474e40ad@syzkaller.appspotmail.com>
+Fixes: fd5e3f5fe27
+Cc: <stable@vger.kernel.org>
+Signed-off-by: Ahmed Ehab <bottaawesome633@gmail.com>
+---
+ include/linux/lockdep.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
-=2D--
- fs/ext4/mballoc.c | 3 +--
- fs/ext4/super.c   | 2 +-
- 2 files changed, 2 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 9dda9cd68ab2..2008d2d524c9 100644
-=2D-- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3075,8 +3075,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *=
-seq, void *v)
- 	seq_puts(seq, " ]");
- 	if (EXT4_MB_GRP_BBITMAP_CORRUPT(&sg.info))
- 		seq_puts(seq, " Block bitmap corrupted!");
--	seq_puts(seq, "\n");
--
-+	seq_putc(seq, '\n');
- 	return 0;
- }
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e72145c4ae5a..c8a80cec46a1 100644
-=2D-- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3045,7 +3045,7 @@ int ext4_seq_options_show(struct seq_file *seq, void=
- *offset)
-
- 	seq_puts(seq, sb_rdonly(sb) ? "ro" : "rw");
- 	rc =3D _ext4_show_options(seq, sb, 1);
--	seq_puts(seq, "\n");
-+	seq_putc(seq, '\n');
- 	return rc;
- }
-
-=2D-
+diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
+index 08b0d1d9d78b..df8fa5929de7 100644
+--- a/include/linux/lockdep.h
++++ b/include/linux/lockdep.h
+@@ -173,7 +173,7 @@ static inline void lockdep_init_map(struct lockdep_map *lock, const char *name,
+ 			      (lock)->dep_map.lock_type)
+ 
+ #define lockdep_set_subclass(lock, sub)					\
+-	lockdep_init_map_type(&(lock)->dep_map, #lock, (lock)->dep_map.key, sub,\
++	lockdep_init_map_type(&(lock)->dep_map, (lock)->dep_map.name, (lock)->dep_map.key, sub,\
+ 			      (lock)->dep_map.wait_type_inner,		\
+ 			      (lock)->dep_map.wait_type_outer,		\
+ 			      (lock)->dep_map.lock_type)
+-- 
 2.45.2
-
