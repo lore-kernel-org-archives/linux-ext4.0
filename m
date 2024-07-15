@@ -1,123 +1,139 @@
-Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 5F1E613B5BD;
-	Mon, 15 Jul 2024 10:32:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
+Received: from mail-wm1-f46.google.com (mail-wm1-f46.google.com [209.85.128.46])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B62D6186E3C;
+	Mon, 15 Jul 2024 10:34:55 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.46
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1721039545; cv=none; b=MKQs5wmcmzUwjyMSR6a2Rfq1AIgDDOzHGef7PnWBBrizDnGWX/KXaDiGKPuRUm+oJcCP7EAVCdqxaaDtoOAEJ4KwNj6rHlDEpSQ1II1wPtlK7C3KdlaskB+ZKvjtHT5OTwkraVts56EyWXLPUFxc0CMjG3FX5vkLzHHlZkoFUhc=
+	t=1721039697; cv=none; b=UGFt5i4P60lgEHa5WdLy7BuhUZEEJf770sTjoiHdu8+aaPDJBjTJ4BT5A2eWR+DIR+I6ZibeZ1jFIP4TY6AJm+PMtF9lQ9EBvE2kVji009EuOCGkKbi3qL7Erj6apmb+upDSRVknq1RekuHO8W4iJbvWVDdCHsRDiHF4rx3zHeI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1721039545; c=relaxed/simple;
-	bh=1vvbywj5eeKaY/5Q3zxYZaJ25/BZeER05pTRkQz95R4=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=rwyMaee5bpXO7t+45o/SqQb1k0/EWZR7FCLviken/mBjMXitsZrUnv2prfaPSpwv5DiSgQW6FET5DvU5E1H5DSyNLljRThIbausMN0Fm4c+RxKWZbkcfF0YkVWAz90X+6VeiuuUpofy0gj9zfVv9UKa/ZKlpSZGKGuofTTd8em0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-3c9ff7000001d7ae-27-6694faaa4f59
-Date: Mon, 15 Jul 2024 19:32:05 +0900
-From: Byungchul Park <byungchul@sk.com>
-To: "Vlastimil Babka (SUSE)" <vbabka@kernel.org>
-Cc: Theodore Ts'o <tytso@mit.edu>, Hyeonggon Yoo <42.hyeyoo@gmail.com>,
-	Linux Memory Management List <linux-mm@kvack.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	max.byungchul.park@sk.com,
-	Gwan-gyeong Mun <gwan-gyeong.mun@intel.com>,
-	kernel_team@skhynix.com
-Subject: Re: Possible circular dependency between i_data_sem and folio lock
- in ext4 filesystem
-Message-ID: <20240715103205.GA38263@system.software.com>
-References: <CAB=+i9SmrqEEqQp+AQvv+O=toO9x0mPam+b1KuNT+CgK0J1JDQ@mail.gmail.com>
- <20240711153846.GG10452@mit.edu>
- <20240712044420.GA62198@system.software.com>
- <20240712053150.GA68384@system.software.com>
- <e71f73d5-4dbc-4194-9409-6daf807cb27e@kernel.org>
+	s=arc-20240116; t=1721039697; c=relaxed/simple;
+	bh=z67cwuXCyLiAJN3piPdcSSVvfm1vvJ6uWmtFWPvPkVY=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=CyWuObka890z4/B9kfCl7fRrl9gAVrksOe2L4ov8V3xd1zucJExz3J7yMki6T2KvYMGTePeycuNRnTarXbOf4wpKa+LWgXu2OWqMOugo8niHOzx5+4iR6iWOXmy9g7zrLS3YqmocRvPfLvfoJVZ1dGk/5PREGNLE//t5bRwAZzc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=dOyjFO2j; arc=none smtp.client-ip=209.85.128.46
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="dOyjFO2j"
+Received: by mail-wm1-f46.google.com with SMTP id 5b1f17b1804b1-42795086628so27862035e9.3;
+        Mon, 15 Jul 2024 03:34:55 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1721039693; x=1721644493; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=dffq/wFS7ipPDTEeMPaMdYsEzjLjNSdN/3BeGkOPcP0=;
+        b=dOyjFO2jC7lHogNBLM8StPpGyN1uw8iMQDRDFKIW0UsDksnYrUmhu6v81GkaiKY6pR
+         g5UHvLpBO4K7jk9Y0dP4L9x/ep/UowvtccDhyOvcjPxPuHY52L+YhNW+vPHjj3De4QoM
+         2EapKJb7tB8W5+pQUnr/ZcvUtTTJ3EISKNx9milXM8hQlZu8iJdaa+a8GQpbUT6ZWVcp
+         5Mbo62U3wNrYxIIgIMJOHCZx5a3/wigp+zRimQQcjpsub4aFoNyTYFw883jzZ50i65NV
+         Gs98vZ9ZocswhixzQUcmFWIq9xc5isdONC++EweUnXCKU9mEjqo3WV+Nig76Arve7is0
+         XR1Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1721039693; x=1721644493;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=dffq/wFS7ipPDTEeMPaMdYsEzjLjNSdN/3BeGkOPcP0=;
+        b=L9QvZ2hjjTVv4Re6+CDxUlCUQmF2ZE5fntTfB9baN08YKu0TLsFppx0NkYonvC3JjE
+         SEjgHxnkVZsLQfzmc/uBkgZE8CP2leCF1mnrxHUwA+NNMzVtF23d1dCVc7zzyp7ORxOF
+         KTz38ew2Xt1OK1hqMmzJ+8iIzLacJDcCMKPguRK9RT2+aYlDGLwvv7Qnqp9DySylMLr5
+         avfcAOF71dEmsBhAX2KRFjqV0Hnet60NJTTU4j0aCoAYpxpwkXUZWEN4xSTD/ynZ3MSD
+         77W/NfQDUHcmrJgAZIq7gDr0STDbskxD5uv5A1UnWvgWOxpJmoCNORGjKwknInN7ouU/
+         lygA==
+X-Forwarded-Encrypted: i=1; AJvYcCVkpuPIhqmn2dBDTU85mOXWy9xFNaoAFr1Llo9rbxTUATNBESQH0kGl51ahJBnhEbOXiYdNRRZwe98sJGHVXQO8E/JEyU/dtvGeu9PrpyCEPhLKVQL/0Ul6AfwLdQjUuzDUpA==
+X-Gm-Message-State: AOJu0YyVAZpXj8VPbwxgBW7s1NcrWu3awQtWPLRLjJA4y8gEiy5MDilO
+	uxJMMeCacbPPxcddIymTczGWAfmmSq1wmkSm4H3c2Wuw3DOrvv6JXtJT95fAKn4=
+X-Google-Smtp-Source: AGHT+IFgbSwxsLnVD4xGnLJHLaWJpwMzFdvR7ziL66wXY2Nvt+hNP/YMHt2EaDX5P4VtWqKCjcfqYg==
+X-Received: by 2002:a05:600c:63c4:b0:426:5e8e:410a with SMTP id 5b1f17b1804b1-426707e31aemr119937755e9.24.1721039693133;
+        Mon, 15 Jul 2024 03:34:53 -0700 (PDT)
+Received: from localhost.localdomain ([156.197.57.143])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4279f239883sm116126895e9.10.2024.07.15.03.34.51
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 15 Jul 2024 03:34:52 -0700 (PDT)
+From: botta633 <bottaawesome633@gmail.com>
+To: linux-kernel@vger.kernel.org
+Cc: Peter Zijlstra <peterz@infradead.org>,
+	Ingo Molnar <mingo@redhat.com>,
+	Will Deacon <will@kernel.org>,
+	Waiman Long <longman@redhat.com>,
+	Boqun Feng <boqun.feng@gmail.com>,
+	linux-ext4@vger.kernel.org,
+	syzkaller@googlegroups.com,
+	Ahmed Ehab <bottaawesome633@gmail.com>,
+	syzbot+7f4a6f7f7051474e40ad@syzkaller.appspotmail.com,
+	stable@vger.kernel.org
+Subject: [PATCH v4 2/2] locking/lockdep: Testing lock class and subclass got the same name pointer
+Date: Mon, 15 Jul 2024 16:26:38 +0300
+Message-ID: <20240715132638.3141-2-bottaawesome633@gmail.com>
+X-Mailer: git-send-email 2.45.2
+In-Reply-To: <20240715132638.3141-1-bottaawesome633@gmail.com>
+References: <20240715132638.3141-1-bottaawesome633@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <e71f73d5-4dbc-4194-9409-6daf807cb27e@kernel.org>
-User-Agent: Mutt/1.9.4 (2018-02-28)
-X-Brightmail-Tracker: H4sIAAAAAAAAA+NgFrrJLMWRmVeSWpSXmKPExsXC9ZZnoe6qX1PSDH6fUbeY2GNgcfH1HyaL
-	mfPusFns2XuSxeLemv+sFq09P9ktOl7eZ3Fg99g56y67x+I9L5k8Nq3qZPPY9GkSu0fTmaPM
-	Hp83yQWwRXHZpKTmZJalFunbJXBlfPlwjq1ghkjFpvZtbA2MJ/m7GDk5JARMJH5NfcrWxcgB
-	Zp9ZUAwSZhFQlbi6YCcjiM0moC5x48ZPZhBbRMBAYvfm86xdjFwczALzmST6jy1iAUkICyRI
-	vJh5GqyBV8BC4uKzOywgRUICrUwSzS0XmCASghInZz4Ba2AW0JK48e8lE8hiZgFpieX/OEBM
-	TgE7id8TpUAqRAWUJQ5sO84EceYRNokLCwQhbEmJgytusExgFJiFZOgsJENnIQxdwMi8ilEo
-	M68sNzEzx0QvozIvs0IvOT93EyMwwJfV/onewfjpQvAhRgEORiUe3gN7J6cJsSaWFVfmHmKU
-	4GBWEuH1/jklTYg3JbGyKrUoP76oNCe1+BCjNAeLkjiv0bfyFCGB9MSS1OzU1ILUIpgsEwen
-	VANjqZbJl0f6/RfsL/yR7c7RYzicxnRIMHpO8u3yFG6u2FqtlnLDn58/By9NNT9kuK7T/mzd
-	gyIpmZ1R0n90z3K2SccV36la1ZqetP2Ky0zxV/WTZj5x0I//avPwkOCbXbGz87bOkjE75KK/
-	v/lwbvfJBDdp3ufah951nhAxXmTUPX2NTHfz74lKLMUZiYZazEXFiQDIhurvbAIAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAA+NgFjrJLMWRmVeSWpSXmKPExsXC5WfdrLvq15Q0g+nrZS0m9hhYXHz9h8ni
-	8NyTrBYz591hs9iz9ySLxb01/1ktZrTlWbT2/GS36Hh5n8WB02PnrLvsHov3vGTy2LSqk81j
-	06dJ7B5NZ44ye3y77eGx+MUHJo/Pm+QCOKK4bFJSczLLUov07RK4Mr58OMdWMEOkYlP7NrYG
-	xpP8XYwcHBICJhJnFhR3MXJysAioSlxdsJMRxGYTUJe4ceMnM4gtImAgsXvzedYuRi4OZoH5
-	TBL9xxaxgCSEBRIkXsw8DdbAK2AhcfHZHRaQIiGBViaJ5pYLTBAJQYmTM5+ANTALaEnc+PeS
-	CWQxs4C0xPJ/HCAmp4CdxO+JUiAVogLKEge2HWeawMg7C0nzLCTNsxCaFzAyr2IUycwry03M
-	zDHVK87OqMzLrNBLzs/dxAgM4GW1fybuYPxy2f0QowAHoxIP74G9k9OEWBPLiitzDzFKcDAr
-	ifB6/5ySJsSbklhZlVqUH19UmpNafIhRmoNFSZzXKzw1QUggPbEkNTs1tSC1CCbLxMEp1cC4
-	JJmjhmvCh9feVo+3lMR39+Tv8lJTKt//Ro1D8PDcRa+WL/R2mlX/u3zn6+2P0t5Yqnx7y93m
-	8PrVq9nFWQu53uilHvQzSMowdf27lYVJU6vzq8c1I4tE5je22wqbxE99c37/aKHFrHfL6u9n
-	Gfv6ctUx/W3T+CBfdkSIL3Hh+nm/buixLZJXYinOSDTUYi4qTgQAKIayOlwCAAA=
-X-CFilter-Loop: Reflected
+Content-Transfer-Encoding: 8bit
 
-On Fri, Jul 12, 2024 at 11:23:36PM +0200, Vlastimil Babka (SUSE) wrote:
-> On 7/12/24 7:31 AM, Byungchul Park wrote:
-> > On Fri, Jul 12, 2024 at 01:44:20PM +0900, Byungchul Park wrote:
-> >> 
-> >> What a funny guy...  He did neither 1) insisting it's a bug in your code
-> >> nor 3) insisting DEPT is a great tool, but just asking if there's any
-> >> locking rules based on the *different acqusition order* between folio
-> >> lock and i_data_sem that he observed anyway.
-> >> 
-> >> I don't think you are a guy who introduces bugs, but the thing is it's
-> >> hard to find a *document* describing locking rules.  Anyone could get
-> >> fairly curious about the different acquisition order.  It's an open
-> >> source project.  You are responsible for appropriate document as well.
-> >> 
-> >> I don't understand why you act to DEPT like that by the way.  You don't
-> >> have to becasue:
-> >> 
-> >>    1. I added the *EXPERIMENTAL* tag in Kconfig as you suggested, which
-> >>       will prevent autotesting until it's considered stable.  However,
-> >>       the report from DEPT can be a good hint to someone.
-> >> 
-> >>    2. DEPT can locate code where needs to be documented even if it's not
-> >>       a real bug.  It could even help better documentation.
-> >> 
-> >> DEPT hurts neither code nor performance unless enabling it.
-> 
-> enabling means building with CONFIG_DEPT right?
+From: Ahmed Ehab <bottaawesome633@gmail.com>
 
-Yes.
+Checking if the lockdep_map->name will change when setting the subclass.
+It shouldn't change so that the lock class and subclass will have the same
+name
 
-> >> > If you want to add lock annotations into the struct page or even
-> >> > struct folio, I cordially invite you to try running that by the mm
-> >> > developers, who will probably tell you why that is a terrible idea
-> >> > since it bloats a critical data structure.
-> 
-> I doubt anyone will object making struct page larger for a non-production
-> debugging config option, which AFAIU DEPT is, i.e. in the same area as
-> LOCKDEP or KASAN etc... I can see at least KMSAN already adds some fields to
-> struct page already.
+Reported-by: <syzbot+7f4a6f7f7051474e40ad@syzkaller.appspotmail.com>
+Fixes: de8f5e4f2dc1f ("lockdep: Introduce wait-type checks")
+Cc: <stable@vger.kernel.org>
+Signed-off-by: Ahmed Ehab <bottaawesome633@gmail.com>
+---
+v3->v4:
+    - Fixed subject line truncation.
 
-I think so.
+ lib/locking-selftest.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
-> >> I already said several times.  Doesn't consume struct page.
-> > 
-> > Sorry for that.  I've changed the code so the current version consumes
-> > it by about two words if enabled.  I can place it to page_ext as before
-> > if needed.
-> 
-> page_ext is useful if you have a debugging feature that can be compiled in
-> but adds no overhead (memory, nor cpu thanks to static keys) unless enabled
-> on boot time, i.e. page_owner... so for DEPT it seems it would be an
-> unnecessary complication.
+diff --git a/lib/locking-selftest.c b/lib/locking-selftest.c
+index 6f6a5fc85b42..aeed613799ca 100644
+--- a/lib/locking-selftest.c
++++ b/lib/locking-selftest.c
+@@ -2710,6 +2710,25 @@ static void local_lock_3B(void)
+ 
+ }
+ 
++ /** 
++  * after setting the subclass the lockdep_map.name changes
++  * if we initialize a new string literal for the subclass
++  * we will have a new name pointer
++  */
++static void class_subclass_X1_name_test(void)
++{
++	printk("  --------------------------------------------------------------------------\n");
++	printk("  | class and subclass name test|\n");
++	printk("  ---------------------\n");
++	const char *name_before_setting_subclass = rwsem_X1.dep_map.name;
++	const char *name_after_setting_subclass;
++
++	WARN_ON(!rwsem_X1.dep_map.name);
++	lockdep_set_subclass(&rwsem_X1, 1);
++	name_after_setting_subclass = rwsem_X1.dep_map.name;
++	WARN_ON(name_before_setting_subclass != name_after_setting_subclass);
++}
++
+ static void local_lock_tests(void)
+ {
+ 	printk("  --------------------------------------------------------------------------\n");
+@@ -2916,6 +2935,8 @@ void locking_selftest(void)
+ 
+ 	local_lock_tests();
+ 
++	class_subclass_X1_name_test();
++
+ 	print_testname("hardirq_unsafe_softirq_safe");
+ 	dotest(hardirq_deadlock_softirq_not_deadlock, FAILURE, LOCKTYPE_SPECIAL);
+ 	pr_cont("\n");
+-- 
+2.45.2
 
-Yeah, I will think it more.  However, maybe, as you said, it could
-introduce a complication.  Thanks.
-
-	Byungchul
