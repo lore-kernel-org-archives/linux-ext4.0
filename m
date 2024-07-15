@@ -1,139 +1,331 @@
-Received: from mail-wm1-f46.google.com (mail-wm1-f46.google.com [209.85.128.46])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B62D6186E3C;
-	Mon, 15 Jul 2024 10:34:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.46
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 049F413A3E0
+	for <linux-ext4@vger.kernel.org>; Mon, 15 Jul 2024 11:20:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1721039697; cv=none; b=UGFt5i4P60lgEHa5WdLy7BuhUZEEJf770sTjoiHdu8+aaPDJBjTJ4BT5A2eWR+DIR+I6ZibeZ1jFIP4TY6AJm+PMtF9lQ9EBvE2kVji009EuOCGkKbi3qL7Erj6apmb+upDSRVknq1RekuHO8W4iJbvWVDdCHsRDiHF4rx3zHeI=
+	t=1721042457; cv=none; b=CVwuX7x5Zl2yl2o+44PD6rAkieNttcTc6CpVYyBA/8OCQ77rrzOqn4fPEaF2ZgWg2zBRBXFQ9bbdPAlun7tBdm49b552lO3ZpyZ52GSgsDPv+xTrtGCLSK9IZBLOQD62PijUgqNO+G1vhQLvkm0x5bRLfyJnTSs3k7Dfmv8Qi5E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1721039697; c=relaxed/simple;
-	bh=z67cwuXCyLiAJN3piPdcSSVvfm1vvJ6uWmtFWPvPkVY=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=CyWuObka890z4/B9kfCl7fRrl9gAVrksOe2L4ov8V3xd1zucJExz3J7yMki6T2KvYMGTePeycuNRnTarXbOf4wpKa+LWgXu2OWqMOugo8niHOzx5+4iR6iWOXmy9g7zrLS3YqmocRvPfLvfoJVZ1dGk/5PREGNLE//t5bRwAZzc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=dOyjFO2j; arc=none smtp.client-ip=209.85.128.46
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1721042457; c=relaxed/simple;
+	bh=4FoyPHp/V+C/eDEil8RlwjdGHpS9a8wRrys5m7ZUdCk=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=OBF8tC98A/9xkIK1IhjTXPjAZBSf+EazXKBQONqIqqch2pct7jTaBos09x2xcdbaEWTaT2NV4F26oIJ3+sDPkABl0znhAMzV+EXp1JDLZC9l5hTKitOcQGJWPj4A3sEDMYdgbjSMtFhNApDZI45FLC/2nZGuEIL+gGavVA+OVco=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=fXMDpN4z; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=drGXUNLw; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=fXMDpN4z; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=drGXUNLw; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="dOyjFO2j"
-Received: by mail-wm1-f46.google.com with SMTP id 5b1f17b1804b1-42795086628so27862035e9.3;
-        Mon, 15 Jul 2024 03:34:55 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1721039693; x=1721644493; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=dffq/wFS7ipPDTEeMPaMdYsEzjLjNSdN/3BeGkOPcP0=;
-        b=dOyjFO2jC7lHogNBLM8StPpGyN1uw8iMQDRDFKIW0UsDksnYrUmhu6v81GkaiKY6pR
-         g5UHvLpBO4K7jk9Y0dP4L9x/ep/UowvtccDhyOvcjPxPuHY52L+YhNW+vPHjj3De4QoM
-         2EapKJb7tB8W5+pQUnr/ZcvUtTTJ3EISKNx9milXM8hQlZu8iJdaa+a8GQpbUT6ZWVcp
-         5Mbo62U3wNrYxIIgIMJOHCZx5a3/wigp+zRimQQcjpsub4aFoNyTYFw883jzZ50i65NV
-         Gs98vZ9ZocswhixzQUcmFWIq9xc5isdONC++EweUnXCKU9mEjqo3WV+Nig76Arve7is0
-         XR1Q==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1721039693; x=1721644493;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=dffq/wFS7ipPDTEeMPaMdYsEzjLjNSdN/3BeGkOPcP0=;
-        b=L9QvZ2hjjTVv4Re6+CDxUlCUQmF2ZE5fntTfB9baN08YKu0TLsFppx0NkYonvC3JjE
-         SEjgHxnkVZsLQfzmc/uBkgZE8CP2leCF1mnrxHUwA+NNMzVtF23d1dCVc7zzyp7ORxOF
-         KTz38ew2Xt1OK1hqMmzJ+8iIzLacJDcCMKPguRK9RT2+aYlDGLwvv7Qnqp9DySylMLr5
-         avfcAOF71dEmsBhAX2KRFjqV0Hnet60NJTTU4j0aCoAYpxpwkXUZWEN4xSTD/ynZ3MSD
-         77W/NfQDUHcmrJgAZIq7gDr0STDbskxD5uv5A1UnWvgWOxpJmoCNORGjKwknInN7ouU/
-         lygA==
-X-Forwarded-Encrypted: i=1; AJvYcCVkpuPIhqmn2dBDTU85mOXWy9xFNaoAFr1Llo9rbxTUATNBESQH0kGl51ahJBnhEbOXiYdNRRZwe98sJGHVXQO8E/JEyU/dtvGeu9PrpyCEPhLKVQL/0Ul6AfwLdQjUuzDUpA==
-X-Gm-Message-State: AOJu0YyVAZpXj8VPbwxgBW7s1NcrWu3awQtWPLRLjJA4y8gEiy5MDilO
-	uxJMMeCacbPPxcddIymTczGWAfmmSq1wmkSm4H3c2Wuw3DOrvv6JXtJT95fAKn4=
-X-Google-Smtp-Source: AGHT+IFgbSwxsLnVD4xGnLJHLaWJpwMzFdvR7ziL66wXY2Nvt+hNP/YMHt2EaDX5P4VtWqKCjcfqYg==
-X-Received: by 2002:a05:600c:63c4:b0:426:5e8e:410a with SMTP id 5b1f17b1804b1-426707e31aemr119937755e9.24.1721039693133;
-        Mon, 15 Jul 2024 03:34:53 -0700 (PDT)
-Received: from localhost.localdomain ([156.197.57.143])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4279f239883sm116126895e9.10.2024.07.15.03.34.51
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 15 Jul 2024 03:34:52 -0700 (PDT)
-From: botta633 <bottaawesome633@gmail.com>
-To: linux-kernel@vger.kernel.org
-Cc: Peter Zijlstra <peterz@infradead.org>,
-	Ingo Molnar <mingo@redhat.com>,
-	Will Deacon <will@kernel.org>,
-	Waiman Long <longman@redhat.com>,
-	Boqun Feng <boqun.feng@gmail.com>,
-	linux-ext4@vger.kernel.org,
-	syzkaller@googlegroups.com,
-	Ahmed Ehab <bottaawesome633@gmail.com>,
-	syzbot+7f4a6f7f7051474e40ad@syzkaller.appspotmail.com,
-	stable@vger.kernel.org
-Subject: [PATCH v4 2/2] locking/lockdep: Testing lock class and subclass got the same name pointer
-Date: Mon, 15 Jul 2024 16:26:38 +0300
-Message-ID: <20240715132638.3141-2-bottaawesome633@gmail.com>
-X-Mailer: git-send-email 2.45.2
-In-Reply-To: <20240715132638.3141-1-bottaawesome633@gmail.com>
-References: <20240715132638.3141-1-bottaawesome633@gmail.com>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="fXMDpN4z";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="drGXUNLw";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="fXMDpN4z";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="drGXUNLw"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 14D2421BA4;
+	Mon, 15 Jul 2024 11:20:53 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1721042453; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=iQXioquYd4iscwzPorKn1RhgAdOcj+H05ef7JBzFtXU=;
+	b=fXMDpN4zQVEMzohtgdG1meiPcV9cV9x6D2+NFPfwJhj8lYAInnLLtBVDiXMvk5IBxMnrkj
+	5DZqO8PU2I9+cAyVmtZz7UoCmGf5Sc/NhTmHTb2VvEtG/CN09Qxsfi/bT04K7H9rWHFH+Y
+	wcUEva5ITNdyn1Icg17EqiCBKmheoSw=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1721042453;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=iQXioquYd4iscwzPorKn1RhgAdOcj+H05ef7JBzFtXU=;
+	b=drGXUNLwIoVTNtC9LxzHQ2yMqXjEkUJ6dsG8q/Xoqfy0xPYAIJchEMYrX03y9e0DJRWOCW
+	Xl+BxCmzNETsdtAg==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=fXMDpN4z;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=drGXUNLw
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1721042453; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=iQXioquYd4iscwzPorKn1RhgAdOcj+H05ef7JBzFtXU=;
+	b=fXMDpN4zQVEMzohtgdG1meiPcV9cV9x6D2+NFPfwJhj8lYAInnLLtBVDiXMvk5IBxMnrkj
+	5DZqO8PU2I9+cAyVmtZz7UoCmGf5Sc/NhTmHTb2VvEtG/CN09Qxsfi/bT04K7H9rWHFH+Y
+	wcUEva5ITNdyn1Icg17EqiCBKmheoSw=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1721042453;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=iQXioquYd4iscwzPorKn1RhgAdOcj+H05ef7JBzFtXU=;
+	b=drGXUNLwIoVTNtC9LxzHQ2yMqXjEkUJ6dsG8q/Xoqfy0xPYAIJchEMYrX03y9e0DJRWOCW
+	Xl+BxCmzNETsdtAg==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 09389134AB;
+	Mon, 15 Jul 2024 11:20:53 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id Uoo7AhUGlWb8LwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 15 Jul 2024 11:20:53 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 7D9D8A0987; Mon, 15 Jul 2024 13:20:48 +0200 (CEST)
+Date: Mon, 15 Jul 2024 13:20:48 +0200
+From: Jan Kara <jack@suse.cz>
+To: Dan Carpenter <dan.carpenter@linaro.org>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+Subject: Re: [bug report] ext4: Convert data=journal writeback to use
+ ext4_writepages()
+Message-ID: <20240715112048.2pap6psmbb5f6urg@quack3>
+References: <01c6db4f-eb47-467a-9bb9-3ca6ee4817d7@moroto.mountain>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <01c6db4f-eb47-467a-9bb9-3ca6ee4817d7@moroto.mountain>
+X-Spamd-Result: default: False [-4.01 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	MISSING_XM_UA(0.00)[];
+	ARC_NA(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	TO_DN_SOME(0.00)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCVD_COUNT_THREE(0.00)[3];
+	FUZZY_BLOCKED(0.00)[rspamd.com];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	RCPT_COUNT_THREE(0.00)[3];
+	DKIM_TRACE(0.00)[suse.cz:+]
+X-Spam-Flag: NO
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Rspamd-Action: no action
+X-Spam-Score: -4.01
+X-Spam-Level: 
+X-Rspamd-Queue-Id: 14D2421BA4
 
-From: Ahmed Ehab <bottaawesome633@gmail.com>
+On Sat 08-06-24 17:25:20, Dan Carpenter wrote:
+> Hello Jan Kara,
+> 
+> Commit 3f079114bf52 ("ext4: Convert data=journal writeback to use
+> ext4_writepages()") from Feb 28, 2023 (linux-next), leads to the
+> following Smatch static checker warning:
+> 
+> 	fs/ext4/inode.c:2478 mpage_prepare_extent_to_map()
+> 	error: we previously assumed 'handle' could be null (see line 2417)
 
-Checking if the lockdep_map->name will change when setting the subclass.
-It shouldn't change so that the lock class and subclass will have the same
-name
+Found this in my inbox :). Yeah, Smatch is getting confused by different
+ways how we can test for journalled data. At the beginning of
+mpage_prepare_extent_to_map() we have:
 
-Reported-by: <syzbot+7f4a6f7f7051474e40ad@syzkaller.appspotmail.com>
-Fixes: de8f5e4f2dc1f ("lockdep: Introduce wait-type checks")
-Cc: <stable@vger.kernel.org>
-Signed-off-by: Ahmed Ehab <bottaawesome633@gmail.com>
----
-v3->v4:
-    - Fixed subject line truncation.
+        if (ext4_should_journal_data(mpd->inode)) {
+                handle = ext4_journal_start(mpd->inode, EXT4_HT_WRITE_PAGE,
+                                            bpp);
+		...
+	}
 
- lib/locking-selftest.c | 21 +++++++++++++++++++++
- 1 file changed, 21 insertions(+)
+so 'handle' is set only if we are journalling data. Later in the function
+we have:
 
-diff --git a/lib/locking-selftest.c b/lib/locking-selftest.c
-index 6f6a5fc85b42..aeed613799ca 100644
---- a/lib/locking-selftest.c
-+++ b/lib/locking-selftest.c
-@@ -2710,6 +2710,25 @@ static void local_lock_3B(void)
- 
- }
- 
-+ /** 
-+  * after setting the subclass the lockdep_map.name changes
-+  * if we initialize a new string literal for the subclass
-+  * we will have a new name pointer
-+  */
-+static void class_subclass_X1_name_test(void)
-+{
-+	printk("  --------------------------------------------------------------------------\n");
-+	printk("  | class and subclass name test|\n");
-+	printk("  ---------------------\n");
-+	const char *name_before_setting_subclass = rwsem_X1.dep_map.name;
-+	const char *name_after_setting_subclass;
-+
-+	WARN_ON(!rwsem_X1.dep_map.name);
-+	lockdep_set_subclass(&rwsem_X1, 1);
-+	name_after_setting_subclass = rwsem_X1.dep_map.name;
-+	WARN_ON(name_before_setting_subclass != name_after_setting_subclass);
-+}
-+
- static void local_lock_tests(void)
- {
- 	printk("  --------------------------------------------------------------------------\n");
-@@ -2916,6 +2935,8 @@ void locking_selftest(void)
- 
- 	local_lock_tests();
- 
-+	class_subclass_X1_name_test();
-+
- 	print_testname("hardirq_unsafe_softirq_safe");
- 	dotest(hardirq_deadlock_softirq_not_deadlock, FAILURE, LOCKTYPE_SPECIAL);
- 	pr_cont("\n");
+                        if (handle) {
+                                err = ext4_journal_ensure_credits(handle, bpp,
+                                                                  0);
+				...
+			}
+
+So if we are journalling data, make sure we have enough credits in the
+handle for the next page. And then we have:
+
+                                if (folio_test_checked(folio)) {
+                                        err = mpage_journal_page_buffers(handle,
+                                                mpd, folio);
+					...
+				}
+
+which uses the handle. Here the trick is that ext4 sets the 'Checked' folio
+flag only for inodes with data journalling. So if Checked flags is set, we
+should have started the handle at the beginning of
+mpage_prepare_extent_to_map().
+
+								Honza
+
+> fs/ext4/inode.c
+>     2362 static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+>     2363 {
+>     2364         struct address_space *mapping = mpd->inode->i_mapping;
+>     2365         struct folio_batch fbatch;
+>     2366         unsigned int nr_folios;
+>     2367         pgoff_t index = mpd->first_page;
+>     2368         pgoff_t end = mpd->last_page;
+>     2369         xa_mark_t tag;
+>     2370         int i, err = 0;
+>     2371         int blkbits = mpd->inode->i_blkbits;
+>     2372         ext4_lblk_t lblk;
+>     2373         struct buffer_head *head;
+>     2374         handle_t *handle = NULL;
+>     2375         int bpp = ext4_journal_blocks_per_page(mpd->inode);
+>     2376 
+>     2377         if (mpd->wbc->sync_mode == WB_SYNC_ALL || mpd->wbc->tagged_writepages)
+>     2378                 tag = PAGECACHE_TAG_TOWRITE;
+>     2379         else
+>     2380                 tag = PAGECACHE_TAG_DIRTY;
+>     2381 
+>     2382         mpd->map.m_len = 0;
+>     2383         mpd->next_page = index;
+>     2384         if (ext4_should_journal_data(mpd->inode)) {
+>     2385                 handle = ext4_journal_start(mpd->inode, EXT4_HT_WRITE_PAGE,
+>     2386                                             bpp);
+>     2387                 if (IS_ERR(handle))
+>     2388                         return PTR_ERR(handle);
+>     2389         }
+>     2390         folio_batch_init(&fbatch);
+>     2391         while (index <= end) {
+>     2392                 nr_folios = filemap_get_folios_tag(mapping, &index, end,
+>     2393                                 tag, &fbatch);
+>     2394                 if (nr_folios == 0)
+>     2395                         break;
+>     2396 
+>     2397                 for (i = 0; i < nr_folios; i++) {
+>     2398                         struct folio *folio = fbatch.folios[i];
+>     2399 
+>     2400                         /*
+>     2401                          * Accumulated enough dirty pages? This doesn't apply
+>     2402                          * to WB_SYNC_ALL mode. For integrity sync we have to
+>     2403                          * keep going because someone may be concurrently
+>     2404                          * dirtying pages, and we might have synced a lot of
+>     2405                          * newly appeared dirty pages, but have not synced all
+>     2406                          * of the old dirty pages.
+>     2407                          */
+>     2408                         if (mpd->wbc->sync_mode == WB_SYNC_NONE &&
+>     2409                             mpd->wbc->nr_to_write <=
+>     2410                             mpd->map.m_len >> (PAGE_SHIFT - blkbits))
+>     2411                                 goto out;
+>     2412 
+>     2413                         /* If we can't merge this page, we are done. */
+>     2414                         if (mpd->map.m_len > 0 && mpd->next_page != folio->index)
+>     2415                                 goto out;
+>     2416 
+>     2417                         if (handle) {
+>                                      ^^^^^^
+> Checked for NULL
+> 
+>     2418                                 err = ext4_journal_ensure_credits(handle, bpp,
+>     2419                                                                   0);
+>     2420                                 if (err < 0)
+>     2421                                         goto out;
+>     2422                         }
+>     2423 
+>     2424                         folio_lock(folio);
+>     2425                         /*
+>     2426                          * If the page is no longer dirty, or its mapping no
+>     2427                          * longer corresponds to inode we are writing (which
+>     2428                          * means it has been truncated or invalidated), or the
+>     2429                          * page is already under writeback and we are not doing
+>     2430                          * a data integrity writeback, skip the page
+>     2431                          */
+>     2432                         if (!folio_test_dirty(folio) ||
+>     2433                             (folio_test_writeback(folio) &&
+>     2434                              (mpd->wbc->sync_mode == WB_SYNC_NONE)) ||
+>     2435                             unlikely(folio->mapping != mapping)) {
+>     2436                                 folio_unlock(folio);
+>     2437                                 continue;
+>     2438                         }
+>     2439 
+>     2440                         folio_wait_writeback(folio);
+>     2441                         BUG_ON(folio_test_writeback(folio));
+>     2442 
+>     2443                         /*
+>     2444                          * Should never happen but for buggy code in
+>     2445                          * other subsystems that call
+>     2446                          * set_page_dirty() without properly warning
+>     2447                          * the file system first.  See [1] for more
+>     2448                          * information.
+>     2449                          *
+>     2450                          * [1] https://lore.kernel.org/linux-mm/20180103100430.GE4911@quack2.suse.cz
+>     2451                          */
+>     2452                         if (!folio_buffers(folio)) {
+>     2453                                 ext4_warning_inode(mpd->inode, "page %lu does not have buffers attached", folio->index);
+>     2454                                 folio_clear_dirty(folio);
+>     2455                                 folio_unlock(folio);
+>     2456                                 continue;
+>     2457                         }
+>     2458 
+>     2459                         if (mpd->map.m_len == 0)
+>     2460                                 mpd->first_page = folio->index;
+>     2461                         mpd->next_page = folio_next_index(folio);
+>     2462                         /*
+>     2463                          * Writeout when we cannot modify metadata is simple.
+>     2464                          * Just submit the page. For data=journal mode we
+>     2465                          * first handle writeout of the page for checkpoint and
+>     2466                          * only after that handle delayed page dirtying. This
+>     2467                          * makes sure current data is checkpointed to the final
+>     2468                          * location before possibly journalling it again which
+>     2469                          * is desirable when the page is frequently dirtied
+>     2470                          * through a pin.
+>     2471                          */
+>     2472                         if (!mpd->can_map) {
+>     2473                                 err = mpage_submit_folio(mpd, folio);
+>     2474                                 if (err < 0)
+>     2475                                         goto out;
+>     2476                                 /* Pending dirtying of journalled data? */
+>     2477                                 if (folio_test_checked(folio)) {
+> --> 2478                                         err = mpage_journal_page_buffers(handle,
+>                                                                                   ^^^^^^
+> Unchecked dereferenced inside the function.
+> 
+>     2479                                                 mpd, folio);
+>     2480                                         if (err < 0)
+>     2481                                                 goto out;
+>     2482                                         mpd->journalled_more_data = 1;
+>     2483                                 }
+>     2484                                 mpage_folio_done(mpd, folio);
+>     2485                         } else {
+>     2486                                 /* Add all dirty buffers to mpd */
+>     2487                                 lblk = ((ext4_lblk_t)folio->index) <<
+>     2488                                         (PAGE_SHIFT - blkbits);
+>     2489                                 head = folio_buffers(folio);
+>     2490                                 err = mpage_process_page_bufs(mpd, head, head,
+>     2491                                                 lblk);
+>     2492                                 if (err <= 0)
+>     2493                                         goto out;
+>     2494                                 err = 0;
+>     2495                         }
+>     2496                 }
+>     2497                 folio_batch_release(&fbatch);
+>     2498                 cond_resched();
+>     2499         }
+>     2500         mpd->scanned_until_end = 1;
+>     2501         if (handle)
+>     2502                 ext4_journal_stop(handle);
+>     2503         return 0;
+>     2504 out:
+>     2505         folio_batch_release(&fbatch);
+>     2506         if (handle)
+>     2507                 ext4_journal_stop(handle);
+>     2508         return err;
+>     2509 }
+> 
+> regards,
+> dan carpenter
+> 
 -- 
-2.45.2
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
