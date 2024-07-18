@@ -1,118 +1,73 @@
 Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EFA9677F2C;
-	Thu, 18 Jul 2024 22:30:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98B78146595;
+	Thu, 18 Jul 2024 22:35:22 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1721341820; cv=none; b=JAQsMHefOqVKtKfUrdC6hckyl2QGp8sG3VORqnrGR5HVpZvsVpfLHFQzszvsoOUoPaOzwcdffNSQ8dh4+SeAfOe74V/UErW3k10a9Oun+yqL41jYVsqelplaF8Xqwkv+Zu3xEoJ2eTE7H3N2xXZS9zhVXtDzXTm9Uj1/u8zIVqs=
+	t=1721342124; cv=none; b=OFAkIAhknMjqNwYuokShe/i+QFuB5wgLwVR5muBJKcLb/h9uHkXQ6JEgfAL3Xy/YbuLrQvZLNDYz5Hy0le9QLDSmP3/wvYtMn0r2cY/achA5IXEeyYh8H/cduxOiQxSJQZlscrbvaKOL3EoMTGE1Btn+zdn1OZbjZVMvYrbVJIw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1721341820; c=relaxed/simple;
-	bh=AR2LyEnpG9JWUDbvRTmOR7bkHSuIwVYAk5WGLXCT6NA=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=NkcKbYnncpCqF2VF+pZ0jFvM2KFn7ezj7eq1DP6etmHYOg3F0Pdx6LbkOCMOmchgv8a6MhuYCUPeg/3RQfAk7f/HSWdycA4rHD0mFqv3q+8eLAglGrmTZzELXiQWdPfbwoArkiN4z7Yxjj7iAUsnC3EOnP6LSqI6vMl+1Ac/LOU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=m1kf3OgL; arc=none smtp.client-ip=90.155.50.34
+	s=arc-20240116; t=1721342124; c=relaxed/simple;
+	bh=Q77l9sJemK2FS1NwrQtLXO+wErvSKs6sLOGw2QWCUeU=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=UPdutMlpVFDpNRGzH8XGBxOGdsSUHBBhTYp+w9RAIrLDzxwVU0z9O4/+VN6nPbBpz6wREBluI3iMc9bGCgrzy9Evqdm3WIvDdeMw//6bibPw9Omx8lnaNlAAAGrTK89S6aGyFcedrnhYayulQXhsV5NAPXSjzH2SnzYvMgpfMj4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=tHOogS6Z; arc=none smtp.client-ip=90.155.50.34
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="m1kf3OgL"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="tHOogS6Z"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-	References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:
-	Content-Type:Content-ID:Content-Description;
-	bh=VN24yx9tPzrfoWtcytnmHecpiKvPA8Lp+lwa5uBWGQE=; b=m1kf3OgLqqQOF+Afj18UMtuGyY
-	eVymTHVe+xIWAMZYC7YBc2fWb3jOlnHdW+GbgyIH0iWYx3S9uRpyjq3UprrdtsZ3v5M00jdomE4/I
-	zl4bsZFxfsjRU5ErGrCWfOi23NOWCFv7dAJrtZOzd075oI0BHpynzJcObJwMIkXhuntMr8I+Jyj9x
-	10WAnzTjy+Nw1f7pOV7nJq/tUTa7+ydwXqvnKZPmfeOnz0aY7+4nHTeX4RPhe7AzGzcwVa0s3uX2O
-	hL/RUPH6z4xbK59s5/Dfk/M7OgB3/2Rdf0/iPsNHKNa1Er7sVwqibmAL3UQeF9+6a0i7gwHc5bnQk
-	0XaZVRww==;
+	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=8EeDOIWMZon6WTAwsmmAoyg2vi80dO8qZGMtoPq7F+E=; b=tHOogS6Zot9g8mA5X2wa8ho1xh
+	cJtBfw9ihmKKR3nG/4Xa9I6ZZcKWIn6vjwPb+Fk4C2EClJ+YSGtx3uKdftj/ZsnAet+hOuoSlMsz0
+	+eRS9XgQN7JHQE/NjJe0cpXBmdWI6c8JqmMdmpXRxnw/uaCi2lJb8f4fxxGKqjGgYfJ+GQud4+vM+
+	bT7XMoZo0TvCyCnhlLWO/aEGwOYhaKsADSFF67gcuGe64n/GloNtpILvGUPsmDotbR8I30TOBCQz8
+	1sTAe/2Igmfud9BCj4g3O3IuehyG+2LMCbZBDIy+W1BKkQs+ETGHZilUSno2ZuQNEYtY8fsiG0VC0
+	9IBpaohg==;
 Received: from willy by casper.infradead.org with local (Exim 4.97.1 #2 (Red Hat Linux))
-	id 1sUZdX-00000002O0Q-0JPP;
-	Thu, 18 Jul 2024 22:30:07 +0000
-From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
-To: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	Hannes Reinecke <hare@suse.com>
-Subject: [PATCH v2 3/4] ext4: Remove array of buffer_heads from mext_page_mkuptodate()
-Date: Thu, 18 Jul 2024 23:30:01 +0100
-Message-ID: <20240718223005.568869-3-willy@infradead.org>
-X-Mailer: git-send-email 2.45.2
-In-Reply-To: <20240718223005.568869-1-willy@infradead.org>
-References: <20240718223005.568869-1-willy@infradead.org>
+	id 1sUZiZ-00000002OEF-411Q;
+	Thu, 18 Jul 2024 22:35:19 +0000
+Date: Thu, 18 Jul 2024 23:35:19 +0100
+From: Matthew Wilcox <willy@infradead.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, Hannes Reinecke <hare@suse.com>
+Subject: Re: [PATCH 2/2] ext4: Remove array of buffer_heads from
+ mext_page_mkuptodate()
+Message-ID: <ZpmYp-ci47MZ6c9T@casper.infradead.org>
+References: <20240516181651.2879778-1-willy@infradead.org>
+ <20240516181651.2879778-2-willy@infradead.org>
+ <20240627202022.GC419129@mit.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20240627202022.GC419129@mit.edu>
 
-Iterate the folio's list of buffer_heads twice instead of keeping
-an array of pointers.  This solves a too-large-array-for-stack problem
-on architectures with a ridiculoously large PAGE_SIZE and prepares
-ext4 to support larger folios.
+On Thu, Jun 27, 2024 at 04:20:22PM -0400, Theodore Ts'o wrote:
+> This patch is causing ext4/020 (which tests the EXT4_IOC_MOVE_EXT
+> ioctl used by e4defrag).  This can be easily reproduced via:
+> "kvm-xfstests -c ext4/4k ext4/020".  From
+> /results/ext4/results-4k/ext4/020.out.bad:
+> 
+>    QA output created by 020
+>    wrote 1048576/1048576 bytes at offset 0
+>    XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
+>    wrote 1023/1023 bytes at offset 0
+>    XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
+>    md5sum: WARNING: 1 computed checksum did NOT match
+>    SCRATCH_MNT/020.orig: FAILED
+> 
+> I'm going to drop both this patch and the preceeding patch in this
+> series ("ext4: reduce stack usage in ext4_mpage_readpages()") pending
+> further investigation.
 
-Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
----
- fs/ext4/move_extent.c | 22 ++++++++++++----------
- 1 file changed, 12 insertions(+), 10 deletions(-)
-
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 6d651ad788ac..660bf34a5c4b 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -166,15 +166,14 @@ mext_folio_double_lock(struct inode *inode1, struct inode *inode2,
- 	return 0;
- }
- 
--/* Force page buffers uptodate w/o dropping page's lock */
--static int
--mext_page_mkuptodate(struct folio *folio, unsigned from, unsigned to)
-+/* Force folio buffers uptodate w/o dropping folio's lock */
-+static int mext_page_mkuptodate(struct folio *folio, size_t from, size_t to)
- {
- 	struct inode *inode = folio->mapping->host;
- 	sector_t block;
--	struct buffer_head *bh, *head, *arr[MAX_BUF_PER_PAGE];
-+	struct buffer_head *bh, *head;
- 	unsigned int blocksize, block_start, block_end;
--	int i, nr = 0;
-+	int nr = 0;
- 	bool partial = false;
- 
- 	BUG_ON(!folio_test_locked(folio));
-@@ -215,20 +214,23 @@ mext_page_mkuptodate(struct folio *folio, unsigned from, unsigned to)
- 			continue;
- 		}
- 		ext4_read_bh_nowait(bh, 0, NULL);
--		BUG_ON(nr >= MAX_BUF_PER_PAGE);
--		arr[nr++] = bh;
-+		nr++;
- 	}
- 	/* No io required */
- 	if (!nr)
- 		goto out;
- 
--	for (i = 0; i < nr; i++) {
--		bh = arr[i];
-+	bh = head;
-+	do {
-+		if (bh_offset(bh) + blocksize <= from)
-+			continue;
-+		if (bh_offset(bh) > to)
-+			break;
- 		wait_on_buffer(bh);
- 		if (buffer_uptodate(bh))
- 			continue;
- 		return -EIO;
--	}
-+	} while ((bh = bh->b_this_page) != head);
- out:
- 	if (!partial)
- 		folio_mark_uptodate(folio);
--- 
-2.43.0
-
+Thanks.  I couldn't get kvm-xfstests to work, but I was able to run
+ext4/020 using Kent's testsuite.  I found two bugs and fixed them.
+I split this second patch into three patches for v2.
