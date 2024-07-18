@@ -1,33 +1,33 @@
 Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B470F12C7F9;
-	Thu, 18 Jul 2024 22:30:09 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 15C015B1FB;
+	Thu, 18 Jul 2024 22:30:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1721341813; cv=none; b=eqU1/UmwpeUPnuvTNwR9bm4yV140TfTHOGqYIIKGlDKomLyzk90xzGyRXqMyJYmr7mrBowtFTDuYaURblGd348Cn0Sjd0a4fgGF7z2Xtwdn2vdNXe63c8p4ZyVLiLTmizJAy3HGSZ1TrH3pTnaBnvcIl0rtK1rwSVZ01rTQzfGU=
+	t=1721341815; cv=none; b=EzeNp8KjdeE3LljD9gIagFn8RdRYltybf3lGQaOqZMfd7RePHqu3NuxI23GylMFCGs7djvsUJBRCWl0LoKb6iWw2XueyGDB6OVrXM4ypZQ727gV4GDNMFaxHEDYRYrQFnVL7Egv5QRF6XbbwiFf4GwpZGOHtME7196+aJA2KV5w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1721341813; c=relaxed/simple;
-	bh=SCb1EseGsn+5pBi2dIrMkxVwkS+8MSH1I9q1XdPH1UI=;
+	s=arc-20240116; t=1721341815; c=relaxed/simple;
+	bh=xXbDKc8Yh3b5P3gYo8YX3u8p27q+YFrAwJyJ6zB8Yto=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=pUSqmSGEQh78GwY1cLjZCdRkXdzeGgnoCljXzBtVxK/T1w6baL9KlMdXHuA8GdF4d2nW/XqQ2vdixEA4DKZA647XCOFp+AqmkP4ry4GvS5ZQUHJEh9UL1QVUIC8o3lex1CCbhPW5vf8BKeZVT4s+ovj+rv/YmCU7wBF/aI2ZmtA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=INY0UkJX; arc=none smtp.client-ip=90.155.50.34
+	 MIME-Version; b=Be+lZNhOg4qlCnbb7OgSvxXrd5+SBM0veMy6rdjpUmmfZ6tgxJSMthdTnBZWaiBJJC3dhzFRzt4rokcK4VopJjpnrcV8uSGaiCHDvH81O8fL5oysAgcMuBv0M4GOIDMlH/ciVQUtIQx7y0aS9fidNNKgGLKADT43GEQyhYuv4ps=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=sKmcnDHR; arc=none smtp.client-ip=90.155.50.34
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="INY0UkJX"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="sKmcnDHR"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
 	References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:
 	Content-Type:Content-ID:Content-Description;
-	bh=NKLp7cFT6stArnXInmDhzYdpMNjqgCzvn8nHi4aXK7E=; b=INY0UkJXSStgnuwdwD/l53f+2e
-	Gk75AwO5jeXk1mNbepCXj3ET8s3IQgAUYdTIplQjbr4VLwnTIv43LPJFiYto0LQILxY+v5hss4iXp
-	2pYt6urNDgN9BRtkRE8WaJcFjqkL7StVIYlUMnDhCtd8nVM3NiCCQME26x0UwQd2PwP1mq4SatZLE
-	9RQPtzODUQvT5u1O+oZ2t9fr3+JUkNga3t0D9xCaTVAIA3gjyzVBJappPOt2ClidLsDsZ05Mu01Kd
-	xwZ5+EUEu5SYP+IHXH0/ol9eI3B/uUZ212k8fMzsxioRSYZb5ZonvkTol7KT5/iJaw2qxzx6zppC5
-	ZZYykMRg==;
+	bh=+NJMSMAX7aG95L+HfUpIkXRtG072jixgCRh36PazJ9w=; b=sKmcnDHR8XhJaq7PUUNFKz/4Qu
+	T5a6y17edFBP/6+dmacpYCDAUJoAJmfRQJzrP5eYpxV64HYdHzxzyKJUvDnx8jCqXvHUHEMA4kNZt
+	7AVcn6OP+5A8t8dgkmgrD7nWCqElv5LBY59jaSaREycT/9WS4jP7UffDAns7mmqBgWjlr8fBtRNRB
+	xY5DsFs6jfqA8DR60jMuK+W5PNj1cOJ4CTQNFzT9U9KvYGMNxr7Uh/JBENXzWfN7GI4Eqjh05cxdl
+	avmkBr6+3p/QuboroCe25y6fzbmwxvYgTCYMeS9xBBBJcsgDiQ/H3rRXaWNNVaHUjqURPbFyaPzkx
+	rTs15nkg==;
 Received: from willy by casper.infradead.org with local (Exim 4.97.1 #2 (Red Hat Linux))
-	id 1sUZdX-00000002O0S-0hRq;
+	id 1sUZdW-00000002O0O-47Z3;
 	Thu, 18 Jul 2024 22:30:07 +0000
 From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To: Theodore Ts'o <tytso@mit.edu>,
@@ -36,9 +36,9 @@ Cc: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
 	linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org,
 	Hannes Reinecke <hare@suse.com>
-Subject: [PATCH v2 4/4] ext4: Tidy the BH loop in mext_page_mkuptodate()
-Date: Thu, 18 Jul 2024 23:30:02 +0100
-Message-ID: <20240718223005.568869-4-willy@infradead.org>
+Subject: [PATCH v2 2/4] ext4: Pipeline buffer reads in mext_page_mkuptodate()
+Date: Thu, 18 Jul 2024 23:30:00 +0100
+Message-ID: <20240718223005.568869-2-willy@infradead.org>
 X-Mailer: git-send-email 2.45.2
 In-Reply-To: <20240718223005.568869-1-willy@infradead.org>
 References: <20240718223005.568869-1-willy@infradead.org>
@@ -50,43 +50,76 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-This for loop is somewhat hard to read; turn it into a normal BH
-do-while loop.
+Instead of synchronously reading one buffer at a time, submit reads
+as we walk the buffers in the first loop, then wait for them in the
+second loop.  This should be significantly more efficient, particularly
+on HDDs, but I have not measured.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/ext4/move_extent.c | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
+ fs/ext4/move_extent.c | 23 +++++++++++++++--------
+ 1 file changed, 15 insertions(+), 8 deletions(-)
 
 diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 660bf34a5c4b..516897b0218e 100644
+index 204f53b23622..6d651ad788ac 100644
 --- a/fs/ext4/move_extent.c
 +++ b/fs/ext4/move_extent.c
-@@ -187,9 +187,11 @@ static int mext_page_mkuptodate(struct folio *folio, size_t from, size_t to)
- 	if (!head)
- 		head = create_empty_buffers(folio, blocksize, 0);
+@@ -174,7 +174,9 @@ mext_page_mkuptodate(struct folio *folio, unsigned from, unsigned to)
+ 	sector_t block;
+ 	struct buffer_head *bh, *head, *arr[MAX_BUF_PER_PAGE];
+ 	unsigned int blocksize, block_start, block_end;
+-	int i, err,  nr = 0, partial = 0;
++	int i, nr = 0;
++	bool partial = false;
++
+ 	BUG_ON(!folio_test_locked(folio));
+ 	BUG_ON(folio_test_writeback(folio));
  
--	block = (sector_t)folio->index << (PAGE_SHIFT - inode->i_blkbits);
--	for (bh = head, block_start = 0; bh != head || !block_start;
--	     block++, block_start = block_end, bh = bh->b_this_page) {
-+	block = folio_pos(folio) >> inode->i_blkbits;
-+	block_end = 0;
-+	bh = head;
-+	do {
-+		block_start = block_end;
+@@ -192,13 +194,13 @@ mext_page_mkuptodate(struct folio *folio, unsigned from, unsigned to)
  		block_end = block_start + blocksize;
  		if (block_end <= from || block_start >= to) {
  			if (!buffer_uptodate(bh))
-@@ -215,7 +217,8 @@ static int mext_page_mkuptodate(struct folio *folio, size_t from, size_t to)
+-				partial = 1;
++				partial = true;
+ 			continue;
  		}
- 		ext4_read_bh_nowait(bh, 0, NULL);
- 		nr++;
--	}
-+	} while (block++, (bh = bh->b_this_page) != head);
-+
- 	/* No io required */
- 	if (!nr)
- 		goto out;
+ 		if (buffer_uptodate(bh))
+ 			continue;
+ 		if (!buffer_mapped(bh)) {
+-			err = ext4_get_block(inode, block, bh, 0);
++			int err = ext4_get_block(inode, block, bh, 0);
+ 			if (err)
+ 				return err;
+ 			if (!buffer_mapped(bh)) {
+@@ -207,6 +209,12 @@ mext_page_mkuptodate(struct folio *folio, unsigned from, unsigned to)
+ 				continue;
+ 			}
+ 		}
++		lock_buffer(bh);
++		if (buffer_uptodate(bh)) {
++			unlock_buffer(bh);
++			continue;
++		}
++		ext4_read_bh_nowait(bh, 0, NULL);
+ 		BUG_ON(nr >= MAX_BUF_PER_PAGE);
+ 		arr[nr++] = bh;
+ 	}
+@@ -216,11 +224,10 @@ mext_page_mkuptodate(struct folio *folio, unsigned from, unsigned to)
+ 
+ 	for (i = 0; i < nr; i++) {
+ 		bh = arr[i];
+-		if (!bh_uptodate_or_lock(bh)) {
+-			err = ext4_read_bh(bh, 0, NULL);
+-			if (err)
+-				return err;
+-		}
++		wait_on_buffer(bh);
++		if (buffer_uptodate(bh))
++			continue;
++		return -EIO;
+ 	}
+ out:
+ 	if (!partial)
 -- 
 2.43.0
 
