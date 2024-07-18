@@ -1,59 +1,47 @@
-Received: from mail-pg1-f173.google.com (mail-pg1-f173.google.com [209.85.215.173])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EB433144D37
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Jul 2024 17:52:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.173
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B470F12C7F9;
+	Thu, 18 Jul 2024 22:30:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1721325131; cv=none; b=cTTtl6itmaR1TkJXnr+T3vvZY1C7gTp8VW7B9qx1QIKeQFmHpRmIeWLiSH9FFfTvaIXPWjuGjotC1XeEq5rcWnIlcijF70HPgcTFjj4RNZDjO6L8kb1L0aFNGIpXAItHEQVXb/0Ha/q7bGrYBKNkvsmVkyFkuderOgzvnPOIjRM=
+	t=1721341813; cv=none; b=eqU1/UmwpeUPnuvTNwR9bm4yV140TfTHOGqYIIKGlDKomLyzk90xzGyRXqMyJYmr7mrBowtFTDuYaURblGd348Cn0Sjd0a4fgGF7z2Xtwdn2vdNXe63c8p4ZyVLiLTmizJAy3HGSZ1TrH3pTnaBnvcIl0rtK1rwSVZ01rTQzfGU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1721325131; c=relaxed/simple;
-	bh=JDne91vBlQuz2wK9jid67VPBUuVFaDf60urM/BN/G8c=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=thN6bHqqXZJYomkczDG/bdwlGwhtBuV4mUphR98eoVBi7r2Xdm1gcpEKOENp2zZDptqdqtRPUPaUrKDhtHcEfeMZ00EqibFf46mRldb5Pg7+wTS3kjzp01X4qC2g52PjH5UXdKDUMSsJhVBICFnHn0T8Oyqn1dFCXA76t7A+7Ew=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=chromium.org; spf=pass smtp.mailfrom=chromium.org; dkim=pass (1024-bit key) header.d=chromium.org header.i=@chromium.org header.b=maM4bxWu; arc=none smtp.client-ip=209.85.215.173
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=chromium.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=chromium.org
+	s=arc-20240116; t=1721341813; c=relaxed/simple;
+	bh=SCb1EseGsn+5pBi2dIrMkxVwkS+8MSH1I9q1XdPH1UI=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=pUSqmSGEQh78GwY1cLjZCdRkXdzeGgnoCljXzBtVxK/T1w6baL9KlMdXHuA8GdF4d2nW/XqQ2vdixEA4DKZA647XCOFp+AqmkP4ry4GvS5ZQUHJEh9UL1QVUIC8o3lex1CCbhPW5vf8BKeZVT4s+ovj+rv/YmCU7wBF/aI2ZmtA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=INY0UkJX; arc=none smtp.client-ip=90.155.50.34
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=chromium.org header.i=@chromium.org header.b="maM4bxWu"
-Received: by mail-pg1-f173.google.com with SMTP id 41be03b00d2f7-75c5bdab7faso722381a12.1
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jul 2024 10:52:09 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=chromium.org; s=google; t=1721325129; x=1721929929; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=c+qb8ZB4KX4nV9rrY3tw38d7rphn9daa9DIZucNXE9Q=;
-        b=maM4bxWuJe+n4tw4uovWQkXhdlo3II8wKDoue/jqXdOmyGlNrS3WgYdbQzR1pUomi8
-         4XcxelqIPzOYrvBvntDKIxjmrzm7bhfHM99JOld4mh3uI7k1fzTgqpGGd1zGWpTT3KqX
-         QJLkTMQkEMKE2PTtQt7edwaC5WmA9mlsEwUA0=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1721325129; x=1721929929;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=c+qb8ZB4KX4nV9rrY3tw38d7rphn9daa9DIZucNXE9Q=;
-        b=pwqlQIcs9oeph/XbezocQkr22/AGexqRd7SQGycBoLqfsdIwHsMY+1/2URgqMu4hob
-         P16XA2uj4risAVHUIqqFsYjcQu2nOKHoqF+/D2VTDAGss51zV+izyvcqkFFqjobFiHE8
-         eTCKlMmZAciW14m4k/s0t+6Dujsy3GQpbX5lLYKd3FtY35khbFPSoIxhSlrvpgg/pRZY
-         xv3Fu+BqDkmnuV97ea+OU+nmuAWezfCmn+39hmxc7lVAjCeAJxUXwPvY5YfWCCpBxh87
-         xZHnCXNl7uS+ay19qL8xdJSK+p0/azHiqXlCkHB5f8xN9NossLc1tHwxVfjRe8qN4nNa
-         J7ww==
-X-Gm-Message-State: AOJu0YxN/g9zz9mXDWxH6nosT67h40tLO4A8bEK3SpJUB/8U2DBcYot6
-	mQsyE7gki1DgfT5xPTOwG/Hn9EURMBeEoVCg0slAGPH5LpNHZKhW+HsO76Dvmw==
-X-Google-Smtp-Source: AGHT+IHCJLy/Neo28CHmpNSzYZAncSuuxbTCXTxsK3aHs3j6UEhyxjbxlZf+9O2v+WItCPvirl5oPA==
-X-Received: by 2002:a05:6a20:7483:b0:1c3:b1e6:d27f with SMTP id adf61e73a8af0-1c3fdd995b6mr7658361637.46.1721325129291;
-        Thu, 18 Jul 2024 10:52:09 -0700 (PDT)
-Received: from localhost ([2620:15c:9d:2:df7c:d80e:c39f:3412])
-        by smtp.gmail.com with UTF8SMTPSA id d9443c01a7336-1fc0bb7020asm95771005ad.1.2024.07.18.10.52.08
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 18 Jul 2024 10:52:08 -0700 (PDT)
-From: Gwendal Grignou <gwendal@chromium.org>
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org,
-	Gwendal Grignou <gwendal@chromium.org>
-Subject: [PATCH] tune2fs.c (main): do not set dirty when default is not changed
-Date: Thu, 18 Jul 2024 10:52:04 -0700
-Message-ID: <20240718175204.1590917-1-gwendal@chromium.org>
-X-Mailer: git-send-email 2.45.2.1089.g2a221341d9-goog
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="INY0UkJX"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
+	References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:
+	Content-Type:Content-ID:Content-Description;
+	bh=NKLp7cFT6stArnXInmDhzYdpMNjqgCzvn8nHi4aXK7E=; b=INY0UkJXSStgnuwdwD/l53f+2e
+	Gk75AwO5jeXk1mNbepCXj3ET8s3IQgAUYdTIplQjbr4VLwnTIv43LPJFiYto0LQILxY+v5hss4iXp
+	2pYt6urNDgN9BRtkRE8WaJcFjqkL7StVIYlUMnDhCtd8nVM3NiCCQME26x0UwQd2PwP1mq4SatZLE
+	9RQPtzODUQvT5u1O+oZ2t9fr3+JUkNga3t0D9xCaTVAIA3gjyzVBJappPOt2ClidLsDsZ05Mu01Kd
+	xwZ5+EUEu5SYP+IHXH0/ol9eI3B/uUZ212k8fMzsxioRSYZb5ZonvkTol7KT5/iJaw2qxzx6zppC5
+	ZZYykMRg==;
+Received: from willy by casper.infradead.org with local (Exim 4.97.1 #2 (Red Hat Linux))
+	id 1sUZdX-00000002O0S-0hRq;
+	Thu, 18 Jul 2024 22:30:07 +0000
+From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
+To: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	Hannes Reinecke <hare@suse.com>
+Subject: [PATCH v2 4/4] ext4: Tidy the BH loop in mext_page_mkuptodate()
+Date: Thu, 18 Jul 2024 23:30:02 +0100
+Message-ID: <20240718223005.568869-4-willy@infradead.org>
+X-Mailer: git-send-email 2.45.2
+In-Reply-To: <20240718223005.568869-1-willy@infradead.org>
+References: <20240718223005.568869-1-willy@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -62,36 +50,43 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-If the default group is not modified, don't set the superblock
-dirty bit.
+This for loop is somewhat hard to read; turn it into a normal BH
+do-while loop.
 
-Similar to commit 2eb3b20e80, it speeds up `tunefs -g` command when
-the group argument is identical.
+Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- misc/tune2fs.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+ fs/ext4/move_extent.c | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 8ae13705..facc8dc9 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -3382,9 +3382,13 @@ _("Warning: The journal is dirty. You may wish to replay the journal like:\n\n"
- 		printf(_("Setting error behavior to %d\n"), errors);
- 	}
- 	if (g_flag) {
--		sb->s_def_resgid = resgid;
--		ext2fs_mark_super_dirty(fs);
--		printf(_("Setting reserved blocks gid to %lu\n"), resgid);
-+		if (sb->s_def_resgid != resgid) {
-+			sb->s_def_resgid = resgid;
-+			ext2fs_mark_super_dirty(fs);
-+			printf(_("Setting reserved blocks gid to %lu\n"), resgid);
-+		} else {
-+			printf(_("Reserved blocks gid already set to %lu\n"), resgid);
-+		}
- 	}
- 	if (i_flag) {
- 		if ((unsigned long long)interval >= (1ULL << 32)) {
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 660bf34a5c4b..516897b0218e 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -187,9 +187,11 @@ static int mext_page_mkuptodate(struct folio *folio, size_t from, size_t to)
+ 	if (!head)
+ 		head = create_empty_buffers(folio, blocksize, 0);
+ 
+-	block = (sector_t)folio->index << (PAGE_SHIFT - inode->i_blkbits);
+-	for (bh = head, block_start = 0; bh != head || !block_start;
+-	     block++, block_start = block_end, bh = bh->b_this_page) {
++	block = folio_pos(folio) >> inode->i_blkbits;
++	block_end = 0;
++	bh = head;
++	do {
++		block_start = block_end;
+ 		block_end = block_start + blocksize;
+ 		if (block_end <= from || block_start >= to) {
+ 			if (!buffer_uptodate(bh))
+@@ -215,7 +217,8 @@ static int mext_page_mkuptodate(struct folio *folio, size_t from, size_t to)
+ 		}
+ 		ext4_read_bh_nowait(bh, 0, NULL);
+ 		nr++;
+-	}
++	} while (block++, (bh = bh->b_this_page) != head);
++
+ 	/* No io required */
+ 	if (!nr)
+ 		goto out;
 -- 
-2.45.2.1089.g2a221341d9-goog
+2.43.0
 
