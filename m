@@ -1,26 +1,27 @@
-Received: from smtpbg151.qq.com (smtpbg151.qq.com [18.169.211.239])
+Received: from smtpbgjp3.qq.com (smtpbgjp3.qq.com [54.92.39.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1571412C48A;
-	Sat, 20 Jul 2024 16:04:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.169.211.239
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B72D1487CC;
+	Sat, 20 Jul 2024 16:04:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=54.92.39.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1721491481; cv=none; b=L7M0mO1eVj6uggJU4atx2MRXOAA1/5WNobY8R1sd7279Z023vz7fHJ7Zhy3SCW9isx7goyMTHND7MH162BzAqWU7FZVkq8hLoMYWi+c8LLoKqeu4ddq+gMKd5EF0LU1DHQi7iVMn7GUOXC/uD5w3TGBPrVkyGThfZ/p2cT+mNlQ=
+	t=1721491486; cv=none; b=KsLL3eKTzUgc0h+bM7+IAvHFKlBpOHHi1oT4H91GYZvVNHLNJ7cB8Sx/dknLhzp77jJHoHnL1LFPV35CA0NnCh23Lsz29UDOB5IedXP/kd21oayLNJyTPcrLmDzzUBXIe1ALi4raXKUGyWMY9jzrazd9Xkv/atkRACH5V9kXHoM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1721491481; c=relaxed/simple;
-	bh=mpp+4vjREuKWx7Lv8rFQ77O9zbAN6tBq2dKxfKnErHM=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=gxvHSAr/bAAVDHehThK79sJjI2RgS7hU2/94vKouzmV8CpfNZebJyV/jjGH5wFuACHcFLijkuoO+6cX2dGSFPENfGeSRCFZeRQM9x+oU2RVdi9SGKTIYcLZaWYlLkTccS/1/la4nTabc9F9zIrFtZxDSwepEoCtN0Khsbd1p4N8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=uniontech.com; spf=pass smtp.mailfrom=uniontech.com; arc=none smtp.client-ip=18.169.211.239
+	s=arc-20240116; t=1721491486; c=relaxed/simple;
+	bh=nYdDeVRQgWO/lNcngruJzRkh9len6++gm+EoGAAb0I4=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=XbWaIbo3qxCUae7FMTW6oZ+LLro/ooDMrWWrz/mAS5rjSnR1P/RxKW2ms8jJqBAmjWsXfYRhGc63K/q/VoNVUsCVPRi8gufThMCUp+Gp8NhS7A34HAWxs4CX0quoWR/IKJjwdvuYtls3rO4gY9YX1kGAYjh9rt6S09GWjoLYuok=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=uniontech.com; spf=pass smtp.mailfrom=uniontech.com; arc=none smtp.client-ip=54.92.39.34
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=uniontech.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uniontech.com
-X-QQ-mid: bizesmtp81t1721491464twyjqvm1
-X-QQ-Originating-IP: lJSXl2BmmlnX0O0hOMAd2J/SUflnUbXnLTy4psbDlXw=
+X-QQ-mid: bizesmtp81t1721491473tfa5o7e4
+X-QQ-Originating-IP: e7eqQ2g4BBTbaLpJkD+hJApUF2qtaxZ4T4SV2G18Gi4=
 Received: from localhost.localdomain ( [113.57.152.160])
 	by bizesmtp.qq.com (ESMTP) with 
-	id ; Sun, 21 Jul 2024 00:04:22 +0800 (CST)
+	id ; Sun, 21 Jul 2024 00:04:31 +0800 (CST)
 X-QQ-SSF: 0000000000000000000000000000000
 X-QQ-GoodBg: 1
-X-BIZMAIL-ID: 9311491502483072868
+X-BIZMAIL-ID: 3741391838611040633
 From: WangYuli <wangyuli@uniontech.com>
 To: stable@vger.kernel.org,
 	gregkh@linuxfoundation.org,
@@ -36,10 +37,12 @@ Cc: jack@suse.cz,
 	zhangdandan@uniontech.com,
 	guanwentao@uniontech.com,
 	WangYuli <wangyuli@uniontech.com>
-Subject: [PATCH v2 4.19 0/4] ext4: improve delalloc buffer write performance
-Date: Sun, 21 Jul 2024 00:04:06 +0800
-Message-ID: <78C2D546AD199A57+20240720160420.578940-1-wangyuli@uniontech.com>
+Subject: [PATCH v2 4.19 2/4] ext4: correct the error path of ext4_write_inline_data_end()
+Date: Sun, 21 Jul 2024 00:04:08 +0800
+Message-ID: <C932196342E85337+20240720160420.578940-3-wangyuli@uniontech.com>
 X-Mailer: git-send-email 2.43.4
+In-Reply-To: <20240720160420.578940-1-wangyuli@uniontech.com>
+References: <20240720160420.578940-1-wangyuli@uniontech.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -50,92 +53,130 @@ Content-Transfer-Encoding: 8bit
 X-QQ-SENDSIZE: 520
 Feedback-ID: bizesmtp:uniontech.com:qybglogicsvrgz:qybglogicsvrgz8a-1
 
-Changes since v1:
-  Fixed some formatting errors to make the patchset less confusing.
+From: Zhang Yi <yi.zhang@huawei.com>
 
-A patchset from linux-5.15 should be backported to 4.19 that can
-significantly improve ext4 fs read and write performance. Unixbench test
-results for linux-4.19.318 on Phytium D2000 CPU are shown below.
+commit 55ce2f649b9e88111270333a8127e23f4f8f42d7 upstream
 
-Test cmd: (Phytium D2000 only has 8 cores)
-  ./Run fs -c 8
+Current error path of ext4_write_inline_data_end() is not correct.
 
-Before this patch set:
-  File Copy 1024 bufsize 2000 maxblocks		1124181
-  File Copy 256 bufsize 500 maxblocks		281885
-  File Copy 4096 bufsize 8000 maxblocks		3383785
-  File Read 1024 bufsize 2000 maxblocks		8702173
-  File Read 256 bufsize 500 maxblocks		3869384
-  File Read 4096 bufsize 8000 maxblocks		13043151
-  File Write 1024 bufsize 2000 maxblocks	1107185
-  File Write 256 bufsize 500 maxblocks 		270493
-  File Write 4096 bufsize 8000 maxblocks	4018084
+Firstly, it should pass out the error value if ext4_get_inode_loc()
+return fail, or else it could trigger infinite loop if we inject error
+here. And then it's better to add inode to orphan list if it return fail
+in ext4_journal_stop(), otherwise we could not restore inline xattr
+entry after power failure. Finally, we need to reset the 'ret' value if
+ext4_write_inline_data_end() return success in ext4_write_end() and
+ext4_journalled_write_end(), otherwise we could not get the error return
+value of ext4_journal_stop().
 
-After this patch set:
-  File Copy 1024 bufsize 2000 maxblocks         2026206
-  File Copy 256 bufsize 500 maxblocks           829534
-  File Copy 4096 bufsize 8000 maxblocks         4066659
-  File Read 1024 bufsize 2000 maxblocks         8877219
-  File Read 256 bufsize 500 maxblocks           3997445
-  File Read 4096 bufsize 8000 maxblocks         13179885
-  File Write 1024 bufsize 2000 maxblocks        4256929
-  File Write 256 bufsize 500 maxblocks          1305320
-  File Write 4096 bufsize 8000 maxblocks	10721052
+Cc: stable@vger.kernel.org
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Link: https://lore.kernel.org/r/20210716122024.1105856-3-yi.zhang@huawei.com
+Reviewed-by: Cheng Nie <niecheng1@uniontech.com>
+Signed-off-by: Dandan Zhang <zhangdandan@uniontech.com>
+Signed-off-by: WangYuli <wangyuli@uniontech.com>
+---
+ fs/ext4/inline.c | 15 +++++----------
+ fs/ext4/inode.c  |  7 +++++--
+ 2 files changed, 10 insertions(+), 12 deletions(-)
 
-We can observe a quantum leap in the test results as a consequence of
-applying this patchset
-
-Link: https://lore.kernel.org/all/20210716122024.1105856-1-yi.zhang@huawei.com/
-
-
-
-Original description:
-
-This patchset address to improve buffer write performance with delalloc.
-The first patch reduce the unnecessary update i_disksize, the second two
-patch refactor the inline data write procedure and also do some small
-fix, the last patch do improve by remove all unnecessary journal handle
-in the delalloc write procedure.
-
-After this patch set, we could get a lot of performance improvement.
-Below is the Unixbench comparison data test on my machine with 'Intel
-Xeon Gold 5120' CPU and nvme SSD backend.
-
-Test cmd:
-
-  ./Run -c 56 -i 3 fstime fsbuffer fsdisk
-
-Before this patch set:
-
-  System Benchmarks Partial Index           BASELINE       RESULT   INDEX
-  File Copy 1024 bufsize 2000 maxblocks       3960.0     422965.0   1068.1
-  File Copy 256 bufsize 500 maxblocks         1655.0     105077.0   634.9
-  File Copy 4096 bufsize 8000 maxblocks       5800.0    1429092.0   2464.0
-                                                                    ========
-  System Benchmarks Index Score (Partial Only)                      1186.6
-
-After this patch set:
-
-  System Benchmarks Partial Index           BASELINE       RESULT   INDEX
-  File Copy 1024 bufsize 2000 maxblocks       3960.0     732716.0   1850.3
-  File Copy 256 bufsize 500 maxblocks         1655.0     184940.0   1117.5
-  File Copy 4096 bufsize 8000 maxblocks       5800.0    2427152.0   4184.7
-                                                                    ========
-  System Benchmarks Index Score (Partial Only)                      2053.0
-
-
-
-
-Zhang Yi (4):
-  ext4: check and update i_disksize properly
-  ext4: correct the error path of ext4_write_inline_data_end()
-  ext4: factor out write end code of inline file
-  ext4: drop unnecessary journal handle in delalloc write
-
- fs/ext4/ext4.h   |   3 -
- fs/ext4/inline.c | 120 ++++++++++++++++++-------------------
- fs/ext4/inode.c  | 150 ++++++++++++-----------------------------------
- 3 files changed, 99 insertions(+), 174 deletions(-)
-
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 71bb3cfc5933..de04bd5fb551 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -745,18 +745,13 @@ int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
+ 	void *kaddr;
+ 	struct ext4_iloc iloc;
+ 
+-	if (unlikely(copied < len)) {
+-		if (!PageUptodate(page)) {
+-			copied = 0;
+-			goto out;
+-		}
+-	}
++	if (unlikely(copied < len) && !PageUptodate(page))
++		return 0;
+ 
+ 	ret = ext4_get_inode_loc(inode, &iloc);
+ 	if (ret) {
+ 		ext4_std_error(inode->i_sb, ret);
+-		copied = 0;
+-		goto out;
++		return ret;
+ 	}
+ 
+ 	ext4_write_lock_xattr(inode, &no_expand);
+@@ -769,7 +764,7 @@ int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
+ 	(void) ext4_find_inline_data_nolock(inode);
+ 
+ 	kaddr = kmap_atomic(page);
+-	ext4_write_inline_data(inode, &iloc, kaddr, pos, len);
++	ext4_write_inline_data(inode, &iloc, kaddr, pos, copied);
+ 	kunmap_atomic(kaddr);
+ 	SetPageUptodate(page);
+ 	/* clear page dirty so that writepages wouldn't work for us. */
+@@ -778,7 +773,7 @@ int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
+ 	ext4_write_unlock_xattr(inode, &no_expand);
+ 	brelse(iloc.bh);
+ 	mark_inode_dirty(inode);
+-out:
++
+ 	return copied;
+ }
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index d8a8e4ee5ff8..44a715e6aae1 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1428,6 +1428,7 @@ static int ext4_write_end(struct file *file,
+ 			goto errout;
+ 		}
+ 		copied = ret;
++		ret = 0;
+ 	} else
+ 		copied = block_write_end(file, mapping, pos,
+ 					 len, copied, page, fsdata);
+@@ -1450,13 +1451,14 @@ static int ext4_write_end(struct file *file,
+ 	if (i_size_changed || inline_data)
+ 		ext4_mark_inode_dirty(handle, inode);
+ 
++errout:
+ 	if (pos + len > inode->i_size && ext4_can_truncate(inode))
+ 		/* if we have allocated more blocks and copied
+ 		 * less. We will have blocks allocated outside
+ 		 * inode->i_size. So truncate them
+ 		 */
+ 		ext4_orphan_add(handle, inode);
+-errout:
++
+ 	ret2 = ext4_journal_stop(handle);
+ 	if (!ret)
+ 		ret = ret2;
+@@ -1538,6 +1540,7 @@ static int ext4_journalled_write_end(struct file *file,
+ 			goto errout;
+ 		}
+ 		copied = ret;
++		ret = 0;
+ 	} else if (unlikely(copied < len) && !PageUptodate(page)) {
+ 		copied = 0;
+ 		ext4_journalled_zero_new_buffers(handle, page, from, to);
+@@ -1566,6 +1569,7 @@ static int ext4_journalled_write_end(struct file *file,
+ 			ret = ret2;
+ 	}
+ 
++errout:
+ 	if (pos + len > inode->i_size && ext4_can_truncate(inode))
+ 		/* if we have allocated more blocks and copied
+ 		 * less. We will have blocks allocated outside
+@@ -1573,7 +1577,6 @@ static int ext4_journalled_write_end(struct file *file,
+ 		 */
+ 		ext4_orphan_add(handle, inode);
+ 
+-errout:
+ 	ret2 = ext4_journal_stop(handle);
+ 	if (!ret)
+ 		ret = ret2;
 -- 
-2.31.1
+2.43.4
+
