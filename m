@@ -1,82 +1,92 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from bg1.exmail.qq.com (bg1.exmail.qq.com [114.132.62.65])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F07002D047;
-	Wed, 24 Jul 2024 02:16:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3751FDF5B;
+	Wed, 24 Jul 2024 04:56:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=114.132.62.65
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1721787408; cv=none; b=JtYToOPXs2MXXuJOQzbOu3bRFV31pCI7GJOigmVYhAPtxWhCOY/XI4DIQv2JQeFDfjGm6yRc3qKzRKsWX34l5n3fu2f82uoQZTdo00m7A81qGUCepsvwidIPTy+3N+2qn5WZ920E+myg9zbRr6chuGYSQYz+68OqUES26VjYhiM=
+	t=1721796992; cv=none; b=Cam0l+VgP2IbpGFZpTPko/16JPH9xbjbROh4f/lfztO/38uNicrQtCqzq7o8PAEXjhwtHW6cz623SafdpEWBqqMtC/JgyMrSegINqgBlxgzflvSSyL/gi2qouk5DhEtHbj+jZEdfAF6yc0Ds4FpA0ZRj3CYF/PJcB4BVQ9Fw0e0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1721787408; c=relaxed/simple;
-	bh=2Qki7VFr+Qj7tXxTqGvLoGf+PC67LDKcpFGcJzAFu6Y=;
-	h=Content-Type:MIME-Version:Subject:From:Message-Id:Date:References:
-	 In-Reply-To:To:Cc; b=aTbyHWLJV499cXUD1y4IrKmT8e1+0BAkKj/VpNOnnC79tw89GAyO/mpUy6/EVVCshz1aYgSaVna9ylRDWrTMOO1CqcT9V47NBoMAmYAg0f4EBxkIajn3+E/RNHNGFMEvEOYLbP1A6HtSenrEkbb4ti6Q+mWcaf1cz4LBhNuX3XY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ouhlBo12; arc=none smtp.client-ip=10.30.226.201
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ouhlBo12"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id A9EE8C4DDE0;
-	Wed, 24 Jul 2024 02:16:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1721787407;
-	bh=2Qki7VFr+Qj7tXxTqGvLoGf+PC67LDKcpFGcJzAFu6Y=;
-	h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
-	b=ouhlBo12N68ilfm38ZrqoSUhIokoptwXvzvwluu497leeNds+QrltwVgSf+s9X+Nz
-	 KpQ/Nh3ZSnbL0/qi1IjJOGwvbdyY4X6FQqGSGCi72ks9O57hCpvVUq/iVbg2xREagb
-	 EeXXZS9A9ZMLP1HyhoOEL0bTNK7FRhLAX4XB3G27VmjjcenzJ63T5KN/aJcU2waJEm
-	 qgrZrigjnVDfYn6dOcL0XUmdRIGkfcvLGRYQY8Qf2X03ZfwcQxY8u0UHX7b+h0jUak
-	 6hwIPN+1lQSFHfX8+kBvvB/Fg2n9a1fpZne9+/mYqSaZabLwbKxjDdBiqkx2YO9LD0
-	 zNydIgD9W7mYA==
-Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
-	by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id 9D706C43140;
-	Wed, 24 Jul 2024 02:16:46 +0000 (UTC)
-Content-Type: text/plain; charset="utf-8"
+	s=arc-20240116; t=1721796992; c=relaxed/simple;
+	bh=ojRQbAahHTByEAfI1eOYOni1gIRLm26bkB+y4at/GTg=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=n2xoCCtM/oq84UMe4R7aKS/a2mHFwmk8prUxrwp86xulIbQdUDkSAx8BvVaH+ip2SGYpq3ilTDqPYTrTfQVEpWDY+fjMZcmDlY0mfSkNOO5chk4zCUsUVZ4VzI6q6/zThxoB3KbRG0NufytH1OfU6JKqlA61WukUUBzhBh/FnNM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=uniontech.com; spf=pass smtp.mailfrom=uniontech.com; arc=none smtp.client-ip=114.132.62.65
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=uniontech.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uniontech.com
+X-QQ-mid: bizesmtpip1t1721796955tn1j07u
+X-QQ-Originating-IP: ngYma45+Uyq6qWUH9KZ71PKZU1IDMA1Xub2T+rMrxJ4=
+Received: from [IPV6:240e:36c:d5d:2c00:58c6:db ( [255.146.199.5])
+	by bizesmtp.qq.com (ESMTP) with 
+	id ; Wed, 24 Jul 2024 12:55:53 +0800 (CST)
+X-QQ-SSF: 0000000000000000000000000000000
+X-QQ-GoodBg: 1
+X-BIZMAIL-ID: 17571171907496050409
+Message-ID: <206F8E88DD4C4DD9+5197bc65-d440-4ad5-8b19-e1f83f4a1c7a@uniontech.com>
+Date: Wed, 24 Jul 2024 12:55:52 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2 4.19 0/4] ext4: improve delalloc buffer write
+ performance
+To: Greg KH <gregkh@linuxfoundation.org>
+Cc: stable@vger.kernel.org, sashal@kernel.org, yi.zhang@huawei.com,
+ jack@suse.cz, tytso@mit.edu, adilger.kernel@dilger.ca,
+ linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+ yukuai3@huawei.com, niecheng1@uniontech.com, zhangdandan@uniontech.com,
+ guanwentao@uniontech.com, chenyichong@uniontech.com, wentao@uniontech.com
+References: <78C2D546AD199A57+20240720160420.578940-1-wangyuli@uniontech.com>
+ <2024072316-thirty-cytoplasm-2b81@gregkh>
+From: WangYuli <wangyuli@uniontech.com>
+In-Reply-To: <2024072316-thirty-cytoplasm-2b81@gregkh>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
-Subject: Re: [f2fs-dev] [RESEND PATCH v9 0/2] Minor cleanup for case insensitive
- path
-From: patchwork-bot+f2fs@kernel.org
-Message-Id: 
- <172178740664.17759.11130907548289451069.git-patchwork-notify@kernel.org>
-Date: Wed, 24 Jul 2024 02:16:46 +0000
-References: <20240207064302.221060-1-eugen.hristev@collabora.com>
-In-Reply-To: <20240207064302.221060-1-eugen.hristev@collabora.com>
-To: Eugen Hristev <eugen.hristev@collabora.com>
-Cc: tytso@mit.edu, jaegeuk@kernel.org, linux-ext4@vger.kernel.org,
- linux-f2fs-devel@lists.sourceforge.net, kernel@collabora.com,
- adilger.kernel@dilger.ca, linux-kernel@vger.kernel.org
+X-QQ-SENDSIZE: 520
+Feedback-ID: bizesmtpip:uniontech.com:qybglogicsvrgz:qybglogicsvrgz8a-1
 
-Hello:
+Hi greg k-h,
 
-This series was applied to jaegeuk/f2fs.git (dev)
-by Christian Brauner <brauner@kernel.org>:
+As a commercial Linux distribution maintainer, we understand that
 
-On Wed,  7 Feb 2024 08:43:00 +0200 you wrote:
-> Hello,
-> 
-> I am trying to respin the series here :
-> https://www.spinics.net/lists/linux-ext4/msg85081.html
-> 
-> To make it easier to apply I split it into smaller chunks which address
-> one single thing.
-> This series will just convert to qstr the storage of the filename
-> currently using fscrypt_str .
-> 
-> [...]
+even though upstream support for linux-4.19.y is ending, our users'
 
-Here is the summary with links:
-  - [f2fs-dev,RESEND,v9,1/2] ext4: Simplify the handling of cached insensitive names
-    https://git.kernel.org/jaegeuk/f2fs/c/f776f02a2c96
-  - [f2fs-dev,RESEND,v9,2/2] f2fs: Simplify the handling of cached insensitive names
-    (no matching commit)
+reliance on this kernel version will not cease immediately.
 
-You are awesome, thank you!
--- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/patchwork/pwbot.html
 
+They often lack the time or resources to promptly migrate all their
+
+devices to a newer kernel, due to considerations such as stability,
+
+operational costs, and other factors.
+
+
+Therefore, to provide a more graceful conclusion to the linux-4.19.y
+
+lifecycle, we propose backporting these performance optimizations
+
+to extend its useful life  and ensure a smooth transition for commercial
+
+users by the way.
+
+
+Of course, we appreciate your suggestion and will prioritize backporting
+
+these optimizations to linux-5.10.y and linux 5.4.y first.
+
+
+Stay tuned for updates. We are committed to staying informed about kernel
+
+updates and community trends. Thanks.
+
+
+Sincerely,
+
+
+--
+
+WangYuli
 
