@@ -1,107 +1,91 @@
-Received: from out-175.mta1.migadu.com (out-175.mta1.migadu.com [95.215.58.175])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 81BB817571
-	for <linux-ext4@vger.kernel.org>; Wed, 24 Jul 2024 02:15:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=95.215.58.175
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F020B1BC58;
+	Wed, 24 Jul 2024 02:16:46 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1721787314; cv=none; b=sc9yPIGbwLYHqOXF8lxBpgweH1STNiREH0A/LulJfGhzQt0LyPjhbdYymQswwJS+Xu3RoYGD9sO8ElqmE7tsKLuyXlYi4qi9CbZQr0wWy/zloYgiPMGDOF7Ao6SEv80iSjxzYpMS8JPw93u3alUCWrWb0vyWntUsqwtNG/mrpPk=
+	t=1721787407; cv=none; b=FjaRJJQXq1Uq/a2MtBXylqkhzbudhBehNAplNxscd7rNk9PuSfTJ87fe4zg2cMnWuWnTmv0uF2SFttHsoV613s87WU/5xRhy8weni1bWvBydmflc2NfcpPGlctPi6BwQ90J0anXr2FQE3ddoF/lgmGR0yrgUlWk0C560aTbgF9s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1721787314; c=relaxed/simple;
-	bh=O96nVOKIorM7OixK34nGovVkLbLQd2lGu7pSs49Y5Xw=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=dCqP8M3HUxZXUGwcFZqarwrnVyIEcyLFW3D110c5fTo2MIM8HZAJbG0YOhFFiYn9ALcCB6aeMGW4gFk7XPHF/aKgl/d3sLfQDZ6KNq/jUQbfe+pEJNE5rkAYcJxc4ewsOP1wJqch5zVi3HwEGsEzYt5wRd35C7MC594XzXjkcgY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=h0HlnRfz; arc=none smtp.client-ip=95.215.58.175
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
+	s=arc-20240116; t=1721787407; c=relaxed/simple;
+	bh=e2dCHd3n8q25XhOxzHvJ6i3RPXn9LxCn1diONk3KotU=;
+	h=Content-Type:MIME-Version:Subject:From:Message-Id:Date:References:
+	 In-Reply-To:To:Cc; b=bhI5VAo13FR8tBFiYin2CP/N21ZjitTrsYGs8gIUmQr3dhRQ+7R8K4xWrdlB1sUlNBnOzFmXqyj7eIGXLlnLiQh/U5K5W0o13w310RVP14Y1hMyio7KhUmE48TdVMya7QeIhxtXrER61ScP+I3XNNLgzxHOrhvEcOE4j+DgGu/g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bMpDk9N7; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="h0HlnRfz"
-Message-ID: <4b932baf-9b43-42cd-9d9b-8048009d6d42@linux.dev>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-	t=1721787309;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=MLUfk9gi7OCPJH9Y7tsnfPUpLHamp4aWw3nheTJInOk=;
-	b=h0HlnRfzLN2pF/0Djo3ulN2R/8hakmdUblUS8AMiDZvzdfcac3jnIdfoJnkofQkSy/5Kv4
-	ruGT11NG/QXJU/JV90HgCY8W5hKXZ0PjyFwlGHLGr9cVWDehFUhwydQ4hZWs/TacOJtqIQ
-	s6MbaR10dt+l4Zl2DHJZxMX7IgFCLUc=
-Date: Wed, 24 Jul 2024 10:14:58 +0800
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bMpDk9N7"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id A0D85C4AF10;
+	Wed, 24 Jul 2024 02:16:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1721787406;
+	bh=e2dCHd3n8q25XhOxzHvJ6i3RPXn9LxCn1diONk3KotU=;
+	h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
+	b=bMpDk9N7EkOjwmpSIaAklT8hKeoG5hdBDnUji25xGqzIqXwl2rfjVmaQ/8qQ2+Yek
+	 gOs+5otr1dYkrWn+WLf0ZC3HwosbZkdbdnUO0UGPhsVjWN98Q7xmyz2jNw6FzWgvOD
+	 9ndEKbh0olHi7p2k64uy+qnGbLmH6t8j1sa6XUSiGnrh7bgv/HP5UQRGPMlsdtpHmK
+	 qfGlbxz8w3UWIOg38XkCepKM8/51bHXqfVu1p7eW27zj2OOxvqss+E6rzPm4jCZyv6
+	 Geo/fzyYTMac242CPAQTv+006yg3TOQ8zCnWl4VapNKMakux9lOgHLCrG2vPZuFVE2
+	 akL++zdvOugdg==
+Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
+	by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id 94D30C43443;
+	Wed, 24 Jul 2024 02:16:46 +0000 (UTC)
+Content-Type: text/plain; charset="utf-8"
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Subject: Re: [PATCH 4/4] f2fs: Use module_{subinit, subeixt} helper macros
-To: kernel test robot <lkp@intel.com>, Arnd Bergmann <arnd@arndb.de>,
- Luis Chamberlain <mcgrof@kernel.org>, Chris Mason
- <chris.mason@fusionio.com>, Josef Bacik <josef@toxicpanda.com>,
- David Sterba <dsterba@suse.com>, tytso@mit.edu,
- Andreas Dilger <adilger.kernel@dilger.ca>, Jaegeuk Kim <jaegeuk@kernel.org>,
- Chao Yu <yuchao0@huawei.com>, Chao Yu <chao@kernel.org>,
- Christoph Hellwig <hch@infradead.org>
-Cc: llvm@lists.linux.dev, oe-kbuild-all@lists.linux.dev,
- linux-arch@vger.kernel.org, linux-kernel@vger.kernel.org,
- linux-modules@vger.kernel.org, linux-btrfs@vger.kernel.org,
- linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
- Youling Tang <tangyouling@kylinos.cn>
-References: <20240723083239.41533-5-youling.tang@linux.dev>
- <202407240204.KcPiCniO-lkp@intel.com>
-Content-Language: en-US, en-AU
-X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
-From: Youling Tang <youling.tang@linux.dev>
-In-Reply-To: <202407240204.KcPiCniO-lkp@intel.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-X-Migadu-Flow: FLOW_OUT
+Content-Transfer-Encoding: 8bit
+Subject: Re: [f2fs-dev] [PATCH v18 0/7] Case insensitive cleanup for ext4/f2fs
+From: patchwork-bot+f2fs@kernel.org
+Message-Id: 
+ <172178740660.17759.10253649840019036127.git-patchwork-notify@kernel.org>
+Date: Wed, 24 Jul 2024 02:16:46 +0000
+References: <20240606073353.47130-1-eugen.hristev@collabora.com>
+In-Reply-To: <20240606073353.47130-1-eugen.hristev@collabora.com>
+To: Eugen Hristev <eugen.hristev@collabora.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+ linux-f2fs-devel@lists.sourceforge.net, linux-fsdevel@vger.kernel.org,
+ jaegeuk@kernel.org, adilger.kernel@dilger.ca, tytso@mit.edu, krisman@suse.de,
+ brauner@kernel.org, jack@suse.cz, ebiggers@google.com,
+ viro@zeniv.linux.org.uk, kernel@collabora.com
 
-On 24/07/2024 02:51, kernel test robot wrote:
-> Hi Youling,
->
-> kernel test robot noticed the following build warnings:
->
-> [auto build test WARNING on kdave/for-next]
-> [also build test WARNING on linus/master next-20240723]
-> [cannot apply to jaegeuk-f2fs/dev-test jaegeuk-f2fs/dev soc/for-next v6.10]
-> [If your patch is applied to the wrong git tree, kindly drop us a note.
-> And when submitting patch, we suggest to use '--base' as documented in
-> https://git-scm.com/docs/git-format-patch#_base_tree_information]
->
-> url:    https://github.com/intel-lab-lkp/linux/commits/Youling-Tang/module-Add-module_subinit-_noexit-and-module_subeixt-helper-macros/20240723-164434
-> base:   https://git.kernel.org/pub/scm/linux/kernel/git/kdave/linux.git for-next
-> patch link:    https://lore.kernel.org/r/20240723083239.41533-5-youling.tang%40linux.dev
-> patch subject: [PATCH 4/4] f2fs: Use module_{subinit, subeixt} helper macros
-> config: i386-buildonly-randconfig-004-20240724 (https://download.01.org/0day-ci/archive/20240724/202407240204.KcPiCniO-lkp@intel.com/config)
-> compiler: clang version 18.1.5 (https://github.com/llvm/llvm-project 617a15a9eac96088ae5e9134248d8236e34b91b1)
-> reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20240724/202407240204.KcPiCniO-lkp@intel.com/reproduce)
->
-> If you fix the issue in a separate patch/commit (i.e. not just a new version of
-> the same patch/commit), kindly add following tags
-> | Reported-by: kernel test robot <lkp@intel.com>
-> | Closes: https://lore.kernel.org/oe-kbuild-all/202407240204.KcPiCniO-lkp@intel.com/
->
-> All warnings (new ones prefixed by >>):
->
->     In file included from fs/f2fs/node.c:16:
->>> fs/f2fs/f2fs.h:4131:57: warning: non-void function does not return a value [-Wreturn-type]
->      4131 | static inline int __init f2fs_create_root_stats(void) { }
+Hello:
 
-I'll fix it later.
-static inline int __init f2fs_create_root_stats(void) { return 0; }
->           |                                                         ^
->     1 warning generated.
-> --
->     In file included from fs/f2fs/data.c:25:
->>> fs/f2fs/f2fs.h:4131:57: warning: non-void function does not return a value [-Wreturn-type]
->      4131 | static inline int __init f2fs_create_root_stats(void) { }
->           |                                                         ^
->     fs/f2fs/data.c:2373:10: warning: variable 'index' set but not used [-Wunused-but-set-variable]
->      2373 |         pgoff_t index;
->           |                 ^
->     2 warnings generated.
-index = folio_index(folio);
-This statement should be moved to CONFIG_F2FS_FS_COMPRESSION.
+This series was applied to jaegeuk/f2fs.git (dev)
+by Christian Brauner <brauner@kernel.org>:
 
-I'll send a separate patch to fix it if it needs to be modified.
+On Thu,  6 Jun 2024 10:33:46 +0300 you wrote:
+> Hello,
+> 
+> I am trying to respin the series here :
+> https://www.spinics.net/lists/linux-ext4/msg85081.html
+> 
+> I resent some of the v9 patches and got some reviews from Gabriel,
+> I did changes as requested and here is v18.
+> 
+> [...]
+
+Here is the summary with links:
+  - [f2fs-dev,v18,1/7] ext4: Simplify the handling of cached casefolded names
+    https://git.kernel.org/jaegeuk/f2fs/c/f776f02a2c96
+  - [f2fs-dev,v18,2/7] f2fs: Simplify the handling of cached casefolded names
+    https://git.kernel.org/jaegeuk/f2fs/c/632f4054b229
+  - [f2fs-dev,v18,3/7] libfs: Introduce case-insensitive string comparison helper
+    https://git.kernel.org/jaegeuk/f2fs/c/6a79a4e187bd
+  - [f2fs-dev,v18,4/7] ext4: Reuse generic_ci_match for ci comparisons
+    https://git.kernel.org/jaegeuk/f2fs/c/d76b92f61f3b
+  - [f2fs-dev,v18,5/7] f2fs: Reuse generic_ci_match for ci comparisons
+    https://git.kernel.org/jaegeuk/f2fs/c/d66858eb0c72
+  - [f2fs-dev,v18,6/7] ext4: Move CONFIG_UNICODE defguards into the code flow
+    https://git.kernel.org/jaegeuk/f2fs/c/d98c822232f8
+  - [f2fs-dev,v18,7/7] f2fs: Move CONFIG_UNICODE defguards into the code flow
+    https://git.kernel.org/jaegeuk/f2fs/c/28add38d545f
+
+You are awesome, thank you!
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/patchwork/pwbot.html
+
+
