@@ -1,118 +1,191 @@
-Received: from out-183.mta1.migadu.com (out-183.mta1.migadu.com [95.215.58.183])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5BFCC5FB95
-	for <linux-ext4@vger.kernel.org>; Mon, 29 Jul 2024 03:02:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=95.215.58.183
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B82BE1DA24;
+	Mon, 29 Jul 2024 11:28:04 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1722222123; cv=none; b=YrxV5OItaqD89fIq7w6YF+RuGP1KInDXWbyk/LJZHcdA4scZxaHlYnoWWHNAp2ecp1DmIvaUev9mb4H+FwSsYSvOVFxFzHoqKLjRYjKcKjLQqw1kO7HO3B71dhtkAUENRKmfsk+sNGvA0nEYUG8guWFMQ8zYNtgSGkITtYbynT4=
+	t=1722252486; cv=none; b=n3QVSF9bUq9ysI8weWdyH/FIXMSY8qhnT/IgEs1RW0ebeHeEYJOQkxm9hozVCV5/rXwNHhFfEnsSTi6r9FD6nwuqPQgfAU5TKQFSwcPIQR5sjiYtyrv3fdKzm782GiDmJ7sVQtioVXeoY0CCneQ4+v5S42b8qazSI2nqIEO11ho=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1722222123; c=relaxed/simple;
-	bh=ejK+JLHw98fyL4yw9lBzd9vdjVs1PyEJPzes0fN3DzE=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=InZr2uACIAbIVtrug2Cem0HiTYAcT4LReY98anvns/H/URUvSwQBaLcCVFSoVp8Up9BgZasr4a+NMwHgFFunt97IKlYOLT+MR1SFcD5E7XdiBbxWGurwUJiSasej1bavem88BNq/HpInDcjPMjEWxazgomdp05L65qv/N4bX23M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=xJ/0a1P0; arc=none smtp.client-ip=95.215.58.183
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
+	s=arc-20240116; t=1722252486; c=relaxed/simple;
+	bh=64wCMHSRx+3w86acTbFol7vjqbpkywyn79By4+qP8vI=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=gchDuK7ZoSjc4gDVgnrUtBGted3g46+bcrrEoeGCoqRt/x0pto78ElNeBC5fph4MQmylJb+2lSJRUYQ0yihvo50XhJDOm8V/a1ONGR0oTLBsnhNAW8lDADIhZnZg3beH8Z1s20xl6qnsTR1wHbh8dkli/smT2Fr2iDdPsZr+aHY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=w3fPnfNX; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=k9E/dqw2; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=w3fPnfNX; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=k9E/dqw2; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="xJ/0a1P0"
-Message-ID: <ca823522-fe78-4eb7-ae1d-b017d16e39fe@linux.dev>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-	t=1722222119;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="w3fPnfNX";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="k9E/dqw2";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="w3fPnfNX";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="k9E/dqw2"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id C9C3C1F78D;
+	Mon, 29 Jul 2024 11:28:02 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1722252482; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=Z9wqau/zSknzCnsohqqshMiTMDATCIJu7G0AysZkCDg=;
-	b=xJ/0a1P0NwUNNMLY6DohbukOFlCjl5lRE89SJL1joXlE8aGAxS5D9t45QWPahYN2fzjZfv
-	p8Q5R/c1tXLpuC7784AJnVdCdqfTi74D920vJy8uLEGQYmqMsB+FwSqUaG9paPfQKJO6Pl
-	aJbeS7+79P91ANxNHHLtZgO+JAF2WtE=
-Date: Mon, 29 Jul 2024 11:01:29 +0800
+	bh=zHUy40S81Hi4I9W9Ak/AUgKQ+mpmORJOALnG2nRnuZM=;
+	b=w3fPnfNXR7uSSln120H+4F0BucM5UqvqvxvUAQ4OQduS4RA5+TwUjEHWI5i6oCBJEH9FtN
+	LesNzcVoghICMVYj0tqTu2X9hzFlGlRU1W50Ws092evHeJU5nA32m5y8AQQn9JXJcm8C7q
+	hmXV6o2fBXjIl4iIiHiAmO6RLBtpRFg=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1722252482;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=zHUy40S81Hi4I9W9Ak/AUgKQ+mpmORJOALnG2nRnuZM=;
+	b=k9E/dqw2MvhFlDgqEBRwJ38Ig/L5V33Nz87eZTwStImN3ZRmR+Vv+po62CMaLMCUbLMtVx
+	OAodIzr8smLBsLAw==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1722252482; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=zHUy40S81Hi4I9W9Ak/AUgKQ+mpmORJOALnG2nRnuZM=;
+	b=w3fPnfNXR7uSSln120H+4F0BucM5UqvqvxvUAQ4OQduS4RA5+TwUjEHWI5i6oCBJEH9FtN
+	LesNzcVoghICMVYj0tqTu2X9hzFlGlRU1W50Ws092evHeJU5nA32m5y8AQQn9JXJcm8C7q
+	hmXV6o2fBXjIl4iIiHiAmO6RLBtpRFg=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1722252482;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=zHUy40S81Hi4I9W9Ak/AUgKQ+mpmORJOALnG2nRnuZM=;
+	b=k9E/dqw2MvhFlDgqEBRwJ38Ig/L5V33Nz87eZTwStImN3ZRmR+Vv+po62CMaLMCUbLMtVx
+	OAodIzr8smLBsLAw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id BD3FF1368A;
+	Mon, 29 Jul 2024 11:28:02 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id DsgtLsJ8p2YjMQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 29 Jul 2024 11:28:02 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 6F770A099C; Mon, 29 Jul 2024 13:28:02 +0200 (CEST)
+Date: Mon, 29 Jul 2024 13:28:02 +0200
+From: Jan Kara <jack@suse.cz>
+To: Baokun Li <libaokun@huaweicloud.com>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, tytso@mit.edu,
+	adilger.kernel@dilger.ca, ritesh.list@gmail.com,
+	linux-kernel@vger.kernel.org, yi.zhang@huawei.com,
+	yangerkun@huawei.com, Baokun Li <libaokun1@huawei.com>
+Subject: Re: [PATCH 08/20] ext4: get rid of ppath in ext4_find_extent()
+Message-ID: <20240729112802.eqkmgf66ebnc22u5@quack3>
+References: <20240710040654.1714672-1-libaokun@huaweicloud.com>
+ <20240710040654.1714672-9-libaokun@huaweicloud.com>
+ <20240725103823.fvvinixcctacf4fx@quack3>
+ <0046d3b3-24ce-4cdb-a40a-4022b79a5a7b@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Subject: Re: [PATCH 1/4] module: Add module_subinit{_noexit} and
- module_subeixt helper macros
-To: Theodore Ts'o <tytso@mit.edu>
-Cc: Christoph Hellwig <hch@infradead.org>, David Sterba <dsterba@suse.cz>,
- Arnd Bergmann <arnd@arndb.de>, kreijack@inwind.it,
- Luis Chamberlain <mcgrof@kernel.org>, Chris Mason <clm@fb.com>,
- Josef Bacik <josef@toxicpanda.com>, David Sterba <dsterba@suse.com>,
- Andreas Dilger <adilger.kernel@dilger.ca>, Jaegeuk Kim <jaegeuk@kernel.org>,
- Chao Yu <chao@kernel.org>, Linux-Arch <linux-arch@vger.kernel.org>,
- linux-kernel@vger.kernel.org, linux-modules@vger.kernel.org,
- linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-f2fs-devel@lists.sourceforge.net, Youling Tang <tangyouling@kylinos.cn>
-References: <ZqJwa2-SsIf0aA_l@infradead.org>
- <68584887-3dec-4ce5-8892-86af50651c41@libero.it>
- <ZqKreStOD-eRkKZU@infradead.org>
- <91bfea9b-ad7e-4f35-a2c1-8cd41499b0c0@linux.dev>
- <ZqOs84hdYkSV_YWd@infradead.org> <20240726152237.GH17473@twin.jikos.cz>
- <20240726175800.GC131596@mit.edu> <ZqPmPufwqbGOTyGI@infradead.org>
- <20240727145232.GA377174@mit.edu>
- <23862652-a702-4a5d-b804-db9ee9f6f539@linux.dev>
- <20240729024412.GD377174@mit.edu>
-Content-Language: en-US, en-AU
-X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
-From: Youling Tang <youling.tang@linux.dev>
-In-Reply-To: <20240729024412.GD377174@mit.edu>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-X-Migadu-Flow: FLOW_OUT
+In-Reply-To: <0046d3b3-24ce-4cdb-a40a-4022b79a5a7b@huaweicloud.com>
+X-Spamd-Result: default: False [-2.10 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	MIME_GOOD(-0.10)[text/plain];
+	RCVD_TLS_LAST(0.00)[];
+	ARC_NA(0.00)[];
+	FUZZY_BLOCKED(0.00)[rspamd.com];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_COUNT_THREE(0.00)[3];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	FREEMAIL_CC(0.00)[suse.cz,vger.kernel.org,mit.edu,dilger.ca,gmail.com,huawei.com];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RCPT_COUNT_SEVEN(0.00)[10];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,huawei.com:email,suse.cz:email,suse.com:email]
+X-Spam-Level: 
+X-Spam-Flag: NO
+X-Spam-Score: -2.10
 
-On 29/07/2024 10:44, Theodore Ts'o wrote:
-> On Mon, Jul 29, 2024 at 09:46:17AM +0800, Youling Tang wrote:
->> 1. Previous version implementation: array mode (see link 1) :
->>     Advantages:
->>     - Few changes, simple principle, easy to understand code.
->>     Disadvantages:
->>     - Each modified module needs to maintain an array, more code.
->>
->> 2. Current implementation: explicit call subinit in initcall (see link 2) :
->>     Advantages:
->>     - Direct use of helpes macros, the subinit call sequence is
->>       intuitive, and the implementation is relatively simple.
->>     Disadvantages:
->>     - helper macros need to be implemented compared to array mode.
->>
->> 3. Only one module_subinit per file (not implemented, see link 3) :
->>     Advantage:
->>     - No need to display to call subinit.
->>     Disadvantages:
->>     - Magic order based on Makefile makes code more fragile,
->>     - Make sure that each file has only one module_subinit,
->>     - It is not intuitive to know which subinits the module needs
->>       and in what order (grep and Makefile are required),
->>     - With multiple subinits per module, it would be difficult to
->>       define module_{subinit, subexit} by MODULE, and difficult to
->>       rollback when initialization fails (I haven't found a good way
->>       to do this yet).
->>
->>
->> Personally, I prefer the implementation of method two.
-> But there's also method zero --- keep things the way they are, and
-> don't try to add a new astraction.
->
-> Advantage:
->
->   -- Code has worked for decades, so it is very well tested
->   -- Very easy to understand and maintain
->
-> Disadvantage
->
->   --- A few extra lines of C code.
-The number of lines of code is not important, the main point is to
-better ensure that subexit runs in the reverse order of subinit when
-init fails.
+On Sat 27-07-24 14:18:33, Baokun Li wrote:
+> On 2024/7/25 18:38, Jan Kara wrote:
+> > On Wed 10-07-24 12:06:42, libaokun@huaweicloud.com wrote:
+> > > From: Baokun Li <libaokun1@huawei.com>
+> > > 
+> > > The use of path and ppath is now very confusing, so to make the code more
+> > > readable, pass path between functions uniformly, and get rid of ppath.
+> > > 
+> > > Getting rid of ppath in ext4_find_extent() requires its caller to update
+> > > ppath. These ppaths will also be dropped later. No functional changes.
+> > > 
+> > > Signed-off-by: Baokun Li <libaokun1@huawei.com>
+> > One nit below, otherwise feel free to add:
+> > 
+> > Reviewed-by: Jan Kara <jack@suse.cz>
+> > 
+> > > @@ -3260,11 +3257,12 @@ static int ext4_split_extent_at(handle_t *handle,
+> > >   	 * WARN_ON may be triggered in ext4_da_update_reserve_space() due to
+> > >   	 * an incorrect ee_len causing the i_reserved_data_blocks exception.
+> > >   	 */
+> > > -	path = ext4_find_extent(inode, ee_block, ppath,
+> > > +	path = ext4_find_extent(inode, ee_block, *ppath,
+> > >   				flags | EXT4_EX_NOFAIL);
+> > >   	if (IS_ERR(path)) {
+> > >   		EXT4_ERROR_INODE(inode, "Failed split extent on %u, err %ld",
+> > >   				 split, PTR_ERR(path));
+> > > +		*ppath = NULL;
+> > >   		return PTR_ERR(path);
+> > >   	}
+> > I think here you forgot to update ppath on success case. It will go away by
+> > the end of the series but still it's good to keep thing consistent...
+> > 
+> > 								Honza
+> 
+> Hi Honza,
+> 
+> Thank you for your review！
+> 
+> In patch 5, the ppath is already updated in case of success, so there
+> is no need to add it here. This update was not shown when the patch
+> was made and it looks like this：
+> 
+> -       path = ext4_find_extent(inode, ee_block, ppath,
+> +       path = ext4_find_extent(inode, ee_block, *ppath,
+>                                 flags | EXT4_EX_NOFAIL);
+>         if (IS_ERR(path)) {
+>                 EXT4_ERROR_INODE(inode, "Failed split extent on %u, err
+> %ld",
+>                                  split, PTR_ERR(path));
+> +               *ppath = NULL;
+>                 return PTR_ERR(path);
+>         }
+>         depth = ext_depth(inode);
+>         ex = path[depth].p_ext;
+>         *ppath = path;
 
-Thanks,
-Youling.
+Yes, you are right. I didn't realize the update was already there. So I
+withdraw my comment :)
 
->
-> which we need to weigh against the other choices.
->
->        	      	       	       	   - Ted
+								Honza
 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
