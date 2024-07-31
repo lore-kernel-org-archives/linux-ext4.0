@@ -1,36 +1,36 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5BFE017C8D;
-	Wed, 31 Jul 2024 09:31:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 53DFA1AAE05;
+	Wed, 31 Jul 2024 09:31:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1722418314; cv=none; b=KvFG6h27biAtzKi95JWKcmgVp/0XF1VlPvY0Pn4C7K8e+uP3m5rzS5VkTIWWJKU9+9BnYC8X+1daPUThe20NdkavKIZAQot9CA2cTYC779XANZUWbkqg2Z9GLR49LEGl6qhNe6shaTZW/ZgFgLAao8BQQJqmScEEvtCT0x06Zqs=
+	t=1722418315; cv=none; b=d4xP8boBzlK7/kE20sAynrTBwdocIuorKxin3stGsfGLIIWNfIl/zfLcTKQFRZ8Wdt78fIL2CD7uv23+7eSbBidtQv0JUSEiNMayNVgzZuuvTlUYfzZ5vyWNP+9jNCN3b47NHCUUd3Vy4uyD5e9gzfV9DPtFgXdizk9wTBvbUt8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1722418314; c=relaxed/simple;
-	bh=VY5Sb68aQNAfC82SoknebxDDu2vIjufBgVDCn/uHZT4=;
+	s=arc-20240116; t=1722418315; c=relaxed/simple;
+	bh=kw6SGK+E2GWOuV47kjsbqDx331VwA9aPNO9ngoMgLZE=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=XzoBT53b9XewQyoIkm9bnP66qHtILpydmeZFDgNS4N2BufOVhSkUqJDnrDKTa/XZBYiKann8QV/pePfEdzWKQcVo5FEcw4jNEQDRU1nvEqsksLYN4oiByO1N6RlYPnhjPAimBfZCokyNd94g2Fucq8cCbu5gHd/gda2T+M57U8Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=rR9qBA5yNwIHmnDHch2YWi/eARZqr9EataOZCxDG1hR1gkODRFae6bVQbqAa9eMjw26B9hQxy3r73e2dTApMBQVc9zDBS+x0Ekpc4bMQzrWHw1XvaBjTLTVJlWLo/OTal16HsU9/C5m4UhZGeSEnQNzlEFuJcWY4+05aobu4DBw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4WYn0l2XZtz4f3lWH;
-	Wed, 31 Jul 2024 17:31:35 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4WYn0n3KV4z4f3jsH;
+	Wed, 31 Jul 2024 17:31:37 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 4BF171A018D;
-	Wed, 31 Jul 2024 17:31:49 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 60FFC1A18C2;
+	Wed, 31 Jul 2024 17:31:50 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-	by APP2 (Coremail) with SMTP id Syh0CgC3oL+CBKpm5KxyAQ--.8660S6;
-	Wed, 31 Jul 2024 17:31:49 +0800 (CST)
+	by APP2 (Coremail) with SMTP id Syh0CgC3oL+CBKpm5KxyAQ--.8660S10;
+	Wed, 31 Jul 2024 17:31:50 +0800 (CST)
 From: Kemeng Shi <shikemeng@huaweicloud.com>
 To: tytso@mit.edu,
 	jack@suse.com
 Cc: linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v3 4/8] jbd2: remove unneeded kmap for jh_in->b_frozen_data in jbd2_journal_write_metadata_buffer
-Date: Wed, 31 Jul 2024 17:29:06 +0800
-Message-Id: <20240731092910.2383048-5-shikemeng@huaweicloud.com>
+Subject: [PATCH v3 8/8] jbd2: remove unneeded check of ret in jbd2_fc_get_buf
+Date: Wed, 31 Jul 2024 17:29:10 +0800
+Message-Id: <20240731092910.2383048-9-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20240731092910.2383048-1-shikemeng@huaweicloud.com>
 References: <20240731092910.2383048-1-shikemeng@huaweicloud.com>
@@ -41,63 +41,69 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgC3oL+CBKpm5KxyAQ--.8660S6
-X-Coremail-Antispam: 1UD129KBjvJXoW7tr47Zr47Xw4UGry7tFy7Jrb_yoW8Gw13pr
-	9a9rykKFyvqryqyr1kWan7ZrWjg3yDWFWUKFWDCa4ayFW3W3sFkr1jva1xK3WjyFZ7Jay8
-	XryqvFWxWwnIyrUanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:Syh0CgC3oL+CBKpm5KxyAQ--.8660S10
+X-Coremail-Antispam: 1UD129KBjvJXoWruF4rtF17Cr15Kw47Gr47CFg_yoW8Jr48pr
+	W5Kr98AFy8ZrW7XF1xXrZ5Jayjv3yvkFy5GFZ8CwnYkw47trn7J3Z8Jw18Wa98ArWrK3W8
+	Zr17Za95Ca1YyFUanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUvEb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
 	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
-	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
+	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
 	rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267
 	AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E
 	14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7
 	xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Y
 	z7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7
 	v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF
-	1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIx
+	1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_JFI_Gr1lIx
 	AIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI
 	42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWI
-	evJa73UjIFyTuYvjxU2CJmUUUUU
+	evJa73UjIFyTuYvjxUFgAwUUUUU
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
-Remove kmap for page of b_frozen_data from jbd2_alloc() which always
-provides an address from the direct kernel mapping.
+Simply return -EINVAL if j_fc_off is invalid to avoid repeated check of
+ret.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/journal.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ fs/jbd2/journal.c | 16 +++++-----------
+ 1 file changed, 5 insertions(+), 11 deletions(-)
 
 diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 312c7575b54f..9c1ffb0dc740 100644
+index e89d777ded34..c5179aa38111 100644
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
-@@ -352,12 +352,13 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
- 		done_copy_out = 1;
- 		new_folio = virt_to_folio(jh_in->b_frozen_data);
- 		new_offset = offset_in_folio(new_folio, jh_in->b_frozen_data);
-+		mapped_data = jh_in->b_frozen_data;
- 	} else {
- 		new_folio = bh_in->b_folio;
- 		new_offset = offset_in_folio(new_folio, bh_in->b_data);
-+		mapped_data = kmap_local_folio(new_folio, new_offset);
- 	}
+@@ -837,17 +837,12 @@ int jbd2_fc_get_buf(journal_t *journal, struct buffer_head **bh_out)
  
--	mapped_data = kmap_local_folio(new_folio, new_offset);
- 	/*
- 	 * Fire data frozen trigger if data already wasn't frozen.  Do this
- 	 * before checking for escaping, as the trigger may modify the magic
-@@ -373,7 +374,8 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
- 	 */
- 	if (*((__be32 *)mapped_data) == cpu_to_be32(JBD2_MAGIC_NUMBER))
- 		do_escape = 1;
--	kunmap_local(mapped_data);
-+	if (!jh_in->b_frozen_data)
-+		kunmap_local(mapped_data);
+ 	*bh_out = NULL;
  
- 	/*
- 	 * Do we need to do a data copy?
+-	if (journal->j_fc_off + journal->j_fc_first < journal->j_fc_last) {
+-		fc_off = journal->j_fc_off;
+-		blocknr = journal->j_fc_first + fc_off;
+-		journal->j_fc_off++;
+-	} else {
+-		ret = -EINVAL;
+-	}
+-
+-	if (ret)
+-		return ret;
++	if (journal->j_fc_off + journal->j_fc_first >= journal->j_fc_last)
++		return -EINVAL;
+ 
++	fc_off = journal->j_fc_off;
++	blocknr = journal->j_fc_first + fc_off;
++	journal->j_fc_off++;
+ 	ret = jbd2_journal_bmap(journal, blocknr, &pblock);
+ 	if (ret)
+ 		return ret;
+@@ -856,7 +851,6 @@ int jbd2_fc_get_buf(journal_t *journal, struct buffer_head **bh_out)
+ 	if (!bh)
+ 		return -ENOMEM;
+ 
+-
+ 	journal->j_fc_wbuf[fc_off] = bh;
+ 
+ 	*bh_out = bh;
 -- 
 2.30.0
 
