@@ -1,111 +1,86 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3248E61FDF;
-	Wed, 31 Jul 2024 06:17:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C616661FDF;
+	Wed, 31 Jul 2024 06:25:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1722406656; cv=none; b=s+6flaNfFBSFZ24SzATt/eKrB5TcuLUF1mJEoBSQGiBqKTyXLMOFxNTpPvEq9sRXP75aJ9lOlMjU4JhIo2RWiuUG6YE0DB3FsL+a5JYpnrabfTLpAT5mU03bVdwqJp8xf7rZvAE4aKlGpEECVCFrnkMiZwhj8KEa5pz6NzFwriA=
+	t=1722407131; cv=none; b=O/lFtKzahLcL1yGFhR7YHdsOncxZNJbmVxAB9WBN53jarrTu50esGETu0sU5d5nu//SNwG0YBrSCOyaX0iFtKd6AyUIgGoKFTTNrGhI2LQHdpA5Iw3a4/j5puBRxH2r/ulYf0tDZFDh+K0L/vQQ3Z2gbAoilqxf4kM7Iiy3XAls=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1722406656; c=relaxed/simple;
-	bh=YM/SgtpE2smUDyS2bmA9l0A/LX9fLBtn3R6YCrgqOgM=;
-	h=Subject:To:Cc:References:From:Message-ID:Date:MIME-Version:
-	 In-Reply-To:Content-Type; b=ZMBo5fiUAF4Gc5+4ubP/9NoTD+cshc1KZFOWQ0LDGsSlmmNuZB5BE77407SIde+/clwikTBvSvL8WFlnE0huBQwRXTftgts4Jf84aMtSUYDsgp4KH0nkfQUHod/ml3aFaYsNQKlPSSFvY1ZbE0qrxxf6k1taxURgrCiqokKBB/M=
+	s=arc-20240116; t=1722407131; c=relaxed/simple;
+	bh=/HhltXrUnAA1vufTg3Jeu0VYuGj993ceIJ71pFcaIk0=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=OONSt3CC6bI3Ujo5Ps1dv9BgWI+QQO+yZXd7b+u03q6KdBgTQdDyb+kkZthDsM5AALekbWeRUug4cbt0t1PL1CXAJkCDfWYXQ7Bo+Cp24VuV4voGW7a/u6SYgXOmMibBWUeMJJNdyoYBigfuFSH8dVS/VyTZjFOO/d+8v8dddDc=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4WYhhT4y9Yz4f3jrq;
-	Wed, 31 Jul 2024 14:17:13 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 945071A018D;
-	Wed, 31 Jul 2024 14:17:26 +0800 (CST)
-Received: from [10.174.179.80] (unknown [10.174.179.80])
-	by APP4 (Coremail) with SMTP id gCh0CgAXPoT01qlmsONnAQ--.46040S3;
-	Wed, 31 Jul 2024 14:17:26 +0800 (CST)
-Subject: Re: [PATCH 7/7] jbd2: remove unneeded check of ret in jbd2_fc_get_buf
-To: Kemeng Shi <shikemeng@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, tytso@mit.edu,
- jack@suse.com
-References: <20240730113335.2365290-1-shikemeng@huaweicloud.com>
- <20240730113335.2365290-8-shikemeng@huaweicloud.com>
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-Message-ID: <a5da8406-ed52-b71f-4766-a16e8d175496@huaweicloud.com>
-Date: Wed, 31 Jul 2024 14:17:24 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
- Thunderbird/78.12.0
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4WYhsh4GSvz4f3jrw;
+	Wed, 31 Jul 2024 14:25:12 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id 7CBE11A06D7;
+	Wed, 31 Jul 2024 14:25:25 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.124.27])
+	by APP1 (Coremail) with SMTP id cCh0CgA3jE7T2KlmaFNcAQ--.8748S3;
+	Wed, 31 Jul 2024 14:25:25 +0800 (CST)
+From: Kemeng Shi <shikemeng@huaweicloud.com>
+To: tytso@mit.edu,
+	jack@suse.com
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v2 1/8] jbd2: correctly compare tids with tid_geq function in jbd2_fc_begin_commit
+Date: Wed, 31 Jul 2024 14:22:40 +0800
+Message-Id: <20240731062247.2380440-2-shikemeng@huaweicloud.com>
+X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20240731062247.2380440-1-shikemeng@huaweicloud.com>
+References: <20240731062247.2380440-1-shikemeng@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-In-Reply-To: <20240730113335.2365290-8-shikemeng@huaweicloud.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgAXPoT01qlmsONnAQ--.46040S3
-X-Coremail-Antispam: 1UD129KBjvdXoW7JFy5ZF4kGw4kZr1rKFyDJrb_yoWDCrc_Xr
-	W8Zr9rZrZxWF1rAF4rC3y8WrnIqws7Zr1kW34xt397KF1Uta1Yq348trW5K39rJF92yr43
-	A3Wa9w40kr9rCjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUb4AYFVCjjxCrM7AC8VAFwI0_Jr0_Gr1l1xkIjI8I6I8E6xAIw20E
-	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l8cAvFVAK0II2c7xJM28CjxkF64kEwV
-	A0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x02
-	67AKxVWxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxV
-	AFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2
-	j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7x
-	kEbVWUJVW8JwACjcxG0xvEwIxGrwCYjI0SjxkI62AI1cAE67vIY487MxkF7I0En4kS14v2
-	6r126r1DMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrV
-	AFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCI
-	c40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267
-	AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_
-	Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU80fO7
-	UUUUU==
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:cCh0CgA3jE7T2KlmaFNcAQ--.8748S3
+X-Coremail-Antispam: 1UD129KBjvdXoW7XFWUJF1fAFW3AF43JF1rCrg_yoWxtFX_XF
+	10yr47Z3yagF15Aw48C3yY9rnaqws7urn5Gw1xtwsFkr4UGF15tFnrt390krn8W3yktrW3
+	WayI9a10qF9xJjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUbsAYFVCjjxCrM7AC8VAFwI0_Gr0_Xr1l1xkIjI8I6I8E6xAIw20E
+	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l82xGYIkIc2x26280x7IE14v26r18M2
+	8IrcIa0xkI8VCY1x0267AKxVWUXVWUCwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK
+	021l84ACjcxK6xIIjxv20xvE14v26ryj6F1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26F
+	4j6r4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0
+	oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7V
+	C0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j
+	6r4UM4x0Y48IcxkI7VAKI48JMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r
+	4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF
+	67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2I
+	x0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2
+	z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnU
+	UI43ZEXa7IU14CJJUUUUU==
+X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
-On 2024/7/30 19:33, Kemeng Shi wrote:
-> Simply return -EINVAL if j_fc_off is invalid to avoid repeated check of
-> ret.
-> 
-> Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-> ---
->  fs/jbd2/journal.c | 8 ++------
->  1 file changed, 2 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index dc18b9f7c999..6f90f7b8e9e5 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -842,12 +842,8 @@ int jbd2_fc_get_buf(journal_t *journal, struct buffer_head **bh_out)
->  		fc_off = journal->j_fc_off;
->  		blocknr = journal->j_fc_first + fc_off;
->  		journal->j_fc_off++;
-> -	} else {
-> -		ret = -EINVAL;
-> -	}
-> -
-> -	if (ret)
-> -		return ret;
-> +	} else
-> +		return -EINVAL;
->  
+Use tid_geq to compare tids to work over sequence number wraps.
 
-I'd like this style, just a suggestion.
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd2/journal.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-	if (journal->j_fc_off + journal->j_fc_first >= journal->j_fc_last)
-		return -EINVAL;
-
-	fc_off = journal->j_fc_off;
-	blocknr = journal->j_fc_first + fc_off;
-	journal->j_fc_off++;
-
-	...
-
-Thanks,
-Yi.
-
-
->  	ret = jbd2_journal_bmap(journal, blocknr, &pblock);
->  	if (ret)
-> 
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 1ebf2393bfb7..da5a56d700f1 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -710,7 +710,7 @@ int jbd2_fc_begin_commit(journal_t *journal, tid_t tid)
+ 		return -EINVAL;
+ 
+ 	write_lock(&journal->j_state_lock);
+-	if (tid <= journal->j_commit_sequence) {
++	if (tid_geq(journal->j_commit_sequence, tid)) {
+ 		write_unlock(&journal->j_state_lock);
+ 		return -EALREADY;
+ 	}
+-- 
+2.30.0
 
