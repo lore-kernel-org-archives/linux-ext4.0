@@ -1,36 +1,36 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4056716087B;
-	Wed, 31 Jul 2024 06:25:30 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1BAA383CA1;
+	Wed, 31 Jul 2024 06:25:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1722407132; cv=none; b=BNdjKrtNJQPBH/m3V5z4bjx92mXWmhKBQ5qY9qoamfzOvWhPuOrkaahpz7+/C+uKbozyoU0H4hBF/Ghx3RE6sFn0mQPfdRcSdPVA1NF9QobK9oHUwGWT/OtXdgN6/+FYe80MbDtqz6ZI23EcZP84ureIpHySQPgvt5T+znkZ1Fs=
+	t=1722407133; cv=none; b=h52pnyolBn7GEgGe/AyifwjFkseeRDGFWilLmbftVAwsfNftzZhQnRRdGGdbYcXNcjGqcVnRPihZxT/TzPX+C//wtMG9Jm/seitA6h710T7Of6C5lRWX4OqkDAUo15xIQWtMVg4Wwrn3qzQSwro3ybPRkavp8z/XCbKUiKKg5R4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1722407132; c=relaxed/simple;
-	bh=01PE1opleXHIxbeKUG1oM5ZPsAVmFyIIKjlkwIE0BD0=;
+	s=arc-20240116; t=1722407133; c=relaxed/simple;
+	bh=/SY875lF/WxaEhkkK9bjvkqo1hDe3vsZWN51cif7RFs=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=rRpDE9+q9KnbkHLwhS3HFrNhJwlX9uYHyiaE89zwFWmzNYPtYeRc3YAC6m8dUk+vFfLJtrCwThRV/KfBfjiiHVmS76/60hRWIg6ytPTTaF2x1kxyXabBuWJuCd6CFECGz3QW7uRZEpxwO0jWRkekHP4owNqlExmLQd0POWx59R8=
+	 MIME-Version; b=CMuOfMISYMgNvM2AWPDvAQRi3ykOR4GR9C97UDHZVH6QiNfuu2yMnqrTg14LKeTwsTmcnlyLrveOnEvJH56U5c/EPAYc2cQZgQP4e8rhtjGnh9dtA1pJGzia0UXxy3kspFZno7pwlqCePegSxvrhOc7PVlAl4hW1WhQsxb1AEXc=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4WYhsg61HQz4f3kv1;
-	Wed, 31 Jul 2024 14:25:11 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4WYhsh4lYmz4f3kv0;
+	Wed, 31 Jul 2024 14:25:12 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id C25BB1A058E;
-	Wed, 31 Jul 2024 14:25:25 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 96BE41A018D;
+	Wed, 31 Jul 2024 14:25:26 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-	by APP1 (Coremail) with SMTP id cCh0CgA3jE7T2KlmaFNcAQ--.8748S4;
-	Wed, 31 Jul 2024 14:25:25 +0800 (CST)
+	by APP1 (Coremail) with SMTP id cCh0CgA3jE7T2KlmaFNcAQ--.8748S7;
+	Wed, 31 Jul 2024 14:25:26 +0800 (CST)
 From: Kemeng Shi <shikemeng@huaweicloud.com>
 To: tytso@mit.edu,
 	jack@suse.com
 Cc: linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v2 2/8] jbd2: remove dead check in journal_alloc_journal_head
-Date: Wed, 31 Jul 2024 14:22:41 +0800
-Message-Id: <20240731062247.2380440-3-shikemeng@huaweicloud.com>
+Subject: [PATCH v2 5/8] jbd2: remove unneeded done_copy_out variable in jbd2_journal_write_metadata_buffer
+Date: Wed, 31 Jul 2024 14:22:44 +0800
+Message-Id: <20240731062247.2380440-6-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20240731062247.2380440-1-shikemeng@huaweicloud.com>
 References: <20240731062247.2380440-1-shikemeng@huaweicloud.com>
@@ -41,48 +41,96 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgA3jE7T2KlmaFNcAQ--.8748S4
-X-Coremail-Antispam: 1UD129KBjvdXoW7XrWDuw1DXw43WF4xtw13Jwb_yoWxKrg_uF
-	10vrs3X3y3Jr43ArWrC34F9r1Sgrn7Zr1ku3WftwnrKryUJFy5JFnru3s5JrZxu3WIkFy7
-	Kw4qk3y0yr9rJjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUbsAYFVCjjxCrM7AC8VAFwI0_Gr0_Xr1l1xkIjI8I6I8E6xAIw20E
-	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l82xGYIkIc2x26280x7IE14v26r15M2
-	8IrcIa0xkI8VCY1x0267AKxVWUCVW8JwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK
-	021l84ACjcxK6xIIjxv20xvE14v26ryj6F1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26F
-	4j6r4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0
-	oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7V
-	C0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j
-	6r4UM4x0Y48IcxkI7VAKI48JMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r
-	4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF
-	67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2I
-	x0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2
-	z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnU
-	UI43ZEXa7IU1ZmRUUUUUU==
+X-CM-TRANSID:cCh0CgA3jE7T2KlmaFNcAQ--.8748S7
+X-Coremail-Antispam: 1UD129KBjvJXoW7ur13Jr43Zr1kXw47tw47Jwb_yoW5JFy8pF
+	WSkrZrtryvqry2yr4kXw4DZryUKrWDWryjkFsrCa4ayay3u3sF9F1jyw10k34jyrZ7J3W8
+	XryUZFWxWwnIyFUanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvKb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
+	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
+	rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW5JVW7JwA2z4x0Y4vE2Ix0cI8IcVCY1x0267
+	AKxVWxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAF
+	wI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2
+	WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkE
+	bVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbV
+	WUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF
+	67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42
+	IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF
+	0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxh
+	VjvjDU0xZFpf9x07jeVbkUUUUU=
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
-We will alloc journal_head with __GFP_NOFAIL anyway, test for failure
-is pointless.
+It's more intuitive to use jh_in->b_frozen_data directly instead of
+done_copy_out variable. Simply remove unneeded done_copy_out variable
+and use b_frozen_data instead.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/journal.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ fs/jbd2/journal.c | 21 ++++++++-------------
+ 1 file changed, 8 insertions(+), 13 deletions(-)
 
 diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index da5a56d700f1..b5d02de1ffff 100644
+index 9c1ffb0dc740..f17d05bc61df 100644
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
-@@ -2866,8 +2866,7 @@ static struct journal_head *journal_alloc_journal_head(void)
- 		ret = kmem_cache_zalloc(jbd2_journal_head_cache,
- 				GFP_NOFS | __GFP_NOFAIL);
- 	}
--	if (ret)
--		spin_lock_init(&ret->b_state_lock);
-+	spin_lock_init(&ret->b_state_lock);
- 	return ret;
- }
+@@ -318,7 +318,6 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ 				  struct buffer_head **bh_out,
+ 				  sector_t blocknr)
+ {
+-	int done_copy_out = 0;
+ 	int do_escape = 0;
+ 	char *mapped_data;
+ 	struct buffer_head *new_bh;
+@@ -349,7 +348,6 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ 	 * we use that version of the data for the commit.
+ 	 */
+ 	if (jh_in->b_frozen_data) {
+-		done_copy_out = 1;
+ 		new_folio = virt_to_folio(jh_in->b_frozen_data);
+ 		new_offset = offset_in_folio(new_folio, jh_in->b_frozen_data);
+ 		mapped_data = jh_in->b_frozen_data;
+@@ -357,17 +355,15 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ 		new_folio = bh_in->b_folio;
+ 		new_offset = offset_in_folio(new_folio, bh_in->b_data);
+ 		mapped_data = kmap_local_folio(new_folio, new_offset);
+-	}
+-
+-	/*
+-	 * Fire data frozen trigger if data already wasn't frozen.  Do this
+-	 * before checking for escaping, as the trigger may modify the magic
+-	 * offset.  If a copy-out happens afterwards, it will have the correct
+-	 * data in the buffer.
+-	 */
+-	if (!done_copy_out)
++		/*
++		 * Fire data frozen trigger if data already wasn't frozen. Do
++		 * this before checking for escaping, as the trigger may modify
++		 * the magic offset.  If a copy-out happens afterwards, it will
++		 * have the correct data in the buffer.
++		 */
+ 		jbd2_buffer_frozen_trigger(jh_in, mapped_data,
+ 					   jh_in->b_triggers);
++	}
  
+ 	/*
+ 	 * Check for escaping
+@@ -380,7 +376,7 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ 	/*
+ 	 * Do we need to do a data copy?
+ 	 */
+-	if (do_escape && !done_copy_out) {
++	if (do_escape && !jh_in->b_frozen_data) {
+ 		char *tmp;
+ 
+ 		spin_unlock(&jh_in->b_state_lock);
+@@ -408,7 +404,6 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ copy_done:
+ 		new_folio = virt_to_folio(jh_in->b_frozen_data);
+ 		new_offset = offset_in_folio(new_folio, jh_in->b_frozen_data);
+-		done_copy_out = 1;
+ 	}
+ 
+ 	/*
 -- 
 2.30.0
 
