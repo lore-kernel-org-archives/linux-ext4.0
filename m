@@ -1,36 +1,36 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EAC451A76C3;
-	Thu,  1 Aug 2024 01:40:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 82C3414D28B;
+	Thu,  1 Aug 2024 01:40:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1722476461; cv=none; b=mF9U2lnVj/DYAn4bg5f402M5pgueNoRRQEsfzme9PB50OKFLMNrOyBl7MQzvoI7tYbXzLEX0ChSfpMViyxON04lOe1jqlEf6gGA+hXN6XIrVWhRyfKywkhWEI9BFriD63D2QzzY3rPTcghW33xyjW31pyvFFcuGjXzYrNiX3PLY=
+	t=1722476461; cv=none; b=mnhzBTgvfr7Xwwvc6+dAsmq77vYAFKVsCfj0tijp3QijLm2yxZloGeJddBlpA8J4BYSClM+ADG5yQOK0d0tV5XR9U8doC66/AuwSBxTXXHJxmG8A+UGNSaLm2Ilny3e94ErdbN1wzOODNEb5yno+Jp9tOXvN6wK34UDlEZP33Ko=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1722476461; c=relaxed/simple;
-	bh=3ZTrYGpYaA8fVeo+GRnubP0MdYrxDUa6oy6fo5D5VFM=;
+	bh=bdwAVGwyKNuC3fQu1A9x6dIRHxv3xzKyHokBtymlUNs=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=sbLwCL3q+2eKWddBrc61TXXsZXNXKqTGkNSHATIhGqg5qtNUqcCKjiTwFsfZ3p8yjHuOZHCkVjzIW50G4hfRm/UlvqTUWyZWGOIfqHH1VFi+h6CBVgZ7SfEfaslhxSzIYdGd9Z3DxRMpCI1DDtyKN7o3TxCQJ0h+fE8dxxao0dQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=Y2scSOGo2WCtxzQDkeCCXZdD9ZSQx12tUDV9+lySWUar1eskrr2oKOTJNqOMJl12PtCHPftHXNVEFwTBGo21mwDasn9khmBc8ADiIAWCGUHVaOxC7gN9cwYjTDHnQEVhb1hkOEgjJl4y+gK+MtmDEonmBE55oLGYBsTtRrd3U8o=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4WZBVz0dnzz4f3js0;
-	Thu,  1 Aug 2024 09:40:43 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4WZBVy4jN2z4f3kvb;
+	Thu,  1 Aug 2024 09:40:42 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 0F3FD1A0359;
+	by mail.maildlp.com (Postfix) with ESMTP id A1E5A1A0568;
 	Thu,  1 Aug 2024 09:40:56 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-	by APP2 (Coremail) with SMTP id Syh0CgBnnr2l56pmr3OyAQ--.24249S7;
-	Thu, 01 Aug 2024 09:40:55 +0800 (CST)
+	by APP2 (Coremail) with SMTP id Syh0CgBnnr2l56pmr3OyAQ--.24249S9;
+	Thu, 01 Aug 2024 09:40:56 +0800 (CST)
 From: Kemeng Shi <shikemeng@huaweicloud.com>
 To: tytso@mit.edu,
 	jack@suse.com
 Cc: linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v4 5/8] jbd2: remove unneeded done_copy_out variable in jbd2_journal_write_metadata_buffer
-Date: Thu,  1 Aug 2024 09:38:12 +0800
-Message-Id: <20240801013815.2393869-6-shikemeng@huaweicloud.com>
+Subject: [PATCH v4 7/8] jbd2: correct comment jbd2_mark_journal_empty
+Date: Thu,  1 Aug 2024 09:38:14 +0800
+Message-Id: <20240801013815.2393869-8-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20240801013815.2393869-1-shikemeng@huaweicloud.com>
 References: <20240801013815.2393869-1-shikemeng@huaweicloud.com>
@@ -41,98 +41,47 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgBnnr2l56pmr3OyAQ--.24249S7
-X-Coremail-Antispam: 1UD129KBjvJXoWxZryfJr1kZF4xGFWkWw13twb_yoW5GrW7pF
-	WfKrWvqryvqry2yr4kWw4DZrWUKrWDWr1jkFZrCa4ayay3u3sF9F1jyw18K34jyrZ7J3W8
-	XryUZFWxWwnIyFUanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvEb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
-	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
-	rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267
-	AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E
-	14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7
-	xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Y
-	z7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7
-	v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF
-	1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_JFI_Gr1lIx
-	AIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI
-	42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWI
-	evJa73UjIFyTuYvjxU2CJmUUUUU
+X-CM-TRANSID:Syh0CgBnnr2l56pmr3OyAQ--.24249S9
+X-Coremail-Antispam: 1UD129KBjvdXoWrKF1UtFy7GFy3Gr4rAF4kXrb_yoW3urbEvF
+	40vr4xZwsxta12yw4rC3W8Wr1ftrs7urn5Z3WftwsFkr1UJa93GFnrJ345t3srur1kK3y2
+	9Fn2ga18tr9rtjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUbVAYFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
+	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l82xGYIkIc2x26280x7IE14v26r126s
+	0DM28IrcIa0xkI8VCY1x0267AKxVW5JVCq3wA2ocxC64kIII0Yj41l84x0c7CEw4AK67xG
+	Y2AK021l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14
+	v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAF
+	wI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2
+	WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkE
+	bVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbV
+	WUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF
+	67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42
+	IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF
+	0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxh
+	VjvjDU0xZFpf9x07UZo7tUUUUU=
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
-It's more intuitive to use jh_in->b_frozen_data directly instead of
-done_copy_out variable. Simply remove unneeded done_copy_out variable
-and use b_frozen_data instead.
+After jbd2_mark_journal_empty, journal log is supposed to be empty.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/jbd2/journal.c | 21 ++++++++-------------
- 1 file changed, 8 insertions(+), 13 deletions(-)
+ fs/jbd2/journal.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 9c1ffb0dc740..f17d05bc61df 100644
+index 85273fb1accb..e89d777ded34 100644
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
-@@ -318,7 +318,6 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
- 				  struct buffer_head **bh_out,
- 				  sector_t blocknr)
- {
--	int done_copy_out = 0;
- 	int do_escape = 0;
- 	char *mapped_data;
- 	struct buffer_head *new_bh;
-@@ -349,7 +348,6 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
- 	 * we use that version of the data for the commit.
- 	 */
- 	if (jh_in->b_frozen_data) {
--		done_copy_out = 1;
- 		new_folio = virt_to_folio(jh_in->b_frozen_data);
- 		new_offset = offset_in_folio(new_folio, jh_in->b_frozen_data);
- 		mapped_data = jh_in->b_frozen_data;
-@@ -357,17 +355,15 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
- 		new_folio = bh_in->b_folio;
- 		new_offset = offset_in_folio(new_folio, bh_in->b_data);
- 		mapped_data = kmap_local_folio(new_folio, new_offset);
--	}
--
--	/*
--	 * Fire data frozen trigger if data already wasn't frozen.  Do this
--	 * before checking for escaping, as the trigger may modify the magic
--	 * offset.  If a copy-out happens afterwards, it will have the correct
--	 * data in the buffer.
--	 */
--	if (!done_copy_out)
-+		/*
-+		 * Fire data frozen trigger if data already wasn't frozen. Do
-+		 * this before checking for escaping, as the trigger may modify
-+		 * the magic offset.  If a copy-out happens afterwards, it will
-+		 * have the correct data in the buffer.
-+		 */
- 		jbd2_buffer_frozen_trigger(jh_in, mapped_data,
- 					   jh_in->b_triggers);
-+	}
+@@ -1938,7 +1938,7 @@ static void jbd2_mark_journal_empty(journal_t *journal, blk_opf_t write_flags)
+ 	if (had_fast_commit)
+ 		jbd2_set_feature_fast_commit(journal);
  
- 	/*
- 	 * Check for escaping
-@@ -380,7 +376,7 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
- 	/*
- 	 * Do we need to do a data copy?
- 	 */
--	if (do_escape && !done_copy_out) {
-+	if (do_escape && !jh_in->b_frozen_data) {
- 		char *tmp;
- 
- 		spin_unlock(&jh_in->b_state_lock);
-@@ -408,7 +404,6 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
- copy_done:
- 		new_folio = virt_to_folio(jh_in->b_frozen_data);
- 		new_offset = offset_in_folio(new_folio, jh_in->b_frozen_data);
--		done_copy_out = 1;
- 	}
- 
- 	/*
+-	/* Log is no longer empty */
++	/* Log is empty */
+ 	write_lock(&journal->j_state_lock);
+ 	journal->j_flags |= JBD2_FLUSHED;
+ 	write_unlock(&journal->j_state_lock);
 -- 
 2.30.0
 
