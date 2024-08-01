@@ -1,180 +1,110 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EA45013AA2D;
-	Thu,  1 Aug 2024 01:24:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 64D281A7219;
+	Thu,  1 Aug 2024 01:40:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1722475476; cv=none; b=SK3OChJDuuGeUS3e5IbooEktrpzDKeURgJQVxjaPbtetFIha4oos1k3vOe83ltoG1+Ts33PbZzEf1rDvZnOvxTNAezH++dnYLe7qa863CWO4VhaoczE4d3p9dg3oXCzUXUlmYia/5nHBMPnBwSybDxfYGpr8kZY5LEDbNw/CobQ=
+	t=1722476460; cv=none; b=W13/2BVPZGIckpUamvoMi11w2J2wIiXUOevr5GS90TRoyMSiBCAFcQZdeQ9eDlD+Cfu4E/CK5xc8324J5XPqhqHqgIWvbcLlBRasVPdSj+yKJUuKffApYMeH8bOPcDPK06NUQnxz5qBnp1lfpBxE20fbv0pPOLaxMW9oQOmcSD0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1722475476; c=relaxed/simple;
-	bh=szTeyMQLDM3wAMn9EegK2Gei3FbTHD59zf+v7vtmfII=;
-	h=Subject:To:Cc:References:From:Message-ID:Date:MIME-Version:
-	 In-Reply-To:Content-Type; b=ONjNk7Dl1QyJGNZOTrZA3v18595kn+fkBt7HIjVHEbP56S01JgyS1E8g0rVrDREjcUyr62dOfxus3VY5dssoOsbvGepcBay+Z/J312xFYaNnelxznl9b11eHtA95IVSZn33aT0xbZk9QFqjldP6/Enmn9tgthzpI5vPVtC8yVJQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	s=arc-20240116; t=1722476460; c=relaxed/simple;
+	bh=5Wn4WTyZNpU1evVyc6lLbhOjWfKhsTNhU1HkXjEyg0I=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=gX7fWUEsq09+gczy4Ohb3+gHLJaQNHa7dnpiKOQjrd5dTYky9blvVCLVQ4g3pWnTkWzqaKuJqNfKCpAJ3t2r0jccgo7oVqn84wZGvlRGHuJGaacdslWi9S0fyYrJ5dM+YruGWXMCaY4x8XdL8Muc4v0yv+0ulAQZGb1s0MUUT0w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4WZB801gdkz4f3jHk;
-	Thu,  1 Aug 2024 09:24:16 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 307991A06D7;
-	Thu,  1 Aug 2024 09:24:29 +0800 (CST)
-Received: from [10.174.178.129] (unknown [10.174.178.129])
-	by APP4 (Coremail) with SMTP id gCh0CgCnzYPL46pmPwO0AQ--.21094S2;
-	Thu, 01 Aug 2024 09:24:29 +0800 (CST)
-Subject: Re: [PATCH v3 6/8] ext4: move escape handle to futher improve
- jbd2_journal_write_metadata_buffer
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, tytso@mit.edu,
- jack@suse.com
-References: <20240731092910.2383048-1-shikemeng@huaweicloud.com>
- <20240731092910.2383048-7-shikemeng@huaweicloud.com>
- <a3fe84d8-62b6-fa5e-a088-15b34fab6063@huaweicloud.com>
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4WZBVx47JCz4f3kvg;
+	Thu,  1 Aug 2024 09:40:41 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.75])
+	by mail.maildlp.com (Postfix) with ESMTP id 8DD0C1A018D;
+	Thu,  1 Aug 2024 09:40:55 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.124.27])
+	by APP2 (Coremail) with SMTP id Syh0CgBnnr2l56pmr3OyAQ--.24249S5;
+	Thu, 01 Aug 2024 09:40:55 +0800 (CST)
 From: Kemeng Shi <shikemeng@huaweicloud.com>
-Message-ID: <a4c6f818-ec38-67a2-35b4-c27726ae0734@huaweicloud.com>
-Date: Thu, 1 Aug 2024 09:24:27 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.5.0
+To: tytso@mit.edu,
+	jack@suse.com
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v4 3/8] jbd2: remove unused return value of jbd2_fc_release_bufs
+Date: Thu,  1 Aug 2024 09:38:10 +0800
+Message-Id: <20240801013815.2393869-4-shikemeng@huaweicloud.com>
+X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20240801013815.2393869-1-shikemeng@huaweicloud.com>
+References: <20240801013815.2393869-1-shikemeng@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-In-Reply-To: <a3fe84d8-62b6-fa5e-a088-15b34fab6063@huaweicloud.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgCnzYPL46pmPwO0AQ--.21094S2
-X-Coremail-Antispam: 1UD129KBjvJXoWxAF13AF18AFykKr45Cr1kAFb_yoW5Kw13pr
-	93KF1fKFWvqr9Fyrn7Ww4DZryYgrWkWr17K3W3Gas3tFZY9wn2gF4jvryrGa4jyrWvka18
-	XFyjqFyxuwnIkFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvC14x267AKxVWUJVW8JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26ryj6F1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
-	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
-	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
-	2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
-	W8JwACjcxG0xvEwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lc7I2V7IY0VAS07AlzVAY
-	IcxG8wCY1x0262kKe7AKxVWUAVWUtwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbV
-	WUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF
-	67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42
-	IY6xIIjxv20xvEc7CjxVAFwI0_Jr0_Gr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF
-	0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Jr0_GrUvcSsGvfC2Kf
-	nxnUUI43ZEXa7VUjuHq7UUUUU==
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:Syh0CgBnnr2l56pmr3OyAQ--.24249S5
+X-Coremail-Antispam: 1UD129KBjvJXoW7tryxXFyfAFy8Zry8Xw48Crg_yoW8Xw1rpa
+	4fG340kr95uryUAw1kWFs8JFW09F4IkryUWFsF9wnYkw43GrsFqrsrtwn2yr9YyrZ5Kw4Y
+	vry8Kw48C340grJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvGb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUWw
+	A2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
+	w2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
+	W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
+	6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
+	Ij6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
+	Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr
+	0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY
+	17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcV
+	C0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY
+	6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa
+	73UjIFyTuYvjxU2ApnDUUUU
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
+Remove unused return value of jbd2_fc_release_bufs.
 
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/jbd2/journal.c    | 4 +---
+ include/linux/jbd2.h | 2 +-
+ 2 files changed, 2 insertions(+), 4 deletions(-)
 
-on 7/31/2024 8:17 PM, Zhang Yi wrote:
-> The title: "ext4: move escape handle..." should be "jbd2: move escape handle..."
-> 
-Sorry for this, will fix it in next version. Thanks!
-> Thanks,
-> Yi.
-> 
-> On 2024/7/31 17:29, Kemeng Shi wrote:
->> Move escape handle to futher improve code readability and remove some
->> repeat check.
->>
->> Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
->> ---
->>  fs/jbd2/journal.c | 49 +++++++++++++++++++++++------------------------
->>  1 file changed, 24 insertions(+), 25 deletions(-)
->>
->> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
->> index f17d05bc61df..85273fb1accb 100644
->> --- a/fs/jbd2/journal.c
->> +++ b/fs/jbd2/journal.c
->> @@ -281,6 +281,16 @@ static void journal_kill_thread(journal_t *journal)
->>  	write_unlock(&journal->j_state_lock);
->>  }
->>  
->> +static inline bool jbd2_data_needs_escaping(char *data)
->> +{
->> +	return *((__be32 *)data) == cpu_to_be32(JBD2_MAGIC_NUMBER);
->> +}
->> +
->> +static inline void jbd2_data_do_escape(char *data)
->> +{
->> +	*((unsigned int *)data) = 0;
->> +}
->> +
->>  /*
->>   * jbd2_journal_write_metadata_buffer: write a metadata buffer to the journal.
->>   *
->> @@ -319,7 +329,6 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
->>  				  sector_t blocknr)
->>  {
->>  	int do_escape = 0;
->> -	char *mapped_data;
->>  	struct buffer_head *new_bh;
->>  	struct folio *new_folio;
->>  	unsigned int new_offset;
->> @@ -350,8 +359,13 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
->>  	if (jh_in->b_frozen_data) {
->>  		new_folio = virt_to_folio(jh_in->b_frozen_data);
->>  		new_offset = offset_in_folio(new_folio, jh_in->b_frozen_data);
->> -		mapped_data = jh_in->b_frozen_data;
->> +		do_escape = jbd2_data_needs_escaping(jh_in->b_frozen_data);
->> +		if (do_escape)
->> +			jbd2_data_do_escape(jh_in->b_frozen_data);
->>  	} else {
->> +		char *tmp;
->> +		char *mapped_data;
->> +
->>  		new_folio = bh_in->b_folio;
->>  		new_offset = offset_in_folio(new_folio, bh_in->b_data);
->>  		mapped_data = kmap_local_folio(new_folio, new_offset);
->> @@ -363,21 +377,13 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
->>  		 */
->>  		jbd2_buffer_frozen_trigger(jh_in, mapped_data,
->>  					   jh_in->b_triggers);
->> -	}
->> -
->> -	/*
->> -	 * Check for escaping
->> -	 */
->> -	if (*((__be32 *)mapped_data) == cpu_to_be32(JBD2_MAGIC_NUMBER))
->> -		do_escape = 1;
->> -	if (!jh_in->b_frozen_data)
->> +		do_escape = jbd2_data_needs_escaping(mapped_data);
->>  		kunmap_local(mapped_data);
->> -
->> -	/*
->> -	 * Do we need to do a data copy?
->> -	 */
->> -	if (do_escape && !jh_in->b_frozen_data) {
->> -		char *tmp;
->> +		/*
->> +		 * Do we need to do a data copy?
->> +		 */
->> +		if (!do_escape)
->> +			goto escape_done;
->>  
->>  		spin_unlock(&jh_in->b_state_lock);
->>  		tmp = jbd2_alloc(bh_in->b_size, GFP_NOFS);
->> @@ -404,17 +410,10 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
->>  copy_done:
->>  		new_folio = virt_to_folio(jh_in->b_frozen_data);
->>  		new_offset = offset_in_folio(new_folio, jh_in->b_frozen_data);
->> +		jbd2_data_do_escape(jh_in->b_frozen_data);
->>  	}
->>  
->> -	/*
->> -	 * Did we need to do an escaping?  Now we've done all the
->> -	 * copying, we can finally do so.
->> -	 * b_frozen_data is from jbd2_alloc() which always provides an
->> -	 * address from the direct kernels mapping.
->> -	 */
->> -	if (do_escape)
->> -		*((unsigned int *)jh_in->b_frozen_data) = 0;
->> -
->> +escape_done:
->>  	folio_set_bh(new_bh, new_folio, new_offset);
->>  	new_bh->b_size = bh_in->b_size;
->>  	new_bh->b_bdev = journal->j_dev;
->>
-> 
-> 
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index b5d02de1ffff..312c7575b54f 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -903,7 +903,7 @@ int jbd2_fc_wait_bufs(journal_t *journal, int num_blks)
+ }
+ EXPORT_SYMBOL(jbd2_fc_wait_bufs);
+ 
+-int jbd2_fc_release_bufs(journal_t *journal)
++void jbd2_fc_release_bufs(journal_t *journal)
+ {
+ 	struct buffer_head *bh;
+ 	int i, j_fc_off;
+@@ -917,8 +917,6 @@ int jbd2_fc_release_bufs(journal_t *journal)
+ 		put_bh(bh);
+ 		journal->j_fc_wbuf[i] = NULL;
+ 	}
+-
+-	return 0;
+ }
+ EXPORT_SYMBOL(jbd2_fc_release_bufs);
+ 
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index b900c642210c..735229e8ad17 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1665,7 +1665,7 @@ int jbd2_fc_get_buf(journal_t *journal, struct buffer_head **bh_out);
+ int jbd2_submit_inode_data(journal_t *journal, struct jbd2_inode *jinode);
+ int jbd2_wait_inode_data(journal_t *journal, struct jbd2_inode *jinode);
+ int jbd2_fc_wait_bufs(journal_t *journal, int num_blks);
+-int jbd2_fc_release_bufs(journal_t *journal);
++void jbd2_fc_release_bufs(journal_t *journal);
+ 
+ /*
+  * is_journal_abort
+-- 
+2.30.0
 
