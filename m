@@ -1,27 +1,28 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AF45A21345;
-	Tue, 13 Aug 2024 12:39:19 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EA18819923A;
+	Tue, 13 Aug 2024 12:39:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1723552762; cv=none; b=edYsdoTMNuAsgwNJHrRWVruT9XKFFfMAwBcUDnME3wjy6EFZDdfiQI5UCLGVdGRZMJeZbL+NuuFZLET2JvAgG2tvsdA1uwW/rp5+TGcv3m+sQiF868OM3WGrljinf8KjYB3N1wbeLjEj1LnlPU8exW5CYw0UZ/4p3rfLnJjGP8c=
+	t=1723552764; cv=none; b=Hd4BD3zbGNqgDbQX5P3h33XVN635gLJVx1QaNiJde5VLh+TgQSCADcRACwTbMqo9qzauj03fSiPibM/kfhcic1iBJpnVCTUFIiEyHLEMNJ0QvIK1EbzZcEYs+j0+F+k5CTBPuZiPdCWvyM2qrfhH6UpnLXxwTWXFuf+65XvWBHg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1723552762; c=relaxed/simple;
-	bh=pX4eEmQ9nihbCYgNo9Yn9kct/omhHF8zzhNPMDcVk/s=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=Ne+fteXeIY1RSEQjg2rJbwAKWQ8i4kRTyIOX/iPi3xNdxDt87veMvFDJPDm8x1seEEL3/0bZ59DuLQEnsGLNMT5iIRylj8thmB3+NqrZJ8NBRUmXpS2x4kW37Zzo+5BP/+G7ztjopMsa1ZnAtXxyfvNCJGQG3NNAr8icr2VZ3xc=
+	s=arc-20240116; t=1723552764; c=relaxed/simple;
+	bh=/UmpYTFHyISx7pjirU+0+lt3UV8KbEDniK+78/jkCME=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=Ei4J9NOskMaefa6+xrufqnENyLNPqUkLoOgbaZ7CUODMGXuZFeIWoG8Wvp5FAWlJaqQlnfDLh1OJ8X6OR+aYqNuSQyIZKJFUYEsCnFQB0FQPyrfla1nVWshky38bZ25Cr5vWQ0j+ER8v5l8Dun5W+yA91gszpsu4XmlROS11DfE=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4WjrY26lQ8z4f3jHT;
-	Tue, 13 Aug 2024 20:39:02 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4WjrY52MYSz4f3jHT;
+	Tue, 13 Aug 2024 20:39:05 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 9FEAC1A1735;
-	Tue, 13 Aug 2024 20:39:16 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 0975F1A018D;
+	Tue, 13 Aug 2024 20:39:19 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP4 (Coremail) with SMTP id gCh0CgBnj4XkU7tmejNSBg--.17625S4;
-	Tue, 13 Aug 2024 20:39:14 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgBnj4XkU7tmejNSBg--.17625S9;
+	Tue, 13 Aug 2024 20:39:18 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -34,10 +35,12 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [PATCH v3 00/12] ext4: simplify the counting and management of delalloc reserved blocks
-Date: Tue, 13 Aug 2024 20:34:40 +0800
-Message-Id: <20240813123452.2824659-1-yi.zhang@huaweicloud.com>
+Subject: [PATCH v3 05/12] ext4: passing block allocation information to ext4_es_insert_extent()
+Date: Tue, 13 Aug 2024 20:34:45 +0800
+Message-Id: <20240813123452.2824659-6-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20240813123452.2824659-1-yi.zhang@huaweicloud.com>
+References: <20240813123452.2824659-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -45,86 +48,141 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgBnj4XkU7tmejNSBg--.17625S4
-X-Coremail-Antispam: 1UD129KBjvJXoWxCFy5Jw15Kw4ktF4DJr18Krg_yoW5GFWrpr
-	WfC3W3Jr10gw17Wa93Aw1UGw1fWa1xAr4UGrWxKr18uFWrAFyxZFnrKFyrZFyrtrWxJF1Y
-	qFyUKw18uas8C37anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUU9Y14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
-	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
-	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
-	2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
-	W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2
-	Y2ka0xkIwI1lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x
-	0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2
-	zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF
-	4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWU
-	CwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCT
-	nIWIevJa73UjIFyTuYvjfUonmRUUUUU
+X-CM-TRANSID:gCh0CgBnj4XkU7tmejNSBg--.17625S9
+X-Coremail-Antispam: 1UD129KBjvJXoWxGw13ZF45WFWruF15ZrWDJwb_yoWrurWkp3
+	98Ary8Gr45Ww409ayIkr4UZr13Ga42krW7CrZayw1fKay3JrySyF1UtFyavF1FqrW8Xr1Y
+	vFW0k34UCa13Ga7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUma14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
+	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
+	CI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14v26r4UJVWxJrUvcSsG
+	vfC2KfnxnUUI43ZEXa7VUbPC7UUUUUU==
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Changes since v2:
- - In patch 3, update the chang log as Jan suggested.
- - In patch 5 and 6, when moving reserved blocks count updating to
-   ext4_es_insert_extent(), chang the condition for determining quota
-   claim by passing allocation information instead of counting used
-   reserved blocks as Jan suggested.
- - Add patch 9, drop an unused helper ext4_es_store_status().
- - Add patch 10, make extent status type exclusive, add assertion and
-   commtents as Jan suggested.
+Just pass the block allocation flag to ext4_es_insert_extent() when we
+replacing a current extent after an actually block allocation or extent
+status conversion, this flag will be used by later changes.
 
-Changes since v1:
- - Just rebase to v6.11-rc1.
+Suggested-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/extents.c        | 5 +++--
+ fs/ext4/extents_status.c | 6 +++---
+ fs/ext4/extents_status.h | 2 +-
+ fs/ext4/inode.c          | 8 ++++----
+ 4 files changed, 11 insertions(+), 10 deletions(-)
 
-This patch series is the part 3 prepartory changes of the buffered IO
-iomap conversion, it simplify the counting and updating logic of
-delalloc reserved blocks. I picked them out from my buffered IO iomap
-conversion RFC series v4[1], and did some minor improvements of commit
-messages. This series is based on 6.11-rc3, after it we could save a lot
-of code.
-
-Patch 1-3 simplify the delalloc extent management logic by changes to
-always set EXT4_GET_BLOCKS_DELALLOC_RESERVE flag when allocating
-preallocated blocks, and don't add EXTENT_STATUS_DELAYED flag to an
-unwritten extent, which means ext4_es_is_delayed() is equal to
-ext4_es_is_delonly().
-
-Patch 4-6 simplify the reserved blocks updating logic by moves the
-reserved blocks updating from ext4_{ind|ext}_map_blocks() to
-ext4_es_insert_extent().
-
-Patch 7-12 make extent status type exclusive and drop the unused code
-(e.g. ext4_es_is_delonly()), update comments and do some cleanup.
-
-[1] https://lore.kernel.org/linux-ext4/20240410142948.2817554-1-yi.zhang@huaweicloud.com/
-
-Thanks,
-Yi.
-
-Zhang Yi (12):
-  ext4: factor out ext4_map_create_blocks() to allocate new blocks
-  ext4: optimize the EXT4_GET_BLOCKS_DELALLOC_RESERVE flag set
-  ext4: don't set EXTENT_STATUS_DELAYED on allocated blocks
-  ext4: let __revise_pending() return newly inserted pendings
-  ext4: passing block allocation information to ext4_es_insert_extent()
-  ext4: update delalloc data reserve spcae in ext4_es_insert_extent()
-  ext4: drop ext4_es_delayed_clu()
-  ext4: use ext4_map_query_blocks() in ext4_map_blocks()
-  ext4: drop unused ext4_es_store_status()
-  ext4: make extent status types exclusive
-  ext4: drop ext4_es_is_delonly()
-  ext4: drop all delonly descriptions
-
- fs/ext4/extents.c        |  42 +------
- fs/ext4/extents_status.c | 240 ++++++++++++++-------------------------
- fs/ext4/extents_status.h |  28 ++---
- fs/ext4/indirect.c       |   7 --
- fs/ext4/inode.c          | 201 ++++++++++++++------------------
- 5 files changed, 189 insertions(+), 329 deletions(-)
-
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index e067f2dd0335..671dacd7c873 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3113,7 +3113,7 @@ static void ext4_zeroout_es(struct inode *inode, struct ext4_extent *ex)
+ 		return;
+ 
+ 	ext4_es_insert_extent(inode, ee_block, ee_len, ee_pblock,
+-			      EXTENT_STATUS_WRITTEN);
++			      EXTENT_STATUS_WRITTEN, 0);
+ }
+ 
+ /* FIXME!! we need to try to merge to left or right after zero-out  */
+@@ -4097,7 +4097,8 @@ static ext4_lblk_t ext4_ext_determine_insert_hole(struct inode *inode,
+ insert_hole:
+ 	/* Put just found gap into cache to speed up subsequent requests */
+ 	ext_debug(inode, " -> %u:%u\n", hole_start, len);
+-	ext4_es_insert_extent(inode, hole_start, len, ~0, EXTENT_STATUS_HOLE);
++	ext4_es_insert_extent(inode, hole_start, len, ~0,
++			      EXTENT_STATUS_HOLE, 0);
+ 
+ 	/* Update hole_len to reflect hole size after lblk */
+ 	if (hole_start != lblk)
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 4d24b56cfaf0..0580bc4bc762 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -848,7 +848,7 @@ static int __es_insert_extent(struct inode *inode, struct extent_status *newes,
+  */
+ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 			   ext4_lblk_t len, ext4_fsblk_t pblk,
+-			   unsigned int status)
++			   unsigned int status, int flags)
+ {
+ 	struct extent_status newes;
+ 	ext4_lblk_t end = lblk + len - 1;
+@@ -862,8 +862,8 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
+ 		return;
+ 
+-	es_debug("add [%u/%u) %llu %x to extent status tree of inode %lu\n",
+-		 lblk, len, pblk, status, inode->i_ino);
++	es_debug("add [%u/%u) %llu %x %x to extent status tree of inode %lu\n",
++		 lblk, len, pblk, status, flags, inode->i_ino);
+ 
+ 	if (!len)
+ 		return;
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+index 3c8e2edee5d5..b74d693c1adb 100644
+--- a/fs/ext4/extents_status.h
++++ b/fs/ext4/extents_status.h
+@@ -129,7 +129,7 @@ extern void ext4_es_init_tree(struct ext4_es_tree *tree);
+ 
+ extern void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				  ext4_lblk_t len, ext4_fsblk_t pblk,
+-				  unsigned int status);
++				  unsigned int status, int flags);
+ extern void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				 ext4_lblk_t len, ext4_fsblk_t pblk,
+ 				 unsigned int status);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e9ce1e4e6acb..260a38453604 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -478,7 +478,7 @@ static int ext4_map_query_blocks(handle_t *handle, struct inode *inode,
+ 	status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+ 			EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+ 	ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+-			      map->m_pblk, status);
++			      map->m_pblk, status, 0);
+ 	return retval;
+ }
+ 
+@@ -559,7 +559,7 @@ static int ext4_map_create_blocks(handle_t *handle, struct inode *inode,
+ 	status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+ 			EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+ 	ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+-			      map->m_pblk, status);
++			      map->m_pblk, status, flags);
+ 
+ 	return retval;
+ }
+@@ -677,7 +677,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+ 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+ 		ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+-				      map->m_pblk, status);
++				      map->m_pblk, status, 0);
+ 	}
+ 	up_read((&EXT4_I(inode)->i_data_sem));
+ 
+@@ -4065,7 +4065,7 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 						    stop_block);
+ 
+ 		ext4_es_insert_extent(inode, first_block, hole_len, ~0,
+-				      EXTENT_STATUS_HOLE);
++				      EXTENT_STATUS_HOLE, 0);
+ 		up_write(&EXT4_I(inode)->i_data_sem);
+ 	}
+ 	ext4_fc_track_range(handle, inode, first_block, stop_block);
 -- 
 2.39.2
 
