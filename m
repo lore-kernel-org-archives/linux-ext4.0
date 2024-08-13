@@ -1,28 +1,28 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EDF3F19ADA8;
-	Tue, 13 Aug 2024 12:39:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4DF9319ADBE;
+	Tue, 13 Aug 2024 12:39:24 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1723552765; cv=none; b=gQsTe2zGPZyF0WeXlWqQo0W0axcDqQBGuX7P4TR4HkFq2RTtZO457DFtDGe2Nu9SsCNlDp+CZsz0UbpcHQSYg8xr7jpgBXN0dl3ULR9x97CFgw8k/Juj7Kpc8hw0HX5gBYnz3wrht2Q6yZFJKjCQlYSwRmMnRHfq2iqYN4j3cLg=
+	t=1723552766; cv=none; b=YUe1MHl7tNI115rQfQSUaXqKMZyYEPOvnozYWtcIGPuOQRG5U8dBoQnsHQb69l7xA3FdtKEKVr6HU94Ssblc5ScAvZWrs8LQoyRgVyGcEQS/bEh6PuuOw3VVKYNeplqGB+VyEbsKTBwVYFl/5wc52EX+lJyqF+QB4BGGjuZIq+g=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1723552765; c=relaxed/simple;
-	bh=adkynFk6UkrXf4A9kGMKOA/PeVnyYImDF0Cqb393QU4=;
+	s=arc-20240116; t=1723552766; c=relaxed/simple;
+	bh=mG267X2NkABTMWHGvozWZ1uh+wCYxCuzMcZjHn0D2Qs=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=J1lj+Xe5pSbGBWVPGpHboUbl/gf7jx6r6ky+8yJF1SBwROFsI01n6ZUketGMh9TZ3cLW7MoPZQBLStkCc1ZZ81awEH/3mv84M28MUx4NtikwS0G56mcfVWyoLPBB2Ftd5uCl1mEBExZnJ+Vt8yWFPoVNlWb9yNRxHvVGbxe7jTQ=
+	 MIME-Version; b=MmFfpVEJ2SfLnuMF9qB2ubA0LwoHleEmgFWSUiX+mQI2zujxRWHWajv2IxSXQXwWrlgJdbtO5H1Ekz0Ynfu34yPlP3F6NYDpep+cbn7QeCv0OP4p67gEQ5jbzTk8FtfGe2B3AJLHl56F7sdMeY7tdvc0BY+xHOPAsAos6MYxmeg=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4WjrY61bzPz4f3jdR;
-	Tue, 13 Aug 2024 20:39:06 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4WjrY74gV7z4f3jdP;
+	Tue, 13 Aug 2024 20:39:07 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id E65E01A1881;
-	Tue, 13 Aug 2024 20:39:19 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 597611A0568;
+	Tue, 13 Aug 2024 20:39:21 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP4 (Coremail) with SMTP id gCh0CgBnj4XkU7tmejNSBg--.17625S11;
-	Tue, 13 Aug 2024 20:39:19 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgBnj4XkU7tmejNSBg--.17625S14;
+	Tue, 13 Aug 2024 20:39:21 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -35,9 +35,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [PATCH v3 07/12] ext4: drop ext4_es_delayed_clu()
-Date: Tue, 13 Aug 2024 20:34:47 +0800
-Message-Id: <20240813123452.2824659-8-yi.zhang@huaweicloud.com>
+Subject: [PATCH v3 10/12] ext4: make extent status types exclusive
+Date: Tue, 13 Aug 2024 20:34:50 +0800
+Message-Id: <20240813123452.2824659-11-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20240813123452.2824659-1-yi.zhang@huaweicloud.com>
 References: <20240813123452.2824659-1-yi.zhang@huaweicloud.com>
@@ -48,11 +48,11 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgBnj4XkU7tmejNSBg--.17625S11
-X-Coremail-Antispam: 1UD129KBjvJXoWxZw1fZw43Cw18Cw13XFyUAwb_yoWrGF1Dpr
-	y3try7JrW3Xw4v9a1xtw17Xr15t3Wqk3yUGr93t3WrKFyrAr1SkFnYyFyfZFyrtrWxuF1Y
-	qFWj9a4UCF4jgFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUma14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+X-CM-TRANSID:gCh0CgBnj4XkU7tmejNSBg--.17625S14
+X-Coremail-Antispam: 1UD129KBjvJXoW7urykGr1xGr47Jw4DXrykuFg_yoW8uw17pa
+	s5Jws8Kr4UWan7u34SkF1rXF15Gw4Ikr9rurZ3Gw1Fva45JrWrCFyxKry5WrnFqFW8ZFya
+	yayFyw1kGay3Ja7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
 	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
@@ -62,136 +62,70 @@ X-Coremail-Antispam: 1UD129KBjvJXoWxZw1fZw43Cw18Cw13XFyUAwb_yoWrGF1Dpr
 	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
 	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
 	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
-	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
-	42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
-	CI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14v26r4UJVWxJrUvcSsG
-	vfC2KfnxnUUI43ZEXa7VUbPC7UUUUUU==
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
+	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
+	daVFxhVjvjDU0xZFpf9x0JUQFxUUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Since we move ext4_da_update_reserve_space() to ext4_es_insert_extent(),
-no one uses ext4_es_delayed_clu() and __es_delayed_clu(), just drop
-them.
+Since we don't add delayed flag in unwritten extents, all of the four
+extent status types EXTENT_STATUS_WRITTEN, EXTENT_STATUS_UNWRITTEN,
+EXTENT_STATUS_DELAYED and EXTENT_STATUS_HOLE are exclusive now, add
+assertion when storing pblock before inserting extent into status tree
+and add comment to the status definition.
 
+Suggested-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/extents_status.c | 88 ----------------------------------------
- fs/ext4/extents_status.h |  2 -
- 2 files changed, 90 deletions(-)
+ fs/ext4/extents_status.h | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 41adf0d69959..b372b98af366 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -2178,94 +2178,6 @@ void ext4_es_insert_delayed_extent(struct inode *inode, ext4_lblk_t lblk,
- 	return;
- }
- 
--/*
-- * __es_delayed_clu - count number of clusters containing blocks that
-- *                    are delayed only
-- *
-- * @inode - file containing block range
-- * @start - logical block defining start of range
-- * @end - logical block defining end of range
-- *
-- * Returns the number of clusters containing only delayed (not delayed
-- * and unwritten) blocks in the range specified by @start and @end.  Any
-- * cluster or part of a cluster within the range and containing a delayed
-- * and not unwritten block within the range is counted as a whole cluster.
-- */
--static unsigned int __es_delayed_clu(struct inode *inode, ext4_lblk_t start,
--				     ext4_lblk_t end)
--{
--	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
--	struct extent_status *es;
--	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
--	struct rb_node *node;
--	ext4_lblk_t first_lclu, last_lclu;
--	unsigned long long last_counted_lclu;
--	unsigned int n = 0;
--
--	/* guaranteed to be unequal to any ext4_lblk_t value */
--	last_counted_lclu = ~0ULL;
--
--	es = __es_tree_search(&tree->root, start);
--
--	while (es && (es->es_lblk <= end)) {
--		if (ext4_es_is_delonly(es)) {
--			if (es->es_lblk <= start)
--				first_lclu = EXT4_B2C(sbi, start);
--			else
--				first_lclu = EXT4_B2C(sbi, es->es_lblk);
--
--			if (ext4_es_end(es) >= end)
--				last_lclu = EXT4_B2C(sbi, end);
--			else
--				last_lclu = EXT4_B2C(sbi, ext4_es_end(es));
--
--			if (first_lclu == last_counted_lclu)
--				n += last_lclu - first_lclu;
--			else
--				n += last_lclu - first_lclu + 1;
--			last_counted_lclu = last_lclu;
--		}
--		node = rb_next(&es->rb_node);
--		if (!node)
--			break;
--		es = rb_entry(node, struct extent_status, rb_node);
--	}
--
--	return n;
--}
--
--/*
-- * ext4_es_delayed_clu - count number of clusters containing blocks that
-- *                       are both delayed and unwritten
-- *
-- * @inode - file containing block range
-- * @lblk - logical block defining start of range
-- * @len - number of blocks in range
-- *
-- * Locking for external use of __es_delayed_clu().
-- */
--unsigned int ext4_es_delayed_clu(struct inode *inode, ext4_lblk_t lblk,
--				 ext4_lblk_t len)
--{
--	struct ext4_inode_info *ei = EXT4_I(inode);
--	ext4_lblk_t end;
--	unsigned int n;
--
--	if (len == 0)
--		return 0;
--
--	end = lblk + len - 1;
--	WARN_ON(end < lblk);
--
--	read_lock(&ei->i_es_lock);
--
--	n = __es_delayed_clu(inode, lblk, end);
--
--	read_unlock(&ei->i_es_lock);
--
--	return n;
--}
--
- /*
-  * __revise_pending - makes, cancels, or leaves unchanged pending cluster
-  *                    reservations for a specified block range depending
 diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index b74d693c1adb..47b3b55a852c 100644
+index 3ca40f018994..7d7af642f7b2 100644
 --- a/fs/ext4/extents_status.h
 +++ b/fs/ext4/extents_status.h
-@@ -252,8 +252,6 @@ extern bool ext4_is_pending(struct inode *inode, ext4_lblk_t lblk);
- extern void ext4_es_insert_delayed_extent(struct inode *inode, ext4_lblk_t lblk,
- 					  ext4_lblk_t len, bool lclu_allocated,
- 					  bool end_allocated);
--extern unsigned int ext4_es_delayed_clu(struct inode *inode, ext4_lblk_t lblk,
--					ext4_lblk_t len);
- extern void ext4_clear_inode_es(struct inode *inode);
+@@ -42,6 +42,10 @@ enum {
+ #define ES_SHIFT (sizeof(ext4_fsblk_t)*8 - ES_FLAGS)
+ #define ES_MASK (~((ext4_fsblk_t)0) << ES_SHIFT)
  
- #endif /* _EXT4_EXTENTS_STATUS_H */
++/*
++ * Besides EXTENT_STATUS_REFERENCED, all these extent type masks
++ * are exclusive, only one type can be set at a time.
++ */
+ #define EXTENT_STATUS_WRITTEN	(1 << ES_WRITTEN_B)
+ #define EXTENT_STATUS_UNWRITTEN (1 << ES_UNWRITTEN_B)
+ #define EXTENT_STATUS_DELAYED	(1 << ES_DELAYED_B)
+@@ -51,7 +55,9 @@ enum {
+ #define ES_TYPE_MASK	((ext4_fsblk_t)(EXTENT_STATUS_WRITTEN | \
+ 			  EXTENT_STATUS_UNWRITTEN | \
+ 			  EXTENT_STATUS_DELAYED | \
+-			  EXTENT_STATUS_HOLE) << ES_SHIFT)
++			  EXTENT_STATUS_HOLE))
++
++#define ES_TYPE_VALID(type)	((type) && !((type) & ((type) - 1)))
+ 
+ struct ext4_sb_info;
+ struct ext4_extent;
+@@ -156,7 +162,7 @@ static inline unsigned int ext4_es_status(struct extent_status *es)
+ 
+ static inline unsigned int ext4_es_type(struct extent_status *es)
+ {
+-	return (es->es_pblk & ES_TYPE_MASK) >> ES_SHIFT;
++	return (es->es_pblk >> ES_SHIFT) & ES_TYPE_MASK;
+ }
+ 
+ static inline int ext4_es_is_written(struct extent_status *es)
+@@ -228,6 +234,8 @@ static inline void ext4_es_store_pblock_status(struct extent_status *es,
+ 					       ext4_fsblk_t pb,
+ 					       unsigned int status)
+ {
++	WARN_ON_ONCE(!ES_TYPE_VALID(status & ES_TYPE_MASK));
++
+ 	es->es_pblk = (((ext4_fsblk_t)status << ES_SHIFT) & ES_MASK) |
+ 		      (pb & ~ES_MASK);
+ }
 -- 
 2.39.2
 
