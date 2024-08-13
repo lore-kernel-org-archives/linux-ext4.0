@@ -1,39 +1,43 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 57DF71991DD;
-	Tue, 13 Aug 2024 12:10:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AF45A21345;
+	Tue, 13 Aug 2024 12:39:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1723551018; cv=none; b=qnKDUmAOuXL+eDVTtLPEnD7nRys4BUWsnpJ0j3CkOZPwEqTMHjZAethFbJUBT3V71V6XWYiMFuxgZpJIUzcf8mJzYraSwKkn5gWX6BaOzWeVh4LiE5VAoqt31+zlv60MaqNTuJfFIfX1JKKLIh6Y8rLWQActs43X5ap9yrnaxZw=
+	t=1723552762; cv=none; b=edYsdoTMNuAsgwNJHrRWVruT9XKFFfMAwBcUDnME3wjy6EFZDdfiQI5UCLGVdGRZMJeZbL+NuuFZLET2JvAgG2tvsdA1uwW/rp5+TGcv3m+sQiF868OM3WGrljinf8KjYB3N1wbeLjEj1LnlPU8exW5CYw0UZ/4p3rfLnJjGP8c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1723551018; c=relaxed/simple;
-	bh=PUAzQnUbsgUKqfDjQJeuAgu4V1DNqjfTgDdRivntvj4=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=plnQjaqdFrEtGhuBT29Y2DsNJCOOvqLTUku/oLBFs4XKnDdG1gaXyV0nLR97dNJb1KzrjFaEljCtpl89FjRJmCwIeaBKrrfEcCFpisAzlAaFVItJZfFmrYAzqcv/t3+LrayYXhyKETYJR2EJQ/hhS4aKrh1xSJno5hhLM4UGENw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	s=arc-20240116; t=1723552762; c=relaxed/simple;
+	bh=pX4eEmQ9nihbCYgNo9Yn9kct/omhHF8zzhNPMDcVk/s=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=Ne+fteXeIY1RSEQjg2rJbwAKWQ8i4kRTyIOX/iPi3xNdxDt87veMvFDJPDm8x1seEEL3/0bZ59DuLQEnsGLNMT5iIRylj8thmB3+NqrZJ8NBRUmXpS2x4kW37Zzo+5BP/+G7ztjopMsa1ZnAtXxyfvNCJGQG3NNAr8icr2VZ3xc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4WjqvS3m4Lz4f3m7P;
-	Tue, 13 Aug 2024 20:09:56 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 328C71A0359;
-	Tue, 13 Aug 2024 20:10:11 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.124.27])
-	by APP3 (Coremail) with SMTP id _Ch0CgDnl7YhTbtmPh4XBg--.33191S4;
-	Tue, 13 Aug 2024 20:10:11 +0800 (CST)
-From: Kemeng Shi <shikemeng@huaweicloud.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca
-Cc: linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH 2/7] ext4: avoid potential buffer_head leak in __ext4_new_inode
-Date: Tue, 13 Aug 2024 20:07:07 +0800
-Message-Id: <20240813120712.2592310-3-shikemeng@huaweicloud.com>
-X-Mailer: git-send-email 2.30.0
-In-Reply-To: <20240813120712.2592310-1-shikemeng@huaweicloud.com>
-References: <20240813120712.2592310-1-shikemeng@huaweicloud.com>
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4WjrY26lQ8z4f3jHT;
+	Tue, 13 Aug 2024 20:39:02 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 9FEAC1A1735;
+	Tue, 13 Aug 2024 20:39:16 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.104.67])
+	by APP4 (Coremail) with SMTP id gCh0CgBnj4XkU7tmejNSBg--.17625S4;
+	Tue, 13 Aug 2024 20:39:14 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	chengzhihao1@huawei.com,
+	yukuai3@huawei.com
+Subject: [PATCH v3 00/12] ext4: simplify the counting and management of delalloc reserved blocks
+Date: Tue, 13 Aug 2024 20:34:40 +0800
+Message-Id: <20240813123452.2824659-1-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.39.2
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -41,58 +45,86 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgDnl7YhTbtmPh4XBg--.33191S4
-X-Coremail-Antispam: 1UD129KBjvJXoW7trW3GF45XF1UtFWxCFy3Jwb_yoW8Jw47pr
-	sxKF1UKF4rXr1agrZ7K34FvFn5KFn7Ka17JF1Fyw1fWFsrtrnIgryfKFyUZ3WakrZ7XF1q
-	qF9Ikr4UXr17ua7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvGb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUXw
-	A2048vs2IY020Ec7CjxVAFwI0_JFI_Gr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
-	w2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
-	W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
-	6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
-	Ij6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
-	Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr
-	0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY
-	17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcV
-	C0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY
-	6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa
-	73UjIFyTuYvjxUz-B_UUUUU
-X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
+X-CM-TRANSID:gCh0CgBnj4XkU7tmejNSBg--.17625S4
+X-Coremail-Antispam: 1UD129KBjvJXoWxCFy5Jw15Kw4ktF4DJr18Krg_yoW5GFWrpr
+	WfC3W3Jr10gw17Wa93Aw1UGw1fWa1xAr4UGrWxKr18uFWrAFyxZFnrKFyrZFyrtrWxJF1Y
+	qFyUKw18uas8C37anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9Y14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
+	1l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
+	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
+	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
+	2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
+	W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2
+	Y2ka0xkIwI1lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x
+	0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2
+	zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF
+	4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWU
+	CwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCT
+	nIWIevJa73UjIFyTuYvjfUonmRUUUUU
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-If a group is marked EXT4_GROUP_INFO_IBITMAP_CORRUPT after it's inode
-bitmap buffer_head was successfully verified, then __ext4_new_inode
-will get a valid inode_bitmap_bh of a corrupted group from
-ext4_read_inode_bitmap in which case inode_bitmap_bh misses a release.
-Hnadle "IS_ERR(inode_bitmap_bh)" and group corruption separately like
-how ext4_free_inode does to avoid buffer_head leak.
+From: Zhang Yi <yi.zhang@huawei.com>
 
-Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
----
- fs/ext4/ialloc.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+Changes since v2:
+ - In patch 3, update the chang log as Jan suggested.
+ - In patch 5 and 6, when moving reserved blocks count updating to
+   ext4_es_insert_extent(), chang the condition for determining quota
+   claim by passing allocation information instead of counting used
+   reserved blocks as Jan suggested.
+ - Add patch 9, drop an unused helper ext4_es_store_status().
+ - Add patch 10, make extent status type exclusive, add assertion and
+   commtents as Jan suggested.
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index ad7f13976dc6..f24a238b6b09 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -1054,9 +1054,13 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
- 		brelse(inode_bitmap_bh);
- 		inode_bitmap_bh = ext4_read_inode_bitmap(sb, group);
- 		/* Skip groups with suspicious inode tables */
--		if (((!(sbi->s_mount_state & EXT4_FC_REPLAY))
--		     && EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) ||
--		    IS_ERR(inode_bitmap_bh)) {
-+		if (IS_ERR(inode_bitmap_bh)) {
-+			inode_bitmap_bh = NULL;
-+			goto next_group;
-+		}
-+		if (!(sbi->s_mount_state & EXT4_FC_REPLAY) &&
-+		    EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) {
-+			brelse(inode_bitmap_bh);
- 			inode_bitmap_bh = NULL;
- 			goto next_group;
- 		}
+Changes since v1:
+ - Just rebase to v6.11-rc1.
+
+This patch series is the part 3 prepartory changes of the buffered IO
+iomap conversion, it simplify the counting and updating logic of
+delalloc reserved blocks. I picked them out from my buffered IO iomap
+conversion RFC series v4[1], and did some minor improvements of commit
+messages. This series is based on 6.11-rc3, after it we could save a lot
+of code.
+
+Patch 1-3 simplify the delalloc extent management logic by changes to
+always set EXT4_GET_BLOCKS_DELALLOC_RESERVE flag when allocating
+preallocated blocks, and don't add EXTENT_STATUS_DELAYED flag to an
+unwritten extent, which means ext4_es_is_delayed() is equal to
+ext4_es_is_delonly().
+
+Patch 4-6 simplify the reserved blocks updating logic by moves the
+reserved blocks updating from ext4_{ind|ext}_map_blocks() to
+ext4_es_insert_extent().
+
+Patch 7-12 make extent status type exclusive and drop the unused code
+(e.g. ext4_es_is_delonly()), update comments and do some cleanup.
+
+[1] https://lore.kernel.org/linux-ext4/20240410142948.2817554-1-yi.zhang@huaweicloud.com/
+
+Thanks,
+Yi.
+
+Zhang Yi (12):
+  ext4: factor out ext4_map_create_blocks() to allocate new blocks
+  ext4: optimize the EXT4_GET_BLOCKS_DELALLOC_RESERVE flag set
+  ext4: don't set EXTENT_STATUS_DELAYED on allocated blocks
+  ext4: let __revise_pending() return newly inserted pendings
+  ext4: passing block allocation information to ext4_es_insert_extent()
+  ext4: update delalloc data reserve spcae in ext4_es_insert_extent()
+  ext4: drop ext4_es_delayed_clu()
+  ext4: use ext4_map_query_blocks() in ext4_map_blocks()
+  ext4: drop unused ext4_es_store_status()
+  ext4: make extent status types exclusive
+  ext4: drop ext4_es_is_delonly()
+  ext4: drop all delonly descriptions
+
+ fs/ext4/extents.c        |  42 +------
+ fs/ext4/extents_status.c | 240 ++++++++++++++-------------------------
+ fs/ext4/extents_status.h |  28 ++---
+ fs/ext4/indirect.c       |   7 --
+ fs/ext4/inode.c          | 201 ++++++++++++++------------------
+ 5 files changed, 189 insertions(+), 329 deletions(-)
+
 -- 
-2.30.0
+2.39.2
 
