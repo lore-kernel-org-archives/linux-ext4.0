@@ -1,36 +1,36 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 57E48199221;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 40713198E71;
 	Tue, 13 Aug 2024 12:10:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1723551017; cv=none; b=CUhgejxDyMTPmnzC4hITqmsjWXS7JI7xbOwEy8std/TjEHeLeU07HBtFViAcq4vNamMmiKMmS3Nk9sKNVOXU6mgNonClAIylwdrfDoNqbZTBm3AQL4hWk69rn31lMiu+ApgfUZk4YxRHWzbTNMGFo2isoR2URjSprrNiVLGkXgk=
+	t=1723551017; cv=none; b=n9gR6PJ7dJQcGcuDQFAeix8fVBnwKlcqhZX6GBEa4u5hig6YJUWNClls5M91BHUd+4F0VzvcD9f9kBhLoxbaoGfSpK0BiqAB+pZtQKoKjsUOvHhUcCrOYLrwRDLDG5IVG6EpuCIAJQtDqKwFedwbLPIrmOem/oU1HykSHdmei7A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1723551017; c=relaxed/simple;
-	bh=/1BqjdA9iCb1vnVWAoyQTpVuLfh0XLAWYxaz/FJU9+4=;
+	bh=Zrv2Wt6WkZBCH+ZPjGL1e5zq4rhWmTx41pc3KWvMKf4=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=DxoNZoEUlIHp2LT/gky4FgyYHPkhyo1T7JGCNT5EC3tzVYSE1cysmGAhpbp9k3TXB+VB7m5JouVjLolp13aaarshM3o2oSOy/UWzb33mc4s+9g7oV+deMqEb+zihvL3vyERCNbQ6N3QevTwFlV4au9La+zr0Rpj48+kV8Rvf5wk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=sJbqua0gBIj8MsN2v3D2Bi2CZJoO139LrRR1EKmYYMffl2DB4uVoEiDJU7o1f5jGGPxwCB0IZmiJR1b1Ov0it9wiNdFDfzcGDj0ZhnbRHpVuHl7VNcwX5fJwwih1DwUPaeVeF2dhA/1KXuz4/76WfuQ4XdNN2GA7shmViwSppXU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4WjqvY4QYYz4f3k6P;
-	Tue, 13 Aug 2024 20:10:01 +0800 (CST)
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4WjqvT5WfDz4f3jXL;
+	Tue, 13 Aug 2024 20:09:57 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id E35341A058E;
-	Tue, 13 Aug 2024 20:10:10 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 7666E1A018D;
+	Tue, 13 Aug 2024 20:10:11 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-	by APP3 (Coremail) with SMTP id _Ch0CgDnl7YhTbtmPh4XBg--.33191S3;
-	Tue, 13 Aug 2024 20:10:10 +0800 (CST)
+	by APP3 (Coremail) with SMTP id _Ch0CgDnl7YhTbtmPh4XBg--.33191S5;
+	Tue, 13 Aug 2024 20:10:11 +0800 (CST)
 From: Kemeng Shi <shikemeng@huaweicloud.com>
 To: tytso@mit.edu,
 	adilger.kernel@dilger.ca
 Cc: linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH 1/7] ext4: avoid buffer_head leak in ext4_mark_inode_used
-Date: Tue, 13 Aug 2024 20:07:06 +0800
-Message-Id: <20240813120712.2592310-2-shikemeng@huaweicloud.com>
+Subject: [PATCH 3/7] ext4: avoid negative min_clusters in find_group_orlov
+Date: Tue, 13 Aug 2024 20:07:08 +0800
+Message-Id: <20240813120712.2592310-4-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20240813120712.2592310-1-shikemeng@huaweicloud.com>
 References: <20240813120712.2592310-1-shikemeng@huaweicloud.com>
@@ -41,60 +41,50 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgDnl7YhTbtmPh4XBg--.33191S3
-X-Coremail-Antispam: 1UD129KBjvdXoWrtw4UGF4xKr15tFW5XF1UZFb_yoWkJrX_ua
-	srJr18J3yrCwn3WF4vvrs8ArWvkay0kF1rWFs5ta43Zw1Ut398uryDArnxArWkuw43Zrn8
-	Ar9Fqry3JryFgjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUbskYFVCjjxCrM7AC8VAFwI0_Gr0_Xr1l1xkIjI8I6I8E6xAIw20E
-	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l82xGYIkIc2x26280x7IE14v26r18M2
-	8IrcIa0xkI8VCY1x0267AKxVWUXVWUCwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK
-	021l84ACjcxK6xIIjxv20xvE14v26ryj6F1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26F
-	4j6r4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0
-	oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7V
-	C0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j
-	6r4UM4x0Y48IcxkI7VAKI48JMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r
-	4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF
-	67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2I
-	x0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2
-	z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVWUJVW8JbIYCTnIWIevJa73Uj
-	IFyTuYvjxUFzV1UUUUU
+X-CM-TRANSID:_Ch0CgDnl7YhTbtmPh4XBg--.33191S5
+X-Coremail-Antispam: 1UD129KBjvdXoW7Gw1DKF4rJry3JFW3JrW7CFg_yoWfuFg_GF
+	92yr4DGw15Jw1Ska48Jw45WrW09rWkGr1j9ry3Xr4ru3WSvr4Fva4DW39xXr48GrW7uw1D
+	Ga4xXrySga429jkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUbV8YFVCjjxCrM7AC8VAFwI0_Xr0_Wr1l1xkIjI8I6I8E6xAIw20E
+	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l82xGYIkIc2x26280x7IE14v26r1rM2
+	8IrcIa0xkI8VCY1x0267AKxVW8JVW5JwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK
+	021l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r
+	4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_
+	GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx
+	0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWU
+	JVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJV
+	W8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF
+	1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6x
+	IIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvE
+	x4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvj
+	DU0xZFpf9x07jec_-UUUUU=
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
-Release inode_bitmap_bh from ext4_read_inode_bitmap in
-ext4_mark_inode_used to avoid buffer_head leak.
-By the way, remove unneeded goto for invalid ino when inode_bitmap_bh
-is NULL.
+min_clusters is signed integer and will be converted to unsigned
+integer when compared with unsigned number stats.free_clusters.
+If min_clusters is negative, it will be converted to a huge unsigned
+value in which case all groups may not meet the actual desired free
+clusters.
+Set negative min_clusters to 0 to avoid unexpected behavior.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 ---
- fs/ext4/ialloc.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ fs/ext4/ialloc.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 9dfd768ed9f8..ad7f13976dc6 100644
+index f24a238b6b09..df41aa079cb5 100644
 --- a/fs/ext4/ialloc.c
 +++ b/fs/ext4/ialloc.c
-@@ -755,10 +755,10 @@ int ext4_mark_inode_used(struct super_block *sb, int ino)
- 	struct ext4_group_desc *gdp;
- 	ext4_group_t group;
- 	int bit;
--	int err = -EFSCORRUPTED;
-+	int err;
+@@ -514,6 +514,8 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+ 	if (min_inodes < 1)
+ 		min_inodes = 1;
+ 	min_clusters = avefreec - EXT4_CLUSTERS_PER_GROUP(sb)*flex_size / 4;
++	if (min_clusters < 0)
++		min_clusters = 0;
  
- 	if (ino < EXT4_FIRST_INO(sb) || ino > max_ino)
--		goto out;
-+		return -EFSCORRUPTED;
- 
- 	group = (ino - 1) / EXT4_INODES_PER_GROUP(sb);
- 	bit = (ino - 1) % EXT4_INODES_PER_GROUP(sb);
-@@ -860,6 +860,7 @@ int ext4_mark_inode_used(struct super_block *sb, int ino)
- 	err = ext4_handle_dirty_metadata(NULL, NULL, group_desc_bh);
- 	sync_dirty_buffer(group_desc_bh);
- out:
-+	brelse(inode_bitmap_bh);
- 	return err;
- }
- 
+ 	/*
+ 	 * Start looking in the flex group where we last allocated an
 -- 
 2.30.0
 
