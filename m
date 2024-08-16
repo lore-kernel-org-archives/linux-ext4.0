@@ -1,165 +1,96 @@
-Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-io1-f72.google.com (mail-io1-f72.google.com [209.85.166.72])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E39717BB17;
-	Fri, 16 Aug 2024 07:57:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DB62812D773
+	for <linux-ext4@vger.kernel.org>; Fri, 16 Aug 2024 09:46:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.166.72
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1723795065; cv=none; b=p5fLUwzNklbqpNw0K3I841cSSp3noMrnDlZUs6nyiGcbbs/oxRaukSkhd+6zZelmaOhE/w4j2f9MwkzPnnOpkRyRHLwm7P0xGoPr/cwmQa1mc9vqA9RHr4JWaoCf1yBg/WDFCNI1tmDMxwPZghglWe2D+j2eTbsGQJMPXe6pN9E=
+	t=1723801587; cv=none; b=avtGCs8cb1Ekvx/ti3n+2ZtP0tCGtaZHfc7bh1TSy8Ty7Bh5YvK6tcZgiyUlE8oelFUrBwzeZUf4HQ6122l6s8nKUeU2gXr6H2+k3GBuTL5e3OalUR16B91H7PFlofwpnTaTotQja2+M3ZrGGmIcV7QXCMgKkxi0fAy4RuhTfsQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1723795065; c=relaxed/simple;
-	bh=OQzWdqZ/3IvOqnfj3FMf0h9rgx5qBGPc1xuvBFYPAQw=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Uk6mqGphbYf9cjOU+IzH6K4GyCEocdt2vKQOmIsl5FjE2l1VPRcVKfhdAk9/OuVXwE1wEgFhJo/N+tYwEhOnqXETCJeEj5xrcIEfOFwXfKrOPhMoMeMDjzqE3hRFHsL6dsnpWR1YmPmUh6YcqyQs94ALxJU672Qafool6nBcxcI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=EoOsEUz1; arc=none smtp.client-ip=148.163.156.1
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="EoOsEUz1"
-Received: from pps.filterd (m0360083.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 47G09PAB024722;
-	Fri, 16 Aug 2024 07:57:31 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from
-	:to:cc:subject:date:message-id:mime-version
-	:content-transfer-encoding; s=pp1; bh=aOfNw5ngMFrwUNFHmwlPfwKa7g
-	X3ByCct4tHj+frhdg=; b=EoOsEUz1pjwkNxMoR0C5UFVdN9MfrXr2MuwR4oXQlK
-	Qf8DN9S2dkZDHyZJuK//DAdxnMV02Zb4/xjW/dvrrWQYCilyW8vQOuvTneHa9vX4
-	5btiRmW8eH/7MuXV10Xyn7+WAB6cjnc5/z1ZNE3NeOyXPvzAXOmle90bpGieaERO
-	t+eTpfEhzvlWDssRB5r3OuBxnVzBTy/lLaqy0fG54rsFQCPlKQVpZVf1k7kfyODV
-	LdMT04SOAspVC7sxyfg9oOVcyKL44jAZgrAJ1AgkiijqC+lP42HNi2wq6ayb/kDj
-	iMHOqN+83wVdOpplnBQ+2RJPL2Y2K4Y8NfEovINKkyUQ==
-Received: from pps.reinject (localhost [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4111d6ffkw-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 16 Aug 2024 07:57:30 +0000 (GMT)
-Received: from m0360083.ppops.net (m0360083.ppops.net [127.0.0.1])
-	by pps.reinject (8.18.0.8/8.18.0.8) with ESMTP id 47G7vUQt025347;
-	Fri, 16 Aug 2024 07:57:30 GMT
-Received: from ppma13.dal12v.mail.ibm.com (dd.9e.1632.ip4.static.sl-reverse.com [50.22.158.221])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4111d6ffkt-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 16 Aug 2024 07:57:30 +0000 (GMT)
-Received: from pps.filterd (ppma13.dal12v.mail.ibm.com [127.0.0.1])
-	by ppma13.dal12v.mail.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 47G7Q3Kf030516;
-	Fri, 16 Aug 2024 07:57:29 GMT
-Received: from smtprelay06.fra02v.mail.ibm.com ([9.218.2.230])
-	by ppma13.dal12v.mail.ibm.com (PPS) with ESMTPS id 40xmrmtdh3-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 16 Aug 2024 07:57:29 +0000
-Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
-	by smtprelay06.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 47G7vPdg35390080
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Fri, 16 Aug 2024 07:57:27 GMT
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 2285E2006A;
-	Fri, 16 Aug 2024 07:57:25 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id D3CB420063;
-	Fri, 16 Aug 2024 07:57:23 +0000 (GMT)
-Received: from li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com (unknown [9.124.216.104])
-	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTP;
-	Fri, 16 Aug 2024 07:57:23 +0000 (GMT)
-From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-Cc: Ritesh Harjani <ritesh.list@gmail.com>, linux-kernel@vger.kernel.org,
-        Kemeng Shi <shikemeng@huaweicloud.com>,
-        syzbot+1ad8bac5af24d01e2cbd@syzkaller.appspotmail.com
-Subject: [PATCH 1/2] ext4: Check stripe size compatibility on remount as well
-Date: Fri, 16 Aug 2024 13:27:14 +0530
-Message-ID: <957d29b85e06f415ee125de141809d2b9e084003.1723794770.git.ojaswin@linux.ibm.com>
-X-Mailer: git-send-email 2.43.5
+	s=arc-20240116; t=1723801587; c=relaxed/simple;
+	bh=Tb0h4ck6cfiihuLwqoLnMdMsolPdYYKMx3c/TZUiA9E=;
+	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=jCqMC2Xn9uD1WYunJ2EjxP754l6JCM1HGs3OC8f5hFY9Sq4lB4/Fk7FfkVf+a5TI1om75eM1vi8m4YjRWnJtLUMgyfMN9jh+3FbJ778D/CRLvk+qHSSB5SO3c/OONaxPsP5ThNLeQwpx68keZHlGZefFrxXsbM8+sLoMBfoNZN0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.166.72
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-io1-f72.google.com with SMTP id ca18e2360f4ac-81f7fa42463so151295839f.0
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Aug 2024 02:46:25 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1723801585; x=1724406385;
+        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=4Lop1zYGMzYsqu86D2s0Uq9vQfJMOb/arCg4VxmPAgE=;
+        b=WU1zWUQC1xAU/+6YWePDKhptwIn4s+qz+9dIVHAuaLrWlgN5anleCSJsLSEamhaIG+
+         mvffHKIyBWcjKviZ+yF/mOxQO3UeOG+r6s77ib+LcqxQ/Jue5JZy4utGR2fQOgeF259q
+         zDEMGDxg7oyYrV+qlu/3jME9CdbzdH0WzjCnWGY7PS2NhxoxgziFQFnpxhwy4uezvUVJ
+         Bh0h4AUkBhgz5fZpOQ69JiSReSPOnPmZAz2zyhF4L2lSGhfLP98Aw+FhVvXluhiks7t9
+         eVrTw54M4HpS9sTmRAD2wKzH/HrRFnoMko4BdAu/vGtTTiPRKIEa4V2IpMdyFwogBB6b
+         Atqw==
+X-Gm-Message-State: AOJu0YxdbauAxTSxxUS5anULwJMbdR17Ew8UlIQCoVOqEyFh1ptlhWoT
+	twXShco4bKslDoADsjaD6ZEaR88SPzZDS2FqNUbfHxzaz7tJCeyfbZZPPVjQeVM+tC+GSY2pbZD
+	qIQoFfQzTp6wfUJ5n0ujb08cX+pNvo2RCXxuSDdh7i/wLVqxQUtoJyXQ=
+X-Google-Smtp-Source: AGHT+IE80XNTjfDnFBIq2+f7vLTg2cxjmDzbCift/9CjRrLuMrKV6+z7KamZUSnLDq+cUck4tIXBQ0HdfSuRX5KNVclrKB1qIVZZ
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-TM-AS-GCONF: 00
-X-Proofpoint-ORIG-GUID: F6cIpn62Zv-30G3JH7TGUlSAkgCwu1pC
-X-Proofpoint-GUID: piW_Ipp-PxeBxS0PJW5SLnvSaM7KLqxo
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1039,Hydra:6.0.680,FMLib:17.12.28.16
- definitions=2024-08-15_18,2024-08-15_01,2024-05-17_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 mlxscore=0 malwarescore=0
- phishscore=0 suspectscore=0 impostorscore=0 lowpriorityscore=0
- mlxlogscore=999 clxscore=1011 adultscore=0 spamscore=0 priorityscore=1501
- bulkscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.19.0-2407110000 definitions=main-2408160053
+X-Received: by 2002:a05:6638:8709:b0:4c2:31f5:3137 with SMTP id
+ 8926c6da1cb9f-4cce0d85575mr75648173.0.1723801585017; Fri, 16 Aug 2024
+ 02:46:25 -0700 (PDT)
+Date: Fri, 16 Aug 2024 02:46:25 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <000000000000236dd4061fc9d5ff@google.com>
+Subject: [syzbot] Monthly ext4 report (Aug 2024)
+From: syzbot <syzbot+list069a4bf4a271f0c4158e@syzkaller.appspotmail.com>
+To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	syzkaller-bugs@googlegroups.com
+Content-Type: text/plain; charset="UTF-8"
 
-We disable stripe size in __ext4_fill_super if it is not a multiple of
-the cluster ratio however this check is missed when trying to remount.
-This can leave us with cases where stripe < cluster_ratio after
-remount:set making EXT4_B2C(sbi->s_stripe) become 0 that can cause some
-unforeseen bugs like divide by 0.
+Hello ext4 maintainers/developers,
 
-Fix that by adding the check in remount path as well.
+This is a 31-day syzbot report for the ext4 subsystem.
+All related reports/information can be found at:
+https://syzkaller.appspot.com/upstream/s/ext4
 
-Additionally, change the users of EXT4_B2C(sbi->s_stripe) to
-EXT4_NUM_B2C() so that if we ever accidentally hit this again, we can
-avoid the value becoming 0. This should not change existing functionality.
+During the period, 4 new issues were detected and 0 were fixed.
+In total, 40 issues are still open and 138 have been fixed so far.
 
-Reported-by: syzbot+1ad8bac5af24d01e2cbd@syzkaller.appspotmail.com
-Tested-by: syzbot+1ad8bac5af24d01e2cbd@syzkaller.appspotmail.com
-Fixes: c3defd99d58c ("ext4: treat stripe in block unit")
-Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Some of the still happening issues:
+
+Ref  Crashes Repro Title
+<1>  1284    Yes   kernel BUG in ext4_do_writepages
+                   https://syzkaller.appspot.com/bug?extid=d1da16f03614058fdc48
+<2>  1159    Yes   INFO: task hung in sync_inodes_sb (5)
+                   https://syzkaller.appspot.com/bug?extid=30476ec1b6dc84471133
+<3>  801     Yes   WARNING: locking bug in __ext4_ioctl
+                   https://syzkaller.appspot.com/bug?extid=a537ff48a9cb940d314c
+<4>  690     Yes   WARNING: locking bug in ext4_ioctl
+                   https://syzkaller.appspot.com/bug?extid=a3c8e9ac9f9d77240afd
+<5>  321     Yes   INFO: task hung in jbd2_journal_commit_transaction (5)
+                   https://syzkaller.appspot.com/bug?extid=3071bdd0a9953bc0d177
+<6>  276     No    INFO: task hung in ext4_stop_mmpd
+                   https://syzkaller.appspot.com/bug?extid=0dd5b81275fa083055d7
+<7>  204     No    INFO: task hung in sb_start_write
+                   https://syzkaller.appspot.com/bug?extid=fb3ada58a6c0a3208821
+<8>  128     Yes   possible deadlock in ext4_xattr_inode_iget (3)
+                   https://syzkaller.appspot.com/bug?extid=ee72b9a7aad1e5a77c5c
+<9>  58      Yes   kernel BUG in ext4_write_inline_data_end (2)
+                   https://syzkaller.appspot.com/bug?extid=0c89d865531d053abb2d
+<10> 34      Yes   KMSAN: uninit-value in aes_encrypt (5)
+                   https://syzkaller.appspot.com/bug?extid=aeb14e2539ffb6d21130
+
 ---
- fs/ext4/super.c | 29 ++++++++++++++++++++++-------
- 1 file changed, 22 insertions(+), 7 deletions(-)
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e72145c4ae5a..9d495d78d262 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5165,6 +5165,18 @@ static int ext4_block_group_meta_init(struct super_block *sb, int silent)
- 	return 0;
- }
- 
-+/*
-+ * It's hard to get stripe aligned blocks if stripe is not aligned with
-+ * cluster, just disable stripe and alert user to simpfy code and avoid
-+ * stripe aligned allocation which will rarely successes.
-+ */
-+static bool ext4_is_stripe_incompatible(struct super_block *sb, unsigned long stripe)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	return (stripe > 0 && sbi->s_cluster_ratio > 1 &&
-+		stripe % sbi->s_cluster_ratio != 0);
-+}
-+
- static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- {
- 	struct ext4_super_block *es = NULL;
-@@ -5272,13 +5284,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 		goto failed_mount3;
- 
- 	sbi->s_stripe = ext4_get_stripe_size(sbi);
--	/*
--	 * It's hard to get stripe aligned blocks if stripe is not aligned with
--	 * cluster, just disable stripe and alert user to simpfy code and avoid
--	 * stripe aligned allocation which will rarely successes.
--	 */
--	if (sbi->s_stripe > 0 && sbi->s_cluster_ratio > 1 &&
--	    sbi->s_stripe % sbi->s_cluster_ratio != 0) {
-+	if (ext4_is_stripe_incompatible(sb, sbi->s_stripe)) {
- 		ext4_msg(sb, KERN_WARNING,
- 			 "stripe (%lu) is not aligned with cluster size (%u), "
- 			 "stripe is disabled",
-@@ -6441,6 +6447,15 @@ static int __ext4_remount(struct fs_context *fc, struct super_block *sb)
- 
- 	}
- 
-+	if ((ctx->spec & EXT4_SPEC_s_stripe) &&
-+	    ext4_is_stripe_incompatible(sb, ctx->s_stripe)) {
-+		ext4_msg(sb, KERN_WARNING,
-+			 "stripe (%lu) is not aligned with cluster size (%u), "
-+			 "stripe is disabled",
-+			 ctx->s_stripe, sbi->s_cluster_ratio);
-+		ctx->s_stripe = 0;
-+	}
-+
- 	/*
- 	 * Changing the DIOREAD_NOLOCK or DELALLOC mount options may cause
- 	 * two calls to ext4_should_dioread_nolock() to return inconsistent
--- 
-2.43.5
+To disable reminders for individual bugs, reply with the following command:
+#syz set <Ref> no-reminders
 
+To change bug's subsystems, reply with:
+#syz set <Ref> subsystems: new-subsystem
+
+You may send multiple commands in a single email message.
