@@ -1,139 +1,72 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-io1-f71.google.com (mail-io1-f71.google.com [209.85.166.71])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BD31F1917CB
-	for <linux-ext4@vger.kernel.org>; Tue, 20 Aug 2024 14:11:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43DC13D982
+	for <linux-ext4@vger.kernel.org>; Tue, 20 Aug 2024 14:23:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.166.71
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724163111; cv=none; b=iJvZEcXFg2YWoFgQkDJI3BOAK12oThurM5KMVjh8y1RbRh3i6DRUPGnLuANYFS5sgRGO9FFj+MnaOoswG4uNCuGp6bYczCbM3XvtFLeO3lZCVcid7IPLWp3uWQm0Mg0XmG/qYW6oKjw5tPUQZsS9fGwT1wL63Pn32sPl3dWSvOg=
+	t=1724163784; cv=none; b=KqoM5vrQIrSlDZjl+wcfMDkbIn58PGdvzEgA2bF8e6Lak8CcETzrMHdoe5JTVzt2ERWgmiS9WF0wwSYRWN+71PWZchzDVSAbVmxS9ab7iv8FKR6QKshLUe9oVEGIfF6b/F3iDMwGvSWMJVctqTnGjlB+7bKQpIzG+SPZEGjzsU0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1724163111; c=relaxed/simple;
-	bh=oyFJwQ6CJco6l2jvEpleg1wYg1Sp8qMEpYz3tF60jyc=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=Q96m/Sp5SUk92+KTMp5RWaM7ntPe3fO2I/OLIn6Kmu2uSpCEahQ14fM6SactN2VZFpFmGWdieABAUnWnMAyPzr49hFYcp6bmMOglQi7+V5dFn3/P0gRGDJRWrZM6olNB4bsk/btEsRLclvWiYOcWhIDDuK2eidJUT1TQ8eMzO/8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4WpBGS5Jmlz4f3jdL
-	for <linux-ext4@vger.kernel.org>; Tue, 20 Aug 2024 22:11:28 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id D7CBA1A14F8
-	for <linux-ext4@vger.kernel.org>; Tue, 20 Aug 2024 22:11:42 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP4 (Coremail) with SMTP id gCh0CgCXv4UTpMRmyr3nCA--.45152S4;
-	Tue, 20 Aug 2024 22:11:38 +0800 (CST)
-From: yangerkun <yangerkun@huaweicloud.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	jack@suse.cz
-Cc: linux-ext4@vger.kernel.org,
-	yangerkun@huawei.com,
-	yangerkun@huaweicloud.com,
-	chengzhihao1@huawei.com
-Subject: [PATCH 1/2] ext4: dax: Fix overflowing extents beyond inode size when partially writing
-Date: Tue, 20 Aug 2024 22:06:56 +0800
-Message-Id: <20240820140657.3685287-1-yangerkun@huaweicloud.com>
-X-Mailer: git-send-email 2.39.2
+	s=arc-20240116; t=1724163784; c=relaxed/simple;
+	bh=gLUPsuWdSTXJTb7WUNyOiFbA7COIzIkvwM69A72ng2Y=;
+	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:
+	 Content-Type; b=DE9gpqUytExw1h1cY4mG7W0LOr7OkNzI6RPY+gblA64wlbmKrkk9sAotCAB0jTpWYTEzQGt77BB+3h2lCSSjud71k9r1Hsxe3zFIcABvchFQCAhCFWnM3uls8S/un3zbhke307gPrVR8TKC31SJOktkoOaR8875qe1uHn+5/Yjs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.166.71
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-io1-f71.google.com with SMTP id ca18e2360f4ac-81f8489097eso518007539f.3
+        for <linux-ext4@vger.kernel.org>; Tue, 20 Aug 2024 07:23:03 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1724163782; x=1724768582;
+        h=to:from:subject:message-id:in-reply-to:date:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=hYjN5/oAhwhrXBgTjU/FX5dzLOB+Fl9k99kdXwpqfh4=;
+        b=CwR7Pv7N6/sBwa/oO+GHDepyP2sqaEmrvejrV0J937Rg4AG+KKpv9nvtXhXGe3RGvQ
+         BLlI8ccGc/1yVYM2Qo/RN0Qs4X0zGcVluQXdiHlQ+uCfFwJ9+6Sz48im+NmGrdGxUZSN
+         +Hn0tI7YcBAypKjepRKiJBhP9Z5XCw5APIeiP6R2eAz9zHCqy5ao5GGi3ep5JmSDwLPc
+         X5I2t8WuQRcs3N0NIgBkRDEpx4gdpCu6qRbSR+MteodhXlZRU6GSv0moU6IOx6KkW/Xr
+         LL7Idhv+ncF3e+wGbSHWCs9ZCDbZu79LhVoDisyuArYT+tz1F2ecpvUku0FPp1ISghY5
+         kLAg==
+X-Forwarded-Encrypted: i=1; AJvYcCXPIrfd28rk7L7fsYJ/HumBcoObJCgm7QQTRSsqCMWZtURIGPZTG5S/TJ14tQPd7kSgHn9cLtKVrUBHkHo03j2/5KIs0XROD4B3UQ==
+X-Gm-Message-State: AOJu0YzPHFV80FdzNuvMXgZtTerTZaY7uKfqV9U3gPFGi6UKNjFCQpVL
+	Mc4cGk9rQUsRtQ2jpG9vsiHvAxW6qWjadx7jMtiijWagzZCoQeFatqzF5Tk2/fqF1jJoVbeZFOu
+	7sf7+Kg4KsSVMkH1z69cnfmTHj/yieX012PTU/V0C0P9nAs7MDGUaftI=
+X-Google-Smtp-Source: AGHT+IHu4ZkUAJ3FI1u8kEFYnwHpSsm3j2LHBI8asJ1P5KcIq195yEeFNPZMqP22Swuy1epC1bQwMwsnfLF7cqSDFyQEUIk3UsuO
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCXv4UTpMRmyr3nCA--.45152S4
-X-Coremail-Antispam: 1UD129KBjvJXoWxAF4ftr1UZF18Cry8Jry8AFb_yoW5Wr1xpr
-	9xKFyY9rWvqasFgay8tF4DZw4jk3W7GrWUCF1UKwn0vF9rZryfKF1jyF4FvF15JrWkuF17
-	XrsYyry8u3W2y3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUkl14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26ryj6F1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26F4j
-	6r4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oV
-	Cq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0
-	I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r
-	4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwCY1x0262kKe7AKxVWU
-	AVWUtwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14
-	v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkG
-	c2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI
-	0_Jr0_Gr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4U
-	MIIF0xvEx4A2jsIEc7CjxVAFwI0_Jr0_GrUvcSsGvfC2KfnxnUUI43ZEXa7VUbSfO7UUUU
-	U==
-X-CM-SenderInfo: 51dqwvhunx0q5kxd4v5lfo033gof0z/
+X-Received: by 2002:a05:6638:980b:b0:4ce:54dc:fa44 with SMTP id
+ 8926c6da1cb9f-4ce54dd01eamr146141173.1.1724163782330; Tue, 20 Aug 2024
+ 07:23:02 -0700 (PDT)
+Date: Tue, 20 Aug 2024 07:23:02 -0700
+In-Reply-To: <ZsSh4NUWT7MlvlSL@quatroqueijos.cascardo.eti.br>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <000000000000c7d90606201e2917@google.com>
+Subject: Re: [syzbot] [ext4?] KASAN: use-after-free Read in ext4_search_dir (2)
+From: syzbot <syzbot+0c2508114d912a54ee79@syzkaller.appspotmail.com>
+To: cascardo@igalia.com, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com
+Content-Type: text/plain; charset="UTF-8"
 
-From: Zhihao Cheng <chengzhihao1@huawei.com>
+Hello,
 
-The dax_iomap_rw() does two things in each iteration: map written blocks
-and copy user data to blocks. If the process is killed by user(See signal
-handling in dax_iomap_iter()), the copied data will be returned and added
-on inode size, which means that the length of written extents may exceed
-the inode size, then fsck will fail. An example is given as:
+syzbot has tested the proposed patch and the reproducer did not trigger any issue:
 
-dd if=/dev/urandom of=file bs=4M count=1
- dax_iomap_rw
-  iomap_iter // round 1
-   ext4_iomap_begin
-    ext4_iomap_alloc // allocate 0~2M extents(written flag)
-  dax_iomap_iter // copy 2M data
-  iomap_iter // round 2
-   iomap_iter_advance
-    iter->pos += iter->processed // iter->pos = 2M
-   ext4_iomap_begin
-    ext4_iomap_alloc // allocate 2~4M extents(written flag)
-  dax_iomap_iter
-   fatal_signal_pending
-  done = iter->pos - iocb->ki_pos // done = 2M
- ext4_handle_inode_extension
-  ext4_update_inode_size // inode size = 2M
+Reported-by: syzbot+0c2508114d912a54ee79@syzkaller.appspotmail.com
+Tested-by: syzbot+0c2508114d912a54ee79@syzkaller.appspotmail.com
 
-fsck reports: Inode 13, i_size is 2097152, should be 4194304.  Fix?
+Tested on:
 
-Fix the problem by truncating extents if the written length is smaller
-than expected.
+commit:         47ac09b9 Linux 6.11-rc4
+git tree:       git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+console output: https://syzkaller.appspot.com/x/log.txt?x=10631a91980000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=df2f0ed7e30a639d
+dashboard link: https://syzkaller.appspot.com/bug?extid=0c2508114d912a54ee79
+compiler:       Debian clang version 15.0.6, GNU ld (GNU Binutils for Debian) 2.40
+patch:          https://syzkaller.appspot.com/x/patch.diff?x=163ed3f5980000
 
-Fixes: 776722e85d3b ("ext4: DAX iomap write support")
-CC: stable@vger.kernel.org
-Link: https://bugzilla.kernel.org/show_bug.cgi?id=219136
-Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/file.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index c89e434db6b7..be061bb64067 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -334,10 +334,10 @@ static ssize_t ext4_handle_inode_extension(struct inode *inode, loff_t offset,
-  * Clean up the inode after DIO or DAX extending write has completed and the
-  * inode size has been updated using ext4_handle_inode_extension().
-  */
--static void ext4_inode_extension_cleanup(struct inode *inode, ssize_t count)
-+static void ext4_inode_extension_cleanup(struct inode *inode, bool need_trunc)
- {
- 	lockdep_assert_held_write(&inode->i_rwsem);
--	if (count < 0) {
-+	if (need_trunc) {
- 		ext4_truncate_failed_write(inode);
- 		/*
- 		 * If the truncate operation failed early, then the inode may
-@@ -586,7 +586,7 @@ static ssize_t ext4_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 		 * writeback of delalloc blocks.
- 		 */
- 		WARN_ON_ONCE(ret == -EIOCBQUEUED);
--		ext4_inode_extension_cleanup(inode, ret);
-+		ext4_inode_extension_cleanup(inode, ret < 0);
- 	}
- 
- out:
-@@ -670,7 +670,7 @@ ext4_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 
- 	if (extend) {
- 		ret = ext4_handle_inode_extension(inode, offset, ret);
--		ext4_inode_extension_cleanup(inode, ret);
-+		ext4_inode_extension_cleanup(inode, ret < (ssize_t)count);
- 	}
- out:
- 	inode_unlock(inode);
--- 
-2.39.2
-
+Note: testing is done by a robot and is best-effort only.
