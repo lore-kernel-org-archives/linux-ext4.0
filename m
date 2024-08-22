@@ -1,47 +1,48 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 28A671CB135
-	for <linux-ext4@vger.kernel.org>; Thu, 22 Aug 2024 15:00:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B8E818EAB
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Aug 2024 15:00:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724338845; cv=none; b=L+z/MyWNi6KPMtgX6jGNWgJtzwrXA+A92mHDE5PSmFOLlZMhKjSZGxrzyLynpR9Se3DQ0h7r1dGv+lmzRs3JW/hU5+i7BL2GQGZm97QDJRu1sZgdaR51feiS2YotMmtbcwkdMztJVVVgHa0ntJT6rrfbdn9SYtyW5J5mhHxX6mU=
+	t=1724338847; cv=none; b=k5Jjfg/IQv6S3tnDsuZLxjEStu8ar2FQBYLvHsSCqgZgni/cSFJzGaE7E9zPAMBlzTDov9KSI0ppBpdN/Xe2Mnxnonclmi4JmQ7EwnpK/nGQ0S+vRfw/6yXskOqUiS0XhgiCxOhb7py1eBcf0I8tDXgKJdol0MJg2Z4MHTr9b9g=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1724338845; c=relaxed/simple;
-	bh=9MmF3OwinZU57ZeQdvO5q5U9hXfnwUZyKjxWoZmXdSQ=;
+	s=arc-20240116; t=1724338847; c=relaxed/simple;
+	bh=70PL5f2MblAyg/FBGlan2qHuC5lm7vOFjRzQYtiH1ZY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=N0yj3kTXe2RWuT4ZATRsTmGcJ26/v0L/5fnaXUSjFKh4WbCZKrLoaAknqTB9L+p4BStDfcC4YNZmckKwKxAhVqeo9b+ZCr68tbWXOrB+C7ksbMfZM8ObKIrs+syw/v2Mm/4NRJpwAhN1tCBGP/OqiTwgnm9nvwKEmrBRUAVV0PM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=VWFgd0TS; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=KbZoLo8XSv9QqbX4DNXvoDu3I0d2Z5g0l4jC73s3FQ14xQ7IbqszC1CBkPICra1FQ8pr7uR8pySQk1ie0mioGNnLsCSiTkkqcofNx3ov7YHSTRpy72ROETWLCK/P451+0o1PrC2GP/vqJGG5rwr9gWf0QiahufD+Cs5LDsq90vU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=ZS2ZkpAf; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="VWFgd0TS"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="ZS2ZkpAf"
 Received: from cwcc.thunk.org (pool-173-48-112-67.bstnma.fios.verizon.net [173.48.112.67])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 47MF0O3b022430
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 47MF0MKa022377
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 22 Aug 2024 11:00:25 -0400
+	Thu, 22 Aug 2024 11:00:23 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1724338826; bh=PJeAnoJXdEfUH82I933bZUUEq15CB74p299DfwOQAnE=;
+	t=1724338824; bh=sKAFdZgSvPvrdIUpPT56RTQQlQknRd04letoFd7nzZo=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=VWFgd0TSgw0Z4ia4OQNb+DL1zYavDG+kRxEstqOjlloMzmh8rfHTo/XFbrJtN6CBd
-	 nDVI+HtGUj6+M5/Qyalb1cw7NjKvT31XOgp2pWQbRea4tPmHMPfL1l5qXie/PNsMqZ
-	 qN5pcuTprbs2Vt/SdUief/ve5tcODukj/8YQvZmGsHPxhxwta1KsIfFh6C/nRPvjdx
-	 gXCWqmwIcibId3K+WLyNajiCF3zuTpIacLUA5o1Ggxt9LcaZpY72LDenocQPY1G5zi
-	 OgsJyimoc5u3KLx8KGEMWdA025XRz0FGmpz1ejTaRTmLlnlA8rVqdIXO8f8IZTAn1z
-	 J5pC4ZXXJSf3A==
+	b=ZS2ZkpAfw50GU3CLQGY7XF6QwhlPO64vfflX76Sy3rlKkzkVQCCJnkXWU+MggveWa
+	 a0LFogos/ap8qtVY/XhY4iZX0Af3deHuSrKOB2GyzxeGe+q4YNsuPA3YPe47MUE8ig
+	 k27T1Neo46XWVVN5tvP2xZfXCuOiujdoS5JceLNbQ3AU3D+AcsiyouJOHCb3x9uxjW
+	 /Lie2wOMNivD/HAVoCaU7sGPbfSXEkPQIz0hyPpW8S00zNF+ZKMqR0QExQd1oUiHB8
+	 U7CQp2BUMUeZk4deCNCyBBwU8n1d9aatBPpLZcD2FShw1GQTx/JRw9XJfryEAjwhvy
+	 76IhY3CIbkzEg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id E64AC15C02C6; Thu, 22 Aug 2024 11:00:21 -0400 (EDT)
+	id E2AC415C02C3; Thu, 22 Aug 2024 11:00:21 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: adilger.kernel@dilger.ca, "yao.ly" <yao.ly@linux.alibaba.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext4: Correct dentry name hash when readdir with encrypted and not casefolded
-Date: Thu, 22 Aug 2024 11:00:14 -0400
-Message-ID: <172433877725.370733.10136882872193689804.b4-ty@mit.edu>
+To: adilger.kernel@dilger.ca, Kemeng Shi <shikemeng@huaweicloud.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 0/3] Some extended attributes related comments correction
+Date: Thu, 22 Aug 2024 11:00:12 -0400
+Message-ID: <172433877724.370733.10230780173544926638.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.45.2
-In-Reply-To: <1719816219-128287-1-git-send-email-yao.ly@linux.alibaba.com>
-References: <1719816219-128287-1-git-send-email-yao.ly@linux.alibaba.com>
+In-Reply-To: <20240606125508.1459893-1-shikemeng@huaweicloud.com>
+References: <20240606125508.1459893-1-shikemeng@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -52,17 +53,25 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Mon, 01 Jul 2024 14:43:39 +0800, yao.ly wrote:
-> EXT4_DIRENT_HASH and EXT4_DIRENT_MINOR_HASH will access struct
-> ext4_dir_entry_hash followed ext4_dir_entry. But there is no ext4_dir_entry_hash
-> followed when inode is encrypted and not casefolded
+On Thu, 06 Jun 2024 20:55:05 +0800, Kemeng Shi wrote:
+> Some extended attributes related comments correction. Please see
+> repective patches for detail. Thanks.
 > 
+> Kemeng Shi (3):
+>   ext4: correct comment of ext4_xattr_cmp
+>   ext4: correct comment of ext4_xattr_block_cache_insert
+>   ext4: correct comment of h_checksum
 > 
+> [...]
 
 Applied, thanks!
 
-[1/1] ext4: Correct dentry name hash when readdir with encrypted and not casefolded
-      commit: 95525bf5b13d28d55fb61400c9e97db6ea7da5f4
+[1/3] ext4: correct comment of ext4_xattr_cmp
+      commit: 6ceeb2d8fdb19a1b6bb9cc48302e682fb380043b
+[2/3] ext4: correct comment of ext4_xattr_block_cache_insert
+      commit: 4b14737ce90424179d615cd35f04453f398f8324
+[3/3] ext4: correct comment of h_checksum
+      commit: 5071010ac3aa32a1b0f0b4c14d3ea6b217ba21ba
 
 Best regards,
 -- 
