@@ -1,28 +1,27 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E5D8615E81;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B50AD10A1C;
 	Thu, 22 Aug 2024 02:40:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724294438; cv=none; b=gPSnxG++xc4lotN/h0RYuZdEmrZ1RMtanuyMrXK76mqSXzh9uoKukrnAKkoIg9VNxCZhWBqJ1G1Ew/oupIOE0HccoykiJSuR0yDXaJ5Gihjy5Odpo5oPtKljPwyRrj2MN78vrDOLqQdruphlSR3m2h3syhevAt6kou8AeQSP1xg=
+	t=1724294438; cv=none; b=rlRfIf80mLvMwxKGmuBzk2p0iEqeNw6DqxAav5y+Dd954af7Jj3M9zwFl0G1lgyheN9GSZtFMXMeDV2+P09Drj7Bnwe+OgKZpNCA63+R6VxRDWABwm00Cp8NmTkNCGdRlCuuhv5Al5SecjrfTSYfDpzGL05k2HrBrDXkBGoz00o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1724294438; c=relaxed/simple;
-	bh=pEPVJbDDg+2upk/d72cFGfKPoOE997AF6Zd3b6EdN8w=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=UNQU7RByR39Ka7Zui87TZyRzY+Nu60R1W50eKmFiISMaePeh5q1DBdlQjLCAh0Rg4ji9knk1jI3G2E7MNTHoNmuMbeVr9Yd8Iwo8k8q6irgRAgRyrl3ciz1tMAxyuxfDSDnMzjq6Fd1JB1mnz5xoJfWkasz/GKWN5QoncgRqYXc=
+	bh=PD7qAguko5ryOSzVxSF4usiYnpSFl8et9TkOsabeJUg=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version:Content-Type; b=MhDPE15GOaMavUv2r40kYSp4ib1ueyG6cuFOMugPfq8Wk8rR6VSNgsKBwJZXUZUsfEISVeQpsZ0AcMs9EQV5fVURhjL7WeTa8HJHtZB3du+NA4DlL4/KfNbZZiu0daJ00kaz+qfByCAdgk5AhLB8Glos+SjF7hkbpodUk64tVbA=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Wq6r06Sbsz4f3n6n;
-	Thu, 22 Aug 2024 10:40:16 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Wq6r52Z1hz4f3jt6;
+	Thu, 22 Aug 2024 10:40:21 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 0BC241A0568;
-	Thu, 22 Aug 2024 10:40:32 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP4 (Coremail) with SMTP id gCh0CgCHr4UapcZmqbd1CQ--.38129S6;
+	by mail.maildlp.com (Postfix) with ESMTP id 113981A06D7;
 	Thu, 22 Aug 2024 10:40:31 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.104.67])
+	by APP4 (Coremail) with SMTP id gCh0CgCHr4UapcZmqbd1CQ--.38129S4;
+	Thu, 22 Aug 2024 10:40:28 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -34,120 +33,144 @@ Cc: tytso@mit.edu,
 	yi.zhang@huawei.com,
 	yangerkun@huawei.com,
 	libaokun@huaweicloud.com,
-	Baokun Li <libaokun1@huawei.com>,
-	zhanchengbin <zhanchengbin1@huawei.com>
-Subject: [PATCH v2 02/25] ext4: prevent partial update of the extents path
-Date: Thu, 22 Aug 2024 10:35:22 +0800
-Message-Id: <20240822023545.1994557-3-libaokun@huaweicloud.com>
+	Baokun Li <libaokun1@huawei.com>
+Subject: [PATCH v2 00/25] ext4: some bugfixes and cleanups for ext4 extents path
+Date: Thu, 22 Aug 2024 10:35:20 +0800
+Message-Id: <20240822023545.1994557-1-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20240822023545.1994557-1-libaokun@huaweicloud.com>
-References: <20240822023545.1994557-1-libaokun@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCHr4UapcZmqbd1CQ--.38129S6
-X-Coremail-Antispam: 1UD129KBjvJXoWxWF4xCrWfGw1fZrWDtr17Awb_yoW5GFWUpF
-	nIkrn5Gr48Way3uFy3tFWUZFy5Ka1kC3yxWrWxAw13WFy5Zr9YqryxKF15CF95JFW8Wa4f
-	XrW8tr1UKw1DGa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmK14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
-	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
-	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
-	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
-	IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
-	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
-	xKxwAKzVCY07xG64k0F24lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I
-	3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxV
-	WUGVWUWwC2zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAF
-	wI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcI
-	k0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j
-	6r4UJbIYCTnIWIevJa73UjIFyTuYvjfUYZ2-UUUUU
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgADBWbFpZhEEQAAsP
+X-CM-TRANSID:gCh0CgCHr4UapcZmqbd1CQ--.38129S4
+X-Coremail-Antispam: 1UD129KBjvJXoWxArWkWF43Gw15Jw4xGFWUCFg_yoW7Gr15pF
+	4fCw1UCw1kJw1kCrZrJa15ZF1Fyw4fW34fArW3Kr1kAF98JryF9FyxKa4YkFW5JFWxAa4a
+	vFWIvr1xC3Z8CaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9E14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
+	1l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
+	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
+	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
+	2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
+	W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2
+	Y2ka0xkIwI1lw4CEc2x0rVAKj4xxMxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAKI4
+	8JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xv
+	wVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjx
+	v20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20E
+	Y4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267
+	AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7VUbknY7UUUUU==
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQACBWbEU35FnwABsS
 
 From: Baokun Li <libaokun1@huawei.com>
 
-In ext4_ext_rm_idx() and ext4_ext_correct_indexes(), there is no proper
-rollback of already executed updates when updating a level of the extents
-path fails, so we may get an inconsistent extents tree, which may trigger
-some bad things in errors=continue mode.
+Hi all!
 
-Hence clear the verified bit of modified extents buffers if the tree fails
-to be updated in ext4_ext_rm_idx() or ext4_ext_correct_indexes(), which
-forces the extents buffers to be checked in ext4_valid_extent_entries(),
-ensuring that the extents tree is consistent.
+This patch series is a hardening of ext4 extents path related code.
 
-Signed-off-by: zhanchengbin <zhanchengbin1@huawei.com>
-Link: https://lore.kernel.org/r/20230213080514.535568-3-zhanchengbin1@huawei.com/
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Tested-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
----
- fs/ext4/extents.c | 31 +++++++++++++++++++++++++++----
- 1 file changed, 27 insertions(+), 4 deletions(-)
+This is the second version of this patch series. Thank you, Jan Kara and
+Ojaswin Mujoo, for the feedback in the previous version. The new version
+has no functional changes compared to the previous one, so I've kept the
+previous Reviewed-by, please let me know if you have any objections.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index bff3666c891a..4d589d34b30e 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1749,12 +1749,23 @@ static int ext4_ext_correct_indexes(handle_t *handle, struct inode *inode,
- 			break;
- 		err = ext4_ext_get_access(handle, inode, path + k);
- 		if (err)
--			break;
-+			goto clean;
- 		path[k].p_idx->ei_block = border;
- 		err = ext4_ext_dirty(handle, inode, path + k);
- 		if (err)
--			break;
-+			goto clean;
- 	}
-+	return 0;
-+
-+clean:
-+	/*
-+	 * The path[k].p_bh is either unmodified or with no verified bit
-+	 * set (see ext4_ext_get_access()). So just clear the verified bit
-+	 * of the successfully modified extents buffers, which will force
-+	 * these extents to be checked to avoid using inconsistent data.
-+	 */
-+	while (++k < depth)
-+		clear_buffer_verified(path[k].p_bh);
- 
- 	return err;
- }
-@@ -2312,12 +2323,24 @@ static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
- 			break;
- 		err = ext4_ext_get_access(handle, inode, path + k);
- 		if (err)
--			break;
-+			goto clean;
- 		path[k].p_idx->ei_block = path[k + 1].p_idx->ei_block;
- 		err = ext4_ext_dirty(handle, inode, path + k);
- 		if (err)
--			break;
-+			goto clean;
- 	}
-+	return 0;
-+
-+clean:
-+	/*
-+	 * The path[k].p_bh is either unmodified or with no verified bit
-+	 * set (see ext4_ext_get_access()). So just clear the verified bit
-+	 * of the successfully modified extents buffers, which will force
-+	 * these extents to be checked to avoid using inconsistent data.
-+	 */
-+	while (++k < depth)
-+		clear_buffer_verified(path[k].p_bh);
-+
- 	return err;
- }
- 
+The following is a brief overview of the patches, see the patches for
+more details.
+
+Patch 1-2: Refactor ext4_ext_rm_idx() as suggested by Jan, and add
+appropriate error handling branches to ext4_ext_rm_idx() and
+ext4_ext_correct_indexes() to avoid inconsistent extents tree.
+ PS: This comes from the previous work of my colleague zhanchengbin
+ (see link), who is no longer in charge of these and I have taken over.
+ Link: https://lore.kernel.org/r/20230213080514.535568-3-zhanchengbin1@huawei.com/
+
+Patch 3-7: Quick fixes for use-after-free and double-free problems caused
+by mixing path(pointer to an extent path) and ppath(pointer to an extent
+path pointer).
+
+Patch 8-9: Fix an issue that caused p_bh to be released twice if it wasn't
+set to NULL after path->p_bh was released. And add a helper function after
+the quick fix to prevent this from happening again.
+
+Patch 10: Fix an issue where the error returned by ext4_find_extent in
+ext4_insert_range() was not propagated correctly.
+
+Patch 11-22: Now the use of path and ppath is so confusing that we can
+trigger use-after-free or double-free by accessing a stale pointer, or
+we can get a memory leak by forgetting to update ppath. And it's very
+difficult to read the code. So to make the code more readable, get rid
+of ppath and pass path between functions uniformly to avoid these risks.
+
+Patch 23-24: Reduces the consumption of unnecessary memory operations by
+avoiding repetitive allocation and release extents path.
+
+Patch 25：Clean up ext4_ext_create_new_leaf() to reduce some unnecessary
+indentation and line breaks.
+
+"kvm-xfstests -c ext4/all -g auto" has been executed with no new failures.
+Randomly injecting faults(EIO, ENOMEM, Realloc Path) in ext4_find_extent()
+while executing xfstests also did not observe new Oops.
+
+Comments and questions are, as always, welcome.
+Please let me know what you think.
+
+Thanks,
+Baokun
+
+Changes since v1:
+ * Collect RVB from Honza and Ojaswin.(Thanks for your review!)
+ * Patch 5: A quick fix has been added for a null pointer or memory leak
+   that could be caused by ppath remaining NULL when path is reallocated.
+ * Patch 6: Added a quick fix for the UAF that could be caused by a path
+   not being updated when the ppath is reallocated.(Spotted by Ojaswin)
+ * Patch 8: Correct the trace stack in commit message.(Spotted by Ojaswin)
+ * Patch 10: Quick fixes split from Patch 15 to be easily pulled into
+   stable.(Suggested by Honza)
+ * Patch 23: A refactoring split from Patch 16 for easy review.(Suggested
+   by Ojaswin)
+ * Patch 24: Modify the patch subject.
+ * Patch 25: Added cleanup patch to remove unnecessary indentation and
+   line breaks in ext4_ext_create_new_leaf().(Suggested by Honza)
+ * Adjust the sequence of patches.
+
+v1: https://lore.kernel.org/r/20240710040654.1714672-1-libaokun@huaweicloud.com
+
+Baokun Li (25):
+  ext4: refactor ext4_ext_rm_idx() to index 'path'
+  ext4: prevent partial update of the extents path
+  ext4: fix slab-use-after-free in ext4_split_extent_at()
+  ext4: avoid use-after-free in ext4_ext_show_leaf()
+  ext4: update orig_path in ext4_find_extent()
+  ext4: aovid use-after-free in ext4_ext_insert_extent()
+  ext4: drop ppath from ext4_ext_replay_update_ex() to avoid double-free
+  ext4: fix double brelse() the buffer of the extents path
+  ext4: add new ext4_ext_path_brelse() helper
+  ext4: propagate errors from ext4_find_extent() in ext4_insert_range()
+  ext4: get rid of ppath in ext4_find_extent()
+  ext4: get rid of ppath in get_ext_path()
+  ext4: get rid of ppath in ext4_ext_create_new_leaf()
+  ext4: get rid of ppath in ext4_ext_insert_extent()
+  ext4: get rid of ppath in ext4_split_extent_at()
+  ext4: get rid of ppath in ext4_force_split_extent_at()
+  ext4: get rid of ppath in ext4_split_extent()
+  ext4: get rid of ppath in ext4_split_convert_extents()
+  ext4: get rid of ppath in ext4_convert_unwritten_extents_endio()
+  ext4: get rid of ppath in ext4_ext_convert_to_initialized()
+  ext4: get rid of ppath in ext4_ext_handle_unwritten_extents()
+  ext4: get rid of ppath in convert_initialized_extent()
+  ext4: refactor ext4_swap_extents() to reuse extents path
+  ext4: make some fast commit functions reuse extents path
+  ext4: save unnecessary indentation in ext4_ext_create_new_leaf()
+
+ fs/ext4/ext4.h        |   9 +-
+ fs/ext4/extents.c     | 781 +++++++++++++++++++++++-------------------
+ fs/ext4/fast_commit.c |  17 +-
+ fs/ext4/migrate.c     |   5 +-
+ fs/ext4/move_extent.c |  36 +-
+ 5 files changed, 456 insertions(+), 392 deletions(-)
+
 -- 
 2.39.2
 
