@@ -1,48 +1,50 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0C2371BFE16
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0C1E71BFE13
 	for <linux-ext4@vger.kernel.org>; Tue, 27 Aug 2024 12:47:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724762876; cv=none; b=Yv1gtXVu4HkaAQwA+bq1lSKmBDh+7Ak5dqZLU0NDulAI40jrH2ElrnZByHaOznpIQTZrBNprXYWn65KAYp3MEAnhfdoudNAY1A4gip6yGYQFW6NhPFSpJbj5yvA8bGwjeGYyndA3YqR1vY7Yi9iipQ15maUKghwMafMvI1+rGtA=
+	t=1724762876; cv=none; b=HrGvZ33tVoji/X+sT/d3LtojUD3yGdHUp5OOio8m/inj8KzQrHMlX52Dre2prQIFVhq1uaSUhjXNx38ETnnIuWJAalCEzR9I+q8oGkRvgaIYYrZibwWMQOwAFb+hneyaekZnL01hQJc0J4gL0O03ZDFsll+GKkSm/n+LaqO/UK4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1724762876; c=relaxed/simple;
-	bh=9tEouNA51z43LCLVflWg/9lAy+GYZyS6g17VcMAdXbw=;
+	bh=XY55OP/Qaf/+GGoLt+wyLwHxCnZpJqmqZD87P/VbmMo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=O3QXCqdjET5+6qECmNpaHWKuYrHnmi87l2T+IVYQ0o46e1A14SJ/wflMgYidqypt3kUa1eXScidYfMgpNIJDE7xl40NUa85PeIDMKhAVudPxGH7qPjMjhZehuxLA3b1TNwLdi+SJD6fuVJZGm7XELs35J66JZKsFA+AGCB0XxOU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=NWBDdajh; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=Gz+eXuoOr0KBwE0lO78LBd3cWMrrNHkJGpcchDGPSHHFFtPkRm2mfxaNSXT3CRBaeIkRkO/AL4DXX6QhZ0lqGAL9kPWd4CIB1AupN2KYyny9QNePE/m6pJdwa0ljoBtjtLJ3EQ4HRVJq8LCphmZn6jAZiaFFMlMZIzr5y6VKICA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=mn+F7tuG; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="NWBDdajh"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="mn+F7tuG"
 Received: from cwcc.thunk.org (pool-173-48-112-93.bstnma.fios.verizon.net [173.48.112.93])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 47RClcQ4021448
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 47RClcV5021450
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 27 Aug 2024 08:47:39 -0400
+	Tue, 27 Aug 2024 08:47:40 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1724762860; bh=h3SDb6VQneSRFjXMKyLtXqVsh+UppbIVj+mvFf7itNE=;
+	t=1724762861; bh=kATzU0mUDcZgfUdBUscSr/30Gq0bulmJCImH68vNTqU=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=NWBDdajh5piwnLD95rkjR/RK9JwQXadjDSH7IT/C6Y57QvOGVkwFFmAOiBUkmW8Do
-	 xpOr0S7iM0S5cB07TZtipzafwxrQ4v2ifbsfN7zfkW0nOOuUqHZRENYhLGx6lOO5wE
-	 4RGBNUZFwCrn1pUcqtlkArxCeYRPQi0eqdF2yOz64ELHkkRN/GIYNTpynSSKvLFcMQ
-	 RD4IxwT5AHtW5u5YbbNJjHWyBg1XftPG8+EJthNgOezmOUiYsCI8gQ7KFU+kpNfJHv
-	 BSmNOyNsaDkzMoxV9wXGG1qbC5LNjwgimR1xcHtZajGiNJdXVYZ8yySJUbWlwSqMnN
-	 Ut/Rs0t2PhTQg==
+	b=mn+F7tuG399axBj9ZMiuFpomzq8yusuKSq0Iw03YRexzYvPcPN8JINm5C1yO7VfQY
+	 PULIj6vUCbimY5RqZ/WtAe2ET6Znb+WaL5Lb/8NL9Pj8No0GftxTnyFeZqZQ/eEtfS
+	 tJFT939Wb94SD8np5d/VIdj3JMqtafsn7osXPjeYP44P/KTJKlUEWmoAx6useSczIE
+	 MYA2HXMokT8Kn9Hj3/V1Hrs4X746cAXGHFOkv47U4U8k8moLj8Pn8OH4UW4toQ14aM
+	 xh71juTJmguCRNT9y1rq0r1kweQ9x/F4xjeTeYbFf0ebymBvO2q5tPDLird1HOYKkg
+	 5epgKK3shIQYw==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id B062215C02C2; Tue, 27 Aug 2024 08:47:38 -0400 (EDT)
+	id B639215C02C6; Tue, 27 Aug 2024 08:47:38 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
+To: Andreas Dilger <adilger@dilger.ca>, Jan Kara <jack@suse.cz>,
+        Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
+        "Luis Henriques (SUSE)" <luis.henriques@linux.dev>
 Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] ext4: don't set SB_RDONLY after filesystem errors
-Date: Tue, 27 Aug 2024 08:47:22 -0400
-Message-ID: <172476284023.635532.9064427382024981891.b4-ty@mit.edu>
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2 0/4] ext4: fix incorrect tid assumptions
+Date: Tue, 27 Aug 2024 08:47:25 -0400
+Message-ID: <172476284020.635532.250077897780132368.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.45.2
-In-Reply-To: <20240805201241.27286-1-jack@suse.cz>
-References: <20240805201241.27286-1-jack@suse.cz>
+In-Reply-To: <20240724161119.13448-1-luis.henriques@linux.dev>
+References: <20240724161119.13448-1-luis.henriques@linux.dev>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,25 +55,26 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Mon, 05 Aug 2024 22:12:41 +0200, Jan Kara wrote:
-> When the filesystem is mounted with errors=remount-ro, we were setting
-> SB_RDONLY flag to stop all filesystem modifications. We knew this misses
-> proper locking (sb->s_umount) and does not go through proper filesystem
-> remount procedure but it has been the way this worked since early ext2
-> days and it was good enough for catastrophic situation damage
-> mitigation. Recently, syzbot has found a way (see link) to trigger
-> warnings in filesystem freezing because the code got confused by
-> SB_RDONLY changing under its hands. Since these days we set
-> EXT4_FLAGS_SHUTDOWN on the superblock which is enough to stop all
-> filesystem modifications, modifying SB_RDONLY shouldn't be needed. So
-> stop doing that.
+On Wed, 24 Jul 2024 17:11:14 +0100, Luis Henriques (SUSE) wrote:
+> As discussed here [1], there are a few places in ext4 and jbd2 code where it
+> is assumed that a tid of '0' is not valid.  Which isn't true.
+> 
+> This small patchset tries to fix (hopefully!) all these places.  Jan Kara
+> had already identified the functions that needed to be fixed.  I believe
+> that the only other issue is the handling of sbi->s_fc_ineligible_tid.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: don't set SB_RDONLY after filesystem errors
-      commit: d3476f3dad4ad68ae5f6b008ea6591d1520da5d8
+[1/4] ext4: fix incorrect tid assumption in ext4_wait_for_tail_page_commit()
+      commit: dd589b0f1445e1ea1085b98edca6e4d5dedb98d0
+[2/4] ext4: fix incorrect tid assumption in __jbd2_log_wait_for_space()
+      commit: 972090651ee15e51abfb2160e986fa050cfc7a40
+[3/4] ext4: fix incorrect tid assumption in jbd2_journal_shrink_checkpoint_list()
+      commit: 7a6443e1dad70281f99f0bd394d7fd342481a632
+[4/4] ext4: fix incorrect tid assumption in ext4_fc_mark_ineligible()
+      commit: ebc4b2c1ac92fc0f8bf3f5a9c285a871d5084a6b
 
 Best regards,
 -- 
