@@ -1,49 +1,48 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A5EED1C32E1
-	for <linux-ext4@vger.kernel.org>; Tue, 27 Aug 2024 12:47:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 65A211C462C
+	for <linux-ext4@vger.kernel.org>; Tue, 27 Aug 2024 12:47:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724762879; cv=none; b=PZLj8kuUbY3s2l3Zi/VI1WbL2DIfPhPwpWe2fyv0F0wy6gKBz5zErUyjFn+A3M7VzxNyTet0ynsxAR31vCxQ0Hr2U7N6ZOoe6OzvHsTDBRtg32WFhZTIsrtUu3Z5vU/j0PvHq5ryrpy566Ut3x/FJSq7yAcEJfZlbUb9hhkp848=
+	t=1724762881; cv=none; b=ffFFvJdp7HyJKt5X14zwsBHrdnZSTF0UyHmajYn0QQ2GY9JO7bNXf4Wokv3jCZr7kfy66OmLeJdOxv7cMAvBaOS1RKce1sV1lEZsBCKEjB6SV6ES0y5gGuZ6zGjGjUAxIPQGdBzVLVH8jkmCfbFNclfINGXtk6/qpnxXYJU6qXI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1724762879; c=relaxed/simple;
-	bh=YMuWxOkb2NOwATeHQR4oFyPhSEVEzdOVjeqSC+oigo8=;
+	s=arc-20240116; t=1724762881; c=relaxed/simple;
+	bh=QJ7zIFY31lkCcAHm0ucVlZlKcMSfL7bKNpyvkzdcIOM=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=HBKWn7I/pQmRZuJfDjr6d4fMifAOzEWU/3jh0sB4g47R0GMX6wPiK2opRFj3KzzfBwgT/66V7AP/LaLAjVIRoXaRXNvowumuzui0PbER2Uaah3KS8zlWBIDi270zE+axX5Na+mzm1LGk17fl+BYQpgaEPXxRia6d/+gMN+kJ2Uk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=LfwYZSNX; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=c0jshpdMJakcAuW0mV6/4hdkCpg1aOiRUtyn1IkA7YqZGx0dXia1w3rQd+ldVCkZLkUvDAsCLUSaccrvWH+ANKaMVffjhM7f5MN1OH9fkkLWFX2yAAy7CqTWnhxJPYMv4pWV6BwVTIbXuvCRmZs8qGPQORteqnXoCAFfc65YgGI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=DOng+Tn5; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="LfwYZSNX"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="DOng+Tn5"
 Received: from cwcc.thunk.org (pool-173-48-112-93.bstnma.fios.verizon.net [173.48.112.93])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 47RClcpp021449
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 47RClfJP021511
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 27 Aug 2024 08:47:40 -0400
+	Tue, 27 Aug 2024 08:47:42 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1724762861; bh=fen4ZU3aF/b0E8Xns2rJygiJI1vRstGMd3LUIA8G0UA=;
+	t=1724762864; bh=KgVLvwVgnSvW9lbOpNjtiCly4AHmvAivyIX/Y/Q3TN8=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=LfwYZSNXCkd2ge0FzPE8jhiqxWRgxT69tF8iF44NWZdoIOxhEkoR5DMyg1/QunFEg
-	 AW8glhTpTATZIkYtY1gW4upD55gLvK6jYpV41ra/SyibRDL0OcYxmHr0V2arTNiB5S
-	 IJ1Atr2hUj6xZaJ+xdn2nSympCB/rG5wtH4BYrhghKrpsDhA43DknG6s2EwQUXWSJV
-	 IKETwC8TLuljkqzCykGFCVp0jSdUtx3n8zb2Sk9zL6970ccV/TMDo/NTnhBeveTKcG
-	 aPDahsr7HyFxjvq81+FjKuhHULV2zX8/MLPf1CfUz8ix1sOMt8iqs9GU0u7jk9iIR6
-	 VfspdrToASOVg==
+	b=DOng+Tn5f7F2t//3P7tqFchr3uYXRD6kcynFwec/V2hjzwe/ha6W8YwcWeqH1z5np
+	 vtrPQDm/Cb1twEh8zyInp1y0948QgVl9B23ZwtteadX61MO9E4EimVxpxxaFLc0Imj
+	 cfHtgpmGkZO1Ogym1vvXDvUEjucgOZtGX180cw9+sQoC73+JZhYwHN9j6uBGml4jDV
+	 p1VU/tsUgqHnMPWDJAp1wgjxoA02EyygzWSliwcU6WXU4jZ9ukRsjZ/ztOpa1VaDQI
+	 3xXksQZioXt3yQ4ew5NwYXOw88K9qKpe6R20z/2/eVnfTQDBbrELNi4joQ2d14YLZH
+	 w6cqiyg5BrJKA==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id B452E15C02C4; Tue, 27 Aug 2024 08:47:38 -0400 (EDT)
+	id BBB7315C1972; Tue, 27 Aug 2024 08:47:38 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Andreas Dilger <adilger@dilger.ca>,
-        "Luis Henriques (SUSE)" <luis.henriques@linux.dev>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: fix access to uninitialised lock in fc replay path
-Date: Tue, 27 Aug 2024 08:47:24 -0400
-Message-ID: <172476284018.635532.5641950219649503079.b4-ty@mit.edu>
+To: linux-kernel@vger.kernel.org, Randy Dunlap <rdunlap@infradead.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Stephen Rothwell <sfr@canb.auug.org.au>,
+        Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] jbd2: fix kernel-doc for j_transaction_overhead_buffers
+Date: Tue, 27 Aug 2024 08:47:28 -0400
+Message-ID: <172476284020.635532.13847870872561422486.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.45.2
-In-Reply-To: <20240718094356.7863-1-luis.henriques@linux.dev>
-References: <20240718094356.7863-1-luis.henriques@linux.dev>
+In-Reply-To: <20240723051647.3053491-1-rdunlap@infradead.org>
+References: <20240723051647.3053491-1-rdunlap@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -54,47 +53,20 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Thu, 18 Jul 2024 10:43:56 +0100, Luis Henriques (SUSE) wrote:
-> The following kernel trace can be triggered with fstest generic/629 when
-> executed against a filesystem with fast-commit feature enabled:
+On Mon, 22 Jul 2024 22:16:47 -0700, Randy Dunlap wrote:
+> Use the correct struct member name in the kernel-doc notation
+> to prevent a kernel-doc build warning.
 > 
-> INFO: trying to register non-static key.
-> The code is fine but needs lockdep annotation, or maybe
-> you didn't initialize this object before use?
-> turning off the locking correctness validator.
-> CPU: 0 PID: 866 Comm: mount Not tainted 6.10.0+ #11
-> Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.16.2-3-gd478f380-prebuilt.qemu.org 04/01/2014
-> Call Trace:
->  <TASK>
->  dump_stack_lvl+0x66/0x90
->  register_lock_class+0x759/0x7d0
->  __lock_acquire+0x85/0x2630
->  ? __find_get_block+0xb4/0x380
->  lock_acquire+0xd1/0x2d0
->  ? __ext4_journal_get_write_access+0xd5/0x160
->  _raw_spin_lock+0x33/0x40
->  ? __ext4_journal_get_write_access+0xd5/0x160
->  __ext4_journal_get_write_access+0xd5/0x160
->  ext4_reserve_inode_write+0x61/0xb0
->  __ext4_mark_inode_dirty+0x79/0x270
->  ? ext4_ext_replay_set_iblocks+0x2f8/0x450
->  ext4_ext_replay_set_iblocks+0x330/0x450
->  ext4_fc_replay+0x14c8/0x1540
->  ? jread+0x88/0x2e0
->  ? rcu_is_watching+0x11/0x40
->  do_one_pass+0x447/0xd00
->  jbd2_journal_recover+0x139/0x1b0
->  jbd2_journal_load+0x96/0x390
->  ext4_load_and_init_journal+0x253/0xd40
->  ext4_fill_super+0x2cc6/0x3180
-> ...
+> include/linux/jbd2.h:1303: warning: Function parameter or struct member 'j_transaction_overhead_buffers' not described in 'journal_s'
+> include/linux/jbd2.h:1303: warning: Excess struct member 'j_transaction_overhead' description in 'journal_s'
+> 
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: fix access to uninitialised lock in fc replay path
-      commit: 23dfdb56581ad92a9967bcd720c8c23356af74c1
+[1/1] jbd2: fix kernel-doc for j_transaction_overhead_buffers
+      commit: 7e8fb2eda9885ea2d13179a4c0bbf810f900ef25
 
 Best regards,
 -- 
