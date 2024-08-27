@@ -1,49 +1,48 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B15741BFE02
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0C2371BFE16
 	for <linux-ext4@vger.kernel.org>; Tue, 27 Aug 2024 12:47:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724762876; cv=none; b=SBXk4sb/U9HtOa1tYxhXwK3BtvRRfWskb4j/sDxoogXAOqOWP1vbuOpp1o2nV/HT9JRBqkAeiX1iUVY08f8u50A5pzL+b81mMCyHwDglhuNItagR3P1Mj0rlASaPz46jns+B7L4KROZuLCkTHNlJsXX7MDpWk+W10AasecxWqcY=
+	t=1724762876; cv=none; b=Yv1gtXVu4HkaAQwA+bq1lSKmBDh+7Ak5dqZLU0NDulAI40jrH2ElrnZByHaOznpIQTZrBNprXYWn65KAYp3MEAnhfdoudNAY1A4gip6yGYQFW6NhPFSpJbj5yvA8bGwjeGYyndA3YqR1vY7Yi9iipQ15maUKghwMafMvI1+rGtA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1724762876; c=relaxed/simple;
-	bh=mHELJVXs7TTiyGNr+hd7btM1rY0XHjZ76L4y7hh0Pq8=;
+	bh=9tEouNA51z43LCLVflWg/9lAy+GYZyS6g17VcMAdXbw=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=Pq3af7WY5+ZEuR+iYG2chzOzt5FUX7E3eKrzgwBBrP9MYpGcWoX/b6hTwTtERjL9yWJca0z2OjVTOh3K3wXrI+6ZkU96AauMHLBVIQmqyLFYeMgQpm26OpBzF2rAgj1UmHOob6eTd2hu/ugshL4t3zzNhsLHYw43vd5n/Chn/NA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=PtKdSb1V; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=O3QXCqdjET5+6qECmNpaHWKuYrHnmi87l2T+IVYQ0o46e1A14SJ/wflMgYidqypt3kUa1eXScidYfMgpNIJDE7xl40NUa85PeIDMKhAVudPxGH7qPjMjhZehuxLA3b1TNwLdi+SJD6fuVJZGm7XELs35J66JZKsFA+AGCB0XxOU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=NWBDdajh; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="PtKdSb1V"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="NWBDdajh"
 Received: from cwcc.thunk.org (pool-173-48-112-93.bstnma.fios.verizon.net [173.48.112.93])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 47RClf3X021539
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 47RClcQ4021448
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 27 Aug 2024 08:47:42 -0400
+	Tue, 27 Aug 2024 08:47:39 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1724762864; bh=iu8i1ABiSX9Dkc12snhpqh3TYZ1/usHouJJFhVEfFkU=;
+	t=1724762860; bh=h3SDb6VQneSRFjXMKyLtXqVsh+UppbIVj+mvFf7itNE=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=PtKdSb1VI6uL1uDk3XNoS/QoBiapTfuauO1Km5Q4dsAv5pYeEQaR6Jl0mowpid39L
-	 BiAaD95FsRRCOgNY3/aMwTQBC2sE9TQX+UNKaI1dkUKnbO1yvNdIbjDF+53E2c+/8O
-	 rl9fYyFXaGlBnNrqze78ManY+b1rOC/bkwof11rifk7DLfrtHvuLpZti43+shfC/9u
-	 IcqJcpNDss2EH9Y/hlyNc88o358zLCr2aZwtMXwv0Uh/js6b1bcnZJ4tam3qxfVD5y
-	 /K7M7ZB13auF1pAh7bPbMfZDQnTKMh+h1MT8pv06zQTnrJGzXA++HacmT8DqPtWQ9f
-	 hN190CoSrQdVw==
+	b=NWBDdajh5piwnLD95rkjR/RK9JwQXadjDSH7IT/C6Y57QvOGVkwFFmAOiBUkmW8Do
+	 xpOr0S7iM0S5cB07TZtipzafwxrQ4v2ifbsfN7zfkW0nOOuUqHZRENYhLGx6lOO5wE
+	 4RGBNUZFwCrn1pUcqtlkArxCeYRPQi0eqdF2yOz64ELHkkRN/GIYNTpynSSKvLFcMQ
+	 RD4IxwT5AHtW5u5YbbNJjHWyBg1XftPG8+EJthNgOezmOUiYsCI8gQ7KFU+kpNfJHv
+	 BSmNOyNsaDkzMoxV9wXGG1qbC5LNjwgimR1xcHtZajGiNJdXVYZ8yySJUbWlwSqMnN
+	 Ut/Rs0t2PhTQg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id C51DF15C1CC9; Tue, 27 Aug 2024 08:47:38 -0400 (EDT)
+	id B062215C02C2; Tue, 27 Aug 2024 08:47:38 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Matthew Wilcox (Oracle)" <willy@infradead.org>
+To: Jan Kara <jack@suse.cz>
 Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Hannes Reinecke <hare@suse.com>
-Subject: Re: [PATCH v2 1/4] ext4: Reduce stack usage in ext4_mpage_readpages()
-Date: Tue, 27 Aug 2024 08:47:33 -0400
-Message-ID: <172476284020.635532.6933318029535354689.b4-ty@mit.edu>
+        Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH] ext4: don't set SB_RDONLY after filesystem errors
+Date: Tue, 27 Aug 2024 08:47:22 -0400
+Message-ID: <172476284023.635532.9064427382024981891.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.45.2
-In-Reply-To: <20240718223005.568869-1-willy@infradead.org>
-References: <20240718223005.568869-1-willy@infradead.org>
+In-Reply-To: <20240805201241.27286-1-jack@suse.cz>
+References: <20240805201241.27286-1-jack@suse.cz>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -54,24 +53,25 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Thu, 18 Jul 2024 23:29:59 +0100, Matthew Wilcox (Oracle) wrote:
-> This function is very similar to do_mpage_readpage() and a similar
-> approach to that taken in commit 12ac5a65cb56 will work.  As in
-> do_mpage_readpage(), we only use this array for checking block contiguity
-> and we can do that more efficiently with a little arithmetic.
+On Mon, 05 Aug 2024 22:12:41 +0200, Jan Kara wrote:
+> When the filesystem is mounted with errors=remount-ro, we were setting
+> SB_RDONLY flag to stop all filesystem modifications. We knew this misses
+> proper locking (sb->s_umount) and does not go through proper filesystem
+> remount procedure but it has been the way this worked since early ext2
+> days and it was good enough for catastrophic situation damage
+> mitigation. Recently, syzbot has found a way (see link) to trigger
+> warnings in filesystem freezing because the code got confused by
+> SB_RDONLY changing under its hands. Since these days we set
+> EXT4_FLAGS_SHUTDOWN on the superblock which is enough to stop all
+> filesystem modifications, modifying SB_RDONLY shouldn't be needed. So
+> stop doing that.
 > 
-> 
+> [...]
 
 Applied, thanks!
 
-[1/4] ext4: Reduce stack usage in ext4_mpage_readpages()
-      commit: e37c9e173bff50a2d57dfecdd694457c00ce5a8c
-[2/4] ext4: Pipeline buffer reads in mext_page_mkuptodate()
-      commit: 368a83cebbb949adbcc20877c35367178497d9cc
-[3/4] ext4: Remove array of buffer_heads from mext_page_mkuptodate()
-      commit: a40759fb16ae839f8c769174fde017564ea564ff
-[4/4] ext4: Tidy the BH loop in mext_page_mkuptodate()
-      commit: 3e3a693551c3e9b45575e94ca2d1d670a47b3fcc
+[1/1] ext4: don't set SB_RDONLY after filesystem errors
+      commit: d3476f3dad4ad68ae5f6b008ea6591d1520da5d8
 
 Best regards,
 -- 
