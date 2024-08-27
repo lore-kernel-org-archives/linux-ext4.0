@@ -1,78 +1,80 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 01BDF155CBD
-	for <linux-ext4@vger.kernel.org>; Tue, 27 Aug 2024 11:07:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43E2E1BCA18
+	for <linux-ext4@vger.kernel.org>; Tue, 27 Aug 2024 12:47:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724756855; cv=none; b=a6JmktLwb8fZik01sd3NZvCPeWprr7DbS/5kkPzWW7trd3CaZ0TVxYNU9KZBPy6d+bbD/s9jpSbA4trtDJwGi8VPz2ALkg3wcqXliAyINfvhmDY/pMVTNQH4K9KVGpmr0SUtqPsBRHCH/C36xPqyvkNurMVfdNWH79qAciyWY+k=
+	t=1724762871; cv=none; b=OlKbHBMezW9ar4m8e9WffJ/FY1b0V614XozFYP+XNVxhXgNRF8HMpbo+WRLQNLQKBuj6goxDZgFkELY43c1Dp0874k0vgefBFezX7EvEGDrk9W8f36KywgRWi+0q+sUEzZKqjotIN/CYc34s2k0PnQ4/s6Ius3nTk0lOKEIou8E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1724756855; c=relaxed/simple;
-	bh=jYRoOxWpfoKZUEqN4PPxjRzVt7jVHzffQ22kkuxINA8=;
-	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=XFdgNi//bYLXF2ty5rvuDd6rz23Nf/s6yHDpD2QlgLKL1yqQeLbw8Rg7X7FGvkSUKrTR0hUteePwo2uxeyjuG1JMzJi4V9ZyTpwD6PO8dfZ2DlLWIvyAnf4+yQEX1Sf2Q08wb+725Kq9cqm9oq3YwlrCtiPFdMz5jf2+t4fBHBw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=YBwPrjlG; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1724762871; c=relaxed/simple;
+	bh=lMUQriP8UMLq/T6yewTOmusJHQkjdcZJHucQ45PVsDI=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=NnExdh02GJFgvTYylAeo/KnWj+dMTsofbHKOtPfaFn01Cn2z470NQxE13YcUsICxxzUQEc2G/t6u4s5L4R7ll69hNgBzDaS7MQiBC4IOr7HtxwTr2i2ZEj22MP2jb96YjkMQCHgYPktMjAZdQK+R9aeYh+hRYPa04khcQSbGAJQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=kISk3PzH; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="YBwPrjlG"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id CCC25C8B7A0
-	for <linux-ext4@vger.kernel.org>; Tue, 27 Aug 2024 11:07:34 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1724756854;
-	bh=jYRoOxWpfoKZUEqN4PPxjRzVt7jVHzffQ22kkuxINA8=;
-	h=From:To:Subject:Date:In-Reply-To:References:From;
-	b=YBwPrjlGMiNopKXeWzLVOkzSXxaaftILmRBzqZ4qyCavlpBN/65L044K5KCrZBSLz
-	 Cb48qNG8DH7sj5e3kuF7No5vgjJfKZowFVBxPLxpshS0gdeIUBeNB7eJhp54NjFa5D
-	 3gx54BBWOaWzSmXKaeaYyvoLh8KlmFFPakJX/FmCii1QSlgf/sdglhP9XShGBLfoWa
-	 9DGvqvKBqqcJz4SfJIIzsP9Smkypm9bsr8TlRNVVeq8GlWA0MhS5hFrI6+pYqBIwmK
-	 u3XKFAomw3sbnPmy0ETnFvqwFTZExElgQOKuVqfGruTnzz4m25rn9zphhjTF3qNnok
-	 +bHs4EfF2JR9A==
-Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
-	id C1AF3C53BBF; Tue, 27 Aug 2024 11:07:34 +0000 (UTC)
-From: bugzilla-daemon@kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 219200] update from 6.11.0-rc1 to 6.11.0-rc5 causes file system
- check every boot
-Date: Tue, 27 Aug 2024 11:07:34 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext2@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext2
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: aros@gmx.com
-X-Bugzilla-Status: RESOLVED
-X-Bugzilla-Resolution: PATCH_ALREADY_AVAILABLE
-X-Bugzilla-Priority: P3
-X-Bugzilla-Assigned-To: fs_ext2@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: bug_status resolution
-Message-ID: <bug-219200-13602-3XzCQJaQYt@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-219200-13602@https.bugzilla.kernel.org/>
-References: <bug-219200-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="kISk3PzH"
+Received: from cwcc.thunk.org (pool-173-48-112-93.bstnma.fios.verizon.net [173.48.112.93])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 47RClftO021551
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Tue, 27 Aug 2024 08:47:42 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1724762863; bh=A6/ygQzAVqdVJxlGWdzzmumNiZui9LuRbVG9Wyw27Vk=;
+	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
+	b=kISk3PzH6GEdxE63kKM36FJhh5xQMG7BXgCiu5sFCeklJDl4HKzUnDRkMMTbDOKqf
+	 CRaWqVNtY7OjES3rKmXPpWa9TREWwPI5yD6EaULvBptEmYo9SW8MGAHT8g+KvVsvlL
+	 N0ezbpVBGxHQML4WKrC0+oU2gMMcfKeN2GHT7+mZLUoRM+mvqWAtlOGBpXx9JucYhZ
+	 UljYlygPyW97Q/MLpUuHwLApx5++59bZw2UgVN+P02FAgFx0zWg7PtZaHyy464y87c
+	 0ATiPUfN4QR2woWwJQA5nKDBkD11tbMpKMdwtupwEKIeiOKDyhKKvxtfTDqRr3+URW
+	 I4rh55eT7wkEA==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+	id C6D7E15C1D08; Tue, 27 Aug 2024 08:47:38 -0400 (EDT)
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        =?UTF-8?q?Wojciech=20G=C5=82adysz?= <wojciech.gladysz@infogain.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Subject: Re: [PATCH] kernel/ext4: nested locking for xattr inode
+Date: Tue, 27 Aug 2024 08:47:34 -0400
+Message-ID: <172476284023.635532.2188826848588011043.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.45.2
+In-Reply-To: <20240801143827.19135-1-wojciech.gladysz@infogain.com>
+References: <20240801143827.19135-1-wojciech.gladysz@infogain.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D219200
 
-Artem S. Tashkinov (aros@gmx.com) changed:
+On Thu, 01 Aug 2024 16:38:27 +0200, Wojciech Gładysz wrote:
+> Add nested locking with I_MUTEX_XATTR subclass to avoid lockdep warning
+> while handling xattr inode on file open syscall at ext4_xattr_inode_iget.
+> 
+> Backtrace
+> EXT4-fs (loop0): Ignoring removed oldalloc option
+> ======================================================
+> WARNING: possible circular locking dependency detected
+> 5.10.0-syzkaller #0 Not tainted
+> ------------------------------------------------------
+> syz-executor543/2794 is trying to acquire lock:
+> ffff8880215e1a48 (&ea_inode->i_rwsem#7/1){+.+.}-{3:3}, at: inode_lock include/linux/fs.h:782 [inline]
+> ffff8880215e1a48 (&ea_inode->i_rwsem#7/1){+.+.}-{3:3}, at: ext4_xattr_inode_iget+0x42a/0x5c0 fs/ext4/xattr.c:425
+> 
+> [...]
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-         Resolution|---                         |PATCH_ALREADY_AVAILABLE
+Applied, thanks!
 
---=20
-You may reply to this email to add a comment.
+[1/1] kernel/ext4: nested locking for xattr inode
+      commit: d1bc560e9a9c78d0b2314692847fc8661e0aeb99
 
-You are receiving this mail because:
-You are watching the assignee of the bug.=
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
