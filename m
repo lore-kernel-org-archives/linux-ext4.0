@@ -1,50 +1,56 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C606E1A01C5
-	for <linux-ext4@vger.kernel.org>; Thu,  5 Sep 2024 14:54:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3E26F1A01C5
+	for <linux-ext4@vger.kernel.org>; Thu,  5 Sep 2024 14:54:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1725548071; cv=none; b=ACVKrRY0KsI0lxpHBK4qiLll53O3yUJipBghBrMVZTu05y6AxErQ+cv68r1AlasKR8P1NJ2d103Tzf3jTLGLVRirfEBdOyKBKWBapmb7L6UTwBVu14zq5sv655KWC8mBNVrONbMDbEmeedBQoFoAhhh0bqFyaOQsqYVonyC6s24=
+	t=1725548073; cv=none; b=jRw+oqXOA4KvqGMjr6Z9CFjgoxa6Slv83M7j4yy1VXibPDXrdPVN/Rtss19l7cRDph5UPLlT6PLG70w84CMQcNrNtOJnU9H2Q5W7K1yA3bsG90uwRUY70AK98s5t6CmSkPpppf3C3dh5jLJBRAzITGTQmEEQ06JkdhI9qm62ASI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1725548071; c=relaxed/simple;
-	bh=V14CJcYvfPKl9Dyj1UEohkgVr1leB7mId7uDrVlxZ+M=;
+	s=arc-20240116; t=1725548073; c=relaxed/simple;
+	bh=hQXOjtem9QT9NkzuckCjeRjdSYhJcKGqfmHQV5n2Xts=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=rBHQqvyo2xo11+GJBpnMEE0eA0hwZY8iMXeaMqRPs0pfhqyuq5KBwz2ItgrccBM5EpUmZmfjo5BBPqVbrFUnccD6W0Bt6TjNYZY4t9LosHPlDkM9/ENqhlfw3E5HIjjYtdcuYPe7hpiCipDdpJC/QsSzXicNYS/CmPSLlZ36NVg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=LUPKQ7Jm; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=KpL+pjmUIj+xFM6Rsl/vIcFP6pICwQwrernJl/QOhOjpfKsAY9TZumO49vnxiZDCBTPgCbzmfoZLwvL8KTdo2sDVEzfg7i67Vk/aYPVcoOU417OGvgjTB4StpsQ4x/Ndv6rbXUNKN4TY1Hso+9cNbKJ/z9bgJ5erJxXp7rGb2OQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=SZ8wiUoc; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="LUPKQ7Jm"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="SZ8wiUoc"
 Received: from cwcc.thunk.org (pool-173-48-102-194.bstnma.fios.verizon.net [173.48.102.194])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 485Erxhn004736
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 485Ers2g004660
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 5 Sep 2024 10:54:00 -0400
+	Thu, 5 Sep 2024 10:53:56 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1725548041; bh=pKlbDCE9K1sa7wnK0pbZ2MfXOKK0I1JnnQcWYxcFKjo=;
+	t=1725548041; bh=dvurbpJwB8Tw+mYM9BXpV2kEkmbOWYuTyKXwPTQf+K4=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=LUPKQ7JmFyJ5kjiOplydNZOb5oUfbrfb+sZqHUkF9yB14PhxdHC79WG8hAsh5X1Ap
-	 PRok2NVp/4k7Q+lIIpKU4lg9MfZoe0V3Bhznw90cHMcssjmjyfd2KNQDCLz815nWnU
-	 pb8BpDXTG5nHDZwCaFK2qbmUTVdf/kIM+aqFC+SXTMvEAZlRj3JM2axm3ZSqfEToUk
-	 wi6NU9RdKEpcnZIXcnlBSAweYJGORfk+6efm4lpU6Co6ptF9YEGsiQL6zwKoU7CeTl
-	 yDDwtEBh+t90qXlIhf9j1q69Cbwxpd7IxY27GxtyRC5MnM3F+STT509k8z3cZh6n7u
-	 /dt6aR0AlHjpA==
+	b=SZ8wiUoc6OsaYUZaBr/28CTxYn8KmxOhfXr4IFkzlBRtJLylgqf9jT5eMkcGzCpu4
+	 CXBeJUnq+51ihqcat13uTXlwLgsdZdnL6/SpWeaiNmHPt5z+Z0DMJcfV4UfvSsVTRj
+	 2qRaTib2Ct/PJ0oLKHc4m3Ms9Oe0MLC5/TJ5NeYMReSRWm/N0YrzXNdeDe6ABGs4UI
+	 idH2b3LKAIUffn3kQ7kB1ZLYRU5qZE9hpPlKIKycjW3FCDs7rNoEKdejAskxouv3an
+	 Tce+f4219T/JqONTk99mOkXhnqu9VJX3uYkavDo6CXQG/pBRO0hmLj8suI8MKAkQ//
+	 pYe3MvYAoGOCQ==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id ED79E15C1D08; Thu, 05 Sep 2024 10:53:54 -0400 (EDT)
+	id DF13615C1942; Thu, 05 Sep 2024 10:53:54 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org, Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca, jack@suse.cz,
-        ritesh.list@gmail.com, yi.zhang@huawei.com, chengzhihao1@huawei.com,
-        yukuai3@huawei.com
-Subject: Re: [PATCH v3 00/12] ext4: simplify the counting and management of delalloc reserved blocks
-Date: Thu,  5 Sep 2024 10:53:49 -0400
-Message-ID: <172554793830.1268668.9236864034882757675.b4-ty@mit.edu>
+To: Gabriel Krisman Bertazi <krisman@suse.de>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Lizhi Xu <lizhi.xu@windriver.com>,
+        adilger.kernel@dilger.ca, coreteam@netfilter.org, davem@davemloft.net,
+        ebiggers@kernel.org, fw@strlen.de, jaegeuk@kernel.org,
+        kadlec@netfilter.org, kuba@kernel.org, linux-ext4@vger.kernel.org,
+        linux-fscrypt@vger.kernel.org, linux-kernel@vger.kernel.org,
+        lkp@intel.com, llvm@lists.linux.dev, netdev@vger.kernel.org,
+        netfilter-devel@vger.kernel.org, oe-kbuild-all@lists.linux.dev,
+        pablo@netfilter.org,
+        syzbot+340581ba9dceb7e06fb3@syzkaller.appspotmail.com,
+        syzkaller-bugs@googlegroups.com
+Subject: Re: [PATCH] ext4: Fix error message when rejecting the default hash
+Date: Thu,  5 Sep 2024 10:53:42 -0400
+Message-ID: <172554793835.1268668.10009711670793037549.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.45.2
-In-Reply-To: <20240813123452.2824659-1-yi.zhang@huaweicloud.com>
-References: <20240813123452.2824659-1-yi.zhang@huaweicloud.com>
+In-Reply-To: <87jzg1en6j.fsf_-_@mailhost.krisman.be>
+References: <87le3kle87.fsf@mailhost.krisman.be> <20240605012335.44086-1-lizhi.xu@windriver.com> <172433877724.370733.16770771071139702263.b4-ty@mit.edu> <87jzg1en6j.fsf_-_@mailhost.krisman.be>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -55,45 +61,26 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Tue, 13 Aug 2024 20:34:40 +0800, Zhang Yi wrote:
-> Changes since v2:
->  - In patch 3, update the chang log as Jan suggested.
->  - In patch 5 and 6, when moving reserved blocks count updating to
->    ext4_es_insert_extent(), chang the condition for determining quota
->    claim by passing allocation information instead of counting used
->    reserved blocks as Jan suggested.
->  - Add patch 9, drop an unused helper ext4_es_store_status().
->  - Add patch 10, make extent status type exclusive, add assertion and
->    commtents as Jan suggested.
+On Tue, 27 Aug 2024 16:16:36 -0400, Gabriel Krisman Bertazi wrote:
+> "Theodore Ts'o" <tytso@mit.edu> writes:
+> 
+> > On Wed, 05 Jun 2024 09:23:35 +0800, Lizhi Xu wrote:
+> >> When mounting the ext4 filesystem, if the default hash version is set to
+> >> DX_HASH_SIPHASH but the casefold feature is not set, exit the mounting.
+> >>
+> >>
+> >
+> > Applied, thanks!
+> >
+> > [1/1] fs/ext4: Filesystem without casefold feature cannot be mounted with spihash
+> >       commit: 985b67cd86392310d9e9326de941c22fc9340eec
 > 
 > [...]
 
 Applied, thanks!
 
-[01/12] ext4: factor out ext4_map_create_blocks() to allocate new blocks
-        commit: 130078d020e0214809f2e13cf4fb80c646020e94
-[02/12] ext4: optimize the EXT4_GET_BLOCKS_DELALLOC_RESERVE flag set
-        commit: 8b8252884f2ff4d28e3ce1a825057b3ad2900c35
-[03/12] ext4: don't set EXTENT_STATUS_DELAYED on allocated blocks
-        commit: eba8c368c8cb9ea05c08caf3dd1a0d0b87d614dc
-[04/12] ext4: let __revise_pending() return newly inserted pendings
-        commit: fccd632670408ab3066712aa90cc972b18d1b617
-[05/12] ext4: passing block allocation information to ext4_es_insert_extent()
-        commit: f3baf33b9cae0e00fe1870abca952d5dfea53dc6
-[06/12] ext4: update delalloc data reserve spcae in ext4_es_insert_extent()
-        commit: c543e2429640293d9eda8c7841d4b5d5e8682826
-[07/12] ext4: drop ext4_es_delayed_clu()
-        commit: 6e124d5b4b02229f8aaa206b1952db31d1687523
-[08/12] ext4: use ext4_map_query_blocks() in ext4_map_blocks()
-        commit: 15996a848564e40a3d030ec7e4603dddb9f425b6
-[09/12] ext4: drop unused ext4_es_store_status()
-        commit: 3b4ba269ab6673d664d2522a0e76797a3550983f
-[10/12] ext4: make extent status types exclusive
-        commit: ce09036ea4f0a54e9dcd7ba644bb1db7cf2d95d4
-[11/12] ext4: drop ext4_es_is_delonly()
-        commit: b224b18497484eef9d2dbb3c803888a3f3a3475e
-[12/12] ext4: drop all delonly descriptions
-        commit: 2046657e64a11b61d5ed07e0d60befd86303125e
+[1/1] ext4: Fix error message when rejecting the default hash
+      commit: a2187431c395cdfbf144e3536f25468c64fc7cfa
 
 Best regards,
 -- 
