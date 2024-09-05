@@ -1,77 +1,115 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.9])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 41C6AF9FE
-	for <linux-ext4@vger.kernel.org>; Thu,  5 Sep 2024 14:56:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 80C231A0737;
+	Thu,  5 Sep 2024 16:32:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=192.198.163.9
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1725548174; cv=none; b=a8uudWD7yoza5OCYbtL/+l5LB3uTFplJ9h/CuR+oBPzV7dqbI58p4hvyt8SGZbTkB5K/olmWGf8DVmvDPWBrFUlOvtFZO8LVeHKbNRWRY29jTv7V/rWvdTvEgNsXztViM7/dAL5/wSvKz3IGDD0SPbddcE4tHB9N/qnhzKy56dc=
+	t=1725553957; cv=none; b=XiZEBZyFdoI3v7+KVjQaXrdwjRBiolLU5IRwplYZbABjrl9FbIlLkG8ncjSW7QgANng4tLpSvPOjOJSq7Su6WATLZaa6XgNlJ//WDyN9vd9f0KkL+LmJx4h4RxxmeILDPq6f/H96KC3Aa1jexOuAmiSLzuRrUblqTi7xekIbTqA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1725548174; c=relaxed/simple;
-	bh=Ya3cBxkk6orVw2MWHjOg8FFcFpxOwiWe/W/gs0aki1U=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=GBY7Xx6HcODubhAKGZY7t7LABJCKg5QQcMx28N1K1SmN3lml9mJPrXhqTL7t4dCpRP30DF/UeXeaeakdpco9Wr7cWa6i0IROuWIhTZAEMQVFhVmydkLBQ1BjfcYK+M5hgwj51IX3jY3WZHXtiEKSez0RPe+R9Abdfao34nwYR8E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Zjezu1hE; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1725553957; c=relaxed/simple;
+	bh=bM8/Aky9cVDTyu6+CHOGv/cduQxzuGgQDvzKsFymVfU=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=gPiCn2mmHITMSXXwv+n+85VMefn7sZogXUjzTV4ZHUF2+pzEen+6nvu1gnegkvvP0tcXW6uLM10c2hqT9S+SK0mdeZHRnguTSO/8DxTm46ojCZvP0bkXXti13wowO1WUbYqduMovJpHnlI2C4JEgkoFZNJXLeIpubZR8zcYlahU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.intel.com; spf=none smtp.mailfrom=linux.intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=bZQ4zSna; arc=none smtp.client-ip=192.198.163.9
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.intel.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=linux.intel.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Zjezu1hE"
-Received: from cwcc.thunk.org (pool-173-48-102-194.bstnma.fios.verizon.net [173.48.102.194])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 485ErsM9004662
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 5 Sep 2024 10:53:56 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1725548038; bh=HSvQunN0IACnXxtuRnogevWBC95tWsgiQrZ2YAw1pak=;
-	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=Zjezu1hEroRBvnodNhcSTPjNt8G6bcMM0vXYA2YqhNtw/KqxzGe07el6Jgi00Mrir
-	 1OPUZESv5E19pHEk2WGOK2l2wLowGleByLmcRk/Y/IZ5F9bn2Kct//rcCZhvOzYGo5
-	 ugHmxcrmedoPH/8Vq+383++miTYD7u64TGjnIX6vjtQt7+aIeYSArry87X/c7etAms
-	 idtPfLeHLhIRhLIIuWgDyH5SRkum++I0+a3Q7wRkz41Dzk96eHeDdUw3giY5VkNYCM
-	 YSjcIEQZnFU7j899vmukcSRm7iSJTv4FzdrISLiSFrRlqiBphW25/wxj3UEah788Jd
-	 mMOVXvM0IhXkA==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id E364515C19A9; Thu, 05 Sep 2024 10:53:54 -0400 (EDT)
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org, Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Ritesh Harjani <ritesh.list@gmail.com>,
-        linux-kernel@vger.kernel.org, Kemeng Shi <shikemeng@huaweicloud.com>,
-        syzbot+1ad8bac5af24d01e2cbd@syzkaller.appspotmail.com
-Subject: Re: [PATCH v3 1/2] ext4: Check stripe size compatibility on remount as well
-Date: Thu,  5 Sep 2024 10:53:44 -0400
-Message-ID: <172554793836.1268668.15514751262481415081.b4-ty@mit.edu>
-X-Mailer: git-send-email 2.45.2
-In-Reply-To: <3a493bb503c3598e25dcfbed2936bb2dff3fece7.1725002410.git.ojaswin@linux.ibm.com>
-References: <3a493bb503c3598e25dcfbed2936bb2dff3fece7.1725002410.git.ojaswin@linux.ibm.com>
+	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="bZQ4zSna"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1725553956; x=1757089956;
+  h=from:to:cc:subject:date:message-id:mime-version:
+   content-transfer-encoding;
+  bh=bM8/Aky9cVDTyu6+CHOGv/cduQxzuGgQDvzKsFymVfU=;
+  b=bZQ4zSnaNTmoIYXtBfjQlI8YTFTOmy0E+MXCJoQEyBYLCum4YWmEQ56g
+   EiMtdujnJ9Y+JxpPaFoC0ih5mmcsZUC/TBZDqx+P2Fs1Vov2k/Y+i6vUc
+   mH178g1qTtWcqnD10vYODq5Y77xYwON2BHfXu4zL8JGqOU4VnesvRRw1b
+   VDMLu2zAYCNwOTg2w4wm/qSDljSoOuznrd2/Pg9mohkIPaDuKWKCjp2hV
+   +m3cTROJsaWpC1lY6EFWWxbuehSunKwx6QK04h1D+Llls1OUF46xjynlk
+   kVtm8QdNCrSF11gHKFGjg1M/RIb325IZPrBEYVF9c+J9X9gZeyEGX3H04
+   w==;
+X-CSE-ConnectionGUID: KGjChtu8R0WwXb6QEt23ow==
+X-CSE-MsgGUID: +8uDIeyjTh+3FXtFzYrmbQ==
+X-IronPort-AV: E=McAfee;i="6700,10204,11186"; a="34952585"
+X-IronPort-AV: E=Sophos;i="6.10,205,1719903600"; 
+   d="scan'208";a="34952585"
+Received: from orviesa009.jf.intel.com ([10.64.159.149])
+  by fmvoesa103.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 05 Sep 2024 09:32:34 -0700
+X-CSE-ConnectionGUID: 5FzCHLL9QUO3km3zapl2Zw==
+X-CSE-MsgGUID: z9pulfogRiSFU0MeIpQb8Q==
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="6.10,205,1719903600"; 
+   d="scan'208";a="65671184"
+Received: from black.fi.intel.com ([10.237.72.28])
+  by orviesa009.jf.intel.com with ESMTP; 05 Sep 2024 09:32:31 -0700
+Received: by black.fi.intel.com (Postfix, from userid 1003)
+	id 347B031E; Thu, 05 Sep 2024 19:32:30 +0300 (EEST)
+From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+To: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	llvm@lists.linux.dev
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Nathan Chancellor <nathan@kernel.org>,
+	Nick Desaulniers <ndesaulniers@google.com>,
+	Bill Wendling <morbo@google.com>,
+	Justin Stitt <justinstitt@google.com>,
+	Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Subject: [PATCH v1 1/1] ext4: Mark ctx_*_flags() with __maybe_unused
+Date: Thu,  5 Sep 2024 19:32:29 +0300
+Message-ID: <20240905163229.140522-1-andriy.shevchenko@linux.intel.com>
+X-Mailer: git-send-email 2.43.0.rc1.1336.g36b5255a03ac
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
+When ctx_set_flags() is unused, it prevents kernel builds
+with clang, `make W=1` and CONFIG_WERROR=y:
 
-On Fri, 30 Aug 2024 12:50:57 +0530, Ojaswin Mujoo wrote:
-> We disable stripe size in __ext4_fill_super if it is not a multiple of
-> the cluster ratio however this check is missed when trying to remount.
-> This can leave us with cases where stripe < cluster_ratio after
-> remount:set making EXT4_B2C(sbi->s_stripe) become 0 that can cause some
-> unforeseen bugs like divide by 0.
-> 
-> Fix that by adding the check in remount path as well.
-> 
-> [...]
+.../ext4/super.c:2120:1: error: unused function 'ctx_set_flags' [-Werror,-Wunused-function]
+ 2120 | EXT4_SET_CTX(flags); /* set only */
+      | ^~~~~~~~~~~~~~~~~~~
 
-Applied, thanks!
+Fix this by marking ctx_*_flags() with __maybe_unused
+(mark both for the sake of symmetry).
 
-[1/2] ext4: Check stripe size compatibility on remount as well
-      commit: ee85e0938aa8f9846d21e4d302c3cf6a2a75110d
-[2/2] ext4: Convert EXT4_B2C(sbi->s_stripe) users to EXT4_NUM_B2C
-      commit: ff2beee206d23f49d022650122f81285849033e4
+See also commit 6863f5643dd7 ("kbuild: allow Clang to find unused static
+inline functions for W=1 build").
 
-Best regards,
+Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+---
+ fs/ext4/super.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e72145c4ae5a..8bbd84c2f3ca 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2095,16 +2095,16 @@ static int ext4_parse_test_dummy_encryption(const struct fs_parameter *param,
+ }
+ 
+ #define EXT4_SET_CTX(name)						\
+-static inline void ctx_set_##name(struct ext4_fs_context *ctx,		\
+-				  unsigned long flag)			\
++static inline __maybe_unused						\
++void ctx_set_##name(struct ext4_fs_context *ctx, unsigned long flag)	\
+ {									\
+ 	ctx->mask_s_##name |= flag;					\
+ 	ctx->vals_s_##name |= flag;					\
+ }
+ 
+ #define EXT4_CLEAR_CTX(name)						\
+-static inline void ctx_clear_##name(struct ext4_fs_context *ctx,	\
+-				    unsigned long flag)			\
++static inline __maybe_unused						\
++void ctx_clear_##name(struct ext4_fs_context *ctx, unsigned long flag)	\
+ {									\
+ 	ctx->mask_s_##name |= flag;					\
+ 	ctx->vals_s_##name &= ~flag;					\
 -- 
-Theodore Ts'o <tytso@mit.edu>
+2.43.0.rc1.1336.g36b5255a03ac
+
