@@ -1,72 +1,72 @@
 Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4B6F417CA0A;
-	Wed, 11 Sep 2024 09:01:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9285815381A;
+	Wed, 11 Sep 2024 09:01:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.158.5
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1726045292; cv=none; b=FlrEnzJ7JYHbx8Eo0wR2CFk4P4UFiXujvoxQbMokwNv7t5VM0wddjd2/5F40F71yOd0HN0PUfcicTO6s1KVG6llesUtd9jQagnq3xUIB3w1dny77VTpbU3kYVyx619mVTk6mX9ApfBRAmyyu58otSDMT5LA+WZqGVfI9odm3eKw=
+	t=1726045292; cv=none; b=HQgFh8QdKYjcj3J2LtxiG3uFgzswi9JgUlZf+Eee2nB/K8Vx1xPHyD+iDYjehlzsneSIbkfyQbmz40rG3chYCMZtnKRhkRtetH6UjEUW8vGm485Y70IKSyQNZoYWUJX29WI+7FuROhsjgCMOTLM+sYj9mUB4gGT75QcXnuMBBaU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1726045292; c=relaxed/simple;
-	bh=jd8FSTGR4XQgbUPpzzHFefpwftEHIkgBoh1yYwPdIXE=;
+	bh=yrID4KohIk6xncNm/NMKEFC1LATH0YC8oNkPsYVr6wo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=lpW3KgiHbi9JpUjpjU47OtDWxOok2vhAm4BRc8kSqs40Xev5jKRxUbo8av5jtz6scf/aifQNONh0IoNhWJkv2jgWHqM0f1QsNv+q326gj6KRBCHtbQ5+gRkCCDW8e/7dMvgM02AdKo5XoT1+dbiQF9863lKmpzMev+0wDIRr9ks=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=ldbJfn3K; arc=none smtp.client-ip=148.163.158.5
+	 MIME-Version; b=eCi+H0IzHJGHd0mmpcFtiHZV3egMvAbqi4UKtz3UhYzOCwDJv4ypwKFQIWEDX4jnmpFYn0vbPE5ghH1GlHyaw9LFhZeOhZ5PUEiAA07tA3RLkgX3sIAxoVH2/UPAjftS7GVYyb2pjvPL24DzzSYriLkIh4r6+TuMtt5+JkTBNzg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=NdzsgZSN; arc=none smtp.client-ip=148.163.158.5
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="ldbJfn3K"
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="NdzsgZSN"
 Received: from pps.filterd (m0353725.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 48B7L9ZF008336;
-	Wed, 11 Sep 2024 09:01:18 GMT
+	by mx0a-001b2d01.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 48AJxktr005571;
+	Wed, 11 Sep 2024 09:01:24 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from
 	:to:cc:subject:date:message-id:in-reply-to:references
-	:mime-version:content-transfer-encoding; s=pp1; bh=MRdPjSH7Wl1rI
-	WISQKQo89B2JKiM+2R/9igZckD2ekw=; b=ldbJfn3KvJZJsqSBL+YY6eEJe08wZ
-	qfE1W5LwFgjDelqdkMOArFZEkbLRitj//oe8s3paw+47gMXRZ7KaNS83xcBkbH6H
-	osCpF+8oPqJWLN1W/wLYCfaqSR2UfwasXAj8q6MW3f4KxDwapRJX8J5euJUVjePD
-	nJ8gvlMCWotPTdl2HTBK/y2Z0X3ojMjMt7x3yrpyXgLdPTI2/J+gWKUS+IM2CnO/
-	ERFr9xXtvhBOdsiY4r9zBmTf8x3C38orNr8/K58Gmr3bUcGdYLP6If54g6GEvxyT
-	Kky3u/edr7ojfUABxWPY8wgVhgmiW0V3i13f8kdtgM1JiNWSOl2m2GGWQ==
+	:mime-version:content-transfer-encoding; s=pp1; bh=Zlmur8TQDlUpV
+	bfQd7mPaUXRtaFk/VFFlbEreuhKxZM=; b=NdzsgZSNZsKaABIJqs5/dharDIzGu
+	CA+1gF+igkePNhhuUk1WE4G7eYH5FS7RH7GnDQlhpVJBb7GBrplkAfLcuLH37yd6
+	EarG/GEjuPSOnoXQTtUm8Y0OAowmkd9Z0Gfcg/jhkvFldd43QEP2Infv1ZH00Pdb
+	BYSH5g+FV/RCRK3koi0PqjZtRH231W2sRemFxy0v9GnJ412siTS/AlYubb1GurF/
+	EpMhDot/qXGqQPwVt5V+lc9f6xksB2ht/A2SRaHpn20HF6yYPf9cg7CPRHJ5Ra8X
+	Zs2X5yIg9YUyqRaLBwyUOvOTFDhLXRof8sVVsLTRniElillBquPaOw2ZQ==
 Received: from pps.reinject (localhost [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 41gd8kmee2-1
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 41gd8kmef2-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 11 Sep 2024 09:01:17 +0000 (GMT)
+	Wed, 11 Sep 2024 09:01:23 +0000 (GMT)
 Received: from m0353725.ppops.net (m0353725.ppops.net [127.0.0.1])
-	by pps.reinject (8.18.0.8/8.18.0.8) with ESMTP id 48B8vNEH018725;
-	Wed, 11 Sep 2024 09:01:17 GMT
+	by pps.reinject (8.18.0.8/8.18.0.8) with ESMTP id 48B91NlZ029094;
+	Wed, 11 Sep 2024 09:01:23 GMT
 Received: from ppma21.wdc07v.mail.ibm.com (5b.69.3da9.ip4.static.sl-reverse.com [169.61.105.91])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 41gd8kmedv-1
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 41gd8kmeeu-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 11 Sep 2024 09:01:16 +0000 (GMT)
+	Wed, 11 Sep 2024 09:01:23 +0000 (GMT)
 Received: from pps.filterd (ppma21.wdc07v.mail.ibm.com [127.0.0.1])
-	by ppma21.wdc07v.mail.ibm.com (8.18.1.2/8.18.1.2) with ESMTP id 48B7To03019847;
-	Wed, 11 Sep 2024 09:01:16 GMT
-Received: from smtprelay05.fra02v.mail.ibm.com ([9.218.2.225])
-	by ppma21.wdc07v.mail.ibm.com (PPS) with ESMTPS id 41h25q0bxf-1
+	by ppma21.wdc07v.mail.ibm.com (8.18.1.2/8.18.1.2) with ESMTP id 48B7CZml019843;
+	Wed, 11 Sep 2024 09:01:22 GMT
+Received: from smtprelay01.fra02v.mail.ibm.com ([9.218.2.227])
+	by ppma21.wdc07v.mail.ibm.com (PPS) with ESMTPS id 41h25q0by2-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 11 Sep 2024 09:01:16 +0000
+	Wed, 11 Sep 2024 09:01:22 +0000
 Received: from smtpav06.fra02v.mail.ibm.com (smtpav06.fra02v.mail.ibm.com [10.20.54.105])
-	by smtprelay05.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 48B91EK345810140
+	by smtprelay01.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 48B91KXN52363670
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Wed, 11 Sep 2024 09:01:14 GMT
+	Wed, 11 Sep 2024 09:01:20 GMT
 Received: from smtpav06.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 37E452004D;
-	Wed, 11 Sep 2024 09:01:14 +0000 (GMT)
+	by IMSVA (Postfix) with ESMTP id 4519120040;
+	Wed, 11 Sep 2024 09:01:20 +0000 (GMT)
 Received: from smtpav06.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 85A5120049;
-	Wed, 11 Sep 2024 09:01:12 +0000 (GMT)
+	by IMSVA (Postfix) with ESMTP id 941312004D;
+	Wed, 11 Sep 2024 09:01:18 +0000 (GMT)
 Received: from li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.in.ibm.com (unknown [9.109.253.82])
 	by smtpav06.fra02v.mail.ibm.com (Postfix) with ESMTP;
-	Wed, 11 Sep 2024 09:01:12 +0000 (GMT)
+	Wed, 11 Sep 2024 09:01:18 +0000 (GMT)
 From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 To: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
 Cc: Ritesh Harjani <ritesh.list@gmail.com>, linux-kernel@vger.kernel.org,
         "Darrick J . Wong" <djwong@kernel.org>, linux-fsdevel@vger.kernel.org,
         John Garry <john.g.garry@oracle.com>, dchinner@redhat.com
-Subject: [RFC 1/5] ext4: add aligned allocation hint in mballoc
-Date: Wed, 11 Sep 2024 14:31:05 +0530
-Message-ID: <3a17d8d55c88799a3af9a7d337f183863912e28e.1726034272.git.ojaswin@linux.ibm.com>
+Subject: [RFC 4/5] ext4: pass lblk and len explicitly to ext4_split_extent*()
+Date: Wed, 11 Sep 2024 14:31:08 +0530
+Message-ID: <35d703d739deafcdd8e57328de0830aecd0bf2e9.1726034272.git.ojaswin@linux.ibm.com>
 X-Mailer: git-send-email 2.43.5
 In-Reply-To: <cover.1726034272.git.ojaswin@linux.ibm.com>
 References: <cover.1726034272.git.ojaswin@linux.ibm.com>
@@ -78,187 +78,193 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-TM-AS-GCONF: 00
-X-Proofpoint-GUID: th1Mj74_lChmgM2Y_8I6D0XwYtNuPs7g
-X-Proofpoint-ORIG-GUID: zQV5Zz-WHZ97A6519km2HUeqhJMxYnl7
+X-Proofpoint-GUID: 5S70imQ3r5t2bIH10SBo5CDtBZWqV4fn
+X-Proofpoint-ORIG-GUID: 4LQc49d_ts3Tozl_qf6CHCdas8lssgye
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.293,Aquarius:18.0.1039,Hydra:6.0.680,FMLib:17.12.60.29
  definitions=2024-09-10_12,2024-09-09_02,2024-09-02_01
 X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
  impostorscore=0 suspectscore=0 clxscore=1015 phishscore=0 spamscore=0
- lowpriorityscore=0 adultscore=0 mlxscore=0 mlxlogscore=999 bulkscore=0
+ lowpriorityscore=0 adultscore=0 mlxscore=0 mlxlogscore=638 bulkscore=0
  malwarescore=0 classifier=spam adjust=0 reason=mlx scancount=1
  engine=8.19.0-2408220000 definitions=main-2409110064
 
-Add support in mballoc for allocating blocks that are aligned
-to a certain power-of-2 offset.
+Since these functions only use the map to determine lblk and len of
+the split, pass them explicitly. This is in preparation for making
+them work with extent size hints cleanly.
 
-1. We define a new flag EXT4_MB_ALIGNED_HINT to indicate that we want
-an aligned allocation. This is just a hint, mballoc tries its best to
-provide aligned blocks but if it can't then it'll fallback to normal
-allocation
-
-2. The alignment is determined by the length of the allocation, for
-example if we ask for 8192 bytes, then the alignment of physical blocks
-will also be 8192 bytes aligned (ie 2 blocks aligned on 4k blocksize).
-
-3. We dont yet support arbitrary alignment. For aligned writes, the
-length/alignment must be power of 2 in blocks, ie for 4k blocksize we
-can get 4k byte aligned, 8k byte aligned, 16k byte aligned ...
-allocation but not 12k byte aligned.
-
-4. We use CR_POWER2_ALIGNED criteria for aligned allocation which by
-design allocates in an aligned manner. Since CR_POWER2_ALIGNED needs the
-ac->ac_g_ex.fe_len to be power of 2, thats where the restriction in
-point 3 above comes from. Since right now aligned allocation support is
-added mainly for atomic writes use case, this restriction should be fine
-since atomic write capable devices usually support only power of 2
-alignments
-
-5. For ease of review enabling inode preallocation support is done in
-upcoming patches and is disabled in this patch.
+No functional change in this patch.
 
 Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/ext4.h              |  2 ++
- fs/ext4/mballoc.c           | 60 +++++++++++++++++++++++++++++++++----
- include/trace/events/ext4.h |  1 +
- 3 files changed, 58 insertions(+), 5 deletions(-)
+ fs/ext4/extents.c | 57 +++++++++++++++++++++++++----------------------
+ 1 file changed, 30 insertions(+), 27 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 8cc15d00e5c8..17964994a049 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -222,6 +222,8 @@ enum criteria {
- /* Avg fragment size rb tree lookup succeeded at least once for
-  * CR_BEST_AVAIL_LEN */
- #define EXT4_MB_CR_BEST_AVAIL_LEN_OPTIMIZED		0x00020000
-+/* The allocation must respect alignment requirements for physical blocks */
-+#define EXT4_MB_HINT_ALIGNED	      	0x40000
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 34e25eee6521..94aeb5b47971 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3347,7 +3347,8 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
+ static struct ext4_ext_path *ext4_split_extent(handle_t *handle,
+ 					       struct inode *inode,
+ 					       struct ext4_ext_path *path,
+-					       struct ext4_map_blocks *map,
++					       ext4_lblk_t lblk,
++					       unsigned int len,
+ 					       int split_flag, int flags,
+ 					       unsigned int *allocated)
+ {
+@@ -3363,7 +3364,7 @@ static struct ext4_ext_path *ext4_split_extent(handle_t *handle,
+ 	ee_len = ext4_ext_get_actual_len(ex);
+ 	unwritten = ext4_ext_is_unwritten(ex);
  
- struct ext4_allocation_request {
- 	/* target inode for block we're allocating */
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index d73e38323879..724905552f3b 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2177,8 +2177,11 @@ static void ext4_mb_use_best_found(struct ext4_allocation_context *ac,
- 	 * user requested originally, we store allocated
- 	 * space in a special descriptor.
- 	 */
--	if (ac->ac_o_ex.fe_len < ac->ac_b_ex.fe_len)
-+	if (ac->ac_o_ex.fe_len < ac->ac_b_ex.fe_len) {
-+		/* Aligned allocation doesn't have preallocation support */
-+		WARN_ON(ac->ac_flags & EXT4_MB_HINT_ALIGNED);
- 		ext4_mb_new_preallocation(ac);
-+	}
+-	if (map->m_lblk + map->m_len < ee_block + ee_len) {
++	if (lblk + len < ee_block + ee_len) {
+ 		split_flag1 = split_flag & EXT4_EXT_MAY_ZEROOUT;
+ 		flags1 = flags | EXT4_GET_BLOCKS_PRE_IO;
+ 		if (unwritten)
+@@ -3372,28 +3373,28 @@ static struct ext4_ext_path *ext4_split_extent(handle_t *handle,
+ 		if (split_flag & EXT4_EXT_DATA_VALID2)
+ 			split_flag1 |= EXT4_EXT_DATA_VALID1;
+ 		path = ext4_split_extent_at(handle, inode, path,
+-				map->m_lblk + map->m_len, split_flag1, flags1);
++				lblk + len, split_flag1, flags1);
+ 		if (IS_ERR(path))
+ 			return path;
+ 		/*
+ 		 * Update path is required because previous ext4_split_extent_at
+ 		 * may result in split of original leaf or extent zeroout.
+ 		 */
+-		path = ext4_find_extent(inode, map->m_lblk, path, flags);
++		path = ext4_find_extent(inode, lblk, path, flags);
+ 		if (IS_ERR(path))
+ 			return path;
+ 		depth = ext_depth(inode);
+ 		ex = path[depth].p_ext;
+ 		if (!ex) {
+ 			EXT4_ERROR_INODE(inode, "unexpected hole at %lu",
+-					(unsigned long) map->m_lblk);
++					(unsigned long) lblk);
+ 			ext4_free_ext_path(path);
+ 			return ERR_PTR(-EFSCORRUPTED);
+ 		}
+ 		unwritten = ext4_ext_is_unwritten(ex);
+ 	}
  
+-	if (map->m_lblk >= ee_block) {
++	if (lblk >= ee_block) {
+ 		split_flag1 = split_flag & EXT4_EXT_DATA_VALID2;
+ 		if (unwritten) {
+ 			split_flag1 |= EXT4_EXT_MARK_UNWRIT1;
+@@ -3401,16 +3402,16 @@ static struct ext4_ext_path *ext4_split_extent(handle_t *handle,
+ 						     EXT4_EXT_MARK_UNWRIT2);
+ 		}
+ 		path = ext4_split_extent_at(handle, inode, path,
+-				map->m_lblk, split_flag1, flags);
++				lblk, split_flag1, flags);
+ 		if (IS_ERR(path))
+ 			return path;
+ 	}
+ 
+ 	if (allocated) {
+-		if (map->m_lblk + map->m_len > ee_block + ee_len)
+-			*allocated = ee_len - (map->m_lblk - ee_block);
++		if (lblk + len > ee_block + ee_len)
++			*allocated = ee_len - (lblk - ee_block);
+ 		else
+-			*allocated = map->m_len;
++			*allocated = len;
+ 	}
+ 	ext4_ext_show_leaf(inode, path);
+ 	return path;
+@@ -3658,8 +3659,8 @@ ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
+ 	}
+ 
+ fallback:
+-	path = ext4_split_extent(handle, inode, path, &split_map, split_flag,
+-				 flags, NULL);
++	path = ext4_split_extent(handle, inode, path, split_map.m_lblk,
++				 split_map.m_len, split_flag, flags, NULL);
+ 	if (IS_ERR(path))
+ 		return path;
+ out:
+@@ -3699,11 +3700,11 @@ ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
+  * allocated pointer. Return an extent path pointer on success, or an error
+  * pointer on failure.
+  */
+-static struct ext4_ext_path *ext4_split_convert_extents(handle_t *handle,
+-					struct inode *inode,
+-					struct ext4_map_blocks *map,
+-					struct ext4_ext_path *path,
+-					int flags, unsigned int *allocated)
++static struct ext4_ext_path *
++ext4_split_convert_extents(handle_t *handle, struct inode *inode,
++			   ext4_lblk_t lblk, unsigned int len,
++			   struct ext4_ext_path *path, int flags,
++			   unsigned int *allocated)
+ {
+ 	ext4_lblk_t eof_block;
+ 	ext4_lblk_t ee_block;
+@@ -3712,12 +3713,12 @@ static struct ext4_ext_path *ext4_split_convert_extents(handle_t *handle,
+ 	int split_flag = 0, depth;
+ 
+ 	ext_debug(inode, "logical block %llu, max_blocks %u\n",
+-		  (unsigned long long)map->m_lblk, map->m_len);
++		  (unsigned long long)lblk, len);
+ 
+ 	eof_block = (EXT4_I(inode)->i_disksize + inode->i_sb->s_blocksize - 1)
+ 			>> inode->i_sb->s_blocksize_bits;
+-	if (eof_block < map->m_lblk + map->m_len)
+-		eof_block = map->m_lblk + map->m_len;
++	if (eof_block < lblk + len)
++		eof_block = lblk + len;
+ 	/*
+ 	 * It is safe to convert extent to initialized via explicit
+ 	 * zeroout only if extent is fully inside i_size or new_size.
+@@ -3737,8 +3738,8 @@ static struct ext4_ext_path *ext4_split_convert_extents(handle_t *handle,
+ 		split_flag |= (EXT4_EXT_MARK_UNWRIT2 | EXT4_EXT_DATA_VALID2);
+ 	}
+ 	flags |= EXT4_GET_BLOCKS_PRE_IO;
+-	return ext4_split_extent(handle, inode, path, map, split_flag, flags,
+-				 allocated);
++	return ext4_split_extent(handle, inode, path, lblk, len, split_flag,
++				 flags, allocated);
  }
  
-@@ -2814,10 +2817,15 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ static struct ext4_ext_path *
+@@ -3773,7 +3774,7 @@ ext4_convert_unwritten_extents_endio(handle_t *handle, struct inode *inode,
+ 			     inode->i_ino, (unsigned long long)ee_block, ee_len,
+ 			     (unsigned long long)map->m_lblk, map->m_len);
+ #endif
+-		path = ext4_split_convert_extents(handle, inode, map, path,
++		path = ext4_split_convert_extents(handle, inode, map->m_lblk, map->m_len, path,
+ 						EXT4_GET_BLOCKS_CONVERT, NULL);
+ 		if (IS_ERR(path))
+ 			return path;
+@@ -3837,8 +3838,9 @@ convert_initialized_extent(handle_t *handle, struct inode *inode,
+ 		  (unsigned long long)ee_block, ee_len);
  
- 	BUG_ON(ac->ac_status == AC_STATUS_FOUND);
+ 	if (ee_block != map->m_lblk || ee_len > map->m_len) {
+-		path = ext4_split_convert_extents(handle, inode, map, path,
+-				EXT4_GET_BLOCKS_CONVERT_UNWRITTEN, NULL);
++		path = ext4_split_convert_extents(
++			handle, inode, map->m_lblk, map->m_len, path,
++			EXT4_GET_BLOCKS_CONVERT_UNWRITTEN, NULL);
+ 		if (IS_ERR(path))
+ 			return path;
  
--	/* first, try the goal */
--	err = ext4_mb_find_by_goal(ac, &e4b);
--	if (err || ac->ac_status == AC_STATUS_FOUND)
--		goto out;
-+	/*
-+	 * first, try the goal. Skip trying goal for aligned allocations since
-+	 * goal determination logic is not alignment aware (yet)
-+	 */
-+	if (!(ac->ac_flags & EXT4_MB_HINT_ALIGNED)) {
-+		err = ext4_mb_find_by_goal(ac, &e4b);
-+		if (err || ac->ac_status == AC_STATUS_FOUND)
-+			goto out;
-+	}
+@@ -3909,8 +3911,9 @@ ext4_ext_handle_unwritten_extents(handle_t *handle, struct inode *inode,
  
- 	if (unlikely(ac->ac_flags & EXT4_MB_HINT_GOAL_ONLY))
- 		goto out;
-@@ -2858,9 +2866,22 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 	 */
- 	if (ac->ac_2order)
- 		cr = CR_POWER2_ALIGNED;
-+	else
-+		WARN_ON_ONCE(ac->ac_g_ex.fe_len > 1 &&
-+			     ac->ac_flags & EXT4_MB_HINT_ALIGNED);
- repeat:
- 	for (; cr < EXT4_MB_NUM_CRS && ac->ac_status == AC_STATUS_CONTINUE; cr++) {
- 		ac->ac_criteria = cr;
-+
-+		if (ac->ac_criteria > CR_POWER2_ALIGNED &&
-+		    ac->ac_flags & EXT4_MB_HINT_ALIGNED &&
-+		    ac->ac_g_ex.fe_len > 1) {
-+			ext4_warning_inode(
-+				ac->ac_inode,
-+				"Aligned allocation not possible, using unaligned allocation");
-+			ac->ac_flags &= ~EXT4_MB_HINT_ALIGNED;
-+		}
-+
+ 	/* get_block() before submitting IO, split the extent */
+ 	if (flags & EXT4_GET_BLOCKS_PRE_IO) {
+-		path = ext4_split_convert_extents(handle, inode, map, path,
+-				flags | EXT4_GET_BLOCKS_CONVERT, allocated);
++		path = ext4_split_convert_extents(
++			handle, inode, map->m_lblk, map->m_len, path,
++			flags | EXT4_GET_BLOCKS_CONVERT, allocated);
+ 		if (IS_ERR(path))
+ 			return path;
  		/*
- 		 * searching for the right group start
- 		 * from the goal value specified
-@@ -2993,6 +3014,24 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 	if (!err && ac->ac_status != AC_STATUS_FOUND && first_err)
- 		err = first_err;
- 
-+	if (ac->ac_flags & EXT4_MB_HINT_ALIGNED && ac->ac_status == AC_STATUS_FOUND) {
-+		ext4_fsblk_t start = ext4_grp_offs_to_block(sb, &ac->ac_b_ex);
-+		ext4_grpblk_t len = EXT4_C2B(sbi, ac->ac_b_ex.fe_len);
-+
-+		if (!len) {
-+			ext4_warning_inode(ac->ac_inode,
-+					   "Expected a non zero len extent");
-+			ac->ac_status = AC_STATUS_BREAK;
-+			goto exit;
-+		}
-+
-+		WARN_ON_ONCE(!is_power_of_2(len));
-+		WARN_ON_ONCE(start % len);
-+		/* We don't support preallocation yet */
-+		WARN_ON_ONCE(ac->ac_b_ex.fe_len != ac->ac_o_ex.fe_len);
-+	}
-+
-+ exit:
- 	mb_debug(sb, "Best len %d, origin len %d, ac_status %u, ac_flags 0x%x, cr %d ret %d\n",
- 		 ac->ac_b_ex.fe_len, ac->ac_o_ex.fe_len, ac->ac_status,
- 		 ac->ac_flags, cr, err);
-@@ -4440,6 +4479,13 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 	if (ac->ac_flags & EXT4_MB_HINT_NOPREALLOC)
- 		return;
- 
-+	/*
-+	 * caller may have strict alignment requirements. In this case, avoid
-+	 * normalization since it is not alignment aware.
-+	 */
-+	if (ac->ac_flags & EXT4_MB_HINT_ALIGNED)
-+		return;
-+
- 	if (ac->ac_flags & EXT4_MB_HINT_GROUP_ALLOC) {
- 		ext4_mb_normalize_group_request(ac);
- 		return ;
-@@ -4794,6 +4840,10 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
- 	if (!(ac->ac_flags & EXT4_MB_HINT_DATA))
- 		return false;
- 
-+	/* using preallocated blocks is not alignment aware. */
-+	if (ac->ac_flags & EXT4_MB_HINT_ALIGNED)
-+		return false;
-+
- 	/*
- 	 * first, try per-file preallocation by searching the inode pa rbtree.
- 	 *
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index cc5e9b7b2b44..05441f87c5d2 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -36,6 +36,7 @@ struct partial_cluster;
- 	{ EXT4_MB_STREAM_ALLOC,		"STREAM_ALLOC" },	\
- 	{ EXT4_MB_USE_ROOT_BLOCKS,	"USE_ROOT_BLKS" },	\
- 	{ EXT4_MB_USE_RESERVED,		"USE_RESV" },		\
-+	{ EXT4_MB_HINT_ALIGNED,		"HINT_ALIGNED" }, \
- 	{ EXT4_MB_STRICT_CHECK,		"STRICT_CHECK" })
- 
- #define show_map_flags(flags) __print_flags(flags, "|",			\
 -- 
 2.43.5
 
