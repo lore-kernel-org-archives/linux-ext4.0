@@ -1,218 +1,117 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from mail-ed1-f42.google.com (mail-ed1-f42.google.com [209.85.208.42])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 975001D67AB;
-	Fri, 13 Sep 2024 10:53:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9523F3716D
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Sep 2024 11:01:23 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.42
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1726224809; cv=none; b=gFNLt8hLhhZXBJQZYEcVMEbKRjpCniJu74ZuIhGNRFDrXmZFycSrC1kaoi8oHsNkZZs/eGZU+b7Sqo3z3W4vwnVn4GBk2Ffk75NXWmwPo69Rmc1Gm3S9FZg7V31TVRavnJOBpbrDheZLOAhi1nb2fvZjkjRQmtWjZ6jeGPLPLbw=
+	t=1726225285; cv=none; b=l0Kewn7QAwo2y/3E8vArAPns+Mrw9vvdU6BDV1keReDYa+d0PnonAmT3yLx2kH+8Idl4wpQdai/DTSrlQnhWqUJN7mCiyezPYH7d/mD0ktpcI7N+CEPsaDw3Qd8Ejk1k0/w2Tva7FXW+aHx00anwct4ivWW51RiWtBikHmQZ9x8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1726224809; c=relaxed/simple;
-	bh=Uc9FxDNdoUWjc+hbZ9UaZylbEv2yZbdiKtk7vYetpkA=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=LMDvRBPX+UIXFFssm9ckhPqbW3E9KvZOWX2PIJupu2Rs4pczCrN+LsfMWZidqCxyxt6XBNL/FKMP0qfXpdDeR806YzOngn6Yuv78+uVttXa8MlVfzN7Z0Pa9WkUak/ojTVQPmRvJOVBRYexWp+Oq2EqIB2Nl1tM6fKavNzubFfA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=2LfT74wn; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=iRo2otEf; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=2LfT74wn; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=iRo2otEf; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1726225285; c=relaxed/simple;
+	bh=6cTHjuS7EBHBD4xtZqJfXECj5rtdnxI2Mext/1qxcOg=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=lCOF59VRjd2Fj9UPOCFzgleqZU7e5MhcnWb0LkjVjOZxPlh2sUVHrGSTLNE3BWRDyCi9ppvsiy7rAWNkkbFu4r67h4IIH6pk8DG7ZBvsxC2CHLMzupom+lhp5q7FKEZVp1372h5vmvdRMNwWbMSUF5C89OgZqUVwAfQ1WtwPRrI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toblux.com; spf=none smtp.mailfrom=toblux.com; dkim=pass (2048-bit key) header.d=toblux-com.20230601.gappssmtp.com header.i=@toblux-com.20230601.gappssmtp.com header.b=3ZFnPrBn; arc=none smtp.client-ip=209.85.208.42
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toblux.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=toblux.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="2LfT74wn";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="iRo2otEf";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="2LfT74wn";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="iRo2otEf"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id AF631219CA;
-	Fri, 13 Sep 2024 10:53:25 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1726224805; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=olF/tjLVnkmEFHRD9cOhZmsPxNvhRvaywZFv/z2JUyc=;
-	b=2LfT74wnCcxzbMz1AWJNwlvHu00UwXPd7bjx9IVWXfUKHtnNYl/62DOI6IkkL9/o+cQrCC
-	DSTX/abF2cLbpS9slYAo8+nxbFd1X7WANdeCATCJ25x8gzuSZA+5YcN6UIQ7RWC0+2i9eo
-	xl1x7/ANJYPp7G8GjzPEZOAnHiQMfqM=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1726224805;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=olF/tjLVnkmEFHRD9cOhZmsPxNvhRvaywZFv/z2JUyc=;
-	b=iRo2otEfgTRtgHfPOYqkkBhtr1dZUZvo32uXzdFtly8mbefzmj0mICZGp0igN6ZTb9N9RX
-	Y2MolsUPOGjYh7Dw==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1726224805; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=olF/tjLVnkmEFHRD9cOhZmsPxNvhRvaywZFv/z2JUyc=;
-	b=2LfT74wnCcxzbMz1AWJNwlvHu00UwXPd7bjx9IVWXfUKHtnNYl/62DOI6IkkL9/o+cQrCC
-	DSTX/abF2cLbpS9slYAo8+nxbFd1X7WANdeCATCJ25x8gzuSZA+5YcN6UIQ7RWC0+2i9eo
-	xl1x7/ANJYPp7G8GjzPEZOAnHiQMfqM=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1726224805;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=olF/tjLVnkmEFHRD9cOhZmsPxNvhRvaywZFv/z2JUyc=;
-	b=iRo2otEfgTRtgHfPOYqkkBhtr1dZUZvo32uXzdFtly8mbefzmj0mICZGp0igN6ZTb9N9RX
-	Y2MolsUPOGjYh7Dw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id A4EC413999;
-	Fri, 13 Sep 2024 10:53:25 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id Eoc7KKUZ5GbtbQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Fri, 13 Sep 2024 10:53:25 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 5CB9EA08EF; Fri, 13 Sep 2024 12:53:10 +0200 (CEST)
-Date: Fri, 13 Sep 2024 12:53:10 +0200
-From: Jan Kara <jack@suse.cz>
-To: Zhaoyang Huang <huangzhaoyang@gmail.com>
-Cc: "zhaoyang.huang" <zhaoyang.huang@unisoc.com>, Jan Kara <jack@suse.cz>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	=?utf-8?B?5bq357qq5ruoIChTdGV2ZSBLYW5nKQ==?= <steve.kang@unisoc.com>
-Subject: Re: [PATCHv3 1/1] fs: ext4: Don't use CMA for buffer_head
-Message-ID: <20240913105310.enqz47nmcn24ux45@quack3>
-References: <20240904075300.1148836-1-zhaoyang.huang@unisoc.com>
- <CAGWkznF0LvqP59edcrs_wxpbUAnK6mZWY-ovE0CPBBXNysUUtg@mail.gmail.com>
+	dkim=pass (2048-bit key) header.d=toblux-com.20230601.gappssmtp.com header.i=@toblux-com.20230601.gappssmtp.com header.b="3ZFnPrBn"
+Received: by mail-ed1-f42.google.com with SMTP id 4fb4d7f45d1cf-5c243ef5237so320794a12.3
+        for <linux-ext4@vger.kernel.org>; Fri, 13 Sep 2024 04:01:23 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=toblux-com.20230601.gappssmtp.com; s=20230601; t=1726225282; x=1726830082; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=b6x+FbPBr6LOLetSJiGWO7sMy2gp7jD6h7M3aIAswxc=;
+        b=3ZFnPrBnyanINfPLnYAtBudE5xd3tCt592o+CnE8XH9GZ4OXdCRiUUKtVbQTFknxwS
+         NkrvTKa2Lxm4GMWstXztXxECMLVUthnDC2tPxe6JCa87j/d4yhqQ8U4w8DDeRJTSj0BN
+         OeGYoiYYmaJ6Bt3y+tQ6WD6GjrG4hvMIC+Ba4fofDZtBY4Eq6bIOvZjElQntm1eabNa2
+         +gLX+mE6vwZoYHTtrtZokHRV+5QtFYwQkjROJgzUZNXIFRU0/muzcLl/gr+VDpgegEMd
+         FRuNPfpIr9E41gOZgjpbYXYgWuRjGhrtiHCWn2saEma+/cAAoxoH0EokIddKWVGt7YDf
+         p37A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1726225282; x=1726830082;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=b6x+FbPBr6LOLetSJiGWO7sMy2gp7jD6h7M3aIAswxc=;
+        b=hBhft3OlgkyXkSAwAOpU/Oh5bY5uZtlJP4F5rYR5HGqnAXy6osWoc5Aeub586mWV1+
+         uVs15bEZl33OSU4KxJqtIST2NF3o60r2iTOb6ry5pW/NsyzsYatrbWa4BTFRrQBHQNnf
+         Vp4s6MtRC/wVugTBkgIRvaLHk9Gv35Zb4v9gyTTU+64QSEnNw/gDIGUP93g2dFJzlz+Y
+         W5K+ymlpM/hv2O3ArxQxMEKiQgvDR+Tp3Ow7kMZ9bEaiki2qENuyq23bPLE1KKlKj3M3
+         Ru48oCdY+2AvjONI0fP6e0OkNMoiYkMs7D9MBeCT3EzbxsHMeOPgsyF7cUK0POz1S68Q
+         V1XA==
+X-Gm-Message-State: AOJu0YyZ16Omf1LbHErjCBz4WwwCihlEEpKeHP3izjK24rZWCfvhf/D5
+	dx1SP04VnJwvhJlVbliAFIajDCRWQUIi3I3WroePDmC7+2HDuurDETGCNQSMI7Y=
+X-Google-Smtp-Source: AGHT+IGIsdWg7O3qlfv6WqCrKkIhGhaWd9vPtXUZRebQ9smyngb4xqLB6yJC4zM5VZ5puQwM7VOsnw==
+X-Received: by 2002:a05:6402:26c3:b0:5c4:bb1:6491 with SMTP id 4fb4d7f45d1cf-5c413e123b3mr1767817a12.3.1726225281653;
+        Fri, 13 Sep 2024 04:01:21 -0700 (PDT)
+Received: from fedora.fritz.box (aftr-62-216-208-245.dynamic.mnet-online.de. [62.216.208.245])
+        by smtp.gmail.com with ESMTPSA id 4fb4d7f45d1cf-5c3ebd51f84sm7459257a12.41.2024.09.13.04.01.20
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 13 Sep 2024 04:01:21 -0700 (PDT)
+From: Thorsten Blum <thorsten.blum@toblux.com>
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	kees@kernel.org,
+	gustavoars@kernel.org
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-hardening@vger.kernel.org,
+	Thorsten Blum <thorsten.blum@toblux.com>
+Subject: [PATCH] ext4: Annotate struct fname with __counted_by()
+Date: Fri, 13 Sep 2024 13:00:14 +0200
+Message-ID: <20240913110013.151331-2-thorsten.blum@toblux.com>
+X-Mailer: git-send-email 2.46.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <CAGWkznF0LvqP59edcrs_wxpbUAnK6mZWY-ovE0CPBBXNysUUtg@mail.gmail.com>
-X-Spam-Score: -3.80
-X-Spamd-Result: default: False [-3.80 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-0.999];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	FREEMAIL_TO(0.00)[gmail.com];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCPT_COUNT_SEVEN(0.00)[8];
-	ARC_NA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	RCVD_COUNT_THREE(0.00)[3];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FUZZY_BLOCKED(0.00)[rspamd.com];
-	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:email]
-X-Spam-Flag: NO
-X-Spam-Level: 
 
-On Fri 13-09-24 10:02:40, Zhaoyang Huang wrote:
-> loop in jan kara
-> 
-> On Wed, Sep 4, 2024 at 3:54 PM zhaoyang.huang <zhaoyang.huang@unisoc.com> wrote:
-> >
-> > From: Zhaoyang Huang <zhaoyang.huang@unisoc.com>
-> >
-> > cma_alloc() keep failed in our system which thanks to a jh->bh->b_page
-> > can not be migrated out of CMA area[1] as the jh has one cp_transaction
-> > pending on it because of j_free > j_max_transaction_buffers[2][3][4][5][6].
-> > We temporarily solve this by launching jbd2_log_do_checkpoint forcefully
-> > somewhere. Since journal is common mechanism to all JFSs and
-> > cp_transaction has a little fewer opportunity to be launched, the
-> > cma_alloc() could be affected under the same scenario. This patch
-> > would like to have buffer_head of ext4 not use CMA pages when doing
-> > sb_getblk.
-> >
-> > [1]
-> > crash_arm64_v8.0.4++> kmem -p|grep ffffff808f0aa150(sb->s_bdev->bd_inode->i_mapping)
-> > fffffffe01a51c00  e9470000 ffffff808f0aa150        3  2 8000000008020 lru,private
-> > fffffffe03d189c0 174627000 ffffff808f0aa150        4  2 2004000000008020 lru,private
-> > fffffffe03d88e00 176238000 ffffff808f0aa150      3f9  2 2008000000008020 lru,private
-> > fffffffe03d88e40 176239000 ffffff808f0aa150        6  2 2008000000008020 lru,private
-> > fffffffe03d88e80 17623a000 ffffff808f0aa150        5  2 2008000000008020 lru,private
-> > fffffffe03d88ec0 17623b000 ffffff808f0aa150        1  2 2008000000008020 lru,private
-> > fffffffe03d88f00 17623c000 ffffff808f0aa150        0  2 2008000000008020 lru,private
-> > fffffffe040e6540 183995000 ffffff808f0aa150      3f4  2 2004000000008020 lru,private
-> >
-> > [2] page -> buffer_head
-> > crash_arm64_v8.0.4++> struct page.private fffffffe01a51c00 -x
-> >       private = 0xffffff802fca0c00
-> >
-> > [3] buffer_head -> journal_head
-> > crash_arm64_v8.0.4++> struct buffer_head.b_private 0xffffff802fca0c00
-> >   b_private = 0xffffff8041338e10,
-> >
-> > [4] journal_head -> b_cp_transaction
-> > crash_arm64_v8.0.4++> struct journal_head.b_cp_transaction 0xffffff8041338e10 -x
-> >   b_cp_transaction = 0xffffff80410f1900,
-> >
-> > [5] transaction_t -> journal
-> > crash_arm64_v8.0.4++> struct transaction_t.t_journal 0xffffff80410f1900 -x
-> >   t_journal = 0xffffff80e70f3000,
-> >
-> > [6] j_free & j_max_transaction_buffers
-> > crash_arm64_v8.0.4++> struct journal_t.j_free,j_max_transaction_buffers 0xffffff80e70f3000 -x
-> >   j_free = 0x3f1,
-> >   j_max_transaction_buffers = 0x100,
-> >
-> > Suggested-by: Theodore Ts'o <tytso@mit.edu>
-> > Signed-off-by: Zhaoyang Huang <zhaoyang.huang@unisoc.com>
+Add the __counted_by compiler attribute to the flexible array member
+name to improve access bounds-checking via CONFIG_UBSAN_BOUNDS and
+CONFIG_FORTIFY_SOURCE.
 
-I think there are better fixes to the problem but as a quick stopgap
-solution I have no problem with this since this is trivial and influences
-only CMA users on ext4. So feel free to add:
+Inline and use struct_size() to calculate the number of bytes to
+allocate for new_fn and remove the local variable len.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Thorsten Blum <thorsten.blum@toblux.com>
+---
+ fs/ext4/dir.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-								Honza
-
-> > ---
-> > v3: switch to use getblk_unmoveable as suggested by Theodore Ts'o
-> > ---
-> > ---
-> >  fs/ext4/inode.c | 9 ++++++++-
-> >  1 file changed, 8 insertions(+), 1 deletion(-)
-> >
-> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > index 941c1c0d5c6e..a0f48840c5c1 100644
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -869,7 +869,14 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
-> >         if (nowait)
-> >                 return sb_find_get_block(inode->i_sb, map.m_pblk);
-> >
-> > -       bh = sb_getblk(inode->i_sb, map.m_pblk);
-> > +       /*
-> > +        * Since bh could introduce extra ref count such as referred by
-> > +        * journal_head etc. Try to avoid using __GFP_MOVABLE here
-> > +        * as it may fail the migration when journal_head remains.
-> > +        */
-> > +       bh = getblk_unmovable(inode->i_sb->s_bdev, map.m_pblk,
-> > +                               inode->i_sb->s_blocksize);
-> > +
-> >         if (unlikely(!bh))
-> >                 return ERR_PTR(-ENOMEM);
-> >         if (map.m_flags & EXT4_MAP_NEW) {
-> > --
-> > 2.25.1
-> >
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index ff4514e4626b..8e7df15bb971 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -408,7 +408,7 @@ struct fname {
+ 	__u32		inode;
+ 	__u8		name_len;
+ 	__u8		file_type;
+-	char		name[];
++	char		name[] __counted_by(name_len);
+ };
+ 
+ /*
+@@ -464,14 +464,13 @@ int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
+ 	struct rb_node **p, *parent = NULL;
+ 	struct fname *fname, *new_fn;
+ 	struct dir_private_info *info;
+-	int len;
+ 
+ 	info = dir_file->private_data;
+ 	p = &info->root.rb_node;
+ 
+ 	/* Create and allocate the fname structure */
+-	len = sizeof(struct fname) + ent_name->len + 1;
+-	new_fn = kzalloc(len, GFP_KERNEL);
++	new_fn = kzalloc(struct_size(new_fn, name, ent_name->len + 1),
++			 GFP_KERNEL);
+ 	if (!new_fn)
+ 		return -ENOMEM;
+ 	new_fn->hash = hash;
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.46.0
+
