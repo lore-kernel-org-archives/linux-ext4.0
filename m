@@ -1,334 +1,123 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from SHSQR01.spreadtrum.com (mx1.unisoc.com [222.66.158.135])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 200DE192594;
-	Tue, 17 Sep 2024 21:29:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A477D6FC5;
+	Wed, 18 Sep 2024 01:28:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=222.66.158.135
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1726608575; cv=none; b=rMjFUtq/PKMDif+xlLTTLN/O7ZdV4yCsNJYzrdeZCOl92Kwb7kWBtKqId6BCPt7WwE+2hFT6Vus5I7lh780ysg/z8TVzcDqnvNLt6YB8ZfzcEZn7p/9W/AR0aYkWvjBLBhHaBCqaq+h6NuKoXu27KwFxpm0UKek0vFBDtp3oe0A=
+	t=1726622925; cv=none; b=fp9tMne4sMnxdMq99xLTu9csw1MZ2mRrZN4eU7iwHe/fPJyo4npvtpObnfDVQG8qnWfkdUqcJs7keqPuC0WrL6GnOEwrfSaJ3hnA4xz+1Sn0nw9R8RzMxjB1myFdoKC/hkb2MR+iYqbvdwv/BHCPvRgoZYEPWVZd+d82zSJD0ow=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1726608575; c=relaxed/simple;
-	bh=U80A2QgmdDQ+lbcvzOnxUMw7XU6PGpCO/xL5QwdtEOY=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=pk3eKGhUJcx8jt1btyxEpD1zIcKPadoznt8Q5jQSCFzZksjv+eLUlLTuE4BTl7uRTxNaPPhm6vdry+h1sOkSmS+gpLZVaaPqGX+mm997XglNZOUaCoczODEKGECOaafOGTqA5I9DXwrx2QQy8QvgGod5Hsv+nlhma9dM05U2anI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=otfEDEWv; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=qTbQNMke; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=otfEDEWv; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=qTbQNMke; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="otfEDEWv";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="qTbQNMke";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="otfEDEWv";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="qTbQNMke"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 3AE55201E0;
-	Tue, 17 Sep 2024 21:29:31 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1726608571; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=qa95/ktdvyh9hNFNrsN46J5FSoqzSObFkyzebALZLcM=;
-	b=otfEDEWvvhCi2pkswdoDo14sv5SIBWEPuecLEzcqT2uZLkiFDeiGORK7bhaUDSgu0Py/q+
-	aNEN+wIy62cGLzNvx5LDO8vnZXs58yP7XW5AHAIW49MrMLfKy2m8IilsK0cxpK8NkcKniI
-	t5yDGKUSmovDgE0UyF5Ry5iJPHDHMos=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1726608571;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=qa95/ktdvyh9hNFNrsN46J5FSoqzSObFkyzebALZLcM=;
-	b=qTbQNMkeVFeVBbigZsOEJIvfqZbn8R5DnEdtUokLOFCXXX0l5lAMiYI63yYDAKDyGuE1YU
-	sx9b3H/K+pjtYyCA==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1726608571; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=qa95/ktdvyh9hNFNrsN46J5FSoqzSObFkyzebALZLcM=;
-	b=otfEDEWvvhCi2pkswdoDo14sv5SIBWEPuecLEzcqT2uZLkiFDeiGORK7bhaUDSgu0Py/q+
-	aNEN+wIy62cGLzNvx5LDO8vnZXs58yP7XW5AHAIW49MrMLfKy2m8IilsK0cxpK8NkcKniI
-	t5yDGKUSmovDgE0UyF5Ry5iJPHDHMos=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1726608571;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=qa95/ktdvyh9hNFNrsN46J5FSoqzSObFkyzebALZLcM=;
-	b=qTbQNMkeVFeVBbigZsOEJIvfqZbn8R5DnEdtUokLOFCXXX0l5lAMiYI63yYDAKDyGuE1YU
-	sx9b3H/K+pjtYyCA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 27B7513AB6;
-	Tue, 17 Sep 2024 21:29:31 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 8TOrCbv06WaiMwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 17 Sep 2024 21:29:31 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 1E39EA0AC2; Tue, 17 Sep 2024 18:50:07 +0200 (CEST)
-Date: Tue, 17 Sep 2024 18:50:07 +0200
-From: Jan Kara <jack@suse.cz>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, tytso@mit.edu,
-	adilger.kernel@dilger.ca, jack@suse.cz, ritesh.list@gmail.com,
-	yi.zhang@huawei.com, chengzhihao1@huawei.com, yukuai3@huawei.com
-Subject: Re: [PATCH v2 01/10] ext4: write out dirty data before dropping pages
-Message-ID: <20240917165007.j5dywaekvnirfffm@quack3>
-References: <20240904062925.716856-1-yi.zhang@huaweicloud.com>
- <20240904062925.716856-2-yi.zhang@huaweicloud.com>
+	s=arc-20240116; t=1726622925; c=relaxed/simple;
+	bh=h6uqLKA0bM7Qsdxx/tRPyXPx0R9jRJ9lBRgpxGwPhAk=;
+	h=From:To:Subject:Date:Message-ID:MIME-Version:Content-Type; b=TyeZ+lwTHhPxplcShpao/laOTcSxXpEtHi0/tFYIUbHjEh/iFtRFeeSBJRVkmnUtva3sBK5M2qEXpsscCzLLwy97m4Am4FFGA8vAe7wTSnr4H0kbTK1CzlBrVbT1qkxOuXWjDu0itKGvin86AUxnU+mgyYCW91RAd/oFfzm0r7M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=unisoc.com; spf=pass smtp.mailfrom=unisoc.com; arc=none smtp.client-ip=222.66.158.135
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=unisoc.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=unisoc.com
+Received: from dlp.unisoc.com ([10.29.3.86])
+	by SHSQR01.spreadtrum.com with ESMTP id 48I1Qmi0082303;
+	Wed, 18 Sep 2024 09:26:48 +0800 (+08)
+	(envelope-from zhaoyang.huang@unisoc.com)
+Received: from SHDLP.spreadtrum.com (bjmbx01.spreadtrum.com [10.0.64.7])
+	by dlp.unisoc.com (SkyGuard) with ESMTPS id 4X7gm55Yjfz2QRv88;
+	Wed, 18 Sep 2024 09:19:17 +0800 (CST)
+Received: from bj03382pcu01.spreadtrum.com (10.0.73.40) by
+ BJMBX01.spreadtrum.com (10.0.64.7) with Microsoft SMTP Server (TLS) id
+ 15.0.1497.23; Wed, 18 Sep 2024 09:26:45 +0800
+From: "zhaoyang.huang" <zhaoyang.huang@unisoc.com>
+To: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.cz>, <linux-ext4@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>,
+        Zhaoyang Huang <huangzhaoyang@gmail.com>, <steve.kang@unisoc.com>
+Subject: [Resend PATCHv3 1/1] fs: ext4: Don't use CMA for buffer_head
+Date: Wed, 18 Sep 2024 09:26:36 +0800
+Message-ID: <20240918012636.1320016-1-zhaoyang.huang@unisoc.com>
+X-Mailer: git-send-email 2.25.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20240904062925.716856-2-yi.zhang@huaweicloud.com>
-X-Spam-Score: -2.30
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	TAGGED_RCPT(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCPT_COUNT_SEVEN(0.00)[11];
-	MIME_TRACE(0.00)[0:+];
-	RCVD_COUNT_THREE(0.00)[3];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,gmail.com,huawei.com];
-	TO_DN_SOME(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FUZZY_BLOCKED(0.00)[rspamd.com];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo]
-X-Spam-Flag: NO
-X-Spam-Level: 
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: SHCAS03.spreadtrum.com (10.0.1.207) To
+ BJMBX01.spreadtrum.com (10.0.64.7)
+X-MAIL:SHSQR01.spreadtrum.com 48I1Qmi0082303
 
-On Wed 04-09-24 14:29:16, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
-> 
-> Current zero range, punch hole and collapse range have a common
-> potential data loss problem. In general, ext4_zero_range(),
-> ext4_collapse_range() and ext4_punch_hold() will discard all page cache
-> of the operation range before converting the extents status. However,
-> the first two functions don't write back dirty data before discarding
-> page cache, and ext4_punch_hold() write back at the very beginning
-> without holding i_rwsem and mapping invalidate lock. Hence, if some bad
-> things (e.g. EIO or ENOMEM) happens just after dropping dirty page
-> cache, the operation will failed but the user's valid data in the dirty
-> page cache will be lost. Fix this by write all dirty data under i_rwsem
-> and mapping invalidate lock before discarding pages.
-> 
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+From: Zhaoyang Huang <zhaoyang.huang@unisoc.com>
 
-I'm not sure this is the direction we want to go. When zeroing / collapsing
-/ punching writing out all the data we are going to remove seems suboptimal
-and we can spend significant time doing work that is mostly unnecessary.
-After all with truncate we also drop pagecache pages and the do on-disk
-modification which can fail.
+cma_alloc() keep failed in our system which thanks to a jh->bh->b_page
+can not be migrated out of CMA area[1] as the jh has one cp_transaction
+pending on it because of j_free > j_max_transaction_buffers[2][3][4][5][6].
+We temporarily solve this by launching jbd2_log_do_checkpoint forcefully
+somewhere. Since journal is common mechanism to all JFSs and
+cp_transaction has a little fewer opportunity to be launched, the
+cma_alloc() could be affected under the same scenario. This patch
+would like to have buffer_head of ext4 not use CMA pages when doing
+sb_getblk.
 
-The case of EIO is in my opinion OK - when there are disk errors, we are
-going to loose data and e2fsck is needed. So protecting with writeout
-against possible damage is pointless. For ENOMEM I agree we should better
-preserve filesystem consistency. Is there some case where we would keep
-filesystem inconsistent on ENOMEM?
+[1]
+crash_arm64_v8.0.4++> kmem -p|grep ffffff808f0aa150(sb->s_bdev->bd_inode->i_mapping)
+fffffffe01a51c00  e9470000 ffffff808f0aa150        3  2 8000000008020 lru,private
+fffffffe03d189c0 174627000 ffffff808f0aa150        4  2 2004000000008020 lru,private
+fffffffe03d88e00 176238000 ffffff808f0aa150      3f9  2 2008000000008020 lru,private
+fffffffe03d88e40 176239000 ffffff808f0aa150        6  2 2008000000008020 lru,private
+fffffffe03d88e80 17623a000 ffffff808f0aa150        5  2 2008000000008020 lru,private
+fffffffe03d88ec0 17623b000 ffffff808f0aa150        1  2 2008000000008020 lru,private
+fffffffe03d88f00 17623c000 ffffff808f0aa150        0  2 2008000000008020 lru,private
+fffffffe040e6540 183995000 ffffff808f0aa150      3f4  2 2004000000008020 lru,private
 
-								Honza
+[2] page -> buffer_head
+crash_arm64_v8.0.4++> struct page.private fffffffe01a51c00 -x
+      private = 0xffffff802fca0c00
 
-> ---
->  fs/ext4/extents.c | 77 +++++++++++++++++------------------------------
->  fs/ext4/inode.c   | 19 +++++-------
->  2 files changed, 36 insertions(+), 60 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index e067f2dd0335..7d5edfa2e630 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4602,6 +4602,24 @@ static long ext4_zero_range(struct file *file, loff_t offset,
->  	if (ret)
->  		goto out_mutex;
->  
-> +	/*
-> +	 * Prevent page faults from reinstantiating pages we have released
-> +	 * from page cache.
-> +	 */
-> +	filemap_invalidate_lock(mapping);
-> +
-> +	ret = ext4_break_layouts(inode);
-> +	if (ret)
-> +		goto out_invalidate_lock;
-> +
-> +	/*
-> +	 * Write data that will be zeroed to preserve them when successfully
-> +	 * discarding page cache below but fail to convert extents.
-> +	 */
-> +	ret = filemap_write_and_wait_range(mapping, start, end - 1);
-> +	if (ret)
-> +		goto out_invalidate_lock;
-> +
->  	/* Preallocate the range including the unaligned edges */
->  	if (partial_begin || partial_end) {
->  		ret = ext4_alloc_file_blocks(file,
-> @@ -4610,7 +4628,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
->  				 round_down(offset, 1 << blkbits)) >> blkbits,
->  				new_size, flags);
->  		if (ret)
-> -			goto out_mutex;
-> +			goto out_invalidate_lock;
->  
->  	}
->  
-> @@ -4619,37 +4637,9 @@ static long ext4_zero_range(struct file *file, loff_t offset,
->  		flags |= (EXT4_GET_BLOCKS_CONVERT_UNWRITTEN |
->  			  EXT4_EX_NOCACHE);
->  
-> -		/*
-> -		 * Prevent page faults from reinstantiating pages we have
-> -		 * released from page cache.
-> -		 */
-> -		filemap_invalidate_lock(mapping);
-> -
-> -		ret = ext4_break_layouts(inode);
-> -		if (ret) {
-> -			filemap_invalidate_unlock(mapping);
-> -			goto out_mutex;
-> -		}
-> -
->  		ret = ext4_update_disksize_before_punch(inode, offset, len);
-> -		if (ret) {
-> -			filemap_invalidate_unlock(mapping);
-> -			goto out_mutex;
-> -		}
-> -
-> -		/*
-> -		 * For journalled data we need to write (and checkpoint) pages
-> -		 * before discarding page cache to avoid inconsitent data on
-> -		 * disk in case of crash before zeroing trans is committed.
-> -		 */
-> -		if (ext4_should_journal_data(inode)) {
-> -			ret = filemap_write_and_wait_range(mapping, start,
-> -							   end - 1);
-> -			if (ret) {
-> -				filemap_invalidate_unlock(mapping);
-> -				goto out_mutex;
-> -			}
-> -		}
-> +		if (ret)
-> +			goto out_invalidate_lock;
->  
->  		/* Now release the pages and zero block aligned part of pages */
->  		truncate_pagecache_range(inode, start, end - 1);
-> @@ -4657,12 +4647,11 @@ static long ext4_zero_range(struct file *file, loff_t offset,
->  
->  		ret = ext4_alloc_file_blocks(file, lblk, max_blocks, new_size,
->  					     flags);
-> -		filemap_invalidate_unlock(mapping);
->  		if (ret)
-> -			goto out_mutex;
-> +			goto out_invalidate_lock;
->  	}
->  	if (!partial_begin && !partial_end)
-> -		goto out_mutex;
-> +		goto out_invalidate_lock;
->  
->  	/*
->  	 * In worst case we have to writeout two nonadjacent unwritten
-> @@ -4675,7 +4664,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
->  	if (IS_ERR(handle)) {
->  		ret = PTR_ERR(handle);
->  		ext4_std_error(inode->i_sb, ret);
-> -		goto out_mutex;
-> +		goto out_invalidate_lock;
->  	}
->  
->  	inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
-> @@ -4694,6 +4683,8 @@ static long ext4_zero_range(struct file *file, loff_t offset,
->  
->  out_handle:
->  	ext4_journal_stop(handle);
-> +out_invalidate_lock:
-> +	filemap_invalidate_unlock(mapping);
->  out_mutex:
->  	inode_unlock(inode);
->  	return ret;
-> @@ -5363,20 +5354,8 @@ static int ext4_collapse_range(struct file *file, loff_t offset, loff_t len)
->  	 * for page size > block size.
->  	 */
->  	ioffset = round_down(offset, PAGE_SIZE);
-> -	/*
-> -	 * Write tail of the last page before removed range since it will get
-> -	 * removed from the page cache below.
-> -	 */
-> -	ret = filemap_write_and_wait_range(mapping, ioffset, offset);
-> -	if (ret)
-> -		goto out_mmap;
-> -	/*
-> -	 * Write data that will be shifted to preserve them when discarding
-> -	 * page cache below. We are also protected from pages becoming dirty
-> -	 * by i_rwsem and invalidate_lock.
-> -	 */
-> -	ret = filemap_write_and_wait_range(mapping, offset + len,
-> -					   LLONG_MAX);
-> +	/* Write out all dirty pages */
-> +	ret = filemap_write_and_wait_range(mapping, ioffset, LLONG_MAX);
->  	if (ret)
->  		goto out_mmap;
->  	truncate_pagecache(inode, ioffset);
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 941c1c0d5c6e..c3d7606a5315 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3957,17 +3957,6 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
->  
->  	trace_ext4_punch_hole(inode, offset, length, 0);
->  
-> -	/*
-> -	 * Write out all dirty pages to avoid race conditions
-> -	 * Then release them.
-> -	 */
-> -	if (mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
-> -		ret = filemap_write_and_wait_range(mapping, offset,
-> -						   offset + length - 1);
-> -		if (ret)
-> -			return ret;
-> -	}
-> -
->  	inode_lock(inode);
->  
->  	/* No need to punch hole beyond i_size */
-> @@ -4021,6 +4010,14 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
->  	if (ret)
->  		goto out_dio;
->  
-> +	/* Write out all dirty pages to avoid race conditions */
-> +	if (mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
-> +		ret = filemap_write_and_wait_range(mapping, offset,
-> +						   offset + length - 1);
-> +		if (ret)
-> +			goto out_dio;
-> +	}
-> +
->  	first_block_offset = round_up(offset, sb->s_blocksize);
->  	last_block_offset = round_down((offset + length), sb->s_blocksize) - 1;
->  
-> -- 
-> 2.39.2
-> 
+[3] buffer_head -> journal_head
+crash_arm64_v8.0.4++> struct buffer_head.b_private 0xffffff802fca0c00
+  b_private = 0xffffff8041338e10,
+
+[4] journal_head -> b_cp_transaction
+crash_arm64_v8.0.4++> struct journal_head.b_cp_transaction 0xffffff8041338e10 -x
+  b_cp_transaction = 0xffffff80410f1900,
+
+[5] transaction_t -> journal
+crash_arm64_v8.0.4++> struct transaction_t.t_journal 0xffffff80410f1900 -x
+  t_journal = 0xffffff80e70f3000,
+
+[6] j_free & j_max_transaction_buffers
+crash_arm64_v8.0.4++> struct journal_t.j_free,j_max_transaction_buffers 0xffffff80e70f3000 -x
+  j_free = 0x3f1,
+  j_max_transaction_buffers = 0x100,
+
+Suggested-by: Theodore Ts'o <tytso@mit.edu>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Zhaoyang Huang <zhaoyang.huang@unisoc.com>
+---
+v3: switch to use getblk_unmoveable as suggested by Theodore Ts'o
+---
+---
+ fs/ext4/inode.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 941c1c0d5c6e..a0f48840c5c1 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -869,7 +869,14 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
+ 	if (nowait)
+ 		return sb_find_get_block(inode->i_sb, map.m_pblk);
+ 
+-	bh = sb_getblk(inode->i_sb, map.m_pblk);
++	/*
++	 * Since bh could introduce extra ref count such as referred by
++	 * journal_head etc. Try to avoid using __GFP_MOVABLE here
++	 * as it may fail the migration when journal_head remains.
++	 */
++	bh = getblk_unmovable(inode->i_sb->s_bdev, map.m_pblk,
++				inode->i_sb->s_blocksize);
++
+ 	if (unlikely(!bh))
+ 		return ERR_PTR(-ENOMEM);
+ 	if (map.m_flags & EXT4_MAP_NEW) {
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.25.1
+
