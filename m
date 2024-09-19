@@ -1,52 +1,56 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 410151A00D4
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Sep 2024 16:06:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2FCF81A0718
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Sep 2024 16:06:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1726762001; cv=none; b=IZYF9WAha6ekUbKwzPrfZdz50BOZTKFvtEL3WSW/dN7yuUAJgzmRVXYj96rJ9J/OX1JBBvS7dZzxriUYSVJgoCddkrIAkU07dJtt4UZllaBIReYEGuFW9h1y6pn6q2CLtwp7TLbkplvRZAw/COgRtsRK7kV5UlQId/wkBxgegYM=
+	t=1726762006; cv=none; b=SDjc+QJFzghlt69e32N/GehbLTXOjEq+hmhHV31Q5gFx0U0FxoWCSfuw+Q7NHLTRdjo+tR75ZjFRapg2kRveUirhRS8T7ZRd6kcHaGmZzuN5B9ddG3c0CmBWq2AVBX6Jsq0jToC0B0RqBcA8PlBWKHvo70BlOifpiOynA7RPqu8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1726762001; c=relaxed/simple;
-	bh=9Qq+iN7PzMYtjCVjfoImaHrZ+BBncjDqQchaIziyS4Y=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type; b=GyuNtRHLgGPc1tzAghawmznREifG/tYFdAFERAxUuslsc8uhbftuvquaJ+un8HoQi81PBlq2Z1zD0N8P8p3/RWlB1TI8DykES5B9ZkK6RFQkVn5Fe4NSkJI+SBzrwFolF+b+9FLvdonXJk8IH5Gx4FBPhvxDWajurtj7kahkl6k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=Y0VtkBUC; arc=none smtp.client-ip=170.10.133.124
+	s=arc-20240116; t=1726762006; c=relaxed/simple;
+	bh=TVOfK/KEvFnMHoMkHjBgKgeBfW812uGd0HtAyR0WnQo=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=CCGXNY4OfG+5wlsIRLi6uJF+j6zn6+nWZR1Lyu0g4ds1Zd7UBOd3+uChGvqB3phztYBKmYggy6hRgeiqoaTEZORD9RU/WL1toAka/vSem1WArbDqHoUajQe0/wpu7BzsHO60H+ddm20bcrnl1fODVdUR5dv+V+5ecsHHf10AzsQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=Ouvf36PG; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Y0VtkBUC"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Ouvf36PG"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1726761999;
+	s=mimecast20190719; t=1726762003;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=21rYFMXb31lvADICgRw9dmiluvbLAQsvS5HBqpSM0e4=;
-	b=Y0VtkBUCHRQIagrF1APRI8Dj/DsViFFIAhTUQ0k/9GhtDeze/6xEWghqTgdM0r7SBDheZU
-	ZLkXnvQmK7RJAxMbiTVodx3sF/R6GDZODveuyU7bLWhaFVCq4nB5uqFOJOLkzHkFwywyI0
-	ZiIqeWrDZymPMqPyxVsNcv8m2qexrGQ=
-Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=J42C6q/FXZPCUSvnSAnn35Rn8chzdx2XnsN02GbHj8A=;
+	b=Ouvf36PG1JTBYu6S5urrQPmgY/rTCWC91U8rqMgftTYesDG6uSTfBt1ooTWxLkyheAuAZ5
+	hWWmgdCzYdne3u+UYHdwZd7lGV3Nx/u6BQ5VvxxYaAkQPtGeyY3g0ZLYiuWiepUGcK3xbc
+	L7h1s5WzzKXTmyMKFF6Q29jlBWkPGVA=
+Received: from mx-prod-mc-01.mail-002.prod.us-west-2.aws.redhat.com
  (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-464-U3qnpmrpMeKr523u27Cxxg-1; Thu,
- 19 Sep 2024 12:06:35 -0400
-X-MC-Unique: U3qnpmrpMeKr523u27Cxxg-1
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-231-wfQAY_bfMzKVfvtJnsgYFg-1; Thu,
+ 19 Sep 2024 12:06:37 -0400
+X-MC-Unique: wfQAY_bfMzKVfvtJnsgYFg-1
 Received: from mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (unknown [10.30.177.17])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id E7A0B1955D47;
-	Thu, 19 Sep 2024 16:06:33 +0000 (UTC)
+	by mx-prod-mc-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 50B971936125;
+	Thu, 19 Sep 2024 16:06:36 +0000 (UTC)
 Received: from bfoster.redhat.com (unknown [10.22.9.175])
-	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 0AF7019560A3;
-	Thu, 19 Sep 2024 16:06:32 +0000 (UTC)
+	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 6590919560A3;
+	Thu, 19 Sep 2024 16:06:35 +0000 (UTC)
 From: Brian Foster <bfoster@redhat.com>
 To: linux-ext4@vger.kernel.org,
 	linux-mm@kvack.org
 Cc: linux-fsdevel@vger.kernel.org,
 	willy@infradead.org
-Subject: [PATCH 0/2] ext4, mm: improve partial inode eof zeroing
-Date: Thu, 19 Sep 2024 12:07:39 -0400
-Message-ID: <20240919160741.208162-1-bfoster@redhat.com>
+Subject: [PATCH 2/2] mm: zero range of eof folio exposed by inode size extension
+Date: Thu, 19 Sep 2024 12:07:41 -0400
+Message-ID: <20240919160741.208162-3-bfoster@redhat.com>
+In-Reply-To: <20240919160741.208162-1-bfoster@redhat.com>
+References: <20240919160741.208162-1-bfoster@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -57,55 +61,89 @@ Content-Type: text/plain
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 3.0 on 10.30.177.17
 
-Hi all,
+On some filesystems, it is currently possible to create a transient
+data inconsistency between pagecache and on-disk state. For example,
+on a 1k block size ext4 filesystem:
 
-I've been poking around at testing zeroing behavior after a couple
-recent enhancements to iomap_zero_range() and fsx[1]. Running [1] on
-ext4 has uncovered a couple issues that I think share responsibility
-between the fs and pagecache.
+$ xfs_io -fc "pwrite 0 2k" -c "mmap 0 4k" -c "mwrite 2k 2k" \
+	  -c "truncate 8k" -c "fiemap -v" -c "pread -v 2k 16" <file>
+...
+ EXT: FILE-OFFSET      BLOCK-RANGE      TOTAL FLAGS
+   0: [0..3]:          17410..17413         4   0x1
+   1: [4..15]:         hole                12
+00000800:  58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58  XXXXXXXXXXXXXXXX
+$ umount <mnt>; mount <dev> <mnt>
+$ xfs_io -c "pread -v 2k 16" <file>
+00000800:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
 
-The details are in the commit logs, but patch 1 updates ext4 to do
-partial eof block zeroing in more cases and patch 2 tweaks
-pagecache_isize_extended() to do eof folio zeroing similar to as is done
-during writeback (i.e., ext4_bio_write_folio(),
-iomap_writepage_handle_eof(), etc.). These kind of overlap, but the fs
-changes handle the case of a block straddling eof (so we're writing to
-disk in that case) and the pagecache changes handle the case of a folio
-straddling eof that might be at least partially hole backed (i.e.
-sub-page block sizes, so we're just clearing pagecache).
+This allocates and writes two 1k blocks, map writes to the post-eof
+portion of the (4k) eof folio, extends the file, and then shows that
+the post-eof data is not cleared before the file size is extended.
+The result is pagecache with a clean and uptodate folio over a hole
+that returns non-zero data. Once reclaimed, pagecache begins to
+return valid data.
 
-Aside from general review, my biggest questions WRT patch 1 are 1.
-whether the journalling bits are handled correctly and 2. whether the
-verity case is handled correctly. I recall seeing verity checks around
-the code and I don't know enough about the feature to quite understand
-why. FWIW, I have run fstests against this using various combinations of
-block size and journalling modes without any regression so far. That
-includes enabling generic/363 [1] for ext4, which afaict is now possible
-with these two proposed changes.
+Some filesystems avoid this problem by flushing the EOF folio before
+inode size extension. This triggers writeback time partial post-eof
+zeroing. XFS explicitly zeroes newly exposed file ranges via
+iomap_zero_range(), but this includes a hack to flush dirty but
+hole-backed folios, which means writeback actually does the zeroing
+in this particular case as well. bcachefs explicitly flushes the eof
+folio on truncate extension to the same effect, but doesn't handle
+the analogous write extension case (i.e., replace "truncate 8k" with
+"pwrite 4k 4k" in the above example command to reproduce the same
+problem on bcachefs). btrfs doesn't seem to support subpage block
+sizes.
 
-WRT patch 2, I originally tested with unconditional zeroing and added
-the dirty check after. This still survives testing, but I'm having
-second thoughts on whether that is correct or introduces a small race
-window between writeback and an i_size update. I guess there's also a
-question of whether the fs or pagecache should be responsible for this,
-but given writeback and truncate_setsize() behavior this seemed fairly
-consistent to me.
+The two main options to avoid this behavior are to either flush or
+do the appropriate zeroing during size extending operations. Zeroing
+is only required when the size change exposes ranges of the file
+that haven't been directly written, such as a write or truncate that
+starts beyond the current eof. The pagecache_isize_extended() helper
+is already used for this particular scenario. It currently cleans
+any pte's for the eof folio to ensure preexisting mappings fault and
+allow the filesystem to take action based on the updated inode size.
+This is required to ensure the folio is fully backed by allocated
+blocks, for example, but this also happens to be the same scenario
+zeroing is required.
 
-Thoughts, reviews, flames appreciated.
+Update pagecache_isize_extended() to zero the post-eof range of the
+eof folio if it is dirty at the time of the size change, since
+writeback now won't have the chance. If non-dirty, the folio has
+either not been written or the post-eof portion was zeroed by
+writeback.
 
-Brian
+Signed-off-by: Brian Foster <bfoster@redhat.com>
+---
+ mm/truncate.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
 
-[1] https://lore.kernel.org/fstests/20240828181534.41054-1-bfoster@redhat.com/
-
-Brian Foster (2):
-  ext4: partial zero eof block on unaligned inode size extension
-  mm: zero range of eof folio exposed by inode size extension
-
- fs/ext4/extents.c |  7 ++++++-
- fs/ext4/inode.c   | 51 +++++++++++++++++++++++++++++++++--------------
- mm/truncate.c     | 15 ++++++++++++++
- 3 files changed, 57 insertions(+), 16 deletions(-)
-
+diff --git a/mm/truncate.c b/mm/truncate.c
+index 0668cd340a46..6e7f3cfb982d 100644
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -797,6 +797,21 @@ void pagecache_isize_extended(struct inode *inode, loff_t from, loff_t to)
+ 	 */
+ 	if (folio_mkclean(folio))
+ 		folio_mark_dirty(folio);
++
++	/*
++	 * The post-eof range of the folio must be zeroed before it is exposed
++	 * to the file. Writeback normally does this, but since i_size has been
++	 * increased we handle it here.
++	 */
++	if (folio_test_dirty(folio)) {
++		unsigned int offset, end;
++
++		offset = from - folio_pos(folio);
++		end = min_t(unsigned int, to - folio_pos(folio),
++			    folio_size(folio));
++		folio_zero_segment(folio, offset, end);
++	}
++
+ 	folio_unlock(folio);
+ 	folio_put(folio);
+ }
 -- 
 2.45.0
 
