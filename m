@@ -1,241 +1,230 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9870C19DFAE
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Sep 2024 12:41:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 342BD12E4A
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Sep 2024 16:06:38 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1726749669; cv=none; b=G4smoOPcPRTe3BSwNogfvUpI+9d4TvZPNBGJpdGqrlKdhiGdJ9ADBrYvZZiJ1Z2aAdH6ebCOLh8yntvFXPzoJpO/z3uBVu0YZQfdVS6gekb6nGu8lIF1tYnbN8B5tZlaJTsGJwDJ1ImnN6z4k+aLcPF6c/B2ocd+k+wHzvUxzo0=
+	t=1726762000; cv=none; b=rB0YMmat8sh/5BCMUJsXSIJrWG08Aqgv14j6gVMfhrb7jOKBECKvQISSeSNfGnQu6WzhIKPWOK4zD3VjRR4k8HLBYF56ebFoGkIIsVoeu0wDUfKcBBWz5/KW70c+ciUoi2TrgkQTuXAzJ9sFBvogyjTgqBf5d0nlbYTtR0eJM5U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1726749669; c=relaxed/simple;
-	bh=x26iYqBoeoZf8GKGmKK3+WLcXQWjkUBKu7A6oBF4hu0=;
-	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
-	 Content-Disposition; b=MDLKo1TEe2jPYAkUMV0cvrQtmh/LlEMSUJB4798s9gIUoo4yUJuHcwZmir1IfY8Qq2o/oCSKOCVUHyKPpOm68DQ83ccNjsKcnERzPaZw2BHmnIaOH9tXp0cnBwwCwvtOpyhxwZXRn3fts2lFSZB9VvWz10XpLphIoaIul8cPbuE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=UN+edTHs; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1726762000; c=relaxed/simple;
+	bh=XEM5F6kFyXLUxyf1vKeQmAjqgM1ZIZmRQvo3zZQoGGY=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=Oz6gYmm6dt99qze4V1F+pivjNimBBzSbqkDT1v2BmVLvf21nTpTVFFou1BvAhiXmTMOlT8/huOqj/n/YiqlDJbIPMNadYBnHBWYcRE/JNbXb+teiLwgX5dIDhq0qt/7NGlJDBRQfuRZVzvEbNohAWwbu1VKPrFzXy6p5WNB/zqU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=B1YeWl7c; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="UN+edTHs"
-Received: from cwcc.thunk.org (pool-108-20-194-30.bstnma.fios.verizon.net [108.20.194.30])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 48JCcmC7000891
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 19 Sep 2024 08:38:49 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1726749530; bh=1oP8nBXnEOv4H0tLtXyba23RZUsaGaX4QZKks4tzHpE=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=UN+edTHslSn7V3FXh5V2nJD6dCOR5Og8+8ngJXunwZwqIsHzeEQwSn3C3wSfKyslj
-	 ifFLjeVtLlHkPaZqXezqcIsceWiT5ceblZFA5l0IS1PPE6SGG6Hldn10i4W9NQ7zMw
-	 WyXFUQOkTAszJYYeA4ygUNd9mOfKUGjeyc7a87oQyy3why6c3eK/c12hj65qGIJcj1
-	 AOIWWfHw/8DUL801/DqBo0qGRZKn4rq7CJpBLRkDLfEpUEY8/ANqhsfDb02sKjK0oG
-	 TmDVJ+mclyX2sHCQE1+RUro/NYiLQn8q35XDzE7IDAzYZZV/79MH2458Q6zvfkImL/
-	 be0oDgHJAM0gQ==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id 1F61A15C19A9; Thu, 19 Sep 2024 08:38:48 -0400 (EDT)
-Date: Thu, 19 Sep 2024 08:38:48 -0400
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-Subject: [GIT PULL] ext4 updates for 6.12-rc1
-Message-ID: <20240919123848.GA1969831@mit.edu>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="B1YeWl7c"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1726761998;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=+Iu9w4/pdlA/C4lnKYiprUYbbck6Hh3XVGFak1anZvk=;
+	b=B1YeWl7cU+EiWvvNpEYIns9nMkqpHp7FNXubUZnhsuJlwtfVxBM1AlY2SfLneFd2tQDdqk
+	4ZV/OClPcBvczrFCMZBvZ08kIIKBbkY05goGt+8JuRjKxsgk+5uX90yWeC/oIT3/P3hMiD
+	nLZa18HKiQh57aKtSPl1ha+A4Tjp224=
+Received: from mx-prod-mc-02.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-336-FDbLKZuHMeKQ0c_FHjUlAQ-1; Thu,
+ 19 Sep 2024 12:06:36 -0400
+X-MC-Unique: FDbLKZuHMeKQ0c_FHjUlAQ-1
+Received: from mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (unknown [10.30.177.17])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-02.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 1F69E1945118;
+	Thu, 19 Sep 2024 16:06:35 +0000 (UTC)
+Received: from bfoster.redhat.com (unknown [10.22.9.175])
+	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 3A0A019560A3;
+	Thu, 19 Sep 2024 16:06:34 +0000 (UTC)
+From: Brian Foster <bfoster@redhat.com>
+To: linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org
+Cc: linux-fsdevel@vger.kernel.org,
+	willy@infradead.org
+Subject: [PATCH 1/2] ext4: partial zero eof block on unaligned inode size extension
+Date: Thu, 19 Sep 2024 12:07:40 -0400
+Message-ID: <20240919160741.208162-2-bfoster@redhat.com>
+In-Reply-To: <20240919160741.208162-1-bfoster@redhat.com>
+References: <20240919160741.208162-1-bfoster@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
+Content-Type: text/plain
 Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.17
 
-The following changes since commit 47ac09b91befbb6a235ab620c32af719f8208399:
+Using mapped writes, it's technically possible to expose stale
+post-eof data on a truncate up operation. Consider the following
+example:
 
-  Linux 6.11-rc4 (2024-08-18 13:17:27 -0700)
+$ xfs_io -fc "pwrite 0 2k" -c "mmap 0 4k" -c "mwrite 2k 2k" \
+	-c "truncate 8k" -c "pread -v 2k 16" <file>
+...
+00000800:  58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58  XXXXXXXXXXXXXXXX
+...
 
-are available in the Git repository at:
+This shows that the post-eof data written via mwrite lands within
+EOF after a truncate up. While this is deliberate of the test case,
+behavior is somewhat unpredictable because writeback does post-eof
+zeroing, and writeback can occur at any time in the background. For
+example, an fsync inserted between the mwrite and truncate causes
+the subsequent read to instead return zeroes. This basically means
+that there is a race window in this situation between any subsequent
+extending operation and writeback that dictates whether post-eof
+data is exposed to the file or zeroed.
 
-  https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus-6.12-rc1
+To prevent this problem, perform partial block zeroing as part of
+the various inode size extending operations that are susceptible to
+it. For truncate extension, zero around the original eof similar to
+how truncate down does partial zeroing of the new eof. For extension
+via writes and fallocate related operations, zero the newly exposed
+range of the file to cover any partial zeroing that must occur at
+the original and new eof blocks.
 
-for you to fetch changes up to ff2beee206d23f49d022650122f81285849033e4:
+Signed-off-by: Brian Foster <bfoster@redhat.com>
+---
+ fs/ext4/extents.c |  7 ++++++-
+ fs/ext4/inode.c   | 51 +++++++++++++++++++++++++++++++++--------------
+ 2 files changed, 42 insertions(+), 16 deletions(-)
 
-  ext4: convert EXT4_B2C(sbi->s_stripe) users to EXT4_NUM_B2C (2024-09-03 22:14:17 -0400)
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index e067f2dd0335..d43a23abf148 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4457,7 +4457,7 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
+ 	int depth = 0;
+ 	struct ext4_map_blocks map;
+ 	unsigned int credits;
+-	loff_t epos;
++	loff_t epos, old_size = i_size_read(inode);
+ 
+ 	BUG_ON(!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS));
+ 	map.m_lblk = offset;
+@@ -4516,6 +4516,11 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
+ 			if (ext4_update_inode_size(inode, epos) & 0x1)
+ 				inode_set_mtime_to_ts(inode,
+ 						      inode_get_ctime(inode));
++			if (epos > old_size) {
++				pagecache_isize_extended(inode, old_size, epos);
++				ext4_zero_partial_blocks(handle, inode,
++						     old_size, epos - old_size);
++			}
+ 		}
+ 		ret2 = ext4_mark_inode_dirty(handle, inode);
+ 		ext4_update_inode_fsync_trans(handle, inode, 1);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 03374dc215d1..c8d5334cecca 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1327,8 +1327,10 @@ static int ext4_write_end(struct file *file,
+ 	folio_unlock(folio);
+ 	folio_put(folio);
+ 
+-	if (old_size < pos && !verity)
++	if (old_size < pos && !verity) {
+ 		pagecache_isize_extended(inode, old_size, pos);
++		ext4_zero_partial_blocks(handle, inode, old_size, pos - old_size);
++	}
+ 	/*
+ 	 * Don't mark the inode dirty under folio lock. First, it unnecessarily
+ 	 * makes the holding time of folio lock longer. Second, it forces lock
+@@ -1443,8 +1445,10 @@ static int ext4_journalled_write_end(struct file *file,
+ 	folio_unlock(folio);
+ 	folio_put(folio);
+ 
+-	if (old_size < pos && !verity)
++	if (old_size < pos && !verity) {
+ 		pagecache_isize_extended(inode, old_size, pos);
++		ext4_zero_partial_blocks(handle, inode, old_size, pos - old_size);
++	}
+ 
+ 	if (size_changed) {
+ 		ret2 = ext4_mark_inode_dirty(handle, inode);
+@@ -3015,7 +3019,8 @@ static int ext4_da_do_write_end(struct address_space *mapping,
+ 	struct inode *inode = mapping->host;
+ 	loff_t old_size = inode->i_size;
+ 	bool disksize_changed = false;
+-	loff_t new_i_size;
++	loff_t new_i_size, zero_len = 0;
++	handle_t *handle;
+ 
+ 	if (unlikely(!folio_buffers(folio))) {
+ 		folio_unlock(folio);
+@@ -3059,18 +3064,21 @@ static int ext4_da_do_write_end(struct address_space *mapping,
+ 	folio_unlock(folio);
+ 	folio_put(folio);
+ 
+-	if (old_size < pos)
++	if (pos > old_size) {
+ 		pagecache_isize_extended(inode, old_size, pos);
++		zero_len = pos - old_size;
++	}
+ 
+-	if (disksize_changed) {
+-		handle_t *handle;
++	if (!disksize_changed && !zero_len)
++		return copied;
+ 
+-		handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
+-		if (IS_ERR(handle))
+-			return PTR_ERR(handle);
+-		ext4_mark_inode_dirty(handle, inode);
+-		ext4_journal_stop(handle);
+-	}
++	handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
++	if (IS_ERR(handle))
++		return PTR_ERR(handle);
++	if (zero_len)
++		ext4_zero_partial_blocks(handle, inode, old_size, zero_len);
++	ext4_mark_inode_dirty(handle, inode);
++	ext4_journal_stop(handle);
+ 
+ 	return copied;
+ }
+@@ -5453,6 +5461,14 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 		}
+ 
+ 		if (attr->ia_size != inode->i_size) {
++			/* attach jbd2 jinode for EOF folio tail zeroing */
++			if (attr->ia_size & (inode->i_sb->s_blocksize - 1) ||
++			    oldsize & (inode->i_sb->s_blocksize - 1)) {
++				error = ext4_inode_attach_jinode(inode);
++				if (error)
++					goto err_out;
++			}
++
+ 			handle = ext4_journal_start(inode, EXT4_HT_INODE, 3);
+ 			if (IS_ERR(handle)) {
+ 				error = PTR_ERR(handle);
+@@ -5463,12 +5479,17 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 				orphan = 1;
+ 			}
+ 			/*
+-			 * Update c/mtime on truncate up, ext4_truncate() will
+-			 * update c/mtime in shrink case below
++			 * Update c/mtime and tail zero the EOF folio on
++			 * truncate up. ext4_truncate() handles the shrink case
++			 * below.
+ 			 */
+-			if (!shrink)
++			if (!shrink) {
+ 				inode_set_mtime_to_ts(inode,
+ 						      inode_set_ctime_current(inode));
++				if (oldsize & (inode->i_sb->s_blocksize - 1))
++					ext4_block_truncate_page(handle,
++							inode->i_mapping, oldsize);
++			}
+ 
+ 			if (shrink)
+ 				ext4_fc_track_range(handle, inode,
+-- 
+2.45.0
 
-NOTE: git will report a merge conflict involving write_begin calls,
-   but just taking the version from the ext4 branch should just work.
-   See the test branch on the ext4.git branch for the test merge that I
-   did my last round of regression tests before sending this pull request.
-
-----------------------------------------------------------------
-Lots of cleanups and bug fixes this cycle, primarily in the block
-allocation, extent management, fast commit, and journalling.
-
-----------------------------------------------------------------
-Artem Sadovnikov (1):
-      ext4: fix i_data_sem unlock order in ext4_ind_migrate()
-
-Baokun Li (26):
-      jbd2: stop waiting for space when jbd2_cleanup_journal_tail() returns error
-      ext4: refactor ext4_ext_rm_idx() to index 'path'
-      ext4: prevent partial update of the extents path
-      ext4: fix slab-use-after-free in ext4_split_extent_at()
-      ext4: avoid use-after-free in ext4_ext_show_leaf()
-      ext4: update orig_path in ext4_find_extent()
-      ext4: aovid use-after-free in ext4_ext_insert_extent()
-      ext4: drop ppath from ext4_ext_replay_update_ex() to avoid double-free
-      ext4: fix double brelse() the buffer of the extents path
-      ext4: add new ext4_ext_path_brelse() helper
-      ext4: propagate errors from ext4_find_extent() in ext4_insert_range()
-      ext4: get rid of ppath in ext4_find_extent()
-      ext4: get rid of ppath in get_ext_path()
-      ext4: get rid of ppath in ext4_ext_create_new_leaf()
-      ext4: get rid of ppath in ext4_ext_insert_extent()
-      ext4: get rid of ppath in ext4_split_extent_at()
-      ext4: get rid of ppath in ext4_force_split_extent_at()
-      ext4: get rid of ppath in ext4_split_extent()
-      ext4: get rid of ppath in ext4_split_convert_extents()
-      ext4: get rid of ppath in ext4_convert_unwritten_extents_endio()
-      ext4: get rid of ppath in ext4_ext_convert_to_initialized()
-      ext4: get rid of ppath in ext4_ext_handle_unwritten_extents()
-      ext4: get rid of ppath in convert_initialized_extent()
-      ext4: refactor ext4_swap_extents() to reuse extents path
-      ext4: make some fast commit functions reuse extents path
-      ext4: save unnecessary indentation in ext4_ext_create_new_leaf()
-
-Edward Adam Davis (1):
-      ext4: no need to continue when the number of entries is 1
-
-Gabriel Krisman Bertazi (1):
-      ext4: fix error message when rejecting the default hash
-
-Jan Kara (1):
-      ext4: don't set SB_RDONLY after filesystem errors
-
-Junchao Sun (1):
-      ext4: adjust the layout of the ext4_inode_info structure to save memory
-
-Kemeng Shi (18):
-      ext4: correct comment of ext4_xattr_cmp
-      ext4: correct comment of ext4_xattr_block_cache_insert
-      ext4: correct comment of h_checksum
-      jbd2: correctly compare tids with tid_geq function in jbd2_fc_begin_commit
-      jbd2: remove dead check in journal_alloc_journal_head
-      jbd2: remove unused return value of jbd2_fc_release_bufs
-      jbd2: remove unneeded kmap for jh_in->b_frozen_data in jbd2_journal_write_metadata_buffer
-      jbd2: remove unneeded done_copy_out variable in jbd2_journal_write_metadata_buffer
-      jbd2: move escape handle to futher improve jbd2_journal_write_metadata_buffer
-      jbd2: correct comment jbd2_mark_journal_empty
-      jbd2: remove unneeded check of ret in jbd2_fc_get_buf
-      ext4: avoid buffer_head leak in ext4_mark_inode_used()
-      ext4: avoid potential buffer_head leak in __ext4_new_inode()
-      ext4: avoid negative min_clusters in find_group_orlov()
-      ext4: remove dead check in __ext4_new_inode()
-      ext4: move checksum length calculation of inode bitmap into ext4_inode_bitmap_csum_[verify/set]() functions
-      ext4: remove unneeded NULL check of buffer_head in ext4_mark_inode_used()
-      ext4: check buffer_verified in advance to avoid unneeded ext4_get_group_info()
-
-Lizhi Xu (1):
-      ext4: filesystems without casefold feature cannot be mounted with siphash
-
-Luis Henriques (SUSE) (6):
-      ext4: fix fast commit inode enqueueing during a full journal commit
-      ext4: fix access to uninitialised lock in fc replay path
-      ext4: fix incorrect tid assumption in ext4_wait_for_tail_page_commit()
-      ext4: fix incorrect tid assumption in __jbd2_log_wait_for_space()
-      ext4: fix incorrect tid assumption in jbd2_journal_shrink_checkpoint_list()
-      ext4: fix incorrect tid assumption in ext4_fc_mark_ineligible()
-
-Markus Elfring (1):
-      ext4: use seq_putc() in two functions
-
-Matthew Wilcox (Oracle) (4):
-      ext4: reduce stack usage in ext4_mpage_readpages()
-      ext4: pipeline buffer reads in mext_page_mkuptodate()
-      ext4: remove array of buffer_heads from mext_page_mkuptodate()
-      ext4: tidy the BH loop in mext_page_mkuptodate()
-
-Ojaswin Mujoo (2):
-      ext4: check stripe size compatibility on remount as well
-      ext4: convert EXT4_B2C(sbi->s_stripe) users to EXT4_NUM_B2C
-
-Randy Dunlap (1):
-      jbd2: fix kernel-doc for j_transaction_overhead_buffers
-
-Shida Zhang (4):
-      ext4: persist the new uptodate buffers in ext4_journalled_zero_new_buffers
-      ext4: hoist ext4_block_write_begin and replace the __block_write_begin
-      ext4: fix a potential assertion failure due to improperly dirtied buffer
-      ext4: remove the special buffer dirty handling in do_journal_get_write_access
-
-Stefan Tauner (1):
-      Documentation: ext4.rst: remove obsolete descriptions of noacl/nouser_xattr options
-
-Thadeu Lima de Souza Cascardo (4):
-      ext4: ext4_search_dir should return a proper error
-      ext4: return error on ext4_find_inline_entry
-      ext4: explicitly exit when ext4_find_inline_entry returns an error
-      ext4: avoid OOB when system.data xattr changes underneath the filesystem
-
-Thorsten Blum (1):
-      ext4: annotate struct ext4_xattr_inode_array with __counted_by()
-
-Wojciech Gładysz (1):
-      ext4: nested locking for xattr inode
-
-Xiaxi Shen (1):
-      ext4: fix timer use-after-free on failed mount
-
-Zhang Yi (12):
-      ext4: factor out ext4_map_create_blocks() to allocate new blocks
-      ext4: optimize the EXT4_GET_BLOCKS_DELALLOC_RESERVE flag set
-      ext4: don't set EXTENT_STATUS_DELAYED on allocated blocks
-      ext4: let __revise_pending() return newly inserted pendings
-      ext4: passing block allocation information to ext4_es_insert_extent()
-      ext4: update delalloc data reserve spcae in ext4_es_insert_extent()
-      ext4: drop ext4_es_delayed_clu()
-      ext4: use ext4_map_query_blocks() in ext4_map_blocks()
-      ext4: drop unused ext4_es_store_status()
-      ext4: make extent status types exclusive
-      ext4: drop ext4_es_is_delonly()
-      ext4: drop all delonly descriptions
-
-Zhihao Cheng (1):
-      ext4: dax: fix overflowing extents beyond inode size when partially writing
-
-carrion bent (1):
-      ext4: fix macro definition error of EXT4_DIRENT_HASH and EXT4_DIRENT_MINOR_HASH
-
-yangerkun (2):
-      ext4: clear EXT4_GROUP_INFO_WAS_TRIMMED_BIT even mount with discard
-      ext4: dax: keep orphan list before truncate overflow allocated blocks
-
-yao.ly (1):
-      ext4: correct encrypted dentry name hash when not casefolded
-
- Documentation/admin-guide/ext4.rst |  10 -
- fs/ext4/bitmap.c                   |   8 +-
- fs/ext4/dir.c                      |  14 +-
- fs/ext4/ext4.h                     |  31 +-
- fs/ext4/extents.c                  | 823 ++++++++++++++++++-----------------
- fs/ext4/extents_status.c           | 240 ++++------
- fs/ext4/extents_status.h           |  28 +-
- fs/ext4/fast_commit.c              |  47 +-
- fs/ext4/file.c                     |  20 +-
- fs/ext4/ialloc.c                   |  35 +-
- fs/ext4/indirect.c                 |   7 -
- fs/ext4/inline.c                   |  46 +-
- fs/ext4/inode.c                    | 292 ++++++-------
- fs/ext4/mballoc.c                  |  25 +-
- fs/ext4/migrate.c                  |   7 +-
- fs/ext4/move_extent.c              |  90 ++--
- fs/ext4/namei.c                    |  16 +-
- fs/ext4/readpage.c                 |  16 +-
- fs/ext4/resize.c                   |   3 +-
- fs/ext4/super.c                    |  65 ++-
- fs/ext4/xattr.c                    |  31 +-
- fs/ext4/xattr.h                    |   7 +-
- fs/jbd2/checkpoint.c               |  21 +-
- fs/jbd2/journal.c                  |  97 ++---
- include/linux/jbd2.h               |   4 +-
- 25 files changed, 989 insertions(+), 994 deletions(-)
