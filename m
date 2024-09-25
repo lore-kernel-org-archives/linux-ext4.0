@@ -1,105 +1,87 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C7B0F22CAC1;
-	Wed, 25 Sep 2024 12:18:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4F1D618CBF7
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Sep 2024 13:36:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1727266683; cv=none; b=EBJ4dqsjHGv2PvPoSAev3nNJUx9J0BgfWiQfJIltTnfIMWAzoU60QYXj2k5/Ck5hDez32oeJxVhVPuxfPV/G8GARmKHIuJy8OpdFVkwvh2Qku8dDyyHQASZkgqXDT3FN0ZKT9nbrVivBV/6tnQKiigj8Z4iKQ/XLH+LlS5OkZTA=
+	t=1727271406; cv=none; b=Kh7DXpHyk/A0IinN9lAwaD2TPLO1Bg9ydjpz81KFf9t2pTXNfUu7rh+5wgzS5mlRHrqE7YTrv8gy4+wB0tOvgYttNB4/D7LSpW1kYE00igHR+E24roknA6a+o3pTZ7Xku64ZDgaYmThnQTDW4OB9Vw9qWdMf43f0Ux4Qyd5RY38=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1727266683; c=relaxed/simple;
-	bh=v2mvxM65+HybBi/a2juuSaSOAdhlM+sU0raG1huyRQ0=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=EbxcpITODuroK+k+2TglvsjsbgJkXcE5bWWc5ib1sgFg0Bplo7T1ti8z2cYZaMgBgl1PvFCI3zoeCtGXtAu+GMXskTZeUbmYX4TLgpQgdA5SvUvuyLz53WOWc4YFHCLZKwKprKBaEdVF5jFG5om6PLuaTwwQdo9yOW5kvTHHlm4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=pZW1mMJm; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1727271406; c=relaxed/simple;
+	bh=qPx6HlnoAnDpwCBcAu31C1DXztXhsVY46wPU1/gsizA=;
+	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=hvS68do6+uo/cZh86GprorvqKv/CFgv3OIdKPUfU09CSSlWKbB4c4HGEt5yQfkJZl5cCJUSPE98E1fJw4Eibf7KXMfqlYCEnV24WF3gyCG5LXy3Mir1kHcuUFFx+gjgrPQHiwLSgCsdXeLAYspgo8fWQDpfojyn1k2RhqQu45EI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=q8nmEjHp; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="pZW1mMJm"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 83540C4CEC7;
-	Wed, 25 Sep 2024 12:18:02 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="q8nmEjHp"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id CB4E3C4CEC3
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Sep 2024 13:36:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1727266683;
-	bh=v2mvxM65+HybBi/a2juuSaSOAdhlM+sU0raG1huyRQ0=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=pZW1mMJmrCG0rdvv3R4Jy9LPHfQ+JZBe8u31hjIyCvcPwo2soGLbW1A33wSNY6Ce5
-	 bMr7G7YfJHeHDsba5vFw7sAC1zsiDy2BS7Tmb7aN0D59kEWWi3+vQ9QrwmYTqGdero
-	 1a5EI0o2FP1iU5EkrCtWsbx9zfVDMnNG/ohU0Gw8bntJDd0mqfyXCWMSuvTB+stZ8i
-	 FkabFcVxiK5z410PRWRwPg9+r0QF517WDf9QF6YLG79Ak6tUmoxlbCWl5WCsXGvJDj
-	 L/QDkRCeghprGR+UiHhKppzx8Kgm+mvJgBg67VQHMVLMiz3zw4pk/pWIMkWfIdLFNN
-	 h6wyWti5rCCng==
-From: Sasha Levin <sashal@kernel.org>
-To: linux-kernel@vger.kernel.org,
-	stable@vger.kernel.org
-Cc: Artem Sadovnikov <ancowi69@gmail.com>,
-	Ritesh Harjani <ritesh.list@gmail.com>,
-	Mikhail Ukhin <mish.uxin2012@yandex.ru>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Sasha Levin <sashal@kernel.org>,
-	adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 6.6 136/139] ext4: fix i_data_sem unlock order in ext4_ind_migrate()
-Date: Wed, 25 Sep 2024 08:09:16 -0400
-Message-ID: <20240925121137.1307574-136-sashal@kernel.org>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20240925121137.1307574-1-sashal@kernel.org>
-References: <20240925121137.1307574-1-sashal@kernel.org>
+	s=k20201202; t=1727271405;
+	bh=qPx6HlnoAnDpwCBcAu31C1DXztXhsVY46wPU1/gsizA=;
+	h=From:To:Subject:Date:In-Reply-To:References:From;
+	b=q8nmEjHppn3hLNEsj/ejovvA7sul9g1N4/+lY6i5okfugzTtLoHJFek5DyKr854hW
+	 lDnMD8vONvcmw8mj4M681tQEX8uBtdaoQ6CHB4v1UYz/vhNvvBoyfkvAFKqHpqTzuS
+	 T+Bp6n7VDBKkRECa/WnPDQ8v/1dNZjmjLeffbD6i5YYfa2/Et/IdEDfBeeKrNzoXta
+	 bLuLkRfBX5BuTuNy8AWQw+lXeQxKk8KXO9cs4DkfX5ukV5nQ2dc71ybX+LQybG1486
+	 J588/LPpgKR9CC3NXjVZiuaMJQt8cF1Y20P/aX+WHCCTcP68T3+Cp6fl9AA+n0KElZ
+	 gdvzFLT0sTkQg==
+Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
+	id BBB85C53BC5; Wed, 25 Sep 2024 13:36:45 +0000 (UTC)
+From: bugzilla-daemon@kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 219306] ext4_truncate() is being called endlessly, all the time
+Date: Wed, 25 Sep 2024 13:36:45 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: low
+X-Bugzilla-Who: linmaxi@gmail.com
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P3
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: 
+Message-ID: <bug-219306-13602-C1RujOPSxt@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-219306-13602@https.bugzilla.kernel.org/>
+References: <bug-219306-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-X-stable-base: Linux 6.6.52
-Content-Transfer-Encoding: 8bit
 
-From: Artem Sadovnikov <ancowi69@gmail.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=3D219306
 
-[ Upstream commit cc749e61c011c255d81b192a822db650c68b313f ]
+--- Comment #3 from Max (linmaxi@gmail.com) ---
+You are right, the printk was causing the problem. I figured it using ftrac=
+e.
+However, I can still see how this problem can arise once there is some
+(necessary) printk called along the call stack of ftruncate(2). Just for
+example, in the function ext4_truncate() there is this code:=20
 
-Fuzzing reports a possible deadlock in jbd2_log_wait_commit.
+if(!(inode->i_state & (I_NEW|I_FREEING)))
+   WARN_ON(!inode_is_locked(inode));
 
-This issue is triggered when an EXT4_IOC_MIGRATE ioctl is set to require
-synchronous updates because the file descriptor is opened with O_SYNC.
-This can lead to the jbd2_journal_stop() function calling
-jbd2_might_wait_for_commit(), potentially causing a deadlock if the
-EXT4_IOC_MIGRATE call races with a write(2) system call.
+WARN_ON is essentially a printk. While it won't be called most of the times,
+once it is, the discussed problem will appear again (until the assertion wo=
+nt
+be true atleast).
 
-This problem only arises when CONFIG_PROVE_LOCKING is enabled. In this
-case, the jbd2_might_wait_for_commit macro locks jbd2_handle in the
-jbd2_journal_stop function while i_data_sem is locked. This triggers
-lockdep because the jbd2_journal_start function might also lock the same
-jbd2_handle simultaneously.
+I will try to fix this.
 
-Found by Linux Verification Center (linuxtesting.org) with syzkaller.
+--=20
+You may reply to this email to add a comment.
 
-Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-Co-developed-by: Mikhail Ukhin <mish.uxin2012@yandex.ru>
-Signed-off-by: Mikhail Ukhin <mish.uxin2012@yandex.ru>
-Signed-off-by: Artem Sadovnikov <ancowi69@gmail.com>
-Rule: add
-Link: https://lore.kernel.org/stable/20240404095000.5872-1-mish.uxin2012%40yandex.ru
-Link: https://patch.msgid.link/20240829152210.2754-1-ancowi69@gmail.com
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/ext4/migrate.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index d98ac2af8199f..a5e1492bbaaa5 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -663,8 +663,8 @@ int ext4_ind_migrate(struct inode *inode)
- 	if (unlikely(ret2 && !ret))
- 		ret = ret2;
- errout:
--	ext4_journal_stop(handle);
- 	up_write(&EXT4_I(inode)->i_data_sem);
-+	ext4_journal_stop(handle);
- out_unlock:
- 	ext4_writepages_up_write(inode->i_sb, alloc_ctx);
- 	return ret;
--- 
-2.43.0
-
+You are receiving this mail because:
+You are watching the assignee of the bug.=
