@@ -1,27 +1,27 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CC37AE555
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DEB57F9DF
 	for <linux-ext4@vger.kernel.org>; Mon, 30 Sep 2024 00:50:36 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1727657439; cv=none; b=I0xZZGuVpg3idySMz2FMs266VohAA3p03FvVTJwhhnYowrQk+ESz+4Ij3FT6wOxr3YoNaimEr4x94effE1o8WHMiGFgAG44a5ggHQxiHGZ+/4v+RV4dHKWJCaONfyL3fT5hdbhaEQDZCYzcyzLleSOlwS3+hdXcd7AoJ9Q52Sbg=
+	t=1727657439; cv=none; b=DXvHBL1eEfsi4CdsUL87gknm54WvdIKBucufq9O5mKN36CEnwwbW5XgbBedkAPtrMa4ThhJ+gUklR0O8Nj8kGMZTxZYN02cy7GvUbIT0E4DJksfrdilZuc/weMraFxbFsIRRhlH9uksb68WWncoGHjj0j+u0WusIkxWpNiYIZLY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1727657439; c=relaxed/simple;
-	bh=CU69TQIJodvKNESe+bhKYe+u/ELAQP50R/+Iw9++fi4=;
+	bh=3XjyZh/YuLZLMN5oR2YU9eY+u4TgIQWZxkf//8hIkXA=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=hdzyEfigwCHT6Ek+/VAHJ6sx+KkIL8R/dMe5Fot/7dr8016l5msaCwEjSxSKGeei5+/0JzKHf+5NYy/Jou1c/e+U9iolVeCKJDUJbwZK0NkQOPrVgWFbDIRylPYQj4x4i1mdo5p5h/lnWb4Vk8FtFd5dWPUIs/fW6MzBapLrLxQ=
+	 MIME-Version; b=aGXRHIegiN8bPbWX9W59MPGDG3wzDUO+HMEELVu0wzMsYxYZNRvtZrtFX1GWmm7zADpI/mk7LAz2jgi76mC1LveIOMs+UMWYOAumQ9GD+/OS3+0MH1UUPTIaVzRNBB5LU+pDY1mFi9H0G4lRdgIBxzUzB1amJAbjvsZajeb/qUo=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4XH2Y46YfFz4f3jdY
-	for <linux-ext4@vger.kernel.org>; Mon, 30 Sep 2024 08:50:16 +0800 (CST)
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4XH2Y53FzLz4f3jdh
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Sep 2024 08:50:17 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 629D21A06D7
+	by mail.maildlp.com (Postfix) with ESMTP id E6CF41A058E
 	for <linux-ext4@vger.kernel.org>; Mon, 30 Sep 2024 08:50:33 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.127.227])
-	by APP4 (Coremail) with SMTP id gCh0CgD3LMnW9flmLxfsCg--.51013S6;
+	by APP4 (Coremail) with SMTP id gCh0CgD3LMnW9flmLxfsCg--.51013S8;
 	Mon, 30 Sep 2024 08:50:33 +0800 (CST)
 From: Ye Bin <yebin@huaweicloud.com>
 To: tytso@mit.edu,
@@ -29,9 +29,9 @@ To: tytso@mit.edu,
 	linux-ext4@vger.kernel.org
 Cc: jack@suse.cz,
 	zhangxiaoxu5@huawei.com
-Subject: [PATCH v2 2/6] jbd2: unified release of buffer_head in do_one_pass()
-Date: Mon, 30 Sep 2024 08:59:38 +0800
-Message-Id: <20240930005942.626942-3-yebin@huaweicloud.com>
+Subject: [PATCH v2 4/6] jbd2: factor out jbd2_do_replay()
+Date: Mon, 30 Sep 2024 08:59:40 +0800
+Message-Id: <20240930005942.626942-5-yebin@huaweicloud.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20240930005942.626942-1-yebin@huaweicloud.com>
 References: <20240930005942.626942-1-yebin@huaweicloud.com>
@@ -42,200 +42,292 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgD3LMnW9flmLxfsCg--.51013S6
-X-Coremail-Antispam: 1UD129KBjvJXoWxAFy8Gr18CFyDGF1xuF1xKrg_yoWrCFyrpw
-	sxGrykuFyqvw1ayas7tFZ8XrWjvF4jyFyUWF1q93Zayw43trnrt34Iqr1ftFW5JFWfZas5
-	XF4rAw1qkw1rKa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUU9Cb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUXw
-	A2048vs2IY020Ec7CjxVAFwI0_JFI_Gr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
-	w2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
-	WxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_
-	GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx
-	0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWU
-	JVW8JwACjcxG0xvY0x0EwIxGrwCY1x0262kKe7AKxVWUAVWUtwCF04k20xvY0x0EwIxGrw
-	CFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE
-	14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2
-	IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxK
-	x2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI
-	0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07jbqXdUUUUU=
+X-CM-TRANSID:gCh0CgD3LMnW9flmLxfsCg--.51013S8
+X-Coremail-Antispam: 1UD129KBjvJXoW3GFyfWF4UKw1xtr18AF47Jwb_yoWxur43pF
+	1Yk390gr909r1IvF1IqFn8XrWag3W2ya4UGF1DCwnaya90yr1aq3s2qr90qFyYyry2vas0
+	gF4rAa4DGw10kr7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUBjb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
+	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
+	rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267
+	AKxVWxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAF
+	wI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2
+	WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkE
+	bVWUJVW8JwACjcxG0xvY0x0EwIxGrwCY1x0262kKe7AKxVWUAVWUtwCF04k20xvY0x0EwI
+	xGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480
+	Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7
+	IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k2
+	6cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxV
+	AFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07jOjjgUUUUU=
 X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 
 From: Ye Bin <yebin10@huawei.com>
 
-Now buffer_head free is very fragmented in do_one_pass(), unified release
-of buffer_head in do_one_pass()
+Factor out jbd2_do_replay() no funtional change.
 
 Signed-off-by: Ye Bin <yebin10@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/recovery.c | 34 +++++++++-------------------------
- 1 file changed, 9 insertions(+), 25 deletions(-)
+ fs/jbd2/recovery.c | 219 +++++++++++++++++++++++----------------------
+ 1 file changed, 110 insertions(+), 109 deletions(-)
 
 diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index 5efbca6a98c4..0adf0cb31a03 100644
+index 0d697979d83e..046744d6239c 100644
 --- a/fs/jbd2/recovery.c
 +++ b/fs/jbd2/recovery.c
-@@ -493,7 +493,7 @@ static int do_one_pass(journal_t *journal,
- 	int			err, success = 0;
- 	journal_superblock_t *	sb;
- 	journal_header_t *	tmp;
--	struct buffer_head *	bh;
-+	struct buffer_head	*bh = NULL;
+@@ -485,6 +485,105 @@ static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
+ 		return tag->t_checksum == cpu_to_be16(csum32);
+ }
+ 
++static __always_inline int jbd2_do_replay(journal_t *journal,
++					  struct recovery_info *info,
++					  struct buffer_head *bh,
++					  unsigned long *next_log_block,
++					  unsigned int next_commit_ID,
++					  int *success, int *block_error)
++{
++	char *tagp;
++	int flags;
++	int err;
++	int tag_bytes = journal_tag_bytes(journal);
++	int descr_csum_size = 0;
++	unsigned long io_block;
++	journal_block_tag_t tag;
++	struct buffer_head *obh;
++	struct buffer_head *nbh;
++
++	if (jbd2_journal_has_csum_v2or3(journal))
++		descr_csum_size = sizeof(struct jbd2_journal_block_tail);
++
++	tagp = &bh->b_data[sizeof(journal_header_t)];
++	while (tagp - bh->b_data + tag_bytes <=
++	       journal->j_blocksize - descr_csum_size) {
++
++		memcpy(&tag, tagp, sizeof(tag));
++		flags = be16_to_cpu(tag.t_flags);
++
++		io_block = (*next_log_block)++;
++		wrap(journal, *next_log_block);
++		err = jread(&obh, journal, io_block);
++		if (err) {
++			/* Recover what we can, but report failure at the end. */
++			*success = err;
++			pr_err("JBD2: IO error %d recovering block %lu in log\n",
++			      err, io_block);
++		} else {
++			unsigned long long blocknr;
++
++			J_ASSERT(obh != NULL);
++			blocknr = read_tag_block(journal, &tag);
++
++			/* If the block has been revoked, then we're all done here. */
++			if (jbd2_journal_test_revoke(journal, blocknr,
++						     next_commit_ID)) {
++				brelse(obh);
++				++info->nr_revoke_hits;
++				goto skip_write;
++			}
++
++			/* Look for block corruption */
++			if (!jbd2_block_tag_csum_verify(journal, &tag,
++					(journal_block_tag3_t *)tagp,
++					obh->b_data, next_commit_ID)) {
++				brelse(obh);
++				*success = -EFSBADCRC;
++				pr_err("JBD2: Invalid checksum recovering data block %llu in journal block %lu\n",
++				      blocknr, io_block);
++				*block_error = 1;
++				goto skip_write;
++			}
++
++			/* Find a buffer for the new data being restored */
++			nbh = __getblk(journal->j_fs_dev, blocknr,
++				       journal->j_blocksize);
++			if (nbh == NULL) {
++				pr_err("JBD2: Out of memory during recovery.\n");
++				brelse(obh);
++				return -ENOMEM;
++			}
++
++			lock_buffer(nbh);
++			memcpy(nbh->b_data, obh->b_data, journal->j_blocksize);
++			if (flags & JBD2_FLAG_ESCAPE) {
++				*((__be32 *)nbh->b_data) =
++				cpu_to_be32(JBD2_MAGIC_NUMBER);
++			}
++
++			BUFFER_TRACE(nbh, "marking dirty");
++			set_buffer_uptodate(nbh);
++			mark_buffer_dirty(nbh);
++			BUFFER_TRACE(nbh, "marking uptodate");
++			++info->nr_replays;
++			unlock_buffer(nbh);
++			brelse(obh);
++			brelse(nbh);
++		}
++
++skip_write:
++		tagp += tag_bytes;
++		if (!(flags & JBD2_FLAG_SAME_UUID))
++			tagp += 16;
++
++		if (flags & JBD2_FLAG_LAST_TAG)
++			break;
++	}
++
++	return 0;
++}
++
+ static int do_one_pass(journal_t *journal,
+ 			struct recovery_info *info, enum passtype pass)
+ {
+@@ -496,9 +595,7 @@ static int do_one_pass(journal_t *journal,
+ 	struct buffer_head	*bh = NULL;
  	unsigned int		sequence;
  	int			blocktype;
- 	int			tag_bytes = journal_tag_bytes(journal);
-@@ -552,6 +552,8 @@ static int do_one_pass(journal_t *journal,
- 		 * record. */
+-	int			tag_bytes = journal_tag_bytes(journal);
+ 	__u32			crc32_sum = ~0; /* Transactional Checksums */
+-	int			descr_csum_size = 0;
+ 	int			block_error = 0;
+ 	bool			need_check_commit_time = false;
+ 	__u64			last_trans_commit_time = 0, commit_time;
+@@ -528,12 +625,6 @@ static int do_one_pass(journal_t *journal,
+ 	 */
  
- 		jbd2_debug(3, "JBD2: checking block %ld\n", next_log_block);
-+		brelse(bh);
-+		bh = NULL;
- 		err = jread(&bh, journal, next_log_block);
- 		if (err)
- 			goto failed;
-@@ -567,20 +569,16 @@ static int do_one_pass(journal_t *journal,
+ 	while (1) {
+-		int			flags;
+-		char *			tagp;
+-		journal_block_tag_t	tag;
+-		struct buffer_head *	obh;
+-		struct buffer_head *	nbh;
+-
+ 		cond_resched();
  
- 		tmp = (journal_header_t *)bh->b_data;
+ 		/* If we already know where to stop the log traversal,
+@@ -587,11 +678,7 @@ static int do_one_pass(journal_t *journal,
+ 		switch(blocktype) {
+ 		case JBD2_DESCRIPTOR_BLOCK:
+ 			/* Verify checksum first */
+-			if (jbd2_journal_has_csum_v2or3(journal))
+-				descr_csum_size =
+-					sizeof(struct jbd2_journal_block_tail);
+-			if (descr_csum_size > 0 &&
+-			    !jbd2_descriptor_block_csum_verify(journal,
++			if (!jbd2_descriptor_block_csum_verify(journal,
+ 							       bh->b_data)) {
+ 				/*
+ 				 * PASS_SCAN can see stale blocks due to lazy
+@@ -628,102 +715,16 @@ static int do_one_pass(journal_t *journal,
+ 				continue;
+ 			}
  
--		if (tmp->h_magic != cpu_to_be32(JBD2_MAGIC_NUMBER)) {
--			brelse(bh);
-+		if (tmp->h_magic != cpu_to_be32(JBD2_MAGIC_NUMBER))
- 			break;
--		}
- 
- 		blocktype = be32_to_cpu(tmp->h_blocktype);
- 		sequence = be32_to_cpu(tmp->h_sequence);
- 		jbd2_debug(3, "Found magic %d, sequence %d\n",
- 			  blocktype, sequence);
- 
--		if (sequence != next_commit_ID) {
--			brelse(bh);
-+		if (sequence != next_commit_ID)
- 			break;
--		}
- 
- 		/* OK, we have a valid descriptor block which matches
- 		 * all of the sequence number checks.  What are we going
-@@ -603,7 +601,6 @@ static int do_one_pass(journal_t *journal,
- 					pr_err("JBD2: Invalid checksum recovering block %lu in log\n",
- 					       next_log_block);
- 					err = -EFSBADCRC;
--					brelse(bh);
- 					goto failed;
- 				}
- 				need_check_commit_time = true;
-@@ -622,16 +619,12 @@ static int do_one_pass(journal_t *journal,
- 				    !info->end_transaction) {
- 					if (calc_chksums(journal, bh,
- 							&next_log_block,
--							&crc32_sum)) {
--						put_bh(bh);
-+							&crc32_sum))
- 						break;
+-			/* A descriptor block: we can now write all of
+-			 * the data blocks.  Yay, useful work is finally
+-			 * getting done here! */
+-
+-			tagp = &bh->b_data[sizeof(journal_header_t)];
+-			while ((tagp - bh->b_data + tag_bytes)
+-			       <= journal->j_blocksize - descr_csum_size) {
+-				unsigned long io_block;
+-
+-				memcpy(&tag, tagp, sizeof(tag));
+-				flags = be16_to_cpu(tag.t_flags);
+-
+-				io_block = next_log_block++;
+-				wrap(journal, next_log_block);
+-				err = jread(&obh, journal, io_block);
+-				if (err) {
+-					/* Recover what we can, but
+-					 * report failure at the end. */
+-					success = err;
+-					printk(KERN_ERR
+-						"JBD2: IO error %d recovering "
+-						"block %lu in log\n",
+-						err, io_block);
+-				} else {
+-					unsigned long long blocknr;
+-
+-					J_ASSERT(obh != NULL);
+-					blocknr = read_tag_block(journal,
+-								 &tag);
+-
+-					/* If the block has been
+-					 * revoked, then we're all done
+-					 * here. */
+-					if (jbd2_journal_test_revoke
+-					    (journal, blocknr,
+-					     next_commit_ID)) {
+-						brelse(obh);
+-						++info->nr_revoke_hits;
+-						goto skip_write;
 -					}
--					put_bh(bh);
- 					continue;
- 				}
- 				next_log_block += count_tags(journal, bh);
- 				wrap(journal, next_log_block);
--				put_bh(bh);
- 				continue;
- 			}
- 
-@@ -701,7 +694,6 @@ static int do_one_pass(journal_t *journal,
- 						       "JBD2: Out of memory "
- 						       "during recovery.\n");
- 						err = -ENOMEM;
--						brelse(bh);
- 						brelse(obh);
- 						goto failed;
- 					}
-@@ -733,7 +725,6 @@ static int do_one_pass(journal_t *journal,
- 					break;
- 			}
- 
--			brelse(bh);
- 			continue;
- 
- 		case JBD2_COMMIT_BLOCK:
-@@ -781,7 +772,6 @@ static int do_one_pass(journal_t *journal,
- 					pr_err("JBD2: Invalid checksum found in transaction %u\n",
- 					       next_commit_ID);
- 					err = -EFSBADCRC;
--					brelse(bh);
- 					goto failed;
- 				}
- 			ignore_crc_mismatch:
-@@ -791,7 +781,6 @@ static int do_one_pass(journal_t *journal,
- 				 */
- 				jbd2_debug(1, "JBD2: Invalid checksum ignored in transaction %u, likely stale data\n",
- 					  next_commit_ID);
--				brelse(bh);
- 				goto done;
- 			}
- 
-@@ -811,7 +800,6 @@ static int do_one_pass(journal_t *journal,
- 				if (info->end_transaction) {
- 					journal->j_failed_commit =
- 						info->end_transaction;
--					brelse(bh);
- 					break;
- 				}
- 
-@@ -847,7 +835,6 @@ static int do_one_pass(journal_t *journal,
- 				if (!jbd2_has_feature_async_commit(journal)) {
- 					journal->j_failed_commit =
- 						next_commit_ID;
--					brelse(bh);
- 					break;
- 				}
- 			}
-@@ -856,7 +843,6 @@ static int do_one_pass(journal_t *journal,
- 				last_trans_commit_time = commit_time;
- 				head_block = next_log_block;
- 			}
--			brelse(bh);
- 			next_commit_ID++;
- 			continue;
- 
-@@ -875,14 +861,11 @@ static int do_one_pass(journal_t *journal,
- 
- 			/* If we aren't in the REVOKE pass, then we can
- 			 * just skip over this block. */
--			if (pass != PASS_REVOKE) {
--				brelse(bh);
-+			if (pass != PASS_REVOKE)
- 				continue;
+-
+-					/* Look for block corruption */
+-					if (!jbd2_block_tag_csum_verify(
+-			journal, &tag, (journal_block_tag3_t *)tagp,
+-			obh->b_data, be32_to_cpu(tmp->h_sequence))) {
+-						brelse(obh);
+-						success = -EFSBADCRC;
+-						printk(KERN_ERR "JBD2: Invalid "
+-						       "checksum recovering "
+-						       "data block %llu in "
+-						       "journal block %lu\n",
+-						       blocknr, io_block);
+-						block_error = 1;
+-						goto skip_write;
+-					}
+-
+-					/* Find a buffer for the new
+-					 * data being restored */
+-					nbh = __getblk(journal->j_fs_dev,
+-							blocknr,
+-							journal->j_blocksize);
+-					if (nbh == NULL) {
+-						printk(KERN_ERR
+-						       "JBD2: Out of memory "
+-						       "during recovery.\n");
+-						err = -ENOMEM;
+-						brelse(obh);
+-						goto failed;
+-					}
+-
+-					lock_buffer(nbh);
+-					memcpy(nbh->b_data, obh->b_data,
+-							journal->j_blocksize);
+-					if (flags & JBD2_FLAG_ESCAPE) {
+-						*((__be32 *)nbh->b_data) =
+-						cpu_to_be32(JBD2_MAGIC_NUMBER);
+-					}
+-
+-					BUFFER_TRACE(nbh, "marking dirty");
+-					set_buffer_uptodate(nbh);
+-					mark_buffer_dirty(nbh);
+-					BUFFER_TRACE(nbh, "marking uptodate");
+-					++info->nr_replays;
+-					unlock_buffer(nbh);
+-					brelse(obh);
+-					brelse(nbh);
+-				}
+-
+-			skip_write:
+-				tagp += tag_bytes;
+-				if (!(flags & JBD2_FLAG_SAME_UUID))
+-					tagp += 16;
+-
+-				if (flags & JBD2_FLAG_LAST_TAG)
+-					break;
 -			}
++			/*
++			 * A descriptor block: we can now write all of the
++			 * data blocks. Yay, useful work is finally getting
++			 * done here!
++			 */
++			err = jbd2_do_replay(journal, info, bh, &next_log_block,
++					     next_commit_ID, &success,
++					     &block_error);
++			if (err)
++				goto failed;
  
- 			err = scan_revoke_records(journal, bh,
- 						  next_commit_ID, info);
--			brelse(bh);
- 			if (err)
- 				goto failed;
  			continue;
-@@ -890,12 +873,12 @@ static int do_one_pass(journal_t *journal,
- 		default:
- 			jbd2_debug(3, "Unrecognised magic %d, end of scan.\n",
- 				  blocktype);
--			brelse(bh);
- 			goto done;
- 		}
- 	}
- 
-  done:
-+	brelse(bh);
- 	/*
- 	 * We broke out of the log scan loop: either we came to the
- 	 * known end of the log or we found an unexpected block in the
-@@ -931,6 +914,7 @@ static int do_one_pass(journal_t *journal,
- 	return success;
- 
-  failed:
-+	brelse(bh);
- 	return err;
- }
  
 -- 
 2.31.1
