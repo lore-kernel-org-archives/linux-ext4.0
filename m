@@ -1,37 +1,40 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 711D1C13B
-	for <linux-ext4@vger.kernel.org>; Mon, 30 Sep 2024 00:50:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9A66E15E8B
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Sep 2024 00:50:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1727657439; cv=none; b=gSNXaqUXCH6cQElDsugxQW0zUxoqVKZibFop766po1/3GKhiaq6EIGkhz5DdlNY6s0WAg36SC4ajs2ATir5/uE3K50qFKdVek9tBsNAM0LogpTD2KqtZO+nHgZJefM3jxg+aKr+0POjEqxoHZp7Ts28co7c9YnlOXf+8C5vpjSc=
+	t=1727657439; cv=none; b=YgOzLK9gxprgDfayZzC3u7DVF6fArzvOBdgMoqUJQ/321Mu/Ie3LnFmVDiB9JxTxFrTO1+UvESIRStU4EbT1eBW9yvGIDTL4zSNJz45nFFBq9jngq0bh66w4yCzxHmWSsfZEHw92ssHOdwvg3a6FzyPEDiF9qIPq5EJiFINJVfA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1727657439; c=relaxed/simple;
-	bh=8jM80l4pgPfUCaxpJPgyW1Q/5vQWWQL+zgOrlZi7TKw=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=i/1rkitbhy9UNRtRVE2QAorrdoygrCVOWh38E+pkhFABu2ngz/PyYPAo0PYtYJCdz543iF5ivTscmknWEbt0yNCsWxpIzQupBHRmXNa6kvJ7an8/UEPElOwZuCiAy/TzDpIV3b6OoD7CwedUPDdjPLpBaQNwnlxkew83A4YIDxA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	bh=eVcD7v7xFjJmFT+JA8uBM2mN7BO3hOT5IvQQg9AhAYE=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=Nv+Rl1fJtWdMhuJUQIb3WsN4C6Sx087fzZjvskiRBEhjTnygXyTeNA7Ky1RSXQGrY2mKKKFZT+BXgRT6BR68Uk1+TLe/AoHOodhtNzvZva0hnFZxECEEbtlprfCrheWu38gqHnGYk6vfX3E23IdV3Amf+AAu8WGb/DfKHOyOB9E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4XH2Y92v2qz4f3jk7
-	for <linux-ext4@vger.kernel.org>; Mon, 30 Sep 2024 08:50:21 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4XH2Y601zxz4f3jrt
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Sep 2024 08:50:18 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id CA8E31A092F
-	for <linux-ext4@vger.kernel.org>; Mon, 30 Sep 2024 08:50:32 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 7693B1A06D7
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Sep 2024 08:50:34 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.127.227])
-	by APP4 (Coremail) with SMTP id gCh0CgD3LMnW9flmLxfsCg--.51013S4;
-	Mon, 30 Sep 2024 08:50:32 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgD3LMnW9flmLxfsCg--.51013S10;
+	Mon, 30 Sep 2024 08:50:34 +0800 (CST)
 From: Ye Bin <yebin@huaweicloud.com>
 To: tytso@mit.edu,
 	adilger.kernel@dilger.ca,
 	linux-ext4@vger.kernel.org
 Cc: jack@suse.cz,
 	zhangxiaoxu5@huawei.com
-Subject: [PATCH v2 0/6] some cleanup and refactor for jbd2 journal recover
-Date: Mon, 30 Sep 2024 08:59:36 +0800
-Message-Id: <20240930005942.626942-1-yebin@huaweicloud.com>
+Subject: [PATCH v2 6/6] jbd2: remove the 'success' parameter from the jbd2_do_replay() function
+Date: Mon, 30 Sep 2024 08:59:42 +0800
+Message-Id: <20240930005942.626942-7-yebin@huaweicloud.com>
 X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20240930005942.626942-1-yebin@huaweicloud.com>
+References: <20240930005942.626942-1-yebin@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -39,40 +42,106 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgD3LMnW9flmLxfsCg--.51013S4
-X-Coremail-Antispam: 1UD129KBjvdXoWrZF45tw18JF1DWw13CF17ZFb_yoWxCrb_Za
-	92gFW8Zw4UXF1jqa4qkr4UJFW7Jr4UAr18GF4kKF4UX3s3Jw15WF1kGr4DZr1rZa4Fkrs8
-	Cr15Ar18JasYvjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUbzxYFVCjjxCrM7AC8VAFwI0_Gr0_Xr1l1xkIjI8I6I8E6xAIw20E
-	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l8cAvFVAK0II2c7xJM28CjxkF64kEwV
-	A0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x02
-	67AKxVWxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxV
-	AFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2
-	j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7x
-	kEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCY1x0262kKe7AKxVWUAVWUtwCF04k20xvY0x0E
-	wIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E74
-	80Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0
-	I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Jr0_Gr1lIxAIcVCF04
-	k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7Cj
-	xVAFwI0_Jr0_GrUvcSsGvfC2KfnxnUUI43ZEXa7IU1veHDUUUUU==
+X-CM-TRANSID:gCh0CgD3LMnW9flmLxfsCg--.51013S10
+X-Coremail-Antispam: 1UD129KBjvJXoW7KF1rZw45Ww4rXFWkWFW5trb_yoW8KF1Dp3
+	W5C39rKFyqvF18WF93XFWkXry2gw1ayFyUWr1q93Z2yay5trWjv34Sg343tFyYkryv9ayr
+	JFWjy345Kwnakw7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUB0b4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
+	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
+	rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267
+	AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E
+	14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7
+	xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Y
+	z7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lc7CjxVAaw2AFwI0_JF0_Jw1l42xK82IYc2Ij64
+	vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8G
+	jcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2I
+	x0cI8IcVAFwI0_JFI_Gr1lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK
+	8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I
+	0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUwuWlUUUUU
 X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 
-Diff v2 vs v1:
-1. Modify the indentation problem and remove unnecessary braces in PATCH[4];
-2. Add PATCH[6] to remove the 'success' parameter from the jbd2_do_replay();
+From: Ye Bin <yebin10@huawei.com>
 
-Ye Bin (6):
-  jbd2: remove redundant judgments for check v1 checksum
-  jbd2: unified release of buffer_head in do_one_pass()
-  jbd2: refactor JBD2_COMMIT_BLOCK process in do_one_pass()
-  jbd2: factor out jbd2_do_replay()
-  jbd2: remove useless 'block_error' variable
-  jbd2: remove the 'success' parameter from the jbd2_do_replay()
-    function
+Keep 'success' internally to track if any error happened and then
+return it at the end in do_one_pass(). If jbd2_do_replay() return
+-ENOMEM then stop replay journal.
 
- fs/jbd2/recovery.c | 311 +++++++++++++++++++++------------------------
- 1 file changed, 148 insertions(+), 163 deletions(-)
+Signed-off-by: Ye Bin <yebin10@huawei.com>
+---
+ fs/jbd2/recovery.c | 21 ++++++++++++---------
+ 1 file changed, 12 insertions(+), 9 deletions(-)
 
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index 4f1e9ca34503..9192be7c19d8 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -489,12 +489,11 @@ static __always_inline int jbd2_do_replay(journal_t *journal,
+ 					  struct recovery_info *info,
+ 					  struct buffer_head *bh,
+ 					  unsigned long *next_log_block,
+-					  unsigned int next_commit_ID,
+-					  int *success)
++					  unsigned int next_commit_ID)
+ {
+ 	char *tagp;
+ 	int flags;
+-	int err;
++	int ret = 0;
+ 	int tag_bytes = journal_tag_bytes(journal);
+ 	int descr_csum_size = 0;
+ 	unsigned long io_block;
+@@ -508,6 +507,7 @@ static __always_inline int jbd2_do_replay(journal_t *journal,
+ 	tagp = &bh->b_data[sizeof(journal_header_t)];
+ 	while (tagp - bh->b_data + tag_bytes <=
+ 	       journal->j_blocksize - descr_csum_size) {
++		int err;
+ 
+ 		memcpy(&tag, tagp, sizeof(tag));
+ 		flags = be16_to_cpu(tag.t_flags);
+@@ -517,7 +517,7 @@ static __always_inline int jbd2_do_replay(journal_t *journal,
+ 		err = jread(&obh, journal, io_block);
+ 		if (err) {
+ 			/* Recover what we can, but report failure at the end. */
+-			*success = err;
++			ret = err;
+ 			pr_err("JBD2: IO error %d recovering block %lu in log\n",
+ 			      err, io_block);
+ 		} else {
+@@ -539,7 +539,7 @@ static __always_inline int jbd2_do_replay(journal_t *journal,
+ 					(journal_block_tag3_t *)tagp,
+ 					obh->b_data, next_commit_ID)) {
+ 				brelse(obh);
+-				*success = -EFSBADCRC;
++				ret = -EFSBADCRC;
+ 				pr_err("JBD2: Invalid checksum recovering data block %llu in journal block %lu\n",
+ 				      blocknr, io_block);
+ 				goto skip_write;
+@@ -580,7 +580,7 @@ static __always_inline int jbd2_do_replay(journal_t *journal,
+ 			break;
+ 	}
+ 
+-	return 0;
++	return ret;
+ }
+ 
+ static int do_one_pass(journal_t *journal,
+@@ -719,9 +719,12 @@ static int do_one_pass(journal_t *journal,
+ 			 * done here!
+ 			 */
+ 			err = jbd2_do_replay(journal, info, bh, &next_log_block,
+-					     next_commit_ID, &success);
+-			if (err)
+-				goto failed;
++					     next_commit_ID);
++			if (err) {
++				if (err == -ENOMEM)
++					goto failed;
++				success = err;
++			}
+ 
+ 			continue;
+ 
 -- 
 2.31.1
 
