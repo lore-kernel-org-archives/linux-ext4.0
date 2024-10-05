@@ -1,88 +1,79 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DB80725761
-	for <linux-ext4@vger.kernel.org>; Sat,  5 Oct 2024 02:41:27 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B2834179A7
+	for <linux-ext4@vger.kernel.org>; Sat,  5 Oct 2024 02:42:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1728096089; cv=none; b=PJEmc1dcZQKmnBnwhYxNcO+80w0yDP9ubVEWbEsYbbSZYkYKuWVOv6DfC6DWvkFGzO4oYV1AddZva5/MwbeNYlZIsJG5ZAeQL8nynEi8aur8Wm8q5yHtjzSceHEzR32pZhfsCRohRYUBcAV0I6c/6UNUZ81uEu2R9xc7pLFszIo=
+	t=1728096148; cv=none; b=XbytoLA0vea9dT1frfQ1NIJyinm6DHgk6s4LkDyzCTSDoiIIabBw4T/M8jBQAQGRBor8O+T4lLB4sRLbi/OYdGwuQvzwzPpJOeYEeiO7dzsrzWEISicAMvrmxTWH5Gt0KRreLhudG+aheUIbdWEKhj7cU9vYtfPaaOp5m7rYEiQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1728096089; c=relaxed/simple;
-	bh=sEc1Mud9OIn2GrJ98M9tAdApwsApW0Xub5TYGwZiI2k=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=dc5NZzydTcfrWsbLOPGoJWzYWmrwV2Z0FRsKL12gMUyDORC0m2Tg4uKOL1GBGTQL6VG8+gfolgGwJxBRS5UGOEP5yrCj1mHVNPmj1yC3V76yR9WUdtXtSWqAgQd27tBuHquhAundIpKgf6Z2qrO47ViF+6/hdLvGUm1KBTVT7FM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=UQ9pC6hQ; arc=none smtp.client-ip=18.9.28.11
+	s=arc-20240116; t=1728096148; c=relaxed/simple;
+	bh=dSuKw3KgBtp4y2Nh4+iaxPe8SGV2r4DIQhHmXwzzgXk=;
+	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
+	 Content-Disposition; b=dGX8aONIO0R3Zu/w3c0w4iq+YaPyN8LbgtKjOCeX35EvJ878pIE36Y6Dv0jJsnVgKDkYxyuEs3G5AAu+KEBQ+s1LVG0l5v1Kc3VuBqsUi131msbkZKAQ52PWqwxKUI6BwcVFNIrdxofSL4iYEc28cwReOMAojbqUjmhLPHXG38I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=oO+0nMBe; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="UQ9pC6hQ"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="oO+0nMBe"
 Received: from cwcc.thunk.org (pool-173-48-111-178.bstnma.fios.verizon.net [173.48.111.178])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 4952ekl8023934
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 4952gLeK024607
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 4 Oct 2024 22:40:47 -0400
+	Fri, 4 Oct 2024 22:42:22 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1728096051; bh=D7qNvMDnML2OmVh2lSkLCFOR0s3St60SrRd9iM1JlZM=;
-	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=UQ9pC6hQWWkQ2EIUhyPwiZqYAAfsTM/9GmVILak9oWlq9u39InM16xAymTCQ37Rnv
-	 ITvHC6bhTZlgcjYT2Jy5/3cFoavgNR9oE89qJsXuiQSB5E8ajE6bCVqI4DPLb8ePyl
-	 z8IG820zhA+DpN9OT+nGBZZFjOzLjYUBHXP3kyfudYxrSQcHleGbaQBJceX7FhEQ6Z
-	 ++AxvrqErVXgqG9vk/W8LVpd4xJaBNSdiDqfn7cVqVjb7hoS2m9eMTXzUaqpRLo8rL
-	 Fx5qvhXVXpjhLusJuHEoSF9BRSR4b6NzyxWIMSHvTwSZGQiU58yam+da0VcJSlvzag
-	 As61vcjI12MZA==
+	t=1728096143; bh=1KaDnjyQshquAFEggCflmVVbS3XL5i46DzD+xxadzNI=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=oO+0nMBe9Xt+zO0yFsTvHGVVCNd53gqdDHncW/msr5T1pJ1gNwzfC15PyPcRiOody
+	 2E4u+v5ux+yv7rgBpDjjD/Gx8TPlOR2AQ2/TN8ScrmwdqllcydUsROewv4kpDCycsZ
+	 oHfzyFoxhiZvKjK8ETPF0yVpE+HCFcnai+CBuCOtqnq5sJWqYDTVHBuLBHhsJ6Fx48
+	 xjp1l6dQBjIB57Xri6Uf9gmE3BmRST/n2xYR72hrpd0E3H8X/FMcfaOSUKMh39vdBQ
+	 +PYa2taSlLxuFVRZeGoVK1LDiR16a6e0Wkm6vDhoNrBE3+/9cXHAQmNsWUAWDBaIK2
+	 qQqnVYXCfw4Bg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id E697E15C6668; Fri, 04 Oct 2024 22:40:45 -0400 (EDT)
+	id 13F7C15C6668; Fri, 04 Oct 2024 22:42:21 -0400 (EDT)
+Date: Fri, 4 Oct 2024 22:42:21 -0400
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org, libaokun@huaweicloud.com
-Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca, jack@suse.cz,
-        linux-kernel@vger.kernel.org, yi.zhang@huawei.com,
-        yangerkun@huawei.com, Baokun Li <libaokun1@huawei.com>,
-        Wesley Hershberger <wesley.hershberger@canonical.com>,
-        =?UTF-8?q?St=C3=A9phane=20Graber?= <stgraber@stgraber.org>,
-        Eric Sandeen <sandeen@redhat.com>, stable@vger.kernel.org,
-        Alexander Mikhalitsyn <alexander@mihalicyn.com>
-Subject: Re: [PATCH v2] ext4: fix off by one issue in alloc_flex_gd()
-Date: Fri,  4 Oct 2024 22:40:36 -0400
-Message-ID: <172809600230.505638.16626414897244702690.b4-ty@mit.edu>
-X-Mailer: git-send-email 2.45.2
-In-Reply-To: <20240927133329.1015041-1-libaokun@huaweicloud.com>
-References: <20240927133329.1015041-1-libaokun@huaweicloud.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: [GIT PULL] ext4 bug fixes for 6.12-rc2
+Message-ID: <20241005024221.GA505880@mit.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
+The following changes since commit 9852d85ec9d492ebef56dc5f229416c925758edc:
 
-On Fri, 27 Sep 2024 21:33:29 +0800, libaokun@huaweicloud.com wrote:
-> Wesley reported an issue:
-> 
-> ==================================================================
-> EXT4-fs (dm-5): resizing filesystem from 7168 to 786432 blocks
-> ------------[ cut here ]------------
-> kernel BUG at fs/ext4/resize.c:324!
-> CPU: 9 UID: 0 PID: 3576 Comm: resize2fs Not tainted 6.11.0+ #27
-> RIP: 0010:ext4_resize_fs+0x1212/0x12d0
-> Call Trace:
->  __ext4_ioctl+0x4e0/0x1800
->  ext4_ioctl+0x12/0x20
->  __x64_sys_ioctl+0x99/0xd0
->  x64_sys_call+0x1206/0x20d0
->  do_syscall_64+0x72/0x110
->  entry_SYSCALL_64_after_hwframe+0x76/0x7e
-> ==================================================================
-> 
-> [...]
+  Linux 6.12-rc1 (2024-09-29 15:06:19 -0700)
 
-Applied, thanks!
+are available in the Git repository at:
 
-[1/1] ext4: fix off by one issue in alloc_flex_gd()
-      commit: 6121258c2b33ceac3d21f6a221452692c465df88
+  https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus-5.12-rc2
 
-Best regards,
--- 
-Theodore Ts'o <tytso@mit.edu>
+for you to fetch changes up to 6121258c2b33ceac3d21f6a221452692c465df88:
+
+  ext4: fix off by one issue in alloc_flex_gd() (2024-10-04 17:36:28 -0400)
+
+----------------------------------------------------------------
+Fix some ext4 bug fixes and regressions relating to oneline resize and
+fast commits.
+
+----------------------------------------------------------------
+Baokun Li (1):
+      ext4: fix off by one issue in alloc_flex_gd()
+
+Luis Henriques (SUSE) (2):
+      ext4: use handle to mark fc as ineligible in __track_dentry_update()
+      ext4: mark fc as ineligible using an handle in ext4_xattr_set()
+
+ fs/ext4/fast_commit.c | 19 +++++++++++--------
+ fs/ext4/resize.c      | 18 ++++++++++--------
+ fs/ext4/xattr.c       |  3 ++-
+ 3 files changed, 23 insertions(+), 17 deletions(-)
