@@ -1,28 +1,28 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1A83680035;
-	Thu, 10 Oct 2024 13:35:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 54BE11C4625;
+	Thu, 10 Oct 2024 13:35:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1728567346; cv=none; b=bRK3nFUb7aBVtkWnbVeaPRN7UTbxvbOq3w31KnCS7my4WCq0bUjSFqYVzNEATFa/B8/s3RimRXlCt8igcUgnslonI/o2F1f+osaBG310rPSnpLbrb0ilhBwiTlbUQ/Vnyt2IIbfgZ1SInSLg/QHO+avgEIwZVZSV7tYGCr5Yjzw=
+	t=1728567347; cv=none; b=eoJnE8tKMWrNE8ZsjWYk7q89BQ5G4vSivL+GEsPmSzNdh7VUQHHph+ddITEHYrEuM0VlKbC6zD5Jk6kZdFfH4Dgg25Mau06kQhiiNkpKwW9kA1KXUWrCIWQupSXm3d+jY3cv5afcrpsxzr6NOi9tMbNab7wkxUEAkarDN/+zxT0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1728567346; c=relaxed/simple;
-	bh=VdJ9IMIjtQwr5Ztqa838ADogQtEwKITr1AZqEGXblPA=;
+	s=arc-20240116; t=1728567347; c=relaxed/simple;
+	bh=stsrva27qYMVu8ViiEei3hO+iSfuJcFVSbZW4duvV7I=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=A7xgkALRFEviMb/LR3VSsL9jRt/Du8ylnvrKBHSiSzc1sDQ+VYwjiXQaU8ElCDTLuZZqxgET2P3IIbhCozUDztDzcfHKpKhuyUl9TOU904MyGb/m1uPKOzBRn4bnc5mmh0xLp7MBEgnt+HUfzwiMIhp1QzSyQ4KMpNoqa+nfxWA=
+	 MIME-Version; b=AlsAdP5oIFBAOMdCEww1iLLMHiZ225Eb05ciSdq/HXQdLZJ0DYQ0G1rVlJIq3aZRiCZheq/LJcBJeozhhs7DOcYyo6Q4+4lTkieMOjds8oI2zS7zpVRxArKS3p73Ha5ZoRdFzVhv7r0BPdymQJPBRCsdq4iwHZuLfgHej7EynNs=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=huawei.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4XPW3P1dxHz4f3jtS;
-	Thu, 10 Oct 2024 21:35:29 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4XPW3J5QrYz4f3kw2;
+	Thu, 10 Oct 2024 21:35:24 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 094761A0568;
-	Thu, 10 Oct 2024 21:35:41 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 644171A06D7;
+	Thu, 10 Oct 2024 21:35:42 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP4 (Coremail) with SMTP id gCh0CgCXysYc2AdnDRnZDg--.21356S5;
-	Thu, 10 Oct 2024 21:35:40 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgCXysYc2AdnDRnZDg--.21356S8;
+	Thu, 10 Oct 2024 21:35:42 +0800 (CST)
 From: Zhang Yi <yi.zhang@huawei.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -35,9 +35,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yi.zhang@huaweicloud.com,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com
-Subject: [PATCH v3 01/10] ext4: remove writable userspace mappings before truncating page cache
-Date: Thu, 10 Oct 2024 21:33:24 +0800
-Message-Id: <20241010133333.146793-2-yi.zhang@huawei.com>
+Subject: [PATCH v3 04/10] ext4: refactor ext4_punch_hole()
+Date: Thu, 10 Oct 2024 21:33:27 +0800
+Message-Id: <20241010133333.146793-5-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20241010133333.146793-1-yi.zhang@huawei.com>
 References: <20241010133333.146793-1-yi.zhang@huawei.com>
@@ -48,146 +48,255 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCXysYc2AdnDRnZDg--.21356S5
-X-Coremail-Antispam: 1UD129KBjvJXoWxXFyrJF43Xw18CFy5Gry5XFb_yoWrAr43pr
-	9rGFyfCrWrZasrWa1Sg3WUZw1rK3WkCF4UJ34fWr1UXFy8X3WkKF1Dtw1jyF4UtrW8Jr4j
-	vF45trWjgF45A3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUHYb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUGw
-	A2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
-	w2x7M28EF7xvwVC0I7IYx2IY67AKxVW5JVW7JwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
-	W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
-	6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
-	Ij6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
-	Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7Iv64x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YV
-	CY1x02628vn2kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCF04k2
-	0xvEw4C26cxK6c8Ij28IcwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r
-	1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij
-	64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr
-	0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF
-	0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07jeg4hUUUUU=
+X-CM-TRANSID:gCh0CgCXysYc2AdnDRnZDg--.21356S8
+X-Coremail-Antispam: 1UD129KBjvJXoW3GF48tFWrGF1fAF17GFWfKrg_yoW3GrW8p3
+	y3Ary5Kr48WFyq9F4Iqr4DXF1Ik3WDKrWUWryxGr1fX34qyw1IgFs0kF1Fgay5trZrZr4j
+	vF45t347WryUuFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUHab4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
+	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
+	rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW5JVW7JwA2z4x0Y4vE2Ix0cI8IcVCY1x0267
+	AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E
+	14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7
+	xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Y
+	z7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7Iv64x0x7Aq67IIx4CEVc8vx2IErcIFxwACI4
+	02YVCY1x02628vn2kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCF
+	04k20xvEw4C26cxK6c8Ij28IcwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14
+	v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkG
+	c2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI
+	0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8
+	JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUFPETDU
+	UUU
 Sender: yi.zhang@huaweicloud.com
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-When zeroing a range of folios on the filesystem which block size is
-less than the page size, the file's mapped partial blocks within one
-page will be marked as unwritten, we should remove writable userspace
-mappings to ensure that ext4_page_mkwrite() can be called during
-subsequent write access to these folios. Otherwise, data written by
-subsequent mmap writes may not be saved to disk.
-
- $mkfs.ext4 -b 1024 /dev/vdb
- $mount /dev/vdb /mnt
- $xfs_io -t -f -c "pwrite -S 0x58 0 4096" -c "mmap -rw 0 4096" \
-               -c "mwrite -S 0x5a 2048 2048" -c "fzero 2048 2048" \
-               -c "mwrite -S 0x59 2048 2048" -c "close" /mnt/foo
-
- $od -Ax -t x1z /mnt/foo
- 000000 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58
- *
- 000800 59 59 59 59 59 59 59 59 59 59 59 59 59 59 59 59
- *
- 001000
-
- $umount /mnt && mount /dev/vdb /mnt
- $od -Ax -t x1z /mnt/foo
- 000000 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58
- *
- 000800 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
- *
- 001000
+The current implementation of ext4_punch_hole() contains complex
+position calculations and stale error tags. To improve the code's
+clarity and maintainability, it is essential to clean up the code and
+improve its readability, this can be achieved by: a) simplifying and
+renaming variables; b) eliminating unnecessary position calculations;
+c) writing back all data in data=journal mode, and drop page cache from
+the original offset to the end, rather than using aligned blocks,
+d) renaming the stale error tags.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/ext4.h    |  2 ++
- fs/ext4/extents.c |  1 +
- fs/ext4/inode.c   | 41 +++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 44 insertions(+)
+ fs/ext4/inode.c | 140 +++++++++++++++++++++---------------------------
+ 1 file changed, 62 insertions(+), 78 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 44b0d418143c..6d0267afd4c1 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3020,6 +3020,8 @@ extern int ext4_inode_attach_jinode(struct inode *inode);
- extern int ext4_can_truncate(struct inode *inode);
- extern int ext4_truncate(struct inode *);
- extern int ext4_break_layouts(struct inode *);
-+extern void ext4_truncate_folios_range(struct inode *inode, loff_t start,
-+				       loff_t end);
- extern int ext4_punch_hole(struct file *file, loff_t offset, loff_t length);
- extern void ext4_set_inode_flags(struct inode *, bool init);
- extern int ext4_alloc_da_blocks(struct inode *inode);
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 34e25eee6521..2a054c3689f0 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4677,6 +4677,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 		}
- 
- 		/* Now release the pages and zero block aligned part of pages */
-+		ext4_truncate_folios_range(inode, start, end);
- 		truncate_pagecache_range(inode, start, end - 1);
- 		inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
- 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 54bdd4884fe6..8b34e79112d5 100644
+index 94b923afcd9c..1d128333bd06 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -31,6 +31,7 @@
- #include <linux/writeback.h>
- #include <linux/pagevec.h>
- #include <linux/mpage.h>
-+#include <linux/rmap.h>
- #include <linux/namei.h>
- #include <linux/uio.h>
- #include <linux/bio.h>
-@@ -3870,6 +3871,46 @@ int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
+@@ -3955,13 +3955,14 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+ {
+ 	struct inode *inode = file_inode(file);
+ 	struct super_block *sb = inode->i_sb;
+-	ext4_lblk_t first_block, stop_block;
++	ext4_lblk_t start_lblk, end_lblk;
+ 	struct address_space *mapping = inode->i_mapping;
+-	loff_t first_block_offset, last_block_offset, max_length;
+-	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	loff_t max_end = EXT4_SB(sb)->s_bitmap_maxbytes - sb->s_blocksize;
++	loff_t end = offset + length;
++	unsigned long blocksize = i_blocksize(inode);
+ 	handle_t *handle;
+ 	unsigned int credits;
+-	int ret = 0, ret2 = 0;
++	int ret = 0;
+ 
+ 	trace_ext4_punch_hole(inode, offset, length, 0);
+ 
+@@ -3969,36 +3970,27 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 
+ 	/* No need to punch hole beyond i_size */
+ 	if (offset >= inode->i_size)
+-		goto out_mutex;
++		goto out;
+ 
+ 	/*
+-	 * If the hole extends beyond i_size, set the hole
+-	 * to end after the page that contains i_size
++	 * If the hole extends beyond i_size, set the hole to end after
++	 * the page that contains i_size, and also make sure that the hole
++	 * within one block before last range.
+ 	 */
+-	if (offset + length > inode->i_size) {
+-		length = inode->i_size +
+-		   PAGE_SIZE - (inode->i_size & (PAGE_SIZE - 1)) -
+-		   offset;
+-	}
++	if (end > inode->i_size)
++		end = round_up(inode->i_size, PAGE_SIZE);
++	if (end > max_end)
++		end = max_end;
++	length = end - offset;
+ 
+ 	/*
+-	 * For punch hole the length + offset needs to be within one block
+-	 * before last range. Adjust the length if it goes beyond that limit.
++	 * Attach jinode to inode for jbd2 if we do any zeroing of partial
++	 * block.
+ 	 */
+-	max_length = sbi->s_bitmap_maxbytes - inode->i_sb->s_blocksize;
+-	if (offset + length > max_length)
+-		length = max_length - offset;
+-
+-	if (offset & (sb->s_blocksize - 1) ||
+-	    (offset + length) & (sb->s_blocksize - 1)) {
+-		/*
+-		 * Attach jinode to inode for jbd2 if we do any zeroing of
+-		 * partial block
+-		 */
++	if (offset & (blocksize - 1) || end & (blocksize - 1)) {
+ 		ret = ext4_inode_attach_jinode(inode);
+ 		if (ret < 0)
+-			goto out_mutex;
+-
++			goto out;
+ 	}
+ 
+ 	/* Wait all existing dio workers, newcomers will block on i_rwsem */
+@@ -4006,7 +3998,7 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 
+ 	ret = file_modified(file);
+ 	if (ret)
+-		goto out_mutex;
++		goto out;
+ 
+ 	/*
+ 	 * Prevent page faults from reinstantiating pages we have released from
+@@ -4016,34 +4008,24 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 
+ 	ret = ext4_break_layouts(inode);
+ 	if (ret)
+-		goto out_dio;
+-
+-	first_block_offset = round_up(offset, sb->s_blocksize);
+-	last_block_offset = round_down((offset + length), sb->s_blocksize) - 1;
++		goto out_invalidate_lock;
+ 
+-	/* Now release the pages and zero block aligned part of pages*/
+-	if (last_block_offset > first_block_offset) {
++	/*
++	 * For journalled data we need to write (and checkpoint) pages
++	 * before discarding page cache to avoid inconsitent data on
++	 * disk in case of crash before punching trans is committed.
++	 */
++	if (ext4_should_journal_data(inode)) {
++		ret = filemap_write_and_wait_range(mapping, offset, end - 1);
++	} else {
+ 		ret = ext4_update_disksize_before_punch(inode, offset, length);
+-		if (ret)
+-			goto out_dio;
+-
+-		/*
+-		 * For journalled data we need to write (and checkpoint) pages
+-		 * before discarding page cache to avoid inconsitent data on
+-		 * disk in case of crash before punching trans is committed.
+-		 */
+-		if (ext4_should_journal_data(inode)) {
+-			ret = filemap_write_and_wait_range(mapping,
+-					first_block_offset, last_block_offset);
+-			if (ret)
+-				goto out_dio;
+-		}
+-
+-		ext4_truncate_folios_range(inode, first_block_offset,
+-					   last_block_offset + 1);
+-		truncate_pagecache_range(inode, first_block_offset,
+-					 last_block_offset);
++		ext4_truncate_folios_range(inode, offset, end);
+ 	}
++	if (ret)
++		goto out_invalidate_lock;
++
++	/* Now release the pages and zero block aligned part of pages*/
++	truncate_pagecache_range(inode, offset, end - 1);
+ 
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+ 		credits = ext4_writepage_trans_blocks(inode);
+@@ -4053,52 +4035,54 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+ 		ext4_std_error(sb, ret);
+-		goto out_dio;
++		goto out_invalidate_lock;
+ 	}
+ 
+-	ret = ext4_zero_partial_blocks(handle, inode, offset,
+-				       length);
++	ret = ext4_zero_partial_blocks(handle, inode, offset, length);
+ 	if (ret)
+-		goto out_stop;
+-
+-	first_block = (offset + sb->s_blocksize - 1) >>
+-		EXT4_BLOCK_SIZE_BITS(sb);
+-	stop_block = (offset + length) >> EXT4_BLOCK_SIZE_BITS(sb);
++		goto out_handle;
+ 
+ 	/* If there are blocks to remove, do it */
+-	if (stop_block > first_block) {
+-		ext4_lblk_t hole_len = stop_block - first_block;
++	start_lblk = round_up(offset, blocksize) >> inode->i_blkbits;
++	end_lblk = end >> inode->i_blkbits;
++
++	if (end_lblk > start_lblk) {
++		ext4_lblk_t hole_len = end_lblk - start_lblk;
+ 
+ 		down_write(&EXT4_I(inode)->i_data_sem);
+ 		ext4_discard_preallocations(inode);
+ 
+-		ext4_es_remove_extent(inode, first_block, hole_len);
++		ext4_es_remove_extent(inode, start_lblk, hole_len);
+ 
+ 		if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+-			ret = ext4_ext_remove_space(inode, first_block,
+-						    stop_block - 1);
++			ret = ext4_ext_remove_space(inode, start_lblk,
++						    end_lblk - 1);
+ 		else
+-			ret = ext4_ind_remove_space(handle, inode, first_block,
+-						    stop_block);
++			ret = ext4_ind_remove_space(handle, inode, start_lblk,
++						    end_lblk);
++		if (ret) {
++			up_write(&EXT4_I(inode)->i_data_sem);
++			goto out_handle;
++		}
+ 
+-		ext4_es_insert_extent(inode, first_block, hole_len, ~0,
++		ext4_es_insert_extent(inode, start_lblk, hole_len, ~0,
+ 				      EXTENT_STATUS_HOLE, 0);
+ 		up_write(&EXT4_I(inode)->i_data_sem);
+ 	}
+-	ext4_fc_track_range(handle, inode, first_block, stop_block);
++	ext4_fc_track_range(handle, inode, start_lblk, end_lblk);
++
++	ret = ext4_mark_inode_dirty(handle, inode);
++	if (unlikely(ret))
++		goto out_handle;
++
++	ext4_update_inode_fsync_trans(handle, inode, 1);
+ 	if (IS_SYNC(inode))
+ 		ext4_handle_sync(handle);
+-
+-	ret2 = ext4_mark_inode_dirty(handle, inode);
+-	if (unlikely(ret2))
+-		ret = ret2;
+-	if (ret >= 0)
+-		ext4_update_inode_fsync_trans(handle, inode, 1);
+-out_stop:
++out_handle:
+ 	ext4_journal_stop(handle);
+-out_dio:
++out_invalidate_lock:
+ 	filemap_invalidate_unlock(mapping);
+-out_mutex:
++out:
+ 	inode_unlock(inode);
  	return ret;
  }
- 
-+static inline void ext4_truncate_folio(struct inode *inode,
-+				       loff_t start, loff_t end)
-+{
-+	unsigned long blocksize = i_blocksize(inode);
-+	struct folio *folio;
-+
-+	if (round_up(start, blocksize) >= round_down(end, blocksize))
-+		return;
-+
-+	folio = filemap_lock_folio(inode->i_mapping, start >> PAGE_SHIFT);
-+	if (IS_ERR(folio))
-+		return;
-+
-+	if (folio_mkclean(folio))
-+		folio_mark_dirty(folio);
-+	folio_unlock(folio);
-+	folio_put(folio);
-+}
-+
-+/*
-+ * When truncating a range of folios, if the block size is less than the
-+ * page size, the file's mapped partial blocks within one page could be
-+ * freed or converted to unwritten. We should call this function to remove
-+ * writable userspace mappings so that ext4_page_mkwrite() can be called
-+ * during subsequent write access to these folios.
-+ */
-+void ext4_truncate_folios_range(struct inode *inode, loff_t start, loff_t end)
-+{
-+	unsigned long blocksize = i_blocksize(inode);
-+
-+	if (end > inode->i_size)
-+		end = inode->i_size;
-+	if (start >= end || blocksize >= PAGE_SIZE)
-+		return;
-+
-+	ext4_truncate_folio(inode, start, min(round_up(start, PAGE_SIZE), end));
-+	if (end > round_up(start, PAGE_SIZE))
-+		ext4_truncate_folio(inode, round_down(end, PAGE_SIZE), end);
-+}
-+
- static void ext4_wait_dax_page(struct inode *inode)
- {
- 	filemap_invalidate_unlock(inode->i_mapping);
 -- 
 2.39.2
 
