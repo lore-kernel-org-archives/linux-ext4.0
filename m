@@ -1,124 +1,149 @@
-Received: from mail-il1-f197.google.com (mail-il1-f197.google.com [209.85.166.197])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from fanzine2.igalia.com (fanzine.igalia.com [178.60.130.6])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0B5301E0E1E
-	for <linux-ext4@vger.kernel.org>; Thu, 17 Oct 2024 16:58:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.166.197
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BF6801EE020;
+	Thu, 17 Oct 2024 21:14:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=178.60.130.6
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1729184323; cv=none; b=AiPXheh16cJGqC+0gc+4Rh+luyEPB6Ic81m4OfCPwPAne/9T8RFMU3CnjVsEgDMr+lHVixoaZ3qgr+IsnAz0w1xyvlZBqd5URRIT3xi7r8Rbe5JxzldwmfuwUGIiMb9ZE464BW6io5lfCiGfkLsUCkUcKQV5NhffcCW6UqOe+es=
+	t=1729199693; cv=none; b=g1U7emRoOUx5kOVLFdKtMBNYAas1T8E3ZPH4mfAlfKwJLLYCY0vNUxUdxnO7oURDuDh2yTQd2za0SNo0eaRS6k2MzPu4vdD0WpaNxFflfbg8MPrLlab7tQgBsPUPirsuI0Iu7uPppGP3evB/RCOHNFVJ5+/RfRQVQadxA+F3URQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1729184323; c=relaxed/simple;
-	bh=7YbQD8cLetHapQ6CCLa94g7znNsOotApkR1WM3YLPwY=;
-	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:
-	 Content-Type; b=g7nP3vWth/hiv+kKsaPS1oQOwMIxA37XCItdY70rSGzFLQ8ZiGr30bNwZfRweghQiBGnoIJYcyKYggMmvqknYqvZV5CSzVWaJdqOveSGtc+ZX3I0088EuYJiswvDEoCdvCBcGIZXrpE3lwFHWBMnmZepnsZIEjyiJrOhPYZVbDI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.166.197
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-il1-f197.google.com with SMTP id e9e14a558f8ab-3a3b7129255so11503835ab.2
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Oct 2024 09:58:38 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1729184318; x=1729789118;
-        h=to:from:subject:message-id:in-reply-to:date:mime-version
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=79cjQdibWULjOwjWvjlqagFC4XgdZamxycxUsvwt0S0=;
-        b=tBRckSDMho7WCfwh/4rSyw9ds5Dl+o7mT/9gjR3PZapKweKJV7hnURqKXmOCtSG6m9
-         J/g6tfWTSIkeHVgPVcxb5WxTA6huqNpbuIXPb6a8GuyT9ImhaJL915mu4wkxStlt6PG+
-         mOpTVL4Hz8GMDroM2LAagbH0DtR5FDB5sFYhnPOR9pqFAxwbYP5RN9BHWde0CCvh5tGj
-         4DfSP8PQF3CY9pay9qmgUpAp1T62pS04iD5lE3MXYkox4rvPcTdFFqaqrTJaKdM2eVlD
-         I4omFICNyt+12itakSm2whfg9MJvk8vvSYWpMpbfHLmYd2Yy2ecMCaYLSwd/aem6WlSd
-         qjjg==
-X-Forwarded-Encrypted: i=1; AJvYcCXZ+NGpXJQ2eu1DfeZZJYW3/7KBt43pHC9V1Cjqw8aFlZDwD9bflf3tw9G9R7UPrahFbBZ6fNyUe3BH@vger.kernel.org
-X-Gm-Message-State: AOJu0YwKAlsBTkN/TTrCvl9VSnjo/Wv23qPnpRBL6Yy1X7T/9gSXHbbA
-	Sg5X0Fq/oo3oP+3F6bDJAv6fn7acp4cH991OxRbzeeI5fLcdbfUA6+PQgxDfJhHhSWBelPnPf3Z
-	kx86PnUYdiI2pf0wvdTtWiuM8haOTa2++b538XCqQLTfsyRK4eZ57ghM=
-X-Google-Smtp-Source: AGHT+IGpW0xuqa7ddvipdfnYt9Hb35BzdMnzmStx/8U/kihUTuPuTGpjwj/1jK4i627Q515+zIfU0LRvYCdEUADTUTJoDnwh4RCC
+	s=arc-20240116; t=1729199693; c=relaxed/simple;
+	bh=84cSCRSgBLxOKFp9MGnsefKREdR9l96jowDjaXAXuM8=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=UX7PHvLczGalUVze3c5aTsv3cYAyAk1aM15FpfRTgTWO6ekMWGRY/s7zwpA9zrheSlnRzefkVQJP9jUhykzYnZV5sDFHWKa6gJrVk/deBN8o5XiztNeIYYOJMJfjqvV7Wg6Y9UmWZxt19QQTsbrZN2NcbmPyKS1w9fWKq9Y08mg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=kxKSNa9s; arc=none smtp.client-ip=178.60.130.6
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=igalia.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="kxKSNa9s"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=igalia.com;
+	s=20170329; h=Cc:To:In-Reply-To:References:Message-Id:
+	Content-Transfer-Encoding:Content-Type:MIME-Version:Subject:Date:From:Sender:
+	Reply-To:Content-ID:Content-Description:Resent-Date:Resent-From:Resent-Sender
+	:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:List-Help:List-Unsubscribe:
+	List-Subscribe:List-Post:List-Owner:List-Archive;
+	bh=8dI7Vp/FrIA/hgTEdP08qCKbl15yNUWf7v4zv+kdBu4=; b=kxKSNa9s+2zS7JilNTuBJKTUIo
+	vqm9cP3VwpRLKFNNiR6MWrQhE0x+mSO83pzF6h6ysRxOcjHNi7tt3uKXUtMWNFOk39CGBhe7Mgz5U
+	7NJQVPC/3ji8Es8CM1a1v0DBIrk7QNpITYFz3LhtuxeA49L3FoeVwg0zpzt5UHbSDMoQ75pGW9Rjd
+	h7GWU4yYl/22lulvtIoRF4te3vFgzUvEadAPGUmzOzhAvYwe2SzKNs3gAuXbG6eYGyKRFPKqrhqRO
+	B3v2F0X5bEIkjE+lIeh67RsnhggJP5ldnf2fJwbdtKzf8eQY7FbzrrSdAbEEh9jvJ5cWX/bXbbZcV
+	KYnRyO6A==;
+Received: from [179.118.186.49] (helo=[192.168.15.100])
+	by fanzine2.igalia.com with esmtpsa 
+	(Cipher TLS1.3:ECDHE_X25519__RSA_PSS_RSAE_SHA256__AES_256_GCM:256) (Exim)
+	id 1t1XpV-00Bnlc-Bl; Thu, 17 Oct 2024 23:14:45 +0200
+From: =?utf-8?q?Andr=C3=A9_Almeida?= <andrealmeid@igalia.com>
+Date: Thu, 17 Oct 2024 18:14:11 -0300
+Subject: [PATCH v7 1/9] libfs: Create the helper function
+ generic_ci_validate_strict_name()
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6e02:17ce:b0:3a3:da4f:79f4 with SMTP id
- e9e14a558f8ab-3a3dc49fc9dmr74253015ab.2.1729184318273; Thu, 17 Oct 2024
- 09:58:38 -0700 (PDT)
-Date: Thu, 17 Oct 2024 09:58:38 -0700
-In-Reply-To: <000000000000eacb0205d7c7865e@google.com>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6711423e.050a0220.a68d8.0013.GAE@google.com>
-Subject: Re: [syzbot] [ext4?] WARNING in ext4_write_inode (2)
-From: syzbot <syzbot+748cc361874fca7d33cc@syzkaller.appspotmail.com>
-To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com, tytso@mit.edu
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+Message-Id: <20241017-tonyk-tmpfs-v7-1-a9c056f8391f@igalia.com>
+References: <20241017-tonyk-tmpfs-v7-0-a9c056f8391f@igalia.com>
+In-Reply-To: <20241017-tonyk-tmpfs-v7-0-a9c056f8391f@igalia.com>
+To: Gabriel Krisman Bertazi <krisman@kernel.org>, 
+ Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
+ Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, 
+ Hugh Dickins <hughd@google.com>, Andrew Morton <akpm@linux-foundation.org>, 
+ Jonathan Corbet <corbet@lwn.net>, smcv@collabora.com
+Cc: kernel-dev@igalia.com, linux-fsdevel@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org, 
+ linux-mm@kvack.org, linux-doc@vger.kernel.org, 
+ Gabriel Krisman Bertazi <krisman@suse.de>, 
+ =?utf-8?q?Andr=C3=A9_Almeida?= <andrealmeid@igalia.com>
+X-Mailer: b4 0.14.2
 
-syzbot has found a reproducer for the following issue on:
+Create a helper function for filesystems do the checks required for
+casefold directories and strict encoding.
 
-HEAD commit:    c964ced77262 Merge tag 'for-linus' of git://git.kernel.org..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=1575f45f980000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=cfbd94c114a3d407
-dashboard link: https://syzkaller.appspot.com/bug?extid=748cc361874fca7d33cc
-compiler:       Debian clang version 15.0.6, GNU ld (GNU Binutils for Debian) 2.40
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=10561830580000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=120c8240580000
-
-Downloadable assets:
-disk image (non-bootable): https://storage.googleapis.com/syzbot-assets/7feb34a89c2a/non_bootable_disk-c964ced7.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/e937ef58569a/vmlinux-c964ced7.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/f1df9880ca4b/bzImage-c964ced7.xz
-mounted in repro: https://storage.googleapis.com/syzbot-assets/33caeecf49f6/mount_0.gz
-
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+748cc361874fca7d33cc@syzkaller.appspotmail.com
-
-------------[ cut here ]------------
-WARNING: CPU: 0 PID: 74 at fs/ext4/inode.c:5195 ext4_write_inode+0x627/0x6f0 fs/ext4/inode.c:5195
-Modules linked in:
-CPU: 0 UID: 0 PID: 74 Comm: kswapd0 Not tainted 6.12.0-rc3-syzkaller-00087-gc964ced77262 #0
-Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.3-debian-1.16.3-2~bpo12+1 04/01/2014
-RIP: 0010:ext4_write_inode+0x627/0x6f0 fs/ext4/inode.c:5195
-Code: ff ff ff 4d 85 ff 74 12 e8 16 38 34 ff 4c 89 ff e8 0e 7d c2 ff e9 cf fd ff ff e8 04 38 34 ff e9 c5 fd ff ff e8 fa 37 34 ff 90 <0f> 0b 90 e9 b7 fd ff ff e8 ec 37 34 ff e9 76 fd ff ff 44 89 f1 80
-RSP: 0018:ffffc90000e46e20 EFLAGS: 00010293
-RAX: ffffffff8260af56 RBX: 0000000000000800 RCX: ffff88801eea2440
-RDX: 0000000000000000 RSI: 0000000000000800 RDI: 0000000000000000
-RBP: ffffc90000e46f20 R08: ffffffff8260a9f2 R09: 1ffffffff2039fcd
-R10: dffffc0000000000 R11: ffffffff8260a930 R12: 0000000000220840
-R13: 1ffff920001c8dc8 R14: 0000000000000000 R15: ffff88801eea2440
-FS:  0000000000000000(0000) GS:ffff88801fc00000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007fbfc77f1af8 CR3: 000000000e734000 CR4: 0000000000352ef0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-Call Trace:
- <TASK>
- write_inode fs/fs-writeback.c:1503 [inline]
- __writeback_single_inode+0x711/0x10d0 fs/fs-writeback.c:1723
- writeback_single_inode+0x1f3/0x660 fs/fs-writeback.c:1779
- write_inode_now+0x1dd/0x260 fs/fs-writeback.c:2829
- iput_final fs/inode.c:1864 [inline]
- iput+0x60d/0xa50 fs/inode.c:1903
- __dentry_kill+0x20d/0x630 fs/dcache.c:615
- shrink_kill+0xa9/0x2c0 fs/dcache.c:1060
- shrink_dentry_list+0x2c0/0x5b0 fs/dcache.c:1087
- prune_dcache_sb+0x10f/0x180 fs/dcache.c:1168
- super_cache_scan+0x34f/0x4b0 fs/super.c:221
- do_shrink_slab+0x701/0x1160 mm/shrinker.c:435
- shrink_slab+0x1093/0x14d0 mm/shrinker.c:662
- shrink_one+0x43b/0x850 mm/vmscan.c:4818
- shrink_many mm/vmscan.c:4879 [inline]
- lru_gen_shrink_node mm/vmscan.c:4957 [inline]
- shrink_node+0x3799/0x3de0 mm/vmscan.c:5937
- kswapd_shrink_node mm/vmscan.c:6765 [inline]
- balance_pgdat mm/vmscan.c:6957 [inline]
- kswapd+0x1ca3/0x3700 mm/vmscan.c:7226
- kthread+0x2f0/0x390 kernel/kthread.c:389
- ret_from_fork+0x4b/0x80 arch/x86/kernel/process.c:147
- ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:244
- </TASK>
-
-
+Suggested-by: Gabriel Krisman Bertazi <krisman@suse.de>
+Signed-off-by: André Almeida <andrealmeid@igalia.com>
 ---
-If you want syzbot to run the reproducer, reply with:
-#syz test: git://repo/address.git branch-or-commit-hash
-If you attach or paste a git patch, syzbot will apply it before testing.
+Changes from v6:
+- Correctly negate utf8_validate() return
+
+Changes from v4:
+- Inline this function
+
+Changes from v2:
+- Moved function to libfs and adpated its name
+- Wrapped at 72 chars column
+- Decomposed the big if (...) to be more clear
+---
+ include/linux/fs.h | 45 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 45 insertions(+)
+
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 3559446279c152c70b7f1f3e0154f6e66a5aba33..403ee5d54c60a0a97e2eba9ef80d8fb4bbd2288f 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -45,6 +45,7 @@
+ #include <linux/slab.h>
+ #include <linux/maple_tree.h>
+ #include <linux/rw_hint.h>
++#include <linux/unicode.h>
+ 
+ #include <asm/byteorder.h>
+ #include <uapi/linux/fs.h>
+@@ -3456,6 +3457,50 @@ extern int generic_ci_match(const struct inode *parent,
+ 			    const struct qstr *folded_name,
+ 			    const u8 *de_name, u32 de_name_len);
+ 
++#if IS_ENABLED(CONFIG_UNICODE)
++/**
++ * generic_ci_validate_strict_name - Check if a given name is suitable
++ * for a directory
++ *
++ * This functions checks if the proposed filename is valid for the
++ * parent directory. That means that only valid UTF-8 filenames will be
++ * accepted for casefold directories from filesystems created with the
++ * strict encoding flag.  That also means that any name will be
++ * accepted for directories that doesn't have casefold enabled, or
++ * aren't being strict with the encoding.
++ *
++ * @dir: inode of the directory where the new file will be created
++ * @name: name of the new file
++ *
++ * Return:
++ * * True if the filename is suitable for this directory. It can be
++ * true if a given name is not suitable for a strict encoding
++ * directory, but the directory being used isn't strict
++ * * False if the filename isn't suitable for this directory. This only
++ * happens when a directory is casefolded and the filesystem is strict
++ * about its encoding.
++ */
++static inline bool generic_ci_validate_strict_name(struct inode *dir, struct qstr *name)
++{
++	if (!IS_CASEFOLDED(dir) || !sb_has_strict_encoding(dir->i_sb))
++		return true;
++
++	/*
++	 * A casefold dir must have a encoding set, unless the filesystem
++	 * is corrupted
++	 */
++	if (WARN_ON_ONCE(!dir->i_sb->s_encoding))
++		return true;
++
++	return !utf8_validate(dir->i_sb->s_encoding, name);
++}
++#else
++static inline bool generic_ci_validate_strict_name(struct inode *dir, struct qstr *name)
++{
++	return true;
++}
++#endif
++
+ static inline bool sb_has_encoding(const struct super_block *sb)
+ {
+ #if IS_ENABLED(CONFIG_UNICODE)
+
+-- 
+2.47.0
+
