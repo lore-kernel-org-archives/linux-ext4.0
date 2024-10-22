@@ -1,28 +1,28 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F2135142E78;
-	Tue, 22 Oct 2024 03:12:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B324A148850;
+	Tue, 22 Oct 2024 03:13:01 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1729566785; cv=none; b=SONKffdL0qFhKUyjqwZi2C1EwvtRyzq6By6+oG2EQG5RV237UF72bpkuG1OdjN9qnfjuYNS1uzo9ov+nKW8a+sbHtmsFPw6pG2KiMwXXiL1w/Opn5tRiAyIWtQvYV6abVVFgNC/DV2GVRHPb8Fd2KNTLX/4MwLbLATygJ+8Uh+Q=
+	t=1729566785; cv=none; b=LlSx4piQqUSyfPPLHT9/HpnUc+76IG9ChlQr2EY7NhvlLEQwcJCDFPa0y+LKJUsQMotUtYpkuvEB8FPkI08EAI4QjfWIXs9qFHN0sjQyN2ZdF4M3rO830ZF466+eKx8iC8jhoro+fyL9ZReLHcAhS/oTMsxOKmg5vrwm4JGQnaM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1729566785; c=relaxed/simple;
-	bh=wA/+byRUE9HEVfAVPo0uMAiN7r+pgEmHZjo59/JZv7c=;
+	bh=mvYROxnhlgk2x4bYLtyr7uhZYNNSevG/8KgsQUSX+BU=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=c9wdkTPijzBpGuONDJL2IK4oF9uqsdzH9Dt35ucD7XZcmu479iYM9SQ9hvdwEh7HcfmD8hW67oApdPZJTbX9FZzXabQ3tuK0AkUeXPSyJjYohXEXlP8RJ6Au+MhCrMseH7Ej39TK1/mvXIw/73XEuljRusOus/AE+j6vHRQeWys=
+	 MIME-Version; b=ShlEKI1V48EycMcOIqEVPtgmCJV5ZsajI52AznSHcohfToHiFl6LDzEpLiYmrr2NRHOt5x5lSJaSORAKfxsPZoSxKAsvYdEEpdp26PzsZv6FRWbJFytfrJyYrIhRqRSw9vCR0Xp2MbRwLl4HbE+g507l5SbKrmEWYbYyYsZJj80=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4XXcgC3PVqz4f3jY2;
-	Tue, 22 Oct 2024 11:12:39 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4XXcgF31JNz4f3jXP;
+	Tue, 22 Oct 2024 11:12:41 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id D0FE91A018D;
-	Tue, 22 Oct 2024 11:12:56 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id BF4F01A018C;
+	Tue, 22 Oct 2024 11:12:58 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.112.188])
-	by APP4 (Coremail) with SMTP id gCh0CgCXysYlGBdnPSwWEw--.716S16;
-	Tue, 22 Oct 2024 11:12:56 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgCXysYlGBdnPSwWEw--.716S19;
+	Tue, 22 Oct 2024 11:12:58 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -40,9 +40,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH 12/27] ext4: introduce seq counter for the extent status entry
-Date: Tue, 22 Oct 2024 19:10:43 +0800
-Message-ID: <20241022111059.2566137-13-yi.zhang@huaweicloud.com>
+Subject: [PATCH 15/27] ext4: implement buffered write iomap path
+Date: Tue, 22 Oct 2024 19:10:46 +0800
+Message-ID: <20241022111059.2566137-16-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
 In-Reply-To: <20241022111059.2566137-1-yi.zhang@huaweicloud.com>
 References: <20241022111059.2566137-1-yi.zhang@huaweicloud.com>
@@ -53,10 +53,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCXysYlGBdnPSwWEw--.716S16
-X-Coremail-Antispam: 1UD129KBjvJXoWxtrW8WF4fuF1UCFWkuF15urg_yoW3GFWxpa
-	9rAr15GrWkXw4q93WxZw4rWr43Wa48CrW7Gr9IgFWFvFW8tr1DKF1UtF1jvF98tFW0yrnr
-	XFWFy34DA3WUWa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:gCh0CgCXysYlGBdnPSwWEw--.716S19
+X-Coremail-Antispam: 1UD129KBjvJXoW3ZFy8Zr1fJw1kGFy8Ar4rGrg_yoWDZF4kpF
+	Z0kry5GF47Xr97uF4ftF47Zr1Fk3Wxtr4UCrW3Wrn8Xr9IyryIqF409FyayF15t3yxCr4j
+	qF4Ykry8Wr4UCrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUQl14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
 	0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
@@ -75,222 +75,297 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-In the iomap_write_iter(), the iomap buffered write frame does not hold
-any locks between querying the inode extent mapping info and performing
-page cache writes. As a result, the extent mapping can be changed due to
-concurrent I/O in flight. Similarly, in the iomap_writepage_map(), the
-write-back process faces a similar problem: concurrent changes can
-invalidate the extent mapping before the I/O is submitted.
+Introduce two new iomap_ops: ext4_iomap_buffered_write_ops and
+ext4_iomap_buffered_da_write_ops to implement the iomap write path.
+These operations invoke ext4_da_map_blocks() to map delayed allocation
+extents and introduce ext4_iomap_get_blocks() to directly allocate
+blocks in non-delayed allocation mode. Additionally, implement
+ext4_iomap_valid() to check the validity of extent mapping.
 
-Therefore, both of these processes must recheck the mapping info after
-acquiring the folio lock. To address this, similar to XFS, we propose
-introducing an extent sequence number to serve as a validity cookie for
-the extent. We will increment this number whenever the extent status
-tree changes, thereby preparing for the buffered write iomap conversion.
-Besides, it also changes the trace code style to make checkpatch.pl
-happy.
+There are two key differences between the buffer_head write path and the
+iomap write path:
+
+1) In the iomap write path, we always allocate unwritten extents for new
+   blocks, which means we consistently enable dioread_nolock. Therefore,
+   we do not need to truncate blocks for short writes and write failure.
+2) The iomap write frame maps multi-blocks in the ->iomap_begin()
+   function, so we must remove the stale delayed allocation range from
+   the short writes and write failure. Otherwise, this could result in a
+   range of delayed extents being covered by a clean folio, leading to
+   inaccurate space reservation.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/ext4.h              |  1 +
- fs/ext4/extents_status.c    | 13 ++++++++-
- fs/ext4/super.c             |  1 +
- include/trace/events/ext4.h | 57 +++++++++++++++++++++----------------
- 4 files changed, 46 insertions(+), 26 deletions(-)
+ fs/ext4/ext4.h  |   3 +
+ fs/ext4/file.c  |  19 +++++-
+ fs/ext4/inode.c | 155 +++++++++++++++++++++++++++++++++++++++++++++---
+ 3 files changed, 169 insertions(+), 8 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6d0267afd4c1..44f6867d3037 100644
+index ee170196bfff..a09f96ef17d8 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1123,6 +1123,7 @@ struct ext4_inode_info {
- 	ext4_lblk_t i_es_shrink_lblk;	/* Offset where we start searching for
- 					   extents to shrink. Protected by
- 					   i_es_lock  */
-+	unsigned int i_es_seq;		/* Change counter for extents */
+@@ -2985,6 +2985,7 @@ int ext4_walk_page_buffers(handle_t *handle,
+ 				     struct buffer_head *bh));
+ int do_journal_get_write_access(handle_t *handle, struct inode *inode,
+ 				struct buffer_head *bh);
++int ext4_nonda_switch(struct super_block *sb);
+ #define FALL_BACK_TO_NONDELALLOC 1
+ #define CONVERT_INLINE_DATA	 2
  
- 	/* ialloc */
- 	ext4_group_t	i_last_alloc_group;
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index c786691dabd3..bea4f87db502 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -204,6 +204,13 @@ static inline ext4_lblk_t ext4_es_end(struct extent_status *es)
- 	return es->es_lblk + es->es_len - 1;
+@@ -3845,6 +3846,8 @@ static inline void ext4_clear_io_unwritten_flag(ext4_io_end_t *io_end)
+ extern const struct iomap_ops ext4_iomap_ops;
+ extern const struct iomap_ops ext4_iomap_overwrite_ops;
+ extern const struct iomap_ops ext4_iomap_report_ops;
++extern const struct iomap_ops ext4_iomap_buffered_write_ops;
++extern const struct iomap_ops ext4_iomap_buffered_da_write_ops;
+ 
+ static inline int ext4_buffer_uptodate(struct buffer_head *bh)
+ {
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index f14aed14b9cf..92471865b4e5 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -282,6 +282,20 @@ static ssize_t ext4_write_checks(struct kiocb *iocb, struct iov_iter *from)
+ 	return count;
  }
  
-+static inline void ext4_es_inc_seq(struct inode *inode)
++static ssize_t ext4_iomap_buffered_write(struct kiocb *iocb,
++					 struct iov_iter *from)
 +{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
++	struct inode *inode = file_inode(iocb->ki_filp);
++	const struct iomap_ops *iomap_ops;
 +
-+	WRITE_ONCE(ei->i_es_seq, READ_ONCE(ei->i_es_seq) + 1);
++	if (test_opt(inode->i_sb, DELALLOC) && !ext4_nonda_switch(inode->i_sb))
++		iomap_ops = &ext4_iomap_buffered_da_write_ops;
++	else
++		iomap_ops = &ext4_iomap_buffered_write_ops;
++
++	return iomap_file_buffered_write(iocb, from, iomap_ops, NULL);
 +}
 +
- /*
-  * search through the tree for an delayed extent with a given offset.  If
-  * it can't be found, try to find next extent.
-@@ -872,6 +879,7 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 	BUG_ON(end < lblk);
- 	WARN_ON_ONCE(status & EXTENT_STATUS_DELAYED);
+ static ssize_t ext4_buffered_write_iter(struct kiocb *iocb,
+ 					struct iov_iter *from)
+ {
+@@ -296,7 +310,10 @@ static ssize_t ext4_buffered_write_iter(struct kiocb *iocb,
+ 	if (ret <= 0)
+ 		goto out;
  
-+	ext4_es_inc_seq(inode);
- 	newes.es_lblk = lblk;
- 	newes.es_len = len;
- 	ext4_es_store_pblock_status(&newes, pblk, status);
-@@ -1519,13 +1527,15 @@ void ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- 	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
- 		return;
+-	ret = generic_perform_write(iocb, from);
++	if (ext4_test_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP))
++		ret = ext4_iomap_buffered_write(iocb, from);
++	else
++		ret = generic_perform_write(iocb, from);
  
--	trace_ext4_es_remove_extent(inode, lblk, len);
- 	es_debug("remove [%u/%u) from extent status tree of inode %lu\n",
- 		 lblk, len, inode->i_ino);
+ out:
+ 	inode_unlock(inode);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f0bc4b58ac4f..23cbcaab0a56 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2862,7 +2862,7 @@ static int ext4_dax_writepages(struct address_space *mapping,
+ 	return ret;
+ }
  
- 	if (!len)
- 		return;
+-static int ext4_nonda_switch(struct super_block *sb)
++int ext4_nonda_switch(struct super_block *sb)
+ {
+ 	s64 free_clusters, dirty_clusters;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+@@ -3257,6 +3257,15 @@ static bool ext4_inode_datasync_dirty(struct inode *inode)
+ 	return inode->i_state & I_DIRTY_DATASYNC;
+ }
  
-+	ext4_es_inc_seq(inode);
-+	trace_ext4_es_remove_extent(inode, lblk, len);
++static bool ext4_iomap_valid(struct inode *inode, const struct iomap *iomap)
++{
++	return iomap->validity_cookie == READ_ONCE(EXT4_I(inode)->i_es_seq);
++}
 +
- 	end = lblk + len - 1;
- 	BUG_ON(end < lblk);
++static const struct iomap_folio_ops ext4_iomap_folio_ops = {
++	.iomap_valid = ext4_iomap_valid,
++};
++
+ static void ext4_set_iomap(struct inode *inode, struct iomap *iomap,
+ 			   struct ext4_map_blocks *map, loff_t offset,
+ 			   loff_t length, unsigned int flags)
+@@ -3287,6 +3296,9 @@ static void ext4_set_iomap(struct inode *inode, struct iomap *iomap,
+ 	    !ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+ 		iomap->flags |= IOMAP_F_MERGED;
  
-@@ -2107,6 +2117,7 @@ void ext4_es_insert_delayed_extent(struct inode *inode, ext4_lblk_t lblk,
- 	WARN_ON_ONCE((EXT4_B2C(sbi, lblk) == EXT4_B2C(sbi, end)) &&
- 		     end_allocated);
++	iomap->validity_cookie = READ_ONCE(EXT4_I(inode)->i_es_seq);
++	iomap->folio_ops = &ext4_iomap_folio_ops;
++
+ 	/*
+ 	 * Flags passed to ext4_map_blocks() for direct I/O writes can result
+ 	 * in m_flags having both EXT4_MAP_MAPPED and EXT4_MAP_UNWRITTEN bits
+@@ -3526,11 +3538,57 @@ const struct iomap_ops ext4_iomap_report_ops = {
+ 	.iomap_begin = ext4_iomap_begin_report,
+ };
  
-+	ext4_es_inc_seq(inode);
- 	newes.es_lblk = lblk;
- 	newes.es_len = len;
- 	ext4_es_store_pblock_status(&newes, ~0, EXTENT_STATUS_DELAYED);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 16a4ce704460..a01e0bbe57c8 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1409,6 +1409,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	ei->i_es_all_nr = 0;
- 	ei->i_es_shk_nr = 0;
- 	ei->i_es_shrink_lblk = 0;
-+	ei->i_es_seq = 0;
- 	ei->i_reserved_data_blocks = 0;
- 	spin_lock_init(&(ei->i_block_reservation_lock));
- 	ext4_init_pending_tree(&ei->i_pending_tree);
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 156908641e68..6f2bf9035216 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -2176,12 +2176,13 @@ DECLARE_EVENT_CLASS(ext4__es_extent,
- 	TP_ARGS(inode, es),
+-static int ext4_iomap_buffered_read_begin(struct inode *inode, loff_t offset,
+-			loff_t length, unsigned int flags, struct iomap *iomap,
+-			struct iomap *srcmap)
++static int ext4_iomap_get_blocks(struct inode *inode,
++				 struct ext4_map_blocks *map)
+ {
+-	int ret;
++	loff_t i_size = i_size_read(inode);
++	handle_t *handle;
++	int ret, needed_blocks;
++
++	/*
++	 * Check if the blocks have already been allocated, this could
++	 * avoid initiating a new journal transaction and return the
++	 * mapping information directly.
++	 */
++	if ((map->m_lblk + map->m_len) <=
++	    round_up(i_size, i_blocksize(inode)) >> inode->i_blkbits) {
++		ret = ext4_map_blocks(NULL, inode, map, 0);
++		if (ret < 0)
++			return ret;
++		if (map->m_flags & (EXT4_MAP_MAPPED | EXT4_MAP_UNWRITTEN |
++				    EXT4_MAP_DELAYED))
++			return 0;
++	}
++
++	/*
++	 * Reserve one block more for addition to orphan list in case
++	 * we allocate blocks but write fails for some reason.
++	 */
++	needed_blocks = ext4_writepage_trans_blocks(inode) + 1;
++	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, needed_blocks);
++	if (IS_ERR(handle))
++		return PTR_ERR(handle);
++
++	ret = ext4_map_blocks(handle, inode, map,
++			      EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT);
++	/*
++	 * We need to stop handle here due to a potential deadlock caused
++	 * by the subsequent call to balance_dirty_pages(). This function
++	 * may wait for the dirty pages to be written back, which could
++	 * initiate another handle and cause it to wait for the first
++	 * handle to complete.
++	 */
++	ext4_journal_stop(handle);
++
++	return ret;
++}
++
++static int ext4_iomap_buffered_begin(struct inode *inode, loff_t offset,
++				     loff_t length, unsigned int flags,
++				     struct iomap *iomap, struct iomap *srcmap,
++				     bool delalloc)
++{
++	int ret, retries = 0;
+ 	struct ext4_map_blocks map;
+ 	u8 blkbits = inode->i_blkbits;
  
- 	TP_STRUCT__entry(
--		__field(	dev_t,		dev		)
--		__field(	ino_t,		ino		)
--		__field(	ext4_lblk_t,	lblk		)
--		__field(	ext4_lblk_t,	len		)
--		__field(	ext4_fsblk_t,	pblk		)
--		__field(	char, status	)
-+		__field(dev_t,		dev)
-+		__field(ino_t,		ino)
-+		__field(ext4_lblk_t,	lblk)
-+		__field(ext4_lblk_t,	len)
-+		__field(ext4_fsblk_t,	pblk)
-+		__field(char,		status)
-+		__field(unsigned int,	seq)
- 	),
+@@ -3541,13 +3599,23 @@ static int ext4_iomap_buffered_read_begin(struct inode *inode, loff_t offset,
+ 	/* Inline data support is not yet available. */
+ 	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
+ 		return -ERANGE;
+-
++retry:
+ 	/* Calculate the first and last logical blocks respectively. */
+ 	map.m_lblk = offset >> blkbits;
+ 	map.m_len = min_t(loff_t, (offset + length - 1) >> blkbits,
+ 			  EXT4_MAX_LOGICAL_BLOCK) - map.m_lblk + 1;
++	if (flags & IOMAP_WRITE) {
++		if (delalloc)
++			ret = ext4_da_map_blocks(inode, &map);
++		else
++			ret = ext4_iomap_get_blocks(inode, &map);
  
- 	TP_fast_assign(
-@@ -2191,13 +2192,15 @@ DECLARE_EVENT_CLASS(ext4__es_extent,
- 		__entry->len	= es->es_len;
- 		__entry->pblk	= ext4_es_show_pblock(es);
- 		__entry->status	= ext4_es_status(es);
-+		__entry->seq	= EXT4_I(inode)->i_es_seq;
- 	),
+-	ret = ext4_map_blocks(NULL, inode, &map, 0);
++		if (ret == -ENOSPC &&
++		    ext4_should_retry_alloc(inode->i_sb, &retries))
++			goto retry;
++	} else {
++		ret = ext4_map_blocks(NULL, inode, &map, 0);
++	}
+ 	if (ret < 0)
+ 		return ret;
  
--	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %s",
-+	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %s seq %u",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  __entry->lblk, __entry->len,
--		  __entry->pblk, show_extent_status(__entry->status))
-+		  __entry->pblk, show_extent_status(__entry->status),
-+		  __entry->seq)
- );
+@@ -3555,6 +3623,79 @@ static int ext4_iomap_buffered_read_begin(struct inode *inode, loff_t offset,
+ 	return 0;
+ }
  
- DEFINE_EVENT(ext4__es_extent, ext4_es_insert_extent,
-@@ -2218,10 +2221,11 @@ TRACE_EVENT(ext4_es_remove_extent,
- 	TP_ARGS(inode, lblk, len),
- 
- 	TP_STRUCT__entry(
--		__field(	dev_t,	dev			)
--		__field(	ino_t,	ino			)
--		__field(	loff_t,	lblk			)
--		__field(	loff_t,	len			)
-+		__field(dev_t,		dev)
-+		__field(ino_t,		ino)
-+		__field(loff_t,		lblk)
-+		__field(loff_t,		len)
-+		__field(unsigned int,	seq)
- 	),
- 
- 	TP_fast_assign(
-@@ -2229,12 +2233,13 @@ TRACE_EVENT(ext4_es_remove_extent,
- 		__entry->ino	= inode->i_ino;
- 		__entry->lblk	= lblk;
- 		__entry->len	= len;
-+		__entry->seq	= EXT4_I(inode)->i_es_seq;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu es [%lld/%lld)",
-+	TP_printk("dev %d,%d ino %lu es [%lld/%lld) seq %u",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  __entry->lblk, __entry->len)
-+		  __entry->lblk, __entry->len, __entry->seq)
- );
- 
- TRACE_EVENT(ext4_es_find_extent_range_enter,
-@@ -2486,14 +2491,15 @@ TRACE_EVENT(ext4_es_insert_delayed_extent,
- 	TP_ARGS(inode, es, lclu_allocated, end_allocated),
- 
- 	TP_STRUCT__entry(
--		__field(	dev_t,		dev		)
--		__field(	ino_t,		ino		)
--		__field(	ext4_lblk_t,	lblk		)
--		__field(	ext4_lblk_t,	len		)
--		__field(	ext4_fsblk_t,	pblk		)
--		__field(	char,		status		)
--		__field(	bool,		lclu_allocated	)
--		__field(	bool,		end_allocated	)
-+		__field(dev_t,		dev)
-+		__field(ino_t,		ino)
-+		__field(ext4_lblk_t,	lblk)
-+		__field(ext4_lblk_t,	len)
-+		__field(ext4_fsblk_t,	pblk)
-+		__field(char,		status)
-+		__field(bool,		lclu_allocated)
-+		__field(bool,		end_allocated)
-+		__field(unsigned int,	seq)
- 	),
- 
- 	TP_fast_assign(
-@@ -2505,15 +2511,16 @@ TRACE_EVENT(ext4_es_insert_delayed_extent,
- 		__entry->status		= ext4_es_status(es);
- 		__entry->lclu_allocated	= lclu_allocated;
- 		__entry->end_allocated	= end_allocated;
-+		__entry->seq		= EXT4_I(inode)->i_es_seq;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %s "
--		  "allocated %d %d",
-+	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %s allocated %d %d seq %u",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  __entry->lblk, __entry->len,
- 		  __entry->pblk, show_extent_status(__entry->status),
--		  __entry->lclu_allocated, __entry->end_allocated)
-+		  __entry->lclu_allocated, __entry->end_allocated,
-+		  __entry->seq)
- );
- 
- /* fsmap traces */
++static int ext4_iomap_buffered_read_begin(struct inode *inode,
++			loff_t offset, loff_t length, unsigned int flags,
++			struct iomap *iomap, struct iomap *srcmap)
++{
++	return ext4_iomap_buffered_begin(inode, offset, length, flags,
++					 iomap, srcmap, false);
++}
++
++static int ext4_iomap_buffered_write_begin(struct inode *inode,
++			loff_t offset, loff_t length, unsigned int flags,
++			struct iomap *iomap, struct iomap *srcmap)
++{
++	return ext4_iomap_buffered_begin(inode, offset, length, flags,
++					 iomap, srcmap, false);
++}
++
++static int ext4_iomap_buffered_da_write_begin(struct inode *inode,
++			loff_t offset, loff_t length, unsigned int flags,
++			struct iomap *iomap, struct iomap *srcmap)
++{
++	return ext4_iomap_buffered_begin(inode, offset, length, flags,
++					 iomap, srcmap, true);
++}
++
++/*
++ * Drop the staled delayed allocation range from the write failure,
++ * including both start and end blocks. If not, we could leave a range
++ * of delayed extents covered by a clean folio, it could lead to
++ * inaccurate space reservation.
++ */
++static void ext4_iomap_punch_delalloc(struct inode *inode, loff_t offset,
++				     loff_t length, struct iomap *iomap)
++{
++	down_write(&EXT4_I(inode)->i_data_sem);
++	ext4_es_remove_extent(inode, offset >> inode->i_blkbits,
++			DIV_ROUND_UP_ULL(length, EXT4_BLOCK_SIZE(inode->i_sb)));
++	up_write(&EXT4_I(inode)->i_data_sem);
++}
++
++static int ext4_iomap_buffered_da_write_end(struct inode *inode, loff_t offset,
++					    loff_t length, ssize_t written,
++					    unsigned int flags,
++					    struct iomap *iomap)
++{
++	loff_t start_byte, end_byte;
++
++	/* If we didn't reserve the blocks, we're not allowed to punch them. */
++	if (iomap->type != IOMAP_DELALLOC || !(iomap->flags & IOMAP_F_NEW))
++		return 0;
++
++	/* Nothing to do if we've written the entire delalloc extent */
++	start_byte = iomap_last_written_block(inode, offset, written);
++	end_byte = round_up(offset + length, i_blocksize(inode));
++	if (start_byte >= end_byte)
++		return 0;
++
++	filemap_invalidate_lock(inode->i_mapping);
++	iomap_write_delalloc_release(inode, start_byte, end_byte, flags,
++				     iomap, ext4_iomap_punch_delalloc);
++	filemap_invalidate_unlock(inode->i_mapping);
++	return 0;
++}
++
++
++const struct iomap_ops ext4_iomap_buffered_write_ops = {
++	.iomap_begin = ext4_iomap_buffered_write_begin,
++};
++
++const struct iomap_ops ext4_iomap_buffered_da_write_ops = {
++	.iomap_begin = ext4_iomap_buffered_da_write_begin,
++	.iomap_end = ext4_iomap_buffered_da_write_end,
++};
++
+ const struct iomap_ops ext4_iomap_buffered_read_ops = {
+ 	.iomap_begin = ext4_iomap_buffered_read_begin,
+ };
 -- 
 2.46.1
 
