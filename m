@@ -1,28 +1,28 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E7B071FEFC0;
-	Tue, 22 Oct 2024 03:13:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5570E200109;
+	Tue, 22 Oct 2024 03:13:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1729566790; cv=none; b=nj+u32SIKCsD1RPAvIMIttvEMKkftKqmksjd2JVzV2OV46qlTQI84NV9aCE+FZ0IJllTsgTtnu2C0CtHw+Zpbj7yCkFxkDKZWGlkFvfL/kOlw7IEiI3UYAZMjZuI3+p+eWjFkA6bsJi02Hngy9lOyBPsLISK6N12h4ZC+fBF+jw=
+	t=1729566791; cv=none; b=RcRw68I1MAid/0YhzUg9G12DApj7fBrxGxqxAUT9ZbXZFq4B4FmoyJLQTzwgqF3wUD2zrkxmJ+rOnY9hyCHqdHVdru+9kvsnDKpfsZDDOAfB9w0mC/mgRoOrPBq6sIdqwO21NUD5Vq3RJvZb9vN+yZmG3CBrELCd0J5CQ0l9PUw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1729566790; c=relaxed/simple;
-	bh=T7Ax1zmPeYMqNlopQKLb8lsCwVcBJZ9ZJijwkkRpwBM=;
+	s=arc-20240116; t=1729566791; c=relaxed/simple;
+	bh=OAzCCl3m2q23m1U+qcLkhExvUHjt8Ff1nVP57Z12V6I=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=F0bPXJsbR0uh3ljwh0Dx/B6IYAE5Eo+fXaFD8QaL1xylCD6bvuqIf3Mwtz+A/0LD7oT9QmXxfFVkqLcRqh/1MLCeNkmFFJTO0iMG6vy8MAMApcuTORkUe3zwGOIJ8MaACR+yhjU/9D60EiwwMhfVS+V8ee/O5Qscj+fMUdwq1vU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=ISr+Zrdmrj/8Fcl4/paJCjDmHkYROINytjIcGVczotiiYIuVgDxxxFMMu9w+7sTG0yLRUUnK/F/81M2z+StNahAdRYW/WVwYDnow8hW4CrJLqCgGhdpkWfGAbymqfqlyc97KJliDmQWe2Zdk+gB41hLQ1MglNKbIKOHvhGNPqv4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4XXcgS68Hhz4f3jks;
-	Tue, 22 Oct 2024 11:12:52 +0800 (CST)
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4XXcgN1lZBz4f3lVx;
+	Tue, 22 Oct 2024 11:12:48 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 235601A018C;
-	Tue, 22 Oct 2024 11:13:05 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 67C5D1A058E;
+	Tue, 22 Oct 2024 11:13:06 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.112.188])
-	by APP4 (Coremail) with SMTP id gCh0CgCXysYlGBdnPSwWEw--.716S29;
-	Tue, 22 Oct 2024 11:13:04 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgCXysYlGBdnPSwWEw--.716S31;
+	Tue, 22 Oct 2024 11:13:06 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -40,9 +40,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH 25/27] ext4: enable large folio for regular file with iomap buffered I/O path
-Date: Tue, 22 Oct 2024 19:10:56 +0800
-Message-ID: <20241022111059.2566137-26-yi.zhang@huaweicloud.com>
+Subject: [PATCH 27/27] ext4: introduce a mount option for iomap buffered I/O path
+Date: Tue, 22 Oct 2024 19:10:58 +0800
+Message-ID: <20241022111059.2566137-28-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
 In-Reply-To: <20241022111059.2566137-1-yi.zhang@huaweicloud.com>
 References: <20241022111059.2566137-1-yi.zhang@huaweicloud.com>
@@ -53,10 +53,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCXysYlGBdnPSwWEw--.716S29
-X-Coremail-Antispam: 1UD129KBjvJXoW7tFyrCw1fZw1xWr1xWF17Jrb_yoW8XrW7pr
-	sxK3W8GrWkX34q9ws3KryxZr1Uta1xGw4UuFWF9wn8WrWDJ34SqF4jkF1xAF48JrWrA3y2
-	qFyIkr13Z3WfC3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:gCh0CgCXysYlGBdnPSwWEw--.716S31
+X-Coremail-Antispam: 1UD129KBjvJXoWxZrW3WFyrtryxWF4xKw1rWFg_yoW5Cr18p3
+	sYkFy8Gr1kZr1F93y8CF48Wr1FkF4Yka1UuFWYgw17WFZrAryxXFyfKF1rCF42qrW8XryI
+	gF1rWw17WF43CrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUQm14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
 	0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
@@ -75,48 +75,75 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Since we have converted the buffered I/O path to iomap for regular
-files, we can enable large folio support as well. This should result in
-significant performance gains for large I/O operations.
+Introduce the buffered_iomap and the nobuffered_iomap mount options to
+enable the iomap buffered I/O path for regular files. This option is
+currently disabled by default until we can support more comprehensive
+features along this path.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/ialloc.c | 4 +++-
- fs/ext4/inode.c  | 4 +++-
- 2 files changed, 6 insertions(+), 2 deletions(-)
+ fs/ext4/ext4.h  | 1 +
+ fs/ext4/inode.c | 2 ++
+ fs/ext4/super.c | 7 +++++++
+ 3 files changed, 10 insertions(+)
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 2e3e257b9808..6ff03fb74867 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -1333,8 +1333,10 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
- 		}
- 	}
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 0096191b454c..c2a44530e026 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1257,6 +1257,7 @@ struct ext4_inode_info {
+ 						    * scanning in mballoc
+ 						    */
+ #define EXT4_MOUNT2_ABORT		0x00000100 /* Abort filesystem */
++#define EXT4_MOUNT2_BUFFERED_IOMAP	0x00000200 /* Use iomap for buffered IO */
  
--	if (ext4_should_use_buffered_iomap(inode))
-+	if (ext4_should_use_buffered_iomap(inode)) {
- 		ext4_set_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP);
-+		mapping_set_large_folios(inode->i_mapping);
-+	}
- 
- 	ext4_update_inode_fsync_trans(handle, inode, 1);
- 
+ #define clear_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt &= \
+ 						~EXT4_MOUNT_##opt
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 512094dc4117..97abc88e6658 100644
+index 97abc88e6658..b6e041a423f9 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -5437,8 +5437,10 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 	if (ret)
- 		goto bad_inode;
+@@ -5153,6 +5153,8 @@ bool ext4_should_use_buffered_iomap(struct inode *inode)
+ {
+ 	struct super_block *sb = inode->i_sb;
  
--	if (ext4_should_use_buffered_iomap(inode))
-+	if (ext4_should_use_buffered_iomap(inode)) {
- 		ext4_set_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP);
-+		mapping_set_large_folios(inode->i_mapping);
-+	}
- 
- 	if (S_ISREG(inode->i_mode)) {
- 		inode->i_op = &ext4_file_inode_operations;
++	if (!test_opt2(sb, BUFFERED_IOMAP))
++		return false;
+ 	if (ext4_has_feature_inline_data(sb))
+ 		return false;
+ 	if (ext4_has_feature_verity(sb))
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 89955081c4fe..435a866359d9 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1675,6 +1675,7 @@ enum {
+ 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
+ 	Opt_max_dir_size_kb, Opt_nojournal_checksum, Opt_nombcache,
+ 	Opt_no_prefetch_block_bitmaps, Opt_mb_optimize_scan,
++	Opt_buffered_iomap, Opt_nobuffered_iomap,
+ 	Opt_errors, Opt_data, Opt_data_err, Opt_jqfmt, Opt_dax_type,
+ #ifdef CONFIG_EXT4_DEBUG
+ 	Opt_fc_debug_max_replay, Opt_fc_debug_force
+@@ -1806,6 +1807,8 @@ static const struct fs_parameter_spec ext4_param_specs[] = {
+ 	fsparam_flag("no_prefetch_block_bitmaps",
+ 						Opt_no_prefetch_block_bitmaps),
+ 	fsparam_s32("mb_optimize_scan",		Opt_mb_optimize_scan),
++	fsparam_flag("buffered_iomap",		Opt_buffered_iomap),
++	fsparam_flag("nobuffered_iomap",	Opt_nobuffered_iomap),
+ 	fsparam_string("check",			Opt_removed),	/* mount option from ext2/3 */
+ 	fsparam_flag("nocheck",			Opt_removed),	/* mount option from ext2/3 */
+ 	fsparam_flag("reservation",		Opt_removed),	/* mount option from ext2/3 */
+@@ -1900,6 +1903,10 @@ static const struct mount_opts {
+ 	{Opt_nombcache, EXT4_MOUNT_NO_MBCACHE, MOPT_SET},
+ 	{Opt_no_prefetch_block_bitmaps, EXT4_MOUNT_NO_PREFETCH_BLOCK_BITMAPS,
+ 	 MOPT_SET},
++	{Opt_buffered_iomap, EXT4_MOUNT2_BUFFERED_IOMAP,
++	 MOPT_SET | MOPT_2 | MOPT_EXT4_ONLY},
++	{Opt_nobuffered_iomap, EXT4_MOUNT2_BUFFERED_IOMAP,
++	 MOPT_CLEAR | MOPT_2 | MOPT_EXT4_ONLY},
+ #ifdef CONFIG_EXT4_DEBUG
+ 	{Opt_fc_debug_force, EXT4_MOUNT2_JOURNAL_FAST_COMMIT,
+ 	 MOPT_SET | MOPT_2 | MOPT_EXT4_ONLY},
 -- 
 2.46.1
 
