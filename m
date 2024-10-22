@@ -1,28 +1,28 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5EBFB1487D1;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 364EE1494CF;
 	Tue, 22 Oct 2024 03:13:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1729566785; cv=none; b=i9sHGMGsF37YTirdUIx1bCVRkW/swwWH1eyWR4eRgP0szwgiX8CdabHWbjFYXz2v3WrqAqWpW4VWvZ+xUl915z5gFiwGRNE0Q+aaDJ+jQnyV0skXF3ULjZRnztrsp8tFrOHflgAXMpvr5MJMwKQAwFcOK+klVTBnKSx9sGqCJAM=
+	t=1729566784; cv=none; b=O7ShU/5f0jlEC7SX5YIvy3cV50ideJgpA80vJtQjT9gjJBrzE9r7GAIo49QIPKtTqZvRIIA1qqSZla2F3dUtzbGs8yIu4qiXejePI3s5UhJ9IJFR0t4FPPzPo8toC6aQe6T8FUmaXJXOx5U9lCm9qla8pQOqQJXtdZmP7JERFiw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1729566785; c=relaxed/simple;
-	bh=QSoSH/PS71Cm1qttsP1bNXGF+E8W1iWagKD5oA18EkQ=;
+	s=arc-20240116; t=1729566784; c=relaxed/simple;
+	bh=L2PnKFl1ZCOWQSi7+wvxH9mUeWEOTVmtXzjuGxJ5G7M=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=KUR3S9OxcAZVzp125lQEv9JGEyUVNt97irLCk9AeGBWlaM6hvUAPAdX59vuWBT5Y0URhGpWIXrnKyQG4Wn/BMlSslHSHH11lWjj878EE8uxPtQ6v7ddGORAx3Ejl9451gt98MW6J6U0kPI1CArbeZWFATYrlsn15hLIXMLIrLKg=
+	 MIME-Version; b=PnvmN/uxyz9N5tqq7VO1g7BuVW6Oe88UvlG3GmNO/t71z2vmL6QgMByOMi7fmBmE1XaUOCNk/lj5g8xvFauGEyGhM5uSRSi+c0ocgntwT0qDBiERWnZgjDRJ62ghxtU0fj9w+ngWntKCCM7OPpk41cpTYFugB2+1sHje9iNCmvs=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4XXcg73Vqkz4f3lVx;
-	Tue, 22 Oct 2024 11:12:35 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4XXcgC27Rlz4f3lW5;
+	Tue, 22 Oct 2024 11:12:39 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id A5F681A0359;
-	Tue, 22 Oct 2024 11:12:53 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 77EE71A018D;
+	Tue, 22 Oct 2024 11:12:57 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.112.188])
-	by APP4 (Coremail) with SMTP id gCh0CgCXysYlGBdnPSwWEw--.716S11;
-	Tue, 22 Oct 2024 11:12:53 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgCXysYlGBdnPSwWEw--.716S17;
+	Tue, 22 Oct 2024 11:12:57 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -40,9 +40,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH 07/27] ext4: refactor ext4_insert_range()
-Date: Tue, 22 Oct 2024 19:10:38 +0800
-Message-ID: <20241022111059.2566137-8-yi.zhang@huaweicloud.com>
+Subject: [PATCH 13/27] ext4: add a new iomap aops for regular file's buffered IO path
+Date: Tue, 22 Oct 2024 19:10:44 +0800
+Message-ID: <20241022111059.2566137-14-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
 In-Reply-To: <20241022111059.2566137-1-yi.zhang@huaweicloud.com>
 References: <20241022111059.2566137-1-yi.zhang@huaweicloud.com>
@@ -53,10 +53,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCXysYlGBdnPSwWEw--.716S11
-X-Coremail-Antispam: 1UD129KBjvJXoW3GryUCF13Wr1UJw45uryDWrg_yoWxAr48pr
-	ZxWry5GrWFqa4v9rW8KF4DZF18K3WkG3y7GryxGrn3Xa4jvr9rK3WYkFyYgFy8KrWkZrWY
-	vF4Fk345Way2ka7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:gCh0CgCXysYlGBdnPSwWEw--.716S17
+X-Coremail-Antispam: 1UD129KBjvJXoWxAFy8XFW5AF1kWFW5JFW5KFg_yoW5ZrykpF
+	98Kas3GF18Zr9rua1fXa9rAr4Yya4fJa1UKFW3G3Wa9r98GrW7KFWqka4jkFy5t3ykJr1I
+	qr4j9ry7GF17CrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUQl14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
 	0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
@@ -68,222 +68,97 @@ X-Coremail-Antispam: 1UD129KBjvJXoW3GryUCF13Wr1UJw45uryDWrg_yoWxAr48pr
 	AGYxC7M4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI
 	7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxV
 	Cjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVW8ZVWrXwCIc40Y0x0EwIxGrwCI42IY
-	6xIIjxv20xvE14v26r1I6r4UMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UMIIF0x
-	vE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv
+	6xIIjxv20xvE14v26r4j6ryUMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UMIIF0x
+	vE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv
 	6xkF7I0E14v26r4UJVWxJrUvcSsGvfC2KfnxnUUI43ZEXa7sRRgAFtUUUUU==
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Simplify ext4_insert_range() and align its code style with that of
-ext4_collapse_range(). Refactor it by: a) renaming variables, b)
-removing redundant input parameter checks and moving the remaining
-checks under i_rwsem in preparation for future refactoring, and c)
-renaming the three stale error tags.
+This patch starts support for iomap in the buffered I/O path of ext4
+regular files. First, it introduces a new iomap address space operation,
+ext4_iomap_aops. Additionally, it adds an inode state flag,
+EXT4_STATE_BUFFERED_IOMAP, which indicates that the inode uses the iomap
+path instead of the original buffer_head path for buffered I/O. Most
+callbacks of ext4_iomap_aops can directly utilize generic
+implementations, the remaining functions .read_folio(), .readahead(),
+and .writepages() will be implemented in later patches.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/extents.c | 101 ++++++++++++++++++++++------------------------
- 1 file changed, 48 insertions(+), 53 deletions(-)
+ fs/ext4/ext4.h  |  1 +
+ fs/ext4/inode.c | 32 ++++++++++++++++++++++++++++++++
+ 2 files changed, 33 insertions(+)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index a4e95f3b5f09..4e35c2415e9b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5428,45 +5428,37 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
- 	handle_t *handle;
- 	struct ext4_ext_path *path;
- 	struct ext4_extent *extent;
--	ext4_lblk_t offset_lblk, len_lblk, ee_start_lblk = 0;
-+	ext4_lblk_t start_lblk, len_lblk, ee_start_lblk = 0;
- 	unsigned int credits, ee_len;
--	int ret = 0, depth, split_flag = 0;
--	loff_t ioffset;
--
--	/*
--	 * We need to test this early because xfstests assumes that an
--	 * insert range of (0, 1) will return EOPNOTSUPP if the file
--	 * system does not support insert range.
--	 */
--	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
--		return -EOPNOTSUPP;
--
--	/* Insert range works only on fs cluster size aligned regions. */
--	if (!IS_ALIGNED(offset | len, EXT4_CLUSTER_SIZE(sb)))
--		return -EINVAL;
-+	int ret, depth, split_flag = 0;
-+	loff_t start;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 44f6867d3037..ee170196bfff 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1916,6 +1916,7 @@ enum {
+ 	EXT4_STATE_VERITY_IN_PROGRESS,	/* building fs-verity Merkle tree */
+ 	EXT4_STATE_FC_COMMITTING,	/* Fast commit ongoing */
+ 	EXT4_STATE_ORPHAN_FILE,		/* Inode orphaned in orphan file */
++	EXT4_STATE_BUFFERED_IOMAP,	/* Inode use iomap for buffered IO */
+ };
  
- 	trace_ext4_insert_range(inode, offset, len);
+ #define EXT4_INODE_BIT_FNS(name, field, offset)				\
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 1ccf84a64b7b..b233f36efefa 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3526,6 +3526,22 @@ const struct iomap_ops ext4_iomap_report_ops = {
+ 	.iomap_begin = ext4_iomap_begin_report,
+ };
  
--	offset_lblk = offset >> EXT4_BLOCK_SIZE_BITS(sb);
--	len_lblk = len >> EXT4_BLOCK_SIZE_BITS(sb);
--
- 	inode_lock(inode);
++static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
++{
++	return 0;
++}
 +
- 	/* Currently just for extent based files */
- 	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
- 		ret = -EOPNOTSUPP;
--		goto out_mutex;
-+		goto out;
- 	}
- 
--	/* Check whether the maximum file size would be exceeded */
--	if (len > inode->i_sb->s_maxbytes - inode->i_size) {
--		ret = -EFBIG;
--		goto out_mutex;
-+	/* Insert range works only on fs cluster size aligned regions. */
-+	if (!IS_ALIGNED(offset | len, EXT4_CLUSTER_SIZE(sb))) {
-+		ret = -EINVAL;
-+		goto out;
- 	}
- 
- 	/* Offset must be less than i_size */
- 	if (offset >= inode->i_size) {
- 		ret = -EINVAL;
--		goto out_mutex;
-+		goto out;
-+	}
++static void ext4_iomap_readahead(struct readahead_control *rac)
++{
 +
-+	/* Check whether the maximum file size would be exceeded */
-+	if (len > inode->i_sb->s_maxbytes - inode->i_size) {
-+		ret = -EFBIG;
-+		goto out;
- 	}
- 
- 	/* Wait for existing dio to complete */
-@@ -5474,7 +5466,7 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
- 
- 	ret = file_modified(file);
- 	if (ret)
--		goto out_mutex;
-+		goto out;
- 
- 	/*
- 	 * Prevent page faults from reinstantiating pages we have released from
-@@ -5484,25 +5476,24 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
- 
- 	ret = ext4_break_layouts(inode);
- 	if (ret)
--		goto out_mmap;
-+		goto out_invalidate_lock;
- 
- 	/*
--	 * Need to round down to align start offset to page size boundary
--	 * for page size > block size.
-+	 * Write out all dirty pages. Need to round down to align start offset
-+	 * to page size boundary for page size > block size.
- 	 */
--	ioffset = round_down(offset, PAGE_SIZE);
--	/* Write out all dirty pages */
--	ret = filemap_write_and_wait_range(inode->i_mapping, ioffset,
--			LLONG_MAX);
-+	start = round_down(offset, PAGE_SIZE);
-+	ret = filemap_write_and_wait_range(mapping, start, LLONG_MAX);
- 	if (ret)
--		goto out_mmap;
--	truncate_pagecache(inode, ioffset);
-+		goto out_invalidate_lock;
++}
 +
-+	truncate_pagecache(inode, start);
- 
- 	credits = ext4_writepage_trans_blocks(inode);
- 	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
- 	if (IS_ERR(handle)) {
- 		ret = PTR_ERR(handle);
--		goto out_mmap;
-+		goto out_invalidate_lock;
- 	}
- 	ext4_fc_mark_ineligible(sb, EXT4_FC_REASON_FALLOC_RANGE, handle);
- 
-@@ -5511,16 +5502,19 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
- 	EXT4_I(inode)->i_disksize += len;
- 	ret = ext4_mark_inode_dirty(handle, inode);
- 	if (ret)
--		goto out_stop;
-+		goto out_handle;
++static int ext4_iomap_writepages(struct address_space *mapping,
++				 struct writeback_control *wbc)
++{
++	return 0;
++}
 +
-+	start_lblk = offset >> inode->i_blkbits;
-+	len_lblk = len >> inode->i_blkbits;
+ /*
+  * For data=journal mode, folio should be marked dirty only when it was
+  * writeably mapped. When that happens, it was already attached to the
+@@ -3612,6 +3628,20 @@ static const struct address_space_operations ext4_da_aops = {
+ 	.swap_activate		= ext4_iomap_swap_activate,
+ };
  
- 	down_write(&EXT4_I(inode)->i_data_sem);
- 	ext4_discard_preallocations(inode);
- 
--	path = ext4_find_extent(inode, offset_lblk, NULL, 0);
-+	path = ext4_find_extent(inode, start_lblk, NULL, 0);
- 	if (IS_ERR(path)) {
- 		up_write(&EXT4_I(inode)->i_data_sem);
- 		ret = PTR_ERR(path);
--		goto out_stop;
-+		goto out_handle;
- 	}
- 
- 	depth = ext_depth(inode);
-@@ -5530,16 +5524,16 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
- 		ee_len = ext4_ext_get_actual_len(extent);
- 
- 		/*
--		 * If offset_lblk is not the starting block of extent, split
--		 * the extent @offset_lblk
-+		 * If start_lblk is not the starting block of extent, split
-+		 * the extent @start_lblk
- 		 */
--		if ((offset_lblk > ee_start_lblk) &&
--				(offset_lblk < (ee_start_lblk + ee_len))) {
-+		if ((start_lblk > ee_start_lblk) &&
-+				(start_lblk < (ee_start_lblk + ee_len))) {
- 			if (ext4_ext_is_unwritten(extent))
- 				split_flag = EXT4_EXT_MARK_UNWRIT1 |
- 					EXT4_EXT_MARK_UNWRIT2;
- 			path = ext4_split_extent_at(handle, inode, path,
--					offset_lblk, split_flag,
-+					start_lblk, split_flag,
- 					EXT4_EX_NOCACHE |
- 					EXT4_GET_BLOCKS_PRE_IO |
- 					EXT4_GET_BLOCKS_METADATA_NOFAIL);
-@@ -5548,31 +5542,32 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
- 		if (IS_ERR(path)) {
- 			up_write(&EXT4_I(inode)->i_data_sem);
- 			ret = PTR_ERR(path);
--			goto out_stop;
-+			goto out_handle;
- 		}
- 	}
- 
- 	ext4_free_ext_path(path);
--	ext4_es_remove_extent(inode, offset_lblk, EXT_MAX_BLOCKS - offset_lblk);
-+	ext4_es_remove_extent(inode, start_lblk, EXT_MAX_BLOCKS - start_lblk);
- 
- 	/*
--	 * if offset_lblk lies in a hole which is at start of file, use
-+	 * if start_lblk lies in a hole which is at start of file, use
- 	 * ee_start_lblk to shift extents
- 	 */
- 	ret = ext4_ext_shift_extents(inode, handle,
--		max(ee_start_lblk, offset_lblk), len_lblk, SHIFT_RIGHT);
--
-+		max(ee_start_lblk, start_lblk), len_lblk, SHIFT_RIGHT);
- 	up_write(&EXT4_I(inode)->i_data_sem);
-+	if (ret)
-+		goto out_handle;
++static const struct address_space_operations ext4_iomap_aops = {
++	.read_folio		= ext4_iomap_read_folio,
++	.readahead		= ext4_iomap_readahead,
++	.writepages		= ext4_iomap_writepages,
++	.dirty_folio		= iomap_dirty_folio,
++	.bmap			= ext4_bmap,
++	.invalidate_folio	= iomap_invalidate_folio,
++	.release_folio		= iomap_release_folio,
++	.migrate_folio		= filemap_migrate_folio,
++	.is_partially_uptodate  = iomap_is_partially_uptodate,
++	.error_remove_folio	= generic_error_remove_folio,
++	.swap_activate		= ext4_iomap_swap_activate,
++};
 +
-+	ext4_update_inode_fsync_trans(handle, inode, 1);
- 	if (IS_SYNC(inode))
- 		ext4_handle_sync(handle);
--	if (ret >= 0)
--		ext4_update_inode_fsync_trans(handle, inode, 1);
- 
--out_stop:
-+out_handle:
- 	ext4_journal_stop(handle);
--out_mmap:
-+out_invalidate_lock:
- 	filemap_invalidate_unlock(mapping);
--out_mutex:
-+out:
- 	inode_unlock(inode);
- 	return ret;
- }
+ static const struct address_space_operations ext4_dax_aops = {
+ 	.writepages		= ext4_dax_writepages,
+ 	.dirty_folio		= noop_dirty_folio,
+@@ -3633,6 +3663,8 @@ void ext4_set_aops(struct inode *inode)
+ 	}
+ 	if (IS_DAX(inode))
+ 		inode->i_mapping->a_ops = &ext4_dax_aops;
++	else if (ext4_test_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP))
++		inode->i_mapping->a_ops = &ext4_iomap_aops;
+ 	else if (test_opt(inode->i_sb, DELALLOC))
+ 		inode->i_mapping->a_ops = &ext4_da_aops;
+ 	else
 -- 
 2.46.1
 
