@@ -1,28 +1,28 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F09351474BF;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CCA44146A9F;
 	Tue, 22 Oct 2024 03:13:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1729566783; cv=none; b=epPpTKZe+sNEsb6iJtOXxNHKKlQR+Y16fEp/bvTQCkZB9oW6BebaNbypqr/gqVZWKpV76jkWiI0OOH34IyleTYXFWSv35HtbORtbszUZkES+xHFFToHGnP4hRKLrBjmPXpE2pZsRQFEaCE2qNgO+5+iCRIzy3jXHgbZB8ZbIt+w=
+	t=1729566783; cv=none; b=V4GopPnZVgwfThWtsJ41ZcEpfmJElKH+EGgrHf76YJw24Y1gbu2v9u5XvRDyyHQSu5jN1KAelfhrwRmZw5VdhuOzXItNDN92aEPKNQPrlv1FJPv2SKDN6eth3fOiOOY1gAFWTVAqv0g8VgauDmbL+dI4IekdN3F3Vox8u7sqRrA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1729566783; c=relaxed/simple;
-	bh=mfpbSaLpTZWPmr7Qv9kGMuWgxyR1PGeQlGnSV9/uK1M=;
+	bh=SL3556zehzIj4Ho5hXlwQ/qb69LOIePNOS7/RN3+B9k=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=TYhS0NATSfBhQ4zAs9wpB6ZbA7mya340rL5HIai0logD0bomUbUWtLc7vDPn/+uKGEbGdQYvXaq4kdzScU4wQcrU2/u1q5HpbXBsaDMtREZ+CFY51SBLY5Me8wq70gnn/YvXIVpePjfmOFRPyk+jnE3EBNFoVFEpqd2jikB+XGI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=B8vlb/NYadNu1VKUsbO0P2nKD1dEBUTd4Z6g9HSPd5c96Sj5l53VCLaGJWC/wxQFFUMK7aiXsYpUXAAjQtYoLes+ZKkhy23PJmG7SU7MY0rIxQSfACoeJRnlnqLFyZR5q6U4kgGk1BOEvLzLHFzMYNcYCLdW0o38Ye4LbFCx0T8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4XXcgK66cyz4f3jkk;
-	Tue, 22 Oct 2024 11:12:45 +0800 (CST)
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4XXcg61f68z4f3lW1;
+	Tue, 22 Oct 2024 11:12:34 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 227051A018D;
-	Tue, 22 Oct 2024 11:12:58 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 64D5A1A058E;
+	Tue, 22 Oct 2024 11:12:52 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.112.188])
-	by APP4 (Coremail) with SMTP id gCh0CgCXysYlGBdnPSwWEw--.716S18;
-	Tue, 22 Oct 2024 11:12:57 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgCXysYlGBdnPSwWEw--.716S9;
+	Tue, 22 Oct 2024 11:12:52 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -40,9 +40,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH 14/27] ext4: implement buffered read iomap path
-Date: Tue, 22 Oct 2024 19:10:45 +0800
-Message-ID: <20241022111059.2566137-15-yi.zhang@huaweicloud.com>
+Subject: [PATCH 05/27] ext4: refactor ext4_zero_range()
+Date: Tue, 22 Oct 2024 19:10:36 +0800
+Message-ID: <20241022111059.2566137-6-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
 In-Reply-To: <20241022111059.2566137-1-yi.zhang@huaweicloud.com>
 References: <20241022111059.2566137-1-yi.zhang@huaweicloud.com>
@@ -53,11 +53,11 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCXysYlGBdnPSwWEw--.716S18
-X-Coremail-Antispam: 1UD129KBjvJXoW7CFyDXF1UXrW3Zw4UurWkXrb_yoW8KrWrpF
-	98KFy5GF47XrnI9a1SgFZrJr1Fk3WxtF45ZrWfWasxuFyYkrW2gay0gFyYvF1Yq3yxAr10
-	qr4jkr1xWF1UArDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUQl14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+X-CM-TRANSID:gCh0CgCXysYlGBdnPSwWEw--.716S9
+X-Coremail-Antispam: 1UD129KBjvJXoW3JFWrGr4DWF1UGr13Jr1fJFb_yoW3GF18pF
+	ZIqrW5Kr48WFyq9r48KFsrZF40k3WkKrWUCFyxWrn5X3srtwn7Kan8KF95WFWIqrZ7Zw4Y
+	vF4Yyry7GFWUWFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUQv14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2jI8I6cxK62vIxIIY0VWUZVW8XwA2048vs2IY02
 	0E87I2jVAFwI0_JF0E3s1l82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0
 	rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6x
@@ -68,78 +68,253 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7CFyDXF1UXrW3Zw4UurWkXrb_yoW8KrWrpF
 	AGYxC7M4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI
 	7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxV
 	Cjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVW8ZVWrXwCIc40Y0x0EwIxGrwCI42IY
-	6xIIjxv20xvE14v26r4j6ryUMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UMIIF0x
-	vE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv
-	6xkF7I0E14v26r4UJVWxJrUvcSsGvfC2KfnxnUUI43ZEXa7sRRgAFtUUUUU==
+	6xIIjxv20xvE14v26r1I6r4UMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWxJVW8Jr1lIxAIcV
+	CF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIE
+	c7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0pRtl1hUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Introduce a new iomap_ops, ext4_iomap_buffered_read_ops to implement the
-iomap read paths, specifically .read_folio() and .readahead() of
-ext4_iomap_aops. This .iomap_begin() handle invokes ext4_map_blocks() to
-query the extent mapping status of the read range and then converts the
-mapping information to iomap.
+The current implementation of ext4_zero_range() contains complex
+position calculations and stale error tags. To improve the code's
+clarity and maintainability, it is essential to clean up the code and
+improve its readability, this can be achieved by: a) simplifying and
+renaming variables, making the style the same as ext4_punch_hole(); b)
+eliminating unnecessary position calculations, writing back all data in
+data=journal mode, and drop page cache from the original offset to the
+end, rather than using aligned blocks; c) renaming the stale out_mutex
+tags.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/inode.c | 37 +++++++++++++++++++++++++++++++++++--
- 1 file changed, 35 insertions(+), 2 deletions(-)
+ fs/ext4/extents.c | 161 +++++++++++++++++++---------------------------
+ 1 file changed, 65 insertions(+), 96 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b233f36efefa..f0bc4b58ac4f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3526,14 +3526,47 @@ const struct iomap_ops ext4_iomap_report_ops = {
- 	.iomap_begin = ext4_iomap_begin_report,
- };
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index aa07b5ddaff8..f843342e5164 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4565,40 +4565,15 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+ 	struct inode *inode = file_inode(file);
+ 	struct address_space *mapping = file->f_mapping;
+ 	handle_t *handle = NULL;
+-	unsigned int max_blocks;
+ 	loff_t new_size = 0;
+-	int ret = 0;
+-	int flags;
+-	int credits;
+-	int partial_begin, partial_end;
+-	loff_t start, end;
+-	ext4_lblk_t lblk;
++	loff_t end = offset + len;
++	ext4_lblk_t start_lblk, end_lblk;
++	unsigned int blocksize = i_blocksize(inode);
+ 	unsigned int blkbits = inode->i_blkbits;
++	int ret, flags, credits;
  
--static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
-+static int ext4_iomap_buffered_read_begin(struct inode *inode, loff_t offset,
-+			loff_t length, unsigned int flags, struct iomap *iomap,
-+			struct iomap *srcmap)
- {
-+	int ret;
-+	struct ext4_map_blocks map;
-+	u8 blkbits = inode->i_blkbits;
+ 	trace_ext4_zero_range(inode, offset, len, mode);
+ 
+-	/*
+-	 * Round up offset. This is not fallocate, we need to zero out
+-	 * blocks, so convert interior block aligned part of the range to
+-	 * unwritten and possibly manually zero out unaligned parts of the
+-	 * range. Here, start and partial_begin are inclusive, end and
+-	 * partial_end are exclusive.
+-	 */
+-	start = round_up(offset, 1 << blkbits);
+-	end = round_down((offset + len), 1 << blkbits);
+-
+-	if (start < offset || end > offset + len)
+-		return -EINVAL;
+-	partial_begin = offset & ((1 << blkbits) - 1);
+-	partial_end = (offset + len) & ((1 << blkbits) - 1);
+-
+-	lblk = start >> blkbits;
+-	max_blocks = (end >> blkbits);
+-	if (max_blocks < lblk)
+-		max_blocks = 0;
+-	else
+-		max_blocks -= lblk;
+-
+ 	inode_lock(inode);
+ 
+ 	/*
+@@ -4606,88 +4581,78 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+ 	 */
+ 	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
+ 		ret = -EOPNOTSUPP;
+-		goto out_mutex;
++		goto out;
+ 	}
+ 
+ 	if (!(mode & FALLOC_FL_KEEP_SIZE) &&
+-	    (offset + len > inode->i_size ||
+-	     offset + len > EXT4_I(inode)->i_disksize)) {
+-		new_size = offset + len;
++	    (end > inode->i_size || end > EXT4_I(inode)->i_disksize)) {
++		new_size = end;
+ 		ret = inode_newsize_ok(inode, new_size);
+ 		if (ret)
+-			goto out_mutex;
++			goto out;
+ 	}
+ 
+-	flags = EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT;
+-
+ 	/* Wait all existing dio workers, newcomers will block on i_rwsem */
+ 	inode_dio_wait(inode);
+ 
+ 	ret = file_modified(file);
+ 	if (ret)
+-		goto out_mutex;
+-
+-	/* Preallocate the range including the unaligned edges */
+-	if (partial_begin || partial_end) {
+-		ret = ext4_alloc_file_blocks(file,
+-				round_down(offset, 1 << blkbits) >> blkbits,
+-				(round_up((offset + len), 1 << blkbits) -
+-				 round_down(offset, 1 << blkbits)) >> blkbits,
+-				new_size, flags);
+-		if (ret)
+-			goto out_mutex;
+-
+-	}
+-
+-	/* Zero range excluding the unaligned edges */
+-	if (max_blocks > 0) {
+-		flags |= (EXT4_GET_BLOCKS_CONVERT_UNWRITTEN |
+-			  EXT4_EX_NOCACHE);
++		goto out;
+ 
+-		/*
+-		 * Prevent page faults from reinstantiating pages we have
+-		 * released from page cache.
+-		 */
+-		filemap_invalidate_lock(mapping);
++	/*
++	 * Prevent page faults from reinstantiating pages we have released
++	 * from page cache.
++	 */
++	filemap_invalidate_lock(mapping);
+ 
+-		ret = ext4_break_layouts(inode);
+-		if (ret) {
+-			filemap_invalidate_unlock(mapping);
+-			goto out_mutex;
+-		}
++	ret = ext4_break_layouts(inode);
++	if (ret)
++		goto out_invalidate_lock;
+ 
++	/*
++	 * For journalled data we need to write (and checkpoint) pages before
++	 * discarding page cache to avoid inconsitent data on disk in case of
++	 * crash before zeroing trans is committed.
++	 */
++	if (ext4_should_journal_data(inode)) {
++		ret = filemap_write_and_wait_range(mapping, offset, end - 1);
++	} else {
+ 		ret = ext4_update_disksize_before_punch(inode, offset, len);
+-		if (ret) {
+-			filemap_invalidate_unlock(mapping);
+-			goto out_mutex;
+-		}
++		ext4_truncate_folios_range(inode, offset, end);
++	}
++	if (ret)
++		goto out_invalidate_lock;
+ 
+-		/*
+-		 * For journalled data we need to write (and checkpoint) pages
+-		 * before discarding page cache to avoid inconsitent data on
+-		 * disk in case of crash before zeroing trans is committed.
+-		 */
+-		if (ext4_should_journal_data(inode)) {
+-			ret = filemap_write_and_wait_range(mapping, start,
+-							   end - 1);
+-			if (ret) {
+-				filemap_invalidate_unlock(mapping);
+-				goto out_mutex;
+-			}
+-		}
++	/* Now release the pages and zero block aligned part of pages */
++	truncate_pagecache_range(inode, offset, end - 1);
+ 
+-		/* Now release the pages and zero block aligned part of pages */
+-		ext4_truncate_folios_range(inode, start, end);
+-		truncate_pagecache_range(inode, start, end - 1);
++	flags = EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT;
++	/* Preallocate the range including the unaligned edges */
++	if (offset & (blocksize - 1) || end & (blocksize - 1)) {
++		ext4_lblk_t alloc_lblk = offset >> blkbits;
++		ext4_lblk_t len_lblk = EXT4_MAX_BLOCKS(len, offset, blkbits);
+ 
+-		ret = ext4_alloc_file_blocks(file, lblk, max_blocks, new_size,
+-					     flags);
+-		filemap_invalidate_unlock(mapping);
++		ret = ext4_alloc_file_blocks(file, alloc_lblk, len_lblk,
++					     new_size, flags);
+ 		if (ret)
+-			goto out_mutex;
++			goto out_invalidate_lock;
+ 	}
+-	if (!partial_begin && !partial_end)
+-		goto out_mutex;
 +
-+	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
-+		return -EIO;
-+	if ((offset >> blkbits) > EXT4_MAX_LOGICAL_BLOCK)
-+		return -EINVAL;
-+	/* Inline data support is not yet available. */
-+	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
-+		return -ERANGE;
++	/* Zero range excluding the unaligned edges */
++	start_lblk = round_up(offset, blocksize) >> blkbits;
++	end_lblk = end >> blkbits;
++	if (end_lblk > start_lblk) {
++		ext4_lblk_t zero_blks = end_lblk - start_lblk;
 +
-+	/* Calculate the first and last logical blocks respectively. */
-+	map.m_lblk = offset >> blkbits;
-+	map.m_len = min_t(loff_t, (offset + length - 1) >> blkbits,
-+			  EXT4_MAX_LOGICAL_BLOCK) - map.m_lblk + 1;
++		flags |= (EXT4_GET_BLOCKS_CONVERT_UNWRITTEN | EXT4_EX_NOCACHE);
++		ret = ext4_alloc_file_blocks(file, start_lblk, zero_blks,
++					     new_size, flags);
++		if (ret)
++			goto out_invalidate_lock;
++	}
++	/* Finish zeroing out if it doesn't contain partial block */
++	if (!(offset & (blocksize - 1)) && !(end & (blocksize - 1)))
++		goto out_invalidate_lock;
+ 
+ 	/*
+ 	 * In worst case we have to writeout two nonadjacent unwritten
+@@ -4700,25 +4665,29 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+ 		ext4_std_error(inode->i_sb, ret);
+-		goto out_mutex;
++		goto out_invalidate_lock;
+ 	}
+ 
++	/* Zero out partial block at the edges of the range */
++	ret = ext4_zero_partial_blocks(handle, inode, offset, len);
++	if (ret)
++		goto out_handle;
 +
-+	ret = ext4_map_blocks(NULL, inode, &map, 0);
-+	if (ret < 0)
-+		return ret;
-+
-+	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
- 	return 0;
+ 	if (new_size)
+ 		ext4_update_inode_size(inode, new_size);
+ 	ret = ext4_mark_inode_dirty(handle, inode);
+ 	if (unlikely(ret))
+ 		goto out_handle;
+-	/* Zero out partial block at the edges of the range */
+-	ret = ext4_zero_partial_blocks(handle, inode, offset, len);
+-	if (ret >= 0)
+-		ext4_update_inode_fsync_trans(handle, inode, 1);
+ 
++	ext4_update_inode_fsync_trans(handle, inode, 1);
+ 	if (file->f_flags & O_SYNC)
+ 		ext4_handle_sync(handle);
+ 
+ out_handle:
+ 	ext4_journal_stop(handle);
+-out_mutex:
++out_invalidate_lock:
++	filemap_invalidate_unlock(mapping);
++out:
+ 	inode_unlock(inode);
+ 	return ret;
  }
- 
--static void ext4_iomap_readahead(struct readahead_control *rac)
-+const struct iomap_ops ext4_iomap_buffered_read_ops = {
-+	.iomap_begin = ext4_iomap_buffered_read_begin,
-+};
-+
-+static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
- {
-+	return iomap_read_folio(folio, &ext4_iomap_buffered_read_ops);
-+}
- 
-+static void ext4_iomap_readahead(struct readahead_control *rac)
-+{
-+	iomap_readahead(rac, &ext4_iomap_buffered_read_ops);
- }
- 
- static int ext4_iomap_writepages(struct address_space *mapping,
 -- 
 2.46.1
 
