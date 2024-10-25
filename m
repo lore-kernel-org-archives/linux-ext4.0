@@ -1,47 +1,47 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D9DC433BE
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Oct 2024 03:54:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 483F618BB9A
+	for <linux-ext4@vger.kernel.org>; Fri, 25 Oct 2024 03:54:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1729828445; cv=none; b=ZTPAw4624MAakNcWJk4wBu/BAwxJH1lGrvM46SeLn5lE6GmnB7URggXVj6uew+Rbw7HDrq9tmXUXIRlSiiwcnqkyHXdzYvSSN6c7or/4fra9rxqzbNMWGsVI0cUJuh0cJwC7lG+LEFzx2X/mu3KHSE3/VMxVeAv/756c/TygH2Y=
+	t=1729828446; cv=none; b=ZG1BwxdIe1fPhKwvDlK5OZ9FaG+8K47yLfBgDbMCEJ4Y7qhofpQm6LK4vJV682+xtEeXKZn1b1HOatREGroB0KnXaGcjy4Im4pTkuelFDMXkIM181saOT0tvgAxoUrgoXNqqt+unJ741v3eK79hj/tAnXPWZ82Ztyate2ojpL70=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1729828445; c=relaxed/simple;
-	bh=7EuiUq5k5FlSKJagnmVyrw8rB8v2iHocmDKJ/4dobl8=;
+	s=arc-20240116; t=1729828446; c=relaxed/simple;
+	bh=jws9toHPBfqEkTSlnCrI+UG68xLef+Mjv6XneyjrdZM=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=EDJr5JHab0A2HZm6LjJ36pAxzOeJ1ob+UU21rWLQshnMDs4z8PR9LgyAbVLO2K4+8okkgGoBc46/p4vQ2rnt57NChxDHtFymi364FMnQGC8r4vquJwJtwOSiA04UIWzqgm8MYHtuFIcx1G7Oo3Zp/2G9mafOY6orYHIVj0c78/8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=aI0knvfU; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=F8qDQst/VTtSm4PqHJy3cqiEpqYFvn6+qC6R0KWez3KCTPzyVmglaiI0NGNWObBW5KGZ3twIl5XFeRclosNdLWfKOX3dZJaJhTIi3X9uoLrvGqbbU4Thp1moTSCilkeFQEjsXoAUV9uGJ3cz4diFyNdZz2u8Pr+u2R++LaZhmng=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Vg8wb1Sw; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="aI0knvfU"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Vg8wb1Sw"
 Received: from cwcc.thunk.org (pool-173-48-115-113.bstnma.fios.verizon.net [173.48.115.113])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 49P3rvir027478
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 49P3rvhL027474
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Thu, 24 Oct 2024 23:53:59 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1729828440; bh=qaiYYma5NRcG8ZeNrHd001CeTFSSb9JE+1D5frVRGxA=;
+	t=1729828439; bh=SQPIrt+9+cBGnSNlwWjz1jE8uVXaqnjhFgI+wiSIsUk=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=aI0knvfUYKu+L0O3YVCp+5T0YzLXsx14Tt+rtgaTdGyrG3BLFeOOF6auYkrdWeoEM
-	 vDi3kWg21jkHiSuW9oWZgkDM4WZK43riniBHqBryisjaJWhd/9cLSLNMY5cur7mY2U
-	 2w5wmCFomXlSqrzRgxzpShrRfL2tYXx2GFTPr8LNwqfh8tPbLsFx6rYaA6shv9aDO/
-	 6YkXVHELQkjqHSl8ANCcyI0hgOn64L7JyXwfGpGGKz0tuf0+FPwJdsQPM92b47sePl
-	 4qwd7X9phd8+PSf5+Ds840Su7zX+SmlkG5jzPs1gPJZa80KaAnO3qF9LY4zXRTmbES
-	 Wh4XAJLi/ligA==
+	b=Vg8wb1SwA+0UH6OYAS7OJoGCMdp25hwfrg4qqjIQ6FiOj/FPIOrWctpu6oDBliUSy
+	 XYIo6dTtyhbFv4F0GeAm5uI6kllIA8b2h+KPBpnklgiEQRX+YG6ifRfWPld/CnFJU/
+	 1FAoI5zR2jFuXRG6/kJAShIALRQiffePxEylTIagoR8N56zEskSdvobhpDDEBEjLIS
+	 exnh6t6DA397E2brKD7c5KIWJLbeRXXXo0cFmu3w/h9iCBNcZucdMCl8VSCNmYo9xL
+	 R65961FasF11A+EVDBzYqlZf/f/kiRlvagg7YTvgNbfNdFNFgUBP+nnELKRH2TBxgG
+	 ao3vOakBTcD6w==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id A2C8415C0329; Thu, 24 Oct 2024 23:53:57 -0400 (EDT)
+	id AA60F15C05FE; Thu, 24 Oct 2024 23:53:57 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] tests: write f_badjour_encrypted output to log
-Date: Thu, 24 Oct 2024 23:53:45 -0400
-Message-ID: <172982841322.4001088.5093484687711589094.b4-ty@mit.edu>
+To: linux-ext4@vger.kernel.org, Alyssa Ross <hi@alyssa.is>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Subject: Re: [PATCH] configure: add SIZEOF_TIME_T to public_config.h
+Date: Thu, 24 Oct 2024 23:53:49 -0400
+Message-ID: <172982841321.4001088.16541388509451729205.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.45.2
-In-Reply-To: <20240605200408.55221-1-adilger@dilger.ca>
-References: <20240605200408.55221-1-adilger@dilger.ca>
+In-Reply-To: <20240527074121.2767083-1-hi@alyssa.is>
+References: <20240527074121.2767083-1-hi@alyssa.is>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -52,17 +52,20 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Wed, 05 Jun 2024 14:03:52 -0600, Andreas Dilger wrote:
-> Write the mke2fs and debugfs output from f_badjour_encrypted/script
-> into a log file instead of stdout/stderr, so that it doesn't mess
-> up the "make check" output, and is available if this test ever fails.
+On Mon, 27 May 2024 09:41:21 +0200, Alyssa Ross wrote:
+> This has recently started being used by ext2fs.h.  Other users of the
+> ext2fs.h header would always get the 32-bit versions of the
+> __encode_extra_time, __decode_extra_sec, and __sb_set_tstamp; and the
+> 64-bit version of __sb_get_tstamp, due to the SIZEOF_TIME_T macro
+> being undefined and treated as zero.
 > 
 > 
+> [...]
 
 Applied, thanks!
 
-[1/1] tests: write f_badjour_encrypted output to log
-      commit: 5cf2c6b1df44e5ef145a5af8e6317ad87b190500
+[1/1] configure: add SIZEOF_TIME_T to public_config.h
+      commit: 6cbb0684c2618a27e49b04e3a99dcbbe90be524c
 
 Best regards,
 -- 
