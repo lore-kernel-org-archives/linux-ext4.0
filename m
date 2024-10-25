@@ -1,48 +1,47 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7070018BC1D
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Oct 2024 03:54:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7BE5918BC32
+	for <linux-ext4@vger.kernel.org>; Fri, 25 Oct 2024 03:54:05 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1729828447; cv=none; b=oagq1/BVWQU5Wk65UoQBhQ96bypzZQX6QB8ZGBQpiq4mV+CpKZUcM5IPJwPCygeAJWFu2eIWuUYmp2TzCCdJniP5BKg4g/XdfIpdu5zmnBiZZrNy5g99sxaN1YfbANo5OubUQUFO4LgCbpba/YTBmVOxAADGB7g6LCSIo8zv8dU=
+	t=1729828447; cv=none; b=ZsQ8aLdjWH78eofJU/dPBmSW4EFUCEuWbvp0BfU5uL89RdNCc6FVkggC/vHcocSe3I+75sc+7lkGT/E6ic1y6Udf5njcmiBiRP/IKjCk6cyjWxaIjbvN5XrNgcgUOOrZ94w45TyKuaAR9ZvZIesDYnt29N09trU1c544txTag54=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1729828447; c=relaxed/simple;
-	bh=iY6H7GOjp3rNG8ouPifK52xEbW/KwpuvEC2DXLKK91Y=;
+	bh=UUnwVfC8PR9S/jNggcZHP176wQuKbD9ViRo0NjLdT88=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=oo4B8COxgvsawIuCJgkL4dr1SgQH1+eK78O9mlQOxXTtYwWj563Xml8p8bMOuSeCZ5nXPnvbms+PNZp5mFZkiE3Kl4pp+H2yy5/biVR8Rf/VDu9xjVoy+PBmxc33ck3eL9MJlOMddVynRw1iaIA1TnVpl+7FRdPdXncddMN1RZw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=I5pbcaXw; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=lFvE5JqtSn8iv9ysp+rc3LfzRDt+wsIHARrXUdPMKFMvGNOguAWybfa5huwo3VyUQabLN0egfEPceXwdeYqSy+JO10pRj1KddAsRP4liXz/q1U2LPocA+7SPOm0lAVjBXjpBQyQK8bF98B5/4LfglYWxltmXYINH9sUqeD1fM0A=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=i84y9ldG; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="I5pbcaXw"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="i84y9ldG"
 Received: from cwcc.thunk.org (pool-173-48-115-113.bstnma.fios.verizon.net [173.48.115.113])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 49P3rvtY027476
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 49P3rx4p027515
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 24 Oct 2024 23:53:58 -0400
+	Thu, 24 Oct 2024 23:54:00 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1729828439; bh=I8+xnqFbJSf0oRq5UMI8oEW/iEA1Ia4k6JXlOXC6uw8=;
+	t=1729828441; bh=pPJA4kz+72UFuRm1TLKggHnB5EEo3IxWvbnfr+g2AXQ=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=I5pbcaXwr6yGow8wv6q5lLko9msy6P1wGiQ2k1KLYlPoViWMAwH1EFNjf8NWPqsa7
-	 zntmLty52T9/OKirqpvh3wG5lLUlb8oDRCsFPp25FvVuq23UhKw21rMPZ4FXIsWYsU
-	 UiYQ9PO0FBinGALNLh6dNvrwgWXYiqLubFUnp62USWGlzOh6ugUzeztApAw3NB3TXc
-	 Kp9r+UNDev8cYzdXtN41wRw4TuYCA1qTJRIpIZcjcg3eFnUaqfK6VGFfg4r7z6aSnu
-	 rzcrBU7aSdYpA2Mn2URQbLCt6KFR7DqLSXzKXE4TCqSMBMtmuiJkFE4kJUHB3alrrI
-	 IlvMGMgzyRDyg==
+	b=i84y9ldGjQipxCQplJoRbbxfGGmfw5Cs1FFYmKFru+IAYDdX4ceT4l/DYaXlIIRRa
+	 OvavdbRFnttZ1Q4Ova5/CZIKMxDrV8uoSxNjJF5YyJG7v1jfhvtjy21IhbL9uI+aI5
+	 Bt+FRpLe6FCpEE0LGkOkOy3/ro/vnORIaWZAa9vvNtv7N07Aecc1m8Jy59640nV0VD
+	 WqEAauteFLZMWAI1A2HGc63/oBVMdXpTwTtX7Lua4YLO8+kRUPA4siox82nVfM5Yh1
+	 z2mFnHdKqqmkKg2erkhZe9hGjmE+YeI059vgJU18p4FgnHACWDr+/VB2Z+dgkslcPl
+	 o7RK/2QaoJfEw==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id A418B15C032A; Thu, 24 Oct 2024 23:53:57 -0400 (EDT)
+	id AC45B15C0603; Thu, 24 Oct 2024 23:53:57 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4 <linux-ext4@vger.kernel.org>,
-        "Darrick J. Wong" <djwong@kernel.org>
+To: linux-ext4@vger.kernel.org, Alyssa Ross <hi@alyssa.is>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: Re: [PATCH] fuse2fs: explicitly set _FILE_OFFSET_BITS again
-Date: Thu, 24 Oct 2024 23:53:46 -0400
-Message-ID: <172982841321.4001088.9223384705402700203.b4-ty@mit.edu>
+Subject: Re: [PATCH e2fsprogs v2] libext2fs: fix unused parameter warnings/errors
+Date: Thu, 24 Oct 2024 23:53:50 -0400
+Message-ID: <172982841321.4001088.7404600551753936583.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.45.2
-In-Reply-To: <20240529181214.GA52969@frogsfrogsfrogs>
-References: <20240529181214.GA52969@frogsfrogsfrogs>
+In-Reply-To: <20240528131841.576999-1-hi@alyssa.is>
+References: <874jaih04p.fsf@alyssa.is> <20240528131841.576999-1-hi@alyssa.is>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,20 +52,15 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Wed, 29 May 2024 11:12:14 -0700, Darrick J. Wong wrote:
-> In commit 3ab99d9b602, the build system was changed not to set
-> _FILE_OFFSET_BITS explicitly due to some weird error on mips64el.
-> Unfortunately, this breaks the aarch64 Debian build because libfuse
-> 2.9.9 requires this value to be set explicitly.  Restore this dumb
-> preprocessor symbol dependency with even more hackery as documented in
-> the commit.
+On Tue, 28 May 2024 15:18:41 +0200, Alyssa Ross wrote:
+> This fixes building dependent packages that use -Werror.
 > 
-> [...]
+> 
 
 Applied, thanks!
 
-[1/1] fuse2fs: explicitly set _FILE_OFFSET_BITS again
-      commit: fb702218ab47b045cbbaf3268984fbdc5f75632e
+[1/1] libext2fs: fix unused parameter warnings/errors
+      commit: 967bcb155295c5e33c0edc6555bd4e25e9307899
 
 Best regards,
 -- 
