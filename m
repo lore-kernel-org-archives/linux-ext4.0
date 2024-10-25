@@ -1,45 +1,102 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8799D7080E;
-	Fri, 25 Oct 2024 16:16:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9D2BD18C93B;
+	Fri, 25 Oct 2024 17:50:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1729872993; cv=none; b=qFKcX3wk+rZFiZAzkTuj+pVvOymjTrvqiJCGxXKRqQqkw9CYJ/EdPkYaVUqlt8KM47UJIbqbHNZnqo+KeFByR6zlcfUdJd8PRyPg4iIBwoSXGw4BK4jI6+hUu/gSEG1P0rpdILuYwTlJgZO4GQSfwg0rcVdJqay1509fIBJz/W8=
+	t=1729878605; cv=none; b=gZ3626+HvGE4SUrlOeLhFHHfYcD1nE3CqKDPnWJYx5Wz7Bl6gF1T4qun/2AW+eE0MmyGvjhnsnYDwMNr+UJAMA2s02S+nFrlhV3hyzIFW07QUMLEGjc6MIdAFzI9WVeqPpgqk3/QFc3hGyRuO3R124cAOdsP7Axb4fxDoiNCdi0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1729872993; c=relaxed/simple;
-	bh=nn618csCV0nfmdVUFNZxtbc9Np+SY9OMrfOoQa9JKs8=;
+	s=arc-20240116; t=1729878605; c=relaxed/simple;
+	bh=/UyQccBEcmYiDYPQwQEHvIDess7h/iGMjHoGEEwd1Go=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=EgYYzJa/R4OkVoQwiY9EqIhE8tiQR7CHpXdbSBJBXNU39xRQ4NJzhfeEJsNlPawDdg1GBi+4tIDVgSuMCxCmI6/0UtAUiuQpYB1i/FHaD7nSrrcwvHNvALWjYkz9+IeI9aW3a6sg7yXK/vlEA8fn9lUzvhaxVkDBh0Afr59vaC8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hXFAoCdo; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=YWSOkVUnvH/3Vg6HBsXIVLJ/6Q3oYkPbJLinhjLZR3/Pg6J7c/GSz6Fu6ID/U8E2rdZz/fmagt9nzodwbhj2JwmxeLII4VkhbCE76UrYZ5ZBIDt3EHJH0pEHRiW+b6o+y0lJoBFkinIwSfwVYp4AzFS3pOvM50g4f63N6e+bx4U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=ownTWJ9L; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=0VCK8/x2; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=ownTWJ9L; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=0VCK8/x2; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hXFAoCdo"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EC848C4CEC3;
-	Fri, 25 Oct 2024 16:16:32 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1729872993;
-	bh=nn618csCV0nfmdVUFNZxtbc9Np+SY9OMrfOoQa9JKs8=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=hXFAoCdoFqZMXlOYigk6dnBpVkwU/b6eZlHDuo5rMt/0DTFnrcuuon7H+kF8A46Nk
-	 f6wBM0zhF/h/OTz6oBAZVGzbmjmIKVKRN/f4HAdyPvSWfyDLgSvdhE2Qf0GDMLv3FT
-	 ATF9Gyb8cM1ZANfYUxBndapkor4pEvK876BQUqmWh0hJ2dDzhIIH5AV+61+6kd0yo8
-	 ikozvmiCr2QWzHaxNXe/shjzgt62S1qcVwJuERUaPx1uPrsRIs62k1Ge5W6R83RG8U
-	 t2XGq7zmzYKBsacmP7UePlrb+qW74okNou3dIs41+tHIdaS9mk4vqc4Z8dWF6FAz5w
-	 RpIsuPWk55Zow==
-Date: Fri, 25 Oct 2024 09:16:32 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
-	John Garry <john.g.garry@oracle.com>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	Dave Chinner <david@fromorbit.com>, linux-kernel@vger.kernel.org,
-	linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 4/6] ext4: Warn if we ever fallback to buffered-io for
- DIO atomic writes
-Message-ID: <20241025161632.GL2386201@frogsfrogsfrogs>
-References: <cover.1729825985.git.ritesh.list@gmail.com>
- <7c4779f1f0c8ead30f660a2cfbdf4d7cc08e405a.1729825985.git.ritesh.list@gmail.com>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="ownTWJ9L";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="0VCK8/x2";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="ownTWJ9L";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="0VCK8/x2"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 8B7D01F7F9;
+	Fri, 25 Oct 2024 17:50:01 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1729878601;
+	h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
+	 cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=faWa8hUjhNnXYbB3wXK4vm2P4aNOrVk6VtNX9UfmEFk=;
+	b=ownTWJ9Lf5ejQQeGvycmodvURhMx88ltENj8SXBaltoPWz5ulsWweH7l8zDR1HzTg8S9+7
+	BnTvjo7UW2XcgI1WQ26txumnQv6mDwliAU6xz5sy6S55/sySF+7cVRe28itJ3VauFMkDn5
+	icbdKT9T+SjjnkG9eNm9GGVnZx5TgpA=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1729878601;
+	h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
+	 cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=faWa8hUjhNnXYbB3wXK4vm2P4aNOrVk6VtNX9UfmEFk=;
+	b=0VCK8/x2s1IpBCmfQqktzy6zLz7X+8fonFoj20qID/JA+o1WoGI/PnKUYhJAWOILdrlKYu
+	wu99lT5t354oU7Dg==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1729878601;
+	h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
+	 cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=faWa8hUjhNnXYbB3wXK4vm2P4aNOrVk6VtNX9UfmEFk=;
+	b=ownTWJ9Lf5ejQQeGvycmodvURhMx88ltENj8SXBaltoPWz5ulsWweH7l8zDR1HzTg8S9+7
+	BnTvjo7UW2XcgI1WQ26txumnQv6mDwliAU6xz5sy6S55/sySF+7cVRe28itJ3VauFMkDn5
+	icbdKT9T+SjjnkG9eNm9GGVnZx5TgpA=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1729878601;
+	h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
+	 cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=faWa8hUjhNnXYbB3wXK4vm2P4aNOrVk6VtNX9UfmEFk=;
+	b=0VCK8/x2s1IpBCmfQqktzy6zLz7X+8fonFoj20qID/JA+o1WoGI/PnKUYhJAWOILdrlKYu
+	wu99lT5t354oU7Dg==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 51B2D132D3;
+	Fri, 25 Oct 2024 17:50:01 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id 3LpvE0naG2deGwAAD6G6ig
+	(envelope-from <dsterba@suse.cz>); Fri, 25 Oct 2024 17:50:01 +0000
+Date: Fri, 25 Oct 2024 19:49:59 +0200
+From: David Sterba <dsterba@suse.cz>
+To: "Pankaj Raghav (Samsung)" <kernel@pankajraghav.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, Chao Yu <chao@kernel.org>,
+	Jonathan Corbet <corbet@lwn.net>, willy@infradead.org,
+	Josef Bacik <josef@toxicpanda.com>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	Michal =?iso-8859-1?Q?Koutn=FD?= <mkoutny@suse.com>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	"Darrick J . Wong" <djwong@kernel.org>,
+	Zefan Li <lizefan.x@bytedance.com>, Tejun Heo <tj@kernel.org>,
+	akpm@linux-foundation.org, Christian Brauner <brauner@kernel.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jaegeuk Kim <jaegeuk@kernel.org>, Jan Kara <jack@suse.cz>,
+	Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.com>,
+	cgroups@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-fsdevel@vger.kernel.org, mcgrof@kernel.org,
+	gost.dev@samsung.com, linux-doc@vger.kernel.org,
+	linux-xfs@vger.kernel.org, Pankaj Raghav <p.raghav@samsung.com>
+Subject: Re: [PATCH] fs/writeback: convert wbc_account_cgroup_owner to take a
+ folio
+Message-ID: <20241025174959.GH31418@suse.cz>
+Reply-To: dsterba@suse.cz
+References: <20240926140121.203821-1-kernel@pankajraghav.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -48,49 +105,58 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <7c4779f1f0c8ead30f660a2cfbdf4d7cc08e405a.1729825985.git.ritesh.list@gmail.com>
+In-Reply-To: <20240926140121.203821-1-kernel@pankajraghav.com>
+User-Agent: Mutt/1.5.23.1-rc1 (2014-03-12)
+X-Spam-Level: 
+X-Spamd-Result: default: False [-4.00 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	HAS_REPLYTO(0.30)[dsterba@suse.cz];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	RCPT_COUNT_TWELVE(0.00)[30];
+	R_RATELIMIT(0.00)[to_ip_from(RL56wjrisuox4ztiyaq54br4m8)];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	ARC_NA(0.00)[];
+	TO_DN_SOME(0.00)[];
+	MID_RHS_MATCH_FROM(0.00)[];
+	RCVD_TLS_ALL(0.00)[];
+	FUZZY_BLOCKED(0.00)[rspamd.com];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	REPLYTO_ADDR_EQ_FROM(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:replyto,suse.cz:mid,suse.com:email,samsung.com:email];
+	RCVD_COUNT_TWO(0.00)[2];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	REPLYTO_DOM_NEQ_TO_DOM(0.00)[]
+X-Spam-Score: -4.00
+X-Spam-Flag: NO
 
-On Fri, Oct 25, 2024 at 09:15:53AM +0530, Ritesh Harjani (IBM) wrote:
-> iomap will not return -ENOTBLK in case of dio atomic writes. But let's
-> also add a WARN_ON_ONCE and return -EIO as a safety net.
+On Thu, Sep 26, 2024 at 04:01:21PM +0200, Pankaj Raghav (Samsung) wrote:
+> From: Pankaj Raghav <p.raghav@samsung.com>
 > 
-> Signed-off-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+> Most of the callers of wbc_account_cgroup_owner() are converting a folio
+> to page before calling the function. wbc_account_cgroup_owner() is
+> converting the page back to a folio to call mem_cgroup_css_from_folio().
+> 
+> Convert wbc_account_cgroup_owner() to take a folio instead of a page,
+> and convert all callers to pass a folio directly except f2fs.
+> 
+> Convert the page to folio for all the callers from f2fs as they were the
+> only callers calling wbc_account_cgroup_owner() with a page. As f2fs is
+> already in the process of converting to folios, these call sites might
+> also soon be calling wbc_account_cgroup_owner() with a folio directly in
+> the future.
+> 
+> No functional changes. Only compile tested.
+> 
+> Signed-off-by: Pankaj Raghav <p.raghav@samsung.com>
 > ---
->  fs/ext4/file.c | 10 +++++++++-
->  1 file changed, 9 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index f9516121a036..af6ebd0ac0d6 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -576,8 +576,16 @@ static ssize_t ext4_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
->  		iomap_ops = &ext4_iomap_overwrite_ops;
->  	ret = iomap_dio_rw(iocb, from, iomap_ops, &ext4_dio_write_ops,
->  			   dio_flags, NULL, 0);
-> -	if (ret == -ENOTBLK)
-> +	if (ret == -ENOTBLK) {
->  		ret = 0;
-> +		/*
-> +		 * iomap will never return -ENOTBLK if write fails for atomic
-> +		 * write. But let's just add a safety net.
+>  fs/btrfs/extent_io.c                    | 7 +++----
+>  fs/btrfs/inode.c                        | 2 +-
 
-I think it can if the pagecache invalidation fails, so you really do
-need the safety net.  I suspect that the xfs version of this series
-needs it too, though it may have fallen out?
+If you ever want to continue with the conversion then for the btrfs part
 
-Reviewed-by: Darrick J. Wong <djwong@kernel.org>
-
---D
-
-> +		 */
-> +		if (WARN_ON_ONCE(iocb->ki_flags & IOCB_ATOMIC))
-> +			ret = -EIO;
-> +	}
-> +
->  	if (extend) {
->  		/*
->  		 * We always perform extending DIO write synchronously so by
-> -- 
-> 2.46.0
-> 
-> 
+Acked-by: David Sterba <dsterba@suse.com>
