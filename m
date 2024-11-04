@@ -1,252 +1,179 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pf1-f179.google.com (mail-pf1-f179.google.com [209.85.210.179])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B5C31B85C4;
-	Sun,  3 Nov 2024 22:32:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 308823214
+	for <linux-ext4@vger.kernel.org>; Mon,  4 Nov 2024 01:52:46 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.179
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1730673155; cv=none; b=UNuLZcudnuVVD/Sra6dCC4Lnh3wDsM1N0W3/8ckv7tOC+FfFd5gsVLHX4twEZDYUhpJKBKyN9zMr1rkhQZIZBB55OGfO/juUZYrsYrw4qTF3WoqMKUJcsRZup+gMA+a9DPWhkOeH9k16v8KwDIQfm6aot9MRKNND4DZfXzUBNhk=
+	t=1730685167; cv=none; b=tZOXhLFCR+MVDbCEdNm1DsKuod6UtuRbb7aBWTRYT494ANnrrEQHww2OwPbdeP0Xu1aYchfN1RTze5zkzSVB4jjDZZD9WiKueZ2DlQyfZa4LYUJEAsqFBBT7Wsz/Eomoyq/WvAxbeIucQwnKt+Ic298OKhtXUnTfumcW47GS2gY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1730673155; c=relaxed/simple;
-	bh=47ZGS4s0ykwzlSaIC0c2LdDMEVdoUJMfULJGERv2xGc=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=UMft4xeraaQNc4OhQI5/AGLBj71V2vBt7xpS0ar6DOd2UUlRkFy0RQ9sHVpSzmuMhb4ty4e43P2WAWcnzrNDRd4884yGrphWtPlhdFspp7W1K6Ol2qTLWB9vWWzAqVDSAw8Q7uZWXLZgJxo77XNGAVSQ4SzYh9D1OGjz9Mn8sdQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=q1ykIOa7; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1730685167; c=relaxed/simple;
+	bh=4ER/EiUCkm4Hjda9LTk/1TdU9pkW80CjEHKAFrE8eD0=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=Hv4Q/4FKD6+Af+zV2UjaMue5IaxHDfw1V8JeFD7XHx+AWRaIt+SJZkcm+DRPjFPnPQfoWR0LUyZXxp6RcXQ8HtA5vSPaJQqhzi1AT7zzSmtTRtKz0mfCkbDsuOBaVRKueMFx1G1D1NEevJGNQKC3BJufdBHZzWgf9rtitL+IuRs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=fromorbit.com; spf=pass smtp.mailfrom=fromorbit.com; dkim=pass (2048-bit key) header.d=fromorbit-com.20230601.gappssmtp.com header.i=@fromorbit-com.20230601.gappssmtp.com header.b=WK2nQ19i; arc=none smtp.client-ip=209.85.210.179
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=fromorbit.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=fromorbit.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="q1ykIOa7"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 90D6FC4CED5;
-	Sun,  3 Nov 2024 22:32:32 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1730673153;
-	bh=47ZGS4s0ykwzlSaIC0c2LdDMEVdoUJMfULJGERv2xGc=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=q1ykIOa7FhBo5TG7EEGuwlAX6JD+hfMRhamK4oMNyVrZDpMPqHTEGAsVbnERHXS8T
-	 +I2XrUziRIKheWu2BlQzXwfZ1l1bjNXguqDK6VXaR/wct879oJyJjpLfr0pqdPRjDc
-	 pgJpJHsZKjL5na6IEdo8DdvwhyfhSCkVyu7UUX9dnortqHNcN8xxIOrpJweL/Ycdzc
-	 TNs6Kild/tZIS7PV10QKFjAyOPbFF38dNBQncvaP5igKWCs7GauQI5N8BGs/n6dj5r
-	 PX3uI/nZ89HFy8Q/OKlj/f+oQiZJDSlGKwqNEM0h+hztwIegm5uD3SmzhUbQinAYA0
-	 pW57GbYyXw9gw==
-From: Eric Biggers <ebiggers@kernel.org>
-To: linux-kernel@vger.kernel.org
-Cc: linux-arch@vger.kernel.org,
-	linux-arm-kernel@lists.infradead.org,
-	linux-crypto@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-mips@vger.kernel.org,
-	linux-riscv@lists.infradead.org,
-	linux-s390@vger.kernel.org,
-	linux-scsi@vger.kernel.org,
-	linuxppc-dev@lists.ozlabs.org,
-	loongarch@lists.linux.dev,
-	sparclinux@vger.kernel.org,
-	x86@kernel.org,
-	Ard Biesheuvel <ardb@kernel.org>
-Subject: [PATCH v3 16/18] jbd2: switch to using the crc32c library
-Date: Sun,  3 Nov 2024 14:31:52 -0800
-Message-ID: <20241103223154.136127-17-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.47.0
-In-Reply-To: <20241103223154.136127-1-ebiggers@kernel.org>
-References: <20241103223154.136127-1-ebiggers@kernel.org>
+	dkim=pass (2048-bit key) header.d=fromorbit-com.20230601.gappssmtp.com header.i=@fromorbit-com.20230601.gappssmtp.com header.b="WK2nQ19i"
+Received: by mail-pf1-f179.google.com with SMTP id d2e1a72fcca58-71e61b47c6cso3310603b3a.2
+        for <linux-ext4@vger.kernel.org>; Sun, 03 Nov 2024 17:52:45 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=fromorbit-com.20230601.gappssmtp.com; s=20230601; t=1730685165; x=1731289965; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=D1gO7nE6k1d3RjOM7nVXHvrivHG7QQDb7RYI/vhsl1g=;
+        b=WK2nQ19iurnnXZh/H138SBIHp3WiDagYGsLzW8Q2WSuM2PMUzKJj/GfR7k0AYmeKos
+         hJn4GArnVZ4VEgxn7oZQy40khQpgPj7onWuH2Phl+7mmvdKuI37jBAHaDDPTsl5nb4Fz
+         GdHbpXvzmCUvx3GQVcjZo3x5ojFrvAMzfz2Em6whCBa4W+CZ7v3EERd5opZz2RKoBb81
+         EEqdAGGTVP1cqLjmU86d+PzgfVPvRq/9rGlVkHr9HWpW+8C1C42gfYNoimoMsqqagNqK
+         iplPld4ChHpTcexP21UpEfo0BTYpe48qtj5N0rWNKy8fNMtiD/pGzmffBubX3nfkTSod
+         NN4g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1730685165; x=1731289965;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=D1gO7nE6k1d3RjOM7nVXHvrivHG7QQDb7RYI/vhsl1g=;
+        b=BwUK2urDSQ8E83nrH3spwdLzYhupiBs16Zo7sXPpSs2owO98ZDNAi07O4rRMwsNdta
+         kNGmmMKRk2U+z5IXVD6YaqE1j7PuWppRvfRlfoBGxODYN5xTvrLqfi7WEtemyv1Nrlml
+         fPTXdLvL/iYAVtbidBgRQ6/+wjxAVDDKoOLDCn4XAdCo4Xvt0i4PoZuGbOheMBmLm14k
+         P8F0vugSuMjmDAg1gELNoN9SQdRohXQIaM/z0+XHKLEv9nTq2TWRQcjW1Y/qc9TN9ISC
+         Vz69s82rW/2yV+4zedJUjWw8v0RJLmBf0Vws75RguDavbaNL0bWSqkjpmLO3tUCJ8kky
+         iETA==
+X-Forwarded-Encrypted: i=1; AJvYcCXaI1y9LVW+HyKxVndgA3blDbqPcLCX/mL6pCXML/eTuIJxpwTnShnNNm5uSI25sKVqUkJ4WMkDE7VG@vger.kernel.org
+X-Gm-Message-State: AOJu0YxqHtYcpgsDXe+agD2MSpx8CCVBg//87xpIRXcFrcvH3T1y+ZkD
+	DF8xJXlpDww9jbHUlEtECAEd2GBWB+sMJmtcU29IQhztJvDL8w7dILWY56LnyB0=
+X-Google-Smtp-Source: AGHT+IHU0t6TXjLqTaEyMJ+80xaQseYHEZhGQPcykH54yPn7f5EMEawKPcrdWfzxP/RT/N77cHYxWA==
+X-Received: by 2002:a05:6a20:d8b:b0:1cf:3d14:6921 with SMTP id adf61e73a8af0-1d9a84d168emr47042468637.35.1730685165442;
+        Sun, 03 Nov 2024 17:52:45 -0800 (PST)
+Received: from dread.disaster.area (pa49-186-86-168.pa.vic.optusnet.com.au. [49.186.86.168])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-720bc318824sm6235825b3a.212.2024.11.03.17.52.44
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 03 Nov 2024 17:52:44 -0800 (PST)
+Received: from dave by dread.disaster.area with local (Exim 4.96)
+	(envelope-from <david@fromorbit.com>)
+	id 1t7mGo-009qSI-0n;
+	Mon, 04 Nov 2024 12:52:42 +1100
+Date: Mon, 4 Nov 2024 12:52:42 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: "Darrick J. Wong" <djwong@kernel.org>
+Cc: Ritesh Harjani <ritesh.list@gmail.com>, Theodore Ts'o <tytso@mit.edu>,
+	John Garry <john.g.garry@oracle.com>, linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>, linux-kernel@vger.kernel.org,
+	linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 5/6] iomap: Lift blocksize restriction on atomic writes
+Message-ID: <Zygo6nqOJMoJxYrm@dread.disaster.area>
+References: <87v7xgmpwo.fsf@gmail.com>
+ <7e322989-c6e0-424a-94bd-3ad6ce5ffee9@oracle.com>
+ <87ttd0mnuo.fsf@gmail.com>
+ <7aea00d4-3914-414d-a18f-586a303868c1@oracle.com>
+ <87r084mkat.fsf@gmail.com>
+ <509180f3-4cc1-4cc2-9d43-5a1e728fb718@oracle.com>
+ <87plnomfsy.fsf@gmail.com>
+ <20241025182858.GM2386201@frogsfrogsfrogs>
+ <87jzdvmqfz.fsf@gmail.com>
+ <20241031213640.GB21832@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20241031213640.GB21832@frogsfrogsfrogs>
 
-From: Eric Biggers <ebiggers@google.com>
+On Thu, Oct 31, 2024 at 02:36:40PM -0700, Darrick J. Wong wrote:
+> On Sat, Oct 26, 2024 at 10:05:44AM +0530, Ritesh Harjani wrote:
+> > > This gets me to the third and much less general solution -- only allow
+> > > untorn writes if we know that the ioend only ever has to run a single
+> > > transaction.  That's why untorn writes are limited to a single fsblock
+> > > for now -- it's a simple solution so that we can get our downstream
+> > > customers to kick the tires and start on the next iteration instead of
+> > > spending years on waterfalling.
+> > >
+> > > Did you notice that in all of these cases, the capabilities of the
+> > > filesystem's ioend processing determines the restrictions on the number
+> > > and type of mappings that ->iomap_begin can give to iomap?
+> > >
+> > > Now that we have a second system trying to hook up to the iomap support,
+> > > it's clear to me that the restrictions on mappings are specific to each
+> > > filesystem.  Therefore, the iomap directio code should not impose
+> > > restrictions on the mappings it receives unless they would prevent the
+> > > creation of the single aligned bio.
+> > >
+> > > Instead, xfs_direct_write_iomap_begin and ext4_iomap_begin should return
+> > > EINVAL or something if they look at the file mappings and discover that
+> > > they cannot perform the ioend without risking torn mapping updates.  In
+> > > the long run, ->iomap_begin is where this iomap->len <= iter->len check
+> > > really belongs, but hold that thought.
+> > >
+> > > For the multi fsblock case, the ->iomap_begin functions would have to
+> > > check that only one metadata update would be necessary in the ioend.
+> > > That's where things get murky, since ext4/xfs drop their mapping locks
+> > > between calls to ->iomap_begin.  So you'd have to check all the mappings
+> > > for unsupported mixed state every time.  Yuck.
+> > >
+> > 
+> > Thanks Darrick for taking time summarizing what all has been done
+> > and your thoughts here.
+> > 
+> > > It might be less gross to retain the restriction that iomap accepts only
+> > > one mapping for the entire file range, like Ritesh has here.
+> > 
+> > less gross :) sure. 
+> > 
+> > I would like to think of this as, being less restrictive (compared to
+> > only allowing a single fsblock) by adding a constraint on the atomic
+> > write I/O request i.e.  
+> > 
+> > "Atomic write I/O request to a region in a file is only allowed if that
+> > region has no partially allocated extents. Otherwise, the file system
+> > can fail the I/O operation by returning -EINVAL."
+> > 
+> > Essentially by adding this constraint to the I/O request, we are
+> > helping the user to prevent atomic writes from accidentally getting
+> > torned and also allowing multi-fsblock writes. So I still think that
+> > might be the right thing to do here or at least a better start. FS can
+> > later work on adding such support where we don't even need above
+> > such constraint on a given atomic write I/O request.
+> 
+> On today's ext4 call, Ted and Ritesh and I realized that there's a bit
+> more to it than this -- it's not possible to support untorn writes to a
+> mix of written/(cow,unwritten) mappings even if they all point to the
+> same physical space.  If the system fails after the storage device
+> commits the write but before any of the ioend processing is scheduled, a
+> subsequent read of the previously written blocks will produce the new
+> data, but reads to the other areas will produce the old contents (or
+> zeroes, or whatever).  That's a torn write.
 
-Now that the crc32c() library function directly takes advantage of
-architecture-specific optimizations, it is unnecessary to go through the
-crypto API.  Just use crc32c().  This is much simpler, and it improves
-performance due to eliminating the crypto API overhead.
+I'm *really* surprised that people are only realising that IO
+completion processing for atomic writes *must be atomic*.
 
-Reviewed-by: Ard Biesheuvel <ardb@kernel.org>
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/jbd2/Kconfig      |  2 --
- fs/jbd2/journal.c    | 25 ++-----------------------
- include/linux/jbd2.h | 31 +++----------------------------
- 3 files changed, 5 insertions(+), 53 deletions(-)
+This was the foundational constraint that the forced alignment
+proposal for XFS was intended to address. i.e. to prevent fs
+operations from violating atomic write IO constraints (e.g. punching
+sub-atomic write size holes in the file) so that the physical IO can
+be done without tearing and the IO completion processing that
+exposes the new data can be done atomically.
 
-diff --git a/fs/jbd2/Kconfig b/fs/jbd2/Kconfig
-index 4ad2c67f93f1..9c19e1512101 100644
---- a/fs/jbd2/Kconfig
-+++ b/fs/jbd2/Kconfig
-@@ -1,11 +1,9 @@
- # SPDX-License-Identifier: GPL-2.0-only
- config JBD2
- 	tristate
- 	select CRC32
--	select CRYPTO
--	select CRYPTO_CRC32C
- 	help
- 	  This is a generic journaling layer for block devices that support
- 	  both 32-bit and 64-bit block numbers.  It is currently used by
- 	  the ext4 and OCFS2 filesystems, but it could also be used to add
- 	  journal support to other file systems or block devices such
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 97f487c3d8fc..56cea5a738a7 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1373,24 +1373,16 @@ static int journal_check_superblock(journal_t *journal)
- 		printk(KERN_ERR "JBD2: Can't enable checksumming v1 and v2/3 "
- 		       "at the same time!\n");
- 		return err;
- 	}
- 
--	/* Load the checksum driver */
- 	if (jbd2_journal_has_csum_v2or3_feature(journal)) {
- 		if (sb->s_checksum_type != JBD2_CRC32C_CHKSUM) {
- 			printk(KERN_ERR "JBD2: Unknown checksum type\n");
- 			return err;
- 		}
- 
--		journal->j_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
--		if (IS_ERR(journal->j_chksum_driver)) {
--			printk(KERN_ERR "JBD2: Cannot load crc32c driver.\n");
--			err = PTR_ERR(journal->j_chksum_driver);
--			journal->j_chksum_driver = NULL;
--			return err;
--		}
- 		/* Check superblock checksum */
- 		if (sb->s_checksum != jbd2_superblock_csum(journal, sb)) {
- 			printk(KERN_ERR "JBD2: journal checksum error\n");
- 			err = -EFSBADCRC;
- 			return err;
-@@ -1611,12 +1603,10 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 
- 	return journal;
- 
- err_cleanup:
- 	percpu_counter_destroy(&journal->j_checkpoint_jh_count);
--	if (journal->j_chksum_driver)
--		crypto_free_shash(journal->j_chksum_driver);
- 	kfree(journal->j_wbuf);
- 	jbd2_journal_destroy_revoke(journal);
- 	journal_fail_superblock(journal);
- 	kfree(journal);
- 	return ERR_PTR(err);
-@@ -2194,12 +2184,10 @@ int jbd2_journal_destroy(journal_t *journal)
- 	if (journal->j_proc_entry)
- 		jbd2_stats_proc_exit(journal);
- 	iput(journal->j_inode);
- 	if (journal->j_revoke)
- 		jbd2_journal_destroy_revoke(journal);
--	if (journal->j_chksum_driver)
--		crypto_free_shash(journal->j_chksum_driver);
- 	kfree(journal->j_fc_wbuf);
- 	kfree(journal->j_wbuf);
- 	kfree(journal);
- 
- 	return err;
-@@ -2340,23 +2328,14 @@ int jbd2_journal_set_features(journal_t *journal, unsigned long compat,
- 			pr_err("JBD2: Cannot enable fast commits.\n");
- 			return 0;
- 		}
- 	}
- 
--	/* Load the checksum driver if necessary */
--	if ((journal->j_chksum_driver == NULL) &&
--	    INCOMPAT_FEATURE_ON(JBD2_FEATURE_INCOMPAT_CSUM_V3)) {
--		journal->j_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
--		if (IS_ERR(journal->j_chksum_driver)) {
--			printk(KERN_ERR "JBD2: Cannot load crc32c driver.\n");
--			journal->j_chksum_driver = NULL;
--			return 0;
--		}
--		/* Precompute checksum seed for all metadata */
-+	/* Precompute checksum seed for all metadata */
-+	if (INCOMPAT_FEATURE_ON(JBD2_FEATURE_INCOMPAT_CSUM_V3))
- 		journal->j_csum_seed = jbd2_chksum(journal, ~0, sb->s_uuid,
- 						   sizeof(sb->s_uuid));
--	}
- 
- 	lock_buffer(journal->j_sb_buffer);
- 
- 	/* If enabling v3 checksums, update superblock */
- 	if (INCOMPAT_FEATURE_ON(JBD2_FEATURE_INCOMPAT_CSUM_V3)) {
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 8aef9bb6ad57..33d25a3d15f1 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -26,11 +26,11 @@
- #include <linux/mutex.h>
- #include <linux/timer.h>
- #include <linux/slab.h>
- #include <linux/bit_spinlock.h>
- #include <linux/blkdev.h>
--#include <crypto/hash.h>
-+#include <linux/crc32c.h>
- #endif
- 
- #define journal_oom_retry 1
- 
- /*
-@@ -1239,17 +1239,10 @@ struct journal_s
- 	 * An opaque pointer to fs-private information.  ext3 puts its
- 	 * superblock pointer here.
- 	 */
- 	void *j_private;
- 
--	/**
--	 * @j_chksum_driver:
--	 *
--	 * Reference to checksum algorithm driver via cryptoapi.
--	 */
--	struct crypto_shash *j_chksum_driver;
--
- 	/**
- 	 * @j_csum_seed:
- 	 *
- 	 * Precomputed journal UUID checksum for seeding other checksums.
- 	 */
-@@ -1748,14 +1741,11 @@ static inline bool jbd2_journal_has_csum_v2or3_feature(journal_t *j)
- 	return jbd2_has_feature_csum2(j) || jbd2_has_feature_csum3(j);
- }
- 
- static inline int jbd2_journal_has_csum_v2or3(journal_t *journal)
- {
--	WARN_ON_ONCE(jbd2_journal_has_csum_v2or3_feature(journal) &&
--		     journal->j_chksum_driver == NULL);
--
--	return journal->j_chksum_driver != NULL;
-+	return jbd2_journal_has_csum_v2or3_feature(journal);
- }
- 
- static inline int jbd2_journal_get_num_fc_blks(journal_superblock_t *jsb)
- {
- 	int num_fc_blocks = be32_to_cpu(jsb->s_num_fc_blks);
-@@ -1794,26 +1784,11 @@ static inline unsigned long jbd2_log_space_left(journal_t *journal)
- #define JBD_MAX_CHECKSUM_SIZE 4
- 
- static inline u32 jbd2_chksum(journal_t *journal, u32 crc,
- 			      const void *address, unsigned int length)
- {
--	struct {
--		struct shash_desc shash;
--		char ctx[JBD_MAX_CHECKSUM_SIZE];
--	} desc;
--	int err;
--
--	BUG_ON(crypto_shash_descsize(journal->j_chksum_driver) >
--		JBD_MAX_CHECKSUM_SIZE);
--
--	desc.shash.tfm = journal->j_chksum_driver;
--	*(u32 *)desc.ctx = crc;
--
--	err = crypto_shash_update(&desc.shash, address, length);
--	BUG_ON(err);
--
--	return *(u32 *)desc.ctx;
-+	return crc32c(crc, address, length);
- }
- 
- /* Return most recent uncommitted transaction */
- static inline tid_t  jbd2_get_latest_transaction(journal_t *journal)
- {
+> Therefore, iomap ought to stick to requiring that ->iomap_begin returns
+> a single iomap to cover the entire file range for the untorn write.  For
+> an unwritten extent, the post-recovery read will see either zeroes or
+> the new contents; for a single-mapping COW it'll see old or new contents
+> but not both.
+
+I'm pretty sure we enforced that in the XFS mapping implemention for
+atomic writes using forced alignment. i.e.  we have to return a
+correctly aligned, contiguous mapping to iomap or we have to return
+-EINVAL to indicate atomic write mapping failed.
+
+Yes, we can check this in iomap, but it's really the filesystem that
+has to implement and enforce it...
+
+-Dave.
 -- 
-2.47.0
-
+Dave Chinner
+david@fromorbit.com
