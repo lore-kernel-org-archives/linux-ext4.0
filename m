@@ -1,48 +1,48 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE6BB2139C9
-	for <linux-ext4@vger.kernel.org>; Thu,  7 Nov 2024 15:13:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A3A0A212EF7
+	for <linux-ext4@vger.kernel.org>; Thu,  7 Nov 2024 15:14:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1730992420; cv=none; b=cu8EGXA2WZ1A685y0c1EcMdhnmIwa3ntwDpOqebCFWdo49sJkJ8tPfpwl4CcCy/4hntEUtoMkVnUvsUnbm7Og8finjf1/Shac28iDFmJfKM0pbCqVhCD6It1h5rksX1165N3eZ1gCEQKi+OnyweaDID15s5QBiM6JQVkqc2q6Jw=
+	t=1730992448; cv=none; b=fQfPPJHptcJR5NBfsv/rh2pDJNMLW02hMCiGwbHOaKhWF7RpvrjFnzy900zVZXORwM9TPQlpHKMixxLcOkMYs7DFZa7YeVEC4C2kvvaahmK8KFnF2Y5JoQw5Qxe/GMW4F2z7UZiZiBuIxNW1oBbCP3YI4Btm2UaDmt7iy/kHiJw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1730992420; c=relaxed/simple;
-	bh=9qt4V0ccHc0UX37sY4hMOqtIZPABzA7z7I8clwPSfuc=;
+	s=arc-20240116; t=1730992448; c=relaxed/simple;
+	bh=c85BsSZmQ0DhmZ5RtLeu+wH/FlicBcGBJ2jXQmcD3WE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=Cbbe7tCqP4+OPVCtNddljTy9PJBNgJtnyuqIBMDHozrOuHsmu0u9o+0zfTYwAJln9hYzA4pvBO/vvH30pV4czDo0m2Xb3d/HiPMMU2v2oEgwfjFVDHTqUbFdEcus7noQHzTUDaSZ/C2i/kdOYRBAB2bFMqnOwu6FkzuCZ2MEwi4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=fbfog9Rf; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=W83PMIFxVt662e9NnHS2PXbekyLRa7SrrM3lBa3s7j3V2oQU2oDWXJ3kYa882eW6IGcMiRFjk7KAREvMOj6ybbiy/7iZLV4+F0+VdNQf2gBzVySld0dd5CHqRbn7sE0Atfk46Ltqte9v4bJxF46WEMsCwuF2Q122VCbm2B+nLpE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=AuRYnwfl; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="fbfog9Rf"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="AuRYnwfl"
 Received: from cwcc.thunk.org (pool-173-48-82-224.bstnma.fios.verizon.net [173.48.82.224])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 4A7FD8TZ003575
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 4A7FD6CD003523
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 7 Nov 2024 10:13:09 -0500
+	Thu, 7 Nov 2024 10:13:07 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1730992391; bh=v/qVTHOljAISwUK06181QYvI3vNOJSHeGigUMv0sbmo=;
+	t=1730992388; bh=pKZuY20VF6iSUTl+wgAMwKSZaeVnqSJpO1FMvnPZu7o=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=fbfog9RfIIO/dQ/H3xytlGn4O0MbdrQgs9Cux58Fr/9fRoE8XSQzic/6hvvcKHpYx
-	 6eVEGdctC2Vzkpz5Ahu+u8JnrErvccXhcBUc/49WAyTeNDEL5zE1CbaT8Ii5fs9M7f
-	 URbNjuSCEw7oMsZGMkrWM4kginjFGoxmjGdyqRGjMLAnjStUps0r8VsCK2KCmOBji/
-	 Sgh32snTo/fzpku/XoMMxUyz98K3N2a31ndK8ykkh5a02nYlJpHsETWkbVX605QUcT
-	 TPo26o4oo456ftNnxJ5AYHAmsBlAn4roBobnECkUbSMigJmQSkvF0Mq9+JClG8bxaj
-	 L+DeQTn3mkh6A==
+	b=AuRYnwflDdH6klPK1+jb4T2h8jxEHKo+/qwBMfPLAr2LVkWrz827CFcnN7eYOIyeH
+	 Zv+ZFukYvGg+vqurrSJ1ot8gtimmRRTqgByBer1/ankCeQDCcJ4ZKieTxPuyDI3A7J
+	 dwuJTx2S4KXVuwniRfrl2iFcHPwfHut9AQ3sFvg3msIw67O7spxuYU1UbGen7g2HC1
+	 IJPbVoW51xPjR2RRnC6z1kxaDE7oW9ZWxB9MxTSSX4zRaorx7KB10cvpOE7/ghfTVg
+	 hTsva2OvpS+pJXhNkkEaXhUbKQWsWu1CToNL5asTkQtSQQKuPfamxxgPaX61MV9Zvn
+	 h+1hQCmf2gAQA==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id 4CDAB15C1A13; Thu, 07 Nov 2024 10:13:06 -0500 (EST)
+	id 3D12415C02FA; Thu, 07 Nov 2024 10:13:06 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        Ye Bin <yebin@huaweicloud.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, jack@suse.cz, zhangxiaoxu5@huawei.com
-Subject: Re: [PATCH v2 0/6] some cleanup and refactor for jbd2 journal recover
-Date: Thu,  7 Nov 2024 10:13:00 -0500
-Message-ID: <173099237655.321265.2925765114453172886.b4-ty@mit.edu>
+To: adilger.kernel@dilger.ca, alexjlzheng@gmail.com
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Jinliang Zheng <alexjlzheng@tencent.com>
+Subject: Re: [RESEND PATCH] ext4: disambiguate the return value of ext4_dio_write_end_io()
+Date: Thu,  7 Nov 2024 10:12:52 -0500
+Message-ID: <173099237654.321265.14598292051529807032.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.45.2
-In-Reply-To: <20240930005942.626942-1-yebin@huaweicloud.com>
-References: <20240930005942.626942-1-yebin@huaweicloud.com>
+In-Reply-To: <20240919082539.381626-1-alexjlzheng@tencent.com>
+References: <20240919082539.381626-1-alexjlzheng@tencent.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,36 +53,20 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Mon, 30 Sep 2024 08:59:36 +0800, Ye Bin wrote:
-> Diff v2 vs v1:
-> 1. Modify the indentation problem and remove unnecessary braces in PATCH[4];
-> 2. Add PATCH[6] to remove the 'success' parameter from the jbd2_do_replay();
+On Thu, 19 Sep 2024 16:25:39 +0800, alexjlzheng@gmail.com wrote:
+> The commit 91562895f803 ("ext4: properly sync file size update after O_SYNC
+> direct IO") causes confusion about the meaning of the return value of
+> ext4_dio_write_end_io().
 > 
-> Ye Bin (6):
->   jbd2: remove redundant judgments for check v1 checksum
->   jbd2: unified release of buffer_head in do_one_pass()
->   jbd2: refactor JBD2_COMMIT_BLOCK process in do_one_pass()
->   jbd2: factor out jbd2_do_replay()
->   jbd2: remove useless 'block_error' variable
->   jbd2: remove the 'success' parameter from the jbd2_do_replay()
->     function
+> Specifically, when the ext4_handle_inode_extension() operation succeeds,
+> ext4_dio_write_end_io() directly returns count instead of 0.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/6] jbd2: remove redundant judgments for check v1 checksum
-      commit: 1438c95d4541fb7283c13d3d65b95fd91010a903
-[2/6] jbd2: unified release of buffer_head in do_one_pass()
-      commit: ed6eb7b7fc53405e57c988b0ff60ae845470ca04
-[3/6] jbd2: refactor JBD2_COMMIT_BLOCK process in do_one_pass()
-      commit: 21e90d4ca19fd9353ff5e02182ae80ef926afc84
-[4/6] jbd2: factor out jbd2_do_replay()
-      commit: 0b85400756de5678f9e581eb7698c6e35f578a16
-[5/6] jbd2: remove useless 'block_error' variable
-      commit: 4b3703e8200e0d8dcf46411f148bbb1d22d59525
-[6/6] jbd2: remove the 'success' parameter from the jbd2_do_replay() function
-      commit: 1c77bb71e581d101df54df95c30407621d87ba68
+[1/1] ext4: disambiguate the return value of ext4_dio_write_end_io()
+      commit: e88d17afcf8364c353942e951f8e968f66bfcaa0
 
 Best regards,
 -- 
