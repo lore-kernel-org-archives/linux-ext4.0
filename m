@@ -1,49 +1,48 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3BE282144CD
-	for <linux-ext4@vger.kernel.org>; Thu,  7 Nov 2024 15:13:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE6BB2139C9
+	for <linux-ext4@vger.kernel.org>; Thu,  7 Nov 2024 15:13:38 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1730992417; cv=none; b=YeNKrJzBJEx3kyYHbMbN5EotS5gvw4xQbImPvGmCHp1mnX5MgZS7u3VBSr24TDsh4YHRrwnOzja/zSDCiHQAcfQCqfVXOKuD7iyOhzlRBWCJd3qvm4ZTc0I5AwEuC3gMCOhLQU/8izxaMKAR7SO8fjX/0It08fKRZEsrtbvdq7o=
+	t=1730992420; cv=none; b=cu8EGXA2WZ1A685y0c1EcMdhnmIwa3ntwDpOqebCFWdo49sJkJ8tPfpwl4CcCy/4hntEUtoMkVnUvsUnbm7Og8finjf1/Shac28iDFmJfKM0pbCqVhCD6It1h5rksX1165N3eZ1gCEQKi+OnyweaDID15s5QBiM6JQVkqc2q6Jw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1730992417; c=relaxed/simple;
-	bh=Jg4ytGyJPzSVZSYZ9ovDHmtORUtX/YMb6ZDk/+LF32I=;
+	s=arc-20240116; t=1730992420; c=relaxed/simple;
+	bh=9qt4V0ccHc0UX37sY4hMOqtIZPABzA7z7I8clwPSfuc=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=dSSIynu2jbJMVShi94qal76MaFsJ5eiykAj2y8glaJjQKBJzfZ9cnuemkoiUmviKRN1JU7L5PcWzC/IhEEfqTz601sMzk1d7tpGYD8TMI7jKxSuSHAGXyxbm4LMhUYnOOPnPs24gojSRKe0bPERh8FmdhGzWiinr+80S1346qKY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=jDlmkL+X; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=Cbbe7tCqP4+OPVCtNddljTy9PJBNgJtnyuqIBMDHozrOuHsmu0u9o+0zfTYwAJln9hYzA4pvBO/vvH30pV4czDo0m2Xb3d/HiPMMU2v2oEgwfjFVDHTqUbFdEcus7noQHzTUDaSZ/C2i/kdOYRBAB2bFMqnOwu6FkzuCZ2MEwi4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=fbfog9Rf; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="jDlmkL+X"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="fbfog9Rf"
 Received: from cwcc.thunk.org (pool-173-48-82-224.bstnma.fios.verizon.net [173.48.82.224])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 4A7FD8eD003610
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 4A7FD8TZ003575
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Thu, 7 Nov 2024 10:13:09 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1730992391; bh=OJPO9o9xC73sRxGQ6mMJoXJYxmQ9I3Ul/+DGELgcONY=;
+	t=1730992391; bh=v/qVTHOljAISwUK06181QYvI3vNOJSHeGigUMv0sbmo=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=jDlmkL+XldCHJtmpERypOduQeHdg5Kd+/Pbam2kDC6LDtfT/VyhOtbOn4F18YU8D9
-	 fv8nH3KvNsk+to57Euszvefapt/Wu6O6ZbRwpdKyXd93Mxn+w0yB+Y7n/Cr/bOdY/z
-	 C2MzymqW0HhiHhQk41XRhTytav7iltQgxsbvkP5PvHgFaaCpG0YQAGCHUHYfiUSxBR
-	 a91YmzMAnSaL06BpQZL4vhFlgwG229SwOerNRDV9GmOLhIgeV9rDvY6vooWgtKsK+O
-	 w/ZkbK3Y/lQycboPu+34OI7KDtmAJZEqmcNOrap6MRVeE1b3Qq9CgWRDtpaBgR/lAl
-	 /gHbN0m6xrBxw==
+	b=fbfog9RfIIO/dQ/H3xytlGn4O0MbdrQgs9Cux58Fr/9fRoE8XSQzic/6hvvcKHpYx
+	 6eVEGdctC2Vzkpz5Ahu+u8JnrErvccXhcBUc/49WAyTeNDEL5zE1CbaT8Ii5fs9M7f
+	 URbNjuSCEw7oMsZGMkrWM4kginjFGoxmjGdyqRGjMLAnjStUps0r8VsCK2KCmOBji/
+	 Sgh32snTo/fzpku/XoMMxUyz98K3N2a31ndK8ykkh5a02nYlJpHsETWkbVX605QUcT
+	 TPo26o4oo456ftNnxJ5AYHAmsBlAn4roBobnECkUbSMigJmQSkvF0Mq9+JClG8bxaj
+	 L+DeQTn3mkh6A==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id 52F1115C1E39; Thu, 07 Nov 2024 10:13:06 -0500 (EST)
+	id 4CDAB15C1A13; Thu, 07 Nov 2024 10:13:06 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Zhaoyang Huang <huangzhaoyang@gmail.com>,
-        steve.kang@unisoc.com, "zhaoyang.huang" <zhaoyang.huang@unisoc.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: Re: [PATCHv2 1/1] fs: ext4: Don't use CMA for buffer_head
-Date: Thu,  7 Nov 2024 10:13:03 -0500
-Message-ID: <173099237652.321265.9092728480077110829.b4-ty@mit.edu>
+To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        Ye Bin <yebin@huaweicloud.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, jack@suse.cz, zhangxiaoxu5@huawei.com
+Subject: Re: [PATCH v2 0/6] some cleanup and refactor for jbd2 journal recover
+Date: Thu,  7 Nov 2024 10:13:00 -0500
+Message-ID: <173099237655.321265.2925765114453172886.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.45.2
-In-Reply-To: <20240904075300.1148836-1-zhaoyang.huang@unisoc.com>
-References: <20240904075300.1148836-1-zhaoyang.huang@unisoc.com>
+In-Reply-To: <20240930005942.626942-1-yebin@huaweicloud.com>
+References: <20240930005942.626942-1-yebin@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -54,23 +53,36 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Wed, 04 Sep 2024 15:53:00 +0800, zhaoyang.huang wrote:
-> cma_alloc() keep failed in our system which thanks to a jh->bh->b_page
-> can not be migrated out of CMA area[1] as the jh has one cp_transaction
-> pending on it because of j_free > j_max_transaction_buffers[2][3][4][5][6].
-> We temporarily solve this by launching jbd2_log_do_checkpoint forcefully
-> somewhere. Since journal is common mechanism to all JFSs and
-> cp_transaction has a little fewer opportunity to be launched, the
-> cma_alloc() could be affected under the same scenario. This patch
-> would like to have buffer_head of ext4 not use CMA pages when doing
-> sb_getblk.
+On Mon, 30 Sep 2024 08:59:36 +0800, Ye Bin wrote:
+> Diff v2 vs v1:
+> 1. Modify the indentation problem and remove unnecessary braces in PATCH[4];
+> 2. Add PATCH[6] to remove the 'success' parameter from the jbd2_do_replay();
+> 
+> Ye Bin (6):
+>   jbd2: remove redundant judgments for check v1 checksum
+>   jbd2: unified release of buffer_head in do_one_pass()
+>   jbd2: refactor JBD2_COMMIT_BLOCK process in do_one_pass()
+>   jbd2: factor out jbd2_do_replay()
+>   jbd2: remove useless 'block_error' variable
+>   jbd2: remove the 'success' parameter from the jbd2_do_replay()
+>     function
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] fs: ext4: Don't use CMA for buffer_head
-      commit: ef60f4aab81d2ce5984135e6af1abcce56a425d7
+[1/6] jbd2: remove redundant judgments for check v1 checksum
+      commit: 1438c95d4541fb7283c13d3d65b95fd91010a903
+[2/6] jbd2: unified release of buffer_head in do_one_pass()
+      commit: ed6eb7b7fc53405e57c988b0ff60ae845470ca04
+[3/6] jbd2: refactor JBD2_COMMIT_BLOCK process in do_one_pass()
+      commit: 21e90d4ca19fd9353ff5e02182ae80ef926afc84
+[4/6] jbd2: factor out jbd2_do_replay()
+      commit: 0b85400756de5678f9e581eb7698c6e35f578a16
+[5/6] jbd2: remove useless 'block_error' variable
+      commit: 4b3703e8200e0d8dcf46411f148bbb1d22d59525
+[6/6] jbd2: remove the 'success' parameter from the jbd2_do_replay() function
+      commit: 1c77bb71e581d101df54df95c30407621d87ba68
 
 Best regards,
 -- 
