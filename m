@@ -1,85 +1,70 @@
-Received: from mx0.riseup.net (mx0.riseup.net [198.252.153.6])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9C55ED26D;
-	Thu,  7 Nov 2024 14:47:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.252.153.6
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D9F0C212EF7
+	for <linux-ext4@vger.kernel.org>; Thu,  7 Nov 2024 15:13:15 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1730990863; cv=none; b=XUWn6gIeRzyVixk3oxtq5C3muhRQqsqxiJ0ERg09NnJAtqS/m0vnC6geKUFDnbOPpWzsA5AawXVufI9e6qAtfxxeTiSzb1pvsgyqigFKsc1KpxVZGND5cKoETK2SG1ippBNl52vavaORtusH1bIquaJI1IYeSeRvNMxbFG8Ytxg=
+	t=1730992397; cv=none; b=Xc9JSFjHddRWjWZoPQRe4LN7sq8Fz/JZT8lG/PwHLwoZpvUFxcpQ+OqYUAU7G2KlceCPs1EJCFdxpZakgA9Zv7WjPzh7v7RcB96VWhnOXF99M+QXU3IELJHK5b8iWDKEOiN5tQH4qItWD21rJtwip8v4zLzAQqy/PUobPNWfSZ0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1730990863; c=relaxed/simple;
-	bh=LsWGaxUhQIDl8XF7MhRdqRUSVd1iaNtFGpmijx6gn2g=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version:Content-Type; b=gCd4J2CiQuZuv08napb6MxG+HA/5NE5SybsiOZPyhyLJZ0ZCR//BjY0Hq8sUKXCV34RXyHRYIlMYIWX/sx2nQqesMR+ivdBReC1VCPrtSwSElxlP8BJ6gcIWzPAiA7ZRQMKzXOqSbF/TrOw+MueBKCpdW6P3Dfkx11MCIgew/hE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=riseup.net; spf=pass smtp.mailfrom=riseup.net; dkim=pass (1024-bit key) header.d=riseup.net header.i=@riseup.net header.b=r8KVhDGI; arc=none smtp.client-ip=198.252.153.6
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=riseup.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=riseup.net
+	s=arc-20240116; t=1730992397; c=relaxed/simple;
+	bh=HcNHhFfTShWTzKzfY/uhw4hdIdh+uMzQeWG6b/6X7G8=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=U/TedRZZ8Oeie8mIw0fM7C7+3nxBsa2gNfu+Tkpt488l+VqRoxE67FJvEnLYy9ksMbVlqEOI36AWZOUeclIcmDhdTgjBdt3Q1pR7XCR+wnEf+4BxELG4gb510YLlWxu56+1kfiGLCieXbTZof55HpAbp/TZm5gEXp0HiFNhm05E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=XSUZSeGZ; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=riseup.net header.i=@riseup.net header.b="r8KVhDGI"
-Received: from fews01-sea.riseup.net (fews01-sea-pn.riseup.net [10.0.1.109])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx0.riseup.net (Postfix) with ESMTPS id 4XklKl0p6Sz9wwr;
-	Thu,  7 Nov 2024 14:47:39 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=riseup.net; s=squak;
-	t=1730990859; bh=LsWGaxUhQIDl8XF7MhRdqRUSVd1iaNtFGpmijx6gn2g=;
-	h=From:To:Cc:Subject:Date:From;
-	b=r8KVhDGIqnLtHrwIHfMTM1WAVSKrIC1BAa42xehxbkT9lLLLeIith9rx2xfYuYVVj
-	 atIrcPaedYW0a6k3ZkAgC7vLYALCcmUR6VY4Ep8I9CgBNH/MsxlD+F3acgG2f467pX
-	 tJgdUYOPIH4I2zptJolQtc4zFck910ov2JAss4cg=
-X-Riseup-User-ID: 642A552ADF2905C00A95B8FBB615697E0CC28B5B49DAFA3D7DA4554E16FA9B70
-Received: from [127.0.0.1] (localhost [127.0.0.1])
-	 by fews01-sea.riseup.net (Postfix) with ESMTPSA id 4XklKj36SbzJn2G;
-	Thu,  7 Nov 2024 14:47:37 +0000 (UTC)
-From: =?UTF-8?q?Daniel=20Mart=C3=ADn=20G=C3=B3mez?= <dalme@riseup.net>
-To: 
-Cc: dalme@riseup.net,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Jan Kara <jack@suse.com>,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH] jbd2: Fix comment describing journal_init_common()
-Date: Thu,  7 Nov 2024 15:45:38 +0100
-Message-Id: <20241107144538.3544-1-dalme@riseup.net>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="XSUZSeGZ"
+Received: from cwcc.thunk.org (pool-173-48-82-224.bstnma.fios.verizon.net [173.48.82.224])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 4A7FD8sc003574
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 7 Nov 2024 10:13:09 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1730992390; bh=KwUQzYi54I4Ym1o1S7slXAKT2+zFfZ/mdrrjh5gTS+8=;
+	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
+	b=XSUZSeGZEJiYyPAwIk4xerseKuQnNr0/q1jQ85X5Be308hZT4aenXS2J7AXI4iiMC
+	 bnYp5cDXQLso+9xTaGGLWhlrX6gBxc5gJq48S2ci8kGNWd7JjZs3cD8e1mJIVgbTet
+	 gFU1SQTtAgbrhjQ+xohMB5ucNOxdEAVCGjc64oZ6UBICR3fSnHqsQTpTwgtoRi4gPM
+	 7Z/Hife4RZA7UUWXjuXM/yGYfUJXr7EWtb9dtVkDQTkHU7wzDj/f/LliOBr4NiqNVf
+	 nS2GatAma3miIbxnyZmydXY7tMspGgRj1SPVTrRjCExvw8OaW6H5GV4tCI4mbJH0KF
+	 UuCnAOB6Xc/SA==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+	id 50DB615C1DE3; Thu, 07 Nov 2024 10:13:06 -0500 (EST)
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Yu Jiaoliang <yujiaoliang@vivo.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, opensource.kernel@vivo.com
+Subject: Re: [PATCH v1] ext4: Use ERR_CAST to return an error-valued pointer
+Date: Thu,  7 Nov 2024 10:13:02 -0500
+Message-ID: <173099237655.321265.11627437788240292655.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.45.2
+In-Reply-To: <20240920021440.1959243-1-yujiaoliang@vivo.com>
+References: <20240920021440.1959243-1-yujiaoliang@vivo.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
-The code indicates that journal_init_common() fills the journal_t object
-it returns while the comment incorrectly states that only a few fields are
-initialised. Also, the comment claims that journal structures could be
-created from scratch which isn't possible as journal_init_common() calls
-journal_load_superblock() which loads and checks journal superblock from
-disk.
 
-Signed-off-by: Daniel Martín Gómez <dalme@riseup.net>
----
- fs/jbd2/journal.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+On Fri, 20 Sep 2024 10:14:40 +0800, Yu Jiaoliang wrote:
+> Instead of directly casting and returning an error-valued pointer,
+> use ERR_CAST to make the error handling more explicit and improve
+> code clarity.
+> 
+> 
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 97f487c3d8fc..3c1d42133687 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1518,9 +1518,10 @@ static int journal_load_superblock(journal_t *journal)
-  * destroy journal_t structures, and to initialise and read existing
-  * journal blocks from disk.  */
- 
--/* First: create and setup a journal_t object in memory.  We initialise
-- * very few fields yet: that has to wait until we have created the
-- * journal structures from from scratch, or loaded them from disk. */
-+/* The journal_init_common() function creates and fills a journal_t object
-+ * in memory. It calls journal_load_superblock() to load the on-disk journal
-+ * superblock and initialize the journal_t object.
-+ */
- 
- static journal_t *journal_init_common(struct block_device *bdev,
- 			struct block_device *fs_dev,
+Applied, thanks!
+
+[1/1] ext4: Use ERR_CAST to return an error-valued pointer
+      commit: 046c72654ae5660746ac8ce10c534d99ae35cf4f
+
+Best regards,
 -- 
-2.39.5
-
+Theodore Ts'o <tytso@mit.edu>
