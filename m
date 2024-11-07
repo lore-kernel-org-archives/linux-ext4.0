@@ -1,48 +1,47 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D9F0C212EF7
-	for <linux-ext4@vger.kernel.org>; Thu,  7 Nov 2024 15:13:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 73F55213141
+	for <linux-ext4@vger.kernel.org>; Thu,  7 Nov 2024 15:13:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1730992397; cv=none; b=Xc9JSFjHddRWjWZoPQRe4LN7sq8Fz/JZT8lG/PwHLwoZpvUFxcpQ+OqYUAU7G2KlceCPs1EJCFdxpZakgA9Zv7WjPzh7v7RcB96VWhnOXF99M+QXU3IELJHK5b8iWDKEOiN5tQH4qItWD21rJtwip8v4zLzAQqy/PUobPNWfSZ0=
+	t=1730992402; cv=none; b=nerOJfTDyxdjrv5bndW+68BsVuqz9iDTFAOdXUrp08JX+J4rDN8UYTSPRFO4a+sZX93QrwafERmXgepRZGBEsyByhns2PhTW0N0zX8L+xH2M2eNOFvQKJpLkaC+ygigrcxoAMKBbL2J6RpIJO5GDHxa8+OYr+K1ayJyg84X9/ow=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1730992397; c=relaxed/simple;
-	bh=HcNHhFfTShWTzKzfY/uhw4hdIdh+uMzQeWG6b/6X7G8=;
+	s=arc-20240116; t=1730992402; c=relaxed/simple;
+	bh=yn548mgLILqtfHPW8pR72deoPM37hYmEmbK8YTroekY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=U/TedRZZ8Oeie8mIw0fM7C7+3nxBsa2gNfu+Tkpt488l+VqRoxE67FJvEnLYy9ksMbVlqEOI36AWZOUeclIcmDhdTgjBdt3Q1pR7XCR+wnEf+4BxELG4gb510YLlWxu56+1kfiGLCieXbTZof55HpAbp/TZm5gEXp0HiFNhm05E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=XSUZSeGZ; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=IOaIYNNVLrurp+xYb4EmI1n4RMEz0/yTgVlfxR2yseOx2IsaSdCeWdpAsJRFiIcsnsgcwd2+HxgGarHe7Z2onMmbZGbG0NUf/aTBX5yC51Fs1Ud3mDnIGM7NIUz5acnQqEh3foqgpqeo2oy2/jtH9Kds6ehSydnv1UCj1gzoRQ8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=fvPa6D/0; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="XSUZSeGZ"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="fvPa6D/0"
 Received: from cwcc.thunk.org (pool-173-48-82-224.bstnma.fios.verizon.net [173.48.82.224])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 4A7FD8sc003574
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 4A7FD8SC003577
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Thu, 7 Nov 2024 10:13:09 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1730992390; bh=KwUQzYi54I4Ym1o1S7slXAKT2+zFfZ/mdrrjh5gTS+8=;
+	t=1730992390; bh=Z2JralDdMShzBNsdUIkVpK5hL6ru3W3+DM142Jrc1ZE=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=XSUZSeGZEJiYyPAwIk4xerseKuQnNr0/q1jQ85X5Be308hZT4aenXS2J7AXI4iiMC
-	 bnYp5cDXQLso+9xTaGGLWhlrX6gBxc5gJq48S2ci8kGNWd7JjZs3cD8e1mJIVgbTet
-	 gFU1SQTtAgbrhjQ+xohMB5ucNOxdEAVCGjc64oZ6UBICR3fSnHqsQTpTwgtoRi4gPM
-	 7Z/Hife4RZA7UUWXjuXM/yGYfUJXr7EWtb9dtVkDQTkHU7wzDj/f/LliOBr4NiqNVf
-	 nS2GatAma3miIbxnyZmydXY7tMspGgRj1SPVTrRjCExvw8OaW6H5GV4tCI4mbJH0KF
-	 UuCnAOB6Xc/SA==
+	b=fvPa6D/0zbbQdE4PZr4Hbmlxl+tzVtgxBMMxM90S6ZxiZWi19yubwJAgV0fqBFv27
+	 aihHZH9OHrVHU+FnWTkQsSbq3ued7tnnvoNxxybDoThMAiyQebsXzeiwdHqnSRBO9T
+	 SnEbCzTD3mPgc1dHTFRd+oTR6q7+VM1QtPUEE/F+R0Pf0d4XZ9yVdt8VoC7pJkIsl6
+	 mNc8KMjsSZqKGyCelF2BdNQlvutiTF2NHia5o4QeaNt/gIjXfnOh+ymcONYrnDxVBS
+	 5FRYHD/oFMojFPZumYH1uBNZVUkb8BtIzXhnC1p8hTVS//RItZkXiH1yDNU5hDjvHs
+	 zmUDS2jVP3NCg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id 50DB615C1DE3; Thu, 07 Nov 2024 10:13:06 -0500 (EST)
+	id 46C9615C18B4; Thu, 07 Nov 2024 10:13:06 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Yu Jiaoliang <yujiaoliang@vivo.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, opensource.kernel@vivo.com
-Subject: Re: [PATCH v1] ext4: Use ERR_CAST to return an error-valued pointer
-Date: Thu,  7 Nov 2024 10:13:02 -0500
-Message-ID: <173099237655.321265.11627437788240292655.b4-ty@mit.edu>
+To: adilger.kernel@dilger.ca, "j.xia" <j.xia@samsung.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: Pass write-hint for buffered IO
+Date: Thu,  7 Nov 2024 10:12:57 -0500
+Message-ID: <173099237654.321265.6588244483471280365.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.45.2
-In-Reply-To: <20240920021440.1959243-1-yujiaoliang@vivo.com>
-References: <20240920021440.1959243-1-yujiaoliang@vivo.com>
+In-Reply-To: <20240919020341.2657646-1-j.xia@samsung.com>
+References: <CGME20240919020429epcas5p3ebeff9323bcd95005ce70714bd18421a@epcas5p3.samsung.com> <20240919020341.2657646-1-j.xia@samsung.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,17 +52,20 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Fri, 20 Sep 2024 10:14:40 +0800, Yu Jiaoliang wrote:
-> Instead of directly casting and returning an error-valued pointer,
-> use ERR_CAST to make the error handling more explicit and improve
-> code clarity.
+On Thu, 19 Sep 2024 10:03:41 +0800, j.xia wrote:
+> Commit 449813515d3e ("block, fs: Restore the per-bio/request data
+> lifetime fields") restored write-hint support in ext4. But that is
+> applicable only for direct IO. This patch supports passing
+> write-hint for buffered IO from ext4 file system to block layer
+> by filling bi_write_hint of struct bio in io_submit_add_bh().
 > 
 > 
+> [...]
 
 Applied, thanks!
 
-[1/1] ext4: Use ERR_CAST to return an error-valued pointer
-      commit: 046c72654ae5660746ac8ce10c534d99ae35cf4f
+[1/1] ext4: Pass write-hint for buffered IO
+      commit: 9783549cb6873bb0b2f6e724bb586e46a6e67e63
 
 Best regards,
 -- 
