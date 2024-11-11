@@ -1,57 +1,57 @@
-Received: from mail-qk1-f173.google.com (mail-qk1-f173.google.com [209.85.222.173])
+Received: from mail-qv1-f52.google.com (mail-qv1-f52.google.com [209.85.219.52])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 25EFE1C460B
-	for <linux-ext4@vger.kernel.org>; Mon, 11 Nov 2024 20:19:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.173
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 621BA1C876F
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Nov 2024 20:19:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.52
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1731356377; cv=none; b=nuVfj/m+UO+GrqlFCh66ZvdbnugheiWAOYipJGlGKTC/MiGfikYnWBUDrPr2r2I7ZNTReW2Agclr1WG7pI1+iMPPAR9j79anaLfqUdXyOxifFKnUEZalCi+QuYPSZDt174L/sFf+vszVonByeos308I1Ogsve7EHuigwbwXADaM=
+	t=1731356378; cv=none; b=iIyYOY0YMB8PtlmDs1v+sFBXDrBcwnsUv2e6K48sns24KamOYzmwEpyxsN2040juUTl7zYRkZxWqAy9tBrtTdDIE43P2x4OKjSVQxdXT8PX1sLLYuQRqj8Yzy2vsEyGe9df55EPrw5t+yFg9fPS0AgX3ZyOZdiO/HH/1A/emT74=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1731356377; c=relaxed/simple;
-	bh=t7nvLm79BnbL0G55pVnNTkmA0duqgzyrwuSpS5La8ko=;
+	s=arc-20240116; t=1731356378; c=relaxed/simple;
+	bh=ebiNpZYnvVnRivNXQB+8i4kmhiMBzkGPNaNaMTrbD18=;
 	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=KfbSseiBPNG2IBJBVMaChFtjMkd/q4O/3qolA7fmcaKcidrPK126mu56B20KtU1iqhcY4IoIsvbSi4/ZNnNo1eh8EetgBeCZu0ZnZsYuJbKLCVdFWXZFymtYxzoYxreYvZdEkh377UjjGDKjkLMN8j+9AtF8nltAwsMNfePfsJU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com; spf=none smtp.mailfrom=toxicpanda.com; dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b=SRh+pPmm; arc=none smtp.client-ip=209.85.222.173
+	 MIME-Version; b=HcS8+xzzDA+f28/4A6YYu40CnRQ2k6MVSeXGxb2KhzGCXv+FTVD9nomhIwqEAbYZFtInbsz2cm14Y+lpJeXYwmZHROfl67+vE2/4WGyI065R03HMhggIGg70Hz31mgHCyD1hs7ygpaQEonQbe9muXcD/+4j2EZyoYwdTCPhOXBU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com; spf=none smtp.mailfrom=toxicpanda.com; dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b=KsDTylkz; arc=none smtp.client-ip=209.85.219.52
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=toxicpanda.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b="SRh+pPmm"
-Received: by mail-qk1-f173.google.com with SMTP id af79cd13be357-7b1601e853eso325312385a.2
-        for <linux-ext4@vger.kernel.org>; Mon, 11 Nov 2024 12:19:33 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b="KsDTylkz"
+Received: by mail-qv1-f52.google.com with SMTP id 6a1803df08f44-6cbe9914487so36180506d6.1
+        for <linux-ext4@vger.kernel.org>; Mon, 11 Nov 2024 12:19:36 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=toxicpanda-com.20230601.gappssmtp.com; s=20230601; t=1731356373; x=1731961173; darn=vger.kernel.org;
+        d=toxicpanda-com.20230601.gappssmtp.com; s=20230601; t=1731356375; x=1731961175; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:to:from:from:to:cc:subject:date:message-id
          :reply-to;
-        bh=QtBO4W7ojcvMiQeJDBijogkryb22CThmLCgaVfO4L7E=;
-        b=SRh+pPmm8ixAsMoQrAPKciMNt87tnAODzM/E8MMC7uO8gmdqjFrKORPIeSF9D9T5dv
-         d0XghpJQz/zSJki0hO4V+jpEmTp7VbU4a1MWuVVMn6FaqomXXAzHNDLGxCFVzT8dlqh2
-         5yNau6tdDFGasfo16eMpgLL0MtymMfGjYZeClrZ1iHcEoD1Eb2J5EGeuwYDfBgTFIsGc
-         C6nx4gj3d6LHiYQPQxEJ2EGsCQGrb/dwd/tYH0Ox7Leatukwrbgw70zoxmtI8rY8Lf9+
-         vfko1iNdDGHfoxphYbjFiQ5Yx+xkE/HuCnaCfD6Yewlfa6i/tY4jqE8X9jdb0CwE9MxS
-         LNIA==
+        bh=K354FbH7N36y1HXaBsHf/k0mJrRSZmAsPpq48Ppw2zw=;
+        b=KsDTylkzOgGiWbe4xY9fDmY/F7+0m5JC1Y4l7qPBaZeAv0ydV8vhzH+V9fHZ3NwPZf
+         veb1C7wPnCqaG1gdsoVAkVG1FNVyhNSzDr9MO63p1F+rB/2jMR9b45XGdS4ANqDShUgS
+         6EWwoOPpd4CiqUei5swGsFI1oYllzegAIbuaHT2JmArM8BAYM0ZX7RPsMDbwUj0Js6TM
+         G1AT9ygGUe0T1yODjStHH+6+0V/waG7Y56iLa4d325OsIoS2SSFuf+9pUTjZrNUi4+ur
+         nMHDjuGo5dxvE3I5i/hJMEXjWaKjhOPp/J+hMjtAMP/JDvyjtWlJVVa9M3Do10WfdbAl
+         fqOw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1731356373; x=1731961173;
+        d=1e100.net; s=20230601; t=1731356375; x=1731961175;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=QtBO4W7ojcvMiQeJDBijogkryb22CThmLCgaVfO4L7E=;
-        b=ulkklzRui2CQEI2dVumTwhBh2lGcjU2my2wl/YcXjap24PbNBjoOTrGMKIncgD+TsU
-         cAOyOCzxKRzci607XHK7cY/HdjqlYRNdJnJTGrsBKSuiji2qLn3Z04ZL83WII37RrZc8
-         kliBNAxJBSApN0wIDNPqf7wR1X4zbVtssXN7f5HGoo+iUEZk1tOxYNqwpARFFMb95t0c
-         1ojiJPW5IRiGut6y62XAu2Rzp1gyWqcHHU57VBNWAPztnzjHHwTeCquNCWzrK4HC8o1/
-         ZkDEoGypVwOHpVevopbffWf9Wq59tCReu44opXK1hwrKRUPFmeV1BcqH6CSbhQOpKVuI
-         vqaw==
-X-Forwarded-Encrypted: i=1; AJvYcCXKENaz+xIC1XBGJNTYK1cPDi+ZMV+9zM1pGWfm/YXyDLdoQfZJU8w5HNFQmJYtrULmxHMi7uIyVyF4@vger.kernel.org
-X-Gm-Message-State: AOJu0YwM4pm5JFdO2GIv5zI2Pf7+xKyV8rBwwhbHhKl8Bcp+pcevEVs5
-	aI4VDMlK7B/HFs3VMKjI+Dx/8/KHDU4k0hsOZ3iN9/2u4EnRuzZFnIszSCajF+w=
-X-Google-Smtp-Source: AGHT+IEVZ5vmyN/LZmrG/1kTbJ7T1FWoFz0xAw/6r2wr8/vwFJmdfm3sS2snhEtpIWxC1ONY/ffBRQ==
-X-Received: by 2002:a05:620a:178b:b0:7b1:447f:d6f0 with SMTP id af79cd13be357-7b331eb87dbmr1968482385a.23.1731356371650;
-        Mon, 11 Nov 2024 12:19:31 -0800 (PST)
+        bh=K354FbH7N36y1HXaBsHf/k0mJrRSZmAsPpq48Ppw2zw=;
+        b=LXPk74Dg/OWzC0aBJrPQjoq8KFil8ftGi38MPTQFO+9Mpv5s4iZVibIyS0qTfXBwoX
+         L8V9FK3Hp//vod91mxIVqPjzeIkWDnnIaMHmL1l+KfMk0tF12mx/3oewoYmjycK3JpuH
+         ikkLlWgVMQVq2lrsUkjm5WJqa751ctWYUo0f4vjQUqUU0NWT2d+QRADf1OytGz7CkhZY
+         UIrLGwkVwuOaXXwc5zP89bVXVNGGPG6ZVeroNZv1kuzQCz6kfVbia3HOfpSL6vvBDPI9
+         GGz5rOnLy0op4AlHgxyLqx87doKQEkmxHlGijSyCG8KGrXUanc7f3CwuMgdt1o3W8/JT
+         33RQ==
+X-Forwarded-Encrypted: i=1; AJvYcCWKGR2xpoqTJj/3gnhenTqOmyik7Dh7T68CZ47cBUcsfMR3WVnxfIkGjxnsDN2fiFufZ6PG0M45gScT@vger.kernel.org
+X-Gm-Message-State: AOJu0YxUpnYkHwghwCz3yDabHEcso66I4mMwgWd1zv/Iqt86iQ+sR6qS
+	iKc2cNcA/CUnBHEf6JvdRBNK44R3g+B8gYY7laJzEwVWApqtqp/VOUYx/CAVQvA=
+X-Google-Smtp-Source: AGHT+IHFQZuz+k/JoyCiK5HhS+saKZlDM8Ru8ImET04ZPdGlwroC1m2336uogkksO+jSLPZVucywhA==
+X-Received: by 2002:a05:6214:4518:b0:6cb:5273:7265 with SMTP id 6a1803df08f44-6d39e1800c0mr180760506d6.20.1731356375457;
+        Mon, 11 Nov 2024 12:19:35 -0800 (PST)
 Received: from localhost (syn-076-182-020-124.res.spectrum.com. [76.182.20.124])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-7b32acea072sm526763585a.114.2024.11.11.12.19.30
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-6d3961df2d2sm63665716d6.25.2024.11.11.12.19.34
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 11 Nov 2024 12:19:30 -0800 (PST)
+        Mon, 11 Nov 2024 12:19:34 -0800 (PST)
 From: Josef Bacik <josef@toxicpanda.com>
 To: kernel-team@fb.com,
 	linux-fsdevel@vger.kernel.org,
@@ -63,9 +63,9 @@ To: kernel-team@fb.com,
 	linux-btrfs@vger.kernel.org,
 	linux-mm@kvack.org,
 	linux-ext4@vger.kernel.org
-Subject: [PATCH v6 13/17] mm: don't allow huge faults for files with pre content watches
-Date: Mon, 11 Nov 2024 15:18:02 -0500
-Message-ID: <5c64164cd1f16431edd1d468cb3204d29d86bbf4.1731355931.git.josef@toxicpanda.com>
+Subject: [PATCH v6 15/17] xfs: add pre-content fsnotify hook for write faults
+Date: Mon, 11 Nov 2024 15:18:04 -0500
+Message-ID: <339a520d48acf1c8dc736460d09fd240201d6e00.1731355931.git.josef@toxicpanda.com>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <cover.1731355931.git.josef@toxicpanda.com>
 References: <cover.1731355931.git.josef@toxicpanda.com>
@@ -77,96 +77,30 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-There's nothing stopping us from supporting this, we could simply pass
-the order into the helper and emit the proper length.  However currently
-there's no tests to validate this works properly, so disable it until
-there's a desire to support this along with the appropriate tests.
+xfs has it's own handling for write faults, so we need to add the
+pre-content fsnotify hook for this case.  Reads go through filemap_fault
+so they're handled properly there.
 
-Reviewed-by: Christian Brauner <brauner@kernel.org>
 Signed-off-by: Josef Bacik <josef@toxicpanda.com>
 ---
- mm/memory.c | 22 ++++++++++++++++++++++
- 1 file changed, 22 insertions(+)
+ fs/xfs/xfs_file.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/mm/memory.c b/mm/memory.c
-index bdf77a3ec47b..dc16a0b171e3 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -78,6 +78,7 @@
- #include <linux/ptrace.h>
- #include <linux/vmalloc.h>
- #include <linux/sched/sysctl.h>
-+#include <linux/fsnotify.h>
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index b19916b11fd5..d1966f996c77 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -1442,6 +1442,10 @@ xfs_write_fault(
+ 	unsigned int		lock_mode = XFS_MMAPLOCK_SHARED;
+ 	vm_fault_t		ret;
  
- #include <trace/events/kmem.h>
++	ret = filemap_fsnotify_fault(vmf);
++	if (unlikely(ret))
++		return ret;
++
+ 	sb_start_pagefault(inode->i_sb);
+ 	file_update_time(vmf->vma->vm_file);
  
-@@ -5637,8 +5638,17 @@ static vm_fault_t do_numa_page(struct vm_fault *vmf)
- static inline vm_fault_t create_huge_pmd(struct vm_fault *vmf)
- {
- 	struct vm_area_struct *vma = vmf->vma;
-+	struct file *file = vma->vm_file;
- 	if (vma_is_anonymous(vma))
- 		return do_huge_pmd_anonymous_page(vmf);
-+	/*
-+	 * Currently we just emit PAGE_SIZE for our fault events, so don't allow
-+	 * a huge fault if we have a pre content watch on this file.  This would
-+	 * be trivial to support, but there would need to be tests to ensure
-+	 * this works properly and those don't exist currently.
-+	 */
-+	if (file && fsnotify_file_has_pre_content_watches(file))
-+		return VM_FAULT_FALLBACK;
- 	if (vma->vm_ops->huge_fault)
- 		return vma->vm_ops->huge_fault(vmf, PMD_ORDER);
- 	return VM_FAULT_FALLBACK;
-@@ -5648,6 +5658,7 @@ static inline vm_fault_t create_huge_pmd(struct vm_fault *vmf)
- static inline vm_fault_t wp_huge_pmd(struct vm_fault *vmf)
- {
- 	struct vm_area_struct *vma = vmf->vma;
-+	struct file *file = vma->vm_file;
- 	const bool unshare = vmf->flags & FAULT_FLAG_UNSHARE;
- 	vm_fault_t ret;
- 
-@@ -5662,6 +5673,9 @@ static inline vm_fault_t wp_huge_pmd(struct vm_fault *vmf)
- 	}
- 
- 	if (vma->vm_flags & (VM_SHARED | VM_MAYSHARE)) {
-+		/* See comment in create_huge_pmd. */
-+		if (file && fsnotify_file_has_pre_content_watches(file))
-+			goto split;
- 		if (vma->vm_ops->huge_fault) {
- 			ret = vma->vm_ops->huge_fault(vmf, PMD_ORDER);
- 			if (!(ret & VM_FAULT_FALLBACK))
-@@ -5681,9 +5695,13 @@ static vm_fault_t create_huge_pud(struct vm_fault *vmf)
- #if defined(CONFIG_TRANSPARENT_HUGEPAGE) &&			\
- 	defined(CONFIG_HAVE_ARCH_TRANSPARENT_HUGEPAGE_PUD)
- 	struct vm_area_struct *vma = vmf->vma;
-+	struct file *file = vma->vm_file;
- 	/* No support for anonymous transparent PUD pages yet */
- 	if (vma_is_anonymous(vma))
- 		return VM_FAULT_FALLBACK;
-+	/* See comment in create_huge_pmd. */
-+	if (file && fsnotify_file_has_pre_content_watches(file))
-+		return VM_FAULT_FALLBACK;
- 	if (vma->vm_ops->huge_fault)
- 		return vma->vm_ops->huge_fault(vmf, PUD_ORDER);
- #endif /* CONFIG_TRANSPARENT_HUGEPAGE */
-@@ -5695,12 +5713,16 @@ static vm_fault_t wp_huge_pud(struct vm_fault *vmf, pud_t orig_pud)
- #if defined(CONFIG_TRANSPARENT_HUGEPAGE) &&			\
- 	defined(CONFIG_HAVE_ARCH_TRANSPARENT_HUGEPAGE_PUD)
- 	struct vm_area_struct *vma = vmf->vma;
-+	struct file *file = vma->vm_file;
- 	vm_fault_t ret;
- 
- 	/* No support for anonymous transparent PUD pages yet */
- 	if (vma_is_anonymous(vma))
- 		goto split;
- 	if (vma->vm_flags & (VM_SHARED | VM_MAYSHARE)) {
-+		/* See comment in create_huge_pmd. */
-+		if (file && fsnotify_file_has_pre_content_watches(file))
-+			goto split;
- 		if (vma->vm_ops->huge_fault) {
- 			ret = vma->vm_ops->huge_fault(vmf, PUD_ORDER);
- 			if (!(ret & VM_FAULT_FALLBACK))
 -- 
 2.43.0
 
