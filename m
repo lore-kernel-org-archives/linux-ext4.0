@@ -1,57 +1,57 @@
-Received: from mail-yw1-f174.google.com (mail-yw1-f174.google.com [209.85.128.174])
+Received: from mail-yb1-f180.google.com (mail-yb1-f180.google.com [209.85.219.180])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0FC90219C8D
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Nov 2024 17:56:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.174
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EF4BF21A4A4
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Nov 2024 17:56:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.180
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1731434214; cv=none; b=AQQoZPQ/TnpP4K2NZeg1aD81oRDZzxooWhSYZAu39FXwQcmdQmXPHKuzi/HwJ6ERPJFY2CkvD1dTnzPkhbBrOrCjCruBHBBh6fHyK0mYD3aGiJpIHeNrrWxDYcVdpDBaLCOh3k9bMeFTXq3BfGf6Lwkd3YogHN83k2DtZq5uP2s=
+	t=1731434216; cv=none; b=Jk0N5Q9D/4E87GZeIXDL1/Qw8EIgtvLqU3MN9bhb/9WbheVtvtyXykFsg8Xr+ueIerwGWJ597J1nVgCVw7YnP1HVHnRBkkS4KOWTaHRqtVodPNFIViTTmG/ZpqpSQOVDxFzM0h4nkRR502/cHztXO1ZSdSoZvNyQsVkEAJOqDJY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1731434214; c=relaxed/simple;
-	bh=32HChrQf54ppyFpL+uRbV0WQCoSZt7JFC7d0t8FH4FM=;
+	s=arc-20240116; t=1731434216; c=relaxed/simple;
+	bh=2N0bizMEg0czxuSX0Hl7S5FVpQVRVn9Mf1MRV8yCr7o=;
 	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=fVr8+7Za9ZW3binHz3LkFyunExbBweHAG64gkTLE35sd61ezh4vyVuRHWcRRSVlJ484wT+wVBFyXAHLkzDni/i/pzYCA38KKsxrQA2mV8AJK+rhbvoMArLvbE162sZMNKwmJYXn25unI+0Of8HVfvhIKuZHQot7FPYIdpvEX1Rg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com; spf=none smtp.mailfrom=toxicpanda.com; dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b=B8tf1Q0l; arc=none smtp.client-ip=209.85.128.174
+	 MIME-Version; b=Z3O7gaVZUPpqvr1O5IKWvVl5RgMLv01/cviUFWLD9fSUB7lt1NYJERJp/Xw9W6FPzmhd71y0HCdxA90ho/TDbMQFVEnRFrWkk9luKcGT3FZRv9esGLhIoTWmHk7KdJAeRY9es1L2lCC4DNg3ySKV2aQ2Jb8ESNWu0Rfo7Ag1LPE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com; spf=none smtp.mailfrom=toxicpanda.com; dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b=RTYNfLGe; arc=none smtp.client-ip=209.85.219.180
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=toxicpanda.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b="B8tf1Q0l"
-Received: by mail-yw1-f174.google.com with SMTP id 00721157ae682-6e5b7cd1ef5so51433627b3.1
-        for <linux-ext4@vger.kernel.org>; Tue, 12 Nov 2024 09:56:52 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b="RTYNfLGe"
+Received: by mail-yb1-f180.google.com with SMTP id 3f1490d57ef6-e0875f1e9edso7785113276.1
+        for <linux-ext4@vger.kernel.org>; Tue, 12 Nov 2024 09:56:54 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=toxicpanda-com.20230601.gappssmtp.com; s=20230601; t=1731434212; x=1732039012; darn=vger.kernel.org;
+        d=toxicpanda-com.20230601.gappssmtp.com; s=20230601; t=1731434214; x=1732039014; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:to:from:from:to:cc:subject:date:message-id
          :reply-to;
-        bh=3KCTaRjNmkxmxaKf/dEMrgpxbgs8A3iRugI4cag6Bm4=;
-        b=B8tf1Q0l7Cn2olzOKvKEvlb0nDjyun1H6yBmktm8r+ZUdYyL7fXrHgPR86KS4qO5mX
-         xF92wdQNgjKiXZLTW4TQzwX1BQ/0py4K3gH1EnOCC+ZJr7FIUhjAaF5MoWCPmYmzdnA1
-         rKc+WgW33Co5PzS+FZBxurWXj7GktZtFJIGYzip83HhHVqWRgQicx16YvyTDAxl5rgNY
-         /FEXaDcYbaXdqKL9otaV5SLCikbQtz/2K+ylc0hnwjb2aCCz5IldEtrFDzBzyhuThQdY
-         9dJ1f//LtW90U9jDTbg1bYEqDGo1hoQrinq1o8vyCVLteMwh6Bzf8ZLK84KjX57zfLyY
-         m20g==
+        bh=3nbIBZPU5mMiQBH7fH9PUjd6pvpSRIo6Q0oL6vGrX38=;
+        b=RTYNfLGeQaoy0PUOIWxtYtFnHVkNAibJVBgae86g9BcoEobO0cKR3Dydxi9PJIha/G
+         Thqv41YoK6M44s0kX/FHVhFC7+Gjqd/RVpJ7660Mxa6z/QASgm4QjDkcTIZfYq7+u7ub
+         9McV9Ysht7dCZHYkz1ysnrijTWRYt1OgiFkjBxPrxHGpphL0fY6HT1FKVeek5hsmIVuS
+         U4Dkrh3dC5cSlpufhZbHE5A+5xLut0KZ7xU2Lh5a+dTAkoDKNhrM02HM6JzDkT0CNlDq
+         oSB2X6fi9G3LuXSimLUj0o+n1kwk2ODZ2rqfOak4SczlmthPuTY8BSCrQZa2/j9PtI+I
+         NOYg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1731434212; x=1732039012;
+        d=1e100.net; s=20230601; t=1731434214; x=1732039014;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=3KCTaRjNmkxmxaKf/dEMrgpxbgs8A3iRugI4cag6Bm4=;
-        b=C/fCgJgSEoiqQOI1QwG1GdEBFoZXVU7TCP5DyjsRu6aTwIQ3U9iky2thKPOmrD/GN4
-         hQ8i31G/hZ4H7RCeq+2r8LpZrwaTpQ1sxaA+50S6rUTSzpR/k5T3Ei51Hp/dbMCrJ2/r
-         24WOKXfy4qpASPAq9nYT4bDwwJCvTLrNHNoD6MhYwRHPoFLc91hs3tmb4U/zNyghK8ic
-         wwsaFE1fulV7SKhIRQTTGVyHaYNnycvRIE8/BzIO4FlKZiuHcZA/FvqcFuCKhrHMt6Ly
-         8eQBZKv8ESdFc0L++eVcAcasvMF2RDMKoW/8oMlXLd5YXPDq4X4y987Wm+N1CWykpYos
-         VsOg==
-X-Forwarded-Encrypted: i=1; AJvYcCW4i+FQtQ6z8doRX/w2UzWgYFi4uC6l4PD5IqRvFxYXz8ipxKIzJoqIc/jDVvFexgq+tzTSTQl0PoAp@vger.kernel.org
-X-Gm-Message-State: AOJu0Yw+mmzIhshTUrXqfd6cFUGuvXOsgXgedjAwmuV4njvPVaamNWt+
-	o/gOjB5lUw1cgavxetTRoNyunTFvjPa+o0x8K2W8xaxU063joHhq8nSa6kZx1pI=
-X-Google-Smtp-Source: AGHT+IFoXHSrvSv1nHXDianvdqh8AvWvvCdruw2IfTMCI7MfgJuOUf9jQwkCjXgIqLVtzlih0erFEw==
-X-Received: by 2002:a05:690c:700e:b0:6ea:8dad:c3cf with SMTP id 00721157ae682-6eadddbc58emr168920227b3.20.1731434212150;
-        Tue, 12 Nov 2024 09:56:52 -0800 (PST)
+        bh=3nbIBZPU5mMiQBH7fH9PUjd6pvpSRIo6Q0oL6vGrX38=;
+        b=XQocbNlIjo15pCnLIm4+TyhJ/eBHWTFAka3LgRWdg0nkqaBQvuBrziaNbOeE0owZAJ
+         AfVXqsKd8K2df0xJ5QLxRftTphy2rt5M4vfhqzbWLC+OGIcQKTfhaGdkqb5CdHb6XnPX
+         GOSGep3dj6/BYqlhjyFNl+TZLzwsPfKdFylh2L/8WcvohY167IwXPqMyQQhURo2y5J7h
+         rC1xbRe51pI3NLSE+8wnH13Q41rH71Cq/lZUNCOmDfVS2y6ojgNiav0D9XjIYlOY4iMC
+         BL1DpI4JXDEHjY1/uc3BwkQje6wCjgZPfguctTFw2XKrp2Vd3Vv2sresAoo4ok+iQo9O
+         aK/g==
+X-Forwarded-Encrypted: i=1; AJvYcCUzphvQ31MQ/23485sPTrQ+4sX3P8ut1phOULdWPd4c1NH3d11lwExZr1+O01VmKIYVkHp30cWqqcCL@vger.kernel.org
+X-Gm-Message-State: AOJu0YxrfLMHCFwNITLUV9zEr3WR6X2kKpKAY/x2wlS3wiwQzWW3nX9Y
+	vowARJT0sMC1r0VxM/2CQwLMMFGUvogfnTxY3x7Y/K+ONzN9Ef6g7lRZc/sfabA=
+X-Google-Smtp-Source: AGHT+IFiuIuaM6zhnPYYC70N0ed/AHQHsVCWIUgMJBIkKyN4ZxuOm530ZzxRBomBAB77BqDgpRvfSQ==
+X-Received: by 2002:a05:6902:150b:b0:e1d:c3ea:da14 with SMTP id 3f1490d57ef6-e337f8f0c7fmr17671301276.32.1731434213851;
+        Tue, 12 Nov 2024 09:56:53 -0800 (PST)
 Received: from localhost (syn-076-182-020-124.res.spectrum.com. [76.182.20.124])
-        by smtp.gmail.com with ESMTPSA id 00721157ae682-6eaceb0cdc8sm26499817b3.65.2024.11.12.09.56.51
+        by smtp.gmail.com with ESMTPSA id 3f1490d57ef6-e336ee15907sm2754453276.4.2024.11.12.09.56.52
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 12 Nov 2024 09:56:51 -0800 (PST)
+        Tue, 12 Nov 2024 09:56:53 -0800 (PST)
 From: Josef Bacik <josef@toxicpanda.com>
 To: kernel-team@fb.com,
 	linux-fsdevel@vger.kernel.org,
@@ -63,9 +63,9 @@ To: kernel-team@fb.com,
 	linux-btrfs@vger.kernel.org,
 	linux-mm@kvack.org,
 	linux-ext4@vger.kernel.org
-Subject: [PATCH v7 15/18] fsnotify: generate pre-content permission event on page fault
-Date: Tue, 12 Nov 2024 12:55:30 -0500
-Message-ID: <8d223ba40c3ad28dcf9369bf16c3182baa925e59.1731433903.git.josef@toxicpanda.com>
+Subject: [PATCH v7 16/18] xfs: add pre-content fsnotify hook for write faults
+Date: Tue, 12 Nov 2024 12:55:31 -0500
+Message-ID: <efd617db128969415cadb1635217c58d6eca1bd7.1731433903.git.josef@toxicpanda.com>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <cover.1731433903.git.josef@toxicpanda.com>
 References: <cover.1731433903.git.josef@toxicpanda.com>
@@ -77,137 +77,30 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-FS_PRE_ACCESS or FS_PRE_MODIFY will be generated on page fault depending
-on the faulting method.
-
-This pre-content event is meant to be used by hierarchical storage
-managers that want to fill in the file content on first read access.
-
-Export a simple helper that file systems that have their own ->fault()
-will use, and have a more complicated helper to be do fancy things with
-in filemap_fault.
+xfs has it's own handling for write faults, so we need to add the
+pre-content fsnotify hook for this case.  Reads go through filemap_fault
+so they're handled properly there.
 
 Signed-off-by: Josef Bacik <josef@toxicpanda.com>
 ---
- include/linux/mm.h |  1 +
- mm/filemap.c       | 78 ++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 79 insertions(+)
+ fs/xfs/xfs_file.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 01c5e7a4489f..90155ef8599a 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -3406,6 +3406,7 @@ extern vm_fault_t filemap_fault(struct vm_fault *vmf);
- extern vm_fault_t filemap_map_pages(struct vm_fault *vmf,
- 		pgoff_t start_pgoff, pgoff_t end_pgoff);
- extern vm_fault_t filemap_page_mkwrite(struct vm_fault *vmf);
-+extern vm_fault_t filemap_fsnotify_fault(struct vm_fault *vmf);
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index ca47cae5a40a..4fe89770ecb5 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -1458,6 +1458,10 @@ xfs_write_fault(
+ 	unsigned int		lock_mode = XFS_MMAPLOCK_SHARED;
+ 	vm_fault_t		ret;
  
- extern unsigned long stack_guard_gap;
- /* Generic expand stack which grows the stack according to GROWS{UP,DOWN} */
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 68ea596f6905..0bf7d645dec5 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -47,6 +47,7 @@
- #include <linux/splice.h>
- #include <linux/rcupdate_wait.h>
- #include <linux/sched/mm.h>
-+#include <linux/fsnotify.h>
- #include <asm/pgalloc.h>
- #include <asm/tlbflush.h>
- #include "internal.h"
-@@ -3289,6 +3290,52 @@ static vm_fault_t filemap_fault_recheck_pte_none(struct vm_fault *vmf)
- 	return ret;
- }
++	ret = filemap_fsnotify_fault(vmf);
++	if (unlikely(ret))
++		return ret;
++
+ 	sb_start_pagefault(inode->i_sb);
+ 	file_update_time(vmf->vma->vm_file);
  
-+/**
-+ * filemap_fsnotify_fault - maybe emit a pre-content event.
-+ * @vmf:	struct vm_fault containing details of the fault.
-+ * @folio:	the folio we're faulting in.
-+ *
-+ * If we have a pre-content watch on this file we will emit an event for this
-+ * range.  If we return anything the fault caller should return immediately, we
-+ * will return VM_FAULT_RETRY if we had to emit an event, which will trigger the
-+ * fault again and then the fault handler will run the second time through.
-+ *
-+ * This is meant to be called with the folio that we will be filling in to make
-+ * sure the event is emitted for the correct range.
-+ *
-+ * Return: a bitwise-OR of %VM_FAULT_ codes, 0 if nothing happened.
-+ */
-+vm_fault_t filemap_fsnotify_fault(struct vm_fault *vmf)
-+{
-+	struct file *fpin = NULL;
-+	int mask = (vmf->flags & FAULT_FLAG_WRITE) ? MAY_WRITE : MAY_ACCESS;
-+	loff_t pos = vmf->pgoff >> PAGE_SHIFT;
-+	size_t count = PAGE_SIZE;
-+	vm_fault_t ret;
-+
-+	/*
-+	 * We already did this and now we're retrying with everything locked,
-+	 * don't emit the event and continue.
-+	 */
-+	if (vmf->flags & FAULT_FLAG_TRIED)
-+		return 0;
-+
-+	/* No watches, we're done. */
-+	if (!fsnotify_file_has_pre_content_watches(vmf->vma->vm_file))
-+		return 0;
-+
-+	fpin = maybe_unlock_mmap_for_io(vmf, fpin);
-+	if (!fpin)
-+		return VM_FAULT_SIGBUS;
-+
-+	ret = fsnotify_file_area_perm(fpin, mask, &pos, count);
-+	fput(fpin);
-+	if (ret)
-+		return VM_FAULT_SIGBUS;
-+	return VM_FAULT_RETRY;
-+}
-+EXPORT_SYMBOL_GPL(filemap_fsnotify_fault);
-+
- /**
-  * filemap_fault - read in file data for page fault handling
-  * @vmf:	struct vm_fault containing details of the fault
-@@ -3392,6 +3439,37 @@ vm_fault_t filemap_fault(struct vm_fault *vmf)
- 	 * or because readahead was otherwise unable to retrieve it.
- 	 */
- 	if (unlikely(!folio_test_uptodate(folio))) {
-+		/*
-+		 * If this is a precontent file we have can now emit an event to
-+		 * try and populate the folio.
-+		 */
-+		if (!(vmf->flags & FAULT_FLAG_TRIED) &&
-+		    fsnotify_file_has_pre_content_watches(file)) {
-+			loff_t pos = folio_pos(folio);
-+			size_t count = folio_size(folio);
-+
-+			/* We're NOWAIT, we have to retry. */
-+			if (vmf->flags & FAULT_FLAG_RETRY_NOWAIT) {
-+				folio_unlock(folio);
-+				goto out_retry;
-+			}
-+
-+			if (mapping_locked)
-+				filemap_invalidate_unlock_shared(mapping);
-+			mapping_locked = false;
-+
-+			folio_unlock(folio);
-+			fpin = maybe_unlock_mmap_for_io(vmf, fpin);
-+			if (!fpin)
-+				goto out_retry;
-+
-+			error = fsnotify_file_area_perm(fpin, MAY_ACCESS, &pos,
-+							count);
-+			if (error)
-+				ret = VM_FAULT_SIGBUS;
-+			goto out_retry;
-+		}
-+
- 		/*
- 		 * If the invalidate lock is not held, the folio was in cache
- 		 * and uptodate and now it is not. Strange but possible since we
 -- 
 2.43.0
 
