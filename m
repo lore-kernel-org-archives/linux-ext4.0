@@ -1,47 +1,50 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 42F8217C8B
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Nov 2024 13:53:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 716EE28E0F
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Nov 2024 13:53:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1731592429; cv=none; b=LyWkDAmeniEo4x2/rKMU3+25/OD+XxKS7Uj8EB/3ix3B1RTo+xfKMtqb8YRqyqBO7oTMclmaF6Et0L3c1Se/+rTTIsWRmhQoRnx37HxuoxGCfJosS8OILdnhDlOl7aGkSvIFFJmo0isuicdQ0np9LD9ndaeCEMTvMTtUWrh2P/w=
+	t=1731592435; cv=none; b=YzkIc1fzL2glTE4wv6DoS23gbCzwRCEQRiXDUvEFkbWOqFt1yd9yWuZ4B/JZUTQFcbGwA0qrwxI58tTJS4QQcggQ/fxPc9tvbLX01pj2oAaZPcFp+1nSbeVlivbmng4FwQK6z23bO9BfI9uKJK7rjWAuT9CAGwO0ESx0ImUJJHU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1731592429; c=relaxed/simple;
-	bh=z3hbkyASjwVUxoo3ofxTCaTvwqr6OL5hHbibAw4xX2c=;
+	s=arc-20240116; t=1731592435; c=relaxed/simple;
+	bh=sPde+t62qlw1KWYPfaZdoPayAdU01Tu8LdaBxK0s168=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=WJhIt05TWSnV18PZm1ugr6Qp118/6nDzKhTmZvOr3vGiX63hDyhDZlUIMKI3AxVyBzRO8rrxS4csr7Tk9Z3JdBqjQYKBL4zLw65S6Uk2OX802bKR8S/Yc00/slH6S9y2PWZL3mGHNN/z5sFIiYvbRDdyGsMwRSZiC4cMkTkfd4M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=QNUKjZBc; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=agQSPR/gMycmlw6/2Y3tqKnDzSepabynjrcmvmdHo3URabLpdWYkwxhgJxba58mmfuFy/Tf1UXGHhaG6L8LyG0laFoFQnZg4pdnIxIVY+X/Tf8NQuF2gzLdvGP2mgzO+h/URseGeJQtb+oD/kdnNFyhdxd2CKcKiBfdBPr3E6Io=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=ZqLy75PV; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="QNUKjZBc"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="ZqLy75PV"
 Received: from cwcc.thunk.org (pool-173-48-113-132.bstnma.fios.verizon.net [173.48.113.132])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 4AEDrhZQ001789
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 4AEDrhY2001791
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 14 Nov 2024 08:53:44 -0500
+	Thu, 14 Nov 2024 08:53:45 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1731592424; bh=6nYRw/UQwayrZmPtD689O9FiCl9PjzHWowoN4WXa/OY=;
+	t=1731592426; bh=GEJgaWVohTOKgKgeXKTN1Tk2qXz4gLesqNEzgdwa5ck=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=QNUKjZBcEhRrrEj3zR25UXZOGZ5JRYb+i9y/nVX0UuEiox5i5AjvbpwGvX81iWs2V
-	 q6zWacSwUOkYMHbbw26UaqFd2ws0MmNCp3dF8rP+kWKtkz07hBdiOb8lokOE3JZ2eU
-	 y+rYhpRYvbybSP2mIefwxIjMX6o1t0Fdr8L9+B3LWDc7seyqHoWpx8pwoCgMG/4+0X
-	 GQxUwuyr9Yud3d5m2tjB2tmzbZ/F9jX+ocI81AEenFuXl+WBvlztbraxqiBBTUJF6n
-	 I/CzTKJpA1icyoKbPXgvb+eaCS3kblrJw6d19ZPw6UOIbjme0kcyY6wyOlEDzUa8mr
-	 pScH/aJTWEmJQ==
+	b=ZqLy75PVkPtk11xWOx5zN1f3rPKrdUY4iIxdGFVmaxmAZTlPlw8N420HjyQ1Gf0YY
+	 nJl2k1jUl7Mpv5IFzEP0MPh6t1MMlxzhHrIrHfy3TKzNHgLOTQhtVjSOggFuTlJdQK
+	 IUsMifkjQg3jK5e05srIVTfsRGRZE2FvEpH55l4VqNHMxlHuO/5K4rnaenuBVX7y+e
+	 a3kC4xKeHDT5RNY7wTPysTDghzt+neYhzY3F8JyYhGBaCh0gzx0X9Nw7+dcPHJgKYJ
+	 1Dm2M22S4pwHopCuu7W9pV6F5XKFuoTiwWJNd8QRlkJI7yUHuAaoIcz2ap3vrAFb4j
+	 SvG5eQ4Oflzgg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id 40B3215C0317; Thu, 14 Nov 2024 08:53:43 -0500 (EST)
+	id 463EB15C136B; Thu, 14 Nov 2024 08:53:43 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Nicolas Bretz <bretznic@gmail.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext4: prevent delalloc to nodelalloc on remount
-Date: Thu, 14 Nov 2024 08:53:32 -0500
-Message-ID: <173159220755.521904.1520067635387223066.b4-ty@mit.edu>
+To: Ritesh Harjani <riteshh@linux.ibm.com>,
+        Dan Carpenter <dan.carpenter@linaro.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        kernel-janitors@vger.kernel.org
+Subject: Re: [PATCH] ext4: cleanup variable name in ext4_fc_del()
+Date: Thu, 14 Nov 2024 08:53:35 -0500
+Message-ID: <173159220754.521904.5429569345801125844.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.45.2
-In-Reply-To: <20241014034143.59779-1-bretznic@gmail.com>
-References: <20241014034143.59779-1-bretznic@gmail.com>
+In-Reply-To: <96008557-8ff4-44cc-b5e3-ce242212f1a3@stanley.mountain>
+References: <96008557-8ff4-44cc-b5e3-ce242212f1a3@stanley.mountain>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -52,20 +55,17 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Sun, 13 Oct 2024 20:41:43 -0700, Nicolas Bretz wrote:
-> Implemented the suggested solution mentioned in the bug
-> https://bugzilla.kernel.org/show_bug.cgi?id=218820
+On Fri, 11 Oct 2024 22:43:44 +0300, Dan Carpenter wrote:
+> The variables "&EXT4_SB(inode->i_sb)->s_fc_lock" and "&sbi->s_fc_lock"
+> are the same lock.  This function uses a mix of both, which is a bit
+> unsightly and confuses Smatch.
 > 
-> Preventing the disabling of delayed allocation mode on remount.
-> delalloc to nodelalloc not permitted anymore
-> nodelalloc to delalloc permitted, not affected
 > 
-> [...]
 
 Applied, thanks!
 
-[1/1] ext4: prevent delalloc to nodelalloc on remount
-      commit: 97f5ec3b166db4e47ee2c0bdb0deb027413d4f2a
+[1/1] ext4: cleanup variable name in ext4_fc_del()
+      commit: 27349b4d2ed072cabedd5115f0542b3b7b538aa8
 
 Best regards,
 -- 
