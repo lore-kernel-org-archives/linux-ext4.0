@@ -1,50 +1,50 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 716EE28E0F
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 33636A95C
 	for <linux-ext4@vger.kernel.org>; Thu, 14 Nov 2024 13:53:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1731592435; cv=none; b=YzkIc1fzL2glTE4wv6DoS23gbCzwRCEQRiXDUvEFkbWOqFt1yd9yWuZ4B/JZUTQFcbGwA0qrwxI58tTJS4QQcggQ/fxPc9tvbLX01pj2oAaZPcFp+1nSbeVlivbmng4FwQK6z23bO9BfI9uKJK7rjWAuT9CAGwO0ESx0ImUJJHU=
+	t=1731592435; cv=none; b=IxS4epsOWJPSzHHaguxYFF8Dtgc11EPxLoqeryacoSLyopAdbi8cCSft36NF1QgYS7YOvbdPN5SFyVBd/RyksKyq7D/XgdY3p4gkpBgNden+7XKNBRT/jKG/DoZN+aMCGdjtaNN6x2F7goVTM1XKKYno56gxrE7HwiKAVE7njJo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1731592435; c=relaxed/simple;
-	bh=sPde+t62qlw1KWYPfaZdoPayAdU01Tu8LdaBxK0s168=;
+	bh=5Ufs1trmbC3y4rXQz/iEI18w20t/4ZAiPLZsOMEN4Rs=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=agQSPR/gMycmlw6/2Y3tqKnDzSepabynjrcmvmdHo3URabLpdWYkwxhgJxba58mmfuFy/Tf1UXGHhaG6L8LyG0laFoFQnZg4pdnIxIVY+X/Tf8NQuF2gzLdvGP2mgzO+h/URseGeJQtb+oD/kdnNFyhdxd2CKcKiBfdBPr3E6Io=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=ZqLy75PV; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=eVwgfyhgZb/cIpdyLkSnI0/oDBN9FAF8HZkYTvO4FnUaQudsYyqeyfjsgcztuIcLirJTUkdes5ZFiNqA8mny+sidoSe38m8T4z/OoNEK4Z+/pVXIa+Yyojs0KHBCNNM17KNLeVQTU8ubS38CFJq8Gdmd6zztlm7xaaQOG1cXMkU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=YYdEDfN5; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="ZqLy75PV"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="YYdEDfN5"
 Received: from cwcc.thunk.org (pool-173-48-113-132.bstnma.fios.verizon.net [173.48.113.132])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 4AEDrhY2001791
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 4AEDrjKR001821
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 14 Nov 2024 08:53:45 -0500
+	Thu, 14 Nov 2024 08:53:46 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1731592426; bh=GEJgaWVohTOKgKgeXKTN1Tk2qXz4gLesqNEzgdwa5ck=;
+	t=1731592427; bh=s0S0NdEdBmejYEXMXsBpbXJhzF8I3A5IbRh5EVSyXXw=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=ZqLy75PVkPtk11xWOx5zN1f3rPKrdUY4iIxdGFVmaxmAZTlPlw8N420HjyQ1Gf0YY
-	 nJl2k1jUl7Mpv5IFzEP0MPh6t1MMlxzhHrIrHfy3TKzNHgLOTQhtVjSOggFuTlJdQK
-	 IUsMifkjQg3jK5e05srIVTfsRGRZE2FvEpH55l4VqNHMxlHuO/5K4rnaenuBVX7y+e
-	 a3kC4xKeHDT5RNY7wTPysTDghzt+neYhzY3F8JyYhGBaCh0gzx0X9Nw7+dcPHJgKYJ
-	 1Dm2M22S4pwHopCuu7W9pV6F5XKFuoTiwWJNd8QRlkJI7yUHuAaoIcz2ap3vrAFb4j
-	 SvG5eQ4Oflzgg==
+	b=YYdEDfN5VO/Z+8VSOnFm9kcgAZ3oziPtKH9C/Mtv6pVGyB3nDEXsMXl8eYXID0XT8
+	 3w2JcwChsPAJo86qeTxVDSZvMjzI2MKdmGJT0gEIs0J2YETJf55nulNl9AcHM8wGiP
+	 5JuS98wxizfkXTF1le2YxnQ/YO3BU6Cr7zMk5/IehPlzXgDD8tlgO4OYIbtJUyRUc/
+	 atKp/0GlHXiLSOkLxyLCoG28U0NEK0z6htk3+Usyf2+uhvHD6ZHCeMhzZAkTGFq+/Q
+	 zzw8BjwfTj5/XP3VeKyrhi2W9GkV+tvtnyGYRFU9v4YOBb5kB5QVDKrTzALTO5U9fh
+	 Rj1iotFL5zfAg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id 463EB15C136B; Thu, 14 Nov 2024 08:53:43 -0500 (EST)
+	id 4A53615C1A13; Thu, 14 Nov 2024 08:53:43 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Ritesh Harjani <riteshh@linux.ibm.com>,
-        Dan Carpenter <dan.carpenter@linaro.org>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        kernel-janitors@vger.kernel.org
-Subject: Re: [PATCH] ext4: cleanup variable name in ext4_fc_del()
-Date: Thu, 14 Nov 2024 08:53:35 -0500
-Message-ID: <173159220754.521904.5429569345801125844.b4-ty@mit.edu>
+To: Andreas Dilger <adilger.kernel@dilger.ca>,
+        Mathieu Othacehe <m.othacehe@gmail.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, lukas.skupinski@landisgyr.com,
+        anton.reding@landisgyr.com
+Subject: Re: [PATCH 1/1] ext4: Prevent an infinite loop in the lazyinit thread.
+Date: Thu, 14 Nov 2024 08:53:37 -0500
+Message-ID: <173159220758.521904.15496365458938404053.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.45.2
-In-Reply-To: <96008557-8ff4-44cc-b5e3-ce242212f1a3@stanley.mountain>
-References: <96008557-8ff4-44cc-b5e3-ce242212f1a3@stanley.mountain>
+In-Reply-To: <20241106134741.26948-2-othacehe@gnu.org>
+References: <20241106134741.26948-1-othacehe@gnu.org> <20241106134741.26948-2-othacehe@gnu.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -55,17 +55,20 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Fri, 11 Oct 2024 22:43:44 +0300, Dan Carpenter wrote:
-> The variables "&EXT4_SB(inode->i_sb)->s_fc_lock" and "&sbi->s_fc_lock"
-> are the same lock.  This function uses a mix of both, which is a bit
-> unsightly and confuses Smatch.
+On Wed, 06 Nov 2024 14:47:41 +0100, Mathieu Othacehe wrote:
+> Use ktime_get_ns instead of ktime_get_real_ns when computing the lr_timeout
+> not to be affected by system time jumps.
 > 
+> Use a boolean instead of the MAX_JIFFY_OFFSET value to determine whether
+> the next_wakeup value has been set. Comparing elr->lr_next_sched to
+> MAX_JIFFY_OFFSET can cause the lazyinit thread to loop indefinitely.
 > 
+> [...]
 
 Applied, thanks!
 
-[1/1] ext4: cleanup variable name in ext4_fc_del()
-      commit: 27349b4d2ed072cabedd5115f0542b3b7b538aa8
+[1/1] ext4: Prevent an infinite loop in the lazyinit thread.
+      commit: e06a8c24f6445c2f1b5255caa4f63b38e31c43fa
 
 Best regards,
 -- 
