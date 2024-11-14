@@ -1,48 +1,49 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0572A1DFE8
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Nov 2024 13:53:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 02FE1433D2
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Nov 2024 13:53:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1731592438; cv=none; b=hH2G5VuTCgK+8HUe49Ntt+fzjrC3Q0AhEFGnwuXYTYKtq+eR9FPfQ/IXuQzwh3XtpYIRBi9083TmM5s1v/hLpIKgLQrrf9J5GBAZcvPz7rEIAcLDWTbPGXG3/nDZtjy4GHE3hH0ujgykJzd2Ut59YUbyfmP9VIJwSrkaqtUktwc=
+	t=1731592440; cv=none; b=O9MAHPgjhs+3ui+ASiju5xbqOiyQ3KKoGvzGor7VA9DSnMD1EZGvD7gU0Oh02RdPwmS3B94uASKS0zpK7yo5RXSSHJehAnW4xG/CWBPb2KJGykLnL8sAkeYUbA6tHPXj1jrDJmHwaSa6po3/vhreIWSrnTMYV8TQb1ptM3Uug/4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1731592438; c=relaxed/simple;
-	bh=Hsnfag2yvfmxi96icq+UxixAXAu9t30q+lmVHZuFVcQ=;
+	s=arc-20240116; t=1731592440; c=relaxed/simple;
+	bh=L22YgOu1UgYfx6yU71GzYdLVSG8mo3DtRChzf/YhAvk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=rcI00+5vderPYzLSvda4ENjp7+rfUIxvjDAohVBCOEpRPknFPkW9vmCP8kOnRKzcHB5aw1zdIvgNGpmOVlBZsz4o2w+JhrXhjfequyFMbwdxP6jFpVKPnAv12oGDToqxkJ2q+R1SE6JxOLe1LAE+jU9PDq6B4Xi3WXmqrvmW3g8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=o3sRW0JP; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=mj6HCj9CcrFy5PmxZWbj93GmyCMpfdRtkgstMzlpYraoipZ12PEABITg4jX3Sorpl8VNLt4pAjzA6InaMOzEhu+0P2buWattcGX5m2x60Sha26t7GIAGirjDraHH9HXffJZ/9v7nP1TslgjxVTBsSRHBRVKdWQ6HXavN4TdRaoo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=cBPoxYX/; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="o3sRW0JP"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="cBPoxYX/"
 Received: from cwcc.thunk.org (pool-173-48-113-132.bstnma.fios.verizon.net [173.48.113.132])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 4AEDrhYJ001787
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 4AEDrjSD001834
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 14 Nov 2024 08:53:44 -0500
+	Thu, 14 Nov 2024 08:53:46 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1731592425; bh=JOCeY+EJ4icaRk50gK7n0dQCHR+VIRbmQCyFly9i+dQ=;
+	t=1731592427; bh=cm8FyW8++apwJak7SylvAXigqaGb6oXHmvYVmGc0/Mw=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=o3sRW0JPQh0jW52wuv/lEux5uSNoT/GVFZcKh6CRrGX536D1Sxe4Rdz+BfkC3D5v4
-	 B/Dwy/iXKLjlom9BKgDdQ9Fdz8vyFwVqWUO9D6tludXymvw7mZZ3KQBeltDUA/FSXz
-	 AUhz32xYoXt6uYpY5ExqeSJeHpOhT2rNxnw4PtkSctVydDqCAaMeHK7Kinja4ChC6A
-	 RY6YWToqMBSgcsUCUrdmfwQ0YHnl49IktksfB6DvEoOOL8vvelvAhVWwVe31XR+ycT
-	 ciF6FscCFkqF4s5YXo26ppFHmcOMWQyknEH98Gvy02m8wMHWNJm5E+Y42OkUMp4Tdd
-	 cogR/ZAYiJAhA==
+	b=cBPoxYX/0uBajMwtC4FHf5RWSeCTsUUKFvAuYn/iVJA5/2Pqsl9jwr1Ik5ItbKMY5
+	 uzy3/Zrl9Nqg485Za0Clc/Fo5OzFbTeqPsYxBi1P6uHSocrdfsgIe6pSuaM9N5T8TZ
+	 Mz4fx/LRnNDZFUP+Ex2cqf9av6GDVqdrF9kfYTEeGOwaZx0lcBUREhXGufS67wSV6t
+	 ce1kyw1S+KIoUa3iQvLHqhgWgUdvuX3XzLnislA75DVFSl0U5afLe+th6OMraqw3ik
+	 hRD891TdDJgoCituMAVEuLoshS0RXH+WY4lUCQrochEXeA5mUthxKgcqiXkWlhZ5pN
+	 aQDjkh1JrnyrQ==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id 4414815C1311; Thu, 14 Nov 2024 08:53:43 -0500 (EST)
+	id 4E34015C1DE3; Thu, 14 Nov 2024 08:53:43 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: =?UTF-8?q?Daniel=20Mart=C3=ADn=20G=C3=B3mez?= <dalme@riseup.net>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] jbd2: Fix comment describing journal_init_common()
-Date: Thu, 14 Nov 2024 08:53:34 -0500
-Message-ID: <173159220758.521904.7231961435577628717.b4-ty@mit.edu>
+To: Andreas Dilger <adilger.kernel@dilger.ca>,
+        Thorsten Blum <thorsten.blum@linux.dev>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: Use str_yes_no() helper function
+Date: Thu, 14 Nov 2024 08:53:39 -0500
+Message-ID: <173159220756.521904.6103415449377192729.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.45.2
-In-Reply-To: <20241107144538.3544-1-dalme@riseup.net>
-References: <20241107144538.3544-1-dalme@riseup.net>
+In-Reply-To: <20241021100056.5521-2-thorsten.blum@linux.dev>
+References: <20241021100056.5521-2-thorsten.blum@linux.dev>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,20 +54,15 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Thu, 07 Nov 2024 15:45:38 +0100, Daniel Martín Gómez wrote:
-> The code indicates that journal_init_common() fills the journal_t object
-> it returns while the comment incorrectly states that only a few fields are
-> initialised. Also, the comment claims that journal structures could be
-> created from scratch which isn't possible as journal_init_common() calls
-> journal_load_superblock() which loads and checks journal superblock from
-> disk.
+On Mon, 21 Oct 2024 12:00:57 +0200, Thorsten Blum wrote:
+> Remove hard-coded strings by using the str_yes_no() helper function.
 > 
-> [...]
+> 
 
 Applied, thanks!
 
-[1/1] jbd2: Fix comment describing journal_init_common()
-      commit: 3e7c69cdb053f9edea95502853f35952ab6cbf06
+[1/1] ext4: Use str_yes_no() helper function
+      commit: 6a0c5887a54318eaaafb00825ebb10d1f7c8f0cf
 
 Best regards,
 -- 
