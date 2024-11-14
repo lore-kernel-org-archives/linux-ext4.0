@@ -1,164 +1,199 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from mail-oa1-f50.google.com (mail-oa1-f50.google.com [209.85.160.50])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E6A8A13AD29
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Nov 2024 15:26:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5008215B0EF
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Nov 2024 15:28:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.50
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1731597972; cv=none; b=hsJ054y5tj69RuqXImc5dkcLj/tQhVD9SfMBzfR9KTh9H4YfCWSOzOYWDC2AT1rVjHsVsmUGjbfk7OjS2ID722N4B3ByXQfWz42C+j963F4MAT2xnaMqBUIX85LI/fN7xMUXEzTVahMwewTeNBxLrTGvTdMuUm3TOlZ9qh4a83U=
+	t=1731598085; cv=none; b=lb/UyfFE+bz4l0ptAL3GYl8whUuSo51FoAa6PKgxc4KeKUwbvmtu05ixBJhWlcqVI/3D/pRJf08regi7lQ6h3OTF8tKQM6xuSNNIAOoapZW3Wi9RPSgeEMS8KVXIpIRL7kUcmbBYf7bsmPquEaSvnSCPWqnXfd2deCIjwsujhag=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1731597972; c=relaxed/simple;
-	bh=pYg0ZEq7YZCEsjJ7S9H6welbOuiHD+tza1hO1fDPFIA=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=WMJJRfSBxSJGJ9lxG0O6L+NTmxQwQu0TosS9t7POXfxPr9GF2Tip2thlPeUH7HpUb7fRNJ57vibZ1ZriePfBPhWJAQxLKBN6sH8S8bK/x+R83LoPfwLWbApZ763Zm67SYIZ+t4EAjOlOdLNG5QsZX9JdEShFrhDAoaV3/IINWwo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=jOwmGtrl; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=QKS5hQTO; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=jOwmGtrl; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=QKS5hQTO; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1731598085; c=relaxed/simple;
+	bh=c2TEu+YFRzeJg1sAj7V27VWatQDU0ccey6dX2M3ChOg=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=rgp84nQoZur1xWisCo+fHdIWkblKFHAWjRRupkJm/wz/hYzptLPwrW2EZ/+Rg8V3V3iSFmyoBS+mmEFd/OKlJsVTWQB2r8fQxER61W63UiqK0sp5Qyy3AH4xRftWP/8HdOKON5OrQY0XiPU6Mnav6Sfe2uKneBjbxy4+grokxo8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=kernel.dk; spf=pass smtp.mailfrom=kernel.dk; dkim=pass (2048-bit key) header.d=kernel-dk.20230601.gappssmtp.com header.i=@kernel-dk.20230601.gappssmtp.com header.b=MBXlZawU; arc=none smtp.client-ip=209.85.160.50
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=kernel.dk
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=kernel.dk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="jOwmGtrl";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="QKS5hQTO";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="jOwmGtrl";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="QKS5hQTO"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 0769521134;
-	Thu, 14 Nov 2024 15:26:08 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1731597968; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=M9TQOyctTx3F+55/OuInl1ZLq7Wuycr0F4jqoyjW/Lg=;
-	b=jOwmGtrlj3NceiVAmrWlc4lTrpNYLGoi1BdxPTsmfXQzXgerChboFKafZGYaGZHMJBj55N
-	IahBiLIoH1bI1DMAsYhL8mgzjB98iprxiUUm6fODKL2Un5SjdareB3m8/K89CDkIvturRi
-	Q2fF0/5l/1QOxwMTAl6Kazq14JTtaL8=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1731597968;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=M9TQOyctTx3F+55/OuInl1ZLq7Wuycr0F4jqoyjW/Lg=;
-	b=QKS5hQTOBf9AHbwBn0m+lU4OKEISdGWrILiWbMyAQnjLofFXA3V7+iZpDloJuwE1lLxc7E
-	DfrPMU0Sn0i9x3Aw==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1731597968; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=M9TQOyctTx3F+55/OuInl1ZLq7Wuycr0F4jqoyjW/Lg=;
-	b=jOwmGtrlj3NceiVAmrWlc4lTrpNYLGoi1BdxPTsmfXQzXgerChboFKafZGYaGZHMJBj55N
-	IahBiLIoH1bI1DMAsYhL8mgzjB98iprxiUUm6fODKL2Un5SjdareB3m8/K89CDkIvturRi
-	Q2fF0/5l/1QOxwMTAl6Kazq14JTtaL8=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1731597968;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=M9TQOyctTx3F+55/OuInl1ZLq7Wuycr0F4jqoyjW/Lg=;
-	b=QKS5hQTOBf9AHbwBn0m+lU4OKEISdGWrILiWbMyAQnjLofFXA3V7+iZpDloJuwE1lLxc7E
-	DfrPMU0Sn0i9x3Aw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id EF50B13794;
-	Thu, 14 Nov 2024 15:26:07 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id XulmOo8WNmdXCQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 14 Nov 2024 15:26:07 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id A3604A0962; Thu, 14 Nov 2024 16:26:07 +0100 (CET)
-Date: Thu, 14 Nov 2024 16:26:07 +0100
-From: Jan Kara <jack@suse.cz>
-To: Theodore Ts'o <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Baolin Liu <liubaolin@kylinos.cn>,
-	Zhi Long <longzhi@sangfor.com.cn>
-Subject: Re: [PATCH v3] ext4: Make sure BH_New bit is cleared in ->write_end
- handler
-Message-ID: <20241114152607.v3bdfpu2sgayztdr@quack3>
-References: <20241018145901.2086-1-jack@suse.cz>
- <20241113175550.GA462442@mit.edu>
+	dkim=pass (2048-bit key) header.d=kernel-dk.20230601.gappssmtp.com header.i=@kernel-dk.20230601.gappssmtp.com header.b="MBXlZawU"
+Received: by mail-oa1-f50.google.com with SMTP id 586e51a60fabf-27b7a1480bdso337307fac.2
+        for <linux-ext4@vger.kernel.org>; Thu, 14 Nov 2024 07:28:02 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=kernel-dk.20230601.gappssmtp.com; s=20230601; t=1731598081; x=1732202881; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=upOcZ8Da+PhrMJT3+CvYdnGUaA0rMPuANSoknEoDO6c=;
+        b=MBXlZawUht7HoB0xXgeeHRp7Rs9EY3Oq+hF6vMqv4y1S1QuOS9TlrX6DnNa4IkeLfj
+         ZZIbiuRxdlrJp8hiztytOZDjj+PqUQgNRRhtpuNAk4s6iN2w4PdQWyCHchZfJA+nXdTR
+         gvX4DuyuVJW2TqIp5B/XsoQEhPC7GD3LE8A7iZqraH8T5wwpu6Cc8E+/J2Ah/FsL8bkR
+         0leP5oxs1zuKHptdaW9TS4h2N8sX7qxBcXSL/33puLU7xXbD40jJi7Jzzg9kF+Qb6Omc
+         snOVzxsUyRdXmjy5KKUv1IZzC7GWhbCXsjhvEz3aAznOrPjzyutsj/NMHso9yCFnb4Rp
+         QKeQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1731598081; x=1732202881;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=upOcZ8Da+PhrMJT3+CvYdnGUaA0rMPuANSoknEoDO6c=;
+        b=bqlF8Hb88EZSsq9znnEbZ9+tf/oEw5kOarjZ2rWVlgW445FeLEHkGoznnXI56wajTR
+         vQqy9fo0D3/Mx4R7ZbL9YRwzxBx1/oTqupghYMabFv/MvZbfXf30yOKXmR3MldNRgMxR
+         oy2Ceo22TWPblrj9YtPse11LK2w3pVd+hoZvT5gLGdl4LL/JIzmCYmSJQqdd/I09I1TF
+         /34OFvZhV3Yog1bzto0zv9q4inzI2FO3V33SjXzWaEq5Sqi3WSlXM31kUyDor/dI15Fa
+         DIehyfOkhjEeYWPIr93j061VsbPjnwA6Maq+NGCZuu6zDzNF9EDfx+c2gOQvQg5vqaCS
+         QZEQ==
+X-Forwarded-Encrypted: i=1; AJvYcCWkMIc6P6bsaz5ydIEnNZoXhOA5XgE6utZ9PBXMaud5iBtDvY6+oyKTESqZBYmJCaPNnT5de4IUC/nk@vger.kernel.org
+X-Gm-Message-State: AOJu0YwmRYEeRne6EYZ28PTHxDwqi6WgUROk6iffQMkDARm84aBtO/r9
+	ebtuSghR2X9IDZzwx4dAjzI6OuI/ggPRL3XBWA3giLNsHT8zire4xVNvFWLpVCo=
+X-Google-Smtp-Source: AGHT+IHBiSMdAqkwaY/EaNZLQHe509r0Wv/sQpfdA1eWS0kETb8TpyQost056gI2LIEpEMGhxGO0ag==
+X-Received: by 2002:a05:6871:6306:b0:277:e1bc:7da7 with SMTP id 586e51a60fabf-295e8dc02c3mr7474161fac.22.1731598081287;
+        Thu, 14 Nov 2024 07:28:01 -0800 (PST)
+Received: from localhost.localdomain ([96.43.243.2])
+        by smtp.gmail.com with ESMTPSA id 006d021491bc7-5eea026eb41sm368250eaf.39.2024.11.14.07.28.00
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 14 Nov 2024 07:28:00 -0800 (PST)
+From: Jens Axboe <axboe@kernel.dk>
+To: linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org
+Cc: hannes@cmpxchg.org,
+	clm@meta.com,
+	linux-kernel@vger.kernel.org,
+	willy@infradead.org,
+	kirill@shutemov.name,
+	linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-xfs@vger.kernel.org,
+	bfoster@redhat.com
+Subject: [PATCHSET v5 0/17] Uncached buffered IO
+Date: Thu, 14 Nov 2024 08:25:04 -0700
+Message-ID: <20241114152743.2381672-2-axboe@kernel.dk>
+X-Mailer: git-send-email 2.45.2
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20241113175550.GA462442@mit.edu>
-X-Spam-Score: -3.80
-X-Spamd-Result: default: False [-3.80 / 50.00];
-	BAYES_HAM(-3.00)[99.99%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-0.999];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	MISSING_XM_UA(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_HAS_DN(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCPT_COUNT_FIVE(0.00)[5];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FUZZY_BLOCKED(0.00)[rspamd.com];
-	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,imap1.dmz-prg2.suse.org:helo,suse.com:email]
-X-Spam-Flag: NO
-X-Spam-Level: 
+Content-Transfer-Encoding: 8bit
 
-On Wed 13-11-24 12:55:50, Theodore Ts'o wrote:
-> On Fri, Oct 18, 2024 at 04:59:01PM +0200, Jan Kara wrote:
-> > Currently we clear BH_New bit in case of error and also in the standard
-> > ext4_write_end() handler (in block_commit_write()). However
-> > ext4_journalled_write_end() misses this clearing and thus we are leaving
-> > stale BH_New bits behind. Generally ext4_block_write_begin() clears
-> > these bits before any harm can be done but in case blocksize < pagesize
-> > and we hit some error when processing a page with these stale bits,
-> > we'll try to zero buffers with these stale BH_New bits and jbd2 will
-> > complain (as buffers were not prepared for writing in this transaction).
-> > Fix the problem by clearing BH_New bits in ext4_journalled_write_end()
-> > and WARN if ext4_block_write_begin() sees stale BH_New bits.
-> > 
-> > Reported-and-tested-by: Baolin Liu <liubaolin@kylinos.cn>
-> > Reported-and-tested-by: Zhi Long <longzhi@sangfor.com.cn>
-> > Fixes: 3910b513fcdf ("ext4: persist the new uptodate buffers in ext4_journalled_zero_new_buffers")
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> 
-> This patch is causing quite a lot of regressions:
-> 
-> ext4/adv: 569 tests, 36 failures, 61 skipped, 6510 seconds
->   Failures: ext4/307 generic/069 generic/079 generic/082 generic/130 
->     generic/131 generic/219 generic/230 generic/231 generic/232 
->     generic/233 generic/234 generic/235 generic/241 generic/244 
->     generic/270 generic/280 generic/355 generic/379 generic/381 
->     generic/382 generic/400 generic/422 generic/464 generic/566 
->     generic/571 generic/572 generic/587 generic/600 generic/601 
->     generic/681 generic/682 generic/691
-> 
-> This appears to be caused by inline data, so a quick reproducer for
-> bisection purposes was:
-> 
->    kvm-xfststs -c ext4/inline ext4/307
-> 
-> Attached below please find the warning which is triggering the
-> "_check_dmesg: something found in dmesg" test failure.
-> 
-> I suspect this should be fairly easy to fix, but I'm going to drop it
-> from my tree for now.
+Hi,
 
-Yeah, sure. I didn't test with inline data so I didn't notice. I'll check
-what's going wrong and sorry for the annoyance.
+5 years ago I posted patches adding support for RWF_UNCACHED, as a way
+to do buffered IO that isn't page cache persistent. The approach back
+then was to have private pages for IO, and then get rid of them once IO
+was done. But that then runs into all the issues that O_DIRECT has, in
+terms of synchronizing with the page cache.
 
-									Honza
+So here's a new approach to the same concent, but using the page cache
+as synchronization. That makes RWF_UNCACHED less special, in that it's
+just page cache IO, except it prunes the ranges once IO is completed.
+
+Why do this, you may ask? The tldr is that device speeds are only
+getting faster, while reclaim is not. Doing normal buffered IO can be
+very unpredictable, and suck up a lot of resources on the reclaim side.
+This leads people to use O_DIRECT as a work-around, which has its own
+set of restrictions in terms of size, offset, and length of IO. It's
+also inherently synchronous, and now you need async IO as well. While
+the latter isn't necessarily a big problem as we have good options
+available there, it also should not be a requirement when all you want
+to do is read or write some data without caching.
+
+Even on desktop type systems, a normal NVMe device can fill the entire
+page cache in seconds. On the big system I used for testing, there's a
+lot more RAM, but also a lot more devices. As can be seen in some of the
+results in the following patches, you can still fill RAM in seconds even
+when there's 1TB of it. Hence this problem isn't solely a "big
+hyperscaler system" issue, it's common across the board.
+
+Common for both reads and writes with RWF_UNCACHED is that they use the
+page cache for IO. Reads work just like a normal buffered read would,
+with the only exception being that the touched ranges will get pruned
+after data has been copied. For writes, the ranges will get writeback
+kicked off before the syscall returns, and then writeback completion
+will prune the range. Hence writes aren't synchronous, and it's easy to
+pipeline writes using RWF_UNCACHED. Folios that aren't instantiated by
+RWF_UNCACHED IO are left untouched. This means you that uncached IO
+will take advantage of the page cache for uptodate data, but not leave
+anything it instantiated/created in cache.
+
+File systems need to support this. The patches add support for the
+generic filemap helpers, and for iomap. Then ext4 and XFS are marked as
+supporting it. The last patch adds support for btrfs as well, lightly
+tested. The read side is already done by filemap, only the write side
+needs a bit of help. The amount of code here is really trivial, and the
+only reason the fs opt-in is necessary is to have an RWF_UNCACHED IO
+return -EOPNOTSUPP just in case the fs doesn't use either the generic
+paths or iomap. Adding "support" to other file systems should be
+trivial, most of the time just a one-liner adding FOP_UNCACHED to the
+fop_flags in the file_operations struct.
+
+Performance results are in patch 8 for reads and patch 10 for writes,
+with the tldr being that I see about a 65% improvement in performance
+for both, with fully predictable IO times. CPU reduction is substantial
+as well, with no kswapd activity at all for reclaim when using uncached
+IO.
+
+Using it from applications is trivial - just set RWF_UNCACHED for the
+read or write, using pwritev2(2) or preadv2(2). For io_uring, same
+thing, just set RWF_UNCACHED in sqe->rw_flags for a buffered read/write
+operation. And that's it.
+
+Patches 1..7 are just prep patches, and should have no functional
+changes at all. Patch 8 adds support for the filemap path for
+RWF_UNCACHED reads, patch 10 adds support for filemap RWF_UNCACHED
+writes, and patches 13..17 adds ext4, xfs/iomap, and btrfs support.
+
+Passes full xfstests and fsx overnight runs, no issues observed. That
+includes the vm running the testing also using RWF_UNCACHED on the host.
+I'll post fsstress and fsx patches for RWF_UNCACHED separately. As far
+as I'm concerned, no further work needs doing here. Once we're into
+the 6.13 merge window, I'll split up this series and aim to get it
+landed that way. There are really 4 parts to this - generic mm bits,
+ext4 bits, xfs bits, and btrfs bits.
+
+And git tree for the patches is here:
+
+https://git.kernel.dk/cgit/linux/log/?h=buffered-uncached.7
+
+ fs/btrfs/bio.c                 |   4 +-
+ fs/btrfs/bio.h                 |   2 +
+ fs/btrfs/extent_io.c           |   8 ++-
+ fs/btrfs/file.c                |   9 ++-
+ fs/ext4/ext4.h                 |   1 +
+ fs/ext4/file.c                 |   2 +-
+ fs/ext4/inline.c               |   7 +-
+ fs/ext4/inode.c                |  18 +++++-
+ fs/ext4/page-io.c              |  28 ++++----
+ fs/iomap/buffered-io.c         |  15 ++++-
+ fs/xfs/xfs_aops.c              |   7 +-
+ fs/xfs/xfs_file.c              |   3 +-
+ include/linux/fs.h             |  21 +++++-
+ include/linux/iomap.h          |   8 ++-
+ include/linux/page-flags.h     |   5 ++
+ include/linux/pagemap.h        |  14 ++++
+ include/trace/events/mmflags.h |   3 +-
+ include/uapi/linux/fs.h        |   6 +-
+ mm/filemap.c                   | 114 +++++++++++++++++++++++++++++----
+ mm/readahead.c                 |  22 +++++--
+ mm/swap.c                      |   2 +
+ mm/truncate.c                  |  35 ++++++----
+ 22 files changed, 271 insertions(+), 63 deletions(-)
+
+Since v3
+- Use foliop_is_uncached() in ext4 rather than do manual compares with
+  foliop_uncached.
+- Add filemap_fdatawrite_range_kick() helper and use that in
+  generic_write_sync() to kick off uncached writeback, rather than need
+  every fs adding a call to generic_uncached_write().
+- Drop generic_uncached_write() helper, not needed anymore.
+- Skip folio_unmap_invalidate() if the folio is dirty.
+- Move IOMAP_F_UNCACHED to the internal iomap flags section, and add
+  comment from Darrick to it as well.
+- Only kick uncached writeback in generic_write_sync() if
+  iocb_is_dsync() isn't true.
+- Disable RWF_UNCACHED on dax mappings. They require more extensive
+  invalidation, and as it isn't a likely use case, just disable it
+  for now.
+- Update a few commit messages
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Jens Axboe
+
