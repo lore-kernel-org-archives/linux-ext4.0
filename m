@@ -1,57 +1,57 @@
-Received: from mail-yw1-f171.google.com (mail-yw1-f171.google.com [209.85.128.171])
+Received: from mail-yw1-f181.google.com (mail-yw1-f181.google.com [209.85.128.181])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 95B7C1F130B
-	for <linux-ext4@vger.kernel.org>; Fri, 15 Nov 2024 15:31:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.171
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 471B01F7094
+	for <linux-ext4@vger.kernel.org>; Fri, 15 Nov 2024 15:31:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.181
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1731684718; cv=none; b=KW3FKYKan8TETm/JjVD7oQDXlQY11JninSv6/fv/UE3ZjxykA9MkkJ+x+pvhTYOJ76k979Y62k8dS928iHyvXz+fu09qrWHj9/OxJ24EBxEO6upXx+bZAtmBk/rfveXsJLqEBFVAbLXefziap+jpgzFvevBnWrG781Cnx5G0fI4=
+	t=1731684719; cv=none; b=cVIcq3SnQVJt5iFtxAd4N3JP1qWq0gMJz/2Mv0cJu1lMGecNVAXbBOZofHJ9CJTaGYM+jJpTgJBk0t6itDFaEEl+8vphkOlMaKhYy3sbIMwOeVPlyjtv0uqZfDB3Kx7fdJdjr7VLdBWQli78J1XucluhcNW8ouAk5GuOr0VpA6Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1731684718; c=relaxed/simple;
-	bh=2N0bizMEg0czxuSX0Hl7S5FVpQVRVn9Mf1MRV8yCr7o=;
+	s=arc-20240116; t=1731684719; c=relaxed/simple;
+	bh=6I0DlDU7r6h299w7wCYMACFg3R+68ox0OBCaPPO6OWw=;
 	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=LaMRvAgtZc4wA9fh2UBNG1gvLQI2MBQG8QC48tq0/bsreu0QGVhJgZn1mwRveWMnOrEFJFtjtzwHnAUXSLUmkhLBgh+7k7+kz8TBff/t/u4m9GB1jQZBFEIzD85fMgZXP4RaNmfttl7hJX8Fp/J/6nnawRlb5REgziyrlaGovl8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com; spf=none smtp.mailfrom=toxicpanda.com; dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b=eC0cYIic; arc=none smtp.client-ip=209.85.128.171
+	 MIME-Version; b=k5f1e74jvXCSm/8kCt6bFol8pVPCLAzG6R/Injxx+P4MHQfRonhi2PeAmYd/AEgoycqhBKNinYiYo3tMpzGhf4tz3jCn2Sks0lGlO6Lz383k5c5EfM+JNP4+zzjntjEOwiYHy5BESNesYSKzuvm78Acz4dXWPjRZzNZjOxSSvoE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com; spf=none smtp.mailfrom=toxicpanda.com; dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b=L/iy3LQa; arc=none smtp.client-ip=209.85.128.181
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=toxicpanda.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b="eC0cYIic"
-Received: by mail-yw1-f171.google.com with SMTP id 00721157ae682-6eb0e90b729so23139637b3.1
-        for <linux-ext4@vger.kernel.org>; Fri, 15 Nov 2024 07:31:56 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b="L/iy3LQa"
+Received: by mail-yw1-f181.google.com with SMTP id 00721157ae682-6eb0c2dda3cso20778877b3.1
+        for <linux-ext4@vger.kernel.org>; Fri, 15 Nov 2024 07:31:58 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=toxicpanda-com.20230601.gappssmtp.com; s=20230601; t=1731684716; x=1732289516; darn=vger.kernel.org;
+        d=toxicpanda-com.20230601.gappssmtp.com; s=20230601; t=1731684717; x=1732289517; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:to:from:from:to:cc:subject:date:message-id
          :reply-to;
-        bh=3nbIBZPU5mMiQBH7fH9PUjd6pvpSRIo6Q0oL6vGrX38=;
-        b=eC0cYIicdKHGAKWmNkEFoUITofha1lNixX70BShTKVQVY9e3K9rBoMn6DWQp3kqlbP
-         dpkBv0NLvDUbcG+MRDBxbLVklABB9YUa5oPLnk5u9szWMwn8QUspmsNqUXyV+dYrt0At
-         8l7cdttDXn/lVGSGvJJN+neqoBkH2ADhP4Qz9mT1Gt2O1Yra10BV7mMLn4nsJYZgTl+Y
-         vTWtQKV0Zx30w4Q6jiXGwljA8/HQD9dqxYQLHjZA9L7BVVXbccbrvS8lQW/DWtOkNuMi
-         kT979D0Y3YYxjZORHK16QThmQlQt/dkuaw5g9nx/3jFdQt4BmpBHv8/j6R6Y1Ia8P2Ro
-         7U/g==
+        bh=SVlCssk7TvFYg+mPz0+epJww2XrJywW98H8fNg6oZ9s=;
+        b=L/iy3LQaJK51zfKZy836wWqkdRDua/qu5MWDwfT8I+E560K7SSexHUFmeDq26/zUrn
+         h3KOdqsG9twRzlUB4bV2Nq2HJynSF/gfw2d8JSFEQAK5/9W6UZhfou3tLH1og64avY/J
+         Al9XK1PhX/dtHA3RzLGasw9+49kqMcgj2JnPqB38Y6LkIe+lMiQN0PXvIr7yOdO8agL6
+         6STMChfP/Z54ueyAO40XQ+EIECZbAI8QivqPPmKrO+2+9PQus8SboVJ5LJjwauCVsou2
+         3x15CjQZiEa/h92ZZTZ0gwOxHvYIa37dpkfhLsrXitqxCpUoNwqZUx4okJMzBlTVDtAL
+         vA6A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1731684716; x=1732289516;
+        d=1e100.net; s=20230601; t=1731684717; x=1732289517;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=3nbIBZPU5mMiQBH7fH9PUjd6pvpSRIo6Q0oL6vGrX38=;
-        b=RTwaV9fYpqQf7QlxM1yDa7H1JKtyhy/7/iwltu9ApdAj6zMKXYTtui0FSjGru/k3ax
-         l+MjCQ7e2t5HjxuDPicAp/jbzSZGJkOrEPnGRrqNFvV0b3y8vO7e3fBGyvI3h6OTiO53
-         /rFidAutq5CozTrx5qBtDfw06ePaNLwPHNnuAO5F9V1RyW3SK5jTRGaUjgtfoAy/cRTm
-         7DUhBSEQupUlRBD9cj8DfZ+d4wOwzOlxrQmTBgO+Q6bJKpKlHcsE7JL4YXiI9/+2f8KP
-         QPAl5nzhtkA2Z493RI+qVNYx02X3G8yN3LIDh6VQe3v0bndfNeQMsrcar97Ph0g/ceew
-         233w==
-X-Forwarded-Encrypted: i=1; AJvYcCWi2QkYKvJuj2kYfJb8o39u/GgHFcKf1An9bUj6682kmRYW1qiTUoXrbCPkSAWeJ/Am/PoG4NT6urTl@vger.kernel.org
-X-Gm-Message-State: AOJu0YxyDpZRU7VKwFkqC2eCF/l859XMgR1lISTW1tfdgLeMax9WC5ao
-	UMF7JmrfHKS4FVS6IAw+QnrAYWadLgvTzOty3dmkaJBSfVp6LOCWCtMs3qBLm9o=
-X-Google-Smtp-Source: AGHT+IF2kfSK7avJhhme8jmNEknNmwYth/OIHi/JSJVRuMCWaSMr+rN1yucoeC0+W4HJkwXlrHqqNQ==
-X-Received: by 2002:a05:690c:688a:b0:6ea:7c46:8c23 with SMTP id 00721157ae682-6ee55ef8021mr42068567b3.35.1731684715691;
-        Fri, 15 Nov 2024 07:31:55 -0800 (PST)
+        bh=SVlCssk7TvFYg+mPz0+epJww2XrJywW98H8fNg6oZ9s=;
+        b=Q7dqxekqIOQbeYypOhsxapF4vKu75r3Wgy3eMxUuS/fqVxTrCwwna1WnjCBMLWy8bd
+         WqoE/RTxS6Ax1k+zhM97EW1l1ovosEzxseNhYhRyV9I5/k+APtEke0IWlSj7ShhlHWVA
+         heYJZSjEw9e9wOEPaQNZLQrdooFR246wpZVytdqMfVC0mDwdfn7cz9UkwQ6F7b51nnvS
+         cdBbE5XBaCs13OXdFOYdkFk8kdC5ri8tsp4VDCJ57DT1PfYXaEXFUsGz87ZaJqjDn7nN
+         ivY1IFS2xKH6WoDdvfGuTWix+i+e5Zi5lN8tO8FIa/IBOv/BtuVzncrj5jPFRNtfKKgk
+         isAg==
+X-Forwarded-Encrypted: i=1; AJvYcCWzQ+ZN4p11PMCfHBS7boyUkDOasBueOqS04xxoMBIHxHteRZftn0z8X3h4hI8UsCrQSDECHkTkuNF5@vger.kernel.org
+X-Gm-Message-State: AOJu0Yy6Fq/7qCXtcgHcpVcdSolYtDi5XsLzjczSfYEB3cz3jgCo+5tB
+	OYnL3MxNUGFEJolUjJreLcJYxiz1QhM3eRf51+lpdIdVpfugP3BeMCOsUHoZ0yo=
+X-Google-Smtp-Source: AGHT+IHB7s7jP8NWV/O0FcTu86HRGJSs7P0wkOPC0j5cMuO18DrwRH2o+5qB1EsHLQ8UmBf4vwq9wQ==
+X-Received: by 2002:a05:690c:62c5:b0:6ea:8a23:7673 with SMTP id 00721157ae682-6ee55bbae6amr38804727b3.8.1731684717148;
+        Fri, 15 Nov 2024 07:31:57 -0800 (PST)
 Received: from localhost (syn-076-182-020-124.res.spectrum.com. [76.182.20.124])
-        by smtp.gmail.com with ESMTPSA id 00721157ae682-6ee440709dbsm7729117b3.54.2024.11.15.07.31.54
+        by smtp.gmail.com with ESMTPSA id 00721157ae682-6ee44075016sm7768367b3.63.2024.11.15.07.31.56
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 15 Nov 2024 07:31:55 -0800 (PST)
+        Fri, 15 Nov 2024 07:31:56 -0800 (PST)
 From: Josef Bacik <josef@toxicpanda.com>
 To: kernel-team@fb.com,
 	linux-fsdevel@vger.kernel.org,
@@ -64,9 +64,9 @@ To: kernel-team@fb.com,
 	linux-btrfs@vger.kernel.org,
 	linux-mm@kvack.org,
 	linux-ext4@vger.kernel.org
-Subject: [PATCH v8 17/19] xfs: add pre-content fsnotify hook for write faults
-Date: Fri, 15 Nov 2024 10:30:30 -0500
-Message-ID: <9eccdf59a65b72f0a1a5e2f2b9bff8eda2d4f2d9.1731684329.git.josef@toxicpanda.com>
+Subject: [PATCH v8 18/19] btrfs: disable defrag on pre-content watched files
+Date: Fri, 15 Nov 2024 10:30:31 -0500
+Message-ID: <4cc5bcea13db7904174353d08e85157356282a59.1731684329.git.josef@toxicpanda.com>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <cover.1731684329.git.josef@toxicpanda.com>
 References: <cover.1731684329.git.josef@toxicpanda.com>
@@ -78,30 +78,39 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-xfs has it's own handling for write faults, so we need to add the
-pre-content fsnotify hook for this case.  Reads go through filemap_fault
-so they're handled properly there.
+We queue up inodes to be defrag'ed asynchronously, which means we do not
+have their original file for readahead.  This means that the code to
+skip readahead on pre-content watched files will not run, and we could
+potentially read in empty pages.
+
+Handle this corner case by disabling defrag on files that are currently
+being watched for pre-content events.
 
 Signed-off-by: Josef Bacik <josef@toxicpanda.com>
 ---
- fs/xfs/xfs_file.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ fs/btrfs/ioctl.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index ca47cae5a40a..4fe89770ecb5 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -1458,6 +1458,10 @@ xfs_write_fault(
- 	unsigned int		lock_mode = XFS_MMAPLOCK_SHARED;
- 	vm_fault_t		ret;
+diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
+index c9302d193187..1e5913f276be 100644
+--- a/fs/btrfs/ioctl.c
++++ b/fs/btrfs/ioctl.c
+@@ -2635,6 +2635,15 @@ static int btrfs_ioctl_defrag(struct file *file, void __user *argp)
+ 			goto out;
+ 		}
  
-+	ret = filemap_fsnotify_fault(vmf);
-+	if (unlikely(ret))
-+		return ret;
++		/*
++		 * Don't allow defrag on pre-content watched files, as it could
++		 * populate the page cache with 0's via readahead.
++		 */
++		if (fsnotify_file_has_pre_content_watches(file)) {
++			ret = -EINVAL;
++			goto out;
++		}
 +
- 	sb_start_pagefault(inode->i_sb);
- 	file_update_time(vmf->vma->vm_file);
- 
+ 		if (argp) {
+ 			if (copy_from_user(&range, argp, sizeof(range))) {
+ 				ret = -EFAULT;
 -- 
 2.43.0
 
