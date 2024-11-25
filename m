@@ -1,73 +1,162 @@
-Received: from mail-il1-f197.google.com (mail-il1-f197.google.com [209.85.166.197])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E3549194AD1
-	for <linux-ext4@vger.kernel.org>; Mon, 25 Nov 2024 11:10:03 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.166.197
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9CDEB186E59;
+	Mon, 25 Nov 2024 11:46:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1732533005; cv=none; b=UNxHSG4MQudJdrIgltnTdehrUJ0c+joZ/XUqZUEK4wFigF5Lf69rC3VpXbu/7T2vkavcZUgdD7tHm+kqxwh4j1ZZkFQdXFDV7mc+IDPljbdFu0A4iMAJmMNFXOcnSnKa3yL50tEPCpLOIzNAgbo27Fs2MzEcVOu+bmr05VoKr1g=
+	t=1732535193; cv=none; b=B8wd1HZ13lPBLP+W3rrv2f1kDTk4rz/KnFprInPYCjA3zSTK4VYAbALbuxIrcuKSsLWH5aDmdwerRRatGxnm3uaF6Ud/G+Kh8Dz61a+eO903/4ATptdd62aMLB8its534fWRhnMNVUxrQyQrduXQPx/Ucr7b3Ylbgv1xMvwvEYk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1732533005; c=relaxed/simple;
-	bh=ag81pewKSJv1JzPBH/2FxoqSjfhawrLPaWjKhWo21w4=;
-	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:
-	 Content-Type; b=nxjapwSJTt7Psc12rJVrLNJhRdSiD1D3VUWoOqE4uEr4u98tvkD+LmNZZBykqcIIBU7Fxeh6KB3/GC9oSAdaA1hLg3dRdhtlISpusufV6sOM7f8KuFfgj6EDHLuP7a9n/KgWko2eKilOrrDG+PmuUzjY1CCkB6xT9TE7ug0Kxp4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.166.197
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-il1-f197.google.com with SMTP id e9e14a558f8ab-3a7b3c63c3aso10369915ab.0
-        for <linux-ext4@vger.kernel.org>; Mon, 25 Nov 2024 03:10:03 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1732533003; x=1733137803;
-        h=to:from:subject:message-id:in-reply-to:date:mime-version
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=azFZgkAznkGWRqKpayynp8wcnMLv0A5z/vByIfvuy2k=;
-        b=ZpVwLLFDWlmMX+UfhkAcdxT02x6sCrVwlGSJTQmwgEgXmNR0i03h7aotsGOi5W14uM
-         Imbjcl9W186s4vyj5dQi+XKGvRBE8JmQidI56pYxmGS373wDvSwdktf8WGXWazZMyqrA
-         3Xg3QM+Zg8uN9+m2i96EhUUq4YZ05h4wJKNmAEbnEwV2STluykjNFyzVQe3he1JJAqUm
-         8jvhSLx287EeeLZvLy7f3v+ewmhfhQgKSh9133TqWnRiqEL5KbyN0A+TxsS4bDVlTvhp
-         uNoi9TEa26MFkCvzWABxMprXUmAvJsfmVceZ7JccWj0pL/NgFXiUWzFyolXzzAKQVKvP
-         MdNw==
-X-Forwarded-Encrypted: i=1; AJvYcCUWE2G6g55jF83QJamfxxlbjQYzaMPP2vjgRvF9LIuAyBZsjdW3vJhnLXv77yA2VPH0y/4ddWJ7OG19@vger.kernel.org
-X-Gm-Message-State: AOJu0Yyd9vaSzRL+YD3ImIG6YZQYMoK0DnoHPajTR/UcxkDhEtWzo+H8
-	jh7hBvC4Z9u0uWcxLlWCaJ039BA+DyHGeq3QmKnWauJvLYaiNNVGpwN/Np4anShW06Sw3iwKCdD
-	Rs5JFRNWoEw/tc6qzRNwnoTO3yH4nvQXnWQ5foxBp4dipq6Cnf13YX8s=
-X-Google-Smtp-Source: AGHT+IFoQkGe2TzK2Kv1xxLurWvC9RrhZntMaXija6nT4YFa6w3mmJCpaUpQEkmsq6sXRwrNPG2IXp0gEE5GZ7zEEkt949sm/a6m
+	s=arc-20240116; t=1732535193; c=relaxed/simple;
+	bh=vCTOertUZohQPhm3R+Ud9igr5aOQGYz3iB1Z+xenxoQ=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=tvY4fNb3tIhvVGf/fCZfsdWAAodFay8Fv1ivOx8e/K4oAjcZB0u6dIudSy6/f2/ZUHO/m9mHiEsFvwEI/xFLn9mMHOShEO/eskbHaPGN93MSeOxjK5n+pdxOymL8JexNxv4554rniMUiMGcstpZvpeENzcrXpPJEMp259pXRtdo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4XxkS56J0Pz4f3kk9;
+	Mon, 25 Nov 2024 19:46:13 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 813541A018C;
+	Mon, 25 Nov 2024 19:46:27 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.112.188])
+	by APP4 (Coremail) with SMTP id gCh0CgCHY4eFY0RnNicrCw--.44046S5;
+	Mon, 25 Nov 2024 19:46:27 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
+	willy@infradead.org,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	brauner@kernel.org,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	chengzhihao1@huawei.com,
+	yukuai3@huawei.com,
+	yangerkun@huawei.com
+Subject: [PATCH 1/9] fs: make block_read_full_folio() support large folio
+Date: Mon, 25 Nov 2024 19:44:11 +0800
+Message-ID: <20241125114419.903270-2-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.46.1
+In-Reply-To: <20241125114419.903270-1-yi.zhang@huaweicloud.com>
+References: <20241125114419.903270-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6e02:1a88:b0:3a7:6566:1e8f with SMTP id
- e9e14a558f8ab-3a79aeade39mr92766535ab.16.1732533003096; Mon, 25 Nov 2024
- 03:10:03 -0800 (PST)
-Date: Mon, 25 Nov 2024 03:10:03 -0800
-In-Reply-To: <20241125105220.1566-1-hdanton@sina.com>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <67445b0b.050a0220.1cc393.0076.GAE@google.com>
-Subject: Re: [syzbot] [ext4?] WARNING: locking bug in get_page_from_freelist
-From: syzbot <syzbot+5abecb17ba9299033d79@syzkaller.appspotmail.com>
-To: adilger.kernel@dilger.ca, bigeasy@linutronix.de, hdanton@sina.com, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	syzkaller-bugs@googlegroups.com, tytso@mit.edu
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:gCh0CgCHY4eFY0RnNicrCw--.44046S5
+X-Coremail-Antispam: 1UD129KBjvJXoWxXr15tFy3XrW7tr15Aw43Jrb_yoW5Gw45pF
+	y3KFZ8Kr4kWr42gFnFyr13Zw1ftas7XF4UCayfJw13ZF98Awn0gryktw1DJFW0qr9xXr95
+	XF15WryrWF18XFUanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUm014x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jr4l82xGYIkIc2
+	x26xkF7I0E14v26r4j6ryUM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
+	xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
+	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
+	kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
+	6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
+	vEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVj
+	vjDU0xZFpf9x0JUfKs8UUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-Hello,
+From: Zhang Yi <yi.zhang@huawei.com>
 
-syzbot has tested the proposed patch and the reproducer did not trigger any issue:
+block_read_full_folio() uses an on-stack array to save the un-uptodated
+buffers. This approach is acceptable for small folios, as there are not
+too many buffers in a single folio. However, if the folio is a large
+folio, the number of buffers could reach up to 2,000 for a 2MB folio
+size with a 1KB block size. Therefore, we cannot use the 'arr' array for
+large folios, instead, we should iterate through the buffers using 'bh =
+bh->b_this_page'.
 
-Reported-by: syzbot+5abecb17ba9299033d79@syzkaller.appspotmail.com
-Tested-by: syzbot+5abecb17ba9299033d79@syzkaller.appspotmail.com
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/buffer.c | 34 +++++++++++++++++-----------------
+ 1 file changed, 17 insertions(+), 17 deletions(-)
 
-Tested on:
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 1fc9a50def0b..54e608c8912e 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2366,7 +2366,7 @@ int block_read_full_folio(struct folio *folio, get_block_t *get_block)
+ {
+ 	struct inode *inode = folio->mapping->host;
+ 	sector_t iblock, lblock;
+-	struct buffer_head *bh, *head, *arr[MAX_BUF_PER_PAGE];
++	struct buffer_head *bh, *head;
+ 	size_t blocksize;
+ 	int nr, i;
+ 	int fully_mapped = 1;
+@@ -2377,8 +2377,6 @@ int block_read_full_folio(struct folio *folio, get_block_t *get_block)
+ 	if (IS_ENABLED(CONFIG_FS_VERITY) && IS_VERITY(inode))
+ 		limit = inode->i_sb->s_maxbytes;
+ 
+-	VM_BUG_ON_FOLIO(folio_test_large(folio), folio);
+-
+ 	head = folio_create_buffers(folio, inode, 0);
+ 	blocksize = head->b_size;
+ 
+@@ -2416,7 +2414,10 @@ int block_read_full_folio(struct folio *folio, get_block_t *get_block)
+ 			if (buffer_uptodate(bh))
+ 				continue;
+ 		}
+-		arr[nr++] = bh;
++		/* lock the buffer */
++		lock_buffer(bh);
++		mark_buffer_async_read(bh);
++		nr++;
+ 	} while (i++, iblock++, (bh = bh->b_this_page) != head);
+ 
+ 	if (fully_mapped)
+@@ -2431,25 +2432,24 @@ int block_read_full_folio(struct folio *folio, get_block_t *get_block)
+ 		return 0;
+ 	}
+ 
+-	/* Stage two: lock the buffers */
+-	for (i = 0; i < nr; i++) {
+-		bh = arr[i];
+-		lock_buffer(bh);
+-		mark_buffer_async_read(bh);
+-	}
+-
+ 	/*
+-	 * Stage 3: start the IO.  Check for uptodateness
+-	 * inside the buffer lock in case another process reading
+-	 * the underlying blockdev brought it uptodate (the sct fix).
++	 * Start the IO.  Check for uptodateness inside the buffer lock
++	 * in case another process reading the underlying blockdev brought
++	 * it uptodate (the sct fix).
+ 	 */
+-	for (i = 0; i < nr; i++) {
+-		bh = arr[i];
++	bh = head;
++	do {
++		if (!buffer_async_read(bh))
++			continue;
++
+ 		if (buffer_uptodate(bh))
+ 			end_buffer_async_read(bh, 1);
+ 		else
+ 			submit_bh(REQ_OP_READ, bh);
+-	}
++
++		nr--;
++	} while (nr && (bh = bh->b_this_page) != head);
++
+ 	return 0;
+ }
+ EXPORT_SYMBOL(block_read_full_folio);
+-- 
+2.46.1
 
-commit:         9f16d5e6 Merge tag 'for-linus' of git://git.kernel.org..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=13a4dee8580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=7393f07275e8e571
-dashboard link: https://syzkaller.appspot.com/bug?extid=5abecb17ba9299033d79
-compiler:       gcc (Debian 12.2.0-14) 12.2.0, GNU ld (GNU Binutils for Debian) 2.40
-patch:          https://syzkaller.appspot.com/x/patch.diff?x=15b46530580000
-
-Note: testing is done by a robot and is best-effort only.
