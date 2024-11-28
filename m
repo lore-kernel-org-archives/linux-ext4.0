@@ -1,242 +1,163 @@
-Received: from mail-ej1-f46.google.com (mail-ej1-f46.google.com [209.85.218.46])
+Received: from mail-il1-f199.google.com (mail-il1-f199.google.com [209.85.166.199])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C54431FA82B;
-	Wed, 27 Nov 2024 12:21:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.218.46
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BA48712C7FD
+	for <linux-ext4@vger.kernel.org>; Thu, 28 Nov 2024 05:37:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.166.199
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1732710068; cv=none; b=T6RCe6FrEPEGfe7CZa3oZGnNdskBLMVUOfbdxmABG+xtblpyCZKpXdOfJaIrsisYLrXVXGK+RQehF2tzNN18LPEr5sU4jOQccCK3/3JAkmiN5KwtzlJCO8i+ehu+IpayZBmZdTbDki7P4UIrtbtY9Gt1KDihPuSeYnoiYvusQps=
+	t=1732772246; cv=none; b=gD3yfO9y6GD3SK0A+g4zjhA1/7Gy6+LJKj19JTvj3MbGZ0+vVcjWWnvjk2+/Fcbv06B9VdNozR0IAmmZa8byK5wEk2Ym9hPU3XqSP2vCa86Pn43H+Fdh/rdkv1K7wegnBwkN0+NMdGKXkL0cnDh/uP38050yq3XPYmaQQzDEsm0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1732710068; c=relaxed/simple;
-	bh=YoYm/8Gmv4T6pcFqBQPC/t9x+Y5EzGkzxsEPtGJyWxY=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=YY3MJl4OVu8OUoDGcOaZn5AR4b+/vzz+CU0kmgUBL3YtYdSSgTijFKm9ohbfHs0dySlpRjr4LkU5QLHJTDOUM4xCbWmiqHclb9AhEz01MGbmrr+Hx/bbt6VSlFixpgP26b+7JogbFB2b2K+40Ek8hnLQjjzl/BVyUxroiiI1BJI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=nB1F9Utm; arc=none smtp.client-ip=209.85.218.46
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="nB1F9Utm"
-Received: by mail-ej1-f46.google.com with SMTP id a640c23a62f3a-aa53ebdf3caso637065766b.2;
-        Wed, 27 Nov 2024 04:21:06 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1732710065; x=1733314865; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=g4AJxcgbGXlGttAV3Sp9Te5JfEMnLRstmnBehcMGYgI=;
-        b=nB1F9UtmOKHdS2GV6WVqbh28V1k48wgKVHdxUvBqqxX1n/ymEjCawj9m4jBEQ8oEaQ
-         Feohw4ptelSu/Yk78NNPkbVRzwCOIAREdqc7i9o34CQwfOIvxkW0VSIy334UDvU3hcUG
-         QvTmMfqpH+cv2+mNLwc4JN4V/ykFZBpZkAbaekkPLilukFBNdmDsALCRlj/sUQ/vpsoc
-         d91oECNBKd/vEG3E60r3okLSauO/92uFvSn39ei7cCyrEece4gOWCrbQM7T5LCGi7wEs
-         PX19G/gZp6FnZEAI0nG/RiFpXVuPSkJQc4oIpvSlI2/b+D0/GgaZ29jS1qfdbAAF1Ifb
-         9h2g==
+	s=arc-20240116; t=1732772246; c=relaxed/simple;
+	bh=I0fWGtRYkrk71ug5Z5vT0Z9EtDi9G71hOV/nq8reRD4=;
+	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=AJ5XRzSxV7W67mz8wSHyVuZ35qaczPH3m4sqV51FwQq2r5Xp0kT64zVJANyKi0ttDzoodkkHgoYLaZbiaAk0o2KEUBdeq5wBcpkgnF7wNkYCGqBWFyUvIZ5XtftbCOdBYe+0xzeWTmeJ6LnA8eRQCFBdFwmor/glrNh01GOfHYc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.166.199
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-il1-f199.google.com with SMTP id e9e14a558f8ab-3a78e952858so4584835ab.3
+        for <linux-ext4@vger.kernel.org>; Wed, 27 Nov 2024 21:37:24 -0800 (PST)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1732710065; x=1733314865;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=g4AJxcgbGXlGttAV3Sp9Te5JfEMnLRstmnBehcMGYgI=;
-        b=ve4qXIaXOTC18GjdBNrLhJDQklTn2yFSD9KtKoAoex064fZAW28ebrGJ3h7Ol6r1z/
-         RR9PIEKuXBeTFJDxt1WwYoUTiDFGKekt4+83KyYO6DONf61MdnrvopmeNrJCHD5h4Wrb
-         qvQPV5gMLqos7Ts5nIdBS8oUNGfyDP0tEVg4N+kGP2BNUdqSCzcmkK6GPpBmh02NWs+J
-         r8CbafgOHITnAm+fNFdqhyLNePOFQwy/OLxESzdnTC41XLwTeBZiqR1x0+KoR6izHGXO
-         +F//ibuCkgZcfg3zYfpZ0IZwnKCYHIKR4wyzQ8V7oLoECIKYzJCsSneFOJ6Bn2FAnUUG
-         qrGw==
-X-Forwarded-Encrypted: i=1; AJvYcCUTg4A3FKHsbFbmRXrSy9d6/HNESTC2uDg9GNWluSoWspDOlqjk3t6bZ8YgpM8Pf1Bgl1jzpUuAJmqC@vger.kernel.org, AJvYcCUey/64BtCsRIh3knYixLJ2GMwTzwjug8kcws86ci1lx7KWIJpIRgjohuvZXrhFyCbNh2+UGpfCXvW48GjJzQ==@vger.kernel.org, AJvYcCXh8qzEscH9+UuZ+2AyZtyVJ/nfB64qedgE0JMzcv9BDFazWKgo4rpt0PQ7A1LKpmvnRp7sksQS+lICiA==@vger.kernel.org, AJvYcCXq+aEHGHzxx4SA3f6Ueh7ksR6uBJSmHC8/Iq9E6ksqKEoMserYX3Bql3vyykNushi1l18+wH8krNWZdw==@vger.kernel.org
-X-Gm-Message-State: AOJu0Yw72zmDE5k1d2TbmT8A217J5qOwjlOGrZndsfO1xkVh5pTt3yjk
-	pphpqFBLghZbREMH+Q8Fu1rC5aU89FiYUdQHzuhVS0NdXgIRlmeKrYdJZMw3W8GQjXmO4c+3nu7
-	+GsNxpFe/a+LNkWF5ttYlvIARUkc+mn/R
-X-Gm-Gg: ASbGncsFs2oqItRVGFUJ44hocNzvR5d+JMByX/vlCbHr2ZhH9tPeLIfGNBz+K8D/hE4
-	Eu0mEHp9j1uiQgdZm8Wg0EqIkHJZQfKk=
-X-Google-Smtp-Source: AGHT+IFZo9o4G9xu1yI2+N8EIMu+e3DL435vyXxWc0NrJTLb0aMbN7osMheigvrNa3XxJ9bTAmpltIRm5/4kmYOjn4g=
-X-Received: by 2002:a17:906:315b:b0:aa5:3853:553e with SMTP id
- a640c23a62f3a-aa58103dbb5mr264470966b.47.1732710064815; Wed, 27 Nov 2024
- 04:21:04 -0800 (PST)
+        d=1e100.net; s=20230601; t=1732772244; x=1733377044;
+        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=z/Aeo78pYxl1DJJesHxrCd5dfR7WVwjSchzygaVTFbM=;
+        b=O7N33IZX63XwCCcFt47kLrcPRq06bt/lJUncUgzSL+IGz8T94Yr8boHAJY1kJJTt2y
+         p4HEv2rAbyMGc0FKupnH8x9qk8eaFFZyuAQPgGq/kJMowJXGCT6qrxa/ZRjYy69s3Alv
+         NqLdmDU+fUmvsI/KMjIWSW9TYn9BtpU6UqB3ym5WEIB/7eHzCV5yCRB3zvebCpETVvX3
+         TdPWzvPj2VymAKq76HhNWEUXwnMS67nnqL8rn2dRpJqJcRlnpd4SloklC9HX9XglQOIZ
+         Gp8Ocvynr6KPRSTItPiLYbp08aAdbnuk/elUuBfZDPsJ5Cebji9EFtgKUB/KOThM+aVW
+         udcw==
+X-Forwarded-Encrypted: i=1; AJvYcCWnmBo0vyKtEbIPj0pX5DuvZnStJ5MR3bJHGAdr3VZY50CcNJRudoncp4dshLR16E8EUkC7KKtwGq/R@vger.kernel.org
+X-Gm-Message-State: AOJu0YyU2OLWdlMJZjo1Pk5m2Xa2xCVCEn2Qy3eVfDohvEwfeemSavJA
+	RwnkOx5cpsxdaqwNr0xosnq/z/TPAIDQhKm86QfEIZO/n2LTs6BYAORmUDNZ4OCU8VGWMHW3vdl
+	1I3IZhRBTbK3CCGSiEFsqxVmgRt9jglaNHYSsCcUZsh+fiijBgqpSmbo=
+X-Google-Smtp-Source: AGHT+IEWPYyxD9EO0mGxxvRLOUDwes72Or4cilDb2il/HYQsAUdTOlHiEsM0UvEWTTS01yZOvxicABaMAOLEDxlFGCSKvhaKkODb
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <cover.1731684329.git.josef@toxicpanda.com> <b80986f8d5b860acea2c9a73c0acd93587be5fe4.1731684329.git.josef@toxicpanda.com>
- <20241121104428.wtlrfhadcvipkjia@quack3> <CAOQ4uxhTiR8eHaf4q0_gLC62CWi9KdaQ05GSeqFkKFkXCH++PA@mail.gmail.com>
- <20241121163618.ubz7zplrnh66aajw@quack3> <CAOQ4uxhsEA2zj-a6H+==S+6G8nv+BQEJDoGjJeimX0yRhHso2w@mail.gmail.com>
- <CAOQ4uxgsjKwX7eoYcjU8SRWjRw39MNv=CMjjO1mQGr9Cd4iafQ@mail.gmail.com>
- <20241122124215.3k3udv5o6eys6ffy@quack3> <CAOQ4uxgCU6fETZTMdyzQmfyE4oBF_xgqpBdVjP20K1Yp1BSDxQ@mail.gmail.com>
- <20241127121838.3fmhjx26cfxcegro@quack3>
-In-Reply-To: <20241127121838.3fmhjx26cfxcegro@quack3>
-From: Amir Goldstein <amir73il@gmail.com>
-Date: Wed, 27 Nov 2024 13:20:52 +0100
-Message-ID: <CAOQ4uxjSQQr88W9z7xK5LbotvpiPon8nk=L33J5Z5RamEGHNCw@mail.gmail.com>
-Subject: Re: [PATCH v8 10/19] fanotify: introduce FAN_PRE_ACCESS permission event
-To: Jan Kara <jack@suse.cz>
-Cc: Josef Bacik <josef@toxicpanda.com>, kernel-team@fb.com, linux-fsdevel@vger.kernel.org, 
-	brauner@kernel.org, torvalds@linux-foundation.org, viro@zeniv.linux.org.uk, 
-	linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org, linux-mm@kvack.org, 
-	linux-ext4@vger.kernel.org
+X-Received: by 2002:a05:6e02:1785:b0:3a7:8040:5962 with SMTP id
+ e9e14a558f8ab-3a7c5445eb6mr66056225ab.0.1732772243891; Wed, 27 Nov 2024
+ 21:37:23 -0800 (PST)
+Date: Wed, 27 Nov 2024 21:37:23 -0800
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <67480193.050a0220.253251.0071.GAE@google.com>
+Subject: [syzbot] [ext4?] WARNING: locking bug in jbd2_alloc
+From: syzbot <syzbot+92b9109f47b38b1a6657@syzkaller.appspotmail.com>
+To: jack@suse.com, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	syzkaller-bugs@googlegroups.com, tytso@mit.edu
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 
-On Wed, Nov 27, 2024 at 1:18=E2=80=AFPM Jan Kara <jack@suse.cz> wrote:
->
-> On Fri 22-11-24 14:51:23, Amir Goldstein wrote:
-> > On Fri, Nov 22, 2024 at 1:42=E2=80=AFPM Jan Kara <jack@suse.cz> wrote:
-> > >
-> > > On Thu 21-11-24 19:37:43, Amir Goldstein wrote:
-> > > > On Thu, Nov 21, 2024 at 7:31=E2=80=AFPM Amir Goldstein <amir73il@gm=
-ail.com> wrote:
-> > > > > On Thu, Nov 21, 2024 at 5:36=E2=80=AFPM Jan Kara <jack@suse.cz> w=
-rote:
-> > > > > > On Thu 21-11-24 15:18:36, Amir Goldstein wrote:
-> > > > > > > On Thu, Nov 21, 2024 at 11:44=E2=80=AFAM Jan Kara <jack@suse.=
-cz> wrote:
-> > > > > > > and also always emitted ACCESS_PERM.
-> > > > > >
-> > > > > > I know that and it's one of those mostly useless events AFAICT.
-> > > > > >
-> > > > > > > my POC is using that PRE_ACCESS to populate
-> > > > > > > directories on-demand, although the functionality is incomple=
-te without the
-> > > > > > > "populate on lookup" event.
-> > > > > >
-> > > > > > Exactly. Without "populate on lookup" doing "populate on readdi=
-r" is ok for
-> > > > > > a demo but not really usable in practice because you can get sp=
-urious
-> > > > > > ENOENT from a lookup.
-> > > > > >
-> > > > > > > > avoid the mistake of original fanotify which had some event=
-s available on
-> > > > > > > > directories but they did nothing and then you have to ponde=
-r hard whether
-> > > > > > > > you're going to break userspace if you actually start emitt=
-ing them...
-> > > > > > >
-> > > > > > > But in any case, the FAN_ONDIR built-in filter is applicable =
-to PRE_ACCESS.
-> > > > > >
-> > > > > > Well, I'm not so concerned about filtering out uninteresting ev=
-ents. I'm
-> > > > > > more concerned about emitting the event now and figuring out la=
-ter that we
-> > > > > > need to emit it in different places or with some other info whe=
-n actual
-> > > > > > production users appear.
-> > > > > >
-> > > > > > But I've realized we must allow pre-content marks to be placed =
-on dirs so
-> > > > > > that such marks can be placed on parents watching children. Wha=
-t we'd need
-> > > > > > to forbid is a combination of FAN_ONDIR and FAN_PRE_ACCESS, wou=
-ldn't we?
-> > > > >
-> > > > > Yes, I think that can work well for now.
-> > > > >
-> > > >
-> > > > Only it does not require only check at API time that both flags are=
- not
-> > > > set, because FAN_ONDIR can be set earlier and then FAN_PRE_ACCESS
-> > > > can be added later and vice versa, so need to do this in
-> > > > fanotify_may_update_existing_mark() AFAICT.
-> > >
-> > > I have now something like:
-> > >
-> > > @@ -1356,7 +1356,7 @@ static int fanotify_group_init_error_pool(struc=
-t fsnotify_group *group)
-> > >  }
-> > >
-> > >  static int fanotify_may_update_existing_mark(struct fsnotify_mark *f=
-sn_mark,
-> > > -                                             unsigned int fan_flags)
-> > > +                                            __u32 mask, unsigned int=
- fan_flags)
-> > >  {
-> > >         /*
-> > >          * Non evictable mark cannot be downgraded to evictable mark.
-> > > @@ -1383,6 +1383,11 @@ static int fanotify_may_update_existing_mark(s=
-truct fsnotify_mark *fsn_mark,
-> > >             fsn_mark->flags & FSNOTIFY_MARK_FLAG_IGNORED_SURV_MODIFY)
-> > >                 return -EEXIST;
-> > >
-> > > +       /* For now pre-content events are not generated for directori=
-es */
-> > > +       mask |=3D fsn_mark->mask;
-> > > +       if (mask & FANOTIFY_PRE_CONTENT_EVENTS && mask & FAN_ONDIR)
-> > > +               return -EEXIST;
-> > > +
-> >
-> > EEXIST is going to be confusing if there was never any mark.
-> > Either return -EINVAL here or also check this condition on the added ma=
-sk
-> > itself before calling fanotify_add_mark() and return -EINVAL there.
-> >
-> > I prefer two distinct errors, but probably one is also good enough.
->
-> That's actually a good point. My previous change allowed setting
-> FAN_PRE_ACCESS | FAN_ONDIR on a new mark because that doesn't get to
-> fanotify_may_update_existing_mark(). So I now have:
->
-> diff --git a/fs/notify/fanotify/fanotify_user.c b/fs/notify/fanotify/fano=
-tify_user.c
-> index 0919ea735f4a..38a46865408e 100644
-> --- a/fs/notify/fanotify/fanotify_user.c
-> +++ b/fs/notify/fanotify/fanotify_user.c
-> @@ -1356,7 +1356,7 @@ static int fanotify_group_init_error_pool(struct fs=
-notify_group *group)
->  }
->
->  static int fanotify_may_update_existing_mark(struct fsnotify_mark *fsn_m=
-ark,
-> -                                             unsigned int fan_flags)
-> +                                            __u32 mask, unsigned int fan=
-_flags)
->  {
->         /*
->          * Non evictable mark cannot be downgraded to evictable mark.
-> @@ -1383,6 +1383,11 @@ static int fanotify_may_update_existing_mark(struc=
-t fsnotify_mark *fsn_mark,
->             fsn_mark->flags & FSNOTIFY_MARK_FLAG_IGNORED_SURV_MODIFY)
->                 return -EEXIST;
->
-> +       /* For now pre-content events are not generated for directories *=
-/
-> +       mask |=3D fsn_mark->mask;
-> +       if (mask & FANOTIFY_PRE_CONTENT_EVENTS && mask & FAN_ONDIR)
-> +               return -EEXIST;
-> +
->         return 0;
->  }
->
-> @@ -1409,7 +1414,7 @@ static int fanotify_add_mark(struct fsnotify_group =
-*group,
->         /*
->          * Check if requested mark flags conflict with an existing mark f=
-lags.
->          */
-> -       ret =3D fanotify_may_update_existing_mark(fsn_mark, fan_flags);
-> +       ret =3D fanotify_may_update_existing_mark(fsn_mark, mask, fan_fla=
-gs);
->         if (ret)
->                 goto out;
->
-> @@ -1905,6 +1910,10 @@ static int do_fanotify_mark(int fanotify_fd, unsig=
-ned int flags, __u64 mask,
->         if (mask & FAN_RENAME && !(fid_mode & FAN_REPORT_NAME))
->                 goto fput_and_out;
->
-> +       /* Pre-content events are not currently generated for directories=
-. */
-> +       if (mask & FANOTIFY_PRE_CONTENT_EVENTS && mask & FAN_ONDIR)
-> +               goto fput_and_out;
-> +
->         if (mark_cmd =3D=3D FAN_MARK_FLUSH) {
->                 ret =3D 0;
->                 if (mark_type =3D=3D FAN_MARK_MOUNT)
-> --
-> 2.35.3
->
+Hello,
 
-Looks good.
+syzbot found the following issue on:
 
-Thanks,
-Amir.
+HEAD commit:    9f16d5e6f220 Merge tag 'for-linus' of git://git.kernel.org..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=11fe76e8580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=e92fc420ca55fe33
+dashboard link: https://syzkaller.appspot.com/bug?extid=92b9109f47b38b1a6657
+compiler:       Debian clang version 15.0.6, GNU ld (GNU Binutils for Debian) 2.40
+
+Unfortunately, I don't have any reproducer for this issue yet.
+
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/c9f905470542/disk-9f16d5e6.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/5b4c9cc530ec/vmlinux-9f16d5e6.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/e0f262e4c35e/bzImage-9f16d5e6.xz
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+92b9109f47b38b1a6657@syzkaller.appspotmail.com
+
+loop2: detected capacity change from 0 to 32768
+JBD2: Ignoring recovery information on journal
+ocfs2: Mounting device (7,2) on (node local, slot 0) with ordered data mode.
+------------[ cut here ]------------
+Looking for class "lock" with key init_kmem_cache_cpus.__key, but found a different class "&c->lock" with the same key
+WARNING: CPU: 1 PID: 6128 at kernel/locking/lockdep.c:939 look_up_lock_class+0xdc/0x170 kernel/locking/lockdep.c:936
+Modules linked in:
+CPU: 1 UID: 0 PID: 6128 Comm: syz.2.25 Not tainted 6.12.0-syzkaller-09073-g9f16d5e6f220 #0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 09/13/2024
+RIP: 0010:look_up_lock_class+0xdc/0x170 kernel/locking/lockdep.c:936
+Code: 01 0f 85 8a 00 00 00 c6 05 68 74 47 04 01 90 49 8b 16 49 8b 76 18 48 8b 8b b8 00 00 00 48 c7 c7 00 fa 0a 8c e8 b5 9c 97 f5 90 <0f> 0b 90 90 eb 61 90 e8 58 cc ea f8 e8 53 f7 b6 f5 48 c7 c7 40 f9
+RSP: 0018:ffffc90004e25dd0 EFLAGS: 00010046
+RAX: e7d07740ab1e6700 RBX: ffffffff93c329a0 RCX: 0000000000080000
+RDX: ffffc9000c6f9000 RSI: 0000000000007ed7 RDI: 0000000000007ed8
+RBP: ffffc90004e25ee0 R08: ffffffff815687d2 R09: 1ffff110170e519a
+R10: dffffc0000000000 R11: ffffed10170e519b R12: ffffe8ffffd7fbf0
+R13: ffffe8ffffd7fbf0 R14: ffffe8ffffd7fbf0 R15: ffffffff9a41b310
+FS:  00007fe17797a6c0(0000) GS:ffff8880b8700000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000001b3181fffc CR3: 000000005d318000 CR4: 00000000003526f0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+Call Trace:
+ <TASK>
+ register_lock_class+0x102/0x980 kernel/locking/lockdep.c:1290
+ __lock_acquire+0xf3/0x2100 kernel/locking/lockdep.c:5101
+ lock_acquire+0x1ed/0x550 kernel/locking/lockdep.c:5849
+ local_lock_acquire+0x20/0x80 include/linux/local_lock_internal.h:29
+ ___slab_alloc+0x11e2/0x14b0 mm/slub.c:3867
+ __slab_alloc+0x58/0xa0 mm/slub.c:3908
+ __slab_alloc_node mm/slub.c:3961 [inline]
+ slab_alloc_node mm/slub.c:4122 [inline]
+ kmem_cache_alloc_noprof+0x1c1/0x2a0 mm/slub.c:4141
+ jbd2_alloc+0x155/0x1b0 fs/jbd2/journal.c:2787
+ jbd2_journal_get_undo_access+0x1d1/0x310 fs/jbd2/transaction.c:1395
+ __ocfs2_journal_access+0x4de/0x8a0 fs/ocfs2/journal.c:692
+ ocfs2_block_group_set_bits+0x29e/0x9a0 fs/ocfs2/suballoc.c:1387
+ ocfs2_search_chain+0x1b27/0x26d0 fs/ocfs2/suballoc.c:1900
+ ocfs2_claim_suballoc_bits+0x11ef/0x2570 fs/ocfs2/suballoc.c:1985
+ __ocfs2_claim_clusters+0x332/0xa40 fs/ocfs2/suballoc.c:2395
+ ocfs2_claim_clusters fs/ocfs2/suballoc.c:2432 [inline]
+ ocfs2_block_group_alloc_contig fs/ocfs2/suballoc.c:432 [inline]
+ ocfs2_block_group_alloc fs/ocfs2/suballoc.c:699 [inline]
+ ocfs2_reserve_suballoc_bits+0x1161/0x4eb0 fs/ocfs2/suballoc.c:832
+ ocfs2_reserve_new_metadata_blocks+0x41c/0x9c0 fs/ocfs2/suballoc.c:982
+ ocfs2_mknod+0x143a/0x2b40 fs/ocfs2/namei.c:345
+ ocfs2_create+0x1ab/0x480 fs/ocfs2/namei.c:672
+ lookup_open fs/namei.c:3649 [inline]
+ open_last_lookups fs/namei.c:3748 [inline]
+ path_openat+0x1c03/0x3590 fs/namei.c:3984
+ do_filp_open+0x27f/0x4e0 fs/namei.c:4014
+ do_sys_openat2+0x13e/0x1d0 fs/open.c:1402
+ do_sys_open fs/open.c:1417 [inline]
+ __do_sys_open fs/open.c:1425 [inline]
+ __se_sys_open fs/open.c:1421 [inline]
+ __x64_sys_open+0x225/0x270 fs/open.c:1421
+ do_syscall_x64 arch/x86/entry/common.c:52 [inline]
+ do_syscall_64+0xf3/0x230 arch/x86/entry/common.c:83
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7fe176b7e819
+Code: ff ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 a8 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007fe17797a038 EFLAGS: 00000246 ORIG_RAX: 0000000000000002
+RAX: ffffffffffffffda RBX: 00007fe176d35fa0 RCX: 00007fe176b7e819
+RDX: 0000000000000000 RSI: 0000000000145142 RDI: 0000000020000240
+RBP: 00007fe176bf175e R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
+R13: 0000000000000000 R14: 00007fe176d35fa0 R15: 00007fff9fb5c5d8
+ </TASK>
+
+
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
+
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
+
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
+
+If you want to undo deduplication, reply with:
+#syz undup
