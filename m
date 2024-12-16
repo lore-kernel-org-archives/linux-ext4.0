@@ -1,27 +1,28 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3E057157469;
-	Mon, 16 Dec 2024 01:42:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 95914157A67;
+	Mon, 16 Dec 2024 01:42:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1734313365; cv=none; b=PFFzs8Dxffb1kjcg5TQl+bNmQLSnqi2m/8n4Uq2sas52mLv4uNP4LIgfI+X3bHi+VGFl2uw4XAV0cKG8bE2AyS/Aql/7GBbHhq2/2b+ElJUiVUrk8FR7dsoZ2gK1+xVTCRJfslJTTVyHoBOmMyz1YcRPtDbjXPwr3eZCZElrJ6U=
+	t=1734313366; cv=none; b=QHkNCeDphjPulv+bPrjPl1ZUEWOqnKLDgSchJlFLbiEsbmpqWGdTTmPbIyBWtPGBruUARyDenfdeSPWPYf2XxjlzBSUOLpGWfn7OfhXDr5fb7OC9FclQOAapJI1RMxqP5ZFi1leOLsySy66YcnO/f/Op2worb6sI5ZA10SOBi2c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1734313365; c=relaxed/simple;
-	bh=mIBk19AdS2D+SOvJqNYJC67SIx3vIcw/biv4HJIz8Jo=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=dYtHvh8pn73zZLdSX8hVjHf4HhTa+9CxqgBZDKT0FJo/XOMavptmQMYmMdeAzFohhs/NiQL+IX0B6rm1GdP41zfZrYR7EO2O8cznWVMShHa1EnNa8EgDwhmqDKKh15FjkdljmmTK41Df7ngTrgkMbGpkUYwwFT6PI1BFk9JdtJw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	s=arc-20240116; t=1734313366; c=relaxed/simple;
+	bh=fdNoRABvkDE8X/ebG6xgN/cHN7wTGXsTiN1bVXWtw8M=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=EGQ5KBo3xENrtyQ3bzUjCl6Am9mxR9PcCUjumpH0ue9sWyu5FInpvtWSAklmM9Bhvp0c1MogmNhnGcdjVeVaoNF7xWIabmc032l9U60l/pk4Vi3veQJdEYX6n0uvP5SbN7LK/DtVXZMZHAKxqvbbNhLq8wSDnTp1ZxOuWPtn0m4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4YBN3T6RnQz4f3jsr;
-	Mon, 16 Dec 2024 09:42:13 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4YBN3c1XnQz4f3jqP;
+	Mon, 16 Dec 2024 09:42:20 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 508671A0568;
-	Mon, 16 Dec 2024 09:42:33 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 98D6C1A07BA;
+	Mon, 16 Dec 2024 09:42:34 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.112.188])
-	by APP4 (Coremail) with SMTP id gCh0CgCHY4d5hV9nYi3kEg--.4387S4;
-	Mon, 16 Dec 2024 09:42:32 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgCHY4d5hV9nYi3kEg--.4387S7;
+	Mon, 16 Dec 2024 09:42:34 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -34,10 +35,12 @@ Cc: linux-fsdevel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH v4 00/10] ext4: clean up and refactor fallocate
-Date: Mon, 16 Dec 2024 09:39:05 +0800
-Message-ID: <20241216013915.3392419-1-yi.zhang@huaweicloud.com>
+Subject: [PATCH v4 03/10] ext4: don't write back data before punch hole in nojournal mode
+Date: Mon, 16 Dec 2024 09:39:08 +0800
+Message-ID: <20241216013915.3392419-4-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
+In-Reply-To: <20241216013915.3392419-1-yi.zhang@huaweicloud.com>
+References: <20241216013915.3392419-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -45,97 +48,82 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCHY4d5hV9nYi3kEg--.4387S4
-X-Coremail-Antispam: 1UD129KBjvJXoWxZF4Duw48Zr43GrWxtw15XFb_yoW5urWrpF
-	W3WF45Xr1UWwnrCws7Wa1xXF1rK3WrJFW7JryIgw1xur4kuFyIvFsrK3W09FW7JrWrGF12
-	vF40yF1ku3WUAa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUU9Y14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
-	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
-	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
-	2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
-	W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2
-	Y2ka0xkIwI1lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x
-	0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2
-	zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF
-	4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWU
-	CwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCT
-	nIWIevJa73UjIFyTuYvjfUonmRUUUUU
+X-CM-TRANSID:gCh0CgCHY4d5hV9nYi3kEg--.4387S7
+X-Coremail-Antispam: 1UD129KBjvJXoW7WF13ZFW5tryUWrWkXF43Wrg_yoW8ZF18pr
+	WakrW5KF48WFWkCw4xtFsrXF1rKayDGrW8Xry8Gw13ua45ArnFgF4j9F1rWa4UtrZrA3yj
+	vF4jyryxWryUuaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUm014x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JrWl82xGYIkIc2
+	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
+	xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
+	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
+	kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
+	6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
+	vEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVj
+	vjDU0xZFpf9x0JUHWlkUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Changes since v3:
- - In patch 1, rename ext4_truncate_folios_range() and move journalled
-   mode specified handles and truncate_pagecache_range() into this
-   helper.
- - In patch 3, switch to use ext4_truncate_page_cache_block_range().
- - In patch 4, use IS_ALIGNED macro to check offset alignments and
-   introduce EXT4_B_TO_LBLK to do the lblk conversion.
- - In patch 5, keep the first ext4_alloc_file_blocks() call before
-   truncating pagecache.
- - In patch 9, rename 'out' label to 'out_inode_lock'.
-Changes since v2:
- - Add Patch 1 to address a newly discovered data loss issue that occurs
-   when using mmap to write after zeroing out a partial page on a
-   filesystem with the block size smaller than the page size.
- - Do not write all data before punching hole, zeroing out and
-   collapsing range as Jan suggested, also drop current data writeback
-   in ext4_punch_hole().
- - Since we don't write back all data in these 4 operations, we only
-   writeback data during inserting range,so do not factor out new
-   helpers in the last two patches, just move common components of
-   sub-operations into ext4_fallocate().
- - Only keep Jan's review tag on patch 2 and 8, other patches contain
-   many code adaptations, so please review them again.
-Changes since v1:
- - Fix an using uninitialized variable problem in the error out path in
-   ext4_do_fallocate() in patch 08.
+There is no need to write back all data before punching a hole in
+non-journaled mode since it will be dropped soon after removing space.
+Therefore, the call to filemap_write_and_wait_range() can be eliminated.
+Besides, similar to ext4_zero_range(), we must address the case of
+partially punched folios when block size < page size. It is essential to
+remove writable userspace mappings to ensure that the folio can be
+faulted again during subsequent mmap write access.
 
-v3: https://lore.kernel.org/linux-ext4/20241022111059.2566137-1-yi.zhang@huaweicloud.com/
-    https://lore.kernel.org/linux-ext4/20241010133333.146793-1-yi.zhang@huawei.com/
-v2: https://lore.kernel.org/linux-ext4/20240904062925.716856-1-yi.zhang@huaweicloud.com/
+In journaled mode, we need to write dirty pages out before discarding
+page cache in case of crash before committing the freeing data
+transaction, which could expose old, stale data, even if synchronization
+has been performed.
 
-Thanks,
-Yi.
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/inode.c | 18 +++++-------------
+ 1 file changed, 5 insertions(+), 13 deletions(-)
 
-Original Info:
-
-Current ext4 fallocate code is mess with mode checking, locking, input
-parameter checking, position calculation, and having some stale code.
-Almost all five sub-operation share similar preparation steps, so it
-deserves a cleanup now.
-
-This series tries to improve the code by refactoring all operations
-related to fallocate. It unifies variable naming, reduces unnecessary
-position calculations, and factors out common preparation components.
-
-The first patch addresses a potential data loss issue that occurs when
-using mmap to write after zeroing out partial blocks of a page on a
-filesystem where the block size is smaller than the page size.
-Subsequent patches focus on cleanup and refactoring, please see them for
-details. After this series, we will significantly reduce redundant code
-and enhance clarity compared to the previous version.
-
-
-Zhang Yi (10):
-  ext4: remove writable userspace mappings before truncating page cache
-  ext4: don't explicit update times in ext4_fallocate()
-  ext4: don't write back data before punch hole in nojournal mode
-  ext4: refactor ext4_punch_hole()
-  ext4: refactor ext4_zero_range()
-  ext4: refactor ext4_collapse_range()
-  ext4: refactor ext4_insert_range()
-  ext4: factor out ext4_do_fallocate()
-  ext4: move out inode_lock into ext4_fallocate()
-  ext4: move out common parts into ext4_fallocate()
-
- fs/ext4/ext4.h    |   4 +
- fs/ext4/extents.c | 527 +++++++++++++++++-----------------------------
- fs/ext4/inode.c   | 204 ++++++++++--------
- 3 files changed, 312 insertions(+), 423 deletions(-)
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index bf735d06b621..a5ba2b71d508 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4018,17 +4018,6 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 
+ 	trace_ext4_punch_hole(inode, offset, length, 0);
+ 
+-	/*
+-	 * Write out all dirty pages to avoid race conditions
+-	 * Then release them.
+-	 */
+-	if (mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
+-		ret = filemap_write_and_wait_range(mapping, offset,
+-						   offset + length - 1);
+-		if (ret)
+-			return ret;
+-	}
+-
+ 	inode_lock(inode);
+ 
+ 	/* No need to punch hole beyond i_size */
+@@ -4090,8 +4079,11 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 		ret = ext4_update_disksize_before_punch(inode, offset, length);
+ 		if (ret)
+ 			goto out_dio;
+-		truncate_pagecache_range(inode, first_block_offset,
+-					 last_block_offset);
++
++		ret = ext4_truncate_page_cache_block_range(inode,
++				first_block_offset, last_block_offset + 1);
++		if (ret)
++			goto out_dio;
+ 	}
+ 
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
 -- 
 2.46.1
 
