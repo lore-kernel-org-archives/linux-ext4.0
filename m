@@ -1,28 +1,27 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0CC7A1547E4;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3E057157469;
 	Mon, 16 Dec 2024 01:42:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1734313365; cv=none; b=M4mEDJDet3NTQfsY/pr9JCk4tpaHJd8NwaRy1MWAQgSqn3rbNX3DlTT7IG+/f6ubypiA4NxzkFXGslZUyT2JTzBFR4zGJLKqAtlgZO95TKPAjJRE59bI1XQvC6DqHZ8iyqcdR7nJXGY0CH6NPHTNZSrCacG9jWEp1aucDqo41PA=
+	t=1734313365; cv=none; b=PFFzs8Dxffb1kjcg5TQl+bNmQLSnqi2m/8n4Uq2sas52mLv4uNP4LIgfI+X3bHi+VGFl2uw4XAV0cKG8bE2AyS/Aql/7GBbHhq2/2b+ElJUiVUrk8FR7dsoZ2gK1+xVTCRJfslJTTVyHoBOmMyz1YcRPtDbjXPwr3eZCZElrJ6U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1734313365; c=relaxed/simple;
-	bh=ghkehPLxJeqBM1xVFkRs1QNUpRagy7jWqQJOzh37lvA=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=DmteAFOAMPCjKC88P4l+A9XNtyjNjHV11G0kB23HnQpiFCbxncqDsO7xpJ/gWSEZN3uHST2wTTT1I1kMCBmtuiJVowrkP40b2iKP2Vu+p4iBRndoivIve30j6zMQaw1SXYow5XtwU7UqPz8RQSOqnHJNf2CixV1Mq4v0jsA/+2U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	bh=mIBk19AdS2D+SOvJqNYJC67SIx3vIcw/biv4HJIz8Jo=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=dYtHvh8pn73zZLdSX8hVjHf4HhTa+9CxqgBZDKT0FJo/XOMavptmQMYmMdeAzFohhs/NiQL+IX0B6rm1GdP41zfZrYR7EO2O8cznWVMShHa1EnNa8EgDwhmqDKKh15FjkdljmmTK41Df7ngTrgkMbGpkUYwwFT6PI1BFk9JdtJw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4YBN3V5Xbcz4f3kFN;
-	Mon, 16 Dec 2024 09:42:14 +0800 (CST)
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4YBN3T6RnQz4f3jsr;
+	Mon, 16 Dec 2024 09:42:13 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 314B01A0196;
-	Mon, 16 Dec 2024 09:42:34 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.112.188])
-	by APP4 (Coremail) with SMTP id gCh0CgCHY4d5hV9nYi3kEg--.4387S6;
+	by mail.maildlp.com (Postfix) with ESMTP id 508671A0568;
 	Mon, 16 Dec 2024 09:42:33 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.112.188])
+	by APP4 (Coremail) with SMTP id gCh0CgCHY4d5hV9nYi3kEg--.4387S4;
+	Mon, 16 Dec 2024 09:42:32 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -35,12 +34,10 @@ Cc: linux-fsdevel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	yukuai3@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH v4 02/10] ext4: don't explicit update times in ext4_fallocate()
-Date: Mon, 16 Dec 2024 09:39:07 +0800
-Message-ID: <20241216013915.3392419-3-yi.zhang@huaweicloud.com>
+Subject: [PATCH v4 00/10] ext4: clean up and refactor fallocate
+Date: Mon, 16 Dec 2024 09:39:05 +0800
+Message-ID: <20241216013915.3392419-1-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
-In-Reply-To: <20241216013915.3392419-1-yi.zhang@huaweicloud.com>
-References: <20241216013915.3392419-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -48,90 +45,97 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCHY4d5hV9nYi3kEg--.4387S6
-X-Coremail-Antispam: 1UD129KBjvJXoW7Zw18AFWrCrWDuFWfGF45Jrb_yoW5JFWxpr
-	WrJa4fGw10gFyq9rWfKr4UZr1Ik3ZrGr4UXrZ5u3yxua4DtwnYgF1YyFySyF45trW8Zr4Y
-	vFyUK34UXw4j937anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUm014x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
-	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
-	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
-	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
-	IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
-	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
-	xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
-	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
-	kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
-	6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
-	vEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVj
-	vjDU0xZFpf9x0JUQXo7UUUUU=
+X-CM-TRANSID:gCh0CgCHY4d5hV9nYi3kEg--.4387S4
+X-Coremail-Antispam: 1UD129KBjvJXoWxZF4Duw48Zr43GrWxtw15XFb_yoW5urWrpF
+	W3WF45Xr1UWwnrCws7Wa1xXF1rK3WrJFW7JryIgw1xur4kuFyIvFsrK3W09FW7JrWrGF12
+	vF40yF1ku3WUAa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9Y14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
+	1l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
+	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
+	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
+	2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
+	W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2
+	Y2ka0xkIwI1lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x
+	0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2
+	zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF
+	4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWU
+	CwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCT
+	nIWIevJa73UjIFyTuYvjfUonmRUUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-After commit 'ad5cd4f4ee4d ("ext4: fix fallocate to use file_modified to
-update permissions consistently"), we can update mtime and ctime
-appropriately through file_modified() when doing zero range, collapse
-rage, insert range and punch hole, hence there is no need to explicit
-update times in those paths, just drop them.
+Changes since v3:
+ - In patch 1, rename ext4_truncate_folios_range() and move journalled
+   mode specified handles and truncate_pagecache_range() into this
+   helper.
+ - In patch 3, switch to use ext4_truncate_page_cache_block_range().
+ - In patch 4, use IS_ALIGNED macro to check offset alignments and
+   introduce EXT4_B_TO_LBLK to do the lblk conversion.
+ - In patch 5, keep the first ext4_alloc_file_blocks() call before
+   truncating pagecache.
+ - In patch 9, rename 'out' label to 'out_inode_lock'.
+Changes since v2:
+ - Add Patch 1 to address a newly discovered data loss issue that occurs
+   when using mmap to write after zeroing out a partial page on a
+   filesystem with the block size smaller than the page size.
+ - Do not write all data before punching hole, zeroing out and
+   collapsing range as Jan suggested, also drop current data writeback
+   in ext4_punch_hole().
+ - Since we don't write back all data in these 4 operations, we only
+   writeback data during inserting range,so do not factor out new
+   helpers in the last two patches, just move common components of
+   sub-operations into ext4_fallocate().
+ - Only keep Jan's review tag on patch 2 and 8, other patches contain
+   many code adaptations, so please review them again.
+Changes since v1:
+ - Fix an using uninitialized variable problem in the error out path in
+   ext4_do_fallocate() in patch 08.
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/extents.c | 5 -----
- fs/ext4/inode.c   | 1 -
- 2 files changed, 6 deletions(-)
+v3: https://lore.kernel.org/linux-ext4/20241022111059.2566137-1-yi.zhang@huaweicloud.com/
+    https://lore.kernel.org/linux-ext4/20241010133333.146793-1-yi.zhang@huawei.com/
+v2: https://lore.kernel.org/linux-ext4/20240904062925.716856-1-yi.zhang@huaweicloud.com/
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 8dc6b4271b15..7fb38aab241d 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4674,8 +4674,6 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 			goto out_mutex;
- 		}
- 
--		inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
--
- 		ret = ext4_alloc_file_blocks(file, lblk, max_blocks, new_size,
- 					     flags);
- 		filemap_invalidate_unlock(mapping);
-@@ -4699,7 +4697,6 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 		goto out_mutex;
- 	}
- 
--	inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
- 	if (new_size)
- 		ext4_update_inode_size(inode, new_size);
- 	ret = ext4_mark_inode_dirty(handle, inode);
-@@ -5435,7 +5432,6 @@ static int ext4_collapse_range(struct file *file, loff_t offset, loff_t len)
- 	up_write(&EXT4_I(inode)->i_data_sem);
- 	if (IS_SYNC(inode))
- 		ext4_handle_sync(handle);
--	inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
- 	ret = ext4_mark_inode_dirty(handle, inode);
- 	ext4_update_inode_fsync_trans(handle, inode, 1);
- 
-@@ -5545,7 +5541,6 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
- 	/* Expand file to avoid data loss if there is error while shifting */
- 	inode->i_size += len;
- 	EXT4_I(inode)->i_disksize += len;
--	inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
- 	ret = ext4_mark_inode_dirty(handle, inode);
- 	if (ret)
- 		goto out_stop;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c68a8b841148..bf735d06b621 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4138,7 +4138,6 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
- 	if (IS_SYNC(inode))
- 		ext4_handle_sync(handle);
- 
--	inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
- 	ret2 = ext4_mark_inode_dirty(handle, inode);
- 	if (unlikely(ret2))
- 		ret = ret2;
+Thanks,
+Yi.
+
+Original Info:
+
+Current ext4 fallocate code is mess with mode checking, locking, input
+parameter checking, position calculation, and having some stale code.
+Almost all five sub-operation share similar preparation steps, so it
+deserves a cleanup now.
+
+This series tries to improve the code by refactoring all operations
+related to fallocate. It unifies variable naming, reduces unnecessary
+position calculations, and factors out common preparation components.
+
+The first patch addresses a potential data loss issue that occurs when
+using mmap to write after zeroing out partial blocks of a page on a
+filesystem where the block size is smaller than the page size.
+Subsequent patches focus on cleanup and refactoring, please see them for
+details. After this series, we will significantly reduce redundant code
+and enhance clarity compared to the previous version.
+
+
+Zhang Yi (10):
+  ext4: remove writable userspace mappings before truncating page cache
+  ext4: don't explicit update times in ext4_fallocate()
+  ext4: don't write back data before punch hole in nojournal mode
+  ext4: refactor ext4_punch_hole()
+  ext4: refactor ext4_zero_range()
+  ext4: refactor ext4_collapse_range()
+  ext4: refactor ext4_insert_range()
+  ext4: factor out ext4_do_fallocate()
+  ext4: move out inode_lock into ext4_fallocate()
+  ext4: move out common parts into ext4_fallocate()
+
+ fs/ext4/ext4.h    |   4 +
+ fs/ext4/extents.c | 527 +++++++++++++++++-----------------------------
+ fs/ext4/inode.c   | 204 ++++++++++--------
+ 3 files changed, 312 insertions(+), 423 deletions(-)
+
 -- 
 2.46.1
 
