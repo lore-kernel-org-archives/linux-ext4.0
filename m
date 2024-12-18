@@ -1,27 +1,28 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 90413155352;
-	Wed, 18 Dec 2024 06:56:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F458156C6F;
+	Wed, 18 Dec 2024 06:56:13 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1734504974; cv=none; b=Vo8ss2SC4tL32YipavLVNOXOJMZWGcZWWtUBp2I+TY5KNkJ1lyBJFx5/1xG4diOREE5dp8V+ynmngmfwRP/SIKYvvLmvruxx4R/B9kNxZoaEO888nGAjNwPZ81KyK6blyTauFAFGSrFcjW+BebYomRzeIatKupoknAvQNlPGHCM=
+	t=1734504975; cv=none; b=FYBbXzJ5R2gjJ2yeXsI3TAUXT+Tvz71i8p4SkkYiTwYx0NlrZsAMbgzKuPxXs/bniYuKRLwK95o+skmDKjLby/s+aa6NE/YDpYUmeYPlKvD78i6JmxzvCyjiw65GZilLEx3w1aDUHJzWKNqPsQINpgGptTI3c52J6rRmSJS2KxU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1734504974; c=relaxed/simple;
-	bh=uzRQJuJLYSduWMTvv+mu5YgzmpJdM5cFpSon1AIO1yw=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=TbwxwRnQ+lqFz0n/w9pYirhV7ZwYeYvqdxnaqPD/A9tIEFSNUChRVdcIAt84VjX/19lQrUP8xMSTP9s47ZSp4zySeaJ0OEHVLXuJqN0uoqL3LGEGkD+jjxF1nrPgeYZtxjbNxtYRzQpu7+g2eUztrzgn6FzRFCHKWd8RuNU2T0s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	s=arc-20240116; t=1734504975; c=relaxed/simple;
+	bh=PItxZlU7olmAcAYHmchpso4UkCwjhshfqAG2RB3B4/o=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=DeOmEZwVvu8DVvfTBOAEOJZCypkYUlhTFlEG8q/RiZtZ092el0upH7VLIfPLZ1aV+RE6Briat/GfWqL8TpT9BIczjNKDSKzLuCw1GMXuSWNOb+gT0MW1u50K+15+CSEhoaSTo6W2/hRzXWG4zGYJjQoHDPpm1npwL/hRNuUQCpI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4YCkwP5Jvjz4f3kFP;
-	Wed, 18 Dec 2024 14:55:49 +0800 (CST)
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4YCkwQ5mHwz4f3kFP;
+	Wed, 18 Dec 2024 14:55:50 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 3CE8B1A0196;
-	Wed, 18 Dec 2024 14:56:09 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 4961B1A0196;
+	Wed, 18 Dec 2024 14:56:10 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-	by APP3 (Coremail) with SMTP id _Ch0CgCnhMEHcmJnLjMnEw--.53472S2;
-	Wed, 18 Dec 2024 14:56:09 +0800 (CST)
+	by APP3 (Coremail) with SMTP id _Ch0CgCnhMEHcmJnLjMnEw--.53472S5;
+	Wed, 18 Dec 2024 14:56:10 +0800 (CST)
 From: Kemeng Shi <shikemeng@huaweicloud.com>
 To: corbet@lwn.net,
 	tytso@mit.edu,
@@ -31,10 +32,12 @@ Cc: dennis.lamerice@gmail.com,
 	linux-doc@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-Subject: [PATCH v2 0/3] Minor cleanups to ext4 and jbd2
-Date: Wed, 18 Dec 2024 22:54:11 +0800
-Message-Id: <20241218145414.1422946-1-shikemeng@huaweicloud.com>
+Subject: [PATCH v2 3/3] ext4: remove unneeded forward declaration
+Date: Wed, 18 Dec 2024 22:54:14 +0800
+Message-Id: <20241218145414.1422946-4-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20241218145414.1422946-1-shikemeng@huaweicloud.com>
+References: <20241218145414.1422946-1-shikemeng@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -42,50 +45,46 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgCnhMEHcmJnLjMnEw--.53472S2
-X-Coremail-Antispam: 1UD129KBjvdXoWruFWDur4rtr4fZFyxZF4ruFg_yoW3Wwb_XF
-	WxtF98CrW7XFy7uF12kr48JF15ZF47Wrn0v3Z3ta10qF1IqFs5Zw1DCrZ3ur1Uur95Cry5
-	tF1UXry8JFn29jkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUbxAYFVCjjxCrM7AC8VAFwI0_Gr0_Xr1l1xkIjI8I6I8E6xAIw20E
-	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl8c
-	AvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWD
-	JwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVWxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oV
-	Cq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG
-	8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2js
-	IE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCY1x0262kK
-	e7AKxVWUAVWUtwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c
-	02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_
-	GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7
-	CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v2
-	6r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07
-	j3TmhUUUUU=
+X-CM-TRANSID:_Ch0CgCnhMEHcmJnLjMnEw--.53472S5
+X-Coremail-Antispam: 1UD129KBjvdXoW7GF4rAr1xKrWDXw13ZF1rXrb_yoWfCrgE9r
+	WxAr4xu343Cw1SkF4F9a13tFnYkrs5Zw48XFZ5t34UuF4jqr4Uu34DZr17Ars8uF4rGay3
+	Cr1kJF13KrWkWjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUbq8YFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
+	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl82
+	xGYIkIc2x26280x7IE14v26r1rM28IrcIa0xkI8VCY1x0267AKxVW5JVCq3wA2ocxC64kI
+	II0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7
+	xvwVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2
+	z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4
+	xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v2
+	6r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCY1x0262kKe7AKxV
+	WUAVWUtwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E
+	14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIx
+	kGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAF
+	wI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JV
+	WxJwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUsoGQ
+	DUUUU
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
-v1->v2:
--Collect RVB from Yi
--Properly remove t_private_list from document.
+Remove unneeded forward declaration of ext4_destroy_lazyinit_thread().
 
-Patch 1 remove unused ext4 journal callback
-patch 2 remove transaction->t_private_list which is only used by ext4
-journal callback
-Patch 3 remove unneeded forward declaration of
-ext4_destroy_lazyinit_thread().
+Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/super.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-More details can be found in respective patches. Thanks.
-
-
-Kemeng Shi (3):
-  ext4: remove unused ext4 journal callback
-  jbd2: remove unused transaction->t_private_list
-  ext4: remove unneeded forward declaration
-
- Documentation/filesystems/journalling.rst |  4 +-
- fs/ext4/ext4_jbd2.h                       | 84 -----------------------
- fs/ext4/super.c                           | 15 ----
- fs/jbd2/transaction.c                     |  1 -
- include/linux/jbd2.h                      |  6 --
- 5 files changed, 1 insertion(+), 109 deletions(-)
-
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8dfda41dabaa..d294cd43d3f2 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -79,7 +79,6 @@ static int ext4_unfreeze(struct super_block *sb);
+ static int ext4_freeze(struct super_block *sb);
+ static inline int ext2_feature_set_ok(struct super_block *sb);
+ static inline int ext3_feature_set_ok(struct super_block *sb);
+-static void ext4_destroy_lazyinit_thread(void);
+ static void ext4_unregister_li_request(struct super_block *sb);
+ static void ext4_clear_request_list(void);
+ static struct inode *ext4_get_journal_inode(struct super_block *sb,
 -- 
 2.30.0
 
