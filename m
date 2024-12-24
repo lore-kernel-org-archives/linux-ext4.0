@@ -1,36 +1,36 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 35A5D1B85FD;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 28AA71B6CF6;
 	Tue, 24 Dec 2024 12:29:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1735043357; cv=none; b=bwOb33tDfuFFM1/qGVKi60decPep08l7r+CvI8C9y2iEZvolkKX4Bp1f4L3lZAeWnCnCRGlui1XSCGiv66fwKmAUkr2Jgq9zG/86UrduYTY6lrajXRjz7XE84fRCbt69VpQjbC0jydIbhCaaM1356LBosAiXtzxBqWa9sskl2qQ=
+	t=1735043357; cv=none; b=Zt906AqPB+xV9KjyqdqjM/d7wwapHYKIbCE10EhN0E1DFLdyresZDsJ+z7oVX2nps3BF0LL7GdT5Ds4/YIlZUszNeMXD+Mgv0Qux5Vkq2xStQ3bCuqe0zDaERbqyIZVwTriGXYSbGFnGA2IyHm2KH0p0tG5lZUAFA5VWHfup32Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1735043357; c=relaxed/simple;
-	bh=Bj0X2QFcEtpYuTf8EIvOv+6sAYkgT645Blxjon+pv0E=;
+	bh=sl03qk5wmNGrYwSL8jjvJ+NBSErs41ttHRFZc7vUYRU=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=WBrC79rg6qJhj11vKb78Cu6bkX+7PQbeGvYZJxHoDFHGbdjbxPkcPAWh2ozm+GClVz4Zuk455CzuPLMBtGhOwK34glLT1xTXG6I5mchoa8pDw2SWswiUhNI7jgoCXIC2mK5VbV6x2X5weMM1THE5fcFEl65P7DMHw6K0vV3KmT8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=IxStntRr5nO5dO7i9N5AuKTKeZSakPjiHdjVF5U5Cnvpuq3/ldrqC8fiE8SBgQFWAKJBO/GSopmsIrcn0bR3GYLWtYYbAoTdXLTSRVvA6XtJ5quyxUippXC1rjndPVAV8gLfTFz4CdshRTrskpcIOBUiQC4B6npcRuSiK9eVMEA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4YHZ1v47fBz4f3lWF;
-	Tue, 24 Dec 2024 20:28:51 +0800 (CST)
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4YHZ1w1F4wz4f3jdG;
+	Tue, 24 Dec 2024 20:28:52 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 570B01A018D;
-	Tue, 24 Dec 2024 20:29:12 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id D59251A018D;
+	Tue, 24 Dec 2024 20:29:11 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.124.27])
-	by APP3 (Coremail) with SMTP id _Ch0CgDXs8AWqWpnruNnFQ--.3177S5;
-	Tue, 24 Dec 2024 20:29:12 +0800 (CST)
+	by APP3 (Coremail) with SMTP id _Ch0CgDXs8AWqWpnruNnFQ--.3177S3;
+	Tue, 24 Dec 2024 20:29:11 +0800 (CST)
 From: Kemeng Shi <shikemeng@huaweicloud.com>
 To: tytso@mit.edu,
 	jack@suse.com
 Cc: linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH 3/6] jbd2: remove unused return value of do_readahead
-Date: Wed, 25 Dec 2024 04:27:04 +0800
-Message-Id: <20241224202707.1530558-4-shikemeng@huaweicloud.com>
+Subject: [PATCH 1/6] jbd2: remove unused h_jdata flag of handle
+Date: Wed, 25 Dec 2024 04:27:02 +0800
+Message-Id: <20241224202707.1530558-2-shikemeng@huaweicloud.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20241224202707.1530558-1-shikemeng@huaweicloud.com>
 References: <20241224202707.1530558-1-shikemeng@huaweicloud.com>
@@ -41,81 +41,52 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgDXs8AWqWpnruNnFQ--.3177S5
-X-Coremail-Antispam: 1UD129KBjvJXoW7uw1UWFW5WrWxCrWxCry3Arb_yoW8Xw13pr
-	n8Ka90kFZ0yr1jva4kJFs8tFWIgF47tFyUCrWqkwn5tF45JFsIqa4vgF1UtFyUtF95ua18
-	Zr1vv3srGw4jk3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUBjb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M280x2IEY4vEnII2IxkI6r1a6r45M2
-	8IrcIa0xkI8VA2jI8067AKxVWUWwA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK
-	0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW5JVW7JwA2z4
-	x0Y4vE2Ix0cI8IcVCY1x0267AKxVWxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2
-	z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4
-	xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v2
-	6r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwI
-	xGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480
-	Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7
-	IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k2
-	6cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxV
-	AFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07jy0PhUUUUU=
+X-CM-TRANSID:_Ch0CgDXs8AWqWpnruNnFQ--.3177S3
+X-Coremail-Antispam: 1UD129KBjvdXoW7Gw1UGFykJF1xXFWDZr15XFb_yoWftrX_Aw
+	4vyrs7WrWxXFnxXw1fKFnrAFsxGay8Jr1UuFnYqr4qkryUZay5Ww4xAFs8ZrW7uFs3Cr43
+	WF18WryxKrnI9jkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUbf8YFVCjjxCrM7AC8VAFwI0_Gr0_Xr1l1xkIjI8I6I8E6xAIw20E
+	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l87I20VAvwVAaII0Ic2I_JFv_Gryl82
+	xGYIkIc2x26280x7IE14v26r18M28IrcIa0xkI8VCY1x0267AKxVWUXVWUCwA2ocxC64kI
+	II0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26ryj6F1UM28EF7
+	xvwVC0I7IYx2IY6xkF7I0E14v26F4j6r4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28E
+	F7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F4
+	0EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_
+	Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JMxAIw28IcxkI7VAKI4
+	8JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xv
+	wVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xIIjx
+	v20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20E
+	Y4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267
+	AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU0a0PDUUUUU==
 X-CM-SenderInfo: 5vklyvpphqwq5kxd4v5lfo033gof0z/
 
-Remove unused return value of do_readahead.
+Flag h_jdata is not used, just remove it.
 
 Signed-off-by: Kemeng Shi <shikemeng@huaweicloud.com>
 ---
- fs/jbd2/recovery.c | 11 +++--------
- 1 file changed, 3 insertions(+), 8 deletions(-)
+ include/linux/jbd2.h | 2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index 9192be7c19d8..a671f8ee7dd2 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -65,9 +65,8 @@ static void journal_brelse_array(struct buffer_head *b[], int n)
-  */
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 50f7ea8714bf..c7fdb2b1b9a6 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -459,7 +459,6 @@ struct jbd2_revoke_table_s;
+  * @h_ref: Reference count on this handle.
+  * @h_err: Field for caller's use to track errors through large fs operations.
+  * @h_sync: Flag for sync-on-close.
+- * @h_jdata: Flag to force data journaling.
+  * @h_reserved: Flag for handle for reserved credits.
+  * @h_aborted: Flag indicating fatal error on handle.
+  * @h_type: For handle statistics.
+@@ -491,7 +490,6 @@ struct jbd2_journal_handle
  
- #define MAXBUF 8
--static int do_readahead(journal_t *journal, unsigned int start)
-+static void do_readahead(journal_t *journal, unsigned int start)
- {
--	int err;
- 	unsigned int max, nbufs, next;
- 	unsigned long long blocknr;
- 	struct buffer_head *bh;
-@@ -85,7 +84,7 @@ static int do_readahead(journal_t *journal, unsigned int start)
- 	nbufs = 0;
- 
- 	for (next = start; next < max; next++) {
--		err = jbd2_journal_bmap(journal, next, &blocknr);
-+		int err = jbd2_journal_bmap(journal, next, &blocknr);
- 
- 		if (err) {
- 			printk(KERN_ERR "JBD2: bad block at offset %u\n",
-@@ -94,10 +93,8 @@ static int do_readahead(journal_t *journal, unsigned int start)
- 		}
- 
- 		bh = __getblk(journal->j_dev, blocknr, journal->j_blocksize);
--		if (!bh) {
--			err = -ENOMEM;
-+		if (!bh)
- 			goto failed;
--		}
- 
- 		if (!buffer_uptodate(bh) && !buffer_locked(bh)) {
- 			bufs[nbufs++] = bh;
-@@ -112,12 +109,10 @@ static int do_readahead(journal_t *journal, unsigned int start)
- 
- 	if (nbufs)
- 		bh_readahead_batch(nbufs, bufs, 0);
--	err = 0;
- 
- failed:
- 	if (nbufs)
- 		journal_brelse_array(bufs, nbufs);
--	return err;
- }
- 
- #endif /* __KERNEL__ */
+ 	/* Flags [no locking] */
+ 	unsigned int	h_sync:		1;
+-	unsigned int	h_jdata:	1;
+ 	unsigned int	h_reserved:	1;
+ 	unsigned int	h_aborted:	1;
+ 	unsigned int	h_type:		8;
 -- 
 2.30.0
 
