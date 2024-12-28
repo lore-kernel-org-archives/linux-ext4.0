@@ -1,33 +1,49 @@
-Received: from mx01.omp.ru (mx01.omp.ru [90.154.21.10])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-SHA384 (256/256 bits))
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83AB714F108;
-	Thu, 26 Dec 2024 09:33:21 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.154.21.10
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F391B644;
+	Sat, 28 Dec 2024 01:49:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1735205604; cv=none; b=sublEnnWhE/xAyMgSX5BZk193QGo/ws5dsi005gNyb0wo+3115kRh/mN1n+jmZEi0S8+llwBf0x1IWvMnqwodRkyZjeOV+PV36q1sBdX4XtPGJ089aHfVyx+0R6PFeIBybBR7IBjdNXaSA5BHbwzNlQzCYCS+FwdjmTO985nWWc=
+	t=1735350594; cv=none; b=ue6yP1708MUqrpEmozWLnMrkptE6hyaz2YepCpLjk2gq5i+TcFK5pbg1sCvNdJ1g9SNfo1HB7ImHvdab4oniAvWxmoU/YdlLYgJm3n4P26ac/mip1k7KHHJKX6wqvK8ARaxyFzcxCfPSUn8ExRvfM5xymC1NgdhESkLjh3yFHWs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1735205604; c=relaxed/simple;
-	bh=YxAIiIMg+sYXQfGh7GZCY1RhHn7isSVWy/WvrkyhWdE=;
-	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=f+kaPjmVZO/4YYuBVdMS3UYS7+w4oyP/uGhphbtGTWzF11OplsvhAlBBMysEswte+4SYFJE00GdQ/wf98SJpV/a723YdY1mjw7v56CCx3amr9KGxG0BkJ55getWGLIvznIKUGZUclnu9rgwZL4eMO2lfwSzdAnvwNEXVICmx4RA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=omp.ru; spf=pass smtp.mailfrom=omp.ru; arc=none smtp.client-ip=90.154.21.10
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=omp.ru
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=omp.ru
-Received: from localhost.localdomain (188.234.32.57) by msexch01.omp.ru
- (10.188.4.12) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384) id 15.2.1258.12; Thu, 26 Dec
- 2024 12:33:13 +0300
-From: d.privalov <d.privalov@omp.ru>
-To: Theodore Ts'o <tytso@mit.edu>
-CC: Andreas Dilger <adilger.kernel@dilger.ca>, <linux-ext4@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>, <lvc-project@linuxtesting.org>, Xiaxi Shen
-	<shenxiaxi26@gmail.com>,
-	<syzbot+59e0101c430934bc9a36@syzkaller.appspotmail.com>, <stable@kernel.org>,
-	Dmitriy Privalov <d.privalov@omp.ru>
-Subject: [PATCH 5.10/5.15 1/1] ext4: fix timer use-after-free on failed mount
-Date: Thu, 26 Dec 2024 12:32:56 +0300
-Message-ID: <20241226093256.44361-1-d.privalov@omp.ru>
-X-Mailer: git-send-email 2.34.1
+	s=arc-20240116; t=1735350594; c=relaxed/simple;
+	bh=apXMFKdB33cHv6Y8GuqQ4tlJMAb7toilWfQwo4edzrI=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=esF+GDG1EJE4qdcSHUuL4mGC9vV2RSiERxpXZIdfwX0RoEocSHjTz2YLFph3/1UrKGQX0JO+YxpeIEmbJlt5zrOmnKXjh/dpYywEb5gmlREIkkhCdL1rBf0pHaWXT32yh2J+KzIK/u/B6LYU0/R2EH/WuHjkPRcinl6aS8PR2jc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4YKlfH4yPNz4f3jJ5;
+	Sat, 28 Dec 2024 09:49:27 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 7D1A61A0196;
+	Sat, 28 Dec 2024 09:49:47 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.104.67])
+	by APP4 (Coremail) with SMTP id gCh0CgB3U4cuWW9nXPNWFw--.42357S5;
+	Sat, 28 Dec 2024 09:49:47 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org,
+	viro@zeniv.linux.org.uk,
+	brauner@kernel.org,
+	jack@suse.cz,
+	tytso@mit.edu,
+	djwong@kernel.org,
+	adilger.kernel@dilger.ca,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	chengzhihao1@huawei.com,
+	yukuai3@huawei.com,
+	yangerkun@huawei.com
+Subject: [RFC PATCH 1/2] fs: introduce FALLOC_FL_FORCE_ZERO to fallocate
+Date: Sat, 28 Dec 2024 09:45:21 +0800
+Message-Id: <20241228014522.2395187-2-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20241228014522.2395187-1-yi.zhang@huaweicloud.com>
+References: <20241228014522.2395187-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -35,90 +51,136 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-ClientProxiedBy: msexch01.omp.ru (10.188.4.12) To msexch01.omp.ru
- (10.188.4.12)
-X-KSE-ServerInfo: msexch01.omp.ru, 9
-X-KSE-AntiSpam-Interceptor-Info: scan successful
-X-KSE-AntiSpam-Version: 6.1.1, Database issued on: 12/26/2024 08:49:16
-X-KSE-AntiSpam-Status: KAS_STATUS_NOT_DETECTED
-X-KSE-AntiSpam-Method: none
-X-KSE-AntiSpam-Rate: 19
-X-KSE-AntiSpam-Info: Lua profiles 190069 [Dec 26 2024]
-X-KSE-AntiSpam-Info: Version: 6.1.1.7
-X-KSE-AntiSpam-Info: Envelope from: d.privalov@omp.ru
-X-KSE-AntiSpam-Info: LuaCore: 49 0.3.49
- 28b3b64a43732373258a371bd1554adb2caa23cb
-X-KSE-AntiSpam-Info: {rep_avail}
-X-KSE-AntiSpam-Info: {Tracking_uf_ne_domains}
-X-KSE-AntiSpam-Info: {Tracking_from_domain_doesnt_match_to}
-X-KSE-AntiSpam-Info: {SMTP from is not routable}
-X-KSE-AntiSpam-Info: {Found in DNSBL: 188.234.32.57 in (user)
- b.barracudacentral.org}
-X-KSE-AntiSpam-Info:
-	syzkaller.appspot.com:7.1.1,5.0.1;patch.msgid.link:7.1.1;127.0.0.199:7.1.2;omp.ru:7.1.1;d41d8cd98f00b204e9800998ecf8427e.com:7.1.1
-X-KSE-AntiSpam-Info: FromAlignment: s
-X-KSE-AntiSpam-Info: ApMailHostAddress: 188.234.32.57
-X-KSE-AntiSpam-Info: {DNS response errors}
-X-KSE-AntiSpam-Info: Rate: 19
-X-KSE-AntiSpam-Info: Status: not_detected
-X-KSE-AntiSpam-Info: Method: none
-X-KSE-AntiSpam-Info: Auth:dmarc=temperror header.from=omp.ru;spf=temperror
- smtp.mailfrom=omp.ru;dkim=none
-X-KSE-Antiphishing-Info: Clean
-X-KSE-Antiphishing-ScanningType: Heuristic
-X-KSE-Antiphishing-Method: None
-X-KSE-Antiphishing-Bases: 12/26/2024 08:52:00
-X-KSE-Antivirus-Interceptor-Info: scan successful
-X-KSE-Antivirus-Info: Clean, bases: 12/26/2024 7:26:00 AM
-X-KSE-Attachment-Filter-Triggered-Rules: Clean
-X-KSE-Attachment-Filter-Triggered-Filters: Clean
-X-KSE-BulkMessagesFiltering-Scan-Result: InTheLimit
+X-CM-TRANSID:gCh0CgB3U4cuWW9nXPNWFw--.42357S5
+X-Coremail-Antispam: 1UD129KBjvJXoWxCF1fCr17JFykAFWDXr4UCFg_yoWrAFW3pF
+	WkKF18G340gryakr95Cws29rn8Zw4kGr45WrWI9ry8Zw45JF93Kr4q9rn5Jas7GrWDZF48
+	Xr1agrZ8uFy2yFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUm014x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jr4l82xGYIkIc2
+	x26xkF7I0E14v26r4j6ryUM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
+	xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
+	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
+	kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
+	6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
+	vEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVj
+	vjDU0xZFpf9x0JUIiiDUUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-From: Xiaxi Shen <shenxiaxi26@gmail.com>
+From: Zhang Yi <yi.zhang@huawei.com>
 
-commit 0ce160c5bdb67081a62293028dc85758a8efb22a upstream.
+Thanks to the development of flash-based storage devices, we can quickly
+write zeros to SSDs using the WRITE_ZERO command. Therefore, we
+introduce a new flag FALLOC_FL_FORCE_ZERO to fallocate, which acts as a
+supported flag for FALLOC_FL_ZERO_RANGE. This flag forces the file
+system to issue zeroes and allocate written extents. The process of
+zeroing out can be accelerated with the REQ_OP_WRITE_ZEROES operation
+when the underlying storage device supports WRITE_ZERO cmd and UMMAP bit
+on SCSI SSDs or DEAC bit on NVMe SSDs.
 
-Syzbot has found an ODEBUG bug in ext4_fill_super
+This provides users with a new method to quickly generate a zeroed file.
+Users no longer need to write zero data to create a file with written
+extents. The subsequent overwriting of this file range can save
+significant metadata changes, which should greatly improve overwrite
+performance on certain filesystems.
 
-The del_timer_sync function cancels the s_err_report timer,
-which reminds about filesystem errors daily. We should
-guarantee the timer is no longer active before kfree(sbi).
+This flag should not be used in conjunction with the FALLOC_FL_KEEP_SIZE
+since allocating written extents beyond file EOF is not permitted.
 
-When filesystem mounting fails, the flow goes to failed_mount3,
-where an error occurs when ext4_stop_mmpd is called, causing
-a read I/O failure. This triggers the ext4_handle_error function
-that ultimately re-arms the timer,
-leaving the s_err_report timer active before kfree(sbi) is called.
-
-Fix the issue by canceling 
-the s_err_report timer after calling ext4_stop_mmpd.
-
-Signed-off-by: Xiaxi Shen <shenxiaxi26@gmail.com>
-Reported-and-tested-by: syzbot+59e0101c430934bc9a36@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=59e0101c430934bc9a36
-Link: https://patch.msgid.link/20240715043336.98097-1-shenxiaxi26@gmail.com
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@kernel.org
-Signed-off-by: Dmitriy Privalov <d.privalov@omp.ru>
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/super.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/open.c                   | 14 +++++++++++---
+ include/linux/falloc.h      |  5 ++++-
+ include/uapi/linux/falloc.h | 12 ++++++++++++
+ 3 files changed, 27 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 9d7800d66200..522a5d85fbf5 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5185,8 +5185,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- failed_mount3a:
- 	ext4_es_unregister_shrinker(sbi);
- failed_mount3:
--	del_timer_sync(&sbi->s_err_report);
- 	ext4_stop_mmpd(sbi);
-+	del_timer_sync(&sbi->s_err_report);
- failed_mount2:
- 	rcu_read_lock();
- 	group_desc = rcu_dereference(sbi->s_group_desc);
+diff --git a/fs/open.c b/fs/open.c
+index e6911101fe71..d3afaddfcf27 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -246,7 +246,7 @@ int vfs_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 	if (offset < 0 || len <= 0)
+ 		return -EINVAL;
+ 
+-	if (mode & ~(FALLOC_FL_MODE_MASK | FALLOC_FL_KEEP_SIZE))
++	if (mode & ~(FALLOC_FL_MODE_MASK | FALLOC_FL_SUPPORT_MASK))
+ 		return -EOPNOTSUPP;
+ 
+ 	/*
+@@ -259,15 +259,23 @@ int vfs_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 	switch (mode & FALLOC_FL_MODE_MASK) {
+ 	case FALLOC_FL_ALLOCATE_RANGE:
+ 	case FALLOC_FL_UNSHARE_RANGE:
++		if (mode & FALLOC_FL_FORCE_ZERO)
++			return -EOPNOTSUPP;
++		break;
+ 	case FALLOC_FL_ZERO_RANGE:
++		if ((mode & FALLOC_FL_KEEP_SIZE) &&
++		     (mode & FALLOC_FL_FORCE_ZERO))
++			return -EOPNOTSUPP;
+ 		break;
+ 	case FALLOC_FL_PUNCH_HOLE:
+-		if (!(mode & FALLOC_FL_KEEP_SIZE))
++		if (!(mode & FALLOC_FL_KEEP_SIZE) ||
++		    (mode & FALLOC_FL_FORCE_ZERO))
+ 			return -EOPNOTSUPP;
+ 		break;
+ 	case FALLOC_FL_COLLAPSE_RANGE:
+ 	case FALLOC_FL_INSERT_RANGE:
+-		if (mode & FALLOC_FL_KEEP_SIZE)
++		if ((mode & FALLOC_FL_KEEP_SIZE) ||
++		    (mode & FALLOC_FL_FORCE_ZERO))
+ 			return -EOPNOTSUPP;
+ 		break;
+ 	default:
+diff --git a/include/linux/falloc.h b/include/linux/falloc.h
+index 3f49f3df6af5..75ac063d7eab 100644
+--- a/include/linux/falloc.h
++++ b/include/linux/falloc.h
+@@ -29,7 +29,8 @@ struct space_resv {
+  * Mask of all supported fallocate modes.  Only one can be set at a time.
+  *
+  * In addition to the mode bit, the mode argument can also encode flags.
+- * FALLOC_FL_KEEP_SIZE is the only supported flag so far.
++ * FALLOC_FL_KEEP_SIZE and FALLOC_FL_FORCE_ZERO are the only supported
++ * flags so far.
+  */
+ #define FALLOC_FL_MODE_MASK	(FALLOC_FL_ALLOCATE_RANGE |	\
+ 				 FALLOC_FL_PUNCH_HOLE |		\
+@@ -37,6 +38,8 @@ struct space_resv {
+ 				 FALLOC_FL_ZERO_RANGE |		\
+ 				 FALLOC_FL_INSERT_RANGE |	\
+ 				 FALLOC_FL_UNSHARE_RANGE)
++#define FALLOC_FL_SUPPORT_MASK	(FALLOC_FL_KEEP_SIZE |		\
++				 FALLOC_FL_FORCE_ZERO)
+ 
+ /* on ia32 l_start is on a 32-bit boundary */
+ #if defined(CONFIG_X86_64)
+diff --git a/include/uapi/linux/falloc.h b/include/uapi/linux/falloc.h
+index 5810371ed72b..7c12bcdff7d3 100644
+--- a/include/uapi/linux/falloc.h
++++ b/include/uapi/linux/falloc.h
+@@ -78,4 +78,16 @@
+  */
+ #define FALLOC_FL_UNSHARE_RANGE		0x40
+ 
++/*
++ * FALLOC_FL_FORCE_ZERO should be used in conjunction with FALLOC_FL_ZERO_RANGE,
++ * it force the file system issuing zero and allocate written extents. The
++ * zeroing out can speed up with the REQ_OP_WRITE_ZEROES command, and sebsequent
++ * overwriting over this range can save significant metadata changes, which
++ * should be contribute to improve the overwrite performance on such
++ * preallocated range.
++ *
++ * This flag cannot be used in conjunction with the FALLOC_FL_KEEP_SIZE.
++ */
++#define FALLOC_FL_FORCE_ZERO		0x80
++
+ #endif /* _UAPI_FALLOC_H_ */
 -- 
-2.34.1
+2.39.2
 
