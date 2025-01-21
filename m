@@ -1,28 +1,28 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 272271B81B8;
-	Tue, 21 Jan 2025 07:16:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B76431B87F0;
+	Tue, 21 Jan 2025 07:16:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737443803; cv=none; b=s2etQsVY/qBbUvTfZMHF0BFDxE8qhGnudtjs7dMFGwKvFe9UOV0xA9MSf7q8U2uYA6iuemqVHvPY8eJ7fXDe7PekQIpvpKgIktLokDKQM8zAX+hEJvp40lvgXN4FvR/nAQ7KaktlfsE8hpVOtvaeqtzgba5GE7t0bT75di9nEus=
+	t=1737443803; cv=none; b=kpYGea2XG9cNGjtP9p3/UdnjGKs8V/Sb/yhdCm7KROKqdrfObjum4FXFt24OkyjKutATJvGTXyzatzBuTf7Z4GlfincwuNVdk4s+76gwdAwWG2LXR+5wKH0Jpzq3zoS8qxWxpSPQJtbpfhYHco5xQFeG9UTb1avuOzcpCPj4ecQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1737443803; c=relaxed/simple;
-	bh=FtrVKFZyNVHyXc8Ymufsw66wGj8NaMiC5Fr6Cjols38=;
+	bh=FQVlNxKEM37oYtJglnt6N+2h7JkbjCYdJY21cDdHci8=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=ibnIKmyb3tcQEf/pHKpOueGVER1ihOwSABARJJKOWwU7SK2hf3bezCaKwzUvjJ0bQYpAUDs/XMmiJTW9HUx78CQsPCWudpNyAOWVc7N2qyWzJ5zjDV1xfSk1OsfabiruHat/bl5UqSxPjdpteG1QtQ8m2+vCfZ2Nr3jNl2U2hYQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=UJoqmYuUbj8RZq8I9TV0X+g4+NbGsz9km09ivPSs5XgKbXb/W/XPGeFET84mOJJ+QijF7cNQXXQ9Usqp5fCnMAB57RR6liSJP447zsHuMR49cyY39nEwZt7ltMLb6zQgTN5UadE+dQIIvSXQGi4EwYRR/WSo83rCmj51nml5zF4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4YcdmK3XjLz4f3jMn;
-	Tue, 21 Jan 2025 15:16:17 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4YcdmR3bFXz4f3jqy;
+	Tue, 21 Jan 2025 15:16:23 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 14E651A17D8;
+	by mail.maildlp.com (Postfix) with ESMTP id E23FC1A17D8;
 	Tue, 21 Jan 2025 15:16:38 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP4 (Coremail) with SMTP id gCh0CgD3W2DNSY9n3Gg+Bg--.34135S10;
-	Tue, 21 Jan 2025 15:16:37 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgD3W2DNSY9n3Gg+Bg--.34135S12;
+	Tue, 21 Jan 2025 15:16:38 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -33,9 +33,9 @@ Cc: tytso@mit.edu,
 	yangerkun@huawei.com,
 	libaokun@huaweicloud.com,
 	Baokun Li <libaokun1@huawei.com>
-Subject: [PATCH v2 6/8] ext4: update the descriptions of data_err=abort and data_err=ignore
-Date: Tue, 21 Jan 2025 15:10:48 +0800
-Message-Id: <20250121071050.3991249-7-libaokun@huaweicloud.com>
+Subject: [PATCH v2 8/8] ext4: pack holes in ext4_inode_info
+Date: Tue, 21 Jan 2025 15:10:50 +0800
+Message-Id: <20250121071050.3991249-9-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20250121071050.3991249-1-libaokun@huaweicloud.com>
 References: <20250121071050.3991249-1-libaokun@huaweicloud.com>
@@ -46,10 +46,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgD3W2DNSY9n3Gg+Bg--.34135S10
-X-Coremail-Antispam: 1UD129KBjvJXoW7WFykArWfGF1xXr17CrWruFg_yoW8GFyDpr
-	sxK3s2qrykuF13CF48Aa1SqFWfKF1xXF43GFs29as7Wan8JrnYqw17t3WYqFyakrWfKay5
-	ZrW2gw1fuFnFya7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:gCh0CgD3W2DNSY9n3Gg+Bg--.34135S12
+X-Coremail-Antispam: 1UD129KBjvJXoW7uF48Jr1kZF1UJryUCrWruFg_yoW8Ar17pF
+	98Ka4xGr40q3yq9rW8GF45Zr1Iva1Igw47X3yDJw45uryqg34FgF4xtF1FvFyYyFW8CFyI
+	qF1jkr1UZw12y3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUPC14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -64,42 +64,60 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7WFykArWfGF1xXr17CrWruFg_yoW8GFyDpr
 	x2IY6xkF7I0E14v26F4j6r4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z2
 	80aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI
 	43ZEXa7VUbT7KDUUUUU==
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQAPBWeOA-NKygADsR
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQAPBWeOA-NKzQABsU
 
 From: Baokun Li <libaokun1@huawei.com>
 
-We now print error messages in ext4_end_bio() when page writeback
-encounters an error. If data_err=abort is set, the journal will also
-be aborted in a kworker. This means that we now check all Buffer I/O
-in all modes and decide whether to abort the journal based on the
-data_err option. Therefore, we remove the ordered mode restriction
-in the descriptions of data_err=abort and data_err=ignore.
+When CONFIG_DEBUG_SPINLOCK is not enabled (general case), there are four
+4 bytes holes and one 2 bytes hole in struct ext4_inode_info. Move the
+members to pack the four 4 bytes holes.
 
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- Documentation/admin-guide/ext4.rst | 7 +++----
+ fs/ext4/ext4.h | 7 +++----
  1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/Documentation/admin-guide/ext4.rst b/Documentation/admin-guide/ext4.rst
-index 2418b0c2d3df..b857eb6ca1b6 100644
---- a/Documentation/admin-guide/ext4.rst
-+++ b/Documentation/admin-guide/ext4.rst
-@@ -238,11 +238,10 @@ When mounting an ext4 filesystem, the following option are accepted:
-         configured using tune2fs)
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6fd550fc0c5c..c1693ba836ee 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1062,6 +1062,8 @@ struct ext4_inode_info {
+ 	/* Number of ongoing updates on this inode */
+ 	atomic_t  i_fc_updates;
  
-   data_err=ignore(*)
--        Just print an error message if an error occurs in a file data buffer in
--        ordered mode.
-+        Just print an error message if an error occurs in a file data buffer.
++	spinlock_t i_raw_lock;	/* protects updates to the raw inode */
 +
-   data_err=abort
--        Abort the journal if an error occurs in a file data buffer in ordered
--        mode.
-+        Abort the journal if an error occurs in a file data buffer.
+ 	/* Fast commit wait queue for this inode */
+ 	wait_queue_head_t i_fc_wait;
  
-   grpid | bsdgroups
-         New objects have the group ID of their parent.
+@@ -1099,8 +1101,6 @@ struct ext4_inode_info {
+ 	struct inode vfs_inode;
+ 	struct jbd2_inode *jinode;
+ 
+-	spinlock_t i_raw_lock;	/* protects updates to the raw inode */
+-
+ 	/*
+ 	 * File creation time. Its function is same as that of
+ 	 * struct timespec64 i_{a,c,m}time in the generic inode.
+@@ -1143,6 +1143,7 @@ struct ext4_inode_info {
+ 	/* quota space reservation, managed internally by quota code */
+ 	qsize_t i_reserved_quota;
+ #endif
++	spinlock_t i_block_reservation_lock;
+ 
+ 	/* Lock protecting lists below */
+ 	spinlock_t i_completed_io_lock;
+@@ -1153,8 +1154,6 @@ struct ext4_inode_info {
+ 	struct list_head i_rsv_conversion_list;
+ 	struct work_struct i_rsv_conversion_work;
+ 
+-	spinlock_t i_block_reservation_lock;
+-
+ 	/*
+ 	 * Transactions that contain inode's metadata needed to complete
+ 	 * fsync and fdatasync, respectively.
 -- 
 2.39.2
 
