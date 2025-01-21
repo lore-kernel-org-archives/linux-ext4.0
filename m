@@ -1,80 +1,111 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DED622F5B
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Jan 2025 04:01:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2BAF61494D9;
+	Tue, 21 Jan 2025 07:16:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737432093; cv=none; b=Fu/JZykXtSCJmk1bUnZaCohRenKBpZ9D5H5gw2ihitFhwijXnOy0u+8YbOQSNeNhdGMOVTJ+6l3SazFLjz6InuYfzj8PcfyN6u//kOlGV1cQbrlHKPOkVPxfa0xiolpLMDLnYhJMiGb31yF1SFrUXzWjfPGX8ZOETfDiMDiK/zA=
+	t=1737443799; cv=none; b=DgSSuIuVTU/qSE3ebxfluSGJj8E/qVN3ntOFyVfWxmwCKPj1ladxTobZN8kRkl0mv5sxl3Jt/dDliZMCYJVHTmddcS8b7Gl9dHEc+yHQSfwUNUTKwH+mvBQvL8WbY3ryJ2eNtsNT33W9x0N31rbjFNDt0nNm4SiYRLHynuSA+aU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1737432093; c=relaxed/simple;
-	bh=6kY2CfxpxpFZVxQOrTyM+yX7jWlUk6ksvtEHi9lF4nM=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=mDO/uOVuGg/j5L6cBRMQlqrSgX963/yT5qMcydVwxJi4oLocmjMMgSUWLzuYQf36NnjCI4BM66x/D10dWprKtR0l5riLVl4xSp08+qwNFgmsNumqao4JqDlyae3RZFAdc6OcL6HW0XUiWZKXncJN+Xibmw1ut8l1h3YFE5EkEUE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=SwlnSiXB; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="SwlnSiXB"
-Received: from cwcc.thunk.org (pool-173-48-114-200.bstnma.fios.verizon.net [173.48.114.200])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 50L41PAr024662
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 20 Jan 2025 23:01:26 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1737432087; bh=/tYOhMctsi0J9YpjBd+EYiyBmQD0HYot8R7VxKMT/xw=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=SwlnSiXBnXEIOaAgr1DnaKzgh5lunCqntJ9Uf9I9xLzw/6zyYTcmxPwGAO6oxSqAO
-	 w9IjIuOgzX4X51j7Y84ado+WXwlyBFkg0LfE3hPJ8JtCo/8m9Fxwjsnwy45sKnbUPA
-	 P8qsjLyzj1YNIWTyrqBvprOe8Gl1d+RMbpF6vY/LfyeqaLkLcE4MJoSs4UB8K6YQ4H
-	 KE++IgaXTwqg1EKOO0MzLKEtOgYSBthpF0yY2/SaXZJRvS93tHETWFrEr5hFZzZ0zG
-	 QIF0/7dGVbA+6AMAAwaA0tThB1Ji5ADPMwHkztw5h8bQqp2E4Y+Yk3U3xJPV4MhNd6
-	 BNLt32TaNDRBQ==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-	id AC70615C0179; Mon, 20 Jan 2025 23:01:25 -0500 (EST)
-Date: Mon, 20 Jan 2025 23:01:25 -0500
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Gerhard Wiesinger <lists@wiesinger.com>
-Cc: linux-ext4@vger.kernel.org
-Subject: Re: Transparent compression with ext4 - especially with zstd
-Message-ID: <20250121040125.GC3761769@mit.edu>
-References: <8cb4d855-6bd8-427f-ac8f-8cf7b91547fb@wiesinger.com>
+	s=arc-20240116; t=1737443799; c=relaxed/simple;
+	bh=8LZEGmtoNBa8NKJDXUkSmn4UUWqFvEX9ES/yP4+IGzc=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=CQeY3uKug0i1jTuNT4ewbYdwWCk2r52NoO4eQeDO+LytI6RLvW123RoZKW+hvuMbAPv2br0q7rzPxRXnzXFWKsdEdGR8PyX8KX/LHbchaPnlkeInW5h8G35IJ8V2vAlQBIrVmSmbImjfHQVJ7DuJTSLqqDEY11CrAmvqjIrqUDo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4YcdmL4yffz4f3jqx;
+	Tue, 21 Jan 2025 15:16:18 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 1ECC91A0EDC;
+	Tue, 21 Jan 2025 15:16:34 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.104.67])
+	by APP4 (Coremail) with SMTP id gCh0CgD3W2DNSY9n3Gg+Bg--.34135S5;
+	Tue, 21 Jan 2025 15:16:33 +0800 (CST)
+From: libaokun@huaweicloud.com
+To: linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	linux-kernel@vger.kernel.org,
+	yi.zhang@huawei.com,
+	yangerkun@huawei.com,
+	libaokun@huaweicloud.com,
+	Baokun Li <libaokun1@huawei.com>
+Subject: [PATCH v2 1/8] ext4: replace opencoded ext4_end_io_end() in ext4_put_io_end()
+Date: Tue, 21 Jan 2025 15:10:43 +0800
+Message-Id: <20250121071050.3991249-2-libaokun@huaweicloud.com>
+X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20250121071050.3991249-1-libaokun@huaweicloud.com>
+References: <20250121071050.3991249-1-libaokun@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <8cb4d855-6bd8-427f-ac8f-8cf7b91547fb@wiesinger.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:gCh0CgD3W2DNSY9n3Gg+Bg--.34135S5
+X-Coremail-Antispam: 1UD129KBjvdXoW7GF43CF1fAFW8Ar15Cw4Uurg_yoWkurb_Zr
+	yfWrn7Cr4ayw1Ika47Aa17Xr1jkFn5Gr1ruF1rZrsIq3W3A34DtF1kArZ8Ar47WF47Aa1U
+	Cr4kAw1fXF1jqjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUbgxFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUGwA2048vs2IY02
+	0Ec7CjxVAFwI0_JFI_Gr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xv
+	wVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM2
+	8EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AI
+	xVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20x
+	vE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xv
+	r2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4kE6xkIj40Ew7xC0wCY1x0262
+	kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s02
+	6c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw
+	0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvE
+	c7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14
+	v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x
+	0JUho7_UUUUU=
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgALBWeKD3kBggAKse
 
-On Sun, Jan 19, 2025 at 03:37:27PM +0100, Gerhard Wiesinger wrote:
-> 
-> Are there any plans to include transparent compression with ext4 (especially
-> with zstd)?
+From: Baokun Li <libaokun1@huawei.com>
 
-I'm not aware of anyone in the ext4 deveopment commuity working on
-something like this.  Fully transparent compression is challenging,
-since supporting random writes into a compressed file is tricky.
-There are solutions (for example, the Stac patent which resulted in
-Microsoft to pay $120 million dollars), but even ignoring the
-intellectual property issues, they tend to compromise the efficiency
-of the compression.
+This reduces duplicate code and ensures that a “potential data loss”
+warning is available if the unwritten conversion fails.
 
-More to the point, given how cheap byte storage tends to be (dollars
-per IOPS tend to be far more of a constraint than dollars per GB),
-it's unclear what the business case would be for any company to fund
-development work in this area, when the cost of a slightly large HDD
-or SSD is going to be far cheaper than the necessary software
-engineering investrment needed, even for a hyperscaler cloud company
-(and even there, it's unclear that transparent compression is really
-needed).
+Signed-off-by: Baokun Li <libaokun1@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/page-io.c | 13 ++++---------
+ 1 file changed, 4 insertions(+), 9 deletions(-)
 
-What is the business and/or technical problem which you are trying to
-solve?
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 69b8a7221a2b..f53b018ea259 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -299,18 +299,13 @@ void ext4_put_io_end_defer(ext4_io_end_t *io_end)
+ 
+ int ext4_put_io_end(ext4_io_end_t *io_end)
+ {
+-	int err = 0;
+-
+ 	if (refcount_dec_and_test(&io_end->count)) {
+-		if (io_end->flag & EXT4_IO_END_UNWRITTEN) {
+-			err = ext4_convert_unwritten_io_end_vec(io_end->handle,
+-								io_end);
+-			io_end->handle = NULL;
+-			ext4_clear_io_unwritten_flag(io_end);
+-		}
++		if (io_end->flag & EXT4_IO_END_UNWRITTEN)
++			return ext4_end_io_end(io_end);
++
+ 		ext4_release_io_end(io_end);
+ 	}
+-	return err;
++	return 0;
+ }
+ 
+ ext4_io_end_t *ext4_get_io_end(ext4_io_end_t *io_end)
+-- 
+2.39.2
 
-Cheers,
-
-					- Ted
