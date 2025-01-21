@@ -1,187 +1,125 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ot1-f43.google.com (mail-ot1-f43.google.com [209.85.210.43])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B75EE1B87ED;
-	Tue, 21 Jan 2025 07:16:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6EF8A1BB6BC
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Jan 2025 09:42:26 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.43
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737443803; cv=none; b=lKrJGv07jJhwwYXUaiYGUdkzYJpjMOKjGL1gV5kmzET+T3p24HM38RFaXZ+vf97P/m0C1/r2saVxAxX570xgmSSKwgC1t+L2dRIfCgIG1gy95DJCIvUYOtKZnWEJwN/T0wkJSlu79BFxf5Hmp7OE7rrymPamZJzApXQKlENFwYI=
+	t=1737452547; cv=none; b=Nf8b1RVfrUI7xsyoU1zLygq2yAXkV8xb28aaN41JjLTHO7J258hFZPeTXyocxZbYKlLPyjXJEqeLFl/qNEdyRloEfuqHTNE1+XL78c8nDp2iRJqfCT90SmZwKFWUVTFWI8O1QIirTSOyTN4UK5P47rwxZhT0kvzFBORfrM8L/JY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1737443803; c=relaxed/simple;
-	bh=rtn2QBT2e5oly+T9szh90TRDgiycmTExCYkNJvupyNs=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=pozufYEI570OsGuZMYaxM27Wkhj1MKU6cfseitWhisSx8KzwtnXBymNF6Fy/HGcYkZnll08z0X1Vxc5ydX5YNeKWo1R7Ia4KCZw4OtYnf50tLpqnSo4Aene6jxopmQJFs1q3t8H7lkPK2IhR0TZP0VbpOg8pDS8JGCy6WZiO/k0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4YcdmR0bZrz4f3jqx;
-	Tue, 21 Jan 2025 15:16:23 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 7C3041A0D8A;
-	Tue, 21 Jan 2025 15:16:38 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP4 (Coremail) with SMTP id gCh0CgD3W2DNSY9n3Gg+Bg--.34135S11;
-	Tue, 21 Jan 2025 15:16:38 +0800 (CST)
-From: libaokun@huaweicloud.com
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	jack@suse.cz,
-	linux-kernel@vger.kernel.org,
-	yi.zhang@huawei.com,
-	yangerkun@huawei.com,
-	libaokun@huaweicloud.com,
-	Baokun Li <libaokun1@huawei.com>
-Subject: [PATCH v2 7/8] ext4: remove unused member 'i_unwritten' from 'ext4_inode_info'
-Date: Tue, 21 Jan 2025 15:10:49 +0800
-Message-Id: <20250121071050.3991249-8-libaokun@huaweicloud.com>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20250121071050.3991249-1-libaokun@huaweicloud.com>
-References: <20250121071050.3991249-1-libaokun@huaweicloud.com>
+	s=arc-20240116; t=1737452547; c=relaxed/simple;
+	bh=+hogXr4voc0KQQO5N+fyx27f2KRwEQPOaUwqHJJck3E=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=Ejkiqf7GY0cqsWBckfZPcgHc3wAHlOl8CQoIozuybRtFAGxShn92GGcqnT/3IOiOhIFLXEzA6+Srv6hJIGbnh8OcWylB7954RoJC4jZJHYtYsQT2gsvmW8BW3QJvpVfS0fsQGbM+ZwNQ5JTbT6UMAby2yz5Ki/5BIm+bjLJwLPQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Z50hP9bS; arc=none smtp.client-ip=209.85.210.43
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Z50hP9bS"
+Received: by mail-ot1-f43.google.com with SMTP id 46e09a7af769-71e3cbd0583so1345890a34.1
+        for <linux-ext4@vger.kernel.org>; Tue, 21 Jan 2025 01:42:26 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1737452545; x=1738057345; darn=vger.kernel.org;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=2pLNPN3ni6Zdmsk2aheSAletIg6IwRY2toiothpvNsY=;
+        b=Z50hP9bSGKksKzPASGQkZeBhCGi6M4hfc1puGC8o1aoJ2BIJdp89mUnpcKBZ1+a5oD
+         P2ltPR46cw6bLl5t194y2WaTfxC4biJoZR2ZEwux+4WlDjSwjhuFzlaVGVBRmuh1o0zG
+         gY1jWIy8HMbdy/4SV0aght6++PhdbZnf8rlZkXkENSbHrEJCBiMtsXdr6VklI1L78kVO
+         QzmKZBjf7d8zhuyIpCpQCImoY9zAQC8tcgP5wcliqWkoJ1nmxaYarfdBpqv2/tpOkRf5
+         DdJ/kV6ze6Mo0ira78Ilq5mbp4Fl/v//UoV0EwK+HpGN1IygprfMfahZ+Cd/yE4EKCP0
+         JAFQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1737452545; x=1738057345;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=2pLNPN3ni6Zdmsk2aheSAletIg6IwRY2toiothpvNsY=;
+        b=aW1PYJxTjFhZq/FnDB1bgFQRaitBBOGibLkKc6QGMkrJPMY+R8HTUi/UKgmEnSZ7hH
+         BKtuNJjI/38SxIvXw4zpIGFS2svrO2rVHu88SviiH1qWnznXZ4KxreVOPmON9JXazK/M
+         5wajo763HZU5jcStDNAgoyAighDFJu3/v3iRd5wHdU1IAQ/C3+cfxNes7Y4Ex+w3d1/y
+         6M8v1WWW7xMrIm+tyG6FpCgrPZs7+HExY/hkrqhc9ajQdKcK0kTobfCSmcje0Ljmav8u
+         osXgeRiU1mdhdvFOAPmuHfh3s6KvfrOJ/FvyWjaramvreDrMjFWclZ5pYAeAWs6pJJYI
+         X/PA==
+X-Forwarded-Encrypted: i=1; AJvYcCWr8kY8kuirmmnepUUXPOx6HLQiMMVbAuVNzVZUO0KyhJWeMJB+KLXtxBfAoUdSYzS9tFW89FyUCnHX@vger.kernel.org
+X-Gm-Message-State: AOJu0Yx9PVVSWzLjFCmQOtfQ/5iZL0ACvx38K0LUIJrVF0Q/KzihBxtw
+	oyvkYyJn8cdFT8y/hJh9VTrY3OaNZ1aJZlyV38t9yhk1I5seq8yzY9fDeaLNNbVrYCoKTMyhsmc
+	kkO0VbeICFRrD1UyhQ8ixcftC79w=
+X-Gm-Gg: ASbGncuJD5zjbbgs7Yy3TojEr955dch3y9VPIy12exgrTfo/6PysfbvN7JRM4FFNCUy
+	lYWasd41L+P40COFaHMZ/uDxIr02bVL6HhIf7rXGq4MPQyNvbCB5AKWW04aetIXgxE7HdetXfEm
+	Oojwo1uVfzWw==
+X-Google-Smtp-Source: AGHT+IFST/Bxn3Rtx81QUTKjaZnb8IsZ5Y3MHTW60QC80/RkvUH22LuKZe2e5KvwLN2KB6jQIM2Mw3igujM7uByN5Xs=
+X-Received: by 2002:a05:6830:6e17:b0:71d:e89e:9af5 with SMTP id
+ 46e09a7af769-7249da90fb0mr11126971a34.16.1737452545505; Tue, 21 Jan 2025
+ 01:42:25 -0800 (PST)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgD3W2DNSY9n3Gg+Bg--.34135S11
-X-Coremail-Antispam: 1UD129KBjvJXoWxur1DArWxGw1fXw4UtF13urg_yoWrWw1kpF
-	WakFy8GF4UXayq9397GFs7ZF1xtw1xKFWDXry7GayUXF9xur9YgF1rtFyrAFyjvFWxAFWx
-	XF40kryUZr13GrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUPC14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
-	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
-	IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
-	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwAKzVCY07xG64k0F24lc7
-	CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1l
-	x2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14
-	v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_JFI_Gr1lIxAIcVC0I7IY
-	x2IY6xkF7I0E14v26F4j6r4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z2
-	80aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI
-	43ZEXa7VUbT7KDUUUUU==
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQAPBWeOA-NKzAAAsU
+References: <8cb4d855-6bd8-427f-ac8f-8cf7b91547fb@wiesinger.com> <20250121040125.GC3761769@mit.edu>
+In-Reply-To: <20250121040125.GC3761769@mit.edu>
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Date: Tue, 21 Jan 2025 09:42:14 +0000
+X-Gm-Features: AbW1kvZghcmGS1mTAqENoTjQ24sh7R0DelDTm895TkKEN1yrN72WSZ_QqVcgIwY
+Message-ID: <CA+rD4x-hh1bzN3YWiGY-EdSpjDxiA-6HzRO14d0pfdb789mS6Q@mail.gmail.com>
+Subject: Re: Transparent compression with ext4 - especially with zstd
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Gerhard Wiesinger <lists@wiesinger.com>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-From: Baokun Li <libaokun1@huawei.com>
+Hi Gerhard, Theodore,
 
-After commit 378f32bab371 ("ext4: introduce direct I/O write using iomap
-infrastructure"), no one cares about the value of i_unwritten, so there
-is no need to maintain this variable, remove it, and clean up the
-associated logic.
+>even for a hyperscaler cloud company
+>(and even there, it's unclear that transparent compression is really
+>needed).
 
-Suggested-by: Zhang Yi <yi.zhang@huawei.com>
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
----
- fs/ext4/ext4.h  | 22 +++-------------------
- fs/ext4/inode.c |  2 +-
- fs/ext4/super.c |  9 +--------
- 3 files changed, 5 insertions(+), 28 deletions(-)
+Regarding exascale storages. Lustre FS (which uses EXT4 (LDISKFS) as a
+backend) has a =E2=80=9CClient-side data compression=E2=80=9D project (LU-1=
+0026) which
+adds transparent compression with an extendable set of algorithms. The
+initial release includes gzip, lz4, lz4hc, lzo, zstd, zstdfast
+algorithms with levels.
+More details are in the LUG and LAD 2023-2024 years presentations.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e0b536df8872..6fd550fc0c5c 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1061,7 +1061,6 @@ struct ext4_inode_info {
- 
- 	/* Number of ongoing updates on this inode */
- 	atomic_t  i_fc_updates;
--	atomic_t i_unwritten; /* Nr. of inflight conversions pending */
- 
- 	/* Fast commit wait queue for this inode */
- 	wait_queue_head_t i_fc_wait;
-@@ -3788,34 +3787,19 @@ static inline void set_bitmap_uptodate(struct buffer_head *bh)
- 	set_bit(BH_BITMAP_UPTODATE, &(bh)->b_state);
- }
- 
--/* For ioend & aio unwritten conversion wait queues */
--#define EXT4_WQ_HASH_SZ		37
--#define ext4_ioend_wq(v)   (&ext4__ioend_wq[((unsigned long)(v)) %\
--					    EXT4_WQ_HASH_SZ])
--extern wait_queue_head_t ext4__ioend_wq[EXT4_WQ_HASH_SZ];
--
- extern int ext4_resize_begin(struct super_block *sb);
- extern int ext4_resize_end(struct super_block *sb, bool update_backups);
- 
--static inline void ext4_set_io_unwritten_flag(struct inode *inode,
--					      struct ext4_io_end *io_end)
-+static inline void ext4_set_io_unwritten_flag(struct ext4_io_end *io_end)
- {
--	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
-+	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN))
- 		io_end->flag |= EXT4_IO_END_UNWRITTEN;
--		atomic_inc(&EXT4_I(inode)->i_unwritten);
--	}
- }
- 
- static inline void ext4_clear_io_unwritten_flag(ext4_io_end_t *io_end)
- {
--	struct inode *inode = io_end->inode;
--
--	if (io_end->flag & EXT4_IO_END_UNWRITTEN) {
-+	if (io_end->flag & EXT4_IO_END_UNWRITTEN)
- 		io_end->flag &= ~EXT4_IO_END_UNWRITTEN;
--		/* Wake up anyone waiting on unwritten extent conversion */
--		if (atomic_dec_and_test(&EXT4_I(inode)->i_unwritten))
--			wake_up_all(ext4_ioend_wq(inode));
--	}
- }
- 
- extern const struct iomap_ops ext4_iomap_ops;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 7c54ae5fcbd4..36b1f9fb690a 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2225,7 +2225,7 @@ static int mpage_map_one_extent(handle_t *handle, struct mpage_da_data *mpd)
- 			mpd->io_submit.io_end->handle = handle->h_rsv_handle;
- 			handle->h_rsv_handle = NULL;
- 		}
--		ext4_set_io_unwritten_flag(inode, mpd->io_submit.io_end);
-+		ext4_set_io_unwritten_flag(mpd->io_submit.io_end);
- 	}
- 
- 	BUG_ON(map->m_len == 0);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 78f2433f6ca0..187cccb2870a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1426,7 +1426,6 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	spin_lock_init(&ei->i_completed_io_lock);
- 	ei->i_sync_tid = 0;
- 	ei->i_datasync_tid = 0;
--	atomic_set(&ei->i_unwritten, 0);
- 	INIT_WORK(&ei->i_rsv_conversion_work, ext4_end_io_rsv_work);
- 	ext4_fc_init_inode(&ei->vfs_inode);
- 	mutex_init(&ei->i_fc_lock);
-@@ -7393,12 +7392,9 @@ static struct file_system_type ext4_fs_type = {
- };
- MODULE_ALIAS_FS("ext4");
- 
--/* Shared across all ext4 file systems */
--wait_queue_head_t ext4__ioend_wq[EXT4_WQ_HASH_SZ];
--
- static int __init ext4_init_fs(void)
- {
--	int i, err;
-+	int err;
- 
- 	ratelimit_state_init(&ext4_mount_msg_ratelimit, 30 * HZ, 64);
- 	ext4_li_info = NULL;
-@@ -7406,9 +7402,6 @@ static int __init ext4_init_fs(void)
- 	/* Build-time check for flags consistency */
- 	ext4_check_flag_values();
- 
--	for (i = 0; i < EXT4_WQ_HASH_SZ; i++)
--		init_waitqueue_head(&ext4__ioend_wq[i]);
--
- 	err = ext4_init_es();
- 	if (err)
- 		return err;
--- 
-2.39.2
+Best regards,
+Artem Blagodarenko
 
+From: Theodore Ts'o <tytso@mit.edu>
+Date: Tuesday, 21 January 2025 at 04:01
+To: Gerhard Wiesinger <lists@wiesinger.com>
+Cc: linux-ext4@vger.kernel.org <linux-ext4@vger.kernel.org>
+Subject: Re: Transparent compression with ext4 - especially with zstd
+
+On Sun, Jan 19, 2025 at 03:37:27PM +0100, Gerhard Wiesinger wrote:
+>
+> Are there any plans to include transparent compression with ext4 (especia=
+lly
+> with zstd)?
+
+I'm not aware of anyone in the ext4 deveopment commuity working on
+something like this.  Fully transparent compression is challenging,
+since supporting random writes into a compressed file is tricky.
+There are solutions (for example, the Stac patent which resulted in
+Microsoft to pay $120 million dollars), but even ignoring the
+intellectual property issues, they tend to compromise the efficiency
+of the compression.
+
+More to the point, given how cheap byte storage tends to be (dollars
+per IOPS tend to be far more of a constraint than dollars per GB),
+it's unclear what the business case would be for any company to fund
+development work in this area, when the cost of a slightly large HDD
+or SSD is going to be far cheaper than the necessary software
+engineering investrment needed, even for a hyperscaler cloud company
+(and even there, it's unclear that transparent compression is really
+needed).
+
+What is the business and/or technical problem which you are trying to
+solve?
+
+Cheers,
+
+                                        - Ted
