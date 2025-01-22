@@ -1,181 +1,206 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-il1-f208.google.com (mail-il1-f208.google.com [209.85.166.208])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A4101213259;
-	Wed, 22 Jan 2025 11:47:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 88EB71DF26F
+	for <linux-ext4@vger.kernel.org>; Wed, 22 Jan 2025 13:06:23 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.166.208
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737546452; cv=none; b=uJD466oIlgtmyaH2TQVI63/Y/4EBrVde/FBASoDoiXRjAyp4Il7tJ++ZOKeYwSUK++SRszDXjzaikhEsA/0AChVAjn53xFjwUcPOwc8b/YLRJ/NsK5lwk+vmKAuaHIEL+PyMIB38B+VIgLO3jYabFZcDxtgTapdeZfCQ8MQcrJA=
+	t=1737551185; cv=none; b=J35yMp1NucKr5ZT6H7KwW+qEfu3viifXdVaGMUWOqegkILzHpx0+liYOefB+E+gjx5CvxatxdOarc0ZyN1c2aEbgfWaVKfN49fkJ1KKxoO83czNznPYApYfEkVw6wGBmZ/0Evlfjl2/Oq4mM2cvmhGNQLf0d9Db7aoLK9naUcxo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1737546452; c=relaxed/simple;
-	bh=Y5SLBH7WRj6oFXP6VqSS0YJXbX94IIpfq+HcBcgSuqY=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=GXpILEbOVScsVfyrR/kNFIQgr+W8OqdwWKhvwBmboP4uE648ODVneWM9RqahLBjssGXTsVmaVdU28FtbFvjj64xv3QPHevE6/EWgHgrBuq81x4LbhHu2unHCJEv9oKgN74ym0oOqlg1gW4+i1BAk+WF24hSXQ3kgXP6YUwUxqKY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4YdMkL2pm4z4f3jqr;
-	Wed, 22 Jan 2025 19:47:06 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id D280D1A0DF0;
-	Wed, 22 Jan 2025 19:47:21 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP4 (Coremail) with SMTP id gCh0CgD3Wl_F2pBn0KiuBg--.48765S8;
-	Wed, 22 Jan 2025 19:47:21 +0800 (CST)
-From: libaokun@huaweicloud.com
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	jack@suse.cz,
-	linux-kernel@vger.kernel.org,
-	yi.zhang@huawei.com,
-	yangerkun@huawei.com,
-	libaokun@huaweicloud.com,
-	Baokun Li <libaokun1@huawei.com>
-Subject: [PATCH v2 4/7] ext4: add more ext4_emergency_state() checks around sb_rdonly()
-Date: Wed, 22 Jan 2025 19:41:27 +0800
-Message-Id: <20250122114130.229709-5-libaokun@huaweicloud.com>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20250122114130.229709-1-libaokun@huaweicloud.com>
-References: <20250122114130.229709-1-libaokun@huaweicloud.com>
+	s=arc-20240116; t=1737551185; c=relaxed/simple;
+	bh=yyjzZuzymCStMfVdWP4IuLqviNp9I4koz2OvlHVvBqg=;
+	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=G89muRVraTZk+JHC47RMgTlhMLA7ZdKmivrHS0h0RbmbjSea51lXshB2/jLnQ02M3Cpcd1XVPE4nuGpEiVMmCw+nADZEqa353kbZl81G6RTmpoaL8XoVaGzeBzgXa4/L6IJM3FpsKBT4P/tNjRPKWzod6PxLuddj+3R+UKum5zc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.166.208
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-il1-f208.google.com with SMTP id e9e14a558f8ab-3ce843b51c3so120273825ab.0
+        for <linux-ext4@vger.kernel.org>; Wed, 22 Jan 2025 05:06:23 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1737551182; x=1738155982;
+        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=t2T4TPHHciuTmKE4LeVibB+rD3ws+gjYDG0vdY1N2bE=;
+        b=LPu8J5JB/5f438ACspSos7+l6xUF1NDURyQl89PH+pBY3YZHEMoFZsJ8XqVd8CdKE2
+         VqkTlZQSy05baJ3f3q/BrHPq5pbhyi46G78ty9KqB9qpALu9Zc8dIEQsoCbzsH9Vrqam
+         AHmrlLl0pNopCeRGtumFKF1KgpUIOpkd+qRZu20JjhGZpec13Nqyul4nrGRXCupyj2sH
+         hxGGmLpEIeUTdHxtpYym11j7XQjZiTyOGUhjEKf9wA/BtC1XbsCMZv6whkLlS39N4wBs
+         wUA22qyQRnLTMxiPiZK6SmRd8N5nhBHlIC8WdXZ4p/c/lZl4n0GsdYUygrAfl4hBkIFx
+         EZaQ==
+X-Forwarded-Encrypted: i=1; AJvYcCV0hR3p64JnXZdbeBYDL9XqZVDbIKWifqaAIqi+5Ji+HsWW2dDQFBr1YRMc3/1KWjEHOEvby/ziN6No@vger.kernel.org
+X-Gm-Message-State: AOJu0YwwkG/AFVpLP+6qnSQ6fDfj1mbG1caG1nLIuEY/7uUXQqDPlI4H
+	3E25XYY+DdAB3e1XHXGJtuP6SpxsU3Ei6CamCFKWu6lhMY/FAhNz68Ds4m0yDZeslNBbEntxops
+	YizjM/sAhuGYLlEk3y0zTH347UIY0UNemysO8yKx28wca+g+nX59r7E8=
+X-Google-Smtp-Source: AGHT+IHX1EX49xytbR+eAo6bSGa0eLevN6oEEY/ybYR7Q37eygFmFe8dBUkpCfIruQNpfjzNRVRmWNf5KOw2+2TUFBsH2o8paK96
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgD3Wl_F2pBn0KiuBg--.48765S8
-X-Coremail-Antispam: 1UD129KBjvJXoWxXr4UAw47uryfWryftryUtrb_yoWrXw1Dpr
-	nYkFykZFWj9w1DuanrGF15XryFgw4IyFyUurW3ur1rXFyDtrn5AFsrtF1FvF17ZrW5Wr1x
-	WF4jyrZrur47CrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUPC14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
-	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
-	IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
-	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwAKzVCY07xG64k0F24lc7
-	CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1l
-	x2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14
-	v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IY
-	x2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87
-	Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14v26r4UJVWxJrUvcSsGvfC2KfnxnUUI
-	43ZEXa7VUbT7KDUUUUU==
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQAQBWeQpvMO7AAAsU
+X-Received: by 2002:a05:6e02:2602:b0:3cf:b39c:58e4 with SMTP id
+ e9e14a558f8ab-3cfb39c5f9amr19165815ab.11.1737551182600; Wed, 22 Jan 2025
+ 05:06:22 -0800 (PST)
+Date: Wed, 22 Jan 2025 05:06:22 -0800
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6790ed4e.050a0220.194594.0010.GAE@google.com>
+Subject: [syzbot] [ext4?] KASAN: slab-out-of-bounds Read in filldir64
+From: syzbot <syzbot+1ef611e998bba0e8bdf0@syzkaller.appspotmail.com>
+To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com, tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
 
-From: Baokun Li <libaokun1@huawei.com>
+Hello,
 
-Some functions check sb_rdonly() to make sure the file system isn't
-modified after it's read-only. Since we also don't want the file system
-modified if it's in an emergency state (shutdown or emergency_ro),
-we're adding additional ext4_emergency_state() checks where sb_rdonly()
-is checked.
+syzbot found the following issue on:
 
-Suggested-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+HEAD commit:    0b7958fa05d5 Merge tag 'for-6.13/dm-fixes' of git://git.ke..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=17594218580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=4ef22c4fce5135b4
+dashboard link: https://syzkaller.appspot.com/bug?extid=1ef611e998bba0e8bdf0
+compiler:       Debian clang version 15.0.6, GNU ld (GNU Binutils for Debian) 2.40
+
+Unfortunately, I don't have any reproducer for this issue yet.
+
+Downloadable assets:
+disk image (non-bootable): https://storage.googleapis.com/syzbot-assets/7feb34a89c2a/non_bootable_disk-0b7958fa.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/1af4eb8ec17e/vmlinux-0b7958fa.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/308c172f79c6/bzImage-0b7958fa.xz
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+1ef611e998bba0e8bdf0@syzkaller.appspotmail.com
+
+loop0: detected capacity change from 0 to 1024
+EXT4-fs: Ignoring removed i_version option
+EXT4-fs: Quota format mount options ignored when QUOTA feature is enabled
+EXT4-fs (loop0): mounted filesystem 00000000-0000-0000-0000-000000000000 r/w without journal. Quota mode: writeback.
+EXT4-fs error (device loop0): ext4_xattr_ibody_find:2240: inode #15: comm syz.0.0: corrupted in-inode xattr: ea_inode specified without ea_inode feature enabled
+EXT4-fs error (device loop0): ext4_xattr_ibody_find:2240: inode #15: comm syz.0.0: corrupted in-inode xattr: ea_inode specified without ea_inode feature enabled
+loop0: detected capacity change from 1024 to 960
+EXT4-fs error (device loop0): ext4_xattr_ibody_find:2240: inode #12: comm syz.0.0: corrupted in-inode xattr: bad magic number in in-inode xattr
+==================================================================
+BUG: KASAN: slab-out-of-bounds in memchr+0x5e/0x70 lib/string.c:802
+Read of size 1 at addr ffff88803df4b7bc by task syz.0.0/5313
+
+CPU: 0 UID: 0 PID: 5313 Comm: syz.0.0 Not tainted 6.13.0-rc6-syzkaller-00046-g0b7958fa05d5 #0
+Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.3-debian-1.16.3-2~bpo12+1 04/01/2014
+Call Trace:
+ <TASK>
+ __dump_stack lib/dump_stack.c:94 [inline]
+ dump_stack_lvl+0x241/0x360 lib/dump_stack.c:120
+ print_address_description mm/kasan/report.c:378 [inline]
+ print_report+0x169/0x550 mm/kasan/report.c:489
+ kasan_report+0x143/0x180 mm/kasan/report.c:602
+ memchr+0x5e/0x70 lib/string.c:802
+ verify_dirent_name fs/readdir.c:152 [inline]
+ filldir64+0x5d/0x690 fs/readdir.c:355
+ dir_emit include/linux/fs.h:3745 [inline]
+ ext4_read_inline_dir+0xb4e/0xe60 fs/ext4/inline.c:1569
+ ext4_readdir+0x475/0x3a60 fs/ext4/dir.c:159
+ iterate_dir+0x571/0x800 fs/readdir.c:108
+ __do_sys_getdents64 fs/readdir.c:403 [inline]
+ __se_sys_getdents64+0x1e2/0x4b0 fs/readdir.c:389
+ do_syscall_x64 arch/x86/entry/common.c:52 [inline]
+ do_syscall_64+0xf3/0x230 arch/x86/entry/common.c:83
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7f6225385d29
+Code: ff ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 a8 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007f6226211038 EFLAGS: 00000246 ORIG_RAX: 00000000000000d9
+RAX: ffffffffffffffda RBX: 00007f6225575fa0 RCX: 00007f6225385d29
+RDX: 0000000000001000 RSI: 0000000020000f80 RDI: 000000000000000a
+RBP: 00007f6225401b08 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
+R13: 0000000000000000 R14: 00007f6225575fa0 R15: 00007fff83a284e8
+ </TASK>
+
+Allocated by task 5313:
+ kasan_save_stack mm/kasan/common.c:47 [inline]
+ kasan_save_track+0x3f/0x80 mm/kasan/common.c:68
+ poison_kmalloc_redzone mm/kasan/common.c:377 [inline]
+ __kasan_kmalloc+0x98/0xb0 mm/kasan/common.c:394
+ kasan_kmalloc include/linux/kasan.h:260 [inline]
+ __do_kmalloc_node mm/slub.c:4298 [inline]
+ __kmalloc_noprof+0x285/0x4c0 mm/slub.c:4310
+ kmalloc_noprof include/linux/slab.h:905 [inline]
+ ext4_read_inline_dir+0x31f/0xe60 fs/ext4/inline.c:1478
+ ext4_readdir+0x475/0x3a60 fs/ext4/dir.c:159
+ iterate_dir+0x571/0x800 fs/readdir.c:108
+ __do_sys_getdents64 fs/readdir.c:403 [inline]
+ __se_sys_getdents64+0x1e2/0x4b0 fs/readdir.c:389
+ do_syscall_x64 arch/x86/entry/common.c:52 [inline]
+ do_syscall_64+0xf3/0x230 arch/x86/entry/common.c:83
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+
+The buggy address belongs to the object at ffff88803df4b780
+ which belongs to the cache kmalloc-64 of size 64
+The buggy address is located 0 bytes to the right of
+ allocated 60-byte region [ffff88803df4b780, ffff88803df4b7bc)
+
+The buggy address belongs to the physical page:
+page: refcount:1 mapcount:0 mapping:0000000000000000 index:0x0 pfn:0x3df4b
+ksm flags: 0x4fff00000000000(node=1|zone=1|lastcpupid=0x7ff)
+page_type: f5(slab)
+raw: 04fff00000000000 ffff88801ac418c0 ffffea0000f02840 dead000000000003
+raw: 0000000000000000 0000000080200020 00000001f5000000 0000000000000000
+page dumped because: kasan: bad access detected
+page_owner tracks the page as allocated
+page last allocated via order 0, migratetype Unmovable, gfp_mask 0x52cc0(GFP_KERNEL|__GFP_NOWARN|__GFP_NORETRY|__GFP_COMP), pid 1, tgid 1 (swapper/0), ts 17263111191, free_ts 0
+ set_page_owner include/linux/page_owner.h:32 [inline]
+ post_alloc_hook+0x1f3/0x230 mm/page_alloc.c:1558
+ prep_new_page mm/page_alloc.c:1566 [inline]
+ get_page_from_freelist+0x365c/0x37a0 mm/page_alloc.c:3476
+ __alloc_pages_noprof+0x292/0x710 mm/page_alloc.c:4753
+ alloc_pages_mpol_noprof+0x3e8/0x680 mm/mempolicy.c:2269
+ alloc_slab_page+0x6a/0x110 mm/slub.c:2423
+ allocate_slab+0x5a/0x2b0 mm/slub.c:2589
+ new_slab mm/slub.c:2642 [inline]
+ ___slab_alloc+0xc27/0x14a0 mm/slub.c:3830
+ __slab_alloc+0x58/0xa0 mm/slub.c:3920
+ __slab_alloc_node mm/slub.c:3995 [inline]
+ slab_alloc_node mm/slub.c:4156 [inline]
+ __do_kmalloc_node mm/slub.c:4297 [inline]
+ __kmalloc_noprof+0x2e6/0x4c0 mm/slub.c:4310
+ kmalloc_noprof include/linux/slab.h:905 [inline]
+ kmalloc_array_noprof include/linux/slab.h:946 [inline]
+ kobj_map+0x6b/0x550 drivers/base/map.c:44
+ cdev_add+0x95/0x170 fs/char_dev.c:491
+ __video_register_device+0x3ac3/0x4a50 drivers/media/v4l2-core/v4l2-dev.c:1045
+ video_register_device include/media/v4l2-dev.h:384 [inline]
+ vivid_create_devnodes+0x1f5f/0x2c90 drivers/media/test-drivers/vivid/vivid-core.c:1677
+ vivid_create_instance drivers/media/test-drivers/vivid/vivid-core.c:2040 [inline]
+ vivid_probe+0x5858/0x7cf0 drivers/media/test-drivers/vivid/vivid-core.c:2093
+ platform_probe+0x13a/0x1c0 drivers/base/platform.c:1404
+ really_probe+0x2b8/0xad0 drivers/base/dd.c:658
+page_owner free stack trace missing
+
+Memory state around the buggy address:
+ ffff88803df4b680: 00 00 00 00 00 00 fc fc fc fc fc fc fc fc fc fc
+ ffff88803df4b700: 00 00 00 00 00 00 00 00 fc fc fc fc fc fc fc fc
+>ffff88803df4b780: 00 00 00 00 00 00 00 04 fc fc fc fc fc fc fc fc
+                                        ^
+ ffff88803df4b800: 00 00 00 00 00 fc fc fc fc fc fc fc fc fc fc fc
+ ffff88803df4b880: 00 00 00 00 00 00 fc fc fc fc fc fc fc fc fc fc
+==================================================================
+
+
 ---
- fs/ext4/file.c  |  3 ++-
- fs/ext4/ioctl.c |  2 +-
- fs/ext4/super.c | 26 +++++++++++++++-----------
- 3 files changed, 18 insertions(+), 13 deletions(-)
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index d0c21e6503c6..45fc6586d41b 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -844,7 +844,8 @@ static int ext4_sample_last_mounted(struct super_block *sb,
- 	if (likely(ext4_test_mount_flag(sb, EXT4_MF_MNTDIR_SAMPLED)))
- 		return 0;
- 
--	if (sb_rdonly(sb) || !sb_start_intwrite_trylock(sb))
-+	if (ext4_emergency_state(sb) || sb_rdonly(sb) ||
-+	    !sb_start_intwrite_trylock(sb))
- 		return 0;
- 
- 	ext4_set_mount_flag(sb, EXT4_MF_MNTDIR_SAMPLED);
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 7b9ce71c1c81..0c5ce9c2cdfc 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -1705,7 +1705,7 @@ int ext4_update_overhead(struct super_block *sb, bool force)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
--	if (sb_rdonly(sb))
-+	if (ext4_emergency_state(sb) || sb_rdonly(sb))
- 		return 0;
- 	if (!force &&
- 	    (sbi->s_overhead == 0 ||
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 4b089a5b760a..d8116c9c2bd0 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -473,8 +473,9 @@ static void ext4_maybe_update_superblock(struct super_block *sb)
- 	__u64 lifetime_write_kbytes;
- 	__u64 diff_size;
- 
--	if (sb_rdonly(sb) || !(sb->s_flags & SB_ACTIVE) ||
--	    !journal || (journal->j_flags & JBD2_UNMOUNT))
-+	if (ext4_emergency_state(sb) || sb_rdonly(sb) ||
-+	    !(sb->s_flags & SB_ACTIVE) || !journal ||
-+	    journal->j_flags & JBD2_UNMOUNT)
- 		return;
- 
- 	now = ktime_get_real_seconds();
-@@ -765,7 +766,8 @@ static void update_super_work(struct work_struct *work)
- 	 * We use directly jbd2 functions here to avoid recursing back into
- 	 * ext4 error handling code during handling of previous errors.
- 	 */
--	if (!sb_rdonly(sbi->s_sb) && journal) {
-+	if (!ext4_emergency_state(sbi->s_sb) &&
-+	    !sb_rdonly(sbi->s_sb) && journal) {
- 		struct buffer_head *sbh = sbi->s_sbh;
- 		bool call_notify_err = false;
- 
-@@ -1325,13 +1327,14 @@ static void ext4_put_super(struct super_block *sb)
- 	ext4_mb_release(sb);
- 	ext4_ext_release(sb);
- 
--	if (!sb_rdonly(sb) && !aborted) {
--		ext4_clear_feature_journal_needs_recovery(sb);
--		ext4_clear_feature_orphan_present(sb);
--		es->s_state = cpu_to_le16(sbi->s_mount_state);
--	}
--	if (!sb_rdonly(sb))
-+	if (!ext4_emergency_state(sb) && !sb_rdonly(sb)) {
-+		if (!aborted) {
-+			ext4_clear_feature_journal_needs_recovery(sb);
-+			ext4_clear_feature_orphan_present(sb);
-+			es->s_state = cpu_to_le16(sbi->s_mount_state);
-+		}
- 		ext4_commit_super(sb);
-+	}
- 
- 	ext4_group_desc_free(sbi);
- 	ext4_flex_groups_free(sbi);
-@@ -3699,7 +3702,8 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
- 		if (group >= elr->lr_next_group) {
- 			ret = 1;
- 			if (elr->lr_first_not_zeroed != ngroups &&
--			    !sb_rdonly(sb) && test_opt(sb, INIT_INODE_TABLE)) {
-+			    !ext4_emergency_state(sb) && !sb_rdonly(sb) &&
-+			    test_opt(sb, INIT_INODE_TABLE)) {
- 				elr->lr_next_group = elr->lr_first_not_zeroed;
- 				elr->lr_mode = EXT4_LI_MODE_ITABLE;
- 				ret = 0;
-@@ -4004,7 +4008,7 @@ int ext4_register_li_request(struct super_block *sb,
- 		goto out;
- 	}
- 
--	if (sb_rdonly(sb) ||
-+	if (ext4_emergency_state(sb) || sb_rdonly(sb) ||
- 	    (test_opt(sb, NO_PREFETCH_BLOCK_BITMAPS) &&
- 	     (first_not_zeroed == ngroups || !test_opt(sb, INIT_INODE_TABLE))))
- 		goto out;
--- 
-2.39.2
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
 
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
+
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
+
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
+
+If you want to undo deduplication, reply with:
+#syz undup
