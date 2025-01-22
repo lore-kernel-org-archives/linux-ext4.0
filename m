@@ -1,28 +1,28 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CF43D212D93;
-	Wed, 22 Jan 2025 11:11:34 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 35B181BDA99;
+	Wed, 22 Jan 2025 11:47:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737544297; cv=none; b=Nc/vN9kdobe3dAcbbjs8LKA2DOdn6J/RX7u8wY2AA3iGP8/UnMgK7A4nBWX9wKndEajJ/TcV5Xsmdo4n92ceulBl0g3kIo9d/EqFL7COpOmOGztRu4Vo8bFvGXiPGUuxyuTWfNQG8ReLQCcVrNIO2/o+nKh7v29MEk/8eHYbZWg=
+	t=1737546446; cv=none; b=Unio0RlUfdc100Zjoz0ndGZqQvvXsj8k5RfitRF+orQqPFGP9JmeOC4GV03t/4OmkcNVqi5d33HWP3zs4VNskqpgtUxTHkA8qftdR3gOkFNx6oI2UkwG6n9lV29e3j1PhQt5J8Z6mosB8nuUjKp+7SDvHOXF2+D2//XZIi3vtcM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1737544297; c=relaxed/simple;
-	bh=R1jCJ6y5Tv4MS7qx6LhEZuVE6xGSFDVZyrn94jDkQQU=;
+	s=arc-20240116; t=1737546446; c=relaxed/simple;
+	bh=CYbud3hksbn6ARgpdsBFCAasNPLtxmxeG896AP2SiyE=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=cEMH4RQ6bBEbwEA7p45CjxRP/fG1TVT5NkHMP9TCrzAMCwlA0rzRdM0kYpLB9ckwboYaSf3as3WbiyjljCOak4Ib0b1feN6yt27W2tc0XDdpeOCw5Jzph90ehw61yNwFOaaVkY1rLRhAMgbPJesFK1JxgT+n0WV88wCODr0QtmU=
+	 MIME-Version; b=dYIqquyB/mcBNrsiKGx0xRv/wT1gqR0y8eI/I1dqYLexJkiZNG3hXdwCSE2/RDh+qjY7tuLuRK/rRLPmnv9u/TcL+eVQh1lPqw7H6wHzXyqFrHcHELa+L3svI9MsqQPOg9JBcN8J/HH/Cy490AOCOpHH6pcSZ6T47OnHkFlG6U8=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4YdLwn5yKrz4f3jd5;
-	Wed, 22 Jan 2025 19:11:05 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4YdMkD0L20z4f3jdD;
+	Wed, 22 Jan 2025 19:47:00 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 742361A1331;
-	Wed, 22 Jan 2025 19:11:26 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id A56F11A0D97;
+	Wed, 22 Jan 2025 19:47:20 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP4 (Coremail) with SMTP id gCh0CgAni19Z0pBnW0KsBg--.50502S8;
-	Wed, 22 Jan 2025 19:11:26 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgD3Wl_F2pBn0KiuBg--.48765S5;
+	Wed, 22 Jan 2025 19:47:20 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -33,12 +33,12 @@ Cc: tytso@mit.edu,
 	yangerkun@huawei.com,
 	libaokun@huaweicloud.com,
 	Baokun Li <libaokun1@huawei.com>
-Subject: [PATCH v3 4/9] ext4: extract ext4_has_journal_option() from __ext4_fill_super()
-Date: Wed, 22 Jan 2025 19:05:28 +0800
-Message-Id: <20250122110533.4116662-5-libaokun@huaweicloud.com>
+Subject: [PATCH v2 1/7] ext4: convert EXT4_FLAGS_* defines to enum
+Date: Wed, 22 Jan 2025 19:41:24 +0800
+Message-Id: <20250122114130.229709-2-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20250122110533.4116662-1-libaokun@huaweicloud.com>
-References: <20250122110533.4116662-1-libaokun@huaweicloud.com>
+In-Reply-To: <20250122114130.229709-1-libaokun@huaweicloud.com>
+References: <20250122114130.229709-1-libaokun@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -46,110 +46,56 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgAni19Z0pBnW0KsBg--.50502S8
-X-Coremail-Antispam: 1UD129KBjvJXoWxZr4kXw17Xry7Zw4kKw48JFb_yoW5Ww17pF
-	ZxZryIyrW8ZF1kurs7GFs5JrWrWw40ka48GrZ29F1kX39FyryIg348tFyYqFyaqFWxGw18
-	XFy0k3W8u34jkaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUPG14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
-	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
-	IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
-	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwAKzVCY07xG64k0F24lc7
-	CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1l
-	x2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14
-	v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IY
-	x2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87
-	Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIF
-	yTuYvjfUYl19UUUUU
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAQBWeQpvkM+wAAsI
+X-CM-TRANSID:gCh0CgD3Wl_F2pBn0KiuBg--.48765S5
+X-Coremail-Antispam: 1UD129KBjvdXoWrurWxAFyUZFW7AFyxJry8AFb_yoWDGFbEka
+	yIvr4rWrs3CF1S9Fn5CryYyr10gr4Iyr4UWFnY9ryrXr4UJrWrJFyDCrWDArn5WF4UuF15
+	ArWkXry2qFy0qjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUbgxFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUGwA2048vs2IY02
+	0Ec7CjxVAFwI0_JFI_Gr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xv
+	wVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVWxJVW8Jr1l84
+	ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I2
+	62IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcV
+	AFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG
+	0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lw4CEc2x0rVAKj4xxMxkF7I0En4
+	kS14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E
+	5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtV
+	W8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY
+	1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI
+	0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x
+	0JUho7_UUUUU=
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAQBWeQpvkM-wACsO
 
 From: Baokun Li <libaokun1@huawei.com>
 
-Extract the ext4_has_journal_option() helper function to reduce code
-duplication. No functional changes.
+Do away with the defines and use an enum as it's cleaner.
 
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/super.c | 50 ++++++++++++++++++++++++-------------------------
- 1 file changed, 25 insertions(+), 25 deletions(-)
+ fs/ext4/ext4.h | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 34a7b6523f8b..8bff0d3f807e 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5020,6 +5020,24 @@ static int ext4_check_journal_data_mode(struct super_block *sb)
- 	return 0;
- }
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 550d21ddba8c..4491e82cfa6f 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2233,9 +2233,11 @@ extern int ext4_feature_set_ok(struct super_block *sb, int readonly);
+ /*
+  * Superblock flags
+  */
+-#define EXT4_FLAGS_RESIZING	0
+-#define EXT4_FLAGS_SHUTDOWN	1
+-#define EXT4_FLAGS_BDEV_IS_DAX	2
++enum {
++	EXT4_FLAGS_RESIZING,	/* Avoid superblock update and resize race */
++	EXT4_FLAGS_SHUTDOWN,	/* Prevent access to the file system */
++	EXT4_FLAGS_BDEV_IS_DAX,	/* Current block device support DAX */
++};
  
-+static const char *ext4_has_journal_option(struct super_block *sb)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+
-+	if (test_opt(sb, JOURNAL_ASYNC_COMMIT))
-+		return "journal_async_commit";
-+	if (test_opt2(sb, EXPLICIT_JOURNAL_CHECKSUM))
-+		return "journal_checksum";
-+	if (sbi->s_commit_interval != JBD2_DEFAULT_MAX_COMMIT_AGE*HZ)
-+		return "commit=";
-+	if (EXT4_MOUNT_DATA_FLAGS &
-+	    (sbi->s_mount_opt ^ sbi->s_def_mount_opt))
-+		return "data=";
-+	if (test_opt(sb, DATA_ERR_ABORT))
-+		return "data_err=abort";
-+	return NULL;
-+}
-+
- static int ext4_load_super(struct super_block *sb, ext4_fsblk_t *lsb,
- 			   int silent)
+ static inline int ext4_forced_shutdown(struct super_block *sb)
  {
-@@ -5411,35 +5429,17 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 		       "suppressed and not mounted read-only");
- 		goto failed_mount3a;
- 	} else {
--		/* Nojournal mode, all journal mount options are illegal */
--		if (test_opt(sb, JOURNAL_ASYNC_COMMIT)) {
--			ext4_msg(sb, KERN_ERR, "can't mount with "
--				 "journal_async_commit, fs mounted w/o journal");
--			goto failed_mount3a;
--		}
-+		const char *journal_option;
- 
--		if (test_opt2(sb, EXPLICIT_JOURNAL_CHECKSUM)) {
--			ext4_msg(sb, KERN_ERR, "can't mount with "
--				 "journal_checksum, fs mounted w/o journal");
--			goto failed_mount3a;
--		}
--		if (sbi->s_commit_interval != JBD2_DEFAULT_MAX_COMMIT_AGE*HZ) {
--			ext4_msg(sb, KERN_ERR, "can't mount with "
--				 "commit=%lu, fs mounted w/o journal",
--				 sbi->s_commit_interval / HZ);
--			goto failed_mount3a;
--		}
--		if (EXT4_MOUNT_DATA_FLAGS &
--		    (sbi->s_mount_opt ^ sbi->s_def_mount_opt)) {
--			ext4_msg(sb, KERN_ERR, "can't mount with "
--				 "data=, fs mounted w/o journal");
--			goto failed_mount3a;
--		}
--		if (test_opt(sb, DATA_ERR_ABORT)) {
-+		/* Nojournal mode, all journal mount options are illegal */
-+		journal_option = ext4_has_journal_option(sb);
-+		if (journal_option != NULL) {
- 			ext4_msg(sb, KERN_ERR,
--				 "can't mount with data_err=abort, fs mounted w/o journal");
-+				 "can't mount with %s, fs mounted w/o journal",
-+				 journal_option);
- 			goto failed_mount3a;
- 		}
-+
- 		sbi->s_def_mount_opt &= ~EXT4_MOUNT_JOURNAL_CHECKSUM;
- 		clear_opt(sb, JOURNAL_CHECKSUM);
- 		clear_opt(sb, DATA_FLAGS);
 -- 
 2.39.2
 
