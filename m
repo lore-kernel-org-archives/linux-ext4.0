@@ -1,313 +1,236 @@
-Received: from mail-pl1-f179.google.com (mail-pl1-f179.google.com [209.85.214.179])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.20])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B61A21764F;
-	Tue,  4 Feb 2025 17:36:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.179
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1738690591; cv=none; b=kk7WgP6QIUYvLEJvNry6tyL2CJ2l20nHTLmCxml8oKnCupnPPTQbXwa4sbDJY36bPAZGLyfwLHOWmIUSu1lNZ5s2m90Xf9Hyi6iiK2CZHFKWpPn/5exIWXo5lhsAxiv1QIE15RlWRxrcaR7jdqh85IkDAkIEoHA5MkiJnC/3LEw=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1738690591; c=relaxed/simple;
-	bh=mJoRNT/c0ha8OMPTHba0V8u4uxTClqTRzrhJOlFH2Pc=;
-	h=From:To:Cc:Subject:In-Reply-To:Date:Message-ID:References; b=deaQ3Ddzknk+9RCxE/70LfNHC3SAdrG+mTHThTfT5W1fSWghnNhANH7rAIXW3OcnU3EcAsAgs/kWWYN6NYTUUyXVYK1usRDpyc0I1913II3xugROVALIHgM3C8LWGid2SA52fgZstaD+IOXzoFG5eiXQ9DMh6F75nRvpdt5WaG4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Qwz1b2hT; arc=none smtp.client-ip=209.85.214.179
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 177522010F5;
+	Tue,  4 Feb 2025 19:06:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=198.175.65.20
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1738695983; cv=fail; b=nnLQfaMU6Qc7A2NLsgiHACbcfFn9/zopR32BLCQDXiDAtlqyOVXWo2cRtO+6wewZ5dqhDDKRlHnV3gTfDWfijg9MN5bJIQ4w8eR0o9aBFQLpv79RMmMA+4lD6p1xB65FTC4UZ/ARPk8jNP3qoQ9Y0Zk0xLlXtMqP/Qux+zpkdHw=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1738695983; c=relaxed/simple;
+	bh=cM7MGCNmgEicKq6tPE7BvkQtbVVInIiUj+wIq5lwFyA=;
+	h=Date:From:To:CC:Subject:Message-ID:References:Content-Type:
+	 Content-Disposition:In-Reply-To:MIME-Version; b=i3zU1Rvq0hoXiFnjvCtg9lc97HK52Ftf3FxX/K7Yc8/5+KU8S/41/n+yTgEABP7bSVabK/YkzMUdc5l+UiINwlcU9QAx9HtHgPzOFUZtNaothjbgZAXcjp7gZchlupCsJrTytPmFhythvHGEhQrTxeBNNvFTIAJnJOLKkaikF2U=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=gWNW5B9d; arc=fail smtp.client-ip=198.175.65.20
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Qwz1b2hT"
-Received: by mail-pl1-f179.google.com with SMTP id d9443c01a7336-21619108a6bso99672425ad.3;
-        Tue, 04 Feb 2025 09:36:29 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1738690589; x=1739295389; darn=vger.kernel.org;
-        h=references:message-id:date:in-reply-to:subject:cc:to:from:from:to
-         :cc:subject:date:message-id:reply-to;
-        bh=fBTd+QKws5bL0u6aVraqPtVTxCvfaWJHWL05QjdevL8=;
-        b=Qwz1b2hTuINduJRw7PyPChNK3Dyty+US5mf/JB1xaDSAeHD6+3iwVC37rB2eJJWUZJ
-         Ac8PMG5UGBMiQ3a0Y4PPmiTE/sg0llKxscBJGEgZAjdMY9RqyhmllevH57qQPrw7KyWW
-         HzfzMgJHQnMP8GsgE5QCMJhJyJE2w9zk1KwXFCZEGLhWR+k8WF8NqXzX/jxNZUrug0B2
-         95Vtm+kiZBeyS9J8jh1fG9V4VDkTQiRjaELHc25zbZdneZlObsX6OtGwkxJUjXscPyrM
-         1ZQEZ4f6e2LzsF9Uud38t08vrD2WBnEv3mL5i7eRXc3CUAmJiSkRd77DeeJSwadMTYAH
-         msaQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1738690589; x=1739295389;
-        h=references:message-id:date:in-reply-to:subject:cc:to:from
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=fBTd+QKws5bL0u6aVraqPtVTxCvfaWJHWL05QjdevL8=;
-        b=ehQ9kmzk3bQIp/Nwb6NUxQx1Uqh/TRfL9TEJsJGlRNs7z0FgraFF0vKQR/BCm4DbF8
-         38c1dHXM2Bhlrg4B4TRwXzlXy4AHj1rOySKuPrX0DhiUGo6yqt3JmJsqWPzr35HkwwaC
-         4N/WWG2gODzLaQHIsVHda79eOrKfMkbAdE4vRZZzZxhLROo0zjYgCqjzD6m2LGIdvo9U
-         E/q996Q481C8nMDgsaCvAWKIgnL/5ZImGajBPAbvK7ALMyZfdA4Q24CWOyqKGYM+59Q4
-         uw2lrodwV2pOQyPZ4jRvWv48pL1Xbh+mYSPKZ3+Gh1sTEu7SWuZXfjqxJ7QCiaPCvTgD
-         6LzQ==
-X-Forwarded-Encrypted: i=1; AJvYcCVzBLLnkPNGKoCWXXP7pGZs3Lgd5PuLxU1rqeT1gzS6JD9nuY1sOBjw1edufgrh0sMXTr4uTPQswjMBBWk+Zg==@vger.kernel.org, AJvYcCXI7mJUB8MKeUzKnd4QBWkJyFQwIZFCk9W2EPkR4C2Zayb2o2OykT9z8/h0mWIq23jmYFfha6rYLR+U@vger.kernel.org, AJvYcCXLGK3okx5KyKodHGCi/xvssuvLcdXSbBZq4UE/ptq/nosxAzfbeZZ5VPzZnMgmIT4ZszrhIyMkfK0z@vger.kernel.org
-X-Gm-Message-State: AOJu0YxKZoNTBiB08N6EcW60gXyuPwlzZJw13OKVRH0jKeIFLrA+Vhal
-	FFzkis5GR6ng45PyDYnDlByGxiaXNSNiRj27z38Qu3UO/ZPbzd67
-X-Gm-Gg: ASbGncuVwyLE3O5mw2CDFqdE7U3AIrW6qniVcKW5NFwgkge6iing/d79WDg/Q6oH5o1
-	3f0ezUmk4VCxFAOFZZ8rTrHl/OYogyKYwWDENwBjxkouEtBh9B0fCFzw95UzpTX46KBb01duHgT
-	uRvolfLH5HbuPfAn1VaVT8IK2i26AI2pFOW0nw01aK1NTHUy9XRa1JUcIVk/uUCzHe8uINPPVHy
-	IW9Adk+Hm2SS5ROdFY3KWQxGRHMPkjy7QBHYFZig2yVbqlHR3yENWKHgXPBfGXadSSSiHaN3cIp
-	9U7PWwcz
-X-Google-Smtp-Source: AGHT+IFt+GHa7BXc/6mtnMTCsNzN7apr1kW66uEGf5H/QpgvNqot84o+EjiUboQmXI8W5ZHtrZT/8w==
-X-Received: by 2002:a17:902:e742:b0:215:a97a:c6bb with SMTP id d9443c01a7336-21dd7c65891mr432206515ad.12.1738690589126;
-        Tue, 04 Feb 2025 09:36:29 -0800 (PST)
-Received: from dw-tp ([49.205.218.89])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-21de31f5f4esm100365155ad.69.2025.02.04.09.36.25
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 04 Feb 2025 09:36:28 -0800 (PST)
-From: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-To: Dave Chinner <david@fromorbit.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Cc: lsf-pc@lists.linux-foundation.org, linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org, djwong@kernel.org, dchinner@redhat.com, jack@suse.cz, tytso@mit.edu, linux-ext4@vger.kernel.org, nirjhar.roy.lists@gmail.com, zlang@kernel.org
-Subject: Re: [LSF/MM/BPF TOPIC] xfstests: Centralizing filesystem configs and device configs
-In-Reply-To: <Z6FFlxFEPfJT0h_P@dread.disaster.area>
-Date: Tue, 04 Feb 2025 12:44:00 +0530
-Message-ID: <87ed0erxl3.fsf@gmail.com>
-References: <Z55RXUKB5O5l8QjM@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com> <Z6FFlxFEPfJT0h_P@dread.disaster.area>
+	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="gWNW5B9d"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1738695982; x=1770231982;
+  h=date:from:to:cc:subject:message-id:references:
+   in-reply-to:mime-version;
+  bh=cM7MGCNmgEicKq6tPE7BvkQtbVVInIiUj+wIq5lwFyA=;
+  b=gWNW5B9djg55jkeqLyHaM1WMZvg9cfGoye5EN12S4dkouuDkjqR6YJsO
+   shQ1V7Zz7XIVNktQg5RpRqX0EAVEz4eNIAN5BNbDQblDf99KOzDwR7LGU
+   DgVyYXMCprc+mJat92eXhAnffZbyrI5MhddYCfPC012ZrhehlskDRBqJB
+   HOwhyd52t/8Iu55PTJ546xTVyhx+gbQjEmt8XvX+wch0us88hN3sNYYxj
+   +WIFFDCgDeTl8oKIIOstH1D/ZcH3TcjjvH+fu67bGzOBH3TqrSe/EKQfu
+   0/hO7h0zbPbZwH9L9UaJ47SS/ldP3Bt9BpzhU9mRPeREcvf5TsYFodN19
+   w==;
+X-CSE-ConnectionGUID: a0qrmAfUQHaF42XjdFSjQw==
+X-CSE-MsgGUID: bL3/RP0NQ2uWAHQ7mw2F3Q==
+X-IronPort-AV: E=McAfee;i="6700,10204,11336"; a="38940926"
+X-IronPort-AV: E=Sophos;i="6.13,259,1732608000"; 
+   d="scan'208";a="38940926"
+Received: from orviesa009.jf.intel.com ([10.64.159.149])
+  by orvoesa112.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 Feb 2025 11:06:19 -0800
+X-CSE-ConnectionGUID: cgVrTHTLT9Gce/m9jLyLaA==
+X-CSE-MsgGUID: EU75cmYRTcmdII97AMI25w==
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="6.13,259,1732608000"; 
+   d="scan'208";a="110457826"
+Received: from orsmsx603.amr.corp.intel.com ([10.22.229.16])
+  by orviesa009.jf.intel.com with ESMTP/TLS/AES256-GCM-SHA384; 04 Feb 2025 11:06:18 -0800
+Received: from orsmsx601.amr.corp.intel.com (10.22.229.14) by
+ ORSMSX603.amr.corp.intel.com (10.22.229.16) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.44; Tue, 4 Feb 2025 11:06:17 -0800
+Received: from ORSEDG602.ED.cps.intel.com (10.7.248.7) by
+ orsmsx601.amr.corp.intel.com (10.22.229.14) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.44 via Frontend Transport; Tue, 4 Feb 2025 11:06:17 -0800
+Received: from NAM02-BN1-obe.outbound.protection.outlook.com (104.47.51.45) by
+ edgegateway.intel.com (134.134.137.103) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.1.2507.44; Tue, 4 Feb 2025 11:06:16 -0800
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=P5QP9gGXJac5pfw6erGVuge8VUwHxdUDOnIBNxU2frBt/5WOAzhIAUipGiGxITFac9pasUozGRYdrs3fHLvz8jy2w0ipyoYAHJxRgWoVJFOkcLdla/yR+4DN6IKeQaVVBPUTN09EaBJEZkF0ktYeKXSnQO9Eu4prj0j3hLH3E8M7ZOf0mHtBvY1TB2lW+wSpslcbObMioU/hD6UsVM3iPAhztDZ/mV0La3VXWrc9Rp9rICLs3Vbmqwt8g96GsONM8NJmQAvfLrUETw616WNxhmXENek6OO4fOco4j7vSjIAPG4AJH+R0SaWMasjY8ohe4H+afetqU+XQIt4GZMsAQw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=cHL/St7chsRUkcMGx7UK1wa5r/a3m1wpwlC0b7MYDoc=;
+ b=PEIJtz2fq2f3TkWZZ43W5uBljE7Iwze6Bs+vdb2G7AH+P/kbY1I1fpJl8Xdp5ciDxKjvF9cX7R1U37E9AQYSP/6pdNJLtcsUNEihOLapoBS2ofuVwV6iapVbzAzOyzgetF12xCZjpjHFHX2LNYhmJhgspqk7Z4J9sh1VP/zZwdc3EbL+ST6FE4koFA0nQ6ADTecs1+0t41MGILThvQ5gkXqOYvosYTIKNt6VXyddR1dFB6s488uaM8AnbwQBCPtOk4Yu9toahjLCppNwQjq120K0BO53loO70f7/LPN4Y1Isju+gMSGRwJCqSahAgXic/7o1TWR6mNRT6WQNno0ASQ==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=intel.com; dmarc=pass action=none header.from=intel.com;
+ dkim=pass header.d=intel.com; arc=none
+Authentication-Results: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=intel.com;
+Received: from PH8PR11MB8107.namprd11.prod.outlook.com (2603:10b6:510:256::6)
+ by MW3PR11MB4681.namprd11.prod.outlook.com (2603:10b6:303:57::14) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8398.24; Tue, 4 Feb
+ 2025 19:06:13 +0000
+Received: from PH8PR11MB8107.namprd11.prod.outlook.com
+ ([fe80::6b05:74cf:a304:ecd8]) by PH8PR11MB8107.namprd11.prod.outlook.com
+ ([fe80::6b05:74cf:a304:ecd8%4]) with mapi id 15.20.8398.025; Tue, 4 Feb 2025
+ 19:06:13 +0000
+Date: Tue, 4 Feb 2025 11:06:08 -0800
+From: Dan Williams <dan.j.williams@intel.com>
+To: Alistair Popple <apopple@nvidia.com>, Dan Williams
+	<dan.j.williams@intel.com>
+CC: <akpm@linux-foundation.org>, <linux-mm@kvack.org>,
+	<alison.schofield@intel.com>, <lina@asahilina.net>, <zhang.lyra@gmail.com>,
+	<gerald.schaefer@linux.ibm.com>, <vishal.l.verma@intel.com>,
+	<dave.jiang@intel.com>, <logang@deltatee.com>, <bhelgaas@google.com>,
+	<jack@suse.cz>, <jgg@ziepe.ca>, <catalin.marinas@arm.com>, <will@kernel.org>,
+	<mpe@ellerman.id.au>, <npiggin@gmail.com>, <dave.hansen@linux.intel.com>,
+	<ira.weiny@intel.com>, <willy@infradead.org>, <djwong@kernel.org>,
+	<tytso@mit.edu>, <linmiaohe@huawei.com>, <david@redhat.com>,
+	<peterx@redhat.com>, <linux-doc@vger.kernel.org>,
+	<linux-kernel@vger.kernel.org>, <linux-arm-kernel@lists.infradead.org>,
+	<linuxppc-dev@lists.ozlabs.org>, <nvdimm@lists.linux.dev>,
+	<linux-cxl@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
+	<linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
+	<jhubbard@nvidia.com>, <hch@lst.de>, <david@fromorbit.com>,
+	<chenhuacai@kernel.org>, <kernel@xen0n.name>, <loongarch@lists.linux.dev>
+Subject: Re: [PATCH v6 23/26] mm: Remove pXX_devmap callers
+Message-ID: <67a2652083600_2d2c2942f@dwillia2-xfh.jf.intel.com.notmuch>
+References: <cover.11189864684e31260d1408779fac9db80122047b.1736488799.git-series.apopple@nvidia.com>
+ <78cb5dce28a7895cc606e76b8e072efe18e24de1.1736488799.git-series.apopple@nvidia.com>
+ <6786b209929e2_20f32945c@dwillia2-xfh.jf.intel.com.notmuch>
+ <af6btaxeeodhvqrmjmdmz7vx2f7fvnavepyhweisagl2boitr6@77pwrvms66hg>
+Content-Type: text/plain; charset="us-ascii"
+Content-Disposition: inline
+In-Reply-To: <af6btaxeeodhvqrmjmdmz7vx2f7fvnavepyhweisagl2boitr6@77pwrvms66hg>
+X-ClientProxiedBy: MW4PR03CA0126.namprd03.prod.outlook.com
+ (2603:10b6:303:8c::11) To PH8PR11MB8107.namprd11.prod.outlook.com
+ (2603:10b6:510:256::6)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: PH8PR11MB8107:EE_|MW3PR11MB4681:EE_
+X-MS-Office365-Filtering-Correlation-Id: 65d682e8-fbf2-4655-c95d-08dd454efe29
+X-LD-Processed: 46c98d88-e344-4ed4-8496-4ed7712e255d,ExtAddr
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam: BCL:0;ARA:13230040|366016|7416014|376014|1800799024;
+X-Microsoft-Antispam-Message-Info: =?us-ascii?Q?38/jBVutNU1lcJEx4SAahZE/kZ9xRVS3Mpu4a5tX7Wd9Q7VTZtalAcYMKFrz?=
+ =?us-ascii?Q?fxeQ5+YZZqFQ/TZEj6+gg1PjfVOmFBsmOb9K3HWi2WyZQ9NasLqCPJAoGBqI?=
+ =?us-ascii?Q?oZwWuwbg4fRLLZ2bI166mee0AB/p1D1uBENqrgmCZvOUVDSNsQzz578wcuPm?=
+ =?us-ascii?Q?RYvgtyMoWWbcaHEjGbEJeaoz4jbNmlGr4/uisOpqNfS+xUCAyQuOCV/hsQiU?=
+ =?us-ascii?Q?LmJVKsvYi78/6olL0qMRweGvJ9w/sxcqTDa9wfwCmi2ciV5MfKFowsANKJeQ?=
+ =?us-ascii?Q?KoUHsJpPT6U5nPOiYxM9g1uiecqxCuPFnYAslQApJ1klf6vBrJHYnc5IWHu6?=
+ =?us-ascii?Q?EuP7A9caYoiYD+xz+iOLXWzgxrBIfIp640q0S/8RIqP8i2TAky16ePhqPGT5?=
+ =?us-ascii?Q?9kT1b6ihlfPEFmHES4vOT6AaHRf4j1fO4V+qxRz9CbY1avgwvOL1NfDXHVFa?=
+ =?us-ascii?Q?75a9TtHuucz/jc1kVlii6DeDLdocu+FpHfpoxRuMtmUaHu/74yeNARDuddSN?=
+ =?us-ascii?Q?CbjH4qRPjPvdRCawesoCnekhEmGBFuUyv81uwxJPeiJ5zEOV3wl0GfDAKjOS?=
+ =?us-ascii?Q?dJnWdFgvMkqhTv7sUPlFzlczGHEtdABhqISRC5XCeUciN2FVyeKiOy2xdZ9U?=
+ =?us-ascii?Q?Htff1EY3ellwCwUgWhC1p65j77vZdHCHEsIAKVbeatk/fZ7jy9bvL8s4py5E?=
+ =?us-ascii?Q?27smhDQKech39uGsxgdcN0IB/CQoGJJfpctE6Si7rBFdAN2nVp3T5oNtG/hU?=
+ =?us-ascii?Q?LDjxnKVv9we12gKup9B3YgdVk0BkCF9oQOdlk/K7iEL3JJqTD4NUOFeZlM+d?=
+ =?us-ascii?Q?0Acb6P8DbZ/+Ib9GZBS8jtGwRGJye0QyMymiPYF000rQAAepGLa+j01yilyB?=
+ =?us-ascii?Q?lYvjzIDcuucugs7GWav5Ji/MXhLSK/XjziT9yerKnUorlMRqzEn0A8d/5+i7?=
+ =?us-ascii?Q?u+fAS3OEtIKKL10iRuJ4SqAzf9c2B84HoJGTd+ibsoi4XVIb3NqyyW0NnFLh?=
+ =?us-ascii?Q?mVGHyqYNHPmXhoPC6VoCbjZaEToaOD6wwReSMGQ5Vrd+LPRmVMUgnvJF2fCq?=
+ =?us-ascii?Q?al/ZiK5qLzWLUPcpAwCtelngMbFxRCpUYGhlPtN+h+Bz9nv0MKnvl3Ohl7mh?=
+ =?us-ascii?Q?H+otIadcWaQq//O0kmUr2GrAaA1qicAQuDjVvJVCe/BbUlg4BJMZ3Zzi3fDJ?=
+ =?us-ascii?Q?p/PVBP59H3NYoM4ekx3XxGu0eKWNeJ9wTmi3aBgnDRWx+h4Bl3Jg+xwkcKmn?=
+ =?us-ascii?Q?Pcyebi2X3CCodwdoOxf29ckpQIYMwFXyigTJHnoFNQR+FKdr1pOrfVYdZKsg?=
+ =?us-ascii?Q?aNwGMBkVX28+BXh6nwLQTeoGCVtDyNLLz0bVREfDr0hzMJFLgahAR2x6Nxxr?=
+ =?us-ascii?Q?U/0BoUW2YLnVpDbYnYcYvxzf+FkG?=
+X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:PH8PR11MB8107.namprd11.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(366016)(7416014)(376014)(1800799024);DIR:OUT;SFP:1101;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0: =?us-ascii?Q?XeMP8ttk3s+N5+hpdQF1bRq0qPjd7lXFQIuAfROA5jmDZ4HOEuojQ5VgRg9m?=
+ =?us-ascii?Q?Avw1AQs7JY7vBBaJH6KvKKG9jBI7Si80nzo0h/DIAvhEy53ak5CbaNUyF8cd?=
+ =?us-ascii?Q?u02h3aBIENBQJcMlM7hwUbrELqV68umzrgsxz5koW7zuQRTwKr7lHoXTO/uY?=
+ =?us-ascii?Q?+0Iu0asHkHeLSHaUOWK3yy1Mxx+x+jYN4QLV2+ifnn7HnMExFugJRbQHPj8B?=
+ =?us-ascii?Q?+ZObL0P4kAVjSYk63aKFLbocCJf9LO6OkKmswuPxkof+ouNGWpQeyYaRvHDO?=
+ =?us-ascii?Q?Q+G+BaM8mDozEAYTAUj+hY1G7TXQfHqGueZwKbcOxc0DFeK8xnVhlTRB1vpJ?=
+ =?us-ascii?Q?VcSMWJMG02ptDGDYrRGsAmAsqKvGsfA7wYtISAAk2I6yT2zHI1/RyTfqm09W?=
+ =?us-ascii?Q?ch1/LMT+m1c1cUnhdwru57jRaoCeb1KFOx8Gts6lXZp9aDBQSzZJXV3Iowuu?=
+ =?us-ascii?Q?4U70fOPAAxKTyKUwaR4bnqRlUuWXAQitwf2552sa3i2F+5MaQT0Dod56vID/?=
+ =?us-ascii?Q?P1wRgTCDiejp2K32AkzBSxLT5Ghp8qPr07LD4U1yGRb2sPxEICeB/upVz2gH?=
+ =?us-ascii?Q?Lj/SGfrLb97TekmzPwcwpXy52aKhnYsNhs52VaoRdIiT72HcJYVKii9WtG+j?=
+ =?us-ascii?Q?Pu1kmbCyqo0O9GIRwKhRa5HaUyGa1EW1k2YlQeYZmoNyLJGtWsiY64FOpoPd?=
+ =?us-ascii?Q?86VFAFDdsdt8xCuUOlI70yRDYM9nFq+pJkbAktavpUgWDsftIB4TkA940HiI?=
+ =?us-ascii?Q?F+qiYRfwlkyGVfYJDeHjreJfRSkGgZawDBv9IVh6AJsZmZGojX5ubtW20Z1m?=
+ =?us-ascii?Q?4UTt2r/yba7gcHxWHDu9dQaKJfOBBixx1VOHtMDV0zBCLc/j7aoqzTxct4hC?=
+ =?us-ascii?Q?6dfJpVkMvKiQOvKc8AsfTBsI089eB+3brWl9O5Y5GXzOwPAdT/t0Ee8r4/JI?=
+ =?us-ascii?Q?qpQlOsjEOLNy0/7GkKDEkmc1IHPlCTn6NsQnO7Lz9RKbtwY+RLmd0BFQocDU?=
+ =?us-ascii?Q?7fH4hYtIXBF0+SL+cDiprqUJlBaWYaLXfrtILirqbtzNpKxCB1IencSumSHb?=
+ =?us-ascii?Q?B169cokQNGmoDr2BnCFCuEqj9GvRQfWbOx2dGZ+3RudiozDqkyG8rCSdIpo9?=
+ =?us-ascii?Q?guK+GZYGlwG6/I3WUl/ewNastrNcMSKrMN4LANaAcFlSYHaF1unj2o8sPaei?=
+ =?us-ascii?Q?UF627RnbqabBvgpAiTe8aB7TfSOcoXxy0MkztecYLv6hsk2Km1AfQ/cGXoj6?=
+ =?us-ascii?Q?vVjQo+PjxAQOsLEDK8zfkfg2GzKvPxj7FNdEc7j6A41DEQUadyW/mEBU7pO8?=
+ =?us-ascii?Q?+dOVugMwy8P7xQfrO27N4zuepvikCYIp/28A+XGJSe4t5wKULhwQbIrrWRgO?=
+ =?us-ascii?Q?kuM3AtaaUoNPucTqH2AeNEW56WnO54X6KCfa3OFqUqqnFvZAGP8JSUJTdwbF?=
+ =?us-ascii?Q?sOHHloBFFs7LdReFhADR6VDkATcPqe0xMSQKq7JvnaO74HnjaedWwU/dgZNV?=
+ =?us-ascii?Q?bk49vfT1cruO3nLtn+wkQAvzxyxpcaKcLY7I+dcnRunDSRNLaUkgDGFM+lZq?=
+ =?us-ascii?Q?8l4G+lsfv6F1OE3gqXRkNIzz5EH0+ZtuCnHNkDZBBlaYVtivPhr/ZwlQ6f+O?=
+ =?us-ascii?Q?CA=3D=3D?=
+X-MS-Exchange-CrossTenant-Network-Message-Id: 65d682e8-fbf2-4655-c95d-08dd454efe29
+X-MS-Exchange-CrossTenant-AuthSource: PH8PR11MB8107.namprd11.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 04 Feb 2025 19:06:13.2720
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 46c98d88-e344-4ed4-8496-4ed7712e255d
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: Bai+4sWbbYao3zHVdLBBVndvnfLDkTR6YSXYR9CkJA8kr3l9w7rN7EVm+6Kcdme17POc0+1d0t8SMj7jH6GYlnPJy5Yhs6Pr9yjI/agoY5M=
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: MW3PR11MB4681
+X-OriginatorOrg: intel.com
 
-Dave Chinner <david@fromorbit.com> writes:
+Alistair Popple wrote:
+> On Tue, Jan 14, 2025 at 10:50:49AM -0800, Dan Williams wrote:
+> > Alistair Popple wrote:
+> > > The devmap PTE special bit was used to detect mappings of FS DAX
+> > > pages. This tracking was required to ensure the generic mm did not
+> > > manipulate the page reference counts as FS DAX implemented it's own
+> > > reference counting scheme.
+> > > 
+> > > Now that FS DAX pages have their references counted the same way as
+> > > normal pages this tracking is no longer needed and can be
+> > > removed.
+> > > 
+> > > Almost all existing uses of pmd_devmap() are paired with a check of
+> > > pmd_trans_huge(). As pmd_trans_huge() now returns true for FS DAX pages
+> > > dropping the check in these cases doesn't change anything.
+> > > 
+> > > However care needs to be taken because pmd_trans_huge() also checks that
+> > > a page is not an FS DAX page. This is dealt with either by checking
+> > > !vma_is_dax() or relying on the fact that the page pointer was obtained
+> > > from a page list. This is possible because zone device pages cannot
+> > > appear in any page list due to sharing page->lru with page->pgmap.
+> > 
+> > While the patch looks straightforward I think part of taking "care" in
+> > this case is to split it such that any of those careful conversions have
+> > their own bisect point in the history.
+> > 
+> > Perhaps this can move to follow-on series to not blow up the patch count
+> > of the base series? ...but first want to get your reaction to splitting
+> > for bisect purposes.
+> 
+> TBH I don't feel too strongly about it - I suppose it would make it easier to
+> bisect to the specific case we weren't careful enough about. However I think if
+> a bug is bisected to this particular patch it would be relatively easy based on
+> the context of the bug to narrow it down to a particular file or two.
+> 
+> I do however feel strongly about whether or not that should be done in a
+> follow-on series :-)
+> 
+> Rebasing such a large series has already become painful and error prone enough
+> so if we want to split this change up it will definitely need to be a separate
+> series done once the rest of this has been merged. So I could be pursaded to
+> roll this and the pfn_t removal (as that depends on devmap going away) together.
+> 
+> Let me know what you think.
 
-> On Sat, Feb 01, 2025 at 10:23:29PM +0530, Ojaswin Mujoo wrote:
->> Greetings,
->> 
->> This proposal is on behalf of Me, Nirjhar and Ritesh. We would like to submit
->> a proposal on centralizing filesystem and device configurations within xfstests
->> and maybe a further discussion on some of the open ideas listed by Ted here [3].
->> More details are mentioned below.
->> 
->> ** Background ** 
->> There was a discussion last year at LSFMM [1] about creating a central fs-config
->> store, that can then be used by anyone for testing different FS
->> features/configurations. This can also bring an awareness among other developers
->> and testers on what is being actively maintained by FS maintainers. We recently
->> posted an RFC [2] for centralizing filesystem configuration which is under
->> review. The next step we are considering is to centralize device configurations
->> within xfstests itself. In line with this, Ted also suggested a similar idea (in
->> point A) [3], where he proposed specifying the device size for the TEST and
->> SCRATCH devices to reduce costs (especially when using cloud infrastructure) and
->> improve the overall runtime of xfstests.
->> 
->> Recently Dave introduced a feature [4] to run the xfs and generic tests in
->> parallel. This patch creates the TEST and SCRATCH devices at runtime without
->> requiring them to be specified in any config file. However, at this stage, the
->> automatic device initialization appears to be somewhat limited. We believe that
->> centralizing device configuration could help enhance this functionality as well.
->
-> Right, the point of check-parallel is to take away the need to
-> specify devices completely.  I've already added support for the
-> LOGWRITES_DEV, and I'm in the process of adding LOGDEV and RTDEV
-> support for both test and scratch devices. At this point, the need
-> for actual actual device specification in the config files goes
-> away.
->
-> What I am expecting to need is a set of fields that specify the
-> *size* of the devices so that the hard-coded image file sizes in
-> the check-parallel script go away.
->
-> From there, I intend to have check-parallel iterate config file run
-> sections itself, rather than have it run them internally to check.
-> That way check is only ever invoked by check-parallel with all the
-> devices completely set up.
-
-Yes, this sounds good. This is what we were anticipating too.
-Thanks for sharing.
-
->
-> Hence a typical host independent config file would look like:
-
-The work being proposed by us here was to make this config file
-centralized within xfstests itself for both fsconfig and device-config.
-This saves us from defining each of this section within local.config file
-and can be used by passing cmdling arguments to invoke a given section
-directly. 
-
-e.g.
-
-    ./check -c configs/xfs/64k -g auto
-
-There have been cases where testers and others have requested info to
-know about - 
-- What different FS config options to test,
-- What gets tested by the Maintainers,  
-- Is there a common place where I can find MKFS and MOUNT options which
-  I should be testing for my FS/feature testing. 
-
-That is the reason, I think, centralizing fsconfig option can be
-helpful. I remember bringing this idea in our last LSFMM-2024, where you
-mentioned that - let's see the RFC [1] and maybe then we can discuss more :).
-Here is the RFC for the same. There are some additional improvements in
-that series, but it mainly adds fsconfig option.
-
-[1]: https://lore.kernel.org/fstests/cover.1736496620.git.nirjhar.roy.lists@gmail.com/
-
->
-> TEST_DEV_SIZE=10g
-> TEST_RTDEV_size=10g
-> TEST_LOGDEV_SIZE=128m
-> SCRATCH_DEV_SIZE=20g
-> SCRATCH_RTDEV_size=20g
-> SCRATCH_LOGDEV_SIZE=512m
-> LOGWRITES_DEV_SIZE=2g
->
-
-For centralizing device-configs idea, I was hoping we could mention above
-in "configs/devices/loop" config file. This can be picked up by ./check
-too if local.config hasn't been provided with these options.
-
-> [xfs]
-> FSTYP=xfs
-> MKFS_OPTIONS="-b size=4k"
-> TEST_FS_MOUNT_OPTIONS=
-> MOUNT_OPTIONS=
-> USE_EXTERNAL=
->
-> [xfs-rmapbt]
-> MKFS_OPTIONS="-b size=4k -m rmapbt=1"
->
-> [xfs-noreflink]
-> MKFS_OPTIONS="-b size=4k -m reflink=0"
->
-> [xfs-n64k]
-> MKFS_OPTIONS="-b size=4k -n size=64k"
->
-> [xfs-ext]
-> MKFS_OPTIONS="-b size=4k"
-> USE_EXTERNAL=yes
->
-> [ext4]
-> FSTYP="ext4"
-> MKFS_OPTIONS=
-> USE_EXTERNAL=
->
-> [btrfs]
-> FSTYP="btrfs"
-> .....
-
-Above all fs configs could be added to configs/{ext4|xfs|btrfs}/... 
-Than this can be used in 2 ways.. 
-
-1. ./check -c configs/xfs/4k,configs/xfs/rmapbt,configs/ext4/4k ... 
-
-2. Or we may still pass fsconfig via local.config file.. e.g. 
-
-# both configs/xfs/4k or xfs/4k can be used here
-[xfs]
-FS_CONFIG_OPTION=configs/xfs/4k
-
-[xfs-rmapbt]
-FS_CONFIG_OPTION=xfs/rmapbt
-
-[xfs-noreflink]
-FS_CONFIG_OPTION=xfs/noreflink
-
-[xfs-n64k]
-FS_CONFIG_OPTION=xfs/64k
-
-[xfs-ext]
-FS_CONFIG_OPTION=xfs/4k
-USE_EXTERNAL=yes
-
-[ext4]
-FS_CONFIG_OPTION=ext4/4k
-
-
->
->
-> IOWs, all that is different from system to system is the device size
-> setup. The actual config sections under test (e.g. [xfs]) never need
-> to change from host to host, nor environment to environment. i.e.
-> "xfs-n64k" runs the same config filesystem test on every system,
-> everywhere...
->
-
-Right. So it's also useful if those configs can stay in configs/<fs>/**
-as well.
-
-
->> ** Proposal ** 
->> We would like to propose a discussion at LSFMM on two key features: central
->
-> I'm not going to be at LSFMM, so please discuss this on the list via
-> email as we'd normally do so. LSFMM discussions are exclusionary
-> whilst, OTOH, the mailing list is inclusive...
->
-
-Sure I am happy to discuss this on mailing list too! It will be good to
-know from others as well, who do FS testing from time to time, on whether
-having a central fsconfig store makes their life easy or not? 
-And from other FS maintainers, on whether adding their test fsconfigs to
-configs/<fs>/** will save them from maintaining it in their custom CI
-wrappers or not? 
-
->> fsconfig and central device-config within xfstests. We can explore how the
->> fsconfig feature can be utilized, and by then, we aim to have a PoC for central
->> device-config feature, which we think can also be discussed in more detail. At
->> this point, we are hoping to get a PoC working with loop devices by default. It
->> will be good to hear from other developers, maintainers, and testers about their
->> thoughts and suggestions on these two features.
->
-> I don't really see a need for a new centralised config setup. With
-> the above, we can acheived a "zero-config" goal with the existing
-> config file formats and infrastructure. All that we need to do is
-> update the default config file in the repo to contain a section for
-> each of the "standard" test configs we want to define....
->
-
-Could you please take look at the shared RFC [1] once? I believe it will
-be useful to have this central to xfstests for reasons I mentioned
-above. This also gets us to zero-config setup with almost no need to
-configure anything. This helps other testers & subsystem maintainers to
-know what configs are being tested by maintainers, which they can use
-for their FS feature testing too.
-We can than directly issue -
-
-           ./check -c <fs>/<config> -g quick
-
-[1]: https://lore.kernel.org/fstests/cover.1736496620.git.nirjhar.roy.lists@gmail.com/
-
-
->> Additionally, we would like to thank Ted for listing several features he uses in
->> his custom kvm-xfstests and gce-xfstests [3]. If there is an interest in further
->> reducing the burden of maintaining custom test scripts and wrappers around
->> xfstests, we can also discuss essential features that could be integrated
->> directly into xfstests, whether from Ted's list or suggestions from others.
->
-> On of my goals with check-parallel is to completely remove the need
-> for end users to configure fstests. i.e. all you need to do is point
-> it at a directory, tell it which filesystem to test, and it "just
-> runs" with all the defaults that come direct from the fstests
-> repository...
->
-
-Right. Centralizing fsconfigs & device configs is also doing the same.
-In fact once we have configs/devices/loop config file, then we don't
-need to even create local.config file (for most cases I believe).
-
-./check and ./check_parallel can be passed these config files and
-xfstests infra will create loop devices, run the tests and later do the
-cleanups.
-
-e.g. maybe something like this... 
-      ./check -c configs/<fs>/config>,configs/devices/loop -g quick
-
-OR
-      ./check -c <fs>/config>,devices/loop -g quick
-    
-
-
-> It is also worth keeping in mind that check-parallel can be run with
-> a single runner thread, in which case a single check instance runs
-> all tests serially. i.e. we can make check-parallel emulate existing
-> check behaviour exactly, except it uses all the
-> auto-config/auto-setup stuff that comes along with check-parallel...
->
-
-Sure thanks Dave for the review.
-
-> -Dave.
-> -- 
-> Dave Chinner
-> david@fromorbit.com
+I tend to think that there's never any regrets for splitting a patch
+along lines of risk. I am fine with keeping that in this series if that
+makes things easier.
