@@ -1,329 +1,232 @@
-Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6C37484A3E;
-	Mon,  3 Mar 2025 17:29:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=205.220.177.32
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1741022948; cv=fail; b=oPVHSHlO/AbjykOHsbQnri5hViV64Xo6G1s1g3NB1u7YJnx+BGB57Z3VdZI8PA58nYqDkc7COWF/YunZCXvtj4VQuoafF5+iWX8Q6h9ZlNQc0rEKK22Qb1cxFWp5vs9J1clurQrbjbwPBOAaOsecr3C6Qy8Dj20C5++Xcft0mrg=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1741022948; c=relaxed/simple;
-	bh=XUCvi7W/wKRGllTerUhiWkgUoNDOdDFuOqAEQnvVbXs=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=ch+c4lAkUjMqtBdlkM/LNPMa5uuYjweuFWraDc439P41Y0lQxTsjS7XdehM4xwoNMvO+A+rKpL/CtypbGA3TrYvSg16FQG3fl82MCzAr/YfTrHqbUVHIG1B+Pk9+iBjzpXHP9QknKP4wPRkIcKlgMQ9ldxO1bTW3iSE4dWYPdZ4=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=U4FccVx6; dkim=pass (1024-bit key) header.d=oracle.onmicrosoft.com header.i=@oracle.onmicrosoft.com header.b=EySHJTR6; arc=fail smtp.client-ip=205.220.177.32
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43679250BEB;
+	Mon,  3 Mar 2025 17:31:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1741023075; cv=none; b=GaNgefKbHjPwnP2RF5mdP1V6ITVPri5cL1SZvQTcu3T/TiqyyvlKBpjj7Qhe1lFUkReNTUZYAS2rV5smr8r/92jL/YtSaSOBJEk7Qdj1nby7EqOAJXHiO8emb7nDPwqPe2cs+yADMDTdMvKI6xPM8BcIiOGSbzpze4TM71b5h9Y=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1741023075; c=relaxed/simple;
+	bh=w6uOTSX/VPzJEMePulP99FzCwhpsVIcs+/wyKHhDP3k=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=mWHVRrQjivDOxB1uoZdgad4ng84f1UCPjpVwXT22CFM/xNQSoojP/dTZyB9tIFL+FzVXdX/722V4yOFfoxKIeZLRjZxVLBWtwBkcT4De9TE7TVTlQrdD+t3TfennUwpNJy3Po2pC6SCY0U/6cenzQg02dguDw28ZYdXTEqPI0Ns=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=GVfk1qaR; arc=none smtp.client-ip=148.163.156.1
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="U4FccVx6";
-	dkim=pass (1024-bit key) header.d=oracle.onmicrosoft.com header.i=@oracle.onmicrosoft.com header.b="EySHJTR6"
-Received: from pps.filterd (m0246632.ppops.net [127.0.0.1])
-	by mx0b-00069f02.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 523GA0FL030059;
-	Mon, 3 Mar 2025 17:11:38 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="GVfk1qaR"
+Received: from pps.filterd (m0356517.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 523E361D022672;
+	Mon, 3 Mar 2025 17:30:58 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
 	:content-transfer-encoding:content-type:date:from:in-reply-to
-	:message-id:mime-version:references:subject:to; s=
-	corp-2023-11-20; bh=MkvMvt99JAoTjPuUnJ0B2tU7ZIeBkXdjnWNGvQTsAf0=; b=
-	U4FccVx6FUNmPgnPTGouiK6N1heOgh1sJtc5Ad0C6s/UfDLoEbhNE6Q7xRYK0q3n
-	R0IMVHNoWt2V7dkzrsB6kSoHuaZS3CFhbKc6n5bDn+E74oYfDV7X3o92cqrzFYNl
-	O304XPIWHd0fLFrgU4dcddE350dqMx0+++QSfuJ0LGZ0P/a78zWhjA4oQjgtz7rH
-	G4MMDxnlrkHEK+PeTk9csMiU6VspW06uqlJAYXcBYxiNp4nhfsCtzzVW9AYbIojW
-	0HoUP7pZKGVV1ELYtka+KpZb5A9XEAXeeVFZkRvGlMIYVB2Z6aME4XOBFyJme2IV
-	wuSDkIQXnGi47M0rIB7Cvw==
-Received: from phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta01.appoci.oracle.com [138.1.114.2])
-	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 453u86k60h-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Mon, 03 Mar 2025 17:11:37 +0000 (GMT)
-Received: from pps.filterd (phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-	by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (8.18.1.2/8.18.1.2) with ESMTP id 523GVSAQ039103;
-	Mon, 3 Mar 2025 17:11:37 GMT
-Received: from nam02-dm3-obe.outbound.protection.outlook.com (mail-dm3nam02lp2044.outbound.protection.outlook.com [104.47.56.44])
-	by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 453rp8g8yx-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Mon, 03 Mar 2025 17:11:36 +0000
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=OZu1iwpVqwPeJoCWSlWCila30Z3oKx/16Kx5XpgAMRZ5CKF1RRdyQugBUlt4GMuuvVIvlY2xVfv+AfPPP5AD8lgOaWEKrpEXIeyAnmQImpdbrBRcf1ZbS4UbNSkDptK7UjjUsTFvssir+oj9fir+p/RBvFmcFf0UC750jvcOgcSIdPrWv1xBZxM+3n0cxbTZfRRoY3/NKCwlGXZc2w+sHilFt5MsGt+FSIhnxFSqfzI3a3bljiMASRZZIT/zFZetv7zKeIS1bNJPwlUHCeJ5MjPKIYjoc4wzqoOwEb37c9z3cLfcQPlSaBuPPfic7yHSpqwO1sva2VBpqn+wzKlMwQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=MkvMvt99JAoTjPuUnJ0B2tU7ZIeBkXdjnWNGvQTsAf0=;
- b=nlS4K2LrWoWnjTrBSxxMj/P3Y9YRpXlThotghKnwIZPgb/lS9Rf76qubTSJyngLwBTcEeusMIjKi4iiPFzXvT70ZKdcz31aqfQAlPc6f6vWWRnZH+/CpfirzQEjubvS3puK7hSH40PI+q9s+QTVOEa24lqHCE8hUGxn/0auCgjlPPkdHci/1dZm8zZjnAD1AAQXDOGu6UgLW4yWaW+0sRodnTgXzyST0VNwMKKOA1tKKBLbXwV9D2Ze9eugJITSD0BPlQwvqrq7KeVCEo1jV3nc3t9bVeg/ncbmig3atLnhdTnsTjlg8BRS6DpGCawkjkcvr6Fqc0SjdL68QRAM5tg==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
- dkim=pass header.d=oracle.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=MkvMvt99JAoTjPuUnJ0B2tU7ZIeBkXdjnWNGvQTsAf0=;
- b=EySHJTR64lxJGcjOxZjzxNo/tpYAL3g4hxPmXiWEeKj9sZdnapcFJaonM4OXhp0xKfZXOFfzb3lgnvI7AOWze41soyCOFK2IxAZ0kvrF/TFUaPA8osZqhdZR48JEe2FcKs72gGeO5c1i4rQQgQcifvjFGIMYSfqNFUlObyouKp8=
-Received: from DM6PR10MB4313.namprd10.prod.outlook.com (2603:10b6:5:212::20)
- by PH7PR10MB6251.namprd10.prod.outlook.com (2603:10b6:510:211::13) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8489.29; Mon, 3 Mar
- 2025 17:11:34 +0000
-Received: from DM6PR10MB4313.namprd10.prod.outlook.com
- ([fe80::4f45:f4ab:121:e088]) by DM6PR10MB4313.namprd10.prod.outlook.com
- ([fe80::4f45:f4ab:121:e088%6]) with mapi id 15.20.8489.028; Mon, 3 Mar 2025
- 17:11:34 +0000
-From: John Garry <john.g.garry@oracle.com>
-To: brauner@kernel.org, djwong@kernel.org, cem@kernel.org
-Cc: linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, ojaswin@linux.ibm.com,
-        ritesh.list@gmail.com, martin.petersen@oracle.com, tytso@mit.edu,
-        linux-ext4@vger.kernel.org, John Garry <john.g.garry@oracle.com>
-Subject: [PATCH v4 02/12] iomap: Rename IOMAP_ATOMIC -> IOMAP_ATOMIC_HW
-Date: Mon,  3 Mar 2025 17:11:10 +0000
-Message-Id: <20250303171120.2837067-3-john.g.garry@oracle.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20250303171120.2837067-1-john.g.garry@oracle.com>
-References: <20250303171120.2837067-1-john.g.garry@oracle.com>
-Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-ClientProxiedBy: LO4P265CA0171.GBRP265.PROD.OUTLOOK.COM
- (2603:10a6:600:312::17) To DM6PR10MB4313.namprd10.prod.outlook.com
- (2603:10b6:5:212::20)
+	:message-id:mime-version:references:subject:to; s=pp1; bh=LCr6pU
+	IsgsVXQTAZXfqxcc+mF9zf7Zl8i5wrr90EN08=; b=GVfk1qaRArbJF2/TC/zrmI
+	Z+kwZJFuU0y2OiTdd0BhdLN2g8OU600u+1qD0rfs7twaEEnPyKHuIOhEIEGSyzh7
+	5Kdm7i9s8rg5U9VEIZSk0w2jnPrVdwXIscGyBsg3uArmpv24Gp1sgHG1UWMBB3yc
+	Wii3G9YE5zVnPtwdFvgvaJ1xhg1taj82PvgZdgBAcwJL1neROFQUDkBk8LzYb3VK
+	KwNy9Igf8z7ja2WJIUP05wzkcstUGao7kGA+AKRI+FCflThzC99uBtWfO2I9vw3z
+	xr+jmAIghAbjY0egQHY0V4ztTM22EAexYGmSXui9gjqR/gLb08GCEOTpukxPfiJw
+	==
+Received: from pps.reinject (localhost [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 455dunsuv1-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 03 Mar 2025 17:30:58 +0000 (GMT)
+Received: from m0356517.ppops.net (m0356517.ppops.net [127.0.0.1])
+	by pps.reinject (8.18.0.8/8.18.0.8) with ESMTP id 523H77q7029492;
+	Mon, 3 Mar 2025 17:30:57 GMT
+Received: from ppma13.dal12v.mail.ibm.com (dd.9e.1632.ip4.static.sl-reverse.com [50.22.158.221])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 455dunsuuw-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 03 Mar 2025 17:30:57 +0000 (GMT)
+Received: from pps.filterd (ppma13.dal12v.mail.ibm.com [127.0.0.1])
+	by ppma13.dal12v.mail.ibm.com (8.18.1.2/8.18.1.2) with ESMTP id 523HA61o020928;
+	Mon, 3 Mar 2025 17:30:56 GMT
+Received: from smtprelay03.fra02v.mail.ibm.com ([9.218.2.224])
+	by ppma13.dal12v.mail.ibm.com (PPS) with ESMTPS id 454esjrv8t-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 03 Mar 2025 17:30:56 +0000
+Received: from smtpav03.fra02v.mail.ibm.com (smtpav03.fra02v.mail.ibm.com [10.20.54.102])
+	by smtprelay03.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 523HUtH559441516
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Mon, 3 Mar 2025 17:30:55 GMT
+Received: from smtpav03.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 185A72004B;
+	Mon,  3 Mar 2025 17:30:55 +0000 (GMT)
+Received: from smtpav03.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 3D00520043;
+	Mon,  3 Mar 2025 17:30:53 +0000 (GMT)
+Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.124.215.79])
+	by smtpav03.fra02v.mail.ibm.com (Postfix) with ESMTPS;
+	Mon,  3 Mar 2025 17:30:53 +0000 (GMT)
+Date: Mon, 3 Mar 2025 23:00:50 +0530
+From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To: Baokun Li <libaokun1@huawei.com>
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+        Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
+        Mahesh Kumar <maheshkumar657g@gmail.com>,
+        Ritesh Harjani <ritesh.list@gmail.com>,
+        Yang Erkun <yangerkun@huawei.com>
+Subject: Re: [PATCH 1/2] ext4: only defer sb update on error if SB_ACTIVE
+Message-ID: <Z8XnMOT1LNzgjwaN@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+References: <cover.1740212945.git.ojaswin@linux.ibm.com>
+ <da8af2e5170f0d94031b812d7d50c6ec1967db1b.1740212945.git.ojaswin@linux.ibm.com>
+ <3f9a67e2-ef08-47d4-b35e-41841e24bb71@huawei.com>
+ <Z72yUqGWHdRyCE25@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+ <1a1ff87b-6f75-4d43-ad7b-54883bea13f8@huawei.com>
+ <Z8BP4luSfyvz-V4T@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+ <84ebed94-d4ab-4b8c-962c-f10ebaca5a75@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: DM6PR10MB4313:EE_|PH7PR10MB6251:EE_
-X-MS-Office365-Filtering-Correlation-Id: 7491a9ba-1146-4b2e-998f-08dd5a767344
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam: BCL:0;ARA:13230040|376014|7416014|366016|1800799024;
-X-Microsoft-Antispam-Message-Info:
-	=?us-ascii?Q?iEPosnaqheRRzSPDb+so/x5UD64lwtux9g57McVODG1tu/oGUE81oOr5x852?=
- =?us-ascii?Q?XBeq5mLX4bZAwNjteNv712F8Arj0ewq9eLmsAthjwcyPEMOOhd2XQf3y1x0c?=
- =?us-ascii?Q?7M9r0Mo+K4kadLoYsbC5PDtyW2gCwHFezyT0iVvs6kUI1LAdJfWce7zZZXLl?=
- =?us-ascii?Q?vrF0rV93/MQ2q0wGgnIac9R0hrHU8H9sKxlBDqXWIUesikrQ+UYSnkRyDtvY?=
- =?us-ascii?Q?jCX5kEEwHTnG086AoizCUZYk/26MO7zjtqUNdYoznh4FfR4YWvG3K4W4NyW/?=
- =?us-ascii?Q?Ece2h8RjkcrFi4Eb6DZiMHF1LOp1CCZFiM5dcA/+66pWv9QsmToJD5qwANHc?=
- =?us-ascii?Q?sUvfPmc0broDEDL1Dq/C50mEbzHLeyHDRPRsiT0o8LFuSvbPb+cjxN8E9D1k?=
- =?us-ascii?Q?Xds6Nn8YkbiIZl/Z7QC2LSqAAEbbcBFNVpba9Yc5QyA/HnbKp7BQ5SS5fRDS?=
- =?us-ascii?Q?9ZpfxoTYWWkta/fu2BHB6SJ7nJCsqiPGL+/lQqFbpsYKvvazKjiMGMoP1/V5?=
- =?us-ascii?Q?i1ffNtwV5Hps5bBXjDjLtiVcjDtsVUHw8H8ghSbhEymEX2YYfRN8gHwCz/v+?=
- =?us-ascii?Q?CQejSyCM+pPOa1T7eNUn182e26Tgaen3aYMyoU2MIyvW014iVGgHLig7n2/P?=
- =?us-ascii?Q?2PO3HqE/y8oWMCUYB2Jkf4xuC+Jpus9dXo5Po8ohBiDwt1ZxMsZEVj4Mp5I6?=
- =?us-ascii?Q?/fRPOSM7UYYHGK1SXf9g35HjuRqn/M1N7issUqxA/E1nQUzV/44QdRwGHyGr?=
- =?us-ascii?Q?KFf/seEkaRNeEsRGcAEicMY2RGYBlhBja8Kz6nhPjROYdpYzz04wQ/0LCkLo?=
- =?us-ascii?Q?Twdld/twqGPS8VfVDJkZq4ckUDRzaIb5ImDwTl2xCSDHi85VrnBaGeKBAJiZ?=
- =?us-ascii?Q?iq3RC2n4EtzLODuMownjz5B4QlDry/LIhXuN2NmqCXO+lyWf5gA3MR39Es4L?=
- =?us-ascii?Q?2+fe9okwCD55QliZdaONQ8U1N+jX1lGsOcNkvNbt4771onurnKP51Yz0oh4w?=
- =?us-ascii?Q?osdaSgTCrlcxV/hBt4YwkBSeBZgG7ENydHIKgsDFrgRAjN3M04+4/6oXelft?=
- =?us-ascii?Q?tWQFRjqH2RMtiLInURrNPPRspb5xn9NScX7AXIvan1+YSBHu6P5uO/sMy1eX?=
- =?us-ascii?Q?ESh2ch5dHTumS4dr1SjeCzfGBmuUf7QO+0a2D1Bg8q5CDNCGSN4HjeLk9RcV?=
- =?us-ascii?Q?Bvnls+PP5r6FPgilDdZC+OC87Jg0ih6155Hw97zS2g1cudVdv/yc3cdI+8y8?=
- =?us-ascii?Q?mlODUWgp9J1HICfwGSE8C5SveUt+3dp1SHz6LyzCm+EWiD+1pTYxIDQBcRbx?=
- =?us-ascii?Q?YtVUnpm/KNEYRoteNfRqvk+xQpqoFCO9kaLREVZcULE0FfhUtwNs3p1jbUCa?=
- =?us-ascii?Q?m1xhr0dIg3nvccrj/jtB/xwkquCE?=
-X-Forefront-Antispam-Report:
-	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:DM6PR10MB4313.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(376014)(7416014)(366016)(1800799024);DIR:OUT;SFP:1101;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
-	=?us-ascii?Q?YKmLozqPL1cj0dAXZw51XrA22BSV7WrU2jOb+D9DDr8WxCUCu/8MtiXNxnXq?=
- =?us-ascii?Q?3YbTuVRXJ5Dij5oG31mm7KJFQ/KRWjIOiHGtUJYgul5zK8PJb79gFDSsw/zG?=
- =?us-ascii?Q?4vgFaXvZ2JOwmMK46gxcDlQifwdNXeiYjybHzQBXATa+6iFud5G0cEpTwBnP?=
- =?us-ascii?Q?HytFzTD7FTaH7bsqyJ8CVLMWIX1khDoo1cP8+Mm3qjueWCUO+USJZfvE5rjI?=
- =?us-ascii?Q?D3k1OeqVlAiObGm4MyJ77ykgDTLmKzrS6i/N5tsr26pQwyV9Ac9jgZTdirJR?=
- =?us-ascii?Q?AXVd3TMSWO5oFZs3+bLDBibUuR2/w0c4yR2QOn4C2PFqVprNtJ0HCejTgDIT?=
- =?us-ascii?Q?JWIjV7EGNEVa71sgUA3JMEWfT6M/Js7crmLybXxvkV6/Dvvkq01pSX1nWibN?=
- =?us-ascii?Q?789jPNlhgqvpgOVtFDnbaEXWhUb6TJOr00mqHs2j9S5l52gxoyFrzp/OQeSM?=
- =?us-ascii?Q?5J7IYd8Jj1Twwkcj6qeoriTVEcfmdZHHlB8054ReaIj4TlCd8q/H/pkmvfRH?=
- =?us-ascii?Q?OcvBcxcAPHl+5UYaZwE8WA6RGmZHCOtJG/oFQbOzt11mHByP8Ahbw7L0DA4D?=
- =?us-ascii?Q?nAi13mhXfUQ0YU7vM9KB/0zh1neOtu/T2pQFZSIldGozSNq/bWczA8VsSetr?=
- =?us-ascii?Q?9nqp4jb1tzuQeAXOSb8bRydckXVFw7hEPRcc9+BN6agSYE9/cxvL0hNbBOHE?=
- =?us-ascii?Q?Msuybe9/VO7vdLaCHICKNOU4AP+WPiYzklBAz2a7ukwvk1nYHtI3ZmCPzqhD?=
- =?us-ascii?Q?OHJd4OTGBTrqe4h6+/i/w1c8IrjXrTUyBfhWT7zSTlmeqJTNv+8K1Kdv9yeH?=
- =?us-ascii?Q?R0sSN9djsNJ8glgdQv9/1iUhN6vKyd5CbL5JEvJCAIhQoTvf8aynNeYmRz6E?=
- =?us-ascii?Q?jMTOd5bQzBHnc1RNWRpCcCcgrckJJPOB8fRe64Vo4EA5c+aJUB/EPZuTf/Zv?=
- =?us-ascii?Q?bPqMM28ykCgXHDTH6zH1nHk2zIJXcr7t0c/9cd5p9eB8AWAnY6U3qNsCFknq?=
- =?us-ascii?Q?O3geEcdl03Xva+yWs3KDwNU2Pk0NpBR4o7oRf2ockR5v+8/d3IKBFN5goiG4?=
- =?us-ascii?Q?bsLqKjcAZjQ1KNHpYFKnc/gVuSAoi0yyMHdQrB5e5PlZIQBWMJhaI67yM9XX?=
- =?us-ascii?Q?iVq3tSI1c++9nLIkvyl8e1NWSWYIUiTZ11qOymIN31ychORIqZaCEWBlrlvQ?=
- =?us-ascii?Q?O1SrT7NtorpilIsDwTa2VdzvEw65hhzP/7ozb1TJbi7H9wm43Pt0rqJdhOrw?=
- =?us-ascii?Q?WlJWCIBeV9OXC9xojHE98jlD3NpxyxieObK7Jzhu6vrN50j3ytHQVmXiynzv?=
- =?us-ascii?Q?D6LuUhep3eapg9+yKKsOwYsY9UqbdB0n8zSAaHHPbIMiay9mIBAqqqexGPw8?=
- =?us-ascii?Q?A+BsxIu+TOC9uWVrfuw5SUK8Nx6fkHBKd6MMoXspVytfNWT65B/6mKNb8XPv?=
- =?us-ascii?Q?hKUkCqtZO0nJjiE5vyYIc6PWXq67yKEBmh8lmUsmozj5gLg6VHCDMpEqbKWp?=
- =?us-ascii?Q?8wVFf1n2XRLSbP0UMDxh8iATN+YyaRmtKEUSp0Qc6OM70DnvO8RacGAoNafe?=
- =?us-ascii?Q?v+O66REZIH3YhB1io9lfKZp+kB3JaWtONQisrlp3pZziRCvqO6t0Z3Ao+Kju?=
- =?us-ascii?Q?SA=3D=3D?=
-X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0:
-	yWg7BwMrTEmwLqoQ6MoJgqwOWdEnF9PRzmJVF8LC97i9sQ7NaMkcRiSG5XsUYevfkHH7kSDljblNxvY7NmYF4IsVUDA+Kit8AhjmVCX0UJFbDLVmcgjSwdg5cxjB3Y/2FU8gQMxozcvJyVxPbQPuZaR1qinLJSBHY1o2q7VTNUUOOQCbnsEIjfiDTM7X9M29xJMSPCO40pDzxmoPJGqafXbSv5rklJelFgxhoMTXnZSD7jDtuZ9Ac4zVHensl25Iry/CzzTDAS/u7QmpWY1/R0dNBRl1ES4GuG0FYIMEv798TFYrhUog8LjFKq2FMqDanTQc+kx11MjYod6td86JFxvcgfkh6gLY/1YtJRitOQiVPU1WZRdXBXjy1EMdBtK6igTb2RwBX+5tVH7ljbFI/6cXY7DGtZ27SDeoVHYm7LY7ORPrq8hY4aap2mFmqxD0MoxBenM+sWvVwDlxmPIaww/yXQS4OchKYB8pMIXpIpCwFJGKd5ZYv2xq7O1q90pgpb65KfryrMCh+xFyxwST+hiretey9ygKhMgWrHcwz6gO+qDpMLtTLW+klEnUGjf77arY0ksfROup3moUuqV/VWYMk9vaNuWl/F+g0TovtSg=
-X-OriginatorOrg: oracle.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 7491a9ba-1146-4b2e-998f-08dd5a767344
-X-MS-Exchange-CrossTenant-AuthSource: DM6PR10MB4313.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 03 Mar 2025 17:11:34.5082
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: cMrYYbRd4NIaJtF1P2QX7l3Dp7sRBWatFnk8EOwRXiZZv53nJmLRTRS+szoowZbRkex+FlvtEYtVsymxhCto7w==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: PH7PR10MB6251
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <84ebed94-d4ab-4b8c-962c-f10ebaca5a75@huawei.com>
+X-TM-AS-GCONF: 00
+X-Proofpoint-ORIG-GUID: oXwgmBByK124_ABNKnXygQNMWV_MpwZ9
+X-Proofpoint-GUID: eh3u1pGDNo_2LwPiT_df1YunPZ9pV067
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.293,Aquarius:18.0.1093,Hydra:6.0.680,FMLib:17.12.68.34
  definitions=2025-03-03_08,2025-03-03_02,2024-11-22_01
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 phishscore=0 suspectscore=0 spamscore=0
- mlxscore=0 mlxlogscore=999 adultscore=0 malwarescore=0 bulkscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2502100000
- definitions=main-2503030131
-X-Proofpoint-ORIG-GUID: bv7SfAyJ0v3V2dLOTI9o0nvNVnYi4MWY
-X-Proofpoint-GUID: bv7SfAyJ0v3V2dLOTI9o0nvNVnYi4MWY
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 lowpriorityscore=0
+ adultscore=0 priorityscore=1501 malwarescore=0 bulkscore=0 spamscore=0
+ suspectscore=0 mlxlogscore=999 phishscore=0 clxscore=1015 mlxscore=0
+ impostorscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.19.0-2502100000 definitions=main-2503030133
 
-In future xfs will support a SW-based atomic write, so rename
-IOMAP_ATOMIC -> IOMAP_ATOMIC_HW to be clear which mode is being used.
+On Thu, Feb 27, 2025 at 08:51:11PM +0800, Baokun Li wrote:
+> On 2025/2/27 19:43, Ojaswin Mujoo wrote:
+> > On Wed, Feb 26, 2025 at 09:55:52AM +0800, Baokun Li wrote:
+> > > On 2025/2/25 20:06, Ojaswin Mujoo wrote:
+> > > > On Tue, Feb 25, 2025 at 09:53:10AM +0800, Baokun Li wrote:
+> > > > > On 2025/2/22 16:40, Ojaswin Mujoo wrote:
+> > > > > > Presently we always BUG_ON if trying to start a transaction on a journal
+> > > > > > marked with JBD2_UNMOUNT, since this should never happen. However while
+> > > > > > running stress tests it was observed that in case of some error handling
+> > > > > > paths, it is possible for update_super_work to start a transaction after
+> > > > > > the journal is destroyed eg:
+> > > > > > 
+> > > > > > (umount)
+> > > > > > ext4_kill_sb
+> > > > > >      kill_block_super
+> > > > > >        generic_shutdown_super
+> > > > > >          sync_filesystem /* commits all txns */
+> > > > > >          evict_inodes
+> > > > > >            /* might start a new txn */
+> > > > > >          ext4_put_super
+> > > > > > 	flush_work(&sbi->s_sb_upd_work) /* flush the workqueue */
+> > > > > >            jbd2_journal_destroy
+> > > > > >              journal_kill_thread
+> > > > > >                journal->j_flags |= JBD2_UNMOUNT;
+> > > > > >              jbd2_journal_commit_transaction
+> > > > > >                jbd2_journal_get_descriptor_buffer
+> > > > > >                  jbd2_journal_bmap
+> > > > > >                    ext4_journal_bmap
+> > > > > >                      ext4_map_blocks
+> > > > > >                        ...
+> > > > > >                        ext4_inode_error
+> > > > > Just curious, since jbd2_journal_bmap() only queries the map and does not
+> > > > > create it, how does it fail here? Is there more information in dmesg?
+> > > > > Is s_journal_inum normal after file system corruption?
+> > > > Hey Baokun,
+> > > Hello Ojaswin,
+> > > 
+> > > Thanks for your detailed explanation!
+> > > > So I dug a bit more into the vmcore. The error information in sbi looks
+> > > > like this:
+> > > > 
+> > > >     s_add_error_count = 1,
+> > > >     s_first_error_code = 117,
+> > > >     s_first_error_line = 475,
+> > > >     s_first_error_ino = 0,
+> > > >     s_first_error_block = 0,
+> > > >     s_first_error_func = 0xc0080000055300d0 <__func__.6> "ext4_read_block_bitmap_nowait",
+> > > >     s_first_error_time = 1737023235,
+> > > > 
+> > > >     s_last_error_code = 117,
+> > > >     s_last_error_line = 609,
+> > > >     s_last_error_ino = 8,
+> > > >     s_last_error_block = 783,
+> > > >     s_last_error_func = 0xc008000005531b10 <__func__.41> "ext4_map_blocks",
+> > > >     s_last_error_time = 1737023236,
+> > > > 
+> > > >     The first error is here:
+> > > > 
+> > > >         if ((bitmap_blk <= le32_to_cpu(sbi->s_es->s_first_data_block)) ||
+> > > >        474               (bitmap_blk >= ext4_blocks_count(sbi->s_es))) {
+> > > >     *  475                   ext4_error(sb, "Invalid block bitmap block %llu in "
+> > > >        476                              "block_group %u", bitmap_blk, block_group);
+> > > >        477                   ext4_mark_group_bitmap_corrupted(sb, block_group,
+> > > >        478                                           EXT4_GROUP_INFO_BBITMAP_CORRUPT);
+> > > >        479                   return ERR_PTR(-EFSCORRUPTED);
+> > > >        480           }
+> > > > 
+> > > > and the last error is here:
+> > > > 
+> > > >       608           if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+> > > >    *  609                   ret = check_block_validity(inode, map);
+> > > >       610                   if (ret != 0)
+> > > >       611                           return ret;
+> > > >       612           }
+> > > > 
+> > > > 
+> > > > And indeed we have the traces of the first error in dmesg:
+> > > > 
+> > > > [75284.713463] EXT4-fs error (device loop36): ext4_read_block_bitmap_nowait:475: comm proc01: Invalid block bitmap block 0 in block_group 0
+> > > > [75284.713470] EXT4-fs error (device loop36): ext4_read_block_bitmap_nowait:475: comm proc01: Invalid block bitmap block 0 in block_group 0
+> > > > [75284.713476] EXT4-fs error (device loop36): ext4_read_block_bitmap_nowait:475: comm proc01: Invalid block bitmap block 0 in block_group 0
+> > > > 
+> > > > However, the last error seems strange. It seems like check_block_validity
+> > > > should ideally never fail for a journal inode.Unfortunately, sbi->s_es page is
+> > > > not recorded in the crash dump for some reason so idk the exact value at the
+> > > > time of the check, but looking in journal->j_inode->i_ino, the inode num is 8,
+> > > > which seems fine to me. So yeah, I'm a bit unsure what caused the corruption.
+> > > > I'll look a bit more into the proc01 ltp to see if we can recreate the failure
+> > > > to get more info.
+> > > Right, check_block_validity() skips the journal inode check. If
+> > > the journal inode check fails, that shows s_es->s_journal_inum and
+> > > journal->j_inode->i_ino are different. The file system doesn't modify
+> > > s_journal_inum, so it should be modified by some other writer bypassing
+> > > the file system (i.e. writing to bare disk).
+> > > 
+> > > If that's how it is, we could avoid this issue by using EXT4_JOURNAL_INO
+> > > directly or saving s_journal_inum to ext4_sb_info (which offers better
+> > > compatibility).
+> > Hey Baokun,
+> > 
+> > So I'm wondering if modifying the check in __check_block_validity the
+> > right thing to do. The fact that something has changed the on disk
+> > journal inode number is itself concerning and maybe stopping IO here is
+> > the right thing to do instead of using a cached journal inode number and
+> > silently ignoring the issue.
+> Because the cached journal inode is fine (it was checked when mounting),
+> and the data we're committing is good too, I think it's okay to keep
+> committing.  The actual problem is someone modified the superblock
+> directly, bypassing the file system, and the file system can't protect
+> against that.
+> > 
+> > Anyways now that the journal inode is corrupted on disk, will the
+> > recovery tooling even be able to read the journal anymore?
+> Actually, the journal inode on disk could still be okay. This just tells us
+> s_es->s_journal_inum is abnormal, meaning part of the superblock on disk
+> got changed. If only the superblock was modified, we can use the backup
+> superblock or grab the latest superblock copy from the journal.
 
-Also relocate setting of IOMAP_ATOMIC_HW to the write path in
-__iomap_dio_rw(), to be clear that this flag is only relevant to writes.
+Ahh right thats true idk why I missed that. Although it's very unlikely 
+someone would have modified/corrupted the journal inode num in sb in the
+tests we are running (mostly syscall tests in ltp), but yes your
+suggestion does make sense. I'll try to look into it and add it in the
+next revision.
 
-Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
-Signed-off-by: John Garry <john.g.garry@oracle.com>
----
- Documentation/filesystems/iomap/operations.rst |  4 ++--
- fs/ext4/inode.c                                |  2 +-
- fs/iomap/direct-io.c                           | 18 +++++++++---------
- fs/iomap/trace.h                               |  2 +-
- include/linux/iomap.h                          |  2 +-
- 5 files changed, 14 insertions(+), 14 deletions(-)
+Regards,
+ojaswin
 
-diff --git a/Documentation/filesystems/iomap/operations.rst b/Documentation/filesystems/iomap/operations.rst
-index d1535109587a..0b9d7be23bce 100644
---- a/Documentation/filesystems/iomap/operations.rst
-+++ b/Documentation/filesystems/iomap/operations.rst
-@@ -514,8 +514,8 @@ IOMAP_WRITE`` with any combination of the following enhancements:
-    if the mapping is unwritten and the filesystem cannot handle zeroing
-    the unaligned regions without exposing stale contents.
- 
-- * ``IOMAP_ATOMIC``: This write is being issued with torn-write
--   protection.
-+ * ``IOMAP_ATOMIC_HW``: This write is being issued with torn-write
-+   protection based on HW-offload support.
-    Only a single bio can be created for the write, and the write must
-    not be split into multiple I/O requests, i.e. flag REQ_ATOMIC must be
-    set.
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 7c54ae5fcbd4..ba2f1e3db7c7 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3467,7 +3467,7 @@ static inline bool ext4_want_directio_fallback(unsigned flags, ssize_t written)
- 		return false;
- 
- 	/* atomic writes are all-or-nothing */
--	if (flags & IOMAP_ATOMIC)
-+	if (flags & IOMAP_ATOMIC_HW)
- 		return false;
- 
- 	/* can only try again if we wrote nothing */
-diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
-index e1e32e2bb0bf..c696ce980796 100644
---- a/fs/iomap/direct-io.c
-+++ b/fs/iomap/direct-io.c
-@@ -317,7 +317,7 @@ static int iomap_dio_zero(const struct iomap_iter *iter, struct iomap_dio *dio,
-  * clearing the WRITE_THROUGH flag in the dio request.
-  */
- static inline blk_opf_t iomap_dio_bio_opflags(struct iomap_dio *dio,
--		const struct iomap *iomap, bool use_fua, bool atomic)
-+		const struct iomap *iomap, bool use_fua, bool atomic_hw)
- {
- 	blk_opf_t opflags = REQ_SYNC | REQ_IDLE;
- 
-@@ -329,7 +329,7 @@ static inline blk_opf_t iomap_dio_bio_opflags(struct iomap_dio *dio,
- 		opflags |= REQ_FUA;
- 	else
- 		dio->flags &= ~IOMAP_DIO_WRITE_THROUGH;
--	if (atomic)
-+	if (atomic_hw)
- 		opflags |= REQ_ATOMIC;
- 
- 	return opflags;
-@@ -340,8 +340,8 @@ static int iomap_dio_bio_iter(struct iomap_iter *iter, struct iomap_dio *dio)
- 	const struct iomap *iomap = &iter->iomap;
- 	struct inode *inode = iter->inode;
- 	unsigned int fs_block_size = i_blocksize(inode), pad;
-+	bool atomic_hw = iter->flags & IOMAP_ATOMIC_HW;
- 	const loff_t length = iomap_length(iter);
--	bool atomic = iter->flags & IOMAP_ATOMIC;
- 	loff_t pos = iter->pos;
- 	blk_opf_t bio_opf;
- 	struct bio *bio;
-@@ -351,7 +351,7 @@ static int iomap_dio_bio_iter(struct iomap_iter *iter, struct iomap_dio *dio)
- 	u64 copied = 0;
- 	size_t orig_count;
- 
--	if (atomic && length != fs_block_size)
-+	if (atomic_hw && length != fs_block_size)
- 		return -EINVAL;
- 
- 	if ((pos | length) & (bdev_logical_block_size(iomap->bdev) - 1) ||
-@@ -428,7 +428,7 @@ static int iomap_dio_bio_iter(struct iomap_iter *iter, struct iomap_dio *dio)
- 			goto out;
- 	}
- 
--	bio_opf = iomap_dio_bio_opflags(dio, iomap, use_fua, atomic);
-+	bio_opf = iomap_dio_bio_opflags(dio, iomap, use_fua, atomic_hw);
- 
- 	nr_pages = bio_iov_vecs_to_alloc(dio->submit.iter, BIO_MAX_VECS);
- 	do {
-@@ -461,7 +461,7 @@ static int iomap_dio_bio_iter(struct iomap_iter *iter, struct iomap_dio *dio)
- 		}
- 
- 		n = bio->bi_iter.bi_size;
--		if (WARN_ON_ONCE(atomic && n != length)) {
-+		if (WARN_ON_ONCE(atomic_hw && n != length)) {
- 			/*
- 			 * This bio should have covered the complete length,
- 			 * which it doesn't, so error. We may need to zero out
-@@ -652,9 +652,6 @@ __iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 	if (iocb->ki_flags & IOCB_NOWAIT)
- 		iomi.flags |= IOMAP_NOWAIT;
- 
--	if (iocb->ki_flags & IOCB_ATOMIC)
--		iomi.flags |= IOMAP_ATOMIC;
--
- 	if (iov_iter_rw(iter) == READ) {
- 		/* reads can always complete inline */
- 		dio->flags |= IOMAP_DIO_INLINE_COMP;
-@@ -689,6 +686,9 @@ __iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 			iomi.flags |= IOMAP_OVERWRITE_ONLY;
- 		}
- 
-+		if (iocb->ki_flags & IOCB_ATOMIC)
-+			iomi.flags |= IOMAP_ATOMIC_HW;
-+
- 		/* for data sync or sync, we need sync completion processing */
- 		if (iocb_is_dsync(iocb)) {
- 			dio->flags |= IOMAP_DIO_NEED_SYNC;
-diff --git a/fs/iomap/trace.h b/fs/iomap/trace.h
-index 9eab2c8ac3c5..69af89044ebd 100644
---- a/fs/iomap/trace.h
-+++ b/fs/iomap/trace.h
-@@ -99,7 +99,7 @@ DEFINE_RANGE_EVENT(iomap_dio_rw_queued);
- 	{ IOMAP_FAULT,		"FAULT" }, \
- 	{ IOMAP_DIRECT,		"DIRECT" }, \
- 	{ IOMAP_NOWAIT,		"NOWAIT" }, \
--	{ IOMAP_ATOMIC,		"ATOMIC" }
-+	{ IOMAP_ATOMIC_HW,	"ATOMIC_HW" }
- 
- #define IOMAP_F_FLAGS_STRINGS \
- 	{ IOMAP_F_NEW,		"NEW" }, \
-diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-index ea29388b2fba..87cd7079aaf3 100644
---- a/include/linux/iomap.h
-+++ b/include/linux/iomap.h
-@@ -189,7 +189,7 @@ struct iomap_folio_ops {
- #else
- #define IOMAP_DAX		0
- #endif /* CONFIG_FS_DAX */
--#define IOMAP_ATOMIC		(1 << 9)
-+#define IOMAP_ATOMIC_HW		(1 << 9)
- #define IOMAP_DONTCACHE		(1 << 10)
- 
- struct iomap_ops {
--- 
-2.31.1
-
+> 
+> 
+> Cheers,
+> Baokun
