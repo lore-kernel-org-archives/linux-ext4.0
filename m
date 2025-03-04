@@ -1,258 +1,144 @@
-Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+Received: from mout.web.de (mout.web.de [212.227.17.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E034B202F7B;
-	Tue,  4 Mar 2025 12:54:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9260420371A;
+	Tue,  4 Mar 2025 13:14:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.227.17.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1741092882; cv=none; b=oPnCLrc9VrLMmNKFJ3XId1dfE/tzub0Rqk/MhI8yYbcCpYfuz8wgAIAQC7p6aptH5VgVFqYHA0q/1qe/cq8w0J3CvmXPDrF4xyJpFeqP3QKQD8P1TnFjaYlZ5nOb4yrgU18t4p2b/zLzlIbL3AQWW5/dXegwzEmkU6c+luU3vWw=
+	t=1741094079; cv=none; b=qF+JziFTilYMV8OEQ3yuxjIh2R4RbE8+aeXCuziLj9+5+cKTJk0+YAEGytGIjta6a9i5BME6xE01NwFLgktdRodm4CRpZxc9bPmrEZ1RiyFrc7oqlDyLw50ZMsmh/bw+33OYRtEjOtQUVjbF6q5i5UhVy3v2VnpvMN7VzLJEPCk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1741092882; c=relaxed/simple;
-	bh=V8nC5TryvlmZdJIb16g+wi8piYOWu1md+jxGO7yNJX4=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Y+oCH/YrGCYDBAN1KTz2nYjZuFOmgLNMHplXMUuHx/iqU+uAASyz7bELqELWRbIZr8Fz+gP0GNAQfK8B3Hiaf6qFn6eIQZAbkzwX0rJ35Xpo2b7GCv/+zR2AxsJrOWuKYW7dpQD7b4Lr799gmycuYKwcwr5pEWP18O2/LNmba2Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=kavBwSo8; arc=none smtp.client-ip=148.163.156.1
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+	s=arc-20240116; t=1741094079; c=relaxed/simple;
+	bh=YerXjkghjd4gZOl/fHPqYfL+75Cdl2tBf53XKAvwNSA=;
+	h=Message-ID:Date:MIME-Version:Subject:From:To:Cc:References:
+	 In-Reply-To:Content-Type; b=VmV6rPoh9Vg+TrvMbTg2RifMxUfykeYV1ShykNE7mKRhNI/ypE+14CO8x/9aUKvGu5zyURV5GIodCAjAX+m0Ws5lkujuu2HM9OmDIVI0iDCwc5bbeEsutWLZzg0cdt180cSllFRjZ+iAkqFZV2yEkAprhk/uzaryVTziCHMsfuE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=web.de; spf=pass smtp.mailfrom=web.de; dkim=pass (2048-bit key) header.d=web.de header.i=markus.elfring@web.de header.b=k4iS6DZQ; arc=none smtp.client-ip=212.227.17.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=web.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=web.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="kavBwSo8"
-Received: from pps.filterd (m0356517.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 5247oDli022672;
-	Tue, 4 Mar 2025 12:54:36 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-type:date:from:in-reply-to:message-id:mime-version
-	:references:subject:to; s=pp1; bh=9GIQtTQ3n52e0xvtZx3D+1FsMOE5DE
-	3K42Qjqn7zKAU=; b=kavBwSo8YQ9Ex6GfrjA3gmAKdk/vKr3Np8yhrVj6VKe2VJ
-	df/oD6cjNn62bTHi7ENO+EtSrm29Ug9bn89e9WC/RLzs7oX6GMkKS0Chrp+oKCGJ
-	F7fOkdshdqoOpDNFw3FH10tWgUY8+9JXKZ1rE4J5bYmgUNE0lQfWsjeDawJ47YRq
-	YLkjlIqeNTCJk+rYBt5VLVo5nt8F8RWM1PnvkNnvp0QkpJFX116GOeRS5M4xLXz9
-	IbPluLTAmBzn0lt9cQtVS6CLjhIjFcSqN5DKOOMxe4CJqnKgY4H5jCp8COLMwcDe
-	ytxL/rSb7b4o3WPL83TJhnupgdGLyHV0ivhxLejA==
-Received: from pps.reinject (localhost [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 455dunxqjx-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 04 Mar 2025 12:54:36 +0000 (GMT)
-Received: from m0356517.ppops.net (m0356517.ppops.net [127.0.0.1])
-	by pps.reinject (8.18.0.8/8.18.0.8) with ESMTP id 524CJKPB018920;
-	Tue, 4 Mar 2025 12:54:35 GMT
-Received: from ppma23.wdc07v.mail.ibm.com (5d.69.3da9.ip4.static.sl-reverse.com [169.61.105.93])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 455dunxqjr-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 04 Mar 2025 12:54:35 +0000 (GMT)
-Received: from pps.filterd (ppma23.wdc07v.mail.ibm.com [127.0.0.1])
-	by ppma23.wdc07v.mail.ibm.com (8.18.1.2/8.18.1.2) with ESMTP id 524CVaSI013720;
-	Tue, 4 Mar 2025 12:54:34 GMT
-Received: from smtprelay04.fra02v.mail.ibm.com ([9.218.2.228])
-	by ppma23.wdc07v.mail.ibm.com (PPS) with ESMTPS id 454e2knavf-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 04 Mar 2025 12:54:34 +0000
-Received: from smtpav04.fra02v.mail.ibm.com (smtpav04.fra02v.mail.ibm.com [10.20.54.103])
-	by smtprelay04.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 524CsWXU32899820
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Tue, 4 Mar 2025 12:54:32 GMT
-Received: from smtpav04.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 54BE720043;
-	Tue,  4 Mar 2025 12:54:32 +0000 (GMT)
-Received: from smtpav04.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id AC15420040;
-	Tue,  4 Mar 2025 12:54:30 +0000 (GMT)
-Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.109.219.249])
-	by smtpav04.fra02v.mail.ibm.com (Postfix) with ESMTPS;
-	Tue,  4 Mar 2025 12:54:30 +0000 (GMT)
-Date: Tue, 4 Mar 2025 18:24:27 +0530
-From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-        linux-kernel@vger.kernel.org, Mahesh Kumar <maheshkumar657g@gmail.com>,
-        Ritesh Harjani <ritesh.list@gmail.com>
-Subject: Re: [PATCH 1/2] ext4: only defer sb update on error if SB_ACTIVE
-Message-ID: <Z8b4Aze43cnDrsBF@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-References: <cover.1740212945.git.ojaswin@linux.ibm.com>
- <da8af2e5170f0d94031b812d7d50c6ec1967db1b.1740212945.git.ojaswin@linux.ibm.com>
- <jnxpphuradrsf73cxfmohfu7wwwckihtulw6ovsitddgt5pqkg@2uoejkr66qnl>
- <Z8BKdo5IAHJRdMkp@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
- <mpm3x7uonxoc73lgva72vaiydc76cmr5niapm45ipk6ts5voab@e7zundhoui6i>
+	dkim=pass (2048-bit key) header.d=web.de header.i=markus.elfring@web.de header.b="k4iS6DZQ"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=web.de;
+	s=s29768273; t=1741094064; x=1741698864; i=markus.elfring@web.de;
+	bh=UMMNbqmprEUf/HLWOjYQYKCqdN+GILAnTDEYyfL3pew=;
+	h=X-UI-Sender-Class:Message-ID:Date:MIME-Version:Subject:From:To:
+	 Cc:References:In-Reply-To:Content-Type:Content-Transfer-Encoding:
+	 cc:content-transfer-encoding:content-type:date:from:message-id:
+	 mime-version:reply-to:subject:to;
+	b=k4iS6DZQ8/M15TRZ65pVu59nIeVatpdt31uGFspHEieqUYXIl0Z+N7FHmFPZhyDZ
+	 V/QiTDVCKKX4WzY28rlTn9RyjanmosZgh3nY1VpW5Mm8iWO+xqmTODtmP1tlgkMgf
+	 xAKlPeP2LRUVfR8csxkKx2TQJFjAEQ9OukbxLAEeaYzo/rwyN6oC4noSyCvuAVXOp
+	 kkNtMsqrHUB5UJ5KgfisFh3dOeZSV2QiSYX71CtTzBWlxfgpMj6UndWvOGLjMsj6V
+	 AQoXeQl78DbqGRUrAIeYf7Rsd41SiLzHRtWmoWCujtFjFwlFj8nK4vZghKk6DG8J5
+	 8oSTRSbYfUiTbp5nqA==
+X-UI-Sender-Class: 814a7b36-bfc1-4dae-8640-3722d8ec6cd6
+Received: from [192.168.178.29] ([94.31.70.64]) by smtp.web.de (mrweb105
+ [213.165.67.124]) with ESMTPSA (Nemesis) id 1N7QUJ-1tCxYw3epR-016ZhD; Tue, 04
+ Mar 2025 14:14:23 +0100
+Message-ID: <81165091-3dcf-4693-8e8f-658cb95dbbb7@web.de>
+Date: Tue, 4 Mar 2025 14:14:23 +0100
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <mpm3x7uonxoc73lgva72vaiydc76cmr5niapm45ipk6ts5voab@e7zundhoui6i>
-X-TM-AS-GCONF: 00
-X-Proofpoint-ORIG-GUID: Rn3lgViAMgDn6Q695MgojrDoKdmzt_SQ
-X-Proofpoint-GUID: 3KlF1a48yKyrmOK7jF7-2o1XsL0-zMcX
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1093,Hydra:6.0.680,FMLib:17.12.68.34
- definitions=2025-03-04_05,2025-03-03_04,2024-11-22_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 lowpriorityscore=0
- adultscore=0 priorityscore=1501 malwarescore=0 bulkscore=0 spamscore=0
- suspectscore=0 mlxlogscore=999 phishscore=0 clxscore=1015 mlxscore=0
- impostorscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.19.0-2502100000 definitions=main-2503040102
+User-Agent: Mozilla Thunderbird
+Subject: [PATCH RESEND] ext4: Fix exception handling in
+ parse_apply_sb_mount_options()
+From: Markus Elfring <Markus.Elfring@web.de>
+To: kernel-janitors@vger.kernel.org, linux-ext4@vger.kernel.org,
+ Andreas Dilger <adilger.kernel@dilger.ca>,
+ Carlos Maiolino <cmaiolino@redhat.com>, Eric Biggers <ebiggers@google.com>,
+ Theodore Ts'o <tytso@mit.edu>
+Cc: cocci@inria.fr, LKML <linux-kernel@vger.kernel.org>
+References: <f9303bdc-b1a7-be5e-56c6-dfa8232b8b55@web.de>
+ <7214c986-4d0e-ad78-6312-c84515dc9abf@web.de>
+Content-Language: en-GB
+In-Reply-To: <7214c986-4d0e-ad78-6312-c84515dc9abf@web.de>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+X-Provags-ID: V03:K1:E5kv+niPk+2Rgm08pXEtLMbHHQnvn5ILOYRpqiTaXLnnlYAhqjj
+ GBoPmLWu+eHxJk3tVh6KBsVIEcJb86QMkysVG5p8vK6giss/7dfoAK+WczhPNmgWmWiSVDM
+ vl2X3J8+Z0wTg11ycHOmqNpJr6xc/HUI6a8/9wMHc8vLPbaEK5GYzEIDw5K1SNeYFWRTdFi
+ awo7grstEiuQ+av0enmWw==
+X-Spam-Flag: NO
+UI-OutboundReport: notjunk:1;M01:P0:cWF7ctUm6do=;l9kjC10cYUQOgJH5/7DPwXKZZg+
+ e8kTUx40Y9u2VbSiu+UG5ma2q5LPl8u7igzHcRvoTshP5VnUN7djIRGF1JLZT/ojGIlwY4V7J
+ OlbGfZkFpDqcoAkfLoXZaun1IcyOcPCzK19ap4AVQwzweGyGRHopTMuPwhtptJz8mRPuQ6FYv
+ 3UFryxssmNvrrn7A131YPnpJZbngY8C1ITn8fgH65OjidoYUNNqLD6eezHYWX6edtHFT7HbpN
+ YkQJk2fsmsPiBUM9Q7kvlh4oCdup3+JCucnHGRMGmfJMCbf15LL4yU5ZBrzGrmDXVvg/0XABf
+ WhfaCm782WzcrfmJPRUy6NI3K+wH732abRxIrcLMf69DVx/uy4TRcmLsyEnWXGjStRIOmeT2z
+ cekaMJZ1qqyfbR6X5rTj9kDK2cLpZSc2r6GgBGR7fLc4DNH+ZcXeUW8kSeOkCTxovDrCJecQm
+ WqcFYDrHUDBZhv9FZsbQI66k57bdrK6kzQCKMmirmRfHy1LWVdT9ynZEMbAsgKV8OsXiZX4Hy
+ dXhkowFSbxJo9mQu7+zjBYCAwtj71pgEuLAi7WYSQ7sMgsAvBZrjoUzNrFiZ5ReiibepO4zF0
+ uAq/i60lNCGIs6XO5ZCNznigyEhnraeRIcmvkGKJ5uczQCQnO829OjlzaCg6AE7Pz0uOj1TuG
+ kLJ7a+HHwxg2iMBrQdbfrnCcTe0g9iSXU3z4XaiybAZV44s8+hHBaCwBC0sb9Afx+D27RphUO
+ c0Sk7dOaxwAMdOTlVTxAgz8yixSpdtdArrHjIMz0xGr3DaRK6PnsB7+EXzlGoRqd4QAcYVbwq
+ mFZCtO5G0N3/pSuxLkVHmYeh0tuN3zWdb1UHbD/8shKZveRtY5nAOi36DIqS4fq6ruvMaY3ya
+ bb4cO3fYPnUI/gQlfPA6c4sdTkLxfmm7nLO5Vprq3920h1jFG7t8W7wpEzOB3fxMx25DIs4dr
+ h9VtweZHStOcKMQhX5MUpW6LCPHM8sWIiubV4vsKSB8d7TzM01jk0I9RyH3Hhg1gpO9UZFSQI
+ 7JCEUG8PjxbfttGNA3ZVURansxspTuIL/TisdTncVM80XHCyFENEdUhTc6Jt30jFxf102oMAr
+ XZ+Bv2g2WJ2aYIrKxa8DZKO+QyVV9vFHx8DI1AM608ZVoPvDF/0atiVArT1j/+tAT06MSxKOu
+ 5hZ5CGkCC0Zn++2BdiC3yMWCTuGuAq/B3uM8HwUkGy670SLxo/BnJKCp2sKxLIy0836mEMGJ7
+ PaoRkSWEafmXOAtSaO/t5d4+16opBwR2VHmxTr8lvtD7VWqvQ1d6gojl8tJbRCmqptdFFJQTQ
+ xjiK7rXRK6SZAi06FmtUFWQaYW7VhUXBwnybRDUHcyQUOmEDxxk/rBNhAFb0MYG58KanH+frc
+ 4IpmMwFV2iv9KcfkRRAjqlEzIXlqJUxX31VUC91JvUZHcZd3gPgvV12qHEUqbHyGycgOJ+JOL
+ pvh5s9lJVX/eDKPPi4mko7UWIVIg=
 
-On Tue, Mar 04, 2025 at 11:25:02AM +0100, Jan Kara wrote:
-> On Thu 27-02-25 16:50:22, Ojaswin Mujoo wrote:
-> > On Mon, Feb 24, 2025 at 03:52:00PM +0100, Jan Kara wrote:
-> > > On Sat 22-02-25 14:10:22, Ojaswin Mujoo wrote:
-> > > > Presently we always BUG_ON if trying to start a transaction on a journal
-> > > > marked with JBD2_UNMOUNT, since this should never happen. However while
-> > > > running stress tests it was observed that in case of some error handling
-> > > > paths, it is possible for update_super_work to start a transaction after
-> > > > the journal is destroyed eg:
-> > > > 
-> > > > (umount)
-> > > > ext4_kill_sb
-> > > >   kill_block_super
-> > > >     generic_shutdown_super
-> > > >       sync_filesystem /* commits all txns */
-> > > >       evict_inodes
-> > > >         /* might start a new txn */
-> > > >       ext4_put_super
-> > > > 	flush_work(&sbi->s_sb_upd_work) /* flush the workqueue */
-> > > >         jbd2_journal_destroy
-> > > >           journal_kill_thread
-> > > >             journal->j_flags |= JBD2_UNMOUNT;
-> > > >           jbd2_journal_commit_transaction
-> > > >             jbd2_journal_get_descriptor_buffer
-> > > >               jbd2_journal_bmap
-> > > >                 ext4_journal_bmap
-> > > >                   ext4_map_blocks
-> > > >                     ...
-> > > >                     ext4_inode_error
-> > > >                       ext4_handle_error
-> > > >                         schedule_work(&sbi->s_sb_upd_work)
-> > > > 
-> > > >                                                /* work queue kicks in */
-> > > >                                                update_super_work
-> > > >                                                  jbd2_journal_start
-> > > >                                                    start_this_handle
-> > > >                                                      BUG_ON(journal->j_flags &
-> > > >                                                             JBD2_UNMOUNT)
-> > > > 
-> > > > Hence, make sure we only defer the update of ext4 sb if the sb is still
-> > > > active.  Otherwise, just fallback to an un-journaled commit.
-> > > > 
-> > > > The important thing to note here is that we must only defer sb update if
-> > > > we have not yet flushed the s_sb_update_work queue in umount path else
-> > > > this race can be hit (point 1 below). Since we don't have a direct way
-> > > > to check for that we use SB_ACTIVE instead. The SB_ACTIVE check is a bit
-> > > > subtle so adding some notes below for future reference:
-> > > > 
-> > > > 1. Ideally we would want to have a something like (flags & JBD2_UNMOUNT
-> > > > == 0) however this is not correct since we could end up scheduling work
-> > > > after it has been flushed:
-> > > > 
-> > > >  ext4_put_super
-> > > >   flush_work(&sbi->s_sb_upd_work)
-> > > > 
-> > > >                            **kjournald2**
-> > > >                            jbd2_journal_commit_transaction
-> > > >                            ...
-> > > >                            ext4_inode_error
-> > > >                              /* JBD2_UNMOUNT not set */
-> > > >                              schedule_work(s_sb_upd_work)
-> > > > 
-> > > >    jbd2_journal_destroy
-> > > >     journal->j_flags |= JBD2_UNMOUNT;
-> > > > 
-> > > >                                       **workqueue**
-> > > >                                       update_super_work
-> > > >                                        jbd2_journal_start
-> > > >                                         start_this_handle
-> > > >                                           BUG_ON(JBD2_UNMOUNT)
-> > > > 
-> > > > Something like the above doesn't happen with SB_ACTIVE check because we
-> > > > are sure that the workqueue would be flushed at a later point if we are
-> > > > in the umount path.
-> > > > 
-> > > > 2. We don't need a similar check in ext4_grp_locked_error since it is
-> > > > only called from mballoc and AFAICT it would be always valid to schedule
-> > > > work here.
-> > > > 
-> > > > Fixes: 2d01ddc86606 ("ext4: save error info to sb through journal if available")
-> > > > Reported-by: Mahesh Kumar <maheshkumar657g@gmail.com>
-> > > > Suggested-by: Ritesh Harjani <ritesh.list@gmail.com>
-> > > > Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-> > > 
-> > > Good catch! But I think the solution will have to be slightly different.
-> > > Basing the check on SB_ACTIVE has the problem that you can have racing
-> > > updates of the sb in the still running transaction and in your direct
-> > > update leading to inconsistencies after a crash (that was the reason why
-> > > we've created the s_sb_upd_work in the first place).
-> > > 
-> > > I would solve this by implementing something like
-> > > ext4_update_sb_destroy_journal() which will set a flag in sbi, flush the
-> > > workqueue, and then destroy the journal. And ext4_handle_error() will check
-> > > for the sbi flag.
-> > > 
-> > > 								Honza
-> > 
-> > Hey Jan,
-> > 
-> > Thanks for the review. So earlier I did go through different code paths to see
-> > if we will have a direct sb write clash with a journalled one it wouldn't but,
-> > relooking at it, seems like we might have a scenario as follows:
-> > 
-> > generic_super_shutdown
-> >  sync_filesytems
-> >   /* running txns committed. executing ext4_journal_commit_callback */
-> >   ext4_maybe_update_superblock
-> >    /* schedules work */
-> >    schedule_work(&sbi->s_sb_upd_work)
-> >                                           update_super_work
-> >                                           /* start a txn and add sb to it */
-> >  sb->s_flags &= ~SB_ACTIVE;
-> >  evict_inode
-> >    ext4_evict_inode
-> >     ext4_std_error
-> >      ext4_handle_error
-> >       /* direct commit of sb (Not good!) */
-> > 
-> > 
-> > Now with the 'setting the flag in sbi' approach, I'm not sure if that will be
-> > enough to handle this as well. For example, if we add a flag like
-> > sbi->s_journal_destroying, then:
-> > 
-> > ext4_put_super
-> >  sbi->s_journal_destroying = true
-> >  flush_workqueue()
-> >   /* sb is now journalled */
-> >  jbd2_journal_destory
-> >   jbd2_journal_commit_transaction
-> >    /* add tag for sb in descriptor and add buffer to wbufs[] */
-> >    /* Later from some other buffer in the txn: */
-> >    jbd2_journal_next_log_block
-> >     /* hits error in ext4_journal_bmap */
-> >     ext4_handle_error
-> >       sbi->s_journal_destroying == true
-> >       /* update and commit sb directly causing a checksum mismatch b/w entry in descriptor */
-> >    jbd2_journal_abort
-> >    /* after abort everything in wbufs[] is written to journal */
-> > 
-> > In the above we will have a checksum mismatch but then maybe its not really
-> > an issue. Maybe since we never commit the txn it is understood that the contents
-> > can't be trusted and it should be fine to have a mismatch b/w the decriptor tag
-> > and the actual super block contents? In which case the sbi flag approach should
-> > be fine.
-> > 
-> > Does my understanding sound correct?
-> 
-> Yes. Since the transaction does not get committed, its contents will be
-> (and must be) ignored. So although you are correct that the superblock
-> content in the transaction need to match the content we write directly, it
-> does not matter because whatever is in the uncommitted transaction must
-> never be written to the final position on disk.
-> 
-> 								Honza
+From: Markus Elfring <elfring@users.sourceforge.net>
+Date: Tue, 21 Mar 2023 22:33:06 +0100
 
-Got it, thanks for the review. I'll address this in v2
+The label =E2=80=9Cout_free=E2=80=9D was used to jump to another pointer c=
+heck
+despite of the detail in the implementation of the function
+=E2=80=9Cparse_apply_sb_mount_options=E2=80=9D that it was determined alre=
+ady
+that a corresponding variable contained a null pointer.
 
-Regards,
-ojaswin
-> 
-> -- 
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
+* Thus use an additional label.
+
+* Delete a redundant check.
+
+
+This issue was detected by using the Coccinelle software.
+
+Fixes: 7edfd85b1ffd ("ext4: Completely separate options parsing and sb set=
+up")
+Fixes: c069db76ed7b ("ext4: fix memory leak in parse_apply_sb_mount_option=
+s()")
+Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
+=2D--
+ fs/ext4/super.c | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e6d84c1e34a4..c0bc46956353 100644
+=2D-- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2435,7 +2435,7 @@ static int parse_apply_sb_mount_options(struct super=
+_block *sb,
+
+ 	fc =3D kzalloc(sizeof(struct fs_context), GFP_KERNEL);
+ 	if (!fc)
+-		goto out_free;
++		goto free_mount_opts;
+
+ 	s_ctx =3D kzalloc(sizeof(struct ext4_fs_context), GFP_KERNEL);
+ 	if (!s_ctx)
+@@ -2467,10 +2467,9 @@ static int parse_apply_sb_mount_options(struct supe=
+r_block *sb,
+ 	ret =3D 0;
+
+ out_free:
+-	if (fc) {
+-		ext4_fc_free(fc);
+-		kfree(fc);
+-	}
++	ext4_fc_free(fc);
++	kfree(fc);
++free_mount_opts:
+ 	kfree(s_mount_opts);
+ 	return ret;
+ }
+=2D-
+2.40.0
+
