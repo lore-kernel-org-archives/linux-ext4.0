@@ -1,72 +1,64 @@
-Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0931F1624DC;
-	Thu,  6 Mar 2025 14:29:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.158.5
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 92E1470838;
+	Thu,  6 Mar 2025 14:33:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1741271347; cv=none; b=pdlmLItn/xJmfNlShANBbOKfwqzlYCnQCR2Zd3mu++WglOOmNi/EjQ1+tgYn4Fm124aH9h8QUZDTFd1t/BGxrQZJz7lSQhWz0rRnBpI03ClAniN1DbvmIydciy30JOxsk69qxUcA7s3JShNGCpdaUjI3lDOJKI5IdCVuA4Y6eoQ=
+	t=1741271635; cv=none; b=DX6UD8VqjdrYgikj7Ogv3VNnFXPmLbhKgfytsW1/BlLqy3GzXVZewM15kG8SVGEtoAYl4yDoBO1QUKCeTB5Dex9Ndk3mxilMGCeyQwmslOgX2e6C9hRveIpvBfRnZEQTisjCcD1VhdmqwZ48OzNzl20EEdOXmHF0eINCgg+w4kA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1741271347; c=relaxed/simple;
-	bh=IAWc07o0hy8Yj6IbKizZU9iMnybLs2RdnYBMOmPC14c=;
+	s=arc-20240116; t=1741271635; c=relaxed/simple;
+	bh=qn+Q4R8xmza2/HuURHifnHLxdVN9qRs1gbeu463GcfU=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=gZV41axpgBl0xDwO/d1L7lsrf6zquRgXm9AIMLBQmb+O4HhZK5BWr6S69RCVc+0L71ybAW2kYB8B1GgcgwrWe4/RUD3Ks/l3ZLbBpjCroIcd1T50XOg8+CErTJsCoGLrIlEqatTIPZHyTfrObc+9aGGCkFIqvYv2RWiHOKGxk2M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=FTSSl90I; arc=none smtp.client-ip=148.163.158.5
+	 MIME-Version; b=PxX+BURM4E8ozuW34dJ6TjABdq13BAEhZZddChCMRhUkLKmOMJZDHyKDswVWolBTuWrWZ0YbyhTSWytL7UMKg40+/s4Xr3zEOPZ2910Ib3yYFbqHd38MXVmhjd01IewWqLo+nET6Ze5QD43zc8qV+JEpxf5YDErVKZkhRIpxazg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=nibIzvwe; arc=none smtp.client-ip=148.163.156.1
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="FTSSl90I"
-Received: from pps.filterd (m0356516.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 5268LpYr000725;
-	Thu, 6 Mar 2025 14:28:47 GMT
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="nibIzvwe"
+Received: from pps.filterd (m0353729.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 526CRxGl004987;
+	Thu, 6 Mar 2025 14:28:43 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
 	:content-transfer-encoding:date:from:in-reply-to:message-id
-	:mime-version:references:subject:to; s=pp1; bh=ZlXcIXcnmN4pmK6oK
-	I6mE4wgeljt6AOBXxWFggX625I=; b=FTSSl90Imdiuwf/el3qjwRGcRYVvQZJYF
-	RESaFOUhbdAiN1970tFCx0uhv0btM+nEi7zHeDuf/InzRyVbNz14IaisjAQC72gq
-	rsSq5jOzBH60K1qz85C8IKAP8P6Oc/CmsH8cbOq5FCRb40IWD1LiC6FDlZWpkN89
-	ORfu+YC+AhIgKsLXVmY8sotStrKp4rDZkDc3YMnT1hg7sxl4Z+xtB8AnFrzwP3re
-	UPMCr0fuT7MUycppTpBV1dWqjwPRQLoAgaggBMHANuCx+MzoAMvIYkDA986npD1S
-	XVwz3JK8/M/F/w15p7qFVj8JKUl+47KB81GfOXMHn7mpIChpFQbag==
-Received: from pps.reinject (localhost [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 456wspmb6y-1
+	:mime-version:references:subject:to; s=pp1; bh=O1fqfThBREakYnxcs
+	61CqVK2DcvqO0Isib51TQQh8Mc=; b=nibIzvweckOueVZQ5uRAN4Gjgnun90Bl9
+	ybrbDjJemH1RBSma7KS71caX3xjRAgJjV95NwbHNG24oVJzmUeCM5TTNdnM9Y0pV
+	5QlltyC0FsObeY8+XQeHtyWQm6Gh3ILcJw1Hym9pq8WBoOa4TBkiZFD6Wi9aWYRm
+	6QwVGNaUspdc7+5e7nG2caTnKW3bou41wS87RCY7UFiljgeS+A4rT5SggiqbvK+Q
+	f3OojN6kgY3hOPtgSTqMFz1thBoRDmF4xYXbdfXTS8R+5436yB0Tsk9Xzuctrn7o
+	OGk7bLb4kjQK445koCnm/qEu8YRKsfJYyXrRVw5FIk8XvRbGEvSbg==
+Received: from ppma21.wdc07v.mail.ibm.com (5b.69.3da9.ip4.static.sl-reverse.com [169.61.105.91])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 457br2rn0m-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 06 Mar 2025 14:28:46 +0000 (GMT)
-Received: from m0356516.ppops.net (m0356516.ppops.net [127.0.0.1])
-	by pps.reinject (8.18.0.8/8.18.0.8) with ESMTP id 526ESkgP010434;
-	Thu, 6 Mar 2025 14:28:46 GMT
-Received: from ppma13.dal12v.mail.ibm.com (dd.9e.1632.ip4.static.sl-reverse.com [50.22.158.221])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 456wspmb6w-1
+	Thu, 06 Mar 2025 14:28:42 +0000 (GMT)
+Received: from pps.filterd (ppma21.wdc07v.mail.ibm.com [127.0.0.1])
+	by ppma21.wdc07v.mail.ibm.com (8.18.1.2/8.18.1.2) with ESMTP id 526CQKPn020846;
+	Thu, 6 Mar 2025 14:28:41 GMT
+Received: from smtprelay03.fra02v.mail.ibm.com ([9.218.2.224])
+	by ppma21.wdc07v.mail.ibm.com (PPS) with ESMTPS id 454djns6wc-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 06 Mar 2025 14:28:46 +0000 (GMT)
-Received: from pps.filterd (ppma13.dal12v.mail.ibm.com [127.0.0.1])
-	by ppma13.dal12v.mail.ibm.com (8.18.1.2/8.18.1.2) with ESMTP id 526De8ph020794;
-	Thu, 6 Mar 2025 14:28:45 GMT
-Received: from smtprelay06.fra02v.mail.ibm.com ([9.218.2.230])
-	by ppma13.dal12v.mail.ibm.com (PPS) with ESMTPS id 454esk8uxw-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 06 Mar 2025 14:28:45 +0000
+	Thu, 06 Mar 2025 14:28:41 +0000
 Received: from smtpav06.fra02v.mail.ibm.com (smtpav06.fra02v.mail.ibm.com [10.20.54.105])
-	by smtprelay06.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 526ESh5t35127948
+	by smtprelay03.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 526ESdgZ45154618
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Thu, 6 Mar 2025 14:28:44 GMT
+	Thu, 6 Mar 2025 14:28:39 GMT
 Received: from smtpav06.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id CBBF72004B;
-	Thu,  6 Mar 2025 14:28:43 +0000 (GMT)
+	by IMSVA (Postfix) with ESMTP id 9B7932004B;
+	Thu,  6 Mar 2025 14:28:39 +0000 (GMT)
 Received: from smtpav06.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 164DD20040;
-	Thu,  6 Mar 2025 14:28:42 +0000 (GMT)
+	by IMSVA (Postfix) with ESMTP id 186D720040;
+	Thu,  6 Mar 2025 14:28:38 +0000 (GMT)
 Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.in.ibm.com (unknown [9.109.219.249])
 	by smtpav06.fra02v.mail.ibm.com (Postfix) with ESMTP;
-	Thu,  6 Mar 2025 14:28:41 +0000 (GMT)
+	Thu,  6 Mar 2025 14:28:37 +0000 (GMT)
 From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 To: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
 Cc: Jan Kara <jack@suse.cz>, Baokun Li <libaokun1@huawei.com>,
-        linux-kernel@vger.kernel.org,
-        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
-Subject: [PATCH v2 3/3] ext4: Make sb update interval tunable
-Date: Thu,  6 Mar 2025 19:58:34 +0530
-Message-ID: <4c89be10ad8c8937048148bce1fc9ca882d060c6.1741270780.git.ojaswin@linux.ibm.com>
+        linux-kernel@vger.kernel.org
+Subject: [PATCH v2 1/3] ext4: define ext4_journal_destroy wrapper
+Date: Thu,  6 Mar 2025 19:58:32 +0530
+Message-ID: <96d5153a015caf5da6b67cffaff3c03c2abecb95.1741270780.git.ojaswin@linux.ibm.com>
 X-Mailer: git-send-email 2.48.1
 In-Reply-To: <cover.1741270780.git.ojaswin@linux.ibm.com>
 References: <cover.1741270780.git.ojaswin@linux.ibm.com>
@@ -78,139 +70,113 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-TM-AS-GCONF: 00
-X-Proofpoint-GUID: cadswMRKw-2OP0LJ8DlJn9haS3EGBuiN
-X-Proofpoint-ORIG-GUID: R9NeYpjWG8xcFFEAgZWBcAQ3_Y6fUikK
+X-Proofpoint-GUID: T--Q_-Uwm6khzEAak0YD-PJpTmvdZ19Y
+X-Proofpoint-ORIG-GUID: T--Q_-Uwm6khzEAak0YD-PJpTmvdZ19Y
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.293,Aquarius:18.0.1093,Hydra:6.0.680,FMLib:17.12.68.34
  definitions=2025-03-06_05,2025-03-06_01,2024-11-22_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 bulkscore=0 adultscore=0
- mlxlogscore=629 clxscore=1015 priorityscore=1501 phishscore=0
- impostorscore=0 malwarescore=0 lowpriorityscore=0 mlxscore=0
- suspectscore=0 spamscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 phishscore=0 mlxscore=0
+ spamscore=0 priorityscore=1501 bulkscore=0 clxscore=1015 mlxlogscore=776
+ malwarescore=0 suspectscore=0 adultscore=0 impostorscore=0
+ lowpriorityscore=0 classifier=spam adjust=0 reason=mlx scancount=1
  engine=8.19.0-2502100000 definitions=main-2503060110
 
-Currently, outside error paths, we auto commit the super block after 1
-hour has passed and 16MB worth of updates have been written since last
-commit. This is a policy decision so make this tunable while keeping the
-defaults same. This is useful if user wants to tweak the superblock
-behavior or for debugging the codepath by allowing to trigger it more
-frequently.
+Define an ext4 wrapper over jbd2_journal_destroy to make sure we
+have consistent behavior during journal destruction. This will also
+come useful in the next patch where we add some ext4 specific logic
+in the destroy path.
 
-We can now tweak the super block update using sb_update_sec and
-sb_update_kb files in /sys/fs/ext4/<dev>/
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/ext4.h  |  9 +++++++++
- fs/ext4/super.c | 15 ++++++++-------
- fs/ext4/sysfs.c |  4 ++++
- 3 files changed, 21 insertions(+), 7 deletions(-)
+ fs/ext4/ext4_jbd2.h | 14 ++++++++++++++
+ fs/ext4/super.c     | 16 ++++++----------
+ 2 files changed, 20 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index d48e93bd5690..82c902ed86f3 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1608,6 +1608,8 @@ struct ext4_sb_info {
- 	unsigned int s_mb_prefetch;
- 	unsigned int s_mb_prefetch_limit;
- 	unsigned int s_mb_best_avail_max_trim_order;
-+	unsigned int s_sb_update_sec;
-+	unsigned int s_sb_update_kb;
- 
- 	/* stats for buddy allocator */
- 	atomic_t s_bal_reqs;	/* number of reqs with len > 1 */
-@@ -2281,6 +2283,13 @@ static inline int ext4_forced_shutdown(struct super_block *sb)
- #define EXT4_DEF_MIN_BATCH_TIME	0
- #define EXT4_DEF_MAX_BATCH_TIME	15000 /* 15ms */
- 
-+/*
-+ * Default values for superblock update
-+ */
-+#define EXT4_DEF_SB_UPDATE_INTERVAL_SEC (3600) /* seconds (1 hour) */
-+#define EXT4_DEF_SB_UPDATE_INTERVAL_KB (16384) /* kilobytes (16MB) */
-+
-+
- /*
-  * Minimum number of groups in a flexgroup before we separate out
-  * directories into the first block group of a flexgroup
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 31552cf0519a..1b47b111c583 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -447,9 +447,6 @@ static time64_t __ext4_get_tstamp(__le32 *lo, __u8 *hi)
- #define ext4_get_tstamp(es, tstamp) \
- 	__ext4_get_tstamp(&(es)->tstamp, &(es)->tstamp ## _hi)
- 
--#define EXT4_SB_REFRESH_INTERVAL_SEC (3600) /* seconds (1 hour) */
--#define EXT4_SB_REFRESH_INTERVAL_KB (16384) /* kilobytes (16MB) */
--
- /*
-  * The ext4_maybe_update_superblock() function checks and updates the
-  * superblock if needed.
-@@ -457,8 +454,10 @@ static time64_t __ext4_get_tstamp(__le32 *lo, __u8 *hi)
-  * This function is designed to update the on-disk superblock only under
-  * certain conditions to prevent excessive disk writes and unnecessary
-  * waking of the disk from sleep. The superblock will be updated if:
-- * 1. More than an hour has passed since the last superblock update, and
-- * 2. More than 16MB have been written since the last superblock update.
-+ * 1. More than sbi->s_sb_update_sec (def: 1 hour) has passed since the last
-+ *    superblock update
-+ * 2. More than sbi->s_sb_update_kb (def: 16MB) kbs have been written since the
-+ *    last superblock update.
-  *
-  * @sb: The superblock
-  */
-@@ -479,7 +478,7 @@ static void ext4_maybe_update_superblock(struct super_block *sb)
- 	now = ktime_get_real_seconds();
- 	last_update = ext4_get_tstamp(es, s_wtime);
- 
--	if (likely(now - last_update < EXT4_SB_REFRESH_INTERVAL_SEC))
-+	if (likely(now - last_update < sbi->s_sb_update_sec))
- 		return;
- 
- 	lifetime_write_kbytes = sbi->s_kbytes_written +
-@@ -494,7 +493,7 @@ static void ext4_maybe_update_superblock(struct super_block *sb)
- 	 */
- 	diff_size = lifetime_write_kbytes - le64_to_cpu(es->s_kbytes_written);
- 
--	if (diff_size > EXT4_SB_REFRESH_INTERVAL_KB)
-+	if (diff_size > sbi->s_sb_update_kb)
- 		schedule_work(&EXT4_SB(sb)->s_sb_upd_work);
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 3f2596c9e5f2..9b3c9df02a39 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -429,4 +429,18 @@ static inline int ext4_should_dioread_nolock(struct inode *inode)
+ 	return 1;
  }
  
-@@ -5246,6 +5245,8 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 	sbi->s_commit_interval = JBD2_DEFAULT_MAX_COMMIT_AGE * HZ;
- 	sbi->s_min_batch_time = EXT4_DEF_MIN_BATCH_TIME;
- 	sbi->s_max_batch_time = EXT4_DEF_MAX_BATCH_TIME;
-+	sbi->s_sb_update_kb = EXT4_DEF_SB_UPDATE_INTERVAL_KB;
-+	sbi->s_sb_update_sec = EXT4_DEF_SB_UPDATE_INTERVAL_SEC;
++/*
++ * Pass journal explicitly as it may not be cached in the sbi->s_journal in some
++ * cases
++ */
++static inline int ext4_journal_destroy(struct ext4_sb_info *sbi, journal_t *journal)
++{
++	int err = 0;
++
++	err = jbd2_journal_destroy(journal);
++	sbi->s_journal = NULL;
++
++	return err;
++}
++
+ #endif	/* _EXT4_JBD2_H */
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a963ffda692a..8ad664d47806 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1297,8 +1297,7 @@ static void ext4_put_super(struct super_block *sb)
  
- 	/*
- 	 * set default s_li_wait_mult for lazyinit, for the case there is
-diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index ddb54608ca2e..987bd00f916a 100644
---- a/fs/ext4/sysfs.c
-+++ b/fs/ext4/sysfs.c
-@@ -254,6 +254,8 @@ EXT4_ATTR(journal_task, 0444, journal_task);
- EXT4_RW_ATTR_SBI_UI(mb_prefetch, s_mb_prefetch);
- EXT4_RW_ATTR_SBI_UI(mb_prefetch_limit, s_mb_prefetch_limit);
- EXT4_RW_ATTR_SBI_UL(last_trim_minblks, s_last_trim_minblks);
-+EXT4_RW_ATTR_SBI_UI(sb_update_sec, s_sb_update_sec);
-+EXT4_RW_ATTR_SBI_UI(sb_update_kb, s_sb_update_kb);
+ 	if (sbi->s_journal) {
+ 		aborted = is_journal_aborted(sbi->s_journal);
+-		err = jbd2_journal_destroy(sbi->s_journal);
+-		sbi->s_journal = NULL;
++		err = ext4_journal_destroy(sbi, sbi->s_journal);
+ 		if ((err < 0) && !aborted) {
+ 			ext4_abort(sb, -err, "Couldn't clean up the journal");
+ 		}
+@@ -4960,8 +4959,7 @@ static int ext4_load_and_init_journal(struct super_block *sb,
+ out:
+ 	/* flush s_sb_upd_work before destroying the journal. */
+ 	flush_work(&sbi->s_sb_upd_work);
+-	jbd2_journal_destroy(sbi->s_journal);
+-	sbi->s_journal = NULL;
++	ext4_journal_destroy(sbi, sbi->s_journal);
+ 	return -EINVAL;
+ }
  
- static unsigned int old_bump_val = 128;
- EXT4_ATTR_PTR(max_writeback_mb_bump, 0444, pointer_ui, &old_bump_val);
-@@ -305,6 +307,8 @@ static struct attribute *ext4_attrs[] = {
- 	ATTR_LIST(mb_prefetch),
- 	ATTR_LIST(mb_prefetch_limit),
- 	ATTR_LIST(last_trim_minblks),
-+	ATTR_LIST(sb_update_sec),
-+	ATTR_LIST(sb_update_kb),
- 	NULL,
- };
- ATTRIBUTE_GROUPS(ext4);
+@@ -5652,8 +5650,7 @@ failed_mount8: __maybe_unused
+ 	if (sbi->s_journal) {
+ 		/* flush s_sb_upd_work before journal destroy. */
+ 		flush_work(&sbi->s_sb_upd_work);
+-		jbd2_journal_destroy(sbi->s_journal);
+-		sbi->s_journal = NULL;
++		ext4_journal_destroy(sbi, sbi->s_journal);
+ 	}
+ failed_mount3a:
+ 	ext4_es_unregister_shrinker(sbi);
+@@ -5958,7 +5955,7 @@ static journal_t *ext4_open_dev_journal(struct super_block *sb,
+ 	return journal;
+ 
+ out_journal:
+-	jbd2_journal_destroy(journal);
++	ext4_journal_destroy(EXT4_SB(sb), journal);
+ out_bdev:
+ 	bdev_fput(bdev_file);
+ 	return ERR_PTR(errno);
+@@ -6075,8 +6072,7 @@ static int ext4_load_journal(struct super_block *sb,
+ 	EXT4_SB(sb)->s_journal = journal;
+ 	err = ext4_clear_journal_err(sb, es);
+ 	if (err) {
+-		EXT4_SB(sb)->s_journal = NULL;
+-		jbd2_journal_destroy(journal);
++		ext4_journal_destroy(EXT4_SB(sb), journal);
+ 		return err;
+ 	}
+ 
+@@ -6094,7 +6090,7 @@ static int ext4_load_journal(struct super_block *sb,
+ 	return 0;
+ 
+ err_out:
+-	jbd2_journal_destroy(journal);
++	ext4_journal_destroy(EXT4_SB(sb), journal);
+ 	return err;
+ }
+ 
 -- 
 2.48.1
 
