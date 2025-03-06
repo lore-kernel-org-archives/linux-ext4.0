@@ -1,64 +1,74 @@
-Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 58B7F17BEBF;
-	Thu,  6 Mar 2025 14:28:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.158.5
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C794516EB42;
+	Thu,  6 Mar 2025 14:28:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1741271332; cv=none; b=GsfNxBzjQLZB+wf/GDYA5Y4A2POZdM9b8LvWwlsXgosR8/HWz8z7ueSwQw0RFVRJ6bY0Z3/wmnBdV8OUflMxS2xdhRvf6mMycYYruABzpQPQPDtt9jDWcUp2GizREigffRniaUM2Wd4Twx+qjsi0CiNSocg2gxSMifRXC+YfLH8=
+	t=1741271335; cv=none; b=utNOz0hWZePhjQig7Mq3GufkC3OR7lJIa1ouXU6DO199Tew74xZmfv7NLKVR5uYNkB7A74t/AfdoNdp1+JhfB5y4hK+trnq/uhe25d3RbuT9rRt+fFf/dove346ynV6kJ7Q/y7/05QU1QZYAY9Z7x5yRHMjwWOMcKE101PfdZzs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1741271332; c=relaxed/simple;
-	bh=VsEHTryIvSCPfyyGMRqkYROKP7sRwl209LDHew4UU1A=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=ioXPQP+0DDz22a1W6VNIh3IJv4Yw09zjrBJS+g4wNBNw7NFwlcsSuqX1b+8DB+FiEbxoBVaavslIRjRxCfl2Hfo3Y05ZmPzb2TOdQmBnF0jCnNvWI7Zokrv1EWALFOFkk+kkAwBx2P17JMUC0poGmXAfGBSYoDKoZtFllO/ephw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=GdVMkld5; arc=none smtp.client-ip=148.163.158.5
+	s=arc-20240116; t=1741271335; c=relaxed/simple;
+	bh=zjb8z7ensd3sXRAJpgQCZaf6D0juc6pdmDMmtLBlumk=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=iPvQ9QiV0ZShPEI5oG19Y2yP/8fYo4Lv69XNuhzoOBlwAWOu8U0cMuCnZvd2wbMzA9wpgwhhhC2DXfuZR3OFHRCXmXfJOOc9cj6yuIb7DouWleqIrpNe0GmifkMNN15+eWXaShSkx0qZIEez7avTlenVUVljvClYpJwuB5oeEz4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=T//WVzNB; arc=none smtp.client-ip=148.163.156.1
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="GdVMkld5"
-Received: from pps.filterd (m0353725.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 5269UdMX028465;
-	Thu, 6 Mar 2025 14:28:40 GMT
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="T//WVzNB"
+Received: from pps.filterd (m0360083.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 526D9fn4023822;
+	Thu, 6 Mar 2025 14:28:45 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-transfer-encoding:date:from:message-id:mime-version
-	:subject:to; s=pp1; bh=0Ex4FGZjL2uJXW0TEhQ5OqQtiGEib/q9COn03voWG
-	ks=; b=GdVMkld5S0kcWWLpM8chCx3RwE4idV+jeZUUoyKw8u0OVMWBOAR+kynXH
-	/GXpqGHBymzyaAcAsMJ/EpJyJuG133tzIaX78P91kPbxQUTTu4ESncPWrVEt0ji1
-	yB08svji32Uegb9rr3tNL/PEHE02unLBVYFDscs7rxI6Qg10iGJrybLNt2uc9nOy
-	sXDh0qQN/jG1TilM2Fy0ynxNUzQXTPMOC2L/O8XV5Ao9sbhaYKosG3u0fWbRzlvD
-	SmIrqgWL+91fELV2rWmBbhnk6sFZ3sPmIRwKsWOTGHznNwhIyeCDt3xPIe3REhUo
-	TGJHOdv3rIQ+eI47/yPRHh9vtg+qw==
-Received: from ppma13.dal12v.mail.ibm.com (dd.9e.1632.ip4.static.sl-reverse.com [50.22.158.221])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 456wu04b7q-1
+	:content-transfer-encoding:date:from:in-reply-to:message-id
+	:mime-version:references:subject:to; s=pp1; bh=5nJ4BzVB7Xst8cj0y
+	d+w4fnY+oJJyaYT+qfw/hCWsTU=; b=T//WVzNB6GY4LNzbFFjX/CyTTBb0aLQ3Z
+	VeCzCre8Hcf043x1UiSgSoz6h7zsZ1mQbssT0zrBnX2u+f5ctpAbcRyyq77DfO7f
+	8YsAf+NHE7nI9Nk27o1XOxz4Nh+JmF+aIeZtnqjwXTHB63pIek8W6IGXXTpnOPgk
+	7p5HA+T34ESHkm203NEEPgTMbr/qX69feCFy2aXOpfGmdipiwTzKxxByfdJrVkEA
+	Toyi2KHTy1BeF5eGmcPf4QNmWTivdbJmO8wbKhWUwovG/hLgd3RkJVPGl4rUhz0v
+	FXzFonefhllcg3gNVFei3r28JDQi17qEZibs23WS57v6yEsa0NiSw==
+Received: from pps.reinject (localhost [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4574392ymk-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 06 Mar 2025 14:28:40 +0000 (GMT)
-Received: from pps.filterd (ppma13.dal12v.mail.ibm.com [127.0.0.1])
-	by ppma13.dal12v.mail.ibm.com (8.18.1.2/8.18.1.2) with ESMTP id 526DhYTj020800;
-	Thu, 6 Mar 2025 14:28:39 GMT
-Received: from smtprelay07.fra02v.mail.ibm.com ([9.218.2.229])
-	by ppma13.dal12v.mail.ibm.com (PPS) with ESMTPS id 454esk8uxg-1
+	Thu, 06 Mar 2025 14:28:44 +0000 (GMT)
+Received: from m0360083.ppops.net (m0360083.ppops.net [127.0.0.1])
+	by pps.reinject (8.18.0.8/8.18.0.8) with ESMTP id 526EQtmb010712;
+	Thu, 6 Mar 2025 14:28:44 GMT
+Received: from ppma12.dal12v.mail.ibm.com (dc.9e.1632.ip4.static.sl-reverse.com [50.22.158.220])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4574392ymf-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 06 Mar 2025 14:28:39 +0000
+	Thu, 06 Mar 2025 14:28:44 +0000 (GMT)
+Received: from pps.filterd (ppma12.dal12v.mail.ibm.com [127.0.0.1])
+	by ppma12.dal12v.mail.ibm.com (8.18.1.2/8.18.1.2) with ESMTP id 526EQOk8032243;
+	Thu, 6 Mar 2025 14:28:43 GMT
+Received: from smtprelay01.fra02v.mail.ibm.com ([9.218.2.227])
+	by ppma12.dal12v.mail.ibm.com (PPS) with ESMTPS id 454cjt9dhd-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 06 Mar 2025 14:28:43 +0000
 Received: from smtpav06.fra02v.mail.ibm.com (smtpav06.fra02v.mail.ibm.com [10.20.54.105])
-	by smtprelay07.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 526ESbEi46399834
+	by smtprelay01.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 526ESf8556033690
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Thu, 6 Mar 2025 14:28:37 GMT
+	Thu, 6 Mar 2025 14:28:41 GMT
 Received: from smtpav06.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id A928B20049;
-	Thu,  6 Mar 2025 14:28:37 +0000 (GMT)
+	by IMSVA (Postfix) with ESMTP id A756820049;
+	Thu,  6 Mar 2025 14:28:41 +0000 (GMT)
 Received: from smtpav06.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 5320E20040;
-	Thu,  6 Mar 2025 14:28:36 +0000 (GMT)
+	by IMSVA (Postfix) with ESMTP id 01BF320040;
+	Thu,  6 Mar 2025 14:28:40 +0000 (GMT)
 Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.in.ibm.com (unknown [9.109.219.249])
 	by smtpav06.fra02v.mail.ibm.com (Postfix) with ESMTP;
-	Thu,  6 Mar 2025 14:28:36 +0000 (GMT)
+	Thu,  6 Mar 2025 14:28:39 +0000 (GMT)
 From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 To: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
 Cc: Jan Kara <jack@suse.cz>, Baokun Li <libaokun1@huawei.com>,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH v2 0/3] Fix a BUG_ON crashing the kernel in start_this_handle
-Date: Thu,  6 Mar 2025 19:58:31 +0530
-Message-ID: <cover.1741270780.git.ojaswin@linux.ibm.com>
+        linux-kernel@vger.kernel.org, Mahesh Kumar <maheshkumar657g@gmail.com>
+Subject: [PATCH v2 2/3] ext4: avoid journaling sb update on error if journal is destroying
+Date: Thu,  6 Mar 2025 19:58:33 +0530
+Message-ID: <1bf59095d87e5dfae8f019385ba3ce58973baaff.1741270780.git.ojaswin@linux.ibm.com>
 X-Mailer: git-send-email 2.48.1
+In-Reply-To: <cover.1741270780.git.ojaswin@linux.ibm.com>
+References: <cover.1741270780.git.ojaswin@linux.ibm.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -67,84 +77,129 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-TM-AS-GCONF: 00
-X-Proofpoint-GUID: vWuTaPUW8JQ_YP2kaWVI8lzSS7tM3Gg4
-X-Proofpoint-ORIG-GUID: vWuTaPUW8JQ_YP2kaWVI8lzSS7tM3Gg4
+X-Proofpoint-GUID: leczszhq_tgtLnJclhiRYTQmmXbZ7OgA
+X-Proofpoint-ORIG-GUID: JPSSjdcpck8VPKlW2RAL9Kv9YG9d8c_U
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.293,Aquarius:18.0.1093,Hydra:6.0.680,FMLib:17.12.68.34
  definitions=2025-03-06_05,2025-03-06_01,2024-11-22_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
- impostorscore=0 suspectscore=0 clxscore=1015 lowpriorityscore=0 mlxscore=0
- bulkscore=0 adultscore=0 spamscore=0 mlxlogscore=892 phishscore=0
- malwarescore=0 classifier=spam adjust=0 reason=mlx scancount=1
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 suspectscore=0
+ lowpriorityscore=0 spamscore=0 phishscore=0 clxscore=1015 mlxscore=0
+ malwarescore=0 adultscore=0 mlxlogscore=999 priorityscore=1501 bulkscore=0
+ impostorscore=0 classifier=spam adjust=0 reason=mlx scancount=1
  engine=8.19.0-2502100000 definitions=main-2503060110
 
-** Changes since v1 [1] **
+Presently we always BUG_ON if trying to start a transaction on a journal marked
+with JBD2_UNMOUNT, since this should never happen. However, while ltp running
+stress tests, it was observed that in case of some error handling paths, it is
+possible for update_super_work to start a transaction after the journal is
+destroyed eg:
 
- * Picked up RVBs from Jan and Ritesh
- * In patch 2/3, we now use a flag in sbi instead of SB_ACITVE
-   to determine when to journal sb vs when to commit directly.
- * Added a prep patch 1/3
+(umount)
+ext4_kill_sb
+  kill_block_super
+    generic_shutdown_super
+      sync_filesystem /* commits all txns */
+      evict_inodes
+        /* might start a new txn */
+      ext4_put_super
+	flush_work(&sbi->s_sb_upd_work) /* flush the workqueue */
+        jbd2_journal_destroy
+          journal_kill_thread
+            journal->j_flags |= JBD2_UNMOUNT;
+          jbd2_journal_commit_transaction
+            jbd2_journal_get_descriptor_buffer
+              jbd2_journal_bmap
+                ext4_journal_bmap
+                  ext4_map_blocks
+                    ...
+                    ext4_inode_error
+                      ext4_handle_error
+                        schedule_work(&sbi->s_sb_upd_work)
 
-[1] https://lore.kernel.org/linux-ext4/cover.1740212945.git.ojaswin@linux.ibm.com/T/#m5e659425b8c8fe2ac01e7242b77fed315ff89db4
+                                               /* work queue kicks in */
+                                               update_super_work
+                                                 jbd2_journal_start
+                                                   start_this_handle
+                                                     BUG_ON(journal->j_flags &
+                                                            JBD2_UNMOUNT)
 
-@Baokun, I didn't get a chance to look into the journal_inode
-modifications we were discussing in [2]. I'll try to spend some time and
-send that as a separate patch. Hope that's okay
+Hence, introduce a new sbi flag s_journal_destroying to indicate journal is
+destroying only do a journaled (and deferred) update of sb if this flag is not
+set. Otherwise, just fallback to an un-journaled commit.
 
-[2] https://lore.kernel.org/linux-ext4/cover.1740212945.git.ojaswin@linux.ibm.com/T/#mad8feb44d9b6ddadf87830b92caa7b78d902dc05
+We set sbi->s_journal_destroying = true only after all the FS updates are done
+during ext4_put_super() (except a running transaction that will get commited
+during jbd2_journal_destroy()). After this point, it is safe to commit the sb
+outside the journal as it won't race with a journaled update (refer
+2d01ddc86606).
+
+Also, we don't need a similar check in ext4_grp_locked_error since it is only
+called from mballoc and AFAICT it would be always valid to schedule work here.
+
+Fixes: 2d01ddc86606 ("ext4: save error info to sb through journal if available")
+Reported-by: Mahesh Kumar <maheshkumar657g@gmail.com>
+Suggested-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+---
+ fs/ext4/ext4.h      | 2 ++
+ fs/ext4/ext4_jbd2.h | 8 ++++++++
+ fs/ext4/super.c     | 4 +++-
+ 3 files changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 2b7d781bfcad..d48e93bd5690 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1728,6 +1728,8 @@ struct ext4_sb_info {
+ 	 */
+ 	struct work_struct s_sb_upd_work;
  
-** Original Cover **
-
-When running LTP stress tests on ext4, after a multiday run we seemed to
-have hit the following BUG_ON:
-
- [NIP  : start_this_handle+268]
- #3 [c000001067c27a40] start_this_handle at c008000004d40f74 [jbd2]  (unreliable)
- #4 [c000001067c27b60] jbd2__journal_start at c008000004d415cc [jbd2]
- #5 [c000001067c27be0] update_super_work at c0080000053f9758 [ext4]
- #6 [c000001067c27c70] process_one_work at c000000000188790
- #7 [c000001067c27d20] worker_thread at c00000000018973c
- #8 [c000001067c27dc0] kthread at c000000000196c84
- #9 [c000001067c27e10] ret_from_kernel_thread at c00000000000cd64
-
-Which comes out to
-
-  382   repeat:
-  383           read_lock(&journal->j_state_lock);
-* 384           BUG_ON(journal->j_flags & JBD2_UNMOUNT);
-  385           if (is_journal_aborted(journal) ||
-  386               (journal->j_errno != 0 && !(journal->j_flags & JBD2_ACK_ERR))) {
-  387                   read_unlock(&journal->j_state_lock);
-
-
-Initially this seemed like it should never happen but upon crash
-analysis it seems like it could indeed be hit as described in patch 1/2.
-
-I would like to add that through the logs we only knew that:
-
-- ext4_journal_bmap -> ext4_map_blocks is failing with EFSCORRUPTED.
-- update_super_work had hit the BUG_ON
-
-I was not able to hit this bug again (without modifying the kernel to
-inject errors) but the above backtrace seems to be one possible paths
-where this BUG_ON can be hit. Rest of the analysis and fix is in patch
-2/3. Patch 3 is just a small tweak that i found helpful while debugging.
-
-That being said, journalling is something I'm not very familiar with and
-there might be gaps in my understanding so thoughts and suggestions are
-welcome.
-
-Ojaswin Mujoo (3):
-  ext4: define ext4_journal_destroy wrapper
-  ext4: avoid journaling sb update on error if journal is destroying
-  ext4: Make sb update interval tunable
-
- fs/ext4/ext4.h      | 11 +++++++++++
- fs/ext4/ext4_jbd2.h | 22 ++++++++++++++++++++++
- fs/ext4/super.c     | 35 +++++++++++++++++------------------
- fs/ext4/sysfs.c     |  4 ++++
- 4 files changed, 54 insertions(+), 18 deletions(-)
-
++	bool s_journal_destorying;
++
+ 	/* Atomic write unit values in bytes */
+ 	unsigned int s_awu_min;
+ 	unsigned int s_awu_max;
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 9b3c9df02a39..6bd3ca84410d 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -437,6 +437,14 @@ static inline int ext4_journal_destroy(struct ext4_sb_info *sbi, journal_t *jour
+ {
+ 	int err = 0;
+ 
++	/*
++	 * At this point all pending FS updates should be done except a possible
++	 * running transaction (which will commit in jbd2_journal_destroy). It
++	 * is now safe for any new errors to directly commit superblock rather
++	 * than going via journal.
++	 */
++	sbi->s_journal_destorying = true;
++
+ 	err = jbd2_journal_destroy(journal);
+ 	sbi->s_journal = NULL;
+ 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8ad664d47806..31552cf0519a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -706,7 +706,7 @@ static void ext4_handle_error(struct super_block *sb, bool force_ro, int error,
+ 		 * constraints, it may not be safe to do it right here so we
+ 		 * defer superblock flushing to a workqueue.
+ 		 */
+-		if (continue_fs && journal)
++		if (continue_fs && journal && !EXT4_SB(sb)->s_journal_destorying)
+ 			schedule_work(&EXT4_SB(sb)->s_sb_upd_work);
+ 		else
+ 			ext4_commit_super(sb);
+@@ -5311,6 +5311,8 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 	spin_lock_init(&sbi->s_error_lock);
+ 	INIT_WORK(&sbi->s_sb_upd_work, update_super_work);
+ 
++	sbi->s_journal_destorying = false;
++
+ 	err = ext4_group_desc_init(sb, es, logical_sb_block, &first_not_zeroed);
+ 	if (err)
+ 		goto failed_mount3;
 -- 
 2.48.1
 
