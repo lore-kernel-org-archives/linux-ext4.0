@@ -1,182 +1,188 @@
-Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 92E1470838;
-	Thu,  6 Mar 2025 14:33:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 017E1175D48
+	for <linux-ext4@vger.kernel.org>; Thu,  6 Mar 2025 15:11:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1741271635; cv=none; b=DX6UD8VqjdrYgikj7Ogv3VNnFXPmLbhKgfytsW1/BlLqy3GzXVZewM15kG8SVGEtoAYl4yDoBO1QUKCeTB5Dex9Ndk3mxilMGCeyQwmslOgX2e6C9hRveIpvBfRnZEQTisjCcD1VhdmqwZ48OzNzl20EEdOXmHF0eINCgg+w4kA=
+	t=1741273920; cv=none; b=NVrQb/6B41ypQlh9o0vx2rhvimOWUPLFMTypLd1iamehyQnswiVweG3vuHbHCvDPesOPWYmCwtOr4jk2Q05OMF421aL2uLnJ5XbqVboZ5fMKMiUb9kgly6uRfCuGC+h7eZhGVFbd/XTQ7cTJC1/8bG8g5JR97a/L7ol5fe7B9Qc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1741271635; c=relaxed/simple;
-	bh=qn+Q4R8xmza2/HuURHifnHLxdVN9qRs1gbeu463GcfU=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=PxX+BURM4E8ozuW34dJ6TjABdq13BAEhZZddChCMRhUkLKmOMJZDHyKDswVWolBTuWrWZ0YbyhTSWytL7UMKg40+/s4Xr3zEOPZ2910Ib3yYFbqHd38MXVmhjd01IewWqLo+nET6Ze5QD43zc8qV+JEpxf5YDErVKZkhRIpxazg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=nibIzvwe; arc=none smtp.client-ip=148.163.156.1
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+	s=arc-20240116; t=1741273920; c=relaxed/simple;
+	bh=B0YqOulFBZs4kl94JpEHwXvmG224aCryBKAo/hDF2Zw=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=j1AvnhD9JCeTtekJsH0j9Yhfld59xgO2EN2gVa4Ir2tarl7QseozOVKv8iabfqnr7JNgXwBPhNWN17s3UKuc61AuvBLEG2YJSFEAGQqYDPUONkkmlTJvINl1tl4jw1DtRI/2m5RICQDg++ul/D7OY9UTbjTgLb5gNNPJc+faidI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=SQjm+xL5; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=FVGyagDA; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=hecFYaR2; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=uAxC0tEh; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="nibIzvwe"
-Received: from pps.filterd (m0353729.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 526CRxGl004987;
-	Thu, 6 Mar 2025 14:28:43 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-transfer-encoding:date:from:in-reply-to:message-id
-	:mime-version:references:subject:to; s=pp1; bh=O1fqfThBREakYnxcs
-	61CqVK2DcvqO0Isib51TQQh8Mc=; b=nibIzvweckOueVZQ5uRAN4Gjgnun90Bl9
-	ybrbDjJemH1RBSma7KS71caX3xjRAgJjV95NwbHNG24oVJzmUeCM5TTNdnM9Y0pV
-	5QlltyC0FsObeY8+XQeHtyWQm6Gh3ILcJw1Hym9pq8WBoOa4TBkiZFD6Wi9aWYRm
-	6QwVGNaUspdc7+5e7nG2caTnKW3bou41wS87RCY7UFiljgeS+A4rT5SggiqbvK+Q
-	f3OojN6kgY3hOPtgSTqMFz1thBoRDmF4xYXbdfXTS8R+5436yB0Tsk9Xzuctrn7o
-	OGk7bLb4kjQK445koCnm/qEu8YRKsfJYyXrRVw5FIk8XvRbGEvSbg==
-Received: from ppma21.wdc07v.mail.ibm.com (5b.69.3da9.ip4.static.sl-reverse.com [169.61.105.91])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 457br2rn0m-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 06 Mar 2025 14:28:42 +0000 (GMT)
-Received: from pps.filterd (ppma21.wdc07v.mail.ibm.com [127.0.0.1])
-	by ppma21.wdc07v.mail.ibm.com (8.18.1.2/8.18.1.2) with ESMTP id 526CQKPn020846;
-	Thu, 6 Mar 2025 14:28:41 GMT
-Received: from smtprelay03.fra02v.mail.ibm.com ([9.218.2.224])
-	by ppma21.wdc07v.mail.ibm.com (PPS) with ESMTPS id 454djns6wc-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 06 Mar 2025 14:28:41 +0000
-Received: from smtpav06.fra02v.mail.ibm.com (smtpav06.fra02v.mail.ibm.com [10.20.54.105])
-	by smtprelay03.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 526ESdgZ45154618
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Thu, 6 Mar 2025 14:28:39 GMT
-Received: from smtpav06.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 9B7932004B;
-	Thu,  6 Mar 2025 14:28:39 +0000 (GMT)
-Received: from smtpav06.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 186D720040;
-	Thu,  6 Mar 2025 14:28:38 +0000 (GMT)
-Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.in.ibm.com (unknown [9.109.219.249])
-	by smtpav06.fra02v.mail.ibm.com (Postfix) with ESMTP;
-	Thu,  6 Mar 2025 14:28:37 +0000 (GMT)
-From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>, Baokun Li <libaokun1@huawei.com>,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH v2 1/3] ext4: define ext4_journal_destroy wrapper
-Date: Thu,  6 Mar 2025 19:58:32 +0530
-Message-ID: <96d5153a015caf5da6b67cffaff3c03c2abecb95.1741270780.git.ojaswin@linux.ibm.com>
-X-Mailer: git-send-email 2.48.1
-In-Reply-To: <cover.1741270780.git.ojaswin@linux.ibm.com>
-References: <cover.1741270780.git.ojaswin@linux.ibm.com>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="SQjm+xL5";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="FVGyagDA";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="hecFYaR2";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="uAxC0tEh"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id EF9391F449;
+	Thu,  6 Mar 2025 15:11:56 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1741273917; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=wg/Wi/kdXx/ufcC5Y+5aMaONyu2mrUu/2PxWeDkziA8=;
+	b=SQjm+xL5/MGUK8LMND8NUgzCc4kxwcScDf5KaOzh+syJesWDXITjneW7wCKVxesyE8AeYb
+	Q6l7PsoSlUOrxci17FSLwlQVuRIM8OppTk0l8KRmsgx/SMm13YWCVMslidWsVg+iJqxglu
+	+TNjCC91HrHfoWehSCk8tUe1Z/PNkpM=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1741273917;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=wg/Wi/kdXx/ufcC5Y+5aMaONyu2mrUu/2PxWeDkziA8=;
+	b=FVGyagDAinLZZINJnsku1+dKx0L2MrqhYEwXSy8zuTOQadh4hGOEuUV35IrfOqCLyC0T81
+	e3bhe00pZKaJNYCA==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=hecFYaR2;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=uAxC0tEh
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1741273916; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=wg/Wi/kdXx/ufcC5Y+5aMaONyu2mrUu/2PxWeDkziA8=;
+	b=hecFYaR2d7FmApyDJ745sdYdRVctWqGW7PQxfHalP50678QM7XPvNR/oWb9GltWZljEWip
+	2hfZ+re+Bj2x5e8SDentBofRtmcNxOOw4lKlWpBka/ISZQF1HsvRlJ1t8nkV/s1GmBHybQ
+	ZM9Al99SzMZr9g0Cnrs/JS9micjZqUI=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1741273916;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=wg/Wi/kdXx/ufcC5Y+5aMaONyu2mrUu/2PxWeDkziA8=;
+	b=uAxC0tEhlLj+L6RJEEI5mVTyFDT3mtunkGZ5k1PET6V24wy8L0vFMX7Obb7A9R9JDZQxAq
+	6vqmgQ5Eu87tN+CQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E6DDA13A61;
+	Thu,  6 Mar 2025 15:11:56 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id HWZZODy7yWfbDwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 06 Mar 2025 15:11:56 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id A27DEA087F; Thu,  6 Mar 2025 16:11:56 +0100 (CET)
+Date: Thu, 6 Mar 2025 16:11:56 +0100
+From: Jan Kara <jack@suse.cz>
+To: libaokun@huaweicloud.com
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
+	jack@suse.cz, linux-kernel@vger.kernel.org, yi.zhang@huawei.com, 
+	yangerkun@huawei.com, Baokun Li <libaokun1@huawei.com>
+Subject: Re: [PATCH] jbd2: remove jbd2_journal_unfile_buffer()
+Message-ID: <gvuytgoly7wgpvc2frp2vtz2khvsiiwfzlia67vty2l7mygflm@22akaxrpbsuz>
+References: <20250306063240.157884-1-libaokun@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-TM-AS-GCONF: 00
-X-Proofpoint-GUID: T--Q_-Uwm6khzEAak0YD-PJpTmvdZ19Y
-X-Proofpoint-ORIG-GUID: T--Q_-Uwm6khzEAak0YD-PJpTmvdZ19Y
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1093,Hydra:6.0.680,FMLib:17.12.68.34
- definitions=2025-03-06_05,2025-03-06_01,2024-11-22_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 phishscore=0 mlxscore=0
- spamscore=0 priorityscore=1501 bulkscore=0 clxscore=1015 mlxlogscore=776
- malwarescore=0 suspectscore=0 adultscore=0 impostorscore=0
- lowpriorityscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.19.0-2502100000 definitions=main-2503060110
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20250306063240.157884-1-libaokun@huaweicloud.com>
+X-Rspamd-Queue-Id: EF9391F449
+X-Spam-Level: 
+X-Spamd-Result: default: False [-4.01 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	ARC_NA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:dkim,suse.cz:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns];
+	MISSING_XM_UA(0.00)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	TO_DN_SOME(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RCVD_COUNT_THREE(0.00)[3];
+	RCPT_COUNT_SEVEN(0.00)[9];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FUZZY_BLOCKED(0.00)[rspamd.com];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	DKIM_TRACE(0.00)[suse.cz:+]
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Action: no action
+X-Spam-Score: -4.01
+X-Spam-Flag: NO
 
-Define an ext4 wrapper over jbd2_journal_destroy to make sure we
-have consistent behavior during journal destruction. This will also
-come useful in the next patch where we add some ext4 specific logic
-in the destroy path.
+On Thu 06-03-25 14:32:40, libaokun@huaweicloud.com wrote:
+> From: Baokun Li <libaokun1@huawei.com>
+> 
+> Since the function jbd2_journal_unfile_buffer() is no longer called
+> anywhere after commit e5a120aeb57f ("jbd2: remove journal_head from
+> descriptor buffers"), so let's remove it.
+> 
+> Signed-off-by: Baokun Li <libaokun1@huawei.com>
 
-Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
----
- fs/ext4/ext4_jbd2.h | 14 ++++++++++++++
- fs/ext4/super.c     | 16 ++++++----------
- 2 files changed, 20 insertions(+), 10 deletions(-)
+Nice! Feel free to add:
 
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index 3f2596c9e5f2..9b3c9df02a39 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -429,4 +429,18 @@ static inline int ext4_should_dioread_nolock(struct inode *inode)
- 	return 1;
- }
- 
-+/*
-+ * Pass journal explicitly as it may not be cached in the sbi->s_journal in some
-+ * cases
-+ */
-+static inline int ext4_journal_destroy(struct ext4_sb_info *sbi, journal_t *journal)
-+{
-+	int err = 0;
-+
-+	err = jbd2_journal_destroy(journal);
-+	sbi->s_journal = NULL;
-+
-+	return err;
-+}
-+
- #endif	/* _EXT4_JBD2_H */
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index a963ffda692a..8ad664d47806 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1297,8 +1297,7 @@ static void ext4_put_super(struct super_block *sb)
- 
- 	if (sbi->s_journal) {
- 		aborted = is_journal_aborted(sbi->s_journal);
--		err = jbd2_journal_destroy(sbi->s_journal);
--		sbi->s_journal = NULL;
-+		err = ext4_journal_destroy(sbi, sbi->s_journal);
- 		if ((err < 0) && !aborted) {
- 			ext4_abort(sb, -err, "Couldn't clean up the journal");
- 		}
-@@ -4960,8 +4959,7 @@ static int ext4_load_and_init_journal(struct super_block *sb,
- out:
- 	/* flush s_sb_upd_work before destroying the journal. */
- 	flush_work(&sbi->s_sb_upd_work);
--	jbd2_journal_destroy(sbi->s_journal);
--	sbi->s_journal = NULL;
-+	ext4_journal_destroy(sbi, sbi->s_journal);
- 	return -EINVAL;
- }
- 
-@@ -5652,8 +5650,7 @@ failed_mount8: __maybe_unused
- 	if (sbi->s_journal) {
- 		/* flush s_sb_upd_work before journal destroy. */
- 		flush_work(&sbi->s_sb_upd_work);
--		jbd2_journal_destroy(sbi->s_journal);
--		sbi->s_journal = NULL;
-+		ext4_journal_destroy(sbi, sbi->s_journal);
- 	}
- failed_mount3a:
- 	ext4_es_unregister_shrinker(sbi);
-@@ -5958,7 +5955,7 @@ static journal_t *ext4_open_dev_journal(struct super_block *sb,
- 	return journal;
- 
- out_journal:
--	jbd2_journal_destroy(journal);
-+	ext4_journal_destroy(EXT4_SB(sb), journal);
- out_bdev:
- 	bdev_fput(bdev_file);
- 	return ERR_PTR(errno);
-@@ -6075,8 +6072,7 @@ static int ext4_load_journal(struct super_block *sb,
- 	EXT4_SB(sb)->s_journal = journal;
- 	err = ext4_clear_journal_err(sb, es);
- 	if (err) {
--		EXT4_SB(sb)->s_journal = NULL;
--		jbd2_journal_destroy(journal);
-+		ext4_journal_destroy(EXT4_SB(sb), journal);
- 		return err;
- 	}
- 
-@@ -6094,7 +6090,7 @@ static int ext4_load_journal(struct super_block *sb,
- 	return 0;
- 
- err_out:
--	jbd2_journal_destroy(journal);
-+	ext4_journal_destroy(EXT4_SB(sb), journal);
- 	return err;
- }
- 
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+> ---
+>  fs/jbd2/transaction.c | 15 ---------------
+>  include/linux/jbd2.h  |  1 -
+>  2 files changed, 16 deletions(-)
+> 
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index 9fe17e290c21..2bc14291a0fb 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -2078,21 +2078,6 @@ static void __jbd2_journal_unfile_buffer(struct journal_head *jh)
+>  	jh->b_transaction = NULL;
+>  }
+>  
+> -void jbd2_journal_unfile_buffer(journal_t *journal, struct journal_head *jh)
+> -{
+> -	struct buffer_head *bh = jh2bh(jh);
+> -
+> -	/* Get reference so that buffer cannot be freed before we unlock it */
+> -	get_bh(bh);
+> -	spin_lock(&jh->b_state_lock);
+> -	spin_lock(&journal->j_list_lock);
+> -	__jbd2_journal_unfile_buffer(jh);
+> -	spin_unlock(&journal->j_list_lock);
+> -	spin_unlock(&jh->b_state_lock);
+> -	jbd2_journal_put_journal_head(jh);
+> -	__brelse(bh);
+> -}
+> -
+>  /**
+>   * jbd2_journal_try_to_free_buffers() - try to free page buffers.
+>   * @journal: journal for operation
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index 82ef232935c0..2205c99beff4 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -1401,7 +1401,6 @@ JBD2_FEATURE_INCOMPAT_FUNCS(fast_commit,	FAST_COMMIT)
+>   */
+>  
+>  /* Filing buffers */
+> -extern void jbd2_journal_unfile_buffer(journal_t *, struct journal_head *);
+>  extern bool __jbd2_journal_refile_buffer(struct journal_head *);
+>  extern void jbd2_journal_refile_buffer(journal_t *, struct journal_head *);
+>  extern void __jbd2_journal_file_buffer(struct journal_head *, transaction_t *, int);
+> -- 
+> 2.46.1
+> 
 -- 
-2.48.1
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
