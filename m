@@ -1,36 +1,36 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 700462114
-	for <linux-ext4@vger.kernel.org>; Tue, 18 Mar 2025 03:41:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7A39E1865E5
+	for <linux-ext4@vger.kernel.org>; Tue, 18 Mar 2025 03:41:55 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1742269315; cv=none; b=CjGaJ9KOD3xcQtA3xd2iRkicUowwfdb8H0yLS16HRORXqhWTbAiegE1bq9829c0g0U07QRRyW7ay0fXDSqnT8G40uE/5rX0aN4eOAFFK+IOug6ZfXyT8XmWoOCbgvW53QXWZRICbB4bz0GbnVQ5ESyzqSddUEkvT180rtX1ncdQ=
+	t=1742269317; cv=none; b=nvdQNQf11E14SD7NC4AInQsBiinbZWLBsBchAQ/pEtGHEOAWv/n5q8VlwuKxTb6E8wsSG36c+iGojcdm8DDp58fnYfesi6WswN17OkWVIZZkfyys9wc+Iz6X8QOkFSpkHrjR5DZ2BCLKMBymnGbsODxWR2DQ2LzF/5o35IvbpTs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1742269315; c=relaxed/simple;
-	bh=kza1B+G0sTvS3lu9twolLgJOmptZM4XnzqLGLHohiAU=;
+	s=arc-20240116; t=1742269317; c=relaxed/simple;
+	bh=RIWLI4MuTo1lhqjZZ5aKwIGYDvk/D+YBxwhT62p+nAw=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=XNHphUlqgd8VZDtmKUgbTRgUTa3E2VEhOG2bRPYwLB6v1TXI5Hnua8QWK+Rg/Lg8oPefMkbbBvyvjViIiwgXakw4dVPNZ/GSL+/ZOp9u6xyTQlvaXq3uZtMsyjwlVkTRHPnCIzstuzwe/nAqM+22PbHDVXvKBYvvWMDfmXgu54g=
+	 MIME-Version:Content-Type; b=JOKdJt6DfB628Fka8yGZ40O7kBPgAfl/00voiwEE60I375BX0yAMkXVP2h/iWC0OWYZjz9MLXCkqUdmLpSq54TtD3u8MB9k5JlDrUZXKF2dtcCs1l4ekHjx/atsJWoAzwPm21TufE2i+KyuoB6sFB4I7CVHFOjX4fLwGiNKoZ6Q=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Received: from trampoline.thunk.org (pool-173-48-111-34.bstnma.fios.verizon.net [173.48.111.34])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 52I3flhg012130
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 52I3fnfq012162
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 17 Mar 2025 23:41:47 -0400
+	Mon, 17 Mar 2025 23:41:49 -0400
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id D5F542E0110; Mon, 17 Mar 2025 23:41:45 -0400 (EDT)
+	id EF6F52E0119; Mon, 17 Mar 2025 23:41:45 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 0/2] jbd2: Fix two annoyances in jbd2
-Date: Mon, 17 Mar 2025 23:41:18 -0400
-Message-ID: <174226639135.1025346.13664778450916411447.b4-ty@mit.edu>
+To: linux-ext4@vger.kernel.org, Julian Sun <sunjunchao2870@gmail.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca, jack@suse.cz
+Subject: Re: [PATCH v2 0/5] Some cleanups and refactoring of the inline data code
+Date: Mon, 17 Mar 2025 23:41:27 -0400
+Message-ID: <174226639131.1025346.17184173928017965569.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.47.2
-In-Reply-To: <20250205183930.12787-1-jack@suse.cz>
-References: <20250205183930.12787-1-jack@suse.cz>
+In-Reply-To: <20250107044702.1836852-1-sunjunchao2870@gmail.com>
+References: <20250107044702.1836852-1-sunjunchao2870@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -41,22 +41,32 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Thu, 06 Feb 2025 10:46:57 +0100, Jan Kara wrote:
-> filesystem fuzzing of ocfs2 has revealed some issues in jbd2 where suitably
-> corrupted fs can trigger issues in jbd2 - most notably a complaint about
-> sb->s_sequence being 0 (which is actually correct after recent changes) and
-> also attempt to replay the journal after it has been wiped. Fix them.
+On Tue, 07 Jan 2025 12:46:57 +0800, Julian Sun wrote:
+> Here are some cleanups and refactoring of the inline data code. Please see
+> patches for details.
 > 
-> Honza
+> Julian Sun (5):
+>   ext4: Remove a redundant return statement
+>   ext4: Don't set EXT4_STATE_MAY_INLINE_DATA for ea inodes
+>   ext4: Introduce a new helper function ext4_generic_write_inline_data()
+>   ext4: Replace ext4_da_write_inline_data_begin() with
+>     ext4_generic_write_inline_data().
+>   ext4: Refactor out ext4_try_to_write_inline_data()
 > 
 > [...]
 
 Applied, thanks!
 
-[1/2] jbd2: Remove wrong sb->s_sequence check
-      commit: e6eff39dd0fe4190c6146069cc16d160e71d1148
-[2/2] jbd2: Do not try to recover wiped journal
-      commit: a662f3c03b754e1f97a2781fa242e95bdb139798
+[1/5] ext4: Remove a redundant return statement
+      commit: f896776a7019ebc6403504262cd4239aaa9b99ba
+[2/5] ext4: Don't set EXT4_STATE_MAY_INLINE_DATA for ea inodes
+      commit: 90c764b4b7f683ca62dbeeceea0ea3a0c6831200
+[3/5] ext4: Introduce a new helper function ext4_generic_write_inline_data()
+      commit: 3db572f780e9dd7be33d5ac3fb3f0e70a9d4a82d
+[4/5] ext4: Replace ext4_da_write_inline_data_begin() with ext4_generic_write_inline_data().
+      commit: f9bdb042dfae981d34911a6184157a720fce5e3d
+[5/5] ext4: Refactor out ext4_try_to_write_inline_data()
+      commit: 30cbe84d48d7d704fdaaf5179a0f4e0764ca35ab
 
 Best regards,
 -- 
