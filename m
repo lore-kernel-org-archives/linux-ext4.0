@@ -1,38 +1,38 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C0C561C5F3A
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E413C1C6FFA
 	for <linux-ext4@vger.kernel.org>; Tue, 18 Mar 2025 03:42:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1742269333; cv=none; b=HOey8wwRJPLVNg0iDERqzfvnOUW85fVbMOAh9bY8hRgSpArIfq29E7oFIXCnQC6XMZ470Ty3m32aPGwylZaIxCis3QnvNVGvglroZ5kaePZmA1QcMypcWPUplua0gnqk9Mnd5jwpQNKswKXngLXDPTGDkunraUkwXT6W8efS4S8=
+	t=1742269333; cv=none; b=C6l1mQjxS9g1FqZenauGvYiTZTfvma12M9Jwnh3m/9OHYY5diroMeBpjFCMsTZmh5QJTHTXqw3LcM8Vs9A0EpUICTZUInHq95yRyKcwwmPo9fcEegQhT5ZT3HPkqxsmDF4selnlsQRBB0bcXKw9C5KD4J0UDNFcDAbpaJ3If9Z0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1742269333; c=relaxed/simple;
-	bh=KxXiiRpdcj2qTFLPlX26QNgkeQEjYv4biOT4q5PE3+4=;
+	bh=GrWM37g8fr6c8W93iOM2ekIcu4MYclPaSvyhQRM595g=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=Yr8bc+9piQ6iszcDtLmLPd2IrvkYb61WhaHjlIq3CvBHFbXxVuqBHmY9rLcnmt0O9TBmnSbCiqc6CfnSYuq7iKbMnIwgPvq6xEqxUwPVg8EDP/gqF9pVHsJyIwJF/VrvEZ/DbMaETkdar3DEF6kj0keXAg4uSUFXQ0lfph/jpWk=
+	 MIME-Version:Content-Type; b=dK9PHHScOZB/VeQmfc3zd0UJoCiHYvioQuoTptL6tU3b9RH4AVOS5ko30chOoyxus9m1GAevtIRDvS+Z80WNw4dHhwIVWu74rRVRaPf8phjoMD3De4eDO+Z+oxiHY3I3cx+bLoj606IcYvexiN2fvIaVM6mVhLus4CEfxaa50gE=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Received: from trampoline.thunk.org (pool-173-48-111-34.bstnma.fios.verizon.net [173.48.111.34])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 52I3fnK7012163
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 52I3fm4l012144
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Mon, 17 Mar 2025 23:41:49 -0400
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id ECC7D2E0118; Mon, 17 Mar 2025 23:41:45 -0400 (EDT)
+	id E45FC2E0115; Mon, 17 Mar 2025 23:41:45 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: jack@suse.com, yi.zhang@huaweicloud.com,
-        Kemeng Shi <shikemeng@huaweicloud.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2 0/6] Minor cleanups to jbd2
-Date: Mon, 17 Mar 2025 23:41:26 -0400
-Message-ID: <174226639133.1025346.17805331764618272859.b4-ty@mit.edu>
+To: linux-ext4@vger.kernel.org, libaokun@huaweicloud.com
+Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca, jack@suse.cz,
+        linux-kernel@vger.kernel.org, yi.zhang@huawei.com,
+        yangerkun@huawei.com, Baokun Li <libaokun1@huawei.com>
+Subject: Re: [PATCH v3 0/9] ext4: fix issues caused by data write-back failures
+Date: Mon, 17 Mar 2025 23:41:23 -0400
+Message-ID: <174226639132.1025346.12727969246066778652.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.47.2
-In-Reply-To: <20250123155014.2097920-1-shikemeng@huaweicloud.com>
-References: <20250123155014.2097920-1-shikemeng@huaweicloud.com>
+In-Reply-To: <20250122110533.4116662-1-libaokun@huaweicloud.com>
+References: <20250122110533.4116662-1-libaokun@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -43,31 +43,36 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Thu, 23 Jan 2025 23:50:08 +0800, Kemeng Shi wrote:
-> v1->v2:
-> -Collect RVB from Jan and Yi.
-> -Remove more stale comment in patch 4/6 as Yi suggested.
-> 
-> This series contains some random minor cleanups to jbd2. No funtional
-> change is intended. More details can be found in respective patches.
-> Thanks.
+On Wed, 22 Jan 2025 19:05:24 +0800, libaokun@huaweicloud.com wrote:
+> Changes since v2:
+>  * Add patch 6.
+>  * Patch 4: Use the new name ext4_has_journal_option().
+>  * Patch 5: Use the new name EXT4_IO_END_DEFER_COMPLETION and
+>             ext4_io_end_defer_completion().
+>  * Collect RVB from Jan Kara and Zhang Yi.(Thanks for your review!)
 > 
 > [...]
 
 Applied, thanks!
 
-[1/6] jbd2: remove unused h_jdata flag of handle
-      commit: ec22493849247d60d595c93573ac3b01534b1965
-[2/6] jbd2: remove unused return value of jbd2_journal_cancel_revoke
-      commit: 9e6d3f9c8a85ed0db0ed1586049321e6b2ac5138
-[3/6] jbd2: remove unused return value of do_readahead
-      commit: 0d26708d8ec488da96a64eb1c6c47a8b3252edc5
-[4/6] jbd2: remove stale comment of update_t_max_wait
-      commit: 6c146277903f1826729bfb4817947d97a97b07cd
-[5/6] jbd2: correct stale function name in comment
-      commit: da5803391e377a39d655d55b4ebf2e416f88a8d6
-[6/6] jbd2: Correct stale comment of release_buffer_page
-      commit: fd3b3d7f51e628f54329738e736a154f6929daab
+[1/9] ext4: replace opencoded ext4_end_io_end() in ext4_put_io_end()
+      commit: 2f94b537c48db155f5aa68d63b747f9d82248341
+[2/9] ext4: do not convert the unwritten extents if data writeback fails
+      commit: e856f93e0fb249955f7d5efb18fe20500a9ccc6d
+[3/9] ext4: reject the 'data_err=abort' option in nojournal mode
+      commit: 26343ca0df715097065b02a6cddb4a029d5b9327
+[4/9] ext4: extract ext4_has_journal_option() from __ext4_fill_super()
+      commit: b1a49bd8132089ff84a96fc2508fd18731fe5690
+[5/9] ext4: abort journal on data writeback failure if in data_err=abort mode
+      commit: ce51afb8cc5e1867ea0dfdf5e92ddbe31a1fad5d
+[6/9] jbd2: drop JBD2_ABORT_ON_SYNCDATA_ERR
+      commit: 6e969ef3d7cff494118205c85a21e05b046ac6c6
+[7/9] ext4: update the descriptions of data_err=abort and data_err=ignore
+      commit: 62c3da1eaccac4b184981ca394b3c870121f286b
+[8/9] ext4: remove unused member 'i_unwritten' from 'ext4_inode_info'
+      commit: 5a1cd0e975c75d4292a9d93e00c84d40b6c0b114
+[9/9] ext4: pack holes in ext4_inode_info
+      commit: bd29881aff6db23f0acde1a6c28c19017fd3115a
 
 Best regards,
 -- 
