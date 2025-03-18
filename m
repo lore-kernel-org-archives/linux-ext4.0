@@ -1,37 +1,38 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ED2491A2643
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 611201AAA10
 	for <linux-ext4@vger.kernel.org>; Tue, 18 Mar 2025 03:42:04 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1742269326; cv=none; b=ZHZfx3nE4nasMc8aimdVNE4DUX6qNzXbQv7RG2vHZJeUgTe5FycDL9X8aJWEWJrN6Rly8255hTrDDzzxOyHTLy7k25MT9fB2w8idvzbYNzDGRcrUxI4wSlKKV5ukkb6fMW3bECoe2AeVyuqLKvvoH7tqxc6H2Id+rAcLAEBvI7w=
+	t=1742269327; cv=none; b=fQvZ51vsxHSp7Wr/L93R7GskJzXbwqaxOFvATpP2HsRCoLhU4LVwEWX9NROvt5XZpUOoLyJ2l3uPUsSadNb0sT5nrN9hy7qF3MZx1NRdH/YBTP+2Ntc/L525dbpfvott+FY3Ao4XuYuKVS1yuSDKMEJiIGMERJQu8LH9FNT7uRc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1742269326; c=relaxed/simple;
-	bh=aHoLFeS9wmOOx6ir4HAUA/HhDddPfzodCcgmDsAZrms=;
+	s=arc-20240116; t=1742269327; c=relaxed/simple;
+	bh=VLIhULSGMXzamCqlQjY10yT5QiYMa1qzsJ22BsNauFM=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=mtfNSVQ9zEqDGPxe+pTSYgmog2rcdtbHVwiZSR7FxiMURHoWed5ZyuUVY9URDKrcKY3DnPoUwNwhr8fo8mtzCpZpPb3bnoLTbyf56+l0uhW0vdr3qgN3bCywZpSnE6nl1whGrwUxFHmrsSJWXsk7H6s44AtUpwrxEm6ITyvMWFs=
+	 MIME-Version:Content-Type; b=AA1vgZ1fspnDCUSqsL4s3TJiBYhrvEzdPAu89LbaM1tt4HfaeQ8zVtEN8RY1Df2Ia+SQZF8jQmV+z27lxGsoUhhnOfYBN+eGp9AGE0PUO8+rS87w4GXbqMMy6z3VQfyWMQ+a0q0yS9080X+jOxmP1c6+RbF7uW/jU+vAEr6ZmNk=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Received: from trampoline.thunk.org (pool-173-48-111-34.bstnma.fios.verizon.net [173.48.111.34])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 52I3fnIF012167
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 52I3flK6012129
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 17 Mar 2025 23:41:49 -0400
+	Mon, 17 Mar 2025 23:41:47 -0400
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 00C662E011B; Mon, 17 Mar 2025 23:41:45 -0400 (EDT)
+	id D8D1B2E0111; Mon, 17 Mar 2025 23:41:45 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org, jack@suse.com, Zizhi Wo <wozizhi@huawei.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, yangerkun@huawei.com
-Subject: Re: [PATCH] ext4: Modify the comment about mb_optimize_scan
-Date: Mon, 17 Mar 2025 23:41:29 -0400
-Message-ID: <174226639138.1025346.5200311084093814962.b4-ty@mit.edu>
+To: Jan Kara <jack@suse.cz>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        syzbot+48a99e426f29859818c0@syzkaller.appspotmail.com,
+        "Darrick J. Wong" <djwong@kernel.org>
+Subject: Re: [PATCH] ext4: Verify fast symlink length
+Date: Mon, 17 Mar 2025 23:41:19 -0400
+Message-ID: <174226639135.1025346.8601680057096942292.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.47.2
-In-Reply-To: <20250224012005.689549-1-wozizhi@huawei.com>
-References: <20250224012005.689549-1-wozizhi@huawei.com>
+In-Reply-To: <20250206094454.20522-2-jack@suse.cz>
+References: <20250206094454.20522-2-jack@suse.cz>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -42,21 +43,16 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Mon, 24 Feb 2025 09:20:05 +0800, Zizhi Wo wrote:
-> Commit 196e402adf2e ("ext4: improve cr 0 / cr 1 group scanning") introduces
-> the sysfs control interface "mb_max_linear_groups" to address the problem
-> that rotational devices performance degrades when the "mb_optimize_scan"
-> feature is enabled, which may result in distant block group allocation.
+On Thu, 06 Feb 2025 10:44:55 +0100, Jan Kara wrote:
+> Verify fast symlink length stored in inode->i_size matches the string
+> stored in the inode to avoid surprises from corrupted filesystems.
 > 
-> However, the name of the interface was incorrect in the comment to the
-> ext4/mballoc.c file, and this patch fixes it, without further changes.
 > 
-> [...]
 
 Applied, thanks!
 
-[1/1] ext4: Modify the comment about mb_optimize_scan
-      commit: 447c11274113dd3543224816cca0d3027759c630
+[1/1] ext4: Verify fast symlink length
+      commit: 5f920d5d60839f7cbbb1ed50eac68d8bc0a73a7c
 
 Best regards,
 -- 
