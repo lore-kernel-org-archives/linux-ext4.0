@@ -1,40 +1,38 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CBD3633D8
-	for <linux-ext4@vger.kernel.org>; Sat, 22 Mar 2025 03:36:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B61107083C
+	for <linux-ext4@vger.kernel.org>; Sat, 22 Mar 2025 03:36:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1742614599; cv=none; b=JcqV95nngMRsZExw+0lALWlaijsGcwH5kE4ZZjIoxlOgGcBpy95m89H6ogOhn26gk73zZSYceUtCIlOdFxqitqRo7W59VMFMnIAiwbTQ19mSiFKr8Q19cEWYr4GefYwOHe4CTdWqn/glrpDZGlquOimd1zlbkRUNXbMt/qs43bA=
+	t=1742614607; cv=none; b=nL/h7Vm2TwjEYXXyKCYchieITQHmC3PcXioweeV/63vZEfmKQPnZUq168V7nzWWrWH3w4BYm/cMcrcum5eS/SEQCF9+N7gh9Pcp4GwXwAwGhHBIdRNsa7GJgJz+aWAda0Y3E3+DLno+FCRHnELmB+IjfUyH8g4aXX4DwOZ7qWPw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1742614599; c=relaxed/simple;
-	bh=RzWxGX0gt0H7R6LSshfnsfipRDDjCoPVTdnFp0GcqTo=;
+	s=arc-20240116; t=1742614607; c=relaxed/simple;
+	bh=hnh3r47MCqymd+jrutHSqC4mQGCHNJt41W4PME5+rfk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=QDypWrtZCHypAajneJEp7jghqzvzZ1hJJd+Y3JdYQQHINpRSgmxcMiKeE/1tJ7f/Eln9tf3QVTL5ga/SgcNxdXkArw4bUXKD8bNxm4rekg7yPyqjudRdcQ24bFHJ6IamIQg4dR7MgfgW7j+bkWR6O9qzAkok2ximT3IQZZg7RDo=
+	 MIME-Version:Content-Type; b=hCCixkcDqc7N8ky20Lw1ahNOhnyGB71cvhYJ5DmLUjgySBD8lYfcdWn35MyF2cemgiJ53rMbOnvjrQeZVUyCA5Ed6zUXJjaocBvbn6S372LWB/qSvYQkQHwKxnSjFUgRI7Etiand0YX4MtJYGXXk5R8ljSD+wsqojRE3Ge8yRt0=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Received: from trampoline.thunk.org (pool-173-48-112-29.bstnma.fios.verizon.net [173.48.112.29])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 52M3aMaA007710
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 52M3aMFq007705
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Fri, 21 Mar 2025 23:36:23 -0400
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id B6F972E010B; Fri, 21 Mar 2025 23:36:22 -0400 (EDT)
+	id BECA02E010E; Fri, 21 Mar 2025 23:36:22 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        "Acs, Jakub" <acsjakub@amazon.de>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, acsjakub@amazon.com,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Mahmoud Adam <mngyadam@amazon.com>, stable@vger.kernel.org,
-        security@kernel.org
-Subject: Re: [PATCH v2] ext4: fix OOB read when checking dotdot dir
-Date: Fri, 21 Mar 2025 23:36:14 -0400
-Message-ID: <174261457018.1344301.17270350351088330714.b4-ty@mit.edu>
+To: linux-ext4@vger.kernel.org, Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+        Baokun Li <libaokun1@huawei.com>,
+        Ritesh Harjani <ritesh.list@gmail.com>, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v4 0/3] Fix a BUG_ON crashing the kernel in start_this_handle
+Date: Fri, 21 Mar 2025 23:36:17 -0400
+Message-ID: <174261457017.1344301.10860947796634385230.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.47.2
-In-Reply-To: <b3ae36a6794c4a01944c7d70b403db5b@amazon.de>
-References: <b3ae36a6794c4a01944c7d70b403db5b@amazon.de>
+In-Reply-To: <cover.1742279837.git.ojaswin@linux.ibm.com>
+References: <cover.1742279837.git.ojaswin@linux.ibm.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -45,24 +43,25 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Thu, 20 Mar 2025 15:46:49 +0000, Acs, Jakub wrote:
-> Mounting a corrupted filesystem with directory which contains '.' dir
-> entry with rec_len == block size results in out-of-bounds read (later
-> on, when the corrupted directory is removed).
+On Tue, 18 Mar 2025 13:22:54 +0530, Ojaswin Mujoo wrote:
+> ** Changes in v4 [4] **
 > 
-> ext4_empty_dir() assumes every ext4 directory contains at least '.'
-> and '..' as directory entries in the first data block. It first loads
-> the '.' dir entry, performs sanity checks by calling ext4_check_dir_entry()
-> and then uses its rec_len member to compute the location of '..' dir
-> entry (in ext4_next_entry). It assumes the '..' dir entry fits into the
-> same data block.
+>   * some minor refactoring and typo fix
+> 
+> [4] https://lore.kernel.org/linux-ext4/cover.1741938027.git.ojaswin@linux.ibm.com/T/#m8b5191fef8b201246ab5b34f7dc11b79fe6afe99
+> 
+> ** Changes in v3 [3] **
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: fix OOB read when checking dotdot dir
-      commit: d5e206778e96e8667d3bde695ad372c296dc9353
+[1/3] ext4: define ext4_journal_destroy wrapper
+      commit: 5a02a6204ca37e7c22fbb55a789c503f05e8e89a
+[2/3] ext4: avoid journaling sb update on error if journal is destroying
+      commit: ce2f26e73783b4a7c46a86e3af5b5c8de0971790
+[3/3] ext4: Make sb update interval tunable
+      commit: 896b02d0b9e7deb4a4eb365e13dd912b49916519
 
 Best regards,
 -- 
