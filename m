@@ -1,38 +1,39 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B61107083C
-	for <linux-ext4@vger.kernel.org>; Sat, 22 Mar 2025 03:36:45 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 21D413E47B
+	for <linux-ext4@vger.kernel.org>; Sat, 22 Mar 2025 03:36:46 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1742614607; cv=none; b=nL/h7Vm2TwjEYXXyKCYchieITQHmC3PcXioweeV/63vZEfmKQPnZUq168V7nzWWrWH3w4BYm/cMcrcum5eS/SEQCF9+N7gh9Pcp4GwXwAwGhHBIdRNsa7GJgJz+aWAda0Y3E3+DLno+FCRHnELmB+IjfUyH8g4aXX4DwOZ7qWPw=
+	t=1742614608; cv=none; b=ps7gzcEICJXY1s40Z2eD4eMQ+mHTQUkWJcWVYCF63Vw96byqiarHGHr7DjwHi9VQf6vzhmSsZenxeg/eote4aIxldu2B2zC6JLSfIW9pxY6CVa4RrvKMymBDYkGF+nNTheIbzxMOOm88gLEWjw8ORLA/XWCdttL3MBGJ6+xT5d4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1742614607; c=relaxed/simple;
-	bh=hnh3r47MCqymd+jrutHSqC4mQGCHNJt41W4PME5+rfk=;
+	s=arc-20240116; t=1742614608; c=relaxed/simple;
+	bh=JqsvHkEtR1js2oxw1GhdUI0c2XgtruxlopFr7w7MbvA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=hCCixkcDqc7N8ky20Lw1ahNOhnyGB71cvhYJ5DmLUjgySBD8lYfcdWn35MyF2cemgiJ53rMbOnvjrQeZVUyCA5Ed6zUXJjaocBvbn6S372LWB/qSvYQkQHwKxnSjFUgRI7Etiand0YX4MtJYGXXk5R8ljSD+wsqojRE3Ge8yRt0=
+	 MIME-Version:Content-Type; b=atiAmNdavJh6jlk/o3L7OvR+ks1RKgAePPzV9KSZRId7dAGUziC19M/6jbH8szlxuPHRYuvfMT5tZQ8F4daHZILvrwZCoS9pA03Kc9jH0q7yvynjdsd2iTy3H6cnXDC/qYqv0WqDeMbMg3VLjtBRMsIH09CzGEJOH9W+GhAyFnk=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Received: from trampoline.thunk.org (pool-173-48-112-29.bstnma.fios.verizon.net [173.48.112.29])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 52M3aMFq007705
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 52M3aMDI007707
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Fri, 21 Mar 2025 23:36:23 -0400
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id BECA02E010E; Fri, 21 Mar 2025 23:36:22 -0400 (EDT)
+	id BC54E2E010D; Fri, 21 Mar 2025 23:36:22 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org, Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        Baokun Li <libaokun1@huawei.com>,
-        Ritesh Harjani <ritesh.list@gmail.com>, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v4 0/3] Fix a BUG_ON crashing the kernel in start_this_handle
-Date: Fri, 21 Mar 2025 23:36:17 -0400
-Message-ID: <174261457017.1344301.10860947796634385230.b4-ty@mit.edu>
+To: Matthew Wilcox <willy@infradead.org>, Andreas Dilger <adilger@dilger.ca>,
+        Ethan Carter Edwards <ethan@ethancedwards.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-hardening@vger.kernel.org
+Subject: Re: [PATCH v2] ext4: hash: simplify kzalloc(n * 1, ...) to kzalloc(n, ...)
+Date: Fri, 21 Mar 2025 23:36:16 -0400
+Message-ID: <174261457016.1344301.3520847990943957158.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.47.2
-In-Reply-To: <cover.1742279837.git.ojaswin@linux.ibm.com>
-References: <cover.1742279837.git.ojaswin@linux.ibm.com>
+In-Reply-To: <20250316-ext4-hash-kcalloc-v2-1-2a99e93ec6e0@ethancedwards.com>
+References: <20250316-ext4-hash-kcalloc-v2-1-2a99e93ec6e0@ethancedwards.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -43,25 +44,15 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Tue, 18 Mar 2025 13:22:54 +0530, Ojaswin Mujoo wrote:
-> ** Changes in v4 [4] **
+On Sun, 16 Mar 2025 01:33:59 -0400, Ethan Carter Edwards wrote:
+> sizeof(char) evaluates to 1. Remove the churn.
 > 
->   * some minor refactoring and typo fix
 > 
-> [4] https://lore.kernel.org/linux-ext4/cover.1741938027.git.ojaswin@linux.ibm.com/T/#m8b5191fef8b201246ab5b34f7dc11b79fe6afe99
-> 
-> ** Changes in v3 [3] **
-> 
-> [...]
 
 Applied, thanks!
 
-[1/3] ext4: define ext4_journal_destroy wrapper
-      commit: 5a02a6204ca37e7c22fbb55a789c503f05e8e89a
-[2/3] ext4: avoid journaling sb update on error if journal is destroying
-      commit: ce2f26e73783b4a7c46a86e3af5b5c8de0971790
-[3/3] ext4: Make sb update interval tunable
-      commit: 896b02d0b9e7deb4a4eb365e13dd912b49916519
+[1/1] ext4: hash: simplify kzalloc(n * 1, ...) to kzalloc(n, ...)
+      commit: 1e93d6f221e7cfe5e069583a2b664e79eb361ba6
 
 Best regards,
 -- 
