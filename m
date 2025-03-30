@@ -1,97 +1,116 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4449D1C8615
-	for <linux-ext4@vger.kernel.org>; Fri, 28 Mar 2025 18:29:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 65AC320B22;
+	Sun, 30 Mar 2025 06:47:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1743186568; cv=none; b=mc7oeELhPCjpQDUUE03ohm4g056ArP7JA9n9L/qC+jAEwWvUQIwV3OWWaol5u1DdKKbFrFJ0V6dznI0eT/uYECHr/vsqUb8b22kGB5mAQbJQsmkGbO1KUfTK55I95BrIhbMOB4f6TSwLktkTWcMlvdK8Wg8KFBsYcA/ziHxJHWs=
+	t=1743317266; cv=none; b=PuOurxngB6QFEBsr03BYDjMCo/j4OaWachZQH2VG4mi0+QU/j9SWmYTbeKoYS+8BkiBD1Sh8JAABrKIjspKDQWAUjK+ZCjH0rcNYduWcvtYekdGhPbPK46Uw7v5XBeI9sQDpUlad8rry6M/6gV+NA2LDDo0cA9j8zDB0AY3mxh4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1743186568; c=relaxed/simple;
-	bh=R4WLChsmbZ8xUp244YW02q5tm4jeuZm+/2yO+YsE7z0=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=gulxFzmoJQCINiz6gyYqwb6qT6ct0lYoiVdNk0Zx0XfIbYgCLpai/oykt8nDruZJUDqW6kfV6wozeNJI9aMxzciu8glHpp7RIEs7dVVnmFPayUlXhXlv+Ki/tLPZ1ftWUnDKcwIGeVlIbN1iUypAsAUPZ8MpE3clgArBfrmt5vY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=uN9kn+pM; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1743317266; c=relaxed/simple;
+	bh=kgB8OOaAyE/3r4VIOULxwjlKCP0HM/KVZ4YfAhG+pT8=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=BYCJ9g/IznBOLFEeRik+WWkdykiDR43oEe1BJcqgvyb7wtBY+b6DUqx5zHsFOkQkGC1WkAHl6hvVwmUk6r4wj3fkhgn6UYnPU8+fve6vSvuE/OmINnwJtm36ctXVik0PfVTPDgseBKfGBavlsvS7faIzw49k216ycJYJCF012L8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=kernel.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=VPgNJJiZ; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=kernel.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="uN9kn+pM"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id ADA7FC4CEE4;
-	Fri, 28 Mar 2025 18:29:27 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1743186567;
-	bh=R4WLChsmbZ8xUp244YW02q5tm4jeuZm+/2yO+YsE7z0=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=uN9kn+pMdRyyGsCCwtJgxJBlWwoubkZ/Ay3WNDz8+n4ACKHdK0Qu1Nyo357TeDpRC
-	 /JbuTd9HFljpyU5woMmBKrb9E/A17Eo+hlSa4yeL4NtY7Frne3xAQCX1D1zMUVboT/
-	 DMAPC5qENM63/MnLKSORuXdpdB1bYJbvaZOuNsdtVCLZI4xnWK0x3rCc3QUtymB8G3
-	 3LP7p6pOX8aNfPURXcUmzueQICkWe7SolPnsbkJAGZUG4mS4Xl5uKjsulcSmLV0u/R
-	 Hw5rYF/XelHOAiedwg5wsK3oVR2GZdX1Mmi67gO9tGklluaWXClLMHGwOqSquGUubv
-	 7MaPVK3z5GiPA==
-Date: Fri, 28 Mar 2025 11:29:27 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: Catherine Hoang <catherine.hoang@oracle.com>
-Cc: linux-ext4@vger.kernel.org
-Subject: Re: [RFC PATCH v2 2/4] ext2: remove buffer heads from group
- descriptors
-Message-ID: <20250328182927.GE2803723@frogsfrogsfrogs>
-References: <20250326014928.61507-1-catherine.hoang@oracle.com>
- <20250326014928.61507-3-catherine.hoang@oracle.com>
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="VPgNJJiZ"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=Sender:Content-Transfer-Encoding:
+	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
+	Reply-To:Content-Type:Content-ID:Content-Description;
+	bh=dsi6MQOqN7ghOTfrKnW38mWU0gU/PvadKLIXd+zTJ3U=; b=VPgNJJiZvXeAxUKUx/r9TdqDiX
+	19jBaZ71+1CjptFA1uPOz7MTCa0Dtsu0KQDcIzZUn9Yi1YtO6j3j5PULNY2V6f/kNMVmC/4U/sNjK
+	ugtHpJAPu+D/ECx8lTjKXbh0fgepBKkPRxSB8RySceHn+wbuC9K3XIza5cZvoQM/IJ4fbkFaQ5ALv
+	Um0efa/I52oG3LJ+ea9SqLXbRwEGidQSjjTfZAfC1MuFqFI0+JafxaPi4N+6MRZX791VwYk7jtVdk
+	jrT63PtUmoskyRNKQhE7QXj1MDsxFidXiGfbCST8XW+vWXZtagnsvPt3q3LLYOB6XmKtBB/x1dxGW
+	89MIB91g==;
+Received: from mcgrof by bombadil.infradead.org with local (Exim 4.98.1 #2 (Red Hat Linux))
+	id 1tymSJ-0000000FreE-2OYS;
+	Sun, 30 Mar 2025 06:47:39 +0000
+From: Luis Chamberlain <mcgrof@kernel.org>
+To: brauner@kernel.org,
+	jack@suse.cz,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org,
+	riel@surriel.com
+Cc: willy@infradead.org,
+	hannes@cmpxchg.org,
+	oliver.sang@intel.com,
+	dave@stgolabs.net,
+	david@redhat.com,
+	axboe@kernel.dk,
+	hare@suse.de,
+	david@fromorbit.com,
+	djwong@kernel.org,
+	ritesh.list@gmail.com,
+	linux-fsdevel@vger.kernel.org,
+	linux-block@vger.kernel.org,
+	linux-mm@kvack.org,
+	gost.dev@samsung.com,
+	p.raghav@samsung.com,
+	da.gomez@samsung.com,
+	mcgrof@kernel.org,
+	syzbot+f3c6fda1297c748a7076@syzkaller.appspotmail.com
+Subject: [PATCH 3/3] mm/migrate: avoid atomic context on buffer_migrate_folio_norefs() migration
+Date: Sat, 29 Mar 2025 23:47:32 -0700
+Message-ID: <20250330064732.3781046-4-mcgrof@kernel.org>
+X-Mailer: git-send-email 2.49.0
+In-Reply-To: <20250330064732.3781046-1-mcgrof@kernel.org>
+References: <20250330064732.3781046-1-mcgrof@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20250326014928.61507-3-catherine.hoang@oracle.com>
+Content-Transfer-Encoding: 8bit
+Sender: Luis Chamberlain <mcgrof@infradead.org>
 
-On Tue, Mar 25, 2025 at 06:49:26PM -0700, Catherine Hoang wrote:
-> The group descriptors are stored as an array of buffer_heads
-> s_group_desc in struct ext2_sb_info. Replace these buffer heads with the
-> new ext2_buffer and update the buffer functions accordingly.
-> 
-> Signed-off-by: Catherine Hoang <catherine.hoang@oracle.com>
-> ---
->  fs/ext2/balloc.c | 24 ++++++++++++------------
->  fs/ext2/ext2.h   |  4 ++--
->  fs/ext2/ialloc.c | 12 ++++++------
->  fs/ext2/super.c  | 10 +++++-----
->  4 files changed, 25 insertions(+), 25 deletions(-)
-> 
-> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-> index b8cfab8f98b9..21dafa9ae2ea 100644
-> --- a/fs/ext2/balloc.c
-> +++ b/fs/ext2/balloc.c
-> @@ -38,7 +38,7 @@
->  
->  struct ext2_group_desc * ext2_get_group_desc(struct super_block * sb,
->  					     unsigned int block_group,
-> -					     struct buffer_head ** bh)
-> +					     struct ext2_buffer ** buf)
->  {
->  	unsigned long group_desc;
->  	unsigned long offset;
-> @@ -63,8 +63,8 @@ struct ext2_group_desc * ext2_get_group_desc(struct super_block * sb,
->  	}
->  
->  	desc = (struct ext2_group_desc *) sbi->s_group_desc[group_desc]->b_data;
-> -	if (bh)
-> -		*bh = sbi->s_group_desc[group_desc];
-> +	if (buf)
-> +		*buf = sbi->s_group_desc[group_desc];
+The buffer_migrate_folio_norefs() should avoid holding the spin lock
+held in order to ensure we can support large folios. The prior commit
+"fs/buffer: avoid races with folio migrations on __find_get_block_slow()"
+ripped out the only rationale for having the atomic context,  so we can
+remove the spin lock call now.
 
-Yeah, these patches would be less long if you'd stuck with the "bh"
-name.  I hate how this sounds like busy work, but please put it back to
-make reviewing easier.
+Reported-by: kernel test robot <oliver.sang@intel.com>
+Reported-by: syzbot+f3c6fda1297c748a7076@syzkaller.appspotmail.com
+Closes: https://lore.kernel.org/oe-lkp/202503101536.27099c77-lkp@intel.com
+Fixes: 3c20917120ce ("block/bdev: enable large folio support for large logical block sizes")
+Signed-off-by: Luis Chamberlain <mcgrof@kernel.org>
+---
+ mm/migrate.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-> @@ -1109,10 +1109,10 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
->  	}
->  	for (i = 0; i < db_count; i++) {
->  		block = descriptor_loc(sb, logic_sb_block, i);
-> -		sbi->s_group_desc[i] = sb_bread(sb, block);
-> +		sbi->s_group_desc[i] = ext2_read_buffer(sb, block);
+diff --git a/mm/migrate.c b/mm/migrate.c
+index 712ddd11f3f0..f3047c685706 100644
+--- a/mm/migrate.c
++++ b/mm/migrate.c
+@@ -861,12 +861,12 @@ static int __buffer_migrate_folio(struct address_space *mapping,
+ 			}
+ 			bh = bh->b_this_page;
+ 		} while (bh != head);
++		spin_unlock(&mapping->i_private_lock);
+ 		if (busy) {
+ 			if (invalidated) {
+ 				rc = -EAGAIN;
+ 				goto unlock_buffers;
+ 			}
+-			spin_unlock(&mapping->i_private_lock);
+ 			invalidate_bh_lrus();
+ 			invalidated = true;
+ 			goto recheck_buffers;
+@@ -884,8 +884,6 @@ static int __buffer_migrate_folio(struct address_space *mapping,
+ 	} while (bh != head);
+ 
+ unlock_buffers:
+-	if (check_refs)
+-		spin_unlock(&mapping->i_private_lock);
+ 	bh = head;
+ 	do {
+ 		unlock_buffer(bh);
+-- 
+2.47.2
 
-ext2_read_buffer can return an ERR_PTR, you need to check for errors
-here, not just null pointers.
-
---D
