@@ -1,34 +1,34 @@
 Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 522F114884C;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 522AC78F34;
 	Thu, 10 Apr 2025 01:49:51 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1744249792; cv=none; b=aq3T9ybR8HkzXIV2E7l30ak8nqmruK+QDz8W+mqb0Bfv5c7ywvBQ6g0IgI4ckAeH/8wBIHu1FoXCHpk7wLHrIMGqVbsbRd/2i5IZF0LU4DihVO75yN6nJjASHSY5DWzy8zb4TtxBGLs/XQn54v7/W+Ckksmv8aVXYMBvAcUf3yw=
+	t=1744249792; cv=none; b=iwmqhEWDxAm/Pw8tgq3NWdCi5mcESvgeKd0dSV6impt1cqvCR5PiMmgdqCH44vef6+++t56rStXme/UE/B1ArH+2hn9vLH47HQWKN5AsYfBwhC4Si+KQiba2Wry3dkGgh3CM9pTeDG8YEASXIYPhR0viqx+PmwDDckUVjMnkUoY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1744249792; c=relaxed/simple;
-	bh=PntIbLJLcwut+u4jzwWlmCVqW/K9+alpriCiB45QVFk=;
+	bh=g87H8JA2OOq9l6nYFs8Rw8WPVhcwUIpwnUsZZOyLVYE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=F7g3wVt/IsO9WD419jJ46gVh1BUeQlpoB+gyRYFQOwMUqkRo5wJ4B5PzoB1aX6BfRuOi7NKlSb3tQCsq6BbG9uthiKblnRmZT4Ii89EnctuDwxsOSsLVVgRqN1+3p/6OMT1D9nfDVt0GUARsEEHbhwegmVn0D0PpSiJtWEkqxkE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=kernel.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=Yw//8RAk; arc=none smtp.client-ip=198.137.202.133
+	 MIME-Version; b=bKEcp8ENB1hWf9hdRu8P71cy06pqZZBB9nKYwKUit5k4kTeuO5pR3uGoCIWVBxSGoEVXMX4r9ewVP62J9PPfkySOZ9tBbdDvqmKSrH1gulP/x5Mu2p4YBA4rQbQES8LFv+YLKfi+2WTc44HChVep7cMrKp78nCkalEL/4eandR8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=kernel.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=phLch9jc; arc=none smtp.client-ip=198.137.202.133
 Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=kernel.org
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="Yw//8RAk"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="phLch9jc"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=bombadil.20210309; h=Sender:Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
 	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=vTKYqeK6owf1W0PFCfkmcr/WH0zrnKyGAnGwrj+ptGw=; b=Yw//8RAkVfn5FzwjQqq2jaRoNX
-	VzPuh+AjIaEx6KIP7Yx5LcTOpptHkTAeDWIPwy+3tzS2/smqJLeuJ+oBb0yAZFkX3RQwVre04CAOy
-	a1WKN5Xl1vTRpgwK25wuPi7rvQ8FCimEw1FU4mZqd2fWe/JTz0rzjT5sCLHgi2bG4VQOIC8Z0y8lZ
-	JKIjgKSt1QMD4NwFRfaEyrgRsIPjAgaT6u40ehpHsnitQqNhMD+2mDVAnGN7nuAuV7fzKRhjJw21X
-	UVL9ZoHR0ZGuINF0W2kc4CH+LJIblsNeZlApOVZpSxxzfcjInWmE96/RUpvF4viwNPZTJiLAFSKyO
-	f7WZbJkg==;
+	bh=xzMVQnlSZLVrjFGORLU1U+D4R5k/13V//cM2BeZORKg=; b=phLch9jcit+F/148sP3LkjXCiZ
+	/KwpKJXZqxT7edP+btyTcTvrMUZl1GQP0pguCo6GmdzIW16Yke7+tI3/Wv2kifqdyRUdpjwxHY8Kf
+	Ag9kTDteSqT75mrwU89HyrAHr2oWdnrq6YGjXQqjR6tzKiaa+EX7F+L3uusKkSxmIW1G+d8jQ3CvE
+	kZ9BVRX8/Yk/up+pVzR+ZGHbejP+a2cJTT/5JSWQ92WS4LMV88u1PCvKXGJu9GX5xl8lAp9vQeQ0d
+	kmZIn8BP+CjXxaDUH4zaTbywssOP/ELkdlO3d4/pE4du3xn+AQ9Fmx98q8lH2ZKnk7/5TPZjsMIB5
+	VXkVN5wg==;
 Received: from mcgrof by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1u2h35-00000008yvO-47o1;
-	Thu, 10 Apr 2025 01:49:47 +0000
+	id 1u2h36-00000008yvS-0MvB;
+	Thu, 10 Apr 2025 01:49:48 +0000
 From: Luis Chamberlain <mcgrof@kernel.org>
 To: brauner@kernel.org,
 	jack@suse.cz,
@@ -53,9 +53,9 @@ Cc: dave@stgolabs.net,
 	p.raghav@samsung.com,
 	da.gomez@samsung.com,
 	mcgrof@kernel.org
-Subject: [PATCH v2 5/8] fs/jbd2: use sleeping version of __find_get_block()
-Date: Wed,  9 Apr 2025 18:49:42 -0700
-Message-ID: <20250410014945.2140781-6-mcgrof@kernel.org>
+Subject: [PATCH v2 7/8] mm/migrate: enable noref migration for jbd2
+Date: Wed,  9 Apr 2025 18:49:44 -0700
+Message-ID: <20250410014945.2140781-8-mcgrof@kernel.org>
 X-Mailer: git-send-email 2.49.0
 In-Reply-To: <20250410014945.2140781-1-mcgrof@kernel.org>
 References: <20250410014945.2140781-1-mcgrof@kernel.org>
@@ -70,72 +70,102 @@ Sender: Luis Chamberlain <mcgrof@infradead.org>
 
 From: Davidlohr Bueso <dave@stgolabs.net>
 
-Convert to the new nonatomic flavor to benefit from potential
-performance benefits and adapt in the future vs migration such
-that semantics are kept.
-
-- jbd2_journal_revoke(): can sleep (has might_sleep() in the beginning)
-
-- jbd2_journal_cancel_revoke(): only used from do_get_write_access() and
-    do_get_create_access() which do sleep. So can sleep.
-
-- jbd2_clear_buffer_revoked_flags() - only called from journal commit code
-    which sleeps. So can sleep.
+Add semantics to enable future optimizations for buffer head noref jbd2
+migration. This adds a new BH_Migrate flag which ensures we can bail
+on the lookup path. This should enable jbd2 to get semantics of when
+a buffer head is under folio migration, and should yield to it and to
+eventually remove the buffer_meta() check skipping current jbd2 folio
+migration.
 
 Suggested-by: Jan Kara <jack@suse.cz>
+Co-developed-by: Luis Chamberlain <mcgrof@kernel.org>
 Signed-off-by: Davidlohr Bueso <dave@stgolabs.net>
 Signed-off-by: Luis Chamberlain <mcgrof@kernel.org>
 ---
- fs/jbd2/revoke.c | 15 +++++++++------
- 1 file changed, 9 insertions(+), 6 deletions(-)
+ fs/buffer.c                 | 12 +++++++++++-
+ fs/ext4/ialloc.c            |  3 ++-
+ include/linux/buffer_head.h |  1 +
+ mm/migrate.c                |  4 ++++
+ 4 files changed, 18 insertions(+), 2 deletions(-)
 
-diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-index 0cf0fddbee81..1467f6790747 100644
---- a/fs/jbd2/revoke.c
-+++ b/fs/jbd2/revoke.c
-@@ -345,7 +345,8 @@ int jbd2_journal_revoke(handle_t *handle, unsigned long long blocknr,
- 	bh = bh_in;
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 07ec57ec100e..753fc45667da 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -211,6 +211,15 @@ __find_get_block_slow(struct block_device *bdev, sector_t block, bool atomic)
+ 	head = folio_buffers(folio);
+ 	if (!head)
+ 		goto out_unlock;
++	/*
++	 * Upon a noref migration, the folio lock serializes here;
++	 * otherwise bail.
++	 */
++	if (test_bit_acquire(BH_Migrate, &head->b_state)) {
++		WARN_ON(folio_locked);
++		goto out_unlock;
++	}
++
+ 	bh = head;
+ 	do {
+ 		if (!buffer_mapped(bh))
+@@ -1393,7 +1402,8 @@ lookup_bh_lru(struct block_device *bdev, sector_t block, unsigned size)
+ /*
+  * Perform a pagecache lookup for the matching buffer.  If it's there, refresh
+  * it in the LRU and mark it as accessed.  If it is not present then return
+- * NULL
++ * NULL. Atomic context callers may also return NULL if the buffer is being
++ * migrated; similarly the page is not marked accessed either.
+  */
+ static struct buffer_head *
+ find_get_block_common(struct block_device *bdev, sector_t block,
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 38bc8d74f4cc..e7ecc7c8a729 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -691,7 +691,8 @@ static int recently_deleted(struct super_block *sb, ext4_group_t group, int ino)
+ 	if (!bh || !buffer_uptodate(bh))
+ 		/*
+ 		 * If the block is not in the buffer cache, then it
+-		 * must have been written out.
++		 * must have been written out, or, most unlikely, is
++		 * being migrated - false failure should be OK here.
+ 		 */
+ 		goto out;
  
- 	if (!bh) {
--		bh = __find_get_block(bdev, blocknr, journal->j_blocksize);
-+		bh = __find_get_block_nonatomic(bdev, blocknr,
-+						journal->j_blocksize);
- 		if (bh)
- 			BUFFER_TRACE(bh, "found on hash");
- 	}
-@@ -355,7 +356,8 @@ int jbd2_journal_revoke(handle_t *handle, unsigned long long blocknr,
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 8db10ca288fc..5559b906b1de 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -34,6 +34,7 @@ enum bh_state_bits {
+ 	BH_Meta,	/* Buffer contains metadata */
+ 	BH_Prio,	/* Buffer should be submitted with REQ_PRIO */
+ 	BH_Defer_Completion, /* Defer AIO completion to workqueue */
++	BH_Migrate,     /* Buffer is being migrated (norefs) */
  
- 		/* If there is a different buffer_head lying around in
- 		 * memory anywhere... */
--		bh2 = __find_get_block(bdev, blocknr, journal->j_blocksize);
-+		bh2 = __find_get_block_nonatomic(bdev, blocknr,
-+						 journal->j_blocksize);
- 		if (bh2) {
- 			/* ... and it has RevokeValid status... */
- 			if (bh2 != bh && buffer_revokevalid(bh2))
-@@ -464,7 +466,8 @@ void jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
- 	 * state machine will get very upset later on. */
- 	if (need_cancel) {
- 		struct buffer_head *bh2;
--		bh2 = __find_get_block(bh->b_bdev, bh->b_blocknr, bh->b_size);
-+		bh2 = __find_get_block_nonatomic(bh->b_bdev, bh->b_blocknr,
-+						 bh->b_size);
- 		if (bh2) {
- 			if (bh2 != bh)
- 				clear_buffer_revoked(bh2);
-@@ -492,9 +495,9 @@ void jbd2_clear_buffer_revoked_flags(journal_t *journal)
- 			struct jbd2_revoke_record_s *record;
- 			struct buffer_head *bh;
- 			record = (struct jbd2_revoke_record_s *)list_entry;
--			bh = __find_get_block(journal->j_fs_dev,
--					      record->blocknr,
--					      journal->j_blocksize);
-+			bh = __find_get_block_nonatomic(journal->j_fs_dev,
-+							record->blocknr,
-+							journal->j_blocksize);
- 			if (bh) {
- 				clear_buffer_revoked(bh);
- 				__brelse(bh);
+ 	BH_PrivateStart,/* not a state bit, but the first bit available
+ 			 * for private allocation by other entities
+diff --git a/mm/migrate.c b/mm/migrate.c
+index 32fa72ba10b4..8fed2655f2e8 100644
+--- a/mm/migrate.c
++++ b/mm/migrate.c
+@@ -851,6 +851,8 @@ static int __buffer_migrate_folio(struct address_space *mapping,
+ 		bool busy;
+ 		bool invalidated = false;
+ 
++		VM_WARN_ON_ONCE(test_and_set_bit_lock(BH_Migrate,
++						      &head->b_state));
+ recheck_buffers:
+ 		busy = false;
+ 		spin_lock(&mapping->i_private_lock);
+@@ -884,6 +886,8 @@ static int __buffer_migrate_folio(struct address_space *mapping,
+ 		bh = bh->b_this_page;
+ 	} while (bh != head);
+ unlock_buffers:
++	if (check_refs)
++		clear_bit_unlock(BH_Migrate, &head->b_state);
+ 	bh = head;
+ 	do {
+ 		unlock_buffer(bh);
 -- 
 2.47.2
 
