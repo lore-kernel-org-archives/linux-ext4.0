@@ -1,32 +1,33 @@
 Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4AE1870800;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 522F114884C;
 	Thu, 10 Apr 2025 01:49:51 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1744249792; cv=none; b=Ih+Xsrb5l38kOJQIc8CHOZ+kJ2ZIv82hlFVU4z0/ZdlJrz91u4PoYleTmqkWD1qINJXL1oRpEQLYi8BH+oyE23a1WCatNLIPTEguR157ykSU49BJX5EwBptQ6m7TAIQFdmOOn7zTKitOryjDZ+SMdOo+LeokxSMQUbuJL5TTL6w=
+	t=1744249792; cv=none; b=aq3T9ybR8HkzXIV2E7l30ak8nqmruK+QDz8W+mqb0Bfv5c7ywvBQ6g0IgI4ckAeH/8wBIHu1FoXCHpk7wLHrIMGqVbsbRd/2i5IZF0LU4DihVO75yN6nJjASHSY5DWzy8zb4TtxBGLs/XQn54v7/W+Ckksmv8aVXYMBvAcUf3yw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1744249792; c=relaxed/simple;
-	bh=gw/NjgWGVSFxab3pAtL6yGS+ccJXroE2E8QVY6YYcos=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type; b=TIbwSpY+wEUkvrElGTxDnDgOkRLcMjtq/2Z2QRwJnJAsyOIhYsHiSbX/WTqm69eihAVtZPSfgX6+KOCclX+Al2uPu35g0XgvcNEcxEUO2u/6qSr3uCBVZsNfFEb0JCLzfOoBi+T3hrCWGwzs9p4ukXZ0O5hcbcgpAMWTpq4tUPs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=kernel.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=BEiQySXq; arc=none smtp.client-ip=198.137.202.133
+	bh=PntIbLJLcwut+u4jzwWlmCVqW/K9+alpriCiB45QVFk=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=F7g3wVt/IsO9WD419jJ46gVh1BUeQlpoB+gyRYFQOwMUqkRo5wJ4B5PzoB1aX6BfRuOi7NKlSb3tQCsq6BbG9uthiKblnRmZT4Ii89EnctuDwxsOSsLVVgRqN1+3p/6OMT1D9nfDVt0GUARsEEHbhwegmVn0D0PpSiJtWEkqxkE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=kernel.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=Yw//8RAk; arc=none smtp.client-ip=198.137.202.133
 Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=kernel.org
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="BEiQySXq"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="Yw//8RAk"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=bombadil.20210309; h=Sender:Content-Transfer-Encoding:
-	Content-Type:MIME-Version:Message-ID:Date:Subject:Cc:To:From:Reply-To:
-	Content-ID:Content-Description:In-Reply-To:References;
-	bh=gU4nDpIOjE/XR68cUwv2i9fTg/9lnNMroLjPUVzoIeM=; b=BEiQySXqoICUoSgnimnicVM34v
-	G/9L/jlt7ClGdnWdjQywPjgPn9xqcGZNhYD/gjEUPnDKJ3EWA3G0NrG0wIE1fbciULTGo3m5INWPb
-	hSzepYVfLVe6Xji0iODjmGEaYx9t/3aWZzU6c4+k3BJhTMHOsKEpZIk4MUBMt5Y993DeZvp6xa/6G
-	VeYnv8slJhT9bEJa2ndSwJp9hOOygH6exj6zE7oFijhMSMhUBgz5BqlbTnWvH5DifiVNkGxV2ADUj
-	zgqnDXpB8tEGjWcB9GFIaviGeIArGZtvLng5svJKbrgP3uU3STjImRi1VRGyiNFiAHe818MzXDcYt
-	Fug5RhCg==;
+	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
+	Reply-To:Content-Type:Content-ID:Content-Description;
+	bh=vTKYqeK6owf1W0PFCfkmcr/WH0zrnKyGAnGwrj+ptGw=; b=Yw//8RAkVfn5FzwjQqq2jaRoNX
+	VzPuh+AjIaEx6KIP7Yx5LcTOpptHkTAeDWIPwy+3tzS2/smqJLeuJ+oBb0yAZFkX3RQwVre04CAOy
+	a1WKN5Xl1vTRpgwK25wuPi7rvQ8FCimEw1FU4mZqd2fWe/JTz0rzjT5sCLHgi2bG4VQOIC8Z0y8lZ
+	JKIjgKSt1QMD4NwFRfaEyrgRsIPjAgaT6u40ehpHsnitQqNhMD+2mDVAnGN7nuAuV7fzKRhjJw21X
+	UVL9ZoHR0ZGuINF0W2kc4CH+LJIblsNeZlApOVZpSxxzfcjInWmE96/RUpvF4viwNPZTJiLAFSKyO
+	f7WZbJkg==;
 Received: from mcgrof by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1u2h35-00000008yv0-37Or;
+	id 1u2h35-00000008yvO-47o1;
 	Thu, 10 Apr 2025 01:49:47 +0000
 From: Luis Chamberlain <mcgrof@kernel.org>
 To: brauner@kernel.org,
@@ -52,90 +53,89 @@ Cc: dave@stgolabs.net,
 	p.raghav@samsung.com,
 	da.gomez@samsung.com,
 	mcgrof@kernel.org
-Subject: [PATCH v2 0/8] mm: enhance migration work around on noref buffer-heads
-Date: Wed,  9 Apr 2025 18:49:37 -0700
-Message-ID: <20250410014945.2140781-1-mcgrof@kernel.org>
+Subject: [PATCH v2 5/8] fs/jbd2: use sleeping version of __find_get_block()
+Date: Wed,  9 Apr 2025 18:49:42 -0700
+Message-ID: <20250410014945.2140781-6-mcgrof@kernel.org>
 X-Mailer: git-send-email 2.49.0
+In-Reply-To: <20250410014945.2140781-1-mcgrof@kernel.org>
+References: <20250410014945.2140781-1-mcgrof@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Sender: Luis Chamberlain <mcgrof@infradead.org>
 
-We have an eye-sore of a spin lock held during page migration which
-was added for a ext4 jbd corruption fix for which we have no clear
-public corruption data. We want to remove the spin lock on mm/migrate
-so to help buffer-head filesystems embrace large folios, since we
-can cond_resched() on large folios on folio_mc_copy(). We've managed
-to reproduce a corruption by just removing the spinlock and stressing
-ext4 with generic/750, a corruption happens after 3 hours many times.
-However, while developing an alternative fix based on feedback [0], we've
-come the conclusion ext4 on vanilla Linux is still affected. We still have
-a lingering jbd2 corruption issue.
+From: Davidlohr Bueso <dave@stgolabs.net>
 
-The underlying race is in jbd2’s use of buffer_migrate_folio_norefs() without
-holding doing proper synchronization, making it unsafe during folio migration.
-ext4 uses jbd2 as its journaling backend. The corruption surfaces in ext4's
-metadata operations, like ext4_ext_insert_extent(), when journal metadata fails
-to be marked dirty due to the migration race. This leads to ENOSPC, journal
-aborts, read-only fallback, and long-term filesystem corruption seen in replay
-logs and "error count since last fsck".
+Convert to the new nonatomic flavor to benefit from potential
+performance benefits and adapt in the future vs migration such
+that semantics are kept.
 
-This simply skips folio migration on jbd2 metadata buffers to avoid races during
-journal writes that can lead to filesystem corruption, but also paves the way
-to enable jbd2 to eventually overcome this limitation and enable folio
-migration, while also implementing some of the suggested enhancements on
-__find_get_block_slow(). The suggested trylock idea is implemented, thereby
-potentially reducing i_private_lock contention and leveraging folio_trylock()
-when allowed.
+- jbd2_journal_revoke(): can sleep (has might_sleep() in the beginning)
 
-The first patch is intended to go through Linus' tree, if agreeable, and then
-the rest can be evaluated for fs-next. Although I did not intend to upstream
-the debugfs interface, at this point I'm convinced the statistics are extremely
-useful while enhacing this path, and should also prove useful in enhacing and
-eventually enabling folio migration on jbd2 metadata buffers.
+- jbd2_journal_cancel_revoke(): only used from do_get_write_access() and
+    do_get_create_access() which do sleep. So can sleep.
 
-If you want this in tree form, see 20250409-bh-meta-migrate-optimal [1].
+- jbd2_clear_buffer_revoked_flags() - only called from journal commit code
+    which sleeps. So can sleep.
 
-[0] https://lore.kernel.org/all/20250330064732.3781046-3-mcgrof@kernel.org/T/#mf2fb79c9ab0d20fab65c65142b7f53680e68d8fa
-[1] https://web.git.kernel.org/pub/scm/linux/kernel/git/mcgrof/linux.git/log/?h=20250409-bh-meta-migrate-optimal
+Suggested-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Davidlohr Bueso <dave@stgolabs.net>
+Signed-off-by: Luis Chamberlain <mcgrof@kernel.org>
+---
+ fs/jbd2/revoke.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
 
-Changes on v2:
-
- - replace heuristic with buffer_meta() check as we're convinced the issue
-   with corruption stil exist and jbd2 metadata buffers still needs work
-   to enable folio migration
- - implements community feedback and performance suggestions on code
-   paving the way to eventually enable jbd2 metadata buffers to leverage
-   folio migration
- - adds debugfs interface
-
-Davidlohr Bueso (6):
-  fs/buffer: try to use folio lock for pagecache lookups
-  fs/buffer: introduce __find_get_block_nonatomic()
-  fs/ocfs2: use sleeping version of __find_get_block()
-  fs/jbd2: use sleeping version of __find_get_block()
-  fs/ext4: use sleeping version of __find_get_block()
-  mm/migrate: enable noref migration for jbd2
-
-Luis Chamberlain (2):
-  migrate: fix skipping metadata buffer heads on migration
-  mm: add migration buffer-head debugfs interface
-
- fs/buffer.c                 |  76 ++++++++++----
- fs/ext4/ialloc.c            |   3 +-
- fs/ext4/inode.c             |   2 +
- fs/ext4/mballoc.c           |   3 +-
- fs/jbd2/revoke.c            |  15 +--
- fs/ocfs2/journal.c          |   2 +-
- include/linux/buffer_head.h |   9 ++
- mm/migrate.c                | 192 ++++++++++++++++++++++++++++++++++--
- 8 files changed, 266 insertions(+), 36 deletions(-)
-
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index 0cf0fddbee81..1467f6790747 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -345,7 +345,8 @@ int jbd2_journal_revoke(handle_t *handle, unsigned long long blocknr,
+ 	bh = bh_in;
+ 
+ 	if (!bh) {
+-		bh = __find_get_block(bdev, blocknr, journal->j_blocksize);
++		bh = __find_get_block_nonatomic(bdev, blocknr,
++						journal->j_blocksize);
+ 		if (bh)
+ 			BUFFER_TRACE(bh, "found on hash");
+ 	}
+@@ -355,7 +356,8 @@ int jbd2_journal_revoke(handle_t *handle, unsigned long long blocknr,
+ 
+ 		/* If there is a different buffer_head lying around in
+ 		 * memory anywhere... */
+-		bh2 = __find_get_block(bdev, blocknr, journal->j_blocksize);
++		bh2 = __find_get_block_nonatomic(bdev, blocknr,
++						 journal->j_blocksize);
+ 		if (bh2) {
+ 			/* ... and it has RevokeValid status... */
+ 			if (bh2 != bh && buffer_revokevalid(bh2))
+@@ -464,7 +466,8 @@ void jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
+ 	 * state machine will get very upset later on. */
+ 	if (need_cancel) {
+ 		struct buffer_head *bh2;
+-		bh2 = __find_get_block(bh->b_bdev, bh->b_blocknr, bh->b_size);
++		bh2 = __find_get_block_nonatomic(bh->b_bdev, bh->b_blocknr,
++						 bh->b_size);
+ 		if (bh2) {
+ 			if (bh2 != bh)
+ 				clear_buffer_revoked(bh2);
+@@ -492,9 +495,9 @@ void jbd2_clear_buffer_revoked_flags(journal_t *journal)
+ 			struct jbd2_revoke_record_s *record;
+ 			struct buffer_head *bh;
+ 			record = (struct jbd2_revoke_record_s *)list_entry;
+-			bh = __find_get_block(journal->j_fs_dev,
+-					      record->blocknr,
+-					      journal->j_blocksize);
++			bh = __find_get_block_nonatomic(journal->j_fs_dev,
++							record->blocknr,
++							journal->j_blocksize);
+ 			if (bh) {
+ 				clear_buffer_revoked(bh);
+ 				__brelse(bh);
 -- 
 2.47.2
 
