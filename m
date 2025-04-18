@@ -1,133 +1,111 @@
-Received: from coral.ash.relay.mailchannels.net (coral.ash.relay.mailchannels.net [23.83.222.39])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8A42D770E2;
-	Fri, 18 Apr 2025 02:38:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=23.83.222.39
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1744943894; cv=pass; b=GHkBugaK5Cl441Gw/FhKtJk0/VOeYcpgsZuhsepkLJvFmEz3HgBNbVBBYhBar+UuA0ZVtA+zZirmHz3aynfJXwIyhW048BblyrL+jJ1dyJSJ60VOMnc7rw2m/6QB7Evidf8GpbzsxjjbbUS7L2q1UHU6teqeIHG7UmjJXqLY3sQ=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1744943894; c=relaxed/simple;
-	bh=caXlnD2oHiRYk4Cd+v3z9Gfe8ZSs6QrQWezKNp5Wa0g=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=q/lahEPLE5HWCcbbvi19TSBjHBV6S1tAq4ZZ9hGFnUzTBwaiPBQXpkg4+FBW+Lf5XjN+yd4eOGsZGKH2zcqjl/mErhsxdooDdHdrGCTdAkh0zOUj1TfP/p9nkKeJp4YBzair64B7sdHP0hOAkS922x+h92GfkYuFqMQUPUK43/w=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=stgolabs.net; spf=pass smtp.mailfrom=stgolabs.net; dkim=pass (2048-bit key) header.d=stgolabs.net header.i=@stgolabs.net header.b=kpdvvT0I; arc=pass smtp.client-ip=23.83.222.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=stgolabs.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=stgolabs.net
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=stgolabs.net header.i=@stgolabs.net header.b="kpdvvT0I"
-X-Sender-Id: dreamhost|x-authsender|dave@stgolabs.net
-Received: from relay.mailchannels.net (localhost [127.0.0.1])
-	by relay.mailchannels.net (Postfix) with ESMTP id 6A4B14E3E63;
-	Fri, 18 Apr 2025 01:59:37 +0000 (UTC)
-Received: from pdx1-sub0-mail-a285.dreamhost.com (trex-8.trex.outbound.svc.cluster.local [100.110.156.188])
-	(Authenticated sender: dreamhost)
-	by relay.mailchannels.net (Postfix) with ESMTPA id 0ECC44E3DA7;
-	Fri, 18 Apr 2025 01:59:37 +0000 (UTC)
-ARC-Seal: i=1; s=arc-2022; d=mailchannels.net; t=1744941577; a=rsa-sha256;
-	cv=none;
-	b=9z4NAulcqZEtIT3DSYAMJEEzyHl4OUVDXYUa/u5xxIbUVEx9loFzXyemUYJIxCWwdjYugU
-	WVF1FilRhnoPGcGgKkwBwVfepuUU+AqqpF3wAA1KcaG8DZbz/nIgk9g1NTLrx3uW6NYbyn
-	+b/V3NaPWumOJic84c6hJowbpt0eGJ+PO5jbunEdw72a2KmiKWXfJ2HOPUtHgjV9irGf6x
-	ymgpFhEeG3oIadQhFKeXeJ5C/sirbDB3bfPjKFoV0v16fYNioIpl8r1LN0rvGYNtpr38zT
-	P1FzH/j3/aENh8ndcvWFl3cunGnzuk0PdkKns6nGngAdcG9fM2inhua8M0UgjA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed;
- d=mailchannels.net;
-	s=arc-2022; t=1744941577;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references:dkim-signature;
-	bh=MabBCGA0m9wa8fg8pahJUNB3mGjC5+Tn6ArLhv/vZP4=;
-	b=f90j+YzQ7hjLmbPv83G8gY9IV1ngRf+fEsgixVWiTHTW34CL04W5yZhP5quyBOfr1nG4sz
-	WwuXcWe6OJOxnILNXMKEecU/l3HkvNTGImZohFuToUOLb+gLH6XUYJJzPWFgSARgULnusF
-	ibDXExRqho6UW5OK1/337w/kviXgddoOO1mzTPCB/X51rWMKAVznGP7z4QcBTzp/GzuRIZ
-	pxUH4WR014BcLc5wosFrmtvAbytHTS6lGt8Hh9xXJv8ExN1kCJXrNYSkjIBz1tVHA6fQp5
-	rBqYWsMYOWd0/2K9nKxhqyR+L+POmNVJ0fwLtJhTKHUF5MUGqCoeBTlJHtusuQ==
-ARC-Authentication-Results: i=1;
-	rspamd-7bd9ff6c58-xxcc2;
-	auth=pass smtp.auth=dreamhost smtp.mailfrom=dave@stgolabs.net
-X-Sender-Id: dreamhost|x-authsender|dave@stgolabs.net
-X-MC-Relay: Neutral
-X-MailChannels-SenderId: dreamhost|x-authsender|dave@stgolabs.net
-X-MailChannels-Auth-Id: dreamhost
-X-Chief-Stop: 39defe2a79e53d38_1744941577351_2613637192
-X-MC-Loop-Signature: 1744941577351:2941586493
-X-MC-Ingress-Time: 1744941577351
-Received: from pdx1-sub0-mail-a285.dreamhost.com (pop.dreamhost.com
- [64.90.62.162])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384)
-	by 100.110.156.188 (trex/7.0.3);
-	Fri, 18 Apr 2025 01:59:37 +0000
-Received: from localhost.localdomain (ip72-199-50-187.sd.sd.cox.net [72.199.50.187])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	(Authenticated sender: dave@stgolabs.net)
-	by pdx1-sub0-mail-a285.dreamhost.com (Postfix) with ESMTPSA id 4Zdycm1J43zC4;
-	Thu, 17 Apr 2025 18:59:36 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=stgolabs.net;
-	s=dreamhost; t=1744941576;
-	bh=MabBCGA0m9wa8fg8pahJUNB3mGjC5+Tn6ArLhv/vZP4=;
-	h=From:To:Cc:Subject:Date:Content-Transfer-Encoding;
-	b=kpdvvT0Ib2FwXMXNFIsJ1B3ejhEV1qHORy8ifsLmPDuDI2XKOMNKHFP5Rw0CyLl6w
-	 rR7V8hLj+GfhGeWq4jzNR3MQZ8cgo84qj8xXYxoeLMTWGMFoKm55+n8ZLsPgH8Aypr
-	 wErbSM37TrMzASGozlXONJ4ETYCh+H9xLho51IyRgg7sqopDUKLBRXEkzinUEH0/Eg
-	 fqka2BRDE/gaK4M5naK6mkgn/RN+5RRk7FawYGfUHZf1Gy5gbN9i7ubDYRxOs921G3
-	 +trPpaHa7x8wUg9nakawBIH5pd3uABIt1rk3+wl80IGVPnZdyuX0hEpjlKqANg5W7O
-	 A5iiKcalfiCKw==
-From: Davidlohr Bueso <dave@stgolabs.net>
-To: jack@suse.cz,
-	tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	brauner@kernel.org
-Cc: mcgrof@kernel.org,
-	willy@infradead.org,
-	hare@suse.de,
-	djwong@kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	Davidlohr Bueso <dave@stgolabs.net>
-Subject: [PATCH 4/7] fs/ocfs2: use sleeping version of __find_get_block()
-Date: Thu, 17 Apr 2025 18:59:18 -0700
-Message-Id: <20250418015921.132400-5-dave@stgolabs.net>
-X-Mailer: git-send-email 2.39.5
-In-Reply-To: <20250418015921.132400-1-dave@stgolabs.net>
-References: <20250418015921.132400-1-dave@stgolabs.net>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0DEDA770E2
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Apr 2025 03:57:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1744948656; cv=none; b=r9/yeJaCacKA5aeB4sPLLu6YKVhX7DewuotWkYYwxQo8OspJMl4jSgPrOYYUBIytYYNgyNafZSaNUXd7lEBf+5SgVmK9rEHxNhVYLbtZqaX0DUNJW9nrsI6Ln7spDQDaBYzVTdJYeCekGsEP1lvPus0JQhERcKfgWIA0BKtmdU4=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1744948656; c=relaxed/simple;
+	bh=+9GDEtuNbwbJbnUKLAmXPzRWDd8iSiYycEpFFqo1kH8=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=JxySWfuZoWqurqzN1XesyHvn2/1abPhpEy2nLWE6xMPFgFE+8vTsKP+oMM8FjV5Tp0xcmBEGq9gE8idRozo/abDQEoraeDhO0BDWzgTdkI4rF8mfxHA4C+uCIJRj/IFM0ODAkBkUi52KkcuAmTdT6XuH4JNM9bH3z7wXd4eZTZA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+Received: from macsyma.thunk.org ([204.26.30.8])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 53I3v7ng002639
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 17 Apr 2025 23:57:08 -0400
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 35878340A4B; Thu, 17 Apr 2025 22:56:23 -0500 (CDT)
+Date: Thu, 17 Apr 2025 22:56:23 -0500
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Luis Chamberlain <mcgrof@kernel.org>
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        kdevops@lists.linux.dev, dave@stgolabs.net, jack@suse.cz
+Subject: Re: ext4 v6.15-rc2 baseline
+Message-ID: <20250418035623.GC6008@mit.edu>
+References: <Z__vQcCF9xovbwtT@bombadil.infradead.org>
+ <20250416233415.GA3779528@mit.edu>
+ <20250417164907.GA6008@mit.edu>
+ <aAFmDjDtZBzxiN66@bombadil.infradead.org>
+ <aAGuAYGZfpUSabSf@bombadil.infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <aAGuAYGZfpUSabSf@bombadil.infradead.org>
 
-This is a path that allows for blocking as it does IO. Convert
-to the new nonatomic flavor to benefit from potential performance
-benefits and adapt in the future vs migration such that semantics
-are kept.
+On Thu, Apr 17, 2025 at 06:42:25PM -0700, Luis Chamberlain wrote:
+> 
+> ext4_defaults: 793 tests, 2 failures, 259 skipped, 10521 seconds
+>   Failures: generic/223 generic/741
 
-Suggested-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Davidlohr Bueso <dave@stgolabs.net>
----
- fs/ocfs2/journal.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+generic/223 is excluded in my tests.  From [1]:
 
-diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
-index f1b4b3e611cb..c7a9729dc9d0 100644
---- a/fs/ocfs2/journal.c
-+++ b/fs/ocfs2/journal.c
-@@ -1249,7 +1249,7 @@ static int ocfs2_force_read_journal(struct inode *inode)
- 		}
- 
- 		for (i = 0; i < p_blocks; i++, p_blkno++) {
--			bh = __find_get_block(osb->sb->s_bdev, p_blkno,
-+			bh = __find_get_block_nonatomic(osb->sb->s_bdev, p_blkno,
- 					osb->sb->s_blocksize);
- 			/* block not cached. */
- 			if (!bh)
--- 
-2.39.5
+// generic/223 tests file alignment, which works on ext4 only by
+// accident because we're not RAID stripe aware yet, and works at all
+// because we have bias towards aligning on power-of-two block numbers.
+// It is a flaky test for some configurations, so skip it.
+generic/223
 
+[1] https://github.com/tytso/xfstests-bld/blob/master/test-appliance/files/root/fs/ext4/exclude
+
+generic/741 looks like some kind of device-mapper setup problem.  From
+741.out.bad:
+
+device-mapper: remove ioctl on flakey-test  failed: No such device or address
+Command failed.
+
+There's nothing interesting in generic/741, but all I can tell you is,
+"it works for me"(tm).
+
+Ran: generic/741
+Passed all 1 tests
+
+
+> ext4_bigalloc16k_4k: 793 tests, 26 failures, 341 skipped, 8856 seconds
+>   Failures: ext4/033 generic/075 generic/082 generic/091 generic/112
+>     generic/127 generic/219 generic/223 generic/230 generic/231
+>     generic/232 generic/233 generic/234 generic/235 generic/263
+>     generic/280 generic/381 generic/382 generic/566 generic/587
+>     generic/600 generic/601 generic/681 generic/682 generic/691
+>     generic/741
+
+Hmm, some of these are because there ar a bunch of tests that don't
+work well the allocation cluster size != the file system block size.
+See [2] for the tests that I exclude.  These are fundamentally test
+bugs that just don't work for bigalloc's clustered allocation.
+
+[2] https://github.com/tytso/xfstests-bld/blob/master/test-appliance/files/root/fs/ext4/cfg/bigalloc_4k.exclude
+
+As far as the rest of the bigalloc failures, some of them is hard to
+tell because you're not saving all of the test artifacts.  In
+particular, the tests which run fsx create ${seq}.*.fsx{good,bad,log}
+files.  My test appliance saves them, because they are super helpful
+when debugging a test failure.  kdevops apparently doesn't.
+
+What I do is save the entire results directory, although by default I
+truncate any test artifacts from passing tests to 31k (this amount is
+configurable via a command line option to gce-xfstests).  This is
+important because some of artifact files are super verbose, and if you
+save them all, the time to run xz on the tar file takes forever.  But
+if the tests fail, they are *super* useful.
+
+For the other bigalloc failures, I have a suspicion --- how big is the
+TEST and SCRATCH devices that you are using?  By default, most of my
+test scenarios use a "small" config which is 5G.  But for the bigalloc
+tests, for the 4k block / 64k cluster size, the deviec needs to be at
+least 20G or some of the tests will fail with ENOSPC.
+
+Cheers,
+
+						- Ted
