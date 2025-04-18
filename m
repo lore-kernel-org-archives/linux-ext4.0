@@ -1,81 +1,81 @@
-Received: from black.elm.relay.mailchannels.net (black.elm.relay.mailchannels.net [23.83.212.19])
+Received: from siberian.tulip.relay.mailchannels.net (siberian.tulip.relay.mailchannels.net [23.83.218.246])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A958F267383;
-	Fri, 18 Apr 2025 02:08:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=23.83.212.19
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D5D63266F1B;
+	Fri, 18 Apr 2025 02:08:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=23.83.218.246
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1744942099; cv=pass; b=RCF1s6Jf4GJvxo+o9rtEv+hjaHQRSDtX2ykjnG9jAEn5f13Lhh01+icRFTr55EIbjRZCi2F0l+AYoGfu7kfhFElECVieiaxTNPfhJ30LtrO/z/7WaTLSriF+rbkLma/tA9CI4BeYYo+eSFZCIWJC2DNl6AAlrld7IZPUJLE72ow=
+	t=1744942100; cv=pass; b=XNhPgVBZNN9NEhV41FVl3IdUqqOww5iSwOBd3REC+X0Q6YKHkIVxwq1/VFVMWCOIwZhzAwcKFns/rYakoyWRU781XsoGng9pvxCeBcn7/G+rmRJL+UJIruYJ521wgYi0e5V87Tq9I5nQ3Jagoz5bxXvjC5YU/dU6pw6wz5PdQHM=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1744942099; c=relaxed/simple;
-	bh=qFVUR1E/2/5PQt69+ghAsaDqdOPGz0m4+DMcpcnOe4w=;
+	s=arc-20240116; t=1744942100; c=relaxed/simple;
+	bh=vcz9OUUPWUbPr1TN5zTl4x+JXmo0eA8S4HDdoyUGBPs=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=VvR85Gego7mTDQpN6CopOCA2W+JCUqv6zUrFeeZI8au8duIpJy/PNexzTzGgSiIz7SWOmEFwfdN6Ogr6ShBGumJT+OKrxyQggAv7tCQolINgfx2qX0TKSgVIBpTaCCtC4FRCb4NYhTR8NKl2/ObYBs7ALVAgpKTzM12WkzNPjW4=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=stgolabs.net; spf=pass smtp.mailfrom=stgolabs.net; dkim=pass (2048-bit key) header.d=stgolabs.net header.i=@stgolabs.net header.b=p1xyuGdf; arc=pass smtp.client-ip=23.83.212.19
+	 MIME-Version; b=W8ynSVMQLScW9PmhxDhB+qvoGCNk8TKhhKKi/ExQo+7Jk6KeyvHj/YAGb4XEn6omMg/+6zv38TEXsvLtNPv3vapJg0k0ptRMKNiXe7gU5Mu1aSwzxtEM4Zdmee9NNwmeBMHRUxZKwc2pBvXBoD+3i6K4t/8PNYhLAS5Df4WQYak=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=stgolabs.net; spf=pass smtp.mailfrom=stgolabs.net; dkim=pass (2048-bit key) header.d=stgolabs.net header.i=@stgolabs.net header.b=ojM1hAs4; arc=pass smtp.client-ip=23.83.218.246
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=stgolabs.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=stgolabs.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=stgolabs.net header.i=@stgolabs.net header.b="p1xyuGdf"
+	dkim=pass (2048-bit key) header.d=stgolabs.net header.i=@stgolabs.net header.b="ojM1hAs4"
 X-Sender-Id: dreamhost|x-authsender|dave@stgolabs.net
 Received: from relay.mailchannels.net (localhost [127.0.0.1])
-	by relay.mailchannels.net (Postfix) with ESMTP id DA7C04E3E21;
-	Fri, 18 Apr 2025 01:59:34 +0000 (UTC)
-Received: from pdx1-sub0-mail-a285.dreamhost.com (100-107-95-229.trex-nlb.outbound.svc.cluster.local [100.107.95.229])
+	by relay.mailchannels.net (Postfix) with ESMTP id 2AA9643A62;
+	Fri, 18 Apr 2025 01:59:40 +0000 (UTC)
+Received: from pdx1-sub0-mail-a285.dreamhost.com (100-109-225-168.trex-nlb.outbound.svc.cluster.local [100.109.225.168])
 	(Authenticated sender: dreamhost)
-	by relay.mailchannels.net (Postfix) with ESMTPA id 76E904E3C8C;
-	Fri, 18 Apr 2025 01:59:34 +0000 (UTC)
-ARC-Seal: i=1; s=arc-2022; d=mailchannels.net; t=1744941574; a=rsa-sha256;
+	by relay.mailchannels.net (Postfix) with ESMTPA id B7F6343E8E;
+	Fri, 18 Apr 2025 01:59:39 +0000 (UTC)
+ARC-Seal: i=1; s=arc-2022; d=mailchannels.net; t=1744941579; a=rsa-sha256;
 	cv=none;
-	b=nTINgWWCpNRS6h4rQ+hDdWix5ieHLh2YvkU/HGmrRHhrLXnmmFZYLGoAKqREEQLf6NlqEo
-	IzGtcgb2AnszYccBiRaabLwBIwo7+lMSPD3JJ5wICmwx/PiSzTOuJ+5o4y51QKPJuAJpkX
-	KKIZXiOJwxomBWoCnIbE9vXkCbEElRWRtxp9iAhedw/AtxYHXrFD3P8ChDcfUVXY/gZU06
-	kQj0eWMmb2Ziic72MAVTxz1tOeT6r4jhxkFEa/LNf11beexjbvymPWznMDidxHEb3vcAlm
-	AQKslS6e9CGQIS2daqtl5icWh5OFYhmfhYgRXpoflG0yiZTpA/Vi35hA7hrMBw==
+	b=ns7YySgcYYnM8Kj9r8WBG/+jq+NUBrxn19NPA+MoKeR+9VM4j49HT5uLUSQpThCedSk4DM
+	bJ1z/Q2crqPYVt3ONDhMiwMkfqj1En5xCZgJ0fq//gTIzD1zvqZwJF42tKxqVtYeJb64Pl
+	ZAMpNm0nMP2zMu14RkMZOXB0c94c5H4OF9q6Ke1mxnk5OpnkmCPLI1mCORUUbLmNIrSQnm
+	1vU6zysbz7Q0YDi2kcecw5aeRjl/adN73hWeMk0mVhOtR05b519waAaJiKuMzt/facjYYp
+	87IkdL/XtwQ4U5htLUD1LZGaCQGw2XbwBib+BnwbnKYEMgjKce3C4x6A4hG3cw==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed;
  d=mailchannels.net;
-	s=arc-2022; t=1744941574;
+	s=arc-2022; t=1744941579;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references:dkim-signature;
-	bh=l0OkMrrCNfiNSUNqllJ63trdw8uvDJBD9sB7Chep1qQ=;
-	b=4D5orQYmCxpExXLwDca3eoowuwJ5J7hePJCnS6NJ7850Xdly79QCPLRnrjnpcQo8i+RAFw
-	OoMYQQUncr+AJoKJvYGbQmClNFpFF4ZRwe3qJ1GEzg7HWtFu2x133WRCWQwsgTLQ9hECGy
-	3XyoweS1nFZbrx4O1vtDjBOfalspQ/FkZ6GuFv35y22WCHvmEN9m9JlQL/uX7FndLspiRO
-	XjjYrgIZF9n9eq3iP3bPXe8Z1LJil829bqpCxwTrHD1vRBcibyx2Bc/PkHOH1twekBw3NF
-	/6K0m97KKSmHZvSxArWSieBCHyoG2CsQlb7SaYIpJluIPoPCxSItWlFZ4meL+w==
+	bh=mLuy4zj438a+1U7en1XTc2so8/rQx/UkGlXZZ4fu/o0=;
+	b=5dFXA76JGdkkLY43IAR7iR52xYZ9W/2hOmYt6L4Znss36zGhTQnn8roHAA2YKmwE6DMf89
+	Fj8ocyUz+gMZGUoOUW+tw97h1V7yLjx4UM2ce3O1vXUMCrCnpYVqWbiCnGRS6Yd2x+YCBZ
+	ZdBtXGv5HXEFyt/cSAR4n9WqdeAn6KdgGhCBHU7xnsbocDHPx4LjaFT+niQMvYwwALm2HK
+	7uTi/ZQMunH0saXX/Qzw7D+WNLHbB/aAxM/I4epcQFXiGSDC1zVRvO77Wc0+S7VfVkOcSM
+	vVjJalJevndsJakSsjU7SDGUA091uVTahWPboMYWGO+bqVoOTpP2gmloNVCNNQ==
 ARC-Authentication-Results: i=1;
-	rspamd-7bd9ff6c58-mj7hx;
+	rspamd-7bd9ff6c58-xxcc2;
 	auth=pass smtp.auth=dreamhost smtp.mailfrom=dave@stgolabs.net
 X-Sender-Id: dreamhost|x-authsender|dave@stgolabs.net
 X-MC-Relay: Neutral
 X-MailChannels-SenderId: dreamhost|x-authsender|dave@stgolabs.net
 X-MailChannels-Auth-Id: dreamhost
-X-Broad-White: 7d820e6c16f23b4a_1744941574795_2082964327
-X-MC-Loop-Signature: 1744941574795:136927829
-X-MC-Ingress-Time: 1744941574795
+X-Arithmetic-Illustrious: 0fad6dd04f8ec142_1744941580073_3053416635
+X-MC-Loop-Signature: 1744941580073:4085039856
+X-MC-Ingress-Time: 1744941580073
 Received: from pdx1-sub0-mail-a285.dreamhost.com (pop.dreamhost.com
  [64.90.62.162])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384)
-	by 100.107.95.229 (trex/7.0.3);
-	Fri, 18 Apr 2025 01:59:34 +0000
+	by 100.109.225.168 (trex/7.0.3);
+	Fri, 18 Apr 2025 01:59:40 +0000
 Received: from localhost.localdomain (ip72-199-50-187.sd.sd.cox.net [72.199.50.187])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
 	(Authenticated sender: dave@stgolabs.net)
-	by pdx1-sub0-mail-a285.dreamhost.com (Postfix) with ESMTPSA id 4Zdycj3m31zC4;
-	Thu, 17 Apr 2025 18:59:33 -0700 (PDT)
+	by pdx1-sub0-mail-a285.dreamhost.com (Postfix) with ESMTPSA id 4Zdycp5xX7z88;
+	Thu, 17 Apr 2025 18:59:38 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=stgolabs.net;
-	s=dreamhost; t=1744941574;
-	bh=l0OkMrrCNfiNSUNqllJ63trdw8uvDJBD9sB7Chep1qQ=;
+	s=dreamhost; t=1744941579;
+	bh=mLuy4zj438a+1U7en1XTc2so8/rQx/UkGlXZZ4fu/o0=;
 	h=From:To:Cc:Subject:Date:Content-Transfer-Encoding;
-	b=p1xyuGdfjY+kIZiUDVQxbDoSeumqeD6CRGZS5xt8zFdXGLyWeymMlwNP2bcj49nSW
-	 SRsKRijsknB7yuhD91VoidYVvK5Pd4U3BBlR6uxo1nLW76h+jtKoK2j9kJsZlRIqXU
-	 QnjWjkTfEWWLLTIQyz9nMXvH6bDSgkKDTT85dGUeAb9SPZ3D49XBTWYQnuSWyCwr1N
-	 oaUKT6pKiNEliKnxRCD2Mdc7nnhNcM/aA3L8ETWJpgAnN3cbSfNddVgxTMqPbNdOpz
-	 Glib8yBke2/A1WzVVrmTlaUBvp7vEgQ5gCvGpoIy9wfqFonA3uxgDH0RfC2B1ETaKE
-	 q96Ib+xiJLoHw==
+	b=ojM1hAs4QuyGMN5IMykmxoNDnE/XSho9YWg2f3+vjt9onDipMWmdlnrV9vBWEe+9D
+	 Y4rzbAtGkyIvbHF1mBxxYraGhEG88LxouC7TxUjznQySZEbzHQpgLPWYol2FiQt6Ue
+	 MOr7emUEtui7A/0wQEgdKQMsciO+SK6i0V4FWcXVGSXBIlKqC24NNmp7j34BnFPlFg
+	 egX7k1DS97Bm+aA/D6ErzxSfg68rfpkHnY1IMMCiCRfURy726xm+HxldOadS4JfMB2
+	 SwYG5xviqBpseVjKf0jrHIuY5BVKwAXfzk3nEKlrt4j4hVSDXRYMw0H4OcIS8TeRRc
+	 BMjzIsk3itaNQ==
 From: Davidlohr Bueso <dave@stgolabs.net>
 To: jack@suse.cz,
 	tytso@mit.edu,
@@ -88,10 +88,12 @@ Cc: mcgrof@kernel.org,
 	linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org,
 	linux-mm@kvack.org,
-	Davidlohr Bueso <dave@stgolabs.net>
-Subject: [PATCH 1/7] fs/buffer: split locking for pagecache lookups
-Date: Thu, 17 Apr 2025 18:59:15 -0700
-Message-Id: <20250418015921.132400-2-dave@stgolabs.net>
+	Davidlohr Bueso <dave@stgolabs.net>,
+	kernel test robot <oliver.sang@intel.com>,
+	syzbot+f3c6fda1297c748a7076@syzkaller.appspotmail.com
+Subject: [PATCH 7/7] mm/migrate: fix sleep in atomic for large folios and buffer heads
+Date: Thu, 17 Apr 2025 18:59:21 -0700
+Message-Id: <20250418015921.132400-8-dave@stgolabs.net>
 X-Mailer: git-send-email 2.39.5
 In-Reply-To: <20250418015921.132400-1-dave@stgolabs.net>
 References: <20250418015921.132400-1-dave@stgolabs.net>
@@ -103,112 +105,133 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Callers of __find_get_block() may or may not allow for blocking
-semantics, and is currently assumed that it will not. Layout
-two paths based on this. The the private_lock scheme will
-continued to be used for atomic contexts. Otherwise take the
-folio lock instead, which protects the buffers, such as
-vs migration and try_to_free_buffers().
+The large folio + buffer head noref migration scenarios are
+being naughty and blocking while holding a spinlock.
 
-Per the "hack idea", the latter can alleviate contention on
-the private_lock for bdev mappings. For reasons of determinism
-and avoid making bugs hard to reproduce, the trylocking is not
-attempted.
+As a consequence of the pagecache lookup path taking the
+folio lock this serializes against migration paths, so
+they can wait for each other. For the private_lock
+atomic case, a new BH_Migrate flag is introduced which
+enables the lookup to bail.
 
-No change in semantics. All lookup users still take the spinlock.
+This allows the critical region of the private_lock on
+the migration path to be reduced to the way it was before
+ebdf4de5642fb6 ("mm: migrate: fix reference  check race
+between __find_get_block() and migration"), that is covering
+the count checks.
 
+The scope is always noref migration.
+
+Reported-by: kernel test robot <oliver.sang@intel.com>
+Reported-by: syzbot+f3c6fda1297c748a7076@syzkaller.appspotmail.com
+Closes: https://lore.kernel.org/oe-lkp/202503101536.27099c77-lkp@intel.com
+Fixes: 3c20917120ce61 ("block/bdev: enable large folio support for large logical block sizes")
 Reviewed-by: Jan Kara <jack@suse.cz>
+Co-developed-by: Luis Chamberlain <mcgrof@kernel.org>
 Signed-off-by: Davidlohr Bueso <dave@stgolabs.net>
 ---
- fs/buffer.c | 41 +++++++++++++++++++++++++----------------
- 1 file changed, 25 insertions(+), 16 deletions(-)
+ fs/buffer.c                 | 12 +++++++++++-
+ fs/ext4/ialloc.c            |  3 ++-
+ include/linux/buffer_head.h |  1 +
+ mm/migrate.c                |  8 +++++---
+ 4 files changed, 19 insertions(+), 5 deletions(-)
 
 diff --git a/fs/buffer.c b/fs/buffer.c
-index c7abb4a029dc..f8fcffdbe5d9 100644
+index f8c9e5eb4685..7be23ff20b27 100644
 --- a/fs/buffer.c
 +++ b/fs/buffer.c
-@@ -176,18 +176,8 @@ void end_buffer_write_sync(struct buffer_head *bh, int uptodate)
- }
- EXPORT_SYMBOL(end_buffer_write_sync);
- 
--/*
-- * Various filesystems appear to want __find_get_block to be non-blocking.
-- * But it's the page lock which protects the buffers.  To get around this,
-- * we get exclusion from try_to_free_buffers with the blockdev mapping's
-- * i_private_lock.
-- *
-- * Hack idea: for the blockdev mapping, i_private_lock contention
-- * may be quite high.  This code could TryLock the page, and if that
-- * succeeds, there is no need to take i_private_lock.
-- */
- static struct buffer_head *
--__find_get_block_slow(struct block_device *bdev, sector_t block)
-+__find_get_block_slow(struct block_device *bdev, sector_t block, bool atomic)
- {
- 	struct address_space *bd_mapping = bdev->bd_mapping;
- 	const int blkbits = bd_mapping->host->i_blkbits;
-@@ -204,7 +194,16 @@ __find_get_block_slow(struct block_device *bdev, sector_t block)
- 	if (IS_ERR(folio))
- 		goto out;
- 
--	spin_lock(&bd_mapping->i_private_lock);
-+	/*
-+	 * Folio lock protects the buffers. Callers that cannot block
-+	 * will fallback to serializing vs try_to_free_buffers() via
-+	 * the i_private_lock.
-+	 */
-+	if (atomic)
-+		spin_lock(&bd_mapping->i_private_lock);
-+	else
-+		folio_lock(folio);
-+
+@@ -207,6 +207,15 @@ __find_get_block_slow(struct block_device *bdev, sector_t block, bool atomic)
  	head = folio_buffers(folio);
  	if (!head)
  		goto out_unlock;
-@@ -236,7 +235,10 @@ __find_get_block_slow(struct block_device *bdev, sector_t block)
- 		       1 << blkbits);
- 	}
- out_unlock:
--	spin_unlock(&bd_mapping->i_private_lock);
-+	if (atomic)
-+		spin_unlock(&bd_mapping->i_private_lock);
-+	else
-+		folio_unlock(folio);
- 	folio_put(folio);
- out:
- 	return ret;
-@@ -1388,14 +1390,15 @@ lookup_bh_lru(struct block_device *bdev, sector_t block, unsigned size)
-  * it in the LRU and mark it as accessed.  If it is not present then return
-  * NULL
-  */
--struct buffer_head *
--__find_get_block(struct block_device *bdev, sector_t block, unsigned size)
-+static struct buffer_head *
-+find_get_block_common(struct block_device *bdev, sector_t block,
-+			unsigned size, bool atomic)
- {
- 	struct buffer_head *bh = lookup_bh_lru(bdev, block, size);
- 
- 	if (bh == NULL) {
- 		/* __find_get_block_slow will mark the page accessed */
--		bh = __find_get_block_slow(bdev, block);
-+		bh = __find_get_block_slow(bdev, block, atomic);
- 		if (bh)
- 			bh_lru_install(bh);
- 	} else
-@@ -1403,6 +1406,12 @@ __find_get_block(struct block_device *bdev, sector_t block, unsigned size)
- 
- 	return bh;
- }
++	/*
++	 * Upon a noref migration, the folio lock serializes here;
++	 * otherwise bail.
++	 */
++	if (test_bit_acquire(BH_Migrate, &head->b_state)) {
++		WARN_ON(!atomic);
++		goto out_unlock;
++	}
 +
-+struct buffer_head *
-+__find_get_block(struct block_device *bdev, sector_t block, unsigned size)
-+{
-+	return find_get_block_common(bdev, block, size, true);
-+}
- EXPORT_SYMBOL(__find_get_block);
+ 	bh = head;
+ 	do {
+ 		if (!buffer_mapped(bh))
+@@ -1390,7 +1399,8 @@ lookup_bh_lru(struct block_device *bdev, sector_t block, unsigned size)
+ /*
+  * Perform a pagecache lookup for the matching buffer.  If it's there, refresh
+  * it in the LRU and mark it as accessed.  If it is not present then return
+- * NULL
++ * NULL. Atomic context callers may also return NULL if the buffer is being
++ * migrated; similarly the page is not marked accessed either.
+  */
+ static struct buffer_head *
+ find_get_block_common(struct block_device *bdev, sector_t block,
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 38bc8d74f4cc..e7ecc7c8a729 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -691,7 +691,8 @@ static int recently_deleted(struct super_block *sb, ext4_group_t group, int ino)
+ 	if (!bh || !buffer_uptodate(bh))
+ 		/*
+ 		 * If the block is not in the buffer cache, then it
+-		 * must have been written out.
++		 * must have been written out, or, most unlikely, is
++		 * being migrated - false failure should be OK here.
+ 		 */
+ 		goto out;
  
- /**
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index c791aa9a08da..0029ff880e27 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -34,6 +34,7 @@ enum bh_state_bits {
+ 	BH_Meta,	/* Buffer contains metadata */
+ 	BH_Prio,	/* Buffer should be submitted with REQ_PRIO */
+ 	BH_Defer_Completion, /* Defer AIO completion to workqueue */
++	BH_Migrate,     /* Buffer is being migrated (norefs) */
+ 
+ 	BH_PrivateStart,/* not a state bit, but the first bit available
+ 			 * for private allocation by other entities
+diff --git a/mm/migrate.c b/mm/migrate.c
+index f3ee6d8d5e2e..676d9cfc7059 100644
+--- a/mm/migrate.c
++++ b/mm/migrate.c
+@@ -845,9 +845,11 @@ static int __buffer_migrate_folio(struct address_space *mapping,
+ 		return -EAGAIN;
+ 
+ 	if (check_refs) {
+-		bool busy;
++		bool busy, migrating;
+ 		bool invalidated = false;
+ 
++		migrating = test_and_set_bit_lock(BH_Migrate, &head->b_state);
++		VM_WARN_ON_ONCE(migrating);
+ recheck_buffers:
+ 		busy = false;
+ 		spin_lock(&mapping->i_private_lock);
+@@ -859,12 +861,12 @@ static int __buffer_migrate_folio(struct address_space *mapping,
+ 			}
+ 			bh = bh->b_this_page;
+ 		} while (bh != head);
++		spin_unlock(&mapping->i_private_lock);
+ 		if (busy) {
+ 			if (invalidated) {
+ 				rc = -EAGAIN;
+ 				goto unlock_buffers;
+ 			}
+-			spin_unlock(&mapping->i_private_lock);
+ 			invalidate_bh_lrus();
+ 			invalidated = true;
+ 			goto recheck_buffers;
+@@ -883,7 +885,7 @@ static int __buffer_migrate_folio(struct address_space *mapping,
+ 
+ unlock_buffers:
+ 	if (check_refs)
+-		spin_unlock(&mapping->i_private_lock);
++		clear_bit_unlock(BH_Migrate, &head->b_state);
+ 	bh = head;
+ 	do {
+ 		unlock_buffer(bh);
 -- 
 2.39.5
 
