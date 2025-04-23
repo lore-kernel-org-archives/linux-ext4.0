@@ -1,27 +1,28 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0C0F721FF47;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 499F61F4CA6;
 	Wed, 23 Apr 2025 09:03:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1745399012; cv=none; b=NMbGmMVvTBZr0t5/QpGWKCe88bOSyNbesfN7BBLs2M7F4AmRleVKjpYW56m+WDNcJbnC8QNxl4pw318m+QWvGuWAnD0pZY8Ex43J4QpzMEX6LjLjLzV+tDRemJc3E2Oa2MY7BBp4RmgskioK6xlRgfkcGU4JJArrYZjD36uM9HM=
+	t=1745399013; cv=none; b=P7lUellyC8nOB8ivVpY/RRAgruRztD8cScACe8Pgefkt4KARqvSrQlaibx4s0RVx9/FV6kI4BkDn9xgX8/VOX9iNQetRQJleOxX03h4YGEOyv34rErgFVxy/tXZOLBIK7awmi2ZqNzKEXF7LjKBjARGo4TKCuYeNTJoJwtgUXAU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1745399012; c=relaxed/simple;
-	bh=iZgg129lpik5ZGSuOYF9PgB8mFRZDSWkTauXVN//Kvo=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=npgXu52kko+rMRmX3+0Y5lzeH2gVYA4BjKILvnE++GaC8zPAS1NdHyi3xXVaeB9XEOzrdk5J+wHH7VRvJ8il4GiwuCp8jrclTCLoh2FaueWZR3khAcILjxKDo3/TrC5suZtW3KeFEA2gFuj/0RRFZ8RTaRYFFEASadqdZIZoJqI=
+	s=arc-20240116; t=1745399013; c=relaxed/simple;
+	bh=hPm3Ac9/0NCJEAox9EIoQJjvvlaLeqJlLO/BQF9wUS0=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=K4X1GofWLTL8WMW9uslzA1iEcp0ompa9diP8iF36jX1J/OMDAzr2LyrQhz+fFHL0uQp+PmpkLsDndQ+/uOULuXjeQ4lxkDcL2PVNG4YS3UwHwHK1QV6V+8CrTwXlwvkcd4MBYMf11bQhSU3GY99VTmDvvM3QW4kEmYet9PPbkIY=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4ZjCmt6kNVz4f3lVM;
-	Wed, 23 Apr 2025 17:02:54 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4ZjCmv6Dsvz4f3kvp;
+	Wed, 23 Apr 2025 17:02:55 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 688651A1479;
-	Wed, 23 Apr 2025 17:03:20 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 596AB1A1C6F;
+	Wed, 23 Apr 2025 17:03:21 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.112.188])
-	by APP3 (Coremail) with SMTP id _Ch0CgAXacPQrAhoJkGrKA--.8976S4;
-	Wed, 23 Apr 2025 17:03:18 +0800 (CST)
+	by APP3 (Coremail) with SMTP id _Ch0CgAXacPQrAhoJkGrKA--.8976S6;
+	Wed, 23 Apr 2025 17:03:21 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -34,10 +35,12 @@ Cc: linux-fsdevel@vger.kernel.org,
 	libaokun1@huawei.com,
 	yukuai3@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH 0/9] ext4: fix stale extent status entries and clairfy rules
-Date: Wed, 23 Apr 2025 16:52:48 +0800
-Message-ID: <20250423085257.122685-1-yi.zhang@huaweicloud.com>
+Subject: [PATCH 2/9] ext4: generalize EXT4_GET_BLOCKS_IO_SUBMIT flag usage
+Date: Wed, 23 Apr 2025 16:52:50 +0800
+Message-ID: <20250423085257.122685-3-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
+In-Reply-To: <20250423085257.122685-1-yi.zhang@huaweicloud.com>
+References: <20250423085257.122685-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -45,72 +48,94 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgAXacPQrAhoJkGrKA--.8976S4
-X-Coremail-Antispam: 1UD129KBjvJXoW7Zw43CFyUKw13JFykGw47XFb_yoW8CrWfpF
-	sxGw4fWr18Xa4aya9xAw4UJFy5G3yxGa17CF9rJw17uF45uFyjqF48KF1FvFyrXrW8Xr1j
-	vF4Iyr17G3WjyFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUU9Y14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
-	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
-	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
-	2Ix0cI8IcVAFwI0_Jrv_JF1lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
-	W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2
-	Y2ka0xkIwI1lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x
-	0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2
-	zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF
-	4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWU
-	CwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCT
-	nIWIevJa73UjIFyTuYvjfUoWlkDUUUU
+X-CM-TRANSID:_Ch0CgAXacPQrAhoJkGrKA--.8976S6
+X-Coremail-Antispam: 1UD129KBjvJXoWxAr1rtrW5Kry7XryxXF18Zrb_yoW5AFW8pF
+	srZ3WIgr4qqay3uwn7CF4Yqry2gr1xK3WDurWYqw4Uuay5tr18tFs0qr1rWa4jgrW8Z390
+	vF1j9w1xt3s5CrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUm014x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
+	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
+	xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
+	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
+	kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
+	6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
+	vEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVj
+	vjDU0xZFpf9x0JUl9a9UUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-This patch series addresses the potential problems discussed with Jan
-Kara regarding the modification rules for mapping extents[1]. Preparing
-for the buffered I/O conversion for regular files.
+From: Zhang Yi <yi.zhang@huawei.com>
 
-This change includes:
+Currently, the EXT4_GET_BLOCKS_IO_SUBMIT flag is only used during data
+writeback to indicate that in ordered mode, the journal commit thread
+should skip re-submitting data and simply wait for I/O completion.
 
-Patch 1-5 fixes problems related to stale extent status entries that
-may arise during the collapsing of ranges, the insertion of ranges, or
-file truncation when these operations compete with concurrent writeback,
-fiemap, or get extent cache.
+To prepare for later patches that need to detect I/O submission context
+in ext4_map_blocks(), generalizes the meaning of
+EXT4_GET_BLOCKS_IO_SUBMIT. This flag will be set during:
+ 1) data I/O writeback,
+ 2) I/O completion extents conversion,
+ 3) journal performing commit in fast_commit.
 
-Patch 6-8 adds a helper function to verify whether the context for
-modifying extents is safe when EXT4_DEBUG is enabled. It primarily
-checks the inode's i_rwsem and the mapping's invalidate_lock.
+This change doesn't affect current usage of this flag and provides a
+clear way to identify I/O submission context.
 
-Patch 9 adds a comment to clarify the rules for loading, mapping,
-modifying, and removing extents.
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/ext4.h        | 13 ++++++++-----
+ fs/ext4/fast_commit.c |  3 ++-
+ 2 files changed, 10 insertions(+), 6 deletions(-)
 
-Please refer to the following patches for details.
-
-[1] https://lore.kernel.org/linux-ext4/20241211160047.qnxvodmbzngo3jtr@quack3/
-
-Thanks,
-Yi.
-
-Zhang Yi (9):
-  ext4: ext4: unify EXT4_EX_NOCACHE|NOFAIL flags in
-    ext4_ext_remove_space()
-  ext4: generalize EXT4_GET_BLOCKS_IO_SUBMIT flag usage
-  ext4: prevent stale extent cache entries caused by concurrent I/O
-    writeback
-  ext4: prevent stale extent cache entries caused by concurrent fiemap
-  ext4: prevent stale extent cache entries caused by concurrent get
-    es_cache
-  ext4: factor out is_special_ino()
-  ext4: introduce ext4_check_map_extents_env() debug helper
-  ext4: check env when mapping and modifying extents
-  ext4: clairfy the rules for modifying extents
-
- fs/ext4/ext4.h           | 26 ++++++++++++---
- fs/ext4/extents.c        | 54 ++++++++++++++++++++----------
- fs/ext4/extents_status.c | 35 ++++++++++++++++++--
- fs/ext4/fast_commit.c    |  4 ++-
- fs/ext4/inode.c          | 71 +++++++++++++++++++++++++++++++---------
- fs/ext4/ioctl.c          |  8 ++++-
- 6 files changed, 157 insertions(+), 41 deletions(-)
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 5a20e9cd7184..ad39bfe4b5d2 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -706,9 +706,6 @@ enum {
+ #define EXT4_GET_BLOCKS_CONVERT			0x0010
+ #define EXT4_GET_BLOCKS_IO_CREATE_EXT		(EXT4_GET_BLOCKS_PRE_IO|\
+ 					 EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT)
+-	/* Convert extent to initialized after IO complete */
+-#define EXT4_GET_BLOCKS_IO_CONVERT_EXT		(EXT4_GET_BLOCKS_CONVERT|\
+-					 EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT)
+ 	/* Eventual metadata allocation (due to growing extent tree)
+ 	 * should not fail, so try to use reserved blocks for that.*/
+ #define EXT4_GET_BLOCKS_METADATA_NOFAIL		0x0020
+@@ -720,9 +717,15 @@ enum {
+ #define EXT4_GET_BLOCKS_ZERO			0x0200
+ #define EXT4_GET_BLOCKS_CREATE_ZERO		(EXT4_GET_BLOCKS_CREATE |\
+ 					EXT4_GET_BLOCKS_ZERO)
+-	/* Caller will submit data before dropping transaction handle. This
+-	 * allows jbd2 to avoid submitting data before commit. */
++	/* Caller is in the context of data submission, such as writeback,
++	 * fsync, etc. Especially, in the generic writeback path, caller will
++	 * submit data before dropping transaction handle. This allows jbd2
++	 * to avoid submitting data before commit. */
+ #define EXT4_GET_BLOCKS_IO_SUBMIT		0x0400
++	/* Convert extent to initialized after IO complete */
++#define EXT4_GET_BLOCKS_IO_CONVERT_EXT		(EXT4_GET_BLOCKS_CONVERT |\
++					 EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT |\
++					 EXT4_GET_BLOCKS_IO_SUBMIT)
+ 	/* Caller is in the atomic contex, find extent if it has been cached */
+ #define EXT4_GET_BLOCKS_CACHED_NOWAIT		0x0800
+ 
+diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
+index da4263a14a20..11c42b39478b 100644
+--- a/fs/ext4/fast_commit.c
++++ b/fs/ext4/fast_commit.c
+@@ -910,7 +910,8 @@ static int ext4_fc_write_inode_data(struct inode *inode, u32 *crc)
+ 	while (cur_lblk_off <= new_blk_size) {
+ 		map.m_lblk = cur_lblk_off;
+ 		map.m_len = new_blk_size - cur_lblk_off + 1;
+-		ret = ext4_map_blocks(NULL, inode, &map, 0);
++		ret = ext4_map_blocks(NULL, inode, &map,
++				      EXT4_GET_BLOCKS_IO_SUBMIT);
+ 		if (ret < 0)
+ 			return -ECANCELED;
+ 
 -- 
 2.46.1
 
