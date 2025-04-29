@@ -1,193 +1,137 @@
-Received: from mail-pl1-f170.google.com (mail-pl1-f170.google.com [209.85.214.170])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DBB87289E2B
-	for <linux-ext4@vger.kernel.org>; Tue, 29 Apr 2025 23:51:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.170
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AF7BA2DDCEE;
+	Tue, 29 Apr 2025 23:52:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1745970687; cv=none; b=T3Io7gWPQTjGpOl6wJXAg5nc4EnynrC6YrvkDHkzWqlLhPXXHH3aDaNzIuyaioC6ryuA9WEWYrdTgxhL8tTrCBQXOuwlnrR4OyXVLvwVFqJNMJzin412o/QmuECwrcMXNSZNzg1ExgxL0DFjCwiGJGMvctfET47AbBz+wOCLbew=
+	t=1745970737; cv=none; b=a4t2p7p/YyNh7ujb2Uxv+nxoY5D3sazGwSDTXimOe57mGBnVUCLKCNOHDH2tRa7PWnR9ctZibVwcaJSwl3CCv9gEmaXa34SZEnTpc1oPQggx1i9OPoRusNzW2kWq4SHRy2iBHYSYMzHhNkxt4mEOR+TM/ToBNnjkoZTGACV2faM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1745970687; c=relaxed/simple;
-	bh=8neD6MWQfw+EyFFux2CEmOhjmwenh3NYJpAggAD9C10=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=jUSepWewJVZwJsSiBJzWzG2s0CrCyMcvW0AtgIpvkIEA04MqwtrFGYh3zy4p8OfaSOR/n7zKnYRKjbR9eDSTVgRfb86UY5ZHom+WA4aIKT4TTI7CFzYBAzTRr3i2UtUZDUx7SuuvuHoncmOJhtJk4hs9T2RHy4/ek2gP4k4EIu4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=fromorbit.com; spf=pass smtp.mailfrom=fromorbit.com; dkim=pass (2048-bit key) header.d=fromorbit-com.20230601.gappssmtp.com header.i=@fromorbit-com.20230601.gappssmtp.com header.b=jICrypSr; arc=none smtp.client-ip=209.85.214.170
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=fromorbit.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=fromorbit.com
+	s=arc-20240116; t=1745970737; c=relaxed/simple;
+	bh=hWNbhvRBcijb1nH7rU5gYmhKTyim5OmwVk1TauQ7sfY=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=uWcaU2FZZbEXEUxMnbdfymQ8WCJZYL5gVe5pCb9bI/B7Z72dfOG1ufQVILMFPFmr87sTA9a3W4CcaZevW4eibSboWzodx0O0fq48sjHawuqN7dqMdLgk7yb7GHdwkm+w2hJnlOjMeHVsYHgzDwUg2WYrD2gWfsyqlHJ4gDuFiK8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZrpHDn2N; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=fromorbit-com.20230601.gappssmtp.com header.i=@fromorbit-com.20230601.gappssmtp.com header.b="jICrypSr"
-Received: by mail-pl1-f170.google.com with SMTP id d9443c01a7336-227a8cdd241so91017725ad.3
-        for <linux-ext4@vger.kernel.org>; Tue, 29 Apr 2025 16:51:24 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=fromorbit-com.20230601.gappssmtp.com; s=20230601; t=1745970684; x=1746575484; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
-        bh=DQB7I1cCDGP31Ffgc304vw5DAP8c3CZYgZKW54rrDxM=;
-        b=jICrypSrSlUI0uNGsY4hr6lYY5WvpZ2GGe7xE8zmy2GsspQpY9N4wSUN/ITzWXx2+N
-         5/1w4PYJY4Hy5gWu0bETa7nE1o6lwOIKoAr7CMFMb14kOnFMW4eBPo/ya11a9NrvPnnG
-         h4pJpAtcIbsb2D1oiGiPDMmHZ6UTYWmHvlTKgtzsez1Tq1vVmFQwwkg8TlVNHm7XBANc
-         8zmLVffMra3OQbJwdHGkw+PHXOusK1RBJJISyc//7wBCqxI9GZR/CS2CvoqnMr4NBkKn
-         IVY4D0c+X/pcMxSytZWpT5mJ1iH4qPbmDcPsU7mdqEFE/zvobFsK0RXnJVa6qLm9xJp4
-         bItQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1745970684; x=1746575484;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=DQB7I1cCDGP31Ffgc304vw5DAP8c3CZYgZKW54rrDxM=;
-        b=enYu2pVPaTH5Zl+6FJ7OnydKzFrBd/dMZulA3Coq1jUn8CKt3YYqExCV/kq4hGoJNv
-         93dUBcyBso4reiw1gzm+YFVl2pCUkHAeWZBR9bsZ7YITxnStcClx3YGS/euedaHwla1q
-         CWlXX1/c4X54EANDn7Ro2QTsOqwgBTogPljBmNEXdXaun2MqtVc/+6GEeuX72eer2oA6
-         Em8czCkRjmmo8oT2Vd2JTfvdnT5kIGxt4a5voYM0DzrMYzZEn+pd3pcq3If7popFw5oj
-         sJk45JJPMiZ7AKmlz68/i0iC4eJQAkd4FJEYmpgb1KBAMOdABDhyxpxNC+d4cKXF3Nvp
-         Bbyg==
-X-Forwarded-Encrypted: i=1; AJvYcCV/Hb2olGH4sucqSMlJV2T5K4HwurAxxnJ/J8/seNw8rUbMlAv9HWlRMrOpmQlqdND4RpIa/ltr7N+O@vger.kernel.org
-X-Gm-Message-State: AOJu0YzGSnakHvdgIKx/JCzNW+6j2DBOu2sLIn+pwUbF6K+ZZlMczW/k
-	DRkQcMeWsK0RatvZsU9yJL0ank4PMUiqpiCHjcD30/bHwkKPJNxyljyX071y6ZE=
-X-Gm-Gg: ASbGncsdfZZnUuWMaMLP5HFXfVgcyjIBpp5vnPylpl8roKQgXTd0E+s0o9tXNs1QBLX
-	RC+zWdlIsfPYqA9rudi0KVQYLrJVegBZb96FBRRIiCgmThdltGZlB1NROE9Ex3os5jjCaMZ43xa
-	ESuW8Qis58x4+vMTGN1/F4Sh6ipOZbUijWLmrzusK3dALfGtGgpdQrJhmR3iowRNSUxnXGTHai4
-	mlY8ySF3w0lfpnJUwpFRVyMC0Vt8v1Wh2gAnVBH+LaZjVHYv+IqBs55pQKhVfZxDC9WyGJA6Fi1
-	Zd3n5F4AJXQZfSzxLbNd4WmS8TY6I4VYln9RzswvEwriphz4heJhlppd+Pk00X+n+l5opyJwb+L
-	DL4M=
-X-Google-Smtp-Source: AGHT+IGnw8oR5NQn26f2EFS9oWO/RFCD5rSfC11L3dAtCqKaPeKK28nVDtSMdG8CZUfJ9vzhi5Hg2w==
-X-Received: by 2002:a17:903:1c4:b0:21f:b483:2ad5 with SMTP id d9443c01a7336-22df350d4d0mr15944745ad.20.1745970684135;
-        Tue, 29 Apr 2025 16:51:24 -0700 (PDT)
-Received: from dread.disaster.area (pa49-181-60-96.pa.nsw.optusnet.com.au. [49.181.60.96])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-22db4d76ce1sm109571705ad.40.2025.04.29.16.51.23
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 29 Apr 2025 16:51:23 -0700 (PDT)
-Received: from dave by dread.disaster.area with local (Exim 4.98.2)
-	(envelope-from <david@fromorbit.com>)
-	id 1u9ujR-0000000F0V9-0vM9;
-	Wed, 30 Apr 2025 09:51:21 +1000
-Date: Wed, 30 Apr 2025 09:51:21 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: "Nirjhar Roy (IBM)" <nirjhar.roy.lists@gmail.com>
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-xfs@vger.kernel.org, ritesh.list@gmail.com,
-	ojaswin@linux.ibm.com, djwong@kernel.org, zlang@kernel.org
-Subject: Re: [PATCH v2 1/2] common: Move exit related functions to a
- common/exit
-Message-ID: <aBFl-eKBBwG-QxCm@dread.disaster.area>
-References: <cover.1745908976.git.nirjhar.roy.lists@gmail.com>
- <a2e20e1d74360a76fd2a1ef553cac6094897bff2.1745908976.git.nirjhar.roy.lists@gmail.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZrpHDn2N"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EAC2CC4CEEE;
+	Tue, 29 Apr 2025 23:52:14 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1745970736;
+	bh=hWNbhvRBcijb1nH7rU5gYmhKTyim5OmwVk1TauQ7sfY=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=ZrpHDn2Nu0RG5qS3ASVqFoUBcLNOfM6pMjdI3HS097Pjq9c9kIR1ho/LSDSaf42qc
+	 ivv5XMqywetZ3SP6X0NW8li5MFpg4aZHUQuPO/o9PiBvCqORXzondvawgftneG1lLh
+	 HTx+UnYefBJaVFHaXFf4t9Jgn0Icbe7XfJ9wB1rxJOx02F8v5j0taxgOEyRI1iTftn
+	 PSAc8594Hfp00zVupIbjG5BZNZO9l+w8ZuBB7HqfmaJlxujwYIjuSmxzXk3k1D+D1i
+	 x0cQ7xI0m63DewMVl1Ce71TXh7OvVoULhF18+xGzSrj2Iwv3EHctXIZCuf7xAqvXf6
+	 fFabtz4QbB15Q==
+From: Sasha Levin <sashal@kernel.org>
+To: linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org
+Cc: Davidlohr Bueso <dave@stgolabs.net>,
+	Jan Kara <jack@suse.cz>,
+	kdevops@lists.linux.dev,
+	Luis Chamberlain <mcgrof@kernel.org>,
+	Christian Brauner <brauner@kernel.org>,
+	Sasha Levin <sashal@kernel.org>,
+	tytso@mit.edu,
+	jack@suse.com,
+	linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 6.12 29/37] fs/jbd2: use sleeping version of __find_get_block()
+Date: Tue, 29 Apr 2025 19:51:14 -0400
+Message-Id: <20250429235122.537321-29-sashal@kernel.org>
+X-Mailer: git-send-email 2.39.5
+In-Reply-To: <20250429235122.537321-1-sashal@kernel.org>
+References: <20250429235122.537321-1-sashal@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <a2e20e1d74360a76fd2a1ef553cac6094897bff2.1745908976.git.nirjhar.roy.lists@gmail.com>
+X-stable: review
+X-Patchwork-Hint: Ignore
+X-stable-base: Linux 6.12.25
+Content-Transfer-Encoding: 8bit
 
-On Tue, Apr 29, 2025 at 06:52:53AM +0000, Nirjhar Roy (IBM) wrote:
-> Introduce a new file common/exit that will contain all the exit
-> related functions. This will remove the dependencies these functions
-> have on other non-related helper files and they can be indepedently
-> sourced. This was suggested by Dave Chinner[1].
-> 
-> [1] https://lore.kernel.org/linux-xfs/Z_UJ7XcpmtkPRhTr@dread.disaster.area/
-> Suggested-by: Dave Chinner <david@fromorbit.com>
-> Signed-off-by: Nirjhar Roy (IBM) <nirjhar.roy.lists@gmail.com>
-> ---
->  common/config   | 17 +----------------
->  common/exit     | 50 +++++++++++++++++++++++++++++++++++++++++++++++++
->  common/preamble |  1 +
->  common/punch    |  5 -----
->  common/rc       | 28 ---------------------------
->  5 files changed, 52 insertions(+), 49 deletions(-)
->  create mode 100644 common/exit
+From: Davidlohr Bueso <dave@stgolabs.net>
 
-Neither of my replys to v1 made it to the list [1], so I'll have to
-repeat what I said here.
+[ Upstream commit f76d4c28a46a9260d85e00dafc8f46d369365d33 ]
 
-I did point out that I had already sent this out here:
+Convert to the new nonatomic flavor to benefit from potential
+performance benefits and adapt in the future vs migration such
+that semantics are kept.
 
-https://lore.kernel.org/fstests/20250417031208.1852171-4-david@fromorbit.com/
+- jbd2_journal_revoke(): can sleep (has might_sleep() in the beginning)
 
-but now this version is mostly the same (except for things noted
-below) so I'm good with this.
+- jbd2_journal_cancel_revoke(): only used from do_get_write_access() and
+    do_get_create_access() which do sleep. So can sleep.
 
-> 
-> diff --git a/common/config b/common/config
-> index eada3971..6a60d144 100644
-> --- a/common/config
-> +++ b/common/config
-> @@ -38,7 +38,7 @@
->  # - this script shouldn't make any assertions about filesystem
->  #   validity or mountedness.
->  #
-> -
-> +. common/exit
->  . common/test_names
+- jbd2_clear_buffer_revoked_flags() - only called from journal commit code
+    which sleeps. So can sleep.
 
-This isn't needed. Include it in check and other high level scripts
-(which need to include this, anyway) before including common/config.
+Suggested-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Davidlohr Bueso <dave@stgolabs.net>
+Link: https://kdevops.org/ext4/v6.15-rc2.html # [0]
+Link: https://lore.kernel.org/all/aAAEvcrmREWa1SKF@bombadil.infradead.org/ # [1]
+Link: https://lore.kernel.org/20250418015921.132400-6-dave@stgolabs.net
+Tested-by: kdevops@lists.linux.dev
+Reviewed-by: Luis Chamberlain <mcgrof@kernel.org>
+Signed-off-by: Christian Brauner <brauner@kernel.org>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ fs/jbd2/revoke.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
 
-> diff --git a/common/exit b/common/exit
-> new file mode 100644
-> index 00000000..ad7e7498
-> --- /dev/null
-> +++ b/common/exit
-> @@ -0,0 +1,50 @@
-> +##/bin/bash
-> +
-> +# This functions sets the exit code to status and then exits. Don't use
-> +# exit directly, as it might not set the value of "$status" correctly, which is
-> +# used as an exit code in the trap handler routine set up by the check script.
-> +_exit()
-> +{
-> +	test -n "$1" && status="$1"
-> +	exit "$status"
-> +}
-> +
-> +_fatal()
-> +{
-> +    echo "$*"
-> +    _exit 1
-> +}
-> +
-> +_die()
-> +{
-> +        echo $@
-> +        _exit 1
-> +}
-
-This should be removed and replaced with _fatal
-
-> +die_now()
-> +{
-> +	_exit 1
-> +}
-
-And this should be removed as well. 
-
-i.e. These two functions are only used by common/punch, so change
-them to use _fatal and _exit rather than duplicating the wrappers.
-
-> diff --git a/common/preamble b/common/preamble
-> index ba029a34..9b6b4b26 100644
-> --- a/common/preamble
-> +++ b/common/preamble
-> @@ -33,6 +33,7 @@ _register_cleanup()
->  # explicitly as a member of the 'all' group.
->  _begin_fstest()
->  {
-> +	. common/exit
->  	if [ -n "$seq" ]; then
->  		echo "_begin_fstest can only be called once!"
->  		_exit 1
-
-Please leave a blank line between includes and unrelated code.
-
--Dave.
-
-[1] Thanks Google, for removing mail auth methods without any
-warning and not reporting permanent delivery failure on attempts
-to send mail an unsupported auth method.
-
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index ce63d5fde9c3a..f68fc8c255f00 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -345,7 +345,8 @@ int jbd2_journal_revoke(handle_t *handle, unsigned long long blocknr,
+ 	bh = bh_in;
+ 
+ 	if (!bh) {
+-		bh = __find_get_block(bdev, blocknr, journal->j_blocksize);
++		bh = __find_get_block_nonatomic(bdev, blocknr,
++						journal->j_blocksize);
+ 		if (bh)
+ 			BUFFER_TRACE(bh, "found on hash");
+ 	}
+@@ -355,7 +356,8 @@ int jbd2_journal_revoke(handle_t *handle, unsigned long long blocknr,
+ 
+ 		/* If there is a different buffer_head lying around in
+ 		 * memory anywhere... */
+-		bh2 = __find_get_block(bdev, blocknr, journal->j_blocksize);
++		bh2 = __find_get_block_nonatomic(bdev, blocknr,
++						 journal->j_blocksize);
+ 		if (bh2) {
+ 			/* ... and it has RevokeValid status... */
+ 			if (bh2 != bh && buffer_revokevalid(bh2))
+@@ -466,7 +468,8 @@ int jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
+ 	 * state machine will get very upset later on. */
+ 	if (need_cancel) {
+ 		struct buffer_head *bh2;
+-		bh2 = __find_get_block(bh->b_bdev, bh->b_blocknr, bh->b_size);
++		bh2 = __find_get_block_nonatomic(bh->b_bdev, bh->b_blocknr,
++						 bh->b_size);
+ 		if (bh2) {
+ 			if (bh2 != bh)
+ 				clear_buffer_revoked(bh2);
+@@ -495,9 +498,9 @@ void jbd2_clear_buffer_revoked_flags(journal_t *journal)
+ 			struct jbd2_revoke_record_s *record;
+ 			struct buffer_head *bh;
+ 			record = (struct jbd2_revoke_record_s *)list_entry;
+-			bh = __find_get_block(journal->j_fs_dev,
+-					      record->blocknr,
+-					      journal->j_blocksize);
++			bh = __find_get_block_nonatomic(journal->j_fs_dev,
++							record->blocknr,
++							journal->j_blocksize);
+ 			if (bh) {
+ 				clear_buffer_revoked(bh);
+ 				__brelse(bh);
 -- 
-Dave Chinner
-david@fromorbit.com
+2.39.5
+
