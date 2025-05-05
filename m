@@ -1,106 +1,103 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 79DCF2ECFDE;
-	Mon,  5 May 2025 23:08:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9344A28983B;
+	Mon,  5 May 2025 23:14:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1746486503; cv=none; b=tc2f20vsKT0ED9qxvuchhUbFWbe38Gsj4ohicAGVw+gO6xG4WkRwIvsG5QRyHl09c3Kyiw42Wc8xBP2ZVk6+0RtxHWVVJHKbcWfAhi6yCAY5M4rLNspWkFFD8rD+IhwQRHI4YEgPxfKTEOBqTTWdKGzebnKHyPojFfmI6w7lESA=
+	t=1746486867; cv=none; b=YvPUutW6kZAQcb81fotsSPVVw7NfPWYDzdY2gjJDjOCxCVJiZonqThJX23C1gX1vs6MlDG8BzfafPbqOiMP577EDQmrMi6FVLUd2uxq0LsCWc9Y7krOkUXCc2u543ab097Z09lv3jRBiWNSfr5nIr2zhh2Mt0X6pYESpDfzHuj0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1746486503; c=relaxed/simple;
-	bh=QaeO5+EedxfnKY00NP1qaHHaC2Fbe8mCW3AnLeOwdCs=;
+	s=arc-20240116; t=1746486867; c=relaxed/simple;
+	bh=BFGZvz3m0NrOmtEShPyDLDmAHNH1RMEpCvqr26JPKEM=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=KiA0dODXhbNrdECa9CEZ/Y01NWgddvEnY7aO3Osn46JCZXueq+YXryXiiBko/oQZNJox1fsbqSpzOdkDnieqnArtXfQkrh3gTQwgbNE5yAGaFceWH9iSRDMZsFW3Nvbb9SkrY2Y4y6H3E+2zXtW5/1SYMT+YPzQlk6DfKx1mbzU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=rIxMDgOY; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version:Content-Type; b=LugkWSnM9qgNt7TMiNIWPUfeiU72aGc3zjxC68jTuPsVyEaALb5rJiN/zns/0z7ceftogyeNXATAveX2OBcCy935mI1zloWoCUS1cSxbmoPLkmBkKV34PhmF/KsZHqbv170XMX5iE8A61SZ7weKoGiaTUOpV9QArhN3JFJu6jws=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=EN5Nd2Mt; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="rIxMDgOY"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5CFC2C4CEEF;
-	Mon,  5 May 2025 23:08:21 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="EN5Nd2Mt"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7EC30C4CEEF;
+	Mon,  5 May 2025 23:14:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1746486502;
-	bh=QaeO5+EedxfnKY00NP1qaHHaC2Fbe8mCW3AnLeOwdCs=;
+	s=k20201202; t=1746486866;
+	bh=BFGZvz3m0NrOmtEShPyDLDmAHNH1RMEpCvqr26JPKEM=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=rIxMDgOYDYaMWvBAp9rfPZt0s+UW2nM9mheb4PExKnR+6MIuvjxHosUqppA3H7R4W
-	 6KebVg7fuqUqk3ZTTS+0xNgaWx+TO25kmUUELnj7QGrIqSzQqY22SsaRoGVI85A6NU
-	 ILcmeXMDISDBo5G45UMH4A5APR6f/bFhDw2i4P/DpTR/BRNcNluu3A2k2/Ljj4v/2G
-	 kgzwWk2l7JiOv70NKHmhKrIYiss4a/sd1eoQsG5LmXMrZsns8UwEtFNQRsnUoKAtI5
-	 NvtMODtYdmuaaB6YZB2M3ZEOQPZByCQI6abCg5ezGqIaSrS4WnZ36A5TEFzxprYd5t
-	 8OB7nR17142pA==
+	b=EN5Nd2MtAeJkuJwauvQbnLn/xGSpef9t22WqLmj6aAHTGXtVwzcB/dDYAdpm4WceY
+	 NVfdSvrgK4+j9/AV0B6+6ByTFYJPVBFQ37xtsE//fh5fYwswF0JDaFfCKtYJiqX1s/
+	 E00uaG6L8295mv289KjsnxGdsYvJBDwe1/ggxJy0Sg46qWmswTjYEw69nPrn89H+iM
+	 bWoRuys8MP3FyAOG9vyycvdXWf7oZ1kcV2D2RY48kEeIOoFOnRKqdSZlijj3ZqtyU0
+	 vHWItSzSPgqfEL2DdhgZrKRAqh6EodzezmnRSovNereVd4fm18f91HJQ946A6It6ba
+	 svyPd8NqzG1EA==
 From: Sasha Levin <sashal@kernel.org>
 To: linux-kernel@vger.kernel.org,
 	stable@vger.kernel.org
-Cc: Baokun Li <libaokun1@huawei.com>,
-	Zhang Yi <yi.zhang@huawei.com>,
+Cc: =?UTF-8?q?Christian=20G=C3=B6ttsche?= <cgzones@googlemail.com>,
+	Serge Hallyn <serge@hallyn.com>,
 	Jan Kara <jack@suse.cz>,
 	Theodore Ts'o <tytso@mit.edu>,
 	Sasha Levin <sashal@kernel.org>,
 	adilger.kernel@dilger.ca,
 	linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 6.1 063/212] ext4: reject the 'data_err=abort' option in nojournal mode
-Date: Mon,  5 May 2025 19:03:55 -0400
-Message-Id: <20250505230624.2692522-63-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.15 033/153] ext4: reorder capability check last
+Date: Mon,  5 May 2025 19:11:20 -0400
+Message-Id: <20250505231320.2695319-33-sashal@kernel.org>
 X-Mailer: git-send-email 2.39.5
-In-Reply-To: <20250505230624.2692522-1-sashal@kernel.org>
-References: <20250505230624.2692522-1-sashal@kernel.org>
+In-Reply-To: <20250505231320.2695319-1-sashal@kernel.org>
+References: <20250505231320.2695319-1-sashal@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 X-stable: review
 X-Patchwork-Hint: Ignore
-X-stable-base: Linux 6.1.136
+X-stable-base: Linux 5.15.181
 Content-Transfer-Encoding: 8bit
 
-From: Baokun Li <libaokun1@huawei.com>
+From: Christian Göttsche <cgzones@googlemail.com>
 
-[ Upstream commit 26343ca0df715097065b02a6cddb4a029d5b9327 ]
+[ Upstream commit 1b419c889c0767a5b66d0a6c566cae491f1cb0f7 ]
 
-data_err=abort aborts the journal on I/O errors. However, this option is
-meaningless if journal is disabled, so it is rejected in nojournal mode
-to reduce unnecessary checks. Also, this option is ignored upon remount.
+capable() calls refer to enabled LSMs whether to permit or deny the
+request.  This is relevant in connection with SELinux, where a
+capability check results in a policy decision and by default a denial
+message on insufficient permission is issued.
+It can lead to three undesired cases:
+  1. A denial message is generated, even in case the operation was an
+     unprivileged one and thus the syscall succeeded, creating noise.
+  2. To avoid the noise from 1. the policy writer adds a rule to ignore
+     those denial messages, hiding future syscalls, where the task
+     performs an actual privileged operation, leading to hidden limited
+     functionality of that task.
+  3. To avoid the noise from 1. the policy writer adds a rule to permit
+     the task the requested capability, while it does not need it,
+     violating the principle of least privilege.
 
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+Signed-off-by: Christian Göttsche <cgzones@googlemail.com>
+Reviewed-by: Serge Hallyn <serge@hallyn.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
-Link: https://patch.msgid.link/20250122110533.4116662-4-libaokun@huaweicloud.com
+Link: https://patch.msgid.link/20250302160657.127253-2-cgoettsche@seltendoof.de
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/super.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ fs/ext4/balloc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7f0231b349057..f829f989f2b59 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2741,6 +2741,13 @@ static int ext4_check_opt_consistency(struct fs_context *fc,
- 	}
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index c23ac149601e5..d6872b71657b6 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -637,8 +637,8 @@ static int ext4_has_free_clusters(struct ext4_sb_info *sbi,
+ 	/* Hm, nope.  Are (enough) root reserved clusters available? */
+ 	if (uid_eq(sbi->s_resuid, current_fsuid()) ||
+ 	    (!gid_eq(sbi->s_resgid, GLOBAL_ROOT_GID) && in_group_p(sbi->s_resgid)) ||
+-	    capable(CAP_SYS_RESOURCE) ||
+-	    (flags & EXT4_MB_USE_ROOT_BLOCKS)) {
++	    (flags & EXT4_MB_USE_ROOT_BLOCKS) ||
++	    capable(CAP_SYS_RESOURCE)) {
  
- 	if (is_remount) {
-+		if (!sbi->s_journal &&
-+		    ctx_test_mount_opt(ctx, EXT4_MOUNT_DATA_ERR_ABORT)) {
-+			ext4_msg(NULL, KERN_WARNING,
-+				 "Remounting fs w/o journal so ignoring data_err option");
-+			ctx_clear_mount_opt(ctx, EXT4_MOUNT_DATA_ERR_ABORT);
-+		}
-+
- 		if (ctx_test_mount_opt(ctx, EXT4_MOUNT_DAX_ALWAYS) &&
- 		    (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)) {
- 			ext4_msg(NULL, KERN_ERR, "can't mount with "
-@@ -5318,6 +5325,11 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 				 "data=, fs mounted w/o journal");
- 			goto failed_mount3a;
- 		}
-+		if (test_opt(sb, DATA_ERR_ABORT)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "can't mount with data_err=abort, fs mounted w/o journal");
-+			goto failed_mount3a;
-+		}
- 		sbi->s_def_mount_opt &= ~EXT4_MOUNT_JOURNAL_CHECKSUM;
- 		clear_opt(sb, JOURNAL_CHECKSUM);
- 		clear_opt(sb, DATA_FLAGS);
+ 		if (free_clusters >= (nclusters + dirty_clusters +
+ 				      resv_clusters))
 -- 
 2.39.5
 
