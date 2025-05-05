@@ -1,43 +1,44 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3EEE7359DED;
-	Mon,  5 May 2025 22:42:51 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B2CAA27E1C9;
+	Mon,  5 May 2025 22:43:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1746484971; cv=none; b=RiWMEiwo8+dUmXeWcSA93/wsqKkq3nzbFTJPaMmRunATEiPwYlNnsvHlApLzYNN8dEzdHTU8iPYn9WybT5VjxR0wVQEIDMvouU+kri8Xfr9Bx4hAHbF7egHrl1MIHOjWIotpJ+BdMio0pniVyeaN2ycTGJoqLvmP7ovwqHU2gcE=
+	t=1746485021; cv=none; b=MUgcYSAQfrgbGM7EU9uxwqdZ7XPu2/EWPnC1nqceXR29bruAwqhxXWf2/X4ArkQ49kTJje+T1f0IdCu+DGksUnpzbzeuRRANpHuup3+Wwz2HPoiEailZjsyi24ZUDamgixhyIHMhFA/tMSzOWBZSV520gUsidWP4U+EkLj7/iok=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1746484971; c=relaxed/simple;
-	bh=voUt6UCtPflvDhsBYQZpXVfdDV5XzYCSHE3Hzu1CIcY=;
+	s=arc-20240116; t=1746485021; c=relaxed/simple;
+	bh=tEVxtUjgU9X6SNIFS64nms3QrNZHyfQin2c79+iXotA=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=N5C5Kr2BO3qfBurYLtRvQpSF8qN4hw82IlbiBjP24Wv0CZYviEupZALz+QtBXVnlbye2wPQtvBN4tdcpUCClanDzhL1K4Rf0uQdbfxI2TYRS3QdQ6RADluNt87jRTfZia++Qv+342YsyoEOUFTJg0Mjki3KHUGBWxXqvd0PApT4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=spVKWHEl; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=UaReljzY4hsuwwQ89YOeMgmNKywHaR3cD/h99wqiU23HEp/sFpeBEkpw+Qv+BNeYSSUKnCuREL3wMdxy98MQsDW/6mFFq0bKLU1tyxAHTTlwGYj2Z5T6NiYxd5jOQZfqJYl+l6VYWxFx9YEz9tAxXXHXHBasYz59ow4O1m+Oj0g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=dOGxJaUO; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="spVKWHEl"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 39835C4CEEF;
-	Mon,  5 May 2025 22:42:50 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="dOGxJaUO"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 99709C4CEED;
+	Mon,  5 May 2025 22:43:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1746484971;
-	bh=voUt6UCtPflvDhsBYQZpXVfdDV5XzYCSHE3Hzu1CIcY=;
+	s=k20201202; t=1746485020;
+	bh=tEVxtUjgU9X6SNIFS64nms3QrNZHyfQin2c79+iXotA=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=spVKWHElt90Al0ZVOpU01VXBnY3mM9da0r24+/lnYfjG5AH1DC61z1JpAYeRoBvxU
-	 cIPgvtS3+HtiaLUl8CGw3tQNZh8HaEC4GG9GOsUTkLM+bbhMzja7IuuSW6CkjlQRBV
-	 DdpFwVCF3qOWuSDara7PxTgOiRcsm6tte4dzAwF7hh8eQIj2iI7C85h1fR0PTIwdJo
-	 Nrdb1o77wqTePvGYRf6MZuER74I9yIe48lXxjB8SnoRa/BHSjEn+QP5fQBxTWrfvS/
-	 fSuIki2dhXrm0Qn6WxE8cfycXUKN6hb/huZ10avO3euEAtqEr0Rksjm4qQXlbwE2hw
-	 9RM7up4CWi0/w==
+	b=dOGxJaUOFDTXKb2hL/uAO9ZPJzPas4nzW4LK2IpK4zHtu8YuiY8z8VjZYDt6SVGlG
+	 AQnzPuNek7lciWYHJDQEl8yzuCLL+ifmhPXSF2kBHh/xKds6oo5iad2+j4hsDfY6tw
+	 +WQ917nbefmHHGLVuPA7J+z08D3aJbvaJUVuhU15RgHmVjxi3uRg3wA5q4uCKvaXQU
+	 0iVJsrKeFVrmeQjCTo6vUJj4j5ygMCDJCBBEV3Uo1b8tWHVqekp2hmULmZ9miyIte5
+	 4J/NNUzScIblLDJLrB1nMPpqD2kfH8izCfu89edNalR0p9YQz0+nwjNooHR39elBlU
+	 nqP7TwIurGSjQ==
 From: Sasha Levin <sashal@kernel.org>
 To: linux-kernel@vger.kernel.org,
 	stable@vger.kernel.org
-Cc: Jan Kara <jack@suse.cz>,
+Cc: Baokun Li <libaokun1@huawei.com>,
+	Jan Kara <jack@suse.cz>,
 	Zhang Yi <yi.zhang@huawei.com>,
 	Theodore Ts'o <tytso@mit.edu>,
 	Sasha Levin <sashal@kernel.org>,
-	jack@suse.com,
+	adilger.kernel@dilger.ca,
 	linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 6.12 102/486] jbd2: do not try to recover wiped journal
-Date: Mon,  5 May 2025 18:32:58 -0400
-Message-Id: <20250505223922.2682012-102-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 6.12 127/486] ext4: do not convert the unwritten extents if data writeback fails
+Date: Mon,  5 May 2025 18:33:23 -0400
+Message-Id: <20250505223922.2682012-127-sashal@kernel.org>
 X-Mailer: git-send-email 2.39.5
 In-Reply-To: <20250505223922.2682012-1-sashal@kernel.org>
 References: <20250505223922.2682012-1-sashal@kernel.org>
@@ -52,56 +53,88 @@ X-Patchwork-Hint: Ignore
 X-stable-base: Linux 6.12.26
 Content-Transfer-Encoding: 8bit
 
-From: Jan Kara <jack@suse.cz>
+From: Baokun Li <libaokun1@huawei.com>
 
-[ Upstream commit a662f3c03b754e1f97a2781fa242e95bdb139798 ]
+[ Upstream commit e856f93e0fb249955f7d5efb18fe20500a9ccc6d ]
 
-If a journal is wiped, we will set journal->j_tail to 0. However if
-'write' argument is not set (as it happens for read-only device or for
-ocfs2), the on-disk superblock is not updated accordingly and thus
-jbd2_journal_recover() cat try to recover the wiped journal. Fix the
-check in jbd2_journal_recover() to use journal->j_tail for checking
-empty journal instead.
+When dioread_nolock is turned on (the default), it will convert unwritten
+extents to written at ext4_end_io_end(), even if the data writeback fails.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+It leads to the possibility that stale data may be exposed when the
+physical block corresponding to the file data is read-only (i.e., writes
+return -EIO, but reads are normal).
+
+Therefore a new ext4_io_end->flags EXT4_IO_END_FAILED is added, which
+indicates that some bio write-back failed in the current ext4_io_end.
+When this flag is set, the unwritten to written conversion is no longer
+performed. Users can read the data normally until the caches are dropped,
+after that, the failed extents can only be read to all 0.
+
+Signed-off-by: Baokun Li <libaokun1@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
-Link: https://patch.msgid.link/20250206094657.20865-4-jack@suse.cz
+Link: https://patch.msgid.link/20250122110533.4116662-3-libaokun@huaweicloud.com
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/jbd2/recovery.c | 11 ++++++-----
- 1 file changed, 6 insertions(+), 5 deletions(-)
+ fs/ext4/ext4.h    |  3 ++-
+ fs/ext4/page-io.c | 16 ++++++++++++++--
+ 2 files changed, 16 insertions(+), 3 deletions(-)
 
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index 667f67342c522..f85f401526c54 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -287,19 +287,20 @@ static int fc_do_one_pass(journal_t *journal,
- int jbd2_journal_recover(journal_t *journal)
- {
- 	int			err, err2;
--	journal_superblock_t *	sb;
--
- 	struct recovery_info	info;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index bbffb76d9a904..75df7eeee50d8 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -278,7 +278,8 @@ struct ext4_system_blocks {
+ /*
+  * Flags for ext4_io_end->flags
+  */
+-#define	EXT4_IO_END_UNWRITTEN	0x0001
++#define EXT4_IO_END_UNWRITTEN	0x0001
++#define EXT4_IO_END_FAILED	0x0002
  
- 	memset(&info, 0, sizeof(info));
--	sb = journal->j_superblock;
+ struct ext4_io_end_vec {
+ 	struct list_head list;		/* list of io_end_vec */
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index b7b9261fec3b5..cb023922c93c8 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -181,14 +181,25 @@ static int ext4_end_io_end(ext4_io_end_t *io_end)
+ 		   "list->prev 0x%p\n",
+ 		   io_end, inode->i_ino, io_end->list.next, io_end->list.prev);
  
- 	/*
- 	 * The journal superblock's s_start field (the current log head)
- 	 * is always zero if, and only if, the journal was cleanly
--	 * unmounted.
-+	 * unmounted. We use its in-memory version j_tail here because
-+	 * jbd2_journal_wipe() could have updated it without updating journal
-+	 * superblock.
- 	 */
--	if (!sb->s_start) {
-+	if (!journal->j_tail) {
-+		journal_superblock_t *sb = journal->j_superblock;
+-	io_end->handle = NULL;	/* Following call will use up the handle */
+-	ret = ext4_convert_unwritten_io_end_vec(handle, io_end);
++	/*
++	 * Do not convert the unwritten extents if data writeback fails,
++	 * or stale data may be exposed.
++	 */
++	io_end->handle = NULL;  /* Following call will use up the handle */
++	if (unlikely(io_end->flag & EXT4_IO_END_FAILED)) {
++		ret = -EIO;
++		if (handle)
++			jbd2_journal_free_reserved(handle);
++	} else {
++		ret = ext4_convert_unwritten_io_end_vec(handle, io_end);
++	}
+ 	if (ret < 0 && !ext4_forced_shutdown(inode->i_sb)) {
+ 		ext4_msg(inode->i_sb, KERN_EMERG,
+ 			 "failed to convert unwritten extents to written "
+ 			 "extents -- potential data loss!  "
+ 			 "(inode %lu, error %d)", inode->i_ino, ret);
+ 	}
 +
- 		jbd2_debug(1, "No recovery required, last transaction %d, head block %u\n",
- 			  be32_to_cpu(sb->s_sequence), be32_to_cpu(sb->s_head));
- 		journal->j_transaction_sequence = be32_to_cpu(sb->s_sequence) + 1;
+ 	ext4_clear_io_unwritten_flag(io_end);
+ 	ext4_release_io_end(io_end);
+ 	return ret;
+@@ -344,6 +355,7 @@ static void ext4_end_bio(struct bio *bio)
+ 			     bio->bi_status, inode->i_ino,
+ 			     (unsigned long long)
+ 			     bi_sector >> (inode->i_blkbits - 9));
++		io_end->flag |= EXT4_IO_END_FAILED;
+ 		mapping_set_error(inode->i_mapping,
+ 				blk_status_to_errno(bio->bi_status));
+ 	}
 -- 
 2.39.5
 
