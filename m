@@ -1,164 +1,142 @@
-Received: from mail-il1-f208.google.com (mail-il1-f208.google.com [209.85.166.208])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4812A290D95
-	for <linux-ext4@vger.kernel.org>; Mon,  5 May 2025 23:53:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.166.208
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 742C5264624;
+	Tue,  6 May 2025 01:31:18 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1746489207; cv=none; b=MigvoD7bDucyzx9B8qs3ydUSk5r+KH9vPYsBiknuCo64soM4c2JCstfli3Rybaf7c+8oidkittd9z7olqdIAqaRTL8ECfFza+ONrNyCrThSoTQzfnW/Pw3uinslqwykCKoJSrpBuLy1NFBLwZJOSk9Ml1EwtrY3lOTvTMriRPRY=
+	t=1746495080; cv=none; b=iHSKxzcWlNuAvyafzU5w4orUZw4qfrvINaVLbbthmIqw97spkgtrvaJTJu3+ttIoVc/7VT2RgLieLnxEWTCMNj2aMmr+svtuWIKcCLBBF/7Immn8SAU/m53cY/mXjSWrfqLA/p6HWuubPmO/mxvb7/om3s4nYlUexT7jHkpBQKg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1746489207; c=relaxed/simple;
-	bh=4szCwPKUAWPCALZNQCt1FT3sTgBhoRie1V8vTB4SGZo=;
-	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=P1GKNbmk6Nk8z9qO0MiLgJTPTRIZ5vZFCuZ/R02spFngZc9Hhy5VbpDd0wXXPvYtPkq0LU0+QiQKahWbb09JctDoT5+fAYoMcyciJHs7cnOAokEjjvyi5dFsqJwDljtvB7vSg+Sy/uPSM0BiGDBXDK3IaF76Nnm1iIrgtCJ2fnM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.166.208
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-il1-f208.google.com with SMTP id e9e14a558f8ab-3d94fe1037cso65548045ab.0
-        for <linux-ext4@vger.kernel.org>; Mon, 05 May 2025 16:53:23 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1746489203; x=1747094003;
-        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=lVvfQB2gd1o++AE5Iug9x1lhI2tv16s5HMfxraXsjOc=;
-        b=qZY3Jww9A6iRrGOseik2P9u0DwUutCdUBeTMv9JexCcGvhz/ivolBemqzfv1RLagM0
-         bOJD/BhAYGRXJ1O2EFkZOrRn2b7En73XgZ6Cw8dfrAGOmChaUlSX3q/SHJca9EN/yUMp
-         V8vOk0avUIfABifbmLcNeQx8Jfk7TUhNbX6u0MsD5s/qP4CsLGIGUfH9LxBmjdFwlQ8P
-         Pm+CiCl2ihYpOfxzf2xmSFMTjBwrF4iuy9Hm2n2NBb2bxz7nSzsEluoEMl2JVF/qhFOD
-         WV3GTqe+qitFrF4SqRE3dj5OspjO47FfxwazVdK/VbMiF1e4BarizNvE0Y1Pr7MdWe2I
-         Zaew==
-X-Forwarded-Encrypted: i=1; AJvYcCV2x9Zfobhre0xxlgE0euPkJM61M6bLV1EnXt3FtwG5JHV2074ZHybu/HrxoeUYyoqR81qfINqCUYCN@vger.kernel.org
-X-Gm-Message-State: AOJu0YwyExlYtgL9ggyYLRzyMoe1fqa4UI4ZsRIpW5JuKOjGrlcj67Dn
-	wPUkRkvkYp1tD5zXSxYQBTNGqFSxFMXdLY44RARrjm0/loRy64ePyts2bFShO49E2bQg3d53t1z
-	ZfdWEx/XdHHcmTYPIC5IWCDgPKSltZS6deGTgTI8WIIo3aAf5wddTYZ8=
-X-Google-Smtp-Source: AGHT+IHFWRP2ubrDOHG2yQxffmplmBna/WWvzM/wBGg1xiw1HNcYYS4LHSGpsBSYKjmOrTiRUb30nVJ2Pn8USxw1fDGeQFGLso/O
+	s=arc-20240116; t=1746495080; c=relaxed/simple;
+	bh=o5p9sZMqKq34QlNHKQvY5g4ZzK5KQ7epCIwDMCypNcE=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=fA26X2QFAhY+bebKmlecD91F3vn/NdIIYdlTvaifeLXPMhnqXc4g+4kCly6CkybYrvYAOm6wzTEh/eWLIkbwq6JUhrFl1kS2zIFHq9RW5HiyhxPe7djragNJAhem+XrhcZPBk4VnBFvyx2W9tsqh9jrKgjwpAjdK+tOpV9BI/7c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4Zs17F3Ykhz4f3lg9;
+	Tue,  6 May 2025 09:30:49 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.252])
+	by mail.maildlp.com (Postfix) with ESMTP id 6D6C41A0359;
+	Tue,  6 May 2025 09:31:15 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.112.188])
+	by APP3 (Coremail) with SMTP id _Ch0CgAne8VbZhloHx2MLQ--.59787S6;
+	Tue, 06 May 2025 09:31:15 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	wanghaichi0403@gmail.com,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	libaokun1@huawei.com,
+	yukuai3@huawei.com,
+	yangerkun@huawei.com
+Subject: [PATCH v2 3/4] ext4: factor out ext4_get_maxbytes()
+Date: Tue,  6 May 2025 09:20:08 +0800
+Message-ID: <20250506012009.3896990-3-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.46.1
+In-Reply-To: <20250506012009.3896990-1-yi.zhang@huaweicloud.com>
+References: <20250506012009.3896990-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6e02:1a41:b0:3d8:7a02:a67b with SMTP id
- e9e14a558f8ab-3da6cdd6201mr14788035ab.8.1746489203173; Mon, 05 May 2025
- 16:53:23 -0700 (PDT)
-Date: Mon, 05 May 2025 16:53:23 -0700
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <68194f73.050a0220.a19a9.0005.GAE@google.com>
-Subject: [syzbot] [ext4?] kernel BUG in ext4_mb_normalize_request
-From: syzbot <syzbot+7fc5cde5fbe19897a469@syzkaller.appspotmail.com>
-To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com, tytso@mit.edu
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:_Ch0CgAne8VbZhloHx2MLQ--.59787S6
+X-Coremail-Antispam: 1UD129KBjvJXoW7tF4xAryrtr43tFW8KrWrAFb_yoW8tF4xp3
+	sxAF1UJr48Z39ru397KF4UZw1Yy3W7Cw48XrWFgF1agryxXry0vFySkF40k3WYgrWrCF1j
+	q3WYkrW7Jw1akFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUm014x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
+	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
+	xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
+	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
+	kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
+	6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
+	vEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVj
+	vjDU0xZFpf9x0JUl9a9UUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-Hello,
+From: Zhang Yi <yi.zhang@huawei.com>
 
-syzbot found the following issue on:
+There are several locations that get the correct maxbytes value based on
+the inode's block type. It would be beneficial to extract a common
+helper function to make the code more clear.
 
-HEAD commit:    4f79eaa2ceac kbuild: Properly disable -Wunterminated-strin..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=148b3774580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=a42a9d552788177b
-dashboard link: https://syzkaller.appspot.com/bug?extid=7fc5cde5fbe19897a469
-compiler:       Debian clang version 20.1.2 (++20250402124445+58df0ef89dd6-1~exp1~20250402004600.97), Debian LLD 20.1.2
-
-Unfortunately, I don't have any reproducer for this issue yet.
-
-Downloadable assets:
-disk image: https://storage.googleapis.com/syzbot-assets/edbf5e3df590/disk-4f79eaa2.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/e9ed2fe174f6/vmlinux-4f79eaa2.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/c11b2a37db5c/bzImage-4f79eaa2.xz
-
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+7fc5cde5fbe19897a469@syzkaller.appspotmail.com
-
-EXT4-fs: Ignoring removed nobh option
-EXT4-fs: Ignoring removed bh option
-EXT4-fs (loop9): mounted filesystem 00000000-0000-0000-0000-000000000000 r/w without journal. Quota mode: writeback.
-EXT4-fs (loop9): start 0, size 131072, fe_logical 131136
-------------[ cut here ]------------
-kernel BUG at fs/ext4/mballoc.c:4555!
-Oops: invalid opcode: 0000 [#1] SMP KASAN PTI
-CPU: 1 UID: 0 PID: 8509 Comm: syz.9.234 Not tainted 6.15.0-rc4-syzkaller-00052-g4f79eaa2ceac #0 PREEMPT(full) 
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 04/19/2025
-RIP: 0010:ext4_mb_normalize_request+0x1cc9/0x1d00 fs/ext4/mballoc.c:4555
-Code: f5 ac ff 48 8b 44 24 38 48 8b 38 48 c7 c6 80 37 7e 8b 48 c7 c2 80 4d 7e 8b 48 8b 4c 24 28 4d 89 f0 49 89 d9 e8 38 a5 09 00 90 <0f> 0b e8 60 26 4d ff 90 0f 0b e8 58 26 4d ff 90 0f 0b e8 50 26 4d
-RSP: 0018:ffffc9000496ed40 EFLAGS: 00010246
-RAX: a8a732223c46f100 RBX: 0000000000020040 RCX: a8a732223c46f100
-RDX: ffffc9000dd70000 RSI: 0000000000023bd3 RDI: 0000000000023bd4
-RBP: 0000000000000000 R08: ffffc9000496e8e7 R09: 1ffff9200092dd1c
-R10: dffffc0000000000 R11: fffff5200092dd1d R12: ffffffff00020800
-R13: dffffc0000000000 R14: 0000000000020000 R15: 0000000000020000
-FS:  00007fec5d95a6c0(0000) GS:ffff888126200000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007f9695f6e270 CR3: 00000000207e0000 CR4: 00000000003526f0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-Call Trace:
- <TASK>
- ext4_mb_new_blocks+0xc59/0x46a0 fs/ext4/mballoc.c:6208
- ext4_ext_map_blocks+0x1618/0x67c0 fs/ext4/extents.c:4379
- ext4_map_create_blocks fs/ext4/inode.c:520 [inline]
- ext4_map_blocks+0x807/0x1740 fs/ext4/inode.c:706
- _ext4_get_block+0x200/0x4c0 fs/ext4/inode.c:785
- ext4_get_block_unwritten+0x2e/0x100 fs/ext4/inode.c:818
- ext4_block_write_begin+0x543/0x1290 fs/ext4/inode.c:1067
- ext4_write_begin+0x6f6/0x12c0 fs/ext4/ext4_jbd2.h:-1
- ext4_da_write_begin+0x33a/0xa60 fs/ext4/inode.c:2932
- generic_perform_write+0x2c4/0x910 mm/filemap.c:4103
- ext4_buffered_write_iter+0xce/0x3a0 fs/ext4/file.c:299
- ext4_file_write_iter+0x298/0x1bc0 fs/ext4/file.c:-1
- new_sync_write fs/read_write.c:591 [inline]
- vfs_write+0x548/0xa90 fs/read_write.c:684
- ksys_pwrite64 fs/read_write.c:791 [inline]
- __do_sys_pwrite64 fs/read_write.c:799 [inline]
- __se_sys_pwrite64 fs/read_write.c:796 [inline]
- __x64_sys_pwrite64+0x193/0x220 fs/read_write.c:796
- do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
- do_syscall_64+0xf6/0x210 arch/x86/entry/syscall_64.c:94
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7fec5cb8e969
-Code: ff ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 a8 ff ff ff f7 d8 64 89 01 48
-RSP: 002b:00007fec5d95a038 EFLAGS: 00000246 ORIG_RAX: 0000000000000012
-RAX: ffffffffffffffda RBX: 00007fec5cdb6080 RCX: 00007fec5cb8e969
-RDX: 00000000000155c2 RSI: 0000200000000140 RDI: 000000000000000a
-RBP: 00007fec5cc10ab1 R08: 0000000000000000 R09: 0000000000000000
-R10: 0000000008000c64 R11: 0000000000000246 R12: 0000000000000000
-R13: 0000000000000000 R14: 00007fec5cdb6080 R15: 00007fffed56a588
- </TASK>
-Modules linked in:
----[ end trace 0000000000000000 ]---
-RIP: 0010:ext4_mb_normalize_request+0x1cc9/0x1d00 fs/ext4/mballoc.c:4555
-Code: f5 ac ff 48 8b 44 24 38 48 8b 38 48 c7 c6 80 37 7e 8b 48 c7 c2 80 4d 7e 8b 48 8b 4c 24 28 4d 89 f0 49 89 d9 e8 38 a5 09 00 90 <0f> 0b e8 60 26 4d ff 90 0f 0b e8 58 26 4d ff 90 0f 0b e8 50 26 4d
-RSP: 0018:ffffc9000496ed40 EFLAGS: 00010246
-RAX: a8a732223c46f100 RBX: 0000000000020040 RCX: a8a732223c46f100
-RDX: ffffc9000dd70000 RSI: 0000000000023bd3 RDI: 0000000000023bd4
-RBP: 0000000000000000 R08: ffffc9000496e8e7 R09: 1ffff9200092dd1c
-R10: dffffc0000000000 R11: fffff5200092dd1d R12: ffffffff00020800
-R13: dffffc0000000000 R14: 0000000000020000 R15: 0000000000020000
-FS:  00007fec5d95a6c0(0000) GS:ffff888126200000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 0000562fcaf64131 CR3: 00000000207e0000 CR4: 00000000003526f0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-
-
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+ fs/ext4/ext4.h    | 7 +++++++
+ fs/ext4/extents.c | 7 +------
+ fs/ext4/file.c    | 7 +------
+ 3 files changed, 9 insertions(+), 12 deletions(-)
 
-syzbot will keep track of this issue. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 5a20e9cd7184..8664bb5367c5 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3378,6 +3378,13 @@ static inline unsigned int ext4_flex_bg_size(struct ext4_sb_info *sbi)
+ 	return 1 << sbi->s_log_groups_per_flex;
+ }
+ 
++static inline loff_t ext4_get_maxbytes(struct inode *inode)
++{
++	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
++		return inode->i_sb->s_maxbytes;
++	return EXT4_SB(inode->i_sb)->s_bitmap_maxbytes;
++}
++
+ #define ext4_std_error(sb, errno)				\
+ do {								\
+ 	if ((errno))						\
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index c616a16a9f36..b294d2f35a26 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4931,12 +4931,7 @@ static const struct iomap_ops ext4_iomap_xattr_ops = {
+ 
+ static int ext4_fiemap_check_ranges(struct inode *inode, u64 start, u64 *len)
+ {
+-	u64 maxbytes;
+-
+-	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+-		maxbytes = inode->i_sb->s_maxbytes;
+-	else
+-		maxbytes = EXT4_SB(inode->i_sb)->s_bitmap_maxbytes;
++	u64 maxbytes = ext4_get_maxbytes(inode);
+ 
+ 	if (*len == 0)
+ 		return -EINVAL;
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index beb078ee4811..b845a25f7932 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -929,12 +929,7 @@ static int ext4_file_open(struct inode *inode, struct file *filp)
+ loff_t ext4_llseek(struct file *file, loff_t offset, int whence)
+ {
+ 	struct inode *inode = file->f_mapping->host;
+-	loff_t maxbytes;
+-
+-	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
+-		maxbytes = EXT4_SB(inode->i_sb)->s_bitmap_maxbytes;
+-	else
+-		maxbytes = inode->i_sb->s_maxbytes;
++	loff_t maxbytes = ext4_get_maxbytes(inode);
+ 
+ 	switch (whence) {
+ 	default:
+-- 
+2.46.1
 
-If the report is already addressed, let syzbot know by replying with:
-#syz fix: exact-commit-title
-
-If you want to overwrite report's subsystems, reply with:
-#syz set subsystems: new-subsystem
-(See the list of subsystem names on the web dashboard)
-
-If the report is a duplicate of another one, reply with:
-#syz dup: exact-subject-of-another-report
-
-If you want to undo deduplication, reply with:
-#syz undup
