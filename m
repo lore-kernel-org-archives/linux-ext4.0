@@ -1,110 +1,64 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from verein.lst.de (verein.lst.de [213.95.11.211])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2FB4B1386DA;
-	Tue,  6 May 2025 02:25:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 575552BD03F;
+	Tue,  6 May 2025 04:22:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.95.11.211
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1746498314; cv=none; b=rLqJbJLau16g8f/D1wiWvNrCNlc3rQT2oXZ7JsjJ/HRPKHYDxDrYzYrv4rNTaHp9F+4064yvZLPV3nOre2fW5FqUPCJIOzB4Dg0+npxI+80qnvTb8qffsOZlQr8jC2+kWBoTEUta7yk1HRdlk/O3z9V5uuJn05zEwg768ks7JTY=
+	t=1746505371; cv=none; b=HSt/selic8ZyCwwwPoMDYiw0f9S4sYRFzv7qKjrHBg7ab+/W0cvR/bhlqWyXt0aXDfUOx1h9qInOFrwAAM22ex+LQ6tXZDXpzbD9M7fA5KF3ChJXzy+bNFZlGwe28xC0ymefoCzTjbCliioRuzylFyMHNyk+AZRcT782++Ns3Sg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1746498314; c=relaxed/simple;
-	bh=yEpidYVsK6d7u4CVEdAvzxNONuSeJ4rBRYQkAnE47VU=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=buI/pyRaHrncxTekHyg3sLZ7ljOMIbYajO9kCM6bXOJCxey1bS/vN/baECyMyLJJz3gOYB14n5U/PJMR8D4UrFGN2x9C/z7n3rPcmG9vo76Xm0GbYjUkt/df3EzlfFnqy2VfSEYSfvViXsYOHrWFdVCDZiCC6wE+a8Mb3hKDkao=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4Zs2KR62dBz4f3jdt;
-	Tue,  6 May 2025 10:24:43 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 49BD21A12DD;
-	Tue,  6 May 2025 10:25:08 +0800 (CST)
-Received: from [10.174.179.80] (unknown [10.174.179.80])
-	by APP4 (Coremail) with SMTP id gCh0CgCnCl8CcxloBMVDLg--.27787S3;
-	Tue, 06 May 2025 10:25:07 +0800 (CST)
-Message-ID: <d93e69d0-8145-40ac-8afc-f1e8ccbe2052@huaweicloud.com>
-Date: Tue, 6 May 2025 10:25:06 +0800
+	s=arc-20240116; t=1746505371; c=relaxed/simple;
+	bh=dUnyonXps9Hj2gJJF9TI4PC9uOAgo51Hbpb/TfEXCBs=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=ls2v2gBnoRlb+pFExutUJVrzvdLnQ/JbAPyuK71ASj/7Oo3GmDMeFxc8Og7uSAU1U8VXYOw9ySgoKICR+ULi/z/UB65NgDxRX7QdnoqjfFibc/62ePneRTsWJRn10C9k5cToSwVXRzNlec/L8zvP0PzOP0nTcPTynINOQqTqdv8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de; spf=pass smtp.mailfrom=lst.de; arc=none smtp.client-ip=213.95.11.211
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
+Received: by verein.lst.de (Postfix, from userid 2407)
+	id BB4C667373; Tue,  6 May 2025 06:22:42 +0200 (CEST)
+Date: Tue, 6 May 2025 06:22:42 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: John Garry <john.g.garry@oracle.com>
+Cc: "Darrick J. Wong" <djwong@kernel.org>, Christoph Hellwig <hch@lst.de>,
+	brauner@kernel.org, viro@zeniv.linux.org.uk, jack@suse.cz,
+	cem@kernel.org, linux-fsdevel@vger.kernel.org, dchinner@redhat.com,
+	linux-xfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	ojaswin@linux.ibm.com, ritesh.list@gmail.com,
+	martin.petersen@oracle.com, linux-ext4@vger.kernel.org,
+	linux-block@vger.kernel.org, catherine.hoang@oracle.com,
+	linux-api@vger.kernel.org
+Subject: Re: [PATCH v11 02/16] xfs: only call xfs_setsize_buftarg once per
+ buffer target
+Message-ID: <20250506042242.GA26378@lst.de>
+References: <20250504085923.1895402-1-john.g.garry@oracle.com> <20250504085923.1895402-3-john.g.garry@oracle.com> <20250505054031.GA20925@lst.de> <8ea91e81-9b96-458e-bd4e-64eada31e184@oracle.com> <20250505104901.GA10128@lst.de> <bb8efa28-19e6-42f5-9a26-cdc0bc48926e@oracle.com> <20250505142234.GG1035866@frogsfrogsfrogs> <40def355-38db-4424-b9f0-b82bba62462b@oracle.com> <200d855d-550d-4207-9118-6a0c10d14f8a@oracle.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: kernel BUG in zero_user_segments
-To: Jan Kara <jack@suse.cz>, Matthew Wilcox <willy@infradead.org>
-Cc: Liebes Wang <wanghaichi0403@gmail.com>, ojaswin@linux.ibm.com,
- Theodore Ts'o <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
- syzkaller@googlegroups.com, Ext4 Developers List <linux-ext4@vger.kernel.org>
-References: <CADCV8spm=TtW_Lu6p-5q-jdHv1ryLcx45mNBEcYdELbHv_4TnQ@mail.gmail.com>
- <uxweupjmz7pzbj77cciiuxduxnbuk33mx75bimynzcjmq664zo@xqrdf6ouf5v6>
- <ac3a58f6-e686-488b-a9ee-fc041024e43d@huawei.com>
- <aBGVmIin8YxRyFDp@casper.infradead.org>
- <znfg4s5ysxqvrzeevkmtgixj5vztcyqbuny7waqkugnzkpg2zx@2vxwh57flvva>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <znfg4s5ysxqvrzeevkmtgixj5vztcyqbuny7waqkugnzkpg2zx@2vxwh57flvva>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgCnCl8CcxloBMVDLg--.27787S3
-X-Coremail-Antispam: 1UD129KBjvJXoW7Kr1xCw4UGr47WF45CF45KFg_yoW8WF4UpF
-	WxAryrtF4DtFWIkan7Zr1Iqrnaq3s8CFWUXF95Gr4fArZ8WFn29rn0kF4YkasF9r4xuw1j
-	qFyjg3srJ3sIyaUanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUyGb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JMxkF7I0En4kS14v26r126r1DMxAIw28IcxkI7VAK
-	I48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7
-	xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xII
-	jxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw2
-	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x02
-	67AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU1veHDUUUUU==
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <200d855d-550d-4207-9118-6a0c10d14f8a@oracle.com>
+User-Agent: Mutt/1.5.17 (2007-11-01)
 
-On 2025/5/1 19:19, Jan Kara wrote:
-> On Wed 30-04-25 04:14:32, Matthew Wilcox wrote:
->> On Tue, Apr 29, 2025 at 03:55:18PM +0800, Zhang Yi wrote:
->>> After debugging, I found that this problem is caused by punching a hole
->>> with an offset variable larger than max_end on a corrupted ext4 inode,
->>> whose i_size is larger than maxbyte. It will result in a negative length
->>> in the truncate_inode_partial_folio(), which will trigger this problem.
+On Mon, May 05, 2025 at 04:27:56PM +0100, John Garry wrote:
+> On 05/05/2025 15:48, John Garry wrote:
+>>>> @Darrick, please comment on whether happy with changes discussed.
+>>> I put the sync_blockdev calls in a separate function so that the
+>>> EIO/ENOSPC/whatever errors that come from the block device sync don't
+>>> get morphed into ENOMEM by xfs_alloc_buftarg before being passed up.  I
+>>> suppose we could make that function return an ERR_PTR, but I was trying
+>>> to avoid making even more changes at the last minute, again.
 >>
->> It seems to me like we're asking for trouble when we allow an inode with
->> an i_size larger than max_end to be instantiated.  There are probably
->> other places which assume it is smaller than max_end.  We should probably
->> decline to create the bad inode in the first place?
-> 
-> Indeed somewhat less quirky fix could be to make ext4_max_bitmap_size()
-> return one block smaller limit. Something like:
-> 
->         /* Compute how many blocks we can address by block tree */
->         res += ppb;
->         res += ppb * ppb;
->         res += ((loff_t)ppb) * ppb * ppb;
-> +	/*
-> +	 * Hole punching assumes it can map the block past end of hole to
-> +	 * tree offsets
-> +	 */
-> +	res -= 1;
->         /* Compute how many metadata blocks are needed */
->         meta_blocks = 1;
->         meta_blocks += 1 + ppb;
-> 
-> The slight caveat is that in theory there could be filesystems out there
-> with so large files and then we'd stop allowing access to such files. But I
-> guess the chances are so low that it's probably worth trying.
-> 
+>> It seems simpler to just have the individual sync_blockdev() calls from 
+>> xfs_alloc_buftarg(), rather than adding ERR_PTR() et al handling in both 
+>> xfs_alloc_buftarg() and xfs_open_devices().
+>
+> Which of the following is better:
 
-Hmm, I suppose this approach could pose some risks to our legacy products,
-and it makes me feel uneasy. Personally, I am more inclined toward the
-current solution, unless we decide to fix the ext4_ind_remove_space()
-directly. :)
-
-Thanks,
-Yi.
-
+To me version 2 looks much better.  I had initial reservations as
+ERR_PTR doesn't play well with userspace, but none of this code is
+in libxfs, so that should be fine.
 
