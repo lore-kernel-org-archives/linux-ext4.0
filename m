@@ -1,184 +1,180 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-io1-f77.google.com (mail-io1-f77.google.com [209.85.166.77])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3E3432561C5;
-	Mon, 12 May 2025 06:44:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8E98E25A328
+	for <linux-ext4@vger.kernel.org>; Mon, 12 May 2025 09:11:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.166.77
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747032298; cv=none; b=CPeJ7ZTUyUMr+AszmrWBKdZmY2S31BTGYza+rkHg+htaxvu4LUdVuDQo9wLc2UDzuyGRjMiKHdikj/lfVfhYLBUfaKU4QocPT0zG2NAGxOeTdSfcc9Q0U4INN7wSDTSqS3h3rqTXZGiMqTfLGnPrxmgg8j+IkN4mo7QVBTLHuPo=
+	t=1747041084; cv=none; b=QEjDu3TPq4Yfvy4WP5n7Vdd1SnrCeId4N7uxhDNrnVgoU/q7Xuh95nGwhk4yp/dZoMH+kPiJmBK1OmB6S7nrskti96BYr1iL3QsPQD6oiQdUAbYCmh0qhhG/CjXMBxrBcT6F9CI7YFcfKGEENHFtWnw7Zhtw4QObsDh8CBQsUt4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1747032298; c=relaxed/simple;
-	bh=jmTUtCBUwJFTXU+jbvgxFCS7ttqFbymd5WbFWGx46O0=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ussY8lD8c2JQa9rgQQoqXz2z6Gwi+VpjkMolMbtHAIp0fu5pJ8qTTbAS8M43qWQ5eIFSDL/6N7d/g7kJq9i6bCb3S7xdIZBXYsMNUPoV7ZPD48jiBT3WCLBM/RwwzxlJIRnrdrsk6QqvLL3ae1JmnPRhDHRkPA5mYqePVOoJlAY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4ZwqpJ5BqSz4f3jXm;
-	Mon, 12 May 2025 14:44:24 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 672B21A0359;
-	Mon, 12 May 2025 14:44:49 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.112.188])
-	by APP4 (Coremail) with SMTP id gCh0CgDHK2DXmCFoxF6sMA--.62010S6;
-	Mon, 12 May 2025 14:44:49 +0800 (CST)
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-To: linux-ext4@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	willy@infradead.org,
-	tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	jack@suse.cz,
-	yi.zhang@huawei.com,
-	yi.zhang@huaweicloud.com,
-	libaokun1@huawei.com,
-	yukuai3@huawei.com,
-	yangerkun@huawei.com
-Subject: [PATCH v2 2/8] ext4: make regular file's buffered write path support large folios
-Date: Mon, 12 May 2025 14:33:13 +0800
-Message-ID: <20250512063319.3539411-3-yi.zhang@huaweicloud.com>
-X-Mailer: git-send-email 2.46.1
-In-Reply-To: <20250512063319.3539411-1-yi.zhang@huaweicloud.com>
-References: <20250512063319.3539411-1-yi.zhang@huaweicloud.com>
+	s=arc-20240116; t=1747041084; c=relaxed/simple;
+	bh=lYVHLSFZ30uPD9HCKWzeRsxqM7TREbjRmxECdkqqcV4=;
+	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=bcYybYL1+ZShBZT5brR0a/FGmaAZAMth39NmcT/PyGdYcolxtk0doHUg/M03HiZ7/2o0rJsSSyYYyEeL5u2PPuw9m/3ikGgeO4yet0t9qP4iA8hIimesD31P+cPNDNqUrrcZNrZ5/ve+3sAtSP84qrRQNSgrt5GPCSlvU33/ifA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.166.77
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-io1-f77.google.com with SMTP id ca18e2360f4ac-85e7e0413c2so352929139f.3
+        for <linux-ext4@vger.kernel.org>; Mon, 12 May 2025 02:11:21 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1747041080; x=1747645880;
+        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=8+uzMLrjggZhRqmqQSIictD5XwFtooJPv3otZj8Vyzk=;
+        b=A8R+pXprHgo+pOlcyFbHskytPJ4jbI0RquxSTeQo28RdUOZ6NiVLtrmRqpnNh13Zty
+         Lmy8HLOFyowNIfqGHwXTqv7/ZKM9IDXJAqNWrzNGPwCj9Ey/AvIul912As1IYgMIknz3
+         my8qInl5B5e5uB6BPa46uunY8+pdyRdztsmdditwPW0SlN4jU2cDdaVCkOiz084AV/rZ
+         Fd5RLxUvUPeaTM8JABlEE0UHfwbnQe3dd97V3P2dg9IAU9QdDMz/wgHkYTCru2VvU4wo
+         hjpYUUHEx/l2b4X8ESnG16+ud6cG6DmWGS7/OMtfLLAUlHBZyoWaMISoNSOIuqZJU4LH
+         pTCQ==
+X-Forwarded-Encrypted: i=1; AJvYcCUyB2sH0fdcKCVBoIy2gQdgBQ/wxneiFRqI/d34a4oN6luQKaJih5aJyJPMgKl5xFlSUv6oFRLXzIXe@vger.kernel.org
+X-Gm-Message-State: AOJu0YwEpAt5yJ3v8b8HXQ1ubtr5BBFaUznekCwkCE6iC0yrmbvrsLV3
+	PMKG/aQ4KcMKC6UcfL60ZvsUgSJZlCmEEIc8TH2dERr70HbBvNbnVrrzCMs6QNflUqHUA0Vmrzz
+	I3sDeGFWPWFi1LAqNuHCfsZtk5OkiAQp+bMFkVmRpaP5bfu0wZkqRN+c=
+X-Google-Smtp-Source: AGHT+IGMn4kHfoXlb0gHYMU6NGzwSXl9HDa5qUR8JrxhkCiq40wtClztX121VRsQGqdrm2gz/wLoGEWpUT+A2YxlmLMpznVphnxe
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgDHK2DXmCFoxF6sMA--.62010S6
-X-Coremail-Antispam: 1UD129KBjvJXoWxCFy8ur13ZF48XFyUXw4UCFg_yoWrWry5pr
-	Z8K3Z7GrW7Zw1q9FWkXFnxXr1Y934xJ3yUCa4fWw1S9F98G3W3Ka1Fka45tFyFqrW8XF48
-	XF4jyry8W3WjyrUanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUm014x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
-	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
-	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
-	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
-	IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
-	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
-	xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
-	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
-	kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
-	6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
-	vEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVj
-	vjDU0xZFpf9x0JUl9a9UUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+X-Received: by 2002:a05:6602:29d3:b0:862:fe54:df4e with SMTP id
+ ca18e2360f4ac-867635af384mr1265132339f.7.1747041080644; Mon, 12 May 2025
+ 02:11:20 -0700 (PDT)
+Date: Mon, 12 May 2025 02:11:20 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6821bb38.050a0220.f2294.0056.GAE@google.com>
+Subject: [syzbot] [mm?] [ext4?] INFO: rcu detected stall in
+ ext4_end_io_rsv_work (3)
+From: syzbot <syzbot+bb842a51b5abbae5a245@syzkaller.appspotmail.com>
+To: akpm@linux-foundation.org, linux-ext4@vger.kernel.org, 
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	linux-mm@kvack.org, syzkaller-bugs@googlegroups.com, willy@infradead.org
+Content-Type: text/plain; charset="UTF-8"
 
-From: Zhang Yi <yi.zhang@huawei.com>
+Hello,
 
-The current buffered write path in ext4 can only allocate and handle
-folios of PAGE_SIZE size. To support larger folios, modify
-ext4_da_write_begin() and ext4_write_begin() to allocate higher-order
-folios, and trim the write length if it exceeds the folio size.
-Additionally, in ext4_da_do_write_end(), use offset_in_folio() instead
-of PAGE_SIZE.
+syzbot found the following issue on:
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+HEAD commit:    707df3375124 Merge tag 'media/v6.15-2' of git://git.kernel..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=16c2a82f980000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=b39cb28b0a399ed3
+dashboard link: https://syzkaller.appspot.com/bug?extid=bb842a51b5abbae5a245
+compiler:       gcc (Debian 12.2.0-14) 12.2.0, GNU ld (GNU Binutils for Debian) 2.40
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=1050b8f4580000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=12a169b3980000
+
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/1920aeaaff98/disk-707df337.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/5a54d789a59a/vmlinux-707df337.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/e40767312770/bzImage-707df337.xz
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+bb842a51b5abbae5a245@syzkaller.appspotmail.com
+
+rcu: INFO: rcu_preempt detected stalls on CPUs/tasks:
+rcu: 	0-...!: (3 ticks this GP) idle=1d3c/1/0x4000000000000000 softirq=14732/14732 fqs=0
+rcu: 	(detected by 1, t=10502 jiffies, g=6677, q=10638 ncpus=2)
+Sending NMI from CPU 1 to CPUs 0:
+NMI backtrace for cpu 0
+CPU: 0 UID: 0 PID: 3557 Comm: kworker/u8:8 Not tainted 6.15.0-rc5-syzkaller-00038-g707df3375124 #0 PREEMPT(full) 
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 04/29/2025
+Workqueue: ext4-rsv-conversion ext4_end_io_rsv_work
+RIP: 0010:__kasan_check_write+0x8/0x20 mm/kasan/shadow.c:37
+Code: f0 ff ff 66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 f3 0f 1e fa 48 8b 0c 24 <89> f6 ba 01 00 00 00 e9 4c f0 ff ff 66 66 2e 0f 1f 84 00 00 00 00
+RSP: 0018:ffffc90000007da0 EFLAGS: 00000086
+RAX: 0000000000000000 RBX: ffff8880b8427840 RCX: ffffffff81985b4d
+RDX: 00000000ffffffff RSI: 0000000000000004 RDI: ffff8880b8427840
+RBP: 1ffff92000000fb6 R08: 4d4df099ab2b819a R09: 0000000000000001
+R10: 0000000000000002 R11: 0000000000000000 R12: ffff8880b8427848
+R13: ffff8880b8427850 R14: ffff888070874340 R15: 0000000000000001
+FS:  0000000000000000(0000) GS:ffff8881249df000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 000055558c02f650 CR3: 000000000e180000 CR4: 00000000003526f0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+Call Trace:
+ <IRQ>
+ instrument_atomic_read_write include/linux/instrumented.h:96 [inline]
+ atomic_try_cmpxchg_acquire include/linux/atomic/atomic-instrumented.h:1300 [inline]
+ queued_spin_lock include/asm-generic/qspinlock.h:111 [inline]
+ do_raw_spin_lock+0x11d/0x2b0 kernel/locking/spinlock_debug.c:116
+ __run_hrtimer kernel/time/hrtimer.c:1765 [inline]
+ __hrtimer_run_queues+0x2bc/0xad0 kernel/time/hrtimer.c:1825
+ hrtimer_interrupt+0x397/0x8e0 kernel/time/hrtimer.c:1887
+ local_apic_timer_interrupt arch/x86/kernel/apic/apic.c:1038 [inline]
+ __sysvec_apic_timer_interrupt+0x108/0x3f0 arch/x86/kernel/apic/apic.c:1055
+ instr_sysvec_apic_timer_interrupt arch/x86/kernel/apic/apic.c:1049 [inline]
+ sysvec_apic_timer_interrupt+0x9f/0xc0 arch/x86/kernel/apic/apic.c:1049
+ </IRQ>
+ <TASK>
+ asm_sysvec_apic_timer_interrupt+0x1a/0x20 arch/x86/include/asm/idtentry.h:702
+RIP: 0010:folio_zone include/linux/mm.h:1967 [inline]
+RIP: 0010:zone_stat_mod_folio include/linux/vmstat.h:432 [inline]
+RIP: 0010:__folio_end_writeback+0x186/0xe60 mm/page-writeback.c:3068
+Code: 89 e2 be 15 00 00 00 48 89 df e8 05 0b 33 00 9c 5d 81 e5 00 02 00 00 31 ff 48 89 ee e8 73 50 c5 ff 48 85 ed 0f 85 90 07 00 00 <e8> f5 54 c5 ff 48 89 da 48 b8 00 00 00 00 00 fc ff df 48 c1 ea 03
+RSP: 0018:ffffc9000cea7950 EFLAGS: 00000293
+RAX: 0000000000000000 RBX: ffffea0001f6ec40 RCX: ffffffff81f5e1a4
+RDX: ffff888032bb2440 RSI: ffffffff81f5e1b2 RDI: 0000000000000007
+RBP: 0000000000000000 R08: 0000000000000007 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000000 R12: 00000000ffffffff
+R13: 0000000000000001 R14: ffffffffffffffff R15: ffffea0001f6ec00
+ folio_end_writeback+0x18f/0x560 mm/filemap.c:1648
+ ext4_finish_bio+0x78f/0xa20 fs/ext4/page-io.c:144
+ ext4_release_io_end+0x119/0x3a0 fs/ext4/page-io.c:159
+ ext4_end_io_end+0x13e/0x4a0 fs/ext4/page-io.c:210
+ ext4_do_flush_completed_IO fs/ext4/page-io.c:287 [inline]
+ ext4_end_io_rsv_work+0x205/0x380 fs/ext4/page-io.c:302
+ process_one_work+0x9cc/0x1b70 kernel/workqueue.c:3238
+ process_scheduled_works kernel/workqueue.c:3319 [inline]
+ worker_thread+0x6c8/0xf10 kernel/workqueue.c:3400
+ kthread+0x3c2/0x780 kernel/kthread.c:464
+ ret_from_fork+0x45/0x80 arch/x86/kernel/process.c:153
+ ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
+ </TASK>
+rcu: rcu_preempt kthread timer wakeup didn't happen for 10501 jiffies! g6677 f0x0 RCU_GP_WAIT_FQS(5) ->state=0x402
+rcu: 	Possible timer handling issue on cpu=0 timer-softirq=4991
+rcu: rcu_preempt kthread starved for 10502 jiffies! g6677 f0x0 RCU_GP_WAIT_FQS(5) ->state=0x402 ->cpu=0
+rcu: 	Unless rcu_preempt kthread gets sufficient CPU time, OOM is now expected behavior.
+rcu: RCU grace-period kthread stack dump:
+task:rcu_preempt     state:I stack:28728 pid:16    tgid:16    ppid:2      task_flags:0x208040 flags:0x00004000
+Call Trace:
+ <TASK>
+ context_switch kernel/sched/core.c:5382 [inline]
+ __schedule+0x116f/0x5de0 kernel/sched/core.c:6767
+ __schedule_loop kernel/sched/core.c:6845 [inline]
+ schedule+0xe7/0x3a0 kernel/sched/core.c:6860
+ schedule_timeout+0x123/0x290 kernel/time/sleep_timeout.c:99
+ rcu_gp_fqs_loop+0x1ea/0xb00 kernel/rcu/tree.c:2046
+ rcu_gp_kthread+0x270/0x380 kernel/rcu/tree.c:2248
+ kthread+0x3c2/0x780 kernel/kthread.c:464
+ ret_from_fork+0x45/0x80 arch/x86/kernel/process.c:153
+ ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
+ </TASK>
+
+
 ---
- fs/ext4/inode.c | 31 +++++++++++++++++++++----------
- 1 file changed, 21 insertions(+), 10 deletions(-)
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 94c7d2d828a6..4d8187f3814e 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1027,7 +1027,7 @@ int ext4_block_write_begin(handle_t *handle, struct folio *folio,
- 			   loff_t pos, unsigned len,
- 			   get_block_t *get_block)
- {
--	unsigned from = pos & (PAGE_SIZE - 1);
-+	unsigned int from = offset_in_folio(folio, pos);
- 	unsigned to = from + len;
- 	struct inode *inode = folio->mapping->host;
- 	unsigned block_start, block_end;
-@@ -1041,8 +1041,7 @@ int ext4_block_write_begin(handle_t *handle, struct folio *folio,
- 	bool should_journal_data = ext4_should_journal_data(inode);
- 
- 	BUG_ON(!folio_test_locked(folio));
--	BUG_ON(from > PAGE_SIZE);
--	BUG_ON(to > PAGE_SIZE);
-+	BUG_ON(to > folio_size(folio));
- 	BUG_ON(from > to);
- 
- 	head = folio_buffers(folio);
-@@ -1152,6 +1151,7 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
- 	struct folio *folio;
- 	pgoff_t index;
- 	unsigned from, to;
-+	fgf_t fgp = FGP_WRITEBEGIN;
- 
- 	ret = ext4_emergency_state(inode->i_sb);
- 	if (unlikely(ret))
-@@ -1164,8 +1164,6 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
- 	 */
- 	needed_blocks = ext4_writepage_trans_blocks(inode) + 1;
- 	index = pos >> PAGE_SHIFT;
--	from = pos & (PAGE_SIZE - 1);
--	to = from + len;
- 
- 	if (ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) {
- 		ret = ext4_try_to_write_inline_data(mapping, inode, pos, len,
-@@ -1184,10 +1182,18 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
- 	 * the folio (if needed) without using GFP_NOFS.
- 	 */
- retry_grab:
--	folio = __filemap_get_folio(mapping, index, FGP_WRITEBEGIN,
--					mapping_gfp_mask(mapping));
-+	fgp |= fgf_set_order(len);
-+	folio = __filemap_get_folio(mapping, index, fgp,
-+				    mapping_gfp_mask(mapping));
- 	if (IS_ERR(folio))
- 		return PTR_ERR(folio);
-+
-+	if (pos + len > folio_pos(folio) + folio_size(folio))
-+		len = folio_pos(folio) + folio_size(folio) - pos;
-+
-+	from = offset_in_folio(folio, pos);
-+	to = from + len;
-+
- 	/*
- 	 * The same as page allocation, we prealloc buffer heads before
- 	 * starting the handle.
-@@ -2920,6 +2926,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
- 	struct folio *folio;
- 	pgoff_t index;
- 	struct inode *inode = mapping->host;
-+	fgf_t fgp = FGP_WRITEBEGIN;
- 
- 	ret = ext4_emergency_state(inode->i_sb);
- 	if (unlikely(ret))
-@@ -2945,11 +2952,15 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
- 	}
- 
- retry:
--	folio = __filemap_get_folio(mapping, index, FGP_WRITEBEGIN,
--			mapping_gfp_mask(mapping));
-+	fgp |= fgf_set_order(len);
-+	folio = __filemap_get_folio(mapping, index, fgp,
-+				    mapping_gfp_mask(mapping));
- 	if (IS_ERR(folio))
- 		return PTR_ERR(folio);
- 
-+	if (pos + len > folio_pos(folio) + folio_size(folio))
-+		len = folio_pos(folio) + folio_size(folio) - pos;
-+
- 	ret = ext4_block_write_begin(NULL, folio, pos, len,
- 				     ext4_da_get_block_prep);
- 	if (ret < 0) {
-@@ -3038,7 +3049,7 @@ static int ext4_da_do_write_end(struct address_space *mapping,
- 		unsigned long end;
- 
- 		i_size_write(inode, new_i_size);
--		end = (new_i_size - 1) & (PAGE_SIZE - 1);
-+		end = offset_in_folio(folio, new_i_size - 1);
- 		if (copied && ext4_da_should_update_i_disksize(folio, end)) {
- 			ext4_update_i_disksize(inode, new_i_size);
- 			disksize_changed = true;
--- 
-2.46.1
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
 
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
+
+If you want syzbot to run the reproducer, reply with:
+#syz test: git://repo/address.git branch-or-commit-hash
+If you attach or paste a git patch, syzbot will apply it before testing.
+
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
+
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
+
+If you want to undo deduplication, reply with:
+#syz undup
