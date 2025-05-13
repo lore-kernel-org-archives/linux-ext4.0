@@ -1,17 +1,17 @@
-Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 51FD7256C9E;
-	Tue, 13 May 2025 10:07:57 +0000 (UTC)
+Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 2E386248880;
+	Tue, 13 May 2025 10:07:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747130881; cv=none; b=iX3evxRkt9Y39PpnYLxbJ9WP5zobbOTufYLSKHLc8n4ylnTHfrzCVoxCdNoLMjEEXsIZgEInZJEEl1snNK3NPMppVzJ/46z3kn8fFYZLHYUXgBLIe0aR1Dl4qd6oftBqYNl5rTlKVtVViXNGfs4FNHwCb2Jc+Tiw5rzbufbfIIE=
+	t=1747130881; cv=none; b=EAjE+hn700nMwn01DNDwbDQIruQXFN3QYpMjSdJR7HnPLqGw/ZUPKlpNpZKzGjZfil/HbP0EXINYyZZ/4E4pC73q3DLlg+PvE4OSm4rkdz6OpOCkx8xkQGnwhDiH6GL1qGN9KT20RikS/dYC04q7GiMKlzG84f1AChX0qvD/sP4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1747130881; c=relaxed/simple;
-	bh=9Sbtv7YuVMjEizoot53ogfQz7NbvVKio90qc+0mHg80=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=O5YHJLnij5Yyo8kNuskF8lR2OD0QaJsSsOmwwNbCU59tCEXSgGPsol3cMhX9g+YSw20Cr7Aa9u/Oh/E2ZlBdW/oLr1l0rm/MMjP0563onNSb/8UIw/XE7OU0LkW2Q39/OC1MsDJvKNQ19FThuE2ckpThNDLnSUz90gwOuFfiBRU=
+	bh=9o9SI0ONdb1WbiIWXrCSb5nX53qir4UGX5Gt0IQgpYM=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=n3Dn1OQcRi3YqqNkKpWhuwgYWc481xv71+npgMwZo34nWPrn8TI7xbBER1/rNYh+S3PtFV+xh0z6Nxrv8upGq9z1YOcEeG7BJCz5M8qUrgu/wzJd0jBV5OSXg/g+3JakzZYvSDoFAIB5QZUlyNPyIM58A2tLHDVSS6DauYDqQkY=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-669ff7000002311f-cc-682319ef77c9
+X-AuditID: a67dfc5b-669ff7000002311f-fc-682319f015c0
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -75,44 +75,44 @@ Cc: kernel_team@skhynix.com,
 	netdev@vger.kernel.org,
 	matthew.brost@intel.com,
 	her0gyugyu@gmail.com
-Subject: [PATCH v15 17/43] dept: apply sdt_might_sleep_{start,end}() to dma fence
-Date: Tue, 13 May 2025 19:07:04 +0900
-Message-Id: <20250513100730.12664-18-byungchul@sk.com>
+Subject: [PATCH v15 20/43] dept: apply timeout consideration to swait
+Date: Tue, 13 May 2025 19:07:07 +0900
+Message-Id: <20250513100730.12664-21-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20250513100730.12664-1-byungchul@sk.com>
 References: <20250513100730.12664-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0hTcRiH+59zds5xuTitsGMG5SKFIsvQeIOMoA+diMhQKAupUx7ayC2Z
-	ZRlFM9dN81KgonmZs9baltlmN2+Z0sosW7WWhZc0kaSpYW1lLWsz+vLy8P5+PO+Xl8alj0Xz
-	aYXqkKBW8akyUkyIR4Orl38JXSxfWb0KPN/OEVB+00KCo9aMwFKfhcHIo43w1utG8Ov5CxxK
-	ihwIqgd6cai39yFoNp4i4fXQLHB6xknoKMolIbvmJgkvP/sw6Cm+hIHZugX6DcMEdBbqMSgZ
-	IeFySTbmH58wmDSYKDBolsCgsYwC30A0dPS5RND8fhmUVvaQ0NTcQYD93iAGrxvKSeiz/BFB
-	p/0JAd78MHBczBPBjTE9CZ+9BhwMnnEKXrXqMLDrQqBO6xee+Tolgsd5rRicuXILA+e7RgQt
-	5z5gYLW4SGj3uDGwWYtw+HntEYLB/FEKTl+YpOByVj6C3NPFBGh7YuHXD//lim/RkFVVR8CN
-	3y60Po6zVFoQ1+4exzmt7Qj30/OG5Jq9OoJ7qme5+2W9FKdteU9xOuthzmZcytU0jWBc9YRH
-	xFlN50nOOnGJ4nJGnRg31tVFxS/YKV6bIqQqMgT1inV7xPLGs1fxtHLJ0U/1BZQG+cQ5KIhm
-	mRg2t18j+s/OxgYswCQTyXZ3T+IBnsssYm15w/6OmMYZ10z2bcU7FAjmMNvY8q+vpksEs4R1
-	6AvIAEuY1ay7JR/9ky5kzXWt050g//73tS4iwFImli3UmYmAlGWqgtjsqn8ilgllHxq7iUIk
-	0aEZJiRVqDKUvCI1JkqeqVIcjdp3UGlF/vcynPDtuocmHAltiKGRLFjyZCRcLhXxGemZyjbE
-	0rhsriTrrn8lSeEzjwnqg7vVh1OF9DYURhOyeZJV3iMpUmY/f0g4IAhpgvp/itFB8zXIUtGw
-	ac1eVeSth+oY2CRxRWlMtbNzooI3xFpX8NeTOhNoe6Jla/hysnBIkeFWJh2fKulMjltrmmgv
-	3s4MlEYMJ37faJh1J2XHx+SwxMEtm5/t8ginQioi4sac8TW+fZUR4UPKB96n2jy9Kp7PPGB2
-	2ow/CppOJt+eo9kztaamV0aky/nopbg6nf8L6y132FoDAAA=
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0wTaRiF+b6Z+aZ0rRkrwUHjrUKI9bKSWPPGdUV/qBOjRv2hCYmX7jqx
-	jYDaIsImm4BcVJSCJoAoYEGtDVSLA/GGIKFa6ZLtVqgFDaISNRCqEKXNIvXSavzz5sk5J+f9
-	c2SUsp6ZKdOnZ4iGdG2qishp+Zbf8paMxi3QLTv+NREC4ydoqLLbCHiuNyCwNediGH64AXqD
-	fgST//5HQUWZB0Htq+cUNDsHELRajxHoeT0VvIFRAq6yUwTyLtkJPB4JYegvP4uhQdoMLyxv
-	aegqrcNQMUzgQkUeDp8hDBOWehYsOQkwaD3PQuhVErgGfAw4ql0MtD5bBJU1/QTutbpocN4e
-	xNBzt4rAgO0rA13OThqCplngOVPMwLX3dQRGghYKLIFRFrrbzRic5lhozA+3Fn78wsCj4nYM
-	hZdvYPA+bUHQduIlBsnmI+AI+DE0SWUUfLr6EMGg6R0LBacnWLiQa0JwqqCchvx+DUz+H/5c
-	PZ4EuRcbabj22YfWrBZsNTYkOPyjlJDfdFT4FHhChNagmRb+qeOFO+efs0J+2zNWMEtHhCar
-	Wrh0bxgLtR8CjCDVnySC9OEsKxS982LhvdvNbp2dIl+1T0zVZ4qGX1fvletajl+hDlUpsoaa
-	S9gcFJIXoWgZzy3nvS13cYQJl8j39U1QEY7h5vFNxW+ZIiSXUZzvF763+imKGNO5bXzVx+7v
-	IZpL4D11JSTCCm4F728zoR+lc/mGxvbvmeiw/vmqm46wktPwpeYGuhTJzSiqHsXo0zPTtPpU
-	zVLjAV12uj5r6Z8H0yQUXpDl79CZ22i8Z0MH4mRINUXROTxfp2S0mcbstA7EyyhVjCL3VlhS
-	7NNm/yUaDu4xHEkVjR1oloxWzVBs3CnuVXL7tRniAVE8JBp+ulgWPTMHqZPHtkt9OyY98ec0
-	1pUZsZopKb0+NX14bdyI33Hz0RidpTVHJ6waUioTXDc6216Qvpbd6mnr4na4bdZyoz3FHuWI
-	XXC/ZPGeO0kmT6VzU2L/xXj7m4KuPyrlC3cVFhnXuJ50/578INktWXTro7xfxoJMbRfeb50d
-	aifxujkWFW3UaZPUlMGo/QYe7KZkPQMAAA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0zTZxjFff/XUq3+7cj2etcKajAyi7o8H+biF8P7xWSXZHPTRBv5Z21W
+	QAqikJhRBYIIDCGVCKgtkFKhSCle8FJXQe5Y6+iAKrLJjFlHkaXaZkBxKzi/PDk55+T8vjwS
+	Wt7DrpRoUjJEXYpKq+CkjHRySc22v1dsVG/3TayH4JsCBqqbrRy4rzYisF7TU+DrTIThkB/B
+	7MNHNFQY3AhMz5/RcK1rDIHDcoqDwRdLwROc4qDXcJaD07XNHDyeCFMwer6Mgkb7PvjN/JKB
+	/tIaCip8HFRVnKYi508Kps0NPJhzYmHcUslD+LkSeseGWHA82QoXLo1ycNfRy0BX2zgFg7er
+	ORiz/stCf1cPA6GSVeA+V8xC06saDiZCZhrMwSkefnEaKegyfgi23Mhg/uu3LHQXOynIr2uh
+	wOO9g+Bewe8U2K1DHHQE/RS02g00zNR3IhgvmeQhr2iahyp9CYKzeecZyB3dBbP/RMgX3yhB
+	f9nGQNPcENqzm1gvWRHp8E/RJLf1OJkJ/soRR8jIkL4aTG5VPuNJ7r0nPDHaj5FWSxypveuj
+	iCkQZIm94QxH7IEynhROeijyyuXiP1/9nfTTJFGryRR1H392WKpufqFHR19zJyo669gc1McW
+	oigJFnbiAkse/16fqncw85oTNuORkWl6XkcL63Fr8ctIXyqhhaHFePiiF80HHwh7cXu+YaHE
+	CLF49HLlwpBM+ATrp53/A9bhRptzoRMV8efqXQsAubALlxobmflRLPwUhW2V78hYWIHvW0aY
+	UiQzokUNSK5JyUxWabQ749VZKZoT8UdSk+0o8l/mk+EDbSjg/qodCRKkWCLr8W1Qy1lVZnpW
+	cjvCEloRLdPfjFiyJFVWtqhLPaQ7phXT29EqCaP4SJYQOp4kF75XZYg/iOJRUfc+pSRRK3MQ
+	k2zeT9oKZhNtdJnO1FuYWeS3v73yY3ZV3dMmj39ix/ZFM6Zl5V8+PfnzmfJzf+0wdS+ztnzd
+	MaCbCoXjUnevcXk9iwfEtbXfbvX/YYQ9g+4m5epsblNeWrjfpd3vPhigYoq2XHfI5gwbvd5v
+	Br5wBmKU+EFCRuCGdXlCWmx1j4JJV6uUcbQuXfUfaqoksVsDAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0hTcRjG+5/rXE6OS+qkRbbogpYmZLxQaV/CQ2SEBIEEOfLQlpvGlqZB
+	5XKJXSZL0pHXpTJlzqZTUquJTZyXylba0jArG9HIS5STVnaZUl9efjzPw/N8eQW42EyGC+SZ
+	Z3lVplQhoYSE8PCegh1f1m6S7ax14eCbLyKg0mqhwHW3CYGlXYOBty8JXi1MI/j59BkOhlIX
+	gjvv3+DQ7pxEYG+8TMGIJwRGfXMUDJZep6CgzkrB88+LGEyUlWDQZEuGt6aPBDzW12Jg8FJQ
+	YSjAAucTBn6TmQZT/maYaiynYfF9HAxOuknorRokwf46Gm5XT1Dw0D5IgLNzCoOR+5UUTFr+
+	kPDYOUDAQnEEuG7qSGieraXg84IJB5NvjoYXPUYMnMbV0KINtBZ++01Cv64Hg8L6VgxGxx8g
+	6C56h4HN4qag1zeNQZutFIcfDX0IpopnaLhyw09DhaYYwfUrZQRoJ+Lh5/fActV8HGhqWgho
+	/uVG+xM4S7UFcb3TczinbTvH/fC9pDj7gpHghmpZrqv8Dc1pu1/TnNGWzbU1RnF1D70Yd+er
+	j+Rs5qsUZ/taQnPXZkYxbnZ4mD6yPlW4N51XyHN4VWxCmlBm9WjQmW9UrqGvnsxHQ+Q1FCRg
+	mV3s5QY7scQUs5UdG/PjSxzGRLJtuo+BjFCAM+6V7KuqcbRkrGIOsI7C0uUQwWxmJ2rK6SUW
+	MbtZjb/nX+kGtqmlZzkTFNB/NQwvD4iZeFZvbCL0SGhEK8woTJ6Zo5TKFfEx6gxZXqY8N+Zk
+	ltKGAh9kurB4sxPNjyQ5ECNAkmDRgHejTExKc9R5SgdiBbgkTKTpCEiidGneeV6VdUKVreDV
+	DhQhICRrRAeP8Wli5pT0LJ/B82d41X8XEwSF5yP979R2U/ktb/KlxKjCw+uiY501l7z60/7w
+	6tlcQ0Ta+WxdjMTZkZOYmHroWKL4g67q+Qvr0ZHmRt/co/7pd7PbQlwplrCu7hXR/bonW+q0
+	6SXe1j3WcJEnxRzyKfJil2dmLDT4+3aHMuvls+57Es96t5Ldl+FSBBc9uhVadjzKKiHUMmlc
+	FK5SS/8CJQIgkj0DAAA=
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -120,57 +120,28 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-Make dept able to track dependencies by dma fence waits and signals.
+Now that CONFIG_DEPT_AGGRESSIVE_TIMEOUT_WAIT was introduced, apply the
+consideration to swait, assuming an input 'ret' in ___swait_event()
+macro is used as a timeout value.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- drivers/dma-buf/dma-fence.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ include/linux/swait.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/dma-buf/dma-fence.c b/drivers/dma-buf/dma-fence.c
-index f0cdd3e99d36..5d2fd2f6a46d 100644
---- a/drivers/dma-buf/dma-fence.c
-+++ b/drivers/dma-buf/dma-fence.c
-@@ -16,6 +16,7 @@
- #include <linux/dma-fence.h>
- #include <linux/sched/signal.h>
- #include <linux/seq_file.h>
-+#include <linux/dept_sdt.h>
- 
- #define CREATE_TRACE_POINTS
- #include <trace/events/dma_fence.h>
-@@ -783,6 +784,7 @@ dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
- 	cb.task = current;
- 	list_add(&cb.base.node, &fence->cb_list);
- 
-+	sdt_might_sleep_start(NULL);
- 	while (!test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags) && ret > 0) {
- 		if (intr)
- 			__set_current_state(TASK_INTERRUPTIBLE);
-@@ -796,6 +798,7 @@ dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
- 		if (ret > 0 && intr && signal_pending(current))
- 			ret = -ERESTARTSYS;
- 	}
-+	sdt_might_sleep_end();
- 
- 	if (!list_empty(&cb.base.node))
- 		list_del(&cb.base.node);
-@@ -885,6 +888,7 @@ dma_fence_wait_any_timeout(struct dma_fence **fences, uint32_t count,
- 		}
- 	}
- 
-+	sdt_might_sleep_start(NULL);
- 	while (ret > 0) {
- 		if (intr)
- 			set_current_state(TASK_INTERRUPTIBLE);
-@@ -899,6 +903,7 @@ dma_fence_wait_any_timeout(struct dma_fence **fences, uint32_t count,
- 		if (ret > 0 && intr && signal_pending(current))
- 			ret = -ERESTARTSYS;
- 	}
-+	sdt_might_sleep_end();
- 
- 	__set_current_state(TASK_RUNNING);
- 
+diff --git a/include/linux/swait.h b/include/linux/swait.h
+index 277ac74f61c3..233acdf55e9b 100644
+--- a/include/linux/swait.h
++++ b/include/linux/swait.h
+@@ -162,7 +162,7 @@ extern void finish_swait(struct swait_queue_head *q, struct swait_queue *wait);
+ 	struct swait_queue __wait;					\
+ 	long __ret = ret;						\
+ 									\
+-	sdt_might_sleep_start(NULL);					\
++	sdt_might_sleep_start_timeout(NULL, __ret);			\
+ 	INIT_LIST_HEAD(&__wait.task_list);				\
+ 	for (;;) {							\
+ 		long __int = prepare_to_swait_event(&wq, &__wait, state);\
 -- 
 2.17.1
 
