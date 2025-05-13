@@ -1,17 +1,17 @@
-Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id D01C92512E0;
-	Tue, 13 May 2025 10:07:52 +0000 (UTC)
+Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 6B5662522B2;
+	Tue, 13 May 2025 10:07:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747130876; cv=none; b=DKeE9Upt9bigr9DGlt+XwaBJdVvTTzDjkcDFhQ0vt+Zfa0ZyWkblQpNE5tRkFpcLA4faT94E6QkAK2SjlYxkZ1ETqz7EbqCZj03TZdolehvMUlZeoN4cSv/qWjCmfyVRT23bX9aJEXQgOXDwhKu5MjxX41Cwh2POagiEgYZglRw=
+	t=1747130877; cv=none; b=aDAp/57gUKvGRdim4WeyhWHa5JipZFo4poSlCjAVETVD+5tiNUO64uKkUnzVJHNMPeAu9HsftPWZU6Hog/sXJEaPJH3kNJpODiIQLjPZtoMrfr2IcAqudciOV4cBCup991TBOD+lnGCN6meWk76XHybz7tkXbwRIJ5cDmAgQpWo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1747130876; c=relaxed/simple;
-	bh=4A9mulUq0DyLsLDdCQ4U5LwuKs+mN67d32ljZcRTlfc=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=AdcUkDUt5EKHUA0S3W/IYgZiW3As06cAloaV/cL90WbLMwDxlB9b2wqe0ve0gsyIzxiRWQJw8yQoDnVLeyEDmcg6TYpRqZIehKmvI79TR8aKRXVtrGcBE6XDLtmTwCjlr+do1CM/rzjkoskbrmTeXvYKXbSA536ukfS7uE9hJk4=
+	s=arc-20240116; t=1747130877; c=relaxed/simple;
+	bh=mVczWw5AJvTGaUa2k+kGuAdITLqzYAqLiO2CNQ+CNGE=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=EhJSowfW9Q7Im0Xbub+cVqTdtO3XfUsGL3vOYSv6bLjFuTZsLrnwNffYeiA8yymTRLX9gx96rwwyMqzOnP0fProm/jPRy0afBFG+Z8Mm517D1jnwqBSlMT73QbxgJelKBpGv8cp3raP+3rTgB8u/MHM6SlUJOo3jeoUTKhm6KAk=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-669ff7000002311f-6c-682319eefd7d
+X-AuditID: a67dfc5b-669ff7000002311f-8c-682319ef1729
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -75,44 +75,44 @@ Cc: kernel_team@skhynix.com,
 	netdev@vger.kernel.org,
 	matthew.brost@intel.com,
 	her0gyugyu@gmail.com
-Subject: [PATCH v15 11/43] dept: add a mechanism to refill the internal memory pools on running out
-Date: Tue, 13 May 2025 19:06:58 +0900
-Message-Id: <20250513100730.12664-12-byungchul@sk.com>
+Subject: [PATCH v15 13/43] dept: apply sdt_might_sleep_{start,end}() to wait_for_completion()/complete()
+Date: Tue, 13 May 2025 19:07:00 +0900
+Message-Id: <20250513100730.12664-14-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20250513100730.12664-1-byungchul@sk.com>
 References: <20250513100730.12664-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa2xLYRjHve85PaetdTmpmYOJrQyZuMxleQi2+eJ8EYKEkKCxM21snbTb
-	mERsdDJsNWIaw3Ql3bJ2Np3EtdQ2tblMWe3CNoyx2qWyaWOso3X58uSX/z/5Pc+HR0hIGwRT
-	hEpVOq9WyVNklJgUD4QY53kmz1AsdOhDwfstj4QLVRYKnFfNCCzXczC4H66BVl8/gp/PnhOg
-	L3IiKH3fScB1RxcCW/lhCpo/hoLL66GgsegEBUcuV1Hwom8UQ8fZ0xjM1rXw1vSJhCeFRgx6
-	NwXn9UdwYPRiGDFV0GDKjobu8mIaRt/HQmNXiwBsr+fCuZIOCu7aGklw3OzG0Hz7AgVdll8C
-	eOJoIMGnmwrOUwUCqBw0UtDnMxFg8npoeGk3YHAYwqFaGxAeHR4TwKMCO4ajV65hcLXfQXAv
-	7x0Gq6WFgjpvP4YaaxEBP8oeIujWDdCQmz9Cw/kcHYITuWdJ0HYshZ/fA5svfouFnEvVJFT6
-	W1DCSs5SYkFcXb+H4LQ1+7gf3lcUZ/MZSO6xkeVuFXfSnPbea5ozWDO4mvIY7vJdN+ZKh7wC
-	zlpxjOKsQ6dp7viAC3ODTU30+oit4hVJfIoyk1cvWLVTrGh/PoD3vkjYX/VFi7NR5eLjSCRk
-	mSWss8kg+M+mc6Y/TDGz2ba2ESLIYUwkW1PwKZCLhQTTMp5tvdiOgsUEZhebXVBMB5lkotmv
-	H404yBImjh08NUz/lU5nzdX2PyJRIPeXNZFBljJL2UKDmQxKWeakiO3zm/9dMZl9UN5GFiKJ
-	AY2rQFKlKjNVrkxZMl+RpVLun78rLdWKAv9lOji67SYacm6sRYwQyUIkDe4ohVQgz9RkpdYi
-	VkjIwiQ5NwKRJEmedYBXp+1QZ6Twmlo0VUjKJkkW+fYlSZnd8nR+D8/v5dX/WywUTclGOrWn
-	zJbvdz2a1uzsQZvotC3inolZ450feutz8+zpnsfudRH5syJvf8ZjCcmhvOtNcufM6J772+f0
-	RrzZvnn508T4sZHwacsSb+i7vDs3x8WrQuo0G+KHv8qGEp1kZnHGXOme8Kv2wtb60isl0rgv
-	q39ZxkVFRYp6/GcW5B3SzYmSkRqFPDaGUGvkvwHIBvbIWwMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSf0yMcRzH+36fX3fH5XEaD2Y4a4yJQ3zM75n1nY3xD+YfPfJwl37YHZGN
-	3bnL/KhWJpHSiV3tupS7RiFrteK0Uqojq1MxRF1GF6Vwx/zz2Wuv9/Z+//ORUSo7M0OmSzgq
-	6RPEODWroBXb15gX+6bP0y5tH18G/qFzNOSWOlhovlOMwFFuwtBXFwUvh/sR/Gx8TkF2VjOC
-	mz1dFJTXexFUFZ1hofVdKLT5B1lwZ11kwXyrlIWWz2MYOq9cwlDs3AZvbO9paMgowJDdx8L1
-	bDMOnI8YRmx2DmzGcOgtyuFgrEcDbq+Hgdo8NwNVrxfBtRudLDyqctNQX9GLofVBLgtex28G
-	Guqf0jCcPhOaM9MYKPEVsPB52EaBzT/IwYtqK4Z661QoswRaz377xcCTtGoMZ2/fxdDW8RDB
-	43PdGJwODwu1/n4MLmcWBaOFdQh60wc4SEkd4eC6KR3BxZQrNFg6I+Hnj8By3pAGTPllNJSM
-	e9DG9cRxw4FIbf8gRSyu42TU386SqmErTZ4VCKQyp4sjlsevOWJ1HiOuooXk1qM+TG5+9TPE
-	aT/PEufXSxy5MNCGia+pidsxa69i7QEpTpck6Zesj1ZoO54P4CMtG0+UfrJgIypZfgHJZQK/
-	QrBdszFBZvn5wqtXI1SQw/g5givtfcArZBTvmSC8zOtAwWAKHyMY03K4INN8uPDlXQEOspJf
-	Kfgyv3H/SmcLxWXVf4vkAT9e2EQHWcVHChnWYjoDKawoxI7CdAlJ8aIuLjLCcFibnKA7ERGT
-	GO9EgQ+ynRrLrEBDrVE1iJch9UTl0765WhUjJhmS42uQIKPUYUrT/YBSHhCTT0r6xH36Y3GS
-	oQbNlNHqacqtu6VoFX9IPCodlqQjkv5/imXyGUZ0ryLGlyyqyvPS6yrxh8mX2yRXDlEYjB89
-	saMKS7Ry2sGyVfLUrh/duT3fo9amxu73hsu9YxGVhRacb859u82Vstrd1L6OD72KY0/pTY12
-	a/7Ojilyc8jmzE2NhV8iN+zfo5m0q7Gz+0xq6O0dKa0Np30LQloSt+gqH2iUS8RlatqgFTUL
-	Kb1B/AN/tU/BPQMAAA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSWUxTaRTH/b67tkPJtSBz3aJTYkwgLhCdHBPH6IPxPmjU+OaYaCPXaR1A
+	LViExIQCEgcFEQVcQAtqrbQMnbaJjtIGyrAJYpVFVEApE0MHsIq2Y1nUVuLLyS+//8n/vByW
+	kLdSi1h1arqoSVUmK2gpKZ2IqF7lWxirWvugZin4P54moaLOTIP7TxMCs12Hwdu8DZ4FxhFM
+	P3pMQHmpG0HV8CAB9pYhBA5jDg3d/0ZCj99HQ3vpGRpyb9TR8GRsBsNAWQkGk3UHvDK8IaGj
+	uBpDuZeGq+W5ODRGMQQNNQwYsleAx3iFgZnhBGgf6qPA8SIeLl8boKHe0U5Cyz0Phu77FTQM
+	mb9Q0NHSRkKgaDG4zxdSUPu2moaxgIEAg9/HwNMGPYYWfQxY8kKF+R8+U9Ba2IAh/+ZfGHqe
+	P0DgPP0ag9XcR0OTfxyDzVpKwNTtZgSeogkGTp0NMnBVV4TgzKkyEvIG1sP0p9Dlyo8JoLtu
+	IaF2tg9t/kUwXzMjoWncRwh5tgxhyt9LC46AnhQeVvPC31cGGSHP+YIR9Nbjgs0YJ9yo92Kh
+	atJPCdaaP2jBOlnCCAUTPVh429XF7FqyV7oxSUxWa0XNmk0HpKppVwE+6ph/YrTXjbKRLbIA
+	SVieW8fPDjbT37muuxOHmeZW8v39QSLM0dxy3lb4hipAUpbg+n7gn1U+R+EgilPxOleQCjPJ
+	reA7s///5mXcz/yrW5+pudJlvMnS8K1IEvKzt7vIMMu59Xyx3kTO7ZRLePudiDleyDca+8li
+	JNOjeTVIrk7VpijVyetWqzJT1SdWHzySYkWh9zKcnPn1Hpp073EhjkWKCFmb9yeVnFJq0zJT
+	XIhnCUW0THc3pGRJyswsUXNkv+Z4spjmQotZUvGjLDGQkSTnflOmi7+L4lFR8z3FrGRRNjq3
+	cuJQ7zThJEbRlljJtovR/9TvWGaO3v5uY3pZpGf4U0VMTFPQaI/cp21c4O7wZXg4Jh857fLE
+	qJdbuw7+1xln0OuzanOkWs31L5dyRpipSq+rZPeGiCd31jRaH12wECWHx95XmdbGjlxMjKfY
+	7p2DufYDd4ecWcfGRyy9jgUKMk2lTIgjNGnKrw3Z7yFaAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUiTaxjHu+/n1dXsycSetKwW0Ru9GGdxQYc6Hw50ExVFQdGHctRTG+mM
+	rUwLO1u6MHVigUm+1LSapjN1E7NyIZPM9WLWnGWZlpQovkE5a2nrbB3Ol4sfvz/8/18unoqo
+	ZKJ5jfakpNOqEhSsjJbt3JS+Znz+UvV6bx8DvolMGoprbCx03KlCYKs3Yhh6tBVeT44gmHr+
+	goKC/A4EpR/fU1Df2ovAWXGeBc+ncOj0jbPgzs9mIf1GDQsvh6cx9Fy5jKHKvgP6rAM0PM0r
+	w1AwxEJRQToOnkEMfmslB1bDMuivKORg+mMcuHu7GGgpcTPgfLsarl7rYaHJ6aahtbEfg+d+
+	MQu9tl8MPG1to2EyNwY6LpkZqB4rY2F40kqB1TfOwatmC4ZWSxTUZgRbL3wNMPDY3Izhws06
+	DJ3dDxA8zPyAwW7rYqHFN4LBYc+n4Ef5IwT9uaMcmHL8HBQZcxFkm67QkNGjhKnvweWSiTgw
+	Xq+lofpnF/prM7FdsyHSMjJOkQzHafLD52WJc9JCkydlIrlX+J4jGQ/fcsRiP0UcFavIjaYh
+	TEq/+Bhir7zIEvuXyxzJGu3EZKy9ndu18IDszyNSgiZZ0q3bHC9TT7my8AnnnJRBbwcyIEd4
+	FgrjReEPscbzDIeYFZaLb974qRBHCotFh3mAyUIynhK6ZoqvS7pRKJgrqEWjy8+EmBaWic8M
+	3357ubBR7LsVYP4rXSRW1Tb/LgoL+p/l7XSIIwSlmGepovOQzIJmVKJIjTY5UaVJUK7VH1en
+	ajUpaw8nJdpR8IOsadOXGtGEZ6sLCTxSzJK3DS1RRzCqZH1qoguJPKWIlBvvBpX8iCr1jKRL
+	OqQ7lSDpXSiGpxXz5Nv2SfERwjHVSem4JJ2QdP+nmA+LNqCyBf7uxsPNB9sG238Nh11VGgsM
+	0VHaOsrkUULMudjBFdmHineWxzxJ227e85lPy4xdeDfnXVQ85TYlbXcH+AYdPtdUXHQndtQ7
+	dn+NN67001mT7+I/O3JI0krHlin3frah+nqfVBd+OzCwF5PZKUfXB5o2vMtd7jIbvH+/2l2o
+	oPVqVdwqSqdX/QsZd9PJPQMAAA==
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -120,271 +120,78 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-dept engine works in a constrained environment.  For example, dept
-cannot make use of dynamic allocation e.g. kmalloc().  So dept has been
-using static pools to keep memory chunks dept uses.
-
-However, dept would barely work once any of the pools gets run out.  So
-implemented a mechanism for the refill on the lack, using irq work and
-workqueue that fits on the contrained environment.
+Make dept able to track dependencies by wait_for_completion()/complete().
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- kernel/dependency/dept.c          | 108 +++++++++++++++++++++++++-----
- kernel/dependency/dept_internal.h |  19 ++++--
- kernel/dependency/dept_object.h   |  10 +--
- kernel/dependency/dept_proc.c     |   8 +--
- 4 files changed, 116 insertions(+), 29 deletions(-)
+ include/linux/completion.h | 30 +++++++++++++++++++++++++-----
+ 1 file changed, 25 insertions(+), 5 deletions(-)
 
-diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index a936a8d831c5..fc1d9e8b28f9 100644
---- a/kernel/dependency/dept.c
-+++ b/kernel/dependency/dept.c
-@@ -74,6 +74,9 @@
- #include <linux/dept.h>
- #include <linux/utsname.h>
- #include <linux/kernel.h>
-+#include <linux/workqueue.h>
-+#include <linux/irq_work.h>
-+#include <linux/vmalloc.h>
- #include "dept_internal.h"
- 
- static int dept_stop;
-@@ -142,9 +145,11 @@ static inline struct dept_task *dept_task(void)
- 		}							\
- 	})
- 
--#define DEPT_INFO_ONCE(s...) pr_warn_once("DEPT_INFO_ONCE: " s)
-+#define DEPT_INFO_ONCE(s...)	pr_warn_once("DEPT_INFO_ONCE: " s)
-+#define DEPT_INFO(s...)		pr_warn("DEPT_INFO: " s)
- 
- static arch_spinlock_t dept_spin = (arch_spinlock_t)__ARCH_SPIN_LOCK_UNLOCKED;
-+static arch_spinlock_t dept_pool_spin = (arch_spinlock_t)__ARCH_SPIN_LOCK_UNLOCKED;
- 
- /*
-  * DEPT internal engine should be careful in using outside functions
-@@ -267,6 +272,7 @@ static bool valid_key(struct dept_key *k)
- 
- #define OBJECT(id, nr)							\
- static struct dept_##id spool_##id[nr];					\
-+static struct dept_##id rpool_##id[nr];					\
- static DEFINE_PER_CPU(struct llist_head, lpool_##id);
- 	#include "dept_object.h"
- #undef  OBJECT
-@@ -275,14 +281,74 @@ struct dept_pool dept_pool[OBJECT_NR] = {
- #define OBJECT(id, nr) {						\
- 	.name = #id,							\
- 	.obj_sz = sizeof(struct dept_##id),				\
--	.obj_nr = ATOMIC_INIT(nr),					\
-+	.obj_nr = nr,							\
-+	.tot_nr = nr,							\
-+	.acc_sz = ATOMIC_INIT(sizeof(spool_##id) + sizeof(rpool_##id)), \
- 	.node_off = offsetof(struct dept_##id, pool_node),		\
- 	.spool = spool_##id,						\
-+	.rpool = rpool_##id,						\
- 	.lpool = &lpool_##id, },
- 	#include "dept_object.h"
- #undef  OBJECT
- };
- 
-+static void dept_wq_work_fn(struct work_struct *work)
-+{
-+	int i;
-+
-+	for (i = 0; i < OBJECT_NR; i++) {
-+		struct dept_pool *p = dept_pool + i;
-+		int sz = p->tot_nr * p->obj_sz;
-+		void *rpool;
-+		bool need;
-+
-+		local_irq_disable();
-+		arch_spin_lock(&dept_pool_spin);
-+		need = !p->rpool;
-+		arch_spin_unlock(&dept_pool_spin);
-+		local_irq_enable();
-+
-+		if (!need)
-+			continue;
-+
-+		rpool = vmalloc(sz);
-+
-+		if (!rpool) {
-+			DEPT_STOP("Failed to extend internal resources.\n");
-+			break;
-+		}
-+
-+		local_irq_disable();
-+		arch_spin_lock(&dept_pool_spin);
-+		if (!p->rpool) {
-+			p->rpool = rpool;
-+			rpool = NULL;
-+			atomic_add(sz, &p->acc_sz);
-+		}
-+		arch_spin_unlock(&dept_pool_spin);
-+		local_irq_enable();
-+
-+		if (rpool)
-+			vfree(rpool);
-+		else
-+			DEPT_INFO("Dept object(%s) just got refilled successfully.\n", p->name);
-+	}
-+}
-+
-+static DECLARE_WORK(dept_wq_work, dept_wq_work_fn);
-+
-+static void dept_irq_work_fn(struct irq_work *w)
-+{
-+	schedule_work(&dept_wq_work);
-+}
-+
-+static DEFINE_IRQ_WORK(dept_irq_work, dept_irq_work_fn);
-+
-+static void request_rpool_refill(void)
-+{
-+	irq_work_queue(&dept_irq_work);
-+}
-+
- /*
-  * Can use llist no matter whether CONFIG_ARCH_HAVE_NMI_SAFE_CMPXCHG is
-  * enabled or not because NMI and other contexts in the same CPU never
-@@ -318,19 +384,31 @@ static void *from_pool(enum object_t t)
- 	/*
- 	 * Try static pool.
- 	 */
--	if (atomic_read(&p->obj_nr) > 0) {
--		int idx = atomic_dec_return(&p->obj_nr);
-+	arch_spin_lock(&dept_pool_spin);
-+
-+	if (!p->obj_nr) {
-+		p->spool = p->rpool;
-+		p->obj_nr = p->rpool ? p->tot_nr : 0;
-+		p->rpool = NULL;
-+		request_rpool_refill();
-+	}
-+
-+	if (p->obj_nr) {
-+		void *ret;
-+
-+		p->obj_nr--;
-+		ret = p->spool + (p->obj_nr * p->obj_sz);
-+		arch_spin_unlock(&dept_pool_spin);
- 
--		if (idx >= 0)
--			return p->spool + (idx * p->obj_sz);
-+		return ret;
- 	}
-+	arch_spin_unlock(&dept_pool_spin);
- 
--	DEPT_INFO_ONCE("---------------------------------------------\n"
--		"  Some of Dept internal resources are run out.\n"
--		"  Dept might still work if the resources get freed.\n"
--		"  However, the chances are Dept will suffer from\n"
--		"  the lack from now. Needs to extend the internal\n"
--		"  resource pools. Ask max.byungchul.park@gmail.com\n");
-+	DEPT_INFO("------------------------------------------\n"
-+		"  Dept object(%s) is run out.\n"
-+		"  Dept is trying to refill the object.\n"
-+		"  Nevertheless, if it fails, Dept will stop.\n",
-+		p->name);
- 	return NULL;
- }
- 
-@@ -2957,8 +3035,8 @@ void __init dept_init(void)
- 	pr_info("... DEPT_MAX_ECXT_HELD  : %d\n", DEPT_MAX_ECXT_HELD);
- 	pr_info("... DEPT_MAX_SUBCLASSES : %d\n", DEPT_MAX_SUBCLASSES);
- #define OBJECT(id, nr)							\
--	pr_info("... memory used by %s: %zu KB\n",			\
--	       #id, B2KB(sizeof(struct dept_##id) * nr));
-+	pr_info("... memory initially used by %s: %zu KB\n",		\
-+	       #id, B2KB(sizeof(spool_##id) + sizeof(rpool_##id)));
- 	#include "dept_object.h"
- #undef  OBJECT
- #define HASH(id, bits)							\
-@@ -2966,6 +3044,6 @@ void __init dept_init(void)
- 	       #id, B2KB(sizeof(struct hlist_head) * (1 << (bits))));
- 	#include "dept_hash.h"
- #undef  HASH
--	pr_info("... total memory used by objects and hashs: %zu KB\n", B2KB(mem_total));
-+	pr_info("... total memory initially used by objects and hashs: %zu KB\n", B2KB(mem_total));
- 	pr_info("... per task memory footprint: %zu bytes\n", sizeof(struct dept_task));
- }
-diff --git a/kernel/dependency/dept_internal.h b/kernel/dependency/dept_internal.h
-index 187a9b21f744..80a7b90df37b 100644
---- a/kernel/dependency/dept_internal.h
-+++ b/kernel/dependency/dept_internal.h
-@@ -22,9 +22,19 @@ struct dept_pool {
- 	size_t				obj_sz;
- 
- 	/*
--	 * the number of the static array
-+	 * the remaining number of the object in spool
- 	 */
--	atomic_t			obj_nr;
-+	int				obj_nr;
-+
-+	/*
-+	 * the number of the object in spool
-+	 */
-+	int				tot_nr;
-+
-+	/*
-+	 * accumulated amount of memory used by the object in byte
-+	 */
-+	atomic_t			acc_sz;
- 
- 	/*
- 	 * offset of ->pool_node
-@@ -34,9 +44,10 @@ struct dept_pool {
- 	/*
- 	 * pointer to the pool
- 	 */
--	void				*spool;
-+	void				*spool; /* static pool */
-+	void				*rpool; /* reserved pool */
- 	struct llist_head		boot_pool;
--	struct llist_head __percpu	*lpool;
-+	struct llist_head __percpu	*lpool; /* local pool */
- };
- 
- enum object_t {
-diff --git a/kernel/dependency/dept_object.h b/kernel/dependency/dept_object.h
-index 0b7eb16fe9fb..4f936adfa8ee 100644
---- a/kernel/dependency/dept_object.h
-+++ b/kernel/dependency/dept_object.h
-@@ -6,8 +6,8 @@
-  * nr: # of the object that should be kept in the pool.
+diff --git a/include/linux/completion.h b/include/linux/completion.h
+index fb2915676574..bd2c207481d6 100644
+--- a/include/linux/completion.h
++++ b/include/linux/completion.h
+@@ -10,6 +10,7 @@
   */
  
--OBJECT(dep, 1024 * 8)
--OBJECT(class, 1024 * 8)
--OBJECT(stack, 1024 * 32)
--OBJECT(ecxt, 1024 * 16)
--OBJECT(wait, 1024 * 32)
-+OBJECT(dep, 1024 * 4 * 2)
-+OBJECT(class, 1024 * 4)
-+OBJECT(stack, 1024 * 4 * 8)
-+OBJECT(ecxt, 1024 * 4 * 2)
-+OBJECT(wait, 1024 * 4 * 4)
-diff --git a/kernel/dependency/dept_proc.c b/kernel/dependency/dept_proc.c
-index 7d61dfbc5865..f07a512b203f 100644
---- a/kernel/dependency/dept_proc.c
-+++ b/kernel/dependency/dept_proc.c
-@@ -73,12 +73,10 @@ static int dept_stats_show(struct seq_file *m, void *v)
+ #include <linux/swait.h>
++#include <linux/dept_sdt.h>
+ 
+ /*
+  * struct completion - structure used to maintain state for a "completion"
+@@ -26,14 +27,33 @@
+ struct completion {
+ 	unsigned int done;
+ 	struct swait_queue_head wait;
++	struct dept_map dmap;
+ };
+ 
++#define init_completion(x)				\
++do {							\
++	sdt_map_init(&(x)->dmap);			\
++	__init_completion(x);				\
++} while (0)
++
++/*
++ * XXX: No use cases for now. Fill the body when needed.
++ */
+ #define init_completion_map(x, m) init_completion(x)
+-static inline void complete_acquire(struct completion *x) {}
+-static inline void complete_release(struct completion *x) {}
++
++static inline void complete_acquire(struct completion *x)
++{
++	sdt_might_sleep_start(&x->dmap);
++}
++
++static inline void complete_release(struct completion *x)
++{
++	sdt_might_sleep_end();
++}
+ 
+ #define COMPLETION_INITIALIZER(work) \
+-	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait) }
++	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait), \
++	  .dmap = DEPT_MAP_INITIALIZER(work, NULL), }
+ 
+ #define COMPLETION_INITIALIZER_ONSTACK_MAP(work, map) \
+ 	(*({ init_completion_map(&(work), &(map)); &(work); }))
+@@ -75,13 +95,13 @@ static inline void complete_release(struct completion *x) {}
+ #endif
+ 
+ /**
+- * init_completion - Initialize a dynamically allocated completion
++ * __init_completion - Initialize a dynamically allocated completion
+  * @x:  pointer to completion structure that is to be initialized
+  *
+  * This inline function will initialize a dynamically created completion
+  * structure.
+  */
+-static inline void init_completion(struct completion *x)
++static inline void __init_completion(struct completion *x)
  {
- 	int r;
- 
--	seq_puts(m, "Availability in the static pools:\n\n");
-+	seq_puts(m, "Accumulated amount of memory used by pools:\n\n");
- #define OBJECT(id, nr)							\
--	r = atomic_read(&dept_pool[OBJECT_##id].obj_nr);		\
--	if (r < 0)							\
--		r = 0;							\
--	seq_printf(m, "%s\t%d/%d(%d%%)\n", #id, r, nr, (r * 100) / (nr));
-+	r = atomic_read(&dept_pool[OBJECT_##id].acc_sz);		\
-+	seq_printf(m, "%s\t%d KB\n", #id, r / 1024);
- 	#include "dept_object.h"
- #undef  OBJECT
- 
+ 	x->done = 0;
+ 	init_swait_queue_head(&x->wait);
 -- 
 2.17.1
 
