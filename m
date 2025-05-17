@@ -1,132 +1,207 @@
-Received: from mail-pg1-f179.google.com (mail-pg1-f179.google.com [209.85.215.179])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.10])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7132C7E792;
-	Sat, 17 May 2025 03:04:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.179
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BADA21E4A9
+	for <linux-ext4@vger.kernel.org>; Sat, 17 May 2025 05:59:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.175.65.10
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747451084; cv=none; b=M7PUvYLxJJpXMof76jT+3VI+deFNK1gJPbHvwxxgYcJSpEX8Fl4zYp+IIIcGmyCKAdAUtIdJen5HMafTwoWM3E7J6s7p0lYlYoGoe7oeZQKev4U6xCLBEotb7xECi59GgSfX5wLSWHYNMMDPqCwYOHGk41wSR61/DnKEt8IkJ98=
+	t=1747461552; cv=none; b=nwln2I1p0Tz/8qIH5A3s81G0piLr4J7Pm4ruZoFXWxOcs48PVWBn0+vT2f97DrTzLFoUmJ6N9k5T7ZG2yH9QhBQnaZdaOJK5M2ad3LAOH2RenNpfDruu4RloiKolgzz0B4fPOr3qrFg3cuYj1Q5cChQOKc199UJrb2NTGy2Jgvk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1747451084; c=relaxed/simple;
-	bh=AiB1G5fTDiC92KHGQaXhJuHBsdKHaLXkpjf4Wj/zw+4=;
-	h=From:To:Cc:Subject:In-Reply-To:Date:Message-ID:References; b=GfNubZ9kLt3oOUg1Clu9qGr76pw0vxKPb/VTmnr9P4RK2QHQRyTbn6IJoTB1ftOHFu/ZLwZ1W3oNJjs8eAh51mKR++QMnqQi2Bs5vGGjGwW4M4BrNczh2niNEnE+f/WwvLRFgIbkwkeg3bxU/uDj/Epz0eHFkIiciYNhBXqYT1o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ZzkF0Wkg; arc=none smtp.client-ip=209.85.215.179
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1747461552; c=relaxed/simple;
+	bh=MGEBLafGgPDazfYUpZO8jg8fG1Cm/F7fZCTB46LGYyg=;
+	h=Date:From:To:Cc:Subject:Message-ID; b=pGMGhFJFF6270299lAaQC1yCr8NcjuFwQ02Ll4nEl/scgThhxaXRpYZH2utdBXPQaXWCoFms62ubgrlitFWzwS5RozwlvzXwipBrfcOXUnk8Xp64wtmXw3PdJtdpYcE/l8e1PahjTzWqSCzA+fGV5Uw/is1Wwm1RKEPjFf6HxPI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=EV3kBx1M; arc=none smtp.client-ip=198.175.65.10
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ZzkF0Wkg"
-Received: by mail-pg1-f179.google.com with SMTP id 41be03b00d2f7-b26f67f10ddso782531a12.3;
-        Fri, 16 May 2025 20:04:43 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1747451082; x=1748055882; darn=vger.kernel.org;
-        h=references:message-id:date:in-reply-to:subject:cc:to:from:from:to
-         :cc:subject:date:message-id:reply-to;
-        bh=y5uGPldJKKMAwnPZRWE4Ky1XmrauLBy4Q/KR+6W7TF8=;
-        b=ZzkF0WkgpBI92RsyBw/dzkT9IUUlN0FqgrQ5Vk/xg3os48JtT9CenEMvPZOmhvQ8as
-         ONNiq8OsekgSN6Q8Io96BJuRHxBHtCCGclNUh4LjtIknBuWvw324uy9P7iM6ZACuPobX
-         ok2RKpp/cvm1g7HWbgM3CHXyUkmBLUg9koT+eQ5xdIhLUse/u2qkGZBj/QpssP0S03wG
-         y+3xS7OAh6KNMysMstE8E4VFLQmhQ6+OxZQ2rY5VkuMngBPTAxkJo3kV33qafU+xLgW4
-         aQl5+xwjW8UTT4I8JiQ8pK/ENdDwzYg9/6tp0HSVwKy5L4ak15gee5tsOchPIp3rY13Z
-         XTaw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1747451082; x=1748055882;
-        h=references:message-id:date:in-reply-to:subject:cc:to:from
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=y5uGPldJKKMAwnPZRWE4Ky1XmrauLBy4Q/KR+6W7TF8=;
-        b=QUlIT8q+OTdeHEJuVHD0b2SYoPyr/klXip0fqE8voTnKEbDledq9nMZP57VzFLzMIy
-         ASGtHECoL6bVOsxsrgz9hv/J6WhZq/osV9Fx6BojEhKbj8Zws/xFn4kntao3X3HqbpGV
-         3JQbexmA96hujFF3ehWHTQJhEKFgrgPy6NLffZVQhZ4/U+/ePRnMZ+0MJ93cyjx/eDU/
-         hA/G3dVTsKsZNoAG+MW9tP5kaYfgf5TDJoSsJTdnNryXIPgftX5DZlmWwVOvMWGmNJeF
-         G+tkWz1paqhJhJ/K5SKEYX8YOxI8z6HQWmBv37Ab/bE7cF0bX5Tg0t6L0x0/+gGvt+hz
-         Biww==
-X-Forwarded-Encrypted: i=1; AJvYcCVmiDkmhe2ZWE8S64Uxaj/q2RnrVd/xNWisDEGW6czfmoc/jYgS8+UjRg8lRQacpp6A0KG1Tle7@vger.kernel.org, AJvYcCWLTJ3MNahMg4O9Ymh24JAVrVkYvtpBFqsjTcVNnJJYZ/VX/jY4Ljb0BukHSVDc/87AMjF1IjGpPoKZ@vger.kernel.org
-X-Gm-Message-State: AOJu0YxBpRAMVpnrsiZqch+ByenAUNbGM6G6np9aOjVrQyuepa7Twd+n
-	Z7/M4osdZSgSdq5MhETVYoeNRH60mtFwgTxMD1nm6ZbA347YFHdw64Ui
-X-Gm-Gg: ASbGncvqv0CIwDaBpYFBwGG/v2dHIB6tp+2tqH3z5L3gHnt9wCY/bu7rK5+pbVuSh5T
-	tS7MMNqWUxw9WUw/aaSZDzRR8EUgnNkbv9f3MVQRbRyzg8a4KQKpdSUbyUqubPeyxsmdQP64fiP
-	HhGNI5sfpXSpZbPUc47tbaKuc15WwR7b7tx1vDDIMJKUCgrEu5ZyOQXmsK0eNn5j26FxmEv6pwp
-	ngUd/a86YdePuIpPlkeFzY0G+2V6OzYdiOE+Kbm8Ys2AIAlymlrCw8DmaBKiJ43pEWRG6Vx2S0M
-	h9rIQwG/7QH7Rk51fXy4pODHeRae4K2JAypp1eZq8F4=
-X-Google-Smtp-Source: AGHT+IFMBW7vy0zF8OQTN+mqbHH/5Mo5Ze/IldPJQvPBPMtjZZ29zvsh/Hqz9ZMeWKcpQEkltzLB4A==
-X-Received: by 2002:a05:6a21:318c:b0:1f5:7c6f:6c8b with SMTP id adf61e73a8af0-2170cc61570mr6521169637.10.1747451082516;
-        Fri, 16 May 2025 20:04:42 -0700 (PDT)
-Received: from dw-tp ([171.76.82.96])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-30e33451984sm5979535a91.23.2025.05.16.20.04.39
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 16 May 2025 20:04:41 -0700 (PDT)
-From: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-To: "Nirjhar Roy (IBM)" <nirjhar.roy.lists@gmail.com>, fstests@vger.kernel.org
-Cc: linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org, ojaswin@linux.ibm.com, djwong@kernel.org, zlang@kernel.org, david@fromorbit.com, nirjhar.roy.lists@gmail.com
-Subject: Re: [PATCH v2 1/2] new: Add a new parameter (name/emailid) in the "new" script
-In-Reply-To: <2df3e3af8eb607025707e120c1b824879e254a01.1747306604.git.nirjhar.roy.lists@gmail.com>
-Date: Sat, 17 May 2025 08:18:46 +0530
-Message-ID: <87jz6gvto1.fsf@gmail.com>
-References: <cover.1747306604.git.nirjhar.roy.lists@gmail.com> <2df3e3af8eb607025707e120c1b824879e254a01.1747306604.git.nirjhar.roy.lists@gmail.com>
+	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="EV3kBx1M"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1747461549; x=1778997549;
+  h=date:from:to:cc:subject:message-id;
+  bh=MGEBLafGgPDazfYUpZO8jg8fG1Cm/F7fZCTB46LGYyg=;
+  b=EV3kBx1Mi0wphB+ohS75MnYDdeAHcH8K8GIbCK3Qf0NKf3H43b0eNJCY
+   bJxVA3GwFHfC6zQKvV8JjEU81X0+6WyFecv3hVp/ACJMJjWzrJjkmUIMB
+   s4jhyJFmFLvVZXkZTWEXzkv2OEmSHKbDd4xC0jWW0fy0peqhhEQehw39o
+   tosUxYkB5029CnvnkoSrRf4Aaz7Gn1HrLdHZJs46IesFVLWO/6lH5taj6
+   I+KXX0Uj6U93PjU8YNpwu7f8Wj+qoqvG37aI2Tb0q3r8Ds6iF5vatF81Y
+   S6iJhhc/5DGai0F38YeKC7MYHgHVhJcNWVocLmtxkFUBMW2BZIIVzq26X
+   g==;
+X-CSE-ConnectionGUID: vzy7z2z2RRe1njvpmmLCXQ==
+X-CSE-MsgGUID: 4ik4tek4RZed/OGIC+7bpA==
+X-IronPort-AV: E=McAfee;i="6700,10204,11435"; a="66844823"
+X-IronPort-AV: E=Sophos;i="6.15,296,1739865600"; 
+   d="scan'208";a="66844823"
+Received: from fmviesa002.fm.intel.com ([10.60.135.142])
+  by orvoesa102.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 16 May 2025 22:59:09 -0700
+X-CSE-ConnectionGUID: JKITeZyIQHmmG/35miehPw==
+X-CSE-MsgGUID: 5wRyvEN1S9+yeEbnznRf1g==
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="6.15,296,1739865600"; 
+   d="scan'208";a="162195508"
+Received: from lkp-server01.sh.intel.com (HELO 1992f890471c) ([10.239.97.150])
+  by fmviesa002.fm.intel.com with ESMTP; 16 May 2025 22:59:08 -0700
+Received: from kbuild by 1992f890471c with local (Exim 4.96)
+	(envelope-from <lkp@intel.com>)
+	id 1uGAZd-000Jxj-2x;
+	Sat, 17 May 2025 05:59:05 +0000
+Date: Sat, 17 May 2025 13:58:59 +0800
+From: kernel test robot <lkp@intel.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+Subject: [tytso-ext4:test] BUILD SUCCESS
+ 362352380cbd92a653434a686276cb792ed50c3d
+Message-ID: <202505171349.YNf6FCis-lkp@intel.com>
+User-Agent: s-nail v14.9.24
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-"Nirjhar Roy (IBM)" <nirjhar.roy.lists@gmail.com> writes:
+tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git test
+branch HEAD: 362352380cbd92a653434a686276cb792ed50c3d  ext4: clairfy the rules for modifying extents
 
-> This patch another optional interactive prompt to enter the
-> author name and email id for each new test file that is
-> created using the "new" file.
->
-> The sample output looks like something like the following:
->
-> ./new selftest
-> Next test id is 007
-> Append a name to the ID? Test name will be 007-$name. y,[n]:
-> Creating test file '007'
-> Add to group(s) [auto] (separate by space, ? for list): selftest quick
-> Enter <author_name> <email-id>: Nirjhar Roy <nirjhar.roy.lists@gmail.com>
+elapsed time: 1031m
 
-I don't see much of a value add in this change here, as folks or
-atleast I prefer to quickly get into writing my test first and later
-worry about these details :). But I guess I understand where you are
-coming from, a lot of times people miss to update this and end up
-sending a test with "YOUR NAME HERE" placeholder.
+configs tested: 130
+configs skipped: 3
 
-So, sure if we are doing this - then please fix the commit message too,
-as it still shows <email-id> above.
+The following configs have been built successfully.
+More configs may be tested in the coming days.
 
--ritesh
+tested configs:
+alpha                             allnoconfig    gcc-14.2.0
+alpha                            allyesconfig    gcc-14.2.0
+arc                              allmodconfig    gcc-14.2.0
+arc                               allnoconfig    gcc-14.2.0
+arc                              allyesconfig    gcc-14.2.0
+arc                   randconfig-001-20250516    gcc-13.3.0
+arc                   randconfig-002-20250516    gcc-13.3.0
+arm                              allmodconfig    gcc-14.2.0
+arm                               allnoconfig    clang-21
+arm                              allyesconfig    gcc-14.2.0
+arm                       imx_v6_v7_defconfig    clang-16
+arm                   randconfig-001-20250516    gcc-7.5.0
+arm                   randconfig-002-20250516    clang-21
+arm                   randconfig-003-20250516    clang-21
+arm                   randconfig-004-20250516    clang-21
+arm                             rpc_defconfig    clang-18
+arm                           sama5_defconfig    gcc-14.2.0
+arm64                            allmodconfig    clang-19
+arm64                             allnoconfig    gcc-14.2.0
+arm64                 randconfig-001-20250516    gcc-9.5.0
+arm64                 randconfig-002-20250516    gcc-9.5.0
+arm64                 randconfig-003-20250516    gcc-5.5.0
+arm64                 randconfig-004-20250516    gcc-9.5.0
+csky                              allnoconfig    gcc-14.2.0
+csky                  randconfig-001-20250516    gcc-14.2.0
+csky                  randconfig-002-20250516    gcc-14.2.0
+hexagon                          allmodconfig    clang-17
+hexagon                           allnoconfig    clang-21
+hexagon                          allyesconfig    clang-21
+hexagon               randconfig-001-20250516    clang-19
+hexagon               randconfig-002-20250516    clang-21
+i386                             allmodconfig    gcc-12
+i386                              allnoconfig    gcc-12
+i386                             allyesconfig    gcc-12
+i386        buildonly-randconfig-001-20250516    clang-20
+i386        buildonly-randconfig-002-20250516    gcc-12
+i386        buildonly-randconfig-003-20250516    clang-20
+i386        buildonly-randconfig-004-20250516    clang-20
+i386        buildonly-randconfig-005-20250516    clang-20
+i386        buildonly-randconfig-006-20250516    gcc-12
+i386                                defconfig    clang-20
+loongarch                        allmodconfig    gcc-14.2.0
+loongarch                         allnoconfig    gcc-14.2.0
+loongarch             randconfig-001-20250516    gcc-14.2.0
+loongarch             randconfig-002-20250516    gcc-14.2.0
+m68k                             allmodconfig    gcc-14.2.0
+m68k                              allnoconfig    gcc-14.2.0
+m68k                             allyesconfig    gcc-14.2.0
+m68k                         amcore_defconfig    gcc-14.2.0
+m68k                       bvme6000_defconfig    gcc-14.2.0
+m68k                        m5272c3_defconfig    gcc-14.2.0
+microblaze                       allmodconfig    gcc-14.2.0
+microblaze                        allnoconfig    gcc-14.2.0
+microblaze                       allyesconfig    gcc-14.2.0
+mips                              allnoconfig    gcc-14.2.0
+mips                        maltaup_defconfig    clang-21
+mips                   sb1250_swarm_defconfig    gcc-14.2.0
+nios2                             allnoconfig    gcc-14.2.0
+nios2                 randconfig-001-20250516    gcc-13.3.0
+nios2                 randconfig-002-20250516    gcc-13.3.0
+openrisc                         alldefconfig    gcc-14.2.0
+openrisc                          allnoconfig    gcc-14.2.0
+openrisc                         allyesconfig    gcc-14.2.0
+openrisc                            defconfig    gcc-14.2.0
+openrisc                 simple_smp_defconfig    gcc-14.2.0
+parisc                           allmodconfig    gcc-14.2.0
+parisc                            allnoconfig    gcc-14.2.0
+parisc                           allyesconfig    gcc-14.2.0
+parisc                              defconfig    gcc-14.2.0
+parisc                randconfig-001-20250516    gcc-10.5.0
+parisc                randconfig-002-20250516    gcc-12.4.0
+powerpc                          allmodconfig    gcc-14.2.0
+powerpc                           allnoconfig    gcc-14.2.0
+powerpc                          allyesconfig    clang-21
+powerpc                      ep88xc_defconfig    gcc-14.2.0
+powerpc                     ppa8548_defconfig    gcc-14.2.0
+powerpc               randconfig-001-20250516    gcc-5.5.0
+powerpc               randconfig-002-20250516    gcc-5.5.0
+powerpc               randconfig-003-20250516    clang-17
+powerpc                    socrates_defconfig    gcc-14.2.0
+powerpc64             randconfig-001-20250516    clang-21
+powerpc64             randconfig-002-20250516    clang-21
+powerpc64             randconfig-003-20250516    clang-21
+riscv                            alldefconfig    gcc-14.2.0
+riscv                            allmodconfig    clang-21
+riscv                             allnoconfig    gcc-14.2.0
+riscv                            allyesconfig    clang-16
+riscv                               defconfig    clang-21
+riscv                 randconfig-001-20250516    gcc-7.5.0
+riscv                 randconfig-002-20250516    gcc-14.2.0
+s390                             allmodconfig    clang-18
+s390                              allnoconfig    clang-21
+s390                             allyesconfig    gcc-14.2.0
+s390                                defconfig    clang-21
+s390                  randconfig-001-20250516    gcc-7.5.0
+s390                  randconfig-002-20250516    gcc-7.5.0
+sh                               allmodconfig    gcc-14.2.0
+sh                                allnoconfig    gcc-14.2.0
+sh                               allyesconfig    gcc-14.2.0
+sh                                  defconfig    gcc-14.2.0
+sh                    randconfig-001-20250516    gcc-7.5.0
+sh                    randconfig-002-20250516    gcc-9.3.0
+sparc                            allmodconfig    gcc-14.2.0
+sparc                             allnoconfig    gcc-14.2.0
+sparc                 randconfig-001-20250516    gcc-8.5.0
+sparc                 randconfig-002-20250516    gcc-8.5.0
+sparc64                             defconfig    gcc-14.2.0
+sparc64               randconfig-001-20250516    gcc-12.4.0
+sparc64               randconfig-002-20250516    gcc-14.2.0
+um                               allmodconfig    clang-19
+um                                allnoconfig    clang-21
+um                               allyesconfig    gcc-12
+um                                  defconfig    clang-21
+um                             i386_defconfig    gcc-12
+um                    randconfig-001-20250516    clang-21
+um                    randconfig-002-20250516    gcc-12
+um                           x86_64_defconfig    clang-21
+x86_64                            allnoconfig    clang-20
+x86_64                           allyesconfig    clang-20
+x86_64      buildonly-randconfig-001-20250516    clang-20
+x86_64      buildonly-randconfig-002-20250516    gcc-12
+x86_64      buildonly-randconfig-003-20250516    clang-20
+x86_64      buildonly-randconfig-004-20250516    clang-20
+x86_64      buildonly-randconfig-005-20250516    gcc-12
+x86_64      buildonly-randconfig-006-20250516    gcc-12
+x86_64                              defconfig    gcc-11
+x86_64                          rhel-9.4-rust    clang-18
+xtensa                            allnoconfig    gcc-14.2.0
+xtensa                randconfig-001-20250516    gcc-10.5.0
+xtensa                randconfig-002-20250516    gcc-10.5.0
 
-> Creating skeletal script for you to edit ...
->  done.
->
-> ...
-> ...
->
-> Signed-off-by: Nirjhar Roy (IBM) <nirjhar.roy.lists@gmail.com>
-> ---
->  new | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
->
-> diff --git a/new b/new
-> index 6b50ffed..636648e2 100755
-> --- a/new
-> +++ b/new
-> @@ -136,6 +136,9 @@ else
->  	check_groups "${new_groups[@]}" || exit 1
->  fi
->  
-> +read -p "Enter <author_name>: " -r
-> +author_name="${REPLY:=YOUR NAME HERE}"
-> +
->  echo -n "Creating skeletal script for you to edit ..."
->  
->  year=`date +%Y`
-> @@ -143,7 +146,7 @@ year=`date +%Y`
->  cat <<End-of-File >$tdir/$id
->  #! /bin/bash
->  # SPDX-License-Identifier: GPL-2.0
-> -# Copyright (c) $year YOUR NAME HERE.  All Rights Reserved.
-> +# Copyright (c) $year $author_name.  All Rights Reserved.
->  #
->  # FS QA Test $id
->  #
-> -- 
-> 2.34.1
+--
+0-DAY CI Kernel Test Service
+https://github.com/intel/lkp-tests/wiki
