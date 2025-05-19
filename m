@@ -1,17 +1,17 @@
 Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 5F1BB281376;
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id D847B2820A9;
 	Mon, 19 May 2025 09:19:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747646347; cv=none; b=dk8PkBAaPrKIU/pvSAPbYZsF83OG4a+aVUm7GQYKXjO1SK6GFmkY2m4w5KA3UYOhpzfdwbaMs/3UwchY5J9YYw7nCxMp0cxNj6WjzUNCDqgagRPmkgwM9o061wr8W//FSHsM1gQ+Sc4oZGM2ccTP1KCfKMohfhXUcadBw+qyofM=
+	t=1747646348; cv=none; b=DZR7UlHSJp+ROEoGhs1mjIejmJ0oQ42w1eKM4VIuujS0xoc92Uty29KRdz1N+Oe4Ly+eBzhyRcgQM8WK0QcEkxUWagpKNDxq68RvBQ4m+ecGnXZJaA0/n4yocng5+ej3QRf0qDcHPhHfcBzne7Q/SyW8TvVIdHbJtumtVIbyykQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1747646347; c=relaxed/simple;
-	bh=oQEw6Eo1ZD4NTR5FBfSUcltAFBYsFRqKtAgptAn2JR8=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=gvBMOU+RH46NM8cb6zEyz5W49tjUHLpHv7D8t4P6zGzB7CWtThUH/JXNbAsNBLOky6nnHq3QCr+PZczHWfzKZxMZd1Dmzy3xqfBZVNysg0RnUS2cC2qSz8UToKjaZHotSmcQtU3/E0BDU+C9g/SE6jo1J0oT+Ux78sGbqpLaS9Q=
+	s=arc-20240116; t=1747646348; c=relaxed/simple;
+	bh=314TpUAkZxMvbV2pk3wlciVKMbaC2tgJL1bvCZ48Y0A=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=cyRSs2pwTg+85vKrHC+sL5YtCdWtBEbioQJRBrcBGJ0bY6gq/ZK6CATwiGVqR2LWgYJQOGRCyXh1Gcl6pMScbyrvfnufpLj3lc1ZAynZ0T1EnsX+hcMVEmTu/ehECMR9sCaM7sWOPrBoehAE/DTjQSj+cRmOxLB2DfMoHJNPznk=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-669ff7000002311f-f6-682af77082b9
+X-AuditID: a67dfc5b-669ff7000002311f-16-682af77048c5
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -75,44 +75,44 @@ Cc: kernel_team@skhynix.com,
 	netdev@vger.kernel.org,
 	matthew.brost@intel.com,
 	her0gyugyu@gmail.com
-Subject: [PATCH v16 35/42] i2c: rename wait_for_completion callback to wait_for_completion_cb
-Date: Mon, 19 May 2025 18:18:19 +0900
-Message-Id: <20250519091826.19752-36-byungchul@sk.com>
+Subject: [PATCH v16 37/42] completion, dept: introduce init_completion_dmap() API
+Date: Mon, 19 May 2025 18:18:21 +0900
+Message-Id: <20250519091826.19752-38-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20250519091826.19752-1-byungchul@sk.com>
 References: <20250519091826.19752-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSe0xTdxTH/f3uq63UXTuid6hxaaIi22Qsak50GjXG3Swh2aYx6iKukRvb
-	WSprFYpxC9jKEISgiKSKUIopCGXWW0zUUaw0gIypdRYoDNkgvnhHpBUUH4XNf04+Od/H+edI
-	CMUtKkqi0R0U9DqVVknLSNlwRNlnP72IUX/eWBwBwfEsEoovOWjw/VaNwFGbgaG/8SvoCA0h
-	eHX7LgFFhT4EZb0PCKht6kHgrjxKw/2Hc8AfHKWhpTCHBlP5JRruDU5h6D5zCkO1GA//2B+T
-	0Jpvw1DUT8O5IhMOj6cYJu1VDNjTl0Bf5VkGpnrjoKWnnQJ31ydgKemmoc7dQkLT1T4M968X
-	09DjeEtBa9MtEkJ5C8B3MpeCmhEbDYMhOwH24CgDf3msGJqs88BpDhdmPn9DQXOuB0PmhcsY
-	/J2/I6jP+heD6GinwRscwuASCwl4WdGIoC9vmIFjJyYZOJeRhyDn2BkSzN2r4NVE+PL58TjI
-	KHWSUPO6HW1YxztKHIj3Do0SvNmVyr8MttG8O2Ql+T9sHH/t7AOGN9d3MbxVPMS7KmP48rp+
-	zJeNBSlerDpO8+LYKYbPHvZjfuTOHeabhbtkXyYKWk2KoI9d/4NMPdjvoJJrOGOzw4bTUW9k
-	NpJKOHYlZ2q8iN9zqb+QmGaaXcYFApMzHMl+zLlyH1PZSCYh2PbZXMf5TjQtfMju5p7da54x
-	kewSznv0LjPNcnY198RX+n/pYq7a6ZnxSMP7rhzvTFbBruL81SXkdCnHFkg5598m+r/AR9zN
-	ygCZj+RWNKsKKTS6lCSVRrtyhTpNpzGu2HsgSUTh/7L/PPX9VTTm29qAWAlSRsid7uVqBaVK
-	MaQlNSBOQigj5VWuaLVCnqhKOyzoD+zRH9IKhga0QEIq58u/CKUmKth9qoPCfkFIFvTvVSyR
-	RqUj3ZwjBZbAni1/fvDdpv3ygSO3PfPnbZ+wmKUDsRXFgYnoC22f3oiyJOfXfbvWrIK56R7D
-	6eePXpw8cX3HwrTD4rgm0r38SX18hrYu/lHW2skWG3NN9HYaC0Z/XfT6686tS38xrttmii2/
-	kjr75oaEvZk7jZsjsgZCP65xDz5rtWwcSZilJA1qVVwMoTeo3gE448iHWwMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa1CMcRTG/f/vtdWa11p51bgtTamRmhHHdXzr1cT44DLCZId37E4Xza4i
-	l1HaXEqhma1Bl63MyraR3T6E1qQdZRlZ2lKpqDFIEWlTyWXL+HLmN+d5zvN8OSwhM1G+rDrh
-	sKhJUMYpaAkp2bI2fVnijyBVaNOFAHAPnyOh4LaZBuetCgTm6jQMfY8i4NXIAIKfz54TkK93
-	Iijp6SKguqEbga38NA3N72aAyz1Ig0OfRUN62W0aXvRPYOjMy8VQYdkMb4zvSXh6qRRDfh8N
-	1/LTsWd8xDBmNDFgTPWH3vKrDEz0hIGju5UCe6GDAltHMFwp6qSh1uYgoaGmF0PzvQIaus1/
-	KHja8JiEkRw/cF7OpqDySykN/SNGAozuQQZe1hkwNBh8oErnST3z/TcFjdl1GM5cv4PB1X4f
-	wYNzbzFYzK002N0DGKwWPQHjNx4h6M35zEDGhTEGrqXlIMjKyCNB1xkOP0c9zYXDYZBWXEVC
-	5a9WtHGDYC4yI8E+MEgIOusRYdzdQgu2EQMpPCnlhbtXuxhB96CDEQyWJMFaHiSU1fZhoWTI
-	TQkW03lasAzlMkLmZxcWvjQ1MVvnRUvWHRDj1MmiZvmGfRJVf5+ZSqzkjzaaS3Eq6pFnIi+W
-	51bwxS49Mck0F8C3tY1NsZxbyFuz31OZSMISXOt0/lVhO5oUZnF7+W8vGqdMJOfP208/ZyZZ
-	yq3kPziL8b/QBXxFVd2Ux8uz78iyT93KuHDeVVFEXkISA5pmQnJ1QnK8Uh0XHqKNVaUkqI+G
-	7D8Ub0GeDzKenLhcg4abI+oRxyKFt7TKtlQlo5TJ2pT4esSzhEIuNVkDVTLpAWXKMVFzKEaT
-	FCdq65EfSyrmSCN3ivtk3EHlYTFWFBNFzX8Vs16+qUjTHcDUtjijt5/N3ePqmhv1y2f9sqKQ
-	FnXwqa0Zvar9frMLZraN4ehF24jIJbsND98GPbayu6KW30zRB/oONeZdX7jjviQmdPXX8tCo
-	e3PQ/BPbN6V9ynW9Hm+PmObw9ufVwfKSu8dXBa4pU2i3RCoX5Okc6YMto0k+SYvV3qPVsRcV
-	pFalDAsiNFrlX+hP++A9AwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0hTYRjHe885O+dsOTmtsJNW1shKpYvR4ulKlw+90L0Iogs58tBGOm2a
+	l0LQsjBNs4VKamtqLXEz11ah5cI0VxaZ6TITs5KyTM3QtvLSZXb58vDj9+f5P18elpQ5RL6s
+	WhMjaDXKcDktoSR9XoXzDn8LUi1s++ADrq+pFBSUm2lovGZCYL6RTEB33Xp44e5FMPLkKQm5
+	2Y0ICt++IuGGowOBveQ4Dc3vvMHp6qehPjudhhPF5TQ86xkloD1HR4DJugleG7soeJxVREBu
+	Nw35uScIz/hIwJCxlAFjUgB0luQxMPo2BOo7WkRgbwuGC/p2Gqrs9RQ4KjoJaL5dQEOH+ZcI
+	HjseUuDO9IPGcxkiKPtcREOP20iC0dXPQFO1gQCHwQcsKZ7CU4M/RfAgo5qAU5evE+B8eQfB
+	3dQ3BFjNLTTUunoJsFmzSRi+WoegM7OPgZNnhhjIT85EkH4yh4KUdgWMfPdcvvg1BJIvWSgo
+	+9GCVq/EZr0Z4drefhKn2OLwsOs5je1uA4UfFfG4Mu8Vg1PutjHYYD2CbSVBuLiqm8CFAy4R
+	tpaeprF1QMfgtD4ngT83NDBbp+6WrAgTwtWxgnbBqlCJ6kp5Ph1lD4y/P5iFktCwfxoSszy3
+	mB+4lkf9Z1NlqmiMaW4O39o6RI7xJG4Gb8vo8ngJS3It4/kXF1+isWAit43P0ek8yyxLcQF8
+	j8lrTEu5Jfxt/Wn0t9OfN1mq//SIPb4tvfaPl3EK3mnS/7t7VszXVe36y1P4eyWtVBaSGtC4
+	UiRTa2IjlOrwxfNVCRp1/PwDkRFW5PkuY+Longo00LijBnEskntJLfZAlUykjI1OiKhBPEvK
+	J0lLbXNVMmmYMuGooI3crz0SLkTXID+Wkk+WLnLHhcm4g8oY4ZAgRAna/ynBin2TkP6sr8/2
+	9lWD5yyB09+LM6bN3Fk9PX62aoJC8aFrKDDqVpN2JKBh3Vw/ZV7y0n365jlXavc/27O1c/yy
+	pooy+FTMb8z1W375B716YqK3OtLZcNMeszlxb1Rc0d7Q4coNMWmInPWlUJO2pXXteTb9mDpI
+	F/yNPMTjsHmHxcGhcaFVa+RUtEoZEkRqo5W/ARfZoblZAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSb0zMcRzHfX//O85+O43fksVtSA014jOa5ZEv5t8jhs0dftzpOrc7RTbW
+	VSylnKwa6Vx/nOqOzl2MuNY6ylXSP0U7oZlpRZYuSuFinnz23uu9vd5PPhwpq6BDOLX2hKjX
+	KjVyRkJJtq9PW677HqGK8llXgX80g4LrVXYG2u7YENirjQQMPN0EPWNDCH4+f0FCQV4bguL3
+	b0iobuhD4C5PZaDzw2zo8g8z4M3LYiCttIqB9sFJAnz5uQTYnNvgrfUjBc2mEgIKBhgoLEgj
+	AucTAePWShasKYuhv/waC5Pvo8Hb102Dp8hLg7s3Eq6afQw8dnspaHjQT0BnzXUG+uy/aWhu
+	eEbBWM58aLucTcPtLyUMDI5ZSbD6h1noqLMQ0GCZC470gPX8t180NGbXEXC+7C4BXa8fIajN
+	eEeA097NgMc/RIDLmUfCxK2nCPpzPrNw7uI4C4XGHARZ5/IpSPfFwM8fgeWi0Wgw3nBQcHuq
+	G8VtwHazHWHP0DCJ010n8YT/JYPdYxYKN5UI+OG1NyxOr+1lscWZiF3lEbj08QCBi0f8NHZW
+	XmCwcySXxZmfuwj8pbWV3blgryT2sKhRJ4n6lRsUEtXNqkJG51526sk3E0pBE2GZKIgT+NWC
+	7WEGPZ0Zfqnw6tU4OZ2D+YWCK/tjgEs4ku+eKfQUvUbTxRx+l5Cfm0tlIo6j+MXCoG3WNJby
+	a4Qa8wX0zxkm2Bx1fz1BAd6b5fnLZXyM0GUzUyYksaAZlShYrU1KUKo1MSsM8apkrfrUikPH
+	E5wo8EDWM5OXH6DRzk31iOeQfJbU4V6mktHKJENyQj0SOFIeLK10hatk0sPK5NOi/vgBfaJG
+	NNSj+RwlnyfdsltUyPijyhNivCjqRP3/luCCQlJQ2b7SGphqrFiEOgbV65q3tmjDr2hE0XO2
+	lPuti/TG3glODe+Ldigs8b4zvT0m3TrDCD958P69WNmxrwomairsSH5L56PGNOmc0EvhVR0f
+	Nu4PzdLQSxJj98SZsGJXddOh2vaOirJ3+5ZEOs1iamjSji21xgN29ea9ce0hxpNr5ZRBpYyO
+	IPUG5R/iiH4zPAMAAA==
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -120,77 +120,157 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-Functionally no change.  This patch is a preparation for DEPT(DEPendency
-Tracker) to track dependencies related to a scheduler API,
-wait_for_completion().
+Currently, dept uses dept's map embedded in task_struct to track
+dependencies related to wait_for_completion() and its family.  So it
+doesn't need an explicit map basically.
 
-Unfortunately, struct i2c_algo_pca_data has a callback member named
-wait_for_completion, that is the same as the scheduler API, which makes
-it hard to change the scheduler API to a macro form because of the
-ambiguity.
-
-Add a postfix _cb to the callback member to remove the ambiguity.
+However, for those who want to set the maps with customized class or
+key, introduce a new API to use external maps.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- drivers/i2c/algos/i2c-algo-pca.c      | 2 +-
- drivers/i2c/busses/i2c-pca-isa.c      | 2 +-
- drivers/i2c/busses/i2c-pca-platform.c | 2 +-
- include/linux/i2c-algo-pca.h          | 2 +-
- 4 files changed, 4 insertions(+), 4 deletions(-)
+ include/linux/completion.h | 40 +++++++++++++++++++++-----------------
+ 1 file changed, 22 insertions(+), 18 deletions(-)
 
-diff --git a/drivers/i2c/algos/i2c-algo-pca.c b/drivers/i2c/algos/i2c-algo-pca.c
-index 384af88e58ad..3647e4e19360 100644
---- a/drivers/i2c/algos/i2c-algo-pca.c
-+++ b/drivers/i2c/algos/i2c-algo-pca.c
-@@ -30,7 +30,7 @@ static int i2c_debug;
- #define pca_clock(adap) adap->i2c_clock
- #define pca_set_con(adap, val) pca_outw(adap, I2C_PCA_CON, val)
- #define pca_get_con(adap) pca_inw(adap, I2C_PCA_CON)
--#define pca_wait(adap) adap->wait_for_completion(adap->data)
-+#define pca_wait(adap) adap->wait_for_completion_cb(adap->data)
- 
- static void pca_reset(struct i2c_algo_pca_data *adap)
- {
-diff --git a/drivers/i2c/busses/i2c-pca-isa.c b/drivers/i2c/busses/i2c-pca-isa.c
-index 85e8cf58e8bf..0cbf2f509527 100644
---- a/drivers/i2c/busses/i2c-pca-isa.c
-+++ b/drivers/i2c/busses/i2c-pca-isa.c
-@@ -95,7 +95,7 @@ static struct i2c_algo_pca_data pca_isa_data = {
- 	/* .data intentionally left NULL, not needed with ISA */
- 	.write_byte		= pca_isa_writebyte,
- 	.read_byte		= pca_isa_readbyte,
--	.wait_for_completion	= pca_isa_waitforcompletion,
-+	.wait_for_completion_cb	= pca_isa_waitforcompletion,
- 	.reset_chip		= pca_isa_resetchip,
+diff --git a/include/linux/completion.h b/include/linux/completion.h
+index 4d8fb1d95c0a..e50f7d9b4b97 100644
+--- a/include/linux/completion.h
++++ b/include/linux/completion.h
+@@ -27,17 +27,15 @@
+ struct completion {
+ 	unsigned int done;
+ 	struct swait_queue_head wait;
++	struct dept_map *dmap;
  };
  
-diff --git a/drivers/i2c/busses/i2c-pca-platform.c b/drivers/i2c/busses/i2c-pca-platform.c
-index 87da8241b927..c0f35ebbe37d 100644
---- a/drivers/i2c/busses/i2c-pca-platform.c
-+++ b/drivers/i2c/busses/i2c-pca-platform.c
-@@ -180,7 +180,7 @@ static int i2c_pca_pf_probe(struct platform_device *pdev)
- 	}
+-#define init_completion(x)				\
+-do {							\
+-	__init_completion(x);				\
+-} while (0)
++#define init_completion(x) init_completion_dmap(x, NULL)
  
- 	i2c->algo_data.data = i2c;
--	i2c->algo_data.wait_for_completion = i2c_pca_pf_waitforcompletion;
-+	i2c->algo_data.wait_for_completion_cb = i2c_pca_pf_waitforcompletion;
- 	if (i2c->gpio)
- 		i2c->algo_data.reset_chip = i2c_pca_pf_resetchip;
- 	else
-diff --git a/include/linux/i2c-algo-pca.h b/include/linux/i2c-algo-pca.h
-index 7c522fdd9ea7..e305bf32e40a 100644
---- a/include/linux/i2c-algo-pca.h
-+++ b/include/linux/i2c-algo-pca.h
-@@ -71,7 +71,7 @@ struct i2c_algo_pca_data {
- 	void 				*data;	/* private low level data */
- 	void (*write_byte)		(void *data, int reg, int val);
- 	int  (*read_byte)		(void *data, int reg);
--	int  (*wait_for_completion)	(void *data);
-+	int  (*wait_for_completion_cb)	(void *data);
- 	void (*reset_chip)		(void *data);
- 	/* For PCA9564, use one of the predefined frequencies:
- 	 * 330000, 288000, 217000, 146000, 88000, 59000, 44000, 36000
+ /*
+- * XXX: No use cases for now. Fill the body when needed.
++ * XXX: This usage using lockdep's map should be deprecated.
+  */
+-#define init_completion_map(x, m) init_completion(x)
++#define init_completion_map(x, m) init_completion_dmap(x, NULL)
+ 
+ static inline void complete_acquire(struct completion *x, long timeout)
+ {
+@@ -48,8 +46,11 @@ static inline void complete_release(struct completion *x)
+ }
+ 
+ #define COMPLETION_INITIALIZER(work) \
+-	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait), }
++	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait), .dmap = NULL, }
+ 
++/*
++ * XXX: This usage using lockdep's map should be deprecated.
++ */
+ #define COMPLETION_INITIALIZER_ONSTACK_MAP(work, map) \
+ 	(*({ init_completion_map(&(work), &(map)); &(work); }))
+ 
+@@ -90,15 +91,18 @@ static inline void complete_release(struct completion *x)
+ #endif
+ 
+ /**
+- * __init_completion - Initialize a dynamically allocated completion
++ * init_completion_dmap - Initialize a dynamically allocated completion
+  * @x:  pointer to completion structure that is to be initialized
++ * @dmap:  pointer to external dept's map to be used as a separated map
+  *
+  * This inline function will initialize a dynamically created completion
+  * structure.
+  */
+-static inline void __init_completion(struct completion *x)
++static inline void init_completion_dmap(struct completion *x,
++		struct dept_map *dmap)
+ {
+ 	x->done = 0;
++	x->dmap = dmap;
+ 	init_swait_queue_head(&x->wait);
+ }
+ 
+@@ -136,13 +140,13 @@ extern void complete_all(struct completion *);
+ 
+ #define wait_for_completion(x)						\
+ ({									\
+-	sdt_might_sleep_start_timeout(NULL, -1L);			\
++	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
+ 	__wait_for_completion(x);					\
+ 	sdt_might_sleep_end();						\
+ })
+ #define wait_for_completion_io(x)					\
+ ({									\
+-	sdt_might_sleep_start_timeout(NULL, -1L);			\
++	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
+ 	__wait_for_completion_io(x);					\
+ 	sdt_might_sleep_end();						\
+ })
+@@ -150,7 +154,7 @@ extern void complete_all(struct completion *);
+ ({									\
+ 	int __ret;							\
+ 									\
+-	sdt_might_sleep_start_timeout(NULL, -1L);			\
++	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
+ 	__ret = __wait_for_completion_interruptible(x);			\
+ 	sdt_might_sleep_end();						\
+ 	__ret;								\
+@@ -159,7 +163,7 @@ extern void complete_all(struct completion *);
+ ({									\
+ 	int __ret;							\
+ 									\
+-	sdt_might_sleep_start_timeout(NULL, -1L);			\
++	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
+ 	__ret = __wait_for_completion_killable(x);			\
+ 	sdt_might_sleep_end();						\
+ 	__ret;								\
+@@ -168,7 +172,7 @@ extern void complete_all(struct completion *);
+ ({									\
+ 	int __ret;							\
+ 									\
+-	sdt_might_sleep_start_timeout(NULL, -1L);			\
++	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
+ 	__ret = __wait_for_completion_state(x, s);			\
+ 	sdt_might_sleep_end();						\
+ 	__ret;								\
+@@ -177,7 +181,7 @@ extern void complete_all(struct completion *);
+ ({									\
+ 	unsigned long __ret;						\
+ 									\
+-	sdt_might_sleep_start_timeout(NULL, t);				\
++	sdt_might_sleep_start_timeout((x)->dmap, t);			\
+ 	__ret = __wait_for_completion_timeout(x, t);			\
+ 	sdt_might_sleep_end();						\
+ 	__ret;								\
+@@ -186,7 +190,7 @@ extern void complete_all(struct completion *);
+ ({									\
+ 	unsigned long __ret;						\
+ 									\
+-	sdt_might_sleep_start_timeout(NULL, t);				\
++	sdt_might_sleep_start_timeout((x)->dmap, t);			\
+ 	__ret = __wait_for_completion_io_timeout(x, t);			\
+ 	sdt_might_sleep_end();						\
+ 	__ret;								\
+@@ -195,7 +199,7 @@ extern void complete_all(struct completion *);
+ ({									\
+ 	long __ret;							\
+ 									\
+-	sdt_might_sleep_start_timeout(NULL, t);				\
++	sdt_might_sleep_start_timeout((x)->dmap, t);			\
+ 	__ret = __wait_for_completion_interruptible_timeout(x, t);	\
+ 	sdt_might_sleep_end();						\
+ 	__ret;								\
+@@ -204,7 +208,7 @@ extern void complete_all(struct completion *);
+ ({									\
+ 	long __ret;							\
+ 									\
+-	sdt_might_sleep_start_timeout(NULL, t);				\
++	sdt_might_sleep_start_timeout((x)->dmap, t);			\
+ 	__ret = __wait_for_completion_killable_timeout(x, t);		\
+ 	sdt_might_sleep_end();						\
+ 	__ret;								\
 -- 
 2.17.1
 
