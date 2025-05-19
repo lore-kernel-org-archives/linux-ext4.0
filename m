@@ -1,17 +1,17 @@
 Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 2E6BC26657D;
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 2E7EA26A0BA;
 	Mon, 19 May 2025 09:18:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747646331; cv=none; b=ce0EJtwpYJuXYBQHqIhvJVmDLm0mxuiF0HYAjtWX9VXXfcKvM3S1eTMKwZUqvpRfjyghc2QLwcqtSmP4DVp/HmGWtDVHquK0sfnBnYOAGk/GTBExpFE8MPedSZIVTlMXrO8HBru6CcmU6O4X2ah/l6eb3JGEX83Efr8Qz3/0Qog=
+	t=1747646331; cv=none; b=CpnHSRhqrVztvKHsLx0MZx6SK25B0PexEZVYHZn3mb4dH0wuqEw+F8dqH+clyifm8liB8qDS65B8zt7iVZNzntorzGBwrOZabU+lHJ8VGAuNqJBybLt5NibGSFWy9UdyzHsiBtYmb5FlT6KE9vhrPuPgqwLUzT9gEGzOS1Fm41o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1747646331; c=relaxed/simple;
-	bh=7s1NGY+0taVVLGCaGeZpYQO8VebthwKwiBfZuZTjF3g=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=H2XuvlgPgEbOlM9RkUcZcGxG6wGDfVNWdzfVtmRcBDwYPtSH5wpW/yX+XR/vEuP3z1OQuhH+9zktHGhlnf3WrJp8A9sLWZIGGX9UXQjCZYpBivJkzHDvkBh6lzqtibTaVGpPPrH2J+w7DzjiARsQvP54uOn19uBiUovRAOfTCEQ=
+	bh=UPgrUdj2zJuIcM2CRwF3Ndg48wh45GAuitrkG1THTag=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=Y2Jd0iqX19oi9SH5Xo4C6mWgqqtxZYQ4UMtjZPTuOsx5lKIqtQd8q+bexlg9xf0XlzfqBuUr2iUDu+h3bzmWPEyBcoIZ1kEHcUsfdvL47Oc3ugVNDuWXap/dwWcqo7L3XyHJUH2cIctdKsKgFE5fls8gdPd20wyMGu6wLfz3CDk=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-681ff7000002311f-94-682af76e9ead
+X-AuditID: a67dfc5b-669ff7000002311f-70-682af76d4e9d
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -75,44 +75,44 @@ Cc: kernel_team@skhynix.com,
 	netdev@vger.kernel.org,
 	matthew.brost@intel.com,
 	her0gyugyu@gmail.com
-Subject: [PATCH v16 12/42] dept: record the latest one out of consecutive waits of the same class
-Date: Mon, 19 May 2025 18:17:56 +0900
-Message-Id: <20250519091826.19752-13-byungchul@sk.com>
+Subject: [PATCH v16 03/42] dept: add single event dependency tracker APIs
+Date: Mon, 19 May 2025 18:17:47 +0900
+Message-Id: <20250519091826.19752-4-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20250519091826.19752-1-byungchul@sk.com>
 References: <20250519091826.19752-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTZxTHfZ772krNTWHbHSyZqXMqRicLbmdTlsUvPkt8mVkWI27ZbuTG
-	VqGwVlCWmICik3ZU0RUmUCw4L7Wtii2J3bQGKYJocCgMgQGbuJEhb47ZOpC9lM59OfnlnPP/
-	nS+Hp7StTCJvMO6RTUYpU8eqafV4XM0K45Nk/arSxkUQfnyEhqoLXhY6znsQeBsKMYxcXw/3
-	ImMInrZ/T0G5vQNBzf0BChpaBhEEXQdY6PxlAXSFJ1los1tZOHj6Agt3Rmcx9Jcdx+DxbYSf
-	lGEabh2rxVA+wkJl+UEcLb9hmFbcHCgFi2HIVcHB7P0UaBvsZiDYtxxOVvezcCXYRkNLYAhD
-	53dVLAx6/2HgVssNGiK2JOgoLWHg3EQtC6MRhQIlPMnB3UYnhhbn81BfFBUe/uNvBlpLGjEc
-	/uYihq7eywiuHvkZg8/bzUIoPIbB77NTMFN3HcGQbZyDQ19Oc1BZaENgPVRGQ1H/anj6Z/Sy
-	43EKFJ6qp+HcX93o3TTirfYiEhqbpEiRfy+ZCf/AkmDESZObtSL5tmKAI0VX+zji9OUSvyuZ
-	nL4ygknNVJghPncxS3xTxzliGe/CZOL2be79l9LVazPkTEOebHrtnU/V+puFE2zOr/P3Wdoc
-	uAA1qyyI50UhVaxyr7UgVQzPTHWiOWaFJWJPzzQ1xwnCQtFfMsxYkJqnhO754j1Hb2wpXpDE
-	R4FRPMe0sFisc/0eY43whtg7aGf+k74seuobYyJVtN9nDcWyWmG12OWppuekolCpEuvOhp4F
-	XhSvuXroY0jjRPPcSGsw5mVJhszUlfp8o2Hfyh3ZWT4UfS9l/+z2AJrq+KAJCTzSxWnqg8v0
-	WkbKM+dnNSGRp3QJGrd/qV6ryZDyP5dN2Z+YcjNlcxNK4mndC5rXI3sztMJOaY+8W5ZzZNP/
-	U8yrEgtQ+nROgdknzTzkS3PHHvz4qCwQP7puc25OXOtXCWknh1tfbU74MGNm6NIrbzJvbWh+
-	zt5uDoR3vbftRFCudG2puGaLJ8oG5evdb/eHbZ60Jw8+2nVpgfVjTXrSQKkju26N1bDuqEO5
-	XLxp05qt3tq+s+3FiUyq2PBZ8fg27YH0/FD5FzrarJdSkimTWfoXSiC0w1oDAAA=
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0yTZxTHfZ73VorV10r0VbY4m4BaL4PEmmM2jZ/w2ZI5wxcUb7yZ72wj
-	FNMKAw0LCBqEQdCl4gVYBS2kLYgtS5hSJKDVghc2ugoIKMQZG24OaRnK1ILxy8kv53/O73w5
-	MkppZZbLdPqjkkEvJqtYOS3f8VXuev2UWhvT7scQmMynoeyanYXOOhsCe0MOBv+d7fA4OILg
-	7YNHFJSaOhFcHuynoME9gMBVc4KFrucLwBsYZ8FjKmQht+oaC38Oz2DoO3cWg83xHTy1vKCh
-	o6QSQ6mfhUuluThUXmKYtlg5sGRHwVDNRQ5mBmPBM+BjoK3cw4Crdy1cqOhjocnlocHdOISh
-	60YZCwP29wx0uO/RECyOhM4zRQzUjlWyMBy0UGAJjHPwV4sZg9u8BOrzQtZTr98xcLeoBcOp
-	K9cxeHtuImjOf4bBYfex0BYYweB0mCh4U30HwVDxKAcnf5nm4FJOMYLCk+doyOvTwNv/QpfL
-	J2Mh57d6Gmr/96FtW4m9wo5I28g4RfKcP5E3gb9Z4gqaadJeKZA/LvZzJK+5lyNmRxpx1qhJ
-	VZMfk8sTAYY4rKdZ4pg4y5GCUS8mYw8fcjs/T5R/fVBK1qVLhi+3Jsm17Tlj7JF/wjMKPOU4
-	G90OK0BhMoHfKFyd6EKzzPKrhO7uaWqWI/gvBGfRC6YAyWUU7wsXHpf3zA0t5kXhVeMwnmWa
-	jxKqa/6dYwW/SegZMDEfpSsEW33LnCgs1O8tbJvbVfIawWuroEuQ3IzmWVGETp+eIuqSNRuM
-	h7WZel3Ghh9SUxwo9EGWrJkzjWiya3sr4mVINV9R71qjVTJiujEzpRUJMkoVobA6V2uVioNi
-	5jHJkHrAkJYsGVtRpIxWLVV8myAlKflD4lHpsCQdkQyfUiwLW56NqvjwFUkxC33rEjc/9930
-	H890T+Tf/6abMVmzdL/GNzzxxHk7VtqyprLT5+8e3a9hv/feqt5ML/OfJ4diftTsrV3irfy9
-	LGJL9C2XxbNI68zw1/Xrd0TeiCsJuqJvi1WJa3xxi2eCjHyQ01urK3JPpFqebNrzc7R6n5CQ
-	GP/ZLrWKNmrFWDVlMIofAJeO0hA9AwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSWUwTYRDH/Xa3u22huKnXKhq0EQ+MKF6ZGM948Pmg8YoPGpVGVtsI1bSK
+	oMGAHHJ7JEAUrLVIbWiR2qLiUYIQLg9EwXIIKKgEwhXRVkE8CpGXyS8z8//NywhJaZVghlCp
+	OsWrVfIQGS2mxH2e+sWqH36KpfkDc8D5PYGC7AIzDbV3TQjMhdEEdJcHQoOrF8GvV69JyEyv
+	RXCrvZWEwoo2BHbjBRrqPntBvXOAhur0ZBpicgpoeNMzQkBLxlUCTNbt8MHQScGLy3oCMrtp
+	yMqMIdyli4AhQx4Dhihf6DBeZ2CkPQCq2xwCsDcvgmvaFhqe2qspqCjqIKDucTYNbea/AnhR
+	UUWBK80baq+kCiC/X09Dj8tAgsE5wMDbEh0BFbqpYIl1C+O//RFAZWoJAfG37xFQ3/QEQXHC
+	RwKsZgcNZc5eAmzWdBKG75Qj6EjrYyAuZYiBrOg0BMlxGRTEtqyEXz/dl298D4DomxYK8n87
+	0Ia12Kw1I1zWO0DiWNsZPOx8R2O7S0fh53oOP7reyuDY4mYG66ynsc3oh3OedhP41qBTgK15
+	iTS2Dl5lcFJfPYH7a2qYnTP3i9cE8yHKMF69ZF2QWPHtTQF58iUXrm+zUFHINikJiYQcu4Kr
+	evgQjbOzrokaZZqdzzU2DpGjPJmdzdlSOwVJSCwkWYcH13CjaSwwid3G5TpqxgIU68sN2h/Q
+	oyxhV3JV9y79l/pwJkvJmEjEruKak8vG+lL3Tr1JS41KOTZLxP18a/kfmM49MzZSl5FEhybk
+	IalSFRYqV4as8FdEqJTh/kdOhFqR+78MkSMHitBg7Z5SxAqRzFNisS9USAXyME1EaCnihKRs
+	siTPtkAhlQTLI87y6hOH1adDeE0p8hZSsmmSZa4zwVL2mPwUf5znT/Lq8SkhFM2IQtrdre1I
+	XZj7O6txb9S81+8OafdVWjZvvd8/uzgmZjhyy4NkyZevu1ZvGOn+8inFdLD9qGRj4qvlc6Z5
+	SX2au/YGpbV6LnJWn4e5kRfBE3/0PR+XQRsmvt+xPmVWz/3yHecKNjV4G70e25ZNSfWwBSVu
+	tvcY/4iGf+BAqkiT8CzbRyqjNAp5gB+p1sj/AV5ct3JbAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSW0xTaRDH/c6das1JJXq8BdPEqBgvGKtDNIT4IJ+a3bjG4OVFGz3axoLY
+	CopmI9iCLFAQIrCiYEGtWIqUFu+UIChaLwiCRQhWIayCoESkrBUUC8aXyS/zn/nNy3CkzELP
+	4tTRh0VttFIjZySU5M81+iWa/4NVy1uzAbxDKRScL7cy0HitFIG1MpGA3gcR0Drcj2Dk2XMS
+	8nIaERR1viahst6DwFlykoHm7qnQ4h1gwJWTxoD+YjkDTX2jBHTkZhNQav8D3pjfUfDkdDEB
+	eb0MnMvTE/7SQ4DPbGHBnDAfukryWRjtDAGXx01DXYGLBmf7Yjhb2MFAldNFQf2tLgKa75xn
+	wGMdo+FJ/SMKhjNmQ2OWkYayT8UM9A2bSTB7B1h4UWMioN40HWwGvzX5yw8aHhprCEi+VEFA
+	S9tdBNUpbwmwW90M1Hn7CXDYc0j4duUBgq6MjywkpftYOJeYgSAtKZcCQ4cCRr76LxcMhUDi
+	BRsFZd/dKDwMWwutCNf1D5DY4DiCv3lfMtg5bKLw42IB385/zWJDdTuLTfZY7CgJxhereglc
+	NOilsd3yD4Ptg9ksTv3YQuBPDQ3s5rk7JWv3ihp1nKhdFrZbovrSVE7GPBWOFntsVAJyTEtF
+	AZzArxS8zW3UODP8AuHVKx85zoH8PMFhfEenIglH8u7JQmtBGxoPpvEbhMvuhokFip8vDDpv
+	MOMs5RXCo4pM9EsaJJTaaiZEAfwqoT2tbqIv88+0lBZSp5HEhCZZUKA6Oi5KqdYoluoOqOKj
+	1UeX7jkYZUf+DzL/PZp1Cw01R9QinkPyKVKbc5FKRivjdPFRtUjgSHmg1OJYqJJJ9yrjj4na
+	g7u0sRpRV4tmc5R8hnTjNnG3jN+vPCweEMUYUfs7JbiAWQlo/fvH2SVhc9Kn/3V8pjFra9Cm
+	8BlBJ07d69zi6r+Px/IjNpcd8awLtd8c3FHZLSXXNRlWrc46k/6f4qqy73pkQLcvcju3KOlu
+	rr5t/79FxorMrytCZUW96fqx2Ji3oRkjTaNJ+sU+uiL5ekrm2Z6b+w6tGLn6QVHl2Hcq/Pvn
+	7hs9c6rllE6lDAkmtTrlTyrxfgA9AwAA
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -120,54 +120,111 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-The current code records all the waits for later use to track relation
-between waits and events within each context.  However, since the same
-class is handled the same way, it'd be okay to record only one on behalf
-of the others if they all have the same class.
+Wrapped the base APIs for easier annotation on wait and event.  Start
+with supporting waiters on each single event.  More general support for
+multiple events is a future work.  Do more when the need arises.
 
-Even though it's the ideal to search the whole history buffer for that,
-since it'd cost too high, alternatively, let's keep the latest one when
-the same class'ed waits consecutively appear.
+How to annotate:
+
+1. Initaialize a map for the interesting wait.
+
+   /*
+    * Place along with the wait instance.
+    */
+   struct dept_map my_wait;
+
+   /*
+    * Place in the initialization code.
+    */
+   sdt_map_init(&my_wait);
+
+2. Place the following at the wait code.
+
+   sdt_wait(&my_wait);
+
+3. Place the following at the event code.
+
+   sdt_event(&my_wait);
+
+That's it!
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- kernel/dependency/dept.c | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
+ include/linux/dept_sdt.h | 65 ++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 65 insertions(+)
+ create mode 100644 include/linux/dept_sdt.h
 
-diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index ad443e063fdc..a2384f3148c5 100644
---- a/kernel/dependency/dept.c
-+++ b/kernel/dependency/dept.c
-@@ -1486,9 +1486,28 @@ static struct dept_wait_hist *new_hist(void)
- 	return wh;
- }
- 
-+static struct dept_wait_hist *last_hist(void)
-+{
-+	int pos_n = hist_pos_next();
-+	struct dept_wait_hist *wh_n = hist(pos_n);
+diff --git a/include/linux/dept_sdt.h b/include/linux/dept_sdt.h
+new file mode 100644
+index 000000000000..0535f763b21b
+--- /dev/null
++++ b/include/linux/dept_sdt.h
+@@ -0,0 +1,65 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Single-event Dependency Tracker
++ *
++ * Started by Byungchul Park <max.byungchul.park@gmail.com>:
++ *
++ *  Copyright (c) 2020 LG Electronics, Inc., Byungchul Park
++ *  Copyright (c) 2024 SK hynix, Inc., Byungchul Park
++ */
 +
-+	/*
-+	 * This is the first try.
-+	 */
-+	if (!pos_n && !wh_n->wait)
-+		return NULL;
++#ifndef __LINUX_DEPT_SDT_H
++#define __LINUX_DEPT_SDT_H
 +
-+	return hist(pos_n + DEPT_MAX_WAIT_HIST - 1);
-+}
++#include <linux/kernel.h>
++#include <linux/dept.h>
 +
- static void add_hist(struct dept_wait *w, unsigned int wg, unsigned int ctxt_id)
- {
--	struct dept_wait_hist *wh = new_hist();
-+	struct dept_wait_hist *wh;
++#ifdef CONFIG_DEPT
++#define sdt_map_init(m)							\
++	do {								\
++		static struct dept_key __key;				\
++		dept_map_init(m, &__key, 0, #m);			\
++	} while (0)
 +
-+	wh = last_hist();
++#define sdt_map_init_key(m, k)		dept_map_init(m, k, 0, #m)
 +
-+	if (!wh || wh->wait->class != w->class || wh->ctxt_id != ctxt_id)
-+		wh = new_hist();
- 
- 	if (likely(wh->wait))
- 		put_wait(wh->wait);
++#define sdt_wait(m)							\
++	do {								\
++		dept_request_event(m);					\
++		dept_wait(m, 1UL, _THIS_IP_, __func__, 0);		\
++	} while (0)
++
++/*
++ * sdt_might_sleep() and its family will be committed in __schedule()
++ * when it actually gets to __schedule(). Both dept_request_event() and
++ * dept_wait() will be performed on the commit.
++ */
++
++/*
++ * Use the code location as the class key if an explicit map is not used.
++ */
++#define sdt_might_sleep_start(m)					\
++	do {								\
++		struct dept_map *__m = m;				\
++		static struct dept_key __key;				\
++		dept_stage_wait(__m, __m ? NULL : &__key, _THIS_IP_, __func__);\
++	} while (0)
++
++#define sdt_might_sleep_end()		dept_clean_stage()
++
++#define sdt_ecxt_enter(m)		dept_ecxt_enter(m, 1UL, _THIS_IP_, "start", "event", 0)
++#define sdt_event(m)			dept_event(m, 1UL, _THIS_IP_, __func__)
++#define sdt_ecxt_exit(m)		dept_ecxt_exit(m, 1UL, _THIS_IP_)
++#define sdt_request_event(m)		dept_request_event(m)
++#else /* !CONFIG_DEPT */
++#define sdt_map_init(m)			do { } while (0)
++#define sdt_map_init_key(m, k)		do { (void)(k); } while (0)
++#define sdt_wait(m)			do { } while (0)
++#define sdt_might_sleep_start(m)	do { } while (0)
++#define sdt_might_sleep_end()		do { } while (0)
++#define sdt_ecxt_enter(m)		do { } while (0)
++#define sdt_event(m)			do { } while (0)
++#define sdt_ecxt_exit(m)		do { } while (0)
++#define sdt_request_event(m)		do { } while (0)
++#endif
++#endif /* __LINUX_DEPT_SDT_H */
 -- 
 2.17.1
 
