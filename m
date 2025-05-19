@@ -1,146 +1,285 @@
-Received: from mail-pl1-f170.google.com (mail-pl1-f170.google.com [209.85.214.170])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2AAFD3208;
-	Mon, 19 May 2025 10:48:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.170
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 465722B9A5;
+	Mon, 19 May 2025 11:03:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747651724; cv=none; b=sYIfDaxm/0oGMzjtKwfD+Th0L56LpOzzfRttaeKo4QoQlrxOcmjGyKALmvIMfjs2Gfmah6H9cjQ/88xgYy1EBx5Ma+1SvHm4pFnF8/sU20EfUghLYFfksniHQuVQtRel1Ous3+Qv25P8QzWVCNi3t5Gc+un9VqOnAxiITzjW8hE=
+	t=1747652616; cv=none; b=XYVjZDWPU63nq3XYdbwJN6pL2R2osimaKOBCQY5LJzFZDjm4wKhyDluB5JSQm8klfB9CIm5tw3P7+aRl1wRSOvhecQo4iHeNLB18dVoz69YbsW6Vte0szm6wOvYTPtiRNjEyAw3pCkRwL3XlWc6sZh+sQvBUMQLkv29z+sSSvy8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1747651724; c=relaxed/simple;
-	bh=10nLNhZ6GFrdReHtylXJB7WK6jzttMXX1sTFVKmQ9Q8=;
-	h=From:To:Cc:Subject:In-Reply-To:Date:Message-ID:References; b=BSDTZqQxdnDOVH7IWLRGyA54CFgQ7Ze/r7FdwEdlMSnwoGd/j0frB0hseVp27oit0JApYjhxxTlNuJuN2cLFiSfMkZZA24WKEOjuUWtdkZ6DGRvXK/GjHkQR2vDbgFQSrW666bLb2URB8fDx8i9PwfPIvNt2mOWgaT/0XVZeRnc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=bnP0n8nI; arc=none smtp.client-ip=209.85.214.170
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1747652616; c=relaxed/simple;
+	bh=jWFKKI+8DujAliA5gTb9l1ZcCEXo3qM/I74AOaXXwEI=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=JHS8Lrn7ItmrhFvQuyaJCGvhv1bFFisr5qJpCbURkg7IV1RnyOdp37kADZPZ2PQidPEUd1ka2tkJFnRs50nkBuAvyTc8hI+U7OCHTwcEnk/414klCNOK2upTxxaIW8e+GgjOi9JsbKlFntUdIYrG/TAAL9RNmE9813Lm00Q52+A=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=SD6CbBf7; arc=none smtp.client-ip=148.163.156.1
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="bnP0n8nI"
-Received: by mail-pl1-f170.google.com with SMTP id d9443c01a7336-231c86bffc1so41132805ad.0;
-        Mon, 19 May 2025 03:48:42 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1747651722; x=1748256522; darn=vger.kernel.org;
-        h=references:message-id:date:in-reply-to:subject:cc:to:from:from:to
-         :cc:subject:date:message-id:reply-to;
-        bh=p5QOKNkL19Kp3xC8l9jIeYjLGhIQ9n7VjMtSrEEZQbc=;
-        b=bnP0n8nIc54CZGqVjAt3dhEcKPn+PScscId6+/mvRtV5rFRziKhppD+4eK5TufjTXB
-         dmaLLyFtvfFoe1/JtrT4e++Cbn0XIOBMa1QIqMusCTLfCIIpfrNOOOzrx2bEBJVA5gEo
-         W3Mq+ZXhS1Gj/j5BbIXd5Jt+86cvYv1WRntRLyaQbETgkra+/9HLIMae3cI0fUhXib6U
-         /5WViDj8fW8BsBfYPoJlZgijcSAiO/5FoPt8YLUsKrEvpc6vjHhpV9GPrM+ZS6D0H9XA
-         UJvfpQLeSwqjfQwhC6qKAAFrZn+MW90uF4fMtZDwxe0Q0KfBSVf9qa7V34WOW2qo2tdo
-         zumQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1747651722; x=1748256522;
-        h=references:message-id:date:in-reply-to:subject:cc:to:from
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=p5QOKNkL19Kp3xC8l9jIeYjLGhIQ9n7VjMtSrEEZQbc=;
-        b=E+CxyIfFUHLevX/2U3fKFHGr0s8FfiaZZRnDPZgbcVDXnBrmXYiiIfR6lFbdw7Xfmy
-         Z4UZGu1Mz/kvHrJd+d4SqE8gnE9QwGFf8wuSyYkQTynp6knDwDU9WVdA1y5LAuJS1g8o
-         zFrUlLuzjeaJHCZZPntgOziRPtNi2ZmJeh/XfzD25t9bsEf8CLMMD9FYadGs9DOtYkXw
-         rhw6NXW1VsM99o4TTGPhbRKJc6UMFoKtf4YgkSEcv7VWp9lDaq8Y04OJpdL/3bD2ntSd
-         K6EA9O2t7MDjQmPtgJtl9LINdYMlWCYkhPGEV9Bh8r/VaGegcPbTHtlRduQQsLHPU1zJ
-         kpqA==
-X-Forwarded-Encrypted: i=1; AJvYcCVThxirUkKc5DEDXbD5o13CqytO0N5clkt8hZsCK+x6VE/835TvzjMwion31Eh8o/dimk0pdQWU3SN9@vger.kernel.org, AJvYcCW4QpkK0BFvqQsB9t4hIAqGx9OZVj2frAGxwgndmPGS2vrVfM7fP42KbEkLESnQBl+dpzSCzfsj/1RnIUA41A==@vger.kernel.org
-X-Gm-Message-State: AOJu0YzA3sphacd9LqFLRWik+V1Z/uwBUWfYDy4WuTaSEehpUwifpFkh
-	X3tJzQ8pYohbzdiywsoZXUHuc+N4niuRJy0Hdy3OVP52cgb0EMB7L1CyHnkwTw==
-X-Gm-Gg: ASbGncsFcN7cvv48PkHa06KOSLGc4qwBCmCYZD+AbjrKAYOwnQRUFwBNgzLr9aB+pPK
-	eAyDOe3bjdVKN8PrB25cUjfHtW+eTPEkaCXweCY4oEgLV7eSVhEwP9jjbcwExq+AnoTrm6fhN+I
-	m4sfxr4+slCP1YYjHCLj3U3dmfnDbDWwLZYNuXZ19rpUNAzcl4mBKXCOcwdZVihLla0Emyz/x/o
-	97GaZ30flOOeM1qj872IB8S/Kj36NNREUvCTyxJCtlTATNobT68m6Y8l6/O5XJPYZkCrGmffjpt
-	x/39FC9supsoO3nb1MDDmgAxe34m0WHJlDOf1v6gZME=
-X-Google-Smtp-Source: AGHT+IHw+YJ5sE4VnZc70gzP29WqwWASwuT643VaDkN8HVjtMhhlPCF7dCd7G3WF6/Q6iEOqOze5hA==
-X-Received: by 2002:a17:902:f78c:b0:21f:85ee:f2df with SMTP id d9443c01a7336-231de35f324mr185427885ad.15.1747651721829;
-        Mon, 19 May 2025 03:48:41 -0700 (PDT)
-Received: from dw-tp ([171.76.82.96])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-231d4e97798sm56857705ad.147.2025.05.19.03.48.38
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 19 May 2025 03:48:40 -0700 (PDT)
-From: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>, John Garry <john.g.garry@oracle.com>, djwong@kernel.org, Ojaswin Mujoo <ojaswin@linux.ibm.com>, linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH v5 0/7] ext4: Add multi-fsblock atomic write support with bigalloc
-In-Reply-To: <cover.1747337952.git.ritesh.list@gmail.com>
-Date: Mon, 19 May 2025 15:37:52 +0530
-Message-ID: <877c2cx69z.fsf@gmail.com>
-References: <cover.1747337952.git.ritesh.list@gmail.com>
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="SD6CbBf7"
+Received: from pps.filterd (m0353729.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 54JAF07v008690;
+	Mon, 19 May 2025 11:03:06 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-type:date:from:in-reply-to:message-id:mime-version
+	:references:subject:to; s=pp1; bh=dgmPtD82+qx4IuowidCfCa23Ougofx
+	TYfYJkwcWoZrA=; b=SD6CbBf7yIjPMBqtp3MaO/t+SkKttS7+QWy8aZYlidz5Z6
+	W/jcWE1JRbqgb/osGlOO5YK/IbexH1V4YoTU7Pnhbut+dixmj+sEjnebo2WUT5pj
+	S6ZWLiTSCrYoUl1ByAAYmITxWuBvoea+YTae6pdOHAy7QRsJ4eBsPX3vXrIwB8Aq
+	DvXbY6YyOl2uPFefbLqcNnJIeiLgFbTPfJ3WREn0LQRPlx8ZQIwI+dOT1Xz2VaPA
+	SzPgVuB2iYrQQAeMABc0i9PegmIVV82jqD0lyakyQwrSA8Pp9Q3ZOilyIrKiHWDX
+	2URTfCYLtgsI5B/aMn1dcOJeShnyFPKaG3tp3Y+Q==
+Received: from ppma11.dal12v.mail.ibm.com (db.9e.1632.ip4.static.sl-reverse.com [50.22.158.219])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 46r2qhr70c-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 19 May 2025 11:03:05 +0000 (GMT)
+Received: from pps.filterd (ppma11.dal12v.mail.ibm.com [127.0.0.1])
+	by ppma11.dal12v.mail.ibm.com (8.18.1.2/8.18.1.2) with ESMTP id 54J7no9p015958;
+	Mon, 19 May 2025 11:03:04 GMT
+Received: from smtprelay06.fra02v.mail.ibm.com ([9.218.2.230])
+	by ppma11.dal12v.mail.ibm.com (PPS) with ESMTPS id 46q7g25ytx-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 19 May 2025 11:03:04 +0000
+Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
+	by smtprelay06.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 54JB32Po19333532
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Mon, 19 May 2025 11:03:03 GMT
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id D1B17200BC;
+	Mon, 19 May 2025 11:03:02 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 47C71200B8;
+	Mon, 19 May 2025 11:03:00 +0000 (GMT)
+Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.109.219.249])
+	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
+	Mon, 19 May 2025 11:03:00 +0000 (GMT)
+Date: Mon, 19 May 2025 16:32:57 +0530
+From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, willy@infradead.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jack@suse.cz, yi.zhang@huawei.com,
+        libaokun1@huawei.com, yukuai3@huawei.com, yangerkun@huawei.com
+Subject: Re: [PATCH v2 0/8] ext4: enable large folio for regular files
+Message-ID: <aCsP4bW6c08h3DJv@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+References: <20250512063319.3539411-1-yi.zhang@huaweicloud.com>
+ <aCcmGyse9prx-D7S@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+ <33b938e9-bd81-4017-a7e0-e5ffb216ac70@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <33b938e9-bd81-4017-a7e0-e5ffb216ac70@huaweicloud.com>
+X-TM-AS-GCONF: 00
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjUwNTE5MDEwMCBTYWx0ZWRfX+ghVC3HcGR0Z MG7YjVgYXbIpoRc3CVtxhEO/G6o36N6WuziHihlnQh6Ug2Cnu3cwxH44x5da6KdwMqkd7xBG1lP PWl/mzOE14WOv1fohTL3XwSGanhrVU1d8IZs1cFQsWV3/I4zoonIeZj/MGD5Hjw5LIMIVHtPPyY
+ +unUVf9offQWh5B4TaUEbA9oNj804ThwN8TLqI/NIdDWjILe28WDCspXp0rkXAUfNFk+ThN3jBV LRJyqHth5R1UAGYCn/Dtl0/wmpS4vSRZosyW9E3/y0s8Q1Ulj0KFJuG+rDVZK2YqpAl04PC2hip A7PTZFhBPK3FHXiVhbOZNi0LVmQeZs7oB0fglgQ8a6C2bg7DUOfkm52AGwYJpQMIE+sn6KIz6Gj
+ 9TxkyeZtaiNl+8HVDth3RaUIIfux4Iqh+uOTlkgZ0pT3MpWC5JmTdG33ijkTMVgPb9KmW/rW
+X-Proofpoint-ORIG-GUID: OXLPx6dTN16GSKp6k9WKFNUVaypBk-4q
+X-Proofpoint-GUID: OXLPx6dTN16GSKp6k9WKFNUVaypBk-4q
+X-Authority-Analysis: v=2.4 cv=P406hjAu c=1 sm=1 tr=0 ts=682b0fe9 cx=c_pps a=aDMHemPKRhS1OARIsFnwRA==:117 a=aDMHemPKRhS1OARIsFnwRA==:17 a=kj9zAlcOel0A:10 a=dt9VzEwgFbYA:10 a=VwQbUJbxAAAA:8 a=AiHppB-aAAAA:8 a=i0EeH86SAAAA:8 a=Z-27RSRBR0MrnfT4iaMA:9
+ a=CjuIK1q_8ugA:10 a=l2o5i1_H8WVCs5eH1y1M:22
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1099,Hydra:6.0.736,FMLib:17.12.80.40
+ definitions=2025-05-19_04,2025-05-16_03,2025-03-28_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 lowpriorityscore=0
+ clxscore=1015 mlxscore=0 adultscore=0 impostorscore=0 spamscore=0
+ malwarescore=0 priorityscore=1501 mlxlogscore=999 bulkscore=0 phishscore=0
+ suspectscore=0 classifier=spam authscore=0 authtc=n/a authcc=
+ route=outbound adjust=0 reason=mlx scancount=1 engine=8.19.0-2505070000
+ definitions=main-2505190100
 
-"Ritesh Harjani (IBM)" <ritesh.list@gmail.com> writes:
+On Mon, May 19, 2025 at 09:19:10AM +0800, Zhang Yi wrote:
+> On 2025/5/16 19:48, Ojaswin Mujoo wrote:
+> > On Mon, May 12, 2025 at 02:33:11PM +0800, Zhang Yi wrote:
+> >> From: Zhang Yi <yi.zhang@huawei.com>
+> >>
+> >> Changes since v1:
+> >>  - Rebase codes on 6.15-rc6.
+> >>  - Drop the modifications in block_read_full_folio() which has supported
+> >>    by commit b72e591f74de ("fs/buffer: remove batching from async
+> >>    read").
+> >>  - Fine-tuning patch 6 without modifying the logic.
+> >>
+> >> v1: https://lore.kernel.org/linux-ext4/20241125114419.903270-1-yi.zhang@huaweicloud.com/
+> >>
+> >> Original Description:
+> >>
+> >> Since almost all of the code paths in ext4 have already been converted
+> >> to use folios, there isn't much additional work required to support
+> >> large folios. This series completes the remaining work and enables large
+> >> folios for regular files on ext4, with the exception of fsverity,
+> >> fscrypt, and data=journal mode.
+> >>
+> >> Unlike my other series[1], which enables large folios by converting the
+> >> buffered I/O path from the classic buffer_head to iomap, this solution
+> >> is based on the original buffer_head, it primarily modifies the block
+> >> offset and length calculations within a single folio in the buffer
+> >> write, buffer read, zero range, writeback, and move extents paths to
+> >> support large folios, doesn't do further code refactoring and
+> >> optimization.
+> >>
+> >> This series have passed kvm-xfstests in auto mode several times, every
+> >> thing looks fine, any comments are welcome.
+> >>
+> >> About performance:
+> >>
+> >> I used the same test script from my iomap series (need to drop the mount
+> >> opts parameter MOUNT_OPT) [2], run fio tests on the same machine with
+> >> Intel Xeon Gold 6240 CPU with 400GB system ram, 200GB ramdisk and 4TB
+> >> nvme ssd disk. Both compared with the base and the IOMAP + large folio
+> >> changes.
+> >>
+> >>  == buffer read ==
+> >>
+> >>                 base          iomap+large folio base+large folio
+> >>  type     bs    IOPS  BW(M/s) IOPS  BW(M/s)     IOPS   BW(M/s)
+> >>  ----------------------------------------------------------------
+> >>  hole     4K  | 576k  2253  | 762k  2975(+32%) | 747k  2918(+29%)
+> >>  hole     64K | 48.7k 3043  | 77.8k 4860(+60%) | 76.3k 4767(+57%)
+> >>  hole     1M  | 2960  2960  | 4942  4942(+67%) | 4737  4738(+60%)
+> >>  ramdisk  4K  | 443k  1732  | 530k  2069(+19%) | 494k  1930(+11%)
+> >>  ramdisk  64K | 34.5k 2156  | 45.6k 2850(+32%) | 41.3k 2584(+20%)
+> >>  ramdisk  1M  | 2093  2093  | 2841  2841(+36%) | 2585  2586(+24%)
+> >>  nvme     4K  | 339k  1323  | 364k  1425(+8%)  | 344k  1341(+1%)
+> >>  nvme     64K | 23.6k 1471  | 25.2k 1574(+7%)  | 25.4k 1586(+8%)
+> >>  nvme     1M  | 2012  2012  | 2153  2153(+7%)  | 2122  2122(+5%)
+> >>
+> >>
+> >>  == buffer write ==
+> >>
+> >>  O: Overwrite; S: Sync; W: Writeback
+> >>
+> >>                      base         iomap+large folio    base+large folio
+> >>  type    O S W bs    IOPS  BW     IOPS  BW(M/s)        IOPS  BW(M/s)
+> >>  ----------------------------------------------------------------------
+> >>  cache   N N N 4K  | 417k  1631 | 440k  1719 (+5%)   | 423k  1655 (+2%)
+> >>  cache   N N N 64K | 33.4k 2088 | 81.5k 5092 (+144%) | 59.1k 3690 (+77%)
+> >>  cache   N N N 1M  | 2143  2143 | 5716  5716 (+167%) | 3901  3901 (+82%)
+> >>  cache   Y N N 4K  | 449k  1755 | 469k  1834 (+5%)   | 452k  1767 (+1%)
+> >>  cache   Y N N 64K | 36.6k 2290 | 82.3k 5142 (+125%) | 67.2k 4200 (+83%)
+> >>  cache   Y N N 1M  | 2352  2352 | 5577  5577 (+137%  | 4275  4276 (+82%)
+> >>  ramdisk N N Y 4K  | 365k  1424 | 354k  1384 (-3%)   | 372k  1449 (+2%)
+> >>  ramdisk N N Y 64K | 31.2k 1950 | 74.2k 4640 (+138%) | 56.4k 3528 (+81%)
+> >>  ramdisk N N Y 1M  | 1968  1968 | 5201  5201 (+164%) | 3814  3814 (+94%)
+> >>  ramdisk N Y N 4K  | 9984  39   | 12.9k 51   (+29%)  | 9871  39   (-1%)
+> >>  ramdisk N Y N 64K | 5936  371  | 8960  560  (+51%)  | 6320  395  (+6%)
+> >>  ramdisk N Y N 1M  | 1050  1050 | 1835  1835 (+75%)  | 1656  1657 (+58%)
+> >>  ramdisk Y N Y 4K  | 411k  1609 | 443k  1731 (+8%)   | 441k  1723 (+7%)
+> >>  ramdisk Y N Y 64K | 34.1k 2134 | 77.5k 4844 (+127%) | 66.4k 4151 (+95%)
+> >>  ramdisk Y N Y 1M  | 2248  2248 | 5372  5372 (+139%) | 4209  4210 (+87%)
+> >>  ramdisk Y Y N 4K  | 182k  711  | 186k  730  (+3%)   | 182k  711  (0%)
+> >>  ramdisk Y Y N 64K | 18.7k 1170 | 34.7k 2171 (+86%)  | 31.5k 1969 (+68%)
+> >>  ramdisk Y Y N 1M  | 1229  1229 | 2269  2269 (+85%)  | 1943  1944 (+58%)
+> >>  nvme    N N Y 4K  | 373k  1458 | 387k  1512 (+4%)   | 399k  1559 (+7%)
+> >>  nvme    N N Y 64K | 29.2k 1827 | 70.9k 4431 (+143%) | 54.3k 3390 (+86%)
+> >>  nvme    N N Y 1M  | 1835  1835 | 4919  4919 (+168%) | 3658  3658 (+99%)
+> >>  nvme    N Y N 4K  | 11.7k 46   | 11.7k 46   (0%)    | 11.5k 45   (-1%)
+> >>  nvme    N Y N 64K | 6453  403  | 8661  541  (+34%)  | 7520  470  (+17%)
+> >>  nvme    N Y N 1M  | 649   649  | 1351  1351 (+108%) | 885   886  (+37%)
+> >>  nvme    Y N Y 4K  | 372k  1456 | 433k  1693 (+16%)  | 419k  1637 (+12%)
+> >>  nvme    Y N Y 64K | 33.0k 2064 | 74.7k 4669 (+126%) | 64.1k 4010 (+94%)
+> >>  nvme    Y N Y 1M  | 2131  2131 | 5273  5273 (+147%) | 4259  4260 (+100%)
+> >>  nvme    Y Y N 4K  | 56.7k 222  | 56.4k 220  (-1%)   | 59.4k 232  (+5%)
+> >>  nvme    Y Y N 64K | 13.4k 840  | 19.4k 1214 (+45%)  | 18.5k 1156 (+38%)
+> >>  nvme    Y Y N 1M  | 714   714  | 1504  1504 (+111%) | 1319  1320 (+85%)
+> >>
+> >> [1] https://lore.kernel.org/linux-ext4/20241022111059.2566137-1-yi.zhang@huaweicloud.com/
+> >> [2] https://lore.kernel.org/linux-ext4/3c01efe6-007a-4422-ad79-0bad3af281b1@huaweicloud.com/
+> >>
+> >> Thanks,
+> >> Yi.
+> >>
+> >> Zhang Yi (8):
+> >>   ext4: make ext4_mpage_readpages() support large folios
+> >>   ext4: make regular file's buffered write path support large folios
+> >>   ext4: make __ext4_block_zero_page_range() support large folio
+> >>   ext4/jbd2: convert jbd2_journal_blocks_per_page() to support large
+> >>     folio
+> >>   ext4: correct the journal credits calculations of allocating blocks
+> >>   ext4: make the writeback path support large folios
+> >>   ext4: make online defragmentation support large folios
+> >>   ext4: enable large folio for regular file
+> >>
+> >>  fs/ext4/ext4.h        |  1 +
+> >>  fs/ext4/ext4_jbd2.c   |  3 +-
+> >>  fs/ext4/ext4_jbd2.h   |  4 +--
+> >>  fs/ext4/extents.c     |  5 +--
+> >>  fs/ext4/ialloc.c      |  3 ++
+> >>  fs/ext4/inode.c       | 72 ++++++++++++++++++++++++++++++-------------
+> >>  fs/ext4/move_extent.c | 11 +++----
+> >>  fs/ext4/readpage.c    | 28 ++++++++++-------
+> >>  fs/jbd2/journal.c     |  7 +++--
+> >>  include/linux/jbd2.h  |  2 +-
+> >>  10 files changed, 88 insertions(+), 48 deletions(-)
+> >>
+> >> -- 
+> >> 2.46.1
+> > 
+> > Hi Zhang,
+> > 
+> > I'm currently testing the patches with 4k block size and 64k pagesize on
+> > power and noticed that ext4/046 is hitting a bug on:
+> > 
+> > [  188.351668][ T1320] NIP [c0000000006f15a4] block_read_full_folio+0x444/0x450
+> > [  188.351782][ T1320] LR [c0000000006f15a0] block_read_full_folio+0x440/0x450
+> > [  188.351868][ T1320] --- interrupt: 700
+> > [  188.351919][ T1320] [c0000000058176e0] [c0000000007d7564] ext4_mpage_readpages+0x204/0x910
+> > [  188.352027][ T1320] [c0000000058177e0] [c0000000007a55d4] ext4_readahead+0x44/0x60
+> > [  188.352119][ T1320] [c000000005817800] [c00000000052bd80] read_pages+0xa0/0x3d0
+> > [  188.352216][ T1320] [c0000000058178a0] [c00000000052cb84] page_cache_ra_order+0x2c4/0x560
+> > [  188.352312][ T1320] [c000000005817990] [c000000000514614] filemap_readahead.isra.0+0x74/0xe0
+> > [  188.352427][ T1320] [c000000005817a00] [c000000000519fe8] filemap_get_pages+0x548/0x9d0
+> > [  188.352529][ T1320] [c000000005817af0] [c00000000051a59c] filemap_read+0x12c/0x520
+> > [  188.352624][ T1320] [c000000005817cc0] [c000000000793ae8] ext4_file_read_iter+0x78/0x320
+> > [  188.352724][ T1320] [c000000005817d10] [c000000000673e54] vfs_read+0x314/0x3d0
+> > [  188.352813][ T1320] [c000000005817dc0] [c000000000674ad8] ksys_read+0x88/0x150
+> > [  188.352905][ T1320] [c000000005817e10] [c00000000002fff4] system_call_exception+0x114/0x300
+> > [  188.353019][ T1320] [c000000005817e50] [c00000000000d05c] system_call_vectored_common+0x15c/0x2ec
+> > 
+> > which is:
+> > 
+> > int block_read_full_folio(struct folio *folio, get_block_t *get_block)
+> > {
+> > 	...
+> > 	/* This is needed for ext4. */
+> > 	if (IS_ENABLED(CONFIG_FS_VERITY) && IS_VERITY(inode))
+> > 		limit = inode->i_sb->s_maxbytes;
+> > 
+> > 	VM_BUG_ON_FOLIO(folio_test_large(folio), folio);    <-------------
+> > 
+> > 	head = folio_create_buffers(folio, inode, 0);
+> > 	blocksize = head->b_size;
+> > 
+> > This seems like it got mistakenly left out. Wihtout this line I'm not
+> > hitting the BUG, however it's strange that none the x86 testing caught
+> > this. I can only replicate this on 4k blocksize on 64k page size power
+> > pc architecture. I'll spend some time to understand why it is not
+> > getting hit on x86 with 1k bs. (maybe ext4_mpage_readpages() is not
+> > falling to block_read_full_folio that easily.)
+> > 
+> > I'll continue testing with the line removed.
+> 
+> Hi Ojaswin.
+> 
+> Thanks for the test again, I checked the commit, this line has already
+> been removed by commit e59e97d42b05 ("fs/buffer fs/mpage: remove large
+> folio restriction").
+> 
+> Thanks,
+> Yi.
 
-> This adds multi-fsblock atomic write support to ext4 using bigalloc. The major
-> chunk of the design changes are kept in Patch-4 & 5.
->
-> v4 -> v5:
-> =========
-> 1. Addressed review comments and added Acked-by from Darrick.
-> 2. Changed a minor WARN_ON(1) at one place to WARN_ON_ONCE(1) in patch-5 in
->    ext4_iomap_begin(). Ideally we may never hit it.
-> 3. Added force commit related info in the Documentation section where
->    mixed mapping details are mentioned.
-> [v4]: https://lore.kernel.org/linux-ext4/cover.1747289779.git.ritesh.list@gmail.com/
-> <...>
-> Ritesh Harjani (IBM) (7):
->   ext4: Document an edge case for overwrites
->   ext4: Check if inode uses extents in ext4_inode_can_atomic_write()
->   ext4: Make ext4_meta_trans_blocks() non-static for later use
->   ext4: Add support for EXT4_GET_BLOCKS_QUERY_LEAF_BLOCKS
->   ext4: Add multi-fsblock atomic write support with bigalloc
->   ext4: Enable support for ext4 multi-fsblock atomic write using bigalloc
->   ext4: Add atomic block write documentation
->
->  .../filesystems/ext4/atomic_writes.rst        | 225 +++++++++++++
->  Documentation/filesystems/ext4/overview.rst   |   1 +
->  fs/ext4/ext4.h                                |  26 +-
->  fs/ext4/extents.c                             |  99 ++++++
->  fs/ext4/file.c                                |   7 +-
->  fs/ext4/inode.c                               | 315 ++++++++++++++++--
->  fs/ext4/super.c                               |   7 +-
->  7 files changed, 655 insertions(+), 25 deletions(-)
->  create mode 100644 Documentation/filesystems/ext4/atomic_writes.rst
+Hi Yi,
 
-Hi Ted, 
+Thanks, seems like they came in via Christian's 6.15-rc1 vfs branch,
+maybe Ted rebased recently since I didnt see this change in the fairly
+recent branhc that I was testing on.
 
-I was working on the rebase over the weekend as I figured that there
-will be merge conflicts with Zhang's series. But later I saw that you
-have already rebased [1] and merged atomic write series in dev branch. 
+Good to see it is fixed. I've another overnight auto run going on, I'll
+update if I see any regressions.
 
-[1]: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/log/?h=dev
-
-So, thanks for taking care of that. After looking at Zhang's series, I
-figured, we may need EXT4_EX_CACHE flag too in
-ext4_convert_unwritten_extents_atomic() i.e.
-
-	int flags = EXT4_GET_BLOCKS_IO_CONVERT_EXT | EXT4_EX_NOCACHE;
-
-This is since, in ext4_map_blocks(), we have a condition check which can
-emit a WARN_ON like this:
-	/*
-	 * Callers from the context of data submission are the only exceptions
-	 * for regular files that do not hold the i_rwsem or invalidate_lock.
-	 * However, caching unrelated ranges is not permitted.
-	 */
-	if (flags & EXT4_GET_BLOCKS_IO_SUBMIT)
-		WARN_ON_ONCE(!(flags & EXT4_EX_NOCACHE));
-	else
-		ext4_check_map_extents_env(inode);
-
-
-Other than adding the no cache flag, couple of other minor
-simplifications can be done too, I guess for e.g. simplifying the
-query_flags logic in ext4_map_query_blocks() function. 
-
-So I am thinking maybe I will provide the above fix and few other minor
-simplfications which we could do on top of ext4's dev branch (after we
-rebased atomic write changes on top of Zhang's series). Please let me
-know if that is ok?
-
-Or do we want to fix the original atomic write patch and do a force push
-to dev branch again?
-
-Please let me know whichever way works best?
-
-Thanks again!
--ritesh
+Thanks,
+Ojaswin
+> 
