@@ -1,17 +1,17 @@
 Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 32C8826B96B;
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 32C2826A1AD;
 	Mon, 19 May 2025 09:18:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747646329; cv=none; b=ZS2eNHcjNaFfWOm9poMSOy+31iB+u5N76LQB5Cy/T1DBZnQOgKjR9sWJuKyyuaAygisruyIfhxE1ld9oFJzDg71WlCJ2rRfQUTnJRj/Xh30T2QCX6e4mU/ZwtlyWGY9jBydM9fSWsUDLTfX+HrS2arVuNlhh3oGNASYJu+kmeaY=
+	t=1747646329; cv=none; b=LUPqEP8zpalC9KGzo/0tQqjhC65Fa7eBPDsz35yMBLZUENElNYZiKp2osDsMQjUla/TbRgDUJwnK3jHkCdE6QnSBB3X4BSLpzLrORdMds4OrxGIaKF6DjJelLAXp4D4RCwMdoqj215RfF3I8rnQVsx33F5parOhMx8hefLtsYqE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1747646329; c=relaxed/simple;
-	bh=KlggbR8P/n36oRZlJZsBth/VG91g9Dz5bdB/P0jqAy0=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=I5tSieYR1ckCwfyCrZmtOIRaY0ZyFvyida6pHMN9J2AQWcxsQ8274ay8lCf5IJebYIohvPhlSuYpHjOe3RYHNnx6W8rrj/Ujtgw2u4kPmpmcRpuJ0t8aydzIger6YmVWpIGjRC/SU9HT8Sx1pQBzzrq2su+FYP6cyP7+Pmk7KAQ=
+	bh=8SxiXT7aMr/Jndlc0Cvu8YV+kxqp+XaubTMN75I/AOI=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=GMZwWm5jBqcUxkHqOQ4FjEqQZc5YqdqZ+E6EVtbBx9RKuWSRHZF4rK4FO7CaXpboP52ix0kxvRZmzIO33Wo2VnAP75MHMLcMkSRYZp71w+KeL3xbbrBf5nZ7OigPTJcQY6HD5vayBi69rQvToxRXPrrPiwwRNkfjlVlgGnntTPs=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-669ff7000002311f-75-682af76d6e83
+X-AuditID: a67dfc5b-669ff7000002311f-73-682af76d8185
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -75,44 +75,44 @@ Cc: kernel_team@skhynix.com,
 	netdev@vger.kernel.org,
 	matthew.brost@intel.com,
 	her0gyugyu@gmail.com
-Subject: [PATCH v16 10/42] dept: distinguish each work from another
-Date: Mon, 19 May 2025 18:17:54 +0900
-Message-Id: <20250519091826.19752-11-byungchul@sk.com>
+Subject: [PATCH v16 08/42] x86_64, dept: add support CONFIG_ARCH_HAS_DEPT_SUPPORT to x86_64
+Date: Mon, 19 May 2025 18:17:52 +0900
+Message-Id: <20250519091826.19752-9-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20250519091826.19752-1-byungchul@sk.com>
 References: <20250519091826.19752-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTZxTHfZ57e++lo8tNp3h9SZxNnIqZjkX0ZHNTtw88WWKyzG9oInVc
-	bV1pTYsFNIsgYBxdq+KA+EJpkXRNW7W2fEClBEvoBKai1oqkghBlIwJdwJYXca7F7MvJL+ef
-	/+98ORwlD0mWc2ptoajXKjUKRkpLx9Ptn2qnM1WfNcRWQ/z1KRouXfMw0HvVjcDTXIZhtDMH
-	niTGELy5e5+CuppeBPahZxQ0hwYQBJwnGHj04kMIx2MMdNWYGCi/fI2BB6/mMURrqzG4fbtg
-	0DFCQ8+ZRgx1owxcrCvHyfE3hlmHiwVH6RoYdl5gYX4oC7oGIhII9G+A89YoA62BLhpCLcMY
-	Ht28xMCA550EekJ3aEhYVkDvWbMErkw0MvAq4aDAEY+x8LDdhiFkywBvRVJ4cupfCfxhbsdw
-	suk6hvDTWwjaTj3H4PNEGOiIj2Hw+2oomPu9E8GwZZyFyl9nWbhYZkFgqqyloSKaDW9mkpfr
-	X2dBWYOXhitvI2jHV8Rj9SDSMRajSIW/iMzFHzMkkLDRpLtRIDcuPGNJRVs/S2y+I8TvzCSX
-	W0cxsU/GJcTn+oUhvslqllSNhzGZuHeP/X5lrnRbvqhRG0X9pq/zpCpvpfHwBFvcFPwHl6JW
-	pgpxnMBvFqJDmiqUtoDjjZ1sihl+rdDXN0uleDH/seA3j0iqkJSj+MgHwpP6pygVfMR/K9jt
-	A0yKaX6NMDM1j1Ms47cIdlMUv5euEtze9gVRWnLfb+pY6Mr5bCHsttIpqcCfSxNqO6vZ94Vl
-	wm1nH30GyWxokQvJ1VpjgVKt2bxRVaJVF2/8UVfgQ8nvcvw8v6cFTfbuDiKeQ4p0mTewXiWX
-	KI2GkoIgEjhKsVjm8q9TyWX5ypKjol63T39EIxqCaAVHK5bKPk8U5cv5g8pC8SdRPCzq/08x
-	l7a8FOVucvE7bwxayxfpCu8/jGXkvQyfzevObcvuOt+8/e3Ui4jzXeGh1ekj25eajzaTrXMt
-	3obMLwq2dRiXtX3jPm7ZX/9l6dwJVe4nQ6jowW+GCYvP7yhe+ed3uuAGy4G/ehR7Z1YN/mAx
-	Wc/tMmdkT7+Ude/OmdYda8o6ffqxbMna4zdzFLRBpczKpPQG5X+H3qqAWQMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0iTYRTHe5736mrxtoa9LLQYdDOthlqHLiuQ8qXoQgRBfchhL22oKzZb
-	GQSaTkxT0lhiNdumLNOVayvo4kIULYvK0sxkWVpEkjdqW5qaTaMvhx/nz/93vhyWkN2kFKxO
-	nyka9Jp0JS0hJXs25cZl/IrRrvucr4JgoICEa/UuGtpv1yFw3c3BMNCSDO9CgwgmXrwioNzS
-	jsDe94GAu629CHw152jo+DIfOoMjNLRZimjIraqn4fX3SQz+y2UY6jy74aPzKwnPLzowlA/Q
-	cLU8F4fHNwzjzloGnNnLoL/mCgOTfSpo6+2ioNnaRoGvZzVUVPppaPC1kdB6vx9Dx8NrNPS6
-	pil43vqUhFDJYmgvLabg1rCDhu8hJwHO4AgDbxptGFptkeDOC1vzf/6h4ElxI4b86jsYOt8/
-	QvC44BMGj6uLhubgIAavx0LA7xstCPpLhhgwXxhn4GpOCYIi82US8vyJMDEWvmwNqCDnupuE
-	W1NdaJtacFW6kNA8OEIIed5Twu/gW1rwhWyk8MzBCw+ufGCEvMc9jGDznBS8NTFCVcMAFuw/
-	gpTgqT1PC54fZYxQONSJheGXL5l9UYckm4+K6TqTaFirTpFo3WbTiWHmdHXTKM5GDXQhimB5
-	LoEfcrQwM0xzK/ju7nFihuXcUt5b/JUqRBKW4Lrm8u+s79FMsJBL4u323tkyyS3jx35O4hmW
-	cut5e5Ef/5Mu4evcjbOiiPC+p6h5tivjEvnOukryIpLY0JxaJNfpTRkaXXriGmOaNkuvO70m
-	9XiGB4UfyHl2svQ+CnQkNyGORcp5UrdvlVZGaUzGrIwmxLOEUi6t9a7UyqRHNVlnRMPxI4aT
-	6aKxCS1mSeUi6c6DYoqMO6bJFNNE8YRo+J9iNkKRjTZGsQmSWAthUavjI5fGS6Md8sPdAVVa
-	0l65PzW+QV1dsiMy2Xlpw3Tm9sbEJHNa6oFzCkdyQkHsvfqKwIKnow+iuTLblrVR5oqxqY4p
-	hfVs5cR03KhJW7r1T3Zo/mp7cPe8FGvs+M1d+rnL90e3TO3IH+3ri407syH3m7xwpyJaSRq1
-	GlUMYTBq/gJ+wP42PAMAAA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSb0xTZxSH97739t7bSpebSuadLNvSxFRrhkLEnMw5TUzmm0zjEk00Ev80
+	cmObQTFFUEgWYVCtIuhMABVhBbFWKIKtJk4pKSWWgRlUqaUgVmXE2EklA1pWQVyr8cvJk/x+
+	5zlfDkcpPJKlnE5/WDToNdlKRkbLwkkN3+hn1drVs11KiMyYaLjUZmPAe70Fge1mCYbQvc0w
+	FJ1AMPfXAAU1VV4EDc+fUHDTE0TgtP7KwOD4p+CLTDLQW1XOQOnlNgYevJrHMFp9DkOLfSs8
+	tbyg4f7ZRgw1IQZqa0pxfLzEELM0s2ApXgZj1osszD9Pg96gXwLOkZVwoX6UgQ5nLw2e22MY
+	Bu9cYiBoeyeB+54/aYhWpoD3twoJtL5uZOBV1EKBJTLJwkOXGYPH/Bm0l8WFx6cXJNBT4cJw
+	vOkGBt/wXQSdpmcY7DY/A92RCQwOexUFb67eQzBWGWbBeDrGQm1JJYJyYzUNZaMZMPdf/HLd
+	TBqU/N5OQ+tbP9q4ntjqbYh0T0xSpMxxhLyJPGKIM2qmSV+jQP64+IQlZZ0jLDHb84nDqiaX
+	O0KYNExFJMTefJIh9qlzLDkV9mHyur+f/emL3bLvssRsXYFoWPX9fpn2cV2YPtSXfHSu9Apd
+	jP7hTyEpJ/BrhPMNLslHDnTcYhPM8CohEIhRCU7mvxYcFS/iHRlH8f5FwlDdMEoEi/lM4d9b
+	8/GA42h+mWAqwQmU8xnCeFfBB+VXQku7671Gyq8VRsq7328q4hVfSz2dUAr8Gakw3XkBf1j4
+	XOiyBuizSG5GnzQjhU5fkKPRZa9J1RbqdUdTD+Tm2FH8uyy/zGfeRlPe7W7Ec0iZJG93rtAq
+	JJqCvMIcNxI4Spksb3Ys1yrkWZrCItGQu8+Qny3muVEKRyuXyNOjR7IU/EHNYfFnUTwkGj6m
+	mJMuLUY6FzUrS43tcI+GTE2nxSzP32jymtmY2ipN2WnsH3DvUjfe+DbT7lNdq1ZvNIV+2BqM
+	3Vmxtzpj3Vy4bZO2SMVsf7DamGRUWf2Ltjg3BGYGVEXnmR/3kKlNV4bagmq+78uFLdu8uTsX
+	Tkw/Xb9uW/2CkIZ7nD3p47XHBnbLm04q6TytJk1NGfI0/wNg7ldfWQMAAA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSf0zMcRjHfb6/O46vc+M7MXaWCEemPBuzbI3PGGNjNjYcfeeOLnbHKWMr
+	V9YP3bBVox+u4pw67rrL5kdnqTmSH9FJkqhhohPqjroLF/PPs9f2ej/v55+HI2VWeiqnSTko
+	6lJUyQpGQknWLzMu0P6IUS9yZSvAP5hNQYndxkDL1WoEttoMAnrvroYXgT4EwUdPSCgqaEFQ
+	3v2ahFpPFwK39TgDre/Gg9ffz0BTQR4Dxko7A08/hwjoLDxDQLVzHbyxfKCg+VQFAUW9DBQX
+	GYnw+EjAkKWKBUt6FPRYz7EQ6o6Fpq42GhpLm2hwd8yDs2WdDNS5myjwXO8hoPVmCQNdtt80
+	NHvuUxAwRULL6XwarnypYOBzwEKCxd/PwrN6MwEe82RwZIZbTwz8ouFefj0BJy7UEOB9eQvB
+	7ey3BDhtbQw0+vsIcDkLSBi+dBdBj8nHQtbJIRaKM0wI8rIKKcjsjIPgz/Dl0sFYyDjvoODK
+	SBtKWIFtZTaEG/v6SZzpOoyH/c8Z7A6YKfygQsA3zr1mcebtDhabnYewyxqDK+t6CVz+3U9j
+	Z1UOg53fz7A41+cl8JfHj9kN07dKlieJyRqDqFu4YqdE/arURx14IE8NGi9S6egTn4siOIFf
+	IrTXXWNHmeGjhfb2IXKU5fxMwZX/gc5FEo7k28YKL0pfolExid8mfLsWCguOo/goITuDGEUp
+	Hye8u2P4VzlDqHbU/62J4OOFjrzGv5uycMRbXUadQhIzGlOF5JoUg1alSY5T6vep01I0qcrd
+	+7VOFP4fy7HQ6etosHV1A+I5pBgndbjnqmW0yqBP0zYggSMVcmmVa45aJk1SpR0Rdft36A4l
+	i/oGFMlRiinSNVvEnTJ+j+qguE8UD4i6/5bgIqamI/zUdGvDZqNyYtSRtb7iHwni+HX2EV9s
+	0F2jc5giQ0MrN80ernXl7B1mXy2YMC7AQGGJtyOk3POevPwV7VrcPf9OUbmk9WgoLlHuGVH+
+	zJrV2ZyUmBNvt6Z6J22fG7QvG3g/7WL0ItNbJnHLQy7qmWKpNt4+Tbpx/kCCYVXCp70KSq9W
+	xcaQOr3qD0hkd0M7AwAA
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -120,38 +120,82 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-Workqueue already provides concurrency control.  By that, any wait in a
-work doesn't prevents events in other works with the control enabled.
-Thus, each work would better be considered a different context.
+dept needs to notice every entrance from user to kernel mode to treat
+every kernel context independently when tracking wait-event dependencies.
+Roughly, system call and user oriented fault are the cases.
 
-So let dept assign a different context id to each work.
+Make dept aware of the entrances of x86_64 and add support
+CONFIG_ARCH_HAS_DEPT_SUPPORT to x86_64.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- kernel/workqueue.c | 3 +++
- 1 file changed, 3 insertions(+)
+ arch/x86/Kconfig            | 1 +
+ arch/x86/entry/syscall_64.c | 7 +++++++
+ arch/x86/mm/fault.c         | 7 +++++++
+ 3 files changed, 15 insertions(+)
 
-diff --git a/kernel/workqueue.c b/kernel/workqueue.c
-index cf6203282737..5a6ab354c416 100644
---- a/kernel/workqueue.c
-+++ b/kernel/workqueue.c
-@@ -55,6 +55,7 @@
- #include <linux/kvm_para.h>
- #include <linux/delay.h>
- #include <linux/irq_work.h>
+diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
+index 5873c9e39919..4b6d9e59d96c 100644
+--- a/arch/x86/Kconfig
++++ b/arch/x86/Kconfig
+@@ -38,6 +38,7 @@ config X86_64
+ 	select ARCH_HAS_ELFCORE_COMPAT
+ 	select ZONE_DMA32
+ 	select EXECMEM if DYNAMIC_FTRACE
++	select ARCH_HAS_DEPT_SUPPORT
+ 
+ config FORCE_DYNAMIC_FTRACE
+ 	def_bool y
+diff --git a/arch/x86/entry/syscall_64.c b/arch/x86/entry/syscall_64.c
+index b6e68ea98b83..66bd5af5aff1 100644
+--- a/arch/x86/entry/syscall_64.c
++++ b/arch/x86/entry/syscall_64.c
+@@ -8,6 +8,7 @@
+ #include <linux/entry-common.h>
+ #include <linux/nospec.h>
+ #include <asm/syscall.h>
 +#include <linux/dept.h>
  
- #include "workqueue_internal.h"
- 
-@@ -3155,6 +3156,8 @@ __acquires(&pool->lock)
- 
- 	lockdep_copy_map(&lockdep_map, &work->lockdep_map);
- #endif
+ #define __SYSCALL(nr, sym) extern long __x64_##sym(const struct pt_regs *);
+ #define __SYSCALL_NORETURN(nr, sym) extern long __noreturn __x64_##sym(const struct pt_regs *);
+@@ -86,6 +87,12 @@ static __always_inline bool do_syscall_x32(struct pt_regs *regs, int nr)
+ /* Returns true to return using SYSRET, or false to use IRET */
+ __visible noinstr bool do_syscall_64(struct pt_regs *regs, int nr)
+ {
++	/*
++	 * This is a system call from user mode.  Make dept work with a
++	 * new kernel mode context.
++	 */
 +	dept_update_cxt();
 +
- 	/* ensure we're on the correct CPU */
- 	WARN_ON_ONCE(!(pool->flags & POOL_DISASSOCIATED) &&
- 		     raw_smp_processor_id() != pool->cpu);
+ 	add_random_kstack_offset();
+ 	nr = syscall_enter_from_user_mode(regs, nr);
+ 
+diff --git a/arch/x86/mm/fault.c b/arch/x86/mm/fault.c
+index 296d294142c8..241537ce47fe 100644
+--- a/arch/x86/mm/fault.c
++++ b/arch/x86/mm/fault.c
+@@ -20,6 +20,7 @@
+ #include <linux/mm_types.h>
+ #include <linux/mm.h>			/* find_and_lock_vma() */
+ #include <linux/vmalloc.h>
++#include <linux/dept.h>
+ 
+ #include <asm/cpufeature.h>		/* boot_cpu_has, ...		*/
+ #include <asm/traps.h>			/* dotraplinkage, ...		*/
+@@ -1220,6 +1221,12 @@ void do_user_addr_fault(struct pt_regs *regs,
+ 	tsk = current;
+ 	mm = tsk->mm;
+ 
++	/*
++	 * This fault comes from user mode.  Make dept work with a new
++	 * kernel mode context.
++	 */
++	dept_update_cxt();
++
+ 	if (unlikely((error_code & (X86_PF_USER | X86_PF_INSTR)) == X86_PF_INSTR)) {
+ 		/*
+ 		 * Whoops, this is kernel mode code trying to execute from
 -- 
 2.17.1
 
