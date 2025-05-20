@@ -1,39 +1,39 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B44AE248F43
-	for <linux-ext4@vger.kernel.org>; Tue, 20 May 2025 14:40:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9EF6424EABD
+	for <linux-ext4@vger.kernel.org>; Tue, 20 May 2025 14:40:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747752058; cv=none; b=PAGzDqW1ERn0H8XqIqyTdIO8N0wm56tlaNHcq5eAD7qs8j1jR2TKWYN+jNV2/H2BChMIwyd/CQk8tVaPLjE1I+DmvItN8EfdgARqVKGd9UjcFWzWgC3gENoOfNxjolxpl6UuiefGawv+G2qs35soB5yGqqnwZwkHLxsd8XhIh4w=
+	t=1747752059; cv=none; b=DvBQsG9u7vf8RtRvIOKIRQII9i4svCxeQPB/d+m7/rdU5fDVld/mXXMJk7wp9INn1bOeKPdvI34JDBonhTyvhi0yy5/gllfF52IL+hTmL/mIai/zmNuN3Qj66y5buDF7Rk/ebcjpeoAgZ1wNMfeUipA5VX01Nb9BAl+nhH/XAcI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1747752058; c=relaxed/simple;
-	bh=IILUo4g9XxkHNqcNVbJg4ope2u1OZE0eGEtTJRxZDjY=;
+	s=arc-20240116; t=1747752059; c=relaxed/simple;
+	bh=aJenwxdDmXYJfWrC4hpGWB7PoCgfVUGznezpZ57Nbg8=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=OwZTc4cmRnArOanlNNt2Zg9v8mD9xqAt4ZFfSBTMS9xruanimZR5cloSF8zWjQA8QUAVPNHrDBiTx3GtBJ/TPJ8NaMB2GyuQssdmX+qAKZgR+/xKP98j4+WZBECxKP1hF69r3PVHRiOyCm1skCYnVT8TN7peoLiHfMPz5Nhlj6o=
+	 MIME-Version:Content-Type; b=ilMP99/WP00Hl5yCu7KL5CnPUQaaZ/PPiSsliqpol4bhbymjMdRntSDnk/25WN26PUb1RvSWtqgGR/81pakcXlxI29i0I9dHEQ0t17TuNq196C/kjea0NNnPCeS216T8xkfn6CYbk8+mEAwNT1zIve28wdyhrqKJzqjkRZjQl/A=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Received: from trampoline.thunk.org (pool-173-48-111-173.bstnma.fios.verizon.net [173.48.111.173])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 54KEeR8D013170
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 54KEeQ5i013155
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 20 May 2025 10:40:27 -0400
+	Tue, 20 May 2025 10:40:26 -0400
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id CE19C2E00E9; Tue, 20 May 2025 10:40:24 -0400 (EDT)
+	id C8C812E00E7; Tue, 20 May 2025 10:40:24 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org, Zhang Yi <yi.zhang@huaweicloud.com>
 Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca, jack@suse.cz,
-        wanghaichi0403@gmail.com, yi.zhang@huawei.com, libaokun1@huawei.com,
-        yukuai3@huawei.com, yangerkun@huawei.com
-Subject: Re: [PATCH v2 1/4] ext4: fix out of bounds punch offset
-Date: Tue, 20 May 2025 10:40:20 -0400
-Message-ID: <174775151765.432196.17776440436332077240.b4-ty@mit.edu>
+        yi.zhang@huawei.com, libaokun1@huawei.com, yukuai3@huawei.com,
+        yangerkun@huawei.com
+Subject: Re: [PATCH 0/9] ext4: fix stale extent status entries and clairfy rules
+Date: Tue, 20 May 2025 10:40:18 -0400
+Message-ID: <174775151762.432196.4176698555758333920.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.47.2
-In-Reply-To: <20250506012009.3896990-1-yi.zhang@huaweicloud.com>
-References: <20250506012009.3896990-1-yi.zhang@huaweicloud.com>
+In-Reply-To: <20250423085257.122685-1-yi.zhang@huaweicloud.com>
+References: <20250423085257.122685-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -44,26 +44,40 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Tue, 06 May 2025 09:20:06 +0800, Zhang Yi wrote:
-> Punching a hole with a start offset that exceeds max_end is not
-> permitted and will result in a negative length in the
-> truncate_inode_partial_folio() function while truncating the page cache,
-> potentially leading to undesirable consequences.
+On Wed, 23 Apr 2025 16:52:48 +0800, Zhang Yi wrote:
+> This patch series addresses the potential problems discussed with Jan
+> Kara regarding the modification rules for mapping extents[1]. Preparing
+> for the buffered I/O conversion for regular files.
 > 
-> A simple reproducer:
+> This change includes:
+> 
+> Patch 1-5 fixes problems related to stale extent status entries that
+> may arise during the collapsing of ranges, the insertion of ranges, or
+> file truncation when these operations compete with concurrent writeback,
+> fiemap, or get extent cache.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/4] ext4: fix out of bounds punch offset
-      commit: b5e58bcd79625423487fa3ecba8e8411b5396327
-[2/4] ext4: fix incorrect punch max_end
-      commit: 29ec9bed2395061350249ae356fb300dd82a78e7
-[3/4] ext4: factor out ext4_get_maxbytes()
-      commit: dbe27f06fa38b9bfc598f8864ae1c5d5831d9992
-[4/4] ext4: ensure i_size is smaller than maxbytes
-      commit: 1a77a028a392fab66dd637cdfac3f888450d00af
+[1/9] ext4: ext4: unify EXT4_EX_NOCACHE|NOFAIL flags in ext4_ext_remove_space()
+      commit: 53ce42accd2002cc490fc86000ac532530507a74
+[2/9] ext4: generalize EXT4_GET_BLOCKS_IO_SUBMIT flag usage
+      commit: 86b349ce0312a397a6961e457108556e44a3d211
+[3/9] ext4: prevent stale extent cache entries caused by concurrent I/O writeback
+      commit: 402e38e6b71f5739119ca3107f375e112d63c7c5
+[4/9] ext4: prevent stale extent cache entries caused by concurrent fiemap
+      commit: 151ff9325e5e17c97839a00b740726656b04647b
+[5/9] ext4: prevent stale extent cache entries caused by concurrent get es_cache
+      commit: f22a0ef2231a7d8374bb021eb86404d0e9de5a02
+[6/9] ext4: factor out is_special_ino()
+      commit: 0b8e0bd45007d5740391e658c2581bd614207387
+[7/9] ext4: introduce ext4_check_map_extents_env() debug helper
+      commit: 7871da20d484d5c7e536bfd52845b6be4488ff30
+[8/9] ext4: check env when mapping and modifying extents
+      commit: 1b4d2a0b794669e54914e3f429c08e49ea40b40c
+[9/9] ext4: clairfy the rules for modifying extents
+      commit: 24b7a2331fcdf6de103ea85e67eede43c0372f77
 
 Best regards,
 -- 
