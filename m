@@ -1,39 +1,44 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D678B2505AC
-	for <linux-ext4@vger.kernel.org>; Tue, 20 May 2025 14:41:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CFF0F24E01B
+	for <linux-ext4@vger.kernel.org>; Tue, 20 May 2025 14:41:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747752062; cv=none; b=cjibjlf+Wsz5EW9ANQ3VV7z9CvQuaKkHeeP0L4kgPXAjclOu7zUiiTBZCfKZ1YtagPzjhck5zNuI+xt1/89mqtfkV8AFmy8Epgq0qfCiviDP0x7YS05+oelwv7xPwz3DJih+TmIr5lUDYd7fKfGZ3pJQ0K2bUGm0D/5eT0ciE2k=
+	t=1747752080; cv=none; b=ZgjUNBSUcl0hw4rQz1LdQlMh8WXT7z3KuQFyvnQSAvw97WE8RoSsHRa61OK4ALqvvreVg2/ppomN6UfiWb1boNl1kNiAhZujvwZvIRlYZTLQ/0RWa1WbH6yiGIO0v37Acb2FwBZBV/GkvVyM03W7jxG6t7nWF67CS+hv+vj+ciw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1747752062; c=relaxed/simple;
-	bh=H0EzHZkaZM4OH7UPbd8j0MRTzc1Tc3zDBZyC2BudrnM=;
+	s=arc-20240116; t=1747752080; c=relaxed/simple;
+	bh=qRybH5cw5MW+2tIr6+LlsfuFuUK8mFtVjjDVpaujrY8=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=XgXQdPo5MfM5yMD8yD0bSSS59ZEzQ/7DxNDnTp0vtklbsWFfhVgevLxFMheh/dAUb8ZiGCqIIcgvnAvaPvWNbgBU6T4bZu0AXzTo7zlWA/nWWvKULf0ka9xBbO1mmf9mFm0+sm9uiWK0mGUp2Tzpvzd6PHHHfrUMGjqsfeolbGA=
+	 MIME-Version:Content-Type; b=T11KlP7eOT5los/94k8oNYpnGNXtwY7x6vAHwpFl3K0869Y/xE7B/hx5hLl3itCVUY0AOIl0FZ2yhCtX1+G9+6BuR3ua6VvqG1IYgYDKiN1sLUyYYHoqDQnSRwagk1HqAfVmrNPlDqgBdkYOY4tHSxv2rEr07gH4Af+DHk5X02o=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Received: from trampoline.thunk.org (pool-173-48-111-173.bstnma.fios.verizon.net [173.48.111.173])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 54KEeQ0U013156
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 54KEeOXq013125
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 20 May 2025 10:40:26 -0400
+	Tue, 20 May 2025 10:40:25 -0400
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id CB70C2E00E8; Tue, 20 May 2025 10:40:24 -0400 (EDT)
+	id B4B552E00DE; Tue, 20 May 2025 10:40:24 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org, Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, willy@infradead.org,
-        adilger.kernel@dilger.ca, jack@suse.cz, yi.zhang@huawei.com,
-        libaokun1@huawei.com, yukuai3@huawei.com, yangerkun@huawei.com
-Subject: Re: [PATCH v2 0/8] ext4: enable large folio for regular files
-Date: Tue, 20 May 2025 10:40:19 -0400
-Message-ID: <174775151766.432196.8064523744534615676.b4-ty@mit.edu>
+To: Andreas Dilger <adilger.kernel@dilger.ca>, Arnd Bergmann <arnd@kernel.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Arnd Bergmann <arnd@arndb.de>,
+        Jan Kara <jack@suse.cz>, Zhang Yi <yi.zhang@huawei.com>,
+        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+        Shida Zhang <zhangshida@kylinos.cn>, Baokun Li <libaokun1@huawei.com>,
+        Jann Horn <jannh@google.com>, Brian Foster <bfoster@redhat.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: avoid -Wformat-security warning
+Date: Tue, 20 May 2025 10:40:10 -0400
+Message-ID: <174775151764.432196.13613749014255693736.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.47.2
-In-Reply-To: <20250512063319.3539411-1-yi.zhang@huaweicloud.com>
-References: <20250512063319.3539411-1-yi.zhang@huaweicloud.com>
+In-Reply-To: <20250423164354.2780635-1-arnd@kernel.org>
+References: <20250423164354.2780635-1-arnd@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -44,34 +49,21 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Mon, 12 May 2025 14:33:11 +0800, Zhang Yi wrote:
-> Changes since v1:
->  - Rebase codes on 6.15-rc6.
->  - Drop the modifications in block_read_full_folio() which has supported
->    by commit b72e591f74de ("fs/buffer: remove batching from async
->    read").
->  - Fine-tuning patch 6 without modifying the logic.
+On Wed, 23 Apr 2025 18:43:49 +0200, Arnd Bergmann wrote:
+> check_igot_inode() prints a variable string, which causes a harmless
+> warning with 'make W=1':
+> 
+> fs/ext4/inode.c:4763:45: error: format string is not a string literal (potentially insecure) [-Werror,-Wformat-security]
+>  4763 |         ext4_error_inode(inode, function, line, 0, err_str);
+> 
+> Use a trivial "%s" format string instead.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/8] ext4: make ext4_mpage_readpages() support large folios
-      commit: fdbd0df9d4a36c9091d4f7e8cdfbe76c94aab0ab
-[2/8] ext4: make regular file's buffered write path support large folios
-      commit: 16705e52e6291c6ab4249aaf1cdf0b8e88afe775
-[3/8] ext4: make __ext4_block_zero_page_range() support large folio
-      commit: 2e9466fc5d7c74a0aeeb388c3c2a4c02b7069d58
-[4/8] ext4/jbd2: convert jbd2_journal_blocks_per_page() to support large folio
-      commit: d6bf294773a472fe4694b92714af482f5c6aa4c6
-[5/8] ext4: correct the journal credits calculations of allocating blocks
-      commit: 0e32d86170121c2d43508e923cb171fb58953b42
-[6/8] ext4: make the writeback path support large folios
-      commit: cd9f76de6ae9a5a0ca6201b1f06cf116a6a3e3a2
-[7/8] ext4: make online defragmentation support large folios
-      commit: 01e807e18fd87937f515926b79152dfa4f13b735
-[8/8] ext4: enable large folio for regular file
-      commit: 7ac67301e82f02b77a5c8e7377a1f414ef108b84
+[1/1] ext4: avoid -Wformat-security warning
+      commit: d612a07931e261c537978aad096e7340b687cd0c
 
 Best regards,
 -- 
