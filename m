@@ -1,37 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6A680239E8B
-	for <linux-ext4@vger.kernel.org>; Wed, 21 May 2025 22:39:06 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A3F00230269
+	for <linux-ext4@vger.kernel.org>; Wed, 21 May 2025 22:39:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747867146; cv=none; b=tCNfFbuO/cR5MxbxMMZG8qhPX8Wqr87ElcAIaZLNpB2cJOJozVkL/m/Z5avD0vBk0Px7QhwhUtqVoPIlsjcuoiAUn9tJ0j8aeprjc0C9ZfPZkhbQPeJhGpDoJVRM0NDDAlAA4On4XcScg1CjKx75IFLt0fmRgdtEztiZLuH6EYI=
+	t=1747867161; cv=none; b=ZFqMl2V74Yfkvo+AmTdYbkYWF8jacDB4W0wz66FoMBhzPdS/7hUhboTmaztjRVR6dvPrbUf2FErlM6axKX6DUDRH1loKXJ/16MJnyhclKvgn9wiACqBsBVhd2lM0tMz+mfJ+zvbXpsl1R4yXPBOVnCHScWdAgqDbwZSPzSsgXqo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1747867146; c=relaxed/simple;
-	bh=+VOFYm3dOCgLWO7M7jmeLjYh+9YmZ+n4zNz5batpDLc=;
+	s=arc-20240116; t=1747867161; c=relaxed/simple;
+	bh=0hAqkF1wJgJh8qbmypf5Z3hMFBAJup/4jlF5RuGV8io=;
 	h=Date:Subject:From:To:Cc:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=n2dFLNwtCOm3uHLTtAgKfBYCXLHqEFPbdlhZ3rKIp8y0+aVsvxNwpCHzy7Ep7bqiazqw/FzxXUmmmTJUJdqi1PpeQmzz5kNF/pJPF8Wp1tlhL/azf/mbs66+V0Rn0kPqWa5U8O+KHT3bYhdjbr5XIOgF1qyCieAomlnQvRFz0UE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=YvtfhgQc; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version:Content-Type; b=aLuvUgu45tCSz/WkcAL55V6lrV+TIfxEqtV0rTD9OjNmezeD1pcG7jbAGdcwstqbDCPPj5ykte7/AfQQyknSuqLCbvkl+mPvLEaD6MyuNU+V0OWkcMUUKI5tBQj+bPTcurXp4isZSaT9PmYq3ecQIwJkV3L9Zemi7YXgOGqNLyY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=RhxugOb/; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="YvtfhgQc"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D177DC4CEE4;
-	Wed, 21 May 2025 22:39:05 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="RhxugOb/"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 79FF4C4CEE4;
+	Wed, 21 May 2025 22:39:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1747867145;
-	bh=+VOFYm3dOCgLWO7M7jmeLjYh+9YmZ+n4zNz5batpDLc=;
+	s=k20201202; t=1747867161;
+	bh=0hAqkF1wJgJh8qbmypf5Z3hMFBAJup/4jlF5RuGV8io=;
 	h=Date:Subject:From:To:Cc:In-Reply-To:References:From;
-	b=YvtfhgQcKRhVHxSebAHFVQ06VFRFUiEW5GkNECThxswi13YWcjHFe2HxpLNB1x5nJ
-	 zjU2XH4wOrws6BAHjWFZSd0RWGIMwdNpEtUD5cRX10Q2OvMzR+QogjmN8Pm1nv2JCN
-	 kq8Lb07w9csW51awoBoeKpVQvj9X/3xd6ZCOUbJAuWhQG2rSS4UlYkLeQpHCSzaDvC
-	 ykbXFS6sAeQ8tf92501CuIuv8hK2CMWu0AVu53sTP+LwjKLtJSRCgPysTDQphOAHEf
-	 9pkfgqFh+y9ufvkRY6Lv1F8UbMFjFSAoGQe12s2lPvTBFmI+aSHpjRtQvlqtvA/fuu
-	 hHBMbVW0KGs8A==
-Date: Wed, 21 May 2025 15:39:05 -0700
-Subject: [PATCH 16/29] fuse2fs: make internal state corruption a hard error
+	b=RhxugOb/qPUcI39o1VYOdb8iPLTCj77pqUlnmPzIE2+gzi6BzN0cU6enfAU33ddFv
+	 ivgjVSDDPzO3VFbCz2PPIY9gg1EhAaJWdmhZ3QLewv6M2nC30W6vEBqhl1zTa81TLZ
+	 IAzCaXdUKQP7rn9AsDDItsLfePwbt6GEvtmFawHNOjdfgCqmJ+sI0/n0aRouFzuVei
+	 YpB9TdaGTAJ23ayBuO9Rp5UuKsqS//YaoBPP8Q1/kSIr5lRSJXrLw9jTckOh4IccqZ
+	 Llh1so7gvzHqsAwxNENevoYArgwUOWSw3yMxwE/7MsHJam3LAH6Rch1jOobkzt4XKT
+	 j61nUEHx46DLg==
+Date: Wed, 21 May 2025 15:39:21 -0700
+Subject: [PATCH 17/29] fuse2fs: make bad magic numbers report a corruption
+ error too
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: tytso@mit.edu
 Cc: linux-ext4@vger.kernel.org
-Message-ID: <174786677837.1383760.2730283507317571357.stgit@frogsfrogsfrogs>
+Message-ID: <174786677853.1383760.10493605429423115597.stgit@frogsfrogsfrogs>
 In-Reply-To: <174786677421.1383760.15289906755026332870.stgit@frogsfrogsfrogs>
 References: <174786677421.1383760.15289906755026332870.stgit@frogsfrogsfrogs>
 Precedence: bulk
@@ -45,31 +46,54 @@ Content-Transfer-Encoding: 7bit
 
 From: Darrick J. Wong <djwong@kernel.org>
 
-If the in-memory contents are wrong, then we want to report a corruption
-error and shut down the filesystem.
+Report bad magic numbers as corruption errors too.
 
 Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
 ---
- misc/fuse2fs.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ misc/fuse2fs.c |   31 +++++++++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
 
 
 diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
-index f0ac89db4f6c37..6b5b19062b4ca1 100644
+index 6b5b19062b4ca1..e73730cfe27130 100644
 --- a/misc/fuse2fs.c
 +++ b/misc/fuse2fs.c
-@@ -167,11 +167,11 @@ struct fuse2fs {
- };
- 
- #define FUSE2FS_CHECK_MAGIC(fs, ptr, num) do {if ((ptr)->magic != (num)) \
--	return translate_error((fs), 0, EXT2_ET_MAGIC_EXT2_FILE); \
-+	return translate_error((fs), 0, EXT2_ET_FILESYSTEM_CORRUPTED); \
- } while (0)
- 
- #define FUSE2FS_CHECK_CONTEXT(ptr) do {if ((ptr)->magic != FUSE2FS_MAGIC) \
--	return translate_error(global_fs, 0, EXT2_ET_BAD_MAGIC); \
-+	return translate_error(global_fs, 0, EXT2_ET_FILESYSTEM_CORRUPTED); \
- } while (0)
- 
- static int __translate_error(ext2_filsys fs, ext2_ino_t ino, errcode_t err,
+@@ -4275,6 +4275,37 @@ static int __translate_error(ext2_filsys fs, ext2_ino_t ino, errcode_t err,
+ 	case EXT2_ET_UNIMPLEMENTED:
+ 		ret = -EOPNOTSUPP;
+ 		break;
++	case EXT2_ET_MAGIC_EXT2FS_FILSYS:
++	case EXT2_ET_MAGIC_BADBLOCKS_LIST:
++	case EXT2_ET_MAGIC_BADBLOCKS_ITERATE:
++	case EXT2_ET_MAGIC_INODE_SCAN:
++	case EXT2_ET_MAGIC_IO_CHANNEL:
++	case EXT2_ET_MAGIC_UNIX_IO_CHANNEL:
++	case EXT2_ET_MAGIC_IO_MANAGER:
++	case EXT2_ET_MAGIC_BLOCK_BITMAP:
++	case EXT2_ET_MAGIC_INODE_BITMAP:
++	case EXT2_ET_MAGIC_GENERIC_BITMAP:
++	case EXT2_ET_MAGIC_TEST_IO_CHANNEL:
++	case EXT2_ET_MAGIC_DBLIST:
++	case EXT2_ET_MAGIC_ICOUNT:
++	case EXT2_ET_MAGIC_PQ_IO_CHANNEL:
++	case EXT2_ET_MAGIC_E2IMAGE:
++	case EXT2_ET_MAGIC_INODE_IO_CHANNEL:
++	case EXT2_ET_MAGIC_EXTENT_HANDLE:
++	case EXT2_ET_BAD_MAGIC:
++	case EXT2_ET_MAGIC_EXTENT_PATH:
++	case EXT2_ET_MAGIC_GENERIC_BITMAP64:
++	case EXT2_ET_MAGIC_BLOCK_BITMAP64:
++	case EXT2_ET_MAGIC_INODE_BITMAP64:
++	case EXT2_ET_MAGIC_RESERVED_13:
++	case EXT2_ET_MAGIC_RESERVED_14:
++	case EXT2_ET_MAGIC_RESERVED_15:
++	case EXT2_ET_MAGIC_RESERVED_16:
++	case EXT2_ET_MAGIC_RESERVED_17:
++	case EXT2_ET_MAGIC_RESERVED_18:
++	case EXT2_ET_MAGIC_RESERVED_19:
++	case EXT2_ET_MMP_MAGIC_INVALID:
++	case EXT2_ET_MAGIC_EA_HANDLE:
+ 	case EXT2_ET_DIR_CORRUPTED:
+ 	case EXT2_ET_CORRUPT_SUPERBLOCK:
+ 	case EXT2_ET_RESIZE_INODE_CORRUPT:
 
