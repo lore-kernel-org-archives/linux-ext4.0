@@ -1,36 +1,36 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 56E341EB5D8
-	for <linux-ext4@vger.kernel.org>; Wed, 21 May 2025 14:51:26 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E0B60222582
+	for <linux-ext4@vger.kernel.org>; Wed, 21 May 2025 14:51:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747839088; cv=none; b=pFUhSi7nzwZIKnev8ExXJJoyILUJ/fkU3pmzQOudNR3JwphLlTZj9HlorTm40AuwjF0cBzRHI4ySPKXQ3LdSWrnQlu6m/RhcGn+J7nulHXy7Xf8yVpZt/409e9C52EZd5D1FIARPB2xI/p7SOZRLhYe14ry23yk9YN9Ck/jRCIU=
+	t=1747839089; cv=none; b=NlLu1OtteqNumb60xDuF0qNWcTAlwXbwACR1k30CGYwd6oZM8YQ5kMuLvCfWBUqcYauFXdopyXUEhKBrO7AHxSBG/CvabL+oudSVig8akRPcI8YheuHa/quMpcuAq2OTQZhLmu7zt7Ppau0Q2wBdf9z9bYy4PIi3tGVjhwgpxns=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1747839088; c=relaxed/simple;
-	bh=1bHSFO5Q8z+2rLFmQ3TYwfUIrvwbBhYfy9F1/PoQat4=;
+	s=arc-20240116; t=1747839089; c=relaxed/simple;
+	bh=zL1Wfn+C0snj/WedF39Ol206Mx5fsz2wKlTp5R1X74Y=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=sl/nja27FFHOqId891ajVagUhUkaAhqU6UPHgc/0ZS7lpPfpASatvE21fBNVkasIRQnLrF6V4tNhJkjlBnNYeAxpPtk7Q/BJ9FO+Iw0C25nEWXu+4AlQvZiMjfwdQRGX+cQzgZ+IXog9EqH17kSXyV57nrN03u81DAaVF7CyPwc=
+	 MIME-Version:Content-Type; b=ZwnPalyx4ZE4yPShNZEnFkFR8BFa2HpomuZB13BHPiwZ/Rk/cq86eRDebie1NY3An98gi6Hrne/SOUG0VTxUyoNNZaWEgx6TUjvnekoPoS0v7YM9Xz9Z7qpi5nEIOkU5u2rhviT6brtjrzCTh/Ly0MehZgVOTp26AldPjm6OHEM=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Received: from trampoline.thunk.org (pool-173-48-111-173.bstnma.fios.verizon.net [173.48.111.173])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 54LEpE5J001402
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 54LEpEl0001404
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Wed, 21 May 2025 10:51:15 -0400
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id BB63F2E00E6; Wed, 21 May 2025 10:51:13 -0400 (EDT)
+	id B3EC62E00E3; Wed, 21 May 2025 10:51:13 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Jakub Wilk <jwilk@jwilk.net>
+To: "Darrick J. Wong" <djwong@kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH e2fsprogs] e2image.8: add missing comma
-Date: Wed, 21 May 2025 10:51:07 -0400
-Message-ID: <174783906007.866336.2299978412189651128.b4-ty@mit.edu>
+Subject: Re: [PATCHSET 4/5] fuse2fs: delegate access control to kernel
+Date: Wed, 21 May 2025 10:51:04 -0400
+Message-ID: <174783906008.866336.15136401398915838196.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.47.2
-In-Reply-To: <20250107070724.6375-1-jwilk@jwilk.net>
-References: <20250107070724.6375-1-jwilk@jwilk.net>
+In-Reply-To: <174553065332.1161102.2163541286559749682.stgit@frogsfrogsfrogs>
+References: <174553065332.1161102.2163541286559749682.stgit@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -41,14 +41,22 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Tue, 07 Jan 2025 08:07:24 +0100, Jakub Wilk wrote:
+On Thu, 24 Apr 2025 14:38:46 -0700, Darrick J. Wong wrote:
+> To speed up fuse2fs, let's allow the kernel to make the access control
+> decisions for mode and acls instead of crappily trying to do that on
+> our own.
 > 
-
+> If you're going to start using this code, I strongly recommend pulling
+> from my git trees, which are linked below.
+> 
+> [...]
 
 Applied, thanks!
 
-[1/1] e2image.8: add missing comma
-      commit: 5a6ec683252be78ccda7dec7dac530f2ebc46ce6
+[1/2] fuse2fs: refactor sysadmin predicate
+      commit: 36f691d3cea9a8941f84a8065ba7b2e02380a14f
+[2/2] fuse2fs: delegate access control decisions to the kernel
+      commit: bc76e0f7fe1e919492c035c918cbc9182b776049
 
 Best regards,
 -- 
