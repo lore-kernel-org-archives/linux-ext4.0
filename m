@@ -1,198 +1,131 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wm1-f44.google.com (mail-wm1-f44.google.com [209.85.128.44])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EF388223702;
-	Fri, 23 May 2025 09:03:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 18ACD7E9;
+	Fri, 23 May 2025 12:31:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.44
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747990998; cv=none; b=jUMLhdkCLmim3/TbQjm+ADi9YTP2/1N22/0bsC+BnibC8IribFSih/BmydxNTLSAZ2i74zFXHqSnuvQkjF7+mYQ9EHoQYIkgtVeI++4uh4V9w/VcIoXKIUUg5UQDEka14eqNfXYpRmjmeobNgANMMtsGcYn30rI+Ee3pgmkBy7A=
+	t=1748003465; cv=none; b=hKchHm631ch+WUL3oXgjQTRZaoipxtM+eeMcSP1tCPDb7Ei9e3xg9dGNQ0NDmVoifcSlytt37d5YyO29alYXPCAZIA1y/iI18jdRbJMkr5jI9YC4kNk9e2I/CjjUP3kOhX6Ypsx9F4LZkA+lH89DIUaoxPR+zBhkWqUKsnK56xI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1747990998; c=relaxed/simple;
-	bh=J3SxiOMpPZbohVP3HSSPnrrxas0MoAU8ASSoVi9x3+E=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=dkZOX6CaviON03RT9qmnEvPYZ8Ep8y5+4T4jwq05U6LZ73XJwtOMRqIIhRA12sP+t94RzvpfzZMVQg0gMqnpfqB2A6ta/4xMuT97dvo98FkohIYBEkFjaVse9xLeR3boJH64KWjXfOc03PUorkQ7i5XvGAXHtNxsbwySGFad7eA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4b3fLz2cvnz4f3jt8;
-	Fri, 23 May 2025 17:02:51 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 4D2A01A018D;
-	Fri, 23 May 2025 17:03:11 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.104.67])
-	by APP4 (Coremail) with SMTP id gCh0CgCH61_MOTBocBILNQ--.27999S5;
-	Fri, 23 May 2025 17:03:11 +0800 (CST)
-From: libaokun@huaweicloud.com
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	jack@suse.cz,
-	linux-kernel@vger.kernel.org,
-	yi.zhang@huawei.com,
-	yangerkun@huawei.com,
-	libaokun1@huawei.com,
-	libaokun@huaweicloud.com
-Subject: [PATCH 1/4] ext4: add ext4_try_lock_group() to skip busy groups
-Date: Fri, 23 May 2025 16:58:18 +0800
-Message-Id: <20250523085821.1329392-2-libaokun@huaweicloud.com>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20250523085821.1329392-1-libaokun@huaweicloud.com>
-References: <20250523085821.1329392-1-libaokun@huaweicloud.com>
+	s=arc-20240116; t=1748003465; c=relaxed/simple;
+	bh=zYFr+I1bNQIoAAYyuQ0AB1ehPMbnBPch3q9BFHXKHZk=;
+	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=QvvJoiJ6vJvi85+n/wsivC8tAigCtXMxaihILCnegd76hx+Mxu0Mxr7C73e8EcZdatjzx7d60IA53sRT+SXKrtwbQSB4bZgg6JOMbYINW6bPfRXppyhNqS/aap7B2x/nHI0Zn3xjPlNmHE0d+5PswUVXVh2fZflNXletPRYWFrQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=hyMnLgRs; arc=none smtp.client-ip=209.85.128.44
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="hyMnLgRs"
+Received: by mail-wm1-f44.google.com with SMTP id 5b1f17b1804b1-442ed8a275fso114417275e9.2;
+        Fri, 23 May 2025 05:31:03 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1748003462; x=1748608262; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:subject:cc:to:from:date:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=Dy8YHa9sBE+qJ+igAsZENydvLd039JNemEnM7InNoVc=;
+        b=hyMnLgRsAWmNj0Xn8FDax038kfzZstDHB5qLJIq4avUFS2OIO7SNS7aX3tBXb0CKLV
+         s8kJeiW6X5DAYAGEyW7wStJHn7XyOd9JFQdlG0HX2AsAblmpOBGUfDFbiSYpXvrWRJy3
+         JpfsVLrNW7WQKQ2jxLHAN4OlOXhsARD0UhVdHEp899gskTHb5Kde8juy76AtOFKxQaA5
+         bsCx1SMCNroS/7s3owXyYdZst5zQwFGoRix0LLz02zWRCA8e1oEn6NIzPyIwhaZk8wP/
+         ZMZ8h4za/NfiyVuPkWZirLJ7Dz6x0wFj7YM4FPRevK2DTt5XPitI2iWUIrnVhoPkiC1/
+         hpOw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1748003462; x=1748608262;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:subject:cc:to:from:date:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=Dy8YHa9sBE+qJ+igAsZENydvLd039JNemEnM7InNoVc=;
+        b=MhriNamNpyVN7YGourrsmhYjxcwMCGORUg7Zs0iigxdOvI0sDT71vE53nA+bK1V/WU
+         U8wDnPZzYS8HoSGVrwKXKtihMjwoveG8TVKZr0BTGN+xcnZsdvo5wu1VphpZfUaQBECr
+         pTsgCH4NY0gXGwelwMydV7wICHDc1tQLaBCZ0uBd2dWf44tkSrCUqsgz0biUhL75CPTd
+         4UZ39KtKz10zblA2Ecr315pL2VL9gymn0/JmopyoUpceA46poMR0EEd/htPZsnOFOadi
+         pYzW1DStH+rJyqzQw4/K/W0PuXVSnsRnuUim/6DNx9mDasoOjhJ4zD/Zt6jRY/uA45QC
+         OMwg==
+X-Forwarded-Encrypted: i=1; AJvYcCV8SXg9AlPcWHP0ydSUsDR1AXskw9I/xZaM9ZKZo5q5X2x5Y3f9iuqwjCKYIBm9vii1T74pqMsR0JPrGJxEKlZ3@vger.kernel.org, AJvYcCVvmmgrEDQd6ISVukZRMZiddN4RX8a/3Ta/B2DUcIt255tvfkz8HfobZthx+/b53r4vOjq+Th4m/QTi@vger.kernel.org, AJvYcCXDB27i6xREiBkvEEflFoG7u6q7cbQlV3u+n7Qj+9c9wMoRyYFqBwKZcHQtVD9k5h7zCggTHWMdGTGMzaxU@vger.kernel.org
+X-Gm-Message-State: AOJu0Yzs+5MKMqDUzuE1c0jJdju61o5qLySSKhuJt57U1rzeZyhq8Vjc
+	F4oqv5stpPk5ilmEUXWG+lAnOq3F9KiQsmMVuO9NqOE/uRkO/1NC4s8ERKI3Sg==
+X-Gm-Gg: ASbGncu/PH6yiABucmQVayW0bGJpWxENDmqSb0l3G6CgtgPWVDlYX3nSfuEdJkcB1l8
+	x9jqkFMjeBz5eShMd7hAB2dIFnUa6b6FLiRZp7C8DODMkOwVWFuEbv3Vu/MRXmrD5Ix0tejPUtC
+	dMuNr2kmHpOunoOVIsvaYzMJGndk3N7oqeg12N6SkDbbo0pkNBQ7Gj7CjARkyevaAWw8m0Oh6sU
+	/lIGFimPPSLmNYvgo46iARddf1gdmsdnNyBxsVjgE0lrjP43U1ShlyYz6NIkAa6UlqR/eyQ0m6e
+	GhHY/8qa9TP2K5WYU2EYeO/quzjuWr0ZdoPBsUA+1IzYYsbUzO3TS1ukB/latUytuCq1QqW8SPw
+	jfmrCyIVDm9rtuQ==
+X-Google-Smtp-Source: AGHT+IGRY+SIJAO8OmgYserPwzfW9oLd1sgZc8DxydvmeRylB5vmFcgb6WgrcelOSrX4QdbKqmgZfA==
+X-Received: by 2002:a05:600c:4fd6:b0:43d:98e7:38dc with SMTP id 5b1f17b1804b1-44b6cc055e8mr21996825e9.5.1748003462110;
+        Fri, 23 May 2025 05:31:02 -0700 (PDT)
+Received: from pumpkin (82-69-66-36.dsl.in-addr.zen.co.uk. [82.69.66.36])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-447f7bae3b9sm136490745e9.33.2025.05.23.05.31.01
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 23 May 2025 05:31:01 -0700 (PDT)
+Date: Fri, 23 May 2025 13:31:00 +0100
+From: David Laight <david.laight.linux@gmail.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Kees Cook <kees@kernel.org>, Ethan Carter Edwards
+ <ethan@ethancedwards.com>, Andreas Dilger <adilger.kernel@dilger.ca>,
+ linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+ linux-hardening@vger.kernel.org
+Subject: Re: [PATCH v2] ext4: replace strcpy() with '.' assignment
+Message-ID: <20250523133100.1b023a6e@pumpkin>
+In-Reply-To: <20250519145930.GB38098@mit.edu>
+References: <20250518-ext4-strcpy-v2-1-80d316325046@ethancedwards.com>
+	<202505190651.943F729@keescook>
+	<20250519145930.GB38098@mit.edu>
+X-Mailer: Claws Mail 4.1.1 (GTK 3.24.38; arm-unknown-linux-gnueabihf)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCH61_MOTBocBILNQ--.27999S5
-X-Coremail-Antispam: 1UD129KBjvJXoWxCrWDWr1UZry5WrW3XryUGFg_yoW7GryUpw
-	srZ3Z8Ar45Wwn8uws7G3y0qw4Fkw40gFWUJrWfuw17Zry3Xrna9as7tF17AF9FgFs3JFnx
-	X3Wav3y7Cr13u37anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUPv14x267AKxVW5JVWrJwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jr4l82xGYIkIc2
-	x26xkF7I0E14v26r1I6r4UM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
-	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
-	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
-	IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
-	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwAKzVCY07xG64k0F24lc7CjxV
-	Aaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2Iq
-	xVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r
-	1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY
-	6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67
-	AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuY
-	vjfUegAzUUUUU
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgARBWgwLIYF3AAAs9
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 
-From: Baokun Li <libaokun1@huawei.com>
+On Mon, 19 May 2025 10:59:30 -0400
+"Theodore Ts'o" <tytso@mit.edu> wrote:
 
-When ext4 allocates blocks, we used to just go through the block groups
-one by one to find a good one. But when there are tons of block groups
-(like hundreds of thousands or even millions) and not many have free space
-(meaning they're mostly full), it takes a really long time to check them
-all, and performance gets bad. So, we added the "mb_optimize_scan" mount
-option (which is on by default now). It keeps track of some group lists,
-so when we need a free block, we can just grab a likely group from the
-right list. This saves time and makes block allocation much faster.
+> On Mon, May 19, 2025 at 06:52:13AM -0700, Kees Cook wrote:
+> > > --- a/fs/ext4/inline.c
+> > > +++ b/fs/ext4/inline.c
+> > > @@ -1314,7 +1314,7 @@ int ext4_inlinedir_to_tree(struct file *dir_file,
+> > >  		if (pos == 0) {
+> > >  			fake.inode = cpu_to_le32(inode->i_ino);
+> > >  			fake.name_len = 1;
+> > > -			strcpy(fake.name, ".");
+> > > +			fake.name[0] = ".";  
+> > 
+> > This means the trailing NUL byte isn't being copied any more? That seems
+> > like a big change, even if name_len is being used for length tracking.  
+> 
+> Yeah, and so that's something that needs to be tested (and not just
+> build tested to catch the obvious FTBFS bug).
 
-But when multiple processes or containers are doing similar things, like
-constantly allocating 8k blocks, they all try to use the same block group
-in the same list. Even just two processes doing this can cut the IOPS in
-half. For example, one container might do 300,000 IOPS, but if you run two
-at the same time, the total is only 150,000.
+The compiler (or headers files) can also allow strcpy() of constant
+length strings into arrays (known size). Erroring requests that are too long.
+The strcpy() is then converted to a memcpy() which can then be optimised
+into writes of constants.
 
-Since we can already look at block groups in a non-linear way, the first
-and last groups in the same list are basically the same for finding a block
-right now. Therefore, add an ext4_try_lock_group() helper function to skip
-the current group when it is locked by another process, thereby avoiding
-contention with other processes. This helps ext4 make better use of having
-multiple block groups.
+So using strcpy() under those conditions 'isn't all bad' and can generate
+better (and less bug prone) code than trying to hand-optimise it.
 
-Also, to make sure we don't skip all the groups that have free space
-when allocating blocks, we won't try to skip busy groups anymore when
-ac_criteria is CR_ANY_FREE.
+So even through strcpy() is usually a bad idea, there is not need to
+remove the calls that the compiler can validate as safe.
 
-Performance test data follows:
+	David   
 
-CPU: HUAWEI Kunpeng 920
-Memory: 480GB
-Disk: 480GB SSD SATA 3.2
-Test: Running will-it-scale/fallocate2 on 64 CPU-bound containers.
-Observation: Average fallocate operations per container per second.
-
-                      base    patched
-mb_optimize_scan=0    3588    6755 (+88.2%)
-mb_optimize_scan=1    3588    4302 (+19.8%)
-
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
----
- fs/ext4/ext4.h    | 23 ++++++++++++++---------
- fs/ext4/mballoc.c | 14 +++++++++++---
- 2 files changed, 25 insertions(+), 12 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 5a20e9cd7184..9c665a620a46 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3494,23 +3494,28 @@ static inline int ext4_fs_is_busy(struct ext4_sb_info *sbi)
- 	return (atomic_read(&sbi->s_lock_busy) > EXT4_CONTENTION_THRESHOLD);
- }
- 
-+static inline bool ext4_try_lock_group(struct super_block *sb, ext4_group_t group)
-+{
-+	if (!spin_trylock(ext4_group_lock_ptr(sb, group)))
-+		return false;
-+	/*
-+	 * We're able to grab the lock right away, so drop the lock
-+	 * contention counter.
-+	 */
-+	atomic_add_unless(&EXT4_SB(sb)->s_lock_busy, -1, 0);
-+	return true;
-+}
-+
- static inline void ext4_lock_group(struct super_block *sb, ext4_group_t group)
- {
--	spinlock_t *lock = ext4_group_lock_ptr(sb, group);
--	if (spin_trylock(lock))
--		/*
--		 * We're able to grab the lock right away, so drop the
--		 * lock contention counter.
--		 */
--		atomic_add_unless(&EXT4_SB(sb)->s_lock_busy, -1, 0);
--	else {
-+	if (!ext4_try_lock_group(sb, group)) {
- 		/*
- 		 * The lock is busy, so bump the contention counter,
- 		 * and then wait on the spin lock.
- 		 */
- 		atomic_add_unless(&EXT4_SB(sb)->s_lock_busy, 1,
- 				  EXT4_MAX_CONTENTION);
--		spin_lock(lock);
-+		spin_lock(ext4_group_lock_ptr(sb, group));
- 	}
- }
- 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 1e98c5be4e0a..5c13d9f8a1cc 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -896,7 +896,8 @@ static void ext4_mb_choose_next_group_p2_aligned(struct ext4_allocation_context
- 				    bb_largest_free_order_node) {
- 			if (sbi->s_mb_stats)
- 				atomic64_inc(&sbi->s_bal_cX_groups_considered[CR_POWER2_ALIGNED]);
--			if (likely(ext4_mb_good_group(ac, iter->bb_group, CR_POWER2_ALIGNED))) {
-+			if (likely(ext4_mb_good_group(ac, iter->bb_group, CR_POWER2_ALIGNED)) &&
-+			    !spin_is_locked(ext4_group_lock_ptr(ac->ac_sb, iter->bb_group))) {
- 				*group = iter->bb_group;
- 				ac->ac_flags |= EXT4_MB_CR_POWER2_ALIGNED_OPTIMIZED;
- 				read_unlock(&sbi->s_mb_largest_free_orders_locks[i]);
-@@ -932,7 +933,8 @@ ext4_mb_find_good_group_avg_frag_lists(struct ext4_allocation_context *ac, int o
- 	list_for_each_entry(iter, frag_list, bb_avg_fragment_size_node) {
- 		if (sbi->s_mb_stats)
- 			atomic64_inc(&sbi->s_bal_cX_groups_considered[cr]);
--		if (likely(ext4_mb_good_group(ac, iter->bb_group, cr))) {
-+		if (likely(ext4_mb_good_group(ac, iter->bb_group, cr)) &&
-+		    !spin_is_locked(ext4_group_lock_ptr(ac->ac_sb, iter->bb_group))) {
- 			grp = iter;
- 			break;
- 		}
-@@ -2911,7 +2913,13 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 			if (err)
- 				goto out;
- 
--			ext4_lock_group(sb, group);
-+			/* skip busy group */
-+			if (cr >= CR_ANY_FREE) {
-+				ext4_lock_group(sb, group);
-+			} else if (!ext4_try_lock_group(sb, group)) {
-+				ext4_mb_unload_buddy(&e4b);
-+				continue;
-+			}
- 
- 			/*
- 			 * We need to check again after locking the
--- 
-2.46.1
+> However, note how we
+> handle normal filenames, as opposed to "." and "..".  From
+> ext4_insert_dentry():
+> 
+> 	de->inode = cpu_to_le32(inode->i_ino);
+> 	ext4_set_de_type(inode->i_sb, de, inode->i_mode);
+> 	de->name_len = fname_len(fname);
+> 	memcpy(de->name, fname_name(fname), fname_len(fname));
+> 
+> Or were you commenting on the "no functional changes intended" line in
+> the commit description?  I agree that this is probably no longer
+> accurate.  :-)
+> 
+> 					- Ted
+> 
 
