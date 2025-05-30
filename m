@@ -1,27 +1,28 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 418701F0E4F;
-	Fri, 30 May 2025 06:41:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 34B1C201006;
+	Fri, 30 May 2025 06:41:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1748587295; cv=none; b=jTTW+t9xuu2CoPyKTN4dFj5axac8qvYi7kWTGqyz+pGnKv1/q9V39YJEh1oR2JBuWU3qP+vOP3HDzL75xi+RSLfm3ls6UQGePbx9x8rz53hnEDYc921IYX6EwxDzhSY7TbMxxpnDakITQl+CaUZz3/ELKHuzMLHleikymUQp7Aw=
+	t=1748587296; cv=none; b=orVoUUOfKG/NoJhEvqVpUN4bOVo3hKUvHhY+vocn04VpeeGo4Xmp4BnsGJW8TbctFlAXQOb6gajoWrAYCDmbo6kt2o03CI1LdWEUrkknG8r9Faw4mmr54Huvf1NGYIedE0RY9L6IYX0s70mUswfRTwVaTvDYBtjRmz4UGz89hlU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1748587295; c=relaxed/simple;
-	bh=9sFOwelv5fYdviKsYOi6adhX1HjIA7FitQc+BiYdpsk=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=ctEpzZtUQGeedKmb3OI6YIQH70tSN8ByQhnEk4jwNEGsUvk7nBnmRLjBlQD8DOoOd18cr+wN1/05BEKpHoXyjk+7wMYy9xaANTXlF/GUknCGkLX5HyqWRWSsxObHXYQe5nWEmEmVPQKP6rBaI+rmH8D6j42AVdgOHsiOW4Sc+Ro=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	s=arc-20240116; t=1748587296; c=relaxed/simple;
+	bh=AHe9ZlzqSs1N0MqxT8r/mBag9PpTGvK3leRA+/aS4ZI=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=giP8EeyjYwF8U8IyWYHp9cG+y5Z+aIKWf//4q2zfLTtpDAg5+4tfDUJoXev9NKPs6YEIPV1lXJ/4A7L9YwPrX/P1alqR2GCFFh8CVI9z8AXsnxqM3vIznPjpOw5G2SB6LvNRVRoO6BwrpUR/CUIEjcOlw/Xf3ovZqGOg1oJuTUM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4b7ttg0JmVzKHLw5;
-	Fri, 30 May 2025 14:41:31 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4b7tth5wC7zYQv4K;
+	Fri, 30 May 2025 14:41:32 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 72BF51A190E;
-	Fri, 30 May 2025 14:41:29 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id E2FCD1A1A1F;
+	Fri, 30 May 2025 14:41:31 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.112.188])
-	by APP4 (Coremail) with SMTP id gCh0CgD3Wl8PUzlo_wXRNw--.6893S4;
-	Fri, 30 May 2025 14:41:27 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgD3Wl8PUzlo_wXRNw--.6893S9;
+	Fri, 30 May 2025 14:41:31 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -35,10 +36,12 @@ Cc: linux-fsdevel@vger.kernel.org,
 	libaokun1@huawei.com,
 	yukuai3@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH 0/5] ext4: fix insufficient credits when writing back large folios
-Date: Fri, 30 May 2025 14:28:53 +0800
-Message-ID: <20250530062858.458039-1-yi.zhang@huaweicloud.com>
+Subject: [PATCH 5/5] ext4: disable large folios if dioread_nolock is not enabled
+Date: Fri, 30 May 2025 14:28:58 +0800
+Message-ID: <20250530062858.458039-6-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
+In-Reply-To: <20250530062858.458039-1-yi.zhang@huaweicloud.com>
+References: <20250530062858.458039-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -46,62 +49,73 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgD3Wl8PUzlo_wXRNw--.6893S4
-X-Coremail-Antispam: 1UD129KBjvJXoW7CrWrGrWDuw4Dur4xZFyrWFg_yoW8AF4kpa
-	93CF95Gw15ua47ZF4fZa1xJF1rG3y8ur4UJFnrXr1DWa98uF1Ikrn3Ka15KFWUJr4xGFyY
-	qr1jkryDGFZ8ArDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUU9Y14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
-	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
-	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
-	2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
-	W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2
-	Y2ka0xkIwI1lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x
-	0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2
-	zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF
-	4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWU
-	CwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCT
-	nIWIevJa73UjIFyTuYvjfUonmRUUUUU
+X-CM-TRANSID:gCh0CgD3Wl8PUzlo_wXRNw--.6893S9
+X-Coremail-Antispam: 1UD129KBjvJXoWxJryDZr15CFWrKw1DJr1DKFg_yoW8WryDpF
+	9xGFW8Grs8uas7CFWxtr1UXr15tayxGa1UJFWSg3WUWFW7AryfKFsYyF1rC3W7JrWxXw4S
+	qF4UCrWDCw43AFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
+	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
+	CI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnI
+	WIevJa73UjIFyTuYvjfUOyIUUUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-This series addresses the issue that Jan pointed out regarding large
-folios support for ext4[1]. The problem is that the credits calculation
-may insufficient in ext4_meta_trans_blocks() when allocating blocks
-during write back a sufficiently large and discontinuous folio, it
-doesn't involve the credits for updating bitmap and group descriptor
-block. However, if we fix this issue, it may lead to significant
-overestimation on the some filesystems with a lot of block groups.
+The write-back process cannot restart a journal transaction when
+submitting a sufficiently large and discontinuous folio if
+dioread_nolock is disabled. To address this, disable large folios when
+building an inode if dioread_nolock is disabled, and also ensure that
+dioread_nolock cannot be disabled on an active inode that has large
+folio enabled.
 
-The solution involves first reserving credit for one page when writing
-back a sufficiently large and discontinuous folio, and then attempting
-to extend the current transaction's credits. If the credits reach the
-upper limit, the handler stops and initiates a new transaction. Again,
-fix the wrong credits calculation in ext4_meta_trans_blocks(). Finally,
-this solution only works in dioread_nolock mode, so disable large folios
-if dioread_nolock is disabled. Please see the following patches for
-details.
+Fixes: 7ac67301e82f ("ext4: enable large folio for regular file")
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/ext4_jbd2.h | 7 +++++++
+ fs/ext4/inode.c     | 2 ++
+ 2 files changed, 9 insertions(+)
 
-[1] https://lore.kernel.org/linux-ext4/ht54j6bvjmiqt62xmcveqlo7bmrunqs4ji7wikfteftdjijzek@7tz5gpejaoen/
-
-Thanks,
-Yi.
-
-Zhang Yi (5):
-  ext4: restart handle if credits are insufficient during writepages
-  ext4: correct the reserved credits for extent conversion
-  ext4/jbd2: reintroduce jbd2_journal_blocks_per_page()
-  ext4: fix insufficient credits calculation in ext4_meta_trans_blocks()
-  ext4: disable large folios if dioread_nolock is not enabled
-
- fs/ext4/ext4_jbd2.h  | 14 ++++++++++
- fs/ext4/inode.c      | 64 +++++++++++++++++++++++++++++++++++---------
- fs/jbd2/journal.c    |  6 +++++
- include/linux/jbd2.h |  1 +
- 4 files changed, 72 insertions(+), 13 deletions(-)
-
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index c0ee756cb34c..59292da272ef 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -422,6 +422,13 @@ static inline int ext4_free_data_revoke_credits(struct inode *inode, int blocks)
+  */
+ static inline int ext4_should_dioread_nolock(struct inode *inode)
+ {
++	/*
++	 * Cannot disable dioread_nolock on an active inode that has
++	 * large folio enabled.
++	 */
++	if (mapping_large_folio_support(inode->i_mapping))
++		return 1;
++
+ 	if (!test_opt(inode->i_sb, DIOREAD_NOLOCK))
+ 		return 0;
+ 	if (!S_ISREG(inode->i_mode))
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e7de2fafc941..421c7bbc3ca9 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5164,6 +5164,8 @@ bool ext4_should_enable_large_folio(struct inode *inode)
+ 		return false;
+ 	if (ext4_has_feature_encrypt(sb))
+ 		return false;
++	if (!ext4_should_dioread_nolock(inode))
++		return false;
+ 
+ 	return true;
+ }
 -- 
 2.46.1
 
