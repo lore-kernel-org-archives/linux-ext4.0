@@ -1,99 +1,110 @@
-Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.4])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id E846F155C87;
-	Fri, 30 May 2025 06:12:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=220.197.31.4
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6E3311F4C85;
+	Fri, 30 May 2025 06:41:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1748585565; cv=none; b=QDgJasvhY3I0Nv29rXPVKmG+Nk9iW20f3j4+nRNm213SNKCOGui9n9uje9xrlkEeQetCxYzt20sfNMyPMQZFpCR1AXPJEXlW2muvYg6P3SEdjmI9VXkeuZt1rtmyMmX+K9N/GDjbWQjnFgCYgBLjbvepR0iFG57DykHJg2gVUFs=
+	t=1748587294; cv=none; b=ejfouJnobyk7oLEhAG2cdLJPCYq8dVrCudfU1xDyEZeiG/nXx/nl4Vs6uj+fRqebuM1reUUUdgFG/0wfy84qOCPYxb3P1srDnp+UA6/ecefPjAay7LKR3UwlBu3nKMBWNVjFq5s+yiPW7X8a1JLKKdEOy9pRW80I7MOBsu+/r6E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1748585565; c=relaxed/simple;
-	bh=ECYNbgxonj2G4+hzU1bi3VciBXLLFGdQax1ZuBBKhs8=;
-	h=Date:From:To:Cc:Subject:In-Reply-To:References:Content-Type:
-	 MIME-Version:Message-ID; b=qhXeD4r4uPNUh5ZFKyezcWv6dvGZagJV+TuZUq4N4u/WDys7YT+My/YqDrJrXNporzJQ2yWPwXjsh2MeEumvBf7bx8Mv67HVbSaz/mGeWHmY2FfJrjvACvton7ftcNZYsdfSMl7G1IhMJdBSJAiJoYt3q0cb/3du1xiSFxLeBvw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=fail (1024-bit key) header.d=163.com header.i=@163.com header.b=SdcdQ5JM reason="signature verification failed"; arc=none smtp.client-ip=220.197.31.4
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=fail reason="signature verification failed" (1024-bit key) header.d=163.com header.i=@163.com header.b="SdcdQ5JM"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-	s=s110527; h=Date:From:To:Subject:Content-Type:MIME-Version:
-	Message-ID; bh=LAkcB8Zm4x5NR3cR1LBlgLBoGr+aB51ytzUBOA97MKo=; b=S
-	dcdQ5JMoa/I+udGQ7qGm5G+x2WskDxqbGkPT4YrbmBQ0mNMBWKGEjHkzbCsnD5nt
-	13McBuXZnJJfNZoInYgm5uSJoe3XNmhvKjE0iiBcL9nv4b4uKe2ixUDKceVU8rKR
-	qep8CgbTc3R9s8nRUX3AwPGOpCu4nCnDAoUpXPiFn8=
-Received: from 00107082$163.com ( [111.35.189.95] ) by
- ajax-webmail-wmsvr-40-137 (Coremail) ; Fri, 30 May 2025 14:12:27 +0800
- (CST)
-Date: Fri, 30 May 2025 14:12:27 +0800 (CST)
-From: "David Wang" <00107082@163.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: Re: [RFC] ext4: use kmem_cache for short fname allocation in
- readdir
-X-Priority: 3
-X-Mailer: Coremail Webmail Server Version XT5.0.14 build 20240801(9da12a7b)
- Copyright (c) 2002-2025 www.mailtech.cn 163com
-In-Reply-To: <20250530043516.GD332467@mit.edu>
-References: <20250529144256.4517-1-00107082@163.com>
- <20250530043516.GD332467@mit.edu>
-X-NTES-SC: AL_Qu2fCvmTuk0v4SifbOkZnEYQheY4XMKyuPkg1YJXOp80iiXw+TwleXBdJFzfwcOmET6tvxevTR985dV8TbNWXZyga29wKsrxG5jtNZnpVpby
-Content-Transfer-Encoding: base64
-Content-Type: text/plain; charset=GBK
+	s=arc-20240116; t=1748587294; c=relaxed/simple;
+	bh=Ll/nhb4kIGJWBtI5NJo2WY9sphr54tDj2J46vfjmWAA=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=YrRw38r7TnWjijDvbs966RdUyNzrJy10LVZYtFWD2fPNBrN9ilt2iEra85aluwIMRu35eGZAyZVvchCRp9BjLUDZXBODytwIvMyKTAqZ/kQRVDGKkOjtvyYEjj9uX06HSpqH4pim9eOfr9hENlDmh9YCCbMSpUApSQjP6WFd5pY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4b7tth08tQzKHMc3;
+	Fri, 30 May 2025 14:41:32 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 6CDD21A1A22;
+	Fri, 30 May 2025 14:41:30 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.175.112.188])
+	by APP4 (Coremail) with SMTP id gCh0CgD3Wl8PUzlo_wXRNw--.6893S6;
+	Fri, 30 May 2025 14:41:30 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	libaokun1@huawei.com,
+	yukuai3@huawei.com,
+	yangerkun@huawei.com
+Subject: [PATCH 2/5] ext4: correct the reserved credits for extent conversion
+Date: Fri, 30 May 2025 14:28:55 +0800
+Message-ID: <20250530062858.458039-3-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.46.1
+In-Reply-To: <20250530062858.458039-1-yi.zhang@huaweicloud.com>
+References: <20250530062858.458039-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Message-ID: <2579f239.5415.1971fd2086a.Coremail.00107082@163.com>
-X-Coremail-Locale: zh_CN
-X-CM-TRANSID:iSgvCgD3X_VMTDlom+0QAA--.9225W
-X-CM-SenderInfo: qqqrilqqysqiywtou0bp/1tbiqBJdqmg5RdBhNwADsc
-X-Coremail-Antispam: 1U5529EdanIXcx71UUUUU7vcSsGvfC2KfnxnUU==
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:gCh0CgD3Wl8PUzlo_wXRNw--.6893S6
+X-Coremail-Antispam: 1UD129KBjvJXoW7Ar4kAw4fJFy3WFW5Jr18Xwb_yoW8Gr4fpF
+	nxGFykWr18ua4kua1S93ZrAF1ruay8C3yUJF4fCw1DXa98Grn2gF1qgw1Yy3WUGrWxJrW5
+	ZF47CryDu3W3Z3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUm014x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
+	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
+	xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
+	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
+	kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
+	6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
+	vEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVj
+	vjDU0xZFpf9x0JUQXo7UUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-CkF0IDIwMjUtMDUtMzAgMTI6MzU6MTYsICJUaGVvZG9yZSBUcydvIiA8dHl0c29AbWl0LmVkdT4g
-d3JvdGU6Cj5PbiBUaHUsIE1heSAyOSwgMjAyNSBhdCAxMDo0Mjo1NlBNICswODAwLCBEYXZpZCBX
-YW5nIHdyb3RlOgo+PiBXaGVuIHNlYXJjaGluZyBmaWxlcywgZXh0NF9yZWFkZGlyIHdvdWxkIGt6
-YWxsb2MoKSBhIGZuYW1lCj4+IG9iamVjdCBmb3IgZWFjaCBlbnRyeS4gSXQgd291bGQgYmUgZmFz
-dGVyIGlmIGEgZGVkaWNhdGVkCj4+IGttZW1fY2FjaGUgaXMgdXNlZCBmb3IgZm5hbWUuCj4+IAo+
-PiBCdXQgZm5hbWVzIGFyZSBvZiB2YXJpYWJsZSBsZW5ndGguCj4+IAo+PiBUaGlzIHBhdGNoIHN1
-Z2dlc3RzIHVzaW5nIGttZW1fY2FjaGUgZm9yIGZuYW1lIHdpdGggc2hvcnQKPj4gbGVuZ3RoLCBh
-bmQgcmVzb3J0aW5nIHRvIGt6YWxsb2Mgd2hlbiBmbmFtZSBuZWVkcyBsYXJnZXIgYnVmZmVyLgo+
-PiBBc3N1bWluZyBsb25nIGZpbGUgbmFtZXMgYXJlIG5vdCB2ZXJ5IGNvbW1vbi4KPj4gCj4+IFBy
-b2ZpbGluZyB3aGVuIHNlYXJjaGluZyBmaWxlcyBpbiBrZXJuZWwgY29kZSBiYXNlLCB3aXRoIGZv
-bGxvd2luZwo+PiBjb21tYW5kOgo+PiAJIyBwZXJmIHJlY29yZCAtZyAtZSBjcHUtY2xvY2sgLS1m
-cmVxPW1heCBiYXNoIC1jIFwKPj4gCSJmb3IgaSBpbiB7MS4uMTAwfTsgZG8gZmluZCAuL2xpbnV4
-IC1uYW1lIG5vdGZvdW5kYXRhbGwgPiAvZGV2L251bGw7IGRvbmUiCj4+IEFuZCB1c2luZyBzYW1w
-bGUgY291bnRzIGFzIGluZGljYXRvciBvZiBwZXJmb3JtYW5jZSBpbXByb3ZlbWVudC4KPgo+SSB3
-b3VsZCB0aGluayBhIGJldHRlciBpbmRpY2F0b3Igb2YgcGVyZm9ybWFuY2UgaW1wcm92ZW1lbnQg
-d291bGQgYmUKPnRvIG1lYXN1cmUgdGhlIHN5c3RlbSB0aW1lIHdoZW4gcnVubmluZyB0aGUgZmlu
-ZCBjb21tYW5kcy4gIChpLmUuLAo+ZWl0aGVyIHVzaW5nIGdldHJ1c2FuZ2Ugd2l0aCBSVVNBR0Vf
-Q0hJTERSRU4gb3Igd2FpdDMgb3Igd2FpdDQpLgoKSSBkaWQgdXNlIGB0aW1lYCB0byBjb21wYXJl
-IHN5c3RlbSB0aW1lIHdoZW4gc2VhcmNoIGZpbGVzIHdpdGggZmluZCwKYW5kIEkgZGlkIHNlZSBz
-bGlnaHQgaW1wcm92ZW1lbnQuICAKVGhlIHN0ZCBkZXZpYXRpb24gaXMgcXVpdGUgaGlnaCBmb3Ig
-dGhlIHdob2xlIGBmaW5kYCBwcm9jZXNzIHRob3VnaC4KCj4KPldlJ3JlIHRyYWRpbmcgb2ZmIHNv
-bWUgZXh0cmEgbWVtb3J5IHVzYWdlIGFuZCBjb2RlIGNvbXBsZXhpdHkgd2l0aAo+bGVzcyBDUFUg
-dGltZSBiZWNhdXNlIGVudHJpZXMgaW4gdGhlIGttZW1fY2FjaGUgbWlnaHQgYmUgbW9yZSBUTEIK
-PmZyaWVuZGx5LiAgQnV0IHRoaXMgaXMgb25seSByZWFsbHkgZ29pbmcgdG8gYmUgYXBwbGljYWJs
-ZSBpZiB0aGUKPmRpcmVjdG9yeSBpcyBsYXJnZSBlbm91Z2ggc3VjaCB0aGF0IHRoZSBjeWNsZXMg
-c3BlbnQgaW4gcmVhZGRpciBpcwo+c2lnbmlmaWNhbnQgY29tcGFyZWQgdG8gdGhlIHJlc3Qgb2Yg
-dGhlIHVzZXJzcGFjZSBwcm9ncmFtLCAqYW5kKiB5b3UKPmFyZSByZWFkaW5nIHRoZSBkaXJlY3Rv
-cnkgbXVsdGlwbGUgdGltZXMgKGUuZy4sIGNhbGxpbmcgZmluZCBvbiBhCj5kaXJlY3RvcnkgaGll
-cmFyY2h5IG1hbnksIG1hbnkgdGltZXMpIHN1Y2ggdGhhdCB0aGUgZGlzayBibG9ja3MgYXJlCj5j
-YWhlZCBhbmQgeW91IGRvbid0IG5lZWQgdG8gcmVhZCB0aGVtIGZyb20gdGhlIHN0b3JhZ2UgZGV2
-aWNlLgo+T3RoZXJ3aXNlIHRoZSBJL08gY29zdHMgd2lsbCBjb21wbGV0ZWx5IGRvbWluYXRlIGFu
-ZCBzd2FtcCB0aGUKPm1hcmdpbmFsIFRMQiBjYWNoZSBzYXZpbmdzLgoKWWVzLCB0aGUgdGVzdCB3
-YXMgcnVuIHdpdGggY2FjaGUtaG90LiAKQnV0IHJlcGVhdGluZyBzZWFyY2ggZmlsZXMgaXMgbm90
-ICB1bmNvbW1vbiBwcmFjdGljZSwgIGBmaW5kYCB3b3VsZCBydW4gd2l0aCBjYWNoZS1ob3QKZXhj
-ZXB0IHRoZSBmaXJzdCByb3VuZC4KIAo+Cj5HaXZlbiB0aGF0IGl0J3MgcmVhbGx5IHJhcmUgZm9y
-IHJlYWRkaXIoKSB0byBiZSB0aGUgYm90dGxlbmVjayBvZiBtYW55Cj53b3JrbG9hZHMsIHRoZSBx
-dWVzdGlvbiBpcywgaXMgaXQgd29ydGggaXQ/CgpUaGF0J3MgdGhlIHF1ZXN0aW9uIEkgaGF2ZSBi
-ZWVuIHRoaW5raW5nIGFib3V0LgpCZXNpZGUgbWFyZ2luYWwgaW1wcm92ZW1lbnQgZm9yIHJlYWRk
-aXIoKSwgSSB3b3VsZCBhcmd1ZSB3aXRoIHRoZSBpbXBhY3Qgb24gb3RoZXIgcGFydHMgaW4gc3lz
-dGVtCndoZW4gc2VhcmNoaW5nIGZpbGVzLiBFdmVuIHdpdGggY2FjaGUtY29kZSwgc2VhcmNoaW5n
-IGxhcmdlIGRpciB3b3VsZCBpbnZvbHZpbmcgaGlnaCBmcmVxdWVudCBvZgptYWxsb2MoKSBmb3Ig
-YSBzaG9ydCBpbnRlcnZhbCwgIFRoaXMgbWlnaHQgaGF2ZSB0cmFuc2llbnQgbmVnYXRpdmUgaW1w
-YWN0ICBvbiBvdGhlcnMgd2hpY2ggYWxzbyByZXF1ZXN0IG1hbGxvYygpLCBidXQgd2l0aApsb3cg
-ZnJlcXVlbmN5LiAgQnV0IEkgZG9uJ3QgaGF2ZSBhIGNvbnZpbmNpbmcgZXhhbXBsZXMgZm9yIHRo
-aXMsIGl0J3MgYWxsIHRoZW9yZXRpY2FsIC4KCgpUaGFua3MKRGF2aWQKCj4KPgkJCQkJCS0gVGVk
-Cg==
+From: Zhang Yi <yi.zhang@huawei.com>
+
+Now, we reserve journal credits for converting extents in only one page
+to written state when the I/O operation is complete. This is
+insufficient when large folio is enabled.
+
+Fix this by reserving credits for converting up to one extent per block in
+the largest 2MB folio, this calculation should only involve extents index
+and leaf blocks, so it should not estimate too many credits.
+
+Fixes: 7ac67301e82f ("ext4: enable large folio for regular file")
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/inode.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5ef34c0c5633..d35c07c1dcac 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2808,12 +2808,12 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
+ 	mpd->journalled_more_data = 0;
+ 
+ 	if (ext4_should_dioread_nolock(inode)) {
++		int bpf = ext4_journal_blocks_per_folio(inode);
+ 		/*
+ 		 * We may need to convert up to one extent per block in
+-		 * the page and we may dirty the inode.
++		 * the folio and we may dirty the inode.
+ 		 */
+-		rsv_blocks = 1 + ext4_chunk_trans_blocks(inode,
+-						PAGE_SIZE >> inode->i_blkbits);
++		rsv_blocks = 1 + ext4_ext_index_trans_blocks(inode, bpf);
+ 	}
+ 
+ 	if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)
+-- 
+2.46.1
+
