@@ -1,27 +1,28 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3320F25BF06;
-	Wed, 11 Jun 2025 11:29:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 84F502609DC;
+	Wed, 11 Jun 2025 11:29:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1749641384; cv=none; b=lu2rLkJVNZCVelZWrme5bYvNs6ZyxKR/h/GxK0NSFLuInp5pGNntltnvoOpBoUT6GTFFAWUBAlPijoZhM0KJR93OOfCYO1fGjvrHjIbBJtt/47u4QjqZkQNThfJOIF8oN1KQSXTNM8p2ZzU4eeMB2KOsNVuQ+lYGzNe+9IRxdt0=
+	t=1749641384; cv=none; b=QfZVk1jKAhqxoRgh4i6daz78KgY6RhrT+mzV5SgIjDW66xK8C/v870YEO84nErc5h369X4B1iF3OLoi9z0N/FgyleZ8YzCtP67niRFELyB+2KEIYajqxPwPR3+SWWt/A51+oUnKwIBw3VdT6yU+ih2aCVAjR7sCy7wnxISaBlTU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1749641384; c=relaxed/simple;
-	bh=LwJzZfwCzwooaWWIheJ4nFIMPjioADEPy417rmh7ndQ=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=f4+EuJlNavvRoF81RNxcXuBzHOs1SWOKZ597HUDmaq5POFzKi0TV35IvGSQoCnM3ofxpuCyJc0wYdRfaMUNYpeCYNAmgi1P9IYFkojY6gVblVXkcUiTK/+CxFs2YZhvOpGHFhaGua2HSjAwtz9xBKYjuOlErsq/Wx6xDVk2Vrdo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	bh=NtdCfMcf2r/v8qSftAZ4GJ0vPtaPTT6F5ZXD12ZoS0g=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=VChQA8cOTfuCBkio2MSHE2ihOZ0jlOPOdMSru8zMH57dItYVNeQsxda3h5agsZxGyqwVjSgm2OJIrOhxXe3i89xVz7RHlivEWdy+tpWV13OQwLXcFBL+DE4CK2Dno9ACaoH1TmPIuxv4q6cC+P3aT1IqDATBWj0jxuTeE4ioq/A=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4bHNjc29MfzKHNHl;
-	Wed, 11 Jun 2025 19:29:40 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4bHNjd4klbzYQvvZ;
+	Wed, 11 Jun 2025 19:29:41 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id A432C1A13F3;
-	Wed, 11 Jun 2025 19:29:38 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id A361B1A0C76;
+	Wed, 11 Jun 2025 19:29:40 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.112.188])
-	by APP3 (Coremail) with SMTP id _Ch0CgAXacOXaElofvDPOw--.32023S4;
-	Wed, 11 Jun 2025 19:29:36 +0800 (CST)
+	by APP3 (Coremail) with SMTP id _Ch0CgAXacOXaElofvDPOw--.32023S8;
+	Wed, 11 Jun 2025 19:29:40 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -35,10 +36,12 @@ Cc: linux-fsdevel@vger.kernel.org,
 	libaokun1@huawei.com,
 	yukuai3@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH v2 0/6] ext4: fix insufficient credits when writing back large folios
-Date: Wed, 11 Jun 2025 19:16:19 +0800
-Message-ID: <20250611111625.1668035-1-yi.zhang@huaweicloud.com>
+Subject: [PATCH v2 4/6] ext4: correct the reserved credits for extent conversion
+Date: Wed, 11 Jun 2025 19:16:23 +0800
+Message-ID: <20250611111625.1668035-5-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
+In-Reply-To: <20250611111625.1668035-1-yi.zhang@huaweicloud.com>
+References: <20250611111625.1668035-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -46,71 +49,63 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgAXacOXaElofvDPOw--.32023S4
-X-Coremail-Antispam: 1UD129KBjvJXoW7KFyfJF48JF43Zr45KFyDKFg_yoW8uryxpa
-	93G3WrG3yrZa47ZFZ3Xa1xGF1rGaykCr1UXr47tw1Dua9xuryxKFsFgF45KFyjyrZ3JFWj
-	qr1jyryDCFZ0y3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUU9Y14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
-	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
-	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
-	2Ix0cI8IcVAFwI0_Jrv_JF1lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
-	W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2
-	Y2ka0xkIwI1lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x
-	0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2
-	zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF
-	4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWU
-	CwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCT
-	nIWIevJa73UjIFyTuYvjfUoWlkDUUUU
+X-CM-TRANSID:_Ch0CgAXacOXaElofvDPOw--.32023S8
+X-Coremail-Antispam: 1UD129KBjvJXoW7Ar4kAw4fJFyDJFyxZr45trb_yoW8GF4UpF
+	nxGFykWF18ua4kua1S9anrZF1rCay8Cw4UJF4fCw4DXa98Grn7Kr1qqw1Fy3WUJrWxJrWr
+	ZF47CryDu3W3ZrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
+	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
+	CI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnI
+	WIevJa73UjIFyTuYvjfUo73vUUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Changes since v1:
- - Make the write-back process supports writing a partial folio if it
-   exits the mapping loop prematurely due to insufficient sapce or
-   journal credits, it also fix the potential stale data and
-   inconsistency issues.
- - Fix the same issue regarding the allocation of blocks in
-   ext4_write_begin() and ext4_page_mkwrite() when delalloc is not
-   enabled.
+Now, we reserve journal credits for converting extents in only one page
+to written state when the I/O operation is complete. This is
+insufficient when large folio is enabled.
 
-This series addresses the issue that Jan pointed out regarding large
-folios support for ext4[1]. The problem is that the credits calculation
-may insufficient in ext4_meta_trans_blocks() when allocating blocks
-during write back a sufficiently large and discontinuous folio, it
-doesn't involve the credits for updating bitmap and group descriptor
-block. However, if we fix this issue, it may lead to significant
-overestimation on the some filesystems with a lot of block groups.
+Fix this by reserving credits for converting up to one extent per block in
+the largest 2MB folio, this calculation should only involve extents index
+and leaf blocks, so it should not estimate too many credits.
 
-The solution involves first ensure that the current journal transaction
-has enough credits when we mapping an extent during allocating blocks.
-Then if the credits reach the upper limit, exit the current mapping
-loop, submit the partial folio and restart a new transaction. Finally,
-fix the wrong credits calculation in ext4_meta_trans_blocks(). Please
-see the following patches for details.
+Fixes: 7ac67301e82f ("ext4: enable large folio for regular file")
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-[1] https://lore.kernel.org/linux-ext4/ht54j6bvjmiqt62xmcveqlo7bmrunqs4ji7wikfteftdjijzek@7tz5gpejaoen/
-
-Thanks,
-Yi.
-
-Zhang Yi (6):
-  ext4: move the calculation of wbc->nr_to_write to mpage_folio_done()
-  ext4: fix stale data if it bail out of the extents mapping loop
-  ext4: restart handle if credits are insufficient during allocating
-    blocks
-  ext4: correct the reserved credits for extent conversion
-  ext4/jbd2: reintroduce jbd2_journal_blocks_per_page()
-  ext4: fix insufficient credits calculation in ext4_meta_trans_blocks()
-
- fs/ext4/ext4_jbd2.h  |   7 +++
- fs/ext4/inode.c      | 118 ++++++++++++++++++++++++++++++++++++-------
- fs/jbd2/journal.c    |   6 +++
- include/linux/jbd2.h |   1 +
- 4 files changed, 113 insertions(+), 19 deletions(-)
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index b51de58518b2..67e37dd546eb 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2848,12 +2848,12 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
+ 	mpd->journalled_more_data = 0;
+ 
+ 	if (ext4_should_dioread_nolock(inode)) {
++		int bpf = ext4_journal_blocks_per_folio(inode);
+ 		/*
+ 		 * We may need to convert up to one extent per block in
+-		 * the page and we may dirty the inode.
++		 * the folio and we may dirty the inode.
+ 		 */
+-		rsv_blocks = 1 + ext4_chunk_trans_blocks(inode,
+-						PAGE_SIZE >> inode->i_blkbits);
++		rsv_blocks = 1 + ext4_ext_index_trans_blocks(inode, bpf);
+ 	}
+ 
+ 	if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)
 -- 
 2.46.1
 
