@@ -1,64 +1,64 @@
-Received: from mail-pf1-f176.google.com (mail-pf1-f176.google.com [209.85.210.176])
+Received: from mail-pl1-f179.google.com (mail-pl1-f179.google.com [209.85.214.179])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 996C8295531;
-	Wed, 18 Jun 2025 11:16:07 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.176
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 27520295DBA;
+	Wed, 18 Jun 2025 11:16:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.179
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1750245371; cv=none; b=kmT7f7pY3frjxnLaukN3wY/tTWCLH8grRIwyIh1vDysKyyjqIxUzI6Syu9r5NkPzZoEnGQEMBulZ9QQYLfSf+rbJpIqkiYXWxJqw4nO81YstF2QM0iqsSpb3KjDeRpVCynwSIhuBYZhjd8lw9DsAFXoFKOWzM4PGJGY68TZiIyI=
+	t=1750245374; cv=none; b=djcAjk1BqVt4MNqwquIZKvpb7vFN3HHwGa4EoLMwRZ4znteikDoaOOpwdcej+wZCvPGRb5LuoB49pB+zVhvoUPZhwIbGEpMt8av0oRwtm2QeFUVHhxOITuhf3fPXgT8wCAYodDyYoa131KRgH93V99p9VU1dvdILl6RByGqe7z4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1750245371; c=relaxed/simple;
-	bh=K5pTB5IITvkRTBBRO+8HubCgsx539iFFT7LH9lgg4Sk=;
+	s=arc-20240116; t=1750245374; c=relaxed/simple;
+	bh=BUu9HUdtaYWu1FAd7SnaGwZ6GdU8g8tTTCu8MsamgeM=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=mRRzZwr5FlRVP9lN84ufFSQ2mkcYdY/GUnC0KGuW4tsL51sZsEABw4cVjrda25aDCfsgPP5vzV+9MFPO8zpEEs2x+/4w2ndQldM+fgbn9lss5l3Cla7/Cob8XikQj/BLexwO3ECcRKnNo4R55t+eXDl1V7z6kHALzS7cpIndSkw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=d5daYMbw; arc=none smtp.client-ip=209.85.210.176
+	 MIME-Version:Content-Type; b=rhZYkctmrtEvWBkIlAQgB5mdnlE++in1piRfsyTQB9X7Wui9qJcP0ZHF+8Lmup7UGzeGv/Gx02e+y3V8ZRd6PzCLe1n72MpHtcLePqWSGagCejuT3nZ+N8t0dAKrA974Gt1rrgsLDzuUfkPT1gofZgQ8VbJoWfub5bpDe1EKLhY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=GxIFb23u; arc=none smtp.client-ip=209.85.214.179
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="d5daYMbw"
-Received: by mail-pf1-f176.google.com with SMTP id d2e1a72fcca58-748ece799bdso249167b3a.1;
-        Wed, 18 Jun 2025 04:16:07 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="GxIFb23u"
+Received: by mail-pl1-f179.google.com with SMTP id d9443c01a7336-234d3261631so45337375ad.1;
+        Wed, 18 Jun 2025 04:16:08 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1750245367; x=1750850167; darn=vger.kernel.org;
+        d=gmail.com; s=20230601; t=1750245368; x=1750850168; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=lxxGu10V6DoBlyRrA1QrIkw1CSrpJwPgwTi1jCn3eGY=;
-        b=d5daYMbwmmevg5a2ArbI3qncNnLCro0QgVy6W6R4Hob3k3dL2m1+IFPa98qFPqwKYa
-         zTn9+zSBy05oLYgkCgSQvoLQRTdCcAI2MdO5ExXB0vffnYMn4OwLw9aAF4a+7qFfbBv0
-         hEXH3POBaeKsT9zAWA16Sl5zZ9i4sICPIWyuZcjZcR7xn/pYJs5Jskn8sheGDZXsM6HP
-         JsKF8IKTOujIt///mswuEwQwhakelvIe3MHnUPeKTzzUr8SIXZeQfyj/gPgYUBBs0wA0
-         YbDUjRTGbHBmWifsehbUs0bcvk8yrHaKt9YrmuWQXx+Yylnj9GS22neydHmGW8uEmbh/
-         UJvg==
+        bh=b6KDUdKeadskP6aqdnMUYKVbmLKz5AEWQ17jezj/TW4=;
+        b=GxIFb23uIQxsD4EaM3v/WicLTcfgzJQI+rPEY6X829lBdUOPVZ4ubRJJldfGY8P4HZ
+         GcJZOb+azqwKd8clrodcy/FR/FvMIt6/v1WMDWCDzRjW7F3ATI8Sj8rrCj4D6vCXdL9p
+         rDikdBZ8pHtAiUqYvy5v0PSTD90jubK+sS4GXGN35rtKe58l/QNZGANO5smXPCt4xKZf
+         lS836WYIxLdw/BfNBheOQG9EaB22W1B2AnYTIRvAj9r6u0umOXMS1UqzmET+Zb93tzmE
+         Ipt09zsA6lrfjmHwLlxgRitwdGoxlklF4kOm5zCRiP1B4uJrVsZTFHr7sa/ouj5Wudl7
+         QSuA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1750245367; x=1750850167;
+        d=1e100.net; s=20230601; t=1750245368; x=1750850168;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=lxxGu10V6DoBlyRrA1QrIkw1CSrpJwPgwTi1jCn3eGY=;
-        b=mSYQpKaHbEEJSAcVuE5XG6Mnf8f0uBinWuHbGv0cvE0t4K9TWibO7I8/UHpMRZ1tZD
-         0Js3531sCuQvzxsbtfwlGZU2K3pJDb9OLZqou5ChohlcnetstUpKUlwnVu+JrDEu5xxm
-         ZwjosX6sAYI3NuPX047Vvi8lbusu3O/v5PyI6YYwqgvt9KA+OupAiF3Hro3lLBJmItQk
-         jySzfw5aOd/S5XgKpUX7CYXUQ0G0j7laFfKhsID8xhdV5z66XkUq71aVfasOTKDSJQHn
-         3z3lEZaFqgd4EBY2XVabzPA+4MhFvGhsUQxmjVLxjDI0fJMg/E8gOaff5+rwD5rfZwpD
-         vl/A==
-X-Forwarded-Encrypted: i=1; AJvYcCWCXYSZ1T5W+urM2nB18fPxoac0QBqISgpzxya4raQqjS4JcbrcXQyWXyIJhtIbQzQJACaXCQ41VjVa8Q==@vger.kernel.org, AJvYcCWy5IJexUe89rSQRLEYHDKlWrqJADc2fdPv0hiG2dSgXQvd5DwdNHIVBOkPpNyOD1envLYZu5hZeMo=@vger.kernel.org
-X-Gm-Message-State: AOJu0Yy38CDH6+p1994C4ff7q1SwU++tf7K5x+o27xDFsXhK+Esro0mv
-	UucXPQNXEqVXpIL69QlGWe6NOq/Do4L6S1r4v+jLLZp75aFgGRppO7lCuAWoPw==
-X-Gm-Gg: ASbGncuw6dMUoTbRH/xW4ESMr7K44lqUIYigXF87nMgmJ721Fb0+F3yVNZSsQt+m1An
-	xwUH1OX9kd9yQGvjhdcrJYXMk9nVJAaqk28Gx6TZaML+qcXXQhXW1v+KkFwdwdG6aEJHUvTuh3s
-	WLn/oGaKLyKUj8owwBHP5b5PrVkwiULEM3BHblCjhD1H3gs26q8y40eCoRpl3lESjhl+dp3AjOX
-	bKKh6QeGG7v4DpQ/Ws8GKH8tXZ56aeSiJ7tYUVFo0pvPR/roUQ/WC2jV703DuAMsbIwqJ5TBx9s
-	5K2UyXufdSVoVlu8vjJi3gfmRZmYP4rTsYz5I2aS0HZirXzCd6zOudaC6txJag==
-X-Google-Smtp-Source: AGHT+IErWc/EF4yO/GsSLGH4UN19fjyyFu2ijPAcsjK58jl9mdviWlSB1G7dPKqPCIqxc7UnWhR0rw==
-X-Received: by 2002:a05:6a00:4b4a:b0:736:54c9:df2c with SMTP id d2e1a72fcca58-7489cfbb3b3mr20955146b3a.15.1750245365958;
-        Wed, 18 Jun 2025 04:16:05 -0700 (PDT)
+        bh=b6KDUdKeadskP6aqdnMUYKVbmLKz5AEWQ17jezj/TW4=;
+        b=oBofUaHV4yQePF0CF5TJGoxP6r7eaKSFRdPm6vwDwkKYaOfUmofBVoUfXWDSKul3t8
+         4YgGhj6JLcYB2t+Z6SshpvZKJFgROC+Uqdra8Br+zLUxXYkEq5QFrLn44TovCH6g/udS
+         9OwFYpArPBPkWVJjer66oszTFhGu64sp8G+9K48tMbHaBkuRKjTq/lXdmK/4eZHGHPsQ
+         9wn/PpIduhTpByMJL0fho7Evuudei3rWnt2xCLuYq/ilKlN7hIbMlEXUMmY6aIbaqcIe
+         FPwn1doY0oZZNoltjSVPEnE71tnvZoop4dSkAiGr74nT2C70naYwxXPJeCMzGKiZNsUi
+         PRYw==
+X-Forwarded-Encrypted: i=1; AJvYcCUoZyGbjforJjYbiyY2ADhXXEluxNdyNoOWDojhBVzQGswgpfyPp61FBJy+NjMsVqLpPfGo7BgoWUg=@vger.kernel.org, AJvYcCUrEqZGB1ZMJ9wywIzAem2tT/+QdU3oekByerDiuVDjt2wRWlxwjDGrcbk1MyHr/G+2r7i6Jjib374KaQ==@vger.kernel.org
+X-Gm-Message-State: AOJu0Ywncv4U4/ldU0GXdHMj1LF/bTCXyfrVdEH4jxf6l6Np8Sggo0/N
+	zvHWeF3Lq0kr3ScpLjnG8QYXQy+ZwOsCHJYNjBuaHm8Qr6v75C9CsYZE
+X-Gm-Gg: ASbGncuVlQ+Qnlc5nstADnrCu0ngpRZ6g6wH81an3ZSuDC53hrdSYmxtt2ki1F8EIQr
+	TAGal9IHAA5XSDRuoXZ9sTNGF9Y82kn73xfK1Eqb3BLSaXnM1OuJun9yt/tMoT3FGUCxzSgM+dx
+	2k5ed+CQaDgdKlq49ckDJe6S/1YhXTAU6ImBVuf6r7rq4T0VA8aQwco12QCayxVATtvu1wuV7Ny
+	e09SgAJLDR2kv30lReqFzqGabUWlEQfWv5ATpdSO6Vw7jsaEoJ8os/AOiK43YlgciDgIocAZdpk
+	wjSMfQb2RPcoXO40/yY/vOvWzpea1k6D2ynqyxeQHc9Z0LOV+YUchyenWrUjDrkdw85n8gpt
+X-Google-Smtp-Source: AGHT+IFJIv1HyeWLDYYDnjy9zhtgS5Rqks2BjUnmyLphTQi+Ix18XVcp2XkFyRlLYUPMyv8jUuBNQQ==
+X-Received: by 2002:a17:903:19cc:b0:234:ef42:5d75 with SMTP id d9443c01a7336-2366b00ee6bmr228150495ad.20.1750245367032;
+        Wed, 18 Jun 2025 04:16:07 -0700 (PDT)
 Received: from archie.me ([103.124.138.155])
-        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-748efa19750sm717606b3a.58.2025.06.18.04.16.02
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2365e0d0bb5sm97548615ad.250.2025.06.18.04.16.02
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 18 Jun 2025 04:16:02 -0700 (PDT)
+        Wed, 18 Jun 2025 04:16:03 -0700 (PDT)
 Received: by archie.me (Postfix, from userid 1000)
-	id AEAED4596078; Wed, 18 Jun 2025 18:15:59 +0700 (WIB)
+	id DAAFC45E3AAE; Wed, 18 Jun 2025 18:15:59 +0700 (WIB)
 From: Bagas Sanjaya <bagasdotme@gmail.com>
 To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
 	Linux Documentation <linux-doc@vger.kernel.org>,
@@ -69,9 +69,9 @@ Cc: "Theodore Ts'o" <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@kernel.org>,
 	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
 	Bagas Sanjaya <bagasdotme@gmail.com>
-Subject: [PATCH 1/4] Documentation: ext4: Slurp included subdocs in high-level overview docs
-Date: Wed, 18 Jun 2025 18:15:34 +0700
-Message-ID: <20250618111544.22602-2-bagasdotme@gmail.com>
+Subject: [PATCH 3/4] Documentation: ext4: Slurp included subdocs in dynamic structures docs
+Date: Wed, 18 Jun 2025 18:15:36 +0700
+Message-ID: <20250618111544.22602-4-bagasdotme@gmail.com>
 X-Mailer: git-send-email 2.49.0
 In-Reply-To: <20250618111544.22602-1-bagasdotme@gmail.com>
 References: <20250618111544.22602-1-bagasdotme@gmail.com>
@@ -81,1748 +81,2890 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=73921; i=bagasdotme@gmail.com; h=from:subject; bh=K5pTB5IITvkRTBBRO+8HubCgsx539iFFT7LH9lgg4Sk=; b=kA0DAAoW9rmJSVVRTqMByyZiAGhSnyaiLz1+AdYQ8EGiVSZwm2SifBdiJkX9xEdlpFS26POZI Yh1BAAWCgAdFiEEkmEOgsu6MhTQh61B9rmJSVVRTqMFAmhSnyYACgkQ9rmJSVVRTqNedgEAu1Zb UA4cyRS/CYcz3zAq1YlfdYvzQl4+wQdNad4FCZwBAPdvueHdaOZWoNAZutB2jAH1uKZGs4xq7h/ fyXHxwKEA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=94728; i=bagasdotme@gmail.com; h=from:subject; bh=BUu9HUdtaYWu1FAd7SnaGwZ6GdU8g8tTTCu8MsamgeM=; b=owGbwMvMwCX2bWenZ2ig32LG02pJDBlB89WWZTiFTugymbP31uW5l7wcOoS9jj/Lc9d2eH9mE /OV3TPjO0pZGMS4GGTFFFkmJfI1nd5lJHKhfa0jzBxWJpAhDFycAjCRKc8Z/scvi2XYJW8Z378q 90kdu/d7lf/fpm6dUyl+wW0OV7bf7jOMDNPmL80Leh3v3bbwm3gA7x//gNSoxnkmd2wuWtgm3I2 LZQMA
 X-Developer-Key: i=bagasdotme@gmail.com; a=openpgp; fpr=701B806FDCA5D3A58FFB8F7D7C276C64A5E44A1D
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-Slurp subdocumentations for high-level ext4 design overview
-(overview.rst) by replacing reST include:: directive with their
-respective contents.
+Slurp subdocumentations for dynamic structures (dynamic.rst) by
+replacing reST include:: directive with their respective contents.
 
 Signed-off-by: Bagas Sanjaya <bagasdotme@gmail.com>
 ---
- Documentation/filesystems/ext4/allocators.rst |  56 --
- .../filesystems/ext4/atomic_writes.rst        | 225 -----
- Documentation/filesystems/ext4/bigalloc.rst   |  34 -
- Documentation/filesystems/ext4/blockgroup.rst | 135 ---
- Documentation/filesystems/ext4/blocks.rst     | 144 ---
- Documentation/filesystems/ext4/checksums.rst  |  73 --
- Documentation/filesystems/ext4/eainode.rst    |  18 -
- Documentation/filesystems/ext4/inlinedata.rst |  37 -
- Documentation/filesystems/ext4/overview.rst   | 819 +++++++++++++++++-
- .../filesystems/ext4/special_inodes.rst       |  55 --
- Documentation/filesystems/ext4/verity.rst     |  44 -
- 11 files changed, 809 insertions(+), 831 deletions(-)
- delete mode 100644 Documentation/filesystems/ext4/allocators.rst
- delete mode 100644 Documentation/filesystems/ext4/atomic_writes.rst
- delete mode 100644 Documentation/filesystems/ext4/bigalloc.rst
- delete mode 100644 Documentation/filesystems/ext4/blockgroup.rst
- delete mode 100644 Documentation/filesystems/ext4/blocks.rst
- delete mode 100644 Documentation/filesystems/ext4/checksums.rst
- delete mode 100644 Documentation/filesystems/ext4/eainode.rst
- delete mode 100644 Documentation/filesystems/ext4/inlinedata.rst
- delete mode 100644 Documentation/filesystems/ext4/special_inodes.rst
- delete mode 100644 Documentation/filesystems/ext4/verity.rst
+ Documentation/filesystems/ext4/attributes.rst |  191 ---
+ Documentation/filesystems/ext4/directory.rst  |  453 ------
+ Documentation/filesystems/ext4/dynamic.rst    | 1415 ++++++++++++++++-
+ Documentation/filesystems/ext4/ifork.rst      |  194 ---
+ Documentation/filesystems/ext4/inodes.rst     |  578 -------
+ 5 files changed, 1411 insertions(+), 1420 deletions(-)
+ delete mode 100644 Documentation/filesystems/ext4/attributes.rst
+ delete mode 100644 Documentation/filesystems/ext4/directory.rst
+ delete mode 100644 Documentation/filesystems/ext4/ifork.rst
+ delete mode 100644 Documentation/filesystems/ext4/inodes.rst
 
-diff --git a/Documentation/filesystems/ext4/allocators.rst b/Documentation/filesystems/ext4/allocators.rst
+diff --git a/Documentation/filesystems/ext4/attributes.rst b/Documentation/filesystems/ext4/attributes.rst
 deleted file mode 100644
-index 7aa85152ace3d0..00000000000000
---- a/Documentation/filesystems/ext4/allocators.rst
+index 87814696a65b59..00000000000000
+--- a/Documentation/filesystems/ext4/attributes.rst
 +++ /dev/null
-@@ -1,56 +0,0 @@
+@@ -1,191 +0,0 @@
 -.. SPDX-License-Identifier: GPL-2.0
 -
--Block and Inode Allocation Policy
-----------------------------------
--
--ext4 recognizes (better than ext3, anyway) that data locality is
--generally a desirably quality of a filesystem. On a spinning disk,
--keeping related blocks near each other reduces the amount of movement
--that the head actuator and disk must perform to access a data block,
--thus speeding up disk IO. On an SSD there of course are no moving parts,
--but locality can increase the size of each transfer request while
--reducing the total number of requests. This locality may also have the
--effect of concentrating writes on a single erase block, which can speed
--up file rewrites significantly. Therefore, it is useful to reduce
--fragmentation whenever possible.
--
--The first tool that ext4 uses to combat fragmentation is the multi-block
--allocator. When a file is first created, the block allocator
--speculatively allocates 8KiB of disk space to the file on the assumption
--that the space will get written soon. When the file is closed, the
--unused speculative allocations are of course freed, but if the
--speculation is correct (typically the case for full writes of small
--files) then the file data gets written out in a single multi-block
--extent. A second related trick that ext4 uses is delayed allocation.
--Under this scheme, when a file needs more blocks to absorb file writes,
--the filesystem defers deciding the exact placement on the disk until all
--the dirty buffers are being written out to disk. By not committing to a
--particular placement until it's absolutely necessary (the commit timeout
--is hit, or sync() is called, or the kernel runs out of memory), the hope
--is that the filesystem can make better location decisions.
--
--The third trick that ext4 (and ext3) uses is that it tries to keep a
--file's data blocks in the same block group as its inode. This cuts down
--on the seek penalty when the filesystem first has to read a file's inode
--to learn where the file's data blocks live and then seek over to the
--file's data blocks to begin I/O operations.
--
--The fourth trick is that all the inodes in a directory are placed in the
--same block group as the directory, when feasible. The working assumption
--here is that all the files in a directory might be related, therefore it
--is useful to try to keep them all together.
--
--The fifth trick is that the disk volume is cut up into 128MB block
--groups; these mini-containers are used as outlined above to try to
--maintain data locality. However, there is a deliberate quirk -- when a
--directory is created in the root directory, the inode allocator scans
--the block groups and puts that directory into the least heavily loaded
--block group that it can find. This encourages directories to spread out
--over a disk; as the top-level directory/file blobs fill up one block
--group, the allocators simply move on to the next block group. Allegedly
--this scheme evens out the loading on the block groups, though the author
--suspects that the directories which are so unlucky as to land towards
--the end of a spinning drive get a raw deal performance-wise.
--
--Of course if all of these mechanisms fail, one can always use e4defrag
--to defragment files.
-diff --git a/Documentation/filesystems/ext4/atomic_writes.rst b/Documentation/filesystems/ext4/atomic_writes.rst
-deleted file mode 100644
-index f65767df3620d5..00000000000000
---- a/Documentation/filesystems/ext4/atomic_writes.rst
-+++ /dev/null
-@@ -1,225 +0,0 @@
--.. SPDX-License-Identifier: GPL-2.0
--.. _atomic_writes:
--
--Atomic Block Writes
---------------------------
--
--Introduction
--~~~~~~~~~~~~
--
--Atomic (untorn) block writes ensure that either the entire write is committed
--to disk or none of it is. This prevents "torn writes" during power loss or
--system crashes. The ext4 filesystem supports atomic writes (only with Direct
--I/O) on regular files with extents, provided the underlying storage device
--supports hardware atomic writes. This is supported in the following two ways:
--
--1. **Single-fsblock Atomic Writes**:
--   EXT4's supports atomic write operations with a single filesystem block since
--   v6.13. In this the atomic write unit minimum and maximum sizes are both set
--   to filesystem blocksize.
--   e.g. doing atomic write of 16KB with 16KB filesystem blocksize on 64KB
--   pagesize system is possible.
--
--2. **Multi-fsblock Atomic Writes with Bigalloc**:
--   EXT4 now also supports atomic writes spanning multiple filesystem blocks
--   using a feature known as bigalloc. The atomic write unit's minimum and
--   maximum sizes are determined by the filesystem block size and cluster size,
--   based on the underlying device’s supported atomic write unit limits.
--
--Requirements
--~~~~~~~~~~~~
--
--Basic requirements for atomic writes in ext4:
--
-- 1. The extents feature must be enabled (default for ext4)
-- 2. The underlying block device must support atomic writes
-- 3. For single-fsblock atomic writes:
--
--    1. A filesystem with appropriate block size (up to the page size)
-- 4. For multi-fsblock atomic writes:
--
--    1. The bigalloc feature must be enabled
--    2. The cluster size must be appropriately configured
--
--NOTE: EXT4 does not support software or COW based atomic write, which means
--atomic writes on ext4 are only supported if underlying storage device supports
--it.
--
--Multi-fsblock Implementation Details
--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
--
--The bigalloc feature changes ext4 to allocate in units of multiple filesystem
--blocks, also known as clusters. With bigalloc each bit within block bitmap
--represents cluster (power of 2 number of blocks) rather than individual
--filesystem blocks.
--EXT4 supports multi-fsblock atomic writes with bigalloc, subject to the
--following constraints. The minimum atomic write size is the larger of the fs
--block size and the minimum hardware atomic write unit; and the maximum atomic
--write size is smaller of the bigalloc cluster size and the maximum hardware
--atomic write unit.  Bigalloc ensures that all allocations are aligned to the
--cluster size, which satisfies the LBA alignment requirements of the hardware
--device if the start of the partition/logical volume is itself aligned correctly.
--
--Here is the block allocation strategy in bigalloc for atomic writes:
--
-- * For regions with fully mapped extents, no additional work is needed
-- * For append writes, a new mapped extent is allocated
-- * For regions that are entirely holes, unwritten extent is created
-- * For large unwritten extents, the extent gets split into two unwritten
--   extents of appropriate requested size
-- * For mixed mapping regions (combinations of holes, unwritten extents, or
--   mapped extents), ext4_map_blocks() is called in a loop with
--   EXT4_GET_BLOCKS_ZERO flag to convert the region into a single contiguous
--   mapped extent by writing zeroes to it and converting any unwritten extents to
--   written, if found within the range.
--
--Note: Writing on a single contiguous underlying extent, whether mapped or
--unwritten, is not inherently problematic. However, writing to a mixed mapping
--region (i.e. one containing a combination of mapped and unwritten extents)
--must be avoided when performing atomic writes.
--
--The reason is that, atomic writes when issued via pwritev2() with the RWF_ATOMIC
--flag, requires that either all data is written or none at all. In the event of
--a system crash or unexpected power loss during the write operation, the affected
--region (when later read) must reflect either the complete old data or the
--complete new data, but never a mix of both.
--
--To enforce this guarantee, we ensure that the write target is backed by
--a single, contiguous extent before any data is written. This is critical because
--ext4 defers the conversion of unwritten extents to written extents until the I/O
--completion path (typically in ->end_io()). If a write is allowed to proceed over
--a mixed mapping region (with mapped and unwritten extents) and a failure occurs
--mid-write, the system could observe partially updated regions after reboot, i.e.
--new data over mapped areas, and stale (old) data over unwritten extents that
--were never marked written. This violates the atomicity and/or torn write
--prevention guarantee.
--
--To prevent such torn writes, ext4 proactively allocates a single contiguous
--extent for the entire requested region in ``ext4_iomap_alloc`` via
--``ext4_map_blocks_atomic()``. EXT4 also force commits the current journalling
--transaction in case if allocation is done over mixed mapping. This ensures any
--pending metadata updates (like unwritten to written extents conversion) in this
--range are in consistent state with the file data blocks, before performing the
--actual write I/O. If the commit fails, the whole I/O must be aborted to prevent
--from any possible torn writes.
--Only after this step, the actual data write operation is performed by the iomap.
--
--Handling Split Extents Across Leaf Blocks
--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
--
--There can be a special edge case where we have logically and physically
--contiguous extents stored in separate leaf nodes of the on-disk extent tree.
--This occurs because on-disk extent tree merges only happens within the leaf
--blocks except for a case where we have 2-level tree which can get merged and
--collapsed entirely into the inode.
--If such a layout exists and, in the worst case, the extent status cache entries
--are reclaimed due to memory pressure, ``ext4_map_blocks()`` may never return
--a single contiguous extent for these split leaf extents.
--
--To address this edge case, a new get block flag
--``EXT4_GET_BLOCKS_QUERY_LEAF_BLOCKS flag`` is added to enhance the
--``ext4_map_query_blocks()`` lookup behavior.
--
--This new get block flag allows ``ext4_map_blocks()`` to first check if there is
--an entry in the extent status cache for the full range.
--If not present, it consults the on-disk extent tree using
--``ext4_map_query_blocks()``.
--If the located extent is at the end of a leaf node, it probes the next logical
--block (lblk) to detect a contiguous extent in the adjacent leaf.
--
--For now only one additional leaf block is queried to maintain efficiency, as
--atomic writes are typically constrained to small sizes
--(e.g. [blocksize, clustersize]).
--
--
--Handling Journal transactions
--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
--
--To support multi-fsblock atomic writes, we ensure enough journal credits are
--reserved during:
--
-- 1. Block allocation time in ``ext4_iomap_alloc()``. We first query if there
--    could be a mixed mapping for the underlying requested range. If yes, then we
--    reserve credits of up to ``m_len``, assuming every alternate block can be
--    an unwritten extent followed by a hole.
--
-- 2. During ``->end_io()`` call, we make sure a single transaction is started for
--    doing unwritten-to-written conversion. The loop for conversion is mainly
--    only required to handle a split extent across leaf blocks.
--
--How to
--------
--
--Creating Filesystems with Atomic Write Support
--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
--
--First check the atomic write units supported by block device.
--See :ref:`atomic_write_bdev_support` for more details.
--
--For single-fsblock atomic writes with a larger block size
--(on systems with block size < page size):
--
--.. code-block:: bash
--
--    # Create an ext4 filesystem with a 16KB block size
--    # (requires page size >= 16KB)
--    mkfs.ext4 -b 16384 /dev/device
--
--For multi-fsblock atomic writes with bigalloc:
--
--.. code-block:: bash
--
--    # Create an ext4 filesystem with bigalloc and 64KB cluster size
--    mkfs.ext4 -F -O bigalloc -b 4096 -C 65536 /dev/device
--
--Where ``-b`` specifies the block size, ``-C`` specifies the cluster size in bytes,
--and ``-O bigalloc`` enables the bigalloc feature.
--
--Application Interface
--~~~~~~~~~~~~~~~~~~~~~
--
--Applications can use the ``pwritev2()`` system call with the ``RWF_ATOMIC`` flag
--to perform atomic writes:
--
--.. code-block:: c
--
--    pwritev2(fd, iov, iovcnt, offset, RWF_ATOMIC);
--
--The write must be aligned to the filesystem's block size and not exceed the
--filesystem's maximum atomic write unit size.
--See ``generic_atomic_write_valid()`` for more details.
--
--``statx()`` system call with ``STATX_WRITE_ATOMIC`` flag can provides following
--details:
--
-- * ``stx_atomic_write_unit_min``: Minimum size of an atomic write request.
-- * ``stx_atomic_write_unit_max``: Maximum size of an atomic write request.
-- * ``stx_atomic_write_segments_max``: Upper limit for segments. The number of
--   separate memory buffers that can be gathered into a write operation
--   (e.g., the iovcnt parameter for IOV_ITER). Currently, this is always set to one.
--
--The STATX_ATTR_WRITE_ATOMIC flag in ``statx->attributes`` is set if atomic
--writes are supported.
--
--.. _atomic_write_bdev_support:
--
--Hardware Support
------------------
--
--The underlying storage device must support atomic write operations.
--Modern NVMe and SCSI devices often provide this capability.
--The Linux kernel exposes this information through sysfs:
--
--* ``/sys/block/<device>/queue/atomic_write_unit_min`` - Minimum atomic write size
--* ``/sys/block/<device>/queue/atomic_write_unit_max`` - Maximum atomic write size
--
--Nonzero values for these attributes indicate that the device supports
--atomic writes.
--
--See Also
----------
--
--* :doc:`bigalloc` - Documentation on the bigalloc feature
--* :doc:`allocators` - Documentation on block allocation in ext4
--* Support for atomic block writes in 6.13:
--  https://lwn.net/Articles/1009298/
-diff --git a/Documentation/filesystems/ext4/bigalloc.rst b/Documentation/filesystems/ext4/bigalloc.rst
-deleted file mode 100644
-index 976a180b209c2a..00000000000000
---- a/Documentation/filesystems/ext4/bigalloc.rst
-+++ /dev/null
-@@ -1,34 +0,0 @@
--.. SPDX-License-Identifier: GPL-2.0
--
--Bigalloc
----------
--
--At the moment, the default size of a block is 4KiB, which is a commonly
--supported page size on most MMU-capable hardware. This is fortunate, as
--ext4 code is not prepared to handle the case where the block size
--exceeds the page size. However, for a filesystem of mostly huge files,
--it is desirable to be able to allocate disk blocks in units of multiple
--blocks to reduce both fragmentation and metadata overhead. The
--bigalloc feature provides exactly this ability.
--
--The bigalloc feature (EXT4_FEATURE_RO_COMPAT_BIGALLOC) changes ext4 to
--use clustered allocation, so that each bit in the ext4 block allocation
--bitmap addresses a power of two number of blocks. For example, if the
--file system is mainly going to be storing large files in the 4-32
--megabyte range, it might make sense to set a cluster size of 1 megabyte.
--This means that each bit in the block allocation bitmap now addresses
--256 4k blocks. This shrinks the total size of the block allocation
--bitmaps for a 2T file system from 64 megabytes to 256 kilobytes. It also
--means that a block group addresses 32 gigabytes instead of 128 megabytes,
--also shrinking the amount of file system overhead for metadata.
--
--The administrator can set a block cluster size at mkfs time (which is
--stored in the s_log_cluster_size field in the superblock); from then
--on, the block bitmaps track clusters, not individual blocks. This means
--that block groups can be several gigabytes in size (instead of just
--128MiB); however, the minimum allocation unit becomes a cluster, not a
--block, even for directories. TaoBao had a patchset to extend the “use
--units of clusters instead of blocks” to the extent tree, though it is
--not clear where those patches went-- they eventually morphed into
--“extent tree v2” but that code has not landed as of May 2015.
--
-diff --git a/Documentation/filesystems/ext4/blockgroup.rst b/Documentation/filesystems/ext4/blockgroup.rst
-deleted file mode 100644
-index ed5a5cac6d40e1..00000000000000
---- a/Documentation/filesystems/ext4/blockgroup.rst
-+++ /dev/null
-@@ -1,135 +0,0 @@
--.. SPDX-License-Identifier: GPL-2.0
--
--Layout
--------
--
--The layout of a standard block group is approximately as follows (each
--of these fields is discussed in a separate section below):
+-Extended Attributes
+--------------------
+-
+-Extended attributes (xattrs) are typically stored in a separate data
+-block on the disk and referenced from inodes via ``inode.i_file_acl*``.
+-The first use of extended attributes seems to have been for storing file
+-ACLs and other security data (selinux). With the ``user_xattr`` mount
+-option it is possible for users to store extended attributes so long as
+-all attribute names begin with “user”; this restriction seems to have
+-disappeared as of Linux 3.0.
+-
+-There are two places where extended attributes can be found. The first
+-place is between the end of each inode entry and the beginning of the
+-next inode entry. For example, if inode.i_extra_isize = 28 and
+-sb.inode_size = 256, then there are 256 - (128 + 28) = 100 bytes
+-available for in-inode extended attribute storage. The second place
+-where extended attributes can be found is in the block pointed to by
+-``inode.i_file_acl``. As of Linux 3.11, it is not possible for this
+-block to contain a pointer to a second extended attribute block (or even
+-the remaining blocks of a cluster). In theory it is possible for each
+-attribute's value to be stored in a separate data block, though as of
+-Linux 3.11 the code does not permit this.
+-
+-Keys are generally assumed to be ASCIIZ strings, whereas values can be
+-strings or binary data.
+-
+-Extended attributes, when stored after the inode, have a header
+-``ext4_xattr_ibody_header`` that is 4 bytes long:
 -
 -.. list-table::
--   :widths: 1 1 1 1 1 1 1 1
+-   :widths: 8 8 24 40
 -   :header-rows: 1
 -
--   * - Group 0 Padding
--     - ext4 Super Block
--     - Group Descriptors
--     - Reserved GDT Blocks
--     - Data Block Bitmap
--     - inode Bitmap
--     - inode Table
--     - Data Blocks
--   * - 1024 bytes
--     - 1 block
--     - many blocks
--     - many blocks
--     - 1 block
--     - 1 block
--     - many blocks
--     - many more blocks
+-   * - Offset
+-     - Type
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le32
+-     - h_magic
+-     - Magic number for identification, 0xEA020000. This value is set by the
+-       Linux driver, though e2fsprogs doesn't seem to check it(?)
 -
--For the special case of block group 0, the first 1024 bytes are unused,
--to allow for the installation of x86 boot sectors and other oddities.
--The superblock will start at offset 1024 bytes, whichever block that
--happens to be (usually 0). However, if for some reason the block size =
--1024, then block 0 is marked in use and the superblock goes in block 1.
--For all other block groups, there is no padding.
+-The beginning of an extended attribute block is in
+-``struct ext4_xattr_header``, which is 32 bytes long:
 -
--The ext4 driver primarily works with the superblock and the group
--descriptors that are found in block group 0. Redundant copies of the
--superblock and group descriptors are written to some of the block groups
--across the disk in case the beginning of the disk gets trashed, though
--not all block groups necessarily host a redundant copy (see following
--paragraph for more details). If the group does not have a redundant
--copy, the block group begins with the data block bitmap. Note also that
--when the filesystem is freshly formatted, mkfs will allocate “reserve
--GDT block” space after the block group descriptors and before the start
--of the block bitmaps to allow for future expansion of the filesystem. By
--default, a filesystem is allowed to increase in size by a factor of
--1024x over the original filesystem size.
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
 -
--The location of the inode table is given by ``grp.bg_inode_table_*``. It
--is continuous range of blocks large enough to contain
--``sb.s_inodes_per_group * sb.s_inode_size`` bytes.
+-   * - Offset
+-     - Type
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le32
+-     - h_magic
+-     - Magic number for identification, 0xEA020000.
+-   * - 0x4
+-     - __le32
+-     - h_refcount
+-     - Reference count.
+-   * - 0x8
+-     - __le32
+-     - h_blocks
+-     - Number of disk blocks used.
+-   * - 0xC
+-     - __le32
+-     - h_hash
+-     - Hash value of all attributes.
+-   * - 0x10
+-     - __le32
+-     - h_checksum
+-     - Checksum of the extended attribute block.
+-   * - 0x14
+-     - __u32
+-     - h_reserved[3]
+-     - Zero.
 -
--As for the ordering of items in a block group, it is generally
--established that the super block and the group descriptor table, if
--present, will be at the beginning of the block group. The bitmaps and
--the inode table can be anywhere, and it is quite possible for the
--bitmaps to come after the inode table, or for both to be in different
--groups (flex_bg). Leftover space is used for file data blocks, indirect
--block maps, extent tree blocks, and extended attributes.
+-The checksum is calculated against the FS UUID, the 64-bit block number
+-of the extended attribute block, and the entire block (header +
+-entries).
 -
--Flexible Block Groups
-----------------------
+-Following the ``struct ext4_xattr_header`` or
+-``struct ext4_xattr_ibody_header`` is an array of
+-``struct ext4_xattr_entry``; each of these entries is at least 16 bytes
+-long. When stored in an external block, the ``struct ext4_xattr_entry``
+-entries must be stored in sorted order. The sort order is
+-``e_name_index``, then ``e_name_len``, and finally ``e_name``.
+-Attributes stored inside an inode do not need be stored in sorted order.
 -
--Starting in ext4, there is a new feature called flexible block groups
--(flex_bg). In a flex_bg, several block groups are tied together as one
--logical block group; the bitmap spaces and the inode table space in the
--first block group of the flex_bg are expanded to include the bitmaps
--and inode tables of all other block groups in the flex_bg. For example,
--if the flex_bg size is 4, then group 0 will contain (in order) the
--superblock, group descriptors, data block bitmaps for groups 0-3, inode
--bitmaps for groups 0-3, inode tables for groups 0-3, and the remaining
--space in group 0 is for file data. The effect of this is to group the
--block group metadata close together for faster loading, and to enable
--large files to be continuous on disk. Backup copies of the superblock
--and group descriptors are always at the beginning of block groups, even
--if flex_bg is enabled. The number of block groups that make up a
--flex_bg is given by 2 ^ ``sb.s_log_groups_per_flex``.
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
 -
--Meta Block Groups
+-   * - Offset
+-     - Type
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __u8
+-     - e_name_len
+-     - Length of name.
+-   * - 0x1
+-     - __u8
+-     - e_name_index
+-     - Attribute name index. There is a discussion of this below.
+-   * - 0x2
+-     - __le16
+-     - e_value_offs
+-     - Location of this attribute's value on the disk block where it is stored.
+-       Multiple attributes can share the same value. For an inode attribute
+-       this value is relative to the start of the first entry; for a block this
+-       value is relative to the start of the block (i.e. the header).
+-   * - 0x4
+-     - __le32
+-     - e_value_inum
+-     - The inode where the value is stored. Zero indicates the value is in the
+-       same block as this entry. This field is only used if the
+-       INCOMPAT_EA_INODE feature is enabled.
+-   * - 0x8
+-     - __le32
+-     - e_value_size
+-     - Length of attribute value.
+-   * - 0xC
+-     - __le32
+-     - e_hash
+-     - Hash value of attribute name and attribute value. The kernel doesn't
+-       update the hash for in-inode attributes, so for that case this value
+-       must be zero, because e2fsck validates any non-zero hash regardless of
+-       where the xattr lives.
+-   * - 0x10
+-     - char
+-     - e_name[e_name_len]
+-     - Attribute name. Does not include trailing NULL.
+-
+-Attribute values can follow the end of the entry table. There appears to
+-be a requirement that they be aligned to 4-byte boundaries. The values
+-are stored starting at the end of the block and grow towards the
+-xattr_header/xattr_entry table. When the two collide, the overflow is
+-put into a separate disk block. If the disk block fills up, the
+-filesystem returns -ENOSPC.
+-
+-The first four fields of the ``ext4_xattr_entry`` are set to zero to
+-mark the end of the key list.
+-
+-Attribute Name Indices
+-~~~~~~~~~~~~~~~~~~~~~~
+-
+-Logically speaking, extended attributes are a series of key=value pairs.
+-The keys are assumed to be NULL-terminated strings. To reduce the amount
+-of on-disk space that the keys consume, the beginning of the key string
+-is matched against the attribute name index. If a match is found, the
+-attribute name index field is set, and matching string is removed from
+-the key name. Here is a map of name index values to key prefixes:
+-
+-.. list-table::
+-   :widths: 16 64
+-   :header-rows: 1
+-
+-   * - Name Index
+-     - Key Prefix
+-   * - 0
+-     - (no prefix)
+-   * - 1
+-     - “user.”
+-   * - 2
+-     - “system.posix_acl_access”
+-   * - 3
+-     - “system.posix_acl_default”
+-   * - 4
+-     - “trusted.”
+-   * - 6
+-     - “security.”
+-   * - 7
+-     - “system.” (inline_data only?)
+-   * - 8
+-     - “system.richacl” (SuSE kernels only?)
+-
+-For example, if the attribute key is “user.fubar”, the attribute name
+-index is set to 1 and the “fubar” name is recorded on disk.
+-
+-POSIX ACLs
+-~~~~~~~~~~
+-
+-POSIX ACLs are stored in a reduced version of the Linux kernel (and
+-libacl's) internal ACL format. The key difference is that the version
+-number is different (1) and the ``e_id`` field is only stored for named
+-user and group ACLs.
+diff --git a/Documentation/filesystems/ext4/directory.rst b/Documentation/filesystems/ext4/directory.rst
+deleted file mode 100644
+index 6eece8e31df8b7..00000000000000
+--- a/Documentation/filesystems/ext4/directory.rst
++++ /dev/null
+@@ -1,453 +0,0 @@
+-.. SPDX-License-Identifier: GPL-2.0
+-
+-Directory Entries
 ------------------
 -
--Without the option META_BG, for safety concerns, all block group
--descriptors copies are kept in the first block group. Given the default
--128MiB(2^27 bytes) block group size and 64-byte group descriptors, ext4
--can have at most 2^27/64 = 2^21 block groups. This limits the entire
--filesystem size to 2^21 * 2^27 = 2^48bytes or 256TiB.
+-In an ext4 filesystem, a directory is more or less a flat file that maps
+-an arbitrary byte string (usually ASCII) to an inode number on the
+-filesystem. There can be many directory entries across the filesystem
+-that reference the same inode number--these are known as hard links, and
+-that is why hard links cannot reference files on other filesystems. As
+-such, directory entries are found by reading the data block(s)
+-associated with a directory file for the particular directory entry that
+-is desired.
 -
--The solution to this problem is to use the metablock group feature
--(META_BG), which is already in ext3 for all 2.6 releases. With the
--META_BG feature, ext4 filesystems are partitioned into many metablock
--groups. Each metablock group is a cluster of block groups whose group
--descriptor structures can be stored in a single disk block. For ext4
--filesystems with 4 KB block size, a single metablock group partition
--includes 64 block groups, or 8 GiB of disk space. The metablock group
--feature moves the location of the group descriptors from the congested
--first block group of the whole filesystem into the first group of each
--metablock group itself. The backups are in the second and last group of
--each metablock group. This increases the 2^21 maximum block groups limit
--to the hard limit 2^32, allowing support for a 512PiB filesystem.
+-Linear (Classic) Directories
+-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 -
--The change in the filesystem format replaces the current scheme where
--the superblock is followed by a variable-length set of block group
--descriptors. Instead, the superblock and a single block group descriptor
--block is placed at the beginning of the first, second, and last block
--groups in a meta-block group. A meta-block group is a collection of
--block groups which can be described by a single block group descriptor
--block. Since the size of the block group descriptor structure is 64
--bytes, a meta-block group contains 16 block groups for filesystems with
--a 1KB block size, and 64 block groups for filesystems with a 4KB
--blocksize. Filesystems can either be created using this new block group
--descriptor layout, or existing filesystems can be resized on-line, and
--the field s_first_meta_bg in the superblock will indicate the first
--block group using this new layout.
+-By default, each directory lists its entries in an “almost-linear”
+-array. I write “almost” because it's not a linear array in the memory
+-sense because directory entries are not split across filesystem blocks.
+-Therefore, it is more accurate to say that a directory is a series of
+-data blocks and that each block contains a linear array of directory
+-entries. The end of each per-block array is signified by reaching the
+-end of the block; the last entry in the block has a record length that
+-takes it all the way to the end of the block. The end of the entire
+-directory is of course signified by reaching the end of the file. Unused
+-directory entries are signified by inode = 0. By default the filesystem
+-uses ``struct ext4_dir_entry_2`` for directory entries unless the
+-“filetype” feature flag is not set, in which case it uses
+-``struct ext4_dir_entry``.
 -
--Please see an important note about ``BLOCK_UNINIT`` in the section about
--block and inode bitmaps.
--
--Lazy Block Group Initialization
---------------------------------
--
--A new feature for ext4 are three block group descriptor flags that
--enable mkfs to skip initializing other parts of the block group
--metadata. Specifically, the INODE_UNINIT and BLOCK_UNINIT flags mean
--that the inode and block bitmaps for that group can be calculated and
--therefore the on-disk bitmap blocks are not initialized. This is
--generally the case for an empty block group or a block group containing
--only fixed-location block group metadata. The INODE_ZEROED flag means
--that the inode table has been initialized; mkfs will unset this flag and
--rely on the kernel to initialize the inode tables in the background.
--
--By not writing zeroes to the bitmaps and inode table, mkfs time is
--reduced considerably. Note the feature flag is RO_COMPAT_GDT_CSUM,
--but the dumpe2fs output prints this as “uninit_bg”. They are the same
--thing.
-diff --git a/Documentation/filesystems/ext4/blocks.rst b/Documentation/filesystems/ext4/blocks.rst
-deleted file mode 100644
-index b0f80ea87c90e1..00000000000000
---- a/Documentation/filesystems/ext4/blocks.rst
-+++ /dev/null
-@@ -1,144 +0,0 @@
--.. SPDX-License-Identifier: GPL-2.0
--
--Blocks
--------
--
--ext4 allocates storage space in units of “blocks”. A block is a group of
--sectors between 1KiB and 64KiB, and the number of sectors must be an
--integral power of 2. Blocks are in turn grouped into larger units called
--block groups. Block size is specified at mkfs time and typically is
--4KiB. You may experience mounting problems if block size is greater than
--page size (i.e. 64KiB blocks on a i386 which only has 4KiB memory
--pages). By default a filesystem can contain 2^32 blocks; if the '64bit'
--feature is enabled, then a filesystem can have 2^64 blocks. The location
--of structures is stored in terms of the block number the structure lives
--in and not the absolute offset on disk.
--
--For 32-bit filesystems, limits are as follows:
+-The original directory entry format is ``struct ext4_dir_entry``, which
+-is at most 263 bytes long, though on disk you'll need to reference
+-``dirent.rec_len`` to know for sure.
 -
 -.. list-table::
--   :widths: 1 1 1 1 1
+-   :widths: 8 8 24 40
 -   :header-rows: 1
 -
--   * - Item
--     - 1KiB
--     - 2KiB
--     - 4KiB
--     - 64KiB
--   * - Blocks
--     - 2^32
--     - 2^32
--     - 2^32
--     - 2^32
--   * - Inodes
--     - 2^32
--     - 2^32
--     - 2^32
--     - 2^32
--   * - File System Size
--     - 4TiB
--     - 8TiB
--     - 16TiB
--     - 256TiB
--   * - Blocks Per Block Group
--     - 8,192
--     - 16,384
--     - 32,768
--     - 524,288
--   * - Inodes Per Block Group
--     - 8,192
--     - 16,384
--     - 32,768
--     - 524,288
--   * - Block Group Size
--     - 8MiB
--     - 32MiB
--     - 128MiB
--     - 32GiB
--   * - Blocks Per File, Extents
--     - 2^32
--     - 2^32
--     - 2^32
--     - 2^32
--   * - Blocks Per File, Block Maps
--     - 16,843,020
--     - 134,480,396
--     - 1,074,791,436
--     - 4,398,314,962,956 (really 2^32 due to field size limitations)
--   * - File Size, Extents
--     - 4TiB
--     - 8TiB
--     - 16TiB
--     - 256TiB
--   * - File Size, Block Maps
--     - 16GiB
--     - 256GiB
--     - 4TiB
--     - 256TiB
--
--For 64-bit filesystems, limits are as follows:
--
--.. list-table::
--   :widths: 1 1 1 1 1
--   :header-rows: 1
--
--   * - Item
--     - 1KiB
--     - 2KiB
--     - 4KiB
--     - 64KiB
--   * - Blocks
--     - 2^64
--     - 2^64
--     - 2^64
--     - 2^64
--   * - Inodes
--     - 2^32
--     - 2^32
--     - 2^32
--     - 2^32
--   * - File System Size
--     - 16ZiB
--     - 32ZiB
--     - 64ZiB
--     - 1YiB
--   * - Blocks Per Block Group
--     - 8,192
--     - 16,384
--     - 32,768
--     - 524,288
--   * - Inodes Per Block Group
--     - 8,192
--     - 16,384
--     - 32,768
--     - 524,288
--   * - Block Group Size
--     - 8MiB
--     - 32MiB
--     - 128MiB
--     - 32GiB
--   * - Blocks Per File, Extents
--     - 2^32
--     - 2^32
--     - 2^32
--     - 2^32
--   * - Blocks Per File, Block Maps
--     - 16,843,020
--     - 134,480,396
--     - 1,074,791,436
--     - 4,398,314,962,956 (really 2^32 due to field size limitations)
--   * - File Size, Extents
--     - 4TiB
--     - 8TiB
--     - 16TiB
--     - 256TiB
--   * - File Size, Block Maps
--     - 16GiB
--     - 256GiB
--     - 4TiB
--     - 256TiB
--
--Note: Files not using extents (i.e. files using block maps) must be
--placed within the first 2^32 blocks of a filesystem. Files with extents
--must be placed within the first 2^48 blocks of a filesystem. It's not
--clear what happens with larger filesystems.
-diff --git a/Documentation/filesystems/ext4/checksums.rst b/Documentation/filesystems/ext4/checksums.rst
-deleted file mode 100644
-index e232749daf5f30..00000000000000
---- a/Documentation/filesystems/ext4/checksums.rst
-+++ /dev/null
-@@ -1,73 +0,0 @@
--.. SPDX-License-Identifier: GPL-2.0
--
--Checksums
-----------
--
--Starting in early 2012, metadata checksums were added to all major ext4
--and jbd2 data structures. The associated feature flag is metadata_csum.
--The desired checksum algorithm is indicated in the superblock, though as
--of October 2012 the only supported algorithm is crc32c. Some data
--structures did not have space to fit a full 32-bit checksum, so only the
--lower 16 bits are stored. Enabling the 64bit feature increases the data
--structure size so that full 32-bit checksums can be stored for many data
--structures. However, existing 32-bit filesystems cannot be extended to
--enable 64bit mode, at least not without the experimental resize2fs
--patches to do so.
--
--Existing filesystems can have checksumming added by running
--``tune2fs -O metadata_csum`` against the underlying device. If tune2fs
--encounters directory blocks that lack sufficient empty space to add a
--checksum, it will request that you run ``e2fsck -D`` to have the
--directories rebuilt with checksums. This has the added benefit of
--removing slack space from the directory files and rebalancing the htree
--indexes. If you _ignore_ this step, your directories will not be
--protected by a checksum!
--
--The following table describes the data elements that go into each type
--of checksum. The checksum function is whatever the superblock describes
--(crc32c as of October 2013) unless noted otherwise.
--
--.. list-table::
--   :widths: 20 8 50
--   :header-rows: 1
--
--   * - Metadata
--     - Length
--     - Ingredients
--   * - Superblock
+-   * - Offset
+-     - Size
+-     - Name
+-     - Description
+-   * - 0x0
 -     - __le32
--     - The entire superblock up to the checksum field. The UUID lives inside
--       the superblock.
--   * - MMP
--     - __le32
--     - UUID + the entire MMP block up to the checksum field.
--   * - Extended Attributes
--     - __le32
--     - UUID + the entire extended attribute block. The checksum field is set to
--       zero.
--   * - Directory Entries
--     - __le32
--     - UUID + inode number + inode generation + the directory block up to the
--       fake entry enclosing the checksum field.
--   * - HTREE Nodes
--     - __le32
--     - UUID + inode number + inode generation + all valid extents + HTREE tail.
--       The checksum field is set to zero.
--   * - Extents
--     - __le32
--     - UUID + inode number + inode generation + the entire extent block up to
--       the checksum field.
--   * - Bitmaps
--     - __le32 or __le16
--     - UUID + the entire bitmap. Checksums are stored in the group descriptor,
--       and truncated if the group descriptor size is 32 bytes (i.e. ^64bit)
--   * - Inodes
--     - __le32
--     - UUID + inode number + inode generation + the entire inode. The checksum
--       field is set to zero. Each inode has its own checksum.
--   * - Group Descriptors
+-     - inode
+-     - Number of the inode that this directory entry points to.
+-   * - 0x4
 -     - __le16
--     - If metadata_csum, then UUID + group number + the entire descriptor;
--       else if gdt_csum, then crc16(UUID + group number + the entire
--       descriptor). In all cases, only the lower 16 bits are stored.
+-     - rec_len
+-     - Length of this directory entry. Must be a multiple of 4.
+-   * - 0x6
+-     - __le16
+-     - name_len
+-     - Length of the file name.
+-   * - 0x8
+-     - char
+-     - name[EXT4_NAME_LEN]
+-     - File name.
 -
-diff --git a/Documentation/filesystems/ext4/eainode.rst b/Documentation/filesystems/ext4/eainode.rst
-deleted file mode 100644
-index 7a2ef26b064ac0..00000000000000
---- a/Documentation/filesystems/ext4/eainode.rst
-+++ /dev/null
-@@ -1,18 +0,0 @@
--.. SPDX-License-Identifier: GPL-2.0
+-Since file names cannot be longer than 255 bytes, the new directory
+-entry format shortens the name_len field and uses the space for a file
+-type flag, probably to avoid having to load every inode during directory
+-tree traversal. This format is ``ext4_dir_entry_2``, which is at most
+-263 bytes long, though on disk you'll need to reference
+-``dirent.rec_len`` to know for sure.
 -
--Large Extended Attribute Values
---------------------------------
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
 -
--To enable ext4 to store extended attribute values that do not fit in the
--inode or in the single extended attribute block attached to an inode,
--the EA_INODE feature allows us to store the value in the data blocks of
--a regular file inode. This “EA inode” is linked only from the extended
--attribute name index and must not appear in a directory entry. The
--inode's i_atime field is used to store a checksum of the xattr value;
--and i_ctime/i_version store a 64-bit reference count, which enables
--sharing of large xattr values between multiple owning inodes. For
--backward compatibility with older versions of this feature, the
--i_mtime/i_generation *may* store a back-reference to the inode number
--and i_generation of the **one** owning inode (in cases where the EA
--inode is not referenced by multiple inodes) to verify that the EA inode
--is the correct one being accessed.
-diff --git a/Documentation/filesystems/ext4/inlinedata.rst b/Documentation/filesystems/ext4/inlinedata.rst
-deleted file mode 100644
-index a728af0d2fd0c5..00000000000000
---- a/Documentation/filesystems/ext4/inlinedata.rst
-+++ /dev/null
-@@ -1,37 +0,0 @@
--.. SPDX-License-Identifier: GPL-2.0
+-   * - Offset
+-     - Size
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le32
+-     - inode
+-     - Number of the inode that this directory entry points to.
+-   * - 0x4
+-     - __le16
+-     - rec_len
+-     - Length of this directory entry.
+-   * - 0x6
+-     - __u8
+-     - name_len
+-     - Length of the file name.
+-   * - 0x7
+-     - __u8
+-     - file_type
+-     - File type code, see ftype_ table below.
+-   * - 0x8
+-     - char
+-     - name[EXT4_NAME_LEN]
+-     - File name.
 -
--Inline Data
-------------
+-.. _ftype:
 -
--The inline data feature was designed to handle the case that a file's
--data is so tiny that it readily fits inside the inode, which
--(theoretically) reduces disk block consumption and reduces seeks. If the
--file is smaller than 60 bytes, then the data are stored inline in
--``inode.i_block``. If the rest of the file would fit inside the extended
--attribute space, then it might be found as an extended attribute
--“system.data” within the inode body (“ibody EA”). This of course
--constrains the amount of extended attributes one can attach to an inode.
--If the data size increases beyond i_block + ibody EA, a regular block
--is allocated and the contents moved to that block.
+-The directory file type is one of the following values:
 -
--Pending a change to compact the extended attribute key used to store
--inline data, one ought to be able to store 160 bytes of data in a
--256-byte inode (as of June 2015, when i_extra_isize is 28). Prior to
--that, the limit was 156 bytes due to inefficient use of inode space.
+-.. list-table::
+-   :widths: 16 64
+-   :header-rows: 1
 -
--The inline data feature requires the presence of an extended attribute
--for “system.data”, even if the attribute value is zero length.
+-   * - Value
+-     - Description
+-   * - 0x0
+-     - Unknown.
+-   * - 0x1
+-     - Regular file.
+-   * - 0x2
+-     - Directory.
+-   * - 0x3
+-     - Character device file.
+-   * - 0x4
+-     - Block device file.
+-   * - 0x5
+-     - FIFO.
+-   * - 0x6
+-     - Socket.
+-   * - 0x7
+-     - Symbolic link.
 -
--Inline Directories
--~~~~~~~~~~~~~~~~~~
+-To support directories that are both encrypted and casefolded directories, we
+-must also include hash information in the directory entry. We append
+-``ext4_extended_dir_entry_2`` to ``ext4_dir_entry_2`` except for the entries
+-for dot and dotdot, which are kept the same. The structure follows immediately
+-after ``name`` and is included in the size listed by ``rec_len`` If a directory
+-entry uses this extension, it may be up to 271 bytes.
 -
--The first four bytes of i_block are the inode number of the parent
--directory. Following that is a 56-byte space for an array of directory
--entries; see ``struct ext4_dir_entry``. If there is a “system.data”
--attribute in the inode body, the EA value is an array of
--``struct ext4_dir_entry`` as well. Note that for inline directories, the
--i_block and EA space are treated as separate dirent blocks; directory
--entries cannot span the two.
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
 -
--Inline directory entries are not checksummed, as the inode checksum
--should protect all inline data contents.
-diff --git a/Documentation/filesystems/ext4/overview.rst b/Documentation/filesystems/ext4/overview.rst
-index 9d4054c17ecb7b..f402ba37179f02 100644
---- a/Documentation/filesystems/ext4/overview.rst
-+++ b/Documentation/filesystems/ext4/overview.rst
-@@ -16,13 +16,812 @@ All fields in ext4 are written to disk in little-endian order. HOWEVER,
- all fields in jbd2 (the journal) are written to disk in big-endian
- order.
+-   * - Offset
+-     - Size
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le32
+-     - hash
+-     - The hash of the directory name
+-   * - 0x4
+-     - __le32
+-     - minor_hash
+-     - The minor hash of the directory name
+-
+-
+-In order to add checksums to these classic directory blocks, a phony
+-``struct ext4_dir_entry`` is placed at the end of each leaf block to
+-hold the checksum. The directory entry is 12 bytes long. The inode
+-number and name_len fields are set to zero to fool old software into
+-ignoring an apparently empty directory entry, and the checksum is stored
+-in the place where the name normally goes. The structure is
+-``struct ext4_dir_entry_tail``:
+-
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
+-
+-   * - Offset
+-     - Size
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le32
+-     - det_reserved_zero1
+-     - Inode number, which must be zero.
+-   * - 0x4
+-     - __le16
+-     - det_rec_len
+-     - Length of this directory entry, which must be 12.
+-   * - 0x6
+-     - __u8
+-     - det_reserved_zero2
+-     - Length of the file name, which must be zero.
+-   * - 0x7
+-     - __u8
+-     - det_reserved_ft
+-     - File type, which must be 0xDE.
+-   * - 0x8
+-     - __le32
+-     - det_checksum
+-     - Directory leaf block checksum.
+-
+-The leaf directory block checksum is calculated against the FS UUID, the
+-directory's inode number, the directory's inode generation number, and
+-the entire directory entry block up to (but not including) the fake
+-directory entry.
+-
+-Hash Tree Directories
+-~~~~~~~~~~~~~~~~~~~~~
+-
+-A linear array of directory entries isn't great for performance, so a
+-new feature was added to ext3 to provide a faster (but peculiar)
+-balanced tree keyed off a hash of the directory entry name. If the
+-EXT4_INDEX_FL (0x1000) flag is set in the inode, this directory uses a
+-hashed btree (htree) to organize and find directory entries. For
+-backwards read-only compatibility with ext2, this tree is actually
+-hidden inside the directory file, masquerading as “empty” directory data
+-blocks! It was stated previously that the end of the linear directory
+-entry table was signified with an entry pointing to inode 0; this is
+-(ab)used to fool the old linear-scan algorithm into thinking that the
+-rest of the directory block is empty so that it moves on.
+-
+-The root of the tree always lives in the first data block of the
+-directory. By ext2 custom, the '.' and '..' entries must appear at the
+-beginning of this first block, so they are put here as two
+-``struct ext4_dir_entry_2`` s and not stored in the tree. The rest of
+-the root node contains metadata about the tree and finally a hash->block
+-map to find nodes that are lower in the htree. If
+-``dx_root.info.indirect_levels`` is non-zero then the htree has two
+-levels; the data block pointed to by the root node's map is an interior
+-node, which is indexed by a minor hash. Interior nodes in this tree
+-contains a zeroed out ``struct ext4_dir_entry_2`` followed by a
+-minor_hash->block map to find leafe nodes. Leaf nodes contain a linear
+-array of all ``struct ext4_dir_entry_2``; all of these entries
+-(presumably) hash to the same value. If there is an overflow, the
+-entries simply overflow into the next leaf node, and the
+-least-significant bit of the hash (in the interior node map) that gets
+-us to this next leaf node is set.
+-
+-To traverse the directory as a htree, the code calculates the hash of
+-the desired file name and uses it to find the corresponding block
+-number. If the tree is flat, the block is a linear array of directory
+-entries that can be searched; otherwise, the minor hash of the file name
+-is computed and used against this second block to find the corresponding
+-third block number. That third block number will be a linear array of
+-directory entries.
+-
+-To traverse the directory as a linear array (such as the old code does),
+-the code simply reads every data block in the directory. The blocks used
+-for the htree will appear to have no entries (aside from '.' and '..')
+-and so only the leaf nodes will appear to have any interesting content.
+-
+-The root of the htree is in ``struct dx_root``, which is the full length
+-of a data block:
+-
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
+-
+-   * - Offset
+-     - Type
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le32
+-     - dot.inode
+-     - inode number of this directory.
+-   * - 0x4
+-     - __le16
+-     - dot.rec_len
+-     - Length of this record, 12.
+-   * - 0x6
+-     - u8
+-     - dot.name_len
+-     - Length of the name, 1.
+-   * - 0x7
+-     - u8
+-     - dot.file_type
+-     - File type of this entry, 0x2 (directory) (if the feature flag is set).
+-   * - 0x8
+-     - char
+-     - dot.name[4]
+-     - “.\0\0\0”
+-   * - 0xC
+-     - __le32
+-     - dotdot.inode
+-     - inode number of parent directory.
+-   * - 0x10
+-     - __le16
+-     - dotdot.rec_len
+-     - block_size - 12. The record length is long enough to cover all htree
+-       data.
+-   * - 0x12
+-     - u8
+-     - dotdot.name_len
+-     - Length of the name, 2.
+-   * - 0x13
+-     - u8
+-     - dotdot.file_type
+-     - File type of this entry, 0x2 (directory) (if the feature flag is set).
+-   * - 0x14
+-     - char
+-     - dotdot_name[4]
+-     - “..\0\0”
+-   * - 0x18
+-     - __le32
+-     - struct dx_root_info.reserved_zero
+-     - Zero.
+-   * - 0x1C
+-     - u8
+-     - struct dx_root_info.hash_version
+-     - Hash type, see dirhash_ table below.
+-   * - 0x1D
+-     - u8
+-     - struct dx_root_info.info_length
+-     - Length of the tree information, 0x8.
+-   * - 0x1E
+-     - u8
+-     - struct dx_root_info.indirect_levels
+-     - Depth of the htree. Cannot be larger than 3 if the INCOMPAT_LARGEDIR
+-       feature is set; cannot be larger than 2 otherwise.
+-   * - 0x1F
+-     - u8
+-     - struct dx_root_info.unused_flags
+-     -
+-   * - 0x20
+-     - __le16
+-     - limit
+-     - Maximum number of dx_entries that can follow this header, plus 1 for
+-       the header itself.
+-   * - 0x22
+-     - __le16
+-     - count
+-     - Actual number of dx_entries that follow this header, plus 1 for the
+-       header itself.
+-   * - 0x24
+-     - __le32
+-     - block
+-     - The block number (within the directory file) that goes with hash=0.
+-   * - 0x28
+-     - struct dx_entry
+-     - entries[0]
+-     - As many 8-byte ``struct dx_entry`` as fits in the rest of the data block.
+-
+-.. _dirhash:
+-
+-The directory hash is one of the following values:
+-
+-.. list-table::
+-   :widths: 16 64
+-   :header-rows: 1
+-
+-   * - Value
+-     - Description
+-   * - 0x0
+-     - Legacy.
+-   * - 0x1
+-     - Half MD4.
+-   * - 0x2
+-     - Tea.
+-   * - 0x3
+-     - Legacy, unsigned.
+-   * - 0x4
+-     - Half MD4, unsigned.
+-   * - 0x5
+-     - Tea, unsigned.
+-   * - 0x6
+-     - Siphash.
+-
+-Interior nodes of an htree are recorded as ``struct dx_node``, which is
+-also the full length of a data block:
+-
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
+-
+-   * - Offset
+-     - Type
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le32
+-     - fake.inode
+-     - Zero, to make it look like this entry is not in use.
+-   * - 0x4
+-     - __le16
+-     - fake.rec_len
+-     - The size of the block, in order to hide all of the dx_node data.
+-   * - 0x6
+-     - u8
+-     - name_len
+-     - Zero. There is no name for this “unused” directory entry.
+-   * - 0x7
+-     - u8
+-     - file_type
+-     - Zero. There is no file type for this “unused” directory entry.
+-   * - 0x8
+-     - __le16
+-     - limit
+-     - Maximum number of dx_entries that can follow this header, plus 1 for
+-       the header itself.
+-   * - 0xA
+-     - __le16
+-     - count
+-     - Actual number of dx_entries that follow this header, plus 1 for the
+-       header itself.
+-   * - 0xE
+-     - __le32
+-     - block
+-     - The block number (within the directory file) that goes with the lowest
+-       hash value of this block. This value is stored in the parent block.
+-   * - 0x12
+-     - struct dx_entry
+-     - entries[0]
+-     - As many 8-byte ``struct dx_entry`` as fits in the rest of the data block.
+-
+-The hash maps that exist in both ``struct dx_root`` and
+-``struct dx_node`` are recorded as ``struct dx_entry``, which is 8 bytes
+-long:
+-
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
+-
+-   * - Offset
+-     - Type
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le32
+-     - hash
+-     - Hash code.
+-   * - 0x4
+-     - __le32
+-     - block
+-     - Block number (within the directory file, not filesystem blocks) of the
+-       next node in the htree.
+-
+-(If you think this is all quite clever and peculiar, so does the
+-author.)
+-
+-If metadata checksums are enabled, the last 8 bytes of the directory
+-block (precisely the length of one dx_entry) are used to store a
+-``struct dx_tail``, which contains the checksum. The ``limit`` and
+-``count`` entries in the dx_root/dx_node structures are adjusted as
+-necessary to fit the dx_tail into the block. If there is no space for
+-the dx_tail, the user is notified to run e2fsck -D to rebuild the
+-directory index (which will ensure that there's space for the checksum.
+-The dx_tail structure is 8 bytes long and looks like this:
+-
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
+-
+-   * - Offset
+-     - Type
+-     - Name
+-     - Description
+-   * - 0x0
+-     - u32
+-     - dt_reserved
+-     - Zero.
+-   * - 0x4
+-     - __le32
+-     - dt_checksum
+-     - Checksum of the htree directory block.
+-
+-The checksum is calculated against the FS UUID, the htree index header
+-(dx_root or dx_node), all of the htree indices (dx_entry) that are in
+-use, and the tail block (dx_tail).
+diff --git a/Documentation/filesystems/ext4/dynamic.rst b/Documentation/filesystems/ext4/dynamic.rst
+index bb0c84333341a5..225324e59fe57c 100644
+--- a/Documentation/filesystems/ext4/dynamic.rst
++++ b/Documentation/filesystems/ext4/dynamic.rst
+@@ -6,7 +6,1414 @@ Dynamic Structures
+ Dynamic metadata are created on the fly when files and blocks are
+ allocated to files.
  
--.. include:: blocks.rst
--.. include:: blockgroup.rst
--.. include:: special_inodes.rst
--.. include:: allocators.rst
--.. include:: checksums.rst
--.. include:: bigalloc.rst
--.. include:: inlinedata.rst
--.. include:: eainode.rst
--.. include:: verity.rst
--.. include:: atomic_writes.rst
-+Blocks
-+------
-+
-+ext4 allocates storage space in units of “blocks”. A block is a group of
-+sectors between 1KiB and 64KiB, and the number of sectors must be an
-+integral power of 2. Blocks are in turn grouped into larger units called
-+block groups. Block size is specified at mkfs time and typically is
-+4KiB. You may experience mounting problems if block size is greater than
-+page size (i.e. 64KiB blocks on a i386 which only has 4KiB memory
-+pages). By default a filesystem can contain 2^32 blocks; if the '64bit'
-+feature is enabled, then a filesystem can have 2^64 blocks. The location
-+of structures is stored in terms of the block number the structure lives
-+in and not the absolute offset on disk.
-+
-+For 32-bit filesystems, limits are as follows:
-+
-+.. list-table::
-+   :widths: 1 1 1 1 1
-+   :header-rows: 1
-+
-+   * - Item
-+     - 1KiB
-+     - 2KiB
-+     - 4KiB
-+     - 64KiB
-+   * - Blocks
-+     - 2^32
-+     - 2^32
-+     - 2^32
-+     - 2^32
-+   * - Inodes
-+     - 2^32
-+     - 2^32
-+     - 2^32
-+     - 2^32
-+   * - File System Size
-+     - 4TiB
-+     - 8TiB
-+     - 16TiB
-+     - 256TiB
-+   * - Blocks Per Block Group
-+     - 8,192
-+     - 16,384
-+     - 32,768
-+     - 524,288
-+   * - Inodes Per Block Group
-+     - 8,192
-+     - 16,384
-+     - 32,768
-+     - 524,288
-+   * - Block Group Size
-+     - 8MiB
-+     - 32MiB
-+     - 128MiB
-+     - 32GiB
-+   * - Blocks Per File, Extents
-+     - 2^32
-+     - 2^32
-+     - 2^32
-+     - 2^32
-+   * - Blocks Per File, Block Maps
-+     - 16,843,020
-+     - 134,480,396
-+     - 1,074,791,436
-+     - 4,398,314,962,956 (really 2^32 due to field size limitations)
-+   * - File Size, Extents
-+     - 4TiB
-+     - 8TiB
-+     - 16TiB
-+     - 256TiB
-+   * - File Size, Block Maps
-+     - 16GiB
-+     - 256GiB
-+     - 4TiB
-+     - 256TiB
-+
-+For 64-bit filesystems, limits are as follows:
-+
-+.. list-table::
-+   :widths: 1 1 1 1 1
-+   :header-rows: 1
-+
-+   * - Item
-+     - 1KiB
-+     - 2KiB
-+     - 4KiB
-+     - 64KiB
-+   * - Blocks
-+     - 2^64
-+     - 2^64
-+     - 2^64
-+     - 2^64
-+   * - Inodes
-+     - 2^32
-+     - 2^32
-+     - 2^32
-+     - 2^32
-+   * - File System Size
-+     - 16ZiB
-+     - 32ZiB
-+     - 64ZiB
-+     - 1YiB
-+   * - Blocks Per Block Group
-+     - 8,192
-+     - 16,384
-+     - 32,768
-+     - 524,288
-+   * - Inodes Per Block Group
-+     - 8,192
-+     - 16,384
-+     - 32,768
-+     - 524,288
-+   * - Block Group Size
-+     - 8MiB
-+     - 32MiB
-+     - 128MiB
-+     - 32GiB
-+   * - Blocks Per File, Extents
-+     - 2^32
-+     - 2^32
-+     - 2^32
-+     - 2^32
-+   * - Blocks Per File, Block Maps
-+     - 16,843,020
-+     - 134,480,396
-+     - 1,074,791,436
-+     - 4,398,314,962,956 (really 2^32 due to field size limitations)
-+   * - File Size, Extents
-+     - 4TiB
-+     - 8TiB
-+     - 16TiB
-+     - 256TiB
-+   * - File Size, Block Maps
-+     - 16GiB
-+     - 256GiB
-+     - 4TiB
-+     - 256TiB
-+
-+.. note::
-+   Files not using extents (i.e. files using block maps) must be
-+   placed within the first 2^32 blocks of a filesystem. Files with extents
-+   must be placed within the first 2^48 blocks of a filesystem. It's not
-+   clear what happens with larger filesystems.
-+
-+Layout
-+------
-+
-+The layout of a standard block group is approximately as follows (each
-+of these fields is discussed in a separate section below):
-+
-+.. list-table::
-+   :widths: 1 1 1 1 1 1 1 1
-+   :header-rows: 1
-+
-+   * - Group 0 Padding
-+     - ext4 Super Block
-+     - Group Descriptors
-+     - Reserved GDT Blocks
-+     - Data Block Bitmap
-+     - inode Bitmap
-+     - inode Table
-+     - Data Blocks
-+   * - 1024 bytes
-+     - 1 block
-+     - many blocks
-+     - many blocks
-+     - 1 block
-+     - 1 block
-+     - many blocks
-+     - many more blocks
-+
-+For the special case of block group 0, the first 1024 bytes are unused,
-+to allow for the installation of x86 boot sectors and other oddities.
-+The superblock will start at offset 1024 bytes, whichever block that
-+happens to be (usually 0). However, if for some reason the block size =
-+1024, then block 0 is marked in use and the superblock goes in block 1.
-+For all other block groups, there is no padding.
-+
-+The ext4 driver primarily works with the superblock and the group
-+descriptors that are found in block group 0. Redundant copies of the
-+superblock and group descriptors are written to some of the block groups
-+across the disk in case the beginning of the disk gets trashed, though
-+not all block groups necessarily host a redundant copy (see following
-+paragraph for more details). If the group does not have a redundant
-+copy, the block group begins with the data block bitmap. Note also that
-+when the filesystem is freshly formatted, mkfs will allocate “reserve
-+GDT block” space after the block group descriptors and before the start
-+of the block bitmaps to allow for future expansion of the filesystem. By
-+default, a filesystem is allowed to increase in size by a factor of
-+1024x over the original filesystem size.
-+
-+The location of the inode table is given by ``grp.bg_inode_table_*``. It
-+is continuous range of blocks large enough to contain
-+``sb.s_inodes_per_group * sb.s_inode_size`` bytes.
-+
-+As for the ordering of items in a block group, it is generally
-+established that the super block and the group descriptor table, if
-+present, will be at the beginning of the block group. The bitmaps and
-+the inode table can be anywhere, and it is quite possible for the
-+bitmaps to come after the inode table, or for both to be in different
-+groups (flex_bg). Leftover space is used for file data blocks, indirect
-+block maps, extent tree blocks, and extended attributes.
-+
-+Flexible Block Groups
-+---------------------
-+
-+Starting in ext4, there is a new feature called flexible block groups
-+(flex_bg). In a flex_bg, several block groups are tied together as one
-+logical block group; the bitmap spaces and the inode table space in the
-+first block group of the flex_bg are expanded to include the bitmaps
-+and inode tables of all other block groups in the flex_bg. For example,
-+if the flex_bg size is 4, then group 0 will contain (in order) the
-+superblock, group descriptors, data block bitmaps for groups 0-3, inode
-+bitmaps for groups 0-3, inode tables for groups 0-3, and the remaining
-+space in group 0 is for file data. The effect of this is to group the
-+block group metadata close together for faster loading, and to enable
-+large files to be continuous on disk. Backup copies of the superblock
-+and group descriptors are always at the beginning of block groups, even
-+if flex_bg is enabled. The number of block groups that make up a
-+flex_bg is given by 2 ^ ``sb.s_log_groups_per_flex``.
-+
-+Meta Block Groups
-+-----------------
-+
-+Without the option META_BG, for safety concerns, all block group
-+descriptors copies are kept in the first block group. Given the default
-+128MiB(2^27 bytes) block group size and 64-byte group descriptors, ext4
-+can have at most 2^27/64 = 2^21 block groups. This limits the entire
-+filesystem size to 2^21 * 2^27 = 2^48bytes or 256TiB.
-+
-+The solution to this problem is to use the metablock group feature
-+(META_BG), which is already in ext3 for all 2.6 releases. With the
-+META_BG feature, ext4 filesystems are partitioned into many metablock
-+groups. Each metablock group is a cluster of block groups whose group
-+descriptor structures can be stored in a single disk block. For ext4
-+filesystems with 4 KB block size, a single metablock group partition
-+includes 64 block groups, or 8 GiB of disk space. The metablock group
-+feature moves the location of the group descriptors from the congested
-+first block group of the whole filesystem into the first group of each
-+metablock group itself. The backups are in the second and last group of
-+each metablock group. This increases the 2^21 maximum block groups limit
-+to the hard limit 2^32, allowing support for a 512PiB filesystem.
-+
-+The change in the filesystem format replaces the current scheme where
-+the superblock is followed by a variable-length set of block group
-+descriptors. Instead, the superblock and a single block group descriptor
-+block is placed at the beginning of the first, second, and last block
-+groups in a meta-block group. A meta-block group is a collection of
-+block groups which can be described by a single block group descriptor
-+block. Since the size of the block group descriptor structure is 64
-+bytes, a meta-block group contains 16 block groups for filesystems with
-+a 1KB block size, and 64 block groups for filesystems with a 4KB
-+blocksize. Filesystems can either be created using this new block group
-+descriptor layout, or existing filesystems can be resized on-line, and
-+the field s_first_meta_bg in the superblock will indicate the first
-+block group using this new layout.
-+
-+Please see an important note about ``BLOCK_UNINIT`` in the section about
-+block and inode bitmaps.
-+
-+Lazy Block Group Initialization
-+-------------------------------
-+
-+A new feature for ext4 are three block group descriptor flags that
-+enable mkfs to skip initializing other parts of the block group
-+metadata. Specifically, the INODE_UNINIT and BLOCK_UNINIT flags mean
-+that the inode and block bitmaps for that group can be calculated and
-+therefore the on-disk bitmap blocks are not initialized. This is
-+generally the case for an empty block group or a block group containing
-+only fixed-location block group metadata. The INODE_ZEROED flag means
-+that the inode table has been initialized; mkfs will unset this flag and
-+rely on the kernel to initialize the inode tables in the background.
-+
-+By not writing zeroes to the bitmaps and inode table, mkfs time is
-+reduced considerably. Note the feature flag is RO_COMPAT_GDT_CSUM,
-+but the dumpe2fs output prints this as “uninit_bg”. They are the same
-+thing.
-+
-+Special inodes
-+--------------
-+
-+ext4 reserves some inode for special features, as follows:
-+
-+.. list-table::
-+   :widths: 6 70
-+   :header-rows: 1
-+
-+   * - inode Number
-+     - Purpose
-+   * - 0
-+     - Doesn't exist; there is no inode 0.
-+   * - 1
-+     - List of defective blocks.
-+   * - 2
-+     - Root directory.
-+   * - 3
-+     - User quota.
-+   * - 4
-+     - Group quota.
-+   * - 5
-+     - Boot loader.
-+   * - 6
-+     - Undelete directory.
-+   * - 7
-+     - Reserved group descriptors inode. (“resize inode”)
-+   * - 8
-+     - Journal inode.
-+   * - 9
-+     - The “exclude” inode, for snapshots(?)
-+   * - 10
-+     - Replica inode, used for some non-upstream feature?
-+   * - 11
-+     - Traditional first non-reserved inode. Usually this is the lost+found directory. See s_first_ino in the superblock.
-+
-+Note that there are also some inodes allocated from non-reserved inode numbers
-+for other filesystem features which are not referenced from standard directory
-+hierarchy. These are generally reference from the superblock. They are:
-+
-+.. list-table::
-+   :widths: 20 50
-+   :header-rows: 1
-+
-+   * - Superblock field
-+     - Description
-+
-+   * - s_lpf_ino
-+     - Inode number of lost+found directory.
-+   * - s_prj_quota_inum
-+     - Inode number of quota file tracking project quotas
-+   * - s_orphan_file_inum
-+     - Inode number of file tracking orphan inodes.
-+
-+Block and Inode Allocation Policy
-+---------------------------------
-+
-+ext4 recognizes (better than ext3, anyway) that data locality is
-+generally a desirably quality of a filesystem. On a spinning disk,
-+keeping related blocks near each other reduces the amount of movement
-+that the head actuator and disk must perform to access a data block,
-+thus speeding up disk IO. On an SSD there of course are no moving parts,
-+but locality can increase the size of each transfer request while
-+reducing the total number of requests. This locality may also have the
-+effect of concentrating writes on a single erase block, which can speed
-+up file rewrites significantly. Therefore, it is useful to reduce
-+fragmentation whenever possible.
-+
-+The first tool that ext4 uses to combat fragmentation is the multi-block
-+allocator. When a file is first created, the block allocator
-+speculatively allocates 8KiB of disk space to the file on the assumption
-+that the space will get written soon. When the file is closed, the
-+unused speculative allocations are of course freed, but if the
-+speculation is correct (typically the case for full writes of small
-+files) then the file data gets written out in a single multi-block
-+extent. A second related trick that ext4 uses is delayed allocation.
-+Under this scheme, when a file needs more blocks to absorb file writes,
-+the filesystem defers deciding the exact placement on the disk until all
-+the dirty buffers are being written out to disk. By not committing to a
-+particular placement until it's absolutely necessary (the commit timeout
-+is hit, or sync() is called, or the kernel runs out of memory), the hope
-+is that the filesystem can make better location decisions.
-+
-+The third trick that ext4 (and ext3) uses is that it tries to keep a
-+file's data blocks in the same block group as its inode. This cuts down
-+on the seek penalty when the filesystem first has to read a file's inode
-+to learn where the file's data blocks live and then seek over to the
-+file's data blocks to begin I/O operations.
-+
-+The fourth trick is that all the inodes in a directory are placed in the
-+same block group as the directory, when feasible. The working assumption
-+here is that all the files in a directory might be related, therefore it
-+is useful to try to keep them all together.
-+
-+The fifth trick is that the disk volume is cut up into 128MB block
-+groups; these mini-containers are used as outlined above to try to
-+maintain data locality. However, there is a deliberate quirk -- when a
-+directory is created in the root directory, the inode allocator scans
-+the block groups and puts that directory into the least heavily loaded
-+block group that it can find. This encourages directories to spread out
-+over a disk; as the top-level directory/file blobs fill up one block
-+group, the allocators simply move on to the next block group. Allegedly
-+this scheme evens out the loading on the block groups, though the author
-+suspects that the directories which are so unlucky as to land towards
-+the end of a spinning drive get a raw deal performance-wise.
-+
-+Of course if all of these mechanisms fail, one can always use e4defrag
-+to defragment files.
-+
-+Checksums
-+---------
-+
-+Starting in early 2012, metadata checksums were added to all major ext4
-+and jbd2 data structures. The associated feature flag is metadata_csum.
-+The desired checksum algorithm is indicated in the superblock, though as
-+of October 2012 the only supported algorithm is crc32c. Some data
-+structures did not have space to fit a full 32-bit checksum, so only the
-+lower 16 bits are stored. Enabling the 64bit feature increases the data
-+structure size so that full 32-bit checksums can be stored for many data
-+structures. However, existing 32-bit filesystems cannot be extended to
-+enable 64bit mode, at least not without the experimental resize2fs
-+patches to do so.
-+
-+Existing filesystems can have checksumming added by running
-+``tune2fs -O metadata_csum`` against the underlying device. If tune2fs
-+encounters directory blocks that lack sufficient empty space to add a
-+checksum, it will request that you run ``e2fsck -D`` to have the
-+directories rebuilt with checksums. This has the added benefit of
-+removing slack space from the directory files and rebalancing the htree
-+indexes. If you _ignore_ this step, your directories will not be
-+protected by a checksum!
-+
-+The following table describes the data elements that go into each type
-+of checksum. The checksum function is whatever the superblock describes
-+(crc32c as of October 2013) unless noted otherwise.
-+
-+.. list-table::
-+   :widths: 20 8 50
-+   :header-rows: 1
-+
-+   * - Metadata
-+     - Length
-+     - Ingredients
-+   * - Superblock
-+     - __le32
-+     - The entire superblock up to the checksum field. The UUID lives inside
-+       the superblock.
-+   * - MMP
-+     - __le32
-+     - UUID + the entire MMP block up to the checksum field.
-+   * - Extended Attributes
-+     - __le32
-+     - UUID + the entire extended attribute block. The checksum field is set to
-+       zero.
-+   * - Directory Entries
-+     - __le32
-+     - UUID + inode number + inode generation + the directory block up to the
-+       fake entry enclosing the checksum field.
-+   * - HTREE Nodes
-+     - __le32
-+     - UUID + inode number + inode generation + all valid extents + HTREE tail.
-+       The checksum field is set to zero.
-+   * - Extents
-+     - __le32
-+     - UUID + inode number + inode generation + the entire extent block up to
-+       the checksum field.
-+   * - Bitmaps
-+     - __le32 or __le16
-+     - UUID + the entire bitmap. Checksums are stored in the group descriptor,
-+       and truncated if the group descriptor size is 32 bytes (i.e. ^64bit)
-+   * - Inodes
-+     - __le32
-+     - UUID + inode number + inode generation + the entire inode. The checksum
-+       field is set to zero. Each inode has its own checksum.
-+   * - Group Descriptors
-+     - __le16
-+     - If metadata_csum, then UUID + group number + the entire descriptor;
-+       else if gdt_csum, then crc16(UUID + group number + the entire
-+       descriptor). In all cases, only the lower 16 bits are stored.
-+
-+Bigalloc
-+--------
-+
-+At the moment, the default size of a block is 4KiB, which is a commonly
-+supported page size on most MMU-capable hardware. This is fortunate, as
-+ext4 code is not prepared to handle the case where the block size
-+exceeds the page size. However, for a filesystem of mostly huge files,
-+it is desirable to be able to allocate disk blocks in units of multiple
-+blocks to reduce both fragmentation and metadata overhead. The
-+bigalloc feature provides exactly this ability.
-+
-+The bigalloc feature (EXT4_FEATURE_RO_COMPAT_BIGALLOC) changes ext4 to
-+use clustered allocation, so that each bit in the ext4 block allocation
-+bitmap addresses a power of two number of blocks. For example, if the
-+file system is mainly going to be storing large files in the 4-32
-+megabyte range, it might make sense to set a cluster size of 1 megabyte.
-+This means that each bit in the block allocation bitmap now addresses
-+256 4k blocks. This shrinks the total size of the block allocation
-+bitmaps for a 2T file system from 64 megabytes to 256 kilobytes. It also
-+means that a block group addresses 32 gigabytes instead of 128 megabytes,
-+also shrinking the amount of file system overhead for metadata.
-+
-+The administrator can set a block cluster size at mkfs time (which is
-+stored in the s_log_cluster_size field in the superblock); from then
-+on, the block bitmaps track clusters, not individual blocks. This means
-+that block groups can be several gigabytes in size (instead of just
-+128MiB); however, the minimum allocation unit becomes a cluster, not a
-+block, even for directories. TaoBao had a patchset to extend the “use
-+units of clusters instead of blocks” to the extent tree, though it is
-+not clear where those patches went-- they eventually morphed into
-+“extent tree v2” but that code has not landed as of May 2015.
-+
-+Inline Data
+-.. include:: inodes.rst
+-.. include:: ifork.rst
+-.. include:: directory.rst
+-.. include:: attributes.rst
++Index Nodes
 +-----------
 +
-+The inline data feature was designed to handle the case that a file's
-+data is so tiny that it readily fits inside the inode, which
-+(theoretically) reduces disk block consumption and reduces seeks. If the
-+file is smaller than 60 bytes, then the data are stored inline in
-+``inode.i_block``. If the rest of the file would fit inside the extended
-+attribute space, then it might be found as an extended attribute
-+“system.data” within the inode body (“ibody EA”). This of course
-+constrains the amount of extended attributes one can attach to an inode.
-+If the data size increases beyond i_block + ibody EA, a regular block
-+is allocated and the contents moved to that block.
-+
-+Pending a change to compact the extended attribute key used to store
-+inline data, one ought to be able to store 160 bytes of data in a
-+256-byte inode (as of June 2015, when i_extra_isize is 28). Prior to
-+that, the limit was 156 bytes due to inefficient use of inode space.
-+
-+The inline data feature requires the presence of an extended attribute
-+for “system.data”, even if the attribute value is zero length.
-+
-+Inline Directories
-+~~~~~~~~~~~~~~~~~~
-+
-+The first four bytes of i_block are the inode number of the parent
-+directory. Following that is a 56-byte space for an array of directory
-+entries; see ``struct ext4_dir_entry``. If there is a “system.data”
-+attribute in the inode body, the EA value is an array of
-+``struct ext4_dir_entry`` as well. Note that for inline directories, the
-+i_block and EA space are treated as separate dirent blocks; directory
-+entries cannot span the two.
-+
-+Inline directory entries are not checksummed, as the inode checksum
-+should protect all inline data contents.
-+
-+Large Extended Attribute Values
-+-------------------------------
-+
-+To enable ext4 to store extended attribute values that do not fit in the
-+inode or in the single extended attribute block attached to an inode,
-+the EA_INODE feature allows us to store the value in the data blocks of
-+a regular file inode. This “EA inode” is linked only from the extended
-+attribute name index and must not appear in a directory entry. The
-+inode's i_atime field is used to store a checksum of the xattr value;
-+and i_ctime/i_version store a 64-bit reference count, which enables
-+sharing of large xattr values between multiple owning inodes. For
-+backward compatibility with older versions of this feature, the
-+i_mtime/i_generation *may* store a back-reference to the inode number
-+and i_generation of the **one** owning inode (in cases where the EA
-+inode is not referenced by multiple inodes) to verify that the EA inode
-+is the correct one being accessed.
-+
-+Verity files
-+------------
-+
-+ext4 supports fs-verity, which is a filesystem feature that provides
-+Merkle tree based hashing for individual readonly files.  Most of
-+fs-verity is common to all filesystems that support it; see
-+:ref:`Documentation/filesystems/fsverity.rst <fsverity>` for the
-+fs-verity documentation.  However, the on-disk layout of the verity
-+metadata is filesystem-specific.  On ext4, the verity metadata is
-+stored after the end of the file data itself, in the following format:
-+
-+- Zero-padding to the next 65536-byte boundary.  This padding need not
-+  actually be allocated on-disk, i.e. it may be a hole.
-+
-+- The Merkle tree, as documented in
-+  :ref:`Documentation/filesystems/fsverity.rst
-+  <fsverity_merkle_tree>`, with the tree levels stored in order from
-+  root to leaf, and the tree blocks within each level stored in their
-+  natural order.
-+
-+- Zero-padding to the next filesystem block boundary.
-+
-+- The verity descriptor, as documented in
-+  :ref:`Documentation/filesystems/fsverity.rst <fsverity_descriptor>`,
-+  with optionally appended signature blob.
-+
-+- Zero-padding to the next offset that is 4 bytes before a filesystem
-+  block boundary.
-+
-+- The size of the verity descriptor in bytes, as a 4-byte little
-+  endian integer.
-+
-+Verity inodes have EXT4_VERITY_FL set, and they must use extents, i.e.
-+EXT4_EXTENTS_FL must be set and EXT4_INLINE_DATA_FL must be clear.
-+They can have EXT4_ENCRYPT_FL set, in which case the verity metadata
-+is encrypted as well as the data itself.
-+
-+Verity files cannot have blocks allocated past the end of the verity
-+metadata.
-+
-+Verity and DAX are not compatible and attempts to set both of these flags
-+on a file will fail.
-+
-+Atomic Block Writes
-+-------------------
-+
-+Introduction
-+~~~~~~~~~~~~
-+
-+Atomic (untorn) block writes ensure that either the entire write is committed
-+to disk or none of it is. This prevents "torn writes" during power loss or
-+system crashes. The ext4 filesystem supports atomic writes (only with Direct
-+I/O) on regular files with extents, provided the underlying storage device
-+supports hardware atomic writes. This is supported in the following two ways:
-+
-+1. **Single-fsblock Atomic Writes**:
-+   ext4 supports atomic write operations with a single filesystem block since
-+   v6.13. In this the atomic write unit minimum and maximum sizes are both set
-+   to filesystem blocksize.
-+   e.g. doing atomic write of 16KB with 16KB filesystem blocksize on 64KB
-+   pagesize system is possible.
-+
-+2. **Multi-fsblock Atomic Writes with Bigalloc**:
-+   ext4 now also supports atomic writes spanning multiple filesystem blocks
-+   using a feature known as bigalloc. The atomic write unit's minimum and
-+   maximum sizes are determined by the filesystem block size and cluster size,
-+   based on the underlying device’s supported atomic write unit limits.
-+
-+Requirements
-+~~~~~~~~~~~~
-+
-+Basic requirements for atomic writes in ext4:
-+
-+ 1. The extents feature must be enabled (default for ext4)
-+ 2. The underlying block device must support atomic writes
-+ 3. For single-fsblock atomic writes:
-+
-+    1. A filesystem with appropriate block size (up to the page size)
-+ 4. For multi-fsblock atomic writes:
-+
-+    1. The bigalloc feature must be enabled
-+    2. The cluster size must be appropriately configured
-+
-+.. note::
-+   ext4 does not support software or COW based atomic write, which means
-+   atomic writes on ext4 are only supported if underlying storage device
-+   supports it.
-+
-+Multi-fsblock Implementation Details
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-+
-+The bigalloc feature changes ext4 to allocate in units of multiple filesystem
-+blocks, also known as clusters. With bigalloc each bit within block bitmap
-+represents cluster (power of 2 number of blocks) rather than individual
-+filesystem blocks.
-+
-+ext4 supports multi-fsblock atomic writes with bigalloc, subject to the
-+following constraints. The minimum atomic write size is the larger of the fs
-+block size and the minimum hardware atomic write unit; and the maximum atomic
-+write size is smaller of the bigalloc cluster size and the maximum hardware
-+atomic write unit.  Bigalloc ensures that all allocations are aligned to the
-+cluster size, which satisfies the LBA alignment requirements of the hardware
-+device if the start of the partition/logical volume is itself aligned correctly.
-+
-+Here is the block allocation strategy in bigalloc for atomic writes:
-+
-+ * For regions with fully mapped extents, no additional work is needed
-+ * For append writes, a new mapped extent is allocated
-+ * For regions that are entirely holes, unwritten extent is created
-+ * For large unwritten extents, the extent gets split into two unwritten
-+   extents of appropriate requested size
-+ * For mixed mapping regions (combinations of holes, unwritten extents, or
-+   mapped extents), ext4_map_blocks() is called in a loop with
-+   EXT4_GET_BLOCKS_ZERO flag to convert the region into a single contiguous
-+   mapped extent by writing zeroes to it and converting any unwritten extents to
-+   written, if found within the range.
-+
-+.. note::
-+   Writing on a single contiguous underlying extent, whether mapped or
-+   unwritten, is not inherently problematic. However, writing to a mixed mapping
-+   region (i.e. one containing a combination of mapped and unwritten extents)
-+   must be avoided when performing atomic writes.
-+
-+The reason is that, atomic writes when issued via pwritev2() with the RWF_ATOMIC
-+flag, requires that either all data is written or none at all. In the event of
-+a system crash or unexpected power loss during the write operation, the affected
-+region (when later read) must reflect either the complete old data or the
-+complete new data, but never a mix of both.
-+
-+To enforce this guarantee, we ensure that the write target is backed by
-+a single, contiguous extent before any data is written. This is critical because
-+ext4 defers the conversion of unwritten extents to written extents until the I/O
-+completion path (typically in ->end_io()). If a write is allowed to proceed over
-+a mixed mapping region (with mapped and unwritten extents) and a failure occurs
-+mid-write, the system could observe partially updated regions after reboot, i.e.
-+new data over mapped areas, and stale (old) data over unwritten extents that
-+were never marked written. This violates the atomicity and/or torn write
-+prevention guarantee.
-+
-+To prevent such torn writes, ext4 proactively allocates a single contiguous
-+extent for the entire requested region in ``ext4_iomap_alloc`` via
-+``ext4_map_blocks_atomic()``. ext4 also force commits the current journalling
-+transaction in case if allocation is done over mixed mapping. This ensures any
-+pending metadata updates (like unwritten to written extents conversion) in this
-+range are in consistent state with the file data blocks, before performing the
-+actual write I/O. If the commit fails, the whole I/O must be aborted to prevent
-+from any possible torn writes.
-+Only after this step, the actual data write operation is performed by the iomap.
-+
-+Handling Split Extents Across Leaf Blocks
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-+
-+There can be a special edge case where we have logically and physically
-+contiguous extents stored in separate leaf nodes of the on-disk extent tree.
-+This occurs because on-disk extent tree merges only happens within the leaf
-+blocks except for a case where we have 2-level tree which can get merged and
-+collapsed entirely into the inode.
-+If such a layout exists and, in the worst case, the extent status cache entries
-+are reclaimed due to memory pressure, ``ext4_map_blocks()`` may never return
-+a single contiguous extent for these split leaf extents.
-+
-+To address this edge case, a new get block flag
-+``EXT4_GET_BLOCKS_QUERY_LEAF_BLOCKS flag`` is added to enhance the
-+``ext4_map_query_blocks()`` lookup behavior.
-+
-+This new get block flag allows ``ext4_map_blocks()`` to first check if there is
-+an entry in the extent status cache for the full range.
-+If not present, it consults the on-disk extent tree using
-+``ext4_map_query_blocks()``.
-+If the located extent is at the end of a leaf node, it probes the next logical
-+block (lblk) to detect a contiguous extent in the adjacent leaf.
-+
-+For now only one additional leaf block is queried to maintain efficiency, as
-+atomic writes are typically constrained to small sizes
-+(e.g. [blocksize, clustersize]).
-+
-+
-+Handling Journal transactions
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-+
-+To support multi-fsblock atomic writes, we ensure enough journal credits are
-+reserved during:
-+
-+ 1. Block allocation time in ``ext4_iomap_alloc()``. We first query if there
-+    could be a mixed mapping for the underlying requested range. If yes, then we
-+    reserve credits of up to ``m_len``, assuming every alternate block can be
-+    an unwritten extent followed by a hole.
-+
-+ 2. During ``->end_io()`` call, we make sure a single transaction is started for
-+    doing unwritten-to-written conversion. The loop for conversion is mainly
-+    only required to handle a split extent across leaf blocks.
-+
-+How to
-+~~~~~~
-+
-+Creating Filesystems with Atomic Write Support
-+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-+
-+First check the atomic write units supported by block device.
-+See :ref:`atomic_write_bdev_support` for more details.
-+
-+For single-fsblock atomic writes with a larger block size
-+(on systems with block size < page size):
-+
-+.. code-block:: bash
-+
-+    # Create an ext4 filesystem with a 16KB block size
-+    # (requires page size >= 16KB)
-+    mkfs.ext4 -b 16384 /dev/device
-+
-+For multi-fsblock atomic writes with bigalloc:
-+
-+.. code-block:: bash
-+
-+    # Create an ext4 filesystem with bigalloc and 64KB cluster size
-+    mkfs.ext4 -F -O bigalloc -b 4096 -C 65536 /dev/device
-+
-+Where ``-b`` specifies the block size, ``-C`` specifies the cluster size in bytes,
-+and ``-O bigalloc`` enables the bigalloc feature.
-+
-+Application Interface
-+^^^^^^^^^^^^^^^^^^^^^
-+
-+Applications can use the ``pwritev2()`` system call with the ``RWF_ATOMIC`` flag
-+to perform atomic writes:
-+
-+.. code-block:: c
-+
-+    pwritev2(fd, iov, iovcnt, offset, RWF_ATOMIC);
-+
-+The write must be aligned to the filesystem's block size and not exceed the
-+filesystem's maximum atomic write unit size.
-+See ``generic_atomic_write_valid()`` for more details.
-+
-+``statx()`` system call with ``STATX_WRITE_ATOMIC`` flag can provides following
-+details:
-+
-+ * ``stx_atomic_write_unit_min``: Minimum size of an atomic write request.
-+ * ``stx_atomic_write_unit_max``: Maximum size of an atomic write request.
-+ * ``stx_atomic_write_segments_max``: Upper limit for segments. The number of
-+   separate memory buffers that can be gathered into a write operation
-+   (e.g., the iovcnt parameter for IOV_ITER). Currently, this is always set to one.
-+
-+The STATX_ATTR_WRITE_ATOMIC flag in ``statx->attributes`` is set if atomic
-+writes are supported.
-+
-+.. _atomic_write_bdev_support:
-+
-+Hardware Support
++In a regular UNIX filesystem, the inode stores all the metadata
++pertaining to the file (time stamps, block maps, extended attributes,
++etc), not the directory entry. To find the information associated with a
++file, one must traverse the directory files to find the directory entry
++associated with a file, then load the inode to find the metadata for
++that file. ext4 appears to cheat (for performance reasons) a little bit
++by storing a copy of the file type (normally stored in the inode) in the
++directory entry. (Compare all this to FAT, which stores all the file
++information directly in the directory entry, but does not support hard
++links and is in general more seek-happy than ext4 due to its simpler
++block allocator and extensive use of linked lists.)
++
++The inode table is a linear array of ``struct ext4_inode``. The table is
++sized to have enough blocks to store at least
++``sb.s_inode_size * sb.s_inodes_per_group`` bytes. The number of the
++block group containing an inode can be calculated as
++``(inode_number - 1) / sb.s_inodes_per_group``, and the offset into the
++group's table is ``(inode_number - 1) % sb.s_inodes_per_group``. There
++is no inode 0.
++
++The inode checksum is calculated against the FS UUID, the inode number,
++and the inode structure itself.
++
++The inode table entry is laid out in ``struct ext4_inode``.
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++   :class: longtable
++
++   * - Offset
++     - Size
++     - Name
++     - Description
++   * - 0x0
++     - __le16
++     - i_mode
++     - File mode. See the table i_mode_ below.
++   * - 0x2
++     - __le16
++     - i_uid
++     - Lower 16-bits of Owner UID.
++   * - 0x4
++     - __le32
++     - i_size_lo
++     - Lower 32-bits of size in bytes.
++   * - 0x8
++     - __le32
++     - i_atime
++     - Last access time, in seconds since the epoch. However, if the EA_INODE
++       inode flag is set, this inode stores an extended attribute value and
++       this field contains the checksum of the value.
++   * - 0xC
++     - __le32
++     - i_ctime
++     - Last inode change time, in seconds since the epoch. However, if the
++       EA_INODE inode flag is set, this inode stores an extended attribute
++       value and this field contains the lower 32 bits of the attribute value's
++       reference count.
++   * - 0x10
++     - __le32
++     - i_mtime
++     - Last data modification time, in seconds since the epoch. However, if the
++       EA_INODE inode flag is set, this inode stores an extended attribute
++       value and this field contains the number of the inode that owns the
++       extended attribute.
++   * - 0x14
++     - __le32
++     - i_dtime
++     - Deletion Time, in seconds since the epoch.
++   * - 0x18
++     - __le16
++     - i_gid
++     - Lower 16-bits of GID.
++   * - 0x1A
++     - __le16
++     - i_links_count
++     - Hard link count. Normally, ext4 does not permit an inode to have more
++       than 65,000 hard links. This applies to files as well as directories,
++       which means that there cannot be more than 64,998 subdirectories in a
++       directory (each subdirectory's '..' entry counts as a hard link, as does
++       the '.' entry in the directory itself). With the DIR_NLINK feature
++       enabled, ext4 supports more than 64,998 subdirectories by setting this
++       field to 1 to indicate that the number of hard links is not known.
++   * - 0x1C
++     - __le32
++     - i_blocks_lo
++     - Lower 32-bits of “block” count. If the huge_file feature flag is not
++       set on the filesystem, the file consumes ``i_blocks_lo`` 512-byte blocks
++       on disk. If huge_file is set and EXT4_HUGE_FILE_FL is NOT set in
++       ``inode.i_flags``, then the file consumes ``i_blocks_lo + (i_blocks_hi
++       << 32)`` 512-byte blocks on disk. If huge_file is set and
++       EXT4_HUGE_FILE_FL IS set in ``inode.i_flags``, then this file
++       consumes (``i_blocks_lo + i_blocks_hi`` << 32) filesystem blocks on
++       disk.
++   * - 0x20
++     - __le32
++     - i_flags
++     - Inode flags. See the table i_flags_ below.
++   * - 0x24
++     - 4 bytes
++     - i_osd1
++     - See the table i_osd1_ for more details.
++   * - 0x28
++     - 60 bytes
++     - i_block[EXT4_N_BLOCKS=15]
++     - Block map or extent tree. See the section “The Contents of inode.i_block”.
++   * - 0x64
++     - __le32
++     - i_generation
++     - File version (for NFS).
++   * - 0x68
++     - __le32
++     - i_file_acl_lo
++     - Lower 32-bits of extended attribute block. ACLs are of course one of
++       many possible extended attributes; I think the name of this field is a
++       result of the first use of extended attributes being for ACLs.
++   * - 0x6C
++     - __le32
++     - i_size_high / i_dir_acl
++     - Upper 32-bits of file/directory size. In ext2/3 this field was named
++       i_dir_acl, though it was usually set to zero and never used.
++   * - 0x70
++     - __le32
++     - i_obso_faddr
++     - (Obsolete) fragment address.
++   * - 0x74
++     - 12 bytes
++     - i_osd2
++     - See the table i_osd2_ for more details.
++   * - 0x80
++     - __le16
++     - i_extra_isize
++     - Size of this inode - 128. Alternately, the size of the extended inode
++       fields beyond the original ext2 inode, including this field.
++   * - 0x82
++     - __le16
++     - i_checksum_hi
++     - Upper 16-bits of the inode checksum.
++   * - 0x84
++     - __le32
++     - i_ctime_extra
++     - Extra change time bits. This provides sub-second precision. See Inode
++       Timestamps section.
++   * - 0x88
++     - __le32
++     - i_mtime_extra
++     - Extra modification time bits. This provides sub-second precision.
++   * - 0x8C
++     - __le32
++     - i_atime_extra
++     - Extra access time bits. This provides sub-second precision.
++   * - 0x90
++     - __le32
++     - i_crtime
++     - File creation time, in seconds since the epoch.
++   * - 0x94
++     - __le32
++     - i_crtime_extra
++     - Extra file creation time bits. This provides sub-second precision.
++   * - 0x98
++     - __le32
++     - i_version_hi
++     - Upper 32-bits for version number.
++   * - 0x9C
++     - __le32
++     - i_projid
++     - Project ID.
++
++.. _i_mode:
++
++The ``i_mode`` value is a combination of the following flags:
++
++.. list-table::
++   :widths: 16 64
++   :header-rows: 1
++
++   * - Value
++     - Description
++   * - 0x1
++     - S_IXOTH (Others may execute)
++   * - 0x2
++     - S_IWOTH (Others may write)
++   * - 0x4
++     - S_IROTH (Others may read)
++   * - 0x8
++     - S_IXGRP (Group members may execute)
++   * - 0x10
++     - S_IWGRP (Group members may write)
++   * - 0x20
++     - S_IRGRP (Group members may read)
++   * - 0x40
++     - S_IXUSR (Owner may execute)
++   * - 0x80
++     - S_IWUSR (Owner may write)
++   * - 0x100
++     - S_IRUSR (Owner may read)
++   * - 0x200
++     - S_ISVTX (Sticky bit)
++   * - 0x400
++     - S_ISGID (Set GID)
++   * - 0x800
++     - S_ISUID (Set UID)
++   * -
++     - These are mutually-exclusive file types:
++   * - 0x1000
++     - S_IFIFO (FIFO)
++   * - 0x2000
++     - S_IFCHR (Character device)
++   * - 0x4000
++     - S_IFDIR (Directory)
++   * - 0x6000
++     - S_IFBLK (Block device)
++   * - 0x8000
++     - S_IFREG (Regular file)
++   * - 0xA000
++     - S_IFLNK (Symbolic link)
++   * - 0xC000
++     - S_IFSOCK (Socket)
++
++.. _i_flags:
++
++The ``i_flags`` field is a combination of these values:
++
++.. list-table::
++   :widths: 16 64
++   :header-rows: 1
++
++   * - Value
++     - Description
++   * - 0x1
++     - This file requires secure deletion (EXT4_SECRM_FL). (not implemented)
++   * - 0x2
++     - This file should be preserved, should undeletion be desired
++       (EXT4_UNRM_FL). (not implemented)
++   * - 0x4
++     - File is compressed (EXT4_COMPR_FL). (not really implemented)
++   * - 0x8
++     - All writes to the file must be synchronous (EXT4_SYNC_FL).
++   * - 0x10
++     - File is immutable (EXT4_IMMUTABLE_FL).
++   * - 0x20
++     - File can only be appended (EXT4_APPEND_FL).
++   * - 0x40
++     - The dump(1) utility should not dump this file (EXT4_NODUMP_FL).
++   * - 0x80
++     - Do not update access time (EXT4_NOATIME_FL).
++   * - 0x100
++     - Dirty compressed file (EXT4_DIRTY_FL). (not used)
++   * - 0x200
++     - File has one or more compressed clusters (EXT4_COMPRBLK_FL). (not used)
++   * - 0x400
++     - Do not compress file (EXT4_NOCOMPR_FL). (not used)
++   * - 0x800
++     - Encrypted inode (EXT4_ENCRYPT_FL). This bit value previously was
++       EXT4_ECOMPR_FL (compression error), which was never used.
++   * - 0x1000
++     - Directory has hashed indexes (EXT4_INDEX_FL).
++   * - 0x2000
++     - AFS magic directory (EXT4_IMAGIC_FL).
++   * - 0x4000
++     - File data must always be written through the journal
++       (EXT4_JOURNAL_DATA_FL).
++   * - 0x8000
++     - File tail should not be merged (EXT4_NOTAIL_FL). (not used by ext4)
++   * - 0x10000
++     - All directory entry data should be written synchronously (see
++       ``dirsync``) (EXT4_DIRSYNC_FL).
++   * - 0x20000
++     - Top of directory hierarchy (EXT4_TOPDIR_FL).
++   * - 0x40000
++     - This is a huge file (EXT4_HUGE_FILE_FL).
++   * - 0x80000
++     - Inode uses extents (EXT4_EXTENTS_FL).
++   * - 0x100000
++     - Verity protected file (EXT4_VERITY_FL).
++   * - 0x200000
++     - Inode stores a large extended attribute value in its data blocks
++       (EXT4_EA_INODE_FL).
++   * - 0x400000
++     - This file has blocks allocated past EOF (EXT4_EOFBLOCKS_FL).
++       (deprecated)
++   * - 0x01000000
++     - Inode is a snapshot (``EXT4_SNAPFILE_FL``). (not in mainline)
++   * - 0x04000000
++     - Snapshot is being deleted (``EXT4_SNAPFILE_DELETED_FL``). (not in
++       mainline)
++   * - 0x08000000
++     - Snapshot shrink has completed (``EXT4_SNAPFILE_SHRUNK_FL``). (not in
++       mainline)
++   * - 0x10000000
++     - Inode has inline data (EXT4_INLINE_DATA_FL).
++   * - 0x20000000
++     - Create children with the same project ID (EXT4_PROJINHERIT_FL).
++   * - 0x80000000
++     - Reserved for ext4 library (EXT4_RESERVED_FL).
++   * -
++     - Aggregate flags:
++   * - 0x705BDFFF
++     - User-visible flags.
++   * - 0x604BC0FF
++     - User-modifiable flags. Note that while EXT4_JOURNAL_DATA_FL and
++       EXT4_EXTENTS_FL can be set with setattr, they are not in the kernel's
++       EXT4_FL_USER_MODIFIABLE mask, since it needs to handle the setting of
++       these flags in a special manner and they are masked out of the set of
++       flags that are saved directly to i_flags.
++
++.. _i_osd1:
++
++The ``osd1`` field has multiple meanings depending on the creator:
++
++Linux:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Size
++     - Name
++     - Description
++   * - 0x0
++     - __le32
++     - l_i_version
++     - Inode version. However, if the EA_INODE inode flag is set, this inode
++       stores an extended attribute value and this field contains the upper 32
++       bits of the attribute value's reference count.
++
++Hurd:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Size
++     - Name
++     - Description
++   * - 0x0
++     - __le32
++     - h_i_translator
++     - ??
++
++Masix:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Size
++     - Name
++     - Description
++   * - 0x0
++     - __le32
++     - m_i_reserved
++     - ??
++
++.. _i_osd2:
++
++The ``osd2`` field has multiple meanings depending on the filesystem creator:
++
++Linux:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Size
++     - Name
++     - Description
++   * - 0x0
++     - __le16
++     - l_i_blocks_high
++     - Upper 16-bits of the block count. Please see the note attached to
++       i_blocks_lo.
++   * - 0x2
++     - __le16
++     - l_i_file_acl_high
++     - Upper 16-bits of the extended attribute block (historically, the file
++       ACL location). See the Extended Attributes section below.
++   * - 0x4
++     - __le16
++     - l_i_uid_high
++     - Upper 16-bits of the Owner UID.
++   * - 0x6
++     - __le16
++     - l_i_gid_high
++     - Upper 16-bits of the GID.
++   * - 0x8
++     - __le16
++     - l_i_checksum_lo
++     - Lower 16-bits of the inode checksum.
++   * - 0xA
++     - __le16
++     - l_i_reserved
++     - Unused.
++
++Hurd:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Size
++     - Name
++     - Description
++   * - 0x0
++     - __le16
++     - h_i_reserved1
++     - ??
++   * - 0x2
++     - __u16
++     - h_i_mode_high
++     - Upper 16-bits of the file mode.
++   * - 0x4
++     - __le16
++     - h_i_uid_high
++     - Upper 16-bits of the Owner UID.
++   * - 0x6
++     - __le16
++     - h_i_gid_high
++     - Upper 16-bits of the GID.
++   * - 0x8
++     - __u32
++     - h_i_author
++     - Author code?
++
++Masix:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Size
++     - Name
++     - Description
++   * - 0x0
++     - __le16
++     - h_i_reserved1
++     - ??
++   * - 0x2
++     - __u16
++     - m_i_file_acl_high
++     - Upper 16-bits of the extended attribute block (historically, the file
++       ACL location).
++   * - 0x4
++     - __u32
++     - m_i_reserved2[2]
++     - ??
++
++Inode Size
++~~~~~~~~~~
++
++In ext2 and ext3, the inode structure size was fixed at 128 bytes
++(``EXT2_GOOD_OLD_INODE_SIZE``) and each inode had a disk record size of
++128 bytes. Starting with ext4, it is possible to allocate a larger
++on-disk inode at format time for all inodes in the filesystem to provide
++space beyond the end of the original ext2 inode. The on-disk inode
++record size is recorded in the superblock as ``s_inode_size``. The
++number of bytes actually used by struct ext4_inode beyond the original
++128-byte ext2 inode is recorded in the ``i_extra_isize`` field for each
++inode, which allows struct ext4_inode to grow for a new kernel without
++having to upgrade all of the on-disk inodes. Access to fields beyond
++EXT2_GOOD_OLD_INODE_SIZE should be verified to be within
++``i_extra_isize``. By default, ext4 inode records are 256 bytes, and (as
++of August 2019) the inode structure is 160 bytes
++(``i_extra_isize = 32``). The extra space between the end of the inode
++structure and the end of the inode record can be used to store extended
++attributes. Each inode record can be as large as the filesystem block
++size, though this is not terribly efficient.
++
++Finding an Inode
 +~~~~~~~~~~~~~~~~
 +
-+The underlying storage device must support atomic write operations.
-+Modern NVMe and SCSI devices often provide this capability.
-+The Linux kernel exposes this information through sysfs:
++Each block group contains ``sb->s_inodes_per_group`` inodes. Because
++inode 0 is defined not to exist, this formula can be used to find the
++block group that an inode lives in:
++``bg = (inode_num - 1) / sb->s_inodes_per_group``. The particular inode
++can be found within the block group's inode table at
++``index = (inode_num - 1) % sb->s_inodes_per_group``. To get the byte
++address within the inode table, use
++``offset = index * sb->s_inode_size``.
 +
-+* ``/sys/block/<device>/queue/atomic_write_unit_min`` - Minimum atomic write size
-+* ``/sys/block/<device>/queue/atomic_write_unit_max`` - Maximum atomic write size
++Inode Timestamps
++~~~~~~~~~~~~~~~~
 +
-+Nonzero values for these attributes indicate that the device supports
-+atomic writes.
++Four timestamps are recorded in the lower 128 bytes of the inode
++structure -- inode change time (ctime), access time (atime), data
++modification time (mtime), and deletion time (dtime). The four fields
++are 32-bit signed integers that represent seconds since the Unix epoch
++(1970-01-01 00:00:00 GMT), which means that the fields will overflow in
++January 2038. If the filesystem does not have orphan_file feature, inodes
++that are not linked from any directory but are still open (orphan inodes) have
++the dtime field overloaded for use with the orphan list. The superblock field
++``s_last_orphan`` points to the first inode in the orphan list; dtime is then
++the number of the next orphaned inode, or zero if there are no more orphans.
 +
-+See Also
-+~~~~~~~~
++If the inode structure size ``sb->s_inode_size`` is larger than 128
++bytes and the ``i_inode_extra`` field is large enough to encompass the
++respective ``i_[cma]time_extra`` field, the ctime, atime, and mtime
++inode fields are widened to 64 bits. Within this “extra” 32-bit field,
++the lower two bits are used to extend the 32-bit seconds field to be 34
++bit wide; the upper 30 bits are used to provide nanosecond timestamp
++accuracy. Therefore, timestamps should not overflow until May 2446.
++dtime was not widened. There is also a fifth timestamp to record inode
++creation time (crtime); this field is 64-bits wide and decoded in the
++same manner as 64-bit [cma]time. Neither crtime nor dtime are accessible
++through the regular stat() interface, though debugfs will report them.
 +
-+* Support for atomic block writes in 6.13:
-+  https://lwn.net/Articles/1009298/
-diff --git a/Documentation/filesystems/ext4/special_inodes.rst b/Documentation/filesystems/ext4/special_inodes.rst
++We use the 32-bit signed time value plus (2^32 * (extra epoch bits)).
++In other words:
++
++.. list-table::
++   :widths: 20 20 20 20 20
++   :header-rows: 1
++
++   * - Extra epoch bits
++     - MSB of 32-bit time
++     - Adjustment for signed 32-bit to 64-bit tv_sec
++     - Decoded 64-bit tv_sec
++     - valid time range
++   * - 0 0
++     - 1
++     - 0
++     - ``-0x80000000 - -0x00000001``
++     - 1901-12-13 to 1969-12-31
++   * - 0 0
++     - 0
++     - 0
++     - ``0x000000000 - 0x07fffffff``
++     - 1970-01-01 to 2038-01-19
++   * - 0 1
++     - 1
++     - 0x100000000
++     - ``0x080000000 - 0x0ffffffff``
++     - 2038-01-19 to 2106-02-07
++   * - 0 1
++     - 0
++     - 0x100000000
++     - ``0x100000000 - 0x17fffffff``
++     - 2106-02-07 to 2174-02-25
++   * - 1 0
++     - 1
++     - 0x200000000
++     - ``0x180000000 - 0x1ffffffff``
++     - 2174-02-25 to 2242-03-16
++   * - 1 0
++     - 0
++     - 0x200000000
++     - ``0x200000000 - 0x27fffffff``
++     - 2242-03-16 to 2310-04-04
++   * - 1 1
++     - 1
++     - 0x300000000
++     - ``0x280000000 - 0x2ffffffff``
++     - 2310-04-04 to 2378-04-22
++   * - 1 1
++     - 0
++     - 0x300000000
++     - ``0x300000000 - 0x37fffffff``
++     - 2378-04-22 to 2446-05-10
++
++This is a somewhat odd encoding since there are effectively seven times
++as many positive values as negative values. There have also been
++long-standing bugs decoding and encoding dates beyond 2038, which don't
++seem to be fixed as of kernel 3.12 and e2fsprogs 1.42.8. 64-bit kernels
++incorrectly use the extra epoch bits 1,1 for dates between 1901 and
++1970. At some point the kernel will be fixed and e2fsck will fix this
++situation, assuming that it is run before 2310.
++
++The Contents of inode.i_block
++------------------------------
++
++Depending on the type of file an inode describes, the 60 bytes of
++storage in ``inode.i_block`` can be used in different ways. In general,
++regular files and directories will use it for file block indexing
++information, and special files will use it for special purposes.
++
++Symbolic Links
++~~~~~~~~~~~~~~
++
++The target of a symbolic link will be stored in this field if the target
++string is less than 60 bytes long. Otherwise, either extents or block
++maps will be used to allocate data blocks to store the link target.
++
++Direct/Indirect Block Addressing
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++In ext2/3, file block numbers were mapped to logical block numbers by
++means of an (up to) three level 1-1 block map. To find the logical block
++that stores a particular file block, the code would navigate through
++this increasingly complicated structure. Notice that there is neither a
++magic number nor a checksum to provide any level of confidence that the
++block isn't full of garbage.
++
++.. ifconfig:: builder != 'latex'
++
++   .. include:: blockmap.rst
++
++.. ifconfig:: builder == 'latex'
++
++   [Table omitted because LaTeX doesn't support nested tables.]
++
++Note that with this block mapping scheme, it is necessary to fill out a
++lot of mapping data even for a large contiguous file! This inefficiency
++led to the creation of the extent mapping scheme, discussed below.
++
++Notice also that a file using this mapping scheme cannot be placed
++higher than 2^32 blocks.
++
++Extent Tree
++~~~~~~~~~~~
++
++In ext4, the file to logical block map has been replaced with an extent
++tree. Under the old scheme, allocating a contiguous run of 1,000 blocks
++requires an indirect block to map all 1,000 entries; with extents, the
++mapping is reduced to a single ``struct ext4_extent`` with
++``ee_len = 1000``. If flex_bg is enabled, it is possible to allocate
++very large files with a single extent, at a considerable reduction in
++metadata block use, and some improvement in disk efficiency. The inode
++must have the extents flag (0x80000) flag set for this feature to be in
++use.
++
++Extents are arranged as a tree. Each node of the tree begins with a
++``struct ext4_extent_header``. If the node is an interior node
++(``eh.eh_depth`` > 0), the header is followed by ``eh.eh_entries``
++instances of ``struct ext4_extent_idx``; each of these index entries
++points to a block containing more nodes in the extent tree. If the node
++is a leaf node (``eh.eh_depth == 0``), then the header is followed by
++``eh.eh_entries`` instances of ``struct ext4_extent``; these instances
++point to the file's data blocks. The root node of the extent tree is
++stored in ``inode.i_block``, which allows for the first four extents to
++be recorded without the use of extra metadata blocks.
++
++The extent tree header is recorded in ``struct ext4_extent_header``,
++which is 12 bytes long:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Size
++     - Name
++     - Description
++   * - 0x0
++     - __le16
++     - eh_magic
++     - Magic number, 0xF30A.
++   * - 0x2
++     - __le16
++     - eh_entries
++     - Number of valid entries following the header.
++   * - 0x4
++     - __le16
++     - eh_max
++     - Maximum number of entries that could follow the header.
++   * - 0x6
++     - __le16
++     - eh_depth
++     - Depth of this extent node in the extent tree. 0 = this extent node
++       points to data blocks; otherwise, this extent node points to other
++       extent nodes. The extent tree can be at most 5 levels deep: a logical
++       block number can be at most ``2^32``, and the smallest ``n`` that
++       satisfies ``4*(((blocksize - 12)/12)^n) >= 2^32`` is 5.
++   * - 0x8
++     - __le32
++     - eh_generation
++     - Generation of the tree. (Used by Lustre, but not standard ext4).
++
++Internal nodes of the extent tree, also known as index nodes, are
++recorded as ``struct ext4_extent_idx``, and are 12 bytes long:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Size
++     - Name
++     - Description
++   * - 0x0
++     - __le32
++     - ei_block
++     - This index node covers file blocks from 'block' onward.
++   * - 0x4
++     - __le32
++     - ei_leaf_lo
++     - Lower 32-bits of the block number of the extent node that is the next
++       level lower in the tree. The tree node pointed to can be either another
++       internal node or a leaf node, described below.
++   * - 0x8
++     - __le16
++     - ei_leaf_hi
++     - Upper 16-bits of the previous field.
++   * - 0xA
++     - __u16
++     - ei_unused
++     -
++
++Leaf nodes of the extent tree are recorded as ``struct ext4_extent``,
++and are also 12 bytes long:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Size
++     - Name
++     - Description
++   * - 0x0
++     - __le32
++     - ee_block
++     - First file block number that this extent covers.
++   * - 0x4
++     - __le16
++     - ee_len
++     - Number of blocks covered by extent. If the value of this field is <=
++       32768, the extent is initialized. If the value of the field is > 32768,
++       the extent is uninitialized and the actual extent length is ``ee_len`` -
++       32768. Therefore, the maximum length of a initialized extent is 32768
++       blocks, and the maximum length of an uninitialized extent is 32767.
++   * - 0x6
++     - __le16
++     - ee_start_hi
++     - Upper 16-bits of the block number to which this extent points.
++   * - 0x8
++     - __le32
++     - ee_start_lo
++     - Lower 32-bits of the block number to which this extent points.
++
++Prior to the introduction of metadata checksums, the extent header +
++extent entries always left at least 4 bytes of unallocated space at the
++end of each extent tree data block (because (2^x % 12) >= 4). Therefore,
++the 32-bit checksum is inserted into this space. The 4 extents in the
++inode do not need checksumming, since the inode is already checksummed.
++The checksum is calculated against the FS UUID, the inode number, the
++inode generation, and the entire extent block leading up to (but not
++including) the checksum itself.
++
++``struct ext4_extent_tail`` is 4 bytes long:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Size
++     - Name
++     - Description
++   * - 0x0
++     - __le32
++     - eb_checksum
++     - Checksum of the extent block, crc32c(uuid+inum+igeneration+extentblock)
++
++Inline Data
++~~~~~~~~~~~
++
++If the inline data feature is enabled for the filesystem and the flag is
++set for the inode, it is possible that the first 60 bytes of the file
++data are stored here.
++
++Directory Entries
++-----------------
++
++In an ext4 filesystem, a directory is more or less a flat file that maps
++an arbitrary byte string (usually ASCII) to an inode number on the
++filesystem. There can be many directory entries across the filesystem
++that reference the same inode number--these are known as hard links, and
++that is why hard links cannot reference files on other filesystems. As
++such, directory entries are found by reading the data block(s)
++associated with a directory file for the particular directory entry that
++is desired.
++
++Linear (Classic) Directories
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++By default, each directory lists its entries in an “almost-linear”
++array. I write “almost” because it's not a linear array in the memory
++sense because directory entries are not split across filesystem blocks.
++Therefore, it is more accurate to say that a directory is a series of
++data blocks and that each block contains a linear array of directory
++entries. The end of each per-block array is signified by reaching the
++end of the block; the last entry in the block has a record length that
++takes it all the way to the end of the block. The end of the entire
++directory is of course signified by reaching the end of the file. Unused
++directory entries are signified by inode = 0. By default the filesystem
++uses ``struct ext4_dir_entry_2`` for directory entries unless the
++“filetype” feature flag is not set, in which case it uses
++``struct ext4_dir_entry``.
++
++The original directory entry format is ``struct ext4_dir_entry``, which
++is at most 263 bytes long, though on disk you'll need to reference
++``dirent.rec_len`` to know for sure.
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Size
++     - Name
++     - Description
++   * - 0x0
++     - __le32
++     - inode
++     - Number of the inode that this directory entry points to.
++   * - 0x4
++     - __le16
++     - rec_len
++     - Length of this directory entry. Must be a multiple of 4.
++   * - 0x6
++     - __le16
++     - name_len
++     - Length of the file name.
++   * - 0x8
++     - char
++     - name[EXT4_NAME_LEN]
++     - File name.
++
++Since file names cannot be longer than 255 bytes, the new directory
++entry format shortens the name_len field and uses the space for a file
++type flag, probably to avoid having to load every inode during directory
++tree traversal. This format is ``ext4_dir_entry_2``, which is at most
++263 bytes long, though on disk you'll need to reference
++``dirent.rec_len`` to know for sure.
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Size
++     - Name
++     - Description
++   * - 0x0
++     - __le32
++     - inode
++     - Number of the inode that this directory entry points to.
++   * - 0x4
++     - __le16
++     - rec_len
++     - Length of this directory entry.
++   * - 0x6
++     - __u8
++     - name_len
++     - Length of the file name.
++   * - 0x7
++     - __u8
++     - file_type
++     - File type code, see ftype_ table below.
++   * - 0x8
++     - char
++     - name[EXT4_NAME_LEN]
++     - File name.
++
++.. _ftype:
++
++The directory file type is one of the following values:
++
++.. list-table::
++   :widths: 16 64
++   :header-rows: 1
++
++   * - Value
++     - Description
++   * - 0x0
++     - Unknown.
++   * - 0x1
++     - Regular file.
++   * - 0x2
++     - Directory.
++   * - 0x3
++     - Character device file.
++   * - 0x4
++     - Block device file.
++   * - 0x5
++     - FIFO.
++   * - 0x6
++     - Socket.
++   * - 0x7
++     - Symbolic link.
++
++To support directories that are both encrypted and casefolded directories, we
++must also include hash information in the directory entry. We append
++``ext4_extended_dir_entry_2`` to ``ext4_dir_entry_2`` except for the entries
++for dot and dotdot, which are kept the same. The structure follows immediately
++after ``name`` and is included in the size listed by ``rec_len`` If a directory
++entry uses this extension, it may be up to 271 bytes.
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Size
++     - Name
++     - Description
++   * - 0x0
++     - __le32
++     - hash
++     - The hash of the directory name
++   * - 0x4
++     - __le32
++     - minor_hash
++     - The minor hash of the directory name
++
++
++In order to add checksums to these classic directory blocks, a phony
++``struct ext4_dir_entry`` is placed at the end of each leaf block to
++hold the checksum. The directory entry is 12 bytes long. The inode
++number and name_len fields are set to zero to fool old software into
++ignoring an apparently empty directory entry, and the checksum is stored
++in the place where the name normally goes. The structure is
++``struct ext4_dir_entry_tail``:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Size
++     - Name
++     - Description
++   * - 0x0
++     - __le32
++     - det_reserved_zero1
++     - Inode number, which must be zero.
++   * - 0x4
++     - __le16
++     - det_rec_len
++     - Length of this directory entry, which must be 12.
++   * - 0x6
++     - __u8
++     - det_reserved_zero2
++     - Length of the file name, which must be zero.
++   * - 0x7
++     - __u8
++     - det_reserved_ft
++     - File type, which must be 0xDE.
++   * - 0x8
++     - __le32
++     - det_checksum
++     - Directory leaf block checksum.
++
++The leaf directory block checksum is calculated against the FS UUID, the
++directory's inode number, the directory's inode generation number, and
++the entire directory entry block up to (but not including) the fake
++directory entry.
++
++Hash Tree Directories
++~~~~~~~~~~~~~~~~~~~~~
++
++A linear array of directory entries isn't great for performance, so a
++new feature was added to ext3 to provide a faster (but peculiar)
++balanced tree keyed off a hash of the directory entry name. If the
++EXT4_INDEX_FL (0x1000) flag is set in the inode, this directory uses a
++hashed btree (htree) to organize and find directory entries. For
++backwards read-only compatibility with ext2, this tree is actually
++hidden inside the directory file, masquerading as “empty” directory data
++blocks! It was stated previously that the end of the linear directory
++entry table was signified with an entry pointing to inode 0; this is
++(ab)used to fool the old linear-scan algorithm into thinking that the
++rest of the directory block is empty so that it moves on.
++
++The root of the tree always lives in the first data block of the
++directory. By ext2 custom, the '.' and '..' entries must appear at the
++beginning of this first block, so they are put here as two
++``struct ext4_dir_entry_2`` s and not stored in the tree. The rest of
++the root node contains metadata about the tree and finally a hash->block
++map to find nodes that are lower in the htree. If
++``dx_root.info.indirect_levels`` is non-zero then the htree has two
++levels; the data block pointed to by the root node's map is an interior
++node, which is indexed by a minor hash. Interior nodes in this tree
++contains a zeroed out ``struct ext4_dir_entry_2`` followed by a
++minor_hash->block map to find leafe nodes. Leaf nodes contain a linear
++array of all ``struct ext4_dir_entry_2``; all of these entries
++(presumably) hash to the same value. If there is an overflow, the
++entries simply overflow into the next leaf node, and the
++least-significant bit of the hash (in the interior node map) that gets
++us to this next leaf node is set.
++
++To traverse the directory as a htree, the code calculates the hash of
++the desired file name and uses it to find the corresponding block
++number. If the tree is flat, the block is a linear array of directory
++entries that can be searched; otherwise, the minor hash of the file name
++is computed and used against this second block to find the corresponding
++third block number. That third block number will be a linear array of
++directory entries.
++
++To traverse the directory as a linear array (such as the old code does),
++the code simply reads every data block in the directory. The blocks used
++for the htree will appear to have no entries (aside from '.' and '..')
++and so only the leaf nodes will appear to have any interesting content.
++
++The root of the htree is in ``struct dx_root``, which is the full length
++of a data block:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Type
++     - Name
++     - Description
++   * - 0x0
++     - __le32
++     - dot.inode
++     - inode number of this directory.
++   * - 0x4
++     - __le16
++     - dot.rec_len
++     - Length of this record, 12.
++   * - 0x6
++     - u8
++     - dot.name_len
++     - Length of the name, 1.
++   * - 0x7
++     - u8
++     - dot.file_type
++     - File type of this entry, 0x2 (directory) (if the feature flag is set).
++   * - 0x8
++     - char
++     - dot.name[4]
++     - “.\0\0\0”
++   * - 0xC
++     - __le32
++     - dotdot.inode
++     - inode number of parent directory.
++   * - 0x10
++     - __le16
++     - dotdot.rec_len
++     - block_size - 12. The record length is long enough to cover all htree
++       data.
++   * - 0x12
++     - u8
++     - dotdot.name_len
++     - Length of the name, 2.
++   * - 0x13
++     - u8
++     - dotdot.file_type
++     - File type of this entry, 0x2 (directory) (if the feature flag is set).
++   * - 0x14
++     - char
++     - dotdot_name[4]
++     - “..\0\0”
++   * - 0x18
++     - __le32
++     - struct dx_root_info.reserved_zero
++     - Zero.
++   * - 0x1C
++     - u8
++     - struct dx_root_info.hash_version
++     - Hash type, see dirhash_ table below.
++   * - 0x1D
++     - u8
++     - struct dx_root_info.info_length
++     - Length of the tree information, 0x8.
++   * - 0x1E
++     - u8
++     - struct dx_root_info.indirect_levels
++     - Depth of the htree. Cannot be larger than 3 if the INCOMPAT_LARGEDIR
++       feature is set; cannot be larger than 2 otherwise.
++   * - 0x1F
++     - u8
++     - struct dx_root_info.unused_flags
++     -
++   * - 0x20
++     - __le16
++     - limit
++     - Maximum number of dx_entries that can follow this header, plus 1 for
++       the header itself.
++   * - 0x22
++     - __le16
++     - count
++     - Actual number of dx_entries that follow this header, plus 1 for the
++       header itself.
++   * - 0x24
++     - __le32
++     - block
++     - The block number (within the directory file) that goes with hash=0.
++   * - 0x28
++     - struct dx_entry
++     - entries[0]
++     - As many 8-byte ``struct dx_entry`` as fits in the rest of the data block.
++
++.. _dirhash:
++
++The directory hash is one of the following values:
++
++.. list-table::
++   :widths: 16 64
++   :header-rows: 1
++
++   * - Value
++     - Description
++   * - 0x0
++     - Legacy.
++   * - 0x1
++     - Half MD4.
++   * - 0x2
++     - Tea.
++   * - 0x3
++     - Legacy, unsigned.
++   * - 0x4
++     - Half MD4, unsigned.
++   * - 0x5
++     - Tea, unsigned.
++   * - 0x6
++     - Siphash.
++
++Interior nodes of an htree are recorded as ``struct dx_node``, which is
++also the full length of a data block:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Type
++     - Name
++     - Description
++   * - 0x0
++     - __le32
++     - fake.inode
++     - Zero, to make it look like this entry is not in use.
++   * - 0x4
++     - __le16
++     - fake.rec_len
++     - The size of the block, in order to hide all of the dx_node data.
++   * - 0x6
++     - u8
++     - name_len
++     - Zero. There is no name for this “unused” directory entry.
++   * - 0x7
++     - u8
++     - file_type
++     - Zero. There is no file type for this “unused” directory entry.
++   * - 0x8
++     - __le16
++     - limit
++     - Maximum number of dx_entries that can follow this header, plus 1 for
++       the header itself.
++   * - 0xA
++     - __le16
++     - count
++     - Actual number of dx_entries that follow this header, plus 1 for the
++       header itself.
++   * - 0xE
++     - __le32
++     - block
++     - The block number (within the directory file) that goes with the lowest
++       hash value of this block. This value is stored in the parent block.
++   * - 0x12
++     - struct dx_entry
++     - entries[0]
++     - As many 8-byte ``struct dx_entry`` as fits in the rest of the data block.
++
++The hash maps that exist in both ``struct dx_root`` and
++``struct dx_node`` are recorded as ``struct dx_entry``, which is 8 bytes
++long:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Type
++     - Name
++     - Description
++   * - 0x0
++     - __le32
++     - hash
++     - Hash code.
++   * - 0x4
++     - __le32
++     - block
++     - Block number (within the directory file, not filesystem blocks) of the
++       next node in the htree.
++
++(If you think this is all quite clever and peculiar, so does the
++author.)
++
++If metadata checksums are enabled, the last 8 bytes of the directory
++block (precisely the length of one dx_entry) are used to store a
++``struct dx_tail``, which contains the checksum. The ``limit`` and
++``count`` entries in the dx_root/dx_node structures are adjusted as
++necessary to fit the dx_tail into the block. If there is no space for
++the dx_tail, the user is notified to run e2fsck -D to rebuild the
++directory index (which will ensure that there's space for the checksum.
++The dx_tail structure is 8 bytes long and looks like this:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Type
++     - Name
++     - Description
++   * - 0x0
++     - u32
++     - dt_reserved
++     - Zero.
++   * - 0x4
++     - __le32
++     - dt_checksum
++     - Checksum of the htree directory block.
++
++The checksum is calculated against the FS UUID, the htree index header
++(dx_root or dx_node), all of the htree indices (dx_entry) that are in
++use, and the tail block (dx_tail).
++
++Extended Attributes
++-------------------
++
++Extended attributes (xattrs) are typically stored in a separate data
++block on the disk and referenced from inodes via ``inode.i_file_acl*``.
++The first use of extended attributes seems to have been for storing file
++ACLs and other security data (selinux). With the ``user_xattr`` mount
++option it is possible for users to store extended attributes so long as
++all attribute names begin with “user”; this restriction seems to have
++disappeared as of Linux 3.0.
++
++There are two places where extended attributes can be found. The first
++place is between the end of each inode entry and the beginning of the
++next inode entry. For example, if inode.i_extra_isize = 28 and
++sb.inode_size = 256, then there are 256 - (128 + 28) = 100 bytes
++available for in-inode extended attribute storage. The second place
++where extended attributes can be found is in the block pointed to by
++``inode.i_file_acl``. As of Linux 3.11, it is not possible for this
++block to contain a pointer to a second extended attribute block (or even
++the remaining blocks of a cluster). In theory it is possible for each
++attribute's value to be stored in a separate data block, though as of
++Linux 3.11 the code does not permit this.
++
++Keys are generally assumed to be ASCIIZ strings, whereas values can be
++strings or binary data.
++
++Extended attributes, when stored after the inode, have a header
++``ext4_xattr_ibody_header`` that is 4 bytes long:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Type
++     - Name
++     - Description
++   * - 0x0
++     - __le32
++     - h_magic
++     - Magic number for identification, 0xEA020000. This value is set by the
++       Linux driver, though e2fsprogs doesn't seem to check it(?)
++
++The beginning of an extended attribute block is in
++``struct ext4_xattr_header``, which is 32 bytes long:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Type
++     - Name
++     - Description
++   * - 0x0
++     - __le32
++     - h_magic
++     - Magic number for identification, 0xEA020000.
++   * - 0x4
++     - __le32
++     - h_refcount
++     - Reference count.
++   * - 0x8
++     - __le32
++     - h_blocks
++     - Number of disk blocks used.
++   * - 0xC
++     - __le32
++     - h_hash
++     - Hash value of all attributes.
++   * - 0x10
++     - __le32
++     - h_checksum
++     - Checksum of the extended attribute block.
++   * - 0x14
++     - __u32
++     - h_reserved[3]
++     - Zero.
++
++The checksum is calculated against the FS UUID, the 64-bit block number
++of the extended attribute block, and the entire block (header +
++entries).
++
++Following the ``struct ext4_xattr_header`` or
++``struct ext4_xattr_ibody_header`` is an array of
++``struct ext4_xattr_entry``; each of these entries is at least 16 bytes
++long. When stored in an external block, the ``struct ext4_xattr_entry``
++entries must be stored in sorted order. The sort order is
++``e_name_index``, then ``e_name_len``, and finally ``e_name``.
++Attributes stored inside an inode do not need be stored in sorted order.
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Type
++     - Name
++     - Description
++   * - 0x0
++     - __u8
++     - e_name_len
++     - Length of name.
++   * - 0x1
++     - __u8
++     - e_name_index
++     - Attribute name index. There is a discussion of this below.
++   * - 0x2
++     - __le16
++     - e_value_offs
++     - Location of this attribute's value on the disk block where it is stored.
++       Multiple attributes can share the same value. For an inode attribute
++       this value is relative to the start of the first entry; for a block this
++       value is relative to the start of the block (i.e. the header).
++   * - 0x4
++     - __le32
++     - e_value_inum
++     - The inode where the value is stored. Zero indicates the value is in the
++       same block as this entry. This field is only used if the
++       INCOMPAT_EA_INODE feature is enabled.
++   * - 0x8
++     - __le32
++     - e_value_size
++     - Length of attribute value.
++   * - 0xC
++     - __le32
++     - e_hash
++     - Hash value of attribute name and attribute value. The kernel doesn't
++       update the hash for in-inode attributes, so for that case this value
++       must be zero, because e2fsck validates any non-zero hash regardless of
++       where the xattr lives.
++   * - 0x10
++     - char
++     - e_name[e_name_len]
++     - Attribute name. Does not include trailing NULL.
++
++Attribute values can follow the end of the entry table. There appears to
++be a requirement that they be aligned to 4-byte boundaries. The values
++are stored starting at the end of the block and grow towards the
++xattr_header/xattr_entry table. When the two collide, the overflow is
++put into a separate disk block. If the disk block fills up, the
++filesystem returns -ENOSPC.
++
++The first four fields of the ``ext4_xattr_entry`` are set to zero to
++mark the end of the key list.
++
++Attribute Name Indices
++~~~~~~~~~~~~~~~~~~~~~~
++
++Logically speaking, extended attributes are a series of key=value pairs.
++The keys are assumed to be NULL-terminated strings. To reduce the amount
++of on-disk space that the keys consume, the beginning of the key string
++is matched against the attribute name index. If a match is found, the
++attribute name index field is set, and matching string is removed from
++the key name. Here is a map of name index values to key prefixes:
++
++.. list-table::
++   :widths: 16 64
++   :header-rows: 1
++
++   * - Name Index
++     - Key Prefix
++   * - 0
++     - (no prefix)
++   * - 1
++     - “user.”
++   * - 2
++     - “system.posix_acl_access”
++   * - 3
++     - “system.posix_acl_default”
++   * - 4
++     - “trusted.”
++   * - 6
++     - “security.”
++   * - 7
++     - “system.” (inline_data only?)
++   * - 8
++     - “system.richacl” (SuSE kernels only?)
++
++For example, if the attribute key is “user.fubar”, the attribute name
++index is set to 1 and the “fubar” name is recorded on disk.
++
++POSIX ACLs
++~~~~~~~~~~
++
++POSIX ACLs are stored in a reduced version of the Linux kernel (and
++libacl's) internal ACL format. The key difference is that the version
++number is different (1) and the ``e_id`` field is only stored for named
++user and group ACLs.
+diff --git a/Documentation/filesystems/ext4/ifork.rst b/Documentation/filesystems/ext4/ifork.rst
 deleted file mode 100644
-index fc0636901fa0e1..00000000000000
---- a/Documentation/filesystems/ext4/special_inodes.rst
+index dc31f505e6c835..00000000000000
+--- a/Documentation/filesystems/ext4/ifork.rst
 +++ /dev/null
-@@ -1,55 +0,0 @@
+@@ -1,194 +0,0 @@
 -.. SPDX-License-Identifier: GPL-2.0
 -
--Special inodes
----------------
+-The Contents of inode.i_block
+-------------------------------
 -
--ext4 reserves some inode for special features, as follows:
+-Depending on the type of file an inode describes, the 60 bytes of
+-storage in ``inode.i_block`` can be used in different ways. In general,
+-regular files and directories will use it for file block indexing
+-information, and special files will use it for special purposes.
+-
+-Symbolic Links
+-~~~~~~~~~~~~~~
+-
+-The target of a symbolic link will be stored in this field if the target
+-string is less than 60 bytes long. Otherwise, either extents or block
+-maps will be used to allocate data blocks to store the link target.
+-
+-Direct/Indirect Block Addressing
+-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-
+-In ext2/3, file block numbers were mapped to logical block numbers by
+-means of an (up to) three level 1-1 block map. To find the logical block
+-that stores a particular file block, the code would navigate through
+-this increasingly complicated structure. Notice that there is neither a
+-magic number nor a checksum to provide any level of confidence that the
+-block isn't full of garbage.
+-
+-.. ifconfig:: builder != 'latex'
+-
+-   .. include:: blockmap.rst
+-
+-.. ifconfig:: builder == 'latex'
+-
+-   [Table omitted because LaTeX doesn't support nested tables.]
+-
+-Note that with this block mapping scheme, it is necessary to fill out a
+-lot of mapping data even for a large contiguous file! This inefficiency
+-led to the creation of the extent mapping scheme, discussed below.
+-
+-Notice also that a file using this mapping scheme cannot be placed
+-higher than 2^32 blocks.
+-
+-Extent Tree
+-~~~~~~~~~~~
+-
+-In ext4, the file to logical block map has been replaced with an extent
+-tree. Under the old scheme, allocating a contiguous run of 1,000 blocks
+-requires an indirect block to map all 1,000 entries; with extents, the
+-mapping is reduced to a single ``struct ext4_extent`` with
+-``ee_len = 1000``. If flex_bg is enabled, it is possible to allocate
+-very large files with a single extent, at a considerable reduction in
+-metadata block use, and some improvement in disk efficiency. The inode
+-must have the extents flag (0x80000) flag set for this feature to be in
+-use.
+-
+-Extents are arranged as a tree. Each node of the tree begins with a
+-``struct ext4_extent_header``. If the node is an interior node
+-(``eh.eh_depth`` > 0), the header is followed by ``eh.eh_entries``
+-instances of ``struct ext4_extent_idx``; each of these index entries
+-points to a block containing more nodes in the extent tree. If the node
+-is a leaf node (``eh.eh_depth == 0``), then the header is followed by
+-``eh.eh_entries`` instances of ``struct ext4_extent``; these instances
+-point to the file's data blocks. The root node of the extent tree is
+-stored in ``inode.i_block``, which allows for the first four extents to
+-be recorded without the use of extra metadata blocks.
+-
+-The extent tree header is recorded in ``struct ext4_extent_header``,
+-which is 12 bytes long:
 -
 -.. list-table::
--   :widths: 6 70
+-   :widths: 8 8 24 40
 -   :header-rows: 1
 -
--   * - inode Number
--     - Purpose
--   * - 0
--     - Doesn't exist; there is no inode 0.
--   * - 1
--     - List of defective blocks.
--   * - 2
--     - Root directory.
--   * - 3
--     - User quota.
--   * - 4
--     - Group quota.
--   * - 5
--     - Boot loader.
--   * - 6
--     - Undelete directory.
--   * - 7
--     - Reserved group descriptors inode. (“resize inode”)
--   * - 8
--     - Journal inode.
--   * - 9
--     - The “exclude” inode, for snapshots(?)
--   * - 10
--     - Replica inode, used for some non-upstream feature?
--   * - 11
--     - Traditional first non-reserved inode. Usually this is the lost+found directory. See s_first_ino in the superblock.
--
--Note that there are also some inodes allocated from non-reserved inode numbers
--for other filesystem features which are not referenced from standard directory
--hierarchy. These are generally reference from the superblock. They are:
--
--.. list-table::
--   :widths: 20 50
--   :header-rows: 1
--
--   * - Superblock field
+-   * - Offset
+-     - Size
+-     - Name
 -     - Description
+-   * - 0x0
+-     - __le16
+-     - eh_magic
+-     - Magic number, 0xF30A.
+-   * - 0x2
+-     - __le16
+-     - eh_entries
+-     - Number of valid entries following the header.
+-   * - 0x4
+-     - __le16
+-     - eh_max
+-     - Maximum number of entries that could follow the header.
+-   * - 0x6
+-     - __le16
+-     - eh_depth
+-     - Depth of this extent node in the extent tree. 0 = this extent node
+-       points to data blocks; otherwise, this extent node points to other
+-       extent nodes. The extent tree can be at most 5 levels deep: a logical
+-       block number can be at most ``2^32``, and the smallest ``n`` that
+-       satisfies ``4*(((blocksize - 12)/12)^n) >= 2^32`` is 5.
+-   * - 0x8
+-     - __le32
+-     - eh_generation
+-     - Generation of the tree. (Used by Lustre, but not standard ext4).
 -
--   * - s_lpf_ino
--     - Inode number of lost+found directory.
--   * - s_prj_quota_inum
--     - Inode number of quota file tracking project quotas
--   * - s_orphan_file_inum
--     - Inode number of file tracking orphan inodes.
-diff --git a/Documentation/filesystems/ext4/verity.rst b/Documentation/filesystems/ext4/verity.rst
+-Internal nodes of the extent tree, also known as index nodes, are
+-recorded as ``struct ext4_extent_idx``, and are 12 bytes long:
+-
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
+-
+-   * - Offset
+-     - Size
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le32
+-     - ei_block
+-     - This index node covers file blocks from 'block' onward.
+-   * - 0x4
+-     - __le32
+-     - ei_leaf_lo
+-     - Lower 32-bits of the block number of the extent node that is the next
+-       level lower in the tree. The tree node pointed to can be either another
+-       internal node or a leaf node, described below.
+-   * - 0x8
+-     - __le16
+-     - ei_leaf_hi
+-     - Upper 16-bits of the previous field.
+-   * - 0xA
+-     - __u16
+-     - ei_unused
+-     -
+-
+-Leaf nodes of the extent tree are recorded as ``struct ext4_extent``,
+-and are also 12 bytes long:
+-
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
+-
+-   * - Offset
+-     - Size
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le32
+-     - ee_block
+-     - First file block number that this extent covers.
+-   * - 0x4
+-     - __le16
+-     - ee_len
+-     - Number of blocks covered by extent. If the value of this field is <=
+-       32768, the extent is initialized. If the value of the field is > 32768,
+-       the extent is uninitialized and the actual extent length is ``ee_len`` -
+-       32768. Therefore, the maximum length of a initialized extent is 32768
+-       blocks, and the maximum length of an uninitialized extent is 32767.
+-   * - 0x6
+-     - __le16
+-     - ee_start_hi
+-     - Upper 16-bits of the block number to which this extent points.
+-   * - 0x8
+-     - __le32
+-     - ee_start_lo
+-     - Lower 32-bits of the block number to which this extent points.
+-
+-Prior to the introduction of metadata checksums, the extent header +
+-extent entries always left at least 4 bytes of unallocated space at the
+-end of each extent tree data block (because (2^x % 12) >= 4). Therefore,
+-the 32-bit checksum is inserted into this space. The 4 extents in the
+-inode do not need checksumming, since the inode is already checksummed.
+-The checksum is calculated against the FS UUID, the inode number, the
+-inode generation, and the entire extent block leading up to (but not
+-including) the checksum itself.
+-
+-``struct ext4_extent_tail`` is 4 bytes long:
+-
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
+-
+-   * - Offset
+-     - Size
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le32
+-     - eb_checksum
+-     - Checksum of the extent block, crc32c(uuid+inum+igeneration+extentblock)
+-
+-Inline Data
+-~~~~~~~~~~~
+-
+-If the inline data feature is enabled for the filesystem and the flag is
+-set for the inode, it is possible that the first 60 bytes of the file
+-data are stored here.
+diff --git a/Documentation/filesystems/ext4/inodes.rst b/Documentation/filesystems/ext4/inodes.rst
 deleted file mode 100644
-index e99ff3fd09f7e7..00000000000000
---- a/Documentation/filesystems/ext4/verity.rst
+index cfc6c16599312a..00000000000000
+--- a/Documentation/filesystems/ext4/inodes.rst
 +++ /dev/null
-@@ -1,44 +0,0 @@
+@@ -1,578 +0,0 @@
 -.. SPDX-License-Identifier: GPL-2.0
 -
--Verity files
--------------
+-Index Nodes
+------------
 -
--ext4 supports fs-verity, which is a filesystem feature that provides
--Merkle tree based hashing for individual readonly files.  Most of
--fs-verity is common to all filesystems that support it; see
--:ref:`Documentation/filesystems/fsverity.rst <fsverity>` for the
--fs-verity documentation.  However, the on-disk layout of the verity
--metadata is filesystem-specific.  On ext4, the verity metadata is
--stored after the end of the file data itself, in the following format:
+-In a regular UNIX filesystem, the inode stores all the metadata
+-pertaining to the file (time stamps, block maps, extended attributes,
+-etc), not the directory entry. To find the information associated with a
+-file, one must traverse the directory files to find the directory entry
+-associated with a file, then load the inode to find the metadata for
+-that file. ext4 appears to cheat (for performance reasons) a little bit
+-by storing a copy of the file type (normally stored in the inode) in the
+-directory entry. (Compare all this to FAT, which stores all the file
+-information directly in the directory entry, but does not support hard
+-links and is in general more seek-happy than ext4 due to its simpler
+-block allocator and extensive use of linked lists.)
 -
--- Zero-padding to the next 65536-byte boundary.  This padding need not
--  actually be allocated on-disk, i.e. it may be a hole.
+-The inode table is a linear array of ``struct ext4_inode``. The table is
+-sized to have enough blocks to store at least
+-``sb.s_inode_size * sb.s_inodes_per_group`` bytes. The number of the
+-block group containing an inode can be calculated as
+-``(inode_number - 1) / sb.s_inodes_per_group``, and the offset into the
+-group's table is ``(inode_number - 1) % sb.s_inodes_per_group``. There
+-is no inode 0.
 -
--- The Merkle tree, as documented in
--  :ref:`Documentation/filesystems/fsverity.rst
--  <fsverity_merkle_tree>`, with the tree levels stored in order from
--  root to leaf, and the tree blocks within each level stored in their
--  natural order.
+-The inode checksum is calculated against the FS UUID, the inode number,
+-and the inode structure itself.
 -
--- Zero-padding to the next filesystem block boundary.
+-The inode table entry is laid out in ``struct ext4_inode``.
 -
--- The verity descriptor, as documented in
--  :ref:`Documentation/filesystems/fsverity.rst <fsverity_descriptor>`,
--  with optionally appended signature blob.
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
+-   :class: longtable
 -
--- Zero-padding to the next offset that is 4 bytes before a filesystem
--  block boundary.
+-   * - Offset
+-     - Size
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le16
+-     - i_mode
+-     - File mode. See the table i_mode_ below.
+-   * - 0x2
+-     - __le16
+-     - i_uid
+-     - Lower 16-bits of Owner UID.
+-   * - 0x4
+-     - __le32
+-     - i_size_lo
+-     - Lower 32-bits of size in bytes.
+-   * - 0x8
+-     - __le32
+-     - i_atime
+-     - Last access time, in seconds since the epoch. However, if the EA_INODE
+-       inode flag is set, this inode stores an extended attribute value and
+-       this field contains the checksum of the value.
+-   * - 0xC
+-     - __le32
+-     - i_ctime
+-     - Last inode change time, in seconds since the epoch. However, if the
+-       EA_INODE inode flag is set, this inode stores an extended attribute
+-       value and this field contains the lower 32 bits of the attribute value's
+-       reference count.
+-   * - 0x10
+-     - __le32
+-     - i_mtime
+-     - Last data modification time, in seconds since the epoch. However, if the
+-       EA_INODE inode flag is set, this inode stores an extended attribute
+-       value and this field contains the number of the inode that owns the
+-       extended attribute.
+-   * - 0x14
+-     - __le32
+-     - i_dtime
+-     - Deletion Time, in seconds since the epoch.
+-   * - 0x18
+-     - __le16
+-     - i_gid
+-     - Lower 16-bits of GID.
+-   * - 0x1A
+-     - __le16
+-     - i_links_count
+-     - Hard link count. Normally, ext4 does not permit an inode to have more
+-       than 65,000 hard links. This applies to files as well as directories,
+-       which means that there cannot be more than 64,998 subdirectories in a
+-       directory (each subdirectory's '..' entry counts as a hard link, as does
+-       the '.' entry in the directory itself). With the DIR_NLINK feature
+-       enabled, ext4 supports more than 64,998 subdirectories by setting this
+-       field to 1 to indicate that the number of hard links is not known.
+-   * - 0x1C
+-     - __le32
+-     - i_blocks_lo
+-     - Lower 32-bits of “block” count. If the huge_file feature flag is not
+-       set on the filesystem, the file consumes ``i_blocks_lo`` 512-byte blocks
+-       on disk. If huge_file is set and EXT4_HUGE_FILE_FL is NOT set in
+-       ``inode.i_flags``, then the file consumes ``i_blocks_lo + (i_blocks_hi
+-       << 32)`` 512-byte blocks on disk. If huge_file is set and
+-       EXT4_HUGE_FILE_FL IS set in ``inode.i_flags``, then this file
+-       consumes (``i_blocks_lo + i_blocks_hi`` << 32) filesystem blocks on
+-       disk.
+-   * - 0x20
+-     - __le32
+-     - i_flags
+-     - Inode flags. See the table i_flags_ below.
+-   * - 0x24
+-     - 4 bytes
+-     - i_osd1
+-     - See the table i_osd1_ for more details.
+-   * - 0x28
+-     - 60 bytes
+-     - i_block[EXT4_N_BLOCKS=15]
+-     - Block map or extent tree. See the section “The Contents of inode.i_block”.
+-   * - 0x64
+-     - __le32
+-     - i_generation
+-     - File version (for NFS).
+-   * - 0x68
+-     - __le32
+-     - i_file_acl_lo
+-     - Lower 32-bits of extended attribute block. ACLs are of course one of
+-       many possible extended attributes; I think the name of this field is a
+-       result of the first use of extended attributes being for ACLs.
+-   * - 0x6C
+-     - __le32
+-     - i_size_high / i_dir_acl
+-     - Upper 32-bits of file/directory size. In ext2/3 this field was named
+-       i_dir_acl, though it was usually set to zero and never used.
+-   * - 0x70
+-     - __le32
+-     - i_obso_faddr
+-     - (Obsolete) fragment address.
+-   * - 0x74
+-     - 12 bytes
+-     - i_osd2
+-     - See the table i_osd2_ for more details.
+-   * - 0x80
+-     - __le16
+-     - i_extra_isize
+-     - Size of this inode - 128. Alternately, the size of the extended inode
+-       fields beyond the original ext2 inode, including this field.
+-   * - 0x82
+-     - __le16
+-     - i_checksum_hi
+-     - Upper 16-bits of the inode checksum.
+-   * - 0x84
+-     - __le32
+-     - i_ctime_extra
+-     - Extra change time bits. This provides sub-second precision. See Inode
+-       Timestamps section.
+-   * - 0x88
+-     - __le32
+-     - i_mtime_extra
+-     - Extra modification time bits. This provides sub-second precision.
+-   * - 0x8C
+-     - __le32
+-     - i_atime_extra
+-     - Extra access time bits. This provides sub-second precision.
+-   * - 0x90
+-     - __le32
+-     - i_crtime
+-     - File creation time, in seconds since the epoch.
+-   * - 0x94
+-     - __le32
+-     - i_crtime_extra
+-     - Extra file creation time bits. This provides sub-second precision.
+-   * - 0x98
+-     - __le32
+-     - i_version_hi
+-     - Upper 32-bits for version number.
+-   * - 0x9C
+-     - __le32
+-     - i_projid
+-     - Project ID.
 -
--- The size of the verity descriptor in bytes, as a 4-byte little
--  endian integer.
+-.. _i_mode:
 -
--Verity inodes have EXT4_VERITY_FL set, and they must use extents, i.e.
--EXT4_EXTENTS_FL must be set and EXT4_INLINE_DATA_FL must be clear.
--They can have EXT4_ENCRYPT_FL set, in which case the verity metadata
--is encrypted as well as the data itself.
+-The ``i_mode`` value is a combination of the following flags:
 -
--Verity files cannot have blocks allocated past the end of the verity
--metadata.
+-.. list-table::
+-   :widths: 16 64
+-   :header-rows: 1
 -
--Verity and DAX are not compatible and attempts to set both of these flags
--on a file will fail.
+-   * - Value
+-     - Description
+-   * - 0x1
+-     - S_IXOTH (Others may execute)
+-   * - 0x2
+-     - S_IWOTH (Others may write)
+-   * - 0x4
+-     - S_IROTH (Others may read)
+-   * - 0x8
+-     - S_IXGRP (Group members may execute)
+-   * - 0x10
+-     - S_IWGRP (Group members may write)
+-   * - 0x20
+-     - S_IRGRP (Group members may read)
+-   * - 0x40
+-     - S_IXUSR (Owner may execute)
+-   * - 0x80
+-     - S_IWUSR (Owner may write)
+-   * - 0x100
+-     - S_IRUSR (Owner may read)
+-   * - 0x200
+-     - S_ISVTX (Sticky bit)
+-   * - 0x400
+-     - S_ISGID (Set GID)
+-   * - 0x800
+-     - S_ISUID (Set UID)
+-   * -
+-     - These are mutually-exclusive file types:
+-   * - 0x1000
+-     - S_IFIFO (FIFO)
+-   * - 0x2000
+-     - S_IFCHR (Character device)
+-   * - 0x4000
+-     - S_IFDIR (Directory)
+-   * - 0x6000
+-     - S_IFBLK (Block device)
+-   * - 0x8000
+-     - S_IFREG (Regular file)
+-   * - 0xA000
+-     - S_IFLNK (Symbolic link)
+-   * - 0xC000
+-     - S_IFSOCK (Socket)
+-
+-.. _i_flags:
+-
+-The ``i_flags`` field is a combination of these values:
+-
+-.. list-table::
+-   :widths: 16 64
+-   :header-rows: 1
+-
+-   * - Value
+-     - Description
+-   * - 0x1
+-     - This file requires secure deletion (EXT4_SECRM_FL). (not implemented)
+-   * - 0x2
+-     - This file should be preserved, should undeletion be desired
+-       (EXT4_UNRM_FL). (not implemented)
+-   * - 0x4
+-     - File is compressed (EXT4_COMPR_FL). (not really implemented)
+-   * - 0x8
+-     - All writes to the file must be synchronous (EXT4_SYNC_FL).
+-   * - 0x10
+-     - File is immutable (EXT4_IMMUTABLE_FL).
+-   * - 0x20
+-     - File can only be appended (EXT4_APPEND_FL).
+-   * - 0x40
+-     - The dump(1) utility should not dump this file (EXT4_NODUMP_FL).
+-   * - 0x80
+-     - Do not update access time (EXT4_NOATIME_FL).
+-   * - 0x100
+-     - Dirty compressed file (EXT4_DIRTY_FL). (not used)
+-   * - 0x200
+-     - File has one or more compressed clusters (EXT4_COMPRBLK_FL). (not used)
+-   * - 0x400
+-     - Do not compress file (EXT4_NOCOMPR_FL). (not used)
+-   * - 0x800
+-     - Encrypted inode (EXT4_ENCRYPT_FL). This bit value previously was
+-       EXT4_ECOMPR_FL (compression error), which was never used.
+-   * - 0x1000
+-     - Directory has hashed indexes (EXT4_INDEX_FL).
+-   * - 0x2000
+-     - AFS magic directory (EXT4_IMAGIC_FL).
+-   * - 0x4000
+-     - File data must always be written through the journal
+-       (EXT4_JOURNAL_DATA_FL).
+-   * - 0x8000
+-     - File tail should not be merged (EXT4_NOTAIL_FL). (not used by ext4)
+-   * - 0x10000
+-     - All directory entry data should be written synchronously (see
+-       ``dirsync``) (EXT4_DIRSYNC_FL).
+-   * - 0x20000
+-     - Top of directory hierarchy (EXT4_TOPDIR_FL).
+-   * - 0x40000
+-     - This is a huge file (EXT4_HUGE_FILE_FL).
+-   * - 0x80000
+-     - Inode uses extents (EXT4_EXTENTS_FL).
+-   * - 0x100000
+-     - Verity protected file (EXT4_VERITY_FL).
+-   * - 0x200000
+-     - Inode stores a large extended attribute value in its data blocks
+-       (EXT4_EA_INODE_FL).
+-   * - 0x400000
+-     - This file has blocks allocated past EOF (EXT4_EOFBLOCKS_FL).
+-       (deprecated)
+-   * - 0x01000000
+-     - Inode is a snapshot (``EXT4_SNAPFILE_FL``). (not in mainline)
+-   * - 0x04000000
+-     - Snapshot is being deleted (``EXT4_SNAPFILE_DELETED_FL``). (not in
+-       mainline)
+-   * - 0x08000000
+-     - Snapshot shrink has completed (``EXT4_SNAPFILE_SHRUNK_FL``). (not in
+-       mainline)
+-   * - 0x10000000
+-     - Inode has inline data (EXT4_INLINE_DATA_FL).
+-   * - 0x20000000
+-     - Create children with the same project ID (EXT4_PROJINHERIT_FL).
+-   * - 0x80000000
+-     - Reserved for ext4 library (EXT4_RESERVED_FL).
+-   * -
+-     - Aggregate flags:
+-   * - 0x705BDFFF
+-     - User-visible flags.
+-   * - 0x604BC0FF
+-     - User-modifiable flags. Note that while EXT4_JOURNAL_DATA_FL and
+-       EXT4_EXTENTS_FL can be set with setattr, they are not in the kernel's
+-       EXT4_FL_USER_MODIFIABLE mask, since it needs to handle the setting of
+-       these flags in a special manner and they are masked out of the set of
+-       flags that are saved directly to i_flags.
+-
+-.. _i_osd1:
+-
+-The ``osd1`` field has multiple meanings depending on the creator:
+-
+-Linux:
+-
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
+-
+-   * - Offset
+-     - Size
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le32
+-     - l_i_version
+-     - Inode version. However, if the EA_INODE inode flag is set, this inode
+-       stores an extended attribute value and this field contains the upper 32
+-       bits of the attribute value's reference count.
+-
+-Hurd:
+-
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
+-
+-   * - Offset
+-     - Size
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le32
+-     - h_i_translator
+-     - ??
+-
+-Masix:
+-
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
+-
+-   * - Offset
+-     - Size
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le32
+-     - m_i_reserved
+-     - ??
+-
+-.. _i_osd2:
+-
+-The ``osd2`` field has multiple meanings depending on the filesystem creator:
+-
+-Linux:
+-
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
+-
+-   * - Offset
+-     - Size
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le16
+-     - l_i_blocks_high
+-     - Upper 16-bits of the block count. Please see the note attached to
+-       i_blocks_lo.
+-   * - 0x2
+-     - __le16
+-     - l_i_file_acl_high
+-     - Upper 16-bits of the extended attribute block (historically, the file
+-       ACL location). See the Extended Attributes section below.
+-   * - 0x4
+-     - __le16
+-     - l_i_uid_high
+-     - Upper 16-bits of the Owner UID.
+-   * - 0x6
+-     - __le16
+-     - l_i_gid_high
+-     - Upper 16-bits of the GID.
+-   * - 0x8
+-     - __le16
+-     - l_i_checksum_lo
+-     - Lower 16-bits of the inode checksum.
+-   * - 0xA
+-     - __le16
+-     - l_i_reserved
+-     - Unused.
+-
+-Hurd:
+-
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
+-
+-   * - Offset
+-     - Size
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le16
+-     - h_i_reserved1
+-     - ??
+-   * - 0x2
+-     - __u16
+-     - h_i_mode_high
+-     - Upper 16-bits of the file mode.
+-   * - 0x4
+-     - __le16
+-     - h_i_uid_high
+-     - Upper 16-bits of the Owner UID.
+-   * - 0x6
+-     - __le16
+-     - h_i_gid_high
+-     - Upper 16-bits of the GID.
+-   * - 0x8
+-     - __u32
+-     - h_i_author
+-     - Author code?
+-
+-Masix:
+-
+-.. list-table::
+-   :widths: 8 8 24 40
+-   :header-rows: 1
+-
+-   * - Offset
+-     - Size
+-     - Name
+-     - Description
+-   * - 0x0
+-     - __le16
+-     - h_i_reserved1
+-     - ??
+-   * - 0x2
+-     - __u16
+-     - m_i_file_acl_high
+-     - Upper 16-bits of the extended attribute block (historically, the file
+-       ACL location).
+-   * - 0x4
+-     - __u32
+-     - m_i_reserved2[2]
+-     - ??
+-
+-Inode Size
+-~~~~~~~~~~
+-
+-In ext2 and ext3, the inode structure size was fixed at 128 bytes
+-(``EXT2_GOOD_OLD_INODE_SIZE``) and each inode had a disk record size of
+-128 bytes. Starting with ext4, it is possible to allocate a larger
+-on-disk inode at format time for all inodes in the filesystem to provide
+-space beyond the end of the original ext2 inode. The on-disk inode
+-record size is recorded in the superblock as ``s_inode_size``. The
+-number of bytes actually used by struct ext4_inode beyond the original
+-128-byte ext2 inode is recorded in the ``i_extra_isize`` field for each
+-inode, which allows struct ext4_inode to grow for a new kernel without
+-having to upgrade all of the on-disk inodes. Access to fields beyond
+-EXT2_GOOD_OLD_INODE_SIZE should be verified to be within
+-``i_extra_isize``. By default, ext4 inode records are 256 bytes, and (as
+-of August 2019) the inode structure is 160 bytes
+-(``i_extra_isize = 32``). The extra space between the end of the inode
+-structure and the end of the inode record can be used to store extended
+-attributes. Each inode record can be as large as the filesystem block
+-size, though this is not terribly efficient.
+-
+-Finding an Inode
+-~~~~~~~~~~~~~~~~
+-
+-Each block group contains ``sb->s_inodes_per_group`` inodes. Because
+-inode 0 is defined not to exist, this formula can be used to find the
+-block group that an inode lives in:
+-``bg = (inode_num - 1) / sb->s_inodes_per_group``. The particular inode
+-can be found within the block group's inode table at
+-``index = (inode_num - 1) % sb->s_inodes_per_group``. To get the byte
+-address within the inode table, use
+-``offset = index * sb->s_inode_size``.
+-
+-Inode Timestamps
+-~~~~~~~~~~~~~~~~
+-
+-Four timestamps are recorded in the lower 128 bytes of the inode
+-structure -- inode change time (ctime), access time (atime), data
+-modification time (mtime), and deletion time (dtime). The four fields
+-are 32-bit signed integers that represent seconds since the Unix epoch
+-(1970-01-01 00:00:00 GMT), which means that the fields will overflow in
+-January 2038. If the filesystem does not have orphan_file feature, inodes
+-that are not linked from any directory but are still open (orphan inodes) have
+-the dtime field overloaded for use with the orphan list. The superblock field
+-``s_last_orphan`` points to the first inode in the orphan list; dtime is then
+-the number of the next orphaned inode, or zero if there are no more orphans.
+-
+-If the inode structure size ``sb->s_inode_size`` is larger than 128
+-bytes and the ``i_inode_extra`` field is large enough to encompass the
+-respective ``i_[cma]time_extra`` field, the ctime, atime, and mtime
+-inode fields are widened to 64 bits. Within this “extra” 32-bit field,
+-the lower two bits are used to extend the 32-bit seconds field to be 34
+-bit wide; the upper 30 bits are used to provide nanosecond timestamp
+-accuracy. Therefore, timestamps should not overflow until May 2446.
+-dtime was not widened. There is also a fifth timestamp to record inode
+-creation time (crtime); this field is 64-bits wide and decoded in the
+-same manner as 64-bit [cma]time. Neither crtime nor dtime are accessible
+-through the regular stat() interface, though debugfs will report them.
+-
+-We use the 32-bit signed time value plus (2^32 * (extra epoch bits)).
+-In other words:
+-
+-.. list-table::
+-   :widths: 20 20 20 20 20
+-   :header-rows: 1
+-
+-   * - Extra epoch bits
+-     - MSB of 32-bit time
+-     - Adjustment for signed 32-bit to 64-bit tv_sec
+-     - Decoded 64-bit tv_sec
+-     - valid time range
+-   * - 0 0
+-     - 1
+-     - 0
+-     - ``-0x80000000 - -0x00000001``
+-     - 1901-12-13 to 1969-12-31
+-   * - 0 0
+-     - 0
+-     - 0
+-     - ``0x000000000 - 0x07fffffff``
+-     - 1970-01-01 to 2038-01-19
+-   * - 0 1
+-     - 1
+-     - 0x100000000
+-     - ``0x080000000 - 0x0ffffffff``
+-     - 2038-01-19 to 2106-02-07
+-   * - 0 1
+-     - 0
+-     - 0x100000000
+-     - ``0x100000000 - 0x17fffffff``
+-     - 2106-02-07 to 2174-02-25
+-   * - 1 0
+-     - 1
+-     - 0x200000000
+-     - ``0x180000000 - 0x1ffffffff``
+-     - 2174-02-25 to 2242-03-16
+-   * - 1 0
+-     - 0
+-     - 0x200000000
+-     - ``0x200000000 - 0x27fffffff``
+-     - 2242-03-16 to 2310-04-04
+-   * - 1 1
+-     - 1
+-     - 0x300000000
+-     - ``0x280000000 - 0x2ffffffff``
+-     - 2310-04-04 to 2378-04-22
+-   * - 1 1
+-     - 0
+-     - 0x300000000
+-     - ``0x300000000 - 0x37fffffff``
+-     - 2378-04-22 to 2446-05-10
+-
+-This is a somewhat odd encoding since there are effectively seven times
+-as many positive values as negative values. There have also been
+-long-standing bugs decoding and encoding dates beyond 2038, which don't
+-seem to be fixed as of kernel 3.12 and e2fsprogs 1.42.8. 64-bit kernels
+-incorrectly use the extra epoch bits 1,1 for dates between 1901 and
+-1970. At some point the kernel will be fixed and e2fsck will fix this
+-situation, assuming that it is run before 2310.
 -- 
 An old man doll... just what I always wanted! - Clara
 
