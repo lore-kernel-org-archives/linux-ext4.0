@@ -1,133 +1,169 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 657E224EA8F;
-	Thu, 19 Jun 2025 11:31:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D4F33223710
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Jun 2025 15:08:29 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1750332721; cv=none; b=RE8WK3GRByqy/beRJtsbffgf/nPk8AdECtjbsExFvX0AAvVyhn8L3MV2oCDhNBDAMDikSh70f0VPqL7AwRrVF2SomspNy1nvBL+qwz+q1q86lzNISGe8G04+81hYo19hJCEsKjKHPCDF6Y8UPO6LUlMNWsTiecvIU16lEBi7sYw=
+	t=1750345711; cv=none; b=dsiA/4cKfMyuNAnjT9EVbZb5xzT/ajoad+ajsMayDcpQm27n5G4alJPhwerFn9MOoaK8UFJMyC5wrXVP8mtYnE6M27cd4dwx454PRUwSmqe1Soxfy1MOrUaY1BsmQoNQQSZJcVKqF7JY7OmErWt/wy14tv7UE6kizoMiPnhee58=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1750332721; c=relaxed/simple;
-	bh=83GJJst8jwxirdSyTar+kvybgHU1wa5oBuVzR0C3Xck=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=PTdLtddG66ntTESc5nRKdOsdYhSY2q1L4oaiLaWQDcLiqEsQgxON4hxxVX6agKfRHfRyz6rYKppGcDR/V7K/Ex2PT6l79i8JqmPorPPwq0F0kxubTXDcF8zQSlOziO1sooQzA7osi6LR9b08qGq4sC2uwZ9yud4BXcV1IuLKBx4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4bNJNV2DlZzKHNDY;
-	Thu, 19 Jun 2025 19:31:54 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id A52AD1A1A2C;
-	Thu, 19 Jun 2025 19:31:52 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.112.188])
-	by APP4 (Coremail) with SMTP id gCh0CgCH618Y9VNoihn_Pw--.51230S12;
-	Thu, 19 Jun 2025 19:31:52 +0800 (CST)
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-To: linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-block@vger.kernel.org,
-	dm-devel@lists.linux.dev,
-	linux-nvme@lists.infradead.org,
-	linux-scsi@vger.kernel.org
-Cc: linux-xfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	hch@lst.de,
-	tytso@mit.edu,
-	djwong@kernel.org,
-	john.g.garry@oracle.com,
-	bmarzins@redhat.com,
-	chaitanyak@nvidia.com,
-	shinichiro.kawasaki@wdc.com,
-	brauner@kernel.org,
-	martin.petersen@oracle.com,
-	yi.zhang@huawei.com,
-	yi.zhang@huaweicloud.com,
-	chengzhihao1@huawei.com,
-	yukuai3@huawei.com,
+	s=arc-20240116; t=1750345711; c=relaxed/simple;
+	bh=2hA+4Ww9WHgKBd3PAkWYifAGMPeE03To9URJw6OxWh4=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=XaDwqH3Yt65hOrYV9rTtP4EG852PDpJUysjcNw/YhGzeaPla1pX/w5NGhbGTK6cmOdQJEu+Spt0aOjMgV3CempAO/1S/awqszbTdhwt2fFlY/hvlHXghGCpEaPrDMM5JbAfJFnKfwabCDJqSizsc3PkXm+PIbblCqn2nfKDrE5Q=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Ou8aj/7h; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=QwBgeA2p; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Ou8aj/7h; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=QwBgeA2p; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Ou8aj/7h";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="QwBgeA2p";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Ou8aj/7h";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="QwBgeA2p"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 2103F1F38D;
+	Thu, 19 Jun 2025 15:08:28 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1750345708; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=qiUTW8EKY7uMeaNwhNHLl9fk6YHAExHTnlrG63mJjvE=;
+	b=Ou8aj/7hAFdlRW+0kqnCds/mpIiL/61CmacQx9NsZmyybmTUEl3grUJct5zfAWUnQbc62G
+	DFLdVoQv+ySvM0DpgNF4Isa0nhViWKMX/EBuvlWZ0Gz9VOfS5ev2jbtj+cQPMGdfrHCZ8B
+	4bN6DedyLB1cxV3nu5xhF09wJHbJ2vU=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1750345708;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=qiUTW8EKY7uMeaNwhNHLl9fk6YHAExHTnlrG63mJjvE=;
+	b=QwBgeA2pUvtbjwCnKLV8uQTAgW/gxs1i26+nXyMits9vJ6xLwnm6GXfHaKfAaGrEUJ6fUK
+	TU8cN1Tsao+TFLBQ==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1750345708; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=qiUTW8EKY7uMeaNwhNHLl9fk6YHAExHTnlrG63mJjvE=;
+	b=Ou8aj/7hAFdlRW+0kqnCds/mpIiL/61CmacQx9NsZmyybmTUEl3grUJct5zfAWUnQbc62G
+	DFLdVoQv+ySvM0DpgNF4Isa0nhViWKMX/EBuvlWZ0Gz9VOfS5ev2jbtj+cQPMGdfrHCZ8B
+	4bN6DedyLB1cxV3nu5xhF09wJHbJ2vU=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1750345708;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=qiUTW8EKY7uMeaNwhNHLl9fk6YHAExHTnlrG63mJjvE=;
+	b=QwBgeA2pUvtbjwCnKLV8uQTAgW/gxs1i26+nXyMits9vJ6xLwnm6GXfHaKfAaGrEUJ6fUK
+	TU8cN1Tsao+TFLBQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E3E5813721;
+	Thu, 19 Jun 2025 15:08:27 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id BbCZN+snVGjhLQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 19 Jun 2025 15:08:27 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 70A8DA29FA; Thu, 19 Jun 2025 17:08:27 +0200 (CEST)
+Date: Thu, 19 Jun 2025 17:08:27 +0200
+From: Jan Kara <jack@suse.cz>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz, 
+	ojaswin@linux.ibm.com, yi.zhang@huawei.com, libaokun1@huawei.com, yukuai3@huawei.com, 
 	yangerkun@huawei.com
-Subject: [PATCH v2 8/9] block: add FALLOC_FL_WRITE_ZEROES support
-Date: Thu, 19 Jun 2025 19:18:05 +0800
-Message-ID: <20250619111806.3546162-9-yi.zhang@huaweicloud.com>
-X-Mailer: git-send-email 2.46.1
-In-Reply-To: <20250619111806.3546162-1-yi.zhang@huaweicloud.com>
-References: <20250619111806.3546162-1-yi.zhang@huaweicloud.com>
+Subject: Re: [PATCH v2 1/6] ext4: move the calculation of wbc->nr_to_write to
+ mpage_folio_done()
+Message-ID: <mvfcwyv5vkmsv52jh2gq4u7vjzqiyfal4pu2yawzunjjqv44vt@qgvepto6vr4j>
+References: <20250611111625.1668035-1-yi.zhang@huaweicloud.com>
+ <20250611111625.1668035-2-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCH618Y9VNoihn_Pw--.51230S12
-X-Coremail-Antispam: 1UD129KBjvJXoW7Zry7Xw4xJr4xAry7Gr1fCrg_yoW8AryUpF
-	4UX3WYgFWFgas3GF1rCa1DWrn5Za1kGrWfCayI9w1F9w47Jrn7Krn0gF98tF98JFWUAan5
-	XayavryUuF17ArDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
-	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
-	IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
-	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
-	kIc2xKxwCY1x0262kKe7AKxVW8ZVWrXwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
-	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
-	AF67kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
-	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
-	4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
-	daVFxhVjvjDU0xZFpf9x0pRiF4iUUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20250611111625.1668035-2-yi.zhang@huaweicloud.com>
+X-Spamd-Result: default: False [-3.80 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-0.999];
+	MIME_GOOD(-0.10)[text/plain];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	ARC_NA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	MISSING_XM_UA(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[12];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_HAS_DN(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	FROM_EQ_ENVFROM(0.00)[];
+	TO_DN_SOME(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FUZZY_BLOCKED(0.00)[rspamd.com];
+	RCVD_TLS_LAST(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email]
+X-Spam-Level: 
+X-Spam-Flag: NO
+X-Spam-Score: -3.80
 
-From: Zhang Yi <yi.zhang@huawei.com>
+On Wed 11-06-25 19:16:20, Zhang Yi wrote:
+> From: Zhang Yi <yi.zhang@huawei.com>
+> 
+> mpage_folio_done() should be a more appropriate place than
+> mpage_submit_folio() for updating the wbc->nr_to_write after we have
+> submitted a fully mapped folio. Preparing to make mpage_submit_folio()
+> allows to submit partially mapped folio that is still under processing.
+> 
+> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
-Add support for FALLOC_FL_WRITE_ZEROES, if the block device enables the
-unmap write zeroes operation, it will issue a write zeroes command.
+Indeed. Feel free to add:
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Martin K. Petersen <martin.petersen@oracle.com>
----
- block/fops.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-diff --git a/block/fops.c b/block/fops.c
-index e1c921549d28..474656a0de70 100644
---- a/block/fops.c
-+++ b/block/fops.c
-@@ -841,7 +841,7 @@ static ssize_t blkdev_read_iter(struct kiocb *iocb, struct iov_iter *to)
- 
- #define	BLKDEV_FALLOC_FL_SUPPORTED					\
- 		(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |		\
--		 FALLOC_FL_ZERO_RANGE)
-+		 FALLOC_FL_ZERO_RANGE | FALLOC_FL_WRITE_ZEROES)
- 
- static long blkdev_fallocate(struct file *file, int mode, loff_t start,
- 			     loff_t len)
-@@ -856,6 +856,13 @@ static long blkdev_fallocate(struct file *file, int mode, loff_t start,
- 	/* Fail if we don't recognize the flags. */
- 	if (mode & ~BLKDEV_FALLOC_FL_SUPPORTED)
- 		return -EOPNOTSUPP;
-+	/*
-+	 * Don't allow writing zeroes if the device does not enable the
-+	 * unmap write zeroes operation.
-+	 */
-+	if ((mode & FALLOC_FL_WRITE_ZEROES) &&
-+	    !bdev_write_zeroes_unmap_sectors(bdev))
-+		return -EOPNOTSUPP;
- 
- 	/* Don't go off the end of the device. */
- 	isize = bdev_nr_bytes(bdev);
-@@ -886,6 +893,9 @@ static long blkdev_fallocate(struct file *file, int mode, loff_t start,
- 	case FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE:
- 		flags = BLKDEV_ZERO_NOFALLBACK;
- 		break;
-+	case FALLOC_FL_WRITE_ZEROES:
-+		flags = 0;
-+		break;
- 	default:
- 		error = -EOPNOTSUPP;
- 		goto fail;
+								Honza
+
+> ---
+>  fs/ext4/inode.c | 7 ++++---
+>  1 file changed, 4 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index be9a4cba35fd..3a086fee7989 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2024,7 +2024,10 @@ int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+>  
+>  static void mpage_folio_done(struct mpage_da_data *mpd, struct folio *folio)
+>  {
+> -	mpd->first_page += folio_nr_pages(folio);
+> +	unsigned long nr_pages = folio_nr_pages(folio);
+> +
+> +	mpd->first_page += nr_pages;
+> +	mpd->wbc->nr_to_write -= nr_pages;
+>  	folio_unlock(folio);
+>  }
+>  
+> @@ -2055,8 +2058,6 @@ static int mpage_submit_folio(struct mpage_da_data *mpd, struct folio *folio)
+>  	    !ext4_verity_in_progress(mpd->inode))
+>  		len = size & (len - 1);
+>  	err = ext4_bio_write_folio(&mpd->io_submit, folio, len);
+> -	if (!err)
+> -		mpd->wbc->nr_to_write -= folio_nr_pages(folio);
+>  
+>  	return err;
+>  }
+> -- 
+> 2.46.1
+> 
 -- 
-2.46.1
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
