@@ -1,62 +1,64 @@
-Received: from mail-pl1-f175.google.com (mail-pl1-f175.google.com [209.85.214.175])
+Received: from mail-pg1-f180.google.com (mail-pg1-f180.google.com [209.85.215.180])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB340255250;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0D72C277C85;
 	Fri, 20 Jun 2025 10:57:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.175
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.180
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1750417045; cv=none; b=YtkfKRuDZ6bzSQGTj6gEuZ6I/g6d3EpmZ28T9xaqzMzdKJUJoNmJfVFGKNUddcrkZMuYZe1SodIvQDwf6qWKcqTjNZeCpQHDU3ZsRttO6JF3LiSPep5pyFeBe0X4zUnzuvxyM8u2+THpOgwhKQAQkubTqefX/FvVZedmeft4NkQ=
+	t=1750417045; cv=none; b=TYC3RwELOHfI/ZGR57raNPiKI8rFbe2+L5ofIqmwjnawojJPjFdWD8cW5SnnqqoGj0XRJzyKdw4sgN10TSpGkw1HuykLxHnQGHDzns/mpMaKNmd8ogn8GQBHXLjQvFxPy39GbJSa8yNt6RRUHaCpC0r2WCsUoEnFs7fhoiqF+4Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1750417045; c=relaxed/simple;
-	bh=gfpQ9Z1lO0AdW5KcdamZiog6rGkXAvMNKaOLrBOPLNw=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Ft8jnDX4cUkKcy7va4+UeKCwDDlQKKkDyGEx0VlqpXF+mVLCLbBpmzIGLwsTl1JsohqDqww9jKtM1R0M/PYzAgBd2kDPOJPIKd+5btLGrQmhYY5QAQvwrlTkfR7Syx4+PI4UTVXRkrrtUOs3IFwFhG2hxS+KD1s+weMjPMsI3Pw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=MnLzrA5L; arc=none smtp.client-ip=209.85.214.175
+	bh=DTwiJYQnNc9AGZWZW0Dv+ePYGitT+lzesJK1X8jUrTs=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=Mc9JcYgITHVHovDj7pHyOsqMtoYBBHs3KAtJtWRsUiL02Vbgbo+TDRAUZyzZYAJl+V2TxsyNH8ry3C7mNpPyl8YEZT/OLNMaCIrRXdBP2gdVttEZaM5h4mXMQzX0bi6a6wFAISFJAoI1aAsnNTNdsqXrBf7y/MSnABuYs8KlQwA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=I9rnaYnP; arc=none smtp.client-ip=209.85.215.180
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="MnLzrA5L"
-Received: by mail-pl1-f175.google.com with SMTP id d9443c01a7336-235e1d710d8so23833465ad.1;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="I9rnaYnP"
+Received: by mail-pg1-f180.google.com with SMTP id 41be03b00d2f7-b31fc7c27abso143050a12.3;
         Fri, 20 Jun 2025 03:57:23 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20230601; t=1750417043; x=1751021843; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=AlAPYPP3NMkx/T2TTChwBuzZguwripR1Sp0yK++aGls=;
-        b=MnLzrA5LNc+V05XuFBrW6/W6q1XIwpDfMiIhpznOf7jcjNYmfES/npsO0L5Upx6bwe
-         JFp2wRTRjjd4vTZ4l3paZnFQsj/DQlJBZso7ArMc9T3zh6IPOGKdsIRsuc1nLf6n8mgn
-         OXQTcoXrscShGN593/w7+nmS5xN1miod9bytcNXNs7jKD9heZFuz6+9zs8RR7F3AcGIS
-         5A5ck1yixs9NlSfARleFxY4XqEBwt3iNFlXQV26spabtrlJLlP9kA3hTHrRrpTja3DQt
-         PDFuomlE+0mQJ1clg6NnR5fNNhfzHeIHlM0f02hTdt7ol+a9+F2+twk0JjfBy7gWf6cS
-         ygbg==
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=Xm1ygtMFp1yHzj86PnisCVORI9v1g6VWyrI+P42tpdU=;
+        b=I9rnaYnP+VWh87+tYtOVG42VLvt5aHzPkxwy84Uj6d7sAxWFYm6eILmmY0LjXRG8GQ
+         tXHgxpJ/vSY4SgcYL9Qi1pqoSQ3Ux6yaNN0Hib6itEA74HHoMOJAsZv2PSzu5gfywPKX
+         bpERo/s4FgBwtRHtOjv3cuNnIwwj9fd0tH8lG7xFIx9FaY/jVYzPrJlOpZiN3u77Y8/A
+         vEnT48MKA6No3ERttjG8ZUWcpSsJF78OF6+fIuGIppPhFysl20vzILTKRju9wr3qIqAy
+         z60+BZVXAEFvBCn3KgLy9jqg5H02+qGziFCCII00UZ1VRxrGRdV2O4uwcwg+Z6ND8qbN
+         /Vfg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20230601; t=1750417043; x=1751021843;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=AlAPYPP3NMkx/T2TTChwBuzZguwripR1Sp0yK++aGls=;
-        b=inlm9ke3uN+ZM6xia04qFatGKytblKEqiv3bEeOi+O8aus3XwKtY1xbokQRn4QCy3I
-         GIanGwlt9Ii7rUuAEOjH16jtkEhlXCzHXYO6b9Yrirk55Z9lHNTfjXOKffz0KgnbWEZU
-         gPxysqeVhvO7ATI0U9QqVLox6ETtQ8fyemUOkYhGGDJXzIMw1UF9luM6UtTF21sQ8Lkw
-         2NTk+KvV0bPzs4k7PqkazSYoN1CAkGVTza5HHrx94YKAkQlaFiB+HqQwTx17BV6y7bTB
-         au1UAfFmigZWKdjhU0mywdRvO2sTY7s2VqqgHvmzcneOUYVta8mqMUIEizS84Kp2SuMy
-         hhLg==
-X-Forwarded-Encrypted: i=1; AJvYcCV6MvLoK7867Zm07cgI9fyulT90YXPfkdINF0kYTQ95US4wtmV9PlnNI13xVZDaogj0WmVjB9Jz6NqlVQ==@vger.kernel.org, AJvYcCXDqH4u3jCKngZy3YBtmJdVk8xWRFPSasCxi/VsxzvmRyavRjGPc20DijEDgPyEEDXBNZ0IV+Z+Osc=@vger.kernel.org
-X-Gm-Message-State: AOJu0Yx8pRdoiz3Ls5yWQ3wQXE13SWCuy+PKV0/gQvoM96grGOeQvgMk
-	7sCgy/l4swcoZJ+/M4qbjwyEpnBulyzfy0vd8+xL5UQw/Re7+vzLonMkkiEcww==
-X-Gm-Gg: ASbGncvfaD9Hwj9UGuBSPvnW00VBih93Rp/wQSOp3RGkz4K1s3NcRcq13rI5oQ8BBj3
-	EnTeqmmZw2W/avROdQzBRRlRZdSWIpHJe+oRiZwH/EDC5Z9Ip+WgI4zGtWh7TmV4If/fNy2KF1g
-	bxZ23cD26FqURC8z/8JqMHc8f79FU8s+gXdT2TrAR/vGDOhUxFdDMGMYjDLbWR+2tHO5BvvjD6m
-	io3KAxYCHx2cVW6aYv40534Mo5bk5GX+TdBq32BknSD9Uaf3OYOGznsyIAwnbaMhXdUxWkedR3a
-	Wxg2LfmosOZxedSbQceCBSlDh6F4z8lWeuuKirBNHAnRo22Z6gWs8eFxNk2omQ==
-X-Google-Smtp-Source: AGHT+IEZIOIYcbLmKVn6OdTDx/fVh+JZECXH8bDK27l5O1moyHdw7IFlw3BFDYTdtlG0UVt3Q8Xc2g==
-X-Received: by 2002:a17:902:d542:b0:235:ed01:18cd with SMTP id d9443c01a7336-237d997a5aemr47687515ad.44.1750417042771;
-        Fri, 20 Jun 2025 03:57:22 -0700 (PDT)
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=Xm1ygtMFp1yHzj86PnisCVORI9v1g6VWyrI+P42tpdU=;
+        b=XTIA0e9qhzBmaXC+NRFclxhOl1wILZryBnLRvqgAWv+lzjHmSlIsaoHvGcK/Bs7hXJ
+         eOfQvCzm9kKRjNdMyZjt0cdNpxXH3gh/u0XmxmbHDQqZp1IrdwNiYRTQU3tI8ISYQp/X
+         uw/+KL8RHdi0FLeZQZWRuCQcUbrsDkm+mktLBzZgfYJGmTBcMraimbifjeKVI1cCDq+L
+         t4tanM1+7qZyWj8eReVzsqKR/0XiL4QNXihP3ioCcejGMJA9ZGUILSl00k9Ida88Jr1K
+         gPTiLE/scYJ0l5g0LYYC/VaaCzL4R02n0riVMD9b02JtPRqYYS13PnvI2N3Twdf6IT0i
+         Xiog==
+X-Forwarded-Encrypted: i=1; AJvYcCUeXUnNXRkKpOht3jhE9FwRB8pO3+SPpjc8OX9n0AoU7ftNJQ6Ig98t3uCXmi8HISQk89zMhrhdyCLSCA==@vger.kernel.org, AJvYcCVGPdFso6BvAih1s6nbH+vvo6j4PIbUkq9KI36Q/R9U6TiT8n29FWNG0JkMW7sXKdKGRK0/eNX5O4Y=@vger.kernel.org
+X-Gm-Message-State: AOJu0Yy1Bn6H+9ddzmsqoiFCILSvC+AZ19/7i8JseU5TDcdFxh2N6aYo
+	Ds1YCyXsaSCobXMj2rnQRqjP82qoeNviTJv6vyGvKWdpWHq/DEp9Rdes
+X-Gm-Gg: ASbGnctlH5OiEr/YKnen3ToGdxYDWS/nra9YBshuGOpiYqm/xy1dln9MUXhiGULVnyj
+	pQofgHn4Ba7blKvY4z7X/mGsDNX3AmHJcUp/AKHnBZhpkZ15m5FP+xOXgYem/ejYG5FwHw0wsgO
+	Si8iHsu+GO37gH5MRJOpuGC+3oewI2G7WGU+XtLvci25RswvGMe9rv3366n7Q/3mpqPCxXUV/hd
+	wRl+kO/QkHoipWG/jsvOdmNpm9NnZ8uVJ8cCuhnKS7GwbfjvbcICSWIxNMHF4Bvr/1+MdPQFs54
+	z1QVhDhKA+nb6rjKRqP1pSlTpnoKtGwcYB/ht9JRUiexiCeQHLcp3fq3c1kzgQ==
+X-Google-Smtp-Source: AGHT+IEeMzChr5YpXkQSb38TF9ejN+susjUsEzMrX/9I3MOi93qmoL1h4M5wrlhRz4hWEYKylxGcbQ==
+X-Received: by 2002:a17:90b:2687:b0:311:a4d6:30f8 with SMTP id 98e67ed59e1d1-3159d641124mr4292834a91.13.1750417043111;
+        Fri, 20 Jun 2025 03:57:23 -0700 (PDT)
 Received: from archie.me ([103.124.138.155])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-237d8640c61sm15653225ad.141.2025.06.20.03.57.21
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3159df71c4bsm1407546a91.2.2025.06.20.03.57.21
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
         Fri, 20 Jun 2025 03:57:22 -0700 (PDT)
 Received: by archie.me (Postfix, from userid 1000)
-	id C308641F3D9A; Fri, 20 Jun 2025 17:57:15 +0700 (WIB)
+	id 9B85740AD723; Fri, 20 Jun 2025 17:57:16 +0700 (WIB)
 From: Bagas Sanjaya <bagasdotme@gmail.com>
 To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
 	Linux Documentation <linux-doc@vger.kernel.org>,
@@ -67,57 +69,77 @@ Cc: "Theodore Ts'o" <tytso@mit.edu>,
 	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
 	"Darrick J. Wong" <djwong@kernel.org>,
 	Bagas Sanjaya <bagasdotme@gmail.com>
-Subject: [PATCH 0/5] ext4 docs toctree reorganization
-Date: Fri, 20 Jun 2025 17:56:39 +0700
-Message-ID: <20250620105643.25141-2-bagasdotme@gmail.com>
+Subject: [PATCH 4/5] Documentation: ext4: blockgroup: Add explicit title heading
+Date: Fri, 20 Jun 2025 17:56:43 +0700
+Message-ID: <20250620105643.25141-6-bagasdotme@gmail.com>
 X-Mailer: git-send-email 2.49.0
+In-Reply-To: <20250620105643.25141-2-bagasdotme@gmail.com>
+References: <20250620105643.25141-2-bagasdotme@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1662; i=bagasdotme@gmail.com; h=from:subject; bh=gfpQ9Z1lO0AdW5KcdamZiog6rGkXAvMNKaOLrBOPLNw=; b=owGbwMvMwCX2bWenZ2ig32LG02pJDBmhtrf07+/2KT1tEar6fO5jBfNrZQyl5+7skDebtSj+s kwya9CtjlIWBjEuBlkxRZZJiXxNp3cZiVxoX+sIM4eVCWQIAxenAExknSjDX6nVYqV9vCn9j0/P rnV87tTJIbP+IzePIsfqecUG/4+ucWH4X3/np9kD7gPb/PgrOP98tjRd/8ZmI5dvmP0lvrPfRBa eYQAA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2105; i=bagasdotme@gmail.com; h=from:subject; bh=DTwiJYQnNc9AGZWZW0Dv+ePYGitT+lzesJK1X8jUrTs=; b=owGbwMvMwCX2bWenZ2ig32LG02pJDBmhtvcenrJIXrfZce2uhRKtGfENEV4WET1y1x+6RClOr 6hef2N+RykLgxgXg6yYIsukRL6m07uMRC60r3WEmcPKBDKEgYtTACbStYnhF1OxVwZ/7NPvG2WV P39Pd+jijNaZ9vyYoJ/y4YucD61uWzIyLHl4gCsjZWpt/atf2ya+UHDL21YavrrHqzBCoLIj7+U DDgA=
 X-Developer-Key: i=bagasdotme@gmail.com; a=openpgp; fpr=701B806FDCA5D3A58FFB8F7D7C276C64A5E44A1D
 Content-Transfer-Encoding: 8bit
 
-Hi Jon, hi Ted,
+Block groups documentation has three, first-level section headings.
+These headings' text become toctree entries and the first one "Layout"
+becomes docs title in the output, which isn't conveying the docs
+contents.
 
-While discussing on my previous ext4 docs reorganization attempt
-by merging contents [1], Jon suggested that considering current docs
-file structure, a proper toctree would be ideal [2]. So, here's
-the patchset that does exactly that.
+Add explicit title heading and demote the rest.
 
-Actual conversion to toctree structure is in [1/5], while the rest
-is cleanups to make the resulting toctree nicer.
+Signed-off-by: Bagas Sanjaya <bagasdotme@gmail.com>
+---
+ Documentation/filesystems/ext4/blockgroup.rst | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
 
-This patchset is based on docs-next tree.
-
-Enjoy!
-
-[1]: https://lore.kernel.org/linux-doc/20250618111544.22602-1-bagasdotme@gmail.com/
-[2]: https://lore.kernel.org/linux-doc/87bjqjh5dr.fsf@trenco.lwn.net/
-
-Bagas Sanjaya (5):
-  Documentation: ext4: Convert includes into toctrees
-  Documentation: ext4: Reduce toctree depth
-  Documentation: ext4: atomic_writes: Demote last three sections
-  Documentation: ext4: blockgroup: Add explicit title heading
-  Documentation: ext4: Move inode table short docs into its own file
-
- .../filesystems/ext4/atomic_writes.rst        | 10 ++++-----
- Documentation/filesystems/ext4/bitmaps.rst    |  7 ------
- Documentation/filesystems/ext4/blockgroup.rst | 11 ++++++----
- Documentation/filesystems/ext4/dynamic.rst    | 10 +++++----
- Documentation/filesystems/ext4/globals.rst    | 15 ++++++++-----
- Documentation/filesystems/ext4/index.rst      |  2 +-
- .../filesystems/ext4/inode_table.rst          |  9 ++++++++
- Documentation/filesystems/ext4/overview.rst   | 22 ++++++++++---------
- 8 files changed, 49 insertions(+), 37 deletions(-)
- create mode 100644 Documentation/filesystems/ext4/inode_table.rst
-
-
-base-commit: d3f825032091fc14c7d5e34bcd54317ae4246903
+diff --git a/Documentation/filesystems/ext4/blockgroup.rst b/Documentation/filesystems/ext4/blockgroup.rst
+index ed5a5cac6d40e1..7cbf0b2b778eab 100644
+--- a/Documentation/filesystems/ext4/blockgroup.rst
++++ b/Documentation/filesystems/ext4/blockgroup.rst
+@@ -1,7 +1,10 @@
+ .. SPDX-License-Identifier: GPL-2.0
+ 
++Block Groups
++------------
++
+ Layout
+-------
++~~~~~~
+ 
+ The layout of a standard block group is approximately as follows (each
+ of these fields is discussed in a separate section below):
+@@ -60,7 +63,7 @@ groups (flex_bg). Leftover space is used for file data blocks, indirect
+ block maps, extent tree blocks, and extended attributes.
+ 
+ Flexible Block Groups
+----------------------
++~~~~~~~~~~~~~~~~~~~~~
+ 
+ Starting in ext4, there is a new feature called flexible block groups
+ (flex_bg). In a flex_bg, several block groups are tied together as one
+@@ -78,7 +81,7 @@ if flex_bg is enabled. The number of block groups that make up a
+ flex_bg is given by 2 ^ ``sb.s_log_groups_per_flex``.
+ 
+ Meta Block Groups
+------------------
++~~~~~~~~~~~~~~~~~
+ 
+ Without the option META_BG, for safety concerns, all block group
+ descriptors copies are kept in the first block group. Given the default
+@@ -117,7 +120,7 @@ Please see an important note about ``BLOCK_UNINIT`` in the section about
+ block and inode bitmaps.
+ 
+ Lazy Block Group Initialization
+--------------------------------
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 
+ A new feature for ext4 are three block group descriptor flags that
+ enable mkfs to skip initializing other parts of the block group
 -- 
 An old man doll... just what I always wanted! - Clara
 
