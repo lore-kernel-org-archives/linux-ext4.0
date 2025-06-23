@@ -1,37 +1,40 @@
-Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
+Received: from szxga04-in.huawei.com (szxga04-in.huawei.com [45.249.212.190])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BFE9FB663;
-	Mon, 23 Jun 2025 07:46:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.189
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DFC241F6667;
+	Mon, 23 Jun 2025 07:47:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.190
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1750664822; cv=none; b=RAilhNhSE37V58AqMHeyHb4E0S1VohBlSp06N9fJ3AOoky2YtApn9YnPCZ4acJEP2jLx6XUosQMEM1VH5NE4MU6OeQ/IWEk3hmc0JKcCDtwOsjKTOPtLIQSj4CfRDQWfLb+8FRSxNgSyRfiXrq0e+yJRzaHTKStGe0xiqyFuyHU=
+	t=1750664823; cv=none; b=kq/2A9mQHKjbZLP1llrfxru6VATpX8POQMAFywdUtndcuTxA9D8RyswZO4ppjdDpFyY5QqmGqx7LICNfLQhlwddG2zbBd1Bvg9zCBCE8U4+c56P8j4f1HE/FqOg13RDzO3IDWITEIquXhwrKny6pJg1BRzJ2sCh8k0eaRgI+7Vo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1750664822; c=relaxed/simple;
-	bh=KzMNTELuuskW0uCA7SkqERTlbKozlKZvL7dBzfTUAAc=;
-	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=Fzk6X8fan19UqzmHBTWbN5/MrDzIT7RSzHopIl4MWIDfj6jYxKoewNNP/b7dvFXZEBGHekZlrrqM4tw9IQVAUEvwhFb7tuqPDVnyiQIFkZJrXF+VgewWAUZeIqOR0nOBjZS9xPY/bDdxD8eEq/k72p9qELmXxv6KnK0NmJAaiMw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.189
+	s=arc-20240116; t=1750664823; c=relaxed/simple;
+	bh=sYtqUFt4brvDA+yF4dcv6k3g1PaR0DyYG66HfGgJ7PQ=;
+	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=UuW4p3KOhL2MRSlJzjrTcz8K4IDeJM/aYz5AAAQXfuRcRaIh6vjD4j/scx+d7QG7fJa6G5aFTsrL9/Y2bfkI59UYMu5+jHZrO/6UwFMtHIynf9a1LZHu/X1v/N7ud2wi5sBSeb91+WNnaVK1fHptKzoDoTT87JGeIwUDVnmZTcs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.190
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.88.194])
-	by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4bQg6T6CRMzPtBv;
-	Mon, 23 Jun 2025 15:42:57 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.162.112])
+	by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4bQg9H39fFz2TSJG;
+	Mon, 23 Jun 2025 15:45:23 +0800 (CST)
 Received: from dggpemf500013.china.huawei.com (unknown [7.185.36.188])
-	by mail.maildlp.com (Postfix) with ESMTPS id B207014027D;
-	Mon, 23 Jun 2025 15:46:54 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 1A0501401F2;
+	Mon, 23 Jun 2025 15:46:58 +0800 (CST)
 Received: from huawei.com (10.175.112.188) by dggpemf500013.china.huawei.com
  (7.185.36.188) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Mon, 23 Jun
- 2025 15:46:53 +0800
+ 2025 15:46:57 +0800
 From: Baokun Li <libaokun1@huawei.com>
 To: <linux-ext4@vger.kernel.org>
 CC: <tytso@mit.edu>, <jack@suse.cz>, <adilger.kernel@dilger.ca>,
 	<ojaswin@linux.ibm.com>, <linux-kernel@vger.kernel.org>,
 	<yi.zhang@huawei.com>, <yangerkun@huawei.com>, <libaokun1@huawei.com>
-Subject: [PATCH v2 00/16] ext4: better scalability for ext4 block allocation
-Date: Mon, 23 Jun 2025 15:32:48 +0800
-Message-ID: <20250623073304.3275702-1-libaokun1@huawei.com>
+Subject: [PATCH v2 04/16] ext4: utilize multiple global goals to reduce contention
+Date: Mon, 23 Jun 2025 15:32:52 +0800
+Message-ID: <20250623073304.3275702-5-libaokun1@huawei.com>
 X-Mailer: git-send-email 2.46.1
+In-Reply-To: <20250623073304.3275702-1-libaokun1@huawei.com>
+References: <20250623073304.3275702-1-libaokun1@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -43,158 +46,147 @@ Content-Transfer-Encoding: 8bit
 X-ClientProxiedBy: kwepems200001.china.huawei.com (7.221.188.67) To
  dggpemf500013.china.huawei.com (7.185.36.188)
 
-Changes since v1:
- * Patch 1: Prioritize checking if a group is busy to avoid unnecessary
-       checks and buddy loading. (Thanks to Ojaswin for the suggestion!)
- * Patch 4: Using multiple global goals instead of moving the goal to the
-       inode level. (Thanks to Honza for the suggestion!)
- * Collect RVB from Jan Kara and Ojaswin Mujoo.(Thanks for your review!)
- * Add patch 2,3,7-16.
- * Due to the change of test server, the relevant test data was refreshed.
+When allocating data blocks, if the first try (goal allocation) fails and
+stream allocation is on, it tries a global goal starting from the last
+group we used (s_mb_last_group). This helps cluster large files together
+to reduce free space fragmentation, and the data block contiguity also
+accelerates write-back to disk.
 
-v1: https://lore.kernel.org/r/20250523085821.1329392-1-libaokun@huaweicloud.com
+However, when multiple processes allocate blocks, having just one global
+goal means they all fight over the same group. This drastically lowers
+the chances of extents merging and leads to much worse file fragmentation.
 
-Since servers have more and more CPUs, and we're running more containers
-on them, we've been using will-it-scale to test how well ext4 scales. The
-fallocate2 test (append 8KB to 1MB, truncate to 0, repeat) run concurrently
-on 64 containers revealed significant contention in block allocation/free,
-leading to much lower aggregate fallocate OPS compared to a single
-container (see below).
+To mitigate this multi-process contention, we now employ multiple global
+goals, with the number of goals being the CPU count rounded up to the
+nearest power of 2. To ensure a consistent goal for each inode, we select
+the corresponding goal by taking the inode number modulo the total number
+of goals.
 
-   1   |    2   |    4   |    8   |   16   |   32   |   64
--------|--------|--------|--------|--------|--------|-------
-295287 | 70665  | 33865  | 19387  | 10104  |  5588  |  3588
-
-Under this test scenario, the primary operations are block allocation
-(fallocate) and block deallocation (truncate). The main bottlenecks for
-these operations are the group lock and s_md_lock. Therefore, this patch
-series primarily focuses on optimizing the code related to these two locks.
-
-The following is a brief overview of the patches, see the patches for
-more details.
-
-Patch 1: Add ext4_try_lock_group() to skip busy groups to take advantage
-of the large number of ext4 groups.
-
-Patches 2-4: Split stream allocation's global goal into multiple goals and
-protect them with memory barriers instead of the expensive s_md_lock.
-
-Patches 5-6: minor cleanups
-
-Patches 7: Converted s_mb_free_pending to atomic_t and used memory barriers
-for consistency, instead of relying on the expensive s_md_lock.
-
-Patches 8: When inserting free extents, we now attempt to merge them with
-already inserted extents first, to reduce s_md_lock contention.
-
-Patches 9: Updates bb_avg_fragment_size_order to -1 when a group is out of
-free blocks, eliminating efficiency-impacting "zombie groups."
-
-Patches 10: Fix potential largest free orders lists corruption when the
-mb_optimize_scan mount option is switched on or off.
-
-Patches 11-16: Convert mb_optimize_scan's existing unordered list traversal
-to an ordered xarray, thereby reducing contention between block allocation
-and freeing, similar to linear traversal.
-
-"kvm-xfstests -c ext4/all -g auto" has been executed with no new failures.
-
-Here are some performance test data for your reference:
+Performance test data follows:
 
 Test: Running will-it-scale/fallocate2 on CPU-bound containers.
 Observation: Average fallocate operations per container per second.
 
-CPU: Kunpeng 920   |          P80            |            P1           |
-Memory: 512GB      |-------------------------|-------------------------|
-Disk: 960GB SSD    | base  |    patched      | base  |    patched      |
+                   | Kunpeng 920 / 512GB -P80|  AMD 9654 / 1536GB -P96 |
+ Disk: 960GB SSD   |-------------------------|-------------------------|
+                   | base  |    patched      | base  |    patched      |
 -------------------|-------|-----------------|-------|-----------------|
-mb_optimize_scan=0 | 2667  | 20619  (+673.1%)| 314065| 299238 (-4.7%)  |
-mb_optimize_scan=1 | 2643  | 20119  (+661.2%)| 316344| 315268 (-0.3%)  |
+mb_optimize_scan=0 | 7612  | 19699 (+158%)   | 21647 | 53093 (+145%)   |
+mb_optimize_scan=1 | 7568  | 9862  (+30.3%)  | 9117  | 14401 (+57.9%)  |
 
-CPU: AMD 9654 * 2  |          P96            |            P1           |
-Memory: 1536GB     |-------------------------|-------------------------|
-Disk: 960GB SSD    | base  |    patched      | base  |    patched      |
--------------------|-------|-----------------|-------|-----------------|
-mb_optimize_scan=0 | 3450  | 51983 (+1406.7%)| 205851| 207033 (+0.5%)  |
-mb_optimize_scan=1 | 3209  | 48486 (+1410.9%)| 207373| 202415 (-2.3%)  |
+Signed-off-by: Baokun Li <libaokun1@huawei.com>
+---
+ fs/ext4/ext4.h    |  2 +-
+ fs/ext4/mballoc.c | 31 ++++++++++++++++++++++++-------
+ fs/ext4/mballoc.h |  9 +++++++++
+ 3 files changed, 34 insertions(+), 8 deletions(-)
 
-Tests also evaluated this patch set's impact on fragmentation: a minor
-increase in free space fragmentation for multi-process workloads, but a
-significant decrease in file fragmentation:
-
-Test Script：
-```shell
-#!/bin/bash
-
-dir="/tmp/test"
-disk="/dev/sda"
-
-mkdir -p $dir
-
-for scan in 0 1 ; do
-    mkfs.ext4 -F -E lazy_itable_init=0,lazy_journal_init=0 \
-              -O orphan_file $disk 200G
-    mount -o mb_optimize_scan=$scan $disk $dir
-
-    fio -directory=$dir -direct=1 -iodepth 128 -thread -ioengine=falloc \
-        -rw=write -bs=4k -fallocate=none -numjobs=64 -file_append=1 \
-        -size=1G -group_reporting -name=job1 -cpus_allowed_policy=split
-
-    e2freefrag $disk
-    e4defrag -c $dir # Without the patch, this could take 5-6 hours.
-    filefrag ${dir}/job* | awk '{print $2}' | \
-                           awk '{sum+=$1} END {print sum/NR}'
-    umount $dir
-done
-```
-
-Test results:
--------------------------------------------------------------|
-                         |       base      |      patched    |
--------------------------|--------|--------|--------|--------|
-mb_optimize_scan         | linear |opt_scan| linear |opt_scan|
--------------------------|--------|--------|--------|--------|
-bw(MiB/s)                | 217    | 217    | 5718   | 5626   |
--------------------------|-----------------------------------|
-Avg. free extent size(KB)| 1943732| 1943732| 1316212| 1171208|
-Num. free extent         | 71     | 71     | 105    | 118    |
--------------------------------------------------------------|
-Avg. extents per file    | 261967 | 261973 | 588    | 570    |
-Avg. size per extent(KB) | 4      | 4      | 1780   | 1837   |
-Fragmentation score      | 100    | 100    | 2      | 2      |
--------------------------------------------------------------| 
-
-Comments and questions are, as always, welcome.
-
-Thanks,
-Baokun
-
-Baokun Li (16):
-  ext4: add ext4_try_lock_group() to skip busy groups
-  ext4: remove unnecessary s_mb_last_start
-  ext4: remove unnecessary s_md_lock on update s_mb_last_group
-  ext4: utilize multiple global goals to reduce contention
-  ext4: get rid of some obsolete EXT4_MB_HINT flags
-  ext4: fix typo in CR_GOAL_LEN_SLOW comment
-  ext4: convert sbi->s_mb_free_pending to atomic_t
-  ext4: merge freed extent with existing extents before insertion
-  ext4: fix zombie groups in average fragment size lists
-  ext4: fix largest free orders lists corruption on mb_optimize_scan
-    switch
-  ext4: factor out __ext4_mb_scan_group()
-  ext4: factor out ext4_mb_might_prefetch()
-  ext4: factor out ext4_mb_scan_group()
-  ext4: convert free group lists to ordered xarrays
-  ext4: refactor choose group to scan group
-  ext4: ensure global ordered traversal across all free groups xarrays
-
- fs/ext4/balloc.c            |   2 +-
- fs/ext4/ext4.h              |  45 +-
- fs/ext4/mballoc.c           | 898 +++++++++++++++++++++---------------
- fs/ext4/mballoc.h           |  18 +-
- include/trace/events/ext4.h |   3 -
- 5 files changed, 553 insertions(+), 413 deletions(-)
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 93f03d8c3dca..c3f16aba7b79 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1630,7 +1630,7 @@ struct ext4_sb_info {
+ 	unsigned int s_mb_group_prealloc;
+ 	unsigned int s_max_dir_size_kb;
+ 	/* where last allocation was done - for stream allocation */
+-	ext4_group_t s_mb_last_group;
++	ext4_group_t *s_mb_last_groups;
+ 	unsigned int s_mb_prefetch;
+ 	unsigned int s_mb_prefetch_limit;
+ 	unsigned int s_mb_best_avail_max_trim_order;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 3f103919868b..216b332a5054 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2168,9 +2168,12 @@ static void ext4_mb_use_best_found(struct ext4_allocation_context *ac,
+ 	ac->ac_buddy_folio = e4b->bd_buddy_folio;
+ 	folio_get(ac->ac_buddy_folio);
+ 	/* store last allocated for subsequent stream allocation */
+-	if (ac->ac_flags & EXT4_MB_STREAM_ALLOC)
+-		/* pairs with smp_load_acquire in ext4_mb_regular_allocator() */
+-		smp_store_release(&sbi->s_mb_last_group, ac->ac_f_ex.fe_group);
++	if (ac->ac_flags & EXT4_MB_STREAM_ALLOC) {
++		int hash = ac->ac_inode->i_ino % MB_LAST_GROUPS;
++		/* Pairs with smp_load_acquire in ext4_mb_regular_allocator() */
++		smp_store_release(&sbi->s_mb_last_groups[hash],
++				  ac->ac_f_ex.fe_group);
++	}
+ 	/*
+ 	 * As we've just preallocated more space than
+ 	 * user requested originally, we store allocated
+@@ -2842,9 +2845,12 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 	}
+ 
+ 	/* if stream allocation is enabled, use global goal */
+-	if (ac->ac_flags & EXT4_MB_STREAM_ALLOC)
+-		/* pairs with smp_store_release in ext4_mb_use_best_found() */
+-		ac->ac_g_ex.fe_group = smp_load_acquire(&sbi->s_mb_last_group);
++	if (ac->ac_flags & EXT4_MB_STREAM_ALLOC) {
++		int hash = ac->ac_inode->i_ino % MB_LAST_GROUPS;
++		/* Pairs with smp_store_release in ext4_mb_use_best_found() */
++		ac->ac_g_ex.fe_group = smp_load_acquire(
++						&sbi->s_mb_last_groups[hash]);
++	}
+ 
+ 	/*
+ 	 * Let's just scan groups to find more-less suitable blocks We
+@@ -3715,10 +3721,17 @@ int ext4_mb_init(struct super_block *sb)
+ 			sbi->s_mb_group_prealloc, EXT4_NUM_B2C(sbi, sbi->s_stripe));
+ 	}
+ 
++	sbi->s_mb_last_groups = kcalloc(MB_LAST_GROUPS, sizeof(ext4_group_t),
++					GFP_KERNEL);
++	if (sbi->s_mb_last_groups == NULL) {
++		ret = -ENOMEM;
++		goto out;
++	}
++
+ 	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
+ 	if (sbi->s_locality_groups == NULL) {
+ 		ret = -ENOMEM;
+-		goto out;
++		goto out_free_last_groups;
+ 	}
+ 	for_each_possible_cpu(i) {
+ 		struct ext4_locality_group *lg;
+@@ -3743,6 +3756,9 @@ int ext4_mb_init(struct super_block *sb)
+ out_free_locality_groups:
+ 	free_percpu(sbi->s_locality_groups);
+ 	sbi->s_locality_groups = NULL;
++out_free_last_groups:
++	kvfree(sbi->s_mb_last_groups);
++	sbi->s_mb_last_groups = NULL;
+ out:
+ 	kfree(sbi->s_mb_avg_fragment_size);
+ 	kfree(sbi->s_mb_avg_fragment_size_locks);
+@@ -3847,6 +3863,7 @@ void ext4_mb_release(struct super_block *sb)
+ 	}
+ 
+ 	free_percpu(sbi->s_locality_groups);
++	kvfree(sbi->s_mb_last_groups);
+ }
+ 
+ static inline int ext4_issue_discard(struct super_block *sb,
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index f8280de3e882..38c37901728d 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -97,6 +97,15 @@
+  */
+ #define MB_NUM_ORDERS(sb)		((sb)->s_blocksize_bits + 2)
+ 
++/*
++ * Number of mb last groups
++ */
++#ifdef CONFIG_SMP
++#define MB_LAST_GROUPS roundup_pow_of_two(nr_cpu_ids)
++#else
++#define MB_LAST_GROUPS 1
++#endif
++
+ struct ext4_free_data {
+ 	/* this links the free block information from sb_info */
+ 	struct list_head		efd_list;
 -- 
 2.46.1
 
