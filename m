@@ -1,100 +1,96 @@
-Received: from out203-205-221-155.mail.qq.com (out203-205-221-155.mail.qq.com [203.205.221.155])
+Received: from mout-p-103.mailbox.org (mout-p-103.mailbox.org [80.241.56.161])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0F12529E103;
-	Wed, 25 Jun 2025 10:53:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.205.221.155
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A70102820D5
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Jun 2025 11:13:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=80.241.56.161
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1750848801; cv=none; b=YX4Revj3gxpa3VcDwRGtxsNWwoZKE71sEsV5DldOb0COQ/z3Txp5E3zc4TS6GxXrtK01LV9Pz1X144yvP+uF8WA4uAjVxfcQldEuNQHpL7CRaCEaFPx1+wX2O3F2gMnb0N1LWPqyjzIM9Qm9an1bDhLJqQ0G4e8nwRp92vh4qK8=
+	t=1750850003; cv=none; b=ZCfgi2jVhP4GLF/lESdkNJCud1SZ/1idPKIb2cZvSr5Qm4e4HDVBiAr74mRhYAQG0LrqAK/0qZ7KtJp2XfjVQQ2zCUyRr6jXfg78OHvYc7uMaPHU5lm2XeCzRn1UYfb9hz3+6futk4FAmwBau52rcFhweQcdeH3JyaHe8ICVsOE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1750848801; c=relaxed/simple;
-	bh=bVTQKiW4WJsF7lVIrAjNgK8DHJH4bRFEnocFDPoC7lw=;
-	h=Message-ID:Date:MIME-Version:From:Subject:To:Cc:References:
-	 In-Reply-To:Content-Type; b=W8c51B4lEmXjwUvgGp5S5YKZFG/8mtaOQ2pZo+1YrTshL8SXipGX9memul0hfl96XBf2D4GU5y+DMsM6+Zh42ThMWkUdQflC2Z7B9cPloJ+DMIE4Hh8QahqDV8QdVOoxsklMw5zXBd45t/eTxEOR2ptpHQQCt1N250rsL4/rDJg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=qhnEOBWS; arc=none smtp.client-ip=203.205.221.155
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+	s=arc-20240116; t=1750850003; c=relaxed/simple;
+	bh=bC8PR2TME4UFCi+5Hc59bcgjdsjRclxq+G/yx4wOW+Y=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=WgCb6ZygAouomXncgBkudeGnei7daZJphkI8YBo4lOUVYrGW1apc4TACJFsSYv3gdmIEg8s3uP/owqQe2sffwvjO1m0Pl8Uvd4iebAKbpY34sXAp10EYm5S3dQootY5Mcqriabc7q2wk8oV3SZuAKp+ngKejz7g9AgRJ1wXOu48=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=pankajraghav.com; spf=pass smtp.mailfrom=pankajraghav.com; dkim=pass (2048-bit key) header.d=pankajraghav.com header.i=@pankajraghav.com header.b=CUuXs4L5; arc=none smtp.client-ip=80.241.56.161
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=pankajraghav.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=pankajraghav.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="qhnEOBWS"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1750848487; bh=tgd2pHPm2RnMeqq7Vwih1WR3E04pB2uiTC5jxE+M+kQ=;
-	h=Date:From:Subject:To:Cc:References:In-Reply-To;
-	b=qhnEOBWSxtRyXSoZkn6l7HUS44VXx4qEHQPF8kInnWqiU7crYtLTU7BtTVBVBie+z
-	 7H8ybhSTw7teK539iWcDYcaGtb3XIIAU6vvvR4KlnGdgKuzPh5R/U5gul6aSaJX9fe
-	 dRGzvkqYIS1+ZB+YR5wvknIdp7LiSxcPxJ5SH5rU=
-Received: from [172.25.20.158] ([111.202.154.66])
-	by newxmesmtplogicsvrszgpuc5-0.qq.com (NewEsmtp) with SMTP
-	id A7A2CCF1; Wed, 25 Jun 2025 18:41:58 +0800
-X-QQ-mid: xmsmtpt1750848118tykbxfohr
-Message-ID: <tencent_E8315EB273FA16ECA8DD46FDA3FC2A320A09@qq.com>
-X-QQ-XMAILINFO: N2/jAoEINgTTVmeFMsiQejiordXzU686AwuiVeg+WQ4hfHy1G68V9KJ6U8soDk
-	 FjqFfgCWPLze8PgyLk7XU3TyBnoQfb/6XHBeUMmHQrBEmBgnDoi3RLdIL7DFy1Tbc73yQn54bT9d
-	 e8FPcpQMT9NBuMMSNx8DJ/c2ds9Ja9LgEiomZK+KbGDaSgYXcZwkCDF6fI3zu0XkWRiU7oyPz1b4
-	 s1+99sUHA4eDOQpG0p32kSjphMvpHz6fsEm17ecmsTkj5r2l5sIYZ5/GrJYVK6nlRRfGw1V4palu
-	 BKxljpr2g3ZkATbXVN6Lsq92oxwdWEyRNI043fQtWEk0N9eXhdsRX1xz8T7c6IoWd1m06XwwIz3B
-	 hzNhUAy/jwdqsIdYaVvkekGTlZRK/EEUWBL1Chvck7J8MPv2iQ92tNfRoC72L+0kkkbdo6Cn4NyO
-	 jsA6SdPiD4STfr+cAUcUD6hDZSMkasYyQpGswLVN0Cpy3f3AlFWhlj+FEWWjmXAeULfxW3J+lpCQ
-	 v9ssZMsa8xz+JaI46jlkFCYR/vwCC9b/fx/FcX3bSHOEdKqzxCSe8oZQ0hvXrPsa/bxxLsb9h/E5
-	 ap+HjwZX3us+AfQIDtSNaps7EJLOXF/eOBJFsoVV58OX7Ay4Pj1UAtNaWefhruNwV8MJgqjKyQLv
-	 fv0rst6CtxHchFxqL5yfSwW7bHY1W/B3jixOXQx0JTRjZHQjRIEXus7+pS5a1TB4qZOrDJe3Atzp
-	 lK2qjRb0O27krp6uyzhBMCt71AHe0Y99+fT8jxrKe6aMgYUpSWgX4bCMJFbUZFqoUMA9NOPuDYgV
-	 JNYVsqTtnrhHE5C7zy92bEFT9guuboAFnk2cldlPo2tVG/diO3McJd8V0dboAwpu+NpMbb0wiR/v
-	 4lPYdscRlzPfyanf4I7w0nZ+gGbB0mxnWt0yOuTAr9auSf4qV1jB4EEsvxO/ym9FjO32VllWG2+t
-	 KnTXNqOhT0D1Oj+2/IPYgB3xm/FKr2JjU/7Vyy3X+Lwlmvd0XTWw==
-X-QQ-XMRINFO: NyFYKkN4Ny6FSmKK/uo/jdU=
-X-OQ-MSGID: <dedbc70d-36f6-43bb-b6bf-a87103b6bb24@qq.com>
-Date: Wed, 25 Jun 2025 18:41:58 +0800
+	dkim=pass (2048-bit key) header.d=pankajraghav.com header.i=@pankajraghav.com header.b="CUuXs4L5"
+Received: from smtp1.mailbox.org (smtp1.mailbox.org [IPv6:2001:67c:2050:b231:465::1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mout-p-103.mailbox.org (Postfix) with ESMTPS id 4bRzhC6lGYz9sd6;
+	Wed, 25 Jun 2025 13:13:15 +0200 (CEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=pankajraghav.com;
+	s=MBO0001; t=1750849996;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=+7oe2pIJC+38vJh1O1Q1OLLWTyKPP/SymJuoX1qC+pk=;
+	b=CUuXs4L5mUJVSQPquyF9jhJ5H8ElV4H2vwva/vVgNV8vO9G2mATA0jby3+2NVTBRfFCi9q
+	1gLmZgxbOezMsFrosqF+99NQWkAKj9XOMubQGfCM0excYZgbWpPPFw3ijGYhyZZfZd1b5e
+	jd451+j4fbnkPiuONgOSCZTtuurz82ddPY/X/l0kNMxabyvMOWv/3x6hafoWTdoql4wgAZ
+	Uwe8maxneTZE6PnZvh20YIL+idbS8ZDV2AKFeeyuONris9ChsjUw+mfMejBL/2zis/+Rqu
+	W4TBr/69BbMmdwOQ+zYPb6kGDrCtjDn/RHBdirJJrjVGw8pCf8KezRQtnjYUXQ==
+Date: Wed, 25 Jun 2025 13:13:11 +0200
+From: "Pankaj Raghav (Samsung)" <kernel@pankajraghav.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>, Luis Chamberlain <mcgrof@kernel.org>, 
+	Pankaj Raghav <p.raghav@samsung.com>, linux-ext4@vger.kernel.org, Zhang Yi <yi.zhang@huaweicloud.com>, 
+	Baokun Li <libaokun1@huawei.com>
+Subject: Re: LBS support for EXT4
+Message-ID: <c3ywjnnpfefledcl27qoqvwi4ew7fkrpmneddbxtquazraocrv@5e6l3t5oqap4>
+References: <6ac7ce67-b54b-437e-9409-7da9402c9de1@pankajraghav.com>
+ <jcgnjl6txstun2hcimtz2zdayz7kxw4em6orafu5mfmcl2j5ik@ootfvveenf7j>
+ <279f3612-ca02-46e0-a4ae-05052f2b1e50@pankajraghav.com>
+ <20250623141753.GA33354@mit.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-From: Chentaotao <chentao325@qq.com>
-Subject: Re: [PATCH v2 1/5] drm/i915: Use kernel_write() in shmem object
- create
-To: Matthew Wilcox <willy@infradead.org>,
- =?UTF-8?B?6ZmI5rab5rabIFRhb3RhbyBDaGVu?= <chentaotao@didiglobal.com>
-Cc: "tytso@mit.edu" <tytso@mit.edu>, "hch@infradead.org" <hch@infradead.org>,
- "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
- "brauner@kernel.org" <brauner@kernel.org>,
- "jani.nikula@linux.intel.com" <jani.nikula@linux.intel.com>,
- "rodrigo.vivi@intel.com" <rodrigo.vivi@intel.com>,
- "tursulin@ursulin.net" <tursulin@ursulin.net>,
- "airlied@gmail.com" <airlied@gmail.com>,
- "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
- "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
- "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
- "intel-gfx@lists.freedesktop.org" <intel-gfx@lists.freedesktop.org>,
- "dri-devel@lists.freedesktop.org" <dri-devel@lists.freedesktop.org>,
- "linux-mm@kvack.org" <linux-mm@kvack.org>,
- "linux-doc@vger.kernel.org" <linux-doc@vger.kernel.org>,
- "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-References: <20250624121149.2927-1-chentaotao@didiglobal.com>
- <20250624121149.2927-2-chentaotao@didiglobal.com>
- <aFqYq-tLtjZjU0Ko@casper.infradead.org>
-In-Reply-To: <aFqYq-tLtjZjU0Ko@casper.infradead.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20250623141753.GA33354@mit.edu>
+X-Rspamd-Queue-Id: 4bRzhC6lGYz9sd6
 
+Thanks for the reply, Ted.
 
-在 2025/6/24 20:23, Matthew Wilcox 写道:
-> On Tue, Jun 24, 2025 at 12:12:04PM +0000, 陈涛涛 Taotao Chen wrote:
->> +++ b/drivers/gpu/drm/i915/gem/i915_gem_shmem.c
->> @@ -637,8 +637,7 @@ i915_gem_object_create_shmem_from_data(struct drm_i915_private *i915,
->>   {
->>   	struct drm_i915_gem_object *obj;
->>   	struct file *file;
->> -	const struct address_space_operations *aops;
->> -	loff_t pos;
->> +	loff_t pos = 0;
->>   	int err;
-> I think 'err' needs to become ssize_t to avoid writes larger than 2GB
-> from being misinterpreted as errors.
+On Mon, Jun 23, 2025 at 10:17:53AM -0400, Theodore Ts'o wrote:
+> If you want to review and test the ext4/iomap changes, that would be
+> great.  Be aware, though, that there are some features of ext4
+> (example: data journalling, fscrypt, fsverity, etc.) that the current
+> iomap buffered I/O code may not support today.  The alternatives are
+> to keep the existing ext4 code paths for those file system features,
+> or to try to add that functionality into iomap.  There are of course
+> tradeoffs to both alternatives; one might result in more code that we
+> have to maintain; the other might require a lot more work.
+> 
+> It _might_ be less effort to add LBS support to native ext4 code.  I
+> think the main thing is to make sure that we always we use a large
+> folio and not fall back to a sub-blocksize set of pages.  So again,
+> it's all about tradeoffs and what you consider to be the highest
+> priority.
 
-Thanks for the great catch! I’ve changed int err; to ssize_t err; as you 
-suggested.
+@Baokun are your LBS patches based on the native ext4 code or on top of
+Zhang's iomap patches.
 
+> 
+> For myself, my primary concern is to keep the code maintainable and to
+> not result in any test regressions.  If your goal is to get more file
+> systems to use iomap for buffered I/O, that might be different than
+> those who are aiming to get performance or improved hardware support
+> ASAP as your higher priority.  I will say that in the ideal world, we
+> would eventually migrate to use the iomap code for buffered I/O for at
+> least the most common case.  But if we end up having an intermediate
+> way station where we have large folio support for LBS before we get to
+> that desired end state, I'm open to that, so long as the code stays
+> maintainable and bug-free(tm).   :-)
+> 
 
+This makes sense. Thanks, Ted.
 
+-- 
+Pankaj Raghav
