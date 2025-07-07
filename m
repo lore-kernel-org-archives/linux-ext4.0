@@ -1,281 +1,94 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C48732D9EFA;
-	Mon,  7 Jul 2025 14:23:02 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DCFBB190472;
+	Mon,  7 Jul 2025 14:54:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1751898186; cv=none; b=msg0FRedzVIlI75jLaJuqUs9GpE5cUs3PITvysnBHnTfSANewVpoZJxWlW+RO06bPJGO6uRbetJs3sB9S+1GLOceODvbjGvJdll/aH+WluTPYjIYIqhaE1flGBCz5B3092Hu4iarVz1jLX53Umw29Rbq3Jwy1oKZs+Vg5H8kIG8=
+	t=1751900091; cv=none; b=CM/wnHjnDzdobUbsmgnLi2LxryMwSL5VcHgPdcKUxb1cXBlYTpJ1iqwyqeXfBWf4/flPTrSgXKWm4fFkkijwZXMNuq/+atTP5RCJXwWJ+3bEoZ9g90HI3GS+JrU46QNpCV1Q65+EKbnizSxVLU9hQGRCG6y12Yjpz7Sh+DMSWH0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1751898186; c=relaxed/simple;
-	bh=+U2My+Aqn5Ydqp5DcchuYsZosyjraV8IFJkLWCd/550=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=hGGZZvjh3OK8ST0kbrFMiokq7kIPYFkP2d3IUDPgdJJFEYckEtTg9/Ot4CtaBNB8RU4Qg2K3SqYs09Fvo5d8ER0cAud8Ee6koelF49snn2s64tktXk1PezuuvXjilHl1mEJKMnJW1HYPqNL0IVmeWRMVhSimdEhvBvW71KfWUjk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4bbRKd6F5jzYQv6N;
-	Mon,  7 Jul 2025 22:23:01 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id AA03A1A1301;
-	Mon,  7 Jul 2025 22:23:00 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.175.112.188])
-	by APP3 (Coremail) with SMTP id _Ch0CgBnxyQ22GtoNazLAw--.46745S13;
-	Mon, 07 Jul 2025 22:23:00 +0800 (CST)
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-To: linux-ext4@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	sashal@kernel.org,
-	naresh.kamboju@linaro.org,
-	jiangqi903@gmail.com,
-	yi.zhang@huawei.com,
-	yi.zhang@huaweicloud.com,
-	libaokun1@huawei.com,
-	yukuai3@huawei.com,
-	yangerkun@huawei.com
-Subject: [PATCH v4 09/11] ext4: replace ext4_writepage_trans_blocks()
-Date: Mon,  7 Jul 2025 22:08:12 +0800
-Message-ID: <20250707140814.542883-10-yi.zhang@huaweicloud.com>
-X-Mailer: git-send-email 2.46.1
-In-Reply-To: <20250707140814.542883-1-yi.zhang@huaweicloud.com>
-References: <20250707140814.542883-1-yi.zhang@huaweicloud.com>
+	s=arc-20240116; t=1751900091; c=relaxed/simple;
+	bh=Uw+QK7zVpDDDWj8PBAhmbUc8RHcgipi1naREnBRErGs=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=Mj+mQxowELancgk1br3eaIRFcuUD8QwBPBgpwf34o0m4wJJnbWnMy2WcSNvajHYUp1pZLk/V+Uwt9q+U0NPIMmAuDun9KQW6LIU8nxaVxtujrxUV/viOJ2YtjGKO3SDWTDyMFb27dXxRfjbkmbj0GbKY8In/oTcvsTopj0SiT4E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=dzLlM0hU; arc=none smtp.client-ip=90.155.50.34
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="dzLlM0hU"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Transfer-Encoding:
+	Content-Type:MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:
+	Sender:Reply-To:Content-ID:Content-Description;
+	bh=o/+i29+EsaHRjTzivT96VVcgGobCX8dLFJXYN29x5S0=; b=dzLlM0hUZ6iClIBOvZOKXBqq2C
+	E+u6WgXHMDatqhaFYT9DdBAsUvrJjBRgmCufxUccg7Ddlr8RI5+RqFOfxeQ7SULeoE/ttv6qtPi79
+	PMnphhz4vZu/BGyg9DF5KbWGTH5EFGB1GWGJ1qTRCdDkIqXo59u6NRG4KLeO/Mv626pnjHXYNpCuo
+	LLPCNwfiLl6JUdeas3gqP5it3rgyFRu2il+fOheOCmaYOeq8YegBZDuKgqUVYw6KyC+VekTOg+AAV
+	luqptV/g6COpriR6jZHeFGHPBY7hwh0/fSQBHyR81gGP6XUixw0hd63szAfYMVfU4PY0+xQTTrFeQ
+	aBx8DwuQ==;
+Received: from willy by casper.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1uYnEu-0000000DVBX-0MLk;
+	Mon, 07 Jul 2025 14:54:40 +0000
+Date: Mon, 7 Jul 2025 15:54:39 +0100
+From: Matthew Wilcox <willy@infradead.org>
+To: =?utf-8?B?6ZmI5rab5rab?= Taotao Chen <chentaotao@didiglobal.com>
+Cc: "tytso@mit.edu" <tytso@mit.edu>,
+	"hch@infradead.org" <hch@infradead.org>,
+	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+	"brauner@kernel.org" <brauner@kernel.org>,
+	"jani.nikula@linux.intel.com" <jani.nikula@linux.intel.com>,
+	"rodrigo.vivi@intel.com" <rodrigo.vivi@intel.com>,
+	"tursulin@ursulin.net" <tursulin@ursulin.net>,
+	"airlied@gmail.com" <airlied@gmail.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+	"intel-gfx@lists.freedesktop.org" <intel-gfx@lists.freedesktop.org>,
+	"dri-devel@lists.freedesktop.org" <dri-devel@lists.freedesktop.org>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"linux-doc@vger.kernel.org" <linux-doc@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"chentao325@qq.com" <chentao325@qq.com>,
+	"frank.li@vivo.com" <frank.li@vivo.com>
+Subject: Re: [PATCH v4 4/5] mm/filemap: add write_begin_get_folio() helper
+ function
+Message-ID: <aGvfr_rLUAHaUQkY@casper.infradead.org>
+References: <20250707070023.206725-1-chentaotao@didiglobal.com>
+ <20250707070023.206725-5-chentaotao@didiglobal.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgBnxyQ22GtoNazLAw--.46745S13
-X-Coremail-Antispam: 1UD129KBjvJXoWxtry3tF48Gr4Dtw43tr4kXrb_yoW3ZF1kpa
-	sxCF1rKr15W34kuFWI9r47Zr4Sg3W8Cr4UXrySkrnYgayDJw1IgFn0v3WFyFy5trW8Wws0
-	vF4Yk34UWa1ak37anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
-	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
-	IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
-	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
-	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
-	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
-	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
-	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
-	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
-	daVFxhVjvjDU0xZFpf9x0JUWMKtUUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+In-Reply-To: <20250707070023.206725-5-chentaotao@didiglobal.com>
 
-From: Zhang Yi <yi.zhang@huawei.com>
+On Mon, Jul 07, 2025 at 07:00:33AM +0000, 陈涛涛 Taotao Chen wrote:
+> +++ b/mm/filemap.c
 
-After ext4 supports large folios, the semantics of reserving credits in
-pages is no longer applicable. In most scenarios, reserving credits in
-extents is sufficient. Therefore, introduce ext4_chunk_trans_extent()
-to replace ext4_writepage_trans_blocks(). move_extent_per_page() is the
-only remaining location where we are still processing extents in pages.
+I think this should be a static inline function.  I don't think it's
+worth moving out of line.  Of course if you have measurements that show
+differently, you can change my mind.
 
-Suggested-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/ext4.h        |  2 +-
- fs/ext4/extents.c     |  6 +++---
- fs/ext4/inline.c      |  6 +++---
- fs/ext4/inode.c       | 33 +++++++++++++++------------------
- fs/ext4/move_extent.c |  3 ++-
- fs/ext4/xattr.c       |  2 +-
- 6 files changed, 25 insertions(+), 27 deletions(-)
+> +/**
+> + * write_begin_get_folio - Get folio for write_begin with flags
+> + * @iocb: kiocb passed from write_begin (may be NULL)
+> + * @mapping: the address space to search in
+> + * @index: page cache index
+> + * @len: length of data being written
+> + *
+> + * This is a helper for filesystem write_begin() implementations.
+> + * It wraps __filemap_get_folio(), setting appropriate flags in
+> + * the write begin context.
+> + *
+> + * Returns a folio or an ERR_PTR.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 18373de980f2..f705046ba6c6 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3064,9 +3064,9 @@ extern int ext4_punch_hole(struct file *file, loff_t offset, loff_t length);
- extern void ext4_set_inode_flags(struct inode *, bool init);
- extern int ext4_alloc_da_blocks(struct inode *inode);
- extern void ext4_set_aops(struct inode *inode);
--extern int ext4_writepage_trans_blocks(struct inode *);
- extern int ext4_normal_submit_inode_data_buffers(struct jbd2_inode *jinode);
- extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
-+extern int ext4_chunk_trans_extent(struct inode *inode, int nrblocks);
- extern int ext4_meta_trans_blocks(struct inode *inode, int lblocks,
- 				  int pextents);
- extern int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index b543a46fc809..f0f155458697 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5171,7 +5171,7 @@ ext4_ext_shift_path_extents(struct ext4_ext_path *path, ext4_lblk_t shift,
- 				credits = depth + 2;
- 			}
- 
--			restart_credits = ext4_writepage_trans_blocks(inode);
-+			restart_credits = ext4_chunk_trans_extent(inode, 0);
- 			err = ext4_datasem_ensure_credits(handle, inode, credits,
- 					restart_credits, 0);
- 			if (err) {
-@@ -5431,7 +5431,7 @@ static int ext4_collapse_range(struct file *file, loff_t offset, loff_t len)
- 
- 	truncate_pagecache(inode, start);
- 
--	credits = ext4_writepage_trans_blocks(inode);
-+	credits = ext4_chunk_trans_extent(inode, 0);
- 	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
-@@ -5527,7 +5527,7 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
- 
- 	truncate_pagecache(inode, start);
- 
--	credits = ext4_writepage_trans_blocks(inode);
-+	credits = ext4_chunk_trans_extent(inode, 0);
- 	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index a1bbcdf40824..d5b32d242495 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -562,7 +562,7 @@ static int ext4_convert_inline_data_to_extent(struct address_space *mapping,
- 		return 0;
- 	}
- 
--	needed_blocks = ext4_writepage_trans_blocks(inode);
-+	needed_blocks = ext4_chunk_trans_extent(inode, 1);
- 
- 	ret = ext4_get_inode_loc(inode, &iloc);
- 	if (ret)
-@@ -1864,7 +1864,7 @@ int ext4_inline_data_truncate(struct inode *inode, int *has_inline)
- 	};
- 
- 
--	needed_blocks = ext4_writepage_trans_blocks(inode);
-+	needed_blocks = ext4_chunk_trans_extent(inode, 1);
- 	handle = ext4_journal_start(inode, EXT4_HT_INODE, needed_blocks);
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
-@@ -1979,7 +1979,7 @@ int ext4_convert_inline_data(struct inode *inode)
- 			return 0;
- 	}
- 
--	needed_blocks = ext4_writepage_trans_blocks(inode);
-+	needed_blocks = ext4_chunk_trans_extent(inode, 1);
- 
- 	iloc.bh = NULL;
- 	error = ext4_get_inode_loc(inode, &iloc);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d9d12529b7fc..85ad14451b26 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1296,7 +1296,8 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
- 	 * Reserve one block more for addition to orphan list in case
- 	 * we allocate blocks but write fails for some reason
- 	 */
--	needed_blocks = ext4_writepage_trans_blocks(inode) + 1;
-+	needed_blocks = ext4_chunk_trans_extent(inode,
-+			ext4_journal_blocks_per_folio(inode)) + 1;
- 	index = pos >> PAGE_SHIFT;
- 
- 	if (ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) {
-@@ -4463,7 +4464,7 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
- 		return ret;
- 
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
--		credits = ext4_writepage_trans_blocks(inode);
-+		credits = ext4_chunk_trans_extent(inode, 2);
- 	else
- 		credits = ext4_blocks_for_truncate(inode);
- 	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
-@@ -4612,7 +4613,7 @@ int ext4_truncate(struct inode *inode)
- 	}
- 
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
--		credits = ext4_writepage_trans_blocks(inode);
-+		credits = ext4_chunk_trans_extent(inode, 1);
- 	else
- 		credits = ext4_blocks_for_truncate(inode);
- 
-@@ -6239,25 +6240,19 @@ int ext4_meta_trans_blocks(struct inode *inode, int lblocks, int pextents)
- }
- 
- /*
-- * Calculate the total number of credits to reserve to fit
-- * the modification of a single pages into a single transaction,
-- * which may include multiple chunks of block allocations.
-- *
-- * This could be called via ext4_write_begin()
-- *
-- * We need to consider the worse case, when
-- * one new block per extent.
-+ * Calculate the journal credits for modifying the number of blocks
-+ * in a single extent within one transaction. 'nrblocks' is used only
-+ * for non-extent inodes. For extent type inodes, 'nrblocks' can be
-+ * zero if the exact number of blocks is unknown.
-  */
--int ext4_writepage_trans_blocks(struct inode *inode)
-+int ext4_chunk_trans_extent(struct inode *inode, int nrblocks)
- {
--	int bpp = ext4_journal_blocks_per_folio(inode);
- 	int ret;
- 
--	ret = ext4_meta_trans_blocks(inode, bpp, bpp);
--
-+	ret = ext4_meta_trans_blocks(inode, nrblocks, 1);
- 	/* Account for data blocks for journalled mode */
- 	if (ext4_should_journal_data(inode))
--		ret += bpp;
-+		ret += nrblocks;
- 	return ret;
- }
- 
-@@ -6635,10 +6630,12 @@ static int ext4_block_page_mkwrite(struct inode *inode, struct folio *folio,
- 	handle_t *handle;
- 	loff_t size;
- 	unsigned long len;
-+	int credits;
- 	int ret;
- 
--	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE,
--				    ext4_writepage_trans_blocks(inode));
-+	credits = ext4_chunk_trans_extent(inode,
-+			ext4_journal_blocks_per_folio(inode));
-+	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, credits);
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 1f8493a56e8f..adae3caf175a 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -280,7 +280,8 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
- 	 */
- again:
- 	*err = 0;
--	jblocks = ext4_writepage_trans_blocks(orig_inode) * 2;
-+	jblocks = ext4_meta_trans_blocks(orig_inode, block_len_in_page,
-+					 block_len_in_page) * 2;
- 	handle = ext4_journal_start(orig_inode, EXT4_HT_MOVE_EXTENTS, jblocks);
- 	if (IS_ERR(handle)) {
- 		*err = PTR_ERR(handle);
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 8d15acbacc20..3fb93247330d 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -962,7 +962,7 @@ int __ext4_xattr_set_credits(struct super_block *sb, struct inode *inode,
- 	 * so we need to reserve credits for this eventuality
- 	 */
- 	if (inode && ext4_has_inline_data(inode))
--		credits += ext4_writepage_trans_blocks(inode) + 1;
-+		credits += ext4_chunk_trans_extent(inode, 1) + 1;
- 
- 	/* We are done if ea_inode feature is not enabled. */
- 	if (!ext4_has_feature_ea_inode(sb))
--- 
-2.46.1
+We prefer:
+
+ * Return: A folio or an ERR_PTR
+
+as this gets its own section in the kernel-doc output.
 
