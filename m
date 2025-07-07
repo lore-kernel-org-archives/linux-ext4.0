@@ -1,28 +1,28 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 77F9E2D8DA8;
-	Mon,  7 Jul 2025 14:22:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 09A8C2D94B0;
+	Mon,  7 Jul 2025 14:23:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1751898182; cv=none; b=D5NEkk1hz3GIqT0S6hCMZj7BDxM0uMv57RbB3e7xJqfBCgintvwwGeh8H2mlq3Nys+RmTR5dq5zsSML4E/oUCoH7zHeM3oLWLyZ5/mKBqzADjOi7iwzO/o7yAoxxeltlHbOGXE7YKPBflhBrgj0d7lzmXWxqkbpjTdT7sQrFdZU=
+	t=1751898183; cv=none; b=KpoRbIo+G2qNsrYg/TlNgySZ9fQipNhyqi5vhVTMIfFB53wv9M/5+/mgM1jDMmgxosHGoxGzeBx9FB+tUlyIdsGVKTtQXEBKlseHCVw5wzQEQYhTCMmGYM6JjjBMc09vY+3lT/KVlPZYGTeIy1WFvayqSUtdb2r21eExqVXxM6w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1751898182; c=relaxed/simple;
-	bh=/8a14RKx+/vu23OotjhAuMT/bhp+m/jgRNfnpIWwJx8=;
+	s=arc-20240116; t=1751898183; c=relaxed/simple;
+	bh=e5AlF55mgUXWP5hKltKYm9ZfVlK26l3HHPO2XHQGZBU=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=UGOmN01ep6a8h8x22UZflmhT9V5cS6RQsAHYIfjY8uZcCx8xIeFUzredwbPSiZtvscKp/iOeSHfZTu5vT6+6BIqNyzjASP+juEil2GAC6kbl6pPkyYnr845aJnHcRvN0XnMZDlwlFLKIVnK7MPn9XIhn6sZJXriMdWUIz/d3WJc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=YxRL1+OKrQx/FLCmK8r7hweMOfBLFOaYj0k8X6nLbKCMlmo2lh0ppiMAdC/rXN9PCqA9D/OCgo5urosae1UfdRtmVcs12sOzHIXLQ/xNuHDAvzH15gSpXkuihqAqUvMmDw/2r1bq7dIg/o7lD9i/3HI3sSeIRuApY/QzKO8OWOk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4bbRKZ5KWZzKHMhd;
-	Mon,  7 Jul 2025 22:22:58 +0800 (CST)
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4bbRKc3LWDzKHMlf;
+	Mon,  7 Jul 2025 22:23:00 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 34D9F1A018C;
-	Mon,  7 Jul 2025 22:22:57 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id E6B8B1A1A82;
+	Mon,  7 Jul 2025 22:22:58 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.112.188])
-	by APP3 (Coremail) with SMTP id _Ch0CgBnxyQ22GtoNazLAw--.46745S7;
-	Mon, 07 Jul 2025 22:22:56 +0800 (CST)
+	by APP3 (Coremail) with SMTP id _Ch0CgBnxyQ22GtoNazLAw--.46745S10;
+	Mon, 07 Jul 2025 22:22:58 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -39,9 +39,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	libaokun1@huawei.com,
 	yukuai3@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH v4 03/11] ext4: fix stale data if it bail out of the extents mapping loop
-Date: Mon,  7 Jul 2025 22:08:06 +0800
-Message-ID: <20250707140814.542883-4-yi.zhang@huaweicloud.com>
+Subject: [PATCH v4 06/11] ext4: enhance tracepoints during the folios writeback
+Date: Mon,  7 Jul 2025 22:08:09 +0800
+Message-ID: <20250707140814.542883-7-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
 In-Reply-To: <20250707140814.542883-1-yi.zhang@huaweicloud.com>
 References: <20250707140814.542883-1-yi.zhang@huaweicloud.com>
@@ -52,120 +52,141 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgBnxyQ22GtoNazLAw--.46745S7
-X-Coremail-Antispam: 1UD129KBjvJXoWxWryDXr47uFyDGw18GrWfKrg_yoW5ZryrpF
-	Wakwn8Gr4kGayak393JFs7Zr1Fk395JrWUXFW7GrZrZFy5tFySkr4xt3WYvFW5JrykAFy0
-	qr45Kr1UW3WUAFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmY14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JrWl82xGYIkIc2
-	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
-	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
-	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
-	IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
-	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
-	xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
-	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
-	kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
-	6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42
-	IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIev
-	Ja73UjIFyTuYvjfUF3kuDUUUU
+X-CM-TRANSID:_Ch0CgBnxyQ22GtoNazLAw--.46745S10
+X-Coremail-Antispam: 1UD129KBjvJXoWxuF17Aw47Xr17Xr45Zw1fWFg_yoWrAry7pF
+	WqkF95Wrs7Zw4Y93WfZa1UZr4FvFykur47tr13WFyDXw1xAr1kKa17KryqyFyjyrZ2kryI
+	qF4qk3sxC3WxWrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
+	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
+	4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
+	daVFxhVjvjDU0xZFpf9x0JUWMKtUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-During the process of writing back folios, if
-mpage_map_and_submit_extent() exits the extent mapping loop due to an
-ENOSPC or ENOMEM error, it may result in stale data or filesystem
-inconsistency in environments where the block size is smaller than the
-folio size.
+After mpage_map_and_submit_extent() supports restarting handle if
+credits are insufficient during allocating blocks, it is more likely to
+exit the current mapping iteration and continue to process the current
+processing partially mapped folio again. The existing tracepoints are
+not sufficient to track this situation, so enhance the tracepoints to
+track the writeback position and the return value before and after
+submitting the folios.
 
-When mapping a discontinuous folio in mpage_map_and_submit_extent(),
-some buffers may have already be mapped. If we exit the mapping loop
-prematurely, the folio data within the mapped range will not be written
-back, and the file's disk size will not be updated. Once the transaction
-that includes this range of extents is committed, this can lead to stale
-data or filesystem inconsistency.
-
-Fix this by submitting the current processing partially mapped folio.
-
-Suggested-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 51 ++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 50 insertions(+), 1 deletion(-)
+ fs/ext4/inode.c             |  5 ++++-
+ include/trace/events/ext4.h | 42 ++++++++++++++++++++++++++++++++-----
+ 2 files changed, 41 insertions(+), 6 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index a88ed7f51afc..a59d148b9185 100644
+index 10d4f86a5c15..51effbad90e5 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2361,6 +2361,47 @@ static int mpage_map_one_extent(handle_t *handle, struct mpage_da_data *mpd)
- 	return 0;
- }
+@@ -2935,7 +2935,8 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
+ 		}
+ 		mpd->do_map = 1;
  
-+/*
-+ * This is used to submit mapped buffers in a single folio that is not fully
-+ * mapped for various reasons, such as insufficient space or journal credits.
-+ */
-+static int mpage_submit_partial_folio(struct mpage_da_data *mpd)
-+{
-+	struct inode *inode = mpd->inode;
-+	struct folio *folio;
-+	loff_t pos;
-+	int ret;
+-		trace_ext4_da_write_pages(inode, mpd->start_pos, wbc);
++		trace_ext4_da_write_folios_start(inode, mpd->start_pos,
++				mpd->next_pos, wbc);
+ 		ret = mpage_prepare_extent_to_map(mpd);
+ 		if (!ret && mpd->map.m_len)
+ 			ret = mpage_map_and_submit_extent(handle, mpd,
+@@ -2973,6 +2974,8 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
+ 		} else
+ 			ext4_put_io_end(mpd->io_submit.io_end);
+ 		mpd->io_submit.io_end = NULL;
++		trace_ext4_da_write_folios_end(inode, mpd->start_pos,
++				mpd->next_pos, wbc, ret);
+ 
+ 		if (ret == -ENOSPC && sbi->s_journal) {
+ 			/*
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 62d52997b5c6..845451077c41 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -482,16 +482,17 @@ TRACE_EVENT(ext4_writepages,
+ 		  (unsigned long) __entry->writeback_index)
+ );
+ 
+-TRACE_EVENT(ext4_da_write_pages,
+-	TP_PROTO(struct inode *inode, loff_t start_pos,
++TRACE_EVENT(ext4_da_write_folios_start,
++	TP_PROTO(struct inode *inode, loff_t start_pos, loff_t next_pos,
+ 		 struct writeback_control *wbc),
+ 
+-	TP_ARGS(inode, start_pos, wbc),
++	TP_ARGS(inode, start_pos, next_pos, wbc),
+ 
+ 	TP_STRUCT__entry(
+ 		__field(	dev_t,	dev			)
+ 		__field(	ino_t,	ino			)
+ 		__field(       loff_t,	start_pos		)
++		__field(       loff_t,	next_pos		)
+ 		__field(	 long,	nr_to_write		)
+ 		__field(	  int,	sync_mode		)
+ 	),
+@@ -500,16 +501,47 @@ TRACE_EVENT(ext4_da_write_pages,
+ 		__entry->dev		= inode->i_sb->s_dev;
+ 		__entry->ino		= inode->i_ino;
+ 		__entry->start_pos	= start_pos;
++		__entry->next_pos	= next_pos;
+ 		__entry->nr_to_write	= wbc->nr_to_write;
+ 		__entry->sync_mode	= wbc->sync_mode;
+ 	),
+ 
+-	TP_printk("dev %d,%d ino %lu start_pos 0x%llx nr_to_write %ld sync_mode %d",
++	TP_printk("dev %d,%d ino %lu start_pos 0x%llx next_pos 0x%llx nr_to_write %ld sync_mode %d",
+ 		  MAJOR(__entry->dev), MINOR(__entry->dev),
+-		  (unsigned long) __entry->ino, __entry->start_pos,
++		  (unsigned long) __entry->ino, __entry->start_pos, __entry->next_pos,
+ 		  __entry->nr_to_write, __entry->sync_mode)
+ );
+ 
++TRACE_EVENT(ext4_da_write_folios_end,
++	TP_PROTO(struct inode *inode, loff_t start_pos, loff_t next_pos,
++		 struct writeback_control *wbc, int ret),
 +
-+	folio = filemap_get_folio(inode->i_mapping,
-+				  mpd->start_pos >> PAGE_SHIFT);
-+	if (IS_ERR(folio))
-+		return PTR_ERR(folio);
-+	/*
-+	 * The mapped position should be within the current processing folio
-+	 * but must not be the folio start position.
-+	 */
-+	pos = ((loff_t)mpd->map.m_lblk) << inode->i_blkbits;
-+	if (WARN_ON_ONCE((folio_pos(folio) == pos) ||
-+			 !folio_contains(folio, pos >> PAGE_SHIFT)))
-+		return -EINVAL;
++	TP_ARGS(inode, start_pos, next_pos, wbc, ret),
 +
-+	ret = mpage_submit_folio(mpd, folio);
-+	if (ret)
-+		goto out;
-+	/*
-+	 * Update start_pos to prevent this folio from being released in
-+	 * mpage_release_unused_pages(), it will be reset to the aligned folio
-+	 * pos when this folio is written again in the next round. Additionally,
-+	 * do not update wbc->nr_to_write here, as it will be updated once the
-+	 * entire folio has finished processing.
-+	 */
-+	mpd->start_pos = pos;
-+out:
-+	folio_unlock(folio);
-+	folio_put(folio);
-+	return ret;
-+}
++	TP_STRUCT__entry(
++		__field(	dev_t,	dev			)
++		__field(	ino_t,	ino			)
++		__field(       loff_t,	start_pos		)
++		__field(       loff_t,	next_pos		)
++		__field(	 long,	nr_to_write		)
++		__field(	  int,	ret			)
++	),
 +
- /*
-  * mpage_map_and_submit_extent - map extent starting at mpd->lblk of length
-  *				 mpd->len and submit pages underlying it for IO
-@@ -2411,8 +2452,16 @@ static int mpage_map_and_submit_extent(handle_t *handle,
- 			 */
- 			if ((err == -ENOMEM) ||
- 			    (err == -ENOSPC && ext4_count_free_clusters(sb))) {
--				if (progress)
-+				/*
-+				 * We may have already allocated extents for
-+				 * some bhs inside the folio, issue the
-+				 * corresponding data to prevent stale data.
-+				 */
-+				if (progress) {
-+					if (mpage_submit_partial_folio(mpd))
-+						goto invalidate_dirty_pages;
- 					goto update_disksize;
-+				}
- 				return err;
- 			}
- 			ext4_msg(sb, KERN_CRIT,
++	TP_fast_assign(
++		__entry->dev		= inode->i_sb->s_dev;
++		__entry->ino		= inode->i_ino;
++		__entry->start_pos	= start_pos;
++		__entry->next_pos	= next_pos;
++		__entry->nr_to_write	= wbc->nr_to_write;
++		__entry->ret		= ret;
++	),
++
++	TP_printk("dev %d,%d ino %lu start_pos 0x%llx next_pos 0x%llx nr_to_write %ld ret %d",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long) __entry->ino, __entry->start_pos, __entry->next_pos,
++		  __entry->nr_to_write, __entry->ret)
++);
++
+ TRACE_EVENT(ext4_da_write_pages_extent,
+ 	TP_PROTO(struct inode *inode, struct ext4_map_blocks *map),
+ 
 -- 
 2.46.1
 
