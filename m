@@ -1,28 +1,28 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E69072DA747;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2A6572DA75A;
 	Mon,  7 Jul 2025 14:23:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1751898185; cv=none; b=frJ8PhMMGt41yAANzCMxsfYwyMDLkVG7o5G351+xUBuPVZW3T/JMV/DT7UfJnDAHpd6or6yW0LY7P54yYRbNbMW+g70blla7zhYjiguDIWtxbZdWScNprkG6bZLuEcDYfuHRBID0apZwqciFXhW4pYPxxuyEK3y7SRudWLCyMSY=
+	t=1751898185; cv=none; b=aFvmOxpMnq2uNSEu9wE5im9QzpWmAEkLr3h8GziHtvVbw93ueQeEvLud/LQcF0x99//EDdoO2zXKnPkwGbKdmFNo1GmGG3iQa5vEiRf+vQVxBOR7UwrktYG4FDzczH0OPQdwntXZO5b2+mBuQZJPecCk3jznp9+GkRWwCNkFZ6E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1751898185; c=relaxed/simple;
-	bh=R2asvLQhBdfY8dbrbq7YimBkMAdxaJcr/EZrATrWVw8=;
+	bh=FZKwy07XvmKoMENra/1jCtoEiCc4x782o8p/B/1DuME=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ilR+8GM62bPRaEWvOaSJZfYusqt9jr/frWOtvVKDsiX0F3s60nWRz37Q3HP8PZGQnq406ozmIpgzr6C/BvEyjdjlZ2ZKzBneLiFPKXZnbH99+QQPgM5W426METgcVRtoJoPMnyJgZgxaE9ji3NLM/AJgwMAIpBFhLi2OZsyJXzI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=ssx5MvXKgjtGCZjzcfdKbP56FHFZH4LJdVrUK0DhTWopyI5FfK2/UodGSDCxtuWrV+f7gjX1+Asb4QBRuauWNbi8rEK3dFUyG5MPz+9rQ3+lUX9aJABLp4B0KRinewQiWh35qPLx7Oje8kgxune9ifaIpPMk05RoxqUUKMPD3mE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4bbRKd4gWkzKHMZR;
-	Mon,  7 Jul 2025 22:23:01 +0800 (CST)
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4bbRKf5vr1zKHMbB;
+	Mon,  7 Jul 2025 22:23:02 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 1D58D1A0AE1;
-	Mon,  7 Jul 2025 22:23:00 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 46A991A12FE;
+	Mon,  7 Jul 2025 22:23:01 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.112.188])
-	by APP3 (Coremail) with SMTP id _Ch0CgBnxyQ22GtoNazLAw--.46745S12;
-	Mon, 07 Jul 2025 22:22:59 +0800 (CST)
+	by APP3 (Coremail) with SMTP id _Ch0CgBnxyQ22GtoNazLAw--.46745S14;
+	Mon, 07 Jul 2025 22:23:01 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -39,9 +39,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	libaokun1@huawei.com,
 	yukuai3@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH v4 08/11] ext4: reserved credits for one extent during the folio writeback
-Date: Mon,  7 Jul 2025 22:08:11 +0800
-Message-ID: <20250707140814.542883-9-yi.zhang@huaweicloud.com>
+Subject: [PATCH v4 10/11] ext4: fix insufficient credits calculation in ext4_meta_trans_blocks()
+Date: Mon,  7 Jul 2025 22:08:13 +0800
+Message-ID: <20250707140814.542883-11-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
 In-Reply-To: <20250707140814.542883-1-yi.zhang@huaweicloud.com>
 References: <20250707140814.542883-1-yi.zhang@huaweicloud.com>
@@ -52,10 +52,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgBnxyQ22GtoNazLAw--.46745S12
-X-Coremail-Antispam: 1UD129KBjvJXoWxZry5KryruFyDAFy7Cw1Dtrb_yoW5WryDpF
-	W3CrWkWr17WFyUuF4xWa1xZF1fWa48C3yUJr9xKFn7Wa98Z34IgFn8KayY9FW5KrWxGa4j
-	vF45C34Duay2yaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:_Ch0CgBnxyQ22GtoNazLAw--.46745S14
+X-Coremail-Antispam: 1UD129KBjvJXoW7uFy7Zw48KrW5GFWrCF1fCrg_yoW8Xw4fp3
+	Z5Ca48Gry8Ww409a18Wa12qr48Ka1kGa17WFWfJw15XFZxZryfKrnFq348Aa45tFWSkw1q
+	qF4ayry3Gw1UA3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -66,7 +66,7 @@ X-Coremail-Antispam: 1UD129KBjvJXoWxZry5KryruFyDAFy7Cw1Dtrb_yoW5WryDpF
 	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
 	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
 	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
-	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI
 	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
 	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
 	daVFxhVjvjDU0xZFpf9x0JUWMKtUUUUU=
@@ -74,72 +74,43 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-After ext4 supports large folios, reserving journal credits for one
-maximum-ordered folio based on the worst case cenario during the
-writeback process can easily exceed the maximum transaction credits.
-Additionally, reserving journal credits for one page is also no
-longer appropriate.
+The calculation of journal credits in ext4_meta_trans_blocks() should
+include pextents, as each extent separately may be allocated from a
+different group and thus need to update different bitmap and group
+descriptor block.
 
-Currently, the folio writeback process can either extend the journal
-credits or initiate a new transaction if the currently reserved journal
-credits are insufficient. Therefore, it can be modified to reserve
-credits for only one extent at the outset. In most cases involving
-continuous mapping, these credits are generally adequate, and we may
-only need to perform some basic credit expansion. However, in extreme
-cases where the block size and folio size differ significantly, or when
-the folios are sufficiently discontinuous, it may be necessary to
-restart a new transaction and resubmit the folios.
-
-Suggested-by: Jan Kara <jack@suse.cz>
+Fixes: 0e32d8617012 ("ext4: correct the journal credits calculations of allocating blocks")
+Reported-by: Jan Kara <jack@suse.cz>
+Closes: https://lore.kernel.org/linux-ext4/nhxfuu53wyacsrq7xqgxvgzcggyscu2tbabginahcygvmc45hy@t4fvmyeky33e/
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Baokun Li <libaokun1@huawei.com>
 ---
- fs/ext4/inode.c | 25 ++++++++-----------------
- 1 file changed, 8 insertions(+), 17 deletions(-)
+ fs/ext4/inode.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3ed4bc6c02f8..d9d12529b7fc 100644
+index 85ad14451b26..4b679cb6c8bd 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2547,21 +2547,6 @@ static int mpage_map_and_submit_extent(handle_t *handle,
- 	return err;
- }
+@@ -6214,7 +6214,7 @@ int ext4_meta_trans_blocks(struct inode *inode, int lblocks, int pextents)
+ 	int ret;
  
--/*
-- * Calculate the total number of credits to reserve for one writepages
-- * iteration. This is called from ext4_writepages(). We map an extent of
-- * up to MAX_WRITEPAGES_EXTENT_LEN blocks and then we go on and finish mapping
-- * the last partial page. So in total we can map MAX_WRITEPAGES_EXTENT_LEN +
-- * bpp - 1 blocks in bpp different extents.
-- */
--static int ext4_da_writepages_trans_blocks(struct inode *inode)
--{
--	int bpp = ext4_journal_blocks_per_folio(inode);
--
--	return ext4_meta_trans_blocks(inode,
--				MAX_WRITEPAGES_EXTENT_LEN + bpp - 1, bpp);
--}
--
- static int ext4_journal_folio_buffers(handle_t *handle, struct folio *folio,
- 				     size_t len)
- {
-@@ -2918,8 +2903,14 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
- 		 * not supported by delalloc.
- 		 */
- 		BUG_ON(ext4_should_journal_data(inode));
--		needed_blocks = ext4_da_writepages_trans_blocks(inode);
--
-+		/*
-+		 * Calculate the number of credits needed to reserve for one
-+		 * extent of up to MAX_WRITEPAGES_EXTENT_LEN blocks. It will
-+		 * attempt to extend the transaction or start a new iteration
-+		 * if the reserved credits are insufficient.
-+		 */
-+		needed_blocks = ext4_chunk_trans_blocks(inode,
-+						MAX_WRITEPAGES_EXTENT_LEN);
- 		/* start a new transaction */
- 		handle = ext4_journal_start_with_reserve(inode,
- 				EXT4_HT_WRITE_PAGE, needed_blocks, rsv_blocks);
+ 	/*
+-	 * How many index and lead blocks need to touch to map @lblocks
++	 * How many index and leaf blocks need to touch to map @lblocks
+ 	 * logical blocks to @pextents physical extents?
+ 	 */
+ 	idxblocks = ext4_index_trans_blocks(inode, lblocks, pextents);
+@@ -6223,7 +6223,7 @@ int ext4_meta_trans_blocks(struct inode *inode, int lblocks, int pextents)
+ 	 * Now let's see how many group bitmaps and group descriptors need
+ 	 * to account
+ 	 */
+-	groups = idxblocks;
++	groups = idxblocks + pextents;
+ 	gdpblocks = groups;
+ 	if (groups > ngroups)
+ 		groups = ngroups;
 -- 
 2.46.1
 
