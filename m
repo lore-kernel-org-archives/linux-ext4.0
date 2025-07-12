@@ -1,48 +1,45 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C29F51442E8
-	for <linux-ext4@vger.kernel.org>; Sat, 12 Jul 2025 18:13:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 95C676F073
+	for <linux-ext4@vger.kernel.org>; Sat, 12 Jul 2025 18:13:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1752343997; cv=none; b=rmTelN1x7B74Kwe6XqM/jMBpqql4V2NstAnbWLoFMzBhxvbg7dnrP0pu8cQ6sQYyuNWEWS9dYTkNV9i6rVCDx4MefcUpLhy+dlLwryyJ/5AnqQzuRR5UH+3/7xjnmYhn7YTWxDS3W205ctB9VPcJ/AAUOgH/TDvxzmxmBJEd8H4=
+	t=1752343998; cv=none; b=CxmLLIfCCzWUag6XfrxTE+etg990fJsOsTiyXGFS/feSJNT/f0GH4zONb1WMCVWWhEkXC6Q8p0gwAyAfDNS+YRYtwgsRDgD0A6JoXJ6wV4Qqp9kizAwnRZiEn32IPVtZGtuG3zUlg+xuqBND0M/aHFJkWvr/k9hS5IOGeNGJZiE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1752343997; c=relaxed/simple;
-	bh=Ml31Uyh+G9/39veowJbCqEz9OoGZmLwMbw5rqkbqmMk=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Cyd1qs5QNd9hs/Ul8CKLk6GQOtjgA9CDR/22FD9AZmtqkbTaybNYnwyodZEKnXczdCW8kHg3xlu9v/lEeA6JpqKq0IKKtzhwqHIoRVI0xi3ssXv7CX6T7dc/7D/vTsz+InWM7psts72gLDn0sGxvqpY5JZgJDUKCUcTXUJXFNVM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=UMu8qozB; arc=none smtp.client-ip=18.9.28.11
+	s=arc-20240116; t=1752343998; c=relaxed/simple;
+	bh=j4KJ5r7hwF/WsOoFrmY/3Jk+I6CtHmJb2qbSRM/cRlY=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=UqbLNC+PaPmtT3bkb98bTtMgV8Nqk7ywgRUeBd3inNNTBB3WlqdPrdmbce+qeycjubG2Ro4sPOSwFp0oDhGh5Y9GJcITD/RYh2ft7hl2rKPKFwr4BJglwnRpnQIfUVO7/YdYBDNRdLQDcC6gpTphxxb5AjcUGvGyPajgau16ayg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=ozDp+laF; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="UMu8qozB"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="ozDp+laF"
 Received: from trampoline.thunk.org (pool-173-48-112-142.bstnma.fios.verizon.net [173.48.112.142])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 56CICwMv029945
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 56CICwNJ029950
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Sat, 12 Jul 2025 14:12:59 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1752343980; bh=ulUcR+R9dEHXuX1QUsyTk4alpYp2dtEhjq41yE8aySg=;
+	t=1752343980; bh=1zG/6l54IFMCXEjHWCcDdXQK7iJCTe15KdvaHvs5Wkg=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=UMu8qozBS+WpPtOcnDv4OIFTdMgpW6S0FGjLGUEeR4hQlLLazeNfXvXaQX2Kg0UT5
-	 vl8nQSzqorlg0t3pzetA5Byfle5kfPUS2KUgEClmaSg7XCNNVbB0nziu0CUsnzJx12
-	 V0vahxtOzxJbFqvIxR0lFfwKD35nzGkC9lyXha6ZQ51BI55OwGkXpg5e/fT/BHGh/m
-	 CszOJw6MEHfQUn4K0E0n6Zu/e38uwI/6m863t7kHx2pscBJenAnLWN0xUOmlFegdoG
-	 kmLOCHjgiPjM167QfLwnaXprwRQNhnRkl6TOVNXGUHX1rCVTrzJY1f3pG77QhqNKg2
-	 GpXHH0KCLbpvQ==
+	b=ozDp+laFEOF9XsQ5YX6kbDc/7yzkAZUTcIYnaXy7Ryc6bLkpFAtEE3h/vpZAYn9Kj
+	 ZMNRZ10iSNVC3b3U1BPV06/iFeGPtREn50fMLUwKOvJyp8/wBUFEdTVjMHe9dGcNsz
+	 7+1M58FtsFVfU6vKwUP2Bw73YrX6nyqNHf+q+tzml7GvvUKVjbiwH/Psc/1oymVFq2
+	 DIsvjwVKlhPkI846pKWBaZMM4q+XJcw2fifVAdIjydLp7/zxlD8kXhXYa1wkKp9f5G
+	 YWnHtffLJAgy21H16b/IkskhAyfEY78P03ZQciF4XgpuD7Puv00e8hl9CeXASKY5P2
+	 V3dGdc1Z3zkTA==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id C74B52E00D7; Sat, 12 Jul 2025 14:12:58 -0400 (EDT)
+	id C2BB72E00D5; Sat, 12 Jul 2025 14:12:58 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: linux-hardening@vger.kernel.org, ethan@ethancedwards.com,
         "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 3/3] ext4: refactor the inline directory conversion and new directory codepaths
-Date: Sat, 12 Jul 2025 14:12:49 -0400
-Message-ID: <20250712181249.434530-3-tytso@mit.edu>
+Subject: [PATCH 1/3] ext4: replace strcmp with direct comparison for '.' and '..'
+Date: Sat, 12 Jul 2025 14:12:47 -0400
+Message-ID: <20250712181249.434530-1-tytso@mit.edu>
 X-Mailer: git-send-email 2.47.2
-In-Reply-To: <20250712181249.434530-1-tytso@mit.edu>
-References: <20250712181249.434530-1-tytso@mit.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -51,235 +48,69 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-There was a lot of common code in the codepaths used to convert an
-inline directory and to creaet a new directory.  To address this,
-rename ext4_init_dot_dotdot() to ext4_init_dirblock() and then move
-common code into that function.
+In a discussion over a proposed patch, "ext4: replace strcpy() with
+'.' assignment"[1], I had asserted that directory entries in ext4 were
+not NUL terminated, and hence it was safe to replace strcpy() with a
+direct assignment.  As it turns out, this was incorrect.  It's true
+for all all directory entries *except* for '.' and '..' where the
+kernel was using strcmp() and where e2fsck actually checks and offers
+to fix things if '.'  and '..' are not NUL terminated.
 
-This reduces the lines of code count in fs/ext4/inline.c and
-fs/ext4/namei.c, as well as reducing the size of their object files.
+[1] https://lore.kernel.org/r/202505191316.JJMnPobO-lkp@intel.com
+
+We can't change this without breaking old kernel versions, but in the
+spirit of "be liberal in what you receive", use direct comparison of
+de->name_len and de->name[0,1] instead of strcmp().  This has the side
+benefit of reducing the compiled text size by 96 bytes on x86_64.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/ext4.h   |  9 ++++----
- fs/ext4/inline.c | 60 ++++++++++--------------------------------------
- fs/ext4/namei.c  | 56 ++++++++++++++++++++++++--------------------
- 3 files changed, 48 insertions(+), 77 deletions(-)
+ fs/ext4/namei.c | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 18373de980f2..4d1d3eff2418 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3612,6 +3612,7 @@ extern loff_t ext4_llseek(struct file *file, loff_t offset, int origin);
- extern int ext4_get_max_inline_size(struct inode *inode);
- extern int ext4_find_inline_data_nolock(struct inode *inode);
- extern int ext4_destroy_inline_data(handle_t *handle, struct inode *inode);
-+extern void ext4_update_final_de(void *de_buf, int old_size, int new_size);
- 
- int ext4_readpage_inline(struct inode *inode, struct folio *folio);
- extern int ext4_try_to_write_inline_data(struct address_space *mapping,
-@@ -3671,10 +3672,10 @@ static inline int ext4_has_inline_data(struct inode *inode)
- extern const struct inode_operations ext4_dir_inode_operations;
- extern const struct inode_operations ext4_special_inode_operations;
- extern struct dentry *ext4_get_parent(struct dentry *child);
--extern struct ext4_dir_entry_2 *ext4_init_dot_dotdot(struct inode *inode,
--				 struct ext4_dir_entry_2 *de,
--				 int blocksize, int csum_size,
--				 unsigned int parent_ino, int dotdot_real_len);
-+extern int ext4_init_dirblock(handle_t *handle, struct inode *inode,
-+			      struct buffer_head *dir_block,
-+			      unsigned int parent_ino, void *inline_buf,
-+			      int inline_size);
- extern void ext4_initialize_dirent_tail(struct buffer_head *bh,
- 					unsigned int blocksize);
- extern int ext4_handle_dirty_dirblock(handle_t *handle, struct inode *inode,
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index eeee007251e0..4ad3255e45cb 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -995,7 +995,7 @@ static void *ext4_get_inline_xattr_pos(struct inode *inode,
- }
- 
- /* Set the final de to cover the whole block. */
--static void ext4_update_final_de(void *de_buf, int old_size, int new_size)
-+void ext4_update_final_de(void *de_buf, int old_size, int new_size)
- {
- 	struct ext4_dir_entry_2 *de, *prev_de;
- 	void *limit;
-@@ -1059,51 +1059,6 @@ static void ext4_restore_inline_data(handle_t *handle, struct inode *inode,
- 	ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
- }
- 
--static int ext4_finish_convert_inline_dir(handle_t *handle,
--					  struct inode *inode,
--					  struct buffer_head *dir_block,
--					  void *buf,
--					  int inline_size)
--{
--	int err, csum_size = 0, header_size = 0;
--	struct ext4_dir_entry_2 *de;
--	void *target = dir_block->b_data;
--
--	/*
--	 * First create "." and ".." and then copy the dir information
--	 * back to the block.
--	 */
--	de = target;
--	de = ext4_init_dot_dotdot(inode, de,
--		inode->i_sb->s_blocksize, csum_size,
--		le32_to_cpu(((struct ext4_dir_entry_2 *)buf)->inode), 1);
--	header_size = (void *)de - target;
--
--	memcpy((void *)de, buf + EXT4_INLINE_DOTDOT_SIZE,
--		inline_size - EXT4_INLINE_DOTDOT_SIZE);
--
--	if (ext4_has_feature_metadata_csum(inode->i_sb))
--		csum_size = sizeof(struct ext4_dir_entry_tail);
--
--	inode->i_size = inode->i_sb->s_blocksize;
--	i_size_write(inode, inode->i_sb->s_blocksize);
--	EXT4_I(inode)->i_disksize = inode->i_sb->s_blocksize;
--	ext4_update_final_de(dir_block->b_data,
--			inline_size - EXT4_INLINE_DOTDOT_SIZE + header_size,
--			inode->i_sb->s_blocksize - csum_size);
--
--	if (csum_size)
--		ext4_initialize_dirent_tail(dir_block,
--					    inode->i_sb->s_blocksize);
--	set_buffer_uptodate(dir_block);
--	unlock_buffer(dir_block);
--	err = ext4_handle_dirty_dirblock(handle, inode, dir_block);
--	if (err)
--		return err;
--	set_buffer_verified(dir_block);
--	return ext4_mark_inode_dirty(handle, inode);
--}
--
- static int ext4_convert_inline_data_nolock(handle_t *handle,
- 					   struct inode *inode,
- 					   struct ext4_iloc *iloc)
-@@ -1175,8 +1130,17 @@ static int ext4_convert_inline_data_nolock(handle_t *handle,
- 		error = ext4_handle_dirty_metadata(handle,
- 						   inode, data_bh);
- 	} else {
--		error = ext4_finish_convert_inline_dir(handle, inode, data_bh,
--						       buf, inline_size);
-+		unlock_buffer(data_bh);
-+		inode->i_size = inode->i_sb->s_blocksize;
-+		i_size_write(inode, inode->i_sb->s_blocksize);
-+		EXT4_I(inode)->i_disksize = inode->i_sb->s_blocksize;
-+
-+		error = ext4_init_dirblock(handle, inode, data_bh,
-+			  le32_to_cpu(((struct ext4_dir_entry_2 *)buf)->inode),
-+			  buf + EXT4_INLINE_DOTDOT_SIZE,
-+			  inline_size - EXT4_INLINE_DOTDOT_SIZE);
-+		if (!error)
-+			error = ext4_mark_inode_dirty(handle, inode);
- 	}
- 
- out_restore:
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 9913a94b6a6d..d83f91b62317 100644
+index a178ac229489..b82f5841c65a 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -2915,11 +2915,17 @@ static int ext4_tmpfile(struct mnt_idmap *idmap, struct inode *dir,
- 	return err;
- }
- 
--struct ext4_dir_entry_2 *ext4_init_dot_dotdot(struct inode *inode,
--			  struct ext4_dir_entry_2 *de,
--			  int blocksize, int csum_size,
--			  unsigned int parent_ino, int dotdot_real_len)
-+int ext4_init_dirblock(handle_t *handle, struct inode *inode,
-+		       struct buffer_head *bh, unsigned int parent_ino,
-+		       void *inline_buf, int inline_size)
- {
-+	struct ext4_dir_entry_2 *de = (struct ext4_dir_entry_2 *) bh->b_data;
-+	size_t			blocksize = bh->b_size;
-+	int			csum_size = 0, header_size;
-+
-+	if (ext4_has_feature_metadata_csum(inode->i_sb))
-+		csum_size = sizeof(struct ext4_dir_entry_tail);
-+
- 	de->inode = cpu_to_le32(inode->i_ino);
- 	de->name_len = 1;
- 	de->rec_len = ext4_rec_len_to_disk(ext4_dir_rec_len(de->name_len, NULL),
-@@ -2930,18 +2936,29 @@ struct ext4_dir_entry_2 *ext4_init_dot_dotdot(struct inode *inode,
- 	de = ext4_next_entry(de, blocksize);
- 	de->inode = cpu_to_le32(parent_ino);
- 	de->name_len = 2;
--	if (!dotdot_real_len)
--		de->rec_len = ext4_rec_len_to_disk(blocksize -
--					(csum_size + ext4_dir_rec_len(1, NULL)),
--					blocksize);
--	else
-+	memcpy(de->name, "..", 3);
-+	ext4_set_de_type(inode->i_sb, de, S_IFDIR);
-+	if (inline_buf) {
- 		de->rec_len = ext4_rec_len_to_disk(
- 					ext4_dir_rec_len(de->name_len, NULL),
- 					blocksize);
--	memcpy(de->name, "..", 3);
--	ext4_set_de_type(inode->i_sb, de, S_IFDIR);
-+		de = ext4_next_entry(de, blocksize);
-+		header_size = (char *)de - bh->b_data;
-+		memcpy((void *)de, inline_buf, inline_size);
-+		ext4_update_final_de(bh->b_data, inline_size + header_size,
-+			blocksize - csum_size);
-+	} else {
-+		de->rec_len = ext4_rec_len_to_disk(blocksize -
-+					(csum_size + ext4_dir_rec_len(1, NULL)),
-+					blocksize);
-+	}
- 
--	return ext4_next_entry(de, blocksize);
-+	if (csum_size)
-+		ext4_initialize_dirent_tail(bh, blocksize);
-+	BUFFER_TRACE(dir_block, "call ext4_handle_dirty_metadata");
-+	set_buffer_uptodate(bh);
-+	set_buffer_verified(bh);
-+	return ext4_handle_dirty_dirblock(handle, inode, bh);
- }
- 
- int ext4_init_new_dir(handle_t *handle, struct inode *dir,
-@@ -2950,13 +2967,8 @@ int ext4_init_new_dir(handle_t *handle, struct inode *dir,
- 	struct buffer_head *dir_block = NULL;
- 	struct ext4_dir_entry_2 *de;
- 	ext4_lblk_t block = 0;
--	unsigned int blocksize = dir->i_sb->s_blocksize;
--	int csum_size = 0;
- 	int err;
- 
--	if (ext4_has_feature_metadata_csum(dir->i_sb))
--		csum_size = sizeof(struct ext4_dir_entry_tail);
--
- 	if (ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) {
- 		err = ext4_try_create_inline_dir(handle, dir, inode);
- 		if (err < 0 && err != -ENOSPC)
-@@ -2965,21 +2977,15 @@ int ext4_init_new_dir(handle_t *handle, struct inode *dir,
- 			goto out;
- 	}
- 
-+	set_nlink(inode, 2);
- 	inode->i_size = 0;
- 	dir_block = ext4_append(handle, inode, &block);
- 	if (IS_ERR(dir_block))
- 		return PTR_ERR(dir_block);
- 	de = (struct ext4_dir_entry_2 *)dir_block->b_data;
--	ext4_init_dot_dotdot(inode, de, blocksize, csum_size, dir->i_ino, 0);
--	set_nlink(inode, 2);
--	if (csum_size)
--		ext4_initialize_dirent_tail(dir_block, blocksize);
--
--	BUFFER_TRACE(dir_block, "call ext4_handle_dirty_metadata");
--	err = ext4_handle_dirty_dirblock(handle, inode, dir_block);
-+	err = ext4_init_dirblock(handle, inode, dir_block, dir->i_ino, NULL, 0);
- 	if (err)
- 		goto out;
--	set_buffer_verified(dir_block);
- out:
- 	brelse(dir_block);
- 	return err;
+@@ -3082,7 +3082,8 @@ bool ext4_empty_dir(struct inode *inode)
+ 	de = (struct ext4_dir_entry_2 *) bh->b_data;
+ 	if (ext4_check_dir_entry(inode, NULL, de, bh, bh->b_data, bh->b_size,
+ 				 0) ||
+-	    le32_to_cpu(de->inode) != inode->i_ino || strcmp(".", de->name)) {
++	    le32_to_cpu(de->inode) != inode->i_ino || de->name_len != 1 ||
++	    de->name[0] != '.') {
+ 		ext4_warning_inode(inode, "directory missing '.'");
+ 		brelse(bh);
+ 		return false;
+@@ -3091,7 +3092,8 @@ bool ext4_empty_dir(struct inode *inode)
+ 	de = ext4_next_entry(de, sb->s_blocksize);
+ 	if (ext4_check_dir_entry(inode, NULL, de, bh, bh->b_data, bh->b_size,
+ 				 offset) ||
+-	    le32_to_cpu(de->inode) == 0 || strcmp("..", de->name)) {
++	    le32_to_cpu(de->inode) == 0 || de->name_len != 2 ||
++	    de->name[0] != '.' || de->name[1] != '.') {
+ 		ext4_warning_inode(inode, "directory missing '..'");
+ 		brelse(bh);
+ 		return false;
+@@ -3532,7 +3534,7 @@ static struct buffer_head *ext4_get_first_dir_block(handle_t *handle,
+ 		if (ext4_check_dir_entry(inode, NULL, de, bh, bh->b_data,
+ 					 bh->b_size, 0) ||
+ 		    le32_to_cpu(de->inode) != inode->i_ino ||
+-		    strcmp(".", de->name)) {
++		    de->name_len != 1 || de->name[0] != '.') {
+ 			EXT4_ERROR_INODE(inode, "directory missing '.'");
+ 			brelse(bh);
+ 			*retval = -EFSCORRUPTED;
+@@ -3543,7 +3545,8 @@ static struct buffer_head *ext4_get_first_dir_block(handle_t *handle,
+ 		de = ext4_next_entry(de, inode->i_sb->s_blocksize);
+ 		if (ext4_check_dir_entry(inode, NULL, de, bh, bh->b_data,
+ 					 bh->b_size, offset) ||
+-		    le32_to_cpu(de->inode) == 0 || strcmp("..", de->name)) {
++		    le32_to_cpu(de->inode) == 0 || de->name_len != 2 ||
++		    de->name[0] != '.' || de->name[1] != '.') {
+ 			EXT4_ERROR_INODE(inode, "directory missing '..'");
+ 			brelse(bh);
+ 			*retval = -EFSCORRUPTED;
 -- 
 2.47.2
 
