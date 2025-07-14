@@ -1,101 +1,89 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5513C23BCF7;
-	Mon, 14 Jul 2025 09:11:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 75B504A1A
+	for <linux-ext4@vger.kernel.org>; Mon, 14 Jul 2025 13:10:15 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1752484318; cv=none; b=thAFIaxZpchqXg37VASkJtRqKcss2rhTiscMNYXCNdGWR03uJ0I6kX47ZK+2lkTAfgxFIKiRhqdjERG/nGQzMO5RVZJheVZfL/ox0taMZazeb/hRKD/TWB2lNiO5OoA3pOxSVwg7lzYH1QiG1AuVhPYr8v1dYqA8OFy2IXg4oZA=
+	t=1752498618; cv=none; b=pS1GkHY1LCwAkQOELD85xZ+F2mZwtwmCc/jivfz8rF6d5SMcxbkLgBtweQVYb3bSBVGf8PNpTWhj/bm8OtmjQ8NTX2uJAVtSMCFN+yrZ/JvOeyY58MmrquIj35z8aMolKfWPpqlOdCUUH8ecAGjq8wr/GY1mQYz3OGlD7abNZWg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1752484318; c=relaxed/simple;
-	bh=nBAAdS/h14HP9PCoH6AZ+SV1+KPCQ3mc43HpXEsPKvA=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=ThI7PFKFp5GjBZSxjUwXUS0uZpo5ZY7oKP6iTlaGELEk39RRX0D0JJB6LfcHzsZYc+XOx7E3WdribDovszjVqudBKU3rK3RKJYggDqYNHOcXZYo6Fj/dKa6i+sDL+BT10RqLW+VmkIpKVulfHwoz7y8xwLnrkoSwKUR1lBho75g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=o7bKE20C; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1752498618; c=relaxed/simple;
+	bh=H4SKZjEc/u6YTb3HSpbG5NllqvZt9OCpm4YSLVpwxec=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=C2YEww4bJX7i4Xy4Kxd+clWxXi2muO3AgOAyOseSAfUUH7W4WQZORzIHRTdIJvFFoipuCcb2rahiQD34too/VSfCk+Syg1vJuqEuyM0OfcZNJaEj/0ZO84hh4xwm1jqrCms9U7CBWcn67X3l+KKBIdWOMPcMFfvBA+XHFyd0CZs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Shja++CB; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="o7bKE20C"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B6403C4CEED;
-	Mon, 14 Jul 2025 09:11:53 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1752484317;
-	bh=nBAAdS/h14HP9PCoH6AZ+SV1+KPCQ3mc43HpXEsPKvA=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=o7bKE20CDPlKcHI0e/TC6KGBJLrWFb6B/a2488r6tyIou5DTxTnLIABvmNvKLFpXa
-	 7ihWDKxdO+vv/6dxAFhP+KNmK7biaOatcxOCFGnogbNAFbLIAlMfDckEtLV2ItloNd
-	 q+sgzKQhx9CjxrP8q9qMnwsebgfC2xO65g6gAWZtgvzGGgarDWPO+UCj1ATob1DSYy
-	 hB0b5IXoIRePk5yKXTPmpQl2MnaS+xpxe/mC4fHAMsZmTxp6rVoD6nDOCT+DHyi51T
-	 4PGbMRz/p7FqCOWASMEOE/MMeQNI6ZYPxHwhKlsQeEecnBP7GF1NJ8nqpzOWCDgaYb
-	 VWjmAtYCQd4xw==
-From: Christian Brauner <brauner@kernel.org>
-To: =?UTF-8?q?=E9=99=88=E6=B6=9B=E6=B6=9B=20Taotao=20Chen?= <chentaotao@didiglobal.com>
-Cc: Christian Brauner <brauner@kernel.org>,
-	linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-block@vger.kernel.org,
-	intel-gfx@lists.freedesktop.org,
-	dri-devel@lists.freedesktop.org,
-	linux-mm@kvack.org,
-	linux-doc@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	chentao325@qq.com,
-	frank.li@vivo.com,
-	tytso@mit.edu,
-	hch@infradead.org,
-	adilger.kernel@dilger.ca,
-	willy@infradead.org,
-	jani.nikula@linux.intel.com,
-	rodrigo.vivi@intel.com,
-	tursulin@ursulin.net,
-	airlied@gmail.com
-Subject: Re: [PATCH v5 0/5] fs: refactor write_begin/write_end and add ext4 IOCB_DONTCACHE support
-Date: Mon, 14 Jul 2025 11:11:43 +0200
-Message-ID: <20250714-tolerant-begreifbar-970f01d32a30@brauner>
-X-Mailer: git-send-email 2.47.2
-In-Reply-To: <20250710101404.362146-1-chentaotao@didiglobal.com>
-References: <20250710101404.362146-1-chentaotao@didiglobal.com>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Shja++CB"
+Received: from trampoline.thunk.org (pool-108-26-156-88.bstnma.fios.verizon.net [108.26.156.88])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 56ED9psi012077
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 14 Jul 2025 09:09:52 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1752498593; bh=WsYVfYMkzdtmf/SQ6JphqxXJec6GGSwCJTtBCG2WdWc=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=Shja++CBENnWHhtMW9kY7QRoa8fJ2eLGJZzq3ruHW9KdSOlE5QmpKUJZsz/q0tNwp
+	 mIhZmQWhpVmxy/JatsAKn9wQMO8oEpvKk3Ftjur7xCKhiT+qH7zS/iCSTmDNpEvH0h
+	 LSXemODGFek7p4cBYuSH/TdZN4wg1VdpdbyriZZKtNDuDBPWQOrG9Qk/XJXYBUW8U7
+	 E5yd1sQTKIEHaAoSL9Fyau1UOgIQWXmFshCB7IWgYZ1VpqBGoXs3EtMd8V+Qs2/XcB
+	 8ilwj/srvv8iGeUOkg4jKp39VmmRJciygFsKP82TLCxveoRz7S4H+Xh+Q7PcnAU8UV
+	 f2DmOZlHbgOsg==
+Received: by trampoline.thunk.org (Postfix, from userid 15806)
+	id 3491E2E00D5; Mon, 14 Jul 2025 09:09:51 -0400 (EDT)
+Date: Mon, 14 Jul 2025 09:09:51 -0400
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Jiany Wu <wujianyue000@gmail.com>
+Cc: "Darrick J. Wong" <djwong@kernel.org>, yi.zhang@huawei.com, jack@suse.cz,
+        linux-ext4@vger.kernel.org
+Subject: Re: Issue with ext4 filesystem corruption when writing to a file
+ after disk exhaustion
+Message-ID: <20250714130951.GB41071@mit.edu>
+References: <CAJxJ_jhEbHJiP-OzSpp2xqai-n=t2CGKXqkmvqf7T3i37Eki0A@mail.gmail.com>
+ <20250711052905.GC2026761@mit.edu>
+ <CAJxJ_jhYUqYhNcsLnjPv+2-n83G77zeQ1jppC6YGfo6bHv+vaA@mail.gmail.com>
+ <20250711154012.GB4040@mit.edu>
+ <20250712042714.GG2672022@frogsfrogsfrogs>
+ <20250712143432.GE4040@mit.edu>
+ <CAJxJ_jh=4q81OnSXk=yAU3u_7CCHZLGhb31eALF0cSyNv34E1g@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1628; i=brauner@kernel.org; h=from:subject:message-id; bh=nBAAdS/h14HP9PCoH6AZ+SV1+KPCQ3mc43HpXEsPKvA=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWSUnLzKYeyw62Dl9TVnpl9493JFlYSRQmE0u5D7zYaTH VYLqhZndZSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAExkpQYjw6KZcwvUGF5FPO6s 6GaL7nsjfX+TyxvnthUTtT43P/Z4kMLwP1l6jpx52reoUxda313fE28u3GfckRy1UKN5s9+nyff /MQIA
-X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAJxJ_jh=4q81OnSXk=yAU3u_7CCHZLGhb31eALF0cSyNv34E1g@mail.gmail.com>
 
-On Thu, 10 Jul 2025 10:14:06 +0000, 陈涛涛 Taotao Chen wrote:
-> From: Taotao Chen <chentaotao@didiglobal.com>
+On Mon, Jul 14, 2025 at 12:37:21PM +0800, Jiany Wu wrote:
+> Hello, Ted,
 > 
-> This patch series refactors the address_space_operations write_begin()
-> and write_end() callbacks to take const struct kiocb * as their first
-> argument, allowing IOCB flags such as IOCB_DONTCACHE to propagate to the
-> filesystem's buffered I/O path.
-> 
-> [...]
+> Good day, thanks indeed for the clarification~
+> Yes, previously tried to mount a specific ext4 disk-img to /var/log,
+> with /dev/loop1 device, and rsyslogd will write to /var/log/syslog.
+> When /tmp directory exhaust manually via fallocate, / dir will be also
+> occupied as 100%, and rsyslog write errors in /dev/loop1 happen, later
+> mount as read-only. Different from the early scenario, but this
+> scenario is not easy to reproduce.
+> Tried updating the test case, not fallocate all spaces in disk, now
+> alloc 95%, everything is normal now, no related error prints anymore.
+> It is confirmed errors are caused by disk exhaust.
+> I think the main hesitation part is whether fallocate is allowed to
+> use the whole disk space.
 
-Applied to the vfs-6.17.misc branch of the vfs/vfs.git tree.
-Patches in the vfs-6.17.misc branch should appear in linux-next soon.
+The fallocate system call is allowed to use the whole space on the
+*file system*.  But it doesn't know about how much free space a
+thin-provisioned device's underlying storage is available.  If you are
+using a loopback mounted image on a disk, if the underlying file
+system on the disk fills up then the block device will have I/O errors
+--- and then the file system on the loop device will run into
+problems, either data loss or metadata corruption.
 
-Please report any outstanding bugs that were missed during review in a
-new review to the original patch series allowing us to drop it.
+So this is working as intended.  If you don't want this, either don't
+use a loopback mount with a sparse file; either use fallocate when
+creating the image file, or don't use a loopback mount.
 
-It's encouraged to provide Acked-bys and Reviewed-bys even though the
-patch has now been applied. If possible patch trailers will be updated.
-
-Note that commit hashes shown below are subject to change due to rebase,
-trailer updates or similar. If in doubt, please check the listed branch.
-
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
-branch: vfs-6.17.misc
-
-[1/5] drm/i915: Use kernel_write() in shmem object create
-      https://git.kernel.org/vfs/vfs/c/110ae5fb48ed
-[2/5] drm/i915: Refactor shmem_pwrite() to use kiocb and write_iter
-      https://git.kernel.org/vfs/vfs/c/dd09194ff58c
-[3/5] fs: change write_begin/write_end interface to take struct kiocb *
-      https://git.kernel.org/vfs/vfs/c/254a06118b31
-[4/5] mm/pagemap: add write_begin_get_folio() helper function
-      https://git.kernel.org/vfs/vfs/c/ff2219c021c5
-[5/5] ext4: support uncached buffered I/O
-      https://git.kernel.org/vfs/vfs/c/2677497bc6f4
+				- Ted
