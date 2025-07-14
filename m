@@ -1,227 +1,164 @@
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A49E71F7098;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D89E6248F5C;
 	Mon, 14 Jul 2025 13:18:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.188
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.187
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1752499116; cv=none; b=udMyHoEA7DdLrcUSE8PWyLeYBU4pMCJIg5XNZVa14/9fxUC9NJezilr1DfyeXgiEPUZzkP7c2XaMxtrHdW82sudHAjrFy0Q7ceDjJdkgG4XP6UTp0mJ8jKvLrjL2BAusiPnzDSR9rVsVRi5LUOr+wJzTOf7yH+up+6h5EZyUfWk=
+	t=1752499116; cv=none; b=kY93+OkIu8+sdBYGFOexyzF9INGpmaHdeIJWJ3FY2V2H5MgP21HCQF08hX6NsWigxb9FZ8SyPWnh4e6ObqxZFt6apHw9EKHVcQ8BdRrX4w6DUB30U6ov1YTiOu2IhLIHZ2d+6oucX97vVFMe79G+HGQ2DxzlB7wZ6akuV42O5ew=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1752499116; c=relaxed/simple;
-	bh=Cdd+9N9KlD//MJSEe52uoFJliR6Jnr1/asbx6nksI6E=;
-	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=fG34Gb+7xVmTYF6YVtGDkGoj2DUusHcyRpDruKQssqZo2un6SS4OIyZL7IOx1s+TAI7kBDl+HHCHa13EH/xN9uX+9b4r6CjtNDlg7HY4NX74YLWJhHKkHK+qltDW6Nw3d5Zi0JUr9HAiRrGGBeOJqxNOvWZEB1j3dq9IDuvmS90=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.188
+	bh=s4gNMvY9cZOwDGjkUhM/jI1sppzTPno8BNjqtEuLb5w=;
+	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=AAx2CKul2LSMeWgZzSaH0DtqXDaPttndbqCXBFV0pg/eHsucrFEcnNFGk7dZy2Ms1LDxF/qWGSNZL6uZHV8oJzop1LSLAq8now3uhaeFCQm8D3tLIouDTzWXuhVOG0CvPZk9gMi9Rg8BVbcAqQOjpNxZMsW5mBC4biFgJs72VIE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.187
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.162.254])
-	by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4bgjSm2b0czXdym;
-	Mon, 14 Jul 2025 21:14:00 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.174])
+	by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4bgjVm6SVXz13Mnb;
+	Mon, 14 Jul 2025 21:15:44 +0800 (CST)
 Received: from dggpemf500013.china.huawei.com (unknown [7.185.36.188])
-	by mail.maildlp.com (Postfix) with ESMTPS id 74A2F180450;
-	Mon, 14 Jul 2025 21:18:28 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 69D6014011A;
+	Mon, 14 Jul 2025 21:18:30 +0800 (CST)
 Received: from huawei.com (10.175.112.188) by dggpemf500013.china.huawei.com
  (7.185.36.188) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Mon, 14 Jul
- 2025 21:18:27 +0800
+ 2025 21:18:29 +0800
 From: Baokun Li <libaokun1@huawei.com>
 To: <linux-ext4@vger.kernel.org>
 CC: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
 	<linux-kernel@vger.kernel.org>, <ojaswin@linux.ibm.com>,
 	<julia.lawall@inria.fr>, <yi.zhang@huawei.com>, <yangerkun@huawei.com>,
 	<libaokun1@huawei.com>, <libaokun@huaweicloud.com>
-Subject: [PATCH v3 00/17] ext4: better scalability for ext4 block allocation
-Date: Mon, 14 Jul 2025 21:03:10 +0800
-Message-ID: <20250714130327.1830534-1-libaokun1@huawei.com>
+Subject: [PATCH v3 02/17] ext4: separate stream goal hits from s_bal_goals for better tracking
+Date: Mon, 14 Jul 2025 21:03:12 +0800
+Message-ID: <20250714130327.1830534-3-libaokun1@huawei.com>
 X-Mailer: git-send-email 2.46.1
+In-Reply-To: <20250714130327.1830534-1-libaokun1@huawei.com>
+References: <20250714130327.1830534-1-libaokun1@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
 X-ClientProxiedBy: kwepems500001.china.huawei.com (7.221.188.70) To
  dggpemf500013.china.huawei.com (7.185.36.188)
 
-Changes since v2:
- * Collect RVB from Jan Kara. (Thanks for your review!)
- * Add patch 2.
- * Patch 4: Switching to READ_ONCE/WRITE_ONCE (great for single-process)
-        over smp_load_acquire/smp_store_release (only slight multi-process
-        gain). (Suggested by Jan Kara)
- * Patch 5: The number of global goals is now set to the lesser of the CPU
-        count or one-fourth of the group count. This prevents setting too
-        many goals for small filesystems, which lead to file dispersion.
-        (Suggested by Jan Kara)
- * Patch 5: Directly use kfree() to release s_mb_last_groups instead of
-        kvfree(). (Suggested by Julia Lawall)
- * Patch 11: Even without mb_optimize_scan enabled, we now always attempt
-        to remove the group from the old order list.(Suggested by Jan Kara)
- * Patch 14-16: Added comments for clarity, refined logic, and removed
-        obsolete variables.
- * Update performance test results and indicate raw disk write bandwidth. 
+In ext4_mb_regular_allocator(), after the call to ext4_mb_find_by_goal()
+fails to achieve the inode goal, allocation continues with the stream
+allocation global goal. Currently, hits for both are combined in
+sbi->s_bal_goals, hindering accurate optimization.
 
-Thanks to Honza for your suggestions!
+This commit separates global goal hits into sbi->s_bal_stream_goals. Since
+stream allocation doesn't use ac->ac_g_ex.fe_start, set fe_start to -1.
+This prevents stream allocations from being counted in s_bal_goals. Also
+clear EXT4_MB_HINT_TRY_GOAL to avoid calling ext4_mb_find_by_goal again.
 
-v2: https://lore.kernel.org/r/20250623073304.3275702-1-libaokun1@huawei.com
+After adding `stream_goal_hits`, `/proc/fs/ext4/sdx/mb_stats` will show:
 
-Changes since v1:
- * Patch 1: Prioritize checking if a group is busy to avoid unnecessary
-       checks and buddy loading. (Thanks to Ojaswin for the suggestion!)
- * Patch 4: Using multiple global goals instead of moving the goal to the
-       inode level. (Thanks to Honza for the suggestion!)
- * Collect RVB from Jan Kara and Ojaswin Mujoo.(Thanks for your review!)
- * Add patch 2,3,7-16.
- * Due to the change of test server, the relevant test data was refreshed.
+mballoc:
+	reqs: 840347
+	success: 750992
+	groups_scanned: 1230506
+	cr_p2_aligned_stats:
+		hits: 21531
+		groups_considered: 411664
+		extents_scanned: 21531
+		useless_loops: 0
+		bad_suggestions: 6
+	cr_goal_fast_stats:
+		hits: 111222
+		groups_considered: 1806728
+		extents_scanned: 467908
+		useless_loops: 0
+		bad_suggestions: 13
+	cr_best_avail_stats:
+		hits: 36267
+		groups_considered: 1817631
+		extents_scanned: 156143
+		useless_loops: 0
+		bad_suggestions: 204
+	cr_goal_slow_stats:
+		hits: 106396
+		groups_considered: 5671710
+		extents_scanned: 22540056
+		useless_loops: 123747
+	cr_any_free_stats:
+		hits: 138071
+		groups_considered: 724692
+		extents_scanned: 23615593
+		useless_loops: 585
+	extents_scanned: 46804261
+		goal_hits: 1307
+		stream_goal_hits: 236317
+		len_goal_hits: 155549
+		2^n_hits: 21531
+		breaks: 225096
+		lost: 35062
+	buddies_generated: 40/40
+	buddies_time_used: 48004
+	preallocated: 5962467
+	discarded: 4847560
 
-v1: https://lore.kernel.org/r/20250523085821.1329392-1-libaokun@huaweicloud.com
+Signed-off-by: Baokun Li <libaokun1@huawei.com>
+---
+ fs/ext4/ext4.h    |  1 +
+ fs/ext4/mballoc.c | 11 +++++++++--
+ 2 files changed, 10 insertions(+), 2 deletions(-)
 
-Since servers have more and more CPUs, and we're running more containers
-on them, we've been using will-it-scale to test how well ext4 scales. The
-fallocate2 test (append 8KB to 1MB, truncate to 0, repeat) run concurrently
-on 64 containers revealed significant contention in block allocation/free,
-leading to much lower average fallocate OPS compared to a single
-container (see below).
-
-   1   |    2   |    4   |    8   |   16   |   32   |   64
--------|--------|--------|--------|--------|--------|-------
-295287 | 70665  | 33865  | 19387  | 10104  |  5588  |  3588
-
-Under this test scenario, the primary operations are block allocation
-(fallocate) and block deallocation (truncate). The main bottlenecks for
-these operations are the group lock and s_md_lock. Therefore, this patch
-series primarily focuses on optimizing the code related to these two locks.
-
-The following is a brief overview of the patches, see the patches for
-more details.
-
-Patch 1: Add ext4_try_lock_group() to skip busy groups to take advantage
-of the large number of ext4 groups.
-
-Patch 2: Separates stream goal hits from s_bal_goals in preparation for
-cleanup of s_mb_last_start.
-
-Patches 3-5: Split stream allocation's global goal into multiple goals and
-remove the unnecessary and expensive s_md_lock.
-
-Patches 6-7: minor cleanups
-
-Patches 8: Converted s_mb_free_pending to atomic_t and used memory barriers
-for consistency, instead of relying on the expensive s_md_lock.
-
-Patches 9: When inserting free extents, we now attempt to merge them with
-already inserted extents first, to reduce s_md_lock contention.
-
-Patches 10: Updates bb_avg_fragment_size_order to -1 when a group is out of
-free blocks, eliminating efficiency-impacting "zombie groups."
-
-Patches 11: Fix potential largest free orders lists corruption when the
-mb_optimize_scan mount option is switched on or off.
-
-Patches 12-17: Convert mb_optimize_scan's existing unordered list traversal
-to ordered xarrays, thereby reducing contention between block allocation
-and freeing, similar to linear traversal.
-
-"kvm-xfstests -c ext4/all -g auto" has been executed with no new failures.
-
-Here are some performance test data for your reference:
-
-Test: Running will-it-scale/fallocate2 on CPU-bound containers.
-Observation: Average fallocate operations per container per second.
-
-|CPU: Kunpeng 920   |          P80           |            P1           |
-|Memory: 512GB      |------------------------|-------------------------|
-|960GB SSD (0.5GB/s)| base  |    patched     | base   |    patched     |
-|-------------------|-------|----------------|--------|----------------|
-|mb_optimize_scan=0 | 2667  | 20049 (+651%)  | 314065 | 316724 (+0.8%) |
-|mb_optimize_scan=1 | 2643  | 19342 (+631%)  | 316344 | 328324 (+3.7%) |
-
-|CPU: AMD 9654 * 2  |          P96           |             P1          |
-|Memory: 1536GB     |------------------------|-------------------------|
-|960GB SSD (1GB/s)  | base  |    patched     | base   |    patched     |
-|-------------------|-------|----------------|--------|----------------|
-|mb_optimize_scan=0 | 3450  | 52125 (+1410%) | 205851 | 215136 (+4.5%) |
-|mb_optimize_scan=1 | 3209  | 50331 (+1468%) | 207373 | 209431 (+0.9%) |
-
-Tests also evaluated this patch set's impact on fragmentation: a minor
-increase in free space fragmentation for multi-process workloads, but a
-significant decrease in file fragmentation:
-
-Test Script：
-```shell
-#!/bin/bash
-
-dir="/tmp/test"
-disk="/dev/sda"
-
-mkdir -p $dir
-
-for scan in 0 1 ; do
-    mkfs.ext4 -F -E lazy_itable_init=0,lazy_journal_init=0 \
-              -O orphan_file $disk 200G
-    mount -o mb_optimize_scan=$scan $disk $dir
-
-    fio -directory=$dir -direct=1 -iodepth 128 -thread -ioengine=falloc \
-        -rw=write -bs=4k -fallocate=none -numjobs=64 -file_append=1 \
-        -size=1G -group_reporting -name=job1 -cpus_allowed_policy=split
-
-    e2freefrag $disk
-    e4defrag -c $dir # Without the patch, this could take 5-6 hours.
-    filefrag ${dir}/job* | awk '{print $2}' | \
-                           awk '{sum+=$1} END {print sum/NR}'
-    umount $dir
-done
-```
-
-Test results:
--------------------------------------------------------------|
-                         |       base      |      patched    |
--------------------------|--------|--------|--------|--------|
-mb_optimize_scan         | linear |opt_scan| linear |opt_scan|
--------------------------|--------|--------|--------|--------|
-bw(MiB/s)                | 217    | 217    | 5718   | 5626   |
--------------------------|-----------------------------------|
-Avg. free extent size(KB)| 1943732| 1943732| 1316212| 1171208|
-Num. free extent         | 71     | 71     | 105    | 118    |
--------------------------------------------------------------|
-Avg. extents per file    | 261967 | 261973 | 588    | 570    |
-Avg. size per extent(KB) | 4      | 4      | 1780   | 1837   |
-Fragmentation score      | 100    | 100    | 2      | 2      |
--------------------------------------------------------------|
-
-Comments and questions are, as always, welcome.
-
-Thanks,
-Baokun
-
-Baokun Li (17):
-  ext4: add ext4_try_lock_group() to skip busy groups
-  ext4: separate stream goal hits from s_bal_goals for better tracking
-  ext4: remove unnecessary s_mb_last_start
-  ext4: remove unnecessary s_md_lock on update s_mb_last_group
-  ext4: utilize multiple global goals to reduce contention
-  ext4: get rid of some obsolete EXT4_MB_HINT flags
-  ext4: fix typo in CR_GOAL_LEN_SLOW comment
-  ext4: convert sbi->s_mb_free_pending to atomic_t
-  ext4: merge freed extent with existing extents before insertion
-  ext4: fix zombie groups in average fragment size lists
-  ext4: fix largest free orders lists corruption on mb_optimize_scan
-    switch
-  ext4: factor out __ext4_mb_scan_group()
-  ext4: factor out ext4_mb_might_prefetch()
-  ext4: factor out ext4_mb_scan_group()
-  ext4: convert free groups order lists to xarrays
-  ext4: refactor choose group to scan group
-  ext4: implement linear-like traversal across order xarrays
-
- fs/ext4/balloc.c            |   2 +-
- fs/ext4/ext4.h              |  61 +--
- fs/ext4/mballoc.c           | 895 ++++++++++++++++++++----------------
- fs/ext4/mballoc.h           |   9 +-
- include/trace/events/ext4.h |   3 -
- 5 files changed, 534 insertions(+), 436 deletions(-)
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9df74123e7e6..8750ace12935 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1646,6 +1646,7 @@ struct ext4_sb_info {
+ 	atomic_t s_bal_cX_ex_scanned[EXT4_MB_NUM_CRS];	/* total extents scanned */
+ 	atomic_t s_bal_groups_scanned;	/* number of groups scanned */
+ 	atomic_t s_bal_goals;	/* goal hits */
++	atomic_t s_bal_stream_goals;	/* stream allocation global goal hits */
+ 	atomic_t s_bal_len_goals;	/* len goal hits */
+ 	atomic_t s_bal_breaks;	/* too long searches */
+ 	atomic_t s_bal_2orders;	/* 2^order hits */
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 336d65c4f6a2..f56ac477c464 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2849,8 +2849,9 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 		/* TBD: may be hot point */
+ 		spin_lock(&sbi->s_md_lock);
+ 		ac->ac_g_ex.fe_group = sbi->s_mb_last_group;
+-		ac->ac_g_ex.fe_start = sbi->s_mb_last_start;
+ 		spin_unlock(&sbi->s_md_lock);
++		ac->ac_g_ex.fe_start = -1;
++		ac->ac_flags &= ~EXT4_MB_HINT_TRY_GOAL;
+ 	}
+ 
+ 	/*
+@@ -3000,8 +3001,12 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 		}
+ 	}
+ 
+-	if (sbi->s_mb_stats && ac->ac_status == AC_STATUS_FOUND)
++	if (sbi->s_mb_stats && ac->ac_status == AC_STATUS_FOUND) {
+ 		atomic64_inc(&sbi->s_bal_cX_hits[ac->ac_criteria]);
++		if (ac->ac_flags & EXT4_MB_STREAM_ALLOC &&
++		    ac->ac_b_ex.fe_group == ac->ac_g_ex.fe_group)
++			atomic_inc(&sbi->s_bal_stream_goals);
++	}
+ out:
+ 	if (!err && ac->ac_status != AC_STATUS_FOUND && first_err)
+ 		err = first_err;
+@@ -3194,6 +3199,8 @@ int ext4_seq_mb_stats_show(struct seq_file *seq, void *offset)
+ 	seq_printf(seq, "\textents_scanned: %u\n",
+ 		   atomic_read(&sbi->s_bal_ex_scanned));
+ 	seq_printf(seq, "\t\tgoal_hits: %u\n", atomic_read(&sbi->s_bal_goals));
++	seq_printf(seq, "\t\tstream_goal_hits: %u\n",
++		   atomic_read(&sbi->s_bal_stream_goals));
+ 	seq_printf(seq, "\t\tlen_goal_hits: %u\n",
+ 		   atomic_read(&sbi->s_bal_len_goals));
+ 	seq_printf(seq, "\t\t2^n_hits: %u\n", atomic_read(&sbi->s_bal_2orders));
 -- 
 2.46.1
 
