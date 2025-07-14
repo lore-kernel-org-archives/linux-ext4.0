@@ -1,38 +1,38 @@
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D89E6248F5C;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 921E41FBCA7;
 	Mon, 14 Jul 2025 13:18:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.187
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.189
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1752499116; cv=none; b=kY93+OkIu8+sdBYGFOexyzF9INGpmaHdeIJWJ3FY2V2H5MgP21HCQF08hX6NsWigxb9FZ8SyPWnh4e6ObqxZFt6apHw9EKHVcQ8BdRrX4w6DUB30U6ov1YTiOu2IhLIHZ2d+6oucX97vVFMe79G+HGQ2DxzlB7wZ6akuV42O5ew=
+	t=1752499116; cv=none; b=EIEtSB8iegSzb0w0RlALNge51B+8akRhd/TQAtbd7PFBB09lFGXNZ6yudnYBFy0ajoVViodsgmcZat8AhywlH+EoGM+XKLHFWK2XtShUEFkFlgIs27oohH3Qn2IlP3P6454j3F14in5OrF4hUGvAcXLNPFBxNI8IY/jzAKOXw10=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1752499116; c=relaxed/simple;
-	bh=s4gNMvY9cZOwDGjkUhM/jI1sppzTPno8BNjqtEuLb5w=;
+	bh=26iNogcD/IZq1J6MQAH9InkD+zCLDu3ta/LmyX2eBag=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=AAx2CKul2LSMeWgZzSaH0DtqXDaPttndbqCXBFV0pg/eHsucrFEcnNFGk7dZy2Ms1LDxF/qWGSNZL6uZHV8oJzop1LSLAq8now3uhaeFCQm8D3tLIouDTzWXuhVOG0CvPZk9gMi9Rg8BVbcAqQOjpNxZMsW5mBC4biFgJs72VIE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.187
+	 MIME-Version:Content-Type; b=OZ6ahOUsktTYnnwR7OxQuUCu09L80iQcX/KUkCop54zZzHFJ8RaEwWWdZOmIJF9PrdHgK8235wKhHpYneokxG3Dd7rSkNncl/BOAntIp6y7XPW0PspdY/SoeJQlsAE30CrZfhr75ZyQyOPPZaBcVsZu259Ckqg5zA+uBFsfsDco=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.189
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.163.174])
-	by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4bgjVm6SVXz13Mnb;
-	Mon, 14 Jul 2025 21:15:44 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.252])
+	by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4bgjTC0BQHzHrVG;
+	Mon, 14 Jul 2025 21:14:23 +0800 (CST)
 Received: from dggpemf500013.china.huawei.com (unknown [7.185.36.188])
-	by mail.maildlp.com (Postfix) with ESMTPS id 69D6014011A;
-	Mon, 14 Jul 2025 21:18:30 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 6D158180B43;
+	Mon, 14 Jul 2025 21:18:29 +0800 (CST)
 Received: from huawei.com (10.175.112.188) by dggpemf500013.china.huawei.com
  (7.185.36.188) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Mon, 14 Jul
- 2025 21:18:29 +0800
+ 2025 21:18:28 +0800
 From: Baokun Li <libaokun1@huawei.com>
 To: <linux-ext4@vger.kernel.org>
 CC: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
 	<linux-kernel@vger.kernel.org>, <ojaswin@linux.ibm.com>,
 	<julia.lawall@inria.fr>, <yi.zhang@huawei.com>, <yangerkun@huawei.com>,
 	<libaokun1@huawei.com>, <libaokun@huaweicloud.com>
-Subject: [PATCH v3 02/17] ext4: separate stream goal hits from s_bal_goals for better tracking
-Date: Mon, 14 Jul 2025 21:03:12 +0800
-Message-ID: <20250714130327.1830534-3-libaokun1@huawei.com>
+Subject: [PATCH v3 01/17] ext4: add ext4_try_lock_group() to skip busy groups
+Date: Mon, 14 Jul 2025 21:03:11 +0800
+Message-ID: <20250714130327.1830534-2-libaokun1@huawei.com>
 X-Mailer: git-send-email 2.46.1
 In-Reply-To: <20250714130327.1830534-1-libaokun1@huawei.com>
 References: <20250714130327.1830534-1-libaokun1@huawei.com>
@@ -47,118 +47,151 @@ Content-Type: text/plain
 X-ClientProxiedBy: kwepems500001.china.huawei.com (7.221.188.70) To
  dggpemf500013.china.huawei.com (7.185.36.188)
 
-In ext4_mb_regular_allocator(), after the call to ext4_mb_find_by_goal()
-fails to achieve the inode goal, allocation continues with the stream
-allocation global goal. Currently, hits for both are combined in
-sbi->s_bal_goals, hindering accurate optimization.
+When ext4 allocates blocks, we used to just go through the block groups
+one by one to find a good one. But when there are tons of block groups
+(like hundreds of thousands or even millions) and not many have free space
+(meaning they're mostly full), it takes a really long time to check them
+all, and performance gets bad. So, we added the "mb_optimize_scan" mount
+option (which is on by default now). It keeps track of some group lists,
+so when we need a free block, we can just grab a likely group from the
+right list. This saves time and makes block allocation much faster.
 
-This commit separates global goal hits into sbi->s_bal_stream_goals. Since
-stream allocation doesn't use ac->ac_g_ex.fe_start, set fe_start to -1.
-This prevents stream allocations from being counted in s_bal_goals. Also
-clear EXT4_MB_HINT_TRY_GOAL to avoid calling ext4_mb_find_by_goal again.
+But when multiple processes or containers are doing similar things, like
+constantly allocating 8k blocks, they all try to use the same block group
+in the same list. Even just two processes doing this can cut the IOPS in
+half. For example, one container might do 300,000 IOPS, but if you run two
+at the same time, the total is only 150,000.
 
-After adding `stream_goal_hits`, `/proc/fs/ext4/sdx/mb_stats` will show:
+Since we can already look at block groups in a non-linear way, the first
+and last groups in the same list are basically the same for finding a block
+right now. Therefore, add an ext4_try_lock_group() helper function to skip
+the current group when it is locked by another process, thereby avoiding
+contention with other processes. This helps ext4 make better use of having
+multiple block groups.
 
-mballoc:
-	reqs: 840347
-	success: 750992
-	groups_scanned: 1230506
-	cr_p2_aligned_stats:
-		hits: 21531
-		groups_considered: 411664
-		extents_scanned: 21531
-		useless_loops: 0
-		bad_suggestions: 6
-	cr_goal_fast_stats:
-		hits: 111222
-		groups_considered: 1806728
-		extents_scanned: 467908
-		useless_loops: 0
-		bad_suggestions: 13
-	cr_best_avail_stats:
-		hits: 36267
-		groups_considered: 1817631
-		extents_scanned: 156143
-		useless_loops: 0
-		bad_suggestions: 204
-	cr_goal_slow_stats:
-		hits: 106396
-		groups_considered: 5671710
-		extents_scanned: 22540056
-		useless_loops: 123747
-	cr_any_free_stats:
-		hits: 138071
-		groups_considered: 724692
-		extents_scanned: 23615593
-		useless_loops: 585
-	extents_scanned: 46804261
-		goal_hits: 1307
-		stream_goal_hits: 236317
-		len_goal_hits: 155549
-		2^n_hits: 21531
-		breaks: 225096
-		lost: 35062
-	buddies_generated: 40/40
-	buddies_time_used: 48004
-	preallocated: 5962467
-	discarded: 4847560
+Also, to make sure we don't skip all the groups that have free space
+when allocating blocks, we won't try to skip busy groups anymore when
+ac_criteria is CR_ANY_FREE.
+
+Performance test data follows:
+
+Test: Running will-it-scale/fallocate2 on CPU-bound containers.
+Observation: Average fallocate operations per container per second.
+
+|CPU: Kunpeng 920   |          P80            |
+|Memory: 512GB      |-------------------------|
+|960GB SSD (0.5GB/s)| base  |    patched      |
+|-------------------|-------|-----------------|
+|mb_optimize_scan=0 | 2667  | 4821  (+80.7%)  |
+|mb_optimize_scan=1 | 2643  | 4784  (+81.0%)  |
+
+|CPU: AMD 9654 * 2  |          P96            |
+|Memory: 1536GB     |-------------------------|
+|960GB SSD (1GB/s)  | base  |    patched      |
+|-------------------|-------|-----------------|
+|mb_optimize_scan=0 | 3450  | 15371 (+345%)   |
+|mb_optimize_scan=1 | 3209  | 6101  (+90.0%)  |
 
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h    |  1 +
- fs/ext4/mballoc.c | 11 +++++++++--
- 2 files changed, 10 insertions(+), 2 deletions(-)
+ fs/ext4/ext4.h    | 23 ++++++++++++++---------
+ fs/ext4/mballoc.c | 19 ++++++++++++++++---
+ 2 files changed, 30 insertions(+), 12 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9df74123e7e6..8750ace12935 100644
+index 18373de980f2..9df74123e7e6 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1646,6 +1646,7 @@ struct ext4_sb_info {
- 	atomic_t s_bal_cX_ex_scanned[EXT4_MB_NUM_CRS];	/* total extents scanned */
- 	atomic_t s_bal_groups_scanned;	/* number of groups scanned */
- 	atomic_t s_bal_goals;	/* goal hits */
-+	atomic_t s_bal_stream_goals;	/* stream allocation global goal hits */
- 	atomic_t s_bal_len_goals;	/* len goal hits */
- 	atomic_t s_bal_breaks;	/* too long searches */
- 	atomic_t s_bal_2orders;	/* 2^order hits */
+@@ -3541,23 +3541,28 @@ static inline int ext4_fs_is_busy(struct ext4_sb_info *sbi)
+ 	return (atomic_read(&sbi->s_lock_busy) > EXT4_CONTENTION_THRESHOLD);
+ }
+ 
++static inline bool ext4_try_lock_group(struct super_block *sb, ext4_group_t group)
++{
++	if (!spin_trylock(ext4_group_lock_ptr(sb, group)))
++		return false;
++	/*
++	 * We're able to grab the lock right away, so drop the lock
++	 * contention counter.
++	 */
++	atomic_add_unless(&EXT4_SB(sb)->s_lock_busy, -1, 0);
++	return true;
++}
++
+ static inline void ext4_lock_group(struct super_block *sb, ext4_group_t group)
+ {
+-	spinlock_t *lock = ext4_group_lock_ptr(sb, group);
+-	if (spin_trylock(lock))
+-		/*
+-		 * We're able to grab the lock right away, so drop the
+-		 * lock contention counter.
+-		 */
+-		atomic_add_unless(&EXT4_SB(sb)->s_lock_busy, -1, 0);
+-	else {
++	if (!ext4_try_lock_group(sb, group)) {
+ 		/*
+ 		 * The lock is busy, so bump the contention counter,
+ 		 * and then wait on the spin lock.
+ 		 */
+ 		atomic_add_unless(&EXT4_SB(sb)->s_lock_busy, 1,
+ 				  EXT4_MAX_CONTENTION);
+-		spin_lock(lock);
++		spin_lock(ext4_group_lock_ptr(sb, group));
+ 	}
+ }
+ 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 336d65c4f6a2..f56ac477c464 100644
+index 1e98c5be4e0a..336d65c4f6a2 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -2849,8 +2849,9 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 		/* TBD: may be hot point */
- 		spin_lock(&sbi->s_md_lock);
- 		ac->ac_g_ex.fe_group = sbi->s_mb_last_group;
--		ac->ac_g_ex.fe_start = sbi->s_mb_last_start;
- 		spin_unlock(&sbi->s_md_lock);
-+		ac->ac_g_ex.fe_start = -1;
-+		ac->ac_flags &= ~EXT4_MB_HINT_TRY_GOAL;
- 	}
- 
- 	/*
-@@ -3000,8 +3001,12 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+@@ -896,7 +896,8 @@ static void ext4_mb_choose_next_group_p2_aligned(struct ext4_allocation_context
+ 				    bb_largest_free_order_node) {
+ 			if (sbi->s_mb_stats)
+ 				atomic64_inc(&sbi->s_bal_cX_groups_considered[CR_POWER2_ALIGNED]);
+-			if (likely(ext4_mb_good_group(ac, iter->bb_group, CR_POWER2_ALIGNED))) {
++			if (!spin_is_locked(ext4_group_lock_ptr(ac->ac_sb, iter->bb_group)) &&
++			    likely(ext4_mb_good_group(ac, iter->bb_group, CR_POWER2_ALIGNED))) {
+ 				*group = iter->bb_group;
+ 				ac->ac_flags |= EXT4_MB_CR_POWER2_ALIGNED_OPTIMIZED;
+ 				read_unlock(&sbi->s_mb_largest_free_orders_locks[i]);
+@@ -932,7 +933,8 @@ ext4_mb_find_good_group_avg_frag_lists(struct ext4_allocation_context *ac, int o
+ 	list_for_each_entry(iter, frag_list, bb_avg_fragment_size_node) {
+ 		if (sbi->s_mb_stats)
+ 			atomic64_inc(&sbi->s_bal_cX_groups_considered[cr]);
+-		if (likely(ext4_mb_good_group(ac, iter->bb_group, cr))) {
++		if (!spin_is_locked(ext4_group_lock_ptr(ac->ac_sb, iter->bb_group)) &&
++		    likely(ext4_mb_good_group(ac, iter->bb_group, cr))) {
+ 			grp = iter;
+ 			break;
  		}
- 	}
+@@ -2899,6 +2901,11 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 							nr, &prefetch_ios);
+ 			}
  
--	if (sbi->s_mb_stats && ac->ac_status == AC_STATUS_FOUND)
-+	if (sbi->s_mb_stats && ac->ac_status == AC_STATUS_FOUND) {
- 		atomic64_inc(&sbi->s_bal_cX_hits[ac->ac_criteria]);
-+		if (ac->ac_flags & EXT4_MB_STREAM_ALLOC &&
-+		    ac->ac_b_ex.fe_group == ac->ac_g_ex.fe_group)
-+			atomic_inc(&sbi->s_bal_stream_goals);
-+	}
- out:
- 	if (!err && ac->ac_status != AC_STATUS_FOUND && first_err)
- 		err = first_err;
-@@ -3194,6 +3199,8 @@ int ext4_seq_mb_stats_show(struct seq_file *seq, void *offset)
- 	seq_printf(seq, "\textents_scanned: %u\n",
- 		   atomic_read(&sbi->s_bal_ex_scanned));
- 	seq_printf(seq, "\t\tgoal_hits: %u\n", atomic_read(&sbi->s_bal_goals));
-+	seq_printf(seq, "\t\tstream_goal_hits: %u\n",
-+		   atomic_read(&sbi->s_bal_stream_goals));
- 	seq_printf(seq, "\t\tlen_goal_hits: %u\n",
- 		   atomic_read(&sbi->s_bal_len_goals));
- 	seq_printf(seq, "\t\t2^n_hits: %u\n", atomic_read(&sbi->s_bal_2orders));
++			/* prevent unnecessary buddy loading. */
++			if (cr < CR_ANY_FREE &&
++			    spin_is_locked(ext4_group_lock_ptr(sb, group)))
++				continue;
++
+ 			/* This now checks without needing the buddy page */
+ 			ret = ext4_mb_good_group_nolock(ac, group, cr);
+ 			if (ret <= 0) {
+@@ -2911,7 +2918,13 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 			if (err)
+ 				goto out;
+ 
+-			ext4_lock_group(sb, group);
++			/* skip busy group */
++			if (cr >= CR_ANY_FREE) {
++				ext4_lock_group(sb, group);
++			} else if (!ext4_try_lock_group(sb, group)) {
++				ext4_mb_unload_buddy(&e4b);
++				continue;
++			}
+ 
+ 			/*
+ 			 * We need to check again after locking the
 -- 
 2.46.1
 
