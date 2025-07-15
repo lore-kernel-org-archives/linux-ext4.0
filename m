@@ -1,126 +1,56 @@
-Received: from mail-lj1-f176.google.com (mail-lj1-f176.google.com [209.85.208.176])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from ssh248.corpemail.net (ssh248.corpemail.net [210.51.61.248])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C5A752CCC5
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2025 01:27:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.176
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DD7CA80B;
+	Tue, 15 Jul 2025 03:16:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=210.51.61.248
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1752542836; cv=none; b=hB8TIzLHTraBGlpK7P0GzGu5LR6qC1LnuoBqGNXUU8u/M93SXcYH9gQ2dK15tULaey4S4ykvMThQd3TBZeZz4R+ElYRjrOqFV3/1R8xVxMlx+8D8mJ3tBh/shnC7J+uYJBLLCz5wBXc3a8J3mJY7ilUwtqhJe0V0ulIp+5awbxc=
+	t=1752549424; cv=none; b=PTXwUQPGyUG3NA1Dq/bTD/AmlGv41IxfZLOq2i4Ct4oKC0poG6J3sQIyRlomaBN0JGK+BbUooghuTO/PTqKeQ0T/z8GnlOJuu4pm/G9lsaGie4Iis7BS2QfrGXJ0l9GJDbKZKfQf0Oma91/oB2foX4pH5XtgutF/P4tU4i0uGEk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1752542836; c=relaxed/simple;
-	bh=j/4sJZcbHC32K0ee+0YzpRwAqKArUBiWFvrwb4dVve4=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=QNAUYmi3uGl9Svn6O8ywCw5sIHr0ZAKRtoLWRtA02SB+53N/ssqVghR1F96ekw+x91RFrL0W5YDsJXfQo7lxz6lmzRs/aJb8Iwstg7Eo7Eh80HvC1Dmi2pRxgYK7T7nmDkNHldDuFfLSI6/gkgtjQ9eZfVtOvVbicsfZWemQbug=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=HYnKfYtG; arc=none smtp.client-ip=209.85.208.176
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HYnKfYtG"
-Received: by mail-lj1-f176.google.com with SMTP id 38308e7fff4ca-32e14ce168eso44390891fa.1
-        for <linux-ext4@vger.kernel.org>; Mon, 14 Jul 2025 18:27:14 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1752542833; x=1753147633; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=+lsB6I1d+zFCdyvil2uVYlX1q0vZUlgB88Dtk7XEVS4=;
-        b=HYnKfYtGDt9ePRjPwRegH4WB7os9F6znpI91Fj2w9t8Z2fW+nQDh1W0K54Z8cXFxtX
-         tZ9g2DCPEike6WuQw2BtXLLtteXmVcuYYiW+HOktlcROVL/udzptwF6Y6s207BAih3i5
-         UMAMKLoiUEU3G/amJggo7mgNCxs2URTHNt95eAA2g3I4kgsZe+igihEU5nh7fHHrcvIn
-         9bZfc51AQCNiVREd9qR8+OcJSTmgpIQ9UM+3ZOmPEmLn5BaAI0LhuxyYV1uB45YxdV3g
-         wklN0L3/ggs/q5fAn+vNUanlzz8aUccN5BS87K0R6SDLoUjLvwCdqtPaqt19OEXM+czI
-         uMBw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1752542833; x=1753147633;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=+lsB6I1d+zFCdyvil2uVYlX1q0vZUlgB88Dtk7XEVS4=;
-        b=A5aiAMQ5ddrWFVMwtHG3vjCD3IJPIBNJ7Pa0DsLNyDnGlS1+xHyXYgfjLZ+tr3kPNP
-         rIt1gEOGMMtCoN9zFy8FmowE0fTvXNecottwc6Vjr6M7Scd5aS9CcWAQCbfDfA0DOsJN
-         vISXCdLWDZ1hdG1C+9qYr/mfLYWK5nQIQ4B7HWOOu4X693f8eH87zz3aTbtpfXiZOhQ9
-         nUO2QerNRndLSZOMrEojNRfZE7NnZgYGGH3m76Glb6F+LtkAIGpyWwzGtIoAoKBWJxUx
-         kxbS04rmNxlkDo36KIbvm1nuDlY7Du9gECbj+Iw1BMMwaBOQxNdrMi4TxX2J+LIz1hNf
-         fvhA==
-X-Forwarded-Encrypted: i=1; AJvYcCWyifZBuqR2mwchKSixgoBIVFCbPw1mkhe7g7gPdNXsfX/3cU6MP+jbsVr0xDmN19yvszrxXGDToZfg@vger.kernel.org
-X-Gm-Message-State: AOJu0YxUgDyH/JkKi1jhYiRhb0hEf5wZI6/bCOZ7+08581NyzTbk5Mgt
-	JI1MEi6/xGCSY87P5WCdxQ1A+3x0XFLn8nvIhUmjMhsO89fw4XU+EUPu3qZnaNUQzWK87LwBdo+
-	NhQ1i5BrTbxwWBspCjjegMtqgB6qYpxk=
-X-Gm-Gg: ASbGncsaT1T0Obrozo8qeGdtbJlr+z9lZHZSi8yQ4Rrd+xjhLwI//ZOv6XP6APi8Clg
-	9EEelj2YekoJ8/xLRXVdLif76KpvnxBJ3UBxGSPpWEyThKls6VjCN2ViW9DjHMwFc7F6pvAdwBg
-	50/lhoIvntV3FBLdFPoG8Ec54qJiHyDJkg00k/xcWxZNEYQnwlnDZblyW70yrKT3VZVGU8gYzTw
-	1P+
-X-Google-Smtp-Source: AGHT+IG1mKsW0dIYEECbqgDfZa9CYtAyMZHjPk8Ws032PjUuaGVaDXgbb9MERd49B8PO5J6C7VF6kZy07eo1besHfJs=
-X-Received: by 2002:a05:651c:154a:b0:32a:7270:5c29 with SMTP id
- 38308e7fff4ca-33053292f80mr41641361fa.2.1752542832370; Mon, 14 Jul 2025
- 18:27:12 -0700 (PDT)
+	s=arc-20240116; t=1752549424; c=relaxed/simple;
+	bh=DobzWGBFs0STjXLqElYZFbvuGKos5OfHW4xHHXaTJhQ=;
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=QRPdCmP8LN/m+fqyNdjz7oWt317WxW89X/Jics3Z0kuF1dl8pnDqoIYtnLCvNOu/sW/IbKdsvv6oSau/TBD9WtUfhl5sz9NY0yUNtErfHhLUnHt7E0weKi+2DRyODfg22W7OsaGSe6T8iJXZAso8mJJEC65y1G+1cAQlPNpmK2w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=inspur.com; spf=pass smtp.mailfrom=inspur.com; arc=none smtp.client-ip=210.51.61.248
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=inspur.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=inspur.com
+Received: from jtjnmail201610.home.langchao.com
+        by ssh248.corpemail.net ((D)) with ASMTP (SSL) id 202507151116450026;
+        Tue, 15 Jul 2025 11:16:45 +0800
+Received: from localhost.localdomain.com (10.94.4.253) by
+ jtjnmail201610.home.langchao.com (10.100.2.10) with Microsoft SMTP Server id
+ 15.1.2507.57; Tue, 15 Jul 2025 11:16:45 +0800
+From: chuguangqing <chuguangqing@inspur.com>
+To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>
+CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>, chuguangqing
+	<chuguangqing@inspur.com>
+Subject: [PATCH 0/1] ext4: add FALLOC_FL_ALLOCATE_RANGE to supported flags mask
+Date: Tue, 15 Jul 2025 11:15:30 +0800
+Message-ID: <20250715031531.1693-1-chuguangqing@inspur.com>
+X-Mailer: git-send-email 2.43.5
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <CAJxJ_jhEbHJiP-OzSpp2xqai-n=t2CGKXqkmvqf7T3i37Eki0A@mail.gmail.com>
- <20250711052905.GC2026761@mit.edu> <CAJxJ_jhYUqYhNcsLnjPv+2-n83G77zeQ1jppC6YGfo6bHv+vaA@mail.gmail.com>
- <20250711154012.GB4040@mit.edu> <20250712042714.GG2672022@frogsfrogsfrogs>
- <20250712143432.GE4040@mit.edu> <CAJxJ_jh=4q81OnSXk=yAU3u_7CCHZLGhb31eALF0cSyNv34E1g@mail.gmail.com>
- <20250714130951.GB41071@mit.edu>
-In-Reply-To: <20250714130951.GB41071@mit.edu>
-From: Jiany Wu <wujianyue000@gmail.com>
-Date: Tue, 15 Jul 2025 09:27:01 +0800
-X-Gm-Features: Ac12FXz27Ijgp8l77hlNPvem5zeYWGdsxPQsOmKqdCRulBSMxAuPYoFEk2J7f84
-Message-ID: <CAJxJ_jgg0H=+JLSjc6SNwa5tiDhWjTunNPE2V1SP-v9_O8oCqw@mail.gmail.com>
-Subject: Re: Issue with ext4 filesystem corruption when writing to a file
- after disk exhaustion
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: "Darrick J. Wong" <djwong@kernel.org>, yi.zhang@huawei.com, jack@suse.cz, 
-	linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+tUid: 20257151116451951eae42aaa82327da64e2f2e669652
+X-Abuse-Reports-To: service@corp-email.com
+Abuse-Reports-To: service@corp-email.com
+X-Complaints-To: service@corp-email.com
+X-Report-Abuse-To: service@corp-email.com
 
-Hello, Ted,
+Add FALLOC_FL_ALLOCATE_RANGE to the set of supported fallocate mode flags.
+This change improves code clarity and maintains by explicitly showing 
+this flag in the supported flags mask.
 
-Thanks indeed for the clarification, it is clear now.
-OK, if using a loopback mounted image on a disk, underlying file
-system full then the block device will have I/O error.
-This loopback mount belongs to a third party common config. I'll
-fallocate lower disk space to not exhaust disk as a work around
-firstly.
-Thanks again for the help:)
+chuguangqing (1):
+  ext4: add FALLOC_FL_ALLOCATE_RANGE to supported flags mask
 
-Best regards,
-Jianyue Wu
+ fs/ext4/extents.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
+-- 
+2.43.5
 
-On Mon, Jul 14, 2025 at 9:09=E2=80=AFPM Theodore Ts'o <tytso@mit.edu> wrote=
-:
->
-> On Mon, Jul 14, 2025 at 12:37:21PM +0800, Jiany Wu wrote:
-> > Hello, Ted,
-> >
-> > Good day, thanks indeed for the clarification~
-> > Yes, previously tried to mount a specific ext4 disk-img to /var/log,
-> > with /dev/loop1 device, and rsyslogd will write to /var/log/syslog.
-> > When /tmp directory exhaust manually via fallocate, / dir will be also
-> > occupied as 100%, and rsyslog write errors in /dev/loop1 happen, later
-> > mount as read-only. Different from the early scenario, but this
-> > scenario is not easy to reproduce.
-> > Tried updating the test case, not fallocate all spaces in disk, now
-> > alloc 95%, everything is normal now, no related error prints anymore.
-> > It is confirmed errors are caused by disk exhaust.
-> > I think the main hesitation part is whether fallocate is allowed to
-> > use the whole disk space.
->
-> The fallocate system call is allowed to use the whole space on the
-> *file system*.  But it doesn't know about how much free space a
-> thin-provisioned device's underlying storage is available.  If you are
-> using a loopback mounted image on a disk, if the underlying file
-> system on the disk fills up then the block device will have I/O errors
-> --- and then the file system on the loop device will run into
-> problems, either data loss or metadata corruption.
->
-> So this is working as intended.  If you don't want this, either don't
-> use a loopback mount with a sparse file; either use fallocate when
-> creating the image file, or don't use a loopback mount.
->
->                                 - Ted
