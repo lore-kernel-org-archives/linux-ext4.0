@@ -1,48 +1,48 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3D6118BF8
-	for <linux-ext4@vger.kernel.org>; Sat, 19 Jul 2025 21:46:17 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 175033208
+	for <linux-ext4@vger.kernel.org>; Sat, 19 Jul 2025 21:46:18 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1752961579; cv=none; b=fOsVefwfZVl7WCHf1A4ysIevn2RZ/StWUuu2zA9ztFrkw8o8xdyEHWS7ghlNSYRQZ327NwNZ25OIC9X2LUYLWUYJD5P0cr9uZ/L2HiqdGs1CQmlrh0C5LSzE1+TQags0Mcil7DbZTDHJejvqrBLr/QhMFGox2d9OgUCC9pC5Bes=
+	t=1752961582; cv=none; b=G4qkzUiLXWdujJsm3kcXYqn/V2Z3fZ6ccWZocgpmi8TVZPqGjg2/NcZFhqRmgfFRBc0wPH0zxtzRiuWjXMNp/sV8yeZXWPoHCCEPLgC3Zzd5rkSwTZcVLm3LUSDRp7H4tFDRnL/6tifSScjGRP5aOsEgLIQm5rAOe4FSyr682L8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1752961579; c=relaxed/simple;
-	bh=g51E9qVkUHuH5cP4lzxW2eczfNGE0gr+PuJO9BddwSI=;
+	s=arc-20240116; t=1752961582; c=relaxed/simple;
+	bh=rsFk0m1wzUGgmql+jRt6b72ND2V98KGu27RWREmEN90=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=GKV28tuosAU1bE72OKd00+yTqt2zswa9w7qaUUhggoKYpFA54SjTK9UIDT7Lvw9QMEz4/eYxbqGhuC29VSwvGNXIAN6+qKrnMyAP3j8k5t0cWYM2Wcz4tWo6ra5ZakIqD79bncCVL4/KPHm7Ifw6ICw/Q4Tik2JSEeshND7rMbo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=HeRomD72; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=m/AT95aKwY6aer+OFliBzYXk7fd2GrkXbGHrQzDbjNZKydROHkDvDEzZBmHVEcXa4Cbh4G9yt+oJ2PoTdfKfsI5isqOQmoG/P4FqJDTrT9K1i371F/3t4h5fW65HdCnwLnndqWfSoisGNgq5iaV3z5q5OSRgDNLvzygOUB7oqgQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=KF1HJf2+; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="HeRomD72"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="KF1HJf2+"
 Received: from trampoline.thunk.org (pool-173-48-117-186.bstnma.fios.verizon.net [173.48.117.186])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 56JLk1BF009670
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 56JLk1Zn009674
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Sat, 19 Jul 2025 17:46:02 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1752961564; bh=wZtbk6XggGNAIQo7Pj2dydBsNQKg5lH3amkmDSXHGQ4=;
+	t=1752961562; bh=ateKGK5G6ibW3xgUev1QWjEYe8jtwF5cKiUGmAAwRMI=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=HeRomD72SCAwF3FPXAAgHoJDBM6zH1F4yqI3cMXKvrI92jh32PPzbzLf4JpCXeql9
-	 1rrguHK91ufnXrU3BQX9BkE6MZkLAmjZidRezsQ5aCmZwMkdvzX7CHr+p+b8U0dBe/
-	 SoUkCPWMKO/GeRWam9gqVfuIIHuv0KU1xlc6FDSq9eZHan6z7A+S68DRmyai8/it8P
-	 QypdVlOqi51WWPXRup3+naOEqz9ahk7KWKSSh6cND83wrOHnPa0pqZhzvfw9Pjoo/V
-	 ap/cNolcojWKxTeiCnRQCjZKEZDDIy7yHPt/wvmxu1niii0s36Xr0dTNF6jYyKxYfO
-	 fFp22ThaPCe2Q==
+	b=KF1HJf2+NhPnATngEsw3cVYaE6XWZuu0ONgu6BtlwAVLXx4unpjgZu2me6lpEcKP9
+	 TrHlTBJQyXFjOfzpEaMtX27NfwnyNNSDD4CLguhrkAlvlK7x6DvVt8HtD66cfTklGY
+	 yyMFUuJJILrZlCtu2IhAcDvzue5YYxDsdHAK0f7LHokRwNshoxTpKm4sxTthguf4xj
+	 VLixoc082JyvPq8ZOx9/w0Z9lT8sMNqPse5IhyTxXLAGvS0dLf88x+YihABZXyoybd
+	 SmNrq4F+8E1/sEaN6OgR+RhTZZayBl5Kq/MidsduBclX4XYvMPWAnyNqvrq12Eg1B5
+	 VR6+iYaMw/URQ==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 1E2FB2E00D5; Sat, 19 Jul 2025 17:46:01 -0400 (EDT)
+	id 2735B2E00DA; Sat, 19 Jul 2025 17:46:01 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Baolin Liu <liubaolin12138@163.com>, Zhi Long <longzhi@sangfor.com.cn>
-Subject: Re: [PATCH v4 RESEND] ext4: Make sure BH_New bit is cleared in ->write_end handler
-Date: Sat, 19 Jul 2025 17:45:52 -0400
-Message-ID: <175296153003.397842.9984626191637719714.b4-ty@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-hardening@vger.kernel.org, ethan@ethancedwards.com
+Subject: Re: [PATCH 1/3] ext4: replace strcmp with direct comparison for '.' and '..'
+Date: Sat, 19 Jul 2025 17:45:56 -0400
+Message-ID: <175296153002.397842.308299159591338786.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.47.2
-In-Reply-To: <20250709084831.23876-2-jack@suse.cz>
-References: <20250709084831.23876-2-jack@suse.cz>
+In-Reply-To: <20250712181249.434530-1-tytso@mit.edu>
+References: <20250712181249.434530-1-tytso@mit.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,24 +53,25 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Wed, 09 Jul 2025 10:48:32 +0200, Jan Kara wrote:
-> Currently we clear BH_New bit in case of error and also in the standard
-> ext4_write_end() handler (in block_commit_write()). However
-> ext4_journalled_write_end() misses this clearing and thus we are leaving
-> stale BH_New bits behind. Generally ext4_block_write_begin() clears
-> these bits before any harm can be done but in case blocksize < pagesize
-> and we hit some error when processing a page with these stale bits,
-> we'll try to zero buffers with these stale BH_New bits and jbd2 will
-> complain (as buffers were not prepared for writing in this transaction).
-> Fix the problem by clearing BH_New bits in ext4_journalled_write_end()
-> and WARN if ext4_block_write_begin() sees stale BH_New bits.
+On Sat, 12 Jul 2025 14:12:47 -0400, Theodore Ts'o wrote:
+> In a discussion over a proposed patch, "ext4: replace strcpy() with
+> '.' assignment"[1], I had asserted that directory entries in ext4 were
+> not NUL terminated, and hence it was safe to replace strcpy() with a
+> direct assignment.  As it turns out, this was incorrect.  It's true
+> for all all directory entries *except* for '.' and '..' where the
+> kernel was using strcmp() and where e2fsck actually checks and offers
+> to fix things if '.'  and '..' are not NUL terminated.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: Make sure BH_New bit is cleared in ->write_end handler
-      commit: 91b8ca8b26729b729dda8a4eddb9aceaea706f37
+[1/3] ext4: replace strcmp with direct comparison for '.' and '..'
+      commit: 3658b8b3398eb2a49ee8d1ac88e5cdc41764f1c9
+[2/3] ext4: use memcpy() instead of strcpy()
+      commit: a35454ecf8a320c49954fdcdae0e8d3323067632
+[3/3] ext4: refactor the inline directory conversion and new directory codepaths
+      commit: 90f097b1403f232a202c501bfd49b1b196e840ea
 
 Best regards,
 -- 
