@@ -1,48 +1,51 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AA7DD1DE3B5
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Aug 2025 14:49:01 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 19E7F202C46
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Aug 2025 14:49:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1755182943; cv=none; b=Z+IXQkT9Js8BfJKP7gYTS1vvO2sH2c18s44QU4XzsCrcw8BCHpWkAWYITW7UzxBiNbSwHryXRQC3R+2GbTAtIWqSWIb2BVIb4Q4LIC4t/TVfl36n4RGXAmwWyoAZCw6VkpMcqmayilyjvypFQK+xqmhq4Zs+u97hXNJrDovq6WE=
+	t=1755182945; cv=none; b=n11qeF0fpW9nXjEs+GIqwMti4DC6EFkNMjI3DTcnclqucaLnU9+Wfwdw95Ai0go3DQKtqzyulB3/jWU2WiAMRLWWZ5PyOhTzYTJWHdXSnU/TovWMmyUpI2Esqy4P2/r2QDN3MF36zkjontnTYyH8CgTTFaY1UpKB03FjxfB/Rek=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1755182943; c=relaxed/simple;
-	bh=Zyn2lbfe+RhoT1pry4GTpM3joFrDzAfPV4ZWBeV4cC8=;
+	s=arc-20240116; t=1755182945; c=relaxed/simple;
+	bh=lKbd0cIx3YD9yCwnJw9keUJDz6kc5VrH3W8yk6SYWLw=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=WtOYRZn7so7w/W527xUjEsToGsdFOcCBxVzQP9oPbE4aQoXL+xncmXTE2Ck3JkznLI/a5k1Z0wJHSU38TauEfF1zHjKN7KvL1Zw5D/1eKIcoH8W4GCsAJhUxXdVOGQNzjxlczIRW42gWRauVE0YrgrhwUIogQvCfG4CglVv6lKs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=KC98Mb6A; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=kkvJbXKYfG3uYdokoMNGPkz2qBEdyLvFSmzdRDq0e9H7VznvE16YPUbW0y8W9uj8WuM5NoBrEmL6RWKX6GHd4mNDRxDogEvoS9f991zNnGJevR51i8+9n+vY0ptelxqFecy02HJ8QC677Bzu6QeD/AgH0BY9faeLSRJQ0Hwae1E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Q2L5HE0Y; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="KC98Mb6A"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Q2L5HE0Y"
 Received: from trampoline.thunk.org (pool-173-48-113-254.bstnma.fios.verizon.net [173.48.113.254])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 57EEmmn4028536
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 57EEmmF1028538
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 14 Aug 2025 10:48:50 -0400
+	Thu, 14 Aug 2025 10:48:49 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1755182931; bh=USFrYrh03EWabSVglgCn3HMtkCYIVtEMIDrCpp0/j6Q=;
+	t=1755182931; bh=fC9hMt9kzc35oEPyqxOv1HVhoaocx86HahTaXPHFxOc=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=KC98Mb6AMAs4PrjyhYlOGwvL8u8qekt0H2xX5R8x8QS9WDMJpHR1iqD65pXEHKFcS
-	 qYjekx8pOg+IYG2poLhVQ3/HSPEtS5zIis87HflzIoo9CNHPEBsKDjWOV32iXQ7AR2
-	 XjbWQVAqRkWmjd06WvYB5pVN0NOOb3UbOBxryeP88XBjtie0vvKXXlLislWQKCRZn3
-	 dq6HPz6Ttqm1fIjrryLZeE321DWTfpz5mC5T18BYJPPD01GBx2Q/LKxfdhsHTHY/sj
-	 SkeqrxfqEpiZzPkM37gz+zRzquEIbXJgDxgn9o3OPLBWbu3pT95ZPwXG/YHIWPyYvf
-	 Y3QnYCK4l6OmQ==
+	b=Q2L5HE0Y86dnQH5SCo52Ozv12cmAXqoCNJm5fflJHlK5J6UvzwGkelbT4D8OXEylq
+	 L5T+XKnbMN0VxZOalpMtLbpLpIsW6iXRRnFOfcW9PRO1qHOJE11/lvk7mHyoZ63PMd
+	 rXAw6R06ZQ9MU+lfAoJcoVR3Jctrb6Y6xtkwScAe2vIih53kvzZFW0kjjpEqXDwnyR
+	 gvuD613Bmg0VC3LPsCkmYH8rKCVZy6Qm4FGSOE+qw00Su/2ncovGz1LnZ5yJ1TAgHC
+	 sv1hHkexHQGVhW/q5ZZF0LlJz0Ql3AVNkZNpfJD9C9H9qVCntc6wPjz/Rbwsjp+kiN
+	 mnNYAx2oixqyg==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id C57EA2E00D0; Thu, 14 Aug 2025 10:48:48 -0400 (EDT)
+	id C40192E00D6; Thu, 14 Aug 2025 10:48:48 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Antonio Quartulli <antonio@mandelbit.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH] ext4: remove useless if check
-Date: Thu, 14 Aug 2025 10:48:40 -0400
-Message-ID: <175518289071.1126827.11027768905716464670.b4-ty@mit.edu>
+        Andreas Dilger <adilger@dilger.ca>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, stable@vger.kernel.org,
+        Andreas Dilger <adilger@whamcloud.com>,
+        Li Dongyang <dongyangli@ddn.com>, Alex Zhuravlev <bzzz@whamcloud.com>,
+        Oleg Drokin <green@whamcloud.com>
+Subject: Re: [PATCH] ext4: check fast symlink for ea_inode correctly
+Date: Thu, 14 Aug 2025 10:48:39 -0400
+Message-ID: <175518289074.1126827.15003843586124325207.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.47.2
-In-Reply-To: <20250721200902.1071-1-antonio@mandelbit.com>
-References: <20250721200902.1071-1-antonio@mandelbit.com>
+In-Reply-To: <20250717063709.757077-1-adilger@dilger.ca>
+References: <20250717063709.757077-1-adilger@dilger.ca>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,17 +56,21 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Mon, 21 Jul 2025 22:09:02 +0200, Antonio Quartulli wrote:
-> This if branch is only jumping to 'out' which
-> is defined just after the branch itself.
-> Hence this is if-check is a no-op and can be removed.
+On Wed, 16 Jul 2025 19:36:42 -0600, Andreas Dilger wrote:
+> The check for a fast symlink in the presence of only an
+> external xattr inode is incorrect.  If a fast symlink does
+> not have an xattr block (i_file_acl == 0), but does have
+> an external xattr inode that increases inode i_blocks, then
+> the check for a fast symlink will incorrectly fail and
+> __ext4_iget()->ext4_ind_check_inode() will report the inode
+> is corrupt when it "validates" i_data[] on the next read:
 > 
-> 
+> [...]
 
 Applied, thanks!
 
-[1/1] ext4: remove useless if check
-      commit: f3fbaa74d999c16b5caeca779e6d7e6e6e7feed8
+[1/1] ext4: check fast symlink for ea_inode correctly
+      commit: b4cc4a4077268522e3d0d34de4b2dc144e2330fa
 
 Best regards,
 -- 
