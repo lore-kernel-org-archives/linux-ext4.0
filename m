@@ -1,55 +1,50 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AFFFB20CCCA
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Aug 2025 14:49:31 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F22BA1FDE01
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Aug 2025 14:49:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1755182973; cv=none; b=pgl418TutCrqu193n1SJ3IN/Zk130VFbtI8iyJqVI+yRbmv1yZTxGi0oXUxEu6qQ8qcWJ1prmRqcO3OEqHaBubwqMfv1XoQpBWaRtw3g7X63qmYKKEBNiXhW+Zkux3QkxaWe8tF01bDBJSloP45K/HIQlpsqrT+ZXi5BVBwmaso=
+	t=1755182974; cv=none; b=MCZfPxRGeZ3pKiFLBi7Z3FyTVIGZ+Whvu+8pPy2k8s2Jf1JTSUKPft2WRhBmi8Gc69QGIesQo+1jXjU/jhMR83OJ3UIFH5dY+z/CeGf243IpXCue9NJbU7cuz2s66Yq5kAj5Mxx30xI3MdEK+ZFEjERyd3FrdKi4ZYBx9/aiK6I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1755182973; c=relaxed/simple;
-	bh=65Qlw9mCW05HC8nqjf7hl/PAv94A3ewrr0LGuyxTuWI=;
+	s=arc-20240116; t=1755182974; c=relaxed/simple;
+	bh=HhbxIxt0mAYsI81UESO8qyUQ+2w1jFxJccSrAeIllxo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=KWmFbYeVD72TwQ8S5n4MNCCctvEBrymDMX/GJQQf1IWSDOS6esLCGkPb+4Ehk9qDmX8E37dtsKD9pgxQkqo+292yco4gdZwON7/U+NW1f/H6zjSSzocAia5zmwnwRD2hkaoe7mkyhWFpdxcM2immkf3p2LpR+l2OdRIKyPUhAws=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=DxLbOwF2; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=W9/QizEScgdVwBAv8gpSlYhe6KS4oUnMX5gMidJux21FLscBPSp/i/wHYwW6WYMLzj3WFzozHd1mPoWn69tMXYjHLf6DuYFLZmOHXDr6NFXb1GKs+zvk/vVi2cw96NNL0Ha7YLuvVwj/BQLu+LXuxLqN6XQQZirltoq/REScpKI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=lPOgKvPi; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="DxLbOwF2"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="lPOgKvPi"
 Received: from trampoline.thunk.org (pool-173-48-113-254.bstnma.fios.verizon.net [173.48.113.254])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 57EEmpOT028598
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 57EEmmgN028540
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 14 Aug 2025 10:48:52 -0400
+	Thu, 14 Aug 2025 10:48:49 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1755182937; bh=X/u7DAPn1uapDj6cV4WX9wukkt3WAmbf0bAmypGYwn4=;
+	t=1755182931; bh=DLHF/zNqFw8TC4bpGo3TS1kaaAbz2WPJb0BI9EMXrJE=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=DxLbOwF2wOAIgSdNMjLPzoCrm1YWIoDJHscecnFT++52pfsyzVZP0zrWAGMjLnQSe
-	 WoZQ5u7w+vYbN9ZKOwtaANDvjg4i1VU0INNxwXd86oBXawBBRfD3hNukhttLyAVCEE
-	 IH3A6wlIAlq8uMxLstBEfE8b/wL21H1ZpBW4Hq3q2DbwYjvLLYfmfuoBBMZub4dUEK
-	 n5nrstD1rRLwR89coaGflmoFe7CDxf31whUEviOdzu39mbxOwNzBm1IT/i0tw77ABx
-	 zdB6m+xyEJaGQjFTttKVayFhP35NMXZxFxfnnNcQz0+gYehsv2mNf4payN80Duaei7
-	 iH5jasYMiRy7w==
+	b=lPOgKvPi528fD7yXkJeH/U59VEWUvpLkgD9r8Z3HP0FQNHjNTxpCkp/2luXL8MYdn
+	 uYDvtWkeJ+gEl6Lc7yQlFwMcfeBD6h1qaFkWXDisoEqY8TNnbwZnC5nbTRzUhSKSS6
+	 qkUItwAVsxoLbjmbxqv6zna/jdymCG99S7Qq/X6fczwtuL3DiLvUu0/WHanRnwWFYi
+	 EQ7p+TTpzI7zFf31szeHji7tDE8uUk6mT/GfNlUQgefBmFLRV4gNu6Tj4OcHa53kBq
+	 lArl1f++azUXAtOSKoEn9aAvY0m83YTWADgLEZak+7Q2IEKXMyPxOh0/wVXotX/GIk
+	 CL4kquSUdwP5g==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id D7AB72E00DE; Thu, 14 Aug 2025 10:48:48 -0400 (EDT)
+	id CE2532E00DB; Thu, 14 Aug 2025 10:48:48 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Kent Overstreet <kent.overstreet@linux.dev>,
-        Eric Biggers <ebiggers@kernel.org>, Jaegeuk Kim <jaegeuk@kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
-        linux-bcachefs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Qianfeng Rong <rongqianfeng@vivo.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, willy@infradead.org
-Subject: Re: [PATCH 0/4] fs: Remove redundant __GFP_NOWARN
-Date: Thu, 14 Aug 2025 10:48:46 -0400
-Message-ID: <175518289076.1126827.2391485209969195669.b4-ty@mit.edu>
+        libaokun@huaweicloud.com
+Cc: "Theodore Ts'o" <tytso@mit.edu>, jack@suse.cz,
+        linux-kernel@vger.kernel.org, yi.zhang@huawei.com,
+        yangerkun@huawei.com, libaokun1@huawei.com
+Subject: Re: [PATCH] jbd2: prevent softlockup in jbd2_log_do_checkpoint()
+Date: Thu, 14 Aug 2025 10:48:43 -0400
+Message-ID: <175518289078.1126827.11901276117881575230.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.47.2
-In-Reply-To: <20250803102243.623705-1-rongqianfeng@vivo.com>
-References: <20250803102243.623705-1-rongqianfeng@vivo.com>
+In-Reply-To: <20250812063752.912130-1-libaokun@huaweicloud.com>
+References: <20250812063752.912130-1-libaokun@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -60,20 +55,26 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Sun, 03 Aug 2025 18:22:38 +0800, Qianfeng Rong wrote:
-> Commit 16f5dfbc851b ("gfp: include __GFP_NOWARN in GFP_NOWAIT")
-> made GFP_NOWAIT implicitly include __GFP_NOWARN.
+On Tue, 12 Aug 2025 14:37:52 +0800, libaokun@huaweicloud.com wrote:
+> Both jbd2_log_do_checkpoint() and jbd2_journal_shrink_checkpoint_list()
+> periodically release j_list_lock after processing a batch of buffers to
+> avoid long hold times on the j_list_lock. However, since both functions
+> contend for j_list_lock, the combined time spent waiting and processing
+> can be significant.
 > 
-> Therefore, explicit __GFP_NOWARN combined with GFP_NOWAIT
-> (e.g., `GFP_NOWAIT | __GFP_NOWARN`) is now redundant. Let's clean
-> up these redundant flags across subsystems.
+> jbd2_journal_shrink_checkpoint_list() explicitly calls cond_resched() when
+> need_resched() is true to avoid softlockups during prolonged operations.
+> But jbd2_log_do_checkpoint() only exits its loop when need_resched() is
+> true, relying on potentially sleeping functions like __flush_batch() or
+> wait_on_buffer() to trigger rescheduling. If those functions do not sleep,
+> the kernel may hit a softlockup.
 > 
 > [...]
 
 Applied, thanks!
 
-[3/4] ext4: Remove redundant __GFP_NOWARN
-      commit: 4ba97589ed19210ff808929052696f5636139823
+[1/1] jbd2: prevent softlockup in jbd2_log_do_checkpoint()
+      commit: 9d98cf4632258720f18265a058e62fde120c0151
 
 Best regards,
 -- 
