@@ -1,64 +1,63 @@
-Received: from mail-yb1-f180.google.com (mail-yb1-f180.google.com [209.85.219.180])
+Received: from mail-yw1-f180.google.com (mail-yw1-f180.google.com [209.85.128.180])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B1FE438B665
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Aug 2025 20:20:31 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.180
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4EDB238B67A
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Aug 2025 20:20:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.180
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1755807634; cv=none; b=Df9tJqDTAwuKrQX/4rU/4PTJva/xlEtJoV5Cle3N/tgDKNeBH6bL8dmIqMeWMg5Eh8QINI2LqDxhMK2eGuHBXlMuOLVUgokVZXIgCaxzeWYspidkuBeWjinZT2BgOZunKMqqjulrYLdpC1HTsczO8wjiAYQzYrtZI6yJuBeWd2Q=
+	t=1755807636; cv=none; b=EMHSCsRH6KpTZ8j+moTdaxBAASf29C5A0CqeyybpHsZods7gcMPXBSEYkwOUUxRn/b5+W3YKuuO8M2jVwClaHR8iGIiUY2e940Tib2s2Ktp4CQOWnPg4EYL00QPier4Gs/l02ii0q9QArPtoxM/bE/2bG8K7qknYVFhKwsL/rAI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1755807634; c=relaxed/simple;
-	bh=ai2oUzPAcRJzj4bWGdjdsYHnumyQaMH/ub0qR04Gbgw=;
+	s=arc-20240116; t=1755807636; c=relaxed/simple;
+	bh=2lSccGeZgoSX9aVaaFdQWb29wL+DUPO/GAFShbd8K+M=;
 	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=qBupRIs65CYOweVBK3WUDun6/pvcN3J5+JrsiFM5Tbx67YpUBZAm/JxB39wiGmGZZMIXA+9ceof7HD6RfqIPGAiBkGK934nrnZ8tB4SoJJ7GI3WO/kerhEavtYzRD39e6fX9hepc+NVeyBKg3Bma2Bpm5qMM2ckd0xOEIKDMjaU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com; spf=none smtp.mailfrom=toxicpanda.com; dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b=HJIyusrn; arc=none smtp.client-ip=209.85.219.180
+	 MIME-Version; b=LhK/PlZ3VbomMQpKYJgmykZaHOsvJkElACBf015JvqqpOACU8O9n9UqO00Vs3Gyv7drTadfweJ+stT3uWy2a0WFdC5AZQfs4Zncz5Z+RAB3YrZIscj0JRWaaIlN5OBUl6xb/azobEtvUoP+nfHT4bLXGnbWiocp+DzsIVJT2hOo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com; spf=none smtp.mailfrom=toxicpanda.com; dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b=zESJVNbk; arc=none smtp.client-ip=209.85.128.180
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=toxicpanda.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b="HJIyusrn"
-Received: by mail-yb1-f180.google.com with SMTP id 3f1490d57ef6-e931cddb0e2so1153796276.3
-        for <linux-ext4@vger.kernel.org>; Thu, 21 Aug 2025 13:20:31 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b="zESJVNbk"
+Received: by mail-yw1-f180.google.com with SMTP id 00721157ae682-71d60504bf8so12596677b3.2
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Aug 2025 13:20:34 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=toxicpanda-com.20230601.gappssmtp.com; s=20230601; t=1755807630; x=1756412430; darn=vger.kernel.org;
+        d=toxicpanda-com.20230601.gappssmtp.com; s=20230601; t=1755807633; x=1756412433; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:to:from:from:to:cc:subject:date:message-id
          :reply-to;
-        bh=opvoMbW1BQLT38gew8BsXyJcIC3tejqT6ZRE2IoYWVw=;
-        b=HJIyusrn5p0YqzySCgPuwSXTOrj7WUWgzNcKljJ2uIU1Qr6qdPlsRaXxP0hgg5d1fY
-         2GeN+mvpFQiaS0E6lymLMIlFUTHaB+Mbk7WNMGMCOq5QKW1pxr3F9zb0r77rLPUfw2mh
-         ZOZwSh3R6+VhSC1+PxMeHs+KRTjW3F7tJqUH7dZ6ehPRmvjtMej4e8eo3tPV1VjB4Smc
-         T+ulJHIQlNFYGdNtM7VW/VM/nMAqJbp1vKYAYBfCRt4IIdlbvCX8aK0TMloY6rRtk0x4
-         i/FVeln2imLP8DO36EUzBkLJK9I82l3G0SyhpNc5H15Pf8j3nV/2fEqVSA21ScSdJP5S
-         p25w==
+        bh=t6l/bS5zsFklKVceeWUebv0jSoLqiCtfylVlw96dX9A=;
+        b=zESJVNbk2y3O8iYx0gwy3rxb0boWcrpPCTc0SvkjoX3yy0ZAxhHS+NsTE0PKR1mKLv
+         zDiDSPUnjyQs5E0n+3TfR+Fi7C+NXtBkaC0C7FBHu2PYmOEtCDlDnh6s4bc9c2uLiLa1
+         rhFEr7QAe8a0NVjWAkpzMwHH3dEsDFuFHzggAwUrt7gHL/UpsWgJfG+9VugQ8F0FE8Cc
+         tDCF0ZLPtG69sqH4bmxy21FyDKet/4cS4qvxKAqvW+35Rwv44JENm61kC2QUQZdf0X+w
+         knms9jQilY/lsOosNJYrueNdZwvGgE/LFUH6X8Q/BuFehfEAwoBrG+VA9FCBjCzvntDV
+         MEgg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1755807630; x=1756412430;
+        d=1e100.net; s=20230601; t=1755807633; x=1756412433;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=opvoMbW1BQLT38gew8BsXyJcIC3tejqT6ZRE2IoYWVw=;
-        b=qhN3D1vDBxaMi/HOMY3ayjns0iXyvYuQOKwSwHhy5QdEKP6hPHsAtL4/bAA1cLbMLx
-         KqmVQfqx2T30zskIIP1gKl74FjscZH2Mt2YQpd5bvhTwzm9/LJ/OKmHJP+/xyfCzns+Z
-         8+B1BCGSlcThuz0c3pyQb+9Ppuvi47VKd3X6vLQAXluzcPUy/tijy2EsZxm0n0WMvg12
-         It+W+EqHKkoOof/SkBUw4ww/MqLdhbL3y6fS2Euq0V6gLpzWVLl39ngHOiO4ORJD9zBq
-         Pj6EiQTh18Ou+5gBA8DjITjAwVjli3Kgrq1euBAKP2a7ZZpIJQIAGGuRnAEZGUaheL/K
-         h0AQ==
-X-Forwarded-Encrypted: i=1; AJvYcCWI5DaBzqmuTlq8fQstV0r2SdsAuKuPGLfU0kABkID6IvuN28mUFAe95DKmcstz9hW7Jx5q02Emc+y7@vger.kernel.org
-X-Gm-Message-State: AOJu0YwKIs38vq36Eo+YNFWn6FJlOId5EUBA4R1HQGS80StJvXcnPHgB
-	nzJUdaavoCHiQZkcOE+i9h6n9qz3hKh+WRwsSCwYUOrLvQxifsV3ZBTtW7vKpo98uOBvAGvgMXh
-	I/tVfGBdD7IKG
-X-Gm-Gg: ASbGncuLWFHzm0DE96HOOQCJBZyr9+27dYLmJrO5Lqcg6fru5X+YpB/3G9lgLRQEdpM
-	obkERfP6ax85Euvysjse17bTlHoEB2o5RD7fvZaF341XHwrxrS8UW48G+6FmfEFU2W/0LkYGL44
-	XGaEjALtMhIP29wux9xheWH/YdvrGiCs/Ek+yHckFHmCueHj2egFWA3uzXmiboUeWhnLmzzj6I3
-	k/xYMXBxpS8f02Rf3Rt38qDCeLotLNN++mFcCejtDAYCDwr1qPtegBdlymNkPfYlSYEke6rrrIz
-	tLSKd0FfK2w6GyQjAa3WuowKVcQ8cj0PPXVRJBGjA/ufYVk4lWxK6PgPqEzfsB0X5b+7n21tbm5
-	RlnYfChOEc4eCRDSjlTqR17K5Ecw3ziMNb95n6Vkr/6NDIQ8dm/zK9mk1OpQ=
-X-Google-Smtp-Source: AGHT+IHyIwzTgpEWg8XzW3K6HAoMrfMJMt75D5zXrJVqgdg8vv7vwKweBunmDYNPDq3GubatUhjj2Q==
-X-Received: by 2002:a05:6902:6b07:b0:e93:3e42:63ca with SMTP id 3f1490d57ef6-e951c3c4751mr826219276.30.1755807630352;
-        Thu, 21 Aug 2025 13:20:30 -0700 (PDT)
+        bh=t6l/bS5zsFklKVceeWUebv0jSoLqiCtfylVlw96dX9A=;
+        b=R2TDRJHTrPkjFTVu2E/MeW2WWHVq4rgqA+t4Oy8RTKE020idOg25xyMNdrB4JpX5Xp
+         q/SDXXHbikTVRYWmJF7XLOLXGuBKx/l8hLtgS2YvZijeCv6qOM+2TquNP/X02ncL+Efb
+         A92kf3fEy9yfkFfnzolhS2IRhbQaGmnkUeeYk2u9SSfQuwT9VFRec8BJCT2kLE+4hLaB
+         e8uLsgtQxVpeeemx6Q/hEvc9Lgn45lTcjhK8Ik3C7S9Bse12V6UXNpmaLB5w8zIGRgvj
+         MM2ZmjnEpqOTbgjy/l1nKLYfT4OnndgULMTqPIOe9vPPzBDSfzxZzphULdzI6tnKXCcE
+         Hb6g==
+X-Forwarded-Encrypted: i=1; AJvYcCWGKMIADsMtfwlf0fgqPEBRy0jXIrbKrSLodhrUj1vu18OqLVLTSRMEIPiCd+tGVkltuVCnkty8Z+L6@vger.kernel.org
+X-Gm-Message-State: AOJu0YysBCYnECU8KAc/PXgb8F7EFz/P9g7u9VYqCCDrh+11VXrXPpDn
+	X5d4iW/DlLWaKmzc61WGEdw16pJx14bkqixHIF70rM0kbtx4KivZfTrniwbRp4cy4UM=
+X-Gm-Gg: ASbGncvM/srlQTg32+lfsK1iDYmmdN+2G/kLEs1OkUokv/PxTNFAq+NUJJbPSoTPsq/
+	yV+p1orsG0Ja+3iRzrLRGe7SxUw/9G5F5VUZploxhZswLO/GU+R6GwnE09I7s60tXXUbMwtNI1F
+	qugm7oyFy4eN08f6ueSFuqeJjr+GMFcjlp899yx5f1EIoN5SQBm0rAbrpgaZmjwHQcBi16RKx7d
+	60lwoF7qh7AFpKld9gwYaa1pO2A1jxmaMTDE6Nj/L5tPa1uKZNJdGK8xTPs6xXnKa1GnagtX90O
+	9euyKPLGOQlGJ75Be6XP+J/DRtJuTizSCgoVSUiFhhg9M7+a16nNBH/Pha0Cg9IB+RDrI4t0fkB
+	VTGWyaYwsl1lMxpLiM1AuMnPNtkD5mGo3AXrZ/d/HlIFP5jlprGEayd3TH7TJtAUOG6u8Vg==
+X-Google-Smtp-Source: AGHT+IENgnB2uo7YbHtB+DxWNcnBLhyOt4jJNvfUugyviv21T/VvDjUt9O60NwAaV2wQMgUkTBA/BA==
+X-Received: by 2002:a05:690c:48c8:b0:71f:b944:ff9 with SMTP id 00721157ae682-71fdc43915bmr7196657b3.44.1755807633295;
+        Thu, 21 Aug 2025 13:20:33 -0700 (PDT)
 Received: from localhost (syn-076-182-020-124.res.spectrum.com. [76.182.20.124])
-        by smtp.gmail.com with ESMTPSA id 3f1490d57ef6-e951c976124sm141967276.34.2025.08.21.13.20.29
+        by smtp.gmail.com with ESMTPSA id 956f58d0204a3-5f52c8b347csm50443d50.6.2025.08.21.13.20.32
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 21 Aug 2025 13:20:29 -0700 (PDT)
+        Thu, 21 Aug 2025 13:20:32 -0700 (PDT)
 From: Josef Bacik <josef@toxicpanda.com>
 To: linux-fsdevel@vger.kernel.org,
 	linux-btrfs@vger.kernel.org,
@@ -67,9 +66,9 @@ To: linux-fsdevel@vger.kernel.org,
 	linux-xfs@vger.kernel.org,
 	brauner@kernel.org,
 	viro@ZenIV.linux.org.uk
-Subject: [PATCH 10/50] fs: stop accessing ->i_count directly in f2fs and gfs2
-Date: Thu, 21 Aug 2025 16:18:21 -0400
-Message-ID: <b8e6eb8a3e690ce082828d3580415bf70dfa93aa.1755806649.git.josef@toxicpanda.com>
+Subject: [PATCH 12/50] fs: rework iput logic
+Date: Thu, 21 Aug 2025 16:18:23 -0400
+Message-ID: <51eb4b2eef8ee1f7bb4f0974b048dc85452d182d.1755806649.git.josef@toxicpanda.com>
 X-Mailer: git-send-email 2.49.0
 In-Reply-To: <cover.1755806649.git.josef@toxicpanda.com>
 References: <cover.1755806649.git.josef@toxicpanda.com>
@@ -81,50 +80,67 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Instead of accessing ->i_count directly in these file systems, use the
-appropriate __iget and iput helpers.
+Currently, if we are the last iput, and we have the I_DIRTY_TIME bit
+set, we will grab a reference on the inode again and then mark it dirty
+and then redo the put.  This is to make sure we delay the time update
+for as long as possible.
+
+We can rework this logic to simply dec i_count if it is not 1, and if it
+is do the time update while still holding the i_count reference.
+
+Then we can replace the atomic_dec_and_lock with locking the ->i_lock
+and doing atomic_dec_and_test, since we did the atomic_add_unless above.
+
+This is preparation for no longer allowing 0 i_count inodes to exist.
 
 Signed-off-by: Josef Bacik <josef@toxicpanda.com>
 ---
- fs/f2fs/super.c      | 4 ++--
- fs/gfs2/ops_fstype.c | 2 +-
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ fs/inode.c | 31 ++++++++++++++++---------------
+ 1 file changed, 16 insertions(+), 15 deletions(-)
 
-diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
-index 1db024b20e29..2045642cfe3b 100644
---- a/fs/f2fs/super.c
-+++ b/fs/f2fs/super.c
-@@ -1750,7 +1750,7 @@ static int f2fs_drop_inode(struct inode *inode)
- 	if ((!inode_unhashed(inode) && inode->i_state & I_SYNC)) {
- 		if (!inode->i_nlink && !is_bad_inode(inode)) {
- 			/* to avoid evict_inode call simultaneously */
+diff --git a/fs/inode.c b/fs/inode.c
+index 16acad5583fc..814c03f5dbb1 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -1928,22 +1928,23 @@ void iput(struct inode *inode)
+ 	if (!inode)
+ 		return;
+ 	BUG_ON(inode->i_state & I_CLEAR);
+-retry:
+-	if (atomic_dec_and_lock(&inode->i_count, &inode->i_lock)) {
+-		if (inode->i_nlink && (inode->i_state & I_DIRTY_TIME)) {
+-			/*
+-			 * Increment i_count directly as we still have our
+-			 * i_obj_count reference still. This is temporary and
+-			 * will go away in a future patch.
+-			 */
 -			atomic_inc(&inode->i_count);
-+			__iget(inode);
- 			spin_unlock(&inode->i_lock);
- 
- 			/* should remain fi->extent_tree for writepage */
-@@ -1769,7 +1769,7 @@ static int f2fs_drop_inode(struct inode *inode)
- 			sb_end_intwrite(inode->i_sb);
- 
- 			spin_lock(&inode->i_lock);
--			atomic_dec(&inode->i_count);
-+			iput(inode);
- 		}
- 		trace_f2fs_drop_inode(inode, 0);
- 		return 0;
-diff --git a/fs/gfs2/ops_fstype.c b/fs/gfs2/ops_fstype.c
-index efe99b732551..c770006f8889 100644
---- a/fs/gfs2/ops_fstype.c
-+++ b/fs/gfs2/ops_fstype.c
-@@ -1754,7 +1754,7 @@ static void gfs2_evict_inodes(struct super_block *sb)
- 			spin_unlock(&inode->i_lock);
- 			continue;
- 		}
--		atomic_inc(&inode->i_count);
-+		__iget(inode);
- 		spin_unlock(&inode->i_lock);
- 		spin_unlock(&sb->s_inode_list_lock);
- 
+-			spin_unlock(&inode->i_lock);
+-			trace_writeback_lazytime_iput(inode);
+-			mark_inode_dirty_sync(inode);
+-			goto retry;
+-		}
+-		iput_final(inode);
++
++	if (atomic_add_unless(&inode->i_count, -1, 1)) {
++		iobj_put(inode);
++		return;
+ 	}
++
++	if (inode->i_nlink && (inode->i_state & I_DIRTY_TIME)) {
++		trace_writeback_lazytime_iput(inode);
++		mark_inode_dirty_sync(inode);
++	}
++
++	spin_lock(&inode->i_lock);
++	if (atomic_dec_and_test(&inode->i_count))
++		iput_final(inode);
++	else
++		spin_unlock(&inode->i_lock);
++
+ 	iobj_put(inode);
+ }
+ EXPORT_SYMBOL(iput);
 -- 
 2.49.0
 
