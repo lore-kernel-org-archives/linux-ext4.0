@@ -1,121 +1,149 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-yw1-f171.google.com (mail-yw1-f171.google.com [209.85.128.171])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A30B92E8DF3;
-	Fri, 22 Aug 2025 12:54:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 722FD2D7DE1
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Aug 2025 13:30:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.171
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1755867280; cv=none; b=tJDgQk4bBFd1j78mTCbdILxW/ZkDOBmXqyhuoLmJq8wOCTK2ijH7SGSY2CM+WVZvIq9Ghm6CgduFZ7N0XPRg8wVn3I+ear4s8jqsGLVa542K8WitcdVcSxy0WDy9f+1ykweMQBEfbdV2MgITr5tH7MQk7vw/ph2dErsVQx4BgjY=
+	t=1755869452; cv=none; b=OK3Dmqu4x6pfzlVvkADwpbufFETMymnbcpjK6/D9S+XKjp0njz35Omy6PnhxIWsqkKDGlNfZ82uU7D9W6Bm7SubywbqeU+ElFrygWf8VrVOUGe2JDHjviYugBT9wj7Qe9rGX4TfuahafVK3l+plOLjQGmKk5SNP+yUC7Lort9Dg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1755867280; c=relaxed/simple;
-	bh=D7CI/ujIOMJT8PwGvAS/XDxJEV+NYubtwhBRMoWUMH8=;
+	s=arc-20240116; t=1755869452; c=relaxed/simple;
+	bh=vawMYpL5MnTwScaPKytLvoy2AK4jNtOc6mZjESzBhco=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=aTxNsWDH4Zj87pOiA6/hBqTaCEoShuCHicWsw7zcnK32N9GpfCTND8R0Bbpm70yA1VTvVXWqkh9Tl3PO3H5G9ngHJVPCiMvuqRgOyK6eILiGf+uW0a2sfGVK0JLIgI2YPV+XbgasvT6neUiZjJbTk6+nkqBzrj6+Y1CXvdUKbVc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Y9nfY9g4; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=LqqK+9XGeIWGrANZe5loJ3mBjz3mobfwUtM+NhDb/sdluYJJ6rR+jhgZiWqtY5/tQ7TQd2C783yCyzrDGcDDadVsLHqTuVm9TFuCO35l90DhOtFHiJL5ms1iAI7+NWXZnOzVC3LNDGwdSvjZtOpU12sUotsPs5SB/aWgVChDLhU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com; spf=none smtp.mailfrom=toxicpanda.com; dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b=dgEwETev; arc=none smtp.client-ip=209.85.128.171
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=toxicpanda.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Y9nfY9g4"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C49AFC4CEED;
-	Fri, 22 Aug 2025 12:54:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1755867279;
-	bh=D7CI/ujIOMJT8PwGvAS/XDxJEV+NYubtwhBRMoWUMH8=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=Y9nfY9g4Wt4WYRMIggPepWnjhLv3wPQlxkqXfUw03cp0KLdU02+GpW5SHU35kQFRQ
-	 YlgLVvro9N7vUU5SRGI7d/uk8EyZZ8vufXJt4m80dL2TJue1D43cM4IxFTncZx7DlJ
-	 7XBtgqIfo2bofoPu5/lyi5icBjreki5Maka6Ac3YWck2KaJQqJsaDFbyD2p0WGa0+h
-	 IPNi8pm8JW8rq8W02leXwO53uRB32lSzdt9+x33ZBXKsKb4SFpLoHjbm3aKdwS2f26
-	 tMAGffVOILiyMy0Ktl+uD9gvCw9E3BKlv9UjRw8lLxpbIBnasC6f+AI+bm7Yr8coKl
-	 xUHBDt4vKKU4g==
-Date: Fri, 22 Aug 2025 14:54:35 +0200
-From: Christian Brauner <brauner@kernel.org>
-To: Josef Bacik <josef@toxicpanda.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org, 
-	kernel-team@fb.com, linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org, 
-	viro@zeniv.linux.org.uk
-Subject: Re: [PATCH 12/50] fs: rework iput logic
-Message-ID: <20250822-waran-tragweite-78946c108d13@brauner>
+	dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b="dgEwETev"
+Received: by mail-yw1-f171.google.com with SMTP id 00721157ae682-71d603acc23so17585407b3.1
+        for <linux-ext4@vger.kernel.org>; Fri, 22 Aug 2025 06:30:50 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=toxicpanda-com.20230601.gappssmtp.com; s=20230601; t=1755869449; x=1756474249; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=ysGi6IoThbqflSFP0+quOx+igxfKxKnr1laLr0pAEm0=;
+        b=dgEwETevblf20PEHJ5z0NjoehlVqLOzlFv1mhAZz9rz41QlPXxXmeqR8LfrYq8+cl8
+         YAlUT/A1joboXNNyG+bevf0BSw0PhQprfZm8L7zjcLPag8O64rlIPRqBb0Kdqp7fxJ8z
+         BrMRQH+h/brLImw3FLt0nR4UEYTGUc4ZTBR5rYXqIFOPQaDyyYq/WTD/p9yNvDLmZzCz
+         sFubt8WzUEI88h3QAIkxvoGFpBRDuTxH/PNiV8jxUJNuJwk11sl/k0apc/BDp343sPZ6
+         OFploYZUk8R4UymOOKt8xJxin8Dz7eGSFLjnvkYbf0VUFuXujfwEw+VVnfQ7+a6m0j71
+         s/5A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1755869449; x=1756474249;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=ysGi6IoThbqflSFP0+quOx+igxfKxKnr1laLr0pAEm0=;
+        b=mrKg1qt1XPevg0VyAuYOLxUJurvKuqwXaSPxB2/D3QvvjyGxxxzpu7Zc9U4idQVhU5
+         /z0i4K07Cb1FAai8ATget0ipQJjr2w07arHdVI3r9EQHkpVxRBi34qnJxiLKpOnl9Y0+
+         W7QjZIL0+vODSzFeP4eVeBZSSv1+EhOk2DrNzOcWVI0Aey8+8OPxBNZkPcNZVHkqh9Vs
+         ERqZSpN6DZaemjbXImj+CRtvqpzlfr3UWDHvHAhQX7eGvqqubSfL+c/MPqL3FoMdooaU
+         +lGGrqY1yc1jJRE2d+B16KGNw1npTt0cY/UN9nyMjUNuOCwg5PN34FHvx5F1PQ1yEYtb
+         XIFQ==
+X-Forwarded-Encrypted: i=1; AJvYcCXsJJDPmn2Kbn1Ur1Ro8AXGezSKhmzfITbMoOrwGFZCPz9rphjCRLG9mvC5omUHiFwLQFlkiu8JdmvU@vger.kernel.org
+X-Gm-Message-State: AOJu0Yz4ntnmmkQ80IEI1l+vE9X1Dx1OTj2eAwx8Di3V4zl7RkvCO89y
+	R4kVnDpGOlJYgHLPh69madNiTVmW2NSh/rIFUqz5HOTFMDT1o72LW1IZu+C/0/bMnOo=
+X-Gm-Gg: ASbGncsRTQ0CB377AyXn7hDqNW3vdR1lq9kKvpXgwqTQ132luiEJiXsccE2T2BBhnRA
+	Cmogtrn3BsnHowmZMynXBJRZNhmVLBenfkndT01lIWJfwLuTVrsUyHNwAw81vkZjq48IkxJynuA
+	hADJh6r9q/CG1mPlPw7WXWeSpuMix6S9JCfo8UeGe4YR0dTxXTLGSfWUkAlD1F6TfCg4hH3qycb
+	ykQNIVXthrJx9sdcP+TNVFHOtjIRkxlIzZg4icueaOxlSZC6kKLVimE2BSHwFXj8Kh/uVo5oA8K
+	3R8MsR5gow47E+Fq43eaCTqVOxvuPc9KEVHRna2vjoiVS53+nLOPQL/oXx2qIWKlKbXl0ka+6KV
+	De7gDBlRYsNYWEUv7SKiXeCMQyX+gNGWdCpkFkKYIAP51bl04yQA4pRZBUBxMcfmqKOTs6Q==
+X-Google-Smtp-Source: AGHT+IE7d8mBxJn5ZH3yrL6qHVvJSHezvTY0uEOPyAXgDu4q6zdL0lvpLU/s1EK3p0Klfj6p9sFXwA==
+X-Received: by 2002:a05:690c:6286:b0:71e:727d:7dc5 with SMTP id 00721157ae682-71fdc406db2mr34431647b3.36.1755869449027;
+        Fri, 22 Aug 2025 06:30:49 -0700 (PDT)
+Received: from localhost (syn-076-182-020-124.res.spectrum.com. [76.182.20.124])
+        by smtp.gmail.com with ESMTPSA id 00721157ae682-71e70c426aasm48695597b3.29.2025.08.22.06.30.48
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 22 Aug 2025 06:30:48 -0700 (PDT)
+Date: Fri, 22 Aug 2025 09:30:47 -0400
+From: Josef Bacik <josef@toxicpanda.com>
+To: Christian Brauner <brauner@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	kernel-team@fb.com, linux-ext4@vger.kernel.org,
+	linux-xfs@vger.kernel.org, viro@zeniv.linux.org.uk
+Subject: Re: [PATCH 00/50] fs: rework inode reference counting
+Message-ID: <20250822133047.GA927384@perftesting>
 References: <cover.1755806649.git.josef@toxicpanda.com>
- <51eb4b2eef8ee1f7bb4f0974b048dc85452d182d.1755806649.git.josef@toxicpanda.com>
+ <20250822-monster-ganztags-cc8039dc09db@brauner>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <51eb4b2eef8ee1f7bb4f0974b048dc85452d182d.1755806649.git.josef@toxicpanda.com>
+In-Reply-To: <20250822-monster-ganztags-cc8039dc09db@brauner>
 
-On Thu, Aug 21, 2025 at 04:18:23PM -0400, Josef Bacik wrote:
-> Currently, if we are the last iput, and we have the I_DIRTY_TIME bit
-> set, we will grab a reference on the inode again and then mark it dirty
-> and then redo the put.  This is to make sure we delay the time update
-> for as long as possible.
+On Fri, Aug 22, 2025 at 12:51:29PM +0200, Christian Brauner wrote:
+> On Thu, Aug 21, 2025 at 04:18:11PM -0400, Josef Bacik wrote:
+> > Hello,
+> > 
+> > This series is the first part of a larger body of work geared towards solving a
+> > variety of scalability issues in the VFS.
+> > 
+> > We have historically had a variety of foot-guns related to inode freeing.  We
+> > have I_WILL_FREE and I_FREEING flags that indicated when the inode was in the
+> > different stages of being reclaimed.  This lead to confusion, and bugs in cases
+> > where one was checked but the other wasn't.  Additionally, it's frankly
+> > confusing to have both of these flags and to deal with them in practice.
 > 
-> We can rework this logic to simply dec i_count if it is not 1, and if it
-> is do the time update while still holding the i_count reference.
+> Agreed.
 > 
-> Then we can replace the atomic_dec_and_lock with locking the ->i_lock
-> and doing atomic_dec_and_test, since we did the atomic_add_unless above.
+> > However, this exists because we have an odd behavior with inodes, we allow them
+> > to have a 0 reference count and still be usable. This again is a pretty unfun
+> > footgun, because generally speaking we want reference counts to be meaningful.
 > 
-> This is preparation for no longer allowing 0 i_count inodes to exist.
+> Agreed.
 > 
-> Signed-off-by: Josef Bacik <josef@toxicpanda.com>
-> ---
->  fs/inode.c | 31 ++++++++++++++++---------------
->  1 file changed, 16 insertions(+), 15 deletions(-)
+> > The problem with the way we reference inodes is the final iput(). The majority
+> > of file systems do their final truncate of a unlinked inode in their
+> > ->evict_inode() callback, which happens when the inode is actually being
+> > evicted. This can be a long process for large inodes, and thus isn't safe to
+> > happen in a variety of contexts. Btrfs, for example, has an entire delayed iput
+> > infrastructure to make sure that we do not do the final iput() in a dangerous
+> > context. We cannot expand the use of this reference count to all the places the
+> > inode is used, because there are cases where we would need to iput() in an IRQ
+> > context  (end folio writeback) or other unsafe context, which is not allowed.
+> > 
+> > To that end, resolve this by introducing a new i_obj_count reference count. This
+> > will be used to control when we can actually free the inode. We then can use
+> > this reference count in all the places where we may reference the inode. This
+> > removes another huge footgun, having ways to access the inode itself without
+> > having an actual reference to it. The writeback code is one of the main places
+> > where we see this. Inodes end up on all sorts of lists here without a proper
+> > reference count. This allows us to protect the inode from being freed by giving
+> > this an other code mechanisms to protect their access to the inode.
+> > 
+> > With this we can separate the concept of the inode being usable, and the inode
+> > being freed.  The next part of the patch series is to stop allowing for inodes
+> > to have an i_count of 0 and still be viable.  This comes with some warts. The
+> > biggest wart is now if we choose to cache inodes in the LRU list we have to
+> > remove the inode from the LRU list if we access it once it's on the LRU list.
+> > This will result in more contention on the lru list lock, but in practice we
+> > rarely have inodes that do not have a dentry, and if we do that inode is not
+> > long for this world.
+> > 
+> > With not allowing inodes to hit a refcount of 0, we can take advantage of that
+> > common pattern of using refcount_inc_not_zero() in all of the lockless places
+> > where we do inode lookup in cache.  From there we can change all the users who
+> > check I_WILL_FREE or I_FREEING to simply check the i_count. If it is 0 then they
+> > aren't allowed to do their work, othrwise they can proceed as normal.
+> > 
+> > With all of that in place we can finally remove these two flags.
+> > 
+> > This is a large series, but it is mostly mechanical. I've kept the patches very
+> > small, to make it easy to review and logic about each change. I have run this
+> > through fstests for btrfs and ext4, xfs is currently going. I wanted to get this
+> > out for review to make sure this big design changes are reasonable to everybody.
+> > 
+> > The series is based on vfs/vfs.all branch, which is based on 6.9-rc1. Thanks,
 > 
-> diff --git a/fs/inode.c b/fs/inode.c
-> index 16acad5583fc..814c03f5dbb1 100644
-> --- a/fs/inode.c
-> +++ b/fs/inode.c
-> @@ -1928,22 +1928,23 @@ void iput(struct inode *inode)
->  	if (!inode)
->  		return;
->  	BUG_ON(inode->i_state & I_CLEAR);
-> -retry:
-> -	if (atomic_dec_and_lock(&inode->i_count, &inode->i_lock)) {
-> -		if (inode->i_nlink && (inode->i_state & I_DIRTY_TIME)) {
-> -			/*
-> -			 * Increment i_count directly as we still have our
-> -			 * i_obj_count reference still. This is temporary and
-> -			 * will go away in a future patch.
-> -			 */
-> -			atomic_inc(&inode->i_count);
-> -			spin_unlock(&inode->i_lock);
-> -			trace_writeback_lazytime_iput(inode);
-> -			mark_inode_dirty_sync(inode);
-> -			goto retry;
-> -		}
-> -		iput_final(inode);
-> +
-> +	if (atomic_add_unless(&inode->i_count, -1, 1)) {
-> +		iobj_put(inode);
-> +		return;
->  	}
-> +
-> +	if (inode->i_nlink && (inode->i_state & I_DIRTY_TIME)) {
-> +		trace_writeback_lazytime_iput(inode);
-> +		mark_inode_dirty_sync(inode);
-> +	}
-> +
-> +	spin_lock(&inode->i_lock);
-> +	if (atomic_dec_and_test(&inode->i_count))
-> +		iput_final(inode);
+> I so hope you meant 6.17-rc1 because otherwise I did something very very
+> wrong. :)
 
-Personally, I'd add a
-// drops i_lock
-comment behind iput_final() but that's a matter of taste tbf.
+Stupid AI hallucination...
 
-> +	else
-> +		spin_unlock(&inode->i_lock);
-> +
->  	iobj_put(inode);
->  }
->  EXPORT_SYMBOL(iput);
-
-This looks a lot less magical than the current variant! We should maybe
-split this patch in two. A cleanup patch that removes the questionable
-"drop to zero, take lock then increment from zero again" logic and then
-in a separate patch add in the iobj_put(). So the cleanup can go to the
-front of the series.
+Josef
