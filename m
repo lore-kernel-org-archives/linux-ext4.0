@@ -1,201 +1,103 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from mail-pf1-f169.google.com (mail-pf1-f169.google.com [209.85.210.169])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 17FB776026
-	for <linux-ext4@vger.kernel.org>; Mon, 25 Aug 2025 12:18:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A72291FDE31
+	for <linux-ext4@vger.kernel.org>; Mon, 25 Aug 2025 12:53:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.169
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1756124286; cv=none; b=K71mWrVSfL8VYclpGBDZA5b8IbW+GZJq4bTejmb60/1yqzHk3AX9W1hgvso22oawdVXsLIsz53+Uos1GgHYUhIcCP8uV4Fd7nmAXJqxnt7eyDhHTQYGf/96mAx9C36bv6SBvu0ty+5f4EqkSzMUe1J4ZftMcZiKUdV93HrgH6uY=
+	t=1756126425; cv=none; b=F75OtY6M2glsb3Gsmn9wX1hTJ9hG9aMg2RPCxejH5/+GLBtpUMDqm8b+DTEvXoCsBgZznYTVz/8gyETCQrG/dJuuF+PFf7SVj0s0dTEwJmBZXEWRIJemf6PNhkHTK1SqGHN8FRiS6+tSoXKhQNYsKaz8muozMOYy1yWebBa5mBI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1756124286; c=relaxed/simple;
-	bh=P9ZioVmRLNZ0PRlBeWitR5wdkkEpDXbsieVIuraxilE=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=hjam/ptOkVIx0V4UfNGmwgCiMfTvFFlyeFFPdAiiEQcSRatSXhAWJyVC8NjbtYeWHr0c+fNcSNdXnSn6et/J1igbCYdHWmzKKQt3QantTExSAXcJj2u4PtgHzVnm1zIEBHBlcwphCL0xIFh9WBiaJFfEnAj49ofBxjyJOL5PtW8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Tao79EtA; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=5rJ/Z/Gr; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Tao79EtA; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=5rJ/Z/Gr; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1756126425; c=relaxed/simple;
+	bh=1zEgsVLb/FGQHrq3v6SLH3vg3+ajNAPVXVrSXj58b+g=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=bQeKAwC04Rn83S7cwuyLSdqb2NTl0sGwCl8tBph1rh1gqCDNBhnVt6o4hF4NXxF9DI3rCAnMQa8AnpXbiNxtVRZb3mo/kgUzXm2htUnAFMup0QFzeXZOZaY83XokthsTleTeauLMsz5/vNH6spb/C9mf6lo9TwUnqaZfqsQf8cE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=lPPUD4x4; arc=none smtp.client-ip=209.85.210.169
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Tao79EtA";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="5rJ/Z/Gr";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Tao79EtA";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="5rJ/Z/Gr"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 4A70A211F3;
-	Mon, 25 Aug 2025 12:18:03 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1756124283; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Avr9qQSALOT/4FAoU4o3mO7LUZ77ekSCMOcAtT98JTM=;
-	b=Tao79EtAkiUvJLLkEijhojJY1EHnJXfA8BZXf+YCTwJ0QOr6o9nI8uIU/IOIvz45Er1yO/
-	/530XOlTtmwzjHr9n899nIC+KUD5hOYpyHxb8aKxQbSqg5JqWmU6PKjqW86pB8c1oU2MZE
-	ViqOeWEuDYowv/vH1UfE9x+pFo81juM=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1756124283;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Avr9qQSALOT/4FAoU4o3mO7LUZ77ekSCMOcAtT98JTM=;
-	b=5rJ/Z/GrRBtFPr2meoPGPviuJqwLUCdM8lWnMgbBeRZZmkztUbDBh7n+6f9ET2u2S3Bs1+
-	UfF5eaQM4wQ0hMCA==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1756124283; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Avr9qQSALOT/4FAoU4o3mO7LUZ77ekSCMOcAtT98JTM=;
-	b=Tao79EtAkiUvJLLkEijhojJY1EHnJXfA8BZXf+YCTwJ0QOr6o9nI8uIU/IOIvz45Er1yO/
-	/530XOlTtmwzjHr9n899nIC+KUD5hOYpyHxb8aKxQbSqg5JqWmU6PKjqW86pB8c1oU2MZE
-	ViqOeWEuDYowv/vH1UfE9x+pFo81juM=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1756124283;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Avr9qQSALOT/4FAoU4o3mO7LUZ77ekSCMOcAtT98JTM=;
-	b=5rJ/Z/GrRBtFPr2meoPGPviuJqwLUCdM8lWnMgbBeRZZmkztUbDBh7n+6f9ET2u2S3Bs1+
-	UfF5eaQM4wQ0hMCA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 33DF4136DB;
-	Mon, 25 Aug 2025 12:18:03 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id B7CiDHtUrGjvEAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 25 Aug 2025 12:18:03 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 1D1F2A0A8A; Mon, 25 Aug 2025 11:52:50 +0200 (CEST)
-Date: Mon, 25 Aug 2025 11:52:50 +0200
-From: Jan Kara <jack@suse.cz>
-To: libaokun@huaweicloud.com
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	jack@suse.cz, linux-kernel@vger.kernel.org, yi.zhang@huawei.com, 
-	yangerkun@huawei.com, libaokun1@huawei.com
-Subject: Re: [PATCH] ext4: add ext4_sb_bread_nofail() helper function for
- ext4_free_branches()
-Message-ID: <clyk3sndidaz3plcvojzci7rs7sqmsegga5izrp46l23zaxtoc@sovizlltl6jd>
-References: <20250821133857.80542-1-libaokun@huaweicloud.com>
+	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="lPPUD4x4"
+Received: by mail-pf1-f169.google.com with SMTP id d2e1a72fcca58-77057266cb8so877359b3a.0
+        for <linux-ext4@vger.kernel.org>; Mon, 25 Aug 2025 05:53:43 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=bytedance.com; s=google; t=1756126423; x=1756731223; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=dkkm1mMFJIJqyLv5AyqoMgolEEmduVMkh7MIx8PmexA=;
+        b=lPPUD4x4m9e7jXwu1LtivNjSBIxkUIRQjIf/g4WjHPc3hG1jP3YdpDaZc8nglL7n3O
+         Vb26uCkiUnZvTzfTyO776nQ4evpr3KBySkihDVJzVZBx9UnDYoUX8DSYmKyMgOiq8FJh
+         jU3VxCesy+R99IxT/l9QCn6L6zWv7fyhq1emxhGQLulI4ywZa/wC58j5Rrs2krd67j/p
+         XUC4SlQJ4f/sAByI9UehLjyUkEXLrDcLFMsQDuVOvwcAatC3si2Ml1ORUy/uJ2gZyOmC
+         ycac+8VdOfmtAC13It6lVuPeoutUSR8qVzIBoMrZXQJ4riLfgQg9iDSaOjjBtG2o5Duq
+         hF5A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1756126423; x=1756731223;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=dkkm1mMFJIJqyLv5AyqoMgolEEmduVMkh7MIx8PmexA=;
+        b=rwyaqzwGTl7/+Z8Pt9l8vN5WRCEz7f1gHhc3d8J1BB1rOZ4SVecG3x5DPI2ivn2yCA
+         oK7XVqbr5WSra/ae27SWskzk4S4EPPmkkomMXOE0uhOMw4438Cy92wLksGAKQcRVjK6F
+         GW2s9KT3t0Tg8l4Be5bIJHLNv/MWImZHqCWlR1HgUayUshAXxOFnUT5Bbu5hJvDXEaZN
+         s37lFYVXJcbL/EINWdxQT0bMhC1FPFXc3S1fCMEaz7LQSSGu/I9I62xIFVO+aO+IPBLE
+         myWabB2oE+QKDp4KKp6aBM99lwp0q4R4nWYPbDeN0zrCs6C54lRIrCZvYwCwHhPCPHK9
+         CdAw==
+X-Gm-Message-State: AOJu0Yw4tZsI6htROmXcFql0sn/AEYVCa+lYe/SdJsl7gdYtEz2SYkoP
+	H01RVS9FsUmW7lwf4d1HURA0u4nevdhxuWot8yhmJCsVqEyGYAcEvcby9dt7e7shk3tyr62cov3
+	YkGE/8oE=
+X-Gm-Gg: ASbGncuEpY5X0OD3XRTnpMnWpm/HTn9zr7ZoNsnlKt0ax4RO1mbCFcgaVg6ISlNJvh0
+	5ka0hefVFDxeVP3ZamONadmtkxzjnIs2Yh4dc2Bu7QrvH9w6nUAQcf6GXL9KXbkoHnJtV6JNlj4
+	4ak95Da45aF2BKYSaTZBsJh4GBOvebxjSqBkwUIFPEjSugE3TlU1wG99cFsLm/dlHuauMBJVLhL
+	wIgRbBsoOA2m8HS9EZMWe4SQH6OYFwNB3fZaz96nsBVJ/yZocax4UUSwwPW6Mg8uwIrn/fd4P9S
+	7kL+BV8rbQfZqt+m8pFDe3D9zbKg8CSL8++IL6vvOjP2QpgmqSQD0GODrrCmG+tq1Ing9gspjZ9
+	8VBhgRDCwzdW/bhr1/hdmDZoF5rzuzktNmo76AodSng==
+X-Google-Smtp-Source: AGHT+IGtSTE++/4XtvzJaYlE0CqH+6g3Jp1FCsz09V/n7jA2I7ankwRr6luvRGzRklsqwUXkYtW5OA==
+X-Received: by 2002:a05:6a20:4e28:b0:243:5744:b2e0 with SMTP id adf61e73a8af0-2435744c04emr7990048637.26.1756126422707;
+        Mon, 25 Aug 2025 05:53:42 -0700 (PDT)
+Received: from localhost ([106.38.226.228])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-77040021393sm7438920b3a.49.2025.08.25.05.53.41
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 25 Aug 2025 05:53:42 -0700 (PDT)
+From: Julian Sun <sunjunchao@bytedance.com>
+To: linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu,
+	jack@suse.com,
+	yi.zhang@huawei.com
+Subject: [PATCH] jbd2: Increase IO priority of checkpoint.
+Date: Mon, 25 Aug 2025 20:53:39 +0800
+Message-Id: <20250825125339.1368799-1-sunjunchao@bytedance.com>
+X-Mailer: git-send-email 2.20.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20250821133857.80542-1-libaokun@huaweicloud.com>
-X-Spam-Level: 
-X-Spamd-Result: default: False [-3.80 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-0.998];
-	MIME_GOOD(-0.10)[text/plain];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	RCVD_TLS_LAST(0.00)[];
-	ARC_NA(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	TO_DN_NONE(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	RCPT_COUNT_SEVEN(0.00)[9];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:email]
-X-Spam-Flag: NO
-X-Spam-Score: -3.80
+Content-Transfer-Encoding: 8bit
 
-On Thu 21-08-25 21:38:57, libaokun@huaweicloud.com wrote:
-> From: Baokun Li <libaokun1@huawei.com>
-> 
-> The implicit __GFP_NOFAIL flag in ext4_sb_bread() was removed in commit
-> 8a83ac54940d ("ext4: call bdev_getblk() from sb_getblk_gfp()"), meaning
-> the function can now fail under memory pressure.
-> 
-> Most callers of ext4_sb_bread() propagate the error to userspace and do not
-> remount the filesystem read-only. However, ext4_free_branches() handles
-> ext4_sb_bread() failure by remounting the filesystem read-only.
-> 
-> This implies that an ext3 filesystem (mounted via the ext4 driver) could be
-> forcibly remounted read-only due to a transient page allocation failure,
-> which is unacceptable.
-> 
-> To mitigate this, introduce a new helper function, ext4_sb_bread_nofail(),
-> which explicitly uses __GFP_NOFAIL, and use it in ext4_free_branches().
-> 
-> Fixes: 8a83ac54940d ("ext4: call bdev_getblk() from sb_getblk_gfp()")
-> Signed-off-by: Baokun Li <libaokun1@huawei.com>
+In commit 6a3afb6ac6df ("jbd2: increase the journal IO's priority"),
+the priority of IOs initiated by jbd2 has been raised, exempting them
+from WBT throttling.
+Checkpoint is also a crucial operation of jbd2. While no serious issues
+have been observed so far, it should still be reasonable to exempt
+checkpoint from WBT throttling.
 
-Looks sane. Feel free to add:
+Signed-off-by: Julian Sun <sunjunchao@bytedance.com>
+---
+ fs/jbd2/checkpoint.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  fs/ext4/ext4.h     | 2 ++
->  fs/ext4/indirect.c | 2 +-
->  fs/ext4/super.c    | 9 +++++++++
->  3 files changed, 12 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 106484739932..32315e51639e 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -3134,6 +3134,8 @@ extern struct buffer_head *ext4_sb_bread(struct super_block *sb,
->  					 sector_t block, blk_opf_t op_flags);
->  extern struct buffer_head *ext4_sb_bread_unmovable(struct super_block *sb,
->  						   sector_t block);
-> +extern struct buffer_head *ext4_sb_bread_nofail(struct super_block *sb,
-> +						sector_t block);
->  extern void ext4_read_bh_nowait(struct buffer_head *bh, blk_opf_t op_flags,
->  				bh_end_io_t *end_io, bool simu_fail);
->  extern int ext4_read_bh(struct buffer_head *bh, blk_opf_t op_flags,
-> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-> index 7de327fa7b1c..39350a18e919 100644
-> --- a/fs/ext4/indirect.c
-> +++ b/fs/ext4/indirect.c
-> @@ -1025,7 +1025,7 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
->  			}
->  
->  			/* Go read the buffer for the next level down */
-> -			bh = ext4_sb_bread(inode->i_sb, nr, 0);
-> +			bh = ext4_sb_bread_nofail(inode->i_sb, nr);
->  
->  			/*
->  			 * A read failure? Report error and clear slot
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index c7d39da7e733..a0e2b396aa76 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -265,6 +265,15 @@ struct buffer_head *ext4_sb_bread_unmovable(struct super_block *sb,
->  	return __ext4_sb_bread_gfp(sb, block, 0, gfp);
->  }
->  
-> +struct buffer_head *ext4_sb_bread_nofail(struct super_block *sb,
-> +					 sector_t block)
-> +{
-> +	gfp_t gfp = mapping_gfp_constraint(sb->s_bdev->bd_mapping,
-> +			~__GFP_FS) | __GFP_MOVABLE | __GFP_NOFAIL;
-> +
-> +	return __ext4_sb_bread_gfp(sb, block, 0, gfp);
-> +}
-> +
->  void ext4_sb_breadahead_unmovable(struct super_block *sb, sector_t block)
->  {
->  	struct buffer_head *bh = bdev_getblk(sb->s_bdev, block,
-> -- 
-> 2.39.2
-> 
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 38861ca04899..2d0719bf6d87 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -131,7 +131,7 @@ __flush_batch(journal_t *journal, int *batch_count)
+ 
+ 	blk_start_plug(&plug);
+ 	for (i = 0; i < *batch_count; i++)
+-		write_dirty_buffer(journal->j_chkpt_bhs[i], REQ_SYNC);
++		write_dirty_buffer(journal->j_chkpt_bhs[i], JBD2_JOURNAL_REQ_FLAGS);
+ 	blk_finish_plug(&plug);
+ 
+ 	for (i = 0; i < *batch_count; i++) {
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.20.1
+
