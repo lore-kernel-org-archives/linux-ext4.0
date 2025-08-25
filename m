@@ -1,89 +1,86 @@
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 331E92EFDAC
-	for <linux-ext4@vger.kernel.org>; Mon, 25 Aug 2025 12:07:26 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 17FB776026
+	for <linux-ext4@vger.kernel.org>; Mon, 25 Aug 2025 12:18:04 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1756123648; cv=none; b=a5jN2JcHjh2ikbuIa8e++jf9H5Zy4qu2F4iPoBNNbQYwGeu8jCtvZ85/zpzPaozxvJDkEiA/Ax5R425i2ZiTMHZvzoQNY2dOSLTqheAWuTNpEh4P3I6IDEEHLewwOMfyadZFKyZP8yj9b7dhnIIgHlFnSOrVapG4KpWRwgjKYpU=
+	t=1756124286; cv=none; b=K71mWrVSfL8VYclpGBDZA5b8IbW+GZJq4bTejmb60/1yqzHk3AX9W1hgvso22oawdVXsLIsz53+Uos1GgHYUhIcCP8uV4Fd7nmAXJqxnt7eyDhHTQYGf/96mAx9C36bv6SBvu0ty+5f4EqkSzMUe1J4ZftMcZiKUdV93HrgH6uY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1756123648; c=relaxed/simple;
-	bh=MWkWojGEIs+5EgCLVlLnBOjxSlqnFs4gPeEtmO3HGug=;
+	s=arc-20240116; t=1756124286; c=relaxed/simple;
+	bh=P9ZioVmRLNZ0PRlBeWitR5wdkkEpDXbsieVIuraxilE=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=ujJPQ/utKea1a/GBJJnx8+TRJ5f4eeuCMj35B+EcKD0AAodrK90g+DIxnWwQAeLNIHqrZHtM05/E0Fb8fdLmOVnUu6L+khGGIlIc96v/n3Qx2VC38cfjE66zFpqQtc87utYCx+K/wY9ZXWLCmc/ABDnUfzYhqxyRFlpoAzApNoM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=t1ZmTaIM; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=83HSOpmW; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=t1ZmTaIM; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=83HSOpmW; arc=none smtp.client-ip=195.135.223.130
+	 Content-Type:Content-Disposition:In-Reply-To; b=hjam/ptOkVIx0V4UfNGmwgCiMfTvFFlyeFFPdAiiEQcSRatSXhAWJyVC8NjbtYeWHr0c+fNcSNdXnSn6et/J1igbCYdHWmzKKQt3QantTExSAXcJj2u4PtgHzVnm1zIEBHBlcwphCL0xIFh9WBiaJFfEnAj49ofBxjyJOL5PtW8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Tao79EtA; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=5rJ/Z/Gr; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Tao79EtA; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=5rJ/Z/Gr; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="t1ZmTaIM";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="83HSOpmW";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="t1ZmTaIM";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="83HSOpmW"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Tao79EtA";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="5rJ/Z/Gr";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Tao79EtA";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="5rJ/Z/Gr"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id F26CE2125B;
-	Mon, 25 Aug 2025 12:07:23 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 4A70A211F3;
+	Mon, 25 Aug 2025 12:18:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1756123644; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1756124283; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=5esCATGxFy1rPdQ5wxmc7jMFTL/ZNi1qRrQlBSRFzPk=;
-	b=t1ZmTaIM0+z6zSJxxyOEwYyPqpiki++QwLvf6SbdhQDAXsJzbiPx6tgrlLwtDXBYKzjUz6
-	XmNeoO6v4iiBYcICYhf9+vPppYOsxvqC0O4Z72aLVDKRmHnsaowAsXrRZ/ZkawLyUHVbbD
-	GD4rB/NSxgCYXEY0yC3iDkhx6piJlwo=
+	bh=Avr9qQSALOT/4FAoU4o3mO7LUZ77ekSCMOcAtT98JTM=;
+	b=Tao79EtAkiUvJLLkEijhojJY1EHnJXfA8BZXf+YCTwJ0QOr6o9nI8uIU/IOIvz45Er1yO/
+	/530XOlTtmwzjHr9n899nIC+KUD5hOYpyHxb8aKxQbSqg5JqWmU6PKjqW86pB8c1oU2MZE
+	ViqOeWEuDYowv/vH1UfE9x+pFo81juM=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1756123644;
+	s=susede2_ed25519; t=1756124283;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=5esCATGxFy1rPdQ5wxmc7jMFTL/ZNi1qRrQlBSRFzPk=;
-	b=83HSOpmWO0E4yGKjz/4xp57phgsCaOgr6D95jxGWvKcSI3kfxKy5OpEcOUKKfaG93/AcKo
-	9/pSeIvPZeujdIDA==
+	bh=Avr9qQSALOT/4FAoU4o3mO7LUZ77ekSCMOcAtT98JTM=;
+	b=5rJ/Z/GrRBtFPr2meoPGPviuJqwLUCdM8lWnMgbBeRZZmkztUbDBh7n+6f9ET2u2S3Bs1+
+	UfF5eaQM4wQ0hMCA==
 Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=t1ZmTaIM;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=83HSOpmW
+	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1756123644; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1756124283; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=5esCATGxFy1rPdQ5wxmc7jMFTL/ZNi1qRrQlBSRFzPk=;
-	b=t1ZmTaIM0+z6zSJxxyOEwYyPqpiki++QwLvf6SbdhQDAXsJzbiPx6tgrlLwtDXBYKzjUz6
-	XmNeoO6v4iiBYcICYhf9+vPppYOsxvqC0O4Z72aLVDKRmHnsaowAsXrRZ/ZkawLyUHVbbD
-	GD4rB/NSxgCYXEY0yC3iDkhx6piJlwo=
+	bh=Avr9qQSALOT/4FAoU4o3mO7LUZ77ekSCMOcAtT98JTM=;
+	b=Tao79EtAkiUvJLLkEijhojJY1EHnJXfA8BZXf+YCTwJ0QOr6o9nI8uIU/IOIvz45Er1yO/
+	/530XOlTtmwzjHr9n899nIC+KUD5hOYpyHxb8aKxQbSqg5JqWmU6PKjqW86pB8c1oU2MZE
+	ViqOeWEuDYowv/vH1UfE9x+pFo81juM=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1756123644;
+	s=susede2_ed25519; t=1756124283;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=5esCATGxFy1rPdQ5wxmc7jMFTL/ZNi1qRrQlBSRFzPk=;
-	b=83HSOpmWO0E4yGKjz/4xp57phgsCaOgr6D95jxGWvKcSI3kfxKy5OpEcOUKKfaG93/AcKo
-	9/pSeIvPZeujdIDA==
+	bh=Avr9qQSALOT/4FAoU4o3mO7LUZ77ekSCMOcAtT98JTM=;
+	b=5rJ/Z/GrRBtFPr2meoPGPviuJqwLUCdM8lWnMgbBeRZZmkztUbDBh7n+6f9ET2u2S3Bs1+
+	UfF5eaQM4wQ0hMCA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id DC8EC1368F;
-	Mon, 25 Aug 2025 12:07:23 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 33DF4136DB;
+	Mon, 25 Aug 2025 12:18:03 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id cU+HNftRrGjtDQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 25 Aug 2025 12:07:23 +0000
+	id B7CiDHtUrGjvEAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 25 Aug 2025 12:18:03 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 707ACA0951; Mon, 25 Aug 2025 14:07:15 +0200 (CEST)
-Date: Mon, 25 Aug 2025 14:07:15 +0200
+	id 1D1F2A0A8A; Mon, 25 Aug 2025 11:52:50 +0200 (CEST)
+Date: Mon, 25 Aug 2025 11:52:50 +0200
 From: Jan Kara <jack@suse.cz>
-To: Ritesh Harjani <ritesh.list@gmail.com>
-Cc: Keith Busch <kbusch@meta.com>, linux-block@vger.kernel.org, 
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org, 
-	snitzer@kernel.org, axboe@kernel.dk, dw@davidwei.uk, brauner@kernel.org, hch@lst.de, 
-	martin.petersen@oracle.com, djwong@kernel.org, linux-xfs@vger.kernel.org, 
-	viro@zeniv.linux.org.uk, Keith Busch <kbusch@kernel.org>, Jan Kara <jack@suse.com>
-Subject: Re: [PATCHv3 0/8] direct-io: even more flexible io vectors
-Message-ID: <g35u5ugmyldqao7evqfeb3hfcbn3xddvpssawttqzljpigy7u4@k3hehh3grecq>
-References: <20250819164922.640964-1-kbusch@meta.com>
- <87a53ra3mb.fsf@gmail.com>
+To: libaokun@huaweicloud.com
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
+	jack@suse.cz, linux-kernel@vger.kernel.org, yi.zhang@huawei.com, 
+	yangerkun@huawei.com, libaokun1@huawei.com
+Subject: Re: [PATCH] ext4: add ext4_sb_bread_nofail() helper function for
+ ext4_free_branches()
+Message-ID: <clyk3sndidaz3plcvojzci7rs7sqmsegga5izrp46l23zaxtoc@sovizlltl6jd>
+References: <20250821133857.80542-1-libaokun@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -92,78 +89,113 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <87a53ra3mb.fsf@gmail.com>
+In-Reply-To: <20250821133857.80542-1-libaokun@huaweicloud.com>
 X-Spam-Level: 
-X-Spam-Flag: NO
-X-Rspamd-Queue-Id: F26CE2125B
-X-Rspamd-Action: no action
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Spamd-Result: default: False [-2.51 / 50.00];
-	BAYES_HAM(-3.00)[99.99%];
-	SUSPICIOUS_RECIPS(1.50)[];
+X-Spamd-Result: default: False [-3.80 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	NEURAL_HAM_SHORT(-0.20)[-0.998];
 	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	RCVD_COUNT_THREE(0.00)[3];
-	FREEMAIL_TO(0.00)[gmail.com];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	RCPT_COUNT_TWELVE(0.00)[17];
 	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	TO_DN_SOME(0.00)[];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
 	RCVD_TLS_LAST(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
+	ARC_NA(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FROM_HAS_DN(0.00)[];
 	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.cz:dkim]
-X-Spam-Score: -2.51
+	FROM_EQ_ENVFROM(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	TO_DN_NONE(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	RCPT_COUNT_SEVEN(0.00)[9];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:email]
+X-Spam-Flag: NO
+X-Spam-Score: -3.80
 
-On Fri 22-08-25 18:57:08, Ritesh Harjani wrote:
-> Keith Busch <kbusch@meta.com> writes:
+On Thu 21-08-25 21:38:57, libaokun@huaweicloud.com wrote:
+> From: Baokun Li <libaokun1@huawei.com>
 > 
-> > From: Keith Busch <kbusch@kernel.org>
-> >
-> > Previous version:
-> >
-> >   https://lore.kernel.org/linux-block/20250805141123.332298-1-kbusch@meta.com/
-> >
-> > This series removes the direct io requirement that io vector lengths
-> > align to the logical block size.
-> >
-> > I tested this on a few raw block device types including nvme,
-> > virtio-blk, ahci, and loop. NVMe is the only one I tested with 4k
-> > logical sectors; everything else was 512.
-> >
-> > On each of those, I tested several iomap filesystems: xfs, ext4, and
-> > btrfs. I found it interesting that each behave a little
-> > differently with handling invalid vector alignments:
-> >
-> >   - XFS is the most straight forward and reports failures on invalid
-> >     vector conditions, same as raw blocks devices.
-> >
-> >   - EXT4 falls back to buffered io for writes but not for reads.
+> The implicit __GFP_NOFAIL flag in ext4_sb_bread() was removed in commit
+> 8a83ac54940d ("ext4: call bdev_getblk() from sb_getblk_gfp()"), meaning
+> the function can now fail under memory pressure.
 > 
-> ++linux-ext4 to get any historical context behind why the difference of
-> behaviour in reads v/s writes for EXT4 DIO. 
+> Most callers of ext4_sb_bread() propagate the error to userspace and do not
+> remount the filesystem read-only. However, ext4_free_branches() handles
+> ext4_sb_bread() failure by remounting the filesystem read-only.
+> 
+> This implies that an ext3 filesystem (mounted via the ext4 driver) could be
+> forcibly remounted read-only due to a transient page allocation failure,
+> which is unacceptable.
+> 
+> To mitigate this, introduce a new helper function, ext4_sb_bread_nofail(),
+> which explicitly uses __GFP_NOFAIL, and use it in ext4_free_branches().
+> 
+> Fixes: 8a83ac54940d ("ext4: call bdev_getblk() from sb_getblk_gfp()")
+> Signed-off-by: Baokun Li <libaokun1@huawei.com>
 
-Hum, how did you test? Because in the basic testing I did (with vanilla
-kernel) I get EINVAL when doing unaligned DIO write in ext4... We should be
-falling back to buffered IO only if the underlying file itself does not
-support any kind of direct IO.
+Looks sane. Feel free to add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
+
+> ---
+>  fs/ext4/ext4.h     | 2 ++
+>  fs/ext4/indirect.c | 2 +-
+>  fs/ext4/super.c    | 9 +++++++++
+>  3 files changed, 12 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 106484739932..32315e51639e 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -3134,6 +3134,8 @@ extern struct buffer_head *ext4_sb_bread(struct super_block *sb,
+>  					 sector_t block, blk_opf_t op_flags);
+>  extern struct buffer_head *ext4_sb_bread_unmovable(struct super_block *sb,
+>  						   sector_t block);
+> +extern struct buffer_head *ext4_sb_bread_nofail(struct super_block *sb,
+> +						sector_t block);
+>  extern void ext4_read_bh_nowait(struct buffer_head *bh, blk_opf_t op_flags,
+>  				bh_end_io_t *end_io, bool simu_fail);
+>  extern int ext4_read_bh(struct buffer_head *bh, blk_opf_t op_flags,
+> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+> index 7de327fa7b1c..39350a18e919 100644
+> --- a/fs/ext4/indirect.c
+> +++ b/fs/ext4/indirect.c
+> @@ -1025,7 +1025,7 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
+>  			}
+>  
+>  			/* Go read the buffer for the next level down */
+> -			bh = ext4_sb_bread(inode->i_sb, nr, 0);
+> +			bh = ext4_sb_bread_nofail(inode->i_sb, nr);
+>  
+>  			/*
+>  			 * A read failure? Report error and clear slot
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index c7d39da7e733..a0e2b396aa76 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -265,6 +265,15 @@ struct buffer_head *ext4_sb_bread_unmovable(struct super_block *sb,
+>  	return __ext4_sb_bread_gfp(sb, block, 0, gfp);
+>  }
+>  
+> +struct buffer_head *ext4_sb_bread_nofail(struct super_block *sb,
+> +					 sector_t block)
+> +{
+> +	gfp_t gfp = mapping_gfp_constraint(sb->s_bdev->bd_mapping,
+> +			~__GFP_FS) | __GFP_MOVABLE | __GFP_NOFAIL;
+> +
+> +	return __ext4_sb_bread_gfp(sb, block, 0, gfp);
+> +}
+> +
+>  void ext4_sb_breadahead_unmovable(struct super_block *sb, sector_t block)
+>  {
+>  	struct buffer_head *bh = bdev_getblk(sb->s_bdev, block,
+> -- 
+> 2.39.2
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
