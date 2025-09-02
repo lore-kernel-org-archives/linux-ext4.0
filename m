@@ -1,166 +1,174 @@
-Received: from mail-pf1-f175.google.com (mail-pf1-f175.google.com [209.85.210.175])
+Received: from mail-pj1-f45.google.com (mail-pj1-f45.google.com [209.85.216.45])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8094A6FC3
-	for <linux-ext4@vger.kernel.org>; Tue,  2 Sep 2025 02:05:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.175
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B8FE52848BA
+	for <linux-ext4@vger.kernel.org>; Tue,  2 Sep 2025 04:08:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.45
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1756778702; cv=none; b=H8NY7JUQR2OUF62qrAh8hf79sAJP6bpPQgm33ZMaLynQqLubix004EuFSg4erJRMkApeyZP/gSdjti2Jb9t8tLaRUeRWiE2fR2gNE2kcmM/krQQaLPGnMU38HVuOplVXY8NkaG0GcKTXC2R47u5ZQfCQG3d0Gp2Chd2/ay22QI4=
+	t=1756786084; cv=none; b=uryPs2YJoNEqTS8f0jDkYjiz+7+YVvxiAtREhrZEfKPq0Vkztn9+cRlXRNQic5RNnt6wwu3Md3GIdRQ2tcR2EAyy0MCbzUNAlFQyAMGdAm3VHLwGbJWFvzYjqe+22lj0lMKTIHEc2VHvEuueZDkfGvsgq+H6ur+N2X5hjm2IOHQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1756778702; c=relaxed/simple;
-	bh=bwssp0EiZsQ+odOIMVIOyR3zjFdUEgD9eqqY+DUOt2U=;
-	h=From:To:Cc:Subject:In-Reply-To:Date:Message-ID:References; b=ozK+7F1HYxy/wFnqWmGl3cQc3n+aisCcStTm1p+4FSZ2FWC/WZqz4Na052XuE8cCuJ1NFzOywOOx/IgD7Y/AXebQ71X15tFvvxf3weG/40KMoRiltYDSPdm4J0yyja8B6Tm4s6DQ4EiMmZck0RkA8jz9AcwgM97hCEquRoDlL/k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=I1HzgYMk; arc=none smtp.client-ip=209.85.210.175
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1756786084; c=relaxed/simple;
+	bh=PWNB5atbUEOuqCWpXCHiRuAa8huc06HyOsum8ht+p4k=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=pHhAWS72DdCjfI4YQ5VkgcRt6XhCm3wQWHTF2/eoBg9a+TP8o9+JuytsAePuyBQ4Y9dA1iNv55c/l6RQFjkH1Y9fzL/76RSGvpyl5INqFSzM7vujzsTMSHBqrqf33CReskOrtZSaOV2AqAhNXfBA+O6SVwe/l66euXi30OHss20=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=fromorbit.com; spf=pass smtp.mailfrom=fromorbit.com; dkim=pass (2048-bit key) header.d=fromorbit-com.20230601.gappssmtp.com header.i=@fromorbit-com.20230601.gappssmtp.com header.b=QBRAITGE; arc=none smtp.client-ip=209.85.216.45
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=fromorbit.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=fromorbit.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="I1HzgYMk"
-Received: by mail-pf1-f175.google.com with SMTP id d2e1a72fcca58-7722c8d2694so2818366b3a.3
-        for <linux-ext4@vger.kernel.org>; Mon, 01 Sep 2025 19:05:00 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=fromorbit-com.20230601.gappssmtp.com header.i=@fromorbit-com.20230601.gappssmtp.com header.b="QBRAITGE"
+Received: by mail-pj1-f45.google.com with SMTP id 98e67ed59e1d1-323267b98a4so4200747a91.1
+        for <linux-ext4@vger.kernel.org>; Mon, 01 Sep 2025 21:08:02 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1756778700; x=1757383500; darn=vger.kernel.org;
-        h=references:message-id:date:in-reply-to:subject:cc:to:from:from:to
-         :cc:subject:date:message-id:reply-to;
-        bh=HIpoPFaDFtt3V5NwaJnahKGyuXSaoblojRcQYbUjRW4=;
-        b=I1HzgYMkgxdad5zh4NWE5oWuTP6XUSwttJlpQCmWQYNDAHzMKYFip0zphwJMiNdqnR
-         p2AH5f0Uj+u2XWleRTPLtvkutTg80zRn/rMCtqMw38wT9oUIoYZALeq6xknWEwrtjZD5
-         o+92JEIF9oiU2cSn4mwknnLTf6AKeYPHpgtUp6rlRGGv7I+tP1pZ61OG9cChiV0gg+yd
-         Fn/WQnrs4UnuibHLtnFXzzSFXAqKjjd7/8b17oQBqlCdj1GBC79My5F1C9isWBB+knIr
-         TXccSkWAs0y+BKYlYv4KXwlyEeXetbZr9kmY3BBTyiBLIxId6n/A4thGnKyVn2zp2/oc
-         QWgQ==
+        d=fromorbit-com.20230601.gappssmtp.com; s=20230601; t=1756786082; x=1757390882; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=2koyHV7vuEyseT1MwkXtGDYmtqrlLkXDUc1MXluszg0=;
+        b=QBRAITGEOjhMRkhNX3qiac+tZhAw8ZcB77z31AC1HEdaVzyA65kIAUeF0DmAm8Igyt
+         wDuUybjJj0CoMtmoNr1sgtOt63zbJeVppZzkEwOtPfJeOaICF6Q2CgaaC1fG+T5R3jPD
+         VX5t4asCNrI0TTpvUIb1hUHp2gaBSeXykNA7UwqU59Fdq5/K1Qq2rZDMDxj+C+cDHsk9
+         ZmFRtZfgkk0LOYDQdIoi3xv9HA4sXQINfvHBHXxC8pJRS5BVhU0g9L5GyGYg6rC/DjAD
+         3p6aeyE3qe2psLLq9JEn1E61sOr+A3QlE87N1iPa506ImNCeOyu57Un3jYaLbqKG3rfO
+         cmFw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1756778700; x=1757383500;
-        h=references:message-id:date:in-reply-to:subject:cc:to:from
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=HIpoPFaDFtt3V5NwaJnahKGyuXSaoblojRcQYbUjRW4=;
-        b=K9I8YkuQmYCHahxsBpt+r28XQ4xQDtPWbpswIjyrU/co2ili6be0lnXT/AW3qjBlxf
-         sx2t89AIXWzEMipoEXrkGdGT7d0rgUNJuBOxfX8aSn/rUOW8S3vDR31gBNCTCMB6M28B
-         Ct2dRkcom+N4zkAlNipeoZMJnxQAroumrbMb7Bal/Us+Ib/CUoLJWuKV2D73Xalc6Tc2
-         GZ5X8c+zdOvDm/GEZIXPiyWjSGuaeI+lpLPzGxTrP361THdjP+orvoRa3LsVE9SHrN5Q
-         akc7uzs0mxUnQIlHGOsEsU/AH64upmuWq+5kbjnBUFzqELYCCnPYzU3+C8ybb7HAPn0J
-         1NVg==
-X-Gm-Message-State: AOJu0YzSyfUr3KxrToLYhPfFKWLQbA8LfMyCeZBWdzHj3FkGK/sWuKp0
-	gc84fsTES2MohG29ilkvkdu1Q8kHV10A2zBYHB6sG4MitphJi0LtuMzAmtMNeQ==
-X-Gm-Gg: ASbGncvMMsSpnZc7nCg30tDQma4peP3KHRX0O2ct6+qnuT0rU3YjDC2x0Z+6bS+dPv/
-	P4nsiUry1G/3e1I373XBio+4+NBmZqSOWhC/B8RVqPobxYjwrfs9bclkzfHkHSyDnXAHfLHcmmN
-	5FKZIvP30nC/Xjcy7/ZacBbBKvJ4y7EZYfkNBH5yzSBNIspQJb/w018RMKnK1SZ719dKpjF0A7G
-	3d8dfgogu8EWdMr4GDLLUO9d1eesKcfd7c2+v15/zT60qVjch5TWo2VUsbCRbjxR/MhavK8/qHR
-	Rt5290dxnPKBUO8XQnQTZQSAyeT7GDeUmaxv0gy4XL+UNhOJWtlqKjEN3IY0UvrXZEdRW7ulHo7
-	16ZN4asVTg3xGyyI=
-X-Google-Smtp-Source: AGHT+IHfI4085doHk2oiwNmH63372oC0GJYCP1qCK9PQ3rweLTcxHpfcTCusZbOq9bx/ip7MZdr7kg==
-X-Received: by 2002:a17:903:1c1:b0:249:112c:f947 with SMTP id d9443c01a7336-249448e49a4mr119202595ad.19.1756778699639;
-        Mon, 01 Sep 2025 19:04:59 -0700 (PDT)
-Received: from dw-tp ([171.76.86.139])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-24906390e6bsm117837895ad.96.2025.09.01.19.04.57
+        d=1e100.net; s=20230601; t=1756786082; x=1757390882;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=2koyHV7vuEyseT1MwkXtGDYmtqrlLkXDUc1MXluszg0=;
+        b=BOTdqIQcfIrfO/q577hMoHLfiSU7AiBeo8g3HkeS0Qi5opH+lquZmkgzYwMQBtsfw2
+         PR96/sLeERha4DVqCeNmja6oiGu/+h97VNo+d3Izeh8bGmF6isFnnKj5zPvTdwN91Vpf
+         EtWm4hInZZKkRcmhmKsz4iQOm6brPcra1HhXvegGp0Ba5PaGK3f5PIbcSBCrrRqclUu/
+         vD6CwYzr9bZL32DoApYm68TA8jG+F6ZNgcnxlC+DbDw/JIO/Y+PWCJ4lgXfj9f/wv3R7
+         f90ij/YsD4/V1OfC3aME7C8QCFAk3lVCbSAKu4r/PalaRDBJWeVBVtfyPzZw7WK43b6P
+         K7/g==
+X-Forwarded-Encrypted: i=1; AJvYcCX+NvwO586GrD747bKG4gs/a+etnfsU8BqMeCybtUEPaoMEgNwDxlGcHdbR9ZJiQnhy0M9vo7blrqg0@vger.kernel.org
+X-Gm-Message-State: AOJu0YzSbhR9XDMUrIr0woJ4HLZscp8EBdxUQSwKg7dG7J0yTUmA7rhN
+	zI2TjS4L+BJcPqCzNMH4k/oxTo4sRixae7Xe0IRNF//SoSKBmkz6Lj3uqwfnpEYHj1A=
+X-Gm-Gg: ASbGncu8yuvamY5u0FlnnX0k6H4TUycWYO6j8FCVuWEs+nfjfR8L+Rb+eEhOXTxLJx+
+	bWADqWxfIhzWZ32CjXdLN9JeCv8Ad9cdIiZwVNskZ92pUNa0ie3uwXGBJ45/TdnfhlWCIx6jCfj
+	vqGG8tzZUfrhS1nqcXpRUBRLLZS4HCSYYBPDOeW/I3najpAHIE47XLFggC2x8D9MJDGzgxvNpbP
+	1IDxtTLf4JQkM9JJTpROwZxf0vdgTIndpjMNyyZySiNP3u5TMxDr/2wbht+IgIuXJ8csz8YQMeZ
+	iqOVg/NQ1rGkh1QNVinhVo+0i8lvs0urkVbeqiFrNCpHR/oRKcz5UlhmAJbn9DzKfRIafFWTBHG
+	TqDTzQ+6s9+8kvQN6aB+ItEJY/A3OGGfGiFhR9sU4bs6ryzNaGTGrEo9CWjPlx3xP1NvykLlEtc
+	7jpIzezQ0u
+X-Google-Smtp-Source: AGHT+IH3u+Jo/a1rSnMJ8O+xKMx2AU7d0v7dIKdjvmcmWczT9CnuxrOhb6LnW4yHVz2TGH9EN1CbSA==
+X-Received: by 2002:a17:90b:1d03:b0:328:a89:71b8 with SMTP id 98e67ed59e1d1-328156e1238mr13146811a91.30.1756786081968;
+        Mon, 01 Sep 2025 21:08:01 -0700 (PDT)
+Received: from dread.disaster.area (pa49-180-91-142.pa.nsw.optusnet.com.au. [49.180.91.142])
+        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-b4cd006c340sm10931232a12.1.2025.09.01.21.08.01
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 01 Sep 2025 19:04:58 -0700 (PDT)
-From: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-To: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Fail unaligned direct IO write with EINVAL
-In-Reply-To: <20250901112739.32484-2-jack@suse.cz>
-Date: Tue, 02 Sep 2025 07:05:18 +0530
-Message-ID: <87wm6hk561.fsf@gmail.com>
-References: <20250901112739.32484-2-jack@suse.cz>
+        Mon, 01 Sep 2025 21:08:01 -0700 (PDT)
+Received: from dave by dread.disaster.area with local (Exim 4.98.2)
+	(envelope-from <david@fromorbit.com>)
+	id 1utIJK-0000000E9YF-1kgq;
+	Tue, 02 Sep 2025 14:07:58 +1000
+Date: Tue, 2 Sep 2025 14:07:58 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Josef Bacik <josef@toxicpanda.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	kernel-team@fb.com, linux-ext4@vger.kernel.org,
+	linux-xfs@vger.kernel.org, brauner@kernel.org,
+	viro@zeniv.linux.org.uk, amir73il@gmail.com
+Subject: Re: [PATCH v2 16/54] fs: delete the inode from the LRU list on lookup
+Message-ID: <aLZtnqTXEpEBpb7z@dread.disaster.area>
+References: <cover.1756222464.git.josef@toxicpanda.com>
+ <646d132baae6e5633064645e677dada101681850.1756222465.git.josef@toxicpanda.com>
+ <aK980KTSlSViOWXW@dread.disaster.area>
+ <20250828114225.GA2848932@perftesting>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20250828114225.GA2848932@perftesting>
 
-Jan Kara <jack@suse.cz> writes:
+On Thu, Aug 28, 2025 at 07:42:25AM -0400, Josef Bacik wrote:
+> On Thu, Aug 28, 2025 at 07:46:56AM +1000, Dave Chinner wrote:
+> > On Tue, Aug 26, 2025 at 11:39:16AM -0400, Josef Bacik wrote:
+> > > When we move to holding a full reference on the inode when it is on an
+> > > LRU list we need to have a mechanism to re-run the LRU add logic. The
+> > > use case for this is btrfs's snapshot delete, we will lookup all the
+> > > inodes and try to drop them, but if they're on the LRU we will not call
+> > > ->drop_inode() because their refcount will be elevated, so we won't know
+> > > that we need to drop the inode.
+> > > 
+> > > Fix this by simply removing the inode from it's respective LRU list when
+> > > we grab a reference to it in a way that we have active users.  This will
+> > > ensure that the logic to add the inode to the LRU or drop the inode will
+> > > be run on the final iput from the user.
+> > > 
+> > > Signed-off-by: Josef Bacik <josef@toxicpanda.com>
+> > 
+> > Have you benchmarked this for scalability?
+> > 
+> > The whole point of lazy LRU removal was to remove LRU lock
+> > contention from the hot lookup path. I suspect that putting the LRU
+> > locks back inside the lookup path is going to cause performance
+> > regressions...
+> > 
+> > FWIW, why do we even need the inode LRU anymore?
+> > 
+> > We certainly don't need it anymore to keep the working set in memory
+> > because that's what the dentry cache LRU does (i.e. by pinning a
+> > reference to the inode whilst the dentry is active).
+> > 
+> > And with the introduction of the cached inode list, we don't need
+> > the inode LRU to track  unreferenced dirty inodes around whilst
+> > they hang out on writeback lists. The inodes on the writeback lists
+> > are now referenced and tracked on the cached inode list, so they
+> > don't need special hooks in the mm/ code to handle the special
+> > transition from "unreferenced writeback" to "unreferenced LRU"
+> > anymore, they can just be dropped from the cached inode list....
+> > 
+> > So rather than jumping through hoops to maintain an LRU we likely
+> > don't actually need and is likely to re-introduce old scalability
+> > issues, why not remove it completely?
+> 
+> That's next on the list, but we're already at 54 patches.  This won't be a hot
+> path, we're not going to consistently find inodes on the LRU to remove.
 
-> Commit bc264fea0f6f ("iomap: support incremental iomap_iter advances")
-> changed the error handling logic in iomap_iter(). Previously any error
-> from iomap_dio_bio_iter() got propagated to userspace, after this commit
-> if ->iomap_end returns error, it gets propagated to userspace instead of
-> an error from iomap_dio_bio_iter(). This results in unaligned writes to
-> ext4 to silently fallback to buffered IO instead of erroring out.
+IME, there are some workloads that hit the inode cache hard
+(typically anything that has a large set of working inodes and
+memory pressure is causing reclaim to run all the time).  In these
+cases, we are finding inodes on the inode cache it's because we've
+missed the dentry cache (due to reclaim) and so the inode we hit is
+unreferenced and on the LRU. i.e. if we don't have lazy LRU removal,
+when we hit the inode cache we'll also typically hit the LRU....
+
+> My rough plans are
+> 
+> 1. Get this series merged.
+> 2. Let it bake and see if any issues arise.
+> 3. Remove the inode LRU completely.
+> 4. Remove the i_hash and use an xarray for inode lookups.
 >
-> Now returning ENOTBLK for DIO writes from ext4_iomap_end() seems
-> unnecessary these days. It is enough to return ENOTBLK from
-> ext4_iomap_begin() when we don't support DIO write for that particular
-> file offset (due to hole).
->
-> Fixes: bc264fea0f6f ("iomap: support incremental iomap_iter advances")
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/inode.c | 35 -----------------------------------
->  1 file changed, 35 deletions(-)
+> The inode LRU removal is going to be a big change,
 
+When I last looked at it, it wasn't a particularly big code change
+at all. It was just that mm/ depended on the LRU existing that
+prevented it from being easily removable. You've addressed that
+dependency by adding the cached inode list for inodes with populated
+address spaces....
 
-Thanks Jan for taking a deeper look and root causing that the problem
-lay in iomap. I agree with the fix.
+> and I want it to be separate
+> from this work from the LRU work in case we find that we do really need the LRU.
+> If that turns out to be the case then we can revisit if this is a scalability
+> issue.  Thanks,
 
-w.r.t Atomic DIO write: 
-Earlier we explicitely used to check (in ext4_want_directio_fallback())
-if the write request was atomic, in that case we never want a fallback.
-However that was mostly a safe guarding. As I looked into it we have
-multiple checks at multiple places to safe guard atomic write DIO
-request. ext4_iomap_alloc() for atomic writes ensures that allocation
-always happens for the full requested length, IOMAP layer also ensures
-that if the bio formed is not of the full user requested length then it
-will return an error.  We also have a WARN_ON_ONCE(1) in ext4 in-case if
-we ever fallback to buffered-io for atomic DIO request.
-So I believe we are good in this case.
+Understood, but I would prefer to do that the other way around.
 
-The change looks good to me. So please feel free to add: 
+i.e. rather than add complexity and potential scalability issues to
+the LRU management on the way to removing the LRU at a later date,
+we remove the LRU at the earliest possible opportunity.
 
-Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+If we have any sort of perf regression caused by the LRU removal, we
+can address those cases via temporary residence on the new cached
+inode list...
 
-
->
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 5b7a15db4953..c3b23c90fd11 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3872,47 +3872,12 @@ static int ext4_iomap_overwrite_begin(struct inode *inode, loff_t offset,
->  	return ret;
->  }
->  
-> -static inline bool ext4_want_directio_fallback(unsigned flags, ssize_t written)
-> -{
-> -	/* must be a directio to fall back to buffered */
-> -	if ((flags & (IOMAP_WRITE | IOMAP_DIRECT)) !=
-> -		    (IOMAP_WRITE | IOMAP_DIRECT))
-> -		return false;
-> -
-> -	/* atomic writes are all-or-nothing */
-> -	if (flags & IOMAP_ATOMIC)
-> -		return false;
-> -
-> -	/* can only try again if we wrote nothing */
-> -	return written == 0;
-> -}
-> -
-> -static int ext4_iomap_end(struct inode *inode, loff_t offset, loff_t length,
-> -			  ssize_t written, unsigned flags, struct iomap *iomap)
-> -{
-> -	/*
-> -	 * Check to see whether an error occurred while writing out the data to
-> -	 * the allocated blocks. If so, return the magic error code for
-> -	 * non-atomic write so that we fallback to buffered I/O and attempt to
-> -	 * complete the remainder of the I/O.
-> -	 * For non-atomic writes, any blocks that may have been
-> -	 * allocated in preparation for the direct I/O will be reused during
-> -	 * buffered I/O. For atomic write, we never fallback to buffered-io.
-> -	 */
-> -	if (ext4_want_directio_fallback(flags, written))
-> -		return -ENOTBLK;
-> -
-> -	return 0;
-> -}
-> -
->  const struct iomap_ops ext4_iomap_ops = {
->  	.iomap_begin		= ext4_iomap_begin,
-> -	.iomap_end		= ext4_iomap_end,
->  };
->  
->  const struct iomap_ops ext4_iomap_overwrite_ops = {
->  	.iomap_begin		= ext4_iomap_overwrite_begin,
-> -	.iomap_end		= ext4_iomap_end,
->  };
->  
->  static int ext4_iomap_begin_report(struct inode *inode, loff_t offset,
-> -- 
-> 2.43.0
+-Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
