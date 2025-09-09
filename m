@@ -1,80 +1,147 @@
-Received: from mail-io1-f72.google.com (mail-io1-f72.google.com [209.85.166.72])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7104F2472AE
-	for <linux-ext4@vger.kernel.org>; Mon,  8 Sep 2025 19:52:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.166.72
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 726AD14B06C;
+	Tue,  9 Sep 2025 03:15:51 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1757361125; cv=none; b=Yq258WLubW26pIM9+pJSJA7JgZHpee4UDxbTd3+uM+kvV0CexReEW6vbaGT1BwH0t98f/wkTFuiJzY+o0AKbvrOz5USCXXVJHB5eFexqgYa0+HtAiluL6lwtopvcSDGpOVnveax0Mx/H0VdRLB2vgY9owF2oM2PTPCfrly3tlVw=
+	t=1757387751; cv=none; b=nH5ftUEPxMp0p8SDqENxnUOGinnCt9sArLVbWfNzkcYNnXla3YxVAtL9lICrsV3dqRhUcbxqYEla542cAwQxlluHF9jsEZ0BFTONqqZNQKROH6zT+LF1UJSY50Arg5Ds4O+pvK2QUVkyxVego0yTnnnbbU+NqlhiG454jq7UABk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1757361125; c=relaxed/simple;
-	bh=Xw3fA3hYo91wcLGD0HNrTR+08mGg9P6FC4LeHeM9EQA=;
-	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:
-	 Content-Type; b=YzDXmoI2bZg6PRD/A74QktaK2zeSm6lLwI/HJcJelZy1+ux+SQL/0fiIMPFqjYWiaatH0Qf6901JNN4fl1UeJ2YUCp6DhNBXDFbY/jm3gvDQQTz3b1+zx6zZvZyOHEvuNg6vxgnq4cvRxcxpg1cboY4jZYixM9ufbRZ0GPhkKNs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.166.72
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-io1-f72.google.com with SMTP id ca18e2360f4ac-8876712ea4bso1203419239f.0
-        for <linux-ext4@vger.kernel.org>; Mon, 08 Sep 2025 12:52:04 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1757361123; x=1757965923;
-        h=to:from:subject:message-id:in-reply-to:date:mime-version
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=6E6CGk2tmAlq5+OVCzHjqNr7fmm4smeKYiarZdZ2kMw=;
-        b=bGPvcmKQUOAZClBNgkr6GbUddZlI2E49fXw02iAA6UDF3iWjWfsE4QtwNEMlJ99qld
-         x5m51HuSOsfwJwMkcnFrzSEre0n4hCwmRyl/UKjXd0/G0Rs2tInAYX0UK8p1RgeeIXnu
-         RHG4LANdZte8woAwxo+hpjDX2lOTnOI5r3Xy618dWf+BfAWit3tl1af3XciNJ/gYMwmE
-         3W8FARGYKVaEZXCNFxKCQXGdjbBqKs2GwR+7AINoXlRbskaVfL0Z8IJDuewJnc+aAQh5
-         jb2s2oSaxMU+rHNrEU3o4PGUnq87hkl6hDjbOe8g03vVoD8sqg3jH4PVIYNm28NnyB7a
-         ZFrg==
-X-Forwarded-Encrypted: i=1; AJvYcCUiqXjJDly3iBViR9y65UGpA4SUDpk4Vaqla6RRieBUF2WVUdHwcn5C7//9+uxLO1T5BR/s4hT7dyVv@vger.kernel.org
-X-Gm-Message-State: AOJu0YyXvyhq2uCWr9TBX8Gwd4zpsVlaJ+g/aAwIYuV385eFHzvtgyTz
-	U7sxTaJ91y4lGvb1kep3i1RhBFc3W1Q1nDnaISk2mdCBJLUF+AdBpRRA+nWG7po1LsH3rJ3DRLN
-	qIncYTahpr+zVuUvyUkmSsRX1z0lZiniBU9TwQIQ9LVOtcI57Yxm1uvJNDnA=
-X-Google-Smtp-Source: AGHT+IGXg7L5kD0uoY5KYmviwfxTBneLi5Cm1Bw2Zj7cRXNgGfxtx4v4PIo7McUtRBfK4wibi8nrfPuz44FeC2vNCprnp34kScX8
+	s=arc-20240116; t=1757387751; c=relaxed/simple;
+	bh=7/K64RgPZX31vBYzcHhhXgQvEVR35qW0pMA4yNu6lqU=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=etJc3PasIYx+9sKJ0SnCaUCm/DBirCamnTn+qmPm3W+FAe3DxyFG6yQ0Pk7Fx7XSXlDAHQYjf3aqh/YBhTTc7GierWKmroUDwp2a0vp4CKp7K74u8yLf+c5e6ofJ1eN+8C8HB6lOpwQnhI1qg2kclDY2zy/ZLPXlw1QypaMA/EY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=eR6t7Mfb; arc=none smtp.client-ip=10.30.226.201
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="eR6t7Mfb"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 29485C4CEF9;
+	Tue,  9 Sep 2025 03:15:51 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1757387751;
+	bh=7/K64RgPZX31vBYzcHhhXgQvEVR35qW0pMA4yNu6lqU=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To:From;
+	b=eR6t7MfblGPsDEIQVECgFHsRXujBw+YOxkccftIbXFlbL2825/LbhiYeCmNHNJCjm
+	 LFXlEvQNlt4y/6Sugrs8yibx0F5F3rKFQZabacCF1ooyT21elFp1aioSEGqDNQvvot
+	 +aOS+S56yl/y8DvKhrZvFpZ7lNxNtVNidMaYSd+9FoNggC+Ng7u66Mx29UGtOvrIOI
+	 lZzUE/I14ndY0E0wmh9ggUkFeN8yrjhajGv0WThrguXCWM54QwwUbD9z49fMdXJbxP
+	 oyUth7biILp0Uc/U9ThnluFuvJbim7IlOXpWiw6cMR4xg5dV2WtDdbOVop6FDROErG
+	 VkM4AoxAIdPzw==
+Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B956CAC585;
+	Tue,  9 Sep 2025 03:15:51 +0000 (UTC)
+From: Theodore Ts'o via B4 Relay <devnull+tytso.mit.edu@kernel.org>
+Date: Mon, 08 Sep 2025 23:15:49 -0400
+Subject: [PATCH 2/3] ext4: add support for 32-bit default reserved uid and
+ gid values
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6e02:1985:b0:407:51a8:6b5c with SMTP id
- e9e14a558f8ab-40751a86cfemr66244445ab.32.1757361123448; Mon, 08 Sep 2025
- 12:52:03 -0700 (PDT)
-Date: Mon, 08 Sep 2025 12:52:03 -0700
-In-Reply-To: <68bf244a.050a0220.192772.0883.GAE@google.com>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <68bf33e3.a70a0220.7a912.02c3.GAE@google.com>
-Subject: Re: [syzbot] [mm?] [ext4?] WARNING in ext4_init_orphan_info
-From: syzbot <syzbot+0b92850d68d9b12934f5@syzkaller.appspotmail.com>
-To: adilger.kernel@dilger.ca, akpm@linux-foundation.org, apopple@nvidia.com, 
-	byungchul@sk.com, david@redhat.com, gourry@gourry.net, jack@suse.cz, 
-	joshua.hahnjy@gmail.com, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, linux-mm@kvack.org, matthew.brost@intel.com, 
-	rakie.kim@sk.com, syzkaller-bugs@googlegroups.com, tytso@mit.edu, 
-	ying.huang@linux.alibaba.com, ziy@nvidia.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250908-tune2fs-v1-2-e3a6929f3355@mit.edu>
+References: <20250908-tune2fs-v1-0-e3a6929f3355@mit.edu>
+In-Reply-To: <20250908-tune2fs-v1-0-e3a6929f3355@mit.edu>
+To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org, linux-api@vger.kernel.org
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3279; i=tytso@mit.edu;
+ h=from:subject:message-id;
+ bh=RgbVLDQ1SgNDZyk7YrOPD3panle4KdyrPTxmbmUXY9M=;
+ b=owEBbQGS/pANAwAIAfL5WVaVDYGjAcsmYgBov5vmVbP+39m2gWWV69uPViscIaEl3j/F3PpjX
+ 32CRb62qI6JATMEAAEIAB0WIQQrablU2/4IeSiBN8ny+VlWlQ2BowUCaL+b5gAKCRDy+VlWlQ2B
+ o2a3B/95WwTsQqwPjFbwaaZG+eimL3r8wCf4C7etrVoDyvwnpzLVQLXG41ohh5OP+pakszgKUge
+ 9Hn6dQuGAKKfA8hUOARJ0XL6eAcZ9H1VN2wTSsSMbEILh3nKw51sKpLzJXIkuVlHzm+589ER1jr
+ s+6YrvAV5Vml1qf31+yFQkWx69VBRP8tkklph8NmPJIHTYEmLZ+tVpD3h7B17klJVmR1DT3PsB+
+ oCVuvGAhBvl1fhxJBaXCXxDsuh/Y0WBTSRNRzvqVKBC6z82ZIo0JqTMgxlsFTfwSm57bzLyKyUz
+ Kb11aO4zSKVXKaxjbx8h/Dtl+ZoJTIHLRwUui/zVE4Je9obt
+X-Developer-Key: i=tytso@mit.edu; a=openpgp;
+ fpr=3AB057B7E78D945C8C5591FBD36F769BC11804F0
+X-Endpoint-Received: by B4 Relay for tytso@mit.edu/default with auth_id=517
+X-Original-From: Theodore Ts'o <tytso@mit.edu>
+Reply-To: tytso@mit.edu
 
-syzbot has bisected this issue to:
+From: Theodore Ts'o <tytso@mit.edu>
 
-commit 02f310fcf47fa9311d6ba2946a8d19e7d7d11f37
-Author: Jan Kara <jack@suse.cz>
-Date:   Mon Aug 16 09:57:06 2021 +0000
+Support for specifying the default user id and group id that is
+allowed to use the reserved block space was added way back when Linux
+only supported 16-bit uid's and gid's.  (Yeah, that long ago.)  It's
+not a commonly used feature, but let's add support for 32-bit user and
+group id's.
 
-    ext4: Speedup ext4 orphan inode handling
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/ext4.h  | 16 +++++++++++++++-
+ fs/ext4/super.c |  8 ++++----
+ 2 files changed, 19 insertions(+), 5 deletions(-)
 
-bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=16645562580000
-start commit:   76eeb9b8de98 Linux 6.17-rc5
-git tree:       upstream
-final oops:     https://syzkaller.appspot.com/x/report.txt?x=15645562580000
-console output: https://syzkaller.appspot.com/x/log.txt?x=11645562580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=429771c55b615e85
-dashboard link: https://syzkaller.appspot.com/bug?extid=0b92850d68d9b12934f5
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=168d2562580000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=15869562580000
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 01a6e2de7fc3ef0e20b039d3200b9c9bd656f59f..4bfcd5f0c74fda30db4009ee28fbee00a2f6b76f 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1442,7 +1442,9 @@ struct ext4_super_block {
+ 	__le16  s_encoding;		/* Filename charset encoding */
+ 	__le16  s_encoding_flags;	/* Filename charset encoding flags */
+ 	__le32  s_orphan_file_inum;	/* Inode for tracking orphan inodes */
+-	__le32	s_reserved[94];		/* Padding to the end of the block */
++	__le16	s_def_resuid_hi;
++	__le16	s_def_resgid_hi;
++	__le32	s_reserved[93];		/* Padding to the end of the block */
+ 	__le32	s_checksum;		/* crc32c(superblock) */
+ };
+ 
+@@ -1812,6 +1814,18 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+ 		 ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
+ }
+ 
++static inline int ext4_get_resuid(struct ext4_super_block *es)
++{
++	return(le16_to_cpu(es->s_def_resuid) |
++	       (le16_to_cpu(es->s_def_resuid_hi) << 16));
++}
++
++static inline int ext4_get_resgid(struct ext4_super_block *es)
++{
++	return(le16_to_cpu(es->s_def_resgid) |
++	       (le16_to_cpu(es->s_def_resgid_hi) << 16));
++}
++
+ /*
+  * Returns: sbi->field[index]
+  * Used to access an array element from the following sbi fields which require
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 94c98446c84f9a4614971d246ca7f001de610a8a..0256c8f7c6cee2b8d9295f2fa9a7acd904382e83 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2951,11 +2951,11 @@ static int _ext4_show_options(struct seq_file *seq, struct super_block *sb,
+ 	}
+ 
+ 	if (nodefs || !uid_eq(sbi->s_resuid, make_kuid(&init_user_ns, EXT4_DEF_RESUID)) ||
+-	    le16_to_cpu(es->s_def_resuid) != EXT4_DEF_RESUID)
++	    ext4_get_resuid(es) != EXT4_DEF_RESUID)
+ 		SEQ_OPTS_PRINT("resuid=%u",
+ 				from_kuid_munged(&init_user_ns, sbi->s_resuid));
+ 	if (nodefs || !gid_eq(sbi->s_resgid, make_kgid(&init_user_ns, EXT4_DEF_RESGID)) ||
+-	    le16_to_cpu(es->s_def_resgid) != EXT4_DEF_RESGID)
++	    ext4_get_resgid(es) != EXT4_DEF_RESGID)
+ 		SEQ_OPTS_PRINT("resgid=%u",
+ 				from_kgid_munged(&init_user_ns, sbi->s_resgid));
+ 	def_errors = nodefs ? -1 : le16_to_cpu(es->s_errors);
+@@ -5270,8 +5270,8 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 
+ 	ext4_set_def_opts(sb, es);
+ 
+-	sbi->s_resuid = make_kuid(&init_user_ns, le16_to_cpu(es->s_def_resuid));
+-	sbi->s_resgid = make_kgid(&init_user_ns, le16_to_cpu(es->s_def_resgid));
++	sbi->s_resuid = make_kuid(&init_user_ns, ext4_get_resuid(es));
++	sbi->s_resgid = make_kgid(&init_user_ns, ext4_get_resuid(es));
+ 	sbi->s_commit_interval = JBD2_DEFAULT_MAX_COMMIT_AGE * HZ;
+ 	sbi->s_min_batch_time = EXT4_DEF_MIN_BATCH_TIME;
+ 	sbi->s_max_batch_time = EXT4_DEF_MAX_BATCH_TIME;
 
-Reported-by: syzbot+0b92850d68d9b12934f5@syzkaller.appspotmail.com
-Fixes: 02f310fcf47f ("ext4: Speedup ext4 orphan inode handling")
+-- 
+2.51.0
 
-For information about bisection process see: https://goo.gl/tpsmEJ#bisection
+
