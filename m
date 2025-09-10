@@ -1,66 +1,65 @@
-Received: from mail-qv1-f54.google.com (mail-qv1-f54.google.com [209.85.219.54])
+Received: from mail-qv1-f47.google.com (mail-qv1-f47.google.com [209.85.219.47])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B861E21507F
-	for <linux-ext4@vger.kernel.org>; Wed, 10 Sep 2025 13:52:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.54
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 82E0D21ABAA
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Sep 2025 13:52:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.47
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1757512322; cv=none; b=lUpxkssA07Osl5l/YaSeIny4YxZd7bYMMj7Q0utsn1NbwFVqq/Un9jjjeKmhNl5wjWKRXPpRhSR+kccT6d4PFwDDM2gyseT0v3XUIvPfXfVIMmMu3nCExoeyaC0bB8qTToX5Jc9F/FV/TlsZoDCbtGsRSqfB/KUWRBaeg1Dfo/E=
+	t=1757512324; cv=none; b=GmbFgaNOpCSAJ4yFtpP8y8rUjrcdDBz+KxUpePP8uj3krpVNqKk/KuiXYorSUgStLeWS1nrEKD/E5i5ycYMUagRqWn12WCKE3DDBrSa1EAx3IXUe3azkfvP08cnlt+6jPXhguYHTOM34JvqCUmWnANMOJHUHRmURRvKcP39ab3U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1757512322; c=relaxed/simple;
-	bh=Ft8jyat+7hNdlt8cJ47WHsOzKv9fYpU6FX43VjbG/y8=;
+	s=arc-20240116; t=1757512324; c=relaxed/simple;
+	bh=HaAsamIMVuOXOfSiEBRRdjvpmcYCgYK0tefmzdDJ2qI=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=KYqz2JTA6oIlxGLN9Tk8rEyQdPkOTmz1IOHk4T9+XhJRbXhap/gsb0WHG1MWgb6UE+vlGQKFFPum0+vCzgL8rtF7rjqrVBOHrmuk7POUaDAdRfbNGEpBPsZOeqOT3MN4BUzBCgE0fBzK4oKV/8IQBO+cdIMV/P6RuK8TNs+Ax4Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linaro.org; spf=pass smtp.mailfrom=linaro.org; dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b=t70fjN2C; arc=none smtp.client-ip=209.85.219.54
+	 In-Reply-To:To:Cc; b=EcTKyYesyXXPxhHQX66QEujHlpvdU9yvZKIdOJnZTBpSQNqr1MXbH3p0wD0yjHfgNI6GkwfmIqIPllF7cvv2RKvUAoOD870+1byILAdetgdB4aevOw+bD+VE0IayBJ9JgZdtdm8Lf5Vbgl7WAFgwD8HkjVV41a/jj1IKKQSDwFE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linaro.org; spf=pass smtp.mailfrom=linaro.org; dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b=FIlcoVlJ; arc=none smtp.client-ip=209.85.219.47
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linaro.org
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linaro.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b="t70fjN2C"
-Received: by mail-qv1-f54.google.com with SMTP id 6a1803df08f44-7211b09f639so74172276d6.3
-        for <linux-ext4@vger.kernel.org>; Wed, 10 Sep 2025 06:52:00 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b="FIlcoVlJ"
+Received: by mail-qv1-f47.google.com with SMTP id 6a1803df08f44-72631c2c2fbso72219986d6.1
+        for <linux-ext4@vger.kernel.org>; Wed, 10 Sep 2025 06:52:02 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linaro.org; s=google; t=1757512320; x=1758117120; darn=vger.kernel.org;
+        d=linaro.org; s=google; t=1757512321; x=1758117121; darn=vger.kernel.org;
         h=cc:to:in-reply-to:references:message-id:content-transfer-encoding
          :mime-version:subject:date:from:from:to:cc:subject:date:message-id
          :reply-to;
-        bh=/uzfT2SZbtSVFwjLgauSyAYiAWQx/GJPtfk/UINh1Gc=;
-        b=t70fjN2CTIPOnipIOfxWhS7y74u7iZC91zlHQG5bOSYVNq2nKFvyonfs9EnKKOqDoj
-         oQGAtBzCuhKKgXlyLxM2qhl4S83hAEdttuvKyRlxE+m3sDxc+JA4x4T9eMexH5ZDAoR4
-         17lXbcV+jMmI2KgOeMAyWrzPRj/Bpdc9hmQIE3UxsW5BVW0HwKj9OWmtRq0XFSEY1/yN
-         bZgC6r7/26uYsuWFyovq5pC30DoeW8y9DFmp79GyuPYeDCB/Cu44rbQxHBVdpbHfEZPU
-         R/c/lKnIRqLO0J0F5yhtoEr/7ncXtI/987CBQSyjzHizh+soIVyit8IBBYDpBTX8JxGw
-         IbMg==
+        bh=MuYEOD+AGUuyJmR//l186Ce7ecpQt4er4wHeoEy1TqM=;
+        b=FIlcoVlJtEDvDkj9nlgNBmpT56bMd5c46UdRCYGRkuP+f4Fua/bJaQL5aYYMIos/0v
+         PKoxKOjf/eAnT3E9ARTZSOdQ/WIWaae5sx4oeZcmPxqjXmfbWJ8pX7axfL1BjUpPdXAR
+         lXqYsX+pmrrY5eviwC0jdgEIeuE95obwqKAKx8+F9oRzMx1DQ2U0n1kbgTNOEQlRf8Ex
+         9Jc0Bc81hMCiY8Rwm9F7HhZq1fgnHhl8NcSLBCGbWu8VX7s7kPA286iO5sSO2oSXWffY
+         bQ+ymROvYO0RtkufMNxncFNOXkDuFj5WOXGyFpNySutZdKb9L19h8paTHOH2o/treZe5
+         i8kw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1757512320; x=1758117120;
+        d=1e100.net; s=20230601; t=1757512321; x=1758117121;
         h=cc:to:in-reply-to:references:message-id:content-transfer-encoding
          :mime-version:subject:date:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=/uzfT2SZbtSVFwjLgauSyAYiAWQx/GJPtfk/UINh1Gc=;
-        b=FAzd3cPVfmQhq6pl0B9y3zToeazr95UI7n4exAucEujYdI/ErNoLR11g1L7XmGnyOM
-         VqWJaF/j3srXu8KIX6cP0RKfAiyVczEWApn+tLCua8KWC9jaWa7bs1KR/bpIfSBhfP+e
-         ad7t31e+0JAC2YnfgXy6hd8x+4gCV3wPJpK96fu9H9LPfXpHdXIMfGUwgXQ3R9rz9DIT
-         /XgnhEtwuJo0j2/c8SN9yyKB6DjpDQtqWm9Bjpf/XBkcmhqDHcDubDDkqeY9LURCHabj
-         4h0nXEsS4Bm7bL/kOJ85pRe48okQMdZL6sRFv91zYP9yzQga8H0/gvIT+wJw8lO/vmvb
-         4vIw==
-X-Gm-Message-State: AOJu0Yw99MjiARlRkJplpbFagzK/OUh2zBQ1MHCWuRd0RwbOYOs3a/UO
-	WZuLe7orP2hqRRpNMsVlDFJy5niJh06unlhSkoCDK8WZDcTg8m2vTmKaISBnCoAWbuyc6leDt5D
-	owf6D
-X-Gm-Gg: ASbGnctoXb1ncbK0MDBrlN4IDo5RcYrE+ApKHINTpMEMdYFr3VpZXGDX1SbO/R9Gx4c
-	moaTNgjFg2Cy+C6nmhf5msp0TuzKjH4APHivvIzu5nElUr707/8PF2D+LVu2OAN/W5Ym8opn259
-	/DjKAtj/OguIvhZWNvTc/f+wgN7OImXmaCvo/pfnPPtSm19c2bvilh04p1b7Udnft6l/HmoVL2J
-	Sda+UmAo8KkdXxcGWLBIUFBA8zw7hlox7hIxb8hLbycX1brunLVWpKhLm4dkFalg0cFAXJgLSWF
-	MNbUcW0In5hoj7g4+6j+Ksc/FjdOOk2Ze+7HSBrOYOLYhzznKqBiubZIHKh+ehOWB14qB53M7my
-	ub1y/rt7pbALvvZ4iFLnbv31zE37FMSlizM5Lr4J//Yw3Mh4yiyrIcGVFHc0=
-X-Google-Smtp-Source: AGHT+IGlI3JkWZ6QetFAfQ7+0o0XBZjCIH3vOA/mXPny5ySk2U0YyPQCsKAg1fBJwtkO8bAfAxeHyQ==
-X-Received: by 2002:a05:6214:2387:b0:70d:81ce:ec1f with SMTP id 6a1803df08f44-7391f9b36a5mr177026206d6.12.1757512319403;
-        Wed, 10 Sep 2025 06:51:59 -0700 (PDT)
+        bh=MuYEOD+AGUuyJmR//l186Ce7ecpQt4er4wHeoEy1TqM=;
+        b=nfXxiPAY1nzeoMyVO882bQIx5prAHUQL9ueLDujbpXjSAx6EoEHLrk1rwwiWnvXdHJ
+         90AlWoVH7CZ4Q+hK3qQXypEgngCoahH/KPHgR/Vrz1TKWEfYEtDt348lwj1jaPVmdHuD
+         /5XqmrXBDM043nbgcyC5S90KlKAf4DBjTDJlz2xuxVrIOrkvjRyBzDIRb64nItpnoTK3
+         BjjTpeykA+JHTjGYYMxYz/KgDycxHdeN/ZRveGFWurK4JjtmGjjMd8BD6Gij1aJ2cD1W
+         yfiewVkc44sK75IpsWxIkyKCKbP2pcGETVb4E5keBtt3EShyMMOgqbm0YnowF2kU3bBP
+         qtyw==
+X-Gm-Message-State: AOJu0YwtS4+gqxOe9xHzdikXkeiLDz/z6+35Mlt7vKvvcYTjqKzWT8Tc
+	oBy+fTsaMjfxPXhLYEDgzjlPeyHBnLmhw1G4q+mLI/o3RFDxVfD/hCB+fE0yymErk6o=
+X-Gm-Gg: ASbGncvGKh7ywyy3eKJo18OLDHN6nfBu7DFulxZAGr+1b68zUAE9VvwrCqQIQE8ILnt
+	MWHzCmADUNRadJg1IdCyknQXFcljG+aDURyOWr4x0oV2JHAm2VXr4nAF/MvayTssRx0PRkiTKTh
+	+ZYHfC/MSukZH/Oa1lTNJISp11P4bTRmRDgmdCedCa0fSUJaDfX7Qp0zlFkcEi/6dZeUbcMmZpa
+	vqtIuYo6rzgA/ZZyjStoCH1uA9KWgZFV/ZBgnZi7UZKox0T2wK4ZM5Wqj2N2QxH3a/RWvZWeNmb
+	kg39vdc4+hjtpBHPSkQ6ncn4aoHEYlK1HPS2jQhoui1vHaWY+foHes2U/GmynFnFoMviq8qzH+B
+	d+oIg5M50X2xXGh+WuybviaeCnJfgVEZKCsrERd0lqIA8EP06XPt0z9ZRqKI=
+X-Google-Smtp-Source: AGHT+IHZ6PE1tIZfMXlMnQmxhO7O+hJ2fxSDFeX/qLXUMnP88YlG18/I53otUH77oUF+X0DO1gbJLw==
+X-Received: by 2002:a05:6214:29ee:b0:70d:7561:64bc with SMTP id 6a1803df08f44-73921b3b44bmr177546616d6.11.1757512321212;
+        Wed, 10 Sep 2025 06:52:01 -0700 (PDT)
 Received: from maple.netwinder.org ([184.147.192.2])
-        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-7252d6ad05asm137500176d6.62.2025.09.10.06.51.58
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-7252d6ad05asm137500176d6.62.2025.09.10.06.52.00
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 10 Sep 2025 06:51:58 -0700 (PDT)
+        Wed, 10 Sep 2025 06:52:00 -0700 (PDT)
 From: Ralph Siemsen <ralph.siemsen@linaro.org>
-Date: Wed, 10 Sep 2025 09:51:46 -0400
-Subject: [PATCH v2 2/4] mke2fs: support multiple '-E' options
+Date: Wed, 10 Sep 2025 09:51:48 -0400
+Subject: [PATCH v2 4/4] mke2fs: fix missing .TP in man page
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -69,89 +68,30 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250910-mke2fs-small-fixes-v2-2-55c9842494e0@linaro.org>
+Message-Id: <20250910-mke2fs-small-fixes-v2-4-55c9842494e0@linaro.org>
 References: <20250910-mke2fs-small-fixes-v2-0-55c9842494e0@linaro.org>
 In-Reply-To: <20250910-mke2fs-small-fixes-v2-0-55c9842494e0@linaro.org>
 To: linux-ext4@vger.kernel.org
 Cc: Ralph Siemsen <ralph.siemsen@linaro.org>
 X-Mailer: b4 0.15-dev-56183
 
-The '-E' option for specifying extended attributes can now be used
-multiple times. The existing support for multiple attributes encoded
-as comma-separated string is maintained for each '-E' option.
-
-Prior to this change, if multiple '-E' options were specified, then
-only the last one was used. Earlier ones were silently ignored.
-
 Signed-off-by: Ralph Siemsen <ralph.siemsen@linaro.org>
 ---
- misc/mke2fs.8.in |  4 +++-
- misc/mke2fs.c    | 16 ++++++++++++----
- 2 files changed, 15 insertions(+), 5 deletions(-)
+ misc/mke2fs.8.in | 1 +
+ 1 file changed, 1 insertion(+)
 
 diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-index 14bae326..99ecc64b 100644
+index ffe02eb0..94d82082 100644
 --- a/misc/mke2fs.8.in
 +++ b/misc/mke2fs.8.in
-@@ -268,7 +268,9 @@ Cause a kernel panic.
- .TP
- .BI \-E " extended-options"
- Set extended options for the file system.  Extended options are comma
--separated, and may take an argument using the equals ('=') sign.  The
-+separated, and may take an argument using the equals ('=') sign.  Multiple
-+.B \-E
-+options may also be used. The
- .B \-E
- option used to be
- .B \-R
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 3a8ff5b1..a54f83ad 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1653,7 +1653,7 @@ static void PRS(int argc, char *argv[])
- 	int		default_csum_seed = 0;
- 	errcode_t	retval;
- 	char *		oldpath = getenv("PATH");
--	char *		extended_opts = 0;
-+	struct str_list extended_opts;
- 	char *		fs_type = 0;
- 	char *		usage_types = 0;
- 	/*
-@@ -1751,6 +1751,13 @@ profile_error:
- 			journal_size = -1;
- 	}
- 
-+	retval = init_list(&extended_opts);
-+	if (retval) {
-+		com_err(program_name, retval, "%s",
-+			_("in malloc for extended_opts"));
-+		exit(1);
-+	}
-+
- 	while ((c = getopt (argc, argv,
- 		    "b:cd:e:g:i:jl:m:no:qr:s:t:vC:DE:FG:I:J:KL:M:N:O:R:ST:U:Vz:")) != EOF) {
- 		switch (c) {
-@@ -1796,7 +1803,7 @@ profile_error:
- 				_("'-R' is deprecated, use '-E' instead"));
- 			/* fallthrough */
- 		case 'E':
--			extended_opts = optarg;
-+			push_string(&extended_opts, optarg);
- 			break;
- 		case 'e':
- 			if (strcmp(optarg, "continue") == 0)
-@@ -2615,8 +2622,9 @@ profile_error:
- 			free(tmp);
- 	}
- 
--	if (extended_opts)
--		parse_extended_opts(&fs_param, extended_opts);
-+	/* Get options from commandline */
-+	for (cpp = extended_opts.list; *cpp; cpp++)
-+		parse_extended_opts(&fs_param, *cpp);
- 
- 	if (fs_param.s_rev_level == EXT2_GOOD_OLD_REV) {
- 		if (fs_features) {
+@@ -739,6 +739,7 @@ the manual page
+ Quiet execution.  Useful if
+ .B mke2fs
+ is run in a script.
++.TP
+ .B \-S
+ Write superblock and group descriptors only.  This is an extreme
+ measure to be taken only in the very unlikely case that all of
 
 -- 
 2.45.2.121.gc2b3f2b3cd
