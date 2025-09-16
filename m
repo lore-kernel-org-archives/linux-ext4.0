@@ -1,115 +1,177 @@
-Received: from mail-yb1-f172.google.com (mail-yb1-f172.google.com [209.85.219.172])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A951C1AC88A
-	for <linux-ext4@vger.kernel.org>; Tue, 16 Sep 2025 01:05:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.172
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7FCDE1AF0C8;
+	Tue, 16 Sep 2025 01:05:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1757984728; cv=none; b=AfwLFIB90JLZgTRSz2haqKrwpQ2yWXRtG72c9S9+23DsUwgDyeGkjepyktAz+otAWVQDXY/S7eBrgGlWJaVvObNE2zRLxa5s02zjlklcbZXGXzGt4Exs5iSfEeAO440RuEGUmtG8OAcghE0ANqPvWnyKZqs7po5ePYEno+FJtWc=
+	t=1757984732; cv=none; b=frIWPJBkWwGL0GePid5RY0qFkBditkUGVmhVXgGi1qHy0VMcsAF58UeTAuQhQUNRFsK9uMC8/Iizv2qIuq8JLH0SmkAxZpm3J+VetfyvAAMq9sfMei2IchE+RothMvmMFUwLWABhubuu+MGGu8si+nKonw+grSHqSIEdiHPcEaE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1757984728; c=relaxed/simple;
-	bh=d4rwn8y0vRJNvu8C079VdIgUQlj+kBjL5HuZ7smgp/E=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=SfitUdFPu+H2skQ7qybvigddpcJ+sJAQX/QpQMo0lSKn1NvczV33UspmFQafLwdpA65tU3UK05uwnfzx8PsTyZi3GuEo/sFviZZOmWPrgVcWe7/8iqvEHSyVzcUYOldd9ATfva4Rmq4+GWtSF6XC8eg0c1Tv0Wwh9QdUXB1x7ns=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=T0I/Xm2a; arc=none smtp.client-ip=209.85.219.172
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1757984732; c=relaxed/simple;
+	bh=pLFVoiDYh4Ed47Jq44pVydQT1vfa67GR1dm/QGqyeEE=;
+	h=Date:Subject:From:To:Cc:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=lZgY9ogCFMhm6x0tTIGT9xaxksIcJDMiFY5XPdHa8mX0vTTGlt4727G29HdErg/EOxMQMSDChkCotsbWDfwY+mDWf4gFV1qi3B75G4ZD7t/3tYAV2tyq24TfPISDHKGjUhLstNUrCgfr5Cpi7vuAOK8F0CKGpSe/Vn1tguWKrAI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=vAsZJM6F; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="T0I/Xm2a"
-Received: by mail-yb1-f172.google.com with SMTP id 3f1490d57ef6-ea3f0d9150eso1951869276.0
-        for <linux-ext4@vger.kernel.org>; Mon, 15 Sep 2025 18:05:24 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1757984724; x=1758589524; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=d4rwn8y0vRJNvu8C079VdIgUQlj+kBjL5HuZ7smgp/E=;
-        b=T0I/Xm2a26Pz9ueMVGxxM+8PBoBl72rLmCzNxbz1k+Zf7VAgqOZWtMXsxpbWUBL8J8
-         jPG2qCslo6GuL8OE/CdATF314calnEw7vxx91ORh8INwPj72HtzWCItEMHgqlS1BGB4L
-         AnggdLmhtN6PrPfYWJw6oIkc2HOZ6SuTst0SQp47zn7zXDjLJdQBMyL/dFLz8br5otKI
-         8dlCMxoRBNvoekrOuCctZSU/9APTEadss2NF0KJzW0tKMoYDIAsZq+yHkaxGVYfE6o2t
-         SJT7LsbW215Aa9TuYPrX1VwOTxvlChId8n3HZzda/uwuRnZUTB37Ib6PO7vzKl/LFvlj
-         okaw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1757984724; x=1758589524;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=d4rwn8y0vRJNvu8C079VdIgUQlj+kBjL5HuZ7smgp/E=;
-        b=WjoVCsFgwCAL3G5MXHnpLoj83wuMov4XUo6wwrVRHlYsike44phtMnnvWIxcrCMzCW
-         hCcxImphIZNkPNmmCoeBRvwnZCN8fucWZ1CN9KxTD6cBuMOCtv1lfh8/hE1+5Ar6Hx+8
-         JhqpFXLQFOucY6TKTzwENXPyfxX4M+DQFU7upaKsq5xY2X199HHwNnx0FbSnakDdMSMM
-         r76OupQnJVlYar80H1LTpNjN3LbM8hDEEKnmzIrzsjA22RHymTeODiU/QgoDsRud/eJu
-         QK7QzrdcIwm+p0eC+DDihAbP4WnjQoncRQP1psorOj8CXebjFk34hkcZuj58IW/nO6a9
-         yPRw==
-X-Forwarded-Encrypted: i=1; AJvYcCWV+wVRZRzGDWW7pLZ2y8DhoYFS7F+SH9mkwU5DmE35HkAkYqbZQQgXaJXjBFTTOTTUrbEMEC/dMcjt@vger.kernel.org
-X-Gm-Message-State: AOJu0YxlFB7if/A32ig8GKhtMKL58gH0AEP/151nUi+PQzM9U5RM5Xn7
-	mBa/WLmRCZUcgnYAdaqwBZpo16Lodz0uKvimNdw5fUUMQvnUme8+j5sCywbzjFe+3oT2FkMMGSw
-	5QzrTGOuSRGpFelrdkjzjKVOJUofStx4=
-X-Gm-Gg: ASbGncvMchQn7YZdsILOQlou1a53G3fceBjwCwcHIe+volj1vTN0SmbWaYctJq71sYf
-	oC7LHK6mBeOJ8mmOsUytHXgB13qbJ2RUXCblgjNAi2/YSnELULBoaa60aGuBpeCJ0nrnCIizZOK
-	TRerejOEecgoh1upmjTrFZr3ouUr/ihAefo+f+cWTmelv9eHca/op1eqGP4wk98UBmAbJkfGHmV
-	ZUl9tIBXhKfcjUhPw==
-X-Google-Smtp-Source: AGHT+IFaJEo1gVHkPCEaCD3vWYjtreYFiQ2WOrRU9CIpbMyg97OVJtr/v3uxdpG+fiXE68E0IfjXLuECnr1bsw09sPQ=
-X-Received: by 2002:a05:6902:2b02:b0:e98:9926:e5ca with SMTP id
- 3f1490d57ef6-ea3d9a6c911mr10729577276.36.1757984723469; Mon, 15 Sep 2025
- 18:05:23 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="vAsZJM6F"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 17B56C4CEF1;
+	Tue, 16 Sep 2025 01:05:32 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1757984732;
+	bh=pLFVoiDYh4Ed47Jq44pVydQT1vfa67GR1dm/QGqyeEE=;
+	h=Date:Subject:From:To:Cc:In-Reply-To:References:From;
+	b=vAsZJM6FDfPFIxchLj7DJZRQmGtApE9OXIvOGqY6FvNPOwSzhqHYRQkvtpci466or
+	 62l8wKyE4FRadF7zxnpvVjtaQd4n/T9Nm+y0xCc6KZvUQBUf4v9F511cfBMlJOPYMZ
+	 Lco9MGG3atndnZZE0XPbdCdJYivyE1N7MY6f7ZbvVqECwQFd4Tj098lVvJ0j95Xtfe
+	 WGtGa4t+XqHlPUj1uAOVWPfpTzEGoVzm7l4fTZ6ybMyXgZjbKDt4+PjTaOZlwfDgE8
+	 8rFODxV+d98+/IlGcjacPLsXkG3T1tJ+S9o572jAIHW8PqZliEDImSfUokTgjAXNx/
+	 MgUb3VzLGG5yg==
+Date: Mon, 15 Sep 2025 18:05:31 -0700
+Subject: [PATCH 08/10] fuse2fs: enable syncfs
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: tytso@mit.edu
+Cc: miklos@szeredi.hu, neal@gompa.dev, linux-fsdevel@vger.kernel.org,
+ linux-ext4@vger.kernel.org, John@groves.net, bernd@bsbernd.com,
+ joannelkoong@gmail.com
+Message-ID: <175798162485.391272.10634665300127990664.stgit@frogsfrogsfrogs>
+In-Reply-To: <175798162297.391272.17812368866586383182.stgit@frogsfrogsfrogs>
+References: <175798162297.391272.17812368866586383182.stgit@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20250913003842.41944-1-safinaskar@gmail.com> <20250915-modebranche-marken-fc832a25e05d@brauner>
-In-Reply-To: <20250915-modebranche-marken-fc832a25e05d@brauner>
-From: Askar Safin <safinaskar@gmail.com>
-Date: Tue, 16 Sep 2025 04:04:47 +0300
-X-Gm-Features: Ac12FXwuxsP2xoupllcCoDiRw8q2uuerrvP566PgC2Qr6qfMP36Zqdrto9P8zEU
-Message-ID: <CAPnZJGAjfpHZn_VzU3ry9ZV6OUS0RN2iWos153_oM_PhVbMgVg@mail.gmail.com>
-Subject: Re: [PATCH RESEND 00/62] initrd: remove classic initrd support
-To: Christian Brauner <brauner@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	Linus Torvalds <torvalds@linux-foundation.org>, 
-	Greg Kroah-Hartman <gregkh@linuxfoundation.org>, Al Viro <viro@zeniv.linux.org.uk>, 
-	Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>, 
-	Andy Shevchenko <andy.shevchenko@gmail.com>, Aleksa Sarai <cyphar@cyphar.com>, 
-	=?UTF-8?Q?Thomas_Wei=C3=9Fschuh?= <thomas.weissschuh@linutronix.de>, 
-	Julian Stecklina <julian.stecklina@cyberus-technology.de>, 
-	Gao Xiang <hsiangkao@linux.alibaba.com>, Art Nikpal <email2tema@gmail.com>, 
-	Andrew Morton <akpm@linux-foundation.org>, Alexander Graf <graf@amazon.com>, 
-	Rob Landley <rob@landley.net>, Lennart Poettering <mzxreary@0pointer.de>, linux-arch@vger.kernel.org, 
-	linux-alpha@vger.kernel.org, linux-snps-arc@lists.infradead.org, 
-	linux-arm-kernel@lists.infradead.org, linux-csky@vger.kernel.org, 
-	linux-hexagon@vger.kernel.org, loongarch@lists.linux.dev, 
-	linux-m68k@lists.linux-m68k.org, linux-mips@vger.kernel.org, 
-	linux-openrisc@vger.kernel.org, linux-parisc@vger.kernel.org, 
-	linuxppc-dev@lists.ozlabs.org, linux-riscv@lists.infradead.org, 
-	linux-s390@vger.kernel.org, linux-sh@vger.kernel.org, 
-	sparclinux@vger.kernel.org, linux-um@lists.infradead.org, x86@kernel.org, 
-	Ingo Molnar <mingo@redhat.com>, linux-block@vger.kernel.org, initramfs@vger.kernel.org, 
-	linux-api@vger.kernel.org, linux-doc@vger.kernel.org, 
-	linux-efi@vger.kernel.org, linux-ext4@vger.kernel.org, 
-	"Theodore Y . Ts'o" <tytso@mit.edu>, linux-acpi@vger.kernel.org, Michal Simek <monstr@monstr.eu>, 
-	devicetree@vger.kernel.org, Luis Chamberlain <mcgrof@kernel.org>, Kees Cook <kees@kernel.org>, 
-	Thorsten Blum <thorsten.blum@linux.dev>, Heiko Carstens <hca@linux.ibm.com>, patches@lists.linux.dev
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 
-On Mon, Sep 15, 2025 at 4:34=E2=80=AFPM Christian Brauner <brauner@kernel.o=
-rg> wrote:
-> Split it up into multiple patch series. Send a first series that
-> focusses only on removing the generic infrastructure keeping it as
-> contained as possible. Only do non-generic cleanups that are absolutely
-> essential for the removal. Then the cleanups can go in separate series
-> later.
+From: Darrick J. Wong <djwong@kernel.org>
 
-Ok, I will do this.
-I will send a minimal patchset with arch/ changes kept to absolute minimum
-or even absent. Nearly all of the changes will be in init/ and docs.
-Hopefully it will pass via the VFS tree.
+Enable syncfs calls in fuse2fs.
 
-If it gets to kernel release, I will consider sending more patchsets.
+Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
+---
+ fuse4fs/fuse4fs.c |   39 ++++++++++++++++++++++++++++++++++++++-
+ misc/fuse2fs.c    |   36 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 74 insertions(+), 1 deletion(-)
 
 
---=20
-Askar Safin
+diff --git a/fuse4fs/fuse4fs.c b/fuse4fs/fuse4fs.c
+index 5673a545b06b31..25c19c0f0deca0 100644
+--- a/fuse4fs/fuse4fs.c
++++ b/fuse4fs/fuse4fs.c
+@@ -1993,7 +1993,7 @@ static int fuse4fs_statx(struct fuse4fs *ff, ext2_ino_t ino, int statx_mask,
+ static void op_statx(fuse_req_t req, fuse_ino_t fino, int flags, int mask,
+ 		     struct fuse_file_info *fi)
+ {
+-	struct statx stx;
++	struct statx stx = { };
+ 	struct fuse4fs *ff = fuse4fs_get(req);
+ 	ext2_ino_t ino;
+ 	int ret = 0;
+@@ -5775,6 +5775,40 @@ static void op_fallocate(fuse_req_t req, fuse_ino_t fino EXT2FS_ATTR((unused)),
+ }
+ #endif /* SUPPORT_FALLOCATE */
+ 
++#if FUSE_VERSION >= FUSE_MAKE_VERSION(3, 99)
++static void op_syncfs(fuse_req_t req, fuse_ino_t ino)
++{
++	struct fuse4fs *ff = fuse4fs_get(req);
++	ext2_filsys fs;
++	errcode_t err;
++	int ret = 0;
++
++	FUSE4FS_CHECK_CONTEXT(req);
++	fs = fuse4fs_start(ff);
++
++	if (ff->opstate == F4OP_WRITABLE) {
++		if (fs->super->s_error_count)
++			fs->super->s_state |= EXT2_ERROR_FS;
++		ext2fs_mark_super_dirty(fs);
++		err = ext2fs_set_gdt_csum(fs);
++		if (err) {
++			ret = translate_error(fs, 0, err);
++			goto out_unlock;
++		}
++
++		err = ext2fs_flush2(fs, 0);
++		if (err) {
++			ret = translate_error(fs, 0, err);
++			goto out_unlock;
++		}
++	}
++
++out_unlock:
++	fuse4fs_finish(ff, ret);
++	fuse_reply_err(req, -ret);
++}
++#endif
++
+ #ifdef HAVE_FUSE_IOMAP
+ static void fuse4fs_iomap_hole(struct fuse4fs *ff, struct fuse_file_iomap *iomap,
+ 			       off_t pos, uint64_t count)
+@@ -7063,6 +7097,9 @@ static struct fuse_lowlevel_ops fs_ops = {
+ #if FUSE_VERSION >= FUSE_MAKE_VERSION(3, 18)
+ 	.statx = op_statx,
+ #endif
++#if FUSE_VERSION >= FUSE_MAKE_VERSION(3, 99)
++	.syncfs = op_syncfs,
++#endif
+ #ifdef HAVE_FUSE_IOMAP
+ 	.iomap_begin = op_iomap_begin,
+ 	.iomap_end = op_iomap_end,
+diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
+index 00dafec79f7766..d4f1825dd695ad 100644
+--- a/misc/fuse2fs.c
++++ b/misc/fuse2fs.c
+@@ -5331,6 +5331,41 @@ static int op_fallocate(const char *path EXT2FS_ATTR((unused)), int mode,
+ }
+ #endif /* SUPPORT_FALLOCATE */
+ 
++#if FUSE_VERSION >= FUSE_MAKE_VERSION(3, 99)
++static int op_syncfs(const char *path)
++{
++	struct fuse2fs *ff = fuse2fs_get();
++	ext2_filsys fs;
++	errcode_t err;
++	int ret = 0;
++
++	FUSE2FS_CHECK_CONTEXT(ff);
++	dbg_printf(ff, "%s: path=%s\n", __func__, path);
++	fs = fuse2fs_start(ff);
++
++	if (ff->opstate == F2OP_WRITABLE) {
++		if (fs->super->s_error_count)
++			fs->super->s_state |= EXT2_ERROR_FS;
++		ext2fs_mark_super_dirty(fs);
++		err = ext2fs_set_gdt_csum(fs);
++		if (err) {
++			ret = translate_error(fs, 0, err);
++			goto out_unlock;
++		}
++
++		err = ext2fs_flush2(fs, 0);
++		if (err) {
++			ret = translate_error(fs, 0, err);
++			goto out_unlock;
++		}
++	}
++
++out_unlock:
++	fuse2fs_finish(ff, ret);
++	return ret;
++}
++#endif
++
+ #ifdef HAVE_FUSE_IOMAP
+ static void fuse2fs_iomap_hole(struct fuse2fs *ff, struct fuse_file_iomap *iomap,
+ 			       off_t pos, uint64_t count)
+@@ -6611,6 +6646,7 @@ static struct fuse_operations fs_ops = {
+ #endif
+ #if FUSE_VERSION >= FUSE_MAKE_VERSION(3, 99)
+ 	.getattr_iflags = op_getattr_iflags,
++	.syncfs = op_syncfs,
+ #endif
+ #ifdef HAVE_FUSE_IOMAP
+ 	.iomap_begin = op_iomap_begin,
+
