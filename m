@@ -1,127 +1,115 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-yb1-f172.google.com (mail-yb1-f172.google.com [209.85.219.172])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9EA6D199935;
-	Tue, 16 Sep 2025 01:05:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A951C1AC88A
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Sep 2025 01:05:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.172
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1757984716; cv=none; b=X0Xk0Ol1yvz2gSZUXz346+Yr1gdht3G6LjMORMzJA3gi8v4CPa8z/nH0HJ6lOHZHxbD1bOTYvLH+p91B4EBGeF1sxROod1QksYiVuCoV9BQH9hO8q7QxMD0CaDPZJ5Z0TFETCTw2VrqesOpTSGVF/xvpw4N76QeTw2VEuDV5+D4=
+	t=1757984728; cv=none; b=AfwLFIB90JLZgTRSz2haqKrwpQ2yWXRtG72c9S9+23DsUwgDyeGkjepyktAz+otAWVQDXY/S7eBrgGlWJaVvObNE2zRLxa5s02zjlklcbZXGXzGt4Exs5iSfEeAO440RuEGUmtG8OAcghE0ANqPvWnyKZqs7po5ePYEno+FJtWc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1757984716; c=relaxed/simple;
-	bh=8y2s1CJuF/dkSpAGEgjI+tudKeP6KeHBPAu4xws8h7k=;
-	h=Date:Subject:From:To:Cc:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=n0tA6d7cYnXrtu8mbnhiiRCMl/oavow0o7kRucmcQwSiyytG6xA/XRywmVB6AYaKj5K6SUKtDALCnamO6g8VpnIccYj/nu6AWmB7Zkmgq+YK3yegNpizCtaIyFRyt9v9LK8I1D+3XBK73/7zARYcDmbc/+Wl2lWQr9bZaAMBczo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Z5JJB0dX; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1757984728; c=relaxed/simple;
+	bh=d4rwn8y0vRJNvu8C079VdIgUQlj+kBjL5HuZ7smgp/E=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=SfitUdFPu+H2skQ7qybvigddpcJ+sJAQX/QpQMo0lSKn1NvczV33UspmFQafLwdpA65tU3UK05uwnfzx8PsTyZi3GuEo/sFviZZOmWPrgVcWe7/8iqvEHSyVzcUYOldd9ATfva4Rmq4+GWtSF6XC8eg0c1Tv0Wwh9QdUXB1x7ns=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=T0I/Xm2a; arc=none smtp.client-ip=209.85.219.172
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Z5JJB0dX"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 76AF8C4CEF1;
-	Tue, 16 Sep 2025 01:05:16 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1757984716;
-	bh=8y2s1CJuF/dkSpAGEgjI+tudKeP6KeHBPAu4xws8h7k=;
-	h=Date:Subject:From:To:Cc:In-Reply-To:References:From;
-	b=Z5JJB0dXf7ziJPRe0uiDlAQe8JqWpsH6aK7EDcpTfvq7VfsODM1r9WhVgNlcmISKK
-	 2oiMDjwtUvGMT+2JRpO3u55/7czAYrQ/sZy+cV5dqaK+giF1vGDnEanhtRjhT7Df3e
-	 8XeJ6eYAvaJmOiU0VIRikNFmgN/Dv2I0Cni+P2yKM0au0MEaxKpf9vAY0jZ78dFw/g
-	 JaCf41rYQItPRZsAD2cJpkln3E9HgfF06iLGX4ErRq7H2o3lrLLSLbgpWNkyztcfHP
-	 6gg3LDudpaLEQ3J9WkSDIwSo3hwRN3FZ0QqEo4KL+wthU44Xz5uc+O9b0nbXmuHmBL
-	 fuxuZ6MDuAQVg==
-Date: Mon, 15 Sep 2025 18:05:16 -0700
-Subject: [PATCH 07/10] fuse2fs: add tracing for retrieving timestamps
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: tytso@mit.edu
-Cc: miklos@szeredi.hu, neal@gompa.dev, linux-fsdevel@vger.kernel.org,
- linux-ext4@vger.kernel.org, John@groves.net, bernd@bsbernd.com,
- joannelkoong@gmail.com
-Message-ID: <175798162467.391272.227746098617279902.stgit@frogsfrogsfrogs>
-In-Reply-To: <175798162297.391272.17812368866586383182.stgit@frogsfrogsfrogs>
-References: <175798162297.391272.17812368866586383182.stgit@frogsfrogsfrogs>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="T0I/Xm2a"
+Received: by mail-yb1-f172.google.com with SMTP id 3f1490d57ef6-ea3f0d9150eso1951869276.0
+        for <linux-ext4@vger.kernel.org>; Mon, 15 Sep 2025 18:05:24 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1757984724; x=1758589524; darn=vger.kernel.org;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=d4rwn8y0vRJNvu8C079VdIgUQlj+kBjL5HuZ7smgp/E=;
+        b=T0I/Xm2a26Pz9ueMVGxxM+8PBoBl72rLmCzNxbz1k+Zf7VAgqOZWtMXsxpbWUBL8J8
+         jPG2qCslo6GuL8OE/CdATF314calnEw7vxx91ORh8INwPj72HtzWCItEMHgqlS1BGB4L
+         AnggdLmhtN6PrPfYWJw6oIkc2HOZ6SuTst0SQp47zn7zXDjLJdQBMyL/dFLz8br5otKI
+         8dlCMxoRBNvoekrOuCctZSU/9APTEadss2NF0KJzW0tKMoYDIAsZq+yHkaxGVYfE6o2t
+         SJT7LsbW215Aa9TuYPrX1VwOTxvlChId8n3HZzda/uwuRnZUTB37Ib6PO7vzKl/LFvlj
+         okaw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1757984724; x=1758589524;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=d4rwn8y0vRJNvu8C079VdIgUQlj+kBjL5HuZ7smgp/E=;
+        b=WjoVCsFgwCAL3G5MXHnpLoj83wuMov4XUo6wwrVRHlYsike44phtMnnvWIxcrCMzCW
+         hCcxImphIZNkPNmmCoeBRvwnZCN8fucWZ1CN9KxTD6cBuMOCtv1lfh8/hE1+5Ar6Hx+8
+         JhqpFXLQFOucY6TKTzwENXPyfxX4M+DQFU7upaKsq5xY2X199HHwNnx0FbSnakDdMSMM
+         r76OupQnJVlYar80H1LTpNjN3LbM8hDEEKnmzIrzsjA22RHymTeODiU/QgoDsRud/eJu
+         QK7QzrdcIwm+p0eC+DDihAbP4WnjQoncRQP1psorOj8CXebjFk34hkcZuj58IW/nO6a9
+         yPRw==
+X-Forwarded-Encrypted: i=1; AJvYcCWV+wVRZRzGDWW7pLZ2y8DhoYFS7F+SH9mkwU5DmE35HkAkYqbZQQgXaJXjBFTTOTTUrbEMEC/dMcjt@vger.kernel.org
+X-Gm-Message-State: AOJu0YxlFB7if/A32ig8GKhtMKL58gH0AEP/151nUi+PQzM9U5RM5Xn7
+	mBa/WLmRCZUcgnYAdaqwBZpo16Lodz0uKvimNdw5fUUMQvnUme8+j5sCywbzjFe+3oT2FkMMGSw
+	5QzrTGOuSRGpFelrdkjzjKVOJUofStx4=
+X-Gm-Gg: ASbGncvMchQn7YZdsILOQlou1a53G3fceBjwCwcHIe+volj1vTN0SmbWaYctJq71sYf
+	oC7LHK6mBeOJ8mmOsUytHXgB13qbJ2RUXCblgjNAi2/YSnELULBoaa60aGuBpeCJ0nrnCIizZOK
+	TRerejOEecgoh1upmjTrFZr3ouUr/ihAefo+f+cWTmelv9eHca/op1eqGP4wk98UBmAbJkfGHmV
+	ZUl9tIBXhKfcjUhPw==
+X-Google-Smtp-Source: AGHT+IFaJEo1gVHkPCEaCD3vWYjtreYFiQ2WOrRU9CIpbMyg97OVJtr/v3uxdpG+fiXE68E0IfjXLuECnr1bsw09sPQ=
+X-Received: by 2002:a05:6902:2b02:b0:e98:9926:e5ca with SMTP id
+ 3f1490d57ef6-ea3d9a6c911mr10729577276.36.1757984723469; Mon, 15 Sep 2025
+ 18:05:23 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+References: <20250913003842.41944-1-safinaskar@gmail.com> <20250915-modebranche-marken-fc832a25e05d@brauner>
+In-Reply-To: <20250915-modebranche-marken-fc832a25e05d@brauner>
+From: Askar Safin <safinaskar@gmail.com>
+Date: Tue, 16 Sep 2025 04:04:47 +0300
+X-Gm-Features: Ac12FXwuxsP2xoupllcCoDiRw8q2uuerrvP566PgC2Qr6qfMP36Zqdrto9P8zEU
+Message-ID: <CAPnZJGAjfpHZn_VzU3ry9ZV6OUS0RN2iWos153_oM_PhVbMgVg@mail.gmail.com>
+Subject: Re: [PATCH RESEND 00/62] initrd: remove classic initrd support
+To: Christian Brauner <brauner@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	Linus Torvalds <torvalds@linux-foundation.org>, 
+	Greg Kroah-Hartman <gregkh@linuxfoundation.org>, Al Viro <viro@zeniv.linux.org.uk>, 
+	Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>, 
+	Andy Shevchenko <andy.shevchenko@gmail.com>, Aleksa Sarai <cyphar@cyphar.com>, 
+	=?UTF-8?Q?Thomas_Wei=C3=9Fschuh?= <thomas.weissschuh@linutronix.de>, 
+	Julian Stecklina <julian.stecklina@cyberus-technology.de>, 
+	Gao Xiang <hsiangkao@linux.alibaba.com>, Art Nikpal <email2tema@gmail.com>, 
+	Andrew Morton <akpm@linux-foundation.org>, Alexander Graf <graf@amazon.com>, 
+	Rob Landley <rob@landley.net>, Lennart Poettering <mzxreary@0pointer.de>, linux-arch@vger.kernel.org, 
+	linux-alpha@vger.kernel.org, linux-snps-arc@lists.infradead.org, 
+	linux-arm-kernel@lists.infradead.org, linux-csky@vger.kernel.org, 
+	linux-hexagon@vger.kernel.org, loongarch@lists.linux.dev, 
+	linux-m68k@lists.linux-m68k.org, linux-mips@vger.kernel.org, 
+	linux-openrisc@vger.kernel.org, linux-parisc@vger.kernel.org, 
+	linuxppc-dev@lists.ozlabs.org, linux-riscv@lists.infradead.org, 
+	linux-s390@vger.kernel.org, linux-sh@vger.kernel.org, 
+	sparclinux@vger.kernel.org, linux-um@lists.infradead.org, x86@kernel.org, 
+	Ingo Molnar <mingo@redhat.com>, linux-block@vger.kernel.org, initramfs@vger.kernel.org, 
+	linux-api@vger.kernel.org, linux-doc@vger.kernel.org, 
+	linux-efi@vger.kernel.org, linux-ext4@vger.kernel.org, 
+	"Theodore Y . Ts'o" <tytso@mit.edu>, linux-acpi@vger.kernel.org, Michal Simek <monstr@monstr.eu>, 
+	devicetree@vger.kernel.org, Luis Chamberlain <mcgrof@kernel.org>, Kees Cook <kees@kernel.org>, 
+	Thorsten Blum <thorsten.blum@linux.dev>, Heiko Carstens <hca@linux.ibm.com>, patches@lists.linux.dev
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-From: Darrick J. Wong <djwong@kernel.org>
+On Mon, Sep 15, 2025 at 4:34=E2=80=AFPM Christian Brauner <brauner@kernel.o=
+rg> wrote:
+> Split it up into multiple patch series. Send a first series that
+> focusses only on removing the generic infrastructure keeping it as
+> contained as possible. Only do non-generic cleanups that are absolutely
+> essential for the removal. Then the cleanups can go in separate series
+> later.
 
-Add tracing for retrieving timestamps so we can debug the weird
-behavior.
+Ok, I will do this.
+I will send a minimal patchset with arch/ changes kept to absolute minimum
+or even absent. Nearly all of the changes will be in init/ and docs.
+Hopefully it will pass via the VFS tree.
 
-Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
----
- misc/fuse2fs.c |   20 ++++++++++++++------
- 1 file changed, 14 insertions(+), 6 deletions(-)
+If it gets to kernel release, I will consider sending more patchsets.
 
 
-diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
-index fa4359133a79fc..00dafec79f7766 100644
---- a/misc/fuse2fs.c
-+++ b/misc/fuse2fs.c
-@@ -1580,9 +1580,11 @@ static void *op_init(struct fuse_conn_info *conn,
- 	return ff;
- }
- 
--static int stat_inode(ext2_filsys fs, ext2_ino_t ino, struct stat *statbuf)
-+static int fuse2fs_stat(struct fuse2fs *ff, ext2_ino_t ino,
-+			struct stat *statbuf)
- {
- 	struct ext2_inode_large inode;
-+	ext2_filsys fs = ff->fs;
- 	dev_t fakedev = 0;
- 	errcode_t err;
- 	int ret = 0;
-@@ -1621,6 +1623,13 @@ static int stat_inode(ext2_filsys fs, ext2_ino_t ino, struct stat *statbuf)
- #else
- 	statbuf->st_ctime = tv.tv_sec;
- #endif
-+
-+	dbg_printf(ff, "%s: ino=%d atime=%lld.%ld mtime=%lld.%ld ctime=%lld.%ld\n",
-+		   __func__, ino,
-+		   (long long int)statbuf->st_atim.tv_sec, statbuf->st_atim.tv_nsec,
-+		   (long long int)statbuf->st_mtim.tv_sec, statbuf->st_mtim.tv_nsec,
-+		   (long long int)statbuf->st_ctim.tv_sec, statbuf->st_ctim.tv_nsec);
-+
- 	if (LINUX_S_ISCHR(inode.i_mode) ||
- 	    LINUX_S_ISBLK(inode.i_mode)) {
- 		if (inode.i_block[0])
-@@ -1667,16 +1676,15 @@ static int op_getattr(const char *path, struct stat *statbuf,
- 		      struct fuse_file_info *fi)
- {
- 	struct fuse2fs *ff = fuse2fs_get();
--	ext2_filsys fs;
- 	ext2_ino_t ino;
- 	int ret = 0;
- 
- 	FUSE2FS_CHECK_CONTEXT(ff);
--	fs = fuse2fs_start(ff);
-+	fuse2fs_start(ff);
- 	ret = fuse2fs_file_ino(ff, path, fi, &ino);
- 	if (ret)
- 		goto out;
--	ret = stat_inode(fs, ino, statbuf);
-+	ret = fuse2fs_stat(ff, ino, statbuf);
- out:
- 	fuse2fs_finish(ff, ret);
- 	return ret;
-@@ -3409,7 +3417,7 @@ static int fuse2fs_file_uses_iomap(struct fuse2fs *ff, ext2_ino_t ino)
- 	if (!fuse2fs_iomap_enabled(ff))
- 		return 0;
- 
--	ret = stat_inode(ff->fs, ino, &statbuf);
-+	ret = fuse2fs_stat(ff, ino, &statbuf);
- 	if (ret)
- 		return ret;
- 
-@@ -4311,7 +4319,7 @@ static int op_readdir_iter(ext2_ino_t dir EXT2FS_ATTR((unused)),
- 			(unsigned long long)i->dirpos);
- 
- 	if (i->flags == FUSE_READDIR_PLUS) {
--		ret = stat_inode(i->fs, dirent->inode, &stat);
-+		ret = fuse2fs_stat(i->ff, dirent->inode, &stat);
- 		if (ret)
- 			return DIRENT_ABORT;
- 	}
-
+--=20
+Askar Safin
