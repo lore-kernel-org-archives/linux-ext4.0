@@ -1,130 +1,67 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A9F8A149E17;
-	Wed, 17 Sep 2025 03:23:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D91B29293D
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Sep 2025 03:28:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1758079397; cv=none; b=jIs5UvyM9MbAR8igWPw/1TMvsJJUyBdww1DyWMQgw7L0lm2Lou/Ry5CiuLNu3DOD6BxSdSEVUxosFCMivHcfYYLYqylgiKTih3uPKuo20BT/HASt80gEQ3i3Nva8GzSXH3e0v8S+kLWB1+XD3c9FKF93uVZVQQuvOxxEXJ8zyIA=
+	t=1758079710; cv=none; b=KtsrT2FvGrLI8GGUrm67x7WYUTilXYLHFyzZcq+y05JaUVoSa4o5rLQgpTSUXhuLBoUSMwBgw4KygdK4l9IEWf0vn0b87TbcYOT2Y4j6j3ST0/meAru5aRrNgRLbFgr1BOZ7p39Idj5/9eWKBFpA6LG4No+hpNIcrsToDRRC1ws=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1758079397; c=relaxed/simple;
-	bh=Em9j3bhCiPFenVEJinrsdXyI/7gV2Mevt9vg2PwMYaM=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=eSr+ybb8LoV4uQ1je7NH6Qf38TXQpwqbLc15MB8K2/jR6VJh14i+7il/P7+IhnMu/q9vBsSfwzjF7XYmdoUEFH4Tqbht8ZI8DsmsnwVGjzzUYHNcwwFyQv+w2skRQORmnqu3+uOP8r04Sm28+5rxaeBfzYnzQMkJ2RZsR+OFEd4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZjHSnj39; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1758079710; c=relaxed/simple;
+	bh=5Sbp0hGoNyLTm+zHAQe1F/DIN8tpDAeChrIATm3Wbqo=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=QRavAbh0jb3oonw0Da9Sf4ecTxRkYLIdTcZfk6BxPgt08lszGPbPu/RlbDthxcLvcpDy8MpSLUD59ee2hAErWjwJ9U8jNfQX+/3QTKDlYprTUR2xu58As+cFjE//HxN+k9aZj4KXo8S/w8BU2EAOZm9PxOCFRrcPK3KGeKMThvw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=GBOezzhS; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZjHSnj39"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 5B064C4CEFA;
-	Wed, 17 Sep 2025 03:23:17 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1758079397;
-	bh=Em9j3bhCiPFenVEJinrsdXyI/7gV2Mevt9vg2PwMYaM=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To:From;
-	b=ZjHSnj399COcIKpui9YSqTgFBppRE/rviOz5BXFxVMkCXBo7D2rBvE9fWZrubpGBT
-	 f+prh11tadNS8awtM61oQTVDOxl4GZ6ohvMWi1bRYq27lPLr98SArzEGKO1B9pKp9J
-	 JveYesb7uCYHMIntW6cIboFn065Sx0XA12YUtLl3huHJ3kuUUU4MifBLHKjeaZpWn/
-	 sojtbCLkvu1h3/LaW26oKgBwOIUyzfYDS9+Sh6r0GmdFf35ymizqOuHaaKWdR3sYNP
-	 WCGs17+EdOHTCp8p/O3B2+RB8dmk7Z/1kFv+XA+8osdnUucsOFB+6zfT0scuRgfX++
-	 33q4PzExX253A==
-Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 49256CAC598;
-	Wed, 17 Sep 2025 03:23:17 +0000 (UTC)
-From: Theodore Ts'o via B4 Relay <devnull+tytso.mit.edu@kernel.org>
-Date: Tue, 16 Sep 2025 23:22:47 -0400
-Subject: [PATCH v2 1/3] ext4: avoid potential buffer over-read in
- parse_apply_sb_mount_options()
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="GBOezzhS"
+Received: from trampoline.thunk.org (pool-173-48-116-225.bstnma.fios.verizon.net [173.48.116.225])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 58H3SJDF001495
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Tue, 16 Sep 2025 23:28:20 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1758079700; bh=mGKSDhN5T2VNimLgAeha9hHp1yidahV9feqDq3H/xO8=;
+	h=From:Subject:Date:Message-ID:MIME-Version;
+	b=GBOezzhS1oja81yw+kOWip3zbOQNYtA4X23HuvYUdvZT0CHBX2np0/XzZ/a/CcZrJ
+	 ez3WxjZZPhR3Rp/q9uLqu2d0PEq5E6LTCxrGBP3OoJkW5Ky5pKsqUiBAsI1CwjUqC2
+	 VflU1oG1rFDJyvchmrtfEa+9G6s8YARv5n22CbdWMc2WKXA2qNbSwZEi4fF0LqIzSO
+	 5NcF9cFBsLCiB659dtRA0E0v1OH27T4UB+l3DH50xnj3K0Y4zu1B0PB3B5CWyPK5fW
+	 yLdM365uKRLZieMIiqEPgxTU0z+SEiW+xgvULcL6X1IXqeNDp3zJIaCQ7jyKmY1ko2
+	 MXo+M1ZhYsavg==
+Received: by trampoline.thunk.org (Postfix, from userid 15806)
+	id 347152E00D9; Tue, 16 Sep 2025 23:28:19 -0400 (EDT)
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH 0/3] E2fsprogs: tune2fs: use an ioctl to update mounted fs
+Date: Tue, 16 Sep 2025 23:28:11 -0400
+Message-ID: <20250917032814.395887-1-tytso@mit.edu>
+X-Mailer: git-send-email 2.51.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250916-tune2fs-v2-1-d594dc7486f0@mit.edu>
-References: <20250916-tune2fs-v2-0-d594dc7486f0@mit.edu>
-In-Reply-To: <20250916-tune2fs-v2-0-d594dc7486f0@mit.edu>
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org, linux-api@vger.kernel.org, 
- stable@vger.kernel.org
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1761; i=tytso@mit.edu;
- h=from:subject:message-id;
- bh=Zik1NfPQHpKrfWfZaCNq+zMCfiMzKhxquLerrhs7sjY=;
- b=owEBbQGS/pANAwAIAfL5WVaVDYGjAcsmYgBoyimj5RZcrRoqS+cfvdfvm0LHMTEEiscYuIGLN
- fPLWp6r8K+JATMEAAEIAB0WIQQrablU2/4IeSiBN8ny+VlWlQ2BowUCaMopowAKCRDy+VlWlQ2B
- owvBB/9BJHZ610L/JEl1w3n9Vmz4gQ4lD68ipzubm1Z+9Ya+s8ifOoFaBrIGfQHm589r1Y2Hghh
- sbvmrumDoXmgzvDAH+OdqnoxBCgPcFZxCDvzLHMTnozTANi+M2JrpIMkcbkKvGE+VzbRv2f99j2
- KmVyBoUiNK9LokXIQT8IyYdfoKYdIA1GK73pEHMDMFLtzPBvUZ+AjQmc3AWojqSiHEHRsSBVhov
- O+pO45iq4kcNTnJ/4YIyOAnGLJdhAwMUh09u7dU8/I6gDG8HLTM13ob2wuHq8gJKeOVlWYfgMlh
- +9csVZda7zql9r0G62bUP0e4+c9gTXicAQUIu1V6XqhYIQq9
-X-Developer-Key: i=tytso@mit.edu; a=openpgp;
- fpr=3AB057B7E78D945C8C5591FBD36F769BC11804F0
-X-Endpoint-Received: by B4 Relay for tytso@mit.edu/default with auth_id=517
-X-Original-From: Theodore Ts'o <tytso@mit.edu>
-Reply-To: tytso@mit.edu
+Content-Transfer-Encoding: 8bit
 
-From: Theodore Ts'o <tytso@mit.edu>
+Teach tune2fs to try use the new EXT4_IOC_SET_TUNE_SB_PARAM ioctl
+interface to update mounted file systems.  This will allow us to
+disallow read/write access to the block device while the file system
+is mounted, once we are sure the updated e2fsprogs is in use.
 
-Unlike other strings in the ext4 superblock, we rely on tune2fs to
-make sure s_mount_opts is NUL terminated.  Harden
-parse_apply_sb_mount_options() by treating s_mount_opts as a potential
-__nonstring.
+Theodore Ts'o (3):
+  tune2fs: reorganize command-line flag handling
+  tune2fs: rework parse_extended_opts() so it only parses the option
+    string
+  tune2fs: try to use the SET_TUNE_SB_PARAM ioctl on mounted file
+    systems
 
-Cc: stable@vger.kernel.org
-Fixes: 8b67f04ab9de ("ext4: Add mount options in superblock")
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/super.c | 17 +++++------------
- 1 file changed, 5 insertions(+), 12 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 699c15db28a82f26809bf68533454a242596f0fd..94c98446c84f9a4614971d246ca7f001de610a8a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2460,7 +2460,7 @@ static int parse_apply_sb_mount_options(struct super_block *sb,
- 					struct ext4_fs_context *m_ctx)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	char *s_mount_opts = NULL;
-+	char s_mount_opts[65];
- 	struct ext4_fs_context *s_ctx = NULL;
- 	struct fs_context *fc = NULL;
- 	int ret = -ENOMEM;
-@@ -2468,15 +2468,11 @@ static int parse_apply_sb_mount_options(struct super_block *sb,
- 	if (!sbi->s_es->s_mount_opts[0])
- 		return 0;
- 
--	s_mount_opts = kstrndup(sbi->s_es->s_mount_opts,
--				sizeof(sbi->s_es->s_mount_opts),
--				GFP_KERNEL);
--	if (!s_mount_opts)
--		return ret;
-+	strscpy_pad(s_mount_opts, sbi->s_es->s_mount_opts);
- 
- 	fc = kzalloc(sizeof(struct fs_context), GFP_KERNEL);
- 	if (!fc)
--		goto out_free;
-+		return -ENOMEM;
- 
- 	s_ctx = kzalloc(sizeof(struct ext4_fs_context), GFP_KERNEL);
- 	if (!s_ctx)
-@@ -2508,11 +2504,8 @@ static int parse_apply_sb_mount_options(struct super_block *sb,
- 	ret = 0;
- 
- out_free:
--	if (fc) {
--		ext4_fc_free(fc);
--		kfree(fc);
--	}
--	kfree(s_mount_opts);
-+	ext4_fc_free(fc);
-+	kfree(fc);
- 	return ret;
- }
- 
+ misc/tune2fs.c | 763 ++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 496 insertions(+), 267 deletions(-)
 
 -- 
 2.51.0
-
 
