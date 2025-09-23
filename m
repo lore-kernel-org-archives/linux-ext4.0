@@ -1,27 +1,27 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3C2C2701B4;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3C9D2701CC;
 	Tue, 23 Sep 2025 01:29:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1758590978; cv=none; b=jirTgIbVshynbOfgqg1ZmH/zLUWeYuE+92xPcguzwJnaEHMvNCQa6/bhHTxumWexqNDTLPd10UL4CdsyHI6Xm+VfylZrrNvmkHHjhr/9tv8FGZ3Zj4+1n6LZuu/6mR+qJ1vZWSWzKy08D90qvdUTU6HTeJSUuMMSkn/4QK//jKs=
+	t=1758590978; cv=none; b=TACv1PdBCL8qIdvpwD2Fq+rKjXe2BMGt4irLTSAKA+oEYvBKKXnE+afRgcb1xiZQVmKnjU7NPD1G/9kwjYIZjmDneDUgsXktlRUM31/ogtevzbs1twXuHVSDjUsjVqBowUD9BXALzUNEHcnX2sTT4i2H+N2FySGoaoYMIdki1Q0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1758590978; c=relaxed/simple;
-	bh=C2oiyfr9F2erbOeu81kYs9iQQq2Amb2HQt4fHUjbKMs=;
+	bh=iYYIRGCB7NPJVlkdCLHGL2lRgfqtqHxpKMJU6D74P5E=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Fy/nygvSmRsAGFx27KICcf+GAPm2DwdfaXLdn1kC0Twvs19PEjVQ5+XmZ669+kOsXfIoSK94AWc9oI9LfSipCjBQgXCTYojSbtUlfupxwpqKrKQMNfRw/keOEnrtP/4njKyvFu9teOnY4D9DC1pIZqc5iwfVZmi7u/nQ3dc9UGY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=Vum/uILT4r8N64c/RwzZXlsky3/GYRsGG+IVqpgQC04NCM6JtS6lZALNw09cGZX80ZHI8eZ5+y2y53jFvt0rw2fy83VPugkb93WIvZb6GJkfON1pr4tFFWBMkqWthzsY9Egchk+sP83/KrDBnsNN36A1S23cK06/DuRAOUkO/C0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4cW2Sv2txyzYQv3W;
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4cW2Sv6LR2zYQv3t;
 	Tue, 23 Sep 2025 09:29:19 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 8DAE01A103D;
-	Tue, 23 Sep 2025 09:29:24 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 0F02C1A104C;
+	Tue, 23 Sep 2025 09:29:25 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP4 (Coremail) with SMTP id gCh0CgAXKWHq99FoGYYGAg--.10941S11;
+	by APP4 (Coremail) with SMTP id gCh0CgAXKWHq99FoGYYGAg--.10941S17;
 	Tue, 23 Sep 2025 09:29:24 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
@@ -35,9 +35,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	libaokun1@huawei.com,
 	yukuai3@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH 07/13] ext4: add mext_check_validity() to do basic check
-Date: Tue, 23 Sep 2025 09:27:17 +0800
-Message-ID: <20250923012724.2378858-8-yi.zhang@huaweicloud.com>
+Subject: [PATCH 13/13] ext4: add two trace points for moving extents
+Date: Tue, 23 Sep 2025 09:27:23 +0800
+Message-ID: <20250923012724.2378858-14-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
 In-Reply-To: <20250923012724.2378858-1-yi.zhang@huaweicloud.com>
 References: <20250923012724.2378858-1-yi.zhang@huaweicloud.com>
@@ -48,11 +48,11 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgAXKWHq99FoGYYGAg--.10941S11
-X-Coremail-Antispam: 1UD129KBjvJXoW3Xr43Ar4xGFyfJFWxKrWktFb_yoW7Xr15pF
-	yxCr13X34jqas0k3yrtFsxXr1Y93WxKr42grZ3Xw48XFWDCF9Igw1DJa1vv3WUtrWDJ3y0
-	qF42kry7ua17JaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+X-CM-TRANSID:gCh0CgAXKWHq99FoGYYGAg--.10941S17
+X-Coremail-Antispam: 1UD129KBjvJXoWxCFyDAF4DAF1kWFykWFykZrb_yoWruw15pF
+	n7AFy5K3ykXaya934xCw48Zr45ua4IkrWUKrySg343XayxtrnFgr4kta1jyF9YyrW8Kryf
+	XFWjyryDKa45W3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
 	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
@@ -62,167 +62,149 @@ X-Coremail-Antispam: 1UD129KBjvJXoW3Xr43Ar4xGFyfJFWxKrWktFb_yoW7Xr15pF
 	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
 	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
 	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
-	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
-	42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
-	CI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnI
-	WIevJa73UjIFyTuYvjfUriihUUUUU
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
+	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
+	daVFxhVjvjDU0xZFpf9x0JUWMKtUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Currently, the basic validation checks during the move extent operation
-are scattered across __ext4_ioctl() and ext4_move_extents(), which makes
-the code somewhat disorganized. Introduce a new helper,
-mext_check_validity(), to handle these checks. This change involves only
-code relocation without any logical modifications.
+To facilitate tracking the length, type, and outcome of the move extent,
+add a trace point at both the entry and exit of mext_move_extent().
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/ioctl.c       |  10 -----
- fs/ext4/move_extent.c | 102 +++++++++++++++++++++++++++---------------
- 2 files changed, 65 insertions(+), 47 deletions(-)
+ fs/ext4/move_extent.c       | 14 ++++++-
+ include/trace/events/ext4.h | 74 +++++++++++++++++++++++++++++++++++++
+ 2 files changed, 86 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 84e3c73952d7..a0d3a951ae85 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -1349,16 +1349,6 @@ static long __ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 		if (!(fd_file(donor)->f_mode & FMODE_WRITE))
- 			return -EBADF;
- 
--		if (ext4_has_feature_bigalloc(sb)) {
--			ext4_msg(sb, KERN_ERR,
--				 "Online defrag not supported with bigalloc");
--			return -EOPNOTSUPP;
--		} else if (IS_DAX(inode)) {
--			ext4_msg(sb, KERN_ERR,
--				 "Online defrag not supported with DAX");
--			return -EOPNOTSUPP;
--		}
--
- 		err = mnt_want_write_file(filp);
- 		if (err)
- 			return err;
 diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 6175906c7119..92f4cba3516d 100644
+index c15294ce2aab..3ea616b0e929 100644
 --- a/fs/ext4/move_extent.c
 +++ b/fs/ext4/move_extent.c
-@@ -442,6 +442,68 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
- 	goto unlock_folios;
- }
+@@ -13,6 +13,8 @@
+ #include "ext4.h"
+ #include "ext4_extents.h"
  
-+/*
-+ * Check the validity of the basic filesystem environment and the
-+ * inodes' support status.
-+ */
-+static int mext_check_validity(struct inode *orig_inode,
-+			       struct inode *donor_inode)
-+{
-+	struct super_block *sb = orig_inode->i_sb;
++#include <trace/events/ext4.h>
 +
-+	if (ext4_has_feature_bigalloc(sb)) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "Online defrag not supported with bigalloc");
-+		return -EOPNOTSUPP;
-+	}
-+
-+	if (IS_DAX(orig_inode)) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "Online defrag not supported with DAX");
-+		return -EOPNOTSUPP;
-+	}
-+
-+	/*
-+	 * TODO: it's not obvious how to swap blocks for inodes with full
-+	 * journaling enabled.
-+	 */
-+	if (ext4_should_journal_data(orig_inode) ||
-+	    ext4_should_journal_data(donor_inode)) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "Online defrag not supported with data journaling");
-+		return -EOPNOTSUPP;
-+	}
-+
-+	if (IS_ENCRYPTED(orig_inode) || IS_ENCRYPTED(donor_inode)) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "Online defrag not supported for encrypted files");
-+		return -EOPNOTSUPP;
-+	}
-+
-+	/* origin and donor should be different inodes */
-+	if (orig_inode == donor_inode) {
-+		ext4_debug("ext4 move extent: The argument files should not be same inode [ino:orig %lu, donor %lu]\n",
-+			   orig_inode->i_ino, donor_inode->i_ino);
-+		return -EINVAL;
-+	}
-+
-+	/* origin and donor should belone to the same filesystem */
-+	if (orig_inode->i_sb != donor_inode->i_sb) {
-+		ext4_debug("ext4 move extent: The argument files should be in same FS [ino:orig %lu, donor %lu]\n",
-+			   orig_inode->i_ino, donor_inode->i_ino);
-+		return -EINVAL;
-+	}
-+
-+	/* Regular file check */
-+	if (!S_ISREG(orig_inode->i_mode) || !S_ISREG(donor_inode->i_mode)) {
-+		ext4_debug("ext4 move extent: The argument files should be regular file [ino:orig %lu, donor %lu]\n",
-+			   orig_inode->i_ino, donor_inode->i_ino);
-+		return -EINVAL;
-+	}
-+
-+	return 0;
-+}
-+
- /**
-  * mext_check_arguments - Check whether move extent can be done
-  *
-@@ -567,43 +629,9 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp, __u64 orig_blk,
- 	ext4_lblk_t d_start = donor_blk;
- 	int ret;
+ struct mext_data {
+ 	struct inode *orig_inode;	/* Origin file inode */
+ 	struct inode *donor_inode;	/* Donor file inode */
+@@ -311,10 +313,14 @@ static int mext_move_extent(struct mext_data *mext, u64 *m_len)
+ 	int ret, ret2;
  
--	if (orig_inode->i_sb != donor_inode->i_sb) {
--		ext4_debug("ext4 move extent: The argument files "
--			"should be in same FS [ino:orig %lu, donor %lu]\n",
--			orig_inode->i_ino, donor_inode->i_ino);
--		return -EINVAL;
--	}
--
--	/* orig and donor should be different inodes */
--	if (orig_inode == donor_inode) {
--		ext4_debug("ext4 move extent: The argument files should not "
--			"be same inode [ino:orig %lu, donor %lu]\n",
--			orig_inode->i_ino, donor_inode->i_ino);
--		return -EINVAL;
--	}
--
--	/* Regular file check */
--	if (!S_ISREG(orig_inode->i_mode) || !S_ISREG(donor_inode->i_mode)) {
--		ext4_debug("ext4 move extent: The argument files should be "
--			"regular file [ino:orig %lu, donor %lu]\n",
--			orig_inode->i_ino, donor_inode->i_ino);
--		return -EINVAL;
--	}
--
--	/* TODO: it's not obvious how to swap blocks for inodes with full
--	   journaling enabled */
--	if (ext4_should_journal_data(orig_inode) ||
--	    ext4_should_journal_data(donor_inode)) {
--		ext4_msg(orig_inode->i_sb, KERN_ERR,
--			 "Online defrag not supported with data journaling");
--		return -EOPNOTSUPP;
--	}
--
--	if (IS_ENCRYPTED(orig_inode) || IS_ENCRYPTED(donor_inode)) {
--		ext4_msg(orig_inode->i_sb, KERN_ERR,
--			 "Online defrag not supported for encrypted files");
--		return -EOPNOTSUPP;
--	}
-+	ret = mext_check_validity(orig_inode, donor_inode);
-+	if (ret)
-+		return ret;
+ 	*m_len = 0;
++	trace_ext4_move_extent_enter(orig_inode, orig_map, donor_inode,
++				     mext->donor_lblk);
+ 	credits = ext4_chunk_trans_extent(orig_inode, 0) * 2;
+ 	handle = ext4_journal_start(orig_inode, EXT4_HT_MOVE_EXTENTS, credits);
+-	if (IS_ERR(handle))
+-		return PTR_ERR(handle);
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
++		goto out;
++	}
  
- 	/* Protect orig and donor inodes against a truncate */
- 	lock_two_nondirectories(orig_inode, donor_inode);
+ 	ret = mext_move_begin(mext, folio, &move_type);
+ 	if (ret)
+@@ -372,6 +378,10 @@ static int mext_move_extent(struct mext_data *mext, u64 *m_len)
+ 	mext_folio_double_unlock(folio);
+ stop_handle:
+ 	ext4_journal_stop(handle);
++out:
++	trace_ext4_move_extent_exit(orig_inode, orig_map->m_lblk, donor_inode,
++				    mext->donor_lblk, orig_map->m_len, *m_len,
++				    move_type, ret);
+ 	return ret;
+ 
+ repair_branches:
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 6a0754d38acf..a05bdd48e16e 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -3016,6 +3016,80 @@ TRACE_EVENT(ext4_update_sb,
+ 		  __entry->fsblk, __entry->flags)
+ );
+ 
++TRACE_EVENT(ext4_move_extent_enter,
++	TP_PROTO(struct inode *orig_inode, struct ext4_map_blocks *orig_map,
++		 struct inode *donor_inode, ext4_lblk_t donor_lblk),
++
++	TP_ARGS(orig_inode, orig_map, donor_inode, donor_lblk),
++
++	TP_STRUCT__entry(
++		__field(dev_t, dev)
++		__field(ino_t, orig_ino)
++		__field(ext4_lblk_t, orig_lblk)
++		__field(unsigned int, orig_flags)
++		__field(ino_t, donor_ino)
++		__field(ext4_lblk_t, donor_lblk)
++		__field(unsigned int, len)
++	),
++
++	TP_fast_assign(
++		__entry->dev		= orig_inode->i_sb->s_dev;
++		__entry->orig_ino	= orig_inode->i_ino;
++		__entry->orig_lblk	= orig_map->m_lblk;
++		__entry->orig_flags	= orig_map->m_flags;
++		__entry->donor_ino	= donor_inode->i_ino;
++		__entry->donor_lblk	= donor_lblk;
++		__entry->len		= orig_map->m_len;
++	),
++
++	TP_printk("dev %d,%d origin ino %lu lblk %u flags %s donor ino %lu lblk %u len %u",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long) __entry->orig_ino,  __entry->orig_lblk,
++		  show_mflags(__entry->orig_flags),
++		  (unsigned long) __entry->donor_ino,  __entry->donor_lblk,
++		  __entry->len)
++);
++
++TRACE_EVENT(ext4_move_extent_exit,
++	TP_PROTO(struct inode *orig_inode, ext4_lblk_t orig_lblk,
++		 struct inode *donor_inode, ext4_lblk_t donor_lblk,
++		 unsigned int m_len, u64 move_len, int move_type, int ret),
++
++	TP_ARGS(orig_inode, orig_lblk, donor_inode, donor_lblk, m_len,
++		move_len, move_type, ret),
++
++	TP_STRUCT__entry(
++		__field(dev_t, dev)
++		__field(ino_t, orig_ino)
++		__field(ext4_lblk_t, orig_lblk)
++		__field(ino_t, donor_ino)
++		__field(ext4_lblk_t, donor_lblk)
++		__field(unsigned int, m_len)
++		__field(u64, move_len)
++		__field(int, move_type)
++		__field(int, ret)
++	),
++
++	TP_fast_assign(
++		__entry->dev		= orig_inode->i_sb->s_dev;
++		__entry->orig_ino	= orig_inode->i_ino;
++		__entry->orig_lblk	= orig_lblk;
++		__entry->donor_ino	= donor_inode->i_ino;
++		__entry->donor_lblk	= donor_lblk;
++		__entry->m_len		= m_len;
++		__entry->move_len	= move_len;
++		__entry->move_type	= move_type;
++		__entry->ret		= ret;
++	),
++
++	TP_printk("dev %d,%d origin ino %lu lblk %u donor ino %lu lblk %u m_len %u, move_len %llu type %d ret %d",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long) __entry->orig_ino,  __entry->orig_lblk,
++		  (unsigned long) __entry->donor_ino,  __entry->donor_lblk,
++		  __entry->m_len, __entry->move_len, __entry->move_type,
++		  __entry->ret)
++);
++
+ #endif /* _TRACE_EXT4_H */
+ 
+ /* This part must be outside protection */
 -- 
 2.46.1
 
