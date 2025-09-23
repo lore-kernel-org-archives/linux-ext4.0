@@ -1,170 +1,110 @@
-Received: from mail-pf1-f171.google.com (mail-pf1-f171.google.com [209.85.210.171])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BA03C258CDF
-	for <linux-ext4@vger.kernel.org>; Mon, 22 Sep 2025 20:51:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.171
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C35852405FD;
+	Tue, 23 Sep 2025 01:29:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1758574321; cv=none; b=ND+U7yZirMVEibCDKnhMUD3x8WZqZVmKlwcTYWJMsXRIcX1qkR8r3YcKjGwsm8XCRRNX5PFUHNZdt5GrjCfZJuVX3oWxYmGceSoiRcZtycKW8RXpvpptDB6adFBT/EMTIJkTysB8kW2ubha07QRJ4pT7JoKzBJ+mzBLzJKpv6cU=
+	t=1758590973; cv=none; b=oniG6qOw79P/ddEyj7mnX/3Wd9qq2aC9WAQjW3h1NQvJ2OuCvCBaWOd1V6pl4QHxleifPoHYY6EkoqHB4RH2vxVluanquiNNB0B8y3SlXdKGihaZJ0UbtDifrqT88ksil1B/qeNXi3rilZBJm5gj2urmW/Ky05xJ9+GWg5o3x3U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1758574321; c=relaxed/simple;
-	bh=CuRjpIsOGe/dIm4nK1ljZv6VvUZXT1BmzFpsFXJF7A8=;
-	h=From:Message-Id:Content-Type:Mime-Version:Subject:Date:
-	 In-Reply-To:Cc:To:References; b=qKRNz1JTUPJ6p6UHJFCh/utkbBCVkND/+2i1ztQsQtqVJPYgIXYruCSsb+P06A8lGsMm1bgxGhg0JV11o6JcEKd3pzOhaf4sRlaf659386RUz2/iK5krCh1sIAfsArygfnCGeOkhXKEkPlO8FkcPNrlazP1Pu4Om4/rSg+fJmag=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20230601.gappssmtp.com header.i=@dilger-ca.20230601.gappssmtp.com header.b=wEBHv3Zq; arc=none smtp.client-ip=209.85.210.171
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20230601.gappssmtp.com header.i=@dilger-ca.20230601.gappssmtp.com header.b="wEBHv3Zq"
-Received: by mail-pf1-f171.google.com with SMTP id d2e1a72fcca58-77f343231fcso700096b3a.3
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Sep 2025 13:51:58 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20230601.gappssmtp.com; s=20230601; t=1758574318; x=1759179118; darn=vger.kernel.org;
-        h=references:to:cc:in-reply-to:date:subject:mime-version:message-id
-         :from:from:to:cc:subject:date:message-id:reply-to;
-        bh=GY7MD3kKhhC/hrvKSF0OvHgBIRAonZcjOE6CMrQyhFk=;
-        b=wEBHv3ZqXlQ9oxoDmxvV3ew4YI/ha2GN9H6ZfUxagUbyYKf6OIO4nYUIEKIzc4HcP1
-         7tkqM1gqYZ1SCz+cG8259xRXFsvx2JMUAl3huon+8mKeY/csHiZAaf1T3FP39cylpUse
-         81wKCMrOxPmJ0tT3wyZMA+qhN42xph+SMc+fiuYMyFSZFMsfOQ+kMlUHoyHhYcDbQNd4
-         oEtatzamv+C2ZPobyDmazUFO1omudmP250OJ1+D6LIWQK9XAHCBp73zBDx1FSdBh+0Yn
-         fDKr8lMS3kcLPsWbn2Ao6vaNKkY1mGfrHQe1hD+K7bGtQ45EcJn8cUXCD5fc/kYnZKjc
-         QTOg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1758574318; x=1759179118;
-        h=references:to:cc:in-reply-to:date:subject:mime-version:message-id
-         :from:x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=GY7MD3kKhhC/hrvKSF0OvHgBIRAonZcjOE6CMrQyhFk=;
-        b=WxU3LeEMb85gxLVpgCd0dIc9a4OwGTcVYcjg9HzWF/xA+yHlzOCxJHFcQgo4hU2cOy
-         GVnZnFJzOLEb+PykltB8V3jvg6XyZj3Tp5FZYfSPAqyLIn5jHBeGlE6E9U8UOd0vZfH1
-         iL3buv+ySnF4Fr1lNg7HEH7QtxqAyzDUZjvxdKQKeDeMpoSa2UOiWFoBq120BLwmAUEk
-         7Dn5NI/HTitak1VeLFyIx58k6kZ+ME5JMR7LJnf5SoOFKQ94MTJDsXrCWjf94YF/TDL2
-         HLH1EUMOAbywOFSka67bMQkKX7n5wmiVy/JGOIAUGLUWwGtpef3MwjNkJLb01z64TBLX
-         ANpg==
-X-Forwarded-Encrypted: i=1; AJvYcCXgFvK6h1jekMeGDcIA8rpkd/5ECZsfy209dF1ArK5xJzRGPMfWS3g7F4pAyWobYFnx6GwDOnwf4KBW@vger.kernel.org
-X-Gm-Message-State: AOJu0YxN3x9QEPDYUeYrAyhOVGpaIqVJaAvpSRY3WfU6QtlALGeXHRFQ
-	kVMiDDNXi7wXCeUacoud/sXj3SOtG54cyPjBmlJ8AkulmoHleskZZBp9xC9os6xVU80ZtomNtOr
-	myR64
-X-Gm-Gg: ASbGncuxAjHCI2MDIB7oO7RKeKp399g+7ZL4X29cuOFYhFaYWWmxL2xEC0IrmRZ7ioZ
-	koVmC9egqAtdhTDwqc4gRlYEbzCYKzUauca7ROZppoZDfz64UTikARaLcMXZPPB9PFjAVnRPV+a
-	kHjxvY99ypPieNtBZ4fbnCoIRC0Q9ErKQ0puIlSApxuuaYJYsfjPARELczuxIFiC80LIn45myMx
-	FIwaloZuTHPDYn97Yh48EB/LqQF8KTqOXS6wOaHs43Qcr5V3iUkmV+d+nW6ps9k/mZ/JdZFPlUV
-	BB8XLIMGvu1nvIpwZR0arXmkPqLOvqK39dDTTeO9esKhEOQe1wKogCg91NIbsFGULdAMLQ2f/s1
-	QyKHbvajs3DXCLb7hE78OZyaty7C2u4t9hVqzoslYOBnkG/31PbAgdMQcihxvE4c5N775WK4=
-X-Google-Smtp-Source: AGHT+IHOQ173ylERx6KZy/Xc7MIg7+ZXbNrrmog1NQNEnWYQ4pjY34TxD81CuKRK1TBa9N61cDuisw==
-X-Received: by 2002:a05:6a20:748b:b0:2bc:ac1b:60ab with SMTP id adf61e73a8af0-2cff0df2ed8mr567358637.52.1758574317749;
-        Mon, 22 Sep 2025 13:51:57 -0700 (PDT)
-Received: from cabot.adilger.int (S01068c763f81ca4b.cg.shawcable.net. [70.77.200.158])
-        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-b552591eb64sm8927339a12.10.2025.09.22.13.51.56
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 22 Sep 2025 13:51:56 -0700 (PDT)
-From: Andreas Dilger <adilger@dilger.ca>
-Message-Id: <8F227773-BD56-4E6F-BB6A-F24931186D77@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_03294430-5BFB-4E40-8142-C357DAE981D8";
- protocol="application/pgp-signature"; micalg=pgp-sha256
+	s=arc-20240116; t=1758590973; c=relaxed/simple;
+	bh=xpHNl9uCs96ADDOmeKTxWjgPzyvdhOzL7M7eU8voDVc=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=o3FafHVC+GuTlfuzspor+U7fKsfJWvkIGJRRbNBMRfXEkfv05YTxzFpazZBwZ2i9IF++diRjErbw8NzC41Gnh9OyRzmGDlLRfZJaut5eQAfR8UOhDJiEV//ZXx33J9pK8rvWkmzgqUNKZklD53D0pvhgEFznfaeTbFm82gCEwDU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4cW2Sv2KlpzYQtpy;
+	Tue, 23 Sep 2025 09:29:19 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 776221A1326;
+	Tue, 23 Sep 2025 09:29:24 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.85.155])
+	by APP4 (Coremail) with SMTP id gCh0CgAXKWHq99FoGYYGAg--.10941S10;
+	Tue, 23 Sep 2025 09:29:24 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	libaokun1@huawei.com,
+	yukuai3@huawei.com,
+	yangerkun@huawei.com
+Subject: [PATCH 06/13] ext4: use EXT4_B_TO_LBLK() in mext_check_arguments()
+Date: Tue, 23 Sep 2025 09:27:16 +0800
+Message-ID: <20250923012724.2378858-7-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.46.1
+In-Reply-To: <20250923012724.2378858-1-yi.zhang@huaweicloud.com>
+References: <20250923012724.2378858-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: ext4: failed to convert unwritten extents (6.12.31 regression)
-Date: Mon, 22 Sep 2025 14:51:52 -0600
-In-Reply-To: <BN9PR18MB4219710FC26F8A610F53AF569812A@BN9PR18MB4219.namprd18.prod.outlook.com>
-Cc: Theodore Ts'o <tytso@mit.edu>,
- linux-ext4 <linux-ext4@vger.kernel.org>
-To: Andrea Biardi <Andrea.Biardi@viavisolutions.com>
-References: <BN9PR18MB4219FBD6D79413965DDEFA6D9812A@BN9PR18MB4219.namprd18.prod.outlook.com>
- <20250922124128.GD481137@mit.edu>
- <BN9PR18MB4219710FC26F8A610F53AF569812A@BN9PR18MB4219.namprd18.prod.outlook.com>
-X-Mailer: Apple Mail (2.3273)
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:gCh0CgAXKWHq99FoGYYGAg--.10941S10
+X-Coremail-Antispam: 1UD129KBjvJXoW7Ar1fCFy3CrW5ur1rZry8Grg_yoW8Gr4xp3
+	WIyFs5C3yqqa4Y9w409F1Iv348Ka1xGr47XrWfJr4UWay0kFyFgF1UKan8AFyjqrWkJ34r
+	ZFn2kr17X345G3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
+	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
+	CI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnI
+	WIevJa73UjIFyTuYvjfUriihUUUUU
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
+From: Zhang Yi <yi.zhang@huawei.com>
 
---Apple-Mail=_03294430-5BFB-4E40-8142-C357DAE981D8
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Switch to using EXT4_B_TO_LBLK() to calculate the EOF position of the
+origin and donor inodes, instead of using open-coded calculations.
 
-On Sep 22, 2025, at 8:00 AM, Andrea Biardi =
-<Andrea.Biardi@viavisolutions.com> wrote:
->=20
-> On 22-Sep-2025,  "Theodore Ts'o" <tytso@mit.edu> wrote:
->=20
->>> [  174.903010] I/O error, dev vda, sector 167922 op 0x1:(WRITE) =
-flags 0x0 phys_seg 2 prio class 0
->>> [  174.903023] I/O error, dev vda, sector 167938 op 0x1:(WRITE) =
-flags 0x4000 phys_seg 254 prio class 0
->>> [  174.903027] I/O error, dev vda, sector 169970 op 0x1:(WRITE) =
-flags 0x0 phys_seg 2 prio class 0
->>> [  174.903031] EXT4-fs warning (device vda1): ext4_end_bio:353: I/O =
-error 10 writing to inode 16 starting block 84985)
->>=20
->> The failure is coming from the block device, which in your case, is
->> the virtio device.  The only causes for this are:
->> 1)  An underlying hardware failure
->> 2)  A bug in the block virtio device
->> 3)  A bug in the VMM (I assume qemu in your case).
->=20
-> Thank you for the quick response!
->=20
-> You do have a point there, the first reported problem is effectively a =
-write failure on vda.
-> I tried with virtio-scsi, and can't reproduce the bug. I will try with =
-a newer version of qemu first, and then look into virtio-blk.
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/move_extent.c | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
 
-It _could_ still be a software issue, if these vda errors are caused by =
-writes
-beyond the end of the block device?  These are showing errors at sector =
-167922+
-so if the vda=3D/boot filesystem is just below 82MiB=3D83968 =
-blocks=3D167936 sectors
-in size then this might be the issue?
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 0f4b7c89edd3..6175906c7119 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -461,12 +461,6 @@ mext_check_arguments(struct inode *orig_inode,
+ 		     __u64 donor_start, __u64 *len)
+ {
+ 	__u64 orig_eof, donor_eof;
+-	unsigned int blkbits = orig_inode->i_blkbits;
+-	unsigned int blocksize = 1 << blkbits;
+-
+-	orig_eof = (i_size_read(orig_inode) + blocksize - 1) >> blkbits;
+-	donor_eof = (i_size_read(donor_inode) + blocksize - 1) >> blkbits;
+-
+ 
+ 	if (donor_inode->i_mode & (S_ISUID|S_ISGID)) {
+ 		ext4_debug("ext4 move extent: suid or sgid is set"
+@@ -526,6 +520,9 @@ mext_check_arguments(struct inode *orig_inode,
+ 			orig_inode->i_ino, donor_inode->i_ino);
+ 		return -EINVAL;
+ 	}
++
++	orig_eof = EXT4_B_TO_LBLK(orig_inode, i_size_read(orig_inode));
++	donor_eof = EXT4_B_TO_LBLK(donor_inode, i_size_read(donor_inode));
+ 	if (orig_eof <= orig_start)
+ 		*len = 0;
+ 	else if (orig_eof < orig_start + *len - 1)
+-- 
+2.46.1
 
-If adding/removing this specific patch shows/hides this patch then it =
-could
-also be a bug in how the ext4 extents or uninitialized extent zeroing at =
-the
-end of the device is handled, assuming that the /boot device is indeed =
-82MB.
-
-Have you tried doing a linear read/write of /dev/vda in 1KiB units to =
-confirm
-that all of the sectors can be read and written?
-
-It might also be a mismatch between /dev/vda size vs. how many block the
-filesystem is formatted to use?
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_03294430-5BFB-4E40-8142-C357DAE981D8
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAmjRtugACgkQcqXauRfM
-H+CHYA/+Mylu8UelQX7oQ3lRwnuywq0xmWXA9U80YLdO4saULVcVGPy1DUPd5s0R
-IL8tR4hBOrpB1yhe/b81BvEsAqP+zs3jlm+B76Js9zmvtLa/WFCK3hBSR3j8jsWF
-2MKfhNYLjX6+CGu5+30cVkM4xN7PDHvsL3C6ZbMJWKy5eMteSYkTCoeCnZLH3NJl
-ggPegdA8zvF1cCWv4R5vEGFT8YsswCK1BM+1go/n2+KSeQGbodXgocWvBjSgvgOd
-2NoK1v3ByTBc+ktFkp7RcdMf/ixUwIluw8L3/R63D5ITsWqNoAT/H1XKuT59rZUK
-s47GoezSUXU6DPL62rO/gl3VICiKgG83547j61hquVhpLxZHaH92a5MAYg+XIVOC
-PPcVAcISjkKBdF87kDXzfEaxdOPB6nrZKRcz4m11aBHEOeaYR0N6S/i5ii/irFNJ
-jCoa6psZXVTWFl3jWMNUeU2w4NABevIos0g+9sxdjaqpYFT1r6SQ3Qlj+ZEftl1l
-DElKmBkXtWzmmvB2kctH15pFg5Q3etTHUY4Bf15TbNn4u++6lL+VoSAB0Tdtombm
-/7DhEXlSs3teDx0oATWuLCIWvqgwnnJFN3nsrX533/724kIBJMAHGmFRA/RNxtSF
-lDNWn98EH+4vawwt8qtE3uSZ+SCL98AF1G/UE/BRGndAi/Ddzzw=
-=KlRV
------END PGP SIGNATURE-----
-
---Apple-Mail=_03294430-5BFB-4E40-8142-C357DAE981D8--
