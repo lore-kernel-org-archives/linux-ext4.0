@@ -1,27 +1,27 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DC9CE2459E5;
-	Tue, 23 Sep 2025 01:29:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9ECF526F296;
+	Tue, 23 Sep 2025 01:29:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1758590976; cv=none; b=YmO7njHdJ2pntBjSmVaR/AWqWFZcT7FCYgiyuwC0xgr1+clFWf9sHgsc0DfTjENfQZCndspe4Cd6eDIirqHMDz7J0Kq+wHcgqnFER2t4jPufD1yE1dg50UJ1Ls25rg93dDrUz9CHkn4LIaoiAYeDP6Sb6YmnRLxlA7klnjDUeG8=
+	t=1758590977; cv=none; b=mBYnBR78xSovoQXnnkaWQ7TsUks/2zZehjSN4aVwdhUPn/26EsDkglrTSrLP+76wPPIERUZb4VmtqpqwsGIgarg1NkobDnl9tpbI2zgh7r7Rlw3NzyRqH593lLptmtrjFAAPu9LlC7vkN+NFNV9qz9y+S6rXsw6aM+dibAtncuA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1758590976; c=relaxed/simple;
-	bh=uwXA7214rTZLSUx7YTuJcKawCH8JK9347t+S5f/2ZvY=;
+	s=arc-20240116; t=1758590977; c=relaxed/simple;
+	bh=CyYQn+cOs12tN7/PlpInkSiOd/5MvYS7xR1XrqzTHRc=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=d/bLAIfp3f2N/HoE4Q14ot4eSnxvXGb8dSm2tzE5B6BsHw4SVei3lRQQSMLhduLjrI8dX3apfZ8YMiEv3ieGAL6KB0CIosXK1TXMZjdB6L7/HIfsBTBb9JzRW1yBdEkOR+H+EcFYAgY4dSN+EnWp8AJi8p3lJ3w3d01TnmxL5f4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=Y/prZgVsCCfz+QayFwxSY+v75d58EaPQzBjMqb8ZasFAoL4ftuJ7VW9+AlZ4u+utR8wLIIfLHCFr2xmBds7OynImUbWU5sq6tWSPkZXhJHwCoeWXhSxOD+n3XPDObfjpWKEAqXSAK+HHnXnIX3QiOiJ0B+vG6ANtJ1ZhCGhnZtw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4cW2Sv6GkczKHLxL;
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4cW2Sv5lxLzYQv4h;
 	Tue, 23 Sep 2025 09:29:19 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 5C16F1A1026;
+	by mail.maildlp.com (Postfix) with ESMTP id F0DD21A1B01;
 	Tue, 23 Sep 2025 09:29:24 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP4 (Coremail) with SMTP id gCh0CgAXKWHq99FoGYYGAg--.10941S8;
+	by APP4 (Coremail) with SMTP id gCh0CgAXKWHq99FoGYYGAg--.10941S16;
 	Tue, 23 Sep 2025 09:29:24 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
@@ -35,9 +35,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	libaokun1@huawei.com,
 	yukuai3@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH 04/13] ext4: make ext4_es_lookup_extent() pass out the extent seq counter
-Date: Tue, 23 Sep 2025 09:27:14 +0800
-Message-ID: <20250923012724.2378858-5-yi.zhang@huaweicloud.com>
+Subject: [PATCH 12/13] ext4: add large folios support for moving extents
+Date: Tue, 23 Sep 2025 09:27:22 +0800
+Message-ID: <20250923012724.2378858-13-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
 In-Reply-To: <20250923012724.2378858-1-yi.zhang@huaweicloud.com>
 References: <20250923012724.2378858-1-yi.zhang@huaweicloud.com>
@@ -48,11 +48,11 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgAXKWHq99FoGYYGAg--.10941S8
-X-Coremail-Antispam: 1UD129KBjvJXoWxGw4rJFyUAry8Cr13CFy5CFg_yoWrZw15p3
-	9xAr4UGw4fZw1v9ayxKF47Zr15K3WYkrW7Cr93Kw1rKa4rXrySyF10yFW2yFyFgrWIqwn0
-	vF40kw1UJa1fKFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+X-CM-TRANSID:gCh0CgAXKWHq99FoGYYGAg--.10941S16
+X-Coremail-Antispam: 1UD129KBjvJXoWxGF1xWrWrJr1rGFWUKrWruFg_yoW5Xw43pF
+	1xKan3tFWkX34I9ry0qay7Zr15Ka4xtr4UWF4fJw1SyFyqvryIgr1jy3WxZFyrtrW8ArWF
+	qF4SkryUWa1Dt3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
 	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
@@ -62,119 +62,85 @@ X-Coremail-Antispam: 1UD129KBjvJXoWxGw4rJFyUAry8Cr13CFy5CFg_yoWrZw15p3
 	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
 	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
 	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
-	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI
-	42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
-	CI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnI
-	WIevJa73UjIFyTuYvjfUriihUUUUU
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
+	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
+	daVFxhVjvjDU0xZFpf9x0JUWMKtUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-When querying extents in the extent status tree, we should hold the
-data_sem if we want to obtain the sequence number as a valid cookie
-simultaneously. However, currently, ext4_map_blocks() calls
-ext4_es_lookup_extent() without holding data_sem. Therefore, we should
-acquire i_es_lock instead, which also ensures that the sequence cookie
-and the extent remain consistent. Consequently, make
-ext4_es_lookup_extent() to pass out the sequence number when necessary.
+Pass the moving extent length into mext_folio_double_lock() so that it
+can acquire a higher-order folio if the length exceeds PAGE_SIZE. This
+can speed up extent moving when the extent is larger than one page.
+Additionally, remove the unnecessary comments from
+mext_folio_double_lock().
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/extents.c        | 2 +-
- fs/ext4/extents_status.c | 6 ++++--
- fs/ext4/extents_status.h | 2 +-
- fs/ext4/inode.c          | 8 ++++----
- 4 files changed, 10 insertions(+), 8 deletions(-)
+ fs/ext4/move_extent.c | 27 ++++++++++-----------------
+ 1 file changed, 10 insertions(+), 17 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index ca5499e9412b..c7d219e6c6d8 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2213,7 +2213,7 @@ static int ext4_fill_es_cache_info(struct inode *inode,
- 	while (block <= end) {
- 		next = 0;
- 		flags = 0;
--		if (!ext4_es_lookup_extent(inode, block, &next, &es))
-+		if (!ext4_es_lookup_extent(inode, block, &next, &es, NULL))
- 			break;
- 		if (ext4_es_is_unwritten(&es))
- 			flags |= FIEMAP_EXTENT_UNWRITTEN;
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 62886e18e2a3..9bf2f48d8ffe 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -1035,8 +1035,8 @@ void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
-  * Return: 1 on found, 0 on not
-  */
- int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
--			  ext4_lblk_t *next_lblk,
--			  struct extent_status *es)
-+			  ext4_lblk_t *next_lblk, struct extent_status *es,
-+			  u64 *pseq)
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index b478631e243c..c15294ce2aab 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -54,23 +54,14 @@ ext4_double_up_write_data_sem(struct inode *orig_inode,
+ 	up_write(&EXT4_I(donor_inode)->i_data_sem);
+ }
+ 
+-/**
+- * mext_folio_double_lock - Grab and lock folio on both @inode1 and @inode2
+- *
+- * @inode1:	the inode structure
+- * @inode2:	the inode structure
+- * @index1:	folio index
+- * @index2:	folio index
+- * @folio:	result folio vector
+- *
+- * Grab two locked folio for inode's by inode order
+- */
+-static int
+-mext_folio_double_lock(struct inode *inode1, struct inode *inode2,
+-		      pgoff_t index1, pgoff_t index2, struct folio *folio[2])
++/* Grab and lock folio on both @inode1 and @inode2 by inode order. */
++static int mext_folio_double_lock(struct inode *inode1, struct inode *inode2,
++				  pgoff_t index1, pgoff_t index2, size_t len,
++				  struct folio *folio[2])
  {
- 	struct ext4_es_tree *tree;
- 	struct ext4_es_stats *stats;
-@@ -1095,6 +1095,8 @@ int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
- 			} else
- 				*next_lblk = 0;
- 		}
-+		if (pseq)
-+			*pseq = EXT4_I(inode)->i_es_seq;
- 	} else {
- 		percpu_counter_inc(&stats->es_stats_cache_misses);
+ 	struct address_space *mapping[2];
+ 	unsigned int flags;
++	fgf_t fgp_flags = FGP_WRITEBEGIN;
+ 
+ 	BUG_ON(!inode1 || !inode2);
+ 	if (inode1 < inode2) {
+@@ -83,14 +74,15 @@ mext_folio_double_lock(struct inode *inode1, struct inode *inode2,
  	}
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index 8f9c008d11e8..f3396cf32b44 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -148,7 +148,7 @@ extern void ext4_es_find_extent_range(struct inode *inode,
- 				      struct extent_status *es);
- extern int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
- 				 ext4_lblk_t *next_lblk,
--				 struct extent_status *es);
-+				 struct extent_status *es, u64 *pseq);
- extern bool ext4_es_scan_range(struct inode *inode,
- 			       int (*matching_fn)(struct extent_status *es),
- 			       ext4_lblk_t lblk, ext4_lblk_t end);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 5b7a15db4953..c7fac4b89c88 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -649,7 +649,7 @@ static int ext4_map_create_blocks(handle_t *handle, struct inode *inode,
- 	 * extent status tree.
- 	 */
- 	if (flags & EXT4_GET_BLOCKS_PRE_IO &&
--	    ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
-+	    ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
- 		if (ext4_es_is_written(&es))
- 			return retval;
+ 
+ 	flags = memalloc_nofs_save();
+-	folio[0] = __filemap_get_folio(mapping[0], index1, FGP_WRITEBEGIN,
++	fgp_flags |= fgf_set_order(len);
++	folio[0] = __filemap_get_folio(mapping[0], index1, fgp_flags,
+ 			mapping_gfp_mask(mapping[0]));
+ 	if (IS_ERR(folio[0])) {
+ 		memalloc_nofs_restore(flags);
+ 		return PTR_ERR(folio[0]);
  	}
-@@ -723,7 +723,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 		ext4_check_map_extents_env(inode);
  
- 	/* Lookup extent status tree firstly */
--	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
-+	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
- 		if (ext4_es_is_written(&es) || ext4_es_is_unwritten(&es)) {
- 			map->m_pblk = ext4_es_pblock(&es) +
- 					map->m_lblk - es.es_lblk;
-@@ -1908,7 +1908,7 @@ static int ext4_da_map_blocks(struct inode *inode, struct ext4_map_blocks *map)
- 	ext4_check_map_extents_env(inode);
- 
- 	/* Lookup extent status tree firstly */
--	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
-+	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
- 		map->m_len = min_t(unsigned int, map->m_len,
- 				   es.es_len - (map->m_lblk - es.es_lblk));
- 
-@@ -1961,7 +1961,7 @@ static int ext4_da_map_blocks(struct inode *inode, struct ext4_map_blocks *map)
- 	 * is held in write mode, before inserting a new da entry in
- 	 * the extent status tree.
- 	 */
--	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
-+	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
- 		map->m_len = min_t(unsigned int, map->m_len,
- 				   es.es_len - (map->m_lblk - es.es_lblk));
+-	folio[1] = __filemap_get_folio(mapping[1], index2, FGP_WRITEBEGIN,
++	folio[1] = __filemap_get_folio(mapping[1], index2, fgp_flags,
+ 			mapping_gfp_mask(mapping[1]));
+ 	memalloc_nofs_restore(flags);
+ 	if (IS_ERR(folio[1])) {
+@@ -214,7 +206,8 @@ static int mext_move_begin(struct mext_data *mext, struct folio *folio[2],
+ 	orig_pos = ((loff_t)mext->orig_map.m_lblk) << blkbits;
+ 	donor_pos = ((loff_t)mext->donor_lblk) << blkbits;
+ 	ret = mext_folio_double_lock(orig_inode, donor_inode,
+-			orig_pos >> PAGE_SHIFT, donor_pos >> PAGE_SHIFT, folio);
++			orig_pos >> PAGE_SHIFT, donor_pos >> PAGE_SHIFT,
++			mext->orig_map.m_len << blkbits, folio);
+ 	if (ret)
+ 		return ret;
  
 -- 
 2.46.1
