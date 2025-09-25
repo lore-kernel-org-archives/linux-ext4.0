@@ -1,27 +1,27 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 99A762EBB8C;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6AB952EB878;
 	Thu, 25 Sep 2025 09:27:13 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1758792435; cv=none; b=gQz31jgEc+6txMnfYco/o5B/qkq4BCcK32EMtQgq3/R2tq9DHTqOAJoj5hEdfOePqZTDL8JTnei7MvKnKccaYwRclS3g8YeJXEQQ3NNDx4bHUaCfbh9HF+pC4oGxIjG+foLTuJTagzEcOGOxduD35aeN82jwTlw4F+6wVwxYkpU=
+	t=1758792435; cv=none; b=qda6w7QBaVncuXWNvDu/zAmoCfXjYdeXzUboKAJbS0us/pLE187kWQ0kefnm6+00wBuitoFZBAp03NQZyMHkfx/BsLbegObcNj2immtUc3hO1sh3TH2rTTvQ8FLqA5eBAFErYlwqph7G3WQ9W3RFtz3MC9wzdumoQpYcEFgE+94=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1758792435; c=relaxed/simple;
-	bh=4JqpOUpiWcHHZxVPF0acWtZVQzg65/SoCmh1zSVcpfQ=;
+	bh=uwXA7214rTZLSUx7YTuJcKawCH8JK9347t+S5f/2ZvY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=dUiovGRhuaXbtAaDlJGICBLdx35PL1dzAOvn7B7YXdjGPEkPuFSkABjcN9w3N6HxJWhFQMhkO8g/L09DSIrMNcH0DfGcKEA+xPNcwsswBeZf2lLRkcudbx1g/8PD+/x0dY1CgR1fQqnkkagOSsvZM3NLljhvT7+hX/tJ6M3xlk0=
+	 MIME-Version; b=UnSClf88ckwYTyNfQHbwSLx5mAHP4fzgmekSI/B/GjD0gbZZJS/s2qw+rAuizSu5gvGgMm/R4AvWUX61ITvlm3c7H2vRHxOImqg3n9Q7m3AXcpzTodzW+pakb6YidErlCo5oM0uXH4ib/TAGoNAcJYfZD+RXFQhyXdVMHLVEkl0=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4cXSz62LXMzKHN5X;
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4cXSz63HryzKHN5j;
 	Thu, 25 Sep 2025 17:26:58 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 398A01A12C6;
+	by mail.maildlp.com (Postfix) with ESMTP id 5C0791A16A9;
 	Thu, 25 Sep 2025 17:27:06 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP4 (Coremail) with SMTP id gCh0CgD3CGHeCtVovAkNAw--.52999S6;
+	by APP4 (Coremail) with SMTP id gCh0CgD3CGHeCtVovAkNAw--.52999S8;
 	Thu, 25 Sep 2025 17:27:06 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
@@ -35,9 +35,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	libaokun1@huawei.com,
 	yukuai3@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH v2 02/13] ext4: correct the checking of quota files before moving extents
-Date: Thu, 25 Sep 2025 17:25:58 +0800
-Message-ID: <20250925092610.1936929-3-yi.zhang@huaweicloud.com>
+Subject: [PATCH v2 04/13] ext4: make ext4_es_lookup_extent() pass out the extent seq counter
+Date: Thu, 25 Sep 2025 17:26:00 +0800
+Message-ID: <20250925092610.1936929-5-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
 In-Reply-To: <20250925092610.1936929-1-yi.zhang@huaweicloud.com>
 References: <20250925092610.1936929-1-yi.zhang@huaweicloud.com>
@@ -48,50 +48,134 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgD3CGHeCtVovAkNAw--.52999S6
-X-Coremail-Antispam: 1UD129KBjvdXoW7GF43Xr4UXr1DAFyfXrWrXwb_yoWDGwbEya
-	yxCrWkZrsYvFWvgrs5JFyrJrs2kF4rGFn8WFZ5Cr13ur1xXr4kGrnYqrnIyr98Wr4UKrZx
-	ZFs7tryayryIgjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUbkxFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
-	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUXwA2048vs2IY02
-	0Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xv
-	wVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM2
-	8EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AI
-	xVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20x
-	vE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xv
-	r2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8cxan2IY04
-	v7MxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j
-	6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7
-	AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE
-	2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcV
-	C2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2Kfnx
-	nUUI43ZEXa7VUbH5lUUUUUU==
+X-CM-TRANSID:gCh0CgD3CGHeCtVovAkNAw--.52999S8
+X-Coremail-Antispam: 1UD129KBjvJXoWxGw4rJFyUAry8Cr13CFy5CFg_yoWrZw15p3
+	9xAr4UGw4fZw1v9ayxKF47Zr15K3WYkrW7Cr93Kw1rKa4rXrySyF10yFW2yFyFgrWIqwn0
+	vF40kw1UJa1fKFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
+	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
+	CI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnI
+	WIevJa73UjIFyTuYvjfUOyIUUUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-The move extent operation should return -EOPNOTSUPP if any of the inodes
-is a quota inode, rather than requiring both to be quota inodes.
+When querying extents in the extent status tree, we should hold the
+data_sem if we want to obtain the sequence number as a valid cookie
+simultaneously. However, currently, ext4_map_blocks() calls
+ext4_es_lookup_extent() without holding data_sem. Therefore, we should
+acquire i_es_lock instead, which also ensures that the sequence cookie
+and the extent remain consistent. Consequently, make
+ext4_es_lookup_extent() to pass out the sequence number when necessary.
 
-Fixes: 02749a4c2082 ("ext4: add ext4_is_quota_file()")
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/move_extent.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/extents.c        | 2 +-
+ fs/ext4/extents_status.c | 6 ++++--
+ fs/ext4/extents_status.h | 2 +-
+ fs/ext4/inode.c          | 8 ++++----
+ 4 files changed, 10 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 4b091c21908f..0f4b7c89edd3 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -485,7 +485,7 @@ mext_check_arguments(struct inode *orig_inode,
- 		return -ETXTBSY;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index ca5499e9412b..c7d219e6c6d8 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2213,7 +2213,7 @@ static int ext4_fill_es_cache_info(struct inode *inode,
+ 	while (block <= end) {
+ 		next = 0;
+ 		flags = 0;
+-		if (!ext4_es_lookup_extent(inode, block, &next, &es))
++		if (!ext4_es_lookup_extent(inode, block, &next, &es, NULL))
+ 			break;
+ 		if (ext4_es_is_unwritten(&es))
+ 			flags |= FIEMAP_EXTENT_UNWRITTEN;
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 62886e18e2a3..9bf2f48d8ffe 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -1035,8 +1035,8 @@ void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
+  * Return: 1 on found, 0 on not
+  */
+ int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
+-			  ext4_lblk_t *next_lblk,
+-			  struct extent_status *es)
++			  ext4_lblk_t *next_lblk, struct extent_status *es,
++			  u64 *pseq)
+ {
+ 	struct ext4_es_tree *tree;
+ 	struct ext4_es_stats *stats;
+@@ -1095,6 +1095,8 @@ int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
+ 			} else
+ 				*next_lblk = 0;
+ 		}
++		if (pseq)
++			*pseq = EXT4_I(inode)->i_es_seq;
+ 	} else {
+ 		percpu_counter_inc(&stats->es_stats_cache_misses);
  	}
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+index 8f9c008d11e8..f3396cf32b44 100644
+--- a/fs/ext4/extents_status.h
++++ b/fs/ext4/extents_status.h
+@@ -148,7 +148,7 @@ extern void ext4_es_find_extent_range(struct inode *inode,
+ 				      struct extent_status *es);
+ extern int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				 ext4_lblk_t *next_lblk,
+-				 struct extent_status *es);
++				 struct extent_status *es, u64 *pseq);
+ extern bool ext4_es_scan_range(struct inode *inode,
+ 			       int (*matching_fn)(struct extent_status *es),
+ 			       ext4_lblk_t lblk, ext4_lblk_t end);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5b7a15db4953..c7fac4b89c88 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -649,7 +649,7 @@ static int ext4_map_create_blocks(handle_t *handle, struct inode *inode,
+ 	 * extent status tree.
+ 	 */
+ 	if (flags & EXT4_GET_BLOCKS_PRE_IO &&
+-	    ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
++	    ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
+ 		if (ext4_es_is_written(&es))
+ 			return retval;
+ 	}
+@@ -723,7 +723,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		ext4_check_map_extents_env(inode);
  
--	if (ext4_is_quota_file(orig_inode) && ext4_is_quota_file(donor_inode)) {
-+	if (ext4_is_quota_file(orig_inode) || ext4_is_quota_file(donor_inode)) {
- 		ext4_debug("ext4 move extent: The argument files should not be quota files [ino:orig %lu, donor %lu]\n",
- 			orig_inode->i_ino, donor_inode->i_ino);
- 		return -EOPNOTSUPP;
+ 	/* Lookup extent status tree firstly */
+-	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
++	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
+ 		if (ext4_es_is_written(&es) || ext4_es_is_unwritten(&es)) {
+ 			map->m_pblk = ext4_es_pblock(&es) +
+ 					map->m_lblk - es.es_lblk;
+@@ -1908,7 +1908,7 @@ static int ext4_da_map_blocks(struct inode *inode, struct ext4_map_blocks *map)
+ 	ext4_check_map_extents_env(inode);
+ 
+ 	/* Lookup extent status tree firstly */
+-	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
++	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
+ 		map->m_len = min_t(unsigned int, map->m_len,
+ 				   es.es_len - (map->m_lblk - es.es_lblk));
+ 
+@@ -1961,7 +1961,7 @@ static int ext4_da_map_blocks(struct inode *inode, struct ext4_map_blocks *map)
+ 	 * is held in write mode, before inserting a new da entry in
+ 	 * the extent status tree.
+ 	 */
+-	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
++	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
+ 		map->m_len = min_t(unsigned int, map->m_len,
+ 				   es.es_len - (map->m_lblk - es.es_lblk));
+ 
 -- 
 2.46.1
 
