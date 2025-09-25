@@ -1,27 +1,27 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 86F542E9EC8;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 86EDF2E8E08;
 	Thu, 25 Sep 2025 09:27:08 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1758792431; cv=none; b=b/pmRocuD+e9tSeGJg2f5CmaW3PrTHn8XwA4PzYBLFRiX5RI7wdkEursglx2gVOMJH4kz7y7InsEsiQvFrvqDRjPUeglPf9m+ft54BsMR3wpUsoB6TgFlrHQMbMfcWxtwoLdAtbfauBQ/0xAvSK0FqtGtWBSedw3qc4xg9GIpsU=
+	t=1758792432; cv=none; b=QW2E0VCNm1GFafhcZoHhqAJtpyD/C1DGPMqy0kwNeuCNh/PRTKmpfStjdChImN9VYvfrbkakFCpbtAZM4cIiUOa0lSYrcLEBvJlQjtBeD6AiO1WJTQ8ZCqk5b7zebKzMuMDcqnWd2Qu3vgV/1afcgSCtzlVgxxDgkcxprMrUlZc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1758792431; c=relaxed/simple;
-	bh=3WMeOSE8g1svVf5m8FoCiGiLGyfsOf3q0tPddab5PFQ=;
+	s=arc-20240116; t=1758792432; c=relaxed/simple;
+	bh=9+5OxevCijthUzY/16DUyhS/Q/mMCPWDXDkf74vdWao=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=XPRteWQPTm3hebuGdEGiwrCW2AfaOXYh7nRoTx5A4Jh0+3KjGw5YnRXi+TPB18mEX7pz8zs6QKXJSH81VeMRScF38H+/lcynaKPtgAhLK4PcWeaA8+9ARHCNVLRXE/YZEPSMPEKnYdq6YvY7acI+UF/3znZBKeWRoyTqXvB3V/w=
+	 MIME-Version; b=So2os1PsTTNNoPqklQOjySiwSqtY9CPXJBB41eln/NzfwzfuwGcoxWgq3QquPbUmKLSY5jc8g6OJhIOATgqMtSdMTjeE/ID2gAapxq5jn8H89CT2cYWGK24hUXgPEl7Cezqx3KX59axY6jifJX5GaggqigRpi5aSc8GFV3xJ1n4=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4cXSz5450VzYQvK8;
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4cXSz52mqzzYQvLd;
 	Thu, 25 Sep 2025 17:26:57 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 910FE1A12C6;
+	by mail.maildlp.com (Postfix) with ESMTP id 649F81A16AD;
 	Thu, 25 Sep 2025 17:27:06 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP4 (Coremail) with SMTP id gCh0CgD3CGHeCtVovAkNAw--.52999S11;
+	by APP4 (Coremail) with SMTP id gCh0CgD3CGHeCtVovAkNAw--.52999S9;
 	Thu, 25 Sep 2025 17:27:06 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
@@ -35,9 +35,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	libaokun1@huawei.com,
 	yukuai3@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH v2 07/13] ext4: add mext_check_validity() to do basic check
-Date: Thu, 25 Sep 2025 17:26:03 +0800
-Message-ID: <20250925092610.1936929-8-yi.zhang@huaweicloud.com>
+Subject: [PATCH v2 05/13] ext4: pass out extent seq counter when mapping blocks
+Date: Thu, 25 Sep 2025 17:26:01 +0800
+Message-ID: <20250925092610.1936929-6-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
 In-Reply-To: <20250925092610.1936929-1-yi.zhang@huaweicloud.com>
 References: <20250925092610.1936929-1-yi.zhang@huaweicloud.com>
@@ -48,10 +48,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgD3CGHeCtVovAkNAw--.52999S11
-X-Coremail-Antispam: 1UD129KBjvJXoW3Xr43Ar4xGFyfJFWxKrWktFb_yoW7Xr15pF
-	yxCr15X34jqas0k3yrtFsxXr1Y93WxKr42grZ3Xw48XFWDCF9Ig3WkJF4vv3W8trWDJ3y0
-	qF42kry7ua17JaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:gCh0CgD3CGHeCtVovAkNAw--.52999S9
+X-Coremail-Antispam: 1UD129KBjvJXoWxXryrtr4xKrWrGw15CryDJrb_yoW5KF18pr
+	ZrAr1rGr4UWw1q9F4SyF4UZF1a93W5KrW7J397WryFya4fJrn3tF1jyF1ayF98KrWfX3WF
+	qFW5K34UCa1fGa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUmI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -70,159 +70,103 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Currently, the basic validation checks during the move extent operation
-are scattered across __ext4_ioctl() and ext4_move_extents(), which makes
-the code somewhat disorganized. Introduce a new helper,
-mext_check_validity(), to handle these checks. This change involves only
-code relocation without any logical modifications.
+When creating or querying mapping blocks using the ext4_map_blocks() and
+ext4_map_{query|create}_blocks() helpers, also pass out the extent
+sequence number of the block mapping info through the ext4_map_blocks
+structure. This sequence number can later serve as a valid cookie within
+iomap infrastructure and the move extents procedure.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/ioctl.c       |  10 -----
- fs/ext4/move_extent.c | 102 +++++++++++++++++++++++++++---------------
- 2 files changed, 65 insertions(+), 47 deletions(-)
+ fs/ext4/ext4.h  |  1 +
+ fs/ext4/inode.c | 24 ++++++++++++++++--------
+ 2 files changed, 17 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 84e3c73952d7..a0d3a951ae85 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -1349,16 +1349,6 @@ static long __ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 		if (!(fd_file(donor)->f_mode & FMODE_WRITE))
- 			return -EBADF;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 7b37a661dd37..7f452895ec09 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -260,6 +260,7 @@ struct ext4_map_blocks {
+ 	ext4_lblk_t m_lblk;
+ 	unsigned int m_len;
+ 	unsigned int m_flags;
++	u64 m_seq;
+ };
  
--		if (ext4_has_feature_bigalloc(sb)) {
--			ext4_msg(sb, KERN_ERR,
--				 "Online defrag not supported with bigalloc");
--			return -EOPNOTSUPP;
--		} else if (IS_DAX(inode)) {
--			ext4_msg(sb, KERN_ERR,
--				 "Online defrag not supported with DAX");
--			return -EOPNOTSUPP;
--		}
+ /*
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c7fac4b89c88..d005a4f3f4b3 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -550,10 +550,13 @@ static int ext4_map_query_blocks(handle_t *handle, struct inode *inode,
+ 		retval = ext4_ext_map_blocks(handle, inode, map, flags);
+ 	else
+ 		retval = ext4_ind_map_blocks(handle, inode, map, flags);
 -
- 		err = mnt_want_write_file(filp);
- 		if (err)
- 			return err;
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 6175906c7119..cdd175d5c1f3 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -442,6 +442,68 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
- 	goto unlock_folios;
+-	if (retval <= 0)
++	if (retval < 0)
+ 		return retval;
+ 
++	/* A hole? */
++	if (retval == 0)
++		goto out;
++
+ 	if (unlikely(retval != map->m_len)) {
+ 		ext4_warning(inode->i_sb,
+ 			     "ES len assertion failed for inode "
+@@ -573,11 +576,13 @@ static int ext4_map_query_blocks(handle_t *handle, struct inode *inode,
+ 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+ 		ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+ 				      map->m_pblk, status, false);
+-		return retval;
++	} else {
++		retval = ext4_map_query_blocks_next_in_leaf(handle, inode, map,
++							    orig_mlen);
+ 	}
+-
+-	return ext4_map_query_blocks_next_in_leaf(handle, inode, map,
+-						  orig_mlen);
++out:
++	map->m_seq = READ_ONCE(EXT4_I(inode)->i_es_seq);
++	return retval;
  }
  
-+/*
-+ * Check the validity of the basic filesystem environment and the
-+ * inodes' support status.
-+ */
-+static int mext_check_validity(struct inode *orig_inode,
-+			       struct inode *donor_inode)
-+{
-+	struct super_block *sb = orig_inode->i_sb;
-+
-+	/* origin and donor should be different inodes */
-+	if (orig_inode == donor_inode) {
-+		ext4_debug("ext4 move extent: The argument files should not be same inode [ino:orig %lu, donor %lu]\n",
-+			   orig_inode->i_ino, donor_inode->i_ino);
-+		return -EINVAL;
-+	}
-+
-+	/* origin and donor should belone to the same filesystem */
-+	if (orig_inode->i_sb != donor_inode->i_sb) {
-+		ext4_debug("ext4 move extent: The argument files should be in same FS [ino:orig %lu, donor %lu]\n",
-+			   orig_inode->i_ino, donor_inode->i_ino);
-+		return -EINVAL;
-+	}
-+
-+	/* Regular file check */
-+	if (!S_ISREG(orig_inode->i_mode) || !S_ISREG(donor_inode->i_mode)) {
-+		ext4_debug("ext4 move extent: The argument files should be regular file [ino:orig %lu, donor %lu]\n",
-+			   orig_inode->i_ino, donor_inode->i_ino);
-+		return -EINVAL;
-+	}
-+
-+	if (ext4_has_feature_bigalloc(sb)) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "Online defrag not supported with bigalloc");
-+		return -EOPNOTSUPP;
-+	}
-+
-+	if (IS_DAX(orig_inode)) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "Online defrag not supported with DAX");
-+		return -EOPNOTSUPP;
-+	}
-+
-+	/*
-+	 * TODO: it's not obvious how to swap blocks for inodes with full
-+	 * journaling enabled.
-+	 */
-+	if (ext4_should_journal_data(orig_inode) ||
-+	    ext4_should_journal_data(donor_inode)) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "Online defrag not supported with data journaling");
-+		return -EOPNOTSUPP;
-+	}
-+
-+	if (IS_ENCRYPTED(orig_inode) || IS_ENCRYPTED(donor_inode)) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "Online defrag not supported for encrypted files");
-+		return -EOPNOTSUPP;
-+	}
-+
-+	return 0;
-+}
-+
- /**
-  * mext_check_arguments - Check whether move extent can be done
-  *
-@@ -567,43 +629,9 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp, __u64 orig_blk,
- 	ext4_lblk_t d_start = donor_blk;
- 	int ret;
+ static int ext4_map_create_blocks(handle_t *handle, struct inode *inode,
+@@ -649,7 +654,7 @@ static int ext4_map_create_blocks(handle_t *handle, struct inode *inode,
+ 	 * extent status tree.
+ 	 */
+ 	if (flags & EXT4_GET_BLOCKS_PRE_IO &&
+-	    ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
++	    ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
+ 		if (ext4_es_is_written(&es))
+ 			return retval;
+ 	}
+@@ -658,6 +663,7 @@ static int ext4_map_create_blocks(handle_t *handle, struct inode *inode,
+ 			EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+ 	ext4_es_insert_extent(inode, map->m_lblk, map->m_len, map->m_pblk,
+ 			      status, flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE);
++	map->m_seq = READ_ONCE(EXT4_I(inode)->i_es_seq);
  
--	if (orig_inode->i_sb != donor_inode->i_sb) {
--		ext4_debug("ext4 move extent: The argument files "
--			"should be in same FS [ino:orig %lu, donor %lu]\n",
--			orig_inode->i_ino, donor_inode->i_ino);
--		return -EINVAL;
--	}
--
--	/* orig and donor should be different inodes */
--	if (orig_inode == donor_inode) {
--		ext4_debug("ext4 move extent: The argument files should not "
--			"be same inode [ino:orig %lu, donor %lu]\n",
--			orig_inode->i_ino, donor_inode->i_ino);
--		return -EINVAL;
--	}
--
--	/* Regular file check */
--	if (!S_ISREG(orig_inode->i_mode) || !S_ISREG(donor_inode->i_mode)) {
--		ext4_debug("ext4 move extent: The argument files should be "
--			"regular file [ino:orig %lu, donor %lu]\n",
--			orig_inode->i_ino, donor_inode->i_ino);
--		return -EINVAL;
--	}
--
--	/* TODO: it's not obvious how to swap blocks for inodes with full
--	   journaling enabled */
--	if (ext4_should_journal_data(orig_inode) ||
--	    ext4_should_journal_data(donor_inode)) {
--		ext4_msg(orig_inode->i_sb, KERN_ERR,
--			 "Online defrag not supported with data journaling");
--		return -EOPNOTSUPP;
--	}
--
--	if (IS_ENCRYPTED(orig_inode) || IS_ENCRYPTED(donor_inode)) {
--		ext4_msg(orig_inode->i_sb, KERN_ERR,
--			 "Online defrag not supported for encrypted files");
--		return -EOPNOTSUPP;
--	}
-+	ret = mext_check_validity(orig_inode, donor_inode);
-+	if (ret)
-+		return ret;
+ 	return retval;
+ }
+@@ -723,7 +729,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		ext4_check_map_extents_env(inode);
  
- 	/* Protect orig and donor inodes against a truncate */
- 	lock_two_nondirectories(orig_inode, donor_inode);
+ 	/* Lookup extent status tree firstly */
+-	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
++	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
+ 		if (ext4_es_is_written(&es) || ext4_es_is_unwritten(&es)) {
+ 			map->m_pblk = ext4_es_pblock(&es) +
+ 					map->m_lblk - es.es_lblk;
+@@ -1979,6 +1985,8 @@ static int ext4_da_map_blocks(struct inode *inode, struct ext4_map_blocks *map)
+ 
+ 	map->m_flags |= EXT4_MAP_DELAYED;
+ 	retval = ext4_insert_delayed_blocks(inode, map->m_lblk, map->m_len);
++	if (!retval)
++		map->m_seq = READ_ONCE(EXT4_I(inode)->i_es_seq);
+ 	up_write(&EXT4_I(inode)->i_data_sem);
+ 
+ 	return retval;
 -- 
 2.46.1
 
