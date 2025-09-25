@@ -1,70 +1,46 @@
-Received: from mail-pf1-f177.google.com (mail-pf1-f177.google.com [209.85.210.177])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 322552DF718
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Sep 2025 02:06:28 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.177
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3E3CC2E8DED;
+	Thu, 25 Sep 2025 09:27:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1758765989; cv=none; b=T7HHBD+GXvdwbsTlbORc81qH+JhHYdtAMJKbJ4AVplGu4NsWcxxzXoTmU+Zxw9AKch1qlGe+OLirj95qO/KXl2I4SFUy4Bho3k6i7ghcJ3BYaOO/GkdqJXSnK16LFq+uqYGkeToyM4oGePXs0hWn2drZz3Q1ftHR7UpVtioqF68=
+	t=1758792430; cv=none; b=USDXCJnSMYyvyz5JOst7oo0UKqrsGDo3umQmrRVlObDcGAi1Zc2pXX2sROVgCDvrBu+Z96UD4OXL3C+ot6DvYz7Mzkfw5lUN3Y1K4yk9ZAabXprrQCsoEO/bzGVuyKrN45F0GyMz343CVdvGaabrjmZhoCUxrmzCeSzexY/OV2Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1758765989; c=relaxed/simple;
-	bh=emM7Hbp4+t3hKY7RQRIqu3zLRsfIXIe2RIjkPWAHEoc=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=C+DFIL7liwh3qbx3ch9e7bdwvSVtHiVlEwIg4OJU4WbOpqcYuRM76Apf0y76/d40qMZGwPJIIQKTQwTg8O0F7y62ADTlHFDrN5qtjPCBhs+v4BR/DHYsQj8YNf17hunZfhYgX8YN9uzlWRbsBS+xz0d/o297B8A/yd+Oww00zFk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=R7Sbh+js; arc=none smtp.client-ip=209.85.210.177
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="R7Sbh+js"
-Received: by mail-pf1-f177.google.com with SMTP id d2e1a72fcca58-77716518125so254487b3a.3
-        for <linux-ext4@vger.kernel.org>; Wed, 24 Sep 2025 19:06:28 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1758765987; x=1759370787; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=tU/TSL5LhuP/twx2wBHqp/4wp73W2M92Uj8iJaHRWWk=;
-        b=R7Sbh+js3985Cv86XKX7c+hizRoRaZAEzHy6GBICDRCNZv4uMUNHxuBUWHzoGifbh5
-         xi4QrAkQbXF/V534XDLVEnxZC/bg861LJkqaXEiaGkYa1NGUGXC0XBmqvajI7ne7nfV5
-         eUeBYTektSS8tj1OQ/3HVJFERuurHDrXiwhW4ojsWCyya4y1k/lerQ2Yj+/W3DWxHTN3
-         kvP0fbGrHUKEGDsDkdeuGDcpzYoKhSRAy/NFc5CpeTrRTN95YDgJ+h4S0hIaerdOCZEb
-         EHaRbEu2evJmI5gWLODiE+g9jkX9n6k3mEAHz+R3mG3ziB32BWZFLIvRpwMEPoIwc8QQ
-         gO0A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1758765987; x=1759370787;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=tU/TSL5LhuP/twx2wBHqp/4wp73W2M92Uj8iJaHRWWk=;
-        b=XT0yLaMeFnqV2QJQyT5G/plflbLxiE4Q/2Z1wDyzDK3fGAsMaBPVhPt1Iyu8uoiodW
-         ReIvWpsIOwfmC6UzSW2/UoTnyC+lD1csEi8oArQ7vyaV9zAWIfhDl4SOa4rXfkGfUBwR
-         S2Pvu6at39MeBC6ILtlLqrYfDMnSSye6JKbPRE/KaR5JgYXCfujTgE6wUXjX8KO0aEiw
-         XvnvcuLck4L+lczAojpcoXdazZ+GcaQgBLx083BBG8TOBNBTYXgSAm8Jt0zeqDL+cMO8
-         doxJ4G54lZ8iaCVjC1VNjeL624xtUX6GBb0gJp0LhYUgjFlNy01Zy+/1DArcLEHUl6sN
-         B5Og==
-X-Gm-Message-State: AOJu0YxkYGSHlE7IOD0qwrVt1hiIhl34MSSAIKGzp9JFGiCcl2nVB+G3
-	sk6ejosAJIsWII7F6KOtyBK0KYTqQQmgq/sAZzXLDHBzCiRnYtaqRQq3
-X-Gm-Gg: ASbGncv0NctVl37b6IasPxgrPvtYFEYkhhn7nPMpheDuszFSloUEc9N/QKzIWW0UQDz
-	kRT0st5PyFxTrSunD7G6Iro3LWOoRz5Kvak5wVAKKSHXkX794JiixDX0LxPXdZL+GZuZd00Gq74
-	/EdKOLfwuz2Y6Mgfi28V9wQ4EQyhHT/KrSFH82k36vnFmd+n8t5L5/lcxywKicXKkrLTCV/Ufc+
-	PjD0mf0VddOSTwlYmTaGbjlxJUCaI2Qmfa4h3871Rhh4I5wD/nmiPx8WvbXT0vrbhi3wSBkipzJ
-	Q/p9NduobMM+eK2qJ88jwrifmy1d7k8foMhO7tIk/BugBZlpok8aLrSgfWv6aAdwCNoV0/lD9FC
-	BsjY7QmuRqD5E2RWgIRMzB8sT5OKvvFOl2STT5nA2dc1II5zl09XzEwWCi0EEgVY+BaBCVgqXgX
-	H5mng=
-X-Google-Smtp-Source: AGHT+IEGkxaZs777ffJyo9MgmjDEDAVLnqbymp9F87MoJbNqiIXjx0kxb58hxWECgzHw3b5fO4opNw==
-X-Received: by 2002:a05:6a00:4654:b0:770:54e6:6c36 with SMTP id d2e1a72fcca58-780fcdc9112mr1994132b3a.7.1758765987402;
-        Wed, 24 Sep 2025 19:06:27 -0700 (PDT)
-Received: from deepanshu-kernel-hacker.. ([2405:201:682f:3094:87f5:62dc:5f13:5ae3])
-        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-78102c27733sm394133b3a.95.2025.09.24.19.06.24
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 24 Sep 2025 19:06:26 -0700 (PDT)
-From: Deepanshu Kartikey <kartikey406@gmail.com>
-To: adilger.kernel@dilger.ca,
-	tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: fix allocation failure in ext4_mb_load_buddy_gfp
-Date: Thu, 25 Sep 2025 07:36:21 +0530
-Message-ID: <20250925020621.1268714-1-kartikey406@gmail.com>
-X-Mailer: git-send-email 2.43.0
+	s=arc-20240116; t=1758792430; c=relaxed/simple;
+	bh=2c9J4BVQOGD7WKgfMY5Roo5DXPkX37AymVYJDjwHoC8=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=tsHi9qPEHGginxGYI5RlqTkNUOFa3/ywMxOBjc6wxjYn40zv6SFxadvCBeI1e+yiVwGNn5jEVHEGi5zz0hDuf0EfpFoROYnKy4Bc67p80jpi9pMET1rjZDb7sZt2GWUJSSWV45yp8UKvXy94RGxeh8HwWra9p3ui+JFsJvK3JkU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4cXSz50y09zYQv32;
+	Thu, 25 Sep 2025 17:26:57 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 285421A1E0F;
+	Thu, 25 Sep 2025 17:27:06 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.85.155])
+	by APP4 (Coremail) with SMTP id gCh0CgD3CGHeCtVovAkNAw--.52999S5;
+	Thu, 25 Sep 2025 17:27:06 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	libaokun1@huawei.com,
+	yukuai3@huawei.com,
+	yangerkun@huawei.com
+Subject: [PATCH v2 01/13] ext4: fix an off-by-one issue during moving extents
+Date: Thu, 25 Sep 2025 17:25:57 +0800
+Message-ID: <20250925092610.1936929-2-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.46.1
+In-Reply-To: <20250925092610.1936929-1-yi.zhang@huaweicloud.com>
+References: <20250925092610.1936929-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -72,30 +48,64 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:gCh0CgD3CGHeCtVovAkNAw--.52999S5
+X-Coremail-Antispam: 1UD129KBjvJXoW7uw4rGFWktF4fJF1UWF1xZrb_yoW8Gr1xp3
+	4aka45KrW0qwnxCw4kW3Z7X3yUG34DKr47Wa4Fkw17CFyay3409rWUK3Wq9a45tFWDJF4r
+	XF4Fkr15Za4UXaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUm014x267AKxVW5JVWrJwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jr4l82xGYIkIc2
+	x26xkF7I0E14v26r4j6ryUM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
+	xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
+	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
+	kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
+	6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
+	vEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVj
+	vjDU0xZFpf9x0JU2dgAUUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
+From: Zhang Yi <yi.zhang@huawei.com>
 
-Hi Andreas,
+During the movement of a written extent, mext_page_mkuptodate() is
+called to read data in the range [from, to) into the page cache and to
+update the corresponding buffers. Therefore, we should not wait on any
+buffer whose start offset is >= 'to'. Otherwise, it will return -EIO and
+fail the extents movement.
 
-Thank you for pointing out the fundamental issue with my approach. You're right that removing __GFP_NOFAIL creates a worse problem by potentially triggering filesystem errors.
+ $ for i in `seq 3 -1 0`; \
+   do xfs_io -fs -c "pwrite -b 1024 $((i * 1024)) 1024" /mnt/foo; \
+   done
+ $ umount /mnt && mount /dev/pmem1s /mnt  # drop cache
+ $ e4defrag /mnt/foo
+   e4defrag 1.47.0 (5-Feb-2023)
+   ext4 defragmentation for /mnt/foo
+   [1/1]/mnt/foo:    0%    [ NG ]
+   Success:                       [0/1]
 
-I understand your suggestion about allowing the function to return errors so the caller can retry, but I need more specific guidance on the implementation approach.
+Fixes: a40759fb16ae ("ext4: remove array of buffer_heads from mext_page_mkuptodate()")
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/move_extent.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Questions:
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index adae3caf175a..4b091c21908f 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -225,7 +225,7 @@ static int mext_page_mkuptodate(struct folio *folio, size_t from, size_t to)
+ 	do {
+ 		if (bh_offset(bh) + blocksize <= from)
+ 			continue;
+-		if (bh_offset(bh) > to)
++		if (bh_offset(bh) >= to)
+ 			break;
+ 		wait_on_buffer(bh);
+ 		if (buffer_uptodate(bh))
+-- 
+2.46.1
 
-1. **Function signature change**: Should ext4_discard_preallocations() be changed from void to int to return error codes? This would require updating all 13+ callers I found.
-
-2. **Caller modifications**: How should the various callers (ext4_truncate, ext4_clear_inode, ext4_release_file, etc.) handle allocation failures during memory pressure? Should they:
-   - Retry the operation later?
-   - Skip preallocation cleanup temporarily?
-   - Handle it differently based on the calling context?
-
-3. **Memory pressure detection**: Is checking (current->flags & PF_MEMALLOC) the right approach to detect when we're in memory reclaim context?
-
-4. **Scope of changes**: Would you prefer:
-   - A minimal fix that just handles the allocation failure gracefully?
-   - A more comprehensive rework of the error handling throughout the preallocation discard path?
-
-I want to make sure I understand the preferred approach before submitting v2, especially since this affects multiple call sites throughout the ext4 codebase.
-
-Best regards,
-Deepanshu
