@@ -1,76 +1,77 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 44657262FE5
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Sep 2025 21:29:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 59CC8286894
+	for <linux-ext4@vger.kernel.org>; Fri, 26 Sep 2025 21:48:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1758922200; cv=none; b=sAUfzoVZwVS5EWHsSvqNNXsCxbDYniovbtJDQxA1rN7HDwCBXja09iIEky5NQeDaJxkoHJTLJSY6IORUreNsbm+uGp/y44ETTACevvK5A08FgCSVbzBw2OMS1O82EogWtPakMRxwzE851l7tSYdETHWdY3jOtv8fB79419A80QQ=
+	t=1758923282; cv=none; b=ARwqmH88r62g2kanShGOB7B8D4LVBJNRdm5aJ9/SjH82Xqu+vF+l07oztqpVSTEcWvT3+JZiqnLBpjdsPGVeDV8hnF/6884cq5ApyVUR1KOGsJp1nvGP7cQI/HsFQyYcBWviJdwveF8wKy/xD8s6nA7WTXHvkbIqFp1DIAr2lSw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1758922200; c=relaxed/simple;
-	bh=XjyzAhJGNgbnCTpF6Q06ehDUiUnI1Qq9zKdsVE4FoLE=;
-	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=uNGYnnYrqUD+DlHuOgQwkTXd9r0KH6rkYf7gmO/XWuloGsRrmM1Idip8GQyoXMXOuPBeSP+WdlhMtGBrNSSo5Zc2IW9qxjaeastLKzmgpjRcixx6RewOJM21YUZHFo89TO921nsW4gtLbpxoCKgt4r8F+zmYvBnJwAC6s36pebU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=XnRrOQNc; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1758923282; c=relaxed/simple;
+	bh=5oG4t0nfrm9fFwvjD36mzMEZQbeSsVBao177LpOvaKw=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=Er4OGjA7RIIWig1NekChcrF1oQT7HetMC8iqxWq4hCk/YNdM03kmfFYK3LyjhgcUa5Y5GZtEm+28aautH9n9g2p8uWlyYt/d688fZDOqItQDye1XKAxjZtI/jmZ7pvpZEh9mv1N4lvarDSEP5fftjRyLSNuPBcy4Y3o4djUbzF4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=pQBbs9YR; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="XnRrOQNc"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id CFB5FC113CF
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Sep 2025 21:29:59 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1758922199;
-	bh=XjyzAhJGNgbnCTpF6Q06ehDUiUnI1Qq9zKdsVE4FoLE=;
-	h=From:To:Subject:Date:In-Reply-To:References:From;
-	b=XnRrOQNcEurbE7qigYcr2UEc0W0gCG3Wsa1k2pOc+2ucQjsPW4p1zaPfpVEU3ky9b
-	 jVNNlbhnfVMi/hE22nf4KpFBJvkLxvOQwKIUasLLtt714VujpOMcpAuB5S7if+AAFx
-	 mEOm/yDsGE9rwnDKWIrYT1IIftGv4nzv5+NMHY8716EXNbP0KxuoTdtLI98PtS3NPQ
-	 rZOYvYeO8t4j4MWL0cmtsWPgPFIAsfhpfp0vFt081iIwHdzHmvGpN2uT9vStq+8uM6
-	 WUosQ+GJoN7a6k6VhSZdJgY/17AsS9oSwlZ7Wn4mqARMc4UwDu8WUNUYfygbbXsIzU
-	 ydcO/wDgJE1vg==
-Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
-	id BEB4CC53BBF; Fri, 26 Sep 2025 21:29:59 +0000 (UTC)
-From: bugzilla-daemon@kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 220594] Online defragmentation has broken in 6.16
-Date: Fri, 26 Sep 2025 21:29:59 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: low
-X-Bugzilla-Who: tytso@mit.edu
-X-Bugzilla-Status: REOPENED
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P3
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-220594-13602-5QZ8wQkkBV@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-220594-13602@https.bugzilla.kernel.org/>
-References: <bug-220594-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="pQBbs9YR"
+Received: from trampoline.thunk.org (pool-173-48-115-162.bstnma.fios.verizon.net [173.48.115.162])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 58QLlsu2014694
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 26 Sep 2025 17:47:55 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1758923275; bh=OdcokRjutK0YxbkiBd/GdaZqoODTCBY5QGX9e+e4tqc=;
+	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
+	b=pQBbs9YRIxk7gfJy/ygcvKbRvxCt3pYxoGwCMCXJBUK8PInRl+BmW0X+RXTYjkqNn
+	 SQPoUR6Y0IpUfqPI+Ao22myS4emfUS7tBtPgQETSmnujuEWvTPYFnFcwaLiZOOVcn+
+	 PM5WsT3xiHDZDHkiKK/AH/VV9j1eLJr7Nu1v2lQc4Vw3lKUisiq6+YnEWph4sH8YV0
+	 Z82oIZsvhs3cMs3Lsk0n03OxzwZdsF4hazY24g2iJRsQ82zbuNzpNHXIUxjncsI2DA
+	 X71Pr1o9RtooRoa7ovZVNrQj2XhTue/czuzj/X+Sjl1Yf9lGcKzigHf/g/8hMO2OxW
+	 Hc4W9NqyOlHzw==
+Received: by trampoline.thunk.org (Postfix, from userid 15806)
+	id D86692E00DC; Fri, 26 Sep 2025 17:47:53 -0400 (EDT)
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Jan Kara <jack@suse.cz>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: Fix checks for orphan inodes
+Date: Fri, 26 Sep 2025 17:47:37 -0400
+Message-ID: <175892300647.128029.6799624233457058163.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.51.0
+In-Reply-To: <20250925123038.20264-2-jack@suse.cz>
+References: <20250925123038.20264-2-jack@suse.cz>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D220594
 
---- Comment #6 from Theodore Tso (tytso@mit.edu) ---
-The reproducer file system which Artem sent me doesn't fail for me on both =
-6.16
-and 6.17-rc4.   So it maybe something which is specific to Artem's kernel or
-hardwaare configuration.
+On Thu, 25 Sep 2025 14:30:39 +0200, Jan Kara wrote:
+> When orphan file feature is enabled, inode can be tracked as orphan
+> either in the standard orphan list or in the orphan file. The first can
+> be tested by checking ei->i_orphan list head, the second is recorded by
+> EXT4_STATE_ORPHAN_FILE inode state flag. There are several places where
+> we want to check whether inode is tracked as orphan and only some of
+> them properly check for both possibilities. Luckily the consequences are
+> mostly minor, the worst that can happen is that we track an inode as
+> orphan although we don't need to and e2fsck then complains (resulting in
+> occasional ext4/307 xfstest failures). Fix the problem by introducing a
+> helper for checking whether an inode is tracked as orphan and use it in
+> appropriate places.
+> 
+> [...]
 
---=20
-You may reply to this email to add a comment.
+Applied, thanks!
 
-You are receiving this mail because:
-You are watching the assignee of the bug.=
+[1/1] ext4: Fix checks for orphan inodes
+      commit: acf943e9768ec9d9be80982ca0ebc4bfd6b7631e
+
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
