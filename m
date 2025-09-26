@@ -1,48 +1,49 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9E166296BAB
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E60F21A2C11
 	for <linux-ext4@vger.kernel.org>; Fri, 26 Sep 2025 21:48:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1758923284; cv=none; b=QXHc00CeiED7IR9Ek5xS8GF+W8yeQmTV0yqyzjT7DV+e9Nc/wbacFU5JDizTxBw6gF6ocBC8tafgeBN2N3z6E2pXLXSFLMhGUcM1WcHuG1RZKydBgd94XAP41S+0aqA90h1tVaUumfsdxG22eIoS8dLiEtSplH7W2XWUlrC+Zp4=
+	t=1758923284; cv=none; b=pPs9UKHK+ucuYBjAb9wt40B9BfnNUXMvJcW/m9BhmcIPh8Io6AqVCKRHM4g9zFmeQlpeWtruLQuWUyEF26jQj0EOaM94bNM4tvrP3GJBOf7fQGNq9pl1MT1CP3ADvAjVql1qwlPp20H3n1MCothChylfksUVIS8mh5Vzj7d5tt0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1758923284; c=relaxed/simple;
-	bh=MkWU/6f+fSnUl/CL1Qlh8jEvh7y4pv+/R48UasHyjpo=;
+	bh=wM1ZdKu8TbDZj+AqXMs7WCeaV16PbANvzAExvV/7kwA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=f4nVXchb4pRhLlbMyUwmcCCohuyJ6aa6AsDMADYloxC93jECxdoDD3tA3mZs2B3k0VntHr4ogYbK3qwHKflydAmC6st5K+Ukwl27yCizFkZNnBq5p9jWYoxVn4yYF6XXdBeA6hXMTR5ZC01ouByx05FogRtrAHhIXEfV9mWq5y0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=okvM/xzL; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=OVRy+Ib2iQDV44KYwS3wcoT4IIfS0ZE6o+25CuXxdJZMuG9hqtW/LzkvbQKHc0V4lRD4FgOMYd3+OQ9oGXze0r6c5wjOqXmu/bG/yfXblnMdGZk7r/HtngP1soMzwYMqwaFLBsKaiK0BuYNO/7JhX08b4sC80AZlt9JFdYPZsPg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=lvDb9VVw; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="okvM/xzL"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="lvDb9VVw"
 Received: from trampoline.thunk.org (pool-173-48-115-162.bstnma.fios.verizon.net [173.48.115.162])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 58QLluwG014774
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 58QLltDP014728
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 26 Sep 2025 17:47:57 -0400
+	Fri, 26 Sep 2025 17:47:56 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1758923277; bh=6L9BUYeyyOIIfKv4k8/ENXrK8PLqjkbHu0SkOFX77yg=;
+	t=1758923277; bh=lNpPeubtMKFqy2oXXeK426X4c097gMLqfGNSXOWUvgw=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=okvM/xzLXmFFsMUvMGjj98Y7fnsN/Mnx6uWFujjfV4SwghOkgknkktnfypy3ZqJIY
-	 UQDUNMYCKw3+OoT7AKtwAC5rJxaj9D4G5o1H86+3AwSFKx0nQ4ERGUj8K7Y7UT5j2Y
-	 t7+A//2df+PnwA88JczYm+uBvNx2bXnQuGFTwGz6xXuZBCkkRf72Fc+8r0b9/MZ8Qp
-	 W7F+aEwCfAnYOxkHOg3pQnQCr7BL8PUspJsNtbYJyLErM/b2Q6SIIL9xjjXiJQMYul
-	 QT9gtcorUcN8b3VuciQofD89cduVQycIgoR7m1wDGGfyjnOblpL0H1+k8Z1kEia0S9
-	 WzOyimw3PXUbw==
+	b=lvDb9VVwE1bbDg0cz5QhNdTuHC+fSCsU7pjxWwuKw791N3VGjL1zR1yppqOSKFSdK
+	 0Ef46O7HNfm2nDf35zwDrnqYuw+MCar9axobLmPonGmgh+cIGHA7jTzGvSJnZiFcbS
+	 jr8rzLSiNjN+OE0eVXnHpGZjdIKH89zbs1VU39/X0TjhNAJimSBzurWHq+2pWu2Rrh
+	 BBcSf/ig0ROlE9hyddL9mDGkVrOX7/oZEua8a3soR8/NfoHbmEVJ+sw883MiNjp3K4
+	 O+q6A+f0AwuVLvOa8miYDgheFbjdacmJRWcp24k9UJtzrq61Q8WefMP2ZEZm98/U+d
+	 CzOL87rZN1Ojg==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id F31892E00E6; Fri, 26 Sep 2025 17:47:53 -0400 (EDT)
+	id DD7EB2E00DE; Fri, 26 Sep 2025 17:47:53 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, linux-api@vger.kernel.org,
-        stable@vger.kernel.org
-Subject: Re: [PATCH v2 0/3] ext4: Add support for mounted updates to the superblock via an ioctl
-Date: Fri, 26 Sep 2025 17:47:47 -0400
-Message-ID: <175892300645.128029.14007371112529693095.b4-ty@mit.edu>
+To: Deepanshu Kartikey <kartikey406@gmail.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        syzbot+4c9d23743a2409b80293@syzkaller.appspotmail.com
+Subject: Re: [PATCH v2] ext4: validate ea_ino and size in check_xattrs
+Date: Fri, 26 Sep 2025 17:47:39 -0400
+Message-ID: <175892300646.128029.17851339613487184890.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20250916-tune2fs-v2-0-d594dc7486f0@mit.edu>
-References: <20250916-tune2fs-v2-0-d594dc7486f0@mit.edu>
+In-Reply-To: <20250923133245.1091761-1-kartikey406@gmail.com>
+References: <20250923133245.1091761-1-kartikey406@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,26 +54,22 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Tue, 16 Sep 2025 23:22:46 -0400, Theodore Ts'o wrote:
-> This patch series enables a future version of tune2fs to be able to
-> modify certain parts of the ext4 superblock without to write to the
-> block device.
+On Tue, 23 Sep 2025 19:02:45 +0530, Deepanshu Kartikey wrote:
+> During xattr block validation, check_xattrs() processes xattr entries
+> without validating that entries claiming to use EA inodes have non-zero
+> sizes. Corrupted filesystems may contain xattr entries where e_value_size
+> is zero but e_value_inum is non-zero, indicating invalid xattr data.
 > 
-> The first patch fixes a potential buffer overrun caused by a
-> maliciously moified superblock.  The second patch adds support for
-> 32-bit uid and gid's which can have access to the reserved blocks pool.
-> The last patch adds the ioctl's which will be used by tune2fs.
+> Add validation in check_xattrs() to detect this corruption pattern early
+> and return -EFSCORRUPTED, preventing invalid xattr entries from causing
+> issues throughout the ext4 codebase.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/3] ext4: avoid potential buffer over-read in parse_apply_sb_mount_options()
-      commit: 8ecb790ea8c3fc69e77bace57f14cf0d7c177bd8
-[2/3] ext4: add support for 32-bit default reserved uid and gid values
-      commit: 12c84dd4d308551568d85203fd6ed2685e861fda
-[3/3] ext4: implemet new ioctls to set and get superblock parameters
-      commit: 04a91570ac67760301e5458d65eaf1342ecca314
+[1/1] ext4: validate ea_ino and size in check_xattrs
+      commit: 44d2a72f4d64655f906ba47a5e108733f59e6f28
 
 Best regards,
 -- 
