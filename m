@@ -1,49 +1,48 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E60F21A2C11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2D4B4286D4B
 	for <linux-ext4@vger.kernel.org>; Fri, 26 Sep 2025 21:48:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1758923284; cv=none; b=pPs9UKHK+ucuYBjAb9wt40B9BfnNUXMvJcW/m9BhmcIPh8Io6AqVCKRHM4g9zFmeQlpeWtruLQuWUyEF26jQj0EOaM94bNM4tvrP3GJBOf7fQGNq9pl1MT1CP3ADvAjVql1qwlPp20H3n1MCothChylfksUVIS8mh5Vzj7d5tt0=
+	t=1758923285; cv=none; b=e58pCvMlTiW63popLhJoNGVdDQdSxtShI7jdwYk1MYiV1xtATUEEBxwAWF+scLCAhXObnUguC9R7DLT+9qsyiDHz+XGUivfiV6d3+vD82rIt8AloIo0e9GuqbIeRVt80hCqH0j6Hci3/meoYg8JF8bIT7SQYwtGqbWgxRSSehk8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1758923284; c=relaxed/simple;
-	bh=wM1ZdKu8TbDZj+AqXMs7WCeaV16PbANvzAExvV/7kwA=;
+	s=arc-20240116; t=1758923285; c=relaxed/simple;
+	bh=PrirZ8DwHxYOKiKvv6l5QCUtmPNPWKAhnoYsv9+LeUg=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=OVRy+Ib2iQDV44KYwS3wcoT4IIfS0ZE6o+25CuXxdJZMuG9hqtW/LzkvbQKHc0V4lRD4FgOMYd3+OQ9oGXze0r6c5wjOqXmu/bG/yfXblnMdGZk7r/HtngP1soMzwYMqwaFLBsKaiK0BuYNO/7JhX08b4sC80AZlt9JFdYPZsPg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=lvDb9VVw; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=LN/XMg9SY6usfVrmbUBJUCSGqEfxwMqSRxxzwcnJjtg1L4y8HAwmke6faYGDY4V7Gpdbf2swWEPI2Ux+gY0SXYEzlIvoCG8c/qEoZKed9PHX5KMe/uRh7+yFzBt+1lwDZ8UcfX4rEPTBBiiytUPMNEld4x9D9c6I+Xz2gjkxy9w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=a6YhqvOl; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="lvDb9VVw"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="a6YhqvOl"
 Received: from trampoline.thunk.org (pool-173-48-115-162.bstnma.fios.verizon.net [173.48.115.162])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 58QLltDP014728
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 58QLlv64014794
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 26 Sep 2025 17:47:56 -0400
+	Fri, 26 Sep 2025 17:47:58 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1758923277; bh=lNpPeubtMKFqy2oXXeK426X4c097gMLqfGNSXOWUvgw=;
+	t=1758923279; bh=jYCaPO50HXjjJPUVno9CgyqTQ1U5Se94RTPV31moWL8=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=lvDb9VVwE1bbDg0cz5QhNdTuHC+fSCsU7pjxWwuKw791N3VGjL1zR1yppqOSKFSdK
-	 0Ef46O7HNfm2nDf35zwDrnqYuw+MCar9axobLmPonGmgh+cIGHA7jTzGvSJnZiFcbS
-	 jr8rzLSiNjN+OE0eVXnHpGZjdIKH89zbs1VU39/X0TjhNAJimSBzurWHq+2pWu2Rrh
-	 BBcSf/ig0ROlE9hyddL9mDGkVrOX7/oZEua8a3soR8/NfoHbmEVJ+sw883MiNjp3K4
-	 O+q6A+f0AwuVLvOa8miYDgheFbjdacmJRWcp24k9UJtzrq61Q8WefMP2ZEZm98/U+d
-	 CzOL87rZN1Ojg==
+	b=a6YhqvOlcKHv77hRYsjN28x1W+bJ8Si5fS/RfR1dw8KDsZmhCDaljgTJ0yGeANuj5
+	 6djOIq9Un8c1jIUqwblaBJfdwU0GhUJQiqgu9vgSKbJmuqrz96DY3eSLm+aRWuCHaN
+	 CRCuujtdKedoU7Iz1BHnQfpSxbd/Xb7Pttx3tRdjccPslYFrZwWMC/tg7TIB4h4dCe
+	 V/ojsRprwMP9oCUQRK6zH5vIzrCjV4bRM5fnP6u3dX0WXnTg8RD5QWOMHuyz1tkjoe
+	 MMWyVOKV6TTgH/bPcVWyinPG7z6SgGgRECf5mDnWVIYP9VjieheBZwfOflE9nUHLJm
+	 9lejb5aBHHZhw==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id DD7EB2E00DE; Fri, 26 Sep 2025 17:47:53 -0400 (EDT)
+	id 043982E00E8; Fri, 26 Sep 2025 17:47:54 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Deepanshu Kartikey <kartikey406@gmail.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        syzbot+4c9d23743a2409b80293@syzkaller.appspotmail.com
-Subject: Re: [PATCH v2] ext4: validate ea_ino and size in check_xattrs
-Date: Fri, 26 Sep 2025 17:47:39 -0400
-Message-ID: <175892300646.128029.17851339613487184890.b4-ty@mit.edu>
+To: adilger.kernel@dilger.ca, Xichao Zhao <zhao.xichao@vivo.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: replace min/max nesting with clamp()
+Date: Fri, 26 Sep 2025 17:47:49 -0400
+Message-ID: <175892300639.128029.16772861472569556620.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20250923133245.1091761-1-kartikey406@gmail.com>
-References: <20250923133245.1091761-1-kartikey406@gmail.com>
+In-Reply-To: <20250818072859.468081-1-zhao.xichao@vivo.com>
+References: <20250818072859.468081-1-zhao.xichao@vivo.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -54,22 +53,17 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Tue, 23 Sep 2025 19:02:45 +0530, Deepanshu Kartikey wrote:
-> During xattr block validation, check_xattrs() processes xattr entries
-> without validating that entries claiming to use EA inodes have non-zero
-> sizes. Corrupted filesystems may contain xattr entries where e_value_size
-> is zero but e_value_inum is non-zero, indicating invalid xattr data.
+On Mon, 18 Aug 2025 15:28:59 +0800, Xichao Zhao wrote:
+> The clamp() macro explicitly expresses the intent of constraining a value
+> within bounds.Therefore, replacing max(min(a,b),c) with clamp(val, lo, hi)
+> can improve code readability.
 > 
-> Add validation in check_xattrs() to detect this corruption pattern early
-> and return -EFSCORRUPTED, preventing invalid xattr entries from causing
-> issues throughout the ext4 codebase.
 > 
-> [...]
 
 Applied, thanks!
 
-[1/1] ext4: validate ea_ino and size in check_xattrs
-      commit: 44d2a72f4d64655f906ba47a5e108733f59e6f28
+[1/1] ext4: replace min/max nesting with clamp()
+      commit: 981b696faf2d59a58d1dc8e258bba00b12e5de93
 
 Best regards,
 -- 
