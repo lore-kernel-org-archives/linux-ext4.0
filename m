@@ -1,50 +1,48 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 29B4228B4FD
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Sep 2025 21:48:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9E166296BAB
+	for <linux-ext4@vger.kernel.org>; Fri, 26 Sep 2025 21:48:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1758923282; cv=none; b=KtYFSXvsCYY4RsinlY9LArXc2GsQyubU8Xt0DUVwi2E2q2DYkG7guhGQ9/YHVGFs1nIA5o2vXeDvBtcoYTb9x7BbxCfFfwWu87VSTSlGr93nXKe0vYjN8R9qbEk39duZnJMJza7GJKprZ2ieYwlvPW+uB/Fv993r9VUmea1f+2g=
+	t=1758923284; cv=none; b=QXHc00CeiED7IR9Ek5xS8GF+W8yeQmTV0yqyzjT7DV+e9Nc/wbacFU5JDizTxBw6gF6ocBC8tafgeBN2N3z6E2pXLXSFLMhGUcM1WcHuG1RZKydBgd94XAP41S+0aqA90h1tVaUumfsdxG22eIoS8dLiEtSplH7W2XWUlrC+Zp4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1758923282; c=relaxed/simple;
-	bh=9NNO5o373SqWmt6lRk8DvxTwe9onkIyB00giMfN4AYA=;
+	s=arc-20240116; t=1758923284; c=relaxed/simple;
+	bh=MkWU/6f+fSnUl/CL1Qlh8jEvh7y4pv+/R48UasHyjpo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=KguWTpFcHyvwyaXolk72Oj3TOX7Xpu93bpUmn6xgZMPM5SMXE3EhFQRQqQB/GCVS6dT4rOVs0ug7WxInzfIi/2e9XmbOnFycXOpPJR913ZPzfCtHLcp1mxE6k3D0RxGvGedLg6DvaI7zqHpaHBzPC2FK3rdi3NQ8i5IBYVBy7gQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=kxixSHYF; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=f4nVXchb4pRhLlbMyUwmcCCohuyJ6aa6AsDMADYloxC93jECxdoDD3tA3mZs2B3k0VntHr4ogYbK3qwHKflydAmC6st5K+Ukwl27yCizFkZNnBq5p9jWYoxVn4yYF6XXdBeA6hXMTR5ZC01ouByx05FogRtrAHhIXEfV9mWq5y0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=okvM/xzL; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="kxixSHYF"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="okvM/xzL"
 Received: from trampoline.thunk.org (pool-173-48-115-162.bstnma.fios.verizon.net [173.48.115.162])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 58QLlslu014684
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 58QLluwG014774
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 26 Sep 2025 17:47:55 -0400
+	Fri, 26 Sep 2025 17:47:57 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1758923276; bh=5zfWWRMDmJQ6sgyIHjdjHF2ZrLrX84iVpbUGQfi3jjs=;
+	t=1758923277; bh=6L9BUYeyyOIIfKv4k8/ENXrK8PLqjkbHu0SkOFX77yg=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=kxixSHYF6P1m94PzYyxOuBt82NAYLUHFK9vEdlDALwwVYgr8QsYmUOyLpV6RBIJ4f
-	 G6DAvXllMeLqUdcUjDBGllNpwmcMCqV+nDBbFqn/vjLrdnQ8jF5/Qbaq1bolxWW3o3
-	 eZ1RXymYlJpeGh1/jz9FSKiXRCdK3OBBnBn9IlxMPpfesKd6NnUA6aXRfFEyNIKoGy
-	 sWHbbTS2EPT2iqzQcKDbGfaAllg/n048smGwJwl0ZTTKrF+/7ltJYHgMhEKmIrzbyY
-	 0bFP+dl653KnehjvZe/ymzfUYUTG+iLp9LuZ2Xf2szztiw+5knoh4YxaO+Yn4VOxIQ
-	 58KC8iLSx5eVg==
+	b=okvM/xzLXmFFsMUvMGjj98Y7fnsN/Mnx6uWFujjfV4SwghOkgknkktnfypy3ZqJIY
+	 UQDUNMYCKw3+OoT7AKtwAC5rJxaj9D4G5o1H86+3AwSFKx0nQ4ERGUj8K7Y7UT5j2Y
+	 t7+A//2df+PnwA88JczYm+uBvNx2bXnQuGFTwGz6xXuZBCkkRf72Fc+8r0b9/MZ8Qp
+	 W7F+aEwCfAnYOxkHOg3pQnQCr7BL8PUspJsNtbYJyLErM/b2Q6SIIL9xjjXiJQMYul
+	 QT9gtcorUcN8b3VuciQofD89cduVQycIgoR7m1wDGGfyjnOblpL0H1+k8Z1kEia0S9
+	 WzOyimw3PXUbw==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id D31B82E00D5; Fri, 26 Sep 2025 17:47:53 -0400 (EDT)
+	id F31892E00E6; Fri, 26 Sep 2025 17:47:53 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: adilger.kernel@dilger.ca, Ahmet Eray Karadag <eraykrdg1@gmail.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        syzbot+0be4f339a8218d2a5bb1@syzkaller.appspotmail.com,
-        Albin Babu Varghese <albinbabuvarghese20@gmail.com>
-Subject: Re: [PATCH v2] Fix: ext4: guard against EA inode refcount underflow in xattr update
-Date: Fri, 26 Sep 2025 17:47:35 -0400
-Message-ID: <175892300646.128029.18166257596583769324.b4-ty@mit.edu>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, linux-api@vger.kernel.org,
+        stable@vger.kernel.org
+Subject: Re: [PATCH v2 0/3] ext4: Add support for mounted updates to the superblock via an ioctl
+Date: Fri, 26 Sep 2025 17:47:47 -0400
+Message-ID: <175892300645.128029.14007371112529693095.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20250920021342.45575-1-eraykrdg1@gmail.com>
-References: <20250918175545.48297-1-eraykrdg1@gmail.com> <20250920021342.45575-1-eraykrdg1@gmail.com>
+In-Reply-To: <20250916-tune2fs-v2-0-d594dc7486f0@mit.edu>
+References: <20250916-tune2fs-v2-0-d594dc7486f0@mit.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -55,21 +53,26 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Sat, 20 Sep 2025 05:13:43 +0300, Ahmet Eray Karadag wrote:
-> syzkaller found a path where ext4_xattr_inode_update_ref() reads an EA
-> inode refcount that is already <= 0 and then applies ref_change (often
-> -1). That lets the refcount underflow and we proceed with a bogus value,
-> triggering errors like:
+On Tue, 16 Sep 2025 23:22:46 -0400, Theodore Ts'o wrote:
+> This patch series enables a future version of tune2fs to be able to
+> modify certain parts of the ext4 superblock without to write to the
+> block device.
 > 
->   EXT4-fs error: EA inode <n> ref underflow: ref_count=-1 ref_change=-1
->   EXT4-fs warning: ea_inode dec ref err=-117
+> The first patch fixes a potential buffer overrun caused by a
+> maliciously moified superblock.  The second patch adds support for
+> 32-bit uid and gid's which can have access to the reserved blocks pool.
+> The last patch adds the ioctl's which will be used by tune2fs.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] Fix: ext4: guard against EA inode refcount underflow in xattr update
-      commit: 57295e835408d8d425bef58da5253465db3d6888
+[1/3] ext4: avoid potential buffer over-read in parse_apply_sb_mount_options()
+      commit: 8ecb790ea8c3fc69e77bace57f14cf0d7c177bd8
+[2/3] ext4: add support for 32-bit default reserved uid and gid values
+      commit: 12c84dd4d308551568d85203fd6ed2685e861fda
+[3/3] ext4: implemet new ioctls to set and get superblock parameters
+      commit: 04a91570ac67760301e5458d65eaf1342ecca314
 
 Best regards,
 -- 
