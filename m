@@ -1,74 +1,102 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pf1-f171.google.com (mail-pf1-f171.google.com [209.85.210.171])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CA9F930FC06
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Sep 2025 21:48:31 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1683C282E1
+	for <linux-ext4@vger.kernel.org>; Sat, 27 Sep 2025 00:18:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.171
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1758923314; cv=none; b=Rqy3tucwPbm0MI006whjK3ZUtvqVSG4SM77nLvhmyIx2IZNYMZbuOMqGqgRn8x36tNCU7X2ARz99lmR7ssFzLtEiBjGm6hvTroVvOJUCpMskKJl3Vd4oj3Cf0JfyY3kvw8LqNLoECno83/K/3tVGmQG2VzyMAgnBhXm1dTqU5GI=
+	t=1758932302; cv=none; b=tX4MWP2qtFIO2RAvCHjm/MGb2L5VwR2+PPFe7QvT//w6eGrWkBKS/FliNXDmzCV0aIuEDELygbO+gwU77M6TqRM7BkjkLR96x3Yf+gEib1qpGPBvyR0lBPghSYaHAeQ0CDEcuYNPb7ejPbHaGvaw5H1yyF14U4mMQni7xLgZpU0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1758923314; c=relaxed/simple;
-	bh=gxgZqhwH/mTgPoELIYApERxo593egAgyTQKocED8Rlo=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=KmvVJrxnMgIJ6Y02pl+bdLF9DtDZ1YeNo0gHXGdenwFN+ps+sqO+6bTjJx+kk3bV/f9Ofp3kHVTSnl/nUf2CQ3UHRfu9A72pAhN6kWuP0PFnoxBMrPR4/El9xXoCFOqiIZnwtgOmwHxjMP8LNYrb5XGpYq/mJA1LM8y8UwelSps=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Cbe/n7B3; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1758932302; c=relaxed/simple;
+	bh=OCMM1i+marxjh6pUkwTDhMRBuqlU+02sLHnJrahSSHk=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=GiWUc6FgTrYyzbT4dYzATD/Ppg6XBkOlYukDaiHigtCQ+2vnj3KSWgcr9TMWZ32+6lD4f5iyU3tf2iTXxAtffUxy/VgxPevaKE5llIOCj9WGE5iPjQmI1aLmUZWQ6l5knMCd3e0F2SGnQy6s53F48kdc/shnUOJi4HNMWJyQRig=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ji76DU+Q; arc=none smtp.client-ip=209.85.210.171
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Cbe/n7B3"
-Received: from trampoline.thunk.org (pool-173-48-115-162.bstnma.fios.verizon.net [173.48.115.162])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 58QLluuO014767
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 26 Sep 2025 17:47:57 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1758923278; bh=4O8aGl8jnSeE+Eb9p/N1s4cwgutKvArz/nVzl2lN+WI=;
-	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=Cbe/n7B3SUBKwUUXouaMj7u0bvzmJNqO+ReUIDqxuHP0/6b2JlwhkSbLEHG2zOUhF
-	 Hn2KiBAQGUSTU1VW0FVwNkyfeE3EYA4Tt0UPjF/dQCA7+TcJi489mLJ0DtUoR+yiD7
-	 SChhd94uxmwbZaL3rLSHQQ/BkuocC/6V8XG9Vf36Z17O33PUASfqNeEOgiz3Iha+Sf
-	 LgVStLlVIN9K143OLfOemSjbtv+hwPDBzbc18fZBx9EHtXXoEHAVANq/Rgue7n9ZyE
-	 sKswdgmUqt9RpWdXUi9ufGV+2WLrRYY3g6a8QdUmkKyKMf/DyIL9ynF4vpxJMhFxKq
-	 aw9HzjsYcfwqg==
-Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id F08532E00E5; Fri, 26 Sep 2025 17:47:53 -0400 (EDT)
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org, Yongjian Sun <sunyongjian@huaweicloud.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
-        jack@suse.cz, yangerkun@huawei.com, yi.zhang@huawei.com,
-        libaokun1@huawei.com, chengzhihao1@huawei.com, sunyongjian1@huawei.com
-Subject: Re: [PATCH v5] ext4: increase i_disksize to offset + len in ext4_update_disksize_before_punch()
-Date: Fri, 26 Sep 2025 17:47:46 -0400
-Message-ID: <175892300644.128029.8297502087637094289.b4-ty@mit.edu>
-X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20250911133024.1841027-1-sunyongjian@huaweicloud.com>
-References: <20250911133024.1841027-1-sunyongjian@huaweicloud.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ji76DU+Q"
+Received: by mail-pf1-f171.google.com with SMTP id d2e1a72fcca58-781010ff051so1974844b3a.0
+        for <linux-ext4@vger.kernel.org>; Fri, 26 Sep 2025 17:18:20 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1758932300; x=1759537100; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=xoCdX6M4UpRUuPuNk8r9g0MkweOF1WQ1ahjsQ+1be2I=;
+        b=ji76DU+QqbB+DgNlMxXt2KlSbBre8YycpupJP8mMKUOXqBQ2/QjdZS3HjgAfAMq5K5
+         HPFYBqOEJ6dyhgWxcCr/foew9HGtqbkSbakhCf9fk/JGyOA03XTgcztfjKtTSW+VkRkN
+         xwY6VvUKmYbvw25D5SzwXltiiFQL602rFGdIB4R+0qiU+ovfHlEakqN5uX1I5jNi1aUo
+         fLATDnxZ5unFzWRaB1ntHV9jo+/IvZZDCdptPSZJuJdBW5Zv6wIiD7WvLW9nkfy2Tb/g
+         uhDWix9ML8rydZqSCfjbZYVJzjTfPnN8dABdiZ30RR42XsGgosfoFPHR7z5EtTIYPUoR
+         mcRw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1758932300; x=1759537100;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=xoCdX6M4UpRUuPuNk8r9g0MkweOF1WQ1ahjsQ+1be2I=;
+        b=LPDb+duc7xtOgUqoz8wPLN6h7bmPphcq3B3DJRZuNEAE8YaBcVTJl5slUe22p5gSM3
+         2Yfl6xAdmGWKUlZsxJbKy65SbF5w5iahWeoOwJbZTOmCaOQg6gwZPiO9d6fCzbA/OHRE
+         maG3EZ2KnFQh50GvKJAS7bDzowqRCCB/puKkvjNyKbZIN2ElKWwxsCRX0GvVnzuNE4jG
+         dnr9KCa9c8xc0vmUYWDRnJSukRQsHAzq3QqDIg1GK8aIK7pQTg2BZXKhHqH+Mq/O4x0o
+         IBqxsUn3iIB7gee9hGbl5ZVYYBfqNcsy71U/aQy5xtkHQI1Cpwf31AVZ0Ga5XDsp304s
+         d7uQ==
+X-Gm-Message-State: AOJu0YxX9mnviosAcIN1QK9FpFY2mWrnszXrjdENe3lxYDBQ9hjqbre7
+	G05QI9npsfI4RQEMM2wZ9sHYhNaMVvyV9JskDDUzTbGsQwVuQPLP40yoOx0Yr+x2f0s=
+X-Gm-Gg: ASbGncuMtJ5XnqXng8IPIlYq7JHX1nN9eKB82z+ADJyH33h7HbveQwL1uPpFg+EftHE
+	Zn45ScJbo/APMEYrPiFgscKCnT7UwzMZro057i6ujgLerK/3UAQln3/6NBlg/IEG8W/wqoJo1ec
+	xLiTaKPDgZHey5mtGdY+HCN2s5ytfHIicXgCN6s8sHTq2RrRV2+MOFc1RFMQxZ5itkLZUweITmv
+	+VpuRak4I0dWrRTFU/8QmK3KNdAN50TE60PWLovozMcxL0GWS8kCqgS24nVhPri+EibDtmp6z6n
+	s+HwpYdRrbyl/W7J8inG5UfdlVWZuUoYRwTTWaeYMkM4bIkJTmDQ8X9e88J7FYEaVHcxIMvhTDT
+	srcO8oD1DyonMk+//8gm800X8THfrDQAP4r43gCcyaS3bmZzjy4zy3J4Zo7FjVZ3FNFy2g9gPA6
+	L1tMyUkYNmHapO
+X-Google-Smtp-Source: AGHT+IE9iOU0xGbfc6wu5KJMpk4TLbi5OzVytsj49pIWcOaRGPjom/RdtIiWb7W0JE+msvBxROCd0w==
+X-Received: by 2002:a17:90b:3e83:b0:32e:389b:8762 with SMTP id 98e67ed59e1d1-3342a158113mr10059781a91.0.1758932300355;
+        Fri, 26 Sep 2025 17:18:20 -0700 (PDT)
+Received: from deepanshu-kernel-hacker.. ([2405:201:682f:3094:9584:386:9d60:7b43])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-334352935d3sm3151967a91.3.2025.09.26.17.18.18
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 26 Sep 2025 17:18:19 -0700 (PDT)
+From: Deepanshu Kartikey <kartikey406@gmail.com>
+To: adilger.kernel@dilger.ca
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: fix allocation failure in ext4_mb_load_buddy_gfp
+Date: Sat, 27 Sep 2025 05:48:15 +0530
+Message-ID: <20250927001815.16635-1-kartikey406@gmail.com>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
+Hi Andreas,
 
-On Thu, 11 Sep 2025 21:30:24 +0800, Yongjian Sun wrote:
-> After running a stress test combined with fault injection,
-> we performed fsck -a followed by fsck -fn on the filesystem
-> image. During the second pass, fsck -fn reported:
-> 
-> Inode 131512, end of extent exceeds allowed value
-> 	(logical block 405, physical block 1180540, len 2)
-> 
-> [...]
+Thank you for the detailed analysis of the tradeoffs.
 
-Applied, thanks!
+Looking at the syzbot report (https://syzkaller.appspot.com/bug?extid=fd3f70a4509fca8c265d), 
+this WARNING appears 4 times, so while not frequent, it's a real issue that occurs 
+under memory pressure conditions.
 
-[1/1] ext4: increase i_disksize to offset + len in ext4_update_disksize_before_punch()
-      commit: 9d80eaa1a1d37539224982b76c9ceeee736510b9
+Your -EAGAIN suggestion makes sense. The approach would be:
+1. During memory reclaim, use GFP_NOFS without __GFP_NOFAIL
+2. If allocation fails, return -EAGAIN to let reclaim skip this inode
+3. Preallocation cleanup happens later when memory is available
+
+I understand this requires modifying the function signature and updating all call 
+sites. I'm willing to do this work and properly test each caller's error handling. 
+
+Questions on implementation:
+- Should callers like ext4_clear_inode() ignore -EAGAIN (leave cleanup for later)?
+- Should callers like ext4_truncate() retry or also defer?
+- For the unused "int needed" parameter you mentioned - should I remove it in the 
+  same patch or separately?
+
+I'd like to implement this fix properly rather than leaving the WARNING unaddressed. 
+Could you provide guidance on the preferred error handling for the different caller 
+contexts?
 
 Best regards,
--- 
-Theodore Ts'o <tytso@mit.edu>
+Deepanshu
