@@ -1,17 +1,17 @@
 Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id E58C230F524
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id E0A3030C61C
 	for <linux-ext4@vger.kernel.org>; Thu,  2 Oct 2025 08:14:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1759392844; cv=none; b=eGdDCO4k+X/s3HI89OlEEk/SvmqHM3L4X9lYntDNQbXngCPzZ+VzOpEtSuQCk7MfRaaj4YlHPF3iZwm5dIepUeiG0myhM572Co5oWQ+3v/gfAn5+lRKiEJWnVjEDqfq+e1wlbYOIaG9Qv0QYxaBcznTd+qOTNWsGFS7PbdwMvFE=
+	t=1759392845; cv=none; b=rTXPJTCKBlMQpQDaYbkR7pcJDWI8dM6qm2UvY1JP9xQmJ6fiTxaLC53HkNH9WLM92Qy2R3vn/kaY7LbwL9A2tjj3T9gIatjgvcFrBQEjDarMz4kdTSvBtCn9mZnpwe7fTV3zkM3DhRrgxRinuYeGeiJESmJkZjImH2xL+7E7+Ig=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1759392844; c=relaxed/simple;
-	bh=ie7Z6O65nZEyytmhWplooZ/RfzjoEP4K1Lb9yqntV+o=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=P32ZmrK3dQnXGfyfHZzH9JNh4on4RPyv8IvSgHIAZ3vUkd97ceqlqruBVeEGQG/WDV2YyzfXaLWOkv2JesgK6mxV9B4sv7hS1/nEB66oePO5tXkKlVG44sEO3F4Q7fmeIn0OKf+uSTUXICEVMLuyIZg5pp0bwtl4C5A/TxLGGP8=
+	s=arc-20240116; t=1759392845; c=relaxed/simple;
+	bh=aUyn6kbD13lpyrV+9RVcwjxIaUKLCg4/lG2fnS/j5oM=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=GKl4M878x8IK+bcoqJx6GTGsg73pddfU3LEG25agDmpIdXBINj851U+OP4E3dYjFpttDFb5JdP9kr3RumW16V0Xmr16vJiuxDTmFUUgrhiMYKqJlfXJ4j74hIRdIaWrt7eN9wBRr/ioRuP2seetNF9JpWRk/0FmRvZJ6CatPxlc=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c45ff70000001609-66-68de3412bbdc
+X-AuditID: a67dfc5b-c45ff70000001609-de-68de3413f895
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -162,43 +162,43 @@ Cc: kernel_team@skhynix.com,
 	rcu@vger.kernel.org,
 	linux-nfs@vger.kernel.org,
 	linux-rt-devel@lists.linux.dev
-Subject: [PATCH v17 32/47] dept: assign unique dept_key to each distinct dma fence caller
-Date: Thu,  2 Oct 2025 17:12:32 +0900
-Message-Id: <20251002081247.51255-33-byungchul@sk.com>
+Subject: [PATCH v17 36/47] dept: assign unique dept_key to each distinct wait_for_completion() caller
+Date: Thu,  2 Oct 2025 17:12:36 +0900
+Message-Id: <20251002081247.51255-37-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20251002081247.51255-1-byungchul@sk.com>
 References: <20251002081247.51255-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0hTYRjHe88579kcLg7L6KTdGEglZatWPN2kPoTvlyCqD5VkrTy44Zwx
-	01wULUvoosNWaTnTaSpDZ5fZh8rsskpqplmKrdLlxEYm0/Ky0pSaK7/9+D8//vw/PGJadgFH
-	ijW6I4Jep9LKWQkj8YeXLZ+l9KgVntHFUHzLzsJZxzUMrTdrEEyaG0VQ8NZMwxVvLwuFfacY
-	6HsRD/7P9RgmC1Lgd/MbGsq8XTTcbfQgaOudCdbsBgxN+eUUFNyZA5bC0xRcqa2noMoYDZbm
-	Ngw9tiIR/LGmwStPB4Z+n5kFx4cXCEbavRRcK+kMDpgcQeCx/8FgtPzE8K6mlYE3D2oxeLvd
-	wWUX8zBcGvAh6A9U0VA1OigC249CDJUjAzQ0W1qCZPNjcNg7WHB1DYvANe6iICd3TASWUyYE
-	Z58H6M0KkvNukiX2Ejsiv8fNiDQErAxxlfPkflGXiFgdGaTOFkNuPOyjSNnQKCYf+zcRR/U5
-	ljiGzCJy3t9Okc6OhywZaGkRbV+wV7IxSdBqMgX9irgDErU77zI+3LMu69zdbNaI7seeR2Fi
-	nlPyj5w36Gn+9j4XTzHLLebd7rFQHsEt4uvyfKGc5prm8R1vl03xLG4P76j5EnIYLprvHLaE
-	HCm3lq/1Xab+dS7ka24/CTlhwbzN28RMsYxbw+cMngk6kqBTGsb3FHz6P2Iu/9TmZvKR1Ipm
-	VCOZRpeZqtJolbFqg06TFXsoLdWBgi9SdWIi4R4aat3pRJwYycOlrdFdahlWZaYbUp2IF9Py
-	COkBW6daJk1SGY4J+rT9+gytkO5EUWJGPke6KnA0ScYlq44IKYJwWNBPXylxWKQRJRsyeo9G
-	6vYn/mjpTn69RLUsq3LIqTxz/OXMwHB8VkLUr/W7Njz+PntHpen6Z9/euRUT4SMJH9YbFYnV
-	2erEhkP185RrxfOjm2SlxQdX/Dzt18fvdum2vK4gJwMm2dXmwM0FS+OiHrgrFCZFUffW8q+/
-	Vu8eM03swJ+2GcaLtfuetcuZdLVqZQytT1f9BXBuUcceAwAA
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSe0hTcRTH+93nHK0uy+imQbEwIdIKepweRATRJbIHhWV/lLNubjgfbD6y
-	qHxsZWZmo01yWT5yiVtp0yITQ7TWY1kuy6ycpi0rH62HK8y5NY3+OXzO+X44nD+OABffJoME
-	8oRkXpkgVUgoISHcuiY7TLysW7ZE7ZoHHZlNBLhHcgi4VG2mIMdykYS2GyYEPe4cBL/HDDho
-	6n0EjGutNIyMvqPB12hFoLdrcTDXZWLws8ZLwWDLDwS6XicFhV8yCXAZ8xAU9Rto+PJgEwz3
-	NJDgc3zC4PWvIQRGpxcDZ9MpBOP6OLhSVkvBWOtzHAp1bQhKex04fK7xh3XWbgSNlVkUfCy4
-	hUO7cxq8dLsoeKw7Q8Gw/RIGX2soKMlqJKHYoEWQXV5Ngb7YQkD9+7s02Ac9GHTptRiYLBHQ
-	Y+wnwFZQhvnv81s3Z4GhMBvzl88Y6K43YDBqrKLhaXkXAcaMEDC0tpPQV1lEg6d3KfhKEsFq
-	+kSD45yOgBvDz8n1OsT91uQTXFXtbYzTvBinOPNlM+LG/mgRN1KRjXOaAn/bMuTCOXVtGldh
-	G6K4P+5XFNf4q4TgnpSx3PnWMK6+yEFz6ntv6e2r9wrXHuQV8lReuXhdtFDWefYCmdS36vDp
-	uiwqA9WH56IAAcssYwde55ETTDGhbGfnKD7Bgcw8tvZs/+QcZ2xz2A77ogmewUSxFtPHSYdg
-	Qtiun4ZJR8SsYK/3X8D+7ZzLmmqaJp0A/7y910ZMsJhZzmpcaqwACUvQlCoUKE9IjZfKFcvD
-	VXGy9AT54fADifEW5P8m4zHP+TtopH1TM2IESDJVZA9xyMSkNFWVHt+MWAEuCRRFV3bJxKKD
-	0vQjvDJxvzJFwauaUbCAkMwSbd7NR4uZWGkyH8fzSbzyf4oJAoIyUH7U5dmD72I33Fw3f2bq
-	fl6WPBU2+HIPFb/91rS5w/PwSdDxgZ07vm9V2FY7d6kj9q6tDj40X4SH6o0nIvJUaZ7IxdO9
-	36/CyukfWk/uuY8aHlm+BR8tMtv6Nlrdu1Lyo7YtKD21sjJyjbbq2j5FSu6bRZYYb0zuM1eo
-	d4vzx8CLi8USQiWTLl2IK1XSv193NrNJAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzXSeUiTcRgH8H7vOYejtyn1qkUximBdKise6LKC8VJERf2jFe4lX9pSp0zT
+	DASrrSy17NByHmnimHOlOaJmdi3NC3Um1LJ5ZGimqR02umxtRf99+D7XP48Il+aQoSKNNlXQ
+	afkEGSUmxJOBFauCFQPq8Jo8HL7OZBMw+DUbgcHuJaCw5xIO06ZcBMbRYhqu37BR8LOzG4ex
+	ujMIHphPUnCqspYC+1ADDe7CSxjU1O+EQdMoAR35NzC4+p6C7yYLDcWdvSR4y5PgWc07Gvov
+	FBBwN2uIhvpXzQisuaM4FJW5Kcitu0NC7TsXBm3GagK6G26SUPWyBwPP+TBwXswjwZU/gmDC
+	Y8Lh+eNyDMyfrpJQpzfScPrLb1/vzBQO7T/aMRg+P0nD51JflmMoJCC7yYOD3r0WSmcioLh5
+	gI4K56xlVsQ9/TCNc3pbOmc39tOczSznKhvfY1zfxEau3nKW4twvGiluqquL5lqv/SS4srY9
+	3KNSK83lnZqiOLthkOQ+jfQRu0NixBvihARNmqBbs0klVlc0XCGTT2iPZd8eQlnoQsw5FCBi
+	GQXbVHUZ/XdPjhfzm2KWsy7Xd9zvYGYJa8sbJf3GmY6F7IuelX4HMQI7WHCG9ptglrH2j1f+
+	WsKsY91jVvrfzsVsTd3jv3sCfHnvmw7CbymzljVM6323xL6e4gC2xHKL/DcQwj4xu4h8JClH
+	cyxIqtGmJfKaBMVqdYZWc2z1oaTEeuR7EVPmr/330GfnXgdiREgWKHEu61dLST4tJSPRgVgR
+	LguWqMxutVQSx2ccF3RJsbqjCUKKA4WJCNkCSaQnPU7KHOZThXhBSBZ0/6uYKCA0C6Xv29be
+	FWZwnx7qMMaaLa/eOmfny0tsXrviXlPI5fHy++PzR4Jbtj4sidySvKMl2rFps9K558hulSFe
+	Fbi9eVZpG/iy/oMzsGzetxXVLkdQAT+i9I7JM9P441Vzkxfri7oeeZTy4dqdIVH8+DB6feDg
+	cLQQc3RXZusiXoGWFjXKiBQ1HyHHdSn8H2DscvseAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzXSa0hTcRQA8P73OUer2xK8aGStJIishIpD7wfULUr6ElIUOfLSlrrFVqZW
+	4NKlZKWNTcm1WprLdNmaVmpMZKGSS3LZW6cZuixn9tCWqa2t6Mvhdx4czocjwMX3yUiBXHGM
+	VymkKRJKSAjj12THzl7RI1ue65gDLzVNBIyN5hFw5Y6Vgjz7ZRI6qqsQ9I7lIfBPGHHQ1gcI
+	mNK10DA63kVDwNGCoMitw8Faq8Hgu+03BUOPviEw9PVTUPxRQ8CI5TyCEq+Rho/N22C49yEJ
+	Ac8HDF798CGw9P/GoL8pF8FUUTJcK62hYKL9KQ7Fhg4E1/s8OAzags3alh4EjoozFAwU3sOh
+	s38GPB8boeCxIZ+CYfcVDD7bKDCfcZBgMuoQZJfdoaDIZCeg/l0DDe6hSQy6i3QYVNl3Qa/F
+	S4CrsBQL3hecuhsBxuJsLBgGMTDcfojBuKWShidl3QRYsmLA2N5JwvuKEhom++IgYFZCS9UH
+	GjwFBgKqh5+SGw2I82svElxlzX2M0z6bojjrVSviJn7pEDdano1z2sJg+sg3gnM5NSe4cpeP
+	4n6NvaA4xw8zwbWVstyl9liuvsRDczmNb+ndq/cJ1ybxKfI0XrVsfaJQdr1BTx7VKNLz7r5D
+	Wahg3zkUJmCZFaw7P4CFTDGL2Nevx/GQw5l5bM0FLxkyzrjmsC/dS0KezfBsryGXDplgYtj6
+	L/q/FjGr2O5BK/1vZzRbZWv6uycsWO/scxEhi5mVrHYkBytEQjOaVonC5Yq0VKk8ZeVSdbIs
+	QyFPX3pImWpHwW+ynJ68VIdGO7c5ESNAkukid4xHJialaeqMVCdiBbgkXJRY0S0Ti5KkGZm8
+	SnlQdTyFVztRlICQRIh2JPCJYuaw9BifzPNHedX/LiYIi8xCHfbGhhvbb70wK8PFWzfvzleX
+	zVJ98iREHah74z0yV5k5uTP+pr4gPrLdpvnqLO/SrjM1D7SOi2rTWz/z/q2nMs8uJOfqM/fP
+	r047fRLrcm3wzYxe7RyYFhGt3rJzaEHUiQTbga/+W+t6mD1tsRL/Xu+Dn/pNel+jyZQwf/H+
+	BlonIdQyadxiXKWW/gFyd5nfSQMAAA==
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -206,209 +206,367 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-dma fence can be used at various points in the code and it's very hard
-to distinguish dma fences between different usages.  Using a single
-dept_key for all the dma fences could trigger false positive reports.
+wait_for_completion() can be used at various points in the code and it's
+very hard to distinguish wait_for_completion()s between different usages.
+Using a single dept_key for all the wait_for_completion()s could trigger
+false positive reports.
 
-Assign unique dept_key to each distinct dma fence wait to avoid false
-positive reports.
+Assign unique dept_key to each distinct wait_for_completion() caller to
+avoid false positive reports.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- drivers/dma-buf/dma-fence.c | 18 ++++-----
- include/linux/dma-fence.h   | 74 +++++++++++++++++++++++++++++--------
- 2 files changed, 68 insertions(+), 24 deletions(-)
+ include/linux/completion.h | 100 +++++++++++++++++++++++++++++++------
+ kernel/sched/completion.c  |  60 +++++++++++-----------
+ 2 files changed, 115 insertions(+), 45 deletions(-)
 
-diff --git a/drivers/dma-buf/dma-fence.c b/drivers/dma-buf/dma-fence.c
-index 0a4b519e3351..df52a7ae336a 100644
---- a/drivers/dma-buf/dma-fence.c
-+++ b/drivers/dma-buf/dma-fence.c
-@@ -481,7 +481,7 @@ int dma_fence_signal(struct dma_fence *fence)
- EXPORT_SYMBOL(dma_fence_signal);
+diff --git a/include/linux/completion.h b/include/linux/completion.h
+index 3200b741de28..4d8fb1d95c0a 100644
+--- a/include/linux/completion.h
++++ b/include/linux/completion.h
+@@ -27,12 +27,10 @@
+ struct completion {
+ 	unsigned int done;
+ 	struct swait_queue_head wait;
+-	struct dept_map dmap;
+ };
  
- /**
-- * dma_fence_wait_timeout - sleep until the fence gets signaled
-+ * __dma_fence_wait_timeout - sleep until the fence gets signaled
-  * or until timeout elapses
-  * @fence: the fence to wait on
-  * @intr: if true, do an interruptible wait
-@@ -499,7 +499,7 @@ EXPORT_SYMBOL(dma_fence_signal);
-  * See also dma_fence_wait() and dma_fence_wait_any_timeout().
-  */
- signed long
--dma_fence_wait_timeout(struct dma_fence *fence, bool intr, signed long timeout)
-+__dma_fence_wait_timeout(struct dma_fence *fence, bool intr, signed long timeout)
+ #define init_completion(x)				\
+ do {							\
+-	sdt_map_init(&(x)->dmap);			\
+ 	__init_completion(x);				\
+ } while (0)
+ 
+@@ -43,17 +41,14 @@ do {							\
+ 
+ static inline void complete_acquire(struct completion *x, long timeout)
  {
- 	signed long ret;
- 
-@@ -528,7 +528,7 @@ dma_fence_wait_timeout(struct dma_fence *fence, bool intr, signed long timeout)
- 	}
- 	return ret;
- }
--EXPORT_SYMBOL(dma_fence_wait_timeout);
-+EXPORT_SYMBOL(__dma_fence_wait_timeout);
- 
- /**
-  * dma_fence_release - default release function for fences
-@@ -764,7 +764,7 @@ dma_fence_default_wait_cb(struct dma_fence *fence, struct dma_fence_cb *cb)
+-	sdt_might_sleep_start_timeout(&x->dmap, timeout);
  }
  
- /**
-- * dma_fence_default_wait - default sleep until the fence gets signaled
-+ * __dma_fence_default_wait - default sleep until the fence gets signaled
-  * or until timeout elapses
-  * @fence: the fence to wait on
-  * @intr: if true, do an interruptible wait
-@@ -776,7 +776,7 @@ dma_fence_default_wait_cb(struct dma_fence *fence, struct dma_fence_cb *cb)
-  * functions taking a jiffies timeout.
-  */
- signed long
--dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
-+__dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
+ static inline void complete_release(struct completion *x)
  {
- 	struct default_wait_cb cb;
- 	unsigned long flags;
-@@ -825,7 +825,7 @@ dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
- 	spin_unlock_irqrestore(fence->lock, flags);
- 	return ret;
- }
--EXPORT_SYMBOL(dma_fence_default_wait);
-+EXPORT_SYMBOL(__dma_fence_default_wait);
- 
- static bool
- dma_fence_test_signaled_any(struct dma_fence **fences, uint32_t count,
-@@ -845,7 +845,7 @@ dma_fence_test_signaled_any(struct dma_fence **fences, uint32_t count,
+-	sdt_might_sleep_end();
  }
  
- /**
-- * dma_fence_wait_any_timeout - sleep until any fence gets signaled
-+ * __dma_fence_wait_any_timeout - sleep until any fence gets signaled
-  * or until timeout elapses
-  * @fences: array of fences to wait on
-  * @count: number of fences to wait on
-@@ -865,7 +865,7 @@ dma_fence_test_signaled_any(struct dma_fence **fences, uint32_t count,
-  * See also dma_fence_wait() and dma_fence_wait_timeout().
-  */
- signed long
--dma_fence_wait_any_timeout(struct dma_fence **fences, uint32_t count,
-+__dma_fence_wait_any_timeout(struct dma_fence **fences, uint32_t count,
- 			   bool intr, signed long timeout, uint32_t *idx)
- {
- 	struct default_wait_cb *cb;
-@@ -933,7 +933,7 @@ dma_fence_wait_any_timeout(struct dma_fence **fences, uint32_t count,
+ #define COMPLETION_INITIALIZER(work) \
+-	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait), \
+-	  .dmap = DEPT_MAP_INITIALIZER(work, NULL), }
++	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait), }
  
- 	return ret;
+ #define COMPLETION_INITIALIZER_ONSTACK_MAP(work, map) \
+ 	(*({ init_completion_map(&(work), &(map)); &(work); }))
+@@ -119,18 +114,18 @@ static inline void reinit_completion(struct completion *x)
+ 	x->done = 0;
  }
--EXPORT_SYMBOL(dma_fence_wait_any_timeout);
-+EXPORT_SYMBOL(__dma_fence_wait_any_timeout);
  
- /**
-  * DOC: deadline hints
-diff --git a/include/linux/dma-fence.h b/include/linux/dma-fence.h
-index 64639e104110..1062fbb637e5 100644
---- a/include/linux/dma-fence.h
-+++ b/include/linux/dma-fence.h
-@@ -369,8 +369,22 @@ int dma_fence_signal_locked(struct dma_fence *fence);
- int dma_fence_signal_timestamp(struct dma_fence *fence, ktime_t timestamp);
- int dma_fence_signal_timestamp_locked(struct dma_fence *fence,
- 				      ktime_t timestamp);
--signed long dma_fence_default_wait(struct dma_fence *fence,
-+signed long __dma_fence_default_wait(struct dma_fence *fence,
- 				   bool intr, signed long timeout);
-+
-+/*
-+ * Associate every caller with its own dept map.
-+ */
-+#define dma_fence_default_wait(f, intr, t)				\
+-extern void wait_for_completion(struct completion *);
+-extern void wait_for_completion_io(struct completion *);
+-extern int wait_for_completion_interruptible(struct completion *x);
+-extern int wait_for_completion_killable(struct completion *x);
+-extern int wait_for_completion_state(struct completion *x, unsigned int state);
+-extern unsigned long wait_for_completion_timeout(struct completion *x,
++extern void __wait_for_completion(struct completion *);
++extern void __wait_for_completion_io(struct completion *);
++extern int __wait_for_completion_interruptible(struct completion *x);
++extern int __wait_for_completion_killable(struct completion *x);
++extern int __wait_for_completion_state(struct completion *x, unsigned int state);
++extern unsigned long __wait_for_completion_timeout(struct completion *x,
+ 						   unsigned long timeout);
+-extern unsigned long wait_for_completion_io_timeout(struct completion *x,
++extern unsigned long __wait_for_completion_io_timeout(struct completion *x,
+ 						    unsigned long timeout);
+-extern long wait_for_completion_interruptible_timeout(
++extern long __wait_for_completion_interruptible_timeout(
+ 	struct completion *x, unsigned long timeout);
+-extern long wait_for_completion_killable_timeout(
++extern long __wait_for_completion_killable_timeout(
+ 	struct completion *x, unsigned long timeout);
+ extern bool try_wait_for_completion(struct completion *x);
+ extern bool completion_done(struct completion *x);
+@@ -139,4 +134,79 @@ extern void complete(struct completion *);
+ extern void complete_on_current_cpu(struct completion *x);
+ extern void complete_all(struct completion *);
+ 
++#define wait_for_completion(x)						\
 +({									\
-+	signed long __ret;						\
++	sdt_might_sleep_start_timeout(NULL, -1L);			\
++	__wait_for_completion(x);					\
++	sdt_might_sleep_end();						\
++})
++#define wait_for_completion_io(x)					\
++({									\
++	sdt_might_sleep_start_timeout(NULL, -1L);			\
++	__wait_for_completion_io(x);					\
++	sdt_might_sleep_end();						\
++})
++#define wait_for_completion_interruptible(x)				\
++({									\
++	int __ret;							\
 +									\
-+	sdt_might_sleep_start_timeout(NULL, t);				\
-+	__ret = __dma_fence_default_wait(f, intr, t);			\
++	sdt_might_sleep_start_timeout(NULL, -1L);			\
++	__ret = __wait_for_completion_interruptible(x);			\
 +	sdt_might_sleep_end();						\
 +	__ret;								\
 +})
-+
- int dma_fence_add_callback(struct dma_fence *fence,
- 			   struct dma_fence_cb *cb,
- 			   dma_fence_func_t func);
-@@ -607,12 +621,37 @@ static inline ktime_t dma_fence_timestamp(struct dma_fence *fence)
- 	return fence->timestamp;
- }
- 
--signed long dma_fence_wait_timeout(struct dma_fence *,
-+signed long __dma_fence_wait_timeout(struct dma_fence *,
- 				   bool intr, signed long timeout);
--signed long dma_fence_wait_any_timeout(struct dma_fence **fences,
-+signed long __dma_fence_wait_any_timeout(struct dma_fence **fences,
- 				       uint32_t count,
- 				       bool intr, signed long timeout,
- 				       uint32_t *idx);
-+/*
-+ * Associate every caller with its own dept map.
-+ */
-+#define dma_fence_wait_timeout(f, intr, t)				\
++#define wait_for_completion_killable(x)					\
 +({									\
-+	signed long __ret;						\
++	int __ret;							\
 +									\
-+	sdt_might_sleep_start_timeout(NULL, t);				\
-+	__ret = __dma_fence_wait_timeout(f, intr, t);			\
++	sdt_might_sleep_start_timeout(NULL, -1L);			\
++	__ret = __wait_for_completion_killable(x);			\
 +	sdt_might_sleep_end();						\
 +	__ret;								\
 +})
-+
-+/*
-+ * Associate every caller with its own dept map.
-+ */
-+#define dma_fence_wait_any_timeout(fpp, count, intr, t, idx)		\
++#define wait_for_completion_state(x, s)					\
 +({									\
-+	signed long __ret;						\
++	int __ret;							\
 +									\
-+	sdt_might_sleep_start_timeout(NULL, t);				\
-+	__ret = __dma_fence_wait_any_timeout(fpp, count, intr, t, idx);	\
++	sdt_might_sleep_start_timeout(NULL, -1L);			\
++	__ret = __wait_for_completion_state(x, s);			\
 +	sdt_might_sleep_end();						\
 +	__ret;								\
 +})
- 
- /**
-  * dma_fence_wait - sleep until the fence gets signaled
-@@ -628,19 +667,24 @@ signed long dma_fence_wait_any_timeout(struct dma_fence **fences,
-  * fence might be freed before return, resulting in undefined behavior.
++#define wait_for_completion_timeout(x, t)				\
++({									\
++	unsigned long __ret;						\
++									\
++	sdt_might_sleep_start_timeout(NULL, t);				\
++	__ret = __wait_for_completion_timeout(x, t);			\
++	sdt_might_sleep_end();						\
++	__ret;								\
++})
++#define wait_for_completion_io_timeout(x, t)				\
++({									\
++	unsigned long __ret;						\
++									\
++	sdt_might_sleep_start_timeout(NULL, t);				\
++	__ret = __wait_for_completion_io_timeout(x, t);			\
++	sdt_might_sleep_end();						\
++	__ret;								\
++})
++#define wait_for_completion_interruptible_timeout(x, t)			\
++({									\
++	long __ret;							\
++									\
++	sdt_might_sleep_start_timeout(NULL, t);				\
++	__ret = __wait_for_completion_interruptible_timeout(x, t);	\
++	sdt_might_sleep_end();						\
++	__ret;								\
++})
++#define wait_for_completion_killable_timeout(x, t)			\
++({									\
++	long __ret;							\
++									\
++	sdt_might_sleep_start_timeout(NULL, t);				\
++	__ret = __wait_for_completion_killable_timeout(x, t);		\
++	sdt_might_sleep_end();						\
++	__ret;								\
++})
+ #endif
+diff --git a/kernel/sched/completion.c b/kernel/sched/completion.c
+index 5e45a60ff7b3..7262000db114 100644
+--- a/kernel/sched/completion.c
++++ b/kernel/sched/completion.c
+@@ -4,7 +4,7 @@
+  * Generic wait-for-completion handler;
   *
-  * See also dma_fence_wait_timeout() and dma_fence_wait_any_timeout().
-+ *
-+ * Associate every caller with its own dept map.
+  * It differs from semaphores in that their default case is the opposite,
+- * wait_for_completion default blocks whereas semaphore default non-block. The
++ * __wait_for_completion default blocks whereas semaphore default non-block. The
+  * interface also makes it easy to 'complete' multiple waiting threads,
+  * something which isn't entirely natural for semaphores.
+  *
+@@ -42,7 +42,7 @@ void complete_on_current_cpu(struct completion *x)
+  * This will wake up a single thread waiting on this completion. Threads will be
+  * awakened in the same order in which they were queued.
+  *
+- * See also complete_all(), wait_for_completion() and related routines.
++ * See also complete_all(), __wait_for_completion() and related routines.
+  *
+  * If this function wakes up a task, it executes a full memory barrier before
+  * accessing the task state.
+@@ -139,23 +139,23 @@ wait_for_common_io(struct completion *x, long timeout, int state)
+ }
+ 
+ /**
+- * wait_for_completion: - waits for completion of a task
++ * __wait_for_completion: - waits for completion of a task
+  * @x:  holds the state of this particular completion
+  *
+  * This waits to be signaled for completion of a specific task. It is NOT
+  * interruptible and there is no timeout.
+  *
+- * See also similar routines (i.e. wait_for_completion_timeout()) with timeout
++ * See also similar routines (i.e. __wait_for_completion_timeout()) with timeout
+  * and interrupt capability. Also see complete().
   */
--static inline signed long dma_fence_wait(struct dma_fence *fence, bool intr)
--{
--	signed long ret;
--
--	/* Since dma_fence_wait_timeout cannot timeout with
--	 * MAX_SCHEDULE_TIMEOUT, only valid return values are
--	 * -ERESTARTSYS and MAX_SCHEDULE_TIMEOUT.
--	 */
--	ret = dma_fence_wait_timeout(fence, intr, MAX_SCHEDULE_TIMEOUT);
--
--	return ret < 0 ? ret : 0;
--}
-+#define dma_fence_wait(f, intr)						\
-+({									\
-+	signed long __ret;						\
-+									\
-+	sdt_might_sleep_start_timeout(NULL, MAX_SCHEDULE_TIMEOUT);	\
-+	__ret = __dma_fence_wait_timeout(f, intr, MAX_SCHEDULE_TIMEOUT);\
-+	sdt_might_sleep_end();						\
-+									\
-+	/*								\
-+	 * Since dma_fence_wait_timeout cannot timeout with		\
-+	 * MAX_SCHEDULE_TIMEOUT, only valid return values are		\
-+	 * -ERESTARTSYS and MAX_SCHEDULE_TIMEOUT.			\
-+	 */								\
-+	__ret < 0 ? __ret : 0;						\
-+})
+-void __sched wait_for_completion(struct completion *x)
++void __sched __wait_for_completion(struct completion *x)
+ {
+ 	wait_for_common(x, MAX_SCHEDULE_TIMEOUT, TASK_UNINTERRUPTIBLE);
+ }
+-EXPORT_SYMBOL(wait_for_completion);
++EXPORT_SYMBOL(__wait_for_completion);
  
- void dma_fence_set_deadline(struct dma_fence *fence, ktime_t deadline);
+ /**
+- * wait_for_completion_timeout: - waits for completion of a task (w/timeout)
++ * __wait_for_completion_timeout: - waits for completion of a task (w/timeout)
+  * @x:  holds the state of this particular completion
+  * @timeout:  timeout value in jiffies
+  *
+@@ -167,28 +167,28 @@ EXPORT_SYMBOL(wait_for_completion);
+  * till timeout) if completed.
+  */
+ unsigned long __sched
+-wait_for_completion_timeout(struct completion *x, unsigned long timeout)
++__wait_for_completion_timeout(struct completion *x, unsigned long timeout)
+ {
+ 	return wait_for_common(x, timeout, TASK_UNINTERRUPTIBLE);
+ }
+-EXPORT_SYMBOL(wait_for_completion_timeout);
++EXPORT_SYMBOL(__wait_for_completion_timeout);
  
+ /**
+- * wait_for_completion_io: - waits for completion of a task
++ * __wait_for_completion_io: - waits for completion of a task
+  * @x:  holds the state of this particular completion
+  *
+  * This waits to be signaled for completion of a specific task. It is NOT
+  * interruptible and there is no timeout. The caller is accounted as waiting
+  * for IO (which traditionally means blkio only).
+  */
+-void __sched wait_for_completion_io(struct completion *x)
++void __sched __wait_for_completion_io(struct completion *x)
+ {
+ 	wait_for_common_io(x, MAX_SCHEDULE_TIMEOUT, TASK_UNINTERRUPTIBLE);
+ }
+-EXPORT_SYMBOL(wait_for_completion_io);
++EXPORT_SYMBOL(__wait_for_completion_io);
+ 
+ /**
+- * wait_for_completion_io_timeout: - waits for completion of a task (w/timeout)
++ * __wait_for_completion_io_timeout: - waits for completion of a task (w/timeout)
+  * @x:  holds the state of this particular completion
+  * @timeout:  timeout value in jiffies
+  *
+@@ -201,14 +201,14 @@ EXPORT_SYMBOL(wait_for_completion_io);
+  * till timeout) if completed.
+  */
+ unsigned long __sched
+-wait_for_completion_io_timeout(struct completion *x, unsigned long timeout)
++__wait_for_completion_io_timeout(struct completion *x, unsigned long timeout)
+ {
+ 	return wait_for_common_io(x, timeout, TASK_UNINTERRUPTIBLE);
+ }
+-EXPORT_SYMBOL(wait_for_completion_io_timeout);
++EXPORT_SYMBOL(__wait_for_completion_io_timeout);
+ 
+ /**
+- * wait_for_completion_interruptible: - waits for completion of a task (w/intr)
++ * __wait_for_completion_interruptible: - waits for completion of a task (w/intr)
+  * @x:  holds the state of this particular completion
+  *
+  * This waits for completion of a specific task to be signaled. It is
+@@ -216,7 +216,7 @@ EXPORT_SYMBOL(wait_for_completion_io_timeout);
+  *
+  * Return: -ERESTARTSYS if interrupted, 0 if completed.
+  */
+-int __sched wait_for_completion_interruptible(struct completion *x)
++int __sched __wait_for_completion_interruptible(struct completion *x)
+ {
+ 	long t = wait_for_common(x, MAX_SCHEDULE_TIMEOUT, TASK_INTERRUPTIBLE);
+ 
+@@ -224,10 +224,10 @@ int __sched wait_for_completion_interruptible(struct completion *x)
+ 		return t;
+ 	return 0;
+ }
+-EXPORT_SYMBOL(wait_for_completion_interruptible);
++EXPORT_SYMBOL(__wait_for_completion_interruptible);
+ 
+ /**
+- * wait_for_completion_interruptible_timeout: - waits for completion (w/(to,intr))
++ * __wait_for_completion_interruptible_timeout: - waits for completion (w/(to,intr))
+  * @x:  holds the state of this particular completion
+  * @timeout:  timeout value in jiffies
+  *
+@@ -238,15 +238,15 @@ EXPORT_SYMBOL(wait_for_completion_interruptible);
+  * or number of jiffies left till timeout) if completed.
+  */
+ long __sched
+-wait_for_completion_interruptible_timeout(struct completion *x,
++__wait_for_completion_interruptible_timeout(struct completion *x,
+ 					  unsigned long timeout)
+ {
+ 	return wait_for_common(x, timeout, TASK_INTERRUPTIBLE);
+ }
+-EXPORT_SYMBOL(wait_for_completion_interruptible_timeout);
++EXPORT_SYMBOL(__wait_for_completion_interruptible_timeout);
+ 
+ /**
+- * wait_for_completion_killable: - waits for completion of a task (killable)
++ * __wait_for_completion_killable: - waits for completion of a task (killable)
+  * @x:  holds the state of this particular completion
+  *
+  * This waits to be signaled for completion of a specific task. It can be
+@@ -254,7 +254,7 @@ EXPORT_SYMBOL(wait_for_completion_interruptible_timeout);
+  *
+  * Return: -ERESTARTSYS if interrupted, 0 if completed.
+  */
+-int __sched wait_for_completion_killable(struct completion *x)
++int __sched __wait_for_completion_killable(struct completion *x)
+ {
+ 	long t = wait_for_common(x, MAX_SCHEDULE_TIMEOUT, TASK_KILLABLE);
+ 
+@@ -262,9 +262,9 @@ int __sched wait_for_completion_killable(struct completion *x)
+ 		return t;
+ 	return 0;
+ }
+-EXPORT_SYMBOL(wait_for_completion_killable);
++EXPORT_SYMBOL(__wait_for_completion_killable);
+ 
+-int __sched wait_for_completion_state(struct completion *x, unsigned int state)
++int __sched __wait_for_completion_state(struct completion *x, unsigned int state)
+ {
+ 	long t = wait_for_common(x, MAX_SCHEDULE_TIMEOUT, state);
+ 
+@@ -272,10 +272,10 @@ int __sched wait_for_completion_state(struct completion *x, unsigned int state)
+ 		return t;
+ 	return 0;
+ }
+-EXPORT_SYMBOL(wait_for_completion_state);
++EXPORT_SYMBOL(__wait_for_completion_state);
+ 
+ /**
+- * wait_for_completion_killable_timeout: - waits for completion of a task (w/(to,killable))
++ * __wait_for_completion_killable_timeout: - waits for completion of a task (w/(to,killable))
+  * @x:  holds the state of this particular completion
+  * @timeout:  timeout value in jiffies
+  *
+@@ -287,12 +287,12 @@ EXPORT_SYMBOL(wait_for_completion_state);
+  * or number of jiffies left till timeout) if completed.
+  */
+ long __sched
+-wait_for_completion_killable_timeout(struct completion *x,
++__wait_for_completion_killable_timeout(struct completion *x,
+ 				     unsigned long timeout)
+ {
+ 	return wait_for_common(x, timeout, TASK_KILLABLE);
+ }
+-EXPORT_SYMBOL(wait_for_completion_killable_timeout);
++EXPORT_SYMBOL(__wait_for_completion_killable_timeout);
+ 
+ /**
+  *	try_wait_for_completion - try to decrement a completion without blocking
+@@ -334,7 +334,7 @@ EXPORT_SYMBOL(try_wait_for_completion);
+  *	completion_done - Test to see if a completion has any waiters
+  *	@x:	completion structure
+  *
+- *	Return: 0 if there are waiters (wait_for_completion() in progress)
++ *	Return: 0 if there are waiters (__wait_for_completion() in progress)
+  *		 1 if there are no waiters.
+  *
+  *	Note, this will always return true if complete_all() was called on @X.
 -- 
 2.17.1
 
