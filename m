@@ -1,17 +1,18 @@
 Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 5DDE931327D;
-	Thu,  2 Oct 2025 08:14:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 8087C313D50;
+	Thu,  2 Oct 2025 08:14:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1759392857; cv=none; b=qzu+gOa08qQH7WgJnD/V+3heLYfo0+VGGJAkvuBP4n/2PmxIcFiozOZ7FxagNKOuBpA+EJFgj+7/AQXqaJDjC9RwOEn0806N3i+Ec47PMWAWR+r8Tq5WdQziWPNNbx/gvvw3/Skygf7xCzD4ysTPXEjSGa712mOFvO5Nw6AoRRc=
+	t=1759392858; cv=none; b=P9CvJ44qWZ0KTK2gQ7MUITS1XIryLxMnPkefZKSavMqnw/EPgAfzxnvaE2/BLd/ltu5Qu/mkYHs1y19k43BwLgVd2gQlqC+smXu49CRUo3WiEge1WgrvAKxGtX7j5IUT99V0iWKHFOalJyoucNi30NESpShLqzo2CekIw04PsqM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1759392857; c=relaxed/simple;
-	bh=0EG+nyhegdHqkltgIfnxVMJLuuhwrD8fF2eYCBLzDfM=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=bZtjZYQwgQ//ip0tGTQWV4Fy6goAZTZrPikmQ/HCQzLTpnvdV4uWtWT2n/6bjJfKd7f1ihvNOtMwO/UrOJDZzPXSscJk8vLlVHL2ZhXelJ8o2COWGqpilQOoQgx8CKeDYSHvkOLLNL+YFI7S+vPqSE0ZtrgX654rigW/dtS+HEE=
+	s=arc-20240116; t=1759392858; c=relaxed/simple;
+	bh=jhmrpwTM08yBA9ZoPplcfQMQcK3SVeR5SdyXR0h1+Bo=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=R/Pg+6hKCBwAa1M/EPzCTwZoZsdqimf0DjmssInqvLY8fqwod9gLRyXhhfr45CE3p9OcwxAtd5cKk6JbT1ylPkpKXRZ4fdmVZvfipEsV9xhT4OTUNN4ra7ydzj5Qdis9ibGZ1cevSUWSv8QlM3S/kP7DTp8Mcq567OfSu6PlzyQ=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c2dff70000001609-d2-68de34190225
+X-AuditID: a67dfc5b-c2dff70000001609-13-68de3419e02b
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -162,267 +163,112 @@ Cc: kernel_team@skhynix.com,
 	rcu@vger.kernel.org,
 	linux-nfs@vger.kernel.org,
 	linux-rt-devel@lists.linux.dev
-Subject: [PATCH v17 44/47] dept: introduce APIs to set page usage and use subclasses_evt for the usage
-Date: Thu,  2 Oct 2025 17:12:44 +0900
-Message-Id: <20251002081247.51255-45-byungchul@sk.com>
+Subject: [PATCH v17 46/47] SUNRPC: relocate struct rcu_head to the first field of struct rpc_xprt
+Date: Thu,  2 Oct 2025 17:12:46 +0900
+Message-Id: <20251002081247.51255-47-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20251002081247.51255-1-byungchul@sk.com>
 References: <20251002081247.51255-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSfUxTZxSHfe9973tbRvWmknBlbmINmpiBYmA5yYxu2R/emJiYGHWZiXAD
-	V9vIhykUxThTR2GdsK1DKaF+lRIKQpVa/EYmgspYYywo0LlWrGIZA0Rdi7KBrOD878nvPPnl
-	nOTIaGU/EyfT5ORL2hwxS0WicNRYdHXiopRH6tUjlnjoO9yGIRwyYjjR5CBgdFUx4DnXiGAg
-	bEQQmvyDBXN3OQ1/O98SGOl4haAiMEigcvgwhnF7GQJL8DgLw7c3wNhACwMz/iEK+idGEdgH
-	31Iwbd4Dp23NBP69e4+GygoPguqAn4Y/nd8huHDnEYJnpos03B+cDw/C4wS6KkoJjHWfoOC5
-	k4D121YGimqaCJhPujBcfXyNBZ+5nIJG1yYYsAcxuE02KrJLRDgfC5P2Bhbs+gR4Um9hYSqQ
-	DDPWXPD/VIFhJFhOYKCzhAHX77cjZz0IUOAoC9JgvBbG4Hrax0DVKR+B661dGIzTIQQ9jR4M
-	TUNeCtx3fsXQZTmDoba/m4LAYy/zeabwuvhHLDQ0X6KE4p5pIjhOOZAQqi2ihWJThDpGx2nB
-	0LxPqHWPEuGfcC8RWiesWPjNxgtXLX5WMPzykBWsLp1guDXGbE76OmptppSlKZC0q9alR6nL
-	Wjxkb3vKfmfvRaxHoZVHkFzGcyl8na2Uec9VN4fZWSbcCt7rnaRnOYaL55t/CM45NOdezPd1
-	fzLLC7ldfJXPO5djLoHvOzuEZ1nBfcp7jxVR7zqX8I3OtrkeeSS/H3DPOUoulS8eN/zv1Mn5
-	kvOH3vEi/ma9F5uQwormNSClJqcgW9RkpSSpC3M0+5MycrNdKPJu9m+mdlxBrzxb2hEnQ6po
-	hSfBr1YyYkFeYXY74mW0KkaRXu9TKxWZYuEBSZubptVlSXnt6EMZVsUq1kzsy1Ryu8V8aY8k
-	7ZW076eUTB6nR+s73X9F17Y5d9qm9DPpCanhtK2xq0pMP5sNlzceIbnzlusdoXir4QP3zOIw
-	69vd81IX97zmSyymLVumS9qQsbRlR/L8koyeo0sSK7+QE3b7gtGHn5l1Xx28UHpuiPJ3bsMH
-	vk/sEjtuTNacyd+eGv1m6aFNDaWU49aLj9S9H8fUvVbhPLWYvJLW5on/AYNKzqdqAwAA
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTdxTG/d/7v/e2zYo3lcQbNdE0QRYiviRgjrg4E028c5vZt2XzjWbc
-	0UoBbRGtcQlYGsmGExpaQguT1VhJKdBRJEOswSIERAJ3TGCzBeuwSICRzFblfS3Lvpz8zvM8
-	eXI+HAmpaKO2SDR5BYIuT6VV0jIsO3HQmMqljav3ekfTYKS4E0M0UoqhptlNQ2lLNQVDTQ0I
-	JqKlCN4t2Ukwta9hWDH3MBBZeM7Amq8HgVU0k+BuLSbgjWeVhpmufxBYQpM0VE0XY5h3liGw
-	he0MTHcfg7mJDgrWglMEjL6dReCcXCVgsvM6ghVrDtxyeGlYGhgkocoyhODnUJCE156Y2doz
-	jsBXf42GV+X3SBieTIDfo/M09Fl+oGFOrCHgbw8Nddd8FNTazQiMt5tpsNa2YGh/cZ8BcWaZ
-	gIDVTEBDy+cw4Qxj6C93ELH7YqlfNoO9ykjExmsCLI0dBCw4XQw8vR3A4CxKAvvAMAUv620M
-	LIf2wVpdPvQ0TDEQvGnB0DQ3SB22IP6d6UfMu7xtBG/6bYXm3T+5Eb+0aEZ85I6R5E3lsbVr
-	dp7kS7yX+Dv9szS/GH1G8763dZh/4uD4ioFUvt0WZPiSh38yX2R8LfsoS9BqCgXdnkOZMnVZ
-	xxB93p922fPsHi5CkZTvkVTCsWlc9aNpJs40m8yNjS2QcU5kd3DeG2EqziTbv40bEXfFeRP7
-	LVcdGFvXMZvEjTRO4TjL2f3cWKWR+K9zO9fg6Vzvkcb04VD/ekbBpnOm+RKiHMnq0AYXStTk
-	FeaqNNr03foctSFPc3n3N/m5LSj2Tc7vlit+RZHhY37ESpDyA7mYFFQrKFWh3pDrR5yEVCbK
-	M+sDaoU8S2W4Iujyz+ouagW9H22VYOVm+fEvhUwFm60qEHIE4byg+98lJNItReh0YNwmlGUX
-	FxgOn+oSzxi7X1VW5L58f/eTjHO+T/U7k69Wdz+QiSc/FKPS0coNvY4LoVWNqNv58MD2z7Jr
-	HxCz+e77NfZ0hxguPZExmLCRajvVvD8F+53s6GIvuB5fD9v8hj1m5tZXUtcbYuOMNfEP6xHt
-	yRd/Hf3Yl/W4qG9IifVq1b4UUqdX/QsQvzpjSQMAAA==
-X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+X-Brightmail-Tracker: H4sIAAAAAAAAA02SbUxTZxTH89z73NuX0OXSmXgBHUsXYlYUh0NytjmzLVv2fFmyxA9bNIqd
+	NLQTKCsKdi8JCGSNCsMu4NpuWCCQulbLWslEKSINzSoQituwYy0vDiEEkAVoGVrKWskyv/3y
+	P+f/O1+OkJYa2VShuviUUlusKJSxYixeTGrek5IzrnqluR9gtLIXQ3hVj+F7h50FvdPIwERY
+	j2DtiZmG1fU/BdA4YqDBfr2SgpWOGAvznmUEl+YqMZhmzAKY638fFiduMbAZmqXgfmQBQft0
+	jILp3q8RbDSehMstLhaeDA3TcKnBj6B5KkTDde84Arf1LAsP6ztp8DWcZ+FRBwuWs24GfjAb
+	EFS1OlgINhoosDk/gIn2GQyNP22HwdYghuhUNmxaNOC1zQrg2uIwA84/+hHYL8zQoL8ZxuD8
+	a5QB91gmGJuCLHS7fRj0G6sIvDceUHCho5OBCvMaA/dsfgyO2QAFA95fMPhMVzAM37zKQNv9
+	EQqmJgMMuIYGaYjUpYH/Yi0DgfqHCK4+amHfyidrNXWY1NzbYIm9yY7IalsVTTwLSzSpdpWT
+	toEFljwO/84Sd8SCyd0Wnlwc2kO6TCEBqe4ZExCL8zRxWeWktXuO+lB+WHwgX1moLlNq9x48
+	LlYNXnm7xJ18ptpwtAItSc4hoZDncnhLDJ1DoqfYY/ubSjDL7eIDgXU6wdu4F3lX7QyTYJob
+	2MGPjuxO8POcgl/xhOiEBnMZ/PI/HydiCZfLW6u+Y7aU6byto/epRhTPf50awAmWcvv5mqVq
+	ams/mfcZp3FCQ8fPOpqkW5fS+apOc7wqjms8Ij7ycxe15Uzh71gDuB5xpmfqpv/rpmfqFkT/
+	iKTq4rIihbowJ0ulK1afyTqhKXKi+MO2fxU9cgMt+w/1IU6IZEkSf0ZIJWUUZaW6oj7EC2nZ
+	Nslxa1AlleQrdJ8rtZo87elCZWkfShNi2XbJvkh5vpQrUJxSnlQqS5Ta/6aUUJRagXbKr2V5
+	b3ftk1TUsmMZm7sJPf4Cdbcn1/JeQcbLj+eXSgp2JNWaWhw7v4iSL30rk8a8396YP+SNHdBp
+	+t58Tf2SJk+08FnUcDvlo2D9/k/r5N++Pvnqu5kN+Hzq+sFjk6rcd2J3Uk4cfpDpCX0STg57
+	e57Tmcqj8+Zuqyg7ffabtMsyXKpSZMtpbaniX2jl8TOsAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAA02Sa0hTYRjHec9d6cRxGZ3Ksgaj6GIXsh4qulDhIejyrQgqVx7amDe2spQC
+	bY6krGwxV1upKQ3bTE0rMlkMJSt11LQb6dLlskJtYpp5XWdJ1JeX3/s8P/7P8+FhcNkIOYdR
+	Jx8XtcnKRDkVToTv3qBfPnvNR9VKZ/kMeJvlImBoMIeAGxVlFORUXSfhVbkDQcdQDoLhMSsO
+	hpogARPGBhoGR9poCDobEOR7jDiU3c/C4EflJAU99QMITD4/BeZvWQQEbLkILN1WGr49jYO+
+	jloSgt4vGLz72YvA5p/EwO86h2AiXwOFxdUUjLlf4mA2vUJwy+fF4Wul1Lzf8BGBs/QsBZ/z
+	HuDQ6p8Or4cCFLwwXaCgz3MDg++VFBSddZJw02pEoC+poCD/ZhUBNZ2PafD0jGPQnm/EwFG1
+	Czps3QQ05RVj0n6SdW8WWM16THq+YmC6W4vBiM1OQ3NJOwG2TAVY3a0kfCq10DDuWwXBohRo
+	cHyhwXvZREB530tyiwkJw4ZLhGCvfogJhpYJSigrKEPC2KgRCYO39bhgyJO+9b0BXMiuPinc
+	buqlhNGhN5Tg/FlECI3FvHDFvVyosXhpIfvJB3rv+gPhGxPERHWaqF2xKT5c1Xxna6oz4lS2
+	8WAmCrDnURjDc2v4J45+LMQUt4h//34ED3Ekt4CvvthNhhjnmqL4t55lIZ7BKfkf9V7JYRiC
+	U/ADv/aHyiy3li/VXyOnIqN5R6XrT0yYVG/1NREhlnGxvCGQjU35EfyL634iFINLYysKZFOT
+	onn9Ayueh1jLf5bln2X5zypCuB1FqpPTkpTqxNgYnUaVnqw+FXM0JakKSQdpOzN+5REabI2r
+	QxyD5NNYj8KrkpHKNF16Uh3iGVweycaXtqtkbIIyPUPUphzWnkgUdXVoLkPIZ7E794nxMu6Y
+	8rioEcVUUfu3izFhczLRh8aWPRBVeFCh3fbZ3bgO254rX9072XNu4Xx3f+PchKhJfdy8q5u2
+	bC5xm8/bYtpcW2MWz+zqYjtrT7ZohI0F9tPajOd7I7b7Tmc034L2nK5n9wotbOehpbFO89Xh
+	w/1ZrsVc3xFFbYV5x1qHnW8zTUtN0oRFu9riBsbujAZzV8gJnUq5agmu1Sl/A2JfrD6MAwAA
+X-CFilter-Loop: Reflected
 
-False positive reports have been observed since dept works with the
-assumption that all the pages have the same dept class, but the class
-should be split since the problematic call paths are different depending
-on what the page is used for.
+While compiling Linux kernel with DEPT on, the following error was
+observed:
 
-At least, ones in block device's address_space and ones in regular
-file's address_space have exclusively different usages.
+   ./include/linux/rcupdate.h:1084:17: note: in expansion of macro
+   ‘BUILD_BUG_ON’
+   1084 | BUILD_BUG_ON(offsetof(typeof(*(ptr)), rhf) >= 4096);	\
+        | ^~~~~~~~~~~~
+   ./include/linux/rcupdate.h:1047:29: note: in expansion of macro
+   'kvfree_rcu_arg_2'
+   1047 | #define kfree_rcu(ptr, rhf) kvfree_rcu_arg_2(ptr, rhf)
+        |                             ^~~~~~~~~~~~~~~~
+   net/sunrpc/xprt.c:1856:9: note: in expansion of macro 'kfree_rcu'
+   1856 | kfree_rcu(xprt, rcu);
+        | ^~~~~~~~~
+    CC net/kcm/kcmproc.o
+   make[4]: *** [scripts/Makefile.build:203: net/sunrpc/xprt.o] Error 1
 
-Thus, define usage candidates like:
+Since kfree_rcu() assumes 'offset of struct rcu_head in a rcu-managed
+struct < 4096', the offest of struct rcu_head in struct rpc_xprt should
+not exceed 4096 but does, due to the debug information added by DEPT.
 
-   DEPT_PAGE_REGFILE_CACHE /* page in regular file's address_space */
-   DEPT_PAGE_BDEV_CACHE    /* page in block device's address_space */
-   DEPT_PAGE_DEFAULT       /* the others */
+Relocate struct rcu_head to the first field of struct rpc_xprt from an
+arbitrary location to avoid the issue and meet the assumption.
 
-Introduce APIs to set each page's usage properly and make sure not to
-interact between at least between DEPT_PAGE_REGFILE_CACHE and
-DEPT_PAGE_BDEV_CACHE.  However, besides the exclusive usages, allow any
-other combinations to interact to the other for example:
-
-   PG_locked for DEPT_PAGE_DEFAULT page can wait for PG_locked for
-   DEPT_PAGE_REGFILE_CACHE page and vice versa.
-
-   PG_locked for DEPT_PAGE_DEFAULT page can wait for PG_locked for
-   DEPT_PAGE_BDEV_CACHE page and vice versa.
-
-   PG_locked for DEPT_PAGE_DEFAULT page can wait for PG_locked for
-   DEPT_PAGE_DEFAULT page.
-
+Reported-by: Yunseong Kim <ysk@kzalloc.com>
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/dept.h       | 31 +++++++++++++++-
- include/linux/mm_types.h   |  1 +
- include/linux/page-flags.h | 76 +++++++++++++++++++++++++++++++++++++-
- 3 files changed, 104 insertions(+), 4 deletions(-)
+ include/linux/sunrpc/xprt.h | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/dept.h b/include/linux/dept.h
-index 0ac13129f308..fbbc41048fac 100644
---- a/include/linux/dept.h
-+++ b/include/linux/dept.h
-@@ -21,8 +21,8 @@ struct task_struct;
- #define DEPT_MAX_WAIT_HIST		64
- #define DEPT_MAX_ECXT_HELD		48
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index f46d1fb8f71a..666e42a17a31 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -211,6 +211,14 @@ enum xprt_transports {
  
--#define DEPT_MAX_SUBCLASSES		16
--#define DEPT_MAX_SUBCLASSES_EVT		2
-+#define DEPT_MAX_SUBCLASSES		24
-+#define DEPT_MAX_SUBCLASSES_EVT		3
- #define DEPT_MAX_SUBCLASSES_USR		(DEPT_MAX_SUBCLASSES / DEPT_MAX_SUBCLASSES_EVT)
- #define DEPT_MAX_SUBCLASSES_CACHE	2
- 
-@@ -390,6 +390,32 @@ struct dept_ext_wgen {
- 	unsigned int wgen;
- };
- 
-+enum {
-+	DEPT_PAGE_DEFAULT = 0,
-+	DEPT_PAGE_REGFILE_CACHE,	/* regular file page cache */
-+	DEPT_PAGE_BDEV_CACHE,		/* block device cache */
-+	DEPT_PAGE_USAGE_NR,		/* nr of usages options */
-+};
-+
-+#define DEPT_PAGE_USAGE_SHIFT 16
-+#define DEPT_PAGE_USAGE_MASK ((1U << DEPT_PAGE_USAGE_SHIFT) - 1)
-+#define DEPT_PAGE_USAGE_PENDING_MASK (DEPT_PAGE_USAGE_MASK << DEPT_PAGE_USAGE_SHIFT)
-+
-+/*
-+ * Identify each page's usage type
-+ */
-+struct dept_page_usage {
+ struct rpc_sysfs_xprt;
+ struct rpc_xprt {
 +	/*
-+	 * low 16 bits  : the current usage type
-+	 * high 16 bits : usage type requested to be set
-+	 *
-+	 * Do not apply the type requested immediately but defer until
-+	 * after clearing PG_locked bit of the folio or page e.g. by
-+	 * folio_unlock().
++	 * Place struct rcu_head within the first 4096 bytes of struct
++	 * rpc_xprt if sizeof(struct rpc_xprt) > 4096, so that
++	 * kfree_rcu() can simply work assuming that.  See the comment
++	 * in kfree_rcu().
 +	 */
-+	atomic_t type; /* Update and read atomically */
-+};
++	struct rcu_head		rcu;
 +
- struct dept_event_site {
- 	/*
- 	 * event site name
-@@ -562,6 +588,7 @@ extern void dept_hardirqs_off(void);
- struct dept_key { };
- struct dept_map { };
- struct dept_ext_wgen { };
-+struct dept_page_usage { };
- struct dept_event_site { };
- 
- #define DEPT_MAP_INITIALIZER(n, k) { }
-diff --git a/include/linux/mm_types.h b/include/linux/mm_types.h
-index 5ebc565309af..8ccbb030500c 100644
---- a/include/linux/mm_types.h
-+++ b/include/linux/mm_types.h
-@@ -224,6 +224,7 @@ struct page {
- 	struct page *kmsan_shadow;
- 	struct page *kmsan_origin;
+ 	struct kref		kref;		/* Reference count */
+ 	const struct rpc_xprt_ops *ops;		/* transport methods */
+ 	unsigned int		id;		/* transport id */
+@@ -317,7 +325,6 @@ struct rpc_xprt {
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+ 	struct dentry		*debugfs;		/* debugfs directory */
  #endif
-+	struct dept_page_usage usage;
- 	struct dept_ext_wgen pg_locked_wgen;
- } _struct_page_alignment;
- 
-diff --git a/include/linux/page-flags.h b/include/linux/page-flags.h
-index d3c4954c4218..3fd3660ddc6f 100644
---- a/include/linux/page-flags.h
-+++ b/include/linux/page-flags.h
-@@ -204,6 +204,68 @@ enum pageflags {
- 
- extern struct dept_map pg_locked_map;
- 
-+static inline int dept_set_page_usage(struct page *p,
-+		unsigned int new_type)
-+{
-+	unsigned int type = atomic_read(&p->usage.type);
-+
-+	if (WARN_ON_ONCE(new_type >= DEPT_PAGE_USAGE_NR))
-+		return -1;
-+
-+	new_type <<= DEPT_PAGE_USAGE_SHIFT;
-+retry:
-+	new_type &= ~DEPT_PAGE_USAGE_MASK;
-+	new_type |= type & DEPT_PAGE_USAGE_MASK;
-+
-+	if (!atomic_try_cmpxchg(&p->usage.type, &type, new_type))
-+		goto retry;
-+
-+	return 0;
-+}
-+
-+static inline int dept_reset_page_usage(struct page *p)
-+{
-+	return dept_set_page_usage(p, DEPT_PAGE_DEFAULT);
-+}
-+
-+static inline void dept_update_page_usage(struct page *p)
-+{
-+	unsigned int type = atomic_read(&p->usage.type);
-+	unsigned int new_type;
-+
-+retry:
-+	new_type = type & DEPT_PAGE_USAGE_PENDING_MASK;
-+	new_type >>= DEPT_PAGE_USAGE_SHIFT;
-+	new_type |= type & DEPT_PAGE_USAGE_PENDING_MASK;
-+
-+	/*
-+	 * Already updated by others.
-+	 */
-+	if (type == new_type)
-+		return;
-+
-+	if (!atomic_try_cmpxchg(&p->usage.type, &type, new_type))
-+		goto retry;
-+}
-+
-+static inline unsigned long dept_event_flags(struct page *p, bool wait)
-+{
-+	unsigned int type;
-+
-+	type = atomic_read(&p->usage.type) & DEPT_PAGE_USAGE_MASK;
-+
-+	if (WARN_ON_ONCE(type >= DEPT_PAGE_USAGE_NR))
-+		return 0;
-+
-+	/*
-+	 * event
-+	 */
-+	if (!wait)
-+		return 1UL << type;
-+
-+	return (1UL << DEPT_PAGE_DEFAULT) | (1UL << type);
-+}
-+
- /*
-  * Place the following annotations in its suitable point in code:
-  *
-@@ -214,20 +276,28 @@ extern struct dept_map pg_locked_map;
- 
- static inline void dept_page_set_bit(struct page *p, int bit_nr)
- {
-+	dept_update_page_usage(p);
- 	if (bit_nr == PG_locked)
- 		dept_request_event(&pg_locked_map, &p->pg_locked_wgen);
- }
- 
- static inline void dept_page_clear_bit(struct page *p, int bit_nr)
- {
-+	unsigned long evt_f;
-+
-+	evt_f = dept_event_flags(p, false);
- 	if (bit_nr == PG_locked)
--		dept_event(&pg_locked_map, 1UL, _RET_IP_, __func__, &p->pg_locked_wgen);
-+		dept_event(&pg_locked_map, evt_f, _RET_IP_, __func__, &p->pg_locked_wgen);
- }
- 
- static inline void dept_page_wait_on_bit(struct page *p, int bit_nr)
- {
-+	unsigned long evt_f;
-+
-+	dept_update_page_usage(p);
-+	evt_f = dept_event_flags(p, true);
- 	if (bit_nr == PG_locked)
--		dept_wait(&pg_locked_map, 1UL, _RET_IP_, __func__, 0, -1L);
-+		dept_wait(&pg_locked_map, evt_f, _RET_IP_, __func__, 0, -1L);
- }
- 
- static inline void dept_folio_set_bit(struct folio *f, int bit_nr)
-@@ -245,6 +315,8 @@ static inline void dept_folio_wait_on_bit(struct folio *f, int bit_nr)
- 	dept_page_wait_on_bit(&f->page, bit_nr);
- }
- #else
-+#define dept_set_page_usage(p, t)		do { } while (0)
-+#define dept_reset_page_usage(p)		do { } while (0)
- #define dept_page_set_bit(p, bit_nr)		do { } while (0)
- #define dept_page_clear_bit(p, bit_nr)		do { } while (0)
- #define dept_page_wait_on_bit(p, bit_nr)	do { } while (0)
+-	struct rcu_head		rcu;
+ 	const struct xprt_class	*xprt_class;
+ 	struct rpc_sysfs_xprt	*xprt_sysfs;
+ 	bool			main; /*mark if this is the 1st transport */
 -- 
 2.17.1
 
