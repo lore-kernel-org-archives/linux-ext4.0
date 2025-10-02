@@ -1,17 +1,17 @@
 Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id E703B30F526;
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id DDB2630EF7B;
 	Thu,  2 Oct 2025 08:14:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1759392845; cv=none; b=NbYf0SZEV71k5+Ixytld0g8yZKf+e/CunfSTBdcMHmzrHxS36WNThzxDMeqT11vwDHhobS/SsWhPd9SwAYHpCosKbdfN4TGfqGQOR9nZ+jd5WgxB9UnouRt1Pat52kRQ6oCuzmAIk9lgwScdl7c54q+UuroeTCxQTcMKCySkRKE=
+	t=1759392846; cv=none; b=ea+SlzKeuYYVPXaM9tWrB8SbMAk7BALPQ3u5mMjNNfs20WfEjgoFE6FIy42V3dohC8j6K6GgzIHdIamAWU8JgKY7He+XervXQvhdjAJuOqLZlEMzhMGhxyXun8zwwFcj2tNpzKUvSsaOoYZGjioH7uPCXe8LVS7rIgLzL9XMRaY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1759392845; c=relaxed/simple;
-	bh=51wXDfJ/geJNTOX9kWjDa7gjFY+JiMiLA1OUeeWv4bs=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=Zn5ASmy5PvEXrsx9Vx3KX+M/3yhGAQ7z5lnRl9QC1fsBSSR6edBBK1X+x/Geu7s4eigxV3UW45Oz16kfK4SbyDm0DGckG/AkamjWmZizoTgqjzw7Y62ulaLTDIkwnBNcGLASn8hhkP3bNvQ93mbhOYebQH8+qzRYcE5y6NPywjo=
+	s=arc-20240116; t=1759392846; c=relaxed/simple;
+	bh=GWWReu+uieKdoNR9LXX0pJ0D/rvvILcUDOdshrqbVYg=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=dLhRwWCmnnM8AagviHnbk3B+XB9ypwwD9hufiYznH+0BaSORGvmGsX+yRwKykLmUWuRU6UK4EbP+I7LlmzUwA3t8KyjTHVDS2g53j7FT9QuN0KhSd0BJg1iGxrMbSir7Ce3VDDEnHAnA9blnaegTIuTTBiub+pJfZ/PP8mUXvHY=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c45ff70000001609-2a-68de34124c87
+X-AuditID: a67dfc5b-c45ff70000001609-84-68de3412feb6
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -162,43 +162,43 @@ Cc: kernel_team@skhynix.com,
 	rcu@vger.kernel.org,
 	linux-nfs@vger.kernel.org,
 	linux-rt-devel@lists.linux.dev
-Subject: [PATCH v17 30/47] fs/jbd2: use a weaker annotation in journal handling
-Date: Thu,  2 Oct 2025 17:12:30 +0900
-Message-Id: <20251002081247.51255-31-byungchul@sk.com>
+Subject: [PATCH v17 33/47] dept: make dept aware of lockdep_set_lock_cmp_fn() annotation
+Date: Thu,  2 Oct 2025 17:12:33 +0900
+Message-Id: <20251002081247.51255-34-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20251002081247.51255-1-byungchul@sk.com>
 References: <20251002081247.51255-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzXSa0hTYRgH8N5z3vPubLk4TMFjdmMkQRezsHo+RPQleAuiKKKoDzb10FbT
-	ZEvNqFjSzHQtG80uhs20WGqpWxfLotLoQjQV11q0mYZZlmtRTisr2rp8+/F/bl8enlVZuMm8
-	LneXZMjV6NVEgRWhuJp58em92rRrlcngO3AXQ2SkFEOp6xQHXZcbEPy0PZDBl+ZfBD50fEYQ
-	vmBBcHqwSgbPR4ej1codcPacm0BNf5CFnoFJ4I2ECTy2lxNwFN/moMG1Gk4MEahsSYTgUTuG
-	y6FODh73+jj4MGgjMOLtZ6D0ZgRDTUkdhlPVAQKW5qscmKrGOGh662eg8+YlDkatyeCveIPg
-	6h0zgkPv2gg8rfJwELC+x1BS18LAeWeIA1ejj0BHZJgBt8vOwmtrSAZmyzcZ2H+UEhj/eobA
-	x4oRbnkaHTNbMW2sbkR0/LsN0Y7hMEsPugvp7VEHpjdOB2XU4cqnbudsWntriKGu+sOEloW8
-	DP3o8cjoo5PjmA54TzC0xmRn1yZtVizNlvS6Askwf9lWhdbSWk7yvk7c7flUi01oTF6G5Lwo
-	pIvm+j72v4+Zy5iYiTBL9Pu//ckThBmi+8ggFzMrPJki+rrnxhwvrBE739XJYsZCinhuqJXE
-	rBQWi4G26n87p4sNzXf/WB7Ne/qf4JhVwiLRHD4YvaWI9tTKxcb2S8zfgSTxntOPK5DSgSbU
-	I5UutyBHo9Onp2qLcnW7U7N25rhQ9Ecu7PuxpRV97lrfjgQeqeOUXSlBrYrTFBiLctqRyLPq
-	BOVWZ0CrUmZrivZIhp0Zhny9ZGxHyTxWJyoXjhZmq4Rtml3SDknKkwz/qwwvn2xCqVkztie4
-	J1z3He/urs7fcIZ/ubJp4pX9A4t7p61IK4wj+2ZmbMwM267lvSxfV3VL/9B7cb9iJRRuLo5M
-	tc1Lw299GXsHV2X+9Fjd/IB/07G+irYpiSmvy40lvS9eOILzl8RrU5ZOX55VnNqXdHLOr0zP
-	fRp4Jt57FViV3AP3D5icamzUahbMZg1GzW9sirINHwMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzXSa0xTdxQAcP/3/vu/paN6c0W5Qea0k5ksImpQj6ib/cSNiY99mtEP0uiN
-	rdCivcgsyQwFGomvQZeWjSoiaEOASaXqQEQZKolghVpFo1TEVB4BLFGQ8RJbjV9OfueRk/Ph
-	yGnuuixGrjNkiEaDJk1FFFixfWNuPJf4UrvKfhxDp7kJw9hoPoazNdUE8mv/lkHH5SoE3WP5
-	CManHDRY6mcxzFhbGBideMHAbGMLArvXSkP1VTMF710fCQzeeYfA1hMgUDRgxhB0nkJQ3Otg
-	YOBeMgx3N8hg1t9HwdMPQwicgY8UBJqOI5ixp8L5MjeBKU87DUW2DgQXevw09LtCzastLxE0
-	VuQQeFNwjQZfYC48HgsSuG87SWDYe5aCty4CpTmNMjjnsCLILa8hYD9Xi6H+1Q0GvIPTFHTZ
-	rRRU1W6DbmcvhraCMip0X2jqSjQ4inKpUOinwPZPAwUTzkoGHpR3YXBmx4HD45PB64piBqZ7
-	VsNsaTq0VPUx4P/DhuHycLtsiw0J45YzWKh0X6cEy6MZIlSXVCNhatKKhNFLubRgKQild4aC
-	tJDn/k241DZEhMmxJ0Ro/FCKhdYyXij0xAv1xX5GyLv1nNmZtFuxab+YpssUjQk/pSi0p+pO
-	kkP/f3P04Ug5zkbjESdQhJxnE/lCywkqbMIu5589m6DDjmKX8O7TvbKwabYtlu/0rgh7PruD
-	b++/yISN2Ti+bKCOhK1k1/FdDSX0l53f8VWups+OCNV9PW04bI5dy1uCeVQBUpSiOZUoSmfI
-	1Gt0aWtXSqlak0F3dOW+dH0tCn2T8/fpwjo06ktuRqwcqSKV3ji/lpNpMiWTvhnxcloVpUyp
-	6NJyyv0aU5ZoTN9rPJImSs1okRyropVbfxVTOPaAJkNMFcVDovFrl5JHxGSjJJ/58MGSxUZ1
-	xWLOpH6apfd0mmd2zb/3vfoH9cWRxEDrv4uIXTc4fT6HO3CsW/rv7pqdtGbiYcy3HfP2Jph6
-	I2/fGLd6FLH+IL0vWbvZ8Ocv6qWujPV7FNGTN9/U1P2VP9L3c4JbSnqxIFbHxetb/VKkQa3e
-	sEyK3JIV7U5ceESFJa1m9Y+0UdJ8AmP23a1JAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0iTYRTHfd7b5nDxNi3fLDBWJoiurBkHsuhD4ENUFPkhMsqXfHEjb0zz
+	UlSa05aUWli2TNO84gXXLNJRVpZRmaloa5QuRxcb6UrnBctaW5dvP/7nd/6cD0dMyhaoALE6
+	KU3QJPEJckZCSSZ8qsJ8lVbVOltNCMxM6yjQGfU0NN/KIcBp+MXAl0dTCOzdUeAaGSPg9ew4
+	gp+Xj8CP3j4SPhvOILjXcJoBh4GB8rKLCDpGTSIoK80l4EX1MAV12UHgqkyGJ01jIhgpukTB
+	M6uZBp1phgJ9xTADg6ZrDPQ/6KGhdcxCQJ+phQbbqIUGS/FHBC2OG+4LZutIaJgspeHTq3wC
+	aqcdJOTX3CSgUzdKwOPWOwQYm80MfK/vRtA0QEFZTiGC291zIjBM1jOgHY4AR/E0vVWB5/IK
+	KTxdm0vivOJmhLVtGfhCbxjuuDoiwtrONyJcaTyKq+/aCVw1NUPjN182Y2PjWQYXTAwR+MNQ
+	KYErnu3BHXnv6N3cfklknJCgThc0a7fESlRdrutkytXgTLO1ncxGFYEFyFvMsUruivM0UYDE
+	f9hlTvPEDBvMWSzzpIf92JVc2/lPtIdJtmcFZx4I9ei+7D5ON4E8SLFB3MPyDI8hZTdypvdV
+	xN/yQK7J8OBPi7c7H7T1UB6WsRFc3let25G4nTJvbqLx7b+FZdzDBgtVjKSVyKsRydRJ6Ym8
+	OkGpUGUlqTMVh5MTjcj9E3UnFmLa0VT/3i7EipHcR9ofNKKS0Xx6alZiF+LEpNxPGtswrJJJ
+	4/isY4Im+ZDmaIKQ2oWWiym5v3T9bEacjI3n04QjgpAiaP5PCbF3QDYKeR69x+a85rXF5pUp
+	ijpwcM3J+ZdPTVU9Oczdc9t6gyPv/5xR2oV3x1bKnY+ck2eUm5au31noGjy+qzNwhyya5xX4
+	G4pZZPYzllTbFc+tfuWD27UK/RO7fknoq9YNDl+9decqfyYtfvH86m8pJ8/6+kesHT8VXnJF
+	W1Rzb/zSXJScSlXx4SGkJpX/DY8ZQpUPAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSe0hTcRTH+917d+91tbgso0v2YiRCpClYnZ5EGV2KIqjoReioixvqjM1M
+	g0KbI7E0G01pU1tK03Tp2lS0WJjaoGzYsmaU81G+yi2ptPK5tqB/Dp9zvh8O549D42KbYDkt
+	V6TxSoU0WUIKCeGhbepIcWyvLNpsjgZ3dgsBkxO5BJTUmUnItd4RwOvaGgR9k7kIfs8YcNA0
+	+wmY0zoomJj6SIHf7kBQ5NLiYK7PxuCnZZ6EsbYfCHQDgyQUf8kmYNx0A4F+2EDBl+f7wNf3
+	RAB+zwgG3b+8CEyD8xgMtlxDMFeUBHfLbSTMODtxKNa9RnBvwIPDqCUQ1jt6EdirrpIwVNiA
+	Q9fgYng7OU7CC911EnyuEgy+WUgwXrULoNSgRaCuqCOhqNRKQHP/YwpcY7MY9BRpMaixHoQ+
+	0zABHYXlWOC+gPVoGRiK1VigjGKge/gEgylTNQWvKnoIMGWFg8HZJYBPVXoKZgdiwG9MBUfN
+	CAWemzoCan2dgl06xP3WFBBcta0R4zRv5kjOXGZG3My0FnET99U4pykMtG3ecZzLsV3k7nd4
+	SW568h3J2X8ZCe5lOcvdckZyzXoPxeU8/UAd3npKuP0cnyxP55UbdiYIZa3+u/h5fUSGu7cJ
+	z0Jlq/MQTbNMLOt3p+WhEJpkItj376fwIIcya1hb/rAgyDjTsYJ1u9YH9SXMCTbXh4JIMOHs
+	s9KLQUPEbGIff76HBZllVrM1lpZ/W0IC866BDiLIYmYjqxnPwQqR0IgWVKNQuSI9RSpP3hil
+	SpJlKuQZUWdTU6wo8Eqmy7O3mtBE175WxNBIskjkCvfIxAJpuiozpRWxNC4JFSVU9cjEonPS
+	zEu8MjVeeSGZV7WiMJqQLBPtP84niJlEaRqfxPPneeX/FKNDlmehT4nT+zPa2e6+trAXZfPR
+	tWE2C3Sfadp2c2/OWWuUlzpw+qvBaW48+UB+e01z+4W8HZZVo5VLd6n7j/WPxa6tx2bfxcT5
+	OqvX006zMYm80hC3Jd2RXxm/p2DzlD10+kMFDgXfz8S3LNQf/ekuwUa97UMNfxKPeN5WrNxt
+	VEREGCWESiaNWYcrVdK/Oib6C0YDAAA=
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -206,43 +206,158 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-jbd2 journal handling code doesn't want jbd2_might_wait_for_commit()
-to be placed between start_this_handle() and stop_this_handle().  So it
-marks the region with rwsem_acquire_read() and rwsem_release().
+commit eb1cfd09f788e ("lockdep: Add lock_set_cmp_fn() annotation") has
+been added to address the issue that lockdep was not able to detect a
+true deadlock like the following:
 
-However, the annotation is too strong for that purpose.  We don't have
-to use more than try lock annotation for that.
+   https://lore.kernel.org/lkml/20220510232633.GA18445@X58A-UD3R/
 
-rwsem_acquire_read() implies:
+The approach is only for lockdep but dept should work being aware of it
+because the new annotation is already used to avoid false positive of
+lockdep in the code.
 
-   1. might be a waiter on contention of the lock.
-   2. enter to the critical section of the lock.
-
-All we need in here is to act 2, not 1.  So trylock version of
-annotation is sufficient for that purpose.  Now that dept partially
-relies on lockdep annotaions, dept interpets rwsem_acquire_read() as a
-potential wait and might report a deadlock by the wait.
-
-Replace it with trylock version of annotation.
+Make dept aware of the new lockdep annotation.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- fs/jbd2/transaction.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/linux/dept.h     | 10 +++++++++
+ kernel/dependency/dept.c | 48 +++++++++++++++++++++++++++++++++++-----
+ kernel/locking/lockdep.c |  1 +
+ 3 files changed, 53 insertions(+), 6 deletions(-)
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index c7867139af69..b4e65f51bf5e 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -441,7 +441,7 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
- 	read_unlock(&journal->j_state_lock);
- 	current->journal_info = handle;
+diff --git a/include/linux/dept.h b/include/linux/dept.h
+index b6dc4ff19537..8b4d97fc4627 100644
+--- a/include/linux/dept.h
++++ b/include/linux/dept.h
+@@ -130,6 +130,11 @@ struct dept_map {
+ 	const char			*name;
+ 	struct dept_key			*keys;
  
--	rwsem_acquire_read(&journal->j_trans_commit_map, 0, 0, _THIS_IP_);
-+	rwsem_acquire_read(&journal->j_trans_commit_map, 0, 1, _THIS_IP_);
- 	jbd2_journal_free_transaction(new_transaction);
++	/*
++	 * keep lockdep map to handle lockdep_set_lock_cmp_fn().
++	 */
++	void				*lockdep_map;
++
  	/*
- 	 * Ensure that no allocations done while the transaction is open are
+ 	 * subclass that can be set from user
+ 	 */
+@@ -156,6 +161,7 @@ struct dept_map {
+ {									\
+ 	.name = #n,							\
+ 	.keys = (struct dept_key *)(k),					\
++	.lockdep_map = NULL,						\
+ 	.sub_u = 0,							\
+ 	.map_key = { .classes = { NULL, } },				\
+ 	.wgen = 0U,							\
+@@ -427,6 +433,8 @@ extern void dept_softirqs_on_ip(unsigned long ip);
+ extern void dept_hardirqs_on(void);
+ extern void dept_softirqs_off(void);
+ extern void dept_hardirqs_off(void);
++
++#define dept_set_lockdep_map(m, lockdep_m) ({ (m)->lockdep_map = lockdep_m; })
+ #else /* !CONFIG_DEPT */
+ struct dept_key { };
+ struct dept_map { };
+@@ -469,5 +477,7 @@ struct dept_ext_wgen { };
+ #define dept_hardirqs_on()				do { } while (0)
+ #define dept_softirqs_off()				do { } while (0)
+ #define dept_hardirqs_off()				do { } while (0)
++
++#define dept_set_lockdep_map(m, lockdep_m)		do { } while (0)
+ #endif
+ #endif /* __LINUX_DEPT_H */
+diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
+index 1c6eb0a6d0a6..a0eb4b108de0 100644
+--- a/kernel/dependency/dept.c
++++ b/kernel/dependency/dept.c
+@@ -1615,9 +1615,39 @@ static int next_wgen(void)
+ 	return atomic_inc_return(&wgen) ?: atomic_inc_return(&wgen);
+ }
+ 
+-static void add_wait(struct dept_class *c, unsigned long ip,
+-		     const char *w_fn, int sub_l, bool sched_sleep,
+-		     bool timeout)
++/*
++ * XXX: This is a temporary patch needed until lockdep stops tracking
++ * dependency in wrong way.  lockdep has added an annotation to specify
++ * a callback to determin whether the given lock aquisition order is
++ * okay or not in its own way.  Even though dept is already working
++ * correctly with sub class on that issue, it needs to be aware of the
++ * annotation anyway.
++ */
++static bool lockdep_cmp_fn(struct dept_map *prev, struct dept_map *next)
++{
++	/*
++	 * Assumes the cmp_fn thing comes from struct lockdep_map.
++	 */
++	struct lockdep_map *p_lock = (struct lockdep_map *)prev->lockdep_map;
++	struct lockdep_map *n_lock = (struct lockdep_map *)next->lockdep_map;
++	struct lock_class *p_class = p_lock ? p_lock->class_cache[0] : NULL;
++	struct lock_class *n_class = n_lock ? n_lock->class_cache[0] : NULL;
++
++	if (!p_class || !n_class)
++		return false;
++
++	if (p_class != n_class)
++		return false;
++
++	if (!p_class->cmp_fn)
++		return false;
++
++	return p_class->cmp_fn(p_lock, n_lock) < 0;
++}
++
++static void add_wait(struct dept_map *m, struct dept_class *c,
++		unsigned long ip, const char *w_fn, int sub_l,
++		bool sched_sleep, bool timeout)
+ {
+ 	struct dept_task *dt = dept_task();
+ 	struct dept_wait *w;
+@@ -1658,8 +1688,13 @@ static void add_wait(struct dept_class *c, unsigned long ip,
+ 		if (!eh->ecxt)
+ 			continue;
+ 
+-		if (eh->ecxt->class != c || eh->sub_l == sub_l)
+-			add_dep(eh->ecxt, w);
++		if (eh->ecxt->class == c && eh->sub_l != sub_l)
++			continue;
++
++		if (i == dt->ecxt_held_pos - 1 && lockdep_cmp_fn(eh->map, m))
++			continue;
++
++		add_dep(eh->ecxt, w);
+ 	}
+ 
+ 	wg = next_wgen();
+@@ -2145,6 +2180,7 @@ void dept_map_init(struct dept_map *m, struct dept_key *k, int sub_u,
+ 	m->name = n;
+ 	m->wgen = 0U;
+ 	m->nocheck = !valid_key(k);
++	m->lockdep_map = NULL;
+ 
+ 	dept_exit_recursive(flags);
+ }
+@@ -2366,7 +2402,7 @@ static void __dept_wait(struct dept_map *m, unsigned long w_f,
+ 		if (!c)
+ 			continue;
+ 
+-		add_wait(c, ip, w_fn, sub_l, sched_sleep, timeout);
++		add_wait(m, c, ip, w_fn, sub_l, sched_sleep, timeout);
+ 	}
+ }
+ 
+diff --git a/kernel/locking/lockdep.c b/kernel/locking/lockdep.c
+index 39b9e3e27c0b..c99f91f7a54d 100644
+--- a/kernel/locking/lockdep.c
++++ b/kernel/locking/lockdep.c
+@@ -5035,6 +5035,7 @@ void lockdep_set_lock_cmp_fn(struct lockdep_map *lock, lock_cmp_fn cmp_fn,
+ 		class->print_fn = print_fn;
+ 	}
+ 
++	dept_set_lockdep_map(&lock->dmap, lock);
+ 	lockdep_recursion_finish();
+ 	raw_local_irq_restore(flags);
+ }
 -- 
 2.17.1
 
