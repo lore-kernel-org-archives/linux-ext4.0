@@ -1,17 +1,17 @@
-Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 1F482311957;
-	Thu,  2 Oct 2025 08:14:05 +0000 (UTC)
+Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 7551B2DC79C;
+	Thu,  2 Oct 2025 08:14:08 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1759392852; cv=none; b=pvctHj1+rC88zLvrrvW61ZrrlKFF8wUbfps/o1o4Lc9DjRnLSRltb3BYX8WJ5TA+XVH8eoljKXi9AVltHz0UhVTeiDRufiaP2TrN/oNWRzv6eZWmHXRWTBARJmFLKElqoBd4/ZGmFDJ2oJjsYXpjE47tYhDxAOdZbnyPFk8xu/o=
+	t=1759392855; cv=none; b=TZktTbZW44KtqF8kEiPWE4WgneX6fauG8Va73Bggc66Yh7UvHN8nQACDiShtJM5Z8pJa3ASV05eCzKpCvLH8CVKK9k9K9KFNTBxzZVC5P7MLfK+vz4KG69jGPGvCuVH0lYlHnt7Zck2iyfFXzG+b/jydLI4lGiKOjg1qrACcf3Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1759392852; c=relaxed/simple;
-	bh=Vg0cL3qHe4cP/WpcIVBPLLHPUcknH8bXkySiCGRbfqw=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=OJonL+s7HGUHndmzQGF5ZsATnyaPkF/+Gm5nIIXqSP7a8rQln3fQhpD9sRXPDwUfvpq16vg2AXldz8HassTM/3E01O+B2xtNIP5KWGyiSC0kRaZdiAxteha/UBG8gmikL8E1MyKIven/RkzgT6rMunuC2nfE3rRjvnuhUv+3wKA=
+	s=arc-20240116; t=1759392855; c=relaxed/simple;
+	bh=L0WtlCojLK6wupXqZkGVRPFE9pJaG7p+Z4/jZGhFssk=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=fj6QOLkACt3JDOHgR1xcoMTC5ShN/DiJrRXmgj0uFar3KxBZ6AuvZE/yU3XfwpLyGq9S3XNf0Fq9qMOoKlprPMJLnpMjJbMPVAJwklQr0Zv5+mQ8xflILP9NLwtaViHnY3PQDHF9/8VKALzefdRrdpggWD13FRn1mPVviNZ5LZY=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c2dff70000001609-3b-68de34143874
+X-AuditID: a67dfc5b-c2dff70000001609-f3-68de3419c66c
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -162,45 +162,45 @@ Cc: kernel_team@skhynix.com,
 	rcu@vger.kernel.org,
 	linux-nfs@vger.kernel.org,
 	linux-rt-devel@lists.linux.dev
-Subject: [PATCH v17 39/47] dept: add module support for struct dept_event_site and dept_event_site_dep
-Date: Thu,  2 Oct 2025 17:12:39 +0900
-Message-Id: <20251002081247.51255-40-byungchul@sk.com>
+Subject: [PATCH v17 45/47] dept: track PG_writeback with dept
+Date: Thu,  2 Oct 2025 17:12:45 +0900
+Message-Id: <20251002081247.51255-46-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20251002081247.51255-1-byungchul@sk.com>
 References: <20251002081247.51255-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSe2xTZRjG+c75zqXNuhzL1COYqE0W4xAmOpc3cokGkaPRxEQHAUxcXY+0
-	ritLC2MTSLalDcsyoCtsc1dLo7OwFms7JnNulm00yDLsNh1F1+FgF7Drio5WgXWzHeG/X573
-	ed5L8rKkPECtYjW6faJep9QqaCmWhlNOrU3LGle/dKZuA4yWeTFE71ZgaPrWQUOFu56C69EK
-	BKbOJQxxi4+BpW4fAkd7GQHzrkUaaiYmaai7XYYh0lqFoGG6kYHbF7dB+HoXBUvBGQKuxmYR
-	THqPIIjX5sOXNk/CX+NHcGoiSEK7bxxBt72chinzORJGJlPh12iEhjkXDdbybgqaGy0Iapvd
-	GIZCCwSM1VoIaHO/BwNmG5GYm1jA2UVA4+AIBTfsDQwsTKwHX9sMA8HjNRjOhn+hIDRtoeH7
-	0j8ZcF+7iKDihygG981RCupbxhI3xu8i8J2/QUCV6xwFA75LGH5uOI3h66tDBMSOrQZ/9VEK
-	AuYpBM45Gw0n5qYRhGKtJLRGIwwMe63E6yrhX9MxLJiG47TgaHEg4cF9CxJM5gT1zUZIweg5
-	INyP/kYL3TErFi7beKF6cK3Q2RBkBGPP74xgde8XjP1hSvDYM95/YZd0o0rUaopEfebmXKn6
-	p46TdGHoreI/LtykStFXr1UiCctzWXz/7CT9iNt7XCjJNPc8HwjcI5Ocxj3Le45OU0kmuYGn
-	+dGhF5O8kvuU73Dal7OYS+dbWjzLfhmXzd8JL6KHPZ/h21zeZV2S0EcmBnCS5dyrvCliJCqR
-	NOFplPCeW+Pkw8BT/AV7AJuRzIpWnEFyja6oQKnRZq1Tl+g0xevy9ha4UeLfWg8v7D6P/vF/
-	0Is4FilSZP70oFpOKYsMJQW9iGdJRZos1z6mlstUypLPRf3ej/X7taKhF61mseJJ2cuxAyo5
-	t0e5T8wXxUJR/6hKsJJVpYgtXxr+qM+2IzjPYafzw5SZ7Vu2VvseXM755u0c47bHsr/z6EhG
-	s3F2d9GPfH36E4uFn6hX9Ku+eKdqy+ad9r7SPVdSU+rn28krxue8r0iuZVry7jnyB4s3VR78
-	r7dY2/TXZ2lHpGffGE9d46Ie77wUmrPED73LNmdPGeqaNr3pX/l3kwIb1Mr1GaTeoPwfvf03
-	E2sDAAA=
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0iTcRTG+7/XOVq8LMEXi4qZRGE3yjpkVBLUS3SjiKgP5aq3NnS6NrMs
-	gnlZSjfnbIoubWmu4SWXM8tEMyOplrm1LqIus5ZlakZ5QZ2urejL4Xee5+HwfDgCXFxLhgrk
-	8Ym8Kl4aJ6GEhHBnVNrS4NUfZCtuu4TwLqWJgJHhTAKuV1VQkFmdT4LjTjmC7pFMBGOTRhy0
-	dT4CpvQtNAyPd9Lga2hBkOvU41BRk4LBb+s0Bf1PfiEw9HgoyOtLIWDIfBlBQa+Rhr6nW2Gw
-	u54En/srBu9HBxCYPdMYeJoyEEzlxsKNYhsFk61tOOQZHAhu9rhx+Gb1mzUtHxA0WFIp+KK7
-	h4PLMwvejAxR8NxwiYJB53UMflgpMKU2kFBo1CNIK6miILewmoC6jw9pcPZ7MejK1WNQXr0D
-	us29BNh1xZi/nz91NwSMeWmYf3zDwFBZj8G4uYyGlyVdBJg14WBsdZHwyVJAg7dnJfhMCdBS
-	/pUGd5aBgDuDbeQmA+LGtFcJrsxWi3Ha11MUV1FUgbjJCT3ihkvTcE6r869PBoZwLt12miu1
-	D1DcxMhbimsYNRHci2KWy25dytUVuGkuvbGD3r3uoHD9MT5OnsSrlm+IEcoe1V6jlP1bznQ+
-	/kxq0K11F1GQgGVWszWNVhRgilnEtreP4wEOZhawtiu9ZIBxxj6XfeeMCPBs5jhbW2mhAkww
-	4WxRke1vXsSsYX8OTqN/N+ez5damv3qQX3f12IkAi5lIVjuUjumQ0IRmlKFgeXySQiqPi1ym
-	jpUlx8vPLDuaoKhG/m8yn/dmP0DDrq3NiBEgyUyRM9wtE5PSJHWyohmxAlwSLIqxdMnEomPS
-	5LO8KuGw6lQcr25GcwSEJES0bT8fI2ZOSBP5WJ5X8qr/LiYICtWgFyWku+/l/aDoaGPGWOhD
-	y4LtTZ1RodGnckwa7bO8+7x80wFx/SFBlpPzeN/uXZu/UbkZ3HMX1vctrorI/vLz3JEsx74w
-	ZcdjBdNmdxkSlPnKMYUDT9Ls0YUVjiYul0ZnHBU/L51w+eatWCWLSl14/Dv+tCQn+8LJulfe
-	XY5LkRJCLZOuXIKr1NI/6YdU+EkDAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSf0wTdxjG/d737npt7HIpJJ6wRNbFbDEiatC8bk5Fk3FZmFnCzIyaaGcv
+	tgxaLcJEM4PSKjGMdDXgnAgFXK20/BCnUbBGUDsRlSKOVQZFEKusQhVoUX7uitl/n/d53+d5
+	8yYvgxVdVAyj1e0XDDpVupKWkbKh+eXxCxN9muWe0/FQUuukoTeUj2B88gyGaYtbArMuN4Li
+	dguG0boZGgK3RhAU9Q3QcGrwCAlBWwGCwTvJMNTbSMHf4VcIbAMzBAzcPI5g8kEbhlNFHgTl
+	fT0YXtaJ2h9uHwKX/SgNz82XMXQMfACPQ0EarEddFORV1tJw7WmDBNoDUwR0F1sIcNR/Da3m
+	CkLcR0PxxQVQVN1IwDtblQTuV3aTMGvVg9vxQgI1Q20UtPg6KQj4LeIZfx6jYOxxHwHOAj+G
+	/IYQCfXPxG75sXMknC7tpuG6q4WE/OkxBO6r/QR0NJTQUFB3mQKfc5aCRw4PCbUvvAS0uu+S
+	0NZQTUG4MBa85ucIqocraDg57EcQCNvwBjU/biokedOjaZp3ljoRPzlhQfzY73mYN5nF8tar
+	IOYnQn/RvCtsJfl7FRx/7bceCW+80SXhrfVZvPH2EMVfsi/hK68PEt8kbJOtVQvp2mzBkLBu
+	l0zT39hP762JOzBxL4/KRYWxJ5CU4dhE7h/zBXwCMXM8W5YakWn2E87rfYcjHM3GcZd+9lMR
+	xmzrh1xn+9IIR7FfcE97S4kIk+xi7nXu2bkZObuaa3JMovfxizhH3c25HKmod/S1khFWsKs4
+	U9AoemXizBkpZxoNke8NC7kmu5c0I7kVzatCCq0uO0OlTU9cpsnRaQ8s263PqEfix9l+mtp+
+	FY14UpsRyyDlfLlncY9GQamyM3MymhHHYGW0fJe9W6OQq1U5BwWDfqchK13IbEaxDKlcIF8Z
+	/lGtYPeo9gs/CMJewfB/l2CkMbnIdAj9K2PSXIdrjAq++fxXD5taykrSqCj1t/jty3UpyXeC
+	T4wnN251bt7UFqVRPihNsfkTUvSfBWZC4X3SRUmhjjcKz696nf7+p58nsWnDB2v0nd+V4fUf
+	NeYmx2wxvrHvADpa/fDK5i7jyNQ8y9qlzqxtvxxv+X7Nx2e1HvjSt1VJZmpUK5ZgQ6bqP1UP
+	GjJtAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0iTcRTG+793R4u3ZfWaQTYQ6aLN0Dh0o2++SEUQ0VV05EtbOq2tLINq
+	NkdmZdtoSk7LSw1zprZlZKJ4ISFNdJkW5byMZVqaUbPy1tqCvhx+5zwPD8+Hw+CSOnIVo0w7
+	I6jT5KlSSkSI9m7TRYbEDCpkRgcJ/VnNBEx7cwgoqqmiIMd+h4SeahuCoekcBL/mLDjo630E
+	LJjaafDOfKDB19iOIN9pwqHqSRYGP2r/UPCl7TsC84iHgoLxLAKmrDcQFI5aaBh/EQeTQw0k
+	+FyfMHj7cwKB1fMHA0/zVQQL+Slwr8xBwVxXNw4F5h4EpSMuHMZq/eKT9kEEjRVXKPhoqMOh
+	17ME3kxPUfDSfJ2CSWcRBl9rKSi50khCscWEQFdeQ0F+sZ2A+uHnNDi/zGMwkG/CwGbfA0PW
+	UQI6DWWYv5/f9XglWAp0mH+MYWB+1IDBjLWShlflAwRYteFg6eolwV1RSMP8SDT4StKh3faJ
+	BtctMwHVk93kLjPif+nzCL7S8RTj9a8XKL7qbhXi52ZNiPc+0OG83uBf2yamcD7bcY5/0DlB
+	8bPTfRTf+LOE4DvKON7YFcnXF7poPrvpPb1v6xHR9mQhVZkhqDftTBIp3A1u6lR12PnZDh2p
+	RXmhuYhhODaG893bn4uCGIqN4N69m8EDHMyGcY6bo2SAcbZzNdfv3BjgZewObnjoLhZggg3n
+	vmmL/3nE7BauxTaHAsyxazhbbfO/nCD/vXekkwiwhI3l9FPZmAGJStCiShSsTMtQyZWpsVGa
+	FEVmmvJ81PF0lR35n8l6cd74DHl741oRyyDpYrEz3KWQkPIMTaaqFXEMLg0WJ1UMKCTiZHnm
+	BUGdnqg+mypoWlEoQ0hXiuMPCkkS9oT8jJAiCKcE9X8VY4JWaVGE0xM23p87fjw2frvJebTm
+	5KVEo8ouG1xxbd3l+Cg8JLRUtnpDgipcveVVQ9OxQ7e9wxpJzIXTLQlbzUcPX+8parofZ6or
+	8zwe+x0ilt9pdicYuq/Sss2K5Et5QSjlUMT+xHLf7AFZf9/y3Q/dkuf2z+u129KNSy/e3txy
+	Y+17RZuU0Cjk0etxtUb+F1bYeZtIAwAA
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -208,283 +208,116 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-struct dept_event_site and struct dept_event_site_dep have been
-introduced to track dependencies between multi event sites for a single
-wait, that will be loaded to data segment.  Plus, a custom section,
-'.dept.event_sites', also has been introduced to keep pointers to the
-objects to make sure all the event sites defined exist in code.
-
-dept should work with the section and segment of module.  Add the
-support to handle the section and segment properly whenever modules are
-loaded and unloaded.
+Makes dept able to track PG_writeback waits and events, which will be
+useful in practice.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/dept.h     | 14 +++++++
- include/linux/module.h   |  5 +++
- kernel/dependency/dept.c | 79 +++++++++++++++++++++++++++++++++++-----
- kernel/module/main.c     | 15 ++++++++
- 4 files changed, 103 insertions(+), 10 deletions(-)
+ include/linux/mm_types.h   |  1 +
+ include/linux/page-flags.h |  7 +++++++
+ mm/filemap.c               | 11 +++++++++++
+ mm/mm_init.c               |  1 +
+ 4 files changed, 20 insertions(+)
 
-diff --git a/include/linux/dept.h b/include/linux/dept.h
-index 988aceee36ad..25fdd324614a 100644
---- a/include/linux/dept.h
-+++ b/include/linux/dept.h
-@@ -414,6 +414,11 @@ struct dept_event_site {
- 	struct dept_event_site		*bfs_parent;
- 	struct list_head		bfs_node;
+diff --git a/include/linux/mm_types.h b/include/linux/mm_types.h
+index 8ccbb030500c..bed1a3bc81e1 100644
+--- a/include/linux/mm_types.h
++++ b/include/linux/mm_types.h
+@@ -226,6 +226,7 @@ struct page {
+ #endif
+ 	struct dept_page_usage usage;
+ 	struct dept_ext_wgen pg_locked_wgen;
++	struct dept_ext_wgen pg_writeback_wgen;
+ } _struct_page_alignment;
+ 
+ /*
+diff --git a/include/linux/page-flags.h b/include/linux/page-flags.h
+index 3fd3660ddc6f..b965b16c8cee 100644
+--- a/include/linux/page-flags.h
++++ b/include/linux/page-flags.h
+@@ -203,6 +203,7 @@ enum pageflags {
+ #include <linux/dept.h>
+ 
+ extern struct dept_map pg_locked_map;
++extern struct dept_map pg_writeback_map;
+ 
+ static inline int dept_set_page_usage(struct page *p,
+ 		unsigned int new_type)
+@@ -279,6 +280,8 @@ static inline void dept_page_set_bit(struct page *p, int bit_nr)
+ 	dept_update_page_usage(p);
+ 	if (bit_nr == PG_locked)
+ 		dept_request_event(&pg_locked_map, &p->pg_locked_wgen);
++	else if (bit_nr == PG_writeback)
++		dept_request_event(&pg_writeback_map, &p->pg_writeback_wgen);
+ }
+ 
+ static inline void dept_page_clear_bit(struct page *p, int bit_nr)
+@@ -288,6 +291,8 @@ static inline void dept_page_clear_bit(struct page *p, int bit_nr)
+ 	evt_f = dept_event_flags(p, false);
+ 	if (bit_nr == PG_locked)
+ 		dept_event(&pg_locked_map, evt_f, _RET_IP_, __func__, &p->pg_locked_wgen);
++	else if (bit_nr == PG_writeback)
++		dept_event(&pg_writeback_map, evt_f, _RET_IP_, __func__, &p->pg_writeback_wgen);
+ }
+ 
+ static inline void dept_page_wait_on_bit(struct page *p, int bit_nr)
+@@ -298,6 +303,8 @@ static inline void dept_page_wait_on_bit(struct page *p, int bit_nr)
+ 	evt_f = dept_event_flags(p, true);
+ 	if (bit_nr == PG_locked)
+ 		dept_wait(&pg_locked_map, evt_f, _RET_IP_, __func__, 0, -1L);
++	else if (bit_nr == PG_writeback)
++		dept_wait(&pg_writeback_map, evt_f, _RET_IP_, __func__, 0, -1L);
+ }
+ 
+ static inline void dept_folio_set_bit(struct folio *f, int bit_nr)
+diff --git a/mm/filemap.c b/mm/filemap.c
+index edb0710ddb3f..d8f1816dc6c2 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1187,6 +1187,13 @@ static void folio_wake_bit(struct folio *folio, int bit_nr)
+ 	key.bit_nr = bit_nr;
+ 	key.page_match = 0;
  
 +	/*
-+	 * for linking all dept_event_site's
++	 * dept_page_clear_bit() being called multiple times is harmless.
++	 * The worst case is to miss some dependencies but it's okay.
 +	 */
-+	struct list_head		all_node;
++	if (bit_nr == PG_locked || bit_nr == PG_writeback)
++		dept_page_clear_bit(&folio->page, bit_nr);
 +
- 	/*
- 	 * flag indicating the event is not only declared but also
- 	 * actually used in code
-@@ -430,6 +435,11 @@ struct dept_event_site_dep {
- 	 */
- 	struct list_head		dep_node;
- 	struct list_head		dep_rev_node;
+ 	spin_lock_irqsave(&q->lock, flags);
+ 	__wake_up_locked_key(q, TASK_NORMAL, &key);
+ 
+@@ -1241,6 +1248,9 @@ static inline bool folio_trylock_flag(struct folio *folio, int bit_nr,
+ struct dept_map __maybe_unused pg_locked_map = DEPT_MAP_INITIALIZER(pg_locked_map, NULL);
+ EXPORT_SYMBOL(pg_locked_map);
+ 
++struct dept_map __maybe_unused pg_writeback_map = DEPT_MAP_INITIALIZER(pg_writeback_map, NULL);
++EXPORT_SYMBOL(pg_writeback_map);
 +
-+	/*
-+	 * for linking all dept_event_site_dep's
-+	 */
-+	struct list_head		all_node;
- };
- 
- #define DEPT_EVENT_SITE_INITIALIZER(es)					\
-@@ -441,6 +451,7 @@ struct dept_event_site_dep {
- 	.bfs_gen = 0,							\
- 	.bfs_parent = NULL,						\
- 	.bfs_node = LIST_HEAD_INIT((es).bfs_node),			\
-+	.all_node = LIST_HEAD_INIT((es).all_node),			\
- 	.used = false,							\
- }
- 
-@@ -450,6 +461,7 @@ struct dept_event_site_dep {
- 	.recover_site = NULL,						\
- 	.dep_node = LIST_HEAD_INIT((esd).dep_node),			\
- 	.dep_rev_node = LIST_HEAD_INIT((esd).dep_rev_node),		\
-+	.all_node = LIST_HEAD_INIT((esd).all_node),			\
- }
- 
- struct dept_event_site_init {
-@@ -473,6 +485,7 @@ extern void dept_init(void);
- extern void dept_task_init(struct task_struct *t);
- extern void dept_task_exit(struct task_struct *t);
- extern void dept_free_range(void *start, unsigned int sz);
-+extern void dept_mark_event_site_used(void *start, void *end);
- 
- extern void dept_map_init(struct dept_map *m, struct dept_key *k, int sub_u, const char *n);
- extern void dept_map_reinit(struct dept_map *m, struct dept_key *k, int sub_u, const char *n);
-@@ -536,6 +549,7 @@ struct dept_event_site { };
- #define dept_task_init(t)				do { } while (0)
- #define dept_task_exit(t)				do { } while (0)
- #define dept_free_range(s, sz)				do { } while (0)
-+#define dept_mark_event_site_used(s, e)			do { } while (0)
- 
- #define dept_map_init(m, k, su, n)			do { (void)(n); (void)(k); } while (0)
- #define dept_map_reinit(m, k, su, n)			do { (void)(n); (void)(k); } while (0)
-diff --git a/include/linux/module.h b/include/linux/module.h
-index 3319a5269d28..4f360c7c9e96 100644
---- a/include/linux/module.h
-+++ b/include/linux/module.h
-@@ -29,6 +29,7 @@
- #include <linux/srcu.h>
- #include <linux/static_call_types.h>
- #include <linux/dynamic_debug.h>
-+#include <linux/dept.h>
- 
- #include <linux/percpu.h>
- #include <asm/module.h>
-@@ -579,6 +580,10 @@ struct module {
- #ifdef CONFIG_DYNAMIC_DEBUG_CORE
- 	struct _ddebug_info dyndbg_info;
- #endif
-+#ifdef CONFIG_DEPT
-+	struct dept_event_site **dept_event_sites;
-+	unsigned int num_dept_event_sites;
-+#endif
- } ____cacheline_aligned __randomize_layout;
- #ifndef MODULE_ARCH_INIT
- #define MODULE_ARCH_INIT {}
-diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index b14400c4f83b..07d883579269 100644
---- a/kernel/dependency/dept.c
-+++ b/kernel/dependency/dept.c
-@@ -984,6 +984,9 @@ static void bfs(void *root, struct bfs_ops *ops, void *in, void **out)
-  * event sites.
-  */
- 
-+static LIST_HEAD(dept_event_sites);
-+static LIST_HEAD(dept_event_site_deps);
-+
- /*
-  * Print all events in the circle.
-  */
-@@ -2043,6 +2046,33 @@ static void del_dep_rcu(struct rcu_head *rh)
- 	preempt_enable();
- }
- 
-+/*
-+ * NOTE: Must be called with dept_lock held.
-+ */
-+static void disconnect_event_site_dep(struct dept_event_site_dep *esd)
-+{
-+	list_del_rcu(&esd->dep_node);
-+	list_del_rcu(&esd->dep_rev_node);
-+}
-+
-+/*
-+ * NOTE: Must be called with dept_lock held.
-+ */
-+static void disconnect_event_site(struct dept_event_site *es)
-+{
-+	struct dept_event_site_dep *esd, *next_esd;
-+
-+	list_for_each_entry_safe(esd, next_esd, &es->dep_head, dep_node) {
-+		list_del_rcu(&esd->dep_node);
-+		list_del_rcu(&esd->dep_rev_node);
-+	}
-+
-+	list_for_each_entry_safe(esd, next_esd, &es->dep_rev_head, dep_rev_node) {
-+		list_del_rcu(&esd->dep_node);
-+		list_del_rcu(&esd->dep_rev_node);
-+	}
-+}
-+
- /*
-  * NOTE: Must be called with dept_lock held.
-  */
-@@ -2384,6 +2414,8 @@ void dept_free_range(void *start, unsigned int sz)
+ static inline int folio_wait_bit_common(struct folio *folio, int bit_nr,
+ 		int state, enum behavior behavior)
  {
- 	struct dept_task *dt = dept_task();
- 	struct dept_class *c, *n;
-+	struct dept_event_site_dep *esd, *next_esd;
-+	struct dept_event_site *es, *next_es;
- 	unsigned long flags;
- 
- 	if (unlikely(!dept_working()))
-@@ -2405,6 +2437,24 @@ void dept_free_range(void *start, unsigned int sz)
- 	while (unlikely(!dept_lock()))
- 		cpu_relax();
- 
-+	list_for_each_entry_safe(esd, next_esd, &dept_event_site_deps, all_node) {
-+		if (!within((void *)esd, start, sz))
-+			continue;
-+
-+		disconnect_event_site_dep(esd);
-+		list_del(&esd->all_node);
-+	}
-+
-+	list_for_each_entry_safe(es, next_es, &dept_event_sites, all_node) {
-+		if (!within((void *)es, start, sz) &&
-+		    !within(es->name, start, sz) &&
-+		    !within(es->func_name, start, sz))
-+			continue;
-+
-+		disconnect_event_site(es);
-+		list_del(&es->all_node);
-+	}
-+
- 	list_for_each_entry_safe(c, n, &dept_classes, all_node) {
- 		if (!within((void *)c->key, start, sz) &&
- 		    !within(c->name, start, sz))
-@@ -3337,6 +3387,7 @@ void __dept_recover_event(struct dept_event_site_dep *esd,
- 
- 	list_add(&esd->dep_node, &es->dep_head);
- 	list_add(&esd->dep_rev_node, &rs->dep_rev_head);
-+	list_add(&esd->all_node, &dept_event_site_deps);
- 	check_recover_dl_bfs(esd);
- unlock:
- 	dept_unlock();
-@@ -3347,6 +3398,23 @@ EXPORT_SYMBOL_GPL(__dept_recover_event);
- 
- #define B2KB(B) ((B) / 1024)
- 
-+void dept_mark_event_site_used(void *start, void *end)
-+{
-+	struct dept_event_site_init **evtinitpp;
-+
-+	for (evtinitpp = (struct dept_event_site_init **)start;
-+	     evtinitpp < (struct dept_event_site_init **)end;
-+	     evtinitpp++) {
-+		(*evtinitpp)->evt_site->used = true;
-+		(*evtinitpp)->evt_site->func_name = (*evtinitpp)->func_name;
-+		list_add(&(*evtinitpp)->evt_site->all_node, &dept_event_sites);
-+
-+		pr_info("dept_event_site %s@%s is initialized.\n",
-+				(*evtinitpp)->evt_site->name,
-+				(*evtinitpp)->evt_site->func_name);
-+	}
-+}
-+
- extern char __dept_event_sites_start[], __dept_event_sites_end[];
- 
- /*
-@@ -3356,20 +3424,11 @@ extern char __dept_event_sites_start[], __dept_event_sites_end[];
- void __init dept_init(void)
- {
- 	size_t mem_total = 0;
--	struct dept_event_site_init **evtinitpp;
- 
- 	/*
- 	 * dept recover dependency tracking works from now on.
+@@ -1683,6 +1693,7 @@ void folio_end_writeback(struct folio *folio)
+ 	 * reused before the folio_wake_bit().
  	 */
--	for (evtinitpp = (struct dept_event_site_init **)__dept_event_sites_start;
--	     evtinitpp < (struct dept_event_site_init **)__dept_event_sites_end;
--	     evtinitpp++) {
--		(*evtinitpp)->evt_site->used = true;
--		(*evtinitpp)->evt_site->func_name = (*evtinitpp)->func_name;
--		pr_info("dept_event %s@%s is initialized.\n",
--				(*evtinitpp)->evt_site->name,
--				(*evtinitpp)->evt_site->func_name);
--	}
-+	dept_mark_event_site_used(__dept_event_sites_start, __dept_event_sites_end);
- 	dept_recover_ready = true;
+ 	folio_get(folio);
++	dept_page_clear_bit(&folio->page, PG_writeback);
+ 	if (__folio_end_writeback(folio))
+ 		folio_wake_bit(folio, PG_writeback);
  
- 	local_irq_disable();
-diff --git a/kernel/module/main.c b/kernel/module/main.c
-index 6ad78f0a58b6..fe0b62a45ed2 100644
---- a/kernel/module/main.c
-+++ b/kernel/module/main.c
-@@ -2720,6 +2720,11 @@ static int find_module_sections(struct module *mod, struct load_info *info)
- 						&mod->dyndbg_info.num_classes);
- #endif
+diff --git a/mm/mm_init.c b/mm/mm_init.c
+index 09e4ac6a73c7..fd2bf6689afa 100644
+--- a/mm/mm_init.c
++++ b/mm/mm_init.c
+@@ -589,6 +589,7 @@ void __meminit __init_single_page(struct page *page, unsigned long pfn,
+ 	page_cpupid_reset_last(page);
+ 	page_kasan_tag_reset(page);
+ 	dept_ext_wgen_init(&page->pg_locked_wgen);
++	dept_ext_wgen_init(&page->pg_writeback_wgen);
  
-+#ifdef CONFIG_DEPT
-+	mod->dept_event_sites = section_objs(info, ".dept.event_sites",
-+					sizeof(*mod->dept_event_sites),
-+					&mod->num_dept_event_sites);
-+#endif
- 	return 0;
- }
- 
-@@ -3346,6 +3351,14 @@ static int early_mod_check(struct load_info *info, int flags)
- 	return err;
- }
- 
-+static void dept_mark_event_site_used_module(struct module *mod)
-+{
-+#ifdef CONFIG_DEPT
-+	dept_mark_event_site_used(mod->dept_event_sites,
-+			     mod->dept_event_sites + mod->num_dept_event_sites);
-+#endif
-+}
-+
- /*
-  * Allocate and load the module: note that size of section 0 is always
-  * zero, and we rely on this for optional sections.
-@@ -3508,6 +3521,8 @@ static int load_module(struct load_info *info, const char __user *uargs,
- 	/* Done! */
- 	trace_module_load(mod);
- 
-+	dept_mark_event_site_used_module(mod);
-+
- 	return do_init_module(mod);
- 
-  sysfs_cleanup:
+ 	INIT_LIST_HEAD(&page->lru);
+ #ifdef WANT_PAGE_VIRTUAL
 -- 
 2.17.1
 
