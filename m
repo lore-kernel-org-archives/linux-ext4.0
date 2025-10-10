@@ -1,70 +1,46 @@
-Received: from mail-pg1-f172.google.com (mail-pg1-f172.google.com [209.85.215.172])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 22E2220A5EA
-	for <linux-ext4@vger.kernel.org>; Fri, 10 Oct 2025 09:53:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.172
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 61413225A5B;
+	Fri, 10 Oct 2025 10:34:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1760089984; cv=none; b=hUg4v8eLEAcpu0l3oF5PoCoHJnW7d4dfGTNMuZNQVH2jOLBgMVQs/NsLNJUAF4NcEXCcX47RzU5iLaP7X9L+sIaq3ZnSWngT887IIFVGrK79+9F+H70gvEyyIv1QOJG06V7pK8cHh+oKb2E4UVjMWf7eq6T/flJIU5SeQmePnm8=
+	t=1760092478; cv=none; b=SJxNHFjcCPvjqbbvJt4HyZocqfs46VcWHti4UGvaS6c4OZubbV24VdolxxIdf/hMd8JT8DD9uaJBzZh57F6/tUFqU7h78g2za/GCeyy96FCDtvTrBR86Dl7SStNgAP9zklK4hc0FtHwfewY18e+zcy05xnHtJW+soDjcXx4hvDM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1760089984; c=relaxed/simple;
-	bh=8BXppt1U4NxWfdmTe9Ool97G27PND00cmpzoCWr7mcQ=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=qzwTDL5+spezfOpktowkBHkWPE8VH3NyZjVXJTaC1gHI6avd6RE0ZPUzubOkiwwZcxZf3xGYlTb+s+2ybWcuc4jP+sLAgweGy38gf/lSAuyy64QphNtSHZ9Wri5FEKH8kJ7niNvYSbgz6FZJDzb3r+cG9UGntah+xt+HCslMAs0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=ea+bOKNg; arc=none smtp.client-ip=209.85.215.172
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="ea+bOKNg"
-Received: by mail-pg1-f172.google.com with SMTP id 41be03b00d2f7-b5507d3ccd8so1519845a12.0
-        for <linux-ext4@vger.kernel.org>; Fri, 10 Oct 2025 02:53:01 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1760089981; x=1760694781; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=BRHyJDXOD3j1aH2KvtqZcQOhtcceIzAv+sdnNE0oQVA=;
-        b=ea+bOKNgvJBuOLyJhFoUz70Q7RhCsw33ZR6/ZqD1pg2NGwgGPZHKJjbmQBmOYNIrEc
-         mHPrg0Fbg3X6o3F7MVZ3tdSjORgBFHGGa07JF6Oj5/nQFwohQPhwiUt5JUmmPz4I8phQ
-         SNisyEt+x8Xt/hiTCQ5NggPU9m3rUdG10zO9ppsKwrdOTDVtQMhXg8XLfKVOMGwp2Q+w
-         9zDMgyBTiz4rrifNWD3XDAEZ5wGAoFE/lKd5HfUqLf0F0PJkk218ktfPHCMc+pxvCBhe
-         PfJoA+vyonNZAYZsKdDQA20vHm2iyfnnRvCgiEwSx3+wc8Hr6R7NdFA9oQhGkHV/j1Ra
-         7bxw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1760089981; x=1760694781;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=BRHyJDXOD3j1aH2KvtqZcQOhtcceIzAv+sdnNE0oQVA=;
-        b=Q0qBL/qolv3XBkK7Ne+JDFUu4+V9o/3jW/JQP2iMDCKopD1dJ4dT6DYtkRoLsXo8ft
-         qGcM+6uPldWR4JlXfxY74OUgRPGzIuELaOLSwj3OoIlSBR5rvyUn/x0wWYYntbZ7its+
-         SddC717LD4r5JuIH0huOiZGlOxrV5eWbN0aZHWqBWNGhbTGRUOO1eNmwLty0fgMKp2t5
-         DIHtFgSlLlEN+kK7mrctqmbEGzEOQq97P9a4fnKpKbzCbYaOlHnvPf4ixoqpN5X1corg
-         X2TsobPpjElkTxkQoQoCFHyhlOnxReQ20pjER8dfucjG+APq+MilfQOeT452Er3gpSGw
-         kpOw==
-X-Gm-Message-State: AOJu0YwaOFjIeBBpVcIfK3EJTK3kFnmAwrD+HQ7YS4pfBaNcvvNoJkpH
-	OM6tsDsbhNWNTczV9FLkfyypK7XeVVgTaLohgjgzNmyhssm7YFuFjqmkEAtZbCZdvdpsxTgCg9G
-	5xGCz/ds71g==
-X-Gm-Gg: ASbGncvv/au7b0Otb15YFNu8hufMaT7v0z7iqYprq36+Wlf6ea8lycCwTO+iQvo3oAS
-	pkciiQxzIOTNUxCqz0XFOmd7P236SlTRJ+adiUoaqVeD5SxmPx8p8UIvKKrGh+TStfefXLXw5QW
-	4sVlclV7S9/IHPmr7Z7/ZOf515byiMhn/2jGltt7np/i8Qnd2qvyJ7NogByeZv1tJIozRvemWKB
-	L4K4aFEllJ7cBMols8qd+pdnYrQtCs9ItcXb0SFV5b7fgxXr7DURZOn0XEkuTpSvIiJIVUG0At1
-	UZkeXEiCR9kyLMiI1FiBdV3amEzZ4+cMF70ZvSqfCCQ4M8qiQfaEk0syRNDa/6JQErIyX+8UHbm
-	nPd4tPYuRrbfjFDDK2Feb9/gXL/X4rddJpA8n/w4NOGPWg0AjEOiTM9FsM6rcaA==
-X-Google-Smtp-Source: AGHT+IFhQus0IMdKIuHREnYY5GhZUGnUcjk+Kk7q21BYWUbv/wFkOFKm+FFnmogTJHEm5ndKmUdZGg==
-X-Received: by 2002:a17:903:1aef:b0:250:1c22:e7b with SMTP id d9443c01a7336-290272e3a78mr144520735ad.43.1760089981239;
-        Fri, 10 Oct 2025 02:53:01 -0700 (PDT)
-Received: from localhost ([106.38.226.85])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-29034f56c04sm52164555ad.110.2025.10.10.02.53.00
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 10 Oct 2025 02:53:00 -0700 (PDT)
-From: Julian Sun <sunjunchao@bytedance.com>
+	s=arc-20240116; t=1760092478; c=relaxed/simple;
+	bh=+xxR2hag0/PnI5LaSNRvX1EX5gGrNaoG80rtC97RI+Q=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=Kfu1+sz9eqnqL0snmIy3whuOS0rwVdjjZ4lmqh0Z7n8fiW/Nc4Cc8GPAwhcoGAtRZS/G0XuVXyvnzPgbLVb7Pjy5D6HDZA1Rog7wH65nBi8EM9QBW5oNhD8ulpO4S0wt8BUZMzc/uLsTzZvPHgaK6YeXz0lxFmH47QGQWMXInaM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4cjjlb6tGTzKHMyF;
+	Fri, 10 Oct 2025 18:34:03 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 20D541A0E44;
+	Fri, 10 Oct 2025 18:34:34 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.85.155])
+	by APP4 (Coremail) with SMTP id gCh0CgCHS2Ms4ehoxOK5CQ--.63632S5;
+	Fri, 10 Oct 2025 18:34:33 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu,
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
 	adilger.kernel@dilger.ca,
-	drosen@google.com
-Subject: [PATCH] ext4: Make error code in __ext4fs_dirhash() consistent.
-Date: Fri, 10 Oct 2025 17:52:57 +0800
-Message-Id: <20251010095257.3008275-1-sunjunchao@bytedance.com>
-X-Mailer: git-send-email 2.39.5
+	jack@suse.cz,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	libaokun1@huawei.com,
+	yukuai3@huawei.com,
+	yangerkun@huawei.com
+Subject: [PATCH v3 01/12] ext4: correct the checking of quota files before moving extents
+Date: Fri, 10 Oct 2025 18:33:15 +0800
+Message-ID: <20251010103326.3353700-2-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.46.1
+In-Reply-To: <20251010103326.3353700-1-yi.zhang@huaweicloud.com>
+References: <20251010103326.3353700-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -72,29 +48,51 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:gCh0CgCHS2Ms4ehoxOK5CQ--.63632S5
+X-Coremail-Antispam: 1UD129KBjvdXoW7GF43Xr4UXr1DAFyfXrWrXwb_yoWDCrcEya
+	yIyrWkZrsYva929rs5JFyrJr4IkF4rKFn8WFZ5Cr15ur1xXr4kGrnYqrnIyr98Ww4UKrZ8
+	ZFs7tryayryIgjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUbkxFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUGwA2048vs2IY02
+	0Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xv
+	wVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM2
+	8EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AI
+	xVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20x
+	vE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xv
+	r2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8cxan2IY04
+	v7MxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j
+	6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7
+	AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE
+	2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcV
+	C2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2Kfnx
+	nUUI43ZEXa7VUjnXo7UUUUU==
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-Currently __ext4fs_dirhash() returns -1 (-EPERM) if fscrypt doesn't
-have encryption key, which may confuse users. Make the error code here
-consistent with existing error code.
+From: Zhang Yi <yi.zhang@huawei.com>
 
-Signed-off-by: Julian Sun <sunjunchao@bytedance.com>
+The move extent operation should return -EOPNOTSUPP if any of the inodes
+is a quota inode, rather than requiring both to be quota inodes.
+
+Fixes: 02749a4c2082 ("ext4: add ext4_is_quota_file()")
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/hash.c | 2 +-
+ fs/ext4/move_extent.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
-index 33cd5b6b02d5..48483cd015d3 100644
---- a/fs/ext4/hash.c
-+++ b/fs/ext4/hash.c
-@@ -268,7 +268,7 @@ static int __ext4fs_dirhash(const struct inode *dir, const char *name, int len,
- 			combined_hash = fscrypt_fname_siphash(dir, &qname);
- 		} else {
- 			ext4_warning_inode(dir, "Siphash requires key");
--			return -1;
-+			return -EINVAL;
- 		}
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 4b091c21908f..0f4b7c89edd3 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -485,7 +485,7 @@ mext_check_arguments(struct inode *orig_inode,
+ 		return -ETXTBSY;
+ 	}
  
- 		hash = (__u32)(combined_hash >> 32);
+-	if (ext4_is_quota_file(orig_inode) && ext4_is_quota_file(donor_inode)) {
++	if (ext4_is_quota_file(orig_inode) || ext4_is_quota_file(donor_inode)) {
+ 		ext4_debug("ext4 move extent: The argument files should not be quota files [ino:orig %lu, donor %lu]\n",
+ 			orig_inode->i_ino, donor_inode->i_ino);
+ 		return -EOPNOTSUPP;
 -- 
-2.39.5
+2.46.1
 
