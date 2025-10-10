@@ -1,106 +1,57 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6CA8A2F0C6B;
-	Fri, 10 Oct 2025 10:34:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 58B1928726D;
+	Fri, 10 Oct 2025 11:24:23 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1760092485; cv=none; b=LHMGnG4IfxsUBA0NFHdn3Gy1NUyqLIZbn7eF9X+BMm2tZeY3hqgz7JOIeEhxjbhHt4JU+TvmfrCQhS0lHB5r5iocppJ6AATg2JNbid8nKz4Aq9skzv0H6St0Juq6AfvVeBStJIqtqTYqaTgOmyW+FajRiFkbI7SO11hjBdoUMJI=
+	t=1760095464; cv=none; b=gJyQNo1awqgZgn3Aw56KnE9Vuwea7N2kZjtIxJHaht3ejPehPkbiYQPJPD6YMRa7Gj33T9fXELBmLaIN//CthHWPlpVQFesbt00PzidGq8iDkIPtblKXQBU2U/F2bHg3pAI1rTCnQsLQ+8EOmjAUaw7+qgSVgTnGOnfRZxP95vc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1760092485; c=relaxed/simple;
-	bh=q8mg2kuq2sHXCI6ihLB3DjnwFpvHDG62+/A3Yw/8XG8=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=g64fFFEVprwu9hCiouqcW8m5ixRiYqqtgETsHX1k1qpiE9Z2EGpAzQAfIzzvUL4p9/kVsjxj86daNWCXF9SBKNqHSj9KNGv/HxNwFmpncbCXJfEqZdIwpKfX0VXW1lT4JybthhuDyF+XFwK1UR8Se8+VFis9hEYtN/1wJC0Xg60=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4cjjlX37hQzYQvLK;
-	Fri, 10 Oct 2025 18:34:00 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 9A9DF1A1441;
-	Fri, 10 Oct 2025 18:34:34 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP4 (Coremail) with SMTP id gCh0CgCHS2Ms4ehoxOK5CQ--.63632S12;
-	Fri, 10 Oct 2025 18:34:34 +0800 (CST)
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-To: linux-ext4@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	jack@suse.cz,
-	yi.zhang@huawei.com,
-	yi.zhang@huaweicloud.com,
-	libaokun1@huawei.com,
-	yukuai3@huawei.com,
-	yangerkun@huawei.com
-Subject: [PATCH v3 08/12] ext4: rename mext_page_mkuptodate() to mext_folio_mkuptodate()
-Date: Fri, 10 Oct 2025 18:33:22 +0800
-Message-ID: <20251010103326.3353700-9-yi.zhang@huaweicloud.com>
-X-Mailer: git-send-email 2.46.1
-In-Reply-To: <20251010103326.3353700-1-yi.zhang@huaweicloud.com>
-References: <20251010103326.3353700-1-yi.zhang@huaweicloud.com>
+	s=arc-20240116; t=1760095464; c=relaxed/simple;
+	bh=kg837NxmZOSgA9tET8qy6RDXHsUNQmBoZOaInlJgJl8=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=FSILol4mQtfFHJft8a7utKlFmPNPnVmPRR9dWH989uCfnogoQcthVAB4DWkveUagZfOykNTtrGYC9CApXJgGsqkWaPPzKQ7pcqsEokAdGbWbSIhcIJzZj6zva1xKP1PFUyGmYs/8Ic5bx9jEgetqyybwUPKeP+CxDg0qvDGDu6E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bXanLDEL; arc=none smtp.client-ip=10.30.226.201
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bXanLDEL"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C172FC4CEF1;
+	Fri, 10 Oct 2025 11:24:19 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1760095462;
+	bh=kg837NxmZOSgA9tET8qy6RDXHsUNQmBoZOaInlJgJl8=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=bXanLDELgBNBOxBd/ZBE2FazKcCnSLO7KPtVGHWFzwDJiWeBP52LlomQQllxp8Jxd
+	 Thdu97QUlnMgILT1Ejffob/aP6rnCWH+WqjdrlwwcAR5aXnkF4yinOBQqNqFJrX6Uk
+	 ET2PkRYJEtwxI4LFDpyZ+YTxfjKEsy7DT56RAZ1hq9mQT4QWxOsMXSA3BQukATjUeE
+	 /sEOtCKXs37PP4RPLhoBz+0pX3WJWzVTHhaJQHDYnMJ0/hJRohqhrVo1ZmvWieZbHz
+	 /oVFZ2bs9CyLzvg9w8A8r998vum/AI9ewU5s3KDUJPcpVLalCjWiee5uHpYzFpshzd
+	 j0WxKFrASOVCA==
+Date: Fri, 10 Oct 2025 13:24:17 +0200
+From: Christian Brauner <brauner@kernel.org>
+To: Mateusz Guzik <mjguzik@gmail.com>
+Cc: viro@zeniv.linux.org.uk, jack@suse.cz, linux-kernel@vger.kernel.org, 
+	linux-fsdevel@vger.kernel.org, josef@toxicpanda.com, kernel-team@fb.com, amir73il@gmail.com, 
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org, 
+	ceph-devel@vger.kernel.org, linux-unionfs@vger.kernel.org
+Subject: Re: [PATCH v7 00/14] hide ->i_state behind accessors
+Message-ID: <20251010-wohnt-raufen-c1215ccf5351@brauner>
+References: <20251009075929.1203950-1-mjguzik@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCHS2Ms4ehoxOK5CQ--.63632S12
-X-Coremail-Antispam: 1UD129KBjvJXoW7Jr1DtF17ur4kWw1Dtw45GFg_yoW8JF13pF
-	y7Ca98trW8Zw1xuwn7JFnrZr45tay7Kr4UWFWfGw1SkFy7tFy0gF1UKa15ZFWFgFWkJrs5
-	uF4fKr1jqayUt3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
-	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
-	IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
-	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
-	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
-	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
-	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
-	42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
-	CI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnI
-	WIevJa73UjIFyTuYvjfUOyIUUUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <20251009075929.1203950-1-mjguzik@gmail.com>
 
-From: Zhang Yi <yi.zhang@huawei.com>
+> More importantly though, this is generated against:
+> https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git/log/?h=vfs-6.19.inode
+> 
+> but that branch happens to be significantly lagging behind master,
+> notably it does not include some writeback changes and bcachefs removal.
+> Thus before generating the patchset I did a rebase on master.
 
-mext_page_mkuptodate() no longer works on a single page, so rename it to
-mext_folio_mkuptodate().
-
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/move_extent.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 0191a3c746db..2df6072b26c0 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -165,7 +165,7 @@ mext_folio_double_lock(struct inode *inode1, struct inode *inode2,
- }
- 
- /* Force folio buffers uptodate w/o dropping folio's lock */
--static int mext_page_mkuptodate(struct folio *folio, size_t from, size_t to)
-+static int mext_folio_mkuptodate(struct folio *folio, size_t from, size_t to)
- {
- 	struct inode *inode = folio->mapping->host;
- 	sector_t block;
-@@ -358,7 +358,7 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
- data_copy:
- 	from = offset_in_folio(folio[0],
- 			       orig_blk_offset << orig_inode->i_blkbits);
--	*err = mext_page_mkuptodate(folio[0], from, from + replaced_size);
-+	*err = mext_folio_mkuptodate(folio[0], from, from + replaced_size);
- 	if (*err)
- 		goto unlock_folios;
- 
--- 
-2.46.1
-
+That's fine I tend to rebase from time-to-time until -rc1 on is out
+which is the final rebase.
