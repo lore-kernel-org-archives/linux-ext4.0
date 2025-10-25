@@ -1,28 +1,28 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C535F262FE5;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 182431DE8BE;
 	Sat, 25 Oct 2025 03:30:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1761363012; cv=none; b=T55nMh/Hi5tPIYmmiklZiKI4m+4F+hN36+eWoH2b9K5rNcfwz1rEx37jgKcXqRc0HOEmhZQrTTVlM9XsZhDS7vMvg1/I+bqitk3hbh0TESjtA2bY9fm3A3VZX74qN265VhiO7kcYJGl4B6TzqHEkNWO8h2pjxy65+gNkhXfsyrY=
+	t=1761363012; cv=none; b=jXkWcVGmP6ZOZArg1z0VgjLHszXDVOKr3Dvz0vsHjx6AxaTpTnkEt+WtQk0dEb/hktPlUpgtujgN7dqbvo1sdjJXj021kLsAiU2u4ov9r8id7pNR06veRLOJaufiCVz5G83dHDQ8OinfdelXhBMFNjqcch6G0gZNn3Ye6m0etd0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1761363012; c=relaxed/simple;
-	bh=2A9GbxCyYmANqsEezNksnGl3vLPW1GFAeT4mOrmRR1g=;
+	bh=ictrwwk5sXSDgdwVd96kq05YWhM0FJV1hhu+tYubEkw=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=cm6dQvcBibhQ2NqastII4Hkzmr6i+Ihd9G+BdpRmSQOViCnVdAcVIDq79dqlz3MV8xH18w0cGeXV1f/gY2xNBedHXDnUj8EqyGfb6L7ynceMPbHWry14XdanCUxoDLPacvfawPbUZtTAvU6P2TXqj9K5iG8hjqd77+K9PI//xjA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=XFMPQ3IbnvfdSWLCzwfNY/u27VT5+575hR+t8FcuMrU3RPDzlTZ1iYSZatMvVHNdsuXezWQZeXVdxP4UdMKFcxdkSkXOWM5JjirwQf2NgesJESxOElO13JTqy2fiktmgwUOabLFf4L9Qa2NJ9NBIfXLBuABdpk03bWNghQH0+Fg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4ctlcL088wzYQtph;
-	Sat, 25 Oct 2025 11:29:06 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4ctlcS2hybzKHMKv;
+	Sat, 25 Oct 2025 11:29:12 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id A36B71A0E5E;
+	by mail.maildlp.com (Postfix) with ESMTP id 168601A1161;
 	Sat, 25 Oct 2025 11:30:04 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.129])
-	by APP2 (Coremail) with SMTP id Syh0CgBHnEQ6RPxox1YbBg--.45388S20;
-	Sat, 25 Oct 2025 11:30:04 +0800 (CST)
+	by APP2 (Coremail) with SMTP id Syh0CgBHnEQ6RPxox1YbBg--.45388S12;
+	Sat, 25 Oct 2025 11:30:03 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -38,9 +38,9 @@ Cc: tytso@mit.edu,
 	chengzhihao1@huawei.com,
 	libaokun1@huawei.com,
 	libaokun@huaweicloud.com
-Subject: [PATCH 16/25] ext4: support large block size in ext4_mpage_readpages()
-Date: Sat, 25 Oct 2025 11:22:12 +0800
-Message-Id: <20251025032221.2905818-17-libaokun@huaweicloud.com>
+Subject: [PATCH 08/25] ext4: support large block size in ext4_readdir()
+Date: Sat, 25 Oct 2025 11:22:04 +0800
+Message-Id: <20251025032221.2905818-9-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20251025032221.2905818-1-libaokun@huaweicloud.com>
 References: <20251025032221.2905818-1-libaokun@huaweicloud.com>
@@ -51,10 +51,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgBHnEQ6RPxox1YbBg--.45388S20
-X-Coremail-Antispam: 1UD129KBjvJXoW7ur4rJw4kWr43JF18uw18uFg_yoW8Gw4fpa
-	93K3WkGrn7WryS9an3XF1kZrnYga47CFWUJFZ3Xry3Wa47tryfKwnFqas5XF4jqrsxZr93
-	XF13Wry7AF4rXrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:Syh0CgBHnEQ6RPxox1YbBg--.45388S12
+X-Coremail-Antispam: 1UD129KBjvJXoW7KF15KF1fWw1rZry8CrWktFb_yoW8Gr17pF
+	Zaga18Kry09r40939rtFy7ZryY9a97GFWUWrW5A345W3s3X34Skr9xtF1jvF1UWw4xAa4r
+	ZF12kFy3GF1UJrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUQa14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -66,48 +66,49 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7ur4rJw4kWr43JF18uw18uFg_yoW8Gw4fpa
 	xan2IY04v7M4kE6xkIj40Ew7xC0wCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxG
 	rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
 	vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IY
-	x2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
-	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x02
+	x2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
+	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x02
 	67AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUdsqAUUUUU=
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAMBWj7Ua9I7QAAsD
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAMBWj7Ua9I6gAGsC
 
 From: Baokun Li <libaokun1@huawei.com>
 
-Use the EXT4_P_TO_LBLK() macro to convert folio indexes to blocks to avoid
-negative left shifts after supporting blocksize greater than PAGE_SIZE.
+In ext4_readdir(), page_cache_sync_readahead() is used to readahead mapped
+physical blocks. With LBS support, this can lead to a negative right shift.
+
+To fix this, the page index is now calculated by first converting the
+physical block number (pblk) to a file position (pos) before converting
+it to a page index. Also, the correct number of pages to readahead is now
+passed.
 
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/readpage.c | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
+ fs/ext4/dir.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index f329daf6e5c7..8c8ec9d60b90 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -213,9 +213,7 @@ int ext4_mpage_readpages(struct inode *inode,
- {
- 	struct bio *bio = NULL;
- 	sector_t last_block_in_bio = 0;
--
- 	const unsigned blkbits = inode->i_blkbits;
--	const unsigned blocks_per_page = PAGE_SIZE >> blkbits;
- 	const unsigned blocksize = 1 << blkbits;
- 	sector_t next_block;
- 	sector_t block_in_file;
-@@ -251,9 +249,8 @@ int ext4_mpage_readpages(struct inode *inode,
- 
- 		blocks_per_folio = folio_size(folio) >> blkbits;
- 		first_hole = blocks_per_folio;
--		block_in_file = next_block =
--			(sector_t)folio->index << (PAGE_SHIFT - blkbits);
--		last_block = block_in_file + nr_pages * blocks_per_page;
-+		block_in_file = next_block = EXT4_P_TO_LBLK(inode, folio->index);
-+		last_block = EXT4_P_TO_LBLK(inode, folio->index + nr_pages);
- 		last_block_in_file = (ext4_readpage_limit(inode) +
- 				      blocksize - 1) >> blkbits;
- 		if (last_block > last_block_in_file)
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index d4164c507a90..256fe2c1d4c1 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -192,13 +192,13 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+ 			continue;
+ 		}
+ 		if (err > 0) {
+-			pgoff_t index = map.m_pblk >>
+-					(PAGE_SHIFT - inode->i_blkbits);
++			pgoff_t index = map.m_pblk << inode->i_blkbits >>
++					PAGE_SHIFT;
+ 			if (!ra_has_index(&file->f_ra, index))
+ 				page_cache_sync_readahead(
+ 					sb->s_bdev->bd_mapping,
+-					&file->f_ra, file,
+-					index, 1);
++					&file->f_ra, file, index,
++					1 << EXT4_SB(sb)->s_min_folio_order);
+ 			file->f_ra.prev_pos = (loff_t)index << PAGE_SHIFT;
+ 			bh = ext4_bread(NULL, inode, map.m_lblk, 0);
+ 			if (IS_ERR(bh)) {
 -- 
 2.46.1
 
