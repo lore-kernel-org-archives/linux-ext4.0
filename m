@@ -1,118 +1,104 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3E11922A4DA;
-	Sat, 25 Oct 2025 03:20:48 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 93E822580ED;
+	Sat, 25 Oct 2025 03:30:05 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1761362451; cv=none; b=P0pSXbg40Jz/iRe6xykWDsjvHFhB5nOqhxa/L34zf9SdhZoLk9Aog3jznAV80i/553wdLGdlBurkjZ9i3IGhmjQDoh6V81/1/Ny0MtbTsbw5jDDq+xn6W6O94jubuuCTiJdI8N9KlCiJOhQi9IAOohOI3KQ7EUnEX6dc5mya1/g=
+	t=1761363007; cv=none; b=EXSSj3ZTMg3lkd0T57oQLNFfQOCctuV3hMvPS4O/zs7c+RrqwHpEOi1CdQI7vBxQ1nzNMhklcRgcu1JbuZlFmTFs98RZPjjUMKfdSd68rjOfJ2RHiVJaBmaPNOps6bqocSh20pw040nEWRI3z3p1oRiKG4nIDKEG7eydaVRkTIo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1761362451; c=relaxed/simple;
-	bh=+HtuhKWNbWuurs46qG8vqq6ZUX7hNXP29A6rpNEF6os=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=UdKK7NDgnMulwyxjlRE/doQdRo/XCgswuohEAkOubSTHB9/bNNXGtwvJ35D6hx2t5Kmkuid31n8agSG+ad0FVv92VjUuLTOf4kjRcYfNsiVs01tv/sL5+V6MRc0fPVP4nRBHgLZFxUgEl2GZKwAJ/DEAMDT+zjxdtae++YsJCBk=
+	s=arc-20240116; t=1761363007; c=relaxed/simple;
+	bh=oqEqRfo0WOWZL1A+A4O5vHFbv2HDQCYSx8eM6XxUJNI=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=guS/FiviA8lF1H4FoyNocmJ6DtCzh8rASx7XfKyxo9xSod6Jc9y6HFJ2jYjqkOZrfsZbWlYPF/GkfDsuh/7X4j9cgb7RvfJhWQe4msc1JJfw1YgSg1NxWqW1AiTKAfb0q/RZQ7K4S0ammNObPB+atK3Evtacv9/ywwP1Ss6Ke3U=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4ctlPj53glzKHLyS;
-	Sat, 25 Oct 2025 11:19:53 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4ctlcR6BT0zKHMMH;
+	Sat, 25 Oct 2025 11:29:11 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 658721A0E8F;
-	Sat, 25 Oct 2025 11:20:45 +0800 (CST)
-Received: from [10.174.178.152] (unknown [10.174.178.152])
-	by APP2 (Coremail) with SMTP id Syh0CgCH3UULQvxowpgaBg--.43262S3;
-	Sat, 25 Oct 2025 11:20:45 +0800 (CST)
-Message-ID: <273dc469-cc25-479c-8cdf-b21253873354@huaweicloud.com>
-Date: Sat, 25 Oct 2025 11:20:43 +0800
+	by mail.maildlp.com (Postfix) with ESMTP id 8A72D1A08C2;
+	Sat, 25 Oct 2025 11:30:03 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.87.129])
+	by APP2 (Coremail) with SMTP id Syh0CgBHnEQ6RPxox1YbBg--.45388S5;
+	Sat, 25 Oct 2025 11:30:03 +0800 (CST)
+From: libaokun@huaweicloud.com
+To: linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	linux-kernel@vger.kernel.org,
+	kernel@pankajraghav.com,
+	mcgrof@kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	yi.zhang@huawei.com,
+	yangerkun@huawei.com,
+	chengzhihao1@huawei.com,
+	libaokun1@huawei.com,
+	libaokun@huaweicloud.com
+Subject: [PATCH 01/25] ext4: remove page offset calculation in ext4_block_zero_page_range()
+Date: Sat, 25 Oct 2025 11:21:57 +0800
+Message-Id: <20251025032221.2905818-2-libaokun@huaweicloud.com>
+X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20251025032221.2905818-1-libaokun@huaweicloud.com>
+References: <20251025032221.2905818-1-libaokun@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 04/10] ext4: Use folio_next_pos()
-To: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
- linux-fsdevel@vger.kernel.org, Christian Brauner <brauner@kernel.org>
-Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
- linux-ext4@vger.kernel.org
-References: <20251024170822.1427218-1-willy@infradead.org>
- <20251024170822.1427218-5-willy@infradead.org>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <20251024170822.1427218-5-willy@infradead.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:Syh0CgCH3UULQvxowpgaBg--.43262S3
-X-Coremail-Antispam: 1UD129KBjvJXoW7AF4DXrW7Zw4rXF45Kr15Arb_yoW8CF4fpr
-	4kKF1DZrZxZF1DuFy3XFnrZFyIk3s8Ww4UGasrG3W3XF98JrnYgr40qw1qgF1Ykry8XF48
-	Zr10qr1kW3WrAFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUylb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JMxkF7I0En4kS14v26r126r1DMxAIw28IcxkI7VAK
-	I48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7
-	xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xII
-	jxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw2
-	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x02
-	67AKxVWUJVW8JbIYCTnIWIevJa73UjIFyTuYvjxUwxhLUUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:Syh0CgBHnEQ6RPxox1YbBg--.45388S5
+X-Coremail-Antispam: 1UD129KBjvdXoWrZFW5uw1fAr1rZr1UZF1UJrb_yoWkJFc_A3
+	yv9w48Ww1rJrnak3W5A3yYqFyvk3W8Crn8uFn8tryrXFWrZFs5X3WkKryY9rs8WF47urs8
+	A34kXF45KrnF9jkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUbP8FF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUGwA2048vs2IY02
+	0Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xv
+	wVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM2
+	8EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AI
+	xVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20x
+	vE14v26r1Y6r17McIj6I8E87Iv67AKxVW8Jr0_Cr1UMcvjeVCFs4IE7xkEbVWUJVW8JwAC
+	jcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2ka0x
+	kIwI1lw4CEc2x0rVAKj4xxMxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC2
+	0s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI
+	0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE
+	14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20x
+	vaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8
+	JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7VUjIztUUUUUU==
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAMBWj7Ua9I6AABsH
 
-On 10/25/2025 1:08 AM, Matthew Wilcox (Oracle) wrote:
-> This is one instruction more efficient than open-coding folio_pos() +
-> folio_size().  It's the equivalent of (x + y) << z rather than
-> x << z + y << z.
-> 
-> Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Cc: linux-ext4@vger.kernel.org
+From: Zhihao Cheng <chengzhihao1@huawei.com>
 
-A nice cleanup!
+For bs <= ps scenarios, calculating the offset within the block is
+sufficient. For bs > ps, an initial page offset calculation can lead to
+incorrect behavior. Thus this redundant calculation has been removed.
 
+Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
+Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/inode.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-> ---
->  fs/ext4/inode.c | 10 +++++-----
->  1 file changed, 5 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index e99306a8f47c..1b22e9516db4 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1319,8 +1319,8 @@ static int ext4_write_begin(const struct kiocb *iocb,
->  	if (IS_ERR(folio))
->  		return PTR_ERR(folio);
->  
-> -	if (pos + len > folio_pos(folio) + folio_size(folio))
-> -		len = folio_pos(folio) + folio_size(folio) - pos;
-> +	if (len > folio_next_pos(folio) - pos)
-> +		len = folio_next_pos(folio) - pos;
->  
->  	from = offset_in_folio(folio, pos);
->  	to = from + len;
-> @@ -2704,7 +2704,7 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
->  
->  			if (mpd->map.m_len == 0)
->  				mpd->start_pos = folio_pos(folio);
-> -			mpd->next_pos = folio_pos(folio) + folio_size(folio);
-> +			mpd->next_pos = folio_next_pos(folio);
->  			/*
->  			 * Writeout when we cannot modify metadata is simple.
->  			 * Just submit the page. For data=journal mode we
-> @@ -3146,8 +3146,8 @@ static int ext4_da_write_begin(const struct kiocb *iocb,
->  	if (IS_ERR(folio))
->  		return PTR_ERR(folio);
->  
-> -	if (pos + len > folio_pos(folio) + folio_size(folio))
-> -		len = folio_pos(folio) + folio_size(folio) - pos;
-> +	if (len > folio_next_pos(folio) - pos)
-> +		len = folio_next_pos(folio) - pos;
->  
->  	ret = ext4_block_write_begin(NULL, folio, pos, len,
->  				     ext4_da_get_block_prep);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e99306a8f47c..0742039c53a7 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4157,9 +4157,8 @@ static int ext4_block_zero_page_range(handle_t *handle,
+ 		struct address_space *mapping, loff_t from, loff_t length)
+ {
+ 	struct inode *inode = mapping->host;
+-	unsigned offset = from & (PAGE_SIZE-1);
+ 	unsigned blocksize = inode->i_sb->s_blocksize;
+-	unsigned max = blocksize - (offset & (blocksize - 1));
++	unsigned int max = blocksize - (from & (blocksize - 1));
+ 
+ 	/*
+ 	 * correct length if it does not fall between
+-- 
+2.46.1
 
