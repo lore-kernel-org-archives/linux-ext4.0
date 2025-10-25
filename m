@@ -1,28 +1,28 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 17E131DE2A7;
-	Sat, 25 Oct 2025 03:30:09 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D9B782D978A;
+	Sat, 25 Oct 2025 03:30:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1761363016; cv=none; b=a36vHekdV+Cnwyf0ZIn+97A0W+5xBb1vzZvpWyT3+lErvhnBcXJv0nvfnuum1BF96F5f5Ma9vBmzOr8ON9mQWNbvRSzVMlo2gqdRXTs0K4+20+h2YENfehp0b16gcuauNaBRcUWRB/ve8WxjsqM3Hkff0pkTT0mkm4fDUSVkE3M=
+	t=1761363017; cv=none; b=XhjnhiZS/QBDmlrH/BgwV1yr/2jtIJkbMyfayru6aPc0buTYxJlVE0dvISS9ESJzG2Ty0Be3483X4BURolB0zwRZMIU5z4MYA4c4e0sgO0ZIxSvAEOJsCyY6t7gocw5Z+SeOgA25uRfrD5FwcWCukOSMV0NCQljjJnKouSSHBhA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1761363016; c=relaxed/simple;
-	bh=HJG6BV4y/laly37/ga9zMZpAoAiq+tujKGnfMeijWwg=;
+	s=arc-20240116; t=1761363017; c=relaxed/simple;
+	bh=VGktx5fV3mvcEcsamy+r9TS/X79co1WNFdTFpf0V4FA=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=d4CYGkT5e1PKnTd+96yIO7EP/MGtRfZSALlquBxVOM4M4E1Go5Xz9PmTYvZ27FdSQNF3d1A1tvfQSy4x0lQqnHjvzb6chFIwsBF+VjvY9YbFmAsSzl/mxU58bq5HB8X3KMZJS/HqegwLk1Jc5EmzwaHb7cK+XEaoAb+18lW81YY=
+	 MIME-Version; b=GR6idsQUWWxKMIMzPMi39asmktsCRQkrPU04TVrwDNMebk/e0jEAxnvYT8d7jXycm0e0Xvqg6894eRCwS7uQsf7LdoBd7i2GV5PCWuf2RNwmcL9tzfZSiYbsB3m8cu7xVdwKSFqoU0eDTwVrLtv6hNVqdPlCEuqBwIEY02xcpf0=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4ctlcS20J6zKHMP3;
-	Sat, 25 Oct 2025 11:29:12 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4ctlcT4tGCzKHMQB;
+	Sat, 25 Oct 2025 11:29:13 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id F1A241A116C;
-	Sat, 25 Oct 2025 11:30:03 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 61CC31A1B60;
+	Sat, 25 Oct 2025 11:30:05 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.129])
-	by APP2 (Coremail) with SMTP id Syh0CgBHnEQ6RPxox1YbBg--.45388S11;
-	Sat, 25 Oct 2025 11:30:03 +0800 (CST)
+	by APP2 (Coremail) with SMTP id Syh0CgBHnEQ6RPxox1YbBg--.45388S29;
+	Sat, 25 Oct 2025 11:30:05 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -38,9 +38,9 @@ Cc: tytso@mit.edu,
 	chengzhihao1@huawei.com,
 	libaokun1@huawei.com,
 	libaokun@huaweicloud.com
-Subject: [PATCH 07/25] ext4: support large block size in ext4_calculate_overhead()
-Date: Sat, 25 Oct 2025 11:22:03 +0800
-Message-Id: <20251025032221.2905818-8-libaokun@huaweicloud.com>
+Subject: [PATCH 25/25] ext4: enable block size larger than page size
+Date: Sat, 25 Oct 2025 11:22:21 +0800
+Message-Id: <20251025032221.2905818-26-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20251025032221.2905818-1-libaokun@huaweicloud.com>
 References: <20251025032221.2905818-1-libaokun@huaweicloud.com>
@@ -51,14 +51,14 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgBHnEQ6RPxox1YbBg--.45388S11
-X-Coremail-Antispam: 1UD129KBjvJXoW7uw4DZw45Zw13CF1kKFy7trb_yoW8WF1xp3
-	Z3GryxGrWruFy8uanrWa9rJF15K3yxGFyUKFWa9ry3urW7ta4S9ry3KFy5tr4xXFWxuryS
-	v3W5KrWfuF15Gw7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:Syh0CgBHnEQ6RPxox1YbBg--.45388S29
+X-Coremail-Antispam: 1UD129KBjvJXoW7uFyxArW7Gr1DJF18Cr1UGFg_yoW8tw45pF
+	WrCFy8Gr15W34v9an2ga1DZF18K3y0kFWUXa4Fgw1xZrZrJ340grn7tF15XFyjqrZ3ZryF
+	qF18Ary7XwnxCFJanT9S1TB71UUUUUDqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUQa14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
 	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
 	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
 	IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Gr1j6F4UJwAm72CE4IkC6x0Yz7v_Jr0_
@@ -66,57 +66,73 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7uw4DZw45Zw13CF1kKFy7trb_yoW8WF1xp3
 	xan2IY04v7M4kE6xkIj40Ew7xC0wCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxG
 	rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
 	vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IY
-	x2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
-	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x02
+	x2IY67AKxVW5JVW7JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
+	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x02
 	67AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUdsqAUUUUU=
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAMBWj7Ua9I6gAEsA
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAMBWj7Ua9I8QAAsf
 
 From: Baokun Li <libaokun1@huawei.com>
 
-ext4_calculate_overhead() used a single page for its bitmap buffer, which
-worked fine when PAGE_SIZE >= block size. However, with block size greater
-than page size (BS > PS) support, the bitmap can exceed a single page.
+Since block device (See commit 3c20917120ce ("block/bdev: enable large
+folio support for large logical block sizes")) and page cache (See commit
+ab95d23bab220ef8 ("filemap: allocate mapping_min_order folios in the page
+cache")) has the ability to have a minimum order when allocating folio,
+and ext4 has supported large folio in commit 7ac67301e82f ("ext4: enable
+large folio for regular file"), now add support for block_size > PAGE_SIZE
+in ext4.
 
-To address this, we now use __get_free_pages() to allocate multiple pages,
-sized to the block size, to properly support BS > PS.
+set_blocksize() -> bdev_validate_blocksize() already validates the block
+size, so ext4_load_super() does not need to perform additional checks.
+
+Here we only need to enable large folio by default when s_min_folio_order
+is greater than 0 and add the FS_LBS bit to fs_flags.
+
+In addition, mark this feature as experimental.
 
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/super.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ fs/ext4/inode.c | 3 +++
+ fs/ext4/super.c | 6 +++++-
+ 2 files changed, 8 insertions(+), 1 deletion(-)
 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 04f9380d4211..ba6cf05860ae 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5146,6 +5146,9 @@ static bool ext4_should_enable_large_folio(struct inode *inode)
+ 	if (!ext4_test_mount_flag(sb, EXT4_MF_LARGE_FOLIO))
+ 		return false;
+ 
++	if (EXT4_SB(sb)->s_min_folio_order)
++		return true;
++
+ 	if (!S_ISREG(inode->i_mode))
+ 		return false;
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA))
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d353e25a5b92..7338c708ea1d 100644
+index fdc006a973aa..4c0bd79bdf68 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -4182,7 +4182,8 @@ int ext4_calculate_overhead(struct super_block *sb)
- 	unsigned int j_blocks, j_inum = le32_to_cpu(es->s_journal_inum);
- 	ext4_group_t i, ngroups = ext4_get_groups_count(sb);
- 	ext4_fsblk_t overhead = 0;
--	char *buf = (char *) get_zeroed_page(GFP_NOFS);
-+	gfp_t gfp = GFP_NOFS | __GFP_ZERO;
-+	char *buf = (char *)__get_free_pages(gfp, sbi->s_min_folio_order);
- 
- 	if (!buf)
- 		return -ENOMEM;
-@@ -4207,7 +4208,7 @@ int ext4_calculate_overhead(struct super_block *sb)
- 		blks = count_overhead(sb, i, buf);
- 		overhead += blks;
- 		if (blks)
--			memset(buf, 0, PAGE_SIZE);
-+			memset(buf, 0, sb->s_blocksize);
- 		cond_resched();
+@@ -5053,6 +5053,9 @@ static int ext4_check_large_folio(struct super_block *sb)
+ 		return -EINVAL;
  	}
  
-@@ -4230,7 +4231,7 @@ int ext4_calculate_overhead(struct super_block *sb)
- 	}
- 	sbi->s_overhead = overhead;
- 	smp_wmb();
--	free_page((unsigned long) buf);
-+	free_pages((unsigned long)buf, sbi->s_min_folio_order);
++	if (sb->s_blocksize > PAGE_SIZE)
++		ext4_msg(sb, KERN_NOTICE, "EXPERIMENTAL bs(%lu) > ps(%lu) enabled.",
++			 sb->s_blocksize, PAGE_SIZE);
  	return 0;
  }
+ 
+@@ -7432,7 +7435,8 @@ static struct file_system_type ext4_fs_type = {
+ 	.init_fs_context	= ext4_init_fs_context,
+ 	.parameters		= ext4_param_specs,
+ 	.kill_sb		= ext4_kill_sb,
+-	.fs_flags		= FS_REQUIRES_DEV | FS_ALLOW_IDMAP | FS_MGTIME,
++	.fs_flags		= FS_REQUIRES_DEV | FS_ALLOW_IDMAP | FS_MGTIME |
++				  FS_LBS,
+ };
+ MODULE_ALIAS_FS("ext4");
  
 -- 
 2.46.1
