@@ -1,136 +1,129 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ed1-f48.google.com (mail-ed1-f48.google.com [209.85.208.48])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3CDD53271E7
-	for <linux-ext4@vger.kernel.org>; Wed, 29 Oct 2025 14:55:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7F7A33043D1
+	for <linux-ext4@vger.kernel.org>; Wed, 29 Oct 2025 15:24:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.48
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1761749740; cv=none; b=oG7lZiL5fj2y+50qqKTlA7RN03OXlwnc5Cchc6eVD/uItAw4SR2Sa1ABe35M9UiAtgvOKXQwsewQdJ4vHzgOMPoKozYXwAFyhu5/wnTCPjCsr0qjZr9ZHybGT8rn+IuLxu6OusOyZky0pxnRwb9SvAETSOhSN4nXqk6n4Oh9itw=
+	t=1761751492; cv=none; b=Sx+0ryv+P9XrLbcmj1FMurcsYv+TDvUoaLn2203GKJOcHT3PGHyE4dcp6VBXCLWM1MtFCSIRFRGMt2Sl0zvbrZ2MBLK8DqEmF4CATy1lHjQF+56T4gl0lEEmjZecjXQq7CZb00mX2gpKWtzgAIvaZr7n6dbI3IgekcwJ8PdQ/CM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1761749740; c=relaxed/simple;
-	bh=Fq4tvpve4ZOyLILttpQEtylyB6eBRjCb67csUFSJJ8k=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=VKRC71dUoNNFOqarPyM81BcrNOEot8MJC7ET//TT7vRrdHopwzf7QKBQdqTNJkKhDPvLNBQzer6ZHgdpkIBIEq3mvq7CdS8N8npXxfYn2U/01OQcx68+RBNBkI1lNcL6A1d9L+es6YwJuUqvruzqVxAVjkf+GDaVPkoS12t/fYY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=aJnodWxe; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1761751492; c=relaxed/simple;
+	bh=KvM3yAit5/aU5CrrYY64Jjy9JkZfQApA1gRH0OBVsOc=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=LGbH17Lk9veCSs7Lh0Fr9qZaLxIdhA4kirfKEaJWL2J2MHdTwtMDqS9JcfIp47wtZiY8ZP9w8gYvf97nSW8w/+Gt1WdYjqxjk0jdad9K9dxzH2x3u+NE2SWQlC9Pln7mKccTWB1XUl4j9K/UZSpO/ZKtg3LSIa3aVqwa6CZt92s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=PLxJP1vK; arc=none smtp.client-ip=209.85.208.48
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="aJnodWxe"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B391DC4CEF7;
-	Wed, 29 Oct 2025 14:55:39 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1761749739;
-	bh=Fq4tvpve4ZOyLILttpQEtylyB6eBRjCb67csUFSJJ8k=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=aJnodWxeLLPbgS0tGiPa/zvxMX3NppG9pz+A0e8yRK7iG4elztTsoMvsqzYxuuo6J
-	 9k7K1N916sJaOwGf1DIRMSzCnkHHgxwAHYIZdtcQtuKUhsS479dyJOfNlWIFF3UmYT
-	 hgh9d+WjPx0AsGQuyyj/c9fxVhanZt9z0fJFrABP9L6cBqo7K+0MXgAnX3Sj06DG9Y
-	 05/nsCJN59NsXIj/MZIufHJ9PAjOVuaiVtFhg5vDkFVsohXQD5dHeHCikbKEQTSbF3
-	 40FHglsHiMPxhqr5lhSyIMMvcU/V7Eu686V2F94m57T/tRkN2QGPZ+XSnLeB/PwPKr
-	 tbpNz+QSpHUYw==
-Date: Wed, 29 Oct 2025 07:55:39 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: Ye Bin <yebin@huaweicloud.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	jack@suse.cz
-Subject: Re: [PATCH] jbd2: fix the inconsistency between checksum and data in
- memory for journal sb
-Message-ID: <20251029145539.GU6170@frogsfrogsfrogs>
-References: <20251028064728.91827-1-yebin@huaweicloud.com>
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="PLxJP1vK"
+Received: by mail-ed1-f48.google.com with SMTP id 4fb4d7f45d1cf-62faa04afd9so10993a12.1
+        for <linux-ext4@vger.kernel.org>; Wed, 29 Oct 2025 08:24:50 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20230601; t=1761751489; x=1762356289; darn=vger.kernel.org;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=L2iJ+gYl0WvAKtN7IryWto0AZlGcZPV36GKYmbq25K0=;
+        b=PLxJP1vKjV1inw/eXjaPWqq1hNjviK6y8ad/zMP8biGQ+LEi26mYpSws9YbHDtgqYK
+         pPBME9obWeVzTRod1fpx68mMBKHDEj6YSt5+sv7Zh63lvPikkgk8YRwhxD28TfgEpFrZ
+         heN4PCwbqYkryFJpD26uJnexTM2W7HCLlhwedjw5r7S8RBKO/8Qo3Y6GM+lPG7YYoJvY
+         +2cV727f3hebry8RbZ0U+qbfZ01pVrGBmLVLv0XvoUCl7oi7TGog94/O7yY5No+ysROw
+         KCSONOPwDvNNxf0jl4AcQsA2eGKA0hjvD0bME6hkhCh2anCK9zYQ1uFcfCi06gdRBIik
+         GfWA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1761751489; x=1762356289;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=L2iJ+gYl0WvAKtN7IryWto0AZlGcZPV36GKYmbq25K0=;
+        b=J6ixMmV+uC5o9Gu65zvg+2MGyppdI2gmxy6rHJ6ETjTb0rLh7flDnYJgHlpVE9A9Xo
+         1sHZejecvGOUNzadryzCyCmx78chADw5vmLC5Q39LmAUw8ohoJgbCAlUOFwWgzHruTLr
+         TV90O/Tsol6yC7VZvhJ+BBmoAc8RZRRwgFMdGg3s2HIen8bravizOSt9dJmOtqrGE9zc
+         BGE0ly8Fe5k0GMbUgJC13Ew9EcH1klQkmRynPPh2wJTBVVaPjpRntAo39MTHrgy9cxfH
+         6O4gSKgqnStxU/jzk7jYQoahtgaC+CXn3gtIwXRKwOrqlxOI5JfL3bJsqK+AME5g9AkM
+         1w6A==
+X-Forwarded-Encrypted: i=1; AJvYcCUgKXOxMSuVB8pL8Z2U5MKs60LyVNV5Ws4j3Mkj2EW+xireyIn47q2ywTrlv7dFmHK7OzO571RQZQA1@vger.kernel.org
+X-Gm-Message-State: AOJu0YyMgBG66kF4wOenLboOqbMzWB63LS9QTBAoZOOnTlas8G+kOgMQ
+	LPi6gXl5oYv6Jfy8t4o8ng1BGUZIi/9NUl0iuJbfzLQsh8NA3+GAEKltiV3qz+2PUkAtmqqxbXM
+	E9vXa6edgCyMTx53OvRAZ6q3f3O3/ey6F/5CnP7eA
+X-Gm-Gg: ASbGncsjGlLcIIOQqnQyvwdXHUJ9iyXpaC2EWN1bMlKgAVB9Pp70fFGsClTfj3INwjO
+	qchK2nFCI0qVe3L5gPWd90sG4AIl+hOYz9m3TXOc2LlLkfyGh7LOQmcM3fo4uHAU3aW8DUeBl4s
+	OkvB20NpuJ5T94afLdkCi5Km7Eet4sEDAx64MTb8WfqqO8s5jlwiNjbyLlJWTpu2GgACXvMoPEm
+	hd8mnwrCdxvLTvfs1FfESzJQUWkrLMMG7sSiR7M/bI5ygPMbClYsQ7+l8KBBsK0UT9WaTMgx+fG
+	hsWRxYQMqI1XVrE6FI5/I4fxzg==
+X-Google-Smtp-Source: AGHT+IGU+esMxf3ccvuz4aU0iKC9IRrUhCYYRzaNs+SjfV5pALSJtfH3UmgORTtgzOclQeamunCFAq3K9fIJ6y1muIQ=
+X-Received: by 2002:a05:6402:24c9:b0:634:90ba:2361 with SMTP id
+ 4fb4d7f45d1cf-640452b67b6mr123042a12.7.1761751488647; Wed, 29 Oct 2025
+ 08:24:48 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20251028064728.91827-1-yebin@huaweicloud.com>
+References: <20251027122847.320924-1-harry.yoo@oracle.com> <20251027122847.320924-4-harry.yoo@oracle.com>
+ <CAJuCfpE9PRvd1Tsm6gAvxKvPFgVt640q3vSbt0wAWOa3G4tnfA@mail.gmail.com> <aQHVB_8NVMZ2cuvh@hyeyoo>
+In-Reply-To: <aQHVB_8NVMZ2cuvh@hyeyoo>
+From: Suren Baghdasaryan <surenb@google.com>
+Date: Wed, 29 Oct 2025 08:24:35 -0700
+X-Gm-Features: AWmQ_blnOhRrDyAN8bKG9PnCSCcBONfyThj1KPKRqtofem1VL-BK-gJoV4GKMAw
+Message-ID: <CAJuCfpGFPuoUceB7SvAJPtVvzOOCzqS50yCcjbuMxV2a0e0KWA@mail.gmail.com>
+Subject: Re: [RFC PATCH V3 3/7] mm/slab: abstract slabobj_ext access via new
+ slab_obj_ext() helper
+To: Harry Yoo <harry.yoo@oracle.com>
+Cc: akpm@linux-foundation.org, vbabka@suse.cz, andreyknvl@gmail.com, 
+	cl@linux.com, dvyukov@google.com, glider@google.com, hannes@cmpxchg.org, 
+	linux-mm@kvack.org, mhocko@kernel.org, muchun.song@linux.dev, 
+	rientjes@google.com, roman.gushchin@linux.dev, ryabinin.a.a@gmail.com, 
+	shakeel.butt@linux.dev, vincenzo.frascino@arm.com, yeoreum.yun@arm.com, 
+	tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-On Tue, Oct 28, 2025 at 02:47:28PM +0800, Ye Bin wrote:
-> From: Ye Bin <yebin10@huawei.com>
-> 
-> Copying the file system while it is mounted as read-only results in
-> a mount failure:
-> [~]# mkfs.ext4 -F /dev/sdc
-> [~]# mount /dev/sdc -o ro /mnt/test
-> [~]# dd if=/dev/sdc of=/dev/sda bs=1M
-> [~]# mount /dev/sda /mnt/test1
-> [ 1094.849826] JBD2: journal checksum error
-> [ 1094.850927] EXT4-fs (sda): Could not load journal inode
-> mount: mount /dev/sda on /mnt/test1 failed: Bad message
+On Wed, Oct 29, 2025 at 1:49=E2=80=AFAM Harry Yoo <harry.yoo@oracle.com> wr=
+ote:
+>
+> On Tue, Oct 28, 2025 at 10:55:39AM -0700, Suren Baghdasaryan wrote:
+> > On Mon, Oct 27, 2025 at 5:29=E2=80=AFAM Harry Yoo <harry.yoo@oracle.com=
+> wrote:
+> > >
+> > > Currently, the slab allocator assumes that slab->obj_exts is a pointe=
+r
+> > > to an array of struct slabobj_ext objects. However, to support storag=
+e
+> > > methods where struct slabobj_ext is embedded within objects, the slab
+> > > allocator should not make this assumption. Instead of directly
+> > > dereferencing the slabobj_exts array, abstract access to
+> > > struct slabobj_ext via helper functions.
+> > >
+> > > Introduce a new API slabobj_ext metadata access:
+> > >
+> > >   slab_obj_ext(slab, obj_exts, index) - returns the pointer to
+> > >   struct slabobj_ext element at the given index.
+> > >
+> > > Directly dereferencing the return value of slab_obj_exts() is no long=
+er
+> > > allowed. Instead, slab_obj_ext() must always be used to access
+> > > individual struct slabobj_ext objects.
+> >
+> > If direct access to the vector is not allowed, it would be better to
+> > eliminate slab_obj_exts() function completely and use the new
+> > slab_obj_ext() instead. I think that's possible. We might need an
+> > additional `bool is_slab_obj_exts()` helper for an early check before
+> > we calculate the object index but that's quite easy.
+>
+> Good point, but that way we cannot avoid reading slab->obj_exts
+> multiple times when we access slabobj_ext of multiple objects
+> as it's accessed via READ_ONCE().
 
-I was about to say "Well don't do that, freeze the fs first..."
+True. I think we use slab->obj_exts to loop over its elements only in
+two places: __memcg_slab_post_alloc_hook() and
+__memcg_slab_free_hook(). I guess we could implement some kind of
+slab_objext_foreach() construct to loop over all elements of
+slab->obj_exts?
 
-> Above issue may happen as follows:
-> ext4_fill_super
->  set_journal_csum_feature_set(sb)
->   if (ext4_has_metadata_csum(sb))
->    incompat = JBD2_FEATURE_INCOMPAT_CSUM_V3;
->   if (test_opt(sb, JOURNAL_CHECKSUM)
->    jbd2_journal_set_features(sbi->s_journal, compat, 0, incompat);
->     lock_buffer(journal->j_sb_buffer);
->     sb->s_feature_incompat  |= cpu_to_be32(incompat);
->     //The data in the journal sb was modified, but the checksum was not
->       updated, so the data remaining in memory has a mismatch between the
->       data and the checksum.
->     unlock_buffer(journal->j_sb_buffer);
-> 
-> In this case, the journal sb copied over is in a state where the checksum
-> and data are inconsistent, so mounting fails.
-> To solve the above issue, update the checksum in memory after modifying
-> the journal sb.
-
-...but I think the actual change is correct because (a) we shouldn't
-unlock the bh with an incorrect checksum because userspace can see that;
-and (b) if the bh ever gets marked dirty, then writeback can push the
-inconsistent buffer to disk at any time.
-
-I think it's the case that j_sb_buffer is only ever written out
-explicitly with submit_bh rather than going through the dirty -> flush
-machinery, but I guess syzbot could read and write the same value from
-userspace to dirty the buffer and flush it out while racing to shut down
-the journal, and now the ondisk journal is inconsistent.
-
-Anyway, the "set csum before unlock_buffer" paradigm is all over the
-ext4 code so
-
-Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
-
---D
-
-> Fixes: 4fd5ea43bc11 ("jbd2: checksum journal superblock")
-> Signed-off-by: Ye Bin <yebin10@huawei.com>
-> ---
->  fs/jbd2/journal.c | 6 ++++++
->  1 file changed, 6 insertions(+)
-> 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index d480b94117cd..5b6e8c1a5e6a 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -2349,6 +2349,8 @@ int jbd2_journal_set_features(journal_t *journal, unsigned long compat,
->  	sb->s_feature_compat    |= cpu_to_be32(compat);
->  	sb->s_feature_ro_compat |= cpu_to_be32(ro);
->  	sb->s_feature_incompat  |= cpu_to_be32(incompat);
-> +	if (jbd2_journal_has_csum_v2or3(journal))
-> +		sb->s_checksum = jbd2_superblock_csum(sb);
->  	unlock_buffer(journal->j_sb_buffer);
->  	jbd2_journal_init_transaction_limits(journal);
->  
-> @@ -2378,9 +2380,13 @@ void jbd2_journal_clear_features(journal_t *journal, unsigned long compat,
->  
->  	sb = journal->j_superblock;
->  
-> +	lock_buffer(journal->j_sb_buffer);
->  	sb->s_feature_compat    &= ~cpu_to_be32(compat);
->  	sb->s_feature_ro_compat &= ~cpu_to_be32(ro);
->  	sb->s_feature_incompat  &= ~cpu_to_be32(incompat);
-> +	if (jbd2_journal_has_csum_v2or3(journal))
-> +		sb->s_checksum = jbd2_superblock_csum(sb);
-> +	unlock_buffer(journal->j_sb_buffer);
->  	jbd2_journal_init_transaction_limits(journal);
->  }
->  EXPORT_SYMBOL(jbd2_journal_clear_features);
-> -- 
-> 2.34.1
-> 
-> 
+>
+> --
+> Cheers,
+> Harry / Hyeonggon
