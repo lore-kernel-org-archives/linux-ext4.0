@@ -1,117 +1,136 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 25E3F2C0F7B;
-	Wed, 29 Oct 2025 14:53:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3CDD53271E7
+	for <linux-ext4@vger.kernel.org>; Wed, 29 Oct 2025 14:55:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1761749618; cv=none; b=NSoVANkLGskMXfU0iHrLzZ3fzRvHOggDgaAfM26GRVD5K1Zr1zyolyh7e/9Aqsc4Y09Oy9+lhLd4uf5z7k1PaOs+VR0scIDqTdj5wQBkFvKDzIyRhUAat+dhNkkfqSPJhDoFqi/tDTuJAG27Xf/MWfC7j0HoOBjgzp5QJvfE+8I=
+	t=1761749740; cv=none; b=oG7lZiL5fj2y+50qqKTlA7RN03OXlwnc5Cchc6eVD/uItAw4SR2Sa1ABe35M9UiAtgvOKXQwsewQdJ4vHzgOMPoKozYXwAFyhu5/wnTCPjCsr0qjZr9ZHybGT8rn+IuLxu6OusOyZky0pxnRwb9SvAETSOhSN4nXqk6n4Oh9itw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1761749618; c=relaxed/simple;
-	bh=4N52YreIUF0OvAY3AgVuCEeEXHoxvfXQKpRpGqGXt0Y=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=qTF/08hMBurk2hPwiIPkUZwmEy9OIzZyGfzUNdQj5E0gGxLFwX+tqQp907bMfRzXXyl/gekmuswJXYIETm6t0bFAc454qrV8pVgSrG445q/6IeGFWhm6YGVB85fuoq/lBa1dRg1sAjIp826mzPY8Dbp9LxT4iVr7mngzjE0GAe8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=d6i+Tpv8; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1761749740; c=relaxed/simple;
+	bh=Fq4tvpve4ZOyLILttpQEtylyB6eBRjCb67csUFSJJ8k=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=VKRC71dUoNNFOqarPyM81BcrNOEot8MJC7ET//TT7vRrdHopwzf7QKBQdqTNJkKhDPvLNBQzer6ZHgdpkIBIEq3mvq7CdS8N8npXxfYn2U/01OQcx68+RBNBkI1lNcL6A1d9L+es6YwJuUqvruzqVxAVjkf+GDaVPkoS12t/fYY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=aJnodWxe; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="d6i+Tpv8"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 75851C4CEF7;
-	Wed, 29 Oct 2025 14:53:32 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="aJnodWxe"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B391DC4CEF7;
+	Wed, 29 Oct 2025 14:55:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1761749617;
-	bh=4N52YreIUF0OvAY3AgVuCEeEXHoxvfXQKpRpGqGXt0Y=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=d6i+Tpv81I+RjXv1z/ZhRypcIVRTtXraq5U9iBWHQnvW+KkPDvGl1y2pSEVEa6fIB
-	 Ln4x6wF3AkfAIwedEj981+iIN+wR6+btNH1aNeYDoUlV+PjuWWLC2qWuazlwsZDUyc
-	 w6JEXBhDvgpuQ5ndnBinokI18XbR2srsXkcfTy4nMLpLT5LYAeO4NgeFX7Rl3DUghg
-	 Y+Yu9YxHcIql1AYDpRrZVpwWLKrTXwOqAs1s25OG2ooUXYEvx3zM1w82Fg077igDaB
-	 eTslPtXRVVOcLbKtU1sdxtLF6P6BiY2N2GMT83pc272G20lW+5PvUy3M8NbUj0mjMG
-	 oZaRyJXLYf5Iw==
-From: Christian Brauner <brauner@kernel.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Christian Brauner <brauner@kernel.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Josef Bacik <josef@toxicpanda.com>,
-	Jan Kara <jack@suse.cz>,
-	linux-block@vger.kernel.org,
-	v9fs@lists.linux.dev,
-	linux-btrfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	jfs-discussion@lists.sourceforge.net,
-	ocfs2-devel@lists.linux.dev,
-	linux-xfs@vger.kernel.org,
-	linux-mm@kvack.org,
-	"Matthew Wilcox (Oracle)" <willy@infradead.org>,
-	Eric Van Hensbergen <ericvh@kernel.org>,
-	Latchesar Ionkov <lucho@ionkov.net>,
-	Dominique Martinet <asmadeus@codewreck.org>,
-	Christian Schoenebeck <linux_oss@crudebyte.com>,
-	Chris Mason <clm@fb.com>,
-	David Sterba <dsterba@suse.com>,
-	Mark Fasheh <mark@fasheh.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	Joseph Qi <joseph.qi@linux.alibaba.com>
-Subject: Re: filemap_* writeback interface cleanups v2
-Date: Wed, 29 Oct 2025 15:53:19 +0100
-Message-ID: <20251029-fahrdienst-klaglos-834e266b8e42@brauner>
-X-Mailer: git-send-email 2.47.3
-In-Reply-To: <20251024080431.324236-1-hch@lst.de>
-References: <20251024080431.324236-1-hch@lst.de>
+	s=k20201202; t=1761749739;
+	bh=Fq4tvpve4ZOyLILttpQEtylyB6eBRjCb67csUFSJJ8k=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=aJnodWxeLLPbgS0tGiPa/zvxMX3NppG9pz+A0e8yRK7iG4elztTsoMvsqzYxuuo6J
+	 9k7K1N916sJaOwGf1DIRMSzCnkHHgxwAHYIZdtcQtuKUhsS479dyJOfNlWIFF3UmYT
+	 hgh9d+WjPx0AsGQuyyj/c9fxVhanZt9z0fJFrABP9L6cBqo7K+0MXgAnX3Sj06DG9Y
+	 05/nsCJN59NsXIj/MZIufHJ9PAjOVuaiVtFhg5vDkFVsohXQD5dHeHCikbKEQTSbF3
+	 40FHglsHiMPxhqr5lhSyIMMvcU/V7Eu686V2F94m57T/tRkN2QGPZ+XSnLeB/PwPKr
+	 tbpNz+QSpHUYw==
+Date: Wed, 29 Oct 2025 07:55:39 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Ye Bin <yebin@huaweicloud.com>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	jack@suse.cz
+Subject: Re: [PATCH] jbd2: fix the inconsistency between checksum and data in
+ memory for journal sb
+Message-ID: <20251029145539.GU6170@frogsfrogsfrogs>
+References: <20251028064728.91827-1-yebin@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2522; i=brauner@kernel.org; h=from:subject:message-id; bh=4N52YreIUF0OvAY3AgVuCEeEXHoxvfXQKpRpGqGXt0Y=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWQyaaVPuJ+i9m4br2nk2mOv3Hiqzuq8kEi/LX5pZ5Jpp 1hLQ0l0RykLgxgXg6yYIotDu0m43HKeis1GmRowc1iZQIYwcHEKwESObmZkePvsGoekGs9rdpbt ZmmmOZrb/hx/6K49NePTtSDdi8HVvIwMl5ZenxV508LqDt+pO5cidkrwHHy3v/970ayNXZffekh 4MAEA
-X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20251028064728.91827-1-yebin@huaweicloud.com>
 
-On Fri, 24 Oct 2025 10:04:11 +0200, Christoph Hellwig wrote:
-> while looking at the filemap writeback code, I think adding
-> filemap_fdatawrite_wbc ended up being a mistake, as all but the original
-> btrfs caller should be using better high level interfaces instead.  This
-> series removes all these, switches btrfs to a more specific interfaces
-> and also cleans up another too low-level interface.  With this the
-> writeback_control that is passed to the writeback code is only
-> initialized in three places, although there are a lot more places in
-> file system code that never reach the common writeback code.
+On Tue, Oct 28, 2025 at 02:47:28PM +0800, Ye Bin wrote:
+> From: Ye Bin <yebin10@huawei.com>
 > 
-> [...]
+> Copying the file system while it is mounted as read-only results in
+> a mount failure:
+> [~]# mkfs.ext4 -F /dev/sdc
+> [~]# mount /dev/sdc -o ro /mnt/test
+> [~]# dd if=/dev/sdc of=/dev/sda bs=1M
+> [~]# mount /dev/sda /mnt/test1
+> [ 1094.849826] JBD2: journal checksum error
+> [ 1094.850927] EXT4-fs (sda): Could not load journal inode
+> mount: mount /dev/sda on /mnt/test1 failed: Bad message
 
-Applied to the vfs-6.19.writeback branch of the vfs/vfs.git tree.
-Patches in the vfs-6.19.writeback branch should appear in linux-next soon.
+I was about to say "Well don't do that, freeze the fs first..."
 
-Please report any outstanding bugs that were missed during review in a
-new review to the original patch series allowing us to drop it.
+> Above issue may happen as follows:
+> ext4_fill_super
+>  set_journal_csum_feature_set(sb)
+>   if (ext4_has_metadata_csum(sb))
+>    incompat = JBD2_FEATURE_INCOMPAT_CSUM_V3;
+>   if (test_opt(sb, JOURNAL_CHECKSUM)
+>    jbd2_journal_set_features(sbi->s_journal, compat, 0, incompat);
+>     lock_buffer(journal->j_sb_buffer);
+>     sb->s_feature_incompat  |= cpu_to_be32(incompat);
+>     //The data in the journal sb was modified, but the checksum was not
+>       updated, so the data remaining in memory has a mismatch between the
+>       data and the checksum.
+>     unlock_buffer(journal->j_sb_buffer);
+> 
+> In this case, the journal sb copied over is in a state where the checksum
+> and data are inconsistent, so mounting fails.
+> To solve the above issue, update the checksum in memory after modifying
+> the journal sb.
 
-It's encouraged to provide Acked-bys and Reviewed-bys even though the
-patch has now been applied. If possible patch trailers will be updated.
+...but I think the actual change is correct because (a) we shouldn't
+unlock the bh with an incorrect checksum because userspace can see that;
+and (b) if the bh ever gets marked dirty, then writeback can push the
+inconsistent buffer to disk at any time.
 
-Note that commit hashes shown below are subject to change due to rebase,
-trailer updates or similar. If in doubt, please check the listed branch.
+I think it's the case that j_sb_buffer is only ever written out
+explicitly with submit_bh rather than going through the dirty -> flush
+machinery, but I guess syzbot could read and write the same value from
+userspace to dirty the buffer and flush it out while racing to shut down
+the journal, and now the ondisk journal is inconsistent.
 
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
-branch: vfs-6.19.writeback
+Anyway, the "set csum before unlock_buffer" paradigm is all over the
+ext4 code so
 
-[01/10] mm: don't opencode filemap_fdatawrite_range in filemap_invalidate_inode
-        https://git.kernel.org/vfs/vfs/c/a21134b5d6cb
-[02/10] 9p: don't opencode filemap_fdatawrite_range in v9fs_mmap_vm_close
-        https://git.kernel.org/vfs/vfs/c/3c2e5cee5eb3
-[03/10] ocfs2: don't opencode filemap_fdatawrite_range in ocfs2_journal_submit_inode_data_buffers
-        https://git.kernel.org/vfs/vfs/c/890f141da068
-[04/10] btrfs: use the local tmp_inode variable in start_delalloc_inodes
-        https://git.kernel.org/vfs/vfs/c/41e52c644753
-[05/10] btrfs: push struct writeback_control into start_delalloc_inodes
-        https://git.kernel.org/vfs/vfs/c/c9501112e3cb
-[06/10] mm,btrfs: add a filemap_flush_nr helper
-        https://git.kernel.org/vfs/vfs/c/7fabcb7fbabb
-[07/10] mm: remove __filemap_fdatawrite
-        https://git.kernel.org/vfs/vfs/c/735965144806
-[08/10] mm: remove filemap_fdatawrite_wbc
-        https://git.kernel.org/vfs/vfs/c/1bcb413d0cd8
-[09/10] mm: remove __filemap_fdatawrite_range
-        https://git.kernel.org/vfs/vfs/c/45cbce5b8877
-[10/10] mm: rename filemap_fdatawrite_range_kick to filemap_flush_range
-        https://git.kernel.org/vfs/vfs/c/c28d67b33cbf
+Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
+
+--D
+
+> Fixes: 4fd5ea43bc11 ("jbd2: checksum journal superblock")
+> Signed-off-by: Ye Bin <yebin10@huawei.com>
+> ---
+>  fs/jbd2/journal.c | 6 ++++++
+>  1 file changed, 6 insertions(+)
+> 
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index d480b94117cd..5b6e8c1a5e6a 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -2349,6 +2349,8 @@ int jbd2_journal_set_features(journal_t *journal, unsigned long compat,
+>  	sb->s_feature_compat    |= cpu_to_be32(compat);
+>  	sb->s_feature_ro_compat |= cpu_to_be32(ro);
+>  	sb->s_feature_incompat  |= cpu_to_be32(incompat);
+> +	if (jbd2_journal_has_csum_v2or3(journal))
+> +		sb->s_checksum = jbd2_superblock_csum(sb);
+>  	unlock_buffer(journal->j_sb_buffer);
+>  	jbd2_journal_init_transaction_limits(journal);
+>  
+> @@ -2378,9 +2380,13 @@ void jbd2_journal_clear_features(journal_t *journal, unsigned long compat,
+>  
+>  	sb = journal->j_superblock;
+>  
+> +	lock_buffer(journal->j_sb_buffer);
+>  	sb->s_feature_compat    &= ~cpu_to_be32(compat);
+>  	sb->s_feature_ro_compat &= ~cpu_to_be32(ro);
+>  	sb->s_feature_incompat  &= ~cpu_to_be32(incompat);
+> +	if (jbd2_journal_has_csum_v2or3(journal))
+> +		sb->s_checksum = jbd2_superblock_csum(sb);
+> +	unlock_buffer(journal->j_sb_buffer);
+>  	jbd2_journal_init_transaction_limits(journal);
+>  }
+>  EXPORT_SYMBOL(jbd2_journal_clear_features);
+> -- 
+> 2.34.1
+> 
+> 
