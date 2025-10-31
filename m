@@ -1,27 +1,28 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9E1742EDD64;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 596E52848B4;
 	Fri, 31 Oct 2025 06:31:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1761892286; cv=none; b=S51sDW4h9nZ5xlLfgvpvVZTICC9PAa0Ua/6k5AY6NmUrlskCL840o8qUXp96VRFwB9DlF67MKXsvgaQIggswIjjetZYX0rnABMkbSLBNIZSPmkD4B/5klQvuJ+TMClMty50+jTOj5r+R+02NJ/aDZ6WenGArQ9+MW40vFYTwFNg=
+	t=1761892286; cv=none; b=Nj7KoP+H0Sagc02ieNW5DFPoj/jMNq+dQazOyx0GPTL1ta1Fgw2EGaHpB82N4OI1W15ABEdJ5pdZtsCkDTzRVxrIq3bcvhbyQShZJyHFJ0uUCpgC9X48lvH18l5NxQG92Gv0UgFJK2/83YG50dDU9fl9PqzvWKb9K8+bkgX3QrU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1761892286; c=relaxed/simple;
-	bh=8m42JcAQvJEaTiHTQMcTCJ98xv4AIRUlejmBaMD4oeM=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=XGhyDC8mO8phX9fqMyB2Ed7WlDk/qaAOQjnWFnxzEWZxNJMxqh8Spk8iRubvvKD+U5mtQGj+wAsEX1a315ztu4+gnXUzzyBy90pbvay8tdJKUBW9fdZsu3pyaUy94V38ULmMutHzYpihR5viFlo+O3iF6pVsr2U06tDZntnpirA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	bh=o+LIBORoXhKHcJTxfihkDW044OArupUAC8XHP4fDIVo=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=HCkuDYLjcgXrxusmzFda2c3khv2nd55d6Ai1dAmT+wcxTqkATA/owCY1q4bb/JUz4v/oYrqAbT5WG+9B1PwG/gS8+trIHbcR9uPQBannnsGop7C6GxyshKRiaeKtTYSEdmua/MPG3ZxfS4HjsAvAv3oDgmMvsBcSpSgjq8Asu4E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4cyWLh1sPDzKHM0X;
-	Fri, 31 Oct 2025 14:30:20 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4cyWMj1mljzYQthv;
+	Fri, 31 Oct 2025 14:31:13 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id E5D451A0847;
-	Fri, 31 Oct 2025 14:31:20 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 35A1B1A07BD;
+	Fri, 31 Oct 2025 14:31:21 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP2 (Coremail) with SMTP id Syh0CgBHnESuVwRpEFrWCA--.33311S4;
-	Fri, 31 Oct 2025 14:31:18 +0800 (CST)
+	by APP2 (Coremail) with SMTP id Syh0CgBHnESuVwRpEFrWCA--.33311S8;
+	Fri, 31 Oct 2025 14:31:21 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -33,10 +34,12 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yi.zhang@huaweicloud.com,
 	libaokun1@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH 0/4] ext4: replace ext4_es_insert_extent() when caching on-disk extents
-Date: Fri, 31 Oct 2025 14:29:01 +0800
-Message-ID: <20251031062905.4135909-1-yi.zhang@huaweicloud.com>
+Subject: [PATCH 4/4] ext4: replace ext4_es_insert_extent() when caching on-disk extents
+Date: Fri, 31 Oct 2025 14:29:05 +0800
+Message-ID: <20251031062905.4135909-5-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
+In-Reply-To: <20251031062905.4135909-1-yi.zhang@huaweicloud.com>
+References: <20251031062905.4135909-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -44,55 +47,101 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgBHnESuVwRpEFrWCA--.33311S4
-X-Coremail-Antispam: 1UD129KBjvJXoW7CF48ZFy7uF45Ar47tF4UCFg_yoW8GF48pr
-	ZxCw1rXr1rW3y7Ga93Jw47tr1fGan7Cr4xZryfKw1xuFyUZFy7ursFka1UZa4fXrWxAr15
-	XF45tr1kG3WUA3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUU9Y14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
-	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
-	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
-	2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
-	W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2
-	Y2ka0xkIwI1lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x
-	0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2
-	zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF
-	4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWU
-	CwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCT
-	nIWIevJa73UjIFyTuYvjfUonmRUUUUU
+X-CM-TRANSID:Syh0CgBHnESuVwRpEFrWCA--.33311S8
+X-Coremail-Antispam: 1UD129KBjvJXoWxWF43tr4DXFyxGrWrtrykGrg_yoW5Ww15pr
+	ZrCr1rGws8Ww1q9FWxJF4UZF15C3WakrW7Gw4IvryrAayrGFyfJF1UtFW2vFWvqrW8Xw1F
+	qF4UK34UCayfCa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUm214x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
+	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMI
+	IF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVF
+	xhVjvjDU0xZFpf9x0JUQFxUUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-This series addresses the optimization that Jan pointed out [1]
-regarding the introduction of a sequence number to
-ext4_es_insert_extent(). The proposal is to replace all instances where
-the cache of on-disk extents is updated by using ext4_es_cache_extent()
-instead of ext4_es_insert_extent(). This change can prevent excessive
-cache invalidations caused by unnecessarily increasing the extent
-sequence number when reading from the on-disk extent tree. This seires
-has no dependency on the patch set[2] that introduced the extent
-sequence number, so it can be merged independently.
+In ext4, the remaining places for inserting extents into the extent
+status tree within ext4_ext_determine_insert_hole() and
+ext4_map_query_blocks() directly cache on-disk extents. We can use
+ext4_es_cache_extent() instead of ext4_es_insert_extent() in these
+cases. This will help reduce unnecessary increases in extent sequence
+numbers and cache invalidations after supporting IOMAP in the future.
 
-[1] https://lore.kernel.org/linux-ext4/ympvfypw3222g2k4xzd5pba4zhkz5jihw4td67iixvrqhuu43y@wse63ntv4s6u/
-[2] https://lore.kernel.org/linux-ext4/20251013015128.499308-1-yi.zhang@huaweicloud.com/
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/extents.c |  4 ++--
+ fs/ext4/inode.c   | 18 +++++++++---------
+ 2 files changed, 11 insertions(+), 11 deletions(-)
 
-Thanks,
-Yi.
-
-Zhang Yi (4):
-  ext4: make ext4_es_cache_extent() support overwrite existing extents
-  ext4: check for conflicts when caching extents
-  ext4: adjust the debug info in ext4_es_cache_extent()
-  ext4: replace ext4_es_insert_extent() when caching on-disk extents
-
- fs/ext4/extents.c        |  8 ++---
- fs/ext4/extents_status.c | 75 +++++++++++++++++++++++++++++++++++-----
- fs/ext4/extents_status.h |  2 +-
- fs/ext4/inode.c          | 18 +++++-----
- 4 files changed, 81 insertions(+), 22 deletions(-)
-
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index c42ceb5aae37..7dc80141350d 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4160,8 +4160,8 @@ static ext4_lblk_t ext4_ext_determine_insert_hole(struct inode *inode,
+ insert_hole:
+ 	/* Put just found gap into cache to speed up subsequent requests */
+ 	ext_debug(inode, " -> %u:%u\n", hole_start, len);
+-	ext4_es_insert_extent(inode, hole_start, len, ~0,
+-			      EXTENT_STATUS_HOLE, false);
++	ext4_es_cache_extent(inode, hole_start, len, ~0,
++			     EXTENT_STATUS_HOLE, true);
+ 
+ 	/* Update hole_len to reflect hole size after lblk */
+ 	if (hole_start != lblk)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e99306a8f47c..a3c37de552e9 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -504,8 +504,8 @@ static int ext4_map_query_blocks_next_in_leaf(handle_t *handle,
+ 	retval = ext4_ext_map_blocks(handle, inode, &map2, 0);
+ 
+ 	if (retval <= 0) {
+-		ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+-				      map->m_pblk, status, false);
++		ext4_es_cache_extent(inode, map->m_lblk, map->m_len,
++				     map->m_pblk, status, true);
+ 		return map->m_len;
+ 	}
+ 
+@@ -526,13 +526,13 @@ static int ext4_map_query_blocks_next_in_leaf(handle_t *handle,
+ 	 */
+ 	if (map->m_pblk + map->m_len == map2.m_pblk &&
+ 			status == status2) {
+-		ext4_es_insert_extent(inode, map->m_lblk,
+-				      map->m_len + map2.m_len, map->m_pblk,
+-				      status, false);
++		ext4_es_cache_extent(inode, map->m_lblk,
++				     map->m_len + map2.m_len, map->m_pblk,
++				     status, true);
+ 		map->m_len += map2.m_len;
+ 	} else {
+-		ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+-				      map->m_pblk, status, false);
++		ext4_es_cache_extent(inode, map->m_lblk, map->m_len,
++				     map->m_pblk, status, true);
+ 	}
+ 
+ 	return map->m_len;
+@@ -571,8 +571,8 @@ static int ext4_map_query_blocks(handle_t *handle, struct inode *inode,
+ 			map->m_len == orig_mlen) {
+ 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+ 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+-		ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+-				      map->m_pblk, status, false);
++		ext4_es_cache_extent(inode, map->m_lblk, map->m_len,
++				     map->m_pblk, status, true);
+ 		return retval;
+ 	}
+ 
 -- 
 2.46.1
 
