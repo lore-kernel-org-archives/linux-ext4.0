@@ -1,62 +1,115 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 072222F0671
-	for <linux-ext4@vger.kernel.org>; Tue,  4 Nov 2025 13:06:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C2C82C0F97
+	for <linux-ext4@vger.kernel.org>; Tue,  4 Nov 2025 13:26:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762261601; cv=none; b=OakOHSAbLmx4HMOvPLcRcD5LknIkGUoVtI0HyQp8NipDlkmu4I57GWKTKBvBWO4PF8kZQSt7f97GA7txaTrvlJV+4TMaXjSNbXRaWgVisyquccF48XU0dIgpPLfTJI84rECVaI+3apZ/zQjF2fqjYlYTQn8/zG6Nj/9Vb3l2NxQ=
+	t=1762262776; cv=none; b=P6dyicLtOtZHKBoOV0+j1GoVD+I3bgK5MNy0qoVt8zzR0WMOltMkvvb8mRcM/AAalRvnrp4evt765CON8CHRpX9UpXos2302EDEZW+XS4e8/e+A629a0mW5mYINHSO2O2RKn46CF5yMMO84PiJbnHIHl4CLEEGh0I+tUtK+++Ww=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762261601; c=relaxed/simple;
-	bh=Sw98CA7Dd7m9VDa27oTBLlgbwnVxpNKFphTRiJFFvvE=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=rYQDehaA+VoLO9LZsizD7Yr6cLlkPDS3hCa1FB7vq8N379NPQiYi678WQYC026iW/CQtRgvqEtiTooEtIeeMnGjygHtz7oCONmymUVpOaZghgaf8+shZ6djxZnmb++EsogsSrnJuxpDC6kKAefmd+GG1lwdOPRlppqRRFIoPqIU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Hdn7x2jV; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Hdn7x2jV"
-Received: from trampoline.thunk.org (pool-173-48-121-96.bstnma.fios.verizon.net [173.48.121.96])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 5A4D6GWm018644
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 4 Nov 2025 08:06:17 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1762261578; bh=NR6KcCeNwcpvHNysD8dkvb/mT+S63WyNywQfp0IG4rw=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=Hdn7x2jVdT1yvx+yIZ7YESB7FcjeA5fn52bWXRm8lOBJ1DTqu2aW56w+ciTrYIAFE
-	 ykxSj+xVBZavWXA09TwGpGtMiLM/CyX/V/66fSvUxOt1P7qGbC0ptuFsUPJPWLfrqq
-	 uHdyBUO2jhKXYB/MyoPv0vjPOB6G8iaDWjRiZm+JnWm3Vl2ayH921d2npIszByc8qA
-	 Ak41Ht3nmCfjNllUfaeDX4TCI2s7u7WKrSpocAZGcWBdDcj4ISJThK6u8c1CdZv/LJ
-	 Rmdn0dWKng48zwS6G4Y7bCWji08QiqtMLVybMffeWBefdkAs9wk6KQ/htrqs3LcVIR
-	 gg8KrW5G/4O/g==
-Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 289192E00D9; Tue, 04 Nov 2025 08:06:16 -0500 (EST)
-Date: Tue, 4 Nov 2025 08:06:16 -0500
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Christian Brauner <brauner@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>,
-        Jan Kara <jack@suse.cz>, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: Re: [PATCH RFC 5/8] ext4: use super write guard in write_mmp_block()
-Message-ID: <20251104130616.GA2988753@mit.edu>
-References: <20251104-work-guards-v1-0-5108ac78a171@kernel.org>
- <20251104-work-guards-v1-5-5108ac78a171@kernel.org>
+	s=arc-20240116; t=1762262776; c=relaxed/simple;
+	bh=MvyZuTXC9tcU3o+e/22gSJ6ZNTNUxYcgSAyjEK0dKMI=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=W+dbOwkE+UwlybzrdUrR3PzrXiRlTD5QCEYRal56XKWGhtnNlWfQekEDqH6DbXXOWs9PIwEzqqTFzEf4JabuxOxv6k4CnDfZ3UCcq+HZBiORXBYvPRjfy1OKa3KKMw3TPDIMSwl4HcXpTliCOOyzGV9yRUXiYAtIp6FwAIG/Nvc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4d18NY1CjbzKHMpN
+	for <linux-ext4@vger.kernel.org>; Tue,  4 Nov 2025 21:26:05 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.75])
+	by mail.maildlp.com (Postfix) with ESMTP id 042D41A07BB
+	for <linux-ext4@vger.kernel.org>; Tue,  4 Nov 2025 21:26:11 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.87.129])
+	by APP2 (Coremail) with SMTP id Syh0CgCn_UXv_glpN8K+Cg--.58269S6;
+	Tue, 04 Nov 2025 21:26:10 +0800 (CST)
+From: Yang Erkun <yangerkun@huawei.com>
+To: linux-ext4@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz
+Cc: yi.zhang@huawei.com,
+	libaokun1@huawei.com,
+	yangerkun@huawei.com,
+	yangerkun@huaweicloud.com
+Subject: [PATCH v2 3/4] ext4: cleanup for ext4_map_blocks
+Date: Tue,  4 Nov 2025 21:17:49 +0800
+Message-Id: <20251104131750.1581541-3-yangerkun@huawei.com>
+X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20251104131750.1581541-1-yangerkun@huawei.com>
+References: <20251104131750.1581541-1-yangerkun@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20251104-work-guards-v1-5-5108ac78a171@kernel.org>
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:Syh0CgCn_UXv_glpN8K+Cg--.58269S6
+X-Coremail-Antispam: 1UD129KBjvJXoW7tFy5try8Aw48tw45ZFWfGrg_yoW8Xryxp3
+	y3Cr1rGr1UWrWY9w4FyF18ZF12kayFk3y8ZFWfAr95Z343Arn3tr1jyF1fCFZ8KrWfJw4U
+	XF4jy345CwsYka7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmEb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUXw
+	A2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
+	w2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
+	W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
+	6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
+	Ij6xIIjxv20xvE14v26r126r1DMcIj6I8E87Iv67AKxVW8Jr0_Cr1UMcvjeVCFs4IE7xkE
+	bVWUJVW8JwACjcxG0xvY0x0EwIxGrwACjsIEF7I21c0EjII2zVCS5cI20VAGYxC7MxkF7I
+	0En4kS14v26r126r1DMxAIw28IcxkI7VAKI48JMxAIw28IcVAKzI0EY4vE52x082I5MxC2
+	0s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI
+	0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE
+	14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20x
+	vaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8
+	JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU8ha9DUUUUU==
+Sender: yangerkun@huaweicloud.com
+X-CM-SenderInfo: 51dqwvhunx0q5kxd4v5lfo033gof0z/
 
-On Tue, Nov 04, 2025 at 01:12:34PM +0100, Christian Brauner wrote:
-> Signed-off-by: Christian Brauner <brauner@kernel.org>
-> ---
->  fs/ext4/mmp.c | 8 ++------
->  1 file changed, 2 insertions(+), 6 deletions(-)
+Retval from ext4_map_create_blocks means we really create some blocks,
+cannot happened with m_flags without EXT4_MAP_UNWRITTEN and
+EXT4_MAP_MAPPED.
 
-Acked-by: Theodore Ts'o <tytso@mit.edu>
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+Signed-off-by: Yang Erkun <yangerkun@huawei.com>
+---
+ fs/ext4/inode.c | 16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e8bac93ca668..3d8ada26d5cd 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -799,7 +799,13 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	down_write(&EXT4_I(inode)->i_data_sem);
+ 	retval = ext4_map_create_blocks(handle, inode, map, flags);
+ 	up_write((&EXT4_I(inode)->i_data_sem));
+-	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
++
++	if (retval < 0)
++		ext_debug(inode, "failed with err %d\n", retval);
++	if (retval <= 0)
++		return retval;
++
++	if (map->m_flags & EXT4_MAP_MAPPED) {
+ 		ret = check_block_validity(inode, map);
+ 		if (ret != 0)
+ 			return ret;
+@@ -828,12 +834,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 				return ret;
+ 		}
+ 	}
+-	if (retval > 0 && (map->m_flags & EXT4_MAP_UNWRITTEN ||
+-				map->m_flags & EXT4_MAP_MAPPED))
+-		ext4_fc_track_range(handle, inode, map->m_lblk,
+-					map->m_lblk + map->m_len - 1);
+-	if (retval < 0)
+-		ext_debug(inode, "failed with err %d\n", retval);
++	ext4_fc_track_range(handle, inode, map->m_lblk, map->m_lblk +
++			    map->m_len - 1);
+ 	return retval;
+ }
+ 
+-- 
+2.39.2
+
