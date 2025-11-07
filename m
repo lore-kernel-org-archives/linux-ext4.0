@@ -1,27 +1,27 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F26F82EA156;
-	Fri,  7 Nov 2025 14:51:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 464C132C94C;
+	Fri,  7 Nov 2025 14:51:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762527089; cv=none; b=M8QbJ6DXpaXX+YMuA9AsCAEozpJVXZN34MJSHFLQklq0C8mgbSjteT/OdTzNCv56L7jLx+sYF9bNEL6qygDb4wm5D+YAF9UVYjIRtla2FyutCtd/efnXcyq+ek+aX+dXnKxwSf+wuJagIURtJ9WshV53yVcdwoBFwhxCfa1a/FU=
+	t=1762527092; cv=none; b=eF7R/BRHoxPp2lfEGMSmJEqymoGtshNWzdnRBQFbLsX1f9p6hA35kZ2i+Mi7i+XbS8b/ZggjFApk2KyzWB0AbRJBFCBElXZ5Nge7Kv2jfOaJcVSfESZj+AkwAqlHnJ1hghkyIvQH2NgBZPog+RKIjvMXjkPG8Rg3z2dGeHr+xi0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762527089; c=relaxed/simple;
-	bh=zru6h0tSducD5Q4JGP0Z7AO61CNXM4NKMumOKOKELBk=;
+	s=arc-20240116; t=1762527092; c=relaxed/simple;
+	bh=usJii5w3KrAr1fKEAvcibS3dL/fzV9/uodxteDdlEhk=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=f4LuGRZggqfeAMBK0MehxJdzMSJblhf+kn4CAuRVohU924ZEHO0OAbAEE3WX0NdlcPdUYPD3skfESwWp9VwCV6Y0Er/BjhSKfs8qy8uecJVj8pb/BUPRxK8lkYfxVBVZiJVCH2GjvqMyOp+8PRh/xk+h7IqkguwXPql5nM/Crng=
+	 MIME-Version; b=pA8Xy9FxxRgrwveCIWCGBcyB3c/c1QDiBNZPr4TxaZlc6pZJfW6Dj2cFIdnTB5ioNf/SvfvcUNceSmkNq5aXHFJbp89j8WKa/wwRJ5I50Zlze1ajPF/7AbSo5zGIpIGC34leS1RXxDo3ErFDz5gMdrh0yQ/nBB8OvSIeTzvAUgU=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4d327D0tX6zYQv3N;
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4d327D50YczYQv4F;
 	Fri,  7 Nov 2025 22:51:04 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 4A4351A084D;
+	by mail.maildlp.com (Postfix) with ESMTP id D726A1A0EFE;
 	Fri,  7 Nov 2025 22:51:24 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.129])
-	by APP2 (Coremail) with SMTP id Syh0CgDnPUZoBw5pRwgbDA--.60770S16;
+	by APP2 (Coremail) with SMTP id Syh0CgDnPUZoBw5pRwgbDA--.60770S24;
 	Fri, 07 Nov 2025 22:51:24 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
@@ -38,9 +38,9 @@ Cc: tytso@mit.edu,
 	chengzhihao1@huawei.com,
 	libaokun1@huawei.com,
 	libaokun@huaweicloud.com
-Subject: [PATCH v2 12/24] ext4: support large block size in ext4_mb_get_buddy_page_lock()
-Date: Fri,  7 Nov 2025 22:42:37 +0800
-Message-Id: <20251107144249.435029-13-libaokun@huaweicloud.com>
+Subject: [PATCH v2 20/24] ext4: support large block size in __ext4_block_zero_page_range()
+Date: Fri,  7 Nov 2025 22:42:45 +0800
+Message-Id: <20251107144249.435029-21-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20251107144249.435029-1-libaokun@huaweicloud.com>
 References: <20251107144249.435029-1-libaokun@huaweicloud.com>
@@ -51,137 +51,52 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgDnPUZoBw5pRwgbDA--.60770S16
-X-Coremail-Antispam: 1UD129KBjvJXoWxJF13CF47GF4xuFyDGF1rWFg_yoWrZF48pa
-	y7Cwn8Jr4kWasrursrZ3saq3WFkas5Zay7A3yIgr13uFy3J34IkFy0k3WUXF1UtFWxGFs5
-	XF45Zry3WF1UX3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUQa14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
-	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
-	IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Gr1j6F4UJwAm72CE4IkC6x0Yz7v_Jr0_
-	Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8c
-	xan2IY04v7M4kE6xkIj40Ew7xC0wCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxG
-	rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
-	vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IY
-	x2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
-	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x02
-	67AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUdsqAUUUUU=
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAFBWkNxrAU2wABse
+X-CM-TRANSID:Syh0CgDnPUZoBw5pRwgbDA--.60770S24
+X-Coremail-Antispam: 1UD129KBjvdXoW7Xw45Wr1fWFWrCF4fCr48Zwb_yoWfurcEkF
+	y8Xr4rXa1rZrn3Aa95Aan0qFs2k3WrCFn8ury3Jrn5ZFykXFZ5G34Dt3yYkr4qgF47Ww45
+	ArZ7XFWayFy2gjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUbmkFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAVCq3wA2048vs2
+	IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28E
+	F7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr
+	1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0D
+	M2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjx
+	v20xvE14v26r1Y6r17McIj6I8E87Iv67AKxVW8Jr0_Cr1UMcvjeVCFs4IE7xkEbVWUJVW8
+	JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2
+	ka0xkIwI1lw4CEc2x0rVAKj4xxMxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAKI48J
+	MxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwV
+	AFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv2
+	0xvE14v26ryj6F1UMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UMIIF0xvE42xK8V
+	AvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E
+	14v26r4UJVWxJrUvcSsGvfC2KfnxnUUI43ZEXa7VUbG-e7UUUUU==
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQAFBWkNxrUVJQAAsm
 
-From: Baokun Li <libaokun1@huawei.com>
+From: Zhihao Cheng <chengzhihao1@huawei.com>
 
-Currently, ext4_mb_get_buddy_page_lock() uses blocks_per_page to calculate
-folio index and offset. However, when blocksize is larger than PAGE_SIZE,
-blocks_per_page becomes zero, leading to a potential division-by-zero bug.
+Use the EXT4_PG_TO_LBLK() macro to convert folio indexes to blocks to avoid
+negative left shifts after supporting blocksize greater than PAGE_SIZE.
 
-To support BS > PS, use bytes to compute folio index and offset within
-folio to get rid of blocks_per_page.
-
-Also, since ext4_mb_get_buddy_page_lock() already fully supports folio,
-rename it to ext4_mb_get_buddy_folio_lock().
-
+Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/mballoc.c | 42 ++++++++++++++++++++++--------------------
- 1 file changed, 22 insertions(+), 20 deletions(-)
+ fs/ext4/inode.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 143d6ff1fdef..b454a41dd6c1 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1510,50 +1510,52 @@ static int ext4_mb_init_cache(struct folio *folio, char *incore, gfp_t gfp)
- }
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c09859786563..22d215f90c64 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4074,7 +4074,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
  
- /*
-- * Lock the buddy and bitmap pages. This make sure other parallel init_group
-- * on the same buddy page doesn't happen whild holding the buddy page lock.
-- * Return locked buddy and bitmap pages on e4b struct. If buddy and bitmap
-- * are on the same page e4b->bd_buddy_folio is NULL and return value is 0.
-+ * Lock the buddy and bitmap folios. This makes sure other parallel init_group
-+ * on the same buddy folio doesn't happen while holding the buddy folio lock.
-+ * Return locked buddy and bitmap folios on e4b struct. If buddy and bitmap
-+ * are on the same folio e4b->bd_buddy_folio is NULL and return value is 0.
-  */
--static int ext4_mb_get_buddy_page_lock(struct super_block *sb,
-+static int ext4_mb_get_buddy_folio_lock(struct super_block *sb,
- 		ext4_group_t group, struct ext4_buddy *e4b, gfp_t gfp)
- {
- 	struct inode *inode = EXT4_SB(sb)->s_buddy_cache;
--	int block, pnum, poff;
--	int blocks_per_page;
-+	int block, pnum;
- 	struct folio *folio;
+ 	blocksize = inode->i_sb->s_blocksize;
  
- 	e4b->bd_buddy_folio = NULL;
- 	e4b->bd_bitmap_folio = NULL;
+-	iblock = folio->index << (PAGE_SHIFT - inode->i_sb->s_blocksize_bits);
++	iblock = EXT4_PG_TO_LBLK(inode, folio->index);
  
--	blocks_per_page = PAGE_SIZE / sb->s_blocksize;
- 	/*
- 	 * the buddy cache inode stores the block bitmap
- 	 * and buddy information in consecutive blocks.
- 	 * So for each group we need two blocks.
- 	 */
- 	block = group * 2;
--	pnum = block / blocks_per_page;
--	poff = block % blocks_per_page;
-+	pnum = EXT4_LBLK_TO_PG(inode, block);
- 	folio = __filemap_get_folio(inode->i_mapping, pnum,
- 			FGP_LOCK | FGP_ACCESSED | FGP_CREAT, gfp);
- 	if (IS_ERR(folio))
- 		return PTR_ERR(folio);
- 	BUG_ON(folio->mapping != inode->i_mapping);
-+	WARN_ON_ONCE(folio_size(folio) < sb->s_blocksize);
- 	e4b->bd_bitmap_folio = folio;
--	e4b->bd_bitmap = folio_address(folio) + (poff * sb->s_blocksize);
-+	e4b->bd_bitmap = folio_address(folio) +
-+			 offset_in_folio(folio, EXT4_LBLK_TO_B(inode, block));
- 
--	if (blocks_per_page >= 2) {
--		/* buddy and bitmap are on the same page */
-+	block++;
-+	pnum = EXT4_LBLK_TO_PG(inode, block);
-+	if (folio_contains(folio, pnum)) {
-+		/* buddy and bitmap are on the same folio */
- 		return 0;
- 	}
- 
--	/* blocks_per_page == 1, hence we need another page for the buddy */
--	folio = __filemap_get_folio(inode->i_mapping, block + 1,
-+	/* we need another folio for the buddy */
-+	folio = __filemap_get_folio(inode->i_mapping, pnum,
- 			FGP_LOCK | FGP_ACCESSED | FGP_CREAT, gfp);
- 	if (IS_ERR(folio))
- 		return PTR_ERR(folio);
- 	BUG_ON(folio->mapping != inode->i_mapping);
-+	WARN_ON_ONCE(folio_size(folio) < sb->s_blocksize);
- 	e4b->bd_buddy_folio = folio;
- 	return 0;
- }
-@@ -1592,14 +1594,14 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group, gfp_t gfp)
- 
- 	/*
- 	 * This ensures that we don't reinit the buddy cache
--	 * page which map to the group from which we are already
-+	 * folio which map to the group from which we are already
- 	 * allocating. If we are looking at the buddy cache we would
- 	 * have taken a reference using ext4_mb_load_buddy and that
--	 * would have pinned buddy page to page cache.
--	 * The call to ext4_mb_get_buddy_page_lock will mark the
--	 * page accessed.
-+	 * would have pinned buddy folio to page cache.
-+	 * The call to ext4_mb_get_buddy_folio_lock will mark the
-+	 * folio accessed.
- 	 */
--	ret = ext4_mb_get_buddy_page_lock(sb, group, &e4b, gfp);
-+	ret = ext4_mb_get_buddy_folio_lock(sb, group, &e4b, gfp);
- 	if (ret || !EXT4_MB_GRP_NEED_INIT(this_grp)) {
- 		/*
- 		 * somebody initialized the group
+ 	bh = folio_buffers(folio);
+ 	if (!bh)
 -- 
 2.46.1
 
