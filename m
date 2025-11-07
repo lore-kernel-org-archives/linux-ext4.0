@@ -1,82 +1,49 @@
-Received: from mail-ej1-f45.google.com (mail-ej1-f45.google.com [209.85.218.45])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A014732938F
-	for <linux-ext4@vger.kernel.org>; Fri,  7 Nov 2025 14:22:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.218.45
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D364D2E540C;
+	Fri,  7 Nov 2025 14:51:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762525328; cv=none; b=AdQ8tQ+xDQwX5lSWc2nNBAuzPFd3auIiCiNFgMHw1hKiYj6oaHJhECXo2c92FrhD5zAShwwfFyGtp47zyFnAxg/jrWCWcQET+ZWfjGQ2cd8uD+wAFkPfkzHfKf9UTI3trFIgNfikhD42RHZ/ngvUTr5x0IXpvSiDlqk4g0i3bg8=
+	t=1762527088; cv=none; b=gTRdrCDh1+60nAMRvID0Fl4PRIwTHaBwnFjqHM8eHR0UXav4ZFLopgpxgKoZHqgGDz37RF+Y2zXzhjYKk4zE8++ZsAU078xEy7aK7QY+yV5LVn51SkQYBwFO68fm/fZO3pJ6l0kimAb+g0ZP9hg9s5y/fJDMbsGbUt25SBNaB0c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762525328; c=relaxed/simple;
-	bh=wS2imuQ9BmkOhIkqMvqqB5gl66Z+pbAiZyZ4vNX0hTE=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=JMZUwlyu4r+Q+24P/TNP1NuKP3s8ibSEIGvTkbHx46xvagT7BmR/wlrwGqZj09PnmDhi5MFOL4hiemQV8XZw34gCzvm2Ud060I9kmXHfv+fXZKYIPyj7rgqgMejpn7acQvsNO4DBpqen8LP3Mdc/lhr5Gk1weH5CAhWwEhkZ4+0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=To2POnNR; arc=none smtp.client-ip=209.85.218.45
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="To2POnNR"
-Received: by mail-ej1-f45.google.com with SMTP id a640c23a62f3a-b72bf7e703fso145655066b.2
-        for <linux-ext4@vger.kernel.org>; Fri, 07 Nov 2025 06:22:05 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1762525324; x=1763130124; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=ALuLKFw+mr0eVU5vuPj8LnIxQt3AfWAYuS4LghXi6Bg=;
-        b=To2POnNRLv1Z3RMuB327G2Bf9yjQ9YNRisL8V7Ov15aKZICI4Ofq0UP/LIsjXK3XcJ
-         VM/LwdnxjyCrL9PnHBrxhsZCG+NPykzg0l0pv5mRfhqC4hWrY5m+Ozha1bnoZfy6+iYy
-         l11vn2RvuaI5l0OjlNCmjYC2kJUYPQzX49GitXv5ByPDkv57UpscjjzZEbRaW9uWdpv+
-         mZdwjpZyiDA7wRjBTnWpbImi0ZQl+ClMQo8gZfEUJwOETqt2ZIYoZ3Atbr3xsPzg11Sj
-         6Sh9e9DRaAWTOuIlOxUa4w5h6K+nKUNG3PSqzYyCRRclZ8b3LfN9EDfyBN3NIdY6GF7j
-         mAUw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1762525324; x=1763130124;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=ALuLKFw+mr0eVU5vuPj8LnIxQt3AfWAYuS4LghXi6Bg=;
-        b=GbGsTBVMjtxP1lxIOoDBeo5CrvjKiYmn9dD09tdqYaDgzMi7kBj7F7tjoSG8plTLqE
-         5wiQlWOvWbhtyf0Janb+pHOUtBnLTUE41lyeSmOOiT2q4mtmHxmpxSUXFoJ4JJX9/08L
-         4J7lB5IGoTI9hTXpsYhE1Jr3Heb48+cHsJNcQGfaEf9aWZhCVCVGuS5I8js/SBreuGW5
-         mCJ9Ms4OG62YB89LE+UZB7q1KsNbD5K7G9lR8FpKJWxN5n7tTOidgtchuAEvwOshHGiJ
-         Ius/UJ64bI6QXUPpoB3c1FXcy1u9TIPjQOx1wSjlnS6dEJoVHO1Rx4TOaYGPdtcOiEUu
-         zFhw==
-X-Forwarded-Encrypted: i=1; AJvYcCVjo5NA7nT9knjhw2OQJQ1mndGJSbX1cI3BOCtukltBpafT2yLEeamGI+xhziJB/DjUxSER5sR0Qg45@vger.kernel.org
-X-Gm-Message-State: AOJu0YwyAJjqxhmYJ/YCUoCG404mGyLunQ0J8vyjdPPAp4yLrGlMRLHs
-	6kn5Y7Mz/FZaaCPnDDqJkrhDjPEqPN+vIuKzd7PH5VrBTYp19FzkmVVi
-X-Gm-Gg: ASbGncuPwcgXCpoUaB79AsYNX+D5hqtj+wnzw+2WpIg53Ws0rsEcTNrMovpKp9HJYzx
-	jSL6AFkRcEPMVor1UiMIb8DHlXT/vQIUDCyP65OrCYWx//94t3vhXuPTbxr+F8Ng0BuXTdbgDLt
-	0AYm0+Y80lpsY89H1/43Tz8aXZPe/YxIF3KoWdAAqmQffzyVjUaJZjr6XUip2v3lQ9uaqZQsQj9
-	Sy5mslZilkwMEFbcVykW95nbgG9VW0lhRS7AFEIPtZw0ODSW4fLU/zbbMXBwCif4V+QhF3hFlE/
-	Q3xD/L0s/H+QmGlRSSXakXpNf+c5eiOoxoEGzJU4KlSE5EVkylRTIKesgmNfwBLRchK5AyoMxJy
-	o4u0O5AZn+NBQuBQtXlTE4BSDohot3u9RuyxFgiv2lXLm8/p+0ooNmEayiMw0VYYMBc7SCGRi52
-	VD27KG+HJW2YdovfgDzzVOq7+iqB2xUxfYBDHKNVRMjmiXuvIz
-X-Google-Smtp-Source: AGHT+IFYK2b9ojdXtTAd4PTW5XlFiit6Z3g1OoNfduNaJTNxwuPOLhjJOAV1QVecyGCifhAj28KZcw==
-X-Received: by 2002:a17:907:3fa5:b0:b3f:a960:e057 with SMTP id a640c23a62f3a-b72c090e626mr342966366b.31.1762525323963;
-        Fri, 07 Nov 2025 06:22:03 -0800 (PST)
-Received: from f.. (cst-prg-14-82.cust.vodafone.cz. [46.135.14.82])
-        by smtp.gmail.com with ESMTPSA id a640c23a62f3a-b72bf97e563sm253322766b.41.2025.11.07.06.22.01
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 07 Nov 2025 06:22:03 -0800 (PST)
-From: Mateusz Guzik <mjguzik@gmail.com>
-To: brauner@kernel.org
-Cc: viro@zeniv.linux.org.uk,
+	s=arc-20240116; t=1762527088; c=relaxed/simple;
+	bh=ROr1qnXjcDLzsd8smDrvomvAWYUXWIuKANlwbkhSYDs=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=UfIvbOkmU5yQF0Hj0n+Ra2IE7+MOoy5jjVAaxRseLJ93fVkEyrUxkY+LkXXlRJCJYtkkeJW96+tUlwXBa49xcGQ4wu60k2HJVF+KSvVorcopU7xiIqh14amM3JsRFe/3TIESN1s3YNfUgtBBfPCQMSPOKpMYoPwtNqyOuvRb64o=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4d327C44ZJzYQv26;
+	Fri,  7 Nov 2025 22:51:03 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.75])
+	by mail.maildlp.com (Postfix) with ESMTP id BB54A1A17F1;
+	Fri,  7 Nov 2025 22:51:23 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.87.129])
+	by APP2 (Coremail) with SMTP id Syh0CgDnPUZoBw5pRwgbDA--.60770S10;
+	Fri, 07 Nov 2025 22:51:23 +0800 (CST)
+From: libaokun@huaweicloud.com
+To: linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
 	jack@suse.cz,
 	linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	tytso@mit.edu,
-	torvalds@linux-foundation.org,
-	josef@toxicpanda.com,
-	linux-btrfs@vger.kernel.org,
-	Mateusz Guzik <mjguzik@gmail.com>
-Subject: [PATCH v3 3/3] fs: retire now stale MAY_WRITE predicts in inode_permission()
-Date: Fri,  7 Nov 2025 15:21:49 +0100
-Message-ID: <20251107142149.989998-4-mjguzik@gmail.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20251107142149.989998-1-mjguzik@gmail.com>
-References: <20251107142149.989998-1-mjguzik@gmail.com>
+	kernel@pankajraghav.com,
+	mcgrof@kernel.org,
+	ebiggers@kernel.org,
+	willy@infradead.org,
+	yi.zhang@huawei.com,
+	yangerkun@huawei.com,
+	chengzhihao1@huawei.com,
+	libaokun1@huawei.com,
+	libaokun@huaweicloud.com
+Subject: [PATCH v2 06/24] ext4: introduce s_min_folio_order for future BS > PS support
+Date: Fri,  7 Nov 2025 22:42:31 +0800
+Message-Id: <20251107144249.435029-7-libaokun@huaweicloud.com>
+X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20251107144249.435029-1-libaokun@huaweicloud.com>
+References: <20251107144249.435029-1-libaokun@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -84,36 +51,98 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:Syh0CgDnPUZoBw5pRwgbDA--.60770S10
+X-Coremail-Antispam: 1UD129KBjvJXoWxJrWfJFyxtr4xKFyrCw13CFg_yoW8KF13pF
+	nxCFyfGrW8Zry8uFs2gFsrX348Kay8KayUXw4S9w15urWaq3409r1Dt3W5AFWYqrW8XFWS
+	qF1UKry7CrnxC37anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUQI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Gr1j6F4UJwAm72CE4IkC6x0Yz7v_Jr0_
+	Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8c
+	xan2IY04v7M4kE6xkIj40Ew7xC0wCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxG
+	rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
+	vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IY
+	x2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8V
+	AvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E
+	14v26r4UJVWxJrUvcSsGvfC2KfnxnUUI43ZEXa7VUbG-e7UUUUU==
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAFBWkNxrAU1wABsS
 
-The primary non-MAY_WRITE consumer now uses lookup_inode_permission_may_exec().
+From: Baokun Li <libaokun1@huawei.com>
 
-Signed-off-by: Mateusz Guzik <mjguzik@gmail.com>
+This commit introduces the s_min_folio_order field to the ext4_sb_info
+structure. This field will store the minimum folio order required by the
+current filesystem, laying groundwork for future support of block sizes
+greater than PAGE_SIZE.
+
+Signed-off-by: Baokun Li <libaokun1@huawei.com>
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/namei.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/ext4.h  |  3 +++
+ fs/ext4/inode.c |  3 ++-
+ fs/ext4/super.c | 10 +++++-----
+ 3 files changed, 10 insertions(+), 6 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 6b2a5a5478e7..2a112b2c0951 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -546,7 +546,7 @@ static inline int do_inode_permission(struct mnt_idmap *idmap,
-  */
- static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
- {
--	if (unlikely(mask & MAY_WRITE)) {
-+	if (mask & MAY_WRITE) {
- 		umode_t mode = inode->i_mode;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 3d18e6bf43cf..6fe8cc3bf9a5 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1688,6 +1688,9 @@ struct ext4_sb_info {
+ 	/* record the last minlen when FITRIM is called. */
+ 	unsigned long s_last_trim_minblks;
  
- 		/* Nobody gets write access to a read-only fs. */
-@@ -577,7 +577,7 @@ int inode_permission(struct mnt_idmap *idmap,
- 	if (unlikely(retval))
- 		return retval;
++	/* minimum folio order of a page cache allocation */
++	unsigned int s_min_folio_order;
++
+ 	/* Precomputed FS UUID checksum for seeding other checksums */
+ 	__u32 s_csum_seed;
  
--	if (unlikely(mask & MAY_WRITE)) {
-+	if (mask & MAY_WRITE) {
- 		/*
- 		 * Nobody gets write access to an immutable file.
- 		 */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 6fec3aa2268a..9faa0cf77075 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5181,7 +5181,8 @@ void ext4_set_inode_mapping_order(struct inode *inode)
+ 	if (!ext4_should_enable_large_folio(inode))
+ 		return;
+ 
+-	mapping_set_folio_order_range(inode->i_mapping, 0,
++	mapping_set_folio_order_range(inode->i_mapping,
++				      EXT4_SB(inode->i_sb)->s_min_folio_order,
+ 				      EXT4_MAX_PAGECACHE_ORDER(inode));
+ }
+ 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a9fa824487f9..a6314a3de51d 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -5107,11 +5107,8 @@ static int ext4_load_super(struct super_block *sb, ext4_fsblk_t *lsb,
+ 	 * If the default block size is not the same as the real block size,
+ 	 * we need to reload it.
+ 	 */
+-	if (sb->s_blocksize == blocksize) {
+-		*lsb = logical_sb_block;
+-		sbi->s_sbh = bh;
+-		return 0;
+-	}
++	if (sb->s_blocksize == blocksize)
++		goto success;
+ 
+ 	/*
+ 	 * bh must be released before kill_bdev(), otherwise
+@@ -5142,6 +5139,9 @@ static int ext4_load_super(struct super_block *sb, ext4_fsblk_t *lsb,
+ 		ext4_msg(sb, KERN_ERR, "Magic mismatch, very weird!");
+ 		goto out;
+ 	}
++
++success:
++	sbi->s_min_folio_order = get_order(blocksize);
+ 	*lsb = logical_sb_block;
+ 	sbi->s_sbh = bh;
+ 	return 0;
 -- 
-2.48.1
+2.46.1
 
