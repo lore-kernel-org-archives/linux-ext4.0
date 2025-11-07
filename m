@@ -1,27 +1,27 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B19F32D7EC;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 773C831A808;
 	Fri,  7 Nov 2025 14:51:31 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762527095; cv=none; b=T0lulbX6ZZgwO+o6s0YGTW1gqIVAU6Wjw6ZLeeSAQsVyW207zKNQXv0Y2ovN+4KVoIZr8QYZq7+aAmN0B73gIm4pJEua48kQy3KNkRS7z+ls0tQtaAfAuFj4fos5i60JsmcLsZbQ+liT3uQ3DnhHA2j6HlnPxICrDOLlnFWp9+w=
+	t=1762527095; cv=none; b=kOi0BW96prK560TZVfgOl/7yJVDXeBVXf6wHp+nN8GQNtLTrlMvOwXH0VrqW/ea3sEN2UelZP8jXF5I1ZDM7cHo7fjcwjDhjoAQAtMiIMVKtncI5DI3vdjqvYt7DhdP5E4XOtpqsc6ssD50i+O7AQGEs/XajMvu2rzC2SunTcfk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1762527095; c=relaxed/simple;
-	bh=lWxVS/oU2F5ShgfeIORrKvnNcHgWHKYt9wSuYI3IXdw=;
+	bh=WGy3nSz0KZLBTn1s/kKP/NQ+l/KC+RqVKYwQ9hLhC+c=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=bwQfFEjWFanWVR/p1GisTOSR/0tZHBtcTji+gAfKM6rkq0RCyGCqG4QaixIGdaiIwFwoCIAKfxwSmfnG2c+MwAGqcmpRz7AjPrfna1W1hdYPHBWaF15k0V/41dSSNrxjBeMsq+jTrmMDhb2BE9T1hugIiTDUancMc9WmCT7OFsI=
+	 MIME-Version; b=QblNz/DD+Na+1AotR8/PgosNqaulEYvhHS+z1vM4RxM6uDM0yUtYGuyslzTQbrAffNZr1LDdaGOIZl25Pqcw64DmnxB2bPeCiB/wcuFcuDJiET3rhYsbZAuIVtnit1We9EtcBKH10NzRCx73X/fmPzUre+i+4EGMbhZfY9csgoo=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4d327P2YxfzKHMdl;
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4d327P0fq9zKHMcJ;
 	Fri,  7 Nov 2025 22:51:13 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id A8BA01A0847;
+	by mail.maildlp.com (Postfix) with ESMTP id 658581A07BD;
 	Fri,  7 Nov 2025 22:51:23 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.129])
-	by APP2 (Coremail) with SMTP id Syh0CgDnPUZoBw5pRwgbDA--.60770S8;
+	by APP2 (Coremail) with SMTP id Syh0CgDnPUZoBw5pRwgbDA--.60770S5;
 	Fri, 07 Nov 2025 22:51:23 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
@@ -38,9 +38,9 @@ Cc: tytso@mit.edu,
 	chengzhihao1@huawei.com,
 	libaokun1@huawei.com,
 	libaokun@huaweicloud.com
-Subject: [PATCH v2 04/24] ext4: make ext4_punch_hole() support large block size
-Date: Fri,  7 Nov 2025 22:42:29 +0800
-Message-Id: <20251107144249.435029-5-libaokun@huaweicloud.com>
+Subject: [PATCH v2 01/24] ext4: remove page offset calculation in ext4_block_zero_page_range()
+Date: Fri,  7 Nov 2025 22:42:26 +0800
+Message-Id: <20251107144249.435029-2-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20251107144249.435029-1-libaokun@huaweicloud.com>
 References: <20251107144249.435029-1-libaokun@huaweicloud.com>
@@ -51,67 +51,55 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgDnPUZoBw5pRwgbDA--.60770S8
-X-Coremail-Antispam: 1UD129KBjvJXoW7WrWxWw4xXryDGw17WF1xZrb_yoW8XF43p3
-	43Gry8u3y8W3yjkF45K3WUZw1xt3Za9w4UXFWUZr4UXr98Ja4Skr12gry0ga1v9r4IyryF
-	qrnrtryfZF17A3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUQ214x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
-	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
-	IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Gr1j6F4UJwAm72CE4IkC6x0Yz7v_Jr0_
-	Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8c
-	xan2IY04v7M4kE6xkIj40Ew7xC0wCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxG
-	rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
-	vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IY
-	x2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8V
-	AvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E
-	14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjfUo0PSUUUUU
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQAFBWkNxrUVHAAAsf
+X-CM-TRANSID:Syh0CgDnPUZoBw5pRwgbDA--.60770S5
+X-Coremail-Antispam: 1UD129KBjvdXoWrZFW5uw1fAr1rZr1UZF1UJrb_yoWkWwb_A3
+	yv9r4rWw1rJrnakF1rA3yYqr1vka18Cr15uFn8tr1rXayrZFZ5X3WvgryY9rs0gF47urs8
+	A3s7XF43Kr9F9jkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUbP8FF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUGwA2048vs2IY02
+	0Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xv
+	wVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM2
+	8EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AI
+	xVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20x
+	vE14v26r1Y6r17McIj6I8E87Iv67AKxVW8Jr0_Cr1UMcvjeVCFs4IE7xkEbVWUJVW8JwAC
+	jcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2ka0x
+	kIwI1lw4CEc2x0rVAKj4xxMxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC2
+	0s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI
+	0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE
+	14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20x
+	vaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8
+	JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7VUjIztUUUUUU==
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQAFBWkNxrUVGgABsY
 
-From: Baokun Li <libaokun1@huawei.com>
+From: Zhihao Cheng <chengzhihao1@huawei.com>
 
-When preparing for bs > ps support, clean up unnecessary PAGE_SIZE
-references in ext4_punch_hole().
+For bs <= ps scenarios, calculating the offset within the block is
+sufficient. For bs > ps, an initial page offset calculation can lead to
+incorrect behavior. Thus this redundant calculation has been removed.
 
-Previously, when a hole extended beyond i_size, we aligned the hole end
-upwards to PAGE_SIZE to handle partial folio invalidation. Now that
-truncate_inode_pages_range() already handles partial folio invalidation
-correctly, this alignment is no longer required.
-
-However, to save pointless tail block zeroing, we still keep rounding up
-to the block size here.
-
-In addition, as Honza pointed out, when the hole end equals i_size, it
-should also be rounded up to the block size. This patch fixes that as well.
-
-Suggested-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/ext4/inode.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f7ca48729738..6fec3aa2268a 100644
+index 783c883d4d5e..d027441a95a9 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4406,10 +4406,10 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+@@ -4165,9 +4165,8 @@ static int ext4_block_zero_page_range(handle_t *handle,
+ 		struct address_space *mapping, loff_t from, loff_t length)
+ {
+ 	struct inode *inode = mapping->host;
+-	unsigned offset = from & (PAGE_SIZE-1);
+ 	unsigned blocksize = inode->i_sb->s_blocksize;
+-	unsigned max = blocksize - (offset & (blocksize - 1));
++	unsigned int max = blocksize - (from & (blocksize - 1));
  
  	/*
- 	 * If the hole extends beyond i_size, set the hole to end after
--	 * the page that contains i_size.
-+	 * the block that contains i_size to save pointless tail block zeroing.
- 	 */
--	if (end > inode->i_size)
--		end = round_up(inode->i_size, PAGE_SIZE);
-+	if (end >= inode->i_size)
-+		end = round_up(inode->i_size, sb->s_blocksize);
- 	if (end > max_end)
- 		end = max_end;
- 	length = end - offset;
+ 	 * correct length if it does not fall between
 -- 
 2.46.1
 
