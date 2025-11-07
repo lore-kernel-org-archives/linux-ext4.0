@@ -1,27 +1,27 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0C0423346AC;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2A6CE334C08;
 	Fri,  7 Nov 2025 14:51:36 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762527098; cv=none; b=DCnTAW/TkgmZDbUFVjBU4YY3Xj+q6en1d5JLXLqGiEpzysqOaTSxHC2Mc+PDww8AM6Ag4Fhe9HzDotYfmp2kDS8Mx0AwNlKyZR1Erdw8A4kA8RmZ+wAz2v0pjBk+vuIlJpJwzIfslTNh3rKPwRSY/zUy6Z5Pql2g/mm6YvvJH5U=
+	t=1762527098; cv=none; b=iL4BUpKRHUKEVNQ9XPykG+8z8TfE9gYVhx9YUxSzx0jDQMaTVzm89j5mVNpFqODgR21Lw7pcEjuO4uzhinx+4X7Mcsc8ZQeCunQbsmdBRATm36WZ6m2le9wQkeQXommspEulzDXg3x+VYTPftEJMK0lbtOeLwVJwrJ+JUB160k0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1762527098; c=relaxed/simple;
-	bh=pvBN5x2VZnYxpaX3ch26zWwZEePiM0O7XP3ruFG8nrc=;
+	bh=+SP5V5FeeB9v98P67CAYO1+av7JpqIZe3ORwtcBUT/k=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=nL6xbPBiFyOSuC2UzPM+1/lStAwzIcEm+0VSA3aSUg10Vf/kvfgHbNi4hHeKwE/NBAjNwlYr28cYJ+DJMfG4tModLTiREZU8mishMQ0+zNKZVZe2NADboFu+uh2KTb3XhfiCliKy68rgSJCw7u49SjzBI5tJcGyFXClslP2ucpw=
+	 MIME-Version; b=NBwDBpA7xydEyXDwlXM1Ic3JIir1BXs16dnGCBCYQ7iwA00fd9gDlTv9tgxkHPG1LV5sGG3MA2zGT+Q2ht586CXJh4KoIABeolGyccDo0EmVDdbQoK6EjJG+m8wJRwqTDjIuIKkAHD2YEbcPd+AGoF33vV+UhxCYd0cpgDvCWwM=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4d327P3wNRzKHMgC;
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4d327P5HW8zKHMgh;
 	Fri,  7 Nov 2025 22:51:13 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id D50EB1A0EC1;
-	Fri,  7 Nov 2025 22:51:23 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 13B561A1A40;
+	Fri,  7 Nov 2025 22:51:24 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.129])
-	by APP2 (Coremail) with SMTP id Syh0CgDnPUZoBw5pRwgbDA--.60770S11;
+	by APP2 (Coremail) with SMTP id Syh0CgDnPUZoBw5pRwgbDA--.60770S14;
 	Fri, 07 Nov 2025 22:51:23 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
@@ -38,9 +38,9 @@ Cc: tytso@mit.edu,
 	chengzhihao1@huawei.com,
 	libaokun1@huawei.com,
 	libaokun@huaweicloud.com
-Subject: [PATCH v2 07/24] ext4: support large block size in ext4_calculate_overhead()
-Date: Fri,  7 Nov 2025 22:42:32 +0800
-Message-Id: <20251107144249.435029-8-libaokun@huaweicloud.com>
+Subject: [PATCH v2 10/24] ext4: add EXT4_LBLK_TO_PG and EXT4_PG_TO_LBLK for block/page conversion
+Date: Fri,  7 Nov 2025 22:42:35 +0800
+Message-Id: <20251107144249.435029-11-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20251107144249.435029-1-libaokun@huaweicloud.com>
 References: <20251107144249.435029-1-libaokun@huaweicloud.com>
@@ -51,10 +51,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgDnPUZoBw5pRwgbDA--.60770S11
-X-Coremail-Antispam: 1UD129KBjvJXoW7uw4DZw47ZFWUuFW5Kw1kAFb_yoW8Xw4Up3
-	Z3WryxCrWruF1DuanruFZrJF4xKa97CFyUKFWa9343Zry7t3s3ur9xKFyYqFWIqFWxury0
-	v3WYgrWxZr15G3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:Syh0CgDnPUZoBw5pRwgbDA--.60770S14
+X-Coremail-Antispam: 1UD129KBjvJXoW7tF4DJrW7uF1DWw17GFW7Jwb_yoW8Jw1xpr
+	sxWFyrGr1Fvry8ur1IgFy0vryfGa93GayUX39FvrZ09FyxKr1fWrs0gr93JFyjg3yrJFWq
+	qFyFkryxWr13G3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUQa14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -66,58 +66,42 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7uw4DZw47ZFWUuFW5Kw1kAFb_yoW8Xw4Up3
 	xan2IY04v7M4kE6xkIj40Ew7xC0wCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxG
 	rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
 	vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IY
-	x2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
-	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x02
+	x2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
+	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x02
 	67AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUdsqAUUUUU=
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAFBWkNxrAU1wADsQ
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQAFBWkNxrUVHwAAsc
 
 From: Baokun Li <libaokun1@huawei.com>
 
-ext4_calculate_overhead() used a single page for its bitmap buffer, which
-worked fine when PAGE_SIZE >= block size. However, with block size greater
-than page size (BS > PS) support, the bitmap can exceed a single page.
-
-To address this, we now use kvmalloc() to allocate memory of the filesystem
-block size, to properly support BS > PS.
+As BS > PS support is coming, all block number to page index (and
+vice-versa) conversions must now go via bytes. Added EXT4_LBLK_TO_PG()
+and EXT4_PG_TO_LBLK() macros to simplify these conversions and handle
+both BS <= PS and BS > PS scenarios cleanly.
 
 Suggested-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/super.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index a6314a3de51d..0d32370a459a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4189,7 +4189,7 @@ int ext4_calculate_overhead(struct super_block *sb)
- 	unsigned int j_blocks, j_inum = le32_to_cpu(es->s_journal_inum);
- 	ext4_group_t i, ngroups = ext4_get_groups_count(sb);
- 	ext4_fsblk_t overhead = 0;
--	char *buf = (char *) get_zeroed_page(GFP_NOFS);
-+	char *buf = kvmalloc(sb->s_blocksize, GFP_NOFS | __GFP_ZERO);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index c00ce6db69f0..4bc0b2b7288a 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -370,6 +370,12 @@ struct ext4_io_submit {
+ 	(round_up((offset), i_blocksize(inode)) >> (inode)->i_blkbits)
+ #define EXT4_LBLK_TO_B(inode, lblk) ((loff_t)(lblk) << (inode)->i_blkbits)
  
- 	if (!buf)
- 		return -ENOMEM;
-@@ -4214,7 +4214,7 @@ int ext4_calculate_overhead(struct super_block *sb)
- 		blks = count_overhead(sb, i, buf);
- 		overhead += blks;
- 		if (blks)
--			memset(buf, 0, PAGE_SIZE);
-+			memset(buf, 0, sb->s_blocksize);
- 		cond_resched();
- 	}
- 
-@@ -4237,7 +4237,7 @@ int ext4_calculate_overhead(struct super_block *sb)
- 	}
- 	sbi->s_overhead = overhead;
- 	smp_wmb();
--	free_page((unsigned long) buf);
-+	kvfree(buf);
- 	return 0;
- }
- 
++/* Translate a block number to a page index */
++#define EXT4_LBLK_TO_PG(inode, lblk)	(EXT4_LBLK_TO_B((inode), (lblk)) >> \
++					 PAGE_SHIFT)
++/* Translate a page index to a block number */
++#define EXT4_PG_TO_LBLK(inode, pnum)	(((loff_t)(pnum) << PAGE_SHIFT) >> \
++					 (inode)->i_blkbits)
+ /* Translate a block number to a cluster number */
+ #define EXT4_B2C(sbi, blk)	((blk) >> (sbi)->s_cluster_bits)
+ /* Translate a cluster number to a block number */
 -- 
 2.46.1
 
