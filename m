@@ -1,27 +1,27 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7744B32D0FD;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B26A32D7F7;
 	Fri,  7 Nov 2025 14:51:31 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762527093; cv=none; b=u9jSNY642JtKZvV9ouL26t8Ocm+JhOIzGG4cUdyBPhYWY0avVhJYmsosPxtQTx3lyrE5ElBIPqm1TurKShOwBlSzQXKT0ZIw+JV9nxIGVELVBcPaxzppMN98jB7SrnshyU3WCsMWCOGAmjoER6kIODeUKkB86wIqb6qz17ufaXk=
+	t=1762527093; cv=none; b=deB9GaTKVt3j7WBrjDB9Bu9+tt386hRF8m8YhH3x1UT+OkTRtkBYayMiBvH1tyeDoEQNfIWiDVlshFL5pi9J7vDHPA39hR7dlTtatd4AjnqzHLuTSX+cEyP+fNXRCKJMAdX0hl+9Sdg7fuKV5zysc97I/tKsoqZwyhM2cStmfLk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1762527093; c=relaxed/simple;
-	bh=kjFOhnnsAFIRaBAAGZcdPlju+he9oqtyekr8ckfQUrs=;
+	bh=AhUusC2kbbSPQvDU5qsnaDrLaqG9n15u4RVCkzxGSW0=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=qCQ9Sy210joqvC6fGskyvlKkvzpZLDKVpQ5ogIvcvBQj+Oxmg35Ci1pbbTGg7aGq0rwO0+gy81L6gKAsroY+W4SunXpBpNaeLmfnAv0fF2kQaYd5X8McQT0UUGoEBSde8QCkpJIJ9K0tUMyA7hIZ1c898Mmch36zAVCBWZBn2tw=
+	 MIME-Version; b=kfysm13BzFmPyQoK6BvQLFX5+W3+fEge6UOhDjpJiW1ymJygo8TyZdlHiAWQWSBvccZ9o3CXO+H7svl0tL6WkcJiP/nEBHr2cYY6XY/xnih1mvo19UXtL4JV1uohHGGyXD0hBdiQxdkwnNuL9SpBrn3OvlBdDRo7UjSVpIzwYG0=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4d327P0skkzKHMXl;
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4d327P2ggPzKHMfp;
 	Fri,  7 Nov 2025 22:51:13 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 709EE1A07C0;
+	by mail.maildlp.com (Postfix) with ESMTP id AE84C1A188E;
 	Fri,  7 Nov 2025 22:51:23 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.129])
-	by APP2 (Coremail) with SMTP id Syh0CgDnPUZoBw5pRwgbDA--.60770S6;
+	by APP2 (Coremail) with SMTP id Syh0CgDnPUZoBw5pRwgbDA--.60770S9;
 	Fri, 07 Nov 2025 22:51:23 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
@@ -38,9 +38,9 @@ Cc: tytso@mit.edu,
 	chengzhihao1@huawei.com,
 	libaokun1@huawei.com,
 	libaokun@huaweicloud.com
-Subject: [PATCH v2 02/24] ext4: remove page offset calculation in ext4_block_truncate_page()
-Date: Fri,  7 Nov 2025 22:42:27 +0800
-Message-Id: <20251107144249.435029-3-libaokun@huaweicloud.com>
+Subject: [PATCH v2 05/24] ext4: enable DIOREAD_NOLOCK by default for BS > PS as well
+Date: Fri,  7 Nov 2025 22:42:30 +0800
+Message-Id: <20251107144249.435029-6-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20251107144249.435029-1-libaokun@huaweicloud.com>
 References: <20251107144249.435029-1-libaokun@huaweicloud.com>
@@ -51,62 +51,53 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgDnPUZoBw5pRwgbDA--.60770S6
-X-Coremail-Antispam: 1UD129KBjvJXoW7Kw1fJFy7WrWfAr1kJr48Xrb_yoW8Gry7pF
-	y5K3y8ur17uFyjga1I9Fn8Xry7K3ZrGFWUXFWjq345Wr92qF1fKrnrKan0qF40qrWxXayq
-	qF4YyrWxZa1UA3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUQj14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
-	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
-	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
-	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
-	IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Gr1j6F4UJwAm72CE4IkC6x0Yz7v_Jr0_Gr1l
-	F7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8cxan2
-	IY04v7M4kE6xkIj40Ew7xC0wCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCF
-	x2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14
-	v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY
-	67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2
-	IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_
-	Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUdManUUUUU=
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAFBWkNxrAU1AAAsQ
+X-CM-TRANSID:Syh0CgDnPUZoBw5pRwgbDA--.60770S9
+X-Coremail-Antispam: 1UD129KBjvdXoW7XF18GFWrWFykGry8Kr47twb_yoWftrcEva
+	yfJrWUWr4rGr4S93WrCa1UAFs0kw4xur1rGws5tr1rXwnIqrWxX34qqr95WF15uF4FqFWr
+	Ars5XF13Wry2gjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUbm8FF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAVCq3wA2048vs2
+	IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28E
+	F7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr
+	1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0D
+	M2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjx
+	v20xvE14v26r1Y6r17McIj6I8E87Iv67AKxVW8Jr0_Cr1UMcvjeVCFs4IE7xkEbVWUJVW8
+	JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2
+	ka0xkIwI1lw4CEc2x0rVAKj4xxMxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAKI48J
+	MxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwV
+	AFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv2
+	0xvE14v26r1I6r4UMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWxJVW8Jr1lIxAIcVCF04k26c
+	xKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAF
+	wI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUdsqAUUUUU=
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQAFBWkNxrUVHQABsf
 
 From: Baokun Li <libaokun1@huawei.com>
 
-For bs <= ps scenarios, calculating the offset within the block is
-sufficient. For bs > ps, an initial page offset calculation can lead to
-incorrect behavior. Thus this redundant calculation has been removed.
+The dioread_nolock related processes already support large folio, so
+dioread_nolock is enabled by default regardless of whether the blocksize
+is less than, equal to, or greater than PAGE_SIZE.
 
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ fs/ext4/super.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d027441a95a9..f7ca48729738 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4191,7 +4191,6 @@ static int ext4_block_zero_page_range(handle_t *handle,
- static int ext4_block_truncate_page(handle_t *handle,
- 		struct address_space *mapping, loff_t from)
- {
--	unsigned offset = from & (PAGE_SIZE-1);
- 	unsigned length;
- 	unsigned blocksize;
- 	struct inode *inode = mapping->host;
-@@ -4200,8 +4199,8 @@ static int ext4_block_truncate_page(handle_t *handle,
- 	if (IS_ENCRYPTED(inode) && !fscrypt_has_encryption_key(inode))
- 		return 0;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 760c9d7588be..a9fa824487f9 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4390,8 +4390,7 @@ static void ext4_set_def_opts(struct super_block *sb,
+ 	    ((def_mount_opts & EXT4_DEFM_NODELALLOC) == 0))
+ 		set_opt(sb, DELALLOC);
  
--	blocksize = inode->i_sb->s_blocksize;
--	length = blocksize - (offset & (blocksize - 1));
-+	blocksize = i_blocksize(inode);
-+	length = blocksize - (from & (blocksize - 1));
- 
- 	return ext4_block_zero_page_range(handle, mapping, from, length);
+-	if (sb->s_blocksize <= PAGE_SIZE)
+-		set_opt(sb, DIOREAD_NOLOCK);
++	set_opt(sb, DIOREAD_NOLOCK);
  }
+ 
+ static int ext4_handle_clustersize(struct super_block *sb)
 -- 
 2.46.1
 
