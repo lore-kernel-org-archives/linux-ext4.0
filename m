@@ -1,27 +1,27 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 12E493346B7;
-	Fri,  7 Nov 2025 14:51:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0C0423346AC;
+	Fri,  7 Nov 2025 14:51:36 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762527098; cv=none; b=HoUaDGosghCW6obEN79teIBYa81Q/WgQ1uOhKij6jmzkg8m8Tr9EmwSl7vr/pcoiC+ZCF2G8ccocHmMN56NLwz6+45ILzK9d94NXMlC9wqr4UCY4+jpqlQu3+8+NDCVr8qWH5AjHsMguzgRhaslevuAgn15d9PC+l6jBt5k2YF8=
+	t=1762527098; cv=none; b=DCnTAW/TkgmZDbUFVjBU4YY3Xj+q6en1d5JLXLqGiEpzysqOaTSxHC2Mc+PDww8AM6Ag4Fhe9HzDotYfmp2kDS8Mx0AwNlKyZR1Erdw8A4kA8RmZ+wAz2v0pjBk+vuIlJpJwzIfslTNh3rKPwRSY/zUy6Z5Pql2g/mm6YvvJH5U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1762527098; c=relaxed/simple;
-	bh=MhQZdVtNV60jS2GyEmHos/LN33zQjrocq608zQghUq8=;
+	bh=pvBN5x2VZnYxpaX3ch26zWwZEePiM0O7XP3ruFG8nrc=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=pLRrtIh7ozuQX5ZqfFiHnjE83V8OV+asp/X4WznMJ0a4JAWhtWIEp4xQZ97q44hIm/rWT3sN0o8FJBjj3IJykM1fZ6AjbaD78/aQM8AH3tf1GEQUNFo7J7SiSuq/q7lDcLacJVlhinNXg8/8j6LXhsq4mPGawmDsB5T3TTi8wjU=
+	 MIME-Version; b=nL6xbPBiFyOSuC2UzPM+1/lStAwzIcEm+0VSA3aSUg10Vf/kvfgHbNi4hHeKwE/NBAjNwlYr28cYJ+DJMfG4tModLTiREZU8mishMQ0+zNKZVZe2NADboFu+uh2KTb3XhfiCliKy68rgSJCw7u49SjzBI5tJcGyFXClslP2ucpw=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4d327P4LvtzKHMfc;
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4d327P3wNRzKHMgC;
 	Fri,  7 Nov 2025 22:51:13 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id E511B1A0EC7;
+	by mail.maildlp.com (Postfix) with ESMTP id D50EB1A0EC1;
 	Fri,  7 Nov 2025 22:51:23 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.129])
-	by APP2 (Coremail) with SMTP id Syh0CgDnPUZoBw5pRwgbDA--.60770S12;
+	by APP2 (Coremail) with SMTP id Syh0CgDnPUZoBw5pRwgbDA--.60770S11;
 	Fri, 07 Nov 2025 22:51:23 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
@@ -38,9 +38,9 @@ Cc: tytso@mit.edu,
 	chengzhihao1@huawei.com,
 	libaokun1@huawei.com,
 	libaokun@huaweicloud.com
-Subject: [PATCH v2 08/24] ext4: support large block size in ext4_readdir()
-Date: Fri,  7 Nov 2025 22:42:33 +0800
-Message-Id: <20251107144249.435029-9-libaokun@huaweicloud.com>
+Subject: [PATCH v2 07/24] ext4: support large block size in ext4_calculate_overhead()
+Date: Fri,  7 Nov 2025 22:42:32 +0800
+Message-Id: <20251107144249.435029-8-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20251107144249.435029-1-libaokun@huaweicloud.com>
 References: <20251107144249.435029-1-libaokun@huaweicloud.com>
@@ -51,10 +51,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgDnPUZoBw5pRwgbDA--.60770S12
-X-Coremail-Antispam: 1UD129KBjvJXoW7KF15KF1fWw1rZry8CrWktFb_yoW8GrWfpF
-	Zag3W8Kry8ur40939rtFy7ZrWY9a97GFWUWrWYy345W3s3X34Skr9xtF1jvF1UW3yxAa4r
-	ZF12yFy3GF15JrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:Syh0CgDnPUZoBw5pRwgbDA--.60770S11
+X-Coremail-Antispam: 1UD129KBjvJXoW7uw4DZw47ZFWUuFW5Kw1kAFb_yoW8Xw4Up3
+	Z3WryxCrWruF1DuanruFZrJF4xKa97CFyUKFWa9343Zry7t3s3ur9xKFyYqFWIqFWxury0
+	v3WYgrWxZr15G3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUQa14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -69,47 +69,55 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7KF15KF1fWw1rZry8CrWktFb_yoW8GrWfpF
 	x2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
 	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x02
 	67AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUdsqAUUUUU=
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAFBWkNxrAU1wAFsW
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAFBWkNxrAU1wADsQ
 
 From: Baokun Li <libaokun1@huawei.com>
 
-In ext4_readdir(), page_cache_sync_readahead() is used to readahead mapped
-physical blocks. With LBS support, this can lead to a negative right shift.
+ext4_calculate_overhead() used a single page for its bitmap buffer, which
+worked fine when PAGE_SIZE >= block size. However, with block size greater
+than page size (BS > PS) support, the bitmap can exceed a single page.
 
-To fix this, the page index is now calculated by first converting the
-physical block number (pblk) to a file position (pos) before converting
-it to a page index. Also, the correct number of pages to readahead is now
-passed.
+To address this, we now use kvmalloc() to allocate memory of the filesystem
+block size, to properly support BS > PS.
 
+Suggested-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/dir.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ fs/ext4/super.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index d4164c507a90..256fe2c1d4c1 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -192,13 +192,13 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
- 			continue;
- 		}
- 		if (err > 0) {
--			pgoff_t index = map.m_pblk >>
--					(PAGE_SHIFT - inode->i_blkbits);
-+			pgoff_t index = map.m_pblk << inode->i_blkbits >>
-+					PAGE_SHIFT;
- 			if (!ra_has_index(&file->f_ra, index))
- 				page_cache_sync_readahead(
- 					sb->s_bdev->bd_mapping,
--					&file->f_ra, file,
--					index, 1);
-+					&file->f_ra, file, index,
-+					1 << EXT4_SB(sb)->s_min_folio_order);
- 			file->f_ra.prev_pos = (loff_t)index << PAGE_SHIFT;
- 			bh = ext4_bread(NULL, inode, map.m_lblk, 0);
- 			if (IS_ERR(bh)) {
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a6314a3de51d..0d32370a459a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4189,7 +4189,7 @@ int ext4_calculate_overhead(struct super_block *sb)
+ 	unsigned int j_blocks, j_inum = le32_to_cpu(es->s_journal_inum);
+ 	ext4_group_t i, ngroups = ext4_get_groups_count(sb);
+ 	ext4_fsblk_t overhead = 0;
+-	char *buf = (char *) get_zeroed_page(GFP_NOFS);
++	char *buf = kvmalloc(sb->s_blocksize, GFP_NOFS | __GFP_ZERO);
+ 
+ 	if (!buf)
+ 		return -ENOMEM;
+@@ -4214,7 +4214,7 @@ int ext4_calculate_overhead(struct super_block *sb)
+ 		blks = count_overhead(sb, i, buf);
+ 		overhead += blks;
+ 		if (blks)
+-			memset(buf, 0, PAGE_SIZE);
++			memset(buf, 0, sb->s_blocksize);
+ 		cond_resched();
+ 	}
+ 
+@@ -4237,7 +4237,7 @@ int ext4_calculate_overhead(struct super_block *sb)
+ 	}
+ 	sbi->s_overhead = overhead;
+ 	smp_wmb();
+-	free_page((unsigned long) buf);
++	kvfree(buf);
+ 	return 0;
+ }
+ 
 -- 
 2.46.1
 
