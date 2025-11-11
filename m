@@ -1,28 +1,28 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9C92C28F948;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 40AB02DCC04;
 	Tue, 11 Nov 2025 14:35:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762871731; cv=none; b=jzMrmZAYWqGUaRgb2QxgvLVKeO/OqEPYpELumHNSkrKCey2QFC+qdEhi30JgTW0mg9ho27p4FDzlq0yR59qJei4QyU8EpzzmZKP8OwCa2yf64mmkdXa/32WL/O/oAVaGx0DurJxuoANJJqcpVGYo4rvyLvKUyM2DnMsBltkkQG0=
+	t=1762871731; cv=none; b=SFiHungm8lttJ85UcOldmkSt9QT2z0mickAfNqylWEeCrOJlTUuu2GozBMNNMgc7nxeDCdxpegwt8y/lXdgENsg2ACFNdlBUgVq6T/n2hWNuges83EHDwTRoJcZKkGjYKqmArhtsZ0qcQeR574QOZpoKLQPDoIEXADfLAgtCxsQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1762871731; c=relaxed/simple;
-	bh=hytnSNj7OABxAoBo5+RLLIPiZwGumRxLUvhAxPgmAWs=;
+	bh=Vl0+VBZqNcsOXP3mcTgJrwI+imWYo0ynixfy4j3hsOQ=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=oHFSnxqmE+ExvRZu41SPnZwYFp4vBErHbBsv8JRjvB13a0FVns0oKnPCj3UQGORHOiG2xAVMwKgdQ6gNgn7jlcTFf4uYF/SqGIYCbgk0w2l6HMt6vbyk3lX4ZYPBC5weAPQwh36EZBUBwXytCQysq7iIF4nH56uyZQXQEO+GDFM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=HlFTh6YiPawMNv/7WU6UzzSDleOhjtV73jQGnvDWzduuMi+fbzGwndiP7H1+otYVhDKst6meGV2hTNsx8ima90z8Y4TGYPqpxW4It0QT9KMZ6QBSuEfWxMNKiEN3pKVSFQyGgH/gm18JTrgRIOaIQ4hhrHAGq4oXgyrVdsVIgI0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4d5Tb32lYbzKHMcv;
-	Tue, 11 Nov 2025 22:35:11 +0800 (CST)
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4d5Tb26clHzKHMbD;
+	Tue, 11 Nov 2025 22:35:10 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 930981A0359;
+	by mail.maildlp.com (Postfix) with ESMTP id 2195C1A0DD7;
 	Tue, 11 Nov 2025 22:35:27 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.129])
-	by APP2 (Coremail) with SMTP id Syh0CgBHo3mrSRNpgYWKAQ--.32556S14;
-	Tue, 11 Nov 2025 22:35:27 +0800 (CST)
+	by APP2 (Coremail) with SMTP id Syh0CgBHo3mrSRNpgYWKAQ--.32556S8;
+	Tue, 11 Nov 2025 22:35:26 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -38,9 +38,9 @@ Cc: tytso@mit.edu,
 	chengzhihao1@huawei.com,
 	libaokun1@huawei.com,
 	libaokun@huaweicloud.com
-Subject: [PATCH v3 10/24] ext4: add EXT4_LBLK_TO_PG and EXT4_PG_TO_LBLK for block/page conversion
-Date: Tue, 11 Nov 2025 22:26:20 +0800
-Message-Id: <20251111142634.3301616-11-libaokun@huaweicloud.com>
+Subject: [PATCH v3 04/24] ext4: make ext4_punch_hole() support large block size
+Date: Tue, 11 Nov 2025 22:26:14 +0800
+Message-Id: <20251111142634.3301616-5-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20251111142634.3301616-1-libaokun@huaweicloud.com>
 References: <20251111142634.3301616-1-libaokun@huaweicloud.com>
@@ -51,11 +51,11 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgBHo3mrSRNpgYWKAQ--.32556S14
-X-Coremail-Antispam: 1UD129KBjvJXoW7tF4DJrW7uF1DWw17GFW7Jwb_yoW8Gr4Dpr
-	ZxWFyrGr1FvFy8ur1IgFy0vryfGan3GayUX39FvrWY9FyxKr1Sgrs0gr95tFyjg3yrJFWq
-	qFyFkryxWr13C3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUQa14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+X-CM-TRANSID:Syh0CgBHo3mrSRNpgYWKAQ--.32556S8
+X-Coremail-Antispam: 1UD129KBjvJXoW7WrWxWw4xXryDGw17WF1xZrb_yoW8Xw1kp3
+	43G348u3y8WayjkF4Yg3WUZw1xt3Za9w4UXFWUZr4UXr98Ja4Skr12gry0ga1v9rWIyryF
+	qrnrtryfZF17A3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUQ214x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
 	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
@@ -66,43 +66,53 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7tF4DJrW7uF1DWw17GFW7Jwb_yoW8Gr4Dpr
 	xan2IY04v7M4kE6xkIj40Ew7xC0wCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxG
 	rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
 	vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IY
-	x2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
-	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x02
-	67AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUdsqAUUUUU=
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAJBWkSsIpDSwAAsH
+	x2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8V
+	AvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E
+	14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjfUo0PSUUUUU
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAJBWkSsIpDSAAAsE
 
 From: Baokun Li <libaokun1@huawei.com>
 
-As BS > PS support is coming, all block number to page index (and
-vice-versa) conversions must now go via bytes. Added EXT4_LBLK_TO_PG()
-and EXT4_PG_TO_LBLK() macros to simplify these conversions and handle
-both BS <= PS and BS > PS scenarios cleanly.
+When preparing for bs > ps support, clean up unnecessary PAGE_SIZE
+references in ext4_punch_hole().
+
+Previously, when a hole extended beyond i_size, we aligned the hole end
+upwards to PAGE_SIZE to handle partial folio invalidation. Now that
+truncate_inode_pages_range() already handles partial folio invalidation
+correctly, this alignment is no longer required.
+
+However, to save pointless tail block zeroing, we still keep rounding up
+to the block size here.
+
+In addition, as Honza pointed out, when the hole end equals i_size, it
+should also be rounded up to the block size. This patch fixes that as well.
 
 Suggested-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h | 6 ++++++
- 1 file changed, 6 insertions(+)
+ fs/ext4/inode.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index c00ce6db69f0..4bc0b2b7288a 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -370,6 +370,12 @@ struct ext4_io_submit {
- 	(round_up((offset), i_blocksize(inode)) >> (inode)->i_blkbits)
- #define EXT4_LBLK_TO_B(inode, lblk) ((loff_t)(lblk) << (inode)->i_blkbits)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f7ca48729738..6fec3aa2268a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4406,10 +4406,10 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
  
-+/* Translate a block number to a page index */
-+#define EXT4_LBLK_TO_PG(inode, lblk)	(EXT4_LBLK_TO_B((inode), (lblk)) >> \
-+					 PAGE_SHIFT)
-+/* Translate a page index to a block number */
-+#define EXT4_PG_TO_LBLK(inode, pnum)	(((loff_t)(pnum) << PAGE_SHIFT) >> \
-+					 (inode)->i_blkbits)
- /* Translate a block number to a cluster number */
- #define EXT4_B2C(sbi, blk)	((blk) >> (sbi)->s_cluster_bits)
- /* Translate a cluster number to a block number */
+ 	/*
+ 	 * If the hole extends beyond i_size, set the hole to end after
+-	 * the page that contains i_size.
++	 * the block that contains i_size to save pointless tail block zeroing.
+ 	 */
+-	if (end > inode->i_size)
+-		end = round_up(inode->i_size, PAGE_SIZE);
++	if (end >= inode->i_size)
++		end = round_up(inode->i_size, sb->s_blocksize);
+ 	if (end > max_end)
+ 		end = max_end;
+ 	length = end - offset;
 -- 
 2.46.1
 
