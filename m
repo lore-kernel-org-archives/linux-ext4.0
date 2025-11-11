@@ -1,28 +1,28 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 409382D8DDA;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9C8242E2F15;
 	Tue, 11 Nov 2025 14:35:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762871733; cv=none; b=BeHNOTZTFfysz0J6QwJuhDuFDDlPAT3jN1R81XnBneQGkaS7KCtb8Q15nSyCg740uj+AKzOlsnbjjF2+bCV5HVZVr/ObEodYmqc0xTNSL7Mhck0O8t2K2zrr9twfqTqK/qixJeb72eSvrvxU4SqFFR/acT+qGEfvSi1hNLX0zek=
+	t=1762871735; cv=none; b=eTk+JRrwf8M5v1x3dMKrm4xjptcOkCR4/eZ1oKNY8k/AtxJ3l9eB6h4tcxtw21uRVwwb3fVS/+E3jM0mDwEJYWK/0fn9u83rSrX6FLzUrkFqQs/7Qk7CGdUN0fmi6w7QAkDeHU3pq9PDXP7BrQGJ6CUMj2G5tsfdLL+kdNeQ0qI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762871733; c=relaxed/simple;
-	bh=kjFOhnnsAFIRaBAAGZcdPlju+he9oqtyekr8ckfQUrs=;
+	s=arc-20240116; t=1762871735; c=relaxed/simple;
+	bh=aXwOsn20Pm+/NMlLDHkm9DHSsfNa3WBpYv5brZ6yaqA=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=SNgEgfNgwWLOeRyMPu0gUCipP2T1YMBGYToke1LXF+hw9Q9U11lUxvdtH3PLSWko3ZvPmZ0mMQ3MYt/kbqQiQvr1l79aYwJEduSp/01m5160mz0ObqrI4qqv5WWXm6gvneuyhd9uqJiu8NO0QfOly+Kk9u8HxIkx9t7NfUHllXA=
+	 MIME-Version; b=YGrlZvcf7pbPyOienqREgCtt0Zo/oYwyYEw/jlokIWWc/ONQvu1oAQOFJBXd8h1/HvtSSeCZ+DeL/vhn20plDgj4dR0p5Ma44BDNGCmsA/vKlW2hwuArlfF/vmCvZ9qgDqWHInZtCVmgB7JuZ2wPoT2SVcYtzMKg84IMJjuM8NY=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4d5Tb25DVLzKHMYv;
-	Tue, 11 Nov 2025 22:35:10 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4d5Tb32PTvzKHMcs;
+	Tue, 11 Nov 2025 22:35:11 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id E706E1A07C0;
-	Tue, 11 Nov 2025 22:35:26 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 84D5A1A1993;
+	Tue, 11 Nov 2025 22:35:27 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.129])
-	by APP2 (Coremail) with SMTP id Syh0CgBHo3mrSRNpgYWKAQ--.32556S6;
-	Tue, 11 Nov 2025 22:35:26 +0800 (CST)
+	by APP2 (Coremail) with SMTP id Syh0CgBHo3mrSRNpgYWKAQ--.32556S13;
+	Tue, 11 Nov 2025 22:35:27 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -38,9 +38,9 @@ Cc: tytso@mit.edu,
 	chengzhihao1@huawei.com,
 	libaokun1@huawei.com,
 	libaokun@huaweicloud.com
-Subject: [PATCH v3 02/24] ext4: remove page offset calculation in ext4_block_truncate_page()
-Date: Tue, 11 Nov 2025 22:26:12 +0800
-Message-Id: <20251111142634.3301616-3-libaokun@huaweicloud.com>
+Subject: [PATCH v3 09/24] ext4: add EXT4_LBLK_TO_B macro for logical block to bytes conversion
+Date: Tue, 11 Nov 2025 22:26:19 +0800
+Message-Id: <20251111142634.3301616-10-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20251111142634.3301616-1-libaokun@huaweicloud.com>
 References: <20251111142634.3301616-1-libaokun@huaweicloud.com>
@@ -51,62 +51,199 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgBHo3mrSRNpgYWKAQ--.32556S6
-X-Coremail-Antispam: 1UD129KBjvJXoW7Kw1fJFy7WrWfAr1kJr48Xrb_yoW8Gry7pF
-	y5K3y8ur17uFyjga1I9Fn8Xry7K3ZrGFWUXFWjq345Wr92qF1fKrnrKan0qF40qrWxXayq
-	qF4YyrWxZa1UA3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUQj14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
-	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
-	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
-	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
-	IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Gr1j6F4UJwAm72CE4IkC6x0Yz7v_Jr0_Gr1l
-	F7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8cxan2
-	IY04v7M4kE6xkIj40Ew7xC0wCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCF
-	x2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14
-	v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY
-	67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2
-	IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_
-	Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUdManUUUUU=
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAJBWkRXwp-zwAHsU
+X-CM-TRANSID:Syh0CgBHo3mrSRNpgYWKAQ--.32556S13
+X-Coremail-Antispam: 1UD129KBjvJXoW3Ar4rKryxZw43ZF43ZFWDArb_yoWxCw43pF
+	Z09F18GF409Fyj9r48KFWDZr12g3W7K3yUXFWru34YgF9rtr1FqF1ktF1fZFy5trWxZ3ZI
+	vF45K347Ww43GrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUQa14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Gr1j6F4UJwAm72CE4IkC6x0Yz7v_Jr0_
+	Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8c
+	xan2IY04v7M4kE6xkIj40Ew7xC0wCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxG
+	rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
+	vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IY
+	x2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
+	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x02
+	67AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUdsqAUUUUU=
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAJBWkSsIpDSgABsH
 
 From: Baokun Li <libaokun1@huawei.com>
 
-For bs <= ps scenarios, calculating the offset within the block is
-sufficient. For bs > ps, an initial page offset calculation can lead to
-incorrect behavior. Thus this redundant calculation has been removed.
+No functional changes.
 
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h    |  1 +
+ fs/ext4/extents.c |  2 +-
+ fs/ext4/inode.c   | 20 +++++++++-----------
+ fs/ext4/namei.c   |  8 +++-----
+ fs/ext4/verity.c  |  2 +-
+ 5 files changed, 15 insertions(+), 18 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6fe8cc3bf9a5..c00ce6db69f0 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -368,6 +368,7 @@ struct ext4_io_submit {
+ 								  blkbits))
+ #define EXT4_B_TO_LBLK(inode, offset) \
+ 	(round_up((offset), i_blocksize(inode)) >> (inode)->i_blkbits)
++#define EXT4_LBLK_TO_B(inode, lblk) ((loff_t)(lblk) << (inode)->i_blkbits)
+ 
+ /* Translate a block number to a cluster number */
+ #define EXT4_B2C(sbi, blk)	((blk) >> (sbi)->s_cluster_bits)
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index c7d219e6c6d8..13c3cfeb13bc 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4562,7 +4562,7 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
+ 		 * allow a full retry cycle for any remaining allocations
+ 		 */
+ 		retries = 0;
+-		epos = (loff_t)(map.m_lblk + ret) << blkbits;
++		epos = EXT4_LBLK_TO_B(inode, map.m_lblk + ret);
+ 		inode_set_ctime_current(inode);
+ 		if (new_size) {
+ 			if (epos > new_size)
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d027441a95a9..f7ca48729738 100644
+index 9faa0cf77075..1153a26ff963 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4191,7 +4191,6 @@ static int ext4_block_zero_page_range(handle_t *handle,
- static int ext4_block_truncate_page(handle_t *handle,
- 		struct address_space *mapping, loff_t from)
+@@ -831,9 +831,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		    !(flags & EXT4_GET_BLOCKS_ZERO) &&
+ 		    !ext4_is_quota_file(inode) &&
+ 		    ext4_should_order_data(inode)) {
+-			loff_t start_byte =
+-				(loff_t)map->m_lblk << inode->i_blkbits;
+-			loff_t length = (loff_t)map->m_len << inode->i_blkbits;
++			loff_t start_byte = EXT4_LBLK_TO_B(inode, map->m_lblk);
++			loff_t length = EXT4_LBLK_TO_B(inode, map->m_len);
+ 
+ 			if (flags & EXT4_GET_BLOCKS_IO_SUBMIT)
+ 				ret = ext4_jbd2_inode_add_wait(handle, inode,
+@@ -2233,7 +2232,6 @@ static int mpage_process_folio(struct mpage_da_data *mpd, struct folio *folio,
+ 	ext4_lblk_t lblk = *m_lblk;
+ 	ext4_fsblk_t pblock = *m_pblk;
+ 	int err = 0;
+-	int blkbits = mpd->inode->i_blkbits;
+ 	ssize_t io_end_size = 0;
+ 	struct ext4_io_end_vec *io_end_vec = ext4_last_io_end_vec(io_end);
+ 
+@@ -2259,7 +2257,8 @@ static int mpage_process_folio(struct mpage_da_data *mpd, struct folio *folio,
+ 					err = PTR_ERR(io_end_vec);
+ 					goto out;
+ 				}
+-				io_end_vec->offset = (loff_t)mpd->map.m_lblk << blkbits;
++				io_end_vec->offset = EXT4_LBLK_TO_B(mpd->inode,
++								mpd->map.m_lblk);
+ 			}
+ 			*map_bh = true;
+ 			goto out;
+@@ -2269,7 +2268,7 @@ static int mpage_process_folio(struct mpage_da_data *mpd, struct folio *folio,
+ 			bh->b_blocknr = pblock++;
+ 		}
+ 		clear_buffer_unwritten(bh);
+-		io_end_size += (1 << blkbits);
++		io_end_size += i_blocksize(mpd->inode);
+ 	} while (lblk++, (bh = bh->b_this_page) != head);
+ 
+ 	io_end_vec->size += io_end_size;
+@@ -2471,7 +2470,7 @@ static int mpage_map_and_submit_extent(handle_t *handle,
+ 	io_end_vec = ext4_alloc_io_end_vec(io_end);
+ 	if (IS_ERR(io_end_vec))
+ 		return PTR_ERR(io_end_vec);
+-	io_end_vec->offset = ((loff_t)map->m_lblk) << inode->i_blkbits;
++	io_end_vec->offset = EXT4_LBLK_TO_B(inode, map->m_lblk);
+ 	do {
+ 		err = mpage_map_one_extent(handle, mpd);
+ 		if (err < 0) {
+@@ -3511,8 +3510,8 @@ static void ext4_set_iomap(struct inode *inode, struct iomap *iomap,
+ 		iomap->dax_dev = EXT4_SB(inode->i_sb)->s_daxdev;
+ 	else
+ 		iomap->bdev = inode->i_sb->s_bdev;
+-	iomap->offset = (u64) map->m_lblk << blkbits;
+-	iomap->length = (u64) map->m_len << blkbits;
++	iomap->offset = EXT4_LBLK_TO_B(inode, map->m_lblk);
++	iomap->length = EXT4_LBLK_TO_B(inode, map->m_len);
+ 
+ 	if ((map->m_flags & EXT4_MAP_MAPPED) &&
+ 	    !ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+@@ -3686,7 +3685,6 @@ static int ext4_iomap_alloc(struct inode *inode, struct ext4_map_blocks *map,
+ 			    unsigned int flags)
  {
--	unsigned offset = from & (PAGE_SIZE-1);
- 	unsigned length;
- 	unsigned blocksize;
- 	struct inode *inode = mapping->host;
-@@ -4200,8 +4199,8 @@ static int ext4_block_truncate_page(handle_t *handle,
- 	if (IS_ENCRYPTED(inode) && !fscrypt_has_encryption_key(inode))
- 		return 0;
+ 	handle_t *handle;
+-	u8 blkbits = inode->i_blkbits;
+ 	int ret, dio_credits, m_flags = 0, retries = 0;
+ 	bool force_commit = false;
  
--	blocksize = inode->i_sb->s_blocksize;
--	length = blocksize - (offset & (blocksize - 1));
-+	blocksize = i_blocksize(inode);
-+	length = blocksize - (from & (blocksize - 1));
+@@ -3745,7 +3743,7 @@ static int ext4_iomap_alloc(struct inode *inode, struct ext4_map_blocks *map,
+ 	 * i_disksize out to i_size. This could be beyond where direct I/O is
+ 	 * happening and thus expose allocated blocks to direct I/O reads.
+ 	 */
+-	else if (((loff_t)map->m_lblk << blkbits) >= i_size_read(inode))
++	else if (EXT4_LBLK_TO_B(inode, map->m_lblk) >= i_size_read(inode))
+ 		m_flags = EXT4_GET_BLOCKS_CREATE;
+ 	else if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+ 		m_flags = EXT4_GET_BLOCKS_IO_CREATE_EXT;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 045616033515..c4b5e252af0e 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1076,7 +1076,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+ 	for (; de < top; de = ext4_next_entry(de, dir->i_sb->s_blocksize)) {
+ 		if (ext4_check_dir_entry(dir, NULL, de, bh,
+ 				bh->b_data, bh->b_size,
+-				(block<<EXT4_BLOCK_SIZE_BITS(dir->i_sb))
++				EXT4_LBLK_TO_B(dir, block)
+ 					 + ((char *)de - bh->b_data))) {
+ 			/* silently ignore the rest of the block */
+ 			break;
+@@ -1630,7 +1630,7 @@ static struct buffer_head *__ext4_find_entry(struct inode *dir,
+ 		}
+ 		set_buffer_verified(bh);
+ 		i = search_dirblock(bh, dir, fname,
+-			    block << EXT4_BLOCK_SIZE_BITS(sb), res_dir);
++				    EXT4_LBLK_TO_B(dir, block), res_dir);
+ 		if (i == 1) {
+ 			EXT4_I(dir)->i_dir_start_lookup = block;
+ 			ret = bh;
+@@ -1710,7 +1710,6 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
+ 			struct ext4_filename *fname,
+ 			struct ext4_dir_entry_2 **res_dir)
+ {
+-	struct super_block * sb = dir->i_sb;
+ 	struct dx_frame frames[EXT4_HTREE_LEVEL], *frame;
+ 	struct buffer_head *bh;
+ 	ext4_lblk_t block;
+@@ -1729,8 +1728,7 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
+ 			goto errout;
  
- 	return ext4_block_zero_page_range(handle, mapping, from, length);
- }
+ 		retval = search_dirblock(bh, dir, fname,
+-					 block << EXT4_BLOCK_SIZE_BITS(sb),
+-					 res_dir);
++					 EXT4_LBLK_TO_B(dir, block), res_dir);
+ 		if (retval == 1)
+ 			goto success;
+ 		brelse(bh);
+diff --git a/fs/ext4/verity.c b/fs/ext4/verity.c
+index b0acb0c50313..415d9c4d8a32 100644
+--- a/fs/ext4/verity.c
++++ b/fs/ext4/verity.c
+@@ -302,7 +302,7 @@ static int ext4_get_verity_descriptor_location(struct inode *inode,
+ 
+ 	end_lblk = le32_to_cpu(last_extent->ee_block) +
+ 		   ext4_ext_get_actual_len(last_extent);
+-	desc_size_pos = (u64)end_lblk << inode->i_blkbits;
++	desc_size_pos = EXT4_LBLK_TO_B(inode, end_lblk);
+ 	ext4_free_ext_path(path);
+ 
+ 	if (desc_size_pos < sizeof(desc_size_disk))
 -- 
 2.46.1
 
