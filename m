@@ -1,28 +1,28 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 81D093328EF;
-	Tue, 11 Nov 2025 14:35:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 03D78337B8A;
+	Tue, 11 Nov 2025 14:35:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762871737; cv=none; b=feJY/gaF6NY6v54wsLaz3SaZgwPUFjfWzOpqCEJGpO08irCSUUdKjymdwHiNxuWpB7ORGiZ9dZ81QMiW096XUlSjPt3azIFEKWvd/cBqXs89ho+kty4CNk4sfNbFXLON2hHNTteWapZK9OxK6wEI7FS10DglRBN3kidSUqU80es=
+	t=1762871738; cv=none; b=sQ2HmPJHJI1kHX6R1vucMyd+b2M4g++64UffLhwQ3HZqkRZCFNl1AdrNcuW7DLCbWgjTD8kIWOUfYn9fqlIj32n3kDb/kk6WRRi7zlRnEU4tF/s58TzbAbM/vapPYobr4tGxTBTPWKkP5PtoYx3sjKjitChdOHbTV1NnMhASrZk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762871737; c=relaxed/simple;
-	bh=zru6h0tSducD5Q4JGP0Z7AO61CNXM4NKMumOKOKELBk=;
+	s=arc-20240116; t=1762871738; c=relaxed/simple;
+	bh=k6Roe4FBj01ojNUXXmdDW6uW6Fz7P6myZ5yrxItYuzc=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=rxNsw/90O2oQf3X9nIAF1cJvMKlpFFtZ7sKZxLqFBI14cQERih6gJ/SYMTLqBx/G0HlM3FPtgb25jb43KgB4JswCBxAuIj2DBWKA7rRTJtzLS562psehHoGfAmtD8ijwXUcdGFuuwSG2XzhPq1+MmOwbajhPfy4ZELUN4z7INa8=
+	 MIME-Version; b=q+SC+5yS4gXCYKs83ksPvzhMM3sUx8W8SxPnzTu1hPnFuxpPQiAIG5VTIcEw5cLUWXltHnByB5PvLBeKBeuR1M/ns845J/x0eXvdDv+KNF+75FN4I/7enwn045TIjGQ7nL0Kot5bc+GrlIhya5Wxs8TGu91cjhQ9KGtsS9ZyLTA=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4d5TZr6BpLzYQv27;
-	Tue, 11 Nov 2025 22:35:00 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4d5TZs5BVFzYQv4Q;
+	Tue, 11 Nov 2025 22:35:01 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id B51921A19A0;
-	Tue, 11 Nov 2025 22:35:27 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 8751D1A07BB;
+	Tue, 11 Nov 2025 22:35:28 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.129])
-	by APP2 (Coremail) with SMTP id Syh0CgBHo3mrSRNpgYWKAQ--.32556S16;
-	Tue, 11 Nov 2025 22:35:27 +0800 (CST)
+	by APP2 (Coremail) with SMTP id Syh0CgBHo3mrSRNpgYWKAQ--.32556S27;
+	Tue, 11 Nov 2025 22:35:28 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -38,9 +38,9 @@ Cc: tytso@mit.edu,
 	chengzhihao1@huawei.com,
 	libaokun1@huawei.com,
 	libaokun@huaweicloud.com
-Subject: [PATCH v3 12/24] ext4: support large block size in ext4_mb_get_buddy_page_lock()
-Date: Tue, 11 Nov 2025 22:26:22 +0800
-Message-Id: <20251111142634.3301616-13-libaokun@huaweicloud.com>
+Subject: [PATCH v3 23/24] ext4: add checks for large folio incompatibilities when BS > PS
+Date: Tue, 11 Nov 2025 22:26:33 +0800
+Message-Id: <20251111142634.3301616-24-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20251111142634.3301616-1-libaokun@huaweicloud.com>
 References: <20251111142634.3301616-1-libaokun@huaweicloud.com>
@@ -51,10 +51,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgBHo3mrSRNpgYWKAQ--.32556S16
-X-Coremail-Antispam: 1UD129KBjvJXoWxJF13CF47GF4xuFyDGF1rWFg_yoWrZF48pa
-	y7Cwn8Jr4kWasrursrZ3saq3WFkas5Zay7A3yIgr13uFy3J34IkFy0k3WUXF1UtFWxGFs5
-	XF45Zry3WF1UX3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:Syh0CgBHo3mrSRNpgYWKAQ--.32556S27
+X-Coremail-Antispam: 1UD129KBjvJXoW3XF4fAw4fXF4fCFWkur45Jrb_yoW7Xr15pF
+	W3Cr1fZrWkZr97Wws7tFsrXr1Ykay8tayUJw4xua47J345t34IyFW0vF1ayFyUtrW8Xryx
+	Xa1Utry7urnrGFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUQa14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -66,122 +66,164 @@ X-Coremail-Antispam: 1UD129KBjvJXoWxJF13CF47GF4xuFyDGF1rWFg_yoWrZF48pa
 	xan2IY04v7M4kE6xkIj40Ew7xC0wCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxG
 	rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
 	vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IY
-	x2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
+	x2IY67AKxVW5JVW7JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
 	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x02
 	67AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUdsqAUUUUU=
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAJBWkSsIpDTQAAsB
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAJBWkSsIpDUwAAsf
 
 From: Baokun Li <libaokun1@huawei.com>
 
-Currently, ext4_mb_get_buddy_page_lock() uses blocks_per_page to calculate
-folio index and offset. However, when blocksize is larger than PAGE_SIZE,
-blocks_per_page becomes zero, leading to a potential division-by-zero bug.
+Supporting a block size greater than the page size (BS > PS) requires
+support for large folios. However, several features (e.g., encrypt)
+do not yet support large folios.
 
-To support BS > PS, use bytes to compute folio index and offset within
-folio to get rid of blocks_per_page.
+To prevent conflicts, this patch adds checks at mount time to prohibit
+these features from being used when BS > PS. Since these features cannot
+be changed on remount, there is no need to check on remount.
 
-Also, since ext4_mb_get_buddy_page_lock() already fully supports folio,
-rename it to ext4_mb_get_buddy_folio_lock().
+This patch adds s_max_folio_order, initialized during mount according to
+filesystem features and mount options. If s_max_folio_order is 0, large
+folios are disabled.
+
+With this in place, ext4_set_inode_mapping_order() can be simplified by
+checking s_max_folio_order, avoiding redundant checks.
 
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/mballoc.c | 42 ++++++++++++++++++++++--------------------
- 1 file changed, 22 insertions(+), 20 deletions(-)
+ fs/ext4/ext4.h  |  4 +++-
+ fs/ext4/inode.c | 38 ++++++++++----------------------------
+ fs/ext4/super.c | 39 +++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 52 insertions(+), 29 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 143d6ff1fdef..b454a41dd6c1 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1510,50 +1510,52 @@ static int ext4_mb_init_cache(struct folio *folio, char *incore, gfp_t gfp)
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 4bc0b2b7288a..79dc231d6e22 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1696,7 +1696,9 @@ struct ext4_sb_info {
+ 	unsigned long s_last_trim_minblks;
+ 
+ 	/* minimum folio order of a page cache allocation */
+-	unsigned int s_min_folio_order;
++	u16 s_min_folio_order;
++	/* supported maximum folio order, 0 means not supported */
++	u16 s_max_folio_order;
+ 
+ 	/* Precomputed FS UUID checksum for seeding other checksums */
+ 	__u32 s_csum_seed;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 7b979e64f481..c38cb811f2ae 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5146,41 +5146,23 @@ static int check_igot_inode(struct inode *inode, ext4_iget_flags flags,
+ 	return -EFSCORRUPTED;
  }
  
- /*
-- * Lock the buddy and bitmap pages. This make sure other parallel init_group
-- * on the same buddy page doesn't happen whild holding the buddy page lock.
-- * Return locked buddy and bitmap pages on e4b struct. If buddy and bitmap
-- * are on the same page e4b->bd_buddy_folio is NULL and return value is 0.
-+ * Lock the buddy and bitmap folios. This makes sure other parallel init_group
-+ * on the same buddy folio doesn't happen while holding the buddy folio lock.
-+ * Return locked buddy and bitmap folios on e4b struct. If buddy and bitmap
-+ * are on the same folio e4b->bd_buddy_folio is NULL and return value is 0.
-  */
--static int ext4_mb_get_buddy_page_lock(struct super_block *sb,
-+static int ext4_mb_get_buddy_folio_lock(struct super_block *sb,
- 		ext4_group_t group, struct ext4_buddy *e4b, gfp_t gfp)
+-static bool ext4_should_enable_large_folio(struct inode *inode)
++void ext4_set_inode_mapping_order(struct inode *inode)
  {
- 	struct inode *inode = EXT4_SB(sb)->s_buddy_cache;
--	int block, pnum, poff;
--	int blocks_per_page;
-+	int block, pnum;
- 	struct folio *folio;
+ 	struct super_block *sb = inode->i_sb;
++	u16 min_order, max_order;
  
- 	e4b->bd_buddy_folio = NULL;
- 	e4b->bd_bitmap_folio = NULL;
+-	if (!S_ISREG(inode->i_mode))
+-		return false;
+-	if (ext4_has_feature_encrypt(sb))
+-		return false;
+-
+-	return true;
+-}
+-
+-/*
+- * Limit the maximum folio order to 2048 blocks to prevent overestimation
+- * of reserve handle credits during the folio writeback in environments
+- * where the PAGE_SIZE exceeds 4KB.
+- */
+-#define EXT4_MAX_PAGECACHE_ORDER(i)		\
+-		umin(MAX_PAGECACHE_ORDER, (11 + (i)->i_blkbits - PAGE_SHIFT))
+-void ext4_set_inode_mapping_order(struct inode *inode)
+-{
+-	u32 max_order;
++	max_order = EXT4_SB(sb)->s_max_folio_order;
++	if (!max_order)
++		return;
  
--	blocks_per_page = PAGE_SIZE / sb->s_blocksize;
- 	/*
- 	 * the buddy cache inode stores the block bitmap
- 	 * and buddy information in consecutive blocks.
- 	 * So for each group we need two blocks.
- 	 */
- 	block = group * 2;
--	pnum = block / blocks_per_page;
--	poff = block % blocks_per_page;
-+	pnum = EXT4_LBLK_TO_PG(inode, block);
- 	folio = __filemap_get_folio(inode->i_mapping, pnum,
- 			FGP_LOCK | FGP_ACCESSED | FGP_CREAT, gfp);
- 	if (IS_ERR(folio))
- 		return PTR_ERR(folio);
- 	BUG_ON(folio->mapping != inode->i_mapping);
-+	WARN_ON_ONCE(folio_size(folio) < sb->s_blocksize);
- 	e4b->bd_bitmap_folio = folio;
--	e4b->bd_bitmap = folio_address(folio) + (poff * sb->s_blocksize);
-+	e4b->bd_bitmap = folio_address(folio) +
-+			 offset_in_folio(folio, EXT4_LBLK_TO_B(inode, block));
+-	if (!ext4_should_enable_large_folio(inode))
++	min_order = EXT4_SB(sb)->s_min_folio_order;
++	if (!min_order && !S_ISREG(inode->i_mode))
+ 		return;
  
--	if (blocks_per_page >= 2) {
--		/* buddy and bitmap are on the same page */
-+	block++;
-+	pnum = EXT4_LBLK_TO_PG(inode, block);
-+	if (folio_contains(folio, pnum)) {
-+		/* buddy and bitmap are on the same folio */
- 		return 0;
- 	}
+-	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA ||
+-	    ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA))
+-		max_order = EXT4_SB(inode->i_sb)->s_min_folio_order;
+-	else
+-		max_order = EXT4_MAX_PAGECACHE_ORDER(inode);
++	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA))
++		max_order = min_order;
  
--	/* blocks_per_page == 1, hence we need another page for the buddy */
--	folio = __filemap_get_folio(inode->i_mapping, block + 1,
-+	/* we need another folio for the buddy */
-+	folio = __filemap_get_folio(inode->i_mapping, pnum,
- 			FGP_LOCK | FGP_ACCESSED | FGP_CREAT, gfp);
- 	if (IS_ERR(folio))
- 		return PTR_ERR(folio);
- 	BUG_ON(folio->mapping != inode->i_mapping);
-+	WARN_ON_ONCE(folio_size(folio) < sb->s_blocksize);
- 	e4b->bd_buddy_folio = folio;
- 	return 0;
+-	mapping_set_folio_order_range(inode->i_mapping,
+-				      EXT4_SB(inode->i_sb)->s_min_folio_order,
+-				      max_order);
++	mapping_set_folio_order_range(inode->i_mapping, min_order, max_order);
  }
-@@ -1592,14 +1594,14 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group, gfp_t gfp)
  
- 	/*
- 	 * This ensures that we don't reinit the buddy cache
--	 * page which map to the group from which we are already
-+	 * folio which map to the group from which we are already
- 	 * allocating. If we are looking at the buddy cache we would
- 	 * have taken a reference using ext4_mb_load_buddy and that
--	 * would have pinned buddy page to page cache.
--	 * The call to ext4_mb_get_buddy_page_lock will mark the
--	 * page accessed.
-+	 * would have pinned buddy folio to page cache.
-+	 * The call to ext4_mb_get_buddy_folio_lock will mark the
-+	 * folio accessed.
- 	 */
--	ret = ext4_mb_get_buddy_page_lock(sb, group, &e4b, gfp);
-+	ret = ext4_mb_get_buddy_folio_lock(sb, group, &e4b, gfp);
- 	if (ret || !EXT4_MB_GRP_NEED_INIT(this_grp)) {
- 		/*
- 		 * somebody initialized the group
+ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 0d32370a459a..f1aeba47b0e3 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -5040,6 +5040,41 @@ static const char *ext4_has_journal_option(struct super_block *sb)
+ 	return NULL;
+ }
+ 
++/*
++ * Limit the maximum folio order to 2048 blocks to prevent overestimation
++ * of reserve handle credits during the folio writeback in environments
++ * where the PAGE_SIZE exceeds 4KB.
++ */
++#define EXT4_MAX_PAGECACHE_ORDER(sb)		\
++		umin(MAX_PAGECACHE_ORDER, (11 + (sb)->s_blocksize_bits - PAGE_SHIFT))
++static void ext4_set_max_mapping_order(struct super_block *sb)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++
++	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
++		sbi->s_max_folio_order = sbi->s_min_folio_order;
++	else
++		sbi->s_max_folio_order = EXT4_MAX_PAGECACHE_ORDER(sb);
++}
++
++static int ext4_check_large_folio(struct super_block *sb)
++{
++	const char *err_str = NULL;
++
++	if (ext4_has_feature_encrypt(sb))
++		err_str = "encrypt";
++
++	if (!err_str) {
++		ext4_set_max_mapping_order(sb);
++	} else if (sb->s_blocksize > PAGE_SIZE) {
++		ext4_msg(sb, KERN_ERR, "bs(%lu) > ps(%lu) unsupported for %s",
++			 sb->s_blocksize, PAGE_SIZE, err_str);
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
+ static int ext4_load_super(struct super_block *sb, ext4_fsblk_t *lsb,
+ 			   int silent)
+ {
+@@ -5316,6 +5351,10 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 
+ 	ext4_apply_options(fc, sb);
+ 
++	err = ext4_check_large_folio(sb);
++	if (err < 0)
++		goto failed_mount;
++
+ 	err = ext4_encoding_init(sb, es);
+ 	if (err)
+ 		goto failed_mount;
 -- 
 2.46.1
 
