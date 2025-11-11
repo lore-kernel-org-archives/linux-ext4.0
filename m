@@ -1,74 +1,80 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C19353A9BE2
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Nov 2025 20:09:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AFE7935CBD1
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Nov 2025 21:12:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762891800; cv=none; b=Y81ZeecEZHTF5zShbbMKBOfAN76KCdsWdyhrAE8X9Dpnd5X9fJYh65j7raPy7nzDS09aTojQXL+1jWG/zuRZVQEPXvcEKUyKtZXR0N96TDhWNjIJ+duHcZ8JC1lFbqBxrVWm2WGkXf+W0hFPkF/it+xbwsDGLZTCxPxlmUgkaqM=
+	t=1762895576; cv=none; b=GoVw2Ikz1MekLjf4e7BO/dkFIwN/OpMkQw6uevY5r+l8Eh7F2IOHA3CECB+mbHXDBiMoAuhiWJO2F7PBfjhKtDa+ern4jzmq4UNEmqJrVexmWdQBhCvwIEAwlr56C470gDj4tHgCiqrLt8tUxhXUxhcvbOTTSZpJicPLHC8ZP1Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762891800; c=relaxed/simple;
-	bh=aKU7CwRoFN7GwAUk/VpcFt8d8rBypsRl8Gnocq6cGlY=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=Qyr1Vu1yawIEUIsRJW3WQ6Whh5JJLMjU6ftC8TB+bjWORzxnO1TzzHzRJTpJ/mTnd/tXxvkneWEXoljBqszP56OyBtUbkYG48b6dZim/SKeIL/uXzZBrWNX2mj1l2poiw+i/VlB2Xj6GlsvL7bHKV3JVDokLtbpcXRhtcKqHsFY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=gYgG8oNh; arc=none smtp.client-ip=18.9.28.11
+	s=arc-20240116; t=1762895576; c=relaxed/simple;
+	bh=r0mhWiTfGOpqSQIirHKg23awhk5TbmMpNPTtCFBniZA=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=bUH2NqWcvJOVH3Y2yE5y5fWzOl7gYQoJ6Pkkw83QUmu08g+COYQBXkg1/nVpGcgK6H9froTzNvB5a9w/+tr2kuNa5SVMKq2l8vZNgjg1Xsp5dDQhU98rle8uv/o/kFXnN3/jF3zlPwO2870DjuaW3kleqwCUVr5vkELhZECSIVg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=ESomTYF5; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="gYgG8oNh"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="ESomTYF5"
 Received: from trampoline.thunk.org (pool-173-48-122-154.bstnma.fios.verizon.net [173.48.122.154])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 5ABK9ow4008978
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 5ABLBmJ4004198
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 11 Nov 2025 15:09:51 -0500
+	Tue, 11 Nov 2025 16:11:49 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1762891792; bh=rGKSYEkWslJh+Ex2G50XKu2IgwJMeDD9JJcg3/TUlCU=;
-	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=gYgG8oNhOwFxh8c5gDdlVLX4n0abFeLNwsVvdM4kXkovttB4PaAtgWiwRjVc6AgGA
-	 nyFr5q7wLjzjqa+Yq/9EgxcMj90z1+c3C9nfws4zVs3jkLWE4rLrketniBG48wAU1u
-	 J8Q4uTOVyk5/k+/riCzzjX+zmH6pRiNBHsrfLvkpjs6hwDx235RT74DyrBGO+YSj4f
-	 ww5Ubhi1pHmQT52Q3ZNAOhtUXyZk3xLPK1hIhcFlhzFGGNEn3jdXzko8KKDwWlYwV7
-	 JtiewaFCVTZcbWw2VdPyd/Dn4/kI8A3eS0khzPZmFfEodq8cb47PSTcmsJYM8Ib1dI
-	 xdRrOCm5DA8Pg==
+	t=1762895511; bh=ArBI5cxQ9YKazNXvvrPNw3dqhQ/NNN1pp3U+5xpb5tE=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=ESomTYF5Re+/mJGYwQ/NIcSAdOLgABopwPWfID286k6s4sxn90PGxOrRl/kmsdNtx
+	 n9OivsAWywD8C+sA3qanRUA+/8xFiANGidiK0cafJeu947gbxaO4Jojyktbb6sBV4+
+	 NRAZvzl0xP6aNwZfi31W3XnPVBeOfsZvbAjGgzAUMOn3FFP7EBSa5H2scA450ziEL2
+	 Clr4V4pd4/MksqIVT0siWc0BbXsRzeSgoNION3IJUSm3Jhgjh66yUXzt9Ol4ZU5cmn
+	 jjCbzIHvxsp2yOv4uZYhiVwTpv4RDHq3pJgIQRD354lu7wzgmiC2Epuidpn/QPIFS0
+	 ZYLf5ledyN7jQ==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 502FD2E00D6; Tue, 11 Nov 2025 15:09:50 -0500 (EST)
+	id 0B8F92E00D9; Tue, 11 Nov 2025 16:11:48 -0500 (EST)
+Date: Tue, 11 Nov 2025 16:11:48 -0500
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger@whamcloud.com>,
-        Li Dongyang <dongyangli@ddn.com>
-Subject: Re: [PATCHv2] ext2fs: fix fast symlink blocks check
-Date: Tue, 11 Nov 2025 15:09:46 -0500
-Message-ID: <176289177750.1399954.9061912181115390685.b4-ty@mit.edu>
-X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20250808080505.1307694-1-adilger@dilger.ca>
-References: <20250808080505.1307694-1-adilger@dilger.ca>
+To: Pankaj Raghav <kernel@pankajraghav.com>
+Cc: libaokun@huaweicloud.com, linux-ext4@vger.kernel.org,
+        adilger.kernel@dilger.ca, jack@suse.cz, linux-kernel@vger.kernel.org,
+        mcgrof@kernel.org, ebiggers@kernel.org, willy@infradead.org,
+        yi.zhang@huawei.com, yangerkun@huawei.com, chengzhihao1@huawei.com,
+        libaokun1@huawei.com
+Subject: Re: [PATCH v3 24/24] ext4: enable block size larger than page size
+Message-ID: <20251111211148.GL2988753@mit.edu>
+References: <20251111142634.3301616-1-libaokun@huaweicloud.com>
+ <20251111142634.3301616-25-libaokun@huaweicloud.com>
+ <880280be-1cd0-41b6-bc89-9168f374a9b9@pankajraghav.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <880280be-1cd0-41b6-bc89-9168f374a9b9@pankajraghav.com>
 
-
-On Fri, 08 Aug 2025 02:04:27 -0600, Andreas Dilger wrote:
-> Use ext4_inode_is_fast_symlink() in ext2fs_inode_has_valid_blocks2()
-> instead of depending exclusively on i_blocks == 0 to determine
-> if an inode is a fast symlink. Otherwise, if a fast symlink has a
-> large external xattr inode that increases i_blocks, it will be
-> incorrectly reported as having invalid blocks.
+On Tue, Nov 11, 2025 at 07:01:20PM +0100, Pankaj Raghav wrote:
 > 
-> 
-> [...]
+> If you are planning to send another revision, then it would be nice to include
+> the corresponding patch to mke2fs as well? I don't know how ext4 process works but
+> just a suggestion.
 
-Applied, thanks!
+It's actually more convenient for me not to mix userspace and kernel
+patches, because b4 doesn't know the difference.  For that matter
+replying with an unrelated patch can also confuse b4, so it's a bit
+easier for people using b4 to send unrelated patches as a separate
+mail thread, using git format-patch / git send-email.
 
-[1/1] ext2fs: fix fast symlink blocks check
-      commit: ae7370a5fa175c609bd7c780a5ffaefdd58efc91
+In this case, the corresponding patch to mke2fs is pretty simple, and
+I've already pushed it to the e2fsprogs git repo:
 
-Best regards,
--- 
-Theodore Ts'o <tytso@mit.edu>
+   https://github.com/tytso/e2fsprogs/commit/6d9033ff854eb346746176f43aa063137275d4b1
+
+:-)
+
+Cheers,
+
+					- Ted
