@@ -1,27 +1,27 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1ED492D131D;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9C7632DECCC;
 	Tue, 11 Nov 2025 14:35:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762871731; cv=none; b=MpqvT6qetqvrglFpZ1V1vLluFyR0zDPCYzgoPqXKedZ5NmpDQwQcKUU0LjC7gC4XXOOXISBxy+DL9RvO3o9ah0wU/aWMDzAgtfeGYRbQjeLwUFJ0b+CI7JDQOsBhiP8PQKBWj7XoipLPNoLK7JhYcJTF522kj6dafjqSmpUHqOY=
+	t=1762871732; cv=none; b=sX1lBXVzRJpY55omJ/AehBdl7GOOmNe/GFE93X5u91FQYinoCn2SH0lfkzM9R8Abj5FvSbJ2gl6CvjWFjt0n7G7gudgC3UZPzWuQxMY220tjrs+ahhc5+MMvOj6xnq56PaeeiHnoeamybp3yqOc5iueNli/DRuf7yzU8QtyaTv8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762871731; c=relaxed/simple;
-	bh=WGy3nSz0KZLBTn1s/kKP/NQ+l/KC+RqVKYwQ9hLhC+c=;
+	s=arc-20240116; t=1762871732; c=relaxed/simple;
+	bh=Jx+c1in1ewd1Dt2A5qNro6tjPX49d1cFqnt8faG1Alg=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=KRdXdFUuT6PLvi5z78UKp+ktS2x6ogah87iS4+FImN86MyglL7JpDLW8PSnyt4F8ec9QyM4CzgN0OEgMCHmpTd9ag0n0Wa+5CiLN8MHtpReV3GE02EKBrLawH0tlXgOST9Vqw06ZtIckPb1v9YvNfAcUSfZ1s/sMt1AMnDLSxsc=
+	 MIME-Version; b=TkhW3Mh6SIDSP/f929FP24yGkJJAIgz8/NgCyMHXMip38a5yFhXcXAzCn5A2iofkwfXqb/8Cw826xL9958c7NO9d+v2YO5FlPl+k4KYdKfrPky3xsEiyMoe2DVxZw4aslVmyuSetyIljFtkpWXOTmWAmULae7KzMFoLy4Cyk8jo=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4d5TZr03kxzYQtxx;
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4d5TZr1GxDzYQtLK;
 	Tue, 11 Nov 2025 22:35:00 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id D96391A07BB;
-	Tue, 11 Nov 2025 22:35:26 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 0B7C41A0B76;
+	Tue, 11 Nov 2025 22:35:27 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.129])
-	by APP2 (Coremail) with SMTP id Syh0CgBHo3mrSRNpgYWKAQ--.32556S5;
+	by APP2 (Coremail) with SMTP id Syh0CgBHo3mrSRNpgYWKAQ--.32556S7;
 	Tue, 11 Nov 2025 22:35:26 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
@@ -38,9 +38,9 @@ Cc: tytso@mit.edu,
 	chengzhihao1@huawei.com,
 	libaokun1@huawei.com,
 	libaokun@huaweicloud.com
-Subject: [PATCH v3 01/24] ext4: remove page offset calculation in ext4_block_zero_page_range()
-Date: Tue, 11 Nov 2025 22:26:11 +0800
-Message-Id: <20251111142634.3301616-2-libaokun@huaweicloud.com>
+Subject: [PATCH v3 03/24] ext4: remove PAGE_SIZE checks for rec_len conversion
+Date: Tue, 11 Nov 2025 22:26:13 +0800
+Message-Id: <20251111142634.3301616-4-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20251111142634.3301616-1-libaokun@huaweicloud.com>
 References: <20251111142634.3301616-1-libaokun@huaweicloud.com>
@@ -51,55 +51,85 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgBHo3mrSRNpgYWKAQ--.32556S5
-X-Coremail-Antispam: 1UD129KBjvdXoWrZFW5uw1fAr1rZr1UZF1UJrb_yoWkWwb_A3
-	yv9r4rWw1rJrnakF1rA3yYqr1vka18Cr15uFn8tr1rXayrZFZ5X3WvgryY9rs0gF47urs8
-	A3s7XF43Kr9F9jkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUbP8FF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
-	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUGwA2048vs2IY02
-	0Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xv
-	wVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM2
-	8EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AI
-	xVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20x
-	vE14v26r1Y6r17McIj6I8E87Iv67AKxVW8Jr0_Cr1UMcvjeVCFs4IE7xkEbVWUJVW8JwAC
-	jcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2ka0x
-	kIwI1lw4CEc2x0rVAKj4xxMxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC2
-	0s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI
-	0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE
-	14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20x
-	vaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8
-	JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7VUjIztUUUUUU==
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAgAJBWkRXwp-zwAFsW
+X-CM-TRANSID:Syh0CgBHo3mrSRNpgYWKAQ--.32556S7
+X-Coremail-Antispam: 1UD129KBjvJXoW7AFW3CFW8GFW5JFy5Jr1UZFb_yoW8ArW3pF
+	43GryUGrWYvF1Uuay2qF4rGa4Ikw1fKw1UJa9xW3yrWFy7Xr4fXr9agFyFqFW8tFZaqFWU
+	Xan8JFWftr43AaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUQ014x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JrWl82xGYIkIc2
+	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Gr1j6F4UJwAm72CE4IkC6x0Yz7v_Jr0_Gr1l
+	F7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8cxan2
+	IY04v7M4kE6xkIj40Ew7xC0wCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCF
+	x2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14
+	v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY
+	67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI
+	8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v2
+	6r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjfUo6wZDUUUU
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQAJBWkSsJdDHwABsM
 
-From: Zhihao Cheng <chengzhihao1@huawei.com>
+From: Baokun Li <libaokun1@huawei.com>
 
-For bs <= ps scenarios, calculating the offset within the block is
-sufficient. For bs > ps, an initial page offset calculation can lead to
-incorrect behavior. Thus this redundant calculation has been removed.
+Previously, ext4_rec_len_(to|from)_disk only performed complex rec_len
+conversions when PAGE_SIZE >= 65536 to reduce complexity.
 
-Signed-off-by: Zhihao Cheng <chengzhihao1@huawei.com>
+However, we are soon to support file system block sizes greater than
+page size, which makes these conditional checks unnecessary. Thus, these
+checks are now removed.
+
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ fs/ext4/ext4.h | 12 ------------
+ 1 file changed, 12 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 783c883d4d5e..d027441a95a9 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4165,9 +4165,8 @@ static int ext4_block_zero_page_range(handle_t *handle,
- 		struct address_space *mapping, loff_t from, loff_t length)
- {
- 	struct inode *inode = mapping->host;
--	unsigned offset = from & (PAGE_SIZE-1);
- 	unsigned blocksize = inode->i_sb->s_blocksize;
--	unsigned max = blocksize - (offset & (blocksize - 1));
-+	unsigned int max = blocksize - (from & (blocksize - 1));
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9f127aedbaee..3d18e6bf43cf 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2475,28 +2475,19 @@ static inline unsigned int ext4_dir_rec_len(__u8 name_len,
+ 	return (rec_len & ~EXT4_DIR_ROUND);
+ }
  
- 	/*
- 	 * correct length if it does not fall between
+-/*
+- * If we ever get support for fs block sizes > page_size, we'll need
+- * to remove the #if statements in the next two functions...
+- */
+ static inline unsigned int
+ ext4_rec_len_from_disk(__le16 dlen, unsigned blocksize)
+ {
+ 	unsigned len = le16_to_cpu(dlen);
+ 
+-#if (PAGE_SIZE >= 65536)
+ 	if (len == EXT4_MAX_REC_LEN || len == 0)
+ 		return blocksize;
+ 	return (len & 65532) | ((len & 3) << 16);
+-#else
+-	return len;
+-#endif
+ }
+ 
+ static inline __le16 ext4_rec_len_to_disk(unsigned len, unsigned blocksize)
+ {
+ 	BUG_ON((len > blocksize) || (blocksize > (1 << 18)) || (len & 3));
+-#if (PAGE_SIZE >= 65536)
+ 	if (len < 65536)
+ 		return cpu_to_le16(len);
+ 	if (len == blocksize) {
+@@ -2506,9 +2497,6 @@ static inline __le16 ext4_rec_len_to_disk(unsigned len, unsigned blocksize)
+ 			return cpu_to_le16(0);
+ 	}
+ 	return cpu_to_le16((len & 65532) | ((len >> 16) & 3));
+-#else
+-	return cpu_to_le16(len);
+-#endif
+ }
+ 
+ /*
 -- 
 2.46.1
 
