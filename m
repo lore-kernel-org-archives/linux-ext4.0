@@ -1,84 +1,177 @@
-Received: from azure-sdnproxy.icoremail.net (azure-sdnproxy.icoremail.net [13.76.142.27])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id AAA6D1339A4;
-	Wed, 12 Nov 2025 15:59:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=13.76.142.27
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1945F329C64;
+	Wed, 12 Nov 2025 18:05:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762963175; cv=none; b=OLt8wcFRDPv5F6DuZJDdhEQ2TqlIkN0/+D4Zb7N543j0HFlwdoamd+FAZmP8g2cw8HEBv678fRf6WSYpYSfCGVX7KjU4dXuzudFbLoeFW9d8h6XOcyGTg+pCv8Ig7OxYFMvDDHq2/ZRcdokBOyIh7whM155DfxyWwUvnTu4vFuk=
+	t=1762970750; cv=none; b=kM4d9+0vNJuS+j1dCCuJIAhf2qWrGTDWVwM2dLt9Cfsxi6uLZODSnoVHEmZ7wzVBNj4YHTCI3AcpRBsf4frD/m1MeW9BWpVbxyRksC1FUir53fPfzDZMxYCPaGaUslMmGxQysp2I4eYiKBCK6NeNJzenS6LdbbMQX8i1tTZ38Sc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762963175; c=relaxed/simple;
-	bh=PsjPaE4lZoLTPqrzivsYPbw6hTDiG4sJvFzbGnjYUwY=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=V2EzpW6ru8DOjk5bIM/Des8oqZjP6CuEPnDpH23lfFIe3x6lc/qAnukX7uBDsTLO5PTxFL6uycYbzXqneehAKUzV+YUA/V/FNSA4w9qDr68g+/oJ54HvsA6BsilbVEmA3maqJ5G9gOMQWc/jN6qDMiSvJKFcvKFUrXF1dQhW9E0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mails.tsinghua.edu.cn; spf=pass smtp.mailfrom=mails.tsinghua.edu.cn; dkim=pass (1024-bit key) header.d=mails.tsinghua.edu.cn header.i=@mails.tsinghua.edu.cn header.b=c9+bFVhd; arc=none smtp.client-ip=13.76.142.27
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mails.tsinghua.edu.cn
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mails.tsinghua.edu.cn
+	s=arc-20240116; t=1762970750; c=relaxed/simple;
+	bh=K6mIgHlRVr4RQHM2LC+rQO8DlVLYN2kPrpWaw3AMSFk=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=DO5TPcfFnOP59OquphXw/+mItJrdxfYZ1210SjXD99fT0oLFf2AlB7kLLdzbdqOLIDsgAJgLUTIbbJmo5DF5Jt+dqiy/uj0xJJRo/Bls/Ub/1OpHivIj3rY5x99CKQSMtM26D6dadpAJOO/zRNuRkjAhv/mQzFpjCPV1J3j076Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Ie2Qql5f; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=mails.tsinghua.edu.cn header.i=@mails.tsinghua.edu.cn header.b="c9+bFVhd"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=mails.tsinghua.edu.cn; s=dkim; h=Received:From:To:Cc:Subject:
-	Date:Message-ID:MIME-Version:Content-Transfer-Encoding; bh=8AhE/
-	aG7KhI0jDuF9HucPWyrSJmKir5bczNqavi8w4I=; b=c9+bFVhdSkRVk76c4Yx9l
-	lI7tikyUDRxzZ8qdgu5RR9AQyEw3Npv/E5F8PUkR2Ig9irI6XK3I+OLRRCFiaJq6
-	GrBnCEMN4APhLicTE3+G/fGz3JbwDst33LjNR2o7jHjcLAnCcFzvvETSZKNuNEen
-	QbpkrBQIhLXY66yORacT30=
-Received: from localhost.localdomain (unknown [183.172.8.203])
-	by web2 (Coremail) with SMTP id yQQGZQBH7CzTrhRp9F1wAA--.27113S2;
-	Wed, 12 Nov 2025 23:59:16 +0800 (CST)
-From: Haodong Tian <tianhd25@mails.tsinghua.edu.cn>
-To: tytso@mit.edu
-Cc: adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Haodong Tian <tianhd25@mails.tsinghua.edu.cn>
-Subject: [PATCH] fs/ext4: fix typo in comment
-Date: Wed, 12 Nov 2025 23:59:16 +0800
-Message-ID: <20251112155916.3007639-1-tianhd25@mails.tsinghua.edu.cn>
-X-Mailer: git-send-email 2.47.3
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Ie2Qql5f"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CFCDAC4CEF1;
+	Wed, 12 Nov 2025 18:05:49 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1762970749;
+	bh=K6mIgHlRVr4RQHM2LC+rQO8DlVLYN2kPrpWaw3AMSFk=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=Ie2Qql5fXfoTRUVI/4qGp1vGfYG7MUQrAgXcegxX2k3BSrl4bvM8Xdslxs/toxdWc
+	 bwW4QoriLPk3PgZ5A7Sf6O4y/j2TkVzT0WWz/Oxj8PBAk3+sJuIz06M4Gfm8CtSGtM
+	 0V7P+286jIXI0NIdfrA2JU4WKtVpH1clHARrL8fy39CuHviZxtfp9CT4Fzw+43y1Ck
+	 SXPuhl1izQ03YPkRWdZ3QaPIY2VoXfXYOJ9hJf9W+Gkt/7VgecdS5aoSrhJCCUH0Uo
+	 MMILnNo0AuFf8kaAPkn9olm66eSwXBMnr6fRhsVaG0lYgeT/SUTEcXgrtgpoqgjtkl
+	 gnJ2VEwZepDyQ==
+Date: Wed, 12 Nov 2025 10:05:49 -0800
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: zlang@redhat.com, fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 6/7] generic/774: reduce file size
+Message-ID: <20251112180549.GD196366@frogsfrogsfrogs>
+References: <176279908967.605950.2192923313361120314.stgit@frogsfrogsfrogs>
+ <176279909116.605950.12144124358096086284.stgit@frogsfrogsfrogs>
+ <aRMCWr2UHlc2FawQ@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:yQQGZQBH7CzTrhRp9F1wAA--.27113S2
-X-Coremail-Antispam: 1UD129KBjvdXoW7XrWxCr48ZrWfAr15GF1ftFb_yoW3Jrc_Wa
-	9rAFW8Z34rtr1Skan2yr45KryFk348tr45Gr13Jr9xXa45ta1v9w1kA39xAFnxWFyayrZx
-	ZryrZry3CayrWjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUb-xFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k26cxKx2IYs7xG
-	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8w
-	A2z4x0Y4vE2Ix0cI8IcVAFwI0_Xr0_Ar1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr0_
-	Cr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s
-	1lnxkEFVAIw20F6cxK64vIFxWle2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IE
-	w4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_JrI_JrylYx0Ex4A2jsIE14v26r1j6r4UMc
-	vjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v
-	4I1lc7CjxVAaw2AFwI0_JF0_Jw1lc2xSY4AK67AK6ryrMxAIw28IcxkI7VAKI48JMxC20s
-	026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_
-	JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14
-	v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xva
-	j40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVWUJV
-	W8JbIYCTnIWIevJa73UjIFyTuYvjfU8q2MUUUUU
-X-CM-SenderInfo: hwld0xrgsvqzpdlo2hxwvl0wxkxdhvlgxou0/1tbiAgQEAmkUKZu2VwABsv
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <aRMCWr2UHlc2FawQ@infradead.org>
 
-Correct 'metdata' -> 'metadata' in comment.
+On Tue, Nov 11, 2025 at 01:31:06AM -0800, Christoph Hellwig wrote:
+> On Mon, Nov 10, 2025 at 10:27:35AM -0800, Darrick J. Wong wrote:
+> > From: Darrick J. Wong <djwong@kernel.org>
+> > 
+> > We've gotten complaints about this test taking hours to run and
+> > producing stall warning on test VMs with a large number of cpu cores.  I
+> 
+> Btw, we should still find a way to avoid stalls for anything a user
+> can easily trigger, independent of fixing the test case.  What were
+> these stall warnings?
 
-Signed-off-by: Haodong Tian <tianhd25@mails.tsinghua.edu.cn>
----
- fs/ext4/balloc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+The ones I see look like this:
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index c9329ed5c094..8040c731b3e4 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -752,7 +752,7 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
- 		*count = ar.len;
- 	/*
- 	 * Account for the allocated meta blocks.  We will never
--	 * fail EDQUOT for metdata, but we do account for it.
-+	 * fail EDQUOT for metadata, but we do account for it.
- 	 */
- 	if (!(*errp) && (flags & EXT4_MB_DELALLOC_RESERVED)) {
- 		dquot_alloc_block_nofail(inode,
--- 
-2.47.3
+FSTYP         -- xfs (debug)
+PLATFORM      -- Linux/x86_64 oci-mtr49 6.18.0-rc5-xfsx #rc5 SMP PREEMPT_DYNAMIC Sun Nov  9 20:11:20 PST 2025
+MKFS_OPTIONS  -- -f -m metadir=1,autofsck=1,uquota,gquota,pquota, -b size=32768, /dev/sda4
+MOUNT_OPTIONS -- /dev/sda4 /opt
 
+and dmesg does this:
+
+run fstests generic/774 at 2025-11-10 13:37:52
+XFS (sda3): EXPERIMENTAL large block size feature enabled.  Use at your own risk!
+XFS (sda3): EXPERIMENTAL metadata directory tree feature enabled.  Use at your own risk!
+XFS (sda3): Mounting V5 Filesystem 0280a424-6e91-401b-8c47-864532b77ceb
+XFS (sda3): Ending clean mount
+XFS (sda4): EXPERIMENTAL large block size feature enabled.  Use at your own risk!
+XFS (sda4): EXPERIMENTAL metadata directory tree feature enabled.  Use at your own risk!
+XFS (sda4): Mounting V5 Filesystem f09b8bdf-3518-44e5-97cb-e0ab36808488
+XFS (sda4): Ending clean mount
+XFS (sda4): Quotacheck needed: Please wait.
+XFS (sda4): Quotacheck: Done.
+XFS (sda4): Unmounting Filesystem f09b8bdf-3518-44e5-97cb-e0ab36808488
+XFS (sda4): EXPERIMENTAL large block size feature enabled.  Use at your own risk!
+XFS (sda4): EXPERIMENTAL metadata directory tree feature enabled.  Use at your own risk!
+XFS (sda4): Mounting V5 Filesystem 11615837-dfa0-47b8-a078-21f9f1f7525b
+XFS (sda4): Ending clean mount
+XFS (sda4): Quotacheck needed: Please wait.
+XFS (sda4): Quotacheck: Done.
+workqueue: iomap_dio_complete_work hogged CPU for >10666us 4 times, consider switching to WQ_UNBOUND
+workqueue: iomap_dio_complete_work hogged CPU for >10666us 5 times, consider switching to WQ_UNBOUND
+workqueue: iomap_dio_complete_work hogged CPU for >10666us 7 times, consider switching to WQ_UNBOUND
+workqueue: iomap_dio_complete_work hogged CPU for >10666us 11 times, consider switching to WQ_UNBOUND
+workqueue: iomap_dio_complete_work hogged CPU for >10666us 19 times, consider switching to WQ_UNBOUND
+INFO: task 3:1:2248454 blocked for more than 61 seconds.
+      Tainted: G        W           6.18.0-rc5-xfsx #rc5
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:3:1             state:D stack:12744 pid:2248454 tgid:2248454 ppid:2      task_flags:0x4248060 flags:0x00080000
+Workqueue: dio/sda4 iomap_dio_complete_work
+Call Trace:
+ <TASK>
+ __schedule+0x4cb/0x1a70
+ ? check_preempt_wakeup_fair+0x162/0x2a0
+ ? wakeup_preempt+0x66/0x70
+ schedule+0x2a/0xe0
+ schedule_preempt_disabled+0x18/0x30
+ rwsem_down_write_slowpath+0x2c5/0x780
+ down_write+0x6e/0x70
+ xfs_reflink_end_atomic_cow+0x133/0x200 [xfs 28bfed63550f2a1085614a29851734fab813b29a]
+ ? finish_task_switch.isra.0+0x9b/0x2b0
+ xfs_dio_write_end_io+0x117/0x320 [xfs 28bfed63550f2a1085614a29851734fab813b29a]
+ iomap_dio_complete+0x41/0x240
+ ? aio_fsync_work+0x120/0x120
+ iomap_dio_complete_work+0x17/0x30
+ process_one_work+0x196/0x3e0
+ worker_thread+0x264/0x380
+ ? _raw_spin_unlock_irqrestore+0x1e/0x40
+ ? rescuer_thread+0x4f0/0x4f0
+ kthread+0x117/0x270
+ ? kthread_complete_and_exit+0x20/0x20
+ ? kthread_complete_and_exit+0x20/0x20
+ ret_from_fork+0xa4/0xe0
+ ? kthread_complete_and_exit+0x20/0x20
+ ret_from_fork_asm+0x11/0x20
+ </TASK>
+INFO: task 3:1:2248454 <writer> blocked on an rw-semaphore likely owned by task 3:13:2308404 <writer>
+INFO: task 3:13:2308404 blocked for more than 61 seconds.
+      Tainted: G        W           6.18.0-rc5-xfsx #rc5
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:3:13            state:D stack:12184 pid:2308404 tgid:2308404 ppid:2      task_flags:0x4248060 flags:0x00080000
+Workqueue: dio/sda4 iomap_dio_complete_work
+Call Trace:
+ <TASK>
+ __schedule+0x4cb/0x1a70
+ ? do_raw_spin_unlock+0x49/0xb0
+ ? _raw_spin_unlock_irqrestore+0x1e/0x40
+ schedule+0x2a/0xe0
+ xlog_grant_head_wait+0x5c/0x2a0 [xfs 28bfed63550f2a1085614a29851734fab813b29a]
+ ? kmem_cache_free+0x540/0x5b0
+ xlog_grant_head_check+0x10e/0x180 [xfs 28bfed63550f2a1085614a29851734fab813b29a]
+ xfs_log_regrant+0xc2/0x1e0 [xfs 28bfed63550f2a1085614a29851734fab813b29a]
+ xfs_trans_roll+0x90/0xc0 [xfs 28bfed63550f2a1085614a29851734fab813b29a]
+ xfs_defer_trans_roll+0x73/0x120 [xfs 28bfed63550f2a1085614a29851734fab813b29a]
+ xfs_defer_finish_noroll+0x2a3/0x520 [xfs 28bfed63550f2a1085614a29851734fab813b29a]
+ xfs_trans_commit+0x3d/0x70 [xfs 28bfed63550f2a1085614a29851734fab813b29a]
+ xfs_reflink_end_atomic_cow+0x19c/0x200 [xfs 28bfed63550f2a1085614a29851734fab813b29a]
+ ? finish_task_switch.isra.0+0x9b/0x2b0
+ xfs_dio_write_end_io+0x117/0x320 [xfs 28bfed63550f2a1085614a29851734fab813b29a]
+ iomap_dio_complete+0x41/0x240
+ ? aio_fsync_work+0x120/0x120
+ iomap_dio_complete_work+0x17/0x30
+ process_one_work+0x196/0x3e0
+ worker_thread+0x264/0x380
+ ? _raw_spin_unlock_irqrestore+0x1e/0x40
+ ? rescuer_thread+0x4f0/0x4f0
+ kthread+0x117/0x270
+ ? kthread_complete_and_exit+0x20/0x20
+ ? kthread_complete_and_exit+0x20/0x20
+ ret_from_fork+0xa4/0xe0
+ ? kthread_complete_and_exit+0x20/0x20
+ ret_from_fork_asm+0x11/0x20
+ </TASK>
+
+I think this is an ABBA livelock where nearly all the threads hold a log
+grant reservation and are trying to obtain ILOCK; but one thread is in
+the middle of an atomic cow write ioend transaction chain but has run
+out of permanent reservation during xfs_trans_roll, which means it holds
+ILOCK and is trying to reserve log grant space.
+
+I also suspect this could happen with regular ioend remapping of shared
+space after a COW.  Perhaps for these ioend types we should chain ioends
+together like we do for direct writes to zoned storage.  Remapping isn't
+going to be low-latency like pure overwrites anyway.
+
+> The patch looks good:
+> 
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
+
+Thanks!
+
+--D
