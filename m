@@ -1,49 +1,50 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0AC54339B37
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Nov 2025 19:14:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7288E331A7D
+	for <linux-ext4@vger.kernel.org>; Mon, 17 Nov 2025 19:14:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1763406857; cv=none; b=juiIpSD3Q4An5gyWqos5RifOizz/vlcCYylm56VyDFqajzgYUF+tU2v6UtsYcyE/UUk/VoGeMFZ/P7sSOr0q/7JGGdW093CgZqiDhEGt8GLa7erJLAvM0cgwRFu+cVbmbcF/f8okEWys1vNkiRFKhW+lyYFi449miAQdBSJNUPk=
+	t=1763406867; cv=none; b=fBZRUZo8k7vsGhoN4EemmxHrERXX+LDt8IyKk04cfjceudXABIUkVZ24F5t87XmQyx6vTUza0S1K6limZhOaev3yXa3zU/ex7klGNQYfAB9R02V5yJl9voHglb1x2pPrzsGSK/Lc9WAEIFMjBzq1A1OMl8RQaGjgdW1bmdzwLXs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1763406857; c=relaxed/simple;
-	bh=S8+oYdvzJkqg5GnbKH1RT7Mgj2ukg9Yf1oBFfES9NFg=;
+	s=arc-20240116; t=1763406867; c=relaxed/simple;
+	bh=E52Fqa9mgA47M0jVrYYh1EhOW/tflIOD5lHoa6eyJU4=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=WfeA0+KN3lEj746beD9LwgsFyaeMPPF9K47BkvxryuDiRLfet4rKa4uiewfEXl25E+2jSGvsjiUTWQbBL8SMv38L5PUdW+Su+dBr9RLbmeaR23Fwr4GQ7R21npV0rDnkgmwtUUoBLN/yh5aHhqlN11tkxR3yP4Celzf2Sd53O2A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=bzt+K3z/; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=R69IaONzEow7Uycer6g35Rv7QRUHFOeDbzHaZ0kSN1kG0OLPgXFuymgPPRtVwMbOJCyJWTCykDEBQDDlEctVFHUMofcbU5c+zCJlwfaALlXwk0STtr9Vg9gylVy6Qyiu2dyoB17YRF5K7Ifw0hKrstNvZ/GuCp8WFPl5DqyvgeA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=FI3970gQ; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="bzt+K3z/"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="FI3970gQ"
 Received: from trampoline.thunk.org (pool-173-48-114-69.bstnma.fios.verizon.net [173.48.114.69])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 5AHJDqn9020625
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 5AHJDo8I020574
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 17 Nov 2025 14:13:53 -0500
+	Mon, 17 Nov 2025 14:13:51 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1763406835; bh=mNZ5GIaU4El1zYRELHlqutylXT+r7C+fyoeeZNVHpfY=;
+	t=1763406832; bh=eM3T6CDxUM3haiwmx7F5ogn5oDynnEoL4DfS5RNHYqU=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=bzt+K3z/iCbZT5y2WMcWDVNp93G0iAunFTHHpfeaq0lo8aGc6TxynOQ/x0X27CDsM
-	 aKDAAvQR2Nf3Rgu3bgCxixCqAMtkdYEREnGNwYC/46Plv/YM9IN5bypPQSw1jNfxDQ
-	 EM7l4m0jFcQW0ErUjnY4IsApPWTUIebmCn9GtgQt+tDf591VTS4HOwKnop/LApWBZg
-	 tOlMj3j92PF9uH0B6vd2MT/404x90sKGTWDd2HOj5t7zFLBfE6C4kT8hvbz30dNpGL
-	 9UAJul1aj2qvtUGnD4jd7JHXJiF+6Qx6g4sdCHNW7sX1ORoNDmwt1CnWPFFZy3IQLg
-	 Hp4J2i6w2eIRA==
+	b=FI3970gQwHbpzPXV0LYvAr2pIeRc6vM45cqcTFp7yrsQUhtcOHfkGsFqVYHrwOOhw
+	 fYz52C5OwpFpS8KK7HgurM2qDjxRrNXOmv1t7Ucf7uRqEwO+itXTEXzgxI5GQFAvTd
+	 4qokNWI/L5dw/BvOg+M3IofgBqfn1T7+Kg/fRT+d136WYWJmxE1MF2YBcuP61gXs9u
+	 2S4Hr9bMczlsOoOqNqUWfjor9+X1YV3yzuevLVVcnDz8JdfuOizjY/n6zrt1WKrlsP
+	 ZFHDZTk/iTzPzmncJGWWnF8Hg2XnVEyYs8aZCic9C9hlvp4etNF9kEjOiyE/UgsiS3
+	 eG0Zxr65276VQ==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 48CD32E00DF; Mon, 17 Nov 2025 14:13:50 -0500 (EST)
+	id 3D4592E00DB; Mon, 17 Nov 2025 14:13:50 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Alexey Nepomnyashih <sdl@nppct.ru>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        lvc-project@linuxtesting.org, stable@vger.kernel.org
-Subject: Re: [PATCH RFC] ext4: add i_data_sem protection in ext4_destroy_inline_data_nolock()
-Date: Mon, 17 Nov 2025 14:13:36 -0500
-Message-ID: <176340680646.138575.18168327924359030421.b4-ty@mit.edu>
+To: adilger.kernel@dilger.ca, Deepanshu Kartikey <kartikey406@gmail.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        syzbot+f3185be57d7e8dda32b8@syzkaller.appspotmail.com,
+        stable@kernel.org
+Subject: Re: [PATCH v2] ext4: refresh inline data size before write operations
+Date: Mon, 17 Nov 2025 14:13:32 -0500
+Message-ID: <176340680640.138575.9087089832680529039.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20251104093326.697381-1-sdl@nppct.ru>
-References: <20251104093326.697381-1-sdl@nppct.ru>
+In-Reply-To: <20251020060936.474314-1-kartikey406@gmail.com>
+References: <20251020060936.474314-1-kartikey406@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -54,21 +55,23 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Tue, 04 Nov 2025 09:33:25 +0000, Alexey Nepomnyashih wrote:
-> Fix a race between inline data destruction and block mapping.
+On Mon, 20 Oct 2025 11:39:36 +0530, Deepanshu Kartikey wrote:
+> The cached ei->i_inline_size can become stale between the initial size
+> check and when ext4_update_inline_data()/ext4_create_inline_data() use
+> it. Although ext4_get_max_inline_size() reads the correct value at the
+> time of the check, concurrent xattr operations can modify i_inline_size
+> before ext4_write_lock_xattr() is acquired.
 > 
-> The function ext4_destroy_inline_data_nolock() changes the inode data
-> layout by clearing EXT4_INODE_INLINE_DATA and setting EXT4_INODE_EXTENTS.
-> At the same time, another thread may execute ext4_map_blocks(), which
-> tests EXT4_INODE_EXTENTS to decide whether to call ext4_ext_map_blocks()
-> or ext4_ind_map_blocks().
+> This causes ext4_update_inline_data() and ext4_create_inline_data() to
+> work with stale capacity values, leading to a BUG_ON() crash in
+> ext4_write_inline_data():
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: add i_data_sem protection in ext4_destroy_inline_data_nolock()
-      commit: 103ce01cd045197461d654f62f1a30cabedbcad4
+[1/1] ext4: refresh inline data size before write operations
+      commit: 892e1cf17555735e9d021ab036c36bc7b58b0e3b
 
 Best regards,
 -- 
