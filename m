@@ -1,119 +1,272 @@
-Received: from out30-118.freemail.mail.aliyun.com (out30-118.freemail.mail.aliyun.com [115.124.30.118])
+Received: from mailtransmit04.runbox.com (mailtransmit04.runbox.com [185.226.149.37])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EB3BC2D063E;
-	Wed, 19 Nov 2025 21:51:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.118
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 51ABF31CA4E;
+	Wed, 19 Nov 2025 22:42:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=185.226.149.37
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1763589076; cv=none; b=f1KdzgcmjlNd6CnAx5ahUOXxSYcCLSjsrVLcq9dnbneiHLa1ZJQJqS76tAuj1laB8Edn+0ZSD7R5H7h8523T6B4ROlz68WYeBuS9x7hbkYsJi3uPI76M4eA9XAfNN01lyHSpQcGQNvpGDiwWSZ4ysK0hFV/Ro0zUvp6vJenuedY=
+	t=1763592170; cv=none; b=p2pG0Z8PvnMUBQcMF/Uj8CNf0zgtpoN4FWwaAAl1UD3U9VE/o+yhbviyCH39xxCplQFrhu6Hx2A8s2oVecFdWCp0UFAoCzF7uGHg6S07aNHUumBArwH34NMBBYXilLHKCeryZBisYrdgtjAvlBEUaBanGQdQlWd7vP8frhfy5As=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1763589076; c=relaxed/simple;
-	bh=rjO8/EIU0uGA9VyCRUHGKIFo2Cfr0MckSaPfGU8kzbA=;
-	h=Message-ID:Date:MIME-Version:Subject:From:To:Cc:References:
-	 In-Reply-To:Content-Type; b=WFCLIFObOH1+oc6KSgHJL1yq91ZOsj/Bow/kKIpxfVIMB38sv9QwcvsJtBhaLsghx4GTCsUylK51TIIhbXRFfndMpjBFmbOhFUzeZoWT8pVgj/jsUmeOfZi6NdP0bbT78Ycl2s7yYBLEsu/9FYidi9jEvoZZtIXikYE3LkZrMl0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=yLOQQZvu; arc=none smtp.client-ip=115.124.30.118
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	s=arc-20240116; t=1763592170; c=relaxed/simple;
+	bh=UsSoZiy+1nMHZ0p5txeT4iFPKqhi6guap0+rcMJ/Rb4=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=En7CrFv5DeAMX3sUEoUuieqspfN+g5vrSA9e4jLFa48KkPu61OtPYV/Sny1H9Vn7xCFSiVij45qSQPY45CK650WRpjFGZ7DfA9smyshD7uy0j6GfvwBEWtuJbf2/tQ2hgLG0b/zxI/1swsYyo9r6tebBRGDpxJs1bVgBedZnr3c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=runbox.com; dkim=pass (2048-bit key) header.d=runbox.com header.i=@runbox.com header.b=zAjm3AIV; arc=none smtp.client-ip=185.226.149.37
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=runbox.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="yLOQQZvu"
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1763589069; h=Message-ID:Date:MIME-Version:Subject:From:To:Content-Type;
-	bh=a2ebXqu2wMZ+a9A6Ssx3+/b3Gpxusqda3SSXvC7SSQ8=;
-	b=yLOQQZvutSRbuB9Ucuc14XqT2mgHARH9ug/oJGPBc3n8xJVFZdd+Xis/eA/4gIitrYtanHgyVngLIGQ0yFZW3XJxlZAwgmTNn3grOWTitv2hQzHI9W7DKbVC9w8/K2/Jd+ZnQVMS17YjU427Xqru4ziFqiLC5WbhJTT7l9yYJLg=
-Received: from 30.170.82.147(mailfrom:hsiangkao@linux.alibaba.com fp:SMTPD_---0WsqMdLV_1763589067 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Thu, 20 Nov 2025 05:51:08 +0800
-Message-ID: <1be4cb25-50e2-46fa-ba86-d6342e997e63@linux.alibaba.com>
-Date: Thu, 20 Nov 2025 05:51:07 +0800
+	dkim=pass (2048-bit key) header.d=runbox.com header.i=@runbox.com header.b="zAjm3AIV"
+Received: from mailtransmit03.runbox ([10.9.9.163] helo=aibo.runbox.com)
+	by mailtransmit04.runbox.com with esmtps  (TLS1.2) tls TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+	(Exim 4.93)
+	(envelope-from <david.laight.linux_spam@runbox.com>)
+	id 1vLqst-006yqT-V1; Wed, 19 Nov 2025 23:42:43 +0100
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=runbox.com;
+	 s=selector1; h=Content-Transfer-Encoding:MIME-Version:References:In-Reply-To
+	:Message-Id:Date:Subject:Cc:To:From;
+	bh=vO7m5qP2A9vVNTA8gRtFqJvwI1Y/pavLSEelmj0I3GM=; b=zAjm3AIVhb5JXtwqa2DXJ3XcjP
+	NRHRr2fM2TOD1SDfChTuYTNW6Xw2SqIbJFjG/OWGO8y4iW7cKtluhdsFRF0JLpm9xJpD1t05rLP16
+	dYHKZ9/5NlKar3NX7NN3Aw/Xh902jfi6XdGEWcb+4BSjxJsOGIijJNy/xSHfTuqKkjY4NXgQjW1Mn
+	V8wzx3P8ulJpjvIyvLv1Stl/Lxb0T3Kf+FlOCeMbGvAUwZzaaXwkDel56c/Wl4Ggs1qtmHedINWr8
+	iXQVLFtPr6RKgEr19snAdxhuDWgV1SFWopndEL7GjrTCQQnEh5nzTPrSU5sxT4Xl4TxR/FE9bIVT1
+	r49qx26g==;
+Received: from [10.9.9.74] (helo=submission03.runbox)
+	by mailtransmit03.runbox with esmtp (Exim 4.86_2)
+	(envelope-from <david.laight.linux_spam@runbox.com>)
+	id 1vLqst-0000Ch-EE; Wed, 19 Nov 2025 23:42:43 +0100
+Received: by submission03.runbox with esmtpsa  [Authenticated ID (1493616)]  (TLS1.2:ECDHE_SECP256R1__RSA_PSS_RSAE_SHA256__AES_256_GCM:256)
+	(Exim 4.93)
+	id 1vLqsj-00Fos6-5A; Wed, 19 Nov 2025 23:42:33 +0100
+From: david.laight.linux@gmail.com
+To: linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Christian Brauner <brauner@kernel.org>,
+	Kees Cook <kees@kernel.org>,
+	Miklos Szeredi <miklos@szeredi.hu>,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	David Laight <david.laight.linux@gmail.com>
+Subject: [PATCH 30/44] fs: use min() or umin() instead of min_t()
+Date: Wed, 19 Nov 2025 22:41:26 +0000
+Message-Id: <20251119224140.8616-31-david.laight.linux@gmail.com>
+X-Mailer: git-send-email 2.39.5
+In-Reply-To: <20251119224140.8616-1-david.laight.linux@gmail.com>
+References: <20251119224140.8616-1-david.laight.linux@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCHSET v6 4/8] fuse: allow servers to use iomap for better
- file IO performance
-From: Gao Xiang <hsiangkao@linux.alibaba.com>
-To: "Darrick J. Wong" <djwong@kernel.org>,
- Demi Marie Obenour <demiobenour@gmail.com>
-Cc: bernd@bsbernd.com, joannelkoong@gmail.com, linux-ext4@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, miklos@szeredi.hu, neal@gompa.dev,
- linux-bcachefs@vger.kernel.org, linux-btrfs@vger.kernel.org,
- zfs-devel@list.zfsonlinux.org
-References: <176169810144.1424854.11439355400009006946.stgit@frogsfrogsfrogs>
- <d0a122b8-3b25-44e6-8c60-538c81b35228@gmail.com>
- <20251119180449.GS196358@frogsfrogsfrogs>
- <af9a8030-cd19-457c-8c15-cb63e8140dfc@linux.alibaba.com>
-In-Reply-To: <af9a8030-cd19-457c-8c15-cb63e8140dfc@linux.alibaba.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
 
+From: David Laight <david.laight.linux@gmail.com>
 
+min_t(unsigned int, a, b) casts an 'unsigned long' to 'unsigned int'.
+Use min(a, b) instead as it promotes any 'unsigned int' to 'unsigned long'
+and so cannot discard significant bits.
 
-On 2025/11/20 05:00, Gao Xiang wrote:
-> 
-> 
-> On 2025/11/20 02:04, Darrick J. Wong wrote:
->> On Wed, Nov 19, 2025 at 04:19:36AM -0500, Demi Marie Obenour wrote:
->>>> By keeping the I/O path mostly within the kernel, we can dramatically
->>>> increase the speed of disk-based filesystems.
->>>
->>> ZFS, BTRFS, and bcachefs all support compression, checksumming,
->>> and RAID.  ZFS and bcachefs also support encryption, and f2fs and
->>> ext4 support fscrypt.
->>>
->>> Will this patchset be able to improve FUSE implementations of these
->>> filesystems?  I'd rather not be in the situation where one can have
->>> a FUSE filesystem that is fast, but only if it doesn't support modern
->>> data integrity or security features.
->>
->> Not on its own, no.
->>
->>> I'm not a filesystem developer, but here are some ideas (that you
->>> can take or leave):
->>>
->>> 1. Keep the compression, checksumming, and/or encryption in-kernel,
->>>     and have userspace tell the kernel what algorithm and/or encryption
->>>     key to use.  These algorithms are generally well-known and secure
->>>     against malicious input.  It might be necessary to make an extra
->>>     data copy, but ideally that copy could just stay within the
->>>     CPU caches.
->>
->> I think this is easily doable for fscrypt and compression since (IIRC)
->> the kernel filesystems already know how to transform data for I/O, and
->> nowadays iomap allows hooking of bios before submission and/or after
->> endio.  Obviously you'd have to store encryption keys in the kernel
->> somewhere.
-> 
-> I think it depends, since (this way) it tries to reuse some of the
-> existing kernel filesystem implementations (and assuming the code is
-> safe), so at least it still needs to load a dedicated kernel module
-> for such usage at least.
-> 
-> I think it's not an issue for userspace ext4 of course (because ext4
-> and fscrypt is almost builtin for all kernels), but for out-of-tree
-> fses even pure userspace fses, I'm not sure it's doable to load the
-> module in a container context.
+A couple of places need umin() because of loops like:
+	nfolios = DIV_ROUND_UP(ret + start, PAGE_SIZE);
 
-Two examples for reference:
+	for (i = 0; i < nfolios; i++) {
+		struct folio *folio = page_folio(pages[i]);
+		...
+		unsigned int len = umin(ret, PAGE_SIZE - start);
+		...
+		ret -= len;
+		...
+	}
+where the compiler doesn't track things well enough to know that
+'ret' is never negative.
 
-  - For compression, in-tree f2fs already has a compression header
-    in data of each compressed extent:
-    https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/fs/f2fs/f2fs.h?h=v6.17#n1497
+The alternate loop:
+        for (i = 0; ret > 0; i++) {
+                struct folio *folio = page_folio(pages[i]);
+                ...
+                unsigned int len = min(ret, PAGE_SIZE - start);
+                ...
+                ret -= len;
+                ...
+        }
+would be equivalent and doesn't need 'nfolios'.
 
-    while other fs may store additional metadata in extent metadata
-    or other place.
+Most of the 'unsigned long' actually come from PAGE_SIZE.
 
-  - gocryptfs (a pure userspace FUSE fs) uses a different format
-    from fscrypt (encrypted data seems even unaligned on disk):
-    https://github.com/rfjakob/gocryptfs/blob/master/Documentation/file-format.md
+Detected by an extra check added to min_t().
 
-> 
-> Maybe eBPF is useful for this area, but it's still not quite
-> flexible compared to native kernel filesystems.
-> 
-> Thanks,
-> Gao Xiang
+Signed-off-by: David Laight <david.laight.linux@gmail.com>
+---
+ fs/buffer.c       | 2 +-
+ fs/exec.c         | 2 +-
+ fs/ext4/mballoc.c | 3 +--
+ fs/ext4/resize.c  | 2 +-
+ fs/ext4/super.c   | 2 +-
+ fs/fat/dir.c      | 4 ++--
+ fs/fat/file.c     | 3 +--
+ fs/fuse/dev.c     | 2 +-
+ fs/fuse/file.c    | 8 +++-----
+ fs/splice.c       | 2 +-
+ 10 files changed, 13 insertions(+), 17 deletions(-)
+
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 6a8752f7bbed..26c4c760b6c6 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2354,7 +2354,7 @@ bool block_is_partially_uptodate(struct folio *folio, size_t from, size_t count)
+ 	if (!head)
+ 		return false;
+ 	blocksize = head->b_size;
+-	to = min_t(unsigned, folio_size(folio) - from, count);
++	to = min(folio_size(folio) - from, count);
+ 	to = from + to;
+ 	if (from < blocksize && to > folio_size(folio) - blocksize)
+ 		return false;
+diff --git a/fs/exec.c b/fs/exec.c
+index 4298e7e08d5d..6d699e48df82 100644
+--- a/fs/exec.c
++++ b/fs/exec.c
+@@ -555,7 +555,7 @@ int copy_string_kernel(const char *arg, struct linux_binprm *bprm)
+ 		return -E2BIG;
+ 
+ 	while (len > 0) {
+-		unsigned int bytes_to_copy = min_t(unsigned int, len,
++		unsigned int bytes_to_copy = min(len,
+ 				min_not_zero(offset_in_page(pos), PAGE_SIZE));
+ 		struct page *page;
+ 
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 9087183602e4..cb68ea974de6 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4254,8 +4254,7 @@ void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
+ 		 * get the corresponding group metadata to work with.
+ 		 * For this we have goto again loop.
+ 		 */
+-		thisgrp_len = min_t(unsigned int, (unsigned int)len,
+-			EXT4_BLOCKS_PER_GROUP(sb) - EXT4_C2B(sbi, blkoff));
++		thisgrp_len = min(len, EXT4_BLOCKS_PER_GROUP(sb) - EXT4_C2B(sbi, blkoff));
+ 		clen = EXT4_NUM_B2C(sbi, thisgrp_len);
+ 
+ 		if (!ext4_sb_block_valid(sb, NULL, block, thisgrp_len)) {
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 050f26168d97..76842f0957b5 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -1479,7 +1479,7 @@ static void ext4_update_super(struct super_block *sb,
+ 
+ 	/* Update the global fs size fields */
+ 	sbi->s_groups_count += flex_gd->count;
+-	sbi->s_blockfile_groups = min_t(ext4_group_t, sbi->s_groups_count,
++	sbi->s_blockfile_groups = min(sbi->s_groups_count,
+ 			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
+ 
+ 	/* Update the reserved block counts only once the new group is
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 33e7c08c9529..e116fe48ff43 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4830,7 +4830,7 @@ static int ext4_check_geometry(struct super_block *sb,
+ 		return -EINVAL;
+ 	}
+ 	sbi->s_groups_count = blocks_count;
+-	sbi->s_blockfile_groups = min_t(ext4_group_t, sbi->s_groups_count,
++	sbi->s_blockfile_groups = min(sbi->s_groups_count,
+ 			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
+ 	if (((u64)sbi->s_groups_count * sbi->s_inodes_per_group) !=
+ 	    le32_to_cpu(es->s_inodes_count)) {
+diff --git a/fs/fat/dir.c b/fs/fat/dir.c
+index 92b091783966..8375e7fbc1a5 100644
+--- a/fs/fat/dir.c
++++ b/fs/fat/dir.c
+@@ -1353,7 +1353,7 @@ int fat_add_entries(struct inode *dir, void *slots, int nr_slots,
+ 
+ 		/* Fill the long name slots. */
+ 		for (i = 0; i < long_bhs; i++) {
+-			int copy = min_t(int, sb->s_blocksize - offset, size);
++			int copy = umin(sb->s_blocksize - offset, size);
+ 			memcpy(bhs[i]->b_data + offset, slots, copy);
+ 			mark_buffer_dirty_inode(bhs[i], dir);
+ 			offset = 0;
+@@ -1364,7 +1364,7 @@ int fat_add_entries(struct inode *dir, void *slots, int nr_slots,
+ 			err = fat_sync_bhs(bhs, long_bhs);
+ 		if (!err && i < nr_bhs) {
+ 			/* Fill the short name slot. */
+-			int copy = min_t(int, sb->s_blocksize - offset, size);
++			int copy = umin(sb->s_blocksize - offset, size);
+ 			memcpy(bhs[i]->b_data + offset, slots, copy);
+ 			mark_buffer_dirty_inode(bhs[i], dir);
+ 			if (IS_DIRSYNC(dir))
+diff --git a/fs/fat/file.c b/fs/fat/file.c
+index 4fc49a614fb8..f48435e586c7 100644
+--- a/fs/fat/file.c
++++ b/fs/fat/file.c
+@@ -140,8 +140,7 @@ static int fat_ioctl_fitrim(struct inode *inode, unsigned long arg)
+ 	if (copy_from_user(&range, user_range, sizeof(range)))
+ 		return -EFAULT;
+ 
+-	range.minlen = max_t(unsigned int, range.minlen,
+-			     bdev_discard_granularity(sb->s_bdev));
++	range.minlen = max(range.minlen, bdev_discard_granularity(sb->s_bdev));
+ 
+ 	err = fat_trim_fs(inode, &range);
+ 	if (err < 0)
+diff --git a/fs/fuse/dev.c b/fs/fuse/dev.c
+index 132f38619d70..0c9fb0db1de1 100644
+--- a/fs/fuse/dev.c
++++ b/fs/fuse/dev.c
+@@ -1813,7 +1813,7 @@ static int fuse_notify_store(struct fuse_conn *fc, unsigned int size,
+ 			goto out_iput;
+ 
+ 		folio_offset = ((index - folio->index) << PAGE_SHIFT) + offset;
+-		nr_bytes = min_t(unsigned, num, folio_size(folio) - folio_offset);
++		nr_bytes = min(num, folio_size(folio) - folio_offset);
+ 		nr_pages = (offset + nr_bytes + PAGE_SIZE - 1) >> PAGE_SHIFT;
+ 
+ 		err = fuse_copy_folio(cs, &folio, folio_offset, nr_bytes, 0);
+diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+index f1ef77a0be05..f4ffa559ad26 100644
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -1252,10 +1252,8 @@ static ssize_t fuse_fill_write_pages(struct fuse_io_args *ia,
+ static inline unsigned int fuse_wr_pages(loff_t pos, size_t len,
+ 				     unsigned int max_pages)
+ {
+-	return min_t(unsigned int,
+-		     ((pos + len - 1) >> PAGE_SHIFT) -
+-		     (pos >> PAGE_SHIFT) + 1,
+-		     max_pages);
++	return min(((pos + len - 1) >> PAGE_SHIFT) - (pos >> PAGE_SHIFT) + 1,
++		   max_pages);
+ }
+ 
+ static ssize_t fuse_perform_write(struct kiocb *iocb, struct iov_iter *ii)
+@@ -1550,7 +1548,7 @@ static int fuse_get_user_pages(struct fuse_args_pages *ap, struct iov_iter *ii,
+ 			struct folio *folio = page_folio(pages[i]);
+ 			unsigned int offset = start +
+ 				(folio_page_idx(folio, pages[i]) << PAGE_SHIFT);
+-			unsigned int len = min_t(unsigned int, ret, PAGE_SIZE - start);
++			unsigned int len = umin(ret, PAGE_SIZE - start);
+ 
+ 			ap->descs[ap->num_folios].offset = offset;
+ 			ap->descs[ap->num_folios].length = len;
+diff --git a/fs/splice.c b/fs/splice.c
+index f5094b6d00a0..41ce3a4ef74f 100644
+--- a/fs/splice.c
++++ b/fs/splice.c
+@@ -1467,7 +1467,7 @@ static ssize_t iter_to_pipe(struct iov_iter *from,
+ 
+ 		n = DIV_ROUND_UP(left + start, PAGE_SIZE);
+ 		for (i = 0; i < n; i++) {
+-			int size = min_t(int, left, PAGE_SIZE - start);
++			int size = umin(left, PAGE_SIZE - start);
+ 
+ 			buf.page = pages[i];
+ 			buf.offset = start;
+-- 
+2.39.5
 
