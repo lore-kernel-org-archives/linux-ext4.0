@@ -1,28 +1,28 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3D4DB2DF146;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AAF372727ED;
 	Fri, 21 Nov 2025 09:16:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1763716609; cv=none; b=BEccCUScZkDsDmpTjwzsLBhiZB45UWlfM8LQDtCjL1P7evnfpAtj9UXfNxSSC5ass52su5skqNcESRtUNBmD16vbSaMtUQevHkdi/FFTS2PP8xNKpIuRu7FxWVgvXP2omtNTuw8b/Bw2TZ/wRhbxaQC4zmhGaQco78ezRIbIBPU=
+	t=1763716610; cv=none; b=gv6yAHagZ0QlSgHDMe2ctT47JlAkYYQ7I0sXXmalYJ6emdwYFWTk91x4gI7tbZoQPzsNeVUvGQiaP5vIVNMvpuzeKlxVpoGfoJdhOG1Q+U/BKQ4MXj0GnMLkIFFEzPGw6MHRPzFsqW1ffFR7vvHgzqrSE7/BACxMRUxlnJ/UNkg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1763716609; c=relaxed/simple;
-	bh=nbLlr4pz10EzMDk4blvgn3Zk/K6kyFcZwM8fWlL40uw=;
+	s=arc-20240116; t=1763716610; c=relaxed/simple;
+	bh=iXC0/0xQeXYSMuZnKkDHPcsnq9rffMXGb7xGo5Rz7hE=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=F+ns7JhiN2jtaL6GxRZumM4i9cAU+Mesy9khbou2VE+lv1/peN4CXSQrJHBc5HnguiO7C6Qqe20y+okzoB+V9zgiKBwXw8nDMPJwXACGLfsqeyq4VUCoBhnel1xTzBZbXHw28J7HCfS4KfHwE6osSQsVXeFfobBrmemDv3zAIjI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=p9U3lgHwXxJvKPbCYibuoyepG7t670/q/nz4b6qDf246Z7Gkdy9ciir/WfE3JGl8rfKF9aWorJoA87I7fFyVxTzdgnMEMsw4OD+B2CqHYNDGd37LRtyTL4WPouP6TdfisPr5YgxCvrPSga0bXvoB+GNj71Zalzm5dbkmg+S2lNQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4dCV276tQdzYQvGn;
-	Fri, 21 Nov 2025 17:15:59 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dCV2N0tF9zKHMvH;
+	Fri, 21 Nov 2025 17:16:12 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 3A8251A084B;
+	by mail.maildlp.com (Postfix) with ESMTP id 1666B1A195F;
 	Fri, 21 Nov 2025 17:16:43 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.129])
-	by APP2 (Coremail) with SMTP id Syh0CgBHpXv4LSBpaLMDBg--.2072S12;
-	Fri, 21 Nov 2025 17:16:43 +0800 (CST)
+	by APP2 (Coremail) with SMTP id Syh0CgBHpXv4LSBpaLMDBg--.2072S10;
+	Fri, 21 Nov 2025 17:16:42 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -39,9 +39,9 @@ Cc: tytso@mit.edu,
 	libaokun1@huawei.com,
 	libaokun@huaweicloud.com,
 	Pankaj Raghav <p.raghav@samsung.com>
-Subject: [PATCH v4 08/24] ext4: support large block size in ext4_readdir()
-Date: Fri, 21 Nov 2025 17:06:38 +0800
-Message-Id: <20251121090654.631996-9-libaokun@huaweicloud.com>
+Subject: [PATCH v4 06/24] ext4: introduce s_min_folio_order for future BS > PS support
+Date: Fri, 21 Nov 2025 17:06:36 +0800
+Message-Id: <20251121090654.631996-7-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20251121090654.631996-1-libaokun@huaweicloud.com>
 References: <20251121090654.631996-1-libaokun@huaweicloud.com>
@@ -52,11 +52,11 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgBHpXv4LSBpaLMDBg--.2072S12
-X-Coremail-Antispam: 1UD129KBjvJXoW7KF15KF1fWw1rZry8CrWktFb_yoW8Gw1rpa
-	9Ig3WvkFy09r40939rtFy7ZFWY9a97GFWUWrWYy345W3s3X3sakr9xtF1jvF1DW3yxAa4f
-	ZF12kFy3GF15J3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUQa14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+X-CM-TRANSID:Syh0CgBHpXv4LSBpaLMDBg--.2072S10
+X-Coremail-Antispam: 1UD129KBjvJXoWxJrWfJFyxtr4xKFyrCw13CFg_yoW8Kw45pF
+	nxCFyfGFW8Zry8uFs2gFsrX34rKay8KayUXrWav3W5urWaq3409r1DtF15AFWYqrW8XFWS
+	qF1UKry7Cr13CrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUQ214x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
 	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
@@ -67,51 +67,84 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7KF15KF1fWw1rZry8CrWktFb_yoW8Gw1rpa
 	xan2IY04v7M4kE6xkIj40Ew7xC0wCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxG
 	rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
 	vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IY
-	x2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
-	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x02
-	67AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUdsqAUUUUU=
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQATBWkf35kfFAAAss
+	x2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8V
+	AvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E
+	14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjfUo0PSUUUUU
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQATBWkf35kfEgAAsq
 
 From: Baokun Li <libaokun1@huawei.com>
 
-In ext4_readdir(), page_cache_sync_readahead() is used to readahead mapped
-physical blocks. With LBS support, this can lead to a negative right shift.
-
-To fix this, the page index is now calculated by first converting the
-physical block number (pblk) to a file position (pos) before converting
-it to a page index. Also, the correct number of pages to readahead is now
-passed.
+This commit introduces the s_min_folio_order field to the ext4_sb_info
+structure. This field will store the minimum folio order required by the
+current filesystem, laying groundwork for future support of block sizes
+greater than PAGE_SIZE.
 
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Pankaj Raghav <p.raghav@samsung.com>
 ---
- fs/ext4/dir.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ fs/ext4/ext4.h  |  3 +++
+ fs/ext4/inode.c |  3 ++-
+ fs/ext4/super.c | 10 +++++-----
+ 3 files changed, 10 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index d4164c507a90..256fe2c1d4c1 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -192,13 +192,13 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
- 			continue;
- 		}
- 		if (err > 0) {
--			pgoff_t index = map.m_pblk >>
--					(PAGE_SHIFT - inode->i_blkbits);
-+			pgoff_t index = map.m_pblk << inode->i_blkbits >>
-+					PAGE_SHIFT;
- 			if (!ra_has_index(&file->f_ra, index))
- 				page_cache_sync_readahead(
- 					sb->s_bdev->bd_mapping,
--					&file->f_ra, file,
--					index, 1);
-+					&file->f_ra, file, index,
-+					1 << EXT4_SB(sb)->s_min_folio_order);
- 			file->f_ra.prev_pos = (loff_t)index << PAGE_SHIFT;
- 			bh = ext4_bread(NULL, inode, map.m_lblk, 0);
- 			if (IS_ERR(bh)) {
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 3d18e6bf43cf..6fe8cc3bf9a5 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1688,6 +1688,9 @@ struct ext4_sb_info {
+ 	/* record the last minlen when FITRIM is called. */
+ 	unsigned long s_last_trim_minblks;
+ 
++	/* minimum folio order of a page cache allocation */
++	unsigned int s_min_folio_order;
++
+ 	/* Precomputed FS UUID checksum for seeding other checksums */
+ 	__u32 s_csum_seed;
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index d11df0f4c546..e8da685ede49 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5181,7 +5181,8 @@ void ext4_set_inode_mapping_order(struct inode *inode)
+ 	if (!ext4_should_enable_large_folio(inode))
+ 		return;
+ 
+-	mapping_set_folio_order_range(inode->i_mapping, 0,
++	mapping_set_folio_order_range(inode->i_mapping,
++				      EXT4_SB(inode->i_sb)->s_min_folio_order,
+ 				      EXT4_MAX_PAGECACHE_ORDER(inode));
+ }
+ 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index f39679892e71..2286cd1e3cb8 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -5109,11 +5109,8 @@ static int ext4_load_super(struct super_block *sb, ext4_fsblk_t *lsb,
+ 	 * If the default block size is not the same as the real block size,
+ 	 * we need to reload it.
+ 	 */
+-	if (sb->s_blocksize == blocksize) {
+-		*lsb = logical_sb_block;
+-		sbi->s_sbh = bh;
+-		return 0;
+-	}
++	if (sb->s_blocksize == blocksize)
++		goto success;
+ 
+ 	/*
+ 	 * bh must be released before kill_bdev(), otherwise
+@@ -5144,6 +5141,9 @@ static int ext4_load_super(struct super_block *sb, ext4_fsblk_t *lsb,
+ 		ext4_msg(sb, KERN_ERR, "Magic mismatch, very weird!");
+ 		goto out;
+ 	}
++
++success:
++	sbi->s_min_folio_order = get_order(blocksize);
+ 	*lsb = logical_sb_block;
+ 	sbi->s_sbh = bh;
+ 	return 0;
 -- 
 2.46.1
 
