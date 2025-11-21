@@ -1,146 +1,93 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-vs1-f51.google.com (mail-vs1-f51.google.com [209.85.217.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6F27D303CA1;
-	Fri, 21 Nov 2025 09:16:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98ABE347BC7
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2025 10:07:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.217.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1763716623; cv=none; b=urenZVuMNh3jo/TICX7hV/UpdQjyf9+/EdkBnOzDswh+WNIHUnaCp4++rAfFoh++xdACVq11n0udY1X4DRkSbXhse7QNS1rA9VZBxwzNJf23OlXoIn0MmiA99V0rjhBN8j7lBaTqfNMQyJjp3ir2h+kpT8HJdYNDkQUsj2WcP40=
+	t=1763719666; cv=none; b=RWfrQ75HN0HaQnKhYv3ybcWt5dbDiC1QadHwV0WrXuLvCPRaz4ha7W0MZkp177yze9jthIbDYJ76is1XcyaLGiM8KgO/W44TS5WtFYgpVeoREq+9Log0OqINAItZdMJ0fAbvE9DezYeN0WYYZq7owkCCbNuAewLt80+2Xs+SZjU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1763716623; c=relaxed/simple;
-	bh=aF+DbgPYapqeQ+9Sv3+u8mH464IRHeCbCP54ohxIjj0=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=AWhp7PiELtNVHiwQR1LJUUmEmsUAKhu/vws0DvdOiocqul64digC/yA9FWgflOJJYDU8bu8dW7G15sSI9kS2Cx3NefKSjvVlVkXNq7sdow5HsUqeCQOT6Om7MJWrI7jqjOBp+mgLV45lV6ojlQV2uq54/8KT0MUeNLsIt0mJg6o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dCV2P2X08zKHMwX;
-	Fri, 21 Nov 2025 17:16:13 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 4F5921A0FC0;
-	Fri, 21 Nov 2025 17:16:44 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.50.87.129])
-	by APP2 (Coremail) with SMTP id Syh0CgBHpXv4LSBpaLMDBg--.2072S28;
-	Fri, 21 Nov 2025 17:16:44 +0800 (CST)
-From: libaokun@huaweicloud.com
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	jack@suse.cz,
-	linux-kernel@vger.kernel.org,
-	kernel@pankajraghav.com,
-	mcgrof@kernel.org,
-	ebiggers@kernel.org,
-	willy@infradead.org,
-	yi.zhang@huawei.com,
-	yangerkun@huawei.com,
-	chengzhihao1@huawei.com,
-	libaokun1@huawei.com,
-	libaokun@huaweicloud.com,
-	Pankaj Raghav <p.raghav@samsung.com>
-Subject: [PATCH v4 24/24] ext4: enable block size larger than page size
-Date: Fri, 21 Nov 2025 17:06:54 +0800
-Message-Id: <20251121090654.631996-25-libaokun@huaweicloud.com>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20251121090654.631996-1-libaokun@huaweicloud.com>
-References: <20251121090654.631996-1-libaokun@huaweicloud.com>
+	s=arc-20240116; t=1763719666; c=relaxed/simple;
+	bh=V9KhnxJVeDaCZq6zHSpU3qk83+Nk3B97c2ewV4vRfXA=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=rutwOVkTepm4/hDv06EE1+uEn9wYp85fNnjfh8FCVsTPTqcTEX7CIhk77apn3VwLAKoDCqB0eNuUqUXhwwrqVTz7gD+3QA9oEiPgv9VQHsFZVbXRG9vViZt+vZKV7VofCl6lXk0eK5J32V1myBxizBOZzG4Ic+YNhmPogcJoPiU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=linux-m68k.org; spf=pass smtp.mailfrom=gmail.com; arc=none smtp.client-ip=209.85.217.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=linux-m68k.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Received: by mail-vs1-f51.google.com with SMTP id ada2fe7eead31-5d758dba570so844146137.2
+        for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2025 02:07:44 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1763719663; x=1764324463;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=/ZbBe/ThurAADsMV6qfsbx/lHsHAAhMbty9lujcUMQ0=;
+        b=ejAqJ07aZ+vPzDhpJKtZ1wKRB6dTeMfJeVtkIcz4yCfGwnIHtH7T38sXeEl11U11Sd
+         +cfmdzktxMxv8IdLIj76xCvibP/iN5/qBVLB/pRK/MbySZBakODXaS5Z9oWVK+hPEj84
+         TnE+2ft2CuFULpcMrg7B60NczJlzm/uQCDmhJOLz3t02d8xnlsPs1BlzurWvSz0SkTHF
+         vVjkhN5zgop5k3JJZfFy/8HTGTm+rej+w/9xAy51FO4oRKmATScBr958UGkWkZ5b8KQE
+         a3MaLaWYiJ8fYRE0aRqT75PyxWmRuvyEWpz7jGhoxHDdvZYeLkE7N9J1c/ch4rnvfK+f
+         snYg==
+X-Forwarded-Encrypted: i=1; AJvYcCVWZ7bk8C/vxzSPaAugwCp5odSdNl8fiQkX7v85d9T7Kr95siTS4hXUoJwwFTfYEZGqRvoIrta1zhvV@vger.kernel.org
+X-Gm-Message-State: AOJu0YygwiXa7NHX3Hhjkp0sJmIsgoXbgkkCafmX8R99oNqUw2hAR048
+	el7wI914IZahmh/IVxzcgivKqsB/a1+AgxaMitM0yIoL5YSEkREO/3pU/cEjn9ou
+X-Gm-Gg: ASbGncviV9MZCHAuokTTJf0CbiJQlhY5s7xt/JkfXLqgpAQzwSDpivA1cfu/ZRSjNMv
+	A3qEt/FjColK6d0Ih1j99KdSXdPrOjWZljoOnTdw1a0XYwo8V/ZcaDkPT2e2TQqpUdyS+S2QMEE
+	lxN9BAbDgMvioi9scn/v2bDi79htIGvmc/GUr5Lq0Z5GjQyh1yZGM4ENZL4bLzVoUdkS/r66Qth
+	w9lwdqkst7k+b7EnMsUveWC9TUcCQXpmMPTFriFPZ7Dn6aH5yDzfu/fuvfrHt7Sv/ijfMNwlkZL
+	QhrKgdK8ZIxj8OXkTpr33Jar7qGvhjvfkodXpi8so9UYFX8o50y2z/cK17zQzv/aXZj8Ay+ICGt
+	X5phXh4Ajyr0bXAf+nrUNTHCucM9lWEF+9/nstHXlZS7XujglMQCZnCv2yZDnHukTF+uHHb4TMC
+	fYw6eQXG4CUnpiYlOLCSE4h58jVgH3bOHC0XvMwK/YxCzPN7P3oVG3
+X-Google-Smtp-Source: AGHT+IH24N8QMPa1EbjccdrKdE/aYH48vn5TstC55Gnq7eJR0xajE5QnpJ/EoLx3M4ftyJsIvBtcRw==
+X-Received: by 2002:a05:6102:e0e:b0:5df:3b19:4125 with SMTP id ada2fe7eead31-5e1de2695femr330793137.26.1763719663205;
+        Fri, 21 Nov 2025 02:07:43 -0800 (PST)
+Received: from mail-vk1-f178.google.com (mail-vk1-f178.google.com. [209.85.221.178])
+        by smtp.gmail.com with ESMTPSA id a1e0cc1a2514c-93c56276527sm2054607241.8.2025.11.21.02.07.42
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Fri, 21 Nov 2025 02:07:42 -0800 (PST)
+Received: by mail-vk1-f178.google.com with SMTP id 71dfb90a1353d-559966a86caso499818e0c.2
+        for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2025 02:07:42 -0800 (PST)
+X-Forwarded-Encrypted: i=1; AJvYcCV2AKScIrWwFy2s9cUSZE7BSE6OomsLmHH+7VygilMCTgzi/AhXFmlKvVf03q59x4srlSQlHP/bDr5o@vger.kernel.org
+X-Received: by 2002:a05:6102:943:b0:5df:c4ec:6607 with SMTP id
+ ada2fe7eead31-5e1de26960bmr362818137.21.1763719662510; Fri, 21 Nov 2025
+ 02:07:42 -0800 (PST)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgBHpXv4LSBpaLMDBg--.2072S28
-X-Coremail-Antispam: 1UD129KBjvJXoWxAr4fAryUXrWUtF1DZFWUurg_yoW5WrWxp3
-	WrGFy8Ar15WFyUua9rWFsF9as3Gw1v9FyUXr90gw1UZFZrX34xKrn7tFy5XFyjqrZ3uFWf
-	XF1vyryayr43uaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUQa14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
-	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
-	IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Gr1j6F4UJwAm72CE4IkC6x0Yz7v_Jr0_
-	Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8c
-	xan2IY04v7M4kE6xkIj40Ew7xC0wCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxG
-	rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
-	vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IY
-	x2IY67AKxVW5JVW7JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
-	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x02
-	67AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUdsqAUUUUU=
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQATBWkf35kfHAAAsk
+References: <20251116130105.1988020-1-409411716@gms.tku.edu.tw>
+ <20251116193513.0f90712a@pumpkin> <20251120155816.GB13687@macsyma-3.local>
+In-Reply-To: <20251120155816.GB13687@macsyma-3.local>
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+Date: Fri, 21 Nov 2025 11:07:31 +0100
+X-Gmail-Original-Message-ID: <CAMuHMdWc-y_Ar4KzZE=HcNXvcO389ooinCL+6srLUtZfJT0OEw@mail.gmail.com>
+X-Gm-Features: AWmQ_bk6JAtRKD51fdcVACNo0YgHUUZbvZ51lJPGy4pP4nR0gbNUSZ4cblql9JQ
+Message-ID: <CAMuHMdWc-y_Ar4KzZE=HcNXvcO389ooinCL+6srLUtZfJT0OEw@mail.gmail.com>
+Subject: Re: [PATCH] ext4: improve str2hashbuf by processing 4-byte chunks
+To: Theodore Tso <tytso@mit.edu>
+Cc: David Laight <david.laight.linux@gmail.com>, Guan-Chun Wu <409411716@gms.tku.edu.tw>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, visitorckw@gmail.com
+Content-Type: text/plain; charset="UTF-8"
 
-From: Baokun Li <libaokun1@huawei.com>
+On Thu, 20 Nov 2025 at 17:11, Theodore Tso <tytso@mit.edu> wrote:
+> "char" is not always signed.  It can be signed or unsigned; the C
+> specification allows either.  In this particular case, scp is a
+> "signed char", not "char".
 
-Since block device (See commit 3c20917120ce ("block/bdev: enable large
-folio support for large logical block sizes")) and page cache (See commit
-ab95d23bab220ef8 ("filemap: allocate mapping_min_order folios in the page
-cache")) has the ability to have a minimum order when allocating folio,
-and ext4 has supported large folio in commit 7ac67301e82f ("ext4: enable
-large folio for regular file"), now add support for block_size > PAGE_SIZE
-in ext4.
+This is Linux, so commit 3bc753c06dd02a35 ("kbuild: treat char as
+always unsigned") in v6.2 and later applies to plain "char".
 
-set_blocksize() -> bdev_validate_blocksize() already validates the block
-size, so ext4_load_super() does not need to perform additional checks.
-Here we only need to add the FS_LBS bit to fs_flags.
+Gr{oetje,eeting}s,
 
-In addition, block sizes larger than the page size are currently supported
-only when CONFIG_TRANSPARENT_HUGEPAGE is enabled. To make this explicit,
-a blocksize_gt_pagesize entry has been added under /sys/fs/ext4/feature/,
-indicating whether bs > ps is supported. This allows mke2fs to check the
-interface and determine whether a warning should be issued when formatting
-a filesystem with block size larger than the page size.
+                        Geert
 
-Suggested-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Pankaj Raghav <p.raghav@samsung.com>
----
- fs/ext4/super.c | 3 ++-
- fs/ext4/sysfs.c | 6 ++++++
- 2 files changed, 8 insertions(+), 1 deletion(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3d03a6eb0ea0..87205660c5d0 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -7453,7 +7453,8 @@ static struct file_system_type ext4_fs_type = {
- 	.init_fs_context	= ext4_init_fs_context,
- 	.parameters		= ext4_param_specs,
- 	.kill_sb		= ext4_kill_sb,
--	.fs_flags		= FS_REQUIRES_DEV | FS_ALLOW_IDMAP | FS_MGTIME,
-+	.fs_flags		= FS_REQUIRES_DEV | FS_ALLOW_IDMAP | FS_MGTIME |
-+				  FS_LBS,
- };
- MODULE_ALIAS_FS("ext4");
- 
-diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index 987bd00f916a..0018e09b867e 100644
---- a/fs/ext4/sysfs.c
-+++ b/fs/ext4/sysfs.c
-@@ -332,6 +332,9 @@ EXT4_ATTR_FEATURE(fast_commit);
- #if IS_ENABLED(CONFIG_UNICODE) && defined(CONFIG_FS_ENCRYPTION)
- EXT4_ATTR_FEATURE(encrypted_casefold);
- #endif
-+#ifdef CONFIG_TRANSPARENT_HUGEPAGE
-+EXT4_ATTR_FEATURE(blocksize_gt_pagesize);
-+#endif
- 
- static struct attribute *ext4_feat_attrs[] = {
- 	ATTR_LIST(lazy_itable_init),
-@@ -351,6 +354,9 @@ static struct attribute *ext4_feat_attrs[] = {
- 	ATTR_LIST(fast_commit),
- #if IS_ENABLED(CONFIG_UNICODE) && defined(CONFIG_FS_ENCRYPTION)
- 	ATTR_LIST(encrypted_casefold),
-+#endif
-+#ifdef CONFIG_TRANSPARENT_HUGEPAGE
-+	ATTR_LIST(blocksize_gt_pagesize),
- #endif
- 	NULL,
- };
 -- 
-2.46.1
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
 
+In personal conversations with technical people, I call myself a hacker. But
+when I'm talking to journalists I just say "programmer" or something like that.
+                                -- Linus Torvalds
