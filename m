@@ -1,27 +1,27 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8EC872FFDED;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6F7432FF670;
 	Fri, 21 Nov 2025 06:10:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1763705436; cv=none; b=RAYi6wm5e4ha3N5wKyUsJ/2aQ7RkHCY9eZ6K9TP8CrX0wgfQke5uaLVLVHUpo+2oSb/KxjRuK4sHiH+BNJNJTa0PFVxzLqFlkYhJau09P/ZQnwkFQR6AQo8n/9FpSF1wi6u1QE4JYlzmbZ1I0IYjZEFWQpKhOagPIQ6R6HePr4M=
+	t=1763705436; cv=none; b=FQjdEjcQ57CMMvPS0LedW2srj5E/Z/hSKd524kvhvU1fzYYo0yOz3vwZS2QnTLGEM78e7sGN2HrAm0KLj2Dw3KOUjwCNMpf80lKZBxFc05jh8CfhU7F5yTuXzdy/OmVa8EJpz2otwZdW7gnQewk4kuWWpWTTi9/m614JDEGd0jg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1763705436; c=relaxed/simple;
-	bh=OZJLwBCrIAEq12lU7vFFrCObmgIi+k8a2wBnBYgJdM8=;
+	bh=tfElMXijn9LujEgOHitaRMBO3gvCAdVQNYKSPpQ6oT8=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=VerV0Qn4C3gjjLheaI+TzyuOXDkZDg5E96iLhEGv9cRBlkrFbssWS45LUv3/mstTWjPIAN5wkeUOLK1xRv0KtG4cxnQm0jZ6gDdz/NdnPG8hx9Lb8xb/IluxKFWeoRrrhZgnDBY8eDFyzghD23WaWZrj6cdme/O/e/ZRZdCvU2Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=lAFoWZl8X5RoReTlnBrotGpuZPiCqW/rj4dQWsytKKsq8QoluZ2CJqg7GA4WLx6ZxbqUf9bALK0PW7vRIY99jf+NmKzFi3qt03SxDVOnE3pcKyZHbZ/yycew5nWMeN8jqeeih3sfZe+Lu1T1cNACNppt9JLD6wxjHg9pE4+P78I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dCPvS2sF8zKHMgB;
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dCPvS0cLVzKHLy4;
 	Fri, 21 Nov 2025 14:09:56 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 2A1921A0EE7;
-	Fri, 21 Nov 2025 14:10:27 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id D5CDB1A1A35;
+	Fri, 21 Nov 2025 14:10:26 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP2 (Coremail) with SMTP id Syh0CgD3VHtAAiBp_of0BQ--.63807S14;
+	by APP2 (Coremail) with SMTP id Syh0CgD3VHtAAiBp_of0BQ--.63807S11;
 	Fri, 21 Nov 2025 14:10:26 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
@@ -35,9 +35,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yizhang089@gmail.com,
 	libaokun1@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH v2 10/13] ext4: make ext4_es_cache_extent() support overwrite existing extents
-Date: Fri, 21 Nov 2025 14:08:08 +0800
-Message-ID: <20251121060811.1685783-11-yi.zhang@huaweicloud.com>
+Subject: [PATCH v2 07/13] ext4: drop extent cache before splitting extent
+Date: Fri, 21 Nov 2025 14:08:05 +0800
+Message-ID: <20251121060811.1685783-8-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
 In-Reply-To: <20251121060811.1685783-1-yi.zhang@huaweicloud.com>
 References: <20251121060811.1685783-1-yi.zhang@huaweicloud.com>
@@ -48,11 +48,11 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgD3VHtAAiBp_of0BQ--.63807S14
-X-Coremail-Antispam: 1UD129KBjvJXoWxury7GFW3Ar15Kw18JF4Utwb_yoWrArykp3
-	9xCr15Jr18Xa4kKayfJa1UXr1rKw4rJrW7Jry3Kr1fCFy5JFyagF1jka4jvFyfWrW8Xr1Y
-	vF40kw1UWa1DC3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+X-CM-TRANSID:Syh0CgD3VHtAAiBp_of0BQ--.63807S11
+X-Coremail-Antispam: 1UD129KBjvJXoW7Ww4fur4xKFyDCrW7Wr15urg_yoW8Kr17pa
+	s2kF1DGr4kA34vg34fG3WDKr1kuw1kGrW7ArW5Gw1jv3WDGryakrn7GayUZFySgFW8ZF15
+	Zr48ta45Ga4DJFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
 	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
@@ -62,116 +62,81 @@ X-Coremail-Antispam: 1UD129KBjvJXoWxury7GFW3Ar15Kw18JF4Utwb_yoWrArykp3
 	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
 	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
 	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
-	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI
-	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
-	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
-	daVFxhVjvjDU0xZFpf9x0JUQFxUUUUUU=
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
+	CI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnI
+	WIevJa73UjIFyTuYvjfUOyIUUUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Currently, ext4_es_cache_extent() is used to load extents into the
-extent status tree when reading on-disk extent blocks. But it inserts
-information into the extent status tree if and only if there isn't
-information about the specified range already. So it only used for the
-initial loading and does not support overwrit extents.
+When splitting an unwritten extent in the middle and converting it to
+initialized in ext4_split_extent() with the EXT4_EXT_MAY_ZEROOUT and
+EXT4_EXT_DATA_VALID2 flags set, it could leave a stale unwritten extent.
 
-However, there are many other places in ext4 where on-disk extents are
-inserted into the extent status tree, such as in ext4_map_query_blocks().
-Currently, they call ext4_es_insert_extent() to perform the insertion,
-but they don't modify the extents, so ext4_es_cache_extent() would be a
-more appropriate choice. However, when ext4_map_query_blocks() inserts
-an extent, it may overwrite a short existing extent of the same type.
-Therefore, to prepare for the replacements, we need to extend
-ext4_es_cache_extent() to allow it to overwrite existing extents with
-the same status. So it checks the found extents before removing and
-inserting. (There is one exception, a hole in the on-disk extent but a
-delayed extent in the extent status tree is allowed.)
+Assume we have an unwritten file and buffered write in the middle of it
+without dioread_nolock enabled, it will allocate blocks as written
+extent.
 
-In addition, since cached extents can be more lenient than the extents
-they modify and do not involve modifying reserved blocks, it is not
-necessary to ensure that the insertion operation succeeds as strictly as
-in the ext4_es_insert_extent() function.
+       0  A      B  N
+       [UUUUUUUUUUUU] on-disk extent      U: unwritten extent
+       [UUUUUUUUUUUU] extent status tree
+       [--DDDDDDDD--]                     D: valid data
+          |<-  ->| ----> this range needs to be initialized
+
+ext4_split_extent() first try to split this extent at B with
+EXT4_EXT_DATA_PARTIAL_VALID1 and EXT4_EXT_MAY_ZEROOUT flag set, but
+ext4_split_extent_at() failed to split this extent due to temporary lack
+of space. It zeroout B to N and leave the entire extent as unwritten.
+
+       0  A      B  N
+       [UUUUUUUUUUUU] on-disk extent
+       [UUUUUUUUUUUU] extent status tree
+       [--DDDDDDDDZZ]                     Z: zeroed data
+
+ext4_split_extent() then try to split this extent at A with
+EXT4_EXT_DATA_VALID2 flag set. This time, it split successfully and
+leave
+an written extent from A to N.
+
+       0  A      B   N
+       [UU|WWWWWWWWWW] on-disk extent     W: written extent
+       [UU|UUUUUUUUUU] extent status tree
+       [--|DDDDDDDDZZ]
+
+Finally ext4_map_create_blocks() only insert extent A to B to the extent
+status tree, and leave an stale unwritten extent in the status tree.
+
+       0  A      B   N
+       [UU|WWWWWWWWWW] on-disk extent     W: written extent
+       [UU|WWWWWWWWUU] extent status tree
+       [--|DDDDDDDDZZ]
+
+Fix this issue by always remove cached extent status entry before
+splitting extent.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/extents_status.c | 47 ++++++++++++++++++++++++++++++++++------
- 1 file changed, 40 insertions(+), 7 deletions(-)
+ fs/ext4/extents.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 818007bb613f..2643d7a31e7b 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -1014,17 +1014,23 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- }
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 2b5aec3f8882..9bb80af4b5cf 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3367,6 +3367,12 @@ static struct ext4_ext_path *ext4_split_extent(handle_t *handle,
+ 	ee_len = ext4_ext_get_actual_len(ex);
+ 	unwritten = ext4_ext_is_unwritten(ex);
  
- /*
-- * ext4_es_cache_extent() inserts information into the extent status
-- * tree if and only if there isn't information about the range in
-- * question already.
-+ * ext4_es_cache_extent() inserts information into the extent status tree
-+ * only if there is no existing information about the specified range or
-+ * if the existing extents have the same status.
-+ *
-+ * Note that this interface is only used for caching on-disk extent
-+ * information and cannot be used to convert existing extents in the extent
-+ * status tree. To convert existing extents, use ext4_es_insert_extent()
-+ * instead.
-  */
- void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
- 			  ext4_lblk_t len, ext4_fsblk_t pblk,
- 			  unsigned int status)
- {
- 	struct extent_status *es;
--	struct extent_status newes;
-+	struct extent_status chkes, newes;
- 	ext4_lblk_t end = lblk + len - 1;
-+	bool conflict = false;
- 
- 	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
- 		return;
-@@ -1040,11 +1046,38 @@ void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
- 	BUG_ON(end < lblk);
- 
- 	write_lock(&EXT4_I(inode)->i_es_lock);
--
- 	es = __es_tree_search(&EXT4_I(inode)->i_es_tree.root, lblk);
--	if (!es || es->es_lblk > end)
--		__es_insert_extent(inode, &newes, NULL);
-+	if (es && es->es_lblk <= end) {
-+		/* Found an extent that covers the entire range. */
-+		if (es->es_lblk <= lblk && es->es_lblk + es->es_len > end) {
-+			if (__es_check_extent_status(es, status, &chkes))
-+				conflict = true;
-+			goto unlock;
-+		}
-+		/* Check and remove all extents in range. */
-+		if (__es_remove_extent(inode, lblk, end, status, NULL,
-+				       &chkes, NULL)) {
-+			conflict = true;
-+			goto unlock;
-+		}
-+	}
-+	__es_insert_extent(inode, &newes, NULL);
-+unlock:
- 	write_unlock(&EXT4_I(inode)->i_es_lock);
-+	if (!conflict)
-+		return;
 +	/*
-+	 * A hole in the on-disk extent but a delayed extent in the extent
-+	 * status tree, is allowed.
++	 * Drop extent cache to prevent stale unwritten extents remaining
++	 * after zeroing out.
 +	 */
-+	if (status == EXTENT_STATUS_HOLE &&
-+	    ext4_es_type(&chkes) == EXTENT_STATUS_DELAYED)
-+		return;
++	ext4_es_remove_extent(inode, ee_block, ee_len);
 +
-+	ext4_warning_inode(inode,
-+			   "ES cache extent failed: add [%d,%d,%llu,0x%x] conflict with existing [%d,%d,%llu,0x%x]\n",
-+			   lblk, len, pblk, status, chkes.es_lblk, chkes.es_len,
-+			   ext4_es_pblock(&chkes), ext4_es_status(&chkes));
- }
+ 	/* Do not cache extents that are in the process of being modified. */
+ 	flags |= EXT4_EX_NOCACHE;
  
- /*
 -- 
 2.46.1
 
