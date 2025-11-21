@@ -1,27 +1,27 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DCA092DCF45;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 599A72E1C6F;
 	Fri, 21 Nov 2025 06:10:28 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1763705431; cv=none; b=IMcOiDxMX7V8zFc11+erjZXMeDAY2rPK7vPDhArxzHZ8CHqXPHilOugilRMxIlyiIV9rRy0J1q+Y3nU3O+LEJG20zg8qGmXE+UE69HdilaA8gjpDAGOoLy4aEueU/WP3/9ULvTH3yYKdOXFIVaqguKnRuBOoVEuS1AwIxLbG/aY=
+	t=1763705431; cv=none; b=IZos1j4jfDnOZVmKrbbWU+a2PClv2lfbnescj2jVbtjE3hOzGl7hoXNS+lLSjyZSgx4rkgCN084lF8i/4VIxs89NqRFpNXfxZh2dWP88JiAh1/7myXwpo0c0AxIiQ5kX8cChfExk9WzqKj2HvKOTXhTaNlbqbNOgXGaziT8ghDQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1763705431; c=relaxed/simple;
-	bh=6+dhuf7c1QK4jBUCFsaFi9oHujThwiLX8HCoz3KISTo=;
+	bh=+lzYgEZSn1+GQtREZCXiiSon7j+Jz5t9UWVUhwwF2aI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=gDZ+9LqUHDAMtgH7OzTT0Jd3tFtje8mR8hwDMvL34/n78a4VflIuAoisfPJlV0irVzBgMW7CdbFDOaN7xc/TDwAKVMXll1zYzX9srrEEAEwLtewWs3Hudx5gSmsNuG3dwLsCqsVaq2ibu3GWBcLxF/XA8IRAlKZn8oOvylA/TLQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=czPQADLlDLG+5BAVL3H7UCZ9qPMsbB40NqEKVb5TCqh5+TAWsjPcrDDl3JL8Hgx2Hnu6HcqCuL4dCdF8Bsg1dBkFq4zCF0xdD/y7E1bI9xwJDWvNZzd2WDA4quswkyfXGlyk6HRBGzXvarqh57g21BYkPLyiz43P+Ugt9P/MfHg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dCPvS056gzKHLy4;
-	Fri, 21 Nov 2025 14:09:56 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4dCPvC6cFKzYQv4J;
+	Fri, 21 Nov 2025 14:09:43 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id BFCE01A018D;
+	by mail.maildlp.com (Postfix) with ESMTP id F0EDA1A0359;
 	Fri, 21 Nov 2025 14:10:26 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP2 (Coremail) with SMTP id Syh0CgD3VHtAAiBp_of0BQ--.63807S10;
+	by APP2 (Coremail) with SMTP id Syh0CgD3VHtAAiBp_of0BQ--.63807S12;
 	Fri, 21 Nov 2025 14:10:26 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
@@ -35,9 +35,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yizhang089@gmail.com,
 	libaokun1@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH v2 06/13] ext4: don't cache extent during splitting extent
-Date: Fri, 21 Nov 2025 14:08:04 +0800
-Message-ID: <20251121060811.1685783-7-yi.zhang@huaweicloud.com>
+Subject: [PATCH v2 08/13] ext4: cleanup useless out tag in __es_remove_extent()
+Date: Fri, 21 Nov 2025 14:08:06 +0800
+Message-ID: <20251121060811.1685783-9-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
 In-Reply-To: <20251121060811.1685783-1-yi.zhang@huaweicloud.com>
 References: <20251121060811.1685783-1-yi.zhang@huaweicloud.com>
@@ -48,10 +48,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgD3VHtAAiBp_of0BQ--.63807S10
-X-Coremail-Antispam: 1UD129KBjvJXoWxAw17tF17tr1xKrW7Ww4fAFb_yoW5XF1rpr
-	ZakF1UGr4kC34vka4xCF4kG3409w4kJrW7Ar93Gw1Y9ayUJFySgF1xt3WYvFyrWr48Za45
-	Zr48K3WUCa4DAFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:Syh0CgD3VHtAAiBp_of0BQ--.63807S12
+X-Coremail-Antispam: 1UD129KBjvJXoW7uFWDuFWfGrWkGryfJFyxZrb_yoW8Cr13pw
+	4rZ34DWryrZw10g397tw1Durya9a40krWUWryftw1fuFy5XryFgF10ya1YvFyFqFW0gw4j
+	qF40yw1jkay7tFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUmI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -70,67 +70,72 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Caching extents during the splitting process is risky, as it may result
-in stale extents remaining in the status tree. Moreover, in most cases,
-the corresponding extent block entries are likely already cached before
-the split happens, making caching here not particularly useful.
-
-Assume we have an unwritten extent, and then DIO writes the first half.
-
-  [UUUUUUUUUUUUUUUU] on-disk extent        U: unwritten extent
-  [UUUUUUUUUUUUUUUU] extent status tree
-  |<-   ->| ----> dio write this range
-
-First, when ext4_split_extent_at() splits this extent, it truncates the
-existing extent and then inserts a new one. During this process, this
-extent status entry may be shrunk, and calls to ext4_find_extent() and
-ext4_cache_extents() may occur, which could potentially insert the
-truncated range as a hole into the extent status tree. After the split
-is completed, this hole is not replaced with the correct status.
-
-  [UUUUUUU|UUUUUUUU] on-disk extent        U: unwritten extent
-  [UUUUUUU|HHHHHHHH] extent status tree    H: hole
-
-Then, the outer calling functions will not correct this remaining hole
-extent either. Finally, if we perform a delayed buffer write on this
-latter part, it will re-insert the delayed extent and cause an error in
-space accounting.
-
-In adition, if the unwritten extent cache is not shrunk during the
-splitting, ext4_cache_extents() also conflicts with existing extents
-when caching extents. In the future, we will add checks when caching
-extents, which will trigger a warning. Therefore, Do not cache extents
-that are being split.
+The out tag in __es_remove_extent() is just return err value, we can
+return it directly if something bad happens. Therefore, remove the
+useless out tag and rename out_get_reserved to out.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/extents.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+ fs/ext4/extents_status.c | 15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 19338f488550..2b5aec3f8882 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3199,6 +3199,9 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
- 	BUG_ON((split_flag & EXT4_EXT_DATA_VALID1) &&
- 	       (split_flag & EXT4_EXT_DATA_VALID2));
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index e04fbf10fe4f..04d56f8f6c0c 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -1434,7 +1434,7 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	struct extent_status orig_es;
+ 	ext4_lblk_t len1, len2;
+ 	ext4_fsblk_t block;
+-	int err = 0;
++	int err;
+ 	bool count_reserved = true;
+ 	struct rsvd_count rc;
  
-+	/* Do not cache extents that are in the process of being modified. */
-+	flags |= EXT4_EX_NOCACHE;
-+
- 	ext_debug(inode, "logical block %llu\n", (unsigned long long)split);
+@@ -1443,9 +1443,9 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
  
- 	ext4_ext_show_leaf(inode, path);
-@@ -3364,6 +3367,9 @@ static struct ext4_ext_path *ext4_split_extent(handle_t *handle,
- 	ee_len = ext4_ext_get_actual_len(ex);
- 	unwritten = ext4_ext_is_unwritten(ex);
+ 	es = __es_tree_search(&tree->root, lblk);
+ 	if (!es)
+-		goto out;
++		return 0;
+ 	if (es->es_lblk > end)
+-		goto out;
++		return 0;
  
-+	/* Do not cache extents that are in the process of being modified. */
-+	flags |= EXT4_EX_NOCACHE;
-+
- 	if (map->m_lblk + map->m_len < ee_block + ee_len) {
- 		split_flag1 = split_flag & EXT4_EXT_MAY_ZEROOUT;
- 		flags1 = flags | EXT4_GET_BLOCKS_PRE_IO;
+ 	/* Simply invalidate cache_es. */
+ 	tree->cache_es = NULL;
+@@ -1480,7 +1480,7 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 
+ 				es->es_lblk = orig_es.es_lblk;
+ 				es->es_len = orig_es.es_len;
+-				goto out;
++				return err;
+ 			}
+ 		} else {
+ 			es->es_lblk = end + 1;
+@@ -1494,7 +1494,7 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 		if (count_reserved)
+ 			count_rsvd(inode, orig_es.es_lblk + len1,
+ 				   orig_es.es_len - len1 - len2, &orig_es, &rc);
+-		goto out_get_reserved;
++		goto out;
+ 	}
+ 
+ 	if (len1 > 0) {
+@@ -1536,11 +1536,10 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 		}
+ 	}
+ 
+-out_get_reserved:
++out:
+ 	if (count_reserved)
+ 		*reserved = get_rsvd(inode, end, es, &rc);
+-out:
+-	return err;
++	return 0;
+ }
+ 
+ /*
 -- 
 2.46.1
 
