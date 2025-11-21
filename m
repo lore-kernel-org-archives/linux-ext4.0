@@ -1,27 +1,27 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C158633D6E8;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5263433ADB9;
 	Fri, 21 Nov 2025 09:16:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1763716617; cv=none; b=kyxbdw0s4pUBwi4XH+xnFwlQy9FK23Q9rotZXf3fmEUu+Zi8GHbD+SxMJEqq9F7JMP8+/dC7zhxsvLWaMs0aXW263y+jiwuQlmoAXGGF0MHqtFcLzqFgT2f5gPseB09FeZKsxIx59CraJaythLfsekH1niwxcygTsDdjDtbYd4I=
+	t=1763716615; cv=none; b=K/sY5iMIewHH2mfCtuTyeo6b7Glf5CRWhVFY0Iq4y7/VU7OGPh/rksW1/f7Mvkq9SMJV+DutlAxco5z2jzDtpwjnTGscdOEDlvsvZtaeUxqzXBv1ZNQd/MQhHvm+kRTy9digeMMQnP/Ya9mYIdsojhviVfK/Oi6giMHEaMkY+os=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1763716617; c=relaxed/simple;
-	bh=/XgSakDfjLXFQZ0fNtaKp9PDSIuKVtLaor6BRknOcXs=;
+	s=arc-20240116; t=1763716615; c=relaxed/simple;
+	bh=zru6h0tSducD5Q4JGP0Z7AO61CNXM4NKMumOKOKELBk=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=QtcAlPCzN9BXqZdxc1bYMlJxUWCECrbpNYwA4vgPl0cZhSnlLzeuMDdhacQOeVdEM6xWo8D2/HIkzxNTJyWgaQySk1NLAce5cASnzBkXFfRAYZU4rhWXClujrmqgodEaaAI7SYq/Q2Ok1D4v/sCwX3s278aMq7/g801sDYFKboo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=DyJ1mrnGLAeHDfc6lIjEw1tGW7tv67IeSRO9DM8LroAomBjeT1MLwXNxrblNCYvzS9q6N35QrPHTt0DrBjeMjy7DMLWGUqE6w0wo1/ZIxynAr/HbSTx3ORWPigC7E3gLXCvNa1aZx5+Dev+4J3ZqGkA19jo+wPVcJ3GZhSPxk3Q=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.235])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dCV2N4hnLzKHMvp;
-	Fri, 21 Nov 2025 17:16:12 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4dCV281dQxzYQvGw;
+	Fri, 21 Nov 2025 17:16:00 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 9BCD41A110B;
+	by mail.maildlp.com (Postfix) with ESMTP id 7C8671A0359;
 	Fri, 21 Nov 2025 17:16:43 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.129])
-	by APP2 (Coremail) with SMTP id Syh0CgBHpXv4LSBpaLMDBg--.2072S18;
+	by APP2 (Coremail) with SMTP id Syh0CgBHpXv4LSBpaLMDBg--.2072S16;
 	Fri, 21 Nov 2025 17:16:43 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
@@ -38,9 +38,9 @@ Cc: tytso@mit.edu,
 	chengzhihao1@huawei.com,
 	libaokun1@huawei.com,
 	libaokun@huaweicloud.com
-Subject: [PATCH v4 14/24] ext4: prepare buddy cache inode for BS > PS with large folios
-Date: Fri, 21 Nov 2025 17:06:44 +0800
-Message-Id: <20251121090654.631996-15-libaokun@huaweicloud.com>
+Subject: [PATCH v4 12/24] ext4: support large block size in ext4_mb_get_buddy_page_lock()
+Date: Fri, 21 Nov 2025 17:06:42 +0800
+Message-Id: <20251121090654.631996-13-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20251121090654.631996-1-libaokun@huaweicloud.com>
 References: <20251121090654.631996-1-libaokun@huaweicloud.com>
@@ -51,10 +51,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgBHpXv4LSBpaLMDBg--.2072S18
-X-Coremail-Antispam: 1UD129KBjvJXoW7AFWxXFy3WF4kCw4DtrWxXrb_yoW8JFWfpa
-	17GF18Gr18Way5CF4xGFy8Xa4xKa1xWay7JrZ29w1jvF9rWFyFkFsrtry29FW8AFWfAayf
-	XF47uw13ur45GaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:Syh0CgBHpXv4LSBpaLMDBg--.2072S16
+X-Coremail-Antispam: 1UD129KBjvJXoWxJF13CF47GF4xuFyDGF1rWFg_yoWrZF48pa
+	y7Cwn8Jr4kWasrursrZ3saq3WFkas5Zay7A3yIgr13uFy3J34IkFy0k3WUXF1UtFWxGFs5
+	XF45Zry3WF1UX3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUQa14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -69,39 +69,119 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7AFWxXFy3WF4kCw4DtrWxXrb_yoW8JFWfpa
 	x2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
 	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x02
 	67AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUdsqAUUUUU=
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQATBWkf35kfGAAAsg
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQATBWkf35kfFgAAsu
 
 From: Baokun Li <libaokun1@huawei.com>
 
-We use EXT4_BAD_INO for the buddy cache inode number. This inode is not
-accessed via __ext4_new_inode() or __ext4_iget(), meaning
-ext4_set_inode_mapping_order() is not called to set its folio order range.
+Currently, ext4_mb_get_buddy_page_lock() uses blocks_per_page to calculate
+folio index and offset. However, when blocksize is larger than PAGE_SIZE,
+blocks_per_page becomes zero, leading to a potential division-by-zero bug.
 
-However, future block size greater than page size support requires this
-inode to support large folios, and the buddy cache code already handles
-BS > PS. Therefore, ext4_set_inode_mapping_order() is now explicitly
-called for this specific inode to set its folio order range.
+To support BS > PS, use bytes to compute folio index and offset within
+folio to get rid of blocks_per_page.
+
+Also, since ext4_mb_get_buddy_page_lock() already fully supports folio,
+rename it to ext4_mb_get_buddy_folio_lock().
 
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/mballoc.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/ext4/mballoc.c | 42 ++++++++++++++++++++++--------------------
+ 1 file changed, 22 insertions(+), 20 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 3f10c64ab2b1..102c6439eb11 100644
+index 143d6ff1fdef..b454a41dd6c1 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -3493,6 +3493,8 @@ static int ext4_mb_init_backend(struct super_block *sb)
- 	 * this will avoid confusion if it ever shows up during debugging. */
- 	sbi->s_buddy_cache->i_ino = EXT4_BAD_INO;
- 	EXT4_I(sbi->s_buddy_cache)->i_disksize = 0;
-+	ext4_set_inode_mapping_order(sbi->s_buddy_cache);
-+
- 	for (i = 0; i < ngroups; i++) {
- 		cond_resched();
- 		desc = ext4_get_group_desc(sb, i, NULL);
+@@ -1510,50 +1510,52 @@ static int ext4_mb_init_cache(struct folio *folio, char *incore, gfp_t gfp)
+ }
+ 
+ /*
+- * Lock the buddy and bitmap pages. This make sure other parallel init_group
+- * on the same buddy page doesn't happen whild holding the buddy page lock.
+- * Return locked buddy and bitmap pages on e4b struct. If buddy and bitmap
+- * are on the same page e4b->bd_buddy_folio is NULL and return value is 0.
++ * Lock the buddy and bitmap folios. This makes sure other parallel init_group
++ * on the same buddy folio doesn't happen while holding the buddy folio lock.
++ * Return locked buddy and bitmap folios on e4b struct. If buddy and bitmap
++ * are on the same folio e4b->bd_buddy_folio is NULL and return value is 0.
+  */
+-static int ext4_mb_get_buddy_page_lock(struct super_block *sb,
++static int ext4_mb_get_buddy_folio_lock(struct super_block *sb,
+ 		ext4_group_t group, struct ext4_buddy *e4b, gfp_t gfp)
+ {
+ 	struct inode *inode = EXT4_SB(sb)->s_buddy_cache;
+-	int block, pnum, poff;
+-	int blocks_per_page;
++	int block, pnum;
+ 	struct folio *folio;
+ 
+ 	e4b->bd_buddy_folio = NULL;
+ 	e4b->bd_bitmap_folio = NULL;
+ 
+-	blocks_per_page = PAGE_SIZE / sb->s_blocksize;
+ 	/*
+ 	 * the buddy cache inode stores the block bitmap
+ 	 * and buddy information in consecutive blocks.
+ 	 * So for each group we need two blocks.
+ 	 */
+ 	block = group * 2;
+-	pnum = block / blocks_per_page;
+-	poff = block % blocks_per_page;
++	pnum = EXT4_LBLK_TO_PG(inode, block);
+ 	folio = __filemap_get_folio(inode->i_mapping, pnum,
+ 			FGP_LOCK | FGP_ACCESSED | FGP_CREAT, gfp);
+ 	if (IS_ERR(folio))
+ 		return PTR_ERR(folio);
+ 	BUG_ON(folio->mapping != inode->i_mapping);
++	WARN_ON_ONCE(folio_size(folio) < sb->s_blocksize);
+ 	e4b->bd_bitmap_folio = folio;
+-	e4b->bd_bitmap = folio_address(folio) + (poff * sb->s_blocksize);
++	e4b->bd_bitmap = folio_address(folio) +
++			 offset_in_folio(folio, EXT4_LBLK_TO_B(inode, block));
+ 
+-	if (blocks_per_page >= 2) {
+-		/* buddy and bitmap are on the same page */
++	block++;
++	pnum = EXT4_LBLK_TO_PG(inode, block);
++	if (folio_contains(folio, pnum)) {
++		/* buddy and bitmap are on the same folio */
+ 		return 0;
+ 	}
+ 
+-	/* blocks_per_page == 1, hence we need another page for the buddy */
+-	folio = __filemap_get_folio(inode->i_mapping, block + 1,
++	/* we need another folio for the buddy */
++	folio = __filemap_get_folio(inode->i_mapping, pnum,
+ 			FGP_LOCK | FGP_ACCESSED | FGP_CREAT, gfp);
+ 	if (IS_ERR(folio))
+ 		return PTR_ERR(folio);
+ 	BUG_ON(folio->mapping != inode->i_mapping);
++	WARN_ON_ONCE(folio_size(folio) < sb->s_blocksize);
+ 	e4b->bd_buddy_folio = folio;
+ 	return 0;
+ }
+@@ -1592,14 +1594,14 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group, gfp_t gfp)
+ 
+ 	/*
+ 	 * This ensures that we don't reinit the buddy cache
+-	 * page which map to the group from which we are already
++	 * folio which map to the group from which we are already
+ 	 * allocating. If we are looking at the buddy cache we would
+ 	 * have taken a reference using ext4_mb_load_buddy and that
+-	 * would have pinned buddy page to page cache.
+-	 * The call to ext4_mb_get_buddy_page_lock will mark the
+-	 * page accessed.
++	 * would have pinned buddy folio to page cache.
++	 * The call to ext4_mb_get_buddy_folio_lock will mark the
++	 * folio accessed.
+ 	 */
+-	ret = ext4_mb_get_buddy_page_lock(sb, group, &e4b, gfp);
++	ret = ext4_mb_get_buddy_folio_lock(sb, group, &e4b, gfp);
+ 	if (ret || !EXT4_MB_GRP_NEED_INIT(this_grp)) {
+ 		/*
+ 		 * somebody initialized the group
 -- 
 2.46.1
 
