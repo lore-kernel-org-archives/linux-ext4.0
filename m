@@ -1,27 +1,27 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 78FAD824A3;
-	Fri, 21 Nov 2025 09:16:51 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7E1683019D7;
+	Fri, 21 Nov 2025 09:16:55 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1763716618; cv=none; b=nTKGZN2mzBk5WwlzqtEWbsU5t/mxT/Q702JPNwyDXq6vUHxqKGCLYltBpIN0v1DKHMUaau4U49loBvgkv0rRINkjBHJKBqCfGxCK1bCxzAzGWwU3Jpk3heQjCHiQ/kMWWzBEruReLgH3soCyugQS4or+ohtdryT1iHroROYeJbU=
+	t=1763716622; cv=none; b=Pzpm0Pf4fkXc0eMWF3lUhfi9sdOtPZFDZHadcQ3deDQ2XcLchlePgJkmsS5Dawg99SnPBqPDjTWLBols9smrbK1ClHQ774nl7RzKjAFGmQD91PDHhVvqQ/3ewb1kU5JKDlRAWBTgFA2lbYj0DH3GiHh4q6dMgrM3RVjsa/NUJV8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1763716618; c=relaxed/simple;
-	bh=Zhn/IogLIgUaBuPIWYgGdBw1sRiR+JtODhQ7+icZ7/M=;
+	s=arc-20240116; t=1763716622; c=relaxed/simple;
+	bh=5nRH6C9HPbHrAAAWo8bVZIj+b7lLZlXDwmXnibyUFPg=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=ki6ixOSimF9fFYMTaWiAvxnDF4LDmHzotZbHcBO7wmh56z9PpKoJJBShXYANmdL8vlxgA+oBIKLBdVXsBR/2Zq+6v7wXpIp4cb0w73lBIzML0pIWVHoqVOc0JlKkoidWZAUvux7qaOkmjgBfP5q+5rlsjzfK50dqcqyFc0fXXm8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=GL459QYREg4sVf8ts+n4reeo9X1m5qGhfNv7lddP8UP3q/ASl3y+nQXiHQohpEPail1EG+qaNXsor2GpUJ7K/JRyVRHaR9GaG8kGxQr8EbJFzjaP2Io4AqB284Q//yWNRp1e3Getm52CRuROSSYQtw7qimSKw/6GMy83XZDvN2c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dCV2N3NYjzKHMvf;
-	Fri, 21 Nov 2025 17:16:12 +0800 (CST)
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dCV2P0qPxzKHMw9;
+	Fri, 21 Nov 2025 17:16:13 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 6F32B1A19B8;
-	Fri, 21 Nov 2025 17:16:43 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 14DCA1A1B41;
+	Fri, 21 Nov 2025 17:16:44 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.129])
-	by APP2 (Coremail) with SMTP id Syh0CgBHpXv4LSBpaLMDBg--.2072S15;
+	by APP2 (Coremail) with SMTP id Syh0CgBHpXv4LSBpaLMDBg--.2072S25;
 	Fri, 21 Nov 2025 17:16:43 +0800 (CST)
 From: libaokun@huaweicloud.com
 To: linux-ext4@vger.kernel.org
@@ -37,10 +37,11 @@ Cc: tytso@mit.edu,
 	yangerkun@huawei.com,
 	chengzhihao1@huawei.com,
 	libaokun1@huawei.com,
-	libaokun@huaweicloud.com
-Subject: [PATCH v4 11/24] ext4: support large block size in ext4_mb_load_buddy_gfp()
-Date: Fri, 21 Nov 2025 17:06:41 +0800
-Message-Id: <20251121090654.631996-12-libaokun@huaweicloud.com>
+	libaokun@huaweicloud.com,
+	Dan Carpenter <dan.carpenter@linaro.org>
+Subject: [PATCH v4 21/24] ext4: make data=journal support large block size
+Date: Fri, 21 Nov 2025 17:06:51 +0800
+Message-Id: <20251121090654.631996-22-libaokun@huaweicloud.com>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20251121090654.631996-1-libaokun@huaweicloud.com>
 References: <20251121090654.631996-1-libaokun@huaweicloud.com>
@@ -50,12 +51,11 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgBHpXv4LSBpaLMDBg--.2072S15
-X-Coremail-Antispam: 1UD129KBjvJXoWxArykWFyUGry7JrW7Jr18Krg_yoWrJF48pF
-	srGrn8Gr48WFnxWwsrZa4Sqr1Fgas3uFWUGFWfWF1fZFy3t3WfKFnrK3WUJF1jqa9rJ3Wk
-	XFW5ZryfuF17W3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:Syh0CgBHpXv4LSBpaLMDBg--.2072S25
+X-Coremail-Antispam: 1UD129KBjvJXoW3AF1xWFy3AF47GF4UWF48WFg_yoW7XrWUpr
+	y3Gry8t3ykZFyq9r48ta17Zr1Yg3WxK3yUZ3s3u3Z3Zw1kJ342gF4jyF1xAFWUJrZ3Ww4S
+	qF40yryUCFnIk3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUQa14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -67,115 +67,137 @@ X-Coremail-Antispam: 1UD129KBjvJXoWxArykWFyUGry7JrW7Jr18Krg_yoWrJF48pF
 	xan2IY04v7M4kE6xkIj40Ew7xC0wCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxG
 	rwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4
 	vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IY
-	x2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
+	x2IY67AKxVW5JVW7JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw2
 	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x02
 	67AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUdsqAUUUUU=
-X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQATBWkf35kfFQAAst
+X-CM-SenderInfo: 5olet0hnxqqx5xdzvxpfor3voofrz/1tbiAQATBWkf35kfGwABsi
 
 From: Baokun Li <libaokun1@huawei.com>
 
-Currently, ext4_mb_load_buddy_gfp() uses blocks_per_page to calculate the
-folio index and offset. However, when blocksize is larger than PAGE_SIZE,
-blocks_per_page becomes zero, leading to a potential division-by-zero bug.
+Currently, ext4_set_inode_mapping_order() does not set max folio order
+for files with the data journalling flag. For files that already have
+large folios enabled, ext4_inode_journal_mode() ignores the data
+journalling flag once max folio order is set.
 
-To support BS > PS, use bytes to compute folio index and offset within
-folio to get rid of blocks_per_page.
+This is not because data journalling cannot work with large folios, but
+because credit estimates will go through the roof if there are too many
+blocks per folio.
 
-Also, if buddy and bitmap land in the same folio, we get that folio’s ref
-instead of looking it up again before updating the buddy.
+Since the real constraint is blocks-per-folio, to support data=journal
+under LBS, we now set max folio order to be equal to min folio order for
+files with the journalling flag. When LBS is disabled, the max folio order
+remains unset as before.
 
+Therefore, before ext4_change_inode_journal_flag() switches the journalling
+mode, we call truncate_pagecache() to drop all page cache for that inode,
+and filemap_write_and_wait() is called unconditionally.
+
+After that, once the journalling mode has been switched, we can safely
+reset the inode mapping order, and the mapping_large_folio_support() check
+in ext4_inode_journal_mode() can be removed.
+
+Suggested-by: Jan Kara <jack@suse.cz>
+Suggested-by: Dan Carpenter <dan.carpenter@linaro.org>
 Signed-off-by: Baokun Li <libaokun1@huawei.com>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/mballoc.c | 27 ++++++++++++++++-----------
- 1 file changed, 16 insertions(+), 11 deletions(-)
+ fs/ext4/ext4_jbd2.c |  3 +--
+ fs/ext4/inode.c     | 33 +++++++++++++++++++--------------
+ 2 files changed, 20 insertions(+), 16 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 9087183602e4..143d6ff1fdef 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1642,17 +1642,15 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group, gfp_t gfp)
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index a0e66bc10093..05e5946ed9b3 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -16,8 +16,7 @@ int ext4_inode_journal_mode(struct inode *inode)
+ 	    ext4_test_inode_flag(inode, EXT4_INODE_EA_INODE) ||
+ 	    test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA ||
+ 	    (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
+-	    !test_opt(inode->i_sb, DELALLOC) &&
+-	    !mapping_large_folio_support(inode->i_mapping))) {
++	    !test_opt(inode->i_sb, DELALLOC))) {
+ 		/* We do not support data journalling for encrypted data */
+ 		if (S_ISREG(inode->i_mode) && IS_ENCRYPTED(inode))
+ 			return EXT4_INODE_ORDERED_DATA_MODE;  /* ordered */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5499b2856f9e..fff059bfeb52 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5152,9 +5152,6 @@ static bool ext4_should_enable_large_folio(struct inode *inode)
  
- /*
-  * Locking note:  This routine calls ext4_mb_init_cache(), which takes the
-- * block group lock of all groups for this page; do not hold the BG lock when
-+ * block group lock of all groups for this folio; do not hold the BG lock when
-  * calling this routine!
-  */
- static noinline_for_stack int
- ext4_mb_load_buddy_gfp(struct super_block *sb, ext4_group_t group,
- 		       struct ext4_buddy *e4b, gfp_t gfp)
+ 	if (!S_ISREG(inode->i_mode))
+ 		return false;
+-	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA ||
+-	    ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA))
+-		return false;
+ 	if (ext4_has_feature_verity(sb))
+ 		return false;
+ 	if (ext4_has_feature_encrypt(sb))
+@@ -5172,12 +5169,20 @@ static bool ext4_should_enable_large_folio(struct inode *inode)
+ 		umin(MAX_PAGECACHE_ORDER, (11 + (i)->i_blkbits - PAGE_SHIFT))
+ void ext4_set_inode_mapping_order(struct inode *inode)
  {
--	int blocks_per_page;
- 	int block;
- 	int pnum;
--	int poff;
- 	struct folio *folio;
- 	int ret;
- 	struct ext4_group_info *grp;
-@@ -1662,7 +1660,6 @@ ext4_mb_load_buddy_gfp(struct super_block *sb, ext4_group_t group,
- 	might_sleep();
- 	mb_debug(sb, "load group %u\n", group);
++	u32 max_order;
++
+ 	if (!ext4_should_enable_large_folio(inode))
+ 		return;
  
--	blocks_per_page = PAGE_SIZE / sb->s_blocksize;
- 	grp = ext4_get_group_info(sb, group);
- 	if (!grp)
- 		return -EFSCORRUPTED;
-@@ -1690,8 +1687,7 @@ ext4_mb_load_buddy_gfp(struct super_block *sb, ext4_group_t group,
- 	 * So for each group we need two blocks.
++	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA ||
++	    ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA))
++		max_order = EXT4_SB(inode->i_sb)->s_min_folio_order;
++	else
++		max_order = EXT4_MAX_PAGECACHE_ORDER(inode);
++
+ 	mapping_set_folio_order_range(inode->i_mapping,
+ 				      EXT4_SB(inode->i_sb)->s_min_folio_order,
+-				      EXT4_MAX_PAGECACHE_ORDER(inode));
++				      max_order);
+ }
+ 
+ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+@@ -6552,14 +6557,14 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+ 	 * dirty data which can be converted only after flushing the dirty
+ 	 * data (and journalled aops don't know how to handle these cases).
  	 */
- 	block = group * 2;
--	pnum = block / blocks_per_page;
--	poff = block % blocks_per_page;
-+	pnum = EXT4_LBLK_TO_PG(inode, block);
- 
- 	/* Avoid locking the folio in the fast path ... */
- 	folio = __filemap_get_folio(inode->i_mapping, pnum, FGP_ACCESSED, 0);
-@@ -1723,7 +1719,8 @@ ext4_mb_load_buddy_gfp(struct super_block *sb, ext4_group_t group,
- 					goto err;
- 				}
- 				mb_cmp_bitmaps(e4b, folio_address(folio) +
--					       (poff * sb->s_blocksize));
-+					offset_in_folio(folio,
-+						EXT4_LBLK_TO_B(inode, block)));
- 			}
- 			folio_unlock(folio);
- 		}
-@@ -1739,12 +1736,18 @@ ext4_mb_load_buddy_gfp(struct super_block *sb, ext4_group_t group,
- 
- 	/* Folios marked accessed already */
- 	e4b->bd_bitmap_folio = folio;
--	e4b->bd_bitmap = folio_address(folio) + (poff * sb->s_blocksize);
-+	e4b->bd_bitmap = folio_address(folio) +
-+			 offset_in_folio(folio, EXT4_LBLK_TO_B(inode, block));
- 
- 	block++;
--	pnum = block / blocks_per_page;
--	poff = block % blocks_per_page;
-+	pnum = EXT4_LBLK_TO_PG(inode, block);
-+	/* buddy and bitmap are on the same folio? */
-+	if (folio_contains(folio, pnum)) {
-+		folio_get(folio);
-+		goto update_buddy;
-+	}
- 
-+	/* we need another folio for the buddy */
- 	folio = __filemap_get_folio(inode->i_mapping, pnum, FGP_ACCESSED, 0);
- 	if (IS_ERR(folio) || !folio_test_uptodate(folio)) {
- 		if (!IS_ERR(folio))
-@@ -1779,9 +1782,11 @@ ext4_mb_load_buddy_gfp(struct super_block *sb, ext4_group_t group,
- 		goto err;
+-	if (val) {
+-		filemap_invalidate_lock(inode->i_mapping);
+-		err = filemap_write_and_wait(inode->i_mapping);
+-		if (err < 0) {
+-			filemap_invalidate_unlock(inode->i_mapping);
+-			return err;
+-		}
++	filemap_invalidate_lock(inode->i_mapping);
++	err = filemap_write_and_wait(inode->i_mapping);
++	if (err < 0) {
++		filemap_invalidate_unlock(inode->i_mapping);
++		return err;
  	}
++	/* Before switch the inode journalling mode evict all the page cache. */
++	truncate_pagecache(inode, 0);
  
-+update_buddy:
- 	/* Folios marked accessed already */
- 	e4b->bd_buddy_folio = folio;
--	e4b->bd_buddy = folio_address(folio) + (poff * sb->s_blocksize);
-+	e4b->bd_buddy = folio_address(folio) +
-+			offset_in_folio(folio, EXT4_LBLK_TO_B(inode, block));
+ 	alloc_ctx = ext4_writepages_down_write(inode->i_sb);
+ 	jbd2_journal_lock_updates(journal);
+@@ -6579,17 +6584,17 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+ 		if (err < 0) {
+ 			jbd2_journal_unlock_updates(journal);
+ 			ext4_writepages_up_write(inode->i_sb, alloc_ctx);
++			filemap_invalidate_unlock(inode->i_mapping);
+ 			return err;
+ 		}
+ 		ext4_clear_inode_flag(inode, EXT4_INODE_JOURNAL_DATA);
+ 	}
+ 	ext4_set_aops(inode);
++	ext4_set_inode_mapping_order(inode);
  
- 	return 0;
+ 	jbd2_journal_unlock_updates(journal);
+ 	ext4_writepages_up_write(inode->i_sb, alloc_ctx);
+-
+-	if (val)
+-		filemap_invalidate_unlock(inode->i_mapping);
++	filemap_invalidate_unlock(inode->i_mapping);
+ 
+ 	/* Finally we can mark the inode as dirty. */
  
 -- 
 2.46.1
