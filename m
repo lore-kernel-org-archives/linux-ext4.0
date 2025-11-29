@@ -1,28 +1,27 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE69F19C540;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE782288C13;
 	Sat, 29 Nov 2025 10:35:38 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1764412542; cv=none; b=J3HbnYCIcc6tYKmIRkiUesNg79NIlYedqOAoBJGvRpo1KIMWvumsoFcGoLbDQvfIxxcZqNOJLvUKvrXcJnHG924wjPLRFxzvTxEt25+DssOrl9G0QGTA3hcOjH3Mw21aACyrgUs/Vue2+CsHhxMspX9hQZwOUccN8YFQjM2ym/g=
+	t=1764412542; cv=none; b=GuM5QWaFtft7mPRO3Pe/iW7oY9/Tmfmggfwrdv+4V3v8T8Xn5a3UzcKtkebP/NBlhTFsYQAoQMT+vQ/u8eiX4DzvjlElqItRxL5woXEATh1LxHNlYsxgyruvI0togJ1BKEZNdsDndruSs75YZH7nAoqVIgrG7x/MmLQNzK1NKUY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1764412542; c=relaxed/simple;
-	bh=HVBoB5IHmQ720ZdZa49JC6bOZSiel3XlOev/OUMySSE=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=r8yYuBM3hwv0jV4euVkhLzTDxMUeW5mWQoblGAZZ6VOIivyaj0mPUc4234uH4TuSFqcvVrsL9sTAVaJkGU/Trt50yFTHBE3InoMb7MbNRfMm8k8EGIj8lIa3tuEVrnn6XwM6fOXWVpGduEvw/TNwIGwOj9ffgPG6GGK+HxKb/oM=
+	bh=iK3eScbK46pW7YktF8ZagjcQSK6j59+q/Iw1r0TvfG8=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=CsyEOBgJu1gi1nezcepJTYG/4YlopY34ncwPgn/rZvj2uiT+VeDHg6v7nugseXq34BvgvcgHSfmn1wpaNp3cxW+92Hp23KUK8v/wVnyjPBln0z047s0K782Lyz1eoveTAHkWRJs+OhVt4NHwf/PfCK2dx9Aa8FeVZ0Acu2ry67M=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dJRPM3Lh4zKHMQS;
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dJRPM0NfszKHMNY;
 	Sat, 29 Nov 2025 18:34:47 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id A50DF1A1728;
+	by mail.maildlp.com (Postfix) with ESMTP id 3A36F1A14F4;
 	Sat, 29 Nov 2025 18:35:30 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP2 (Coremail) with SMTP id Syh0CgAnhXtfzCpp_56qCQ--.62661S9;
-	Sat, 29 Nov 2025 18:35:30 +0800 (CST)
+	by APP2 (Coremail) with SMTP id Syh0CgAnhXtfzCpp_56qCQ--.62661S4;
+	Sat, 29 Nov 2025 18:35:28 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -36,12 +35,10 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yizhang089@gmail.com,
 	libaokun1@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH v3 05/14] ext4: don't cache extent during splitting extent
-Date: Sat, 29 Nov 2025 18:32:37 +0800
-Message-ID: <20251129103247.686136-6-yi.zhang@huaweicloud.com>
+Subject: [PATCH v3 00/14] ext4: replace ext4_es_insert_extent() when caching on-disk extents
+Date: Sat, 29 Nov 2025 18:32:32 +0800
+Message-ID: <20251129103247.686136-1-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
-In-Reply-To: <20251129103247.686136-1-yi.zhang@huaweicloud.com>
-References: <20251129103247.686136-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -49,92 +46,101 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgAnhXtfzCpp_56qCQ--.62661S9
-X-Coremail-Antispam: 1UD129KBjvJXoWxAw17tF17tr1xKrW7Ww4fAFb_yoW5WF4kpF
-	ZakF1UGr4kCw1vk34xAF4kK3409w4kGrW7Ar95Gw1Y9FyUJFyagF1xtw1YvFyrWr48Za45
-	Zr40kF1UCa4DAFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUma14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
-	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
-	IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
-	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
-	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
-	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
-	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
-	42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
-	CI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4UJVWxJrUvcSsG
-	vfC2KfnxnUUI43ZEXa7VU1zpBDUUUUU==
+X-CM-TRANSID:Syh0CgAnhXtfzCpp_56qCQ--.62661S4
+X-Coremail-Antispam: 1UD129KBjvJXoWxXry8ur15ZrWDGr47Zw4rGrg_yoWrJr1xpF
+	Wakr45Jr48X34xK3yfJw1UXr13G3WfGr47uryfKw1rZFy5AFy2gr4kKa1YvFyfXrW8W3W5
+	ZF4Fyrs8Ga45C3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9Y14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
+	1l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
+	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
+	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
+	2Ix0cI8IcVAFwI0_JrI_JrylYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
+	W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2
+	Y2ka0xkIwI1lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x
+	0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2
+	zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF
+	4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWU
+	CwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCT
+	nIWIevJa73UjIFyTuYvjfUFg4SDUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Caching extents during the splitting process is risky, as it may result
-in stale extents remaining in the status tree. Moreover, in most cases,
-the corresponding extent block entries are likely already cached before
-the split happens, making caching here not particularly useful.
+Changes since v2:
+ - Rebase the codes on ext4.git dev-91ef18b567da.
+ - Move the first cleanup patch in v2 to patch 08 to facilitate easier
+   backporting.
+ - In patch 01, correct the mismatch comments for
+   EXT4_EXT_DATA_ENTIRE_VALID1 and EXT4_EXT_DATA_PARTIAL_VALID1.
+ - Modify patch 06 and add 07, cleanup the commit message to avoid
+   confusion, and don't always drop extent cache before splitting
+   extent, instead, do this only after PARTIAL_VALID1 zeroed out or
+   split extent fails.
+ - In patch 08, mark zero_ex to initialized.
+ - In patch 09, correct the word 'tag' to 'lable' in the commit message.
+ - In patch 11, add return value check of __es_remove_extent() in
+   ext4_es_cache_extent().
+ - Collecting RVB tags.
 
-Assume we have an unwritten extent, and then DIO writes the first half.
+   Thanks for the comments and suggestions from Jan, Ojaswin and Baokun!
+   Next, it is necessary to focus on refactoring and cleaning up the
+   code related to ext4_split_extent(). Ojaswin is going to take on this
+   work since he has already been exploring it on his local branch.
 
-  [UUUUUUUUUUUUUUUU] on-disk extent        U: unwritten extent
-  [UUUUUUUUUUUUUUUU] extent status tree
-  |<-   ->| ----> dio write this range
+Changes since v1:
+ - Rebase the codes based on the latest linux-next 20251120.
+ - Add patches 01-05, fix two stale data problems caused by
+   EXT4_EXT_MAY_ZEROOUT when splitting extent.
+ - Add patches 06-07, fix two stale extent status entries problems also
+   caused by splitting extent.
+ - Modify patches 08-10, extend __es_remove_extent() and
+   ext4_es_cache_extent() to allow them to overwrite existing extents of
+   the same status when caching on-disk extents, while also checking
+   extents of different stauts and raising alarms to prevent misuse.
+ - Add patch 13 to clear the usage of ext4_es_insert_extent(), and
+   remove the TODO comment in it.
 
-First, when ext4_split_extent_at() splits this extent, it truncates the
-existing extent and then inserts a new one. During this process, this
-extent status entry may be shrunk, and calls to ext4_find_extent() and
-ext4_cache_extents() may occur, which could potentially insert the
-truncated range as a hole into the extent status tree. After the split
-is completed, this hole is not replaced with the correct status.
+v2: https://lore.kernel.org/linux-ext4/20251121060811.1685783-1-yi.zhang@huaweicloud.com/
+v1: https://lore.kernel.org/linux-ext4/20251031062905.4135909-1-yi.zhang@huaweicloud.com/
 
-  [UUUUUUU|UUUUUUUU] on-disk extent        U: unwritten extent
-  [UUUUUUU|HHHHHHHH] extent status tree    H: hole
+Original Description
 
-Then, the outer calling functions will not correct this remaining hole
-extent either. Finally, if we perform a delayed buffer write on this
-latter part, it will re-insert the delayed extent and cause an error in
-space accounting.
+This series addresses the optimization that Jan pointed out [1]
+regarding the introduction of a sequence number to
+ext4_es_insert_extent(). The proposal is to replace all instances where
+the cache of on-disk extents is updated by using ext4_es_cache_extent()
+instead of ext4_es_insert_extent(). This change can prevent excessive
+cache invalidations caused by unnecessarily increasing the extent
+sequence number when reading from the on-disk extent tree.
 
-In adition, if the unwritten extent cache is not shrunk during the
-splitting, ext4_cache_extents() also conflicts with existing extents
-when caching extents. In the future, we will add checks when caching
-extents, which will trigger a warning. Therefore, Do not cache extents
-that are being split.
+[1] https://lore.kernel.org/linux-ext4/ympvfypw3222g2k4xzd5pba4zhkz5jihw4td67iixvrqhuu43y@wse63ntv4s6u/
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Reviewed-by: Baokun Li <libaokun1@huawei.com>
-Cc: stable@kernel.org
----
- fs/ext4/extents.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+Cheers,
+Yi.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index daecf3f0b367..be9fd2ab8667 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3199,6 +3199,9 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
- 	BUG_ON((split_flag & EXT4_EXT_DATA_VALID1) &&
- 	       (split_flag & EXT4_EXT_DATA_VALID2));
- 
-+	/* Do not cache extents that are in the process of being modified. */
-+	flags |= EXT4_EX_NOCACHE;
-+
- 	ext_debug(inode, "logical block %llu\n", (unsigned long long)split);
- 
- 	ext4_ext_show_leaf(inode, path);
-@@ -3381,6 +3384,9 @@ static struct ext4_ext_path *ext4_split_extent(handle_t *handle,
- 	ee_len = ext4_ext_get_actual_len(ex);
- 	unwritten = ext4_ext_is_unwritten(ex);
- 
-+	/* Do not cache extents that are in the process of being modified. */
-+	flags |= EXT4_EX_NOCACHE;
-+
- 	if (map->m_lblk + map->m_len < ee_block + ee_len) {
- 		split_flag1 = split_flag & EXT4_EXT_MAY_ZEROOUT;
- 		flags1 = flags | EXT4_GET_BLOCKS_SPLIT_NOMERGE;
+Zhang Yi (14):
+  ext4: subdivide EXT4_EXT_DATA_VALID1
+  ext4: don't zero the entire extent if EXT4_EXT_DATA_PARTIAL_VALID1
+  ext4: don't set EXT4_GET_BLOCKS_CONVERT when splitting before
+    submitting I/O
+  ext4: correct the mapping status if the extent has been zeroed
+  ext4: don't cache extent during splitting extent
+  ext4: drop extent cache after doing PARTIAL_VALID1 zeroout
+  ext4: drop extent cache when splitting extent fails
+  ext4: cleanup zeroout in ext4_split_extent_at()
+  ext4: cleanup useless out label in __es_remove_extent()
+  ext4: make __es_remove_extent() check extent status
+  ext4: make ext4_es_cache_extent() support overwrite existing extents
+  ext4: adjust the debug info in ext4_es_cache_extent()
+  ext4: replace ext4_es_insert_extent() when caching on-disk extents
+  ext4: drop the TODO comment in ext4_es_insert_extent()
+
+ fs/ext4/extents.c        | 135 ++++++++++++++++++++++++---------------
+ fs/ext4/extents_status.c | 124 ++++++++++++++++++++++++++---------
+ fs/ext4/inode.c          |  18 +++---
+ 3 files changed, 187 insertions(+), 90 deletions(-)
+
 -- 
 2.46.1
 
