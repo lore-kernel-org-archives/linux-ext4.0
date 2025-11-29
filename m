@@ -1,27 +1,28 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE782288C13;
-	Sat, 29 Nov 2025 10:35:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9A40F2C0263;
+	Sat, 29 Nov 2025 10:35:43 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1764412542; cv=none; b=GuM5QWaFtft7mPRO3Pe/iW7oY9/Tmfmggfwrdv+4V3v8T8Xn5a3UzcKtkebP/NBlhTFsYQAoQMT+vQ/u8eiX4DzvjlElqItRxL5woXEATh1LxHNlYsxgyruvI0togJ1BKEZNdsDndruSs75YZH7nAoqVIgrG7x/MmLQNzK1NKUY=
+	t=1764412546; cv=none; b=tkIsm+ZyzR6pPlmI6QQ2kGSJnf8s6HAK30hLK/aZMWlnsvsG/dCs5mmXBlDtGRNDWyLWLQEF5hNjadnVmF+Y4TAOj3ix1fNzc8cLeXSwahgBNZM7vgMk+p6X+xbHctRQgDAbqafIq75yaX9MrTNGJ/8dntdwvsbdcYL/7YAM/DQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1764412542; c=relaxed/simple;
-	bh=iK3eScbK46pW7YktF8ZagjcQSK6j59+q/Iw1r0TvfG8=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=CsyEOBgJu1gi1nezcepJTYG/4YlopY34ncwPgn/rZvj2uiT+VeDHg6v7nugseXq34BvgvcgHSfmn1wpaNp3cxW+92Hp23KUK8v/wVnyjPBln0z047s0K782Lyz1eoveTAHkWRJs+OhVt4NHwf/PfCK2dx9Aa8FeVZ0Acu2ry67M=
+	s=arc-20240116; t=1764412546; c=relaxed/simple;
+	bh=KzoY1o5o5HkeAz5GtXXnuXi2hP9iQuJUxW+HhuJTzWE=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=ahGOmvpcyqiqcTP5ifsJUEjHPEQra1sI7e8nFF7pqXdyRJMROiaoz2B5Q2Ccm4szGVhF7u6ckzQ9Yi/NPViN5HGYKrM8y9PoP2vj/S9rXPsrJ4JWwUfUS1KUXe9LvPCv1HxweBroN8zngynxKhOYmPbfUAOmkvAx1ANHbdRg6xA=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.216])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dJRPM0NfszKHMNY;
+Received: from mail.maildlp.com (unknown [172.19.93.142])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dJRPM5vVYzKHMQH;
 	Sat, 29 Nov 2025 18:34:47 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 3A36F1A14F4;
-	Sat, 29 Nov 2025 18:35:30 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 014DA1A07BD;
+	Sat, 29 Nov 2025 18:35:31 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP2 (Coremail) with SMTP id Syh0CgAnhXtfzCpp_56qCQ--.62661S4;
-	Sat, 29 Nov 2025 18:35:28 +0800 (CST)
+	by APP2 (Coremail) with SMTP id Syh0CgAnhXtfzCpp_56qCQ--.62661S13;
+	Sat, 29 Nov 2025 18:35:30 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -35,10 +36,12 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yizhang089@gmail.com,
 	libaokun1@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH v3 00/14] ext4: replace ext4_es_insert_extent() when caching on-disk extents
-Date: Sat, 29 Nov 2025 18:32:32 +0800
-Message-ID: <20251129103247.686136-1-yi.zhang@huaweicloud.com>
+Subject: [PATCH v3 09/14] ext4: cleanup useless out label in __es_remove_extent()
+Date: Sat, 29 Nov 2025 18:32:41 +0800
+Message-ID: <20251129103247.686136-10-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
+In-Reply-To: <20251129103247.686136-1-yi.zhang@huaweicloud.com>
+References: <20251129103247.686136-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -46,101 +49,97 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgAnhXtfzCpp_56qCQ--.62661S4
-X-Coremail-Antispam: 1UD129KBjvJXoWxXry8ur15ZrWDGr47Zw4rGrg_yoWrJr1xpF
-	Wakr45Jr48X34xK3yfJw1UXr13G3WfGr47uryfKw1rZFy5AFy2gr4kKa1YvFyfXrW8W3W5
-	ZF4Fyrs8Ga45C3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUU9Y14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
-	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
-	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
-	2Ix0cI8IcVAFwI0_JrI_JrylYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
-	W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2
-	Y2ka0xkIwI1lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x
-	0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2
-	zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF
-	4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWU
-	CwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCT
-	nIWIevJa73UjIFyTuYvjfUFg4SDUUUU
+X-CM-TRANSID:Syh0CgAnhXtfzCpp_56qCQ--.62661S13
+X-Coremail-Antispam: 1UD129KBjvJXoW7uFW3ZrW8Ar4DWrykWr4Uurg_yoW8ZrW5pa
+	1Fv34DWry8Zw40g397tw1Durya93WxGFW7Wryftw1S9FyYqryFgr10ya1YvFyFqFW8K3yU
+	XF40yw1jkay7tFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
+	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
+	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
+	daVFxhVjvjDU0xZFpf9x0JUWMKtUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Changes since v2:
- - Rebase the codes on ext4.git dev-91ef18b567da.
- - Move the first cleanup patch in v2 to patch 08 to facilitate easier
-   backporting.
- - In patch 01, correct the mismatch comments for
-   EXT4_EXT_DATA_ENTIRE_VALID1 and EXT4_EXT_DATA_PARTIAL_VALID1.
- - Modify patch 06 and add 07, cleanup the commit message to avoid
-   confusion, and don't always drop extent cache before splitting
-   extent, instead, do this only after PARTIAL_VALID1 zeroed out or
-   split extent fails.
- - In patch 08, mark zero_ex to initialized.
- - In patch 09, correct the word 'tag' to 'lable' in the commit message.
- - In patch 11, add return value check of __es_remove_extent() in
-   ext4_es_cache_extent().
- - Collecting RVB tags.
+The out label in __es_remove_extent() is just return err value, we can
+return it directly if something bad happens. Therefore, remove the
+useless out label and rename out_get_reserved to out.
 
-   Thanks for the comments and suggestions from Jan, Ojaswin and Baokun!
-   Next, it is necessary to focus on refactoring and cleaning up the
-   code related to ext4_split_extent(). Ojaswin is going to take on this
-   work since he has already been exploring it on his local branch.
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Reviewed-by: Baokun Li <libaokun1@huawei.com>
+---
+ fs/ext4/extents_status.c | 15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
 
-Changes since v1:
- - Rebase the codes based on the latest linux-next 20251120.
- - Add patches 01-05, fix two stale data problems caused by
-   EXT4_EXT_MAY_ZEROOUT when splitting extent.
- - Add patches 06-07, fix two stale extent status entries problems also
-   caused by splitting extent.
- - Modify patches 08-10, extend __es_remove_extent() and
-   ext4_es_cache_extent() to allow them to overwrite existing extents of
-   the same status when caching on-disk extents, while also checking
-   extents of different stauts and raising alarms to prevent misuse.
- - Add patch 13 to clear the usage of ext4_es_insert_extent(), and
-   remove the TODO comment in it.
-
-v2: https://lore.kernel.org/linux-ext4/20251121060811.1685783-1-yi.zhang@huaweicloud.com/
-v1: https://lore.kernel.org/linux-ext4/20251031062905.4135909-1-yi.zhang@huaweicloud.com/
-
-Original Description
-
-This series addresses the optimization that Jan pointed out [1]
-regarding the introduction of a sequence number to
-ext4_es_insert_extent(). The proposal is to replace all instances where
-the cache of on-disk extents is updated by using ext4_es_cache_extent()
-instead of ext4_es_insert_extent(). This change can prevent excessive
-cache invalidations caused by unnecessarily increasing the extent
-sequence number when reading from the on-disk extent tree.
-
-[1] https://lore.kernel.org/linux-ext4/ympvfypw3222g2k4xzd5pba4zhkz5jihw4td67iixvrqhuu43y@wse63ntv4s6u/
-
-Cheers,
-Yi.
-
-Zhang Yi (14):
-  ext4: subdivide EXT4_EXT_DATA_VALID1
-  ext4: don't zero the entire extent if EXT4_EXT_DATA_PARTIAL_VALID1
-  ext4: don't set EXT4_GET_BLOCKS_CONVERT when splitting before
-    submitting I/O
-  ext4: correct the mapping status if the extent has been zeroed
-  ext4: don't cache extent during splitting extent
-  ext4: drop extent cache after doing PARTIAL_VALID1 zeroout
-  ext4: drop extent cache when splitting extent fails
-  ext4: cleanup zeroout in ext4_split_extent_at()
-  ext4: cleanup useless out label in __es_remove_extent()
-  ext4: make __es_remove_extent() check extent status
-  ext4: make ext4_es_cache_extent() support overwrite existing extents
-  ext4: adjust the debug info in ext4_es_cache_extent()
-  ext4: replace ext4_es_insert_extent() when caching on-disk extents
-  ext4: drop the TODO comment in ext4_es_insert_extent()
-
- fs/ext4/extents.c        | 135 ++++++++++++++++++++++++---------------
- fs/ext4/extents_status.c | 124 ++++++++++++++++++++++++++---------
- fs/ext4/inode.c          |  18 +++---
- 3 files changed, 187 insertions(+), 90 deletions(-)
-
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index e04fbf10fe4f..04d56f8f6c0c 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -1434,7 +1434,7 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	struct extent_status orig_es;
+ 	ext4_lblk_t len1, len2;
+ 	ext4_fsblk_t block;
+-	int err = 0;
++	int err;
+ 	bool count_reserved = true;
+ 	struct rsvd_count rc;
+ 
+@@ -1443,9 +1443,9 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 
+ 	es = __es_tree_search(&tree->root, lblk);
+ 	if (!es)
+-		goto out;
++		return 0;
+ 	if (es->es_lblk > end)
+-		goto out;
++		return 0;
+ 
+ 	/* Simply invalidate cache_es. */
+ 	tree->cache_es = NULL;
+@@ -1480,7 +1480,7 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 
+ 				es->es_lblk = orig_es.es_lblk;
+ 				es->es_len = orig_es.es_len;
+-				goto out;
++				return err;
+ 			}
+ 		} else {
+ 			es->es_lblk = end + 1;
+@@ -1494,7 +1494,7 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 		if (count_reserved)
+ 			count_rsvd(inode, orig_es.es_lblk + len1,
+ 				   orig_es.es_len - len1 - len2, &orig_es, &rc);
+-		goto out_get_reserved;
++		goto out;
+ 	}
+ 
+ 	if (len1 > 0) {
+@@ -1536,11 +1536,10 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 		}
+ 	}
+ 
+-out_get_reserved:
++out:
+ 	if (count_reserved)
+ 		*reserved = get_rsvd(inode, end, es, &rc);
+-out:
+-	return err;
++	return 0;
+ }
+ 
+ /*
 -- 
 2.46.1
 
