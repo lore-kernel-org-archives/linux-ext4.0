@@ -1,28 +1,28 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 27A10285CBC;
-	Sat, 29 Nov 2025 10:35:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE853288C20;
+	Sat, 29 Nov 2025 10:35:38 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1764412539; cv=none; b=Aie9IW9cBFM+MGfsIoxeNlJ5bGavDLoOAHmldCx6t3H5GKxYFdjb6A78HzCvxs+dyhZejhqmI1TKQ+P1nfy+oZH+WV/VnaE/Vr1opczwtGSufW/oX9YCoipGsQKTNjpb+S9wAcAhaI2LFSEfu0Xp+bfmWOCk2x0psWxb6lal/OY=
+	t=1764412541; cv=none; b=VP0oExN51FJ2OCIFIBuAR+TevsP08YhOBnsrRGdjFms9CXY6DAXeZdxTNbYY/h1fVQw+nhfPV9KWnyw3lhkGbFz7QA3sQTEWFqaY6MKqRJc61dwLH27B8sFoDxPs7YA6R+9rVkkfREI5QNjsJac7fgdS9YJiAHwNqjbLwIBpxws=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1764412539; c=relaxed/simple;
-	bh=9kWre2nZJcsb8KlJ5MGjDaPeHGKcZypCKa5U4lhaVMM=;
+	s=arc-20240116; t=1764412541; c=relaxed/simple;
+	bh=SmSydm2kjWy8IltF7D7w7ZyiF50tx4tLTESyzkAB+jw=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=UzYIkCe9u/kzI0CHTT/2rG7xVobS4HUbEM24fYxzkOQ2K3WP/ikSydhBdpzrz3xTyKpYqF8gdB3W8IGXgtiQk4JNH+CQqdHJ4siw5gWZbAEFqt9nEJfUfm7jmQwq5GefEbiVH1omeIpctncXKkmc/vZoUYevcwKaPiOA6/QHiVU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=tI2t99L1CpvQaWH9PqWYbBQaW1ALYzMKZGAnVTEFswDAp+e6tc5auWVy/fJYWNIJS/d6ypWlI/w2I0yZxhRP90+1GgkbFhD96kvru9b+v1SVJwbsYm6uDHZGyVRH/+MiIyPjXay8r/O23tOXYckym5oCKwWLflVp/UREguC7i6I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4dJRP645wSzYQtpm;
-	Sat, 29 Nov 2025 18:34:34 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dJRPM4WQXzKHMQH;
+	Sat, 29 Nov 2025 18:34:47 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 557981A07C0;
-	Sat, 29 Nov 2025 18:35:31 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id C98121A0C3B;
+	Sat, 29 Nov 2025 18:35:30 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP2 (Coremail) with SMTP id Syh0CgAnhXtfzCpp_56qCQ--.62661S18;
-	Sat, 29 Nov 2025 18:35:31 +0800 (CST)
+	by APP2 (Coremail) with SMTP id Syh0CgAnhXtfzCpp_56qCQ--.62661S11;
+	Sat, 29 Nov 2025 18:35:30 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -36,9 +36,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yizhang089@gmail.com,
 	libaokun1@huawei.com,
 	yangerkun@huawei.com
-Subject: [PATCH v3 14/14] ext4: drop the TODO comment in ext4_es_insert_extent()
-Date: Sat, 29 Nov 2025 18:32:46 +0800
-Message-ID: <20251129103247.686136-15-yi.zhang@huaweicloud.com>
+Subject: [PATCH v3 07/14] ext4: drop extent cache when splitting extent fails
+Date: Sat, 29 Nov 2025 18:32:39 +0800
+Message-ID: <20251129103247.686136-8-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.46.1
 In-Reply-To: <20251129103247.686136-1-yi.zhang@huaweicloud.com>
 References: <20251129103247.686136-1-yi.zhang@huaweicloud.com>
@@ -49,11 +49,11 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgAnhXtfzCpp_56qCQ--.62661S18
-X-Coremail-Antispam: 1UD129KBjvJXoW7uF4kXw45Gr4kKF4kXw1rXrb_yoW8Jw4kpr
-	nxCw18Jr4fXa1vkayxGF4UXryfKaykGrW7GrZ7Kw1fKFW5JryS9F1qyFWYvFyfWrWxJrW5
-	ZF40kw1UWa1UJaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+X-CM-TRANSID:Syh0CgAnhXtfzCpp_56qCQ--.62661S11
+X-Coremail-Antispam: 1UD129KBjvJXoW7tF4xur4xCFW8Kw1ruF4kWFg_yoW8Wr4Dpr
+	s7Ar1UWrn5u3W2krZrGayUZ3W7Ca1UGr47GFWfG3s8KF17XrWFgF17t3W0vFyFgFW8Wa43
+	Ar40yr1UAay3AFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUma14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
 	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
@@ -63,48 +63,59 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7uF4kXw45Gr4kKF4kXw1rXrb_yoW8Jw4kpr
 	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
 	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
 	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
-	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI
-	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
-	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
-	daVFxhVjvjDU0xZFpf9x0JUWMKtUUUUU=
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
+	CI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14v26r4UJVWxJrUvcSsG
+	vfC2KfnxnUUI43ZEXa7VU1zpBDUUUUU==
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Now we have ext4_es_cache_extent() to cache on-disk extents instead of
-ext4_es_insert_extent(), so drop the TODO comment.
+When the split extent fails, we might leave some extents still being
+processed and return an error directly, which will result in stale
+extent entries remaining in the extent status tree. So drop all of the
+remaining potentially stale extents if the splitting fails.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Baokun Li <libaokun1@huawei.com>
+Cc: stable@kernel.org
 ---
- fs/ext4/extents_status.c | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
+ fs/ext4/extents.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 0529c603ee88..fc83e7e2ca9e 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -898,7 +898,8 @@ static int __es_insert_extent(struct inode *inode, struct extent_status *newes,
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 1094e4923451..945995d68c4d 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3267,7 +3267,7 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
  
- /*
-  * ext4_es_insert_extent() adds information to an inode's extent
-- * status tree.
-+ * status tree. This interface is used for modifying extents. To cache
-+ * on-disk extents, use ext4_es_cache_extent() instead.
-  */
- void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 			   ext4_lblk_t len, ext4_fsblk_t pblk,
-@@ -977,10 +978,6 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 		}
- 		pending = err3;
+ 	err = PTR_ERR(path);
+ 	if (err != -ENOSPC && err != -EDQUOT && err != -ENOMEM)
+-		return path;
++		goto out_path;
+ 
+ 	/*
+ 	 * Get a new path to try to zeroout or fix the extent length.
+@@ -3281,7 +3281,7 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
+ 	if (IS_ERR(path)) {
+ 		EXT4_ERROR_INODE(inode, "Failed split extent on %u, err %ld",
+ 				 split, PTR_ERR(path));
+-		return path;
++		goto out_path;
  	}
--	/*
--	 * TODO: For cache on-disk extents, there is no need to increment
--	 * the sequence counter, this requires future optimization.
--	 */
- 	ext4_es_inc_seq(inode);
- error:
- 	write_unlock(&EXT4_I(inode)->i_es_lock);
+ 	depth = ext_depth(inode);
+ 	ex = path[depth].p_ext;
+@@ -3358,6 +3358,10 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
+ 		ext4_free_ext_path(path);
+ 		path = ERR_PTR(err);
+ 	}
++out_path:
++	if (IS_ERR(path))
++		/* Remove all remaining potentially stale extents. */
++		ext4_es_remove_extent(inode, ee_block, ee_len);
+ 	ext4_ext_show_leaf(inode, path);
+ 	return path;
+ }
 -- 
 2.46.1
 
