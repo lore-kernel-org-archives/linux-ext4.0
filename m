@@ -1,51 +1,49 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 11F5133344D
-	for <linux-ext4@vger.kernel.org>; Mon,  1 Dec 2025 16:24:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 85F9B33343E
+	for <linux-ext4@vger.kernel.org>; Mon,  1 Dec 2025 16:24:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1764606249; cv=none; b=AiczAUWv74zRgps24oVPbrEAg8svf63baotE/s6OAPN8WibF1b+YHUIP+Jmb/07ARneddNgU4khPD/UO99EXXLtBDxPodB1ndujiOKjBbfXzVYk6jy8spUgOhun0LB/TJUyxACAPdG8EJznQpHf+nyEUMyW/fqGN4So+Mlp3nI8=
+	t=1764606269; cv=none; b=X1tpyV15OQ0ZxKwBKPUNSsZvCvNJD7VXEjYYEwSG0/2DeAy0x5xnmYWXl9I/9iWkRpxzopicH16XjUHNlDFjooXRG9x6r2d1tU+8HH8z2PeOqV+NO+17xU40ML+zAZOVWadvCWjKseqt4YnhZWhZOHqfNxMvI4jNrDiAZb/4Q5w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1764606249; c=relaxed/simple;
-	bh=IaOgbXRI96Z/A5nbOuLFAk2vXr/HqzrWr8OsC7fL8Mk=;
+	s=arc-20240116; t=1764606269; c=relaxed/simple;
+	bh=lN+ZCD7YN5daSgQPMDcH/f5fzllgVQmW/Lkh1NyXnic=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=Zu0aDqSrDyd4K/D9GgtyFo4foYR4xSQCLC6qvMVLQSl1nV2xraxe4j36vWDdV7NorC4dwQ5j+8O1k6yVBVaXirD9N/2Xx63XUXRPdWQVcunbWdaNbFSHM+uV4gJJ6VW6Ir+qo4JAvJXwx39ytwREt4TQXrOgGFBbXu3EhQFyMIE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=dszEWsBb; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=rHvy7KXqF9YvwyCdRr4KgCqMosKZ54vD0wz6uoIV2Yg/QoptMl35SQK/XKw/Qv5nBeyNmK677ZGTMJBd+ZnYEWSuxyBa+mpfV19wrd7P2vdr210E57AEqFp1FkZIurvmYtgZbtrvW6yC3Y/s2FPSfVEcNZLrHCf9EbmraIhjloo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=RCD5Esig; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="dszEWsBb"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="RCD5Esig"
 Received: from trampoline.thunk.org (pool-173-48-121-67.bstnma.fios.verizon.net [173.48.121.67])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 5B1GNsvG008154
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 5B1GNs5t008159
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Mon, 1 Dec 2025 11:23:55 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1764606236; bh=v9PYJ/AS1zHpSeYFSJpKi363UDMw/vXMzT2m9GD4IJI=;
+	t=1764606236; bh=Dcr+pf7z81l5mbJZ6g15wYFJJtxRb9I1xHhuv0xSw88=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=dszEWsBbMO6z4FyLXaCEuYPnshilj+71kY6jtJV328U0G9/BnhU6/0ySpdsi/4UYi
-	 dvHus7zdsgh3ELv2pf9fI6gO8tSw+3YQnfxszzeIKrI4V/kRHQ1SpW3Ox/Fs0XfyBe
-	 gOC7UwvoL5CVBCkeEvdx2WaHrmMFuOgHs49l0LHTVz+MEI4fJw8DLxSwDilWknRZJf
-	 cnggOfg3x7YIwySSl7R1CC28vaknVG2nJxCNIG+OFLPU82H8nCdUlDVXhZGwUuxhzP
-	 EBn/Ycdrcjonxgg01UIFno2lg9fxmQvz8timH3rMvmksIbZt4XAw79Gd+LDLiPr+Ad
-	 u2fGP/Ktk8bFg==
+	b=RCD5EsigaI0CXiPZ306SE37ss7MaWAQ0Et41pje1DRCu6973/3gcac6X2yOagXkrO
+	 Cbg3VX5WSYIyF59rdS/YvFpD6O6eVkfhJ/HZpE/6M8YrIUV106I0tT8XmFm+qYesA7
+	 21YlMFB19eV/u8vmtDX4CSI4UQ50/zROBZNkkiqEXJJox35/QktAoXI6Lshm2y+bLn
+	 3S8IluzZL99Nv3JyAofUGWgizgrZU5ahqnMp0IBKhOsJwrBfANaOu7edfReVP5oUv7
+	 baAYxHUfsw9REm+nPvnQ4nzcSaA98O9GY5wwW6ezkr2gk5bpZ4JyW7cVBjEB9lsxwB
+	 //NL89nErjCgg==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id ECCEF2E00D9; Mon, 01 Dec 2025 11:23:53 -0500 (EST)
+	id F21ED2E00DB; Mon, 01 Dec 2025 11:23:53 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Daniel Tang <danielzgtg.opensource@gmail.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-        Eric Biggers <ebiggers@google.com>,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] Documentation: ext4: Document casefold and encrypt flags
-Date: Mon,  1 Dec 2025 11:23:43 -0500
-Message-ID: <176455640536.1349182.13508992419516252883.b4-ty@mit.edu>
+To: linux-ext4@vger.kernel.org, libaokun@huaweicloud.com
+Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca, jack@suse.cz,
+        linux-kernel@vger.kernel.org, yi.zhang@huawei.com,
+        yangerkun@huawei.com, libaokun1@huawei.com
+Subject: Re: [PATCH] ext4: align max orphan file size with e2fsprogs limit
+Date: Mon,  1 Dec 2025 11:23:45 -0500
+Message-ID: <176455640536.1349182.9500059559864469564.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.51.0
-In-Reply-To: <4506189.9SDvczpPoe@daniel-desktop3>
-References: <4506189.9SDvczpPoe@daniel-desktop3>
+In-Reply-To: <20251120134233.2994147-1-libaokun@huaweicloud.com>
+References: <20251120134233.2994147-1-libaokun@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -56,20 +54,22 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Wed, 19 Nov 2025 09:32:13 -0500, Daniel Tang wrote:
-> Based on ext4(5) and fs/ext4/ext4.h.
+On Thu, 20 Nov 2025 21:42:33 +0800, libaokun@huaweicloud.com wrote:
+> Kernel commit 0a6ce20c1564 ("ext4: verify orphan file size is not too big")
+> limits the maximum supported orphan file size to 8 << 20.
 > 
-> For INCOMPAT_ENCRYPT, it's possible to create a new filesystem with that
-> flag without creating any encrypted inodes. ext4(5) says it adds
-> "support" but doesn't say whether anything's actually present like
-> COMPAT_RESIZE_INODE does.
+> However, in e2fsprogs, the orphan file size is set to 32–512 filesystem
+> blocks when creating a filesystem.
+> 
+> With 64k block size, formatting an ext4 fs >32G gives an orphan file bigger
+> than the kernel allows, so mount prints an error and fails:
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] Documentation: ext4: Document casefold and encrypt flags
-      commit: 39fc6d4d3527d790f090dcb10bdb82fd1a1d925a
+[1/1] ext4: align max orphan file size with e2fsprogs limit
+      commit: 7c11c56eb32eae96893eebafdbe3decadefe88ad
 
 Best regards,
 -- 
