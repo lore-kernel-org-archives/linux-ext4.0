@@ -1,81 +1,65 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7E89A333452
-	for <linux-ext4@vger.kernel.org>; Mon,  1 Dec 2025 16:28:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3422A334C24
+	for <linux-ext4@vger.kernel.org>; Mon,  1 Dec 2025 16:44:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1764606508; cv=none; b=QjKZRhjQOPxOjkKuJ98K6Qp6f+BcumgAtKSJ7Gkuy6OUiKiuiDDGcMwgduiy3e+A0jaiOK3Ep+CWsRuGnM4toVmqWpOwfIPDUGakw1rZcfcwhN3knCognkHrXCo2rgq/Q+zi2EyoGXkAizNqlWmnQ5rt9zCfWbLXyf6muC7vX/M=
+	t=1764607453; cv=none; b=DhMUqXX3hOhBWwwMTzuN7AUFovxO9ebOfn8I+3BvsggtbenbGy7VtOiP1g4BjibSi2KVXd0OkKr/X1mIyiIPYo8eCEV19+Le22ML4GQISO1xE/Kv3DapIJce55eE5q2hM/QXAD3xRYOUagCRIQgMridOr2eGjHyp8kzomLU6VVw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1764606508; c=relaxed/simple;
-	bh=buLCI8wk6RmLtGJP8jJoPXBelL/3Y29bbxzjKLxGobM=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=hKVNR8t7FEmdUP2fy5GM+M2hnOdAljZlIvyEeAswAKwUUHB0k152chdpnM4gGJDhRWdqaRL+4dKndi8QNWbQY8O4tu41CZO+WY0VK/GyWvq3nKinEMERrZ9s+F+a3ev4Qxiware3J2KRKyXedGM+wwn6XSlLfUfIGSJ5efxGQjo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=OLhd9AtK; arc=none smtp.client-ip=18.9.28.11
+	s=arc-20240116; t=1764607453; c=relaxed/simple;
+	bh=Eqan1lcCS7PhNb7cI4HgmqaYTO6suzk4oCQM1opdpHE=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=ByFj8RCvGhK8qWJ8VtwoNx4VIU6ZVCQ3m3gnPkeYDErRzaBdRgmuc3+4oM/mlM4QbTO3ufnD+LvSbTQuDA0jK8VaT7Rz/NY5D3blTMEEUX9QMufB2iKv+wHSPCi3CHhFYxbcGC6dsltf00uhED3R2UTm3pHI2soGGqRCQVRATTQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=kU+zLRLI; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="OLhd9AtK"
-Received: from trampoline.thunk.org (pool-173-48-121-67.bstnma.fios.verizon.net [173.48.121.67])
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="kU+zLRLI"
+Received: from macsyma.thunk.org (pool-173-48-121-67.bstnma.fios.verizon.net [173.48.121.67])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 5B1GNsmb008174
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 5B1GhiX0028078
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 1 Dec 2025 11:23:55 -0500
+	Mon, 1 Dec 2025 11:43:45 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1764606236; bh=fQo4vd5KQhxo/ZdGnKAc55jtiATNEP6YCFuef8oibPA=;
-	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=OLhd9AtKgyOR+f0BNNOajkWzZECWQyODvKaeFFVnrBO+dNH2N/5AP7IqtA1wQZbJx
-	 BqtULqF/AJl8OkdibXmUVyyIs0rjnmKJac11utY7bjczBcmDyld2OmrpDUnFwFs0HW
-	 b3WqLhxSOQOKXTRJyUJvNDKWzpv6OCORRiYSDkpThdl6Wln/cbzV6aMWa/apjBOV3K
-	 RqMejZMUl3k+lLQSY7KgAd47f4zQ5L0xwsop8iVe2elH1FhUVu/bLwX781VHy0bc95
-	 e7dZiDqHE9nzQo65MDdPjr9EwV+/gzZ3Zz1ZcumMzR6jzc9I6hzNgWKYd+ZqBMu+GK
-	 qGxfZv3AMXhzA==
-Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 042352E00DD; Mon, 01 Dec 2025 11:23:54 -0500 (EST)
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org, Yongjian Sun <sunyongjian@huaweicloud.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
-        jack@suse.cz, yangerkun@huawei.com, yi.zhang@huawei.com,
-        libaokun1@huawei.com, chengzhihao1@huawei.com, sunyongjian1@huawei.com
-Subject: Re: [PATCH v2 0/2] ext4: fixes for mb_check_buddy integrity checks
-Date: Mon,  1 Dec 2025 11:23:47 -0500
-Message-ID: <176455640539.1349182.12240095790496691411.b4-ty@mit.edu>
-X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20251106060614.631382-1-sunyongjian@huaweicloud.com>
-References: <20251106060614.631382-1-sunyongjian@huaweicloud.com>
+	t=1764607428; bh=30D1uwVmpUJDMUqwCiius2BLnDO0nEX6+WbV0se7/DA=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=kU+zLRLIp+HmtfYlDL0OFq1AaG0iFZ4Ym3Tsw0oCnSEoWT/zSATaEBV2RrsWtjG76
+	 HfCxpVFdnCOOQTB0vLnj4LsZih1L4U/gTKUJktCidLrqnj0dOEN2ju30YYePsxnSH9
+	 kXXgg7D/k0vuMPMUJ0omL4WqJhHQIZ7hT2gDb7KeBVE3evNtdjrkyV+2K1Bat4uFCg
+	 4B7KsoaiX2bIerOmlT7samm9YMIC8s8kbzEIPY7pmLQsIPtAXcVM6E6MBCA+bbYWEg
+	 wFQ5X/uUPI0gbmLt3fLIj6Y+aEc397DeAf7kMbTC3hjbIo1O6A+TXogM+X5DXCvY6w
+	 bAWNVSBxwoofg==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 4C46E4DB5DFB; Mon,  1 Dec 2025 11:42:44 -0500 (EST)
+Date: Mon, 1 Dec 2025 11:42:44 -0500
+From: "Theodore Tso" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org, Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        adilger.kernel@dilger.ca, jack@suse.cz, ojaswin@linux.ibm.com,
+        yi.zhang@huawei.com, yizhang089@gmail.com, libaokun1@huawei.com,
+        yangerkun@huawei.com
+Subject: Re: [PATCH v3 00/14] ext4: replace ext4_es_insert_extent() when
+ caching on-disk extents
+Message-ID: <20251201164244.GB52186@macsyma.lan>
+References: <20251129103247.686136-1-yi.zhang@huaweicloud.com>
+ <176455640539.1349182.13217688668593418002.b4-ty@mit.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <176455640539.1349182.13217688668593418002.b4-ty@mit.edu>
 
+On Mon, Dec 01, 2025 at 11:23:50AM -0500, Theodore Ts'o wrote:
+> Applied, thanks!
 
-On Thu, 06 Nov 2025 14:06:12 +0800, Yongjian Sun wrote:
-> Link to v1:
->  - https://lore.kernel.org/all/20251105074250.3517687-1-sunyongjian@huaweicloud.com/
-> 
-> Changes in v2:
->  - Patch 2/2: the logical error in the order-0 check code has been corrected.
-> 
-> Yongjian Sun (2):
->   ext4: fix incorrect group number assertion in mb_check_buddy for
->     exhausted preallocations
->   ext4: improve integrity checking in __mb_check_buddy by enhancing
->     order-0 validation
-> 
-> [...]
+n.b.  This is on the dev branch, but I plan to not include it in the initial
+pull request to Linus, so it can get a bit more soak testing.  I'll
+send to Linus after -rc1.
 
-Applied, thanks!
-
-[1/2] ext4: fix incorrect group number assertion in mb_check_buddy for exhausted preallocations
-      commit: 3f7a79d05c692c7cfec70bf104b1b3c3d0ce6247
-[2/2] ext4: improve integrity checking in __mb_check_buddy by enhancing order-0 validation
-      commit: d9ee3ff810f1cc0e253c9f2b17b668b973cb0e06
-
-Best regards,
--- 
-Theodore Ts'o <tytso@mit.edu>
+					- Ted
