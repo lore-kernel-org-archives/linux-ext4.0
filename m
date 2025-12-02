@@ -1,102 +1,84 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6DC2829C343;
-	Mon,  1 Dec 2025 23:25:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0846779CF;
+	Tue,  2 Dec 2025 01:15:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1764631553; cv=none; b=VxMU1J9Bsjt/6FVW+2ciANAQ5XY3vD1r6fr8uoObTOydW4JtSP2+vL86ar2hgHpkOArC+7G9BiZ1XhoxPz6DBjFtRaaNatSVQsE+NmxoN96WtV0SIgVACi4ytPN4+XosIotR8CAe33mXf2wodOKRl8VhUmmVVQwk/aO7Nh+dngE=
+	t=1764638136; cv=none; b=M4DQAvsg0As25yZnHwZ8jyAhzK7AGRZkVwnZty5fU9nK9UTqnfZYFcMVgf05kLP1C8EiNPIn0am2dcozn7WvkYfO503E2xn5ka0TcHcpNeScwvX8lW426C+s2w8rVcTmf47kwNon/RotYrrKcIDk6JfmdhHSrCbie5IA57MBEKE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1764631553; c=relaxed/simple;
-	bh=xGkROoIvoUcJWUknA264dG6FlmozswxekDwDGbxLWJg=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=j1Lk+65ZFmU9/+8KjvAMNe6FatD3fja3AhHNfb/nNfpoXaTObqaSr3z6J/esGhzaBT35HI2o3NcH+sEniUzK+te3usH0GHQAyYcFoMF19Ad6aggHNklKdN1ChSk1k+MsJ6vy6kTMgyyUXqOSS5bh1WSebgIxcd9WbTtqZI7cCyo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Gtsnt20a; arc=none smtp.client-ip=10.30.226.201
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Gtsnt20a"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 46FDEC4CEF1;
-	Mon,  1 Dec 2025 23:25:53 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1764631553;
-	bh=xGkROoIvoUcJWUknA264dG6FlmozswxekDwDGbxLWJg=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=Gtsnt20a4uTHdyFHBCwsW8q8+HV1Uy2jSROfwK9FOxrdv49KqwtEyxpPl0L6MeTF9
-	 S41PxS3AJvv06gnnTs7aHCWU9Wz9r3NhPuC3FlWo7UW7+kxMS974Lsccj5pGJClMSa
-	 DqElBYqy9sGkxxckrLUYtZ+V0/HHe0hBtTw3SBPvW1rtvSKxsFG9en0VCCEJPKN5W0
-	 K089JoqGXtqMUeesiz+h1ONJBdEXzQcDPeohopKRFdQOGyVdgQuce+sX0jO7gBWYMK
-	 tzFZRsPUKR2mA2DItjWYCcmSdjBFNRDSX3hL6CuJT6AfZs8ZOfzZE4VE0EXnsrNrE3
-	 1TA/bVvo6KKVQ==
-Date: Mon, 1 Dec 2025 15:25:52 -0800
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: Theodore Tso <tytso@mit.edu>,
-	syzbot <syzbot+bb2455d02bda0b5701e3@syzkaller.appspotmail.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	syzkaller-bugs@googlegroups.com
-Subject: Re: [syzbot] [ext4?] possible deadlock in ext4_destroy_inline_data
- (2)
-Message-ID: <20251201232552.GA89435@frogsfrogsfrogs>
-References: <690bcad7.050a0220.baf87.0076.GAE@google.com>
- <20251201161648.GA52186@macsyma.lan>
- <2ED9BD8E-9A4D-4800-8633-9FEAD464049D@dilger.ca>
+	s=arc-20240116; t=1764638136; c=relaxed/simple;
+	bh=27YmfSAf6ihD8Vwk8T//YvYVhcdQkw1zLlYlcmFuBGE=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=cSB7vsBGZk/PHf7md9iMA8DHyMjrWDTnGYif9kolshrYLEqvj8YyK9DJ79vdqOWu8MXTs0nmEa6Ex0+DACyDmmuLOFCLUkkWOGGOCQfLMTlRKMaI2QzH9t+JT/BuiUvFwYY6ZZXxDtt/tqU9u2+R3FBmD/lEgMNV00kibI2M6dA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4dL2rf5rT4zYQtdy;
+	Tue,  2 Dec 2025 09:15:30 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.75])
+	by mail.maildlp.com (Postfix) with ESMTP id AF0811A1719;
+	Tue,  2 Dec 2025 09:15:31 +0800 (CST)
+Received: from [10.174.178.152] (unknown [10.174.178.152])
+	by APP2 (Coremail) with SMTP id Syh0CgAX+FGxPS5pG2YpAQ--.13757S3;
+	Tue, 02 Dec 2025 09:15:31 +0800 (CST)
+Message-ID: <b17bf8ae-7592-4c2f-a13c-de6199ca65ce@huaweicloud.com>
+Date: Tue, 2 Dec 2025 09:15:29 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <2ED9BD8E-9A4D-4800-8633-9FEAD464049D@dilger.ca>
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v3 00/14] ext4: replace ext4_es_insert_extent() when
+ caching on-disk extents
+To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+ adilger.kernel@dilger.ca, jack@suse.cz, ojaswin@linux.ibm.com,
+ yi.zhang@huawei.com, yizhang089@gmail.com, libaokun1@huawei.com,
+ yangerkun@huawei.com
+References: <20251129103247.686136-1-yi.zhang@huaweicloud.com>
+ <176455640539.1349182.13217688668593418002.b4-ty@mit.edu>
+ <20251201164244.GB52186@macsyma.lan>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <20251201164244.GB52186@macsyma.lan>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:Syh0CgAX+FGxPS5pG2YpAQ--.13757S3
+X-Coremail-Antispam: 1UD129KBjDUn29KB7ZKAUJUUUUU529EdanIXcx71UUUUU7v73
+	VFW2AGmfu7bjvjm3AaLaJ3UjIYCTnIWjp_UUUYV7kC6x804xWl14x267AKxVW8JVW5JwAF
+	c2x0x2IEx4CE42xK8VAvwI8IcIk0rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII
+	0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xv
+	wVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4
+	x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG
+	64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r
+	1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvEwIxGrwACI402YVCY1x02628vn2kI
+	c2xKxwCF04k20xvY0x0EwIxGrwCF54CYxVCY1x0262kKe7AKxVWUtVW8ZwCFx2IqxVCFs4
+	IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1r
+	MI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJV
+	WUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j
+	6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYx
+	BIdaVFxhVjvjDU0xZFpf9x07UWE__UUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On Mon, Dec 01, 2025 at 04:17:02PM -0700, Andreas Dilger wrote:
-> On Dec 1, 2025, at 9:16 AM, Theodore Tso <tytso@mit.edu> wrote:
-> > 
-> > That being said, we probably should just not try to expand the inode's
-> > extra size while evicting the inode.  In practice we don't actually do
-> > this since we haven't expanded the inode's extra size space in over a
-> > decade, and so this only happens in a debugging mount option that
-> > syzbot helpfully uses, and not in real life.
+On 12/2/2025 12:42 AM, Theodore Tso wrote:
+> On Mon, Dec 01, 2025 at 11:23:50AM -0500, Theodore Ts'o wrote:
+>> Applied, thanks!
 > 
-> I think we would regret removing this if/when we *do* expand the inode
-> size.  We used this functionality to upgrade filesystems online when
-> i_projid was first added and users suddenly wanted to use project quotas.
-> If we need some new inode field in the future it will be good to have it.
+> n.b.  This is on the dev branch, but I plan to not include it in the initial
+> pull request to Linus, so it can get a bit more soak testing.  I'll
+> send to Linus after -rc1.
+> 
+> 					- Ted
 
-Or expand extra_isize only when someone tries to set an inode field that
-actually requires it?  e.g. whenever setting the project id?
+Sure, thank you. It would be better to do more testing. Please let me
+know if there is any regression. :-)
 
---D
+Thanks,
+Yi.
 
-> > Also, there's no real point in doing this on the evict path,
-> > especially if the inode is about to be released as part of the
-> > eviction.
-> 
-> This could check in ext4_orphan_cleanup()->ext4_evict_inode() path
-> that this is orphan cleanup with EXT4_ORPHAN_FS and skip the expansion?
-> As you write, it doesn't make sense to do that when the file is being
-> deleted anyway.  Something like the following, which adds unlikely() to
-> that branch since it may happen only once or never in the lifetime of
-> any inode:
-> 
-> Cheers, Andreas
-> ---
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index e99306a8f47c..ae48748decc5 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -6481,7 +6490,8 @@ int __ext4_mark_inode_dirty(handle_t *handle,
->  	if (err)
->  		goto out;
-> -	if (EXT4_I(inode)->i_extra_isize < sbi->s_want_extra_isize)
-> +	if (unlikely(EXT4_I(inode)->i_extra_isize < sbi->s_want_extra_isize &&
-> +		     !(sbi->s_mount_state & EXT4_ORPHAN_FS)))
->  		ext4_try_to_expand_extra_isize(inode, sbi->s_want_extra_isize,
->  					       iloc, handle);
-> 
-> 
-> 
-> 
-> 
-> 
+
+
