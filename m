@@ -1,17 +1,17 @@
-Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 74ECF31A554;
-	Fri,  5 Dec 2025 07:20:47 +0000 (UTC)
+Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id E26EE31CA46;
+	Fri,  5 Dec 2025 07:20:55 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1764919266; cv=none; b=jBb+lVGlWTfnGa8nlx+qMOlaTK7AbNyPpWxMk5fFVJLOZaugBDKdP0URvaWXELfGFQcufUxzBv+TpDBv+tu/1jxb3VIDBi3orHfRH7CVUWZwtIskIgl6PsADNGzQ5XSxetIGX8op3jbqmOZmz0+5jb1PbtEIxhGjUTskHgL6UVE=
+	t=1764919281; cv=none; b=QD2fM/RqpZh/g0YCX5tfvMAlAM5M4QGqsJ1OBkOvIs7GpADgq+NYluTtyBTk9hWyhfFA3iyMmfcY4DrNV/NgzLZ195GB7M3EUSPbn+lJyXvW5m1Qhs4w58MWcIrVVrW8gj3FYgfchX7P0Rtw/prZEw3tmsGkDSlmv0UXvndxzt8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1764919266; c=relaxed/simple;
-	bh=FliTVDSIpAU7z4bwrrHFuint8+3hA0BBDhmYa2LwLLQ=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=Dok/t5oun2mNttkT25Zlg+qz8Y1gtiF1dkxesum7ZXL0BkTL+VdcoQQCtT+erCd6db7peb270mCWtkoe0SmVKCVXRxRNWt5IWnlpppyXda3xS/dYCGdNQQwUeEe/nqJLPVhZIgU++E9alJOmDgPOnNETyYg1GXrvOGqTDy5MI6M=
+	s=arc-20240116; t=1764919281; c=relaxed/simple;
+	bh=ZzgJZGS1Zfmf9DoSYkDLhcEEZ40CTW0WckDgtNV4WWQ=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=EMo97qnIJXPGNp18RJj1HdZxFMHz2Go/wSVdVWnRh9aaKY2I5yfqP7oo35GQQhuj/ZgRFmqiI+vAkt6acjFZqyAJacyUiUNM+92a7KhlEt2jM5AkZWzjG98K/NyS5520uUt01DucX0NP1YSq3b2QRFR34piiF7vKMtuWkm+ogWI=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c45ff70000001609-f1-69328770be99
+X-AuditID: a67dfc5b-c45ff70000001609-6c-69328771e8c3
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -178,45 +178,44 @@ Cc: kernel_team@skhynix.com,
 	aliceryhl@google.com,
 	tmgross@umich.edu,
 	rust-for-linux@vger.kernel.org
-Subject: [PATCH v18 25/42] dept: add documents for dept
-Date: Fri,  5 Dec 2025 16:18:38 +0900
-Message-Id: <20251205071855.72743-26-byungchul@sk.com>
+Subject: [PATCH v18 29/42] dept: make dept aware of lockdep_set_lock_cmp_fn() annotation
+Date: Fri,  5 Dec 2025 16:18:42 +0900
+Message-Id: <20251205071855.72743-30-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20251205071855.72743-1-byungchul@sk.com>
 References: <20251205071855.72743-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTZxTH99yX5146mt1VJ3eYzKWZMcOIQnw5MaYx+uV+0ES3ZGZbolZ7
-	M+4sUFpBMBqLwujwDdlKJxUtiIC2oCsapIMEEbqhIrUgb7OAUasEKkJWECphF4zffuf8z/mf
-	k5PDkqp/6VhWSjkoGlO0ejVWUIpQdOmqtLxEaY3dFQOW3GPQnd1Eway9jgGL+zwNvhongsGw
-	BcFUxE7CbKGXAWs2AtfNbAKsT59jCA3+RcNc4CUBPZOjCEaK3mCItHeQYLP6ENz0DiBorDqO
-	4UXBLRK6wmMY2qwnMTx6MIKgxF6IINjfSMCJy9cxFJW4Kagf8jDwaOQdAU73dhisCFJgG5a1
-	P2PAbntFQIV5OdjbO+WZjlTwOl8yEDhrpaAm1EFD20A3DXXmIQbcfa3ykqeCJFg8YQrcz2Sh
-	sX8llP5STsH5i08wNDS2UdDpuYBhwDVHg9k+RYPf6aPgvvcfCtqKr1LQ4amWL3DuNA3Vr8sw
-	/PY6iKDPNspARXiMAX+Tg4CqcRu9WSfk+mex4LroQkJkphAJ/105QQq5BXJ4d3SMFGbCj7Fw
-	r4wXyn+dIYRz7auE+uIAIzjc6UJOS4gWaqvihMsNw4RQOhGmd8T/oNikE/VShmhcrdmrSKr0
-	TmNDdS/K7PvjLDajfgfKR1Esz63l/y6fYz6wv9OH5xlzK/je3mlynhdzX/K1p4N0PlKwJNe5
-	jM+bPiMLLLuI28A3XDoyX0Nxy/kuz11qnpXcev5NXwd+77mMd95oWvCJkvPWnpkFVnHr+Ev5
-	UwuePFcZxZf11JLvGz7n71T1UgVI6UAfXUMqKSUjWSvp18YnZaVImfH7U5PdSH65iqPvfryN
-	JnzfNiOORepoZdOhBElFazNMWcnNiGdJ9WLlqH6NpFLqtFmHRWPqHmO6XjQ1o6UspY5RJk4e
-	0qm4n7QHxQOiaBCNH1SCjYo1I8vOJyF1dLdRt6Xk++uVmQWaxy1x2Vt3tRhWPFz3+5K0Oys3
-	tkoR3bj22K6hSDfarMwUc4paP/UnwO09RxMnVl/dbXr7leatxmDI0437vh4r21kT+Ozaw20/
-	P7vw8XBg4z51/ancb1q+iP1u/JZlUr1hVpNWe7944nDdjp7pTzxzS3K2qClTkjYhjjSatP8D
-	mw7ByG4DAAA=
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0hTYRjHe895957jaHFYQgcjimEXopul9WAXkz50CIo+FF0xRx5yONfa
-	yjK6OG156aaDTWuWprlirjK1y7LR0BqVhVtW2sUsWCvRMmoq89os+vLwe57///nzfHhYWu6U
-	RLEqzX5Rp1GqFUSKpRuW58zX5i5WLcq6MwfyjMfhQ6dfAm8Mbgx9wTwMpTcdBEasdxnIqz0v
-	gSdt2Ri8N6oRdPblIRgYstJgdI5hGDF5GAiG3jNgNiAYc3kQWHwmGtq9D2lw1Bso+F0zSqC7
-	6RcC82c/geIuA4Ze22kEFwJWBroer4XvnQ0SGOv4SkFbfw8Cm3+UAr87F8GIJQ3KKurC65af
-	BIZetNBQbPYiuPy5g4ZfXZ8Q1Hs+InBdyybwpfA2Da3+SfCqr5fAU/MpAt99pRT8qCFQnu2S
-	gO95N4KLVhOCwDsXBTmVNwlYLtZicH66z4Cve5iCDxYTBdW166HTFsDQXFhBhc8Nu25NAWtx
-	DhUu3ygwX2+gIGSzM6urkDBgPIsFe90dSjC+HCGC45IDCUODJiQEq3JowVgYbpt6emnhRN1B
-	oaq5hwiDfa+J4Oovx8KzCl64kj9ICUUv5gvOCx3MxsTt0hUpolqVIeoWrkqWpl71hIj2ejs6
-	9LbkHMlC78pRAYpgeS6Wf9nqJeNMuNl8e3uIHudIbgZfdyYgKUBSluZap/O5obNhgWUnc8v4
-	B2VHxj2Ym8m/ut+Ex1nGLeV/vm0h/zKn89U17r85EeG5uW3wL8u5OL6sYEBSiKTlaIIdRao0
-	GelKlTpugT4tNVOjOrRg9970WhR+KNvR4aJ7KNi6thFxLFJMlLkPxqjkEmWGPjO9EfEsrYiU
-	9agXqeSyFGXmYVG3d5fugFrUN6KpLFZMka3bIibLuT3K/WKaKGpF3X+VYiOispD9/Vantmtn
-	/Lq4+k2BpFEmOvbeMZv0eXQooT9fvVSrc09auA09mxdZ5omVxUedVOCP+VWbA6kz7u5wNiSW
-	9C5buVtX+uZp8uPDD70Jib50//CaJYZgE45Pmjyt6Iqicl4LL8aMPjo/qyVzHxPteGAvicu/
-	5cIpydVCQrMmqbJZgfWpypi5tE6v/APETlIvTAMAAA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0iTcRTG+7/XbTl6WUFvCSmjsLIspeIQGX3ww5tfKgoqFWrkm47mrFlO
+	i7K85CU1k9TczLvLdF7aLEoyzWpEaiZ2WfNuNROzRJ02ndlc9O13nuc5h3PgCHCJhVwrkCvP
+	8yqlTCGlRIRo3K1kqyrZT77dPuEOvQNfSfh4rYUA23QKAQV1egpSDPkkzM5rcVjINtEwbe+h
+	YbHJhEDfcA2Dqfo/FIy9mESQM/SVgl+6dAQaq9YZ6RvBoKjU6HRzJyiY7+jEIS/nHYLJ0UEE
+	DaZ+BN+yHuLw3vaLgvGuAgx+1lNQHN9EQlf7GAKrpQmDhLI6CnLvGgh4MthIQ9eYA4MBnZWA
+	tqxSDPJGneaD1aDN+46BXVdFQ3tZLwHDlRoaHEO+sFgcCabqERpqxztJGLNmU2D4/Mq5eLoV
+	h5RGGwGGLx9JaLJ4Q8n1cgLyC3ud5y5MIzA9Hsagu7GAgvT6hyT06xdJqBsxY9Bmek1AT8dN
+	Gjoba0gwdrTjMJPpvi+Um03KJLgq4yOM0xfqETc/l4246YoEnEvKcpaJRjVX0faD4uZsHyju
+	TSnLlafOYdwTTR/NJT6z0Fyx4QKX+HKc5IyVmw/6BYn2hPIKeTSv2rb3pCh88G0bdjbXK+bO
+	zw1XkcYjDQkFLLOD7Z8ow/9zkbaTXmKK8WLNZrtLX8V4ssYMK5mGRAKc6fZgk+2ZLmMlc4z9
+	ZEvDlphgNrBPa3RoicXMLjZ+8Db9b6gHW13f4soLnXrOpzkXS5idbFHarGsoy9wTsoWOPOpf
+	wxr2eaWZyELiYrSsCknkyugImVyxwyc8VimP8TkVGWFAzo/TXXYEP0aT7w63IkaApG7iFrWv
+	XELKoqNiI1oRK8Clq8Q/FNvlEnGoLPYir4o8obqg4KNakbuAkK4W+82oQyVMmOw8f4bnz/Kq
+	/y4mEK69ilLP+W86Gua57srbL6kzgWiFdsiSrGj4bEEre3f737d43kloKakJESm9SFmNz62E
+	rgrToWaLZjTuQXPsVE/M4mRtdPD+JDbnN3EjsDrw9aWGjO5navK2Q73lwPHuI+apSIN33N2A
+	lzFbg4VHQsLe9KlhY8amAMdyve/6uObTAflBUiIqXOa7GVdFyf4Co+nbDW0DAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSe2xLcRTH/X739t6uVq6auBkyKeKV0WFyxJtkLolH4g/iEWu4sVo3tLMH
+	8eimNhvSNdrZis5YyR42nddMWSYWzFgNHTatqM2y2YZ1tU1NN/HPyeec7/d8c/44QkJyRxAs
+	VMTG8apYuVJKiUjRuoUpoftT5yhkna3TIE17FBqdbgG81VSS4OlOI+F8SREFPtMdGtKs2QJ4
+	4kgmoe56IQKnJw2Bt99EgLZ8gASfvpqG7t4PNBg0CAZs1QiMdj0BDXUPCSi6qcHws/QPBW2P
+	fiAwfHJTkNWqIaHTcgpBTrOJhtbHq+Cbs0IAA00tGBw97Qgs7j8Y3JWpCHzGaDDnlfnXjV0U
+	9Ne+JCDLUIfg0qcmAn60uhDcrP6IwHYtmYIvulsE1LtHwGtPJwVPDRkUfLOfx9BRSkFusk0A
+	9udtCC6Y9Aia39swpFwuocB4wUpCueseDfa23xgajXoMhda14LQ0k1Cjy8P+c/2uG2PBlJWC
+	/eUrBkNxBYZeSwG9LB9xXu0Zkisou4057SsfxRVdLEJcf58ecd35KQSn1fnbR+2dBHe8LIHL
+	r2mnuD7PG4qz9eSS3LM8lrtysg9zmbWhXHlOE71h+RbRol28UhHPq2YviRRFuV7U4H3GqYnn
+	OqYcQzkh6ShAyDLzWLPpJT3IFDOVbWjoJQY5iJnIlp1uFqQjkZBg6kPY1N4zQ8JoZjPr8KTj
+	QSaZKez9YgsaZDEzn012naX/hYawhaWVQ/4A/9zg6BtiCRPOmtO9Ah0S5aJhBShIERsfI1co
+	w2epo6OSYhWJs3bujbEi/ztZDv/OvIu661dVIUaIpIHiyoQwhUQgj1cnxVQhVkhIg8TtSplC
+	It4lTzrIq/buUB1Q8uoqNE5ISseK12ziIyXMbnkcH83z+3jVfxULA4KPoSrZO2/GxsiljtWv
+	3/bYuezt4S0rkhYfrs92abZFjFqhC5zg3Rr4feXn1WHVCzbKZqLPZtGDlt3OuJ+NiYaLZl/J
+	pHk7PyzJxNkVjhHLJp+Y9KskVBZxqtbxPfd6xKHZwdbA4d4HGRldHSfix0/f8zjAe3L8qIQj
+	XVfWXx0zsrg0sW7uKympjpKHzSBUavlfDbu1g0oDAAA=
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -224,931 +223,158 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-Add documents describing the concept and APIs of dept.
+commit eb1cfd09f788e ("lockdep: Add lock_set_cmp_fn() annotation") has
+been added to address the issue that lockdep was not able to detect a
+true deadlock like the following:
+
+   https://lore.kernel.org/lkml/20220510232633.GA18445@X58A-UD3R/
+
+The approach is only for lockdep but dept should work being aware of it
+because the new annotation is already used to avoid false positive of
+lockdep in the code.
+
+Make dept aware of the new lockdep annotation.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- Documentation/dev-tools/dept.rst     | 778 +++++++++++++++++++++++++++
- Documentation/dev-tools/dept_api.rst | 125 +++++
- 2 files changed, 903 insertions(+)
- create mode 100644 Documentation/dev-tools/dept.rst
- create mode 100644 Documentation/dev-tools/dept_api.rst
+ include/linux/dept.h     | 10 +++++++++
+ kernel/dependency/dept.c | 48 +++++++++++++++++++++++++++++++++++-----
+ kernel/locking/lockdep.c |  1 +
+ 3 files changed, 53 insertions(+), 6 deletions(-)
 
-diff --git a/Documentation/dev-tools/dept.rst b/Documentation/dev-tools/dept.rst
-new file mode 100644
-index 000000000000..333166464543
---- /dev/null
-+++ b/Documentation/dev-tools/dept.rst
-@@ -0,0 +1,778 @@
-+DEPT(DEPendency Tracker)
-+========================
-+
-+Started by Byungchul Park <max.byungchul.park@sk.com>
-+
-+How lockdep works
-+-----------------
-+
-+Lockdep detects a deadlock by checking lock acquisition order.  For
-+example, a graph to track acquisition order built by lockdep might look
-+like:
-+
-+.. literal::
-+
-+   A -> B -
-+           \
-+            -> E
-+           /
-+   C -> D -
-+
-+   where 'A -> B' means that acquisition A is prior to acquisition B
-+   with A still held.
-+
-+Lockdep keeps adding each new acquisition order into the graph at
-+runtime.  For example, 'E -> C' will be added when the two locks have
-+been acquired in the order, E and then C.  The graph will look like:
-+
-+.. literal::
-+
-+       A -> B -
-+               \
-+                -> E -
-+               /      \
-+    -> C -> D -        \
-+   /                   /
-+   \                  /
-+    ------------------
-+
-+   where 'A -> B' means that acquisition A is prior to acquisition B
-+   with A still held.
-+
-+This graph contains a subgraph that demonstrates a loop like:
-+
-+.. literal::
-+
-+                -> E -
-+               /      \
-+    -> C -> D -        \
-+   /                   /
-+   \                  /
-+    ------------------
-+
-+   where 'A -> B' means that acquisition A is prior to acquisition B
-+   with A still held.
-+
-+Lockdep reports it as a deadlock on detection of a loop and stops its
-+working.
-+
-+CONCLUSION
-+
-+Lockdep detects a deadlock by checking if a loop has been created after
-+adding a new acquisition order into the graph.
-+
-+
-+Limitation of lockdep
-+---------------------
-+
-+Lockdep deals with a deadlock by typical lock e.g. spinlock and mutex,
-+that are supposed to be released within the acquisition context.
-+However, when it comes to a deadlock by folio lock that is not supposed
-+to be released within the acquisition context or other general
-+synchronization mechanisms, lockdep doesn't work.
-+
-+NOTE:  In this document, 'context' refers to any type of unique context
-+e.g. irq context, normal process context, wq worker context, or so on.
-+
-+Can lockdep detect the following deadlock?
-+
-+.. literal::
-+
-+   context X	   context Y	   context Z
-+
-+		   mutex_lock A
-+   folio_lock B
-+		   folio_lock B <- DEADLOCK
-+				   mutex_lock A <- DEADLOCK
-+				   folio_unlock B
-+		   folio_unlock B
-+		   mutex_unlock A
-+				   mutex_unlock A
-+
-+No.  What about the following?
-+
-+.. literal::
-+
-+   context X		   context Y
-+
-+			   mutex_lock A
-+   mutex_lock A <- DEADLOCK
-+			   wait_for_complete B <- DEADLOCK
-+   complete B
-+			   mutex_unlock A
-+   mutex_unlock A
-+
-+No.
-+
-+CONCLUSION
-+
-+Lockdep cannot detect a deadlock by folio lock or other general
-+synchronization mechanisms.
-+
-+
-+What leads a deadlock
-+---------------------
-+
-+A deadlock occurs when one or multi contexts are waiting for events that
-+will never happen.  For example:
-+
-+.. literal::
-+
-+   context X	   context Y	   context Z
-+
-+   |		   |		   |
-+   v		   |		   |
-+   1 wait for A    v		   |
-+   .		   2 wait for C    v
-+   event C	   .		   3 wait for B
-+		   event B	   .
-+				   event A
-+
-+Event C cannot be triggered because context X is stuck at 1, event B
-+cannot be triggered because context Y is stuck at 2, and event A cannot
-+be triggered because context Z is stuck at 3.  All the contexts are
-+stuck.  We call this **deadlock**.
-+
-+If an event occurrence to awaken its wait is a prerequisite to reaching
-+another event, we call it **dependency**.  In this example:
-+
-+   * Event A occurrence is a prerequisite to reaching event C.
-+   * Event C occurrence is a prerequisite to reaching event B.
-+   * Event B occurrence is a prerequisite to reaching event A.
-+
-+In terms of dependency:
-+
-+   * Event C depends on event A.
-+   * Event B depends on event C.
-+   * Event A depends on event B.
-+
-+Dependency graph reflecting this example will look like:
-+
-+.. literal::
-+
-+    -> C -> A -> B -
-+   /                \
-+   \                /
-+    ----------------
-+
-+   where 'A -> B' means that event A depends on event B.
-+
-+A circular dependency exists.  Such a circular dependency leads a
-+deadlock since no waiters can have desired events triggered.
-+
-+CONCLUSION
-+
-+A circular dependency of events leads a deadlock.
-+
-+
-+Introduce DEPT
-+--------------
-+
-+DEPT(DEPendency Tracker) tracks wait and event instead of lock
-+acquisition order so as to recognize the following situation:
-+
-+.. literal::
-+
-+   context X	   context Y	   context Z
-+
-+   |		   |		   |
-+   v		   |		   |
-+   wait for A	   v		   |
-+   .		   wait for C	   v
-+   event C	   .		   wait for B
-+		   event B	   .
-+				   event A
-+
-+and builds up a dependency graph at runtime that is similar to lockdep.
-+The graph might look like:
-+
-+.. literal::
-+
-+    -> C -> A -> B -
-+   /                \
-+   \                /
-+    ----------------
-+
-+   where 'A -> B' means that event A depends on event B.
-+
-+DEPT keeps adding each new dependency into the graph at runtime.  For
-+example, 'B -> D' will be added when event D occurrence is a
-+prerequisite to reaching event B like:
-+
-+.. literal::
-+
-+   context W
-+
-+   |
-+   v
-+   wait for D
-+   .
-+   event B
-+
-+After the addition, the graph will look like:
-+
-+.. literal::
-+
-+                     -> D
-+                    /
-+    -> C -> A -> B -
-+   /                \
-+   \                /
-+    ----------------
-+
-+   where 'A -> B' means that event A depends on event B.
-+
-+DEPT is going to report a deadlock on detection of a new loop.
-+
-+CONCLUSION
-+
-+DEPT works on wait and event so as to theoretically detect all the
-+potential deadlocks.
-+
-+
-+How DEPT works
-+--------------
-+
-+Let's take a look how DEPT works with the 1st example in the section
-+'Limitation of lockdep'.
-+
-+.. literal::
-+
-+   context X	   context Y	   context Z
-+
-+		   mutex_lock A
-+   folio_lock B
-+		   folio_lock B <- DEADLOCK
-+				   mutex_lock A <- DEADLOCK
-+				   folio_unlock B
-+		   folio_unlock B
-+		   mutex_unlock A
-+				   mutex_unlock A
-+
-+NOTE:  In this document, 'event context' refers to a portion within a
-+context where an interesting event is triggered in, between a point
-+where the context has started progressing toward the event, and the
-+event.
-+
-+Adding comments to describe DEPT's view in detail:
-+
-+.. literal::
-+
-+   context X	   context Y	   context Z
-+
-+		   mutex_lock A
-+		   /* might wait for A */
-+		   /* start to take into account event A's context */
-+		   /* 1 */
-+   folio_lock B
-+   /* might wait for B */
-+   /* start to take into account event B's context */
-+   /* 2 */
-+
-+		   folio_lock B
-+		   /* might wait for B */ <- DEADLOCK
-+		   /* start to take into account event B's context */
-+		   /* 3 */
-+
-+				   mutex_lock A
-+				   /* might wait for A */ <- DEADLOCK
-+				   /* start to take into account
-+				      event A's context */
-+				   /* 4 */
-+
-+				   folio_unlock B
-+				   /* event B that's been valid since 2 */
-+		   folio_unlock B
-+		   /* event B that's been valid since 3 */
-+
-+		   mutex_unlock A
-+		   /* event A that's been valid since 1 */
-+
-+				   mutex_unlock A
-+				   /* event A that's been valid since 4 */
-+
-+Let's build up dependency graph with this example.  Firstly, context X:
-+
-+.. literal::
-+
-+   context X
-+
-+   folio_lock B
-+   /* might wait for B */
-+   /* start to take into account event B's context */
-+   /* 2 */
-+
-+There are no events to create dependency.  Next, context Y:
-+
-+.. literal::
-+
-+   context Y
-+
-+   mutex_lock A
-+   /* might wait for A */
-+   /* start to take into account event A's context */
-+   /* 1 */
-+
-+   folio_lock B
-+   /* might wait for B */
-+   /* start to take into account event B's context */
-+   /* 3 */
-+
-+   folio_unlock B
-+   /* event B that's been valid since 3 */
-+
-+   mutex_unlock A
-+   /* event A that's been valid since 1 */
-+
-+There are two events, folio_unlock B a.k.a. event B and mutex_unlock A
-+a.k.a. event A.  For event B, since there are no waits between 3 and the
-+event, event B does not create any dependency.  For event A, there is a
-+wait, folio_lock B a.k.a. wait B, between 1 and the event.  Which means
-+event A cannot be triggered if wait B cannot be awakened by event B.
-+Therefore, we can say event A depends on event B, say, 'A -> B'.  The
-+graph will look like after adding the dependency:
-+
-+.. literal::
-+
-+   A -> B
-+
-+   where 'A -> B' means that event A depends on event B.
-+
-+Lastly, context Z:
-+
-+.. literal::
-+
-+   context Z
-+
-+   mutex_lock A
-+   /* might wait for A */
-+   /* start to take into account event A's context */
-+   /* 4 */
-+
-+   folio_unlock B
-+   /* event B that's been valid since 2 */
-+
-+   mutex_unlock A
-+   /* event A that's been valid since 4 */
-+
-+There are also two events, folio_unlock B a.k.a. event B and
-+mutex_unlock A a.k.a. event A.  For event B, there is a wait, mutex_lock
-+A a.k.a. wait A, between 2 and the event.  Which means event B cannot be
-+triggered if wait A cannot be awakened by event A.  Therefore, we can
-+say event B depends on event A, say, 'B -> A'.  The graph will look like
-+after adding the dependency:
-+
-+.. literal::
-+
-+    -> A -> B -
-+   /           \
-+   \           /
-+    -----------
-+
-+   where 'A -> B' means that event A depends on event B.
-+
-+A new loop has been created.  So DEPT can report it as a deadlock.  For
-+event A, since there are no waits between 4 and the event, event A does
-+not create any dependency.  That's it.
-+
-+CONCLUSION
-+
-+DEPT works well with any general synchronization mechanisms by focusing
-+on wait, event and its context.
-+
-+
-+Interpret DEPT report
-+---------------------
-+
-+The following is the same example in the section 'How DEPT works'.
-+
-+.. literal::
-+
-+   context X	   context Y	   context Z
-+
-+		   mutex_lock A
-+		   /* might wait for A */
-+		   /* start to take into account event A's context */
-+		   /* 1 */
-+   folio_lock B
-+   /* might wait for B */
-+   /* start to take into account event B's context */
-+   /* 2 */
-+
-+		   folio_lock B
-+		   /* might wait for B */ <- DEADLOCK
-+		   /* start to take into account event B's context */
-+		   /* 3 */
-+
-+				   mutex_lock A
-+				   /* might wait for A */ <- DEADLOCK
-+				   /* start to take into account
-+				      event A's context */
-+				   /* 4 */
-+
-+				   folio_unlock B
-+				   /* event B that's been valid since 2 */
-+		   folio_unlock B
-+		   /* event B that's been valid since 3 */
-+
-+		   mutex_unlock A
-+		   /* event A that's been valid since 1 */
-+
-+				   mutex_unlock A
-+				   /* event A that's been valid since 4 */
-+
-+We can simplify this by labeling each waiting point with [W], each
-+point where its event's context starts with [S] and each event with [E].
-+This example will look like after the labeling:
-+
-+.. literal::
-+
-+   context X	   context Y	   context Z
-+
-+		   [W][S] mutex_lock A
-+   [W][S] folio_lock B
-+		   [W][S] folio_lock B <- DEADLOCK
-+
-+				   [W][S] mutex_lock A <- DEADLOCK
-+				   [E] folio_unlock B
-+		   [E] folio_unlock B
-+		   [E] mutex_unlock A
-+				   [E] mutex_unlock A
-+
-+DEPT uses the symbols [W], [S] and [E] in its report as described above.
-+The following is an example reported by DEPT for a real problem in
-+practice.
-+
-+.. literal::
-+
-+   Link: https://lore.kernel.org/lkml/6383cde5-cf4b-facf-6e07-1378a485657d@I-love.SAKURA.ne.jp/#t
-+   Link: https://lore.kernel.org/lkml/1674268856-31807-1-git-send-email-byungchul.park@lge.com/
-+
-+   ===================================================
-+   DEPT: Circular dependency has been detected.
-+   6.2.0-rc1-00025-gb0c20ebf51ac-dirty #28 Not tainted
-+   ---------------------------------------------------
-+   summary
-+   ---------------------------------------------------
-+   *** DEADLOCK ***
-+
-+   context A
-+       [S] lock(&ni->ni_lock:0)
-+       [W] folio_wait_bit_common(PG_locked_map:0)
-+       [E] unlock(&ni->ni_lock:0)
-+
-+   context B
-+       [S] (unknown)(PG_locked_map:0)
-+       [W] lock(&ni->ni_lock:0)
-+       [E] folio_unlock(PG_locked_map:0)
-+
-+   [S]: start of the event context
-+   [W]: the wait blocked
-+   [E]: the event not reachable
-+   ---------------------------------------------------
-+   context A's detail
-+   ---------------------------------------------------
-+   context A
-+       [S] lock(&ni->ni_lock:0)
-+       [W] folio_wait_bit_common(PG_locked_map:0)
-+       [E] unlock(&ni->ni_lock:0)
-+
-+   [S] lock(&ni->ni_lock:0):
-+   [<ffffffff82b396fb>] ntfs3_setattr+0x54b/0xd40
-+   stacktrace:
-+         ntfs3_setattr+0x54b/0xd40
-+         notify_change+0xcb3/0x1430
-+         do_truncate+0x149/0x210
-+         path_openat+0x21a3/0x2a90
-+         do_filp_open+0x1ba/0x410
-+         do_sys_openat2+0x16d/0x4e0
-+         __x64_sys_creat+0xcd/0x120
-+         do_syscall_64+0x41/0xc0
-+         entry_SYSCALL_64_after_hwframe+0x63/0xcd
-+
-+   [W] folio_wait_bit_common(PG_locked_map:0):
-+   [<ffffffff81b228b0>] truncate_inode_pages_range+0x9b0/0xf20
-+   stacktrace:
-+         folio_wait_bit_common+0x5e0/0xaf0
-+         truncate_inode_pages_range+0x9b0/0xf20
-+         truncate_pagecache+0x67/0x90
-+         ntfs3_setattr+0x55a/0xd40
-+         notify_change+0xcb3/0x1430
-+         do_truncate+0x149/0x210
-+         path_openat+0x21a3/0x2a90
-+         do_filp_open+0x1ba/0x410
-+         do_sys_openat2+0x16d/0x4e0
-+         __x64_sys_creat+0xcd/0x120
-+         do_syscall_64+0x41/0xc0
-+         entry_SYSCALL_64_after_hwframe+0x63/0xcd
-+
-+   [E] unlock(&ni->ni_lock:0):
-+   (N/A)
-+   ---------------------------------------------------
-+   context B's detail
-+   ---------------------------------------------------
-+   context B
-+       [S] (unknown)(PG_locked_map:0)
-+       [W] lock(&ni->ni_lock:0)
-+       [E] folio_unlock(PG_locked_map:0)
-+
-+   [S] (unknown)(PG_locked_map:0):
-+   (N/A)
-+
-+   [W] lock(&ni->ni_lock:0):
-+   [<ffffffff82b009ec>] attr_data_get_block+0x32c/0x19f0
-+   stacktrace:
-+         attr_data_get_block+0x32c/0x19f0
-+         ntfs_get_block_vbo+0x264/0x1330
-+         __block_write_begin_int+0x3bd/0x14b0
-+         block_write_begin+0xb9/0x4d0
-+         ntfs_write_begin+0x27e/0x480
-+         generic_perform_write+0x256/0x570
-+         __generic_file_write_iter+0x2ae/0x500
-+         ntfs_file_write_iter+0x66d/0x1d70
-+         do_iter_readv_writev+0x20b/0x3c0
-+         do_iter_write+0x188/0x710
-+         vfs_iter_write+0x74/0xa0
-+         iter_file_splice_write+0x745/0xc90
-+         direct_splice_actor+0x114/0x180
-+         splice_direct_to_actor+0x33b/0x8b0
-+         do_splice_direct+0x1b7/0x280
-+         do_sendfile+0xb49/0x1310
-+
-+   [E] folio_unlock(PG_locked_map:0):
-+   [<ffffffff81f10222>] generic_write_end+0xf2/0x440
-+   stacktrace:
-+         generic_write_end+0xf2/0x440
-+         ntfs_write_end+0x42e/0x980
-+         generic_perform_write+0x316/0x570
-+         __generic_file_write_iter+0x2ae/0x500
-+         ntfs_file_write_iter+0x66d/0x1d70
-+         do_iter_readv_writev+0x20b/0x3c0
-+         do_iter_write+0x188/0x710
-+         vfs_iter_write+0x74/0xa0
-+         iter_file_splice_write+0x745/0xc90
-+         direct_splice_actor+0x114/0x180
-+         splice_direct_to_actor+0x33b/0x8b0
-+         do_splice_direct+0x1b7/0x280
-+         do_sendfile+0xb49/0x1310
-+         __x64_sys_sendfile64+0x1d0/0x210
-+         do_syscall_64+0x41/0xc0
-+         entry_SYSCALL_64_after_hwframe+0x63/0xcd
-+   ---------------------------------------------------
-+   information that might be helpful
-+   ---------------------------------------------------
-+   CPU: 1 PID: 8060 Comm: a.out Not tainted
-+	6.2.0-rc1-00025-gb0c20ebf51ac-dirty #28
-+   Hardware name: QEMU Standard PC (i440FX + PIIX, 1996),
-+	BIOS Bochs 01/01/2011
-+   Call Trace:
-+    <TASK>
-+    dump_stack_lvl+0xf2/0x169
-+    print_circle.cold+0xca4/0xd28
-+    ? lookup_dep+0x240/0x240
-+    ? extend_queue+0x223/0x300
-+    cb_check_dl+0x1e7/0x260
-+    bfs+0x27b/0x610
-+    ? print_circle+0x240/0x240
-+    ? llist_add_batch+0x180/0x180
-+    ? extend_queue_rev+0x300/0x300
-+    ? __add_dep+0x60f/0x810
-+    add_dep+0x221/0x5b0
-+    ? __add_idep+0x310/0x310
-+    ? add_iecxt+0x1bc/0xa60
-+    ? add_iecxt+0x1bc/0xa60
-+    ? add_iecxt+0x1bc/0xa60
-+    ? add_iecxt+0x1bc/0xa60
-+    __dept_wait+0x600/0x1490
-+    ? add_iecxt+0x1bc/0xa60
-+    ? truncate_inode_pages_range+0x9b0/0xf20
-+    ? check_new_class+0x790/0x790
-+    ? dept_enirq_transition+0x519/0x9c0
-+    dept_wait+0x159/0x3b0
-+    ? truncate_inode_pages_range+0x9b0/0xf20
-+    folio_wait_bit_common+0x5e0/0xaf0
-+    ? filemap_get_folios_contig+0xa30/0xa30
-+    ? dept_enirq_transition+0x519/0x9c0
-+    ? lock_is_held_type+0x10e/0x160
-+    ? lock_is_held_type+0x11e/0x160
-+    truncate_inode_pages_range+0x9b0/0xf20
-+    ? truncate_inode_partial_folio+0xba0/0xba0
-+    ? setattr_prepare+0x142/0xc40
-+    truncate_pagecache+0x67/0x90
-+    ntfs3_setattr+0x55a/0xd40
-+    ? ktime_get_coarse_real_ts64+0x1e5/0x2f0
-+    ? ntfs_extend+0x5c0/0x5c0
-+    ? mode_strip_sgid+0x210/0x210
-+    ? ntfs_extend+0x5c0/0x5c0
-+    notify_change+0xcb3/0x1430
-+    ? do_truncate+0x149/0x210
-+    do_truncate+0x149/0x210
-+    ? file_open_root+0x430/0x430
-+    ? process_measurement+0x18c0/0x18c0
-+    ? ntfs_file_release+0x230/0x230
-+    path_openat+0x21a3/0x2a90
-+    ? path_lookupat+0x840/0x840
-+    ? dept_enirq_transition+0x519/0x9c0
-+    ? lock_is_held_type+0x10e/0x160
-+    do_filp_open+0x1ba/0x410
-+    ? may_open_dev+0xf0/0xf0
-+    ? find_held_lock+0x2d/0x110
-+    ? lock_release+0x43c/0x830
-+    ? dept_ecxt_exit+0x31a/0x590
-+    ? _raw_spin_unlock+0x3b/0x50
-+    ? alloc_fd+0x2de/0x6e0
-+    do_sys_openat2+0x16d/0x4e0
-+    ? __ia32_sys_get_robust_list+0x3b0/0x3b0
-+    ? build_open_flags+0x6f0/0x6f0
-+    ? dept_enirq_transition+0x519/0x9c0
-+    ? dept_enirq_transition+0x519/0x9c0
-+    ? lock_is_held_type+0x4e/0x160
-+    ? lock_is_held_type+0x4e/0x160
-+    __x64_sys_creat+0xcd/0x120
-+    ? __x64_compat_sys_openat+0x1f0/0x1f0
-+    do_syscall_64+0x41/0xc0
-+    entry_SYSCALL_64_after_hwframe+0x63/0xcd
-+   RIP: 0033:0x7f8b9e4e4469
-+   Code: 00 f3 c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00 48 89 f8 48
-+   89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48>
-+   3d 01 f0 ff ff 73 01 c3 48 8b 0d ff 49 2b 00 f7 d8 64 89 01 48
-+   RSP: 002b:00007f8b9eea4ef8 EFLAGS: 00000202 ORIG_RAX: 0000000000000055
-+   RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 00007f8b9e4e4469
-+   RDX: 0000000000737562 RSI: 0000000000000000 RDI: 0000000020000000
-+   RBP: 00007f8b9eea4f20 R08: 0000000000000000 R09: 0000000000000000
-+   R10: 0000000000000000 R11: 0000000000000202 R12: 00007fffa75511ee
-+   R13: 00007fffa75511ef R14: 00007f8b9ee85000 R15: 0000000000000003
-+    </TASK>
-+
-+Let's take a look at the summary that is the most important part.
-+
-+.. literal::
-+
-+   ---------------------------------------------------
-+   summary
-+   ---------------------------------------------------
-+   *** DEADLOCK ***
-+
-+   context A
-+       [S] lock(&ni->ni_lock:0)
-+       [W] folio_wait_bit_common(PG_locked_map:0)
-+       [E] unlock(&ni->ni_lock:0)
-+
-+   context B
-+       [S] (unknown)(PG_locked_map:0)
-+       [W] lock(&ni->ni_lock:0)
-+       [E] folio_unlock(PG_locked_map:0)
-+
-+   [S]: start of the event context
-+   [W]: the wait blocked
-+   [E]: the event not reachable
-+
-+The summary shows the following scenario:
-+
-+.. literal::
-+
-+   context A	   context B	   context ?(unknown)
-+
-+				   [S] folio_lock(&f1)
-+   [S] lock(&ni->ni_lock:0)
-+   [W] folio_wait_bit_common(PG_locked_map:0)
-+
-+		   [W] lock(&ni->ni_lock:0)
-+		   [E] folio_unlock(&f1)
-+
-+   [E] unlock(&ni->ni_lock:0)
-+
-+Adding comments to describe DEPT's view in detail:
-+
-+.. literal::
-+
-+   context A	   context B	   context ?(unknown)
-+
-+				   [S] folio_lock(&f1)
-+				   /* start to take into account context
-+				      B heading for folio_unlock(&f1) */
-+				   /* 1 */
-+   [S] lock(&ni->ni_lock:0)
-+   /* start to take into account this context heading for
-+      unlock(&ni->ni_lock:0) */
-+   /* 2 */
-+
-+   [W] folio_wait_bit_common(PG_locked_map:0) (= folio_lock(&f1))
-+   /* might wait for folio_unlock(&f1) */
-+
-+		   [W] lock(&ni->ni_lock:0)
-+		   /* might wait for unlock(&ni->ni_lock:0) */
-+
-+		   [E] folio_unlock(&f1)
-+		   /* event that's been valid since 1 */
-+
-+   [E] unlock(&ni->ni_lock:0)
-+   /* event that's been valid since 2 */
-+
-+Let's build up dependency graph with this report. Firstly, context A:
-+
-+.. literal::
-+
-+   context A
-+
-+   [S] lock(&ni->ni_lock:0)
-+   /* start to take into account this context heading for
-+      unlock(&ni->ni_lock:0) */
-+   /* 2 */
-+
-+   [W] folio_wait_bit_common(PG_locked_map:0) (= folio_lock(&f1))
-+   /* might wait for folio_unlock(&f1) */
-+
-+   [E] unlock(&ni->ni_lock:0)
-+   /* event that's been valid since 2 */
-+
-+There is one event, unlock(&ni->ni_lock:0).  There is a wait,
-+folio_lock(&f1), between 2 and the event.  Which means
-+unlock(&ni->ni_lock:0) is not reachable if folio_lock(&f1) cannot be
-+awakened by the owner's folio_unlock(&f1).  Therefore, we can say
-+unlock(&ni->ni_lock:0) depends on folio_unlock(&f1), say,
-+'unlock(&ni->ni_lock:0) -> folio_unlock(&f1)'.
-+
-+The graph will look like after adding the dependency:
-+
-+.. literal::
-+
-+   unlock(&ni->ni_lock:0) -> folio_unlock(&f1)
-+
-+   where 'A -> B' means that event A depends on event B.
-+
-+Secondly, context B:
-+
-+.. literal::
-+
-+   context B
-+
-+   [W] lock(&ni->ni_lock:0)
-+   /* might wait for unlock(&ni->ni_lock:0) */
-+
-+   [E] folio_unlock(&f1)
-+   /* event that's been valid since 1 */
-+
-+There is also one event, folio_unlock(&f1).  There is a wait,
-+lock(&ni->ni_lock:0), between 1 and the event.  Which means
-+folio_unlock(&f1) is not reachable if lock(&ni->ni_lock:0) cannot be
-+awakened by the owner's unlock(&ni->ni_lock:0).  Therefore, we can say
-+folio_unlock(&f1) depends on unlock(&ni->ni_lock:0), say,
-+'folio_unlock(&f1) -> unlock(&ni->ni_lock:0)'.
-+
-+The graph will look like after adding the dependency:
-+
-+.. literal::
-+
-+    -> unlock(&ni->ni_lock:0) -> folio_unlock(&f1) -
-+   /                                                \
-+   \                                                /
-+    ------------------------------------------------
-+
-+   where 'A -> B' means that event A depends on event B.
-+
-+A new loop has been created.  So DEPT can report it as a deadlock!  Cool!
-+
-+CONCLUSION
-+
-+DEPT works awesome!
-diff --git a/Documentation/dev-tools/dept_api.rst b/Documentation/dev-tools/dept_api.rst
-new file mode 100644
-index 000000000000..409116a62849
---- /dev/null
-+++ b/Documentation/dev-tools/dept_api.rst
-@@ -0,0 +1,125 @@
-+DEPT(DEPendency Tracker) APIs
-+=============================
-+
-+Started by Byungchul Park <max.byungchul.park@sk.com>
-+
-+SDT(Single-event Dependency Tracker) APIs
-+-----------------------------------------
-+Use these APIs to annotate on either wait or event.  These have been
-+already applied into the existing synchronization primitives e.g.
-+waitqueue, swait, wait_for_completion(), dma fence and so on.  The basic
-+APIs of SDT are:
-+
-+.. code-block:: c
-+
-+   /*
-+    * After defining 'struct dept_map map', initialize the instance.
-+    */
-+   sdt_map_init(map);
-+
-+   /*
-+    * Place just before the interesting wait.
-+    */
-+   sdt_wait(map);
-+
-+   /*
-+    * Place just before the interesting event.
-+    */
-+   sdt_event(map);
-+
-+The advanced APIs of SDT are:
-+
-+.. code-block:: c
-+
-+   /*
-+    * After defining 'struct dept_map map', initialize the instance
-+    * using an external key.
-+    */
-+   sdt_map_init_key(map, key);
-+
-+   /*
-+    * Place just before the interesting timeout wait.
-+    */
-+   sdt_wait_timeout(map, time);
-+
-+   /*
-+    * Use sdt_might_sleep_start() and sdt_might_sleep_end() in pair.
-+    * Place at the start of the interesting section that might enter
-+    * schedule() or its family that needs to be woken up by
-+    * try_to_wake_up().
-+    */
-+   sdt_might_sleep_start(map);
-+
-+   /*
-+    * Use sdt_might_sleep_start_timeout() and sdt_might_sleep_end() in
-+    * pair.  Place at the start of the interesting section that might
-+    * enter schedule_timeout() or its family that needs to be woken up
-+    * by try_to_wake_up().
-+    */
-+   sdt_might_sleep_start_timeout(map, time);
-+
-+   /*
-+    * Use sdt_might_sleep_start() and sdt_might_sleep_end() in pair.
-+    * Place at the end of the interesting section that might enter
-+    * schedule(), schedule_timeout() or its family that needs to be
-+    * woken up by try_to_wake_up().
-+    */
-+   sdt_might_sleep_end();
-+
-+   /*
-+    * Use sdt_ecxt_enter() and sdt_ecxt_exit() in pair.  Place at the
-+    * start of the interesting section where the interesting event might
-+    * be triggered.
-+    */
-+   sdt_ecxt_enter(map);
-+
-+   /*
-+    * Use sdt_ecxt_enter() and sdt_ecxt_exit() in pair.  Place at the
-+    * end of the interesting section where the interesting event might
-+    * be triggered.
-+    */
-+   sdt_ecxt_exit(map);
-+
-+
-+LDT(Lock Dependency Tracker) APIs
-+---------------------------------
-+Do not use these APIs directly.  These are the wrappers for typical
-+locks, that have been already applied into major locks internally e.g.
-+spin lock, mutex, rwlock and so on.  The APIs of LDT are:
-+
-+.. code-block:: c
-+
-+   ldt_init(map, key, sub, name);
-+   ldt_lock(map, sub_local, try, nest, ip);
-+   ldt_rlock(map, sub_local, try, nest, ip, queued);
-+   ldt_wlock(map, sub_local, try, nest, ip);
-+   ldt_unlock(map, ip);
-+   ldt_downgrade(map, ip);
-+   ldt_set_class(map, name, key, sub_local, ip);
-+
-+
-+Raw APIs
-+--------
-+Do not use these APIs directly.  The raw APIs of dept are:
-+
-+.. code-block:: c
-+
-+   dept_free_range(start, size);
-+   dept_map_init(map, key, sub, name);
-+   dept_map_reinit(map, key, sub, name);
-+   dept_ext_wgen_init(ext_wgen);
-+   dept_map_copy(map_to, map_from);
-+   dept_wait(map, wait_flags, ip, wait_func, sub_local, time);
-+   dept_stage_wait(map, key, ip, wait_func, time);
-+   dept_request_event_wait_commit();
-+   dept_clean_stage();
-+   dept_stage_event(task, ip);
-+   dept_ecxt_enter(map, evt_flags, ip, ecxt_func, evt_func, sub_local);
-+   dept_ecxt_holding(map, evt_flags);
-+   dept_request_event(map, ext_wgen);
-+   dept_event(map, evt_flags, ip, evt_func, ext_wgen);
-+   dept_ecxt_exit(map, evt_flags, ip);
-+   dept_ecxt_enter_nokeep(map);
-+   dept_key_init(key);
-+   dept_key_destroy(key);
-+   dept_map_ecxt_modify(map, cur_evt_flags, key, evt_flags, ip, ecxt_func, evt_func, sub_local);
+diff --git a/include/linux/dept.h b/include/linux/dept.h
+index 7d5e01f56e8e..bbcb48f6140a 100644
+--- a/include/linux/dept.h
++++ b/include/linux/dept.h
+@@ -53,6 +53,11 @@ struct dept_map {
+ 	const char			*name;
+ 	struct dept_key			*keys;
+ 
++	/*
++	 * keep lockdep map to handle lockdep_set_lock_cmp_fn().
++	 */
++	void				*lockdep_map;
++
+ 	/*
+ 	 * subclass that can be set from user
+ 	 */
+@@ -79,6 +84,7 @@ struct dept_map {
+ {									\
+ 	.name = #n,							\
+ 	.keys = (struct dept_key *)(k),					\
++	.lockdep_map = NULL,						\
+ 	.sub_u = 0,							\
+ 	.map_key = { .classes = { NULL, } },				\
+ 	.wgen = 0U,							\
+@@ -179,6 +185,8 @@ extern void dept_softirqs_on_ip(unsigned long ip);
+ extern void dept_hardirqs_on(void);
+ extern void dept_softirqs_off(void);
+ extern void dept_hardirqs_off(void);
++
++#define dept_set_lockdep_map(m, lockdep_m) ({ (m)->lockdep_map = lockdep_m; })
+ #else /* !CONFIG_DEPT */
+ struct dept_key { };
+ struct dept_map { };
+@@ -221,5 +229,7 @@ struct dept_ext_wgen { };
+ #define dept_hardirqs_on()				do { } while (0)
+ #define dept_softirqs_off()				do { } while (0)
+ #define dept_hardirqs_off()				do { } while (0)
++
++#define dept_set_lockdep_map(m, lockdep_m)		do { } while (0)
+ #endif
+ #endif /* __LINUX_DEPT_H */
+diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
+index 1c6eb0a6d0a6..a0eb4b108de0 100644
+--- a/kernel/dependency/dept.c
++++ b/kernel/dependency/dept.c
+@@ -1615,9 +1615,39 @@ static int next_wgen(void)
+ 	return atomic_inc_return(&wgen) ?: atomic_inc_return(&wgen);
+ }
+ 
+-static void add_wait(struct dept_class *c, unsigned long ip,
+-		     const char *w_fn, int sub_l, bool sched_sleep,
+-		     bool timeout)
++/*
++ * XXX: This is a temporary patch needed until lockdep stops tracking
++ * dependency in wrong way.  lockdep has added an annotation to specify
++ * a callback to determin whether the given lock aquisition order is
++ * okay or not in its own way.  Even though dept is already working
++ * correctly with sub class on that issue, it needs to be aware of the
++ * annotation anyway.
++ */
++static bool lockdep_cmp_fn(struct dept_map *prev, struct dept_map *next)
++{
++	/*
++	 * Assumes the cmp_fn thing comes from struct lockdep_map.
++	 */
++	struct lockdep_map *p_lock = (struct lockdep_map *)prev->lockdep_map;
++	struct lockdep_map *n_lock = (struct lockdep_map *)next->lockdep_map;
++	struct lock_class *p_class = p_lock ? p_lock->class_cache[0] : NULL;
++	struct lock_class *n_class = n_lock ? n_lock->class_cache[0] : NULL;
++
++	if (!p_class || !n_class)
++		return false;
++
++	if (p_class != n_class)
++		return false;
++
++	if (!p_class->cmp_fn)
++		return false;
++
++	return p_class->cmp_fn(p_lock, n_lock) < 0;
++}
++
++static void add_wait(struct dept_map *m, struct dept_class *c,
++		unsigned long ip, const char *w_fn, int sub_l,
++		bool sched_sleep, bool timeout)
+ {
+ 	struct dept_task *dt = dept_task();
+ 	struct dept_wait *w;
+@@ -1658,8 +1688,13 @@ static void add_wait(struct dept_class *c, unsigned long ip,
+ 		if (!eh->ecxt)
+ 			continue;
+ 
+-		if (eh->ecxt->class != c || eh->sub_l == sub_l)
+-			add_dep(eh->ecxt, w);
++		if (eh->ecxt->class == c && eh->sub_l != sub_l)
++			continue;
++
++		if (i == dt->ecxt_held_pos - 1 && lockdep_cmp_fn(eh->map, m))
++			continue;
++
++		add_dep(eh->ecxt, w);
+ 	}
+ 
+ 	wg = next_wgen();
+@@ -2145,6 +2180,7 @@ void dept_map_init(struct dept_map *m, struct dept_key *k, int sub_u,
+ 	m->name = n;
+ 	m->wgen = 0U;
+ 	m->nocheck = !valid_key(k);
++	m->lockdep_map = NULL;
+ 
+ 	dept_exit_recursive(flags);
+ }
+@@ -2366,7 +2402,7 @@ static void __dept_wait(struct dept_map *m, unsigned long w_f,
+ 		if (!c)
+ 			continue;
+ 
+-		add_wait(c, ip, w_fn, sub_l, sched_sleep, timeout);
++		add_wait(m, c, ip, w_fn, sub_l, sched_sleep, timeout);
+ 	}
+ }
+ 
+diff --git a/kernel/locking/lockdep.c b/kernel/locking/lockdep.c
+index 39b9e3e27c0b..c99f91f7a54d 100644
+--- a/kernel/locking/lockdep.c
++++ b/kernel/locking/lockdep.c
+@@ -5035,6 +5035,7 @@ void lockdep_set_lock_cmp_fn(struct lockdep_map *lock, lock_cmp_fn cmp_fn,
+ 		class->print_fn = print_fn;
+ 	}
+ 
++	dept_set_lockdep_map(&lock->dmap, lock);
+ 	lockdep_recursion_finish();
+ 	raw_local_irq_restore(flags);
+ }
 -- 
 2.17.1
 
