@@ -1,143 +1,184 @@
-Received: from canpmsgout03.his.huawei.com (canpmsgout03.his.huawei.com [113.46.200.218])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ECCE52CCC0
-	for <linux-ext4@vger.kernel.org>; Sat, 13 Dec 2025 01:46:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.218
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9CC7D242D6A;
+	Sat, 13 Dec 2025 02:22:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1765590396; cv=none; b=cMf/Zm6YSwzg2rMrepCn4KRrCCy3uYuW3AcbqsTAubeVSTdby3QM/gCLg003TVNzfqBhCEuoDu9SwxFCUPqXcD1tsYVfQtl1Hx35uWfWdMq+OpqAGGgYQPDLqJncfsygDXdpT8xlwrT2Sm3dwtYLT350NfI4o3/np2Hzn2F1I8A=
+	t=1765592554; cv=none; b=FjlbOWh++T9+h7T19zxST1pi8vmkOvN5LZqaf1tHouNTUpXbcbaK5b6Iz9M1EJ7dS7KQGnYyFlOxoOdlFvtbRwdsxRFnkdFlRZ4pWwTz75+ke9dkZzqkCDySMhLSgr5LCnPTq1iArmylT/G07HCvzlnBMSVa7ToNp0VEaYexwas=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1765590396; c=relaxed/simple;
-	bh=u/FtnDLqlhBbtnoc1Fd3PBRJ9iITJpLV7dAGFUWo+QM=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:CC:
-	 In-Reply-To:Content-Type; b=R52tQBU49m3aFFDwHDOVFN9W4qzZGzROLDcFlLNBez+GfLJdSM//cj46ZbqZX56y1oawWCeuGzlrVHUk5zVGOuyymvIXjNduqI5Z77xtByGxvdpbKNtAvr38RvJF20LHrBT8/uc1HEWv74ewEarDBhOApNd5dp3Zh4YPqeutGOw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=J4fHKVJw; arc=none smtp.client-ip=113.46.200.218
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="J4fHKVJw"
-dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
-	c=relaxed/relaxed; q=dns/txt;
-	h=From;
-	bh=LC96HhzCyqhs5Xph9eZ12VC9ShVmnkZf9Pn2o4LER/c=;
-	b=J4fHKVJwwSUPAQCMZ/b/xuFMFjBgmPIrK61r39ZEyDbANGIo73OclLjU3eKP4xjQuCkfuncV3
-	cAXBOYTmiEM9OymLwUXmThae/VU7/zLbB063/TZ3SsR9DdRTMhjJLpsOHY79RoVSIDSOl1/y0Do
-	vvQYu4mIC7RBOtgr7saqjqE=
-Received: from mail.maildlp.com (unknown [172.19.162.254])
-	by canpmsgout03.his.huawei.com (SkyGuard) with ESMTPS id 4dSpyD33DzzpSvc;
-	Sat, 13 Dec 2025 09:43:48 +0800 (CST)
-Received: from dggpemf500013.china.huawei.com (unknown [7.185.36.188])
-	by mail.maildlp.com (Postfix) with ESMTPS id EA3711804F5;
-	Sat, 13 Dec 2025 09:46:24 +0800 (CST)
-Received: from [127.0.0.1] (10.174.178.254) by dggpemf500013.china.huawei.com
- (7.185.36.188) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Sat, 13 Dec
- 2025 09:46:24 +0800
-Message-ID: <ef906e19-04b9-4793-998e-81c34ebf9126@huawei.com>
-Date: Sat, 13 Dec 2025 09:46:23 +0800
+	s=arc-20240116; t=1765592554; c=relaxed/simple;
+	bh=7Cs1pr7wAo/xMoCnHKq12fNe9CDnAQGWhwmIwaIGDq0=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=MwInMMdo2oQ9OWS+Ud5lK1t5OS0LfUanePqhE2fzOOt7Ocr8WiCCXzhepwsUHwB4IQPqTTCgpDkwWcl2oYmKX1Ve59WRbupKmhHcC3Yrk0qixuPcGgcfBU8WyepGsxmINRQmgDnA5lLewtD8W4dJCnrt0Z0ZoqfUGHpSZrU76Ic=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.235])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4dSqpT5pzBzYQtvd;
+	Sat, 13 Dec 2025 10:22:09 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.75])
+	by mail.maildlp.com (Postfix) with ESMTP id 3D40C1A0A29;
+	Sat, 13 Dec 2025 10:22:29 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.85.155])
+	by APP2 (Coremail) with SMTP id Syh0CgA3F1HTzTxpFXQ7Bg--.63968S11;
+	Sat, 13 Dec 2025 10:22:29 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	yizhang089@gmail.com,
+	libaokun1@huawei.com,
+	yangerkun@huawei.com,
+	yukuai@fnnas.com
+Subject: [PATCH -next 7/7] ext4: remove EXT4_GET_BLOCKS_IO_CREATE_EXT
+Date: Sat, 13 Dec 2025 10:20:08 +0800
+Message-ID: <20251213022008.1766912-8-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.46.1
+In-Reply-To: <20251213022008.1766912-1-yi.zhang@huaweicloud.com>
+References: <20251213022008.1766912-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: fix dirtyclusters double decrement on fs shutdown
-Content-Language: en-GB
-To: Brian Foster <bfoster@redhat.com>
-References: <20251212154735.512651-1-bfoster@redhat.com>
-From: Baokun Li <libaokun1@huawei.com>
-CC: <linux-ext4@vger.kernel.org>
-In-Reply-To: <20251212154735.512651-1-bfoster@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-X-ClientProxiedBy: kwepems100002.china.huawei.com (7.221.188.206) To
- dggpemf500013.china.huawei.com (7.185.36.188)
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:Syh0CgA3F1HTzTxpFXQ7Bg--.63968S11
+X-Coremail-Antispam: 1UD129KBjvJXoWxGFWUGw1UGF1xAryfXr1UJrb_yoWrGrW5p3
+	sxAF1xGr4jq34j93yxCa1UXr12k3W8KF47ur4rJrWF9a43Ar1fKF10ya4FyFWFgFW8Za1Y
+	qFWrK34UJa93GrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
+	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
+	4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
+	daVFxhVjvjDU0xZFpf9x0JUQFxUUUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-Hi Brian,
+From: Zhang Yi <yi.zhang@huawei.com>
 
-Thanks for the patch.
+We do not use EXT4_GET_BLOCKS_IO_CREATE_EXT or split extents before
+submitting I/O; therefore, remove the related code.
 
-On 2025-12-12 23:47, Brian Foster wrote:
-> fstests test generic/388 occasionally reproduces a warning in
-> ext4_put_super() associated with the dirty clusters count:
->
->   WARNING: CPU: 7 PID: 76064 at fs/ext4/super.c:1324 ext4_put_super+0x48c/0x590 [ext4]
->
-> Tracing the failure shows that the warning fires due to an
-> s_dirtyclusters_counter value of -1. IOW, this appears to be a
-> spurious decrement as opposed to some sort of leak. Further tracing
-> of the dirty cluster count deltas and an LLM scan of the resulting
-> output identified the cause as a double decrement in the error path
-> between ext4_mb_mark_diskspace_used() and the caller
-> ext4_mb_new_blocks().
->
-> First, note that generic/388 is a shutdown vs. fsstress test and so
-> produces a random set of operations and shutdown injections. In the
-> problematic case, the shutdown triggers an error return from the
-> ext4_handle_dirty_metadata() call(s) made from
-> ext4_mb_mark_context(). The changed value is non-zero at this point,
-> so ext4_mb_mark_diskspace_used() does not exit after the error
-> bubbles up from ext4_mb_mark_context(). Instead, the former
-> decrements both cluster counters and returns the error up to
-> ext4_mb_new_blocks(). The latter falls into the !ar->len out path
-> which decrements the dirty clusters counter a second time, creating
-> the inconsistency.
->
-> AFAICT the solution here is to exit immediately from
-> ext4_mb_mark_diskspace_used() on error, regardless of the changed
-> value. This leaves the caller responsible for clearing the block
-> reservation at the same level it is acquired. This also skips the
-> free clusters update, but the caller also calls into
-> ext4_discard_allocated_blocks() to free the blocks back into the
-> group. This survives an overnight loop test of generic/388 on an
-> otherwise reproducing system and survives a local regression run.
->
-> Signed-off-by: Brian Foster <bfoster@redhat.com>
-> ---
->
-> Hi all,
->
-> I've thrown some testing at this and poked around the area enough that I
-> _think_ it is reasonably sane, but the error paths are hairy and I could
-> certainly be missing some details. I'm happy to try a different approach
-> if there are any thoughts around that.. thanks.
->
-> Brian
->
->  fs/ext4/mballoc.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 56d50fd3310b..224abfd6a42b 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -4234,7 +4234,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
->  				   ac->ac_b_ex.fe_start, ac->ac_b_ex.fe_len,
->  				   flags, &changed);
->  
-> -	if (err && changed == 0)
-> +	if (err)
->  		return err;
->  
->  #ifdef AGGRESSIVE_CHECK
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/ext4.h    |  9 ---------
+ fs/ext4/extents.c | 29 -----------------------------
+ fs/ext4/inode.c   | 11 -----------
+ 3 files changed, 49 deletions(-)
 
-I think we might need to swap that && for an ||.
-
-Basically, we should only proceed with the following logic if there's
-no error and the bitmap was actually changed. If we hit an error or
-if the section we intended to modify was already fully handled,
-we should just bail out early. Otherwise, the err could get quietly
-ignored unless we hit a duplicate allocation that happens to result in
-'changed' being zero.
-
-By the way, I spotted two other spots with similar error logic:
-ext4_mb_clear_bb() and ext4_group_add_blocks().
-
-Since this issue popped up in the last couple of years, we should
-probably add a Fixes: tag to make backporting easier.
-
-
-Cheers,
-Baokun
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9a71357f192d..174c51402864 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -707,15 +707,6 @@ enum {
+ 	 * found an unwritten extent, we need to split it.
+ 	 */
+ #define EXT4_GET_BLOCKS_SPLIT_NOMERGE		0x0008
+-	/*
+-	 * Caller is from the dio or dioread_nolock buffered IO, reqest to
+-	 * create an unwritten extent if it does not exist or split the
+-	 * found unwritten extent. Also do not merge the newly created
+-	 * unwritten extent, io end will convert unwritten to written,
+-	 * and try to merge the written extent.
+-	 */
+-#define EXT4_GET_BLOCKS_IO_CREATE_EXT		(EXT4_GET_BLOCKS_SPLIT_NOMERGE|\
+-					 EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT)
+ 	/* Convert unwritten extent to initialized. */
+ #define EXT4_GET_BLOCKS_CONVERT			0x0010
+ 	/* Eventual metadata allocation (due to growing extent tree)
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index c98f7c5482b4..c7c66ab825e7 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3925,34 +3925,6 @@ ext4_ext_handle_unwritten_extents(handle_t *handle, struct inode *inode,
+ 	trace_ext4_ext_handle_unwritten_extents(inode, map, flags,
+ 						*allocated, newblock);
+ 
+-	/* get_block() before submitting IO, split the extent */
+-	if (flags & EXT4_GET_BLOCKS_SPLIT_NOMERGE) {
+-		int depth;
+-
+-		path = ext4_split_convert_extents(handle, inode, map, path,
+-						  flags, allocated);
+-		if (IS_ERR(path))
+-			return path;
+-		/*
+-		 * shouldn't get a 0 allocated when splitting an extent unless
+-		 * m_len is 0 (bug) or extent has been corrupted
+-		 */
+-		if (unlikely(*allocated == 0)) {
+-			EXT4_ERROR_INODE(inode,
+-					 "unexpected allocated == 0, m_len = %u",
+-					 map->m_len);
+-			err = -EFSCORRUPTED;
+-			goto errout;
+-		}
+-		/* Don't mark unwritten if the extent has been zeroed out. */
+-		path = ext4_find_extent(inode, map->m_lblk, path, flags);
+-		if (IS_ERR(path))
+-			return path;
+-		depth = ext_depth(inode);
+-		if (ext4_ext_is_unwritten(path[depth].p_ext))
+-			map->m_flags |= EXT4_MAP_UNWRITTEN;
+-		goto out;
+-	}
+ 	/* IO end_io complete, convert the filled extent to written */
+ 	if (flags & EXT4_GET_BLOCKS_CONVERT) {
+ 		path = ext4_convert_unwritten_extents_endio(handle, inode,
+@@ -4006,7 +3978,6 @@ ext4_ext_handle_unwritten_extents(handle_t *handle, struct inode *inode,
+ 		goto errout;
+ 	}
+ 
+-out:
+ 	map->m_flags |= EXT4_MAP_NEW;
+ map_out:
+ 	map->m_flags |= EXT4_MAP_MAPPED;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 39348ee46e5c..fa579e857baf 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -588,7 +588,6 @@ static int ext4_map_query_blocks(handle_t *handle, struct inode *inode,
+ static int ext4_map_create_blocks(handle_t *handle, struct inode *inode,
+ 				  struct ext4_map_blocks *map, int flags)
+ {
+-	struct extent_status es;
+ 	unsigned int status;
+ 	int err, retval = 0;
+ 
+@@ -649,16 +648,6 @@ static int ext4_map_create_blocks(handle_t *handle, struct inode *inode,
+ 			return err;
+ 	}
+ 
+-	/*
+-	 * If the extent has been zeroed out, we don't need to update
+-	 * extent status tree.
+-	 */
+-	if (flags & EXT4_GET_BLOCKS_SPLIT_NOMERGE &&
+-	    ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
+-		if (ext4_es_is_written(&es))
+-			return retval;
+-	}
+-
+ 	status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+ 			EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+ 	ext4_es_insert_extent(inode, map->m_lblk, map->m_len, map->m_pblk,
+-- 
+2.46.1
 
