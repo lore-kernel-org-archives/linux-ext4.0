@@ -1,27 +1,28 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 738DC1F541E;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1987D142E83;
 	Tue, 23 Dec 2025 01:20:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1766452848; cv=none; b=pxH6PZg73tWkVFCCl7yfR8phBulvpfou0tGXb4XpghpXOOvoSkazbSuW7PSuKZkRhoAzkPhKiSQXvEyTZBbMK2mQ1CXp8/d1xa3SczSWMjnQZImtB23jqQwr0HtYw78qLlDKhG7JYRR5YfENOYq8EROh7pUBQBIZePQuM8q0sVI=
+	t=1766452848; cv=none; b=rFsdXEX2u2pW2ECT8SJKGaNkm9t6HZE3FeZQlfKXusEvPud7E8hZCu9DiBmhKDUucGj9zddcK35wQ+3giRD760mnMVmofUHy5ssW6by8ETpKpl5ZU4/jpWktoBc6wi4jFZZEjZ8EYQw4ws1lEBfaQ5t7qKGRsRdqUzvHLq38iLw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1766452848; c=relaxed/simple;
-	bh=x69l8+2WGN+FTaMh43i4WYna7gXXqW68EQT75ys0UXY=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=DcpxZt+s6ayaGiuOYEP8TBZdIsYZGop4Jqw+wOwkI87XtWNYnBqDkL22xIFkfRgoBUkGJhzZzqysV1h4us4lK3U2Wx9X1/Pl2WcaDa8+5TyRW+J8RF8QQok4QwgFBGFoJJAABreGgtqwH3fcK8iR5MVb1ZZ3FtEuFLwPMkLQwk0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	bh=Fq04VL+jIvP95V86tnHS8fRzMMlgjv8ZxfG7nqVaUB0=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=nZA58rynFG0bVQLC7FN2AfebS8CSwWqO6LwZzD27uISFWZkm+qn7nlnHRNdS7N9Lqy1x05aA2HdwDtIJ0ivp7G7uFDxTOHK6bU/JD5/p24MQ9ooBijdp2g4LzJHkiyUB1qe5b4NPWY/mA8BF2L0WswrBTl6VvMbaDqZD6SOylcU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dZxyf3RqlzKHMMK;
-	Tue, 23 Dec 2025 09:20:26 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4dZxyJ0HTvzYQtgC;
+	Tue, 23 Dec 2025 09:20:08 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 0B0024058D;
+	by mail.maildlp.com (Postfix) with ESMTP id 370824058A;
 	Tue, 23 Dec 2025 09:20:44 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP4 (Coremail) with SMTP id gCh0CgAXd_dY7klpHOeZBA--.61342S4;
-	Tue, 23 Dec 2025 09:20:39 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgAXd_dY7klpHOeZBA--.61342S6;
+	Tue, 23 Dec 2025 09:20:44 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -37,10 +38,12 @@ Cc: linux-fsdevel@vger.kernel.org,
 	libaokun1@huawei.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH -next v2 0/7] ext4: defer unwritten splitting until I/O completion
-Date: Tue, 23 Dec 2025 09:17:55 +0800
-Message-ID: <20251223011802.31238-1-yi.zhang@huaweicloud.com>
+Subject: [PATCH -next v2 2/7] ext4: don't split extent before submitting I/O
+Date: Tue, 23 Dec 2025 09:17:57 +0800
+Message-ID: <20251223011802.31238-3-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
+In-Reply-To: <20251223011802.31238-1-yi.zhang@huaweicloud.com>
+References: <20251223011802.31238-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -48,138 +51,119 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgAXd_dY7klpHOeZBA--.61342S4
-X-Coremail-Antispam: 1UD129KBjvJXoWxCF1xXF1UXrWxZFyUWF47CFg_yoWrCFWUpr
-	Wfuw17Jr4kta4UK397Aa1jqr1F9w1fAr47ur1rG348ZF15CFyYgr42q3WrZa45J395W3WY
-	vr4Yqw1DC3WUCaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUU9014x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26F4j
-	6r4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oV
-	Cq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0
-	I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r
-	4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628v
-	n2kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7x
-	kEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E
-	67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCw
-	CI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1x
-	MIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIda
-	VFxhVjvjDU0xZFpf9x0JUd-B_UUUUU=
+X-CM-TRANSID:gCh0CgAXd_dY7klpHOeZBA--.61342S6
+X-Coremail-Antispam: 1UD129KBjvJXoWxXrWUuw1fXF1rCFWkJF43ZFb_yoWrZF4fpF
+	43Cw18GF4vga9093yxtF1UWr12g3W7Gr4UZryFg3yUXFZ8GryYqF4rKa4rZa4rtrWkX3yY
+	vF4Y934Uu3W5CFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUm014x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
+	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
+	xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
+	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
+	kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
+	6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
+	vEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVj
+	vjDU0xZFpf9x0JUQXo7UUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Changes sicne v1:
- - In patch 03, add a comment explaining how DAX writes to unwritten
-   extents, as Jan suggested.
+Currently, when writing back dirty pages to the filesystem with the
+dioread_nolock feature enabled and when doing DIO, if the area to be
+written back is part of an unwritten extent, the
+EXT4_GET_BLOCKS_IO_CREATE_EXT flag is set during block allocation before
+submitting I/O. The function ext4_split_convert_extents() then attempts
+to split this extent in advance. This approach is designed to prevents
+extent splitting and conversion to the written type from failing due to
+insufficient disk space at the time of I/O completion, which could
+otherwise result in data loss.
 
-v1: https://lore.kernel.org/linux-ext4/20251213022008.1766912-1-yi.zhang@huaweicloud.com/
-
-This series proposes deferring the splitting of unwritten extents from
-the point of I/O submission until I/O completion when partially writing
-to a preallocated file.
-
-This change primarily needs to address whether it will increase the
-likelihood of extent conversion failure due to the inability to split
-extents in scenarios with insufficient space, which could result in I/O
-write failures and data loss. After analysis, it has been confirmed that
-two existing mechanisms ensure I/O operations do not fail.
-
-The first is the EXT4_GET_BLOCKS_METADATA_NOFAIL flag, which is a best
-effort, it permits the use of 2% of the reserved space or 4,096 blocks
-in the file system when splitting extents. This flag covers most
-scenarios where extent splitting might fail. The second is the
+However, we already have two mechanisms to ensure successful extent
+conversion. The first is the EXT4_GET_BLOCKS_METADATA_NOFAIL flag, which
+is a best effort, it permits the use of 2% of the reserved space or
+4,096 blocks in the file system when splitting extents. This flag covers
+most scenarios where extent splitting might fail. The second is the
 EXT4_EXT_MAY_ZEROOUT flag, which is also set during extent splitting. If
 the reserved space is insufficient and splitting fails, it does not
 retry the allocation. Instead, it directly zeros out the extra part of
 the extent, thereby avoiding splitting and directly converting the
 entire extent to the written type.
 
-These two mechanisms currently have no difference before I/O submission
-or after I/O completion. Therefore, Although deferring extent splitting
-will add pressure on reserved space after I/O completion, but it won't
+These two mechanisms also exist when I/Os are completed because there is
+a concurrency window between write-back and fallocate, which may still
+require us to split extents upon I/O completion. There is no much
+difference between splitting extents before submitting I/O. Therefore,
+It seems possible to defer the splitting until I/O completion, it won't
 increase the risk of I/O failure and data loss. On the contrary, if some
-I/Os can be merged when I/O completion during writeback, it can also
-reduce unnecessary splitting operations, thereby alleviating the
-pressure on reserved space. 
+I/Os can be merged when I/O completion, it can also reduce unnecessary
+splitting operations, thereby alleviating the pressure on reserved
+space.
 
-In addition, deferring extent splitting until I/O completion can also
-simplify the I/O submission process and avoid initiating unnecessary
+In addition, deferring extent splitting until I/O completion can
+also simplify the IO submission process and avoid initiating unnecessary
 journal handles when writing unwritten extents.
 
-Patch 01-03: defer splitting extent until I/O completion.
-Patch 04-07: do some cleanup of the DIO path and remove
-             EXT4_GET_BLOCKS_IO_CREATE_EXT.
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/extents.c | 13 +------------
+ fs/ext4/inode.c   |  4 ++--
+ 2 files changed, 3 insertions(+), 14 deletions(-)
 
-Tests:
-
- - Run xfstests with the -g enospc option approximately 50 times. Before
-   applying this series, the reserved blocks were used over 6000/7000
-   times on a 1 GB filesystem with a 4 KB / 1 KB block size. After
-   applying this series, the counts remain nearly the same. In both
-   cases, there were no splitting failures.
- - Run xfstests with the -g enospc option about one day, no regressions
-   occurred.
- - Intentionally create a scenario in which reserved blocks are
-   exhausted. Before applying the patch, zero out the extent before I/O
-   submission; after applying the patch, zero out the extent after I/O
-   completion. There are no other differences.
- - xfstests-bld shows no regression.
-
-Performance:
-
-This can improve the write performance of concurrent DIO for multiple
-files. The fio tests below show a ~25% performance improvement when
-wirting to unwritten files on my VM with a 100G memory backed disk.
-
-  [unwritten]
-  direct=1
-  ioengine=psync
-  numjobs=16
-  rw=write     # write/randwrite
-  bs=4K
-  iodepth=1
-  directory=/mnt
-  size=5G
-  runtime=30s
-  overwrite=0
-  norandommap=1
-  fallocate=native
-  ramp_time=5s
-  group_reporting=1
-
- [w/o]
-  w:  IOPS=62.5k, BW=244MiB/s
-  rw: IOPS=56.7k, BW=221MiB/s
-
- [w]
-  w:  IOPS=79.6k, BW=311MiB/s
-  rw: IOPS=70.2k, BW=274MiB/s
-
-TODO:
-
-Next, we can investigate whether, during the buffer I/O write-back
-process, writing an unwritten extent can also avoid initiating a journal
-handle.
-
-Thank,
-Yi.
-
-Zhang Yi (7):
-  ext4: use reserved metadata blocks when splitting extent on endio
-  ext4: don't split extent before submitting I/O
-  ext4: avoid starting handle when dio writing an unwritten extent
-  ext4: remove useless ext4_iomap_overwrite_ops
-  ext4: remove unused unwritten parameter in ext4_dio_write_iter()
-  ext4: simply the mapping query logic in ext4_iomap_begin()
-  ext4: remove EXT4_GET_BLOCKS_IO_CREATE_EXT
-
- fs/ext4/ext4.h    | 10 ---------
- fs/ext4/extents.c | 46 ++++----------------------------------
- fs/ext4/file.c    | 23 ++++++++-----------
- fs/ext4/inode.c   | 56 ++++++++++++-----------------------------------
- 4 files changed, 27 insertions(+), 108 deletions(-)
-
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index e53959120b04..c98f7c5482b4 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3787,21 +3787,10 @@ ext4_convert_unwritten_extents_endio(handle_t *handle, struct inode *inode,
+ 	ext_debug(inode, "logical block %llu, max_blocks %u\n",
+ 		  (unsigned long long)ee_block, ee_len);
+ 
+-	/* If extent is larger than requested it is a clear sign that we still
+-	 * have some extent state machine issues left. So extent_split is still
+-	 * required.
+-	 * TODO: Once all related issues will be fixed this situation should be
+-	 * illegal.
+-	 */
+ 	if (ee_block != map->m_lblk || ee_len > map->m_len) {
+ 		int flags = EXT4_GET_BLOCKS_CONVERT |
+ 			    EXT4_GET_BLOCKS_METADATA_NOFAIL;
+-#ifdef CONFIG_EXT4_DEBUG
+-		ext4_warning(inode->i_sb, "Inode (%ld) finished: extent logical block %llu,"
+-			     " len %u; IO logical block %llu, len %u",
+-			     inode->i_ino, (unsigned long long)ee_block, ee_len,
+-			     (unsigned long long)map->m_lblk, map->m_len);
+-#endif
++
+ 		path = ext4_split_convert_extents(handle, inode, map, path,
+ 						  flags, NULL);
+ 		if (IS_ERR(path))
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index bb8165582840..ffde24ff7347 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2376,7 +2376,7 @@ static int mpage_map_one_extent(handle_t *handle, struct mpage_da_data *mpd)
+ 
+ 	dioread_nolock = ext4_should_dioread_nolock(inode);
+ 	if (dioread_nolock)
+-		get_blocks_flags |= EXT4_GET_BLOCKS_IO_CREATE_EXT;
++		get_blocks_flags |= EXT4_GET_BLOCKS_UNWRIT_EXT;
+ 
+ 	err = ext4_map_blocks(handle, inode, map, get_blocks_flags);
+ 	if (err < 0)
+@@ -3744,7 +3744,7 @@ static int ext4_iomap_alloc(struct inode *inode, struct ext4_map_blocks *map,
+ 	else if (EXT4_LBLK_TO_B(inode, map->m_lblk) >= i_size_read(inode))
+ 		m_flags = EXT4_GET_BLOCKS_CREATE;
+ 	else if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+-		m_flags = EXT4_GET_BLOCKS_IO_CREATE_EXT;
++		m_flags = EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT;
+ 
+ 	if (flags & IOMAP_ATOMIC)
+ 		ret = ext4_map_blocks_atomic_write(handle, inode, map, m_flags,
 -- 
 2.52.0
 
