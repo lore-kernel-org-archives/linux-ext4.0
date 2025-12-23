@@ -1,28 +1,28 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0C59813D891;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7386E1F4615;
 	Tue, 23 Dec 2025 01:20:46 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1766452848; cv=none; b=hbS1sJ1bC7GXDrP922hEK+o58gjRsxpEZuGHjFf8g0lWUWl6+Lrq0FL9AMifqhafzA35VJyoLaq2oAZMO5faMn5/phiF5hxSJwIFrCiFEG1EE87lyz35FIj/POYIqC8TL5c+zYYcysco1gDKPl7pNnCcHsTRao2Iy51gBHtgOGk=
+	t=1766452848; cv=none; b=iHishLqkro5ehYePt/bqJYz55z7NRbNdl1gOUvr0Pp8FDYyIIi1sxZGRWbzHbeYP2o98NppxBlEqgKZ6V5nLeR9DgyMFh+4BQNRCcibp22BrCpWP2UyHGUgPrpL4lt2MLqkSfUwUOIWhiqJYE9fh/Y2MruF10PNQjaPnxgcy++o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1766452848; c=relaxed/simple;
-	bh=mZ+58os3GMVHG9BVUxARkW7THLKsZh3BBr+ErN++WiU=;
+	bh=wTGAjbP+ZPWTJsSVnVKvbFkqaRRbXnR+qYXVurGyTxE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=m4jSHCD4ZL3ME8zC32/q51V+X4EHSBuzJUST3D7wE1L/igLXsLGxNuq9ybRSdGPJBn6JbJJnG7rSVNh1sAuvrK/8u2XqzyDJCZiANQB6lfzAhw2YIMP87LqS1bBAQic0KFjSgU/f4p7QrXvLNcZHnqeJl0qSF1RWvKscrCYn4MQ=
+	 MIME-Version; b=fjOufVbQn8xgp6uKge88cShkML30WFfdMfcHinHfOpSyryUkHshG8eyLj6gOYVt36f8sFshxoVXDp2IjwxQHGn+7dn4nH8dCf7ZPX8JoMy5nrh934wAMHAI7q2XIZmBjbdYgqfT/cCz/nEzMDNkSK0hzAaSfPCkxOW9qY6zDPKw=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dZxyf4MLczKHMMl;
-	Tue, 23 Dec 2025 09:20:26 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.177])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dZxyg078dzKHMNj;
+	Tue, 23 Dec 2025 09:20:27 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 2940D4056C;
+	by mail.maildlp.com (Postfix) with ESMTP id 8E6F84058D;
 	Tue, 23 Dec 2025 09:20:44 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP4 (Coremail) with SMTP id gCh0CgAXd_dY7klpHOeZBA--.61342S5;
-	Tue, 23 Dec 2025 09:20:43 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgAXd_dY7klpHOeZBA--.61342S10;
+	Tue, 23 Dec 2025 09:20:44 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -38,9 +38,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	libaokun1@huawei.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH -next v2 1/7] ext4: use reserved metadata blocks when splitting extent on endio
-Date: Tue, 23 Dec 2025 09:17:56 +0800
-Message-ID: <20251223011802.31238-2-yi.zhang@huaweicloud.com>
+Subject: [PATCH -next v2 6/7] ext4: simply the mapping query logic in ext4_iomap_begin()
+Date: Tue, 23 Dec 2025 09:18:01 +0800
+Message-ID: <20251223011802.31238-7-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20251223011802.31238-1-yi.zhang@huaweicloud.com>
 References: <20251223011802.31238-1-yi.zhang@huaweicloud.com>
@@ -51,75 +51,69 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgAXd_dY7klpHOeZBA--.61342S5
-X-Coremail-Antispam: 1UD129KBjvJXoW7Zw15Ary3ZF4fKF4UGrW8Xrb_yoW8uF18pr
-	yay3W8Gr40qw1Y9F92ya18Aryjk3W5GF47urZxtayUWay7AryrXF12k34F9FyYvrWxJa1Y
-	vr40vw1UZwn5Ca7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUm014x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jr4l82xGYIkIc2
-	x26xkF7I0E14v26r4j6ryUM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
-	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
-	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
-	IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
-	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
-	xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
-	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
-	kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
-	6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
-	vEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVj
-	vjDU0xZFpf9x0JU4OJ5UUUUU=
+X-CM-TRANSID:gCh0CgAXd_dY7klpHOeZBA--.61342S10
+X-Coremail-Antispam: 1UD129KBjvJXoW7CFWUCFW7Cw1fWFW8tFWrXwb_yoW8Xw45pF
+	Z3Ka95GFn5XF1UurZayrn3XrWUta1ftw4UZF4fWry5Xr90gr10qr4YgF1Yvr48JrWxArWF
+	gFW0yr18u3WUZFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
+	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
+	CI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnI
+	WIevJa73UjIFyTuYvjfUOyIUUUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-When performing buffered writes, we may need to split and convert an
-unwritten extent into a written one during the end I/O process. However,
-we do not reserve space specifically for these metadata changes, we only
-reserve 2% of space or 4096 blocks. To address this, we use
-EXT4_GET_BLOCKS_PRE_IO to potentially split extents in advance and
-EXT4_GET_BLOCKS_METADATA_NOFAIL to utilize reserved space if necessary.
-
-These two approaches can reduce the likelihood of running out of space
-and losing data. However, these methods are merely best efforts, we
-could still run out of space, and there is not much difference between
-converting an extent during the writeback process and the end I/O
-process, it won't increase the rick of losing data if we postpone the
-conversion.
-
-Therefore, also use EXT4_GET_BLOCKS_METADATA_NOFAIL in
-ext4_convert_unwritten_extents_endio() to prepare for the buffered I/O
-iomap conversion, which may perform extent conversion during the end I/O
-process.
+In the write path mapping check of ext4_iomap_begin(), the return value
+'ret' should never greater than orig_mlen. If 'ret' equals 'orig_mlen',
+it can be returned directly without checking IOMAP_ATOMIC.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/extents.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/ext4/inode.c | 16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 27eb2c1df012..e53959120b04 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3794,6 +3794,8 @@ ext4_convert_unwritten_extents_endio(handle_t *handle, struct inode *inode,
- 	 * illegal.
- 	 */
- 	if (ee_block != map->m_lblk || ee_len > map->m_len) {
-+		int flags = EXT4_GET_BLOCKS_CONVERT |
-+			    EXT4_GET_BLOCKS_METADATA_NOFAIL;
- #ifdef CONFIG_EXT4_DEBUG
- 		ext4_warning(inode->i_sb, "Inode (%ld) finished: extent logical block %llu,"
- 			     " len %u; IO logical block %llu, len %u",
-@@ -3801,7 +3803,7 @@ ext4_convert_unwritten_extents_endio(handle_t *handle, struct inode *inode,
- 			     (unsigned long long)map->m_lblk, map->m_len);
- #endif
- 		path = ext4_split_convert_extents(handle, inode, map, path,
--						EXT4_GET_BLOCKS_CONVERT, NULL);
-+						  flags, NULL);
- 		if (IS_ERR(path))
- 			return path;
- 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index b84a2a10dfb8..67fe7d0f47e3 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3816,17 +3816,19 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 		if (offset + length <= i_size_read(inode)) {
+ 			ret = ext4_map_blocks(NULL, inode, &map, 0);
+ 			/*
+-			 * For atomic writes the entire requested length should
+-			 * be mapped. For DAX we convert extents to initialized
+-			 * ones before copying the data, otherwise we do it
+-			 * after I/O so there's no need to call into
+-			 * ext4_iomap_alloc().
++			 * For DAX we convert extents to initialized ones before
++			 * copying the data, otherwise we do it after I/O so
++			 * there's no need to call into ext4_iomap_alloc().
+ 			 */
+ 			if ((map.m_flags & EXT4_MAP_MAPPED) ||
+ 			    (!(flags & IOMAP_DAX) &&
+ 			     (map.m_flags & EXT4_MAP_UNWRITTEN))) {
+-				if ((!(flags & IOMAP_ATOMIC) && ret > 0) ||
+-				   (flags & IOMAP_ATOMIC && ret >= orig_mlen))
++				/*
++				 * For atomic writes the entire requested
++				 * length should be mapped.
++				 */
++				if (ret == orig_mlen ||
++				    (!(flags & IOMAP_ATOMIC) && ret > 0))
+ 					goto out;
+ 			}
+ 			map.m_len = orig_mlen;
 -- 
 2.52.0
 
