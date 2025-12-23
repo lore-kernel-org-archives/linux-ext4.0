@@ -1,28 +1,27 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7380C1E7C08;
-	Tue, 23 Dec 2025 01:20:46 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 47D08275B0F;
+	Tue, 23 Dec 2025 01:22:08 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1766452849; cv=none; b=AnFfDzPB3V6Ug/FuO90giihokvsgHJx+8tgBZj/0Q6bK/bG+8ZlNztPn/IARO8dVYRG+70sPogVlEuNh7i6MPQxTk7guwlfxcjR6wwL3CvYwV9dyi8yUQKs/tJ9g8ratNIzB6ucGAqMbr2uH/LEBjvLYp3sh78w0fQZlku79yxQ=
+	t=1766452934; cv=none; b=ZmnC07NqE/Nmq+0FQxeeA5SbL3ExbGiue/h4PXjUxhHVJPlgLYWUDoaDLOc/nxBEUNBlopWZrgQw6ohXhLpwxzo0upFT9lnKZOTDndYY3R4fc9eeVePzkU43bbxkFv/D3NzhkiK19vb3IyElE9VRb02fkOA0TGi77BSbU/04l9I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1766452849; c=relaxed/simple;
-	bh=JYNthEwYtsLIOrgxpvhx55Qp7GR97zi6uVGpgdxDbR4=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=IL0e+pwjDhOFwp/m3+xyfa3asqqe4As2geaggB3XXDI0Sv3JFd0bB1CMWNuEiR8vpJI6bD58N/b0BYh2CkmQuixGbyetdTCgus22VEebYNaWRAt1tE8MbP3in1Ai90hBskxjICNc7tOVu5ulfYuD4hbbHPJiYriSoAtRbRSA5i0=
+	s=arc-20240116; t=1766452934; c=relaxed/simple;
+	bh=enW0RG4rfCC1wkokoyc0WeEvlHsnAmgcMZsz1RaC6fQ=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=hfniut31LVog0rRjcWgC9kxY7jG7FZBurq5u5sdjd8+TRHMuEdgKzDcRTaM8nSFvCyl4R5E7foRwBQZzI7OsOXebB54/TEcqOXBf+KERsAkHLGimjpvOmQwp1tAIg1o1zRZ8f9wcjVU/mK+gPrlu/JOu58pS9xylpj6Jct7VuJ0=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dZxyf6sXXzKHMN1;
-	Tue, 23 Dec 2025 09:20:26 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dZy0C5LDmzKHMKc;
+	Tue, 23 Dec 2025 09:21:47 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 808304056E;
-	Tue, 23 Dec 2025 09:20:44 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 4A44540577;
+	Tue, 23 Dec 2025 09:22:05 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP4 (Coremail) with SMTP id gCh0CgAXd_dY7klpHOeZBA--.61342S9;
-	Tue, 23 Dec 2025 09:20:44 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgAHaPis7klpsgSaBA--.63035S4;
+	Tue, 23 Dec 2025 09:22:05 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org,
@@ -38,12 +37,10 @@ Cc: linux-fsdevel@vger.kernel.org,
 	libaokun1@huawei.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH -next v2 5/7] ext4: remove unused unwritten parameter in ext4_dio_write_iter()
-Date: Tue, 23 Dec 2025 09:18:00 +0800
-Message-ID: <20251223011802.31238-6-yi.zhang@huaweicloud.com>
+Subject: [PATCH v2] ext4: don't order data when zeroing unwritten or delayed block
+Date: Tue, 23 Dec 2025 09:19:27 +0800
+Message-ID: <20251223011927.34042-1-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
-In-Reply-To: <20251223011802.31238-1-yi.zhang@huaweicloud.com>
-References: <20251223011802.31238-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -51,103 +48,67 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgAXd_dY7klpHOeZBA--.61342S9
-X-Coremail-Antispam: 1UD129KBjvJXoWxuF4rXF43trykGFyrtFyDGFg_yoW5Xry7pF
-	13KFy7XFZ7W3srWrW8tay8ur1Yga1kC3yxWrW5W3WrZry8AryftF1xtFyay3WrJrZ7J3W2
-	gFsYkryDZw17KrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
-	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
-	IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
-	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
-	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
-	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
-	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
-	42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
-	CI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnI
-	WIevJa73UjIFyTuYvjfUOyIUUUUUU
+X-CM-TRANSID:gCh0CgAHaPis7klpsgSaBA--.63035S4
+X-Coremail-Antispam: 1UD129KBjvJXoW7AryxAF13tFyxWFyfZF17GFg_yoW8WFWUpa
+	sxK3W8Gr4kW34q9a97uF1xZryjka18WFWxGFWfG3yqv3y3JF1YvF9Fg3409a12yrW7Ga4Y
+	qF4UW3409FnxA3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9I14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
+	1l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
+	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
+	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
+	2Ix0cI8IcVAFwI0_JrI_JrylYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
+	W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2
+	Y2ka0xkIwI1lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x
+	0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2
+	zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_JFI_Gr
+	1lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1lIxAIcVCF04k26cxKx2IYs7xG6r1j
+	6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJb
+	IYCTnIWIevJa73UjIFyTuYvjfUFg4SDUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-The parameter unwritten in ext4_dio_write_iter() is no longer needed,
-simply remove it.
+When zeroing out a written partial block, it is necessary to order the
+data to prevent exposing stale data on disk. However, if the buffer is
+unwritten or delayed, it is not allocated as written, so ordering the
+data is not required. This can prevent strange and unnecessary ordered
+writes when appending data across a region within a block.
+
+Assume we have a 2K unwritten file on a filesystem with 4K blocksize,
+and buffered write from 3K to 4K. Before this patch,
+__ext4_block_zero_page_range() would add the range [2k,3k) to the
+ordered range, and then the JBD2 commit process would write back this
+block. However, it does nothing since the block is not mapped as
+written, this folio will be redirtied and written back agian through the
+normal write back process.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/file.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+ fs/ext4/inode.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 6b4b68f830d5..fa22fc0e45f3 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -424,14 +424,14 @@ static const struct iomap_dio_ops ext4_dio_write_ops = {
-  */
- static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
- 				     bool *ilock_shared, bool *extend,
--				     bool *unwritten, int *dio_flags)
-+				     int *dio_flags)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file_inode(file);
- 	loff_t offset;
- 	size_t count;
- 	ssize_t ret;
--	bool overwrite, unaligned_io;
-+	bool overwrite, unaligned_io, unwritten;
- 
- restart:
- 	ret = ext4_generic_write_checks(iocb, from);
-@@ -443,7 +443,7 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
- 
- 	unaligned_io = ext4_unaligned_io(inode, from, offset);
- 	*extend = ext4_extending_io(inode, offset, count);
--	overwrite = ext4_overwrite_io(inode, offset, count, unwritten);
-+	overwrite = ext4_overwrite_io(inode, offset, count, &unwritten);
- 
- 	/*
- 	 * Determine whether we need to upgrade to an exclusive lock. This is
-@@ -458,7 +458,7 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
- 	 */
- 	if (*ilock_shared &&
- 	    ((!IS_NOSEC(inode) || *extend || !overwrite ||
--	     (unaligned_io && *unwritten)))) {
-+	     (unaligned_io && unwritten)))) {
- 		if (iocb->ki_flags & IOCB_NOWAIT) {
- 			ret = -EAGAIN;
- 			goto out;
-@@ -481,7 +481,7 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
- 			ret = -EAGAIN;
- 			goto out;
- 		}
--		if (unaligned_io && (!overwrite || *unwritten))
-+		if (unaligned_io && (!overwrite || unwritten))
- 			inode_dio_wait(inode);
- 		*dio_flags = IOMAP_DIO_FORCE_WAIT;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 2e79b09fe2f0..f2d70c9af446 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4109,9 +4109,13 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 	if (ext4_should_journal_data(inode)) {
+ 		err = ext4_dirty_journalled_data(handle, bh);
+ 	} else {
+-		err = 0;
+ 		mark_buffer_dirty(bh);
+-		if (ext4_should_order_data(inode))
++		/*
++		 * Only the written block requires ordered data to prevent
++		 * exposing stale data.
++		 */
++		if (!buffer_unwritten(bh) && !buffer_delay(bh) &&
++		    ext4_should_order_data(inode))
+ 			err = ext4_jbd2_inode_add_write(handle, inode, from,
+ 					length);
  	}
-@@ -506,7 +506,7 @@ static ssize_t ext4_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	struct inode *inode = file_inode(iocb->ki_filp);
- 	loff_t offset = iocb->ki_pos;
- 	size_t count = iov_iter_count(from);
--	bool extend = false, unwritten = false;
-+	bool extend = false;
- 	bool ilock_shared = true;
- 	int dio_flags = 0;
- 
-@@ -552,7 +552,7 @@ static ssize_t ext4_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
- 
- 	ret = ext4_dio_write_checks(iocb, from, &ilock_shared, &extend,
--				    &unwritten, &dio_flags);
-+				    &dio_flags);
- 	if (ret <= 0)
- 		return ret;
- 
 -- 
 2.52.0
 
