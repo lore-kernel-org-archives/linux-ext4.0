@@ -1,87 +1,127 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 14AE62BDC0A;
-	Mon,  5 Jan 2026 01:18:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE6901367;
+	Mon,  5 Jan 2026 01:48:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1767575939; cv=none; b=IfrEgVPggToY+qa7fln+Gle+L910roCINJ/3ptzQHXC3w+9Acg4ZBP5lcFh1VK2buHdQ95ULR8NRFA/zxcwEJX6GA1oaAuZgQENtKMx0KLpLWuvIXv7a0TPDR19qb57nlZ1KD48FL5xlYCrVat4+UDW2yiLNTA1Sd7QlfTcAcKU=
+	t=1767577727; cv=none; b=LBCTIYDNs0hI8r+AuXDG7tQxSRNk8gZcOE62GdmwopA+mV3YWdHm2D6L4vGD1v+tMonlrbaJEPoL4JkAZ/S1Vn2+bO9smdPtBxJA3AnRjIP+HzivwkboViUyOZG5cYivFk+SRl4qOWaNt8ImijbC4YErpRapDnulvt4vsdiC32U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1767575939; c=relaxed/simple;
-	bh=BMki50x7viBiOeBkeQLRFUMkIbs34xjZGd9x+JkL8j8=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=PqpWj2y+/PttY2gdo4+I9QmDBVDLsfasVjju6Yvv71lYcYIVcM0D1+pzgIvsjfNAUvpbKH96C8CpfLjal0iP7mzBry4JE1/MYwnCPwgIMygtFRue5Yo5wrbP01onf7phfc0MAtBzaORXGB75J/JH1GuG2eW9gPKJj5CpO/031pk=
+	s=arc-20240116; t=1767577727; c=relaxed/simple;
+	bh=d6q/zjeIncE/mA9v6xm9GVqB2a6KGFw352k6rnKR8f0=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=b2f2strpDtMMnnpYpDgCbM6DoSIAdv0zfff5StcQRPvfSnV4+KTtTbLrGzOBu4dFnhK3aE7cxLp65/sjAC5BhueHXarmtsDqAQ553obVExpDdqW+tkCAQe6If+t08whJZKXOiLEUTH/SkAzForxXXprWKhh+TJb4umpz7DFCLo4=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dkxJ76BmlzKHM07;
-	Mon,  5 Jan 2026 09:18:15 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4dkxyY0n3pzKHMX2;
+	Mon,  5 Jan 2026 09:48:05 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 57FBB40570;
-	Mon,  5 Jan 2026 09:18:53 +0800 (CST)
-Received: from [10.174.178.152] (unknown [10.174.178.152])
-	by APP4 (Coremail) with SMTP id gCh0CgDXOPl6EVtpgeKpCg--.40742S3;
-	Mon, 05 Jan 2026 09:18:51 +0800 (CST)
-Message-ID: <7846a127-c67e-491c-8d99-f00b9c472084@huaweicloud.com>
-Date: Mon, 5 Jan 2026 09:18:50 +0800
+	by mail.maildlp.com (Postfix) with ESMTP id 9423940573;
+	Mon,  5 Jan 2026 09:48:42 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.85.155])
+	by APP4 (Coremail) with SMTP id gCh0CgBHp_dpGFtppFisCg--.42376S5;
+	Mon, 05 Jan 2026 09:48:42 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	yizhang089@gmail.com,
+	libaokun1@huawei.com,
+	yangerkun@huawei.com,
+	yukuai@fnnas.com
+Subject: [PATCH -next v3 1/7] ext4: use reserved metadata blocks when splitting extent on endio
+Date: Mon,  5 Jan 2026 09:45:16 +0800
+Message-ID: <20260105014522.1937690-2-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.52.0
+In-Reply-To: <20260105014522.1937690-1-yi.zhang@huaweicloud.com>
+References: <20260105014522.1937690-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH -next v2 6/7] ext4: simply the mapping query logic in
- ext4_iomap_begin()
-To: Markus Elfring <Markus.Elfring@web.de>, linux-ext4@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, Baokun Li <libaokun1@huawei.com>,
- Jan Kara <jack@suse.cz>, Ojaswin Mujoo <ojaswin@linux.ibm.com>,
- Theodore Ts'o <tytso@mit.edu>
-Cc: LKML <linux-kernel@vger.kernel.org>,
- Andreas Dilger <adilger.kernel@dilger.ca>,
- Ritesh Harjani <ritesh.list@gmail.com>, Yang Erkun <yangerkun@huawei.com>,
- Yu Kuai <yukuai@fnnas.com>, zhangyi <yizhang089@gmail.com>
-References: <20251223011802.31238-7-yi.zhang@huaweicloud.com>
- <f81c3747-ef35-4726-a7b9-f69b99ed1d97@web.de>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <f81c3747-ef35-4726-a7b9-f69b99ed1d97@web.de>
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgDXOPl6EVtpgeKpCg--.40742S3
-X-Coremail-Antispam: 1UD129KBjDUn29KB7ZKAUJUUUUU529EdanIXcx71UUUUU7v73
-	VFW2AGmfu7bjvjm3AaLaJ3UjIYCTnIWjp_UUUYV7kC6x804xWl14x267AKxVW8JVW5JwAF
-	c2x0x2IEx4CE42xK8VAvwI8IcIk0rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII
-	0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xv
-	wVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4
-	x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG
-	64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_JrI_JrylYx0Ex4A2jsIE14v26r
-	1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvEwIxGrwACI402YVCY1x02628vn2kI
-	c2xKxwCF04k20xvY0x0EwIxGrwCF54CYxVCY1x0262kKe7AKxVWUtVW8ZwCFx2IqxVCFs4
-	IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1r
-	MI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJV
-	WUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j
-	6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYx
-	BIdaVFxhVjvjDU0xZFpf9x07UQzVbUUUUU=
+X-CM-TRANSID:gCh0CgBHp_dpGFtppFisCg--.42376S5
+X-Coremail-Antispam: 1UD129KBjvJXoW7Zw15Ary3ZF4fKF4UGrW8Xrb_yoW8trWUpF
+	yak3W8Gr40qw1Y9F92yF48Aryjk3W5GF47urZxtayUWay7AryrXr12kw1F9FyYvrWxJ3WY
+	vr40vw18Zwn8Ca7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUm014x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jr4l82xGYIkIc2
+	x26xkF7I0E14v26r4j6ryUM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
+	xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
+	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
+	kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
+	6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
+	vEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVj
+	vjDU0xZFpf9x0JU4OJ5UUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On 1/4/2026 9:00 PM, Markus Elfring wrote:
->> In the write path mapping check of ext4_iomap_begin(), the return value
->> 'ret' should never greater than orig_mlen. If 'ret' equals 'orig_mlen',
->> it can be returned directly without checking IOMAP_ATOMIC.
-> 
-> See also once more:
-> https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Documentation/process/submitting-patches.rst?h=v6.19-rc3#n94
-> 
-> 
-> How do you think about to use the word “simplify” in the summary phrase?
-> 
-> Regards,
-> Markus
+From: Zhang Yi <yi.zhang@huawei.com>
 
-Yeah, it makes sense to me, I will revise it in v3.
+When performing buffered writes, we may need to split and convert an
+unwritten extent into a written one during the end I/O process. However,
+we do not reserve space specifically for these metadata changes, we only
+reserve 2% of space or 4096 blocks. To address this, we use
+EXT4_GET_BLOCKS_PRE_IO to potentially split extents in advance and
+EXT4_GET_BLOCKS_METADATA_NOFAIL to utilize reserved space if necessary.
 
-Thanks,
-Yi.
+These two approaches can reduce the likelihood of running out of space
+and losing data. However, these methods are merely best efforts, we
+could still run out of space, and there is not much difference between
+converting an extent during the writeback process and the end I/O
+process, it won't increase the risk of losing data if we postpone the
+conversion.
+
+Therefore, also use EXT4_GET_BLOCKS_METADATA_NOFAIL in
+ext4_convert_unwritten_extents_endio() to prepare for the buffered I/O
+iomap conversion, which may perform extent conversion during the end I/O
+process.
+
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Baokun Li <libaokun1@huawei.com>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+---
+ fs/ext4/extents.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 27eb2c1df012..e53959120b04 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3794,6 +3794,8 @@ ext4_convert_unwritten_extents_endio(handle_t *handle, struct inode *inode,
+ 	 * illegal.
+ 	 */
+ 	if (ee_block != map->m_lblk || ee_len > map->m_len) {
++		int flags = EXT4_GET_BLOCKS_CONVERT |
++			    EXT4_GET_BLOCKS_METADATA_NOFAIL;
+ #ifdef CONFIG_EXT4_DEBUG
+ 		ext4_warning(inode->i_sb, "Inode (%ld) finished: extent logical block %llu,"
+ 			     " len %u; IO logical block %llu, len %u",
+@@ -3801,7 +3803,7 @@ ext4_convert_unwritten_extents_endio(handle_t *handle, struct inode *inode,
+ 			     (unsigned long long)map->m_lblk, map->m_len);
+ #endif
+ 		path = ext4_split_convert_extents(handle, inode, map, path,
+-						EXT4_GET_BLOCKS_CONVERT, NULL);
++						  flags, NULL);
+ 		if (IS_ERR(path))
+ 			return path;
+ 
+-- 
+2.52.0
 
