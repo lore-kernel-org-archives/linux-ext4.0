@@ -1,138 +1,109 @@
-Received: from mail-qv1-f49.google.com (mail-qv1-f49.google.com [209.85.219.49])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from out-184.mta0.migadu.com (out-184.mta0.migadu.com [91.218.175.184])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F3BD24735A1
-	for <linux-ext4@vger.kernel.org>; Thu,  8 Jan 2026 11:40:02 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.49
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 844B5465241
+	for <linux-ext4@vger.kernel.org>; Thu,  8 Jan 2026 11:58:27 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=91.218.175.184
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1767872408; cv=none; b=cm3owDP0akM4vIO7hudS4MoNe7/1jmBMP9nodZtEwNGHTgvBn4iNokg7ESiN7uYSEnJpa4XUuAGAz3bo/rOGwV0jV2h9onvHHJeMxpo7GqTDCbaf/sWs4FwUenkYbyLk87OCo0H19Ryxlb2IVMtLL1y4RzGW/hW3D1Nh0ZZSDGo=
+	t=1767873510; cv=none; b=G9oCGCNijadNlVdT0e6m3G40SALP+nQJN2WHCh/oVOTOjIqU1GKcC1Kwn/KWXv8OOYlvTYYjh8Z7gGrh+PHea6NcFxYP4ygTU/CFKPTnmRg4P3mUYf3UlUtGihpEKIlj1O4rL3hDdgGfM4v9M+fXi/Pd/pjaPXJfgBzfPSDn3ag=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1767872408; c=relaxed/simple;
-	bh=ezvnqHz57gvkldOznzeZCMww1jUfcQ7xappaEfnvzZE=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=VfXioZsR9WykaXJFKeAkVO+M5kpb5JpvCSVqsIDXoGSiUNtPRjrFJRJE2ims+PywGWnbbYdhDRN0x4zn4PoxlMoDQKuUBJRTXRLbK671DWsSNPq/owVUmdxcE1wSze/QvulG4o0e1f1liCHBVJbZ5r6bwjX2uwl8BtLmEmZxIkk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=YawHteLV; arc=none smtp.client-ip=209.85.219.49
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
+	s=arc-20240116; t=1767873510; c=relaxed/simple;
+	bh=QdgW7/Ywb3ypVra4qAU0CBPlI3FV3Ye6csN8xmiewuM=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=pr59Cp8pM/Wp35qDBYQn3wsMKfhOIr+idmzi+qWPkLcOKIGF9RjvoNsOffeTBbLJL1iPtDA2+RdijH0D8B3rX8PP4B50AQcXMGkmGC6RiEE3+cbvgkR8EOh/on1ezJMyN/r1jm3DnS+Ah/XrL5oDCavMwdMOUS+e1/kMCSs8us4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=hXrLYYwT; arc=none smtp.client-ip=91.218.175.184
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="YawHteLV"
-Received: by mail-qv1-f49.google.com with SMTP id 6a1803df08f44-8907ec50855so32942526d6.3
-        for <linux-ext4@vger.kernel.org>; Thu, 08 Jan 2026 03:40:01 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20230601; t=1767872400; x=1768477200; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=De/F7GrZ3a7XQW11zwFhVMyznAHPN5+HCcRNv17+1Go=;
-        b=YawHteLVrnHK3lXXOFIIgMvlqbUWb1l2jMcI7SZhdlee5Hk49JnqZPZHuqm+TVpzZz
-         4RicRRov650HZEdbMMi3ueF/cXYISxpVbPE3M4WZVRsxHM53TZnDdoRJiva3rFqsnjTV
-         GwOZxFVa5V0hxW/DDbqvAXSnvAQLvH1evxeMNUpFshLrEWEsFXmo+o29w3mve3mIjfPW
-         lBrdOYalCBklb+kcFbqrC1c0jeb6nOYkmKKQMNaEkoWGHs070V9YKA7TKkSYwaBRL/b5
-         e+ky/HkNZclcQoKMLxzmqhmjvq57wXiaiGu2KK7noDOY9rdvSGbmVPMYab+QmIgXiGUT
-         zHSg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1767872400; x=1768477200;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=De/F7GrZ3a7XQW11zwFhVMyznAHPN5+HCcRNv17+1Go=;
-        b=LecV4+VF2fHtoKO9B0kOUfrMxutl4s/Fovu23zB3inHq6XG+w3g7WCNh9HsTHNLnBC
-         28AwIaaOmQ9nbvrRICX9QCrNrBKTo7LSHG31kEl/OkOjVgKqxApFtJ3CLSj43kbw/K8K
-         xshX2vG2U3HlPTK9X4dmktNVHZdyk7ZsattEVebLyukiZVPUrE9wBxteDcumHrzn+JVE
-         F3yJ4lZijBX7jTk5mMJLExhq6V1GSuktpGvH42OppDyt2Zs4RaHEGd+lwNMqbWxkpAjQ
-         W8nVKkd+rdfS0+mVPSYUpsFpD2U2AvBf/dEW6m/dRJ5pktdLk63iOy2hIlW9ZEaWwaBC
-         H03Q==
-X-Forwarded-Encrypted: i=1; AJvYcCXkQCLb70dGeNmB65PMRe3qxGFBadxdPoVCMJj1tP3U30/UyGcK6+LrUoFEW+bV6X4KEFjbpYOLPfNI@vger.kernel.org
-X-Gm-Message-State: AOJu0Yx815OvSmZWRi9ybXuvCn5vAvHXqW3n2z/WLl+fhu+yejqoLvpW
-	0ScZrXu7KXEkUzOTgHV3fryBee2PjAfM98g8OBTvu+5/6AjK5E+4PDECVSuQ/nS5Ybdkz+4+Mye
-	TNH3sdF/kl4rl42OFoIoCtQipij0rpi+zIuz7AvF1
-X-Gm-Gg: AY/fxX5YSPmc01J+Ipkk4arjX7B4OjO2rq0XxC/bDuq0Z9Y+A0jH1xZO6hMR8PxeQmD
-	YLThYe+SRQAY3MUfHwHuG7REpR2ipuyvYXqHv9yTqcYkcCLLiFV1RPL2HujXdLd9YnV8s6HFqko
-	OiFLWAS9BsHeK7lUfpbEnfPvV0u9ZYTbkSsbs7R7QHfeUNX7oDc7RqnMLLOJXlA9CwdKcB9/0O4
-	HF5USrbzGOf8GuAlKJk49x5q+/0LQoaQz23ozKdn2NNacre2LO4xijbXPvJf4LvKGsAxQCz4WiB
-	pO+WiTmTMew5wOr3/S8b+5yshz/qd3iVjuie
-X-Google-Smtp-Source: AGHT+IEtTsutQpO25KKJJxkwWclrV1NkoOFyJBOS1res7lIatKk2McpUxH3uFSbvGt+LR+VAYJv6MCV9dzQjj1c4j+4=
-X-Received: by 2002:a05:6214:20c4:b0:87c:152c:7b25 with SMTP id
- 6a1803df08f44-8908417a83emr85986576d6.13.1767872399549; Thu, 08 Jan 2026
- 03:39:59 -0800 (PST)
+	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="hXrLYYwT"
+Date: Thu, 8 Jan 2026 19:57:59 +0800
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
+	t=1767873504;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=0m0duLtHTkYn6eVmR3FYjJRUqSe/1NoTjqwhsTnSDn4=;
+	b=hXrLYYwTptrwpyONDcA5ygx/VKWJnwg8tyeYPLPPeBnrpVYqmqkrK7o1wsDxwwLcfSZzJe
+	8OAdxdWQgKCBXlFuuL/gbtJqft/mIHqLdOzY7cuPAQHwRrTM78y47kkDOC0Pgc67pRSEtN
+	MeggUj29Bust2hNfTWVo+fBUu6i0Vf8=
+X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
+From: Hao Li <hao.li@linux.dev>
+To: Harry Yoo <harry.yoo@oracle.com>
+Cc: akpm@linux-foundation.org, vbabka@suse.cz, andreyknvl@gmail.com, 
+	cl@gentwo.org, dvyukov@google.com, glider@google.com, hannes@cmpxchg.org, 
+	linux-mm@kvack.org, mhocko@kernel.org, muchun.song@linux.dev, rientjes@google.com, 
+	roman.gushchin@linux.dev, ryabinin.a.a@gmail.com, shakeel.butt@linux.dev, 
+	surenb@google.com, vincenzo.frascino@arm.com, yeoreum.yun@arm.com, tytso@mit.edu, 
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	cgroups@vger.kernel.org
+Subject: Re: [PATCH V5 8/8] mm/slab: place slabobj_ext metadata in unused
+ space within s->size
+Message-ID: <he2zo2ct4zkv34iiakp7zjzgdbl2n7nj3w7c3dlldvegbs6vxd@zyqrpczadamc>
+References: <20260105080230.13171-1-harry.yoo@oracle.com>
+ <20260105080230.13171-9-harry.yoo@oracle.com>
+ <fgx3lapibabra4x7tewx55nuvxz235ruvm3agpprjbdcmt3rc6@h54ln5tfdssz>
+ <aV9tnLlsecX8ukMv@hyeyoo>
+ <7uiizca4ejiqw6zegjwmou5va4kw7na7wivy4kxebrju7dsdwo@5brr7vhwf5oh>
+ <aV-Kn8vfyL5mnlJv@hyeyoo>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260105080230.13171-1-harry.yoo@oracle.com> <20260105080230.13171-2-harry.yoo@oracle.com>
-In-Reply-To: <20260105080230.13171-2-harry.yoo@oracle.com>
-From: Alexander Potapenko <glider@google.com>
-Date: Thu, 8 Jan 2026 12:39:22 +0100
-X-Gm-Features: AQt7F2p4_VUyRgHz6qqEM5-JBZ5E2KV2nkrPg5vKNyZeCt2rwmq1SfsxSID667s
-Message-ID: <CAG_fn=XCx9-uYOhRQXTde7ud=H9kwM_Sf3ZjHQd9hfYDspzeOA@mail.gmail.com>
-Subject: Re: [PATCH V5 1/8] mm/slab: use unsigned long for orig_size to ensure
- proper metadata align
-To: Harry Yoo <harry.yoo@oracle.com>
-Cc: akpm@linux-foundation.org, vbabka@suse.cz, andreyknvl@gmail.com, 
-	cl@gentwo.org, dvyukov@google.com, hannes@cmpxchg.org, linux-mm@kvack.org, 
-	mhocko@kernel.org, muchun.song@linux.dev, rientjes@google.com, 
-	roman.gushchin@linux.dev, ryabinin.a.a@gmail.com, shakeel.butt@linux.dev, 
-	surenb@google.com, vincenzo.frascino@arm.com, yeoreum.yun@arm.com, 
-	tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, cgroups@vger.kernel.org, hao.li@linux.dev, 
-	stable@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <aV-Kn8vfyL5mnlJv@hyeyoo>
+X-Migadu-Flow: FLOW_OUT
 
-On Mon, Jan 5, 2026 at 9:02=E2=80=AFAM Harry Yoo <harry.yoo@oracle.com> wro=
-te:
->
-> When both KASAN and SLAB_STORE_USER are enabled, accesses to
-> struct kasan_alloc_meta fields can be misaligned on 64-bit architectures.
-> This occurs because orig_size is currently defined as unsigned int,
-> which only guarantees 4-byte alignment. When struct kasan_alloc_meta is
-> placed after orig_size, it may end up at a 4-byte boundary rather than
-> the required 8-byte boundary on 64-bit systems.
->
-> Note that 64-bit architectures without HAVE_EFFICIENT_UNALIGNED_ACCESS
-> are assumed to require 64-bit accesses to be 64-bit aligned.
-> See HAVE_64BIT_ALIGNED_ACCESS and commit adab66b71abf ("Revert:
-> "ring-buffer: Remove HAVE_64BIT_ALIGNED_ACCESS"") for more details.
->
-> Change orig_size from unsigned int to unsigned long to ensure proper
-> alignment for any subsequent metadata. This should not waste additional
-> memory because kmalloc objects are already aligned to at least
-> ARCH_KMALLOC_MINALIGN.
->
-> Suggested-by: Andrey Ryabinin <ryabinin.a.a@gmail.com>
-> Cc: stable@vger.kernel.org
-> Fixes: 6edf2576a6cc ("mm/slub: enable debugging memory wasting of kmalloc=
-")
-> Signed-off-by: Harry Yoo <harry.yoo@oracle.com>
-> ---
->  mm/slub.c | 14 +++++++-------
->  1 file changed, 7 insertions(+), 7 deletions(-)
->
-> diff --git a/mm/slub.c b/mm/slub.c
-> index ad71f01571f0..1c747435a6ab 100644
-> --- a/mm/slub.c
-> +++ b/mm/slub.c
-> @@ -857,7 +857,7 @@ static inline bool slab_update_freelist(struct kmem_c=
-ache *s, struct slab *slab,
->   * request size in the meta data area, for better debug and sanity check=
-.
->   */
->  static inline void set_orig_size(struct kmem_cache *s,
-> -                               void *object, unsigned int orig_size)
-> +                               void *object, unsigned long orig_size)
->  {
->         void *p =3D kasan_reset_tag(object);
->
-> @@ -867,10 +867,10 @@ static inline void set_orig_size(struct kmem_cache =
-*s,
->         p +=3D get_info_end(s);
->         p +=3D sizeof(struct track) * 2;
->
-> -       *(unsigned int *)p =3D orig_size;
-> +       *(unsigned long *)p =3D orig_size;
+On Thu, Jan 08, 2026 at 07:44:47PM +0900, Harry Yoo wrote:
+> On Thu, Jan 08, 2026 at 05:52:27PM +0800, Hao Li wrote:
+> > On Thu, Jan 08, 2026 at 05:41:00PM +0900, Harry Yoo wrote:
+> > > On Thu, Jan 08, 2026 at 01:52:09PM +0800, Hao Li wrote:
+> > > > On Mon, Jan 05, 2026 at 05:02:30PM +0900, Harry Yoo wrote:
+> > > > > When a cache has high s->align value and s->object_size is not aligned
+> > > > > to it, each object ends up with some unused space because of alignment.
+> > > > > If this wasted space is big enough, we can use it to store the
+> > > > > slabobj_ext metadata instead of wasting it.
+> > > > 
+> > > > Hi, Harry,
+> > > 
+> > > Hi Hao,
+> > > 
+> > > > When we save obj_ext in s->size space, it seems that slab_ksize() might
+> > > > be missing the corresponding handling.
+> > > 
+> > > Oops.
+> > > 
+> > > > It still returns s->size, which could cause callers of slab_ksize()
+> > > > to see unexpected data (i.e. obj_ext), or even overwrite the obj_ext data.
+> > > 
+> > > Yes indeed.
+> > > Great point, thanks!
+> > > 
+> > > I'll fix it by checking if the slab has obj_exts within the object
+> > > layout and returning s->object_size if so.
+> > 
+> > Makes sense - I think there's one more nuance worth capturing.
+> > slab_ksize() seems to compute the maximum safe size by applying layout
+> > constraints from most-restrictive to least-restrictive:
+> > redzones/poison/KASAN clamp it to object_size, tail metadata
+> > (SLAB_TYPESAFE_BY_RCU / SLAB_STORE_USER) clamps it to inuse, and only
+> > when nothing metadata lives does it return s->size.
+> 
+> Waaaait, SLAB_TYPESAFE_BY_RCU isn't the only case where we put freelist
+> pointer after the object.
+> 
+> What about caches with constructor?
+> We do place it after object, but slab_ksize() may return s->size? 
 
-Instead of calculating the offset of the original size in several
-places, should we maybe introduce a function that returns a pointer to
-it?
+That's a really good question - thanks for calling it out. I took
+another look at the code, and the comment for ksize() notes that it's
+only meant to be used with kmalloc()-family allocations; those objects
+don't have a ctor pointer. So as long as callers stick to that contract,
+I think we should be fine and don't need to worry too much about this
+case.
+
+-- 
+Thanks,
+Hao
