@@ -1,105 +1,263 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 54779427A1A;
-	Tue, 20 Jan 2026 17:34:49 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D064C3BC4DC
+	for <linux-ext4@vger.kernel.org>; Tue, 20 Jan 2026 21:48:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1768930491; cv=none; b=U9ij2ztIFqC7JOLAmPRmY2ZI8G1uqIqAZ+ijqsn6ft7oXoM1Qb7ZG4aXP9KfNa6st9shS2xmFcnlBEo/CNv89jmcSdv+KWo5+xg2xibfiEdVER7KtklCv1f9JCFPlx9ipQlsVemTllf/bj7VKYI7IywbhhXzM17qdiHRZ7q9lgE=
+	t=1768945738; cv=none; b=MMR5ef3cgVBLUFtKrT6uiApUVfayAqMLs95KgkOtrb+9JmnuyTXJ3PeECBFxuVCiuVZdowlLmlgC2Q1RreqMpTFpdJI9Q/YgK6kUhfHWepBE/W8kYNFP/7xvMa8s522fVhg07+XB8P5+/qwvz4sA6qVDso8d7mem2MO8kn9OwtQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1768930491; c=relaxed/simple;
-	bh=bbwKwfsUkmuvOMgOcdbOJxj3wN5bi2yJZMEPDyyRAmk=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=anWP0IUiT0OrqaSMb+RTVEa8J+tbTQpnhxU2Tdfly1/1PPy8sm+vnwl+tuU5kvCpt5OtPR4uO73TqXDlu/JU3WRInR/0AmwxacK1ZhMXzbNd1ylZYqWTVu9/8ZbfqrSh4wSqJkTXVd7gy+lT3GV6VXIjNU1YNaCtAbP4eNTL1o0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=oNwjuBdM; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1768945738; c=relaxed/simple;
+	bh=96b8Nubirwao54BkP50ZkP0NSv+GbSST6a8dD5+v4ms=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=C6PMGjMfwRFkV3gmcHmcP1RhQBp3yl+xKitJ1WncWM9BsxOmHXQOlRzMpR/7/lCj6R96EbOo6Q5YJnIgJZQb0Ko5ddWOlc8q3UO+gMXLM2I7CFWEQSBpiDWk/OU4U+Ba1ZKoJvwmFIh20ysDvxiFi1bXORsTHdjL9eHluPfvpgo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=YSN+IBTl; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="oNwjuBdM"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CA559C19421;
-	Tue, 20 Jan 2026 17:34:49 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="YSN+IBTl"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CF64AC4AF09;
+	Tue, 20 Jan 2026 21:48:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1768930489;
-	bh=bbwKwfsUkmuvOMgOcdbOJxj3wN5bi2yJZMEPDyyRAmk=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=oNwjuBdMDLfek3/xIfvCw2Cg7Igj3Yx+mB7nJya6q5iHS+aEveDCYOpcpIXMHJVHK
-	 VikR47aGfhbX4f8sXZN781IN6Tnv6H6+NrFAeRqI9eYH7dC/T6zqDKaX99VASDB7NQ
-	 hYdK2YP1hL7PpEL0dc6J3+Vbg7qJK/PhxRvT0LlNYSnZ3yGcXdu4qqN69FHgjr1xR8
-	 WhRvVWarLotZ+67tOStY2TysV7KIJ5HB9sNtt6pvrE5xNQ1E1VZsmmd9Ccj1uGiogm
-	 aCjjn3sQDEIIYBt59WkxoUxhJcd4sNgNX1xxIYKMLWJBoVCXjJrGGORZiHCczGf23V
-	 f+O6KVgEi7Peg==
-Date: Tue, 20 Jan 2026 09:34:49 -0800
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: Andrey Albershteyn <aalbersh@redhat.com>
-Cc: Christoph Hellwig <hch@lst.de>, Eric Biggers <ebiggers@kernel.org>,
-	Matthew Wilcox <willy@infradead.org>, fsverity@lists.linux.dev,
-	linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	aalbersh@kernel.org, david@fromorbit.com, tytso@mit.edu,
-	linux-ext4@vger.kernel.org, jaegeuk@kernel.org, chao@kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net
-Subject: Re: fsverity metadata offset, was: Re: [PATCH v2 0/23] fs-verity
- support for XFS with post EOF merkle tree
-Message-ID: <20260120173449.GT15551@frogsfrogsfrogs>
-References: <op5poqkjoachiv2qfwizunoeg7h6w5x2rxdvbs4vhryr3aywbt@cul2yevayijl>
- <aWci_1Uu5XndYNkG@casper.infradead.org>
- <20260114061536.GG15551@frogsfrogsfrogs>
- <5z5r6jizgxqz5axvzwbdmtkadehgdf7semqy2oxsfytmzzu6ik@zfvhexcp3fz2>
- <6r24wj3o3gctl3vz4n3tdrfjx5ftkybdjmmye2hejdcdl6qseh@c2yvpd5d4ocf>
- <20260119063349.GA643@lst.de>
- <20260119193242.GB13800@sol>
- <20260119195816.GA15583@frogsfrogsfrogs>
- <20260120073218.GA6757@lst.de>
- <5tse47xskuaofuworccgwhyftyymx5xj3mc6opwz7nfxa225u6@uvbk4gc2rktd>
+	s=k20201202; t=1768945738;
+	bh=96b8Nubirwao54BkP50ZkP0NSv+GbSST6a8dD5+v4ms=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
+	b=YSN+IBTls9vtdpn3pRtNBdf73N0qA/tQk3w4RgvlWzio2fknpGVb/a0o7P7flK/1y
+	 zzJtGo9wujbVTBo7Axx4HQ/eOiOPbO6DnlaRheiScvIv1C8xSZxJoQ9koobwUIo3/z
+	 bcm+sMkCuZPeonMVjryuEdKbJLcNDMKql+Ek0XSn5s5bTJgS271HmzsqC3P/8RVnbU
+	 03MMFgLCRnZ3UTWInrk2WkKm17NMBn3d1bcHjdTgKopkzmxW8tAteaboWwKj5BrV20
+	 Y92l4G1JtVIu1HmY5gXGwvqSrpdFYgSn3e/bU6+kNyrad4sDexNfki+wGKWiarbNRN
+	 562IzeWDAwUbg==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id C6BC1F40068;
+	Tue, 20 Jan 2026 16:48:56 -0500 (EST)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Tue, 20 Jan 2026 16:48:56 -0500
+X-ME-Sender: <xms:SPhvaQtWESY-A74K_HEn66lmVvpKNm5MFxR6oEthFHsJh9f_m8HVhg>
+    <xme:SPhvaYRYYoD8hzZ-gIklJVxdAnFdEQdnVq654EzYKHMt8mKFQ1HUDx-gqtBhm_VwW
+    y-Z6EZs6GGoSKSpdopfG6bYC-99jxEd1TpQw3BiJGcJttr32OeEtWRt>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgddugeduheefucetufdoteggodetrf
+    dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
+    rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
+    gurhepofggfffhvfevkfgjfhfutgfgsehtjeertdertddtnecuhfhrohhmpedfvehhuhgt
+    khcunfgvvhgvrhdfuceotggvlheskhgvrhhnvghlrdhorhhgqeenucggtffrrghtthgvrh
+    hnpefhffekffeftdfgheeiveekudeuhfdvjedvfedvueduvdegleekgeetgfduhfefleen
+    ucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhrohhmpegthhhutg
+    hklhgvvhgvrhdomhgvshhmthhprghuthhhphgvrhhsohhnrghlihhthidqudeifeegleel
+    leehledqfedvleekgeegvdefqdgtvghlpeepkhgvrhhnvghlrdhorhhgsehfrghsthhmrg
+    hilhdrtghomhdpnhgspghrtghpthhtohepfedvpdhmohguvgepshhmthhpohhuthdprhgt
+    phhtthhopehsvghnohiihhgrthhskhihsegthhhrohhmihhumhdrohhrghdprhgtphhtth
+    hopegrughilhhgvghrrdhkvghrnhgvlhesughilhhgvghrrdgtrgdprhgtphhtthhopehs
+    lhgrvhgrseguuhgsvgihkhhordgtohhmpdhrtghpthhtoheprhhonhhnihgvshgrhhhlsg
+    gvrhhgsehgmhgrihhlrdgtohhmpdhrtghpthhtoheprghnnhgrsehkvghrnhgvlhdrohhr
+    ghdprhgtphhtthhopegsrhgruhhnvghrsehkvghrnhgvlhdrohhrghdprhgtphhtthhope
+    gtvghmsehkvghrnhgvlhdrohhrghdprhgtphhtthhopegthhgroheskhgvrhhnvghlrdho
+    rhhgpdhrtghpthhtohepughjfihonhhgsehkvghrnhgvlhdrohhrgh
+X-ME-Proxy: <xmx:SPhvaamXZA19JIcSMetmmNDyPupKYtpsGBX8RUilZqnOb0aJRtehUQ>
+    <xmx:SPhvaeTpcVU1Wim3vGB6ES93L_VTC352WS9ZxeyR0pY82SdQj2k7jQ>
+    <xmx:SPhvaf64sRrImZuiE0FT-3g9SeUWs7whMFXlvnbGOZ0KmNQDNm2Ajg>
+    <xmx:SPhvaVEUXZXhb9_ub-oDB-zXsCXaXQzldUQIcPSpt844LE_RlPLPmA>
+    <xmx:SPhvaZHRcYWU9BKUQSIRIo2WYqA9j8HDF7yWiIXBvkQ32EK5DSe3aB5a>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 89A9B780070; Tue, 20 Jan 2026 16:48:56 -0500 (EST)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <5tse47xskuaofuworccgwhyftyymx5xj3mc6opwz7nfxa225u6@uvbk4gc2rktd>
+X-ThreadId: AfQWKZtCjdVF
+Date: Tue, 20 Jan 2026 16:48:31 -0500
+From: "Chuck Lever" <cel@kernel.org>
+To: "Darrick J. Wong" <djwong@kernel.org>,
+ "Christian Brauner" <brauner@kernel.org>
+Cc: "Alexander Viro" <viro@zeniv.linux.org.uk>, "Jan Kara" <jack@suse.cz>,
+ linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+ linux-xfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+ linux-nfs@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+ "OGAWA Hirofumi" <hirofumi@mail.parknet.co.jp>,
+ "Namjae Jeon" <linkinjeon@kernel.org>,
+ "Sungjong Seo" <sj1557.seo@samsung.com>,
+ "Yuezhang Mo" <yuezhang.mo@sony.com>,
+ almaz.alexandrovich@paragon-software.com,
+ "Viacheslav Dubeyko" <slava@dubeyko.com>, glaubitz@physik.fu-berlin.de,
+ frank.li@vivo.com, "Theodore Tso" <tytso@mit.edu>,
+ adilger.kernel@dilger.ca, "Carlos Maiolino" <cem@kernel.org>,
+ "Steve French" <sfrench@samba.org>, "Paulo Alcantara" <pc@manguebit.org>,
+ "Ronnie Sahlberg" <ronniesahlberg@gmail.com>,
+ "Shyam Prasad N" <sprasad@microsoft.com>,
+ "Trond Myklebust" <trondmy@kernel.org>,
+ "Anna Schumaker" <anna@kernel.org>, "Jaegeuk Kim" <jaegeuk@kernel.org>,
+ "Chao Yu" <chao@kernel.org>, "Hans de Goede" <hansg@kernel.org>,
+ senozhatsky@chromium.org, "Chuck Lever" <chuck.lever@oracle.com>
+Message-Id: <38bf1452-8cf8-477b-bcc3-9fe442033bc5@app.fastmail.com>
+In-Reply-To: <20260120172608.GQ15551@frogsfrogsfrogs>
+References: <20260120142439.1821554-1-cel@kernel.org>
+ <20260120142439.1821554-2-cel@kernel.org>
+ <20260120172608.GQ15551@frogsfrogsfrogs>
+Subject: Re: [PATCH v6 01/16] fs: Add case sensitivity flags to file_kattr
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-On Tue, Jan 20, 2026 at 12:44:19PM +0100, Andrey Albershteyn wrote:
-> On 2026-01-20 08:32:18, Christoph Hellwig wrote:
-> > On Mon, Jan 19, 2026 at 11:58:16AM -0800, Darrick J. Wong wrote:
-> > > > >  a) not all architectures are reasonable.  As Darrick pointed out
-> > > > >     hexagon seems to support page size up to 1MiB.  While I don't know
-> > > > >     if they exist in real life, powerpc supports up to 256kiB pages,
-> > > > >     and I know they are used for real in various embedded settings
-> > > 
-> > > They *did* way back in the day, I worked with some seekrit PPC440s early
-> > > in my career.  I don't know that any of them still exist, but the code
-> > > is still there...
-> > 
-> > Sorry, I meant I don't really know how real the hexagon large page
-> > sizes are.  I know about the ppcs one personally, too.
-> > 
-> > > > If we do need to fix this, there are a couple things we could consider
-> > > > doing without changing the on-disk format in ext4 or f2fs: putting the
-> > > > data in the page cache at a different offset than it exists on-disk, or
-> > > > using "small" pages for EOF specifically.
-> > > 
-> > > I'd leave the ondisk offset as-is, but change the pagecache offset to
-> > > roundup(i_size_read(), mapping_max_folio_size_supported()) just to keep
-> > > file data and fsverity metadata completely separate.
-> > 
-> > Can we find a way to do that in common code and make ext4 and f2fs do
-> > the same?
-> 
-> hmm I don't see what else we could do except providing common offset
-> and then use it to map blocks
-> 
-> loff_t fsverity_metadata_offset(struct inode *inode)
-> {
-> 	return roundup(i_size_read(), mapping_max_folio_size_supported());
-> }
 
-Yeah, that's probably the best we can do.  Please add a comment to that
-helper to state explicitly that this is the *incore* file offset of the
-merkle tree if the filesystem decides to cache it in the pagecache.
 
---D
+On Tue, Jan 20, 2026, at 12:26 PM, Darrick J. Wong wrote:
+> On Tue, Jan 20, 2026 at 09:24:24AM -0500, Chuck Lever wrote:
+>> From: Chuck Lever <chuck.lever@oracle.com>
+>> 
+>> Enable upper layers such as NFSD to retrieve case sensitivity
+>> information from file systems by adding FS_XFLAG_CASEFOLD and
+>> FS_XFLAG_CASENONPRESERVING flags.
+>> 
+>> Filesystems report case-insensitive or case-nonpreserving behavior
+>> by setting these flags directly in fa->fsx_xflags. The default
+>> (flags unset) indicates POSIX semantics: case-sensitive and
+>> case-preserving. These flags are read-only; userspace cannot set
+>> them via ioctl.
+>> 
+>> Relocate struct file_kattr initialization from fileattr_fill_xflags()
+>> and fileattr_fill_flags() to vfs_fileattr_get() and the ioctl/syscall
+>> call sites. This allows filesystem ->fileattr_get() callbacks to set
+>> flags directly in fa->fsx_xflags before invoking the fill functions,
+>> which previously would have zeroed those values. Callers that bypass
+>> vfs_fileattr_get() must now zero-initialize the struct themselves.
+>> 
+>> Case sensitivity information is exported to userspace via the
+>> fa_xflags field in the FS_IOC_FSGETXATTR ioctl and file_getattr()
+>> system call.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>  fs/file_attr.c           | 14 ++++++--------
+>>  fs/xfs/xfs_ioctl.c       |  2 +-
+>>  include/linux/fileattr.h |  3 ++-
+>>  include/uapi/linux/fs.h  |  2 ++
+>
+> This ought to go to linux-api because you're changing the userspace api.
+> Granted it's only adding a flag definition to an existing ioctl, but
+> FS_XFLAG_CASEFOLD /does/ collide with Andrey's fsverity xflag patch...
+>
+> (The rest of the changes looks ok to me.)
 
-> -- 
-> - Andrey
-> 
-> 
+Process question for Christian: Do you want to see a v7 of this
+series with Cc: linux-api before proceeding, or are you taking
+both Andrey's and mine and can resolve the conflict, or ... ?
+
+
+> --D
+>
+>>  4 files changed, 11 insertions(+), 10 deletions(-)
+>> 
+>> diff --git a/fs/file_attr.c b/fs/file_attr.c
+>> index 13cdb31a3e94..2700200c5b9c 100644
+>> --- a/fs/file_attr.c
+>> +++ b/fs/file_attr.c
+>> @@ -15,12 +15,10 @@
+>>   * @fa:		fileattr pointer
+>>   * @xflags:	FS_XFLAG_* flags
+>>   *
+>> - * Set ->fsx_xflags, ->fsx_valid and ->flags (translated xflags).  All
+>> - * other fields are zeroed.
+>> + * Set ->fsx_xflags, ->fsx_valid and ->flags (translated xflags).
+>>   */
+>>  void fileattr_fill_xflags(struct file_kattr *fa, u32 xflags)
+>>  {
+>> -	memset(fa, 0, sizeof(*fa));
+>>  	fa->fsx_valid = true;
+>>  	fa->fsx_xflags = xflags;
+>>  	if (fa->fsx_xflags & FS_XFLAG_IMMUTABLE)
+>> @@ -46,11 +44,9 @@ EXPORT_SYMBOL(fileattr_fill_xflags);
+>>   * @flags:	FS_*_FL flags
+>>   *
+>>   * Set ->flags, ->flags_valid and ->fsx_xflags (translated flags).
+>> - * All other fields are zeroed.
+>>   */
+>>  void fileattr_fill_flags(struct file_kattr *fa, u32 flags)
+>>  {
+>> -	memset(fa, 0, sizeof(*fa));
+>>  	fa->flags_valid = true;
+>>  	fa->flags = flags;
+>>  	if (fa->flags & FS_SYNC_FL)
+>> @@ -84,6 +80,8 @@ int vfs_fileattr_get(struct dentry *dentry, struct file_kattr *fa)
+>>  	struct inode *inode = d_inode(dentry);
+>>  	int error;
+>>  
+>> +	memset(fa, 0, sizeof(*fa));
+>> +
+>>  	if (!inode->i_op->fileattr_get)
+>>  		return -ENOIOCTLCMD;
+>>  
+>> @@ -323,7 +321,7 @@ int ioctl_setflags(struct file *file, unsigned int __user *argp)
+>>  {
+>>  	struct mnt_idmap *idmap = file_mnt_idmap(file);
+>>  	struct dentry *dentry = file->f_path.dentry;
+>> -	struct file_kattr fa;
+>> +	struct file_kattr fa = {};
+>>  	unsigned int flags;
+>>  	int err;
+>>  
+>> @@ -355,7 +353,7 @@ int ioctl_fssetxattr(struct file *file, void __user *argp)
+>>  {
+>>  	struct mnt_idmap *idmap = file_mnt_idmap(file);
+>>  	struct dentry *dentry = file->f_path.dentry;
+>> -	struct file_kattr fa;
+>> +	struct file_kattr fa = {};
+>>  	int err;
+>>  
+>>  	err = copy_fsxattr_from_user(&fa, argp);
+>> @@ -434,7 +432,7 @@ SYSCALL_DEFINE5(file_setattr, int, dfd, const char __user *, filename,
+>>  	struct filename *name __free(putname) = NULL;
+>>  	unsigned int lookup_flags = 0;
+>>  	struct file_attr fattr;
+>> -	struct file_kattr fa;
+>> +	struct file_kattr fa = {};
+>>  	int error;
+>>  
+>>  	BUILD_BUG_ON(sizeof(struct file_attr) < FILE_ATTR_SIZE_VER0);
+>> diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
+>> index 59eaad774371..f0417c4d1fca 100644
+>> --- a/fs/xfs/xfs_ioctl.c
+>> +++ b/fs/xfs/xfs_ioctl.c
+>> @@ -496,7 +496,7 @@ xfs_ioc_fsgetxattra(
+>>  	xfs_inode_t		*ip,
+>>  	void			__user *arg)
+>>  {
+>> -	struct file_kattr	fa;
+>> +	struct file_kattr	fa = {};
+>>  
+>>  	xfs_ilock(ip, XFS_ILOCK_SHARED);
+>>  	xfs_fill_fsxattr(ip, XFS_ATTR_FORK, &fa);
+>> diff --git a/include/linux/fileattr.h b/include/linux/fileattr.h
+>> index f89dcfad3f8f..709de829659f 100644
+>> --- a/include/linux/fileattr.h
+>> +++ b/include/linux/fileattr.h
+>> @@ -16,7 +16,8 @@
+>>  
+>>  /* Read-only inode flags */
+>>  #define FS_XFLAG_RDONLY_MASK \
+>> -	(FS_XFLAG_PREALLOC | FS_XFLAG_HASATTR)
+>> +	(FS_XFLAG_PREALLOC | FS_XFLAG_HASATTR | \
+>> +	 FS_XFLAG_CASEFOLD | FS_XFLAG_CASENONPRESERVING)
+>>  
+>>  /* Flags to indicate valid value of fsx_ fields */
+>>  #define FS_XFLAG_VALUES_MASK \
+>> diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+>> index 66ca526cf786..919148beaa8c 100644
+>> --- a/include/uapi/linux/fs.h
+>> +++ b/include/uapi/linux/fs.h
+>> @@ -253,6 +253,8 @@ struct file_attr {
+>>  #define FS_XFLAG_FILESTREAM	0x00004000	/* use filestream allocator */
+>>  #define FS_XFLAG_DAX		0x00008000	/* use DAX for IO */
+>>  #define FS_XFLAG_COWEXTSIZE	0x00010000	/* CoW extent size allocator hint */
+>> +#define FS_XFLAG_CASEFOLD	0x00020000	/* case-insensitive lookups */
+>> +#define FS_XFLAG_CASENONPRESERVING 0x00040000	/* case not preserved */
+>>  #define FS_XFLAG_HASATTR	0x80000000	/* no DIFLAG for this	*/
+>>  
+>>  /* the read-only stuff doesn't really belong here, but any other place is
+>> -- 
+>> 2.52.0
+>> 
+>>
+
+-- 
+Chuck Lever
