@@ -1,90 +1,93 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1A2BF362156
-	for <linux-ext4@vger.kernel.org>; Thu, 22 Jan 2026 09:23:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 61A1434D3A4
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Jan 2026 10:05:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769073796; cv=none; b=PSr7Y1nV6R+MMIyF8HkUnDO3/ZZqHOLmcN0qY7n5JgJxuRHjXrb8+pxazJOq7CJ1mTsGisuZ4KSPCbjHKC8MlEsDDQjp0B7TWyb7SfDzMSyTIU9YbD92gy4EmldCyNAPNO9CLoi6BfldsUrhWioEwMEgXAkynHluukiJ/tVWrr0=
+	t=1769076309; cv=none; b=r5I7PJ9uHJkELk5R89kclXzcrX3Vq+U/tCWR5uPa0BjljNMyCfL+JxzC04Gx9upjkUBctIbqobAq3zyHwyQGRM3Ghsnhj3iaEXYjBmsJOdEHbnhSLnSpK3YxtT8dmPZT7yy8uckS6nBHfG2nt6JFfOHRbLCxRNZdBUtK5ey/BHI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1769073796; c=relaxed/simple;
-	bh=7ElgnauMWjCC1ACsvCYYc3v8oa61s035AcGSVaJmKhg=;
+	s=arc-20240116; t=1769076309; c=relaxed/simple;
+	bh=MRan9B0EEcK8gXicfj+D1fSVd5Gt317ZxAZHXGkA7nw=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=RqQHaNmvgGpevLB1oO3qLNDqUsWwQVoqQw71m8q5upJi9Hwc+yf87kwl4w7tLvcR3598ZceLe7wPeNiX3/IYztdi3tEVP9Q+i6J1uUrtVD8wv2XQwe0eQDbkZMB0TTYa2DXbTRlg9D9Zg7hisLykOoe8aWlR022sGZyjfPDz7io=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=xCFSu/Zp; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=uAi3BOKd; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=xCFSu/Zp; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=uAi3BOKd; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	 Content-Type:Content-Disposition:In-Reply-To; b=tchNCRBecYaEE0w4iteqsy2p4QJb9Y9qMrAgTmggbDbLQEhovrpHPFkIIw3VFZP200V5E2vBZnT/Y05BW30kvOWBIPiaLNRWkNisPc9ZR3ssQmTb396OO14QdFi6e9MWa4iuewKAAOwoIPLeBdkYhD0o4lrrv2CfNBxrAN9lNtQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=XWf8CMi7; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=l8Fbk2NH; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="xCFSu/Zp";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="uAi3BOKd";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="xCFSu/Zp";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="uAi3BOKd"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 2788E5BD13;
-	Thu, 22 Jan 2026 09:23:05 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1769073785; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="XWf8CMi7";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="l8Fbk2NH"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1769076307;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=mU2Ks98F5J+AbPp8AUVSHb8mtwCciz++x0FIFFNKyxI=;
-	b=xCFSu/Zpyn+/2VG1Gp9/FliKrefPraGT574m11SLEJCk2gTW92CCpasEPDaGdxCE6eUKD2
-	gWz94q7otNJHJ9lfk7lgxrUWZiyQOB521V47RJYpOaB3t0BK1qVLOsdNj1Oda81HiRhrFs
-	QoX8L+Nx65Fwj9PqeF9tvwAM8YpO/Cs=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1769073785;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=mU2Ks98F5J+AbPp8AUVSHb8mtwCciz++x0FIFFNKyxI=;
-	b=uAi3BOKd2uuFDcGW4kLYdDgozzz8l0JN8Hj8gGcCTdq5Pln5nu0eiERtI16C33dFYiFhe0
-	zJZQKSTMfH8UuzCg==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1769073785; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=mU2Ks98F5J+AbPp8AUVSHb8mtwCciz++x0FIFFNKyxI=;
-	b=xCFSu/Zpyn+/2VG1Gp9/FliKrefPraGT574m11SLEJCk2gTW92CCpasEPDaGdxCE6eUKD2
-	gWz94q7otNJHJ9lfk7lgxrUWZiyQOB521V47RJYpOaB3t0BK1qVLOsdNj1Oda81HiRhrFs
-	QoX8L+Nx65Fwj9PqeF9tvwAM8YpO/Cs=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1769073785;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=mU2Ks98F5J+AbPp8AUVSHb8mtwCciz++x0FIFFNKyxI=;
-	b=uAi3BOKd2uuFDcGW4kLYdDgozzz8l0JN8Hj8gGcCTdq5Pln5nu0eiERtI16C33dFYiFhe0
-	zJZQKSTMfH8UuzCg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 8C4BF13930;
-	Thu, 22 Jan 2026 09:23:04 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id DoA7InjscWnkEAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 22 Jan 2026 09:23:04 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id AA13CA082E; Thu, 22 Jan 2026 10:15:12 +0100 (CET)
-Date: Thu, 22 Jan 2026 10:15:12 +0100
-From: Jan Kara <jack@suse.cz>
+	bh=YNqvczIVehNho1K6yzOe7LZ08YqMOyw0NvDlIw+P6AI=;
+	b=XWf8CMi72NELo3h9CCYJe6airjNy8gH8lzXJiSPqO2Sh9VCBzFGjLHnMlNPSrhLXWFD72g
+	bWbC11vmPKUscRUifPz8mF88PrwdRv5Dp5IvyfeOzjRc9cu2b4fdQkEJkQj3OOlQQWYoBx
+	HrZrVhkuGWAoru6QNh5ddV/Fcw7pY0s=
+Received: from mail-wm1-f72.google.com (mail-wm1-f72.google.com
+ [209.85.128.72]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-301-6xFWbeWjO6urjPbupoQmHw-1; Thu, 22 Jan 2026 05:05:05 -0500
+X-MC-Unique: 6xFWbeWjO6urjPbupoQmHw-1
+X-Mimecast-MFC-AGG-ID: 6xFWbeWjO6urjPbupoQmHw_1769076304
+Received: by mail-wm1-f72.google.com with SMTP id 5b1f17b1804b1-4801bceb317so7117395e9.1
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Jan 2026 02:05:05 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1769076304; x=1769681104; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=YNqvczIVehNho1K6yzOe7LZ08YqMOyw0NvDlIw+P6AI=;
+        b=l8Fbk2NHAO+bLmKfCIIxJ9zbILX8MfmbR4bRMD0/5lkKZ0LVIRNXdg1oUj8RZ5+Ivk
+         67wqrLFWA41x/aodmdDUlqF1Nl0YsyZKmr/+ldGHwBBqVzG6f72WyuT0k7APYKCnLGk2
+         ZHZO1OxaXPa2eLs79WBkKLBoabeFynrKF0+jsjyUie2YTOCw+U5Siidy1rOj8oX0u4Hp
+         uHrwi7FQ02i8e/pTPUqCF7AUxNg82Smm/B1utPs7jxRvqbIkvM+1yemA6ohpbw8zy0Ax
+         JVm0BcF6uAg3ijIuqOC0Sf7NJEIqPs5iWhGoQyMdB0OUl9CGwoYw8excKK+1rSa68GPn
+         E/JA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1769076304; x=1769681104;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=YNqvczIVehNho1K6yzOe7LZ08YqMOyw0NvDlIw+P6AI=;
+        b=ZX3hNy4Tjs0uv3l1qsjPLKCQ1Gdz3JcvdZoWr1tWvU4rVAuEx0Fpn7xcSl8oKPRRbN
+         XSXeBkiFMBRo65Q10v5zzyrOzX6ONtdmWXbG5eTZaeyTIS+hi1uAJmVZBPevTIq/jS9s
+         7mz69Y8dE7Jt5dvhcZOSlTiIxpADx2C4O6Mq5fmQIiMwScIBWOoeZOAOdT20flJksKi4
+         CQRKhilShQKuQnb2xtNEM2zfmXVdYN2f+sr9tAruKXezndwP2eiFcduAD8jbIUmf2Xzj
+         N9WiZdql0KpF96LLqYmBSel0pb77VDWTnF7cqS+g7uFWKeQlu4b9+B/WcFlqsw5K9y8P
+         5mvg==
+X-Forwarded-Encrypted: i=1; AJvYcCUBTbshxHf7ZUqO3p73vZ15FptR1h/5rOjbHGFCHxwkrSzAvVeB9Le8OVAZymFf+H4+7I6oHn97r11c@vger.kernel.org
+X-Gm-Message-State: AOJu0YySPMpGyPba80H34YboROwul1TBYsqvjPFDMNUhKSL2Iz5G3MWG
+	ipOOlFqOJb1tzsHZWrkt0uhQKGJZkBpXfmIadGeSq8y6RsNAY2YC4gDoLbulOIkR/aU+FXy/+a3
+	LUQ1T27L0SioxQIuIDdP7MDHEh1sQ/SeXYEgGJcW+NrmLImoW0FRYDDiD/4RhBw==
+X-Gm-Gg: AZuq6aIAJJy+K59RlMGb7H9X58lH5qT5/OTD0NObsDtovOEN1disWUBTRwjuO0g4Owz
+	5DSkZa8RCHwb2JdqJpQXDPaux4pmzIXFd1DrVNTX2pXGU1KV2lK+ILPySC30voo/9rkMhZC08T7
+	Hup4dpKx1LGj1r9tZNzZfopUKB0v1mahTTyDw1jsTLt9rgmJmcUe/8/gUjKFd5hooikPNo1vfRS
+	x95JI00+UAW5xSIzIWdAo3Aq+A7LIGaR41gIM4kZn6CKZ+AxsDFhP/1WSINgQtK9w5JdW+8OChI
+	L0xNbSRtz+A/P/tqTZL0/clrDIlGnZzzk67pZvoaAZaW+d5xoR7jVzNPIrHlHfgD3K4cXnPblJA
+	=
+X-Received: by 2002:a05:600c:1388:b0:477:a36f:1a57 with SMTP id 5b1f17b1804b1-480409ca767mr113935885e9.3.1769076304274;
+        Thu, 22 Jan 2026 02:05:04 -0800 (PST)
+X-Received: by 2002:a05:600c:1388:b0:477:a36f:1a57 with SMTP id 5b1f17b1804b1-480409ca767mr113935225e9.3.1769076303635;
+        Thu, 22 Jan 2026 02:05:03 -0800 (PST)
+Received: from thinky ([217.30.74.39])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4804704087asm53174235e9.6.2026.01.22.02.05.02
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 22 Jan 2026 02:05:03 -0800 (PST)
+Date: Thu, 22 Jan 2026 11:04:32 +0100
+From: Andrey Albershteyn <aalbersh@redhat.com>
 To: Christoph Hellwig <hch@lst.de>
 Cc: Eric Biggers <ebiggers@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>, 
 	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, David Sterba <dsterba@suse.com>, 
 	Theodore Ts'o <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>, 
-	Andrey Albershteyn <aalbersh@redhat.com>, "Matthew Wilcox (Oracle)" <willy@infradead.org>, 
-	linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org, 
-	linux-f2fs-devel@lists.sourceforge.net, fsverity@lists.linux.dev
-Subject: Re: [PATCH 02/11] fs,fsverity: clear out fsverity_info from common
- code
-Message-ID: <izxwgrpegtwftqsuhv5pdodwttqsdyvzvfom3fj75msdxhjdul@yl7z3inr6fvr>
+	"Matthew Wilcox (Oracle)" <willy@infradead.org>, linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org, 
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, fsverity@lists.linux.dev
+Subject: Re: [PATCH 03/11] fsverity: pass struct file to
+ ->write_merkle_tree_block
+Message-ID: <2i3y4kybtm2lusa7eoutefawgrkhoqhuyquilu3qvkziyhpbvf@jeyk27glmeyg>
 References: <20260122082214.452153-1-hch@lst.de>
- <20260122082214.452153-3-hch@lst.de>
+ <20260122082214.452153-4-hch@lst.de>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -93,210 +96,16 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260122082214.452153-3-hch@lst.de>
-X-Spamd-Result: default: False [-3.80 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-0.999];
-	MIME_GOOD(-0.10)[text/plain];
-	MISSING_XM_UA(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[16];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	TO_DN_SOME(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,imap1.dmz-prg2.suse.org:helo,lst.de:email,suse.com:email]
-X-Spam-Flag: NO
-X-Spam-Score: -3.80
-X-Spam-Level: 
+In-Reply-To: <20260122082214.452153-4-hch@lst.de>
 
-On Thu 22-01-26 09:21:58, Christoph Hellwig wrote:
-> Directly remove the fsverity_info from the hash and free it from
-> clear_inode instead of requiring file systems to handle it.
+On 2026-01-22 09:21:59, Christoph Hellwig wrote:
+> This will make an iomap implementation of the method easier.
 > 
 > Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-Looks good to me. Feel free to add:
+looks good to me
+Reviewed-by: Andrey Albershteyn <aalbersh@redhat.com>
 
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  fs/btrfs/inode.c         | 10 +++-------
->  fs/ext4/super.c          |  1 -
->  fs/f2fs/inode.c          |  1 -
->  fs/inode.c               |  9 +++++++++
->  fs/verity/open.c         |  3 +--
->  include/linux/fsverity.h | 26 ++------------------------
->  6 files changed, 15 insertions(+), 35 deletions(-)
-> 
-> diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
-> index a2b5b440637e..67c64efc5099 100644
-> --- a/fs/btrfs/inode.c
-> +++ b/fs/btrfs/inode.c
-> @@ -34,7 +34,6 @@
->  #include <linux/sched/mm.h>
->  #include <linux/iomap.h>
->  #include <linux/unaligned.h>
-> -#include <linux/fsverity.h>
->  #include "misc.h"
->  #include "ctree.h"
->  #include "disk-io.h"
-> @@ -5571,11 +5570,8 @@ void btrfs_evict_inode(struct inode *inode)
->  
->  	trace_btrfs_inode_evict(inode);
->  
-> -	if (!root) {
-> -		fsverity_cleanup_inode(inode);
-> -		clear_inode(inode);
-> -		return;
-> -	}
-> +	if (!root)
-> +		goto clear_inode;
->  
->  	fs_info = inode_to_fs_info(inode);
->  	evict_inode_truncate_pages(inode);
-> @@ -5675,7 +5671,7 @@ void btrfs_evict_inode(struct inode *inode)
->  	 * to retry these periodically in the future.
->  	 */
->  	btrfs_remove_delayed_node(BTRFS_I(inode));
-> -	fsverity_cleanup_inode(inode);
-> +clear_inode:
->  	clear_inode(inode);
->  }
->  
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 87205660c5d0..86131f4d8718 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1527,7 +1527,6 @@ void ext4_clear_inode(struct inode *inode)
->  		EXT4_I(inode)->jinode = NULL;
->  	}
->  	fscrypt_put_encryption_info(inode);
-> -	fsverity_cleanup_inode(inode);
->  }
->  
->  static struct inode *ext4_nfs_get_inode(struct super_block *sb,
-> diff --git a/fs/f2fs/inode.c b/fs/f2fs/inode.c
-> index 38b8994bc1b2..ee332b994348 100644
-> --- a/fs/f2fs/inode.c
-> +++ b/fs/f2fs/inode.c
-> @@ -1000,7 +1000,6 @@ void f2fs_evict_inode(struct inode *inode)
->  	}
->  out_clear:
->  	fscrypt_put_encryption_info(inode);
-> -	fsverity_cleanup_inode(inode);
->  	clear_inode(inode);
->  }
->  
-> diff --git a/fs/inode.c b/fs/inode.c
-> index 379f4c19845c..38dbdfbb09ba 100644
-> --- a/fs/inode.c
-> +++ b/fs/inode.c
-> @@ -14,6 +14,7 @@
->  #include <linux/cdev.h>
->  #include <linux/memblock.h>
->  #include <linux/fsnotify.h>
-> +#include <linux/fsverity.h>
->  #include <linux/mount.h>
->  #include <linux/posix_acl.h>
->  #include <linux/buffer_head.h> /* for inode_has_buffers */
-> @@ -773,6 +774,14 @@ void dump_mapping(const struct address_space *mapping)
->  
->  void clear_inode(struct inode *inode)
->  {
-> +	/*
-> +	 * Only IS_VERITY() inodes can have verity info, so start by checking
-> +	 * for IS_VERITY() (which is faster than retrieving the pointer to the
-> +	 * verity info).  This minimizes overhead for non-verity inodes.
-> +	 */
-> +	if (IS_ENABLED(CONFIG_FS_VERITY) && IS_VERITY(inode))
-> +		fsverity_cleanup_inode(inode);
-> +
->  	/*
->  	 * We have to cycle the i_pages lock here because reclaim can be in the
->  	 * process of removing the last page (in __filemap_remove_folio())
-> diff --git a/fs/verity/open.c b/fs/verity/open.c
-> index 2aa5eae5a540..090cb77326ee 100644
-> --- a/fs/verity/open.c
-> +++ b/fs/verity/open.c
-> @@ -384,14 +384,13 @@ int __fsverity_file_open(struct inode *inode, struct file *filp)
->  }
->  EXPORT_SYMBOL_GPL(__fsverity_file_open);
->  
-> -void __fsverity_cleanup_inode(struct inode *inode)
-> +void fsverity_cleanup_inode(struct inode *inode)
->  {
->  	struct fsverity_info **vi_addr = fsverity_info_addr(inode);
->  
->  	fsverity_free_info(*vi_addr);
->  	*vi_addr = NULL;
->  }
-> -EXPORT_SYMBOL_GPL(__fsverity_cleanup_inode);
->  
->  void __init fsverity_init_info_cache(void)
->  {
-> diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
-> index 86fb1708676b..ea1ed2e6c2f9 100644
-> --- a/include/linux/fsverity.h
-> +++ b/include/linux/fsverity.h
-> @@ -179,26 +179,6 @@ int fsverity_get_digest(struct inode *inode,
->  /* open.c */
->  
->  int __fsverity_file_open(struct inode *inode, struct file *filp);
-> -void __fsverity_cleanup_inode(struct inode *inode);
-> -
-> -/**
-> - * fsverity_cleanup_inode() - free the inode's verity info, if present
-> - * @inode: an inode being evicted
-> - *
-> - * Filesystems must call this on inode eviction to free the inode's verity info.
-> - */
-> -static inline void fsverity_cleanup_inode(struct inode *inode)
-> -{
-> -	/*
-> -	 * Only IS_VERITY() inodes can have verity info, so start by checking
-> -	 * for IS_VERITY() (which is faster than retrieving the pointer to the
-> -	 * verity info).  This minimizes overhead for non-verity inodes.
-> -	 */
-> -	if (IS_VERITY(inode))
-> -		__fsverity_cleanup_inode(inode);
-> -	else
-> -		VFS_WARN_ON_ONCE(*fsverity_info_addr(inode) != NULL);
-> -}
->  
->  /* read_metadata.c */
->  
-> @@ -250,10 +230,6 @@ static inline int __fsverity_file_open(struct inode *inode, struct file *filp)
->  	return -EOPNOTSUPP;
->  }
->  
-> -static inline void fsverity_cleanup_inode(struct inode *inode)
-> -{
-> -}
-> -
->  /* read_metadata.c */
->  
->  static inline int fsverity_ioctl_read_metadata(struct file *filp,
-> @@ -331,4 +307,6 @@ static inline int fsverity_file_open(struct inode *inode, struct file *filp)
->  	return 0;
->  }
->  
-> +void fsverity_cleanup_inode(struct inode *inode);
-> +
->  #endif	/* _LINUX_FSVERITY_H */
-> -- 
-> 2.47.3
-> 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+- Andrey
+
