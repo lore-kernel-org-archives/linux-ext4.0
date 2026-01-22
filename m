@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 39C0243DA47;
-	Thu, 22 Jan 2026 16:03:39 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5E12C42E016;
+	Thu, 22 Jan 2026 16:03:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769097819; cv=none; b=nGI46jWGG9hAvFUr0hzBysYz2aFVO02io2b3KgAwTG8rDWYRtd1XBNoz8X1CDqoDWZRj4CAXm5xGLNyn9pPJSIkoRaSonRhq1mdwsvbfcUGRD7zX/IikCT0u+80OyuVLPzzY5U+IaUAS2wZBU0kOQAaSqyEKOl797fK23+fL5Oc=
+	t=1769097824; cv=none; b=SaPJqrIn6OPsEcIlF6CND4H2gn5b0dzR9L0nMi/j5uJpSvN5aOBZ/KIfmrkUfolWjqukVpStUveS4LgDkqdJ3CxA8o/vESmZ4JF2CEIpssdZoTDDKkXqKohQpz3IKrfmpWwF9/rFMEeeHOaVrhlwbZR0HvoxUSNw369Wm9osYDw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1769097819; c=relaxed/simple;
-	bh=vo+ZsaKAK/vmxsw0XxmdeStjATZWutMATw6PeQlNXOc=;
+	s=arc-20240116; t=1769097824; c=relaxed/simple;
+	bh=YDDyyYB+YVCQQ3bOYUSgoPwx7V5Jm2aE0B8Vt/Q0AHw=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=tzmYeeVfAb1oSrAtDj3w/VgUi41OG/uMH9g2yhOGOVdeHDUtXVwC/gRVkrE3MImynWF7HcLHTIv6S9+1kM/Y+v5dTBvWudFl3aWmcIHlC3ADWZpKENXVVtHSrlj47l98OQKLNNqUf2x6nj0dmgU3pJNjL284zQjz+OKsrUT0a8Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ive8vpih; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=SHeFq8872nVgltKR/1q5kd5gn2i5Ga0JzPUkUhEir8FCyR1dOFQD8gozK0jLEF8Q5a4hnfVJCxqJvyqR6szXP9LSK62jjuPVPXXAr269tZ46bYKcssR7xQ9J7ynOgeYGYEDrYOkJU5XwMW15kv1NpiwW84fpyILq+WL5LWZidAM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=g/sLXrEl; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ive8vpih"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2B4B0C116D0;
-	Thu, 22 Jan 2026 16:03:36 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="g/sLXrEl"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 35E6DC116D0;
+	Thu, 22 Jan 2026 16:03:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1769097818;
-	bh=vo+ZsaKAK/vmxsw0XxmdeStjATZWutMATw6PeQlNXOc=;
+	s=k20201202; t=1769097823;
+	bh=YDDyyYB+YVCQQ3bOYUSgoPwx7V5Jm2aE0B8Vt/Q0AHw=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=ive8vpihKT3C+OwU5VtIASW5NNK17qKQvjofXk9ZbwSkuUi6qObOLLy43qeCycnvg
-	 VI244SnMONYOv3cCrSz1zLBjW3DuLfJbbwyTK1tvF+7bczHzbxHg7WHs2D1EQ9jbXs
-	 3Y7sLwIAQ7w+an8tl9gLifWuOZyNBt2Dedywx9jH7pIzV+qfNDJFehMNpRl4KcDSF0
-	 T9AnxYIy3ce91fOG36XwTtVfApPtp+6HlEgaN5cQK4/ZBIWB6UhcxjV0rzSZM4K8Jj
-	 haLFAHCZkd6Y3RUju9YLU499jLmSeQwewVeu/584nVqJW+0EgUj4yP6p8RxZvsTO3H
-	 2KJg7fJDm5TCQ==
+	b=g/sLXrEly993FahgZPwCWJLYU6V+16O3RjK9dfQBPO5qkuryI+Sukw7w3Gukpme47
+	 Cc9dmFFMuvOQoakWSCiGslFdzmW9RxTFN2SdYZrINv0tMVCaQUsmmn+X0yRCwBu6Pq
+	 OdLmrxmJGAJCF9JBDaZL2b83T/7IsVqbFvCvXG1snKIpJ0jE9sX4kVwHFj5Hj1914x
+	 5H1gOP3LaQEpBnnNMc+xtyaMP2A61YUBZ0zI3/5x9R7lu9cJz36GgZL4+e1oSJPHYM
+	 +7z25L9Wdkp685O4WLv2zj5M9Bzq4I4r5ZbJtmd9yYp1OtmROzyKj2RNzvtsZhLaZF
+	 LC5BIjYMitvpw==
 From: Chuck Lever <cel@kernel.org>
 To: Al Viro <viro@zeniv.linux.org.uk>,
 	Christian Brauner <brauner@kernel.org>,
@@ -59,9 +59,9 @@ Cc: <linux-fsdevel@vger.kernel.org>,
 	hansg@kernel.org,
 	senozhatsky@chromium.org,
 	Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v7 09/16] cifs: Implement fileattr_get for case sensitivity
-Date: Thu, 22 Jan 2026 11:03:04 -0500
-Message-ID: <20260122160311.1117669-10-cel@kernel.org>
+Subject: [PATCH v7 11/16] f2fs: Add case sensitivity reporting to fileattr_get
+Date: Thu, 22 Jan 2026 11:03:06 -0500
+Message-ID: <20260122160311.1117669-12-cel@kernel.org>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260122160311.1117669-1-cel@kernel.org>
 References: <20260122160311.1117669-1-cel@kernel.org>
@@ -75,87 +75,40 @@ Content-Transfer-Encoding: 8bit
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Upper layers such as NFSD need a way to query whether a filesystem
-handles filenames in a case-sensitive manner. Report CIFS/SMB case
-handling behavior via the FS_XFLAG_CASEFOLD flag.
+NFS and other remote filesystem protocols need to determine
+whether a local filesystem performs case-insensitive lookups
+so they can provide correct semantics to clients. Without
+this information, f2fs exports cannot properly advertise
+their filename case behavior.
 
-CIFS servers (typically Windows or Samba) are usually case-insensitive
-but case-preserving, meaning they ignore case during lookups but store
-filenames exactly as provided.
+Report f2fs case sensitivity behavior via the FS_XFLAG_CASEFOLD
+flag. Like ext4, f2fs supports per-directory case folding via
+the casefold flag (IS_CASEFOLDED). Files are always case-preserving.
 
-The implementation reports case sensitivity based on the nocase mount
-option, which reflects whether the client expects the server to perform
-case-insensitive comparisons. When nocase is set, the mount is reported
-as case-insensitive.
-
-The callback is registered in all three inode_operations structures
-(directory, file, and symlink) to ensure consistent reporting across
-all inode types.
-
+Reviewed-by: Chao Yu <chao@kernel.org>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/smb/client/cifsfs.c | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+ fs/f2fs/file.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/fs/smb/client/cifsfs.c b/fs/smb/client/cifsfs.c
-index d9664634144d..39426a128b3d 100644
---- a/fs/smb/client/cifsfs.c
-+++ b/fs/smb/client/cifsfs.c
-@@ -30,6 +30,7 @@
- #include <linux/xattr.h>
- #include <linux/mm.h>
- #include <linux/key-type.h>
-+#include <linux/fileattr.h>
- #include <uapi/linux/magic.h>
- #include <net/ipv6.h>
- #include "cifsfs.h"
-@@ -1193,6 +1194,22 @@ struct file_system_type smb3_fs_type = {
- MODULE_ALIAS_FS("smb3");
- MODULE_ALIAS("smb3");
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index d7047ca6b98d..91c255bbbf48 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -3439,6 +3439,13 @@ int f2fs_fileattr_get(struct dentry *dentry, struct file_kattr *fa)
+ 	if (f2fs_sb_has_project_quota(F2FS_I_SB(inode)))
+ 		fa->fsx_projid = from_kprojid(&init_user_ns, fi->i_projid);
  
-+static int cifs_fileattr_get(struct dentry *dentry, struct file_kattr *fa)
-+{
-+	struct cifs_sb_info *cifs_sb = CIFS_SB(dentry->d_sb);
-+	struct cifs_tcon *tcon = cifs_sb_master_tcon(cifs_sb);
-+
 +	/*
-+	 * Case sensitivity is reported based on the nocase mount option.
-+	 * CIFS servers typically perform case-insensitive lookups while
-+	 * preserving case in stored filenames. The nocase option indicates
-+	 * case-insensitive comparison is in effect for this mount.
++	 * f2fs preserves case (the default). If this inode is a
++	 * casefolded directory, report case-insensitive; otherwise
++	 * report case-sensitive (standard POSIX behavior).
 +	 */
-+	if (tcon->nocase)
++	if (IS_CASEFOLDED(inode))
 +		fa->fsx_xflags |= FS_XFLAG_CASEFOLD;
-+	return 0;
-+}
-+
- const struct inode_operations cifs_dir_inode_ops = {
- 	.create = cifs_create,
- 	.atomic_open = cifs_atomic_open,
-@@ -1210,6 +1227,7 @@ const struct inode_operations cifs_dir_inode_ops = {
- 	.listxattr = cifs_listxattr,
- 	.get_acl = cifs_get_acl,
- 	.set_acl = cifs_set_acl,
-+	.fileattr_get = cifs_fileattr_get,
- };
+ 	return 0;
+ }
  
- const struct inode_operations cifs_file_inode_ops = {
-@@ -1220,6 +1238,7 @@ const struct inode_operations cifs_file_inode_ops = {
- 	.fiemap = cifs_fiemap,
- 	.get_acl = cifs_get_acl,
- 	.set_acl = cifs_set_acl,
-+	.fileattr_get = cifs_fileattr_get,
- };
- 
- const char *cifs_get_link(struct dentry *dentry, struct inode *inode,
-@@ -1254,6 +1273,7 @@ const struct inode_operations cifs_symlink_inode_ops = {
- 	.setattr = cifs_setattr,
- 	.permission = cifs_permission,
- 	.listxattr = cifs_listxattr,
-+	.fileattr_get = cifs_fileattr_get,
- };
- 
- /*
 -- 
 2.52.0
 
