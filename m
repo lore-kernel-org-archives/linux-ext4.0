@@ -1,48 +1,49 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8E3FA37105C
-	for <linux-ext4@vger.kernel.org>; Wed, 28 Jan 2026 18:05:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3EE7436F437
+	for <linux-ext4@vger.kernel.org>; Wed, 28 Jan 2026 18:05:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769623534; cv=none; b=fU6naW2XBnLEh21LWo7unlU1TfTSZ6Q78arYsbOqX/58RrfV3CLfMiJiqID+nTqr6QYOF6y1IY19lK8YdiilLhnUwWj/D4ZfUEH9E8SpFP75rjM89fKe+/SCGwAbpjtn9bJK8BQUXyru0LCGC6YQYrJB+TcHEn5C/OHn/fBGviE=
+	t=1769623537; cv=none; b=eMunFmFlqvuQ/CFKpS1bukHO0IGny4z/ac2cTdHl2HQlBQAMav2vn0oJtXhm16spXzonblXOgIgZaNKgMJDZAJAE18R5+SXCAf4Ni/bRALccNHZAD67004yvEIhg6XBxyN2/94j2KJRxdNgocxUOkOpknJlDArvEZiOEaqPuzRo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1769623534; c=relaxed/simple;
-	bh=Qi9rV6amFZaR+XS7UeGzIaDXZBZ4K2v+KFRmcsd9tm4=;
+	s=arc-20240116; t=1769623537; c=relaxed/simple;
+	bh=i/tndf1EqorbEeQkQkZTsLIp5n8auM7VxbJQjxgHC+U=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=hF+pwBq33aH/HYkgMMHD1GdzW6LDDqZixWuZzy7S7e00OrxFbN9kSSJXS2tDsi1Z1twVoaorBEwZY8sXhkhdGpBocEI4rjyCIcktOs5y15erMBb9t1QQzqYqhwv2EAsyz2OlbIfKsPBeqMtxEVB3jPcNWDNQ+5S5LApD0A1+HaY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=hPthuY4G; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=f7zcj75x/cBDKdjqVie3hxNkQ4p5zBYULlCLZLvhyhBkncPDP4kbL7EKjAXVlTK3LZ8npWLMB+iUY7264kkQ+akjtUTWBRcU7TUk8VyeTJgxLk0OkTCX1Awp9EAqqxPPJcvXpj+4Bh0UKou1CsC6f3MNDnUAmHjfB0jN2DeUG6w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Ou6Lk2pT; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="hPthuY4G"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Ou6Lk2pT"
 Received: from trampoline.thunk.org (pool-173-48-123-50.bstnma.fios.verizon.net [173.48.123.50])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 60SI5GBf028635
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 60SI5GNQ028634
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Wed, 28 Jan 2026 13:05:17 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1769623518; bh=Bd0MsZi5z4ttEfhXH7vzk46pYu7HCNVKKBGjxqxVJN4=;
+	t=1769623518; bh=WMPk7clOddB33GiQ7o8ddtxtguT6/yuBZkOPNrCW4XM=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=hPthuY4GbLccTt9f8zJSCfZBaiQJZdwKqVCVy3fmnybZwus2QBm2bidMWldExHttB
-	 O8rqZDV4kvt+8PurKkWQZTpEu2rFEKx9QgFta/mNEGAKXynGrKSe8d8QI+AEJHdoSD
-	 66jGJdlASxfLglkfdTBrVzl2yIsb/1F4nDQYBPmf8+ycAVT8CIaxJGuFtqo6a0PuT4
-	 lUV6bX/BM+Gk7DzVtGu7RnCclN9kt6w4bMGdq87yK3LaOQsnk5UZTNVhc5RadAn5MQ
-	 4zjSv4Msaul2Szl5/IOLFcIpKmQb6ndy6hPvLGfJQz8HUw2UYr8fevW6iJwEuspFtJ
-	 dLH12RnuDe5Qg==
+	b=Ou6Lk2pTMDGX0BSYwp913qHdEjZv67tI1LmQRI9Z7ZIR5UT31GuvyHoWTOEVEWDDa
+	 h73+QKNwqLsE7OfSSVtJKAlfEoV2/F71TYBfv6KyJKaN+j3GKeR3iehgxTThKUHvYh
+	 1/1bjR/Uq2m5rDn9kslPov/Eg8xQpVHoerprWp++xBB2UAhoq0ziQ4nzF35CaOviRw
+	 wwYYFFfqPNT95wI4m8h5AEspzZbtLU5u6BcOBNbLiK5Hq5GhQRkcUnj0Ycw37kaqco
+	 oLzUnOW/YeWihx+xJjwxVu/717c6yijmjUaaOSK+GIMrlCnMbQYo+3yS9S3CNe3jYk
+	 mZnJxtoGu1cNw==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 11D642E00DC; Wed, 28 Jan 2026 13:05:16 -0500 (EST)
+	id 0BEA42E00DA; Wed, 28 Jan 2026 13:05:16 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: adilger.kernel@dilger.ca, Baolin Liu <liubaolin12138@163.com>
+To: Jan Kara <jack@suse.cz>
 Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Baolin Liu <liubaolin@kylinos.cn>
-Subject: Re: [PATCH v1] ext4: Remove redundant NULL check after __GFP_NOFAIL
-Date: Wed, 28 Jan 2026 13:05:02 -0500
-Message-ID: <176962347639.1138505.9928374064740899868.b4-ty@mit.edu>
+        Baokun Li <libaokun1@huawei.com>, Pedro Falcato <pfalcato@suse.de>,
+        Zhang Yi <yi.zhang@huawei.com>
+Subject: Re: [PATCH 1/2] ext4: always allocate blocks only from groups inode can use
+Date: Wed, 28 Jan 2026 13:05:00 -0500
+Message-ID: <176962347640.1138505.1021788434907927289.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20260106062016.154573-1-liubaolin12138@163.com>
-References: <20260106062016.154573-1-liubaolin12138@163.com>
+In-Reply-To: <20260114182836.14120-3-jack@suse.cz>
+References: <20260114182333.7287-1-jack@suse.cz> <20260114182836.14120-3-jack@suse.cz>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,15 +54,24 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Tue, 06 Jan 2026 14:20:16 +0800, Baolin Liu wrote:
-> Remove redundant NULL check after kcalloc() with GFP_NOFS | __GFP_NOFAIL.
+On Wed, 14 Jan 2026 19:28:18 +0100, Jan Kara wrote:
+> For filesystems with more than 2^32 blocks inodes using indirect block
+> based format cannot use blocks beyond the 32-bit limit.
+> ext4_mb_scan_groups_linear() takes care to not select these unsupported
+> groups for such inodes however other functions selecting groups for
+> allocation don't. So far this is harmless because the other selection
+> functions are used only with mb_optimize_scan and this is currently
+> disabled for inodes with indirect blocks however in the following patch
+> we want to enable mb_optimize_scan regardless of inode format.
 > 
-> 
+> [...]
 
 Applied, thanks!
 
-[1/1] ext4: Remove redundant NULL check after __GFP_NOFAIL
-      commit: 591a4ab9b8b125bf72a345ca6f5c0ee4481db02b
+[1/2] ext4: always allocate blocks only from groups inode can use
+      commit: 4865c768b563deff1b6a6384e74a62f143427b42
+[2/2] ext4: use optimized mballoc scanning regardless of inode format
+      commit: 3574c322b1d0eb32dbd76b469cb08f9a67641599
 
 Best regards,
 -- 
