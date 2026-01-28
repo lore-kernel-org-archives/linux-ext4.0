@@ -1,49 +1,48 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5B7531B4257
-	for <linux-ext4@vger.kernel.org>; Wed, 28 Jan 2026 18:05:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6555936F436
+	for <linux-ext4@vger.kernel.org>; Wed, 28 Jan 2026 18:05:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769623530; cv=none; b=qmKDKanTKFFoiGOm7+5nMuFDkVKgwXwEkKG0iU/d50dDKScG8QiXm1U0Fdaz7blgrDE8aCgy3ruBMyAOVDMWinjXLe0b2M5QXRVvtR/rXaoGMS1ur7QXZahDcVvrsxEalXMOOdWMQfHP9TYgDw7bzihb2UYalbCm9bZlPQqDqXE=
+	t=1769623533; cv=none; b=h2gUbAc/DU4QXF/+OydIVOOE0VFtR1rDRw5VOybiq1CT3luTebQZUdaOdV1DX0MJFz4YR3tFYDvjbtjlOqlfmvrtJjkyvLZCZosaDmdhoLUtvePqAso4f7nZtrjT4CVtktNVIMY44iy+9OJe5nLpYJD46Mf8DU3MyyZ2f1ehIP4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1769623530; c=relaxed/simple;
-	bh=VIsDiK+2BRF0SW5DFNHjyyDZGZ0W93mIRWEfsjUjCB4=;
+	s=arc-20240116; t=1769623533; c=relaxed/simple;
+	bh=1U+OyrA8uwtaSnRUUyKK6K6swTf15aHMCftKLG3gCsY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=MPhefkMaY5ZN5+p8ox0Io3LGZdq6RlDNu1TC8cToKv7i3F3/FH+dJWMPiLnU2aYZJC17PcPNO+VWY76ScrhM8hhwHGOyR005ZO2zUy5Rs57j0ecuf2ZrXSaAHM2uFoKVWltgNG2svGNW5rnPd80LXLBSer2V/B8LncGGnOq8zhs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Nx/98xkd; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=uZI3FYt9wmBTFwLFAg3DY3ZLu8x9l0M0ZL8IdN1v7v5+II89IJvHI8UV3A87ps23wYbfWU7DZOYmMRkBRkMx0ZGMx4bLpEHybYowwvxWPXLtKgyodqVjEPVqc2t94BHRtofevhWJwutM7vSrwDJAR526Q9bHmSiOJl3PTj4l/yc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=fI3rTvBk; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Nx/98xkd"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="fI3rTvBk"
 Received: from trampoline.thunk.org (pool-173-48-123-50.bstnma.fios.verizon.net [173.48.123.50])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 60SI5I5t028739
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 60SI5I7g028688
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 28 Jan 2026 13:05:19 -0500
+	Wed, 28 Jan 2026 13:05:18 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1769623521; bh=lsKu2rHK4zKsJbcnpYKXJuKR+DBMCaXK6Bj8kOdzT1A=;
+	t=1769623519; bh=gO6ZIXhMpvu536yECHMmwBUXlytoEedcVAAJq0J7vqk=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=Nx/98xkd1dRvLMRLx3jg3OEjXryzVX7NNB4oLnlPh5el/jnYXTl5TqOC1Af/ujqqy
-	 p16vdzYuC1rE19eJnHqxhEec5KENDZYQkX7HA9SSuRAY/AmaX2RHIvwaHr04aJLOPZ
-	 3yfm78TT2DcgHUnjmoUzEhz3JhWDnP+KppyVKmJmwwcy0wkAGJdLNP+QkvnlrAkxYP
-	 sllrtRweYAxTsAXKXV/r1nr9/XKinMy2+llVQTva956LMlNc9kaE4H3Yt2QpKOVyQe
-	 VhnObZd2FMsSScle1dArVlmQ9wySthQTf+TZEm4gw8deTjQah+6WX+hKrTVG13i7gH
-	 dSmKYkK0xXxrA==
+	b=fI3rTvBkVu80PWI145vzJuZeLtvmRT71uCehTqWgFj3UZwszJikunfRbsDA6xvIbm
+	 SE/1wr82lm35NZPmJDmMbTInk/8+w/lHU4Gq+an5SY2V+pI1eDW3uj7VySfn07oEqm
+	 cm01j4MLYddIpixRBaVSLDzrcz6FDrjI0VtWVkaqzqNFYGy62+Hux5WQLehuarXopF
+	 xbdivPu4b7om4KvrfBsSF4kChEeYaWq6gc0ir1GSlDAwccbH36Pufqme+ql5QRKVcT
+	 rv+SmtQ0oWzybr9zJC31p1tWScsjDPyuP/XOjBvr4hoPnLxTv4kX3ZtYHJwYN1vbLX
+	 55ZjBVEcyGzcA==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 298402E00E4; Wed, 28 Jan 2026 13:05:16 -0500 (EST)
+	id 14B0B2E00DD; Wed, 28 Jan 2026 13:05:16 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Zilin Guan <zilin@seu.edu.cn>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jianhao.xu@seu.edu.cn
-Subject: Re: [PATCH] ext4: Fix memory leak in ext4_ext_shift_extents()
-Date: Wed, 28 Jan 2026 13:05:10 -0500
-Message-ID: <176962347638.1138505.3045993165442370929.b4-ty@mit.edu>
+To: adilger.kernel@dilger.ca, Baolin Liu <liubaolin12138@163.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Baolin Liu <liubaolin@kylinos.cn>
+Subject: Re: [PATCH v2] ext4: add sysfs attribute err_report_sec to control s_err_report timer
+Date: Wed, 28 Jan 2026 13:05:03 -0500
+Message-ID: <176962347637.1138505.16069919738430336386.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20251225084800.905701-1-zilin@seu.edu.cn>
-References: <20251225084800.905701-1-zilin@seu.edu.cn>
+In-Reply-To: <20251211030256.28613-1-liubaolin12138@163.com>
+References: <20251211030256.28613-1-liubaolin12138@163.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -54,20 +53,17 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Thu, 25 Dec 2025 08:48:00 +0000, Zilin Guan wrote:
-> In ext4_ext_shift_extents(), if the extent is NULL in the while loop, the
-> function returns immediately without releasing the path obtained via
-> ext4_find_extent(), leading to a memory leak.
+On Thu, 11 Dec 2025 11:02:56 +0800, Baolin Liu wrote:
+> Add a new sysfs attribute "err_report_sec" to control the s_err_report
+> timer in ext4_sb_info. Writing '0' disables the timer, while writing
+> a non-zero value enables the timer and sets the timeout in seconds.
 > 
-> Fix this by jumping to the out label to ensure the path is properly
-> released.
 > 
-> [...]
 
 Applied, thanks!
 
-[1/1] ext4: Fix memory leak in ext4_ext_shift_extents()
-      commit: ca81109d4a8f192dc1cbad4a1ee25246363c2833
+[1/1] ext4: add sysfs attribute err_report_sec to control s_err_report timer
+      commit: d518215c27194486fe13136a8dbbbabeefb5c9b6
 
 Best regards,
 -- 
