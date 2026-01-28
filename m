@@ -1,83 +1,89 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E2CB1374743
-	for <linux-ext4@vger.kernel.org>; Wed, 28 Jan 2026 18:05:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B3D4B32E732;
+	Wed, 28 Jan 2026 21:38:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769623561; cv=none; b=Onpr0CNgmANAokqa1ncROH00LRRrpJpbgIqNO4Lx6MDsc+BdL79q1Fd/C7LQqo+YXGLSS1NNW8CJlw5wa+Cl96bGvRC7GKhIQFAI9I1EZxyGBByhmTyErIoAqBFGmtmQPcPy5wMCzW0R8MtymMq8k0RnFcniFF5Kf8EwrV0su2I=
+	t=1769636342; cv=none; b=OwKNnKeELu21TDuN7LRoWHMeATB1quAVl9Pong/h3qJ/EpvvqGdwTtnIsQdZWCvzQ/lBW/H0lQOi2ShURkBuIRoz7/sjP+kRRxOsGN5EojFczoS3Cv6tYDTLOnuPuj+8PUlN+cE+fQh2CON0ECra50UKqyQQUOWp5QdaRfIjDHY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1769623561; c=relaxed/simple;
-	bh=jsinFAx3qLYGClKyITZm7LWnXhS+ytI3d6fx69OZAqA=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=ReBAhXPbXsY2C5QY4XG4kuRMFKCm+msDFdR0xEEASsqHIp1E+b/9FvkIgSY1X6R++oup6BDGlQqNQEMX+RJo6WXwI8RbqBJ9Y2bnb1UdRrq9CBO2apI8cFKoYA2U5ceFp9vOYanXbyru7xnNiQylQTBEWy2A2Wb/NkntJYbsGEw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=p1fYOI2t; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1769636342; c=relaxed/simple;
+	bh=9T7+GBtaepLJzNLa+Zs+hyWDHHppxYz7YfDFEVJEOI4=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=BGPC3Q/XTUb0vlRk1nQLXhm1gKarIwy8FMNnGFtVQB6nzHIZilNAiijuSX7xqmAkFA614agWseXiQxBSBZuEh/bHIxN7GiBjYD4DJ9P1t+PaIQ1SblJFkWzIvk5IdStS7Lvai5r0A2s1gmjid2DzSXjSfqkY0HCsnAxITxuT2YA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=W/YX9qgE; arc=none smtp.client-ip=90.155.50.34
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="p1fYOI2t"
-Received: from trampoline.thunk.org (pool-173-48-123-50.bstnma.fios.verizon.net [173.48.123.50])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 60SI5I5r028738
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 28 Jan 2026 13:05:19 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1769623521; bh=vDhsy/lq/Dw6rvp5wCr/5llOfs06iNuwkaPMfRwj9HQ=;
-	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=p1fYOI2tUd2NGtjrqj9bptyLzMw4RhluRFt+gc6OqR64gdk2CnzhOMagDUf+tNXn9
-	 OwiV3aWJ2c8zl4ly9Cj5za7pTHhEXwmnATcKJ8PSntit7S3IucN9ih+pMtpvw/FcwG
-	 oiYzXYWOLAvWq1APthHdYFNl0f28iXk+oPkza2AfSWuG7yoQvXKU6JuebMGllqtT7i
-	 VcGJ0sQ7oZ2I97rYGX3FS+nmvMzBXQNhzWOvYCLk1xhAAzFJeRtQG/5tJs/tMSCwVr
-	 vZZPmLCDk4Bc18nfF91MqWPEjRwF43vTaZ3rhaKlmDgS9UuZVhI5KW/BcfXevrW/Va
-	 wVo7rSGPauAWQ==
-Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 26B862E00E3; Wed, 28 Jan 2026 13:05:16 -0500 (EST)
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org, Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca, jack@suse.cz,
-        ojaswin@linux.ibm.com, ritesh.list@gmail.com, yi.zhang@huawei.com,
-        yizhang089@gmail.com, libaokun1@huawei.com, yangerkun@huawei.com,
-        yukuai@alb-78bjiv52429oh8qptp.cn-shenzhen.alb.aliyuncs.com
-Subject: Re: [PATCH v2] ext4: don't order data when zeroing unwritten or delayed block
-Date: Wed, 28 Jan 2026 13:05:09 -0500
-Message-ID: <176962347638.1138505.18169489887205179764.b4-ty@mit.edu>
-X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20251223011927.34042-1-yi.zhang@huaweicloud.com>
-References: <20251223011927.34042-1-yi.zhang@huaweicloud.com>
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="W/YX9qgE"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=LFY20aXr4oyNthpI0ftb5zOXTh8Shnm4hJYKYI7JCmo=; b=W/YX9qgEQwrUf4tYRGEF1H+S8F
+	ptwtJynZTZ9puxoo5CBVM5H7tjZd2cDu8aIFH8SI0yND5nDzkDI0XUrbWW+TAC/vlJHMuYjviuHz0
+	PtqkjeP5hNuFg6RVTzVJFEncEQZrqvTkQ0N5N8SheTBIcjCVeFAl4eNsnPVSaJ70vSmOhXKWIbjbc
+	Pt60oMyUxrRtOKPSQ39fmeRpuCZi/jbXIhDlr6M8dCukDQR1QbhbtQM4qE2cN53K0qfsKNLan1ZW+
+	FFtSR8O10b2e34uT4G8YwmZV5g/BRpBykoSbmI+5XAbIMt6hcyp7P7GRy365lb7EyrdLG+qdMuS65
+	dkoLvbrw==;
+Received: from willy by casper.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1vlDFV-00000009e0I-3Xv1;
+	Wed, 28 Jan 2026 21:38:53 +0000
+Date: Wed, 28 Jan 2026 21:38:53 +0000
+From: Matthew Wilcox <willy@infradead.org>
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: Christoph Hellwig <hch@lst.de>, Al Viro <viro@zeniv.linux.org.uk>,
+	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
+	David Sterba <dsterba@suse.com>, Theodore Ts'o <tytso@mit.edu>,
+	Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+	Andrey Albershteyn <aalbersh@redhat.com>,
+	linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+	fsverity@lists.linux.dev
+Subject: Re: [PATCH 11/11] fsverity: use a hashtable to find the fsverity_info
+Message-ID: <aXqB7Wlfx62bAjqF@casper.infradead.org>
+References: <20260122082214.452153-1-hch@lst.de>
+ <20260122082214.452153-12-hch@lst.de>
+ <20260125013104.GA2255@sol>
+ <aXaPph6Yi-hzf0J-@casper.infradead.org>
+ <20260126044432.GE30803@lst.de>
+ <20260126201206.GA30838@quark>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260126201206.GA30838@quark>
 
-
-On Tue, 23 Dec 2025 09:19:27 +0800, Zhang Yi wrote:
-> When zeroing out a written partial block, it is necessary to order the
-> data to prevent exposing stale data on disk. However, if the buffer is
-> unwritten or delayed, it is not allocated as written, so ordering the
-> data is not required. This can prevent strange and unnecessary ordered
-> writes when appending data across a region within a block.
+On Mon, Jan 26, 2026 at 12:12:06PM -0800, Eric Biggers wrote:
+> When CONFIG_FS_VERITY=n, there can still be inodes that have fsverity
+> enabled, since they might have already been present on the filesystem.
+> The S_VERITY flag and the corresponding IS_VERITY() macro are being used
+> to identify such inodes and handle them appropriately.  
 > 
-> Assume we have a 2K unwritten file on a filesystem with 4K blocksize,
-> and buffered write from 3K to 4K. Before this patch,
-> __ext4_block_zero_page_range() would add the range [2k,3k) to the
-> ordered range, and then the JBD2 commit process would write back this
-> block. However, it does nothing since the block is not mapped as
-> written, this folio will be redirtied and written back agian through the
-> normal write back process.
+> Consider fsverity_file_open() for example:
 > 
-> [...]
+> static inline int fsverity_file_open(struct inode *inode, struct file *filp)
+> {
+> 	if (IS_VERITY(inode))
+> 		return __fsverity_file_open(inode, filp);
+> 	return 0;
+> }
+> 
+> When CONFIG_FS_VERITY=n, __fsverity_file_open() resolves to the stub:
+> 
+> static inline int __fsverity_file_open(struct inode *inode, struct file *filp)
+> {
+> 	return -EOPNOTSUPP;
+> }
+> 
+> So the result is that on a kernel that doesn't have fsverity support
+> enabled, trying to open an fsverity file fails with EOPNOTSUPP.
 
-Applied, thanks!
-
-[1/1] ext4: don't order data when zeroing unwritten or delayed block
-      commit: 154922b34da9770223d9883ac6976635a786b5ba
-
-Best regards,
--- 
-Theodore Ts'o <tytso@mit.edu>
+... why?  If the user has built a kernel without VERITY support enabled,
+they're no longer allowed to open files with verity metadata?  I can't
+see the harm in allowing them to read these files, they're just not
+protected against these files being corrupted.
