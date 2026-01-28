@@ -1,49 +1,52 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3EE7436F437
-	for <linux-ext4@vger.kernel.org>; Wed, 28 Jan 2026 18:05:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4D33037105C
+	for <linux-ext4@vger.kernel.org>; Wed, 28 Jan 2026 18:05:36 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769623537; cv=none; b=eMunFmFlqvuQ/CFKpS1bukHO0IGny4z/ac2cTdHl2HQlBQAMav2vn0oJtXhm16spXzonblXOgIgZaNKgMJDZAJAE18R5+SXCAf4Ni/bRALccNHZAD67004yvEIhg6XBxyN2/94j2KJRxdNgocxUOkOpknJlDArvEZiOEaqPuzRo=
+	t=1769623537; cv=none; b=PT98ymKSJcHiy4pRFy2phgJ/mFZEBe+rlW3dMFHhCRG5lhHkSWoRa4lq978HMplimPy3B83Qno0eFalL6irIMVPs+PBU2aDnkpaIVgJnkd0L50tuVJzLnLN/jNA6Ey2zcZZQ7xpLZ6kgYnBgF9WumdoKaBQECawpU8Uyjfl6hwI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1769623537; c=relaxed/simple;
-	bh=i/tndf1EqorbEeQkQkZTsLIp5n8auM7VxbJQjxgHC+U=;
+	bh=Z5Y0ypxvByBYwjX882uJ7Vj1LBD1G57O7acbyz/bNg0=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=f7zcj75x/cBDKdjqVie3hxNkQ4p5zBYULlCLZLvhyhBkncPDP4kbL7EKjAXVlTK3LZ8npWLMB+iUY7264kkQ+akjtUTWBRcU7TUk8VyeTJgxLk0OkTCX1Awp9EAqqxPPJcvXpj+4Bh0UKou1CsC6f3MNDnUAmHjfB0jN2DeUG6w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Ou6Lk2pT; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=u/CstWaRQwoCPHtS03gJXy1xZmv0I3sRNeqyehnYSz4Vw9uWmwmYqovlDxOCEpPFK5ue8pzIeb+unhLoI9RgOSnzNevT32L69IQQM86CFrVh6Au1en9pLQTbyyUOApDGgeU19d2a69SkxOFi/F6C18Ix0Y75tHifJYm5+t1zNg8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=l4Y2sqLn; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Ou6Lk2pT"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="l4Y2sqLn"
 Received: from trampoline.thunk.org (pool-173-48-123-50.bstnma.fios.verizon.net [173.48.123.50])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 60SI5GNQ028634
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 60SI5INC028707
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 28 Jan 2026 13:05:17 -0500
+	Wed, 28 Jan 2026 13:05:19 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1769623518; bh=WMPk7clOddB33GiQ7o8ddtxtguT6/yuBZkOPNrCW4XM=;
+	t=1769623520; bh=HUdpk//KLYaWaJDXR2jsgdTu6WM7NU4I0jkVARXteCU=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=Ou6Lk2pTMDGX0BSYwp913qHdEjZv67tI1LmQRI9Z7ZIR5UT31GuvyHoWTOEVEWDDa
-	 h73+QKNwqLsE7OfSSVtJKAlfEoV2/F71TYBfv6KyJKaN+j3GKeR3iehgxTThKUHvYh
-	 1/1bjR/Uq2m5rDn9kslPov/Eg8xQpVHoerprWp++xBB2UAhoq0ziQ4nzF35CaOviRw
-	 wwYYFFfqPNT95wI4m8h5AEspzZbtLU5u6BcOBNbLiK5Hq5GhQRkcUnj0Ycw37kaqco
-	 oLzUnOW/YeWihx+xJjwxVu/717c6yijmjUaaOSK+GIMrlCnMbQYo+3yS9S3CNe3jYk
-	 mZnJxtoGu1cNw==
+	b=l4Y2sqLnyzXR/XvAoq2mHPf2OB/BmVMC9zbxiRw37VFkQOn8KWNSfRi4p6LSf/pOy
+	 T2KJmlwKvI9wGd8459ss3gaqG2kk04Xr9BstsmY1ECfbCnucWKdReWHgf9djZ8/dh3
+	 2i7T6g3UwD0MV+hxKz8/CRfjm6cCa7MKuzW6oP3d1MgSyFYde4rPUfhjQLgJIe68en
+	 d+unHmp9yRT1K7JzEDbB2/RUPCWZWs3th2DOmThQtXBPk2XNiuUY5mhdq6Kf25mAZB
+	 oUph5YIsADi86gXPYebNLlnBtV18sog7dUT1A2gb+9eIPnMXIVJO4n2WWbrIFqBAnE
+	 yxlvn8ZCHy22g==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 0BEA42E00DA; Wed, 28 Jan 2026 13:05:16 -0500 (EST)
+	id 1AE772E00DF; Wed, 28 Jan 2026 13:05:16 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Baokun Li <libaokun1@huawei.com>, Pedro Falcato <pfalcato@suse.de>,
-        Zhang Yi <yi.zhang@huawei.com>
-Subject: Re: [PATCH 1/2] ext4: always allocate blocks only from groups inode can use
-Date: Wed, 28 Jan 2026 13:05:00 -0500
-Message-ID: <176962347640.1138505.1021788434907927289.b4-ty@mit.edu>
+To: Andreas Dilger <adilger.kernel@dilger.ca>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Masami Hiramatsu <mhiramat@kernel.org>,
+        Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-trace-kernel@vger.kernel.org, Li Chen <me@linux.beauty>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Subject: Re: [RFC 0/5] ext4: mark more ops fast-commit ineligible
+Date: Wed, 28 Jan 2026 13:05:05 -0500
+Message-ID: <176962347636.1138505.14797940787687720541.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20260114182836.14120-3-jack@suse.cz>
-References: <20260114182333.7287-1-jack@suse.cz> <20260114182836.14120-3-jack@suse.cz>
+In-Reply-To: <20251211115146.897420-1-me@linux.beauty>
+References: <20251211115146.897420-1-me@linux.beauty>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -54,24 +57,31 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Wed, 14 Jan 2026 19:28:18 +0100, Jan Kara wrote:
-> For filesystems with more than 2^32 blocks inodes using indirect block
-> based format cannot use blocks beyond the 32-bit limit.
-> ext4_mb_scan_groups_linear() takes care to not select these unsupported
-> groups for such inodes however other functions selecting groups for
-> allocation don't. So far this is harmless because the other selection
-> functions are used only with mb_optimize_scan and this is currently
-> disabled for inodes with indirect blocks however in the following patch
-> we want to enable mb_optimize_scan regardless of inode format.
+On Thu, 11 Dec 2025 19:51:37 +0800, Li Chen wrote:
+> ext4 fast commit only logs operations with replay support. This series
+> marks a few more operations as fast-commit ineligible and accounts
+> them via fc_info so behaviour under fast commit is easier to reason
+> about.
+> 
+> Testing was done in a QEMU guest on loopback ext4 filesystems created
+> with -O fast_commit[/,verity] by exercising each operation and checking
+> /proc/fs/ext4/*/fc_info for the corresponding ineligible reason and
+> ineligible commit counters. Detailed steps are in each commit's message.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/2] ext4: always allocate blocks only from groups inode can use
-      commit: 4865c768b563deff1b6a6384e74a62f143427b42
-[2/2] ext4: use optimized mballoc scanning regardless of inode format
-      commit: 3574c322b1d0eb32dbd76b469cb08f9a67641599
+[1/5] ext4: mark inode format migration fast-commit ineligible
+      commit: 87e79fa122bc9a6576f1690ee264fcbd77d3ab58
+[2/5] ext4: mark fs-verity enable fast-commit ineligible
+      commit: 16d43b9748c655b36a675cc55789f40fd827e9b1
+[3/5] ext4: mark move extents fast-commit ineligible
+      commit: 690558921d9f9388c6bc83610451d8cb393e4d88
+[4/5] ext4: mark group add fast-commit ineligible
+      commit: 89b4336fd5ec78f51f9d3a1d100f3ffa3228e604
+[5/5] ext4: mark group extend fast-commit ineligible
+      commit: 1f8dd813a1c771b13c303f73d876164bc9b327cc
 
 Best regards,
 -- 
