@@ -1,27 +1,27 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 326312561A2;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0AA47274B59;
 	Tue,  3 Feb 2026 06:30:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1770100218; cv=none; b=gVLd0O51o+PE+SAqjwAws6IsZHn0ybKndFORL6A1F01CyuwooFsd+j9+VmwO90uQvZMcdhitXtfE9qwlvsBoPQGvCU9wxBACELGyXF/jNm4RwiIQFaH5dWVX7x+xPEkXlM7rG/JYuFzE35g8Qaq7OblLCz/y7kskQ8jrpd5Wziw=
+	t=1770100218; cv=none; b=rIE+ORotirKDXm5R7BR1XT7CvvRtbGWWnenv8f0y8zzMewjqg7zkiEvhIQMh2dIeF4ahX0PvDM2UUKpMaZ+hboBkLDazi08PLsXuIp6/owXCf9oOxRs9XuHcOYi6UZJRIwabUhjEN5WcKbIUEh6nkKCDkA+zWu51qYnu8DVhXkg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1770100218; c=relaxed/simple;
-	bh=S2JHZ9z2ebAASrluuxrESw3zqucOOxCysAALmIGrhV0=;
+	bh=CMTE+Cf76Gzeg0G+tthiDJ1aQ5q8wvGQclGet9gJkbg=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=QM1Au2MTynbCbuEN7DRvksPA6TJJYtPxXTw7yf/a/ZJtVLkwBveDCH1vLeWxlPqY8wZNVw6jWEtkkBbjkg/bnQImhXU3SLnp2fPTH54e8AtzfwdOwciDe7FhkDEt2pQlL/YjhA2Dmh/YXYelFS2S/CUX8+YUi9wLtoCOWybycKo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=ZCnXttZfzvoDzfghq1R/vk07Egfo0tTfidRwydhcY3LXH04/dj3RRyx5d0QSGYUeLHMVTRNqUjr1eMpM58hz796Dy83rPepky1nzWemm4BXNOhxSMa8iHrsdaMkGOzukahg0tiq3sYmTmOSZlp6I8XljL6s8s9c8YJVM+T5XK0w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4f4trJ5zWzzKHMbB;
-	Tue,  3 Feb 2026 14:29:52 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4f4tqp6QR3zYQtvJ;
+	Tue,  3 Feb 2026 14:29:26 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 2A8304058F;
-	Tue,  3 Feb 2026 14:30:14 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id D07B84058F;
+	Tue,  3 Feb 2026 14:30:13 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP4 (Coremail) with SMTP id gCh0CgAHaPjnlYFpiadbGA--.27803S10;
+	by APP4 (Coremail) with SMTP id gCh0CgAHaPjnlYFpiadbGA--.27803S6;
 	Tue, 03 Feb 2026 14:30:13 +0800 (CST)
 From: Zhang Yi <yi.zhang@huawei.com>
 To: linux-ext4@vger.kernel.org
@@ -40,9 +40,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	libaokun1@huawei.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH -next v2 06/22] ext4: don't zero partial block under an active handle when truncating down
-Date: Tue,  3 Feb 2026 14:25:06 +0800
-Message-ID: <20260203062523.3869120-7-yi.zhang@huawei.com>
+Subject: [PATCH -next v2 02/22] ext4: make ext4_block_truncate_page() return zeroed length
+Date: Tue,  3 Feb 2026 14:25:02 +0800
+Message-ID: <20260203062523.3869120-3-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260203062523.3869120-1-yi.zhang@huawei.com>
 References: <20260203062523.3869120-1-yi.zhang@huawei.com>
@@ -53,101 +53,72 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgAHaPjnlYFpiadbGA--.27803S10
-X-Coremail-Antispam: 1UD129KBjvJXoWxJFyUXw47Ar1UGw43JFWDJwb_yoW5Gr1xpF
-	9xG3y5Jr48W34q9ayIqFsrZF15K3WfCayjgFWxGrs5tr98X34FvF13KrWIkFWYyrZ5W3yj
-	qF1UAryUWF1DC3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUHqb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
-	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
-	rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267
-	AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E
-	14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7
-	xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Y
-	z7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7Iv64x0x7Aq67IIx4CEVc8vx2IErcIFxwACI4
-	02YVCY1x02628vn2kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCF
-	04k20xvEw4C26cxK6c8Ij28IcwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14
-	v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_GFv_WrylIxkG
-	c2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI42IY6xIIjxv20xvEc7CjxVAFwI
-	0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_
-	Gr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x07UZyC
-	LUUUUU=
+X-CM-TRANSID:gCh0CgAHaPjnlYFpiadbGA--.27803S6
+X-Coremail-Antispam: 1UD129KBjvJXoW7WF18Cr1Dtw4kJF18KFyrCrg_yoW8AFWUp3
+	45GrW5Wr47u34q9an7uFs3Xr1a93WfGFW8Way3Gr98u34fXF1ftF90g3ZYvF4jg3yxXayj
+	qF45tFW7uw17ArJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUHYb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUXw
+	A2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
+	w2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
+	W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
+	6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
+	Ij6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
+	Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7Iv64x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YV
+	CY1x02628vn2kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCF04k2
+	0xvEw4C26cxK6c8Ij28IcwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r
+	1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_GFv_WrylIxkGc2Ij
+	64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr
+	0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF
+	0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07UCiihUUUUU=
 Sender: yi.zhang@huaweicloud.com
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-When truncating down, move the call to ext4_block_truncate_page() before
-starting the handle. This change has no effect in non-journal data mode
-because it doesn't require an active handle. However, in journal data
-mode, it may cause the zeroing of partial blocks and the release of
-subsequent full blocks to be distributed across different transactions.
-This is safe as well because the transaction that zeroes the blocks will
-always be committed first, and the entire truncate operation does not
-require atomicity guarantee.
-
-This change prepares for converting the block zero range to the iomap
-infrastructure, which does not use ordered data mode and requires active
-writeback to prevent exposing stale data. The writeback must be
-completed before the transaction to remove the orphan is committed, and
-it cannot be performed within an active handle.
+Modify ext4_block_truncate_page() to return the zeroed length. This is
+prepared for the move out of ordered data handling in
+__ext4_block_zero_page_range(), which is prepared for the conversion of
+block zero range to the iomap infrastructure.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/inode.c | 27 ++++++++++++---------------
- 1 file changed, 12 insertions(+), 15 deletions(-)
+ fs/ext4/inode.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c05b1c0a1b45..e67c750866a5 100644
+index 759a2a031a9d..f856ea015263 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4570,7 +4570,7 @@ int ext4_inode_attach_jinode(struct inode *inode)
- int ext4_truncate(struct inode *inode)
- {
- 	struct ext4_inode_info *ei = EXT4_I(inode);
--	unsigned int credits;
-+	unsigned int credits, zero_len = 0;
- 	int err = 0, err2;
- 	handle_t *handle;
- 	struct address_space *mapping = inode->i_mapping;
-@@ -4603,6 +4603,12 @@ int ext4_truncate(struct inode *inode)
- 		err = ext4_inode_attach_jinode(inode);
- 		if (err)
- 			goto out_trace;
+@@ -4163,6 +4163,7 @@ static int ext4_block_zero_page_range(handle_t *handle,
+  * up to the end of the block which corresponds to `from'.
+  * This required during truncate. We need to physically zero the tail end
+  * of that block so it doesn't yield old data if the file is later grown.
++ * Return the zeroed length on success.
+  */
+ static int ext4_block_truncate_page(handle_t *handle,
+ 		struct address_space *mapping, loff_t from)
+@@ -4170,6 +4171,8 @@ static int ext4_block_truncate_page(handle_t *handle,
+ 	unsigned length;
+ 	unsigned blocksize;
+ 	struct inode *inode = mapping->host;
++	bool did_zero = false;
++	int err;
+ 
+ 	/* If we are processing an encrypted inode during orphan list handling */
+ 	if (IS_ENCRYPTED(inode) && !fscrypt_has_encryption_key(inode))
+@@ -4178,7 +4181,12 @@ static int ext4_block_truncate_page(handle_t *handle,
+ 	blocksize = i_blocksize(inode);
+ 	length = blocksize - (from & (blocksize - 1));
+ 
+-	return ext4_block_zero_page_range(handle, mapping, from, length, NULL);
++	err = ext4_block_zero_page_range(handle, mapping, from, length,
++					 &did_zero);
++	if (err)
++		return err;
 +
-+		zero_len = ext4_block_truncate_page(mapping, inode->i_size);
-+		if (zero_len < 0) {
-+			err = zero_len;
-+			goto out_trace;
-+		}
- 	}
++	return did_zero ? length : 0;
+ }
  
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-@@ -4616,21 +4622,12 @@ int ext4_truncate(struct inode *inode)
- 		goto out_trace;
- 	}
- 
--	if (inode->i_size & (inode->i_sb->s_blocksize - 1)) {
--		unsigned int zero_len;
--
--		zero_len = ext4_block_truncate_page(mapping, inode->i_size);
--		if (zero_len < 0) {
--			err = zero_len;
-+	/* Ordered zeroed data to prevent exposure of stale data. */
-+	if (zero_len && !IS_DAX(inode) && ext4_should_order_data(inode)) {
-+		err = ext4_jbd2_inode_add_write(handle, inode, inode->i_size,
-+						zero_len);
-+		if (err)
- 			goto out_stop;
--		}
--		if (zero_len && !IS_DAX(inode) &&
--		    ext4_should_order_data(inode)) {
--			err = ext4_jbd2_inode_add_write(handle, inode,
--					inode->i_size, zero_len);
--			if (err)
--				goto out_stop;
--		}
- 	}
- 
- 	/*
+ int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
 -- 
 2.52.0
 
