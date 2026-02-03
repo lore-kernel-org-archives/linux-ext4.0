@@ -1,85 +1,174 @@
-Received: from verein.lst.de (verein.lst.de [213.95.11.211])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 475EB271464;
-	Tue,  3 Feb 2026 05:36:10 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.95.11.211
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 180DE29ACCD;
+	Tue,  3 Feb 2026 06:30:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1770096971; cv=none; b=m3hqk3eh/ZWYwjrIDIYgiNVdir7TpF4hjM+RrgRW5AHAi58ii/T43sQEkYX9nENSxvQbzWOr3IpdQIdBrgNAz1ET3Zil9OowAouJasRIRRyTZIYRxkd0ENCnPAVz6z+KdQ1yFSD3XTh1Xi6Pdwa4Kty3AiFCKbNSIgAnQ/9nVTQ=
+	t=1770100218; cv=none; b=oDvGFJQArxTdIfknMSzN203ywc5FjZ4YGw+vOCw54gzuWIf7Tdbm4q8BlgrW0t+i5C2DsQb/GGKdKByWiI8jDUKBLeZ9Ce5X2ygLbaACSJ/VpkPDkYh9XISDZrI3YufdoOQksOotUNgVoxlz+mdMNkMAa3iW/PgGr5ofDkuuQ4M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1770096971; c=relaxed/simple;
-	bh=cC/qk4dm1B5K6YpfaVGKmBECm1eO3/9Kot5iyWUeUr4=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=IL70yqCP0tQFdib4rl8vG9EZNAcKyvMjW/WUuakCOxXL1fKcL+xN1EIgwM11gS0M1ZXrCaVxHPA9WlYNrxgbvEfXATmx31fOvWeU8P42S3s+efgpx6cQ5dkZERFjvcJ0aHi+3IJDdq0SV6qtk8p+q3DnhXosRvX3yIrm6d6TX/w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de; spf=pass smtp.mailfrom=lst.de; arc=none smtp.client-ip=213.95.11.211
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
-Received: by verein.lst.de (Postfix, from userid 2407)
-	id E866E68AFE; Tue,  3 Feb 2026 06:36:04 +0100 (CET)
-Date: Tue, 3 Feb 2026 06:36:04 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: Christoph Hellwig <hch@lst.de>, Jaegeuk Kim <jaegeuk@kernel.org>,
-	Chao Yu <chao@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
-	David Sterba <dsterba@suse.com>, Theodore Ts'o <tytso@mit.edu>,
-	Andrey Albershteyn <aalbersh@redhat.com>,
-	Matthew Wilcox <willy@infradead.org>, linux-fsdevel@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net, fsverity@lists.linux.dev
-Subject: Re: fsverity speedup and memory usage optimization v5
-Message-ID: <20260203053604.GC15956@lst.de>
-References: <20260202060754.270269-1-hch@lst.de> <20260202211423.GB4838@quark> <20260202223404.GA173552@quark>
+	s=arc-20240116; t=1770100218; c=relaxed/simple;
+	bh=AgnJHZvpuhGhhEC/wxrYKwfc53/ALq3B5sdYyj9G4lw=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=FLDyMTZt6CAEs/WqdJZQt0NY5qOYJbDIi/meGLf1RExJipc4slWa2TPTN8GaZOuiMoWyuxGKs3w/t3dhtzOu0CZ+U5XkHTQob2DXUcjcczWZM3Ci4wwSG8BkmP3pPpwqrxOgp3ddcZ1wzDAV0GNdhwy8p+1Mqt1lqkJHJOnKeck=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=huawei.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4f4trJ4VhQzKHMZj;
+	Tue,  3 Feb 2026 14:29:52 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id E8C194056B;
+	Tue,  3 Feb 2026 14:30:13 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.85.155])
+	by APP4 (Coremail) with SMTP id gCh0CgAHaPjnlYFpiadbGA--.27803S7;
+	Tue, 03 Feb 2026 14:30:13 +0800 (CST)
+From: Zhang Yi <yi.zhang@huawei.com>
+To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	hch@infradead.org,
+	djwong@kernel.org,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	yizhang089@gmail.com,
+	libaokun1@huawei.com,
+	yangerkun@huawei.com,
+	yukuai@fnnas.com
+Subject: [PATCH -next v2 03/22] ext4: only order data when partially block truncating down
+Date: Tue,  3 Feb 2026 14:25:03 +0800
+Message-ID: <20260203062523.3869120-4-yi.zhang@huawei.com>
+X-Mailer: git-send-email 2.52.0
+In-Reply-To: <20260203062523.3869120-1-yi.zhang@huawei.com>
+References: <20260203062523.3869120-1-yi.zhang@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260202223404.GA173552@quark>
-User-Agent: Mutt/1.5.17 (2007-11-01)
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:gCh0CgAHaPjnlYFpiadbGA--.27803S7
+X-Coremail-Antispam: 1UD129KBjvJXoWxWFyUZF1UtF13Wr45Aw4kXrb_yoW5tw4rpF
+	W3Kw4xJrn7G34Du3WS93W7Xr1Yk3WrCF48KFyxWw4kZ3s8Xry2yF15KFy0kay7trW3G3Wj
+	vFWUtry7u3ZrAaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUHFb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUWw
+	A2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
+	w2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
+	W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
+	6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
+	Ij6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
+	Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7Iv64x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YV
+	CY1x02628vn2kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCF04k2
+	0xvEw4C26cxK6c8Ij28IcwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r
+	1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_GFv_WrylIxkGc2Ij
+	64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Cr
+	0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI
+	42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUFzVbDUUUU
+Sender: yi.zhang@huaweicloud.com
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On Mon, Feb 02, 2026 at 02:34:04PM -0800, Eric Biggers wrote:
-> On Mon, Feb 02, 2026 at 01:14:23PM -0800, Eric Biggers wrote:
-> > On Mon, Feb 02, 2026 at 07:06:29AM +0100, Christoph Hellwig wrote:
-> > > Hi all,
-> > > 
-> > > this series has a hodge podge of fsverity enhances that I looked into as
-> > > part of the review of the xfs fsverity support series.
-> > > 
-> > > The first part optimizes the fsverity read path by kicking off readahead
-> > > for the fsverity hashes from the data read submission context, which in my
-> > > simply testing showed huge benefits for sequential reads using dd.
-> > > I haven't been able to get fio to run on a preallocated fio file, but
-> > > I expect random read benefits would be significantly better than that
-> > > still.
-> > > 
-> > > The second part avoids the need for a pointer in every inode for fsverity
-> > > and instead uses a rhashtable lookup, which is done once per read_folio
-> > > or ->readahead invocation plus for btrfs only for each bio completion.
-> > > Right now this does not increse the number of inodes in
-> > > each slab, but for ext4 we are getting very close to that (within
-> > > 16 bytes by my count).
-> > > 
-> > > Changes since v5:
-> > >  - drop already merged patches
-> > >  - fix a bisection hazard for non-ENOENT error returns from
-> > >    generic_read_merkle_tree_page
-> > >  - don't recurse on invalidate_lock
-> > >  - refactor page_cache_ra_unbounded locking to support the above
-> > >  - refactor ext4 and f2fs fsverity readahead to remove the need for the
-> > >    first_folio branch in the main readpages loop
-> > 
-> > Applied to https://git.kernel.org/pub/scm/fs/fsverity/linux.git/log/?h=for-next
-> > 
-> > (Though it's getting late for v6.20 / v7.0.  So if there are any
-> > additional issues reported, I may have to drop it.)
-> 
-> Unfortunately this silently conflicts with changes in the f2fs tree.
-> Resolution doesn't look too bad, but we'll need to handle this.
-> Christoph, Jaegeuk, and Chao, let me know if this looks okay:
+Currently, __ext4_block_zero_page_range() is called in the following
+four cases to zero out the data in partial blocks:
 
-I ended up with the same merge, and it looks good to me.
+1. Truncate down.
+2. Truncate up.
+3. Perform block allocation (e.g., fallocate) or append writes across a
+   range extending beyond the end of the file (EOF).
+4. Partial block punch hole.
+
+If the default ordered data mode is used, __ext4_block_zero_page_range()
+will write back the zeroed data to the disk through the order mode after
+zeroing out.
+
+Among the cases 1,2 and 3 described above, only case 1 actually requires
+this ordered write. Assuming no one intentionally bypasses the file
+system to write directly to the disk. When performing a truncate down
+operation, ensuring that the data beyond the EOF is zeroed out before
+updating i_disksize is sufficient to prevent old data from being exposed
+when the file is later extended. In other words, as long as the on-disk
+data in case 1 can be properly zeroed out, only the data in memory needs
+to be zeroed out in cases 2 and 3, without requiring ordered data.
+
+Case 4 does not require ordered data because the entire punch hole
+operation does not provide atomicity guarantees. Therefore, it's safe to
+move the ordered data operation from __ext4_block_zero_page_range() to
+ext4_truncate().
+
+It should be noted that after this change, we can only determine whether
+to perform ordered data operations based on whether the target block has
+been zeroed, rather than on the state of the buffer head. Consequently,
+unnecessary ordered data operations may occur when truncating an
+unwritten dirty block. However, this scenario is relatively rare, so the
+overall impact is minimal.
+
+This is prepared for the conversion to the iomap infrastructure since it
+doesn't use ordered data mode and requires active writeback, which
+reduces the complexity of the conversion.
+
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/inode.c | 32 +++++++++++++++++++-------------
+ 1 file changed, 19 insertions(+), 13 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f856ea015263..20b60abcf777 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4106,19 +4106,10 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 	folio_zero_range(folio, offset, length);
+ 	BUFFER_TRACE(bh, "zeroed end of block");
+ 
+-	if (ext4_should_journal_data(inode)) {
++	if (ext4_should_journal_data(inode))
+ 		err = ext4_dirty_journalled_data(handle, bh);
+-	} else {
++	else
+ 		mark_buffer_dirty(bh);
+-		/*
+-		 * Only the written block requires ordered data to prevent
+-		 * exposing stale data.
+-		 */
+-		if (!buffer_unwritten(bh) && !buffer_delay(bh) &&
+-		    ext4_should_order_data(inode))
+-			err = ext4_jbd2_inode_add_write(handle, inode, from,
+-					length);
+-	}
+ 	if (!err && did_zero)
+ 		*did_zero = true;
+ 
+@@ -4578,8 +4569,23 @@ int ext4_truncate(struct inode *inode)
+ 		goto out_trace;
+ 	}
+ 
+-	if (inode->i_size & (inode->i_sb->s_blocksize - 1))
+-		ext4_block_truncate_page(handle, mapping, inode->i_size);
++	if (inode->i_size & (inode->i_sb->s_blocksize - 1)) {
++		unsigned int zero_len;
++
++		zero_len = ext4_block_truncate_page(handle, mapping,
++						    inode->i_size);
++		if (zero_len < 0) {
++			err = zero_len;
++			goto out_stop;
++		}
++		if (zero_len && !IS_DAX(inode) &&
++		    ext4_should_order_data(inode)) {
++			err = ext4_jbd2_inode_add_write(handle, inode,
++					inode->i_size, zero_len);
++			if (err)
++				goto out_stop;
++		}
++	}
+ 
+ 	/*
+ 	 * We add the inode to the orphan list, so that if this
+-- 
+2.52.0
 
