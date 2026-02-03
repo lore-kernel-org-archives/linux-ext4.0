@@ -1,63 +1,185 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 26E9039E6EF;
-	Tue,  3 Feb 2026 14:13:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9231F1E487
+	for <linux-ext4@vger.kernel.org>; Tue,  3 Feb 2026 14:50:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1770127995; cv=none; b=RZZdxOrODHomTslJhKLBiYNmdzTbHBSSzVjO8ov2MSt2V838Imco2OQzsD/CrcA0xqkH/SAAkHxcgQ/DArHNJRCh67zVRGgoRf01G+EeKUARiikNX/zNSg4oqDUpAmE+RHa0oJFd4EeYzaCJcsP0xGGPnlRmUv5ErfMqfpCGAcM=
+	t=1770130247; cv=none; b=oeajLJdOrLpTUTdwzi6LRi8J8j/jLPbJnK77as2CQMxaSsQOQbUXDHNgU+9zBWhJksnFZrPCarcixRqDNyfAa9PiNMDLjy+1CMyPRvrCm//q1MqkFHleiwAi3hba3TMMPe/CZrqtdrj8D0rgw27FzypJnrEg5Y31G7ITPgHf9BY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1770127995; c=relaxed/simple;
-	bh=ud6/qDTvHEv3JHnnq3Ok9bapKUCIHzeDxsblGDgexJM=;
+	s=arc-20240116; t=1770130247; c=relaxed/simple;
+	bh=pH7aguUyl752/wAdz0ZJ60xBADwB0yyPS+Lqpl9dO/g=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=je87LZP8xJ2sqjUA1hg4JwqWp1jHu8iF8SarmvGCn+hD7KPzXblhZ5Kt3T9Q5ff1Odfb7BxCOHWVYD9S8MLsq8nHSBYATMlTH+VE5TLnS6XrtBRfMyRiNfB6iWFG2evALAMrmwa9mvZVNGm5WTzbdP6V1XZCpsLjV77s4OWfG28=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GYRf9eFw; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=cTydoCxmewf20CHfshg2HzMAw6nPYvDj2Fm+pS9H6wlsuQ5QfhJEU5dr22w2DxgVR5jEqfPdKZ3JItbZrriNvW2DuEIichPh/cPfJ0xVwwPENEVvlY/9mFJ3kt9nfHaLUQBKdCqzHZtE/C2kKCP8+tpHPa8Tjlf2jO+Wicca1xw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=tDgRFGqX; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=2Yny2qzQ; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=tDgRFGqX; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=2Yny2qzQ; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GYRf9eFw"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4F802C116D0;
-	Tue,  3 Feb 2026 14:13:12 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1770127995;
-	bh=ud6/qDTvHEv3JHnnq3Ok9bapKUCIHzeDxsblGDgexJM=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=GYRf9eFwtLq8EBYcO6i1U7KkKaGBeE95DuVUY3g/j0bZkkLmB2U4Z34BKihIk/VHC
-	 YRgPU7UoWxFTyl61mLAi5gfkVq0HOory4CuKYteEQFmN1XUlcG63nJWgXB/AEz19vK
-	 fGUmCVAJwUebhWEq7EX6QoZE610YiQ4CNP0/8pwxCEwjjCf4WhvJUFOnf8RE0b/pEu
-	 Jl66aOM49PVBQBnJIqSRtDbyFbczCvG5AvTM7iI1OzDbeYsNkUON+UlTm2fO+lHw0f
-	 5G9tqtICTb6V9+2eqqF8NfbRCYNLnddApOybvh2TkP9zw+mXTrERoLdPzamAj1p6e4
-	 unT6t6w/hNLAg==
-Date: Tue, 3 Feb 2026 15:13:09 +0100
-From: Christian Brauner <brauner@kernel.org>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: Mateusz Guzik <mjguzik@gmail.com>, jack@suse.cz, 
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, hughd@google.com, 
-	linux-ext4@vger.kernel.org, tytso@mit.edu, linux-mm@kvack.org
-Subject: Re: [PATCH v3 0/3] symlink length caching
-Message-ID: <20260203-reibt-bestnote-7da2affa6e26@brauner>
-References: <20241120112037.822078-1-mjguzik@gmail.com>
- <20241121-blatt-akkubetrieben-ad5d655d184a@brauner>
- <20260203042052.GE3183987@ZenIV>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="tDgRFGqX";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="2Yny2qzQ";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="tDgRFGqX";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="2Yny2qzQ"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 933DE5BCC6;
+	Tue,  3 Feb 2026 14:50:43 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1770130243; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ERkrjzuQK7Aa/7UCcxP4OZ4zW+9Awu+eZyIVuFg7Mwc=;
+	b=tDgRFGqX0S8pyUOfoM2PpFSS98TXM35RwqOSJxlvLvxGxBYqHyYIBt6nENl+ohM+C8gG6K
+	9LwM0ABDAe2+Qi0crt2g6fyqZGE26w1gZUx8Ry5u3mXxEQafqXT2DjVu7i1HAo3BwGjGwp
+	p7bumf0bFDxgSxNIJUmYCqVUFxMsodo=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1770130243;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ERkrjzuQK7Aa/7UCcxP4OZ4zW+9Awu+eZyIVuFg7Mwc=;
+	b=2Yny2qzQuHXFbqxZYy7cDo8wIRmVHVatiNar7z9erKeMhzE5bWZcxzOvvyhXliAHadMbuG
+	sufK+tsWlBVhY9DA==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=tDgRFGqX;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=2Yny2qzQ
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1770130243; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ERkrjzuQK7Aa/7UCcxP4OZ4zW+9Awu+eZyIVuFg7Mwc=;
+	b=tDgRFGqX0S8pyUOfoM2PpFSS98TXM35RwqOSJxlvLvxGxBYqHyYIBt6nENl+ohM+C8gG6K
+	9LwM0ABDAe2+Qi0crt2g6fyqZGE26w1gZUx8Ry5u3mXxEQafqXT2DjVu7i1HAo3BwGjGwp
+	p7bumf0bFDxgSxNIJUmYCqVUFxMsodo=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1770130243;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ERkrjzuQK7Aa/7UCcxP4OZ4zW+9Awu+eZyIVuFg7Mwc=;
+	b=2Yny2qzQuHXFbqxZYy7cDo8wIRmVHVatiNar7z9erKeMhzE5bWZcxzOvvyhXliAHadMbuG
+	sufK+tsWlBVhY9DA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 7DD063EA62;
+	Tue,  3 Feb 2026 14:50:43 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id Vs+4HkMLgmmiDAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 03 Feb 2026 14:50:43 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 347DBA09E1; Tue,  3 Feb 2026 15:50:43 +0100 (CET)
+Date: Tue, 3 Feb 2026 15:50:43 +0100
+From: Jan Kara <jack@suse.cz>
+To: Gerald Yang <gerald.yang@canonical.com>
+Cc: Jan Kara <jack@suse.cz>, tytso@mit.edu, adilger.kernel@dilger.ca, 
+	linux-ext4@vger.kernel.org, gerald.yang.tw@gmail.com
+Subject: Re: [PATCH] ext4: Fix call trace when remounting to read only in
+ data=journal mode
+Message-ID: <gluj62pw5pu7ag2juf5ejwsr3ghvckag7wh4zunwyk57slcrmg@42of57gybigz>
+References: <20260128074515.2028982-1-gerald.yang@canonical.com>
+ <4u2l4huoj7zsfy2u37lgdzlmwwdntgqaer7wta7ud3kat7ox2n@oxhbcqryre3r>
+ <CAMsNC+s1R-AUzhe80vjxYCSRu0X9Ybp33sSMHGHKpBL6=dG2_w@mail.gmail.com>
+ <bycdopvwzfaskilhk3nsljuk3gkztvoa3is466a6utuj2lozmj@pxf44ulcnqup>
+ <CAMsNC+ve3dRwT1xGWB0pvBJXqBpeksf7PgbEeihcnfs=AmwVRQ@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260203042052.GE3183987@ZenIV>
+In-Reply-To: <CAMsNC+ve3dRwT1xGWB0pvBJXqBpeksf7PgbEeihcnfs=AmwVRQ@mail.gmail.com>
+X-Spam-Score: -2.51
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_COUNT_THREE(0.00)[3];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	ARC_NA(0.00)[];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	TO_DN_SOME(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	RCPT_COUNT_FIVE(0.00)[6];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_CC(0.00)[suse.cz,mit.edu,dilger.ca,vger.kernel.org,gmail.com];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email]
+X-Spam-Level: 
+X-Rspamd-Action: no action
+X-Rspamd-Queue-Id: 933DE5BCC6
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Spam-Flag: NO
 
-On Tue, Feb 03, 2026 at 04:20:52AM +0000, Al Viro wrote:
-> On Thu, Nov 21, 2024 at 01:34:44PM +0100, Christian Brauner wrote:
-> 
-> > [1/3] vfs: support caching symlink lengths in inodes
-> >       https://git.kernel.org/vfs/vfs/c/5cbb3c7e0051
-> > [2/3] ext4: use inode_set_cached_link()
-> >       https://git.kernel.org/vfs/vfs/c/740456f67017
-> > [3/3] tmpfs: use inode_set_cached_link()
-> >       https://git.kernel.org/vfs/vfs/c/30071e02c163
-> 
-> _Very_ belated note: that needs D/f/porting.rst chunk that would cover
-> readlink_copy() calling conventions change.
+Hello,
 
-No probs. I'll put something in there in a second.
+On Fri 30-01-26 19:38:55, Gerald Yang wrote:
+> Thanks for sharing the findings, I'd also like to share some findings:
+> I tried to figure out why the buffer is dirty after calling sync_filesystem,
+> in mpage_prepare_extent_to_map, first I printed folio_test_dirty(folio):
+> 
+> while (index <= end)
+>     ...
+>     for (i = 0; i < nr_folios; i++) {
+>         ...
+>         (print if folio is dirty here)
+> 
+> and actually all folios are clean:
+> if (!folio_test_dirty(folio) ||
+>     ...
+>     folio_unlock(folio);
+>     continue;       <==== continue here without writing anything
+> 
+> Because the call trace happens before going into the above while loop:
+> 
+> if (ext4_should_journal_data(mpd->inode)) {
+>     handle = ext4_journal_start(mpd->inode, EXT4_HT_WRITE_PAGE,
+> 
+> it checks if the file system is read only and dumps the call trace in
+> ext4_journal_check_start, but it doesn't check if there are any real writes
+> that will happen later in the loop.
+> 
+> To confirm this, first I added 2 more lines in the reproduce script before
+> remounting read only:
+> sync      <==== it calls ext4_sync_fs to flush all dirty data same as what's
+>                          called during remount read only
+> echo 1 > /proc/sys/vm/drop_caches       <==== drop clean page cache
+> mount -o remount,ro ext4disk mnt
+> 
+> Then I can no longer reproduce the call trace.
+
+OK, but ext4_do_writepages() has a check at the beginning:
+
+        if (!mapping->nrpages || !mapping_tagged(mapping, PAGECACHE_TAG_DIRTY))
+                goto out_writepages;
+
+So if there are no dirty pages, mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)
+should be false and so we shouldn't go further?
+
+It all looks like some kind of a race because I'm not always able to
+reproduce the problem... I'll try to look more into this.
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
