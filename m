@@ -1,50 +1,46 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 46A7A38B7D4;
-	Tue,  3 Feb 2026 06:30:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1EA1737F10D;
+	Tue,  3 Feb 2026 06:43:23 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1770100227; cv=none; b=UGzpqxdPYG9/eh1Z4bJ3PeW2KOjpHtoNQW7I9obMLLVDhBz4yhhrpg5h/HF9X4Ck1o2/KkNmkKceo0NmfecL7WvSh7xIBd2Q15wfohxJjmsEYkiWRTH+1TFdYusPuTQrdKVBaDYHthxt6yabq3GGLmFCtn1bdPgPgZaxdqSpNyQ=
+	t=1770101008; cv=none; b=f3e4htE5sejGo5216B3VV/YP2ZTF5bUMu8jlHGeScV7i72E461lW8v6SL2lpPs/fpUnKzZYwCoLmG8gTD0sgvs+8ZO8e3krixRP6AXmrecMhp3gevjZGo+g3bT+dwmZhgEDhjYCK3kNCbvXqHjfx7ltdqhN2Jak8PZYqUCvX7yo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1770100227; c=relaxed/simple;
-	bh=RlJROsKsuZ2IUY0rvdbWaYINjizodYjUAPp4dLBZuY4=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=p9LJlIxhDN0HOIEJIkRaLHuroUrnjDWdj45wTKsqEsxMvdefiLQ4NktFNsWod8XX15JuxBjFMy6Mtpya8I7qCCYMCHLgrTkgTb0YnM03lh12hjmeT8qKr7K8ocVX2kXy3FcjKExthx30ZhYaqCDtvxE25MI/Fxc96swN3PJtazk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=huawei.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4f4tqr2LFMzYQv00;
-	Tue,  3 Feb 2026 14:29:28 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 4319E4056B;
-	Tue,  3 Feb 2026 14:30:15 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP4 (Coremail) with SMTP id gCh0CgAHaPjnlYFpiadbGA--.27803S23;
-	Tue, 03 Feb 2026 14:30:15 +0800 (CST)
-From: Zhang Yi <yi.zhang@huawei.com>
-To: linux-ext4@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com,
-	hch@infradead.org,
-	djwong@kernel.org,
-	yi.zhang@huawei.com,
-	yi.zhang@huaweicloud.com,
-	yizhang089@gmail.com,
-	libaokun1@huawei.com,
-	yangerkun@huawei.com,
-	yukuai@fnnas.com
-Subject: [PATCH -next v2 19/22] ext4: add block mapping tracepoints for iomap buffered I/O path
-Date: Tue,  3 Feb 2026 14:25:19 +0800
-Message-ID: <20260203062523.3869120-20-yi.zhang@huawei.com>
-X-Mailer: git-send-email 2.52.0
-In-Reply-To: <20260203062523.3869120-1-yi.zhang@huawei.com>
+	s=arc-20240116; t=1770101008; c=relaxed/simple;
+	bh=YxnLEDFvxUI7l36+T8EekjNNMUgD0xYWyK83awG3GWE=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=Hpp/O7+QdI1Ydlhdmz0yB0uhydprFvRmHwUHA/q+KlPysUm/1EZt3jUvy2RjzK5KODy7yN80iedsWf05bmt0j5ryI2fgwTcb0LssBdW7h4FUQFLvl500zgBjs+GvFK2uPLZufZ4cWXBQdLmWarslQtp2Fp+9vbJj3GA7UU312+0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=IqYpjmZ9; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="IqYpjmZ9"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=3mIYYnmGWQthU0VsUBlRairb/xoImbcJWcAdyZ3LfIQ=; b=IqYpjmZ9xcRBPhMG5DRB1fGaKI
+	wZ3htFSGptgohTgwCq4Gj+p/VM2pfewBfZFugiT2rZ1cMz5Fkp3SUUh3yvZWpk/9VxH2XGEs0/ZO5
+	3/NJnvWx6rY22ExCZyPj6RuKoSc1CYlAIJyG5WmmzBppvQssbact0IdGCMH6NtomgwA73zLNkaQWO
+	MlyUOS7J5QlHJNlaIpsXZgCeUZPC1V1sLRyoyZkMGD/SSC77ebgkOhn1T6AYjFLuL1lIL2Ee7eJDJ
+	yDOrBrN9u0+I/RS/v9Dl4S9O9SoAR9fldeWqw9NYY3q3B8Yt7MjMelxwiBW3gNlQTK13GOcXLC9oj
+	NjVBM01Q==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1vnA87-00000006Cnk-3hNU;
+	Tue, 03 Feb 2026 06:43:19 +0000
+Date: Mon, 2 Feb 2026 22:43:19 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Zhang Yi <yi.zhang@huawei.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, tytso@mit.edu,
+	adilger.kernel@dilger.ca, jack@suse.cz, ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com, hch@infradead.org, djwong@kernel.org,
+	yi.zhang@huaweicloud.com, yizhang089@gmail.com,
+	libaokun1@huawei.com, yangerkun@huawei.com, yukuai@fnnas.com
+Subject: Re: [PATCH -next v2 00/22]  ext4: use iomap for regular file's
+ buffered I/O path
+Message-ID: <aYGZB_hugPRXCiSI@infradead.org>
 References: <20260203062523.3869120-1-yi.zhang@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -52,132 +48,77 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgAHaPjnlYFpiadbGA--.27803S23
-X-Coremail-Antispam: 1UD129KBjvJXoWxXw4DXw48ur43Zr47KFWDCFg_yoWrJFyxpF
-	yDtFy5GF4rZrsF9w4fWrW3Zr1Fva1xKr4UGry3Wry5JFWxtr42gF4UGFyYyFy5tw4jkryf
-	XF4Yyry8G3W7urDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUHqb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
-	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
-	rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267
-	AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E
-	14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7
-	xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Y
-	z7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7Iv64x0x7Aq67IIx4CEVc8vx2IErcIFxwACI4
-	02YVCY1x02628vn2kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCF
-	04k20xvEw4C26cxK6c8Ij28IcwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14
-	v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_GFv_WrylIxkG
-	c2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI42IY6xIIjxv20xvEc7CjxVAFwI
-	0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_
-	Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x07UZyC
-	LUUUUU=
-Sender: yi.zhang@huaweicloud.com
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260203062523.3869120-1-yi.zhang@huawei.com>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-Add tracepoints for iomap buffered read, write, partial block zeroing
-and writeback operations.
+> Original Cover (Updated):
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
----
- fs/ext4/inode.c             |  6 +++++
- include/trace/events/ext4.h | 45 +++++++++++++++++++++++++++++++++++++
- 2 files changed, 51 insertions(+)
+This really should always be first.  The updates are rather minor
+compared to the overview that the cover letter provides.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c59f3adba0f3..77dcca584153 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3956,6 +3956,8 @@ static int ext4_iomap_buffered_read_begin(struct inode *inode, loff_t offset,
- 	if (ret < 0)
- 		return ret;
- 
-+	trace_ext4_iomap_buffered_read_begin(inode, &map, offset, length,
-+					     flags);
- 	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
- 	return 0;
- }
-@@ -4040,6 +4042,8 @@ static int ext4_iomap_buffered_do_write_begin(struct inode *inode,
- 	if (ret < 0)
- 		return ret;
- 
-+	trace_ext4_iomap_buffered_write_begin(inode, &map, offset, length,
-+					      flags);
- 	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
- 	return 0;
- }
-@@ -4142,6 +4146,7 @@ static int ext4_iomap_zero_begin(struct inode *inode,
- 			map.m_len = (offset >> blkbits) - map.m_lblk;
- 	}
- 
-+	trace_ext4_iomap_zero_begin(inode, &map, offset, length, flags);
- 	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
- 	iomap->flags |= iomap_flags;
- 
-@@ -4319,6 +4324,7 @@ static int ext4_iomap_map_writeback_range(struct iomap_writepage_ctx *wpc,
- 	}
- out:
- 	ewpc->data_seq = map.m_seq;
-+	trace_ext4_iomap_map_writeback_range(inode, &map, offset, dirty_len, 0);
- 	ext4_set_iomap(inode, &wpc->iomap, &map, offset, dirty_len, 0);
- 	return 0;
- }
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index a3e8fe414df8..1922df4190e7 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -3096,6 +3096,51 @@ TRACE_EVENT(ext4_move_extent_exit,
- 		  __entry->ret)
- );
- 
-+DECLARE_EVENT_CLASS(ext4_set_iomap_class,
-+	TP_PROTO(struct inode *inode, struct ext4_map_blocks *map,
-+		 loff_t offset, loff_t length, unsigned int flags),
-+	TP_ARGS(inode, map, offset, length, flags),
-+	TP_STRUCT__entry(
-+		__field(dev_t, dev)
-+		__field(ino_t, ino)
-+		__field(ext4_lblk_t, m_lblk)
-+		__field(unsigned int, m_len)
-+		__field(unsigned int, m_flags)
-+		__field(u64, m_seq)
-+		__field(loff_t, offset)
-+		__field(loff_t, length)
-+		__field(unsigned int, iomap_flags)
-+	),
-+	TP_fast_assign(
-+		__entry->dev		= inode->i_sb->s_dev;
-+		__entry->ino		= inode->i_ino;
-+		__entry->m_lblk		= map->m_lblk;
-+		__entry->m_len		= map->m_len;
-+		__entry->m_flags	= map->m_flags;
-+		__entry->m_seq		= map->m_seq;
-+		__entry->offset		= offset;
-+		__entry->length		= length;
-+		__entry->iomap_flags	= flags;
-+
-+	),
-+	TP_printk("dev %d:%d ino %lu m_lblk %u m_len %u m_flags %s m_seq %llu orig_off 0x%llx orig_len 0x%llx iomap_flags 0x%x",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  __entry->ino, __entry->m_lblk, __entry->m_len,
-+		  show_mflags(__entry->m_flags), __entry->m_seq,
-+		  __entry->offset, __entry->length, __entry->iomap_flags)
-+)
-+
-+#define DEFINE_SET_IOMAP_EVENT(name) \
-+DEFINE_EVENT(ext4_set_iomap_class, name, \
-+	TP_PROTO(struct inode *inode, struct ext4_map_blocks *map, \
-+		 loff_t offset, loff_t length, unsigned int flags), \
-+	TP_ARGS(inode, map, offset, length, flags))
-+
-+DEFINE_SET_IOMAP_EVENT(ext4_iomap_buffered_read_begin);
-+DEFINE_SET_IOMAP_EVENT(ext4_iomap_buffered_write_begin);
-+DEFINE_SET_IOMAP_EVENT(ext4_iomap_map_writeback_range);
-+DEFINE_SET_IOMAP_EVENT(ext4_iomap_zero_begin);
-+
- #endif /* _TRACE_EXT4_H */
- 
- /* This part must be outside protection */
--- 
-2.52.0
+> Key notes on the iomap implementations in this series.
+>  - Don't use ordered data mode to prevent exposing stale data when
+>    performing append write and truncating down.
+
+I can't parse this.
+
+>  - Override dioread_nolock mount option, always allocate unwritten
+>    extents for new blocks.
+
+Why do you override it?
+
+>  - When performing write back, don't use reserved journal handle and
+>    postponing updating i_disksize until I/O is done.
+
+Again missing the why and the implications.
+
+>  buffered write
+>  ==============
+> 
+>   buffer_head:
+>   bs      write cache    uncached write
+>   1k       423  MiB/s      36.3 MiB/s
+>   4k       1067 MiB/s      58.4 MiB/s
+>   64k      4321 MiB/s      869  MiB/s
+>   1M       4640 MiB/s      3158 MiB/s
+>   
+>   iomap:
+>   bs      write cache    uncached write
+>   1k       403  MiB/s      57   MiB/s
+>   4k       1093 MiB/s      61   MiB/s
+>   64k      6488 MiB/s      1206 MiB/s
+>   1M       7378 MiB/s      4818 MiB/s
+
+This would read better if you actually compated buffered_head
+vs iomap side by side.
+
+What is the bs?  The read unit size?  I guess not the file system
+block size as some of the values are too large for that.
+
+Looks like iomap is faster, often much faster except for the
+1k cached case, where it is slightly slower.  Do you have
+any idea why?
+
+>  buffered read
+>  =============
+> 
+>   buffer_head:
+>   bs      read hole   read cache      read data
+>   1k       635  MiB/s    661  MiB/s    605  MiB/s
+>   4k       1987 MiB/s    2128 MiB/s    1761 MiB/s
+>   64k      6068 MiB/s    9472 MiB/s    4475 MiB/s
+>   1M       5471 MiB/s    8657 MiB/s    4405 MiB/s
+> 
+>   iomap:
+>   bs      read hole   read cache       read data
+>   1k       643  MiB/s    653  MiB/s    602  MiB/s
+>   4k       2075 MiB/s    2159 MiB/s    1716 MiB/s
+>   64k      6267 MiB/s    9545MiB/s     4451 MiB/s
+>   1M       6072 MiB/s    9191MiB/s     4467 MiB/s
+
+What is read cache vs read data here?
+
+Otherwise same comments as for the write case.
 
