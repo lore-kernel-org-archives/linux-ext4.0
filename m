@@ -1,210 +1,332 @@
-Received: from sonic313-9.consmr.mail.ne1.yahoo.com (sonic313-9.consmr.mail.ne1.yahoo.com [66.163.185.32])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 63FED1C84DE
-	for <linux-ext4@vger.kernel.org>; Fri,  6 Feb 2026 19:55:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=66.163.185.32
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1770407750; cv=none; b=AuUkifm5xWovL80CR8zJ+gPTEQk/PPAWhUp19C28R2kVTPpllh5F9t6Exd3hEpjHeV76/C6/X9dLMAyLcYtZ5BP0Q9jgL93MQV0ugkyeQR0foh6cZxxIuzxinqB6gHBmbeVfZpEgxAwcdjrTfL3whU6b2FmcVlqCPF09heSYhiM=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1770407750; c=relaxed/simple;
-	bh=Qznso+gOEdVKc1UWF3AswxDe3QvhPDsvwvlm84ujxMg=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=hm4vCZmq64JQu+0EySrP+6EG9wJfCVkykoE0XK3U4PFNMc4UAHjBRD1tQaUqg/38KP8X8rrnZHLhnCHwTYymGdl9pZmLKGzKkFPAzSX/S/oDw4PSHd+m11oyidNP6/J2Xv3PcGMMjArySD991nbGP1wnizifToCTP0L9tNf+99M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=rocketmail.com; spf=pass smtp.mailfrom=rocketmail.com; dkim=pass (2048-bit key) header.d=rocketmail.com header.i=@rocketmail.com header.b=fIIFSccY; arc=none smtp.client-ip=66.163.185.32
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=rocketmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=rocketmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D98132E62C4;
+	Fri,  6 Feb 2026 20:02:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=205.220.177.32
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1770408173; cv=fail; b=eu5tGtNB1xBHC6CKolqpQ+/595YJKHawxfijTdkZnu++zdTdCzTB7ucW5lI5pBsHFCJAKvZnqaJOlXgjOIGFlOs0StGHhHjyGUtJ8zCZG6jtfhmMfImkgntdk8EYAZOzk33g5K6YcAmJHdTGhvZw/g/qdYHVGwE039YsKaj/Ark=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1770408173; c=relaxed/simple;
+	bh=0RErPAhVbGAMrLI8oTOEgW2gDceNVDchy+hsI4HgJV0=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:Content-Type:
+	 Content-Disposition:In-Reply-To:MIME-Version; b=Bwzw1x+NpNal536mxPEs4eHqjd+d1gXN5qVinkDgSsBavrk03y12dLrUGs13VMeageVpJZj7QiKcBi6HgyUinkAUCNrK06wGcbeAYP5VmwDe6TZOoOR4DJYPww/YukTt0rCZ2SFdcwe5ir4tdUDnvuPweOJv4Pb0nvqa8vOAIXw=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=j1D1lOHr; dkim=pass (1024-bit key) header.d=oracle.onmicrosoft.com header.i=@oracle.onmicrosoft.com header.b=ysMRiNJ0; arc=fail smtp.client-ip=205.220.177.32
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=rocketmail.com header.i=@rocketmail.com header.b="fIIFSccY"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=rocketmail.com; s=s2048; t=1770407749; bh=MMn6NE6Jpdx5f/iKl7GfVAcNZfgnwSDTsK9q6cp9FLY=; h=Date:Subject:To:Cc:References:From:In-Reply-To:From:Subject:Reply-To; b=fIIFSccYWcQCMVUbTHyFkkni7E/RtKzEGVwkzkTHXK+yLcJPnvZNBx6DRl6WomEnRP5RSE+Dk3PZ89+N4s28EV4F22kh2r6ZAwFpwF8fIGw1GQjBqBUtLArr0HTbKPQ5gTANBQ7LXNZtfyj8o6UHvcWE0prhU9yhkjH5DrzrgwzVOPZYkF1da/H/dnoQdHpe7OzvyFhHCa6g52IYey48hoH4W464heck3fdYvozrdudg8kw5eMPQfBTEIRShWdvo87u73frtFy6Uodi4VnbBgHOND6AShOlkGHIfQhazHeW99LbcRpudjseigXW28TDQtiKV8533BKFcxYLDjn4Hsw==
-X-SONIC-DKIM-SIGN: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1770407749; bh=7Tl/fx9PXoQcEIinK2kGWMP0+KbdU4wqbwcDF65a2UP=; h=X-Sonic-MF:Date:Subject:To:From:From:Subject; b=lfTKT5dmgkU45xbjrYQxHatV+xZmxAUU+1Go0DDjPlBFFqHGxVnjO6vRfccquOFL1mfCGAbi+vznlK5h4Sq9XVt2JzvsYu0CQHuRri55r5BXWOB29FeAoagyZP4M3FFbBybIZ4J2k1nRpsEqC92VOfVy+lLepGqzyIRY6y/eKepH1iylYIRrIOfbcj+yaPRggQIziYXmMrMJC4952NGdgkxKKprmkL/VYpkhF29pb+z9RAB1DtNIh+MQ1eYdO8oMGzQqyk1ItIHkith/A3whpgKBfxgyR7DR+K7986Kq1hzCxDC/Cwl01yDYuASP08gJquFF36yoDaCyJkKap3lANw==
-X-YMail-OSG: A2_WwtwVM1k3b78TRwrr3AO1mMQeqzfY6ZBgsNeb2TYRFnBfHJb2a_Y4Lf6E0H0
- 714Q51VIPHaYXHnFHV0IhxWov8avc.QZIAbVWhhSd.M1tFiCm5HDNXjcjVAf9FltoGkoJP6OLPQQ
- dQd0u0999qN6MYnuR7uFDpP_x2LJLY6gakTWZIsXDSPAs0PHupLG6ytvgBsbsZ7hFGW8GCIIqXVm
- .5ZaRDr4Fc9MZ9FkOR2_F2XaEWL9CAFMub5FTJcnYmWxk8Ha.1i7Z744NUu5uZ.b4wHYf6YrvG7E
- EiQZhaVdzXzI9TieqjKOHTbtLg20VWKMmoZMPmYcosn9wn1IiuHdiD.HQTJm4edL_zfuINAIboti
- 58w6Lx5TGWrDFQjQV9lZVeE.Mxuo_xXFsJ5020pm0Py1LFgocJMHrJrb81czJsDLIoZbQ3ZFUB4V
- x9tyStDBvOFlbZix_SBs9h9wxFceE5gH4IUqXQTnMX1pLDPGI0x8W_wK0jUK_bnKyHzdN3nNMBQ9
- JjhABQkPmn68npgn83NMxbN70t4XEUKlR7xPAAWF1BPuD7vqW8LYjqWYPfXwkUwkVEWLKMMTbZYm
- Tkxf5t4KOExD96dMv8kACF6xj3xIsBKT9.wV684RNII1riiL5i2wcNfIIO7tTpVnMNFtTqLz0EQr
- 9u8D87Fs3nd5cR1nakO1rxrdl0L5NuF2f8n1idrlsDWaCv0mgiiI_PqXvfGoWkE2KXaljQPZoqRr
- 0i49mGZE_I7.Kvt4DnRAwfQKULN5enZcfn0HethJK9aAmf5nIDRGeMQH7IMgwC2ADnfJx2PqDk_j
- hHOBgM7HRXD5IDqXlVVLKYjns_On.Y6mmiLd9tOYA03bDwU1TLaR7Ohd2miuRAG1_e8FQiI7niBV
- WRlS_uWSNQ40F3JAeu8xRvKwZ9ObJ8FjSiRXc1Fz86pN.s7rLvyfRDjG_FA460NiV1R6hpyS8Kkn
- OUoL5UJiSBieJS1cc.6499H0s3RaeIA_PO54BkYOa1P6d4bvvtIMDbkIZa5OvZfaOduO4Lq2i55E
- ycbG5A.JS8T9eTvPxo2NS_e2Zx.mhkxguONwCBLU47PHrlthRhu3JED4.323kIdI7oGb5J4L7nnt
- tTr0z6C2ZbtV0ZQY3M68mKlBhAYGe6S7xpyMuBZ31hhoa86t8nzQYvbdjbzgGCvQGgASxTOQvmyx
- Vve1I2zQfloGmDZlAtUMU7jc7_qc7B3R3uHk7nNH15L1O.ggSfHSw2OwF_BqA6uE9zDIuAwnka8E
- KOf_i5SsPaC3DWmezyqW4LuTXs4A.CMDUlyAIshXKCw.5W.VWkPrjL8tWYb8wXcFqZCNwDoDZ1D2
- EpSZcvAYxaRzr3Wf2bIS7t0ZMov.p2jGo5wO9i52cdWALogtlAoBR9ILDwjedHAv4a8OUBijF1Ph
- UJ5O2qtpNokTStpta0OPc6r_vT56GDasPwzbce2MPlY9FRvTTbMFiRR6yMGKiVE_ws5qgxq9wSEn
- hZLuPd0B65c0DwIhxSsi2kUpWA0TGZvZpNcWHd58Wlq_EPiQHRXAXjOfxcmwYqrkle07G7u8Es8S
- 9umoUIrtT.Tvm_m4fKtjk16xlChGebHqFO7Zvjx4m3JATAu0_euyNn2pyJs_0hxu75y4nHGsrNhl
- 54ZH6LO_hzUFOSF7jcVwNytD3eNfN0O87AMZtcQnXTJXa_EqLrKmlKqf0zzL.gP8EEo6BaWP4f.e
- 5YpzF1diFDHacBzOKTSVAn11GKfbbgmn59bMN5CnwkcIOCS.HsZykmL9G6UNqy3wB1YaCts2TvL2
- xAOmI4NDG0BiUAvx6U6fR5n0RGSNYNufiND2Aj7UOGKozg0D9JNoYKvlwyLgIVQmxZsX1EKZi2lG
- m_.tBTLrxyQccohZJw_kh_8_1CoBu7b7nCW8qygxJktVFHZmwU0ti8WMj.3xW4nIMiBChHwOXI3D
- l3naSI_Bi99b2JRkNdGv58c_h_26xkeI.QhHiXC9TYVRm_PWp72_oCagU6F0A.ZQ9UBFJ05i3tB0
- ezhIbi5jI4xH1UvPrqbAiQH0TjZHmMIAkCQu5X1ORjstbioHi9ukBjFqWNVYa62RpyxMxRiTlwci
- zhanJTcASgEvr9vawbmFMaVqiYeUQAhwY3mKxtRHlR07trGvsSI77CJGnQ39kOX5CkCUvnkxhodY
- sUTJ8wyJW9bSpyjS0WmnNCHfpXLTYwaalG.34L.XC2fheb4aUO8V472y0YECSa6x1rgkO0S2Hxnd
- yjqD5gDPgb_liAcBc6COXogK3Gls4Py.DX3L4pXHg
-X-Sonic-MF: <mario_lohajner@rocketmail.com>
-X-Sonic-ID: a4aa0e2a-ed77-497d-bfbb-f4b0b999eb66
-Received: from sonic.gate.mail.ne1.yahoo.com by sonic313.consmr.mail.ne1.yahoo.com with HTTP; Fri, 6 Feb 2026 19:55:49 +0000
-Received: by hermes--production-ir2-6fcf857f6f-4mj2c (Yahoo Inc. Hermes SMTP Server) with ESMTPA ID 70af6ba215ea17f83f6d2b29883ff657;
-          Fri, 06 Feb 2026 19:25:26 +0000 (UTC)
-Message-ID: <26d60068-d149-4c53-a432-8b9db6b7e6a5@rocketmail.com>
-Date: Fri, 6 Feb 2026 20:25:24 +0100
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="j1D1lOHr";
+	dkim=pass (1024-bit key) header.d=oracle.onmicrosoft.com header.i=@oracle.onmicrosoft.com header.b="ysMRiNJ0"
+Received: from pps.filterd (m0333520.ppops.net [127.0.0.1])
+	by mx0b-00069f02.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 616JuPO8790774;
+	Fri, 6 Feb 2026 20:01:57 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc
+	:content-type:date:from:in-reply-to:message-id:mime-version
+	:references:subject:to; s=corp-2025-04-25; bh=IIkdhKlounf8LNIOKu
+	57WvWnowqLrOAc6ssJmhwgASI=; b=j1D1lOHr+K7D2iLzkIVS6kNZ3pHKwbrygo
+	nabhbYjqsoyNWhCYPqKheYP1rl1smCSyVy5bwlul5n7wVeweVfrxt0GLbE9ioH+f
+	vMO1NxVC/eunTPEgphwByAJbAQO0JwBv04ciEiQI/nAcKzGeLrELMHaNvhRfUSpB
+	tDJjem8ulMVG18jLTnrY+0ziGQZ7ZKz/FnrnMcw2ZcIgb0SkGdxVLM1Qoueg6UU0
+	78lpH8s6ZP5gGr33e6y8+9EsBFE/HdPOzmHwDX0q2VcbQOnkLWU0q5qEbbztCkZL
+	NVZlrCpdCKmIQWx8lWjZNlAensS7IvFZwPupnz1uxTRzZQTEHAcg==
+Received: from phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta01.appoci.oracle.com [138.1.114.2])
+	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 4c3jsqp49t-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Fri, 06 Feb 2026 20:01:56 +0000 (GMT)
+Received: from pps.filterd (phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
+	by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (8.18.1.2/8.18.1.2) with ESMTP id 616IE24h036938;
+	Fri, 6 Feb 2026 20:01:55 GMT
+Received: from cy3pr05cu001.outbound.protection.outlook.com (mail-westcentralusazon11013046.outbound.protection.outlook.com [40.93.201.46])
+	by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 4c186f1820-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Fri, 06 Feb 2026 20:01:55 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=ZuT56QyxkT/9rUu9Um1AjvmlDL2JZ+qNmD+5PdOVU0hOWfohsXmzNklf2e4OV5FQXH8kb1MwEYjqY0DFWDUtOpJvKXDnIx8g07aP8wW8hNjTuaOwD4n9LR57EI4AUqusyGhZ6reXZRJTeJUKzYGfb5NnlSnywNW/tnWlqlLijBMD2sBUROnDJzQNA4lQMQPL+HM2HQ3LKJvM14oV4TUwK8GiaD3iGRcA8PId3ftbFw9zK3Kc8KIei4mPNEo8RysBDnRgTuRDAihO0igYYc6QavJw+u8ToHBCPfw+bSiGOcWCAat/liYktSJfL4rFACRGtNp0mT/3X7pshfRdHiRK8w==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=IIkdhKlounf8LNIOKu57WvWnowqLrOAc6ssJmhwgASI=;
+ b=x/RnQFV/B9ZA5lShY9tyr1byAZarISlHknEeTgpsQirV0kBvfT+topsTuLvmiPmxOywbIn0SBUTpWx9v6A1XJY0r8KuDkPUwZffmuSl00drLe1KtNguzEDh6ckF3EGl0gojvKDNnk9GV6DVPlw8wzfred75YedgdRfpVYNAO+SCRelJz5TFgzaAvAAr7k1yhHwZ+QYWH2Yn6oOkAM/aNRFIoovjZgnwWnvX1MoRSs8UsWJ3gzB8z4U1GtFUA53i87LFI+bOw2K2jHPtv/RJgtqI3uPUd89WHMEqn4P1O+LPIsD/UgHXNl587xzdBHuy6stx9sRJWmewsxKn21iG+VA==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
+ dkim=pass header.d=oracle.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=IIkdhKlounf8LNIOKu57WvWnowqLrOAc6ssJmhwgASI=;
+ b=ysMRiNJ0cbZInAI588n+QogfqnoBzrKNmznHr2gvRRfw6tqt/6zmwU1H56IrSjkTnO7s4wvaAPFpnJoFVygzRWjXCRLBU7a9wD2m8OVF+7+3HA0fhvoCpyetz+nl1T4OnXfcpvI0n9M7O5IVJiWqQsrs/aAEIbqxi9Wzo6RmqT0=
+Received: from DS0PR10MB8223.namprd10.prod.outlook.com (2603:10b6:8:1ce::20)
+ by CH3PR10MB8215.namprd10.prod.outlook.com (2603:10b6:610:1f5::7) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9564.8; Fri, 6 Feb
+ 2026 20:01:47 +0000
+Received: from DS0PR10MB8223.namprd10.prod.outlook.com
+ ([fe80::b4a4:94e3:f0bc:f4c9]) by DS0PR10MB8223.namprd10.prod.outlook.com
+ ([fe80::b4a4:94e3:f0bc:f4c9%5]) with mapi id 15.20.9520.006; Fri, 6 Feb 2026
+ 20:01:47 +0000
+Date: Fri, 6 Feb 2026 20:01:46 +0000
+From: Lorenzo Stoakes <lorenzo.stoakes@oracle.com>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Pedro Falcato <pfalcato@suse.de>, Jarkko Sakkinen <jarkko@kernel.org>,
+        Dave Hansen <dave.hansen@linux.intel.com>,
+        Thomas Gleixner <tglx@kernel.org>, Ingo Molnar <mingo@redhat.com>,
+        Borislav Petkov <bp@alien8.de>, x86@kernel.org,
+        "H . Peter Anvin" <hpa@zytor.com>, Arnd Bergmann <arnd@arndb.de>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Vishal Verma <vishal.l.verma@intel.com>,
+        Dave Jiang <dave.jiang@intel.com>,
+        Maarten Lankhorst <maarten.lankhorst@linux.intel.com>,
+        Maxime Ripard <mripard@kernel.org>,
+        Thomas Zimmermann <tzimmermann@suse.de>,
+        David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>,
+        Jani Nikula <jani.nikula@linux.intel.com>,
+        Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
+        Rodrigo Vivi <rodrigo.vivi@intel.com>,
+        Tvrtko Ursulin <tursulin@ursulin.net>,
+        Christian Koenig <christian.koenig@amd.com>,
+        Huang Rui <ray.huang@amd.com>, Matthew Auld <matthew.auld@intel.com>,
+        Matthew Brost <matthew.brost@intel.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
+        Benjamin LaHaise <bcrl@kvack.org>, Gao Xiang <xiang@kernel.org>,
+        Chao Yu <chao@kernel.org>, Yue Hu <zbestahu@gmail.com>,
+        Jeffle Xu <jefflexu@linux.alibaba.com>,
+        Sandeep Dhavale <dhavale@google.com>,
+        Hongbo Li <lihongbo22@huawei.com>, Chunhai Guo <guochunhai@vivo.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Muchun Song <muchun.song@linux.dev>,
+        Oscar Salvador <osalvador@suse.de>,
+        David Hildenbrand <david@kernel.org>,
+        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+        Mike Marshall <hubcap@omnibond.com>,
+        Martin Brandenburg <martin@omnibond.com>,
+        Tony Luck <tony.luck@intel.com>,
+        Reinette Chatre <reinette.chatre@intel.com>,
+        Dave Martin <Dave.Martin@arm.com>, James Morse <james.morse@arm.com>,
+        Babu Moger <babu.moger@amd.com>, Carlos Maiolino <cem@kernel.org>,
+        Damien Le Moal <dlemoal@kernel.org>,
+        Naohiro Aota <naohiro.aota@wdc.com>,
+        Johannes Thumshirn <jth@kernel.org>,
+        Matthew Wilcox <willy@infradead.org>,
+        "Liam R . Howlett" <Liam.Howlett@oracle.com>,
+        Vlastimil Babka <vbabka@suse.cz>, Mike Rapoport <rppt@kernel.org>,
+        Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>,
+        Hugh Dickins <hughd@google.com>,
+        Baolin Wang <baolin.wang@linux.alibaba.com>, Zi Yan <ziy@nvidia.com>,
+        Nico Pache <npache@redhat.com>, Ryan Roberts <ryan.roberts@arm.com>,
+        Dev Jain <dev.jain@arm.com>, Barry Song <baohua@kernel.org>,
+        Lance Yang <lance.yang@linux.dev>, Jann Horn <jannh@google.com>,
+        David Howells <dhowells@redhat.com>, Paul Moore <paul@paul-moore.com>,
+        James Morris <jmorris@namei.org>,
+        "Serge E . Hallyn" <serge@hallyn.com>,
+        Yury Norov <yury.norov@gmail.com>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>, linux-sgx@vger.kernel.org,
+        linux-kernel@vger.kernel.org, nvdimm@lists.linux.dev,
+        linux-cxl@vger.kernel.org, dri-devel@lists.freedesktop.org,
+        intel-gfx@lists.freedesktop.org, linux-fsdevel@vger.kernel.org,
+        linux-aio@kvack.org, linux-erofs@lists.ozlabs.org,
+        linux-ext4@vger.kernel.org, linux-mm@kvack.org, ntfs3@lists.linux.dev,
+        devel@lists.orangefs.org, linux-xfs@vger.kernel.org,
+        keyrings@vger.kernel.org, linux-security-module@vger.kernel.org,
+        Jason Gunthorpe <jgg@nvidia.com>
+Subject: Re: [PATCH v2 09/13] mm: update all remaining mmap_prepare users to
+ use vma_flags_t
+Message-ID: <d55a0ba8-46a3-49d4-ba76-aa9658e1e8be@lucifer.local>
+References: <cover.1769097829.git.lorenzo.stoakes@oracle.com>
+ <fb1f55323799f09fe6a36865b31550c9ec67c225.1769097829.git.lorenzo.stoakes@oracle.com>
+ <hmc2or77xnhrdlncfzjsljljwljnp6zztqsvmgxspfilmzkyty@czxpjpdm66ov>
+ <20260206113153.c443545459474cdef6dfd7ea@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260206113153.c443545459474cdef6dfd7ea@linux-foundation.org>
+X-ClientProxiedBy: LO4P123CA0674.GBRP123.PROD.OUTLOOK.COM
+ (2603:10a6:600:351::6) To DS0PR10MB8223.namprd10.prod.outlook.com
+ (2603:10b6:8:1ce::20)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: add optional rotating block allocation policy
-Content-Language: hr
-To: Theodore Tso <tytso@mit.edu>
-Cc: Baokun Li <libaokun1@huawei.com>, adilger.kernel@dilger.ca,
- linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
- Yang Erkun <yangerkun@huawei.com>, libaokun9@gmail.com
-References: <20260204033112.406079-1-mario_lohajner.ref@rocketmail.com>
- <20260204033112.406079-1-mario_lohajner@rocketmail.com>
- <c6a3faa7-299a-4f10-981d-693cdf55b930@huawei.com>
- <069704a4-2417-470a-bf32-0ee3afd1be6a@rocketmail.com>
- <9fc3443b-0eea-4917-909b-709113f5e706@huawei.com>
- <606941c7-2a0d-44c7-a848-188212686a78@rocketmail.com>
- <20260206014249.GH31420@macsyma.lan>
-From: Mario Lohajner <mario_lohajner@rocketmail.com>
-In-Reply-To: <20260206014249.GH31420@macsyma.lan>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
-X-Mailer: WebService/1.1.25164 mail.backend.jedi.jws.acl:role.jedi.acl.token.atz.jws.hermes.yahoo
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: DS0PR10MB8223:EE_|CH3PR10MB8215:EE_
+X-MS-Office365-Filtering-Correlation-Id: e5ef8c73-bce5-48e9-d95b-08de65ba8f5f
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam: BCL:0;ARA:13230040|1800799024|366016|7416014|376014;
+X-Microsoft-Antispam-Message-Info:
+	=?us-ascii?Q?n9zJSU9Pf54JdVbwxsbDpmdk3jELo/jV7oFwPywMzYWnub0II9PVoW5EzrFj?=
+ =?us-ascii?Q?eEusQXBpIXTIoIJzKSfZA2JCTqR7gFq6VHwIYekCyRxt8b3GtIp4gNSe7vYG?=
+ =?us-ascii?Q?kIiU79eGzK0Pmu2rwN8U8nr1RAjGX8ePB2fy5ZeImK4ezhCzCpQ60Blmf8+E?=
+ =?us-ascii?Q?eVvVvGKwjGp2RaXYtzYDYHOZ1Fctwm8FKT+HzMFg/I70UIzT6Zztkv1MZLQT?=
+ =?us-ascii?Q?TGD+dfo8BkUTBpdigjsWeVC6Ogz1x1oM16nW20Ns8bsdFMOErjBgRGqUH2pZ?=
+ =?us-ascii?Q?svaJXYIv/7CgSCm/RsPs2C0BafhToU45elzfeYTk+Fxgq/GJCOshENHvau44?=
+ =?us-ascii?Q?pob9UOepxBkhji839ikYFL3+p5OCzxwOKPkqrxRTc6ZRAROAG3b3x+EyUvEW?=
+ =?us-ascii?Q?gjl4VZFTNKLVIfcZRYDKIKO80oKAqDk84pU7YFn4R+xRh1m0g8Du2SmkQQTT?=
+ =?us-ascii?Q?6r7Se9QtJW7PyjAhad8RjBV4goXNDs7LSu+8GyNB1g0yTJ1N/v629ggKTxuc?=
+ =?us-ascii?Q?GWLvO/KMBqOIKv+fs/TfrPPW4phNhCW2nTPrqv/kFUB3IfA1XD0VOofzxR0f?=
+ =?us-ascii?Q?w1PGNQgOl8bejdt2gWxpb3x7R8345Uo12RcXxJXU0F0c0i0FRY/tZUxg8L/R?=
+ =?us-ascii?Q?qfSKpwCvrNOifzMl1X/ej9YA/kVvnxLmcp2GwitBa2Xc7GXKtZ9VbmCUGYV6?=
+ =?us-ascii?Q?DEOtCcc4xuBhaZ7rkTKVNDtxoitiM8ShzVLZawOf1saLnCOe5233BVlvW2/q?=
+ =?us-ascii?Q?xNOnLpfGfgGgv0b82GsU7604KDRrGxU4bT+WjMH4V2/avobWiv/kTPXPHojC?=
+ =?us-ascii?Q?3pCtjNTsM5nWhg3DN8l7+16jjC6sBFEIOB6kwFyxt8XX3p5XiFsrTnHNcEFm?=
+ =?us-ascii?Q?RCUPlFBluVpYM2McCfy61zViDLpUcbMc1hTbq3HRl7MPw9AqKJFbUlpldlOr?=
+ =?us-ascii?Q?lnHDdiYMDgLICXzI5ObDEClMMEgjOIszY4JsIaKevTZAkU9XNg+2w2ydCocd?=
+ =?us-ascii?Q?aWf+kortpXqim2OikfyzO4F33VKqVLx1mtnsZWTIBbgn266307HNpOKTjAVv?=
+ =?us-ascii?Q?z+oMkIMFyQBt9TFFckpm8TSfc1VMNuZ2AX9LEDtT8j0moBo0EW8oa8MQwV5m?=
+ =?us-ascii?Q?6P/e2vHIWvnv4I53/0k45S5qCga655BDelV/QEtmRCUpZyLzHZo1otiA2nen?=
+ =?us-ascii?Q?vvhS2gpVLhFfVtoMwDOgpTVP9NQPwXPjobh1Vi7UkWpIL80mrLYR+NlMLlxn?=
+ =?us-ascii?Q?IW5COWpAko91nGx/DrUMc5XXJdYdMXMAlZMU5kmZM7brc2Xw6Bv05dC+mYr+?=
+ =?us-ascii?Q?X0ZpFCr65z5X1MUIM7tCiBqBN3ihAyNd/ZMVqCWDeGqcfvd2lvgbD7CkCC5t?=
+ =?us-ascii?Q?qDM49/EuevQtX8IXpH4AdTeBZDuV5yE4aKbBX3jZLct2B4I22GChnM/deKHS?=
+ =?us-ascii?Q?UiJcsISO0jXZtJINkYVJxZ1M53uEb6qtBTr6P0alSGDcxTcizFaeimfKwFBR?=
+ =?us-ascii?Q?cQuGGCh9zSmrRfsFhN6ctlCxC82g0LtBat1OWm8UYtpWHFhMDPVG96wE+pHC?=
+ =?us-ascii?Q?PoPJmxq2oS2nEm6Npos=3D?=
+X-Forefront-Antispam-Report:
+	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:DS0PR10MB8223.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(1800799024)(366016)(7416014)(376014);DIR:OUT;SFP:1101;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0:
+	=?us-ascii?Q?5fiS3hEI71s1mZtg7XEvgdeYlW7y5BVQPk1UWGYhSM5V9XeX+3Dqkgwn5pxH?=
+ =?us-ascii?Q?UTmCZEBn5pLqEOdvb0ufe4JpF+viYTaP5w/5VeenB6yyhyavG3YyMs7b2REj?=
+ =?us-ascii?Q?FH4rt6mn+a+fqSOx5gtM+cAiL8Jb8sCivRABfVIgFA+cYbd1kdcca3yf/EaT?=
+ =?us-ascii?Q?yNN5bWrAdoVYnDc5C/mlrqmkO5MrHAJXm2EoZweOfmp+FDXSMxJglp2iFnOm?=
+ =?us-ascii?Q?wlAHD7YEypWMiMKdnk4q81VMbVnI8X1HQYIoAVhOgwK2w4vQOkEv56gVl4zb?=
+ =?us-ascii?Q?ilkFXyKGhMZvffKMg81vZlhPKxgpcUFom8w6EsdkQp5E6y3DXB6aKOpQmxt5?=
+ =?us-ascii?Q?t21CfwTZhl8tr6PzoASpG3ahQC/FlUARO2UqBL87KZHOKophUROEd6FFHyvc?=
+ =?us-ascii?Q?lKLMpRTGz+TUgM/e0dOcroni/hFvcAk9BD78Uixby9U2yzzDpwoWq77PseJl?=
+ =?us-ascii?Q?wRt8phf+x56oRNfRoI/cJoQ6Fo56F1NCKbb/HVbZ7t2t/I4q8QnO+n2Sgz8O?=
+ =?us-ascii?Q?KpiKLLzuirkhrmRqGL9HI5xDBjVFVAh3GWq0Vp/g8xvn0W3vae2Sc5MrbTZQ?=
+ =?us-ascii?Q?ijRoShOpTm96Hj2czGMk/3zvq6IB9AxNUZnR16aDnGbVaNA5KDYFZhbRzKDB?=
+ =?us-ascii?Q?w2E171nz6PpqXizzc791gIaDqv8QvF5NhnCMdyhPlchqeTkCAawRkcNQRSPX?=
+ =?us-ascii?Q?8rGSTWlEwD/YUMcEyYskFlmCSQImIKC7Q3YuizOWUbkYhQwMFx3I6V1L7Ps6?=
+ =?us-ascii?Q?NUYuVg6lZClU5dbwozMF4s7JgmRtlBTCqEv9hRYywim3TwzIVDrvdpQOb/E8?=
+ =?us-ascii?Q?ntL2lIY3DxyiG92hRjPf0R2IOyAZk0PQ92off0CjON5R0FoouLfGaCEdeBGd?=
+ =?us-ascii?Q?6yvntKH1d0WZ4qxZorMyoKPB5iLIXFw8C9NQth0otYvwryJJIB1aR+P4HcMX?=
+ =?us-ascii?Q?jAWYGHHIk8NXTvKtbdRbw4R6PqpCSMTPnysfEeIgAUkv2FQiOsTIByJpkufL?=
+ =?us-ascii?Q?o0FhPobPERKh+O6nYSZTe22qjFQDeRTVNynHIBpKNk4CMxCKETYhFEiFabpV?=
+ =?us-ascii?Q?vKOzXY0Xzbm0CU5LRY8qDtV24V6phdEJ5jTwPTU2wKrPUhUYwfXwT4rvrLDV?=
+ =?us-ascii?Q?y5++nL3ZgQavsSWU1bPEoGyC9Te7nKCqzyMqZke/trwwWqjmwsKKU4CWKpZK?=
+ =?us-ascii?Q?IL1CdzARJ/rVWACs5M9dtMi3coEbPYbH2KssoQMUcn1dkGtT8AS66OG9N/Y7?=
+ =?us-ascii?Q?8N0q0Zd5WNtSRaIwvP44uXp7ZsEF2qRaemtNNIUImwT0yw28Dv0KMjRelh0A?=
+ =?us-ascii?Q?cZG+fEZsXRgvmCr4cg62jfTl9JW20gl3neoEisE6ZzVGq+roBo81Y978xrfg?=
+ =?us-ascii?Q?TnnlpF6eZK7cszPOwYLejd8tKVDTWp1nr/r2MFopOnn1S6lxr6muBEyO0++b?=
+ =?us-ascii?Q?242QHcMUbRO1nAYp5+WjLos85bBpSXJswxQmEAZlDECBrWW+KQ9NbpOhngIl?=
+ =?us-ascii?Q?Ejf1oO8/6aV03DuGhcNgHiuuVFeMo1BIQ0+dXVOpfcQmpFANPKufXuxXsfz6?=
+ =?us-ascii?Q?j+b5eelrZ8THRSB6dhjxHhOgY2CKXu7n11cxFiG+ld5VB5Q9zdYpAYugQVUV?=
+ =?us-ascii?Q?tCpyUvWF95ClRO+BkAhv+mBIu0C1TCANXdqN+u/rM4W0ckYEiHtBkA1dIG44?=
+ =?us-ascii?Q?p05UQD9pWpfX/gwocYCUaBRpCLVJ0+k/TvSApu/yWEi1Ippag33RWfLsAitj?=
+ =?us-ascii?Q?chEaGlQISwCNdmX1dokZGc81CQQIa/k=3D?=
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0:
+	gRg3zfjEgoOb1pzNIRFIXMWmV8OXJnUZaMmG6lvdJCjgyhIxVtbIxtf1Zp3Al32t9c/Pk3CYjW4DEMLnq1LsAccIiqyqxP2gZ6doz0aBxDeZhVu8rQLTr1btGmRvwHxVSVxrI7rkF+3H17cMTaKqX32gDRwfd5UDza/50OPTp8OrJJyOrPS4rXLr12Rzi1lqrz2O2LpU0qwPXq33MPsIlTF0+CZoSxQPmDvtO69bAgtYbCTBn3jjgQvGgAzJ4wWMWbpabKZUV0wzce6MH57tV+RGjBPBcbBfdmYy5dNzGI+RC78sqLhIr56ChK6lkczO4+CYIUKbbzZ8f2Nu77FwrWUezwk+ONjhUHdbg6q0RN+OlJGImQcJ9dF1TS77B2uXZ4f2CIJZ0b1cBWyyCMpxv9UkiZyPwktQnZi3cCnTJiJD5XJfd3PVLiuADSvLnE3MZg+hOIYewhtaeIA4GgHWAEA/A9+qjW93cCY/9HkZkGfFlHOBU779y5Jt4Ix9semlDlFFsbwP+8cDu8mS4hWTEs1kNrQM/9OkO1RYWI1h5xVJc1aVNfW+Sbebpl0LZKJ9tdvrDo36lH4nA/8ZFB7IlZv2F/KGLwU8Rf3iJMIxwIk=
+X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: e5ef8c73-bce5-48e9-d95b-08de65ba8f5f
+X-MS-Exchange-CrossTenant-AuthSource: DS0PR10MB8223.namprd10.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 06 Feb 2026 20:01:47.8662
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: oE39J1tHGB6bCnlJ/MGiyJii+EVqj8rNF1mWtGn6pSRB1D/mGKZRsUd+AILfS1PyHJNo6440Vad2sXrf7k1j5soyBWRtgo8gMXOA8qz8SdI=
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH3PR10MB8215
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1121,Hydra:6.1.51,FMLib:17.12.100.49
+ definitions=2026-02-06_05,2026-02-05_03,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxlogscore=921 suspectscore=0
+ mlxscore=0 adultscore=0 phishscore=0 bulkscore=0 malwarescore=0
+ spamscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2601150000 definitions=main-2602060147
+X-Authority-Analysis: v=2.4 cv=Db0aa/tW c=1 sm=1 tr=0 ts=698648b4 cx=c_pps
+ a=XiAAW1AwiKB2Y8Wsi+sD2Q==:117 a=XiAAW1AwiKB2Y8Wsi+sD2Q==:17
+ a=6eWqkTHjU83fiwn7nKZWdM+Sl24=:19 a=z/mQ4Ysz8XfWz/Q5cLBRGdckG28=:19
+ a=lCpzRmAYbLLaTzLvsPZ7Mbvzbb8=:19 a=xqWC_Br6kY4A:10 a=kj9zAlcOel0A:10
+ a=HzLeVaNsDn8A:10 a=GoEa3M9JfhUA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=Mpw57Om8IfrbqaoTuvik:22 a=GgsMoib0sEa3-_RKJdDe:22 a=se1DkVxXpihIbOsVGb0A:9
+ a=CjuIK1q_8ugA:10
+X-Proofpoint-ORIG-GUID: db6m_is3Yv0tbcwjkkKt16lvjfSadZc6
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwMjA2MDE0OCBTYWx0ZWRfX3AAS7Oqt7MxT
+ iH0ONPvWZqHXXd4hieWMZH+5gm0UHlxSyQGndI4Vb9KZTZkwPSgJmEdASxIXYTMrEVShLhixhwg
+ pW4IAyyfo6bYi7ydIh1PCVuXnru10qq5lZHiFmo2Lu1Vct0d0mLWCCN0vTMh9O2y4LbXjP0zzwt
+ dxtb9mwbP0pgBmCVhPRePEnINuu/DcK9r/YrxMojiR31bIICsk9B5zDXKZCu13YEReG9cSmg856
+ aL59JIWRwQWHrdS3BfKXtWi09pBJJbiOycP4hqGvgsZ8IXR8XSh5jVC04pj77H6vvqxL4/GUkEc
+ AT19EmxlEwCJBtFnqHhh0GtoKKCrCoMxhacOxl4HEOv0bDOvrcpAVx/+vcTF9Qk9/WDT14hnsyN
+ sfzfRppVGQHbDxUX55yyg+uLy+vfrwz8LMgobEYsonjsmtRK4JQbqVlAJe8wqlgf/3Bdfq2DOtE
+ S+mQt3DUHzFPM3goSsA==
+X-Proofpoint-GUID: db6m_is3Yv0tbcwjkkKt16lvjfSadZc6
 
-On 06. 02. 2026. 02:42, Theodore Tso wrote:
-> On Thu, Feb 05, 2026 at 01:23:18PM +0100, Mario Lohajner wrote:
->> Let me briefly restate the intent, focusing on the fundamentals.
->>
->> Rotalloc is not wear leveling (and is intentionally not named as such).
->> It is a allocation policy whose goal is to reduce allocation hotspots by
->> enforcing mount-wide sequential allocation. Wear leveling, if any,
->> remains a device/firmware concern and is explicitly out of scope.
->> While WL motivated part of this work,
-> 
-> Yes, but *why* are you trying to reduce allocation hotspots?  What
-> problem are you trying to solve?  And actually, you are making
-> allocation hotspots *worse* since with global cursor, by definition
-> there is a single, super-hotspot.  This will cause scalability issues
-> on a system with multiple CPU's trying to write in parallel.
-Greetings Ted,
+On Fri, Feb 06, 2026 at 11:31:53AM -0800, Andrew Morton wrote:
+> On Fri, 6 Feb 2026 17:46:36 +0000 Pedro Falcato <pfalcato@suse.de> wrote:
+>
+> > > -#define VM_REMAP_FLAGS (VM_IO | VM_PFNMAP | VM_DONTEXPAND | VM_DONTDUMP)
+> > > +#define VMA_REMAP_FLAGS mk_vma_flags(VMA_IO_BIT, VMA_PFNMAP_BIT,	\
+> > > +				     VMA_DONTEXPAND_BIT, VMA_DONTDUMP_BIT)
+> >
+> > as a sidenote, these flags are no longer constant expressions and thus
+> >
+> > static vma_flags_t flags = VMA_REMAP_FLAGS;
 
-First off, apologies for the delayed reply — your emails somehow ended 
-up in my spam! I hope this doesn’t happen again.
-Also, sorry for the lengthy responses; I really care to make my points 
-clear.
+I mean this would be a code smell anyway :) but point taken.
 
-I’m not proposing that ext4 should implement or control wear leveling.
-WL clearly does (or does not) exist below the FS layer and is opaque to 
-us (we have no way of knowing).
-What is observable in practice, however, is persistent allocation 
-locality near the beginning of the LBA space under real workloads, and a 
-corresponding concentration of wear in that area, interestingly it seems 
-to be vendor-agnostic. = The force within is very strong :-)
+> >
+> > can't compile.
+>
+> Yup, that isn't nice.  An all-caps thing with no () is a compile-time
+> constant.
 
-The elephant:
-My concern is a potential policy interaction: filesystem locality
-policies tend to concentrate hot metadata and early allocations. During
-deallocation, we naturally discard/trim those blocks ASAP to make them
-ready for write, thus optimizing for speed, while at the same time 
-signaling them as free. Meanwhile, an underlying WL policy (if present) 
-tries to consume free blocks opportunistically.
-If these two interact poorly, the result can be a sustained bias toward
-low-LBA hot regions (as observable in practice).
-The elephant is in the room and is called “wear” / hotspots at the LBA 
-start.
+There is precedence for this, e.g. TASK_SIZE_MAX and other arch defines like
+that:
 
+ error: initializer element is not a compile-time constant
+ 3309 | static unsigned long task_max = TASK_SIZE_MAX;
+      |                                 ^~~~~~~~~~~~~
 
-> 
->> the main added value of this patch is allocator separation.
->> The policy indirection (aka vectored allocator) allows allocation
->> strategies that are orthogonal to the regular allocator to operate
->> outside the hot path, preserving existing heuristics and improving
->> maintainability.
-> 
-> Allocator separation is not necessarily that an unalloyed good thing.
-> By having duplicated code, it means that if we need to make a change
-> in infrastructure code, we might now need to make it in multiple code
-> paths.  It is also one more code path that we have to test and
-> maintain.  So there is a real cost from the perspctive of the upstream
-> maintenance perspective.
+And this will almost certainly (and certainly in everything I tested) become a
+compile-time constant via the optimiser so to all intents and purposes it _is_
+essentially compile-time.
 
-My goal was to keep the regular allocator intact and trivially clean.
-Baokun noticed this well — I’m using all existing heuristics; the only
-tweak I do is to ‘fix the goal’ (i.e., set where to start), which then
-sequentially advances toward the region most likely to contain empty,
-unused space, at which point allocations become nearly instantaneous.
+But the point of doing it this way is to maintain, as much as possible,
+one-to-one translation between the previous approach and the new with as little
+noise/friction as possible.
 
-Being orthogonal in principle, these two allocators/policies are meant 
-to live independently of each other.
+Making this a function makes things really horrible honestly.
 
-Alternatively, we could drop the separation entirely and add a few
-conditional branches to the regular allocator to the same effect,
-but this introduces overhead, potential branch mispredictions, and all 
-the associated shenanigans (minor but not insignifficant).
-Separation avoids that, at the minimal cost of maintaining 20-ish extra
-lines of code.
-(memory we have; time is scarce)
+Because vma_remap_flags() suddenly because a vague thing - I'd assume this was a
+function doing something. So now do we call it get_vma_remap_flags()? Suddenly
+something nice-ish like:
 
-> 
-> Also, because having a single global allocation point (your "cursor")
-> is going to absolutely *trash* performance, especially for high speed
-> NVMe devices connected to high count CPU's, it's not clear to me why
-> performance is necessary for rotalloc.
-> 
->> The rotating allocator itself is a working prototype.
->> It was written with minimal diff and clarity in mind to make the policy
->> reviewable. Refinements and simplifications are expected and welcome.
-> 
-> OK, so this sounds like it's not ready for prime time....
+	if (vma_flags_test(flags, VMA_REMAP_FLAGS)) {
+		...
+	}
 
-I don’t consider it “not ready for prime time.” It is a rather simple 
-refinement of the existing allocator, producing clean, contiguous 
-layouts with sequential allocation across the LBA space without increase 
-in complexity and with equal or lower latency.
-Further refinements are anticipated and welcome — not because the 
-current approach is flawed, but because this seems like an area where we 
-can reasonably ask whether it can be even better.
+Become:
 
-> 
->> Regarding discard/trim: while discard prepares blocks for reuse and
->> signals that a block is free, it does not implement wear leveling by
->> itself. Rotalloc operates at a higher layer; by promoting sequentiality,
->> it reduces block/group allocation hotspots regardless of underlying
->> device behavior.
->> Since it is not in line with the current allocator goals, it is
->> implemented as an optional policy.
-> 
-> Again, what is the high level goal of rotalloc?  What specific
-> hardware and workload are you trying to optimize for?  If you want to
-> impose a maintaince overhead on upstream, you need to justify why the
-> mainteance overhead is worth it.  And so that means you need to be a
-> bit more explicit about what specific real-world solution you are
-> trying to solve....
-> 
-> 						- Ted
+	if (vma_flags_test(flags, get_vma_remap_flags())) {
+		...
+	}
 
-Again, we’re not focusing solely on wear leveling here, but since we
-can’t influence the WL implementation itself, the only lever we have is
-our own allocation policy.
-The question I’m trying to sanity-check is whether we can avoid
-reinforcing this pattern, and instead aim for an allocation strategy
-that helps minimize the issue—or even avoid it entirely if possible.
+And now it's SUPER ambiguous as to what you're doing there. I'd assume right
+away that get_vma_remap_flags() was going off and doing something or referencing
+a static variable or something.
 
-Even though this pattern is clear in practice I’m not claiming this
-applies universally, only that it appears often enough to be worth
-discussing at the policy level. For that reason, it seems reasonable to
-treat this as an optional policy choice, disabled by default.
+Given the compile will treat the former _exactly_ as if it were a compile-time
+constant it's just adding unnecessary ambiguity.
 
-Sincerely,
-Mario
+So is it something we can live with?
+
+If it looks like a duck, walks like a duck and quacks like a duck, but isn't
+there when the pond is first dug out, can we still call it a duck? ;)
+
+>
+> It looks like we can make this a nice inlined (commented!) lower-cased
+> C function as a little low-priority cleanup.
+>
+> > Rest LGTM though.
+> >
+> > Acked-by: Pedro Falcato <pfalcato@suse.de>
+>
+> Great, thanks.
+
+Cheers, Lorenzo
