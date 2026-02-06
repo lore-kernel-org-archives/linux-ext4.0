@@ -1,187 +1,141 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C004642669B
-	for <linux-ext4@vger.kernel.org>; Fri,  6 Feb 2026 17:49:25 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C6D532D949F;
+	Fri,  6 Feb 2026 19:29:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1770400170; cv=none; b=VBS3dyhjuXaD1h47Yl/XH8Pm2k+rSoEXICDTbfW4We0pJOp4eBOANK/YVZPzRos5Xsne6dye8IN9/wNTSVB+eTiMgd7DRGAWbZ/BK5HqeMHkZ3KPixJvIO4y6KmPftUQmL6dNtilsIzj60wLK/emlgnMk23EPjfkdJJEZCGayIM=
+	t=1770406152; cv=none; b=U15FIvxlpwr4+Dbcd3kogDahaOydXuj7f+rOQoR2USA+ndiK4mCeMJPPo1ogEO+6pEyEcxqJQhvGqvoaMt1D/wVMzDsD1g6w/MZIk0Yon6EC0G79pSgKMvYUCiQNoLbv6FtBrrFmlalwAViSJxMf3Td6MM+yp7TtyidMV0nF8z0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1770400170; c=relaxed/simple;
-	bh=1+ayMKxLL2hm2ej7JQlORkWTURI0AEOoeE7nYT3n0/Q=;
+	s=arc-20240116; t=1770406152; c=relaxed/simple;
+	bh=H19CTmslTs0mcQ7KjWaj+mu13duhxLwq9lwwVm2UFzI=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=n45RJPQ0CZ9/UTwa2PWxpAPivUBcSNZjt8rZ2cHolroS9n6BDXtNspaoUx59slM7l64zSQxw73SCWDVFrzBDg2YYgGlz+SjKoPY0xkmTjBCpvxhE6xbm29SUyYak/EyTRMICWgQyaqKycLW4AwhWtvPgXD2USXdA2WSdZ8czfJU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=l/6Zba67; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=VW1vXPJJ; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=l/6Zba67; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=VW1vXPJJ; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
+	 Content-Type:Content-Disposition:In-Reply-To; b=lKNz7RXTnkpzHILwoCGVUWMswqWKERHiapYiVY7wQkO24AVcHWGZjeD3ycUEaTA64Qr2tHuER+B7foy4P5wNlQVwvx5DbK/B9XN0hJpmfp/LJz18z4WB6BttrBqeeYJRnND4fPsSEFDKerUZdyeW/ny2SNse8c/zAVAZpQG/6l0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CTTcotFc; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="l/6Zba67";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="VW1vXPJJ";
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="l/6Zba67";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="VW1vXPJJ"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 519585BCC5;
-	Fri,  6 Feb 2026 17:49:23 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1770400163; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=nnMxCJOvkMnPQbgpeWt8SUXPOQ8u/RYZLzkpyQtNU0s=;
-	b=l/6Zba67Dnl6MO5r45aEnmU/0Sy5VA+9L3FbrHCuAfzmUMwsNylgYfhSVWQB/uDgmn3zWw
-	pXO17HtXCkzNZFL/1kN7VPu/BsabSIfWDKpXYEAVOliWZ3TXRbUJH6HockJNMFaOpcv/ao
-	8HD8U2hWJypGgvy0Os4tE9utodzVrBk=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1770400163;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=nnMxCJOvkMnPQbgpeWt8SUXPOQ8u/RYZLzkpyQtNU0s=;
-	b=VW1vXPJJm/PyJhpbRk3VzSHGpdvIxAaRA1qWZ/9gSIg4SYPT/R4A+CUqL6ZzaMX6v5ujwO
-	WFpMfpbKDvFP1tAg==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.de header.s=susede2_rsa header.b="l/6Zba67";
-	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=VW1vXPJJ
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1770400163; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=nnMxCJOvkMnPQbgpeWt8SUXPOQ8u/RYZLzkpyQtNU0s=;
-	b=l/6Zba67Dnl6MO5r45aEnmU/0Sy5VA+9L3FbrHCuAfzmUMwsNylgYfhSVWQB/uDgmn3zWw
-	pXO17HtXCkzNZFL/1kN7VPu/BsabSIfWDKpXYEAVOliWZ3TXRbUJH6HockJNMFaOpcv/ao
-	8HD8U2hWJypGgvy0Os4tE9utodzVrBk=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1770400163;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=nnMxCJOvkMnPQbgpeWt8SUXPOQ8u/RYZLzkpyQtNU0s=;
-	b=VW1vXPJJm/PyJhpbRk3VzSHGpdvIxAaRA1qWZ/9gSIg4SYPT/R4A+CUqL6ZzaMX6v5ujwO
-	WFpMfpbKDvFP1tAg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 010C93EA63;
-	Fri,  6 Feb 2026 17:49:17 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id q7b0N50phmn3XgAAD6G6ig
-	(envelope-from <pfalcato@suse.de>); Fri, 06 Feb 2026 17:49:17 +0000
-Date: Fri, 6 Feb 2026 17:49:12 +0000
-From: Pedro Falcato <pfalcato@suse.de>
-To: Lorenzo Stoakes <lorenzo.stoakes@oracle.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>, 
-	Jarkko Sakkinen <jarkko@kernel.org>, Dave Hansen <dave.hansen@linux.intel.com>, 
-	Thomas Gleixner <tglx@kernel.org>, Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>, 
-	x86@kernel.org, "H . Peter Anvin" <hpa@zytor.com>, Arnd Bergmann <arnd@arndb.de>, 
-	Greg Kroah-Hartman <gregkh@linuxfoundation.org>, Dan Williams <dan.j.williams@intel.com>, 
-	Vishal Verma <vishal.l.verma@intel.com>, Dave Jiang <dave.jiang@intel.com>, 
-	Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, Maxime Ripard <mripard@kernel.org>, 
-	Thomas Zimmermann <tzimmermann@suse.de>, David Airlie <airlied@gmail.com>, 
-	Simona Vetter <simona@ffwll.ch>, Jani Nikula <jani.nikula@linux.intel.com>, 
-	Joonas Lahtinen <joonas.lahtinen@linux.intel.com>, Rodrigo Vivi <rodrigo.vivi@intel.com>, 
-	Tvrtko Ursulin <tursulin@ursulin.net>, Christian Koenig <christian.koenig@amd.com>, 
-	Huang Rui <ray.huang@amd.com>, Matthew Auld <matthew.auld@intel.com>, 
-	Matthew Brost <matthew.brost@intel.com>, Alexander Viro <viro@zeniv.linux.org.uk>, 
-	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, Benjamin LaHaise <bcrl@kvack.org>, 
-	Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>, Yue Hu <zbestahu@gmail.com>, 
-	Jeffle Xu <jefflexu@linux.alibaba.com>, Sandeep Dhavale <dhavale@google.com>, 
-	Hongbo Li <lihongbo22@huawei.com>, Chunhai Guo <guochunhai@vivo.com>, Theodore Ts'o <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Muchun Song <muchun.song@linux.dev>, 
-	Oscar Salvador <osalvador@suse.de>, David Hildenbrand <david@kernel.org>, 
-	Konstantin Komarov <almaz.alexandrovich@paragon-software.com>, Mike Marshall <hubcap@omnibond.com>, 
-	Martin Brandenburg <martin@omnibond.com>, Tony Luck <tony.luck@intel.com>, 
-	Reinette Chatre <reinette.chatre@intel.com>, Dave Martin <Dave.Martin@arm.com>, 
-	James Morse <james.morse@arm.com>, Babu Moger <babu.moger@amd.com>, 
-	Carlos Maiolino <cem@kernel.org>, Damien Le Moal <dlemoal@kernel.org>, 
-	Naohiro Aota <naohiro.aota@wdc.com>, Johannes Thumshirn <jth@kernel.org>, 
-	Matthew Wilcox <willy@infradead.org>, "Liam R . Howlett" <Liam.Howlett@oracle.com>, 
-	Vlastimil Babka <vbabka@suse.cz>, Mike Rapoport <rppt@kernel.org>, 
-	Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, Hugh Dickins <hughd@google.com>, 
-	Baolin Wang <baolin.wang@linux.alibaba.com>, Zi Yan <ziy@nvidia.com>, Nico Pache <npache@redhat.com>, 
-	Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>, Barry Song <baohua@kernel.org>, 
-	Lance Yang <lance.yang@linux.dev>, Jann Horn <jannh@google.com>, 
-	David Howells <dhowells@redhat.com>, Paul Moore <paul@paul-moore.com>, 
-	James Morris <jmorris@namei.org>, "Serge E . Hallyn" <serge@hallyn.com>, 
-	Yury Norov <yury.norov@gmail.com>, Rasmus Villemoes <linux@rasmusvillemoes.dk>, 
-	linux-sgx@vger.kernel.org, linux-kernel@vger.kernel.org, nvdimm@lists.linux.dev, 
-	linux-cxl@vger.kernel.org, dri-devel@lists.freedesktop.org, intel-gfx@lists.freedesktop.org, 
-	linux-fsdevel@vger.kernel.org, linux-aio@kvack.org, linux-erofs@lists.ozlabs.org, 
-	linux-ext4@vger.kernel.org, linux-mm@kvack.org, ntfs3@lists.linux.dev, 
-	devel@lists.orangefs.org, linux-xfs@vger.kernel.org, keyrings@vger.kernel.org, 
-	linux-security-module@vger.kernel.org, Jason Gunthorpe <jgg@nvidia.com>
-Subject: Re: [PATCH v2 10/13] mm: make vm_area_desc utilise vma_flags_t only
-Message-ID: <224p7l6o6vsve6uv654wbrhmlo6lxbvzh6hm33fsoujhftuunf@zhf66q54ldlc>
-References: <cover.1769097829.git.lorenzo.stoakes@oracle.com>
- <fd2a2938b246b4505321954062b1caba7acfc77a.1769097829.git.lorenzo.stoakes@oracle.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CTTcotFc"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4A1BFC116C6;
+	Fri,  6 Feb 2026 19:29:12 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1770406152;
+	bh=H19CTmslTs0mcQ7KjWaj+mu13duhxLwq9lwwVm2UFzI=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=CTTcotFc3gc6fmpzfmk7wakAZ1AsWntoMJIyKzjixY73Fwi/P8uUfjpRwICRn8ocx
+	 NhCuApAq3PMLhEED38jc0PvFJ25mkBNzXmfIV812ioxFPFerTh21KMUuBxD6Z0bLu1
+	 X2q3n8ZQ1AQ3slKJL9vUN+XBzIQEQ8/xzjCaQ3wp/vtdMCsnbkbDL/cxwRb+6n5KNM
+	 b6T/ar4qMfYDk1tMFSJcrPARgPGrR/ZTyaL1x2UHbMnKLX33rtw339NvIBxOsjEvIP
+	 Mj6xeJy2cfZV+zT5yyICulr7XHNNPTSJDZhRGECDzAr92DCViFoa0NYVgrriXp5ZDs
+	 9H7A2WmFARSdQ==
+Date: Fri, 6 Feb 2026 11:29:11 -0800
+From: Kees Cook <kees@kernel.org>
+To: Andy Shevchenko <andriy.shevchenko@intel.com>
+Cc: =?utf-8?B?5p2O6b6Z5YW0?= <coregee2000@gmail.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, syzkaller@googlegroups.com,
+	andy@kernel.org, akpm@linux-foundation.org,
+	linux-hardening@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+Subject: Re: [Kernel Bug] WARNING in ext4_fill_super
+Message-ID: <202602061032.63DD1CA3AE@keescook>
+References: <CAHPqNmzBb2LruMA6jymoHXQRsoiAKMFZ1wVEz8JcYKg4U6TBbw@mail.gmail.com>
+ <aYX4n42gmy75aw4Y@smile.fi.intel.com>
+ <aYYD3rxyIfdH2R-d@smile.fi.intel.com>
+ <aYYE4iLTXZw5t0w_@smile.fi.intel.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <fd2a2938b246b4505321954062b1caba7acfc77a.1769097829.git.lorenzo.stoakes@oracle.com>
-X-Spamd-Result: default: False [-2.51 / 50.00];
-	BAYES_HAM(-3.00)[99.99%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	FROM_HAS_DN(0.00)[];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	TO_DN_SOME(0.00)[];
-	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	FREEMAIL_CC(0.00)[linux-foundation.org,kernel.org,linux.intel.com,redhat.com,alien8.de,zytor.com,arndb.de,linuxfoundation.org,intel.com,suse.de,gmail.com,ffwll.ch,ursulin.net,amd.com,zeniv.linux.org.uk,suse.cz,kvack.org,linux.alibaba.com,google.com,huawei.com,vivo.com,mit.edu,dilger.ca,linux.dev,paragon-software.com,omnibond.com,arm.com,wdc.com,infradead.org,oracle.com,suse.com,nvidia.com,paul-moore.com,namei.org,hallyn.com,rasmusvillemoes.dk,vger.kernel.org,lists.linux.dev,lists.freedesktop.org,lists.ozlabs.org,lists.orangefs.org];
-	RCVD_TLS_ALL(0.00)[];
-	DKIM_TRACE(0.00)[suse.de:+];
-	TO_MATCH_ENVRCPT_SOME(0.00)[];
-	RCPT_COUNT_GT_50(0.00)[93];
-	RCVD_COUNT_TWO(0.00)[2];
-	FROM_EQ_ENVFROM(0.00)[];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	R_RATELIMIT(0.00)[to_ip_from(RLwxok9gz6e6xb7dgp4tusfohw)];
-	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:dkim,suse.de:email,oracle.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns]
-X-Spam-Flag: NO
-X-Spam-Score: -2.51
-X-Rspamd-Queue-Id: 519585BCC5
-X-Rspamd-Action: no action
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Spam-Level: 
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <aYYE4iLTXZw5t0w_@smile.fi.intel.com>
 
-On Thu, Jan 22, 2026 at 04:06:19PM +0000, Lorenzo Stoakes wrote:
-> Now we have eliminated all uses of vm_area_desc->vm_flags, eliminate this
-> field, and have mmap_prepare users utilise the vma_flags_t
-> vm_area_desc->vma_flags field only.
-> 
-> As part of this change we alter is_shared_maywrite() to accept a
-> vma_flags_t parameter, and introduce is_shared_maywrite_vm_flags() for use
-> with legacy vm_flags_t flags.
-> 
-> We also update struct mmap_state to add a union between vma_flags and
-> vm_flags temporarily until the mmap logic is also converted to using
-> vma_flags_t.
-> 
-> Also update the VMA userland tests to reflect this change.
-> 
-> Signed-off-by: Lorenzo Stoakes <lorenzo.stoakes@oracle.com>
+On Fri, Feb 06, 2026 at 05:12:34PM +0200, Andy Shevchenko wrote:
+> On Fri, Feb 06, 2026 at 05:08:19PM +0200, Andy Shevchenko wrote:
+> > On Fri, Feb 06, 2026 at 04:20:15PM +0200, Andy Shevchenko wrote:
+> > > On Mon, Feb 02, 2026 at 12:19:45PM +0800, 李龙兴 wrote:
+> > > > Dear Linux kernel developers and maintainers,
+> > > > 
+> > > > We would like to report a new kernel bug found by our tool. The issue
+> > > > is a WARNING in ext4_fill_super. Details are as follows.
+> > > 
+> > > First of all, the warning appears in parse_apply_sb_mount_options().
+> [...]
+> Actually, the documentation says that strscpy*() must be used against C-strings.
+> This can explain the bug, id est the given string in mount options is not
+> NUL-terminated. That's where bug may come from. So, the Q is why is mount options
+> not NUL-terminated when it comes to ext4_fill_super()?
 
-Reviewed-by: Pedro Falcato <pfalcato@suse.de>
- 
+parse_apply_sb_mount_options(...):
+	...
+        char s_mount_opts[64];
+	...
+        if (strscpy_pad(s_mount_opts, sbi->s_es->s_mount_opts) < 0)
+                return -E2BIG;
+
+Is sbi->s_es->s_mount_opts expected to be a C string? If not, this
+strscpy_pad() should likely be memtostr_pad(). (s_mount_opts is expected
+to be a C string based on its use with later C string API calls.)
+
+It seems like s_mount_opts is expected to be a C string, I can see it
+being used that way in lots of other places, e.g.:
+
+fs/ext4/ioctl.c:        strscpy_pad(ret.mount_opts, es->s_mount_opts);
+fs/ext4/ioctl.c:        strscpy_pad(es->s_mount_opts, params->mount_opts);
+fs/ext4/super.c:        if (!sbi->s_es->s_mount_opts[0])
+fs/ext4/super.c:        if (strscpy_pad(s_mount_opts, sbi->s_es->s_mount_opts) < 0)
+
+I can't tell where es->s_mount_opts comes from originally?
+
+This one:
+
+fs/ext4/ioctl.c:        strscpy_pad(es->s_mount_opts, params->mount_opts);
+
+comes through ext4_ioctl_set_tune_sb() which has:
+
+        if (strnlen(params.mount_opts, sizeof(params.mount_opts)) ==
+            sizeof(params.mount_opts))
+                return -E2BIG;
+
+So it's already checked for, and suggests it must be NUL-terminated.
+
+> > > > loop4: detected capacity change from 0 to 514
+> > > > ------------[ cut here ]------------
+> > > > strnlen: detected buffer overflow: 65 byte read of buffer size 64
+> > > > WARNING: CPU: 0 PID: 12320 at lib/string_helpers.c:1035
+> > > > __fortify_report+0x9c/0xd0 lib/string_helpers.c:1035
+> > > > [...]
+> > > > Call Trace:
+> > > >  <TASK>
+> > > >  __fortify_panic+0x23/0x30 lib/string_helpers.c:1042
+> > > >  strnlen include/linux/fortify-string.h:235 [inline]
+> > > >  sized_strscpy include/linux/fortify-string.h:309 [inline]
+> > > >  parse_apply_sb_mount_options fs/ext4/super.c:2486 [inline]
+> > > >  __ext4_fill_super fs/ext4/super.c:5306 [inline]
+> > > >  ext4_fill_super+0x3972/0xaf70 fs/ext4/super.c:5736
+> > > >  get_tree_bdev_flags+0x38c/0x620 fs/super.c:1698
+> > > >  vfs_get_tree+0x8e/0x340 fs/super.c:1758
+> > > >  fc_mount fs/namespace.c:1199 [inline]
+> > > >  do_new_mount_fc fs/namespace.c:3642 [inline]
+
+So, something via do_new_mount_fc? Probably:
+
+static int ext4_fill_super(struct super_block *sb, struct fs_context *fc)
+
+which calls __ext4_fill_super(), and eventually
+parse_apply_sb_mount_options(). Which depends on:
+
+        struct ext4_fs_context *ctx = fc->fs_private;
+
+But I can't figure out where that comes from. Seems like fs_parse(), but
+I don't see where mount option strings would come through...
+
+Anyone more familiar with this know?
+
+-Kees
 
 -- 
-Pedro
+Kees Cook
