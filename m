@@ -1,39 +1,40 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A2EA7330B22;
-	Mon, 23 Feb 2026 23:03:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3FA8337D11D;
+	Mon, 23 Feb 2026 23:04:15 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1771887839; cv=none; b=aFU8O2WYXbi8lvvlr+mv/AVjbd9uAXq2uVmHSTZtN5PnG2K9j1DZ4aRNoDiHODAihulrIYorzwKbB6zTT84I7jDPmvDKgD4UcUPGGp5hzOMij+byNq5/h2y+Ej55DMzt5DHFn9Ilw65XgzLOAO4FKKB53I4eZjQlEv6ZXPh+reU=
+	t=1771887855; cv=none; b=QdcAXz0wlxLFfP+Zl3WwWa1gFVq4Z9RQ5r5ZxxqAZy5LWUC1KMTu7OZJUMbI4j954lHQdnDYAHjbA3ezAsoARx9w+Qp53b0YQ2G4P0mJbgQRqLF8unCRaR91jlzlT4oaP8JyJSCKXbdh0KV3UBzRkb49sIuFe4wxKutEkBupqCs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1771887839; c=relaxed/simple;
-	bh=ZM/OlRDmd00KCo3Het/kb7CP3Z0mwSRFYcG7IK3QxE4=;
+	s=arc-20240116; t=1771887855; c=relaxed/simple;
+	bh=RK2wQUhVjXMYMKbuFaa168T85P+VefLVbONdf2pvFz4=;
 	h=Date:Subject:From:To:Cc:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=V4TShXIv6+XeSeS3ozf385OdXqbxixyckEJRaBRXAL/yzDJtfcBQMHVbWSK93SyCUQCKhsUTNF3szpNLIg53/KrPMBpDxzzlDmT4Cbd9bIgbKSb+ef+M3IuEWgbXfwEQzz2w4oA+LqVZQlBamJqQk+NvWDs4UZow8mtyH2vzvUg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UpI772UX; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version:Content-Type; b=gtdIoXZGspe6s7jtBTY5Ei9UK6BEq6Idcco3IRMUMx9LAsmwYMBGvOdXAQEk0xgcA/AqrbWTq/qyGHkXRKFV8PkrjRD0OhwTuoeMh0nHsH6zPlU+L9hAuTyaSlVBZuuewnE5bV4bhQRlbreOyZ/OHk5u3j6cF5KHtWJOK2UsGt0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=XnOOyCc8; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UpI772UX"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3F4FDC116C6;
-	Mon, 23 Feb 2026 23:03:59 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="XnOOyCc8"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DCE21C116C6;
+	Mon, 23 Feb 2026 23:04:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1771887839;
-	bh=ZM/OlRDmd00KCo3Het/kb7CP3Z0mwSRFYcG7IK3QxE4=;
+	s=k20201202; t=1771887854;
+	bh=RK2wQUhVjXMYMKbuFaa168T85P+VefLVbONdf2pvFz4=;
 	h=Date:Subject:From:To:Cc:In-Reply-To:References:From;
-	b=UpI772UXsSKKvpolDWdys7Kx6XkRmapLuIKrU4pq5qdA2tIwYBesUPv14KNH1hGXE
-	 80Yb4C29PutPwO/GKuKCUWGkHMCKdpKPtfnJ8CFbQlNRFxP6YQcsub4omLRofqnX4C
-	 q+Na9o02983+HJoNsHxhN0iTJWcDd8ZoB/L9xqscmq5UHyX7hQDeMrlpxZqmPd3XIn
-	 isGmBJH8TaTOqcCttKDkaipn/yXKPDSrF4pqAZ2wS7/QjaOxh2/nlu+VCx02qQSgRH
-	 8MPzyS92ZpiAONATMDciK/xOHSW+rFw8WLYPgeZ9gazQ1zA5v0jQC8HVwu7/WYM69A
-	 MPFUgASPA0zig==
-Date: Mon, 23 Feb 2026 15:03:58 -0800
-Subject: [PATCHSET v7 5/6] libfuse: run fuse servers as a contained service
+	b=XnOOyCc8/Kt59oBMIbbSKFWI7tgApFEC/3vO1AIayuL0pTbJQygjdRNw+4doViTYJ
+	 SwqjIhwCib3Ilcxc7KJ/wo23VywSndwyLRLRGQ2+o4sZS9MGpcOnWuaCKanKJzuTmj
+	 ZQlAwx1YIN3NJFLJ4g56WU3tSpxmB1Q1MI3fUtVeViicx6K5YIw0XdHRzB1jKK27ED
+	 kAZndD7zLngpasg3QGxBHFwxTf7BaXbudLs0i77qXoMmHCcwsmrYbL01OojEQtdfia
+	 yF/J/4yKlunRTdxw/TmtZ22pmZpumP5a0FogQvdmwLPW0X+muypF71WRvS18m50MV/
+	 T/jSF/rEPMAfg==
+Date: Mon, 23 Feb 2026 15:04:14 -0800
+Subject: [PATCHSET RFC 6/6] fuse: allow fuse servers to upload iomap BPF
+ programs
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: djwong@kernel.org, bschubert@ddn.com
 Cc: bernd@bsbernd.com, miklos@szeredi.hu, neal@gompa.dev,
- linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-ext4@vger.kernel.org, john@groves.net, linux-fsdevel@vger.kernel.org,
  bpf@vger.kernel.org, joannelkoong@gmail.com
-Message-ID: <177188741298.3942122.15899633653835028664.stgit@frogsfrogsfrogs>
+Message-ID: <177188741597.3942368.18114094782378370092.stgit@frogsfrogsfrogs>
 In-Reply-To: <20260223224617.GA2390314@frogsfrogsfrogs>
 References: <20260223224617.GA2390314@frogsfrogsfrogs>
 Precedence: bulk
@@ -47,14 +48,31 @@ Content-Transfer-Encoding: 7bit
 
 Hi all,
 
-This patchset defines the necessary communication protocols and library
-code so that users can mount fuse servers that run in unprivileged
-systemd service containers.  That in turn allows unprivileged untrusted
-mounts, because the worst that can happen is that a malicious image
-crashes the fuse server and the mount dies, instead of corrupting the
-kernel.  As part of the delegation, add a new ioctl allowing any process
-with an open fusedev fd to ask for permission for anyone with that
-fusedev fd to use iomap.
+There are certain fuse servers that might benefit from the ability to
+upload a BPF program into the kernel to respond to ->iomap_begin
+requests instead of upcalling the fuse server itself.
+
+For example, consider a fuse server that abstracts a large amount of
+storage for use as intermediate storage by programs.  If the storage is
+striped across hardware devices (e.g. RAID0 or interleaved memory
+controllers) then the iomapping pattern will be completely regular but
+the mappings themselves might be very small.
+
+Performance for large IOs will suck if it is necessary to upcall the
+fuse server every time we cross a mapping boundary.  The fuse server can
+try to mitigate that hit by upserting mappings ahead of time, but
+there's a better solution for this usecase: BPF programs.
+
+In this case, the fuse server can compile a BPF program that will
+compute the mapping data for a given request and upload the program.
+This avoids the overhead of cache lookups and server upcalls.  Note that
+the BPF verifier still imposes instruction count and complexity limits
+on the uploaded programs.
+
+Note that I embraced and extended some code from Joanne, but at this
+point I've modified it so heavily that it's not really the original
+anymore.  But she still gets credit for coming up with the idea and
+engaging me in flinging prototypes around.
 
 If you're going to start using this code, I strongly recommend pulling
 from my git trees, which are linked below.
@@ -65,44 +83,15 @@ Comments and questions are, as always, welcome.
 --D
 
 kernel git tree:
-https://git.kernel.org/cgit/linux/kernel/git/djwong/xfs-linux.git/log/?h=fuse-service-container
+https://git.kernel.org/cgit/linux/kernel/git/djwong/xfs-linux.git/log/?h=fuse-iomap-bpf
 ---
 Commits in this patchset:
- * libfuse: add systemd/inetd socket service mounting helper
- * libfuse: integrate fuse services into mount.fuse3
- * libfuse: delegate iomap privilege from mount.service to fuse services
- * libfuse: enable setting iomap block device block size
- * fuservicemount: create loop devices for regular files
+ * libfuse: allow fuse servers to upload bpf code for iomap functions
+ * libfuse: add kfuncs for iomap bpf programs to manage the cache
+ * libfuse: make fuse_inode opaque to iomap bpf programs
 ---
- include/fuse_kernel.h       |    8 
- include/fuse_lowlevel.h     |   22 +
- include/fuse_service.h      |  170 +++++++
- include/fuse_service_priv.h |  127 +++++
- lib/fuse_i.h                |    5 
- util/mount_service.h        |   41 ++
- doc/fuservicemount3.8       |   32 +
- doc/meson.build             |    3 
- include/meson.build         |    4 
- lib/fuse_lowlevel.c         |   16 +
- lib/fuse_service.c          |  848 +++++++++++++++++++++++++++++++++
- lib/fuse_service_stub.c     |   91 ++++
- lib/fuse_versionscript      |   15 +
- lib/helper.c                |   53 ++
- lib/meson.build             |   14 +
- lib/mount.c                 |   57 ++
- meson.build                 |   36 +
- meson_options.txt           |    6 
- util/fuservicemount.c       |   66 +++
- util/meson.build            |   13 -
- util/mount.fuse.c           |   58 +-
- util/mount_service.c        | 1100 +++++++++++++++++++++++++++++++++++++++++++
- 22 files changed, 2749 insertions(+), 36 deletions(-)
- create mode 100644 include/fuse_service.h
- create mode 100644 include/fuse_service_priv.h
- create mode 100644 util/mount_service.h
- create mode 100644 doc/fuservicemount3.8
- create mode 100644 lib/fuse_service.c
- create mode 100644 lib/fuse_service_stub.c
- create mode 100644 util/fuservicemount.c
- create mode 100644 util/mount_service.c
+ include/fuse_iomap_bpf.h |  263 ++++++++++++++++++++++++++++++++++++++++++++++
+ include/meson.build      |    3 -
+ 2 files changed, 265 insertions(+), 1 deletion(-)
+ create mode 100644 include/fuse_iomap_bpf.h
 
