@@ -1,205 +1,316 @@
-Received: from mail-oo1-f69.google.com (mail-oo1-f69.google.com [209.85.161.69])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4FC681CAB3
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Feb 2026 00:12:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.69
+Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id CFBB83EBF3F;
+	Mon, 23 Feb 2026 00:33:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1771805553; cv=none; b=OcEzlu9hcOUvBmgkE7fAq5ukTgztAOYuG9GimvZwAhJ3DHslo7fw/IAHCTxc98Rj8pw6xNY0o6AKw+EvXYzf1x2E4F4/9Q4/6CJoYXG0hbLEpx9tnC7cvzIzWAjw1QodgPu+uxMs/W541lExkG/wVAYU2L1Ip9SbeyD6gGJfV3I=
+	t=1771806822; cv=none; b=Stdu0LZmTHJcZENjT96CPOZyQSX4YfstYE5puGXLsRcVMaYIttRb/+Qk2vw1tbNSIkaW06XagWkV8OQ4X+KE8RD4sgGFIaGOaajLWQZOc5yquDh0WPxYQR9sKQWiFu3nAcpQuwNSd2GkE+4h71XUGhzgrbV7uj0QaE6HJ3Py9u8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1771805553; c=relaxed/simple;
-	bh=5bUr7sH35IGltrfONE25zKXT4CvmNOONlESAbyC3Vlg=;
-	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=JK886QPAakahIq1oHcKGz6ZxWDmriXNHfEWKzbO/7zIOmtsB0Eebnr219ORIHgsRMSIKDzl++h71qQ17G6FqRgs8qBhOhlKOydSYqee0oS1rhW1OHunaiYTpqwOzuBN65Xondah2HhTTCFkOLNJtnjUVjwiO9txIfwAUgcJtDmc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.161.69
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oo1-f69.google.com with SMTP id 006d021491bc7-679c6ef1538so26566032eaf.3
-        for <linux-ext4@vger.kernel.org>; Sun, 22 Feb 2026 16:12:32 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1771805551; x=1772410351;
-        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=FVSwO3WjMzkZD2mJ7wvPOqX/OqMofdVFZgH8wLdFZUM=;
-        b=eLhST95fdQV438IX81MfVtjw/7MktyqV756dl12/Tmoe8rGWJeAG3TOLd1keRF2mWN
-         PG3yYwAGmmXoe8rz4xhh9uK+RbdhD4qAzTXXmCGIYg5O4I8UWnCu5wVbfBqDFNSyZLLl
-         Q9E8qEuGmBHFbmHKd/WOkMVeOD6uciG9c95zbivkKnDMlfnPtjNADQi8Nc+CBMQVjtft
-         DNkZY6If/3GhRdZyl+VxY6CTNgzVJ1/PId/BMrAzQ0q3UgrPhGPp8Cw4y2GyFFDkb3bb
-         tXTAyb5zO5krmjIFqML8Yab4zt66wIE4Z20ZkMZRECbZroyAeEuqrgUm7E8hAUzGdATj
-         Vomw==
-X-Forwarded-Encrypted: i=1; AJvYcCWg+dpMdwDh7soEMDYMf6XXN6PJASC5b1WcXS3ps4qbvZBtMXY8gk+zC71Sr8tSqBYpaZJtwTDecT5E@vger.kernel.org
-X-Gm-Message-State: AOJu0Yy4SvYIWUVmqOVv2JJOMDJGb/1jsKxQSlryrgn7e2uIcO2ogtlA
-	Z2FWTCprEbXNsYT507sFkJ4qdAW3rbAXvka2LLDcsrIueZz8Y2jHUmpFw5XuF0AzCioRBGa/dFF
-	shTAnTieb9tNG1my0YZJKJITto9yE7THYYntisLrgkB+awOdwIRCQbBqx4LQ=
+	s=arc-20240116; t=1771806822; c=relaxed/simple;
+	bh=Empke4UdsPxxKAiOLj2ALTMJhcJk2XqsTNT04XmtesE=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=VvNkNuZbuEGiNc6nkb9aEp4+gqwcjh4vI+ZJhqA+5Bm3WlQxmNpSKUKqH0daTHkeojrArwPjubmLPtwcVX5JbrPESfPT1DQEgBMvc+jbDiJmzYpDDWGSca98jO0vqpKooWGVZne+NkHVZ5Zf+oqqbq26xTYi/kTIwkkuZv216kE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
+X-AuditID: a67dfc5b-c2dff70000001609-4b-699ba05fae7c
+Date: Mon, 23 Feb 2026 09:33:30 +0900
+From: Byungchul Park <byungchul@sk.com>
+To: Petr Pavlu <petr.pavlu@suse.com>
+Cc: kernel_team@skhynix.com, torvalds@linux-foundation.org,
+	damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	mingo@redhat.com, peterz@infradead.org, will@kernel.org,
+	tglx@linutronix.de, rostedt@goodmis.org, joel@joelfernandes.org,
+	sashal@kernel.org, daniel.vetter@ffwll.ch, duyuyang@gmail.com,
+	johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
+	willy@infradead.org, david@fromorbit.com, amir73il@gmail.com,
+	gregkh@linuxfoundation.org, kernel-team@lge.com, linux-mm@kvack.org,
+	akpm@linux-foundation.org, mhocko@kernel.org, minchan@kernel.org,
+	hannes@cmpxchg.org, vdavydov.dev@gmail.com, sj@kernel.org,
+	jglisse@redhat.com, dennis@kernel.org, cl@linux.com,
+	penberg@kernel.org, rientjes@google.com, vbabka@suse.cz,
+	ngupta@vflare.org, linux-block@vger.kernel.org,
+	josef@toxicpanda.com, linux-fsdevel@vger.kernel.org, jack@suse.cz,
+	jlayton@kernel.org, dan.j.williams@intel.com, hch@infradead.org,
+	djwong@kernel.org, dri-devel@lists.freedesktop.org,
+	rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
+	hamohammed.sa@gmail.com, harry.yoo@oracle.com,
+	chris.p.wilson@intel.com, gwan-gyeong.mun@intel.com,
+	max.byungchul.park@gmail.com, boqun.feng@gmail.com,
+	longman@redhat.com, yunseong.kim@ericsson.com, ysk@kzalloc.com,
+	yeoreum.yun@arm.com, netdev@vger.kernel.org,
+	matthew.brost@intel.com, her0gyugyu@gmail.com, corbet@lwn.net,
+	catalin.marinas@arm.com, bp@alien8.de, x86@kernel.org,
+	hpa@zytor.com, luto@kernel.org, sumit.semwal@linaro.org,
+	gustavo@padovan.org, christian.koenig@amd.com,
+	andi.shyti@kernel.org, arnd@arndb.de, lorenzo.stoakes@oracle.com,
+	Liam.Howlett@oracle.com, rppt@kernel.org, surenb@google.com,
+	mcgrof@kernel.org, da.gomez@kernel.org, samitolvanen@google.com,
+	paulmck@kernel.org, frederic@kernel.org, neeraj.upadhyay@kernel.org,
+	joelagnelf@nvidia.com, josh@joshtriplett.org, urezki@gmail.com,
+	mathieu.desnoyers@efficios.com, jiangshanlai@gmail.com,
+	qiang.zhang@linux.dev, juri.lelli@redhat.com,
+	vincent.guittot@linaro.org, dietmar.eggemann@arm.com,
+	bsegall@google.com, mgorman@suse.de, vschneid@redhat.com,
+	chuck.lever@oracle.com, neil@brown.name, okorniev@redhat.com,
+	Dai.Ngo@oracle.com, tom@talpey.com, trondmy@kernel.org,
+	anna@kernel.org, kees@kernel.org, bigeasy@linutronix.de,
+	clrkwllms@kernel.org, mark.rutland@arm.com, ada.coupriediaz@arm.com,
+	kristina.martsenko@arm.com, wangkefeng.wang@huawei.com,
+	broonie@kernel.org, kevin.brodsky@arm.com, dwmw@amazon.co.uk,
+	shakeel.butt@linux.dev, ast@kernel.org, ziy@nvidia.com,
+	yuzhao@google.com, baolin.wang@linux.alibaba.com,
+	usamaarif642@gmail.com, joel.granados@kernel.org,
+	richard.weiyang@gmail.com, geert+renesas@glider.be,
+	tim.c.chen@linux.intel.com, linux@treblig.org,
+	alexander.shishkin@linux.intel.com, lillian@star-ark.net,
+	chenhuacai@kernel.org, francesco@valla.it,
+	guoweikang.kernel@gmail.com, link@vivo.com, jpoimboe@kernel.org,
+	masahiroy@kernel.org, brauner@kernel.org,
+	thomas.weissschuh@linutronix.de, oleg@redhat.com, mjguzik@gmail.com,
+	andrii@kernel.org, wangfushuai@baidu.com, linux-doc@vger.kernel.org,
+	linux-arm-kernel@lists.infradead.org, linux-media@vger.kernel.org,
+	linaro-mm-sig@lists.linaro.org, linux-i2c@vger.kernel.org,
+	linux-arch@vger.kernel.org, linux-modules@vger.kernel.org,
+	rcu@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-rt-devel@lists.linux.dev, 2407018371@qq.com, dakr@kernel.org,
+	miguel.ojeda.sandonis@gmail.com, neilb@ownmail.net,
+	bagasdotme@gmail.com, wsa+renesas@sang-engineering.com,
+	dave.hansen@intel.com, geert@linux-m68k.org, ojeda@kernel.org,
+	alex.gaynor@gmail.com, gary@garyguo.net, bjorn3_gh@protonmail.com,
+	lossin@kernel.org, a.hindborg@kernel.org, aliceryhl@google.com,
+	tmgross@umich.edu, rust-for-linux@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v18 34/42] dept: add module support for struct
+ dept_event_site and dept_event_site_dep
+Message-ID: <20260223003330.GB44876@system.software.com>
+References: <20251205071855.72743-1-byungchul@sk.com>
+ <20251205071855.72743-35-byungchul@sk.com>
+ <7afb6666-43b6-4d17-b875-e585c7a5ac99@suse.com>
+ <20260213055006.GA55430@system.software.com>
+ <7765df86-b08a-4f70-900d-4b4d85c07d49@suse.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6820:2223:b0:677:87ab:a78a with SMTP id
- 006d021491bc7-679c4507febmr3469431eaf.61.1771805551145; Sun, 22 Feb 2026
- 16:12:31 -0800 (PST)
-Date: Sun, 22 Feb 2026 16:12:31 -0800
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <699b9b6f.a70a0220.2c38d7.0189.GAE@google.com>
-Subject: [syzbot] [ext4?] KASAN: use-after-free Read in xattr_find_entry (2)
-From: syzbot <syzbot+fb32afec111a7d61b939@syzkaller.appspotmail.com>
-To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com, tytso@mit.edu
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <7765df86-b08a-4f70-900d-4b4d85c07d49@suse.com>
+User-Agent: Mutt/1.9.4 (2018-02-28)
+X-Brightmail-Tracker: H4sIAAAAAAAAA02Sf1DTZRzH7/n+3s51TxPzUa5fS8/DzH4ccZ/ukOjqj++dd4aXd3napSu+
+	xa5t6KYgdRlzYINqER0S3xk3BZFgiQxR80IWg6UJBRa46bBEWBEsYm4zITC+dl3+87nXvZ/X
+	vT+fPx6B1srccsFg3iVZzHqjjlMz6uiiw49td7sMTwT9y8BR+h4M2XwMJOIOBuZcp3hweGtY
+	OHdpHwP9x5oRzFUGeKiyIbjdEUDgOWGjoOraKAdyxMXDpeQkglHf+wgOXRum4UTgKoKfElMc
+	RAcOUjDQO4EgcrmDAntdCwcHPvcyUD2+AK1LwVVtpxbGbxT01oUZaCheCSONMg+33fkQaP6V
+	h+GPqxg4Fv2BBc+HERq814dYqKkNc+CYiyModt1kod93gYULgXMMJJ2p0P/JRywEK8YQhKon
+	eWicrmYh4L4P2jtLEcTqkwz0ub5nIez8nYH99a0UdLecoqAl4qfBn5ikYMQZ5cFlcyJwdCdp
+	aO+5ycPx6aMc2G78jKAk/DT8dfw6C1/ODaHsbLGp7SQlemo9SJydqURi/IidFkvaCsWZxCAn
+	diTdjPjdYSLWl81Q4lfyMC+6vbvFku4oK9Z9PU6Jh2IJVrw8sU70NpVxOQ9tUWfmSkZDgWR5
+	PGu7Oi/ibKV3hDL2nA7nFKPP0sqRSiA4nVwdvMKVI+EO9/oFJWbwStJ81okU5vAqEgzeohUl
+	Ba8gF0eeK0dqgcYHHiDn2xys4izGRuL/dJpSHA0G4oktUWItTiDSF3pRYQ2+l5yvGWUUpvFq
+	Epwfv6PTOJUcnRcUVOFMEu15UDGW4EeI7+S3lLKJ4IiKjNXE0L8HLyPfNAaZCoTlu1rlu1rl
+	/1vdiG5CWoO5wKQ3GNPX5hWZDXvWvp5v8qKFH9vw7t9bT6NY/0tdCAtIt0jjm5INWlZfYC0y
+	dSEi0LoUzezsQqTJ1Re9LVnyt1l2GyVrF0oVGN1SzVPJwlwtflO/S3pLknZIlv9eKUG1vBi9
+	sP9s+x8b3LOqLTilMuQo+3Fb9v23dk6/Zn1Uv/nPK1kZe+9ZXy6nb/xlcc8X6x8u3bgmfmbN
+	cGfnjZ21vn3PdttfWRE3M4kjTWmN1oh5LGed/9WChl7TpirLhsGLhW8YZzIqhMwzaVl7nwm9
+	k7Xq5anR5x3z9XUTH1g39U3aTfRALDNDx1jz9E+upi1W/T8wE0YKrQMAAA==
+X-Brightmail-Tracker: H4sIAAAAAAAAA02SfUwbdRjHfe53vR6NZ86ubOeImnU2TsxejM48iXNxxrhzZnPinHFZ3Kq7
+	SEMpWzvZGDECtVrREKhpGe3QilIXqG5rGY4tVUIdAweRDiegvGym1hFgnUBZoJTaMzHunyff
+	53k+n+T542GJel6xkjWYDktmk96oZVS0asdT1rX7vB7Dhrn4/Wi3vYfDY1EF/lreTmNi1k7j
+	iVN+BlOe75RoD9QpsGuggsa+b5sBxxJ2wNtJD0FbW5rGlKNTibPzvyvRWQ6YDnUCuiIOgoN9
+	PxD0t5RTOHN6icGJ8DSg83qUwdrxchrjvk8A3TGPEscvbsWpsQsKTI/8ReHA3CSgL7pEYbT9
+	Q8CUqwA/bwhmdNctBpO9PxOsdfYBfnF9hOD0+DXAls5RwNDJCgb/rD5LsD96D/6SiDPY7fyY
+	wanICQpvnmbQWxFSYKRnArDe4wCM/Rai0PrlKQZd9QEa266dV2JkYpHCYZeDwubAdhzzxWi8
+	XN1AZc7NUGdWoKfWSmXKDQqd31ygcN7XpHymEcTbtipabAq2UqLtSooR/Z/5QUwuOECcbbQS
+	0VadacOTcSK+HzwiNl6eZMSFxFVGDM15afGnBkH86qMFSqzpXSu2uUeUO7fsUW06IBkNxZJ5
+	/eb9qvxY1RlycOjJo+eGd5bB8UcqgWUF/gmhJ8xWQhZL8zqh+fsqkDPDPywMDs4TGdHwDwlX
+	/thSCSqW8K4HhO6gXSEzy3ijEP70b0pmOB4F/3S2PFbzCRB6h16SM8ffK3TXRWk5Ez5XGFwa
+	/xcnfI7w9RIrxyx+kzB18UGZyOZXC+2tl6hq4Nx3yO47ZPf/shdIE2gMpuJCvcG4cZ2lIL/E
+	ZDi67q2iwgBkHtL37mLNOZjt39oBPAvau7lb93kMaoW+2FJS2AECS7QaLpl0G9TcAX3JMclc
+	tM/8jlGydEAOS2tXcNtek/ar+bf1h6UCSToomf/bUmzWyjJ481i6LLZo1nj7D63GILf8lR6z
+	LlTwslN/12R6d9zZ0jXQym6eXnboyO6hIrixUTHzqu+F0tIPXr/KWbcnt+19uk633vNjIO/x
+	Ndl5nGn5s6N7F3TdeaZHzz9X6grtmtmVU3Pp+eNrVrV0rdqjC2t6TcWjG07mvng2MpBqrLe9
+	kU7f1NKWfP1jucRs0f8DOc5IfIwDAAA=
+X-CFilter-Loop: Reflected
 
-Hello,
+On Wed, Feb 18, 2026 at 04:08:19PM +0100, Petr Pavlu wrote:
+> On 2/13/26 6:50 AM, Byungchul Park wrote:
+> > On Wed, Jan 07, 2026 at 01:19:00PM +0100, Petr Pavlu wrote:
+> >> On 12/5/25 8:18 AM, Byungchul Park wrote:
+> >>> struct dept_event_site and struct dept_event_site_dep have been
+> >>> introduced to track dependencies between multi event sites for a single
+> >>> wait, that will be loaded to data segment.  Plus, a custom section,
+> >>> '.dept.event_sites', also has been introduced to keep pointers to the
+> >>> objects to make sure all the event sites defined exist in code.
+> >>>
+> >>> dept should work with the section and segment of module.  Add the
+> >>> support to handle the section and segment properly whenever modules are
+> >>> loaded and unloaded.
+> >>>
+> >>> Signed-off-by: Byungchul Park <byungchul@sk.com>
+> >>
+> >> Below are a few comments from the module loader perspective.
+> >
+> > Sorry about the late reply.  I've been going through some major life
+> > changes lately. :(
+> >
+> > Thank you sooooo~ much for your helpful feedback.  I will leave my
+> > opinion below.
+> >
+> [...]
+> >>> diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
+> >>> index b14400c4f83b..07d883579269 100644
+> >>> --- a/kernel/dependency/dept.c
+> >>> +++ b/kernel/dependency/dept.c
+> >>> @@ -984,6 +984,9 @@ static void bfs(void *root, struct bfs_ops *ops, void *in, void **out)
+> >>>   * event sites.
+> >>>   */
+> >>>
+> >>> +static LIST_HEAD(dept_event_sites);
+> >>> +static LIST_HEAD(dept_event_site_deps);
+> >>> +
+> >>>  /*
+> >>>   * Print all events in the circle.
+> >>>   */
+> >>> @@ -2043,6 +2046,33 @@ static void del_dep_rcu(struct rcu_head *rh)
+> >>>       preempt_enable();
+> >>>  }
+> >>>
+> >>> +/*
+> >>> + * NOTE: Must be called with dept_lock held.
+> >>> + */
+> >>> +static void disconnect_event_site_dep(struct dept_event_site_dep *esd)
+> >>> +{
+> >>> +     list_del_rcu(&esd->dep_node);
+> >>> +     list_del_rcu(&esd->dep_rev_node);
+> >>> +}
+> >>> +
+> >>> +/*
+> >>> + * NOTE: Must be called with dept_lock held.
+> >>> + */
+> >>> +static void disconnect_event_site(struct dept_event_site *es)
+> >>> +{
+> >>> +     struct dept_event_site_dep *esd, *next_esd;
+> >>> +
+> >>> +     list_for_each_entry_safe(esd, next_esd, &es->dep_head, dep_node) {
+> >>> +             list_del_rcu(&esd->dep_node);
+> >>> +             list_del_rcu(&esd->dep_rev_node);
+> >>> +     }
+> >>> +
+> >>> +     list_for_each_entry_safe(esd, next_esd, &es->dep_rev_head, dep_rev_node) {
+> >>> +             list_del_rcu(&esd->dep_node);
+> >>> +             list_del_rcu(&esd->dep_rev_node);
+> >>> +     }
+> >>> +}
+> >>> +
+> >>>  /*
+> >>>   * NOTE: Must be called with dept_lock held.
+> >>>   */
+> >>> @@ -2384,6 +2414,8 @@ void dept_free_range(void *start, unsigned int sz)
+> >>>  {
+> >>>       struct dept_task *dt = dept_task();
+> >>>       struct dept_class *c, *n;
+> >>> +     struct dept_event_site_dep *esd, *next_esd;
+> >>> +     struct dept_event_site *es, *next_es;
+> >>>       unsigned long flags;
+> >>>
+> >>>       if (unlikely(!dept_working()))
+> >>> @@ -2405,6 +2437,24 @@ void dept_free_range(void *start, unsigned int sz)
+> >>>       while (unlikely(!dept_lock()))
+> >>>               cpu_relax();
+> >>>
+> >>> +     list_for_each_entry_safe(esd, next_esd, &dept_event_site_deps, all_node) {
+> >>> +             if (!within((void *)esd, start, sz))
+> >>> +                     continue;
+> >>> +
+> >>> +             disconnect_event_site_dep(esd);
+> >>> +             list_del(&esd->all_node);
+> >>> +     }
+> >>> +
+> >>> +     list_for_each_entry_safe(es, next_es, &dept_event_sites, all_node) {
+> >>> +             if (!within((void *)es, start, sz) &&
+> >>> +                 !within(es->name, start, sz) &&
+> >>> +                 !within(es->func_name, start, sz))
+> >>> +                     continue;
+> >>> +
+> >>> +             disconnect_event_site(es);
+> >>> +             list_del(&es->all_node);
+> >>> +     }
+> >>> +
+> >>>       list_for_each_entry_safe(c, n, &dept_classes, all_node) {
+> >>>               if (!within((void *)c->key, start, sz) &&
+> >>>                   !within(c->name, start, sz))
+> >>> @@ -3337,6 +3387,7 @@ void __dept_recover_event(struct dept_event_site_dep *esd,
+> >>>
+> >>>       list_add(&esd->dep_node, &es->dep_head);
+> >>>       list_add(&esd->dep_rev_node, &rs->dep_rev_head);
+> >>> +     list_add(&esd->all_node, &dept_event_site_deps);
+> >>>       check_recover_dl_bfs(esd);
+> >>>  unlock:
+> >>>       dept_unlock();
+> >>> @@ -3347,6 +3398,23 @@ EXPORT_SYMBOL_GPL(__dept_recover_event);
+> >>>
+> >>>  #define B2KB(B) ((B) / 1024)
+> >>>
+> >>> +void dept_mark_event_site_used(void *start, void *end)
+> >>
+> >> Nit: I suggest that dept_mark_event_site_used() take pointers to
+> >> dept_event_site_init, which would catch the type mismatch with
+> >
+> > IMO, this is the easiest way to get all the pointers from start to the
+> > end, or I can't get the number of the pointers.  It's similar to the
+> > initcalls section for device drivers.
+> 
+> This was a minor suggestion.. The idea is to simply change the function
+> signature to:
+> 
+> void dept_mark_event_site_used(struct dept_event_site_init **start,
+>                                struct dept_event_site_init **end))
 
-syzbot found the following issue on:
+I got what you meant.  I will.  Thanks.
 
-HEAD commit:    2961f841b025 Merge tag 'turbostat-2026.02.14' of git://git..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=156cb15a580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=665cbf0979cda6c5
-dashboard link: https://syzkaller.appspot.com/bug?extid=fb32afec111a7d61b939
-compiler:       Debian clang version 21.1.8 (++20251221033036+2078da43e25a-1~exp1~20251221153213.50), Debian LLD 21.1.8
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=17a43b3a580000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=157f895a580000
+	Byungchul
 
-Downloadable assets:
-disk image: https://storage.googleapis.com/syzbot-assets/54d6a30cbc5f/disk-2961f841.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/40003e4ec76c/vmlinux-2961f841.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/2db393aba9ff/bzImage-2961f841.xz
-mounted in repro: https://storage.googleapis.com/syzbot-assets/07bdbcf04dc1/mount_0.gz
-  fsck result: OK (log: https://syzkaller.appspot.com/x/fsck.log?x=12b95c02580000)
-
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+fb32afec111a7d61b939@syzkaller.appspotmail.com
-
-loop0: detected capacity change from 1024 to 64
-EXT4-fs error (device loop0): ext4_find_dest_de:2050: inode #12: block 7: comm syz.0.17: bad entry in directory: directory entry overrun - offset=0, inode=268435456, rec_len=1280, size=56 fake=0
-==================================================================
-BUG: KASAN: use-after-free in xattr_find_entry+0x1a5/0x280 fs/ext4/xattr.c:334
-Read of size 4 at addr ffff88806ee29004 by task syz.0.17/5997
-
-CPU: 1 UID: 49663 PID: 5997 Comm: syz.0.17 Not tainted syzkaller #0 PREEMPT(full) 
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 02/12/2026
-Call Trace:
- <TASK>
- dump_stack_lvl+0xe8/0x150 lib/dump_stack.c:120
- print_address_description mm/kasan/report.c:378 [inline]
- print_report+0xba/0x230 mm/kasan/report.c:482
- kasan_report+0x117/0x150 mm/kasan/report.c:595
- xattr_find_entry+0x1a5/0x280 fs/ext4/xattr.c:334
- ext4_xattr_ibody_get+0x232/0x4c0 fs/ext4/xattr.c:655
- ext4_xattr_get+0x123/0x6a0 fs/ext4/xattr.c:709
- ext4_get_acl+0x84/0x930 fs/ext4/acl.c:165
- __get_acl+0x27e/0x410 fs/posix_acl.c:159
- check_acl+0x3a/0x150 fs/namei.c:385
- acl_permission_check fs/namei.c:471 [inline]
- generic_permission+0x497/0x690 fs/namei.c:524
- do_inode_permission fs/namei.c:585 [inline]
- inode_permission+0x243/0x5f0 fs/namei.c:648
- lookup_inode_permission_may_exec fs/namei.c:-1 [inline]
- may_lookup fs/namei.c:1973 [inline]
- link_path_walk+0x1149/0x18d0 fs/namei.c:2595
- path_lookupat+0xe4/0x8c0 fs/namei.c:2803
- filename_lookup+0x256/0x5d0 fs/namei.c:2833
- user_path_at+0x40/0x160 fs/namei.c:3612
- do_mount fs/namespace.c:4156 [inline]
- __do_sys_mount fs/namespace.c:4348 [inline]
- __se_sys_mount+0x2dc/0x420 fs/namespace.c:4325
- do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
- do_syscall_64+0x14d/0xf80 arch/x86/entry/syscall_64.c:94
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7f72cdd9c629
-Code: ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 e8 ff ff ff f7 d8 64 89 01 48
-RSP: 002b:00007fff6aba2c28 EFLAGS: 00000246 ORIG_RAX: 00000000000000a5
-RAX: ffffffffffffffda RBX: 00007f72ce015fa0 RCX: 00007f72cdd9c629
-RDX: 0000000000000000 RSI: 0000200000000040 RDI: 0000000000000000
-RBP: 00007f72cde32b39 R08: 0000000000000000 R09: 0000000000000000
-R10: 0000000002094080 R11: 0000000000000246 R12: 0000000000000000
-R13: 00007f72ce015fac R14: 00007f72ce015fa0 R15: 00007f72ce015fa0
- </TASK>
-
-The buggy address belongs to the physical page:
-page: refcount:0 mapcount:0 mapping:0000000000000000 index:0x7f3283789 pfn:0x6ee29
-flags: 0xfff00000000000(node=0|zone=1|lastcpupid=0x7ff)
-raw: 00fff00000000000 ffffea0001bb8a88 ffffea0001bb8908 0000000000000000
-raw: 00000007f3283789 0000000000000000 00000000ffffffff 0000000000000000
-page dumped because: kasan: bad access detected
-page_owner tracks the page as freed
-page last allocated via order 0, migratetype Movable, gfp_mask 0x140dca(GFP_HIGHUSER_MOVABLE|__GFP_ZERO|__GFP_COMP), pid 5981, tgid 5981 (sed), ts 108386366383, free_ts 108399318838
- set_page_owner include/linux/page_owner.h:32 [inline]
- post_alloc_hook+0x231/0x280 mm/page_alloc.c:1888
- prep_new_page mm/page_alloc.c:1896 [inline]
- get_page_from_freelist+0x24dc/0x2580 mm/page_alloc.c:3961
- __alloc_frozen_pages_noprof+0x18d/0x380 mm/page_alloc.c:5249
- alloc_pages_mpol+0x232/0x4a0 mm/mempolicy.c:2485
- folio_alloc_mpol_noprof mm/mempolicy.c:2504 [inline]
- vma_alloc_folio_noprof+0xea/0x210 mm/mempolicy.c:2539
- folio_prealloc mm/memory.c:-1 [inline]
- alloc_anon_folio mm/memory.c:5200 [inline]
- do_anonymous_page mm/memory.c:5257 [inline]
- do_pte_missing+0x1656/0x3750 mm/memory.c:4467
- handle_pte_fault mm/memory.c:6308 [inline]
- __handle_mm_fault mm/memory.c:6446 [inline]
- handle_mm_fault+0x1bec/0x3310 mm/memory.c:6615
- do_user_addr_fault+0xa73/0x1340 arch/x86/mm/fault.c:1334
- handle_page_fault arch/x86/mm/fault.c:1474 [inline]
- exc_page_fault+0x6a/0xc0 arch/x86/mm/fault.c:1527
- asm_exc_page_fault+0x26/0x30 arch/x86/include/asm/idtentry.h:618
-page last free pid 5981 tgid 5981 stack trace:
- reset_page_owner include/linux/page_owner.h:25 [inline]
- __free_pages_prepare mm/page_alloc.c:1432 [inline]
- free_unref_folios+0xd38/0x14c0 mm/page_alloc.c:3039
- folios_put_refs+0x789/0x8d0 mm/swap.c:1002
- free_pages_and_swap_cache+0x2e7/0x5b0 mm/swap_state.c:423
- __tlb_batch_free_encoded_pages mm/mmu_gather.c:138 [inline]
- tlb_batch_pages_flush mm/mmu_gather.c:151 [inline]
- tlb_flush_mmu_free mm/mmu_gather.c:398 [inline]
- tlb_flush_mmu+0x6d3/0xa30 mm/mmu_gather.c:405
- tlb_finish_mmu+0xf9/0x230 mm/mmu_gather.c:530
- exit_mmap+0x453/0xdb0 mm/mmap.c:1290
- __mmput+0x118/0x430 kernel/fork.c:1174
- exit_mm+0x168/0x220 kernel/exit.c:581
- do_exit+0x62e/0x2320 kernel/exit.c:959
- do_group_exit+0x21b/0x2d0 kernel/exit.c:1112
- __do_sys_exit_group kernel/exit.c:1123 [inline]
- __se_sys_exit_group kernel/exit.c:1121 [inline]
- __x64_sys_exit_group+0x3f/0x40 kernel/exit.c:1121
- x64_sys_call+0x221a/0x2240 arch/x86/include/generated/asm/syscalls_64.h:232
- do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
- do_syscall_64+0x14d/0xf80 arch/x86/entry/syscall_64.c:94
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-
-Memory state around the buggy address:
- ffff88806ee28f00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
- ffff88806ee28f80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
->ffff88806ee29000: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
-                   ^
- ffff88806ee29080: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
- ffff88806ee29100: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
-==================================================================
-
-
----
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
-
-syzbot will keep track of this issue. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
-
-If the report is already addressed, let syzbot know by replying with:
-#syz fix: exact-commit-title
-
-If you want syzbot to run the reproducer, reply with:
-#syz test: git://repo/address.git branch-or-commit-hash
-If you attach or paste a git patch, syzbot will apply it before testing.
-
-If you want to overwrite report's subsystems, reply with:
-#syz set subsystems: new-subsystem
-(See the list of subsystem names on the web dashboard)
-
-If the report is a duplicate of another one, reply with:
-#syz dup: exact-subject-of-another-report
-
-If you want to undo deduplication, reply with:
-#syz undup
+> This way, the compiler can provide proper type checking to ensure that
+> correct pointers are passed to dept_mark_event_site_used(). It would
+> catch the type mismatch with module::dept_event_sites.
+> 
+> >
+> >> module::dept_event_sites.
+> >>
+> >>> +{
+> >>> +     struct dept_event_site_init **evtinitpp;
+> >>> +
+> >>> +     for (evtinitpp = (struct dept_event_site_init **)start;
+> >>> +          evtinitpp < (struct dept_event_site_init **)end;
+> >>> +          evtinitpp++) {
+> >>> +             (*evtinitpp)->evt_site->used = true;
+> >>> +             (*evtinitpp)->evt_site->func_name = (*evtinitpp)->func_name;
+> >>> +             list_add(&(*evtinitpp)->evt_site->all_node, &dept_event_sites);
+> >>> +
+> >>> +             pr_info("dept_event_site %s@%s is initialized.\n",
+> >>> +                             (*evtinitpp)->evt_site->name,
+> >>> +                             (*evtinitpp)->evt_site->func_name);
+> >>> +     }
+> >>> +}
+> >>> +
+> >>>  extern char __dept_event_sites_start[], __dept_event_sites_end[];
+> >>
+> >> Related to the above, __dept_event_sites_start and
+> >> __dept_event_sites_end can already be properly typed here.
+> >
+> > How can I get the number of the pointers?
+> 
+> Similarly here, changing the code to:
+> 
+> extern struct dept_event_site_init *__dept_event_sites_start[], *__dept_event_sites_end[];
+> 
+> It is the same for the initcalls you mentioned. The declarations of
+> their start/end symbols are also already properly typed as
+> initcall_entry_t[] in include/linux/init.h.
+> 
+> --
+> Thanks,
+> Petr
