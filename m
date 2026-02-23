@@ -1,178 +1,207 @@
-Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id BBDD01A3160;
-	Mon, 23 Feb 2026 00:47:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
+Received: from mail-pj1-f48.google.com (mail-pj1-f48.google.com [209.85.216.48])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 47D79199E89
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Feb 2026 01:11:15 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.48
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1771807659; cv=none; b=r2gTlsQTaAszrTBXAXrm/5IjaoX5DkFJTRjcNVA4cNKDhhikEzliR2bAQLEton4KI8YH1HUDwmV3ZN/eDcn+PPX2REiD1ep9GqGegrUycUGgz4X9ynuG0qFfxtmbN16XvfBQZ+ogYtCl5GJCOPVAsrtghboCd5Wv9NASXNkZd6w=
+	t=1771809076; cv=none; b=Axf0Lg+b76ozvX/9wsLbIcIzVR4/lKo3lAofltBZzEIhv7BnRn1oGJV54DHsXHBQ2DjHe7dbEd5EjbQGcuT+y5FEVwTCIemjReTO3gnEn6Jb1nBKPlZipquK5ITmLv54tPRvJ3RFrH/6RDT8U4u20kXLbv3GsZwd/2HrYTNGw6w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1771807659; c=relaxed/simple;
-	bh=9Rg2ovzdHFVJcpJOm3vuScJXDsF1IsJTiaRKGC5EjjE=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=CGrLhzwItaxXLe7TpMpDCUARs6cyxd3M9bleebK3gVvS8AKiq8tAO96PzeCV96zI0nJay3gnQSFf+IRS+Fo1eo2J++rTzEM/wPnQ9w+H5txmXd2hSrAo1vDpNFNFeVY4eHEMkra8Se9FxNT6JwdfXe3zIbXhOiC4a/tLo3Zy7ZI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c45ff70000001609-c0-699ba00d57c1
-Date: Mon, 23 Feb 2026 09:32:07 +0900
-From: Byungchul Park <byungchul@sk.com>
-To: Dirk Behme <dirk.behme@gmx.de>
-Cc: linux-kernel@vger.kernel.org, kernel_team@skhynix.com,
-	torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
-	linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, mingo@redhat.com, peterz@infradead.org,
-	will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
-	joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
-	duyuyang@gmail.com, johannes.berg@intel.com, tj@kernel.org,
-	tytso@mit.edu, willy@infradead.org, david@fromorbit.com,
-	amir73il@gmail.com, gregkh@linuxfoundation.org, kernel-team@lge.com,
-	linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
-	minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com,
-	sj@kernel.org, jglisse@redhat.com, dennis@kernel.org, cl@linux.com,
-	penberg@kernel.org, rientjes@google.com, vbabka@suse.cz,
-	ngupta@vflare.org, linux-block@vger.kernel.org,
-	josef@toxicpanda.com, linux-fsdevel@vger.kernel.org, jack@suse.cz,
-	jlayton@kernel.org, dan.j.williams@intel.com, hch@infradead.org,
-	djwong@kernel.org, dri-devel@lists.freedesktop.org,
-	rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
-	hamohammed.sa@gmail.com, harry.yoo@oracle.com,
-	chris.p.wilson@intel.com, gwan-gyeong.mun@intel.com,
-	max.byungchul.park@gmail.com, boqun.feng@gmail.com,
-	longman@redhat.com, yunseong.kim@ericsson.com, ysk@kzalloc.com,
-	yeoreum.yun@arm.com, netdev@vger.kernel.org,
-	matthew.brost@intel.com, her0gyugyu@gmail.com, corbet@lwn.net,
-	catalin.marinas@arm.com, bp@alien8.de, x86@kernel.org,
-	hpa@zytor.com, luto@kernel.org, sumit.semwal@linaro.org,
-	gustavo@padovan.org, christian.koenig@amd.com,
-	andi.shyti@kernel.org, arnd@arndb.de, lorenzo.stoakes@oracle.com,
-	Liam.Howlett@oracle.com, rppt@kernel.org, surenb@google.com,
-	mcgrof@kernel.org, petr.pavlu@suse.com, da.gomez@kernel.org,
-	samitolvanen@google.com, paulmck@kernel.org, frederic@kernel.org,
-	neeraj.upadhyay@kernel.org, joelagnelf@nvidia.com,
-	josh@joshtriplett.org, urezki@gmail.com,
-	mathieu.desnoyers@efficios.com, jiangshanlai@gmail.com,
-	qiang.zhang@linux.dev, juri.lelli@redhat.com,
-	vincent.guittot@linaro.org, dietmar.eggemann@arm.com,
-	bsegall@google.com, mgorman@suse.de, vschneid@redhat.com,
-	chuck.lever@oracle.com, neil@brown.name, okorniev@redhat.com,
-	Dai.Ngo@oracle.com, tom@talpey.com, trondmy@kernel.org,
-	anna@kernel.org, kees@kernel.org, bigeasy@linutronix.de,
-	clrkwllms@kernel.org, mark.rutland@arm.com, ada.coupriediaz@arm.com,
-	kristina.martsenko@arm.com, wangkefeng.wang@huawei.com,
-	broonie@kernel.org, kevin.brodsky@arm.com, dwmw@amazon.co.uk,
-	shakeel.butt@linux.dev, ast@kernel.org, ziy@nvidia.com,
-	yuzhao@google.com, baolin.wang@linux.alibaba.com,
-	usamaarif642@gmail.com, joel.granados@kernel.org,
-	richard.weiyang@gmail.com, geert+renesas@glider.be,
-	tim.c.chen@linux.intel.com, linux@treblig.org,
-	alexander.shishkin@linux.intel.com, lillian@star-ark.net,
-	chenhuacai@kernel.org, francesco@valla.it,
-	guoweikang.kernel@gmail.com, link@vivo.com, jpoimboe@kernel.org,
-	masahiroy@kernel.org, brauner@kernel.org,
-	thomas.weissschuh@linutronix.de, oleg@redhat.com, mjguzik@gmail.com,
-	andrii@kernel.org, wangfushuai@baidu.com, linux-doc@vger.kernel.org,
-	linux-arm-kernel@lists.infradead.org, linux-media@vger.kernel.org,
-	linaro-mm-sig@lists.linaro.org, linux-i2c@vger.kernel.org,
-	linux-arch@vger.kernel.org, linux-modules@vger.kernel.org,
-	rcu@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-rt-devel@lists.linux.dev, 2407018371@qq.com, dakr@kernel.org,
-	miguel.ojeda.sandonis@gmail.com, neilb@ownmail.net,
-	bagasdotme@gmail.com, wsa+renesas@sang-engineering.com,
-	dave.hansen@intel.com, geert@linux-m68k.org, ojeda@kernel.org,
-	alex.gaynor@gmail.com, gary@garyguo.net, bjorn3_gh@protonmail.com,
-	lossin@kernel.org, a.hindborg@kernel.org, aliceryhl@google.com,
-	tmgross@umich.edu, rust-for-linux@vger.kernel.org
-Subject: Re: [PATCH v18 31/42] dept: assign unique dept_key to each distinct
- wait_for_completion() caller
-Message-ID: <20260223003207.GA44876@system.software.com>
-References: <20251205071855.72743-1-byungchul@sk.com>
- <20251205071855.72743-32-byungchul@sk.com>
- <ab0b9f9c-3a05-42f3-b4a7-ddb6ab0d37a4@gmx.de>
+	s=arc-20240116; t=1771809076; c=relaxed/simple;
+	bh=L24fpwGeD7px2wf3dFOvRPZK8x7DN7NZLZ/Tn53Csu8=;
+	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
+	 Message-Id:References:To; b=GpuVHHa7Q0Z6Qe/tXLMqQ44W0nIp9T1kDcDqPRSxV1kCF7hiRuGNA6OxHffE7piYXfX9dI80AwXE3yjanJAH1Y9p996N9WJ9pgK0MvZacJyVUEEw34CAZcpMhj4goyh0PFC4OJACyM3Dq+WS4xPOmgp+nPllwAH5ctt0DbShZUw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20230601.gappssmtp.com header.i=@dilger-ca.20230601.gappssmtp.com header.b=TjQPHEqc; arc=none smtp.client-ip=209.85.216.48
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=dilger-ca.20230601.gappssmtp.com header.i=@dilger-ca.20230601.gappssmtp.com header.b="TjQPHEqc"
+Received: by mail-pj1-f48.google.com with SMTP id 98e67ed59e1d1-35480b0827bso2288079a91.0
+        for <linux-ext4@vger.kernel.org>; Sun, 22 Feb 2026 17:11:15 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dilger-ca.20230601.gappssmtp.com; s=20230601; t=1771809074; x=1772413874; darn=vger.kernel.org;
+        h=to:references:message-id:content-transfer-encoding:cc:date
+         :in-reply-to:from:subject:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=RvESBW1qrUuw3Rqh3QinWReW7kdD3jhBUVJZUasGnN0=;
+        b=TjQPHEqcC2VmBXSBFJNSRf1X8+AvN6E4IZrkqtvZ7RdNIDDFNKiThCezwk1+xrN0av
+         lW7vrjcYbcZMJ69s+Vxva82wCnu3TFG9kx9BYPvP/cSAx+cePdg0JbojcAUS9kS0IoDC
+         3l/KgnscW47agDAaErZSZdgBh7+ZGKqCKKYl+BOJoElptl/NkXkdZ1NN3mXvaCzpnDmM
+         uj8wuQy/KmoaggJl6fcL5Wu4nhgALQb5M4zVmWaVxXyhtkHX8hWQnMIMBiehFEdfLsj5
+         rFt4xIUbYCTF3sdDWhST2hLpHoX24TVzv5fVlhyERdzl8gAk7nIbSV95TRi30n6OvJmO
+         CfEA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1771809074; x=1772413874;
+        h=to:references:message-id:content-transfer-encoding:cc:date
+         :in-reply-to:from:subject:mime-version:x-gm-gg:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=RvESBW1qrUuw3Rqh3QinWReW7kdD3jhBUVJZUasGnN0=;
+        b=ljymHDcqcXRpdYrvjkz5W/Cqrvm8vZP8Sp6aByCOWnunOvyqfxxfJKm4cvkdY+jkMj
+         ACHsCzpTYa2O51rM7fawoCHzsOhJ+GJ/n1Tya7Zj4lAISySJ/BJyKiKupUbf/rPC5cdk
+         nXJWr+/RiBAa/jQ30IbZ/EeUpTozd3tGCNadD2jeJvO4NdyVF+0O7xtHly24gAF8CMCz
+         wr+O/xuSix26naapWXlREjy1IP5OiiEx6gCbQ93NrudXwf564yvizFbCz/U/b914/n9V
+         2ug7j+t+nuMll9cxsaUUroDVjGaCcilS/W/UhUzEF6snHntQplNMKYzIrXhh80DxvVV7
+         eIXg==
+X-Forwarded-Encrypted: i=1; AJvYcCVfoJNSI4tA4sMiNsWpnQXMYU9fmTlGv1p/JGnhmY5K8zz7ZLAHTkA83TO5jtkYauSjzutEZHb1KMe4@vger.kernel.org
+X-Gm-Message-State: AOJu0Yy4XZitjXPOROHEeEVI9CRFRulYLljy7DmCJZDr0+yVDKYnNqW7
+	XZeTfsf1mzdcWzWSIIrP4cbHXDdFBnOyPS9qRaHpTVH58dG60+vheN6a6yF2prI1IjLC+25LTNz
+	0ZIqBvy8=
+X-Gm-Gg: AZuq6aLQwn+hj3ECdPIWvJKWe1EBU8kg+BI6NJBAXinI7bn2BDmamWELvtNpPJSd09j
+	AJa6sPq2cyJlSGIK/WLtRg9Xf400p9TBzXFC8jwVXRDivpPmCO1u8sCGkHtNqh66Np5IdKvWIM0
+	JB5NQnAB0zHroZBMxePz8CHY6RjOPJXyzh4GVpkTPcyaD7ObLyNKEJjWky3FcABZe0RCelJVIQZ
+	2w4LFir3muCPKPwTomCPrZ4LW0FeJisCEp9VLyv71uH9Gx7dzxsbZPsZlWDgpIUcOGbXfej7PbI
+	vOgGy1NiGJcblo6Pr+c20cpnR6EQD3JkA+cP/E81wJDt+kumgKxxXBL5FqGEtlI+TlGpQyaP9v7
+	KI8Dd2S7DHoD9wgjSPBK9nNtmAIFYAVjvzieVTNy3CrEUvxTFXFGN04r/Wcvuy/23rbkDGswd1s
+	EQOh2baOsHnWpz+YYfWQOyip432LkF8sMPNdFi/rm1U3lMaUVOjwY4tNdk2o1z/a5znKt2YiQyP
+	Q6lA5CZmqLtiDvx
+X-Received: by 2002:a17:90b:2cc7:b0:34c:ab9b:837c with SMTP id 98e67ed59e1d1-358983a8b41mr10989438a91.0.1771809074558;
+        Sun, 22 Feb 2026 17:11:14 -0800 (PST)
+Received: from smtpclient.apple (S01068c763f81ca4b.cg.shawcable.net. [70.77.200.158])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-358a1a2cb62sm6227722a91.0.2026.02.22.17.11.13
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Sun, 22 Feb 2026 17:11:13 -0800 (PST)
+Content-Type: text/plain;
+	charset=utf-8
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <ab0b9f9c-3a05-42f3-b4a7-ddb6ab0d37a4@gmx.de>
-User-Agent: Mutt/1.9.4 (2018-02-28)
-X-Brightmail-Tracker: H4sIAAAAAAAAA02Sa0yTZxTH87x3GupeOpFHmS6pQROm9RKTHZdlMSbL3i9zW/xgoonayCs0
-	QMUWuXiJXGokRATqSmc7sUCoRGpEFKmZdR2deIG6drjRlRasqWjDEMZaHOG2dsTMLyf//P45
-	v5wPhyNl3zGrOJW6UNSolXlyRkJJxpObNkotZtXmke7NEBgJ0/B7uZOCWLSKgnlzNwsjsSoE
-	0ZkhFgzlCBYdvQh8nh9JsN0qJ+DvjgUGxlxTCAyhMAOR+19A2HkWwVjDJAOz7l9IMBo8CJpC
-	QRKmIs8Q3OodRuBoq2DgRV0XCaahwzAQXgZPYxMMvO5gwFLhoOGSWY9g1O8goLLlOgMNlzop
-	8I7NERBo0BPQ3vkl9NU1E2CMxLsbaWA2VhLx8YoAw7UfCJixXmWhvyVAgbUsA563mViYC22B
-	YK2BgrFRPQPRpyECbOdGSXD4P4KLjQEG7joeUVA1H0XQa39OwLmOLhqGbYs0eJx9NPza7qGg
-	r/chBUPuWhZaB70EhJ754m19Db0jS3hz5jwl2BptSIi2VpKC688JUtDdLBYc0xZKeNyMhXr3
-	RuGOKcgKk3/tF3T3/Kxg6Twm6H4ep4WbbZlCy90IITRNxeivN+yVfJol5qmKRM2mzw5Kcu58
-	62IKLiSXDOpyy1CFpBolcZjfhofdV5i32VVhZasRx1F8Bh7xZicww6/HPt8MmcDLeTnuCuxI
-	YJJvX4MHxksS+X0+F9+/Pf+fRcoDbg5H6Gok4WS8HmGv6wKxVKTgRxfD1NJyJvYtRIiEk+TT
-	8ZUFLoGT+E+wq/sMncip/FrsvP2ASHgw70/Cw9bL5NKZK/FPbT6qDvGmd7Smd7Sm/7UWRF5F
-	MpW6KF+pytumyClVq0oUh47kd6L4v1pPze2zoynP7h7Ec0ieLHVOmFQyWlmkLc3vQZgj5cul
-	s7NxJM1Slh4XNUcOaI7lidoelM5R8jTp1uniLBmfrSwUc0WxQNS8bQkuaVUZWjYPGfu3qxST
-	A2tOptt1J/4QK92DT/pTTm21N77Sr17dX7ryn49TB2vKdiZ7wydSUrdfvjYaXEx7WH84c12s
-	etG4W63Y89X3ZEvsvWlF64ZvWPPn8NsHsQ/vvTz7+ugh5LfXnD94XL5zz5NdaM649vSKuuzp
-	dcag9k3BrrQDxfLC2hVySpuj3JJJarTKfwENi1eBqwMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAA02SbUxTZxTH8zzP7e1tQ821YLjo4ofqYmIibmaa4yRK9mHe7P0TOr+MRq5y
-	VyimVQZOYyk065hZsK4ltMoQtVugvpXXznQjNOAcM7ZWRzPBalaRhiJMWhmtpWtjlvnl5H/+
-	//M7OR8OQ5RJyWpG1B4WdFp1lYqWU/KPdjRuyutwiG8MTJeA2XQCJsIRCfzRMERBIm6m4MwV
-	Fw1px4AUzO42Cfw6bqTAf7kbQThhRrCYchAweTIUpC2jUogv3ZeCtQFBxjuKwBawEAj5fyHg
-	6m3AsHB1mYYZ3zME1kcRGlqjDRTMOU8isE85pBAd2Q2z4esSyEw+wTD+PIbAGVnGEBn6CkHa
-	poHvO3uyuG2ehtSt2wRarX4E5x5NEngWfYigd/QBAu+PRhoet/QRsN8/AMHICribmKPhpvUb
-	GmYDZzA8vUpDh9ErgcDvMwjOOiwIpv70Ymg8f4UG21k3BZ6HP0khMPMCw4TNgqHb/SGEnVMU
-	jLV04uzJ2alrheBobcTZMo3Beuk6LnUiftH0LcV39fRj3nQnTfOudhfiU0kL4uMXGwlvasm2
-	vtgc4Zt6vuAvjsVoPpm4R/Pe5x0U/1snx1/4Oon5U7c28R77pPSTd/bJSyqEKrFW0G3eWS6v
-	9Hznow+dzqsbb9IYkFHejGQMx77F+YxOaTNiGIp9nQsHDuZsmt3AhUJLJGcXsCqub6I0ZxO2
-	ey0XnK3L6XxWw430p+mcVrDAdUaikmYkZ5SsBXEB32n8MljJ3WyLUC/hjVxoOYpzOwm7hvth
-	mcnZMvZtzjdgkuT0KnYdN9R/A7cghf0V2v4Kbf+f7kCkCxWI2tpqtVi1tVivqazXinXF+2uq
-	3Sj7kc7jL04Nonhw9zBiGaTKU8wXOUSlRF2rr68eRhxDVAWKVMouKhUV6vqjgq7mM92RKkE/
-	jNYwlKpQ8d4eoVzJHlQfFjSCcEjQ/ZdiRrbagPJJHDyfip/vCZTtcpfn9cnW73C1/82Qnr1d
-	wS+Xap7mG8rOtZaGmv7SJsvmNYsFI0Xr321P/bz1yMKqf1zFK/C1bbEwGZx+PCiDxPumtfqg
-	v7332F3PvnuGGydjbQuWiqLeO2Mf6Oq2vLaue0vKf+Dj6Inthl0lhRHz9kyGFWMqSl+pfnMj
-	0enV/wJlLv3cjQMAAA==
-X-CFilter-Loop: Reflected
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.100.1.1.5\))
+Subject: Re: [PATCH v2 1/3] jbd2: store jinode dirty range in PAGE_SIZE units
+From: Andreas Dilger <adilger@dilger.ca>
+In-Reply-To: <19c79ca43a6.6b379cc81360187.4397285579129640737@linux.beauty>
+Date: Sun, 22 Feb 2026 18:11:02 -0700
+Cc: Theodore Ts'o <tytso@mit.edu>,
+ Jan Kara <jack@suse.cz>,
+ Mark Fasheh <mark@fasheh.com>,
+ linux-ext4 <linux-ext4@vger.kernel.org>,
+ ocfs2-devel <ocfs2-devel@lists.linux.dev>,
+ Matthew Wilcox <willy@infradead.org>,
+ Jan Kara <jack@suse.com>,
+ linux-kernel <linux-kernel@vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <890EF4B9-1907-4122-8272-680845C2058E@dilger.ca>
+References: <20260219114645.778338-1-me@linux.beauty>
+ <20260219114645.778338-2-me@linux.beauty>
+ <63C86D0D-9EF6-4D33-95B2-8D0F5B305B0B@dilger.ca>
+ <19c79ca43a6.6b379cc81360187.4397285579129640737@linux.beauty>
+To: Li Chen <me@linux.beauty>
+X-Mailer: Apple Mail (2.3864.100.1.1.5)
 
-On Sun, Feb 15, 2026 at 07:42:05AM +0100, Dirk Behme wrote:
-> On 05.12.25 08:18, Byungchul Park wrote:
-> > wait_for_completion() can be used at various points in the code and it's
-> > very hard to distinguish wait_for_completion()s between different usages.
-> > Using a single dept_key for all the wait_for_completion()s could trigger
-> > false positive reports.
-> >
-> > Assign unique dept_key to each distinct wait_for_completion() caller to
-> > avoid false positive reports.
-> >
-> > While at it, add a rust helper for wait_for_completion() to avoid build
-> > errors.
-> >
-> > Signed-off-by: Byungchul Park <byungchul@sk.com>
-> > ---
-> >  include/linux/completion.h | 100 +++++++++++++++++++++++++++++++------
-> >  kernel/sched/completion.c  |  60 +++++++++++-----------
-> >  rust/helpers/completion.c  |   5 ++
-> >  3 files changed, 120 insertions(+), 45 deletions(-)
-> >
-> ...
-> > diff --git a/rust/helpers/completion.c b/rust/helpers/completion.c
-> > index b2443262a2ae..5bae5e749def 100644
-> > --- a/rust/helpers/completion.c
-> > +++ b/rust/helpers/completion.c
-> > @@ -6,3 +6,8 @@ void rust_helper_init_completion(struct completion *x)
-> >  {
-> >       init_completion(x);
-> >  }
-> > +
-> > +void rust_helper_wait_for_completion(struct completion *x)
-> 
-> Please add `__rust_helper`:
+On Feb 19, 2026, at 23:43, Li Chen <me@linux.beauty> wrote:
+>=20
+> Hi Andreas,
+>=20
+> Thanks a lot for your review!
+>=20
+> ---- On Fri, 20 Feb 2026 05:00:13 +0800  Andreas Dilger =
+<adilger@dilger.ca> wrote ---
+>> On Feb 19, 2026, at 04:46, Li Chen <me@linux.beauty> wrote:
+>>>=20
+>>> jbd2_inode fields are updated under journal->j_list_lock, but some =
+paths
+>>> read them without holding the lock (e.g. fast commit helpers and =
+ordered
+>>> truncate helpers).
+>>>=20
+>>> READ_ONCE() alone is not sufficient for i_dirty_start/end as they =
+are
+>>> loff_t and 32-bit platforms can observe torn loads. Store the dirty =
+range
+>>> in PAGE_SIZE units as pgoff_t so lockless readers can take non-torn
+>>> snapshots.
+>>=20
+>> When making semantic changes like this, it is best to change the =
+variable
+>> names as well, so that breaks compilation if bisection happens to =
+land
+>> between these patches.  Otherwise, that could cause some random =
+behavior
+>> if jbd2 is treating these as pages, but ext4/ocfs2 are treating them =
+as
+>> bytes or vice versa.
+>>=20
+>> Something like i_dirty_{start,end} -> i_dirty_{start,end}_page would =
+make
+>> this very clear what the units are.
+>=20
+> Agreed. I=E2=80=99ll make the units explicit in the field names (e.g. =
+*_page).
+>=20
+>> To avoid breakage between the patches (which is desirable to avoid =
+problems
+>> with automated bisection) you should make an initial patch with =
+wrappers to
+>> access these values and convert ext4/ocfs2 to use them:
+>>=20
+>> static inline loff_t jbd2_jinode_dirty_start(struct jbd2_inode =
+*jinode)
+>> {
+>>    return jinode->i_dirty_start;
+>> }
+>>=20
+>> static inline loff_t jbd2_jinode_dirty_end(struct jbd2_inode *jinode)
+>> {
+>>    return jinode->i_dirty_end;
+>> }
+>>=20
+>> then change this in the jbd2 patch at the end, which would then be =
+self-contained:
+>>=20
+>> static inline loff_t jbd2_jinode_dirty_start(struct jbd2_inode =
+*jinode)
+>> {
+>>    return (loff_t)jinode->i_dirty_start_page << PAGE_SHIFT;
+>> }
+>>=20
+>> static inline loff_t jbd2_jinode_dirty_end(struct jbd2_inode *jinode)
+>> {
+>>    return ((loff_t)jinode->i_dirty_end_page << PAGE_SHIFT) + =
+~PAGE_MASK;
+>> }
+>=20
+>=20
+> Agreed as well. I=E2=80=99ll add an accessor and switch ext4/ocfs2 =
+over to it first,
+> Then do the internal representation change later.
+>=20
+> I plan to use a single helper that returns the (start,end) pair in
+> bytes:
+>=20
+> static inline bool jbd2_jinode_get_dirty_range(const struct jbd2_inode =
+*jinode,
+> loff_t *start, loff_t *end)
+> {
+>    pgoff_t start_page =3D READ_ONCE(jinode->i_dirty_start_page);
+>    pgoff_t end_page =3D READ_ONCE(jinode->i_dirty_end_page);
+>=20
+>    if (end_page =3D=3D JBD2_INODE_DIRTY_RANGE_NONE)
+>      return false;
+>=20
+>    *start =3D (loff_t)start_page << PAGE_SHIFT;
+>    *end =3D ((loff_t)end_page << PAGE_SHIFT) + PAGE_SIZE - 1;
+>    return true;
+>=20
+> }
+>=20
+> I think this is a bit easier to use correctly than separate start/end =
+helpers
+> (keeps start/end together, and the end-of-page conversion lives in one =
+place).
+>=20
+> Does that sound OK, or would you rather see separate
+> jbd2_jinode_dirty_start()/jbd2_jinode_dirty_end() helpers?
 
-I will.  Thanks.
+This is fine with me.  I had only proposed the other option as a =
+"typical"
+interface for such fields.  If start/end are always used together then =
+it
+is fine that there is only one function to get these fields, and one to
+set them.
 
-	Byungchul
-> 
-> https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/rust/helpers/completion.c?h=next-20260213&id=1c7a6f48f7eeb3014584d2fc55fc67f0cbaeef69
-> 
-> Best regards
-> 
-> Dirk
+Cheers, Andreas
+
+
+
+
