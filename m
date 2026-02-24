@@ -1,65 +1,119 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CB7752E5418;
-	Tue, 24 Feb 2026 19:17:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2A0B528643A;
+	Tue, 24 Feb 2026 19:17:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1771960640; cv=none; b=U7OtA9FdcwUDsvxEUFUCoZ9wqpCSc8gN6/sJzAEhLSAewNApTQXVs7d2VP/qjaVFU7qDN1A60bFyTpc9nifWwSmZ9Axk+d8ygl9TUhLgJGjM0sFTQBe3HpD200oYZgGakDcEvJyfABS+xQ+XyxuBZTEP+oFPSJJfS9R+9/M521M=
+	t=1771960666; cv=none; b=qgtQeMGkzWBqji3q29/wUB+101W1WAMTCqPHjRszUY/lY2m0obBvcv7SLIK9cq5oGTl1rOZ+np5aAFtnnu1f2K+XHsZGaR1GgbumBK0nuQGSXjL7U0V2d3YUcxoYNeuWmY7zm7ZIy29PfaVRnk3YzSaS0pPPLKwwqn5JE/08Wuk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1771960640; c=relaxed/simple;
-	bh=faguA4shdIM+KkhQL9WA+K6xihdWfZPqdSPDIbLMpKI=;
+	s=arc-20240116; t=1771960666; c=relaxed/simple;
+	bh=yZo3aV05MfTY9I1xb/ZlO4ur0zlxYGJ0xQv68/z5aQ8=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=tXvo4owIvG1JRrA7fDDx5x0TlocVTvShJfeViXRnBW/nIWMGfpNv2yPJ1Zd9POWQIUGsFB8O9nd+Eutf/H41nyShWQL4e4dN7V6AKmEvW6TPY5eE/Nj7FIAfI9vEwI25FZvDdOkkQYlu4l+nEsZezuF8qko5X8NuWPfQmC4a/iE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=itx+6p8l; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=jy2q6H5lbcjk+Dnal1BmcAhAzXXchnKWy66gP4RBsOc6SY6wBnF2st7h0JoOWWS9gzuLqnpguNm46YOkxe2SfyrmWnCfIlDPahbz4GgfcYpaIl3Ga6OPe37TU6TmJGGgBhPWOYWHvQeGq2nw2L1c3xG1OECNpDGEMbHAAsMxoRY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=XnG6yk4i; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="itx+6p8l"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 59A02C116D0;
-	Tue, 24 Feb 2026 19:17:20 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="XnG6yk4i"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B8FFEC116D0;
+	Tue, 24 Feb 2026 19:17:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1771960640;
-	bh=faguA4shdIM+KkhQL9WA+K6xihdWfZPqdSPDIbLMpKI=;
+	s=k20201202; t=1771960665;
+	bh=yZo3aV05MfTY9I1xb/ZlO4ur0zlxYGJ0xQv68/z5aQ8=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=itx+6p8lv4hxjibsTkQujlUwfXPNx271bSJ+A42P8iapQry7iyF17p5ZEVOhVZOzS
-	 MdiR+XaaHySiKiasCTfuVQlGD1rNSyKD5b468rTUGitc8qx2ic3Xa6/ZDLjnBVu5qZ
-	 9vC4RX1nBrzbv1eGWxyiJmq1CdG9rs+0dI5IcCcXQPUAxneB/RGJ7QeIMADqGJ56wb
-	 u2guxdQ/VFHYQ64wBLhI4Moov/bXLyIDJay/NA6L0aRboM8uND4VHu+AL9Uc0kDb2e
-	 j08DK+SRHnCenuA9KqU2397gFH9n4Xr+ud6q0mWTQmqJCek4REWFMyKNoXuHcuUFp0
-	 MPLHOvbwkBtpA==
-Date: Tue, 24 Feb 2026 11:17:19 -0800
+	b=XnG6yk4iLPe4fN3FpI287hQfCMNe5M5oK7n99UbvOzMZimXZ5TOABXRHeb/svAzJC
+	 AVOnHuXIChrXUgH8t9nhCDguZFHz/1+jkrQt54iWhcCDrc8+HOP/M/s9VxDitpuQeI
+	 VqSwNAnjcVeWcvG1eNXOgKmZo39KZQ1FC8mi6xX1Z9EUhCt86Mbb87xXI5V0ucKwSW
+	 Mr8ZAxtgO0ap/vCSeJMWtGVL1kd4fUX8G6xMe57ahxIqjc1hpWVAT8rIQp5KA0dcM3
+	 ltkf36h0CAvABv6agxpHVnpXtSZvTIqbu1zCZHfY8/M4pydheqyr5q/sK4DQ497WjV
+	 10DpbLBepnadA==
+Date: Tue, 24 Feb 2026 11:17:45 -0800
 From: "Darrick J. Wong" <djwong@kernel.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: brauner@kernel.org, miklos@szeredi.hu, bpf@vger.kernel.org,
+To: Horst Birthelmer <horst@birthelmer.de>
+Cc: miklos@szeredi.hu, stable@vger.kernel.org, joannelkoong@gmail.com,
+	bpf@vger.kernel.org, bernd@bsbernd.com, neal@gompa.dev,
 	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 1/2] iomap: allow directio callers to supply _COMP_WORK
-Message-ID: <20260224191719.GA13829@frogsfrogsfrogs>
-References: <177188733433.3935463.11119081161286211234.stgit@frogsfrogsfrogs>
- <177188733463.3935463.15637212610999039409.stgit@frogsfrogsfrogs>
- <20260224140030.GA9516@lst.de>
+Subject: Re: [PATCH 2/5] fuse: quiet down complaints in fuse_conn_limit_write
+Message-ID: <20260224191745.GB13829@frogsfrogsfrogs>
+References: <177188733084.3935219.10400570136529869673.stgit@frogsfrogsfrogs>
+ <177188733154.3935219.17731267668265272256.stgit@frogsfrogsfrogs>
+ <aZ1iT-KBp8Vt002k@fedora.fritz.box>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20260224140030.GA9516@lst.de>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <aZ1iT-KBp8Vt002k@fedora.fritz.box>
 
-On Tue, Feb 24, 2026 at 03:00:30PM +0100, Christoph Hellwig wrote:
-> On Mon, Feb 23, 2026 at 03:07:53PM -0800, Darrick J. Wong wrote:
-> >  #define IOMAP_DIO_NO_INVALIDATE	(1U << 26)
-> > -#define IOMAP_DIO_COMP_WORK	(1U << 27)
-> >  #define IOMAP_DIO_WRITE_THROUGH	(1U << 28)
-> >  #define IOMAP_DIO_NEED_SYNC	(1U << 29)
-> >  #define IOMAP_DIO_WRITE		(1U << 30)
+On Tue, Feb 24, 2026 at 09:36:38AM +0100, Horst Birthelmer wrote:
+> On Mon, Feb 23, 2026 at 03:06:50PM -0800, Darrick J. Wong wrote:
+> > From: Darrick J. Wong <djwong@kernel.org>
+> > 
+> > gcc 15 complains about an uninitialized variable val that is passed by
+> > reference into fuse_conn_limit_write:
+> > 
+> >  control.c: In function ‘fuse_conn_congestion_threshold_write’:
+> >  include/asm-generic/rwonce.h:55:37: warning: ‘val’ may be used uninitialized [-Wmaybe-uninitialized]
+> >     55 |         *(volatile typeof(x) *)&(x) = (val);                            \
+> >        |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+> >  include/asm-generic/rwonce.h:61:9: note: in expansion of macro ‘__WRITE_ONCE’
+> >     61 |         __WRITE_ONCE(x, val);                                           \
+> >        |         ^~~~~~~~~~~~
+> >  control.c:178:9: note: in expansion of macro ‘WRITE_ONCE’
+> >    178 |         WRITE_ONCE(fc->congestion_threshold, val);
+> >        |         ^~~~~~~~~~
+> >  control.c:166:18: note: ‘val’ was declared here
+> >    166 |         unsigned val;
+> >        |                  ^~~
+> > 
+> > Unfortunately there's enough macro spew involved in kstrtoul_from_user
+> > that I think gcc gives up on its analysis and sprays the above warning.
+> > AFAICT it's not actually a bug, but we could just zero-initialize the
+> > variable to enable using -Wmaybe-uninitialized to find real problems.
+> > 
+> > Previously we would use some weird uninitialized_var annotation to quiet
+> > down the warnings, so clearly this code has been like this for quite
+> > some time.
+> > 
+> > Cc: <stable@vger.kernel.org> # v5.9
+> > Fixes: 3f649ab728cda8 ("treewide: Remove uninitialized_var() usage")
+> > Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
+> > ---
+> >  fs/fuse/control.c |    4 ++--
+> >  1 file changed, 2 insertions(+), 2 deletions(-)
+> > 
+> > 
+> > diff --git a/fs/fuse/control.c b/fs/fuse/control.c
+> > index 140bd5730d9984..073c2d8e4dfc7c 100644
+> > --- a/fs/fuse/control.c
+> > +++ b/fs/fuse/control.c
+> > @@ -121,7 +121,7 @@ static ssize_t fuse_conn_max_background_write(struct file *file,
+> >  					      const char __user *buf,
+> >  					      size_t count, loff_t *ppos)
+> >  {
+> > -	unsigned val;
+> > +	unsigned val = 0;
+> >  	ssize_t ret;
+> >  
+> >  	ret = fuse_conn_limit_write(file, buf, count, ppos, &val,
+> > @@ -163,7 +163,7 @@ static ssize_t fuse_conn_congestion_threshold_write(struct file *file,
+> >  						    const char __user *buf,
+> >  						    size_t count, loff_t *ppos)
+> >  {
+> > -	unsigned val;
+> > +	unsigned val = 0;
+> >  	struct fuse_conn *fc;
+> >  	ssize_t ret;
+> >  
+> > 
+> > 
 > 
-> Maybe move up IOMAP_DIO_NO_INVALIDATE to avoid unused bits?
-> 
-> Otherwise this looks good:
-> 
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
+> This looks good to me. Trivial fix for an annoying problem.
+> Reviewed-by: Horst Birthelmer <hbirthelmer@ddn.com>
 
-Done, and thanks for the review!
+Thanks for the review!
 
 --D
