@@ -1,106 +1,112 @@
-Received: from smtp02-ext3.udag.de (smtp02-ext3.udag.de [62.146.106.33])
+Received: from sender4-op-o15.zoho.com (sender4-op-o15.zoho.com [136.143.188.15])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5D86233121E;
-	Tue, 24 Feb 2026 08:36:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.146.106.33
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1771922208; cv=none; b=XRrBYQ3Rhj/2iMJOZ9s1qUvHfhBAPd99NySQ73j13nTQfdvDrOpI4ibSLOYVPAtwk+c8U4gelAXusP2rxtOO1enKu8i9EWRljwneoLOQCyL3voj1vAuPD41kzkpmCe2l87WpG1eyRw9c+AZn7UewD7hllsV8JpK91JeMelJ45iw=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1771922208; c=relaxed/simple;
-	bh=7mnOkl0qBsY0BUBWyCoFBzJO3ONHvC/fRvepJG//lvw=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=oUTKUpLFwwuy95egBZxFyM/Pyf0LaGfZo0c6qf1G/3/oB+yt/sEvnh5+0O1djNotszmxJmxDiPWR1r2jzvJ8KMDKDenh7mAAN9SMZWPjVNbEOBG6OdL4qhKJ7u0XPlA3BL7TMVdPtv0MomVo2ibPSAOMw8H4wacZGZ4b3qTiVcE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=birthelmer.de; spf=pass smtp.mailfrom=birthelmer.de; arc=none smtp.client-ip=62.146.106.33
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=birthelmer.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=birthelmer.de
-Received: from localhost (200-143-067-156.ip-addr.inexio.net [156.67.143.200])
-	by smtp02-ext3.udag.de (Postfix) with ESMTPA id D2488E078D;
-	Tue, 24 Feb 2026 09:36:38 +0100 (CET)
-Authentication-Results: smtp02-ext3.udag.de;
-	auth=pass smtp.auth=birthelmercom-0001 smtp.mailfrom=horst@birthelmer.de
-Date: Tue, 24 Feb 2026 09:36:38 +0100
-From: Horst Birthelmer <horst@birthelmer.de>
-To: "Darrick J. Wong" <djwong@kernel.org>
-Cc: miklos@szeredi.hu, stable@vger.kernel.org, joannelkoong@gmail.com, 
-	bpf@vger.kernel.org, bernd@bsbernd.com, neal@gompa.dev, linux-fsdevel@vger.kernel.org, 
-	linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 2/5] fuse: quiet down complaints in fuse_conn_limit_write
-Message-ID: <aZ1iT-KBp8Vt002k@fedora.fritz.box>
-References: <177188733084.3935219.10400570136529869673.stgit@frogsfrogsfrogs>
- <177188733154.3935219.17731267668265272256.stgit@frogsfrogsfrogs>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 48BF036BCE3;
+	Tue, 24 Feb 2026 09:25:18 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=136.143.188.15
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1771925119; cv=pass; b=ax9RV/MV3ZEJGeS+s6isPGzC4nW2v30LUnFtI5410gY6xDZU0IJXQwA7JqjzifD/H2R9KOth3fSAiBJxZ8gVyu/UNcDn41DCVkBPzUjajmxnXr3gWzjOdmSaRc2hhcXypaH6JL4/YFHlET9tKlQs5b6E7y0HTbaQDNDgCgANv2k=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1771925119; c=relaxed/simple;
+	bh=l/+8xNhBJiAqz5eluZVYjjv0RTENPns16lQDGSJeU4g=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=MXgIY93M5hnCbw0KBzA8uvTRSUiG/FaVZctumMtvdTdhhZ49fMRpFRJjjzLHC587VAbrPCRTWgm8mMmHcMtZd/Ya57lm3HvgwXXh2Melq4Ff0s470UN/kM6LgAdVmom94nXQV4UIuoHjRvAtmYOlupO3AepAldiu017bBm8dux4=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty; spf=pass smtp.mailfrom=linux.beauty; dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b=NAXkf/BR; arc=pass smtp.client-ip=136.143.188.15
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.beauty
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b="NAXkf/BR"
+ARC-Seal: i=1; a=rsa-sha256; t=1771925091; cv=none; 
+	d=zohomail.com; s=zohoarc; 
+	b=BHqbqezsLZHhDpdi0idNEqEAIP+uVVfFKL25A5UqX74xrWs+O5yv0jdmIG4G+NCp6jUnVsJ0BwOytPHk1jMbaX8oEmovwPZLlbu0cJsCCIMMkUUmGxF51ERz+idTNSuY2cEJhIVxhMzRpqrmlYcQH9aJ0i79NSM97cAGGNci/d0=
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zohomail.com; s=zohoarc; 
+	t=1771925091; h=Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:MIME-Version:Message-ID:Subject:Subject:To:To:Message-Id:Reply-To; 
+	bh=lq/az62VqJL5U3p1nsUAG3qRG0JWKPWWQXM+kQO5te8=; 
+	b=he03inaAXvfYbUFBdZQVNXtTVT28bmgI74cYnMfM30OywsqccjtTwyszdLMUELsRKqLlb4qtGtJlgb8b9zhLU1lH0huppc3idpDkEzOB/U2g38e0YfVvLVNoxG7pGncNzkcenZJWzhAvrGV30BIHEd/YBrpxdPLYBnS/CWJIYjs=
+ARC-Authentication-Results: i=1; mx.zohomail.com;
+	dkim=pass  header.i=linux.beauty;
+	spf=pass  smtp.mailfrom=me@linux.beauty;
+	dmarc=pass header.from=<me@linux.beauty>
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1771925091;
+	s=zmail; d=linux.beauty; i=me@linux.beauty;
+	h=From:From:To:To:Cc:Cc:Subject:Subject:Date:Date:Message-ID:MIME-Version:Content-Transfer-Encoding:Message-Id:Reply-To;
+	bh=lq/az62VqJL5U3p1nsUAG3qRG0JWKPWWQXM+kQO5te8=;
+	b=NAXkf/BRQ+RdIVOsE3SNsiHFygplCBLitAFxyM4354wK80Hq4uJ1STGF4eN9Q4Z2
+	XCbDGzovEzd+DfEseS6EISVNVBkRVLWA6Fpr9sIbiWiFlhsczzv82gE9czP3+Mm6RZr
+	rdBAXPZxm9r2y4Bi9Q7IohOWFVUAqAUH+pKzjLBQ=
+Received: by mx.zohomail.com with SMTPS id 1771925089111389.9681096666558;
+	Tue, 24 Feb 2026 01:24:49 -0800 (PST)
+From: Li Chen <me@linux.beauty>
+To: Theodore Ts'o <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>,
+	Mark Fasheh <mark@fasheh.com>,
+	linux-ext4@vger.kernel.org,
+	ocfs2-devel@lists.linux.dev
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	Joel Becker <jlbec@evilplan.org>,
+	Joseph Qi <joseph.qi@linux.alibaba.com>,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v3 0/4] jbd2/ext4/ocfs2: lockless jinode dirty range
+Date: Tue, 24 Feb 2026 17:24:29 +0800
+Message-ID: <20260224092434.202122-1-me@linux.beauty>
+X-Mailer: git-send-email 2.52.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <177188733154.3935219.17731267668265272256.stgit@frogsfrogsfrogs>
+X-ZohoMailClient: External
 
-On Mon, Feb 23, 2026 at 03:06:50PM -0800, Darrick J. Wong wrote:
-> From: Darrick J. Wong <djwong@kernel.org>
-> 
-> gcc 15 complains about an uninitialized variable val that is passed by
-> reference into fuse_conn_limit_write:
-> 
->  control.c: In function ‘fuse_conn_congestion_threshold_write’:
->  include/asm-generic/rwonce.h:55:37: warning: ‘val’ may be used uninitialized [-Wmaybe-uninitialized]
->     55 |         *(volatile typeof(x) *)&(x) = (val);                            \
->        |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~
->  include/asm-generic/rwonce.h:61:9: note: in expansion of macro ‘__WRITE_ONCE’
->     61 |         __WRITE_ONCE(x, val);                                           \
->        |         ^~~~~~~~~~~~
->  control.c:178:9: note: in expansion of macro ‘WRITE_ONCE’
->    178 |         WRITE_ONCE(fc->congestion_threshold, val);
->        |         ^~~~~~~~~~
->  control.c:166:18: note: ‘val’ was declared here
->    166 |         unsigned val;
->        |                  ^~~
-> 
-> Unfortunately there's enough macro spew involved in kstrtoul_from_user
-> that I think gcc gives up on its analysis and sprays the above warning.
-> AFAICT it's not actually a bug, but we could just zero-initialize the
-> variable to enable using -Wmaybe-uninitialized to find real problems.
-> 
-> Previously we would use some weird uninitialized_var annotation to quiet
-> down the warnings, so clearly this code has been like this for quite
-> some time.
-> 
-> Cc: <stable@vger.kernel.org> # v5.9
-> Fixes: 3f649ab728cda8 ("treewide: Remove uninitialized_var() usage")
-> Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
-> ---
->  fs/fuse/control.c |    4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
-> 
-> 
-> diff --git a/fs/fuse/control.c b/fs/fuse/control.c
-> index 140bd5730d9984..073c2d8e4dfc7c 100644
-> --- a/fs/fuse/control.c
-> +++ b/fs/fuse/control.c
-> @@ -121,7 +121,7 @@ static ssize_t fuse_conn_max_background_write(struct file *file,
->  					      const char __user *buf,
->  					      size_t count, loff_t *ppos)
->  {
-> -	unsigned val;
-> +	unsigned val = 0;
->  	ssize_t ret;
->  
->  	ret = fuse_conn_limit_write(file, buf, count, ppos, &val,
-> @@ -163,7 +163,7 @@ static ssize_t fuse_conn_congestion_threshold_write(struct file *file,
->  						    const char __user *buf,
->  						    size_t count, loff_t *ppos)
->  {
-> -	unsigned val;
-> +	unsigned val = 0;
->  	struct fuse_conn *fc;
->  	ssize_t ret;
->  
-> 
-> 
+This series makes the jbd2_inode dirty range tracking safe for lockless
+reads in jbd2 and filesystem callbacks used by ext4 and ocfs2.
 
-This looks good to me. Trivial fix for an annoying problem.
-Reviewed-by: Horst Birthelmer <hbirthelmer@ddn.com>
+Some paths access jinode fields without holding journal->j_list_lock
+(e.g. fast commit helpers and ordered truncate helpers). v1 used READ_ONCE()
+on i_dirty_start/end, but Matthew pointed out that loff_t can be torn on
+32-bit platforms, and Jan suggested storing the dirty range in PAGE_SIZE
+units as pgoff_t.
+
+With this series, jbd2 stores the dirty range as page indexes and uses
+READ_ONCE()/WRITE_ONCE() for lockless access. ext4 and ocfs2 use the new
+jbd2_jinode_get_dirty_range() accessor which converts the page-based range
+back to byte offsets for writeback.
+
+This is based on Jan's suggestion in the review of the ext4 jinode
+publication race fix. [1]
+
+Changes since v2:
+- Add jbd2_jinode_get_dirty_range() accessor and convert ext4/ocfs2 to use it
+  before switching the underlying representation (per Andreas).
+- Rename the dirty range fields to i_dirty_start_page/end_page to make the
+  PAGE_SIZE units explicit and avoid silent unit mismatches when bisecting.
+
+Changes since v1:
+- Store i_dirty_start/end in PAGE_SIZE units (pgoff_t) to avoid torn loads on
+  32-bit (pointed out by Matthew, suggested by Jan).
+- Use WRITE_ONCE() for i_dirty_* / i_flags updates in jbd2 (per Jan).
+- Drop pointless READ_ONCE() on i_vfs_inode in jbd2_wait_inode_data (per Jan).
+- Convert ext4/ocfs2 callbacks to translate page range to byte offsets.
+
+[1]: https://lore.kernel.org/all/4jxwogttddiaoqbstlgou5ox6zs27ngjjz5ukrxafm2z5ijxod@so4eqnykiegj/
+
+v2: https://lore.kernel.org/all/20260219114645.778338-1-me@linux.beauty/
+v1: https://lore.kernel.org/all/20260130031232.60780-1-me@linux.beauty/
+
+Li Chen (4):
+  jbd2: add jinode dirty range accessors
+  ext4: use jbd2 jinode dirty range accessor
+  ocfs2: use jbd2 jinode dirty range accessor
+  jbd2: store jinode dirty range in PAGE_SIZE units
+
+ fs/ext4/inode.c       | 10 ++++++--
+ fs/ext4/super.c       | 16 +++++++++----
+ fs/jbd2/commit.c      | 56 +++++++++++++++++++++++++++++++++----------
+ fs/jbd2/journal.c     |  5 ++--
+ fs/jbd2/transaction.c | 20 ++++++++++------
+ fs/ocfs2/journal.c    |  9 +++++--
+ include/linux/jbd2.h  | 35 +++++++++++++++++++++------
+ 7 files changed, 112 insertions(+), 39 deletions(-)
+
+-- 
+2.52.0
