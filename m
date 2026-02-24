@@ -1,54 +1,57 @@
 Received: from sender4-op-o15.zoho.com (sender4-op-o15.zoho.com [136.143.188.15])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 48BF036BCE3;
-	Tue, 24 Feb 2026 09:25:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BCA4C36A025;
+	Tue, 24 Feb 2026 09:25:28 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=136.143.188.15
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1771925119; cv=pass; b=ax9RV/MV3ZEJGeS+s6isPGzC4nW2v30LUnFtI5410gY6xDZU0IJXQwA7JqjzifD/H2R9KOth3fSAiBJxZ8gVyu/UNcDn41DCVkBPzUjajmxnXr3gWzjOdmSaRc2hhcXypaH6JL4/YFHlET9tKlQs5b6E7y0HTbaQDNDgCgANv2k=
+	t=1771925129; cv=pass; b=VU9JVtqh/NpqC98hQDDwKkb02QV5Km/RDaBrxShxnAbwCUsvi/7COkdlYdHqAsIFLT/7FKdpOD6QSttiAB9jB15sNv7ONgFweG9745kJmWHaranNxn9GgldETGLjLJi4FwUeXzaM5sAzdvhs2aEmIlNQbgGQHKd6FINOqNnIvxY=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1771925119; c=relaxed/simple;
-	bh=l/+8xNhBJiAqz5eluZVYjjv0RTENPns16lQDGSJeU4g=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=MXgIY93M5hnCbw0KBzA8uvTRSUiG/FaVZctumMtvdTdhhZ49fMRpFRJjjzLHC587VAbrPCRTWgm8mMmHcMtZd/Ya57lm3HvgwXXh2Melq4Ff0s470UN/kM6LgAdVmom94nXQV4UIuoHjRvAtmYOlupO3AepAldiu017bBm8dux4=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty; spf=pass smtp.mailfrom=linux.beauty; dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b=NAXkf/BR; arc=pass smtp.client-ip=136.143.188.15
+	s=arc-20240116; t=1771925129; c=relaxed/simple;
+	bh=nYee31V4R+ye21Tb469w3CGk1W/ZmOK/8or+xQNTE8U=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=DlfbVTlVvtUrY50rcN3TuCx1NwSNTZzLGkRr9JQ1pdIPiOUVs2rnDaCfu5Y3lIiHQ/UeWD8nI84zv9KfNLNZNQ0oC4Aps/WIjAqIozlvsUDFmTCpTWB9O7xxB1gzEbL5N8pJ+0SbK9f/jWG4rBrKgHY8oM58sbexGgZTUqkCfoA=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty; spf=pass smtp.mailfrom=linux.beauty; dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b=oF2TP5yZ; arc=pass smtp.client-ip=136.143.188.15
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.beauty
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b="NAXkf/BR"
-ARC-Seal: i=1; a=rsa-sha256; t=1771925091; cv=none; 
+	dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b="oF2TP5yZ"
+ARC-Seal: i=1; a=rsa-sha256; t=1771925095; cv=none; 
 	d=zohomail.com; s=zohoarc; 
-	b=BHqbqezsLZHhDpdi0idNEqEAIP+uVVfFKL25A5UqX74xrWs+O5yv0jdmIG4G+NCp6jUnVsJ0BwOytPHk1jMbaX8oEmovwPZLlbu0cJsCCIMMkUUmGxF51ERz+idTNSuY2cEJhIVxhMzRpqrmlYcQH9aJ0i79NSM97cAGGNci/d0=
+	b=hkEbIFt4DttIgv1CMozsmY98EMfKwCuLpSWdiZdlW4ggDVwTVziNNdp4OKV0W0iH5iOvW1OYsPT7FX+28b44rGIGG2YKIMSMxHPZ/YnHXlWkbO1ocfOM5fxzVzzb1R2DRN8wZqoZcQMl34q5Qv6ZNNZormcMNNaADyrmRIwxE/U=
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zohomail.com; s=zohoarc; 
-	t=1771925091; h=Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:MIME-Version:Message-ID:Subject:Subject:To:To:Message-Id:Reply-To; 
-	bh=lq/az62VqJL5U3p1nsUAG3qRG0JWKPWWQXM+kQO5te8=; 
-	b=he03inaAXvfYbUFBdZQVNXtTVT28bmgI74cYnMfM30OywsqccjtTwyszdLMUELsRKqLlb4qtGtJlgb8b9zhLU1lH0huppc3idpDkEzOB/U2g38e0YfVvLVNoxG7pGncNzkcenZJWzhAvrGV30BIHEd/YBrpxdPLYBnS/CWJIYjs=
+	t=1771925095; h=Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:Subject:To:To:Message-Id:Reply-To; 
+	bh=cmlJ31saADhV9cIVXgk18qWI8zfxtzNj8Oj1whESdKg=; 
+	b=VHQvhdXUwjjWNBNjlzoFZ6287O1DsmkYRR72xwYPjnxU9CqPK7BzRlag8mvIBaxgquSJCob5bgmF8+11uAwNYERXJiJoYKxmNsjxVDoh6caaRKj1t7aAvjpFxKJFVaK2j91X3Tf/rv3bDibT1cHVP/B9oQrm2jPpHzLTmMcyPts=
 ARC-Authentication-Results: i=1; mx.zohomail.com;
 	dkim=pass  header.i=linux.beauty;
 	spf=pass  smtp.mailfrom=me@linux.beauty;
 	dmarc=pass header.from=<me@linux.beauty>
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1771925091;
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1771925095;
 	s=zmail; d=linux.beauty; i=me@linux.beauty;
-	h=From:From:To:To:Cc:Cc:Subject:Subject:Date:Date:Message-ID:MIME-Version:Content-Transfer-Encoding:Message-Id:Reply-To;
-	bh=lq/az62VqJL5U3p1nsUAG3qRG0JWKPWWQXM+kQO5te8=;
-	b=NAXkf/BRQ+RdIVOsE3SNsiHFygplCBLitAFxyM4354wK80Hq4uJ1STGF4eN9Q4Z2
-	XCbDGzovEzd+DfEseS6EISVNVBkRVLWA6Fpr9sIbiWiFlhsczzv82gE9czP3+Mm6RZr
-	rdBAXPZxm9r2y4Bi9Q7IohOWFVUAqAUH+pKzjLBQ=
-Received: by mx.zohomail.com with SMTPS id 1771925089111389.9681096666558;
-	Tue, 24 Feb 2026 01:24:49 -0800 (PST)
+	h=From:From:To:To:Cc:Cc:Subject:Subject:Date:Date:Message-ID:In-Reply-To:References:MIME-Version:Content-Transfer-Encoding:Message-Id:Reply-To;
+	bh=cmlJ31saADhV9cIVXgk18qWI8zfxtzNj8Oj1whESdKg=;
+	b=oF2TP5yZH4wa7aDLhycqy8eVRVHofHSb8jZ22zOkEyr3iZ86/Dbe7W6UEwAtY5zx
+	yujTcVbXiQnL1b7nZJOBHtzMcIpuRxtqHM66qhEjTi6AxOpGkzlAjGnb5V0r6Di48AV
+	eUWv2xRYOIAkOiFySob8PIggU6aNspwvqcZTjvkc=
+Received: by mx.zohomail.com with SMTPS id 1771925093993179.92546983539432;
+	Tue, 24 Feb 2026 01:24:53 -0800 (PST)
 From: Li Chen <me@linux.beauty>
 To: Theodore Ts'o <tytso@mit.edu>,
 	Jan Kara <jack@suse.cz>,
 	Mark Fasheh <mark@fasheh.com>,
 	linux-ext4@vger.kernel.org,
-	ocfs2-devel@lists.linux.dev
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	Joel Becker <jlbec@evilplan.org>,
-	Joseph Qi <joseph.qi@linux.alibaba.com>,
+	ocfs2-devel@lists.linux.dev,
+	Jan Kara <jack@suse.com>,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v3 0/4] jbd2/ext4/ocfs2: lockless jinode dirty range
-Date: Tue, 24 Feb 2026 17:24:29 +0800
-Message-ID: <20260224092434.202122-1-me@linux.beauty>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	Li Chen <me@linux.beauty>
+Subject: [PATCH v3 1/4] jbd2: add jinode dirty range accessors
+Date: Tue, 24 Feb 2026 17:24:30 +0800
+Message-ID: <20260224092434.202122-2-me@linux.beauty>
 X-Mailer: git-send-email 2.52.0
+In-Reply-To: <20260224092434.202122-1-me@linux.beauty>
+References: <20260224092434.202122-1-me@linux.beauty>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -58,55 +61,43 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-ZohoMailClient: External
 
-This series makes the jbd2_inode dirty range tracking safe for lockless
-reads in jbd2 and filesystem callbacks used by ext4 and ocfs2.
+Provide a helper to fetch jinode dirty ranges in bytes. This lets
+filesystem callbacks avoid depending on the internal representation,
+preparing for a later conversion to page units.
 
-Some paths access jinode fields without holding journal->j_list_lock
-(e.g. fast commit helpers and ordered truncate helpers). v1 used READ_ONCE()
-on i_dirty_start/end, but Matthew pointed out that loff_t can be torn on
-32-bit platforms, and Jan suggested storing the dirty range in PAGE_SIZE
-units as pgoff_t.
-
-With this series, jbd2 stores the dirty range as page indexes and uses
-READ_ONCE()/WRITE_ONCE() for lockless access. ext4 and ocfs2 use the new
-jbd2_jinode_get_dirty_range() accessor which converts the page-based range
-back to byte offsets for writeback.
-
-This is based on Jan's suggestion in the review of the ext4 jinode
-publication race fix. [1]
-
+Suggested-by: Andreas Dilger <adilger@dilger.ca>
+Signed-off-by: Li Chen <me@linux.beauty>
+---
 Changes since v2:
-- Add jbd2_jinode_get_dirty_range() accessor and convert ext4/ocfs2 to use it
-  before switching the underlying representation (per Andreas).
-- Rename the dirty range fields to i_dirty_start_page/end_page to make the
-  PAGE_SIZE units explicit and avoid silent unit mismatches when bisecting.
+- New patch: add jbd2_jinode_get_dirty_range() helper.
 
-Changes since v1:
-- Store i_dirty_start/end in PAGE_SIZE units (pgoff_t) to avoid torn loads on
-  32-bit (pointed out by Matthew, suggested by Jan).
-- Use WRITE_ONCE() for i_dirty_* / i_flags updates in jbd2 (per Jan).
-- Drop pointless READ_ONCE() on i_vfs_inode in jbd2_wait_inode_data (per Jan).
-- Convert ext4/ocfs2 callbacks to translate page range to byte offsets.
+ include/linux/jbd2.h | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
-[1]: https://lore.kernel.org/all/4jxwogttddiaoqbstlgou5ox6zs27ngjjz5ukrxafm2z5ijxod@so4eqnykiegj/
-
-v2: https://lore.kernel.org/all/20260219114645.778338-1-me@linux.beauty/
-v1: https://lore.kernel.org/all/20260130031232.60780-1-me@linux.beauty/
-
-Li Chen (4):
-  jbd2: add jinode dirty range accessors
-  ext4: use jbd2 jinode dirty range accessor
-  ocfs2: use jbd2 jinode dirty range accessor
-  jbd2: store jinode dirty range in PAGE_SIZE units
-
- fs/ext4/inode.c       | 10 ++++++--
- fs/ext4/super.c       | 16 +++++++++----
- fs/jbd2/commit.c      | 56 +++++++++++++++++++++++++++++++++----------
- fs/jbd2/journal.c     |  5 ++--
- fs/jbd2/transaction.c | 20 ++++++++++------
- fs/ocfs2/journal.c    |  9 +++++--
- include/linux/jbd2.h  | 35 +++++++++++++++++++++------
- 7 files changed, 112 insertions(+), 39 deletions(-)
-
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index a53a00d36228c..64392baf5f4b4 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -445,6 +445,20 @@ struct jbd2_inode {
+ 	loff_t i_dirty_end;
+ };
+ 
++static inline bool jbd2_jinode_get_dirty_range(const struct jbd2_inode *jinode,
++					       loff_t *start, loff_t *end)
++{
++	loff_t start_byte = jinode->i_dirty_start;
++	loff_t end_byte = jinode->i_dirty_end;
++
++	if (!end_byte)
++		return false;
++
++	*start = start_byte;
++	*end = end_byte;
++	return true;
++}
++
+ struct jbd2_revoke_table_s;
+ 
+ /**
 -- 
 2.52.0
