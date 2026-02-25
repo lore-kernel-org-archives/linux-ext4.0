@@ -1,238 +1,382 @@
-Received: from mail-ed1-f48.google.com (mail-ed1-f48.google.com [209.85.208.48])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0a-00364e01.pphosted.com (mx0a-00364e01.pphosted.com [148.163.135.74])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AF301316918
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2026 21:43:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.48
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772055827; cv=pass; b=Cyv39NhRfmkO8lwiCy0G2+a97oHz+40gCRexttYbV+6vD6SHHgNAyoE5khbzOesHqFJKOWaqt8Zv+lP0pBoR9TuvduUvqiHugbLs+d2Mjwc6dRDOw8IBTSfxyQvV0KCGrfQRir2yjwFUD44LBysr/ioyIcFL2TrA2L+2yXbAd+Q=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772055827; c=relaxed/simple;
-	bh=hoZBQczrzcuyVPOXD+tTAmFlTYabJ94zI9Irylb/EVw=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=RzYEoO44ES5QHptp3n1+RiPkPS7wibScBeo6QHC6iZkKMDbiW9+UADHQFCq7wuuBjtWMMMmaxuY9Aqi6H0y0aHN3HsbXVi3owCA2ulZSPncdyR5xA4Jia/PdMA7TK9pErWNwJ6anCUG/Tri49n12ehW6ZNeQRDEw0ApTlUDJWCY=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=DcXnIIPe; arc=pass smtp.client-ip=209.85.208.48
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BE710361668
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2026 22:41:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.135.74
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1772059304; cv=none; b=pn2h0EkxSEwnbzew9uGkPWmilK202/mefi1jEtLmBFleS2DqHNHniYySBF5RZOIDXWP602gdiXt5P9EugFdK5J1OlYiBXFwinXIQNNq17ipUCiQrdxXmjvY9DVCJDxKjVJeC7ZATJIe93GJgsTZPUL/VeLalS0K2aK7iPLwhpQY=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1772059304; c=relaxed/simple;
+	bh=Ut4irJAP91Ja56kFfECaXVcCmgWiTiooWThaHJixb4A=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=HptpZEPr99yjW3Wt8zFVGT/YW2lVudVunnc8lrmd6aL7VqtjY/oWWD3jyOUC5ftGMoNJtA4lBwqpZBKFlcfl18a6F/5NQTYTanaomMgxgxW6KZ1+h48339MYXc/J7pxGxZBX0Eq55vBVPAed9e3xHeLGnt9UkkG5x9uSSSg/4PQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=columbia.edu; spf=pass smtp.mailfrom=columbia.edu; dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.b=ZQwNYgHV; arc=none smtp.client-ip=148.163.135.74
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=columbia.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=columbia.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="DcXnIIPe"
-Received: by mail-ed1-f48.google.com with SMTP id 4fb4d7f45d1cf-65f3a35ff13so3608a12.0
-        for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2026 13:43:45 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1772055824; cv=none;
-        d=google.com; s=arc-20240605;
-        b=VHC+IcdZ2eg0AvPilKSHYy3BczyNlpFCmMFtYeelzZf4I6ZcEMfci03PqRvg8fwgXB
-         rKMMPGaikNE2A/pe4ZiN57dd19zIajtbbGoFt7i8H//C0ry3ylYeTko4U4dlGMVR2GXk
-         9rRWovQ45l08ysDcPZN3bNx5xev/tAZ9AMjPrsq71kuYKINuFjf8VXVQs81H5x2eu5Oh
-         dXh8p+2a3NY5LhvbggAdQeN4h3e/4PHQ7Wnnlkwn8ochyqevWMvbzoHX6f6YaODfqrsY
-         S8tWQOa8hYNqfQA0TNSr86ZdVzdAbOiDccGH9qLa+n78vuieLVcyfLaMy/Lc4OgfjhYI
-         rxvg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=vB9FeLIHdzkOeJQl8sZ1jnIIU5NTPuPRUQDCv7qOk1c=;
-        fh=54y2aoEqJvnzETXkgZwaln0xxGFVT8hK666Ewx9Ymmo=;
-        b=Xz+C5t1yz/G6/V/6+zLsKj7sHzHVRubGaCbmBxnB0G5MHmv++h05upiWA4ngf5srDG
-         o6/DPS8IdSsJDrJem9Ye4Xs61GOeqb9Ac40MwMsg9kDch+8BVif5RkdXVhKmia6I0lGB
-         wH0WBLhU7t1qrW3gk9L/MU6S/izm7Mu19MY1p0ETKHp1eDU7AXX1uRDOA8QSwuCnlYdu
-         zZthwVSb6EMgWxj3imW9eU31WUOWbR0ZJyedjXUCQWmh53T6WbzE49Y5UAuKFsi80lNA
-         nF4fTP2r4bY9EAqyJKS8PxVI010ZbssHrdlXpm0okpD6tLf/J4Ei4gTZ++eHsp/EjmvU
-         FUZg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20230601; t=1772055824; x=1772660624; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=vB9FeLIHdzkOeJQl8sZ1jnIIU5NTPuPRUQDCv7qOk1c=;
-        b=DcXnIIPehOR7Zcc84tU5ax/4/X+fJQQXdh6G/qeIGgAwD6QNLuPBvyozFNu04p1olg
-         g2ioHyEBoajIsPgNamu8pOCASAUioThGOznYmtfFxA2PNCUI/goNDca2bs4YaC57UiMX
-         hrNrJLYnxtIrwCeUCMpB65/mfvXVpuwHhNmB8r2rpeEZVUk9JmP1VTBaWsG8jXrjKXwl
-         UiqonoSGe9mduDMaJoz8Kgszdb+iCjKBceJQZRl2elaXYdryJsUcOdQPBv+X7m1a9tcz
-         uA3wykguwgIff37UR05C2cadCAQdbVnrzA/akWYG16NJ0Q72rMQDl7LjJp/0lKeJMubA
-         Zb8Q==
+	dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.b="ZQwNYgHV"
+Received: from pps.filterd (m0167072.ppops.net [127.0.0.1])
+	by mx0a-00364e01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 61PMC7Ah1601526
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2026 17:41:42 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=columbia.edu; h=
+	cc:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:subject:to; s=pps01; bh=UCad
+	QArHxHi9ThZ1jAIvSvngqH0LQPrZ8HK0cEt3m1g=; b=ZQwNYgHVk1e7AonBp1GN
+	AHhms9mVIbxtdg9djgycPaIK5SH2e7LZ9supw+fWQxOsuxDxLdWYTg29qYdOZWOY
+	Yoxind27Lp1LnTlBB+iocGqkBeujZgdoOx0KTpb3+L2flDUaQvgq7QGL0FSOMsZb
+	aePYzQ46aAH5yfuxGueCd2PW8+BtSYb/6riEK9KE4UlCVlV4OAKU7LPjPny0bZRa
+	r/F5oQMKeYFunqtUXZRY4gcq/FG3n9onHe0PD5YjSbIvEHhHmA/12/mqQIcDCB0E
+	/BIYyBF4K6XcVWBm+onb/+8xjo0VkdTKX9hjL7/Xe7D735HMn5X1aR3McboDQo3F
+	fQ==
+Received: from mail-qt1-f198.google.com (mail-qt1-f198.google.com [209.85.160.198])
+	by mx0a-00364e01.pphosted.com (PPS) with ESMTPS id 4chxa0p1sp-1
+	(version=TLSv1.3 cipher=TLS_AES_128_GCM_SHA256 bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2026 17:41:41 -0500 (EST)
+Received: by mail-qt1-f198.google.com with SMTP id d75a77b69052e-506a936d7afso28832961cf.3
+        for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2026 14:41:41 -0800 (PST)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1772055824; x=1772660624;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=vB9FeLIHdzkOeJQl8sZ1jnIIU5NTPuPRUQDCv7qOk1c=;
-        b=nDQdYODdWJtPZi8Y53gZGuWPdj0xKkJHk4EBIdduoMCV8MlrvC2tIjOF6VWIVlKOcA
-         9uQZFYYcO2njGflG0b2eNKrJDw5qM2V+oP0BDVIAgGeaETysaeKfHY0dzUgQnXv+/fdD
-         LXwLIAcJ46I0U/KxHBOAOHAqGy9VAaXSkS/NvR5igW2D48fkM6kb21EOblTDYGmX26qd
-         H4BAbv4uVJynrRQLaM27RJE4ZBULrevC5QtdRw1WLcEUAQ9VYpSplCHW4y5ouA0d/3z2
-         UvS/um0qSftYsWSG21SFRKw5+ORwnzXrqbe/ppZfJst/hY0X3EEa5pREKfl4P2B4ALlD
-         vm3w==
-X-Forwarded-Encrypted: i=1; AJvYcCWAd6eb5urHeTZwMWWeOm37sEQa+lQDH6WHyYIA+WK7LGy5lwkTYmC8vmKhJpmCuQi+WHhpujcpdGCx@vger.kernel.org
-X-Gm-Message-State: AOJu0YyHCsnBUe6uinxSKg0pLEXnTRpT/heLiYiq67nXXqqzqanjsBZO
-	Bk1GIzsLNH1zXbkz9DQ4zOboVVXpeEYM5MigMWWtcQeHX8up64ZVyjUHx4YIAMKQEP/gABZUcrm
-	yu7K3+q5qkwhYJeuchSi+ZbYgphanDFAvw4ttm1wW
-X-Gm-Gg: ATEYQzzmqr9mOSWSPeIcepFNPjFR3u49iOhdoBUKr8PcVwUIEKrCe+F7Mg9cC8AZfOl
-	jxObjwZ6GD8KuF2BjvbcnRlukX30FIRQI2sByyLVcfGUqNmV962rxoGu4MsjwdsymGJieZPv1b6
-	7TH1WgdbjsgZLgGcLxGM4sb65DZlaDMQlIft/RV59/5tf+Czg5Qqe/pi8UtOupdw7QXx1Gtohmv
-	QlMWyZQ/IPzksNBdVv30Ua7LZ/3wF76fPAa1do8kkooqpgAo3AoyGCennwGZtQsfsZNZjCG4oRf
-	PU7vdSCcK+AAJ9PwGb5rIL0Y9M+2FTzFbt9Sbg==
-X-Received: by 2002:aa7:c7cf:0:b0:658:e7a:6fa7 with SMTP id
- 4fb4d7f45d1cf-65fab61a7b0mr11377a12.4.1772055823405; Wed, 25 Feb 2026
- 13:43:43 -0800 (PST)
+        d=1e100.net; s=20230601; t=1772059300; x=1772664100;
+        h=cc:to:in-reply-to:references:message-id:content-transfer-encoding
+         :mime-version:subject:date:from:x-gm-gg:x-gm-message-state:from:to
+         :cc:subject:date:message-id:reply-to;
+        bh=UCadQArHxHi9ThZ1jAIvSvngqH0LQPrZ8HK0cEt3m1g=;
+        b=RS0Vw4KKhCMtJgcrOoKruKq4OMmD/sy/SVVER82ONxJhtog5MuO5iU6E5DKrmlBKno
+         7WtOjymea8KcjHTfdmOq54JmQ47jmQP3KFg2Q2w1d9hn3EkVhkxlKEpWDpG/EecFocIa
+         O0IClvTb9PtyMPzc06VhoFWsgeIHldolZ4i2lmN0xEaI+JOcS7lhPm2tsgfNzQYyNZhL
+         wvTaKxibAF35eF7e+X3CshysnC51y81h/fflzFbvRgR0MSIzxfqjmya8FE6AWliNgQ8u
+         zVsDFMT9WUa1XcOUZWV0VNw81e3XsLIg0vDSjhiWOsA57qVMuIgAwCVY1uP50xLjqNct
+         g+5g==
+X-Forwarded-Encrypted: i=1; AJvYcCVAAy4/SCT82Ncp8RrOpdUo7AxFr+PlZkYjGKPKVsx42Fhgy38FnQussUyuNxMuoqA5XS812dCwSoWX@vger.kernel.org
+X-Gm-Message-State: AOJu0YzhHA7Gz+vd1aH8c1wK88fpvfcMKqSX4sXKG6LYGkS3dvER2bIH
+	nOf3kxXOEyftFt30REmnS1Cat+AiumiiGvlTMqbhqRzffC7g4GODegTOUFK2z5hjQzL73lSpU39
+	SaImc8j9syH4kI4jS8RRRI+akAQBjLRM3pUMHgvHpTzUhokHKJB2YR5S6XuDXQRUnAWA=
+X-Gm-Gg: ATEYQzyZDK7ayzjb88P9kOmFVgPEoFsJJcqif4IWREn/zLhNHmSqxuYYQV/7wAxogaD
+	8XW28VFC5vi0IYzKmos6AuC9+8cqCcB99S5b0R0ccjmCTlEPWYmm71P3MirIVbyK8HxKZ69S+r6
+	3tehGP0JW64xqFbKz7O51bo54sVDocRWiFDJUl32BuhcbXkv/zjb4YrJpm35q4N91zIn3DY1vLv
+	rI0lFBiILjKFLfatCotP9SIl1iHtMwQos7iqT9zG1ZXi9pKc4zq6yhDtuRO/MnyKIEaWL/mcAq/
+	LVCznLNeZKAxV0cwgvTmtOoTvAofgzZuXE+ySACIn8OZfQdpKSMjYn2kz7/ud6lKIjVsbBTR6Cp
+	uJe/oPMSI4iKwNcPbTifr/Ld6KX2imUvO
+X-Received: by 2002:ac8:5850:0:b0:4ec:a568:7b1c with SMTP id d75a77b69052e-50745effd87mr1368551cf.21.1772059300010;
+        Wed, 25 Feb 2026 14:41:40 -0800 (PST)
+X-Received: by 2002:ac8:5850:0:b0:4ec:a568:7b1c with SMTP id d75a77b69052e-50745effd87mr1368101cf.21.1772059299490;
+        Wed, 25 Feb 2026 14:41:39 -0800 (PST)
+Received: from [127.0.1.1] ([216.158.158.246])
+        by smtp.gmail.com with ESMTPSA id d75a77b69052e-507449be47dsm4196231cf.15.2026.02.25.14.41.38
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 25 Feb 2026 14:41:38 -0800 (PST)
+From: Tal Zussman <tz2294@columbia.edu>
+Date: Wed, 25 Feb 2026 17:40:57 -0500
+Subject: [PATCH RFC v2 2/2] block: enable RWF_DONTCACHE for block devices
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20250619111806.3546162-3-yi.zhang@huaweicloud.com>
- <20260225000531.3658802-1-robertpang@google.com> <7d2a3f65-4272-46c1-991a-356f0d2323cb@huaweicloud.com>
-In-Reply-To: <7d2a3f65-4272-46c1-991a-356f0d2323cb@huaweicloud.com>
-From: Robert Pang <robertpang@google.com>
-Date: Wed, 25 Feb 2026 13:43:31 -0800
-X-Gm-Features: AaiRm53fO14_kYBnlB-QimzynwfGzteAR7wRZiT1Sf0awQgFveGcUyR_Z7IWsCY
-Message-ID: <CAJhEC05L7QEc9iY7gFZVK3SPYvFhtFyURss6xQgZ-qWwZZkFjA@mail.gmail.com>
-Subject: Re: [PATCH v2 2/9] nvme: set max_hw_wzeroes_unmap_sectors if device
- supports DEAC bit
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: Zhang Yi <yi.zhang@huawei.com>, bmarzins@redhat.com, brauner@kernel.org, 
-	chaitanyak@nvidia.com, chengzhihao1@huawei.com, djwong@kernel.org, 
-	dm-devel@lists.linux.dev, hch@lst.de, john.g.garry@oracle.com, 
-	linux-block@vger.kernel.org, linux-ext4@vger.kernel.org, 
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org, 
-	linux-xfs@vger.kernel.org, martin.petersen@oracle.com, 
-	shinichiro.kawasaki@wdc.com, tytso@mit.edu, yangerkun@huawei.com, 
-	yukuai3@huawei.com
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260225-blk-dontcache-v2-2-70e7ac4f7108@columbia.edu>
+References: <20260225-blk-dontcache-v2-0-70e7ac4f7108@columbia.edu>
+In-Reply-To: <20260225-blk-dontcache-v2-0-70e7ac4f7108@columbia.edu>
+To: Jens Axboe <axboe@kernel.dk>,
+        "Tigran A. Aivazian" <aivazian.tigran@gmail.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
+        Namjae Jeon <linkinjeon@kernel.org>,
+        Sungjong Seo <sj1557.seo@samsung.com>,
+        Yuezhang Mo <yuezhang.mo@sony.com>, Dave Kleikamp <shaggy@kernel.org>,
+        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
+        Viacheslav Dubeyko <slava@dubeyko.com>,
+        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+        Bob Copeland <me@bobcopeland.com>,
+        "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        jfs-discussion@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
+        ntfs3@lists.linux.dev, linux-karma-devel@lists.sourceforge.net,
+        linux-mm@kvack.org, Tal Zussman <tz2294@columbia.edu>
+X-Mailer: b4 0.14.3-dev-d7477
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772059296; l=9465;
+ i=tz2294@columbia.edu; s=20250528; h=from:subject:message-id;
+ bh=Ut4irJAP91Ja56kFfECaXVcCmgWiTiooWThaHJixb4A=;
+ b=Nv2Kk4KuLTpGQX84Y042xeZddog0F8f7rPDUzrUKUw+0BVDRxxIPtrNiY2iL73Q/t4raHOUQx
+ MqYl+nhxhJlBePWXMDkS88wNw/JvTeg7ErN4IzVAeE9mMzN1BIIMHzs
+X-Developer-Key: i=tz2294@columbia.edu; a=ed25519;
+ pk=BIj5KdACscEOyAC0oIkeZqLB3L94fzBnDccEooxeM5Y=
+X-Authority-Analysis: v=2.4 cv=Csiys34D c=1 sm=1 tr=0 ts=699f7aa6 cx=c_pps
+ a=mPf7EqFMSY9/WdsSgAYMbA==:117 a=mD05b5UW6KhLIDvowZ5dSQ==:17
+ a=IkcTkHD0fZMA:10 a=HzLeVaNsDn8A:10 a=x7bEGLp0ZPQA:10
+ a=VkNPw1HP01LnGYTKEx00:22 a=Da8U98TiO7q1upZEImrf:22 a=SsB-OO3BMngHh3ZO9fOt:22
+ a=Omgu3vtQbb9kFtOpCJYA:9 a=QEXdDO2ut3YA:10 a=dawVfQjAaf238kedN5IG:22
+X-Proofpoint-GUID: uRWoZGSsNSeSb9UW7T2doc0dypjPptub
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwMjI1MDIxNiBTYWx0ZWRfXzt4/JMjILzyp
+ VM/eJrA0snJ/YlWZdMwGvmol5y9tw+2ARi7oVyXJeIn/gsihhFUmiROOSTSCVfEa0CTyka3nJa7
+ R3M5ZbBMBTdRishP0WoYeCUq0dR7C4IOZOVOF+krR1iFPibiOslTmwWJLHtZ8K9DheALwdo+SWM
+ XukNhQCHnJEoV7TETj5OJPV/+79zYdYd5+4jhk3GZBlRpvROM3OGwaX/n/ASCHS4jO+z33TE04i
+ EFQP4rEjfQvMRhokDZsBQ8ClH1Bi24/FVPgAjlrPHqfm7dZf6rFQuQXez8SWwZdLrP+D2lKElhd
+ o4CV62LGYpghEXFRJTYYFYylIHiPofpRH1JZjxzcYuG/adgTKydZrjuB1/KsSpomotZSqv0iOPS
+ YdTKJYTosKZskvkIRR1MRLoFx9PHa7MT6tWIN5te9/GthpTv29vbD9PBJaKrMuWbWKRU4yiUaE5
+ /NgaRi7lk1/vb2819QA==
+X-Proofpoint-ORIG-GUID: uRWoZGSsNSeSb9UW7T2doc0dypjPptub
+X-Proofpoint-Virus-Version: vendor=nai engine=6800 definitions=11712
+ signatures=596818
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ adultscore=0 priorityscore=1501 spamscore=0 clxscore=1015 lowpriorityscore=10
+ impostorscore=10 phishscore=0 suspectscore=0 bulkscore=10 malwarescore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2602130000 definitions=main-2602250216
 
-Dear Zhang Yi
+Block device buffered reads and writes already pass through
+filemap_read() and iomap_file_buffered_write() respectively, both of
+which handle IOCB_DONTCACHE. Enable RWF_DONTCACHE for block device files
+by setting FOP_DONTCACHE in def_blk_fops.
 
-Thank you for your quick response. Please see my comments below:
+For CONFIG_BUFFER_HEAD paths, thread the kiocb through
+block_write_begin() so that buffer_head-based I/O can use DONTCACHE
+behavior as well. Callers without a kiocb context (e.g. nilfs2 recovery)
+pass NULL, which preserves the existing behavior.
 
-On Tue, Feb 24, 2026 at 6:32=E2=80=AFPM Zhang Yi <yi.zhang@huaweicloud.com>=
- wrote:
->
-> Hi Robert!
->
-> On 2/25/2026 8:05 AM, Robert Pang wrote:
-> > Dear Zhang Yi,
-> >
-> > In reviewing your patch series implementing support for the
-> > FALLOC_FL_WRITE_ZEROES flag, I noted the logic propagating
-> > max_write_zeroes_sectors to max_hw_wzeroes_unmap_sectors in commit 545f=
-b46e5bc6
-> > "nvme: set max_hw_wzeroes_unmap_sectors if device supports DEAC bit" [1=
-]. This
-> > appears to be intended for devices that support the Write Zeroes comman=
-d
-> > alongside the DEAC bit to indicate unmap capability.
-> >
-> > Furthermore, within core.c, the NVME_QUIRK_DEALLOCATE_ZEROES quirk alre=
-ady
-> > identifies devices that deterministically return zeroes after a dealloc=
-ate
-> > command [2]. This quirk currently enables Write Zeroes support via disc=
-ard in
-> > existing implementations [3, 4].
-> >
-> > Given this, would it be appropriate to respect NVME_QUIRK_DEALLOCATE_ZE=
-ROES also
-> > to enable unmap Write Zeroes for these devices, following the prior com=
-mit
-> > 6e02318eaea5 "nvme: add support for the Write Zeroes command" [5]? I ha=
-ve
-> > included a proposed change to nvme_update_ns_info_block() below for you=
-r
-> > consideration.
-> >
->
-> Thank you for your point. Overall, this makes sense to me, but I have one
-> question below.
->
-> > Best regards
-> > Robert Pang
-> >
-> > diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
-> > index f5ebcaa2f859..9c7e2cabfab3 100644
-> > --- a/drivers/nvme/host/core.c
-> > +++ b/drivers/nvme/host/core.c
-> > @@ -2422,7 +2422,9 @@ static int nvme_update_ns_info_block(struct nvme_=
-ns *ns,
-> >          * require that, it must be a no-op if reads from deallocated d=
-ata
-> >          * do not return zeroes.
-> >          */
-> > -       if ((id->dlfeat & 0x7) =3D=3D 0x1 && (id->dlfeat & (1 << 3))) {
-> > +       if ((id->dlfeat & 0x7) =3D=3D 0x1 && (id->dlfeat & (1 << 3)) ||
-> > +           (ns->ctrl->quirks & NVME_QUIRK_DEALLOCATE_ZEROES) &&
-> > +           (ns->ctrl->oncs & NVME_CTRL_ONCS_DSM)) {
->                                 ^^^^^^^^^^^^^^^^^^
-> Why do you want to add a check for NVME_CTRL_ONCS_DSM? In nvme_config_dis=
-card(),
-> it appears that we prioritize ctrl->dmrsl, allowing discard to still be
-> supported even on some non-standard devices where NVME_CTRL_ONCS_DSM is n=
-ot set.
-> In nvme_update_disk_info(), if the device only has NVME_QUIRK_DEALLOCATE_=
-ZEROES,
-> we still populate lim->max_write_zeroes_sectors (which might be non-zero =
-on
-> devices that support NVME_CTRL_ONCS_WRITE_ZEROES). Right? So I'm not sure=
- if we
-> only need to check for NVME_QUIRK_DEALLOCATE_ZEROES here.
->
-The check for NVME_CTRL_ONCS_DSM is to follow the same check in [3]. There,=
- the
-check was added by 58a0c875ce02 "nvme: don't apply NVME_QUIRK_DEALLOCATE_ZE=
-ROES
-when DSM is not supported" [6]. The idea is to limit
-NVME_QUIRK_DEALLOCATE_ZEROES
-to those devices that support DSM.
+This support is useful for databases that operate on raw block devices,
+among other userspace applications.
 
-> >                 ns->head->features |=3D NVME_NS_DEAC;
->
-> I think we should not set NVME_NS_DEAC for the quirks case.
->
-Make sense. In that case, will it be more appropriate to set
-max_hw_wzeroes_unmap_sectors in nvme_update_disk_info() where
-NVME_QUIRK_DEALLOCATE_ZEROES is checked? I.e.
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Tal Zussman <tz2294@columbia.edu>
+---
+ block/fops.c                |  4 ++--
+ fs/bfs/file.c               |  2 +-
+ fs/buffer.c                 | 12 ++++++++----
+ fs/exfat/inode.c            |  2 +-
+ fs/ext2/inode.c             |  2 +-
+ fs/jfs/inode.c              |  2 +-
+ fs/minix/inode.c            |  2 +-
+ fs/nilfs2/inode.c           |  2 +-
+ fs/nilfs2/recovery.c        |  2 +-
+ fs/ntfs3/inode.c            |  2 +-
+ fs/omfs/file.c              |  2 +-
+ fs/udf/inode.c              |  2 +-
+ fs/ufs/inode.c              |  2 +-
+ include/linux/buffer_head.h |  5 +++--
+ 14 files changed, 24 insertions(+), 19 deletions(-)
 
-diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
-index f5ebcaa2f859..3f5dd3f867e9 100644
---- a/drivers/nvme/host/core.c
-+++ b/drivers/nvme/host/core.c
-@@ -2120,9 +2120,10 @@ static bool nvme_update_disk_info(struct
-nvme_ns *ns, struct nvme_id_ns *id,
-        lim->io_min =3D phys_bs;
-        lim->io_opt =3D io_opt;
-        if ((ns->ctrl->quirks & NVME_QUIRK_DEALLOCATE_ZEROES) &&
--           (ns->ctrl->oncs & NVME_CTRL_ONCS_DSM))
-+           (ns->ctrl->oncs & NVME_CTRL_ONCS_DSM)) {
-                lim->max_write_zeroes_sectors =3D UINT_MAX;
--       else
-+               lim->max_hw_wzeroes_unmap_sectors =3D UINT_MAX;
-+       } else
-                lim->max_write_zeroes_sectors =3D ns->ctrl->max_zeroes_sect=
-ors;
-        return valid;
+diff --git a/block/fops.c b/block/fops.c
+index 4d32785b31d9..6bc727f8b252 100644
+--- a/block/fops.c
++++ b/block/fops.c
+@@ -505,7 +505,7 @@ static int blkdev_write_begin(const struct kiocb *iocb,
+ 			      unsigned len, struct folio **foliop,
+ 			      void **fsdata)
+ {
+-	return block_write_begin(mapping, pos, len, foliop, blkdev_get_block);
++	return block_write_begin(iocb, mapping, pos, len, foliop, blkdev_get_block);
  }
+ 
+ static int blkdev_write_end(const struct kiocb *iocb,
+@@ -967,7 +967,7 @@ const struct file_operations def_blk_fops = {
+ 	.splice_write	= iter_file_splice_write,
+ 	.fallocate	= blkdev_fallocate,
+ 	.uring_cmd	= blkdev_uring_cmd,
+-	.fop_flags	= FOP_BUFFER_RASYNC,
++	.fop_flags	= FOP_BUFFER_RASYNC | FOP_DONTCACHE,
+ };
+ 
+ static __init int blkdev_init(void)
+diff --git a/fs/bfs/file.c b/fs/bfs/file.c
+index d33d6bde992b..f2804e38b8a7 100644
+--- a/fs/bfs/file.c
++++ b/fs/bfs/file.c
+@@ -177,7 +177,7 @@ static int bfs_write_begin(const struct kiocb *iocb,
+ {
+ 	int ret;
+ 
+-	ret = block_write_begin(mapping, pos, len, foliop, bfs_get_block);
++	ret = block_write_begin(iocb, mapping, pos, len, foliop, bfs_get_block);
+ 	if (unlikely(ret))
+ 		bfs_write_failed(mapping, pos + len);
+ 
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 838c0c571022..33c3580b85d8 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2241,14 +2241,18 @@ EXPORT_SYMBOL(block_commit_write);
+  *
+  * The filesystem needs to handle block truncation upon failure.
+  */
+-int block_write_begin(struct address_space *mapping, loff_t pos, unsigned len,
+-		struct folio **foliop, get_block_t *get_block)
++int block_write_begin(const struct kiocb *iocb, struct address_space *mapping,
++		loff_t pos, unsigned len, struct folio **foliop, get_block_t *get_block)
+ {
+ 	pgoff_t index = pos >> PAGE_SHIFT;
++	fgf_t fgp_flags = FGP_WRITEBEGIN;
+ 	struct folio *folio;
+ 	int status;
+ 
+-	folio = __filemap_get_folio(mapping, index, FGP_WRITEBEGIN,
++	if (iocb && iocb->ki_flags & IOCB_DONTCACHE)
++		fgp_flags |= FGP_DONTCACHE;
++
++	folio = __filemap_get_folio(mapping, index, fgp_flags,
+ 			mapping_gfp_mask(mapping));
+ 	if (IS_ERR(folio))
+ 		return PTR_ERR(folio);
+@@ -2591,7 +2595,7 @@ int cont_write_begin(const struct kiocb *iocb, struct address_space *mapping,
+ 		(*bytes)++;
+ 	}
+ 
+-	return block_write_begin(mapping, pos, len, foliop, get_block);
++	return block_write_begin(iocb, mapping, pos, len, foliop, get_block);
+ }
+ EXPORT_SYMBOL(cont_write_begin);
+ 
+diff --git a/fs/exfat/inode.c b/fs/exfat/inode.c
+index f9501c3a3666..39d36e8fdfd6 100644
+--- a/fs/exfat/inode.c
++++ b/fs/exfat/inode.c
+@@ -456,7 +456,7 @@ static int exfat_write_begin(const struct kiocb *iocb,
+ 	if (unlikely(exfat_forced_shutdown(mapping->host->i_sb)))
+ 		return -EIO;
+ 
+-	ret = block_write_begin(mapping, pos, len, foliop, exfat_get_block);
++	ret = block_write_begin(iocb, mapping, pos, len, foliop, exfat_get_block);
+ 
+ 	if (ret < 0)
+ 		exfat_write_failed(mapping, pos+len);
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index dbfe9098a124..11aab03de752 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -930,7 +930,7 @@ ext2_write_begin(const struct kiocb *iocb, struct address_space *mapping,
+ {
+ 	int ret;
+ 
+-	ret = block_write_begin(mapping, pos, len, foliop, ext2_get_block);
++	ret = block_write_begin(iocb, mapping, pos, len, foliop, ext2_get_block);
+ 	if (ret < 0)
+ 		ext2_write_failed(mapping, pos + len);
+ 	return ret;
+diff --git a/fs/jfs/inode.c b/fs/jfs/inode.c
+index 4709762713ef..ae52db437771 100644
+--- a/fs/jfs/inode.c
++++ b/fs/jfs/inode.c
+@@ -303,7 +303,7 @@ static int jfs_write_begin(const struct kiocb *iocb,
+ {
+ 	int ret;
+ 
+-	ret = block_write_begin(mapping, pos, len, foliop, jfs_get_block);
++	ret = block_write_begin(iocb, mapping, pos, len, foliop, jfs_get_block);
+ 	if (unlikely(ret))
+ 		jfs_write_failed(mapping, pos + len);
+ 
+diff --git a/fs/minix/inode.c b/fs/minix/inode.c
+index 51ea9bdc813f..9075c0ba2f20 100644
+--- a/fs/minix/inode.c
++++ b/fs/minix/inode.c
+@@ -465,7 +465,7 @@ static int minix_write_begin(const struct kiocb *iocb,
+ {
+ 	int ret;
+ 
+-	ret = block_write_begin(mapping, pos, len, foliop, minix_get_block);
++	ret = block_write_begin(iocb, mapping, pos, len, foliop, minix_get_block);
+ 	if (unlikely(ret))
+ 		minix_write_failed(mapping, pos + len);
+ 
+diff --git a/fs/nilfs2/inode.c b/fs/nilfs2/inode.c
+index 51bde45d5865..d9d57eeecc5d 100644
+--- a/fs/nilfs2/inode.c
++++ b/fs/nilfs2/inode.c
+@@ -230,7 +230,7 @@ static int nilfs_write_begin(const struct kiocb *iocb,
+ 	if (unlikely(err))
+ 		return err;
+ 
+-	err = block_write_begin(mapping, pos, len, foliop, nilfs_get_block);
++	err = block_write_begin(iocb, mapping, pos, len, foliop, nilfs_get_block);
+ 	if (unlikely(err)) {
+ 		nilfs_write_failed(mapping, pos + len);
+ 		nilfs_transaction_abort(inode->i_sb);
+diff --git a/fs/nilfs2/recovery.c b/fs/nilfs2/recovery.c
+index a9c61d0492cb..2f5fe44bf736 100644
+--- a/fs/nilfs2/recovery.c
++++ b/fs/nilfs2/recovery.c
+@@ -541,7 +541,7 @@ static int nilfs_recover_dsync_blocks(struct the_nilfs *nilfs,
+ 		}
+ 
+ 		pos = rb->blkoff << inode->i_blkbits;
+-		err = block_write_begin(inode->i_mapping, pos, blocksize,
++		err = block_write_begin(NULL, inode->i_mapping, pos, blocksize,
+ 					&folio, nilfs_get_block);
+ 		if (unlikely(err)) {
+ 			loff_t isize = inode->i_size;
+diff --git a/fs/ntfs3/inode.c b/fs/ntfs3/inode.c
+index 0a9ac5efeb67..8c788feb319e 100644
+--- a/fs/ntfs3/inode.c
++++ b/fs/ntfs3/inode.c
+@@ -966,7 +966,7 @@ int ntfs_write_begin(const struct kiocb *iocb, struct address_space *mapping,
+ 			goto out;
+ 	}
+ 
+-	err = block_write_begin(mapping, pos, len, foliop,
++	err = block_write_begin(iocb, mapping, pos, len, foliop,
+ 				ntfs_get_block_write_begin);
+ 
+ out:
+diff --git a/fs/omfs/file.c b/fs/omfs/file.c
+index 49a1de5a827f..3bade632e36e 100644
+--- a/fs/omfs/file.c
++++ b/fs/omfs/file.c
+@@ -317,7 +317,7 @@ static int omfs_write_begin(const struct kiocb *iocb,
+ {
+ 	int ret;
+ 
+-	ret = block_write_begin(mapping, pos, len, foliop, omfs_get_block);
++	ret = block_write_begin(iocb, mapping, pos, len, foliop, omfs_get_block);
+ 	if (unlikely(ret))
+ 		omfs_write_failed(mapping, pos + len);
+ 
+diff --git a/fs/udf/inode.c b/fs/udf/inode.c
+index 7fae8002344a..aec9cdc938be 100644
+--- a/fs/udf/inode.c
++++ b/fs/udf/inode.c
+@@ -259,7 +259,7 @@ static int udf_write_begin(const struct kiocb *iocb,
+ 	int ret;
+ 
+ 	if (iinfo->i_alloc_type != ICBTAG_FLAG_AD_IN_ICB) {
+-		ret = block_write_begin(mapping, pos, len, foliop,
++		ret = block_write_begin(iocb, mapping, pos, len, foliop,
+ 					udf_get_block);
+ 		if (unlikely(ret))
+ 			udf_write_failed(mapping, pos + len);
+diff --git a/fs/ufs/inode.c b/fs/ufs/inode.c
+index e2b0a35de2a7..dfba985265a8 100644
+--- a/fs/ufs/inode.c
++++ b/fs/ufs/inode.c
+@@ -481,7 +481,7 @@ static int ufs_write_begin(const struct kiocb *iocb,
+ {
+ 	int ret;
+ 
+-	ret = block_write_begin(mapping, pos, len, foliop, ufs_getfrag_block);
++	ret = block_write_begin(iocb, mapping, pos, len, foliop, ufs_getfrag_block);
+ 	if (unlikely(ret))
+ 		ufs_write_failed(mapping, pos + len);
+ 
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index b16b88bfbc3e..4b07dec5f8eb 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -258,8 +258,9 @@ int __block_write_full_folio(struct inode *inode, struct folio *folio,
+ 		get_block_t *get_block, struct writeback_control *wbc);
+ int block_read_full_folio(struct folio *, get_block_t *);
+ bool block_is_partially_uptodate(struct folio *, size_t from, size_t count);
+-int block_write_begin(struct address_space *mapping, loff_t pos, unsigned len,
+-		struct folio **foliop, get_block_t *get_block);
++int block_write_begin(const struct kiocb *iocb, struct address_space *mapping,
++		loff_t pos, unsigned len, struct folio **foliop,
++		get_block_t *get_block);
+ int __block_write_begin(struct folio *folio, loff_t pos, unsigned len,
+ 		get_block_t *get_block);
+ int block_write_end(loff_t pos, unsigned len, unsigned copied, struct folio *);
 
-Best regards
-Robert
+-- 
+2.39.5
 
-> Cheers,
-> Yi.
->
-> >                 lim.max_hw_wzeroes_unmap_sectors =3D lim.max_write_zero=
-es_sectors;
-> >         }
-> >
-> > [1] https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/=
-commit/?id=3D545fb46e5bc6
-> > [2] https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/=
-tree/drivers/nvme/host/nvme.h#n72
-> > [3] https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/=
-tree/drivers/nvme/host/core.c#n938
-> > [4] https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/=
-tree/drivers/nvme/host/core.c#n2122
-> > [5] https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/=
-commit/?id=3D6e02318eaea5
-[6] https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/comm=
-it/?id=3D58a0c875ce02
