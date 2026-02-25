@@ -1,47 +1,44 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BA5D0387362;
-	Wed, 25 Feb 2026 14:20:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5167F3DA7EB;
+	Wed, 25 Feb 2026 17:03:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772029244; cv=none; b=iFxsPpTZ16WRqL8VKqCvB7HVaNY8Thk3rXQ7tU9loLkNBJA1/+S+e4EYOCCt776S8DsekLUKCpk7dXFMN/7BNo66HrWT1n94BRcI3CD7yBjqXhGx8uYQx+8W2Be9f61/9iZdu4DbHPlzIBc7VjktXY1HVptireyENPMPngv0wrA=
+	t=1772039005; cv=none; b=hCDyMtpVe/zyposNwQvZjozWzLJlhC6z5gFcJ+gLxu3vQa3Iv18Uq+KMihfGKMzD48Q2mM5qi1FzN2NIYBMGePDm5qUgM4K+YkXTmAsR+X5TUI7LCjiv7AzCk5Eks10jSaSBd7quKLuZ9XjSWLf8VJzl01YxzgNVCWO90Hr1pCY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772029244; c=relaxed/simple;
-	bh=IN52F3Q+kDaVpJdJvOMh9uIoa24HkEH5ayrYESSOUeE=;
+	s=arc-20240116; t=1772039005; c=relaxed/simple;
+	bh=+54Y2ZaIfsOsI9qJ7/J6L0tufQ7xJ8poQmI0lVmcc/k=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=ZAWjXJ4p3/VJLMcbMf9mDcTVt7kacMf8fASlII+TXkVBH0pl8DE1eyNT0Xq4KHX1UB68Zqcuid5VHMz552S1+g560JvEXF6ueT0OGrxkDYnPKmVtI7edwSoZNAwogllN74rkYP41BQKsjoy76Rjha5oHB1z6STtZsiW22xTk/FE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=IKqrcGHA; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	 Content-Type:Content-Disposition:In-Reply-To; b=t4oBaUcn3nE9fRVpvv4x06s9KbpkwIjVv6O/XB6x7pzfiTTUN/uutzwDW+mJiHPXh5mi7JJNvk9lGg270rAzuM8iOX1bLVOhfRh7UsFh4iKrCQE/sLdOE9WKA7/J/d7z9LkimaitBLSYRQWjKfMPIXISMIwspTeJxVwS4H4l+Ok=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AwM+YFF/; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="IKqrcGHA"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=p+I1WBIA9XuUaR/q9NvpkB8vKQ1KePEcHq/hzuc52fM=; b=IKqrcGHAT0EM6UfAS5OvTyNDpV
-	qq4O+Zfkj1ni8okg/5rGab1Z/BU2B6r608EKfvFUPRzbYGGMimELaJzcJmL51GY3wyCvEb/dwZ+So
-	0pIcHrLemOjrlwDRSnZDfFvWCglu0FwG7cXezeptXmGTt1EoJcr0pj+uOqdiDNLMVSxuBxkhHXlnI
-	VIZmlRBspI4NoHuicm0dVqiBuIoWkxcZN8ehbjFb2gVNRbJwmNk78f9fENwJeZPaZkVAWujYhg2pi
-	IIfK5e8k06jhY/Jjx576TkRrpxSMbyKB5S4lDX+SFGP1xKkvuw0zYB+mvbC+T6ooCRweFnkIcexJQ
-	gFWKCvKg==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1vvFkn-00000004BT9-3xF7;
-	Wed, 25 Feb 2026 14:20:41 +0000
-Date: Wed, 25 Feb 2026 06:20:41 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: "Darrick J. Wong" <djwong@kernel.org>
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Vyacheslav Kovalevsky <slava.kovalevskiy.2014@gmail.com>,
-	tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: Re: Writing more than 4096 bytes with O_SYNC flag does not persist
- all previously written data if system crashes
-Message-ID: <aZ8FOX4S6bXYS8VZ@infradead.org>
-References: <3d8f73f4-3a64-4a86-8fc9-d910d4fa3be1@gmail.com>
- <aZ2599dwNuqPQgzB@infradead.org>
- <20260224222339.GA13823@frogsfrogsfrogs>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AwM+YFF/"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D8C65C116D0;
+	Wed, 25 Feb 2026 17:03:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1772039004;
+	bh=+54Y2ZaIfsOsI9qJ7/J6L0tufQ7xJ8poQmI0lVmcc/k=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=AwM+YFF/HAeRvq6xs2PE2tgPQqXk7dDtviEV4m24LKlW3zbrv06H8In7g9ug1CEIo
+	 +pL3I6Xl/VMl3/tIyQYQSDcnAv0e1uAG0e9W+j5Eu9yR1ozVpEH+VFbgqr1ol474+f
+	 qRe7Kic8JHEQoNx7Ne/2B/WoOFPx17QDrdnhQ3OWm0pAeBR05pS2IASdB6C+KKqxI7
+	 o8Nc7A0SDmx3lk9MEyUSZbmknwcd9zM8NwpMOwdAjhjt8TIA8cBT+FQyrG+9qTdy4Y
+	 ZV3PZsSXqisUJSNmPg+u5igl+/K9fchj7boSBwbNOZgCothLS2R1i0ZHfwoJzoZjvZ
+	 duufAfesWwgVw==
+Date: Wed, 25 Feb 2026 09:03:22 -0800
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: brauner@kernel.org, miklos@szeredi.hu, bpf@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 2/2] iomap: allow NULL swap info bdev when activating
+ swapfile
+Message-ID: <20260225170322.GF13829@frogsfrogsfrogs>
+References: <177188733433.3935463.11119081161286211234.stgit@frogsfrogsfrogs>
+ <177188733484.3935463.443855246947996750.stgit@frogsfrogsfrogs>
+ <20260224140118.GB9516@lst.de>
+ <20260224192653.GC13829@frogsfrogsfrogs>
+ <20260225141639.GB2732@lst.de>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -50,15 +47,31 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260224222339.GA13823@frogsfrogsfrogs>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+In-Reply-To: <20260225141639.GB2732@lst.de>
 
-On Tue, Feb 24, 2026 at 02:23:39PM -0800, Darrick J. Wong wrote:
-> He did, way at the beginning: open a file, write 5000 bytes, close it,
-> open again with O_SYNC, write 300 bytes, close it, force-reboot, and
-> watch the file come back up with only 4096 bytes written.
+On Wed, Feb 25, 2026 at 03:16:39PM +0100, Christoph Hellwig wrote:
+> On Tue, Feb 24, 2026 at 11:26:53AM -0800, Darrick J. Wong wrote:
+> > > That sounds pretty sketchy.  How do you make sure that is safe vs
+> > > memory reclaim deadlocks?  Does someone really need this feature?
+> > 
+> > Err, which part is sketchy, specifically?  This patch that adjusts stuff
+> > in fs/iomap/, or the (much later) patch to fuse-iomap?
+> 
+> The concept of swapping to fuse.
+> 
+> > Obviously this means that the fuse server is granting a longterm layout
+> > lease to the kernel swapfile code, so it should reply to
+> > fuse_iomap_begin with a error code if it doesn't want to do that.
+> > 
+> > I don't know that anyone really needs this feature, but pre-iomap
+> > fuse2fs supports swapfiles, as does any other fuse server that
+> > implements bmap.
+> 
+> Eww, I didn't know people were already trying to support swap to fuse.
 
-Oh, I misunderstood the load and thought it would write the 300 bytes
-after the previous 5000 bytes.  If it overwrites the result is totally
-expected.
+It was merged in the kernel via commit b2d2272fae1e1d ("[PATCH] fuse:
+add bmap support"), which was 2.6.20.  So people have been using it for
+~20 years now.  At least it's the mm-managed bio swap path and we're not
+actually upcalling the fuse server to do swapins/swapouts.
 
+--D
