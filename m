@@ -1,88 +1,86 @@
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 724DB24E4C3
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Feb 2026 13:39:27 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD7AE2DB7AA
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Feb 2026 13:42:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772113168; cv=none; b=fzSBLjunSQMecM9+3AInq33L5mepohBbVWPe6Zk50kkv7cKu6y08LuZbc2kEBn5GIisKcuZyArljl32krRH5x+4bt26MIAaExrXB25b0OevQbO2hL25hP0Lmndx4Uwqlno7x4+2w/IiWhiqLH1yap+MIYE2rzKobm3hVn5JlCAs=
+	t=1772113364; cv=none; b=daB/QG45rIpXRDEHz/RbjLA6eMEujlryVH0tTelnQXnhUlcMV1EtARsUaMsXjF9OsofyCY4xA1mr1it8T5s8mtwhZ7xaQnIYKDnZaRqfyWmM2L8IXWMP4XkIWpkSmm5dZocQO5fh1Qzn6U+3Qi1Y6vJEJuLmVINeXRoeDs9dbfE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772113168; c=relaxed/simple;
-	bh=IIIAzBYvY1zIrRjAJ2Bq0qo6uLAb4Rc16WoUXokZA20=;
+	s=arc-20240116; t=1772113364; c=relaxed/simple;
+	bh=s550snIqDJ0ywicY67DWoFFAcZLDlmTadUwn8kskgWg=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=IH+G1yjGjCcTY7ui0ML1dV8YjL3ItYfT4lgpBonPkvkJTouTdZteYfWUHBtHSFJFSh1UzkWY5dJfDiGnj33Q93LPwB0PBkBECqfxDHQtDhZHLCFFBcFLyUpfJrCyOCPNJDUeuCDNjchVmwHhXeuZy0g4P5tTA7HQiaLDXQVMapg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=e3IjUPcs; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=gaGc91Zy; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=O5E7h2c1; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=SvAWqU4F; arc=none smtp.client-ip=195.135.223.131
+	 Content-Type:Content-Disposition:In-Reply-To; b=S7Tn/NwCLk901jw3BXSStUdiOdZH80K5BL5lWrlVawiMCFk8gZCYOpmAExge2asY4EHMJVigPfibALSPJCj43GJqVHDt7M9rpooyY34adq9r37VLvWw+qFSCs7lKTnvGh1FITs/Xz7tYDIunefEwZVZVXXfuWvAGfJNhTt6UOcY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=loThPtzI; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Dsk1D7QG; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=serO32Wy; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=QXjCB3NI; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="e3IjUPcs";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="gaGc91Zy";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="O5E7h2c1";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="SvAWqU4F"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="loThPtzI";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Dsk1D7QG";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="serO32Wy";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="QXjCB3NI"
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id B2E351FAA3;
-	Thu, 26 Feb 2026 13:39:24 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id DEE6F1FAA3;
+	Thu, 26 Feb 2026 13:42:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1772113165; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1772113360; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=c/rXhoBzkdB7BsxszB1c7jbt2UMbPw0IOuoVqNzSFxk=;
-	b=e3IjUPcscDOBmJvuRJfEFWt3rqtqjD+N7WtCHvANjk7quI9EoLNeQfqsPtsLL8bXLq/Qku
-	aj7Jt/boK7ZgX4Ta8uOEbktgniXN4/8eZVwIe7rRpFDcNeUMhc43vDFFBeYxl8CBTqBhpW
-	w28sM/U6wM7GzeE9q0gXtiFJzRCZRJw=
+	bh=VFI0elnYDOhY2r6C0zAf5uTNtHqHigHRD2xFQXO+NCI=;
+	b=loThPtzIdmG27N4TTCeTkhmiTveNSKAAMf6dA6EEIbbaPCgSAhBRcUjiFz4uYZu4+fo8Jk
+	DVd9FRBSreZl8WfNcU84q14M52GxLnYlOOZ1+/20HtboyOLK5xzV/yyVojNsRz43GxRVV1
+	5hKsrgeoPmVRlgQIi5cGnC7AkSOcnOM=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1772113165;
+	s=susede2_ed25519; t=1772113360;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=c/rXhoBzkdB7BsxszB1c7jbt2UMbPw0IOuoVqNzSFxk=;
-	b=gaGc91ZyXfsgQ5CFlRMgHRtZPHJogyDR+q/yHh7jnRGtRMHmN2UXyEXnwnP17rK0OVz5XS
-	BY8dK+Ar1cbEAYAA==
+	bh=VFI0elnYDOhY2r6C0zAf5uTNtHqHigHRD2xFQXO+NCI=;
+	b=Dsk1D7QGnZ6RZ7XD1CLKogcqxjFJA2NMjcTcNNai10oPiztzUX4Wb5n7/Iye85hT9ISxoy
+	+ianQ9PJNHlztIDg==
 Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=O5E7h2c1;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=SvAWqU4F
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=serO32Wy;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=QXjCB3NI
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1772113164; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1772113359; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=c/rXhoBzkdB7BsxszB1c7jbt2UMbPw0IOuoVqNzSFxk=;
-	b=O5E7h2c1/MXNc0M4eaCFjg1NVCAsGhVCaWHrmc8Dyv6p58HNQ5/IycbNTSd7gfuNpqYNGk
-	m/3DuNlexMbBFa4tUQ9wU05PcaMbfukWxy2pZ0yzwdLSVCoVlC3AkHqE97eAwlXtsKq78i
-	pGdaVOa2AA59SZX27bj0r2fPFRb9SIA=
+	bh=VFI0elnYDOhY2r6C0zAf5uTNtHqHigHRD2xFQXO+NCI=;
+	b=serO32Wyl63+Zn8QShrKtQX+cZ4hd6QcbxyEzXXF6ya4Z9Ind1GYqSdDbaQwH1d9dA8uan
+	ks2MohT/38HUS16EflfEVqIwHFYLuiVb1TevQg/m2fI/sNSU+/viUtTXs40eaOXfcHWzyf
+	dIv3NHwyjK1weHDDOw4PzQHsMmrSlHA=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1772113164;
+	s=susede2_ed25519; t=1772113359;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=c/rXhoBzkdB7BsxszB1c7jbt2UMbPw0IOuoVqNzSFxk=;
-	b=SvAWqU4FdeoB8l0FDhxnW6hcYWeW+iPIZzTf4/SjdkFjLW1SFF3Ipb+S9jQvDNW/nHzfEW
-	fW3UHIOUSjEbVYCg==
+	bh=VFI0elnYDOhY2r6C0zAf5uTNtHqHigHRD2xFQXO+NCI=;
+	b=QXjCB3NIqu06JpWOkJmd1InU50EcR6bewmmI1LTlxHNasWkii61g39qEd1uL50ehpdomEj
+	d4Na581oY8P+E0Dw==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id A89E63EA62;
-	Thu, 26 Feb 2026 13:39:24 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id C28C33EA62;
+	Thu, 26 Feb 2026 13:42:39 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id FlYnKQxNoGk6ZAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 26 Feb 2026 13:39:24 +0000
+	id GrGULs9NoGkHaAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 26 Feb 2026 13:42:39 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 6DA5CA0A27; Thu, 26 Feb 2026 14:39:24 +0100 (CET)
-Date: Thu, 26 Feb 2026 14:39:24 +0100
+	id 8301FA0A27; Thu, 26 Feb 2026 14:42:39 +0100 (CET)
+Date: Thu, 26 Feb 2026 14:42:39 +0100
 From: Jan Kara <jack@suse.cz>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>, 
-	linux-ext4@vger.kernel.org, Free Ekanayaka <free.ekanayaka@gmail.com>, 
-	stable@vger.kernel.org
-Subject: Re: [PATCH 2/2] ext4: Fix fsync(2) for nojournal mode
-Message-ID: <gzffe2p4gbxrkwolwk2lxpd72gzkbnvfgopz2z5g5z3ses5rdy@fyraeynvocf7>
-References: <20260211140209.30337-1-jack@suse.cz>
- <20260216164848.3074-4-jack@suse.cz>
- <85f5a062-2cdb-48ef-8250-cdc022209634@huaweicloud.com>
+To: Ye Bin <yebin@huaweicloud.com>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, 
+	jack@suse.cz
+Subject: Re: [PATCH] ext4: fix mballoc-test.c is not compiled when
+ EXT4_KUNIT_TESTS=M
+Message-ID: <o65evw32fb2cg2sclvxc3dkbqlhzzdns3uducvb7mgbkp4i5l3@hsluqhpejick>
+References: <20260226110917.1904980-1-yebin@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -91,111 +89,203 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <85f5a062-2cdb-48ef-8250-cdc022209634@huaweicloud.com>
-X-Rspamd-Action: no action
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Spamd-Result: default: False [-2.51 / 50.00];
+In-Reply-To: <20260226110917.1904980-1-yebin@huaweicloud.com>
+X-Spamd-Result: default: False [-4.01 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
 	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
 	MX_GOOD(-0.01)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	FROM_HAS_DN(0.00)[];
 	RCVD_COUNT_THREE(0.00)[3];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
 	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	MIME_TRACE(0.00)[0:+];
 	ARC_NA(0.00)[];
 	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
 	TO_DN_SOME(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	RCPT_COUNT_FIVE(0.00)[6];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	RCVD_TLS_LAST(0.00)[];
-	TAGGED_RCPT(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DWL_DNSWL_BLOCKED(0.00)[suse.cz:dkim];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCPT_COUNT_FIVE(0.00)[5];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
 	MISSING_XM_UA(0.00)[];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FREEMAIL_CC(0.00)[suse.cz,mit.edu,vger.kernel.org,gmail.com];
 	DKIM_TRACE(0.00)[suse.cz:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,huawei.com:email]
-X-Rspamd-Queue-Id: B2E351FAA3
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,huawei.com:email,kylinos.cn:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns]
+X-Rspamd-Action: no action
 X-Spam-Flag: NO
-X-Spam-Score: -2.51
+X-Spam-Score: -4.01
 X-Spam-Level: 
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Rspamd-Queue-Id: DEE6F1FAA3
 
-On Thu 26-02-26 19:56:34, Zhang Yi wrote:
-> On 2/17/2026 12:48 AM, Jan Kara wrote:
-> > When inode metadata is changed, we sometimes just call
-> > ext4_mark_inode_dirty() to track modified metadata. This copies inode
-> > metadata into block buffer which is enough when we are journalling
-> > metadata. However when we are running in nojournal mode we currently
-> > fail to write the dirtied inode buffer during fsync(2) because the inode
-> > is not marked as dirty.
+On Thu 26-02-26 19:09:17, Ye Bin wrote:
+> From: Ye Bin <yebin10@huawei.com>
 > 
-> Please let me understand this. You mean that because some places we
-> directly call ext4_mark_inode_dirty() to mark the inode as dirty, instead
-> of using the generic mark_inode_dirty(), this results in the inode missing
-> the I_DIRTY_INODE flag. Consequently, generic_buffers_fsync_noflush()->
-> sync_inode_metadata() does not write the inode, leading to the metadata
-> not being updated on disk after fsync(2), right?
+> Now, only EXT4_KUNIT_TESTS=Y testcase will be compiled in 'mballoc.c'.
+> To solve this issue, the ext4 test code needs to be decoupled. The ext4
+> test module is compiled into a separate module.
+> 
+> Reported-by: ChenXiaoSong <chenxiaosong@kylinos.cn>
+> Closes: https://patchwork.kernel.org/project/cifs-client/patch/20260118091313.1988168-2-chenxiaosong.chenxiaosong@linux.dev/
+> Fixes: 7c9fa399a369 ("ext4: add first unit test for ext4_mb_new_blocks_simple in mballoc")
+> Signed-off-by: Ye Bin <yebin10@huawei.com>
 
-Correct.
+I think this is a good idea but:
 
-> Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+> -#ifdef CONFIG_EXT4_KUNIT_TESTS
+> -#include "mballoc-test.c"
+> +#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
+> +void mb_clear_bits_test(void *bm, int cur, int len)
+> +{
+> +	 mb_clear_bits(bm, cur, len);
+> +}
+> +EXPORT_SYMBOL_GPL(mb_clear_bits_test);
 
-Thanks for review!
+Please use EXPORT_SYMBOL_FOR_MODULES() for the exports to make them clearly
+ext4 internal. Thanks!
 
 								Honza
 
-> > Use explicit ext4_write_inode() call to make
-> > sure the inode table buffer is written to the disk. This is a band aid
-> > solution but proper solution requires a much larger rewrite including
-> > changes in metadata bh tracking infrastructure.
-> > 
-> > Reported-by: Free Ekanayaka <free.ekanayaka@gmail.com>
-> > Link: https://lore.kernel.org/all/87il8nhxdm.fsf@x1.mail-host-address-is-not-set/
-> > CC: stable@vger.kernel.org
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > ---
-> >  fs/ext4/fsync.c | 16 ++++++++++++++--
-> >  1 file changed, 14 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-> > index e476c6de3074..bd8f230fa507 100644
-> > --- a/fs/ext4/fsync.c
-> > +++ b/fs/ext4/fsync.c
-> > @@ -83,11 +83,23 @@ static int ext4_fsync_nojournal(struct file *file, loff_t start, loff_t end,
-> >  				int datasync, bool *needs_barrier)
-> >  {
-> >  	struct inode *inode = file->f_inode;
-> > +	struct writeback_control wbc = {
-> > +		.sync_mode = WB_SYNC_ALL,
-> > +		.nr_to_write = 0,
-> > +	};
-> >  	int ret;
-> >  
-> >  	ret = generic_buffers_fsync_noflush(file, start, end, datasync);
-> > -	if (!ret)
-> > -		ret = ext4_sync_parent(inode);
-> > +	if (ret)
-> > +		return ret;
-> > +
-> > +	/* Force writeout of inode table buffer to disk */
-> > +	ret = ext4_write_inode(inode, &wbc);
-> > +	if (ret)
-> > +		return ret;
-> > +
-> > +	ret = ext4_sync_parent(inode);
-> > +
-> >  	if (test_opt(inode->i_sb, BARRIER))
-> >  		*needs_barrier = true;
-> >  
+> +
+> +ext4_fsblk_t
+> +ext4_mb_new_blocks_simple_test(struct ext4_allocation_request *ar,
+> +			       int *errp)
+> +{
+> +	return ext4_mb_new_blocks_simple(ar, errp);
+> +}
+> +EXPORT_SYMBOL_GPL(ext4_mb_new_blocks_simple_test);
+> +
+> +int mb_find_next_zero_bit_test(void *addr, int max, int start)
+> +{
+> +	return mb_find_next_zero_bit(addr, max, start);
+> +}
+> +EXPORT_SYMBOL_GPL(mb_find_next_zero_bit_test);
+> +
+> +int mb_find_next_bit_test(void *addr, int max, int start)
+> +{
+> +	return mb_find_next_bit(addr, max, start);
+> +}
+> +EXPORT_SYMBOL_GPL(mb_find_next_bit_test);
+> +
+> +void mb_clear_bit_test(int bit, void *addr)
+> +{
+> +	mb_clear_bit(bit, addr);
+> +}
+> +EXPORT_SYMBOL_GPL(mb_clear_bit_test);
+> +
+> +int mb_test_bit_test(int bit, void *addr)
+> +{
+> +	return mb_test_bit(bit, addr);
+> +}
+> +EXPORT_SYMBOL_GPL(mb_test_bit_test);
+> +
+> +int ext4_mb_mark_diskspace_used_test(struct ext4_allocation_context *ac,
+> +				     handle_t *handle)
+> +{
+> +	return ext4_mb_mark_diskspace_used(ac, handle);
+> +}
+> +EXPORT_SYMBOL_GPL(ext4_mb_mark_diskspace_used_test);
+> +
+> +int mb_mark_used_test(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
+> +{
+> +	return mb_mark_used(e4b, ex);
+> +}
+> +EXPORT_SYMBOL_GPL(mb_mark_used_test);
+> +
+> +void ext4_mb_generate_buddy_test(struct super_block *sb, void *buddy,
+> +				 void *bitmap, ext4_group_t group,
+> +				 struct ext4_group_info *grp)
+> +{
+> +	ext4_mb_generate_buddy(sb, buddy, bitmap, group, grp);
+> +}
+> +EXPORT_SYMBOL_GPL(ext4_mb_generate_buddy_test);
+> +
+> +int ext4_mb_load_buddy_test(struct super_block *sb, ext4_group_t group,
+> +			    struct ext4_buddy *e4b)
+> +{
+> +	return ext4_mb_load_buddy(sb, group, e4b);
+> +}
+> +EXPORT_SYMBOL_GPL(ext4_mb_load_buddy_test);
+> +
+> +void ext4_mb_unload_buddy_test(struct ext4_buddy *e4b)
+> +{
+> +	ext4_mb_unload_buddy(e4b);
+> +}
+> +EXPORT_SYMBOL_GPL(ext4_mb_unload_buddy_test);
+> +
+> +void mb_free_blocks_test(struct inode *inode, struct ext4_buddy *e4b,
+> +			 int first, int count)
+> +{
+> +	mb_free_blocks(inode, e4b, first, count);
+> +}
+> +EXPORT_SYMBOL_GPL(mb_free_blocks_test);
+> +
+> +void ext4_free_blocks_simple_test(struct inode *inode, ext4_fsblk_t block,
+> +				  unsigned long count)
+> +{
+> +	return ext4_free_blocks_simple(inode, block, count);
+> +}
+> +EXPORT_SYMBOL_GPL(ext4_free_blocks_simple_test);
+> +
+> +EXPORT_SYMBOL_GPL(ext4_wait_block_bitmap);
+> +EXPORT_SYMBOL_GPL(ext4_mb_init);
+> +EXPORT_SYMBOL_GPL(ext4_get_group_desc);
+> +EXPORT_SYMBOL_GPL(ext4_count_free_clusters);
+> +EXPORT_SYMBOL_GPL(ext4_get_group_info);
+> +EXPORT_SYMBOL_GPL(ext4_free_group_clusters_set);
+> +EXPORT_SYMBOL_GPL(ext4_mb_release);
+> +EXPORT_SYMBOL_GPL(ext4_read_block_bitmap_nowait);
+> +EXPORT_SYMBOL_GPL(mb_set_bits);
+> +EXPORT_SYMBOL_GPL(ext4_fc_init_inode);
+> +EXPORT_SYMBOL_GPL(ext4_mb_mark_context);
+>  #endif
+> diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+> index 15a049f05d04..b32e03e7ae8d 100644
+> --- a/fs/ext4/mballoc.h
+> +++ b/fs/ext4/mballoc.h
+> @@ -270,4 +270,34 @@ ext4_mballoc_query_range(
+>  	ext4_mballoc_query_range_fn	formatter,
+>  	void				*priv);
+>  
+> +#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
+> +extern void mb_clear_bits_test(void *bm, int cur, int len);
+> +extern int ext4_mb_mark_context(handle_t *handle,
+> +		struct super_block *sb, bool state,
+> +		ext4_group_t group, ext4_grpblk_t blkoff,
+> +		ext4_grpblk_t len, int flags,
+> +		ext4_grpblk_t *ret_changed);
+> +extern ext4_fsblk_t
+> +ext4_mb_new_blocks_simple_test(struct ext4_allocation_request *ar,
+> +			       int *errp);
+> +extern int mb_find_next_zero_bit_test(void *addr, int max, int start);
+> +extern int mb_find_next_bit_test(void *addr, int max, int start);
+> +extern void mb_clear_bit_test(int bit, void *addr);
+> +extern int mb_test_bit_test(int bit, void *addr);
+> +extern int
+> +ext4_mb_mark_diskspace_used_test(struct ext4_allocation_context *ac,
+> +				 handle_t *handle);
+> +extern int mb_mark_used_test(struct ext4_buddy *e4b,
+> +			     struct ext4_free_extent *ex);
+> +extern void ext4_mb_generate_buddy_test(struct super_block *sb,
+> +		void *buddy, void *bitmap, ext4_group_t group,
+> +		struct ext4_group_info *grp);
+> +extern int ext4_mb_load_buddy_test(struct super_block *sb,
+> +		ext4_group_t group, struct ext4_buddy *e4b);
+> +extern void ext4_mb_unload_buddy_test(struct ext4_buddy *e4b);
+> +extern void mb_free_blocks_test(struct inode *inode,
+> +		struct ext4_buddy *e4b, int first, int count);
+> +extern void ext4_free_blocks_simple_test(struct inode *inode,
+> +		ext4_fsblk_t block, unsigned long count);
+> +#endif
+>  #endif
+> -- 
+> 2.34.1
 > 
 -- 
 Jan Kara <jack@suse.com>
