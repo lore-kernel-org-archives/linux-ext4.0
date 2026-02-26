@@ -1,39 +1,39 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F262C3D649B
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Feb 2026 14:33:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 190E83D1CBE;
+	Thu, 26 Feb 2026 14:42:01 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772116392; cv=none; b=iDrsysQF8st6FiKgMwvGr+AQ4QlPBzNUuDD/Wvis3wCCiE3IJpEdP9f5PGvPog/f6oNVHOdHhXhxtjd/jPd1Vng47lvAdmwApJddnfnDTny9U9vFjfV96OGEGbojU3l54WUM96CCh+d2eNlG4ZdVBAELcHSxxNxlGzojLIWEHpE=
+	t=1772116922; cv=none; b=I6fIQWvDBo9r2H/N9Ag2M6BR50znMY9MB7acICnNLK10n1UZJdOkT0TiFUy8XCFIpJZBWWatsJI0Kx3pxOYyTbRCRPBQl6JO98j6nukoSq+qI9T6Mc9GK/ZeC0Vwk6vyFldJLzqi6dE28JRuMTVYmZPFAe/lpQc6fAGJbIRK4q0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772116392; c=relaxed/simple;
-	bh=AFa4gQHlzMo9gb/8lkyfEZ2nW6wsvEKiuglk6riJ6WA=;
-	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=e7iTvkY3wuSbgyKQ3yGgXoRrFoUskJi5ZFUMF48jsBfh/tvB2RuTNXN44nuINibXo1IqzR1Ax0FvBggIuiVbqanm6Dmzys13DsSDw4gutuBjAlSqzYQnbj9kI8ggBC5V5KqNVtb2sNjBjvRwm4g4VolRi6h2SW42TdEcFtz0I0g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jiHScR/u; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1772116922; c=relaxed/simple;
+	bh=PZEH3868/PTa3lGS3LIKMKOTqR8foArFIj+pwsdzmnY=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=bW9iVgjjyOQGWHGhPqUfDieNrF2mvPUwqfpLhEeGOF1OXchpWt7BMWlXdcw+pHLq1t+ORX3Mn6mBihqcYp/ybOlDB8SAu4aRix1HPoyGwNuynZerft/624NgVJWnzDCc6u2xb83NGH+YkLqSYnNo1Z/QPy9PUtC/TIKXCJpRwcg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=C/IfueHe; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jiHScR/u"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CE3D5C116C6
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Feb 2026 14:33:10 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="C/IfueHe"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B7DC7C116C6;
+	Thu, 26 Feb 2026 14:42:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1772116391;
-	bh=AFa4gQHlzMo9gb/8lkyfEZ2nW6wsvEKiuglk6riJ6WA=;
-	h=From:To:Subject:Date:In-Reply-To:References:From;
-	b=jiHScR/ubcBUQzfrwN4wDQJ7ORGEp+qhpeR9fFPAC7KSgYEX9cDeg1CHNkiAzENRH
-	 jcd7cdt25SEpKLBh/pslGC+St7dIG/oxbRbVDH97GieOnntelW1EePllH6ChpFg+Ed
-	 1ogOW+s/dNDS/wd5r3L6k5Q38iFX/wDsyxdwMuhEO6Tp37AFeHiODgrICWTvjz5qxi
-	 WlVRULE2zd2vyN11coUjr8mJO9ijEeEpoqRpBBe+bcGS74NdvsP81PyBU9wtRGggTX
-	 BiG0sjYNxwnEiiu+l/cLgI6lc1l1MRtaSBOuq2jpx4e1qZS2An3q6dcNNk6u8+7trl
-	 2zc2LEsiTqpCw==
+	s=k20201202; t=1772116921;
+	bh=PZEH3868/PTa3lGS3LIKMKOTqR8foArFIj+pwsdzmnY=;
+	h=From:To:Cc:Subject:Date:From;
+	b=C/IfueHe4JhDFrgbr7y4s0DesCIUIpevAj2G7tL+KvCyuoq7gLyIwZfbT4+E7sNvm
+	 DdLBZS5c2D0kC8MyTbdArdISuVHLxz0Xi8bR63FA/933AfpDe/YW4fbaXjq+TttMMH
+	 BRUZaiclyFgVXZci2UpGJp+donyiyxkSjUan29TVR9du5SuU4QS9DjKQ7Beb1e9Dkc
+	 60H2T0826vaFi5JUBzM8HEkA/NyYyMedy/Nf/Jslauus6PjknrpOT7AJAKWpCxTQ4a
+	 uKYNhwa0c6gn1etkdN7+t05hO3hDupwiQoDI1x2Fe1v/NG4CS76ie45hurbLNfcJZg
+	 qDeuSOkr2dVxA==
 From: Anand Jain <asj@kernel.org>
-To: linux-ext4@vger.kernel.org
-Subject: [RFC PATCH 3/3] ext4: derive f_fsid from block device to avoid collisions
-Date: Thu, 26 Feb 2026 22:28:07 +0800
-Message-ID: <e269a49eed2de23eb9f9bd7f506f0fe47696a023.1772095546.git.asj@kernel.org>
+To: fstests@vger.kernel.org
+Cc: linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-xfs@vger.kernel.org
+Subject: [PATCH 0/9] fstests: add test coverage for cloned filesystem ids
+Date: Thu, 26 Feb 2026 22:41:41 +0800
+Message-ID: <cover.1772095513.git.asj@kernel.org>
 X-Mailer: git-send-email 2.43.0
-In-Reply-To: <cover.1772095546.git.asj@kernel.org>
-References: <cover.1772095546.git.asj@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -42,36 +42,69 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-statfs() currently reports f_fsid derived from the on-disk UUID.
-Cloned block devices share the same UUID, so distinct ext4 instances
-can return identical f_fsid values. This leads to collisions in
-fanotify.
+This series adds fstests infrastructure and test cases to verify correct
+filesystem identity behaviour when a filesystem is cloned (e.g. via
+block-level copy), covering inotify, fanotify, f_fsid, libblkid, IMA,
+and exportfs file handles.
 
-Encode sb->s_dev into f_fsid instead of using the superblock UUID.
-This provides a per-device identifier and avoids conflicts when
-filesystem is cloned, matching the behavior with xfs.
+  - SCRATCH_DEV_POOL support extended to non-Btrfs filesystems
+  - _mkfs_scratch_sized_clone() helper to create a cloned filesystem
+  - _clone_mount_option() helper to apply per-filesystem clone mount options
 
-Marking as RFC: it is unclear whether any usecase requires the f_fsid of
-a cloned filesystem to be consistent with that of the source filesystem.
+New tests verify:
+  - inotify and fanotify events are isolated between cloned filesystems
+  - f_fsid is unique across cloned filesystem instances
+  - libblkid correctly resolves duplicate UUIDs to distinct devices
+  - IMA distinct identity for each cloned filesystem
+  - exportfs file handles resolve correctly on cloned filesystems
 
-Signed-off-by: Anand Jain <asj@kernel.org>
----
- fs/ext4/super.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Testing:
+  Requires kernel patches [1] for all tests to pass.
+   [1] https://lore.kernel.org/linux-btrfs/cover.1772095546.git.asj@kernel.org/
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 43f680c750ae..ec3c5882dff3 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -6941,7 +6941,7 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
- 	buf->f_files = le32_to_cpu(es->s_inodes_count);
- 	buf->f_ffree = percpu_counter_sum_positive(&sbi->s_freeinodes_counter);
- 	buf->f_namelen = EXT4_NAME_LEN;
--	buf->f_fsid = uuid_to_fsid(es->s_uuid);
-+	buf->f_fsid = u64_to_fsid(huge_encode_dev(sb->s_dev));
- 
- #ifdef CONFIG_QUOTA
- 	if (ext4_test_inode_flag(dentry->d_inode, EXT4_INODE_PROJINHERIT) &&
+Anand Jain (9):
+  fstests: allow SCRATCH_DEV_POOL for non-Btrfs filesystems
+  fstests: add _mkfs_scratch_clone() helper
+  fstests: add _clone_mount_option() helper
+  fstests: add test for inotify isolation on cloned devices
+  fstests: verify fanotify isolation on cloned filesystems
+  fstests: verify f_fsid for cloned filesystems
+  fstests: verify libblkid resolution of duplicate UUIDs
+  fstests: verify IMA isolation on cloned filesystems
+  fstests: verify exportfs file handles on cloned filesystems
+
+ .gitignore            |   1 +
+ common/config         |   1 +
+ common/rc             |  55 ++++++++++++++++++-----
+ src/Makefile          |   2 +-
+ src/fanotify.c        |  66 +++++++++++++++++++++++++++
+ tests/generic/790     |  78 ++++++++++++++++++++++++++++++++
+ tests/generic/790.out |   7 +++
+ tests/generic/791     |  86 +++++++++++++++++++++++++++++++++++
+ tests/generic/791.out |   7 +++
+ tests/generic/792     |  57 ++++++++++++++++++++++++
+ tests/generic/792.out |   7 +++
+ tests/generic/793     |  73 ++++++++++++++++++++++++++++++
+ tests/generic/793.out |  22 +++++++++
+ tests/generic/794     | 101 ++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/794.out |  10 +++++
+ tests/generic/795     |  67 ++++++++++++++++++++++++++++
+ tests/generic/795.out |   2 +
+ 17 files changed, 629 insertions(+), 13 deletions(-)
+ create mode 100644 src/fanotify.c
+ create mode 100644 tests/generic/790
+ create mode 100644 tests/generic/790.out
+ create mode 100644 tests/generic/791
+ create mode 100644 tests/generic/791.out
+ create mode 100644 tests/generic/792
+ create mode 100644 tests/generic/792.out
+ create mode 100644 tests/generic/793
+ create mode 100644 tests/generic/793.out
+ create mode 100644 tests/generic/794
+ create mode 100644 tests/generic/794.out
+ create mode 100644 tests/generic/795
+ create mode 100644 tests/generic/795.out
+
 -- 
 2.43.0
 
