@@ -1,30 +1,30 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C2D152D8780;
-	Sun,  1 Mar 2026 01:33:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 709ED430B90;
+	Sun,  1 Mar 2026 01:33:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772328787; cv=none; b=M2hiFxlu3meDrYPWrjIeaVHqE284ruilsIGA1EtZZ94NRAoncoP6ko8PhIOAnyXYugAKFZKULHM2yyKIu854+VUA3gLyy+YtVeVR5IaOJcCUes1pOyiGbJokb0dy8ACOAhc79QDmGxKIiEdsgaketiMte79zzrW9BCLT2TAnnjc=
+	t=1772328792; cv=none; b=AyfgywUT8XpHGwQp1UNGM7QD5jfcN54vzc3cnmvubvRXcUTl7iKy6joWiKiQ2lKUcgbR4sDj0WKokCxgHfIeydcELQIvZdk7Px0BhBFrUk5AwNpMtc9J3KPKcZKZuFDmCCfiZxICdzGnm+nVLnSFCDc8UMDsEtpvl+bbZcee4Pc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772328787; c=relaxed/simple;
-	bh=kMsf31DmHi5dV8jyFKPJVXivSIjX2NdUE7lnI2OyKqk=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=kRo81Ur6gFmUzDvgzNqdGrhZgztHJWNsTaADMRAVH0nUgl8AwaMVALh53oLcHdYAyWpWTwgHvjni4PaJ/yOFBHjqGgtXmjmureVB+j3tHKfYXDZmpNYd/Qw1Dyq+9CvVt5KlX18QhpTdHleq8uvD5kr3LcITP6nxhSDe7UdasHY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jyBJlzT1; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1772328792; c=relaxed/simple;
+	bh=JgF46oXyUe2UnTfDZ3KBh1znoUprrjYOR4p6UOBgKz8=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=HBdrmhrFX8RD3ODKeRKiAbszyOSNbXKYITpwr9bPMKd2Ll9Hk8BCWpU1o1RGx1a+afhncuqhh9Q2EQMrtnxbvpD2odPl4kAZtlDPubWUELpAyWBZjF8SEwsEWdE4IrbfXvsTx8otWLqFa6Ll8Di8faErJCTglPhy7W4fC7rr+uo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AALp06b1; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jyBJlzT1"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E3B20C19421;
-	Sun,  1 Mar 2026 01:33:06 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AALp06b1"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 95009C19425;
+	Sun,  1 Mar 2026 01:33:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1772328787;
-	bh=kMsf31DmHi5dV8jyFKPJVXivSIjX2NdUE7lnI2OyKqk=;
+	s=k20201202; t=1772328792;
+	bh=JgF46oXyUe2UnTfDZ3KBh1znoUprrjYOR4p6UOBgKz8=;
 	h=From:To:Cc:Subject:Date:From;
-	b=jyBJlzT1hDLse5Jb7xIKb24fiZnOyCRuPEojqOcQQjyzPqKpjgRMlvVv67bLLEpzg
-	 0NOrffV9qMmAfI3iWcLOQ8TMuBbQXN2LVtcorePslyjrMNNr2ZBB8jxBYXT3Mdro45
-	 XhYs3BN24MvCEfShZOgW6V7UiO+LtERZ1vDZUQW+tEVkkZoq/vWkTWI1oidFKDITBz
-	 Q9uyBMnZ9F4dxqUFuamArNwbaAGAW9SNIgtBIJa8ih8B0NvKVEgs0qQ+lSaSuETvyw
-	 JJbV9QMp+or6Dxg5z/KjBB/gdwsNGUUHcTed9eViqyqe/qa+ds7c0j4zb2hESpTjYk
-	 v2h4rumFfGtmQ==
+	b=AALp06b1TwHTvFCc9hFbzdnvkTRGyPonkzQrJMNUKCFs3Mv6hHjSCGfuApnt7vYs0
+	 oj/eda6o6Z24xa433LZXYFSUci+W2Dlw6R71av9xH15QVXyVxTPZ7ncBsYKrlBh3Ec
+	 N9SNLp6gaDPKNvQZ+Op7twxqyoNqhYSPSlXEJEt38Xp1QnaE6ClfjsRuZZ5fjtF7iT
+	 hxTQYaUg6qaLqOaOeVnsKddX22bKQlDdutakUcrwz1NxR5d+yxVg7PgLD3DRYmkYrz
+	 puvD/6pIemKCFw0HfFnB30G9OCRbku3KWO1x8/123cwUuTjIHr4Ozd59t+43irqSQd
+	 aTZwTqW49vgkw==
 From: Sasha Levin <sashal@kernel.org>
 To: stable@vger.kernel.org,
 	yi.zhang@huawei.com
@@ -33,9 +33,9 @@ Cc: Ojaswin Mujoo <ojaswin@linux.ibm.com>,
 	stable@kernel.org,
 	Theodore Ts'o <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org
-Subject: FAILED: Patch "ext4: don't zero the entire extent if EXT4_EXT_DATA_PARTIAL_VALID1" failed to apply to 6.6-stable tree
-Date: Sat, 28 Feb 2026 20:33:05 -0500
-Message-ID: <20260301013305.1692256-1-sashal@kernel.org>
+Subject: FAILED: Patch "ext4: don't cache extent during splitting extent" failed to apply to 6.6-stable tree
+Date: Sat, 28 Feb 2026 20:33:10 -0500
+Message-ID: <20260301013310.1692354-1-sashal@kernel.org>
 X-Mailer: git-send-email 2.51.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -57,89 +57,77 @@ Sasha
 
 ------------------ original commit in Linus's tree ------------------
 
-From 1bf6974822d1dba86cf11b5f05498581cf3488a2 Mon Sep 17 00:00:00 2001
+From 8b4b19a2f96348d70bfa306ef7d4a13b0bcbea79 Mon Sep 17 00:00:00 2001
 From: Zhang Yi <yi.zhang@huawei.com>
-Date: Sat, 29 Nov 2025 18:32:34 +0800
-Subject: [PATCH] ext4: don't zero the entire extent if
- EXT4_EXT_DATA_PARTIAL_VALID1
+Date: Sat, 29 Nov 2025 18:32:37 +0800
+Subject: [PATCH] ext4: don't cache extent during splitting extent
 
-When allocating initialized blocks from a large unwritten extent, or
-when splitting an unwritten extent during end I/O and converting it to
-initialized, there is currently a potential issue of stale data if the
-extent needs to be split in the middle.
+Caching extents during the splitting process is risky, as it may result
+in stale extents remaining in the status tree. Moreover, in most cases,
+the corresponding extent block entries are likely already cached before
+the split happens, making caching here not particularly useful.
 
-       0  A      B  N
-       [UUUUUUUUUUUU]    U: unwritten extent
-       [--DDDDDDDD--]    D: valid data
-          |<-  ->| ----> this range needs to be initialized
+Assume we have an unwritten extent, and then DIO writes the first half.
 
-ext4_split_extent() first try to split this extent at B with
-EXT4_EXT_DATA_ENTIRE_VALID1 and EXT4_EXT_MAY_ZEROOUT flag set, but
-ext4_split_extent_at() failed to split this extent due to temporary lack
-of space. It zeroout B to N and mark the entire extent from 0 to N
-as written.
+  [UUUUUUUUUUUUUUUU] on-disk extent        U: unwritten extent
+  [UUUUUUUUUUUUUUUU] extent status tree
+  |<-   ->| ----> dio write this range
 
-       0  A      B  N
-       [WWWWWWWWWWWW]    W: written extent
-       [SSDDDDDDDDZZ]    Z: zeroed, S: stale data
+First, when ext4_split_extent_at() splits this extent, it truncates the
+existing extent and then inserts a new one. During this process, this
+extent status entry may be shrunk, and calls to ext4_find_extent() and
+ext4_cache_extents() may occur, which could potentially insert the
+truncated range as a hole into the extent status tree. After the split
+is completed, this hole is not replaced with the correct status.
 
-ext4_split_extent() then try to split this extent at A with
-EXT4_EXT_DATA_VALID2 flag set. This time, it split successfully and left
-a stale written extent from 0 to A.
+  [UUUUUUU|UUUUUUUU] on-disk extent        U: unwritten extent
+  [UUUUUUU|HHHHHHHH] extent status tree    H: hole
 
-       0  A      B   N
-       [WW|WWWWWWWWWW]
-       [SS|DDDDDDDDZZ]
+Then, the outer calling functions will not correct this remaining hole
+extent either. Finally, if we perform a delayed buffer write on this
+latter part, it will re-insert the delayed extent and cause an error in
+space accounting.
 
-Fix this by pass EXT4_EXT_DATA_PARTIAL_VALID1 to ext4_split_extent_at()
-when splitting at B, don't convert the entire extent to written and left
-it as unwritten after zeroing out B to N. The remaining work is just
-like the standard two-part split. ext4_split_extent() will pass the
-EXT4_EXT_DATA_VALID2 flag when it calls ext4_split_extent_at() for the
-second time, allowing it to properly handle the split. If the split is
-successful, it will keep extent from 0 to A as unwritten.
+In adition, if the unwritten extent cache is not shrunk during the
+splitting, ext4_cache_extents() also conflicts with existing extents
+when caching extents. In the future, we will add checks when caching
+extents, which will trigger a warning. Therefore, Do not cache extents
+that are being split.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 Reviewed-by: Baokun Li <libaokun1@huawei.com>
 Cc: stable@kernel.org
-Message-ID: <20251129103247.686136-3-yi.zhang@huaweicloud.com>
+Message-ID: <20251129103247.686136-6-yi.zhang@huaweicloud.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/extents.c | 13 ++++++++++++-
- 1 file changed, 12 insertions(+), 1 deletion(-)
+ fs/ext4/extents.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 8d5ca450aa5d2..1fee84ea20af1 100644
+index daecf3f0b367c..be9fd2ab86679 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -3310,6 +3310,15 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
- 		}
+@@ -3199,6 +3199,9 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
+ 	BUG_ON((split_flag & EXT4_EXT_DATA_VALID1) &&
+ 	       (split_flag & EXT4_EXT_DATA_VALID2));
  
- 		if (!err) {
-+			/*
-+			 * The first half contains partially valid data, the
-+			 * splitting of this extent has not been completed, fix
-+			 * extent length and ext4_split_extent() split will the
-+			 * first half again.
-+			 */
-+			if (split_flag & EXT4_EXT_DATA_PARTIAL_VALID1)
-+				goto fix_extent_len;
++	/* Do not cache extents that are in the process of being modified. */
++	flags |= EXT4_EX_NOCACHE;
 +
- 			/* update the extent length and mark as initialized */
- 			ex->ee_len = cpu_to_le16(ee_len);
- 			ext4_ext_try_to_merge(handle, inode, path, ex);
-@@ -3379,7 +3388,9 @@ static struct ext4_ext_path *ext4_split_extent(handle_t *handle,
- 			split_flag1 |= EXT4_EXT_MARK_UNWRIT1 |
- 				       EXT4_EXT_MARK_UNWRIT2;
- 		if (split_flag & EXT4_EXT_DATA_VALID2)
--			split_flag1 |= EXT4_EXT_DATA_ENTIRE_VALID1;
-+			split_flag1 |= map->m_lblk > ee_block ?
-+				       EXT4_EXT_DATA_PARTIAL_VALID1 :
-+				       EXT4_EXT_DATA_ENTIRE_VALID1;
- 		path = ext4_split_extent_at(handle, inode, path,
- 				map->m_lblk + map->m_len, split_flag1, flags1);
- 		if (IS_ERR(path))
+ 	ext_debug(inode, "logical block %llu\n", (unsigned long long)split);
+ 
+ 	ext4_ext_show_leaf(inode, path);
+@@ -3381,6 +3384,9 @@ static struct ext4_ext_path *ext4_split_extent(handle_t *handle,
+ 	ee_len = ext4_ext_get_actual_len(ex);
+ 	unwritten = ext4_ext_is_unwritten(ex);
+ 
++	/* Do not cache extents that are in the process of being modified. */
++	flags |= EXT4_EX_NOCACHE;
++
+ 	if (map->m_lblk + map->m_len < ee_block + ee_len) {
+ 		split_flag1 = split_flag & EXT4_EXT_MAY_ZEROOUT;
+ 		flags1 = flags | EXT4_GET_BLOCKS_SPLIT_NOMERGE;
 -- 
 2.51.0
 
