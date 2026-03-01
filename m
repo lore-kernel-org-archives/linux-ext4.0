@@ -1,41 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 61A342F28FF;
-	Sun,  1 Mar 2026 02:00:46 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D3689430B9A;
+	Sun,  1 Mar 2026 02:00:48 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772330446; cv=none; b=IlPDnlb/FnL9bzvnYRpw5r0WkLPU0edkNGF2UFJY2WZr36RRjb9Fw84OUCTaD+iR/uaB8uQN0U6kVDti5MapVob4Io4lK2Uqp/aNbBRl5R3FJ8GV8fyc9yLRlhY4Sg+a0ZtT4LXEvGbemUXII8UaxrpkG47QpeoRj3rHFUBA7F0=
+	t=1772330448; cv=none; b=sPKukDwdepArTfk2QN/RK1/lEWI1Omj18Zgxq9BLO+LIxLDUzn8rX/0z5PPiT7lI8CCKfZ366scxARPRv+If/iJEzpauzv+mPdagHYRg01jQlsKpz643EzPemRx+qt3+Nn+9zEfZgr6y2UaUrf0sHYpDelBXJDeXwwk82jEMY9o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772330446; c=relaxed/simple;
-	bh=grUwDtS+K2wQfCMjAsH/9IWfNYPaj0EmMMGzha2rZYc=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=JO5Xo40Lj/AsJhhLBkm5sKixitutpugg5ax3CC2OdOEXE+YSeaCXHDlO1XxmHtVYKQaOxBCv3jyTK062VdPjV8KG8foY2iHacOrYX/PrxDHY/ycsoDtPSyEfi40jH79tdi1iY2wHfUFseLhoR2veH0L5rlk4DuxIEv3Fu+uVU1c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cRvUpCLj; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1772330448; c=relaxed/simple;
+	bh=+tvc9IlLmVomMxdiqopj8CTOZ3h5MCL9mHjWQZlzRWM=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=HxMWrYAs73NhcfpmDV/DpHIhUw4bHZC73gJsw4ew94f6AtooYjDROWyn/0xAWZr8/Pw8zBGpWuS4vuqZkqVmEFsvA+lLICbTAoVdmmCOahC9uI7ty6tXm5qimATth5EabELVsTkgJu+gDWR6K/9WaBwxPPXa0ZkvAxnJV7cmvWw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=RN9uSWqL; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cRvUpCLj"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8634EC19421;
-	Sun,  1 Mar 2026 02:00:45 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="RN9uSWqL"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 06B54C19421;
+	Sun,  1 Mar 2026 02:00:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1772330446;
-	bh=grUwDtS+K2wQfCMjAsH/9IWfNYPaj0EmMMGzha2rZYc=;
+	s=k20201202; t=1772330448;
+	bh=+tvc9IlLmVomMxdiqopj8CTOZ3h5MCL9mHjWQZlzRWM=;
 	h=From:To:Cc:Subject:Date:From;
-	b=cRvUpCLjge+NexYDOpINx1hkuFyL08pa+UQQwlQjexx2Tqrn6ZU9RvCM4MOmY6dLO
-	 H4bMXmzHxCPfDUvxZnFGkDszRcr9hqKdA7Zt5j73dIN8EmIlFx17k62MVs/RoJMcyD
-	 mH3wlON3EtiijmrXOblBRYAhPgt28+xGugCPe7OzGe5tXNh0gZbqmroJlC/MKd/Os/
-	 fAFrvh531dvbL/u8QfoBNAmxC59RHt3pBG8CZtDsKuzOzGjorxqwHmlv3goJD02A3K
-	 Qc3Uf7J8QDgWXYeCSi/T9TL8qGtQ+oae5U6iAGV34bfLKGM7cuSW7GXK/VvlLaEFnj
-	 uaN67y/n/6reg==
+	b=RN9uSWqLmhv+xr1ihfmlSF3yRaffiZtUpyVSFwWzUXu5c4mXWdZpfNAmDL/T5BoIE
+	 sLHFrZs5tEPhGIcPnoU94tIaeTnH2aGFUuZyO2Vh/RV6d+X4jbTZTA2W9DqNh/QDgo
+	 VLmiErW8vwKImztw5SA3hZEIE7GDBdLWidFZnuLQ7t1//UVRxkEk2JU4mScYmMGmDU
+	 suHmBrXEjqZvR1XC1ohO7YEkBDqwdfwLNqsMc7Qu3y5SllZw7fO7vh1HNaa2wewU3r
+	 PCghnfX+bMetZeJZu3olOalKNQy79CcAby21Fw4Zstn1oKYipbQ5384sqsgfyflZ6U
+	 C6lK2b73pZ0QA==
 From: Sasha Levin <sashal@kernel.org>
 To: stable@vger.kernel.org,
 	yi.zhang@huawei.com
-Cc: Baokun Li <libaokun1@huawei.com>,
+Cc: Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Baokun Li <libaokun1@huawei.com>,
 	stable@kernel.org,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
 	Theodore Ts'o <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org
-Subject: FAILED: Patch "ext4: drop extent cache after doing PARTIAL_VALID1 zeroout" failed to apply to 5.10-stable tree
-Date: Sat, 28 Feb 2026 21:00:44 -0500
-Message-ID: <20260301020044.1727568-1-sashal@kernel.org>
+Subject: FAILED: Patch "ext4: don't set EXT4_GET_BLOCKS_CONVERT when splitting before submitting I/O" failed to apply to 5.10-stable tree
+Date: Sat, 28 Feb 2026 21:00:46 -0500
+Message-ID: <20260301020046.1727643-1-sashal@kernel.org>
 X-Mailer: git-send-email 2.51.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -57,87 +57,100 @@ Sasha
 
 ------------------ original commit in Linus's tree ------------------
 
-From 6d882ea3b0931b43530d44149b79fcd4ffc13030 Mon Sep 17 00:00:00 2001
+From feaf2a80e78f89ee8a3464126077ba8683b62791 Mon Sep 17 00:00:00 2001
 From: Zhang Yi <yi.zhang@huawei.com>
-Date: Sat, 29 Nov 2025 18:32:38 +0800
-Subject: [PATCH] ext4: drop extent cache after doing PARTIAL_VALID1 zeroout
+Date: Sat, 29 Nov 2025 18:32:35 +0800
+Subject: [PATCH] ext4: don't set EXT4_GET_BLOCKS_CONVERT when splitting before
+ submitting I/O
 
-When splitting an unwritten extent in the middle and converting it to
-initialized in ext4_split_extent() with the EXT4_EXT_MAY_ZEROOUT and
-EXT4_EXT_DATA_VALID2 flags set, it could leave a stale unwritten extent.
+When allocating blocks during within-EOF DIO and writeback with
+dioread_nolock enabled, EXT4_GET_BLOCKS_PRE_IO was set to split an
+existing large unwritten extent. However, EXT4_GET_BLOCKS_CONVERT was
+set when calling ext4_split_convert_extents(), which may potentially
+result in stale data issues.
 
-Assume we have an unwritten file and buffered write in the middle of it
-without dioread_nolock enabled, it will allocate blocks as written
-extent.
+Assume we have an unwritten extent, and then DIO writes the second half.
 
-       0  A      B  N
-       [UUUUUUUUUUUU] on-disk extent      U: unwritten extent
-       [UUUUUUUUUUUU] extent status tree
-       [--DDDDDDDD--]                     D: valid data
-          |<-  ->| ----> this range needs to be initialized
+   [UUUUUUUUUUUUUUUU] on-disk extent        U: unwritten extent
+   [UUUUUUUUUUUUUUUU] extent status tree
+            |<-   ->| ----> dio write this range
 
-ext4_split_extent() first try to split this extent at B with
-EXT4_EXT_DATA_PARTIAL_VALID1 and EXT4_EXT_MAY_ZEROOUT flag set, but
-ext4_split_extent_at() failed to split this extent due to temporary lack
-of space. It zeroout B to N and leave the entire extent as unwritten.
+First, ext4_iomap_alloc() call ext4_map_blocks() with
+EXT4_GET_BLOCKS_PRE_IO, EXT4_GET_BLOCKS_UNWRIT_EXT and
+EXT4_GET_BLOCKS_CREATE flags set. ext4_map_blocks() find this extent and
+call ext4_split_convert_extents() with EXT4_GET_BLOCKS_CONVERT and the
+above flags set.
 
-       0  A      B  N
-       [UUUUUUUUUUUU] on-disk extent
-       [UUUUUUUUUUUU] extent status tree
-       [--DDDDDDDDZZ]                     Z: zeroed data
+Then, ext4_split_convert_extents() calls ext4_split_extent() with
+EXT4_EXT_MAY_ZEROOUT, EXT4_EXT_MARK_UNWRIT2 and EXT4_EXT_DATA_VALID2
+flags set, and it calls ext4_split_extent_at() to split the second half
+with EXT4_EXT_DATA_VALID2, EXT4_EXT_MARK_UNWRIT1, EXT4_EXT_MAY_ZEROOUT
+and EXT4_EXT_MARK_UNWRIT2 flags set. However, ext4_split_extent_at()
+failed to insert extent since a temporary lack -ENOSPC. It zeroes out
+the first half but convert the entire on-disk extent to written since
+the EXT4_EXT_DATA_VALID2 flag set, but left the second half as unwritten
+in the extent status tree.
 
-ext4_split_extent() then try to split this extent at A with
-EXT4_EXT_DATA_VALID2 flag set. This time, it split successfully and
-leave an written extent from A to N.
+   [0000000000SSSSSS]  data                S: stale data, 0: zeroed
+   [WWWWWWWWWWWWWWWW]  on-disk extent      W: written extent
+   [WWWWWWWWWWUUUUUU]  extent status tree
 
-       0  A      B  N
-       [UUWWWWWWWWWW] on-disk extent      W: written extent
-       [UUUUUUUUUUUU] extent status tree
-       [--DDDDDDDDZZ]
+Finally, if the DIO failed to write data to the disk, the stale data in
+the second half will be exposed once the cached extent entry is gone.
 
-Finally ext4_map_create_blocks() only insert extent A to B to the extent
-status tree, and leave an stale unwritten extent in the status tree.
+Fix this issue by not passing EXT4_GET_BLOCKS_CONVERT when splitting
+an unwritten extent before submitting I/O, and make
+ext4_split_convert_extents() to zero out the entire extent range
+to zero for this case, and also mark the extent in the extent status
+tree for consistency.
 
-       0  A      B  N
-       [UUWWWWWWWWWW] on-disk extent      W: written extent
-       [UUWWWWWWWWUU] extent status tree
-       [--DDDDDDDDZZ]
-
-Fix this issue by always cached extent status entry after zeroing out
-the second part.
-
+Fixes: b8a8684502a0 ("ext4: Introduce FALLOC_FL_ZERO_RANGE flag for fallocate")
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 Reviewed-by: Baokun Li <libaokun1@huawei.com>
 Cc: stable@kernel.org
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Message-ID: <20251129103247.686136-7-yi.zhang@huaweicloud.com>
+Message-ID: <20251129103247.686136-4-yi.zhang@huaweicloud.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/extents.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+ fs/ext4/extents.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index be9fd2ab86679..1094e49234513 100644
+index 1fee84ea20af1..91b56de60c905 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -3319,8 +3319,16 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
- 			 * extent length and ext4_split_extent() split will the
- 			 * first half again.
- 			 */
--			if (split_flag & EXT4_EXT_DATA_PARTIAL_VALID1)
-+			if (split_flag & EXT4_EXT_DATA_PARTIAL_VALID1) {
-+				/*
-+				 * Drop extent cache to prevent stale unwritten
-+				 * extents remaining after zeroing out.
-+				 */
-+				ext4_es_remove_extent(inode,
-+					le32_to_cpu(zero_ex.ee_block),
-+					ext4_ext_get_actual_len(&zero_ex));
- 				goto fix_extent_len;
-+			}
- 
- 			/* update the extent length and mark as initialized */
- 			ex->ee_len = cpu_to_le16(ee_len);
+@@ -3746,15 +3746,19 @@ static struct ext4_ext_path *ext4_split_convert_extents(handle_t *handle,
+ 	/* Convert to unwritten */
+ 	if (flags & EXT4_GET_BLOCKS_CONVERT_UNWRITTEN) {
+ 		split_flag |= EXT4_EXT_DATA_ENTIRE_VALID1;
+-	/* Convert to initialized */
+-	} else if (flags & EXT4_GET_BLOCKS_CONVERT) {
++	/* Split the existing unwritten extent */
++	} else if (flags & (EXT4_GET_BLOCKS_UNWRIT_EXT |
++			    EXT4_GET_BLOCKS_CONVERT)) {
+ 		/*
+ 		 * It is safe to convert extent to initialized via explicit
+ 		 * zeroout only if extent is fully inside i_size or new_size.
+ 		 */
+ 		split_flag |= ee_block + ee_len <= eof_block ?
+ 			      EXT4_EXT_MAY_ZEROOUT : 0;
+-		split_flag |= (EXT4_EXT_MARK_UNWRIT2 | EXT4_EXT_DATA_VALID2);
++		split_flag |= EXT4_EXT_MARK_UNWRIT2;
++		/* Convert to initialized */
++		if (flags & EXT4_GET_BLOCKS_CONVERT)
++			split_flag |= EXT4_EXT_DATA_VALID2;
+ 	}
+ 	flags |= EXT4_GET_BLOCKS_SPLIT_NOMERGE;
+ 	return ext4_split_extent(handle, inode, path, map, split_flag, flags,
+@@ -3930,7 +3934,7 @@ ext4_ext_handle_unwritten_extents(handle_t *handle, struct inode *inode,
+ 	/* get_block() before submitting IO, split the extent */
+ 	if (flags & EXT4_GET_BLOCKS_SPLIT_NOMERGE) {
+ 		path = ext4_split_convert_extents(handle, inode, map, path,
+-				flags | EXT4_GET_BLOCKS_CONVERT, allocated);
++						  flags, allocated);
+ 		if (IS_ERR(path))
+ 			return path;
+ 		/*
 -- 
 2.51.0
 
