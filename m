@@ -1,30 +1,30 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 23F551DED49;
-	Sun,  1 Mar 2026 02:00:34 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 315A62594B9;
+	Sun,  1 Mar 2026 02:00:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772330434; cv=none; b=R6osKMUCHFBPp2Y92YUmC7zAuED2gwcjQlJNW00i+NKdTP++eXl0F9DPu1ks5gOSMBGCJwV7jwe8tVOg79Kd3aHr9RvafnAuNvGtlR9CFnUqPcJPVvRzynS4vE3q6dUiRG9iIotQ5eHbaiywLsNYr9x7CYX6YQTt+jBFjHhNEJU=
+	t=1772330439; cv=none; b=B3q0ZlIPUwgBJWsEpIvm0Et04HPhRL6y93pTk7TN61XkbzFDduWUxBFxoQIC53dBqKkljTDlIziU0NLkBiHSHC86gG5x3UeeO1m4iySj2E+KM+vpIaMSf73/O7BJ2BAB/fsoweQMjizaXBw3BmHkjb307kwBQ/1DV+qf6+BLHqs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772330434; c=relaxed/simple;
-	bh=K1D4mn2pDLE0sBMMMgT5N546+Usi24C7G4hFF+3LVIU=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=OwbrARW+6NhKITNdVA9teTtLgQ5WFj5FzNcv/kPCWvpfoNsM/d6BCmAqgyijpmu09+WAv8aSl90GcCNbjl0ly31/CqB8a/BaK48XmOVjjSTij4vw3JvYkil3tI7yM0pv5/6KCvk/LoXInSe1iqW1rMxiPAIV6M9Y9YAD/ovW0Ng=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=aR3oWNrN; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1772330439; c=relaxed/simple;
+	bh=Xvi2Ljysug7O56hgxL630/B4BaMkRfL4R4Fe4BNgYo4=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=XXTpEVwLuKYrh35s5MpNXwLFE7cTBS2xR3n0CsW5uC8wORoCDJHCbfbtqtNBnON0OnEBjwEJ3yrJ9ZA3y7uLuez33zfmlEydnxOtX54GrHvTiNOSDtkCW4c7eptNjY/a8/TlICW6KLqjQXEl4T8SdlHHukKw6tSF4QqnXwZt9Bc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Jv0WKWrG; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="aR3oWNrN"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 430FDC19421;
-	Sun,  1 Mar 2026 02:00:33 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Jv0WKWrG"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 58738C19421;
+	Sun,  1 Mar 2026 02:00:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1772330434;
-	bh=K1D4mn2pDLE0sBMMMgT5N546+Usi24C7G4hFF+3LVIU=;
+	s=k20201202; t=1772330439;
+	bh=Xvi2Ljysug7O56hgxL630/B4BaMkRfL4R4Fe4BNgYo4=;
 	h=From:To:Cc:Subject:Date:From;
-	b=aR3oWNrNgjqeZfUpnk3VpzYcz0yO1V5pdpC+xp2ybAk7iOPGXDNfpCo5GHl0QNuGs
-	 4+RUKZyyTiDDfoxreL1lrmgaSWvajRX1EaGJPF+NRCIAEC5/tfjVU8ptaOchlGwva8
-	 fxlCUMflD8SVksCkCzZ0G8I4wGsRfVUXZA4pP2NURauaRhXkOo0Re0GLKX2R9k6FjV
-	 46fuWKGdx25u14LMcK9nxH9yhzuQZDLRycjS00N3lNKTgP3eAb9kke2NwGCz17Hlhu
-	 ypfNgWwGzBNpMROcUfPLCqeA2vIo915BoWHzFs4G64DX/aAYeosyHTqYQ4M6O4jLjC
-	 C1KM5JsI0xpRA==
+	b=Jv0WKWrG/NobQKOUYc8tI8yVhNXl0UulCw5C9JT+mjLOJCl2lUiDfSTF7zyqEwHI4
+	 +/pFLMItTVEPW0rHAI+9LVqaaB+l5Cq50nTa8r0JGFolyrH+TtxSBHW0qjNQoBB5/v
+	 x5sT8+2R+YI5+SIAKPDabIEoT13goiNzhTL03jzzkXVFub8pELaFzNcnneo4BuPtBi
+	 lFHAQ3B+Jf49DRptPRC6taBLgVEqX+d6e922uCxL3Zy/GNkm/7DiaGNUUTJ3oPpL6F
+	 Z76MFg0ppyoCrmkMpJfkgMpqqQrMIxyuxopqh86mCny82Iq8qDhmgcdcXBi3OywAJK
+	 b9GoqtKFxRxsw==
 From: Sasha Levin <sashal@kernel.org>
 To: stable@vger.kernel.org,
 	yi.zhang@huawei.com
@@ -33,9 +33,9 @@ Cc: Ojaswin Mujoo <ojaswin@linux.ibm.com>,
 	stable@kernel.org,
 	Theodore Ts'o <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org
-Subject: FAILED: Patch "ext4: subdivide EXT4_EXT_DATA_VALID1" failed to apply to 5.10-stable tree
-Date: Sat, 28 Feb 2026 21:00:31 -0500
-Message-ID: <20260301020032.1726644-1-sashal@kernel.org>
+Subject: FAILED: Patch "ext4: don't zero the entire extent if EXT4_EXT_DATA_PARTIAL_VALID1" failed to apply to 5.10-stable tree
+Date: Sat, 28 Feb 2026 21:00:36 -0500
+Message-ID: <20260301020037.1726742-1-sashal@kernel.org>
 X-Mailer: git-send-email 2.51.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -57,88 +57,89 @@ Sasha
 
 ------------------ original commit in Linus's tree ------------------
 
-From 22784ca541c0f01c5ebad14e8228298dc0a390ed Mon Sep 17 00:00:00 2001
+From 1bf6974822d1dba86cf11b5f05498581cf3488a2 Mon Sep 17 00:00:00 2001
 From: Zhang Yi <yi.zhang@huawei.com>
-Date: Sat, 29 Nov 2025 18:32:33 +0800
-Subject: [PATCH] ext4: subdivide EXT4_EXT_DATA_VALID1
+Date: Sat, 29 Nov 2025 18:32:34 +0800
+Subject: [PATCH] ext4: don't zero the entire extent if
+ EXT4_EXT_DATA_PARTIAL_VALID1
 
-When splitting an extent, if the EXT4_GET_BLOCKS_CONVERT flag is set and
-it is necessary to split the target extent in the middle,
-ext4_split_extent() first handles splitting the latter half of the
-extent and passes the EXT4_EXT_DATA_VALID1 flag. This flag implies that
-all blocks before the split point contain valid data; however, this
-assumption is incorrect.
+When allocating initialized blocks from a large unwritten extent, or
+when splitting an unwritten extent during end I/O and converting it to
+initialized, there is currently a potential issue of stale data if the
+extent needs to be split in the middle.
 
-Therefore, subdivid EXT4_EXT_DATA_VALID1 into
-EXT4_EXT_DATA_ENTIRE_VALID1 and EXT4_EXT_DATA_PARTIAL_VALID1, which
-indicate that the first half of the extent is either entirely valid or
-only partially valid, respectively. These two flags cannot be set
-simultaneously.
+       0  A      B  N
+       [UUUUUUUUUUUU]    U: unwritten extent
+       [--DDDDDDDD--]    D: valid data
+          |<-  ->| ----> this range needs to be initialized
 
-This patch does not use EXT4_EXT_DATA_PARTIAL_VALID1, it only replaces
-EXT4_EXT_DATA_VALID1 with EXT4_EXT_DATA_ENTIRE_VALID1 at the location
-where it is set, no logical changes.
+ext4_split_extent() first try to split this extent at B with
+EXT4_EXT_DATA_ENTIRE_VALID1 and EXT4_EXT_MAY_ZEROOUT flag set, but
+ext4_split_extent_at() failed to split this extent due to temporary lack
+of space. It zeroout B to N and mark the entire extent from 0 to N
+as written.
+
+       0  A      B  N
+       [WWWWWWWWWWWW]    W: written extent
+       [SSDDDDDDDDZZ]    Z: zeroed, S: stale data
+
+ext4_split_extent() then try to split this extent at A with
+EXT4_EXT_DATA_VALID2 flag set. This time, it split successfully and left
+a stale written extent from 0 to A.
+
+       0  A      B   N
+       [WW|WWWWWWWWWW]
+       [SS|DDDDDDDDZZ]
+
+Fix this by pass EXT4_EXT_DATA_PARTIAL_VALID1 to ext4_split_extent_at()
+when splitting at B, don't convert the entire extent to written and left
+it as unwritten after zeroing out B to N. The remaining work is just
+like the standard two-part split. ext4_split_extent() will pass the
+EXT4_EXT_DATA_VALID2 flag when it calls ext4_split_extent_at() for the
+second time, allowing it to properly handle the split. If the split is
+successful, it will keep extent from 0 to A as unwritten.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 Reviewed-by: Baokun Li <libaokun1@huawei.com>
 Cc: stable@kernel.org
-Message-ID: <20251129103247.686136-2-yi.zhang@huaweicloud.com>
+Message-ID: <20251129103247.686136-3-yi.zhang@huaweicloud.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/extents.c | 18 ++++++++++++------
- 1 file changed, 12 insertions(+), 6 deletions(-)
+ fs/ext4/extents.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 2cf5759ba6894..8d5ca450aa5d2 100644
+index 8d5ca450aa5d2..1fee84ea20af1 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -43,8 +43,13 @@
- #define EXT4_EXT_MARK_UNWRIT1	0x2  /* mark first half unwritten */
- #define EXT4_EXT_MARK_UNWRIT2	0x4  /* mark second half unwritten */
+@@ -3310,6 +3310,15 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
+ 		}
  
--#define EXT4_EXT_DATA_VALID1	0x8  /* first half contains valid data */
--#define EXT4_EXT_DATA_VALID2	0x10 /* second half contains valid data */
-+/* first half contains valid data */
-+#define EXT4_EXT_DATA_ENTIRE_VALID1	0x8   /* has entirely valid data */
-+#define EXT4_EXT_DATA_PARTIAL_VALID1	0x10  /* has partially valid data */
-+#define EXT4_EXT_DATA_VALID1		(EXT4_EXT_DATA_ENTIRE_VALID1 | \
-+					 EXT4_EXT_DATA_PARTIAL_VALID1)
+ 		if (!err) {
++			/*
++			 * The first half contains partially valid data, the
++			 * splitting of this extent has not been completed, fix
++			 * extent length and ext4_split_extent() split will the
++			 * first half again.
++			 */
++			if (split_flag & EXT4_EXT_DATA_PARTIAL_VALID1)
++				goto fix_extent_len;
 +
-+#define EXT4_EXT_DATA_VALID2	0x20 /* second half contains valid data */
- 
- static __le32 ext4_extent_block_csum(struct inode *inode,
- 				     struct ext4_extent_header *eh)
-@@ -3190,8 +3195,9 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
- 	unsigned int ee_len, depth;
- 	int err = 0;
- 
--	BUG_ON((split_flag & (EXT4_EXT_DATA_VALID1 | EXT4_EXT_DATA_VALID2)) ==
--	       (EXT4_EXT_DATA_VALID1 | EXT4_EXT_DATA_VALID2));
-+	BUG_ON((split_flag & EXT4_EXT_DATA_VALID1) == EXT4_EXT_DATA_VALID1);
-+	BUG_ON((split_flag & EXT4_EXT_DATA_VALID1) &&
-+	       (split_flag & EXT4_EXT_DATA_VALID2));
- 
- 	ext_debug(inode, "logical block %llu\n", (unsigned long long)split);
- 
-@@ -3373,7 +3379,7 @@ static struct ext4_ext_path *ext4_split_extent(handle_t *handle,
+ 			/* update the extent length and mark as initialized */
+ 			ex->ee_len = cpu_to_le16(ee_len);
+ 			ext4_ext_try_to_merge(handle, inode, path, ex);
+@@ -3379,7 +3388,9 @@ static struct ext4_ext_path *ext4_split_extent(handle_t *handle,
  			split_flag1 |= EXT4_EXT_MARK_UNWRIT1 |
  				       EXT4_EXT_MARK_UNWRIT2;
  		if (split_flag & EXT4_EXT_DATA_VALID2)
--			split_flag1 |= EXT4_EXT_DATA_VALID1;
-+			split_flag1 |= EXT4_EXT_DATA_ENTIRE_VALID1;
+-			split_flag1 |= EXT4_EXT_DATA_ENTIRE_VALID1;
++			split_flag1 |= map->m_lblk > ee_block ?
++				       EXT4_EXT_DATA_PARTIAL_VALID1 :
++				       EXT4_EXT_DATA_ENTIRE_VALID1;
  		path = ext4_split_extent_at(handle, inode, path,
  				map->m_lblk + map->m_len, split_flag1, flags1);
  		if (IS_ERR(path))
-@@ -3728,7 +3734,7 @@ static struct ext4_ext_path *ext4_split_convert_extents(handle_t *handle,
- 
- 	/* Convert to unwritten */
- 	if (flags & EXT4_GET_BLOCKS_CONVERT_UNWRITTEN) {
--		split_flag |= EXT4_EXT_DATA_VALID1;
-+		split_flag |= EXT4_EXT_DATA_ENTIRE_VALID1;
- 	/* Convert to initialized */
- 	} else if (flags & EXT4_GET_BLOCKS_CONVERT) {
- 		/*
 -- 
 2.51.0
 
