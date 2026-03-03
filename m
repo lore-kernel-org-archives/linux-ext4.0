@@ -1,39 +1,39 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B774339D6D4
-	for <linux-ext4@vger.kernel.org>; Tue,  3 Mar 2026 10:36:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9179F39D6CE
+	for <linux-ext4@vger.kernel.org>; Tue,  3 Mar 2026 10:36:07 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772534167; cv=none; b=tUpRH5VM2LnrkKd6Of9EqRTQxeIIGVDrMx3lcOlrrnuERf+0UHMVJjma+0iZEO4Chmg3T6DmN5aFmJNJ6ru/gFGNQ2/KcE8dVCN7dcZzfKY9MXQrcGzpM3mYArJUGPjpnmzoBpGfKf5VL5MhY6XJitZe2i/kXKj3ouaKkXODNQQ=
+	t=1772534170; cv=none; b=u0JPzf4C3LdxkZ8ZrxzNE3Yy11gD3xG2dZwB/S+5M+i8TBgknPUQypACr0yPJdgI5Vuh2UBlV+TsG0ooFKJ/wf/r94T5NVjdhYcX4RM98aeJM5FBnAnstnjidCAeuCQttKBSGq5rgVpIaCeZbgAnUprn/rIty4CV/unD7KIxS3c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772534167; c=relaxed/simple;
-	bh=t1ZJ98uKW/mjTlAtf9li2hXoonFOHXZVBOd5Czf0muc=;
+	s=arc-20240116; t=1772534170; c=relaxed/simple;
+	bh=9mjhfCWoeJv6I1ItfFebb5usm5NcNzQ2umKz8lNEm4E=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ZO++ZlYQ7HYs/eodlHCKUq45kJAJFG5w8YX90jXN7ctWFDEq74TlIswaBJp6uadRBk42KpunTIFB+ANTk5PsFknzyVIBlwwFGo5rnlAWOyAPiD/jMkEwviAlY+moFeVJFRNG1SSn7tRyTB0ZqCpR7VG/Kz2gEEepayUXHqhiL1o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; arc=none smtp.client-ip=195.135.223.131
+	 MIME-Version; b=l13NBqtJLJdGBt+vKucmfQA32edaWpzsCarP+teraHRSWOruyRInTWmdrNZa8qoZcOs0zcLIlmEDbLPZU46saTefpqrbJM2mWpVC0ushaepbazeEabt2N3qaUTWDBUqBuxJhPmLNhtPXZgWypNO1juoDmlD9yVveBCJDlyqhjvA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 7B47A5BE33;
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 5DDFB3F8EA;
 	Tue,  3 Mar 2026 10:34:45 +0000 (UTC)
-Authentication-Results: smtp-out2.suse.de;
+Authentication-Results: smtp-out1.suse.de;
 	none
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 6EC693EA6C;
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 516C53EA6C;
 	Tue,  3 Mar 2026 10:34:45 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id nHwKG0W5pmmfFQAAD6G6ig
+	id noLoE0W5pmmUFQAAD6G6ig
 	(envelope-from <jack@suse.cz>); Tue, 03 Mar 2026 10:34:45 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 463E1A0B7F; Tue,  3 Mar 2026 11:34:41 +0100 (CET)
+	id 1F1A2A0B7A; Tue,  3 Mar 2026 11:34:41 +0100 (CET)
 From: Jan Kara <jack@suse.cz>
 To: <linux-fsdevel@vger.kernel.org>
 Cc: Christian Brauner <brauner@kernel.org>,
@@ -50,9 +50,9 @@ Cc: Christian Brauner <brauner@kernel.org>,
 	linux-aio@kvack.org,
 	Benjamin LaHaise <bcrl@kvack.org>,
 	Jan Kara <jack@suse.cz>
-Subject: [PATCH 30/32] vfs: Drop mapping_metadata_bhs from address space
-Date: Tue,  3 Mar 2026 11:34:19 +0100
-Message-ID: <20260303103406.4355-62-jack@suse.cz>
+Subject: [PATCH 25/32] bfs: Track metadata bhs in fs-private inode part
+Date: Tue,  3 Mar 2026 11:34:14 +0100
+Message-ID: <20260303103406.4355-57-jack@suse.cz>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <20260303101717.27224-1-jack@suse.cz>
 References: <20260303101717.27224-1-jack@suse.cz>
@@ -62,13 +62,13 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2964; i=jack@suse.cz; h=from:subject; bh=t1ZJ98uKW/mjTlAtf9li2hXoonFOHXZVBOd5Czf0muc=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBpprk32Wxql2wtTkldVHgQyouf3CalCsOswKYUJ sSpBtaI5ZGJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCaaa5NwAKCRCcnaoHP2RA 2SkZCADLjRuMocQoKB6Huvda5j98SKmeWKpdEXSnbq26Ng0XEuFXFEkxnuwzhg3/zoIHhmJ4hc6 V2x3XgNJZSxtORfX7CMU9xit+xaKCRcpNW9XK+JYjmdSi1y+fpqzHqbceOtPnNoQ9mzDrwKvdlL ve8qnUNotEyH3DKsaPJZrUlEzq3PhCKJT7eyQysuSqgketXfzetTdLN/njPfReA9nq313q4VcY1 fu8RNYPFC3XPNFCxJ4zzXqLgd1zNmR0LYEx+DY0QIx2tVT1cXHujtkjbfRUTxHLUcv762X7+ynw CGVtg9VV4BMqYPOi2NyaIcF1JYncPuqXu1OiAsCjU8N9DXpc
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2544; i=jack@suse.cz; h=from:subject; bh=9mjhfCWoeJv6I1ItfFebb5usm5NcNzQ2umKz8lNEm4E=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBpprkzm+CXPHG9qbKxLBWqWfD9bfsr1e7/r+Z0e 3i6Z9c2uGeJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCaaa5MwAKCRCcnaoHP2RA 2U37CADBuxAkezEybmQ0+5cu0HE2PB14rqomXTSB64cI4hA4RYjEtXYMq6ndBH7EUmG/Typj0mb Z+WqgD1gdRE03UGv21Xr+V9XaKUCmZ1hItLRnX5SJL5Gz1FmWkRbc1ON5e00Ua9lI4KfwaWjLgq wcJocR12a0aQuW7rn3OXkZ+GLDTO0+MU3QXQleblPeAR0/U9Q4Zj7r66v2vf9KL98RlA/rrf8cb /b5AcHHZK0G9fsiDIdW+V39fgNxI3zkNeHtwENm+KTHC8LLeZ5uzEKdOgDnRvFZhajvwiEpelUK S2R4MKTBLxLRbKF//3ybdddGqVpwdMi46ZjPt7CTgfL0wxDI
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 X-Rspamd-Pre-Result: action=no action;
 	module=replies;
 	Message is reply to one we originated
-X-Rspamd-Queue-Id: 7B47A5BE33
+X-Rspamd-Queue-Id: 5DDFB3F8EA
 X-Rspamd-Pre-Result: action=no action;
 	module=replies;
 	Message is reply to one we originated
@@ -81,84 +81,85 @@ X-Spamd-Result: default: False [-4.00 / 50.00];
 	TAGGED_RCPT(0.00)[]
 X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
 
-Nobody uses mapping_metadata_bhs in struct address_space anymore. Just
-remove it.
+Track metadata bhs for an inode in fs-private part of the inode.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/buffer.c        | 16 ++++++++++------
- fs/inode.c         |  2 --
- include/linux/fs.h |  1 -
- 3 files changed, 10 insertions(+), 9 deletions(-)
+ fs/bfs/bfs.h   | 2 ++
+ fs/bfs/dir.c   | 1 +
+ fs/bfs/file.c  | 4 +++-
+ fs/bfs/inode.c | 7 +++++++
+ 4 files changed, 13 insertions(+), 1 deletion(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 096a8d9e3280..02176e0acfe1 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -501,9 +501,13 @@ EXPORT_SYMBOL(mmb_init);
+diff --git a/fs/bfs/bfs.h b/fs/bfs/bfs.h
+index 606f9378b2f0..5fadb6e860f1 100644
+--- a/fs/bfs/bfs.h
++++ b/fs/bfs/bfs.h
+@@ -35,6 +35,7 @@ struct bfs_inode_info {
+ 	unsigned long i_dsk_ino; /* inode number from the disk, can be 0 */
+ 	unsigned long i_sblock;
+ 	unsigned long i_eblock;
++	struct mapping_metadata_bhs i_metadata_bhs;
+ 	struct inode vfs_inode;
+ };
  
- static struct mapping_metadata_bhs *inode_get_metadata_bhs(struct inode *inode)
- {
-+	/*
-+	 * We can get called for various half-initialized or bad inodes so
-+	 * verify .get_metadata_bhs callback exists.
-+	 */
- 	if (inode->i_op->get_metadata_bhs)
- 		return inode->i_op->get_metadata_bhs(inode);
--	return &inode->i_mapping->i_metadata_bhs;
-+	return NULL;
+@@ -55,6 +56,7 @@ static inline struct bfs_inode_info *BFS_I(struct inode *inode)
+ /* inode.c */
+ extern struct inode *bfs_iget(struct super_block *sb, unsigned long ino);
+ extern void bfs_dump_imap(const char *, struct super_block *);
++struct mapping_metadata_bhs *bfs_get_metadata_bhs(struct inode *inode);
+ 
+ /* file.c */
+ extern const struct inode_operations bfs_file_inops;
+diff --git a/fs/bfs/dir.c b/fs/bfs/dir.c
+index c375e22c4c0c..30529f476582 100644
+--- a/fs/bfs/dir.c
++++ b/fs/bfs/dir.c
+@@ -262,6 +262,7 @@ const struct inode_operations bfs_dir_inops = {
+ 	.link			= bfs_link,
+ 	.unlink			= bfs_unlink,
+ 	.rename			= bfs_rename,
++	.get_metadata_bhs	= bfs_get_metadata_bhs,
+ };
+ 
+ static int bfs_add_entry(struct inode *dir, const struct qstr *child, int ino)
+diff --git a/fs/bfs/file.c b/fs/bfs/file.c
+index d33d6bde992b..335ab07e37fe 100644
+--- a/fs/bfs/file.c
++++ b/fs/bfs/file.c
+@@ -200,4 +200,6 @@ const struct address_space_operations bfs_aops = {
+ 	.bmap		= bfs_bmap,
+ };
+ 
+-const struct inode_operations bfs_file_inops;
++const struct inode_operations bfs_file_inops = {
++	.get_metadata_bhs = bfs_get_metadata_bhs,
++};
+diff --git a/fs/bfs/inode.c b/fs/bfs/inode.c
+index e0e50a9dbe9c..f1a392394a23 100644
+--- a/fs/bfs/inode.c
++++ b/fs/bfs/inode.c
+@@ -259,6 +259,8 @@ static struct inode *bfs_alloc_inode(struct super_block *sb)
+ 	bi = alloc_inode_sb(sb, bfs_inode_cachep, GFP_KERNEL);
+ 	if (!bi)
+ 		return NULL;
++	mmb_init(&bi->i_metadata_bhs);
++
+ 	return &bi->vfs_inode;
  }
  
- static void __remove_assoc_queue(struct mapping_metadata_bhs *mmb,
-@@ -544,7 +548,7 @@ static void remove_assoc_queue(struct buffer_head *bh)
- 
- bool mmb_has_buffers(struct mapping_metadata_bhs *mmb)
- {
--	return !list_empty(&mmb->list);
-+	return mmb && !list_empty(&mmb->list);
- }
- EXPORT_SYMBOL_GPL(mmb_has_buffers);
- 
-@@ -552,10 +556,10 @@ EXPORT_SYMBOL_GPL(mmb_has_buffers);
-  * sync_mapping_buffers - write out & wait upon a mapping's "associated" buffers
-  * @mapping: the mapping which wants those buffers written
-  *
-- * Starts I/O against the buffers at mapping->i_metadata_bhs and waits upon
-- * that I/O. Basically, this is a convenience function for fsync().  @mapping
-- * is a file or directory which needs those buffers to be written for a
-- * successful fsync().
-+ * Starts I/O against the buffers tracked in mapping_metadata_bhs for the
-+ * mapping and waits upon that I/O. Basically, this is a convenience function
-+ * for fsync().  @mapping is a file or directory which needs those buffers to
-+ * be written for a successful fsync().
-  *
-  * We have conflicting pressures: we want to make sure that all
-  * initially dirty buffers get waited on, but that any subsequently
-diff --git a/fs/inode.c b/fs/inode.c
-index 393f586d050a..d5774e627a9c 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -483,8 +483,6 @@ static void __address_space_init_once(struct address_space *mapping)
- 	init_rwsem(&mapping->i_mmap_rwsem);
- 	INIT_LIST_HEAD(&mapping->i_private_list);
- 	spin_lock_init(&mapping->i_private_lock);
--	spin_lock_init(&mapping->i_metadata_bhs.lock);
--	INIT_LIST_HEAD(&mapping->i_metadata_bhs.list);
- 	mapping->i_mmap = RB_ROOT_CACHED;
+@@ -296,6 +298,11 @@ static void destroy_inodecache(void)
+ 	kmem_cache_destroy(bfs_inode_cachep);
  }
  
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index b4d9be1fefa4..1611d8ce4b66 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -490,7 +490,6 @@ struct address_space {
- 	errseq_t		wb_err;
- 	spinlock_t		i_private_lock;
- 	struct list_head	i_private_list;
--	struct mapping_metadata_bhs i_metadata_bhs;
- 	struct rw_semaphore	i_mmap_rwsem;
- } __attribute__((aligned(sizeof(long)))) __randomize_layout;
- 	/*
++struct mapping_metadata_bhs *bfs_get_metadata_bhs(struct inode *inode)
++{
++	return &BFS_I(inode)->i_metadata_bhs;
++}
++
+ static const struct super_operations bfs_sops = {
+ 	.alloc_inode	= bfs_alloc_inode,
+ 	.free_inode	= bfs_free_inode,
 -- 
 2.51.0
 
