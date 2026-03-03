@@ -1,265 +1,197 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B32C39D6CF;
-	Tue,  3 Mar 2026 13:20:03 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F2E7E27AC31;
+	Tue,  3 Mar 2026 13:38:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772544004; cv=none; b=aWc/W6B+ntnfQGZTQJ3rnK+8IwaW2GwNqdHHhKdaZwRJ8rQD6spJgrPSupog8bFbGWtUmawygb2iBu94Tqr9/GnFRNpSzLHODpdvi8wr2H2LGb37XbEpHhDo7JTSPCawlIJNndJwbZRWjQYTvs1rVnwAtvea18oknf+AZ9rWhT8=
+	t=1772545086; cv=none; b=R8JbZxEpsZ7f87L+WSNb7mbFYLYPblcSvskCXGRDcXzwwEJYj/7YcN7Vu3EquTyuxHWHMXzFfAiJpguPj8AeO+d9ha51UTy9n3tZyq39JA35+bxW3muuKhjJP9qCE6XrfSCtG2EErjtUCPd/prhbeTOMPbz1YC2WlMzp0aVacoc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772544004; c=relaxed/simple;
-	bh=EevoioCXPDnDw9Dx0CTLNigeicoSZ+92kk+jyNLVd/k=;
+	s=arc-20240116; t=1772545086; c=relaxed/simple;
+	bh=PUXhAzVyDg5opgkKNFU6JDJ0GnFs4fQn60ZJlvuuzq4=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=jfeDrw5BREDhERC/wuPQX6iH6ONWt3rj5tPsPVmj16CnjGYWKmERaL8wS+KdX/APzBr/bGhPZZZRZ+9V/6lVfnT0Q08k9SgKhtwbv4Jv/gooKYgVDkBWYKdiQccQSAVwt14ySp9/FpJQgpXZSeAv+uwdQc4DM5M5sHWnepj8mbs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=uqFg1JSx; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=iydiijkJmAjhNPWZGpQa+DIaaVStJuGbrS8VDEcZXOK67lymeuISDBmD01E/Uio+8xsFbGdLEGf8GZSbrzDKFg+fSrUcATNjzuUne2hLPK5wQ1rhQIymDe/SmgKcHqCTaWU02Rs2RRRP/d5aHV/GB4UN589UshE6LWmwJClVbXA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=C+NAzkUg; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="uqFg1JSx"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 645A5C116C6;
-	Tue,  3 Mar 2026 13:20:02 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1772544003;
-	bh=EevoioCXPDnDw9Dx0CTLNigeicoSZ+92kk+jyNLVd/k=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=uqFg1JSx1lMKdyVNGeIg8uWY7xV3rKZnCWIlCf2pGD2yqnLwC7IWp8ndWogir/Xdr
-	 3eBDmqdXcQ93qaEkOOkBL7447yN+4rrFx+tIn6DYuDFbJVQXwEAByTflNY4RJDCqA7
-	 j7AUTVLqp3itaTaGvOGxOx2BwCXb1eWLZhOEk7WTkSPMiX5WB8FEW6k4MtJjXdx3He
-	 iVHU2tRQ2vEgyg7JPUhGumsU/Eyg01dzU6JLaSS+hifP6dUORURe7uIJlzjzYUHNeS
-	 EkX09pTsv80S8omK8KYRYbBoRGRofjOHzXRkq+nsYyQqsxClRqSoNeZnzHSXtyAgmZ
-	 +I/kicco9PpZA==
-Date: Tue, 3 Mar 2026 14:19:59 +0100
-From: Alejandro Colomar <alx@kernel.org>
-To: Theodore Tso <tytso@mit.edu>
-Cc: Andreas Dilger <adilger@dilger.ca>, 
-	Vyacheslav Kovalevsky <slava.kovalevskiy.2014@gmail.com>, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	linux-man@vger.kernel.org
-Subject: Re: Writing more than 4096 bytes with O_SYNC flag does not persist
- all previously written data if system crashes
-Message-ID: <aabdQf-gsEprJoFp@devuan>
-References: <3d8f73f4-3a64-4a86-8fc9-d910d4fa3be1@gmail.com>
- <174A8D06-B9B6-4546-A528-7A814D538208@dilger.ca>
- <20260219133244.GB69183@macsyma-wired.lan>
- <aZxLxum4WFYKbx2O@devuan>
- <20260223193238.GA63263@macsyma-wired.lan>
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="C+NAzkUg"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=Tk3uESbdvJBK0ZQDjaLs3gOQpD471/ds7fVyav3aEqM=; b=C+NAzkUgUxjxJBynLnQ11RqjfR
+	zbYsG/zy2ofectzScTg6NHncmcu0JStQWd88qwniMwEHPUDMrzeu5AbPFjRTOGOusjBgApX2iupEQ
+	4TSFZW7l8R1upfRlXqKLi4RgyAdnukQQvbYPR1dAqrxxpUxnOkbsrwTNYlBbOrqkyVi4QvfAA8Hbw
+	HJt/UXrH+SdGFi54kJW0+OTTU2dVCgOBYq2an1JkF/fBKXqVFdbNMcBaFcL7O/j1sFF7d0sWaEROA
+	h3pRPEd5DrrHSXCFjh0Qfque8DSpJNMUn053UKYZ0bE9iWOzQNS+w/08ekbSH5pMrlzHr3N0R0CUZ
+	4DO7FRhQ==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1vxPvS-0000000FEic-3CMP;
+	Tue, 03 Mar 2026 13:36:38 +0000
+Date: Tue, 3 Mar 2026 05:36:38 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: "Darrick J. Wong" <djwong@kernel.org>
+Cc: Theodore Tso <tytso@mit.edu>, Jeff Layton <jlayton@kernel.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
+	Steven Rostedt <rostedt@goodmis.org>,
+	Masami Hiramatsu <mhiramat@kernel.org>,
+	Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Matthew Wilcox <willy@infradead.org>,
+	Eric Biggers <ebiggers@kernel.org>,
+	Muchun Song <muchun.song@linux.dev>,
+	Oscar Salvador <osalvador@suse.de>,
+	David Hildenbrand <david@kernel.org>,
+	David Howells <dhowells@redhat.com>,
+	Paulo Alcantara <pc@manguebit.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
+	Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	Steve French <sfrench@samba.org>,
+	Ronnie Sahlberg <ronniesahlberg@gmail.com>,
+	Shyam Prasad N <sprasad@microsoft.com>,
+	Bharath SM <bharathsm@microsoft.com>,
+	Alexander Aring <alex.aring@gmail.com>,
+	Ryusuke Konishi <konishi.ryusuke@gmail.com>,
+	Viacheslav Dubeyko <slava@dubeyko.com>,
+	Eric Van Hensbergen <ericvh@kernel.org>,
+	Latchesar Ionkov <lucho@ionkov.net>,
+	Dominique Martinet <asmadeus@codewreck.org>,
+	Christian Schoenebeck <linux_oss@crudebyte.com>,
+	David Sterba <dsterba@suse.com>,
+	Marc Dionne <marc.dionne@auristor.com>, Ian Kent <raven@themaw.net>,
+	Luis de Bethencourt <luisbg@kernel.org>,
+	Salah Triki <salah.triki@gmail.com>,
+	"Tigran A. Aivazian" <aivazian.tigran@gmail.com>,
+	Ilya Dryomov <idryomov@gmail.com>,
+	Alex Markuze <amarkuze@redhat.com>,
+	Jan Harkes <jaharkes@cs.cmu.edu>, coda@cs.cmu.edu,
+	Nicolas Pitre <nico@fluxnic.net>, Tyler Hicks <code@tyhicks.com>,
+	Amir Goldstein <amir73il@gmail.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	John Paul Adrian Glaubitz <glaubitz@physik.fu-berlin.de>,
+	Yangtao Li <frank.li@vivo.com>,
+	Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
+	David Woodhouse <dwmw2@infradead.org>,
+	Richard Weinberger <richard@nod.at>,
+	Dave Kleikamp <shaggy@kernel.org>,
+	Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+	Mark Fasheh <mark@fasheh.com>, Joel Becker <jlbec@evilplan.org>,
+	Joseph Qi <joseph.qi@linux.alibaba.com>,
+	Mike Marshall <hubcap@omnibond.com>,
+	Martin Brandenburg <martin@omnibond.com>,
+	Miklos Szeredi <miklos@szeredi.hu>, Anders Larsen <al@alarsen.net>,
+	Zhihao Cheng <chengzhihao1@huawei.com>,
+	Damien Le Moal <dlemoal@kernel.org>,
+	Naohiro Aota <naohiro.aota@wdc.com>,
+	Johannes Thumshirn <jth@kernel.org>,
+	John Johansen <john.johansen@canonical.com>,
+	Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>,
+	"Serge E. Hallyn" <serge@hallyn.com>,
+	Mimi Zohar <zohar@linux.ibm.com>,
+	Roberto Sassu <roberto.sassu@huawei.com>,
+	Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+	Eric Snowberg <eric.snowberg@oracle.com>, Fan Wu <wufan@kernel.org>,
+	Stephen Smalley <stephen.smalley.work@gmail.com>,
+	Ondrej Mosnacek <omosnace@redhat.com>,
+	Casey Schaufler <casey@schaufler-ca.com>,
+	Alex Deucher <alexander.deucher@amd.com>,
+	Christian =?iso-8859-1?Q?K=F6nig?= <christian.koenig@amd.com>,
+	David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>,
+	Sumit Semwal <sumit.semwal@linaro.org>,
+	Eric Dumazet <edumazet@google.com>,
+	Kuniyuki Iwashima <kuniyu@google.com>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Willem de Bruijn <willemb@google.com>,
+	"David S. Miller" <davem@davemloft.net>,
+	Jakub Kicinski <kuba@kernel.org>, Simon Horman <horms@kernel.org>,
+	Oleg Nesterov <oleg@redhat.com>,
+	Peter Zijlstra <peterz@infradead.org>,
+	Ingo Molnar <mingo@redhat.com>,
+	Arnaldo Carvalho de Melo <acme@kernel.org>,
+	Namhyung Kim <namhyung@kernel.org>,
+	Mark Rutland <mark.rutland@arm.com>,
+	Alexander Shishkin <alexander.shishkin@linux.intel.com>,
+	Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>,
+	Adrian Hunter <adrian.hunter@intel.com>,
+	James Clark <james.clark@linaro.org>,
+	Martin Schiller <ms@dev.tdt.de>, Eric Paris <eparis@redhat.com>,
+	Joerg Reuter <jreuter@yaina.de>,
+	Marcel Holtmann <marcel@holtmann.org>,
+	Johan Hedberg <johan.hedberg@gmail.com>,
+	Luiz Augusto von Dentz <luiz.dentz@gmail.com>,
+	Oliver Hartkopp <socketcan@hartkopp.net>,
+	Marc Kleine-Budde <mkl@pengutronix.de>,
+	David Ahern <dsahern@kernel.org>,
+	Neal Cardwell <ncardwell@google.com>,
+	Steffen Klassert <steffen.klassert@secunet.com>,
+	Herbert Xu <herbert@gondor.apana.org.au>,
+	Remi Denis-Courmont <courmisch@gmail.com>,
+	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+	Xin Long <lucien.xin@gmail.com>,
+	Magnus Karlsson <magnus.karlsson@intel.com>,
+	Maciej Fijalkowski <maciej.fijalkowski@intel.com>,
+	Stanislav Fomichev <sdf@fomichev.me>,
+	Alexei Starovoitov <ast@kernel.org>,
+	Daniel Borkmann <daniel@iogearbox.net>,
+	Jesper Dangaard Brouer <hawk@kernel.org>,
+	John Fastabend <john.fastabend@gmail.com>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-trace-kernel@vger.kernel.org, nvdimm@lists.linux.dev,
+	fsverity@lists.linux.dev, linux-mm@kvack.org, netfs@lists.linux.dev,
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+	linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+	samba-technical@lists.samba.org, linux-nilfs@vger.kernel.org,
+	v9fs@lists.linux.dev, linux-afs@lists.infradead.org,
+	autofs@vger.kernel.org, ceph-devel@vger.kernel.org,
+	codalist@telemann.coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
+	linux-mtd@lists.infradead.org, jfs-discussion@lists.sourceforge.net,
+	ntfs3@lists.linux.dev, ocfs2-devel@lists.linux.dev,
+	devel@lists.orangefs.org, linux-unionfs@vger.kernel.org,
+	apparmor@lists.ubuntu.com, linux-security-module@vger.kernel.org,
+	linux-integrity@vger.kernel.org, selinux@vger.kernel.org,
+	amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
+	linux-media@vger.kernel.org, linaro-mm-sig@lists.linaro.org,
+	netdev@vger.kernel.org, linux-perf-users@vger.kernel.org,
+	linux-fscrypt@vger.kernel.org, linux-xfs@vger.kernel.org,
+	linux-hams@vger.kernel.org, linux-x25@vger.kernel.org,
+	audit@vger.kernel.org, linux-bluetooth@vger.kernel.org,
+	linux-can@vger.kernel.org, linux-sctp@vger.kernel.org,
+	bpf@vger.kernel.org
+Subject: Re: [PATCH v2 001/110] vfs: introduce kino_t typedef and PRIino
+ format macro
+Message-ID: <aabj5o1x4T-bRmro@infradead.org>
+References: <20260302-iino-u64-v2-0-e5388800dae0@kernel.org>
+ <20260302-iino-u64-v2-1-e5388800dae0@kernel.org>
+ <20260303012556.GA6520@macsyma-wired.lan>
+ <20260303042546.GF13868@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha512;
-	protocol="application/pgp-signature"; boundary="cwylalky2hmunx5a"
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260223193238.GA63263@macsyma-wired.lan>
+In-Reply-To: <20260303042546.GF13868@frogsfrogsfrogs>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
+On Mon, Mar 02, 2026 at 08:25:46PM -0800, Darrick J. Wong wrote:
+> > That being said, the userspace PRIu64, et. al macros are complete
+> > format specifiers, not just a length modifier.  And I think this
+> > results in less ugly format specifiers in our kernel code.
+> 
+> Yeah, I don't like "ino=%" PRIino "u, lolz\n" either.  I'd rather have
+> the whole format in the PRIino definition -- it /is/ unsigned long
+> after all.
 
---cwylalky2hmunx5a
-Content-Type: text/plain; protected-headers=v1; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-From: Alejandro Colomar <alx@kernel.org>
-To: Theodore Tso <tytso@mit.edu>
-Cc: Andreas Dilger <adilger@dilger.ca>, 
-	Vyacheslav Kovalevsky <slava.kovalevskiy.2014@gmail.com>, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	linux-man@vger.kernel.org
-Subject: Re: Writing more than 4096 bytes with O_SYNC flag does not persist
- all previously written data if system crashes
-Message-ID: <aabdQf-gsEprJoFp@devuan>
-References: <3d8f73f4-3a64-4a86-8fc9-d910d4fa3be1@gmail.com>
- <174A8D06-B9B6-4546-A528-7A814D538208@dilger.ca>
- <20260219133244.GB69183@macsyma-wired.lan>
- <aZxLxum4WFYKbx2O@devuan>
- <20260223193238.GA63263@macsyma-wired.lan>
-MIME-Version: 1.0
-In-Reply-To: <20260223193238.GA63263@macsyma-wired.lan>
+Just drop the bloody macro and the pointless micro-splitting of the
+change.  After this the inode is always 64-bit and we can just use
+normal ll specifiers without messing things up.
 
-Hi Ted,
-
-On 2026-02-23T14:32:38-0500, Theodore Tso wrote:
-[...]
-> The text in VERSIONS is not incorrect, in that it is talking about the
-> distinction of O_SYNC and O_DSYNC in terms of which kinds of metadata
-> will be persisted.
->=20
-> However, the reason why all of this information regarding Synchronized
-> I/O is in VERSIONS is describing the historic behaviour of Linux
-> version 2.6.33 versus more modern versions of Linux.  But 2.6.33 dates
-> from February 24, 2010 --- 16 years ago.  So it might be simpler if we
-> simply dropped this kind of historical information.
-
-I prefer keeping it, but I agree with moving it to a place where it
-doesn't distract (maybe even a separate page).
-
-> But if you do
-> want to keep it, we should move the bulk of that inforamtion into
-> O_SYNC and O_DSYNC.
->=20
-> So maybe:
->=20
->        O_DSYNC
->               Write  operations  on the file will complete according to t=
-he re=E2=80=90
->               quirements of synchronized I/O data integrity completion.
->=20
->               By the time write(2) (and similar) return, the  output  dat=
-a  has
->               been  transferred to the underlying hardware, along with an=
-y file
->               metadata that would be required to retrieve that data.
->=20
-> 	      See VERSIONS for a description of how historial versions
-> 	      of the Linux kernes from 2010 behaved.
->=20
->        O_SYNC Write  operations  on the file will complete according to t=
-he re=E2=80=90
->               quirements of synchronized I/O file integrity completion (b=
-y con=E2=80=90
->               trast with the synchronized I/O data  integrity  completion=
-  pro=E2=80=90
->               vided by O_DSYNC.)
->=20
->               By the time write(2) (or similar) returns, the output
->               data and all file metadata associated inode for the
->               opened file have been transferred to the underlying
->               hardware.
-> 	     =20
-> 	      See VERSIONS for a description of how historial versions
-> 	      of the Linux kernes from 2010 behaved.
-
-LGTM.
-
->=20
->     VERSIONS
->        Before Linux 2.6.33, Linux implemented only the O_SYNC flag for
->        open().  However, when that flag was specified, most
->        filesystems actually pro=E2=80=90 vided the equivalent of synchron=
-ized
->        I/O data integrity completion (i.e., O_SYNC was actually
->        implemented as the equivalent of O_DSYNC).
->=20
-> I'd suggest dropping everything else in VERSIONS, including the
-> discussion of O_RSYNC.  All of that is much more appropriate for a
-> tutorial.
-
-How about having an O_RSYNC(2const) manual page that talks in detail
-about it?
-
->=20
-> If you really want to keep all of that text, perhaps it could be moved
-> into a synchronized-io man page in section 7.
-
-Yes, a syncronized-io(7) page would make sense.
-
->  In that we can talk
-> about the difference of fsync() and fdatasync(), which is interesting
-> as a conceptual model, and conceptually it is similar to the O_SYNC
-> and O_DSYNC.  But the difference of what data will be written back
-> (the data that was written in the file descriptor where the
-> O_SYNC/O_DSYNC flag was set, eitehr via open or fcntl, versus all
-> buffered data in the buffer cache).  The synchronized-io man page
-> could also have more of the information around O_DIRECT in one place.
-
-I like the idea of a chapter 7 manual page, or separate 2const pages for
-each different macro.  Whatever you consider more useful/readable.
-
->=20
-> > If you'd write a patch, I'd appreciate that.
->=20
-> Well, there's a question of what's the minimal change that is needed
-> to fix out-and-out inaccuracies, and we can just delete some
-> parenthetical comments.
-
-Yup; I strongly prefer many minimal patches.  If you (or anyone) start
-by removing parentheticals that are unnecessary or incorrect, that'd be
-good.
-
-I would do that, but I wouldn't be able to write the commit messages, or
-decide how to group them.  I'd need someone expert in those APIs to
-write the patches.  I can then amend them editorially if they have any
-minor issues.
-
-> BTW, if we want to delete inaccurate information, I'd also suggest
-> deleting the following text in the O_DIRECT section of the man page:
->=20
->       A semantically similar (but deprecated) interface for block
->       devices is described in raw(8).
->=20
-> ----
->=20
-> Then there's trying to rearrange the tutorial-style information for
-> people who want to implement code which needs data persistence
-> guarantees.  That's quite a lot more work, and while I'm happy to
-> review or assist someone to write that more expansive tutorial
-> material, it's not something I'm willing to sign up to do.
-
-Okay.  While I can't do the removal of inaccurate text, I can reorganize
-correct text.  If you do the former, I can do this afterwards.  I'll CC
-you in such patches.
-
-> ----
->=20
-> Finally, there are some philosophical questions about what the goals
-> of the Linux kernel man pages --- how important is having historical
-> information (for exmaple O_DIRECT has a "since 2.4.10", which is 25
-> years ago --- really)? and how important is there to have tutorial
-> infomation and where should that information should be organized in
-> the man page.
-
-Michael Kerrisk wanted to keep everything after Linux 2.6.  Moving it to
-HISTORY, and reducing less important details, is appropriate, but
-removing it all is not so much.
-
-I more or less keep that guideline, although I'm slightly more prone to
-removals, but not too much.
-
-> My personal opinion is that the primary priority of the Linux man page
-> is to document the specification of the kernel interfaces that we
-> expose to user space.  Things like tutorial material and a descriptive
-> of historical versions are of secondary importance.
-
-Yup.  I've been moving a lot of text to separate pages or HISTORY
-sections, or removing unnecessary details.
-
-> I'd also advocate dropping historical information for kernel versions
-> which are older than say, 7 years.  Curretly the oldest LTS kernel
-> which is supported upstream is 5.10, which was originally released in
-> 2020, and will EOL by end of 2026.  The Linux kernel 5.0 was released
-> on March 3, 2019, so using a 7 year lookback means that explanation
-> about how the Linux kernel in 2.4.x, 2.6.y, 3.x, 4.x, etc. can be
-> dropped from the man pages, since IMHO it will reduces a lot of noise
-> that will likely confuse readers.
->=20
-> But that's a call for Alex and the man pages project to make.
-
-
-Have a lovely day!
-Alex
-
->=20
-> Cheers,
->=20
-> 					- Ted
-
---=20
-<https://www.alejandro-colomar.es>
-
---cwylalky2hmunx5a
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAABCgAdFiEES7Jt9u9GbmlWADAi64mZXMKQwqkFAmmm3/kACgkQ64mZXMKQ
-wqmQ5xAAilOVkKnvEPkeVJsvbf7Eq7vmSaIm9PU8wsbwEH1sgTagIsPbzTPaEMZc
-OEfSO4Xpz4fO8UwGALHpnNgf6xySDujKNmJOkNQLsFjJaJFRIK1Z3urDK67VQ3Uy
-5u8ltUW41HcPuhBNlyx7Tlx7OY2+qdp/9aNsDH5yuyN8kVkX3sJtMAK0XK4KRjo/
-cFU/09ytvdDI9gCk9tYZqaW8Cis1UjaQgdUEas7BxV+CTu5OlruOy+KTN3yzlJKI
-XfkIO1tgp+e7CbJCqy7H+5XkanQvzQCsutpiyf90ixojiTO9dzKENHrl0Jj8x6gq
-1kW31TG7plLdqD006UyVmbGKJOyYPmpwI76sFIld2hgzaFRvic/UidqquRdWfx+X
-relshs71ME3WAG8tISIZItcyjuPj/eCdx3XTiXdBR96m4T0HoYrh2b5xYxIbxZjT
-SXKS2KOXZQ/Bbm1PASrw3RcR6/SP49p+9CBdPnXGaJCwk5EgXaAwYyIF+3LsWHdp
-uNWsl2RoHt8YJx0qzLuk/+O77+Ti/7wqVxPzRxmK2kRYE/+myElirisPKSNJcTFb
-aDLf1TQ8/IQbiNpZq+S2oASeHcv8FY2A05X4ouJRMNOEmb+fzYE8nPajeA3fHKWk
-eUT9urM3bF3WADye02uGDJIBd2C996r2MbGa+2FdwWoZKqZahHM=
-=J8OC
------END PGP SIGNATURE-----
-
---cwylalky2hmunx5a--
