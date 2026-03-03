@@ -1,16 +1,16 @@
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9179F39D6CE
-	for <linux-ext4@vger.kernel.org>; Tue,  3 Mar 2026 10:36:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 03A333947A0
+	for <linux-ext4@vger.kernel.org>; Tue,  3 Mar 2026 10:36:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772534170; cv=none; b=u0JPzf4C3LdxkZ8ZrxzNE3Yy11gD3xG2dZwB/S+5M+i8TBgknPUQypACr0yPJdgI5Vuh2UBlV+TsG0ooFKJ/wf/r94T5NVjdhYcX4RM98aeJM5FBnAnstnjidCAeuCQttKBSGq5rgVpIaCeZbgAnUprn/rIty4CV/unD7KIxS3c=
+	t=1772534176; cv=none; b=gZY5xdkMALGzVoApJADuddfpR8keSDnNq+qO69KByvzadJL3+e60Re8mLIxev+XbIMFQSq9WmbmSAf9uc+T1Uexchgt/Q0xRPnQoLjm5eVTVolKFbbHEcTTUk00KT9v7zmcsPmWNVhgm9P+ROkkFwgiWbySyehHBDwVYF2gpZug=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772534170; c=relaxed/simple;
-	bh=9mjhfCWoeJv6I1ItfFebb5usm5NcNzQ2umKz8lNEm4E=;
+	s=arc-20240116; t=1772534176; c=relaxed/simple;
+	bh=6dajYHiVjkSm4ZzODgwKbSVFHrCgzhJerabocNYVVjI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=l13NBqtJLJdGBt+vKucmfQA32edaWpzsCarP+teraHRSWOruyRInTWmdrNZa8qoZcOs0zcLIlmEDbLPZU46saTefpqrbJM2mWpVC0ushaepbazeEabt2N3qaUTWDBUqBuxJhPmLNhtPXZgWypNO1juoDmlD9yVveBCJDlyqhjvA=
+	 MIME-Version; b=KmZ0j0V1H/O6RNX8du86OHOlZRRmwZt+wwG4x0XYg/zCNE6z1UaRkDJHAI+CAHuxIhzhp90nnlKRME5zPjRAOj/BZn/ZJx/hqL1LkvNAQwYvy+wIpt7eHi6oslfXj2U3gvU5goMhDR5SI6AaHAxrpVnzkrVDp4QUH7nGeUo8qfk=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
@@ -18,7 +18,7 @@ Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 5DDFB3F8EA;
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 679EE3F942;
 	Tue,  3 Mar 2026 10:34:45 +0000 (UTC)
 Authentication-Results: smtp-out1.suse.de;
 	none
@@ -26,14 +26,14 @@ Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 516C53EA6C;
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 5D4CA3EA70;
 	Tue,  3 Mar 2026 10:34:45 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id noLoE0W5pmmUFQAAD6G6ig
+	id MJjFFkW5pmmaFQAAD6G6ig
 	(envelope-from <jack@suse.cz>); Tue, 03 Mar 2026 10:34:45 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 1F1A2A0B7A; Tue,  3 Mar 2026 11:34:41 +0100 (CET)
+	id 2DFBCA0B7C; Tue,  3 Mar 2026 11:34:41 +0100 (CET)
 From: Jan Kara <jack@suse.cz>
 To: <linux-fsdevel@vger.kernel.org>
 Cc: Christian Brauner <brauner@kernel.org>,
@@ -50,9 +50,9 @@ Cc: Christian Brauner <brauner@kernel.org>,
 	linux-aio@kvack.org,
 	Benjamin LaHaise <bcrl@kvack.org>,
 	Jan Kara <jack@suse.cz>
-Subject: [PATCH 25/32] bfs: Track metadata bhs in fs-private inode part
-Date: Tue,  3 Mar 2026 11:34:14 +0100
-Message-ID: <20260303103406.4355-57-jack@suse.cz>
+Subject: [PATCH 27/32] udf: Track metadata bhs in fs-private inode part
+Date: Tue,  3 Mar 2026 11:34:16 +0100
+Message-ID: <20260303103406.4355-59-jack@suse.cz>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <20260303101717.27224-1-jack@suse.cz>
 References: <20260303101717.27224-1-jack@suse.cz>
@@ -62,13 +62,13 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2544; i=jack@suse.cz; h=from:subject; bh=9mjhfCWoeJv6I1ItfFebb5usm5NcNzQ2umKz8lNEm4E=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBpprkzm+CXPHG9qbKxLBWqWfD9bfsr1e7/r+Z0e 3i6Z9c2uGeJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCaaa5MwAKCRCcnaoHP2RA 2U37CADBuxAkezEybmQ0+5cu0HE2PB14rqomXTSB64cI4hA4RYjEtXYMq6ndBH7EUmG/Typj0mb Z+WqgD1gdRE03UGv21Xr+V9XaKUCmZ1hItLRnX5SJL5Gz1FmWkRbc1ON5e00Ua9lI4KfwaWjLgq wcJocR12a0aQuW7rn3OXkZ+GLDTO0+MU3QXQleblPeAR0/U9Q4Zj7r66v2vf9KL98RlA/rrf8cb /b5AcHHZK0G9fsiDIdW+V39fgNxI3zkNeHtwENm+KTHC8LLeZ5uzEKdOgDnRvFZhajvwiEpelUK S2R4MKTBLxLRbKF//3ybdddGqVpwdMi46ZjPt7CTgfL0wxDI
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3179; i=jack@suse.cz; h=from:subject; bh=6dajYHiVjkSm4ZzODgwKbSVFHrCgzhJerabocNYVVjI=; b=owGbwMvMwME4Z+4qdvsUh5uMp9WSGDKX7TSNVF2nFX9t9eJp3/xFZxwqlHLYuD4v9YTc8g0Hj GrKGYKXdzIaszAwcjDIiimyrI68qH1tnlHX1lANGZhBrEwgUxi4OAVgIswR7P9sYsP4Fh5busqz eYuDDMe1jyoLrX++8O22yWSqvZq5QnLLB70ey6O7Yx+8aDMIN2nc4WTWrSMnGBI1RWDVrNY/E1a kxYvkWPdcNbsYGWnOUO7Td/Jo9xvOVWuXrS1m6z8a82kFq8kh67XaDBt1NOv9t+grab8TsjR8Lc O3KDaJa4onyyPHzFhhge6++qKSi1obd3sHPd/T+TqjfdfBAy23t7JMdN3N8m7n3/y6dyY8rBnO9 +60xc44KbZcK9rCJsW5tq6iUmbRhAaB2EqnxHIN+8uP/5bK9+/Y4GBrV9RUdXlq8eKly/WChS5u UP92OK691OjtjZV+4sx/jn5Ptyo0m3e51yf+YQfzZ6tMAA==
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 X-Rspamd-Pre-Result: action=no action;
 	module=replies;
 	Message is reply to one we originated
-X-Rspamd-Queue-Id: 5DDFB3F8EA
+X-Rspamd-Queue-Id: 679EE3F942
 X-Rspamd-Pre-Result: action=no action;
 	module=replies;
 	Message is reply to one we originated
@@ -85,81 +85,92 @@ Track metadata bhs for an inode in fs-private part of the inode.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/bfs/bfs.h   | 2 ++
- fs/bfs/dir.c   | 1 +
- fs/bfs/file.c  | 4 +++-
- fs/bfs/inode.c | 7 +++++++
- 4 files changed, 13 insertions(+), 1 deletion(-)
+ fs/udf/file.c    | 1 +
+ fs/udf/namei.c   | 1 +
+ fs/udf/super.c   | 6 ++++++
+ fs/udf/symlink.c | 1 +
+ fs/udf/udf_i.h   | 1 +
+ fs/udf/udfdecl.h | 1 +
+ 6 files changed, 11 insertions(+)
 
-diff --git a/fs/bfs/bfs.h b/fs/bfs/bfs.h
-index 606f9378b2f0..5fadb6e860f1 100644
---- a/fs/bfs/bfs.h
-+++ b/fs/bfs/bfs.h
-@@ -35,6 +35,7 @@ struct bfs_inode_info {
- 	unsigned long i_dsk_ino; /* inode number from the disk, can be 0 */
- 	unsigned long i_sblock;
- 	unsigned long i_eblock;
-+	struct mapping_metadata_bhs i_metadata_bhs;
- 	struct inode vfs_inode;
+diff --git a/fs/udf/file.c b/fs/udf/file.c
+index 32ae7cfd72c5..8d51313173f3 100644
+--- a/fs/udf/file.c
++++ b/fs/udf/file.c
+@@ -251,4 +251,5 @@ static int udf_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 
+ const struct inode_operations udf_file_inode_operations = {
+ 	.setattr		= udf_setattr,
++	.get_metadata_bhs	= udf_get_metadata_bhs,
  };
- 
-@@ -55,6 +56,7 @@ static inline struct bfs_inode_info *BFS_I(struct inode *inode)
- /* inode.c */
- extern struct inode *bfs_iget(struct super_block *sb, unsigned long ino);
- extern void bfs_dump_imap(const char *, struct super_block *);
-+struct mapping_metadata_bhs *bfs_get_metadata_bhs(struct inode *inode);
- 
- /* file.c */
- extern const struct inode_operations bfs_file_inops;
-diff --git a/fs/bfs/dir.c b/fs/bfs/dir.c
-index c375e22c4c0c..30529f476582 100644
---- a/fs/bfs/dir.c
-+++ b/fs/bfs/dir.c
-@@ -262,6 +262,7 @@ const struct inode_operations bfs_dir_inops = {
- 	.link			= bfs_link,
- 	.unlink			= bfs_unlink,
- 	.rename			= bfs_rename,
-+	.get_metadata_bhs	= bfs_get_metadata_bhs,
+diff --git a/fs/udf/namei.c b/fs/udf/namei.c
+index 5f2e9a892bff..ef9eadb96f4e 100644
+--- a/fs/udf/namei.c
++++ b/fs/udf/namei.c
+@@ -1025,4 +1025,5 @@ const struct inode_operations udf_dir_inode_operations = {
+ 	.mknod				= udf_mknod,
+ 	.rename				= udf_rename,
+ 	.tmpfile			= udf_tmpfile,
++	.get_metadata_bhs		= udf_get_metadata_bhs,
  };
+diff --git a/fs/udf/super.c b/fs/udf/super.c
+index 27f463fd1d89..eb62972c9fda 100644
+--- a/fs/udf/super.c
++++ b/fs/udf/super.c
+@@ -166,6 +166,7 @@ static struct inode *udf_alloc_inode(struct super_block *sb)
+ 	ei->cached_extent.lstart = -1;
+ 	spin_lock_init(&ei->i_extent_cache_lock);
+ 	inode_set_iversion(&ei->vfs_inode, 1);
++	mmb_init(&ei->i_metadata_bhs);
  
- static int bfs_add_entry(struct inode *dir, const struct qstr *child, int ino)
-diff --git a/fs/bfs/file.c b/fs/bfs/file.c
-index d33d6bde992b..335ab07e37fe 100644
---- a/fs/bfs/file.c
-+++ b/fs/bfs/file.c
-@@ -200,4 +200,6 @@ const struct address_space_operations bfs_aops = {
- 	.bmap		= bfs_bmap,
- };
- 
--const struct inode_operations bfs_file_inops;
-+const struct inode_operations bfs_file_inops = {
-+	.get_metadata_bhs = bfs_get_metadata_bhs,
-+};
-diff --git a/fs/bfs/inode.c b/fs/bfs/inode.c
-index e0e50a9dbe9c..f1a392394a23 100644
---- a/fs/bfs/inode.c
-+++ b/fs/bfs/inode.c
-@@ -259,6 +259,8 @@ static struct inode *bfs_alloc_inode(struct super_block *sb)
- 	bi = alloc_inode_sb(sb, bfs_inode_cachep, GFP_KERNEL);
- 	if (!bi)
- 		return NULL;
-+	mmb_init(&bi->i_metadata_bhs);
-+
- 	return &bi->vfs_inode;
+ 	return &ei->vfs_inode;
+ }
+@@ -205,6 +206,11 @@ static void destroy_inodecache(void)
+ 	kmem_cache_destroy(udf_inode_cachep);
  }
  
-@@ -296,6 +298,11 @@ static void destroy_inodecache(void)
- 	kmem_cache_destroy(bfs_inode_cachep);
- }
- 
-+struct mapping_metadata_bhs *bfs_get_metadata_bhs(struct inode *inode)
++struct mapping_metadata_bhs *udf_get_metadata_bhs(struct inode *inode)
 +{
-+	return &BFS_I(inode)->i_metadata_bhs;
++	return &UDF_I(inode)->i_metadata_bhs;
 +}
 +
- static const struct super_operations bfs_sops = {
- 	.alloc_inode	= bfs_alloc_inode,
- 	.free_inode	= bfs_free_inode,
+ /* Superblock operations */
+ static const struct super_operations udf_sb_ops = {
+ 	.alloc_inode	= udf_alloc_inode,
+diff --git a/fs/udf/symlink.c b/fs/udf/symlink.c
+index fe03745d09b1..56c860a10b91 100644
+--- a/fs/udf/symlink.c
++++ b/fs/udf/symlink.c
+@@ -168,4 +168,5 @@ const struct address_space_operations udf_symlink_aops = {
+ const struct inode_operations udf_symlink_inode_operations = {
+ 	.get_link	= page_get_link,
+ 	.getattr	= udf_symlink_getattr,
++	.get_metadata_bhs	= udf_get_metadata_bhs,
+ };
+diff --git a/fs/udf/udf_i.h b/fs/udf/udf_i.h
+index 312b7c9ef10e..fdaa88c49c2b 100644
+--- a/fs/udf/udf_i.h
++++ b/fs/udf/udf_i.h
+@@ -50,6 +50,7 @@ struct udf_inode_info {
+ 	struct kernel_lb_addr	i_locStreamdir;
+ 	__u64			i_lenStreams;
+ 	struct rw_semaphore	i_data_sem;
++	struct mapping_metadata_bhs i_metadata_bhs;
+ 	struct udf_ext_cache cached_extent;
+ 	/* Spinlock for protecting extent cache */
+ 	spinlock_t i_extent_cache_lock;
+diff --git a/fs/udf/udfdecl.h b/fs/udf/udfdecl.h
+index d159f20d61e8..db2b92217bf5 100644
+--- a/fs/udf/udfdecl.h
++++ b/fs/udf/udfdecl.h
+@@ -126,6 +126,7 @@ static inline void udf_updated_lvid(struct super_block *sb)
+ extern u64 lvid_get_unique_id(struct super_block *sb);
+ struct inode *udf_find_metadata_inode_efe(struct super_block *sb,
+ 					u32 meta_file_loc, u32 partition_num);
++struct mapping_metadata_bhs *udf_get_metadata_bhs(struct inode *inode);
+ 
+ /* namei.c */
+ static inline unsigned int udf_dir_entry_len(struct fileIdentDesc *cfi)
 -- 
 2.51.0
 
