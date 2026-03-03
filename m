@@ -1,39 +1,80 @@
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 81B3239B949
-	for <linux-ext4@vger.kernel.org>; Tue,  3 Mar 2026 10:36:30 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C61283822B5
+	for <linux-ext4@vger.kernel.org>; Tue,  3 Mar 2026 10:36:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772534191; cv=none; b=Fmy/cm0sJIehZByQZdfPIta02wIig4BRMXW8J8NOB6BcwgQ5jYuFFy/IYInRRXNfgCDTijEE9oTPaCN5U4gu5OzJbf3dFI4UyQ+7Q5qSV2GyEl/3H/nATuasRD2Atnini6azotp5xHHzrK7swTYrSTSGygiFsT3unnxifO149mI=
+	t=1772534197; cv=none; b=lsypZr2sQd8gphNcicMhuzTLAYscr3Y1ZTaDKyqdFyUXoTtZZZr8GRgPyU6xENT2u0tIE8SeNWcI9aAVgKsuUnVJUigjdg8cwoC7oY9m0PuF3fvZTh0leE4kOynpFuJGrAenQf0qZwPzzRULSQes7aHf+uDr8zBVonndjfQMpPs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772534191; c=relaxed/simple;
-	bh=glK5IwI5bzBvc6wGANg8E++2uCF5SfKIYMDofG/EJec=;
+	s=arc-20240116; t=1772534197; c=relaxed/simple;
+	bh=KGtDrC9rNzTK65SQ8Oe7H9Ud9xEAArRJg33A6iQt0U0=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=sDUSZkEDWvAnsn//qgWSENT4yiIhPQGuFkGlJf4U0oBWEHGWzjeuvvuFA793dmh9ZrqonSDJYObsQ3jTFTa1+qfe7aeGfbtkyizZoUBNRhYrEbhf3kll5abt2TwOm/1J0cdSaycJB3vo+pKC57R9qTiA2CuGBRxSqqV9EW4uODs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; arc=none smtp.client-ip=195.135.223.130
+	 MIME-Version; b=gv5PTWRrhKf5thIYDQlhIToIW9JuEjToSDqLEKukECaYy6silJwrBU3N9Kke9xytOJSbPpsmG0/AZw+a/yhwDa37txMYzqnrGuWAq4hF6KW7Id/LYO08UsWgdNktYD8pAbpM46pnSCD5pMDNyGlRGJtgYMcNyry9jWA9c3rmpvw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=PDz6JRWj; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Gz7qITFv; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=PDz6JRWj; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Gz7qITFv; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="PDz6JRWj";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Gz7qITFv";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="PDz6JRWj";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Gz7qITFv"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 7CFE03F8F3;
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 7DDEA3F90D;
 	Tue,  3 Mar 2026 10:34:45 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1772534085; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ZJwm4fvAg3a1hOEhycwe2FUYXuHnKvYj9968NDPJOws=;
+	b=PDz6JRWjSeQ890kGuvn9Ph3Oi9gtVV75wuen0eIC/mXNKQGoQxwSBjYdpl7p80YHjXOdCR
+	QvAXuk3IkmlmHuPhyD4zb2nHhmjfM+eR+GE9hifa3adtlblT9qFmnPhqvjXVVG4l58jNyz
+	VxHPfyz0cN5Wn2xVAqi+jo/jPSzHpGk=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1772534085;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ZJwm4fvAg3a1hOEhycwe2FUYXuHnKvYj9968NDPJOws=;
+	b=Gz7qITFvIJY6misgdjIAVQ1WndNK0+d38+baDQ3JpzKnvkyCNN/CXIM+W3BWuPlCNupEuB
+	lLHuW+/doPxx85CQ==
 Authentication-Results: smtp-out1.suse.de;
 	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1772534085; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ZJwm4fvAg3a1hOEhycwe2FUYXuHnKvYj9968NDPJOws=;
+	b=PDz6JRWjSeQ890kGuvn9Ph3Oi9gtVV75wuen0eIC/mXNKQGoQxwSBjYdpl7p80YHjXOdCR
+	QvAXuk3IkmlmHuPhyD4zb2nHhmjfM+eR+GE9hifa3adtlblT9qFmnPhqvjXVVG4l58jNyz
+	VxHPfyz0cN5Wn2xVAqi+jo/jPSzHpGk=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1772534085;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ZJwm4fvAg3a1hOEhycwe2FUYXuHnKvYj9968NDPJOws=;
+	b=Gz7qITFvIJY6misgdjIAVQ1WndNK0+d38+baDQ3JpzKnvkyCNN/CXIM+W3BWuPlCNupEuB
+	lLHuW+/doPxx85CQ==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 67C213EA69;
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 74BE23EA6E;
 	Tue,  3 Mar 2026 10:34:45 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id wgBcGUW5pmmdFQAAD6G6ig
+	id DFGAHEW5pmmlFQAAD6G6ig
 	(envelope-from <jack@suse.cz>); Tue, 03 Mar 2026 10:34:45 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 3E25DA0B7E; Tue,  3 Mar 2026 11:34:41 +0100 (CET)
+	id 59132A0B82; Tue,  3 Mar 2026 11:34:41 +0100 (CET)
 From: Jan Kara <jack@suse.cz>
 To: <linux-fsdevel@vger.kernel.org>
 Cc: Christian Brauner <brauner@kernel.org>,
@@ -50,9 +91,9 @@ Cc: Christian Brauner <brauner@kernel.org>,
 	linux-aio@kvack.org,
 	Benjamin LaHaise <bcrl@kvack.org>,
 	Jan Kara <jack@suse.cz>
-Subject: [PATCH 29/32] ext4: Track metadata bhs in fs-private inode part
-Date: Tue,  3 Mar 2026 11:34:18 +0100
-Message-ID: <20260303103406.4355-61-jack@suse.cz>
+Subject: [PATCH 32/32] fs: Drop i_private_list from address_space
+Date: Tue,  3 Mar 2026 11:34:21 +0100
+Message-ID: <20260303103406.4355-64-jack@suse.cz>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <20260303101717.27224-1-jack@suse.cz>
 References: <20260303101717.27224-1-jack@suse.cz>
@@ -62,156 +103,87 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4816; i=jack@suse.cz; h=from:subject; bh=glK5IwI5bzBvc6wGANg8E++2uCF5SfKIYMDofG/EJec=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBpprk2eXk3gBLtLKTK6vnw0UxDVHoLdffj9Gncu VMs27zm3eaJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCaaa5NgAKCRCcnaoHP2RA 2eMXCACdnE5C1+/lCrGBS99f+cu5Lf4A/gsWSmltB4nZv30ejF4l0epIRPudvmCG0shOIBrkbop +Agkd5u6WzuU/wwY9G/tkZ1vHkxjclfBkREyGftqS6GlfgCwB/PyG+2We/pB1jI0jLriALb3I+w PiKUunQNDYy0QCSziRKPT1DMJSZZcC50ZNQ2e5Kyu9+5AN+kc2WyzJN8T8E6YHunCupUbJ6xgI6 2SvnkBVq2TB6QhV8RybU+648wxdMqHNHcEblqWitBWiXlJGiUX6TwmVNFws9q/avHoDE/zOyKCq 3aRO0APtNPg5S0P2XTORKdcfJTlGHrcnT92ouNVEFoHOJhxr
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1755; i=jack@suse.cz; h=from:subject; bh=KGtDrC9rNzTK65SQ8Oe7H9Ud9xEAArRJg33A6iQt0U0=; b=kA0DAAgBnJ2qBz9kQNkByyZiAGmmuTmiwKupnqCllCbgGVKgOMHk8s5SOF8d/mNwYbZRpubyN okBMwQAAQgAHRYhBKtZ0SvWnjKKtVUoHJydqgc/ZEDZBQJpprk5AAoJEJydqgc/ZEDZAigIAPAg aLhOjvAkhogRp0PsPfiAlvNv8YRXMwIUjSIqMVAVwFc9REL4+R/6NFJ4gCRMGYFlHOC4aiMszpE UhueKj0QF0yqOeimbTOxxJ4HM3FWc2ur/GMmzFeJWrzhICzX09nA7/6Hprn8HNFifoXIakkxFc9 9twj3/r1SUkgyxIJp/2OBbYiE3rtCR+eEdZdPQ9H+4W2G6nh48oBHafwjhTisOiNQU7nNMUxk81 j4ACfRGlNgQs4+nSQK9oqCnaxhuwyww22NWbsYcINd7RbAgUaUDydVNDDXw6s0L4ZqXj57PIlyo XL4jg8Q4WkKImKMYn4iUBtJnDjfg0FkWiPEaVKw=
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
-X-Rspamd-Pre-Result: action=no action;
-	module=replies;
-	Message is reply to one we originated
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Spamd-Result: default: False [-4.00 / 50.00];
+X-Spamd-Result: default: False [-5.30 / 50.00];
 	REPLY(-4.00)[];
-	TAGGED_RCPT(0.00)[]
-X-Rspamd-Queue-Id: 7CFE03F8F3
-X-Rspamd-Pre-Result: action=no action;
-	module=replies;
-	Message is reply to one we originated
-X-Rspamd-Action: no action
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_CONTAINS_FROM(1.00)[];
+	R_MISSING_CHARSET(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-0.999];
+	MIME_GOOD(-0.10)[text/plain];
+	ARC_NA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[15];
+	MIME_TRACE(0.00)[0:+];
+	TO_DN_SOME(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	FREEMAIL_CC(0.00)[kernel.org,ZenIV.linux.org.uk,vger.kernel.org,mit.edu,gmail.com,suse.com,mail.parknet.co.jp,linux.dev,suse.de,kvack.org,suse.cz];
+	FROM_HAS_DN(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo];
+	RCVD_TLS_LAST(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	R_RATELIMIT(0.00)[to_ip_from(RLck8brw5hxmszoarioc7838it)];
+	RCVD_COUNT_THREE(0.00)[3];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com]
 X-Spam-Flag: NO
-X-Spam-Score: -4.00
+X-Spam-Score: -5.30
 X-Spam-Level: 
 
-Track metadata bhs for an inode in fs-private part of the inode. We need
-the tracking only for nojournal mode so this is somewhat wasteful. We
-can relatively easily make the mapping_metadata_bhs struct dynamically
-allocated similarly to how we treat jbd2_inode but let's leave that for
-ext4 specific series once the dust settles a bit.
+Nobody is using i_private_list anymore. Remove it.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h    | 4 +++-
- fs/ext4/file.c    | 1 +
- fs/ext4/inode.c   | 2 +-
- fs/ext4/namei.c   | 2 ++
- fs/ext4/super.c   | 6 ++++++
- fs/ext4/symlink.c | 3 +++
- 6 files changed, 16 insertions(+), 2 deletions(-)
+ fs/inode.c         | 2 --
+ include/linux/fs.h | 2 --
+ 2 files changed, 4 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 293f698b7042..a829e5da67af 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1121,6 +1121,7 @@ struct ext4_inode_info {
- 	struct rw_semaphore i_data_sem;
- 	struct inode vfs_inode;
- 	struct jbd2_inode *jinode;
-+	struct mapping_metadata_bhs i_metadata_bhs;
- 
- 	/*
- 	 * File creation time. Its function is same as that of
-@@ -3203,8 +3204,9 @@ extern void ext4_mark_group_bitmap_corrupted(struct super_block *sb,
- 					     unsigned int flags);
- extern unsigned int ext4_num_base_meta_blocks(struct super_block *sb,
- 					      ext4_group_t block_group);
--extern void print_daily_error_info(struct timer_list *t);
-+struct mapping_metadata_bhs *ext4_get_metadata_bhs(struct inode *inode);
- 
-+extern void print_daily_error_info(struct timer_list *t);
- extern __printf(7, 8)
- void __ext4_error(struct super_block *, const char *, unsigned int, bool,
- 		  int, __u64, const char *, ...);
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index f1dc5ce791a7..3d433f50524b 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -987,5 +987,6 @@ const struct inode_operations ext4_file_inode_operations = {
- 	.fiemap		= ext4_fiemap,
- 	.fileattr_get	= ext4_fileattr_get,
- 	.fileattr_set	= ext4_fileattr_set,
-+	.get_metadata_bhs = ext4_get_metadata_bhs,
- };
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 011cb2eb16a2..eead6c5c2366 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3436,7 +3436,7 @@ static bool ext4_inode_datasync_dirty(struct inode *inode)
- 	}
- 
- 	/* Any metadata buffers to write? */
--	if (mmb_has_buffers(&inode->i_mapping->i_metadata_bhs))
-+	if (mmb_has_buffers(&EXT4_I(inode)->i_metadata_bhs))
- 		return true;
- 	return inode_state_read_once(inode) & I_DIRTY_DATASYNC;
- }
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index c4b5e252af0e..4d2cae140b71 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -4228,6 +4228,7 @@ const struct inode_operations ext4_dir_inode_operations = {
- 	.fiemap         = ext4_fiemap,
- 	.fileattr_get	= ext4_fileattr_get,
- 	.fileattr_set	= ext4_fileattr_set,
-+	.get_metadata_bhs = ext4_get_metadata_bhs,
- };
- 
- const struct inode_operations ext4_special_inode_operations = {
-@@ -4236,4 +4237,5 @@ const struct inode_operations ext4_special_inode_operations = {
- 	.listxattr	= ext4_listxattr,
- 	.get_inode_acl	= ext4_get_acl,
- 	.set_acl	= ext4_set_acl,
-+	.get_metadata_bhs = ext4_get_metadata_bhs,
- };
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index ea827b0ecc8d..4b9eb86b03e2 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1428,6 +1428,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	INIT_WORK(&ei->i_rsv_conversion_work, ext4_end_io_rsv_work);
- 	ext4_fc_init_inode(&ei->vfs_inode);
- 	spin_lock_init(&ei->i_fc_lock);
-+	mmb_init(&ei->i_metadata_bhs);
- 	return &ei->vfs_inode;
- }
- 
-@@ -1521,6 +1522,11 @@ static void destroy_inodecache(void)
- 	kmem_cache_destroy(ext4_inode_cachep);
- }
- 
-+struct mapping_metadata_bhs *ext4_get_metadata_bhs(struct inode *inode)
-+{
-+	return &EXT4_I(inode)->i_metadata_bhs;
-+}
-+
- void ext4_clear_inode(struct inode *inode)
+diff --git a/fs/inode.c b/fs/inode.c
+index d5774e627a9c..a8f019078fab 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -481,7 +481,6 @@ static void __address_space_init_once(struct address_space *mapping)
  {
- 	ext4_fc_del(inode);
-diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
-index 645240cc0229..53ec8daf4cae 100644
---- a/fs/ext4/symlink.c
-+++ b/fs/ext4/symlink.c
-@@ -119,6 +119,7 @@ const struct inode_operations ext4_encrypted_symlink_inode_operations = {
- 	.setattr	= ext4_setattr,
- 	.getattr	= ext4_encrypted_symlink_getattr,
- 	.listxattr	= ext4_listxattr,
-+	.get_metadata_bhs = ext4_get_metadata_bhs,
- };
- 
- const struct inode_operations ext4_symlink_inode_operations = {
-@@ -126,6 +127,7 @@ const struct inode_operations ext4_symlink_inode_operations = {
- 	.setattr	= ext4_setattr,
- 	.getattr	= ext4_getattr,
- 	.listxattr	= ext4_listxattr,
-+	.get_metadata_bhs = ext4_get_metadata_bhs,
- };
- 
- const struct inode_operations ext4_fast_symlink_inode_operations = {
-@@ -133,4 +135,5 @@ const struct inode_operations ext4_fast_symlink_inode_operations = {
- 	.setattr	= ext4_setattr,
- 	.getattr	= ext4_getattr,
- 	.listxattr	= ext4_listxattr,
-+	.get_metadata_bhs = ext4_get_metadata_bhs,
- };
+ 	xa_init_flags(&mapping->i_pages, XA_FLAGS_LOCK_IRQ | XA_FLAGS_ACCOUNT);
+ 	init_rwsem(&mapping->i_mmap_rwsem);
+-	INIT_LIST_HEAD(&mapping->i_private_list);
+ 	spin_lock_init(&mapping->i_private_lock);
+ 	mapping->i_mmap = RB_ROOT_CACHED;
+ }
+@@ -795,7 +794,6 @@ void clear_inode(struct inode *inode)
+ 	 * nor even WARN_ON(!mapping_empty).
+ 	 */
+ 	xa_unlock_irq(&inode->i_data.i_pages);
+-	BUG_ON(!list_empty(&inode->i_data.i_private_list));
+ 	BUG_ON(!(inode_state_read_once(inode) & I_FREEING));
+ 	BUG_ON(inode_state_read_once(inode) & I_CLEAR);
+ 	BUG_ON(!list_empty(&inode->i_wb_list));
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 1611d8ce4b66..adad21e31cfc 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -470,7 +470,6 @@ struct mapping_metadata_bhs {
+  * @flags: Error bits and flags (AS_*).
+  * @wb_err: The most recent error which has occurred.
+  * @i_private_lock: For use by the owner of the address_space.
+- * @i_private_list: For use by the owner of the address_space.
+  */
+ struct address_space {
+ 	struct inode		*host;
+@@ -489,7 +488,6 @@ struct address_space {
+ 	unsigned long		flags;
+ 	errseq_t		wb_err;
+ 	spinlock_t		i_private_lock;
+-	struct list_head	i_private_list;
+ 	struct rw_semaphore	i_mmap_rwsem;
+ } __attribute__((aligned(sizeof(long)))) __randomize_layout;
+ 	/*
 -- 
 2.51.0
 
