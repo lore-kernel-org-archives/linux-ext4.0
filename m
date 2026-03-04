@@ -1,72 +1,66 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B5C9134CFC6;
-	Wed,  4 Mar 2026 13:40:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4599E1F936;
+	Wed,  4 Mar 2026 13:41:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772631639; cv=none; b=Dbw3cV5yiaDjefIwnpNOuBqsIV8i1KLvj0gOZTWHITPi+1cl+dzfQTW33uoQrBL7BmUsGxvOhratv1AuM0ZqLuQkeySFejBK+D0Wn1dajVePJWcZCza0W6cl0JL6Y+LFImvoCVWFxAoa48aWGO1Uezu2ihGvoJN33DtzSetiBmQ=
+	t=1772631711; cv=none; b=WKkf0P8yCNbCOt2KsdVaGkFC/xmGsyhCTliwqY9d/6sqEKkG6TZOoRNpRGyeAxjxpnrRsSNuJKE3WFvpgIPQUrdYZG5wjAu9mp4Li50zuXu/pYorm/grpBUByfZE4KqshCCepffZUPO+TkwUiKx9GSr6H56gOGdR8ijeR+2zQjs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772631639; c=relaxed/simple;
-	bh=saBpvESaGj5QiqSpFfWOGnf8j0MOslSLXlBi7/U5dHg=;
+	s=arc-20240116; t=1772631711; c=relaxed/simple;
+	bh=lF/cbWNAZkiBRClEeQv0v8+hIPKKoDPFA2TgerpF5Jg=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=hp3mRDJdDLDCNTVhJ0FOjMiCWglOrv7r7q6WGWoCwr1Vi+3PLNwaZkHlSYTKqubVts9Eh51plsNMQoq39q+P3gy4xuC4jh/kty6bmcyjuvqbDWTVmBO3iGdSKKFzQubLdsA5fS9ezwGuTZBIqTjO8bbkVCKfHjghub0Bws6gZz0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Pz9Q10ce; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=IBCFBcxYAIcWrsxD6tiskyCpF8VnHQuVUyFgozFEdM+TWSSDSMK3Ssjt1RPlq2zDqqXrc3AXG55BivfNNqMBZ+JKniv6Dtv6UoIex0qIYVgh+dLHTY0AJ2oa1+FgiFGcNUR3UGlYw3VFOskw/9pesAc7c5OT6C/gjb3EevYKk2Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=cd5iyByk; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Pz9Q10ce"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 17945C19423;
-	Wed,  4 Mar 2026 13:40:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1772631639;
-	bh=saBpvESaGj5QiqSpFfWOGnf8j0MOslSLXlBi7/U5dHg=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=Pz9Q10cesxvicAfZAxJWsJipenbgc+L+GNBCNpgox/ApeDmUPPNe8bReiHFtdKJCo
-	 YDJrcx41hrcP49safkalWHRbQyMbDCsHrAYtLJLIZsdZrE0bJ6Utugirq3RpNrvbZO
-	 FHWGLQu8SALp+v14qeuSUvgpocfy3rK1dggz0b3mdpAENAGW19TwVxKlHXFttwaBBN
-	 9doonxpzjRixTTqINhTaW9bdDXsZKwniR6coFVIkE9yZoYJn9u4qPvJs7mZhBc07jy
-	 mvSFumdnatCpc4H+iN0pw8E1ysCu1zZ7LDRKoVLOgExDFMBxxcINf3rkkQfAzvtlq7
-	 VguxGnHd/toJA==
-Date: Wed, 4 Mar 2026 14:40:33 +0100
-From: Christian Brauner <brauner@kernel.org>
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="cd5iyByk"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=w0TVsxPotofUHITY70zCKKGc2w7JRgEPcs5hoEtoJ8U=; b=cd5iyBykON7MtCkmTuA2fxz6N+
+	sRrRQbJGIreUITx+yGXBaJah4d0KTSszKUJqfiarfchCo81YDMCwTJhiEAX2FuG4F5U1LQnG5cX9k
+	gN8cAsZbj77p610YmQ/Sbks35bGhsk/JY+AYAPJOud+CDWm2I8AURLTAZcU8naJlgKyTXquYPZWUt
+	I+IT6WxxqCrOxUm8nRtEUSHe35ockE/E39cGKS5fXthlkCuZREL7igrsZeD9xH7vTn/HO4yb20XK1
+	HNl/Oqai0dWBigM8bROs5iV99RFPzE8rWtNCrOFIppUiYW2WRJu6om1PQIoK81mRyByCsBbLyJqEX
+	x+dI0VSw==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1vxmU1-0000000HGe2-2K0m;
+	Wed, 04 Mar 2026 13:41:49 +0000
+Date: Wed, 4 Mar 2026 05:41:49 -0800
+From: Christoph Hellwig <hch@infradead.org>
 To: Jan Kara <jack@suse.cz>
-Cc: linux-fsdevel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>, 
-	linux-ext4@vger.kernel.org, Ted Tso <tytso@mit.edu>, 
-	"Tigran A. Aivazian" <aivazian.tigran@gmail.com>, David Sterba <dsterba@suse.com>, 
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Muchun Song <muchun.song@linux.dev>, 
-	Oscar Salvador <osalvador@suse.de>, David Hildenbrand <david@kernel.org>, linux-mm@kvack.org, 
-	linux-aio@kvack.org, Benjamin LaHaise <bcrl@kvack.org>
-Subject: Re: [PATCH 31/32] kvm: Use private inode list instead of
- i_private_list
-Message-ID: <20260304-mahnung-ableisten-50d5c4e71013@brauner>
+Cc: linux-fsdevel@vger.kernel.org, Christian Brauner <brauner@kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>, linux-ext4@vger.kernel.org,
+	Ted Tso <tytso@mit.edu>,
+	"Tigran A. Aivazian" <aivazian.tigran@gmail.com>,
+	David Sterba <dsterba@suse.com>,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	Muchun Song <muchun.song@linux.dev>,
+	Oscar Salvador <osalvador@suse.de>,
+	David Hildenbrand <david@kernel.org>, linux-mm@kvack.org,
+	linux-aio@kvack.org, Benjamin LaHaise <bcrl@kvack.org>,
+	Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+	ntfs3@lists.linux.dev
+Subject: Re: [PATCH 19/32] ntfs3: Drop pointless sync_mapping_buffers() call
+Message-ID: <aag2nTROMNra7t6l@infradead.org>
 References: <20260303101717.27224-1-jack@suse.cz>
- <20260303103406.4355-63-jack@suse.cz>
+ <20260303103406.4355-51-jack@suse.cz>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260303103406.4355-63-jack@suse.cz>
+In-Reply-To: <20260303103406.4355-51-jack@suse.cz>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-On Tue, Mar 03, 2026 at 11:34:20AM +0100, Jan Kara wrote:
-> Instead of using mapping->i_private_list use a list in private part of
-> the inode.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  virt/kvm/guest_memfd.c | 12 +++++++-----
->  1 file changed, 7 insertions(+), 5 deletions(-)
-> 
-> diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-> index 017d84a7adf3..6d36a7827870 100644
-> --- a/virt/kvm/guest_memfd.c
-> +++ b/virt/kvm/guest_memfd.c
-> @@ -30,6 +30,7 @@ struct gmem_file {
->  struct gmem_inode {
->  	struct shared_policy policy;
->  	struct inode vfs_inode;
-> +	struct list_head gem_file_list;
 
-I think that needs to be gMem_file_list not, gem_file_list.
+Can you move the various cleanups that don't really depend on any of
+the refactoring to the front of the list?  i.e., drop all the useless
+code first before doing real changes?
+
