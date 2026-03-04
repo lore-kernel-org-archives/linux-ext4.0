@@ -1,47 +1,46 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 343171A2392
-	for <linux-ext4@vger.kernel.org>; Wed,  4 Mar 2026 14:14:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BC97D3B8932
+	for <linux-ext4@vger.kernel.org>; Wed,  4 Mar 2026 14:14:49 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772633667; cv=none; b=GzEo+Hg2ymf5RRdIm5N0kmS0qRS+CVrMewxgLvmM1EUJsl2GLMd80XNnhMA9cgnvUZLmRKaa8KjtsjQWbvUrT+xY5w2lQe00V/yZpcayWmJdnphCWgWK5xs3TIQwFIUWDK8B7wbckmvGQ1ri9zi4K1kJI4gGR877n67uUE5xFJQ=
+	t=1772633691; cv=none; b=JEELkCzhYuP8npAghB5Tmcdwz8KHBP2znBdtnZLD91xd2mhSaYiGptuDctwLt1O7rcrprrbN+nmF5NYXbAMUTp/m83lznr/oWa7f0fEfM99jscNx17Q3tWd3HLjjunlDdS/qgpHhedQTFzsBoA5g+ceMDbMTknoPNlIxu315Oj0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772633667; c=relaxed/simple;
-	bh=FuKc6t7DcwG+mQu4eBxw6G18XWXXQKWW4YuhYjUsnZU=;
+	s=arc-20240116; t=1772633691; c=relaxed/simple;
+	bh=itbX/tFnfNscq1eXla5FCpsDU+VEsZTpjuk29qjkQt8=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=nVdXYUbAr40DApLvux++3ahdHu9fiZNt7ZIIWMeRyPc/31/Ps3I6ArvuHlltlD9zHhGinv1LdroJACk2v3SjjrqB6mx/b5v78UyrfmHCexVjemW77FZwJgKRDVEAG3ern7q8bhPMu+L1oYSp3n8s/tkIaiHAMncdJHHojJ6qyPc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=JG6hF2YF; arc=none smtp.client-ip=18.9.28.11
+	 Content-Type:Content-Disposition:In-Reply-To; b=PxuNDd9TBL0j8mtDY1DXvx0fDitw5F4dab9oCWccpZkzJSYWUsQ+m+m5ILWTguxisc8GOw4GP9LGGNwOzJGkI/0r3ftrNOZ9u7qk/V1qqlWXNBV2v7nuDjRjadH4Pyqk5jWVJZisMgI/i+LDuNWx2bAYdTvX9WXrHF6jFYCqQmo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=SPvIH1J6; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="JG6hF2YF"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="SPvIH1J6"
 Received: from macsyma.thunk.org (99-196-129-228.cust.exede.net [99.196.129.228] (may be forged))
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 624EE650004187
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 624EEYfE004347
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 4 Mar 2026 09:14:14 -0500
+	Wed, 4 Mar 2026 09:14:42 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1772633656; bh=EnzvVGkZDTGoQ8+nlJHlNyl/6W2tmjA5E+T0mfIpQ6Y=;
+	t=1772633683; bh=1CO9EaetjlrNgv7A96rTqiFRCTA9HyjCR3JdHY449Ic=;
 	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=JG6hF2YFD0ggUJ8L2zFSiCU1u/dv7gInQhdB4AWmScNHF+abeaHTwOx4mF92btQYe
-	 pjKK0RQCKLNdVOD+sjYVoTVtXaHKOsSPsohrjHJ2nke8krkMaJQNDpd9YZyq+99Kri
-	 d99/dMqaQ6u5UF2/XCOQO/7JnelMECUOHYz7Gt9k6UVt+so9vwrZT1YgH8jwvb8Sfm
-	 kH612ne2xzV1jcHS6dSr9W60XlVZj/CPwOAFDTnHbYR6w+o3nBoN1y0krMppeLwlL9
-	 vxKNzSCMi7Wn3EC4tOwxNQA/lb3CmzBzSpuS/yG1huRWaSBsKXixPW5SSQWQewcCGI
-	 ldGtAQIJmMi5w==
+	b=SPvIH1J6khtYccNs2u8IUpOirvi+wIEl+CLb7MjB5nxuUiMZ+tG860d/upxBSZLGS
+	 P0wWkKR9qmCCrNJN2hmM6qDYABAhVBelP8NtmopIHwaBdhiw3Xy+h7KOT0ECEr3CP/
+	 LZAPAoxKrFM27lC2B1QUTUZG6FKiCcexTxkdkzLWIPKkvj8OTGK4pxD2A4op0r7/ef
+	 heCeU9uAw/lOZTDfsPGB72Cj9RAhCOnJvSi9y+Jd8nF4Xn65c9gA0QIyBBwAH5wbKc
+	 QZbEYlTmB9yt4qvPmJAF2VBY50MRHSL5j8ciEEjyMYHiYEcu6NHZhd1lNq6CTeIl/l
+	 eZsd37s9yEjFQ==
 Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 5F8605B86333; Wed,  4 Mar 2026 09:14:04 -0500 (EST)
-Date: Wed, 4 Mar 2026 09:14:04 -0500
+	id E3A5E5B863F4; Wed,  4 Mar 2026 09:14:33 -0500 (EST)
+Date: Wed, 4 Mar 2026 09:14:33 -0500
 From: "Theodore Tso" <tytso@mit.edu>
 To: Jan Kara <jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 05/32] ext4: Sync and invalidate metadata buffers from
- ext4_evict_inode()
-Message-ID: <20260304141404.GA8243@macsyma-wired.lan>
+Subject: Re: [PATCH 06/32] ext4: Use inode_has_buffers()
+Message-ID: <20260304141433.GB8243@macsyma-wired.lan>
 References: <20260303101717.27224-1-jack@suse.cz>
- <20260303103406.4355-37-jack@suse.cz>
+ <20260303103406.4355-38-jack@suse.cz>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -50,13 +49,11 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260303103406.4355-37-jack@suse.cz>
+In-Reply-To: <20260303103406.4355-38-jack@suse.cz>
 
-On Tue, Mar 03, 2026 at 11:33:54AM +0100, Jan Kara wrote:
-> There are only very few filesystems using generic metadata buffer head
-> tracking and everybody is paying the overhead. When we remove this
-> tracking for inode reclaim code .evict will start to see inodes with
-> metadata buffers attached so write them out and prune them.
+On Tue, Mar 03, 2026 at 11:33:55AM +0100, Jan Kara wrote:
+> Instead of checking i_private_list directly use appropriate wrapper
+> inode_has_buffers(). Also delete stale comment.
 > 
 > Signed-off-by: Jan Kara <jack@suse.cz>
 
