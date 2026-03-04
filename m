@@ -1,78 +1,72 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2F30537F73A;
-	Wed,  4 Mar 2026 13:40:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B5C9134CFC6;
+	Wed,  4 Mar 2026 13:40:39 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772631635; cv=none; b=J8aIHkPQ/wUn50nrtTCqKS/UxBcRQyzk4oV+ZauQA3sZAUFU6WRfw8zWlq+yqkEe/YV6+fQkTpQqE4Fqh6j+FgZ/HOnAEQgxkEa/3R6RDc2Et1cjv/2yES0IFdVb05MiejBdVNjs0azaf7jDqc+wF2RwQy9ns7xzHzi76MssCGA=
+	t=1772631639; cv=none; b=Dbw3cV5yiaDjefIwnpNOuBqsIV8i1KLvj0gOZTWHITPi+1cl+dzfQTW33uoQrBL7BmUsGxvOhratv1AuM0ZqLuQkeySFejBK+D0Wn1dajVePJWcZCza0W6cl0JL6Y+LFImvoCVWFxAoa48aWGO1Uezu2ihGvoJN33DtzSetiBmQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772631635; c=relaxed/simple;
-	bh=Wgq3ARRdpO1Q0iJ5SGsrCWCaMeC2JHo6yO58UJf37NE=;
+	s=arc-20240116; t=1772631639; c=relaxed/simple;
+	bh=saBpvESaGj5QiqSpFfWOGnf8j0MOslSLXlBi7/U5dHg=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Q4ldDuFsWGB8BOTNFgpVVOGMADjrGtVoSHIwMPK+3oHQl0EyVuwU8N9xRyi+r+OnEN+bcVtdB8W/6kjptydase5B8ey5BCzIQO0QXOPG62uTAHbnIMLSqB8v1bJ9TFialCgXbpW+CUWTgmUL1pcDIGxI0n8LE/X6bx/lU6GHaPA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=teznPaF7; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	 Content-Type:Content-Disposition:In-Reply-To; b=hp3mRDJdDLDCNTVhJ0FOjMiCWglOrv7r7q6WGWoCwr1Vi+3PLNwaZkHlSYTKqubVts9Eh51plsNMQoq39q+P3gy4xuC4jh/kty6bmcyjuvqbDWTVmBO3iGdSKKFzQubLdsA5fS9ezwGuTZBIqTjO8bbkVCKfHjghub0Bws6gZz0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Pz9Q10ce; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="teznPaF7"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=UpMjkqBNogxSPvE5B7hwtzwkc1kjwuxpixdO2LSAbyg=; b=teznPaF7Zol9XUlVmtkbdixlbj
-	BGB56AhLKfWY9Cz+hlyK/SiVnKp62wmIciq1TfXQFK3eFHtabHDLKNQO0GqXac+YG8+R8BcmFAt8K
-	cYAuvLkI/h0RYFbvWB03S5niI7jr1jteo6dXkwPe/R14U9EuFH+GJa45KPaMASqgAe98EAq0VK8Xi
-	YyyYCH1nP6ks5seA8bZfAOTiODPxPZy/vA9q1sDq9Lr1OL9KaPoJwlI8OO9j9x33Z2lfM9YjsjoYr
-	QiFjKMIvshsyvhmFha2IBILD2rNKcADZJIHENkohEcDKP4kwAxyx23jS2oLVsblAfaNcvNhAOhztq
-	KNlz3OuQ==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1vxmSn-0000000HGUA-0qlh;
-	Wed, 04 Mar 2026 13:40:33 +0000
-Date: Wed, 4 Mar 2026 05:40:33 -0800
-From: Christoph Hellwig <hch@infradead.org>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Pz9Q10ce"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 17945C19423;
+	Wed,  4 Mar 2026 13:40:35 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1772631639;
+	bh=saBpvESaGj5QiqSpFfWOGnf8j0MOslSLXlBi7/U5dHg=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=Pz9Q10cesxvicAfZAxJWsJipenbgc+L+GNBCNpgox/ApeDmUPPNe8bReiHFtdKJCo
+	 YDJrcx41hrcP49safkalWHRbQyMbDCsHrAYtLJLIZsdZrE0bJ6Utugirq3RpNrvbZO
+	 FHWGLQu8SALp+v14qeuSUvgpocfy3rK1dggz0b3mdpAENAGW19TwVxKlHXFttwaBBN
+	 9doonxpzjRixTTqINhTaW9bdDXsZKwniR6coFVIkE9yZoYJn9u4qPvJs7mZhBc07jy
+	 mvSFumdnatCpc4H+iN0pw8E1ysCu1zZ7LDRKoVLOgExDFMBxxcINf3rkkQfAzvtlq7
+	 VguxGnHd/toJA==
+Date: Wed, 4 Mar 2026 14:40:33 +0100
+From: Christian Brauner <brauner@kernel.org>
 To: Jan Kara <jack@suse.cz>
-Cc: linux-fsdevel@vger.kernel.org, Christian Brauner <brauner@kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>, linux-ext4@vger.kernel.org,
-	Ted Tso <tytso@mit.edu>,
-	"Tigran A. Aivazian" <aivazian.tigran@gmail.com>,
-	David Sterba <dsterba@suse.com>,
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-	Muchun Song <muchun.song@linux.dev>,
-	Oscar Salvador <osalvador@suse.de>,
-	David Hildenbrand <david@kernel.org>, linux-mm@kvack.org,
+Cc: linux-fsdevel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>, 
+	linux-ext4@vger.kernel.org, Ted Tso <tytso@mit.edu>, 
+	"Tigran A. Aivazian" <aivazian.tigran@gmail.com>, David Sterba <dsterba@suse.com>, 
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Muchun Song <muchun.song@linux.dev>, 
+	Oscar Salvador <osalvador@suse.de>, David Hildenbrand <david@kernel.org>, linux-mm@kvack.org, 
 	linux-aio@kvack.org, Benjamin LaHaise <bcrl@kvack.org>
-Subject: Re: [PATCH 17/32] fs: Move metadata bhs tracking to a separate struct
-Message-ID: <aag2URb_D0h--RKX@infradead.org>
+Subject: Re: [PATCH 31/32] kvm: Use private inode list instead of
+ i_private_list
+Message-ID: <20260304-mahnung-ableisten-50d5c4e71013@brauner>
 References: <20260303101717.27224-1-jack@suse.cz>
- <20260303103406.4355-49-jack@suse.cz>
+ <20260303103406.4355-63-jack@suse.cz>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20260303103406.4355-49-jack@suse.cz>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+In-Reply-To: <20260303103406.4355-63-jack@suse.cz>
 
-On Tue, Mar 03, 2026 at 11:34:06AM +0100, Jan Kara wrote:
-> +static void remove_assoc_queue(struct buffer_head *bh)
-> +{
-> +	struct address_space *mapping;
-> +	struct mapping_metadata_bhs *mmb;
-> +
-> +	/*
-> +	 * The locking dance is ugly here. We need to acquire lock
-> +	 * protecting metadata bh list while possibly racing with bh
-> +	 * being removed from the list or moved to a different one.  We
-> +	 * use RCU to pin mapping_metadata_bhs in memory to
-> +	 * opportunistically acquire the lock and then recheck the bh
-> +	 * didn't move under us.
-> +	 */
+On Tue, Mar 03, 2026 at 11:34:20AM +0100, Jan Kara wrote:
+> Instead of using mapping->i_private_list use a list in private part of
+> the inode.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  virt/kvm/guest_memfd.c | 12 +++++++-----
+>  1 file changed, 7 insertions(+), 5 deletions(-)
+> 
+> diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
+> index 017d84a7adf3..6d36a7827870 100644
+> --- a/virt/kvm/guest_memfd.c
+> +++ b/virt/kvm/guest_memfd.c
+> @@ -30,6 +30,7 @@ struct gmem_file {
+>  struct gmem_inode {
+>  	struct shared_policy policy;
+>  	struct inode vfs_inode;
+> +	struct list_head gem_file_list;
 
-Should the buffer_head simply have a pointer to the metadata bh list,
-as that would avoid all this and keep a lot of the references to the
-list self-contained?
-
+I think that needs to be gMem_file_list not, gem_file_list.
