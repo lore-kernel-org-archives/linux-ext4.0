@@ -1,77 +1,78 @@
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 22E263A2570
-	for <linux-ext4@vger.kernel.org>; Wed,  4 Mar 2026 10:30:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 599BF371064
+	for <linux-ext4@vger.kernel.org>; Wed,  4 Mar 2026 10:36:36 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772620223; cv=none; b=plpUWoyPGNVOI2mGKnbBVI23/3lPP4hBHQ4UW/+xU0SibbOkBHFiofa5K9yz6aEDDJiR/FD608MmBbZDy5tWj8xvM5SrRMWqk5t/+49vEBlFCqr/yW3JLCHxtNK2YmWwk/Cf0xy9fTCkgQlcI6bVjmfpTuWAdQV8YK8tqqqP6Zg=
+	t=1772620597; cv=none; b=pL55//tYxTooOaBvWJvYK5peJBqe6jShQ9778OYz4j+VO6U4XQebJeW/ocPNenaKRKd4lAtslWezDbFfL19P8W+KlELyaA/EnWf86hiQDCtgeUxqLKdwdybmSiHVVbgSVs8n6GIlY6ArgNoFWs4CDaRmTpG+fSmqZ8bgZ/avv+o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772620223; c=relaxed/simple;
-	bh=7a/WUUQxacqPYN/i8eDfaudF6ynDdM6mXdn4w7XcwU0=;
+	s=arc-20240116; t=1772620597; c=relaxed/simple;
+	bh=AAaYb372R3xoantgDs+TmQKbpqHy1RvhhYr3K8EKnJY=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=PTiY2x1OywUP20SGjzEKzvfq34uo26T+wAjQGJaLSIBh3YJvHFdVpJUzdD2B46JnUUuTFGGI+tSIgT15/4L+iv0uOwhc2jtNOiKikveICk5Zhpe/OvEquq2FzYVx8Q4AtpOexxZBIl4NPVAwkLXPtFXpQOHCGl7K9lSwplFIjSA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=siZp4t3A; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=hRWnixAt; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=sucmmmmn; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=yA1+3gNC; arc=none smtp.client-ip=195.135.223.131
+	 Content-Type:Content-Disposition:In-Reply-To; b=Ks8PjzvhfMeB1RuYOCfi8RirrGguAnakrNgrQ3TmL8wQVUj0vtKQMqds3c7IXIAevxCFnF8UMkfSoZBQhN5A7VhbA+Snhm9V34ndI/KIO5c872LxvMIqvM7okfgiy1IRh6zAsFVY8RBlnulJ8L36yL941gg9LHLi8DQz7hkEgwM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=zbilbouA; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=h6UD410H; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=zbilbouA; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=h6UD410H; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="siZp4t3A";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="hRWnixAt";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="sucmmmmn";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="yA1+3gNC"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="zbilbouA";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="h6UD410H";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="zbilbouA";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="h6UD410H"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id B41D45BDE4;
-	Wed,  4 Mar 2026 10:30:19 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 850D15BDA8;
+	Wed,  4 Mar 2026 10:36:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1772620220; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1772620593; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=sA285zy6QvyW+5GYqPLWOMtmxarDFnIGsLox5OjCH6I=;
-	b=siZp4t3A6Gf7DGpcxsRRqAstaAJIVoTJ994JqZJ/yzRrFrOsdoZfaoBS/Eyhe87hyvPA6V
-	ACbOl0dkkPmrlELO+M4o7JsWRHqGmA/3Et7bHuhWfPXJJNQc3bJda66Hz5nrMN3c07qkn8
-	brVXr3gB0cqoE93ekYMuAdwUe3mH1rU=
+	bh=ZTAUHAF9UTKpf13oP8jFEeNlGDpWhHrwgG4ztNisMz0=;
+	b=zbilbouAi79PwtHlicoiF+7RqOe6qooQ/oBnE6AcOXE57Iq4/Mxaib3jR1vkNMRVfByT+f
+	Xy+Yd4bB21cuWG6QB0LPHgvEm/j8DtsQSmNqI1wMF+q83LGdxpttBEYgZi8QBGuVOKdOyq
+	iDRS5bOHFNQkmyRCYw+1Jdp96SCXUuM=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1772620220;
+	s=susede2_ed25519; t=1772620593;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=sA285zy6QvyW+5GYqPLWOMtmxarDFnIGsLox5OjCH6I=;
-	b=hRWnixAtmwxt16gQu446BAjJv3l0nr8nlvQ2Y2YP7RqDe3+cF9h8sOnCox5H4/p8I4ATlu
-	9KBD82KihbPdmGBQ==
+	bh=ZTAUHAF9UTKpf13oP8jFEeNlGDpWhHrwgG4ztNisMz0=;
+	b=h6UD410HcIUj3J3y8gxiaHvPXQMrHZhLCPf0xqLb6Nblr+uNgkP5hvUXfcUoIeUrS6IWvu
+	kHQj933123o5X9Aw==
 Authentication-Results: smtp-out2.suse.de;
-	none
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=zbilbouA;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=h6UD410H
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1772620219; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1772620593; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=sA285zy6QvyW+5GYqPLWOMtmxarDFnIGsLox5OjCH6I=;
-	b=sucmmmmnugeUmrf/mrx7P0vgvqWX5k1t//3lGg5lXWEFgGqkO7enjSQGkoD+bl+uIrL0A1
-	LzxnMykHZHeYYQ7dbmpG1Szz+IVO/cZq4nFgfrK3Kqd6rta6XPvnnxnBbXGYmTHT+XiXON
-	A6tZeLKBsCIWIy+dxSwdE3CXglxjUtk=
+	bh=ZTAUHAF9UTKpf13oP8jFEeNlGDpWhHrwgG4ztNisMz0=;
+	b=zbilbouAi79PwtHlicoiF+7RqOe6qooQ/oBnE6AcOXE57Iq4/Mxaib3jR1vkNMRVfByT+f
+	Xy+Yd4bB21cuWG6QB0LPHgvEm/j8DtsQSmNqI1wMF+q83LGdxpttBEYgZi8QBGuVOKdOyq
+	iDRS5bOHFNQkmyRCYw+1Jdp96SCXUuM=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1772620219;
+	s=susede2_ed25519; t=1772620593;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=sA285zy6QvyW+5GYqPLWOMtmxarDFnIGsLox5OjCH6I=;
-	b=yA1+3gNCGVL6lZ/iRstT5HJ6afRStjV0CxO209O7gedN2drYGBQdK9Tc9YwtNB62iHONEH
-	X7suKX7Zsk9/HoBg==
+	bh=ZTAUHAF9UTKpf13oP8jFEeNlGDpWhHrwgG4ztNisMz0=;
+	b=h6UD410HcIUj3J3y8gxiaHvPXQMrHZhLCPf0xqLb6Nblr+uNgkP5hvUXfcUoIeUrS6IWvu
+	kHQj933123o5X9Aw==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id A41743EA6C;
-	Wed,  4 Mar 2026 10:30:19 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 77EB33EA69;
+	Wed,  4 Mar 2026 10:36:33 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id IWsNKLsJqGmFDgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 04 Mar 2026 10:30:19 +0000
+	id yNI+HTELqGkjFQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 04 Mar 2026 10:36:33 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 67F9AA0A1B; Wed,  4 Mar 2026 11:30:19 +0100 (CET)
-Date: Wed, 4 Mar 2026 11:30:19 +0100
+	id 379CAA0A1B; Wed,  4 Mar 2026 11:36:29 +0100 (CET)
+Date: Wed, 4 Mar 2026 11:36:29 +0100
 From: Jan Kara <jack@suse.cz>
 To: Christoph Hellwig <hch@infradead.org>
 Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org, 
@@ -83,10 +84,10 @@ Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
 	Benjamin LaHaise <bcrl@kvack.org>, Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org
 Subject: Re: [PATCH 21/32] bdev: Drop pointless invalidate_mapping_buffers()
  call
-Message-ID: <7irr5gqmatluutbkywhvom7ryzn6j7cl4sw7q2d7e5q3grd7u2@mk54kpnqbi52>
+Message-ID: <n3anrkzfguzbn5sfwsom472cx4uzejyfemz3d5jm7c4rt3qr6z@ez2cgwzmbfyi>
 References: <20260303101717.27224-1-jack@suse.cz>
  <20260303103406.4355-53-jack@suse.cz>
- <aabqTRvKIWo2mHz1@infradead.org>
+ <aabrf4YhPJ2X7n9q@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -95,52 +96,56 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <aabqTRvKIWo2mHz1@infradead.org>
-X-Spamd-Result: default: False [-2.30 / 50.00];
+In-Reply-To: <aabrf4YhPJ2X7n9q@infradead.org>
+X-Rspamd-Action: no action
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Spamd-Result: default: False [-2.51 / 50.00];
 	BAYES_HAM(-3.00)[99.99%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
+	MX_GOOD(-0.01)[];
 	FUZZY_RATELIMITED(0.00)[rspamd.com];
 	RCPT_COUNT_TWELVE(0.00)[18];
-	TAGGED_RCPT(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[suse.cz,vger.kernel.org,kernel.org,zeniv.linux.org.uk,mit.edu,gmail.com,suse.com,mail.parknet.co.jp,linux.dev,suse.de,kvack.org,kernel.dk];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
 	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	MIME_TRACE(0.00)[0:+];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo]
+	ARC_NA(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	FREEMAIL_CC(0.00)[suse.cz,vger.kernel.org,kernel.org,zeniv.linux.org.uk,mit.edu,gmail.com,suse.com,mail.parknet.co.jp,linux.dev,suse.de,kvack.org,kernel.dk];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from,2a07:de40:b281:106:10:150:64:167:received];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	MISSING_XM_UA(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.cz:dkim]
+X-Rspamd-Queue-Id: 850D15BDA8
 X-Spam-Flag: NO
-X-Spam-Score: -2.30
+X-Spam-Score: -2.51
 X-Spam-Level: 
 
-On Tue 03-03-26 06:03:57, Christoph Hellwig wrote:
-> > diff --git a/block/bdev.c b/block/bdev.c
-> > index ed022f8c48c7..ad1660b6b324 100644
-> > --- a/block/bdev.c
-> > +++ b/block/bdev.c
-> > @@ -420,7 +420,6 @@ static void init_once(void *data)
-> >  static void bdev_evict_inode(struct inode *inode)
-> >  {
-> >  	truncate_inode_pages_final(&inode->i_data);
-> > -	invalidate_inode_buffers(inode); /* is it needed here? */
-> >  	clear_inode(inode);
-> >  }
-> 
-> With this, bdev_evict_inode can go away as it is equivalent to the
-> default action when no ->evict_inode is provided.
+On Tue 03-03-26 06:09:03, Christoph Hellwig wrote:
+> FYI, linux-block only got this patch which is totally messed up.
+> Please always send all patches to every list and person, otherwise
+> you fill peoples inboxes with unreviewable junk.
 
-Good point. I'll remove bdev_evict_inode(). Thanks!
+Well, I've CCed on the whole series everybody who was non-trivially
+impacted. But there are couple of these trivial "remove effectively dead
+code" patches which stand on their own and a lot of people actually prefer
+to only get individual patches in such cases. So I don't plan on changing
+that but I guess I could have CCed linux-block on the whole series as
+buffer_heads are tangentially related to block layer anyway.
 
 								Honza
 -- 
