@@ -1,168 +1,113 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 513873A759A
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2026 12:28:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 39F763B6378;
+	Tue, 10 Mar 2026 12:28:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773145695; cv=none; b=kMWzxZFKh65Rbi6V1sg/enFOJp/yInLBbw6tegaHvVHNiNNAgH0M/4GZHVG8kbQTjqX+f05sE0uOtC1xgBTRAUfoXV7Rv3jC4YuQWAY4QTshBadyRjdYOMnDpiK7Xnnyx2Jmr1CdNn2Dgm1Is4bTaUxGuUbR92oxfaX3vRc3FwQ=
+	t=1773145714; cv=none; b=YYkKrWTpvV1BCdEut7Nd0y3OeNd7lSOp9yLpWsbYu6r0umZce68M0AXdf+dwRFIuWgpcJ7UJVy7578BFMevBflxExLa4A/BQpsXBmcqMChEz3XkAN5p5wnWSQ9F3X14KDqkBjhR5I76Na0qns2N+W7/z/cYqrBunb4ho+bNsLgs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773145695; c=relaxed/simple;
-	bh=z+s7iNZOmv7Y60pQcgjzg6oVwR9dEAJDGfv+PpLuWM0=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=dTBNJ4RTYZafsSCcy+heg8od3ZLFvmylPQsPdpCGB0remj/Q5aqFtYBTyPfTdExH7eQyyyvvmgKxRoeiyd0f+qPQw3KnxUNnKjUKkv1GXOgJLSJ903ucTnzszCqU4btflrtpopXRiX3NfRwJGcDfAUdRCv+jj4Ise9FAw4pVbwg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=RLPrKHAQ; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1773145714; c=relaxed/simple;
+	bh=NZ5oTCN6VGzePwnu776uK+3unhTqb8pwokxv1IJtK7c=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=noHGQmxEL7IiXdiF1hNqEE9uS+fhYYF0hIJyU1chSxO/FtpJTW1bVVyqWOi1E4WPjAeBdzHrOL8ney+Biqjn3eN1PjYWD4Pfho2p9Fnl+y9Lm4V6kLLlMke34xalTNHMyPdq1PxQR9TH4x3t7rnw8iZk8l+7BH0gHYbtJACoJmo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=FOutLnoL; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="RLPrKHAQ"
-Received: from trampoline.thunk.org (pool-173-48-117-133.bstnma.fios.verizon.net [173.48.117.133])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62ACS8WG022651
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 10 Mar 2026 08:28:09 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1773145689; bh=0tuRckjV7VXF4FxDrS0YxUqr6sqNgghmyE2YFnA7WzM=;
-	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=RLPrKHAQ7ewIB0MWDJsbWsBBqUC17lQza2yj5cnhzFbbSTxWnN+yYSu2oBR868Pub
-	 IlYg1uz52six2nrceh/JqEnzuHd3eRNrfPTs2xtgG+wFCaqQl8Fvb1yqjp+qrXeE9n
-	 zQzlJYJVy6iZsLwxRa9ZF8ZS8wc37DuHs75FEgqBAlJu0UEpQqfHgP0fDhcLKFtxSQ
-	 +qL4LYr18D98sogoTnlO9/PB+GITi33VVdZVEvtTwtCUPCzRvqyz35eaEKH9/7YUni
-	 9zd2CXqDthWKWzzXjjiQa+N3d0MEr0qg+QFFXVbwLgr7m8tTjNtRYWaFCKsYY7t1Oq
-	 TIhH/BYdvMFPw==
-Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 3A5062E00D6; Tue, 10 Mar 2026 08:28:08 -0400 (EDT)
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-Subject: [RFC PATCH] ext4: handle wraparound when searching for blocks for indirect mapped blocks
-Date: Tue, 10 Mar 2026 08:28:06 -0400
-Message-ID: <20260310122806.1277631-1-tytso@mit.edu>
-X-Mailer: git-send-email 2.51.0
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="FOutLnoL"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A8179C19423;
+	Tue, 10 Mar 2026 12:28:23 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1773145714;
+	bh=NZ5oTCN6VGzePwnu776uK+3unhTqb8pwokxv1IJtK7c=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=FOutLnoL/seeB/icY17T5kE23weT+c8OWPxsN1CuLtbqZf1qO8twCXpCHPEW4zEb5
+	 uM5pcZxBh8XK3wQOjz6gQLnb8DbNMsJ6SwgjqzPaDdyeQRMdzDiadj+7d8CVSVSbbp
+	 WbSnGZkMbwo0cpPlViR1A0oh5e53oFE0sYAJxulW9oCNKaXKAhhACMzXx6XsRo3Hlx
+	 /XgKdmLcz/EtWl6VZEOUGY5PBqGn3Xb4X+aqLL+l2HoSL3wZMd6NhcSGeVt+ZFpBkn
+	 8s7ZymgPrZjLjSz7/xRlCoCIsHrVCduE0eaA6Z9IamuK4ZW4bnyThB9ZhLWcSUucoJ
+	 BJsDSXl6ZXWkQ==
+Date: Tue, 10 Mar 2026 12:28:20 +0000
+From: Mark Brown <broonie@kernel.org>
+To: Philipp Hahn <phahn-oss@avm.de>
+Cc: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com,
+	bpf@vger.kernel.org, ceph-devel@vger.kernel.org, cocci@inria.fr,
+	dm-devel@lists.linux.dev, dri-devel@lists.freedesktop.org,
+	gfs2@lists.linux.dev, intel-gfx@lists.freedesktop.org,
+	intel-wired-lan@lists.osuosl.org, iommu@lists.linux.dev,
+	kvm@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+	linux-block@vger.kernel.org, linux-bluetooth@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+	linux-clk@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-gpio@vger.kernel.org, linux-hyperv@vger.kernel.org,
+	linux-input@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-leds@vger.kernel.org, linux-media@vger.kernel.org,
+	linux-mips@vger.kernel.org, linux-mm@kvack.org,
+	linux-modules@vger.kernel.org, linux-mtd@lists.infradead.org,
+	linux-nfs@vger.kernel.org, linux-omap@vger.kernel.org,
+	linux-phy@lists.infradead.org, linux-pm@vger.kernel.org,
+	linux-rockchip@lists.infradead.org, linux-s390@vger.kernel.org,
+	linux-scsi@vger.kernel.org, linux-sctp@vger.kernel.org,
+	linux-security-module@vger.kernel.org, linux-sh@vger.kernel.org,
+	linux-sound@vger.kernel.org,
+	linux-stm32@st-md-mailman.stormreply.com,
+	linux-trace-kernel@vger.kernel.org, linux-usb@vger.kernel.org,
+	linux-wireless@vger.kernel.org, netdev@vger.kernel.org,
+	ntfs3@lists.linux.dev, samba-technical@lists.samba.org,
+	sched-ext@lists.linux.dev, target-devel@vger.kernel.org,
+	tipc-discussion@lists.sourceforge.net, v9fs@lists.linux.dev,
+	Sylwester Nawrocki <s.nawrocki@samsung.com>,
+	Liam Girdwood <lgirdwood@gmail.com>,
+	Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>,
+	Max Filippov <jcmvbkbc@gmail.com>
+Subject: Re: [PATCH 18/61] sound: Prefer IS_ERR_OR_NULL over manual NULL check
+Message-ID: <19aa26fc-8570-492e-8e17-23d6950676f0@sirena.org.uk>
+References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
+ <20260310-b4-is_err_or_null-v1-18-bd63b656022d@avm.de>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: multipart/signed; micalg=pgp-sha512;
+	protocol="application/pgp-signature"; boundary="7JjDB+7CEHk89uTh"
+Content-Disposition: inline
+In-Reply-To: <20260310-b4-is_err_or_null-v1-18-bd63b656022d@avm.de>
+X-Cookie: A fool and his honey are soon parted.
 
-Commit 4865c768b563 ("ext4: always allocate blocks only from groups
-inode can use") restricts what blocks will be allocated for indirect
-block based files to block numbers that fit within 32-bit block
-numbers.
 
-However, when using a review bot running on the latest Gemini LLM to
-check this commit when backporting into an LTS based kernel, it raised
-the following concerns:
+--7JjDB+7CEHk89uTh
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-   If ac->ac_g_ex.fe_group is >= ngroups (for instance, if the goal
-   group was populated via stream allocation from s_mb_last_groups),
-   then start will be >= ngroups.
+On Tue, Mar 10, 2026 at 12:48:44PM +0100, Philipp Hahn wrote:
+> Prefer using IS_ERR_OR_NULL() over using IS_ERR() and a manual NULL
+> check.
 
-   Does this allow allocating blocks beyond the 32-bit limit for
-   indirect block mapped files? The commit message mentions that
-   ext4_mb_scan_groups_linear() takes care to not select unsupported
-   groups. However, its loop uses group = *start, and the very first
-   iteration will call ext4_mb_scan_group() with this unsupported
-   group because next_linear_group() is only called at the end of the
-   iteration.
+I can't tell what the dependency story is here, it looks like there's
+none?  If that's the case you shouldn't send things as a single series,
+send separate patches to the various subsystems.
 
-   Also, in the optimized scanning paths like
-   ext4_mb_scan_groups_p2_aligned(), start is passed into
-   ext4_mb_scan_groups_xa_range(). If start >= ngroups, will this
-   trigger the WARN_ON_ONCE(end > ngroups || start >= end) because end
-   is set to ngroups? Furthermore, after wrapping around, end will be
-   set to the original start which is > ngroups, triggering the
-   warning a second time. Should this code clamp start to < ngroups
-   before scanning?
+Please submit patches using subject lines reflecting the style for the
+subsystem, this makes it easier for people to identify relevant patches.
+Look at what existing commits in the area you're changing are doing and
+make sure your subject lines visually resemble what they're doing.
+There's no need to resubmit to fix this alone.
 
-After reviewing the code paths involved and considering the LLM
-review, I believe that while it is unlikely, it is possible that how
-commit 4865c768b563 added ext4_get_allocation_groups_count() doesn't
-completely address all of the possible situtions that might show up
-when using indirect-mapped files and allocating blocks on a file
-system with more than 2**32 blocks.
+--7JjDB+7CEHk89uTh
+Content-Type: application/pgp-signature; name="signature.asc"
 
-So this commit adds some safety checks and wrap around logic to some
-functions if the multiblock allocator: ext4_mb_scan_groups_xa_range(),
-ext4_mb_scan_groups_best_avail(), ext4_mb_scan_groups_p2_aligned(),
-and ext4_mb_scan_groups().
+-----BEGIN PGP SIGNATURE-----
 
-Fixes: 4865c768b563 ("ext4: always allocate blocks only from groups inode can use")
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>
----
- fs/ext4/mballoc.c | 26 ++++++++++++++++++++------
- 1 file changed, 20 insertions(+), 6 deletions(-)
+iQEzBAABCgAdFiEEreZoqmdXGLWf4p/qJNaLcl1Uh9AFAmmwDmMACgkQJNaLcl1U
+h9D4VAf/VCpoXjivQsq8mL1i6sHdID6byBqwG7egrwiRCrsZav80JlvY/F+1fWQl
+Fe3Ct+yRv1pWeNy67wSCZD3mtHtNH0JpwRTNxS1XQrnXc7CLjzKunCldDfzTbfom
++QmXWHQB3Qo9ie1ugoAGet9gx/vkV0z+cv9sVHg1o1R7/AKqfgov7xnuP9Hlv9Uk
+p1pkMya/NhbXBsrh+BFbktLgp+7sAOMjWgtGZ3NfHzwju9n4Jdbl1JcPxgDl0SHp
+6z8kP2+oskOspesqLWw62mZF+bN32Ycjt1N7/EFjtPBdJKIcQJLICoACzxyQBZYg
++i50s/oSRL1HiP4US2lxoy8BqxaqrQ==
+=U6jW
+-----END PGP SIGNATURE-----
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 20e9fdaf4301..454d5a1b4803 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -915,13 +915,17 @@ static int ext4_mb_scan_groups_xa_range(struct ext4_allocation_context *ac,
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	enum criteria cr = ac->ac_criteria;
- 	ext4_group_t ngroups = ext4_get_allocation_groups_count(ac);
--	unsigned long group = start;
-+	unsigned long group, end_range;
- 	struct ext4_group_info *grp;
- 
--	if (WARN_ON_ONCE(end > ngroups || start >= end))
--		return 0;
--
--	xa_for_each_range(xa, group, grp, start, end - 1) {
-+	if (start >= ngroups)
-+		start = 0;
-+	group = start;
-+wrap_around:
-+	end_range = end;
-+	if (end_range > ngroups)
-+		end_range = ngroups;
-+	xa_for_each_range(xa, group, grp, start, end_range - 1) {
- 		int err;
- 
- 		if (sbi->s_mb_stats)
-@@ -933,7 +937,11 @@ static int ext4_mb_scan_groups_xa_range(struct ext4_allocation_context *ac,
- 
- 		cond_resched();
- 	}
--
-+	if (start) {
-+		end = start;
-+		start = 0;
-+		goto wrap_around;
-+	}
- 	return 0;
- }
- 
-@@ -967,6 +975,8 @@ static int ext4_mb_scan_groups_p2_aligned(struct ext4_allocation_context *ac,
- 
- 	start = group;
- 	end = ext4_get_allocation_groups_count(ac);
-+	if (start >= end)
-+		return 0;
- wrap_around:
- 	for (i = ac->ac_2order; i < MB_NUM_ORDERS(ac->ac_sb); i++) {
- 		ret = ext4_mb_scan_groups_largest_free_order_range(ac, i,
-@@ -1099,6 +1109,8 @@ static int ext4_mb_scan_groups_best_avail(struct ext4_allocation_context *ac,
- 
- 	start = group;
- 	end = ext4_get_allocation_groups_count(ac);
-+	if (start >= end)
-+		start = 0;
- wrap_around:
- 	for (i = order; i >= min_order; i--) {
- 		int frag_order;
-@@ -1199,6 +1211,8 @@ static int ext4_mb_scan_groups(struct ext4_allocation_context *ac)
- 
- 	/* searching for the right group start from the goal value specified */
- 	start = ac->ac_g_ex.fe_group;
-+	if (start >= ngroups)
-+		start = 0;
- 	ac->ac_prefetch_grp = start;
- 	ac->ac_prefetch_nr = 0;
- 
--- 
-2.51.0
-
+--7JjDB+7CEHk89uTh--
