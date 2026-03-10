@@ -1,39 +1,38 @@
-Received: from mail.avm.de (mail.avm.de [212.42.244.120])
+Received: from mail.avm.de (mail.avm.de [212.42.244.119])
 	(using TLSv1.2 with cipher DHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC9F14ADDA7;
-	Tue, 10 Mar 2026 11:55:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.42.244.120
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E0F1C49218D;
+	Tue, 10 Mar 2026 11:55:51 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.42.244.119
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773143765; cv=none; b=Hhi1ATX9ywsIdbaER9P362+5Aq8ApPQTeowHB5SA2sYF8czSF5Nj1xxU66jk42Slb0SNjLAvNetEnFe1imz+y2uhrh8Z41YocXkuNs02h1y3DMPmYdzU/UXD4kTEeByHwLptdXQlEdYDASphNgBdRZ25IyJFp876PBTRFwRhaLw=
+	t=1773143762; cv=none; b=OLj+5ImvfPnaAxdCfmIY7wKauiVneKYZsyUEFdC29V4RNg4a1kjJ5NjHhsLuydK6kfjszT3BCEd77EHWCKhMFWRlEV31xLQBuLPtwTWTRa9hPw5Fh36K9h5LJmUpO7/syvpJrbveTSSPFhJaA7kawp/A8b1xXS/xwynIIF21Hw0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773143765; c=relaxed/simple;
-	bh=iG/6Gbypjz2OmWQb0dXEIiFm2wHO3xZ/QJrRffJjoq0=;
+	s=arc-20240116; t=1773143762; c=relaxed/simple;
+	bh=zh0NA9cMXwD2DkPFVL0EOnYz45KEbaJC9E9Miol506A=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=COFMx9ZI71ReOzSEE84+BC6im1PMaDcJ+Fjy556zlrHQRJLyYUXjF/Kk6VB0xPEo6+gjs/PGKi3VJptwX2pItghMDWTQ+Y3HZWADnaQovPhuhZJqDP8B1e3XuGD0IBZ6am1cqVocKBGv1uIQoBCJv0CwZFo2BveHnW37B797Npg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b=g+N0/sgS; arc=none smtp.client-ip=212.42.244.120
+	 In-Reply-To:To:Cc; b=kheGrOpSjbU56uQgVkBu6eAu/w9qLfSHSBIVmoHJ9pssfUo5005DoWzag2Ks+Co++q7vpsoAnsnQDwDgLADmO6t6PYVLz0AkMDisqZYadkSJYJetyx6cg79w/o3gexJ9WEO5goQngH0axU/gG5vjL4yWXvtjny3gF0oBJUWCgd4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b=SxQcNNRu; arc=none smtp.client-ip=212.42.244.119
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=avm.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b="g+N0/sgS"
+	dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b="SxQcNNRu"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=avm.de; s=mail;
-	t=1773143726; bh=iG/6Gbypjz2OmWQb0dXEIiFm2wHO3xZ/QJrRffJjoq0=;
+	t=1773143727; bh=zh0NA9cMXwD2DkPFVL0EOnYz45KEbaJC9E9Miol506A=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=g+N0/sgSQ8SRQky5YcCPVvBqWjz0hDf6/mz5MXtIt5pp3nndKwnydeDBFFaGciw76
-	 fK8hCsX2XQfm37mz50EiEfGo9ClFJDaFX6LRzTWB5+xeibMvG/0El8aLjh4dU3qpIV
-	 pdtzYGFmANh8kH/hW7lr12MBHwTlKf1PiSqCWud4=
+	b=SxQcNNRuEiFwL/5k7L3uNmiPeI5MF2imk5edf5+bENjDS759Fz4qD+/GE8T78XGoj
+	 y3Anx7ULmIKK+LqK0b0jH70rnI3ftcXHXYxeZ0UjeUBfUOOob6Uk/Ag51Y5ZWXmM5b
+	 3t6vwVKkMaMk0t3qb5EymyzCnKyZ6WtwRBwC159Q=
 Received: from [2001:bf0:244:244::71] (helo=mail.avm.de)
 	by mail.avm.de with ESMTP (eXpurgate 4.55.2)
 	(envelope-from <phahn-oss@avm.de>)
-	id 69b006ac-b734-7f0000032729-7f000001c052-1
-	for <multiple-recipients>; Tue, 10 Mar 2026 12:55:24 +0100
+	id 69b006af-2367-7f0000032729-7f000001c9bc-1
+	for <multiple-recipients>; Tue, 10 Mar 2026 12:55:27 +0100
 Received: from mail-auth.avm.de (dovecot-mx-01.avm.de [IPv6:2001:bf0:244:244::71])
 	by mail.avm.de (Postfix) with ESMTPS;
-	Tue, 10 Mar 2026 12:55:24 +0100 (CET)
+	Tue, 10 Mar 2026 12:55:27 +0100 (CET)
 From: Philipp Hahn <phahn-oss@avm.de>
-Date: Tue, 10 Mar 2026 12:48:53 +0100
-Subject: [PATCH 27/61] net/netlink: Prefer IS_ERR_OR_NULL over manual NULL
- check
+Date: Tue, 10 Mar 2026 12:49:12 +0100
+Subject: [PATCH 46/61] vfio: Prefer IS_ERR_OR_NULL over manual NULL check
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -42,7 +41,7 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260310-b4-is_err_or_null-v1-27-bd63b656022d@avm.de>
+Message-Id: <20260310-b4-is_err_or_null-v1-46-bd63b656022d@avm.de>
 References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 In-Reply-To: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com, 
@@ -72,23 +71,21 @@ To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com,
  sched-ext@lists.linux.dev, target-devel@vger.kernel.org, 
  tipc-discussion@lists.sourceforge.net, v9fs@lists.linux.dev, 
  Philipp Hahn <phahn-oss@avm.de>
-Cc: "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1045; i=phahn-oss@avm.de;
- h=from:subject:message-id; bh=iG/6Gbypjz2OmWQb0dXEIiFm2wHO3xZ/QJrRffJjoq0=;
- b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAYxKX27oPhhgjZ9L2aN+uf2Pkd/lJuV0FZGx
- 7sT5NeXxfGJATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAGMQAKCRA0LQZT0ays
- 2910CACA5AX3Aqq6mMRjUqWLJkwISGQ/SClIom7gyl5y4YdXmFh365btAW6CDMrujm4g2yYHKMn
- icMIaMalhr2gJPGai/SU/Cr5CZi3ZY+4gua5T+uq+HkP8vLsixdy6MzBKvC4YJ7SQ9u1y3suTJ2
- dXw3LfFbSDyXJK4eAmt3Q9xLN+IDoqMq7+VyONJtkwZmjMDy5iHAJpd4FamMBrqSwy4GaDMKKm7
- glgw85FRb142AMKifN1ghWcWZj4AIrKdQR8M3/bZ64Q5ElxSWaeaZ0coUuPBsdwn1welLaCtuOr
- MNnjMGoWnx945CHnVYBBpgGh+sR8NWsokX9o62B2ZLaEYpxG
+Cc: Alex Williamson <alex@shazbot.org>
+X-Developer-Signature: v=1; a=openpgp-sha256; l=940; i=phahn-oss@avm.de;
+ h=from:subject:message-id; bh=zh0NA9cMXwD2DkPFVL0EOnYz45KEbaJC9E9Miol506A=;
+ b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAZyWhsmplRS68Hjc75s841x9LkbYtnoYEUHf
+ 5sKSdvRLCOJATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAGcgAKCRA0LQZT0ays
+ 26J5B/950clmJMa20JiDvd2Y9XUU4IMRZvZhOhN1i+pY6SIYFFSSWrstAJqpIpGOZ3R9V9O+AHS
+ +c7Qni9AFhXI7buBYvtSAJWLJA8EJ41+9M8UOXpQoB5DcXO1c0CGt0ajsPjByLrSehp36R5PzH2
+ wWu5vJHC6K9Bj9PLCfIhxzyGkz/hL0gcZbuCGZMCsvjzhhK3aqUIEmC2PQzNoj/okoSky7H2ok5
+ Weutgt7pTJ9Q0oTr+n0PVtebcJ9O9+q3o9Yrs2sONA2GIXHGzM3vgOrYqV1Xoa6t/eWQHNiKxUs
+ zghoWpQpcWwkFeKxopN3kqosmr1/sM4hUF11IDDx0e4ZVVPT
 X-Developer-Key: i=phahn-oss@avm.de; a=openpgp;
  fpr=58AF7C2E007CDBE62C59E078F50EFDCF8AD04B1A
-X-purgate-ID: 149429::1773143724-DEDD0A3D-09A71CC5/0/0
+X-purgate-ID: 149429::1773143727-BACB9E1F-6BD158D9/0/0
 X-purgate-type: clean
-X-purgate-size: 1047
+X-purgate-size: 942
 X-purgate-Ad: Categorized by eleven eXpurgate (R) https://www.eleven.de
 X-purgate: This mail is considered clean (visit https://www.eleven.de for further information)
 X-purgate: clean
@@ -98,31 +95,27 @@ check.
 
 Change generated with coccinelle.
 
-To: "David S. Miller" <davem@davemloft.net>
-To: Eric Dumazet <edumazet@google.com>
-To: Jakub Kicinski <kuba@kernel.org>
-To: Paolo Abeni <pabeni@redhat.com>
-To: Simon Horman <horms@kernel.org>
-Cc: netdev@vger.kernel.org
+To: Alex Williamson <alex@shazbot.org>
+Cc: kvm@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org
 Signed-off-by: Philipp Hahn <phahn-oss@avm.de>
 ---
- net/netlink/af_netlink.c | 2 +-
+ drivers/vfio/vfio_main.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/netlink/af_netlink.c b/net/netlink/af_netlink.c
-index 4d609d5cf40653e04de60f2d28ee26b8bdcdc2ed..58707b9da84adf1002ab9eff9401fa2083374189 100644
---- a/net/netlink/af_netlink.c
-+++ b/net/netlink/af_netlink.c
-@@ -2667,7 +2667,7 @@ static void *netlink_seq_start(struct seq_file *seq, loff_t *posp)
+diff --git a/drivers/vfio/vfio_main.c b/drivers/vfio/vfio_main.c
+index 742477546b15d4dbaf9ebcfb2e67627db71521e0..d71922dfde5885967398deddec3e9e04b05adfec 100644
+--- a/drivers/vfio/vfio_main.c
++++ b/drivers/vfio/vfio_main.c
+@@ -923,7 +923,7 @@ vfio_ioctl_device_feature_mig_device_state(struct vfio_device *device,
  
- 	netlink_walk_start(iter);
+ 	/* Handle the VFIO_DEVICE_FEATURE_SET */
+ 	filp = device->mig_ops->migration_set_state(device, mig.device_state);
+-	if (IS_ERR(filp) || !filp)
++	if (IS_ERR_OR_NULL(filp))
+ 		goto out_copy;
  
--	for (pos = *posp; pos && obj && !IS_ERR(obj); pos--)
-+	for (pos = *posp; pos && !IS_ERR_OR_NULL(obj); pos--)
- 		obj = __netlink_seq_next(seq);
- 
- 	return obj;
+ 	return vfio_ioct_mig_return_fd(filp, arg, &mig);
 
 -- 
 2.43.0
