@@ -1,220 +1,93 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 681062D877B
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2026 14:24:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9157C2EBB84
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2026 14:42:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773152679; cv=none; b=NQAS1X1c3/XKs0qQnUrVNmca6zR32K3EVLepwql/ocEYLAxKzfDEos3AgeJFWxD2HCqHaGAcnnJHPf5VYGt9ywMTwmFzehiz3FRDM8gnZJJQRmc0VhawYjMFw1RKw6I0fNQy62g495OewC1qRH1EngscjrjbpWXjhS0AlMvhT/s=
+	t=1773153780; cv=none; b=TThbzfgRZaGfvkf4JgkojCW5lTk4jpyQaNM8nsCWMAGObH+SNxDtbYepRdxW0JWUwtD5OC6CpriN3Ga4tQW5/0fdM5G9wFsj0BKDW+0bEl21iZuz/9MSFZL8vzOCuwjv4bCEmTe7tUt7b94x/rbEgfKFlcVFC0GEtGe7dMLGY7A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773152679; c=relaxed/simple;
-	bh=XwidptKIhvR+UF4aaOLrgKMULsgr14IRJkHhby+ViXQ=;
+	s=arc-20240116; t=1773153780; c=relaxed/simple;
+	bh=ulN49Zz6Uvce5EQ9S9G5wrSA/FkX6ZfXtBj/b3XcPks=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=jZYLIQljrqB1qveuVFD8lBYDeySLXO9qwFihkr6oKkkXfaaHqrMSgF8PcjA8YMdov0E82cCXD6865/1rd9CJDRMmqe8JPHC/4dDEJYnLRhi4oAvAjbu1OmoB/oDaElCTpM1rHp02TtbW7QoBNesM3inD8SXm4WttroPyGmDONxg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=F6C5rtqO; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	 Content-Type:Content-Disposition:In-Reply-To; b=ZkJI/0X/1wuUlpi25BW7HCuzjIMbLFT5uQFml8NU0eDwltFVTDW4ZaN/p27+VMxXvAyKVLG3H4Bw2nb5wwu/OvQc5E1wyYDcvVqjCYiLBVrUIsIJD/mVEnXhWs8gVBnRIyWjQKqRDpeAuM02bVJ8sHEuFi4nMAGln43AuYRIj2A=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=Wu6auwHR; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=mGu88KJC; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="F6C5rtqO"
-Received: from macsyma.thunk.org (pool-173-48-117-133.bstnma.fios.verizon.net [173.48.117.133])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62AENmx0023256
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 10 Mar 2026 10:23:49 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1773152637; bh=4/p8AtxdJ3b4aYgpRIBgOOPVM9R5HZLzlaxPPsEZ2Q4=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=F6C5rtqODrQpEwdwVTgFCawAhLv3gwk1txjCpTf9qYEhws10oNToQIbXrBSiNnSGn
-	 HKzLPM0wlhbQz5hd3KNNbDsKNUIOcLP5D+4J1qJhv/m9AJCmBvmBntSwPXXBcrZ48c
-	 UG5I74ocwzVwmg9UHdT0hLejm00ahwJz4Tby2LgiJXvFIYDaYDAoayC1G2vaNRdttd
-	 dnaccWPVwGwuO0YYJTFV0/A1hSU2yI/onO0qlICZ11ISIKYrG0S38XY0XZ07wXHuQf
-	 SRLcsUXeYesD2NrtHf5Vg5nqM+e/voDzSfyx+6EAL02kYRxR5zwo7A3kwnstvVAN1a
-	 N4dmfF0o4YLWg==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 96A8A5C4FCED; Tue, 10 Mar 2026 10:23:48 -0400 (EDT)
-Date: Tue, 10 Mar 2026 10:23:48 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Philipp Hahn <phahn-oss@avm.de>
-Cc: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com,
-        bpf@vger.kernel.org, ceph-devel@vger.kernel.org, cocci@inria.fr,
-        dm-devel@lists.linux.dev, dri-devel@lists.freedesktop.org,
-        gfs2@lists.linux.dev, intel-gfx@lists.freedesktop.org,
-        intel-wired-lan@lists.osuosl.org, iommu@lists.linux.dev,
-        kvm@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
-        linux-block@vger.kernel.org, linux-bluetooth@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-clk@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-gpio@vger.kernel.org, linux-hyperv@vger.kernel.org,
-        linux-input@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-leds@vger.kernel.org, linux-media@vger.kernel.org,
-        linux-mips@vger.kernel.org, linux-mm@kvack.org,
-        linux-modules@vger.kernel.org, linux-mtd@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-omap@vger.kernel.org,
-        linux-phy@lists.infradead.org, linux-pm@vger.kernel.org,
-        linux-rockchip@lists.infradead.org, linux-s390@vger.kernel.org,
-        linux-scsi@vger.kernel.org, linux-sctp@vger.kernel.org,
-        linux-security-module@vger.kernel.org, linux-sh@vger.kernel.org,
-        linux-sound@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com,
-        linux-trace-kernel@vger.kernel.org, linux-usb@vger.kernel.org,
-        linux-wireless@vger.kernel.org, netdev@vger.kernel.org,
-        ntfs3@lists.linux.dev, samba-technical@lists.samba.org,
-        sched-ext@lists.linux.dev, target-devel@vger.kernel.org,
-        tipc-discussion@lists.sourceforge.net, v9fs@lists.linux.dev,
-        Julia Lawall <Julia.Lawall@inria.fr>,
-        Nicolas Palix <nicolas.palix@imag.fr>, Chris Mason <clm@fb.com>,
-        David Sterba <dsterba@suse.com>, Ilya Dryomov <idryomov@gmail.com>,
-        Alex Markuze <amarkuze@redhat.com>,
-        Viacheslav Dubeyko <slava@dubeyko.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Steve French <sfrench@samba.org>, Paulo Alcantara <pc@manguebit.org>,
-        Ronnie Sahlberg <ronniesahlberg@gmail.com>,
-        Shyam Prasad N <sprasad@microsoft.com>, Tom Talpey <tom@talpey.com>,
-        Bharath SM <bharathsm@microsoft.com>,
-        Eric Van Hensbergen <ericvh@kernel.org>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Christian Schoenebeck <linux_oss@crudebyte.com>,
-        Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>,
-        Yue Hu <zbestahu@gmail.com>, Jeffle Xu <jefflexu@linux.alibaba.com>,
-        Sandeep Dhavale <dhavale@google.com>,
-        Hongbo Li <lihongbo22@huawei.com>, Chunhai Guo <guochunhai@vivo.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
-        Andreas Gruenbacher <agruenba@redhat.com>, Kees Cook <kees@kernel.org>,
-        Tony Luck <tony.luck@intel.com>,
-        "Guilherme G. Piccoli" <gpiccoli@igalia.com>, Jan Kara <jack@suse.com>,
-        Phillip Lougher <phillip@squashfs.org.uk>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Masami Hiramatsu <mhiramat@kernel.org>,
-        Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        Tejun Heo <tj@kernel.org>, David Vernet <void@manifault.com>,
-        Andrea Righi <arighi@nvidia.com>, Changwoo Min <changwoo@igalia.com>,
-        Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>,
-        Juri Lelli <juri.lelli@redhat.com>,
-        Vincent Guittot <vincent.guittot@linaro.org>,
-        Dietmar Eggemann <dietmar.eggemann@arm.com>,
-        Ben Segall <bsegall@google.com>, Mel Gorman <mgorman@suse.de>,
-        Valentin Schneider <vschneid@redhat.com>,
-        Luis Chamberlain <mcgrof@kernel.org>, Petr Pavlu <petr.pavlu@suse.com>,
-        Daniel Gomez <da.gomez@kernel.org>,
-        Sami Tolvanen <samitolvanen@google.com>,
-        Aaron Tomlin <atomlin@atomlin.com>,
-        Sylwester Nawrocki <s.nawrocki@samsung.com>,
-        Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>,
-        Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>,
-        Max Filippov <jcmvbkbc@gmail.com>, Paolo Bonzini <pbonzini@redhat.com>,
-        John Johansen <john.johansen@canonical.com>,
-        Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>,
-        "Serge E. Hallyn" <serge@hallyn.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Alasdair Kergon <agk@redhat.com>, Mike Snitzer <snitzer@kernel.org>,
-        Mikulas Patocka <mpatocka@redhat.com>,
-        Benjamin Marzinski <bmarzins@redhat.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        David Ahern <dsahern@kernel.org>, Eric Dumazet <edumazet@google.com>,
-        Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
-        Simon Horman <horms@kernel.org>, Marcel Holtmann <marcel@holtmann.org>,
-        Johan Hedberg <johan.hedberg@gmail.com>,
-        Luiz Augusto von Dentz <luiz.dentz@gmail.com>,
-        Alexei Starovoitov <ast@kernel.org>,
-        Daniel Borkmann <daniel@iogearbox.net>,
-        Jesper Dangaard Brouer <hawk@kernel.org>,
-        John Fastabend <john.fastabend@gmail.com>,
-        Stanislav Fomichev <sdf@fomichev.me>,
-        Jamal Hadi Salim <jhs@mojatatu.com>, Jiri Pirko <jiri@resnulli.us>,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-        Xin Long <lucien.xin@gmail.com>, Trond Myklebust <trondmy@kernel.org>,
-        Anna Schumaker <anna@kernel.org>, Chuck Lever <chuck.lever@oracle.com>,
-        Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
-        Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>,
-        Jon Maloy <jmaloy@redhat.com>,
-        Johannes Berg <johannes@sipsolutions.net>,
-        Catalin Marinas <catalin.marinas@arm.com>,
-        Russell King <linux@armlinux.org.uk>, John Crispin <john@phrozen.org>,
-        Thomas Bogendoerfer <tsbogend@alpha.franken.de>,
-        Yoshinori Sato <ysato@users.sourceforge.jp>,
-        Rich Felker <dalias@libc.org>,
-        John Paul Adrian Glaubitz <glaubitz@physik.fu-berlin.de>,
-        Andrzej Hajda <andrzej.hajda@intel.com>,
-        Neil Armstrong <neil.armstrong@linaro.org>,
-        Robert Foss <rfoss@kernel.org>,
-        Laurent Pinchart <Laurent.pinchart@ideasonboard.com>,
-        Jonas Karlman <jonas@kwiboo.se>,
-        Jernej Skrabec <jernej.skrabec@gmail.com>,
-        Maarten Lankhorst <maarten.lankhorst@linux.intel.com>,
-        Maxime Ripard <mripard@kernel.org>,
-        Thomas Zimmermann <tzimmermann@suse.de>,
-        David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>,
-        Zhenyu Wang <zhenyuw.linux@gmail.com>,
-        Zhi Wang <zhi.wang.linux@gmail.com>,
-        Jani Nikula <jani.nikula@linux.intel.com>,
-        Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
-        Rodrigo Vivi <rodrigo.vivi@intel.com>,
-        Tvrtko Ursulin <tursulin@ursulin.net>,
-        Alex Deucher <alexander.deucher@amd.com>,
-        Christian =?iso-8859-1?Q?K=F6nig?= <christian.koenig@amd.com>,
-        Sandy Huang <hjc@rock-chips.com>,
-        Heiko =?iso-8859-1?Q?St=FCbner?= <heiko@sntech.de>,
-        Andy Yan <andy.yan@rock-chips.com>,
-        Igor Russkikh <irusskikh@marvell.com>,
-        Andrew Lunn <andrew+netdev@lunn.ch>,
-        Pavan Chebbi <pavan.chebbi@broadcom.com>,
-        Michael Chan <mchan@broadcom.com>,
-        Potnuri Bharat Teja <bharat@chelsio.com>,
-        Tony Nguyen <anthony.l.nguyen@intel.com>,
-        Przemek Kitszel <przemyslaw.kitszel@intel.com>,
-        Taras Chornyi <taras.chornyi@plvision.eu>,
-        Maxime Coquelin <mcoquelin.stm32@gmail.com>,
-        Alexandre Torgue <alexandre.torgue@foss.st.com>,
-        Iyappan Subramanian <iyappan@os.amperecomputing.com>,
-        Keyur Chudgar <keyur@os.amperecomputing.com>,
-        Quan Nguyen <quan@os.amperecomputing.com>,
-        Heiner Kallweit <hkallweit1@gmail.com>, Marc Zyngier <maz@kernel.org>,
-        Thomas Gleixner <tglx@kernel.org>, Andrew Lunn <andrew@lunn.ch>,
-        Gregory Clement <gregory.clement@bootlin.com>,
-        Sebastian Hesselbarth <sebastian.hesselbarth@gmail.com>,
-        Vinod Koul <vkoul@kernel.org>, Linus Walleij <linusw@kernel.org>,
-        Ulf Hansson <ulf.hansson@linaro.org>,
-        Heiko Carstens <hca@linux.ibm.com>, Vasily Gorbik <gor@linux.ibm.com>,
-        Alexander Gordeev <agordeev@linux.ibm.com>,
-        Christian Borntraeger <borntraeger@linux.ibm.com>,
-        Sven Schnelle <svens@linux.ibm.com>,
-        "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Eduardo Valentin <edubezval@gmail.com>, Keerthy <j-keerthy@ti.com>,
-        "Rafael J. Wysocki" <rafael@kernel.org>,
-        Daniel Lezcano <daniel.lezcano@kernel.org>,
-        Zhang Rui <rui.zhang@intel.com>, Lukasz Luba <lukasz.luba@arm.com>,
-        Alex Williamson <alex@shazbot.org>,
-        Mark Greer <mgreer@animalcreek.com>,
-        Miquel Raynal <miquel.raynal@bootlin.com>,
-        Richard Weinberger <richard@nod.at>,
-        Vignesh Raghavendra <vigneshr@ti.com>,
-        Shuah Khan <skhan@linuxfoundation.org>,
-        Kieran Bingham <kieran.bingham@ideasonboard.com>,
-        Mauro Carvalho Chehab <mchehab@kernel.org>,
-        Joerg Roedel <joro@8bytes.org>, Will Deacon <will@kernel.org>,
-        Robin Murphy <robin.murphy@arm.com>, Lee Jones <lee@kernel.org>,
-        Pavel Machek <pavel@kernel.org>, Dave Penkler <dpenkler@gmail.com>,
-        "K. Y. Srinivasan" <kys@microsoft.com>,
-        Haiyang Zhang <haiyangz@microsoft.com>, Wei Liu <wei.liu@kernel.org>,
-        Dexuan Cui <decui@microsoft.com>, Long Li <longli@microsoft.com>,
-        Justin Sanders <justin@coraid.com>, Jens Axboe <axboe@kernel.dk>,
-        Georgi Djakov <djakov@kernel.org>,
-        Michael Turquette <mturquette@baylibre.com>,
-        Stephen Boyd <sboyd@kernel.org>,
-        Philipp Zabel <p.zabel@pengutronix.de>, Borislav Petkov <bp@alien8.de>,
-        Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org,
-        "H. Peter Anvin" <hpa@zytor.com>,
-        Pali =?iso-8859-1?Q?Roh=E1r?= <pali@kernel.org>,
-        Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Subject: Re: [PATCH 00/61] treewide: Use IS_ERR_OR_NULL over manual NULL
- check - refactor
-Message-ID: <20260310142348.GA41218@macsyma-wired.lan>
-References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Wu6auwHR";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="mGu88KJC"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1773153778;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=BMpkjIBAlArWoSNA1cagHtqrYddD4BAtLIKx0zMiI/c=;
+	b=Wu6auwHR35+CvewBNjz4Y2soT3YOiRe29xV2QAAMRWj9PiGDJlsxAAZaH5fGBHFNdl1IKR
+	q9KQc53P0Rc8iySp3DxwSVVP9xiXv30K+31Z1DLJM2lUkC+6hjpO2ixSBua24aGGPWQ4ro
+	qR2NWFS6iW3AxnmukJ3sK6SFcZqC1SE=
+Received: from mail-ej1-f70.google.com (mail-ej1-f70.google.com
+ [209.85.218.70]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-225-6dED6cbbNg2NnnsFw4HOgA-1; Tue, 10 Mar 2026 10:42:57 -0400
+X-MC-Unique: 6dED6cbbNg2NnnsFw4HOgA-1
+X-Mimecast-MFC-AGG-ID: 6dED6cbbNg2NnnsFw4HOgA_1773153776
+Received: by mail-ej1-f70.google.com with SMTP id a640c23a62f3a-b8f5bce308dso1148921966b.1
+        for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2026 07:42:57 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1773153776; x=1773758576; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=BMpkjIBAlArWoSNA1cagHtqrYddD4BAtLIKx0zMiI/c=;
+        b=mGu88KJCD10p+zEzHwQJiTHmPvdzGKjcPI2EcpKLWCrWxbis4LERltzsUCqJYjTl1m
+         GqwiVllxDhd+4s4hwxfhij1/vmhF2xBzxq0NVN81PHa0c7VRoGb3czdVIg1tsXKA/2BW
+         +q8IdjTlhd4zwjRbia+k7GIf6Jx8OEfyy6Jkdk8KQi7Xu+kUkr5p4Db+gkVgiAP9eLRl
+         f4OAt35S7zmS/REn6Tz8Sh1xTgtnZawQVZlbtlSEAG82DsTKhulEFMZJHxhdIUbX3HH0
+         o1dL4mzFApXbdP/RJy8r9MipvSzb5XkCoaq/bnGrP//18RpXAAxzGGIYiLBuDJRQSQBu
+         GnNw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1773153776; x=1773758576;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=BMpkjIBAlArWoSNA1cagHtqrYddD4BAtLIKx0zMiI/c=;
+        b=wV3lFs3qaa/eupG8TcSy9bJ62xNBCSE+N5P56hwPemyWOxzLzIv9Qp/FNSEVJF7GTJ
+         F6ADeU6xHr5bIjRr+gCLanlhacnyDn55mEzvI51sC4xEMPKFvtU99PM9ublrmZWV3iqi
+         Pd6aTZWg37prDvBsWNpnlchjBABC4/VTVHXMJKd8ZC1zXiUUzrH/gZJ+bw6yv4a8CGr0
+         AhLQpOlXXiPq3bnKNCQscTLgA0o/D1R/g0FymIcDrdE2bRS4RaNi1bcAi7hLtf5+0tb6
+         nf2QJy0oSDXTLKt6feNkcJcs5biGYpGZoymPFFqM3ltFETq9nXLbP56FndXtud9faHJB
+         505g==
+X-Forwarded-Encrypted: i=1; AJvYcCVfLdLrfUiYmfz5nEHLCalQLw3uhmWiNT/45fT7oFw4PMFkYDReRP0ScVu1Pw8J4/j2xnMKPZ89uy0u@vger.kernel.org
+X-Gm-Message-State: AOJu0Yx24gaCPCrAjjD2H/2h4pobVVhswgCzCD1Cao+FUqZBJmS6LAMo
+	StHg7k1dU9gSGg8DfBghcj9M2Ij+N5PsboO4oUdCFSrlNhlWKTAf4pnzGY1tlkntRf4M5PK8zZO
+	egnn/3MTgkzqJeF45CS78q+xK6i/KsVJXtPURmv4y81WzEmurKduH0fzLzIl7ag==
+X-Gm-Gg: ATEYQzxq8UM+P9mHtMVFBOhPlBTKdgGMMMiJBOkzBjirvKg/PgdQRUkZoCLQ9TEPvn1
+	NSTsCZ+ZbLZ4J6MbcM0LdVMvvRVspqDMCanj/XBcek4lXjDNQFHN+q4GdHi06Cs3Bmpkw3Px/p2
+	1BlJrjh56Tw5p3oQFkeUNFllKDvm1G/yevLAiCf3NEHtn5yg9r9XtmZr/Cu0z8sfT9UusA3p34S
+	DgNi9ljBBVxEC3A7m0dydEPj/2xfJwnSQj8ToMB/UmZeIHZUmNH8wJTTyBVjwFRM1keLvK6GMPr
+	2BYEorl38SnP365y5Jz2FpeIAFQ30TelF0waEKV2pIopLmVqWh+KFCuTo/c9PPoltqTDTH9kAg8
+	5HlNg7/AuHoA=
+X-Received: by 2002:a17:907:98d:b0:b93:edc0:e2e8 with SMTP id a640c23a62f3a-b942e02c34cmr869671966b.48.1773153776102;
+        Tue, 10 Mar 2026 07:42:56 -0700 (PDT)
+X-Received: by 2002:a17:907:98d:b0:b93:edc0:e2e8 with SMTP id a640c23a62f3a-b942e02c34cmr869668766b.48.1773153775426;
+        Tue, 10 Mar 2026 07:42:55 -0700 (PDT)
+Received: from thinky ([217.30.74.39])
+        by smtp.gmail.com with ESMTPSA id a640c23a62f3a-b94dad4271esm420956866b.32.2026.03.10.07.42.54
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 10 Mar 2026 07:42:55 -0700 (PDT)
+Date: Tue, 10 Mar 2026 15:42:54 +0100
+From: Andrey Albershteyn <aalbersh@redhat.com>
+To: "Darrick J. Wong" <djwong@kernel.org>
+Cc: Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org, 
+	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, ebiggers@kernel.org, hch@lst.de, 
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
+	linux-btrfs@vger.kernel.org
+Subject: Re: [PATCH v4 10/25] iomap: teach iomap to handle fsverity holes and
+ verify data holes
+Message-ID: <usl6wrms76zioxpq7xqzo26plpvw642pqrb2zxe4nysnmipm2o@ntl5ml3okjyq>
+References: <20260309192355.176980-1-aalbersh@kernel.org>
+ <20260309192355.176980-11-aalbersh@kernel.org>
+ <20260310010502.GB1105363@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -223,28 +96,56 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
+In-Reply-To: <20260310010502.GB1105363@frogsfrogsfrogs>
 
-On Tue, Mar 10, 2026 at 12:48:26PM +0100, Philipp Hahn wrote:
-> While doing some static code analysis I stumbled over a common pattern,
-> where IS_ERR() is combined with a NULL check. For that there is
-> IS_ERR_OR_NULL().
+On 2026-03-09 18:05:02, Darrick J. Wong wrote:
+> > +		/*
+> > +		 * Handling of fsverity "holes". We hit this for two case:
+> > +		 *   1. No need to go further, the hole after fsverity
+> > +		 *	descriptor is the end of the fsverity metadata.
+> > +		 *
+> > +		 *   2. This folio contains merkle tree blocks which need to be
+> > +		 *	synthesized. If we already have fsverity info (ctx->vi)
+> > +		 *	synthesize these blocks.
+> > +		 */
+> > +		if ((iomap->flags & IOMAP_F_FSVERITY) &&
+> > +		    iomap->type == IOMAP_HOLE) {
+> > +			/*
+> > +			 * Don't cause lookup if we already have fsverity
+> > +			 * context from the previous tree hole
+> > +			 */
+> > +			if (!ctx->vi)
+> > +				ctx->vi = fsverity_get_info(iter->inode);
+> > +			if (ctx->vi)
 > 
-> I've written a Coccinelle patch to find and patch those instances.
-> The patches follow grouped by subsystem.
+> Is it an error if ctx->vi isn't set here? 
 
-I'm going to gently suggest that you *not* try to do this as a
-tree-wide change, since we don't need to change some interface
-requiring a global, flag day change.  This is instead a cleanup, which
-maybe makes the code slightly better, but which also has a the
-downside of breaking lots of inflight development patches by
-potentially causing merge or patch conflicts.
+no
 
-So why don't you send it to each subsystem as a separate patch or
-small patch series, instead of spamming a dozen-plus mailing lists,
-are probably hundreds of developers, most of whom aren't going to
-care about changs in some far flung part of the kernel?
+> We won't fill the folio
+> with the zerohash, but we'll set uptodate anyway...
+> 
+> > +				fsverity_folio_zero_hash(folio, poff, plen,
+> > +							 ctx->vi);
+> > +			iomap_set_range_uptodate(folio, poff, plen);
+> 
+> ...though I suppose it's the case that the uninitialized folio contents
+> will most likely cause fsverity to report data corruption so at least
+> it's obvious.
+> 
+> OTOH it does seem a little strange to set uptodate having not
+> initialized the folio contents.
 
-Regards,
+This the first case described in the comment above:
 
-						- Ted
++		 * Handling of fsverity "holes". We hit this for two case:
++		 *   1. No need to go further, the hole after fsverity
++		 *	descriptor is the end of the fsverity metadata.
+
+fsverity will not read this part of the folio. I think this can be
+zeroed, but I don't really see the point to do so as no one will
+read it and we use this folio once, for reading the descriptor.
+
+-- 
+- Andrey
+
