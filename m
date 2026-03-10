@@ -1,38 +1,38 @@
 Received: from mail.avm.de (mail.avm.de [212.42.244.120])
 	(using TLSv1.2 with cipher DHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DA9B647CC7C;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9037847B431;
 	Tue, 10 Mar 2026 11:55:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.42.244.120
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773143755; cv=none; b=pL2GcHq0TdFxORbtxBygYVjkBnVo6jeUdwMhu4+8OHT5H2yE5wY3tUz12xVaHLLkyAtWW6s3NaEmG+X4NTWyVwu3EBlxpr5cI5V1vJ+2zM4UTw04Ub3SRjdfCtoHMS4H6YMc79yvlmoJNQDHBc0noy9qbsAskKHr5DqWbRkYnZ8=
+	t=1773143756; cv=none; b=lNLk98etxSieoc4SvRPNOdUOor5DW9otg5a3OeP/WO4WmiJloSvMpIc65ULVVst7I9dhIRWpO8ysQSBSLqtf93eIsiokuw8v3Dylr/1O58TgGbtzJMXXtavEIm2DrjXQ9owKLBZ9+JBuD/oaXPvpIP6Av0ZU7YHd/kKfSrW0kKA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773143755; c=relaxed/simple;
-	bh=N8ytNu1U36GmBgTPXVAE5/A4s2PfdogY1tJY/l2pxcM=;
+	s=arc-20240116; t=1773143756; c=relaxed/simple;
+	bh=Z5CcgUmxb8TIHuxVENT8+Rdbeolb2IW3uV9KbiLoZl0=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=YSLZxB7ifLKjdDOG2C2WScpUDk7nJT9pyRM4z8FGEx93fszHWEtYXiVflZpTYwb9tZ7BcgAMPRdGCnNUEbJeqPwscotRzPzGadATHf/DOEUiJaNms3/+3FGSmksey+fAk0nC/hZYAiredvCicCdl/4JuEKwbBqF9CiSLzv69GLo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b=f0/sH3vW; arc=none smtp.client-ip=212.42.244.120
+	 In-Reply-To:To:Cc; b=gD1BrmD+qRTHvkHSnhEifOU+JtQr5Jp8+wSyYWJk0ChwL4WwNFlf8Q/lxZKwj8nXPAMyY4Ckc90bqAidTTiOA4qCcbpqZ+HR6WkJoRy2730/7OZSo7u4bQHj4dOtqXYXuwEztXRrGmIeW/D/iYonm61JcXYzWXxiwVT+rx60tVs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b=HvCb/8oi; arc=none smtp.client-ip=212.42.244.120
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=avm.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b="f0/sH3vW"
+	dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b="HvCb/8oi"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=avm.de; s=mail;
-	t=1773143725; bh=N8ytNu1U36GmBgTPXVAE5/A4s2PfdogY1tJY/l2pxcM=;
+	t=1773143724; bh=Z5CcgUmxb8TIHuxVENT8+Rdbeolb2IW3uV9KbiLoZl0=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=f0/sH3vWUtSFTcrY68KbpDRxIZCYT2hIiwDi3Dik93BJCASdZICq9tTWJ3wgjDVyu
-	 Jxt6MZXNePDtV4TX0U7P53CBk1XHgvUArUuxPPUnS5hIbTeOVph/0B/h50wymqYtj1
-	 3T7/WTJwdzfusP5uEpNMFoKuQUCnMWZUuDcbxKoU=
-Received: from [2001:bf0:244:244::71] (helo=mail.avm.de)
+	b=HvCb/8oi+QjPTMN2Yg58hVQgISqDho2KSemsYUZ+vy5VD2bnZIm5jRkx5UuokMrry
+	 Cd/bADEMvLj4WpFiDDooSYtHMuljYAEx/RujmrWNzucIvLCjqd0TnsL6u3xLqdwjKn
+	 SoUF7kcbAi1lGgdxzJJB8ERoQMMzj0TR7iF4FK9M=
+Received: from [212.42.244.71] (helo=mail.avm.de)
 	by mail.avm.de with ESMTP (eXpurgate 4.55.2)
 	(envelope-from <phahn-oss@avm.de>)
-	id 69b006ab-b734-7f0000032729-7f000001bfc8-1
+	id 69b006ab-b734-7f0000032729-7f000001bfb4-1
 	for <multiple-recipients>; Tue, 10 Mar 2026 12:55:23 +0100
-Received: from mail-auth.avm.de (dovecot-mx-01.avm.de [IPv6:2001:bf0:244:244::71])
+Received: from mail-auth.avm.de (dovecot-mx-01.avm.de [212.42.244.71])
 	by mail.avm.de (Postfix) with ESMTPS;
 	Tue, 10 Mar 2026 12:55:23 +0100 (CET)
 From: Philipp Hahn <phahn-oss@avm.de>
-Date: Tue, 10 Mar 2026 12:48:38 +0100
-Subject: [PATCH 12/61] quota: Prefer IS_ERR_OR_NULL over manual NULL check
+Date: Tue, 10 Mar 2026 12:48:34 +0100
+Subject: [PATCH 08/61] fuse: Prefer IS_ERR_OR_NULL over manual NULL check
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -41,7 +41,7 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260310-b4-is_err_or_null-v1-12-bd63b656022d@avm.de>
+Message-Id: <20260310-b4-is_err_or_null-v1-8-bd63b656022d@avm.de>
 References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 In-Reply-To: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com, 
@@ -71,21 +71,21 @@ To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com,
  sched-ext@lists.linux.dev, target-devel@vger.kernel.org, 
  tipc-discussion@lists.sourceforge.net, v9fs@lists.linux.dev, 
  Philipp Hahn <phahn-oss@avm.de>
-Cc: Jan Kara <jack@suse.com>
-X-Developer-Signature: v=1; a=openpgp-sha256; l=763; i=phahn-oss@avm.de;
- h=from:subject:message-id; bh=N8ytNu1U36GmBgTPXVAE5/A4s2PfdogY1tJY/l2pxcM=;
- b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAX+MICb9QGDh9sr8xrXC0GI/+3a26bt3TCKL
- Vjl33LfQY+JATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAF/gAKCRA0LQZT0ays
- 26n6B/wNFZznKdxnE0qMd12a2eIuA9+krGiImi7olxEd9wOJhsBf8sKwI0E3QgvpW0h7L8AJ/V7
- YwWi88O6oeBiZ3QDKSUmLS/9VlykYZ97N4eOIEzkOMJxki98cx4PncgKAN9Jy63O/7GoZyteCZ7
- +9i83brafUHJWnhfe2dyfef6pp7LRzaCEfdld6TPIgAENhsi0/zr3Pv5hQfjJiyWTNInkfN/Wc9
- eBcVMsl2Zb6jE1xGE/aNpGFG8dNw74geAiaLniVxheZHeJfqzhWkArPaHQ0SYGtCtwd5smdDDAA
- 6BFeqEcljgo2LkEM+gZQjogP088dQYDyFGUkwYA0hLFDBEaT
+Cc: Miklos Szeredi <miklos@szeredi.hu>
+X-Developer-Signature: v=1; a=openpgp-sha256; l=890; i=phahn-oss@avm.de;
+ h=from:subject:message-id; bh=Z5CcgUmxb8TIHuxVENT8+Rdbeolb2IW3uV9KbiLoZl0=;
+ b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAXxKvlvqCH0DwJSbq+UNs0LTyfOD3vzlRqtT
+ 2TRtqiRMXSJATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAF8QAKCRA0LQZT0ays
+ 2xgMCACJUN2JSxzamJUFQvwc92wfvAAIT82LlFBC4CNAPLjUwClhfMFmMBmKAZA8HDz81VrcG/p
+ fo2P5eS+rFs83E9iVI/bW+OpSphb7hd9/Pa3DNpSkaQcLQUMHw39s5ltgUYmcwhQdUpEa+pWYW+
+ gg+34EAVtKnYkmIuH1aWQKSSPRHXFEEIj8Mu1YI3EnTGvDB+NleQt1zN6UaIksTNUf5+3I2W33b
+ Z+hxOEmA2AEpaox3bemtlkSQbWv4qtVtcFYcWHKzhKpkUH0i5WAZ0lUSrDgtHsTI7KM+223fQQ9
+ V7CmYp8rYAFlP8Yb8uQbtjIbd9Kw5z3oAZRh0mglz23o1NU6
 X-Developer-Key: i=phahn-oss@avm.de; a=openpgp;
  fpr=58AF7C2E007CDBE62C59E078F50EFDCF8AD04B1A
-X-purgate-ID: 149429::1773143723-435C7A3D-F151BDE4/0/0
+X-purgate-ID: 149429::1773143723-035C7A3D-B44CD0B6/0/0
 X-purgate-type: clean
-X-purgate-size: 765
+X-purgate-size: 892
 X-purgate-Ad: Categorized by eleven eXpurgate (R) https://www.eleven.de
 X-purgate: This mail is considered clean (visit https://www.eleven.de for further information)
 X-purgate: clean
@@ -95,26 +95,27 @@ check.
 
 Change generated with coccinelle.
 
-To: Jan Kara <jack@suse.com>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: linux-fsdevel@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org
 Signed-off-by: Philipp Hahn <phahn-oss@avm.de>
 ---
- fs/quota/quota.c | 2 +-
+ fs/fuse/dir.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/quota/quota.c b/fs/quota/quota.c
-index 33bacd70758007129e0375bab44d7431195ec441..2e09fc247d0cf45b9e83a4f8a0be7ea694c8c2a1 100644
---- a/fs/quota/quota.c
-+++ b/fs/quota/quota.c
-@@ -965,7 +965,7 @@ SYSCALL_DEFINE4(quotactl, unsigned int, cmd, const char __user *, special,
- 	else
- 		drop_super_exclusive(sb);
- out:
--	if (pathp && !IS_ERR(pathp))
-+	if (!IS_ERR_OR_NULL(pathp))
- 		path_put(pathp);
- 	return ret;
- }
+diff --git a/fs/fuse/dir.c b/fs/fuse/dir.c
+index 7ac6b232ef12323e3afb97b98301f623bce917a4..7b39c013027bd9c4ba6f080bfc9b3ec22bc2dd4a 100644
+--- a/fs/fuse/dir.c
++++ b/fs/fuse/dir.c
+@@ -1599,7 +1599,7 @@ int fuse_reverse_inval_entry(struct fuse_conn *fc, u64 parent_nodeid,
+ 		goto put_parent;
+ 	while (!entry) {
+ 		struct dentry *child = try_lookup_noperm(name, dir);
+-		if (!child || IS_ERR(child))
++		if (IS_ERR_OR_NULL(child))
+ 			goto put_parent;
+ 		entry = start_removing_dentry(dir, child);
+ 		dput(child);
 
 -- 
 2.43.0
