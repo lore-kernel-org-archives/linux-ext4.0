@@ -1,39 +1,36 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 44EFB3B9DB6
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2026 13:05:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 35E003B9DB0
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2026 13:05:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773147959; cv=none; b=IMmOxBZsV4JTUxivV0iOxwkod50sxPrMXIA9ZcZm8aYF0DRQ4HbDRQlBmSqoHjzETfiExr9PkVFggs4W5rYLY3C0/mX1NvTgnBBLfloz1JO2HBIGIE/XaMXRvOPBN1Wdt8sWdhtSy2xQQOJNmkC3rY700NpvRNj01nmvPfe/R+8=
+	t=1773147960; cv=none; b=mMt81VuMMmHXJm6PaYt5LSgKwTVLjFUIjBnrIjdQVbZgqi8TgYGtTR93ZmWBkYcg7tqEBAALIBsTq43vixVe+i7MXIGKBbx3A4TXkVclgqNnax95vBvapncgqHIu5lWjGSyQ/eb0KUk6eKX7rxCyZC3xK9J4tn0gF8y1u4W5nJo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773147959; c=relaxed/simple;
-	bh=InyXciXjxh4XoQoDPiUsNY/XZg3cJlKGqvVlUYa/VTI=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=hbkZyzUodtHs5DYbFG7v8XR5pDuLHmhvAEmbFEEHZId1htbkITipRYajvLNMfCCykOYgYt46dlwT/vU7wfew8xYwFzzPs7AYf7qklquOOVs/QgxGGHMB1ca63VEPd0J32esFtqqYono7dsLooklvzqkKoxUIPrR2RrTUsjTmLGc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	s=arc-20240116; t=1773147960; c=relaxed/simple;
+	bh=yn4e6bjy94Lpduj5OA4I41o0aFsgx2ulAaNoQGCRNjg=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=H4ta0d4oDW1pFipSs1K+xzF3yrfQXsnbSlFdc1EI3GJVPX7fmxrrkI1EU5rdGeUTVhEIRmaEIheanX5JsW41c75mB5L/fLnwDWfOw+w/tRB/hv9UqK/elpCGr0C9grh9XlXE5ShH5D+wzbmtfu7ATRFPP7Gwg5ryuQYJWrJLv4M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4fVYys2DvDzKHMh4
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2026 21:05:41 +0800 (CST)
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4fVYyq1ZkNzKHMWT
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2026 21:05:39 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 98EB240590
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2026 21:05:56 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 8500B4057D
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2026 21:05:54 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.132])
-	by APP4 (Coremail) with SMTP id gCh0CgCHYUwxF7BpaX6fAQ--.37695S6;
-	Tue, 10 Mar 2026 21:05:56 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgCHYUwxF7BpaX6fAQ--.37695S4;
+	Tue, 10 Mar 2026 21:05:54 +0800 (CST)
 From: Ye Bin <yebin@huaweicloud.com>
 To: tytso@mit.edu,
 	adilger.kernel@dilger.ca,
 	linux-ext4@vger.kernel.org
 Cc: jack@suse.cz
-Subject: [PATCH -next 2/8] ext4: introduce EXPORT_SYMBOL_FOR_EXT4_TEST() helper
-Date: Tue, 10 Mar 2026 21:04:06 +0800
-Message-Id: <20260310130412.3156753-3-yebin@huaweicloud.com>
+Subject: [PATCH -next 0/8] Fix some issues about ext4-test
+Date: Tue, 10 Mar 2026 21:04:04 +0800
+Message-Id: <20260310130412.3156753-1-yebin@huaweicloud.com>
 X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20260310130412.3156753-1-yebin@huaweicloud.com>
-References: <20260310130412.3156753-1-yebin@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -41,65 +38,55 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCHYUwxF7BpaX6fAQ--.37695S6
-X-Coremail-Antispam: 1UD129KBjvJXoWxJr13XrW5WrWUAryxGw4UArb_yoW8JFyxpw
-	sIyF4xGrWa9345u3y7GF1kX347Wws2g3W8Jw4F93y5XF9xXryfGFn8twn0vF1jga97XF4f
-	XFy8ZF15Jr1fCa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvGb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUXw
-	A2048vs2IY020Ec7CjxVAFwI0_JFI_Gr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
-	w2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
-	W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
-	6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
-	Ij6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
-	Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr
-	0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY
-	17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcV
-	C0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY
-	6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa
-	73UjIFyTuYvjxUzMKuUUUUU
+X-CM-TRANSID:gCh0CgCHYUwxF7BpaX6fAQ--.37695S4
+X-Coremail-Antispam: 1UD129KBjvJXoW7Jr18WFWfKr1rGr15Zr1fWFg_yoW8JrWxpw
+	13AFsxWr45Zrn3ZFZxGw4UAw15Wr18AwsrZry3t3W8XFy3AryrJrsrKr1rAFy8XrW8XF1U
+	Ar18tr4UG3W3C3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUgCb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
+	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+	Cjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCj
+	c4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4
+	CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1x
+	MIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
+	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsG
+	vfC2KfnxnUUI43ZEXa7IU1CPfJUUUUU==
 X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 
 From: Ye Bin <yebin10@huawei.com>
 
-Introduce EXPORT_SYMBOL_FOR_EXT4_TEST() helper for kuint test.
+Patch [1]-[2]:
+Decoupled mballoc-test and extents-test from ext4. Patch [1] does not
+have any changes compared to the previously released version, so the
+reviewed-by is added.
+Patch [3-7]:
+Bugfix for extents-test.c.
+Patch [8]:
+Bugfix for mballoc-test.c.
 
-Signed-off-by: Ye Bin <yebin10@huawei.com>
----
- fs/ext4/ext4.h    | 5 +++++
- fs/ext4/mballoc.c | 3 ---
- 2 files changed, 5 insertions(+), 3 deletions(-)
+Ye Bin (8):
+  ext4: fix mballoc-test.c is not compiled when EXT4_KUNIT_TESTS=M
+  ext4: introduce EXPORT_SYMBOL_FOR_EXT4_TEST() helper
+  ext4: fix extents-test.c is not compiled when EXT4_KUNIT_TESTS=M
+  ext4: fix miss unlock 'sb->s_umount' in extents_kunit_init()
+  ext4: fix miss free super_block in extents_kunit_exit()
+  ext4: fix the error handling process in extents_kunit_init).
+  ext4: fix possible null-ptr-deref in extents_kunit_exit()
+  ext4: fix possible null-ptr-deref in mbt_kunit_exit()
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 4cb2345339ba..8bf2a2ac4787 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3945,6 +3945,11 @@ static inline bool ext4_inode_can_atomic_write(struct inode *inode)
- extern int ext4_block_write_begin(handle_t *handle, struct folio *folio,
- 				  loff_t pos, unsigned len,
- 				  get_block_t *get_block);
-+
-+#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
-+#define EXPORT_SYMBOL_FOR_EXT4_TEST(sym) \
-+	EXPORT_SYMBOL_FOR_MODULES(sym, "ext4-test")
-+#endif
- #endif	/* __KERNEL__ */
- 
- #endif	/* _EXT4_H */
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 842a604ae5db..97b3f0e4c80b 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -7193,9 +7193,6 @@ ext4_mballoc_query_range(
- }
- 
- #if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
--#define EXPORT_SYMBOL_FOR_EXT4_TEST(sym) \
--	EXPORT_SYMBOL_FOR_MODULES(sym, "ext4-test")
--
- void mb_clear_bits_test(void *bm, int cur, int len)
- {
- 	 mb_clear_bits(bm, cur, len);
+ fs/ext4/Makefile       |   5 +-
+ fs/ext4/ext4.h         |   5 ++
+ fs/ext4/ext4_extents.h |  12 +++++
+ fs/ext4/extents-test.c |  59 ++++++++++++++++--------
+ fs/ext4/extents.c      |  38 ++++++++++++---
+ fs/ext4/mballoc-test.c |  87 ++++++++++++++++++-----------------
+ fs/ext4/mballoc.c      | 102 +++++++++++++++++++++++++++++++++++++++--
+ fs/ext4/mballoc.h      |  30 ++++++++++++
+ 8 files changed, 268 insertions(+), 70 deletions(-)
+
 -- 
 2.34.1
 
