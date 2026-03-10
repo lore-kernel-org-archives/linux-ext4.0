@@ -1,170 +1,170 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 628B22D6E4B;
-	Tue, 10 Mar 2026 01:29:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BA7982BE02C;
+	Tue, 10 Mar 2026 01:44:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773106155; cv=none; b=moGa/fVjSRb84CJQHmneAwmbs3NdPMpRAsJzqfwUR7bijHjfO1OE/AYF0gLMVmnuMzWskQGOmkDp/y0GbBLUOp2RwOJkzZiaJbxlo/LEGf9IpPqz0nJXeSywwEt45S8KnalkNSQRUS5D+XddN8VMLvIjCII7tuKGMprTjCh+6pM=
+	t=1773107102; cv=none; b=QRm32Sl9IHIZ9vQCZVuWSpGmWMZXDRaZmmSlO+yD1WTpWMxeQfAKXvaWvUBiuNf77iuUTESc+hQPlbLwgZBmA+5o2r641R6pbwTq819WU0tnGX6A6u6Wnjz7mUK/YeS0h7OIN22dHWjwqodlQikEWeBb/nPgYvM5nJ1aithQEY4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773106155; c=relaxed/simple;
-	bh=psMJeJ5QeW8IxZJ0xELWgUGIx/A1kFF6591jRgDLsAM=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=VymDkl8AN1IbrBPIhm/86aYhB3T5sC5ZmWDQmgKI//R7nXb6jfcUz1BybXuf3aGp0sWUN+ZsXBWCfmzM3zL0Pt/rMtyoIR1ion/XVxk/QYfnwP8xdYKAKM4nLVSJB5NiVZrbc5pKvuW8jo8G+9X3KFTidvyQ31lajp/4dLrrwMo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=J8tuMvN5; arc=none smtp.client-ip=10.30.226.201
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="J8tuMvN5"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0813BC4CEF7;
-	Tue, 10 Mar 2026 01:29:14 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1773106155;
-	bh=psMJeJ5QeW8IxZJ0xELWgUGIx/A1kFF6591jRgDLsAM=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=J8tuMvN5dh7ZFOphg99/sztaSQz9CBx7xX8N75nGlVabNVY+vSoB1YPK2+lII0+Ar
-	 IkRvCN+E59+pb7dwInJl8GZ16zgR4OpeUS5bK1J/OZfE7c3k0AZchZ50ghQWCunAOS
-	 iOJyZvBYopjaa32T4Gwd8Owvb0bXRi41BcrLtl+tnuVilrI0HzM15cNWtwwDXx8UJ2
-	 SKBOOVmTuhK1K0ZD+H7S8jFXhh6paWncBM3Tsr+ZhEDI75OdECJpiS6W5Z851KkSGG
-	 8J/FZJrrLW0tlsHRdTN40MA7bGIqipN6EDFFUSJFJv6ga7plNVTFWrEVlVR86OjKlN
-	 b0j8sDZBFhtuw==
-Date: Mon, 9 Mar 2026 18:29:14 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: Andrey Albershteyn <aalbersh@kernel.org>
-Cc: linux-xfs@vger.kernel.org, fsverity@lists.linux.dev,
-	linux-fsdevel@vger.kernel.org, ebiggers@kernel.org, hch@lst.de,
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-	linux-btrfs@vger.kernel.org
-Subject: Re: [PATCH v4 19/25] xfs: remove unwritten extents after
- preallocations in fsverity metadata
-Message-ID: <20260310012914.GG1105363@frogsfrogsfrogs>
-References: <20260309192355.176980-1-aalbersh@kernel.org>
- <20260309192355.176980-20-aalbersh@kernel.org>
+	s=arc-20240116; t=1773107102; c=relaxed/simple;
+	bh=vJ32tUAUEfcZ5ZyTll1vYBEUPWvc2om6F4OlyCMMZOw=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=KUc+Ng//RO4HQ+3/IXYYhZlSQWOiwZ9ubjpKbI87V6Xw5L7T1SKCRNnDaoc5DU16+bH13fjSB1vNJlAUQ10ppntsbuBbMar+0lYLs1baO5vl6DUuvbfFIdrsWWpLUOrF8fL253I3lzS+hOKx816R8+2AULxySvLGTKmP4zumWiU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4fVGs70RTKzKHMgj;
+	Tue, 10 Mar 2026 09:44:43 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id 982EE4057C;
+	Tue, 10 Mar 2026 09:44:57 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.85.155])
+	by APP1 (Coremail) with SMTP id cCh0CgB3edmQd69pXNliAQ--.11692S5;
+	Tue, 10 Mar 2026 09:44:57 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	libaokun@linux.alibaba.com,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	yizhang089@gmail.com,
+	yangerkun@huawei.com,
+	yukuai@fnnas.com
+Subject: [PATCH 01/10] ext4: add did_zero output parameter to ext4_block_zero_page_range()
+Date: Tue, 10 Mar 2026 09:40:52 +0800
+Message-ID: <20260310014101.4140698-2-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.52.0
+In-Reply-To: <20260310014101.4140698-1-yi.zhang@huaweicloud.com>
+References: <20260310014101.4140698-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260309192355.176980-20-aalbersh@kernel.org>
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:cCh0CgB3edmQd69pXNliAQ--.11692S5
+X-Coremail-Antispam: 1UD129KBjvJXoWxCF17XryxJF1rtF17KryUWrg_yoW5uF45pr
+	y5t345ur47u34q9F4xWF1jvr1Skwn3GFW8W3y3G3sYv3yIq3WxKF95K3ZYvF4jg3y7Xay0
+	qF4Yy3y2gw1UArJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUm014x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jr4l82xGYIkIc2
+	x26xkF7I0E14v26r4j6ryUM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
+	xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
+	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
+	kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
+	6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
+	vEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVj
+	vjDU0xZFpf9x0JUfKs8UUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On Mon, Mar 09, 2026 at 08:23:34PM +0100, Andrey Albershteyn wrote:
-> XFS preallocates spaces during writes. In normal I/O this space, if
-> unused, is removed by truncate. For files with fsverity, XFS does not
-> use truncate as fsverity metadata is stored past EOF.
-> 
-> After we're done with writing fsverity metadata iterate over extents in
-> that region and remove any unwritten ones. These would be preallocation
-> leftovers in the merkle tree holes and past fsverity descriptor.
-> 
-> Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
-> ---
->  fs/xfs/xfs_fsverity.c | 62 +++++++++++++++++++++++++++++++++++++++++++
->  1 file changed, 62 insertions(+)
-> 
-> diff --git a/fs/xfs/xfs_fsverity.c b/fs/xfs/xfs_fsverity.c
-> index e5cd17ec15b6..f78e5f0c2fd0 100644
-> --- a/fs/xfs/xfs_fsverity.c
-> +++ b/fs/xfs/xfs_fsverity.c
-> @@ -21,6 +21,8 @@
->  #include "xfs_iomap.h"
->  #include "xfs_error.h"
->  #include "xfs_health.h"
-> +#include "xfs_bmap.h"
-> +#include "xfs_bmap_util.h"
->  #include <linux/fsverity.h>
->  #include <linux/iomap.h>
->  #include <linux/pagemap.h>
-> @@ -189,6 +191,58 @@ xfs_fsverity_delete_metadata(
->  	return error;
->  }
->  
-> +static int
-> +xfs_fsverity_cancel_unwritten(
-> +	struct xfs_inode	*ip,
-> +	xfs_fileoff_t		start,
-> +	xfs_fileoff_t		end)
-> +{
-> +	struct xfs_mount	*mp = ip->i_mount;
-> +	struct xfs_trans	*tp;
-> +	xfs_fileoff_t		offset_fsb = XFS_B_TO_FSB(mp, start);
-> +	xfs_fileoff_t		end_fsb = XFS_B_TO_FSB(mp, end);
-> +	struct xfs_bmbt_irec	imap;
-> +	int			nimaps;
-> +	int			error = 0;
-> +	int			done;
-> +
-> +	error = xfs_trans_alloc(mp, &M_RES(mp)->tr_write, 0, 0, 0, &tp);
-> +	if (error)
-> +		return error;
-> +
-> +	xfs_ilock(ip, XFS_ILOCK_EXCL);
-> +	xfs_trans_ijoin(tp, ip, 0);
-> +
-> +	while (offset_fsb < end_fsb) {
-> +		nimaps = 1;
-> +
-> +		error = xfs_bmapi_read(ip, offset_fsb, end_fsb - offset_fsb,
-> +							  &imap, &nimaps, 0);
+From: Zhang Yi <yi.zhang@huawei.com>
 
-Indent two tabs, plz. :)
+Add a bool *did_zero output parameter to ext4_block_zero_page_range()
+and __ext4_block_zero_page_range(). The parameter reports whether a
+partial block was zeroed out, which is needed for the upcoming iomap
+buffered I/O conversion.
 
-> +		if (error)
-> +			goto out_cancel;
-> +
-> +		if (nimaps == 0)
-> +			break;
-> +
-> +		if (imap.br_state == XFS_EXT_UNWRITTEN) {
-> +			error = xfs_bunmapi(tp, ip, imap.br_startoff,
-> +					    imap.br_blockcount, 0, 1, &done);
-> +			if (error)
-> +				goto out_cancel;
-> +		}
-> +
-> +		offset_fsb = imap.br_startoff + imap.br_blockcount;
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/inode.c | 23 ++++++++++++++---------
+ 1 file changed, 14 insertions(+), 9 deletions(-)
 
-There's an upper limit on the number of blocks you can unmap/free in a
-single transaction.  Maybe move the xfs_trans_{alloc,commit} into the
-loop body?
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 396dc3a5d16b..1e037a314dab 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4003,7 +4003,8 @@ void ext4_set_aops(struct inode *inode)
+  * racing writeback can come later and flush the stale pagecache to disk.
+  */
+ static int __ext4_block_zero_page_range(handle_t *handle,
+-		struct address_space *mapping, loff_t from, loff_t length)
++		struct address_space *mapping, loff_t from, loff_t length,
++		bool *did_zero)
+ {
+ 	unsigned int offset, blocksize, pos;
+ 	ext4_lblk_t iblock;
+@@ -4091,6 +4092,8 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 			err = ext4_jbd2_inode_add_write(handle, inode, from,
+ 					length);
+ 	}
++	if (!err && did_zero)
++		*did_zero = true;
+ 
+ unlock:
+ 	folio_unlock(folio);
+@@ -4106,7 +4109,8 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+  * that corresponds to 'from'
+  */
+ static int ext4_block_zero_page_range(handle_t *handle,
+-		struct address_space *mapping, loff_t from, loff_t length)
++		struct address_space *mapping, loff_t from, loff_t length,
++		bool *did_zero)
+ {
+ 	struct inode *inode = mapping->host;
+ 	unsigned blocksize = inode->i_sb->s_blocksize;
+@@ -4120,10 +4124,11 @@ static int ext4_block_zero_page_range(handle_t *handle,
+ 		length = max;
+ 
+ 	if (IS_DAX(inode)) {
+-		return dax_zero_range(inode, from, length, NULL,
++		return dax_zero_range(inode, from, length, did_zero,
+ 				      &ext4_iomap_ops);
+ 	}
+-	return __ext4_block_zero_page_range(handle, mapping, from, length);
++	return __ext4_block_zero_page_range(handle, mapping, from, length,
++					    did_zero);
+ }
+ 
+ /*
+@@ -4146,7 +4151,7 @@ static int ext4_block_truncate_page(handle_t *handle,
+ 	blocksize = i_blocksize(inode);
+ 	length = blocksize - (from & (blocksize - 1));
+ 
+-	return ext4_block_zero_page_range(handle, mapping, from, length);
++	return ext4_block_zero_page_range(handle, mapping, from, length, NULL);
+ }
+ 
+ int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
+@@ -4169,13 +4174,13 @@ int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
+ 	if (start == end &&
+ 	    (partial_start || (partial_end != sb->s_blocksize - 1))) {
+ 		err = ext4_block_zero_page_range(handle, mapping,
+-						 lstart, length);
++						 lstart, length, NULL);
+ 		return err;
+ 	}
+ 	/* Handle partial zero out on the start of the range */
+ 	if (partial_start) {
+-		err = ext4_block_zero_page_range(handle, mapping,
+-						 lstart, sb->s_blocksize);
++		err = ext4_block_zero_page_range(handle, mapping, lstart,
++						 sb->s_blocksize, NULL);
+ 		if (err)
+ 			return err;
+ 	}
+@@ -4183,7 +4188,7 @@ int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
+ 	if (partial_end != sb->s_blocksize - 1)
+ 		err = ext4_block_zero_page_range(handle, mapping,
+ 						 byte_end - partial_end,
+-						 partial_end + 1);
++						 partial_end + 1, NULL);
+ 	return err;
+ }
+ 
+-- 
+2.52.0
 
-Oh wait, you skip the written extents.  Ok, so maybe just roll it after
-you've done a bunmapi.
-
-Do you need to purge the cow fork too?
-
---D
-
-> +	}
-> +
-> +	error = xfs_trans_commit(tp);
-> +	xfs_iunlock(ip, XFS_ILOCK_EXCL);
-> +	return error;
-> +out_cancel:
-> +	xfs_trans_cancel(tp);
-> +	xfs_iunlock(ip, XFS_ILOCK_EXCL);
-> +	return error;
-> +}
-> +
->  
->  /*
->   * Prepare to enable fsverity by clearing old metadata.
-> @@ -264,6 +318,14 @@ xfs_fsverity_end_enable(
->  	if (error)
->  		goto out;
->  
-> +	/*
-> +	 * Remove unwritten extents left by preallocations in the merkle tree
-> +	 * holes and past descriptor
-> +	 */
-> +	error = xfs_fsverity_cancel_unwritten(ip, range_start, LLONG_MAX);
-> +	if (error)
-> +		goto out;
-> +
->  	/*
->  	 * Set fsverity inode flag
->  	 */
-> -- 
-> 2.51.2
-> 
-> 
