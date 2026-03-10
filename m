@@ -1,39 +1,38 @@
-Received: from mail.avm.de (mail.avm.de [212.42.244.94])
+Received: from mail.avm.de (mail.avm.de [212.42.244.120])
 	(using TLSv1.2 with cipher DHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ECD6C492186;
-	Tue, 10 Mar 2026 11:55:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.42.244.94
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE1A44B8DF0;
+	Tue, 10 Mar 2026 11:55:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.42.244.120
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773143763; cv=none; b=gYnfr2oKq50Qq1yTkMDQ7j0W83OkIG2QbTe3prqzdElvik2YXH7Cu3D/6NcLFuh4KEL3VnZ64sqRoUosAVnZ7ODygLHEPX4ribyCyHdpGsTuKim62uu/al0S4sAlwDm6YsTVU4RCvrMQfVps2l/vGTv4aQeZPXCDlKWuwSOEMXY=
+	t=1773143765; cv=none; b=ItSZVO0EoGQdQvEn8GgZ0VrWw+NCYhiZ8vraFk6MxBUOyrcEWvJP73pMCUedYEPHiwI+pheDkQsy3yGIxRdYw5sB8Z647NGLWoC13rO0XnDrsqS+mqUKsxC8N/qMz61lDUpJ7X1LrWUv53SvOmarwITEFZv7uy08lZifMSSIuwo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773143763; c=relaxed/simple;
-	bh=u291MpoQyOoQ8laFPzXzGEOIKYw0K1QgWZAkzpMyO94=;
+	s=arc-20240116; t=1773143765; c=relaxed/simple;
+	bh=gXi6ivSyh7ZdNYhxQJgA68gjpGeiYyVoxWZ9PHNV1mk=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=YldEIMJwWi+NM1ldmwbBjUnSlwekuD/8BD+zv/pGRmLhnXI5cMNF2RkxPwdtmqNSw7xKurniD9V+Wl01mEdl6X7ZQxxawzJbGn/qb7Hv+bkBz/jfSMc7jr+DNaq6v0n3ibNgSQgwATUekMbpQbWh40X5jgT4Sp+Yq0y8Fpg9UZ8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b=ykq5xCtC; arc=none smtp.client-ip=212.42.244.94
+	 In-Reply-To:To:Cc; b=HqEyQU/s2PxpeV+JYPdVOQGTnMQAkcXlo2gHsvSj9v2rT8XcFcQlBLrsEwAXwsA9NIt3dLSpft4QN3OJKNFt41tRgyy10W3MHRKEYrM8NrhQa+ffw4cnbxl+FqiklH/FmgjNLNOEHO59fCpLoiI5VmvyI+x00n/PXe3fNqhG87M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b=i31l4ZLC; arc=none smtp.client-ip=212.42.244.120
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=avm.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b="ykq5xCtC"
+	dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b="i31l4ZLC"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=avm.de; s=mail;
-	t=1773143728; bh=u291MpoQyOoQ8laFPzXzGEOIKYw0K1QgWZAkzpMyO94=;
+	t=1773143727; bh=gXi6ivSyh7ZdNYhxQJgA68gjpGeiYyVoxWZ9PHNV1mk=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=ykq5xCtCLnpuisjh7yCkntpXVoj7+lenTonMwnNyj3HEswqyJb7tAewrRcpMAVrss
-	 htdRzuKIhEkY2u9z8HmZVLAVG9LXQEK5KzfFb+glv/mPDwZDOJWP8p2pGfwANfwg8Y
-	 cyh+Ai5Y49rs9bC9KZyLfdR4nR4N9Gt4Gg3G9z8A=
+	b=i31l4ZLCMLhpXpaK7/Y2yOfuiAhnSJr8fMnqxjs25j5opOPrdqJNTkpsIEDFkqgSp
+	 sZnvLSPj8tGgU4HRU29DH4iPyKhf4v+uoWFgpTspJJOsv7N1zoPc8cizNZidyZ8Q0X
+	 jUywybPonMt30TuRnw66+h5bxhBLfRmMmaXnPfrQ=
 Received: from [2001:bf0:244:244::71] (helo=mail.avm.de)
 	by mail.avm.de with ESMTP (eXpurgate 4.55.2)
 	(envelope-from <phahn-oss@avm.de>)
-	id 69b006af-e21d-7f0000032729-7f000001ba8e-1
+	id 69b006af-b734-7f0000032729-7f0000019c20-1
 	for <multiple-recipients>; Tue, 10 Mar 2026 12:55:27 +0100
 Received: from mail-auth.avm.de (dovecot-mx-01.avm.de [IPv6:2001:bf0:244:244::71])
 	by mail.avm.de (Postfix) with ESMTPS;
 	Tue, 10 Mar 2026 12:55:27 +0100 (CET)
 From: Philipp Hahn <phahn-oss@avm.de>
-Date: Tue, 10 Mar 2026 12:49:11 +0100
-Subject: [PATCH 45/61] thermal: Prefer IS_ERR_OR_NULL over manual NULL
- check
+Date: Tue, 10 Mar 2026 12:49:17 +0100
+Subject: [PATCH 51/61] leds: Prefer IS_ERR_OR_NULL over manual NULL check
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -42,7 +41,7 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260310-b4-is_err_or_null-v1-45-bd63b656022d@avm.de>
+Message-Id: <20260310-b4-is_err_or_null-v1-51-bd63b656022d@avm.de>
 References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 In-Reply-To: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com, 
@@ -72,24 +71,21 @@ To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com,
  sched-ext@lists.linux.dev, target-devel@vger.kernel.org, 
  tipc-discussion@lists.sourceforge.net, v9fs@lists.linux.dev, 
  Philipp Hahn <phahn-oss@avm.de>
-Cc: Eduardo Valentin <edubezval@gmail.com>, Keerthy <j-keerthy@ti.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1238; i=phahn-oss@avm.de;
- h=from:subject:message-id; bh=u291MpoQyOoQ8laFPzXzGEOIKYw0K1QgWZAkzpMyO94=;
- b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAZv85jT8mK77P0DgzyoB3jbjqxnd52qin/43
- 73TECCS4NSJATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAGbwAKCRA0LQZT0ays
- 2zstCACwpYJlOocsZ3HBVMWCF0IhNq09wby5LkvAsENXavKVYKWH0lNK553mHyG2L0hqOjwgfmQ
- 2R6ChfeUAdB1pLjTViMeeaIXq4AlyCRjEyAsVR/bQ5/US1JrFGhJzXarTPhODhjHiBoPAuzZhOB
- 8fipmcjA1HLbJFaREcynXwQWmFtG9ouLXgkvipVtzsg9HQdQPWOUefHLkAAvMOKdk+hmDB4ECbB
- NiykkLaAUziz7cfWSAQQRPcA1Gr6EaK8Vw6tF4Kl2S0zRlJlORdN+u8vB04XH9TW/DB1ISJvpll
- cqhryBZ8g4FfGeREfmgUyiQqqlzXdeOdKWH1FU8uNB4YFH+q
+Cc: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>
+X-Developer-Signature: v=1; a=openpgp-sha256; l=923; i=phahn-oss@avm.de;
+ h=from:subject:message-id; bh=gXi6ivSyh7ZdNYhxQJgA68gjpGeiYyVoxWZ9PHNV1mk=;
+ b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAaDRzpibZr08PkdSw8N3Wy2DsiAYuwbT7jaR
+ Q+T5qeGz2qJATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAGgwAKCRA0LQZT0ays
+ 2y8ACACMKWU5TdDg1OYJ2RnR6HQxJ+2JBIhOyDk8x3FmHidd0wyjcAKA49FqYhtFEhdjGJpgNO3
+ wlcNr4zJ0vDoKzMmVWNj4Kco49QymIlKxd4ko1v9jLom22gL6FIw+i0pd7JG7Dw9K0M9qv/g65X
+ psKPmTQlkBRnjyq+gEp1UF+Z+aW8svU4fmV048TA2bEb7zgfrp0dmnA9hbj2JEYjWrt/pHjBWtC
+ 27oF1sxBbFSjPkNzuaBpb0y9RWyLO/07lImA1AItNHZGlvNpydtzvqp/I3qxgt9sXKt1PHRt8iZ
+ u4zVb/lltaBI2wPScPn/3+nmKc5y9QbdtT1oK6vzRsjkH2h6
 X-Developer-Key: i=phahn-oss@avm.de; a=openpgp;
  fpr=58AF7C2E007CDBE62C59E078F50EFDCF8AD04B1A
-X-purgate-ID: 149429::1773143727-7DE07F2F-8C4B41F9/0/0
+X-purgate-ID: 149429::1773143727-CD5F3A3D-F6F9F436/0/0
 X-purgate-type: clean
-X-purgate-size: 1240
+X-purgate-size: 925
 X-purgate-Ad: Categorized by eleven eXpurgate (R) https://www.eleven.de
 X-purgate: This mail is considered clean (visit https://www.eleven.de for further information)
 X-purgate: clean
@@ -99,33 +95,28 @@ check.
 
 Change generated with coccinelle.
 
-To: Eduardo Valentin <edubezval@gmail.com>
-To: Keerthy <j-keerthy@ti.com>
-To: "Rafael J. Wysocki" <rafael@kernel.org>
-To: Daniel Lezcano <daniel.lezcano@kernel.org>
-To: Zhang Rui <rui.zhang@intel.com>
-To: Lukasz Luba <lukasz.luba@arm.com>
-Cc: linux-pm@vger.kernel.org
-Cc: linux-omap@vger.kernel.org
+To: Lee Jones <lee@kernel.org>
+To: Pavel Machek <pavel@kernel.org>
+Cc: linux-leds@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org
 Signed-off-by: Philipp Hahn <phahn-oss@avm.de>
 ---
- drivers/thermal/ti-soc-thermal/ti-thermal-common.c | 2 +-
+ drivers/leds/trigger/ledtrig-tty.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/thermal/ti-soc-thermal/ti-thermal-common.c b/drivers/thermal/ti-soc-thermal/ti-thermal-common.c
-index 0cf0826b805a998abd0d4e2cfa6938de8a46c4f0..9218417e6d923ec370e032f5b91f9a839fd293f4 100644
---- a/drivers/thermal/ti-soc-thermal/ti-thermal-common.c
-+++ b/drivers/thermal/ti-soc-thermal/ti-thermal-common.c
-@@ -228,7 +228,7 @@ int ti_thermal_register_cpu_cooling(struct ti_bandgap *bgp, int id)
- 		return 0;
+diff --git a/drivers/leds/trigger/ledtrig-tty.c b/drivers/leds/trigger/ledtrig-tty.c
+index 8eb6286b33ac3cdcbb72ed9ad5ad7105e15d20b6..3725571144d910b225ca9605771fc0f0c8355efd 100644
+--- a/drivers/leds/trigger/ledtrig-tty.c
++++ b/drivers/leds/trigger/ledtrig-tty.c
+@@ -220,7 +220,7 @@ static void ledtrig_tty_work(struct work_struct *work)
+ 			goto out;
  
- 	data = ti_bandgap_get_sensor_data(bgp, id);
--	if (!data || IS_ERR(data))
-+	if (IS_ERR_OR_NULL(data))
- 		data = ti_thermal_build_data(bgp, id);
+ 		tty = tty_kopen_shared(devno);
+-		if (IS_ERR(tty) || !tty)
++		if (IS_ERR_OR_NULL(tty))
+ 			/* What to do? retry or abort */
+ 			goto out;
  
- 	if (!data)
 
 -- 
 2.43.0
