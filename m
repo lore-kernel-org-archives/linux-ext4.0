@@ -1,38 +1,38 @@
-Received: from mail.avm.de (mail.avm.de [212.42.244.119])
+Received: from mail.avm.de (mail.avm.de [212.42.244.94])
 	(using TLSv1.2 with cipher DHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E49C5423A6C;
-	Tue, 10 Mar 2026 11:55:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.42.244.119
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 648A748AE17;
+	Tue, 10 Mar 2026 11:55:51 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.42.244.94
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773143760; cv=none; b=Zd5DGMHMmczVV9z+KnJCGW8zwq0fmzrV7jkdlXNEMJyBu0eMezpcPTsuK4ZZ22p2l3XMatNB/i/5I5/HjOWGXIvp13sGCsGAybOBHpNynrZjlu1mdRGOpcgwk7H9qj4wxMxfX328PFuWrpNDu5ZGGBwJxB6kfSwxfeqz1YxHi/o=
+	t=1773143761; cv=none; b=o79lAOcX2bBYkNF2Hsu4LCfckEu516HYBRtKzqd4xyW0xxKZWHmJSjQi6BoEIPi8LEeRKWGE1oxSIkMPKjyEnS+m6VR1xLR5rAydHXO/wxMIsae+tv1Gohz4bbfo80gUE3PJWQzBxrkrtKBSQEYWFoj7L27pYd97QDsYVsmB3NY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773143760; c=relaxed/simple;
-	bh=Ch69HE8buqP46euP+YYFTxXSo2whzs/OaZa7KOXrnvQ=;
+	s=arc-20240116; t=1773143761; c=relaxed/simple;
+	bh=tuKkFaje3/67N7+EgH43toSki2nfSyvowNLdXGdESEg=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=ZouGKRW8zEH2kLucSXcIb0vB9ZEhTZqnNP8yauBiicItzUPAwbI6XF+NZ4ijaCjwWh/snSVSyVHCSi144yJuD/5YfXNin+9ry1XVCXdYEr3ZHdQuTI268/hy22WH7gYcF9QWlSLc+k3hF74KvI9jb0P9BHI5MX2IHxKUpOvsmog=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b=cflriKS/; arc=none smtp.client-ip=212.42.244.119
+	 In-Reply-To:To:Cc; b=TL/iaxoLGcy0Cf893oaAyptu1VCr8tXZI4KNt4p4zMDCEcalk07gMaiscRcDo8GsjcLHM58fp59FDvwmZxA/DiHTaPZWpyIfNPNzJjcQVNqxSMNQBuwhvqlHvk2Clfbyvb+KV9Zd8Ob3puxN1v3bL5/FC16zar+i/bboCZ66aMU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b=r+Bm3oJS; arc=none smtp.client-ip=212.42.244.94
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=avm.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b="cflriKS/"
+	dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b="r+Bm3oJS"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=avm.de; s=mail;
-	t=1773143726; bh=Ch69HE8buqP46euP+YYFTxXSo2whzs/OaZa7KOXrnvQ=;
+	t=1773143727; bh=tuKkFaje3/67N7+EgH43toSki2nfSyvowNLdXGdESEg=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=cflriKS/Uv58AGT33/uwNkwB7J2sdEXakW9Rj3yjFGXI+RI4a366cceElHliZyuuJ
-	 mPSZ4TFmYIg3AF1ANgH8AJ4fIbLOCMfBhLuXzJMYqTbevJEc4r+piLw+nWaz0hy5uE
-	 Y9GvHMtmRIkJRf4y+wtLqshG0kOCxTBOOJdztUGI=
-Received: from [212.42.244.71] (helo=mail.avm.de)
+	b=r+Bm3oJS8/+32ZYGJ4UVxlrt7f9UtpWnT+67BiHxtliz59uxMI5sUh7+OdyJZrU84
+	 oJKKVCJPxENp4cyPplGnJOyhV2Rya3i4aDtjbyK8DFhZzMmI64bq0RbYNiKKndHNeg
+	 obwacGvLiuG6y1WbSPM0lPtBbQUvyegsd7ixN734=
+Received: from [2001:bf0:244:244::71] (helo=mail.avm.de)
 	by mail.avm.de with ESMTP (eXpurgate 4.55.2)
 	(envelope-from <phahn-oss@avm.de>)
-	id 69b006ad-2367-7f0000032729-7f000001c97a-1
-	for <multiple-recipients>; Tue, 10 Mar 2026 12:55:26 +0100
-Received: from mail-auth.avm.de (dovecot-mx-01.avm.de [212.42.244.71])
+	id 69b006af-e21d-7f0000032729-7f000001ba70-1
+	for <multiple-recipients>; Tue, 10 Mar 2026 12:55:27 +0100
+Received: from mail-auth.avm.de (dovecot-mx-01.avm.de [IPv6:2001:bf0:244:244::71])
 	by mail.avm.de (Postfix) with ESMTPS;
-	Tue, 10 Mar 2026 12:55:25 +0100 (CET)
+	Tue, 10 Mar 2026 12:55:27 +0100 (CET)
 From: Philipp Hahn <phahn-oss@avm.de>
-Date: Tue, 10 Mar 2026 12:48:58 +0100
-Subject: [PATCH 32/61] net/wireless: Prefer IS_ERR_OR_NULL over manual NULL
+Date: Tue, 10 Mar 2026 12:49:08 +0100
+Subject: [PATCH 42/61] pmdomain: Prefer IS_ERR_OR_NULL over manual NULL
  check
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -42,7 +42,7 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260310-b4-is_err_or_null-v1-32-bd63b656022d@avm.de>
+Message-Id: <20260310-b4-is_err_or_null-v1-42-bd63b656022d@avm.de>
 References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 In-Reply-To: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com, 
@@ -72,21 +72,21 @@ To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com,
  sched-ext@lists.linux.dev, target-devel@vger.kernel.org, 
  tipc-discussion@lists.sourceforge.net, v9fs@lists.linux.dev, 
  Philipp Hahn <phahn-oss@avm.de>
-Cc: Johannes Berg <johannes@sipsolutions.net>
-X-Developer-Signature: v=1; a=openpgp-sha256; l=917; i=phahn-oss@avm.de;
- h=from:subject:message-id; bh=Ch69HE8buqP46euP+YYFTxXSo2whzs/OaZa7KOXrnvQ=;
- b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAZCB6VtswQFIkNrtK394BinlB0uxLllvDTnj
- z6f33li4q+JATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAGQgAKCRA0LQZT0ays
- 29wzCAChPFrcW+FfvZBVjABe7F29XZ5724a8XRQE85Iu6UGQCVTrGSBLyo8jXYsg5J3peaPVeKT
- KKhoEQfBVKbt6EAaScrTEpLi3KNOnd86Q8Wna7PddPHX6e15k2MlGUGDjd2Bw64F5NdG8ERAjc6
- DA0lCDlLGGjTu5XPxTGz5ABOwv4DjK6Yeb1iOXElewR1+d8c0JuR13TfzCtZK7b2pKqoZzkmtsk
- 88UMWo9/5GiOCX9lUMyP/7qRCJPVDMHslX+kZfg6K27OVxqrHU+QQ1K66P5yscc52ULdw9obFw9
- w1Ny2/RuJ7C5Uaac1egGmoDY7u2Te8bNEht0/tO/Xq6O2NMq
+Cc: Ulf Hansson <ulf.hansson@linaro.org>, Heiko Stuebner <heiko@sntech.de>
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1155; i=phahn-oss@avm.de;
+ h=from:subject:message-id; bh=tuKkFaje3/67N7+EgH43toSki2nfSyvowNLdXGdESEg=;
+ b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAZkDlGRZW4plkDdO/q/5zI0Z5Mh3aiEDX5Kr
+ HkD8tDHTjSJATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAGZAAKCRA0LQZT0ays
+ 22gFCACOZ3xbUn7DVys9f0zhKrFg1046b9jGtTeftFIaZ4sDTERX+NnuADwMWlcQi8MAEiX00cR
+ w7aw6Pu5UwlIY4a//xAXQOD0Vq3vR2NLs/mYfOXBEyx8uBUm6hnHex2/TV3VaisJJ0c/nDfxiVS
+ PU0p02U0cgmDRMbp/b1fSLFHzNrm+hO/7LNRD9bLaqTjGpZUScyufroKDOn5G4AkEBqNVNB17jO
+ VAtR0IXhgFW2Uuc0XEKCg+KHshTFKSAPvKPonnlie/OWxc6MLfJtX+Szyr9D2UStWTYIluWdysV
+ 1svYEoMi2X+1/dEnsAW5QR9/oHEWtkGT2aoEyJlhPvAZyp4m
 X-Developer-Key: i=phahn-oss@avm.de; a=openpgp;
  fpr=58AF7C2E007CDBE62C59E078F50EFDCF8AD04B1A
-X-purgate-ID: 149429::1773143726-964B0E1F-7D6D0A0A/0/0
+X-purgate-ID: 149429::1773143727-E2654F2F-96715D38/0/0
 X-purgate-type: clean
-X-purgate-size: 919
+X-purgate-size: 1157
 X-purgate-Ad: Categorized by eleven eXpurgate (R) https://www.eleven.de
 X-purgate: This mail is considered clean (visit https://www.eleven.de for further information)
 X-purgate: clean
@@ -96,27 +96,30 @@ check.
 
 Change generated with coccinelle.
 
-To: Johannes Berg <johannes@sipsolutions.net>
-Cc: linux-wireless@vger.kernel.org
+To: Ulf Hansson <ulf.hansson@linaro.org>
+To: Heiko Stuebner <heiko@sntech.de>
+Cc: linux-pm@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-rockchip@lists.infradead.org
 Cc: linux-kernel@vger.kernel.org
 Signed-off-by: Philipp Hahn <phahn-oss@avm.de>
 ---
- net/wireless/reg.c | 2 +-
+ drivers/pmdomain/rockchip/pm-domains.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/wireless/reg.c b/net/wireless/reg.c
-index 1c5c38d18febd511285bc4aab93a60b4287dc054..222764a151ea25bec6179dbaffa87f34fdbf8da6 100644
---- a/net/wireless/reg.c
-+++ b/net/wireless/reg.c
-@@ -1014,7 +1014,7 @@ static void regdb_fw_cb(const struct firmware *fw, void *context)
+diff --git a/drivers/pmdomain/rockchip/pm-domains.c b/drivers/pmdomain/rockchip/pm-domains.c
+index 44d34840ede7a8f483930044c96042dda9290809..4352aa40298a3bcfde90811258bac20a86068c10 100644
+--- a/drivers/pmdomain/rockchip/pm-domains.c
++++ b/drivers/pmdomain/rockchip/pm-domains.c
+@@ -746,7 +746,7 @@ static int rockchip_pd_attach_dev(struct generic_pm_domain *genpd,
  	}
  
- 	rtnl_lock();
--	if (regdb && !IS_ERR(regdb)) {
-+	if (!IS_ERR_OR_NULL(regdb)) {
- 		/* negative case - a bug
- 		 * positive case - can happen due to race in case of multiple cb's in
- 		 * queue, due to usage of asynchronous callback
+ 	i = 0;
+-	while ((clk = of_clk_get(dev->of_node, i++)) && !IS_ERR(clk)) {
++	while (!IS_ERR_OR_NULL((clk = of_clk_get(dev->of_node, i++)))) {
+ 		dev_dbg(dev, "adding clock '%pC' to list of PM clocks\n", clk);
+ 		error = pm_clk_add_clk(dev, clk);
+ 		if (error) {
 
 -- 
 2.43.0
