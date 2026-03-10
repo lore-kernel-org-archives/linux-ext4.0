@@ -1,36 +1,36 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A64243B9DB9
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A63373B9DB7
 	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2026 13:05:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773147961; cv=none; b=VAufaBs50GipEjyfMZ2dSNoheibDWe5ZC0EAaRxHn7oeUS0RhPLi1gB+8g99NIm7O+Uis3Y1obTeKVJ/DnNZqGFvQFImaH3p/zfFcQD31pyuplcWdOB5eL23M5CNK9oimhWoCaIAu8UjCBphbUVgA5k+R7QcSPJ1hfFJEedrudY=
+	t=1773147962; cv=none; b=HB5rWbDtsnRPz0zo3VCLoXqtVeb02ZCjVn8hWMs1dIgv86ULJNzVTECLnPq4jMpYXUbgQUJ66biSyuSVaF//o3NvO+H1T2bVglVK1CvJsLiz6Vv/e/AG0SmhjyBaye0lqz2Z1dMIyv4XOn64dYmFLBM46YYb2h2w1lyO/FC+pGY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773147961; c=relaxed/simple;
-	bh=sO5GQFXB/MZI87UyW8bvsLGXCYs9YkbphXk8l8UhURk=;
+	s=arc-20240116; t=1773147962; c=relaxed/simple;
+	bh=D89zo2MNvGlZnd4KFWMq7kq+Acadbxg0c0e8BNDI/aQ=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=H+8fFcjT6lEWypef7v4FrxEp7rTggow+B4UFc9XHC9dFL/CmDbTmrAxnIzOGqzTIWMvgxqekwm8qATaEBvfYfJZDs118+D6lUJdm2uaGS4l8tP7Xc/MnyNk75eFmL+1eu64NQTrzdDOzV5kw+A8nLKhohiGXvFXoKjwhejjh+r4=
+	 MIME-Version; b=BFHTPHLR84LJU5LNTO9AMl+C/nSvz+IybEXWOlbBNQefsWK6vKz/8cJKP2EpER8hKavts3ZGi0U+HzIRIH1GUWRvhNOgKCm5OGNIhhlWE51JvGuz9p9lYRdnPJbWEZoVcNrslADX7ECt+2JmiwkHWdzTKBElooKqOnZyctLNw6c=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4fVYyG5qRxzYQv6l
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2026 21:05:10 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4fVYyH0ZqhzYQv9Q
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2026 21:05:11 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 934A34056E
+	by mail.maildlp.com (Postfix) with ESMTP id D5C4F4056D
 	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2026 21:05:56 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.132])
-	by APP4 (Coremail) with SMTP id gCh0CgCHYUwxF7BpaX6fAQ--.37695S5;
-	Tue, 10 Mar 2026 21:05:54 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgCHYUwxF7BpaX6fAQ--.37695S12;
+	Tue, 10 Mar 2026 21:05:56 +0800 (CST)
 From: Ye Bin <yebin@huaweicloud.com>
 To: tytso@mit.edu,
 	adilger.kernel@dilger.ca,
 	linux-ext4@vger.kernel.org
 Cc: jack@suse.cz
-Subject: [PATCH -next 1/8] ext4: fix mballoc-test.c is not compiled when EXT4_KUNIT_TESTS=M
-Date: Tue, 10 Mar 2026 21:04:05 +0800
-Message-Id: <20260310130412.3156753-2-yebin@huaweicloud.com>
+Subject: [PATCH -next 8/8] ext4: fix possible null-ptr-deref in mbt_kunit_exit()
+Date: Tue, 10 Mar 2026 21:04:12 +0800
+Message-Id: <20260310130412.3156753-9-yebin@huaweicloud.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20260310130412.3156753-1-yebin@huaweicloud.com>
 References: <20260310130412.3156753-1-yebin@huaweicloud.com>
@@ -41,525 +41,80 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCHYUwxF7BpaX6fAQ--.37695S5
-X-Coremail-Antispam: 1UD129KBjvAXoW3Cw48uw4kZr4rXFyfGr4xCrg_yoW8CF4xWo
-	WIyF12qw48urWjqFW8CrW3J34Duw4kKay3Gr4rurZ8WrW2yr1YvF12kwsIqw17Gw40kFyI
-	vasxXa43Ar4kCrZ3n29KB7ZKAUJUUUU8529EdanIXcx71UUUUU7v73VFW2AGmfu7bjvjm3
-	AaLaJ3UjIYCTnIWjp_UUUYf7kC6x804xWl14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK
-	8VAvwI8IcIk0rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jr
-	4l82xGYIkIc2x26xkF7I0E14v26r1Y6r1xM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48v
-	e4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI
-	0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AK
-	xVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ew
-	Av7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY
-	6r1j6r4UM4x0Y48IcxkI7VAKI48JMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r
-	1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CE
-	b7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0x
-	vE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAI
-	cVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2Kf
-	nxnUUI43ZEXa7IU14CJJUUUUU==
+X-CM-TRANSID:gCh0CgCHYUwxF7BpaX6fAQ--.37695S12
+X-Coremail-Antispam: 1UD129KBjvJXoW7ur4rXry3JF48Zw47Gr1UAwb_yoW8WFy8p3
+	98CFyYgrW8ur1qyw47tryDAryIgws29F4UJryxC3WavFZxCryrAFn5KFyYqFW8uFW8Xa95
+	ZF1jq34qgr1fAaUanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvEb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
+	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
+	rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267
+	AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E
+	14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7
+	xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Y
+	z7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7
+	v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF
+	1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_JFI_Gr1lIx
+	AIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI
+	42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWI
+	evJa73UjIFyTuYvjxUFgAwUUUUU
 X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 
 From: Ye Bin <yebin10@huawei.com>
 
-Now, only EXT4_KUNIT_TESTS=Y testcase will be compiled in 'mballoc.c'.
-To solve this issue, the ext4 test code needs to be decoupled. The ext4
-test module is compiled into a separate module.
+There's issue as follows:
+    # test_new_blocks_simple: failed to initialize: -12
+KASAN: null-ptr-deref in range [0x0000000000000638-0x000000000000063f]
+Tainted: [E]=UNSIGNED_MODULE, [N]=TEST
+RIP: 0010:mbt_kunit_exit+0x5e/0x3e0 [ext4_test]
+Call Trace:
+ <TASK>
+ kunit_try_run_case_cleanup+0xbc/0x100 [kunit]
+ kunit_generic_run_threadfn_adapter+0x89/0x100 [kunit]
+ kthread+0x408/0x540
+ ret_from_fork+0xa76/0xdf0
+ ret_from_fork_asm+0x1a/0x30
 
-Reported-by: ChenXiaoSong <chenxiaosong@kylinos.cn>
-Closes: https://patchwork.kernel.org/project/cifs-client/patch/20260118091313.1988168-2-chenxiaosong.chenxiaosong@linux.dev/
+If mbt_kunit_init() init testcase failed will lead to null-ptr-deref.
+So add test if 'sb' is inited success in mbt_kunit_exit().
+
 Fixes: 7c9fa399a369 ("ext4: add first unit test for ext4_mb_new_blocks_simple in mballoc")
 Signed-off-by: Ye Bin <yebin10@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/Makefile       |   4 +-
- fs/ext4/mballoc-test.c |  81 +++++++++++++++----------------
- fs/ext4/mballoc.c      | 105 +++++++++++++++++++++++++++++++++++++++--
- fs/ext4/mballoc.h      |  30 ++++++++++++
- 4 files changed, 175 insertions(+), 45 deletions(-)
+ fs/ext4/mballoc-test.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index 72206a292676..d836c3fe311b 100644
---- a/fs/ext4/Makefile
-+++ b/fs/ext4/Makefile
-@@ -14,7 +14,7 @@ ext4-y	:= balloc.o bitmap.o block_validity.o dir.o ext4_jbd2.o extents.o \
- 
- ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
- ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
--ext4-inode-test-objs			+= inode-test.o
--obj-$(CONFIG_EXT4_KUNIT_TESTS)		+= ext4-inode-test.o
-+ext4-test-objs				+= inode-test.o mballoc-test.o
-+obj-$(CONFIG_EXT4_KUNIT_TESTS)		+= ext4-test.o
- ext4-$(CONFIG_FS_VERITY)		+= verity.o
- ext4-$(CONFIG_FS_ENCRYPTION)		+= crypto.o
 diff --git a/fs/ext4/mballoc-test.c b/fs/ext4/mballoc-test.c
-index b9f22e3a8d5c..c75b91ae0cf0 100644
+index c75b91ae0cf0..90ed505fa4b1 100644
 --- a/fs/ext4/mballoc-test.c
 +++ b/fs/ext4/mballoc-test.c
-@@ -8,6 +8,7 @@
- #include <linux/random.h>
+@@ -362,7 +362,6 @@ static int mbt_kunit_init(struct kunit *test)
+ 		return ret;
+ 	}
  
- #include "ext4.h"
-+#include "mballoc.h"
+-	test->priv = sb;
+ 	kunit_activate_static_stub(test,
+ 				   ext4_read_block_bitmap_nowait,
+ 				   ext4_read_block_bitmap_nowait_stub);
+@@ -383,6 +382,8 @@ static int mbt_kunit_init(struct kunit *test)
+ 		return -ENOMEM;
+ 	}
  
- struct mbt_grp_ctx {
- 	struct buffer_head bitmap_bh;
-@@ -336,7 +337,7 @@ ext4_mb_mark_context_stub(handle_t *handle, struct super_block *sb, bool state,
- 	if (state)
- 		mb_set_bits(bitmap_bh->b_data, blkoff, len);
- 	else
--		mb_clear_bits(bitmap_bh->b_data, blkoff, len);
-+		mb_clear_bits_test(bitmap_bh->b_data, blkoff, len);
- 
++	test->priv = sb;
++
  	return 0;
  }
-@@ -413,14 +414,14 @@ static void test_new_blocks_simple(struct kunit *test)
  
- 	/* get block at goal */
- 	ar.goal = ext4_group_first_block_no(sb, goal_group);
--	found = ext4_mb_new_blocks_simple(&ar, &err);
-+	found = ext4_mb_new_blocks_simple_test(&ar, &err);
- 	KUNIT_ASSERT_EQ_MSG(test, ar.goal, found,
- 		"failed to alloc block at goal, expected %llu found %llu",
- 		ar.goal, found);
+@@ -390,6 +391,9 @@ static void mbt_kunit_exit(struct kunit *test)
+ {
+ 	struct super_block *sb = (struct super_block *)test->priv;
  
- 	/* get block after goal in goal group */
- 	ar.goal = ext4_group_first_block_no(sb, goal_group);
--	found = ext4_mb_new_blocks_simple(&ar, &err);
-+	found = ext4_mb_new_blocks_simple_test(&ar, &err);
- 	KUNIT_ASSERT_EQ_MSG(test, ar.goal + EXT4_C2B(sbi, 1), found,
- 		"failed to alloc block after goal in goal group, expected %llu found %llu",
- 		ar.goal + 1, found);
-@@ -428,7 +429,7 @@ static void test_new_blocks_simple(struct kunit *test)
- 	/* get block after goal group */
- 	mbt_ctx_mark_used(sb, goal_group, 0, EXT4_CLUSTERS_PER_GROUP(sb));
- 	ar.goal = ext4_group_first_block_no(sb, goal_group);
--	found = ext4_mb_new_blocks_simple(&ar, &err);
-+	found = ext4_mb_new_blocks_simple_test(&ar, &err);
- 	KUNIT_ASSERT_EQ_MSG(test,
- 		ext4_group_first_block_no(sb, goal_group + 1), found,
- 		"failed to alloc block after goal group, expected %llu found %llu",
-@@ -438,7 +439,7 @@ static void test_new_blocks_simple(struct kunit *test)
- 	for (i = goal_group; i < ext4_get_groups_count(sb); i++)
- 		mbt_ctx_mark_used(sb, i, 0, EXT4_CLUSTERS_PER_GROUP(sb));
- 	ar.goal = ext4_group_first_block_no(sb, goal_group);
--	found = ext4_mb_new_blocks_simple(&ar, &err);
-+	found = ext4_mb_new_blocks_simple_test(&ar, &err);
- 	KUNIT_ASSERT_EQ_MSG(test,
- 		ext4_group_first_block_no(sb, 0) + EXT4_C2B(sbi, 1), found,
- 		"failed to alloc block before goal group, expected %llu found %llu",
-@@ -448,7 +449,7 @@ static void test_new_blocks_simple(struct kunit *test)
- 	for (i = 0; i < ext4_get_groups_count(sb); i++)
- 		mbt_ctx_mark_used(sb, i, 0, EXT4_CLUSTERS_PER_GROUP(sb));
- 	ar.goal = ext4_group_first_block_no(sb, goal_group);
--	found = ext4_mb_new_blocks_simple(&ar, &err);
-+	found = ext4_mb_new_blocks_simple_test(&ar, &err);
- 	KUNIT_ASSERT_NE_MSG(test, err, 0,
- 		"unexpectedly get block when no block is available");
- }
-@@ -492,16 +493,16 @@ validate_free_blocks_simple(struct kunit *test, struct super_block *sb,
- 			continue;
- 
- 		bitmap = mbt_ctx_bitmap(sb, i);
--		bit = mb_find_next_zero_bit(bitmap, max, 0);
-+		bit = mb_find_next_zero_bit_test(bitmap, max, 0);
- 		KUNIT_ASSERT_EQ_MSG(test, bit, max,
- 				    "free block on unexpected group %d", i);
- 	}
- 
- 	bitmap = mbt_ctx_bitmap(sb, goal_group);
--	bit = mb_find_next_zero_bit(bitmap, max, 0);
-+	bit = mb_find_next_zero_bit_test(bitmap, max, 0);
- 	KUNIT_ASSERT_EQ(test, bit, start);
- 
--	bit = mb_find_next_bit(bitmap, max, bit + 1);
-+	bit = mb_find_next_bit_test(bitmap, max, bit + 1);
- 	KUNIT_ASSERT_EQ(test, bit, start + len);
- }
- 
-@@ -524,7 +525,7 @@ test_free_blocks_simple_range(struct kunit *test, ext4_group_t goal_group,
- 
- 	block = ext4_group_first_block_no(sb, goal_group) +
- 		EXT4_C2B(sbi, start);
--	ext4_free_blocks_simple(inode, block, len);
-+	ext4_free_blocks_simple_test(inode, block, len);
- 	validate_free_blocks_simple(test, sb, goal_group, start, len);
- 	mbt_ctx_mark_used(sb, goal_group, 0, EXT4_CLUSTERS_PER_GROUP(sb));
- }
-@@ -566,15 +567,15 @@ test_mark_diskspace_used_range(struct kunit *test,
- 
- 	bitmap = mbt_ctx_bitmap(sb, TEST_GOAL_GROUP);
- 	memset(bitmap, 0, sb->s_blocksize);
--	ret = ext4_mb_mark_diskspace_used(ac, NULL);
-+	ret = ext4_mb_mark_diskspace_used_test(ac, NULL);
- 	KUNIT_ASSERT_EQ(test, ret, 0);
- 
- 	max = EXT4_CLUSTERS_PER_GROUP(sb);
--	i = mb_find_next_bit(bitmap, max, 0);
-+	i = mb_find_next_bit_test(bitmap, max, 0);
- 	KUNIT_ASSERT_EQ(test, i, start);
--	i = mb_find_next_zero_bit(bitmap, max, i + 1);
-+	i = mb_find_next_zero_bit_test(bitmap, max, i + 1);
- 	KUNIT_ASSERT_EQ(test, i, start + len);
--	i = mb_find_next_bit(bitmap, max, i + 1);
-+	i = mb_find_next_bit_test(bitmap, max, i + 1);
- 	KUNIT_ASSERT_EQ(test, max, i);
- }
- 
-@@ -617,54 +618,54 @@ static void mbt_generate_buddy(struct super_block *sb, void *buddy,
- 	max = EXT4_CLUSTERS_PER_GROUP(sb);
- 	bb_h = buddy + sbi->s_mb_offsets[1];
- 
--	off = mb_find_next_zero_bit(bb, max, 0);
-+	off = mb_find_next_zero_bit_test(bb, max, 0);
- 	grp->bb_first_free = off;
- 	while (off < max) {
- 		grp->bb_counters[0]++;
- 		grp->bb_free++;
- 
--		if (!(off & 1) && !mb_test_bit(off + 1, bb)) {
-+		if (!(off & 1) && !mb_test_bit_test(off + 1, bb)) {
- 			grp->bb_free++;
- 			grp->bb_counters[0]--;
--			mb_clear_bit(off >> 1, bb_h);
-+			mb_clear_bit_test(off >> 1, bb_h);
- 			grp->bb_counters[1]++;
- 			grp->bb_largest_free_order = 1;
- 			off++;
- 		}
- 
--		off = mb_find_next_zero_bit(bb, max, off + 1);
-+		off = mb_find_next_zero_bit_test(bb, max, off + 1);
- 	}
- 
- 	for (order = 1; order < MB_NUM_ORDERS(sb) - 1; order++) {
- 		bb = buddy + sbi->s_mb_offsets[order];
- 		bb_h = buddy + sbi->s_mb_offsets[order + 1];
- 		max = max >> 1;
--		off = mb_find_next_zero_bit(bb, max, 0);
-+		off = mb_find_next_zero_bit_test(bb, max, 0);
- 
- 		while (off < max) {
--			if (!(off & 1) && !mb_test_bit(off + 1, bb)) {
-+			if (!(off & 1) && !mb_test_bit_test(off + 1, bb)) {
- 				mb_set_bits(bb, off, 2);
- 				grp->bb_counters[order] -= 2;
--				mb_clear_bit(off >> 1, bb_h);
-+				mb_clear_bit_test(off >> 1, bb_h);
- 				grp->bb_counters[order + 1]++;
- 				grp->bb_largest_free_order = order + 1;
- 				off++;
- 			}
- 
--			off = mb_find_next_zero_bit(bb, max, off + 1);
-+			off = mb_find_next_zero_bit_test(bb, max, off + 1);
- 		}
- 	}
- 
- 	max = EXT4_CLUSTERS_PER_GROUP(sb);
--	off = mb_find_next_zero_bit(bitmap, max, 0);
-+	off = mb_find_next_zero_bit_test(bitmap, max, 0);
- 	while (off < max) {
- 		grp->bb_fragments++;
- 
--		off = mb_find_next_bit(bitmap, max, off + 1);
-+		off = mb_find_next_bit_test(bitmap, max, off + 1);
- 		if (off + 1 >= max)
- 			break;
- 
--		off = mb_find_next_zero_bit(bitmap, max, off + 1);
-+		off = mb_find_next_zero_bit_test(bitmap, max, off + 1);
- 	}
- }
- 
-@@ -706,7 +707,7 @@ do_test_generate_buddy(struct kunit *test, struct super_block *sb, void *bitmap,
- 	/* needed by validation in ext4_mb_generate_buddy */
- 	ext4_grp->bb_free = mbt_grp->bb_free;
- 	memset(ext4_buddy, 0xff, sb->s_blocksize);
--	ext4_mb_generate_buddy(sb, ext4_buddy, bitmap, TEST_GOAL_GROUP,
-+	ext4_mb_generate_buddy_test(sb, ext4_buddy, bitmap, TEST_GOAL_GROUP,
- 			       ext4_grp);
- 
- 	KUNIT_ASSERT_EQ(test, memcmp(mbt_buddy, ext4_buddy, sb->s_blocksize),
-@@ -760,7 +761,7 @@ test_mb_mark_used_range(struct kunit *test, struct ext4_buddy *e4b,
- 	ex.fe_group = TEST_GOAL_GROUP;
- 
- 	ext4_lock_group(sb, TEST_GOAL_GROUP);
--	mb_mark_used(e4b, &ex);
-+	mb_mark_used_test(e4b, &ex);
- 	ext4_unlock_group(sb, TEST_GOAL_GROUP);
- 
- 	mb_set_bits(bitmap, start, len);
-@@ -769,7 +770,7 @@ test_mb_mark_used_range(struct kunit *test, struct ext4_buddy *e4b,
- 	memset(buddy, 0xff, sb->s_blocksize);
- 	for (i = 0; i < MB_NUM_ORDERS(sb); i++)
- 		grp->bb_counters[i] = 0;
--	ext4_mb_generate_buddy(sb, buddy, bitmap, 0, grp);
-+	ext4_mb_generate_buddy_test(sb, buddy, bitmap, 0, grp);
- 
- 	KUNIT_ASSERT_EQ(test, memcmp(buddy, e4b->bd_buddy, sb->s_blocksize),
- 			0);
-@@ -798,7 +799,7 @@ static void test_mb_mark_used(struct kunit *test)
- 				bb_counters[MB_NUM_ORDERS(sb)]), GFP_KERNEL);
- 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, grp);
- 
--	ret = ext4_mb_load_buddy(sb, TEST_GOAL_GROUP, &e4b);
-+	ret = ext4_mb_load_buddy_test(sb, TEST_GOAL_GROUP, &e4b);
- 	KUNIT_ASSERT_EQ(test, ret, 0);
- 
- 	grp->bb_free = EXT4_CLUSTERS_PER_GROUP(sb);
-@@ -809,7 +810,7 @@ static void test_mb_mark_used(struct kunit *test)
- 		test_mb_mark_used_range(test, &e4b, ranges[i].start,
- 					ranges[i].len, bitmap, buddy, grp);
- 
--	ext4_mb_unload_buddy(&e4b);
-+	ext4_mb_unload_buddy_test(&e4b);
- }
- 
- static void
-@@ -825,16 +826,16 @@ test_mb_free_blocks_range(struct kunit *test, struct ext4_buddy *e4b,
- 		return;
- 
- 	ext4_lock_group(sb, e4b->bd_group);
--	mb_free_blocks(NULL, e4b, start, len);
-+	mb_free_blocks_test(NULL, e4b, start, len);
- 	ext4_unlock_group(sb, e4b->bd_group);
- 
--	mb_clear_bits(bitmap, start, len);
-+	mb_clear_bits_test(bitmap, start, len);
- 	/* bypass bb_free validatoin in ext4_mb_generate_buddy */
- 	grp->bb_free += len;
- 	memset(buddy, 0xff, sb->s_blocksize);
- 	for (i = 0; i < MB_NUM_ORDERS(sb); i++)
- 		grp->bb_counters[i] = 0;
--	ext4_mb_generate_buddy(sb, buddy, bitmap, 0, grp);
-+	ext4_mb_generate_buddy_test(sb, buddy, bitmap, 0, grp);
- 
- 	KUNIT_ASSERT_EQ(test, memcmp(buddy, e4b->bd_buddy, sb->s_blocksize),
- 			0);
-@@ -865,7 +866,7 @@ static void test_mb_free_blocks(struct kunit *test)
- 				bb_counters[MB_NUM_ORDERS(sb)]), GFP_KERNEL);
- 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, grp);
- 
--	ret = ext4_mb_load_buddy(sb, TEST_GOAL_GROUP, &e4b);
-+	ret = ext4_mb_load_buddy_test(sb, TEST_GOAL_GROUP, &e4b);
- 	KUNIT_ASSERT_EQ(test, ret, 0);
- 
- 	ex.fe_start = 0;
-@@ -873,7 +874,7 @@ static void test_mb_free_blocks(struct kunit *test)
- 	ex.fe_group = TEST_GOAL_GROUP;
- 
- 	ext4_lock_group(sb, TEST_GOAL_GROUP);
--	mb_mark_used(&e4b, &ex);
-+	mb_mark_used_test(&e4b, &ex);
- 	ext4_unlock_group(sb, TEST_GOAL_GROUP);
- 
- 	grp->bb_free = 0;
-@@ -886,7 +887,7 @@ static void test_mb_free_blocks(struct kunit *test)
- 		test_mb_free_blocks_range(test, &e4b, ranges[i].start,
- 					  ranges[i].len, bitmap, buddy, grp);
- 
--	ext4_mb_unload_buddy(&e4b);
-+	ext4_mb_unload_buddy_test(&e4b);
- }
- 
- #define COUNT_FOR_ESTIMATE 100000
-@@ -904,7 +905,7 @@ static void test_mb_mark_used_cost(struct kunit *test)
- 	if (sb->s_blocksize > PAGE_SIZE)
- 		kunit_skip(test, "blocksize exceeds pagesize");
- 
--	ret = ext4_mb_load_buddy(sb, TEST_GOAL_GROUP, &e4b);
-+	ret = ext4_mb_load_buddy_test(sb, TEST_GOAL_GROUP, &e4b);
- 	KUNIT_ASSERT_EQ(test, ret, 0);
- 
- 	ex.fe_group = TEST_GOAL_GROUP;
-@@ -918,7 +919,7 @@ static void test_mb_mark_used_cost(struct kunit *test)
- 			ex.fe_start = ranges[i].start;
- 			ex.fe_len = ranges[i].len;
- 			ext4_lock_group(sb, TEST_GOAL_GROUP);
--			mb_mark_used(&e4b, &ex);
-+			mb_mark_used_test(&e4b, &ex);
- 			ext4_unlock_group(sb, TEST_GOAL_GROUP);
- 		}
- 		end = jiffies;
-@@ -929,14 +930,14 @@ static void test_mb_mark_used_cost(struct kunit *test)
- 				continue;
- 
- 			ext4_lock_group(sb, TEST_GOAL_GROUP);
--			mb_free_blocks(NULL, &e4b, ranges[i].start,
-+			mb_free_blocks_test(NULL, &e4b, ranges[i].start,
- 				       ranges[i].len);
- 			ext4_unlock_group(sb, TEST_GOAL_GROUP);
- 		}
- 	}
- 
- 	kunit_info(test, "costed jiffies %lu\n", all);
--	ext4_mb_unload_buddy(&e4b);
-+	ext4_mb_unload_buddy_test(&e4b);
- }
- 
- static const struct mbt_ext4_block_layout mbt_test_layouts[] = {
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index fcc55d2a00a1..842a604ae5db 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4088,7 +4088,7 @@ void ext4_exit_mballoc(void)
- 
- #define EXT4_MB_BITMAP_MARKED_CHECK 0x0001
- #define EXT4_MB_SYNC_UPDATE 0x0002
--static int
-+int
- ext4_mb_mark_context(handle_t *handle, struct super_block *sb, bool state,
- 		     ext4_group_t group, ext4_grpblk_t blkoff,
- 		     ext4_grpblk_t len, int flags, ext4_grpblk_t *ret_changed)
-@@ -7192,6 +7192,105 @@ ext4_mballoc_query_range(
- 	return error;
- }
- 
--#ifdef CONFIG_EXT4_KUNIT_TESTS
--#include "mballoc-test.c"
-+#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
-+#define EXPORT_SYMBOL_FOR_EXT4_TEST(sym) \
-+	EXPORT_SYMBOL_FOR_MODULES(sym, "ext4-test")
++	if (!sb)
++		return;
 +
-+void mb_clear_bits_test(void *bm, int cur, int len)
-+{
-+	 mb_clear_bits(bm, cur, len);
-+}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(mb_clear_bits_test);
-+
-+ext4_fsblk_t
-+ext4_mb_new_blocks_simple_test(struct ext4_allocation_request *ar,
-+			       int *errp)
-+{
-+	return ext4_mb_new_blocks_simple(ar, errp);
-+}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mb_new_blocks_simple_test);
-+
-+int mb_find_next_zero_bit_test(void *addr, int max, int start)
-+{
-+	return mb_find_next_zero_bit(addr, max, start);
-+}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(mb_find_next_zero_bit_test);
-+
-+int mb_find_next_bit_test(void *addr, int max, int start)
-+{
-+	return mb_find_next_bit(addr, max, start);
-+}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(mb_find_next_bit_test);
-+
-+void mb_clear_bit_test(int bit, void *addr)
-+{
-+	mb_clear_bit(bit, addr);
-+}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(mb_clear_bit_test);
-+
-+int mb_test_bit_test(int bit, void *addr)
-+{
-+	return mb_test_bit(bit, addr);
-+}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(mb_test_bit_test);
-+
-+int ext4_mb_mark_diskspace_used_test(struct ext4_allocation_context *ac,
-+				     handle_t *handle)
-+{
-+	return ext4_mb_mark_diskspace_used(ac, handle);
-+}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mb_mark_diskspace_used_test);
-+
-+int mb_mark_used_test(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
-+{
-+	return mb_mark_used(e4b, ex);
-+}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(mb_mark_used_test);
-+
-+void ext4_mb_generate_buddy_test(struct super_block *sb, void *buddy,
-+				 void *bitmap, ext4_group_t group,
-+				 struct ext4_group_info *grp)
-+{
-+	ext4_mb_generate_buddy(sb, buddy, bitmap, group, grp);
-+}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mb_generate_buddy_test);
-+
-+int ext4_mb_load_buddy_test(struct super_block *sb, ext4_group_t group,
-+			    struct ext4_buddy *e4b)
-+{
-+	return ext4_mb_load_buddy(sb, group, e4b);
-+}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mb_load_buddy_test);
-+
-+void ext4_mb_unload_buddy_test(struct ext4_buddy *e4b)
-+{
-+	ext4_mb_unload_buddy(e4b);
-+}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mb_unload_buddy_test);
-+
-+void mb_free_blocks_test(struct inode *inode, struct ext4_buddy *e4b,
-+			 int first, int count)
-+{
-+	mb_free_blocks(inode, e4b, first, count);
-+}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(mb_free_blocks_test);
-+
-+void ext4_free_blocks_simple_test(struct inode *inode, ext4_fsblk_t block,
-+				  unsigned long count)
-+{
-+	return ext4_free_blocks_simple(inode, block, count);
-+}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_free_blocks_simple_test);
-+
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_wait_block_bitmap);
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mb_init);
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_get_group_desc);
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_count_free_clusters);
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_get_group_info);
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_free_group_clusters_set);
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mb_release);
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_read_block_bitmap_nowait);
-+EXPORT_SYMBOL_FOR_EXT4_TEST(mb_set_bits);
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_fc_init_inode);
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mb_mark_context);
- #endif
-diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-index 15a049f05d04..b32e03e7ae8d 100644
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -270,4 +270,34 @@ ext4_mballoc_query_range(
- 	ext4_mballoc_query_range_fn	formatter,
- 	void				*priv);
- 
-+#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
-+extern void mb_clear_bits_test(void *bm, int cur, int len);
-+extern int ext4_mb_mark_context(handle_t *handle,
-+		struct super_block *sb, bool state,
-+		ext4_group_t group, ext4_grpblk_t blkoff,
-+		ext4_grpblk_t len, int flags,
-+		ext4_grpblk_t *ret_changed);
-+extern ext4_fsblk_t
-+ext4_mb_new_blocks_simple_test(struct ext4_allocation_request *ar,
-+			       int *errp);
-+extern int mb_find_next_zero_bit_test(void *addr, int max, int start);
-+extern int mb_find_next_bit_test(void *addr, int max, int start);
-+extern void mb_clear_bit_test(int bit, void *addr);
-+extern int mb_test_bit_test(int bit, void *addr);
-+extern int
-+ext4_mb_mark_diskspace_used_test(struct ext4_allocation_context *ac,
-+				 handle_t *handle);
-+extern int mb_mark_used_test(struct ext4_buddy *e4b,
-+			     struct ext4_free_extent *ex);
-+extern void ext4_mb_generate_buddy_test(struct super_block *sb,
-+		void *buddy, void *bitmap, ext4_group_t group,
-+		struct ext4_group_info *grp);
-+extern int ext4_mb_load_buddy_test(struct super_block *sb,
-+		ext4_group_t group, struct ext4_buddy *e4b);
-+extern void ext4_mb_unload_buddy_test(struct ext4_buddy *e4b);
-+extern void mb_free_blocks_test(struct inode *inode,
-+		struct ext4_buddy *e4b, int first, int count);
-+extern void ext4_free_blocks_simple_test(struct inode *inode,
-+		ext4_fsblk_t block, unsigned long count);
-+#endif
- #endif
+ 	mbt_mb_release(sb);
+ 	mbt_ctx_release(sb);
+ 	mbt_ext4_free_super_block(sb);
 -- 
 2.34.1
 
