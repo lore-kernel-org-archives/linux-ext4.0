@@ -1,241 +1,245 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Received: from mout.web.de (mout.web.de [212.227.17.12])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 589083033D1
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2026 15:26:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A5A743A7855;
+	Tue, 10 Mar 2026 15:47:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.227.17.12
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773156407; cv=none; b=DJh0AHFq/ZRDKBJHOPsJBtM4rxKBTW49jYOBbC6h6Vkdc1TONyDguRgsWIC1FvS70mN5Y8raXiG3KQNtSBEYBF5CMS1L5ap/TTxzcQZkdNi+y41WzZEcZZZSIE2cNOESWATsnsq7CMr+0cypBIuLSho74JUlG4bRBzFk4Ybk5JA=
+	t=1773157673; cv=none; b=DlxFjJ4y2tA3BLQQzXRINZ7hR9advuDjTcK2YuZY1s21SghLya3PSHkzW5B1rcEIrcOJvM8M43OwswZSVZXO/h2sTPO5/tP3bacCWDRkf6fTZt1xivbhU+r+mWN/fv8mZDRmKf1zFQu3fBwOlYR6hiEr9FAwcQXj3/3M5q2RbPo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773156407; c=relaxed/simple;
-	bh=AX0ctPz83qSLOzLpPxIYTaFxSNZV6mAVpxGRzddvK4k=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=JdRVeyD5nlStQVBowDJYQo90pCeK8E3DoAU9ms6pjZ1KlzAZPbg730NCNCQh3i5oZ40OBGQK5q/bxinvUfHwUcFc4TpXS5hVppYRosDZ91YQmD/V/cCZ65AynEHxwp8aCQNTa00gsJUEI8cZQmmcjvhCi1x12zpp3Z0XtYsZ5vs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=a/LMcL23; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=W7ASdYye; arc=none smtp.client-ip=170.10.129.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	s=arc-20240116; t=1773157673; c=relaxed/simple;
+	bh=nIfgenJGac4O6CqM8mWCtdayOts9dS1D2FhHmYYRcn4=;
+	h=Message-ID:Date:MIME-Version:To:Cc:References:Subject:From:
+	 In-Reply-To:Content-Type; b=VmRzxWdtuxNUzcu8Umc2r6Uugq/ZVDmaj8JBIGmk+Ej5oBT4gwyYtVSXybj5bv6fzSXl/iURGHDousF5kwWAWMv22/4RhcZgP3/P0Se+dYOZB+irCRKbMCUUAZ3mSTZDCGaGKu4PXV9su4KRCFQgGnUXPTOkw9vBdv/J1M6yD6I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=web.de; spf=pass smtp.mailfrom=web.de; dkim=pass (2048-bit key) header.d=web.de header.i=markus.elfring@web.de header.b=h7K0qFC8; arc=none smtp.client-ip=212.227.17.12
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=web.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=web.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="a/LMcL23";
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="W7ASdYye"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1773156405;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=x1gPBnL3nFJNBIyIa1yav05jeafDePL0up3MPLKVYLI=;
-	b=a/LMcL23Po8bwC6vocNuIls3kl97sFLFfnI7bdvdjSqdJizYROxCqCzOOVkx89sKu4tmpb
-	5+rPZskYeEx/BS8XftSwHwSVS+VqFVJgBzesQplq3Pm0iHSnjobzmb5oHulmQwUoGH0j5C
-	QX5d9Xmu2gtRazkbuflyeg60cMuzR4g=
-Received: from mail-wm1-f72.google.com (mail-wm1-f72.google.com
- [209.85.128.72]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-111-77pWyfFbNTuPgqTZPZT0Gg-1; Tue, 10 Mar 2026 11:26:44 -0400
-X-MC-Unique: 77pWyfFbNTuPgqTZPZT0Gg-1
-X-Mimecast-MFC-AGG-ID: 77pWyfFbNTuPgqTZPZT0Gg_1773156403
-Received: by mail-wm1-f72.google.com with SMTP id 5b1f17b1804b1-4836abfc742so109153885e9.0
-        for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2026 08:26:44 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1773156403; x=1773761203; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
-        bh=x1gPBnL3nFJNBIyIa1yav05jeafDePL0up3MPLKVYLI=;
-        b=W7ASdYyeCPp6vZKAK5+QPjDcLsz1v+DpV4q9bjSyCgS99vxgTaK9pb4t3V9U/ndo0Y
-         wGI9iC+fLOGbjd1KHA3XAxsyBNkKMKX7G5oyVVVtzu/ngSMD/VqfEg/oEUlEvk6KN06t
-         tpPogzbw8PTyGiVIM6kmFVVQJl6d0jcm2S2n7qqQuRoF8DxkL2e+QQbvUczltUGfgNUf
-         X3AbgQOPxC4tHv5ABdPspcKesA287EnGTV20RzPMJxSJigo2W1LXiBxa3GAJ7RdB4UsM
-         EHSp2CrGaCJC2/Dmcvrh6JyhXPemxlN4+HKJA74gYLsfr8beA2osqRkhbxt2ry9g+Zh1
-         PcLQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1773156403; x=1773761203;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=x1gPBnL3nFJNBIyIa1yav05jeafDePL0up3MPLKVYLI=;
-        b=b60y7EWdHokkiSXuCAtoAk3c5aY5FzlgSUi4amlEVyp9odn5AfcjQU2uwac5QI10/2
-         OPOhl6LoJt+fQQm8BJZHDvG9We2jywJldJiyEqoaSt+1s0NiTDS+OM6IAgWsfDl4JlBu
-         rhhkA6I0OzyS+B3o7DxG/P8siNgZvuFLubvyka+1R4IZXtVjsf7AtGqMcC3SncbqKyIc
-         iCFiFsblIZxUlF93kQJvwg62sncI9DWyNQ7XVPgo10WarY7H2MMhcNzjJ8QkwEgd/Goe
-         LC8VBjMJqrf11WoTI/Fz/k3wWKv7lwQo0iyzqgR9rUUHmy98ZqLKJP5VcLPEGIyKNvUB
-         2cEA==
-X-Forwarded-Encrypted: i=1; AJvYcCU8Oor4q76dDX0ms51nbK9LZgh3BtllSEpRBnAKUNi0c7TvksTfwJQgZtgVa8mTLoYT5eUZvUDeN2B/@vger.kernel.org
-X-Gm-Message-State: AOJu0YzHdBCSck/c2XsV9Mq8tKKaPghSbGDHRtRR6ACvAkUda2RfhHYt
-	Ffhvag7HsepwNWJJ0LgAEYuqG6B3V23T8cQU8qcgBZsRowh3YtTHNOg+o7P/QkBrCFcgfqh6V8w
-	9kSHNcD3kN2xuaAdjByFBsJ5gCySfTgFdYdJFgRxwTDWvMv/FINn0184GBwzI8Q==
-X-Gm-Gg: ATEYQzzVhvQBX6qnOxtePEZsdqp6riqaUE08vk64y51AqktT0sR0H7+TSd0cKVeaOlZ
-	+dBZYGz8MbLE/ySbDHGC7ZmKPjUukDliMJNY199dN/STBGoJBwg2JlFU0JWhB+4ao8YY4ssHz+p
-	0718zQ7krjQJUyAiMO4SiFGRq95o9PfSFLKeSGUbA0YJTfUWD+AGYauucOIQ9PXsqC4dAKe7G/2
-	DwrKcrQ901U6LbdSxM7a69QceO7MBx7dbifFMBbN64qLYAgaFtSRQJ1iYY8rOq3IUOKarayy7oq
-	f7cSn9H911HQriZrAvtn0IcRiVtf03XoxZgfxUSasTVYQdI8zq/9qxjGdO2crPfWGCmBxqbepYv
-	nogDCb+l9Ql8=
-X-Received: by 2002:a05:600c:3f19:b0:485:3e6c:aabc with SMTP id 5b1f17b1804b1-4853e6caf6emr96414895e9.19.1773156402814;
-        Tue, 10 Mar 2026 08:26:42 -0700 (PDT)
-X-Received: by 2002:a05:600c:3f19:b0:485:3e6c:aabc with SMTP id 5b1f17b1804b1-4853e6caf6emr96414285e9.19.1773156402225;
-        Tue, 10 Mar 2026 08:26:42 -0700 (PDT)
-Received: from thinky ([217.30.74.39])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4853ebab1a2sm153169175e9.1.2026.03.10.08.26.41
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 10 Mar 2026 08:26:41 -0700 (PDT)
-Date: Tue, 10 Mar 2026 16:26:41 +0100
-From: Andrey Albershteyn <aalbersh@redhat.com>
-To: "Darrick J. Wong" <djwong@kernel.org>
-Cc: Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org, 
-	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, ebiggers@kernel.org, hch@lst.de, 
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
-	linux-btrfs@vger.kernel.org
-Subject: Re: [PATCH v4 18/25] xfs: add fs-verity support
-Message-ID: <njszph4g2g63ijfyatukmgmfyafrhsrtja526gz4pjgn2edymh@l7aq2rpxnold>
-References: <20260309192355.176980-1-aalbersh@kernel.org>
- <20260309192355.176980-19-aalbersh@kernel.org>
- <20260310012658.GF1105363@frogsfrogsfrogs>
+	dkim=pass (2048-bit key) header.d=web.de header.i=markus.elfring@web.de header.b="h7K0qFC8"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=web.de;
+	s=s29768273; t=1773157662; x=1773762462; i=markus.elfring@web.de;
+	bh=ViIdeWt5br4rBsrGxHUMEkJDkD/ERSvSv/UV5SzvttY=;
+	h=X-UI-Sender-Class:Message-ID:Date:MIME-Version:To:Cc:References:
+	 Subject:From:In-Reply-To:Content-Type:Content-Transfer-Encoding:
+	 cc:content-transfer-encoding:content-type:date:from:message-id:
+	 mime-version:reply-to:subject:to;
+	b=h7K0qFC8lui0M3aEG2yhHOptmzLeK24S79cZCRktla9iVPsdh7MMZY9IQ+0fNsjy
+	 1Jmj8tPDjUYGV0N31jChpPIbrmEGAAiLmOFKWubyE3NTttjDE8UYZYzPrHWHwqRbT
+	 ZmJLoNHR6+mwIgea1XMDsroKD1VkpdbtDpYP5RQOlLeXbFM1sGNyCjcqO4VGv6oH0
+	 or7WNvOJCD7wct+ITkk6hEn2pz09hvl0HnH1IXkz/NhmxM4+GPG6PRDdXRWJwhNqD
+	 E/CyuUCmqvUAopwe+bMtAzI3unk/5Tnu7dsxuDhsN1+B/BFgi6IvYkOUfIHgIX1fz
+	 IDA+/KUXvW7fGiboiQ==
+X-UI-Sender-Class: 814a7b36-bfc1-4dae-8640-3722d8ec6cd6
+Received: from client.hidden.invalid by smtp.web.de (mrweb106
+ [213.165.67.124]) with ESMTPSA (Nemesis) id 1N5lj7-1vYM6w3zfn-012TrV; Tue, 10
+ Mar 2026 16:41:18 +0100
+Message-ID: <924acf71-45df-4ea2-9bbd-b6f5ff262b2b@web.de>
+Date: Tue, 10 Mar 2026 16:41:12 +0100
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260310012658.GF1105363@frogsfrogsfrogs>
+User-Agent: Mozilla Thunderbird
+To: Philipp Hahn <phahn-oss@avm.de>, cocci@inria.fr,
+ Julia Lawall <Julia.Lawall@inria.fr>
+Cc: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com,
+ bpf@vger.kernel.org, ceph-devel@vger.kernel.org, dm-devel@lists.linux.dev,
+ dri-devel@lists.freedesktop.org, gfs2@lists.linux.dev,
+ intel-gfx@lists.freedesktop.org, intel-wired-lan@lists.osuosl.org,
+ iommu@lists.linux.dev, kvm@vger.kernel.org,
+ linux-arm-kernel@lists.infradead.org, linux-block@vger.kernel.org,
+ linux-bluetooth@vger.kernel.org, linux-btrfs@vger.kernel.org,
+ linux-cifs@vger.kernel.org, linux-clk@vger.kernel.org,
+ linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, linux-gpio@vger.kernel.org,
+ linux-hyperv@vger.kernel.org, linux-input@vger.kernel.org,
+ linux-kernel@vger.kernel.org, linux-leds@vger.kernel.org,
+ linux-media@vger.kernel.org, linux-mips@vger.kernel.org, linux-mm@kvack.org,
+ linux-modules@vger.kernel.org, linux-mtd@lists.infradead.org,
+ linux-nfs@vger.kernel.org, linux-omap@vger.kernel.org,
+ linux-phy@lists.infradead.org, linux-pm@vger.kernel.org,
+ linux-rockchip@lists.infradead.org, linux-s390@vger.kernel.org,
+ linux-scsi@vger.kernel.org, linux-sctp@vger.kernel.org,
+ linux-security-module@vger.kernel.org, linux-sh@vger.kernel.org,
+ linux-sound@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com,
+ linux-trace-kernel@vger.kernel.org, linux-usb@vger.kernel.org,
+ linux-wireless@vger.kernel.org, netdev@vger.kernel.org,
+ nicolas.palix@imag.fr, ntfs3@lists.linux.dev,
+ samba-technical@lists.samba.org, sched-ext@lists.linux.dev,
+ target-devel@vger.kernel.org, tipc-discussion@lists.sourceforge.net,
+ v9fs@lists.linux.dev
+References: <20260310-b4-is_err_or_null-v1-1-bd63b656022d@avm.de>
+Subject: Re: [PATCH 01/61] Coccinelle: Prefer IS_ERR_OR_NULL over manual NULL
+ check
+Content-Language: en-GB, de-DE
+From: Markus Elfring <Markus.Elfring@web.de>
+In-Reply-To: <20260310-b4-is_err_or_null-v1-1-bd63b656022d@avm.de>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+X-Provags-ID: V03:K1:I49ufsxpBKiFBze+2Qm04f+elx94DZSymOaZcQTAnyd9Dy18WSZ
+ l5PlqGBdCeQJnqXYHB7LM8JEThQzWaqt46DhF3JOnbIEKCtwYJeZnzJMAXhMu3h78zedo+b
+ 2MDr9yfDF5xiOPbOsnoVg9HvEpZouoV7eAA1AasOX+/8mAaWp7eICgl3FZXuUGMMgTPEUmo
+ 9zEXJmftCILFnPJ5epBUQ==
+X-Spam-Flag: NO
+UI-OutboundReport: notjunk:1;M01:P0:04WXpfHKV24=;XM8484Tl0Gel7LmfPFVAhD+GUiz
+ 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
+ WH56U++o=
 
-On 2026-03-09 18:26:58, Darrick J. Wong wrote:
-> > +/*
-> > + * Retrieve the verity descriptor.
-> > + */
-> > +static int
-> > +xfs_fsverity_get_descriptor(
-> > +	struct inode		*inode,
-> > +	void			*buf,
-> > +	size_t			buf_size)
-> > +{
-> > +	struct xfs_inode	*ip = XFS_I(inode);
-> > +	struct xfs_mount	*mp = ip->i_mount;
-> > +	__be32			d_desc_size;
-> > +	u32			desc_size;
-> > +	u64			desc_size_pos;
-> > +	int			error;
-> > +	u64			desc_pos;
-> > +	struct xfs_bmbt_irec	rec;
-> > +	int			is_empty;
-> > +	uint32_t		blocksize = i_blocksize(VFS_I(ip));
-> > +	xfs_fileoff_t		last_block_offset;
-> > +
-> > +	ASSERT(inode->i_flags & S_VERITY);
-> > +	error = xfs_bmap_last_extent(NULL, ip, XFS_DATA_FORK, &rec, &is_empty);
-> > +	if (error)
-> > +		return error;
-> > +
-> > +	if (is_empty)
-> > +		return -ENODATA;
-> > +
-> > +	last_block_offset =
-> > +		XFS_FSB_TO_B(mp, rec.br_startoff + rec.br_blockcount);
-> > +	if (last_block_offset < xfs_fsverity_metadata_offset(ip))
-> > +		return -ENODATA;
-> > +
-> > +	desc_size_pos = last_block_offset - sizeof(__be32);
-> > +	error = fsverity_pagecache_read(inode, (char *)&d_desc_size,
-> > +				  sizeof(d_desc_size), desc_size_pos);
-> > +	if (error)
-> > +		return error;
-> > +
-> > +	desc_size = be32_to_cpu(d_desc_size);
-> > +	if (XFS_IS_CORRUPT(mp, desc_size > FS_VERITY_MAX_DESCRIPTOR_SIZE))
-> > +		return -ERANGE;
-> > +	if (XFS_IS_CORRUPT(mp, desc_size > desc_size_pos))
-> > +		return -ERANGE;
-> > +
-> > +	if (!buf_size)
-> > +		return desc_size;
-> > +
-> > +	if (XFS_IS_CORRUPT(mp, desc_size > buf_size))
-> > +		return -ERANGE;
-> > +
-> > +	desc_pos = round_down(desc_size_pos - desc_size, blocksize);
-> > +	error = fsverity_pagecache_read(inode, buf, desc_size, desc_pos);
-> 
-> Hmm so at this point ... the very last u32 mapped in the data fork
-> contains the size of the fsverity descriptor; and the descriptor itself
-> is in the bytes just before that u32 size field?
+> Find and convert uses of IS_ERR() plus NULL check to IS_ERR_OR_NULL().
+=E2=80=A6
 
-Yes. In common case this would be single block. But if descriptor
-has signature it could be up to 16k over a few blocks. The u32 size
-would be still the last mapped u32 of the data fork.
+Can this information trigger any more consequences on corresponding summar=
+y phrases?
 
-> 
-> The merkle tree itself is in the bytes between
-> xfs_fsverity_metadata_offset() and the block(s) consumed by the
-> descriptor, right?
 
-Yes. And there is space between merkle tree end and descriptor. The
-descriptor is placed in the next 64k aligned block after last merkle
-tree block (the same way merkle tree is spaced from the data). This
-is different from ext4/f2fs.
+=E2=80=A6
+> +++ b/scripts/coccinelle/api/is_err_or_null.cocci
+> @@ -0,0 +1,125 @@
+=E2=80=A6
+> +virtual patch
+> +virtual report
+> +virtual org
 
-This is done for merkle tree and descriptor to always get into
-different pages. This requirement is due to merkle tree block
-synthesis (iomap needs descriptor to synthesize these).
+How will interests evolve further for the support of the operation mode =
+=E2=80=9Ccontext=E2=80=9D?
 
-If iomap would read page with descriptor and merkle tree blocks
-requiring to be synthesized but iomap is reading this page to get
-fsverity descriptor, iomap don't know how to handle these blocks. It
-can just skip/zero these blocks and continue. But then when fsverity
-will want to read these blocks they are already uptodate (with
-zeroes/random). This was solved by invalidating the page with
-descriptor in v3. In this rev fsverity is limited by 64k page size
-so if descriptor is far enough this won't be the case.
 
-> 
-> Eventually it'd be awful nice to see an update to the ondisk format
-> docs, though it's probably more useful to have me guess at the format
-> and have you confirm that I got the details right; then at least two
-> people will know what the ondisk format is for fsverity stuff. :)
-> 
-> > +	if (error)
-> > +		return error;
-> > +
-> > +	return desc_size;
-> > +}
-> > +
-> > +static int
-> > +xfs_fsverity_write_descriptor(
-> > +	struct file		*file,
-> > +	const void		*desc,
-> > +	u32			desc_size,
-> > +	u64			merkle_tree_size)
-> > +{
-> > +	int			error;
-> > +	struct inode		*inode = file_inode(file);
-> > +	struct xfs_inode	*ip = XFS_I(inode);
-> > +	unsigned int		blksize = ip->i_mount->m_attr_geo->blksize;
-> > +	u64			tree_last_block =
-> > +		xfs_fsverity_metadata_offset(ip) + merkle_tree_size;
-> > +	u64			desc_pos = round_up(tree_last_block, 65536);
-> > +	u64			desc_end = desc_pos + desc_size;
-> > +	__be32			desc_size_disk = cpu_to_be32(desc_size);
-> > +	u64			desc_size_pos =
-> > +			round_up(desc_end + sizeof(desc_size_disk), blksize) -
-> > +			sizeof(desc_size_disk);
-> > +
-> > +	error = iomap_fsverity_write(file, desc_size_pos, sizeof(__be32),
-> > +				     (const void *)&desc_size_disk,
-> > +				     &xfs_buffered_write_iomap_ops,
-> > +				     &xfs_iomap_write_ops);
-> > +	if (error)
-> > +		return error;
-> > +
-> > +	error = iomap_fsverity_write(file, desc_pos, desc_size, desc,
-> > +				     &xfs_buffered_write_iomap_ops,
-> > +				     &xfs_iomap_write_ops);
-> > +
-> > +	return error;
-> 
-> This could turn into the shorter "return iomap_fsverity_write()"
+> +@p1 depends on patch@
+> +expression E;
+> +@@
+> +(
+> +-	E !=3D NULL && !IS_ERR(E)
+> ++	!IS_ERR_OR_NULL(E)
+> +|
+> +-	E =3D=3D NULL || IS_ERR(E)
+> ++	IS_ERR_OR_NULL(E)
+> +|
+> +-	!IS_ERR(E) && E !=3D NULL
+> ++	!IS_ERR_OR_NULL(E)
+> +|
+> +-	IS_ERR(E) || E =3D=3D NULL
+> ++	IS_ERR_OR_NULL(E)
+> +)
 
-sure, thanks!
+Did you eventually check probabilities for the occurrence of mentioned cas=
+e distinctions?
 
-> I don't see anything objectionable here, but I would like confirmation
-> that I've sniffed out the ondisk format correctly.
 
--- 
-- Andrey
+> +@p2 depends on patch@
+=E2=80=A6
 
+I suggest to reconsider =E2=80=9Cside effects=E2=80=9D according to the sp=
+litting of these SmPL rules
+once more.
+
+
+=E2=80=A6
+> +@r2 depends on report || org@
+> +identifier I;
+> +expression E;
+> +position p;
+> +@@
+> +(
+> +*	(I =3D E) !=3D NULL && ... && !IS_ERR@p(I)
+> +|
+> +*	(I =3D E) =3D=3D NULL || ... || IS_ERR@p(I)
+> +)
+
+I doubt that the usage of SmPL asterisks fits to these two operation modes=
+.
+
+
+=E2=80=A6
+> +@p5 depends on patch disable unlikely @
+> +expression E;
+> +@@
+> +-\( likely \| unlikely \)(
+> +(
+> + IS_ERR_OR_NULL(E)
+> +|
+> + !IS_ERR_OR_NULL(E)
+> +)
+> +-)
+
+* Would it be nicer to move such SmPL code to the end of the patch rule li=
+sting?
+
+* Can this source code search pattern matter also for further operation mo=
+des?
+
+
+Regards,
+Markus
