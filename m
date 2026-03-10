@@ -1,30 +1,30 @@
 Received: from mail.avm.de (mail.avm.de [212.42.244.94])
 	(using TLSv1.2 with cipher DHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AC35644D023;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B66A844D033;
 	Tue, 10 Mar 2026 11:55:37 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.42.244.94
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773143740; cv=none; b=PbOpIzAaCN1TlyPMCOHzn2+0LQlKvWP5uJfCaUR6dRamHNV4+A8uWi9+L4c4BPCrs/ltz3AohhdfNX953mQVGicILZdCHu1utJ/udP6HCaAtdlfXTIvLXWI249teR17XW3HfRUyuFG+qinoTQSB3MhHRExSwl737s/hJznvtmHE=
+	t=1773143742; cv=none; b=HjGTtsqaeYVureVb7KsvXb1YxODckUu/Sh5TnUO1pIOuI3M6jYPBAfAwu2PwXh0O1Cw3TOo5amPhd6BxPjuvzVIVE27/Pmkszmm89wsUxAQ2bsmYfEXgQFPY2vQolsCeHaKM/V+c5N2laX+xRTQiJrkoyTWtK2EThJOxilEFYLM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773143740; c=relaxed/simple;
-	bh=Wx/k10vuVbp8ZUI17J5Bmoq0XIce6rBC9+YI4+K5MhY=;
+	s=arc-20240116; t=1773143742; c=relaxed/simple;
+	bh=OPqqHdKZkEBOTA9s0xCv07joTtAqSJfXU2nXlSYlnvo=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=eX88ERyb/AOnCdHqbAW4sSJKteTA5gvUVTTV/hB/ssykw8A4LfYSzs6aTMRQYw02LEOpQx4+ux9m8zXfGivajFJZ4LfX9sE1IB8V5QsDIK3aJDWS5iC1wFtRi5xBMwnnQVMCYl7vOSxzKJgohC01yjVdOdLj4fZP41O35QQDpF0=
+	 In-Reply-To:To:Cc; b=U/HyIIfv6r6VdeyMUl+Ds+JFLyCoRoczM21EkxXITpmWRLvZ72YWh4FVJkdkkbMKkIVbn3BcjXp0vph0A4YaSMAy4vKEADTrvSGDndUU/qApLgJadfae0Ww0/0T4ztew0O4oqqhmg1H6AMmMRYs5iv4QnaI6GxSeimmfWMKPyXw=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; arc=none smtp.client-ip=212.42.244.94
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=avm.de
 Received: from [212.42.244.71] (helo=mail.avm.de)
 	by mail.avm.de with ESMTP (eXpurgate 4.55.2)
 	(envelope-from <phahn-oss@avm.de>)
-	id 69b006ab-e21d-7f0000032729-7f000001d99c-1
+	id 69b006ac-e21d-7f0000032729-7f000001d9be-1
 	for <multiple-recipients>; Tue, 10 Mar 2026 12:55:24 +0100
 Received: from mail-auth.avm.de (dovecot-mx-01.avm.de [212.42.244.71])
 	by mail.avm.de (Postfix) with ESMTPS;
-	Tue, 10 Mar 2026 12:55:23 +0100 (CET)
+	Tue, 10 Mar 2026 12:55:24 +0100 (CET)
 From: Philipp Hahn <phahn-oss@avm.de>
-Date: Tue, 10 Mar 2026 12:48:33 +0100
-Subject: [PATCH 07/61] erofs: Prefer IS_ERR_OR_NULL over manual NULL check
+Date: Tue, 10 Mar 2026 12:48:36 +0100
+Subject: [PATCH 10/61] gfs2: Prefer IS_ERR_OR_NULL over manual NULL check
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -33,7 +33,7 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260310-b4-is_err_or_null-v1-7-bd63b656022d@avm.de>
+Message-Id: <20260310-b4-is_err_or_null-v1-10-bd63b656022d@avm.de>
 References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 In-Reply-To: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com, 
@@ -63,24 +63,21 @@ To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com,
  sched-ext@lists.linux.dev, target-devel@vger.kernel.org, 
  tipc-discussion@lists.sourceforge.net, v9fs@lists.linux.dev, 
  Philipp Hahn <phahn-oss@avm.de>
-Cc: Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>, 
- Yue Hu <zbestahu@gmail.com>, Jeffle Xu <jefflexu@linux.alibaba.com>, 
- Sandeep Dhavale <dhavale@google.com>, Hongbo Li <lihongbo22@huawei.com>, 
- Chunhai Guo <guochunhai@vivo.com>
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1165; i=phahn-oss@avm.de;
- h=from:subject:message-id; bh=Wx/k10vuVbp8ZUI17J5Bmoq0XIce6rBC9+YI4+K5MhY=;
- b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAXuTWLAsZgE3CYfS0prKIO5oYoR3eM1fSwdn
- +XKr0TQn0GJATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAF7gAKCRA0LQZT0ays
- 2/j8B/sEd5J2vRHsnvhncB2lMo9VZ5h3+ZMJUztWw9QhmuXX9Qx3HEdJ5GLZ84ct6sqOhNTdJzS
- JFD7aVZEzrOOhcVXC4LBSF/0LTyuRs08pHBx90juaWCHs505i/RK57onvWUjJYv2jNvBVJQQ+S6
- AU4u0SqHLiT0AAUqbjuiM2TTHxhB5xD59cg+mk4rXkCdmvt3sw2+h9McRwE+VdqWIniC4/IsZt/
- lSDklfOcCL2PaTrHCFhWHaM0/yrWd/ljPTRmFceOPsri9YRyl2VkofnQ4LBx/tIitZdlpukR5BZ
- 3gdZMB70thXOoVOpRxkVmdjJvHPiGXebLpJqAK8oxLcbLF+S
+Cc: Andreas Gruenbacher <agruenba@redhat.com>
+X-Developer-Signature: v=1; a=openpgp-sha256; l=893; i=phahn-oss@avm.de;
+ h=from:subject:message-id; bh=OPqqHdKZkEBOTA9s0xCv07joTtAqSJfXU2nXlSYlnvo=;
+ b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAX4/dv49K4j89zI86N9JpAw6t8eU0kmPVDxm
+ PT/7+a10hGJATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAF+AAKCRA0LQZT0ays
+ 2zIKB/999m4RLBdXe9kckM0CjKr4GcE3BeYjqHOf9Mb/fXRspIYiRhfK/0d76B0wUZ9vMlV+kHN
+ aPugbL3mxS3VAKy9S9eV+9mHhq2ovSgAXuPOSy8/qOTGHUqDaNzk/2uQki9ZfnbI3N1QVu0zj5x
+ 8blYFqhhVL5JzTcz+RG+KziT6t1xXKbIKoya+t7T6UrNg4H5H2bWy4EaQ7+S0qT/OwwuCndJ5uT
+ z17dIMTDIfQoeXt9rkvrr2Ft1Brl0Ry1Iiv5kD+CcJTipZJNdlQgICgttnzL/8iG0G6ksTSjehE
+ 819EPypp6/ZxNz8oLOAo07gCKojS6jLLwc/BvUWqoKOgacEb
 X-Developer-Key: i=phahn-oss@avm.de; a=openpgp;
  fpr=58AF7C2E007CDBE62C59E078F50EFDCF8AD04B1A
-X-purgate-ID: 149429::1773143724-8966EF2F-D5F13E8E/0/0
+X-purgate-ID: 149429::1773143724-363F1F2F-29C6BAA2/0/0
 X-purgate-type: clean
-X-purgate-size: 1167
+X-purgate-size: 895
 X-purgate-Ad: Categorized by eleven eXpurgate (R) https://www.eleven.de
 X-purgate: This mail is considered clean (visit https://www.eleven.de for further information)
 X-purgate: clean
@@ -90,33 +87,27 @@ check.
 
 Change generated with coccinelle.
 
-To: Gao Xiang <xiang@kernel.org>
-To: Chao Yu <chao@kernel.org>
-To: Yue Hu <zbestahu@gmail.com>
-To: Jeffle Xu <jefflexu@linux.alibaba.com>
-To: Sandeep Dhavale <dhavale@google.com>
-To: Hongbo Li <lihongbo22@huawei.com>
-To: Chunhai Guo <guochunhai@vivo.com>
-Cc: linux-erofs@lists.ozlabs.org
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Cc: gfs2@lists.linux.dev
 Cc: linux-kernel@vger.kernel.org
 Signed-off-by: Philipp Hahn <phahn-oss@avm.de>
 ---
- fs/erofs/zdata.c | 2 +-
+ fs/gfs2/glock.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/erofs/zdata.c b/fs/erofs/zdata.c
-index 3977e42b9516861bf3d59c072b6b8aaa6898dd8a..88c293ab2b1ef7962c6f5c0aa82639859e41b8e2 100644
---- a/fs/erofs/zdata.c
-+++ b/fs/erofs/zdata.c
-@@ -1227,7 +1227,7 @@ static int z_erofs_parse_in_bvecs(struct z_erofs_backend *be, bool *overlapped)
- 		struct page *page = bvec->page;
+diff --git a/fs/gfs2/glock.c b/fs/gfs2/glock.c
+index 2acbabccc8adf957e02845041193502a96370a6d..8ed6b4535a728e217e5cec7b64488583b5737c58 100644
+--- a/fs/gfs2/glock.c
++++ b/fs/gfs2/glock.c
+@@ -2013,7 +2013,7 @@ static void glock_hash_walk(glock_examiner examiner, const struct gfs2_sbd *sdp)
+ 	do {
+ 		rhashtable_walk_start(&iter);
  
- 		/* compressed data ought to be valid when decompressing */
--		if (IS_ERR(page) || !page) {
-+		if (IS_ERR_OR_NULL(page)) {
- 			bvec->page = NULL;	/* clear the failure reason */
- 			err = page ? PTR_ERR(page) : -EIO;
- 			continue;
+-		while ((gl = rhashtable_walk_next(&iter)) && !IS_ERR(gl)) {
++		while (!IS_ERR_OR_NULL((gl = rhashtable_walk_next(&iter)))) {
+ 			if (glock_sbd(gl) == sdp)
+ 				examiner(gl);
+ 		}
 
 -- 
 2.43.0
