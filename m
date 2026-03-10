@@ -1,38 +1,30 @@
-Received: from mail.avm.de (mail.avm.de [212.42.244.119])
+Received: from mail.avm.de (mail.avm.de [212.42.244.94])
 	(using TLSv1.2 with cipher DHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 598A9472769;
-	Tue, 10 Mar 2026 11:55:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.42.244.119
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BA8F04779AA;
+	Tue, 10 Mar 2026 11:55:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.42.244.94
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773143749; cv=none; b=uYfPkBkk3r9o+B55hRLmLL3kzrxU95kbsA5nVv1YmMX7z1VqlocoGkJrVw2cQytfKMCGZet1fu/d2lKvxu/OxixdUo+9dQHkzGatL9nKeqFp25I6nh0+EdStbbRsGFsKLcEXgrly7h/IZOr8KyD5+rLXLkNj0mXmxGzzdsuxTKU=
+	t=1773143751; cv=none; b=tB1iAb7iUAVEYmunR/sMTNTA7ql9FNVIKRvGP04jT6DXmcAARPwuTLeNn2HSy8qN9Hv2Kj4rrkk1pVmaexn17I+/k59VNIjDlVaVtrbJs2biZCRClIc43VtqPXdLG7X0TRQW91+6LdCCCTmCRWFRp2+CeWXHT9hPGX7+DoGWQ7A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773143749; c=relaxed/simple;
-	bh=kiPG2WUM9IIy6uswgVTVvYBzahqCQdDF2WT1QCoS/Vw=;
+	s=arc-20240116; t=1773143751; c=relaxed/simple;
+	bh=dZgGx+TJ86HynJEVGMrEA5pIsLW37DebkwtATXmSHOI=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=JlrvXjEuTzN0U0bFGNxzc/m2ZwBBMuibtCfCDdnCunwholkANxJ1EWfJeJ+sjCJXMQ2KPXza63tnMuS2+7I60Nl2jFf9OrbQC24G0i0wfY41Cu2crz1FJb7CgMmd24Hh48LsBpRBBi2GRl9cyNICloR5KRCsUO0+QqNpmpZagP4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b=ZhZk+uUN; arc=none smtp.client-ip=212.42.244.119
+	 In-Reply-To:To:Cc; b=SjCohHE54th+StuAmhFRr04j2wct5MfHsEdngM5oIrtAWa+jgExMxyYYtO1ImW0W3Hp/OBm5LI5eO1jz8wOVAbJ7rHUSEGtSmU9J16RUclzSpL9Vrtev/KE/SmYYGbhXlwUJbnxvTIyc2SUgEG/0jIvTrBmm5reo4S6Q8GgMud0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; arc=none smtp.client-ip=212.42.244.94
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=avm.de
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b="ZhZk+uUN"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=avm.de; s=mail;
-	t=1773143724; bh=kiPG2WUM9IIy6uswgVTVvYBzahqCQdDF2WT1QCoS/Vw=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=ZhZk+uUNXnEjnXl3w1yfhkldMOPDqhhLXZDAMjGv1auPlOiTaiSmNuwae77r69zpo
-	 wcrpRdQM8a/BZjLbD65ntammcni0DoJ16RicrUwWgtwucTmCe9C/jdQpatxzC+dLyR
-	 7BX2TKdOEfp7WLvyJKm7RVbstZgrWU81uOV3ziCw=
 Received: from [2001:bf0:244:244::71] (helo=mail.avm.de)
 	by mail.avm.de with ESMTP (eXpurgate 4.55.2)
 	(envelope-from <phahn-oss@avm.de>)
-	id 69b006ac-2367-7f0000032729-7f0000019d32-1
-	for <multiple-recipients>; Tue, 10 Mar 2026 12:55:24 +0100
+	id 69b006ad-e21d-7f0000032729-7f000001d9e2-1
+	for <multiple-recipients>; Tue, 10 Mar 2026 12:55:25 +0100
 Received: from mail-auth.avm.de (dovecot-mx-01.avm.de [IPv6:2001:bf0:244:244::71])
 	by mail.avm.de (Postfix) with ESMTPS;
-	Tue, 10 Mar 2026 12:55:24 +0100 (CET)
+	Tue, 10 Mar 2026 12:55:25 +0100 (CET)
 From: Philipp Hahn <phahn-oss@avm.de>
-Date: Tue, 10 Mar 2026 12:48:40 +0100
-Subject: [PATCH 14/61] seq_file: Prefer IS_ERR_OR_NULL over manual NULL
+Date: Tue, 10 Mar 2026 12:48:47 +0100
+Subject: [PATCH 21/61] lib/test: Prefer IS_ERR_OR_NULL over manual NULL
  check
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -42,7 +34,7 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260310-b4-is_err_or_null-v1-14-bd63b656022d@avm.de>
+Message-Id: <20260310-b4-is_err_or_null-v1-21-bd63b656022d@avm.de>
 References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 In-Reply-To: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com, 
@@ -72,22 +64,24 @@ To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com,
  sched-ext@lists.linux.dev, target-devel@vger.kernel.org, 
  tipc-discussion@lists.sourceforge.net, v9fs@lists.linux.dev, 
  Philipp Hahn <phahn-oss@avm.de>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1255; i=phahn-oss@avm.de;
- h=from:subject:message-id; bh=kiPG2WUM9IIy6uswgVTVvYBzahqCQdDF2WT1QCoS/Vw=;
- b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAYFWY4XXOtO7D0H7zI3NI24qzy0WRyWgjhsq
- Pb/2PtoUG2JATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAGBQAKCRA0LQZT0ays
- 2/mIB/9Q6s+1zeiVLXadpRpmyYqAancRy7Bn2FComUQinQhHrSfolPuiVxb6YyfHfnSDtXR2P+o
- ZC/nc1mJGpByDWP4SS6acK19nNK/UVhicQydNeQRM17jmZovojRAWhs2/Nh6sutbizWZwHsYvxg
- dtISFMErQIBKR+INYDqNnYmu1VPajdqnQ2qfmPWd9l1FO4V1847kZKmczXV6MF80eYNGSPwebB7
- l5j+3Vv8ufK5FuVMTE1IDmjxjEXHtLbmfXLvEEcTc8Z+XvV4Rj3NOSWzcbcpJ8pMZ35IaPEecEu
- E1IfNqm4CamuHsKtBBAJcEXcTCoiSwuZuARjawKppxNaRDTT
+Cc: Andrew Morton <akpm@linux-foundation.org>, 
+ Luis Chamberlain <mcgrof@kernel.org>, Petr Pavlu <petr.pavlu@suse.com>, 
+ Daniel Gomez <da.gomez@kernel.org>, Sami Tolvanen <samitolvanen@google.com>, 
+ Aaron Tomlin <atomlin@atomlin.com>
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2236; i=phahn-oss@avm.de;
+ h=from:subject:message-id; bh=dZgGx+TJ86HynJEVGMrEA5pIsLW37DebkwtATXmSHOI=;
+ b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAYdDyn9P9EqiNuLjohkPV9X7iASajPgIoE/Y
+ Nuv6AjHInyJATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAGHQAKCRA0LQZT0ays
+ 2wT8B/9ExWKAo/Sn9Hy5RU9mMJnGJZfEhSDSh3BrEyzAo8askVVJ9+5gjVv5zubvVRZSl0xsWYD
+ ONcBymLUypUnGPDyKoUOhx2btlwnIrxM+A/znjwtFfejlhgahBH8clBf9ppwmWxz+aomfSi8dH0
+ gI3DmyyOVIa4OSRnV4I+RdKzJvI1/m5sEwA+61ywfL4pM19NmtFK9XOne0dvmugbwth+SSxAJRb
+ vUziX2Dy0AcV+RxD3aCuKKv6tZLzJkBbkKbaQ16k0qyAZb3zbS92hAPdw+yFsGOJMaFjGgEs6OE
+ FCCv3wHl+aKzbAwbrH/eK6sw740pLs96xx8NapXtmcrko8Wn
 X-Developer-Key: i=phahn-oss@avm.de; a=openpgp;
  fpr=58AF7C2E007CDBE62C59E078F50EFDCF8AD04B1A
-X-purgate-ID: 149429::1773143724-84C8DE1F-2119C3CC/0/0
+X-purgate-ID: 149429::1773143725-98670F2F-CE18AF23/0/0
 X-purgate-type: clean
-X-purgate-size: 1257
+X-purgate-size: 2238
 X-purgate-Ad: Categorized by eleven eXpurgate (R) https://www.eleven.de
 X-purgate: This mail is considered clean (visit https://www.eleven.de for further information)
 X-purgate: clean
@@ -97,38 +91,55 @@ check.
 
 Change generated with coccinelle.
 
-To: Alexander Viro <viro@zeniv.linux.org.uk>
-To: Christian Brauner <brauner@kernel.org>
-To: Jan Kara <jack@suse.cz>
-Cc: linux-fsdevel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+To: Luis Chamberlain <mcgrof@kernel.org>
+To: Petr Pavlu <petr.pavlu@suse.com>
+To: Daniel Gomez <da.gomez@kernel.org>
+To: Sami Tolvanen <samitolvanen@google.com>
+To: Aaron Tomlin <atomlin@atomlin.com>
 Cc: linux-kernel@vger.kernel.org
+Cc: linux-modules@vger.kernel.org
 Signed-off-by: Philipp Hahn <phahn-oss@avm.de>
 ---
- fs/seq_file.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ lib/test_firmware.c | 2 +-
+ lib/test_kmod.c     | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/seq_file.c b/fs/seq_file.c
-index 4745db2a34d12b1084cb059a667c367f4fb56dad..da30cbd6485ca8eff6c2572eab10659c694387d2 100644
---- a/fs/seq_file.c
-+++ b/fs/seq_file.c
-@@ -226,7 +226,7 @@ ssize_t seq_read_iter(struct kiocb *iocb, struct iov_iter *iter)
- 	p = m->op->start(m, &m->index);
- 	while (1) {
- 		err = PTR_ERR(p);
--		if (!p || IS_ERR(p))	// EOF or an error
-+		if (IS_ERR_OR_NULL(p))	// EOF or an error
- 			break;
- 		err = m->op->show(m, p);
- 		if (err < 0)		// hard error
-@@ -266,7 +266,7 @@ ssize_t seq_read_iter(struct kiocb *iocb, struct iov_iter *iter)
- 					    m->op->next);
- 			m->index++;
- 		}
--		if (!p || IS_ERR(p))	// no next record for us
-+		if (IS_ERR_OR_NULL(p))	// no next record for us
- 			break;
- 		if (m->count >= iov_iter_count(iter))
- 			break;
+diff --git a/lib/test_firmware.c b/lib/test_firmware.c
+index b471d720879a70c0db82e605960abe69de28ab4b..fc3177927a02e2d7849915309048529395ece0f8 100644
+--- a/lib/test_firmware.c
++++ b/lib/test_firmware.c
+@@ -955,7 +955,7 @@ static ssize_t trigger_batched_requests_store(struct device *dev,
+ 		init_completion(&req->completion);
+ 		req->task = kthread_run(test_fw_run_batch_request, req,
+ 					     "%s-%u", KBUILD_MODNAME, req->idx);
+-		if (!req->task || IS_ERR(req->task)) {
++		if (IS_ERR_OR_NULL(req->task)) {
+ 			pr_err("Setting up thread %u failed\n", req->idx);
+ 			req->task = NULL;
+ 			rc = -ENOMEM;
+diff --git a/lib/test_kmod.c b/lib/test_kmod.c
+index f0dd092860ea6f9c69a71e10cb1c8b071b1cd1b7..f44a181f6f1ab53cf95a0a0b598b88cb5f8f369d 100644
+--- a/lib/test_kmod.c
++++ b/lib/test_kmod.c
+@@ -327,7 +327,7 @@ static int try_one_request(struct kmod_test_device *test_dev, unsigned int idx)
+ 	info->task_sync = kthread_run(run_request, info, "%s-%u",
+ 				      KBUILD_MODNAME, idx);
+ 
+-	if (!info->task_sync || IS_ERR(info->task_sync)) {
++	if (IS_ERR_OR_NULL(info->task_sync)) {
+ 		test_dev->test_is_oom = true;
+ 		dev_err(test_dev->dev, "Setting up thread %u failed\n", idx);
+ 		info->task_sync = NULL;
+@@ -358,7 +358,7 @@ static void test_dev_kmod_stop_tests(struct kmod_test_device *test_dev)
+ 
+ 	for (i=0; i < config->num_threads; i++) {
+ 		info = &test_dev->info[i];
+-		if (info->task_sync && !IS_ERR(info->task_sync)) {
++		if (!IS_ERR_OR_NULL(info->task_sync)) {
+ 			dev_info(test_dev->dev,
+ 				 "Stopping still-running thread %i\n", i);
+ 			kthread_stop(info->task_sync);
 
 -- 
 2.43.0
