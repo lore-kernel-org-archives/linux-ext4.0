@@ -1,105 +1,122 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail.avm.de (mail.avm.de [212.42.244.120])
+	(using TLSv1.2 with cipher DHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 27D4942B728;
-	Tue, 10 Mar 2026 10:06:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 31D8342188A;
+	Tue, 10 Mar 2026 11:55:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.42.244.120
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773137208; cv=none; b=GqawTLQP+pGf6SCujERnqmBicJCAyDQ5oBrPXlsnuRzmdNRf1l/hc+sDRoYhm/NDou8TWqCk8TBo6G18GirVt4ucOFPGq7+cnR1NPFnWD/EiRcqmss0g1b4ey9XKUzEqW07pI1i29ME/o+e4chEJASSQRi4SM4eIOFsBArtdgUs=
+	t=1773143736; cv=none; b=JyjpjDNBamRX/d/0cBxhn8krCQOjexJ2vrQdxL9etQTgsSveWfmqAXU9Utungvjhf1ymk2tyTygW3eFbj9ceo2rBjCRHZq3BBsZECgAl7/pH+x9OcO6hwaUjZ7EqkgDRsUFouXu1RhYhXogSD8c1uEUyZLhZ0zSpr9skyUkgM2c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773137208; c=relaxed/simple;
-	bh=W4CTub0Sa88sKKNCsV7akuk2L56fgLFSCEVuVsLi5N4=;
-	h=Message-ID:Date:MIME-Version:From:Subject:To:Cc:References:
-	 In-Reply-To:Content-Type; b=iZqN3115qAUb4LpN9TNKZvEc8L6KQCpnZ8zokn0uiCaB273e6IYhZLIW3KzUK+6a/gMF8oaFCLLT2c5f3kMuMMsc2ypVoVobCPwHHM27TQt5wjfAczVsw2RIJeWrtSSeGzcsYo8lEBSDr8aTbwd4Ut59wv99NYuFtueuR4nGSOw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mffQwmEU; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1773143736; c=relaxed/simple;
+	bh=5P0DiWaZEPF/d3SPdMB+rZQJk1DY1mVuY8d9xffySsA=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=Y14YQFuhCN3Kna4n1bwdJLy6NiH7PsoBM7Us66PzPbSe668DAzp4tTo4cuQaqKhLnGId48d7VcOl3YdYa4gX896kymcYC+OJsptk56QFk5wYX8Gajg4MTVHJ9JF9m3oSlGutdRSt3+thWos4pR/PlY2QtSRm5Z/QKNjYzOak55w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b=E8nt1Igf; arc=none smtp.client-ip=212.42.244.120
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=avm.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mffQwmEU"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C4EF4C19423;
-	Tue, 10 Mar 2026 10:06:44 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1773137208;
-	bh=W4CTub0Sa88sKKNCsV7akuk2L56fgLFSCEVuVsLi5N4=;
-	h=Date:From:Subject:To:Cc:References:In-Reply-To:From;
-	b=mffQwmEUr06v4k/y5Wr5pQqSjZjrr3p5wQsKp12EJx7cBlr2cCr+KXTspy1x0Rdhk
-	 6TOCiBL89tbh/AEp9qlvqto4iIivLN/Dg6/zA9QZx9tP6EzutiQUE6WWV1Wzl9WUqQ
-	 cfoJ986b8ifQjBR+0WqZa3y18URtV4iST9OLW6arc8PTOwTc8jMLb804uaJlz9e/8r
-	 gmmCxhRShwL9bEFoUqqlEurRfx8/uugM52V2h20qIkYK55n/RD+iuWGC4cp6jdgIUp
-	 CF6QrzDR/92ko7b/TcgATw438hSMtsHagIVeDTuUDj3VtP0qxaFtGHesoiuyxgwwki
-	 c0tSgtW0pF2GA==
-Message-ID: <a61a876d-6377-4e7a-9651-e0fc05819a72@kernel.org>
-Date: Tue, 10 Mar 2026 11:06:42 +0100
+	dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b="E8nt1Igf"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=avm.de; s=mail;
+	t=1773143723; bh=5P0DiWaZEPF/d3SPdMB+rZQJk1DY1mVuY8d9xffySsA=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
+	b=E8nt1Igfikzg1UTgOGISAzAMiKswf2ND49bi7Kfi9UIZL/Ebzc+UJJz79rFMcVayH
+	 w+/EzW9fK7u4Bg5GlsqH3X/nHnzFmDjyW7AnMKYXmhb+RvNdMihtj8ZP/p/a51PpAe
+	 gPrdgwP6uGn176nZZmhXnabbuO0mAOF/przWQZhQ=
+Received: from [212.42.244.71] (helo=mail.avm.de)
+	by mail.avm.de with ESMTP (eXpurgate 4.55.2)
+	(envelope-from <phahn-oss@avm.de>)
+	id 69b006ab-b734-7f0000032729-7f000001bfd2-1
+	for <multiple-recipients>; Tue, 10 Mar 2026 12:55:23 +0100
+Received: from mail-auth.avm.de (dovecot-mx-01.avm.de [212.42.244.71])
+	by mail.avm.de (Postfix) with ESMTPS;
+	Tue, 10 Mar 2026 12:55:23 +0100 (CET)
+From: Philipp Hahn <phahn-oss@avm.de>
+Date: Tue, 10 Mar 2026 12:48:39 +0100
+Subject: [PATCH 13/61] squashfs: Prefer IS_ERR_OR_NULL over manual NULL
+ check
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-From: vbabka@kernel.org
-Subject: Re: [PATCH] mm/slab: fix an incorrect check in obj_exts_alloc_size()
-Content-Language: en-US
-To: Harry Yoo <harry.yoo@oracle.com>
-Cc: adilger.kernel@dilger.ca, akpm@linux-foundation.org,
- cgroups@vger.kernel.org, hannes@cmpxchg.org, hao.li@linux.dev,
- linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-kernel@vger.kernel.org, linux-mm@kvack.org, shicenci@gmail.com,
- cl@gentwo.org, rientjes@google.com, roman.gushchin@linux.dev,
- viro@zeniv.linux.org.uk, surenb@google.com, stable@vger.kernel.org
-References: <aa5NmA25QsFDMhof@hyeyoo>
- <20260309072219.22653-1-harry.yoo@oracle.com>
- <0a25d83b-c6ea-4230-a89d-1f496b91764c@kernel.org> <aa-PQBn5d0-U-sKg@hyeyoo>
-In-Reply-To: <aa-PQBn5d0-U-sKg@hyeyoo>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
+Message-Id: <20260310-b4-is_err_or_null-v1-13-bd63b656022d@avm.de>
+References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
+In-Reply-To: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
+To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com, 
+ bpf@vger.kernel.org, ceph-devel@vger.kernel.org, cocci@inria.fr, 
+ dm-devel@lists.linux.dev, dri-devel@lists.freedesktop.org, 
+ gfs2@lists.linux.dev, intel-gfx@lists.freedesktop.org, 
+ intel-wired-lan@lists.osuosl.org, iommu@lists.linux.dev, 
+ kvm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-block@vger.kernel.org, linux-bluetooth@vger.kernel.org, 
+ linux-btrfs@vger.kernel.org, linux-cifs@vger.kernel.org, 
+ linux-clk@vger.kernel.org, linux-erofs@lists.ozlabs.org, 
+ linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ linux-gpio@vger.kernel.org, linux-hyperv@vger.kernel.org, 
+ linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-leds@vger.kernel.org, linux-media@vger.kernel.org, 
+ linux-mips@vger.kernel.org, linux-mm@kvack.org, 
+ linux-modules@vger.kernel.org, linux-mtd@lists.infradead.org, 
+ linux-nfs@vger.kernel.org, linux-omap@vger.kernel.org, 
+ linux-phy@lists.infradead.org, linux-pm@vger.kernel.org, 
+ linux-rockchip@lists.infradead.org, linux-s390@vger.kernel.org, 
+ linux-scsi@vger.kernel.org, linux-sctp@vger.kernel.org, 
+ linux-security-module@vger.kernel.org, linux-sh@vger.kernel.org, 
+ linux-sound@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+ linux-trace-kernel@vger.kernel.org, linux-usb@vger.kernel.org, 
+ linux-wireless@vger.kernel.org, netdev@vger.kernel.org, 
+ ntfs3@lists.linux.dev, samba-technical@lists.samba.org, 
+ sched-ext@lists.linux.dev, target-devel@vger.kernel.org, 
+ tipc-discussion@lists.sourceforge.net, v9fs@lists.linux.dev, 
+ Philipp Hahn <phahn-oss@avm.de>
+Cc: Phillip Lougher <phillip@squashfs.org.uk>
+X-Developer-Signature: v=1; a=openpgp-sha256; l=775; i=phahn-oss@avm.de;
+ h=from:subject:message-id; bh=5P0DiWaZEPF/d3SPdMB+rZQJk1DY1mVuY8d9xffySsA=;
+ b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAYCOfXcw6nKYZXjZ+DBieT/hiu2NsAfQUre0
+ jlVRw6aXW2JATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAGAgAKCRA0LQZT0ays
+ 213oB/sHjZoOpAMz20yPf5W58oaVS3VDOW1zZjyOZfXyKihmnOb8lV99cBPQClALjvBUcqLXemg
+ tpELfmCMWmmS2DLDh38s8m7H4SkSFm3iB+qUl+u8a8NGrDjTz2g0nlLXJ2i4mzmAqWbDldfEhAp
+ ePslhLAf6MqAOAwxF9goTetOQ472ZWbOa7vI5fCqcvwcF/q5QIEUmGs+z5b0yUklyrSflqQlQo4
+ adffOC5kl3ETGEGqBgVXEIg3h8JiDkJe6MaBbDmB/JG3IQRjeJ8YfJc6t+cVg+eXVpCRQOreMFS
+ jG7NgF/eCJBIlcELmHlOCy2pst+P0hiPrthj4RBlPC3hRS93
+X-Developer-Key: i=phahn-oss@avm.de; a=openpgp;
+ fpr=58AF7C2E007CDBE62C59E078F50EFDCF8AD04B1A
+X-purgate-ID: 149429::1773143723-265C1A3D-EB4B679C/0/0
+X-purgate-type: clean
+X-purgate-size: 777
+X-purgate-Ad: Categorized by eleven eXpurgate (R) https://www.eleven.de
+X-purgate: This mail is considered clean (visit https://www.eleven.de for further information)
+X-purgate: clean
 
-On 3/10/26 04:25, Harry Yoo wrote:
-> On Mon, Mar 09, 2026 at 03:00:17PM +0100, vbabka@kernel.org wrote:
->> On 3/9/26 08:22, Harry Yoo wrote:
->> > obj_exts_alloc_size() prevents recursive allocation of slabobj_ext
->> > array from the same cache, to avoid creating slabs that are never freed.
->> > 
->> > There is one mistake that returns the original size when memory
->> > allocation profiling is disabled. The assumption was that
->> > memcg-triggered slabobj_ext allocation is always served from
->> > KMALLOC_CGROUP type. But this is wrong [1]: when the caller specifies
->> > both __GFP_RECLAIMABLE and __GFP_ACCOUNT with SLUB_TINY enabled, the
->> > allocation is served from normal kmalloc. This is because kmalloc_type()
->> > prioritizes __GFP_RECLAIMABLE over __GFP_ACCOUNT, and SLUB_TINY aliases
->> > KMALLOC_RECLAIM with KMALLOC_NORMAL.
->> 
->> Hm that's suboptimal (leads to sparsely used obj_exts in normal kmalloc
->> slabs) and maybe separately from this hotfix we could make sure that with
->> SLUB_TINY, __GFP_ACCOUNT is preferred going forward?
-> 
-> To be honest, I don't a have strong opinion on that.
-> 
-> Is grouping by mobility (for anti-fragmentation less) important on
-> SLUB_TINY systems?
+Prefer using IS_ERR_OR_NULL() over using IS_ERR() and a manual NULL
+check.
 
-Yeah, that's why "KMALLOC_RECLAIM = KMALLOC_NORMAL" there. So prioritizing
-__GFP_RECLAIMABLE does nothing there, it goes to the same kmalloc_normal
-cache. It only results in ignoring KMALLOC_CGROUP.
-(I think in practice SLUB_TINY systems wouldn't enabled CONFIG_MEMCG either,
-so it's a low priority, but still logical imho).
+Change generated with coccinelle.
 
->> > As a result, the recursion guard is bypassed and the problematic slabs
->> > can be created. Fix this by removing the mem_alloc_profiling_enabled()
->> > check entirely. The remaining is_kmalloc_normal() check is still
->> > sufficient to detect whether the cache is of KMALLOC_NORMAL type and
->> > avoid bumping the size if it's not.
->> > 
->> > Without SLUB_TINY, no functional change intended.
->> > With SLUB_TINY, allocations with __GFP_ACCOUNT|__GFP_RECLAIMABLE
->> > now allocate a larger array if the sizes equal.
->> > 
->> > Reported-by: Zw Tang <shicenci@gmail.com>
->> > Fixes: 280ea9c3154b ("mm/slab: avoid allocating slabobj_ext array from its own slab")
->> > Closes: https://lore.kernel.org/linux-mm/CAPHJ_VKuMKSke8b11AZQw1PTSFN4n2C0gFxC6xGOG0ZLHgPmnA@mail.gmail.com
->> > Cc: stable@vger.kernel.org
->> > Signed-off-by: Harry Yoo <harry.yoo@oracle.com>
->> 
->> Added to slab/for-next-fixes, thanks!
-> 
-> Thanks!
-> 
+To: Phillip Lougher <phillip@squashfs.org.uk>
+Cc: linux-kernel@vger.kernel.org
+Signed-off-by: Philipp Hahn <phahn-oss@avm.de>
+---
+ fs/squashfs/cache.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/squashfs/cache.c b/fs/squashfs/cache.c
+index 67abd4dff222235e75d8c2b10d5e9b811d6e38d8..8888cc02966e2e33210c872c733205d4c581ecc9 100644
+--- a/fs/squashfs/cache.c
++++ b/fs/squashfs/cache.c
+@@ -198,7 +198,7 @@ void squashfs_cache_delete(struct squashfs_cache *cache)
+ {
+ 	int i, j;
+ 
+-	if (IS_ERR(cache) || cache == NULL)
++	if (IS_ERR_OR_NULL(cache))
+ 		return;
+ 
+ 	for (i = 0; i < cache->entries; i++) {
+
+-- 
+2.43.0
 
