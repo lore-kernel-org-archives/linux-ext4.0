@@ -1,38 +1,38 @@
-Received: from mail.avm.de (mail.avm.de [212.42.244.120])
+Received: from mail.avm.de (mail.avm.de [212.42.244.119])
 	(using TLSv1.2 with cipher DHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EACC046AF38;
-	Tue, 10 Mar 2026 11:55:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.42.244.120
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B01DD4657F3;
+	Tue, 10 Mar 2026 11:55:39 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.42.244.119
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773143748; cv=none; b=Fzgb7bwQJyuLAig5gseLQwtvi2UHOvJkkwNfuhextru8UHxbA5r04Wd96/mFFdtc3wl+YhyYGmiS/gWKtCbWw/vMdFCp6MlqsOl3sSUtHPnzfHdJU5eIc+y4+5QkS5R7iBk/Mk7dvY2Ki3dFlkQ+TYWnXy1aZaPsR7UiQBned3E=
+	t=1773143749; cv=none; b=Ji7rN6OuGls7wCepF3QkMANhnMDUzvtmdfDigoFrw6H/zkiQpzTyv4f4vJTExNem5jILxgtHtA2HAHcQyo/QpB4AVWotK036Ag7W8zseNtFQluMLSPnz0BNzvjk6bN6La0RyGNeifBHJWQlnufVLpWuyl+t9uXcsX3FAm7IRdhw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773143748; c=relaxed/simple;
-	bh=1PXfnuytcDxCJ5WvjcpjD44YA1sDO5ZH9mYGPwGsGfw=;
+	s=arc-20240116; t=1773143749; c=relaxed/simple;
+	bh=KX6X+DDiGt9UXTjcCHLPV6DtScldl/2cIRjPuvT9tTY=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=fFRtPfr7LO7uHr1HjDvDw+uShgQHce81ExTXRekRxvXXNPpYuOQ3voc6xHdhrWJKKzbTHh3hjg51S/Y0yzpFPNX6j12SHUAThiO9kN0xPFBrvuPaLhaShfQzf8V4BOiDdsW71q3Dpt/BsT0dk83TYRqXr9GvnpbMqx7LzbHHvOE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b=J3wSWYAg; arc=none smtp.client-ip=212.42.244.120
+	 In-Reply-To:To:Cc; b=c7jps1l2eCVhPG1KU0jWmuky8a+VgTm1xgA7KXEhRKzyVZBAEU378A6xQp0aOF2K7Wtuu2oTlm1dFxoehmHsawBmYiv2cTI/1Hd/1/RQlvOuFTVbj3N6KLRwzroqEJpIsnpyRDLbJ5EE3oFiGVjzOnuzEA3nstdU6MbcQ28EIEM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b=ZioiLNZ6; arc=none smtp.client-ip=212.42.244.119
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=avm.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b="J3wSWYAg"
+	dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b="ZioiLNZ6"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=avm.de; s=mail;
-	t=1773143724; bh=1PXfnuytcDxCJ5WvjcpjD44YA1sDO5ZH9mYGPwGsGfw=;
+	t=1773143723; bh=KX6X+DDiGt9UXTjcCHLPV6DtScldl/2cIRjPuvT9tTY=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=J3wSWYAgTHffE/RASKBpQWq2ySnTd5MpW6YLASVrV89gusHRkOxfAkrwsTjGvFaNS
-	 hDxuWWXJL4XVOl+LI/t97dlq56rN6Kpzc7n2jHPxY+V+uUTEo8r5Ulk5M3qiRSRkq1
-	 dYJqASb6U15Y8KxN9uh8urreNs5K4N5plRC3Hf68=
-Received: from [212.42.244.71] (helo=mail.avm.de)
+	b=ZioiLNZ6EfhKGMrW73+pjGIuwzOuvOKiSTcZ7wPJiCwebXNzeEOuXWZ+A1nFHvhW4
+	 kJcOoKZ0VhxgqpRswcks1O+/9tUDVhOk4k88nkZD85ItDoYcz2HVcAjttfrO5CwuLe
+	 NFoc05VLkE1QM4ORDb0Hi3i8FcBzsZqAPnJdPzxQ=
+Received: from [2001:bf0:244:244::71] (helo=mail.avm.de)
 	by mail.avm.de with ESMTP (eXpurgate 4.55.2)
 	(envelope-from <phahn-oss@avm.de>)
-	id 69b006ab-b734-7f0000032729-7f000001bff0-1
+	id 69b006ab-2367-7f0000032729-7f0000019d06-1
 	for <multiple-recipients>; Tue, 10 Mar 2026 12:55:23 +0100
-Received: from mail-auth.avm.de (dovecot-mx-01.avm.de [212.42.244.71])
+Received: from mail-auth.avm.de (dovecot-mx-01.avm.de [IPv6:2001:bf0:244:244::71])
 	by mail.avm.de (Postfix) with ESMTPS;
 	Tue, 10 Mar 2026 12:55:23 +0100 (CET)
 From: Philipp Hahn <phahn-oss@avm.de>
-Date: Tue, 10 Mar 2026 12:48:42 +0100
-Subject: [PATCH 16/61] sched: Prefer IS_ERR_OR_NULL over manual NULL check
+Date: Tue, 10 Mar 2026 12:48:32 +0100
+Subject: [PATCH 06/61] 9p: Prefer IS_ERR_OR_NULL over manual NULL check
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -41,7 +41,7 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260310-b4-is_err_or_null-v1-16-bd63b656022d@avm.de>
+Message-Id: <20260310-b4-is_err_or_null-v1-6-bd63b656022d@avm.de>
 References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 In-Reply-To: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com, 
@@ -71,28 +71,24 @@ To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com,
  sched-ext@lists.linux.dev, target-devel@vger.kernel.org, 
  tipc-discussion@lists.sourceforge.net, v9fs@lists.linux.dev, 
  Philipp Hahn <phahn-oss@avm.de>
-Cc: Tejun Heo <tj@kernel.org>, David Vernet <void@manifault.com>, 
- Andrea Righi <arighi@nvidia.com>, Changwoo Min <changwoo@igalia.com>, 
- Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>, 
- Juri Lelli <juri.lelli@redhat.com>, 
- Vincent Guittot <vincent.guittot@linaro.org>, 
- Dietmar Eggemann <dietmar.eggemann@arm.com>, 
- Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>, 
- Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1398; i=phahn-oss@avm.de;
- h=from:subject:message-id; bh=1PXfnuytcDxCJ5WvjcpjD44YA1sDO5ZH9mYGPwGsGfw=;
- b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAYMDPZu3smBGrrjEDAZgewRd/vSzrMtCJxCU
- Ab0/aCneJOJATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAGDAAKCRA0LQZT0ays
- 2yYuCACBFSism0sJT51wNOH3mmVipRWFOp8Vg+RkYWteB8QGePJlSbJv9OJm09HMkW7tLjwUyWX
- VVHeC9B16w6ID+8gEcOTClH7t/fK4Dy8WecKHkh0F285AVZWcglgZ3SjIJUNbcIL4vnctyxVDTz
- UXRKVqYZS83Tz67A8a3xEjr7wme1UPPk+FME5Cb8slTwxHRkeibjPT1wP0LHzCbUOIo6nCgv8R7
- jLfvDCodAoO4aPJRzL3vfdPDFaqXegciQKVWThwHK6Iz+gXqJuudCNdAk8Oa0FFSpSor2eNbdWj
- hK6ZRlUo0db2BRvH/nraA1HapgaLEA9P2vfUY2mJwp9Lzm4g
+Cc: Eric Van Hensbergen <ericvh@kernel.org>, 
+ Latchesar Ionkov <lucho@ionkov.net>, 
+ Dominique Martinet <asmadeus@codewreck.org>, 
+ Christian Schoenebeck <linux_oss@crudebyte.com>
+X-Developer-Signature: v=1; a=openpgp-sha256; l=932; i=phahn-oss@avm.de;
+ h=from:subject:message-id; bh=KX6X+DDiGt9UXTjcCHLPV6DtScldl/2cIRjPuvT9tTY=;
+ b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAXqJp0CDUjw9jEvsvX+a/KbvAdXeFk7KScmA
+ k1gbpU+8P+JATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAF6gAKCRA0LQZT0ays
+ 29mrCACj+Vud6UtbAeAOyyVoHbFLvMA1jaglqqRGws0fgYsgwpzXFXvy2i2CmaAOIcTuq4UVTOl
+ 2Cp9O2MO0VDKHA4864zJOud8em6WQkYpTs1edDKjyZ8gpLnrkl+uUALuLIZHLcn32/PFl6USje2
+ 0rlhbB9Ue5RZDoT7EFzcp3mX899jCdSGzalbeWr5SPDgRQW0S9l7PbTpDgAvlvTr4+JT6Q76sJ+
+ Xum3jXXZ29Rm368akWgnu/SoCzltjqdTHnSYloTAliMoi8hFFj6gbktEQSHRbMEzLVXTgNcHq2l
+ 4mfiDZbzmkqs8S8e3yaP+Mk/R/tjrHLygop2cIGzqTfhnlfW
 X-Developer-Key: i=phahn-oss@avm.de; a=openpgp;
  fpr=58AF7C2E007CDBE62C59E078F50EFDCF8AD04B1A
-X-purgate-ID: 149429::1773143723-E0DD4A3D-EB59D507/0/0
+X-purgate-ID: 149429::1773143723-77CF7E1F-303E842C/0/0
 X-purgate-type: clean
-X-purgate-size: 1400
+X-purgate-size: 934
 X-purgate-Ad: Categorized by eleven eXpurgate (R) https://www.eleven.de
 X-purgate: This mail is considered clean (visit https://www.eleven.de for further information)
 X-purgate: clean
@@ -102,39 +98,30 @@ check.
 
 Change generated with coccinelle.
 
-To: Tejun Heo <tj@kernel.org>
-To: David Vernet <void@manifault.com>
-To: Andrea Righi <arighi@nvidia.com>
-To: Changwoo Min <changwoo@igalia.com>
-To: Ingo Molnar <mingo@redhat.com>
-To: Peter Zijlstra <peterz@infradead.org>
-To: Juri Lelli <juri.lelli@redhat.com>
-To: Vincent Guittot <vincent.guittot@linaro.org>
-To: Dietmar Eggemann <dietmar.eggemann@arm.com>
-To: Steven Rostedt <rostedt@goodmis.org>
-To: Ben Segall <bsegall@google.com>
-To: Mel Gorman <mgorman@suse.de>
-To: Valentin Schneider <vschneid@redhat.com>
-Cc: sched-ext@lists.linux.dev
+To: Eric Van Hensbergen <ericvh@kernel.org>
+To: Latchesar Ionkov <lucho@ionkov.net>
+To: Dominique Martinet <asmadeus@codewreck.org>
+To: Christian Schoenebeck <linux_oss@crudebyte.com>
+Cc: v9fs@lists.linux.dev
 Cc: linux-kernel@vger.kernel.org
 Signed-off-by: Philipp Hahn <phahn-oss@avm.de>
 ---
- kernel/sched/ext.c | 2 +-
+ fs/9p/fid.h | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/kernel/sched/ext.c b/kernel/sched/ext.c
-index 1594987d637b09e586ae788b7f2e6336332d605a..cfa869bd7de5406a5ca094992ab04c62b0e92fd0 100644
---- a/kernel/sched/ext.c
-+++ b/kernel/sched/ext.c
-@@ -3688,7 +3688,7 @@ static void scx_sched_free_rcu_work(struct work_struct *work)
- 	do {
- 		rhashtable_walk_start(&rht_iter);
+diff --git a/fs/9p/fid.h b/fs/9p/fid.h
+index 0d6138bee2a3d1ab565ab2d210c0a3f3bf97e4e3..3bb7ef4380e972a2d9ab67eb4aab6cc5bfe2eea7 100644
+--- a/fs/9p/fid.h
++++ b/fs/9p/fid.h
+@@ -27,7 +27,7 @@ static inline struct p9_fid *v9fs_fid_clone(struct dentry *dentry)
+ 	struct p9_fid *fid, *nfid;
  
--		while ((dsq = rhashtable_walk_next(&rht_iter)) && !IS_ERR(dsq))
-+		while (!IS_ERR_OR_NULL((dsq = rhashtable_walk_next(&rht_iter))))
- 			destroy_dsq(sch, dsq->id);
+ 	fid = v9fs_fid_lookup(dentry);
+-	if (!fid || IS_ERR(fid))
++	if (IS_ERR_OR_NULL(fid))
+ 		return fid;
  
- 		rhashtable_walk_stop(&rht_iter);
+ 	nfid = clone_fid(fid);
 
 -- 
 2.43.0
