@@ -1,227 +1,214 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B5B1B3B9DA0;
-	Tue, 10 Mar 2026 12:23:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9CD1738A28F;
+	Tue, 10 Mar 2026 12:23:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773145413; cv=none; b=A5IMII5AxxkfGQuSYr+7muVeTCh2QDjGYw8vpdfiLwUwFWGFnEWbxTIClOpC9I8caB7psB9MTjHsMnzMsvswVQDwJTukFLxoYL7StmBbyjFTmzvHIF8Wkn0peO62byA3jmPA9Z11llOxaqldoFQrvaNeG6bJ1WAjqlLXXGmAwo4=
+	t=1773145415; cv=none; b=s7Gok/HUaEPE161CG02g0Uh1zKHkkEp5gsGcEtHzH1jcvUEBuC6gubP7IxGTIiYaUN5mtGFD/h0Scth2NGLXKPlaAQ3YLys7EGwojmpeDTT7ArWOrWSj8zrOykOGxAKzdgmHcvudehJ7iid9X5ftbYPdRV1ComgqIkT1Tjr9aDw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773145413; c=relaxed/simple;
-	bh=dKSFFzRnVfNET7rWuE5Oko4JdMIW5clek3Ra8qeLWt0=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=Tvu+3sBL8hmaPMkTpe4bZY4OHGPWB3daqTlabcAZFxjC0nQMPriUzI5b4dwhtI5nYIKkY3/ssnz4ZhOy4uOlqQMzsAa4xXT0cAOOq4FMquhvfWETA5JcwxAN4hCZhgj2Q/ynVa/Vzb42iw9J21sQq4BT1LDMyCdp41qa01x7trA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fkez07Tl; arc=none smtp.client-ip=10.30.226.201
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fkez07Tl"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B10E4C19423;
-	Tue, 10 Mar 2026 12:23:27 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1773145413;
-	bh=dKSFFzRnVfNET7rWuE5Oko4JdMIW5clek3Ra8qeLWt0=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-	b=fkez07TlE1bfdj9q72lfPh33xZUWj92R+6N34570wM83IJULMKkc+t1NI+NIthPJ8
-	 udd0+wDsOsLyEYtc2rUq6c/04oYHs4Ijd8GvgL72KdgHcTTjuge6542A67j9ng4nMs
-	 ibR7d2V6NwLDyu/uVXWq0145yHAFZxvc42G+2L2+sUZ3uktv+EclNSS20uQ7swL0HP
-	 LWOaDsIKcth0kzayTnUnDFQv7L72QnV4UUeRrzt36Vk9ZcP+WXEjov00vhjcxe3Gp8
-	 CPc1GnWeA6B7VfYAg6uLBaadmh06wX7OXgaehJVXZ7xVcjj32thXyrmbMa6Rym7GyL
-	 HCCmPdJG4zvRQ==
-Message-ID: <d97c4fd76d7b7fc8b38d3bb4e4ed700b1003ecba.camel@kernel.org>
-Subject: Re: [PATCH 30/61] net/sunrpc: Prefer IS_ERR_OR_NULL over manual
- NULL check
-From: Jeff Layton <jlayton@kernel.org>
-To: Philipp Hahn <phahn-oss@avm.de>, amd-gfx@lists.freedesktop.org, 
-	apparmor@lists.ubuntu.com, bpf@vger.kernel.org, ceph-devel@vger.kernel.org,
- 	cocci@inria.fr, dm-devel@lists.linux.dev, dri-devel@lists.freedesktop.org,
- 	gfs2@lists.linux.dev, intel-gfx@lists.freedesktop.org, 
-	intel-wired-lan@lists.osuosl.org, iommu@lists.linux.dev,
- kvm@vger.kernel.org, 	linux-arm-kernel@lists.infradead.org,
- linux-block@vger.kernel.org, 	linux-bluetooth@vger.kernel.org,
- linux-btrfs@vger.kernel.org, 	linux-cifs@vger.kernel.org,
- linux-clk@vger.kernel.org, 	linux-erofs@lists.ozlabs.org,
- linux-ext4@vger.kernel.org, 	linux-fsdevel@vger.kernel.org,
- linux-gpio@vger.kernel.org, 	linux-hyperv@vger.kernel.org,
- linux-input@vger.kernel.org, 	linux-kernel@vger.kernel.org,
- linux-leds@vger.kernel.org, 	linux-media@vger.kernel.org,
- linux-mips@vger.kernel.org, linux-mm@kvack.org, 
-	linux-modules@vger.kernel.org, linux-mtd@lists.infradead.org, 
-	linux-nfs@vger.kernel.org, linux-omap@vger.kernel.org, 
-	linux-phy@lists.infradead.org, linux-pm@vger.kernel.org, 
-	linux-rockchip@lists.infradead.org, linux-s390@vger.kernel.org, 
-	linux-scsi@vger.kernel.org, linux-sctp@vger.kernel.org, 
-	linux-security-module@vger.kernel.org, linux-sh@vger.kernel.org, 
-	linux-sound@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
-	linux-trace-kernel@vger.kernel.org, linux-usb@vger.kernel.org, 
-	linux-wireless@vger.kernel.org, netdev@vger.kernel.org,
- ntfs3@lists.linux.dev, 	samba-technical@lists.samba.org,
- sched-ext@lists.linux.dev, 	target-devel@vger.kernel.org,
- tipc-discussion@lists.sourceforge.net, 	v9fs@lists.linux.dev
-Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>,  Dai Ngo <Dai.Ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>, "David S. Miller" <davem@davemloft.net>,  Eric
- Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo
- Abeni <pabeni@redhat.com>,  Simon Horman <horms@kernel.org>
-Date: Tue, 10 Mar 2026 08:23:26 -0400
-In-Reply-To: <20260310-b4-is_err_or_null-v1-30-bd63b656022d@avm.de>
-References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
-	 <20260310-b4-is_err_or_null-v1-30-bd63b656022d@avm.de>
-Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
- keydata=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
- QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.58.3 (3.58.3-1.fc43) 
+	s=arc-20240116; t=1773145415; c=relaxed/simple;
+	bh=dfu3luwQicp+280gKKuHDHjH89+NSfz4qXi+IzprZn0=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=BoSFnfQRV6zIRS8cwIKhzMoYGs2E1UUzTpBmbChpsqfuOYYHYAMon6KlXbdtf15wQd8xuYQbyVrBRWQaGkyyr6YierJONNnQgOXBpcwKUeJDf8vbxxaEjcoB5m+FEjRZ9xT22gPC4f1dU0uxL4YP2kh89D3P46vLaQ1tlVuNuD0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4fVY1l0NLGzKHMZR;
+	Tue, 10 Mar 2026 20:23:07 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id 4408340539;
+	Tue, 10 Mar 2026 20:23:22 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP1 (Coremail) with SMTP id cCh0CgD3+Ng4DbBpmKCYAQ--.16282S3;
+	Tue, 10 Mar 2026 20:23:22 +0800 (CST)
+Message-ID: <7cbbefaf-28fc-4400-b2da-7ab8d1afc952@huaweicloud.com>
+Date: Tue, 10 Mar 2026 20:23:20 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [BUG] Warning in ext4_check_map_extents_env
+To: Pedro Demarchi Gomes <pedrodemargomes@gmail.com>,
+ Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, linux-trace-kernel@vger.kernel.org
+References: <aa7Ms0MzyPKggFGo@fedora>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <aa7Ms0MzyPKggFGo@fedora>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:cCh0CgD3+Ng4DbBpmKCYAQ--.16282S3
+X-Coremail-Antispam: 1UD129KBjvJXoW3Wr13XF13JF43Zr4kKw48JFb_yoWxCFy8pF
+	1YyF4kCw48Ar1UZFy2y3Wq9w1UKr47uFWUGryxGr18A3W8GF13XFy5GF4UKrZxArWDZrW7
+	Jw1DAw1kKayUtaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUyCb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
+	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JMxkF7I0En4kS14v26r126r1DMxAIw28IcxkI7VAK
+	I48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7
+	xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xII
+	jxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw2
+	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x02
+	67AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x07jjVbkUUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On Tue, 2026-03-10 at 12:48 +0100, Philipp Hahn wrote:
-> Prefer using IS_ERR_OR_NULL() over using IS_ERR() and a manual NULL
-> check.
->=20
-> Change generated with coccinelle.
->=20
-> To: Trond Myklebust <trondmy@kernel.org>
-> To: Anna Schumaker <anna@kernel.org>
-> To: Chuck Lever <chuck.lever@oracle.com>
-> To: Jeff Layton <jlayton@kernel.org>
-> To: NeilBrown <neil@brown.name>
-> To: Olga Kornievskaia <okorniev@redhat.com>
-> To: Dai Ngo <Dai.Ngo@oracle.com>
-> To: Tom Talpey <tom@talpey.com>
-> To: "David S. Miller" <davem@davemloft.net>
-> To: Eric Dumazet <edumazet@google.com>
-> To: Jakub Kicinski <kuba@kernel.org>
-> To: Paolo Abeni <pabeni@redhat.com>
-> To: Simon Horman <horms@kernel.org>
-> Cc: linux-nfs@vger.kernel.org
-> Cc: netdev@vger.kernel.org
-> Cc: linux-kernel@vger.kernel.org
-> Signed-off-by: Philipp Hahn <phahn-oss@avm.de>
-> ---
->  net/sunrpc/xprtrdma/svc_rdma_transport.c | 12 ++++++------
->  1 file changed, 6 insertions(+), 6 deletions(-)
->=20
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrd=
-ma/svc_rdma_transport.c
-> index 9b623849723ed0eb74b827881c6f32d3434c891b..b4d03e59a8202f20360cff1e2=
-e79b1e325396517 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> @@ -578,7 +578,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xp=
-rt *xprt)
->   errout:
->  	/* Take a reference in case the DTO handler runs */
->  	svc_xprt_get(&newxprt->sc_xprt);
-> -	if (newxprt->sc_qp && !IS_ERR(newxprt->sc_qp))
-> +	if (!IS_ERR_OR_NULL(newxprt->sc_qp))
->  		ib_destroy_qp(newxprt->sc_qp);
->  	rdma_destroy_id(newxprt->sc_cm_id);
->  	rpcrdma_rn_unregister(dev, &newxprt->sc_rn);
-> @@ -608,7 +608,7 @@ static void svc_rdma_free(struct svc_xprt *xprt)
->  	might_sleep();
-> =20
->  	/* This blocks until the Completion Queues are empty */
-> -	if (rdma->sc_qp && !IS_ERR(rdma->sc_qp))
-> +	if (!IS_ERR_OR_NULL(rdma->sc_qp))
->  		ib_drain_qp(rdma->sc_qp);
->  	flush_workqueue(svcrdma_wq);
-> =20
-> @@ -619,16 +619,16 @@ static void svc_rdma_free(struct svc_xprt *xprt)
->  	svc_rdma_recv_ctxts_destroy(rdma);
-> =20
->  	/* Destroy the QP if present (not a listener) */
-> -	if (rdma->sc_qp && !IS_ERR(rdma->sc_qp))
-> +	if (!IS_ERR_OR_NULL(rdma->sc_qp))
->  		ib_destroy_qp(rdma->sc_qp);
-> =20
-> -	if (rdma->sc_sq_cq && !IS_ERR(rdma->sc_sq_cq))
-> +	if (!IS_ERR_OR_NULL(rdma->sc_sq_cq))
->  		ib_free_cq(rdma->sc_sq_cq);
-> =20
-> -	if (rdma->sc_rq_cq && !IS_ERR(rdma->sc_rq_cq))
-> +	if (!IS_ERR_OR_NULL(rdma->sc_rq_cq))
->  		ib_free_cq(rdma->sc_rq_cq);
-> =20
-> -	if (rdma->sc_pd && !IS_ERR(rdma->sc_pd))
-> +	if (!IS_ERR_OR_NULL(rdma->sc_pd))
->  		ib_dealloc_pd(rdma->sc_pd);
-> =20
->  	/* Destroy the CM ID */
+Hi,
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+Thank you for the report!
+
++ add UPROBES list to CC.
+
+On 3/9/2026 9:41 PM, Pedro Demarchi Gomes wrote:
+> Hi,
+> 
+> The warning below occurs when running selftests/mm/merge on a kernel built
+> with CONFIG_EXT4_DEBUG=y.
+> 
+> syzkaller login: [   29.277674] ------------[ cut here ]------------
+> [   29.279636] WARNING: fs/ext4/inode.c:436 at ext4_check_map_extents_env+0x389/0x440, CPU#1: merge/365
+> [   29.282459] Modules linked in:
+> [   29.283497] CPU: 1 UID: 0 PID: 365 Comm: merge Not tainted 7.0.0-rc3 #59 PREEMPT(full)
+> [   29.285999] Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.3-debian-1.16.3-2 04/01/2014
+> [   29.288850] RIP: 0010:ext4_check_map_extents_env+0x389/0x440
+> [   29.290653] Code: ff 48 89 da 48 b8 00 00 00 00 00 fc ff df 48 c1 ea 03 80 3c 02 00 0f 85 87 00 00 00 48 8b 45 18 48 85 c0 0f 85 2e fd ff ff 90 <0f> 0b 90 e9 25 fd ff ff e8 8a 2e ca ff e9 e4 fc ff ff 48 89 df e8
+> [   29.296623] RSP: 0018:ffff88811876f2a8 EFLAGS: 00010246
+> [   29.298288] RAX: 0000000000000000 RBX: ffff888106c66798 RCX: ffffffff81e8ad60
+> [   29.300529] RDX: 1ffff11020d8ccf3 RSI: 0000000000000008 RDI: ffff888106c66798
+> [   29.302748] RBP: ffff888106c66780 R08: 0000000000000000 R09: ffffed1020d8ccf3
+> [   29.305009] R10: ffff888106c6679f R11: 0000000000000001 R12: 00000000001e0c26
+> [   29.307226] R13: ffff88811876f494 R14: ffff88811876f498 R15: ffff88811876f488
+> [   29.309477] FS:  00007fbe82723780(0000) GS:ffff8883c38aa000(0000) knlGS:0000000000000000
+> [   29.312085] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> [   29.313749] CR2: 00007fbe82790915 CR3: 000000011880e000 CR4: 00000000000006f0
+> [   29.315643] Call Trace:
+> [   29.316170]  <TASK>
+> [   29.316539]  ext4_map_blocks+0x602/0xb40
+> [   29.317204]  ? __pfx_ext4_map_blocks+0x10/0x10
+> [   29.317971]  ? __pfx_stack_trace_save+0x10/0x10
+> [   29.318719]  ? __filemap_add_folio+0x66f/0xb30
+> [   29.319500]  ext4_mpage_readpages.constprop.0.isra.0+0x918/0xe20
+> [   29.320501]  ? __pfx_ext4_mpage_readpages.constprop.0.isra.0+0x10/0x10
+> [   29.321602]  ? filemap_add_folio+0x11e/0x2c0
+> [   29.322325]  ? __pfx_ext4_read_folio+0x10/0x10
+> [   29.323107]  ext4_read_folio+0xd9/0x230
+> [   29.323762]  ? __pfx_ext4_read_folio+0x10/0x10
+> [   29.324552]  ? __pfx_ext4_read_folio+0x10/0x10
+> [   29.325321]  filemap_read_folio+0x43/0x150
+> [   29.326041]  do_read_cache_folio+0x1b1/0x320
+> [   29.326759]  read_cache_page+0x46/0x120
+> [   29.327426]  install_breakpoint+0x27d/0x810
+
+It seems this isn't an issue with ext4 itself. Instead, the implementation
+in uprobe_mmap() seems not respecting the principle that read_cache_page()
+should be called while holding mapping->invalidate_lock.
+
+Although the files tracked through uprobe are generally not modified, so
+this should not cause a real stale page cache issue. However, I was
+wandering why don't we just follow this rule?
+
+Thanks,
+Yi.
+
+> [   29.328123]  uprobe_mmap+0x439/0xeb0
+> [   29.328715]  ? __pfx_uprobe_mmap+0x10/0x10
+> [   29.329391]  __mmap_region+0x8af/0x2290
+> [   29.330074]  ? __pfx___mmap_region+0x10/0x10
+> [   29.330793]  ? unwind_get_return_address+0x59/0xa0
+> [   29.331630]  ? event_sched_in+0x33f/0xaf0
+> [   29.332308]  ? perf_event_groups_next+0x9a/0x200
+> [   29.333667]  ? mm_get_unmapped_area_vmflags+0x6c/0xe0
+> [   29.335295]  ? mmap_region+0xd3/0x2b0
+> [   29.336171]  do_mmap+0x98a/0xec0
+> [   29.336713]  ? ipe_mmap_file+0xcf/0xe0
+> [   29.337340]  ? __pfx_do_mmap+0x10/0x10
+> [   29.337977]  ? __pfx_down_write_killable+0x10/0x10
+> [   29.338757]  ? __pfx_mutex_unlock+0x10/0x10
+> [   29.339477]  vm_mmap_pgoff+0x1b2/0x310
+> [   29.340114]  ? __pfx_vm_mmap_pgoff+0x10/0x10
+> [   29.340819]  ? __pfx___do_sys_perf_event_open+0x10/0x10
+> [   29.341688]  ? fget+0x189/0x230
+> [   29.342223]  ksys_mmap_pgoff+0x2b1/0x5b0
+> [   29.342868]  ? __pfx_ksys_mmap_pgoff+0x10/0x10
+> [   29.343618]  do_syscall_64+0xe2/0x560
+> [   29.344246]  entry_SYSCALL_64_after_hwframe+0x77/0x7f
+> [   29.345105] RIP: 0033:0x7fbe82832de2
+> [   29.345707] Code: 00 00 00 0f 1f 44 00 00 41 f7 c1 ff 0f 00 00 75 27 55 89 cd 53 48 89 fb 48 85 ff 74 3b 41 89 ea 48 89 df b8 09 00 00 00 0f 05 <48> 3d 00 f0 ff ff 77 76 5b 5d c3 0f 1f 00 48 8b 05 f9 8f 0d 00 64
+> [   29.348851] RSP: 002b:00007ffd535f3b38 EFLAGS: 00000206 ORIG_RAX: 0000000000000009
+> [   29.350309] RAX: ffffffffffffffda RBX: 00007fbe826f9000 RCX: 00007fbe82832de2
+> [   29.351526] RDX: 0000000000000004 RSI: 000000000000a000 RDI: 00007fbe826f9000
+> [   29.352865] RBP: 0000000000000012 R08: 000000000000000b R09: 0000000000000000
+> [   29.354136] R10: 0000000000000012 R11: 0000000000000206 R12: 00007ffd535f4120
+> [   29.355357] R13: 0000000000000000 R14: 000000000000000b R15: 0000000000001000
+> [   29.356684]  </TASK>
+> [   29.357119] ---[ end trace 0000000000000000 ]---
+> 
+> The warning is triggered by TEST_F(merge, handle_uprobe_upon_merged_vma) in
+> selftests/mm/merge.c. It occurs during the first mmap() following the
+> __NR_perf_event_open syscall, as shown in the excerpt below:
+> 
+> TEST_F(merge, handle_uprobe_upon_merged_vma)
+> {
+> 	const size_t attr_sz = sizeof(struct perf_event_attr);
+> 	unsigned int page_size = self->page_size;
+> 	const char *probe_file = "./foo";
+> 	char *carveout = self->carveout;
+> 	struct perf_event_attr attr;
+> 	unsigned long type;
+> 	void *ptr1, *ptr2;
+> 	int fd;
+> 
+> 	fd = open(probe_file, O_RDWR|O_CREAT, 0600);
+> 	ASSERT_GE(fd, 0);
+> 
+> 	ASSERT_EQ(ftruncate(fd, page_size), 0);
+> 	if (read_sysfs("/sys/bus/event_source/devices/uprobe/type", &type) != 0) {
+> 		SKIP(goto out, "Failed to read uprobe sysfs file, skipping");
+> 	}
+> 
+> 	memset(&attr, 0, attr_sz);
+> 	attr.size = attr_sz;
+> 	attr.type = type;
+> 	attr.config1 = (__u64)(long)probe_file;
+> 	attr.config2 = 0x0;
+> 
+> 	ASSERT_GE(syscall(__NR_perf_event_open, &attr, 0, -1, -1, 0), 0);
+> 
+> 	ptr1 = mmap(&carveout[page_size], 10 * page_size, PROT_EXEC,
+> 		    MAP_PRIVATE | MAP_FIXED, fd, 0); < WARNING!!!
+> 	ASSERT_NE(ptr1, MAP_FAILED);
+> 
+> 	getchar();
+> 
+> 	ptr2 = mremap(ptr1, page_size, 2 * page_size,
+> 		      MREMAP_MAYMOVE | MREMAP_FIXED, ptr1 + 5 * page_size);
+> 	ASSERT_NE(ptr2, MAP_FAILED);
+> 
+> 	ASSERT_NE(mremap(ptr2, page_size, page_size,
+> 			 MREMAP_MAYMOVE | MREMAP_FIXED, ptr1), MAP_FAILED);
+> 
+> out:
+> 	close(fd);
+> 	remove(probe_file);
+> }
+> 
+> The issue originates from the following call chain:
+> 	prepare_uprobe
+> 	  -> copy_insn
+> 	       -> __copy_insn
+> 		    -> read_mapping_page() or shmem_read_mapping_page()
+> 
+> Both read_mapping_page() and shmem_read_mapping_page() are invoked
+> without holding i_rwsem or invalidate_lock. When CONFIG_EXT4_DEBUG
+> is enabled, this triggers the warning in ext4_check_map_extents_env().
+> 
+> 
+> 
+
