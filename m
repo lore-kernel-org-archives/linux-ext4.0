@@ -1,199 +1,207 @@
-Received: from out30-98.freemail.mail.aliyun.com (out30-98.freemail.mail.aliyun.com [115.124.30.98])
+Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.21])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 49137278161
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Mar 2026 02:38:31 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.98
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8832C342530
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Mar 2026 02:44:51 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.175.65.21
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773196716; cv=none; b=mTl3vI3+DrMwnBfR0DXw3YeLD0Ua6jZgz7HrPDTBnwkKLbJVZwiiskcjhDmZccpHDZqmeOLZYUnUGwXG/i+LmdUhEZ/Buqvv2gsz+5oDve9QhGjwLn9DLRX9vxjwima+V5VaEDD85ToUVVGiw79TRGSgOcfNJKQ+j9oW8GvEfuw=
+	t=1773197094; cv=none; b=IiRAH8HXDVOsQKNXX5csDsRJqi4zyCuz4bAB6zjEJvzAx0l3gb+643N8WVXN4XYHpyBdhs9N79PHq8J+vFhj+a5sJ6tpHh7/qz8TAdD2RzBDhWrydUsvzOzAxAfDPKlGHz9xl4m4wJx3obNNGZb9nRtHhI7s8TvY3Wjs13iZJ7c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773196716; c=relaxed/simple;
-	bh=aq4avvuibgsN50dMoTC/3Pr6X4jtYnIpJdujbfSHWbE=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=tsEp2gqYELPsKmeiG9p/+OdhYy/Qvvtlfzk77zFRbwytUxjtivszR2hLCkoIoHfMP2TU4qF3itVte2/32ojQtVdaR5m/hpcbXCBb00RK7VmniGZfg8mvjzNRIxggRI6od22Be2azhWmezPjv+hjYVZoAhZd7drULwhcD+9urDis=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=bYREo80Z; arc=none smtp.client-ip=115.124.30.98
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	s=arc-20240116; t=1773197094; c=relaxed/simple;
+	bh=aw7376Y+5fry1SPxrRsCeviGdshoDjNPD8dYCjwKLVA=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=uk1ySU6XySQm169fUifNxcrb8GwrN+Un0GbMyTDMDzLoBq40taA3zhIebTpk/y4kHZTaCYDWyUgtiRmBP61nGTIwaG2JSaF2fKiMdna6zgI6AOKd3a4wCeR5aFDOc0uq2eD7NoYM9zidW8jAj1Sg5UYBmd/9InXSEYbRxRYeliY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=bwt89s1J; arc=none smtp.client-ip=198.175.65.21
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="bYREo80Z"
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1773196702; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=+1Ii/LXw6ucwfmSPhS6buDS/Z8cFHFhpzl/LJx+StbY=;
-	b=bYREo80ZfWA9U3I6fqMRgQO+xUv6VlUYHOWqMYZ5FKcuL7QmcXuWdwc1st29/7kZVDot3hprAQEj2LOTcMOXKqTa9/1QxS+BhtYybAnbcSXTWMZ6lwexwY8SwDaGUO6a9tgL6+wRASrP1Y2RHhO6L3p116jYNFXDT56KZ2gGrMM=
-Received: from 30.221.147.134(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X-iF1fg_1773196701 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Wed, 11 Mar 2026 10:38:22 +0800
-Message-ID: <5ce9dfe2-721e-4d20-9bd9-3560aa76888d@linux.alibaba.com>
-Date: Wed, 11 Mar 2026 10:38:20 +0800
+	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="bwt89s1J"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1773197091; x=1804733091;
+  h=date:from:to:cc:subject:message-id:references:
+   mime-version:in-reply-to;
+  bh=aw7376Y+5fry1SPxrRsCeviGdshoDjNPD8dYCjwKLVA=;
+  b=bwt89s1JFX2S+uAWrDjItjaEOgBavMR3xXpGzz66EAU2BJkBIFVYYw5F
+   bOYXgZ7MqbzdY4ukJQCbMGal6h/iv1F7GXkJbZFds2QnARUgi2ziJrHxj
+   SInESG5qv1VhB7NX0cSfUS+S3LQV1RBOdhMK78bU0sulls+iTgqY35r+u
+   NM3iR2S9GeQdmAbHpI56rv+ASpdVWFNXJ0+vyCQmtP87mw5D/x2iqJotn
+   9jQ5UbmZE3iKfYuXnChS3AuYDzCy4mO//tHLvaGgkwi6roQ1O4eDJPV4d
+   ti3KR5tnAkFXUVMi3XLPsjHO6GqMeODtUqXVPWFAenKB/pLaXUmFxakxS
+   A==;
+X-CSE-ConnectionGUID: J07aDc0IRgy3+msO6NwOLQ==
+X-CSE-MsgGUID: v25G8mlIRaaeRO7hz+3fZQ==
+X-IronPort-AV: E=McAfee;i="6800,10657,11725"; a="74134162"
+X-IronPort-AV: E=Sophos;i="6.23,113,1770624000"; 
+   d="scan'208";a="74134162"
+Received: from orviesa006.jf.intel.com ([10.64.159.146])
+  by orvoesa113.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 10 Mar 2026 19:44:51 -0700
+X-CSE-ConnectionGUID: C98uoD5xRxmWjqykstzOGQ==
+X-CSE-MsgGUID: k5iiteuBRwmwOE7a45V+ZA==
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="6.23,113,1770624000"; 
+   d="scan'208";a="219442196"
+Received: from lkp-server01.sh.intel.com (HELO 418530b1a366) ([10.239.97.150])
+  by orviesa006.jf.intel.com with ESMTP; 10 Mar 2026 19:44:50 -0700
+Received: from kbuild by 418530b1a366 with local (Exim 4.98.2)
+	(envelope-from <lkp@intel.com>)
+	id 1w09Z0-000000000bZ-2HrH;
+	Wed, 11 Mar 2026 02:44:46 +0000
+Date: Wed, 11 Mar 2026 10:44:45 +0800
+From: kernel test robot <lkp@intel.com>
+To: Ye Bin <yebin@huaweicloud.com>, tytso@mit.edu, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org
+Cc: oe-kbuild-all@lists.linux.dev, jack@suse.cz
+Subject: Re: [PATCH -next 1/8] ext4: fix mballoc-test.c is not compiled when
+ EXT4_KUNIT_TESTS=M
+Message-ID: <202603111026.Utt3pe7W-lkp@intel.com>
+References: <20260310130412.3156753-2-yebin@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [RFC PATCH] ext4: handle wraparound when searching for blocks for
- indirect mapped blocks
-To: Theodore Ts'o <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>, libaokun@linux.alibaba.com,
- Ext4 Developers List <linux-ext4@vger.kernel.org>
-References: <20260310122806.1277631-1-tytso@mit.edu>
-Content-Language: en-US
-From: Baokun Li <libaokun@linux.alibaba.com>
-In-Reply-To: <20260310122806.1277631-1-tytso@mit.edu>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260310130412.3156753-2-yebin@huaweicloud.com>
 
-Hi Ted,
+Hi Ye,
 
-On 3/10/26 8:28 PM, Theodore Ts'o wrote:
-> Commit 4865c768b563 ("ext4: always allocate blocks only from groups
-> inode can use") restricts what blocks will be allocated for indirect
-> block based files to block numbers that fit within 32-bit block
-> numbers.
->
-> However, when using a review bot running on the latest Gemini LLM to
-> check this commit when backporting into an LTS based kernel, it raised
-> the following concerns:
->
->    If ac->ac_g_ex.fe_group is >= ngroups (for instance, if the goal
->    group was populated via stream allocation from s_mb_last_groups),
->    then start will be >= ngroups.
->
->    Does this allow allocating blocks beyond the 32-bit limit for
->    indirect block mapped files? The commit message mentions that
->    ext4_mb_scan_groups_linear() takes care to not select unsupported
->    groups. However, its loop uses group = *start, and the very first
->    iteration will call ext4_mb_scan_group() with this unsupported
->    group because next_linear_group() is only called at the end of the
->    iteration.
->
->    Also, in the optimized scanning paths like
->    ext4_mb_scan_groups_p2_aligned(), start is passed into
->    ext4_mb_scan_groups_xa_range(). If start >= ngroups, will this
->    trigger the WARN_ON_ONCE(end > ngroups || start >= end) because end
->    is set to ngroups? Furthermore, after wrapping around, end will be
->    set to the original start which is > ngroups, triggering the
->    warning a second time. Should this code clamp start to < ngroups
->    before scanning?
->
-> After reviewing the code paths involved and considering the LLM
-> review, I believe that while it is unlikely, it is possible that how
-> commit 4865c768b563 added ext4_get_allocation_groups_count() doesn't
-> completely address all of the possible situtions that might show up
-> when using indirect-mapped files and allocating blocks on a file
-> system with more than 2**32 blocks.
->
-> So this commit adds some safety checks and wrap around logic to some
-> functions if the multiblock allocator: ext4_mb_scan_groups_xa_range(),
-> ext4_mb_scan_groups_best_avail(), ext4_mb_scan_groups_p2_aligned(),
-> and ext4_mb_scan_groups().
->
-> Fixes: 4865c768b563 ("ext4: always allocate blocks only from groups inode can use")
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> Cc: Jan Kara <jack@suse.cz>
-> ---
+kernel test robot noticed the following build warnings:
 
-Good spotting! ext4_find_goal() ensures that the goal block obtained for
-indirect-block-based files will not exceed EXT4_MAX_BLOCK_FILE_PHYS.
-However, on an ext4 filesystem where the two file formats are mixed,
-it is indeed possible to get an excessively large goal group via stream
-allocation.
+[auto build test WARNING on next-20260309]
 
-Since the mixed-format case is quite rare, I think we can simply validate
-start in ext4_mb_scan_groups() and reset it to 0 when it exceeds the limit,
-like this:
+url:    https://github.com/intel-lab-lkp/linux/commits/Ye-Bin/ext4-fix-mballoc-test-c-is-not-compiled-when-EXT4_KUNIT_TESTS-M/20260310-225016
+base:   next-20260309
+patch link:    https://lore.kernel.org/r/20260310130412.3156753-2-yebin%40huaweicloud.com
+patch subject: [PATCH -next 1/8] ext4: fix mballoc-test.c is not compiled when EXT4_KUNIT_TESTS=M
+config: sh-defconfig (https://download.01.org/0day-ci/archive/20260311/202603111026.Utt3pe7W-lkp@intel.com/config)
+compiler: sh4-linux-gcc (GCC) 15.2.0
+reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20260311/202603111026.Utt3pe7W-lkp@intel.com/reproduce)
 
-        /* searching for the right group start from the goal value
-specified */
-        start = ac->ac_g_ex.fe_group;
-+       if (start >= ngroups)
-+               start = 0;
-        ac->ac_prefetch_grp = start;
-        ac->ac_prefetch_nr = 0;
+If you fix the issue in a separate patch/commit (i.e. not just a new version of
+the same patch/commit), kindly add following tags
+| Reported-by: kernel test robot <lkp@intel.com>
+| Closes: https://lore.kernel.org/oe-kbuild-all/202603111026.Utt3pe7W-lkp@intel.com/
 
-This way, we don’t need to add similar checks in every CR.
+All warnings (new ones prefixed by >>):
+
+>> fs/ext4/mballoc.c:4088:1: warning: no previous prototype for 'ext4_mb_mark_context' [-Wmissing-prototypes]
+    4088 | ext4_mb_mark_context(handle_t *handle, struct super_block *sb, bool state,
+         | ^~~~~~~~~~~~~~~~~~~~
 
 
-Besides, ext4_mb_scan_groups_xa_range relies on the caller to handle the
-wrap-around logic so as to ensure an overall one-way traversal of groups;
-see commit a3ce570a5d6a ("ext4: implement linear-like traversal across
-order xarrays") for details. So in any case, I don’t think it is necessary
-to add wrap-around logic here. It should be sufficient for the caller to
-guarantee that end <= ngroups and start < end.
+vim +/ext4_mb_mark_context +4088 fs/ext4/mballoc.c
 
+c9de560ded61faa Alex Tomas 2008-01-29  4084  
+c431d3867e0a825 Kemeng Shi 2023-09-29  4085  #define EXT4_MB_BITMAP_MARKED_CHECK 0x0001
+c431d3867e0a825 Kemeng Shi 2023-09-29  4086  #define EXT4_MB_SYNC_UPDATE 0x0002
+74bd22ec0285256 Ye Bin     2026-03-10  4087  int
+c431d3867e0a825 Kemeng Shi 2023-09-29 @4088  ext4_mb_mark_context(handle_t *handle, struct super_block *sb, bool state,
+c431d3867e0a825 Kemeng Shi 2023-09-29  4089  		     ext4_group_t group, ext4_grpblk_t blkoff,
+c431d3867e0a825 Kemeng Shi 2023-09-29  4090  		     ext4_grpblk_t len, int flags, ext4_grpblk_t *ret_changed)
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4091  {
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4092  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4093  	struct buffer_head *bitmap_bh = NULL;
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4094  	struct ext4_group_desc *gdp;
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4095  	struct buffer_head *gdp_bh;
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4096  	int err;
+c431d3867e0a825 Kemeng Shi 2023-09-29  4097  	unsigned int i, already, changed = len;
+bdefd689b7ff0ea Kemeng Shi 2023-09-29  4098  
+bdefd689b7ff0ea Kemeng Shi 2023-09-29  4099  	KUNIT_STATIC_STUB_REDIRECT(ext4_mb_mark_context,
+bdefd689b7ff0ea Kemeng Shi 2023-09-29  4100  				   handle, sb, state, group, blkoff, len,
+bdefd689b7ff0ea Kemeng Shi 2023-09-29  4101  				   flags, ret_changed);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4102  
+c431d3867e0a825 Kemeng Shi 2023-09-29  4103  	if (ret_changed)
+c431d3867e0a825 Kemeng Shi 2023-09-29  4104  		*ret_changed = 0;
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4105  	bitmap_bh = ext4_read_block_bitmap(sb, group);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4106  	if (IS_ERR(bitmap_bh))
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4107  		return PTR_ERR(bitmap_bh);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4108  
+c431d3867e0a825 Kemeng Shi 2023-09-29  4109  	if (handle) {
+c431d3867e0a825 Kemeng Shi 2023-09-29  4110  		BUFFER_TRACE(bitmap_bh, "getting write access");
+c431d3867e0a825 Kemeng Shi 2023-09-29  4111  		err = ext4_journal_get_write_access(handle, sb, bitmap_bh,
+c431d3867e0a825 Kemeng Shi 2023-09-29  4112  						    EXT4_JTR_NONE);
+c431d3867e0a825 Kemeng Shi 2023-09-29  4113  		if (err)
+c431d3867e0a825 Kemeng Shi 2023-09-29  4114  			goto out_err;
+c431d3867e0a825 Kemeng Shi 2023-09-29  4115  	}
+c431d3867e0a825 Kemeng Shi 2023-09-29  4116  
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4117  	err = -EIO;
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4118  	gdp = ext4_get_group_desc(sb, group, &gdp_bh);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4119  	if (!gdp)
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4120  		goto out_err;
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4121  
+c431d3867e0a825 Kemeng Shi 2023-09-29  4122  	if (handle) {
+c431d3867e0a825 Kemeng Shi 2023-09-29  4123  		BUFFER_TRACE(gdp_bh, "get_write_access");
+c431d3867e0a825 Kemeng Shi 2023-09-29  4124  		err = ext4_journal_get_write_access(handle, sb, gdp_bh,
+c431d3867e0a825 Kemeng Shi 2023-09-29  4125  						    EXT4_JTR_NONE);
+c431d3867e0a825 Kemeng Shi 2023-09-29  4126  		if (err)
+c431d3867e0a825 Kemeng Shi 2023-09-29  4127  			goto out_err;
+c431d3867e0a825 Kemeng Shi 2023-09-29  4128  	}
+c431d3867e0a825 Kemeng Shi 2023-09-29  4129  
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4130  	ext4_lock_group(sb, group);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4131  	if (ext4_has_group_desc_csum(sb) &&
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4132  	    (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))) {
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4133  		gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4134  		ext4_free_group_clusters_set(sb, gdp,
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4135  			ext4_free_clusters_after_init(sb, group, gdp));
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4136  	}
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4137  
+c431d3867e0a825 Kemeng Shi 2023-09-29  4138  	if (flags & EXT4_MB_BITMAP_MARKED_CHECK) {
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4139  		already = 0;
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4140  		for (i = 0; i < len; i++)
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4141  			if (mb_test_bit(blkoff + i, bitmap_bh->b_data) ==
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4142  					state)
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4143  				already++;
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4144  		changed = len - already;
+c431d3867e0a825 Kemeng Shi 2023-09-29  4145  	}
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4146  
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4147  	if (state) {
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4148  		mb_set_bits(bitmap_bh->b_data, blkoff, len);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4149  		ext4_free_group_clusters_set(sb, gdp,
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4150  			ext4_free_group_clusters(sb, gdp) - changed);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4151  	} else {
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4152  		mb_clear_bits(bitmap_bh->b_data, blkoff, len);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4153  		ext4_free_group_clusters_set(sb, gdp,
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4154  			ext4_free_group_clusters(sb, gdp) + changed);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4155  	}
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4156  
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4157  	ext4_block_bitmap_csum_set(sb, gdp, bitmap_bh);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4158  	ext4_group_desc_csum_set(sb, group, gdp);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4159  	ext4_unlock_group(sb, group);
+c431d3867e0a825 Kemeng Shi 2023-09-29  4160  	if (ret_changed)
+c431d3867e0a825 Kemeng Shi 2023-09-29  4161  		*ret_changed = changed;
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4162  
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4163  	if (sbi->s_log_groups_per_flex) {
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4164  		ext4_group_t flex_group = ext4_flex_group(sbi, group);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4165  		struct flex_groups *fg = sbi_array_rcu_deref(sbi,
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4166  					   s_flex_groups, flex_group);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4167  
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4168  		if (state)
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4169  			atomic64_sub(changed, &fg->free_clusters);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4170  		else
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4171  			atomic64_add(changed, &fg->free_clusters);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4172  	}
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4173  
+c431d3867e0a825 Kemeng Shi 2023-09-29  4174  	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4175  	if (err)
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4176  		goto out_err;
+c431d3867e0a825 Kemeng Shi 2023-09-29  4177  	err = ext4_handle_dirty_metadata(handle, NULL, gdp_bh);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4178  	if (err)
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4179  		goto out_err;
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4180  
+c431d3867e0a825 Kemeng Shi 2023-09-29  4181  	if (flags & EXT4_MB_SYNC_UPDATE) {
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4182  		sync_dirty_buffer(bitmap_bh);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4183  		sync_dirty_buffer(gdp_bh);
+c431d3867e0a825 Kemeng Shi 2023-09-29  4184  	}
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4185  
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4186  out_err:
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4187  	brelse(bitmap_bh);
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4188  	return err;
+f9e2d95a4532185 Kemeng Shi 2023-09-29  4189  }
+c9de560ded61faa Alex Tomas 2008-01-29  4190  
 
-Cheers,
-Baokun
-
->  fs/ext4/mballoc.c | 26 ++++++++++++++++++++------
->  1 file changed, 20 insertions(+), 6 deletions(-)
->
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 20e9fdaf4301..454d5a1b4803 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -915,13 +915,17 @@ static int ext4_mb_scan_groups_xa_range(struct ext4_allocation_context *ac,
->  	struct ext4_sb_info *sbi = EXT4_SB(sb);
->  	enum criteria cr = ac->ac_criteria;
->  	ext4_group_t ngroups = ext4_get_allocation_groups_count(ac);
-> -	unsigned long group = start;
-> +	unsigned long group, end_range;
->  	struct ext4_group_info *grp;
->  
-> -	if (WARN_ON_ONCE(end > ngroups || start >= end))
-> -		return 0;
-> -
-> -	xa_for_each_range(xa, group, grp, start, end - 1) {
-> +	if (start >= ngroups)
-> +		start = 0;
-> +	group = start;
-> +wrap_around:
-> +	end_range = end;
-> +	if (end_range > ngroups)
-> +		end_range = ngroups;
-> +	xa_for_each_range(xa, group, grp, start, end_range - 1) {
->  		int err;
->  
->  		if (sbi->s_mb_stats)
-> @@ -933,7 +937,11 @@ static int ext4_mb_scan_groups_xa_range(struct ext4_allocation_context *ac,
->  
->  		cond_resched();
->  	}
-> -
-> +	if (start) {
-> +		end = start;
-> +		start = 0;
-> +		goto wrap_around;
-> +	}
->  	return 0;
->  }
->  
-> @@ -967,6 +975,8 @@ static int ext4_mb_scan_groups_p2_aligned(struct ext4_allocation_context *ac,
->  
->  	start = group;
->  	end = ext4_get_allocation_groups_count(ac);
-> +	if (start >= end)
-> +		return 0;
->  wrap_around:
->  	for (i = ac->ac_2order; i < MB_NUM_ORDERS(ac->ac_sb); i++) {
->  		ret = ext4_mb_scan_groups_largest_free_order_range(ac, i,
-> @@ -1099,6 +1109,8 @@ static int ext4_mb_scan_groups_best_avail(struct ext4_allocation_context *ac,
->  
->  	start = group;
->  	end = ext4_get_allocation_groups_count(ac);
-> +	if (start >= end)
-> +		start = 0;
->  wrap_around:
->  	for (i = order; i >= min_order; i--) {
->  		int frag_order;
-> @@ -1199,6 +1211,8 @@ static int ext4_mb_scan_groups(struct ext4_allocation_context *ac)
->  
->  	/* searching for the right group start from the goal value specified */
->  	start = ac->ac_g_ex.fe_group;
-> +	if (start >= ngroups)
-> +		start = 0;
->  	ac->ac_prefetch_grp = start;
->  	ac->ac_prefetch_nr = 0;
->  
+-- 
+0-DAY CI Kernel Test Service
+https://github.com/intel/lkp-tests/wiki
