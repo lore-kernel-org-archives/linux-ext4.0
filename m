@@ -1,141 +1,128 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ej1-f48.google.com (mail-ej1-f48.google.com [209.85.218.48])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1CA89331203
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Mar 2026 14:12:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0596C3148CF
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Mar 2026 14:13:27 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.218.48
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773238338; cv=none; b=PWX470a2mTQzYHgU8kW4hF5Ms9BfvYkdQAD06yGVDnQkc2fcGejDqHvKSs+UWLaT0TjsLs2hmoTxcyT7IW/kGzJX4sdQsa6RXBmlZHSFhrzEDheQ2+GM1i6hFHKCVQAFM6TytV+TTcYz+t2YY+CrcReMoxGLj6ol3mt+zz8Lk80=
+	t=1773238410; cv=none; b=XKyiTQG+fvLpsUhvmyfmeGdk8T0RLncOJ8TUgxADJLPlMVoUKBMAW+nDS4ZGyIulejgp3HgBec1IW7g1fklE6uYP1tBZl5i0f6knmySo54V1GF8KNaOwOqv6ohUXlGeFONh/acHDepTaY/lhBF3/R79fgdiSqiA4fbU22i03lu0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773238338; c=relaxed/simple;
-	bh=sbi8PiBmxZrygGAaf16ycgK96+2JscyHa2Wp90VuFKg=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=idhs9Plu8a1EpEQ5maktElE3X2Kr/Jzp51jbrrT1cgUqkt8IW5IOECxRrHDTUW4JGbBwyZLEBbFybjyBCDHIsWs7152jgCyVofq8/GNULyxStwKCNXUMOxdQp81X9w8e869H5ULA3VQDYapVbuwtH6Xw6UnFQqpo8IKDN1mxZ+w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=ABIEUYaT; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="ABIEUYaT"
-Received: from trampoline.thunk.org (pool-173-48-111-151.bstnma.fios.verizon.net [173.48.111.151])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62BEBwrJ028692
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 11 Mar 2026 10:12:00 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1773238320; bh=RLnZyyR9hVnNc5UaXakGClmv+GZYeFYucUHPcTXGv64=;
-	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=ABIEUYaTMJL3xLpjayRFxkXV6sQYLVZVSYPUT8Py8dV5+ZSkKqJEu6DvEftl5g9FZ
-	 WRFv6r70zgJNeLjZXfn9sR9mnzvmKk85WbrUFdIqOWhYeK8N4d8XgMdLYkl0ISramG
-	 PG4IOafM06lyMVB1ss/w4roM3uIY66n2ay63x3mBhw9NaLKBSG1Ti6YP89GrnonWUV
-	 iQPxvgNe0fbGxo8vYF/AH4qZk7YbxGnpSV99F7CFFnfqdlMHhJkTwjoQlXTp63j0cs
-	 VV3h4YlyhmhiRfrehjERUlQU1w8pFAmD6iTzYDvQm6rylecbjIlRf+aoiws8Lxv4mP
-	 a5dYz0nwuwnzg==
-Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 9DEBA2E00D6; Wed, 11 Mar 2026 10:11:58 -0400 (EDT)
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc: Baokun Li <libaokun@linux.alibaba.com>, "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH] Fix default orphan file size calculations
-Date: Wed, 11 Mar 2026 10:11:50 -0400
-Message-ID: <20260311141150.120724-1-tytso@mit.edu>
-X-Mailer: git-send-email 2.51.0
+	s=arc-20240116; t=1773238410; c=relaxed/simple;
+	bh=POUJjzeRhBIXfPGojdZfC417KH92loTKx1KmDpRcfoc=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=WKeEPiC8DnPZxVBzfVtF/Vpo5nQ7CIcm+SngWH/VPeVuuV4rq9L6Wf0Xoe1qP7DmNY2BA6n71jBHgMrIIM638qXwMa4ekc0qYN97EBq4pD+oHb6dihe9aFQl4YqH6P5xdhPabRx8Vj8sqkAE0Gp1YKEcsforKJq3dKicVpxBKDU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=linux-m68k.org; spf=pass smtp.mailfrom=gmail.com; arc=none smtp.client-ip=209.85.218.48
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=linux-m68k.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Received: by mail-ej1-f48.google.com with SMTP id a640c23a62f3a-b942b36de08so190712266b.1
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Mar 2026 07:13:27 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1773238406; x=1773843206;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=wIz9Fr5w5J45ZN4rxwvT/0kjXMGfLP1VpB2aKPOax7k=;
+        b=QmgC1xU3JdvW568nPnauE/aJgLdwHX3J+5oD26AOpfpILepLGzvhveHlCa0KYp3gU8
+         O95z0eurYf0oJk5+h4z8heQo2F44QMWz/kyqXEEOynaBlNKeRlFi5oxCswPS/9rO0k/J
+         qCIBdw/8jJE8zAJ7+gQKFqgnwrpidOzSeNZtmKiAFIIiCQEVoNSWApZSN2fMgtconfY1
+         JvcOSLrr69nVz7AmDhsLZvo8sr604EK2L19Mpb/TKtEJI68NgV0NjjyF1z2HjmjqKgZA
+         EevnzEM+OUyAA7Yk3pPVQJTrNVZgAKiChan8fq2a32j463W9GCYSzRbd261aTkfxTuyZ
+         SwjQ==
+X-Forwarded-Encrypted: i=1; AJvYcCW6ZlTajajERPekwIde/8em6Bpb4yq6seZL24APxauMpQPZ5rdg3sC/xsoSZqw7TOVUhazsVm6FOPFr@vger.kernel.org
+X-Gm-Message-State: AOJu0YwJ4ynhcHzRDiZG5u5QW1XQFWZ4E67vq3IFnileE8+zuraHZU+C
+	bGpSIlCNqL4bLQaXEppTFpzMBvHwBrOxDY5Pu4xofM1u1eSr1YNNEtUZi3leo/f8QtGsJw==
+X-Gm-Gg: ATEYQzynuZ3wu4A12xVjci3giiiEtItoLnu3v96/BIPLy9Iz2VmN3/ophscqkhzi+3H
+	OzJtYI7GR7c17VmKKaYn7sMzCCGMJF5DKhVWGaUAMYqgLR3oNiLgpizd5tb5/5woG2hOAGqWT/1
+	i6Xy5NNvQmb44yP5xY3KQ3zjOeJPpuz8Zt1U95pBEE0qmdaRVkTW4g9CnD/X+THcSDuNDQV3GFL
+	HrerggjPQAg24MgQCjSCVLUDoUpDVQMv4+wFtvk1XOjsEozmY45NGg2Bk1UHAw3Js+IaKu1n+uR
+	vslW1A+1x5aAKF71/lp6M2JMNfnW3x+AvRFYbrfd224OA3Wx/A8+F3EkyAc47BNiVZsp3+0JzYb
+	unE3k6WuFXu9oniryYlQFDLtQF6++EiMtxJ3F6e/OgNBd4Jx/Srm+5KI/WNpzrMPLv7zbdwqpv5
+	Hw1B/i+GYGLMGxwxrw/lK4qTAJYxmEbYz9gzugjduVqfQDJ56gBdDGVi+3datv2ZoAYGtbOS8=
+X-Received: by 2002:a17:907:980b:b0:b94:82e:55e7 with SMTP id a640c23a62f3a-b972d86d8edmr135099366b.25.1773238406035;
+        Wed, 11 Mar 2026 07:13:26 -0700 (PDT)
+Received: from mail-ed1-f41.google.com (mail-ed1-f41.google.com. [209.85.208.41])
+        by smtp.gmail.com with ESMTPSA id a640c23a62f3a-b972de47966sm56443766b.17.2026.03.11.07.13.24
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 11 Mar 2026 07:13:25 -0700 (PDT)
+Received: by mail-ed1-f41.google.com with SMTP id 4fb4d7f45d1cf-66325f30570so984889a12.1
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Mar 2026 07:13:24 -0700 (PDT)
+X-Forwarded-Encrypted: i=1; AJvYcCXEovXyeEIDQsalCUVA1lyDXFBenVaDsMDOYCXPuUp7F1Vvpjf8/EVpTcxQIlG94LttN+jn7bOLdDN3@vger.kernel.org
+X-Received: by 2002:a17:907:6d16:b0:b88:4f25:81da with SMTP id
+ a640c23a62f3a-b97113ff0b9mr462021166b.0.1773237981235; Wed, 11 Mar 2026
+ 07:06:21 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
+ <20260310-b4-is_err_or_null-v1-15-bd63b656022d@avm.de> <20260310100750.303af303@gandalf.local.home>
+ <20260311141332.b611237d36b61b2409e66cb3@kernel.org> <20260311100332.6a2ce4b1@gandalf.local.home>
+In-Reply-To: <20260311100332.6a2ce4b1@gandalf.local.home>
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+Date: Wed, 11 Mar 2026 15:06:07 +0100
+X-Gmail-Original-Message-ID: <CAMuHMdX4kRGLaKMzPuhS1Pmxh609eiqQW-cAS_jWBBbt-vE6SA@mail.gmail.com>
+X-Gm-Features: AaiRm53WEGMMLW4z34e7P-lM1qFvsCJGZ_o4JNL5NPWbhJPKmcqz6k9bJcyL--8
+Message-ID: <CAMuHMdX4kRGLaKMzPuhS1Pmxh609eiqQW-cAS_jWBBbt-vE6SA@mail.gmail.com>
+Subject: Re: [PATCH 15/61] trace: Prefer IS_ERR_OR_NULL over manual NULL check
+To: Steven Rostedt <rostedt@goodmis.org>
+Cc: "Masami Hiramatsu (Google)" <mhiramat@kernel.org>, Philipp Hahn <phahn-oss@avm.de>, amd-gfx@lists.freedesktop.org, 
+	apparmor@lists.ubuntu.com, bpf@vger.kernel.org, ceph-devel@vger.kernel.org, 
+	cocci@inria.fr, dm-devel@lists.linux.dev, dri-devel@lists.freedesktop.org, 
+	gfs2@lists.linux.dev, intel-gfx@lists.freedesktop.org, 
+	intel-wired-lan@lists.osuosl.org, iommu@lists.linux.dev, kvm@vger.kernel.org, 
+	linux-arm-kernel@lists.infradead.org, linux-block@vger.kernel.org, 
+	linux-bluetooth@vger.kernel.org, linux-btrfs@vger.kernel.org, 
+	linux-cifs@vger.kernel.org, linux-clk@vger.kernel.org, 
+	linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org, 
+	linux-fsdevel@vger.kernel.org, linux-gpio@vger.kernel.org, 
+	linux-hyperv@vger.kernel.org, linux-input@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, linux-leds@vger.kernel.org, 
+	linux-media@vger.kernel.org, linux-mips@vger.kernel.org, linux-mm@kvack.org, 
+	linux-modules@vger.kernel.org, linux-mtd@lists.infradead.org, 
+	linux-nfs@vger.kernel.org, linux-omap@vger.kernel.org, 
+	linux-phy@lists.infradead.org, linux-pm@vger.kernel.org, 
+	linux-rockchip@lists.infradead.org, linux-s390@vger.kernel.org, 
+	linux-scsi@vger.kernel.org, linux-sctp@vger.kernel.org, 
+	linux-security-module@vger.kernel.org, linux-sh@vger.kernel.org, 
+	linux-sound@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+	linux-trace-kernel@vger.kernel.org, linux-usb@vger.kernel.org, 
+	linux-wireless@vger.kernel.org, netdev@vger.kernel.org, ntfs3@lists.linux.dev, 
+	samba-technical@lists.samba.org, sched-ext@lists.linux.dev, 
+	target-devel@vger.kernel.org, tipc-discussion@lists.sourceforge.net, 
+	v9fs@lists.linux.dev, Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+Content-Type: text/plain; charset="UTF-8"
 
-Due to missing parenthesis around the #defines for
-EXT4_{MAX,DEFAULT}_ORPHAN_FILE_SIZE, the default number of blocks
-assigned to the orphan file was calculated as 2 when the file system
-has more than 2**21 blocks:
+Hi Steven,
 
-   % mke2fs  -t ext4 -Fq /tmp/foo.img 8191M
-   /tmp/foo.img contains a ext4 file system
-           created on Wed Mar 11 09:54:04 2026
-   % debugfs -R "extents <12>" /tmp/foo.img
-   debugfs 1.47.4 (6-Mar-2025)
-   Level Entries       Logical          Physical Length Flags
-    0/ 0   1/  1     0 -   510    9255 -    9765    511
+On Wed, 11 Mar 2026 at 15:03, Steven Rostedt <rostedt@goodmis.org> wrote:
+> On Wed, 11 Mar 2026 14:13:32 +0900
+> Masami Hiramatsu (Google) <mhiramat@kernel.org> wrote:
+>
+> > Hmm, now IS_ERR_OR_NULL() is an inline function, so it is safe.
+> > But if you want to use IS_ERR_OR_NULL() here, it will be better something like
+> >
+> > node = rhashtable_walk_next(&iter);
+> > while (!IS_ERR_OR_NULL(node)) {
+> >       fprobe_remove_node_in_module(mod, node, &alist);
+> >       node = rhashtable_walk_next(&iter);
+> > }
+>
+> But now you need to have a duplicate code in order to acquire "node"
+>
+> I think the patch just makes the code worse.
 
-   % mke2fs  -t ext4 -Fq /tmp/foo.img 8192M
-   /tmp/foo.img contains a ext4 file system
-           created on Wed Mar 11 09:54:11 2026
-   % debugfs -R "extents <12>" /tmp/foo.img
-   debugfs 1.47.4 (6-Mar-2025)
-   Level Entries       Logical          Physical Length Flags
-    0/ 0   1/  1     0 -     1    9255 -    9256      2  <======
+Obviously we need a new for_each_*() helper hiding all the gory internals?
 
-In addition, looking at how the defaults was calculated, there were
-some unit mismatches where number of blocks was compared with number
-of bytes, and number of blocks divided by the blocksize.  As a result,
-the number of blocks was much larger than before when the file system
-blocksize was 1k, and much smaller than when the file system was 64k,
-which was a bit surprising.
+Gr{oetje,eeting}s,
 
-This caused a libblockdev regression test to fail when it created an
-ext4 file system using a 1k blocksize and had a size of 138240k.
-Before e2fsprogs 1.47.4, the size of the orphan file was 33k; but in
-e2fsprogs 1.47.4, the size of the orphan file became 135k.  This
-pushed the overhead just over 10%, which triggered the test failure.
+                        Geert
 
-So simplify the calculation so that default of the orphan file ranges
-from 32 file system blocks and EXT4_DEFAULT_ORPHAN_SIZE, and avoids
-the use of the file system blocksize.
-
-Fixes: 6f03c698ef53 ("libext2fs: fix orphan file size > kernel limit with large blocksize")
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- lib/ext2fs/ext2fs.h |  4 ++--
- lib/ext2fs/orphan.c | 12 ++++++------
- 2 files changed, 8 insertions(+), 8 deletions(-)
-
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index d9df007c4..92da4d140 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1819,8 +1819,8 @@ errcode_t ext2fs_set_data_io(ext2_filsys fs, io_channel new_io);
- errcode_t ext2fs_rewrite_to_io(ext2_filsys fs, io_channel new_io);
- 
- /* orphan.c */
--#define EXT4_MAX_ORPHAN_FILE_SIZE	8 << 20
--#define EXT4_DEFAULT_ORPHAN_FILE_SIZE	2 << 20
-+#define EXT4_MAX_ORPHAN_FILE_SIZE	(8 << 20)
-+#define EXT4_DEFAULT_ORPHAN_FILE_SIZE	(2 << 20)
- extern errcode_t ext2fs_create_orphan_file(ext2_filsys fs, blk_t num_blocks);
- extern errcode_t ext2fs_truncate_orphan_file(ext2_filsys fs);
- extern e2_blkcnt_t ext2fs_default_orphan_file_blocks(ext2_filsys fs);
-diff --git a/lib/ext2fs/orphan.c b/lib/ext2fs/orphan.c
-index 40b1c5c72..b894f2468 100644
---- a/lib/ext2fs/orphan.c
-+++ b/lib/ext2fs/orphan.c
-@@ -218,18 +218,18 @@ out:
- 
- /*
-  * Find reasonable size for orphan file. We choose orphan file size to be
-- * between 32 filesystem blocks and EXT4_DEFAULT_ORPHAN_FILE_SIZE, and not
-- * more than 1/fs->blocksize of the filesystem unless it is really small.
-+ * between 32 filesystem blocks and EXT4_DEFAULT_ORPHAN_FILE_SIZE.
-  */
- e2_blkcnt_t ext2fs_default_orphan_file_blocks(ext2_filsys fs)
- {
- 	__u64 num_blocks = ext2fs_blocks_count(fs->super);
--	e2_blkcnt_t blks = EXT4_DEFAULT_ORPHAN_FILE_SIZE / fs->blocksize;
-+	e2_blkcnt_t blks = num_blocks / 4096;
-+	e2_blkcnt_t max_blks = EXT4_DEFAULT_ORPHAN_FILE_SIZE / fs->blocksize;
- 
--	if (num_blocks < 128 * 1024)
-+	if (blks < 32)
- 		blks = 32;
--	else if (num_blocks < EXT4_DEFAULT_ORPHAN_FILE_SIZE)
--		blks = num_blocks / fs->blocksize;
-+	if (blks > max_blks)
-+		blks = max_blks;
- 	return (blks + EXT2FS_CLUSTER_MASK(fs)) & ~EXT2FS_CLUSTER_MASK(fs);
- }
- 
 -- 
-2.51.0
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
 
+In personal conversations with technical people, I call myself a hacker. But
+when I'm talking to journalists I just say "programmer" or something like that.
+                                -- Linus Torvalds
