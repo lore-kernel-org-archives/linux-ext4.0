@@ -1,166 +1,135 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.15])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE8F63009D4;
-	Wed, 11 Mar 2026 05:13:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7A0EB2C21C7
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Mar 2026 06:33:04 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.175.65.15
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773206020; cv=none; b=Cc7hQV9GgodxTlVcTtxHKIymC1Xg4S0sMHu/0bcoaO7Gq27+PQp0tT1IwvetCitf5qCuu9qpBN0dKefptjwkA/5DWg59iRKEdggDTw4Lv2QAqPrnjj4R2yP2TCu8J12b1em5zrfekZXLbZMFLLQqd8QLr5zreiqjWd6sPmjjd9c=
+	t=1773210786; cv=none; b=Fz86qX5Y8MfbJPMoAZ3Ce5ipnh6/SyJmwliT39LuIsA3e6iBkFQVgO3psk/fPAbnzFNUcGxc5c3GPkUsRQPs/uhuGzX+F9+e3od8FnVcBnkAPlTeeeGOaF8LvfPZpxqe3xoAfrjjrD8BXcR0Lc0/dYuTVDUDKNJMF06CDL/yxq8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773206020; c=relaxed/simple;
-	bh=28by/08L5sQfVInnpnws13wBN8rSRzXkYuFZbXIDejE=;
-	h=Date:From:To:Cc:Subject:Message-Id:In-Reply-To:References:
-	 Mime-Version:Content-Type; b=HwyY7YfRAzZm5jwvgo6Fo7N57zCkXx+eASOsgnSNAfyEpcRa/Zi77VD7VkcFsy7idT0U2jjdLC1UDxvKJONFTEB5zDzVxAZXKHq3TvPq0HeGTwIq4E4CIbMxJ1eJxMogQGbEpJsXyqSURpVwuGgH4vFyNA37VgX9rlYgK49cw9w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fBD8jk+A; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1773210786; c=relaxed/simple;
+	bh=hy2z2Qb/U5FcKACRjb1ntc8ME6okKkGmpDdfG9prsxU=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=jwmT46s0BliDbfnY2hHcHhftebAd0OVZuLNu56W4/e9WeXHon80p9DquhneIAWHsomxTx/I/Dfm3/HnywOM0A7eaBy9KlSkZ76vQkm0800Oxs9j5sSLWNNsHjRMXnwfsUX83W7RMaCnkWYZLSwgouSk5n6BTIrQkVUeNHrIuLMY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=E7lLBxcr; arc=none smtp.client-ip=198.175.65.15
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fBD8jk+A"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0B290C4CEF7;
-	Wed, 11 Mar 2026 05:13:33 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1773206020;
-	bh=28by/08L5sQfVInnpnws13wBN8rSRzXkYuFZbXIDejE=;
-	h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
-	b=fBD8jk+Az9XLzjQybetTno+W1ryvU+pJL+N7BKChPP4rEV9IYqgPEFF2K1MPy7V+I
-	 icuIUfL/Dg5/kgC+Hmy6YXnokVmu1zBps2v+geMH037tafu9KbfbPBt55PGuheVQJI
-	 z4qBbYgbztbgPszs8uOt3DWOo4BLsomiZb502AAVr8RGodlkXenJkrZoPQ7T4PM4Oz
-	 vrK0XegnvMjvVzXWSmVe1LK/JeGbm1OZeYQWd07yKlzuY4gn+/WuMImks+j3fST4ms
-	 212iplG27c78T1c+7zhxUp3BWeQ6jYmUF3g5aNFDkxAetR3pCSSickOn/0/x8U56nb
-	 McVwjAbkgnZAA==
-Date: Wed, 11 Mar 2026 14:13:32 +0900
-From: Masami Hiramatsu (Google) <mhiramat@kernel.org>
-To: Steven Rostedt <rostedt@goodmis.org>
-Cc: Philipp Hahn <phahn-oss@avm.de>, amd-gfx@lists.freedesktop.org,
- apparmor@lists.ubuntu.com, bpf@vger.kernel.org, ceph-devel@vger.kernel.org,
- cocci@inria.fr, dm-devel@lists.linux.dev, dri-devel@lists.freedesktop.org,
- gfs2@lists.linux.dev, intel-gfx@lists.freedesktop.org,
- intel-wired-lan@lists.osuosl.org, iommu@lists.linux.dev,
- kvm@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
- linux-block@vger.kernel.org, linux-bluetooth@vger.kernel.org,
- linux-btrfs@vger.kernel.org, linux-cifs@vger.kernel.org,
- linux-clk@vger.kernel.org, linux-erofs@lists.ozlabs.org,
- linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-gpio@vger.kernel.org, linux-hyperv@vger.kernel.org,
- linux-input@vger.kernel.org, linux-kernel@vger.kernel.org,
- linux-leds@vger.kernel.org, linux-media@vger.kernel.org,
- linux-mips@vger.kernel.org, linux-mm@kvack.org,
- linux-modules@vger.kernel.org, linux-mtd@lists.infradead.org,
- linux-nfs@vger.kernel.org, linux-omap@vger.kernel.org,
- linux-phy@lists.infradead.org, linux-pm@vger.kernel.org,
- linux-rockchip@lists.infradead.org, linux-s390@vger.kernel.org,
- linux-scsi@vger.kernel.org, linux-sctp@vger.kernel.org,
- linux-security-module@vger.kernel.org, linux-sh@vger.kernel.org,
- linux-sound@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com,
- linux-trace-kernel@vger.kernel.org, linux-usb@vger.kernel.org,
- linux-wireless@vger.kernel.org, netdev@vger.kernel.org,
- ntfs3@lists.linux.dev, samba-technical@lists.samba.org,
- sched-ext@lists.linux.dev, target-devel@vger.kernel.org,
- tipc-discussion@lists.sourceforge.net, v9fs@lists.linux.dev, Masami
- Hiramatsu <mhiramat@kernel.org>, Mathieu Desnoyers
- <mathieu.desnoyers@efficios.com>
-Subject: Re: [PATCH 15/61] trace: Prefer IS_ERR_OR_NULL over manual NULL
- check
-Message-Id: <20260311141332.b611237d36b61b2409e66cb3@kernel.org>
-In-Reply-To: <20260310100750.303af303@gandalf.local.home>
-References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
-	<20260310-b4-is_err_or_null-v1-15-bd63b656022d@avm.de>
-	<20260310100750.303af303@gandalf.local.home>
-X-Mailer: Sylpheed 3.8.0beta1 (GTK+ 2.24.33; x86_64-pc-linux-gnu)
+	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="E7lLBxcr"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1773210784; x=1804746784;
+  h=date:from:to:cc:subject:message-id:references:
+   mime-version:in-reply-to;
+  bh=hy2z2Qb/U5FcKACRjb1ntc8ME6okKkGmpDdfG9prsxU=;
+  b=E7lLBxcr4vyAfG971Jis3Qu6Az7FMSrx/WRtXfWN559TxpHdlsMEgkAd
+   Q/y7XUC2Db7mXd16UnA38RFuo8NZpS40EjU7Eiu+5f3gRVoqyZxEOrlib
+   WNdaqzZKRqI7ybQyYOHFfdF9xJBWbGJ77NuRu/cG60a0miB3DViMbuOx1
+   ibVt35qE4wfgaZktETp10dSkIjvCNkXCaZfpf904YIoWUgDuzW04xWnIh
+   GcZ/nWKv7QClFrKTcoXPw2phAoTOnGAhvVQ6FmIV1ABSdIgxM4Yd0zcYk
+   fq0E2EtUFJYkOhYEAPpwuLj+hrirGxGmCnPIzSDtFuQVt6mD8EGLAdmbj
+   g==;
+X-CSE-ConnectionGUID: qzEvC8fhR2qLT+ptrv9qoA==
+X-CSE-MsgGUID: U9sRH5NNRWq9PCCzvrD86A==
+X-IronPort-AV: E=McAfee;i="6800,10657,11725"; a="77876638"
+X-IronPort-AV: E=Sophos;i="6.23,113,1770624000"; 
+   d="scan'208";a="77876638"
+Received: from orviesa009.jf.intel.com ([10.64.159.149])
+  by orvoesa107.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 10 Mar 2026 23:33:04 -0700
+X-CSE-ConnectionGUID: WKkg2C9bRVaSUyh2hELVZw==
+X-CSE-MsgGUID: 08z9iToyRRu9rbP6rvp6BQ==
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="6.23,113,1770624000"; 
+   d="scan'208";a="220311560"
+Received: from lkp-server01.sh.intel.com (HELO 418530b1a366) ([10.239.97.150])
+  by orviesa009.jf.intel.com with ESMTP; 10 Mar 2026 23:33:00 -0700
+Received: from kbuild by 418530b1a366 with local (Exim 4.98.2)
+	(envelope-from <lkp@intel.com>)
+	id 1w0D7r-000000000oL-1IxT;
+	Wed, 11 Mar 2026 06:32:59 +0000
+Date: Wed, 11 Mar 2026 14:32:12 +0800
+From: kernel test robot <lkp@intel.com>
+To: Ye Bin <yebin@huaweicloud.com>, tytso@mit.edu, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org
+Cc: oe-kbuild-all@lists.linux.dev, jack@suse.cz
+Subject: Re: [PATCH -next 3/8] ext4: fix extents-test.c is not compiled when
+ EXT4_KUNIT_TESTS=M
+Message-ID: <202603111416.j2HqVIhj-lkp@intel.com>
+References: <20260310130412.3156753-4-yebin@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260310130412.3156753-4-yebin@huaweicloud.com>
 
-On Tue, 10 Mar 2026 10:07:50 -0400
-Steven Rostedt <rostedt@goodmis.org> wrote:
+Hi Ye,
 
-> On Tue, 10 Mar 2026 12:48:41 +0100
-> Philipp Hahn <phahn-oss@avm.de> wrote:
-> 
-> > Prefer using IS_ERR_OR_NULL() over using IS_ERR() and a manual NULL
-> > check.
-> 
-> Why?
-> 
-> > 
-> > Change generated with coccinelle.
-> > 
-> > To: Steven Rostedt <rostedt@goodmis.org>
-> > To: Masami Hiramatsu <mhiramat@kernel.org>
-> > To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-> > Cc: linux-kernel@vger.kernel.org
-> > Cc: linux-trace-kernel@vger.kernel.org
-> > Signed-off-by: Philipp Hahn <phahn-oss@avm.de>
-> > ---
-> >  kernel/trace/fprobe.c                | 2 +-
-> >  kernel/trace/kprobe_event_gen_test.c | 2 +-
-> >  kernel/trace/trace_events_hist.c     | 2 +-
-> >  3 files changed, 3 insertions(+), 3 deletions(-)
-> > 
-> > diff --git a/kernel/trace/fprobe.c b/kernel/trace/fprobe.c
-> > index dcadf1d23b8a31f571392d0c49cbd22df1716b4f..a94ce810d83b90f55d1178a9bd29c78fd068df4c 100644
-> > --- a/kernel/trace/fprobe.c
-> > +++ b/kernel/trace/fprobe.c
-> > @@ -607,7 +607,7 @@ static int fprobe_module_callback(struct notifier_block *nb,
-> >  	do {
-> >  		rhashtable_walk_start(&iter);
-> >  
-> > -		while ((node = rhashtable_walk_next(&iter)) && !IS_ERR(node))
-> > +		while (!IS_ERR_OR_NULL((node = rhashtable_walk_next(&iter))))
-> 
-> Ug, No!
-> 
-> That looks so much worse than the original.
+kernel test robot noticed the following build warnings:
 
-Hmm, now IS_ERR_OR_NULL() is an inline function, so it is safe.
-But if you want to use IS_ERR_OR_NULL() here, it will be better something like
+[auto build test WARNING on next-20260309]
 
-node = rhashtable_walk_next(&iter);
-while (!IS_ERR_OR_NULL(node)) {
-	fprobe_remove_node_in_module(mod, node, &alist);
-	node = rhashtable_walk_next(&iter);
-}
+url:    https://github.com/intel-lab-lkp/linux/commits/Ye-Bin/ext4-fix-mballoc-test-c-is-not-compiled-when-EXT4_KUNIT_TESTS-M/20260310-225016
+base:   next-20260309
+patch link:    https://lore.kernel.org/r/20260310130412.3156753-4-yebin%40huaweicloud.com
+patch subject: [PATCH -next 3/8] ext4: fix extents-test.c is not compiled when EXT4_KUNIT_TESTS=M
+config: sh-defconfig (https://download.01.org/0day-ci/archive/20260311/202603111416.j2HqVIhj-lkp@intel.com/config)
+compiler: sh4-linux-gcc (GCC) 15.2.0
+reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20260311/202603111416.j2HqVIhj-lkp@intel.com/reproduce)
 
-Thanks,
+If you fix the issue in a separate patch/commit (i.e. not just a new version of
+the same patch/commit), kindly add following tags
+| Reported-by: kernel test robot <lkp@intel.com>
+| Closes: https://lore.kernel.org/oe-kbuild-all/202603111416.j2HqVIhj-lkp@intel.com/
 
-> 
-> -- Steve
-> 
-> >  			fprobe_remove_node_in_module(mod, node, &alist);
-> >  
-> >  		rhashtable_walk_stop(&iter);
-> > diff --git a/kernel/trace/kprobe_event_gen_test.c b/kernel/trace/kprobe_event_gen_test.c
-> > index 5a4b722b50451bfdee42769a6d3be39c055690d1..a1735ca273f0b756aa1fcfcdab30ddad9bc51c5f 100644
-> > --- a/kernel/trace/kprobe_event_gen_test.c
-> > +++ b/kernel/trace/kprobe_event_gen_test.c
-> > @@ -75,7 +75,7 @@ static struct trace_event_file *gen_kretprobe_test;
-> >  
-> >  static bool trace_event_file_is_valid(struct trace_event_file *input)
-> >  {
-> > -	return input && !IS_ERR(input);
-> > +	return !IS_ERR_OR_NULL(input);
-> >  }
-> >  
-> >  /*
-> > diff --git a/kernel/trace/trace_events_hist.c b/kernel/trace/trace_events_hist.c
-> > index 73ea180cad555898693e92ee397a1c9493c7c167..59df215e1dfd9349eca1c0823ed709ec7285f766 100644
-> > --- a/kernel/trace/trace_events_hist.c
-> > +++ b/kernel/trace/trace_events_hist.c
-> > @@ -3973,7 +3973,7 @@ trace_action_create_field_var(struct hist_trigger_data *hist_data,
-> >  	 */
-> >  	field_var = create_target_field_var(hist_data, system, event, var);
-> >  
-> > -	if (field_var && !IS_ERR(field_var)) {
-> > +	if (!IS_ERR_OR_NULL(field_var)) {
-> >  		save_field_var(hist_data, field_var);
-> >  		hist_field = field_var->var;
-> >  	} else {
-> > 
-> 
+All warnings (new ones prefixed by >>):
 
+>> fs/ext4/extents.c:187:5: warning: no previous prototype for '__ext4_ext_dirty' [-Wmissing-prototypes]
+     187 | int __ext4_ext_dirty(const char *where, unsigned int line,
+         |     ^~~~~~~~~~~~~~~~
+>> fs/ext4/extents.c:3147:5: warning: no previous prototype for 'ext4_ext_zeroout' [-Wmissing-prototypes]
+    3147 | int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
+         |     ^~~~~~~~~~~~~~~~
+
+
+vim +/__ext4_ext_dirty +187 fs/ext4/extents.c
+
+   180	
+   181	/*
+   182	 * could return:
+   183	 *  - EROFS
+   184	 *  - ENOMEM
+   185	 *  - EIO
+   186	 */
+ > 187	int __ext4_ext_dirty(const char *where, unsigned int line,
+   188			     handle_t *handle, struct inode *inode,
+   189			     struct ext4_ext_path *path)
+   190	{
+   191		int err;
+   192	
+   193		KUNIT_STATIC_STUB_REDIRECT(__ext4_ext_dirty, where, line, handle, inode,
+   194					   path);
+   195	
+   196		WARN_ON(!rwsem_is_locked(&EXT4_I(inode)->i_data_sem));
+   197		if (path->p_bh) {
+   198			ext4_extent_block_csum_set(inode, ext_block_hdr(path->p_bh));
+   199			/* path points to block */
+   200			err = __ext4_handle_dirty_metadata(where, line, handle,
+   201							   inode, path->p_bh);
+   202			/* Extents updating done, re-set verified flag */
+   203			if (!err)
+   204				set_buffer_verified(path->p_bh);
+   205		} else {
+   206			/* path points to leaf/index in inode body */
+   207			err = ext4_mark_inode_dirty(handle, inode);
+   208		}
+   209		return err;
+   210	}
+   211	
 
 -- 
-Masami Hiramatsu (Google) <mhiramat@kernel.org>
+0-DAY CI Kernel Test Service
+https://github.com/intel/lkp-tests/wiki
