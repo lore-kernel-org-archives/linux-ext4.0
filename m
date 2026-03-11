@@ -1,136 +1,121 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-vk1-f177.google.com (mail-vk1-f177.google.com [209.85.221.177])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BA1FA1DF74F
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Mar 2026 11:47:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4914B257825
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Mar 2026 13:22:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.177
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773229671; cv=none; b=Bn1G0scu/XIF3ZmYWDHwauAAUz3Q96o0cchKXbHcVZxTapfeNpLDud6BEuDLJm8BaOFGJn6ZeBBb/eZ6q6TZ2fYEopDTN3P7U1ndV26+D0wBFrSOf/UBqthESyC5ylNWG4pu9nvlJMB1KLWHmVunpBL0UBCffTk3ZZ90YvF2xok=
+	t=1773235361; cv=none; b=hxijtylItK2a8bZf/kqTRC6hCGUA85jWPxgxnEzjksFuHQl0zhY0gXKghvfXQhw0CFXdQyMuaTzxTE+F/HbtP+afrHwoyr13bxaNLeGu1lSrJETr92WZL3RjQLfVBTKx2KRupoqpq7C0D+aLJ4BOY8Esy4oXxS85uNv1WBglG0g=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773229671; c=relaxed/simple;
-	bh=Hot8zhdh4os52H/bQtBLbPFsGFzTkd5c7ypRjZf9624=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=XyBwz5E/qs2wwc+z8dK5sDgEbmKGPH/m0HV7gyQyOdDeHZD6NReEeln5DP58/7zVGnFWV5TIRoUTGtBA2BKow2MR1pgSt1VBEHi3WTLoVglIUG4IqK3d8VYpkETacATgX6M+XZE1ZB36Kf+iqB+cd/4dhREAan10fVBlSPDKqI8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=ih7sYP2V; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=nlrWJJDN; arc=none smtp.client-ip=170.10.129.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="ih7sYP2V";
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="nlrWJJDN"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1773229670;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=asRPjwI5YmOjCP6UVRlsstGP3cgkUliMF2dXi85Qbqg=;
-	b=ih7sYP2Vjjjx1VqtqmSGwp9rOd1/3CqpElEce91KvTTNipUSrci7oCF/DYTF/VzG4QpkNQ
-	AzRjJv2HnFG9x6pDfpak3Cc6sjIK/DHaJnDmjubwO8Dv4AInt0o82wqp2rRxbi8wWA9K4d
-	UR2gaXVE5DVygqgGt8JEywDPA0Ehu2k=
-Received: from mail-wm1-f71.google.com (mail-wm1-f71.google.com
- [209.85.128.71]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-275-eV5CUxObMXC75SoHMr3U-g-1; Wed, 11 Mar 2026 07:47:48 -0400
-X-MC-Unique: eV5CUxObMXC75SoHMr3U-g-1
-X-Mimecast-MFC-AGG-ID: eV5CUxObMXC75SoHMr3U-g_1773229667
-Received: by mail-wm1-f71.google.com with SMTP id 5b1f17b1804b1-48539bda3dcso31037835e9.2
-        for <linux-ext4@vger.kernel.org>; Wed, 11 Mar 2026 04:47:48 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1773229667; x=1773834467; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
-        bh=asRPjwI5YmOjCP6UVRlsstGP3cgkUliMF2dXi85Qbqg=;
-        b=nlrWJJDNrqzuaLdO7weVeErzoXcRpDb+mroRiA4Ojlp6ftlQckim8mzmsdEK6w/MRL
-         tTEdLEjKzJFNg1nRQA8NPfBusIK0FQTzZUZBuOrUZ/xCKnETTZB53aG7ubUnFEW/TKqu
-         hU9Je59avigpmas8q0upYaifR9Q/Qx6aWKZ9YX+s9pspxSpYMBE910DXGQn/Nviwe2c2
-         ORKDLw2T+YerhCFi+urov5IPaKvNyyvL04z7IJrWgpmICgVLS3x8LHPPibepVEiRAySz
-         tXLfdVEoSrrxTrowIUGkVCDwn4ATTNlUHlM6+QHEpuPsVfQIUDBCcID9anBQPvntf71I
-         HB5g==
+	s=arc-20240116; t=1773235361; c=relaxed/simple;
+	bh=bQRlE5OR+3/41N9B/xBGXfMeOTv3hgeQ2WrY6jcTpBY=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=upT3m8UYb5PeP3qzisXj7X/erJ50+YfQzuszUAzsTWdNc+IsOaU4GwoUjhf1J1dS5b9YjsYTbe7A9nHMbcb82D9H24RkRUbIUdQmPgTUqD3ZNiB+su0+M4DAGt0/rsoSzeIWfSJ08uW1+h8ue405ricTDdC6ZNrvPKGX6upOCAw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=linux-m68k.org; spf=pass smtp.mailfrom=gmail.com; arc=none smtp.client-ip=209.85.221.177
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=linux-m68k.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Received: by mail-vk1-f177.google.com with SMTP id 71dfb90a1353d-56ae58f3fc6so6635932e0c.3
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Mar 2026 06:22:40 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1773229667; x=1773834467;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=asRPjwI5YmOjCP6UVRlsstGP3cgkUliMF2dXi85Qbqg=;
-        b=UH6JTgZ7a8fy8hcAWUQ8IPlb/NstexaN5nBaQfB4BTzvmODJ0d+WDQnl5f8ip4/pul
-         +JzYMmqe70P3hSO6xTQkLYvA72ptFp8hdJkP3Az2UgbhA1i93HU8iJ3Xg+ZzeGQLMX7Q
-         yTz9ACGZK97EcDNEQ8il7q9TBtmbhV/aa/PDxDLMQ/TUKKlK1UXzx/JauiijWuKsP26D
-         EFCoU6KLBr1lnrRH5Jaw5v24hipOoPp9ezYCXQDk5cCxJqi8Vpl4Fxho7KSmZu7RYkOM
-         MAPf2Al39MzJkmoIWD8EADh9WeFPMNp4UsIWt0iQfLhgMkInGkw1xBVOvww9pssUOq7m
-         eAZA==
-X-Forwarded-Encrypted: i=1; AJvYcCWoqf9f48SlCyx5RNe1nldfjlcAyDjmz7JhSWnpVlxx+8PeBD73DGH+kH2/zsZ6IVwqtdRyEdYaQjLY@vger.kernel.org
-X-Gm-Message-State: AOJu0YzlFChOzgPPKjzk5ZBAykZ0DtNo+SZXbaUysRQY/usfoSadlSfx
-	pqJ/SZizaJ7lrFKpSXYT3ZJCCNJ0ul3Psduc28PGdWb+yHpr79UAnapWcBgH5GaV4rtZy2Tor9O
-	mOyL1dLVm1gdQSflhFwRb4TcxFhDZnc5qxUgjjxRgLyP+yIkqgReknPYNfP0w0A==
-X-Gm-Gg: ATEYQzxclYY0/aLYeDL+Qvqnth1FuV5X4Ll5uZ3wuvsPOcQw87GKPlDZ+YuwleWhZr8
-	m+4m0D7PS+jMHHHDOlRJNf9xaGD1QRxFxP0N/9kf9NUVx5SrEOTBtLTbR/UmGeINIPCZgrY7Zr0
-	r/r+5qz1TvHABUJ6tt9eZNzPa/ymtNdkf0hpvAeXaVuLr/DQTJqp4PK/Tqj/PG7XlYyhW1gQ8s9
-	IBxQhiBoP29TQCaPHQQQ3ROC4cbvHUNYI57zskDl6/FX2CGjgaqMs1iZ8kA0+JFkpd2YDPZZABX
-	uFqN54whfwJQ3rR+87c7GbhS6JySJX3kAoBaDRI1OXVlgndBGHndS+i+Np+EoeNpYyqpgz72B6J
-	OfI5xdWZgWKA=
-X-Received: by 2002:a05:600c:6818:b0:485:3ca4:4eee with SMTP id 5b1f17b1804b1-4854b144e6dmr35215625e9.34.1773229667261;
-        Wed, 11 Mar 2026 04:47:47 -0700 (PDT)
-X-Received: by 2002:a05:600c:6818:b0:485:3ca4:4eee with SMTP id 5b1f17b1804b1-4854b144e6dmr35215345e9.34.1773229666807;
-        Wed, 11 Mar 2026 04:47:46 -0700 (PDT)
-Received: from thinky ([217.30.74.39])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4854ad5ee37sm37540885e9.2.2026.03.11.04.47.46
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 11 Mar 2026 04:47:46 -0700 (PDT)
-Date: Wed, 11 Mar 2026 12:47:45 +0100
-From: Andrey Albershteyn <aalbersh@redhat.com>
-To: "Darrick J. Wong" <djwong@kernel.org>
-Cc: Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org, 
-	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, ebiggers@kernel.org, hch@lst.de, 
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
-	linux-btrfs@vger.kernel.org
-Subject: Re: [PATCH v4 01/25] fsverity: report validation errors through
- fserror to fsnotify
-Message-ID: <jezqpw7mjdren3gzvmkxv7dzviisf7mx2n6dwtq3iwgypghvne@z76sdkkk2x7n>
-References: <20260309192355.176980-1-aalbersh@kernel.org>
- <20260309192355.176980-2-aalbersh@kernel.org>
- <20260310004627.GV6033@frogsfrogsfrogs>
+        d=1e100.net; s=20230601; t=1773235359; x=1773840159;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=34DR94e/1PAvLLEaib58vFA4GW0m5SGe6jvxchEhMek=;
+        b=Q9o6v4lsTKzlISxUUOLJkULJUPHGIMFvg9qEJpUvBbF/DUUXmw0Ehvc9lDaGEb+qpZ
+         UP9zJlE0Wg1a1PTqNPonCUxpXRrbl7StMeUsRoYzV08KXt3qG5927nXEcQsnPnz8HzKI
+         o/Rp7SA8VdFzeG9AJITJA5xWuYnO8HoepRWCJ+OvywdpRF48DKLNDk8h3eTLfoGid4sh
+         a2ioYLdKtbwNdKSgvykWCbEUf4ReffBUK+/tK7oSnpnmr07SmmJtwPmj+PZAaY2qsOlm
+         HyQrrslQTGzlXhAZmjI/Xtc3X/QcJWdk2HuWP7iC2HVGJUdAGbf3SvYYtE/TQl3tykaj
+         owIw==
+X-Forwarded-Encrypted: i=1; AJvYcCVGqmNfgGxbSx72mZBOJXiFpZFfh+Sin0Tc2Jp0fhi66Pv/SQ00jJPZpvB5Ro9cfhyUoQ6KydeCa1ng@vger.kernel.org
+X-Gm-Message-State: AOJu0Yz163l/r4Xaa/ko3eHJRL0MKsHuvn7NaNgMVpl5QG9fK1nYKDRS
+	+DyZiSUQzGafZJoS3W+RpG7LXkRgSuAjHcHXtZ5/S8nID8fKFpiJ031IPF2Oe3cz9xk=
+X-Gm-Gg: ATEYQzzl0vFeAfudH4rxn9pFkzBC5kWyHEHXc2O/OSdiaA6vFk5L54pXqJ9chDiQFnu
+	4i2bAxdKvNZFan0BKnsFWS5mrS+NIWYP9dnComTmKV0mjSp2InzpYmHntAJP+fv2OPXtp/M7YOe
+	DvU28c9ryTB+B6OEzQvtXTQ/8XaPexG5F7Clb5ZO3dTuydQK/rPI2/jIG3DZ3mD+b9iWDVmDgYa
+	PCL8vnNg5hZNYXJO5+fmfirQPeTdJjw5hUMEVsJKsfwgTExOUgfvlnSp9kLys6/gGHbxZUk4V/4
+	L3BKzCMiOx5wODKA/h6LCgczMp8hOqKtR013koFaWhwAzMXLMQP/ShHaigxv9Atiok6KfaiiOC7
+	UppdHXjobzdfNT5QQl5Dze5AA3qrE1vINGB8CBMAZN/+eggXdr9kw8PSDjybjL04e452lWsGenJ
+	ahjB0Vg6dKsm0GXNjpCraWJJEzWRI8n6D8P9fCsXENzf0PLPdClQGLve6EREig
+X-Received: by 2002:a05:6122:f09:b0:55a:ab0d:bf74 with SMTP id 71dfb90a1353d-56b4754c994mr951242e0c.13.1773235359165;
+        Wed, 11 Mar 2026 06:22:39 -0700 (PDT)
+Received: from mail-vs1-f50.google.com (mail-vs1-f50.google.com. [209.85.217.50])
+        by smtp.gmail.com with ESMTPSA id 71dfb90a1353d-56b4645d11csm902968e0c.12.2026.03.11.06.22.39
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 11 Mar 2026 06:22:39 -0700 (PDT)
+Received: by mail-vs1-f50.google.com with SMTP id ada2fe7eead31-5fff18d44fbso3421569137.1
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Mar 2026 06:22:39 -0700 (PDT)
+X-Forwarded-Encrypted: i=1; AJvYcCWYKcU+iP0V6xiBha3BJjP6Gaep/gDfYQegRtlgtgdd8Xvn8miv47hSTFbVZNP1rCw1q5nRpTK0NKGm@vger.kernel.org
+X-Received: by 2002:a05:6122:1d05:b0:55b:7494:177b with SMTP id
+ 71dfb90a1353d-56b4752d806mr922396e0c.10.1773234967338; Wed, 11 Mar 2026
+ 06:16:07 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260310004627.GV6033@frogsfrogsfrogs>
+References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de> <20260310-b4-is_err_or_null-v1-36-bd63b656022d@avm.de>
+In-Reply-To: <20260310-b4-is_err_or_null-v1-36-bd63b656022d@avm.de>
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+Date: Wed, 11 Mar 2026 14:15:56 +0100
+X-Gmail-Original-Message-ID: <CAMuHMdXQ8Q4jvkgFRJYhghz2BZRDC-9Mk6DbXxuaOc6C9DFHZQ@mail.gmail.com>
+X-Gm-Features: AaiRm52J84H77ROK64ZWWtJfaiCpnFeKyoSRmPbi-NC8CN6Ju1TJEFxJU9gZQQ8
+Message-ID: <CAMuHMdXQ8Q4jvkgFRJYhghz2BZRDC-9Mk6DbXxuaOc6C9DFHZQ@mail.gmail.com>
+Subject: Re: [PATCH 36/61] arch/sh: Prefer IS_ERR_OR_NULL over manual NULL check
+To: Philipp Hahn <phahn-oss@avm.de>
+Cc: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com, 
+	bpf@vger.kernel.org, ceph-devel@vger.kernel.org, cocci@inria.fr, 
+	dm-devel@lists.linux.dev, dri-devel@lists.freedesktop.org, 
+	gfs2@lists.linux.dev, intel-gfx@lists.freedesktop.org, 
+	intel-wired-lan@lists.osuosl.org, iommu@lists.linux.dev, kvm@vger.kernel.org, 
+	linux-arm-kernel@lists.infradead.org, linux-block@vger.kernel.org, 
+	linux-bluetooth@vger.kernel.org, linux-btrfs@vger.kernel.org, 
+	linux-cifs@vger.kernel.org, linux-clk@vger.kernel.org, 
+	linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org, 
+	linux-fsdevel@vger.kernel.org, linux-gpio@vger.kernel.org, 
+	linux-hyperv@vger.kernel.org, linux-input@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, linux-leds@vger.kernel.org, 
+	linux-media@vger.kernel.org, linux-mips@vger.kernel.org, linux-mm@kvack.org, 
+	linux-modules@vger.kernel.org, linux-mtd@lists.infradead.org, 
+	linux-nfs@vger.kernel.org, linux-omap@vger.kernel.org, 
+	linux-phy@lists.infradead.org, linux-pm@vger.kernel.org, 
+	linux-rockchip@lists.infradead.org, linux-s390@vger.kernel.org, 
+	linux-scsi@vger.kernel.org, linux-sctp@vger.kernel.org, 
+	linux-security-module@vger.kernel.org, linux-sh@vger.kernel.org, 
+	linux-sound@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+	linux-trace-kernel@vger.kernel.org, linux-usb@vger.kernel.org, 
+	linux-wireless@vger.kernel.org, netdev@vger.kernel.org, ntfs3@lists.linux.dev, 
+	samba-technical@lists.samba.org, sched-ext@lists.linux.dev, 
+	target-devel@vger.kernel.org, tipc-discussion@lists.sourceforge.net, 
+	v9fs@lists.linux.dev, Yoshinori Sato <ysato@users.sourceforge.jp>, 
+	Rich Felker <dalias@libc.org>, John Paul Adrian Glaubitz <glaubitz@physik.fu-berlin.de>
+Content-Type: text/plain; charset="UTF-8"
 
-On 2026-03-09 17:46:27, Darrick J. Wong wrote:
-> On Mon, Mar 09, 2026 at 08:23:16PM +0100, Andrey Albershteyn wrote:
-> > Reported verification errors to fsnotify through recently added fserror
-> > interface.
-> > 
-> > Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
-> > ---
-> >  fs/verity/verify.c | 2 ++
-> >  1 file changed, 2 insertions(+)
-> > 
-> > diff --git a/fs/verity/verify.c b/fs/verity/verify.c
-> > index 4004a1d42875..99276053d3bb 100644
-> > --- a/fs/verity/verify.c
-> > +++ b/fs/verity/verify.c
-> > @@ -9,6 +9,7 @@
-> >  
-> >  #include <linux/bio.h>
-> >  #include <linux/export.h>
-> > +#include <linux/fserror.h>
-> >  
-> >  #define FS_VERITY_MAX_PENDING_BLOCKS 2
-> >  
-> > @@ -312,6 +313,7 @@ static bool verify_data_block(struct fsverity_info *vi,
-> >  		data_pos, level - 1, params->hash_alg->name, hsize, want_hash,
-> >  		params->hash_alg->name, hsize,
-> >  		level == 0 ? dblock->real_hash : real_hash);
-> > +	fserror_report_data_lost(inode, data_pos, params->block_size, GFP_NOFS);
-> 
-> Don't we also need to cover the "if (unlikely(data_pos >= inode->i_size))"
-> around line 199 in verify_data_block?
+On Tue, 10 Mar 2026 at 12:56, Philipp Hahn <phahn-oss@avm.de> wrote:
+> Prefer using IS_ERR_OR_NULL() over using IS_ERR() and a manual NULL
+> check.
+>
+> Change generated with coccinelle.
+>
+> To: Yoshinori Sato <ysato@users.sourceforge.jp>
+> To: Rich Felker <dalias@libc.org>
+> To: John Paul Adrian Glaubitz <glaubitz@physik.fu-berlin.de>
+> Cc: linux-sh@vger.kernel.org
+> Cc: linux-kernel@vger.kernel.org
+> Signed-off-by: Philipp Hahn <phahn-oss@avm.de>
 
-make sense, will add it there too
+Reviewed-by: Geert Uytterhoeven <geert+renesas@glider.be>
+
+Gr{oetje,eeting}s,
+
+                        Geert
 
 -- 
-- Andrey
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
 
+In personal conversations with technical people, I call myself a hacker. But
+when I'm talking to journalists I just say "programmer" or something like that.
+                                -- Linus Torvalds
