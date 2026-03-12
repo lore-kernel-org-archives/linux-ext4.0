@@ -1,104 +1,132 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D29213C5DBA
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 13:14:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 536D32D97B7
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 13:51:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773321291; cv=none; b=QI+52KyxaoT9RV7mgZ/gktTlENtjvTaitFOolLHslDEAnzfiu70olyMSDiNZycns9efv4c3mlqyxykbB4xIDzQ36beatMcLq2yEmYgEiJOrMD1VQCPv2CjkWRQwFIQaZvEGri/ULnOKEXWvdEsZ0wuJXpl7qnJlTi5CxUlcTECc=
+	t=1773323465; cv=none; b=MIeJQ+kGAFTejLCZ0vFfJD0ILFQKBeO0GoeSHMQw8yWVYlQKrB/zZ7mzawVpfwBawRfcQFRaR1EzFb5UB/IYV2QZlDAmga9G7nIsP35XqTebXLmlXv5lKO/TYT7hts1rAl89ia1gceSiWqkk97DkxacmorOyaNczPN4ZPmKaY50=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773321291; c=relaxed/simple;
-	bh=on4gGb7XOTYMoEW2dWJjy7OuLvXzDFw73SBhO95/EiE=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=gIcXA/TerOIsbguZQ/Bdv9psnkyxp9E1T4jzskLm3e+dpz+NZS4tHE8KJx7YJkoeCdKFes1Sd35rWadWQz2vFMtbd1CJ7vDB86EwSnKpCIgH8F1Fd4f73JyBg+ny/rcoUcAStcXQW85cYVtcYBevwjuY/eenBE++y048o+5xg+Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4fWp3K6Rg7zYQv7b
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 21:13:49 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 19A8040573
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 21:14:39 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.50.87.132])
-	by APP4 (Coremail) with SMTP id gCh0CgDX_Ug8vLJpGVeVAg--.45112S8;
-	Thu, 12 Mar 2026 21:14:39 +0800 (CST)
-From: Ye Bin <yebin@huaweicloud.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-Cc: jack@suse.cz
-Subject: [PATCH v2 4/8] ext4: fix miss unlock 'sb->s_umount' in extents_kunit_init()
-Date: Thu, 12 Mar 2026 21:12:49 +0800
-Message-Id: <20260312131253.366296-5-yebin@huaweicloud.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20260312131253.366296-1-yebin@huaweicloud.com>
-References: <20260312131253.366296-1-yebin@huaweicloud.com>
+	s=arc-20240116; t=1773323465; c=relaxed/simple;
+	bh=m79QPg3lZxtO3qB8FGmL4feJvOHf6hv0uj9IuHB+gbQ=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=E7/Bl3Vujoq1uPraZF2emd76hdiq2PtfZSfi2I9bIBqXBWXIFFuVUhYQNn88gjC3exoaXrKPDOLu+HR7oqxR6iZypzH3tUYuaFZtZ/etHI0ChKy459Ae7huCYyCZt8De3CBMcvk0rPxxavgktlk56Wk9cmNOIpkUXB+IJsTGjsA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=WlsVTztL; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=UKkFTRLV; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="WlsVTztL";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="UKkFTRLV"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1773323462;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=lusPCuwgPIO7EacrWQT9X+JN0PBRkgLuOI7TKiRgdsk=;
+	b=WlsVTztL9Q7LVBAKNoZOhRHsqYJFjMRLCEzzuXMvsNKwQYfyT1pwl/DnxPa9WNqHvUDBJo
+	vyf28QBR4OzI7ioOciTAFIJxcTMoMe+DuhlB1u0efcGmlCkJP+4RnZN4MbtnH6hQCaHPg4
+	TaKkerjrhWVgTFnzT0gTWQzXRiAvog0=
+Received: from mail-wm1-f69.google.com (mail-wm1-f69.google.com
+ [209.85.128.69]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-544-AQqVzvLJOySq_0Syynpuxw-1; Thu, 12 Mar 2026 09:51:01 -0400
+X-MC-Unique: AQqVzvLJOySq_0Syynpuxw-1
+X-Mimecast-MFC-AGG-ID: AQqVzvLJOySq_0Syynpuxw_1773323460
+Received: by mail-wm1-f69.google.com with SMTP id 5b1f17b1804b1-48531e8ae62so7679415e9.3
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 06:51:00 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1773323460; x=1773928260; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=lusPCuwgPIO7EacrWQT9X+JN0PBRkgLuOI7TKiRgdsk=;
+        b=UKkFTRLV/0FpcgXxXaAqKqccZ+9UaoVYGX+kZeHJOOWrZj1hl4Pm7YWUH46/PUxJpR
+         JiHomMvQ9oq2nntEilD//7XxR2aeabWZujfCvZvx+y/D6LFXN3130DKQl5bQR9jCn0Nk
+         luCI6ukJKDwcMELQQFIKt90G3QIDBejsjAAFW8ge22JgldGzs3sRD2xxBUEb1FSPOhjr
+         bhkAbZyY6BVEUvWXfHfdXBiYE5Boodi3Xeuz0E79EcAcLYH4cDiuE21xHpiitsXzt7jc
+         yrR+1ajoWsiUsOqXxcpNCTQAFZFYKR/Fkuxy4D7CxUgHgGbg8i3gklud+A/F53XZG9DE
+         cGrA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1773323460; x=1773928260;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=lusPCuwgPIO7EacrWQT9X+JN0PBRkgLuOI7TKiRgdsk=;
+        b=HkloZcDd78zrFXDdqLQI4d3jwRO50/2BckTRXEiIhAPs2lBpkMT4yOOuCj++miRLmA
+         5JIgaDgKcT75d6FfPKH/ZIDdEvexs5DBi9jhAUdi7FWvDRZGkN68pFcdKJp3jN2IFHTG
+         qyXbPqG+oHG+p0bYDYz2Qq6EY9Oq/fFNB6f8uzE1NyIBqbHEzwYKm84lDdmEILe1tKKi
+         5ErCEKbvk/yX7a+lrE3PS/3zbPRL7a/K4ekEKybzNPpRpACMrRyWI1GkszQJ44GcB4yw
+         b+dIDf2hXHooe5TJB/vJAg/UnqJTMhx5d00bZCtYzJHAh0JY+1QIjoB3dda2nerx3hvY
+         ecoQ==
+X-Forwarded-Encrypted: i=1; AJvYcCWEvWHFagHpp1x2fLGFB6K/vT6/1S4y2j2CE8wGbeof2JLz+qzi5/JJw3DYfX+J26vXdmqPgQJX28Mr@vger.kernel.org
+X-Gm-Message-State: AOJu0YzjAyR0y2sTz4xMDid9XBNymDX81voDYTayloVqqSqfpYwoJe+D
+	qBXrFlLNZJ1S9O2KudrI01yhRaL1XBqauXoMX354EtX+S+8sjErWiVXoWWHnIf7DoWAGHxW1HnX
+	k9B4ttZ+4BaRAB5BEizCvQBQPo1iMqj4id2Wfb7kgmkUG06gNxq/oU0GhlxAmkQ==
+X-Gm-Gg: ATEYQzwTCP/4O0b/vNIe5a4DVJ9MprQqjUyFUlvswpI0h73WsPF9ru0ID10M2hOzwM/
+	8AFfsBUjgMtoc2Adj1QVM5Qsv+4VgBQ1vt1Ejm4ILaGpEXJXshXN7R+CJODNG5gRYc6R3oZNjQ3
+	6j2JK96Ztht6+0JrXkJW+Fue8c5XvkDCHhEuBf1KiG53/vwyHtGZVhDeClYwqi3KwOP1/1hpU4v
+	R8K9ffqlBvlnBMxztnlzRzl06k2eYE3tRQtSZXjAeReGhlBGHZ3DdFIdFzN3s1RafZAfvsZnoAQ
+	uSap3R3HHolfC6XRx8w6A13IigUGAdSrmzK89gNm4dQAqi6wQJvC1iDDM4ob71tfEoGLM5xkFK/
+	zMYRpQ6ofKTo=
+X-Received: by 2002:a05:600c:1e8f:b0:485:2ce2:4c8a with SMTP id 5b1f17b1804b1-4854b0a4c24mr109097945e9.1.1773323459794;
+        Thu, 12 Mar 2026 06:50:59 -0700 (PDT)
+X-Received: by 2002:a05:600c:1e8f:b0:485:2ce2:4c8a with SMTP id 5b1f17b1804b1-4854b0a4c24mr109097485e9.1.1773323459224;
+        Thu, 12 Mar 2026 06:50:59 -0700 (PDT)
+Received: from thinky ([217.30.74.39])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-439fdf09abesm8106385f8f.0.2026.03.12.06.50.58
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 12 Mar 2026 06:50:58 -0700 (PDT)
+Date: Thu, 12 Mar 2026 14:50:57 +0100
+From: Andrey Albershteyn <aalbersh@redhat.com>
+To: "Darrick J. Wong" <djwong@kernel.org>
+Cc: Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org, 
+	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, ebiggers@kernel.org, hch@lst.de, 
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
+	linux-btrfs@vger.kernel.org
+Subject: Re: [PATCH v4 19/25] xfs: remove unwritten extents after
+ preallocations in fsverity metadata
+Message-ID: <ymisdrze3ohdnxa4inqfwp4riaz4qk5nmtil33adn5ukhngq7v@f3tcv3hbzobz>
+References: <20260309192355.176980-1-aalbersh@kernel.org>
+ <20260309192355.176980-20-aalbersh@kernel.org>
+ <20260310012914.GG1105363@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgDX_Ug8vLJpGVeVAg--.45112S8
-X-Coremail-Antispam: 1UD129KBjvJXoW7tr17ur4DZw1xZr45Wr48JFb_yoW8Gw1Dpr
-	4fAFy8Kr1ru3W7C3y8GF4Utry3Can5C3W7CryfWF43XFW7u348KF45KF1YkFW5Xa1UXFn8
-	AF40ya4UCw43C3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvEb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
-	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
-	rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267
-	AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E
-	14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7
-	xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Y
-	z7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7
-	v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF
-	1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIx
-	AIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI
-	42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWI
-	evJa73UjIFyTuYvjxU2CJmUUUUU
-X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260310012914.GG1105363@frogsfrogsfrogs>
 
-From: Ye Bin <yebin10@huawei.com>
+On 2026-03-09 18:29:14, Darrick J. Wong wrote:
+> > XFS preallocates spaces during writes. In normal I/O this space, if
+> > unused, is removed by truncate. For files with fsverity, XFS does not
+> > use truncate as fsverity metadata is stored past EOF.
+> > 
+> > After we're done with writing fsverity metadata iterate over extents in
+> > that region and remove any unwritten ones. These would be preallocation
+> > leftovers in the merkle tree holes and past fsverity descriptor.
+> > 
+> > Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
+> > ---
 
-There's warning as follows when do ext4 kunit test:
-WARNING: kunit_try_catch/15923 still has locks held!
-7.0.0-rc3-next-20260309-00028-g73f965a1bbb1-dirty #281 Tainted: G            E    N
-1 lock held by kunit_try_catch/15923:
- #0: ffff888139f860e0 (&type->s_umount_key#70/1){+.+.}-{4:4}, at: alloc_super.constprop.0+0x172/0xa90
-Call Trace:
- <TASK>
- dump_stack_lvl+0x180/0x1b0
- debug_check_no_locks_held+0xc8/0xd0
- do_exit+0x1502/0x2b20
- kthread+0x3a9/0x540
- ret_from_fork+0xa76/0xdf0
- ret_from_fork_asm+0x1a/0x30
+> There's an upper limit on the number of blocks you can unmap/free in a
+> single transaction.  Maybe move the xfs_trans_{alloc,commit} into the
+> loop body?
+> 
+> Oh wait, you skip the written extents.  Ok, so maybe just roll it after
+> you've done a bunmapi.
 
-As sget() will return 'sb' which holds 's->s_umount' lock. However,
-"extents-test" miss unlock this lock.
-So unlock 's->s_umount' in the end of extents_kunit_init().
+I see, I will add a rolling transaction. Btw, why skipping the
+written extents let's us use rolling here?
 
-Fixes: cb1e0c1d1fad ("ext4: kunit tests for extent splitting and conversion")
-Signed-off-by: Ye Bin <yebin10@huawei.com>
----
- fs/ext4/extents-test.c | 2 ++
- 1 file changed, 2 insertions(+)
+> 
+> Do you need to purge the cow fork too?
 
-diff --git a/fs/ext4/extents-test.c b/fs/ext4/extents-test.c
-index 9e055f399167..5a5016ea1ecc 100644
---- a/fs/ext4/extents-test.c
-+++ b/fs/ext4/extents-test.c
-@@ -307,6 +307,8 @@ static int extents_kunit_init(struct kunit *test)
- 	kunit_activate_static_stub(test, ext4_ext_zeroout, ext4_ext_zeroout_stub);
- 	kunit_activate_static_stub(test, ext4_issue_zeroout,
- 				   ext4_issue_zeroout_stub);
-+	up_write(&sb->s_umount);
-+
- 	return 0;
- }
- 
+hmm, what case are you thinking about here? The fsverity is written
+in past EOF region, I don't see how COW extent could be left there.
+Can they somehow be left mapped for blocks past i_size?
+
 -- 
-2.34.1
+- Andrey
 
