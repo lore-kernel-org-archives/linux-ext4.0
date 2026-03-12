@@ -1,100 +1,125 @@
-Received: from relay.hostedemail.com (smtprelay0016.hostedemail.com [216.40.44.16])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ed1-f47.google.com (mail-ed1-f47.google.com [209.85.208.47])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 16D043D0921;
-	Thu, 12 Mar 2026 23:38:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=216.40.44.16
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 250603D9DAF
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 23:52:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.47
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773358733; cv=none; b=gNc7QzVANDcghrzlXK9ogXcKcIQ4CL6h7lL1fp0b6P+dcjGMjADiI7+bw02kwq92U/AkKRPyEnI4UpvBO+z+SxSt78lul8514e8qJlo4fkaKvStQDIukEwckiRrBT5SuQmTAxG7XRL5oL0w/6h7m2iV9zXK2XuM1n9lV3/LwIVg=
+	t=1773359525; cv=none; b=lOpdQ/Yx9QTcmu6WI5NBMp6OXP9ZV/LgpIRnPGkZYw+BuQuFbPF+6JmsBqvicE3/FfzzmAtG7Sw40GbaRQufMlPTLY3FuUVuKMnULaqBfFl7MeuFwrBgk5x+O5kpIZ0OPCScN3zJouvfrtN7OQjbeYpm7lQqj/IJaEeQ3MwLQ4w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773358733; c=relaxed/simple;
-	bh=PjQnm7PdIi0z/ruBJQNhneZVuQrhBMEPnKL7b5RdF4s=;
-	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=mHOn912MrD9Mv4A7skBR0PKUAd2YQONvoGuwmegZk+aLI9xDD64Nugvzp0iJt4bxlkIkoSwd5wWoP6lhbKURLpIEvFTAfF8iFVn0f6tUGppkidhOO0VZp2fruKxRiTKt/8m8dYiPUK2EujsuU6cB8wBkEbJ+7EAzu6l1zAKT4i0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=goodmis.org; spf=pass smtp.mailfrom=goodmis.org; arc=none smtp.client-ip=216.40.44.16
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=goodmis.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=goodmis.org
-Received: from omf04.hostedemail.com (a10.router.float.18 [10.200.18.1])
-	by unirelay04.hostedemail.com (Postfix) with ESMTP id 75BA61A0463;
-	Thu, 12 Mar 2026 23:38:47 +0000 (UTC)
-Received: from [HIDDEN] (Authenticated sender: rostedt@goodmis.org) by omf04.hostedemail.com (Postfix) with ESMTPA id 437DE20024;
-	Thu, 12 Mar 2026 23:38:32 +0000 (UTC)
-Date: Thu, 12 Mar 2026 19:38:47 -0400
-From: Steven Rostedt <rostedt@goodmis.org>
-To: NeilBrown <neilb@ownmail.net>
-Cc: NeilBrown <neil@brown.name>, Linus Torvalds
- <torvalds@linux-foundation.org>, Alexander Viro <viro@zeniv.linux.org.uk>,
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, Jeff
- Layton <jlayton@kernel.org>, Trond Myklebust <trondmy@kernel.org>, Anna
- Schumaker <anna@kernel.org>, Carlos Maiolino <cem@kernel.org>, Miklos
- Szeredi <miklos@szeredi.hu>, Amir Goldstein <amir73il@gmail.com>, Jan
- Harkes <jaharkes@cs.cmu.edu>, Hugh Dickins <hughd@google.com>, Baolin Wang
- <baolin.wang@linux.alibaba.com>, David Howells <dhowells@redhat.com>, Marc
- Dionne <marc.dionne@auristor.com>, Steve French <sfrench@samba.org>, Namjae
- Jeon <linkinjeon@kernel.org>, Sungjong Seo <sj1557.seo@samsung.com>,
- Yuezhang Mo <yuezhang.mo@sony.com>, Andreas Hindborg
- <a.hindborg@kernel.org>, Breno Leitao <leitao@debian.org>, "Theodore Ts'o"
- <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, Masami
- Hiramatsu <mhiramat@kernel.org>, Ilya Dryomov <idryomov@gmail.com>, Alex
- Markuze <amarkuze@redhat.com>, Viacheslav Dubeyko <slava@dubeyko.com>,
- Tyler Hicks <code@tyhicks.com>, Andreas Gruenbacher <agruenba@redhat.com>,
- Richard Weinberger <richard@nod.at>, Anton Ivanov
- <anton.ivanov@cambridgegreys.com>, Johannes Berg
- <johannes@sipsolutions.net>, Jeremy Kerr <jk@ozlabs.org>, Ard Biesheuvel
- <ardb@kernel.org>, linux-fsdevel@vger.kernel.org,
- linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org,
- linux-unionfs@vger.kernel.org, coda@cs.cmu.edu, linux-mm@kvack.org,
- linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org,
- linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
- linux-trace-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
- ecryptfs@vger.kernel.org, gfs2@lists.linux.dev,
- linux-um@lists.infradead.org, linux-efi@vger.kernel.org
-Subject: Re: [PATCH RFC 00/53] lift lookup out of exclive lock for dir ops
-Message-ID: <20260312193847.28c32a2c@gandalf.local.home>
-In-Reply-To: <20260312214330.3885211-1-neilb@ownmail.net>
-References: <20260312214330.3885211-1-neilb@ownmail.net>
-X-Mailer: Claws Mail 3.20.0git84 (GTK+ 2.24.33; x86_64-pc-linux-gnu)
+	s=arc-20240116; t=1773359525; c=relaxed/simple;
+	bh=wOUC16WI4/reo5GvoZO5ESmt8rfD7PE3++Xf9novjKE=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=fFU9LeYWjK2Cz34etF+gWnvp99rmaet76VS3TNnfa4TWkyAw+eJr3xqG7lNGjqT5bbFelevHPmT/D7YZ9M2HurAft8jPKjm0zfhEcl86mr03Y67BK010/ZT7DCATr9He/INrdkmqveXe2uFU0u3mb5UXjfKVDtReRhca0k0IF/A=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=linux-foundation.org; spf=pass smtp.mailfrom=linuxfoundation.org; dkim=pass (1024-bit key) header.d=linux-foundation.org header.i=@linux-foundation.org header.b=NdLN8spx; arc=none smtp.client-ip=209.85.208.47
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=linux-foundation.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linuxfoundation.org
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=linux-foundation.org header.i=@linux-foundation.org header.b="NdLN8spx"
+Received: by mail-ed1-f47.google.com with SMTP id 4fb4d7f45d1cf-660a293515fso2789119a12.1
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 16:52:03 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linux-foundation.org; s=google; t=1773359522; x=1773964322; darn=vger.kernel.org;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc:subject:date:message-id:reply-to;
+        bh=pkgvHL0resGmXTqRBi16uC1NxLEncxIx9i+VLjGIXAo=;
+        b=NdLN8spxAnXU3OtOtiPHJrtwygm0T8rtXLQoXp4tSNwDQHyWdX52NwKuAVZtYzxq0Z
+         4QP5IIQva+T/9Z4TgdWvgkH0+odeZPPW5rGWwVYvuJf2mbuFhHFsEFnBBvkFCNugrvEw
+         ChMECZsI9TNiDnQ+MkoUKWHMfrR+LdX2REBr8=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1773359522; x=1773964322;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=pkgvHL0resGmXTqRBi16uC1NxLEncxIx9i+VLjGIXAo=;
+        b=OubONwONrm/MNjGxp/XyLqRGHqCwzmefmaPOW9u9HWqk6RpaSH6y+c96vuPZ1fVaLZ
+         Vp2NfIrki5dI1qHMihiMhqa1Uj0DMQHMHs3mdl2jeiGr5cQHSGyhFRYfRTpTNpJZTfy5
+         s+GmpcSS8yE1Ot5in6OKlAwojOnFFDYGHWv1lpKcnWonRSdQzynq2UxroRqvTHg0/QyN
+         dssCer5WI3HeOtZiDRpoyUPbRa6jt2RHFaVVGHvYEU06KiCWiKoEkUf+QPwDfn3Blonj
+         SUbJbAlw8xD50uQYp0X96hi1mNvip/MfYi0q04gNSpjd8fD0o9EmJLQ3fZvwmIO8VV9X
+         BIXw==
+X-Forwarded-Encrypted: i=1; AJvYcCVFC0V3ws4DUMEbsItUkhT8QGjZtLoKe5hcmhAaudS5ntxCrDvdRDu5FOvYjQ2x9AFxUvFWH2Z+8Wni@vger.kernel.org
+X-Gm-Message-State: AOJu0YzUmp2BY1cOmOeTDD5bc8vnxdwmmIgdG+aB1IzuGkEQJAfgg6LP
+	7AftKRTZ8od4pFcoMR31cw3854Xri9U66+aML27AVY0S5LpZUT+Sad3Sy4YAbdlEVhcIKLaSLTE
+	VcZycdSQ=
+X-Gm-Gg: ATEYQzx85t/eItUGlid6BaDAeNm+3vp0jlw8JuakyqyocuEdPGSFbo3m0QrGwoRoJhj
+	ipkxA9YKIoUv8wWBiKDJhP4LR2c5LiNymoeZR/gJKVA81PWHMLqBs5NdYfmBj6QjO6VUQL34Z++
+	7G9+5Q10CuneEt+i8/5HsvxkNdpRI81MapsBIUzJPEFzD3mokHfjKFfM6w1v5CdiICrpoKTMly9
+	6ogMTaXe01xu/CSzuclUc7xThGaRXEelewa1pkN2ZLmNoiqqAzdfUkbB9FRcZEOvm8fPf1v/qrL
+	brelTeOoUcAjp9ejcCinpde9By3Z90BkZ3TX0F6uWyWzvU8tV9Sk/RU1axNb6nshNa5Gm4JNsyi
+	yzEKWE82aGwaUGx3Y1ML3MZqBteVEZf7Q5SEBDMjZNS6e/kdztruBpKVg7IJiJ8fI4C32sYcup7
+	0TpXjDzglRMf8swMTtmIFe41JKZ9hOycpC/kCG+GKlu+CMZN1RZ9OQoFjTM4jJ0wfaYX8uT7FD
+X-Received: by 2002:a05:6402:5113:b0:65f:a9fa:cbab with SMTP id 4fb4d7f45d1cf-663bb4da4bemr689313a12.32.1773359522319;
+        Thu, 12 Mar 2026 16:52:02 -0700 (PDT)
+Received: from mail-ej1-f52.google.com (mail-ej1-f52.google.com. [209.85.218.52])
+        by smtp.gmail.com with ESMTPSA id 4fb4d7f45d1cf-66350b85ca3sm846939a12.26.2026.03.12.16.52.01
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 12 Mar 2026 16:52:01 -0700 (PDT)
+Received: by mail-ej1-f52.google.com with SMTP id a640c23a62f3a-b96f02b4329so272398766b.2
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 16:52:01 -0700 (PDT)
+X-Forwarded-Encrypted: i=1; AJvYcCUtzrdt2FH7pSEPvU9SMurqv6g7K0NpL0hFVOze7RNxR57CGyz2RuWLE75BlY7JtVZzGtA/NTB5uNq6@vger.kernel.org
+X-Received: by 2002:a17:907:c5c9:b0:b96:d802:8b41 with SMTP id
+ a640c23a62f3a-b9764fd8722mr66207066b.15.1773359215961; Thu, 12 Mar 2026
+ 16:46:55 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-X-Stat-Signature: uw6f48jbt5c7m69ogen7zm3qrgdgnged
-X-Rspamd-Server: rspamout08
-X-Rspamd-Queue-Id: 437DE20024
-X-Session-Marker: 726F737465647440676F6F646D69732E6F7267
-X-Session-ID: U2FsdGVkX188/YrC5TApof6JUD5+VNztl2shXsvgY5o=
-X-HE-Tag: 1773358712-902307
-X-HE-Meta: U2FsdGVkX1+OxQ2+Isx7vF4UixzzITSWoLGanhQdmOUQzHc1ErHaC2HhfFr20UjnVfuApzdY0CnNI9X2EzaFzoxWkp+inh8h89+ue9tsCje/WXI2p8TViZKD1rgZ9aRmWPzAaOFt9AR3SlccruGvmKX1nd3X2qcHF/Qj4v2Ic2F2kBtdL+HvK1KWscULRrzA7ZXclvIVR+DpEPprYwt/KKB72qtNEyxLFZN/ZdoFOmgI0OmUW9WSqFmPDtGp6NNUkGL68vmGr0d1dJsWkcANTfDGT58FCBs3Q3TWI/CNur9ihaDpBPfKeDQH86AL8k3ONIIfeCwhZyBEr7FfTAOuyi2fOWNNYZopJrxvZi0zu3x2dKf/Woo8mIogKoo/MSw6
+References: <20260312214330.3885211-1-neilb@ownmail.net>
+In-Reply-To: <20260312214330.3885211-1-neilb@ownmail.net>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Thu, 12 Mar 2026 16:46:39 -0700
+X-Gmail-Original-Message-ID: <CAHk-=wh92deXvH5iXCo9mThXCBYt-jRcVu=z4kiH-f3+wZQOHA@mail.gmail.com>
+X-Gm-Features: AaiRm503fTaccEgKNbxF9h_dDHM9fUsSr52XJuxzTwCI0G9L03uDq8g5di1zchk
+Message-ID: <CAHk-=wh92deXvH5iXCo9mThXCBYt-jRcVu=z4kiH-f3+wZQOHA@mail.gmail.com>
+Subject: Re: [PATCH RFC 00/53] lift lookup out of exclive lock for dir ops
+To: NeilBrown <neil@brown.name>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
+	Jeff Layton <jlayton@kernel.org>, Trond Myklebust <trondmy@kernel.org>, 
+	Anna Schumaker <anna@kernel.org>, Carlos Maiolino <cem@kernel.org>, Miklos Szeredi <miklos@szeredi.hu>, 
+	Amir Goldstein <amir73il@gmail.com>, Jan Harkes <jaharkes@cs.cmu.edu>, 
+	Hugh Dickins <hughd@google.com>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
+	David Howells <dhowells@redhat.com>, Marc Dionne <marc.dionne@auristor.com>, 
+	Steve French <sfrench@samba.org>, Namjae Jeon <linkinjeon@kernel.org>, 
+	Sungjong Seo <sj1557.seo@samsung.com>, Yuezhang Mo <yuezhang.mo@sony.com>, 
+	Andreas Hindborg <a.hindborg@kernel.org>, Breno Leitao <leitao@debian.org>, "Theodore Ts'o" <tytso@mit.edu>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Steven Rostedt <rostedt@goodmis.org>, 
+	Masami Hiramatsu <mhiramat@kernel.org>, Ilya Dryomov <idryomov@gmail.com>, 
+	Alex Markuze <amarkuze@redhat.com>, Viacheslav Dubeyko <slava@dubeyko.com>, Tyler Hicks <code@tyhicks.com>, 
+	Andreas Gruenbacher <agruenba@redhat.com>, Richard Weinberger <richard@nod.at>, 
+	Anton Ivanov <anton.ivanov@cambridgegreys.com>, Johannes Berg <johannes@sipsolutions.net>, 
+	Jeremy Kerr <jk@ozlabs.org>, Ard Biesheuvel <ardb@kernel.org>, linux-fsdevel@vger.kernel.org, 
+	linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org, 
+	linux-unionfs@vger.kernel.org, coda@cs.cmu.edu, linux-mm@kvack.org, 
+	linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, 
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	linux-trace-kernel@vger.kernel.org, ceph-devel@vger.kernel.org, 
+	ecryptfs@vger.kernel.org, gfs2@lists.linux.dev, linux-um@lists.infradead.org, 
+	linux-efi@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-On Fri, 13 Mar 2026 08:11:47 +1100
-NeilBrown <neilb@ownmail.net> wrote:
+On Thu, 12 Mar 2026 at 14:44, NeilBrown <neilb@ownmail.net> wrote:
+>
+> This patch set progresses my effort to improve concurrency of
+> directory operations and specifically to allow concurrent updates
+> in a given directory.
 
-> *[PATCH 26/53] smb/client: don't unhashed and rehash to prevent new
-> *[PATCH 27/53] smb/client: use d_splice_alias() in atomic_open
->  [PATCH 28/53] smb/client: Use d_alloc_noblock() in
-> *[PATCH 29/53] exfat: simplify exfat_lookup()
-> *[PATCH 30/53] configfs: remove d_add() calls before
->  [PATCH 31/53] configfs: stop using d_add().
-> *[PATCH 32/53] ext4: move dcache modifying code out of __ext4_link()
-> *[PATCH 33/53] ext4: use on-stack dentries in
+I only got about half the patches, but the ones I did get didn't raise
+my hackles.
 
->  [PATCH 34/53] tracefs: stop using d_add().
+HOWEVER.
 
-Hmm, another reason I hate being Cc'd on every patch of a patch bomb where
-I only need to look at one (and maybe the first) patch.
+This is very much a "absolutely requires ACKs from Al" series. Al?
 
-For some reason, I'm missing several patches, and this is one of them :-p
+Also, because I only got about half the patches, and there's 53 of
+them total, I'd really like to see a git branch for something like
+this. It makes it easier to review for me, and I suspect it makes it
+easier for some of the test robots too.
 
--- Steve
+But again - this needs Al to look at it. Iirc he had some fundamental
+concern with the last version - hopefully now fixed, but ...
 
-
->  [PATCH 35/53] cephfs: stop using d_add().
-> *[PATCH 36/53] cephfs: remove d_alloc from CEPH_MDS_OP_LOOKUPNAME
->  [PATCH 37/53] cephfs: Use d_alloc_noblock() in
->  [PATCH 38/53] cephfs: Don't d_drop() before d_splice_alias()
->  [PATCH 39/53] ecryptfs: stop using d_add().
->  [PATCH 40/53] gfs2: stop using d_add().
+                 Linus
