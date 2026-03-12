@@ -1,93 +1,47 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 536D32D97B7
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 13:51:03 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 015522820C6
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 14:24:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773323465; cv=none; b=MIeJQ+kGAFTejLCZ0vFfJD0ILFQKBeO0GoeSHMQw8yWVYlQKrB/zZ7mzawVpfwBawRfcQFRaR1EzFb5UB/IYV2QZlDAmga9G7nIsP35XqTebXLmlXv5lKO/TYT7hts1rAl89ia1gceSiWqkk97DkxacmorOyaNczPN4ZPmKaY50=
+	t=1773325453; cv=none; b=LjFWjNDWvzG6wy+cpi7d2odF+NT40GmXCg13JH6Vhj8a27Kh/xzlyPtpj0FarzZX6K3BJwfxBUQDrgZRYHGQzLb5Y4y+mAQT4eZbaBp0bwFjDT6tUgURc/VOUKXW9GQoYSMflV73zWlKqORKohhzfDcnmBcO06ftUYgTd45BV80=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773323465; c=relaxed/simple;
-	bh=m79QPg3lZxtO3qB8FGmL4feJvOHf6hv0uj9IuHB+gbQ=;
+	s=arc-20240116; t=1773325453; c=relaxed/simple;
+	bh=i9yT9FeM3/WxOJnh3KbfC7d8LmcD46jw5+8L5fzUCfA=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=E7/Bl3Vujoq1uPraZF2emd76hdiq2PtfZSfi2I9bIBqXBWXIFFuVUhYQNn88gjC3exoaXrKPDOLu+HR7oqxR6iZypzH3tUYuaFZtZ/etHI0ChKy459Ae7huCYyCZt8De3CBMcvk0rPxxavgktlk56Wk9cmNOIpkUXB+IJsTGjsA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=WlsVTztL; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=UKkFTRLV; arc=none smtp.client-ip=170.10.133.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	 Content-Type:Content-Disposition:In-Reply-To; b=H8GRRpG/o6ytfNksHK66/nAuGjY04JEu9p+pKdYR+PHCXNqM/A0/QJHj1UNLuig5tmuLHRRWks9lHeNJvSnCk94ILtn/Wv+dR0pMKklOdSFWDuRj5mTlv6qF1zp/z0t17q3IvFad4gs3HUF5veP2JybzIagJT1K+p83ieU11Vmw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=TOMti2ms; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="WlsVTztL";
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="UKkFTRLV"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1773323462;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=lusPCuwgPIO7EacrWQT9X+JN0PBRkgLuOI7TKiRgdsk=;
-	b=WlsVTztL9Q7LVBAKNoZOhRHsqYJFjMRLCEzzuXMvsNKwQYfyT1pwl/DnxPa9WNqHvUDBJo
-	vyf28QBR4OzI7ioOciTAFIJxcTMoMe+DuhlB1u0efcGmlCkJP+4RnZN4MbtnH6hQCaHPg4
-	TaKkerjrhWVgTFnzT0gTWQzXRiAvog0=
-Received: from mail-wm1-f69.google.com (mail-wm1-f69.google.com
- [209.85.128.69]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-544-AQqVzvLJOySq_0Syynpuxw-1; Thu, 12 Mar 2026 09:51:01 -0400
-X-MC-Unique: AQqVzvLJOySq_0Syynpuxw-1
-X-Mimecast-MFC-AGG-ID: AQqVzvLJOySq_0Syynpuxw_1773323460
-Received: by mail-wm1-f69.google.com with SMTP id 5b1f17b1804b1-48531e8ae62so7679415e9.3
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 06:51:00 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1773323460; x=1773928260; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
-        bh=lusPCuwgPIO7EacrWQT9X+JN0PBRkgLuOI7TKiRgdsk=;
-        b=UKkFTRLV/0FpcgXxXaAqKqccZ+9UaoVYGX+kZeHJOOWrZj1hl4Pm7YWUH46/PUxJpR
-         JiHomMvQ9oq2nntEilD//7XxR2aeabWZujfCvZvx+y/D6LFXN3130DKQl5bQR9jCn0Nk
-         luCI6ukJKDwcMELQQFIKt90G3QIDBejsjAAFW8ge22JgldGzs3sRD2xxBUEb1FSPOhjr
-         bhkAbZyY6BVEUvWXfHfdXBiYE5Boodi3Xeuz0E79EcAcLYH4cDiuE21xHpiitsXzt7jc
-         yrR+1ajoWsiUsOqXxcpNCTQAFZFYKR/Fkuxy4D7CxUgHgGbg8i3gklud+A/F53XZG9DE
-         cGrA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1773323460; x=1773928260;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=lusPCuwgPIO7EacrWQT9X+JN0PBRkgLuOI7TKiRgdsk=;
-        b=HkloZcDd78zrFXDdqLQI4d3jwRO50/2BckTRXEiIhAPs2lBpkMT4yOOuCj++miRLmA
-         5JIgaDgKcT75d6FfPKH/ZIDdEvexs5DBi9jhAUdi7FWvDRZGkN68pFcdKJp3jN2IFHTG
-         qyXbPqG+oHG+p0bYDYz2Qq6EY9Oq/fFNB6f8uzE1NyIBqbHEzwYKm84lDdmEILe1tKKi
-         5ErCEKbvk/yX7a+lrE3PS/3zbPRL7a/K4ekEKybzNPpRpACMrRyWI1GkszQJ44GcB4yw
-         b+dIDf2hXHooe5TJB/vJAg/UnqJTMhx5d00bZCtYzJHAh0JY+1QIjoB3dda2nerx3hvY
-         ecoQ==
-X-Forwarded-Encrypted: i=1; AJvYcCWEvWHFagHpp1x2fLGFB6K/vT6/1S4y2j2CE8wGbeof2JLz+qzi5/JJw3DYfX+J26vXdmqPgQJX28Mr@vger.kernel.org
-X-Gm-Message-State: AOJu0YzjAyR0y2sTz4xMDid9XBNymDX81voDYTayloVqqSqfpYwoJe+D
-	qBXrFlLNZJ1S9O2KudrI01yhRaL1XBqauXoMX354EtX+S+8sjErWiVXoWWHnIf7DoWAGHxW1HnX
-	k9B4ttZ+4BaRAB5BEizCvQBQPo1iMqj4id2Wfb7kgmkUG06gNxq/oU0GhlxAmkQ==
-X-Gm-Gg: ATEYQzwTCP/4O0b/vNIe5a4DVJ9MprQqjUyFUlvswpI0h73WsPF9ru0ID10M2hOzwM/
-	8AFfsBUjgMtoc2Adj1QVM5Qsv+4VgBQ1vt1Ejm4ILaGpEXJXshXN7R+CJODNG5gRYc6R3oZNjQ3
-	6j2JK96Ztht6+0JrXkJW+Fue8c5XvkDCHhEuBf1KiG53/vwyHtGZVhDeClYwqi3KwOP1/1hpU4v
-	R8K9ffqlBvlnBMxztnlzRzl06k2eYE3tRQtSZXjAeReGhlBGHZ3DdFIdFzN3s1RafZAfvsZnoAQ
-	uSap3R3HHolfC6XRx8w6A13IigUGAdSrmzK89gNm4dQAqi6wQJvC1iDDM4ob71tfEoGLM5xkFK/
-	zMYRpQ6ofKTo=
-X-Received: by 2002:a05:600c:1e8f:b0:485:2ce2:4c8a with SMTP id 5b1f17b1804b1-4854b0a4c24mr109097945e9.1.1773323459794;
-        Thu, 12 Mar 2026 06:50:59 -0700 (PDT)
-X-Received: by 2002:a05:600c:1e8f:b0:485:2ce2:4c8a with SMTP id 5b1f17b1804b1-4854b0a4c24mr109097485e9.1.1773323459224;
-        Thu, 12 Mar 2026 06:50:59 -0700 (PDT)
-Received: from thinky ([217.30.74.39])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-439fdf09abesm8106385f8f.0.2026.03.12.06.50.58
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 12 Mar 2026 06:50:58 -0700 (PDT)
-Date: Thu, 12 Mar 2026 14:50:57 +0100
-From: Andrey Albershteyn <aalbersh@redhat.com>
-To: "Darrick J. Wong" <djwong@kernel.org>
-Cc: Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org, 
-	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, ebiggers@kernel.org, hch@lst.de, 
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
-	linux-btrfs@vger.kernel.org
-Subject: Re: [PATCH v4 19/25] xfs: remove unwritten extents after
- preallocations in fsverity metadata
-Message-ID: <ymisdrze3ohdnxa4inqfwp4riaz4qk5nmtil33adn5ukhngq7v@f3tcv3hbzobz>
-References: <20260309192355.176980-1-aalbersh@kernel.org>
- <20260309192355.176980-20-aalbersh@kernel.org>
- <20260310012914.GG1105363@frogsfrogsfrogs>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="TOMti2ms"
+Received: from macsyma.thunk.org (pool-173-48-82-98.bstnma.fios.verizon.net [173.48.82.98])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62CENjJq029865
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 12 Mar 2026 10:23:46 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1773325427; bh=8sVFQwueacNF2ffXdVWcLqc510X70XmJe7FWrTN0S90=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=TOMti2mse/vS63BUkERyDjTdBGDKX9GOJngvCOYOhYEkSroDr5qqt4rPynuJHdfB9
+	 tATnMAlB23yDhxQ9bZM0AagqjB2A18I4t5n04Jy5g87ITZMWLYMsGyHQRov+nOypk9
+	 lk7rLrJvznEhKxcAGwotSYJ/r9bUlcyk4qTYWAchZfPjN3Npy5UgcAkxZMi0p02xq1
+	 XpvlAhZz6fTqZLCpGnvU/C4+/dGjkeyj2p/NBFWt8vwtUCoBhLj0GjQAwoX/T0SDf9
+	 jkoZNVRG4lGDxb+7tINC0kOAguAQZaRi4Ekdqkwtog9AhcPkFOe9S+4taGOOS8PMiu
+	 fPv+VMe78bCaQ==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 79CB25D0C5BA; Thu, 12 Mar 2026 10:23:45 -0400 (EDT)
+Date: Thu, 12 Mar 2026 10:23:45 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: Baokun Li <libaokun@linux.alibaba.com>
+Cc: Jan Kara <jack@suse.cz>, Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [RFC PATCH] ext4: handle wraparound when searching for blocks
+ for indirect mapped blocks
+Message-ID: <20260312142345.GA4689@macsyma-wired.lan>
+References: <20260310122806.1277631-1-tytso@mit.edu>
+ <5ce9dfe2-721e-4d20-9bd9-3560aa76888d@linux.alibaba.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -96,37 +50,28 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260310012914.GG1105363@frogsfrogsfrogs>
+In-Reply-To: <5ce9dfe2-721e-4d20-9bd9-3560aa76888d@linux.alibaba.com>
 
-On 2026-03-09 18:29:14, Darrick J. Wong wrote:
-> > XFS preallocates spaces during writes. In normal I/O this space, if
-> > unused, is removed by truncate. For files with fsverity, XFS does not
-> > use truncate as fsverity metadata is stored past EOF.
-> > 
-> > After we're done with writing fsverity metadata iterate over extents in
-> > that region and remove any unwritten ones. These would be preallocation
-> > leftovers in the merkle tree holes and past fsverity descriptor.
-> > 
-> > Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
-> > ---
-
-> There's an upper limit on the number of blocks you can unmap/free in a
-> single transaction.  Maybe move the xfs_trans_{alloc,commit} into the
-> loop body?
+On Wed, Mar 11, 2026 at 10:38:20AM +0800, Baokun Li wrote:
 > 
-> Oh wait, you skip the written extents.  Ok, so maybe just roll it after
-> you've done a bunmapi.
+> Good spotting! ext4_find_goal() ensures that the goal block obtained for
+> indirect-block-based files will not exceed EXT4_MAX_BLOCK_FILE_PHYS.
+> However, on an ext4 filesystem where the two file formats are mixed,
+> it is indeed possible to get an excessively large goal group via stream
+> allocation.
 
-I see, I will add a rolling transaction. Btw, why skipping the
-written extents let's us use rolling here?
+Well, I didn't spot it; an LLM AI noticed.  :-) Arguably I should have
+noticed it when doing my review, but I didn't.
 
-> 
-> Do you need to purge the cow fork too?
+> Since the mixed-format case is quite rare, I think we can simply validate
+> start in ext4_mb_scan_groups() and reset it to 0 when it exceeds the limit,
+> like this:
 
-hmm, what case are you thinking about here? The fsverity is written
-in past EOF region, I don't see how COW extent could be left there.
-Can they somehow be left mapped for blocks past i_size?
+No, I don't think that's enough.  It's not just that we could have an
+excessively large goal group.  The goal group could also just be, say,
+2**32 - 5.  If the next 5 groups are full, then when we do an
+optimized scan, we will end up beyond the 2**32 limit.  That's why we
+need to add some kidn of wraparound logic to *any* caller to
+ext4_get_allocation_groups_count().
 
--- 
-- Andrey
-
+							- Ted
