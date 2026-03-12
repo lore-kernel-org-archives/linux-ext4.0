@@ -1,37 +1,37 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B735A3B27C4
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 20:59:40 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7EAB73AC0FC
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 20:59:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773349180; cv=none; b=b/QKPAszkSZS4iIp2AeNwKcBbFlscui/HaaiLA8jrtYp/3WkJ0u4vJOZvkaymQ31PSQmLkVfxudfUejt8e5JcYj+nv1MSpe7TsvAmVS2HxgpgvdDNw2HqiWkMsV8x7bnmaOdk98SUphPzfFo/RIud5ffrhS86n8a71AG9eBy3Cw=
+	t=1773349196; cv=none; b=h7U41al/k7aa2xhBfBrGShabN2y+1TfRglMOWYOzPKdgb5ZQMuMuLze0w321RDt0JnmtWz2BifT5iHoYLOSazgeelswG7gFILTFnwRdpMco4zSQDmgbIvb99nUj5RciL17xZ32q8EG8gzyLPMF62HaAnWUAT/iMFSsgYJxMVlDg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773349180; c=relaxed/simple;
-	bh=lpG9Gp66v9gjkYzKSy4yYXRK+KSURUnY612WorBDsr0=;
+	s=arc-20240116; t=1773349196; c=relaxed/simple;
+	bh=IeA9dNknIOuMT5HXmgSHwzNhcEuFl8WHxTQm17gHN1E=;
 	h=Date:Subject:From:To:Cc:Message-ID:MIME-Version:In-Reply-To:
-	 References:Content-Type; b=PjvMRyYGVTzBhV1spzkc841IpogS0mEpcOcX6bPDxPHSNWn5eHyYEqGq2jzJM62/Hy9yriS6K7/WEI+a0ZBmDPo76KBxSzXOGz0OwgWV60due2m7nFhOEbYTFk4c6fmiMO55dJgBdsWmHamEPmzdWkMMBu1s/6qODSlbNFxk51w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Y3IMJXDG; arc=none smtp.client-ip=10.30.226.201
+	 References:Content-Type; b=NM3Yk7BKEIWqMUaEjXU1h7cgnJpzNiU6LwwpsxTTUgF7ctAW1sdkNt9H9DqfBWcwPl/xPZsAUy0GyvgMd8b+hhXq/fy247Gh36wL5OBO1ZaFaoXCfSR8pZPNpOI6xoWfWOqXvB/4GK+u2Zss052LVGiwmDlB6uSq+MVPIRmvpeQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=K4wnt7HX; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Y3IMJXDG"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 60521C4AF09;
-	Thu, 12 Mar 2026 20:59:40 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="K4wnt7HX"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 12543C4CEF7;
+	Thu, 12 Mar 2026 20:59:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1773349180;
-	bh=lpG9Gp66v9gjkYzKSy4yYXRK+KSURUnY612WorBDsr0=;
+	s=k20201202; t=1773349196;
+	bh=IeA9dNknIOuMT5HXmgSHwzNhcEuFl8WHxTQm17gHN1E=;
 	h=Date:Subject:From:To:Cc:In-Reply-To:References:From;
-	b=Y3IMJXDGhJwhXkMXiV3Ev9qoxJp7priuqNa9hEj7WWpFCyayC7FKeb5CRPLDUgLcw
-	 vBOB3eh0aCep54RtsnP9S0JwF5dm+wCOqkKIqQMP/mLIkFyB0tPgMI/kToXkDH4iwA
-	 5NSeAw+tg2qxJfE4FcOCRgaWbd6ILbPONoA4f+wE5krZH8okbZXSNAEZUAsPrisb8C
-	 P4UldIV4eHCDDnXXYs/D0+VVJ//FKIxCzCRxCz7HyU3RnS0EiJUcMPnRzKo45IoVQh
-	 eBts/35I13fSClZVjmgtkk2+yNjGtzLkPqVH7IFT+JMNrqkHqnZyuylxyauksuSCjX
-	 ZqCI2ZW2LQz2A==
-Date: Thu, 12 Mar 2026 13:59:39 -0700
-Subject: [GIT PULL 1/9] fuse2fs: fix locking problems
+	b=K4wnt7HXlt5FhGR1nNCrvOT+QZLdBKEuoIh3hL7nq4tAyFingFinwW3tTPtf9cVO0
+	 O2SODEEgIkDDmerGNhf9KDY+QtKMh3+fSVW5sT7udDqs/hesEgy9n6KkZkPMAoe0Z5
+	 2Iiyp9kLjhQsuranikDm7Ra3bkxuEX+jAsdvrZ8OJHqItkV2GcyKN5KRuoW4V+aDPh
+	 SX6aZx/Yb1uWpbA7vpOM/3xDJT++XwI45hx039IpJuOc0o6veFK4qFJY6IbEPe4I0R
+	 gTRRzAnBHYV0xUa1gC1nyaTR62bcn8j3uEIwdW99J0ea+yzyYrDWsBaCEY9h59Dn32
+	 QRoKi79zpwRBg==
+Date: Thu, 12 Mar 2026 13:59:55 -0700
+Subject: [GIT PULL 2/9] fuse2fs: add some easy new features
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: tytso@mit.edu
 Cc: djwong@kernel.org, linux-ext4@vger.kernel.org
-Message-ID: <177334916459.3254574.17133177610807268883.stg-ugh@frogsfrogsfrogs>
+Message-ID: <177334916488.3254574.394222234133985617.stg-ugh@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -51,42 +51,71 @@ As usual, I did a test-merge with the main upstream branch as of a few
 minutes ago, and didn't see any conflicts.  Please let me know if you
 encounter any problems.
 
-The following changes since commit 7ee1d505ef3b37831215f490411f346fe57e9053:
-
-Update release notes, etc., for the 1.47.4 release (2026-03-06 12:17:36 -0500)
-
-are available in the Git repository at:
-
-https://git.kernel.org/pub/scm/linux/kernel/git/djwong/e2fsprogs.git tags/fuse2fs-locking_2026-03-12
-
-for you to fetch changes up to b22ae270a1016c158a434c6bc601ba623e17a361:
+The following changes since commit b22ae270a1016c158a434c6bc601ba623e17a361:
 
 fuse2fs: try to grab block device O_EXCL repeatedly (2026-03-08 19:14:02 -0700)
 
+are available in the Git repository at:
+
+https://git.kernel.org/pub/scm/linux/kernel/git/djwong/e2fsprogs.git tags/fuse2fs-new-features_2026-03-12
+
+for you to fetch changes up to a4fc4817e3072cb19f481da24d4520671a174fff:
+
+fuse2fs: implement MMP updates (2026-03-08 19:14:04 -0700)
+
 ----------------------------------------------------------------
-fuse2fs: fix locking problems [01/18]
+fuse2fs: add some easy new features [02/18]
 
-Teach fuse2fs to flock the file(s) underlying the filesystem if the fs
-is stored in a regular file, so that we don't have to create and
-maintain separate lockfiles.
-
-For block devices, fix a weird race between mount and unmount that is
-causing testing failures by waiting a small amount of time to grab a
-lock.
+As of 2025, libfuse is a lot more capable than it was in 2013.
+Implement some new features such as readdirplus and directory seeking
+for better directory performance, and reduce the amount of filesystem
+flushing so that it only happens when userspace explicitly asks for it.
+Now we also can add htree indices to large directories, support MMP in
+fuse2fs, and link count overflows are handled correctly.
 
 Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
 
 ----------------------------------------------------------------
-Darrick J. Wong (4):
-libext2fs: add POSIX advisory locking to the unix IO manager
-fuse2fs: try to lock filesystem image files before using them
-fuse2fs: quiet down write-protect warning
-fuse2fs: try to grab block device O_EXCL repeatedly
+Darrick J. Wong (21):
+libext2fs: initialize htree when expanding directory
+libext2fs: create link count adjustment helpers for dir_nlink
+libext2fs: fix ext2fs_mmp_update
+libext2fs: refactor aligned MMP buffer allocation
+libext2fs: always use ext2fs_mmp_get_mem to allocate fs->mmp_buf
+fuse2fs: disable write access when cluster size > block size
+fuse2fs: enable more caching
+fuse2fs: check root directory while mounting
+fuse2fs: read bitmaps asynchronously during initialization
+fuse2fs: use file handles when possible
+fuse2fs: implement dir seeking
+fuse2fs: implement readdirplus
+fuse2fs: implement dirsync mode
+fuse2fs: only flush O_SYNC files on close
+fuse2fs: improve want_extra_isize handling
+fuse2fs: cache symlink targets in the kernel
+fuse2fs: constrain worker thread count
+fuse2fs: improve error handling behaviors
+fuse2fs: fix link count overflows on dir_nlink filesystems
+libsupport: add background thread manager
+fuse2fs: implement MMP updates
 
-lib/ext2fs/ext2_io.h         |  12 +++-
-debian/libext2fs2t64.symbols |   2 +
-lib/ext2fs/io_manager.c      |  16 +++++
-lib/ext2fs/unix_io.c         |  71 +++++++++++++++++++++
-misc/fuse2fs.c               | 144 +++++++++++++++++++++++++++++++++++++++----
-5 files changed, 232 insertions(+), 13 deletions(-)
+lib/ext2fs/ext2fs.h          |   6 +
+lib/support/bthread.h        |  27 ++
+configure                    |  47 ++++
+configure.ac                 |  29 ++
+debian/libext2fs2t64.symbols |   6 +
+e2fsck/unix.c                |   2 +-
+lib/config.h.in              |   3 +
+lib/ext2fs/dupfs.c           |   7 +-
+lib/ext2fs/link.c            | 290 ++++++++++++++++++++
+lib/ext2fs/mkdir.c           |   2 +-
+lib/ext2fs/mmp.c             |  24 +-
+lib/support/Makefile.in      |   6 +-
+lib/support/bthread.c        | 201 ++++++++++++++
+misc/dumpe2fs.c              |   2 +-
+misc/fuse2fs.1.in            |   9 +
+misc/fuse2fs.c               | 635 +++++++++++++++++++++++++++++++++++++------
+16 files changed, 1191 insertions(+), 105 deletions(-)
+create mode 100644 lib/support/bthread.h
+create mode 100644 lib/support/bthread.c
 
