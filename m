@@ -1,129 +1,106 @@
-Received: from mail-qt1-f179.google.com (mail-qt1-f179.google.com [209.85.160.179])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A78133C343A
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 12:57:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.179
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E9F0E3C3431
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 13:14:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773320254; cv=none; b=Ctnx7zTHUR8SEDK/AJvM5Y/42I9JSK4qu9Df/qVKhwMswMU8U1CJoFbtNZKr3MVr/iOteWBfb5x7q9TWHUgYyBbu04x1Uun5zfzTmSaGjPwjgcRWSJUk/xJefaly4BG9HVgVreSxtEaWBgimUNTlHtT+PFYja7lytzqyodtrOmk=
+	t=1773321284; cv=none; b=FXjdsBOf9mTqu/bHSjfMbgycdh1UN6Doy0F/N+bU7Zdc+Mxag7j7fzHwZC36o2B6rDDHCLjA96LIY6ifmu5hxiy5+jhZztRx7f4D2DG05PjmqffiWCRyidv5O0qYvo1mq3WydPbaCF/MJDiv42D3NSPv50WD1wY4aHf+n+bIesE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773320254; c=relaxed/simple;
-	bh=Rr1jkAP22lZkLvo3o90a9fRSWh9+kilNKtAarSScWFY=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Saaewb2zUVyOAdtoims9JacBBeRTsQIqB96AjRPrL7XPLx6FQIlKmrGX+REFRf8P0c33G733IHprj4h+iwb4iE1WJABRkljSf5ln9vv6PKj+RwT22iUkU9IJZvyFbxTGyeBwexx+1uyECicAi8qHQX5tvxUQL1lLrGdRGIwcatM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=ziepe.ca; spf=pass smtp.mailfrom=ziepe.ca; dkim=pass (2048-bit key) header.d=ziepe.ca header.i=@ziepe.ca header.b=fHqxjqGD; arc=none smtp.client-ip=209.85.160.179
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=ziepe.ca
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ziepe.ca
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ziepe.ca header.i=@ziepe.ca header.b="fHqxjqGD"
-Received: by mail-qt1-f179.google.com with SMTP id d75a77b69052e-5094b54a250so5475721cf.2
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 05:57:32 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=ziepe.ca; s=google; t=1773320252; x=1773925052; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
-        bh=J1SF1XBHkHR0j7NZVucv0LxpGoGXl67PUefLsfwpAbo=;
-        b=fHqxjqGD7mReR8MT2yBowt9MuNKPAKQc++mWcb4ZOttX6YldICO+OnnxWIQjO0C8L5
-         wjOw0Gg7MqV4U+G9pES+s6h1NtZIjaKrBXMW81hrLyc8SxWYHtvQK3FlTjqiyroZskXE
-         jYj0kUENL7Yhu5zg+0UQ91XYlYYlozX9U8uAqBEFaih0fSnDo8kprjTDRYJ58gzKRExo
-         MSUW+Q+e0P2WpZGotx0DuVRaUqq4vGsUUSX1YbPnOxmRUKlXFY/aNRmXMXDbAEfx0Lnn
-         e41FpuPSZjTSuTkWfTMW8e1MvewVXC2p6zLd4GrSZjvSKS4Q06nDQYaSimUW3qR5RhoY
-         JV6A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1773320252; x=1773925052;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=J1SF1XBHkHR0j7NZVucv0LxpGoGXl67PUefLsfwpAbo=;
-        b=OjCVCrO95//nApYbQrYuTS1o6mzb0apwdJVvX41UtttEjJ+xLS5UxH2/PSY6E/DIXx
-         /iAq2oPP6IGWQKb0sXubnEKlj7rk0helcpGyv15hnJpFWKoB1u/CyIfWoILMfi4OAYxG
-         RJNdyKattErik/84yPqmts1wi/fXmoDTfZR7zMKsOwccXEQ3Tu8wJ/jJJrQuEnwuRGrv
-         nQcURJFW+CjGoTLzDxYo7T51Lpz5XbY4YqR+q63M1M3H2u9BwSXOh+D+PhU/1pqeFvnk
-         2cts581nawQpqoE0vuT+97zHDLNU4W21z2LazzXoUEqmsArMoX6WIMHR0+zvACdV7uE0
-         Kmog==
-X-Forwarded-Encrypted: i=1; AJvYcCXbOLFEpMEi/By4NSqwsMMKquk1R0DaLgSZoOLjuwx6EMh7Olj4IsflHKhMKc8N4vkOldBQD7Jt2XSY@vger.kernel.org
-X-Gm-Message-State: AOJu0YzsVwrZPI6SxTpDVLPe977tkM2p/dMO+UHZk+gBGU7A965+XIdg
-	NB4COK2h6PYguddnz/q3DY/Mv3b22w8XMSfkzej5o2Oc1YzjhfqP5AmPGMtCdCnGvyI=
-X-Gm-Gg: ATEYQzzUfT9voGmgEpNOtYDHmj7Rnlt1+votVVIgTmvbo2W0xcZcLvnhvyoyB8SjcDN
-	3atw3BnyGr/tBTuomfi2OnRvl0GE46GkiIXD3YeWDSYG9wzTHNr7kOWIwJty7kj3ZlSTFsb66Pe
-	qV9AYqEG2PVWuTCa8NGEz7p3HU7/NGAtxot8+jPmnCzR0Sk/JEnHGRM3/2ZGQLzM3HABqCkYose
-	KSimETzv1I5TbDVRrJB2nCt55kOqXj/J7lQLCpIUM6fGVXtpNk8mc9n5XBO3UvrJ8M+3wzl4JiO
-	FtVSntJSu9GB1/cnXhIEMoDEBwc+8KjiDgbx+iPe17DCHh4NFbd3Wuje9DDq2Z4ZZkIA7CaEWar
-	C5wLItpTj05vYXsgiVzNv0QyRxsbmw1T6xIMp8Y7QbBYkqw/IKZCr+aqsmaUvbPBkD+WpXVKQ8W
-	sY0h6z8DUXn+55fyv1nqR1T1P3XOx4PxPcn12PXJGujLkt/7hJWkMU4NTbXmW0rx+GEXgMsoX0k
-	C1z4jiC
-X-Received: by 2002:ac8:5d4d:0:b0:509:cbc:127b with SMTP id d75a77b69052e-5093a1bd58fmr77950521cf.60.1773320251710;
-        Thu, 12 Mar 2026 05:57:31 -0700 (PDT)
-Received: from ziepe.ca (hlfxns017vw-142-162-112-119.dhcp-dynamic.fibreop.ns.bellaliant.net. [142.162.112.119])
-        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-89a65bd318fsm33341196d6.8.2026.03.12.05.57.30
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 12 Mar 2026 05:57:31 -0700 (PDT)
-Received: from jgg by wakko with local (Exim 4.97)
-	(envelope-from <jgg@ziepe.ca>)
-	id 1w0fbW-00000006fKD-1POa;
-	Thu, 12 Mar 2026 09:57:30 -0300
-Date: Thu, 12 Mar 2026 09:57:30 -0300
-From: Jason Gunthorpe <jgg@ziepe.ca>
-To: Kuan-Wei Chiu <visitorckw@gmail.com>
-Cc: Philipp Hahn <phahn-oss@avm.de>, amd-gfx@lists.freedesktop.org,
-	apparmor@lists.ubuntu.com, bpf@vger.kernel.org,
-	ceph-devel@vger.kernel.org, cocci@inria.fr,
-	dm-devel@lists.linux.dev, dri-devel@lists.freedesktop.org,
-	gfs2@lists.linux.dev, intel-gfx@lists.freedesktop.org,
-	intel-wired-lan@lists.osuosl.org, iommu@lists.linux.dev,
-	kvm@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
-	linux-block@vger.kernel.org, linux-bluetooth@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-	linux-clk@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-gpio@vger.kernel.org, linux-hyperv@vger.kernel.org,
-	linux-input@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-leds@vger.kernel.org, linux-media@vger.kernel.org,
-	linux-mips@vger.kernel.org, linux-mm@kvack.org,
-	linux-modules@vger.kernel.org, linux-mtd@lists.infradead.org,
-	linux-nfs@vger.kernel.org, linux-omap@vger.kernel.org,
-	linux-phy@lists.infradead.org, linux-pm@vger.kernel.org,
-	linux-rockchip@lists.infradead.org, linux-s390@vger.kernel.org,
-	linux-scsi@vger.kernel.org, linux-sctp@vger.kernel.org,
-	linux-security-module@vger.kernel.org, linux-sh@vger.kernel.org,
-	linux-sound@vger.kernel.org,
-	linux-stm32@st-md-mailman.stormreply.com,
-	linux-trace-kernel@vger.kernel.org, linux-usb@vger.kernel.org,
-	linux-wireless@vger.kernel.org, netdev@vger.kernel.org,
-	ntfs3@lists.linux.dev, samba-technical@lists.samba.org,
-	sched-ext@lists.linux.dev, target-devel@vger.kernel.org,
-	tipc-discussion@lists.sourceforge.net, v9fs@lists.linux.dev
-Subject: Re: [PATCH 00/61] treewide: Use IS_ERR_OR_NULL over manual NULL
- check - refactor
-Message-ID: <20260312125730.GI1469476@ziepe.ca>
-References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
- <abBlpGKO842B3yl9@google.com>
+	s=arc-20240116; t=1773321284; c=relaxed/simple;
+	bh=K4lMAB5iyM1tKT1ql1roLVcmrucwGvXHJGf4wJXn0UU=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=ruqjpTA2MI4rU6VtvHKNcKsh3RdHJEWgNm+I7tZLB/99CWtS4IyP/EsKght5YXrraRa9vl+/UIjadZF8wZ4xCLgdw7MljEIN6wNi1eZlUUAXiKPL745Pu6CKz/4c9OjksGYTUshgACiIccRRWMmg+YTmRCp7cWkmAmR2j3gBong=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4fWp3w5DGGzKHMpW
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 21:14:20 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 2BC6240573
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 21:14:39 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.87.132])
+	by APP4 (Coremail) with SMTP id gCh0CgDX_Ug8vLJpGVeVAg--.45112S11;
+	Thu, 12 Mar 2026 21:14:39 +0800 (CST)
+From: Ye Bin <yebin@huaweicloud.com>
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org
+Cc: jack@suse.cz
+Subject: [PATCH v2 7/8] ext4: fix possible null-ptr-deref in extents_kunit_exit()
+Date: Thu, 12 Mar 2026 21:12:52 +0800
+Message-Id: <20260312131253.366296-8-yebin@huaweicloud.com>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20260312131253.366296-1-yebin@huaweicloud.com>
+References: <20260312131253.366296-1-yebin@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <abBlpGKO842B3yl9@google.com>
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:gCh0CgDX_Ug8vLJpGVeVAg--.45112S11
+X-Coremail-Antispam: 1UD129KBjvJXoW7uFyrtw48CF1fCr1ruw1fCrg_yoW8GrW3pr
+	sxAF4j9r4rZw1DCFWxGFyUJryaka92kFW7uryxJF43KayUury8KryUtr1jqFW5XF48XFy5
+	Ar40v34UK3ZxG3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvEb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
+	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
+	rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267
+	AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E
+	14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7
+	xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Y
+	z7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7
+	v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF
+	1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_JFI_Gr1lIx
+	AIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI
+	42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWI
+	evJa73UjIFyTuYvjxUFgAwUUUUU
+X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 
-On Wed, Mar 11, 2026 at 02:40:36AM +0800, Kuan-Wei Chiu wrote:
+From: Ye Bin <yebin10@huawei.com>
 
-> IMHO, the necessity of IS_ERR_OR_NULL() often highlights a confusing or
-> flawed API design. It usually implies that the caller is unsure whether
-> a failure results in an error pointer or a NULL pointer. 
+There's issue as follows:
+KASAN: null-ptr-deref in range [0x00000000000002c0-0x00000000000002c7]
+Tainted: [E]=UNSIGNED_MODULE, [N]=TEST
+RIP: 0010:extents_kunit_exit+0x2e/0xc0 [ext4_test]
+Call Trace:
+ <TASK>
+ kunit_try_run_case_cleanup+0xbc/0x100 [kunit]
+ kunit_generic_run_threadfn_adapter+0x89/0x100 [kunit]
+ kthread+0x408/0x540
+ ret_from_fork+0xa76/0xdf0
+ ret_from_fork_asm+0x1a/0x30
 
-+1
+Above issue happens as extents_kunit_init() init testcase failed.
+So test if testcase is inited success.
 
-IS_ERR_OR_NULL() should always be looked on with suspicion. Very
-little should be returning some tri-state 'ERR' 'NULL' 'SUCCESS'
-pointer. What does the middle condition even mean? IS_ERR_OR_NULL()
-implies ERR and NULL are semanticly the same, so fix the things to
-always use ERR.
+Fixes: cb1e0c1d1fad ("ext4: kunit tests for extent splitting and conversion")
+Signed-off-by: Ye Bin <yebin10@huawei.com>
+---
+ fs/ext4/extents-test.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-If you want to improve things work to get rid of the NULL checks this
-script identifies. Remove ERR or NULL because only one can ever
-happen, or fix the source to consistently return ERR.
+diff --git a/fs/ext4/extents-test.c b/fs/ext4/extents-test.c
+index 7e2796f72d45..b1ea37e74f12 100644
+--- a/fs/ext4/extents-test.c
++++ b/fs/ext4/extents-test.c
+@@ -142,8 +142,12 @@ static struct file_system_type ext_fs_type = {
+ 
+ static void extents_kunit_exit(struct kunit *test)
+ {
+-	struct ext4_sb_info *sbi = k_ctx.k_ei->vfs_inode.i_sb->s_fs_info;
++	struct ext4_sb_info *sbi;
+ 
++	if (!k_ctx.k_ei)
++		return;
++
++	sbi = k_ctx.k_ei->vfs_inode.i_sb->s_fs_info;
+ 	deactivate_super(sbi->s_sb);
+ 	kfree(k_ctx.k_ei);
+ 	kfree(k_ctx.k_data);
+-- 
+2.34.1
 
-Jason
