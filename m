@@ -1,37 +1,37 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D161726ED25
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 21:00:27 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 517C8376498
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2026 21:00:43 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773349227; cv=none; b=Vc4Ls/JkmBLanEVn1MQKX23X8ExBEelFENkL9bPn8vxxu/4jXDGRoWIZp3iKqEuXKz4vz3bCOqkCy3xviZgqyialWLsQHyN2jpusMmf9vK5zRaEy/YCParQKVL2ahYioJF+M5nizqg0GpNxGVayaEimCd5KztGleLejveFZmrzg=
+	t=1773349243; cv=none; b=M54dFAkK+6BWa94HDZRS/eGy6SNEZiu9hOHPCtIU/6Crz9RF5SbnUjgvYJeiYcoFBGAlFQBQKiCf6S6kSTHMB6joI21q5xUvftJq18sDT5/DwFAjDwkTKvLViGWwRdtHsXzftTAtzyy17lvYz35V7Yc1TtGv3wtLg/cJTY0mdgE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773349227; c=relaxed/simple;
-	bh=3U/Hu1+jh2yMYzLLlUw623lt3B2OjQwnjV1x3Y1+arA=;
+	s=arc-20240116; t=1773349243; c=relaxed/simple;
+	bh=VKVdkdyRyyGQVtsqQJbyruGOWSFCgrCstENolPQK4g0=;
 	h=Date:Subject:From:To:Cc:Message-ID:MIME-Version:In-Reply-To:
-	 References:Content-Type; b=aCZtHPtttwdNjP7pAnRhXlCUT1hV62EA7PK3cOQRFzv0nfgDOoXrjiVNMGrXomoFWemiQCLK7soqiRFjSUWzDjpvvP44+76phUGk1sM5mqvW1Ko9R6iz/SCVPMAO8cVF42kh6Fa7uJqDk8szvu2Ft6+iDXRulzLsHe88/GAIIhs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CPVwlCKX; arc=none smtp.client-ip=10.30.226.201
+	 References:Content-Type; b=Z98mEHronWNfhIeXrYLV58iz/Fum9C7MNYwZ6boMW8J1AMH/mDmcZuulARNH/Gi6b1m66f5zS2lMjEHLk9Y+2rxpa3jQCYi/VX645YVqF7JDIedIAj8om0VUz4PDXb2pOs/AOhoOf2eAsUGdtNXHxGMMbuO4F+bF+Bo6DctUKNY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZO4OSRDz; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CPVwlCKX"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 72D48C19425;
-	Thu, 12 Mar 2026 21:00:27 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZO4OSRDz"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 243C5C4CEF7;
+	Thu, 12 Mar 2026 21:00:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1773349227;
-	bh=3U/Hu1+jh2yMYzLLlUw623lt3B2OjQwnjV1x3Y1+arA=;
+	s=k20201202; t=1773349243;
+	bh=VKVdkdyRyyGQVtsqQJbyruGOWSFCgrCstENolPQK4g0=;
 	h=Date:Subject:From:To:Cc:In-Reply-To:References:From;
-	b=CPVwlCKXbdpp4+AAwZjOU7+Yo+PX4bK6mhTmMsCB7PIpl+RGL8dm/7bDSmFC+X05v
-	 Pf9dmN+k9Se8ea9aZ6+wxj7EiTKC36+jqoKCTWsJVU3SHvD1AonRNmsc3sj/0FJwG0
-	 vImveGtgc2u+lQ+7G5zbkmve2kUf2I8ohYVbKgPEfLox+qsis3KcBznNBMh0vI2m3H
-	 HQq2IeR4pCz4hsNacDgxSTNFUmlwOoYvZtaveL2mBSyHLvxOUb4qlNOLmkb1l/DkVX
-	 0UOGWebB6+1Yh4DLVydQe65+Ohxe1zOKjSwcgcXJCiP0MVzNVBV0R2h5CrsvsJCcWy
-	 O8KJ4FzSsIOjg==
-Date: Thu, 12 Mar 2026 14:00:26 -0700
-Subject: [GIT PULL 4/9] fuse2fs: refactor unmount code
+	b=ZO4OSRDzcHO2ErLaADO2gpGoJrXm65BPg/g7BP1ZmF6L3VsSpWZUB1xr8xxMOUvpF
+	 L60EMxcq8Qmp0HVW0oDeYXgC3gCRPdjMvv/eqHr/E1hM9WzqdXlIbtj8xA6h+8q76n
+	 UQeBO7vzR5jUKH5lFsVgYrar29YMEV+NNw7Xir3iCe+HDMVWTk6sbqpjaxn3H2d8W6
+	 QmSHfDK4NQQeBrLB35j4sDPcCpRDZ+hbVI9pC0ODnr/1HCUhUqQALgSZd2zXO7+VqN
+	 yZ/CQ8f3XQn3NtTZvDboXlQ0KNIfj354fFYVHbKfwLYc5iYKDVEbIGyLTnbhPPXp3q
+	 hjh4Qtqx05eeg==
+Date: Thu, 12 Mar 2026 14:00:42 -0700
+Subject: [GIT PULL 5/9] fuse2fs: refactor mount code
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: tytso@mit.edu
 Cc: djwong@kernel.org, linux-ext4@vger.kernel.org
-Message-ID: <177334916548.3254574.4332031441968487356.stg-ugh@frogsfrogsfrogs>
+Message-ID: <177334916576.3254574.12995451033800002505.stg-ugh@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -51,35 +51,37 @@ As usual, I did a test-merge with the main upstream branch as of a few
 minutes ago, and didn't see any conflicts.  Please let me know if you
 encounter any problems.
 
-The following changes since commit f5c46155c79cccd46e047d732063c7f21db35c8e:
-
-fuse2fs: collect runtime of various operations (2026-03-08 19:14:05 -0700)
-
-are available in the Git repository at:
-
-https://git.kernel.org/pub/scm/linux/kernel/git/djwong/e2fsprogs.git tags/fuse2fs-refactor-unmounting_2026-03-12
-
-for you to fetch changes up to 5d3394ff8d6f2e120be1343c1504831d9602a3b4:
+The following changes since commit 5d3394ff8d6f2e120be1343c1504831d9602a3b4:
 
 fuse2fs: hoist unmount code from main (2026-03-08 19:14:05 -0700)
 
-----------------------------------------------------------------
-fuse2fs: refactor unmount code [04/18]
+are available in the Git repository at:
 
-In this series, we refactor the code around ext2fs_close to get ready
-for iomap mode.  The significant part of this series is moving the
-unmount code to op_destroy, because we want to release the block device
-as a part of the umount(2) process to maintain expected behavior of the
-in-kernel local filesystem drivers.
+https://git.kernel.org/pub/scm/linux/kernel/git/djwong/e2fsprogs.git tags/fuse2fs-refactor-mounting_2026-03-12
+
+for you to fetch changes up to 9476b1377d887872f96d7144a81d2107cff3df1f:
+
+fuse2fs: adjust OOM killer score if possible (2026-03-08 19:14:05 -0700)
+
+----------------------------------------------------------------
+fuse2fs: refactor mount code [05/18]
+
+Here, we hoist the mounting code out of main() into a pile of separate
+helper functions to reduce the complexity of understanding the mount
+code.  This isn't strictly required for iomap, but it makes main() a lot
+easier to understand.
 
 Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
 
 ----------------------------------------------------------------
 Darrick J. Wong (3):
-fuse2fs: get rid of the global_fs variable
-fuse2fs: hoist lockfile code
-fuse2fs: hoist unmount code from main
+fuse2fs: split filesystem mounting into helper functions
+fuse2fs: register as an IO flusher thread
+fuse2fs: adjust OOM killer score if possible
 
-misc/fuse2fs.c | 199 +++++++++++++++++++++++++++++++--------------------------
-1 file changed, 108 insertions(+), 91 deletions(-)
+configure       |  37 ++++
+configure.ac    |  18 ++
+lib/config.h.in |   3 +
+misc/fuse2fs.c  | 634 +++++++++++++++++++++++++++++++-------------------------
+4 files changed, 412 insertions(+), 280 deletions(-)
 
