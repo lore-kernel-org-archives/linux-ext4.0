@@ -1,49 +1,47 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0ABE12DAFA1
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Mar 2026 14:32:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BB6B03A7F74;
+	Fri, 13 Mar 2026 14:55:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773412341; cv=none; b=MdOKKqXxvXy5r6QKKwPpsMy5IJwiHA+ANLertaz60Bno7yNnTa4HcfymXljIBG3Bf/8CmLL/HGqZ5WMWS7Qqri52aBjhA7zll7yf//rH+TUAywhvTVOHSSUVes0Qny7235jkuGDwRVQ+j1S1/rjquZJVRthND7Mch/QTeTcmdv0=
+	t=1773413752; cv=none; b=LDzjf+LfqH1gOChC7ZrqeoX8ddldpj/u7gy2TmqKlZjOsSWIN1JftEDq7lH3CS8kcWXR6pA9wc+g2niXVoZKpTjyf49MywgtC7qUYo65SLVNNdImk18X+V5Gxd2E4pmll/hZh96LZ+9d9FXQZ/PvHcsQBOrzHAfkd6rd5esMm1w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773412341; c=relaxed/simple;
-	bh=x9PbsbschYPZsjhTcC/C1cw0uWC+2sVJY8spiTbt5+A=;
+	s=arc-20240116; t=1773413752; c=relaxed/simple;
+	bh=1SJdVb46rEOXp0TNCRzNQH20hOu3F1a8jHEpr/61pdg=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=be/bFMuov0MKpA+y1VXoa3r+SHn4q7I4ZoAeJgZKuu59CIci1S7Mjx1Cmr+s/DF2oMcE7mc+BvvXhMiJBIyE5jsTWBnWSe9Hiuffpb2UdCnIBWJVAqTOCsHLK5Q1iVqf7TsxnbVjeO0I5FDBQjixY5DeioagtyKdBu11TgH6Xl0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=HDx0wqXM; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	 Content-Type:Content-Disposition:In-Reply-To; b=O7wF6pWkjx8hO36/j38Beivm2HccAJRhszXIHRi7Bb7NK/SIEWToK+tYveWFeyZWdkWFqCyIWH6Umwo+8ZeI69jX6YxyeuNZ1raj+wK2I3bItLAyg91JGRuGe3tWJth5S9iibByenRNbyEnzanDWfOrGwz4iIzwCbQplnEtfRL0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=STCiPlE7; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="HDx0wqXM"
-Received: from macsyma.thunk.org (pool-173-48-82-106.bstnma.fios.verizon.net [173.48.82.106])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62DEW11o013052
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 13 Mar 2026 10:32:03 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1773412323; bh=zjdy1qdWJI9qZih14ZYU/jLdm5z/Sd8CdpTV1dlf9tc=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=HDx0wqXMRvcd+1M3vVXOWkdUthEEayXYsALytvzA6jZHwYQwGdiMVAMZq9a/x7iUi
-	 XcqZhDGE0Sakz9q9BC2EQr2LxXxaodz/PSJQeRMNE0WKouwBRxpY/JPl99JHZSptEJ
-	 e0kP2L4e+5r78x8qoYzgnAAkTy+BXf2Gfn//4N+sHluqo9BS5SlPKse4wV6wyPluGA
-	 se0Sn7ibljH0m+IotsIO1rFxjNwLk82iOcsqdjoxnBSC+lFOcGMhx/plfhMzmxEhgM
-	 pvf6frVrJFqO4cXVujpRBfNx4bRHsDFjTAMBSlthG0syqYOwGRYDC2u8lN6b3i10sn
-	 nRbSsLpmlVbqQ==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 2A44B5D2E294; Fri, 13 Mar 2026 10:31:01 -0400 (EDT)
-Date: Fri, 13 Mar 2026 10:31:01 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Baokun Li <libaokun@linux.alibaba.com>
-Cc: Jan Kara <jack@suse.cz>, Ext4 Developers List <linux-ext4@vger.kernel.org>
-Subject: Re: [RFC PATCH] ext4: handle wraparound when searching for blocks
- for indirect mapped blocks
-Message-ID: <20260313143101.GA38016@macsyma-wired.lan>
-References: <20260310122806.1277631-1-tytso@mit.edu>
- <5ce9dfe2-721e-4d20-9bd9-3560aa76888d@linux.alibaba.com>
- <20260312142345.GA4689@macsyma-wired.lan>
- <2a047aeb-6db8-4be9-8908-b12632d5e632@linux.alibaba.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="STCiPlE7"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 45E4FC19421;
+	Fri, 13 Mar 2026 14:55:52 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1773413752;
+	bh=1SJdVb46rEOXp0TNCRzNQH20hOu3F1a8jHEpr/61pdg=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=STCiPlE7YCJ6EP08/0/rI3sm0hiVo8h5O7hPvhYrwE3F9gUgh6x4qYOG+oseUMFcp
+	 0fco+B87d09Raz+TTKdqXsLyYzKcXAdDlu7u6dynGTXapE5MiKaRnCLZNtHfy4iPVf
+	 YrFUa2ViLJHx3lj6THIzfxNRTHyc59xkPpq2G4OYaS7/FpXFsareyepu+TXhtqXV1t
+	 +IWXOamdz1kto1W1vQdKKch43W+DgpLtRQt/JCOlpjqXu2nAG9q2e5bg95X1VbUZkm
+	 zFHSXzhBhfLcoSN9hVcPH55Kp/YFTYgSIxZnb4g0wcPn5Iu25E8YXr01CGvzb/Z3K7
+	 vTjplDCeoUGQQ==
+Date: Fri, 13 Mar 2026 07:55:51 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Andrey Albershteyn <aalbersh@redhat.com>
+Cc: Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org,
+	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org,
+	ebiggers@kernel.org, hch@lst.de, linux-ext4@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net, linux-btrfs@vger.kernel.org
+Subject: Re: [PATCH v4 19/25] xfs: remove unwritten extents after
+ preallocations in fsverity metadata
+Message-ID: <20260313145551.GN1770774@frogsfrogsfrogs>
+References: <20260309192355.176980-1-aalbersh@kernel.org>
+ <20260309192355.176980-20-aalbersh@kernel.org>
+ <20260310012914.GG1105363@frogsfrogsfrogs>
+ <ymisdrze3ohdnxa4inqfwp4riaz4qk5nmtil33adn5ukhngq7v@f3tcv3hbzobz>
+ <20260312145250.GE6069@frogsfrogsfrogs>
+ <dz3va7indkh4to2pingopyndck737qvyxvlfomkqqothzj4pdk@wu26ba5stnf6>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -52,41 +50,85 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <2a047aeb-6db8-4be9-8908-b12632d5e632@linux.alibaba.com>
+In-Reply-To: <dz3va7indkh4to2pingopyndck737qvyxvlfomkqqothzj4pdk@wu26ba5stnf6>
 
-On Fri, Mar 13, 2026 at 10:00:04AM +0800, Baokun Li wrote:
-> IIUC, ngroups/end here only depend on filesystem size and whether the inode
-> is extent-based, and both should stay unchanged during block allocation.
-> So doing the check once at the beginning should be sufficient. Am I missing
-> anything?
+On Fri, Mar 13, 2026 at 12:17:15PM +0100, Andrey Albershteyn wrote:
+> On 2026-03-12 07:52:50, Darrick J. Wong wrote:
+> > On Thu, Mar 12, 2026 at 02:50:57PM +0100, Andrey Albershteyn wrote:
+> > > On 2026-03-09 18:29:14, Darrick J. Wong wrote:
+> > > > > XFS preallocates spaces during writes. In normal I/O this space, if
+> > > > > unused, is removed by truncate. For files with fsverity, XFS does not
+> > > > > use truncate as fsverity metadata is stored past EOF.
+> > > > > 
+> > > > > After we're done with writing fsverity metadata iterate over extents in
+> > > > > that region and remove any unwritten ones. These would be preallocation
+> > > > > leftovers in the merkle tree holes and past fsverity descriptor.
+> > > > > 
+> > > > > Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
+> > > > > ---
+> > > 
+> > > > There's an upper limit on the number of blocks you can unmap/free in a
+> > > > single transaction.  Maybe move the xfs_trans_{alloc,commit} into the
+> > > > loop body?
+> > > > 
+> > > > Oh wait, you skip the written extents.  Ok, so maybe just roll it after
+> > > > you've done a bunmapi.
+> > > 
+> > > I see, I will add a rolling transaction. Btw, why skipping the
+> > > written extents let's us use rolling here?
+> > 
+> > Hrmm.  At first I thought: why can't xfs_fsverity_cancel_unwritten
+> > allocate (and commit) the transaction inside the loop body?  Then I
+> > thought "well, it's only conditionally unmapping things, and it's sort
+> > of a pain to allocate a transaction only then to find out if you
+> > actually want to run one".
+> > 
+> > OTOH there could be billions of extents in the data fork, so holding the
+> > ILOCK for that many transactions isn't a good thing because tr_write
+> > only preallocates space for a certain number of transaction rolls.
+> > fsverity already holds IOLOCK_EXCL so there can't be any other programs
+> > using the file.
+> > 
+> > So now I arrive back at "The transaction allocation and commit/cancel
+> > should be inside the loop body, since crashing midway through wouldn't
+> > result in user-visible changes to the file data".
+> > 
+> > > > Do you need to purge the cow fork too?
+> > > 
+> > > hmm, what case are you thinking about here? The fsverity is written
+> > > in past EOF region, I don't see how COW extent could be left there.
+> > > Can they somehow be left mapped for blocks past i_size?
+> > 
+> > I was talking about speculative cow fork preallocations below i_size.
+> > They'll eventually get purged by blockgc, but you could give the space
+> > back once you've committed enabling the fsverity file flag.
+> 
+> hmm, if they're purged by blockgc, then why to do it here? I'm
 
-The problem here is that case where we use
-ext4_get_allocation_groups_count as ngroups and end are different.  In
-some places we do this:
+Since you've made the file read-only by turning on fsverity, I think
+it's appropriate to return the COW fork preallocations to the free space
+pool.  Granted, you're correct that blockgc will eventually call
+xfs_reflink_cancel_cow_range for you either due to timeout or because
+something hit ENOSPC and kicked blockgc.  So I guess its not a
+requirement to land this series; I was just surprised not to see
+xfs_reflink_cancel_cow_range done explicitly here.
 
-        ext4_group_t ngroups = ext4_get_allocation_groups_count(ac);
+> iterating and removing unwritten extents here only because
+> xfs_inode_free_eofblocks() will skip fsverity inodes, the check in
+> xfs_can_free_eofblocks():
+> 
+> 	if (IS_VERITY(VFS_I(ip)))
+> 		return false;
+> 
+> The skipping is done to not remove all the fsverity metadata
+> extents. With preallocations enabled there could be unwritten
+> extents left in the metadata.
 
-and in others we do this:
+<nod> Cleaning out the unwritten extents from the data fork when
+enabling fsverity makes sense to me and is totally fine.
 
-        end = ext4_get_allocation_groups_count(ac);
+> Am I missing something?
 
-Now, if start is zero, then these two are equivalent.  But if start is
-not zero, but say, is 2**32 - 8, then where we use
-ext4_allocaiton_groups_count() as the last block group to search, then
-we only will search exactly 8 block groups, and if
-there are free blocks in the first 8 block groups, then the scanning
-function will fail.
+Nah, but we might be talking past each other a bit at this point. :/
 
-Alternatively, if we just do the check at the beginning, then 2**32 -
-8 is a valid starting point, but if we just search forward by ngroups,
-then we may end up returning a block group which won't work for
-indirect mapped inodes.
-
-Hence, in *every* function where we call
-ext4_get_allocaiton_groups_count(), if the goal is to search all block
-groups that are valid for indirect mapped inodes, and start might be
-greater than 0, we *have* to handle wraparound.
-
-Does that make sense?
-
-						- Ted
+--D
