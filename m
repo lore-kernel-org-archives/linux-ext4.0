@@ -1,66 +1,95 @@
-Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AC6A138AC93
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Mar 2026 10:35:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.158.5
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 48C04625
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Mar 2026 11:17:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773398115; cv=none; b=We/Ob0F45tSNOHE8mykiM7jk2hjZ0FayEV0ltFLWWo50aO6cDNWCQjhYnwMdjDOjEF3rQz0kWi4jWYh51hiTbJdCmweX3UnZFfqkt/9sr5sEAnl8/2weLSNrVm0EBKd0FaUgplF0/AHmtAUAEnph792KusGVq8L3eLn/VCza1B8=
+	t=1773400644; cv=none; b=OBlEyPrGKm2gI+WPDAdoKHALsh9wPTGQZTmd2KAXIBPWvM9Fio1fk1NBPmxxDw110poDs9MhbD5Y5kUEGeOi2nnolKX/EFwuMaFXr+DeVrWwZWjTYfEFHmoBOs5s8/oW+HF+gCkJqcHn5m0mBnaYtFkrwPSApajdpYWKpjdXouY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773398115; c=relaxed/simple;
-	bh=hRhlxu9Vyv/qCp/se/zjjbJC4GwUMWermKUAF3aqZuo=;
+	s=arc-20240116; t=1773400644; c=relaxed/simple;
+	bh=2ocLF+6gDlSJ0COpbZ4Q1YW8LyldVKS8d2Q/lZFZfic=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=bRkBhTkkIoquXO95Etr1Z9Rld+V1pa4yZ9Vi567CexHiU5dmZt82+qlG8hQbmL1UlVCvr6B2Kx31nwJvDaht4CA7NU3+VRSpCc5VuDe9JJHExPYXr5uB34HvZWBiN6QD291nR8GojwLo4dhwFkJ0dFyB1Yoe4Fy+AWrhffzLlJc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=o60gXzu1; arc=none smtp.client-ip=148.163.158.5
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+	 Content-Type:Content-Disposition:In-Reply-To; b=YyQZe4UHyOLPFFLCXssD9d0hZAWjHmzrQm/EnHGa71Q8ZfFSodHTvMvgz6679KyEdkkqId30uVoLDIo7z5X6He3GZ8zPvneAKQaHvRc0LaiiI/1EbBnU+lVzkHbycODeyw2r2J80ew+tH6Onb6wEx0+hJWEO0r8Bl2NNGBKbq9I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=OKrNARqw; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=UK3vPB4M; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="o60gXzu1"
-Received: from pps.filterd (m0353725.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 62D6ZZIj2206305;
-	Fri, 13 Mar 2026 10:35:04 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-type:date:from:in-reply-to:message-id:mime-version
-	:references:subject:to; s=pp1; bh=xLWVW+nbPTQTGLUukh7sU13nz39c6j
-	ctNiuXhKGvVTU=; b=o60gXzu1+tx3PTmipR8LFaVUnKw70gh7y1GY03o80+6uTC
-	8hnCdeypsNBWGsPg67U5nOrldo2q6cDiBPniox/+uGsrNww2tZ4/IWTpTALX0iLv
-	uq+OgFuxDrKyfbscULbwH7r9ppE4k4AXYxrRIkqbM86I9NFRzD49BKTF+O13NLBf
-	wnBT4A3UuX/yMT6iM5FZ9DzwtViTmoUfUSJJt/IA675fHp/oxw0paMSIlH8zGSkg
-	7/ewufkko24KI5lyfKV0x7ilL3h6VUwOiu5x/K4uHv/4tW2ZHY7O0IlZoGXwaQ0J
-	KOWjULGSpWxfSWFAoKiRbgIK/XVVrfMjrFRbYYYg==
-Received: from ppma21.wdc07v.mail.ibm.com (5b.69.3da9.ip4.static.sl-reverse.com [169.61.105.91])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4cuh98f1aj-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 13 Mar 2026 10:35:03 +0000 (GMT)
-Received: from pps.filterd (ppma21.wdc07v.mail.ibm.com [127.0.0.1])
-	by ppma21.wdc07v.mail.ibm.com (8.18.1.2/8.18.1.2) with ESMTP id 62DA1HD8008821;
-	Fri, 13 Mar 2026 10:35:03 GMT
-Received: from smtprelay02.fra02v.mail.ibm.com ([9.218.2.226])
-	by ppma21.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4cuha769tq-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 13 Mar 2026 10:35:02 +0000
-Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
-	by smtprelay02.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 62DAZ1AJ52036032
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Fri, 13 Mar 2026 10:35:01 GMT
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 0740F2006A;
-	Fri, 13 Mar 2026 10:35:01 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 9113D20063;
-	Fri, 13 Mar 2026 10:34:59 +0000 (GMT)
-Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.39.23.11])
-	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
-	Fri, 13 Mar 2026 10:34:59 +0000 (GMT)
-Date: Fri, 13 Mar 2026 16:04:56 +0530
-From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To: Ye Bin <yebin@huaweicloud.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        jack@suse.cz
-Subject: Re: [PATCH -next 0/8] Fix some issues about ext4-test
-Message-ID: <abPoUFviqJTmC387@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-References: <20260310130412.3156753-1-yebin@huaweicloud.com>
- <abO55xo3MDyJ-NEi@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="OKrNARqw";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="UK3vPB4M"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1773400640;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=G3aAJby17/qDvpdgHW3BwLZTyLi3K99yUle4/tTAV/E=;
+	b=OKrNARqwkYelqWGSTRuXPia0Hk9bJllMK93J6bCZsenFBTr2yAP8WoHr5HIUq1yJmxnNzJ
+	roRty5ThfMb56It1GF+ACxR58ERoxghdXQPbE/9WcJewxFRFNdhw7EVsgVA6EO8b0CpQt3
+	rB0HRscEx8F6ofgjV8gqmn6Stxp+rIE=
+Received: from mail-wr1-f69.google.com (mail-wr1-f69.google.com
+ [209.85.221.69]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-82-mIn1RL91OJuYPPE2_ZLSBA-1; Fri, 13 Mar 2026 07:17:19 -0400
+X-MC-Unique: mIn1RL91OJuYPPE2_ZLSBA-1
+X-Mimecast-MFC-AGG-ID: mIn1RL91OJuYPPE2_ZLSBA_1773400638
+Received: by mail-wr1-f69.google.com with SMTP id ffacd0b85a97d-439db9da59eso1498705f8f.2
+        for <linux-ext4@vger.kernel.org>; Fri, 13 Mar 2026 04:17:19 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1773400638; x=1774005438; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=G3aAJby17/qDvpdgHW3BwLZTyLi3K99yUle4/tTAV/E=;
+        b=UK3vPB4MSDCHkPA4jY4bB4yUOPaA7qwwS1LXEuynBfO59zoai/l5X8o2xCWclGXV9g
+         4smlqXR4kVAEJKriI1vdp3grxQvUKsV2of3/gf1PzJ27aS7trVLjTDcEitb0F2CgO2Yt
+         J9xA0neDom/pRM5O0V3MZO/y5APXFxyJjq7zXfFo9X9JuGZ1yMVtRJEAI7AiSG4eBclz
+         0vRL2PiokHB9CoCR1ecOeHpJAWdzUMQX03jiFgSyeMorFmcYq7l2K4q9A9LC+cQ46KND
+         LMU6DKVZ6zW1K2U7I+KLgkC+dp+pEhcNz/IR0XTeFQzcac/qO14FXgQ5g/+47jbD7jur
+         JDjQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1773400638; x=1774005438;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=G3aAJby17/qDvpdgHW3BwLZTyLi3K99yUle4/tTAV/E=;
+        b=IY9qJm1NA7rLmRpsti6BZkn+3SIpjInu8KLAY/aevh70UBqVzljQx7IOcyoAhjBxjB
+         WGsUoFf1lRH/QqQ5N45ohV2xDkg/V/Ziu2aXxnSKn3z1nGO7eL4JZzUz3ObilSJxxOI+
+         /3IERU3APH4NNIMKRqaSn3QbQEHcGcOhfk4eiSmyf6/6/W+bZXTBhQTBfPre2GaRTtIN
+         XykGq8XSzFqE7zYIpiSUVhIE+Pd3/43FyvMGKscAScTONDtW65LTAX/98OlsSb/ku886
+         kUDfgjBaxs18yVY5uYCux8yR43OqIJlq9urFdWo5uhV5JRIjqQoJ61uNhsC4znbwufTd
+         YEPg==
+X-Forwarded-Encrypted: i=1; AJvYcCXdGXv/W3OyjiwHx+644bMuLoUECm9I0RhBlQZn2eknS0O6nybXhmG40TwLy06Yz7VC6HKYpFMQCyRK@vger.kernel.org
+X-Gm-Message-State: AOJu0YwtFbYHdsa9gj9u3uJyPfSbBymZsp9yRi3BC1SFTXVqOWW0uXTc
+	1V/QnD54iEjJV0glI0n/1Bt1WJbDdAmgJ45v5RdEwCKJbj8p4eZbXPNnJnau2a0pINjFVT1UOYF
+	/QflKT1QpwrSzI7nTy8iCwSlV1ci5iph4E4NZoulp4SHVFWsSZg1Uy0Mh9IKduw==
+X-Gm-Gg: ATEYQzyQjMdOqJ+223F9gaXG3oCVdDI7y4DG5qOLFqw2lIBawr5C6SyT2Rdg+FdFtNH
+	rrBRjUm+HOcDeilsO6zxIdOdvxoJ7iGxfIuVIV9lzTbObdbwRyTDVIc+fqDL3p+de7VJNr4qKFX
+	ZLjS0gD8v8tNx7DQCVSCPl7ap5DS2zCTFuFz0m6GDn0kOd7ZMDXHIqRYGLUKxHgwryzYhFydXFh
+	sIbSX0xUdFa95fZZOhCfD8RFL8KDGsLU4wqNodSUXC0CJmGlkgp1Ezy7paaV234U25vaz5BzxGv
+	D1GGMdnSF0T9nTAXxmQsRAk4Gv/IKWJ9QXjNfBn94+hk19blWpN43inVwnQSaxXysFue+IoyTou
+	dNa9lSe7pec8=
+X-Received: by 2002:a05:6000:2010:b0:439:ddc0:4bee with SMTP id ffacd0b85a97d-43a04d86228mr5317854f8f.16.1773400637595;
+        Fri, 13 Mar 2026 04:17:17 -0700 (PDT)
+X-Received: by 2002:a05:6000:2010:b0:439:ddc0:4bee with SMTP id ffacd0b85a97d-43a04d86228mr5317761f8f.16.1773400636834;
+        Fri, 13 Mar 2026 04:17:16 -0700 (PDT)
+Received: from thinky ([217.30.74.39])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-43a03cfd18fsm8558495f8f.36.2026.03.13.04.17.16
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 13 Mar 2026 04:17:16 -0700 (PDT)
+Date: Fri, 13 Mar 2026 12:17:15 +0100
+From: Andrey Albershteyn <aalbersh@redhat.com>
+To: "Darrick J. Wong" <djwong@kernel.org>
+Cc: Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org, 
+	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, ebiggers@kernel.org, hch@lst.de, 
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
+	linux-btrfs@vger.kernel.org
+Subject: Re: [PATCH v4 19/25] xfs: remove unwritten extents after
+ preallocations in fsverity metadata
+Message-ID: <dz3va7indkh4to2pingopyndck737qvyxvlfomkqqothzj4pdk@wu26ba5stnf6>
+References: <20260309192355.176980-1-aalbersh@kernel.org>
+ <20260309192355.176980-20-aalbersh@kernel.org>
+ <20260310012914.GG1105363@frogsfrogsfrogs>
+ <ymisdrze3ohdnxa4inqfwp4riaz4qk5nmtil33adn5ukhngq7v@f3tcv3hbzobz>
+ <20260312145250.GE6069@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -69,105 +98,72 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <abO55xo3MDyJ-NEi@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-X-TM-AS-GCONF: 00
-X-Authority-Analysis: v=2.4 cv=M+pA6iws c=1 sm=1 tr=0 ts=69b3e857 cx=c_pps
- a=GFwsV6G8L6GxiO2Y/PsHdQ==:117 a=GFwsV6G8L6GxiO2Y/PsHdQ==:17
- a=kj9zAlcOel0A:10 a=Yq5XynenixoA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=RnoormkPH1_aCDwRdu11:22 a=V8glGbnc2Ofi9Qvn3v5h:22 a=VwQbUJbxAAAA:8
- a=VnNF1IyMAAAA:8 a=qNABUOcEAAAA:8 a=pGLkceISAAAA:8 a=i0EeH86SAAAA:8
- a=V06nIGNlhVeJqx2CMeoA:9 a=CjuIK1q_8ugA:10 a=Ytm653ucTKQjCvbzLygB:22
-X-Proofpoint-GUID: PYx7x7I8nzIAVPPZ40XdmNE_BQpPw-NK
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwMzEzMDA4MiBTYWx0ZWRfX3rG1c7tWqmhA
- x4lAfLZ0cEM2nC6CuAaI5xJaaRtgZmksyCkxF537mTGkiIzW6/qG3RJc8sXFqTU5v/qTMBnyi3P
- amQTVKWRcNcVwz4YNB0EJb/a2m7TV4MOmU6LiMxd2aGwuiHuPlPJCy6ub8rb2g9umTOQlZg29N4
- 6TOsqvCERFfjwZudeaAhYphyXddTrtLHwjtaniWEzOggsjrWcde3bfzBD6PS2DGbaaOeTes9Xiz
- kVdydyP5aOkiew8Ir2lVPQenVW5HLKGXy1mi23lOQ0WrPrEGqT99aUmGDwlKOQlFimyavfb7SmP
- 2eGukAyj92MPkPE+KkhOBu1VTCmB5lT2hAovNxfd4IsGDlaGJ0wkvAKv3xPw7b21q/BYUq0Cn+d
- zhCDujDaA2Rm7FtRG507OnPV2r2LUCm+L38+kFheiQr70aAVzscP0EueXTveY++9XuKRX4B5GYy
- r+pVFHtI/mr0U1L0B2g==
-X-Proofpoint-ORIG-GUID: PYx7x7I8nzIAVPPZ40XdmNE_BQpPw-NK
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.51,FMLib:17.12.100.49
- definitions=2026-03-13_02,2026-03-12_01,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- lowpriorityscore=0 spamscore=0 suspectscore=0 priorityscore=1501
- impostorscore=0 phishscore=0 clxscore=1015 bulkscore=0 adultscore=0
- malwarescore=0 classifier=typeunknown authscore=0 authtc= authcc=
- route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2603050001
- definitions=main-2603130082
+In-Reply-To: <20260312145250.GE6069@frogsfrogsfrogs>
 
-On Fri, Mar 13, 2026 at 12:46:55PM +0530, Ojaswin Mujoo wrote:
-> On Tue, Mar 10, 2026 at 09:04:04PM +0800, Ye Bin wrote:
-> > From: Ye Bin <yebin10@huawei.com>
+On 2026-03-12 07:52:50, Darrick J. Wong wrote:
+> On Thu, Mar 12, 2026 at 02:50:57PM +0100, Andrey Albershteyn wrote:
+> > On 2026-03-09 18:29:14, Darrick J. Wong wrote:
+> > > > XFS preallocates spaces during writes. In normal I/O this space, if
+> > > > unused, is removed by truncate. For files with fsverity, XFS does not
+> > > > use truncate as fsverity metadata is stored past EOF.
+> > > > 
+> > > > After we're done with writing fsverity metadata iterate over extents in
+> > > > that region and remove any unwritten ones. These would be preallocation
+> > > > leftovers in the merkle tree holes and past fsverity descriptor.
+> > > > 
+> > > > Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
+> > > > ---
 > > 
-> > Patch [1]-[2]:
-> > Decoupled mballoc-test and extents-test from ext4. Patch [1] does not
-> > have any changes compared to the previously released version, so the
-> > reviewed-by is added.
-> > Patch [3-7]:
-> > Bugfix for extents-test.c.
-> > Patch [8]:
-> > Bugfix for mballoc-test.c.
+> > > There's an upper limit on the number of blocks you can unmap/free in a
+> > > single transaction.  Maybe move the xfs_trans_{alloc,commit} into the
+> > > loop body?
+> > > 
+> > > Oh wait, you skip the written extents.  Ok, so maybe just roll it after
+> > > you've done a bunmapi.
 > > 
-> > Ye Bin (8):
-> >   ext4: fix mballoc-test.c is not compiled when EXT4_KUNIT_TESTS=M
-> >   ext4: introduce EXPORT_SYMBOL_FOR_EXT4_TEST() helper
-> >   ext4: fix extents-test.c is not compiled when EXT4_KUNIT_TESTS=M
-> >   ext4: fix miss unlock 'sb->s_umount' in extents_kunit_init()
-> >   ext4: fix miss free super_block in extents_kunit_exit()
-> >   ext4: fix the error handling process in extents_kunit_init).
-> >   ext4: fix possible null-ptr-deref in extents_kunit_exit()
-> >   ext4: fix possible null-ptr-deref in mbt_kunit_exit()
+> > I see, I will add a rolling transaction. Btw, why skipping the
+> > written extents let's us use rolling here?
+> 
+> Hrmm.  At first I thought: why can't xfs_fsverity_cancel_unwritten
+> allocate (and commit) the transaction inside the loop body?  Then I
+> thought "well, it's only conditionally unmapping things, and it's sort
+> of a pain to allocate a transaction only then to find out if you
+> actually want to run one".
+> 
+> OTOH there could be billions of extents in the data fork, so holding the
+> ILOCK for that many transactions isn't a good thing because tr_write
+> only preallocates space for a certain number of transaction rolls.
+> fsverity already holds IOLOCK_EXCL so there can't be any other programs
+> using the file.
+> 
+> So now I arrive back at "The transaction allocation and commit/cancel
+> should be inside the loop body, since crashing midway through wouldn't
+> result in user-visible changes to the file data".
+> 
+> > > Do you need to purge the cow fork too?
 > > 
-> >  fs/ext4/Makefile       |   5 +-
-> >  fs/ext4/ext4.h         |   5 ++
-> >  fs/ext4/ext4_extents.h |  12 +++++
-> >  fs/ext4/extents-test.c |  59 ++++++++++++++++--------
-> >  fs/ext4/extents.c      |  38 ++++++++++++---
-> >  fs/ext4/mballoc-test.c |  87 ++++++++++++++++++-----------------
-> >  fs/ext4/mballoc.c      | 102 +++++++++++++++++++++++++++++++++++++++--
-> >  fs/ext4/mballoc.h      |  30 ++++++++++++
-> >  8 files changed, 268 insertions(+), 70 deletions(-)
+> > hmm, what case are you thinking about here? The fsverity is written
+> > in past EOF region, I don't see how COW extent could be left there.
+> > Can they somehow be left mapped for blocks past i_size?
 > 
-> Hi Ye,
-> 
-> Thanks for the fixes, seems like I completely forgot cleaning up
-> resources in extents-test.c so thanks for taking that up. Sadly, my UML
-> kunit runs didn't catch any of this :/
-> 
-> Although the series look good to me, I have a request, can you please
-> resend the fixes in patch 4 - 7 separate from patch 1 2 3.  We need
-> these fixes (specifically patch 4 and 5) to fix the breakage in
-> linux-next [1], keeping them separate can help Ted just pickup the
-> urgent fixes independent of patch 1,2,3.
-> 
-> Also, for patch 5, it fixes an issue that Ritesh fixed in his patche
-> [2]. I think your patch is a better approach since all cleanup is
-> handled via deactivate_super(). However, his commit message better
-> describes the issue. While resending, can you include his commit message
-> as well. (I've checked with him so feel free to reuse it).
+> I was talking about speculative cow fork preallocations below i_size.
+> They'll eventually get purged by blockgc, but you could give the space
+> back once you've committed enabling the fsverity file flag.
 
-Hey Ye, sorry for the confusion but you can ignore the above paragraph.
-We still need Ritesh's patches along with yours. More details here [1]
+hmm, if they're purged by blockgc, then why to do it here? I'm
+iterating and removing unwritten extents here only because
+xfs_inode_free_eofblocks() will skip fsverity inodes, the check in
+xfs_can_free_eofblocks():
 
-That being said, I still feel the fixes here can go separately. I'll try
-to priortize the review of patch 4 - 7 so thaat we can get them in shape
-to be merged.
+	if (IS_VERITY(VFS_I(ip)))
+		return false;
 
-[1] https://lore.kernel.org/linux-ext4/abPh6GX0t22m628D@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com/
+The skipping is done to not remove all the fsverity metadata
+extents. With preallocations enabled there could be unwritten
+extents left in the metadata.
 
-Regards,
-ojaswin
+Am I missing something?
 
-> 
-> Thanks again,
-> Ojaswin
-> 
-> [1] https://lore.kernel.org/all/0d21783c-5299-4488-9708-def0b1a4dcbe@sirena.org.uk/
-> [2] https://lore.kernel.org/linux-ext4/5bb9041471dab8ce870c191c19cbe4df57473be8.1772381213.git.ritesh.list@gmail.com/
-> 
-> > 
-> > -- 
-> > 2.34.1
-> > 
+-- 
+- Andrey
+
