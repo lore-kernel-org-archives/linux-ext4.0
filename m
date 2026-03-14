@@ -1,126 +1,159 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8CA87F507;
-	Sat, 14 Mar 2026 16:55:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 732142E6116
+	for <linux-ext4@vger.kernel.org>; Sat, 14 Mar 2026 17:04:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773507358; cv=none; b=LERT/5f1k4wrjD0Ep3PnuKdioYfqj13hhCFiydn8w6KLjkAf+ncj/B9q07cmRuQw0bg/z/W7oqxs/e6geDSFHX1+PtwMbZadiID4W0P8IHyxlQY+FWMHIjoMaWpbM3QrTQLZJzsAQApqLHbkToF33CCK6rqQ8CN8uZN/HEn0tKw=
+	t=1773507873; cv=none; b=ihLfmB/WBcCqNX165qzv5lYmMXQLfElkg2qPnfn36qEh5kxxm6IgcEkFqrQDeqSU6MbNqnIHewzYSu2ljZEtW2ppfN2Q7HXTmVz22voUP46aKnPbj5namMyXV3VFagasW6av6XccbS6st4qKtaNB1UkIHCGH7Sxu7I+GSd/DuIE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773507358; c=relaxed/simple;
-	bh=OU2kqLqL46R/whoj7/DBKG1N2KxHrjeHH683kSBKUxc=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=I3DusJEh5h9Mbll00Kz7CgBl+L71wrSujgytCHgU7eB/bL6fe1FfnwUkevMZIeF5lu969N0aSv0Mc1qUSvV4xXKkdPjCMhgQJ3CxvwPHfMjRWKJKJ6FF3l5Kwtw/azvABAIMoTTOtmHWoRjL4xgiC1kbjUK8ny/LWqyAlDDJWeI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ANCrx5T8; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1773507873; c=relaxed/simple;
+	bh=+ysvLkOY/6j/R/TWM/XeHYspBYMAFmbYe1y4eHA9qLA=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=AyBAxPi0RPP/0RXmKJMuUPMb2UY26YovbvXLEHg+B4Mmiej8chjFYT7JA0QcXpHhXkDy5Ivu9s7fhXO6u0mwXbyY5+6deaNgHUw6s+69WVCJkLxQyAK2tn1o9TpuI5MzEPEVkujzbxS/n0aQJ4PMFqBxhOBDm01weA3BiO/iMbM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=XFAHJHTa; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=OZjPWx1p; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ANCrx5T8"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8B3DEC116C6;
-	Sat, 14 Mar 2026 16:55:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1773507358;
-	bh=OU2kqLqL46R/whoj7/DBKG1N2KxHrjeHH683kSBKUxc=;
-	h=From:To:Cc:Subject:Date:From;
-	b=ANCrx5T8MufQXBY2woTDqlBfXgvZxyD4i8MsnPhrQbASPKjywtvZZf1V5ypMLAUea
-	 QqGV/V6TLoGZOg/ggr12tsQHYqT3cdG/qtNVoMAMO50rs6sGQmhFdiNyGv6an86Nyt
-	 rvkFyrExlBnH3DEuZ3vXdIjuAV5sDKeiLoj7gqJi/Txj41xD7vfsu98iL0JphdxzGD
-	 ncLLym8LTgk4r3SGHofa7hi+JIsn8/MXvda4liTXY4bAG2/FdLQQQxrBHmNjz4rfDq
-	 cMamCoInZHj1hlRnHB7JFJjDhIzaERoweMZJC2ENy4aHn6jYGAwjHekHI8x1lUWue8
-	 h973Gw5UNoImA==
-From: Eric Biggers <ebiggers@kernel.org>
-To: Herbert Xu <herbert@gondor.apana.org.au>,
-	linux-crypto@vger.kernel.org
-Cc: linux-ext4@vger.kernel.org,
-	linux-fscrypt@vger.kernel.org,
-	Thierry Reding <thierry.reding@gmail.com>,
-	Jonathan Hunter <jonathanh@nvidia.com>,
-	Eric Biggers <ebiggers@kernel.org>,
-	Zorro Lang <zlang@redhat.com>,
-	stable@vger.kernel.org,
-	Akhil R <akhilrajeev@nvidia.com>
-Subject: [PATCH] crypto: tegra - Add missing CRYPTO_ALG_ASYNC
-Date: Sat, 14 Mar 2026 09:55:15 -0700
-Message-ID: <20260314165515.9678-1-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.53.0
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="XFAHJHTa";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="OZjPWx1p"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1773507871;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=TY2RZifNMA2+PGDu5d8zIqDKxVt19EdeEHnDXNRBqlI=;
+	b=XFAHJHTaAeAQBZhAm5J0rXPnR7bLAEJ9GWRNusUPymK4K24qMF6LMBjM4fRljXAuw7KbiL
+	tRUyV7Mv3+cEGPp+wmH1tN1h7RD3owChiy17AQXU+23L3RnXQaeDYTowEozO84eoZokmSj
+	Ax83MPPzF5igknceLgk0Mjv4LxRHTWo=
+Received: from mail-pl1-f200.google.com (mail-pl1-f200.google.com
+ [209.85.214.200]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-581-2yKcsoFUNwqR1kgf9IOqqA-1; Sat, 14 Mar 2026 13:04:29 -0400
+X-MC-Unique: 2yKcsoFUNwqR1kgf9IOqqA-1
+X-Mimecast-MFC-AGG-ID: 2yKcsoFUNwqR1kgf9IOqqA_1773507869
+Received: by mail-pl1-f200.google.com with SMTP id d9443c01a7336-2b04911610fso4524035ad.3
+        for <linux-ext4@vger.kernel.org>; Sat, 14 Mar 2026 10:04:29 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1773507868; x=1774112668; darn=vger.kernel.org;
+        h=in-reply-to:content-transfer-encoding:content-disposition
+         :mime-version:references:message-id:subject:cc:to:from:date:from:to
+         :cc:subject:date:message-id:reply-to;
+        bh=TY2RZifNMA2+PGDu5d8zIqDKxVt19EdeEHnDXNRBqlI=;
+        b=OZjPWx1pr3ATCwsqXFldQaaMg0jHR3FcYdl4U1d7djGcjDIsz3rjZZnXn+8yFJuyl8
+         YEW+6H2fs4kM4wIyIM0KuEgoYJYXHbM2p+b12NHJp4PwnoYJaPOriyNb2BRxR7DK7ZPe
+         121McMA2KZ7EECJ3LmlV3BmQU7PzhTOaLTnxLGTWnxqdJjvj6s+HXSYKQPAZpcQ83YQf
+         gAqyx15XyqjSEJB/eTLxlvcGDMFzZh3f4zofMG9I1CAMIyVVbpxSJzJMRVANRKzCI9WS
+         HMO96eNQAYIo94bvngQFTEMHvQEFU4TS+fmT3sRxNzEKgyLQuZGTLPQrz5P07pdkoXGj
+         Vwtg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1773507868; x=1774112668;
+        h=in-reply-to:content-transfer-encoding:content-disposition
+         :mime-version:references:message-id:subject:cc:to:from:date:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=TY2RZifNMA2+PGDu5d8zIqDKxVt19EdeEHnDXNRBqlI=;
+        b=PPRcwdw9S5ZkhHfE/y2zpUD0Sqjafff1h+WTs2CtxTtlSGK1gGJeFjpqaMstntJdwg
+         LrxnKgwtjAOoMbMr4mb2takJOXoDQyR4cKf7dWm6SiIKW1NDYH/39qbFaRjThseTXHuU
+         tO6OEcUHtnzMS/xvTWVRuV2sSywfRDXZcDp4jHX1DHD7gSZPEBAL3huq2eQxvSNJNgKL
+         S6s9As+qlph2q+SQRf9UNyI/DZw/HkCTXWBGRfaYzQf/85eNf3+iMXj5w+si7g9O5225
+         tB/1qZb2fKWzS/hpxsVDoXkn2U1Y1hfYk37mLNOGt4t2pcGfjZlx6Yr0KCENLDwKKMPV
+         wdtA==
+X-Forwarded-Encrypted: i=1; AJvYcCW6cJjZ2YJH/BHYHhjd+9X+59n41+rbKUXM537s3CwB+CEpIzU3IpVbHl0ampdWwblSLgzpkOKhEpf7@vger.kernel.org
+X-Gm-Message-State: AOJu0YzkCqgztQjQC3kD91ZNocz+1u4Mjcz24578oWaJH1+iGQIJPJ+c
+	O1xJMeMupVjgpi/R9NwTfSHzwqNGhWHySCmU8nry/K7VkeuwScJgFDXFceDK0bla7wzwLmCeGIs
+	6F91CU20WmxX8qJdMtRuXbdCoQ1ev+Yo6cFN49EdTZ8/EUkxo4XJNo8TyC5I//7OOMMa36LQ=
+X-Gm-Gg: ATEYQzyWufjRV7Y7GmOT9LiG1U7s+XIcF9MMwX70zy9HDGF03OAuYXfNBPbH2sEVz3Y
+	/7ow/9jKY4ZPorV4Dk0IRp7+uzFHbUmp3xSsULU//uGaO1HayKEydbAjwmjYnKF/5NDIj583i9F
+	8IMfvP9qUE2Gg9ye/Qsnv8LavRk/VkGunK63J/HU+KsXy0+KijNwM3/JjgE1HOr0VoZ4tPXAblm
+	EQS+weFmxnuer3VSX0gJmn0m2fHK0vBBMSIYlcZeW5txRMo+zBl8TtXRPZzOyhMF38rS9Uv0j6o
+	gtoKE8qWUGBmlkmzyVIHZHy2sgyvbGAZnKoLX7rXKaHwEsYPnRt5COUIIUru8GRAExxwvHdM3Ep
+	gQ7bznTjpOnvIajdKywjPDI4wV/W00j4ujep3h6xobxeVU4nQ6Z0GbLwG5x1fjQ==
+X-Received: by 2002:a17:902:ef07:b0:2ad:e02b:4629 with SMTP id d9443c01a7336-2aecac81c73mr90329835ad.50.1773507868281;
+        Sat, 14 Mar 2026 10:04:28 -0700 (PDT)
+X-Received: by 2002:a17:902:ef07:b0:2ad:e02b:4629 with SMTP id d9443c01a7336-2aecac81c73mr90329605ad.50.1773507867842;
+        Sat, 14 Mar 2026 10:04:27 -0700 (PDT)
+Received: from dell-per750-06-vm-08.rhts.eng.pek2.redhat.com ([209.132.188.88])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2aece7ed753sm73365325ad.45.2026.03.14.10.04.25
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sat, 14 Mar 2026 10:04:27 -0700 (PDT)
+Date: Sun, 15 Mar 2026 01:04:22 +0800
+From: Zorro Lang <zlang@redhat.com>
+To: Anand Jain <anajain.sg@gmail.com>
+Cc: Anand Jain <asj@kernel.org>, fstests@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-xfs@vger.kernel.org
+Subject: Re: [PATCH 2/9] fstests: add _mkfs_scratch_clone() helper
+Message-ID: <20260314170422.a62qqwqe6agom443@dell-per750-06-vm-08.rhts.eng.pek2.redhat.com>
+References: <cover.1772095513.git.asj@kernel.org>
+ <254fdd3e212f6618ea33207ef24db2b316d2d8fc.1772095513.git.asj@kernel.org>
+ <20260309191317.vxcjvqfpoqdiycki@dell-per750-06-vm-08.rhts.eng.pek2.redhat.com>
+ <43710dd2-4282-4475-a29d-983295fab86f@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
+In-Reply-To: <43710dd2-4282-4475-a29d-983295fab86f@gmail.com>
 
-The tegra crypto driver failed to set the CRYPTO_ALG_ASYNC on its
-asynchronous algorithms, causing the crypto API to select them for users
-that request only synchronous algorithms.  This causes crashes (at
-least).  Fix this by adding the flag like what the other drivers do.
+On Wed, Mar 11, 2026 at 10:32:18AM +0800, Anand Jain wrote:
+> 
+> > What about if ${#devs[@]} > 2 ?
+> 
+> On purpose- so tests using _scratch_mkfs_sized_clone() don't
+> pick a random higher number. If a test needs more than two
+> devices, opens an opportunity to critically review this function.
+> >> +	fi
+> >> +
+> >> +	case "$FSTYP" in
+> >> +	"btrfs")
+> >> +		_scratch_mkfs_sized $size
+> >> +		_scratch_mount
+> >> +		$BTRFS_UTIL_PROG subvolume create $SCRATCH_MNT/sv1
+> >> +		_scratch_unmount
+> >> +		;;
+> >> +	"xfs"|"ext4")
+> >> +		_scratch_mkfs_sized $size
+> >> +		;;
+> >> +	*)
+> >> +		_notrun "fstests clone op unsupported for FS $FSTYP"
+> >> +		;;
+> >> +	esac
+> >> +
+> >> +	# clone SCRATCH_DEV devs[0] to devs[1].
+> >> +	dd if=$SCRATCH_DEV of=${devs[1]} bs=$size status=none count=1 || \
+> >> +							_fail "Clone failed"
+> > 
+> > I'm wondering if we absolutely need to use SCRATCH_DEV_POOL for this test. Could we clone SCRATCH_DEV
+> > to an image file instead? Or would it be feasible to simply run the test using two image files?
+> 
+> Using a config file and testing directly on block devices lets
+> us cover a wider range of devices.
+> 
+> When I wrote this test case, I was also considering whether a
+> serial-number–based mount without extra mount option, would be
+> better in the kernel.
+> 
+> The downside is that xfs/ext4 testers now need to use
+> SCRATCH_DEV_POOL. Let me know what you prefer.
 
-Reported-by: Zorro Lang <zlang@redhat.com>
-Closes: https://lore.kernel.org/r/20260314080937.pghb4aa7d4je3mhh@dell-per750-06-vm-08.rhts.eng.pek2.redhat.com
-Fixes: 0880bb3b00c8 ("crypto: tegra - Add Tegra Security Engine driver")
-Cc: stable@vger.kernel.org
-Cc: Akhil R <akhilrajeev@nvidia.com>
-Signed-off-by: Eric Biggers <ebiggers@kernel.org>
----
+I'm concerned that testers from other filesystems might not be familiar
+with SCRATCH_DEV_POOL, as it's typically not a requirement for their
+testing. I'm not sure if they would be willing to configure and switch
+to SCRATCH_DEV_POOL, just for these few test cases. If we can avoid making
+the pool to be a hard requirement, it might be more user-friendly for other
+fs list. Welcome feedback and review points from other filesystem mailing
+lists :)
 
-This patch is targeting crypto/master
+Thanks,
+Zorro
 
- drivers/crypto/tegra/tegra-se-aes.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/crypto/tegra/tegra-se-aes.c b/drivers/crypto/tegra/tegra-se-aes.c
-index 0e07d0523291a..cb97a59084519 100644
---- a/drivers/crypto/tegra/tegra-se-aes.c
-+++ b/drivers/crypto/tegra/tegra-se-aes.c
-@@ -592,10 +592,11 @@ static struct tegra_se_alg tegra_aes_algs[] = {
- 			.ivsize	= AES_BLOCK_SIZE,
- 			.base = {
- 				.cra_name = "xts(aes)",
- 				.cra_driver_name = "xts-aes-tegra",
- 				.cra_priority = 500,
-+				.cra_flags = CRYPTO_ALG_ASYNC,
- 				.cra_blocksize = AES_BLOCK_SIZE,
- 				.cra_ctxsize	   = sizeof(struct tegra_aes_ctx),
- 				.cra_alignmask	   = (__alignof__(u64) - 1),
- 				.cra_module	   = THIS_MODULE,
- 			},
-@@ -1920,10 +1921,11 @@ static struct tegra_se_alg tegra_aead_algs[] = {
- 			.ivsize	= GCM_AES_IV_SIZE,
- 			.base = {
- 				.cra_name = "gcm(aes)",
- 				.cra_driver_name = "gcm-aes-tegra",
- 				.cra_priority = 500,
-+				.cra_flags = CRYPTO_ALG_ASYNC,
- 				.cra_blocksize = 1,
- 				.cra_ctxsize = sizeof(struct tegra_aead_ctx),
- 				.cra_alignmask = 0xf,
- 				.cra_module = THIS_MODULE,
- 			},
-@@ -1942,10 +1944,11 @@ static struct tegra_se_alg tegra_aead_algs[] = {
- 			.chunksize = AES_BLOCK_SIZE,
- 			.base = {
- 				.cra_name = "ccm(aes)",
- 				.cra_driver_name = "ccm-aes-tegra",
- 				.cra_priority = 500,
-+				.cra_flags = CRYPTO_ALG_ASYNC,
- 				.cra_blocksize = 1,
- 				.cra_ctxsize = sizeof(struct tegra_aead_ctx),
- 				.cra_alignmask = 0xf,
- 				.cra_module = THIS_MODULE,
- 			},
-@@ -1969,11 +1972,11 @@ static struct tegra_se_alg tegra_cmac_algs[] = {
- 			.halg.statesize = sizeof(struct tegra_cmac_reqctx),
- 			.halg.base = {
- 				.cra_name = "cmac(aes)",
- 				.cra_driver_name = "tegra-se-cmac",
- 				.cra_priority = 300,
--				.cra_flags = CRYPTO_ALG_TYPE_AHASH,
-+				.cra_flags = CRYPTO_ALG_TYPE_AHASH | CRYPTO_ALG_ASYNC,
- 				.cra_blocksize = AES_BLOCK_SIZE,
- 				.cra_ctxsize = sizeof(struct tegra_cmac_ctx),
- 				.cra_alignmask = 0,
- 				.cra_module = THIS_MODULE,
- 				.cra_init = tegra_cmac_cra_init,
-
-base-commit: 1c9982b4961334c1edb0745a04cabd34bc2de675
--- 
-2.53.0
+> 
+> 
+> 
+> 
 
