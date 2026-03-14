@@ -1,186 +1,136 @@
-Received: from canpmsgout05.his.huawei.com (canpmsgout05.his.huawei.com [113.46.200.220])
+Received: from out30-133.freemail.mail.aliyun.com (out30-133.freemail.mail.aliyun.com [115.124.30.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 77BD41C701F
-	for <linux-ext4@vger.kernel.org>; Sat, 14 Mar 2026 02:21:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.220
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 907E640DFA1
+	for <linux-ext4@vger.kernel.org>; Sat, 14 Mar 2026 07:41:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773454871; cv=none; b=rNwmnt3YM9DCV8T5RMFp7G5p2flVKOfl/t2Q3T1Bf+u3sJeb1DzxDsZJkWrRIDzI2FgIoOJ+Uoq/CUUPsOpZRKuc+Gx5iJV8oACzvf0LjdIqfv6rPlQ8vdTawoJqhRIjx5QolcdLaOrLDWWWdRG86KmwUylhOx1EsIlNOCCcopo=
+	t=1773474122; cv=none; b=lIxhWHiHBUgetLSzZbKHNu1IEnKb8UzumTBv+xelnzNz/SCOXeXPZQhP+xxxrC7w4wNLtn+3bdqw46eu4oiqO7QW9VcBLt/siufRaLTrMUbMSTkZWV2n6aUs8/jKfQyujzkv432gWbEhF5A0o/Zkl48AtYC7kO8/jBOuQZQ3LL0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773454871; c=relaxed/simple;
-	bh=znSomJJdozl0hMJerIglLUCOX+lVXvssVLlogmj5MDQ=;
-	h=Subject:To:References:CC:From:Message-ID:Date:MIME-Version:
-	 In-Reply-To:Content-Type; b=l451D5IDV/WiZPpH57dOBFRNq9gCIqtBakHRg/rB4nRsr/CHUYA0lC3no8wU0DqRAbzi+6sjpsQLYK1Yf72JKCzf2R4l7WprprszsjcouAlrZz5/v/n2zd/1W9AdkfwazgeHUwxgdkjp2cZ+w25arfXURUCZvrB0KDFbsTPeNH0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=FnMPeFhS; arc=none smtp.client-ip=113.46.200.220
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+	s=arc-20240116; t=1773474122; c=relaxed/simple;
+	bh=e6dAMY2UcHHW9Si0S5gvkvqVshlXtIxRSy47KwWKA4A=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=Gv2lfnBoQbKDzgBX3p57BHaZQU2cqRTuos8RSQmM7TJyxPTIl3gpLz+GljaroJR09PMrJdFS98vZ6TjqE+aNSE2TR8KQSDgFXFiIO2+DB6R4hMU+YGSR8Py++hCM1b5tHoNS2xJ+8rlKSftYyujcS3vMY1xL2mAvmFPNODMpUFE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=gaNKgDqP; arc=none smtp.client-ip=115.124.30.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="FnMPeFhS"
-dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
-	c=relaxed/relaxed; q=dns/txt;
-	h=From;
-	bh=Jd3DnUptsv5623hJDnXs6RpjqUQvi0tdazT8oVAoskg=;
-	b=FnMPeFhS2qsfdwi62GbEqsbcD+WrqfWR4cb48fe5LlaXYcLMJeTveyzxnDnTkFJKHf7YhCJdP
-	innHI5zzXn1773CGdfoPdAecJNet7NwdZWkwxpmamKTltlt/Wj5hJ0++JtmNhL58brmDWO4CfQ8
-	YXjvlQvuZd8Bg+byZGErtsE=
-Received: from mail.maildlp.com (unknown [172.19.162.140])
-	by canpmsgout05.his.huawei.com (SkyGuard) with ESMTPS id 4fXlLq03msz12LFj;
-	Sat, 14 Mar 2026 10:15:31 +0800 (CST)
-Received: from dggemv706-chm.china.huawei.com (unknown [10.3.19.33])
-	by mail.maildlp.com (Postfix) with ESMTPS id DEE5A2025E;
-	Sat, 14 Mar 2026 10:21:04 +0800 (CST)
-Received: from kwepemq500016.china.huawei.com (7.202.194.202) by
- dggemv706-chm.china.huawei.com (10.3.19.33) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.1544.11; Sat, 14 Mar 2026 10:21:04 +0800
-Received: from [10.174.178.185] (10.174.178.185) by
- kwepemq500016.china.huawei.com (7.202.194.202) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.1544.11; Sat, 14 Mar 2026 10:21:04 +0800
-Subject: Re: [PATCH -next 6/8] ext4: fix the error handling process in
- extents_kunit_init).
-To: Ritesh Harjani <ritesh.list@gmail.com>, Ye Bin <yebin@huaweicloud.com>,
-	<tytso@mit.edu>, <adilger.kernel@dilger.ca>, <linux-ext4@vger.kernel.org>
-References: <20260310130412.3156753-1-yebin@huaweicloud.com>
- <20260310130412.3156753-7-yebin@huaweicloud.com>
- <sea4sz73.ritesh.list@gmail.com>
-CC: <jack@suse.cz>
-From: "yebin (H)" <yebin10@huawei.com>
-Message-ID: <69B4C60C.8010205@huawei.com>
-Date: Sat, 14 Mar 2026 10:21:00 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:38.0) Gecko/20100101
- Thunderbird/38.1.0
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="gaNKgDqP"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1773474114; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=juJMIhACt0N6RqB0iR/nekytbprC/opCSKTEKZkDldk=;
+	b=gaNKgDqPotBFnMG+qgiwz2n88HdyybdsokDF3dHlyam687kgQbpZ9SmwwXX+TAofGl6fQb9c7BpLiydqzYD34GTK0ce5HeZZghsi55ZDLthd+vagOp4FHNn6jV94MsULOe/oz/54U3xX69t1IiW8j2iBZSNyfWgNHFTxT97iRG0=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R261e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037033178;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=4;SR=0;TI=SMTPD_---0X-vC0ic_1773474113;
+Received: from 192.168.3.86(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X-vC0ic_1773474113 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Sat, 14 Mar 2026 15:41:54 +0800
+Message-ID: <f499f164-2e93-4fa7-a6dd-b3949e1a1223@linux.alibaba.com>
+Date: Sat, 14 Mar 2026 15:41:52 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-In-Reply-To: <sea4sz73.ritesh.list@gmail.com>
-Content-Type: text/plain; charset="windows-1252"; format=flowed
-Content-Transfer-Encoding: 7bit
-X-ClientProxiedBy: kwepems100001.china.huawei.com (7.221.188.238) To
- kwepemq500016.china.huawei.com (7.202.194.202)
+User-Agent: Mozilla Thunderbird
+Subject: Re: [RFC PATCH] ext4: handle wraparound when searching for blocks for
+ indirect mapped blocks
+To: Theodore Tso <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>, Ext4 Developers List
+ <linux-ext4@vger.kernel.org>, libaokun@linux.alibaba.com
+References: <20260310122806.1277631-1-tytso@mit.edu>
+ <5ce9dfe2-721e-4d20-9bd9-3560aa76888d@linux.alibaba.com>
+ <20260312142345.GA4689@macsyma-wired.lan>
+ <2a047aeb-6db8-4be9-8908-b12632d5e632@linux.alibaba.com>
+ <20260313143101.GA38016@macsyma-wired.lan>
+Content-Language: en-US
+From: Baokun Li <libaokun@linux.alibaba.com>
+In-Reply-To: <20260313143101.GA38016@macsyma-wired.lan>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+On 3/13/26 10:31 PM, Theodore Tso wrote:
+
+> On Fri, Mar 13, 2026 at 10:00:04AM +0800, Baokun Li wrote:
+>> IIUC, ngroups/end here only depend on filesystem size and whether the inode
+>> is extent-based, and both should stay unchanged during block allocation.
+>> So doing the check once at the beginning should be sufficient. Am I missing
+>> anything?
+> The problem here is that case where we use
+> ext4_get_allocation_groups_count as ngroups and end are different.  In
+> some places we do this:
+>
+>         ext4_group_t ngroups = ext4_get_allocation_groups_count(ac);
+>
+> and in others we do this:
+>
+>         end = ext4_get_allocation_groups_count(ac);
+>
+> Now, if start is zero, then these two are equivalent.  But if start is
+> not zero, but say, is 2**32 - 8, then where we use
+> ext4_allocaiton_groups_count() as the last block group to search, then
+> we only will search exactly 8 block groups, and if
+> there are free blocks in the first 8 block groups, then the scanning
+> function will fail.
+
+ext4_mb_scan_groups_p2_aligned(), ext4_mb_scan_groups_goal_fast(), and
+ext4_mb_scan_groups_best_avail() will all wrap around and retry
+[0, 2^32 - 8) after failing to search [2^32 - 8, 2^32). So if there are
+free blocks in the first 8 block groups, the allocation will not fail.
+
+>
+> Alternatively, if we just do the check at the beginning, then 2**32 -
+> 8 is a valid starting point, but if we just search forward by ngroups,
+> then we may end up returning a block group which won't work for
+> indirect mapped inodes.
+
+Here, ngroups refers to the number of block groups available for
+allocation, i.e. the range [0, ngroups), rather than implying that
+ngroups groups are scanned on each pass. In general, we first scan the
+[start, ngroups) portion of the xarrays, and then the [0, start) portion.
+
+For indirect-mapped inodes, ext4_get_allocation_groups_count() returns
+s_blockfile_groups. The end of those groups should not exceed 2^32 blocks;
+otherwise, the s_blockfile_groups logic itself would be broken.
+
+> Hence, in *every* function where we call
+> ext4_get_allocaiton_groups_count(), if the goal is to search all block
+> groups that are valid for indirect mapped inodes, and start might be
+> greater than 0, we *have* to handle wraparound.
+>
+> Does that make sense?
+>
+Thanks for the detailed explanation, but I’m afraid I still don’t
+quite follow.
+
+Take `ext4_mb_scan_groups_p2_aligned` as an example:
+
+ext4_mb_scan_groups
+  ngroups = ext4_get_allocation_groups_count(ac); // safe
+  start = ac->ac_g_ex.fe_group; // may be greater than ngroups
+  ext4_mb_scan_groups_p2_aligned()
+    start = group; // may be greater than ngroups
+    end = ext4_get_allocation_groups_count(ac); // == ngroups
+wrap_around:
+    ext4_mb_scan_groups_xa_range(start, end)
+      ngroups = ext4_get_allocation_groups_count(ac); // == end
+        // `start` may exceed `end`, but `end` is always within bounds.
+        // So we only need to make sure the `start` computed by
+        // ext4_mb_scan_groups() is less than `ngroups`.
+    // Forward scan failed; let the caller handle wrap-around.
+    if (start) {
+        end = start; // `end` may be invalid if `start` is invalid.
+        start = 0;
+        goto wrap_around;
+    }
+
+So it looks like the later start/end values only go wrong if the initial
+start is already >= ngroups.
+
+Did I miss something here?
 
 
+Thanks,
+Baokun
 
-On 2026/3/13 20:15, Ritesh Harjani wrote:
-> Ye Bin <yebin@huaweicloud.com> writes:
->
->> From: Ye Bin <yebin10@huawei.com>
->>
->> The error processing in extents_kunit_init() is improper, causing
->> resource leakage.
->> Reconstruct the error handling process to prevent potential resource
->> leaks
->>
->> Fixes: cb1e0c1d1fad ("ext4: kunit tests for extent splitting and conversion")
->> Signed-off-by: Ye Bin <yebin10@huawei.com>
->> ---
->>   fs/ext4/extents-test.c | 41 +++++++++++++++++++++++++++++------------
->>   1 file changed, 29 insertions(+), 12 deletions(-)
->>
->> diff --git a/fs/ext4/extents-test.c b/fs/ext4/extents-test.c
->> index 70d84c0a18e2..7e2796f72d45 100644
->> --- a/fs/ext4/extents-test.c
->> +++ b/fs/ext4/extents-test.c
->> @@ -222,33 +222,37 @@ static int extents_kunit_init(struct kunit *test)
->>   		(struct kunit_ext_test_param *)(test->param_value);
->>   	int err;
->>
->> -	sb = sget(&ext_fs_type, NULL, ext_set, 0, NULL);
->> -	if (IS_ERR(sb))
->> -		return PTR_ERR(sb);
->> -
->> -	sb->s_blocksize = 4096;
->> -	sb->s_blocksize_bits = 12;
->> -
->>   	sbi = kzalloc_obj(struct ext4_sb_info);
->>   	if (sbi == NULL)
->>   		return -ENOMEM;
->>
->> +	sb = sget(&ext_fs_type, NULL, ext_set, 0, NULL);
->> +	if (IS_ERR(sb)) {
->> +		kfree(sbi);
->> +		return PTR_ERR(sb);
->> +	}
->> +
->>   	sbi->s_sb = sb;
->>   	sb->s_fs_info = sbi;
->>
->> +	sb->s_blocksize = 4096;
->> +	sb->s_blocksize_bits = 12;
->> +
->>   	if (!param || !param->disable_zeroout)
->>   		sbi->s_extent_max_zeroout_kb = 32;
->>
->>   	/* setup the mock inode */
->>   	k_ctx.k_ei = kzalloc_obj(struct ext4_inode_info);
->> -	if (k_ctx.k_ei == NULL)
->> -		return -ENOMEM;
->> +	if (k_ctx.k_ei == NULL) {
->> +		err = -ENOMEM;
->> +		goto out_deactivate;
->> +	}
->>   	ei = k_ctx.k_ei;
->>   	inode = &ei->vfs_inode;
->>
->>   	err = ext4_es_register_shrinker(sbi);
->>   	if (err)
->> -		return err;
->> +		goto out_deactivate;
->>
->>   	ext4_es_init_tree(&ei->i_es_tree);
->>   	rwlock_init(&ei->i_es_lock);
->> @@ -264,8 +268,10 @@ static int extents_kunit_init(struct kunit *test)
->>   	inode->i_sb = sb;
->>
->>   	k_ctx.k_data = kzalloc(EXT_DATA_LEN * 4096, GFP_KERNEL);
->> -	if (k_ctx.k_data == NULL)
->> -		return -ENOMEM;
->> +	if (k_ctx.k_data == NULL) {
->> +		err = -ENOMEM;
->> +		goto out_deactivate;
->> +	}
->>
->>   	/*
->>   	 * set the data area to a junk value
->> @@ -310,6 +316,17 @@ static int extents_kunit_init(struct kunit *test)
->>   	up_write(&sb->s_umount);
->>
->>   	return 0;
->> +
->> +out_deactivate:
->> +	kfree(k_ctx.k_ei);
->> +	k_ctx.k_ei = NULL;
->> +
->> +	kfree(k_ctx.k_data);
->> +	k_ctx.k_data = NULL;
->> +
->> +	deactivate_locked_super(sb);
->
-> So I guess the right thing to do for now is, what Ojaswin also mentioned
-> [1].  Let's go with patch [2], as is.. and we can fix all the remaining
-> issues as part of this series. With that in mind, this patch series
-> needs to be applid on top of [2]. So that means.. our error handling
-> should also properly take care of unregister shrinker and freeing sbi..
->
-> [1]: https://lore.kernel.org/linux-ext4/abPh6GX0t22m628D@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com/
-> [2]: https://lore.kernel.org/linux-ext4/5bb9041471dab8ce870c191c19cbe4df57473be8.1772381213.git.ritesh.list@gmail.com/#t
->
-> -ritesh
->
-I will base on your patch and then create a separate patchset for the
-fixes and send it.
->
->> +
->> +	return err;
->>   }
->>
->>   /*
->> --
->> 2.34.1
->
->
-> .
->
