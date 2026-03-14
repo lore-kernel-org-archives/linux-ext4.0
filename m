@@ -1,108 +1,186 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from canpmsgout05.his.huawei.com (canpmsgout05.his.huawei.com [113.46.200.220])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 397BE611E
-	for <linux-ext4@vger.kernel.org>; Sat, 14 Mar 2026 01:30:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 77BD41C701F
+	for <linux-ext4@vger.kernel.org>; Sat, 14 Mar 2026 02:21:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.220
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773451842; cv=none; b=YgEZCZjUMnHV9EqBccHiJ3sP1IXS3kYsdjE5sBNTaqFK4mVOD34c5dAbxE2Gddhg6vlkWjyA64dtVuVk1zHmknuHlVoCjoUnD+geNiCgukYS13HJiqLAUqu55n5v+qglDhOG28w3bwA0bSvTquApOjUNRQ/1kgLe4Km5ZrF1ZgE=
+	t=1773454871; cv=none; b=rNwmnt3YM9DCV8T5RMFp7G5p2flVKOfl/t2Q3T1Bf+u3sJeb1DzxDsZJkWrRIDzI2FgIoOJ+Uoq/CUUPsOpZRKuc+Gx5iJV8oACzvf0LjdIqfv6rPlQ8vdTawoJqhRIjx5QolcdLaOrLDWWWdRG86KmwUylhOx1EsIlNOCCcopo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773451842; c=relaxed/simple;
-	bh=u3mgh3Q5/rMpgPHt4oTtkzFSh8OjHgYltZkqBO29Xrk=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=i1E3pPZMTECLMexwyAf5hlcw0iyJttDONs90R3r57AMw4Q6JIP+QkKHB0ai40sN/MME4xQ+44pEQj2woKfTMSSknQWaZ/Eqj2lZPuSIjXIjVtg+miw3ksJGyHovsqYBOBLyQ90dTvkvrQO5Tw2e4Xq4vgzdDn8IuiGlYZat6DGs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=p9uWVYgs; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1773454871; c=relaxed/simple;
+	bh=znSomJJdozl0hMJerIglLUCOX+lVXvssVLlogmj5MDQ=;
+	h=Subject:To:References:CC:From:Message-ID:Date:MIME-Version:
+	 In-Reply-To:Content-Type; b=l451D5IDV/WiZPpH57dOBFRNq9gCIqtBakHRg/rB4nRsr/CHUYA0lC3no8wU0DqRAbzi+6sjpsQLYK1Yf72JKCzf2R4l7WprprszsjcouAlrZz5/v/n2zd/1W9AdkfwazgeHUwxgdkjp2cZ+w25arfXURUCZvrB0KDFbsTPeNH0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=FnMPeFhS; arc=none smtp.client-ip=113.46.200.220
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="p9uWVYgs"
-Received: from macsyma.thunk.org (pool-173-48-82-106.bstnma.fios.verizon.net [173.48.82.106])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62E1UVCv023306
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 13 Mar 2026 21:30:32 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1773451834; bh=4zJNuU1e0F4TqMNhCdZwFGVEsKs4UaSaoO++/onsT9k=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=p9uWVYgstJhZqv0w+507u3l98qexPQHUrLpIVoyqeRtzYuGZ2w7skbKJHXS0HjLnt
-	 pMpt6ty7tXLlxRGb3s8l11iBM2A4y2Z9OqF5c/KT95ikbS5MibzZ3PHrI4EV4sbSXd
-	 1tdCGNcASIciJmbmvWizAvjZ9nAeJxKnsRioGZyTqd+T5K2H4ohT0Z5J0yzbLjSYt8
-	 5YRkpTpT/LCWYQ03JXKA/JUdHZhRwwnmFjoCS2Pqj6SNstnxedGn34OTkB37XqkhLj
-	 60nuilCjKh8LmWl5dbpPMyop+fWSv4jqzYPRWlvPWxEBL3C4P1+t4aNkKI4kQIiOLG
-	 5bGCaA3tI4V5Q==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 9ABEA5D373D5; Fri, 13 Mar 2026 21:29:30 -0400 (EDT)
-Date: Fri, 13 Mar 2026 21:29:30 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Helen Koike <koike@igalia.com>
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        kernel-dev@igalia.com,
-        syzbot+b73703b873a33d8eb8f6@syzkaller.appspotmail.com
-Subject: Re: [PATCH] ext4: fix bigalloc cluster arithmetic when
- s_first_data_block != 0
-Message-ID: <20260314012930.GB38016@macsyma-wired.lan>
-References: <20260313151835.1248953-1-koike@igalia.com>
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="FnMPeFhS"
+dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
+	c=relaxed/relaxed; q=dns/txt;
+	h=From;
+	bh=Jd3DnUptsv5623hJDnXs6RpjqUQvi0tdazT8oVAoskg=;
+	b=FnMPeFhS2qsfdwi62GbEqsbcD+WrqfWR4cb48fe5LlaXYcLMJeTveyzxnDnTkFJKHf7YhCJdP
+	innHI5zzXn1773CGdfoPdAecJNet7NwdZWkwxpmamKTltlt/Wj5hJ0++JtmNhL58brmDWO4CfQ8
+	YXjvlQvuZd8Bg+byZGErtsE=
+Received: from mail.maildlp.com (unknown [172.19.162.140])
+	by canpmsgout05.his.huawei.com (SkyGuard) with ESMTPS id 4fXlLq03msz12LFj;
+	Sat, 14 Mar 2026 10:15:31 +0800 (CST)
+Received: from dggemv706-chm.china.huawei.com (unknown [10.3.19.33])
+	by mail.maildlp.com (Postfix) with ESMTPS id DEE5A2025E;
+	Sat, 14 Mar 2026 10:21:04 +0800 (CST)
+Received: from kwepemq500016.china.huawei.com (7.202.194.202) by
+ dggemv706-chm.china.huawei.com (10.3.19.33) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.1544.11; Sat, 14 Mar 2026 10:21:04 +0800
+Received: from [10.174.178.185] (10.174.178.185) by
+ kwepemq500016.china.huawei.com (7.202.194.202) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.1544.11; Sat, 14 Mar 2026 10:21:04 +0800
+Subject: Re: [PATCH -next 6/8] ext4: fix the error handling process in
+ extents_kunit_init).
+To: Ritesh Harjani <ritesh.list@gmail.com>, Ye Bin <yebin@huaweicloud.com>,
+	<tytso@mit.edu>, <adilger.kernel@dilger.ca>, <linux-ext4@vger.kernel.org>
+References: <20260310130412.3156753-1-yebin@huaweicloud.com>
+ <20260310130412.3156753-7-yebin@huaweicloud.com>
+ <sea4sz73.ritesh.list@gmail.com>
+CC: <jack@suse.cz>
+From: "yebin (H)" <yebin10@huawei.com>
+Message-ID: <69B4C60C.8010205@huawei.com>
+Date: Sat, 14 Mar 2026 10:21:00 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:38.0) Gecko/20100101
+ Thunderbird/38.1.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260313151835.1248953-1-koike@igalia.com>
+In-Reply-To: <sea4sz73.ritesh.list@gmail.com>
+Content-Type: text/plain; charset="windows-1252"; format=flowed
+Content-Transfer-Encoding: 7bit
+X-ClientProxiedBy: kwepems100001.china.huawei.com (7.221.188.238) To
+ kwepemq500016.china.huawei.com (7.202.194.202)
 
-On Fri, Mar 13, 2026 at 12:18:30PM -0300, Helen Koike wrote:
-> On filesystems with bigalloc enabled and s_first_data_block != 0,
 
-This is never supposed to happen; fsck already checks for this.  From
-e2fsck/super.c:
 
-	should_be = (sb->s_log_block_size == 0 &&
-		     EXT2FS_CLUSTER_RATIO(fs) == 1) ? 1 : 0;
-	if (sb->s_first_data_block != should_be) {
-		pctx.blk = sb->s_first_data_block;
-		pctx.blk2 = should_be;
-		fix_problem(ctx, PR_0_FIRST_DATA_BLOCK, &pctx);
-		ctx->flags |= E2F_FLAG_ABORT;
-		return;
-	}
-
-You can also see evidence of this code path getting trigger by
-clicking on "corrupt_fs" in the Syzkaller dashboard.
-
-> Introduce four macros that subtract s_first_data_block before
-> operating, matching the coordinate system used by mballoc:
-
-This is *way* more complicated than it needs to be.  All you need to
-do is just reject the mount if the file system is this insanely
-corrupted.  For example:
-
-	if (ext4_has_feature_bigalloc(sb) &&
-	    es->s_first_data_block) {
-		ext4_msg(sb, KERN_WARNING, "bad geometry: bigalloc "
-			 "file system with non-zero first_data_block");
-		return -EINVAL;
-	}
-
-> Regarding the issue reported by syzbot...
-
-Yeah, this is why I generally don't pay that much attention to syzbot
-reports that mount a corrupted file system.  Users are supposed to run
-fsck on a file system before they blindly mount it.  If they don't, I
-don't consider it a security vulnerability; it's just a stupid system
-administrator trick, and he or she deserves everything that happens to
-them.  Hence, such issues are not a security issue, but just a quality
-of implementation issue.  I'll accept patches to addrese sorts of
-things, but it doesn't rate a CVE or high priority processing.
-
-Furthermore, any fix needs to as simple as possible, and avoids adding
-extra overhead especially on hot paths.  In this particular case,
-rejecting the mount is the simplest fix, since the file system
-corruption is *easy* to detect.
-
-Cheers,
-
-					- Ted
+On 2026/3/13 20:15, Ritesh Harjani wrote:
+> Ye Bin <yebin@huaweicloud.com> writes:
+>
+>> From: Ye Bin <yebin10@huawei.com>
+>>
+>> The error processing in extents_kunit_init() is improper, causing
+>> resource leakage.
+>> Reconstruct the error handling process to prevent potential resource
+>> leaks
+>>
+>> Fixes: cb1e0c1d1fad ("ext4: kunit tests for extent splitting and conversion")
+>> Signed-off-by: Ye Bin <yebin10@huawei.com>
+>> ---
+>>   fs/ext4/extents-test.c | 41 +++++++++++++++++++++++++++++------------
+>>   1 file changed, 29 insertions(+), 12 deletions(-)
+>>
+>> diff --git a/fs/ext4/extents-test.c b/fs/ext4/extents-test.c
+>> index 70d84c0a18e2..7e2796f72d45 100644
+>> --- a/fs/ext4/extents-test.c
+>> +++ b/fs/ext4/extents-test.c
+>> @@ -222,33 +222,37 @@ static int extents_kunit_init(struct kunit *test)
+>>   		(struct kunit_ext_test_param *)(test->param_value);
+>>   	int err;
+>>
+>> -	sb = sget(&ext_fs_type, NULL, ext_set, 0, NULL);
+>> -	if (IS_ERR(sb))
+>> -		return PTR_ERR(sb);
+>> -
+>> -	sb->s_blocksize = 4096;
+>> -	sb->s_blocksize_bits = 12;
+>> -
+>>   	sbi = kzalloc_obj(struct ext4_sb_info);
+>>   	if (sbi == NULL)
+>>   		return -ENOMEM;
+>>
+>> +	sb = sget(&ext_fs_type, NULL, ext_set, 0, NULL);
+>> +	if (IS_ERR(sb)) {
+>> +		kfree(sbi);
+>> +		return PTR_ERR(sb);
+>> +	}
+>> +
+>>   	sbi->s_sb = sb;
+>>   	sb->s_fs_info = sbi;
+>>
+>> +	sb->s_blocksize = 4096;
+>> +	sb->s_blocksize_bits = 12;
+>> +
+>>   	if (!param || !param->disable_zeroout)
+>>   		sbi->s_extent_max_zeroout_kb = 32;
+>>
+>>   	/* setup the mock inode */
+>>   	k_ctx.k_ei = kzalloc_obj(struct ext4_inode_info);
+>> -	if (k_ctx.k_ei == NULL)
+>> -		return -ENOMEM;
+>> +	if (k_ctx.k_ei == NULL) {
+>> +		err = -ENOMEM;
+>> +		goto out_deactivate;
+>> +	}
+>>   	ei = k_ctx.k_ei;
+>>   	inode = &ei->vfs_inode;
+>>
+>>   	err = ext4_es_register_shrinker(sbi);
+>>   	if (err)
+>> -		return err;
+>> +		goto out_deactivate;
+>>
+>>   	ext4_es_init_tree(&ei->i_es_tree);
+>>   	rwlock_init(&ei->i_es_lock);
+>> @@ -264,8 +268,10 @@ static int extents_kunit_init(struct kunit *test)
+>>   	inode->i_sb = sb;
+>>
+>>   	k_ctx.k_data = kzalloc(EXT_DATA_LEN * 4096, GFP_KERNEL);
+>> -	if (k_ctx.k_data == NULL)
+>> -		return -ENOMEM;
+>> +	if (k_ctx.k_data == NULL) {
+>> +		err = -ENOMEM;
+>> +		goto out_deactivate;
+>> +	}
+>>
+>>   	/*
+>>   	 * set the data area to a junk value
+>> @@ -310,6 +316,17 @@ static int extents_kunit_init(struct kunit *test)
+>>   	up_write(&sb->s_umount);
+>>
+>>   	return 0;
+>> +
+>> +out_deactivate:
+>> +	kfree(k_ctx.k_ei);
+>> +	k_ctx.k_ei = NULL;
+>> +
+>> +	kfree(k_ctx.k_data);
+>> +	k_ctx.k_data = NULL;
+>> +
+>> +	deactivate_locked_super(sb);
+>
+> So I guess the right thing to do for now is, what Ojaswin also mentioned
+> [1].  Let's go with patch [2], as is.. and we can fix all the remaining
+> issues as part of this series. With that in mind, this patch series
+> needs to be applid on top of [2]. So that means.. our error handling
+> should also properly take care of unregister shrinker and freeing sbi..
+>
+> [1]: https://lore.kernel.org/linux-ext4/abPh6GX0t22m628D@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com/
+> [2]: https://lore.kernel.org/linux-ext4/5bb9041471dab8ce870c191c19cbe4df57473be8.1772381213.git.ritesh.list@gmail.com/#t
+>
+> -ritesh
+>
+I will base on your patch and then create a separate patchset for the
+fixes and send it.
+>
+>> +
+>> +	return err;
+>>   }
+>>
+>>   /*
+>> --
+>> 2.34.1
+>
+>
+> .
+>
