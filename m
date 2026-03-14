@@ -1,36 +1,36 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CC6DA275B18
-	for <linux-ext4@vger.kernel.org>; Sat, 14 Mar 2026 07:50:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 962CE25B30D
+	for <linux-ext4@vger.kernel.org>; Sat, 14 Mar 2026 07:50:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773474656; cv=none; b=tqVxvARjieaBQyfy5/RXEHx00ge18Zib3L8rvRozklL6wnZKtaIY3m3IdjL/yUzYm2gkVvW4HugGoF0Aa/trrMHZ2PgrU17iK2i7neUzXkNjmHQLAoQfFYNJC/lYShpJx4GJizOeLfGoYYEKErqDOAXTPlz5UcCibfVsqAWGYw4=
+	t=1773474660; cv=none; b=NA/b8QCG4pIAugs8Qb6p5dud6EwzCu6XS8aqSg/6uPKipIkxHDNsVX+u/vkpPQdd9eoj8UnMJYVMlB/nf4d0wgBogkvnoHddnDlh0wJ4oplBYju3+LoIiu80tkwQA8CpS6c1dxQ632ujEcVGqo4c80e6XwlWFjGF1vqRX3esTKk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773474656; c=relaxed/simple;
-	bh=nzYEMQqjtAQtr1Zz8Sv2s+uafonlSR/qW5iG+pq2WRw=;
+	s=arc-20240116; t=1773474660; c=relaxed/simple;
+	bh=MCut1xmWDcthZ3uFAEslcqm2vPGE6iDREG0YH7RJ/ZY=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=R/BdJ6Qx2ASoi8Cvwbi2IjLfVNfOjK40AD5zFUk4tFOdch3J2B6lOyr+nkJvmBeo2rHSbSf3H8YunGD1hgtRhG5rztVi3MfdvQJY5qyee8CEGEZQQ2AjSXLUQvzWlv9W8n77sQpJhmpM1E7FvpXV995D9tiJul7+a9FWPJfS9+Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=U2KXrSPSA6DnBjy2I4mLudZwLJaTVG0PPBLjdeeP/AiGCGqB2ArNJ25q7d+hnGqXo4U9NHDVfWWiCnWEXcGuTu31IzLwqyg9tRCHRe4hXu1Upj6/27LrtILiJe6rrg4rZwpjJ1KGEtTtBHjzlobIl5HeIfydfx/ndpeyXeFdRZ4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4fXtnK2s1mzKHMck
-	for <linux-ext4@vger.kernel.org>; Sat, 14 Mar 2026 15:50:29 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4fXtmk2gWPzYQtsC
+	for <linux-ext4@vger.kernel.org>; Sat, 14 Mar 2026 15:49:58 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 963234058F
+	by mail.maildlp.com (Postfix) with ESMTP id 8B3574056B
 	for <linux-ext4@vger.kernel.org>; Sat, 14 Mar 2026 15:50:50 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.132])
-	by APP4 (Coremail) with SMTP id gCh0CgDX_UhZE7Vpm1BvAw--.31250S8;
+	by APP4 (Coremail) with SMTP id gCh0CgDX_UhZE7Vpm1BvAw--.31250S6;
 	Sat, 14 Mar 2026 15:50:50 +0800 (CST)
 From: Ye Bin <yebin@huaweicloud.com>
 To: tytso@mit.edu,
 	adilger.kernel@dilger.ca,
 	linux-ext4@vger.kernel.org
 Cc: jack@suse.cz
-Subject: [PATCH v3 4/5] ext4: fix possible null-ptr-deref in extents_kunit_exit()
-Date: Sat, 14 Mar 2026 15:49:02 +0800
-Message-Id: <20260314074903.1314851-5-yebin@huaweicloud.com>
+Subject: [PATCH v3 2/5] ext4: fix miss unlock 'sb->s_umount' in extents_kunit_init()
+Date: Sat, 14 Mar 2026 15:49:00 +0800
+Message-Id: <20260314074903.1314851-3-yebin@huaweicloud.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20260314074903.1314851-1-yebin@huaweicloud.com>
 References: <20260314074903.1314851-1-yebin@huaweicloud.com>
@@ -41,67 +41,64 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgDX_UhZE7Vpm1BvAw--.31250S8
-X-Coremail-Antispam: 1UD129KBjvJXoW7uFyrtw48CF1fCr1ruw1fCrg_yoW8GFykpr
-	sxCF4jgr48Zw1DCFWxGFyUJryakan7uFW7uryxJa13KayDCry8tryjkr1UtFW5XF48XFyY
-	9F40v3yUK3W3KaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvKb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
-	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
-	rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267
-	AKxVWxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAF
-	wI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2
-	WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkE
-	bVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbV
-	WUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF
-	67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42
-	IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF
-	0xvEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxh
-	VjvjDU0xZFpf9x07jeVbkUUUUU=
+X-CM-TRANSID:gCh0CgDX_UhZE7Vpm1BvAw--.31250S6
+X-Coremail-Antispam: 1UD129KBjvJXoW7tr17ur4DZw1xZr45Wr48JFb_yoW8Gw1Dpr
+	4xAFyUKr4ru3W7Cay8Ga1Utry3Can8C3W7CryfWF43XFWUu348KF4fKF1YkFW5Xa1jqF1q
+	yF48ta45Cw43C3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvlb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUXw
+	A2048vs2IY020Ec7CjxVAFwI0_JFI_Gr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
+	w2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
+	WxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_
+	GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx
+	0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWU
+	JVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJV
+	W8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF
+	1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6x
+	IIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvE
+	x4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvj
+	DU0xZFpf9x07URpBfUUUUU=
 X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 
 From: Ye Bin <yebin10@huawei.com>
 
-There's issue as follows:
-KASAN: null-ptr-deref in range [0x00000000000002c0-0x00000000000002c7]
-Tainted: [E]=UNSIGNED_MODULE, [N]=TEST
-RIP: 0010:extents_kunit_exit+0x2e/0xc0 [ext4_test]
+There's warning as follows when do ext4 kunit test:
+WARNING: kunit_try_catch/15923 still has locks held!
+7.0.0-rc3-next-20260309-00028-g73f965a1bbb1-dirty #281 Tainted: G            E    N
+1 lock held by kunit_try_catch/15923:
+ #0: ffff888139f860e0 (&type->s_umount_key#70/1){+.+.}-{4:4}, at: alloc_super.constprop.0+0x172/0xa90
 Call Trace:
  <TASK>
- kunit_try_run_case_cleanup+0xbc/0x100 [kunit]
- kunit_generic_run_threadfn_adapter+0x89/0x100 [kunit]
- kthread+0x408/0x540
+ dump_stack_lvl+0x180/0x1b0
+ debug_check_no_locks_held+0xc8/0xd0
+ do_exit+0x1502/0x2b20
+ kthread+0x3a9/0x540
  ret_from_fork+0xa76/0xdf0
  ret_from_fork_asm+0x1a/0x30
 
-Above issue happens as extents_kunit_init() init testcase failed.
-So test if testcase is inited success.
+As sget() will return 'sb' which holds 's->s_umount' lock. However,
+"extents-test" miss unlock this lock.
+So unlock 's->s_umount' in the end of extents_kunit_init().
 
 Fixes: cb1e0c1d1fad ("ext4: kunit tests for extent splitting and conversion")
 Signed-off-by: Ye Bin <yebin10@huawei.com>
 ---
- fs/ext4/extents-test.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ fs/ext4/extents-test.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/fs/ext4/extents-test.c b/fs/ext4/extents-test.c
-index 543236a31e13..6ae72986ca9c 100644
+index e3d23e3cda87..3d4663d99eb1 100644
 --- a/fs/ext4/extents-test.c
 +++ b/fs/ext4/extents-test.c
-@@ -142,9 +142,12 @@ static struct file_system_type ext_fs_type = {
- 
- static void extents_kunit_exit(struct kunit *test)
- {
--	struct super_block *sb = k_ctx.k_ei->vfs_inode.i_sb;
--	struct ext4_sb_info *sbi = sb->s_fs_info;
-+	struct ext4_sb_info *sbi;
- 
-+	if (!k_ctx.k_ei)
-+		return;
+@@ -310,6 +310,8 @@ static int extents_kunit_init(struct kunit *test)
+ 	kunit_activate_static_stub(test, ext4_ext_zeroout, ext4_ext_zeroout_stub);
+ 	kunit_activate_static_stub(test, ext4_issue_zeroout,
+ 				   ext4_issue_zeroout_stub);
++	up_write(&sb->s_umount);
 +
-+	sbi = k_ctx.k_ei->vfs_inode.i_sb->s_fs_info;
- 	ext4_es_unregister_shrinker(sbi);
- 	deactivate_super(sbi->s_sb);
- 	kfree(sbi);
+ 	return 0;
+ }
+ 
 -- 
 2.34.1
 
