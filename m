@@ -1,291 +1,183 @@
-Received: from mail-ej1-f47.google.com (mail-ej1-f47.google.com [209.85.218.47])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CC9A2339878
-	for <linux-ext4@vger.kernel.org>; Sun, 15 Mar 2026 13:51:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.47
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773582703; cv=pass; b=LgcLYdEVcfN1mVpc4VYoZFFea6cE+uRZGMM9HiwZyFu2BA/bUeOiWREjNEJHvkv3gqsud7tNS5nKXCi0/UZ1neFmIYH/Ngoqwq1RFwixvAy9hF8tZafwOWyNxV5I0f7oE5Gmzlv9s8L5bCIy4WFNnJ7BW9RByDNKdmKgt/8R6WE=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773582703; c=relaxed/simple;
-	bh=Vs01mlsWygXmaXPS3h5z1k3Hf3KZR9yElATURfIfNww=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=bDaaqF19suhNrprom3Q5zmFWI/n8dTWxjqIzX2rv/fwx0b7+xAAsWBhmdYYTBOrmsbCW1X5EprkHag33QSz7hlHMh3zdLBzuJMeEc5ePyIGAgjyN2MXMbwalByvJNiQHhM8kZewo5keqM0tPxLx2O0LHogCEouPa6XoOMXkZ+KI=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=niOi+68t; arc=pass smtp.client-ip=209.85.218.47
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C4D5236E462
+	for <linux-ext4@vger.kernel.org>; Sun, 15 Mar 2026 15:55:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1773590122; cv=none; b=MO6qNXgnr+cdOTZXH0qdRAZ3h5Z0hXwc9J8z2Q6U/IHqKqrd3U823vxDQkBWYYiKIvlqK9eHEqtEKK8vJTqjYInM32SxTx/2kCEqNZLocUp0YRRkmTWYk7x8mZKh8GdNg+28paE2OqJ06wchhr1jQRJr6Am8mUjJgVNBkFjVjW4=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1773590122; c=relaxed/simple;
+	bh=2qTLxckE9oMDjwMxGCBaza0lbBYLuX0cOOAxPmFeG0w=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=ogpyK1vQleZvyST8Ao16uldZ61hD8HprUQ41gXwopR7hUvPGXu6KNirZ/cqw6QblQzUFT/zE8Pn7VeXqPDv71LAmAyo80MERNpyv4EqqJmmXWfB5lu3ObnXB3DSCvG+wqx5J13WYIhbVKz4HYNMG5AuvD9d7Yxv/dwCAcvRJ9uQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=TEZCmtp5; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=F+2ZAl0y; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="niOi+68t"
-Received: by mail-ej1-f47.google.com with SMTP id a640c23a62f3a-b97bca3797dso6689166b.0
-        for <linux-ext4@vger.kernel.org>; Sun, 15 Mar 2026 06:51:41 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1773582700; cv=none;
-        d=google.com; s=arc-20240605;
-        b=TTzBPBy+o4jinDfMHrVlFx9pQVQxL0GTUYTcrqa3NPvZmxcGEbz6WYoHhAB4bzp6av
-         7miK+JXhrGuIdSP/LptsuEfaOkWGihu5clnDJudZX1I9N3We6uOV39IgiAgQ+cmRDyNW
-         xueQO4WuGyeZPZvvu2DtzH6Kg002PxUSzwidw+Urb/PwOuCDCI5ftFIod0IRZ8YZhJ0Q
-         hfErBwIJumIpVVTqVmDMhhL+RJkpyiC+lL6wb/+8/VCrPqR27n+XxXCLGud0QFCtfxv9
-         N4XESkNomnL/7y4vQeDRsG6EHEaAqSVJ2iBZOKGGNvu3nxhXCzQ1Sn+hvuPoKDX8D9vw
-         Q/0A==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=LD1Y/Z+QIVaxjTqqF6DEde0TPCIZAs/xYcpmNl5+JUA=;
-        fh=UdAoF9Ys1KVSRuz1ODnHTIedgk9YbyVXGAetc2qhKeQ=;
-        b=MGcWLJqOla0Y/fp04P4O/L8E9BE7ZyhrymLar1jMOWukYNNbZA1fzLXLk/c/AfQyXO
-         iCFOeX3TI147E/+3Snk5zyorI+ZXmXVyOsMhiGoDU41feTD2HkYwlRU6KDdca/saD0+D
-         iWZL+twXUBCMeLAFiX7foVNsnuNp2HYPg8VTG/42Qlb1zhnssZUMjmpjp2wJkZlwwnsB
-         ERIte++PrULaoJhc2La5EWQOY0E+Mw8sXRBGiThC1ntSLZ6MiWtQTdxaH2Fs7hsSUzIA
-         YZZl/AnTYS4+z1vSYnU/u1L/+zyJIlxyGOV1v72U9nAJnUFSaAji6jvfliBOL/UxPmM/
-         LA8A==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="TEZCmtp5";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="F+2ZAl0y"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1773590118;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=xQ3rAvJPMukjRlEJsiY79XXn5O5j6UdqZxcxui6ZZRY=;
+	b=TEZCmtp5XdXy37uK8/+x0d8O5li6Wed62J8h1pxFmJnWVGiSh2dhgOFOaZQz81Oa/IA1gp
+	pgTsZhVa6FZp4xRI3mTxgM2MpHmB9U/JlS+NPgzNykviJKT2/two7ShTTH/QENAz6h6hB6
+	nkHsvSMP/Gn4K+Y1SGZAkoFDpTtBP8k=
+Received: from mail-pl1-f197.google.com (mail-pl1-f197.google.com
+ [209.85.214.197]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-502-wAqYyiv9P1WZJT58VQdHkw-1; Sun, 15 Mar 2026 11:55:17 -0400
+X-MC-Unique: wAqYyiv9P1WZJT58VQdHkw-1
+X-Mimecast-MFC-AGG-ID: wAqYyiv9P1WZJT58VQdHkw_1773590116
+Received: by mail-pl1-f197.google.com with SMTP id d9443c01a7336-2aec784479cso223795195ad.3
+        for <linux-ext4@vger.kernel.org>; Sun, 15 Mar 2026 08:55:17 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1773582700; x=1774187500; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=LD1Y/Z+QIVaxjTqqF6DEde0TPCIZAs/xYcpmNl5+JUA=;
-        b=niOi+68t+4ftQYvaTzVsRIkap5gRXpAugLlwQHpWZCH0WvCYllQe1U7gpK6TQ746LN
-         sNb6+5qFVJvATOEcP8S1YSgpJuP99izxvfE9uv+ymv5s8v7mpmYBgjxzgmmrMIO20ol5
-         XRphCrEl9BexTpEgwv+wQSN4mImqSAHd9JsJo3w0NsYQAB6tOh/4qcvYp8Jff3IdmD2I
-         4tSEzLy6dzy72soZcqjVHMHgUtghx14Tou/mIE3WQ2HWt4arTCyksDfNfZAyf2iOSfXz
-         lwavfOdGwvHNzVdTXiKTbMW4WZkF9yE9MfkZ1gT2J9g25fenbgVIVPyGiFfk/1mzFyNE
-         UBEw==
+        d=redhat.com; s=google; t=1773590116; x=1774194916; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=xQ3rAvJPMukjRlEJsiY79XXn5O5j6UdqZxcxui6ZZRY=;
+        b=F+2ZAl0yeFz29YJNQWKx8AbT6mMBx/3iserbsufjJib9A5R0ZiGwyfe/0Y1T4x6Afe
+         v94+LclcBsr+V85l0yfk7jswguN//VMErIiTu55GvEWSdWSd8W8FqH1PteOm52euJt8K
+         5u8koHdOUZ1pthQguz9N/95OOVqhzrFEH/Y3NXmpU3v1Wrv0sPzw2WkSoI5L/WVVIcyP
+         q1zIkDyadboWs/gSLaFwX68fXVTfY2d5MOOIA4oBl1J0UCG+dRABUNaVGgvG8CdmWk7H
+         rRwu+T3DMYYR4+qMPfHIFtwo/21IkZiouqgEylXFjq76Tqz0XtikKIau5md9+Yssmar2
+         cRkg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1773582700; x=1774187500;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=LD1Y/Z+QIVaxjTqqF6DEde0TPCIZAs/xYcpmNl5+JUA=;
-        b=cuHBKMJwimkfGYwMjewIVigyMp+LIibLw6VbEKIoMEDK5pCy07NuwVd33NR0Po8k7R
-         aoPuKqbeumaMOZSl83zzwj5gcQ0W7r/FX7cYO961BChET4tsrDuPEGcaNNY2iKCPYOC1
-         1goP4r+tedTg5acO8Ww/MfOhr6+UmpUiWZYRfdZPBW8DpgxumagEswMkrHBm+MGD3zxh
-         vGK13qhrj2O2G5lPn9Asnq58NPEUaNWsqs6YHvTjShnP889HcxPFZL7yYVihRCBNZR+B
-         uNIgyZVLDG+a7ge2gFcheM0Oz8EGBc/hRpGmgDVkgjTS4ErCKzLUtfVuLspeYNlmElkB
-         e6zQ==
-X-Forwarded-Encrypted: i=1; AJvYcCXOk2NNpPN0oecvPAbBMmA0kRgZcjYUBAW6zew6pCns+L5QTC0Hkcc4YcdcHQZ2z8oWBoTt5mLibloC@vger.kernel.org
-X-Gm-Message-State: AOJu0Yz58yh55w01k2CG1u4lNw7itJU+T6wfdtkCjsf0h8MnOqzBF8yC
-	lSdYin38Unv0p7U3ouChCzEoSjt6qIOI4/wUO60Ri1EFCQFzTeuBgVJbDzceVRZGOfN32OcWwpL
-	Vy9CDHFAw90PvrERPYDsdb4iBXJ3ohYY=
-X-Gm-Gg: ATEYQzzpuCTWmg9n0qVk2efNUyX+pJVT92egEG00h4Cg1SQIX1A6YPP4vn7OME2wAzi
-	95eZCdb1IP1WZQj9/FiGt1ON5yhzGun+H4hAyqgFHSTqaWxeAOAf4PRMxgMXyIWiDpoFcd1kGY2
-	gsmN1FVV0jxn0g3HF6JQrGJUP4ch4quiOTVOISCwSZ0szf3e87Zah6FCn0BqTfXqQ+/WJyTF0x3
-	1Jl7kglqmp0fv4TBDwcXQYZxP3JWEAiI68pjei9bQDYw2Mtr+dIvpEpEQgR/oCiAMupzvvkdkZU
-	BgqUpQw6edAN0Nn3Fr7utszIdMtRZSy4ad9RNnxCMw==
-X-Received: by 2002:a17:907:8dcd:b0:b93:c5a9:a5e6 with SMTP id
- a640c23a62f3a-b976507af92mr500109966b.2.1773582699724; Sun, 15 Mar 2026
- 06:51:39 -0700 (PDT)
+        d=1e100.net; s=20251104; t=1773590116; x=1774194916;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=xQ3rAvJPMukjRlEJsiY79XXn5O5j6UdqZxcxui6ZZRY=;
+        b=ktsLgI7Rba7hmruEjKN3rAQEG3v2cFQgxfQjomqHgr1c0XkdAc58W9j8VBtzBx3o9j
+         xw9J9nlceBcG49NAtjlMcyC3tfBwCrfR+gvwjP2EuJKzW7m5Ek2H94cdrPI4dvtDW+1O
+         kCwKQAIBm5Ud67NGIZ3d6XDJPF2tRZClLck/du1E/XqzZcgHLBJzIFuYiGINPsiubeRX
+         bmtBE/+et5IJHc8koL11W7U6O35+UFMkdeo/iR22V9tuesJBMBZ7x6AgVfw8lnzaOjGP
+         QNm8GtPQeFjPVbt71SIyCE05EWIOT9aJ6IY72YOa7+fKmQwKCHLoXDLr/vMRayokpQGh
+         jzHg==
+X-Forwarded-Encrypted: i=1; AJvYcCVOPTCQlqU25pdl9ZGxbKanWou6BqnIrxSCVh+XEnD8JeKzN4WGXh1QLfuS+v5I0x6Jedt37SIy9ROm@vger.kernel.org
+X-Gm-Message-State: AOJu0YxNAOEH2IIHLUl8uWK/jCVqp3rO22fK4VR2gQQ7/GJsL1TnLSOZ
+	NR5k5gS8rfYzl9sBqLxTumwicAicyECv8NK6mgAjXWOml81hg/A0Xx4dH9QjqF3VYSbRzCuXPSB
+	tXRlxK2c3c/N5HncmB6HUDYiyykCfNnrxj8bbI05Bq57sLClFXCUyHJZg+xBpL5w=
+X-Gm-Gg: ATEYQzwdPPD41quBWDG09BhTvkNuaZQ64ArXV7bUNi2/FOW3Lck/ECN7v76ZXlioD4Q
+	bZtjr2gebVViijuGitP3y47OU10Oyg21ZyLOO0/8vMQZsU3aGJlmewKK79Qq6Q0N/s+VYva/EdT
+	rFlt1k5Czzf5jTYJrAPCIblyPqNxF1PWdVOMuRm5ppi3rYrNPtno+BXXzAaEajQl8PnefjWI4A1
+	2ytq2WYTeFivLORFStnlha7IqQ6WLWr0ftu6aVBOfb2q8SlAgo8obZv0xqq5fe+XyVBFrdQS+rF
+	ZLvcqQatzlebf6Hw5gmIXQykg7OdNUhO9uQWNkq5bncWO2CBM5zxcspwA3deunlJX/3ZxY6c+rw
+	LB7nIS3OBTFaacI2TYg==
+X-Received: by 2002:a17:902:ea06:b0:2ae:4b91:8407 with SMTP id d9443c01a7336-2aecaaa861amr105927355ad.34.1773590116469;
+        Sun, 15 Mar 2026 08:55:16 -0700 (PDT)
+X-Received: by 2002:a17:902:ea06:b0:2ae:4b91:8407 with SMTP id d9443c01a7336-2aecaaa861amr105927135ad.34.1773590116029;
+        Sun, 15 Mar 2026 08:55:16 -0700 (PDT)
+Received: from doltdoltdolt ([209.132.188.88])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2aece62c701sm106718375ad.37.2026.03.15.08.55.12
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 15 Mar 2026 08:55:15 -0700 (PDT)
+Date: Sun, 15 Mar 2026 23:55:10 +0800
+From: Zorro Lang <zlang@redhat.com>
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: Herbert Xu <herbert@gondor.apana.org.au>, linux-crypto@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+	Thierry Reding <thierry.reding@gmail.com>,
+	Jonathan Hunter <jonathanh@nvidia.com>, stable@vger.kernel.org,
+	Akhil R <akhilrajeev@nvidia.com>
+Subject: Re: [PATCH] crypto: tegra - Add missing CRYPTO_ALG_ASYNC
+Message-ID: <20260315155510.myp3i7jhzs654zr2@doltdoltdolt>
+References: <20260314165515.9678-1-ebiggers@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260312214330.3885211-1-neilb@ownmail.net> <20260312214330.3885211-17-neilb@ownmail.net>
-In-Reply-To: <20260312214330.3885211-17-neilb@ownmail.net>
-From: Amir Goldstein <amir73il@gmail.com>
-Date: Sun, 15 Mar 2026 14:51:27 +0100
-X-Gm-Features: AaiRm50yYPhN2uA9nBAPVNuAVUOhGIEBVS5rPtx5ZlpdDP1j4SB9NhEOC_7KNWo
-Message-ID: <CAOQ4uxjmcNxsCmDSVgkTns=3BAuQcT3pVvsQzza+u3iqXqrz5g@mail.gmail.com>
-Subject: Re: [PATCH 16/53] ovl: drop dir lock for lookups in impure readdir
-To: NeilBrown <neil@brown.name>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, Alexander Viro <viro@zeniv.linux.org.uk>, 
-	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@kernel.org>, 
-	Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, Carlos Maiolino <cem@kernel.org>, 
-	Miklos Szeredi <miklos@szeredi.hu>, Jan Harkes <jaharkes@cs.cmu.edu>, Hugh Dickins <hughd@google.com>, 
-	Baolin Wang <baolin.wang@linux.alibaba.com>, David Howells <dhowells@redhat.com>, 
-	Marc Dionne <marc.dionne@auristor.com>, Steve French <sfrench@samba.org>, 
-	Namjae Jeon <linkinjeon@kernel.org>, Sungjong Seo <sj1557.seo@samsung.com>, 
-	Yuezhang Mo <yuezhang.mo@sony.com>, Andreas Hindborg <a.hindborg@kernel.org>, 
-	Breno Leitao <leitao@debian.org>, "Theodore Ts'o" <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Steven Rostedt <rostedt@goodmis.org>, 
-	Masami Hiramatsu <mhiramat@kernel.org>, Ilya Dryomov <idryomov@gmail.com>, 
-	Alex Markuze <amarkuze@redhat.com>, Viacheslav Dubeyko <slava@dubeyko.com>, Tyler Hicks <code@tyhicks.com>, 
-	Andreas Gruenbacher <agruenba@redhat.com>, Richard Weinberger <richard@nod.at>, 
-	Anton Ivanov <anton.ivanov@cambridgegreys.com>, Johannes Berg <johannes@sipsolutions.net>, 
-	Jeremy Kerr <jk@ozlabs.org>, Ard Biesheuvel <ardb@kernel.org>, linux-fsdevel@vger.kernel.org, 
-	linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org, 
-	linux-unionfs@vger.kernel.org, coda@cs.cmu.edu, linux-mm@kvack.org, 
-	linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	linux-trace-kernel@vger.kernel.org, ceph-devel@vger.kernel.org, 
-	ecryptfs@vger.kernel.org, gfs2@lists.linux.dev, linux-um@lists.infradead.org, 
-	linux-efi@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260314165515.9678-1-ebiggers@kernel.org>
 
-On Thu, Mar 12, 2026 at 10:49=E2=80=AFPM NeilBrown <neilb@ownmail.net> wrot=
-e:
->
-> From: NeilBrown <neil@brown.name>
->
-> When performing an "impure" readdir, ovl needs to perform a lookup on som=
-e
-> of the names that it found.
-> With proposed locking changes it will not be possible to perform this
-> lookup (in particular, not safe to wait for d_alloc_parallel()) while
-> holding a lock on the directory.
->
-> ovl doesn't really need the lock at this point.
-
-Not exactly. see below.
-
-> It has already iterated
-> the directory and has cached a list of the contents.  It now needs to
-> gather extra information about some contents.  It can do this without
-> the lock.
->
-> After gathering that info it needs to retake the lock for API
-> correctness.  After doing this it must check IS_DEADDIR() again to
-> ensure readdir always returns -ENOENT on a removed directory.
->
-> Note that while ->iterate_shared is called with a shared lock, ovl uses
-> WRAP_DIR_ITER() so an exclusive lock is held and so we drop and retake
-> that exclusive lock.
->
-> As the directory is no longer locked in ovl_cache_update() we need
-> dget_parent() to get a reference to the parent.
->
-> Signed-off-by: NeilBrown <neil@brown.name>
+On Sat, Mar 14, 2026 at 09:55:15AM -0700, Eric Biggers wrote:
+> The tegra crypto driver failed to set the CRYPTO_ALG_ASYNC on its
+> asynchronous algorithms, causing the crypto API to select them for users
+> that request only synchronous algorithms.  This causes crashes (at
+> least).  Fix this by adding the flag like what the other drivers do.
+> 
+> Reported-by: Zorro Lang <zlang@redhat.com>
+> Closes: https://lore.kernel.org/r/20260314080937.pghb4aa7d4je3mhh@dell-per750-06-vm-08.rhts.eng.pek2.redhat.com
+> Fixes: 0880bb3b00c8 ("crypto: tegra - Add Tegra Security Engine driver")
+> Cc: stable@vger.kernel.org
+> Cc: Akhil R <akhilrajeev@nvidia.com>
+> Signed-off-by: Eric Biggers <ebiggers@kernel.org>
 > ---
->  fs/overlayfs/readdir.c | 19 ++++++++++++-------
->  1 file changed, 12 insertions(+), 7 deletions(-)
->
-> diff --git a/fs/overlayfs/readdir.c b/fs/overlayfs/readdir.c
-> index 1dcc75b3a90f..d5123b37921c 100644
-> --- a/fs/overlayfs/readdir.c
-> +++ b/fs/overlayfs/readdir.c
-> @@ -568,13 +568,12 @@ static int ovl_cache_update(const struct path *path=
-, struct ovl_cache_entry *p,
->                         goto get;
->                 }
->                 if (p->len =3D=3D 2) {
-> -                       /* we shall not be moved */
-> -                       this =3D dget(dir->d_parent);
-> +                       this =3D dget_parent(dir);
->                         goto get;
->                 }
->         }
->         /* This checks also for xwhiteouts */
-> -       this =3D lookup_one(mnt_idmap(path->mnt), &QSTR_LEN(p->name, p->l=
-en), dir);
-> +       this =3D lookup_one_unlocked(mnt_idmap(path->mnt), &QSTR_LEN(p->n=
-ame, p->len), dir);
 
-ovl_cache_update() is also called from ovl_iterate_merged() where inode
-is locked.
-
->         if (IS_ERR_OR_NULL(this) || !this->d_inode) {
->                 /* Mark a stale entry */
->                 p->is_whiteout =3D true;
-> @@ -666,11 +665,12 @@ static int ovl_dir_read_impure(const struct path *p=
-ath,  struct list_head *list,
->         if (err)
->                 return err;
->
-> +       inode_unlock(path->dentry->d_inode);
->         list_for_each_entry_safe(p, n, list, l_node) {
->                 if (!name_is_dot_dotdot(p->name, p->len)) {
->                         err =3D ovl_cache_update(path, p, true);
->                         if (err)
-> -                               return err;
-> +                               break;
->                 }
->                 if (p->ino =3D=3D p->real_ino) {
->                         list_del(&p->l_node);
-> @@ -680,14 +680,19 @@ static int ovl_dir_read_impure(const struct path *p=
-ath,  struct list_head *list,
->                         struct rb_node *parent =3D NULL;
->
->                         if (WARN_ON(ovl_cache_entry_find_link(p->name, p-=
->len,
-> -                                                             &newp, &par=
-ent)))
-> -                               return -EIO;
-> +                                                             &newp, &par=
-ent))) {
-> +                               err =3D -EIO;
-> +                               break;
-> +                       }
->
->                         rb_link_node(&p->node, parent, newp);
->                         rb_insert_color(&p->node, root);
->                 }
->         }
-> -       return 0;
-> +       inode_lock(path->dentry->d_inode);
-> +       if (IS_DEADDIR(path->dentry->d_inode))
-> +               err =3D -ENOENT;
-> +       return err;
->  }
->
->  static struct ovl_dir_cache *ovl_cache_get_impure(const struct path *pat=
-h)
-> --
-
-You missed the fact that overlayfs uses the dir inode lock
-to protect the readdir inode cache, so your patch introduces
-a risk for storing a stale readdir cache when dir modify operations
-invalidate the readdir cache version while lock is dropped
-and also introduces memory leak when cache is stomped
-without freeing cache created by a competing thread.
-I think something like the untested patch below should fix this.
-
-I did not look into ovl_iterate_merged() to see if it has a simple
-fix and I am not 100% sure that this fix for impure dir is enough.
+Thanks for you quick response, Eric. This fix works on my side. With this patch,
+same reproducer can't trigger that bug anymore.
 
 Thanks,
-Amir.
+Zorro
 
-diff --git a/fs/overlayfs/readdir.c b/fs/overlayfs/readdir.c
-index d5123b37921c8..9e90064b252ce 100644
---- a/fs/overlayfs/readdir.c
-+++ b/fs/overlayfs/readdir.c
-@@ -702,15 +702,13 @@ static struct ovl_dir_cache
-*ovl_cache_get_impure(const struct path *path)
-        struct inode *inode =3D d_inode(dentry);
-        struct ovl_fs *ofs =3D OVL_FS(dentry->d_sb);
-        struct ovl_dir_cache *cache;
-+       /* Snapshot version before ovl_dir_read_impure() drops i_rwsem */
-+       u64 version =3D ovl_inode_version_get(inode);
+> 
+> This patch is targeting crypto/master
+> 
+>  drivers/crypto/tegra/tegra-se-aes.c | 5 ++++-
+>  1 file changed, 4 insertions(+), 1 deletion(-)
+> 
+> diff --git a/drivers/crypto/tegra/tegra-se-aes.c b/drivers/crypto/tegra/tegra-se-aes.c
+> index 0e07d0523291a..cb97a59084519 100644
+> --- a/drivers/crypto/tegra/tegra-se-aes.c
+> +++ b/drivers/crypto/tegra/tegra-se-aes.c
+> @@ -592,10 +592,11 @@ static struct tegra_se_alg tegra_aes_algs[] = {
+>  			.ivsize	= AES_BLOCK_SIZE,
+>  			.base = {
+>  				.cra_name = "xts(aes)",
+>  				.cra_driver_name = "xts-aes-tegra",
+>  				.cra_priority = 500,
+> +				.cra_flags = CRYPTO_ALG_ASYNC,
+>  				.cra_blocksize = AES_BLOCK_SIZE,
+>  				.cra_ctxsize	   = sizeof(struct tegra_aes_ctx),
+>  				.cra_alignmask	   = (__alignof__(u64) - 1),
+>  				.cra_module	   = THIS_MODULE,
+>  			},
+> @@ -1920,10 +1921,11 @@ static struct tegra_se_alg tegra_aead_algs[] = {
+>  			.ivsize	= GCM_AES_IV_SIZE,
+>  			.base = {
+>  				.cra_name = "gcm(aes)",
+>  				.cra_driver_name = "gcm-aes-tegra",
+>  				.cra_priority = 500,
+> +				.cra_flags = CRYPTO_ALG_ASYNC,
+>  				.cra_blocksize = 1,
+>  				.cra_ctxsize = sizeof(struct tegra_aead_ctx),
+>  				.cra_alignmask = 0xf,
+>  				.cra_module = THIS_MODULE,
+>  			},
+> @@ -1942,10 +1944,11 @@ static struct tegra_se_alg tegra_aead_algs[] = {
+>  			.chunksize = AES_BLOCK_SIZE,
+>  			.base = {
+>  				.cra_name = "ccm(aes)",
+>  				.cra_driver_name = "ccm-aes-tegra",
+>  				.cra_priority = 500,
+> +				.cra_flags = CRYPTO_ALG_ASYNC,
+>  				.cra_blocksize = 1,
+>  				.cra_ctxsize = sizeof(struct tegra_aead_ctx),
+>  				.cra_alignmask = 0xf,
+>  				.cra_module = THIS_MODULE,
+>  			},
+> @@ -1969,11 +1972,11 @@ static struct tegra_se_alg tegra_cmac_algs[] = {
+>  			.halg.statesize = sizeof(struct tegra_cmac_reqctx),
+>  			.halg.base = {
+>  				.cra_name = "cmac(aes)",
+>  				.cra_driver_name = "tegra-se-cmac",
+>  				.cra_priority = 300,
+> -				.cra_flags = CRYPTO_ALG_TYPE_AHASH,
+> +				.cra_flags = CRYPTO_ALG_TYPE_AHASH | CRYPTO_ALG_ASYNC,
+>  				.cra_blocksize = AES_BLOCK_SIZE,
+>  				.cra_ctxsize = sizeof(struct tegra_cmac_ctx),
+>  				.cra_alignmask = 0,
+>  				.cra_module = THIS_MODULE,
+>  				.cra_init = tegra_cmac_cra_init,
+> 
+> base-commit: 1c9982b4961334c1edb0745a04cabd34bc2de675
+> -- 
+> 2.53.0
+> 
 
-        cache =3D ovl_dir_cache(inode);
--       if (cache && ovl_inode_version_get(inode) =3D=3D cache->version)
-+       if (cache && version =3D=3D cache->version)
-                return cache;
-
--       /* Impure cache is not refcounted, free it here */
--       ovl_dir_cache_free(inode);
--       ovl_set_dir_cache(inode, NULL);
--
-        cache =3D kzalloc_obj(struct ovl_dir_cache);
-        if (!cache)
-                return ERR_PTR(-ENOMEM);
-@@ -721,6 +719,14 @@ static struct ovl_dir_cache
-*ovl_cache_get_impure(const struct path *path)
-                kfree(cache);
-                return ERR_PTR(res);
-        }
-+
-+       /*
-+        * Impure cache is not refcounted, free it here.
-+        * Also frees cache stored by concurrent readdir during i_rwsem dro=
-p.
-+        */
-+       ovl_dir_cache_free(inode);
-+       ovl_set_dir_cache(inode, NULL);
-+
-        if (list_empty(&cache->entries)) {
-                /*
-                 * A good opportunity to get rid of an unneeded "impure" fl=
-ag.
-@@ -736,7 +742,7 @@ static struct ovl_dir_cache
-*ovl_cache_get_impure(const struct path *path)
-                return NULL;
-        }
-
--       cache->version =3D ovl_inode_version_get(inode);
-+       cache->version =3D version;
-        ovl_set_dir_cache(inode, cache);
-
-        return cache;
