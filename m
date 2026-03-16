@@ -1,109 +1,347 @@
-Received: from mail-dy1-f172.google.com (mail-dy1-f172.google.com [74.125.82.172])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B03AC34F486
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Mar 2026 19:33:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.82.172
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D9AB296BDC;
+	Mon, 16 Mar 2026 20:22:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773689589; cv=none; b=TDNtxdlECI0/aOvO7YPOZ3yEFDppmfxgbZQO8s/DxbY0E8PKZW+BcxP68A9sMZg1Y1LltwdQerUIFht8frnL8P0NMhGMoHO6ANqmYtW7XdSmDMgnQC0lWPhHLg6FGRF4IpML85MFMajQ3tYnBjUts/3LlsRQjKXxuvxf4NFsKUU=
+	t=1773692540; cv=none; b=uY6ozJXyGaTuvKUdbjjogJoM+e2ZzTt9TTZPFsZSFigUgZBxPxrLngQX/nPovGsmIVn6vcZX5HsXsZM27I4mtk/1bxDGr8wDS1IBPSELljOzKZVD2Klq16HfmtjEmyaHrPSrn3+w2UissX/a9tSAYuLnpLCiFD4OC5mboZkmOTU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773689589; c=relaxed/simple;
-	bh=BKyb47DDwdSsnpL1XTkfexWMuZ4TBqZJfWxM7FwbfB0=;
-	h=From:Content-Type:Mime-Version:Date:Subject:Message-Id:To; b=h8kGJw4sVZ5Wovdb6WyRBVdrYshhuCWjyTE+wNq0hYfjToW3y3IQElS7Zd/quSP0q9wcaUWJloc/89HYYzh4X0t+dL8XtViy560og9tdXNnYdeRDkNLOpv8fKe0y/9uN6ZgUG8XTCsUzwDST8LCADAbh/RhKx3xIn0hmXU/ApgQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=bqWp4ree; arc=none smtp.client-ip=74.125.82.172
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1773692540; c=relaxed/simple;
+	bh=lunMFDLmUDZwME6Stf/cLCjqXqvBAvKS+2/nf2ou+lU=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=IieE79mlNtIlYyfNW+JyuY/vaoDKIz8idukbIka0HEzICDlkib5/yVA9UlgPluLYXOMfw8Mc/5QZEaHHwEIDoZ8NEMGjsnVg4UMdggKxv9BhY4Ncky2kEXEYXozW1bA5j3pvccfLR49MUwkzIvevZLutPyNn0xcgyWd9A84oJVE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=pkDskulU; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="bqWp4ree"
-Received: by mail-dy1-f172.google.com with SMTP id 5a478bee46e88-2c0cf039a45so1401856eec.0
-        for <linux-ext4@vger.kernel.org>; Mon, 16 Mar 2026 12:33:08 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1773689588; x=1774294388; darn=vger.kernel.org;
-        h=to:message-id:subject:date:mime-version:content-transfer-encoding
-         :from:from:to:cc:subject:date:message-id:reply-to;
-        bh=BKyb47DDwdSsnpL1XTkfexWMuZ4TBqZJfWxM7FwbfB0=;
-        b=bqWp4reeTgR4lkdM/M7/v8Biqed0MJba1qPj8qkg5TxuhDtDMV50XvSatAlL2Csm2y
-         Sxr/b1KeDCSBSkR1CgmjsRc0mUYzBubzoQuh77Ao4lqZWkrsl9tloe3p6RfMoYt3OCmY
-         F17m+/fSxFXZdX5N6HpcRiMfPt+I+XErHcsWGuokir+/H47ovh+y1Rm8eszaX/klZjcu
-         IFmHaAYuVtjQ3g0IdqKjOG2oyg//IMTETIlQ3R0th2HLG306oBcup2WbuSOGpZlZjH/R
-         4ZARnVVNvyHF5sN17apNLz0wsqNhGqEDGZG9VDpUIGdpLEjRkHbUDTJtxIMEe4mHGsr5
-         D8tQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1773689588; x=1774294388;
-        h=to:message-id:subject:date:mime-version:content-transfer-encoding
-         :from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=BKyb47DDwdSsnpL1XTkfexWMuZ4TBqZJfWxM7FwbfB0=;
-        b=oZetIPAQPgc4S7gaYZbN9pC9wov7jxzSXrWbMmMio49dJyQFyC/gcLGtoLNeRRZGEH
-         vhFFX33vXQNkn+yku1mqknsD+0rNAY+mqC/7zntvEQrZt+1Mz+ZZfv8Tx4+5JvxSvjWm
-         8WnHH9UPP7aDKTKa0d7hBX+DF6ib0PMSzK2S5bYHrDxtrU/n9h/OBR+yuDlz6kEYpA48
-         RX3qhC4lSlb5o4GlKUwGBOFeXdwmqBoZ++Fn1nHD4XPjUi6nr64FSFonnCKmYGzM09U8
-         RKpDzHKdvOIAdKSnBdThc3yGzd0Ugulh/OWFyCqWVsNxa+is9a9T/nFpbiYZJyncT17e
-         Ri2w==
-X-Forwarded-Encrypted: i=1; AJvYcCX8C7dOdCRPIAQOOT9r+PSWosxIicwRp6cAiCMYMM56FgvzyUqVFa9Grzyvb3rYQng+mP5pwKmjH70e@vger.kernel.org
-X-Gm-Message-State: AOJu0Yz01Do41MMWiecZCJ0joQVCTeEdKSRfl89G3ZNjOLXdfscVWRJs
-	YlVsteFV03drNyt7xAB3dQvv0JqJNoqAP2+mStC4NqaU4/KzLSKUeerb
-X-Gm-Gg: ATEYQzwUJcdLsBJPXpGpX/xk9D+ZDQDg5YMkSoaIi16ywq/J3kHn+sB0zG5/9B97of3
-	dU4/yjTvdRIHiuNOfrqZDxW5t/8K/sY4WmMrUVcirOSTcFG8SGpZUb/GvcN/Us4yWL99NBg8h4Q
-	EXPX+Lio1AFl0DcsP+OKXGENmgTVP/ufgHV8wR0jlcQ6RCXIOEM0A/kck2qJsxw7cybgr7Simy3
-	KcqpJ5HgWRrVk0cA0YqzmhbndJ4TtR/DPAH0Zh1ZzYy1j3T0G36PryFQs9sAwS/tndhmypvYUJR
-	WM0F67Ba0GfJN0j+lp9L0TUiWeWzqYhf069pbamTougPGYQIv999jWOOFyqqchYlttq5Q/1fa0t
-	2jWoTsdzUHZ8GCf+WKaKeki4ovXfNj8CT9fEOhv46tDd+s+s/GmFEPAEHiTlEAQAhtmmMN6I2xA
-	LU5iud9jR5DNJ4CVpfhecNgxoxNRUnTgi0lWCcOn17EwJMgJJ6qPiBDW4=
-X-Received: by 2002:a05:7300:e788:b0:2be:142f:d48a with SMTP id 5a478bee46e88-2bea55a4a89mr6554425eec.27.1773689587753;
-        Mon, 16 Mar 2026 12:33:07 -0700 (PDT)
-Received: from smtpclient.apple ([128.107.241.172])
-        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-2c0bfd41aacsm8334565eec.27.2026.03.16.12.33.07
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 16 Mar 2026 12:33:07 -0700 (PDT)
-From: Shramana Chakraborty <chakrashramana28@gmail.com>
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="pkDskulU"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CDB5BC19421;
+	Mon, 16 Mar 2026 20:22:19 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1773692540;
+	bh=lunMFDLmUDZwME6Stf/cLCjqXqvBAvKS+2/nf2ou+lU=;
+	h=From:To:Cc:Subject:Date:From;
+	b=pkDskulUimYSgSHEr5XRuQ6Y2UyWEaEb4MET41cMDSNhkVIW2u91d+9a5w66hAthj
+	 b99sEtvhucrCtqDbUF1ETKIaxX1ybhNIfjwPP2i2jOrBBGGIE0670W4IkVDqz9XIHg
+	 veSX2KtUsNvSfj1MQmuO+/mqgil09m1VFDq8me6KFrPxBacoDUY72TSOc7tH7JmwoE
+	 M+WqEWHwQHUyWfeVofPyA9DJJLDL7V+68Zu8X/Vg41kYXgFX/xZ5I9eh4PSLFAExpt
+	 zEqjm0BNbezNK+3wdxJ2G1JDfDsI134PBmIGgeljnFvYAoz/uX4oPnmrgf7nmS31AF
+	 U816hA1TfBIxQ==
+From: Eric Biggers <ebiggers@kernel.org>
+To: Herbert Xu <herbert@gondor.apana.org.au>,
+	linux-crypto@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org,
+	linux-fscrypt@vger.kernel.org,
+	Thierry Reding <thierry.reding@gmail.com>,
+	Jonathan Hunter <jonathanh@nvidia.com>,
+	Eric Biggers <ebiggers@kernel.org>,
+	Zorro Lang <zlang@redhat.com>,
+	stable@vger.kernel.org,
+	Akhil R <akhilrajeev@nvidia.com>
+Subject: [PATCH v2] crypto: tegra - Add missing CRYPTO_ALG_ASYNC
+Date: Mon, 16 Mar 2026 13:21:19 -0700
+Message-ID: <20260316202119.13934-1-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3774.600.62\))
-Date: Mon, 16 Mar 2026 12:32:56 -0700
-Subject: Warning Trace seen at
- https://elixir.bootlin.com/linux/v6.6.69/source/fs/ext4/ext4_jbd2.c#L73 post
- remount-ro
-Message-Id: <E3FC477A-39B2-400F-A990-F703233B915D@gmail.com>
-To: tytso@mit.edu,
- adilger.kernel@dilger.ca,
- linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org
-X-Mailer: Apple Mail (2.3774.600.62)
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-Hi All,
+The tegra crypto driver failed to set the CRYPTO_ALG_ASYNC on its
+asynchronous algorithms, causing the crypto API to select them for users
+that request only synchronous algorithms.  This causes crashes (at
+least).  Fix this by adding the flag like what the other drivers do.
+Also remove the unnecessary CRYPTO_ALG_TYPE_* flags, since those just
+get ignored and overridden by the registration function anyway.
 
-I am following up on this bug, =
-https://bugzilla.kernel.org/show_bug.cgi?id=3D220299, I raised last year =
-regarding warning traces seen during systemd shutdown.
+Reported-by: Zorro Lang <zlang@redhat.com>
+Closes: https://lore.kernel.org/r/20260314080937.pghb4aa7d4je3mhh@dell-per750-06-vm-08.rhts.eng.pek2.redhat.com
+Fixes: 0880bb3b00c8 ("crypto: tegra - Add Tegra Security Engine driver")
+Cc: stable@vger.kernel.org
+Cc: Akhil R <akhilrajeev@nvidia.com>
+Signed-off-by: Eric Biggers <ebiggers@kernel.org>
+---
 
-Warning Trace seen at =
-https://elixir.bootlin.com/linux/v6.6.69/source/fs/ext4/ext4_jbd2.c#L73 =
-is hit by the writeback system even though there is nothing to write and =
-the filesystem has been mounted as readonly.=20
-An ext4 fs is mounted with journal=3Ddata and a large file is written to =
-it. Then the fs is mounted as readonly-ro post a sync. At this point of =
-time, data consistency is preserved through the sync itself followed by =
-a sync from the remount-ro action.=20
-All the dirty pages should be marked as clean in the cache. Yet post the =
-remount-ro, it hits =
-https://elixir.bootlin.com/linux/v6.6.69/source/fs/ext4/ext4_jbd2.c#L73 =
-and prints the trace as the fs is readonly now.=20
-Even though there is nothing to writeback, the wb_writeback is scheduled =
-every 5 secs or so and the same trace can be seen if changed from =
-WARN_ON_ONCE to WARN_ON.
+This patch is targeting crypto/master.
 
-I found that this was reported earlier as well via =
-https://lkml.org/lkml/2024/5/17/983.=20
+v2: fix tegra-se-hash.c as well, and remove unnecessary type flags
 
-This is still seen on 6.6.x LTS kernel with rootfs mounted with =
-data=3Djournal option. I wonder whether/how this could be addressed.
+ drivers/crypto/tegra/tegra-se-aes.c  | 11 ++++++----
+ drivers/crypto/tegra/tegra-se-hash.c | 30 ++++++++++++++++------------
+ 2 files changed, 24 insertions(+), 17 deletions(-)
 
-Thanks and Regards
-Shramana Chakraborty=
+diff --git a/drivers/crypto/tegra/tegra-se-aes.c b/drivers/crypto/tegra/tegra-se-aes.c
+index 0e07d0523291..9210cceb4b7b 100644
+--- a/drivers/crypto/tegra/tegra-se-aes.c
++++ b/drivers/crypto/tegra/tegra-se-aes.c
+@@ -527,11 +527,11 @@ static struct tegra_se_alg tegra_aes_algs[] = {
+ 			.ivsize	= AES_BLOCK_SIZE,
+ 			.base = {
+ 				.cra_name = "cbc(aes)",
+ 				.cra_driver_name = "cbc-aes-tegra",
+ 				.cra_priority = 500,
+-				.cra_flags = CRYPTO_ALG_TYPE_SKCIPHER | CRYPTO_ALG_ASYNC,
++				.cra_flags = CRYPTO_ALG_ASYNC,
+ 				.cra_blocksize = AES_BLOCK_SIZE,
+ 				.cra_ctxsize = sizeof(struct tegra_aes_ctx),
+ 				.cra_alignmask = 0xf,
+ 				.cra_module = THIS_MODULE,
+ 			},
+@@ -548,11 +548,11 @@ static struct tegra_se_alg tegra_aes_algs[] = {
+ 			.max_keysize = AES_MAX_KEY_SIZE,
+ 			.base = {
+ 				.cra_name = "ecb(aes)",
+ 				.cra_driver_name = "ecb-aes-tegra",
+ 				.cra_priority = 500,
+-				.cra_flags = CRYPTO_ALG_TYPE_SKCIPHER | CRYPTO_ALG_ASYNC,
++				.cra_flags = CRYPTO_ALG_ASYNC,
+ 				.cra_blocksize = AES_BLOCK_SIZE,
+ 				.cra_ctxsize = sizeof(struct tegra_aes_ctx),
+ 				.cra_alignmask = 0xf,
+ 				.cra_module = THIS_MODULE,
+ 			},
+@@ -570,11 +570,11 @@ static struct tegra_se_alg tegra_aes_algs[] = {
+ 			.ivsize	= AES_BLOCK_SIZE,
+ 			.base = {
+ 				.cra_name = "ctr(aes)",
+ 				.cra_driver_name = "ctr-aes-tegra",
+ 				.cra_priority = 500,
+-				.cra_flags = CRYPTO_ALG_TYPE_SKCIPHER | CRYPTO_ALG_ASYNC,
++				.cra_flags = CRYPTO_ALG_ASYNC,
+ 				.cra_blocksize = 1,
+ 				.cra_ctxsize = sizeof(struct tegra_aes_ctx),
+ 				.cra_alignmask = 0xf,
+ 				.cra_module = THIS_MODULE,
+ 			},
+@@ -592,10 +592,11 @@ static struct tegra_se_alg tegra_aes_algs[] = {
+ 			.ivsize	= AES_BLOCK_SIZE,
+ 			.base = {
+ 				.cra_name = "xts(aes)",
+ 				.cra_driver_name = "xts-aes-tegra",
+ 				.cra_priority = 500,
++				.cra_flags = CRYPTO_ALG_ASYNC,
+ 				.cra_blocksize = AES_BLOCK_SIZE,
+ 				.cra_ctxsize	   = sizeof(struct tegra_aes_ctx),
+ 				.cra_alignmask	   = (__alignof__(u64) - 1),
+ 				.cra_module	   = THIS_MODULE,
+ 			},
+@@ -1920,10 +1921,11 @@ static struct tegra_se_alg tegra_aead_algs[] = {
+ 			.ivsize	= GCM_AES_IV_SIZE,
+ 			.base = {
+ 				.cra_name = "gcm(aes)",
+ 				.cra_driver_name = "gcm-aes-tegra",
+ 				.cra_priority = 500,
++				.cra_flags = CRYPTO_ALG_ASYNC,
+ 				.cra_blocksize = 1,
+ 				.cra_ctxsize = sizeof(struct tegra_aead_ctx),
+ 				.cra_alignmask = 0xf,
+ 				.cra_module = THIS_MODULE,
+ 			},
+@@ -1942,10 +1944,11 @@ static struct tegra_se_alg tegra_aead_algs[] = {
+ 			.chunksize = AES_BLOCK_SIZE,
+ 			.base = {
+ 				.cra_name = "ccm(aes)",
+ 				.cra_driver_name = "ccm-aes-tegra",
+ 				.cra_priority = 500,
++				.cra_flags = CRYPTO_ALG_ASYNC,
+ 				.cra_blocksize = 1,
+ 				.cra_ctxsize = sizeof(struct tegra_aead_ctx),
+ 				.cra_alignmask = 0xf,
+ 				.cra_module = THIS_MODULE,
+ 			},
+@@ -1969,11 +1972,11 @@ static struct tegra_se_alg tegra_cmac_algs[] = {
+ 			.halg.statesize = sizeof(struct tegra_cmac_reqctx),
+ 			.halg.base = {
+ 				.cra_name = "cmac(aes)",
+ 				.cra_driver_name = "tegra-se-cmac",
+ 				.cra_priority = 300,
+-				.cra_flags = CRYPTO_ALG_TYPE_AHASH,
++				.cra_flags = CRYPTO_ALG_ASYNC,
+ 				.cra_blocksize = AES_BLOCK_SIZE,
+ 				.cra_ctxsize = sizeof(struct tegra_cmac_ctx),
+ 				.cra_alignmask = 0,
+ 				.cra_module = THIS_MODULE,
+ 				.cra_init = tegra_cmac_cra_init,
+diff --git a/drivers/crypto/tegra/tegra-se-hash.c b/drivers/crypto/tegra/tegra-se-hash.c
+index 4a298ace6e9f..06bb5bf0fa33 100644
+--- a/drivers/crypto/tegra/tegra-se-hash.c
++++ b/drivers/crypto/tegra/tegra-se-hash.c
+@@ -759,11 +759,11 @@ static struct tegra_se_alg tegra_hash_algs[] = {
+ 			.halg.statesize = sizeof(struct tegra_sha_reqctx),
+ 			.halg.base = {
+ 				.cra_name = "sha1",
+ 				.cra_driver_name = "tegra-se-sha1",
+ 				.cra_priority = 300,
+-				.cra_flags = CRYPTO_ALG_TYPE_AHASH,
++				.cra_flags = CRYPTO_ALG_ASYNC,
+ 				.cra_blocksize = SHA1_BLOCK_SIZE,
+ 				.cra_ctxsize = sizeof(struct tegra_sha_ctx),
+ 				.cra_alignmask = 0,
+ 				.cra_module = THIS_MODULE,
+ 				.cra_init = tegra_sha_cra_init,
+@@ -784,11 +784,11 @@ static struct tegra_se_alg tegra_hash_algs[] = {
+ 			.halg.statesize = sizeof(struct tegra_sha_reqctx),
+ 			.halg.base = {
+ 				.cra_name = "sha224",
+ 				.cra_driver_name = "tegra-se-sha224",
+ 				.cra_priority = 300,
+-				.cra_flags = CRYPTO_ALG_TYPE_AHASH,
++				.cra_flags = CRYPTO_ALG_ASYNC,
+ 				.cra_blocksize = SHA224_BLOCK_SIZE,
+ 				.cra_ctxsize = sizeof(struct tegra_sha_ctx),
+ 				.cra_alignmask = 0,
+ 				.cra_module = THIS_MODULE,
+ 				.cra_init = tegra_sha_cra_init,
+@@ -809,11 +809,11 @@ static struct tegra_se_alg tegra_hash_algs[] = {
+ 			.halg.statesize = sizeof(struct tegra_sha_reqctx),
+ 			.halg.base = {
+ 				.cra_name = "sha256",
+ 				.cra_driver_name = "tegra-se-sha256",
+ 				.cra_priority = 300,
+-				.cra_flags = CRYPTO_ALG_TYPE_AHASH,
++				.cra_flags = CRYPTO_ALG_ASYNC,
+ 				.cra_blocksize = SHA256_BLOCK_SIZE,
+ 				.cra_ctxsize = sizeof(struct tegra_sha_ctx),
+ 				.cra_alignmask = 0,
+ 				.cra_module = THIS_MODULE,
+ 				.cra_init = tegra_sha_cra_init,
+@@ -834,11 +834,11 @@ static struct tegra_se_alg tegra_hash_algs[] = {
+ 			.halg.statesize = sizeof(struct tegra_sha_reqctx),
+ 			.halg.base = {
+ 				.cra_name = "sha384",
+ 				.cra_driver_name = "tegra-se-sha384",
+ 				.cra_priority = 300,
+-				.cra_flags = CRYPTO_ALG_TYPE_AHASH,
++				.cra_flags = CRYPTO_ALG_ASYNC,
+ 				.cra_blocksize = SHA384_BLOCK_SIZE,
+ 				.cra_ctxsize = sizeof(struct tegra_sha_ctx),
+ 				.cra_alignmask = 0,
+ 				.cra_module = THIS_MODULE,
+ 				.cra_init = tegra_sha_cra_init,
+@@ -859,11 +859,11 @@ static struct tegra_se_alg tegra_hash_algs[] = {
+ 			.halg.statesize = sizeof(struct tegra_sha_reqctx),
+ 			.halg.base = {
+ 				.cra_name = "sha512",
+ 				.cra_driver_name = "tegra-se-sha512",
+ 				.cra_priority = 300,
+-				.cra_flags = CRYPTO_ALG_TYPE_AHASH,
++				.cra_flags = CRYPTO_ALG_ASYNC,
+ 				.cra_blocksize = SHA512_BLOCK_SIZE,
+ 				.cra_ctxsize = sizeof(struct tegra_sha_ctx),
+ 				.cra_alignmask = 0,
+ 				.cra_module = THIS_MODULE,
+ 				.cra_init = tegra_sha_cra_init,
+@@ -884,11 +884,11 @@ static struct tegra_se_alg tegra_hash_algs[] = {
+ 			.halg.statesize = sizeof(struct tegra_sha_reqctx),
+ 			.halg.base = {
+ 				.cra_name = "sha3-224",
+ 				.cra_driver_name = "tegra-se-sha3-224",
+ 				.cra_priority = 300,
+-				.cra_flags = CRYPTO_ALG_TYPE_AHASH,
++				.cra_flags = CRYPTO_ALG_ASYNC,
+ 				.cra_blocksize = SHA3_224_BLOCK_SIZE,
+ 				.cra_ctxsize = sizeof(struct tegra_sha_ctx),
+ 				.cra_alignmask = 0,
+ 				.cra_module = THIS_MODULE,
+ 				.cra_init = tegra_sha_cra_init,
+@@ -909,11 +909,11 @@ static struct tegra_se_alg tegra_hash_algs[] = {
+ 			.halg.statesize = sizeof(struct tegra_sha_reqctx),
+ 			.halg.base = {
+ 				.cra_name = "sha3-256",
+ 				.cra_driver_name = "tegra-se-sha3-256",
+ 				.cra_priority = 300,
+-				.cra_flags = CRYPTO_ALG_TYPE_AHASH,
++				.cra_flags = CRYPTO_ALG_ASYNC,
+ 				.cra_blocksize = SHA3_256_BLOCK_SIZE,
+ 				.cra_ctxsize = sizeof(struct tegra_sha_ctx),
+ 				.cra_alignmask = 0,
+ 				.cra_module = THIS_MODULE,
+ 				.cra_init = tegra_sha_cra_init,
+@@ -934,11 +934,11 @@ static struct tegra_se_alg tegra_hash_algs[] = {
+ 			.halg.statesize = sizeof(struct tegra_sha_reqctx),
+ 			.halg.base = {
+ 				.cra_name = "sha3-384",
+ 				.cra_driver_name = "tegra-se-sha3-384",
+ 				.cra_priority = 300,
+-				.cra_flags = CRYPTO_ALG_TYPE_AHASH,
++				.cra_flags = CRYPTO_ALG_ASYNC,
+ 				.cra_blocksize = SHA3_384_BLOCK_SIZE,
+ 				.cra_ctxsize = sizeof(struct tegra_sha_ctx),
+ 				.cra_alignmask = 0,
+ 				.cra_module = THIS_MODULE,
+ 				.cra_init = tegra_sha_cra_init,
+@@ -959,11 +959,11 @@ static struct tegra_se_alg tegra_hash_algs[] = {
+ 			.halg.statesize = sizeof(struct tegra_sha_reqctx),
+ 			.halg.base = {
+ 				.cra_name = "sha3-512",
+ 				.cra_driver_name = "tegra-se-sha3-512",
+ 				.cra_priority = 300,
+-				.cra_flags = CRYPTO_ALG_TYPE_AHASH,
++				.cra_flags = CRYPTO_ALG_ASYNC,
+ 				.cra_blocksize = SHA3_512_BLOCK_SIZE,
+ 				.cra_ctxsize = sizeof(struct tegra_sha_ctx),
+ 				.cra_alignmask = 0,
+ 				.cra_module = THIS_MODULE,
+ 				.cra_init = tegra_sha_cra_init,
+@@ -986,11 +986,12 @@ static struct tegra_se_alg tegra_hash_algs[] = {
+ 			.halg.statesize = sizeof(struct tegra_sha_reqctx),
+ 			.halg.base = {
+ 				.cra_name = "hmac(sha224)",
+ 				.cra_driver_name = "tegra-se-hmac-sha224",
+ 				.cra_priority = 300,
+-				.cra_flags = CRYPTO_ALG_TYPE_AHASH | CRYPTO_ALG_NEED_FALLBACK,
++				.cra_flags = CRYPTO_ALG_ASYNC |
++					     CRYPTO_ALG_NEED_FALLBACK,
+ 				.cra_blocksize = SHA224_BLOCK_SIZE,
+ 				.cra_ctxsize = sizeof(struct tegra_sha_ctx),
+ 				.cra_alignmask = 0,
+ 				.cra_module = THIS_MODULE,
+ 				.cra_init = tegra_sha_cra_init,
+@@ -1013,11 +1014,12 @@ static struct tegra_se_alg tegra_hash_algs[] = {
+ 			.halg.statesize = sizeof(struct tegra_sha_reqctx),
+ 			.halg.base = {
+ 				.cra_name = "hmac(sha256)",
+ 				.cra_driver_name = "tegra-se-hmac-sha256",
+ 				.cra_priority = 300,
+-				.cra_flags = CRYPTO_ALG_TYPE_AHASH | CRYPTO_ALG_NEED_FALLBACK,
++				.cra_flags = CRYPTO_ALG_ASYNC |
++					     CRYPTO_ALG_NEED_FALLBACK,
+ 				.cra_blocksize = SHA256_BLOCK_SIZE,
+ 				.cra_ctxsize = sizeof(struct tegra_sha_ctx),
+ 				.cra_alignmask = 0,
+ 				.cra_module = THIS_MODULE,
+ 				.cra_init = tegra_sha_cra_init,
+@@ -1040,11 +1042,12 @@ static struct tegra_se_alg tegra_hash_algs[] = {
+ 			.halg.statesize = sizeof(struct tegra_sha_reqctx),
+ 			.halg.base = {
+ 				.cra_name = "hmac(sha384)",
+ 				.cra_driver_name = "tegra-se-hmac-sha384",
+ 				.cra_priority = 300,
+-				.cra_flags = CRYPTO_ALG_TYPE_AHASH | CRYPTO_ALG_NEED_FALLBACK,
++				.cra_flags = CRYPTO_ALG_ASYNC |
++					     CRYPTO_ALG_NEED_FALLBACK,
+ 				.cra_blocksize = SHA384_BLOCK_SIZE,
+ 				.cra_ctxsize = sizeof(struct tegra_sha_ctx),
+ 				.cra_alignmask = 0,
+ 				.cra_module = THIS_MODULE,
+ 				.cra_init = tegra_sha_cra_init,
+@@ -1067,11 +1070,12 @@ static struct tegra_se_alg tegra_hash_algs[] = {
+ 			.halg.statesize = sizeof(struct tegra_sha_reqctx),
+ 			.halg.base = {
+ 				.cra_name = "hmac(sha512)",
+ 				.cra_driver_name = "tegra-se-hmac-sha512",
+ 				.cra_priority = 300,
+-				.cra_flags = CRYPTO_ALG_TYPE_AHASH | CRYPTO_ALG_NEED_FALLBACK,
++				.cra_flags = CRYPTO_ALG_ASYNC |
++					     CRYPTO_ALG_NEED_FALLBACK,
+ 				.cra_blocksize = SHA512_BLOCK_SIZE,
+ 				.cra_ctxsize = sizeof(struct tegra_sha_ctx),
+ 				.cra_alignmask = 0,
+ 				.cra_module = THIS_MODULE,
+ 				.cra_init = tegra_sha_cra_init,
+
+base-commit: 5c52607c43c397b79a9852ce33fc61de58c3645c
+-- 
+2.53.0
+
