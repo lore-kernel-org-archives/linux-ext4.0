@@ -1,75 +1,118 @@
-Received: from out-180.mta1.migadu.com (out-180.mta1.migadu.com [95.215.58.180])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 04F8C356A24
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Mar 2026 08:20:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=95.215.58.180
+Received: from foss.arm.com (foss.arm.com [217.140.110.172])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 3B44B3988EE;
+	Mon, 16 Mar 2026 13:30:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.140.110.172
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773649244; cv=none; b=p47pUB7Is7nG1LCUm2Ugswy2a1N/LXf8E0MDyCLIuzObcVwCIU4oOqcWgAzTUXBtSsCNVKhnKNsuCwBLd9ZqHy6oKU9sA36+aFDAU0myu0a0kkdXl6MuRE0D1HUID0ajC51tkdqY4DtihYzwPJ9PzNtevTN7+hZ1Me1QGn2Sq2E=
+	t=1773667835; cv=none; b=dMmWbQcH9JXXE3dVUgMNW4DFLAhgCEZhhlhpCenx9HwWxkTmE1uTzwVMrvrtGunNs1VrPWP5rZM4lkGQSP7FsIOJODAJxpbrEmTA5eCCzSOxYC5y/ou/ovFowog2PpdEUnuaZZ3pNPDtvj+wqVD6PA4W2aQFgtQyVmbqVOi490o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773649244; c=relaxed/simple;
-	bh=oeVzCri6wpeDD6cg8BuScxKUpYVfZuAUzvu3p3QJ8xI=;
-	h=From:To:Cc:Subject:Date:Message-Id; b=mizQgK7guWu3IIUAU/whjESIxxti9HIUR5VNBcvK3Ad96re6KDf0XjXQfPGofaEPVf2NJKPOSQqIsoABNLeeqx8gfT2DzR8exLNhLm172B9ILziRtwcwzHGwb7ZyPIRf7JvaA+zgMA2Nf0CalDyrU+JiuGl/TPht1I66zdxpo0A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=BkTZDjqO; arc=none smtp.client-ip=95.215.58.180
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="BkTZDjqO"
-X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-	t=1773649231;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc; bh=xQLmof+oFaB/69SzWnte3YNOj3E5zBMIyI7uGACdvnM=;
-	b=BkTZDjqOld3UxqavtrcxfuW5Q9q5Clq89l2XrTxGrckJUZsRkg6+ZootacPGW9XZqV9Cv2
-	y27ZfF8AB+Wdi1sMjNeOia4A6qALewWGRx+zAA/YgVVdganJMTl5p0tobfY8qU8TUKkoAs
-	tR2INgX0D7f5pliFggtKe7tPrzenEvY=
-From: Zqiang <qiang.zhang@linux.dev>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca
-Cc: linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	qiang.zhang@linux.dev
-Subject: [PATCH] ext4: Fix possible NULL pointer dereference in ext4_group_desc_free()
-Date: Mon, 16 Mar 2026 16:20:25 +0800
-Message-Id: <20260316082025.9574-1-qiang.zhang@linux.dev>
-X-Migadu-Flow: FLOW_OUT
+	s=arc-20240116; t=1773667835; c=relaxed/simple;
+	bh=12QmHVFW6kvGAsAEHlRgc6k9FaOX+eCOvB+1XSjB85g=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=Bbj9i3OmX6tLHsLG9LsVUer8BMIseUV+cewr4p5b4W0GLlnwPuU7seL8aE/at0nXm72aSd8dJNxLetLzuHHuYyH1LmmKQGBoR67oCN6y9fm4gvzOaf7ZCgi6tFdE7Nt15YoWXaTLjQ3vkM5D8UeKzGqO7h9DPbsmd2QLdRgsNKs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=arm.com; spf=pass smtp.mailfrom=arm.com; arc=none smtp.client-ip=217.140.110.172
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=arm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=arm.com
+Received: from usa-sjc-imap-foss1.foss.arm.com (unknown [10.121.207.14])
+	by usa-sjc-mx-foss1.foss.arm.com (Postfix) with ESMTP id 357291477;
+	Mon, 16 Mar 2026 06:30:25 -0700 (PDT)
+Received: from [10.57.61.116] (unknown [10.57.61.116])
+	by usa-sjc-imap-foss1.foss.arm.com (Postfix) with ESMTPSA id 9D4953F778;
+	Mon, 16 Mar 2026 06:30:22 -0700 (PDT)
+Message-ID: <2c7466f5-d952-4356-9b55-9d2ebb3471f2@arm.com>
+Date: Mon, 16 Mar 2026 13:30:19 +0000
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 50/61] iommu: Prefer IS_ERR_OR_NULL over manual NULL check
+To: Philipp Hahn <phahn-oss@avm.de>, amd-gfx@lists.freedesktop.org,
+ apparmor@lists.ubuntu.com, bpf@vger.kernel.org, ceph-devel@vger.kernel.org,
+ cocci@inria.fr, dm-devel@lists.linux.dev, dri-devel@lists.freedesktop.org,
+ gfs2@lists.linux.dev, intel-gfx@lists.freedesktop.org,
+ intel-wired-lan@lists.osuosl.org, iommu@lists.linux.dev,
+ kvm@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+ linux-block@vger.kernel.org, linux-bluetooth@vger.kernel.org,
+ linux-btrfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+ linux-clk@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+ linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-gpio@vger.kernel.org, linux-hyperv@vger.kernel.org,
+ linux-input@vger.kernel.org, linux-kernel@vger.kernel.org,
+ linux-leds@vger.kernel.org, linux-media@vger.kernel.org,
+ linux-mips@vger.kernel.org, linux-mm@kvack.org,
+ linux-modules@vger.kernel.org, linux-mtd@lists.infradead.org,
+ linux-nfs@vger.kernel.org, linux-omap@vger.kernel.org,
+ linux-phy@lists.infradead.org, linux-pm@vger.kernel.org,
+ linux-rockchip@lists.infradead.org, linux-s390@vger.kernel.org,
+ linux-scsi@vger.kernel.org, linux-sctp@vger.kernel.org,
+ linux-security-module@vger.kernel.org, linux-sh@vger.kernel.org,
+ linux-sound@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com,
+ linux-trace-kernel@vger.kernel.org, linux-usb@vger.kernel.org,
+ linux-wireless@vger.kernel.org, netdev@vger.kernel.org,
+ ntfs3@lists.linux.dev, samba-technical@lists.samba.org,
+ sched-ext@lists.linux.dev, target-devel@vger.kernel.org,
+ tipc-discussion@lists.sourceforge.net, v9fs@lists.linux.dev
+Cc: Joerg Roedel <joro@8bytes.org>, Will Deacon <will@kernel.org>
+References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
+ <20260310-b4-is_err_or_null-v1-50-bd63b656022d@avm.de>
+From: Robin Murphy <robin.murphy@arm.com>
+Content-Language: en-GB
+In-Reply-To: <20260310-b4-is_err_or_null-v1-50-bd63b656022d@avm.de>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-This can happen if the kvmalloc_objs() fails and sbi->s_group_desc pointer
-is NULL in the ext4_group_desc_init(), and then the ext4_group_desc_free()
-is called, leading to a NULL group_desc pointer dereference.
+On 2026-03-10 11:49 am, Philipp Hahn wrote:
+> Prefer using IS_ERR_OR_NULL() over using IS_ERR() and a manual NULL
+> check.
 
-This commit therefore adds a NULL check for sbi->s_group_desc before
-accessing its internal members.
+AFAICS it doesn't look possible for the argument to be anything other 
+than valid at both callsites, so *both* conditions here seem in fact to 
+be entirely redundant.
 
-Signed-off-by: Zqiang <qiang.zhang@linux.dev>
----
- fs/ext4/super.c | 8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+> Change generated with coccinelle.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 43f680c750ae..c4307dc04687 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1256,9 +1256,11 @@ static void ext4_group_desc_free(struct ext4_sb_info *sbi)
- 
- 	rcu_read_lock();
- 	group_desc = rcu_dereference(sbi->s_group_desc);
--	for (i = 0; i < sbi->s_gdb_count; i++)
--		brelse(group_desc[i]);
--	kvfree(group_desc);
-+	if (group_desc) {
-+		for (i = 0; i < sbi->s_gdb_count; i++)
-+			brelse(group_desc[i]);
-+		kvfree(group_desc);
-+	}
- 	rcu_read_unlock();
- }
- 
--- 
-2.17.1
+Please use coccinelle responsibly. Mechanical changes are great for 
+scripted API updates, but for cleanup, whilst it's ideal for *finding* 
+areas of code that are worth looking at, the code then wants actually 
+looking at, in its whole context, because meaningful cleanup often goes 
+deeper than trivial replacement.
+
+In particular, anywhere IS_ERR_OR_NULL() is genuinely relevant is 
+usually a sign of bad interface design, so if you're looking at this 
+then you really should be looking first and foremost to remove any 
+checks that are already unnecessary, and for the remainder, to see if 
+the thing being checked can be improved to not mix the two different 
+styles. That would be constructive and (usually) welcome cleanup. Simply 
+churning a bunch of code with this ugly macro that's arguably less 
+readable than what it replaces, not so much.
+
+Thanks,
+Robin.
+
+> To: Joerg Roedel <joro@8bytes.org>
+> To: Will Deacon <will@kernel.org>
+> To: Robin Murphy <robin.murphy@arm.com>
+> Cc: iommu@lists.linux.dev
+> Cc: linux-kernel@vger.kernel.org
+> Signed-off-by: Philipp Hahn <phahn-oss@avm.de>
+> ---
+>   drivers/iommu/omap-iommu.c | 2 +-
+>   1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/drivers/iommu/omap-iommu.c b/drivers/iommu/omap-iommu.c
+> index 8231d7d6bb6a9202025643639a6b28e6faa84659..500a42b57a997696ff37c76f028a717ab71d01f9 100644
+> --- a/drivers/iommu/omap-iommu.c
+> +++ b/drivers/iommu/omap-iommu.c
+> @@ -881,7 +881,7 @@ static int omap_iommu_attach(struct omap_iommu *obj, u32 *iopgd)
+>    **/
+>   static void omap_iommu_detach(struct omap_iommu *obj)
+>   {
+> -	if (!obj || IS_ERR(obj))
+> +	if (IS_ERR_OR_NULL(obj))
+>   		return;
+>   
+>   	spin_lock(&obj->iommu_lock);
+> 
 
