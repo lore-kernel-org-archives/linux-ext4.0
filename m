@@ -1,41 +1,41 @@
 Received: from sender4-op-o15.zoho.com (sender4-op-o15.zoho.com [136.143.188.15])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C578A34DB4B;
-	Tue, 17 Mar 2026 08:49:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 08B82347523;
+	Tue, 17 Mar 2026 08:49:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=136.143.188.15
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773737354; cv=pass; b=nxFyz3fWyIXQb35r7sUkbUG4e2X8x/oSA9md/uHvZZ9nKA7fS3iKHuN7hdRTf8kGcQySqZenLUyzL6I4Rz6gyxFNMd34eTWJURjLotmoEN/Al34G4bnDWw3UCmtKzeMlR+QifN3OhEgHfe2ogw3U+3yu8FAZ1i3cl0UhMiGCLpg=
+	t=1773737374; cv=pass; b=cNRogjq3ifPWTaIwMckDH5b+S1yBfQYlhR8oFSkDhPyJiYLEi8IIsPeRQZ0a6osBRATB1XUf4zPQ6CxFm9noRuuXbB4G7gu1kLZOw0v1rZYx8vawslgmGNthACY/nswe301KoGodiKaBjiADVEYycnalLPS3eg53xFf5zmY+VJ8=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773737354; c=relaxed/simple;
-	bh=2QQnnYAFsnVBSeKVvXgvRx2UHnhO/USOL8fHAb5/tgQ=;
+	s=arc-20240116; t=1773737374; c=relaxed/simple;
+	bh=2T1XEP+0MbcGvf5V4jkWy/jAlUceMp6GSTuQIhUYAm8=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=nVxnLjeN0gmI4BqtBHe3u4G/7B4AzWDFlLv3ZQuTgxqC+ffyogsR7PZPAUTPZUojTy51qhb41JETsZTqabgHSPfbY7+GGvwswCwvK0SD6ha2/f+DUZm4HAUW8YfX/1R8x9AnWOa5uTJI2iDnv6idPDNw5K57lsP9A9YJpG8mBQw=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty; spf=pass smtp.mailfrom=linux.beauty; dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b=DPHeUuyX; arc=pass smtp.client-ip=136.143.188.15
+	 MIME-Version; b=IxxXHAxcdZTO55Vf+AySKQgEIv3ccU1h3b5GeWtzHgfccnPRu0rXE6h6BXiLKUDPuS/g5gtJHUUUIyiMcHNv3ckl4bXRtNlTT+Gvq1/SClz1bEhszqo9isszkahvl9XwIg/LXBz9pk4cvxDtv/2dyKvmsBDmcmS2s+f1MgfwdY4=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty; spf=pass smtp.mailfrom=linux.beauty; dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b=h3slt7MN; arc=pass smtp.client-ip=136.143.188.15
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.beauty
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b="DPHeUuyX"
-ARC-Seal: i=1; a=rsa-sha256; t=1773737203; cv=none; 
+	dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b="h3slt7MN"
+ARC-Seal: i=1; a=rsa-sha256; t=1773737207; cv=none; 
 	d=zohomail.com; s=zohoarc; 
-	b=PXI+XJ03V1M0x1QBzMT2ZVJJ8eyWbrJ3ZOjmOr+ChfRh9MX29ElMbrbg0I/DaFHvzeb8MvWbCnPPVZpwuXe6GHAl6tdDHPaeVfnZwGy5BTwYWFHvjaxy0AaWD5g67/5udfsgTN6rtWSPV/oSBHbMoZNlgT/kkiOkS11BdGK5g+A=
+	b=fryVqFhxzvVeMHpI/nWxveNM4UdB+jJhipE1ePCuTQyHACojZ0DS3oErYr2pOk3hWwzMHlHDlpkSLYcMoLyh+TJHE/rqewN63q61yV7QT/G4iz1qX0X387anNI/fMlLVTpzlE4R88VOqn+DytRKi+A0YvAjoI+lOv5gy9G5mUFI=
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zohomail.com; s=zohoarc; 
-	t=1773737203; h=Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:Subject:To:To:Message-Id:Reply-To; 
-	bh=tL/9hXvNCUQaU/c3iyjpe5tzJGEQNbiFXrrzi7CN0HU=; 
-	b=PydlSFv8DyzVhV0+OXaxOd8mPsmPGPZ9xEHP4WosJ96xSyJULWiFIna0iQoeLQSDB/xeMSjFeKaAb9XGMbM1QnJwFvu6c+PBXE4p5KoRvkC92mUPvEobACxtNCsO7G5k4zIlVVG5UvSQURewLv2NsfFj6AXq4aaX2sa8az+sV5Q=
+	t=1773737207; h=Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:Subject:To:To:Message-Id:Reply-To; 
+	bh=rDK5gClFMcbUS8LdYCJMAjdOkGkFNx9hD8v2sQ0+bsw=; 
+	b=MzEBrYqHbnMXc7c9pM320X2sF3OtJ2FENNxzowq//tVclDjVWwtwmB321Gcq6PxL1QrNiO222vtwwIQ/HsHkC6UNo4E7OXHg0poorJ2q9YmTGLHu1XgF8h69GoiC9e0jGOXL5pZFa+tmYDFxD42HxxWgvA+0Tpxa2wbfPVzarIo=
 ARC-Authentication-Results: i=1; mx.zohomail.com;
 	dkim=pass  header.i=linux.beauty;
 	spf=pass  smtp.mailfrom=me@linux.beauty;
 	dmarc=pass header.from=<me@linux.beauty>
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1773737203;
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1773737207;
 	s=zmail; d=linux.beauty; i=me@linux.beauty;
 	h=From:From:To:To:Cc:Cc:Subject:Subject:Date:Date:Message-ID:In-Reply-To:References:MIME-Version:Content-Transfer-Encoding:Message-Id:Reply-To;
-	bh=tL/9hXvNCUQaU/c3iyjpe5tzJGEQNbiFXrrzi7CN0HU=;
-	b=DPHeUuyX+VM3Ab0naXEIiooTWHNfHh4g8QJQ/2rhUVUHFckio8gg9bJ3XvxH8fQo
-	Vr9KMzI2ThZRQL0xtHGGAKJC6UrwrnHR8jEN/MewtI1BOeoYoIjO/vqrFHv4XTexb96
-	NiW/wxzKv5GCf81PVAfZt257VPT+CR3F9jyBGItA=
-Received: by mx.zohomail.com with SMTPS id 1773737201936794.0160351190276;
-	Tue, 17 Mar 2026 01:46:41 -0700 (PDT)
+	bh=rDK5gClFMcbUS8LdYCJMAjdOkGkFNx9hD8v2sQ0+bsw=;
+	b=h3slt7MNz0BCbeMG3aQcwjhRcN25E2QM/XlfDGlzfDn3M/MDBhvPq6KRNlEV1nSL
+	d6nYzBtpdZ2INluGW654jdtEAEdEm22lwoclgMY82ai2cmEQ7/t3Eck2t/sYTXrtrIZ
+	+1FHhZW5HPKlR962DvXfTEu6unOhOAh+JIXDhnC4=
+Received: by mx.zohomail.com with SMTPS id 17737372049957.253615372300146;
+	Tue, 17 Mar 2026 01:46:44 -0700 (PDT)
 From: Li Chen <me@linux.beauty>
 To: Zhang Yi <yi.zhang@huaweicloud.com>,
 	Theodore Ts'o <tytso@mit.edu>,
@@ -47,9 +47,9 @@ Cc: Steven Rostedt <rostedt@goodmis.org>,
 	Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
 	linux-trace-kernel@vger.kernel.org,
 	Li Chen <me@linux.beauty>
-Subject: [RFC v5 1/7] ext4: fast commit: snapshot inode state before writing log
-Date: Tue, 17 Mar 2026 16:46:16 +0800
-Message-ID: <20260317084624.457185-2-me@linux.beauty>
+Subject: [RFC v5 2/7] ext4: lockdep: handle i_data_sem subclassing for special inodes
+Date: Tue, 17 Mar 2026 16:46:17 +0800
+Message-ID: <20260317084624.457185-3-me@linux.beauty>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20260317084624.457185-1-me@linux.beauty>
 References: <20260317084624.457185-1-me@linux.beauty>
@@ -62,628 +62,73 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-ZohoMailClient: External
 
-Fast commit writes inode metadata and data range updates after unlocking
-journal updates. New handles can start at that point, so the log writing
-path must not look at live inode state.
+Fast commit can hold s_fc_lock while writing journal blocks. Mapping the
+journal inode can take its i_data_sem. Normal inode update paths can take a
+data inode i_data_sem and then s_fc_lock, which makes lockdep report a
+circular dependency.
 
-Add a commit-time per-inode snapshot and populate it while journal updates
-are locked and existing handles are drained. Store the snapshot behind
-ext4_inode_info->i_fc_snap so ext4_inode_info only grows by one pointer.
-The snapshot contains a copy of the on-disk inode plus the data range
-records needed for fast commit TLVs.
+lockdep treats all i_data_sem instances as one lock class and cannot
+distinguish the journal inode i_data_sem from a regular inode i_data_sem.
+The journal inode is not tracked by fast commit and no FC waiters ever
+depend on it, so this is not a real ABBA deadlock. Assign the journal inode
+a dedicated i_data_sem lockdep subclass to avoid the false positive.
 
-Snapshotting runs under jbd2_journal_lock_updates(). Avoid triggering I/O
-there by using ext4_get_inode_loc_noio() and falling back to full commit
-if the inode table block is not present or not uptodate.
-
-Log writing then only serializes the snapshot, so it no longer needs to
-call ext4_map_blocks() and take i_data_sem under s_fc_lock. The snapshot
-is installed and freed under s_fc_lock and is released from fast commit
-cleanup and inode eviction.
+Inode cache objects can be recycled, so also reset i_data_sem to
+I_DATA_SEM_NORMAL when allocating an ext4 inode. Otherwise a new inode may
+inherit an old subclass (journal/quota/ea) and trigger lockdep warnings.
 
 Signed-off-by: Li Chen <me@linux.beauty>
 ---
- fs/ext4/ext4.h        |  22 ++-
- fs/ext4/fast_commit.c | 330 +++++++++++++++++++++++++++++++++++-------
- fs/ext4/inode.c       |  51 +++++++
- 3 files changed, 351 insertions(+), 52 deletions(-)
+ fs/ext4/ext4.h  | 4 +++-
+ fs/ext4/super.c | 8 ++++++++
+ 2 files changed, 11 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 1524276aeac79..bd30c24d4f948 100644
+index bd30c24d4f948..2e1681057196a 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1033,6 +1033,7 @@ enum {
- 	I_DATA_SEM_EA
+@@ -1025,12 +1025,14 @@ do {										\
+  *			  than the first
+  *  I_DATA_SEM_QUOTA  - Used for quota inodes only
+  *  I_DATA_SEM_EA     - Used for ea_inodes only
++ *  I_DATA_SEM_JOURNAL - Used for journal inode only
+  */
+ enum {
+ 	I_DATA_SEM_NORMAL = 0,
+ 	I_DATA_SEM_OTHER,
+ 	I_DATA_SEM_QUOTA,
+-	I_DATA_SEM_EA
++	I_DATA_SEM_EA,
++	I_DATA_SEM_JOURNAL
  };
  
-+struct ext4_fc_inode_snap;
- 
- /*
-  * fourth extended file system inode data in memory
-@@ -1089,6 +1090,22 @@ struct ext4_inode_info {
- 	/* End of lblk range that needs to be committed in this fast commit */
- 	ext4_lblk_t i_fc_lblk_len;
- 
-+	/*
-+	 * Commit-time fast commit snapshots.
-+	 *
-+	 * i_fc_snap is installed and freed under sbi->s_fc_lock. The fast
-+	 * commit log writing path reads the snapshot under sbi->s_fc_lock while
-+	 * serializing fast commit TLVs.
-+	 *
-+	 * The snapshot lifetime is bounded by EXT4_STATE_FC_COMMITTING and the
-+	 * corresponding cleanup / eviction paths.
-+	 *
-+	 * i_fc_snap points to per-inode snapshot data for fast commit:
-+	 * - a raw inode snapshot for EXT4_FC_TAG_INODE
-+	 * - data range records for EXT4_FC_TAG_{ADD,DEL}_RANGE
-+	 */
-+	struct ext4_fc_inode_snap *i_fc_snap;
-+
- 	spinlock_t i_raw_lock;	/* protects updates to the raw inode */
- 
- 	/* Fast commit wait queue for this inode */
-@@ -3093,8 +3110,9 @@ extern int  ext4_file_getattr(struct mnt_idmap *, const struct path *,
- 			      struct kstat *, u32, unsigned int);
- extern void ext4_dirty_inode(struct inode *, int);
- extern int ext4_change_inode_journal_flag(struct inode *, int);
--extern int ext4_get_inode_loc(struct inode *, struct ext4_iloc *);
--extern int ext4_get_fc_inode_loc(struct super_block *sb, unsigned long ino,
-+int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc);
-+int ext4_get_inode_loc_noio(struct inode *inode, struct ext4_iloc *iloc);
-+int ext4_get_fc_inode_loc(struct super_block *sb, unsigned long ino,
- 			  struct ext4_iloc *iloc);
- extern int ext4_inode_attach_jinode(struct inode *inode);
- extern int ext4_can_truncate(struct inode *inode);
-diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 5bd57d7f921b9..d5c28304e8181 100644
---- a/fs/ext4/fast_commit.c
-+++ b/fs/ext4/fast_commit.c
-@@ -55,21 +55,23 @@
-  *     deleted while it is being flushed.
-  * [2] Flush data buffers to disk and clear "EXT4_STATE_FC_FLUSHING_DATA"
-  *     state.
-- * [3] Lock the journal by calling jbd2_journal_lock_updates. This ensures that
-- *     all the exsiting handles finish and no new handles can start.
-- * [4] Mark all the fast commit eligible inodes as undergoing fast commit
-- *     by setting "EXT4_STATE_FC_COMMITTING" state.
-- * [5] Unlock the journal by calling jbd2_journal_unlock_updates. This allows
-+ * [3] Lock the journal by calling jbd2_journal_lock_updates(). This ensures
-+ *     that all the existing handles finish and no new handles can start.
-+ * [4] Mark all the fast commit eligible inodes as undergoing fast commit by
-+ *     setting "EXT4_STATE_FC_COMMITTING" state, and snapshot the inode state
-+ *     needed for log writing.
-+ * [5] Unlock the journal by calling jbd2_journal_unlock_updates(). This allows
-  *     starting of new handles. If new handles try to start an update on
-  *     any of the inodes that are being committed, ext4_fc_track_inode()
-  *     will block until those inodes have finished the fast commit.
-  * [6] Commit all the directory entry updates in the fast commit space.
-- * [7] Commit all the changed inodes in the fast commit space and clear
-- *     "EXT4_STATE_FC_COMMITTING" for these inodes.
-+ * [7] Commit all the changed inodes in the fast commit space.
-  * [8] Write tail tag (this tag ensures the atomicity, please read the following
-  *     section for more details).
-+ * [9] Clear "EXT4_STATE_FC_COMMITTING" and wake up waiters in
-+ *     ext4_fc_cleanup().
-  *
-- * All the inode updates must be enclosed within jbd2_jounrnal_start()
-+ * All the inode updates must be enclosed within jbd2_journal_start()
-  * and jbd2_journal_stop() similar to JBD2 journaling.
-  *
-  * Fast Commit Ineligibility
-@@ -199,6 +201,8 @@ static void ext4_end_buffer_io_sync(struct buffer_head *bh, int uptodate)
- 	unlock_buffer(bh);
+ struct ext4_fc_inode_snap;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 79762c3e0dff3..4f5f0c21d436f 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1423,6 +1423,9 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 	INIT_WORK(&ei->i_rsv_conversion_work, ext4_end_io_rsv_work);
+ 	ext4_fc_init_inode(&ei->vfs_inode);
+ 	spin_lock_init(&ei->i_fc_lock);
++#ifdef CONFIG_LOCKDEP
++	lockdep_set_subclass(&ei->i_data_sem, I_DATA_SEM_NORMAL);
++#endif
+ 	return &ei->vfs_inode;
  }
  
-+static void ext4_fc_free_inode_snap(struct inode *inode);
-+
- static inline void ext4_fc_reset_inode(struct inode *inode)
- {
- 	struct ext4_inode_info *ei = EXT4_I(inode);
-@@ -215,6 +219,7 @@ void ext4_fc_init_inode(struct inode *inode)
- 	ext4_clear_inode_state(inode, EXT4_STATE_FC_COMMITTING);
- 	INIT_LIST_HEAD(&ei->i_fc_list);
- 	INIT_LIST_HEAD(&ei->i_fc_dilist);
-+	ei->i_fc_snap = NULL;
- 	init_waitqueue_head(&ei->i_fc_wait);
- }
- 
-@@ -240,6 +245,7 @@ void ext4_fc_del(struct inode *inode)
- 
- 	alloc_ctx = ext4_fc_lock(inode->i_sb);
- 	if (list_empty(&ei->i_fc_list) && list_empty(&ei->i_fc_dilist)) {
-+		ext4_fc_free_inode_snap(inode);
- 		ext4_fc_unlock(inode->i_sb, alloc_ctx);
- 		return;
- 	}
-@@ -281,6 +287,7 @@ void ext4_fc_del(struct inode *inode)
- 		}
- 		finish_wait(wq, &wait.wq_entry);
- 	}
-+	ext4_fc_free_inode_snap(inode);
- 	list_del_init(&ei->i_fc_list);
- 
- 	/*
-@@ -845,6 +852,21 @@ static bool ext4_fc_add_dentry_tlv(struct super_block *sb, u32 *crc,
- 	return true;
- }
- 
-+struct ext4_fc_range {
-+	struct list_head list;
-+	u16 tag;
-+	ext4_lblk_t lblk;
-+	ext4_lblk_t len;
-+	ext4_fsblk_t pblk;
-+	bool unwritten;
-+};
-+
-+struct ext4_fc_inode_snap {
-+	struct list_head data_list;
-+	unsigned int inode_len;
-+	u8 inode_buf[];
-+};
-+
- /*
-  * Writes inode in the fast commit space under TLV with tag @tag.
-  * Returns 0 on success, error on failure.
-@@ -852,21 +874,21 @@ static bool ext4_fc_add_dentry_tlv(struct super_block *sb, u32 *crc,
- static int ext4_fc_write_inode(struct inode *inode, u32 *crc)
- {
- 	struct ext4_inode_info *ei = EXT4_I(inode);
--	int inode_len = EXT4_GOOD_OLD_INODE_SIZE;
--	int ret;
--	struct ext4_iloc iloc;
-+	struct ext4_fc_inode_snap *snap = ei->i_fc_snap;
- 	struct ext4_fc_inode fc_inode;
- 	struct ext4_fc_tl tl;
- 	u8 *dst;
-+	u8 *src;
-+	int inode_len;
-+	int ret;
- 
--	ret = ext4_get_inode_loc(inode, &iloc);
--	if (ret)
--		return ret;
-+	if (!snap)
-+		return -ECANCELED;
- 
--	if (ext4_test_inode_flag(inode, EXT4_INODE_INLINE_DATA))
--		inode_len = EXT4_INODE_SIZE(inode->i_sb);
--	else if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE)
--		inode_len += ei->i_extra_isize;
-+	src = snap->inode_buf;
-+	inode_len = snap->inode_len;
-+	if (!src || inode_len == 0)
-+		return -ECANCELED;
- 
- 	fc_inode.fc_ino = cpu_to_le32(inode->i_ino);
- 	tl.fc_tag = cpu_to_le16(EXT4_FC_TAG_INODE);
-@@ -882,10 +904,9 @@ static int ext4_fc_write_inode(struct inode *inode, u32 *crc)
- 	dst += EXT4_FC_TAG_BASE_LEN;
- 	memcpy(dst, &fc_inode, sizeof(fc_inode));
- 	dst += sizeof(fc_inode);
--	memcpy(dst, (u8 *)ext4_raw_inode(&iloc), inode_len);
-+	memcpy(dst, src, inode_len);
- 	ret = 0;
- err:
--	brelse(iloc.bh);
- 	return ret;
- }
- 
-@@ -895,12 +916,74 @@ static int ext4_fc_write_inode(struct inode *inode, u32 *crc)
-  */
- static int ext4_fc_write_inode_data(struct inode *inode, u32 *crc)
- {
--	ext4_lblk_t old_blk_size, cur_lblk_off, new_blk_size;
- 	struct ext4_inode_info *ei = EXT4_I(inode);
--	struct ext4_map_blocks map;
-+	struct ext4_fc_inode_snap *snap = ei->i_fc_snap;
- 	struct ext4_fc_add_range fc_ext;
- 	struct ext4_fc_del_range lrange;
- 	struct ext4_extent *ex;
-+	struct ext4_fc_range *range;
-+
-+	if (!snap)
-+		return -ECANCELED;
-+
-+	list_for_each_entry(range, &snap->data_list, list) {
-+		if (range->tag == EXT4_FC_TAG_DEL_RANGE) {
-+			lrange.fc_ino = cpu_to_le32(inode->i_ino);
-+			lrange.fc_lblk = cpu_to_le32(range->lblk);
-+			lrange.fc_len = cpu_to_le32(range->len);
-+			if (!ext4_fc_add_tlv(inode->i_sb, EXT4_FC_TAG_DEL_RANGE,
-+					     sizeof(lrange), (u8 *)&lrange, crc))
-+				return -ENOSPC;
-+			continue;
-+		}
-+
-+		fc_ext.fc_ino = cpu_to_le32(inode->i_ino);
-+		ex = (struct ext4_extent *)&fc_ext.fc_ex;
-+		ex->ee_block = cpu_to_le32(range->lblk);
-+		ex->ee_len = cpu_to_le16(range->len);
-+		ext4_ext_store_pblock(ex, range->pblk);
-+		if (range->unwritten)
-+			ext4_ext_mark_unwritten(ex);
-+		else
-+			ext4_ext_mark_initialized(ex);
-+
-+		if (!ext4_fc_add_tlv(inode->i_sb, EXT4_FC_TAG_ADD_RANGE,
-+				     sizeof(fc_ext), (u8 *)&fc_ext, crc))
-+			return -ENOSPC;
-+	}
-+
-+	return 0;
-+}
-+
-+static void ext4_fc_free_ranges(struct list_head *head)
-+{
-+	struct ext4_fc_range *range, *range_n;
-+
-+	list_for_each_entry_safe(range, range_n, head, list) {
-+		list_del(&range->list);
-+		kfree(range);
-+	}
-+}
-+
-+static void ext4_fc_free_inode_snap(struct inode *inode)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct ext4_fc_inode_snap *snap = ei->i_fc_snap;
-+
-+	if (!snap)
-+		return;
-+
-+	ext4_fc_free_ranges(&snap->data_list);
-+	kfree(snap);
-+	ei->i_fc_snap = NULL;
-+}
-+
-+static int ext4_fc_snapshot_inode_data(struct inode *inode,
-+				       struct list_head *ranges)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	ext4_lblk_t start_lblk, end_lblk, cur_lblk;
-+	struct ext4_map_blocks map;
- 	int ret;
- 
- 	spin_lock(&ei->i_fc_lock);
-@@ -908,18 +991,20 @@ static int ext4_fc_write_inode_data(struct inode *inode, u32 *crc)
- 		spin_unlock(&ei->i_fc_lock);
- 		return 0;
- 	}
--	old_blk_size = ei->i_fc_lblk_start;
--	new_blk_size = ei->i_fc_lblk_start + ei->i_fc_lblk_len - 1;
-+	start_lblk = ei->i_fc_lblk_start;
-+	end_lblk = ei->i_fc_lblk_start + ei->i_fc_lblk_len - 1;
- 	ei->i_fc_lblk_len = 0;
- 	spin_unlock(&ei->i_fc_lock);
- 
--	cur_lblk_off = old_blk_size;
--	ext4_debug("will try writing %d to %d for inode %ld\n",
--		   cur_lblk_off, new_blk_size, inode->i_ino);
-+	cur_lblk = start_lblk;
-+	ext4_debug("snapshot data ranges %u-%u for inode %lu\n",
-+		   start_lblk, end_lblk, inode->i_ino);
-+
-+	while (cur_lblk <= end_lblk) {
-+		struct ext4_fc_range *range;
- 
--	while (cur_lblk_off <= new_blk_size) {
--		map.m_lblk = cur_lblk_off;
--		map.m_len = new_blk_size - cur_lblk_off + 1;
-+		map.m_lblk = cur_lblk;
-+		map.m_len = end_lblk - cur_lblk + 1;
- 		ret = ext4_map_blocks(NULL, inode, &map,
- 				      EXT4_GET_BLOCKS_IO_SUBMIT |
- 				      EXT4_EX_NOCACHE);
-@@ -927,17 +1012,21 @@ static int ext4_fc_write_inode_data(struct inode *inode, u32 *crc)
- 			return -ECANCELED;
- 
- 		if (map.m_len == 0) {
--			cur_lblk_off++;
-+			cur_lblk++;
- 			continue;
- 		}
- 
-+		range = kmalloc(sizeof(*range), GFP_NOFS);
-+		if (!range)
-+			return -ENOMEM;
-+
-+		range->lblk = map.m_lblk;
-+		range->len = map.m_len;
-+		range->pblk = 0;
-+		range->unwritten = false;
-+
- 		if (ret == 0) {
--			lrange.fc_ino = cpu_to_le32(inode->i_ino);
--			lrange.fc_lblk = cpu_to_le32(map.m_lblk);
--			lrange.fc_len = cpu_to_le32(map.m_len);
--			if (!ext4_fc_add_tlv(inode->i_sb, EXT4_FC_TAG_DEL_RANGE,
--					    sizeof(lrange), (u8 *)&lrange, crc))
--				return -ENOSPC;
-+			range->tag = EXT4_FC_TAG_DEL_RANGE;
- 		} else {
- 			unsigned int max = (map.m_flags & EXT4_MAP_UNWRITTEN) ?
- 				EXT_UNWRITTEN_MAX_LEN : EXT_INIT_MAX_LEN;
-@@ -945,26 +1034,67 @@ static int ext4_fc_write_inode_data(struct inode *inode, u32 *crc)
- 			/* Limit the number of blocks in one extent */
- 			map.m_len = min(max, map.m_len);
- 
--			fc_ext.fc_ino = cpu_to_le32(inode->i_ino);
--			ex = (struct ext4_extent *)&fc_ext.fc_ex;
--			ex->ee_block = cpu_to_le32(map.m_lblk);
--			ex->ee_len = cpu_to_le16(map.m_len);
--			ext4_ext_store_pblock(ex, map.m_pblk);
--			if (map.m_flags & EXT4_MAP_UNWRITTEN)
--				ext4_ext_mark_unwritten(ex);
--			else
--				ext4_ext_mark_initialized(ex);
--			if (!ext4_fc_add_tlv(inode->i_sb, EXT4_FC_TAG_ADD_RANGE,
--					    sizeof(fc_ext), (u8 *)&fc_ext, crc))
--				return -ENOSPC;
-+			range->tag = EXT4_FC_TAG_ADD_RANGE;
-+			range->len = map.m_len;
-+			range->pblk = map.m_pblk;
-+			range->unwritten = !!(map.m_flags & EXT4_MAP_UNWRITTEN);
- 		}
- 
--		cur_lblk_off += map.m_len;
-+		INIT_LIST_HEAD(&range->list);
-+		list_add_tail(&range->list, ranges);
-+
-+		cur_lblk += map.m_len;
+@@ -5863,6 +5866,11 @@ static struct inode *ext4_get_journal_inode(struct super_block *sb,
+ 		return ERR_PTR(-EFSCORRUPTED);
  	}
  
- 	return 0;
- }
- 
-+static int ext4_fc_snapshot_inode(struct inode *inode)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct ext4_fc_inode_snap *snap;
-+	int inode_len = EXT4_GOOD_OLD_INODE_SIZE;
-+	struct ext4_iloc iloc;
-+	LIST_HEAD(ranges);
-+	int ret;
-+	int alloc_ctx;
++#ifdef CONFIG_LOCKDEP
++	lockdep_set_subclass(&EXT4_I(journal_inode)->i_data_sem,
++			     I_DATA_SEM_JOURNAL);
++#endif
 +
-+	ret = ext4_get_inode_loc_noio(inode, &iloc);
-+	if (ret)
-+		return ret;
-+
-+	if (ext4_test_inode_flag(inode, EXT4_INODE_INLINE_DATA))
-+		inode_len = EXT4_INODE_SIZE(inode->i_sb);
-+	else if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE)
-+		inode_len += ei->i_extra_isize;
-+
-+	snap = kmalloc(struct_size(snap, inode_buf, inode_len), GFP_NOFS);
-+	if (!snap) {
-+		brelse(iloc.bh);
-+		return -ENOMEM;
-+	}
-+	INIT_LIST_HEAD(&snap->data_list);
-+	snap->inode_len = inode_len;
-+
-+	memcpy(snap->inode_buf, (u8 *)ext4_raw_inode(&iloc), inode_len);
-+	brelse(iloc.bh);
-+
-+	ret = ext4_fc_snapshot_inode_data(inode, &ranges);
-+	if (ret) {
-+		kfree(snap);
-+		ext4_fc_free_ranges(&ranges);
-+		return ret;
-+	}
-+
-+	alloc_ctx = ext4_fc_lock(inode->i_sb);
-+	ext4_fc_free_inode_snap(inode);
-+	ei->i_fc_snap = snap;
-+	list_splice_tail_init(&ranges, &snap->data_list);
-+	ext4_fc_unlock(inode->i_sb, alloc_ctx);
-+
-+	return 0;
-+}
-+
- 
- /* Flushes data of all the inodes in the commit queue. */
- static int ext4_fc_flush_data(journal_t *journal)
-@@ -1015,6 +1145,11 @@ static int ext4_fc_commit_dentry_updates(journal_t *journal, u32 *crc)
- 		 */
- 		if (list_empty(&fc_dentry->fcd_dilist))
- 			continue;
-+		/*
-+		 * For EXT4_FC_TAG_CREAT, fcd_dilist is linked on the created
-+		 * inode's i_fc_dilist list (kept singular), so we can recover the
-+		 * inode through it.
-+		 */
- 		ei = list_first_entry(&fc_dentry->fcd_dilist,
- 				struct ext4_inode_info, i_fc_dilist);
- 		inode = &ei->vfs_inode;
-@@ -1039,6 +1174,88 @@ static int ext4_fc_commit_dentry_updates(journal_t *journal, u32 *crc)
- 	return 0;
- }
- 
-+static int ext4_fc_snapshot_inodes(journal_t *journal)
-+{
-+	struct super_block *sb = journal->j_private;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_inode_info *iter;
-+	struct ext4_fc_dentry_update *fc_dentry;
-+	struct inode **inodes;
-+	unsigned int nr_inodes = 0;
-+	unsigned int i = 0;
-+	int ret = 0;
-+	int alloc_ctx;
-+
-+	alloc_ctx = ext4_fc_lock(sb);
-+	list_for_each_entry(iter, &sbi->s_fc_q[FC_Q_MAIN], i_fc_list)
-+		nr_inodes++;
-+
-+	list_for_each_entry(fc_dentry, &sbi->s_fc_dentry_q[FC_Q_MAIN], fcd_list) {
-+		struct ext4_inode_info *ei;
-+
-+		if (fc_dentry->fcd_op != EXT4_FC_TAG_CREAT)
-+			continue;
-+		if (list_empty(&fc_dentry->fcd_dilist))
-+			continue;
-+
-+		/* See the comment in ext4_fc_commit_dentry_updates(). */
-+		ei = list_first_entry(&fc_dentry->fcd_dilist,
-+				      struct ext4_inode_info, i_fc_dilist);
-+		if (!list_empty(&ei->i_fc_list))
-+			continue;
-+
-+		nr_inodes++;
-+	}
-+	ext4_fc_unlock(sb, alloc_ctx);
-+
-+	if (!nr_inodes)
-+		return 0;
-+
-+	inodes = kvcalloc(nr_inodes, sizeof(*inodes), GFP_NOFS);
-+	if (!inodes)
-+		return -ENOMEM;
-+
-+	alloc_ctx = ext4_fc_lock(sb);
-+	list_for_each_entry(iter, &sbi->s_fc_q[FC_Q_MAIN], i_fc_list) {
-+		inodes[i] = igrab(&iter->vfs_inode);
-+		if (inodes[i])
-+			i++;
-+	}
-+
-+	list_for_each_entry(fc_dentry, &sbi->s_fc_dentry_q[FC_Q_MAIN], fcd_list) {
-+		struct ext4_inode_info *ei;
-+
-+		if (fc_dentry->fcd_op != EXT4_FC_TAG_CREAT)
-+			continue;
-+		if (list_empty(&fc_dentry->fcd_dilist))
-+			continue;
-+
-+		/* See the comment in ext4_fc_commit_dentry_updates(). */
-+		ei = list_first_entry(&fc_dentry->fcd_dilist,
-+				      struct ext4_inode_info, i_fc_dilist);
-+		if (!list_empty(&ei->i_fc_list))
-+			continue;
-+
-+		inodes[i] = igrab(&ei->vfs_inode);
-+		if (inodes[i])
-+			i++;
-+	}
-+	ext4_fc_unlock(sb, alloc_ctx);
-+
-+	for (nr_inodes = 0; nr_inodes < i; nr_inodes++) {
-+		ret = ext4_fc_snapshot_inode(inodes[nr_inodes]);
-+		if (ret)
-+			break;
-+	}
-+
-+	for (nr_inodes = 0; nr_inodes < i; nr_inodes++) {
-+		if (inodes[nr_inodes])
-+			iput(inodes[nr_inodes]);
-+	}
-+	kvfree(inodes);
-+	return ret;
-+}
-+
- static int ext4_fc_perform_commit(journal_t *journal)
- {
- 	struct super_block *sb = journal->j_private;
-@@ -1111,7 +1328,11 @@ static int ext4_fc_perform_commit(journal_t *journal)
- 				     EXT4_STATE_FC_COMMITTING);
- 	}
- 	ext4_fc_unlock(sb, alloc_ctx);
-+
-+	ret = ext4_fc_snapshot_inodes(journal);
- 	jbd2_journal_unlock_updates(journal);
-+	if (ret)
-+		return ret;
- 
- 	/*
- 	 * Step 5: If file system device is different from journal device,
-@@ -1308,6 +1529,7 @@ static void ext4_fc_cleanup(journal_t *journal, int full, tid_t tid)
- 					struct ext4_inode_info,
- 					i_fc_list);
- 		list_del_init(&ei->i_fc_list);
-+		ext4_fc_free_inode_snap(&ei->vfs_inode);
- 		ext4_clear_inode_state(&ei->vfs_inode,
- 				       EXT4_STATE_FC_COMMITTING);
- 		if (tid_geq(tid, ei->i_sync_tid)) {
-@@ -1343,6 +1565,14 @@ static void ext4_fc_cleanup(journal_t *journal, int full, tid_t tid)
- 					     struct ext4_fc_dentry_update,
- 					     fcd_list);
- 		list_del_init(&fc_dentry->fcd_list);
-+		if (fc_dentry->fcd_op == EXT4_FC_TAG_CREAT &&
-+		    !list_empty(&fc_dentry->fcd_dilist)) {
-+			/* See the comment in ext4_fc_commit_dentry_updates(). */
-+			ei = list_first_entry(&fc_dentry->fcd_dilist,
-+					      struct ext4_inode_info,
-+					      i_fc_dilist);
-+			ext4_fc_free_inode_snap(&ei->vfs_inode);
-+		}
- 		list_del_init(&fc_dentry->fcd_dilist);
- 
- 		release_dentry_name_snapshot(&fc_dentry->fcd_name);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index a1c81ffdca2b9..385ff112d405e 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4969,6 +4969,57 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
- 	return ret;
- }
- 
-+/*
-+ * ext4_get_inode_loc_noio() is a best-effort variant of ext4_get_inode_loc().
-+ * It looks up the inode table block in the buffer cache and returns -EAGAIN if
-+ * the block is not present or not uptodate, without starting any I/O.
-+ */
-+int ext4_get_inode_loc_noio(struct inode *inode, struct ext4_iloc *iloc)
-+{
-+	struct super_block *sb = inode->i_sb;
-+	struct ext4_group_desc *gdp;
-+	struct buffer_head *bh;
-+	ext4_fsblk_t block;
-+	int inodes_per_block, inode_offset;
-+	unsigned long ino = inode->i_ino;
-+
-+	iloc->bh = NULL;
-+	if (ino < EXT4_ROOT_INO ||
-+	    ino > le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count))
-+		return -EFSCORRUPTED;
-+
-+	iloc->block_group = (ino - 1) / EXT4_INODES_PER_GROUP(sb);
-+	gdp = ext4_get_group_desc(sb, iloc->block_group, NULL);
-+	if (!gdp)
-+		return -EIO;
-+
-+	/* Figure out the offset within the block group inode table. */
-+	inodes_per_block = EXT4_SB(sb)->s_inodes_per_block;
-+	inode_offset = ((ino - 1) % EXT4_INODES_PER_GROUP(sb));
-+	iloc->offset = (inode_offset % inodes_per_block) * EXT4_INODE_SIZE(sb);
-+
-+	block = ext4_inode_table(sb, gdp);
-+	if (block <= le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block) ||
-+	    block >= ext4_blocks_count(EXT4_SB(sb)->s_es)) {
-+		ext4_error(sb,
-+			   "Invalid inode table block %llu in block_group %u",
-+			   block, iloc->block_group);
-+		return -EFSCORRUPTED;
-+	}
-+	block += inode_offset / inodes_per_block;
-+
-+	bh = sb_find_get_block(sb, block);
-+	if (!bh)
-+		return -EAGAIN;
-+	if (!ext4_buffer_uptodate(bh)) {
-+		brelse(bh);
-+		return -EAGAIN;
-+	}
-+
-+	iloc->bh = bh;
-+	return 0;
-+}
-+
- 
- int ext4_get_fc_inode_loc(struct super_block *sb, unsigned long ino,
- 			  struct ext4_iloc *iloc)
+ 	ext4_debug("Journal inode found at %p: %lld bytes\n",
+ 		  journal_inode, journal_inode->i_size);
+ 	return journal_inode;
 -- 
 2.53.0
 
