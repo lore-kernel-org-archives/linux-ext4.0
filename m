@@ -1,56 +1,56 @@
-Received: from fhigh-a4-smtp.messagingengine.com (fhigh-a4-smtp.messagingengine.com [103.168.172.155])
+Received: from fout-a4-smtp.messagingengine.com (fout-a4-smtp.messagingengine.com [103.168.172.147])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7878D390C82;
-	Tue, 17 Mar 2026 22:47:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.155
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B3A8385521;
+	Tue, 17 Mar 2026 22:47:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.147
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773787629; cv=none; b=o6AuZUL7h/lk3EgrbIySe9y8HeArZwRNGtsnxfTSzDwlRG/HFihxL7aOUpbqgn4ITEhqs1hqV2x62OCQQx2DVZ/e6pAsUUPRrUEflf9yY3NT4hiMExDPDnUrd5OtnSsDPdqsOnHgf3q+k+N7LZRBRatbjdUVytvSGdvbNVMqzeI=
+	t=1773787633; cv=none; b=h6pXJ71hKNm6qLtfnVbGKGHkRbtofCtaNWXOKZQWSTNoT1NigNSzqEjM++VxkvZjEJ9hR72eoG4saiRfqJkWM1gVi+cPgl7LAA7vqXmVtcZatc6gK+QyyiumSNOZMAfNFB7DMc4ID188q+WWCEswlYwFMrAGO9stHFQTpj8whIQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773787629; c=relaxed/simple;
-	bh=lzGLkPj6EIBLoDDopH08vW3/dirj64/jYYyJLJRu1gA=;
+	s=arc-20240116; t=1773787633; c=relaxed/simple;
+	bh=7uCrkEfVh3jKSyeXWT2eqN5YUBCGRWEAwVdTHM4SBw0=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=h0KOd9VC9LYRrMOU7S3TV4PYOSKr+pRw4qUHaovGjMeu6uXs6pSiktX8aCWFPcXcei/4bIgpiXAgX449/DSRgzw0XcYjjSEgQ0/imNFMStwKAXgQPLtifCdFJu3QaF/OzPCNCQ89IX/exCd1voxI1Cbtq3hEv5+a+NxQspV4kXc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=Qw4eSO5z; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=w9zHTQzo; arc=none smtp.client-ip=103.168.172.155
+	 MIME-Version; b=ip+aycmjGYuwciJkm/9d/p5SDRXMXB87ctXNzcSzjmf6WiAO0fN/7i1bmRnXYno5gfcZ62kaEEdvttGlEIvJFOdaxBLjwuRyqywIKMt/s46KhVotjRW5Ind8I9j/hQti4VFm+Q6iVWVTCMObWp7Kk9++OBlf8B6n1KCL2vJ7xi4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=a3OqhTVV; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=NCVLtQor; arc=none smtp.client-ip=103.168.172.147
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="Qw4eSO5z";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="w9zHTQzo"
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailfhigh.phl.internal (Postfix) with ESMTP id ADF57140006F;
-	Tue, 17 Mar 2026 18:47:07 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-02.internal (MEProxy); Tue, 17 Mar 2026 18:47:07 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="a3OqhTVV";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="NCVLtQor"
+Received: from phl-compute-01.internal (phl-compute-01.internal [10.202.2.41])
+	by mailfout.phl.internal (Postfix) with ESMTP id C7FD9EC0110;
+	Tue, 17 Mar 2026 18:47:11 -0400 (EDT)
+Received: from phl-frontend-04 ([10.202.2.163])
+  by phl-compute-01.internal (MEProxy); Tue, 17 Mar 2026 18:47:11 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1773787627;
-	 x=1773874027; bh=EAYMGZKardNes1EaIXLEhSqvdlm62ri72cqVgOVatjo=; b=
-	Qw4eSO5zEcCe9oLnNo/gakwjR8c3i4ZRpRo6xW1vDW/YFgjD3RQOlalyO9XsqP/f
-	n8CtImAhItW2jEFWdovEmCF9VYGjUu7pHdKw6Vp3rGx4XuyqBaF8jqbJeb2nG55J
-	Bf3UZ49vskUtpDCIBG7WSPIyP1PTt8xg9cbDlWtjKSLqBe34D15Z3iY55TAOsZ54
-	oSMgxu3xuplLyqvohjIoG//2Al9Hh13TEqJMr/BfPno3YplrV471i9+NZ0TxJGxg
-	IaUUB3Rh8Df0+XAxc7InZw5Jayff9VZs7Xkc4CD1tZs7leis7wUZ8d5FVcn7DDcQ
-	M8P8mrMXw0VYVk6ANXzH8Q==
+	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1773787631;
+	 x=1773874031; bh=M08o3yrYCfIMK1eXLxlmu6lq3fEzkhTY/ywOT6g4Fa8=; b=
+	a3OqhTVVjWK75EKRKycU2XK+Raij9gLz7KtFstAWJfq/EUHI/2jBHbUnKTLxRVXz
+	eCG28ctb5up/AwJyfk3G35e4CFBLs5bEkxxPPXOk4JtJtAP2se3rbSGYuST5eY0Q
+	xTCZEVcSd3z6po1NRzFFViF+LPfjemuIfIR/eVeBFIjkiJ+xL+TcdSxryk83mqsB
+	uW0YcWO7VnvbkYHH12JEi7c4O4iZE/sYQKN9PErWZLVzHWiHoCp9BPkXVR2uQZSH
+	qnc2SEBmsWQmwMPHyA0aIL7Ze5nOEs/jhv/4xrNF9Q2dB3m1nKEcW10DlNFd5WHu
+	Qg9plmLSCSrt1n4zcywPXQ==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
 	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm1; t=1773787627; x=1773874027; bh=E
-	AYMGZKardNes1EaIXLEhSqvdlm62ri72cqVgOVatjo=; b=w9zHTQzoiualyn+KY
-	+JxSb3biFR5bthTttFbvF7wJpW576OFa60NL7xtqo0LSFrKs0WJ4ax+l9kf16oOJ
-	pVKuNOoM5j9TyFGKbt3bzF3oc8UaWgbxCpIljSCyyTUbZinowOAEAMueiXmmZ0dE
-	59mjkOM9vJKjbJUWrciABe2VCPpbWFnkuwmVEijgF40aCwOW4hYA552X6v8hCPV5
-	7rrC2NPCqWn1uef5Dg0Bmxd6w4bh/FF5Gz0ZpKgq0Qydl22TZi3nD44Kf+UE/8yV
-	TiZW0+89Eq1p9rFpjd5OoXRjGy71dGzgx1z3m3wTiY3Mid774HVqiHJyWYKrILH4
-	W4hgg==
-X-ME-Sender: <xms:69m5aaat0kAyiS76Q5cc1CPfcT9v7MpExyNVZEdBcxszc0AiLksEpg>
-    <xme:69m5ae49YHB6zVbHtUEad1sQLYQ7enWjwSivsIFgW8TKjcDsNMpgOYP6TWeC2WqyO
-    ruYReA_Nn1mLyrACpZtOW1B7EwvwsdUv-iadf3H7smX4D1dA7I>
-X-ME-Received: <xmr:69m5aVDvGwHbu0IkwHrjfXeVGqQSVqq8oDRGMOWfsN7xvpMQIgqSalFDPduNerhhY3pdstGf5LZL9i1pbuJRsQgcMi5GTYg3h1v4fFdelbDW>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgdeftddvgeekucetufdoteggodetrf
+	:x-me-sender:x-sasl-enc; s=fm1; t=1773787631; x=1773874031; bh=M
+	08o3yrYCfIMK1eXLxlmu6lq3fEzkhTY/ywOT6g4Fa8=; b=NCVLtQor8Jhkjw2qF
+	3iS3eOYS1/3vBJkELIUx9Xn5aE79VCopE14YgZJ6Bwnghu6TRdBvCSg85JurV4Bc
+	VP8Fk4DMlEvTGd9XfhGOLFM+F1J8v7UCpNS/GA+NHUb5WRqVpxitukOuC8eXo/X6
+	lXN4ygC6SrQ+0vdJtxJQAtqFY72ZhQhPZxa3rLeisvv5FyuRv2AFfZFg36kkYY3w
+	mcuIUFw+IhUwqZNV3/NEOc8px/fLNcjMyF+EKGyxb+W9xUq3uxIOenNj5ZT6i456
+	e0liURClHIR0T+e9JV7hVGysSjqzFm0apcK2mr+myOi8kQocX4c0gVCNtno0bdcW
+	T+RGg==
+X-ME-Sender: <xms:79m5aar45IsdIBPa6AwkbCZaZdVKuho0z2niFaqfx9o4CLmgZVrpSg>
+    <xme:79m5aaLGP3YL3oUe_yzohOOoPAQaG1eosQLNMtuFL5h1jIVrGF4uWcj8gPnqS1ZVf
+    h8cBMo9FzZR2yPbuSPpzQRU5Idb6qP3ygoOVMX7KKZIkutiRQ>
+X-ME-Received: <xmr:79m5afTbCnQlo0mvMnEqZNoMqalltaZQATGC1uoR3iTZOAARPINwGzW_bar_tNhStWob8ow9D8YkAJLToOk4vj3qxNHj2yNNqI83l4BjR11b>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgdeftddvgeelucetufdoteggodetrf
     dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
     rghilhhouhhtmecufedttdenucenucfjughrpefhvfevufffkffojghfrhgggfestdekre
     dtredttdenucfhrhhomheppfgvihhluehrohifnhcuoehnvghilhgssehofihnmhgrihhl
@@ -62,23 +62,23 @@ X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgdeftddvgeekucetufdote
     igthegsehvghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthhtohepjhgrtghksehsuhhs
     vgdrtgiipdhrtghpthhtohepthihthhsohesmhhithdrvgguuhdprhgtphhtthhopegrug
     hilhhgvghrrdhkvghrnhgvlhesughilhhgvghrrdgtrg
-X-ME-Proxy: <xmx:69m5acceo5OlKa0PDuVGNAvsHgRIsEQL5tEbTHH9U4gW5JKP961Z8Q>
-    <xmx:69m5acIsyLFbvkaEVD_amS5IIFA7EZ9biu7lypzlqFpXEj9WevpNpA>
-    <xmx:69m5af2bugDqRhAY39HPSXP7bmtVJmM-GGrh7RIwe2QRFpnxEyzosw>
-    <xmx:69m5aWgTmXODl6uy_m7EGblMl9bAViqBF-ar-bdQm7r7DBxqyJFzZA>
-    <xmx:69m5aZAN-4qIRbJitP91ni2USw4gwcoodyR226CV2_AcnTb8kBODlVxG>
+X-ME-Proxy: <xmx:79m5aZs4KYvEhYDCRpMSkWsNGONwMSFpQzaKYWwPTynp2iaZ3KYMwQ>
+    <xmx:79m5aQakhThwIWn1m-f4bQ3a6K296oozeUCpt9ff2q2fNQ0PnvXWuA>
+    <xmx:79m5afF7PYMM1O1eWreOOD_xreMUEjeZeDtmO12pQfw_F-09c7E6ag>
+    <xmx:79m5aUymd6ft0biO7RdFmiO2xZMHk7G0RCaUFQZ1eThxtKNtM-XWTQ>
+    <xmx:79m5aYTmZflG01SsSklgQ6DI2m7YkB5vwqei3uHX-us5ajvjL1FjbDvB>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
- 17 Mar 2026 18:47:05 -0400 (EDT)
+ 17 Mar 2026 18:47:09 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: "Theodore Ts'o" <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Jan Kara <jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org
-Subject: [PATCH 2/3] ext4: add ext4_fc_eligible()
-Date: Wed, 18 Mar 2026 09:39:50 +1100
-Message-ID: <20260317224638.3809014-3-neilb@ownmail.net>
+Subject: [PATCH 3/3] ext4: move dcache manipulation out of __ext4_link()
+Date: Wed, 18 Mar 2026 09:39:51 +1100
+Message-ID: <20260317224638.3809014-4-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
 In-Reply-To: <20260317224638.3809014-1-neilb@ownmail.net>
 References: <20260317224638.3809014-1-neilb@ownmail.net>
@@ -93,114 +93,188 @@ Content-Transfer-Encoding: 8bit
 
 From: NeilBrown <neil@brown.name>
 
-Testing EXT4_MF_FC_INELIGIBLE is almost always combined with testing
-ext4_fc_disabled().  The code can be simplified by combining these two
-in a new ext4_fc_eligible().
+__ext4_link() has two callers.
 
-In ext4_fc_track_inode() this moves the ext4_fc_disabled() test after
-ext4_fc_mark_ineligible(), but as that is a non-op when
-ext4_fc_disabled() is true, this is no no consequence.
+- ext4_link() calls it during normal handling of the link() system
+  call or similar
+- ext4_fc_replay_link_internal() calls it when replaying the journal
+  at mount time.
+
+The former needs changes to dcache - instaniating the dentry to the
+inode on success.  The latter doesn't need or want any dcache
+manipluation.
+
+So move the manipulation out of __ext4_link() and do it in ext4_link()
+only.
+
+This requires:
+ - passing the qname from the dentry explicitly to __ext4_link.
+   The parent dir is already passed.  The dentry is still passed
+   in the ext4_link() case purely for use by ext4_fc_track_link().
+ - passing the inode separately to ext4_fc_track_link() as the
+   dentry will not be instantiated yet.
+ - using __ext4_add_entry() in ext4_link, which doesn't need a dentry.
+ - moving ext4_inc_count(), ihold)(, d_instantiate(), drop_nlink() and
+   iput() calls out of __ext4_link() into ext4_link().
+
+This substantially simplifies ext4_fc_replay_link_internal(), and
+removes a use of d_alloc() which, it is planned, will be removed.
 
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- fs/ext4/fast_commit.c | 43 ++++++++++++++-----------------------------
- 1 file changed, 14 insertions(+), 29 deletions(-)
+ fs/ext4/ext4.h        |  5 +++--
+ fs/ext4/fast_commit.c | 32 ++++----------------------------
+ fs/ext4/namei.c       | 25 ++++++++++++++-----------
+ 3 files changed, 21 insertions(+), 41 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 293f698b7042..e757e9cf9728 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2974,7 +2974,8 @@ void __ext4_fc_track_unlink(handle_t *handle, struct inode *inode,
+ void __ext4_fc_track_link(handle_t *handle, struct inode *inode,
+ 	struct dentry *dentry);
+ void ext4_fc_track_unlink(handle_t *handle, struct dentry *dentry);
+-void ext4_fc_track_link(handle_t *handle, struct dentry *dentry);
++void ext4_fc_track_link(handle_t *handle, struct inode *inode,
++			struct dentry *dentry);
+ void __ext4_fc_track_create(handle_t *handle, struct inode *inode,
+ 			    struct dentry *dentry);
+ void ext4_fc_track_create(handle_t *handle, struct dentry *dentry);
+@@ -3719,7 +3720,7 @@ extern int ext4_handle_dirty_dirblock(handle_t *handle, struct inode *inode,
+ extern int __ext4_unlink(struct inode *dir, const struct qstr *d_name,
+ 			 struct inode *inode, struct dentry *dentry);
+ extern int __ext4_link(struct inode *dir, struct inode *inode,
+-		       struct dentry *dentry);
++		       const struct qstr *d_name, struct dentry *dentry);
+ 
+ #define S_SHIFT 12
+ static const unsigned char ext4_type_by_mode[(S_IFMT >> S_SHIFT) + 1] = {
 diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index f575751f1cae..3ee302b73f45 100644
+index 3ee302b73f45..175dda11f377 100644
 --- a/fs/ext4/fast_commit.c
 +++ b/fs/ext4/fast_commit.c
-@@ -224,6 +224,12 @@ static bool ext4_fc_disabled(struct super_block *sb)
- 		(EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY));
+@@ -497,10 +497,9 @@ void __ext4_fc_track_link(handle_t *handle,
+ 	trace_ext4_fc_track_link(handle, inode, dentry, ret);
  }
  
-+static bool ext4_fc_eligible(struct super_block *sb)
-+{
-+	return !ext4_fc_disabled(sb) &&
-+		!(ext4_test_mount_flag(sb, EXT4_MF_FC_INELIGIBLE));
-+}
-+
- /*
-  * Remove inode from fast commit list. If the inode is being committed
-  * we wait until inode commit is done.
-@@ -473,13 +479,8 @@ void ext4_fc_track_unlink(handle_t *handle, struct dentry *dentry)
+-void ext4_fc_track_link(handle_t *handle, struct dentry *dentry)
++void ext4_fc_track_link(handle_t *handle, struct inode *inode,
++			struct dentry *dentry)
  {
- 	struct inode *inode = d_inode(dentry);
- 
--	if (ext4_fc_disabled(inode->i_sb))
--		return;
+-	struct inode *inode = d_inode(dentry);
 -
--	if (ext4_test_mount_flag(inode->i_sb, EXT4_MF_FC_INELIGIBLE))
--		return;
--
--	__ext4_fc_track_unlink(handle, inode, dentry);
-+	if (ext4_fc_eligible(inode->i_sb))
-+		__ext4_fc_track_unlink(handle, inode, dentry);
+ 	if (ext4_fc_eligible(inode->i_sb))
+ 		__ext4_fc_track_link(handle, inode, dentry);
  }
- 
- void __ext4_fc_track_link(handle_t *handle,
-@@ -500,13 +501,8 @@ void ext4_fc_track_link(handle_t *handle, struct dentry *dentry)
+@@ -1431,7 +1430,6 @@ static int ext4_fc_replay_link_internal(struct super_block *sb,
+ 				struct inode *inode)
  {
- 	struct inode *inode = d_inode(dentry);
+ 	struct inode *dir = NULL;
+-	struct dentry *dentry_dir = NULL, *dentry_inode = NULL;
+ 	struct qstr qstr_dname = QSTR_INIT(darg->dname, darg->dname_len);
+ 	int ret = 0;
  
--	if (ext4_fc_disabled(inode->i_sb))
--		return;
--
--	if (ext4_test_mount_flag(inode->i_sb, EXT4_MF_FC_INELIGIBLE))
--		return;
--
--	__ext4_fc_track_link(handle, inode, dentry);
-+	if (ext4_fc_eligible(inode->i_sb))
-+		__ext4_fc_track_link(handle, inode, dentry);
- }
- 
- void __ext4_fc_track_create(handle_t *handle, struct inode *inode,
-@@ -527,13 +523,8 @@ void ext4_fc_track_create(handle_t *handle, struct dentry *dentry)
- {
- 	struct inode *inode = d_inode(dentry);
- 
--	if (ext4_fc_disabled(inode->i_sb))
--		return;
--
--	if (ext4_test_mount_flag(inode->i_sb, EXT4_MF_FC_INELIGIBLE))
--		return;
--
--	__ext4_fc_track_create(handle, inode, dentry);
-+	if (ext4_fc_eligible(inode->i_sb))
-+		__ext4_fc_track_create(handle, inode, dentry);
- }
- 
- /* __track_fn for inode tracking */
-@@ -557,16 +548,13 @@ void ext4_fc_track_inode(handle_t *handle, struct inode *inode)
- 	if (S_ISDIR(inode->i_mode))
- 		return;
- 
--	if (ext4_fc_disabled(inode->i_sb))
--		return;
--
- 	if (ext4_should_journal_data(inode)) {
- 		ext4_fc_mark_ineligible(inode->i_sb,
- 					EXT4_FC_REASON_INODE_JOURNAL_DATA, handle);
- 		return;
+@@ -1442,21 +1440,7 @@ static int ext4_fc_replay_link_internal(struct super_block *sb,
+ 		goto out;
  	}
  
--	if (ext4_test_mount_flag(inode->i_sb, EXT4_MF_FC_INELIGIBLE))
-+	if (!ext4_fc_eligible(inode->i_sb))
- 		return;
- 
- 	/*
-@@ -644,10 +632,7 @@ void ext4_fc_track_range(handle_t *handle, struct inode *inode, ext4_lblk_t star
- 	if (S_ISDIR(inode->i_mode))
- 		return;
- 
--	if (ext4_fc_disabled(inode->i_sb))
--		return;
+-	dentry_dir = d_obtain_alias(dir);
+-	if (IS_ERR(dentry_dir)) {
+-		ext4_debug("Failed to obtain dentry");
+-		dentry_dir = NULL;
+-		goto out;
+-	}
 -
--	if (ext4_test_mount_flag(inode->i_sb, EXT4_MF_FC_INELIGIBLE))
-+	if (!ext4_fc_eligible(inode->i_sb))
- 		return;
+-	dentry_inode = d_alloc(dentry_dir, &qstr_dname);
+-	if (!dentry_inode) {
+-		ext4_debug("Inode dentry not created.");
+-		ret = -ENOMEM;
+-		goto out;
+-	}
+-
+-	ret = __ext4_link(dir, inode, dentry_inode);
++	ret = __ext4_link(dir, inode, &qstr_dname, NULL);
+ 	/*
+ 	 * It's possible that link already existed since data blocks
+ 	 * for the dir in question got persisted before we crashed OR
+@@ -1470,16 +1454,8 @@ static int ext4_fc_replay_link_internal(struct super_block *sb,
  
- 	if (ext4_has_inline_data(inode)) {
+ 	ret = 0;
+ out:
+-	if (dentry_dir) {
+-		d_drop(dentry_dir);
+-		dput(dentry_dir);
+-	} else if (dir) {
++	if (dir)
+ 		iput(dir);
+-	}
+-	if (dentry_inode) {
+-		d_drop(dentry_inode);
+-		dput(dentry_inode);
+-	}
+ 
+ 	return ret;
+ }
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 768036a109d7..23942320c515 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3452,7 +3452,8 @@ static int ext4_symlink(struct mnt_idmap *idmap, struct inode *dir,
+ 	return err;
+ }
+ 
+-int __ext4_link(struct inode *dir, struct inode *inode, struct dentry *dentry)
++int __ext4_link(struct inode *dir, struct inode *inode,
++		const struct qstr *d_name, struct dentry *dentry)
+ {
+ 	handle_t *handle;
+ 	int err, retries = 0;
+@@ -3467,10 +3468,8 @@ int __ext4_link(struct inode *dir, struct inode *inode, struct dentry *dentry)
+ 		ext4_handle_sync(handle);
+ 
+ 	inode_set_ctime_current(inode);
+-	ext4_inc_count(inode);
+-	ihold(inode);
+ 
+-	err = ext4_add_entry(handle, dentry, inode);
++	err = __ext4_add_entry(handle, dir, d_name, inode);
+ 	if (!err) {
+ 		err = ext4_mark_inode_dirty(handle, inode);
+ 		/* this can happen only for tmpfile being
+@@ -3478,11 +3477,8 @@ int __ext4_link(struct inode *dir, struct inode *inode, struct dentry *dentry)
+ 		 */
+ 		if (inode->i_nlink == 1)
+ 			ext4_orphan_del(handle, inode);
+-		d_instantiate(dentry, inode);
+-		ext4_fc_track_link(handle, dentry);
+-	} else {
+-		drop_nlink(inode);
+-		iput(inode);
++		if (dentry)
++			ext4_fc_track_link(handle, inode, dentry);
+ 	}
+ 	ext4_journal_stop(handle);
+ 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
+@@ -3511,9 +3507,16 @@ static int ext4_link(struct dentry *old_dentry,
+ 	err = dquot_initialize(dir);
+ 	if (err)
+ 		return err;
+-	return __ext4_link(dir, inode, dentry);
++	ext4_inc_count(inode);
++	err = __ext4_link(dir, inode, &dentry->d_name, dentry);
++	if (!err) {
++		ihold(inode);
++		d_instantiate(dentry, inode);
++	} else {
++		drop_nlink(inode);
++	}
++	return err;
+ }
+-
+ /*
+  * Try to find buffer head where contains the parent block.
+  * It should be the inode block if it is inlined or the 1st block
 -- 
 2.50.0.107.gf914562f5916.dirty
 
