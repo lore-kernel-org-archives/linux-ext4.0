@@ -1,130 +1,115 @@
-Received: from fanzine2.igalia.com (fanzine2.igalia.com [213.97.179.56])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D28DC3CD8AC;
-	Tue, 17 Mar 2026 13:53:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.97.179.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7E1623E1227
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Mar 2026 14:01:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773755643; cv=none; b=gZXG5tXIioFMD/jFq+LNb0HhQhCPX2UOqPI2x2kthSWiHtjC+yozhxR/pEUM2nl0dhZ8b9lcbZWRf6KNHRjfNOgqTZsMwnAaDqd1n3rjpumkt7h2Xmj3TtdakPrJeN3eEmFfRfapOYWRmtMG0oIQdFzZ8Np1B8F8OkP5VZJNeL0=
+	t=1773756061; cv=none; b=RKmR4OYbM/7ngJytuJYx5313mDfzJkfpwUtUKYSFXU0fReZEeBuy+WmNCpNl1Qs2dMNSihD+O6AY0KDdNYNCxD/X86MuuU27BT/NRp8dibYTzVfNM4sFT4n0+54doYfjCQ2B9toFxX/LGtQxiR8mx5E21uQWtiy0zX0OeYsw29s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773755643; c=relaxed/simple;
-	bh=LJ9TJsHzw3L9Xu55TCPkqfykOgJsXXURBVYZvyFKx7E=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=H5n23YkyeQtSrAVZJwwVrlYtOsnp/kQ7rXrx9LLbUn4xqSmxSLABiI+F6rZgtTC5Uzc0CkyoQhr8AZ4+uhtJFXjS/GX0rYhK0C9TrU/RozF28g5yc4RkI0+TWxgAqi8LfBN4XXS5dcOI+pg5C3/DZc2a30o/ETLbTrBTwE5dYFU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=bqVDSwkM; arc=none smtp.client-ip=213.97.179.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=igalia.com
+	s=arc-20240116; t=1773756061; c=relaxed/simple;
+	bh=yhVL8QDOI/FFbAizMBorJLYfRMwc296FoGjhH73QP+I=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=GlCJ4KnELPpUVC/iKAHrew3V0v2Jwt/v7hhWofifLRE4wW4dkdsv8tMJYa49s3d+2EtMSvT/NcSSSDLASJhbh0OQO2vTf1zksA7YAPQtdiLLRozjINGFX52pMyq6ea8v+azLhzpVwcp75ghK9VK5zr0OVkE/bCLjhsCytedOHxY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=O34gw2CD; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="bqVDSwkM"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=igalia.com;
-	s=20170329; h=Content-Transfer-Encoding:Content-Type:In-Reply-To:From:
-	References:Cc:To:Subject:MIME-Version:Date:Message-ID:Sender:Reply-To:
-	Content-ID:Content-Description:Resent-Date:Resent-From:Resent-Sender:
-	Resent-To:Resent-Cc:Resent-Message-ID:List-Id:List-Help:List-Unsubscribe:
-	List-Subscribe:List-Post:List-Owner:List-Archive;
-	bh=8DzbUUpiltHLtFn+rbiARRaD8w+RtKX12xhZlS2MWNo=; b=bqVDSwkMZFbXT4jvVzyEO73eJg
-	YP1ViDNkNts9OBUIpYunzSOoFUkLkfagftPpj7+VGx/vGEdZ6B/Tap4pQ6n2oViBgPTOUuXey8UXn
-	TR5VpyB3vOLafvbcmlPrNBE22legHEUm9KQxmqmKd2S2VD8gaRfzc7H1tEXnuC6ZvHiVGOEdwKeSj
-	8DTVg4Y1Wnmd668h/VhDlSrtGkun8urfgvCFZWN3D3OkjqhveL5tP/9ECpBRLg/USrU2PxmIvqIXj
-	Za5o4wxObHsyKbrlyzr2U99L3/nSljG6OkzjOEwo9dXHXhWQ4/gix01P28b8Zh0a1RGmcpg1MpC/I
-	VqeAlztg==;
-Received: from [189.115.10.45] (helo=[192.168.68.133])
-	by fanzine2.igalia.com with esmtpsa 
-	(Cipher TLS1.3:ECDHE_X25519__RSA_PSS_RSAE_SHA256__AES_128_GCM:128) (Exim)
-	id 1w2Urp-002IgB-Fk; Tue, 17 Mar 2026 14:53:53 +0100
-Message-ID: <1bab1298-7814-41a1-8741-b60999aeae42@igalia.com>
-Date: Tue, 17 Mar 2026 10:53:49 -0300
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="O34gw2CD"
+Received: from macsyma.thunk.org (pool-173-48-82-106.bstnma.fios.verizon.net [173.48.82.106])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62HE0LqH014273
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Tue, 17 Mar 2026 10:00:22 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1773756024; bh=jPZ0GRsGQixJN9OLjYc4HU0xw7QwN6o0ICegT4jM4tY=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=O34gw2CDG6Aq8qdbIztYiRALOaD9uCRKP5dsXsPYHK4XVrGQmgHOlfWyZtSbu47ey
+	 KrLGXP90Qn08vmXLIMMxXbM53lJfDNvNVj235c+VO01+AhkUiA/jSFRI1pNoVHjjlF
+	 Y298YkZoli+zUKeYawj6ipHekqbspsPx1DITHDS69eG4M3g8NlG65Nnq2BnMKBTb3R
+	 sphgeUtuXI5AZ8tCys+Bw7YLAJkK4e+si4utiqTMEzliRvacuYZCNk+GhZzaC0sWed
+	 abLMeBD32p2JBl+s2PcPA5Z553v+YaG+NPOHw86M2e3vPY2MHpzIm07Js3YwSP864j
+	 KqhYo0Y4dIE1Q==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 1A7CC5DF7D85; Tue, 17 Mar 2026 09:59:21 -0400 (EDT)
+Date: Tue, 17 Mar 2026 09:59:21 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: Demi Marie Obenour <demiobenour@gmail.com>
+Cc: "Darrick J. Wong" <djwong@kernel.org>,
+        Joanne Koong <joannelkoong@gmail.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>, bpf@vger.kernel.org,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Miklos Szeredi <miklos@szeredi.hu>, Bernd Schubert <bernd@bsbernd.com>,
+        Neal Gompa <neal@gompa.dev>, Amir Goldstein <amir73il@gmail.com>,
+        Christian Brauner <brauner@kernel.org>,
+        Jeff Layton <jlayton@kernel.org>, John@groves.net
+Subject: Re: [PATCHBLIZZARD v7] fuse/libfuse/e2fsprogs: containerize ext4 for
+ safer operation
+Message-ID: <20260317135921.GB53921@macsyma-wired.lan>
+References: <20260223224617.GA2390314@frogsfrogsfrogs>
+ <CAJnrk1Yd1J60-Ek=O7jzZQg454pbr3O=b71yZHzYbrWfqJr__w@mail.gmail.com>
+ <20260316180408.GN6069@frogsfrogsfrogs>
+ <CAJnrk1bmJYMt27xedN2Xza0KPXfYEbh-9g=3fNWru-HRM9WFEw@mail.gmail.com>
+ <20260316234137.GJ1742010@frogsfrogsfrogs>
+ <208bfbd2-d671-462c-925f-4d51b7df1f18@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: fix bigalloc cluster arithmetic when
- s_first_data_block != 0
-To: Theodore Tso <tytso@mit.edu>
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
- kernel-dev@igalia.com, syzbot+b73703b873a33d8eb8f6@syzkaller.appspotmail.com
-References: <20260313151835.1248953-1-koike@igalia.com>
- <20260314012930.GB38016@macsyma-wired.lan>
-Content-Language: en-US
-From: Helen Koike <koike@igalia.com>
-In-Reply-To: <20260314012930.GB38016@macsyma-wired.lan>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <208bfbd2-d671-462c-925f-4d51b7df1f18@gmail.com>
 
-Hi Ted,
-
-
-On 3/13/26 10:29 PM, Theodore Tso wrote:
-> On Fri, Mar 13, 2026 at 12:18:30PM -0300, Helen Koike wrote:
->> On filesystems with bigalloc enabled and s_first_data_block != 0,
+On Mon, Mar 16, 2026 at 08:20:29PM -0400, Demi Marie Obenour wrote:
 > 
-> This is never supposed to happen; fsck already checks for this.  From
-> e2fsck/super.c:
-> 
-> 	should_be = (sb->s_log_block_size == 0 &&
-> 		     EXT2FS_CLUSTER_RATIO(fs) == 1) ? 1 : 0;
-> 	if (sb->s_first_data_block != should_be) {
-> 		pctx.blk = sb->s_first_data_block;
-> 		pctx.blk2 = should_be;
-> 		fix_problem(ctx, PR_0_FIRST_DATA_BLOCK, &pctx);
-> 		ctx->flags |= E2F_FLAG_ABORT;
-> 		return;
-> 	}
-> 
-> You can also see evidence of this code path getting trigger by
-> clicking on "corrupt_fs" in the Syzkaller dashboard.
+> It's worth noting that on ChromeOS and Android, the only trusted
+> disk images are those that are read-only and protected by dm-verity.
+> *Every* writable image is considered untrusted.
 
-I see, thanks for the pointers.
+So I can't speak for ChromeOS or Android, but given discussions that
+I've had with folks in those teams when we were developing fscrypt and
+fsverity, the writeable images which are soldered onto the mainboard,
+where user data is stored, is protected by fscrypt, which provide
+confidentiality but not integrity for user data.
 
-> 
->> Introduce four macros that subtract s_first_data_block before
->> operating, matching the coordinate system used by mballoc:
-> 
-> This is *way* more complicated than it needs to be.  All you need to
-> do is just reject the mount if the file system is this insanely
-> corrupted.  For example:
-> 
-> 	if (ext4_has_feature_bigalloc(sb) &&
-> 	    es->s_first_data_block) {
-> 		ext4_msg(sb, KERN_WARNING, "bad geometry: bigalloc "
-> 			 "file system with non-zero first_data_block");
-> 		return -EINVAL;
-> 	}
+However, from a trust perspective, if there is an "evil maid attack"
+(where someone leaves their device unattended in a hotel room, and the
+housecleaning staff removes the device, and the flash is removed from
+the mainboard and modified) is something which is considered an attack
+which is realistically only going to be carried out by a nation state,
+and the primary priority was protecting the privileged APK's (the
+moral equivalent of setuid binaries), and that's where fsverity is
+used to protect against that threat.
 
-Agreed. I thought it should be supported from [1] but I missed [2].
+Yes, the nation state attacker could potentially corrupt the metadata
+of the writeable file system image, and but there are enough zero day
+attacks that involve sending corrupted image files that trigger buffer
+overflows, etc., that while it would be nice to protect against this
+sort of thing, given that it requires a physical attack (and that
+point, the nation state attacker could also enhance the device with
+remotely denotated explosives, something which spies on the
+touchscreen or microphone and ships the output over the network,
+etc.), I don't believe this is considered a high priority threat that
+is worth spending $$$ to mitigate.
 
-[1] https://lore.kernel.org/all/20130221134943.GA3818@gmail.com/
-[2] https://lore.kernel.org/all/20130222030327.GB3421@gmail.com/
+The only other extrenal image, which is where something like using
+fuse would be interesting, is a USB thumb drive being connected to the
+ChromeOS or Android device.  In that case, performance is really not
+an issue, so running fsck before mounting would probably be considered
+acceptable.  The main issue here is that fsck for NTFS, FAT, etc.,
+probably isn't as good as the fsck for a file systems such as xfs or
+ext4.  So the primary protection that we have is that enterprise
+managed devices can simply prohibit mounting external USB thumb drives
+if the enterprise administrators elects to do so.  This doesn't help
+personal devices, but users have to take affirmative action to mount a
+device (simply inserting a device isn't enough, at least on Android),
+so people who are paranoid can simply not pick up a USB thumb drive
+they find in a parking lot and insert it into their phone.
 
-> 
->> Regarding the issue reported by syzbot...
-> 
-> Yeah, this is why I generally don't pay that much attention to syzbot
-> reports that mount a corrupted file system.  Users are supposed to run
-> fsck on a file system before they blindly mount it.  If they don't, I
-> don't consider it a security vulnerability; it's just a stupid system
-> administrator trick, and he or she deserves everything that happens to
-> them.  Hence, such issues are not a security issue, but just a quality
-> of implementation issue.  I'll accept patches to addrese sorts of
-> things, but it doesn't rate a CVE or high priority processing.
+Cheers,
 
-Make sense.
-
-I think I'll submit this patch as per your suggestion since I'm already 
-looking at this, but I won't bother you further with these sorts of 
-low-priority issues.
-
-> 
-> Furthermore, any fix needs to as simple as possible, and avoids adding
-> extra overhead especially on hot paths.  In this particular case,
-> rejecting the mount is the simplest fix, since the file system
-> corruption is *easy* to detect.
-
-Ack, and thanks for your reply!
-
-Helen,
-Cheers
+						- Ted
+					
