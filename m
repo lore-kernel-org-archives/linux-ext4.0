@@ -1,153 +1,240 @@
-Received: from out30-112.freemail.mail.aliyun.com (out30-112.freemail.mail.aliyun.com [115.124.30.112])
+Received: from sender4-op-o15.zoho.com (sender4-op-o15.zoho.com [136.143.188.15])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B070878F4A;
-	Tue, 17 Mar 2026 06:32:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.112
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773729128; cv=none; b=O33+7kPO239qSD5u0+q4reb6eqakHCUY60kr4Gd3qmZqh6idJ/DCTpCjYIRTDRXyrlk24375uZ8HRF137sgaKMwi7LliP4MGd2ibGsm8A+TkY2akDayBO5mOPJVC3auMstXch0K7fPeUdAl8QO1Q7RH80n3oVV2LITArKs4C2Ok=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773729128; c=relaxed/simple;
-	bh=SmzjEUPZwsFE/pJKO4SYDQENZOpI/eAx5M56KVBI4RI=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=qDDlivTQilQMgaQgM5fr99AzEhRQMyUoQy1JGzwvcseobDHC5ugtlP0R4XKG5OMV/1AGqrAOVal9hI/IOTcc/UX+VPuJjrYDKhYHvN18LL2sKoRCprvlgT0v2y7E3LMXfUO19DIQl2bNsmnZDIYKvJh5eS7ggHXRWhAern9A0OA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=J6A1EVCb; arc=none smtp.client-ip=115.124.30.112
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D3AC725A2C6;
+	Tue, 17 Mar 2026 08:46:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=136.143.188.15
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1773737212; cv=pass; b=MvB94j8qJDrrveFJ9O56qimH6Ua7aOf4mWXGtkXpUjqnkfj5ZBBft4wtiVt3cyWYMFQiaMQXBCLMMie/zWeHRgOOSM32GS4Qky7VKDZVZ4SR2wgU5S+PiMGemjrzztSxK0yINtB3ZAo0ODvgLIzzaVWlVPWrKTd9lvXdqCDFHVE=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1773737212; c=relaxed/simple;
+	bh=aup1IqZo9UMazhxj1av/hE/2NVMwmtq/EKHwIvmWTNM=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=PWodmHrZhXVqTHVXSIV/TZapb/KWLw50IgdK9qwFOk07Aej81efTs6VtYqIP5orLJ899RmI4qge7+JOn3xDsbQyeFO/RlawjDFO9h0zNGACzCFwyuRad2hM2brhfOI/TyS7Fx0HUdqPszsGSpmERvf1fQCgBDIT4X0GrJdCfibc=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty; spf=pass smtp.mailfrom=linux.beauty; dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b=MmYMkBBC; arc=pass smtp.client-ip=136.143.188.15
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.beauty
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="J6A1EVCb"
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1773729122; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=iKgmgUZ2NdT5cBd3dYW90T1ooVdZfeIB6q4PDhYYig8=;
-	b=J6A1EVCbpAqcls+jAXP8bAROcI/KvS9AKfMLrVeqJpOCyudEyUjphQJYwoxLJ0GuarhCs5U4LSZ6bW1ooXiNj5QAMO6/6xNX+uywAianECpYQb/gdz8gLOmjDNrvDFhWyXXWozYiDD1duF8MMuSsft+OMCQ3Zp1+egOs0efUMvI=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R201e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037009110;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=6;SR=0;TI=SMTPD_---0X.9zd3i_1773729121;
-Received: from 30.221.130.194(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X.9zd3i_1773729121 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Tue, 17 Mar 2026 14:32:02 +0800
-Message-ID: <5e747089-7fc8-4230-b9e2-65e479fcebab@linux.alibaba.com>
-Date: Tue, 17 Mar 2026 14:32:01 +0800
+	dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b="MmYMkBBC"
+ARC-Seal: i=1; a=rsa-sha256; t=1773737199; cv=none; 
+	d=zohomail.com; s=zohoarc; 
+	b=UdPJlk/vzE0xaLErWh9bcCgDnrUce05XF7Hv8uVzwb96jkdQJFORrRdEc3jANyErd/LYfqO0zWcxxj5DzNsasPUiPZz0GgseNJdRcipLgt3KzQkIrpeFs/haohBSe8zVtXjGrGcx7fTdJHUJ91Mtw3gBeI56AYhXpfHVct5azw8=
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zohomail.com; s=zohoarc; 
+	t=1773737199; h=Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:MIME-Version:Message-ID:Subject:Subject:To:To:Message-Id:Reply-To; 
+	bh=fLJIQAAt5xHN9p781jAFKEe7AE08plu24BBTw9o/6pg=; 
+	b=j8L0XjmZ5jNq71lzSbHlCkASYJ/xyMbzLPDHgGgB5iuD93RJLO+76DT/GXZKM1eVbqnz08cF4C5p/ty7cJcVjD0jRRnhGEciYRveS4W4146AMbk4HjUO8T9cdTECq5WEQoxibzNyL5LnJFU11WDfy2eJappdVd1b8x5oDr41lIQ=
+ARC-Authentication-Results: i=1; mx.zohomail.com;
+	dkim=pass  header.i=linux.beauty;
+	spf=pass  smtp.mailfrom=me@linux.beauty;
+	dmarc=pass header.from=<me@linux.beauty>
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1773737199;
+	s=zmail; d=linux.beauty; i=me@linux.beauty;
+	h=From:From:To:To:Cc:Cc:Subject:Subject:Date:Date:Message-ID:MIME-Version:Content-Transfer-Encoding:Message-Id:Reply-To;
+	bh=fLJIQAAt5xHN9p781jAFKEe7AE08plu24BBTw9o/6pg=;
+	b=MmYMkBBCxhuxKWISiZ8S16509Tldi+H6KOD4siBVhvqZuurho+nNXDECzXAjMn4P
+	kA3uyUD6lbBVj5O2Fx8zO+Lzd2SaSJPhJKyF5uYYUr7HqCYUce+fuiwKGw+DHKYWlYj
+	12sHgYGyfWJyWC+ZviSw93nvmeupLrLoj3SKVww0=
+Received: by mx.zohomail.com with SMTPS id 1773737196851456.3272384599427;
+	Tue, 17 Mar 2026 01:46:36 -0700 (PDT)
+From: Li Chen <me@linux.beauty>
+To: Zhang Yi <yi.zhang@huaweicloud.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: Steven Rostedt <rostedt@goodmis.org>,
+	Masami Hiramatsu <mhiramat@kernel.org>,
+	Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+	linux-ext4@vger.kernel.org,
+	linux-trace-kernel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [RFC v5 0/7] ext4: fast commit: snapshot inode state for FC log
+Date: Tue, 17 Mar 2026 16:46:15 +0800
+Message-ID: <20260317084624.457185-1-me@linux.beauty>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: Fix possible NULL pointer dereference in
- ext4_group_desc_free()
-To: Zqiang <qiang.zhang@linux.dev>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, tytso@mit.edu,
- adilger.kernel@dilger.ca, libaokun@linux.alibaba.com
-References: <20260316082025.9574-1-qiang.zhang@linux.dev>
- <e275a80b-df14-4d05-9334-b10d2e57fbbc@linux.alibaba.com>
- <584a552d5b5cf7554f4a1c607e62f308436ff3eb@linux.dev>
-Content-Language: en-US
-From: Baokun Li <libaokun@linux.alibaba.com>
-In-Reply-To: <584a552d5b5cf7554f4a1c607e62f308436ff3eb@linux.dev>
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
+X-ZohoMailClient: External
 
+Hi,
 
-On 3/17/26 7:33 AM, Zqiang wrote:
->> On 3/16/26 4:20 PM, Zqiang wrote:
->>
->>> This can happen if the kvmalloc_objs() fails and sbi->s_group_desc pointer
->>>  is NULL in the ext4_group_desc_init(), and then the ext4_group_desc_free()
->>>  is called, leading to a NULL group_desc pointer dereference.
->>>
->>>  This commit therefore adds a NULL check for sbi->s_group_desc before
->>>  accessing its internal members.
->>>
->>>  Signed-off-by: Zqiang <qiang.zhang@linux.dev>
->>>  ---
->>>  fs/ext4/super.c | 8 +++++---
->>>  1 file changed, 5 insertions(+), 3 deletions(-)
->>>
->>>  diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->>>  index 43f680c750ae..c4307dc04687 100644
->>>  --- a/fs/ext4/super.c
->>>  +++ b/fs/ext4/super.c
->>>  @@ -1256,9 +1256,11 @@ static void ext4_group_desc_free(struct ext4_sb_info *sbi)
->>>  
->>>  rcu_read_lock();
->>>  group_desc = rcu_dereference(sbi->s_group_desc);
->>>  - for (i = 0; i < sbi->s_gdb_count; i++)
->>>
->> In ext4_group_desc_init(), s_gdb_count is only assigned after kvmalloc_array
->> allocation succeeds. Therefore, when kvmalloc_array fails, the
->> brelse(group_desc[i]) in ext4_group_desc_free() will not actually be
->> executed,
->> and thus this NULL pointer dereference issue will not be triggered.
->
-> Thanks for replay, got it, sorry for make noise.
->
-> Just then, I find that warning may be trigger:
->
-> the kvfree() is called in RCU read critical section, if
-> the sbi->s_group_desc pointer comes from vmalloc(),
-> the vfree() is called to release it, but the might_sleep()
-> is called in the vfree(), this may be trigger warnings in
-> rcu_sleep_check() when the enable CONFIG_DEBUG_ATOMIC_SLEEP.
+(This RFC v5 series is based on linux-next tag next-20260106 plus the
+prerequisite patch "ext4: fast commit: make s_fc_lock reclaim-safe":
+https://lore.kernel.org/all/20260106120621.440126-1-me@linux.beauty/)
 
-Indeed, vfree triggers the following warning: ```
-===========================================================================
-EXT4-fs (vdc): unmounting filesystem
-c478da00-c52c-4dd4-81c1-d4f93e12ab50. BUG: sleeping function called from
-invalid context at mm/vmalloc.c:3441 in_atomic(): 0, irqs_disabled(): 0,
-non_block: 0, pid: 457, name: umount preempt_count: 0, expected: 0 RCU
-nest depth: 1, expected: 0 CPU: 0 UID: 0 PID: 457 Comm: umount Tainted:
-G W 6.19.0-rc4-g4f5e8e6f0123-dirty #10 PREEMPT(none) Tainted: [W]=WARN
-Call Trace: <TASK> dump_stack_lvl+0x55/0x70 __might_resched+0x116/0x160
-vfree+0x38/0x60 ext4_put_super+0x1ac/0x490
-generic_shutdown_super+0x81/0x180 kill_block_super+0x1a/0x40
-ext4_kill_sb+0x22/0x40 deactivate_locked_super+0x35/0xb0
-cleanup_mnt+0x101/0x170 task_work_run+0x5c/0xa0
-exit_to_user_mode_loop+0xe2/0x460 do_syscall_64+0x1de/0x1f0
-entry_SYSCALL_64_after_hwframe+0x76/0x7e
-===========================================================================
-``` And ext4_mb_init_backend, ext4_mb_release, ext4_flex_groups_free
-have similar issues.Indeed, vfree triggers the following warning:
+Zhang Yi in RFC v3 review pointed out that postponing lockdep assertions only
+masks the issue, and that sleeping in ext4_fc_track_inode() while holding
+i_data_sem can form a real ABBA deadlock if the fast commit writer also needs
+i_data_sem while the inode is in FC_COMMITTING.
 
-===========================================================================
-EXT4-fs (vdc): unmounting filesystem c478da00-c52c-4dd4-81c1-d4f93e12ab50.
-BUG: sleeping function called from invalid context at mm/vmalloc.c:3441
-in_atomic(): 0, irqs_disabled(): 0, non_block: 0, pid: 457, name: umount
-preempt_count: 0, expected: 0
-RCU nest depth: 1, expected: 0
-CPU: 0 UID: 0 PID: 457 Comm: umount Tainted: G W
-               6.19.0-rc4-g4f5e8e6f0123-dirty #10 PREEMPT(none)
-Tainted: [W]=WARN
-Call Trace:
- <TASK>
- dump_stack_lvl+0x55/0x70
- __might_resched+0x116/0x160
- vfree+0x38/0x60
- ext4_put_super+0x1ac/0x490
- generic_shutdown_super+0x81/0x180
- kill_block_super+0x1a/0x40
- ext4_kill_sb+0x22/0x40
- deactivate_locked_super+0x35/0xb0
- cleanup_mnt+0x101/0x170
- task_work_run+0x5c/0xa0
- exit_to_user_mode_loop+0xe2/0x460
- do_syscall_64+0x1de/0x1f0
- entry_SYSCALL_64_after_hwframe+0x76/0x7e
-===========================================================================
+Zhang Yi suggested two possible directions to address the root cause:
 
-And ext4_mb_init_backend, ext4_mb_release, ext4_flex_groups_free have
-similar issues.
+1. "Ha, the solution seems to have already been listed in the TODOs in
+fast_commit.c.
 
-> May be use rcu_access_pointer() to access sbi->s_group_desc
-> is enough.
->
-Yes, these are all initialization or teardown paths and cannot run
-concurrently with
-online resize, so using rcu_access_pointer() seems sufficient.
+  Change ext4_fc_commit() to lookup logical to physical mapping using extent
+  status tree. This would get rid of the need to call ext4_fc_track_inode()
+  before acquiring i_data_sem. To do that we would need to ensure that
+  modified extents from the extent status tree are not evicted from memory."
 
-Also, should we add might_sleep() to kvfree() to prevent similar issues?
+2. "Alternatively, recording the mapped range of tracking might also be
+feasible."
 
+This series implements a hybrid way: it implements approach 2 by snapshotting inode image
+and mapped ranges at commit time, and consuming only snapshots during log
+writing.
 
-Cheers,
-Baokun
+Approach 2 still needs a mapping source while building the snapshot
+(logical-to-physical and unwritten/hole semantics). Calling ext4_map_blocks()
+there would take i_data_sem and can block inside the
+jbd2_journal_lock_updates() window, which risks deadlocks or unbounded stalls.
+So the snapshot path uses approach 1's extent status lookups as a best-effort
+mapping source to avoid ext4_map_blocks().
 
+I did not fully implement approach 1 (making extent status lookups
+authoritative by preventing reclaim of needed entries) because that would need
+additional pinning/integration under memory pressure and a larger correctness
+surface. Instead, the extent status tree is treated as a cache and the
+snapshot path falls back to full commit on cache misses or unstable mappings
+(e.g. delayed allocation).
+
+Lock inversion / deadlock model (before):
+
+CPU0 (metadata update)               CPU1 (fast commit)
+--------------------               -----------------
+... hold i_data_sem (A)             mutex_lock(s_fc_lock) (B)
+    ext4_fc_track_inode()             ext4_fc_write_inode_data()
+      mutex_lock(s_fc_lock) (B)         ext4_map_blocks()
+      wait FC_COMMITTING (sleep)          down_read(i_data_sem) (A)
+
+This creates i_data_sem (A) -> s_fc_lock (B) on update paths, and
+s_fc_lock (B) -> i_data_sem (A) on commit paths. Once CPU0 sleeps while
+holding (A), CPU1 can block on (A) while holding (B), completing the ABBA
+cycle.
+
+New model (this series):
+
+CPU0 (metadata update)               CPU1 (fast commit)
+--------------------               -----------------
+... maybe hold i_data_sem (A)        jbd2_journal_lock_updates()
+    ext4_fc_track_*()                 snapshot inode + ranges (no map_blocks)
+      mutex_lock(s_fc_lock) (B)       jbd2_journal_unlock_updates()
+      if FC_COMMITTING: set FC_REQUEUE s_fc_lock (B)
+      no sleep                         write FC log from snapshots only
+                                    cleanup: clear COMMITTING, requeue if set
+
+The commit path no longer takes i_data_sem while holding s_fc_lock, and
+tracking no longer sleeps waiting for FC_COMMITTING. If an inode is updated
+during a fast commit, EXT4_STATE_FC_REQUEUE records that fact and the inode
+is moved to FC_Q_STAGING for the next commit.
+The only remaining FC_COMMITTING waiter is ext4_fc_del(), which drops
+s_fc_lock before sleeping.
+
+This series snapshots the on-disk inode and tracked data ranges while journal
+updates are locked and existing handles are drained. The log writing phase then
+serializes only snapshots, so it no longer needs to call ext4_map_blocks() and
+take i_data_sem under s_fc_lock. This is done in two steps: patch 1 drops
+ext4_map_blocks() from log writing by introducing commit-time snapshots, and
+patch 5 drops ext4_map_blocks() from the snapshot path by using the extent
+status cache. The snapshot also records whether a mapped extent is unwritten,
+so the ADD_RANGE records (and replay) preserve unwritten semantics.
+
+Snapshotting runs under jbd2_journal_lock_updates(). Since a cache miss in
+ext4_get_inode_loc() can start synchronous inode table I/O and stall handle
+starts for milliseconds, patch 1 uses ext4_get_inode_loc_noio() and falls back
+to full commit if the inode table block is not present or not uptodate.
+
+ext4_fc_track_inode() also stops waiting for FC_COMMITTING. Updates during an
+ongoing fast commit are marked with EXT4_STATE_FC_REQUEUE and are replayed in
+the next fast commit, while ext4_fc_del() waits for FC_COMMITTING so an inode
+cannot be removed while the commit thread is still using it.
+
+The extent status tree is a cache, not an authoritative source, so the snapshot
+path falls back to full commit on cache misses or unstable mappings (e.g.
+delayed allocation). This includes cases where extent status entries are not
+present (or have been reclaimed) under memory pressure. The snapshot path does
+not try to rebuild mappings by calling ext4_map_blocks(); instead it simply
+marks the transaction fast commit ineligible.
+
+To keep the updates-locked window bounded, the snapshot path caps the number of
+snapshotted inodes and ranges per fast commit (currently 1024 inodes and 2048
+ranges) and falls back to full commit when the cap is exceeded. The series also
+handles the journal inode i_data_sem lockdep false positive via subclassing;
+journal inode mapping may still take i_data_sem even when data inode mapping is
+avoided.
+
+Patch 6 adds the ext4_fc_lock_updates tracepoint to quantify the updates-locked
+window and snapshot fallback reasons. Patch 7 extends
+/proc/fs/ext4/<sb_id>/fc_info with best-effort snapshot counters. If the /proc
+interface is undesirable, I can drop patch 7 and keep the tracepoint only, or
+drop even both.
+
+Testing and measurement were done on a QEMU/KVM guest with virtio-pmem + dax
+(ext4 -O fast_commit, mounted dax,noatime). The workload does python3 500x
+{4K write + fsync}, fallocate 256M, and python3 500x {creat + fsync(dir)}.
+Over 3 cold boots, ext4_fc_lock_updates reported locked_ns p50 2.88-2.92 us,
+p99 <= 6.71 us, and max <= 102.71 us, with snap_err always 0. Under stress-ng
+memory pressure (stress-ng --vm 4 --vm-bytes 75% --timeout 60s), locked_ns p50
+2.94 us, p99 <= 4.97 us, and max <= 20.07 us. The fc_info snapshot failure
+counters stayed at 0.
+These hold times are in the low microseconds range, and the caps keep the
+worst case bounded.
+
+Comments and guidance are very welcome. Please let me know if there are any
+concerns about correctness, corner cases, or better approaches.
+
+RFC v4 -> RFC v5:
+- Patch 6: Make ext4_fc_lock_updates snap_err human readable via
+  TRACE_DEFINE_ENUM() + __print_symbolic(), using a single TRACE_SNAP_ERR
+  mapping while keeping the enum values stable for tooling.
+
+RFC v3 -> RFC v4:
+- Replace lockdep_assert movement with removing the wait in
+  ext4_fc_track_inode() and using EXT4_STATE_FC_REQUEUE to capture updates
+  during an ongoing fast commit.
+- Replace dropping s_fc_lock around log writing with commit-time snapshots of
+  inode image and mapped ranges (recording the mapped range of tracking as
+  suggested by Zhang Yi) so log writing consumes only snapshots.
+- Avoid inode table I/O under jbd2_journal_lock_updates() via
+  ext4_get_inode_loc_noio() and fallback to full commit on cache misses.
+- Use the extent status cache for snapshot mappings and fall back to full
+  commit on cache misses or unstable mappings (e.g. delayed allocation).
+- Add tracepoint and /proc snapshot stats to quantify the updates-locked window
+  and snapshot fallback reasons.
+
+RFC v2 -> RFC v3:
+- rebase on top of
+  https://lore.kernel.org/linux-ext4/20251223131342.287864-1-me@linux.beauty/T/#u
+
+RFC v1 -> RFC v2:
+- patch 1: move comments to correct place
+- patch 2: add it to patchset.
+- add missing RFC prefix
+
+RFC v1: https://lore.kernel.org/linux-ext4/20251222032655.87056-1-me@linux.beauty/T/#u
+RFC v2: https://lore.kernel.org/linux-ext4/20251222151906.24607-1-me@linux.beauty/T/#t
+RFC v3: https://lore.kernel.org/linux-ext4/20251224032943.134063-1-me@linux.beauty/
+RFC v4: https://lore.kernel.org/all/20260120112538.132774-1-me@linux.beauty/t/#m9a6c8f2391c6dc67471e918a0577b130e7633e49
+
+Thanks,
+Li Chen (7):
+  ext4: fast commit: snapshot inode state before writing log
+  ext4: lockdep: handle i_data_sem subclassing for special inodes
+  ext4: fast commit: avoid waiting for FC_COMMITTING
+  ext4: fast commit: avoid self-deadlock in inode snapshotting
+  ext4: fast commit: avoid i_data_sem by dropping ext4_map_blocks() in
+    snapshots
+  ext4: fast commit: add lock_updates tracepoint
+  ext4: fast commit: export snapshot stats in fc_info
+
+ fs/ext4/ext4.h              |  73 +++-
+ fs/ext4/fast_commit.c       | 703 +++++++++++++++++++++++++++++-------
+ fs/ext4/inode.c             |  51 +++
+ fs/ext4/super.c             |   9 +
+ include/trace/events/ext4.h |  61 ++++
+ 5 files changed, 763 insertions(+), 134 deletions(-)
+
+-- 
+2.53.0
