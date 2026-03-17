@@ -1,200 +1,248 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from out-178.mta1.migadu.com (out-178.mta1.migadu.com [95.215.58.178])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 148B83C3BF0
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Mar 2026 12:28:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3D4DF3C3BF0
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Mar 2026 13:23:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=95.215.58.178
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773750532; cv=none; b=WgsmKQnWwTZBQXFh3+bHR3Cai9g4C67gNO2rqO7EzrB4gTXQZy+qWRz57ZXrz0AMC2Wu04n+Q8Nay4YjNvgVESA/H1DZdyxH0V/sST9bag6eAD02dVOrw93rjDOpyGzUkqwfU7ISBNHbi0EyqR8tN8wvuM/MbMoAAHxHtdAEDpA=
+	t=1773753823; cv=none; b=m7gNEZVejUADA8F5+4x5Nu66j7KPMObi9FEfe2PcxvDQm2seffH5Y11U9RBjf0AISjGU9eN0hSJ3iZTL1R/VNPtK4k9XBpHeAmcqjf8Uk4yeeD6xvisMekvtxDdSABFShdM+A4OqlFHqr8bv/Sd+NJlFFz+WZLfb3X9IQU7ULNM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773750532; c=relaxed/simple;
-	bh=XOl9cAcN8OTL0ft6oAX4UsYweQQIxpj7m5J/jNMpsqc=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=M0lwk4XRcnuvdWIX06IYM9QrtC66LOhLui/5d913bZl0qMJ/CYbMdMnpvXsPK1KmQIRf7mUE0p3AEo4knOiqDP3RqdUOvyOsxwLoiC9xPwuGN+vW64hYZaTOYcBm9LDoUIwAz4v12+4R1h4T9fNrDid6WWa5aSzwfvKbrC1wmMU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Y/v/Mo22; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=M8KPaHsi; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Y/v/Mo22; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=M8KPaHsi; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1773753823; c=relaxed/simple;
+	bh=zRqYwsaQjbzPweFVZG7Vcc6xFgnJ2dJVGg4RTxCL8JQ=;
+	h=MIME-Version:Date:Content-Type:From:Message-ID:Subject:To:Cc:
+	 In-Reply-To:References; b=kVawwRv6FeQr7y+nhEygS5toteI/p69bwDCeEPNuqQe7haMYFojlv2yisbTR/sh1AZxmhB2EbdKzRSEXP17a0iVi1d+UFCjI/zpRflDL4P/aL7X/ynuRQtSe7BWZi6Mudk9VsvtKY5O85gGpxkafpd+bhtOEdNBWBdVlpgye+AM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=n/yKCdNv; arc=none smtp.client-ip=95.215.58.178
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Y/v/Mo22";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="M8KPaHsi";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Y/v/Mo22";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="M8KPaHsi"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 3146B5BCC6;
-	Tue, 17 Mar 2026 12:28:49 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1773750529; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=M4V//nKnbr6ltxj2qGC42q0WjQ2NljMEpL+rfneUCzk=;
-	b=Y/v/Mo224DUKhE90c73UCahCYc0XOSWr66CklW2izubg7HQiclk41PpZKBPZvzEC4r8Thi
-	4cSUCAnnpug1ErXu6hEy68jdYhM2aStBwylLx6JIsJnueefMxGvZMdkVwKnpRi6CphX1J3
-	hVor+HodSjjGGxCu40hTVmBr6bMEnAk=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1773750529;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=M4V//nKnbr6ltxj2qGC42q0WjQ2NljMEpL+rfneUCzk=;
-	b=M8KPaHsirf6ZFAb64OEm67bui2GpbeYMU8tGEOFMD6n2Ujz1nEHiLjo5FE2eQskMYHy6Kp
-	PeE6aw83TarbTfCQ==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1773750529; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=M4V//nKnbr6ltxj2qGC42q0WjQ2NljMEpL+rfneUCzk=;
-	b=Y/v/Mo224DUKhE90c73UCahCYc0XOSWr66CklW2izubg7HQiclk41PpZKBPZvzEC4r8Thi
-	4cSUCAnnpug1ErXu6hEy68jdYhM2aStBwylLx6JIsJnueefMxGvZMdkVwKnpRi6CphX1J3
-	hVor+HodSjjGGxCu40hTVmBr6bMEnAk=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1773750529;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=M4V//nKnbr6ltxj2qGC42q0WjQ2NljMEpL+rfneUCzk=;
-	b=M8KPaHsirf6ZFAb64OEm67bui2GpbeYMU8tGEOFMD6n2Ujz1nEHiLjo5FE2eQskMYHy6Kp
-	PeE6aw83TarbTfCQ==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 15CB34273B;
-	Tue, 17 Mar 2026 12:28:49 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id J0BMBQFJuWlrAgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 17 Mar 2026 12:28:49 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id D06DFA0A5B; Tue, 17 Mar 2026 13:28:48 +0100 (CET)
-Date: Tue, 17 Mar 2026 13:28:48 +0100
-From: Jan Kara <jack@suse.cz>
-To: Milos Nikic <nikic.milos@gmail.com>
-Cc: jack@suse.cz, tytso@mit.edu, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>, 
-	Zhang Yi <yi.zhang@huawei.com>, Baokun Li <libaokun@linux.alibaba.com>
-Subject: Re: [PATCH v2 1/1] jbd2: gracefully abort on checkpointing state
- corruptions
-Message-ID: <6m6t2domksqnztnbud2gplxx5uzsxvvz25jeddjul7kzl2g6rw@5awwcsoiddhg>
-References: <20260311041548.159424-1-nikic.milos@gmail.com>
+	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="n/yKCdNv"
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260311041548.159424-1-nikic.milos@gmail.com>
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	MISSING_XM_UA(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	ARC_NA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	FREEMAIL_TO(0.00)[gmail.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	TO_DN_SOME(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	RCPT_COUNT_SEVEN(0.00)[8];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[alibaba.com:email,dilger.ca:email,suse.com:email,imap1.dmz-prg2.suse.org:helo,suse.cz:email,huawei.com:email]
-X-Spam-Flag: NO
-X-Spam-Score: -2.30
-X-Spam-Level: 
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
+	t=1773753819;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=eLE1bO1sAFW/aIxrF7164qd1+c52VLlR0z0r7oduuZA=;
+	b=n/yKCdNvIQ0+SEBMvAPggeQeyBMC8mkqJVVOsQI0kzX1i3oBX/gTZi9jL8oeJ0cLpAmWkE
+	h7EhBKGYRAhs4a5u6gV4A+xHO03O190dKADcJfvfvZHjUv9da5ijqdvjs+Bsn6Znx/e/7j
+	UZn88kGbqxDRADo44xgZOg2iSfR6kTw=
+Date: Tue, 17 Mar 2026 13:23:32 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
+From: "Zqiang" <qiang.zhang@linux.dev>
+Message-ID: <5b06137188083d93a6938a0c94d23a57c6ec8db3@linux.dev>
+TLS-Required: No
+Subject: Re: [PATCH] ext4: Fix possible NULL pointer dereference in
+ ext4_group_desc_free()
+To: "Baokun Li" <libaokun@linux.alibaba.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, tytso@mit.edu,
+ adilger.kernel@dilger.ca, libaokun@linux.alibaba.com
+In-Reply-To: <5e747089-7fc8-4230-b9e2-65e479fcebab@linux.alibaba.com>
+References: <20260316082025.9574-1-qiang.zhang@linux.dev>
+ <e275a80b-df14-4d05-9334-b10d2e57fbbc@linux.alibaba.com>
+ <584a552d5b5cf7554f4a1c607e62f308436ff3eb@linux.dev>
+ <5e747089-7fc8-4230-b9e2-65e479fcebab@linux.alibaba.com>
+X-Migadu-Flow: FLOW_OUT
 
-On Tue 10-03-26 21:15:48, Milos Nikic wrote:
-> This patch targets two internal state machine invariants in checkpoint.c
-> residing inside functions that natively return integer error codes.
-> 
-> - In jbd2_cleanup_journal_tail(): A blocknr of 0 indicates a severely
-> corrupted journal superblock. Replaced the J_ASSERT with a WARN_ON_ONCE
-> and a graceful journal abort, returning -EFSCORRUPTED.
-> 
-> - In jbd2_log_do_checkpoint(): Replaced the J_ASSERT_BH checking for
-> an unexpected buffer_jwrite state. If the warning triggers, we
-> explicitly drop the just-taken get_bh() reference and call __flush_batch()
-> to safely clean up any previously queued buffers in the j_chkpt_bhs array,
-> preventing a memory leak before returning -EFSCORRUPTED.
-> 
-> Signed-off-by: Milos Nikic <nikic.milos@gmail.com>
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-> Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
-> Reviewed-by: Baokun Li <libaokun@linux.alibaba.com>
+>=20
+>=20On 3/17/26 7:33 AM, Zqiang wrote:
+>=20
+>=20>=20
+>=20> >=20
+>=20> > On 3/16/26 4:20 PM, Zqiang wrote:
+> > >=20
+>=20>  This can happen if the kvmalloc_objs() fails and sbi->s_group_desc=
+ pointer
+> >  is NULL in the ext4_group_desc_init(), and then the ext4_group_desc_=
+free()
+> >  is called, leading to a NULL group_desc pointer dereference.
+> >=20
+>=20>  This commit therefore adds a NULL check for sbi->s_group_desc befo=
+re
+> >  accessing its internal members.
+> >=20
+>=20>  Signed-off-by: Zqiang <qiang.zhang@linux.dev>
+> >  ---
+> >  fs/ext4/super.c | 8 +++++---
+> >  1 file changed, 5 insertions(+), 3 deletions(-)
+> >=20
+>=20>  diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> >  index 43f680c750ae..c4307dc04687 100644
+> >  --- a/fs/ext4/super.c
+> >  +++ b/fs/ext4/super.c
+> >  @@ -1256,9 +1256,11 @@ static void ext4_group_desc_free(struct ext4_=
+sb_info *sbi)
+> >=20=20
+>=20>  rcu_read_lock();
+> >  group_desc =3D rcu_dereference(sbi->s_group_desc);
+> >  - for (i =3D 0; i < sbi->s_gdb_count; i++)
+> >=20
+>=20> >=20
+>=20> > In ext4_group_desc_init(), s_gdb_count is only assigned after kvm=
+alloc_array
+> > >  allocation succeeds. Therefore, when kvmalloc_array fails, the
+> > >  brelse(group_desc[i]) in ext4_group_desc_free() will not actually =
+be
+> > >  executed,
+> > >  and thus this NULL pointer dereference issue will not be triggered=
+.
+> > >=20
+>=20>  Thanks for replay, got it, sorry for make noise.
+> >=20
+>=20>  Just then, I find that warning may be trigger:
+> >=20
+>=20>  the kvfree() is called in RCU read critical section, if
+> >  the sbi->s_group_desc pointer comes from vmalloc(),
+> >  the vfree() is called to release it, but the might_sleep()
+> >  is called in the vfree(), this may be trigger warnings in
+> >  rcu_sleep_check() when the enable CONFIG_DEBUG_ATOMIC_SLEEP.
+> >=20
+>=20Indeed, vfree triggers the following warning: ```
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D
+> EXT4-fs (vdc): unmounting filesystem
+> c478da00-c52c-4dd4-81c1-d4f93e12ab50. BUG: sleeping function called fro=
+m
+> invalid context at mm/vmalloc.c:3441 in_atomic(): 0, irqs_disabled(): 0=
+,
+> non_block: 0, pid: 457, name: umount preempt_count: 0, expected: 0 RCU
+> nest depth: 1, expected: 0 CPU: 0 UID: 0 PID: 457 Comm: umount Tainted:
+> G W 6.19.0-rc4-g4f5e8e6f0123-dirty #10 PREEMPT(none) Tainted: [W]=3DWAR=
+N
+> Call Trace: <TASK> dump_stack_lvl+0x55/0x70 __might_resched+0x116/0x160
+> vfree+0x38/0x60 ext4_put_super+0x1ac/0x490
+> generic_shutdown_super+0x81/0x180 kill_block_super+0x1a/0x40
+> ext4_kill_sb+0x22/0x40 deactivate_locked_super+0x35/0xb0
+> cleanup_mnt+0x101/0x170 task_work_run+0x5c/0xa0
+> exit_to_user_mode_loop+0xe2/0x460 do_syscall_64+0x1de/0x1f0
+> entry_SYSCALL_64_after_hwframe+0x76/0x7e
 
-Looks good to me. Feel free to add:
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+This can also actually happen, depending on your kernel configuration:
+ CONFIG_PREEMPT_NONE=3Dy=20
+=20CONFIG_PROVE_RCU=3Dy
+ CONFIG_DEBUG_ATOMIC_SLEEP=3Dy
+ CONFIG_PREEMPT_RCU=3Dn
+ CONFIG_PREEMPT_COUNT=3Dy
+ CONFIG_DEBUG_PREEMPT=3Dy
 
-								Honza
 
-> ---
->  Changes in v2:
-> 
->     Replaced the -EUCLEAN error code with -EFSCORRUPTED to better align with ext4/jbd2 semantics for on-disk metadata inconsistencies (per Baokun's review).
-> 
->     Reordered the error path in jbd2_log_do_checkpoint() so that jbd2_journal_abort() is called after __flush_batch(). This ensures cleanly batched buffers are logically flushed before the journal kill switch is flipped.
-> 
->     Collected Reviewed-by tags from Andreas Dilger, Zhang Yi, and Baokun Li.
-> 
-> Changes in v1:
-> 
->     Initial implementation converting J_ASSERTs in jbd2_cleanup_journal_tail() and jbd2_log_do_checkpoint() to WARN_ON_ONCE and graceful journal aborts.
-> 
->  fs/jbd2/checkpoint.c | 15 +++++++++++++--
->  1 file changed, 13 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-> index de89c5bef607..1508e2f54462 100644
-> --- a/fs/jbd2/checkpoint.c
-> +++ b/fs/jbd2/checkpoint.c
-> @@ -267,7 +267,15 @@ int jbd2_log_do_checkpoint(journal_t *journal)
->  			 */
->  			BUFFER_TRACE(bh, "queue");
->  			get_bh(bh);
-> -			J_ASSERT_BH(bh, !buffer_jwrite(bh));
-> +			if (WARN_ON_ONCE(buffer_jwrite(bh))) {
-> +				put_bh(bh); /* drop the ref we just took */
-> +				spin_unlock(&journal->j_list_lock);
-> +				/* Clean up any previously batched buffers */
-> +				if (batch_count)
-> +					__flush_batch(journal, &batch_count);
-> +				jbd2_journal_abort(journal, -EFSCORRUPTED);
-> +				return -EFSCORRUPTED;
-> +			}
->  			journal->j_chkpt_bhs[batch_count++] = bh;
->  			transaction->t_chp_stats.cs_written++;
->  			transaction->t_checkpoint_list = jh->b_cpnext;
-> @@ -325,7 +333,10 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
->  
->  	if (!jbd2_journal_get_log_tail(journal, &first_tid, &blocknr))
->  		return 1;
-> -	J_ASSERT(blocknr != 0);
-> +	if (WARN_ON_ONCE(blocknr == 0)) {
-> +		jbd2_journal_abort(journal, -EFSCORRUPTED);
-> +		return -EFSCORRUPTED;
-> +	}
->  
->  	/*
->  	 * We need to make sure that any blocks that were recently written out
-> -- 
-> 2.53.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+./include/linux/rcupdate.h:409 Illegal context switch in RCU read-side cr=
+itical section!
+
+other info that might help us debug this:
+
+rcu_scheduler_active =3D 2, debug_locks =3D 1
+2 locks held by umount/555:
+ #0: ffff88800da680e8 (&type->s_umount_key#29){++++}-{4:4}, at: deactivat=
+e_super+0x76/0xa0
+ #1: ffffffff86a0e580 (rcu_read_lock){....}-{1:3}, at: ext4_group_desc_fr=
+ee+0x27/0x270
+
+Call Trace:
+ <TASK>
+ dump_stack_lvl+0xbb/0xd0
+ dump_stack+0x14/0x20
+ lockdep_rcu_suspicious+0x15a/0x1b0
+ __might_resched+0x375/0x4d0
+ ? put_object.part.0+0x2c/0x50
+ __might_sleep+0x108/0x160
+ vfree+0x58/0x910
+ ? ext4_group_desc_free+0x27/0x270
+ kvfree+0x23/0x40
+ ext4_group_desc_free+0x111/0x270
+ ext4_put_super+0x3c8/0xd40
+ generic_shutdown_super+0x14c/0x4a0
+ ? __pfx_shrinker_free+0x10/0x10
+ kill_block_super+0x40/0x90
+ ext4_kill_sb+0x6d/0xb0
+ deactivate_locked_super+0xb4/0x180
+ deactivate_super+0x7e/0xa0
+ cleanup_mnt+0x296/0x3e0
+ __cleanup_mnt+0x16/0x20
+ task_work_run+0x157/0x250
+ ? __pfx_task_work_run+0x10/0x10
+ ? exit_to_user_mode_loop+0x6a/0x550
+ exit_to_user_mode_loop+0x102/0x550
+ do_syscall_64+0x44a/0x500
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+
+
+
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D
+> ``` And ext4_mb_init_backend, ext4_mb_release, ext4_flex_groups_free
+> have similar issues.Indeed, vfree triggers the following warning:
+>=20
+>=20=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D
+> EXT4-fs (vdc): unmounting filesystem c478da00-c52c-4dd4-81c1-d4f93e12ab=
+50.
+> BUG: sleeping function called from invalid context at mm/vmalloc.c:3441
+> in_atomic(): 0, irqs_disabled(): 0, non_block: 0, pid: 457, name: umoun=
+t
+> preempt_count: 0, expected: 0
+> RCU nest depth: 1, expected: 0
+> CPU: 0 UID: 0 PID: 457 Comm: umount Tainted: G W
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A06.19.0-rc4-g4f5e=
+8e6f0123-dirty #10 PREEMPT(none)
+> Tainted: [W]=3DWARN
+> Call Trace:
+> =C2=A0<TASK>
+> =C2=A0dump_stack_lvl+0x55/0x70
+> =C2=A0__might_resched+0x116/0x160
+> =C2=A0vfree+0x38/0x60
+> =C2=A0ext4_put_super+0x1ac/0x490
+> =C2=A0generic_shutdown_super+0x81/0x180
+> =C2=A0kill_block_super+0x1a/0x40
+> =C2=A0ext4_kill_sb+0x22/0x40
+> =C2=A0deactivate_locked_super+0x35/0xb0
+> =C2=A0cleanup_mnt+0x101/0x170
+> =C2=A0task_work_run+0x5c/0xa0
+> =C2=A0exit_to_user_mode_loop+0xe2/0x460
+> =C2=A0do_syscall_64+0x1de/0x1f0
+> =C2=A0entry_SYSCALL_64_after_hwframe+0x76/0x7e
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D
+>=20
+>=20And ext4_mb_init_backend, ext4_mb_release, ext4_flex_groups_free have
+> similar issues.
+>=20
+>=20>=20
+>=20> May be use rcu_access_pointer() to access sbi->s_group_desc
+> >  is enough.
+> >=20
+>=20Yes, these are all initialization or teardown paths and cannot run
+> concurrently with
+> online resize, so using rcu_access_pointer() seems sufficient.
+
+Will make a patch and CC you :)
+
+>=20
+>=20Also, should we add might_sleep() to kvfree() to prevent similar issu=
+es?
+
+I think it makes sense.
+
+Thanks
+Zqiang
+
+>=20
+>=20Cheers,
+> Baokun
+>
