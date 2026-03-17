@@ -1,248 +1,130 @@
-Received: from out-178.mta1.migadu.com (out-178.mta1.migadu.com [95.215.58.178])
+Received: from fanzine2.igalia.com (fanzine2.igalia.com [213.97.179.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3D4DF3C3BF0
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Mar 2026 13:23:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=95.215.58.178
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D28DC3CD8AC;
+	Tue, 17 Mar 2026 13:53:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.97.179.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773753823; cv=none; b=m7gNEZVejUADA8F5+4x5Nu66j7KPMObi9FEfe2PcxvDQm2seffH5Y11U9RBjf0AISjGU9eN0hSJ3iZTL1R/VNPtK4k9XBpHeAmcqjf8Uk4yeeD6xvisMekvtxDdSABFShdM+A4OqlFHqr8bv/Sd+NJlFFz+WZLfb3X9IQU7ULNM=
+	t=1773755643; cv=none; b=gZXG5tXIioFMD/jFq+LNb0HhQhCPX2UOqPI2x2kthSWiHtjC+yozhxR/pEUM2nl0dhZ8b9lcbZWRf6KNHRjfNOgqTZsMwnAaDqd1n3rjpumkt7h2Xmj3TtdakPrJeN3eEmFfRfapOYWRmtMG0oIQdFzZ8Np1B8F8OkP5VZJNeL0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773753823; c=relaxed/simple;
-	bh=zRqYwsaQjbzPweFVZG7Vcc6xFgnJ2dJVGg4RTxCL8JQ=;
-	h=MIME-Version:Date:Content-Type:From:Message-ID:Subject:To:Cc:
-	 In-Reply-To:References; b=kVawwRv6FeQr7y+nhEygS5toteI/p69bwDCeEPNuqQe7haMYFojlv2yisbTR/sh1AZxmhB2EbdKzRSEXP17a0iVi1d+UFCjI/zpRflDL4P/aL7X/ynuRQtSe7BWZi6Mudk9VsvtKY5O85gGpxkafpd+bhtOEdNBWBdVlpgye+AM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=n/yKCdNv; arc=none smtp.client-ip=95.215.58.178
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
+	s=arc-20240116; t=1773755643; c=relaxed/simple;
+	bh=LJ9TJsHzw3L9Xu55TCPkqfykOgJsXXURBVYZvyFKx7E=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=H5n23YkyeQtSrAVZJwwVrlYtOsnp/kQ7rXrx9LLbUn4xqSmxSLABiI+F6rZgtTC5Uzc0CkyoQhr8AZ4+uhtJFXjS/GX0rYhK0C9TrU/RozF28g5yc4RkI0+TWxgAqi8LfBN4XXS5dcOI+pg5C3/DZc2a30o/ETLbTrBTwE5dYFU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=bqVDSwkM; arc=none smtp.client-ip=213.97.179.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=igalia.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="n/yKCdNv"
+	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="bqVDSwkM"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=igalia.com;
+	s=20170329; h=Content-Transfer-Encoding:Content-Type:In-Reply-To:From:
+	References:Cc:To:Subject:MIME-Version:Date:Message-ID:Sender:Reply-To:
+	Content-ID:Content-Description:Resent-Date:Resent-From:Resent-Sender:
+	Resent-To:Resent-Cc:Resent-Message-ID:List-Id:List-Help:List-Unsubscribe:
+	List-Subscribe:List-Post:List-Owner:List-Archive;
+	bh=8DzbUUpiltHLtFn+rbiARRaD8w+RtKX12xhZlS2MWNo=; b=bqVDSwkMZFbXT4jvVzyEO73eJg
+	YP1ViDNkNts9OBUIpYunzSOoFUkLkfagftPpj7+VGx/vGEdZ6B/Tap4pQ6n2oViBgPTOUuXey8UXn
+	TR5VpyB3vOLafvbcmlPrNBE22legHEUm9KQxmqmKd2S2VD8gaRfzc7H1tEXnuC6ZvHiVGOEdwKeSj
+	8DTVg4Y1Wnmd668h/VhDlSrtGkun8urfgvCFZWN3D3OkjqhveL5tP/9ECpBRLg/USrU2PxmIvqIXj
+	Za5o4wxObHsyKbrlyzr2U99L3/nSljG6OkzjOEwo9dXHXhWQ4/gix01P28b8Zh0a1RGmcpg1MpC/I
+	VqeAlztg==;
+Received: from [189.115.10.45] (helo=[192.168.68.133])
+	by fanzine2.igalia.com with esmtpsa 
+	(Cipher TLS1.3:ECDHE_X25519__RSA_PSS_RSAE_SHA256__AES_128_GCM:128) (Exim)
+	id 1w2Urp-002IgB-Fk; Tue, 17 Mar 2026 14:53:53 +0100
+Message-ID: <1bab1298-7814-41a1-8741-b60999aeae42@igalia.com>
+Date: Tue, 17 Mar 2026 10:53:49 -0300
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-	t=1773753819;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=eLE1bO1sAFW/aIxrF7164qd1+c52VLlR0z0r7oduuZA=;
-	b=n/yKCdNvIQ0+SEBMvAPggeQeyBMC8mkqJVVOsQI0kzX1i3oBX/gTZi9jL8oeJ0cLpAmWkE
-	h7EhBKGYRAhs4a5u6gV4A+xHO03O190dKADcJfvfvZHjUv9da5ijqdvjs+Bsn6Znx/e/7j
-	UZn88kGbqxDRADo44xgZOg2iSfR6kTw=
-Date: Tue, 17 Mar 2026 13:23:32 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
-X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
-From: "Zqiang" <qiang.zhang@linux.dev>
-Message-ID: <5b06137188083d93a6938a0c94d23a57c6ec8db3@linux.dev>
-TLS-Required: No
-Subject: Re: [PATCH] ext4: Fix possible NULL pointer dereference in
- ext4_group_desc_free()
-To: "Baokun Li" <libaokun@linux.alibaba.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, tytso@mit.edu,
- adilger.kernel@dilger.ca, libaokun@linux.alibaba.com
-In-Reply-To: <5e747089-7fc8-4230-b9e2-65e479fcebab@linux.alibaba.com>
-References: <20260316082025.9574-1-qiang.zhang@linux.dev>
- <e275a80b-df14-4d05-9334-b10d2e57fbbc@linux.alibaba.com>
- <584a552d5b5cf7554f4a1c607e62f308436ff3eb@linux.dev>
- <5e747089-7fc8-4230-b9e2-65e479fcebab@linux.alibaba.com>
-X-Migadu-Flow: FLOW_OUT
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] ext4: fix bigalloc cluster arithmetic when
+ s_first_data_block != 0
+To: Theodore Tso <tytso@mit.edu>
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+ kernel-dev@igalia.com, syzbot+b73703b873a33d8eb8f6@syzkaller.appspotmail.com
+References: <20260313151835.1248953-1-koike@igalia.com>
+ <20260314012930.GB38016@macsyma-wired.lan>
+Content-Language: en-US
+From: Helen Koike <koike@igalia.com>
+In-Reply-To: <20260314012930.GB38016@macsyma-wired.lan>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
->=20
->=20On 3/17/26 7:33 AM, Zqiang wrote:
->=20
->=20>=20
->=20> >=20
->=20> > On 3/16/26 4:20 PM, Zqiang wrote:
-> > >=20
->=20>  This can happen if the kvmalloc_objs() fails and sbi->s_group_desc=
- pointer
-> >  is NULL in the ext4_group_desc_init(), and then the ext4_group_desc_=
-free()
-> >  is called, leading to a NULL group_desc pointer dereference.
-> >=20
->=20>  This commit therefore adds a NULL check for sbi->s_group_desc befo=
-re
-> >  accessing its internal members.
-> >=20
->=20>  Signed-off-by: Zqiang <qiang.zhang@linux.dev>
-> >  ---
-> >  fs/ext4/super.c | 8 +++++---
-> >  1 file changed, 5 insertions(+), 3 deletions(-)
-> >=20
->=20>  diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> >  index 43f680c750ae..c4307dc04687 100644
-> >  --- a/fs/ext4/super.c
-> >  +++ b/fs/ext4/super.c
-> >  @@ -1256,9 +1256,11 @@ static void ext4_group_desc_free(struct ext4_=
-sb_info *sbi)
-> >=20=20
->=20>  rcu_read_lock();
-> >  group_desc =3D rcu_dereference(sbi->s_group_desc);
-> >  - for (i =3D 0; i < sbi->s_gdb_count; i++)
-> >=20
->=20> >=20
->=20> > In ext4_group_desc_init(), s_gdb_count is only assigned after kvm=
-alloc_array
-> > >  allocation succeeds. Therefore, when kvmalloc_array fails, the
-> > >  brelse(group_desc[i]) in ext4_group_desc_free() will not actually =
-be
-> > >  executed,
-> > >  and thus this NULL pointer dereference issue will not be triggered=
-.
-> > >=20
->=20>  Thanks for replay, got it, sorry for make noise.
-> >=20
->=20>  Just then, I find that warning may be trigger:
-> >=20
->=20>  the kvfree() is called in RCU read critical section, if
-> >  the sbi->s_group_desc pointer comes from vmalloc(),
-> >  the vfree() is called to release it, but the might_sleep()
-> >  is called in the vfree(), this may be trigger warnings in
-> >  rcu_sleep_check() when the enable CONFIG_DEBUG_ATOMIC_SLEEP.
-> >=20
->=20Indeed, vfree triggers the following warning: ```
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
-> EXT4-fs (vdc): unmounting filesystem
-> c478da00-c52c-4dd4-81c1-d4f93e12ab50. BUG: sleeping function called fro=
-m
-> invalid context at mm/vmalloc.c:3441 in_atomic(): 0, irqs_disabled(): 0=
-,
-> non_block: 0, pid: 457, name: umount preempt_count: 0, expected: 0 RCU
-> nest depth: 1, expected: 0 CPU: 0 UID: 0 PID: 457 Comm: umount Tainted:
-> G W 6.19.0-rc4-g4f5e8e6f0123-dirty #10 PREEMPT(none) Tainted: [W]=3DWAR=
-N
-> Call Trace: <TASK> dump_stack_lvl+0x55/0x70 __might_resched+0x116/0x160
-> vfree+0x38/0x60 ext4_put_super+0x1ac/0x490
-> generic_shutdown_super+0x81/0x180 kill_block_super+0x1a/0x40
-> ext4_kill_sb+0x22/0x40 deactivate_locked_super+0x35/0xb0
-> cleanup_mnt+0x101/0x170 task_work_run+0x5c/0xa0
-> exit_to_user_mode_loop+0xe2/0x460 do_syscall_64+0x1de/0x1f0
-> entry_SYSCALL_64_after_hwframe+0x76/0x7e
+Hi Ted,
 
 
-This can also actually happen, depending on your kernel configuration:
- CONFIG_PREEMPT_NONE=3Dy=20
-=20CONFIG_PROVE_RCU=3Dy
- CONFIG_DEBUG_ATOMIC_SLEEP=3Dy
- CONFIG_PREEMPT_RCU=3Dn
- CONFIG_PREEMPT_COUNT=3Dy
- CONFIG_DEBUG_PREEMPT=3Dy
+On 3/13/26 10:29 PM, Theodore Tso wrote:
+> On Fri, Mar 13, 2026 at 12:18:30PM -0300, Helen Koike wrote:
+>> On filesystems with bigalloc enabled and s_first_data_block != 0,
+> 
+> This is never supposed to happen; fsck already checks for this.  From
+> e2fsck/super.c:
+> 
+> 	should_be = (sb->s_log_block_size == 0 &&
+> 		     EXT2FS_CLUSTER_RATIO(fs) == 1) ? 1 : 0;
+> 	if (sb->s_first_data_block != should_be) {
+> 		pctx.blk = sb->s_first_data_block;
+> 		pctx.blk2 = should_be;
+> 		fix_problem(ctx, PR_0_FIRST_DATA_BLOCK, &pctx);
+> 		ctx->flags |= E2F_FLAG_ABORT;
+> 		return;
+> 	}
+> 
+> You can also see evidence of this code path getting trigger by
+> clicking on "corrupt_fs" in the Syzkaller dashboard.
 
+I see, thanks for the pointers.
 
-./include/linux/rcupdate.h:409 Illegal context switch in RCU read-side cr=
-itical section!
+> 
+>> Introduce four macros that subtract s_first_data_block before
+>> operating, matching the coordinate system used by mballoc:
+> 
+> This is *way* more complicated than it needs to be.  All you need to
+> do is just reject the mount if the file system is this insanely
+> corrupted.  For example:
+> 
+> 	if (ext4_has_feature_bigalloc(sb) &&
+> 	    es->s_first_data_block) {
+> 		ext4_msg(sb, KERN_WARNING, "bad geometry: bigalloc "
+> 			 "file system with non-zero first_data_block");
+> 		return -EINVAL;
+> 	}
 
-other info that might help us debug this:
+Agreed. I thought it should be supported from [1] but I missed [2].
 
-rcu_scheduler_active =3D 2, debug_locks =3D 1
-2 locks held by umount/555:
- #0: ffff88800da680e8 (&type->s_umount_key#29){++++}-{4:4}, at: deactivat=
-e_super+0x76/0xa0
- #1: ffffffff86a0e580 (rcu_read_lock){....}-{1:3}, at: ext4_group_desc_fr=
-ee+0x27/0x270
+[1] https://lore.kernel.org/all/20130221134943.GA3818@gmail.com/
+[2] https://lore.kernel.org/all/20130222030327.GB3421@gmail.com/
 
-Call Trace:
- <TASK>
- dump_stack_lvl+0xbb/0xd0
- dump_stack+0x14/0x20
- lockdep_rcu_suspicious+0x15a/0x1b0
- __might_resched+0x375/0x4d0
- ? put_object.part.0+0x2c/0x50
- __might_sleep+0x108/0x160
- vfree+0x58/0x910
- ? ext4_group_desc_free+0x27/0x270
- kvfree+0x23/0x40
- ext4_group_desc_free+0x111/0x270
- ext4_put_super+0x3c8/0xd40
- generic_shutdown_super+0x14c/0x4a0
- ? __pfx_shrinker_free+0x10/0x10
- kill_block_super+0x40/0x90
- ext4_kill_sb+0x6d/0xb0
- deactivate_locked_super+0xb4/0x180
- deactivate_super+0x7e/0xa0
- cleanup_mnt+0x296/0x3e0
- __cleanup_mnt+0x16/0x20
- task_work_run+0x157/0x250
- ? __pfx_task_work_run+0x10/0x10
- ? exit_to_user_mode_loop+0x6a/0x550
- exit_to_user_mode_loop+0x102/0x550
- do_syscall_64+0x44a/0x500
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
+> 
+>> Regarding the issue reported by syzbot...
+> 
+> Yeah, this is why I generally don't pay that much attention to syzbot
+> reports that mount a corrupted file system.  Users are supposed to run
+> fsck on a file system before they blindly mount it.  If they don't, I
+> don't consider it a security vulnerability; it's just a stupid system
+> administrator trick, and he or she deserves everything that happens to
+> them.  Hence, such issues are not a security issue, but just a quality
+> of implementation issue.  I'll accept patches to addrese sorts of
+> things, but it doesn't rate a CVE or high priority processing.
 
+Make sense.
 
+I think I'll submit this patch as per your suggestion since I'm already 
+looking at this, but I won't bother you further with these sorts of 
+low-priority issues.
 
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
-> ``` And ext4_mb_init_backend, ext4_mb_release, ext4_flex_groups_free
-> have similar issues.Indeed, vfree triggers the following warning:
->=20
->=20=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
-> EXT4-fs (vdc): unmounting filesystem c478da00-c52c-4dd4-81c1-d4f93e12ab=
-50.
-> BUG: sleeping function called from invalid context at mm/vmalloc.c:3441
-> in_atomic(): 0, irqs_disabled(): 0, non_block: 0, pid: 457, name: umoun=
-t
-> preempt_count: 0, expected: 0
-> RCU nest depth: 1, expected: 0
-> CPU: 0 UID: 0 PID: 457 Comm: umount Tainted: G W
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A06.19.0-rc4-g4f5e=
-8e6f0123-dirty #10 PREEMPT(none)
-> Tainted: [W]=3DWARN
-> Call Trace:
-> =C2=A0<TASK>
-> =C2=A0dump_stack_lvl+0x55/0x70
-> =C2=A0__might_resched+0x116/0x160
-> =C2=A0vfree+0x38/0x60
-> =C2=A0ext4_put_super+0x1ac/0x490
-> =C2=A0generic_shutdown_super+0x81/0x180
-> =C2=A0kill_block_super+0x1a/0x40
-> =C2=A0ext4_kill_sb+0x22/0x40
-> =C2=A0deactivate_locked_super+0x35/0xb0
-> =C2=A0cleanup_mnt+0x101/0x170
-> =C2=A0task_work_run+0x5c/0xa0
-> =C2=A0exit_to_user_mode_loop+0xe2/0x460
-> =C2=A0do_syscall_64+0x1de/0x1f0
-> =C2=A0entry_SYSCALL_64_after_hwframe+0x76/0x7e
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
->=20
->=20And ext4_mb_init_backend, ext4_mb_release, ext4_flex_groups_free have
-> similar issues.
->=20
->=20>=20
->=20> May be use rcu_access_pointer() to access sbi->s_group_desc
-> >  is enough.
-> >=20
->=20Yes, these are all initialization or teardown paths and cannot run
-> concurrently with
-> online resize, so using rcu_access_pointer() seems sufficient.
+> 
+> Furthermore, any fix needs to as simple as possible, and avoids adding
+> extra overhead especially on hot paths.  In this particular case,
+> rejecting the mount is the simplest fix, since the file system
+> corruption is *easy* to detect.
 
-Will make a patch and CC you :)
+Ack, and thanks for your reply!
 
->=20
->=20Also, should we add might_sleep() to kvfree() to prevent similar issu=
-es?
-
-I think it makes sense.
-
-Thanks
-Zqiang
-
->=20
->=20Cheers,
-> Baokun
->
+Helen,
+Cheers
