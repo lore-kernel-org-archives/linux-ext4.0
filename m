@@ -1,87 +1,86 @@
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 535EE3AEF31
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Mar 2026 11:50:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 148B83C3BF0
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Mar 2026 12:28:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773748217; cv=none; b=A29BbShk83rPZ2WLBUUWWOTkShskMm4U9ww3nNRzaV9ndO0K3uPjH5zX6WmduCY+P2mU7EvhkJB1QI/C0pW99afC4vM+C+y5wvV6YcHyyvSwl4RAB30LMeod2uHDhcjdf6qAcQf01uMDx30V7aUDoi0klkvjGNmntInlCxyB6ws=
+	t=1773750532; cv=none; b=WgsmKQnWwTZBQXFh3+bHR3Cai9g4C67gNO2rqO7EzrB4gTXQZy+qWRz57ZXrz0AMC2Wu04n+Q8Nay4YjNvgVESA/H1DZdyxH0V/sST9bag6eAD02dVOrw93rjDOpyGzUkqwfU7ISBNHbi0EyqR8tN8wvuM/MbMoAAHxHtdAEDpA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773748217; c=relaxed/simple;
-	bh=Erj8Kzj69FZGFXVp7fnEZzZdL208JVwvNceFTqTWGqQ=;
+	s=arc-20240116; t=1773750532; c=relaxed/simple;
+	bh=XOl9cAcN8OTL0ft6oAX4UsYweQQIxpj7m5J/jNMpsqc=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=naMHvpJ38n21G40bjqKoiBedV/a6Oy5t6VV6YYgSq5rTsYLUIhwO2lNWlpvDMVXfgfkqtv3yiRy53T1ePZ8gDkCqwDT8LYB3x6B6iM9XeAfDEB5UqypayHzyb9Ak4S3wbd6bEn/hxT0Ok7EP4DR0zghPo2W6Kl+fxysVrW8iUao=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=p2YWXluh; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=wzqWwUOp; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=p2YWXluh; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=wzqWwUOp; arc=none smtp.client-ip=195.135.223.131
+	 Content-Type:Content-Disposition:In-Reply-To; b=M0lwk4XRcnuvdWIX06IYM9QrtC66LOhLui/5d913bZl0qMJ/CYbMdMnpvXsPK1KmQIRf7mUE0p3AEo4knOiqDP3RqdUOvyOsxwLoiC9xPwuGN+vW64hYZaTOYcBm9LDoUIwAz4v12+4R1h4T9fNrDid6WWa5aSzwfvKbrC1wmMU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Y/v/Mo22; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=M8KPaHsi; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Y/v/Mo22; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=M8KPaHsi; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="p2YWXluh";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="wzqWwUOp";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="p2YWXluh";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="wzqWwUOp"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Y/v/Mo22";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="M8KPaHsi";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Y/v/Mo22";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="M8KPaHsi"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 6EC785BDCA;
-	Tue, 17 Mar 2026 11:50:13 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 3146B5BCC6;
+	Tue, 17 Mar 2026 12:28:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1773748213; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1773750529; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=QMa+bUvJhcvAmmrgLCA3Tnv+9U4u85bmrB/H/AwTyOU=;
-	b=p2YWXluhoPSwFY6OE5iOnDXFbTxA9V+yMq/+ykjFH528UyNnCAhNsYfYyyoG76SoB81MK4
-	5dvJ51RI2GjyziincpR6KdS8WAPscbOMn0wcXYH7fcX9U6cy4r2yJ5urOVsUuPyXw3qESq
-	Bd/XFAgxlrIR9zhRwTX8iREAf5AJcyU=
+	bh=M4V//nKnbr6ltxj2qGC42q0WjQ2NljMEpL+rfneUCzk=;
+	b=Y/v/Mo224DUKhE90c73UCahCYc0XOSWr66CklW2izubg7HQiclk41PpZKBPZvzEC4r8Thi
+	4cSUCAnnpug1ErXu6hEy68jdYhM2aStBwylLx6JIsJnueefMxGvZMdkVwKnpRi6CphX1J3
+	hVor+HodSjjGGxCu40hTVmBr6bMEnAk=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1773748213;
+	s=susede2_ed25519; t=1773750529;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=QMa+bUvJhcvAmmrgLCA3Tnv+9U4u85bmrB/H/AwTyOU=;
-	b=wzqWwUOpDMKvigyk1zGubbokodWnbiFd40YJ/c4ZH+BDuKssGKJdA4U5RDaIm5cuDbmADP
-	BKui7LprFJICwUAQ==
+	bh=M4V//nKnbr6ltxj2qGC42q0WjQ2NljMEpL+rfneUCzk=;
+	b=M8KPaHsirf6ZFAb64OEm67bui2GpbeYMU8tGEOFMD6n2Ujz1nEHiLjo5FE2eQskMYHy6Kp
+	PeE6aw83TarbTfCQ==
 Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=p2YWXluh;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=wzqWwUOp
+	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1773748213; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1773750529; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=QMa+bUvJhcvAmmrgLCA3Tnv+9U4u85bmrB/H/AwTyOU=;
-	b=p2YWXluhoPSwFY6OE5iOnDXFbTxA9V+yMq/+ykjFH528UyNnCAhNsYfYyyoG76SoB81MK4
-	5dvJ51RI2GjyziincpR6KdS8WAPscbOMn0wcXYH7fcX9U6cy4r2yJ5urOVsUuPyXw3qESq
-	Bd/XFAgxlrIR9zhRwTX8iREAf5AJcyU=
+	bh=M4V//nKnbr6ltxj2qGC42q0WjQ2NljMEpL+rfneUCzk=;
+	b=Y/v/Mo224DUKhE90c73UCahCYc0XOSWr66CklW2izubg7HQiclk41PpZKBPZvzEC4r8Thi
+	4cSUCAnnpug1ErXu6hEy68jdYhM2aStBwylLx6JIsJnueefMxGvZMdkVwKnpRi6CphX1J3
+	hVor+HodSjjGGxCu40hTVmBr6bMEnAk=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1773748213;
+	s=susede2_ed25519; t=1773750529;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=QMa+bUvJhcvAmmrgLCA3Tnv+9U4u85bmrB/H/AwTyOU=;
-	b=wzqWwUOpDMKvigyk1zGubbokodWnbiFd40YJ/c4ZH+BDuKssGKJdA4U5RDaIm5cuDbmADP
-	BKui7LprFJICwUAQ==
+	bh=M4V//nKnbr6ltxj2qGC42q0WjQ2NljMEpL+rfneUCzk=;
+	b=M8KPaHsirf6ZFAb64OEm67bui2GpbeYMU8tGEOFMD6n2Ujz1nEHiLjo5FE2eQskMYHy6Kp
+	PeE6aw83TarbTfCQ==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 64BE84273B;
-	Tue, 17 Mar 2026 11:50:13 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 15CB34273B;
+	Tue, 17 Mar 2026 12:28:49 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id nzmWGPU/uWlPWAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 17 Mar 2026 11:50:13 +0000
+	id J0BMBQFJuWlrAgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 17 Mar 2026 12:28:49 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 205CCA0A5B; Tue, 17 Mar 2026 12:50:09 +0100 (CET)
-Date: Tue, 17 Mar 2026 12:50:09 +0100
+	id D06DFA0A5B; Tue, 17 Mar 2026 13:28:48 +0100 (CET)
+Date: Tue, 17 Mar 2026 13:28:48 +0100
 From: Jan Kara <jack@suse.cz>
-To: Baokun Li <libaokun@linux.alibaba.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz, 
-	linux-ext4@vger.kernel.org
-Subject: Re: [PATCH e2fsprogs] lib/quota: fix checksum mismatch on
- uninitialized PRJQUOTA inode
-Message-ID: <bd5gg6pv5czo6okeelhiq4smerzlrdvqxcho7gillkfltowmvy@gyped3r7vpwn>
-References: <20251210081558.2714709-1-libaokun@huaweicloud.com>
- <8382fe78-5b3f-4c1a-96eb-62494835f693@linux.alibaba.com>
+To: Milos Nikic <nikic.milos@gmail.com>
+Cc: jack@suse.cz, tytso@mit.edu, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>, 
+	Zhang Yi <yi.zhang@huawei.com>, Baokun Li <libaokun@linux.alibaba.com>
+Subject: Re: [PATCH v2 1/1] jbd2: gracefully abort on checkpointing state
+ corruptions
+Message-ID: <6m6t2domksqnztnbud2gplxx5uzsxvvz25jeddjul7kzl2g6rw@5awwcsoiddhg>
+References: <20260311041548.159424-1-nikic.milos@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -90,154 +89,112 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <8382fe78-5b3f-4c1a-96eb-62494835f693@linux.alibaba.com>
-X-Rspamd-Action: no action
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Spamd-Result: default: False [-4.01 / 50.00];
+In-Reply-To: <20260311041548.159424-1-nikic.milos@gmail.com>
+X-Spamd-Result: default: False [-2.30 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	ARC_NA(0.00)[];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	TO_DN_SOME(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	FROM_HAS_DN(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCPT_COUNT_FIVE(0.00)[5];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
 	MISSING_XM_UA(0.00)[];
-	ASN(0.00)[asn:32098, ipnet:2800::/6, country:US];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[huawei.com:email,suse.com:email,suse.cz:dkim,suse.cz:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns]
-X-Rspamd-Queue-Id: 6EC785BDCA
+	TAGGED_RCPT(0.00)[];
+	ARC_NA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	FREEMAIL_TO(0.00)[gmail.com];
+	RCVD_COUNT_THREE(0.00)[3];
+	TO_DN_SOME(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	RCPT_COUNT_SEVEN(0.00)[8];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[alibaba.com:email,dilger.ca:email,suse.com:email,imap1.dmz-prg2.suse.org:helo,suse.cz:email,huawei.com:email]
 X-Spam-Flag: NO
-X-Spam-Score: -4.01
+X-Spam-Score: -2.30
 X-Spam-Level: 
 
-On Thu 12-03-26 14:26:08, Baokun Li wrote:
-> A gentle ping...
+On Tue 10-03-26 21:15:48, Milos Nikic wrote:
+> This patch targets two internal state machine invariants in checkpoint.c
+> residing inside functions that natively return integer error codes.
 > 
-> On 12/10/25 4:15 PM, libaokun@huaweicloud.com wrote:
-> > From: Baokun Li <libaokun1@huawei.com>
-> >
-> > In quota_inode_init_new(), we attempt to read and truncate an existing
-> > quota inode before proceeding with its initialization.
-> >
-> > This read operation verifies the inode's checksum. This works fine for
-> > USRQUOTA and GRPQUOTA inodes because write_reserved_inodes() is always
-> > called during ext4 image creation to set appropriate checksums for these
-> > reserved inodes.
-> >
-> > However, the PRJQUOTA inode is not reserved, and its corresponding inode
-> > table block may not have been zeroed, potentially containing stale data.
-> > Consequently, reading this inode can fail due to a checksum mismatch.
-> >
-> > This can be reproduced by running the following sequence:
-> >
-> >   dd if=/dev/random of=$DISK bs=1M count=128
-> >   mkfs.ext4 -F -q -b 1024 $DISK 5G
-> >   tune2fs -O quota,project $DISK
-> >
-> > Which results in the following error output:
-> >
-> >  tune2fs 1.47.3 (8-Jul-2025)
-> >  [ERROR] quotaio.c:279:quota_inode_init_new: ex2fs_read_inode failed
-> >  [ERROR] quotaio.c:341:quota_file_create: init_new_quota_inode failed
-> >  tune2fs: Inode checksum does not match inode while writing quota file (2)
-> >
-> > While running `kvm-xfstests -c ext4/1k -C 1 generic/383`, the test itself
-> > does not fail, but checksum verification failures are reported even
-> > without fault injection, which led to discovering this issue.
-> >
-> > To fix this, we stop attempting to read the quota inode that is about
-> > to be initialized inside quota_inode_init_new(). Instead, the logic
-> > to attempt truncation of an existing quota inode is moved to be handled
-> > inside quota_file_create().
-> >
-> > Fixes: 080e09b4 ("Add project quota support")
-> > Signed-off-by: Baokun Li <libaokun1@huawei.com>
+> - In jbd2_cleanup_journal_tail(): A blocknr of 0 indicates a severely
+> corrupted journal superblock. Replaced the J_ASSERT with a WARN_ON_ONCE
+> and a graceful journal abort, returning -EFSCORRUPTED.
+> 
+> - In jbd2_log_do_checkpoint(): Replaced the J_ASSERT_BH checking for
+> an unexpected buffer_jwrite state. If the warning triggers, we
+> explicitly drop the just-taken get_bh() reference and call __flush_batch()
+> to safely clean up any previously queued buffers in the j_chkpt_bhs array,
+> preventing a memory leak before returning -EFSCORRUPTED.
+> 
+> Signed-off-by: Milos Nikic <nikic.milos@gmail.com>
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+> Reviewed-by: Baokun Li <libaokun@linux.alibaba.com>
 
-Looks good. Feel free to add:
+Looks good to me. Feel free to add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
-> > ---
-> >  lib/support/quotaio.c | 30 +++++++++++++-----------------
-> >  1 file changed, 13 insertions(+), 17 deletions(-)
-> >
-> > diff --git a/lib/support/quotaio.c b/lib/support/quotaio.c
-> > index f5f2c7f7..827df85b 100644
-> > --- a/lib/support/quotaio.c
-> > +++ b/lib/support/quotaio.c
-> > @@ -274,18 +274,6 @@ static errcode_t quota_inode_init_new(ext2_filsys fs, ext2_ino_t ino)
-> >  	errcode_t err = 0;
-> >  	time_t now;
-> >  
-> > -	err = ext2fs_read_inode(fs, ino, &inode);
-> > -	if (err) {
-> > -		log_err("ex2fs_read_inode failed");
-> > -		return err;
-> > -	}
-> > -
-> > -	if (EXT2_I_SIZE(&inode)) {
-> > -		err = quota_inode_truncate(fs, ino);
-> > -		if (err)
-> > -			return err;
-> > -	}
-> > -
-> >  	memset(&inode, 0, sizeof(struct ext2_inode));
-> >  	ext2fs_iblk_set(fs, &inode, 0);
-> >  	now = fs->now ? fs->now : time(0);
-> > @@ -319,6 +307,10 @@ errcode_t quota_file_create(struct quota_handle *h, ext2_filsys fs,
-> >  	if (fmt == -1)
-> >  		fmt = QFMT_VFS_V1;
-> >  
-> > +	err = ext2fs_read_bitmaps(fs);
-> > +	if (err)
-> > +		goto out_err;
-> > +
-> >  	h->qh_qf.fs = fs;
-> >  	qf_inum = quota_type2inum(qtype, fs->super);
-> >  	if (qf_inum == 0 && qtype == PRJQUOTA) {
-> > @@ -330,15 +322,19 @@ errcode_t quota_file_create(struct quota_handle *h, ext2_filsys fs,
-> >  		ext2fs_mark_ib_dirty(fs);
-> >  	} else if (qf_inum == 0) {
-> >  		return EXT2_ET_BAD_INODE_NUM;
-> > +	} else {
-> > +		err = quota_inode_truncate(fs, qf_inum);
-> > +		if (err) {
-> > +			log_err("quota_inode_truncate failed, ino=%u, type=%d",
-> > +				qf_inum, qtype);
-> > +			return err;
-> > +		}
-> >  	}
-> >  
-> > -	err = ext2fs_read_bitmaps(fs);
-> > -	if (err)
-> > -		goto out_err;
-> > -
-> >  	err = quota_inode_init_new(fs, qf_inum);
-> >  	if (err) {
-> > -		log_err("init_new_quota_inode failed");
-> > +		log_err("init_new_quota_inode failed, ino=%u, type=%d",
-> > +			qf_inum, qtype);
-> >  		goto out_err;
-> >  	}
-> >  	h->qh_qf.ino = qf_inum;
+> ---
+>  Changes in v2:
+> 
+>     Replaced the -EUCLEAN error code with -EFSCORRUPTED to better align with ext4/jbd2 semantics for on-disk metadata inconsistencies (per Baokun's review).
+> 
+>     Reordered the error path in jbd2_log_do_checkpoint() so that jbd2_journal_abort() is called after __flush_batch(). This ensures cleanly batched buffers are logically flushed before the journal kill switch is flipped.
+> 
+>     Collected Reviewed-by tags from Andreas Dilger, Zhang Yi, and Baokun Li.
+> 
+> Changes in v1:
+> 
+>     Initial implementation converting J_ASSERTs in jbd2_cleanup_journal_tail() and jbd2_log_do_checkpoint() to WARN_ON_ONCE and graceful journal aborts.
+> 
+>  fs/jbd2/checkpoint.c | 15 +++++++++++++--
+>  1 file changed, 13 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+> index de89c5bef607..1508e2f54462 100644
+> --- a/fs/jbd2/checkpoint.c
+> +++ b/fs/jbd2/checkpoint.c
+> @@ -267,7 +267,15 @@ int jbd2_log_do_checkpoint(journal_t *journal)
+>  			 */
+>  			BUFFER_TRACE(bh, "queue");
+>  			get_bh(bh);
+> -			J_ASSERT_BH(bh, !buffer_jwrite(bh));
+> +			if (WARN_ON_ONCE(buffer_jwrite(bh))) {
+> +				put_bh(bh); /* drop the ref we just took */
+> +				spin_unlock(&journal->j_list_lock);
+> +				/* Clean up any previously batched buffers */
+> +				if (batch_count)
+> +					__flush_batch(journal, &batch_count);
+> +				jbd2_journal_abort(journal, -EFSCORRUPTED);
+> +				return -EFSCORRUPTED;
+> +			}
+>  			journal->j_chkpt_bhs[batch_count++] = bh;
+>  			transaction->t_chp_stats.cs_written++;
+>  			transaction->t_checkpoint_list = jh->b_cpnext;
+> @@ -325,7 +333,10 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
+>  
+>  	if (!jbd2_journal_get_log_tail(journal, &first_tid, &blocknr))
+>  		return 1;
+> -	J_ASSERT(blocknr != 0);
+> +	if (WARN_ON_ONCE(blocknr == 0)) {
+> +		jbd2_journal_abort(journal, -EFSCORRUPTED);
+> +		return -EFSCORRUPTED;
+> +	}
+>  
+>  	/*
+>  	 * We need to make sure that any blocks that were recently written out
+> -- 
+> 2.53.0
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
