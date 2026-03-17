@@ -1,55 +1,55 @@
 Received: from sender4-op-o15.zoho.com (sender4-op-o15.zoho.com [136.143.188.15])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C8BF130AAB3;
-	Tue, 17 Mar 2026 08:52:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2CD043469FC;
+	Tue, 17 Mar 2026 08:52:46 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=136.143.188.15
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773737551; cv=pass; b=NWeV5q6mxqyAJCL/EphsjvYuBXLEQyPqBJvtGME5E4kE+CPZpLzEgZLB/IVlKWk8zW67sKz+2uegduaAr6Cqy/zldnITpb/SqRShuh6OMEjAXgY4ZLlARPOb52wYKNx2Xy5pRl/V+1XS2Gyd8hBUvcqQBAsSHyn8JXSYop4G8rU=
+	t=1773737567; cv=pass; b=co3zI5MAR6dhLOhKpwnF8tHI2p6vyr20LG66mOihjcIkgjm9hISNVA4d9P/2el9KqF0CyJnqnUdEg6ZZ7/L8Za7Myg8q5uwQ4+Lp/NhMcAs5uUKo/e8fUquipOPuEDMAGhV3xv4UGDIRL/aIJBbt7Z0P1cw1wu7S2UNWwMl3KMo=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773737551; c=relaxed/simple;
-	bh=+mhp8nB86SpIOIhz9PsOc/rLWfrwilDYHeN95YWdPaQ=;
+	s=arc-20240116; t=1773737567; c=relaxed/simple;
+	bh=3V/4HCxLNar5J0DSP8hsbSJr8QT6q1DT/iyom99xsTc=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=J3xCQzgxDg5S8PatcTipME9/OR6U9xCAXZvJCheghlIH3eul1i8VQLLUerDdN7pRIaKSuGFxN30LtRd06csmh9tD3hnPltPNkWPnJjg9Pc1KiFcz3NEA+xl7ZWDh3qipdDf13l1njMoV2o8bqwHZI0a2GsHApY1uoRtHSCMWEmE=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty; spf=pass smtp.mailfrom=linux.beauty; dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b=NtiNegCB; arc=pass smtp.client-ip=136.143.188.15
+	 MIME-Version; b=r3pI76POAbA2QGo4TlVtmTFgsSxXvZyv9ZFzR/XdOy3tvhP7+PuHi32ddrmJsmpN+HW8ukmVDGdsFBgRvau8JuvNau3QTrCPvwtibcfqzgU8toIbPEnm8H9NkBK0NVS+UtrgU8svCL0QxnelwRTcZmjrhR+mWmgSh7NxqVu8/zA=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty; spf=pass smtp.mailfrom=linux.beauty; dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b=oRkCCeZV; arc=pass smtp.client-ip=136.143.188.15
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.beauty
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b="NtiNegCB"
-ARC-Seal: i=1; a=rsa-sha256; t=1773737217; cv=none; 
+	dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b="oRkCCeZV"
+ARC-Seal: i=1; a=rsa-sha256; t=1773737219; cv=none; 
 	d=zohomail.com; s=zohoarc; 
-	b=iIn3mMqFgLlyXWEnsAZuBnLHVjksm1Duw9DQQrIs7Uyh2DVLFQmCO0PD4lD8uUsf9vEVzr2xmolHWFOH94+9yvqo1+6Q+/Q/YIGFJoOU/2f4UQBG2NakrKsru/vbhwtUdQMAkLLMedMpZ8B/3XEOa5mM8jO9dF72O6CnoJs2Ewo=
+	b=KISMUvMHgs/gF5AA5njE0BevoFAp5Jb6jetoYmXETpe9Usg8WOTNUd3JWFoAQDMZXcUU+G4f9RgsPNDK9AX8BGkGq37WyJy+Yq5yg00g389epMkfEBt2GL0FF5utlaFRhbHWi+bEnvAGUqkHBYiL8qnVkiKWitRzfhZCrsL9Lg0=
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zohomail.com; s=zohoarc; 
-	t=1773737217; h=Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:Subject:To:To:Message-Id:Reply-To; 
-	bh=RxWMWPv1NdyaTr2fpCSAr/NyhvS6g2TMrFBNb4ftq+U=; 
-	b=LJJSY86M+r8xIx4a1hDG0G6atnN6aozpwgrIOIDLnquxJxYJKyh/0Hjbme3tt2UI+NdIMwc+kw3gQbORcRppNN8PywuKfIWGpkC/J4eMt7t+Y+9SOwycOYflWdNHBGzNJRt4gi5f87uaDPEvfCotKulOiCM3UpvdZSTSXX4s28Y=
+	t=1773737219; h=Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:Subject:To:To:Message-Id:Reply-To; 
+	bh=x+FqMOeVwBq5rmUfLqMZ2sHmwA9pQ8tbT/7FXrKq/co=; 
+	b=TjOzOf5TwF7W+C3/zvYfQVI+/YyH0O4HS5nVm3PPzhV5GKjxazxYx0S4nlKMJmqnYgG8J2846nqPsfnO1ARPtFduqXL01Y32ShbDaw8opAUmoLEdl3BPyt6JIVv2d6uKU7vi+ACiciRKLzbUevcLXutEYktUI41WQaAQ5HSG/cY=
 ARC-Authentication-Results: i=1; mx.zohomail.com;
 	dkim=pass  header.i=linux.beauty;
 	spf=pass  smtp.mailfrom=me@linux.beauty;
 	dmarc=pass header.from=<me@linux.beauty>
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1773737217;
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1773737219;
 	s=zmail; d=linux.beauty; i=me@linux.beauty;
 	h=From:From:To:To:Cc:Cc:Subject:Subject:Date:Date:Message-ID:In-Reply-To:References:MIME-Version:Content-Transfer-Encoding:Message-Id:Reply-To;
-	bh=RxWMWPv1NdyaTr2fpCSAr/NyhvS6g2TMrFBNb4ftq+U=;
-	b=NtiNegCBPSUkQN0vWx/KIXcTsQFOqrw39I6KgC2v74agWrMvBW6XoE/U3VXdsoKi
-	T2poyyKsmO8sG3JpKr2+R+7ExR8rHIymfTywRw+fQfRO56BO9a9sJ8kQn2LDIzRMix2
-	pgKlXKMHtTr3lGrlgj5JttDdPCwb00vRXD9gZG+o=
-Received: by mx.zohomail.com with SMTPS id 1773737215239340.2094742257068;
-	Tue, 17 Mar 2026 01:46:55 -0700 (PDT)
+	bh=x+FqMOeVwBq5rmUfLqMZ2sHmwA9pQ8tbT/7FXrKq/co=;
+	b=oRkCCeZVTBm1sS6jJlAvvObbtjL4j4MdqafGsaPDQ8cgwu3px8SIFDA3y9Esfzbh
+	Zf2SDp+DN5KVQoZBBu+/x/atQyW2WEXHOXFzn2pbiN4kbhqrNJN/6MSw55xjTIoZE38
+	/4qKPJRIHlZCAFxbHN6teB7Xj9a+kkxZg7wOtuE0=
+Received: by mx.zohomail.com with SMTPS id 1773737218326614.3828448167444;
+	Tue, 17 Mar 2026 01:46:58 -0700 (PDT)
 From: Li Chen <me@linux.beauty>
 To: Zhang Yi <yi.zhang@huaweicloud.com>,
 	Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Cc: Steven Rostedt <rostedt@goodmis.org>,
+	Steven Rostedt <rostedt@goodmis.org>,
 	Masami Hiramatsu <mhiramat@kernel.org>,
 	Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-	linux-trace-kernel@vger.kernel.org,
-	Li Chen <me@linux.beauty>
-Subject: [RFC v5 5/7] ext4: fast commit: avoid i_data_sem by dropping ext4_map_blocks() in snapshots
-Date: Tue, 17 Mar 2026 16:46:20 +0800
-Message-ID: <20260317084624.457185-6-me@linux.beauty>
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-trace-kernel@vger.kernel.org
+Cc: Li Chen <me@linux.beauty>
+Subject: [RFC v5 6/7] ext4: fast commit: add lock_updates tracepoint
+Date: Tue, 17 Mar 2026 16:46:21 +0800
+Message-ID: <20260317084624.457185-7-me@linux.beauty>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20260317084624.457185-1-me@linux.beauty>
 References: <20260317084624.457185-1-me@linux.beauty>
@@ -62,484 +62,351 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-ZohoMailClient: External
 
-Commit-time snapshots run under jbd2_journal_lock_updates(), so the work
-done there must stay bounded.
+Commit-time fast commit snapshots run under jbd2_journal_lock_updates(),
+so it is useful to quantify the time spent with updates locked and to
+understand why snapshotting can fail.
 
-The snapshot path still used ext4_map_blocks() to build data ranges. This
-can take i_data_sem and pulls the mapping code into the snapshot logic.
-Build inode data range snapshots from the extent status tree instead.
-
-The extent status tree is a cache, not an authoritative source. If the
-needed information is missing or unstable (e.g. delayed allocation), treat
-the transaction as fast commit ineligible and fall back to full commit.
-
-Also cap the number of inodes and ranges snapshotted per fast commit and
-allocate range records from a dedicated slab cache. The inode pointer
-array is allocated outside the updates-locked window.
-
-Testing: QEMU/KVM guest, virtio-pmem + dax, ext4 -O fast_commit, mounted
-dax,noatime. Ran python3 500x {4K write + fsync}, fallocate 256M, and
-python3 500x {creat + fsync(dir)} without lockdep splats or errors.
+Add a new tracepoint, ext4_fc_lock_updates, reporting the time spent in
+the updates-locked window along with the number of snapshotted inodes
+and ranges. Record the first snapshot failure reason in a stable snap_err
+field for tooling.
 
 Signed-off-by: Li Chen <me@linux.beauty>
 ---
- fs/ext4/fast_commit.c | 253 +++++++++++++++++++++++++++++-------------
- 1 file changed, 177 insertions(+), 76 deletions(-)
+ fs/ext4/ext4.h              | 15 ++++++++
+ fs/ext4/fast_commit.c       | 71 +++++++++++++++++++++++++++++--------
+ include/trace/events/ext4.h | 61 +++++++++++++++++++++++++++++++
+ 3 files changed, 132 insertions(+), 15 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 68a64fa0be926..b9e146f3dd9e4 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1037,6 +1037,21 @@ enum {
+ 
+ struct ext4_fc_inode_snap;
+ 
++/*
++ * Snapshot failure reasons for ext4_fc_lock_updates tracepoint.
++ * Keep these stable for tooling.
++ */
++enum ext4_fc_snap_err {
++	EXT4_FC_SNAP_ERR_NONE		= 0,
++	EXT4_FC_SNAP_ERR_ES_MISS	= 1,
++	EXT4_FC_SNAP_ERR_ES_DELAYED	= 2,
++	EXT4_FC_SNAP_ERR_ES_OTHER	= 3,
++	EXT4_FC_SNAP_ERR_INODES_CAP	= 4,
++	EXT4_FC_SNAP_ERR_RANGES_CAP	= 5,
++	EXT4_FC_SNAP_ERR_NOMEM		= 6,
++	EXT4_FC_SNAP_ERR_INODE_LOC	= 7,
++};
++
+ /*
+  * fourth extended file system inode data in memory
+  */
 diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 966211a3342a0..d1eefee609120 100644
+index d1eefee609120..4929e2990b292 100644
 --- a/fs/ext4/fast_commit.c
 +++ b/fs/ext4/fast_commit.c
-@@ -183,6 +183,15 @@
+@@ -193,6 +193,12 @@ static struct kmem_cache *ext4_fc_range_cachep;
+ #define EXT4_FC_SNAPSHOT_MAX_INODES	1024
+ #define EXT4_FC_SNAPSHOT_MAX_RANGES	2048
  
- #include <trace/events/ext4.h>
- static struct kmem_cache *ext4_fc_dentry_cachep;
-+static struct kmem_cache *ext4_fc_range_cachep;
++static inline void ext4_fc_set_snap_err(int *snap_err, int err)
++{
++	if (snap_err && *snap_err == EXT4_FC_SNAP_ERR_NONE)
++		*snap_err = err;
++}
 +
-+/*
-+ * Avoid spending unbounded time/memory snapshotting highly fragmented files
-+ * under jbd2_journal_lock_updates(). If we exceed this limit, fall back to
-+ * full commit.
-+ */
-+#define EXT4_FC_SNAPSHOT_MAX_INODES	1024
-+#define EXT4_FC_SNAPSHOT_MAX_RANGES	2048
- 
  static void ext4_end_buffer_io_sync(struct buffer_head *bh, int uptodate)
  {
-@@ -954,7 +963,7 @@ static void ext4_fc_free_ranges(struct list_head *head)
- 
- 	list_for_each_entry_safe(range, range_n, head, list) {
- 		list_del(&range->list);
--		kfree(range);
-+		kmem_cache_free(ext4_fc_range_cachep, range);
- 	}
- }
- 
-@@ -972,16 +981,19 @@ static void ext4_fc_free_inode_snap(struct inode *inode)
- }
- 
+ 	BUFFER_TRACE(bh, "");
+@@ -983,11 +989,12 @@ static void ext4_fc_free_inode_snap(struct inode *inode)
  static int ext4_fc_snapshot_inode_data(struct inode *inode,
--				       struct list_head *ranges)
-+				       struct list_head *ranges,
-+				       unsigned int nr_ranges_total,
-+				       unsigned int *nr_rangesp)
+ 				       struct list_head *ranges,
+ 				       unsigned int nr_ranges_total,
+-				       unsigned int *nr_rangesp)
++				       unsigned int *nr_rangesp,
++				       int *snap_err)
  {
  	struct ext4_inode_info *ei = EXT4_I(inode);
-+	unsigned int nr_ranges = 0;
+-	unsigned int nr_ranges = 0;
  	ext4_lblk_t start_lblk, end_lblk, cur_lblk;
--	struct ext4_map_blocks map;
--	int ret;
++	unsigned int nr_ranges = 0;
  
  	spin_lock(&ei->i_fc_lock);
  	if (ei->i_fc_lblk_len == 0) {
- 		spin_unlock(&ei->i_fc_lock);
-+		if (nr_rangesp)
-+			*nr_rangesp = 0;
- 		return 0;
- 	}
- 	start_lblk = ei->i_fc_lblk_start;
-@@ -994,61 +1006,78 @@ static int ext4_fc_snapshot_inode_data(struct inode *inode,
- 		   start_lblk, end_lblk, inode->i_ino);
- 
- 	while (cur_lblk <= end_lblk) {
-+		struct extent_status es;
+@@ -1010,11 +1017,16 @@ static int ext4_fc_snapshot_inode_data(struct inode *inode,
  		struct ext4_fc_range *range;
-+		ext4_lblk_t len;
+ 		ext4_lblk_t len;
  
--		map.m_lblk = cur_lblk;
--		map.m_len = end_lblk - cur_lblk + 1;
--		ret = ext4_map_blocks(NULL, inode, &map,
--				      EXT4_GET_BLOCKS_IO_SUBMIT |
--				      EXT4_EX_NOCACHE);
--		if (ret < 0)
--			return -ECANCELED;
-+		if (!ext4_es_lookup_extent(inode, cur_lblk, NULL, &es, NULL))
-+			return -EAGAIN;
-+
-+		if (ext4_es_is_delayed(&es))
-+			return -EAGAIN;
+-		if (!ext4_es_lookup_extent(inode, cur_lblk, NULL, &es, NULL))
++		if (!ext4_es_lookup_extent(inode, cur_lblk, NULL, &es, NULL)) {
++			ext4_fc_set_snap_err(snap_err, EXT4_FC_SNAP_ERR_ES_MISS);
+ 			return -EAGAIN;
++		}
  
--		if (map.m_len == 0) {
-+		len = es.es_len - (cur_lblk - es.es_lblk);
-+		if (len > end_lblk - cur_lblk + 1)
-+			len = end_lblk - cur_lblk + 1;
-+		if (len == 0) {
- 			cur_lblk++;
+-		if (ext4_es_is_delayed(&es))
++		if (ext4_es_is_delayed(&es)) {
++			ext4_fc_set_snap_err(snap_err,
++					     EXT4_FC_SNAP_ERR_ES_DELAYED);
+ 			return -EAGAIN;
++		}
+ 
+ 		len = es.es_len - (cur_lblk - es.es_lblk);
+ 		if (len > end_lblk - cur_lblk + 1)
+@@ -1024,12 +1036,17 @@ static int ext4_fc_snapshot_inode_data(struct inode *inode,
  			continue;
  		}
  
--		range = kmalloc(sizeof(*range), GFP_NOFS);
-+		if (nr_ranges_total + nr_ranges >= EXT4_FC_SNAPSHOT_MAX_RANGES)
-+			return -E2BIG;
-+
-+		range = kmem_cache_alloc(ext4_fc_range_cachep, GFP_NOFS);
- 		if (!range)
+-		if (nr_ranges_total + nr_ranges >= EXT4_FC_SNAPSHOT_MAX_RANGES)
++		if (nr_ranges_total + nr_ranges >= EXT4_FC_SNAPSHOT_MAX_RANGES) {
++			ext4_fc_set_snap_err(snap_err,
++					     EXT4_FC_SNAP_ERR_RANGES_CAP);
+ 			return -E2BIG;
++		}
+ 
+ 		range = kmem_cache_alloc(ext4_fc_range_cachep, GFP_NOFS);
+-		if (!range)
++		if (!range) {
++			ext4_fc_set_snap_err(snap_err, EXT4_FC_SNAP_ERR_NOMEM);
  			return -ENOMEM;
-+		nr_ranges++;
++		}
+ 		nr_ranges++;
  
--		range->lblk = map.m_lblk;
--		range->len = map.m_len;
-+		range->lblk = cur_lblk;
-+		range->len = len;
- 		range->pblk = 0;
- 		range->unwritten = false;
- 
--		if (ret == 0) {
-+		if (ext4_es_is_hole(&es)) {
- 			range->tag = EXT4_FC_TAG_DEL_RANGE;
--		} else {
--			unsigned int max = (map.m_flags & EXT4_MAP_UNWRITTEN) ?
--				EXT_UNWRITTEN_MAX_LEN : EXT_INIT_MAX_LEN;
--
--			/* Limit the number of blocks in one extent */
--			map.m_len = min(max, map.m_len);
-+		} else if (ext4_es_is_written(&es) ||
-+			   ext4_es_is_unwritten(&es)) {
-+			unsigned int max;
- 
- 			range->tag = EXT4_FC_TAG_ADD_RANGE;
--			range->len = map.m_len;
--			range->pblk = map.m_pblk;
--			range->unwritten = !!(map.m_flags & EXT4_MAP_UNWRITTEN);
-+			range->pblk = ext4_es_pblock(&es) +
-+				      (cur_lblk - es.es_lblk);
-+			range->unwritten = ext4_es_is_unwritten(&es);
-+
-+			max = range->unwritten ? EXT_UNWRITTEN_MAX_LEN :
-+						 EXT_INIT_MAX_LEN;
-+			if (range->len > max)
-+				range->len = max;
-+		} else {
-+			kmem_cache_free(ext4_fc_range_cachep, range);
-+			return -EAGAIN;
+ 		range->lblk = cur_lblk;
+@@ -1054,6 +1071,7 @@ static int ext4_fc_snapshot_inode_data(struct inode *inode,
+ 				range->len = max;
+ 		} else {
+ 			kmem_cache_free(ext4_fc_range_cachep, range);
++			ext4_fc_set_snap_err(snap_err, EXT4_FC_SNAP_ERR_ES_OTHER);
+ 			return -EAGAIN;
  		}
  
- 		INIT_LIST_HEAD(&range->list);
- 		list_add_tail(&range->list, ranges);
+@@ -1070,7 +1088,7 @@ static int ext4_fc_snapshot_inode_data(struct inode *inode,
  
--		cur_lblk += map.m_len;
-+		cur_lblk += range->len;
- 	}
- 
-+	if (nr_rangesp)
-+		*nr_rangesp = nr_ranges;
- 	return 0;
- }
- 
--static int ext4_fc_snapshot_inode(struct inode *inode)
-+static int ext4_fc_snapshot_inode(struct inode *inode,
-+				  unsigned int nr_ranges_total,
-+				  unsigned int *nr_rangesp)
+ static int ext4_fc_snapshot_inode(struct inode *inode,
+ 				  unsigned int nr_ranges_total,
+-				  unsigned int *nr_rangesp)
++				  unsigned int *nr_rangesp, int *snap_err)
  {
  	struct ext4_inode_info *ei = EXT4_I(inode);
  	struct ext4_fc_inode_snap *snap;
- 	int inode_len = EXT4_GOOD_OLD_INODE_SIZE;
- 	struct ext4_iloc iloc;
- 	LIST_HEAD(ranges);
-+	unsigned int nr_ranges = 0;
- 	int ret;
+@@ -1082,8 +1100,10 @@ static int ext4_fc_snapshot_inode(struct inode *inode,
  	int alloc_ctx;
  
-@@ -1072,7 +1101,8 @@ static int ext4_fc_snapshot_inode(struct inode *inode)
- 	memcpy(snap->inode_buf, (u8 *)ext4_raw_inode(&iloc), inode_len);
+ 	ret = ext4_get_inode_loc_noio(inode, &iloc);
+-	if (ret)
++	if (ret) {
++		ext4_fc_set_snap_err(snap_err, EXT4_FC_SNAP_ERR_INODE_LOC);
+ 		return ret;
++	}
+ 
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_INLINE_DATA))
+ 		inode_len = EXT4_INODE_SIZE(inode->i_sb);
+@@ -1092,6 +1112,7 @@ static int ext4_fc_snapshot_inode(struct inode *inode,
+ 
+ 	snap = kmalloc(struct_size(snap, inode_buf, inode_len), GFP_NOFS);
+ 	if (!snap) {
++		ext4_fc_set_snap_err(snap_err, EXT4_FC_SNAP_ERR_NOMEM);
+ 		brelse(iloc.bh);
+ 		return -ENOMEM;
+ 	}
+@@ -1102,7 +1123,7 @@ static int ext4_fc_snapshot_inode(struct inode *inode,
  	brelse(iloc.bh);
  
--	ret = ext4_fc_snapshot_inode_data(inode, &ranges);
-+	ret = ext4_fc_snapshot_inode_data(inode, &ranges, nr_ranges_total,
-+					  &nr_ranges);
+ 	ret = ext4_fc_snapshot_inode_data(inode, &ranges, nr_ranges_total,
+-					  &nr_ranges);
++					  &nr_ranges, snap_err);
  	if (ret) {
  		kfree(snap);
  		ext4_fc_free_ranges(&ranges);
-@@ -1085,10 +1115,11 @@ static int ext4_fc_snapshot_inode(struct inode *inode)
- 	list_splice_tail_init(&ranges, &snap->data_list);
- 	ext4_fc_unlock(inode->i_sb, alloc_ctx);
+@@ -1203,7 +1224,10 @@ static int ext4_fc_alloc_snapshot_inodes(struct super_block *sb,
+ 					 unsigned int *nr_inodesp);
  
-+	if (nr_rangesp)
-+		*nr_rangesp = nr_ranges;
- 	return 0;
- }
- 
--
- /* Flushes data of all the inodes in the commit queue. */
- static int ext4_fc_flush_data(journal_t *journal)
- {
-@@ -1167,49 +1198,32 @@ static int ext4_fc_commit_dentry_updates(journal_t *journal, u32 *crc)
- 	return 0;
- }
- 
--static int ext4_fc_snapshot_inodes(journal_t *journal)
-+static int ext4_fc_alloc_snapshot_inodes(struct super_block *sb,
-+					 struct inode ***inodesp,
-+					 unsigned int *nr_inodesp);
-+
-+static int ext4_fc_snapshot_inodes(journal_t *journal, struct inode **inodes,
-+				   unsigned int inodes_size)
+ static int ext4_fc_snapshot_inodes(journal_t *journal, struct inode **inodes,
+-				   unsigned int inodes_size)
++				   unsigned int inodes_size,
++				   unsigned int *nr_inodesp,
++				   unsigned int *nr_rangesp,
++				   int *snap_err)
  {
  	struct super_block *sb = journal->j_private;
  	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_inode_info *iter;
- 	struct ext4_fc_dentry_update *fc_dentry;
--	struct inode **inodes;
--	unsigned int nr_inodes = 0;
- 	unsigned int i = 0;
-+	unsigned int idx;
-+	unsigned int nr_ranges = 0;
- 	int ret = 0;
- 	int alloc_ctx;
- 
--	alloc_ctx = ext4_fc_lock(sb);
--	list_for_each_entry(iter, &sbi->s_fc_q[FC_Q_MAIN], i_fc_list)
--		nr_inodes++;
--
--	list_for_each_entry(fc_dentry, &sbi->s_fc_dentry_q[FC_Q_MAIN], fcd_list) {
--		struct ext4_inode_info *ei;
--
--		if (fc_dentry->fcd_op != EXT4_FC_TAG_CREAT)
--			continue;
--		if (list_empty(&fc_dentry->fcd_dilist))
--			continue;
--
--		/* See the comment in ext4_fc_commit_dentry_updates(). */
--		ei = list_first_entry(&fc_dentry->fcd_dilist,
--				      struct ext4_inode_info, i_fc_dilist);
--		if (!list_empty(&ei->i_fc_list))
--			continue;
--
--		nr_inodes++;
--	}
--	ext4_fc_unlock(sb, alloc_ctx);
--
--	if (!nr_inodes)
-+	if (!inodes_size)
- 		return 0;
- 
--	inodes = kvcalloc(nr_inodes, sizeof(*inodes), GFP_NOFS);
--	if (!inodes)
--		return -ENOMEM;
--
+@@ -1221,6 +1245,8 @@ static int ext4_fc_snapshot_inodes(journal_t *journal, struct inode **inodes,
  	alloc_ctx = ext4_fc_lock(sb);
  	list_for_each_entry(iter, &sbi->s_fc_q[FC_Q_MAIN], i_fc_list) {
-+		if (i >= inodes_size) {
-+			ret = -E2BIG;
-+			goto unlock;
-+		}
- 		inodes[i++] = &iter->vfs_inode;
- 	}
- 
-@@ -1229,6 +1243,10 @@ static int ext4_fc_snapshot_inodes(journal_t *journal)
- 		if (!list_empty(&ei->i_fc_list))
+ 		if (i >= inodes_size) {
++			ext4_fc_set_snap_err(snap_err,
++					     EXT4_FC_SNAP_ERR_INODES_CAP);
+ 			ret = -E2BIG;
+ 			goto unlock;
+ 		}
+@@ -1244,6 +1270,8 @@ static int ext4_fc_snapshot_inodes(journal_t *journal, struct inode **inodes,
  			continue;
  
-+		if (i >= inodes_size) {
-+			ret = -E2BIG;
-+			goto unlock;
-+		}
- 		/*
- 		 * Create-only inodes may only be referenced via fcd_dilist and
- 		 * not appear on s_fc_q[MAIN]. They may hit the last iput while
-@@ -1240,15 +1258,22 @@ static int ext4_fc_snapshot_inodes(journal_t *journal)
- 		ext4_set_inode_state(inode, EXT4_STATE_FC_COMMITTING);
- 		inodes[i++] = inode;
- 	}
-+unlock:
- 	ext4_fc_unlock(sb, alloc_ctx);
+ 		if (i >= inodes_size) {
++			ext4_fc_set_snap_err(snap_err,
++					     EXT4_FC_SNAP_ERR_INODES_CAP);
+ 			ret = -E2BIG;
+ 			goto unlock;
+ 		}
+@@ -1268,16 +1296,20 @@ static int ext4_fc_snapshot_inodes(journal_t *journal, struct inode **inodes,
+ 		unsigned int inode_ranges = 0;
  
--	for (nr_inodes = 0; nr_inodes < i; nr_inodes++) {
--		ret = ext4_fc_snapshot_inode(inodes[nr_inodes]);
-+	if (ret)
-+		return ret;
-+
-+	for (idx = 0; idx < i; idx++) {
-+		unsigned int inode_ranges = 0;
-+
-+		ret = ext4_fc_snapshot_inode(inodes[idx], nr_ranges,
-+					     &inode_ranges);
+ 		ret = ext4_fc_snapshot_inode(inodes[idx], nr_ranges,
+-					     &inode_ranges);
++					     &inode_ranges, snap_err);
  		if (ret)
  			break;
-+		nr_ranges += inode_ranges;
+ 		nr_ranges += inode_ranges;
  	}
  
--	kvfree(inodes);
++	if (nr_inodesp)
++		*nr_inodesp = i;
++	if (nr_rangesp)
++		*nr_rangesp = nr_ranges;
  	return ret;
  }
  
-@@ -1259,6 +1284,8 @@ static int ext4_fc_perform_commit(journal_t *journal)
- 	struct ext4_inode_info *iter;
- 	struct ext4_fc_head head;
+-static int ext4_fc_perform_commit(journal_t *journal)
++static int ext4_fc_perform_commit(journal_t *journal, tid_t commit_tid)
+ {
+ 	struct super_block *sb = journal->j_private;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+@@ -1286,10 +1318,15 @@ static int ext4_fc_perform_commit(journal_t *journal)
  	struct inode *inode;
-+	struct inode **inodes;
-+	unsigned int inodes_size;
+ 	struct inode **inodes;
+ 	unsigned int inodes_size;
++	unsigned int snap_inodes = 0;
++	unsigned int snap_ranges = 0;
++	int snap_err = EXT4_FC_SNAP_ERR_NONE;
  	struct blk_plug plug;
  	int ret = 0;
  	u32 crc = 0;
-@@ -1311,6 +1338,10 @@ static int ext4_fc_perform_commit(journal_t *journal)
- 		return ret;
+ 	int alloc_ctx;
++	ktime_t lock_start;
++	u64 locked_ns;
  
- 
-+	ret = ext4_fc_alloc_snapshot_inodes(sb, &inodes, &inodes_size);
-+	if (ret)
-+		return ret;
-+
- 	/* Step 4: Mark all inodes as being committed. */
- 	jbd2_journal_lock_updates(journal);
  	/*
-@@ -1326,8 +1357,9 @@ static int ext4_fc_perform_commit(journal_t *journal)
- 	}
- 	ext4_fc_unlock(sb, alloc_ctx);
- 
--	ret = ext4_fc_snapshot_inodes(journal);
-+	ret = ext4_fc_snapshot_inodes(journal, inodes, inodes_size);
- 	jbd2_journal_unlock_updates(journal);
-+	kvfree(inodes);
+ 	 * Step 1: Mark all inodes on s_fc_q[MAIN] with
+@@ -1337,13 +1374,13 @@ static int ext4_fc_perform_commit(journal_t *journal)
  	if (ret)
  		return ret;
  
-@@ -1383,6 +1415,64 @@ static int ext4_fc_perform_commit(journal_t *journal)
- 	return ret;
- }
+-
+ 	ret = ext4_fc_alloc_snapshot_inodes(sb, &inodes, &inodes_size);
+ 	if (ret)
+ 		return ret;
  
-+static unsigned int ext4_fc_count_snapshot_inodes(struct super_block *sb)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_inode_info *iter;
-+	struct ext4_fc_dentry_update *fc_dentry;
-+	unsigned int nr_inodes = 0;
-+	int alloc_ctx;
-+
-+	alloc_ctx = ext4_fc_lock(sb);
-+	list_for_each_entry(iter, &sbi->s_fc_q[FC_Q_MAIN], i_fc_list)
-+		nr_inodes++;
-+
-+	list_for_each_entry(fc_dentry, &sbi->s_fc_dentry_q[FC_Q_MAIN], fcd_list) {
-+		struct ext4_inode_info *ei;
-+
-+		if (fc_dentry->fcd_op != EXT4_FC_TAG_CREAT)
-+			continue;
-+		if (list_empty(&fc_dentry->fcd_dilist))
-+			continue;
-+
-+		/* See the comment in ext4_fc_commit_dentry_updates(). */
-+		ei = list_first_entry(&fc_dentry->fcd_dilist,
-+				      struct ext4_inode_info, i_fc_dilist);
-+		if (!list_empty(&ei->i_fc_list))
-+			continue;
-+
-+		nr_inodes++;
-+	}
-+	ext4_fc_unlock(sb, alloc_ctx);
-+
-+	return nr_inodes;
-+}
-+
-+static int ext4_fc_alloc_snapshot_inodes(struct super_block *sb,
-+					 struct inode ***inodesp,
-+					 unsigned int *nr_inodesp)
-+{
-+	unsigned int nr_inodes = ext4_fc_count_snapshot_inodes(sb);
-+	struct inode **inodes;
-+
-+	*inodesp = NULL;
-+	*nr_inodesp = 0;
-+
-+	if (!nr_inodes)
-+		return 0;
-+
-+	if (nr_inodes > EXT4_FC_SNAPSHOT_MAX_INODES)
-+		return -E2BIG;
-+
-+	inodes = kvcalloc(nr_inodes, sizeof(*inodes), GFP_NOFS);
-+	if (!inodes)
-+		return -ENOMEM;
-+
-+	*inodesp = inodes;
-+	*nr_inodesp = nr_inodes;
-+	return 0;
-+}
-+
- static void ext4_fc_update_stats(struct super_block *sb, int status,
- 				 u64 commit_time, int nblks, tid_t commit_tid)
- {
-@@ -1475,7 +1565,10 @@ int ext4_fc_commit(journal_t *journal, tid_t commit_tid)
- 	fc_bufs_before = (sbi->s_fc_bytes + bsize - 1) / bsize;
- 	ret = ext4_fc_perform_commit(journal);
- 	if (ret < 0) {
--		status = EXT4_FC_STATUS_FAILED;
-+		if (ret == -EAGAIN || ret == -E2BIG || ret == -ECANCELED)
-+			status = EXT4_FC_STATUS_INELIGIBLE;
-+		else
-+			status = EXT4_FC_STATUS_FAILED;
- 		goto fallback;
+ 	/* Step 4: Mark all inodes as being committed. */
+ 	jbd2_journal_lock_updates(journal);
++	lock_start = ktime_get();
+ 	/*
+ 	 * The journal is now locked. No more handles can start and all the
+ 	 * previous handles are now drained. Snapshotting happens in this
+@@ -1357,8 +1394,12 @@ static int ext4_fc_perform_commit(journal_t *journal)
  	}
- 	nblks = (sbi->s_fc_bytes + bsize - 1) / bsize - fc_bufs_before;
-@@ -1559,34 +1652,35 @@ static void ext4_fc_cleanup(journal_t *journal, int full, tid_t tid)
+ 	ext4_fc_unlock(sb, alloc_ctx);
  
- 	while (!list_empty(&sbi->s_fc_dentry_q[FC_Q_MAIN])) {
- 		fc_dentry = list_first_entry(&sbi->s_fc_dentry_q[FC_Q_MAIN],
--					     struct ext4_fc_dentry_update,
--					     fcd_list);
-+						 struct ext4_fc_dentry_update,
-+						 fcd_list);
- 		list_del_init(&fc_dentry->fcd_list);
- 		if (fc_dentry->fcd_op == EXT4_FC_TAG_CREAT &&
--		    !list_empty(&fc_dentry->fcd_dilist)) {
-+			!list_empty(&fc_dentry->fcd_dilist)) {
- 			/* See the comment in ext4_fc_commit_dentry_updates(). */
- 			ei = list_first_entry(&fc_dentry->fcd_dilist,
--					      struct ext4_inode_info,
--					      i_fc_dilist);
-+						  struct ext4_inode_info,
-+						  i_fc_dilist);
- 			ext4_fc_free_inode_snap(&ei->vfs_inode);
- 			spin_lock(&ei->i_fc_lock);
- 			ext4_clear_inode_state(&ei->vfs_inode,
--					       EXT4_STATE_FC_REQUEUE);
-+						   EXT4_STATE_FC_REQUEUE);
- 			ext4_clear_inode_state(&ei->vfs_inode,
--					       EXT4_STATE_FC_COMMITTING);
-+						   EXT4_STATE_FC_COMMITTING);
- 			spin_unlock(&ei->i_fc_lock);
- 			/*
- 			 * Make sure clearing of EXT4_STATE_FC_COMMITTING is
--			 * visible before we send the wakeup. Pairs with implicit
--			 * barrier in prepare_to_wait() in ext4_fc_del().
-+			 * visible before we send the wakeup. Pairs with
-+			 * implicit barrier in prepare_to_wait() in
-+			 * ext4_fc_del().
- 			 */
- 			smp_mb();
- #if (BITS_PER_LONG < 64)
- 			wake_up_bit(&ei->i_state_flags,
--				    EXT4_STATE_FC_COMMITTING);
-+					EXT4_STATE_FC_COMMITTING);
- #else
- 			wake_up_bit(&ei->i_flags,
--				    EXT4_STATE_FC_COMMITTING);
-+					EXT4_STATE_FC_COMMITTING);
- #endif
- 		}
- 		list_del_init(&fc_dentry->fcd_dilist);
-@@ -2582,13 +2676,20 @@ int __init ext4_fc_init_dentry_cache(void)
- 	ext4_fc_dentry_cachep = KMEM_CACHE(ext4_fc_dentry_update,
- 					   SLAB_RECLAIM_ACCOUNT);
+-	ret = ext4_fc_snapshot_inodes(journal, inodes, inodes_size);
++	ret = ext4_fc_snapshot_inodes(journal, inodes, inodes_size,
++				      &snap_inodes, &snap_ranges, &snap_err);
+ 	jbd2_journal_unlock_updates(journal);
++	locked_ns = ktime_to_ns(ktime_sub(ktime_get(), lock_start));
++	trace_ext4_fc_lock_updates(sb, commit_tid, locked_ns, snap_inodes,
++				   snap_ranges, ret, snap_err);
+ 	kvfree(inodes);
+ 	if (ret)
+ 		return ret;
+@@ -1563,7 +1604,7 @@ int ext4_fc_commit(journal_t *journal, tid_t commit_tid)
+ 		journal_ioprio = EXT4_DEF_JOURNAL_IOPRIO;
+ 	set_task_ioprio(current, journal_ioprio);
+ 	fc_bufs_before = (sbi->s_fc_bytes + bsize - 1) / bsize;
+-	ret = ext4_fc_perform_commit(journal);
++	ret = ext4_fc_perform_commit(journal, commit_tid);
+ 	if (ret < 0) {
+ 		if (ret == -EAGAIN || ret == -E2BIG || ret == -ECANCELED)
+ 			status = EXT4_FC_STATUS_INELIGIBLE;
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index fd76d14c2776e..dc084f39b74ad 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -104,6 +104,26 @@ TRACE_DEFINE_ENUM(EXT4_FC_REASON_INODE_JOURNAL_DATA);
+ TRACE_DEFINE_ENUM(EXT4_FC_REASON_ENCRYPTED_FILENAME);
+ TRACE_DEFINE_ENUM(EXT4_FC_REASON_MAX);
  
--	if (ext4_fc_dentry_cachep == NULL)
-+	if (!ext4_fc_dentry_cachep)
- 		return -ENOMEM;
- 
-+	ext4_fc_range_cachep = KMEM_CACHE(ext4_fc_range, SLAB_RECLAIM_ACCOUNT);
-+	if (!ext4_fc_range_cachep) {
-+		kmem_cache_destroy(ext4_fc_dentry_cachep);
-+		return -ENOMEM;
-+	}
++#undef EM
++#undef EMe
++#define EM(a)	TRACE_DEFINE_ENUM(EXT4_FC_SNAP_ERR_##a);
++#define EMe(a)	TRACE_DEFINE_ENUM(EXT4_FC_SNAP_ERR_##a);
 +
- 	return 0;
- }
++#define TRACE_SNAP_ERR						\
++	EM(NONE)						\
++	EM(ES_MISS)						\
++	EM(ES_DELAYED)						\
++	EM(ES_OTHER)						\
++	EM(INODES_CAP)						\
++	EM(RANGES_CAP)						\
++	EM(NOMEM)						\
++	EMe(INODE_LOC)
++
++TRACE_SNAP_ERR
++
++#undef EM
++#undef EMe
++
+ #define show_fc_reason(reason)						\
+ 	__print_symbolic(reason,					\
+ 		{ EXT4_FC_REASON_XATTR,		"XATTR"},		\
+@@ -2812,6 +2832,47 @@ TRACE_EVENT(ext4_fc_commit_stop,
+ 		  __entry->num_fc_ineligible, __entry->nblks_agg, __entry->tid)
+ );
  
- void ext4_fc_destroy_dentry_cache(void)
- {
-+	kmem_cache_destroy(ext4_fc_range_cachep);
- 	kmem_cache_destroy(ext4_fc_dentry_cachep);
- }
++#define EM(a)	{ EXT4_FC_SNAP_ERR_##a, #a },
++#define EMe(a)	{ EXT4_FC_SNAP_ERR_##a, #a }
++
++TRACE_EVENT(ext4_fc_lock_updates,
++	    TP_PROTO(struct super_block *sb, tid_t commit_tid, u64 locked_ns,
++		     unsigned int nr_inodes, unsigned int nr_ranges, int err,
++		     int snap_err),
++
++	TP_ARGS(sb, commit_tid, locked_ns, nr_inodes, nr_ranges, err, snap_err),
++
++	TP_STRUCT__entry(/* entry */
++		__field(dev_t, dev)
++		__field(tid_t, tid)
++		__field(u64, locked_ns)
++		__field(unsigned int, nr_inodes)
++		__field(unsigned int, nr_ranges)
++		__field(int, err)
++		__field(int, snap_err)
++	),
++
++	TP_fast_assign(/* assign */
++		__entry->dev = sb->s_dev;
++		__entry->tid = commit_tid;
++		__entry->locked_ns = locked_ns;
++		__entry->nr_inodes = nr_inodes;
++		__entry->nr_ranges = nr_ranges;
++		__entry->err = err;
++		__entry->snap_err = snap_err;
++	),
++
++	TP_printk("dev %d,%d tid %u locked_ns %llu nr_inodes %u nr_ranges %u err %d snap_err %s",
++		  MAJOR(__entry->dev), MINOR(__entry->dev), __entry->tid,
++		  __entry->locked_ns, __entry->nr_inodes, __entry->nr_ranges,
++		  __entry->err, __print_symbolic(__entry->snap_err,
++						 TRACE_SNAP_ERR))
++);
++
++#undef EM
++#undef EMe
++#undef TRACE_SNAP_ERR
++
+ #define FC_REASON_NAME_STAT(reason)					\
+ 	show_fc_reason(reason),						\
+ 	__entry->fc_ineligible_rc[reason]
 -- 
 2.53.0
 
