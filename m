@@ -1,106 +1,114 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A845D3C3BFD
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Mar 2026 12:56:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 93E2C3B0ADC
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Mar 2026 13:59:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773925001; cv=none; b=Br1J3nI+8T49AZPaH3DIJyHyulO6446MIhRjWfG369EbU4aPS9ln/oE022ZcJHfLr6ceruTRBLGLJ7LObrhylURDVIhIaoNfCBrJNiBpd+WRuIqAaD3dVpRlh01BXtbcgz9uRQ7+0qlhtdbUIdV287XJV6W+DqOzA2W+9QpLz8U=
+	t=1773928781; cv=none; b=GcbN2fQDPGBrBSnrDwSijtop708rTFKqbajrYikX5nrNiB4g0xLQEsyzvEKviCcaK7emWafHM7L6/4nQtZZq3QMnf+Lh2snj9NGqRyayf3To76MLZjZafK2Hwerp3FI6Im1mD6uNzeIq5DPu2+j8l82ZxxPIJcbqmRInqNEFg3Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773925001; c=relaxed/simple;
-	bh=WY3bjKmRH8qFcnlkWTbgZY0ZY3c7vpOAI5F0Ow5Jn2U=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=kSxuUhe4tapPsGYWBUNk22DRHa98j4+5wn5BVC+aNsmDmfbGr7NdwRpvPCYGNSjbGrSGo7jdlOlFyDyT27gVeBi1w+SMfFiFhGrY6hLClVYIE0wySbgenKkYJYASVqeEl4zHDFbiR7C67WGsHSzmrJcZ35UFHsFkOKP8V8IAjT4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4fc5KX6SH9zKHMV7
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Mar 2026 20:56:00 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 3B88A40574
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Mar 2026 20:56:30 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.50.87.132])
-	by APP4 (Coremail) with SMTP id gCh0CgCHYUx68rtpgy7uBQ--.23117S5;
-	Thu, 19 Mar 2026 20:56:30 +0800 (CST)
-From: Ye Bin <yebin@huaweicloud.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-Cc: jack@suse.cz
-Subject: [PATCH v4 1/5] ext4: fix miss unlock 'sb->s_umount' in extents_kunit_init()
-Date: Thu, 19 Mar 2026 20:54:30 +0800
-Message-Id: <20260319125434.333117-2-yebin@huaweicloud.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20260319125434.333117-1-yebin@huaweicloud.com>
-References: <20260319125434.333117-1-yebin@huaweicloud.com>
+	s=arc-20240116; t=1773928781; c=relaxed/simple;
+	bh=r1Oad3yEIm+4Mn3a5SSXoqW6hQtvMH82TAhx4xRxGmA=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=JzjPqnKESILNCAfpNUKeBP0YE0WPvzROwhwJTqXh08TPObIUom3WCy40EPfRqg1yLU5PpPwozXg6KQmVKuv3x8UaHdX3NU5gnDZ6/GdLWfy4d1N7tSGY+VOp0l7YfleRbYLxfeHFCELthMPBwhsGdv/juJHK2O04h92UcdgIcUA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=OPdJbKt0; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="OPdJbKt0"
+Received: from macsyma.thunk.org (pool-173-48-82-102.bstnma.fios.verizon.net [173.48.82.102])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62JDxQYq027693
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 19 Mar 2026 09:59:27 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1773928769; bh=XdmDZ/TgnLjxR3aRJ1G8nfZazOQHGOiLK/eYzaDPW+s=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=OPdJbKt0Fltg0aXQ2+DW/beeyt+MeTo+TmigWI9MtD0w7EQFhZjx0IPkJttgNW22b
+	 uUxeOY0CDQyLki8k9dRlV5qhVPdZbEtqAyou1NF1ww/EK+h+lpy5uToKUyx9N0rtIL
+	 e2osJVxEHbe8g7VLHZ7VgIFkd+q89ZSsxf44gCXbMj29pbAWUrkPU7PMNLSWyq5SPs
+	 BSZFBiMD0ojhCR6O7Baj0kJE2cEPbpez0dyp3FwSl3jE+LLeyhjCbAFp1nWHC4hipB
+	 gskeUI1iNId8eOEOIGOL+OFKzz3fi4r4mmQOr39Ni98yfpt3Lw/tVVwciPjEswl++g
+	 gCi3mzAcP0DhQ==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 4F59E5E493BD; Thu, 19 Mar 2026 09:58:26 -0400 (EDT)
+Date: Thu, 19 Mar 2026 09:58:26 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: ZhengYuan Huang <gality369@gmail.com>
+Cc: adilger.kernel@dilger.ca, tahsin@google.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, baijiaju1990@gmail.com,
+        r33s3n6@gmail.com, zzzccc427@gmail.com, stable@vger.kernel.org
+Subject: Re: [PATCH] ext4: xattr: fix out-of-bounds access in
+ ext4_xattr_set_entry
+Message-ID: <20260319135826.GA91368@macsyma-wired.lan>
+References: <20260318075842.3341370-1-gality369@gmail.com>
+ <20260318144509.GA82331@macsyma-wired.lan>
+ <CAOmEq9Uq5xMvhT7cyoY2uhSBhwSEEJ1vYRY36N4sxZSPCO1S8w@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCHYUx68rtpgy7uBQ--.23117S5
-X-Coremail-Antispam: 1UD129KBjvJXoW7tr17ur4DZw1xZr45Wr48JFb_yoW8Xw1Dpw
-	43AFyUKr1rZ3W7CFW8tF4UtryYka1fCa47CryfWF43XFW7u348Kr1fKF1YkFW5Xa1UXFn8
-	ZF40va4jkw43C3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvlb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUGw
-	A2048vs2IY020Ec7CjxVAFwI0_Jrv_JF4l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
-	w2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
-	W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
-	6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
-	Ij6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
-	Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr
-	0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY
-	17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcV
-	C0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY
-	6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r1j6r4UYxBIdaVFxhVjvj
-	DU0xZFpf9x07UAEfrUUUUU=
-X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAOmEq9Uq5xMvhT7cyoY2uhSBhwSEEJ1vYRY36N4sxZSPCO1S8w@mail.gmail.com>
 
-From: Ye Bin <yebin10@huawei.com>
+On Thu, Mar 19, 2026 at 07:13:45PM +0800, ZhengYuan Huang wrote:
+> 
+> And yes, the reproducer does involve actively modifying the mounted
+> filesystem image. We use ublk to enable this behavior.
 
-There's warning as follows when do ext4 kunit test:
-WARNING: kunit_try_catch/15923 still has locks held!
-7.0.0-rc3-next-20260309-00028-g73f965a1bbb1-dirty #281 Tainted: G            E    N
-1 lock held by kunit_try_catch/15923:
- #0: ffff888139f860e0 (&type->s_umount_key#70/1){+.+.}-{4:4}, at: alloc_super.constprop.0+0x172/0xa90
-Call Trace:
- <TASK>
- dump_stack_lvl+0x180/0x1b0
- debug_check_no_locks_held+0xc8/0xd0
- do_exit+0x1502/0x2b20
- kthread+0x3a9/0x540
- ret_from_fork+0xa76/0xdf0
- ret_from_fork_asm+0x1a/0x30
+We don't consider bugs which involve modfying the mounted filesystem
+as valid from a security perspective.  In particular, I don't want to
+add checks to hotpaths to try to protect against these sorts of
+failures, because they simply shouldn't be allowed --- and/or if the
+attacker has write access to the block device while the file system is
+mounted, you've basically lost already.
 
-As sget() will return 'sb' which holds 's->s_umount' lock. However,
-"extents-test" miss unlock this lock.
-So unlock 's->s_umount' in the end of extents_kunit_init().
+We have added the ioctl EXT4_IOC_SET_TUNE_SB_PARAM to more recent
+kernels, and will be teaching tune2fs to use that instead of modifying
+the mounted file system directly.  Once that happens, we will add a
+kernel configuration option which works like
+CONFIG_BLK_DEV_WRITE_MOUNTED, but which is ext4 specific; so that for
+distributions that are shipping a sufficiently new version of
+e2fsprogs, they can block write access to mounted ext4 file systems.
+Quoting from Kconfig documentation for CONFIG_BLK_DEV_WRITE_MOUNTED:
 
-Fixes: cb1e0c1d1fad ("ext4: kunit tests for extent splitting and conversion")
-Signed-off-by: Ye Bin <yebin10@huawei.com>
-Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
----
- fs/ext4/extents-test.c | 2 ++
- 1 file changed, 2 insertions(+)
+        When a block device is mounted, writing to its buffer cache is very
+        likely going to cause filesystem corruption. It is also rather easy to
+        crash the kernel in this way since the filesystem has no practical way
+        of detecting these writes to buffer cache and verifying its metadata
+        integrity. However there are some setups that need this capability
+        like running fsck on read-only mounted root device, modifying some
+        features on mounted ext4 filesystem, and similar. If you say N, the
+        kernel will prevent processes from writing to block devices that are
+        mounted by filesystems which provides some more protection from runaway
+        privileged processes and generally makes it much harder to crash
+        filesystem drivers.
 
-diff --git a/fs/ext4/extents-test.c b/fs/ext4/extents-test.c
-index 5496b2c8e2cd..82c59291e045 100644
---- a/fs/ext4/extents-test.c
-+++ b/fs/ext4/extents-test.c
-@@ -309,6 +309,8 @@ static int extents_kunit_init(struct kunit *test)
- 	kunit_activate_static_stub(test, ext4_ext_zeroout, ext4_ext_zeroout_stub);
- 	kunit_activate_static_stub(test, ext4_issue_zeroout,
- 				   ext4_issue_zeroout_stub);
-+	up_write(&sb->s_umount);
-+
- 	return 0;
- }
- 
--- 
-2.34.1
+The official syzkaller instance sets CONFIG_BLK_DEV_WRITE_MOUNTED to
+"no" and we've asked them to block fuzzers which try to modify the
+file used by loopback mounts, because these sorts of syzkaller reports
+are pure noise as far as we are concerned.
 
+If system administrators are stupid enough to make the block device
+world writeable, they deserve everything they get.  Similarly, if
+system administrators don't run fsck on random USB thumb drive dropped
+in the parking lot by the MSS or the KGB before mounting it, again,
+the bug is between the chair and keyboard.  (For that matter,
+inserting a random USB device for which you aren't sure whether it
+came from a trusted source can make you vulnerable to hardware-level
+attacks.  Just don't do it.)
+
+That being said, we are more likely to accept patches to address
+static file system corruption, but the checks need to be done when the
+metadata in question is first loaded, and outside of a hot path.  But
+trying to defend against dynamic modifications of the block device is
+really a fools errand, without completely trashing the performance of
+the file system.
+
+Cheers,
+
+					- Ted
