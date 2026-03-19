@@ -1,50 +1,102 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 93E2C3B0ADC
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Mar 2026 13:59:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD24D30F541
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Mar 2026 14:13:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773928781; cv=none; b=GcbN2fQDPGBrBSnrDwSijtop708rTFKqbajrYikX5nrNiB4g0xLQEsyzvEKviCcaK7emWafHM7L6/4nQtZZq3QMnf+Lh2snj9NGqRyayf3To76MLZjZafK2Hwerp3FI6Im1mD6uNzeIq5DPu2+j8l82ZxxPIJcbqmRInqNEFg3Y=
+	t=1773929635; cv=none; b=PYR7Kh+QqnqBwpRl1XL6mBKgKz1SrxLVsHAgvDtdYhKvihRIyi5ckJI0HugeAwFAK7W6weRsn51hqCWwZbZWFUqrHmO/tI5VM6HjLNHgvdCgKfQY3A/Xc6PYZTzjfcV9e7QuF/njSPFPhsbOYKMn2Jcb4Y9EQQ8CchkuMH3nFHg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773928781; c=relaxed/simple;
-	bh=r1Oad3yEIm+4Mn3a5SSXoqW6hQtvMH82TAhx4xRxGmA=;
+	s=arc-20240116; t=1773929635; c=relaxed/simple;
+	bh=4zAon2/wL1xkF183JwLxXVvEK05OvlwLI29zwOFhq2E=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=JzjPqnKESILNCAfpNUKeBP0YE0WPvzROwhwJTqXh08TPObIUom3WCy40EPfRqg1yLU5PpPwozXg6KQmVKuv3x8UaHdX3NU5gnDZ6/GdLWfy4d1N7tSGY+VOp0l7YfleRbYLxfeHFCELthMPBwhsGdv/juJHK2O04h92UcdgIcUA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=OPdJbKt0; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	 Content-Type:Content-Disposition:In-Reply-To; b=jOHAAJREJv/vCu60xNvr4nB/l5DVhikcieUVwEXUzEhD1Ee1Zad1AlIwPHHpbZxigTopnxRzp9Pt1tVa42Y+MTunar+9JP7XN2EnWZNnIFKBZ+uau1v8Q7bG84APsWOJGd+R6B7ocsGK1mWMIHWdqVIB/AeuGD1WmL3SmN47huw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=qJFdgiFw; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=4jpB79yc; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=OrcSAEzL; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=HXVk5/yP; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="OPdJbKt0"
-Received: from macsyma.thunk.org (pool-173-48-82-102.bstnma.fios.verizon.net [173.48.82.102])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62JDxQYq027693
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 19 Mar 2026 09:59:27 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1773928769; bh=XdmDZ/TgnLjxR3aRJ1G8nfZazOQHGOiLK/eYzaDPW+s=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=OPdJbKt0Fltg0aXQ2+DW/beeyt+MeTo+TmigWI9MtD0w7EQFhZjx0IPkJttgNW22b
-	 uUxeOY0CDQyLki8k9dRlV5qhVPdZbEtqAyou1NF1ww/EK+h+lpy5uToKUyx9N0rtIL
-	 e2osJVxEHbe8g7VLHZ7VgIFkd+q89ZSsxf44gCXbMj29pbAWUrkPU7PMNLSWyq5SPs
-	 BSZFBiMD0ojhCR6O7Baj0kJE2cEPbpez0dyp3FwSl3jE+LLeyhjCbAFp1nWHC4hipB
-	 gskeUI1iNId8eOEOIGOL+OFKzz3fi4r4mmQOr39Ni98yfpt3Lw/tVVwciPjEswl++g
-	 gCi3mzAcP0DhQ==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 4F59E5E493BD; Thu, 19 Mar 2026 09:58:26 -0400 (EDT)
-Date: Thu, 19 Mar 2026 09:58:26 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: ZhengYuan Huang <gality369@gmail.com>
-Cc: adilger.kernel@dilger.ca, tahsin@google.com, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, baijiaju1990@gmail.com,
-        r33s3n6@gmail.com, zzzccc427@gmail.com, stable@vger.kernel.org
-Subject: Re: [PATCH] ext4: xattr: fix out-of-bounds access in
- ext4_xattr_set_entry
-Message-ID: <20260319135826.GA91368@macsyma-wired.lan>
-References: <20260318075842.3341370-1-gality369@gmail.com>
- <20260318144509.GA82331@macsyma-wired.lan>
- <CAOmEq9Uq5xMvhT7cyoY2uhSBhwSEEJ1vYRY36N4sxZSPCO1S8w@mail.gmail.com>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="qJFdgiFw";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="4jpB79yc";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="OrcSAEzL";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="HXVk5/yP"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 233AB5BD4B;
+	Thu, 19 Mar 2026 14:13:51 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1773929632; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=4fUFXPph0d+U/6GDmGbgLZ/FXBjYuxpYsgD69WTKZEc=;
+	b=qJFdgiFwZof840urwELAyJUPmqr5R5KSb1T4rwYuc7bb8XNbCm/kv+M5FkrKSBEOM1bZiu
+	/MGyuwm/OFnFKmJm/t/Uz/+GbEcAEAQCMtEWioCbgwKOh4DWZ0qNVZOg9g66xDY+m4U+fD
+	w9Xqoe30eNI+goFz62hSwZMzWorThdA=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1773929632;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=4fUFXPph0d+U/6GDmGbgLZ/FXBjYuxpYsgD69WTKZEc=;
+	b=4jpB79ycXSQsxOkgtV3HKUa6Dm/vQ/wRir8pmFsiYnB6qgK3LbPe12RtulXb4tol7/E3ij
+	faYPra8B4GTfZjDQ==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1773929631; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=4fUFXPph0d+U/6GDmGbgLZ/FXBjYuxpYsgD69WTKZEc=;
+	b=OrcSAEzL/6c4UDB40dZmtUkHL2UKN/t418W/3/WLfRE3VUYtttdOTA1LBRs2LexriSZBXr
+	IUCLAcO9QxQoLCNXA0PSitgNb7BC5cuH9t+EXroQLbXGhfbC1mTChSWj64vc6V41FfYy8R
+	mio6pb/J12e+5TPnOnmBoDRex83ce1A=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1773929631;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=4fUFXPph0d+U/6GDmGbgLZ/FXBjYuxpYsgD69WTKZEc=;
+	b=HXVk5/yPJtxIjyky0dtujMNvVHE9KONXRU8D1O6wb4LBxoqwDaKPYOnkGEkCrYDJmYyVOA
+	klxEA++oJw6AsaAw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 14B714273B;
+	Thu, 19 Mar 2026 14:13:51 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id TmUEBZ8EvGlPZwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 19 Mar 2026 14:13:51 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id C850FA0B32; Thu, 19 Mar 2026 15:13:46 +0100 (CET)
+Date: Thu, 19 Mar 2026 15:13:46 +0100
+From: Jan Kara <jack@suse.cz>
+To: Philipp Hahn <phahn-oss@avm.de>
+Cc: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com, 
+	bpf@vger.kernel.org, ceph-devel@vger.kernel.org, cocci@inria.fr, 
+	dm-devel@lists.linux.dev, dri-devel@lists.freedesktop.org, gfs2@lists.linux.dev, 
+	intel-gfx@lists.freedesktop.org, intel-wired-lan@lists.osuosl.org, iommu@lists.linux.dev, 
+	kvm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+	linux-block@vger.kernel.org, linux-bluetooth@vger.kernel.org, linux-btrfs@vger.kernel.org, 
+	linux-cifs@vger.kernel.org, linux-clk@vger.kernel.org, linux-erofs@lists.ozlabs.org, 
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, linux-gpio@vger.kernel.org, 
+	linux-hyperv@vger.kernel.org, linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	linux-leds@vger.kernel.org, linux-media@vger.kernel.org, linux-mips@vger.kernel.org, 
+	linux-mm@kvack.org, linux-modules@vger.kernel.org, linux-mtd@lists.infradead.org, 
+	linux-nfs@vger.kernel.org, linux-omap@vger.kernel.org, linux-phy@lists.infradead.org, 
+	linux-pm@vger.kernel.org, linux-rockchip@lists.infradead.org, linux-s390@vger.kernel.org, 
+	linux-scsi@vger.kernel.org, linux-sctp@vger.kernel.org, 
+	linux-security-module@vger.kernel.org, linux-sh@vger.kernel.org, linux-sound@vger.kernel.org, 
+	linux-stm32@st-md-mailman.stormreply.com, linux-trace-kernel@vger.kernel.org, linux-usb@vger.kernel.org, 
+	linux-wireless@vger.kernel.org, netdev@vger.kernel.org, ntfs3@lists.linux.dev, 
+	samba-technical@lists.samba.org, sched-ext@lists.linux.dev, target-devel@vger.kernel.org, 
+	tipc-discussion@lists.sourceforge.net, v9fs@lists.linux.dev, Jan Kara <jack@suse.com>
+Subject: Re: [PATCH 12/61] quota: Prefer IS_ERR_OR_NULL over manual NULL check
+Message-ID: <ol2d7c5z7yfyuwo5tyfxurgqedruhr6bzmuv37bx5phhrmmoyh@4zjspbtexid3>
+References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
+ <20260310-b4-is_err_or_null-v1-12-bd63b656022d@avm.de>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,62 +105,69 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CAOmEq9Uq5xMvhT7cyoY2uhSBhwSEEJ1vYRY36N4sxZSPCO1S8w@mail.gmail.com>
+In-Reply-To: <20260310-b4-is_err_or_null-v1-12-bd63b656022d@avm.de>
+X-Spam-Score: -2.30
+X-Spam-Level: 
+X-Spamd-Result: default: False [-2.30 / 50.00];
+	BAYES_HAM(-3.00)[99.99%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-0.999];
+	MIME_GOOD(-0.10)[text/plain];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TO_DN_SOME(0.00)[];
+	ARC_NA(0.00)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	MISSING_XM_UA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	FROM_HAS_DN(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	TO_MATCH_ENVRCPT_SOME(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	R_RATELIMIT(0.00)[to_ip_from(RLck44p98ib5bmd95s13xxw3gp)];
+	RCVD_TLS_LAST(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCPT_COUNT_GT_50(0.00)[55];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email]
+X-Spam-Flag: NO
 
-On Thu, Mar 19, 2026 at 07:13:45PM +0800, ZhengYuan Huang wrote:
+On Tue 10-03-26 12:48:38, Philipp Hahn wrote:
+> Prefer using IS_ERR_OR_NULL() over using IS_ERR() and a manual NULL
+> check.
 > 
-> And yes, the reproducer does involve actively modifying the mounted
-> filesystem image. We use ublk to enable this behavior.
+> Change generated with coccinelle.
+> 
+> To: Jan Kara <jack@suse.com>
+> Cc: linux-kernel@vger.kernel.org
+> Signed-off-by: Philipp Hahn <phahn-oss@avm.de>
 
-We don't consider bugs which involve modfying the mounted filesystem
-as valid from a security perspective.  In particular, I don't want to
-add checks to hotpaths to try to protect against these sorts of
-failures, because they simply shouldn't be allowed --- and/or if the
-attacker has write access to the block device while the file system is
-mounted, you've basically lost already.
+Thanks for the patch but frankly I find the original variant clearer wrt
+what is going on. So I prefer to keep the code as is.
 
-We have added the ioctl EXT4_IOC_SET_TUNE_SB_PARAM to more recent
-kernels, and will be teaching tune2fs to use that instead of modifying
-the mounted file system directly.  Once that happens, we will add a
-kernel configuration option which works like
-CONFIG_BLK_DEV_WRITE_MOUNTED, but which is ext4 specific; so that for
-distributions that are shipping a sufficiently new version of
-e2fsprogs, they can block write access to mounted ext4 file systems.
-Quoting from Kconfig documentation for CONFIG_BLK_DEV_WRITE_MOUNTED:
+								Honza
 
-        When a block device is mounted, writing to its buffer cache is very
-        likely going to cause filesystem corruption. It is also rather easy to
-        crash the kernel in this way since the filesystem has no practical way
-        of detecting these writes to buffer cache and verifying its metadata
-        integrity. However there are some setups that need this capability
-        like running fsck on read-only mounted root device, modifying some
-        features on mounted ext4 filesystem, and similar. If you say N, the
-        kernel will prevent processes from writing to block devices that are
-        mounted by filesystems which provides some more protection from runaway
-        privileged processes and generally makes it much harder to crash
-        filesystem drivers.
-
-The official syzkaller instance sets CONFIG_BLK_DEV_WRITE_MOUNTED to
-"no" and we've asked them to block fuzzers which try to modify the
-file used by loopback mounts, because these sorts of syzkaller reports
-are pure noise as far as we are concerned.
-
-If system administrators are stupid enough to make the block device
-world writeable, they deserve everything they get.  Similarly, if
-system administrators don't run fsck on random USB thumb drive dropped
-in the parking lot by the MSS or the KGB before mounting it, again,
-the bug is between the chair and keyboard.  (For that matter,
-inserting a random USB device for which you aren't sure whether it
-came from a trusted source can make you vulnerable to hardware-level
-attacks.  Just don't do it.)
-
-That being said, we are more likely to accept patches to address
-static file system corruption, but the checks need to be done when the
-metadata in question is first loaded, and outside of a hot path.  But
-trying to defend against dynamic modifications of the block device is
-really a fools errand, without completely trashing the performance of
-the file system.
-
-Cheers,
-
-					- Ted
+> ---
+>  fs/quota/quota.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/quota/quota.c b/fs/quota/quota.c
+> index 33bacd70758007129e0375bab44d7431195ec441..2e09fc247d0cf45b9e83a4f8a0be7ea694c8c2a1 100644
+> --- a/fs/quota/quota.c
+> +++ b/fs/quota/quota.c
+> @@ -965,7 +965,7 @@ SYSCALL_DEFINE4(quotactl, unsigned int, cmd, const char __user *, special,
+>  	else
+>  		drop_super_exclusive(sb);
+>  out:
+> -	if (pathp && !IS_ERR(pathp))
+> +	if (!IS_ERR_OR_NULL(pathp))
+>  		path_put(pathp);
+>  	return ret;
+>  }
+> 
+> -- 
+> 2.43.0
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
