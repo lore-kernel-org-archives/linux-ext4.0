@@ -1,239 +1,218 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 27CFF37F00D;
-	Thu, 19 Mar 2026 16:08:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7403E314A90;
+	Thu, 19 Mar 2026 17:02:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773936517; cv=none; b=QpPjCUIOpHzA0MNrOyJI9EuhSyYUM6kI8CgG3KpvFejD4uWiYLEKMO+ddRzl2zCyi29Ic/HWv7aUcCh79kzZmve7oPnVGBka11TozOIwQ+xK83Yn5jMQcmAtc/gZpPt9QmefSS91mJBuLbnH8XHhGasqgYnHrzZzBMYlHVGv/EY=
+	t=1773939760; cv=none; b=OFhMPZt++gup7Zey5rtjR2dvFtOR5aJV48F2i2GlSodNvcEpaNmKlhswNXhHXmCb6U5ifk1brEa4srnAy64uwj0strSH0Qmyv9/Wre9x0dNZdoHb3Yx3+tm7qbcHjSz3S7huh2tnK769t9Sy9u37/BaxMRrSzmJQ+CoBQ/q7kJM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773936517; c=relaxed/simple;
-	bh=o1nEYWZwXDVFpFJjGoVPgZjhYgj+bC+THgG7j4SXdHc=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=NtbA0y079u+Xhabg+C+apWwB/54mVuOodIZFviI+xJe/r66q/XbiLfCX2n4Z0oB06dF1P4fd95+zg8+k1MfwDcX2zcaVv6cvto8f0i/vNB4nTm9PZlgrPhagr8Q2PK/o7ImIfEfsq85Q4Wm35aV5xuraPxMGxgqMUITD/swAJ04=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=JFDZ3iii; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1773939760; c=relaxed/simple;
+	bh=1joVFanxDh8PwgMXEWccLkn6Kcw2pxcU3MySKiM4AmA=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Nd8lTE+n9+tI1n0UFZVykcZz9165Hv7jB/T7Fd41hva+5B1mc0h77m8M93r/JV0VZDLe6UASjYZVXaUflUft2XTOd1LMYjsl88qNlfg8nqxg8II3AcllURA8hjz3yp4SGLGuG/wsl+yJUI4PyKFuN5YAW3750I4ihCsdpMKNZuo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fRKc/RQd; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="JFDZ3iii"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B9C7DC19425;
-	Thu, 19 Mar 2026 16:08:36 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fRKc/RQd"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C2148C19424;
+	Thu, 19 Mar 2026 17:02:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1773936516;
-	bh=o1nEYWZwXDVFpFJjGoVPgZjhYgj+bC+THgG7j4SXdHc=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=JFDZ3iiirFhuAYssDeT1wsoCsGsbSWhOs4QuenVfwYm0BMehruZ18OS8D5X8SJZOg
-	 PJURSw4qEeCt+R1DDRwkaduIGmeArMDl4Csq+XnwCwatKjJ0LK06SjHhG04h4X8VYP
-	 ULKdrslnBN8ZbxaTrFJGNGJjdfxh3U0NsM0csnL6jNjShFnZwlXnE8TKAhlWU14mxm
-	 98LWzqEiC+37kL80BnB8NpXezUI4gi36e2xD4tYnmhtM4JWULzxbI7fMtw3LBLBIFL
-	 rxP66FSYEqbjPn89qOH5VEziSCwmUUadJ/azNWyL6NYuqtqEfmc2sQgSb4oIKAmo3e
-	 PAwlxmXoDY1IA==
-Date: Thu, 19 Mar 2026 09:08:36 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: Demi Marie Obenour <demiobenour@gmail.com>
-Cc: Joanne Koong <joannelkoong@gmail.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>, bpf@vger.kernel.org,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Miklos Szeredi <miklos@szeredi.hu>,
-	Bernd Schubert <bernd@bsbernd.com>, Theodore Ts'o <tytso@mit.edu>,
-	Neal Gompa <neal@gompa.dev>, Amir Goldstein <amir73il@gmail.com>,
-	Christian Brauner <brauner@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>, John@groves.net
-Subject: Re: [PATCHBLIZZARD v7] fuse/libfuse/e2fsprogs: containerize ext4 for
- safer operation
-Message-ID: <20260319160836.GC6004@frogsfrogsfrogs>
-References: <20260223224617.GA2390314@frogsfrogsfrogs>
- <CAJnrk1Yd1J60-Ek=O7jzZQg454pbr3O=b71yZHzYbrWfqJr__w@mail.gmail.com>
- <20260316180408.GN6069@frogsfrogsfrogs>
- <CAJnrk1bmJYMt27xedN2Xza0KPXfYEbh-9g=3fNWru-HRM9WFEw@mail.gmail.com>
- <20260316234137.GJ1742010@frogsfrogsfrogs>
- <208bfbd2-d671-462c-925f-4d51b7df1f18@gmail.com>
- <20260318213129.GB6004@frogsfrogsfrogs>
- <c7866006-bd17-4fd8-a603-bd3016fdfeb0@gmail.com>
+	s=k20201202; t=1773939760;
+	bh=1joVFanxDh8PwgMXEWccLkn6Kcw2pxcU3MySKiM4AmA=;
+	h=From:To:Cc:Subject:Date:From;
+	b=fRKc/RQdcmF8WuT8iYok51UB0OX4N96zZrvJTOrnqk0grGzC7rNAA1tco0sSQdhrm
+	 aUruzC2WAYo2pMcUeT1Ak91yJCzqnLW0Eq+zQ0SnM/3vEh/xjuUVSr4cGNW8s5gkF8
+	 +sKchm7xrKq4fsS1T4ZdjoyhSGkdCEJe+3uahXPM2rNXCnje1CYVHe/2czSFKJS3SZ
+	 uUdk/oSG1LOvPVGUFSn/KJWfyVcB9YF1FQnnRq7r/TZLV2HYX8nL7RxwkP4VYqfHBW
+	 dFW1SqxWHb/l4PAw/T4AuHkvI4vAtzTzn6MmqgJtg+fx0r1gIkCDgIvJpKm+MhDS5J
+	 Zy+WbVYmn/3aQ==
+From: Andrey Albershteyn <aalbersh@kernel.org>
+To: linux-xfs@vger.kernel.org,
+	fsverity@lists.linux.dev,
+	linux-fsdevel@vger.kernel.org,
+	ebiggers@kernel.org
+Cc: Andrey Albershteyn <aalbersh@kernel.org>,
+	hch@lst.de,
+	linux-ext4@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-btrfs@vger.kernel.org,
+	djwong@kernel.org,
+	david@fromorbit.com
+Subject: [PATCH v5 00/25] fs-verity support for XFS with post EOF merkle tree
+Date: Thu, 19 Mar 2026 18:01:47 +0100
+Message-ID: <20260319170231.1455553-1-aalbersh@kernel.org>
+X-Mailer: git-send-email 2.51.2
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <c7866006-bd17-4fd8-a603-bd3016fdfeb0@gmail.com>
 
-On Thu, Mar 19, 2026 at 03:28:21AM -0400, Demi Marie Obenour wrote:
-> On 3/18/26 17:31, Darrick J. Wong wrote:
-> > On Mon, Mar 16, 2026 at 08:20:29PM -0400, Demi Marie Obenour wrote:
-> >> On 3/16/26 19:41, Darrick J. Wong wrote:
-> >>> On Mon, Mar 16, 2026 at 04:08:55PM -0700, Joanne Koong wrote:
-> >>>> On Mon, Mar 16, 2026 at 11:04 AM Darrick J. Wong <djwong@kernel.org> wrote:
-> >>>>>
-> >>>>> On Mon, Mar 16, 2026 at 10:56:21AM -0700, Joanne Koong wrote:
-> >>>>>> On Mon, Feb 23, 2026 at 2:46 PM Darrick J. Wong <djwong@kernel.org> wrote:
-> >>>>>>>
-> >>>>>>> There are some warts remaining:
-> >>>>>>>
-> >>>>>>> a. I would like to continue the discussion about how the design review
-> >>>>>>>    of this code should be structured, and how might I go about creating
-> >>>>>>>    new userspace filesystem servers -- lightweight new ones based off
-> >>>>>>>    the existing userspace tools?  Or by merging lklfuse?
-> >>>>>>
-> >>>>>> What do you mean by "merging lklfuse"?
-> >>>>>
-> >>>>> Merging the lklfuse project into upstream Linux, which involves running
-> >>>>> the whole kit and caboodle through our review process, and then fixing
-> >>>>
-> >>>> Gotcha, so it would basically be having to port this arch/lkl
-> >>>> directory [1] into the linux tree
-> >>>
-> >>> Right.
-> >>>
-> >>>>> user-mode-linux to work anywhere other than x86.
-> >>>>
-> >>>> Are lklfuse and user-mode-linux (UML) two separate things or is
-> >>>> lklfuse dependent on user-mode-linux?
-> >>>
-> >>> I was under the impression that lklfuse uses UML.  Given the weird
-> >>> things in arch/lkl/Kconfig:
-> >>>
-> >>> config 64BIT
-> >>> 	bool "64bit kernel"
-> >>> 	default y if OUTPUT_FORMAT = "pe-x86-64"
-> >>> 	default $(success,$(srctree)/arch/lkl/scripts/cc-objdump-file-format.sh|grep -q '^elf64-') if OUTPUT_FORMAT != "pe-x86-64"
-> >>>
-> >>> I was kinda guessing x86_64 was the primary target of the developers?
-> >>>
-> >>> /me notes that he's now looked into libguestfs per Demi Marie's comments
-> >>> and some curiosity on the part of ngompa and i>
-> >>>
-> >>> Whatever it is that libguestfs does to stand up unprivileged fs mounts
-> >>> also could fit this bill.  It's *really* slow to start because it takes
-> >>> the booted kernel, creates a largeish initramfs, boots that combo via
-> >>> libvirt, and then fires up a fuse server to talk to the vm kernel.
-> >>>
-> >>> I think all you'd have to do is change libguestfs to start the VM and
-> >>> run the fuse server inside a systemd container instead of directly from
-> >>> the CLI.
-> >>
-> >> The feedback I have gotten from ngompa is that libguestfs is just
-> >> too slow for distros to use it to mount stuff.
-> > 
-> > Yes, libguestfs is /verrrry/ slow to start up.
-> > 
-> >>>>>> Could you explain what the limitations of lklfuse are compared to the
-> >>>>>> fuse iomap approach in this patchset?
-> >>>>>
-> >>>>> The ones I know about are:
-> >>>>>
-> >>>>> 1> There's no support for vmapped kernel memory in UML mode, so anyone
-> >>>>> who requires a large contiguous memory buffer cannot assemble them out
-> >>>>> of "physical" pages.  This has been a stumbling block for XFS in the
-> >>>>> past.
-> >>>>>
-> >>>>> 2> LKLFUSE still uses the classic fuse IO paths, which means that at
-> >>>>> best you can directio the IO through the lklfuse kernel.  At worst you
-> >>>>> have to use the pagecache inside the lklfuse kernel, which is very
-> >>>>> wasteful.
-> >>>>
-> >>>> For the security / isolation use cases you've described, is
-> >>>> near-native performance a hard requirement?
-> >>>
-> >>> Not a hard requirement, just a means to convince people that they can
-> >>> choose containment without completely collapsing performance.
-> >>>
-> >>>> As I understand it, the main use cases of this will be for mounting
-> >>>> untrusted disk images and CI/filesystem testing, or are there broader
-> >>>> use cases beyond this?
-> >>>
-> >>> That covers nearly all of it.
-> >>
-> >> It's worth noting that on ChromeOS and Android, the only trusted
-> >> disk images are those that are read-only and protected by dm-verity.
-> >> *Every* writable image is considered untrusted.
-> >>
-> >> I don't know if doing a full fsck at each boot is considered
-> >> acceptable, but I suspect it would slow boot far too much.
-> > 
-> > Not to mention that an attacker who gained control of the boot process
-> > could inject malicious filesystem metadata after fsck completes
-> > successfully but before the kernel mount occurs.
-> > 
-> >> Yes, Google ought to be paying for the kernel changes to fix this mess.
-> >>
-> >>>>> 3> lklfuse hasn't been updated since 6.6.
-> >>>>
-> >>>> Gotcha. So if I'm understanding it correctly, the pros/cons come down to:
-> >>>> lklfuse pros:
-> >>>> - (arguably) easier setup cost. once it's setup (assuming it's
-> >>>> possible to add support for the vmapped kernel memory thing you
-> >>>> mentioned above), it'll automatically work for every filesystem vs.
-> >>>> having to implement a fuse-iomap server for every filesystem
-> >>>
-> >>> Or even a good non-iomap fuse server for every filesystem.  Admittedly
-> >>> the weak part of fuse4fs is that libext2fs is not as robust as the
-> >>> kernel is.
-> >>>
-> >>>> - easier to maintain vs. having to maintain each filesystem's
-> >>>> userspace server implementation
-> >>>
-> >>> Yeah.
-> >>>
-> >>>> lklfuse cons:
-> >>>> - worse (not sure by how much) performance
-> >>>
-> >>> Probably a lot, because now you have to run a full IO stack all the way
-> >>> through lklfuse.
-> >>
-> >> How much is "a lot"?  Is it "this is only useful for non-interactive
-> >> overnight backups", "you will notice this in benchmarks but it's okay
-> >> for normal use", or somewhere in between?
-> > 
-> > Startup is painfully slow.  Normal operation isn't noticeably bad, but I
-> > didn't bother doing any performance comparisons.
-> > 
-> >> Could lklfuse and iomap be combined?
-> > 
-> > Probably, though you'd have to find a way to route the FUSE_IOMAP_*
-> > requests to a filesystem driver.  That's upside-down of the current
-> > iomap model where filesystems have to opt into using iomap on a
-> > per-IO-path basis, and then iomap calls the filesystem to find mappings.
-> 
-> If it does get done it would be awesome.  I don't think I'll be able to
-> contribute, though.
+Hi all,
 
-I wonder if one could export a (pnfs) layout from the lklfuse kernel to
-the real one, that's <cough> where struct iomap came from.  A huge
-downside to that solution is that layouts don't support out of place
-writes because pnfs doesn't support out of place writes.
+This patch series adds fs-verity support for XFS. This version stores
+merkle tree beyond end of the file, the same way as ext4 does it. The
+difference is that verity descriptor is stored at the next aligned 64k
+block after the merkle tree last block. This is done due to sparse
+merkle tree which doesn't store hashes of zero data blocks.
 
-> >>>> - once it's merged into the kernel, we can't choose to not
-> >>>> maintain/support it in the future
-> >>>
-> >>> Correct.
-> >>>
-> >>>> Am I understanding this correctly?
-> >>>>
-> >>>> In my opinion, if near-native performance is not a hard requirement,
-> >>>> it seems like less pain overall to go with lklfuse. lklfuse seems a
-> >>>> lot easier to maintain and I'm not sure if some complexities like
-> >>>> btrfs's copy-on-write could be handled properly with fuse-iomap.
-> >>>
-> >>> btrfs cow can be done with iomap, at least on the directio end.  It's
-> >>> the other features like fsverity/fscrypt/data checksumming that aren't
-> >>> currently supported by iomap.
-> >>
-> >> Pretty much everyone on btrfs uses data checksumming.
-> >>
-> >>>> What are your thoughts on this?
-> >>>
-> >>> "Gee, what if I could simplify most of my own work out of existence?"
-> >>
-> >> What is that work?
-> > 
-> > Everything I've put out since the end of online fsck for xfs.
-> 
-> Is pretty much all of that work either on better FUSE performance or
-> fixes for problems found by fuzzers?
+The patchset starts with a few fs-verity preparation patches. Then, a
+few patches to allow iomap to work in post EOF region. The XFS fs-verity
+implementation follows.
 
-Mostly the iomap parts of fuse-iomap.  It's a huge complication to add
-to the already confusing fuse codebase.
+The tree is read by iomap into page cache at offset of next largest
+folio past end of file. The same offset is used for on-disk.
 
---D
+This patchsets also synthesizes merkle tree block full of hashes of
+zeroed data blocks. This merkle blocks are not stored on disk, they are
+holes in the tree.
+
+Testing. The -g verity is passing for 1k, 8k and 4k with/without quota
+on 4k and 64k page size systems. Tested -g auto for enabled/disabled
+fsverity.
+
+This series based on latest fsverity/for-next with patchset fs generated
+integrity information [1].
+
+kernel:
+https://git.kernel.org/pub/scm/linux/kernel/git/aalbersh/xfs-linux.git/log/?h=b4/fsverity
+
+xfsprogs:
+https://github.com/alberand/xfsprogs/tree/b4/fsverity
+
+xfstests:
+https://github.com/alberand/xfstests/tree/b4/fsverity
+
+Cc: fsverity@lists.linux.dev
+Cc: linux-fsdevel@vger.kernel.org
+Cc: linux-xfs@vger.kernel.org
+
+Cc: david@fromorbit.com
+Cc: djwong@kernel.org
+Cc: ebiggers@kernel.org
+Cc: hch@lst.de
+
+[1]: https://lore.kernel.org/linux-xfs/20260223132021.292832-1-hch@lst.de/
+
+---
+Changes in v5:
+- Add fserror_report_data_lost() for data blocks in page spanning EOF
+- Issue fsverity metadata readahead in data readahead
+- iomap_fsverity_write() return type fix
+- Use of S_ISREG(mode)
+- Make 65536 #define instead of open-coded
+- Use transaction per unwritten extent removal
+- Fetch fsverity_info for all fsverity metadata
+- Revert fsverity_folio_zero_hash() stub as used in iomap
+- Extend cancel_unwritten to whole file range to remove cow leftovers
+- Drop delayed allocation on the COW fork on fsverity completion
+Changes in v4:
+- Use fserror interface in fsverity instead of fs callback
+- Hoist pagecache_read from f2fs/ext4 to fsverity
+- Refactor iomap code
+- Fetch fsverity_info only for file data and merkle tree holes
+- Do not disable preallocation, remove unwritten extents instead
+- Offload fsverity hash I/O to fsverity workqueue in read path
+- Store merkle tree at round_up(i_size, 64k)
+- Add a spacing between merkle tree and fsverity descriptor as next 64k
+  aligned block
+- Squash helpers into first user commits
+- Squash on-disk format changes into single commit
+- Drop different offset for pagecache/on-disk
+- Don't zero out pages in higher order folios in write path
+- Link to v3: https://lore.kernel.org/fsverity/20260217231937.1183679-1-aalbersh@kernel.org/T/#t
+Changes in v3:
+- Different on-disk and pagecache offset
+- Use read path ioends
+- Switch to hashtable fsverity info
+- Synthesize merkle tree blocks full of zeroes
+- Other minor refactors
+- Link to v2: https://lore.kernel.org/fsverity/20260114164210.GO15583@frogsfrogsfrogs/T/#t
+Changes in v2:
+- Move to VFS interface for merkle tree block reading
+- Drop patchset for per filesystem workqueues
+- Change how offsets of the descriptor and tree metadata is calculated
+- Store fs-verity descriptor in data fork side by side with merkle tree
+- Simplify iomap changes, remove interface for post eof read/write
+- Get rid of extended attribute implementation
+- Link to v1: https://lore.kernel.org/r/20250728-fsverity-v1-0-9e5443af0e34@kernel.org
+
+Andrey Albershteyn (23):
+  fsverity: report validation errors through fserror to fsnotify
+  fsverity: expose ensure_fsverity_info()
+  fsverity: generate and store zero-block hash
+  fsverity: introduce fsverity_folio_zero_hash()
+  fsverity: pass digest size and hash of the empty block to ->write
+  fsverity: hoist pagecache_read from f2fs/ext4 to fsverity
+  iomap: introduce IOMAP_F_FSVERITY and teach writeback to handle
+    fsverity
+  iomap: obtain fsverity info for read path
+  iomap: issue readahead for fsverity merkle tree
+  iomap: teach iomap to handle fsverity holes and verify data holes
+  iomap: introduce iomap_fsverity_write() for writing fsverity metadata
+  xfs: introduce fsverity on-disk changes
+  xfs: initialize fs-verity on file open
+  xfs: don't allow to enable DAX on fs-verity sealed inode
+  xfs: disable direct read path for fs-verity files
+  xfs: handle fsverity I/O in write/read path
+  xfs: use read ioend for fsverity data verification
+  xfs: add fs-verity support
+  xfs: remove unwritten extents after preallocations in fsverity
+    metadata
+  xfs: add fs-verity ioctls
+  xfs: introduce health state for corrupted fsverity metadata
+  xfs: add fsverity traces
+  xfs: enable ro-compat fs-verity flag
+
+Darrick J. Wong (2):
+  xfs: advertise fs-verity being available on filesystem
+  xfs: check and repair the verity inode flag state
+
+ fs/btrfs/verity.c              |   6 +-
+ fs/ext4/verity.c               |  36 +--
+ fs/f2fs/verity.c               |  34 +--
+ fs/iomap/buffered-io.c         |  99 ++++++-
+ fs/iomap/trace.h               |   3 +-
+ fs/verity/enable.c             |   4 +-
+ fs/verity/fsverity_private.h   |   3 +
+ fs/verity/open.c               |   8 +-
+ fs/verity/pagecache.c          |  55 ++++
+ fs/verity/verify.c             |   4 +
+ fs/xfs/Makefile                |   1 +
+ fs/xfs/libxfs/xfs_bmap.c       |   7 +
+ fs/xfs/libxfs/xfs_format.h     |  35 ++-
+ fs/xfs/libxfs/xfs_fs.h         |   2 +
+ fs/xfs/libxfs/xfs_health.h     |   4 +-
+ fs/xfs/libxfs/xfs_inode_buf.c  |   8 +
+ fs/xfs/libxfs/xfs_inode_util.c |   2 +
+ fs/xfs/libxfs/xfs_sb.c         |   4 +
+ fs/xfs/scrub/attr.c            |   7 +
+ fs/xfs/scrub/common.c          |  53 ++++
+ fs/xfs/scrub/common.h          |   2 +
+ fs/xfs/scrub/inode.c           |   7 +
+ fs/xfs/scrub/inode_repair.c    |  36 +++
+ fs/xfs/xfs_aops.c              |  62 ++++-
+ fs/xfs/xfs_bmap_util.c         |   8 +
+ fs/xfs/xfs_file.c              |  19 +-
+ fs/xfs/xfs_fsverity.c          | 457 +++++++++++++++++++++++++++++++++
+ fs/xfs/xfs_fsverity.h          |  28 ++
+ fs/xfs/xfs_health.c            |   1 +
+ fs/xfs/xfs_inode.h             |   6 +
+ fs/xfs/xfs_ioctl.c             |  14 +
+ fs/xfs/xfs_iomap.c             |  15 +-
+ fs/xfs/xfs_iops.c              |   4 +
+ fs/xfs/xfs_message.c           |   4 +
+ fs/xfs/xfs_message.h           |   1 +
+ fs/xfs/xfs_mount.h             |   4 +
+ fs/xfs/xfs_super.c             |   7 +
+ fs/xfs/xfs_trace.h             |  46 ++++
+ include/linux/fsverity.h       |  23 +-
+ include/linux/iomap.h          |  10 +
+ 40 files changed, 1035 insertions(+), 94 deletions(-)
+ create mode 100644 fs/xfs/xfs_fsverity.c
+ create mode 100644 fs/xfs/xfs_fsverity.h
+
+-- 
+2.51.2
+
