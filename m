@@ -1,212 +1,111 @@
-Received: from out30-124.freemail.mail.aliyun.com (out30-124.freemail.mail.aliyun.com [115.124.30.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj1-f41.google.com (mail-pj1-f41.google.com [209.85.216.41])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 56C3A6FC5;
-	Fri, 20 Mar 2026 02:47:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8F153274670
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Mar 2026 02:59:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.41
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773974877; cv=none; b=nnQ5A+BgHRiv1nW6vcnd2VrgkVN63uypu139xNH0M7wUhkQ9XphSL8sL7hA0J19RDBTiQwzWnCTPPCpz2ZS4QHq5W80UrbO/s8lqIffbnSmwwZwuhNBFlrMKPzsSc4Lk0kGA6as8vLVAIcJfT4+gcLHGQuuj8GMjtZte0zPkzEA=
+	t=1773975586; cv=none; b=keEy4nDUWepEz9RABw8kAvGLCv3k5zXA+RyAVuf3R/H2mFs+jqgX0SZ0s8F0XWQXXErLfej8BxYU737Zv+qM0HqZ8Rh6sCvmE1nbMfjrn/Pv5AUPzGFrgpp0ZZKrczS8aGsEwJ9uTKgVGvSfpCy+8ErKNdvFQhNmaUVkWoZbdT8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773974877; c=relaxed/simple;
-	bh=5sDgx/ZVtGv4newKhl43zVMUOjyRE/Fvs3dDeL7Jd7A=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=YYTHMIjZOtf37w4kleJ/9gssooEC4WxLXz0cPlu//eV459PgMl19bw0hr1vezL1N+oE8Jx8hCiO5X4IXCVE9B/pOD25SA/ngABWBov8JqVJC+Sr+i0kPhzQ9USmvBJdGW9jX4ssDzsFIhfWDCcc5/nkYh06lVUcOZFAnfEBvB3k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=jvSAqOW9; arc=none smtp.client-ip=115.124.30.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	s=arc-20240116; t=1773975586; c=relaxed/simple;
+	bh=IGZT/b2Wb5kjS/Sd+XkL28nXnaB9P5G3WNDz4tdsboc=;
+	h=From:To:Cc:Subject:In-Reply-To:Date:Message-ID:References; b=p4hLcUbwmQlYv+FV1Y9wqhyK4p3DXjTrI7j+u4F7WafXFr/JHwkIeQcEUmKAR1kBElov488AvwL8u2+5a2k2Qshrf3WnAmSE5Hdtt00sjZWCA06c2U3J5jOv5FltQaPe73qFMoYXHo5o84+306Jc8jCJwgDOetmegGBbCuryip8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=V6jd6bWs; arc=none smtp.client-ip=209.85.216.41
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="jvSAqOW9"
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1773974866; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=4Ip+RIOBCQEjYNw1VYfwJ1MDIzy6WlZYhjDTZX3ZfaI=;
-	b=jvSAqOW9lwjrNhjw5BCn2HXswQpZaq3gKqNcn+Q9en0wdMLOIMPVMyTpdCk0NeO0Zf72496N7/pDLNWKkIkWrSVE3U6s0FSwECyXRzElW9FQvrLQZD4Yf/HaG6qd0YVYoD5oZ8SGLrAotssRaxxEMHSyVziWsgjO7j8fvIJa5Ss=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R391e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam011083073210;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=6;SR=0;TI=SMTPD_---0X.K9PgI_1773974865;
-Received: from 30.221.129.199(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X.K9PgI_1773974865 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Fri, 20 Mar 2026 10:47:45 +0800
-Message-ID: <4f2ee7d7-0812-49b0-a7d7-81cb833119d1@linux.alibaba.com>
-Date: Fri, 20 Mar 2026 10:47:43 +0800
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="V6jd6bWs"
+Received: by mail-pj1-f41.google.com with SMTP id 98e67ed59e1d1-35b98def50bso982551a91.0
+        for <linux-ext4@vger.kernel.org>; Thu, 19 Mar 2026 19:59:45 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1773975585; x=1774580385; darn=vger.kernel.org;
+        h=references:message-id:date:in-reply-to:subject:cc:to:from:from:to
+         :cc:subject:date:message-id:reply-to;
+        bh=UGX89m0PohXrr797EE31OQ2fn8215Se8Vp7bchpg7Ng=;
+        b=V6jd6bWs5C0dPh8RZWl13SCDGqn34DMzeOeyLW95gj8BiUbMCiMpLBZPVQ7qKltfq6
+         Si4Le3aVNR2UXcq5/z6I/lyFGtlsmVI2Z3bkmgkTqW2rh4eFb58mK5o/9jv4OoOkv+HO
+         y0mlAtjT35K3BiYvx3u+r11PK0Tih+DjzoY2sT6/3OrJKsMjA9BSHHbduOoVYAVKwvAa
+         eSXZi8IN6LKJv2H5K3kugwEhgKmgdttJYTduighpxtE6LAKyLf5j5z3tgEn3a69oaY1i
+         GbiilxmVbc+lTLd6LOzgeXm1y69dY1v1cY3oj5x4DpgFOz3KSbqj6lYLIu29YrAyE5ch
+         cXjw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1773975585; x=1774580385;
+        h=references:message-id:date:in-reply-to:subject:cc:to:from:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=UGX89m0PohXrr797EE31OQ2fn8215Se8Vp7bchpg7Ng=;
+        b=h2gMuSUe2AzHqccCsbPVQRxarYWTyz9SADRprgoRvyamwEqI+Dsq+6IcURRA6k82KZ
+         sSD2FOPdxgEG7bFTM8kgtA9iZxyx0WrmBWRcfT8i7qY7J+K4FL0IJT8wHvAWlswCccG7
+         Q8L90SSHXnn6ijz58vmi7KnG/yJX/1qJNFV1kX6VthVfrDvWbcVodm5SlGIK62ucwSYN
+         dbaJjJKUH79OKWmbiPDn7c2eNfwfeAlRKb5LLWCEc6DJGSaMOMo5KCAORQ1/Y+kJNFtk
+         24tEnyHrlopqEmnoCtHZkGryVgYSv8/zWQZ/xULukADUlD6Mfnaz/CK/s+IU8KbC4//C
+         wWvA==
+X-Forwarded-Encrypted: i=1; AJvYcCXKX2EnLRq+BN7PbxeKZGiY1ZMBabQuLZxOeKpPr7q7NyQ56ZcuruA060ipGmjEMQ7k+Tl+QVHaPf7L@vger.kernel.org
+X-Gm-Message-State: AOJu0YyAWzCKLTDTj9xRvNo+hFPZWDGz8pvsujH+vWlrZ69SyX41bqz6
+	+3efnT55Ulrs8vhxIVcwrwJJ7SWf2nv3TCjyYdcbvDrEA920Vb4rTujA
+X-Gm-Gg: ATEYQzzBvKGnyOr/pVdxAwDncBFizPTiTC80ma6pyxARyrm6G+C8v5pvE2LbvJA+Lhl
+	MD0MIGGXKpgX45N/V/VePKir0vANY24mY+YDI9dBjLflYXyC2HOrb+1mpvTVZFJvqlvaZlW6kNR
+	whH0dwcBa1BFtiZCuKMzeuvpo4nV57MsZ+KxUuaMxJALKOQDkOKS5psWPRmHcw5hIkYDoT32eBF
+	YjfbsS/dsni33QDx7p4ujMTanO5cwyXqYh/fJHoPvos/u13OFl8aa9IkrW//9EGx50q+CQ4vMds
+	lIhyMKT+BoScrzIAs85CG9y1tscBfW/HBWIEepN6axxCO+sbduMUu5FzUpVrhXsWke197HjyNcb
+	E37+3DzgZamUroUSbWZ1h11hBE+SXiFpLPy/gVkMJ7VMV0TB9dIGhhNU95YMrRCc5CtV29e7Okv
+	pZdpHu0QbSQEfRS4x9wnuvEg==
+X-Received: by 2002:a17:90b:3b81:b0:359:9073:c368 with SMTP id 98e67ed59e1d1-35bd2d1fe24mr1070777a91.28.1773975584954;
+        Thu, 19 Mar 2026 19:59:44 -0700 (PDT)
+Received: from pve-server ([49.205.216.49])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-35bc610c535sm3976321a91.16.2026.03.19.19.59.40
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 19 Mar 2026 19:59:44 -0700 (PDT)
+From: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+To: Jiayuan Chen <jiayuan.chen@linux.dev>, linux-ext4@vger.kernel.org, jack@suse.cz
+Cc: Jiayuan Chen <jiayuan.chen@shopee.com>, Jiayuan Chen <jiayuan.chen@linux.dev>, Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, Ritesh Harjani <riteshh@linux.ibm.com>, Ye Bin <yebin10@huawei.com>, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v3] ext4: fix use-after-free in update_super_work when racing with umount
+In-Reply-To: <20260319120336.157873-1-jiayuan.chen@linux.dev>
+Date: Fri, 20 Mar 2026 08:23:16 +0530
+Message-ID: <jyv7xlcz.ritesh.list@gmail.com>
+References: <20260319120336.157873-1-jiayuan.chen@linux.dev>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: Fix the might_sleep() warnings in kvfree()
-To: Zqiang <qiang.zhang@linux.dev>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org, libaokun@linux.alibaba.com
-References: <20260319094545.19291-1-qiang.zhang@linux.dev>
-Content-Language: en-US
-From: Baokun Li <libaokun@linux.alibaba.com>
-In-Reply-To: <20260319094545.19291-1-qiang.zhang@linux.dev>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
 
+Jiayuan Chen <jiayuan.chen@linux.dev> writes:
 
-On 3/19/26 5:45 PM, Zqiang wrote:
-> Use the kvfree() in the RCU read critical section can trigger
-> the following warnings:
+> From: Jiayuan Chen <jiayuan.chen@shopee.com>
 >
-> EXT4-fs (vdb): unmounting filesystem cd983e5b-3c83-4f5a-a136-17b00eb9d018.
+> Commit b98535d09179 ("ext4: fix bug_on in start_this_handle during umount
+> filesystem") moved ext4_unregister_sysfs() before flushing s_sb_upd_work
+> to prevent new error work from being queued via /proc/fs/ext4/xx/mb_groups
+> reads during unmount. However, this introduced a use-after-free because
+> update_super_work calls ext4_notify_error_sysfs() -> sysfs_notify() which
+> accesses the kobject's kernfs_node after it has been freed by kobject_del()
+> in ext4_unregister_sysfs():
 >
-> WARNING: suspicious RCU usage
->
-> ./include/linux/rcupdate.h:409 Illegal context switch in RCU read-side critical section!
->
-> other info that might help us debug this:
->
-> rcu_scheduler_active = 2, debug_locks = 1
->
-> Call Trace:
->  <TASK>
->  dump_stack_lvl+0xbb/0xd0
->  dump_stack+0x14/0x20
->  lockdep_rcu_suspicious+0x15a/0x1b0
->  __might_resched+0x375/0x4d0
->  ? put_object.part.0+0x2c/0x50
->  __might_sleep+0x108/0x160
->  vfree+0x58/0x910
->  ? ext4_group_desc_free+0x27/0x270
->  kvfree+0x23/0x40
->  ext4_group_desc_free+0x111/0x270
->  ext4_put_super+0x3c8/0xd40
->  generic_shutdown_super+0x14c/0x4a0
->  ? __pfx_shrinker_free+0x10/0x10
->  kill_block_super+0x40/0x90
->  ext4_kill_sb+0x6d/0xb0
->  deactivate_locked_super+0xb4/0x180
->  deactivate_super+0x7e/0xa0
->  cleanup_mnt+0x296/0x3e0
->  __cleanup_mnt+0x16/0x20
->  task_work_run+0x157/0x250
->  ? __pfx_task_work_run+0x10/0x10
->  ? exit_to_user_mode_loop+0x6a/0x550
->  exit_to_user_mode_loop+0x102/0x550
->  do_syscall_64+0x44a/0x500
->  entry_SYSCALL_64_after_hwframe+0x77/0x7f
->  </TASK>
->
-> BUG: sleeping function called from invalid context at mm/vmalloc.c:3441
-> in_atomic(): 1, irqs_disabled(): 0, non_block: 0, pid: 556, name: umount
-> preempt_count: 1, expected: 0
-> CPU: 3 UID: 0 PID: 556 Comm: umount
-> Call Trace:
->  <TASK>
->  dump_stack_lvl+0xbb/0xd0
->  dump_stack+0x14/0x20
->  __might_resched+0x275/0x4d0
->  ? put_object.part.0+0x2c/0x50
->  __might_sleep+0x108/0x160
->  vfree+0x58/0x910
->  ? ext4_group_desc_free+0x27/0x270
->  kvfree+0x23/0x40
->  ext4_group_desc_free+0x111/0x270
->  ext4_put_super+0x3c8/0xd40
->  generic_shutdown_super+0x14c/0x4a0
->  ? __pfx_shrinker_free+0x10/0x10
->  kill_block_super+0x40/0x90
->  ext4_kill_sb+0x6d/0xb0
->  deactivate_locked_super+0xb4/0x180
->  deactivate_super+0x7e/0xa0
->  cleanup_mnt+0x296/0x3e0
->  __cleanup_mnt+0x16/0x20
->  task_work_run+0x157/0x250
->  ? __pfx_task_work_run+0x10/0x10
->  ? exit_to_user_mode_loop+0x6a/0x550
->  exit_to_user_mode_loop+0x102/0x550
->  do_syscall_64+0x44a/0x500
->  entry_SYSCALL_64_after_hwframe+0x77/0x7f
->
-> The above scenarios occur in initialization failures and teardown
-> paths, there are no parallel operations on the resources released
-> by kvfree(), this commit therefore remove rcu_read_lock/unlock() and
-> use rcu_access_pointer() instead of rcu_dereference() operations.
->
-> Fixes: 7c990728b99e ("ext4: fix potential race between s_flex_groups online resizing and access")
-> Fixes: df3da4ea5a0f ("ext4: fix potential race between s_group_info online resizing and access")
-> Signed-off-by: Zqiang <qiang.zhang@linux.dev>
+>   update_super_work                ext4_put_super
+>   -----------------                --------------
+>                                    ext4_unregister_sysfs(sb)
+>                                      kobject_del(&sbi->s_kobj)
+>                                        __kobject_del()
+>                                          sysfs_remove_dir()
+>                                            kobj->sd = NULL
+>                                          sysfs_put(sd)
+>                                            kernfs_put()  // RCU free
+>   ext4_notify_error_sysfs(sbi)
+>     sysfs_notify(&sbi->s_kobj)
+>       kn = kobj->sd              // stale pointer
+>       kernfs_get(kn)             // UAF on freed kernfs_node
+>                                    ext4_journal_destroy()
+>                                      flush_work(&sbi->s_sb_upd_work)
 
-Looks good, feel free to add:
+Yes, the race between kobject_del() and sysfs_notify() -> kernfs_get()
+is real.
 
-Reviewed-by: Baokun Li <libaokun@linux.alibaba.com>
+and sysfs_remove_dir() explicitely says:
+	 * In general, kobject owner is responsible for ensuring removal
+	 * doesn't race with other operations and sysfs doesn't provide any
+	 * protection
 
-> ---
->  fs/ext4/mballoc.c | 10 +++-------
->  fs/ext4/super.c   |  8 ++------
->  2 files changed, 5 insertions(+), 13 deletions(-)
->
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 20e9fdaf4301..e96513cc6151 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -3580,9 +3580,7 @@ static int ext4_mb_init_backend(struct super_block *sb)
->  	rcu_read_unlock();
->  	iput(sbi->s_buddy_cache);
->  err_freesgi:
-> -	rcu_read_lock();
-> -	kvfree(rcu_dereference(sbi->s_group_info));
-> -	rcu_read_unlock();
-> +	kvfree(rcu_access_pointer(sbi->s_group_info));
->  	return -ENOMEM;
->  }
->  
-> @@ -3897,7 +3895,8 @@ void ext4_mb_release(struct super_block *sb)
->  		WARN_ON_ONCE(!list_empty(&sbi->s_discard_list));
->  	}
->  
-> -	if (sbi->s_group_info) {
-> +	group_info = rcu_access_pointer(sbi->s_group_info);
-> +	if (group_info) {
->  		for (i = 0; i < ngroups; i++) {
->  			cond_resched();
->  			grinfo = ext4_get_group_info(sb, i);
-> @@ -3915,12 +3914,9 @@ void ext4_mb_release(struct super_block *sb)
->  		num_meta_group_infos = (ngroups +
->  				EXT4_DESC_PER_BLOCK(sb) - 1) >>
->  			EXT4_DESC_PER_BLOCK_BITS(sb);
-> -		rcu_read_lock();
-> -		group_info = rcu_dereference(sbi->s_group_info);
->  		for (i = 0; i < num_meta_group_infos; i++)
->  			kfree(group_info[i]);
->  		kvfree(group_info);
-> -		rcu_read_unlock();
->  	}
->  	ext4_mb_avg_fragment_size_destroy(sbi);
->  	ext4_mb_largest_free_orders_destroy(sbi);
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 43f680c750ae..0b2fa7bd787f 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1254,12 +1254,10 @@ static void ext4_group_desc_free(struct ext4_sb_info *sbi)
->  	struct buffer_head **group_desc;
->  	int i;
->  
-> -	rcu_read_lock();
-> -	group_desc = rcu_dereference(sbi->s_group_desc);
-> +	group_desc = rcu_access_pointer(sbi->s_group_desc);
->  	for (i = 0; i < sbi->s_gdb_count; i++)
->  		brelse(group_desc[i]);
->  	kvfree(group_desc);
-> -	rcu_read_unlock();
->  }
->  
->  static void ext4_flex_groups_free(struct ext4_sb_info *sbi)
-> @@ -1267,14 +1265,12 @@ static void ext4_flex_groups_free(struct ext4_sb_info *sbi)
->  	struct flex_groups **flex_groups;
->  	int i;
->  
-> -	rcu_read_lock();
-> -	flex_groups = rcu_dereference(sbi->s_flex_groups);
-> +	flex_groups = rcu_access_pointer(sbi->s_flex_groups);
->  	if (flex_groups) {
->  		for (i = 0; i < sbi->s_flex_groups_allocated; i++)
->  			kvfree(flex_groups[i]);
->  		kvfree(flex_groups);
->  	}
-> -	rcu_read_unlock();
->  }
->  
->  static void ext4_put_super(struct super_block *sb)
+Hence this patch which adds a new mutex lock to prevent the above race,
+looks good to me. So please feel free to add:
+
+Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
