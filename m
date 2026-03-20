@@ -1,173 +1,143 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from mail-oo1-f69.google.com (mail-oo1-f69.google.com [209.85.161.69])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7923E2D876B
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Mar 2026 10:24:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D0354259CB2
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Mar 2026 10:27:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.69
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774002294; cv=none; b=EIqOGHCUTOhImP4mzNUBZLT+ppfwRe+0f9u/uQck1+NU4Qn++mD2R57WZa11RnpVyLGj2N6CeE0BsEL9f2teN5AMujDMtLd/U1xO6N8VMkLJEIreareRs7rqqyzEfZ/W9hSUtWV21iaLmRF3LlXPw5j8peKVE5WYPkBJHJt4OTg=
+	t=1774002446; cv=none; b=EYNM+xHtdcROWLLcS/rC9CIAYjzmy/jaFAWzhRYQMi7hPtepVmu28Tpm7IiIW8qQHm9Kv9KtlhysSLtz4dpmaTfhtReZXy/3GRlgEL/1lS+djFvVoVKlA6YIBol1azK9DEHiH5bHNqhlZy0S16MGp+JrqZMDQTL53vzYeqE9wFI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774002294; c=relaxed/simple;
-	bh=X6jDWu2fdH0Zm0gmVcgOKx0GN9a/+AYR5mOBcninh+s=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=socRdClwA0KvcpllmVc0zxu8JesNhKtjrpN7XNWow5gWIEf691q2EQDyOUq8EsBijII4isieAT3PLWh75r1zAaRjYORYgzkE0WBb0f9kfP0KfOTgrZTB86Dk6tqMvKexwF/LeCCywDYg1ulM0yFB3Jc1Ti0otNFnCyn0tC5DahQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=D/7Ro3Ac; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ZBtQAsQT; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=D/7Ro3Ac; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ZBtQAsQT; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="D/7Ro3Ac";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ZBtQAsQT";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="D/7Ro3Ac";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ZBtQAsQT"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 6EDDE5BD9B;
-	Fri, 20 Mar 2026 10:24:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1774002286; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=P9BXB+KtsveXYCXMIwnYLL97YjLNc7kaO1ffqyFRLFQ=;
-	b=D/7Ro3AcqMts+oT/Y13T02QTqSn+nax4A+OR8PKuSdOKzzP1H1G5wJ50Ab/oOZMqp4Q3kV
-	5cBOuIpY8wBVGv9HJPuhpleQdskpmp6d6dbwWZpeHNaHReB9jeWiz1inJn4bkWjoqubtl3
-	kWUT2i+hZJYRVbLEEbKrZM/2O6GfSRw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1774002286;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=P9BXB+KtsveXYCXMIwnYLL97YjLNc7kaO1ffqyFRLFQ=;
-	b=ZBtQAsQT+SL2ceCrFnvEjftZRSnO80jpkKnuJpQz43lsnRkAxHYJbYvvLqlNU8yhgJ0UBN
-	5VYQi3MwsyQuYeCA==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1774002286; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=P9BXB+KtsveXYCXMIwnYLL97YjLNc7kaO1ffqyFRLFQ=;
-	b=D/7Ro3AcqMts+oT/Y13T02QTqSn+nax4A+OR8PKuSdOKzzP1H1G5wJ50Ab/oOZMqp4Q3kV
-	5cBOuIpY8wBVGv9HJPuhpleQdskpmp6d6dbwWZpeHNaHReB9jeWiz1inJn4bkWjoqubtl3
-	kWUT2i+hZJYRVbLEEbKrZM/2O6GfSRw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1774002286;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=P9BXB+KtsveXYCXMIwnYLL97YjLNc7kaO1ffqyFRLFQ=;
-	b=ZBtQAsQT+SL2ceCrFnvEjftZRSnO80jpkKnuJpQz43lsnRkAxHYJbYvvLqlNU8yhgJ0UBN
-	5VYQi3MwsyQuYeCA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E266D4273B;
-	Fri, 20 Mar 2026 10:24:45 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id yYNAN20gvWlPOwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Fri, 20 Mar 2026 10:24:45 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id A309DA0AFD; Fri, 20 Mar 2026 11:24:41 +0100 (CET)
-Date: Fri, 20 Mar 2026 11:24:41 +0100
-From: Jan Kara <jack@suse.cz>
-To: NeilBrown <neil@brown.name>
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 2/3] ext4: add ext4_fc_eligible()
-Message-ID: <swsnaqghu7pkvmxj5tonqera2gplyvpxmpusxlreqpyjg2ea3j@b7g7pabdp74x>
-References: <20260317224638.3809014-1-neilb@ownmail.net>
- <20260317224638.3809014-3-neilb@ownmail.net>
- <gh7e7uykczpyhfxrh6y54c2jlcs4pzcud65aqsjoj4am6cajzp@wq26crdxv2yd>
- <177396306176.3934327.9167241352093307006@noble.neil.brown.name>
+	s=arc-20240116; t=1774002446; c=relaxed/simple;
+	bh=imOwnv2Cbz22Ws/05tLd2xt72S1UsRmM78MAIuAH+Vw=;
+	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:Cc:
+	 Content-Type; b=jD87526EcUr2AuWexeamm+tgm4YVvqxmXA1k1IW7P3kx/LP99xTc4+3CN2uVKDXl9ZyOoB18SADVEtNiNPwEFnQpELYtfq0qoKe7zxGBu/+Tt6/HxoaXuayYGcab5DxbjQrbBJIxSUn5p7W3cZLKv8U96ttWig52WMNuYPqOPTY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.161.69
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oo1-f69.google.com with SMTP id 006d021491bc7-679c5ed0942so20931147eaf.1
+        for <linux-ext4@vger.kernel.org>; Fri, 20 Mar 2026 03:27:24 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1774002444; x=1774607244;
+        h=cc:to:from:subject:message-id:in-reply-to:date:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=v2LdeuSx+OigkkOPyuviLWPLZ0CDnj0BK3QxBJMRGfU=;
+        b=GzPIDoVfKoa7UZ4BEDxrjhy59TuSlAhLQ3ijK4S88p7AoLgDpMcrk+hB1l5XiKHcF1
+         6Thj0Q4WfjbLsLkQJENxsUSQpzfw05oRu9AknIC0Op9YYrGwB3o1dL9GH1hAdlebmiAg
+         aohJyGZW8hJPS881RVTvujfk07gdkJTGfW/pVkKZIF7kDtkhc/fzNgCDL18z13dJWhZF
+         ocwxW0KN21gEkgERSmTaCGa1fAm8FtZlC66y0Bmo+x26mh3fZVTEDZ3P06edN5Xypi11
+         6T6MWXpfhtGQ3WbKttM7QYtzYCeWYbhD1c05sgmwdatEQpWhTRQDHbkWSpGjTKvDXJdr
+         CMaA==
+X-Forwarded-Encrypted: i=1; AJvYcCX+LR5QFWed+9u8F1p12uM3siglO/6SBkNZKe/7McPjcW8HSzhoRJaKu4clDg2I33UCPVdbwy6hOv10@vger.kernel.org
+X-Gm-Message-State: AOJu0YwY6tvYf5pKnZxwvMGBhLtBBisdEMMbDFogVBTfsAAzYnBx9abx
+	JTPrlx3bmM71rO+7KrXvWZS6pfB3m+f6ukH+DKjXG1WUk17sNxp72t6i5esZvZb+bSg9rH5axai
+	R1h+cTB9xl8LFta7AI1kUGDxsyOp/8EbyUXbT4+NXjxHaBsrtsnZvDP+6U08=
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <177396306176.3934327.9167241352093307006@noble.neil.brown.name>
-X-Spam-Score: -3.80
-X-Spam-Level: 
-X-Spamd-Result: default: False [-3.80 / 50.00];
-	BAYES_HAM(-3.00)[99.99%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MISSING_XM_UA(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	RCPT_COUNT_FIVE(0.00)[6];
-	FROM_EQ_ENVFROM(0.00)[];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,imap1.dmz-prg2.suse.org:helo,suse.com:email]
-X-Spam-Flag: NO
+X-Received: by 2002:a05:6820:2d4a:b0:67c:1d0b:d64f with SMTP id
+ 006d021491bc7-67c22f743d1mr1763235eaf.37.1774002443879; Fri, 20 Mar 2026
+ 03:27:23 -0700 (PDT)
+Date: Fri, 20 Mar 2026 03:27:23 -0700
+In-Reply-To: <20260319073651.79209-1-jiayuan.chen@linux.dev>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <69bd210b.050a0220.3bf4de.001a.GAE@google.com>
+Subject: [syzbot ci] Re: ext4: fix use-after-free in update_super_work when
+ racing with umount
+From: syzbot ci <syzbot+cid9716702bbf43cf2@syzkaller.appspotmail.com>
+To: adilger.kernel@dilger.ca, jack@suse.cz, jiayuan.chen@linux.dev, 
+	jiayuan.chen@shopee.com, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, riteshh@linux.ibm.com, tytso@mit.edu, 
+	yebin10@huawei.com
+Cc: syzbot@lists.linux.dev, syzkaller-bugs@googlegroups.com
+Content-Type: text/plain; charset="UTF-8"
 
-On Fri 20-03-26 10:31:01, NeilBrown wrote:
-> On Thu, 19 Mar 2026, Jan Kara wrote:
-> > On Wed 18-03-26 09:39:50, NeilBrown wrote:
-> > > From: NeilBrown <neil@brown.name>
-> > > 
-> > > Testing EXT4_MF_FC_INELIGIBLE is almost always combined with testing
-> > > ext4_fc_disabled().  The code can be simplified by combining these two
-> > > in a new ext4_fc_eligible().
-> > > 
-> > > In ext4_fc_track_inode() this moves the ext4_fc_disabled() test after
-> > > ext4_fc_mark_ineligible(), but as that is a non-op when
-> > > ext4_fc_disabled() is true, this is no no consequence.
-> > > 
-> > > Signed-off-by: NeilBrown <neil@brown.name>
-> > 
-> > One nit below, otherwise feel free to add:
-> > 
-> > Reviewed-by: Jan Kara <jack@suse.cz>
-> > 
-> > > @@ -557,16 +548,13 @@ void ext4_fc_track_inode(handle_t *handle, struct inode *inode)
-> > >  	if (S_ISDIR(inode->i_mode))
-> > >  		return;
-> > >  
-> > > -	if (ext4_fc_disabled(inode->i_sb))
-> > > -		return;
-> > > -
-> > >  	if (ext4_should_journal_data(inode)) {
-> > >  		ext4_fc_mark_ineligible(inode->i_sb,
-> > >  					EXT4_FC_REASON_INODE_JOURNAL_DATA, handle);
-> > >  		return;
-> > >  	}
-> > >  
-> > > -	if (ext4_test_mount_flag(inode->i_sb, EXT4_MF_FC_INELIGIBLE))
-> > > +	if (!ext4_fc_eligible(inode->i_sb))
-> > >  		return;
-> > 
-> > Here I think the !ext4_fc_eligible() check could be actually above the
-> > ext4_should_journal_data() check - if the fs is not eligible for
-> > fastcommit, there's no point in marking it ineligible again...
-> 
-> Both you and Andreas have questioned that choice - so I should explain
-> my reasoning.
-> 
-> ext4_fc_mark_ineligible() is NOT a no-op when the sb is already marked
-> ineligible.  The code updates sb->s_fc_ineligible_tid to the largest tid
-> which was ineligible for fc.  Then it only clears the "ineligible" flag
-> after that highest numbered transaction has committed.  If we skip
-> ext4_fc_mark_ineligible() because EXT4_MF_FC_INELIGIBLE is already set,
-> then that flag could be cleared too early.
+syzbot ci has tested the following series
 
-Oops, you're right. I forgot about this subtlety. Thanks for explanation!
+[v2] ext4: fix use-after-free in update_super_work when racing with umount
+https://lore.kernel.org/all/20260319073651.79209-1-jiayuan.chen@linux.dev
+* [PATCH v2] ext4: fix use-after-free in update_super_work when racing with umount
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+and found the following issue:
+WARNING in ext4_notify_error_sysfs
+
+Full report is available here:
+https://ci.syzbot.org/series/3b258c63-ea54-492a-ab47-c09e62612658
+
+***
+
+WARNING in ext4_notify_error_sysfs
+
+tree:      torvalds
+URL:       https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux
+base:      0e4f8f1a3d081e834be5fd0a62bdb2554fadd307
+arch:      amd64
+compiler:  Debian clang version 21.1.8 (++20251221033036+2078da43e25a-1~exp1~20251221153213.50), Debian LLD 21.1.8
+config:    https://ci.syzbot.org/builds/8149e3c8-4cb9-4fa0-9bf5-3d6deda6899d/config
+C repro:   https://ci.syzbot.org/findings/6f6eafc6-a231-4909-9025-539fa10ffcfd/c_repro
+syz repro: https://ci.syzbot.org/findings/6f6eafc6-a231-4909-9025-539fa10ffcfd/syz_repro
+
+------------[ cut here ]------------
+DEBUG_LOCKS_WARN_ON(lock->magic != lock)
+WARNING: kernel/locking/mutex.c:593 at __mutex_lock_common kernel/locking/mutex.c:593 [inline], CPU#1: kworker/1:4/5883
+WARNING: kernel/locking/mutex.c:593 at __mutex_lock+0x10a4/0x1300 kernel/locking/mutex.c:776, CPU#1: kworker/1:4/5883
+Modules linked in:
+CPU: 1 UID: 0 PID: 5883 Comm: kworker/1:4 Not tainted syzkaller #0 PREEMPT(full) 
+Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.2-debian-1.16.2-1 04/01/2014
+Workqueue: events update_super_work
+
+RIP: 0010:__mutex_lock_common kernel/locking/mutex.c:593 [inline]
+RIP: 0010:__mutex_lock+0x10ab/0x1300 kernel/locking/mutex.c:776
+Code: 11 90 48 c1 e8 03 42 0f b6 04 28 84 c0 0f 85 33 02 00 00 83 3d d9 e1 61 04 00 75 13 48 8d 3d 1c f7 64 04 48 c7 c6 c0 e0 cc 8b <67> 48 0f b9 3a 90 e9 ac f0 ff ff 90 0f 0b 90 e9 73 f4 ff ff 90 0f
+RSP: 0018:ffffc90004dcf900 EFLAGS: 00010246
+RAX: 0000000000000000 RBX: 1ffff920009b9f38 RCX: ffff888172d3d7c0
+RDX: 0000000000000000 RSI: ffffffff8bcce0c0 RDI: ffffffff9014ec10
+RBP: ffffc90004dcfaa8 R08: ffffffff9011d6c3 R09: 1ffffffff2023ad8
+R10: dffffc0000000000 R11: fffffbfff2023ad9 R12: ffff888172218368
+R13: dffffc0000000000 R14: 0000000000000000 R15: 0000000000000000
+FS:  0000000000000000(0000) GS:ffff8882a945d000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000562af42c7d40 CR3: 0000000111346000 CR4: 00000000000006f0
+Call Trace:
+ <TASK>
+ ext4_notify_error_sysfs+0x23/0xa0 fs/ext4/sysfs.c:600
+ process_one_work kernel/workqueue.c:3276 [inline]
+ process_scheduled_works+0xb6e/0x18c0 kernel/workqueue.c:3359
+ worker_thread+0xa53/0xfc0 kernel/workqueue.c:3440
+ kthread+0x388/0x470 kernel/kthread.c:436
+ ret_from_fork+0x51e/0xb90 arch/x86/kernel/process.c:158
+ ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
+ </TASK>
+----------------
+Code disassembly (best guess):
+   0:	11 90 48 c1 e8 03    	adc    %edx,0x3e8c148(%rax)
+   6:	42 0f b6 04 28       	movzbl (%rax,%r13,1),%eax
+   b:	84 c0                	test   %al,%al
+   d:	0f 85 33 02 00 00    	jne    0x246
+  13:	83 3d d9 e1 61 04 00 	cmpl   $0x0,0x461e1d9(%rip)        # 0x461e1f3
+  1a:	75 13                	jne    0x2f
+  1c:	48 8d 3d 1c f7 64 04 	lea    0x464f71c(%rip),%rdi        # 0x464f73f
+  23:	48 c7 c6 c0 e0 cc 8b 	mov    $0xffffffff8bcce0c0,%rsi
+* 2a:	67 48 0f b9 3a       	ud1    (%edx),%rdi <-- trapping instruction
+  2f:	90                   	nop
+  30:	e9 ac f0 ff ff       	jmp    0xfffff0e1
+  35:	90                   	nop
+  36:	0f 0b                	ud2
+  38:	90                   	nop
+  39:	e9 73 f4 ff ff       	jmp    0xfffff4b1
+  3e:	90                   	nop
+  3f:	0f                   	.byte 0xf
+
+
+***
+
+If these findings have caused you to resend the series or submit a
+separate fix, please add the following tag to your commit message:
+  Tested-by: syzbot@syzkaller.appspotmail.com
+
+---
+This report is generated by a bot. It may contain errors.
+syzbot ci engineers can be reached at syzkaller@googlegroups.com.
