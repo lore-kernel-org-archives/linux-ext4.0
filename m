@@ -1,364 +1,340 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from mail-wm1-f41.google.com (mail-wm1-f41.google.com [209.85.128.41])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BF2583BA223
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Mar 2026 13:44:03 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774014247; cv=none; b=c9H2pUa+gvrshKdoB9ojAQ3Xz9qQvkUv6vmOjET38/SaGHaegRK6vSpnJ7zGBPMidFdAjHwZxb/RKu0ZOpxB2PdYa0NsrJZMg4KWtaqDH9Wqyh3ljslvUhVaZhEPmJBEMBJpMvZvTe4KyvOIny458Y/v9C+5cVmwmKZLo4s2AAs=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774014247; c=relaxed/simple;
-	bh=u3porfR07OCSVbnK5mwmJNrIjfzwKCHhr+GnDb/R8VQ=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Bdhc7fg5/qXdhjE+S8p9do+hmiGIn/bIlcwZGyGm9G2HBwav5uxYgtcIanC+55IymmUCcU4xhnNDCnyKLvDuKav1FFRvb7OdJ2MPf88xFBPmrooqRtaL+tNzmp+CfERe1UuNHfa/wx1aoa6M01h9RfaHEb+lWMNUFrFTIOQVDgI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 00D984D430;
-	Fri, 20 Mar 2026 13:41:46 +0000 (UTC)
-Authentication-Results: smtp-out1.suse.de;
-	none
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E75CC4281A;
-	Fri, 20 Mar 2026 13:41:45 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id E0N5OJlOvWmgCQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Fri, 20 Mar 2026 13:41:45 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id B40BAA0A81; Fri, 20 Mar 2026 14:41:45 +0100 (CET)
-From: Jan Kara <jack@suse.cz>
-To: <linux-fsdevel@vger.kernel.org>
-Cc: <linux-block@vger.kernel.org>,
-	Christian Brauner <brauner@kernel.org>,
-	Al Viro <viro@ZenIV.linux.org.uk>,
-	<linux-ext4@vger.kernel.org>,
-	Ted Tso <tytso@mit.edu>,
-	"Tigran A. Aivazian" <aivazian.tigran@gmail.com>,
-	David Sterba <dsterba@suse.com>,
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-	Muchun Song <muchun.song@linux.dev>,
-	Oscar Salvador <osalvador@suse.de>,
-	David Hildenbrand <david@kernel.org>,
-	linux-mm@kvack.org,
-	linux-aio@kvack.org,
-	Benjamin LaHaise <bcrl@kvack.org>,
-	Jan Kara <jack@suse.cz>
-Subject: [PATCH 41/41] fs: Unify generic_file_fsync() with mmb methods
-Date: Fri, 20 Mar 2026 14:41:36 +0100
-Message-ID: <20260320134100.20731-82-jack@suse.cz>
-X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20260320131728.6449-1-jack@suse.cz>
-References: <20260320131728.6449-1-jack@suse.cz>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4574B3CAE8A
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Mar 2026 17:04:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.128.41
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1774026284; cv=pass; b=L8en1bt56OosmKqgKYtoZYdmFMh3pfK4fiTsdXal1CE94ih8KhgoqZZwm78WlaCCsa2dJVnwREmJDIpS9OpCw4GwTXwGBNaC5mT4kjFX7X9gEBNwojFOODnxVIWYiC1tB1K/iGuCfgfiwDxZfeZFgidULvX44I98snFIlMLq1JI=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1774026284; c=relaxed/simple;
+	bh=+bl/uBIhPNqydKIdxjAkvggAJ7Krl++MR0iJh/EZ/d0=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=hSxQXjVJri4IsbfoV3cJTkmfcrDojVOD1pPkTtJItZg+cjl+f5hYFZwEC20W4fa0Oaw0qpnjpd3+/JJRQl/AjxNRJDgHiuCLzNYrynOJrT6GVayh4WPzdRY15pjtKGVlLPRzLo+NM1zqCTN8An7jyXkkbC8A4JcaWhEUXQRisAI=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=RgIAkprp; arc=pass smtp.client-ip=209.85.128.41
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RgIAkprp"
+Received: by mail-wm1-f41.google.com with SMTP id 5b1f17b1804b1-486ff201041so7303975e9.1
+        for <linux-ext4@vger.kernel.org>; Fri, 20 Mar 2026 10:04:42 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1774026281; cv=none;
+        d=google.com; s=arc-20240605;
+        b=RI+5rDhmRiHqY+0TJl+a+WbPMO9FU1+rm1AdbODRm3oknmp0kPcsRaWgX064CyzQZu
+         k/8M5Hx/eBkRVwSfpOF0iJFeBmoKJ66VXAYNXzIOihkn/0Ch2RYIhofWm6XKunR2bVuh
+         bH2CLgZMDIq4DKrlGdqBERGjAEGXK3fq/J9/lSEI3C7oyVEnXbM7+p4YNSDG/Ms3AwrO
+         ZgApnR/OOUGtb4Y6GwkHFDL12xFWzGKsFUAUwjy/laeBAmRn6XuFB6tCITnxIcAMkioG
+         q0vpj+c6FhmdfPCr7RZHW77EZWehxvH4C9xBnCoJdUkWt8YMd1rCF5q6VnrdHA+S27MH
+         bPlQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=I9IRcCyUSKVtsIJtcaSlKi8SABJOeRMy8z1xpU+5O18=;
+        fh=czk3eadgbM33SJefFtsguSVSLJsjeq0JDnBmvmhNygQ=;
+        b=WnJzL5e67/mklpRUSLD68a54L8VsrcnK6M5gRGr/dUm8+LNXFippic/UylM776urvu
+         GSqKwYykZtQxDu48fhV89cbWXmbkjyIyFPemO/ixsaB8JjVK9DgDkKN6cQfUJjg0ISDP
+         giyVUhWyKv4A+davT7Z69S4i8DPWoSoaU58Cc0wyP3hPtS4d1pn/O1iEwLBivQ0jXPXo
+         gryjayQraPtwqlbRDQ7qbqDvNZHFr9Pliy7IIgQRCRHZuLmf4YfWJoJ4KkHcvZIE/Ee5
+         B1UVaNdLhk/ySbufIrTiwnQfvdV7wrHubJksupWtooRXBgIYSlA+rkpBeVCwdnyMCmGc
+         FYRA==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1774026281; x=1774631081; darn=vger.kernel.org;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=I9IRcCyUSKVtsIJtcaSlKi8SABJOeRMy8z1xpU+5O18=;
+        b=RgIAkprpZ1iZ6gM9mY4c4hCczKoTjJp2v+qQp4SB2V6+ltVels7ljFKYS8g9lp3BtI
+         NWtUA7aOcQqo6eZIGAmGujlsliUbdvVWlroIkQF1Hg/4BphDnypa6cxiP5uUzHy1zZ2i
+         D0motFDdpeWGG8gWpvchJV/YKgZXpVI2K+8tcfz/HpGMXpv5eDE1wV+WsHyh8nEnZcxT
+         2U+aDmcfQ5TIAqx2LmcCL0ii5dHH7bRTXPwST4sN+KXFUuJrpC7q6m45cXCPylzsjA19
+         raDP1Y6fEueuaMs/rWyHVQhYINg4Dh6ItBVQDhUO/giyqUqABUXVxn3vTSfhCQDhUXPy
+         yHzg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1774026281; x=1774631081;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=I9IRcCyUSKVtsIJtcaSlKi8SABJOeRMy8z1xpU+5O18=;
+        b=O4E3FeozQOOoYIA2bvAu+HROo2oDM0xOsn6VISQEqqwqhUITWi9/219r2wxE64lsdA
+         jUUq06DRWHQCzePWd3WT4mD6DvE+eFZ1ww0G0LtcUCKMfxfiXK+z/N8A/75KuYyyWvzL
+         U8IvXJcl+sLkbvdxE5bM7EW5zXsEulasbdk0Ekwu+hbmrl/gRGzMTKK8VFQewgMug2FZ
+         eXVJD78EZh0AqM3bhk+o6BWTFickbfKXxSPPx+d632GVKHe91dtj3PMFXUpuJm9yzVJy
+         EcaRhZ7bcZo2kbAuthT9/S+hn0s2FLJmWQJKMjdcQYmckm+rwjs7jXnry0o7mVrahpMH
+         TknA==
+X-Forwarded-Encrypted: i=1; AJvYcCWDTJz9PCS9syqa8evaQjGbTgpulwIzcT2lvqnYhFnCpa6djIDK8E9XP25NSqYZXBsqEpSNs3CF+MsX@vger.kernel.org
+X-Gm-Message-State: AOJu0Yx+xBTfcRUdHj/oz4GfC2/ncrnitk/SzA1ZlHu2xU/ieWYFw1Mj
+	uuZuCXEqE21Qbzp7OUa4EnRVX2ljwHCwFsHWZ9v1t67r+4Vh6ZjfLHzoJdl3u+bNhcTKWWQLFQm
+	f0Zwk/yuF1ESL3LsnzN7VVCWvqtMKfCc=
+X-Gm-Gg: ATEYQzwyTDWQw2Lyl8UItZB06GwFC0wvDFjxU1HYwJB/Degk+K9/Sri2NTjitFTXUrc
+	qmkeWq723yIstguIu0RkMY7tknnxPqrviwUPO6HgJMlU0fJpB7v0hfpoOcI2sbYx0+XRPx0AlQr
+	Cz6NsCi1e1Bu8HrSdD4sEypq/fwv/Y++dtbH8xEGrVVRYHbHDW83V7GFDUOuRwMY4lIPKXoPwCF
+	AX/r+ziR+GNRAT2UxQx640XF4k5Q5ThJXYmnMbm4u90hVXN+rgF9SR4iykTd3Nd0YULjao8IhmQ
+	Qtf0/w==
+X-Received: by 2002:a05:600c:4e8e:b0:483:c35d:3659 with SMTP id
+ 5b1f17b1804b1-486fee04a48mr53945845e9.18.1774026281186; Fri, 20 Mar 2026
+ 10:04:41 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=10120; i=jack@suse.cz; h=from:subject; bh=u3porfR07OCSVbnK5mwmJNrIjfzwKCHhr+GnDb/R8VQ=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBpvU6PfWFNF+k1rQzIhgJAYYebiqgveBacW4oG8 qimx8h0nMmJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCab1OjwAKCRCcnaoHP2RA 2cTLCACwh4E0JVe7BO+48vRSYOUK8hnfU856Oyx3btgU/BDTI49z5bh2XML2yiFpSgWzTSsoYH8 WdAo6pdqwRuihDoPDRVbGOw+vzMzm9+4S4i/e51Gf4MnjPi0JfmYxR8imaaiDxb1ad8wPU9Hzcs 9uAG1BUQqCm7nnN62hSA1AxqqA33vyMMlPp32DDis2B/jC268SLTiWcjaqUt5LvrRkBIIKT/ZJV jz6FojU4Jfhes0T7iG7G3lLkAQs+4FYgnla/P19Af/WEGDWfSwqXlQV8d5eJ8C1rnvdAbU4Uf6d 4Xoe8e6DjRa1Js4mT9uxlwtvoeylfEjgDQsFYt3eKJqqC4VP
-X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
-Content-Transfer-Encoding: 8bit
-X-Rspamd-Pre-Result: action=no action;
-	module=replies;
-	Message is reply to one we originated
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Spamd-Result: default: False [-4.00 / 50.00];
-	REPLY(-4.00)[];
-	TAGGED_RCPT(0.00)[];
-	R_RATELIMIT(0.00)[to(RLpnp1psq57oqao6ocwdpbxen9)]
-X-Rspamd-Queue-Id: 00D984D430
-X-Rspamd-Pre-Result: action=no action;
-	module=replies;
-	Message is reply to one we originated
-X-Rspamd-Action: no action
-X-Spam-Flag: NO
-X-Spam-Score: -4.00
-X-Spam-Level: 
+References: <20260223224617.GA2390314@frogsfrogsfrogs> <CAJnrk1Yd1J60-Ek=O7jzZQg454pbr3O=b71yZHzYbrWfqJr__w@mail.gmail.com>
+ <20260316180408.GN6069@frogsfrogsfrogs> <CAJnrk1bmJYMt27xedN2Xza0KPXfYEbh-9g=3fNWru-HRM9WFEw@mail.gmail.com>
+ <20260316234137.GJ1742010@frogsfrogsfrogs> <208bfbd2-d671-462c-925f-4d51b7df1f18@gmail.com>
+ <20260318213129.GB6004@frogsfrogsfrogs> <c7866006-bd17-4fd8-a603-bd3016fdfeb0@gmail.com>
+ <20260319160836.GC6004@frogsfrogsfrogs>
+In-Reply-To: <20260319160836.GC6004@frogsfrogsfrogs>
+From: Joanne Koong <joannelkoong@gmail.com>
+Date: Fri, 20 Mar 2026 10:04:29 -0700
+X-Gm-Features: AaiRm50xHe4ukUSm2hvSegIf78mKkgxNJHj63lsspClyd3AiJBMTgrgezTnWrb0
+Message-ID: <CAJnrk1Zpxv1CyUn2sbN2j73M57F8r4foyDQQ0Df_g0Ev+yx-Qg@mail.gmail.com>
+Subject: Re: [PATCHBLIZZARD v7] fuse/libfuse/e2fsprogs: containerize ext4 for
+ safer operation
+To: "Darrick J. Wong" <djwong@kernel.org>
+Cc: Demi Marie Obenour <demiobenour@gmail.com>, linux-fsdevel <linux-fsdevel@vger.kernel.org>, 
+	bpf@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>, 
+	Miklos Szeredi <miklos@szeredi.hu>, Bernd Schubert <bernd@bsbernd.com>, "Theodore Ts'o" <tytso@mit.edu>, 
+	Neal Gompa <neal@gompa.dev>, Amir Goldstein <amir73il@gmail.com>, 
+	Christian Brauner <brauner@kernel.org>, Jeff Layton <jlayton@kernel.org>, John@groves.net
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-__generic_file_fsync() is practically identical to
-generic_mmb_fsync_noflush() with one subtle difference:
+On Thu, Mar 19, 2026 at 9:08=E2=80=AFAM Darrick J. Wong <djwong@kernel.org>=
+ wrote:
+>
+> On Thu, Mar 19, 2026 at 03:28:21AM -0400, Demi Marie Obenour wrote:
+> > On 3/18/26 17:31, Darrick J. Wong wrote:
+> > > On Mon, Mar 16, 2026 at 08:20:29PM -0400, Demi Marie Obenour wrote:
+> > >> On 3/16/26 19:41, Darrick J. Wong wrote:
+> > >>> On Mon, Mar 16, 2026 at 04:08:55PM -0700, Joanne Koong wrote:
+> > >>>> On Mon, Mar 16, 2026 at 11:04=E2=80=AFAM Darrick J. Wong <djwong@k=
+ernel.org> wrote:
+> > >>>>>
+> > >>>>> On Mon, Mar 16, 2026 at 10:56:21AM -0700, Joanne Koong wrote:
+> > >>>>>> On Mon, Feb 23, 2026 at 2:46=E2=80=AFPM Darrick J. Wong <djwong@=
+kernel.org> wrote:
+> > >>>>>>>
+> > >>>>>>> There are some warts remaining:
+> > >>>>>>>
+> > >>>>>>> a. I would like to continue the discussion about how the design=
+ review
+> > >>>>>>>    of this code should be structured, and how might I go about =
+creating
+> > >>>>>>>    new userspace filesystem servers -- lightweight new ones bas=
+ed off
+> > >>>>>>>    the existing userspace tools?  Or by merging lklfuse?
+> > >>>>>>
+> > >>>>>> What do you mean by "merging lklfuse"?
+> > >>>>>
+> > >>>>> Merging the lklfuse project into upstream Linux, which involves r=
+unning
+> > >>>>> the whole kit and caboodle through our review process, and then f=
+ixing
+> > >>>>
+> > >>>> Gotcha, so it would basically be having to port this arch/lkl
+> > >>>> directory [1] into the linux tree
+> > >>>
+> > >>> Right.
+> > >>>
+> > >>>>> user-mode-linux to work anywhere other than x86.
+> > >>>>
+> > >>>> Are lklfuse and user-mode-linux (UML) two separate things or is
+> > >>>> lklfuse dependent on user-mode-linux?
+> > >>>
+> > >>> I was under the impression that lklfuse uses UML.  Given the weird
+> > >>> things in arch/lkl/Kconfig:
+> > >>>
+> > >>> config 64BIT
+> > >>>   bool "64bit kernel"
+> > >>>   default y if OUTPUT_FORMAT =3D "pe-x86-64"
+> > >>>   default $(success,$(srctree)/arch/lkl/scripts/cc-objdump-file-for=
+mat.sh|grep -q '^elf64-') if OUTPUT_FORMAT !=3D "pe-x86-64"
+> > >>>
+> > >>> I was kinda guessing x86_64 was the primary target of the developer=
+s?
+> > >>>
+> > >>> /me notes that he's now looked into libguestfs per Demi Marie's com=
+ments
+> > >>> and some curiosity on the part of ngompa and i>
+> > >>>
+> > >>> Whatever it is that libguestfs does to stand up unprivileged fs mou=
+nts
+> > >>> also could fit this bill.  It's *really* slow to start because it t=
+akes
+> > >>> the booted kernel, creates a largeish initramfs, boots that combo v=
+ia
+> > >>> libvirt, and then fires up a fuse server to talk to the vm kernel.
+> > >>>
+> > >>> I think all you'd have to do is change libguestfs to start the VM a=
+nd
+> > >>> run the fuse server inside a systemd container instead of directly =
+from
+> > >>> the CLI.
+> > >>
+> > >> The feedback I have gotten from ngompa is that libguestfs is just
+> > >> too slow for distros to use it to mount stuff.
+> > >
+> > > Yes, libguestfs is /verrrry/ slow to start up.
+> > >
+> > >>>>>> Could you explain what the limitations of lklfuse are compared t=
+o the
+> > >>>>>> fuse iomap approach in this patchset?
+> > >>>>>
+> > >>>>> The ones I know about are:
+> > >>>>>
+> > >>>>> 1> There's no support for vmapped kernel memory in UML mode, so a=
+nyone
+> > >>>>> who requires a large contiguous memory buffer cannot assemble the=
+m out
+> > >>>>> of "physical" pages.  This has been a stumbling block for XFS in =
+the
+> > >>>>> past.
+> > >>>>>
+> > >>>>> 2> LKLFUSE still uses the classic fuse IO paths, which means that=
+ at
+> > >>>>> best you can directio the IO through the lklfuse kernel.  At wors=
+t you
+> > >>>>> have to use the pagecache inside the lklfuse kernel, which is ver=
+y
+> > >>>>> wasteful.
+> > >>>>
+> > >>>> For the security / isolation use cases you've described, is
+> > >>>> near-native performance a hard requirement?
+> > >>>
+> > >>> Not a hard requirement, just a means to convince people that they c=
+an
+> > >>> choose containment without completely collapsing performance.
+> > >>>
+> > >>>> As I understand it, the main use cases of this will be for mountin=
+g
+> > >>>> untrusted disk images and CI/filesystem testing, or are there broa=
+der
+> > >>>> use cases beyond this?
+> > >>>
+> > >>> That covers nearly all of it.
+> > >>
+> > >> It's worth noting that on ChromeOS and Android, the only trusted
+> > >> disk images are those that are read-only and protected by dm-verity.
+> > >> *Every* writable image is considered untrusted.
+> > >>
+> > >> I don't know if doing a full fsck at each boot is considered
+> > >> acceptable, but I suspect it would slow boot far too much.
+> > >
+> > > Not to mention that an attacker who gained control of the boot proces=
+s
+> > > could inject malicious filesystem metadata after fsck completes
+> > > successfully but before the kernel mount occurs.
+> > >
+> > >> Yes, Google ought to be paying for the kernel changes to fix this me=
+ss.
+> > >>
+> > >>>>> 3> lklfuse hasn't been updated since 6.6.
+> > >>>>
+> > >>>> Gotcha. So if I'm understanding it correctly, the pros/cons come d=
+own to:
+> > >>>> lklfuse pros:
+> > >>>> - (arguably) easier setup cost. once it's setup (assuming it's
+> > >>>> possible to add support for the vmapped kernel memory thing you
+> > >>>> mentioned above), it'll automatically work for every filesystem vs=
+.
+> > >>>> having to implement a fuse-iomap server for every filesystem
+> > >>>
+> > >>> Or even a good non-iomap fuse server for every filesystem.  Admitte=
+dly
+> > >>> the weak part of fuse4fs is that libext2fs is not as robust as the
+> > >>> kernel is.
+> > >>>
+> > >>>> - easier to maintain vs. having to maintain each filesystem's
+> > >>>> userspace server implementation
+> > >>>
+> > >>> Yeah.
+> > >>>
+> > >>>> lklfuse cons:
+> > >>>> - worse (not sure by how much) performance
+> > >>>
+> > >>> Probably a lot, because now you have to run a full IO stack all the=
+ way
+> > >>> through lklfuse.
+> > >>
+> > >> How much is "a lot"?  Is it "this is only useful for non-interactive
+> > >> overnight backups", "you will notice this in benchmarks but it's oka=
+y
+> > >> for normal use", or somewhere in between?
+> > >
+> > > Startup is painfully slow.  Normal operation isn't noticeably bad, bu=
+t I
+> > > didn't bother doing any performance comparisons.
 
-1) __generic_file_fsync() takes inode lock when calling writing out the
-inode.
-2) generic_mmb_fsync_noflush() calls mmb_sync_buffers().
+For the CI/filesystem testing use case, could fork() help amortize
+lklfuse's slow startup time? eg start lklfuse + pay LKL initialization
+cost once, fork for each test, and each child mounts its own test
+image?
 
-Taking inode lock when writing out the inode seems pointless in
-particular because there are lots of places (most notably sync(2) path)
-that don't do that so hardly anything can depend on it. When NULL is
-passed to generic_mmb_fsync_noflush(), mmb_sync_buffers() is not called
-so that difference is not a problem.
+> > >
+> > >> Could lklfuse and iomap be combined?
+> > >
+> > > Probably, though you'd have to find a way to route the FUSE_IOMAP_*
+> > > requests to a filesystem driver.  That's upside-down of the current
+> > > iomap model where filesystems have to opt into using iomap on a
+> > > per-IO-path basis, and then iomap calls the filesystem to find mappin=
+gs.
+> >
+> > If it does get done it would be awesome.  I don't think I'll be able to
+> > contribute, though.
+>
+> I wonder if one could export a (pnfs) layout from the lklfuse kernel to
+> the real one, that's <cough> where struct iomap came from.  A huge
+> downside to that solution is that layouts don't support out of place
+> writes because pnfs doesn't support out of place writes.
+>
+> > >>>> - once it's merged into the kernel, we can't choose to not
+> > >>>> maintain/support it in the future
+> > >>>
+> > >>> Correct.
+> > >>>
+> > >>>> Am I understanding this correctly?
+> > >>>>
+> > >>>> In my opinion, if near-native performance is not a hard requiremen=
+t,
+> > >>>> it seems like less pain overall to go with lklfuse. lklfuse seems =
+a
+> > >>>> lot easier to maintain and I'm not sure if some complexities like
+> > >>>> btrfs's copy-on-write could be handled properly with fuse-iomap.
+> > >>>
+> > >>> btrfs cow can be done with iomap, at least on the directio end.  It=
+'s
+> > >>> the other features like fsverity/fscrypt/data checksumming that are=
+n't
+> > >>> currently supported by iomap.
+> > >>
+> > >> Pretty much everyone on btrfs uses data checksumming.
+> > >>
+> > >>>> What are your thoughts on this?
+> > >>>
+> > >>> "Gee, what if I could simplify most of my own work out of existence=
+?"
+> > >>
+> > >> What is that work?
+> > >
+> > > Everything I've put out since the end of online fsck for xfs.
+> >
+> > Is pretty much all of that work either on better FUSE performance or
+> > fixes for problems found by fuzzers?
+>
+> Mostly the iomap parts of fuse-iomap.  It's a huge complication to add
+> to the already confusing fuse codebase.
 
-So let's remove __generic_file_fsync() and use
-generic_mmb_fsync_noflush() instead to reduce code duplication. Arguably
-this leaks a bit of buffer_head knowledge into fs/libfs.c which is not
-great but avoiding the duplication seems worth it.
+imo if you did end up going the lklfuse route, I think it'd still be
+useful to have the generic iomap infrastructure pieces of your
+fuse-iomap patchblizzard added, for future new filesystem
+implementations that can provide extent mappings to get near-native IO
+performance.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/buffer.c                 | 74 -------------------------------------
- fs/exfat/file.c             |  2 +-
- fs/libfs.c                  | 57 ++++++++++++++++------------
- include/linux/buffer_head.h |  5 ---
- include/linux/fs.h          | 12 +++++-
- 5 files changed, 45 insertions(+), 105 deletions(-)
+Thanks,
+Joanne
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 43aca5b7969f..591aed740601 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -621,80 +621,6 @@ int mmb_sync_buffers(struct mapping_metadata_bhs *mmb)
- }
- EXPORT_SYMBOL(mmb_sync_buffers);
- 
--/**
-- * generic_mmb_fsync_noflush - generic buffer fsync implementation
-- * for simple filesystems with no inode lock
-- *
-- * @file:	file to synchronize
-- * @mmb:	list of metadata bhs to flush
-- * @start:	start offset in bytes
-- * @end:	end offset in bytes (inclusive)
-- * @datasync:	only synchronize essential metadata if true
-- *
-- * This is a generic implementation of the fsync method for simple
-- * filesystems which track all non-inode metadata in the buffers list
-- * hanging off the address_space structure.
-- */
--int generic_mmb_fsync_noflush(struct file *file,
--			      struct mapping_metadata_bhs *mmb,
--			      loff_t start, loff_t end, bool datasync)
--{
--	struct inode *inode = file->f_mapping->host;
--	int err;
--	int ret = 0;
--
--	err = file_write_and_wait_range(file, start, end);
--	if (err)
--		return err;
--
--	if (mmb)
--		ret = mmb_sync_buffers(mmb);
--	if (!(inode_state_read_once(inode) & I_DIRTY_ALL))
--		goto out;
--	if (datasync && !(inode_state_read_once(inode) & I_DIRTY_DATASYNC))
--		goto out;
--
--	err = sync_inode_metadata(inode, 1);
--	if (ret == 0)
--		ret = err;
--
--out:
--	/* check and advance again to catch errors after syncing out buffers */
--	err = file_check_and_advance_wb_err(file);
--	if (ret == 0)
--		ret = err;
--	return ret;
--}
--EXPORT_SYMBOL(generic_mmb_fsync_noflush);
--
--/**
-- * generic_mmb_fsync - generic buffer fsync implementation
-- * for simple filesystems with no inode lock
-- *
-- * @file:	file to synchronize
-- * @mmb:	list of metadata bhs to flush
-- * @start:	start offset in bytes
-- * @end:	end offset in bytes (inclusive)
-- * @datasync:	only synchronize essential metadata if true
-- *
-- * This is a generic implementation of the fsync method for simple
-- * filesystems which track all non-inode metadata in the buffers list
-- * hanging off the address_space structure. This also makes sure that
-- * a device cache flush operation is called at the end.
-- */
--int generic_mmb_fsync(struct file *file, struct mapping_metadata_bhs *mmb,
--		      loff_t start, loff_t end, bool datasync)
--{
--	struct inode *inode = file->f_mapping->host;
--	int ret;
--
--	ret = generic_mmb_fsync_noflush(file, mmb, start, end, datasync);
--	if (!ret)
--		ret = blkdev_issue_flush(inode->i_sb->s_bdev);
--	return ret;
--}
--EXPORT_SYMBOL(generic_mmb_fsync);
--
- /*
-  * Called when we've recently written block `bblock', and it is known that
-  * `bblock' was for a buffer_boundary() buffer.  This means that the block at
-diff --git a/fs/exfat/file.c b/fs/exfat/file.c
-index 90cd540afeaa..fe6eb391eb4e 100644
---- a/fs/exfat/file.c
-+++ b/fs/exfat/file.c
-@@ -577,7 +577,7 @@ int exfat_file_fsync(struct file *filp, loff_t start, loff_t end, int datasync)
- 	if (unlikely(exfat_forced_shutdown(inode->i_sb)))
- 		return -EIO;
- 
--	err = __generic_file_fsync(filp, start, end, datasync);
-+	err = generic_mmb_fsync_noflush(filp, NULL, start, end, datasync);
- 	if (err)
- 		return err;
- 
-diff --git a/fs/libfs.c b/fs/libfs.c
-index 548e119668df..7c1d78862e39 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -18,7 +18,7 @@
- #include <linux/exportfs.h>
- #include <linux/iversion.h>
- #include <linux/writeback.h>
--#include <linux/buffer_head.h> /* sync_mapping_buffers */
-+#include <linux/buffer_head.h> /* mmb_sync_buffers() */
- #include <linux/fs_context.h>
- #include <linux/pseudo_fs.h>
- #include <linux/fsnotify.h>
-@@ -1539,19 +1539,22 @@ struct dentry *generic_fh_to_parent(struct super_block *sb, struct fid *fid,
- EXPORT_SYMBOL_GPL(generic_fh_to_parent);
- 
- /**
-- * __generic_file_fsync - generic fsync implementation for simple filesystems
-+ * generic_mmb_fsync_noflush - generic buffer fsync implementation
-+ * for simple filesystems with no inode lock
-  *
-- * @file:	file to synchronize
-- * @start:	start offset in bytes
-- * @end:	end offset in bytes (inclusive)
-- * @datasync:	only synchronize essential metadata if true
-+ * @file:       file to synchronize
-+ * @mmb:        list of metadata bhs to flush
-+ * @start:      start offset in bytes
-+ * @end:        end offset in bytes (inclusive)
-+ * @datasync:   only synchronize essential metadata if true
-  *
-  * This is a generic implementation of the fsync method for simple
-  * filesystems which track all non-inode metadata in the buffers list
-  * hanging off the address_space structure.
-  */
--int __generic_file_fsync(struct file *file, loff_t start, loff_t end,
--				 int datasync)
-+int generic_mmb_fsync_noflush(struct file *file,
-+			      struct mapping_metadata_bhs *mmb,
-+			      loff_t start, loff_t end, bool datasync)
- {
- 	struct inode *inode = file->f_mapping->host;
- 	int err;
-@@ -1561,45 +1564,53 @@ int __generic_file_fsync(struct file *file, loff_t start, loff_t end,
- 	if (err)
- 		return err;
- 
--	inode_lock(inode);
-+	if (mmb)
-+		ret = mmb_sync_buffers(mmb);
- 	if (!(inode_state_read_once(inode) & I_DIRTY_ALL))
- 		goto out;
- 	if (datasync && !(inode_state_read_once(inode) & I_DIRTY_DATASYNC))
- 		goto out;
- 
--	ret = sync_inode_metadata(inode, 1);
-+	err = sync_inode_metadata(inode, 1);
-+	if (ret == 0)
-+		ret = err;
-+
- out:
--	inode_unlock(inode);
- 	/* check and advance again to catch errors after syncing out buffers */
- 	err = file_check_and_advance_wb_err(file);
- 	if (ret == 0)
- 		ret = err;
- 	return ret;
- }
--EXPORT_SYMBOL(__generic_file_fsync);
-+EXPORT_SYMBOL(generic_mmb_fsync_noflush);
- 
- /**
-- * generic_file_fsync - generic fsync implementation for simple filesystems
-- *			with flush
-+ * generic_mmb_fsync - generic buffer fsync implementation
-+ * for simple filesystems with no inode lock
-+ *
-  * @file:	file to synchronize
-+ * @mmb:	list of metadata bhs to flush
-  * @start:	start offset in bytes
-  * @end:	end offset in bytes (inclusive)
-  * @datasync:	only synchronize essential metadata if true
-  *
-+ * This is a generic implementation of the fsync method for simple
-+ * filesystems which track all non-inode metadata in the buffers list
-+ * hanging off the address_space structure. This also makes sure that
-+ * a device cache flush operation is called at the end.
-  */
--
--int generic_file_fsync(struct file *file, loff_t start, loff_t end,
--		       int datasync)
-+int generic_mmb_fsync(struct file *file, struct mapping_metadata_bhs *mmb,
-+		      loff_t start, loff_t end, bool datasync)
- {
- 	struct inode *inode = file->f_mapping->host;
--	int err;
-+	int ret;
- 
--	err = __generic_file_fsync(file, start, end, datasync);
--	if (err)
--		return err;
--	return blkdev_issue_flush(inode->i_sb->s_bdev);
-+	ret = generic_mmb_fsync_noflush(file, mmb, start, end, datasync);
-+	if (!ret)
-+		ret = blkdev_issue_flush(inode->i_sb->s_bdev);
-+	return ret;
- }
--EXPORT_SYMBOL(generic_file_fsync);
-+EXPORT_SYMBOL(generic_mmb_fsync);
- 
- /**
-  * generic_check_addressable - Check addressability of file system
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index 74fcc9a03c32..f003a1937826 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -207,11 +207,6 @@ void end_buffer_write_sync(struct buffer_head *bh, int uptodate);
- 
- /* Things to do with metadata buffers list */
- void mmb_mark_buffer_dirty(struct buffer_head *bh, struct mapping_metadata_bhs *mmb);
--int generic_mmb_fsync_noflush(struct file *file,
--			      struct mapping_metadata_bhs *mmb,
--			      loff_t start, loff_t end, bool datasync);
--int generic_mmb_fsync(struct file *file, struct mapping_metadata_bhs *mmb,
--		      loff_t start, loff_t end, bool datasync);
- void clean_bdev_aliases(struct block_device *bdev, sector_t block,
- 			sector_t len);
- static inline void clean_bdev_bh_alias(struct buffer_head *bh)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index caa9203ed213..32178e53d448 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -3298,8 +3298,16 @@ void simple_offset_destroy(struct offset_ctx *octx);
- 
- extern const struct file_operations simple_offset_dir_operations;
- 
--extern int __generic_file_fsync(struct file *, loff_t, loff_t, int);
--extern int generic_file_fsync(struct file *, loff_t, loff_t, int);
-+int generic_mmb_fsync_noflush(struct file *file,
-+			      struct mapping_metadata_bhs *mmb,
-+			      loff_t start, loff_t end, bool datasync);
-+int generic_mmb_fsync(struct file *file, struct mapping_metadata_bhs *mmb,
-+		      loff_t start, loff_t end, bool datasync);
-+static inline int generic_file_fsync(struct file *file,
-+				     loff_t start, loff_t end, int datasync)
-+{
-+	return generic_mmb_fsync(file, NULL, start, end, datasync);
-+}
- 
- extern int generic_check_addressable(unsigned, u64);
- 
--- 
-2.51.0
-
+>
+> --D
