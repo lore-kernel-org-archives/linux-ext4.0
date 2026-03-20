@@ -1,75 +1,77 @@
 Received: from fout-b1-smtp.messagingengine.com (fout-b1-smtp.messagingengine.com [202.12.124.144])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE1BE40DFB6;
-	Fri, 20 Mar 2026 00:08:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9A6FA40DFB6;
+	Fri, 20 Mar 2026 00:09:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.144
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773965334; cv=none; b=eD897GymiJY9GLEDz1reN/EGmsqoFYcLE0X9Zr54VaSpcM/d79b6IHApvwSZhZ2i2yQnl1xCtEoAgRYbtDANoiZIaEgITbk5UMTvnAPEESMRYM7WpJTMIcVtLZs+mbAydCMvRNnxNNXCtoV7cmsOYgB5zP56M7gS6PFincH/A4o=
+	t=1773965341; cv=none; b=Q7PDa7cdvNa/e/U9ZB7yh2YIlo3bt19E9lfRrOXg+MbNlwH6+GbYJv3v6ANT+9JStP+wnt1lBU3ewpL9zilGPOnJx57LaQZ8+tqLxFe4tJGGWzE/fu5xNbx4fnb8P3Bc6J6WM6ewX9NaR+JtSfHoekvqQ8+YiCwlb1pic1+s8OY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773965334; c=relaxed/simple;
-	bh=cI23oACrE3PC4QlPacXJHV7xiyASOofmgMHiwGwNN4w=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=NoLBRvtwpQ95ENhlMtJQ9mGPpv7HvboIlH2TFkpOrdazTu+cr7W76g29mLKXNKm1S0TpKK5RTZDZdw8QxrD2AGbGWNg6K/r9pCSalz8iqbsJYkdAS8GAdqrnNKWB+gSfWUKqW533PRS8Se7Ji4f4q4+TCvbF1GZMlHz3Re82jYU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=SZwsB9Gf; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=o+OIaXuE; arc=none smtp.client-ip=202.12.124.144
+	s=arc-20240116; t=1773965341; c=relaxed/simple;
+	bh=AWSCDqznb/lYKKV7P3N9VTU06awWLFlUAzQlVK/w7CA=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=VqV8ExXemee2YgQYrw9ON/cm5BLVSJn6RCQkJp6Dz8vwu2TRFnWfFwYIe3veDkkHc7wpWXGIqnMlC7+2P/kB/nf1R5YjrM0EnwUvgMVfz2kmByRZlFtL8Nzg+kpmdIG9wPWGlz64upgRIdKRJrVIs24zCjmFMEIK9UM9S2c1zjU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=iD5YDNBc; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=2zsKRp4z; arc=none smtp.client-ip=202.12.124.144
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="SZwsB9Gf";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="o+OIaXuE"
-Received: from phl-compute-01.internal (phl-compute-01.internal [10.202.2.41])
-	by mailfout.stl.internal (Postfix) with ESMTP id 1D33C1D001CE;
-	Thu, 19 Mar 2026 20:08:52 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-01.internal (MEProxy); Thu, 19 Mar 2026 20:08:52 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="iD5YDNBc";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="2zsKRp4z"
+Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
+	by mailfout.stl.internal (Postfix) with ESMTP id CF4EC1D001C5;
+	Thu, 19 Mar 2026 20:08:59 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-02.internal (MEProxy); Thu, 19 Mar 2026 20:09:00 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
-	:in-reply-to:message-id:mime-version:reply-to:reply-to:subject
-	:subject:to:to; s=fm1; t=1773965331; x=1774051731; bh=QCXruPa3di
-	eMrUupTBIqnyN1CQd6edaGU2kYQq4ghp4=; b=SZwsB9GfKGegVRUd2uSkRA53p0
-	8wVUfgdNlGhbmIpQyvmC8ZRrQAgDtWbKHR7GSBZ+pFmup4KWF0u+9sZtQ1GEMJb4
-	jsyiZ2MoYtVgzV/Z2NsJtoYh3E+etFJBsGtudrRwaqoUkMMaLDNMOHNHWCIh1sS/
-	sfol3mmZi+u4dS1P0XJAcm3557ndBKtOqghzz+rlJzvj37Na7j3ifKcxpLXOJIcn
-	9jHBR769bTQlkI+0Yl4IuAG3llevsydzofQ+qv1aNZ/Y60MpcMfVxlFTgyxH1nb8
-	S4FT0zkcH9k+Zd4oj6f6FR8n3WcfmcgLIlFbE0Kea8PUCvTGlBbwPt4E/9QA==
+	:in-reply-to:in-reply-to:message-id:mime-version:references
+	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1773965339;
+	 x=1774051739; bh=PlkSBc6kw5jERRl8A4GR5qIL721JqqZ0PsEXTMKKvI4=; b=
+	iD5YDNBcyq9RTrQGDCINID7d2A1JPgc7JwhMP8g3Hp0jMal5rxUSpLZ+wiZxq68T
+	gh1rHwaCVxdFH44biCJYr7nukFAIMCa0waUayeT/TcN3UUTo30GM1jgx0j8LyUtZ
+	L9+4pb+BVMZe2vAIVQACh2LTZR8G94NYOQzv0hNQrH51wxTI8olR5I4F+m+tTqjs
+	2OSqdVVJ4bXGI2uipCB0+XfsMsKAFtjIoJDLtbQTkk5jVA/Nyfbex3/zQRg2meAv
+	6IhkaFQ00HXsqI0ncMaVa4VQHFk6jncjHeIddO1KVCXfkX1uCWP7SigegjAUOg2K
+	LNfo6kh5U1IVJxgEIKnDfQ==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
-	:in-reply-to:message-id:mime-version:reply-to:reply-to:subject
-	:subject:to:to:x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=
-	fm1; t=1773965331; x=1774051731; bh=QCXruPa3dieMrUupTBIqnyN1CQd6
-	edaGU2kYQq4ghp4=; b=o+OIaXuEbDZnMkQOyywJUtqO3X+yE3RG0pMXGK+qVeuP
-	azNUkDcUh6Nd+qKBSSuh8WDPXQX+YAnA0gozIDaXfObU10rGWSvp9Qe+fbyAQ5lc
-	S70qpb5HdlwcbBSiEpt3Uyw/IS5umfdcZmtssLj20OUyTCnBuKCcIz+FoBEgtgyV
-	x1CO9ZXAD2fY1NW1K0B1jvA/ntQty7YpYYUmZMpU0rZrV0B4EGNQgfF/SbqnFb7K
-	5dziKIxbIbu0uEw5TVN8u4ReNbdxv7RPfOd21euPqslOfZ9ZnwGlwQaBWOPYJwam
-	pk8yXPTH+rC3TBHTchkCA1Lgd7P4uKz+Q0MG1MTZeA==
-X-ME-Sender: <xms:E5C8acJhkTw300L97UG3R_KNP-TYsxI51Fiql0CpPYBaI28dEo_r8A>
-    <xme:E5C8aVdbgKYcqnTIMMArzaIkdGnZei-qhI4fRaB6vYczsjIMH0HIfucxfkZfsPjfK
-    jPXIYG_ygms0GQ0OpgxjTIlKsV2y1hS4QW_QIM45GK_ijMQRQ>
-X-ME-Received: <xmr:E5C8aT_dYEPJRxZ_GuZUKvh7FKUWHsO1m7oELtR7EgFNA6WbPZ19jG3U_4JMlefvLoA1a8l7ZOc7GrEa8SqYmedsPS87U_uoynoBQA2APd7C>
+	:in-reply-to:in-reply-to:message-id:mime-version:references
+	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
+	:x-me-sender:x-sasl-enc; s=fm1; t=1773965339; x=1774051739; bh=P
+	lkSBc6kw5jERRl8A4GR5qIL721JqqZ0PsEXTMKKvI4=; b=2zsKRp4zOVWYdBTtW
+	z6CFdHHXN1bBkstpIgKmh0JxXy9aRKLJPuUpH7N0ZUUu76IyRSNrlVVcEbE8fMO7
+	FTKFLZopdUXUQ9DFWETky8WBlR3Za5mi4cH1KvJoE7YopqPtQajsxmZ3+LHX9GpH
+	pg1TvRxZWM9MTCnVLHDmJjOCyO+BidAqPtvTO8qHrGXKJP7OO9qbaRxNWyb11vGY
+	BnZMYrDkV4R10GFXItP3j6/yKgKp8VlWUKYrw27FKJpXBt5NZY4aTaoNnt/Viq0y
+	rloohat9Vpwv2Th1ALh0v1Rw6wPiCZvZaPX6M02NG+N18EuaWnWMJEGxA683u2X9
+	UPbGg==
+X-ME-Sender: <xms:G5C8adINpdc8xyy1Bgc_RnUHQzY2kHtC1iNGa856hF4cS5qtEF-0hg>
+    <xme:G5C8aSf-NtndgFo_ehg_0gQNdI8368XGtwDR3xLXw0_xWPsbIbQx5IiNX7yRHpFZq
+    b2K7Cp0FrwlFO2aI_85N2BtoMoKNN_X8WFdcDFjWYoW8Wkt7w>
+X-ME-Received: <xmr:G5C8ac8PK2nTBCJ1vDlwjipyXQJQHBHXpWbmuPwcsZa5C-rKa5BSgtjylWuaMuOmakqd3Q>
 X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgdeftdekgeduucetufdoteggodetrf
     dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
-    rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnefgmh
-    hpthihuchsuhgsjhgvtghtucdluddtmdenucfjughrpefhvfevufffkfforhgggfestdek
-    redtredttdenucfhrhhomheppfgvihhluehrohifnhcuoehnvghilhgssehofihnmhgrih
-    hlrdhnvghtqeenucggtffrrghtthgvrhhnpeektdelueeludfhfffhudfgkeetffejledu
-    uedvhffhheekheffteeuvdekvdeffeenucffohhmrghinhepshgrshhhihhkohdruggvvh
-    enucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhrohhmpehnvghi
-    lhgssehofihnmhgrihhlrdhnvghtpdhnsggprhgtphhtthhopeeipdhmohguvgepshhmth
-    hpohhuthdprhgtphhtthhopehlihhnuhigqdhfshguvghvvghlsehvghgvrhdrkhgvrhhn
-    vghlrdhorhhgpdhrtghpthhtoheplhhinhhugidqvgigthegsehvghgvrhdrkhgvrhhnvg
-    hlrdhorhhgpdhrtghpthhtohepjhgrtghksehsuhhsvgdrtgiipdhrtghpthhtohepthih
-    thhsohesmhhithdrvgguuhdprhgtphhtthhopehhrghrshhhrggushhhihhrfigrughkrg
-    hrsehgmhgrihhlrdgtohhmpdhrtghpthhtoheprgguihhlghgvrhdrkhgvrhhnvghlsegu
-    ihhlghgvrhdrtggr
-X-ME-Proxy: <xmx:E5C8aarsSN4xdm80PmKh5pFB2Ku35Y1NTUuaa_qiAgpNF4cyWfcZOQ>
-    <xmx:E5C8aQD3bdCn4MNzIygnxHIytRkIsBOyMJDV32wyBG-onCcUaQIjHA>
-    <xmx:E5C8aUwvij3ZIgqNsY5cy4Cj8e2dIMm-7iJcM42samc2oThVP7IthA>
-    <xmx:E5C8aV1HqMdOFx1sdyfeiPBmPdptk5EJ8p0lwjca699Ea-39AWK9zg>
-    <xmx:E5C8acgkeFEy3uHxookM8lassEZuSsXpmAbggCz9OKMf9v1P2oT7rx3B>
+    rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
+    gurhephffvvefufffkofgjfhhrggfgsedtkeertdertddtnecuhfhrohhmpefpvghilheu
+    rhhofihnuceonhgvihhlsgesohifnhhmrghilhdrnhgvtheqnecuggftrfgrthhtvghrnh
+    epveevkeffudeuvefhieeghffgudektdelkeejiedtjedugfeukedvkeffvdefvddunecu
+    vehluhhsthgvrhfuihiivgeptdenucfrrghrrghmpehmrghilhhfrhhomhepnhgvihhlsg
+    esohifnhhmrghilhdrnhgvthdpnhgspghrtghpthhtohepiedpmhhouggvpehsmhhtphho
+    uhhtpdhrtghpthhtoheplhhinhhugidqfhhsuggvvhgvlhesvhhgvghrrdhkvghrnhgvlh
+    drohhrghdprhgtphhtthhopehlihhnuhigqdgvgihtgeesvhhgvghrrdhkvghrnhgvlhdr
+    ohhrghdprhgtphhtthhopehjrggtkhesshhushgvrdgtiidprhgtphhtthhopehthihtsh
+    hosehmihhtrdgvughupdhrtghpthhtohephhgrrhhshhgrughshhhirhifrggukhgrrhes
+    ghhmrghilhdrtghomhdprhgtphhtthhopegrughilhhgvghrrdhkvghrnhgvlhesughilh
+    hgvghrrdgtrg
+X-ME-Proxy: <xmx:G5C8afrTjRtyqSNywx5OD9r61781vx2BV04foRGTCYU_mN5MtdEH_w>
+    <xmx:G5C8aRBUVmyX75_gSEwgjoMN31muKNNlh6qlSQn0GOhfEySDldzD5w>
+    <xmx:G5C8aRwv1g0oGkff_R0gYvE75wl6PUpl3TNIdjec9BE1Udbx314gOA>
+    <xmx:G5C8ae0SmfMvLSW9ssJ-X25_wOi03ziGVbNW0P8Lb8QHg_AIgPWeMw>
+    <xmx:G5C8aVgQtVo-vXb3ew1nEN0zruodm4q6x3dpyOYZQJ8u9P21CAj5Ug4j>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Thu,
- 19 Mar 2026 20:08:49 -0400 (EDT)
+ 19 Mar 2026 20:08:57 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: "Theodore Ts'o" <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -77,10 +79,12 @@ To: "Theodore Ts'o" <tytso@mit.edu>,
 	Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 Cc: linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org
-Subject: 
-Date: Fri, 20 Mar 2026 11:03:15 +1100
-Message-ID: <20260320000838.3797494-1-neilb@ownmail.net>
+Subject: [PATCH v2 1/3] ext4: split __ext4_add_entry() out of ext4_add_entry()
+Date: Fri, 20 Mar 2026 11:03:16 +1100
+Message-ID: <20260320000838.3797494-2-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
+In-Reply-To: <20260320000838.3797494-1-neilb@ownmail.net>
+References: <20260320000838.3797494-1-neilb@ownmail.net>
 Reply-To: NeilBrown <neil@brown.name>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -90,30 +94,68 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-This new version
- - includes some reviewed-bys
- - adds an explanation to second patch of why ext4_fc_eligible() was
-   placed where it was in one case
- - modifies the last patch (but keeps the Reviews - hope that is OK)
-   to keep the changes to ->i_nlink in __ext4_link
-    https://sashiko.dev/#/patchset/20260317224638.3809014-1-neilb%40ownmail.net
-   points out that removing it for the replay path might not be correct,
-   and I cannot now see any reason to move those changes (ext4_inc_count() 
-   and drop_nlink())
+From: NeilBrown <neil@brown.name>
 
-From previous email:
+__ext4_add_entry() is not given a dentry - just inodes and name.
+This will help the next patch which simplifies __ex4_link().
 
-My particular interest in changing ext4 is to remove the use of
-d_alloc().  I will want to deprecate d_alloc() as it doesn't fit the new
-model well.
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: NeilBrown <neil@brown.name>
+---
+ fs/ext4/namei.c | 21 ++++++++++++++-------
+ 1 file changed, 14 insertions(+), 7 deletions(-)
 
-The use of d_alloc() in ext4 is incidental to the actual task at hand.
-The code really wants to pass around a parent directory and a name, and
-only uses the dentry because that seems convenient.  As these patches
-show the code actually becomes simpler when we avoid the dentry.
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index c4b5e252af0e..768036a109d7 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2353,10 +2353,10 @@ static int make_indexed_dir(handle_t *handle, struct ext4_filename *fname,
+  * may not sleep between calling this and putting something into
+  * the entry, as someone else might have used it while you slept.
+  */
+-static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
++static int __ext4_add_entry(handle_t *handle, struct inode *dir,
++			  const struct qstr *d_name,
+ 			  struct inode *inode)
+ {
+-	struct inode *dir = d_inode(dentry->d_parent);
+ 	struct buffer_head *bh = NULL;
+ 	struct ext4_dir_entry_2 *de;
+ 	struct super_block *sb;
+@@ -2373,13 +2373,10 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 	sb = dir->i_sb;
+ 	blocksize = sb->s_blocksize;
+ 
+-	if (fscrypt_is_nokey_name(dentry))
+-		return -ENOKEY;
+-
+-	if (!generic_ci_validate_strict_name(dir, &dentry->d_name))
++	if (!generic_ci_validate_strict_name(dir, d_name))
+ 		return -EINVAL;
+ 
+-	retval = ext4_fname_setup_filename(dir, &dentry->d_name, 0, &fname);
++	retval = ext4_fname_setup_filename(dir, d_name, 0, &fname);
+ 	if (retval)
+ 		return retval;
+ 
+@@ -2460,6 +2457,16 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 	return retval;
+ }
+ 
++static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
++			  struct inode *inode)
++{
++	struct inode *dir = d_inode(dentry->d_parent);
++
++	if (fscrypt_is_nokey_name(dentry))
++		return -ENOKEY;
++	return __ext4_add_entry(handle, dir, &dentry->d_name, inode);
++}
++
+ /*
+  * Returns 0 for success, or a negative error value
+  */
+-- 
+2.50.0.107.gf914562f5916.dirty
 
-NeilBrown
-
- [PATCH v2 1/3] ext4: split __ext4_add_entry() out of ext4_add_entry()
- [PATCH v2 2/3] ext4: add ext4_fc_eligible()
- [PATCH v2 3/3] ext4: move dcache manipulation out of __ext4_link()
