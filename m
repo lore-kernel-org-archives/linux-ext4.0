@@ -1,141 +1,189 @@
-Received: from mail-ed1-f52.google.com (mail-ed1-f52.google.com [209.85.208.52])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 052C1335571
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Mar 2026 07:43:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.52
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773992616; cv=pass; b=t3CvtSDM5P3EAPmRrE57PjadKqXVkq7qEaKK26Qc7Q5oCgn4Cvp9WrexTGWUeHKSSqsdD5KxgzX/QCNNXGrjgG9NZST2FkM0Fdu51QythOKgS34+B45isbywpF3hEpqB/VCnCj4yxgxVvoeFlRWZWkACSHqcr6LTIxPqGDBffA0=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773992616; c=relaxed/simple;
-	bh=RlOnalncJRXIlyYuLKjmVtEW17H7itzj7J5Hhw9r4v4=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=LEcQCg3NsA1PNXwCGYZ/UgfwmL2cU9hucODUn/n5317JN2Y/RRXiPZ0qeShKoRHUSkFqc47Yc74ZJRhPFMwiW+X5voqk4NlJ64Jq/0TiGPZEyTWfMVtA31VcKQEI1ZR+ZWdMWSNlRQuqbVNgDingZPWJPqPIAa87MNGC3XhoOp4=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=D7jkzBdX; arc=pass smtp.client-ip=209.85.208.52
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 503DF376493
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Mar 2026 09:04:55 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1773997497; cv=none; b=ROBZhA1lQbc9lWbgTJMcywhShlz0syk3Ac53ZKlCkcGdv3WdroRlVm7530lQv9Z3yi82Uo95KkXk0q6E9rRj2JXIFXByImcmNORyTTts/UMyTxaYlwKo883THx8u8XFToTqx5Wq5nwgxZ2r2aFNakwwL8pWuwV/oS9GU0hHsKPQ=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1773997497; c=relaxed/simple;
+	bh=oPjLQnoGXFqSRaJelVbBh0puTVgXFDpTz2rE66XORh0=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=FAtaNNTA22dLLUBcOqQaaYQgnLgRa4Xp9HpaE1h14yqCQnqoNdyx15QeOle6DmesYOAdV99bQI6CpBdyYx1eTr7yyYqTaUvq/GsagoA+3ZAtzPF+cuJIdw/terq48Nw3FaOpdFdSr6ZPus81FyhYNfrNRiaZeoOX8iV/2C8vmDg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=F4WP61Ub; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=kCcOYlWs; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=F4WP61Ub; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=kCcOYlWs; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="D7jkzBdX"
-Received: by mail-ed1-f52.google.com with SMTP id 4fb4d7f45d1cf-6686d06c411so2501355a12.3
-        for <linux-ext4@vger.kernel.org>; Fri, 20 Mar 2026 00:43:34 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1773992613; cv=none;
-        d=google.com; s=arc-20240605;
-        b=fBcP09VG0OB7Vo2xydf+1Ju5CQAWvOXMTfNbMtuj7yXSCMhh9H5mK9KY9+1PXb7Bu5
-         caFXpAZEDiN8XBCRVBprAaQL2CRKeJTcpuobEoqrytCFuqIkJRHB0PePMBUqr2VnAmNR
-         5tXlASzd63J3fBwPqdV6mVuvnm14GCd/Yk9wa9V6tCGf5ttQl+NsW2/bNfVoKOkgbSVc
-         jCNhixOu28T3Xp9WUdnQS652Rqv1W42ZNuXPdWx1mgB+PYhpSUMcGhync9ZhcGG1W0jS
-         Li7KX9fxc1u650QbacRY2l7QlsxeChGVy2ZA5RtOpZ+puG5+nPiNftuQyZM/isvAMPRa
-         lnjg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=ZnmAAX0F5BvT7Ekm6/q+ZVK3TkJKOZIX6rvlGFkJP6s=;
-        fh=eyV9H2Mu6DaM5BCooLkFZkfIwI4JuV9QtvdRsh0UmhM=;
-        b=b1L1fMp7WEdPcunTRHbiJx+bBrsnhqNw0T6eUyHJS5Qf9ocDsmnBQtVPBwWarszN1t
-         vxLIJzjybLVoFNnswuIbOItb2pEReAWTXbNhZ9Lzg/fgDuG6s3l/ZCarRtX6vy8NpbEm
-         ECKWrIQRtS2E64K+J7M6cYY+rDdyzWKLkclYJ21kw6MmT0swrhjiG5/WrpcvLLG9Wrv0
-         or/j9ctWI5TLTGkNf9OVstR2lXS9r3T/wJgW1s3HWxI2Bm7SGPUZRBfkbvWhjJg5Drd2
-         DwrzKI2k2pj5ib9SZhuR2OVRYkczDAroK6cXJOWXOqOYT57LoEbvFbljgO4L4CQMxIzy
-         OcFw==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1773992613; x=1774597413; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=ZnmAAX0F5BvT7Ekm6/q+ZVK3TkJKOZIX6rvlGFkJP6s=;
-        b=D7jkzBdXkP3tLzYL4LGjl+OEHNm2ok/lUPkV9AR83y/D21yqUpd4MxLyQTLX4OgB25
-         Ub7PVrxT1AXvKO1XqHm7Rk4evgjsi8OK/1TD4/4QYs/aQg4lKOBQGNcBY31TmsIJhocU
-         PulzubrCA/HRiMeOqvepV7M4fFLK1AguV7KJrqd3VKBVYE1LRqhDO6o+LrWQkiMkkKRh
-         7npzUMqLL4mbBofhWfgpsCLK6GRE3Q5/erfdbBx8siDH1K4nQLJ9+ZUqyJfGMfLVXDP6
-         PCLI3d5w2WhPe/Qa84Hu2DqfyrlUARcI7ugiEBagnj9QiFCg6Z1WqTPQWy27C+9rWG5o
-         EDtA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1773992613; x=1774597413;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=ZnmAAX0F5BvT7Ekm6/q+ZVK3TkJKOZIX6rvlGFkJP6s=;
-        b=NtEQe+7qyo3Pv1t4yIv1Aph3Tjdatkf0+zeLs7yDuUevVBrYZVJ9Qfc4VNq3dBRcwi
-         Sun75taytDyiTZfOJBM/CoeW7TUAIe1n1ZDVzYcERAM0Z3S+GKWI4Cin4Z6TA/1Fj5/x
-         Zd2/AsDvoLXmYbWKfeem1Nrnpkj7rECcjkd7PJq6LPtf98C+iBSokLJzkT4I60a26AA5
-         Zg7PtSemBXcUeJNut4o8OCbyK7IDT8UEg46VoNhMKrm1CW6b2LUhoG8bMGDbBYH+/IJ7
-         7BO6DEjLo5B4rcok7V0EOdTn00I3chaABa0MaP08rrTdKMfgjaHUuKgey0jQv4Qulvgt
-         t/+A==
-X-Forwarded-Encrypted: i=1; AJvYcCUBOd18nVu1rKInqofrso1k2LCkw3JyRTrOhoz7OiCHgPcwETjx6PyiGhH479t5tRyq0/GSAmExH8Zp@vger.kernel.org
-X-Gm-Message-State: AOJu0YzW3jAGRL0237KLjAJxHSJB8jyU1Kw4MnInWDD5TM5iokUkszN1
-	DINBc8j9HnIAFAr8f3kwPjV+qtjn2jheDjG6dt2XMj1tlMkx6tBBlVUS1uO18OM6XmcmE9q2BZz
-	2+jPPxGkCrnlcN2B4wDE34Gonvs1+9ng=
-X-Gm-Gg: ATEYQzzkHAjFRcT0xXEbtQWlFcGmkihdi5X3Y8ZUwL5LTOJ5Za7AAJPuY0NQ+GDWywe
-	9FT0Q3GmRJhrA27Ft0sNx2dageM5fnfRonPG55JchWE7SB72tpAXG4lEtJC4/QVm+/C9WIzpiJe
-	igkis6nONd8GKDz83koRsmNX/gOZEUuSGpA1SFCxij8GGkXdQ5o13KPjAttjF8azJQzDNzZZ7Zf
-	4AHoL4oeCHuEvZwiSzuhu8Z70QyN4W5SfAVIpCpiXmIX5Oh6dN4okHbqp1SxjHAtcoCdw0oMNrS
-	OAr50Ntrdhp8HpE1LcrhwLmHbmENUlRqO//LLwk9U93rqTvqPS0qVVg=
-X-Received: by 2002:a17:907:c30f:b0:b98:33a7:d5e3 with SMTP id
- a640c23a62f3a-b9833a7da38mr92239066b.8.1773992612858; Fri, 20 Mar 2026
- 00:43:32 -0700 (PDT)
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="F4WP61Ub";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="kCcOYlWs";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="F4WP61Ub";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="kCcOYlWs"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 379314D22F;
+	Fri, 20 Mar 2026 09:04:53 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1773997493; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=lDuHUjaYVat/cTx5x8pECdzs5D3NYqubZeNbkRfxlfs=;
+	b=F4WP61UbB1LeL+U2hvGXg4l0BgJv/r+v7S4S5SMHg3IK2lM7Am8lSgQm2chWbKj4kRvWqo
+	d3h/BelgmlT84hiaPiPYgaHC+wdylJjL4uDm9BSTPysh3WCZc0aCLovdwbD2HisxjvQozS
+	MMXJeilNosvo/Bs4YjMmi04sjOw2wgY=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1773997493;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=lDuHUjaYVat/cTx5x8pECdzs5D3NYqubZeNbkRfxlfs=;
+	b=kCcOYlWsoeqnwzQ3QeFg37nI6l3oPBdV+IaxLiTKq5BDcyDObe1BzAop8PbOdZ/kqn94xQ
+	HyjaZD4AcARaDpBw==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1773997493; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=lDuHUjaYVat/cTx5x8pECdzs5D3NYqubZeNbkRfxlfs=;
+	b=F4WP61UbB1LeL+U2hvGXg4l0BgJv/r+v7S4S5SMHg3IK2lM7Am8lSgQm2chWbKj4kRvWqo
+	d3h/BelgmlT84hiaPiPYgaHC+wdylJjL4uDm9BSTPysh3WCZc0aCLovdwbD2HisxjvQozS
+	MMXJeilNosvo/Bs4YjMmi04sjOw2wgY=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1773997493;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=lDuHUjaYVat/cTx5x8pECdzs5D3NYqubZeNbkRfxlfs=;
+	b=kCcOYlWsoeqnwzQ3QeFg37nI6l3oPBdV+IaxLiTKq5BDcyDObe1BzAop8PbOdZ/kqn94xQ
+	HyjaZD4AcARaDpBw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 2EB604273B;
+	Fri, 20 Mar 2026 09:04:53 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id mXpfC7UNvWkqZwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Fri, 20 Mar 2026 09:04:53 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id DC024A0AFD; Fri, 20 Mar 2026 10:04:52 +0100 (CET)
+From: Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
+Cc: <linux-ext4@vger.kernel.org>,
+	yi1.lai@linux.intel.com,
+	Mateusz Guzik <mjguzik@gmail.com>,
+	Jan Kara <jack@suse.cz>,
+	stable@vger.kernel.org
+Subject: [PATCH] ext4: Fix deadlock on inode reallocation
+Date: Fri, 20 Mar 2026 10:04:29 +0100
+Message-ID: <20260320090428.24899-2-jack@suse.cz>
+X-Mailer: git-send-email 2.51.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260318075842.3341370-1-gality369@gmail.com> <20260318144509.GA82331@macsyma-wired.lan>
- <CAOmEq9Uq5xMvhT7cyoY2uhSBhwSEEJ1vYRY36N4sxZSPCO1S8w@mail.gmail.com> <20260319135826.GA91368@macsyma-wired.lan>
-In-Reply-To: <20260319135826.GA91368@macsyma-wired.lan>
-From: ZhengYuan Huang <gality369@gmail.com>
-Date: Fri, 20 Mar 2026 15:43:21 +0800
-X-Gm-Features: AaiRm50Kae10smYX-Q49h1EZ7iONGnZgBSsOmlgQkjHk0D8vD2D3MhNxlmOLYf0
-Message-ID: <CAOmEq9VAW_a7RsSPquy0_eJOLP4aHOWvwTtzmeLUPXpy85xJvw@mail.gmail.com>
-Subject: Re: [PATCH] ext4: xattr: fix out-of-bounds access in ext4_xattr_set_entry
-To: Theodore Tso <tytso@mit.edu>
-Cc: adilger.kernel@dilger.ca, tahsin@google.com, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, baijiaju1990@gmail.com, r33s3n6@gmail.com, 
-	zzzccc427@gmail.com, stable@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2943; i=jack@suse.cz; h=from:subject; bh=oPjLQnoGXFqSRaJelVbBh0puTVgXFDpTz2rE66XORh0=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBpvQ2c6EClVse9vuF6gUxwj7HB89CaK74gIvlhX 2/9rSBWmEeJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCab0NnAAKCRCcnaoHP2RA 2d3GB/0WqFZat6MA7FFMHyohYCEsnqY20qfsxoq40Iiy9msQ1Ur4GLNnpQ7C6jBPi8EHyCAoJN2 6M0nhtRKePkIqbnuXLNdfNPb0Tak3fo6bRMEuYbu9jF5p40So1uDCPyMu+YPj5SJBJZp5fsdF+r miGD/jbUdYljlKuuj7QyLtLWO9HUaXofMbCBYFzvUrUgSHXAzlPmGyWq28kEx+5vG9Ta5wTfFCN FkQYAmCLzFnKcqYMuFxSm8KMsQQMtvwUcy755IoDmwl5IDZn4RI7Np6Pxqpevm+CZ5qAIrG+Qsj YgP7MkE9Ps9sz7DVse9PQIeZbYnOCE3kWd236d6lcCEbuw+b
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
+X-Spamd-Result: default: False [-2.80 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	MID_CONTAINS_FROM(1.00)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	R_MISSING_CHARSET(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-0.996];
+	MIME_GOOD(-0.10)[text/plain];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[intel.com:email,suse.cz:mid,suse.cz:email,imap1.dmz-prg2.suse.org:helo];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	ARC_NA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	TO_DN_SOME(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	FREEMAIL_CC(0.00)[vger.kernel.org,linux.intel.com,gmail.com,suse.cz];
+	RCPT_COUNT_FIVE(0.00)[6];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com]
+X-Spam-Flag: NO
+X-Spam-Score: -2.80
+X-Spam-Level: 
 
-On Thu, Mar 19, 2026 at 9:59=E2=80=AFPM Theodore Tso <tytso@mit.edu> wrote:
-> We don't consider bugs which involve modfying the mounted filesystem
-> as valid from a security perspective.  In particular, I don't want to
-> add checks to hotpaths to try to protect against these sorts of
-> failures, because they simply shouldn't be allowed --- and/or if the
-> attacker has write access to the block device while the file system is
-> mounted, you've basically lost already.
+Currently there is a race in ext4 when reallocating freed inode
+resulting in a deadlock:
 
-Thank you for the detailed explanation. I understand that runtime
-modifications to a mounted block device are considered out of scope,
-and adding checks for such cases in hot paths would be too costly.
+Task1					Task2
+ext4_evict_inode()
+  handle = ext4_journal_start();
+  ...
+  if (IS_SYNC(inode))
+    handle->h_sync = 1;
+  ext4_free_inode()
+					ext4_new_inode()
+					  handle = ext4_journal_start()
+					  finds the bit in inode bitmap
+					    already clear
+					  insert_inode_locked()
+					    waits for inode to be
+					      removed from the hash.
+  ext4_journal_stop(handle)
+    jbd2_journal_stop(handle)
+      jbd2_log_wait_commit(journal, tid);
+        - deadlocks waiting for transaction handle Task2 holds
 
-Our original understanding was that a filesystem should handle on-disk
-inconsistencies gracefully, so we used this approach to simulate
-silent disk corruption or I/O errors at runtime and test filesystem
-robustness. From your reply above, it seems that this understanding
-may not be correct.
+Fix the problem by removing inode from the hash already in
+ext4_clear_inode() by which time all IO for the inode is done so reuse
+is already fine but we are still before possibly blocking on transaction
+commit.
 
-> That being said, we are more likely to accept patches to address
-> static file system corruption, but the checks need to be done when the
-> metadata in question is first loaded, and outside of a hot path.  But
-> trying to defend against dynamic modifications of the block device is
-> really a fools errand, without completely trashing the performance of
-> the file system.
+Reported-by: "Lai, Yi" <yi1.lai@linux.intel.com>
+Link: https://lore.kernel.org/all/abNvb2PcrKj1FBeC@ly-workstation
+Fixes: 88ec797c4680 ("fs: make insert_inode_locked() wait for inode destruction")
+CC: stable@vger.kernel.org
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/super.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
-There seem to be three layers of defense: fsck, mount-time checks, and
-runtime checks. Would it be more accurate to understand the boundary
-this way: once the filesystem metadata has passed mount-time
-validation (even if it would not necessarily pass fsck), the
-filesystem is still expected to handle later errors gracefully rather
-than crash?
+Ted, this is a regression recently introduced by VFS changes in
+insert_inode_locked() but I think it's best fixed in ext4. If you agree, it
+would be nice to merge this so that it makes it to 7.0 release. Thanks!
 
-More specifically, for inconsistencies that arise at runtime, is the
-general expectation that they are outside the filesystem's
-responsibility and should instead be handled by other layers (for
-example, lower-level storage redundancy / RAID)? Or is there still
-room for defensive checks in the filesystem, as long as they are done
-outside hot paths?
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 43f680c750ae..b8122d24c083 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1527,6 +1527,27 @@ void ext4_clear_inode(struct inode *inode)
+ 	invalidate_inode_buffers(inode);
+ 	clear_inode(inode);
+ 	ext4_discard_preallocations(inode);
++	/*
++	 * We must remove the inode from the hash before ext4_free_inode()
++	 * clears the bit in inode bitmap as otherwise another process reusing
++	 * the inode will block in insert_inode_hash() waiting for inode
++	 * eviction to complete while holding transaction handle open, but
++	 * ext4_evict_inode() still running for that inode could block waiting
++	 * for transaction commit if the inode is marked as IS_SYNC => deadlock.
++	 *
++	 * Removing the inode from the hash here is safe. There are two cases
++	 * to consider:
++	 * 1) The inode still has references to it (i_nlink > 0). In that case
++	 * we are keeping the inode and once we remove the inode from the hash,
++	 * iget() can create the new inode structure for the same inode number
++	 * and we are fine with that as all IO on behalf of the inode is
++	 * finished.
++	 * 2) We are deleting the inode (i_nlink == 0). In that case inode
++	 * number cannot be reused until ext4_free_inode() clears the bit in
++	 * the inode bitmap, at which point all IO is done and reuse is fine
++	 * again.
++	 */
++	remove_inode_hash(inode);
+ 	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
+ 	dquot_drop(inode);
+ 	if (EXT4_I(inode)->jinode) {
+-- 
+2.51.0
 
-Thanks again for your time and clarification.
-
-Best regards,
-ZhengYuan Huang
