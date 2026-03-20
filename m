@@ -1,146 +1,119 @@
-Received: from fhigh-a1-smtp.messagingengine.com (fhigh-a1-smtp.messagingengine.com [103.168.172.152])
+Received: from fout-b1-smtp.messagingengine.com (fout-b1-smtp.messagingengine.com [202.12.124.144])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6E54840FDA1;
-	Thu, 19 Mar 2026 23:31:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.152
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE1BE40DFB6;
+	Fri, 20 Mar 2026 00:08:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.144
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773963072; cv=none; b=q4efkzd6JSJM5nNn/IhUNrL2kWqpIZKG8h6CxX1vknKwPT2HsKN42fpl22+YMfdsYjbhsrb+V8946kJ7OFEoE5ILpGG36iYH8mnypAu4Y+Kd1eGBbmGyUrQZqcdXzSEOjaBsepdx/0fYKVQUPgvEktFtbxxzdBVuisPaqKi2eOQ=
+	t=1773965334; cv=none; b=eD897GymiJY9GLEDz1reN/EGmsqoFYcLE0X9Zr54VaSpcM/d79b6IHApvwSZhZ2i2yQnl1xCtEoAgRYbtDANoiZIaEgITbk5UMTvnAPEESMRYM7WpJTMIcVtLZs+mbAydCMvRNnxNNXCtoV7cmsOYgB5zP56M7gS6PFincH/A4o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773963072; c=relaxed/simple;
-	bh=VDV1t9X0pCHz/FqLpP7oaxOs14JmZqMPXyxxrK41nb8=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=cvvkuVLFfmcK3Uv5Rw+q1IrwO54CvhBzA7Cz47wjpM8U8v0IbLRCQ2AowNM34PiFIQi0d6q9Vx18AcmdZnYW/UfKao6Hq+sBClZDp6ExCQxq1TU3VNNmuyZ0JuIjhVRUHDpPVaWqfISnpk2/dtF4bD9AEH3VpIia6/pH5a6rfWU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=VamPNMTM; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=2VnWrWVV; arc=none smtp.client-ip=103.168.172.152
+	s=arc-20240116; t=1773965334; c=relaxed/simple;
+	bh=cI23oACrE3PC4QlPacXJHV7xiyASOofmgMHiwGwNN4w=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=NoLBRvtwpQ95ENhlMtJQ9mGPpv7HvboIlH2TFkpOrdazTu+cr7W76g29mLKXNKm1S0TpKK5RTZDZdw8QxrD2AGbGWNg6K/r9pCSalz8iqbsJYkdAS8GAdqrnNKWB+gSfWUKqW533PRS8Se7Ji4f4q4+TCvbF1GZMlHz3Re82jYU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=SZwsB9Gf; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=o+OIaXuE; arc=none smtp.client-ip=202.12.124.144
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="VamPNMTM";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="2VnWrWVV"
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailfhigh.phl.internal (Postfix) with ESMTP id 6265D1400263;
-	Thu, 19 Mar 2026 19:31:08 -0400 (EDT)
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="SZwsB9Gf";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="o+OIaXuE"
+Received: from phl-compute-01.internal (phl-compute-01.internal [10.202.2.41])
+	by mailfout.stl.internal (Postfix) with ESMTP id 1D33C1D001CE;
+	Thu, 19 Mar 2026 20:08:52 -0400 (EDT)
 Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-02.internal (MEProxy); Thu, 19 Mar 2026 19:31:08 -0400
+  by phl-compute-01.internal (MEProxy); Thu, 19 Mar 2026 20:08:52 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:content-type:date
-	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to; s=fm1; t=
-	1773963068; x=1774049468; bh=LHdPdoDlVBet7DwKoIGjDsuMYpD72lArg1Y
-	8Hs9OJSU=; b=VamPNMTMQUQhrSbKT0PiUi10pxzRgg3ubPJXGHo9oHbeX+N+BYj
-	gD8y/65phPFI5zbP5IOSgSCsyPW0nInXrCop8jLeQFRtWBo6vu8gLoYAq36T7A0/
-	V5hFiHoTH6InJ/P4yETnuk7WJMGlzZsAIzV2N5S+0VWQnzO+YntQrbyELVqYPv/1
-	s6osG8CiFTz2Lzp2WSBHzsGulOgT3k1GGG44hAqHMghqZFP7d0BctDLXRIZcogAW
-	rE7Q5qx+qV1uXn/TD2BxEVeD56TWKIZD/WyrG5T3+sMxggvvrCYcJ6Witeyjjcax
-	hMRSQO9oWGTZZLNUUvOV8PM4MQA4ZBQhvsQ==
+	cc:cc:content-transfer-encoding:content-type:date:date:from:from
+	:in-reply-to:message-id:mime-version:reply-to:reply-to:subject
+	:subject:to:to; s=fm1; t=1773965331; x=1774051731; bh=QCXruPa3di
+	eMrUupTBIqnyN1CQd6edaGU2kYQq4ghp4=; b=SZwsB9GfKGegVRUd2uSkRA53p0
+	8wVUfgdNlGhbmIpQyvmC8ZRrQAgDtWbKHR7GSBZ+pFmup4KWF0u+9sZtQ1GEMJb4
+	jsyiZ2MoYtVgzV/Z2NsJtoYh3E+etFJBsGtudrRwaqoUkMMaLDNMOHNHWCIh1sS/
+	sfol3mmZi+u4dS1P0XJAcm3557ndBKtOqghzz+rlJzvj37Na7j3ifKcxpLXOJIcn
+	9jHBR769bTQlkI+0Yl4IuAG3llevsydzofQ+qv1aNZ/Y60MpcMfVxlFTgyxH1nb8
+	S4FT0zkcH9k+Zd4oj6f6FR8n3WcfmcgLIlFbE0Kea8PUCvTGlBbwPt4E/9QA==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:content-type:date:date:feedback-id:feedback-id
-	:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1773963068; x=
-	1774049468; bh=LHdPdoDlVBet7DwKoIGjDsuMYpD72lArg1Y8Hs9OJSU=; b=2
-	VnWrWVVetcp0xKY+PheuuIH8Lu8mj02PQuMN6meSrQet0pNGqMQw7Gz0AmoDma7D
-	Wu3SMmN0EoVZ0Q6M2l67g6UZUP2LiPJHfGOIIh8PPZ/v0TLVOBeIQLc//nVVbJBz
-	xAMjpMuUGC5aWhv7xlSD1XTV44FjON7tOiYZxt98DMUwE7u3rkDrHHf3/oOflKal
-	srjB1ampfdiwB8Snlq02oTGbUMLtMtbAd/UsJ6gtQ1dUY6qHAnAd1bjXSfPSjiOy
-	OGVNK+RfH9TXionsLM7XbNZ+Msw+CqdYqQ2RcNxby0kJHLjgPExYRwuozBC12jpM
-	Dsaf023a7xD/P7At0wXlA==
-X-ME-Sender: <xms:O4e8aTipvpABKR-OJz1w_z1gMwu65swvcgZx9HPetLrCYvpobdB9Ww>
-    <xme:O4e8aRiHdwLJ1TDy67ZA9E9A4quO43FLDq6PFyd7IRd8-EZBychHO4QLdgYM3TDXK
-    P7N8LLgTSUNMaF9gvAYNC_lM7-t97SQLtW0QhoyK64pGTaqkA>
-X-ME-Received: <xmr:O4e8aTLSef_Fufm8rWIHaVGeCEj1hhUYXXZTrdPNjGUVjaMwfqprhoULQ597KD0O9dWw7qw94kanYfwWk3AxcsUi-IUs-iO2kswPu4Q0XMxl>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgdeftdekfeefucetufdoteggodetrf
+	:content-type:date:date:feedback-id:feedback-id:from:from
+	:in-reply-to:message-id:mime-version:reply-to:reply-to:subject
+	:subject:to:to:x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=
+	fm1; t=1773965331; x=1774051731; bh=QCXruPa3dieMrUupTBIqnyN1CQd6
+	edaGU2kYQq4ghp4=; b=o+OIaXuEbDZnMkQOyywJUtqO3X+yE3RG0pMXGK+qVeuP
+	azNUkDcUh6Nd+qKBSSuh8WDPXQX+YAnA0gozIDaXfObU10rGWSvp9Qe+fbyAQ5lc
+	S70qpb5HdlwcbBSiEpt3Uyw/IS5umfdcZmtssLj20OUyTCnBuKCcIz+FoBEgtgyV
+	x1CO9ZXAD2fY1NW1K0B1jvA/ntQty7YpYYUmZMpU0rZrV0B4EGNQgfF/SbqnFb7K
+	5dziKIxbIbu0uEw5TVN8u4ReNbdxv7RPfOd21euPqslOfZ9ZnwGlwQaBWOPYJwam
+	pk8yXPTH+rC3TBHTchkCA1Lgd7P4uKz+Q0MG1MTZeA==
+X-ME-Sender: <xms:E5C8acJhkTw300L97UG3R_KNP-TYsxI51Fiql0CpPYBaI28dEo_r8A>
+    <xme:E5C8aVdbgKYcqnTIMMArzaIkdGnZei-qhI4fRaB6vYczsjIMH0HIfucxfkZfsPjfK
+    jPXIYG_ygms0GQ0OpgxjTIlKsV2y1hS4QW_QIM45GK_ijMQRQ>
+X-ME-Received: <xmr:E5C8aT_dYEPJRxZ_GuZUKvh7FKUWHsO1m7oELtR7EgFNA6WbPZ19jG3U_4JMlefvLoA1a8l7ZOc7GrEa8SqYmedsPS87U_uoynoBQA2APd7C>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgdeftdekgeduucetufdoteggodetrf
     dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
-    rghilhhouhhtmecufedttdenucenucfjughrpegtgfgghffvvefujghffffkrhesthhqre
-    dttddtjeenucfhrhhomheppfgvihhluehrohifnhcuoehnvghilhgssehofihnmhgrihhl
-    rdhnvghtqeenucggtffrrghtthgvrhhnpeeljedtfeegueekieetudevheduveefffevud
-    etgfetudfhgedvgfdtieeguedujeenucevlhhushhtvghrufhiiigvpedtnecurfgrrhgr
-    mhepmhgrihhlfhhrohhmpehnvghilhgssehofihnmhgrihhlrdhnvghtpdhnsggprhgtph
-    htthhopeehpdhmohguvgepshhmthhpohhuthdprhgtphhtthhopehlihhnuhigqdhfshgu
-    vghvvghlsehvghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthhtoheplhhinhhugidqvg
-    igthegsehvghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthhtohepjhgrtghksehsuhhs
-    vgdrtgiipdhrtghpthhtohepthihthhsohesmhhithdrvgguuhdprhgtphhtthhopegrug
-    hilhhgvghrrdhkvghrnhgvlhesughilhhgvghrrdgtrg
-X-ME-Proxy: <xmx:PIe8aQHFy1-AZm1jRnziaP9ZCLlpNzgJVFRfGEIg0Dxu0-gfYpSgpQ>
-    <xmx:PIe8aXQP563yyGiYbxgaNGHBlZxVy3XM4Ul-mlamtuRGgGDwSCQkNg>
-    <xmx:PIe8accNpXEacDQ7QHwwhb0OEG44KwyKHMbfinRSVCZnDQdVXgnXiw>
-    <xmx:PIe8aWoC3ztaZEt3Z3g9Ov1MVY5cfwL1uE4SxFdL9TE1eqK1vRsFVw>
-    <xmx:PIe8adrfr3podYklJL6NOYII0bnx5ZPiJB03KU8MQoTN5Q4T65_SnRP_>
+    rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnefgmh
+    hpthihuchsuhgsjhgvtghtucdluddtmdenucfjughrpefhvfevufffkfforhgggfestdek
+    redtredttdenucfhrhhomheppfgvihhluehrohifnhcuoehnvghilhgssehofihnmhgrih
+    hlrdhnvghtqeenucggtffrrghtthgvrhhnpeektdelueeludfhfffhudfgkeetffejledu
+    uedvhffhheekheffteeuvdekvdeffeenucffohhmrghinhepshgrshhhihhkohdruggvvh
+    enucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhrohhmpehnvghi
+    lhgssehofihnmhgrihhlrdhnvghtpdhnsggprhgtphhtthhopeeipdhmohguvgepshhmth
+    hpohhuthdprhgtphhtthhopehlihhnuhigqdhfshguvghvvghlsehvghgvrhdrkhgvrhhn
+    vghlrdhorhhgpdhrtghpthhtoheplhhinhhugidqvgigthegsehvghgvrhdrkhgvrhhnvg
+    hlrdhorhhgpdhrtghpthhtohepjhgrtghksehsuhhsvgdrtgiipdhrtghpthhtohepthih
+    thhsohesmhhithdrvgguuhdprhgtphhtthhopehhrghrshhhrggushhhihhrfigrughkrg
+    hrsehgmhgrihhlrdgtohhmpdhrtghpthhtoheprgguihhlghgvrhdrkhgvrhhnvghlsegu
+    ihhlghgvrhdrtggr
+X-ME-Proxy: <xmx:E5C8aarsSN4xdm80PmKh5pFB2Ku35Y1NTUuaa_qiAgpNF4cyWfcZOQ>
+    <xmx:E5C8aQD3bdCn4MNzIygnxHIytRkIsBOyMJDV32wyBG-onCcUaQIjHA>
+    <xmx:E5C8aUwvij3ZIgqNsY5cy4Cj8e2dIMm-7iJcM42samc2oThVP7IthA>
+    <xmx:E5C8aV1HqMdOFx1sdyfeiPBmPdptk5EJ8p0lwjca699Ea-39AWK9zg>
+    <xmx:E5C8acgkeFEy3uHxookM8lassEZuSsXpmAbggCz9OKMf9v1P2oT7rx3B>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Thu,
- 19 Mar 2026 19:31:05 -0400 (EDT)
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+ 19 Mar 2026 20:08:49 -0400 (EDT)
+From: NeilBrown <neilb@ownmail.net>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.cz>,
+	Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+Cc: linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+Subject: 
+Date: Fri, 20 Mar 2026 11:03:15 +1100
+Message-ID: <20260320000838.3797494-1-neilb@ownmail.net>
+X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
+Reply-To: NeilBrown <neil@brown.name>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: NeilBrown <neilb@ownmail.net>
-To: "Jan Kara" <jack@suse.cz>
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
- "Andreas Dilger" <adilger.kernel@dilger.ca>, "Jan Kara" <jack@suse.cz>,
- linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 2/3] ext4: add ext4_fc_eligible()
-In-reply-to: <gh7e7uykczpyhfxrh6y54c2jlcs4pzcud65aqsjoj4am6cajzp@wq26crdxv2yd>
-References: <20260317224638.3809014-1-neilb@ownmail.net>,
- <20260317224638.3809014-3-neilb@ownmail.net>,
- <gh7e7uykczpyhfxrh6y54c2jlcs4pzcud65aqsjoj4am6cajzp@wq26crdxv2yd>
-Date: Fri, 20 Mar 2026 10:31:01 +1100
-Message-id: <177396306176.3934327.9167241352093307006@noble.neil.brown.name>
-Reply-To: NeilBrown <neil@brown.name>
+Content-Transfer-Encoding: 8bit
 
-On Thu, 19 Mar 2026, Jan Kara wrote:
-> On Wed 18-03-26 09:39:50, NeilBrown wrote:
-> > From: NeilBrown <neil@brown.name>
-> >=20
-> > Testing EXT4_MF_FC_INELIGIBLE is almost always combined with testing
-> > ext4_fc_disabled().  The code can be simplified by combining these two
-> > in a new ext4_fc_eligible().
-> >=20
-> > In ext4_fc_track_inode() this moves the ext4_fc_disabled() test after
-> > ext4_fc_mark_ineligible(), but as that is a non-op when
-> > ext4_fc_disabled() is true, this is no no consequence.
-> >=20
-> > Signed-off-by: NeilBrown <neil@brown.name>
->=20
-> One nit below, otherwise feel free to add:
->=20
-> Reviewed-by: Jan Kara <jack@suse.cz>
->=20
-> > @@ -557,16 +548,13 @@ void ext4_fc_track_inode(handle_t *handle, struct i=
-node *inode)
-> >  	if (S_ISDIR(inode->i_mode))
-> >  		return;
-> > =20
-> > -	if (ext4_fc_disabled(inode->i_sb))
-> > -		return;
-> > -
-> >  	if (ext4_should_journal_data(inode)) {
-> >  		ext4_fc_mark_ineligible(inode->i_sb,
-> >  					EXT4_FC_REASON_INODE_JOURNAL_DATA, handle);
-> >  		return;
-> >  	}
-> > =20
-> > -	if (ext4_test_mount_flag(inode->i_sb, EXT4_MF_FC_INELIGIBLE))
-> > +	if (!ext4_fc_eligible(inode->i_sb))
-> >  		return;
->=20
-> Here I think the !ext4_fc_eligible() check could be actually above the
-> ext4_should_journal_data() check - if the fs is not eligible for
-> fastcommit, there's no point in marking it ineligible again...
+This new version
+ - includes some reviewed-bys
+ - adds an explanation to second patch of why ext4_fc_eligible() was
+   placed where it was in one case
+ - modifies the last patch (but keeps the Reviews - hope that is OK)
+   to keep the changes to ->i_nlink in __ext4_link
+    https://sashiko.dev/#/patchset/20260317224638.3809014-1-neilb%40ownmail.net
+   points out that removing it for the replay path might not be correct,
+   and I cannot now see any reason to move those changes (ext4_inc_count() 
+   and drop_nlink())
 
-Both you and Andreas have questioned that choice - so I should explain
-my reasoning.
+From previous email:
 
-ext4_fc_mark_ineligible() is NOT a no-op when the sb is already marked
-ineligible.  The code updates sb->s_fc_ineligible_tid to the largest tid
-which was ineligible for fc.  Then it only clears the "ineligible" flag
-after that highest numbered transaction has committed.  If we skip
-ext4_fc_mark_ineligible() because EXT4_MF_FC_INELIGIBLE is already set,
-then that flag could be cleared too early.
+My particular interest in changing ext4 is to remove the use of
+d_alloc().  I will want to deprecate d_alloc() as it doesn't fit the new
+model well.
 
-Thanks,
+The use of d_alloc() in ext4 is incidental to the actual task at hand.
+The code really wants to pass around a parent directory and a name, and
+only uses the dentry because that seems convenient.  As these patches
+show the code actually becomes simpler when we avoid the dentry.
+
 NeilBrown
+
+ [PATCH v2 1/3] ext4: split __ext4_add_entry() out of ext4_add_entry()
+ [PATCH v2 2/3] ext4: add ext4_fc_eligible()
+ [PATCH v2 3/3] ext4: move dcache manipulation out of __ext4_link()
