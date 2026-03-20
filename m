@@ -1,39 +1,39 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 880D1329378
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Mar 2026 13:42:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3721C37187C
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Mar 2026 13:42:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774014144; cv=none; b=FjjbhkO+NPa9y4Ul81H4U+IuwH8kWWbFLtsXlOEngBfuChVfBDMkngAXTXDXSb6OcApgLL/GMSIoNO5cI/FuXXiwCQu2YbKP8K/lvVOCJ5nzCuIS3KExXqYK6D4/wj4PYHFVuzm97tMh0l7LhpDm1llFjRroOzIRc4/BpTejQMs=
+	t=1774014149; cv=none; b=uM92SEhzuVnu1zclBOFOgQ3i8XwZsDbhqx9dWXxr68v4MSrDvhhbK/5XkY58bZ+3AQzyLiwAW0u7PGSx+qa8IQrYrEP4RWn1aU4Yj5m5w8t0zk8WCDlc5+9zvTJXcrBwjiwnnEnqZiFkbNObfPwUHPuWZVbZJ5p4/naHLRwzsrg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774014144; c=relaxed/simple;
-	bh=owc5m+YmFPFX9G7b4L5yVqAn4sHTNVwb7RYuqrd3Kag=;
+	s=arc-20240116; t=1774014149; c=relaxed/simple;
+	bh=YpwlY9gANXCHPNbAIVrmfcTj04CmV1BsSIb2drOA8QM=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=SwrvuwNbc2fc31bCdtXihuG+YFXePX4VIG+8i2uUK2Xi9H8npkxw6r5hOGOAU48rCpqVW8cnASwF2vE+UMTTfTo3IEoE6rVvJs6inpOND6Uy7zzR4D1TGlctouSOhKszejLZKPk/BwQ1AseeLUugdqgStvnbBh9nN9LcjJjgk4Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; arc=none smtp.client-ip=195.135.223.130
+	 MIME-Version; b=A94LbwNEOSmu+NZ/X3vXauTlELFz8Y3Gxs5qq5WuJLbwk+mwccOlyLhixer+GapBi0aWBtvwiXOTR4WIPNCvNztHe0hMlitfqoaQ7kyQgy5aFyrt1P2Ve0H2ckYDSQd7taZqw9oJVBATj8F586jz6d1COukGtPttWSwoU0rDD2I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 5048B4D285;
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 320905BE08;
 	Fri, 20 Mar 2026 13:41:45 +0000 (UTC)
-Authentication-Results: smtp-out1.suse.de;
+Authentication-Results: smtp-out2.suse.de;
 	none
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 452CB42819;
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 113F74281B;
 	Fri, 20 Mar 2026 13:41:45 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id EyniEJlOvWlsCQAAD6G6ig
+	id N/4yBJlOvWllCQAAD6G6ig
 	(envelope-from <jack@suse.cz>); Fri, 20 Mar 2026 13:41:45 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id D935CA0B56; Fri, 20 Mar 2026 14:41:44 +0100 (CET)
+	id B3726A0A9E; Fri, 20 Mar 2026 14:41:44 +0100 (CET)
 From: Jan Kara <jack@suse.cz>
 To: <linux-fsdevel@vger.kernel.org>
 Cc: <linux-block@vger.kernel.org>,
@@ -51,9 +51,9 @@ Cc: <linux-block@vger.kernel.org>,
 	linux-aio@kvack.org,
 	Benjamin LaHaise <bcrl@kvack.org>,
 	Jan Kara <jack@suse.cz>
-Subject: [PATCH 17/41] ext4: Sync and invalidate metadata buffers from ext4_evict_inode()
-Date: Fri, 20 Mar 2026 14:41:12 +0100
-Message-ID: <20260320134100.20731-58-jack@suse.cz>
+Subject: [PATCH 12/41] fs: Drop sync_mapping_buffers() from __generic_file_fsync()
+Date: Fri, 20 Mar 2026 14:41:07 +0100
+Message-ID: <20260320134100.20731-53-jack@suse.cz>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <20260320131728.6449-1-jack@suse.cz>
 References: <20260320131728.6449-1-jack@suse.cz>
@@ -63,13 +63,13 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1456; i=jack@suse.cz; h=from:subject; bh=owc5m+YmFPFX9G7b4L5yVqAn4sHTNVwb7RYuqrd3Kag=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBpvU56/m40sh9r+/VqeE/EOztc8+Vm8Hwnlm9ew gLKiBy9a+aJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCab1OegAKCRCcnaoHP2RA 2cWCB/9G3dVfiVkIYgi+VExtwyXQQHTeJyM3wYtTmwcKRC9Fw+jtltLqpMltzU5aN6lGYQY6oWJ Nvfqt318qgAKwQHvwqgssFBmm9YMyPUZri8Y21D9V8DftJabV6FTL7wBHMnIbkfHitEm09irp5a tS6TX42aH0xsov2PY8RzkQAfVCPHzlMV+F8hrhqr36s2rvmfvQ+CEqNCZTUy/+98k6EeIV+msAq duXZ0ndGU0dhBtmY19D5E8dYlHvbcVxvAGZeqZJgXzgTTI17ipPPQD0BUf3+FOjcLuYX2nXyQZG OntlKK/d1++/q46iCWtvNlBJ7YTib8NrQwWghea/nMMTaURJ
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1135; i=jack@suse.cz; h=from:subject; bh=YpwlY9gANXCHPNbAIVrmfcTj04CmV1BsSIb2drOA8QM=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBpvU52sjR+o4oxbnG9aLagbbudeDN06j+Jq4fhR fjZyg4nS6qJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCab1OdgAKCRCcnaoHP2RA 2a9CB/92F1jsJ3pb11l0aKofBm0Zt/jJjH/fyYCQ5Ttu8zNndGAc1uCOl1EfZdu4wCPY56J6qpT IuHSNDYA+5pelUesuQAxDvEQu4F3gLUKknjg0kLT02ahHvrv2eRBIgctjclBTqbfZUAXbg1vrjE anSm0g5dysaM5JTBnNxD49RNzIEi90xTw7vkRnUy5IZ7PAUqEr2b5nQEOr6rpLyEKh+UWolfvxy 0PQtTkKn4WsGr4tRG4nSX0zbpNKxAGuHMfI4eye0NYi2tZLebr16KDpwVnWRaTE+dSHonwGSdlJ 6OQS+CHCJT2p10Dpz1PJVZJADOV5efY8uzTWx4cvz8x71EYs
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 X-Rspamd-Pre-Result: action=no action;
 	module=replies;
 	Message is reply to one we originated
-X-Rspamd-Queue-Id: 5048B4D285
+X-Rspamd-Queue-Id: 320905BE08
 X-Rspamd-Pre-Result: action=no action;
 	module=replies;
 	Message is reply to one we originated
@@ -79,51 +79,48 @@ X-Spam-Level:
 X-Spam-Flag: NO
 X-Spamd-Result: default: False [-4.00 / 50.00];
 	REPLY(-4.00)[];
-	TAGGED_RCPT(0.00)[];
-	R_RATELIMIT(0.00)[to_ip_from(RLhafujjw6m7bafrsz8p45s31g)]
+	TAGGED_RCPT(0.00)[]
 X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
 
-There are only very few filesystems using generic metadata buffer head
-tracking and everybody is paying the overhead. When we remove this
-tracking for inode reclaim code .evict will start to see inodes with
-metadata buffers attached so write them out and prune them.
+No filesystem calling __generic_file_fsync() uses metadata bh tracking.
+Drop sync_mapping_buffers() call from __generic_file_fsync() as it's
+pointless now.
 
-Acked-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 4 +++-
- fs/ext4/super.c | 3 ++-
- 2 files changed, 5 insertions(+), 2 deletions(-)
+ fs/libfs.c | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d18d94acddcc..6f892abef003 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -185,7 +185,9 @@ void ext4_evict_inode(struct inode *inode)
- 		ext4_evict_ea_inode(inode);
- 	if (inode->i_nlink) {
- 		truncate_inode_pages_final(&inode->i_data);
--
-+		/* Avoid mballoc special inode which has no proper iops */
-+		if (!EXT4_SB(inode->i_sb)->s_journal)
-+			sync_mapping_buffers(&inode->i_data);
- 		goto no_delete;
- 	}
- 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 43f680c750ae..ea827b0ecc8d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1524,7 +1524,8 @@ static void destroy_inodecache(void)
- void ext4_clear_inode(struct inode *inode)
+diff --git a/fs/libfs.c b/fs/libfs.c
+index 74134ba2e8d1..548e119668df 100644
+--- a/fs/libfs.c
++++ b/fs/libfs.c
+@@ -1555,23 +1555,19 @@ int __generic_file_fsync(struct file *file, loff_t start, loff_t end,
  {
- 	ext4_fc_del(inode);
--	invalidate_inode_buffers(inode);
-+	if (!EXT4_SB(inode->i_sb)->s_journal)
-+		invalidate_inode_buffers(inode);
- 	clear_inode(inode);
- 	ext4_discard_preallocations(inode);
- 	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
+ 	struct inode *inode = file->f_mapping->host;
+ 	int err;
+-	int ret;
++	int ret = 0;
+ 
+ 	err = file_write_and_wait_range(file, start, end);
+ 	if (err)
+ 		return err;
+ 
+ 	inode_lock(inode);
+-	ret = sync_mapping_buffers(inode->i_mapping);
+ 	if (!(inode_state_read_once(inode) & I_DIRTY_ALL))
+ 		goto out;
+ 	if (datasync && !(inode_state_read_once(inode) & I_DIRTY_DATASYNC))
+ 		goto out;
+ 
+-	err = sync_inode_metadata(inode, 1);
+-	if (ret == 0)
+-		ret = err;
+-
++	ret = sync_inode_metadata(inode, 1);
+ out:
+ 	inode_unlock(inode);
+ 	/* check and advance again to catch errors after syncing out buffers */
 -- 
 2.51.0
 
