@@ -1,283 +1,176 @@
-Received: from fout-b1-smtp.messagingengine.com (fout-b1-smtp.messagingengine.com [202.12.124.144])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pg1-f170.google.com (mail-pg1-f170.google.com [209.85.215.170])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C54C02A1BF;
-	Fri, 20 Mar 2026 00:09:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.144
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5FF722E0B48
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Mar 2026 02:04:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.170
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773965353; cv=none; b=c03oNQpUb0I9JKJ4apFNQq5lLGrcZqhP1sXmilylaUx7KRoJkxQ/UQ947PxjKaI42PUQoxRlbhqvoDxaqgit3cnjdbmYAyo92TDN7ARYeC5c1IDZLLAu9tR7Ph8nHZqLtc4ezKJiyCpIH6j+REX/yqEwh9y2Xb4BUWTlMM97a5c=
+	t=1773972260; cv=none; b=JgkDG6uTv1UviPQa7Ayvm6/orVp9aOZS+242sVIjW8sd5r6pKKsH2BkBvrXubAKL8mDWdv1FozfllgD4nkZH1r/KkheYOWlMEAvlYlErq7A/GtP5FxWE2L/ALFiGY51VnT2b93ohdH42/OrC+HNh3kRSHaTxHj31eZ0vqBU1lAw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773965353; c=relaxed/simple;
-	bh=qEW+hhgoHTCyqPJ4+pi0q19745A6/zYvSEHUbtutXC0=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=qdKemRgIjvhU4kkuQQLcUw5X23vATAPfVnG753PeqCWJa2aJbHTyY17nFYtbOmAVPaLDqqlinxr2uKFXNqmXEAF9IjR6E4aJhXMsv4RuQfk6ChkDA/xcaOT+BfeZgCrDxtHT8HN2FtDME084Xxw0bPr2og39/RjZ/RZ1vqOdA3g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=XL4oGTDa; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=F5YtDC6j; arc=none smtp.client-ip=202.12.124.144
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+	s=arc-20240116; t=1773972260; c=relaxed/simple;
+	bh=e4O1qswBHehoONgzt/B78p8L7qGsD1GJlEIlnfElYKU=;
+	h=From:To:Cc:Subject:In-Reply-To:Date:Message-ID:References; b=pX9oHS466UZb1uH8gRb6E+ZPvoYDT06p37lcq2J3W3V/s6AbJYGsie9e6P1gJo4ttkJK0DXtP6L5/FcJSI4YM307+meJljbGIXahBOGRKwdvcS0e9Ew/ZtytZB0hFn3iqWO2p7jKcvypuZMWjbDBpVPnsYI7RIWmWncpCyWn3P4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=TYy2JbrR; arc=none smtp.client-ip=209.85.215.170
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="XL4oGTDa";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="F5YtDC6j"
-Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
-	by mailfout.stl.internal (Postfix) with ESMTP id 4014C1D001C5;
-	Thu, 19 Mar 2026 20:09:11 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-06.internal (MEProxy); Thu, 19 Mar 2026 20:09:11 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:date:date:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1773965351;
-	 x=1774051751; bh=Jdxs8DAMfvHPQiSovwBqpWv/pa4pnhOezyO1/ayissY=; b=
-	XL4oGTDamSr9iRduZCOnTLN0wrMmygWutMz02Jp/LBvRn8630mleRqEjyXx5iRPY
-	RSe92yxKd3HYj8OpKaK5Q5/O2LaXh3jpbxKf8T6Kml7cdF+gc3yjuW4kRmXOvTdC
-	h0/OHw7Bwff+BmJ79A+D7j3tLqXPj2a8use674sB+ficd2u5oSW+E65efmjvLhso
-	KSWOprUNB+/iKZ3iuEA/ZoFt8vXNRr4SQcWZwuBg0Bal0XC3lIt7lsPoG2+DTNhu
-	y7OpPddG+8dA/JmA2gx63xA0Q5EXqPAwC3NRIEabDW2R4QQtaDRrVk0JyEXYrLku
-	beiXEy/uswO29KY1CqjLPw==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:date:date:feedback-id:feedback-id:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm1; t=1773965351; x=1774051751; bh=J
-	dxs8DAMfvHPQiSovwBqpWv/pa4pnhOezyO1/ayissY=; b=F5YtDC6j4UhbfoJlb
-	3+M5VbO6mEvj9c+M327HQM0NlKtPFl2uxUZEjjjU27P74rW62Y/3ovMbT8mqZqyK
-	SE63LOePdvT1v7+dx4xGk9cytwJuQltDThcnWXpwhMXNsG18ATF6/6YtJf37U38c
-	7kFV/fCXBbBBzYqq+mK4YbjiCzRREysW4HmHARxad7ExCaGk56G7cf1jnB03d/j/
-	9MnJpYFH2plDSdXpHZnuQaXv7uq4EIuGmKC2NG1qC9hbuUC6NuXLdJaX9Tx82wnx
-	iVmODW2ZwxAKopzM+IDx0neFI761kE/Hl//N4mQdi13lTlbP5bHLd025qrrJFJID
-	zLwdg==
-X-ME-Sender: <xms:JpC8aSJfzh4LYBr86S_Wfn8d2DINEhCW0SkOVptkW8L-Em2h8jQn_A>
-    <xme:JpC8aTd9nJoSa31nhAjCOR4e34l0NOAHwhiGd2fLPVOUF-ST5IKJPJ10uc7OJbYfw
-    xJPKcEO2XIw5J2MflQGCbQKiDlut2n9oN-P-bUmmqTPyjRe>
-X-ME-Received: <xmr:JpC8aZ-JSvQNcu1xZOx2VkkXRCsC3GyOI8afrc3w2rt8n3NnqXu1AXy4eafAa-gQlXrL_hnceoGyX3URQVKNHCrXc6UK5qZDiv8N4kGKp8RO>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgdeftdekgeduucetufdoteggodetrf
-    dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
-    rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
-    gurhephffvvefufffkofgjfhhrggfgsedtkeertdertddtnecuhfhrohhmpefpvghilheu
-    rhhofihnuceonhgvihhlsgesohifnhhmrghilhdrnhgvtheqnecuggftrfgrthhtvghrnh
-    epveevkeffudeuvefhieeghffgudektdelkeejiedtjedugfeukedvkeffvdefvddunecu
-    vehluhhsthgvrhfuihiivgeptdenucfrrghrrghmpehmrghilhhfrhhomhepnhgvihhlsg
-    esohifnhhmrghilhdrnhgvthdpnhgspghrtghpthhtohepiedpmhhouggvpehsmhhtphho
-    uhhtpdhrtghpthhtoheplhhinhhugidqfhhsuggvvhgvlhesvhhgvghrrdhkvghrnhgvlh
-    drohhrghdprhgtphhtthhopehlihhnuhigqdgvgihtgeesvhhgvghrrdhkvghrnhgvlhdr
-    ohhrghdprhgtphhtthhopehjrggtkhesshhushgvrdgtiidprhgtphhtthhopehthihtsh
-    hosehmihhtrdgvughupdhrtghpthhtohephhgrrhhshhgrughshhhirhifrggukhgrrhes
-    ghhmrghilhdrtghomhdprhgtphhtthhopegrughilhhgvghrrdhkvghrnhgvlhesughilh
-    hgvghrrdgtrg
-X-ME-Proxy: <xmx:JpC8aYqRJUspExEoUUJ_gGjYgkInyPa6u0jNo-wGNh6bblYihqogEA>
-    <xmx:JpC8aWBqAaVkXwVO7WYjUBK4c_mne51U13Y0g68iaCoXwSeKxPpHJw>
-    <xmx:JpC8aSyPetbeyd80Ku_2HH6rsR09duHMklzN8uDEnJl1t0c4qT8MMw>
-    <xmx:JpC8ab1ZpH7NWPGjCP0-qxwfP77y2V9ktdlooGIy6rq9kawVIPrIhg>
-    <xmx:J5C8aSj3Zr7xVhS0KQgblOISoCFzg2QFCG3pKLREQ8WI1FuEr-_wqrL_>
-Feedback-ID: i9d664b8f:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Thu,
- 19 Mar 2026 20:09:08 -0400 (EDT)
-From: NeilBrown <neilb@ownmail.net>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.cz>,
-	Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Cc: linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-Subject: [PATCH v2 3/3] ext4: move dcache manipulation out of __ext4_link()
-Date: Fri, 20 Mar 2026 11:03:18 +1100
-Message-ID: <20260320000838.3797494-4-neilb@ownmail.net>
-X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
-In-Reply-To: <20260320000838.3797494-1-neilb@ownmail.net>
-References: <20260320000838.3797494-1-neilb@ownmail.net>
-Reply-To: NeilBrown <neil@brown.name>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TYy2JbrR"
+Received: by mail-pg1-f170.google.com with SMTP id 41be03b00d2f7-c73fbdd9b53so530124a12.3
+        for <linux-ext4@vger.kernel.org>; Thu, 19 Mar 2026 19:04:16 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1773972255; x=1774577055; darn=vger.kernel.org;
+        h=references:message-id:date:in-reply-to:subject:cc:to:from:from:to
+         :cc:subject:date:message-id:reply-to;
+        bh=DHV98jkPPJadyUUgPILk+xa8pW0vORXFLXmtPXYqpRw=;
+        b=TYy2JbrRAyRGLIuLOc8e+anbMYugfNI9wkLH6pwTrFF+47VUkPHU3HaHNlg+FqAzRs
+         3K4/uanC0BuhByawLQ2AwNAUlIswjHD0zPD6OCYq9+khIOyK/CQelhahLdfrJ6FQXAXS
+         3my26vAy9mFztHVPsnz9OlieoxzP2lkTsfJSNZQhvU/DH8ocazQdqSmK1ycEZRWS+qj0
+         GBiREN9TYGWTsb3gDAPHymDyCXuYmKvfgX9Ud54JRhxc0R3yu5/L4r2YMoYeG7XahQzE
+         3JaS/12LRIph3Qp/eY60F2tzfR2Bkn3wSUpQk/OOR+fpq/v5fzYzh2rAjDIr+jk8H6kX
+         Toiw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1773972255; x=1774577055;
+        h=references:message-id:date:in-reply-to:subject:cc:to:from:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=DHV98jkPPJadyUUgPILk+xa8pW0vORXFLXmtPXYqpRw=;
+        b=lBa68QaCz7CHPwIDmK8udO4GdmRJlH5J5ktksqmaLrNy/nNxlRdVUU4sw9TfEOgPj0
+         qc0UtXHrKebb//178RhcjRhXVy6xIsFwIeBwoNr14Dmu6RinyJa3tc/7U+PsUtyGpZue
+         7fEERZgss/cp+txkgLFw0+6kkFKFd6uvnzYsB/ThV7yHEPrvSOYa3ed+vVcoDih5bXfY
+         TNvNLXwMEQm7nDe/PJ/KAWw4aXpTAxhZPCUN5a8buFCjGUqc3/OEQ0BjNXy1q/NWmyvF
+         ADCkwP+tnHgL2b4KHXIghWB3i1cWKRq8cW/jKorC/n4a6EwAJsVv0Zw7JxBP5kKeABdp
+         KS8w==
+X-Forwarded-Encrypted: i=1; AJvYcCVDvl0YN4a9LrZTVvYqdM8A2QkpuynKXeLV9NSkZadXU2MIQu/yVJ7UECdPMUl6rVlX03GgV2wbnFiJ@vger.kernel.org
+X-Gm-Message-State: AOJu0YzGek9FReClA7BsqRuMmM20wQ+D/S/JgGBJSccQ1UfHWD3cBbbp
+	+vnMaH+vOX50IvWQzu2cvOkOgak5Q03ChthHO2S7MVssylGowhJg+NZXjyIuEQ+S
+X-Gm-Gg: ATEYQzzvSG+gxd48qjdd7H21dlvpahaV6XVMvj0cn8yRZfPSTRymf8EAM5dR/bZsjNM
+	7/62FrDU+NuGyXO45ERGPcQyJSOUEDbmO1NICTWog1IUIljNfWLkoiE8ighsIG68Vx3VDX6LF5X
+	dJiWPaK4PeaKhrZQnzc4iQk+JYUhgcnuMZ1Zlclo922X6orT/w8JI5RdalqCzjw515wgDzHj4B5
+	v7GUUH0KDjWVe0LmUbfaWCVH/IfPcnGsegexDxlbjjP87aXdqHfvghBm9IaAN4BobMDRhTyL+z4
+	tbBL89SJhzmFPGj70aJKxC1np3mA57+FOEAGK4ML9XVk8/vQcO0Vb6wKb7ITMOslPMIlWPa42Ws
+	FYX7Jb2kVQdY/WS1Xo2BNutIibuvUTRh61AXNAKtlq6uCviSLt1W1LR2tJ3NVX9Qf6Gq7oAS2oZ
+	QKdR7exUKjJBWtuksor0RamA==
+X-Received: by 2002:a17:90b:4b85:b0:355:35b0:8b78 with SMTP id 98e67ed59e1d1-35bd2d105efmr872355a91.27.1773972255362;
+        Thu, 19 Mar 2026 19:04:15 -0700 (PDT)
+Received: from pve-server ([49.205.216.49])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-35bd24f1b9csm305196a91.0.2026.03.19.19.04.12
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 19 Mar 2026 19:04:14 -0700 (PDT)
+From: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+To: Ye Bin <yebin@huaweicloud.com>, tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+Cc: jack@suse.cz, Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Subject: Re: [PATCH v4 3/5] ext4: fix the error handling process in extents_kunit_init).
+In-Reply-To: <20260319125434.333117-4-yebin@huaweicloud.com>
+Date: Fri, 20 Mar 2026 07:26:08 +0530
+Message-ID: <ldfnxo07.ritesh.list@gmail.com>
+References: <20260319125434.333117-1-yebin@huaweicloud.com> <20260319125434.333117-4-yebin@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-From: NeilBrown <neil@brown.name>
+Ye Bin <yebin@huaweicloud.com> writes:
 
-__ext4_link() has two callers.
+> From: Ye Bin <yebin10@huawei.com>
+>
+> The error processing in extents_kunit_init() is improper, causing
+> resource leakage.
+> Reconstruct the error handling process to prevent potential resource
+> leaks
+>
+> Fixes: cb1e0c1d1fad ("ext4: kunit tests for extent splitting and conversion")
+> Signed-off-by: Ye Bin <yebin10@huawei.com>
+> Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+> Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+> ---
+>  fs/ext4/extents-test.c | 43 ++++++++++++++++++++++++++++++------------
+>  1 file changed, 31 insertions(+), 12 deletions(-)
+>
+> diff --git a/fs/ext4/extents-test.c b/fs/ext4/extents-test.c
+> index 3d4663d99eb1..4ce3f81f6409 100644
+> --- a/fs/ext4/extents-test.c
+> +++ b/fs/ext4/extents-test.c
+> @@ -225,33 +225,37 @@ static int extents_kunit_init(struct kunit *test)
+>  		(struct kunit_ext_test_param *)(test->param_value);
+>  	int err;
+>  
+> -	sb = sget(&ext_fs_type, NULL, ext_set, 0, NULL);
+> -	if (IS_ERR(sb))
+> -		return PTR_ERR(sb);
+> -
+> -	sb->s_blocksize = 4096;
+> -	sb->s_blocksize_bits = 12;
+> -
+>  	sbi = kzalloc_obj(struct ext4_sb_info);
+>  	if (sbi == NULL)
+>  		return -ENOMEM;
+>  
+> +	sb = sget(&ext_fs_type, NULL, ext_set, 0, NULL);
+> +	if (IS_ERR(sb)) {
+> +		kfree(sbi);
+> +		return PTR_ERR(sb);
+> +	}
+> +
+>  	sbi->s_sb = sb;
+>  	sb->s_fs_info = sbi;
+>  
+> +	sb->s_blocksize = 4096;
+> +	sb->s_blocksize_bits = 12;
+> +
+>  	if (!param || !param->disable_zeroout)
+>  		sbi->s_extent_max_zeroout_kb = 32;
+>  
+>  	/* setup the mock inode */
+>  	k_ctx.k_ei = kzalloc_obj(struct ext4_inode_info);
+> -	if (k_ctx.k_ei == NULL)
+> -		return -ENOMEM;
+> +	if (k_ctx.k_ei == NULL) {
+> +		err = -ENOMEM;
+> +		goto out_deactivate;
+> +	}
+>  	ei = k_ctx.k_ei;
+>  	inode = &ei->vfs_inode;
+>  
+>  	err = ext4_es_register_shrinker(sbi);
+>  	if (err)
+> -		return err;
+> +		goto out_deactivate;
 
-- ext4_link() calls it during normal handling of the link() system
-  call or similar
-- ext4_fc_replay_link_internal() calls it when replaying the journal
-  at mount time.
+Even though the patch looks ok, but still wanted to check if ... 
 
-The former needs changes to dcache - instantiating the dentry to the
-inode on success.  The latter doesn't need or want any dcache
-manipulation.
+Do you think we can move ext4_es_register_shrinker() before setting up
+the mock inode and on error we simply return err?
+That way, there won't be any ambiguity in the error handling for calling
+ext4_es_unregister_shrinker()?
 
-So move the manipulation out of __ext4_link() and do it in ext4_link()
-only.
+>  
+>  	ext4_es_init_tree(&ei->i_es_tree);
+>  	rwlock_init(&ei->i_es_lock);
+> @@ -267,8 +271,10 @@ static int extents_kunit_init(struct kunit *test)
+>  	inode->i_sb = sb;
+>  
+>  	k_ctx.k_data = kzalloc(EXT_DATA_LEN * 4096, GFP_KERNEL);
+> -	if (k_ctx.k_data == NULL)
+> -		return -ENOMEM;
+> +	if (k_ctx.k_data == NULL) {
+> +		err = -ENOMEM;
+> +		goto out_deactivate;
+> +	}
+>  
+>  	/*
+>  	 * set the data area to a junk value
+> @@ -313,6 +319,19 @@ static int extents_kunit_init(struct kunit *test)
+>  	up_write(&sb->s_umount);
+>  
+>  	return 0;
+> +
+> +out_deactivate:
+> +	kfree(k_ctx.k_ei);
+> +	k_ctx.k_ei = NULL;
+> +
+> +	kfree(k_ctx.k_data);
+> +	k_ctx.k_data = NULL;
+> +
+> +	ext4_es_unregister_shrinker(sbi);
 
-This requires:
- - passing the qname from the dentry explicitly to __ext4_link.
-   The parent dir is already passed.  The dentry is still passed
-   in the ext4_link() case purely for use by ext4_fc_track_link().
- - passing the inode separately to ext4_fc_track_link() as the
-   dentry will not be instantiated yet.
- - using __ext4_add_entry() in ext4_link, which doesn't need a dentry.
- - moving ihold(), d_instantiate(), drop_nlink() and iput() calls out
-   of __ext4_link() into ext4_link().
-
-Note that ext4_inc_count() and drop_nlink() remain in __ext4_link()
-as both callers need them and they are not related to the dentry.
-
-This substantially simplifies ext4_fc_replay_link_internal(), and
-removes a use of d_alloc() which, it is planned, will be removed.
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: NeilBrown <neil@brown.name>
----
- fs/ext4/ext4.h        |  5 +++--
- fs/ext4/fast_commit.c | 32 ++++----------------------------
- fs/ext4/namei.c       | 19 +++++++++++--------
- 3 files changed, 18 insertions(+), 38 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 293f698b7042..e757e9cf9728 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2974,7 +2974,8 @@ void __ext4_fc_track_unlink(handle_t *handle, struct inode *inode,
- void __ext4_fc_track_link(handle_t *handle, struct inode *inode,
- 	struct dentry *dentry);
- void ext4_fc_track_unlink(handle_t *handle, struct dentry *dentry);
--void ext4_fc_track_link(handle_t *handle, struct dentry *dentry);
-+void ext4_fc_track_link(handle_t *handle, struct inode *inode,
-+			struct dentry *dentry);
- void __ext4_fc_track_create(handle_t *handle, struct inode *inode,
- 			    struct dentry *dentry);
- void ext4_fc_track_create(handle_t *handle, struct dentry *dentry);
-@@ -3719,7 +3720,7 @@ extern int ext4_handle_dirty_dirblock(handle_t *handle, struct inode *inode,
- extern int __ext4_unlink(struct inode *dir, const struct qstr *d_name,
- 			 struct inode *inode, struct dentry *dentry);
- extern int __ext4_link(struct inode *dir, struct inode *inode,
--		       struct dentry *dentry);
-+		       const struct qstr *d_name, struct dentry *dentry);
- 
- #define S_SHIFT 12
- static const unsigned char ext4_type_by_mode[(S_IFMT >> S_SHIFT) + 1] = {
-diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 3ee302b73f45..175dda11f377 100644
---- a/fs/ext4/fast_commit.c
-+++ b/fs/ext4/fast_commit.c
-@@ -497,10 +497,9 @@ void __ext4_fc_track_link(handle_t *handle,
- 	trace_ext4_fc_track_link(handle, inode, dentry, ret);
- }
- 
--void ext4_fc_track_link(handle_t *handle, struct dentry *dentry)
-+void ext4_fc_track_link(handle_t *handle, struct inode *inode,
-+			struct dentry *dentry)
- {
--	struct inode *inode = d_inode(dentry);
--
- 	if (ext4_fc_eligible(inode->i_sb))
- 		__ext4_fc_track_link(handle, inode, dentry);
- }
-@@ -1431,7 +1430,6 @@ static int ext4_fc_replay_link_internal(struct super_block *sb,
- 				struct inode *inode)
- {
- 	struct inode *dir = NULL;
--	struct dentry *dentry_dir = NULL, *dentry_inode = NULL;
- 	struct qstr qstr_dname = QSTR_INIT(darg->dname, darg->dname_len);
- 	int ret = 0;
- 
-@@ -1442,21 +1440,7 @@ static int ext4_fc_replay_link_internal(struct super_block *sb,
- 		goto out;
- 	}
- 
--	dentry_dir = d_obtain_alias(dir);
--	if (IS_ERR(dentry_dir)) {
--		ext4_debug("Failed to obtain dentry");
--		dentry_dir = NULL;
--		goto out;
--	}
--
--	dentry_inode = d_alloc(dentry_dir, &qstr_dname);
--	if (!dentry_inode) {
--		ext4_debug("Inode dentry not created.");
--		ret = -ENOMEM;
--		goto out;
--	}
--
--	ret = __ext4_link(dir, inode, dentry_inode);
-+	ret = __ext4_link(dir, inode, &qstr_dname, NULL);
- 	/*
- 	 * It's possible that link already existed since data blocks
- 	 * for the dir in question got persisted before we crashed OR
-@@ -1470,16 +1454,8 @@ static int ext4_fc_replay_link_internal(struct super_block *sb,
- 
- 	ret = 0;
- out:
--	if (dentry_dir) {
--		d_drop(dentry_dir);
--		dput(dentry_dir);
--	} else if (dir) {
-+	if (dir)
- 		iput(dir);
--	}
--	if (dentry_inode) {
--		d_drop(dentry_inode);
--		dput(dentry_inode);
--	}
- 
- 	return ret;
- }
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 768036a109d7..20ec5674e64b 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -3452,7 +3452,8 @@ static int ext4_symlink(struct mnt_idmap *idmap, struct inode *dir,
- 	return err;
- }
- 
--int __ext4_link(struct inode *dir, struct inode *inode, struct dentry *dentry)
-+int __ext4_link(struct inode *dir, struct inode *inode,
-+		const struct qstr *d_name, struct dentry *dentry)
- {
- 	handle_t *handle;
- 	int err, retries = 0;
-@@ -3468,9 +3469,8 @@ int __ext4_link(struct inode *dir, struct inode *inode, struct dentry *dentry)
- 
- 	inode_set_ctime_current(inode);
- 	ext4_inc_count(inode);
--	ihold(inode);
- 
--	err = ext4_add_entry(handle, dentry, inode);
-+	err = __ext4_add_entry(handle, dir, d_name, inode);
- 	if (!err) {
- 		err = ext4_mark_inode_dirty(handle, inode);
- 		/* this can happen only for tmpfile being
-@@ -3478,11 +3478,10 @@ int __ext4_link(struct inode *dir, struct inode *inode, struct dentry *dentry)
- 		 */
- 		if (inode->i_nlink == 1)
- 			ext4_orphan_del(handle, inode);
--		d_instantiate(dentry, inode);
--		ext4_fc_track_link(handle, dentry);
-+		if (dentry)
-+			ext4_fc_track_link(handle, inode, dentry);
- 	} else {
- 		drop_nlink(inode);
--		iput(inode);
- 	}
- 	ext4_journal_stop(handle);
- 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
-@@ -3511,9 +3510,13 @@ static int ext4_link(struct dentry *old_dentry,
- 	err = dquot_initialize(dir);
- 	if (err)
- 		return err;
--	return __ext4_link(dir, inode, dentry);
-+	err = __ext4_link(dir, inode, &dentry->d_name, dentry);
-+	if (!err) {
-+		ihold(inode);
-+		d_instantiate(dentry, inode);
-+	}
-+	return err;
- }
--
- /*
-  * Try to find buffer head where contains the parent block.
-  * It should be the inode block if it is inlined or the 1st block
--- 
-2.50.0.107.gf914562f5916.dirty
-
+-ritesh
