@@ -1,87 +1,44 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A96DD3C1960
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Mar 2026 16:42:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4469F3AF644;
+	Mon, 23 Mar 2026 16:44:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774284142; cv=none; b=QTTgzGcZeCnyF3b1tE8BWUAxWm8ftT4ZKTQigxoRbYrPccW8PYHUUYd03EhQfbO75Fh5egvSG3VnI3jjb8MDmq47geOajPDj+JuWhk0Omjx+2cMtvK5owJLywvmla/USFMfK47aXR0MPlY+Sz+O+JzcO1ZY+ZmJlz/ATYOZSd8A=
+	t=1774284287; cv=none; b=r53WQqhnzBuJAwwlcDYBHbUotR4OUgPyu/9SxiCIjjgDWjDwvxV7rhhcai1bKWpiFtWJ62kEFbzHCujr8bk86gYi2WqifJ+Q5E97UH/OGSv/+PNs+ZiQtzxuxNCb8wJu9e9udBAjIWnxLqLAEMFuowJ5ope5g9Ix4iMjhftJK7g=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774284142; c=relaxed/simple;
-	bh=bd9a3xL6kPu5lComBXroA3vmLQUt+2d0Oq8i6IWSgIU=;
+	s=arc-20240116; t=1774284287; c=relaxed/simple;
+	bh=1+A9z4oo4a20DVlIgkoPybZ1mZVXGZUNa9GfgN9BBcE=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Q9cFR/spiYEYn8gkekj2D1xRg9llZSmQ2N/rjtoCTnYRHyAfLLDz8GGz6wtGZuLJcE3B45D3RKfahWEi4kPyXWpKrmd/nlRJbdiIXebknIEPfLLdhFnqYjy3FByxKjOiCk+uQxWx1e3Tiog0WN10vMNgZ+Od0IcupGJZHh3LNaw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=CISImGyh; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Xs5+KVs7; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=KfUnIH7i; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=CgovIDHJ; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	 Content-Type:Content-Disposition:In-Reply-To; b=WlV6gExUuOYbDHEUFyV9XOuEYYB7aUrsjXSp5sTuxtxI25pV9zg07f8Ou60FjqG2G8o504ehsNx/k+wRh9PUghYz5EpvTF7DtDCIAhJS8TnWxhty+eTVk2vR2Pt/a1FJA36GTxwkLBZTYX1f3K7lMM21NHK39xfQMvbATjnwVeo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=sQGZL9Ti; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="CISImGyh";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Xs5+KVs7";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="KfUnIH7i";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="CgovIDHJ"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id EE0E54D502;
-	Mon, 23 Mar 2026 16:42:18 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1774284139; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=j2AVgaHBuYdVkNFUO+hbSlij9obyiYWh3940QmFvhag=;
-	b=CISImGyhCvgpnzXaNwOvXaT1ZaVXzuLmsTqCV7sCEReqziubYciJAbtCCYKqLQWlG36NoZ
-	y81S/YK+iawJAef7+NXP59K4LOs7Uuaji7KWXtPqiAdOVoCXzGG2Na98RmNyZBVa9kxjgj
-	CTgIMBg6XSPuMsuXeYTlea5zIL7FurY=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1774284139;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=j2AVgaHBuYdVkNFUO+hbSlij9obyiYWh3940QmFvhag=;
-	b=Xs5+KVs74LVz9pjvHEKrCQohBFqDKt+Hbq9m3INSNgjpHJQDl2Fw2s89bt2HumkjaR8Isq
-	bN67IzDAHNco3ICw==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1774284138; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=j2AVgaHBuYdVkNFUO+hbSlij9obyiYWh3940QmFvhag=;
-	b=KfUnIH7i4ppGH+0UmPKtmulJm9sgYCPT7vpRVa/Feq8Xr4tCyqE5mFdGmA0YgMAvd70qYZ
-	KMuzZi8zM5YRQnnnFOGHPoPK7IcqLGGbs57kX9aEOHAkXAlaPJs1Yd5K4lm7KslZKUo6Z3
-	A0Ld01OaXBKvMg94dHxJplzulequFj0=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1774284138;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=j2AVgaHBuYdVkNFUO+hbSlij9obyiYWh3940QmFvhag=;
-	b=CgovIDHJ+/xUWyKVHrAkdl8DMGHxMCbp2hO4JDtX/03EIGcUXjk7wWz1kSao1MLv2yqwOZ
-	RG1UWsrzdMWZDkAg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E01324398E;
-	Mon, 23 Mar 2026 16:42:18 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id RLWnNmptwWkNLQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 23 Mar 2026 16:42:18 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 9AB41A0B32; Mon, 23 Mar 2026 17:42:14 +0100 (CET)
-Date: Mon, 23 Mar 2026 17:42:14 +0100
-From: Jan Kara <jack@suse.cz>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz, 
-	ojaswin@linux.ibm.com, ritesh.list@gmail.com, libaokun@linux.alibaba.com, 
-	yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com, yukuai@fnnas.com
-Subject: Re: [PATCH 03/10] ext4: rename and extend ext4_block_truncate_page()
-Message-ID: <relslspmbtx4bqn6zxk5xcw4jcdsgg4rl2nwzybxhq3ulmxtam@owp3lpoqpfwa>
-References: <20260310014101.4140698-1-yi.zhang@huaweicloud.com>
- <20260310014101.4140698-4-yi.zhang@huaweicloud.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="sQGZL9Ti"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DC788C2BC9E;
+	Mon, 23 Mar 2026 16:44:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1774284287;
+	bh=1+A9z4oo4a20DVlIgkoPybZ1mZVXGZUNa9GfgN9BBcE=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=sQGZL9TiRdrb/TBLkiNI/UjRydjZLNKysGdxkZ2nRGm6STTztk16h/O1g65zHBe/W
+	 GEchgzv+k8u6cdutNdg/lL/4H5aL8uIfhBYqfp48qB+5iVesnqqwimaJc5oADL5njL
+	 w1ajVIWg1Mka+H0F/qY01sgmWpJE0u78gGEGgtPrcCA3NaGZqsSBsV3EZSwgSeQ/CQ
+	 Q5UEWVnKsQnEUJ8HxvXlfVUrYhROtgXNKdPShdjLp2y96P2PMRE8wjpM2cLWYnrdPz
+	 Q/PT10W6eRzhr5Nf8T20+AJ6nRfIVTVYQcJGQe/vveMGrjGSnfg8mtYHhGrCg544L/
+	 rCEci3+X0PTtw==
+Date: Mon, 23 Mar 2026 09:44:46 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Theodore Tso <tytso@mit.edu>
+Cc: Anand Jain <asj@kernel.org>, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org,
+	hch@infradead.org
+Subject: Re: [PATCH v2 3/3] ext4: derive f_fsid from block device to avoid
+ collisions
+Message-ID: <20260323164446.GB6212@frogsfrogsfrogs>
+References: <cover.1774092915.git.asj@kernel.org>
+ <33e8eb64c304a4d42b60f608c26497bf9a2e9e19.1774092915.git.asj@kernel.org>
+ <20260323041624.GA11453@mac.lan>
+ <20260323152943.GH6223@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -90,197 +47,62 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260310014101.4140698-4-yi.zhang@huaweicloud.com>
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	URIBL_BLOCKED(0.00)[imap1.dmz-prg2.suse.org:helo,suse.cz:email,suse.com:email,huawei.com:email];
-	ARC_NA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	TO_DN_SOME(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[14];
-	TAGGED_RCPT(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,linux.ibm.com,gmail.com,linux.alibaba.com,huawei.com,fnnas.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email]
-X-Spam-Flag: NO
-X-Spam-Score: -2.30
-X-Spam-Level: 
+In-Reply-To: <20260323152943.GH6223@frogsfrogsfrogs>
 
-On Tue 10-03-26 09:40:54, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
+On Mon, Mar 23, 2026 at 08:29:43AM -0700, Darrick J. Wong wrote:
+> On Sun, Mar 22, 2026 at 11:16:24PM -0500, Theodore Tso wrote:
+> > On Sat, Mar 21, 2026 at 07:55:19PM +0800, Anand Jain wrote:
+> > > statfs() currently reports f_fsid derived from the on-disk UUID.
+> > > Cloned block devices share the same UUID, so distinct ext4 instances
+> > > can return identical f_fsid values. This leads to collisions in
+> > > fanotify.
+> > > 
+> > > Encode sb->s_dev into f_fsid instead of using the superblock UUID.
+> > > This provides a per-device identifier and avoids conflicts when
+> > > filesystem is cloned, matching the behavior with xfs.
+> > 
+> > As I observed in [1] this leads to collisions when for removable block
+> > devices which can be used to mount different file systems.
+> > 
+> > [1] https://lore.kernel.org/all/20260322203151.GA98947@mac.lan/
+> > 
+> > > Place this change behind the new mount option "-o nouuid" for ABI
+> > > compatibility.
+> > 
+> > I *really* hate this mount option.  It's not at all obvious what it
+> > means for a system administrator who hasn't had the context of reading
+> > the e-mail discussion on this subject.
 > 
-> Rename ext4_block_truncate_page() to ext4_block_zero_eof() and extend
-> its signature to accept an explicit 'end' offset instead of calculating
-> the block boundary. This helper function now can replace all cases
-> requiring zeroing of the partial EOF block, including the append
-> buffered write paths in ext4_*_write_end().
+> I don't love 'nouuid' either, because it means something completely
+> different in XFS.  'fsid_from_dev' or something would at least be
+> clearer about what it's doing...
 > 
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-
-Looks good. Feel free to add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  fs/ext4/ext4.h    |  2 ++
->  fs/ext4/extents.c |  4 ++--
->  fs/ext4/inode.c   | 43 +++++++++++++++++++++++--------------------
->  3 files changed, 27 insertions(+), 22 deletions(-)
+> > As I stated in [1], I think the f_fsid is a terrible interface that
+> > was promulgated by history, and future usage should be strongly
+> > discouraged, and the wise programmer won't use it because it has
+> > significant compatibility issues.
+> > 
+> > As such, my personal preference is that we not try to condition it on
+> > a mount option, which in all likelihood almost no one will use, and
+> > instead just change it so that we hash the file system's UUID and
+> > block device number together and use that for ext4's f_fsid.
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 293f698b7042..c62459ef9796 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -3099,6 +3099,8 @@ extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
->  extern int ext4_chunk_trans_extent(struct inode *inode, int nrblocks);
->  extern int ext4_meta_trans_blocks(struct inode *inode, int lblocks,
->  				  int pextents);
-> +extern int ext4_block_zero_eof(handle_t *handle, struct inode *inode,
-> +			       loff_t from, loff_t end);
->  extern int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
->  			     loff_t lstart, loff_t lend);
->  extern vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf);
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index ae3804f36535..a265070c1b79 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4625,8 +4625,8 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
->  						      inode_get_ctime(inode));
->  			if (epos > old_size) {
->  				pagecache_isize_extended(inode, old_size, epos);
-> -				ext4_zero_partial_blocks(handle, inode,
-> -						     old_size, epos - old_size);
-> +				ext4_block_zero_eof(handle, inode, old_size,
-> +						    epos);
->  			}
->  		}
->  		ret2 = ext4_mark_inode_dirty(handle, inode);
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index a737ce05e768..52c6a86ad9f9 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1458,7 +1458,7 @@ static int ext4_write_end(const struct kiocb *iocb,
->  
->  	if (old_size < pos && !verity) {
->  		pagecache_isize_extended(inode, old_size, pos);
-> -		ext4_zero_partial_blocks(handle, inode, old_size, pos - old_size);
-> +		ext4_block_zero_eof(handle, inode, old_size, pos);
->  	}
->  	/*
->  	 * Don't mark the inode dirty under folio lock. First, it unnecessarily
-> @@ -1576,7 +1576,7 @@ static int ext4_journalled_write_end(const struct kiocb *iocb,
->  
->  	if (old_size < pos && !verity) {
->  		pagecache_isize_extended(inode, old_size, pos);
-> -		ext4_zero_partial_blocks(handle, inode, old_size, pos - old_size);
-> +		ext4_block_zero_eof(handle, inode, old_size, pos);
->  	}
->  
->  	if (size_changed) {
-> @@ -3252,7 +3252,7 @@ static int ext4_da_do_write_end(struct address_space *mapping,
->  	if (IS_ERR(handle))
->  		return PTR_ERR(handle);
->  	if (zero_len)
-> -		ext4_zero_partial_blocks(handle, inode, old_size, zero_len);
-> +		ext4_block_zero_eof(handle, inode, old_size, pos);
->  	ext4_mark_inode_dirty(handle, inode);
->  	ext4_journal_stop(handle);
->  
-> @@ -4132,29 +4132,32 @@ static int ext4_block_zero_page_range(handle_t *handle,
->  }
->  
->  /*
-> - * ext4_block_truncate_page() zeroes out a mapping from file offset `from'
-> - * up to the end of the block which corresponds to `from'.
-> - * This required during truncate. We need to physically zero the tail end
-> - * of that block so it doesn't yield old data if the file is later grown.
-> - * Return the zeroed length on success.
-> + * Zero out a mapping from file offset 'from' up to the end of the block
-> + * which corresponds to 'from' or to the given 'end' inside this block.
-> + * This required during truncate up and performing append writes. We need
-> + * to physically zero the tail end of that block so it doesn't yield old
-> + * data if the file is grown. Return the zeroed length on success.
->   */
-> -static int ext4_block_truncate_page(handle_t *handle,
-> -		struct address_space *mapping, loff_t from)
-> +int ext4_block_zero_eof(handle_t *handle, struct inode *inode,
-> +			loff_t from, loff_t end)
->  {
-> -	unsigned length;
-> -	unsigned blocksize;
-> -	struct inode *inode = mapping->host;
-> +	unsigned int blocksize = i_blocksize(inode);
-> +	unsigned int offset;
-> +	loff_t length = end - from;
->  	bool did_zero = false;
->  	int err;
->  
-> +	offset = from & (blocksize - 1);
-> +	if (!offset || from >= end)
-> +		return 0;
->  	/* If we are processing an encrypted inode during orphan list handling */
->  	if (IS_ENCRYPTED(inode) && !fscrypt_has_encryption_key(inode))
->  		return 0;
->  
-> -	blocksize = i_blocksize(inode);
-> -	length = blocksize - (from & (blocksize - 1));
-> +	if (length > blocksize - offset)
-> +		length = blocksize - offset;
->  
-> -	err = ext4_block_zero_page_range(handle, mapping, from, length,
-> +	err = ext4_block_zero_page_range(handle, inode->i_mapping, from, length,
->  					 &did_zero);
->  	if (err)
->  		return err;
-> @@ -4508,7 +4511,6 @@ int ext4_truncate(struct inode *inode)
->  	unsigned int credits;
->  	int err = 0, err2;
->  	handle_t *handle;
-> -	struct address_space *mapping = inode->i_mapping;
->  
->  	/*
->  	 * There is a possibility that we're either freeing the inode
-> @@ -4551,8 +4553,9 @@ int ext4_truncate(struct inode *inode)
->  		goto out_trace;
->  	}
->  
-> +	/* Zero to the end of the block containing i_size */
->  	if (inode->i_size & (inode->i_sb->s_blocksize - 1))
-> -		ext4_block_truncate_page(handle, mapping, inode->i_size);
-> +		ext4_block_zero_eof(handle, inode, inode->i_size, LLONG_MAX);
->  
->  	/*
->  	 * We add the inode to the orphan list, so that if this
-> @@ -5911,8 +5914,8 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
->  				inode_set_mtime_to_ts(inode,
->  						      inode_set_ctime_current(inode));
->  				if (oldsize & (inode->i_sb->s_blocksize - 1))
-> -					ext4_block_truncate_page(handle,
-> -							inode->i_mapping, oldsize);
-> +					ext4_block_zero_eof(handle, inode,
-> +							    oldsize, LLONG_MAX);
->  			}
->  
->  			if (shrink)
-> -- 
-> 2.52.0
+> ...but why not just set fsid to some approximation of the dev_t like
+> XFS and be done with it?
 > 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> 	st->f_fsid = u64_to_fsid(huge_encode_dev(mp->m_ddev_targp->bt_dev))
+> 
+> There are a few other single-bdev filesystems that do this.
+
+/me reads the rest of both threads, realizes the answer is "because you
+can eject media, mount another media with the same fs, and bizarrely
+they produce the same fsid."
+
+I'll point out that for the filesystems that base fsid off of a block
+device, perhaps we should mix in the diskseq to prevent that problem?
+
+But then someone said the magic words "IMA and fanotify also use fsid"
+and /me backs away from yet another opportunity to argue about
+open-coded file handles from legacy Unix.
+
+--D
