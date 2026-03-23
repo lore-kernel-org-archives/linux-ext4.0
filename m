@@ -1,44 +1,88 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4469F3AF644;
-	Mon, 23 Mar 2026 16:44:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F13F73BED2A
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Mar 2026 16:48:48 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774284287; cv=none; b=r53WQqhnzBuJAwwlcDYBHbUotR4OUgPyu/9SxiCIjjgDWjDwvxV7rhhcai1bKWpiFtWJ62kEFbzHCujr8bk86gYi2WqifJ+Q5E97UH/OGSv/+PNs+ZiQtzxuxNCb8wJu9e9udBAjIWnxLqLAEMFuowJ5ope5g9Ix4iMjhftJK7g=
+	t=1774284530; cv=none; b=USuxksY6WA/V7NQLjyBelV7Uz55C3CUGDFGOEcyS8vSxQHSi78AF47yr6EFzJjtecXdsgctw9uFjLDPAZSDp0Tz3BCTgc5IVtJV75s1wka/T6TnLrscc5HKmrPIQH5l/TG1rzOgS/H4N3at1UyaV4wRQjICVuEq6SOzSuBMULlo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774284287; c=relaxed/simple;
-	bh=1+A9z4oo4a20DVlIgkoPybZ1mZVXGZUNa9GfgN9BBcE=;
+	s=arc-20240116; t=1774284530; c=relaxed/simple;
+	bh=4wchZFJ72UHmjR0msQD/1ZFoMcT/o5fLsDRmTeXT1A0=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=WlV6gExUuOYbDHEUFyV9XOuEYYB7aUrsjXSp5sTuxtxI25pV9zg07f8Ou60FjqG2G8o504ehsNx/k+wRh9PUghYz5EpvTF7DtDCIAhJS8TnWxhty+eTVk2vR2Pt/a1FJA36GTxwkLBZTYX1f3K7lMM21NHK39xfQMvbATjnwVeo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=sQGZL9Ti; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=Ui17n4PT+yjY4sgm3ffpJ2DrBnhNnUautenq8sa+FUIZ4qTAeHiekHIV7ArWMurokKyMxVjlKt2B98UBKagOJGaCimIlGijBzm/0ySljhypiyozaObZCBiVCZYyqXzpiGqUrDyw7k2lzlW6k2963pyIsiPxKoi+u6erZjjTY5Ks=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=L/IHAaZ8; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=NkVDLfQj; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=L/IHAaZ8; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=NkVDLfQj; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="sQGZL9Ti"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DC788C2BC9E;
-	Mon, 23 Mar 2026 16:44:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1774284287;
-	bh=1+A9z4oo4a20DVlIgkoPybZ1mZVXGZUNa9GfgN9BBcE=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=sQGZL9TiRdrb/TBLkiNI/UjRydjZLNKysGdxkZ2nRGm6STTztk16h/O1g65zHBe/W
-	 GEchgzv+k8u6cdutNdg/lL/4H5aL8uIfhBYqfp48qB+5iVesnqqwimaJc5oADL5njL
-	 w1ajVIWg1Mka+H0F/qY01sgmWpJE0u78gGEGgtPrcCA3NaGZqsSBsV3EZSwgSeQ/CQ
-	 Q5UEWVnKsQnEUJ8HxvXlfVUrYhROtgXNKdPShdjLp2y96P2PMRE8wjpM2cLWYnrdPz
-	 Q/PT10W6eRzhr5Nf8T20+AJ6nRfIVTVYQcJGQe/vveMGrjGSnfg8mtYHhGrCg544L/
-	 rCEci3+X0PTtw==
-Date: Mon, 23 Mar 2026 09:44:46 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: Theodore Tso <tytso@mit.edu>
-Cc: Anand Jain <asj@kernel.org>, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org,
-	hch@infradead.org
-Subject: Re: [PATCH v2 3/3] ext4: derive f_fsid from block device to avoid
- collisions
-Message-ID: <20260323164446.GB6212@frogsfrogsfrogs>
-References: <cover.1774092915.git.asj@kernel.org>
- <33e8eb64c304a4d42b60f608c26497bf9a2e9e19.1774092915.git.asj@kernel.org>
- <20260323041624.GA11453@mac.lan>
- <20260323152943.GH6223@frogsfrogsfrogs>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="L/IHAaZ8";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="NkVDLfQj";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="L/IHAaZ8";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="NkVDLfQj"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 5C3D95BF27;
+	Mon, 23 Mar 2026 16:48:47 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1774284527; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=KU0afoG+2MHCg++kvfYF7uoxXlBULjWJRWR1yIZqljs=;
+	b=L/IHAaZ8px/DyJP4r/B1pXA0vwWyrqTLk0Uew640LFDJ52z1Zq74zN+osDEcx5SaikcBWg
+	V1RRTQGbff+0OEJEgvG+dIO8+n9BL+ObbijUcBc3wdU50FtKjVJwaL0OVKOG73zRlmR6Sc
+	jIRLebKnUYKud1Xsqr5nMEnqx78Wkok=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1774284527;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=KU0afoG+2MHCg++kvfYF7uoxXlBULjWJRWR1yIZqljs=;
+	b=NkVDLfQjJNugJh8mTJB6YN4vtoXuBiPkFDingXvU1ToDdQp3TKr/Fqgw1T3iQFfnOWIyuq
+	72BBbsJr8YUrDpBg==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b="L/IHAaZ8";
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=NkVDLfQj
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1774284527; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=KU0afoG+2MHCg++kvfYF7uoxXlBULjWJRWR1yIZqljs=;
+	b=L/IHAaZ8px/DyJP4r/B1pXA0vwWyrqTLk0Uew640LFDJ52z1Zq74zN+osDEcx5SaikcBWg
+	V1RRTQGbff+0OEJEgvG+dIO8+n9BL+ObbijUcBc3wdU50FtKjVJwaL0OVKOG73zRlmR6Sc
+	jIRLebKnUYKud1Xsqr5nMEnqx78Wkok=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1774284527;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=KU0afoG+2MHCg++kvfYF7uoxXlBULjWJRWR1yIZqljs=;
+	b=NkVDLfQjJNugJh8mTJB6YN4vtoXuBiPkFDingXvU1ToDdQp3TKr/Fqgw1T3iQFfnOWIyuq
+	72BBbsJr8YUrDpBg==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 4E7DA43995;
+	Mon, 23 Mar 2026 16:48:47 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id 354kE+9uwWmANAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 23 Mar 2026 16:48:47 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 01430A0B32; Mon, 23 Mar 2026 17:48:38 +0100 (CET)
+Date: Mon, 23 Mar 2026 17:48:38 +0100
+From: Jan Kara <jack@suse.cz>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz, 
+	ojaswin@linux.ibm.com, ritesh.list@gmail.com, libaokun@linux.alibaba.com, 
+	yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com, yukuai@fnnas.com
+Subject: Re: [PATCH 04/10] ext4: factor out journalled block zeroing range
+Message-ID: <gvsj27lkqxs6xy7rdiyarw5ocjuvqrrn2knx5jo45eoc7tw6no@kow27zlgjy5r>
+References: <20260310014101.4140698-1-yi.zhang@huaweicloud.com>
+ <20260310014101.4140698-5-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -47,62 +91,85 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260323152943.GH6223@frogsfrogsfrogs>
+In-Reply-To: <20260310014101.4140698-5-yi.zhang@huaweicloud.com>
+X-Rspamd-Action: no action
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	URIBL_BLOCKED(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,huawei.com:email,suse.cz:dkim,suse.cz:email];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCPT_COUNT_TWELVE(0.00)[14];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,linux.ibm.com,gmail.com,linux.alibaba.com,huawei.com,fnnas.com];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns]
+X-Rspamd-Queue-Id: 5C3D95BF27
+X-Spam-Flag: NO
+X-Spam-Score: -2.51
+X-Spam-Level: 
 
-On Mon, Mar 23, 2026 at 08:29:43AM -0700, Darrick J. Wong wrote:
-> On Sun, Mar 22, 2026 at 11:16:24PM -0500, Theodore Tso wrote:
-> > On Sat, Mar 21, 2026 at 07:55:19PM +0800, Anand Jain wrote:
-> > > statfs() currently reports f_fsid derived from the on-disk UUID.
-> > > Cloned block devices share the same UUID, so distinct ext4 instances
-> > > can return identical f_fsid values. This leads to collisions in
-> > > fanotify.
-> > > 
-> > > Encode sb->s_dev into f_fsid instead of using the superblock UUID.
-> > > This provides a per-device identifier and avoids conflicts when
-> > > filesystem is cloned, matching the behavior with xfs.
-> > 
-> > As I observed in [1] this leads to collisions when for removable block
-> > devices which can be used to mount different file systems.
-> > 
-> > [1] https://lore.kernel.org/all/20260322203151.GA98947@mac.lan/
-> > 
-> > > Place this change behind the new mount option "-o nouuid" for ABI
-> > > compatibility.
-> > 
-> > I *really* hate this mount option.  It's not at all obvious what it
-> > means for a system administrator who hasn't had the context of reading
-> > the e-mail discussion on this subject.
+On Tue 10-03-26 09:40:55, Zhang Yi wrote:
+> From: Zhang Yi <yi.zhang@huawei.com>
 > 
-> I don't love 'nouuid' either, because it means something completely
-> different in XFS.  'fsid_from_dev' or something would at least be
-> clearer about what it's doing...
+> Refactor __ext4_block_zero_page_range() by separating the block zeroing
+> operations for ordered data mode and journal data mode into two distinct
+> functions:
 > 
-> > As I stated in [1], I think the f_fsid is a terrible interface that
-> > was promulgated by history, and future usage should be strongly
-> > discouraged, and the wise programmer won't use it because it has
-> > significant compatibility issues.
-> > 
-> > As such, my personal preference is that we not try to condition it on
-> > a mount option, which in all likelihood almost no one will use, and
-> > instead just change it so that we hash the file system's UUID and
-> > block device number together and use that for ext4's f_fsid.
+>   - ext4_block_do_zero_range(): handles non-journal data mode with
+>     ordered data support
+>   - ext4_block_journalled_zero_range(): handles journal data mode
 > 
-> ...but why not just set fsid to some approximation of the dev_t like
-> XFS and be done with it?
+> Also extract a common helper, ext4_block_get_zero_range(), to handle
+> buffer head and folio retrieval, along with the associated error
+> handling. This prepares for converting the partial block zero range to
+> the iomap infrastructure.
 > 
-> 	st->f_fsid = u64_to_fsid(huge_encode_dev(mp->m_ddev_targp->bt_dev))
-> 
-> There are a few other single-bdev filesystems that do this.
+> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
-/me reads the rest of both threads, realizes the answer is "because you
-can eject media, mount another media with the same fs, and bizarrely
-they produce the same fsid."
+Just one nit below. Otherwise feel free to add:
 
-I'll point out that for the filesystems that base fsid off of a block
-device, perhaps we should mix in the diskseq to prevent that problem?
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-But then someone said the magic words "IMA and fanotify also use fsid"
-and /me backs away from yet another opportunity to argue about
-open-coded file handles from legacy Unix.
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 52c6a86ad9f9..d63d455831b9 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4002,13 +4002,12 @@ void ext4_set_aops(struct inode *inode)
+>   * ext4_punch_hole, etc) which needs to be properly zeroed out. Otherwise a
+>   * racing writeback can come later and flush the stale pagecache to disk.
+>   */
+> -static int __ext4_block_zero_page_range(handle_t *handle,
+> -		struct address_space *mapping, loff_t from, loff_t length,
+> -		bool *did_zero)
+> +static struct buffer_head *ext4_block_get_zero_range(struct inode *inode,
+> +				      loff_t from, loff_t length)
 
---D
+I'd call this function ext4_load_tail_bh() and AFAICT the 'length' argument
+is unused so it can be dropped.
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
