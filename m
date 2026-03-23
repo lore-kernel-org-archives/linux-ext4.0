@@ -1,127 +1,90 @@
-Received: from smtpbg150.qq.com (smtpbg150.qq.com [18.132.163.193])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E975C220698;
-	Mon, 23 Mar 2026 01:58:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.132.163.193
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 02F6329B77E
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Mar 2026 04:17:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774231148; cv=none; b=Euh3lDf2AQHKYDkF6CXBj9G1uO3Qt+SyUfcl8M1b5juRPWMr1bFwYWjBYfKx1CM+sn2HbnoL8goGqIIHqMToGRwu2GNaGZ8E5IGdssDheNeNlzafTwOnomqCcCEKG2N8hn4CLoAd+rHhcM5thReANLJvrVBSgFpF9DtsaRohzLI=
+	t=1774239433; cv=none; b=CCU4jUmHlo9jVTFRZ9WXH5w1XEH97/rSKGehEUmDGrKxDC+8lj/Oz+S/4/n4z05ZiEZFPZbRsD97gvdPj2ByBiqa35YVlpMdlVdlrqaqQNrB3LplEcBbm9z6BrCFeFnKIg5OFRQjcFk0HanRzG8Y0ego/I9KyRMfiHe7WSZJmAQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774231148; c=relaxed/simple;
-	bh=mqsWQIny/xtNJkDzyP34DuNr/8tEIVM+sUUaF8Pk6j8=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=g+2hon3IBd4SGyixBGZO2jXvrqkVImsRCXivRj0ST0yYohKu4gAn4ATjURv/rDQROoBZcTMkPZ1VA1yxg0h0oqalvIgBi+R5oEzjOwujb3Jn4kiwGgWd3vpGiisBSdz9vFBLXHgT6DNjNdJSTn/KEH0Xw/M5I3FfTH2T7UzT+Ug=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com; spf=pass smtp.mailfrom=uniontech.com; dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b=S3bBQPX5; arc=none smtp.client-ip=18.132.163.193
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uniontech.com
+	s=arc-20240116; t=1774239433; c=relaxed/simple;
+	bh=zRqey/N6H/3SBDXw1/PahbKVSm4cZKMQ+1uV2IdBlJU=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=WiFmjum3NRkF/+mOsQ8n6rfKG0c7P3Moqu4v1OsXsSwKgB7qc6prVyjbTzc9P47fjK8vfW8e3tncWEUcNCavHZKazP0zKPZ9swqYIGRkvwZHDYfKli6NYFHwDdc2c7nPps79OT5LrefKdc7VK6z4Yb3iLe0Y34le3cSsf4pcV2o=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=j2JYJKKH; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b="S3bBQPX5"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=uniontech.com;
-	s=onoh2408; t=1774231086;
-	bh=U6CfW020VaiCPJpEFzx5LZvJi0pfiqwCtRTy25AdTTg=;
-	h=From:To:Subject:Date:Message-ID:MIME-Version;
-	b=S3bBQPX5ymw+RqT1ue8TMrmtolKDX80H+u121Rpf8b3hdX9lJDZD2csigcC0ns0kC
-	 ya7Kv81gBpNRutrno1cjcdahQ3YbbfCdqd9Y9zHRalLXk4UjUhg+3Oolt5IlRSfek7
-	 OS1ghl0N98Q8yTDWLPiOJjlhWoXe+XSc2/t6TLXc=
-X-QQ-mid: esmtpgz14t1774231081t9973f5df
-X-QQ-Originating-IP: R8HxEBsUaKMU7NU7hpM9fSc9EgbyRv2GSZHwRmuhTSk=
-Received: from hongao-PC ( [113.57.152.160])
-	by bizesmtp.qq.com (ESMTP) with 
-	id ; Mon, 23 Mar 2026 09:57:55 +0800 (CST)
-X-QQ-SSF: 0000000000000000000000000000000
-X-QQ-GoodBg: 1
-X-BIZMAIL-ID: 16343628199778094862
-EX-QQ-RecipientCnt: 9
-From: hongao <hongao@uniontech.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	jack@suse.cz,
-	yi.zhang@huawei.com,
-	ojaswin@linux.ibm.com
-Cc: linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	hongao <hongao@uniontech.com>,
-	syzbot+1ffa5d865557e51cb604@syzkaller.appspotmail.com
-Subject: [PATCH] ext4: skip split extent recovery on corruption
-Date: Mon, 23 Mar 2026 09:57:52 +0800
-Message-ID: <FA074540F4E30F27+20260323015752.60064-1-hongao@uniontech.com>
-X-Mailer: git-send-email 2.51.0
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="j2JYJKKH"
+Received: from macsyma.thunk.org (c-73-9-28-129.hsd1.il.comcast.net [73.9.28.129])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62N4GPhx029184
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 23 Mar 2026 00:16:27 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1774239388; bh=nic3aVwcVeurbIvUZF6NESYjPiZr7nwKGGsmRTdtT2o=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=j2JYJKKHAfrS0seO/fsdaQIZxuj1z2Kwt774DYtiIhzQPhkgrvFK4y/0CrpSmWa8T
+	 bvxpsCMDHuPYd2YxuBEQqtf5VX/yDVt70+ozz4lbrY/BrEfPq0iCM49tW2N1rh53W3
+	 JuMRjxtxxikbTLEqIRKfHNSkjKam8DHcTImnUllL3iV0VgwkLYL0PXirwiE4hwIUf9
+	 lI4KE8JD3vj9W1fkV96XHDiv5WPjHAo7BPjF42tKCzf9zCcmnybK4hbYwARnI+Kz6D
+	 FjE+9/2cNBoOm5CBiizq4h9rFtx5jQbW5S7cT8+NbXt2RrF07cXhvJVrXeW3xMccR/
+	 YQxWuX4TEUqXA==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id CD6DB5ED844A; Sun, 22 Mar 2026 23:16:24 -0500 (CDT)
+Date: Sun, 22 Mar 2026 23:16:24 -0500
+From: "Theodore Tso" <tytso@mit.edu>
+To: Anand Jain <asj@kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org, hch@infradead.org
+Subject: Re: [PATCH v2 3/3] ext4: derive f_fsid from block device to avoid
+ collisions
+Message-ID: <20260323041624.GA11453@mac.lan>
+References: <cover.1774092915.git.asj@kernel.org>
+ <33e8eb64c304a4d42b60f608c26497bf9a2e9e19.1774092915.git.asj@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-QQ-SENDSIZE: 520
-Feedback-ID: esmtpgz:uniontech.com:qybglogicsvrgz:qybglogicsvrgz6b-0
-X-QQ-XMAILINFO: MNbA5mkmBXEJj4uCN+9aC4/dSBxy97O0dx2AQipHy9DIU10cKXzymZtR
-	maVKS209yqplDu0APaHeECvdbt8GgLsY2/NMlAkQsu62Rmdi0F0AhgycQqDFrHElX/VB5Um
-	Q02MGv0awaGVEWCX7KIKiBqspjrq11QRWy+ZxnrzDL6z1UImclhG+tltM2l6eKs5lQdi/q6
-	9TH9oga2vdYNr7KrwiI+AJ+1X8Z76Dr0Vu4Ty+O7MpBM99zyMr4TMUZZsyWFlqV9iQ0QYzg
-	zPYdEnT+K46cwSAN2u2pzAF4gaVIlmRK/Kb/NCzHHmB/TjTffnHkmI9q3hrm44VwtpM8WZN
-	QFuZWS5MKYmox6R77leowuO2JTxKdSG7VG268XRMcdN/dUJzKxfgPVCmGp1CDM5YaqjbnJz
-	h9Qv51g4e6H7ryr4eE5p7beCbLgkcOwWZTWVBTt8LLjTlkMuiYFJy/uU3zMYY0ZiyjYaO5M
-	MlGZbj84IkAtNTZWWFC9MOxs8bDGPwnsLtAa0vQZrauu0ybLLiurCrsKGnhY0aLspymk0dl
-	1zLr6Xs3myoGFAATX3yTl4rSQagpjTfvGHrYDG8Ccbxa4La0GYEW2YiwtWl3Z3krwl7xaAN
-	Oy1tVQRM/QfmG+FUEIX2w8VOczb9wxe6fyq+HCl3gW1/GpumJNNwol0S0iLsKMxtfvaHSLS
-	ZJm5YV0m+zZyIbBKZDM6ouPxBkUG1SAtq23qQrSj2popbZ7FbtJ4vtrCQ+jI9WvwPG3tvNW
-	vm3hEUvBSIWRGCPPAm0xxMpkq3ydnryVnTw+qasHGDm/WdVQNdTDtTawkT4NYSwMCBwFadc
-	vWRjxexn3Qx+LfeVNR+T7xbGkluqZpLNthBU2rURxgnozOP/fcoi4otA1TZxLqEU5EG9Eae
-	4DPwTVsh6k1mqdOYgCcYA1s+uxLIEfNmaWeq/Y1KOY2TvGffrcXOhAycEb0VSOTmSWBXZPM
-	b/kNM+mem1+0Z22dGR+mDadnyYhMFPFxcwYOXz5vsxgQ2YsA4xKJKAuw9bFwWpoPtohI0bG
-	4gxoRXc9bsVJuq+qY0ZT5HTb9V9iLe2aRowE1gxjlJTySw0Nmt
-X-QQ-XMRINFO: NI4Ajvh11aEjEMj13RCX7UuhPEoou2bs1g==
-X-QQ-RECHKSPAM: 0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <33e8eb64c304a4d42b60f608c26497bf9a2e9e19.1774092915.git.asj@kernel.org>
 
-ext4_split_extent_at() retries after ext4_ext_insert_extent() fails by
-refinding the original extent and restoring its length. That recovery is
-only safe for transient resource failures such as -ENOSPC, -EDQUOT, and
--ENOMEM.
+On Sat, Mar 21, 2026 at 07:55:19PM +0800, Anand Jain wrote:
+> statfs() currently reports f_fsid derived from the on-disk UUID.
+> Cloned block devices share the same UUID, so distinct ext4 instances
+> can return identical f_fsid values. This leads to collisions in
+> fanotify.
+> 
+> Encode sb->s_dev into f_fsid instead of using the superblock UUID.
+> This provides a per-device identifier and avoids conflicts when
+> filesystem is cloned, matching the behavior with xfs.
 
-When ext4_ext_insert_extent() fails because the extent tree is already
-corrupted, ext4_find_extent() can return a leaf path without p_ext.
-ext4_split_extent_at() then dereferences path[depth].p_ext while trying to
-fix up the original extent length, causing a NULL pointer dereference while
-handling a pre-existing filesystem corruption.
+As I observed in [1] this leads to collisions when for removable block
+devices which can be used to mount different file systems.
 
-Do not enter the recovery path for corruption errors, and validate p_ext
-after refinding the extent before touching it. This keeps the recovery path
-limited to cases it can actually repair and turns the syzbot-triggered crash
-into a proper corruption report.
+[1] https://lore.kernel.org/all/20260322203151.GA98947@mac.lan/
 
-Fixes: 716b9c23b862 ("ext4: refactor split and convert extents")
-Reported-by: syzbot+1ffa5d865557e51cb604@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=1ffa5d865557e51cb604
-Signed-off-by: hongao <hongao@uniontech.com>
+> Place this change behind the new mount option "-o nouuid" for ABI
+> compatibility.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index ae3804f36535..aba9947fd151 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3239,6 +3239,9 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
- 
- 	insert_err = PTR_ERR(path);
- 	err = 0;
-+	if (insert_err != -ENOSPC && insert_err != -EDQUOT &&
-+	    insert_err != -ENOMEM)
-+		goto out_path;
- 
- 	/*
- 	 * Get a new path to try to zeroout or fix the extent length.
-@@ -3261,6 +3264,13 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
- 
- 	depth = ext_depth(inode);
- 	ex = path[depth].p_ext;
-+	if (!ex) {
-+		EXT4_ERROR_INODE(inode,
-+				 "bad extent address lblock: %lu, depth: %d pblock %lld",
-+				 (unsigned long)ee_block, depth, path[depth].p_block);
-+		err = -EFSCORRUPTED;
-+		goto out;
-+	}
- 
- fix_extent_len:
- 	ex->ee_len = orig_ex.ee_len;
--- 
-2.51.0
+I *really* hate this mount option.  It's not at all obvious what it
+means for a system administrator who hasn't had the context of reading
+the e-mail discussion on this subject.
 
+As I stated in [1], I think the f_fsid is a terrible interface that
+was promulgated by history, and future usage should be strongly
+discouraged, and the wise programmer won't use it because it has
+significant compatibility issues.
+
+As such, my personal preference is that we not try to condition it on
+a mount option, which in all likelihood almost no one will use, and
+instead just change it so that we hash the file system's UUID and
+block device number together and use that for ext4's f_fsid.
+
+Thoughts, comments?
+
+						- Ted
