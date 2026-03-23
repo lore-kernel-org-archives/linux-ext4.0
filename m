@@ -1,88 +1,88 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7A6EF3BBA08
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Mar 2026 16:59:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2A6D03C196D
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Mar 2026 17:06:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774285176; cv=none; b=hjXphQDFp6fSgmy4+ilnlg8iTBi4KAGtGGNJK/ocnnnGZV+3WqyGCplVa5XvfAkbwaec2SUAVU6t98ypZxb55w0NP4ElIuerw0/3jskG2NL55zGTRZS6pZ6TZGwQk8ZDbwfzrezkDas+zbmol4zBRkjqNfdWFwHHIJKjuHriCVg=
+	t=1774285575; cv=none; b=jBLjFikYaTBYUeJ8SfNK9NgYwhae3aqEkzC3tYI59Iblt5wLgb5dusb500QOs9GnWSaA7aysQehVo7nM5VhI4NZe/cAakCGwE9wkqo5omql9Gn0qNUec61tfV5FGd+rSuORzwbpeRiuj3yXolFwX+Zk1qi7GSEMxblo8IYP0Mfk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774285176; c=relaxed/simple;
-	bh=bKy4pyM/NzkCfY5vnnXks4qEqiBqCT0dYU5WSLoXEU8=;
+	s=arc-20240116; t=1774285575; c=relaxed/simple;
+	bh=YkXgetrDoZrTsRrBiNcp2celND5wb4rtXtw7uEvh+tY=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=agnlNHGH2PCxCN7/naVNPgFHDcCnvGy5hLMKzXIpAOQDUEpbscR2Mc4KlcvhgkJk6xBON7ccdzblQLhorW9H6R45QlHBpCDMkMyCW0DNJ3qnD6sD5YvOp8Khjz4+tyd0P9aEMQsRirnOsVDsxkiEqiWEU0s+yzkusZkHQVUrwL0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=M//ITXjC; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=60adHQVx; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=M//ITXjC; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=60adHQVx; arc=none smtp.client-ip=195.135.223.131
+	 Content-Type:Content-Disposition:In-Reply-To; b=fpolYw9B+Lkxix81wTmk/9prjbJzwk4iheFR4nLOC8ANc52xH6iLUJ0tm9SvQsDbJbJX0gP3XI3WoTkk76XJe22C3oafXjN0dsU/BjoIYxsaQzNDUNFrZ07LLC0Xr43BjxoBCcRrHjMStnKFoWCC5ZpqEbrPDWoPpLpiFgYyEZo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Gi11Isxd; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=gXB7wa2e; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Gi11Isxd; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=gXB7wa2e; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="M//ITXjC";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="60adHQVx";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="M//ITXjC";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="60adHQVx"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Gi11Isxd";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="gXB7wa2e";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Gi11Isxd";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="gXB7wa2e"
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id C59E05BFFB;
-	Mon, 23 Mar 2026 16:59:33 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 757DC4D57D;
+	Mon, 23 Mar 2026 17:06:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1774285173; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1774285572; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=CPSoSRocZVTJF3dHNHIBKpX++RKv7lEPUsYSrb9s3WI=;
-	b=M//ITXjCWA7qRQHlPhoP/NsYmoZXZiUYIqspYQHTL1smBwZiCniVJ9aeAvGG2czblc/nOs
-	7EwRJT7vbdrZD2mH1EbUsEUtciT4s/duylh5PzawrsMGo+NF5v/+MFrmIpWr/od8zW/XQ/
-	eylqqiH5BaK18uoDzimPydItdukgRf0=
+	bh=b3CL0P5nbgTxq4Ojj9vRg2PuSFBwRGMrj28jitly5co=;
+	b=Gi11IsxdaYCCHFjQbCcWW+O/HXhk+/6OPTdHHGcPt+WRNHfYs+K2sa+Wwd+FzHPHrhx5Jx
+	y+tOxTU6WrGoopaUegTEJS9CVXgGxvQqZjlEJoI1MKkoCUxKFKImbQxr8qVJrUpJODx4UJ
+	ENkBaEP0snfw4IU5la9DG13hf1e3AM8=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1774285173;
+	s=susede2_ed25519; t=1774285572;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=CPSoSRocZVTJF3dHNHIBKpX++RKv7lEPUsYSrb9s3WI=;
-	b=60adHQVxpSAn83294LvvoohYi/lPvWKG20OwPqesIpQQjubukmIcJxETN+FpvbZf5zztMh
-	2Re2PaI43TZcQABw==
-Authentication-Results: smtp-out2.suse.de;
+	bh=b3CL0P5nbgTxq4Ojj9vRg2PuSFBwRGMrj28jitly5co=;
+	b=gXB7wa2e7gCeXaFadyT3SF5zjSPNDFRg9LlliDWbRw+1ljlQ2kXUghi4n+u/luXGFx3rJU
+	9T8AbUTl2j168ZCQ==
+Authentication-Results: smtp-out1.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1774285173; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1774285572; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=CPSoSRocZVTJF3dHNHIBKpX++RKv7lEPUsYSrb9s3WI=;
-	b=M//ITXjCWA7qRQHlPhoP/NsYmoZXZiUYIqspYQHTL1smBwZiCniVJ9aeAvGG2czblc/nOs
-	7EwRJT7vbdrZD2mH1EbUsEUtciT4s/duylh5PzawrsMGo+NF5v/+MFrmIpWr/od8zW/XQ/
-	eylqqiH5BaK18uoDzimPydItdukgRf0=
+	bh=b3CL0P5nbgTxq4Ojj9vRg2PuSFBwRGMrj28jitly5co=;
+	b=Gi11IsxdaYCCHFjQbCcWW+O/HXhk+/6OPTdHHGcPt+WRNHfYs+K2sa+Wwd+FzHPHrhx5Jx
+	y+tOxTU6WrGoopaUegTEJS9CVXgGxvQqZjlEJoI1MKkoCUxKFKImbQxr8qVJrUpJODx4UJ
+	ENkBaEP0snfw4IU5la9DG13hf1e3AM8=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1774285173;
+	s=susede2_ed25519; t=1774285572;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=CPSoSRocZVTJF3dHNHIBKpX++RKv7lEPUsYSrb9s3WI=;
-	b=60adHQVxpSAn83294LvvoohYi/lPvWKG20OwPqesIpQQjubukmIcJxETN+FpvbZf5zztMh
-	2Re2PaI43TZcQABw==
+	bh=b3CL0P5nbgTxq4Ojj9vRg2PuSFBwRGMrj28jitly5co=;
+	b=gXB7wa2e7gCeXaFadyT3SF5zjSPNDFRg9LlliDWbRw+1ljlQ2kXUghi4n+u/luXGFx3rJU
+	9T8AbUTl2j168ZCQ==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id BA77F439A1;
-	Mon, 23 Mar 2026 16:59:33 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 6024C439A4;
+	Mon, 23 Mar 2026 17:06:12 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 35xuLXVxwWnMPgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 23 Mar 2026 16:59:33 +0000
+	id DoNyFwRzwWlkRgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 23 Mar 2026 17:06:12 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 7F268A0B32; Mon, 23 Mar 2026 17:59:33 +0100 (CET)
-Date: Mon, 23 Mar 2026 17:59:33 +0100
+	id 0CF60A0B32; Mon, 23 Mar 2026 18:06:12 +0100 (CET)
+Date: Mon, 23 Mar 2026 18:06:12 +0100
 From: Jan Kara <jack@suse.cz>
 To: Zhang Yi <yi.zhang@huaweicloud.com>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
 	linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz, 
 	ojaswin@linux.ibm.com, ritesh.list@gmail.com, libaokun@linux.alibaba.com, 
 	yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com, yukuai@fnnas.com
-Subject: Re: [PATCH 06/10] ext4: move ordered data handling out of
- ext4_block_do_zero_range()
-Message-ID: <cfniq2uvcf5al6ltvbw5s46nacv5a2j6vh57npu64rlqbftkrd@hel5yrb6f22s>
+Subject: Re: [PATCH 08/10] ext4: pass allocate range as loff_t to
+ ext4_alloc_file_blocks()
+Message-ID: <5ksipnlrlnhqbcefijyawmyrfrcth4czaufishu5gl3koomrpf@vjnhfpyo3hhw>
 References: <20260310014101.4140698-1-yi.zhang@huaweicloud.com>
- <20260310014101.4140698-7-yi.zhang@huaweicloud.com>
+ <20260310014101.4140698-9-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -91,7 +91,9 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260310014101.4140698-7-yi.zhang@huaweicloud.com>
+In-Reply-To: <20260310014101.4140698-9-yi.zhang@huaweicloud.com>
+X-Spam-Score: -2.30
+X-Spam-Level: 
 X-Spamd-Result: default: False [-2.30 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
@@ -99,206 +101,205 @@ X-Spamd-Result: default: False [-2.30 / 50.00];
 	MID_RHS_NOT_FQDN(0.50)[];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	URIBL_BLOCKED(0.00)[huawei.com:email,imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:email];
-	ARC_NA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	TO_DN_SOME(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[14];
-	TAGGED_RCPT(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,linux.ibm.com,gmail.com,linux.alibaba.com,huawei.com,fnnas.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[huawei.com:email,suse.cz:email,suse.com:email,imap1.dmz-prg2.suse.org:helo]
+	RCVD_COUNT_THREE(0.00)[3];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	ARC_NA(0.00)[];
+	URIBL_BLOCKED(0.00)[suse.com:email,suse.cz:email,huawei.com:email,imap1.dmz-prg2.suse.org:helo];
+	RCPT_COUNT_TWELVE(0.00)[14];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_TLS_LAST(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,linux.ibm.com,gmail.com,linux.alibaba.com,huawei.com,fnnas.com];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,huawei.com:email,suse.com:email,suse.cz:email]
 X-Spam-Flag: NO
-X-Spam-Score: -2.30
-X-Spam-Level: 
 
-On Tue 10-03-26 09:40:57, Zhang Yi wrote:
+On Tue 10-03-26 09:40:59, Zhang Yi wrote:
 > From: Zhang Yi <yi.zhang@huawei.com>
 > 
-> Remove the handle parameter from ext4_block_do_zero_range() and move the
-> ordered data handling to ext4_block_zero_eof().
-> 
-> This is necessary for truncate up and append writes across a range
-> extending beyond EOF. The ordered data must be committed before updating
-> i_disksize to prevent exposing stale on-disk data from concurrent
-> post-EOF mmap writes during previous folio writeback or in case of
-> system crash during append writes.
-> 
-> This is unnecessary for partial block hole punching because the entire
-> punch operation does not provide atomicity guarantees and can already
-> expose intermediate results in case of crash.
-
-Also because hole punching can only ever expose data that was there before
-the punch but missed zeroing during append / truncate could expose data
-that was not visible in the file before the operation.
-
-> Since ordered data handling is no longer performed inside
-> ext4_zero_partial_blocks(), ext4_punch_hole() no longer needs to attach
-> jinode.
-> 
-> This is prepared for the conversion to the iomap infrastructure, which
-> does not use ordered data mode while zeroing post-EOF partial blocks.
+> Change ext4_alloc_file_blocks() to accept offset and len in byte
+> granularity instead of block granularity. This allows callers to pass
+> byte offsets and lengths directly, and this prepares for moving the
+> ext4_zero_partial_blocks() call from the while(len) loop for unaligned
+> append writes, where it only needs to be invoked once before doing block
+> allocation.
 > 
 > Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
-The patch looks good. Feel free to add:
+Looks good. Feel free to add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > ---
->  fs/ext4/inode.c | 58 ++++++++++++++++++++++++-------------------------
->  1 file changed, 29 insertions(+), 29 deletions(-)
+>  fs/ext4/extents.c | 53 ++++++++++++++++++++---------------------------
+>  1 file changed, 22 insertions(+), 31 deletions(-)
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 86f169df226a..8fea044b3bff 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4076,12 +4076,12 @@ static struct buffer_head *ext4_block_get_zero_range(struct inode *inode,
->  	return err ? ERR_PTR(err) : NULL;
->  }
->  
-> -static int ext4_block_do_zero_range(handle_t *handle, struct inode *inode,
-> -				    loff_t from, loff_t length, bool *did_zero)
-> +static int ext4_block_do_zero_range(struct inode *inode, loff_t from,
-> +				    loff_t length, bool *did_zero,
-> +				    bool *zero_written)
->  {
->  	struct buffer_head *bh;
->  	struct folio *folio;
-> -	int err = 0;
->  
->  	bh = ext4_block_get_zero_range(inode, from, length);
->  	if (IS_ERR_OR_NULL(bh))
-> @@ -4092,19 +4092,14 @@ static int ext4_block_do_zero_range(handle_t *handle, struct inode *inode,
->  	BUFFER_TRACE(bh, "zeroed end of block");
->  
->  	mark_buffer_dirty(bh);
-> -	/*
-> -	 * Only the written block requires ordered data to prevent exposing
-> -	 * stale data.
-> -	 */
-> -	if (ext4_should_order_data(inode) &&
-> -	    !buffer_unwritten(bh) && !buffer_delay(bh))
-> -		err = ext4_jbd2_inode_add_write(handle, inode, from, length);
-> -	if (!err && did_zero)
-> +	if (did_zero)
->  		*did_zero = true;
-> +	if (zero_written && !buffer_unwritten(bh) && !buffer_delay(bh))
-> +		*zero_written = true;
->  
->  	folio_unlock(folio);
->  	folio_put(folio);
-> -	return err;
-> +	return 0;
->  }
->  
->  static int ext4_block_journalled_zero_range(handle_t *handle,
-> @@ -4148,7 +4143,8 @@ static int ext4_block_journalled_zero_range(handle_t *handle,
->   * that corresponds to 'from'
->   */
->  static int ext4_block_zero_range(handle_t *handle, struct inode *inode,
-> -				 loff_t from, loff_t length, bool *did_zero)
-> +				 loff_t from, loff_t length, bool *did_zero,
-> +				 bool *zero_written)
->  {
->  	unsigned blocksize = inode->i_sb->s_blocksize;
->  	unsigned int max = blocksize - (from & (blocksize - 1));
-> @@ -4167,7 +4163,8 @@ static int ext4_block_zero_range(handle_t *handle, struct inode *inode,
->  		return ext4_block_journalled_zero_range(handle, inode, from,
->  							length, did_zero);
->  	}
-> -	return ext4_block_do_zero_range(handle, inode, from, length, did_zero);
-> +	return ext4_block_do_zero_range(inode, from, length, did_zero,
-> +					zero_written);
->  }
->  
->  /*
-> @@ -4184,6 +4181,7 @@ int ext4_block_zero_eof(handle_t *handle, struct inode *inode,
->  	unsigned int offset;
->  	loff_t length = end - from;
->  	bool did_zero = false;
-> +	bool zero_written = false;
->  	int err;
->  
->  	offset = from & (blocksize - 1);
-> @@ -4196,9 +4194,22 @@ int ext4_block_zero_eof(handle_t *handle, struct inode *inode,
->  	if (length > blocksize - offset)
->  		length = blocksize - offset;
->  
-> -	err = ext4_block_zero_range(handle, inode, from, length, &did_zero);
-> +	err = ext4_block_zero_range(handle, inode, from, length,
-> +				    &did_zero, &zero_written);
->  	if (err)
->  		return err;
-> +	/*
-> +	 * It's necessary to order zeroed data before update i_disksize when
-> +	 * truncating up or performing an append write, because there might be
-> +	 * exposing stale on-disk data which may caused by concurrent post-EOF
-> +	 * mmap write during folio writeback.
-> +	 */
-> +	if (ext4_should_order_data(inode) &&
-> +	    did_zero && zero_written && !IS_DAX(inode)) {
-> +		err = ext4_jbd2_inode_add_write(handle, inode, from, length);
-> +		if (err)
-> +			return err;
-> +	}
->  
->  	return did_zero ? length : 0;
->  }
-> @@ -4222,13 +4233,13 @@ int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
->  	if (start == end &&
->  	    (partial_start || (partial_end != sb->s_blocksize - 1))) {
->  		err = ext4_block_zero_range(handle, inode, lstart,
-> -					    length, NULL);
-> +					    length, NULL, NULL);
->  		return err;
->  	}
->  	/* Handle partial zero out on the start of the range */
->  	if (partial_start) {
->  		err = ext4_block_zero_range(handle, inode, lstart,
-> -					    sb->s_blocksize, NULL);
-> +					    sb->s_blocksize, NULL, NULL);
->  		if (err)
->  			return err;
->  	}
-> @@ -4236,7 +4247,7 @@ int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
->  	if (partial_end != sb->s_blocksize - 1)
->  		err = ext4_block_zero_range(handle, inode,
->  					    byte_end - partial_end,
-> -					    partial_end + 1, NULL);
-> +					    partial_end + 1, NULL, NULL);
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 753a0f3418a4..57a686b600d9 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -4542,15 +4542,15 @@ int ext4_ext_truncate(handle_t *handle, struct inode *inode)
 >  	return err;
 >  }
 >  
-> @@ -4411,17 +4422,6 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
->  		end = max_end;
->  	length = end - offset;
+> -static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
+> -				  ext4_lblk_t len, loff_t new_size,
+> -				  int flags)
+> +static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
+> +				  loff_t new_size, int flags)
+>  {
+>  	struct inode *inode = file_inode(file);
+>  	handle_t *handle;
+>  	int ret = 0, ret2 = 0, ret3 = 0;
+>  	int retries = 0;
+>  	int depth = 0;
+> +	ext4_lblk_t len_lblk;
+>  	struct ext4_map_blocks map;
+>  	unsigned int credits;
+>  	loff_t epos, old_size = i_size_read(inode);
+> @@ -4558,14 +4558,14 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
+>  	bool alloc_zero = false;
 >  
-> -	/*
-> -	 * Attach jinode to inode for jbd2 if we do any zeroing of partial
-> -	 * block.
-> -	 */
-> -	if (!IS_ALIGNED(offset | end, sb->s_blocksize)) {
-> -		ret = ext4_inode_attach_jinode(inode);
-> -		if (ret < 0)
-> -			return ret;
-> -	}
+>  	BUG_ON(!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS));
+> -	map.m_lblk = offset;
+> -	map.m_len = len;
+> +	map.m_lblk = offset >> blkbits;
+> +	map.m_len = len_lblk = EXT4_MAX_BLOCKS(len, offset, blkbits);
+>  	/*
+>  	 * Don't normalize the request if it can fit in one extent so
+>  	 * that it doesn't get unnecessarily split into multiple
+>  	 * extents.
+>  	 */
+> -	if (len <= EXT_UNWRITTEN_MAX_LEN)
+> +	if (len_lblk <= EXT_UNWRITTEN_MAX_LEN)
+>  		flags |= EXT4_GET_BLOCKS_NO_NORMALIZE;
+>  
+>  	/*
+> @@ -4582,16 +4582,16 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
+>  	/*
+>  	 * credits to insert 1 extent into extent tree
+>  	 */
+> -	credits = ext4_chunk_trans_blocks(inode, len);
+> +	credits = ext4_chunk_trans_blocks(inode, len_lblk);
+>  	depth = ext_depth(inode);
+>  
+>  retry:
+> -	while (len) {
+> +	while (len_lblk) {
+>  		/*
+>  		 * Recalculate credits when extent tree depth changes.
+>  		 */
+>  		if (depth != ext_depth(inode)) {
+> -			credits = ext4_chunk_trans_blocks(inode, len);
+> +			credits = ext4_chunk_trans_blocks(inode, len_lblk);
+>  			depth = ext_depth(inode);
+>  		}
+>  
+> @@ -4648,7 +4648,7 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
+>  		}
+>  
+>  		map.m_lblk += ret;
+> -		map.m_len = len = len - ret;
+> +		map.m_len = len_lblk = len_lblk - ret;
+>  	}
+>  	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+>  		goto retry;
+> @@ -4665,11 +4665,9 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+>  {
+>  	struct inode *inode = file_inode(file);
+>  	handle_t *handle = NULL;
+> -	loff_t new_size = 0;
+> +	loff_t align_start, align_end, new_size = 0;
+>  	loff_t end = offset + len;
+> -	ext4_lblk_t start_lblk, end_lblk;
+>  	unsigned int blocksize = i_blocksize(inode);
+> -	unsigned int blkbits = inode->i_blkbits;
+>  	int ret, flags, credits;
+>  
+>  	trace_ext4_zero_range(inode, offset, len, mode);
+> @@ -4690,11 +4688,8 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+>  	flags = EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT;
+>  	/* Preallocate the range including the unaligned edges */
+>  	if (!IS_ALIGNED(offset | end, blocksize)) {
+> -		ext4_lblk_t alloc_lblk = offset >> blkbits;
+> -		ext4_lblk_t len_lblk = EXT4_MAX_BLOCKS(len, offset, blkbits);
 > -
-> -
->  	ret = ext4_update_disksize_before_punch(inode, offset, length);
->  	if (ret)
+> -		ret = ext4_alloc_file_blocks(file, alloc_lblk, len_lblk,
+> -					     new_size, flags);
+> +		ret = ext4_alloc_file_blocks(file, offset, len, new_size,
+> +					     flags);
+>  		if (ret)
+>  			return ret;
+>  	}
+> @@ -4709,18 +4704,17 @@ static long ext4_zero_range(struct file *file, loff_t offset,
 >  		return ret;
+>  
+>  	/* Zero range excluding the unaligned edges */
+> -	start_lblk = EXT4_B_TO_LBLK(inode, offset);
+> -	end_lblk = end >> blkbits;
+> -	if (end_lblk > start_lblk) {
+> -		ext4_lblk_t zero_blks = end_lblk - start_lblk;
+> -
+> +	align_start = round_up(offset, blocksize);
+> +	align_end = round_down(end, blocksize);
+> +	if (align_end > align_start) {
+>  		if (mode & FALLOC_FL_WRITE_ZEROES)
+>  			flags = EXT4_GET_BLOCKS_CREATE_ZERO | EXT4_EX_NOCACHE;
+>  		else
+>  			flags |= (EXT4_GET_BLOCKS_CONVERT_UNWRITTEN |
+>  				  EXT4_EX_NOCACHE);
+> -		ret = ext4_alloc_file_blocks(file, start_lblk, zero_blks,
+> -					     new_size, flags);
+> +		ret = ext4_alloc_file_blocks(file, align_start,
+> +					     align_end - align_start, new_size,
+> +					     flags);
+>  		if (ret)
+>  			return ret;
+>  	}
+> @@ -4768,15 +4762,11 @@ static long ext4_do_fallocate(struct file *file, loff_t offset,
+>  	struct inode *inode = file_inode(file);
+>  	loff_t end = offset + len;
+>  	loff_t new_size = 0;
+> -	ext4_lblk_t start_lblk, len_lblk;
+>  	int ret;
+>  
+>  	trace_ext4_fallocate_enter(inode, offset, len, mode);
+>  	WARN_ON_ONCE(!inode_is_locked(inode));
+>  
+> -	start_lblk = offset >> inode->i_blkbits;
+> -	len_lblk = EXT4_MAX_BLOCKS(len, offset, inode->i_blkbits);
+> -
+>  	/* We only support preallocation for extent-based files only. */
+>  	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
+>  		ret = -EOPNOTSUPP;
+> @@ -4791,7 +4781,7 @@ static long ext4_do_fallocate(struct file *file, loff_t offset,
+>  			goto out;
+>  	}
+>  
+> -	ret = ext4_alloc_file_blocks(file, start_lblk, len_lblk, new_size,
+> +	ret = ext4_alloc_file_blocks(file, offset, len, new_size,
+>  				     EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT);
+>  	if (ret)
+>  		goto out;
+> @@ -4801,7 +4791,8 @@ static long ext4_do_fallocate(struct file *file, loff_t offset,
+>  					EXT4_I(inode)->i_sync_tid);
+>  	}
+>  out:
+> -	trace_ext4_fallocate_exit(inode, offset, len_lblk, ret);
+> +	trace_ext4_fallocate_exit(inode, offset,
+> +			EXT4_MAX_BLOCKS(len, offset, inode->i_blkbits), ret);
+>  	return ret;
+>  }
+>  
 > -- 
 > 2.52.0
 > 
