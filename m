@@ -1,119 +1,127 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from smtpbg150.qq.com (smtpbg150.qq.com [18.132.163.193])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 77AFC3290D8
-	for <linux-ext4@vger.kernel.org>; Sun, 22 Mar 2026 20:32:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E975C220698;
+	Mon, 23 Mar 2026 01:58:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.132.163.193
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774211541; cv=none; b=a/GdZGg2WWzehT0Ljc/h7HJxnwQ1p+LUdnAwLSQEiL23Zc/DoOqNWeNfcxD3pKq/efGUCdHB5ub48XTK1VBnxfke7Wbt68FyYM3j/g1GYSH5yxMqBJvoix0zJNUg5AiMJxo1HD2LwVjliBk9MF85y8wznLpBoOsR+0SidZGigvg=
+	t=1774231148; cv=none; b=Euh3lDf2AQHKYDkF6CXBj9G1uO3Qt+SyUfcl8M1b5juRPWMr1bFwYWjBYfKx1CM+sn2HbnoL8goGqIIHqMToGRwu2GNaGZ8E5IGdssDheNeNlzafTwOnomqCcCEKG2N8hn4CLoAd+rHhcM5thReANLJvrVBSgFpF9DtsaRohzLI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774211541; c=relaxed/simple;
-	bh=tM+/UY328FJDNiZwa35a9co2Q3qPVhE18Ea4eeQLv6U=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=n3ZK2shZjmDMXL0mHIeKYN2Yu9rMGXU/+5cCOiUcUVQNQ5sLFZe+noxifJRISuvO+fiyJr4VKrgmX+KLtQdbozsvLnm2v9ud7+rjQSk1hvH+/3ngM2q4nI/eLRGSqL9znsaCBggNdoGiHtQ2NjBH86rtzuvgdQQkOfuCtHQWJIc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=dNbRzOag; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1774231148; c=relaxed/simple;
+	bh=mqsWQIny/xtNJkDzyP34DuNr/8tEIVM+sUUaF8Pk6j8=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=g+2hon3IBd4SGyixBGZO2jXvrqkVImsRCXivRj0ST0yYohKu4gAn4ATjURv/rDQROoBZcTMkPZ1VA1yxg0h0oqalvIgBi+R5oEzjOwujb3Jn4kiwGgWd3vpGiisBSdz9vFBLXHgT6DNjNdJSTn/KEH0Xw/M5I3FfTH2T7UzT+Ug=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com; spf=pass smtp.mailfrom=uniontech.com; dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b=S3bBQPX5; arc=none smtp.client-ip=18.132.163.193
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uniontech.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="dNbRzOag"
-Received: from macsyma.thunk.org (c-73-9-28-129.hsd1.il.comcast.net [73.9.28.129])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62MKVqWO017077
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Sun, 22 Mar 2026 16:31:53 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1774211514; bh=iEccsDOzEp4fu19KyZY9/xIJr6KjvuxTLq/e+HCMxE0=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=dNbRzOagN6ZIOGtlHfaiHxuohKPBc/VNrAq4z6Uhd6jsV0UYRe8vypeoBL94lYcOn
-	 F7Nycjl28BFgQYoEJ1jGS2GF3TU0qREcVKlJvdC76UPd3DjYkHoiuD4K7keFFP+t1t
-	 /hTwKkKTi4JrTCi9ACoIx6N6jZPjGTqe332HRULizwR/Q8IToauxZ63tLz32ejLCWY
-	 H7FDoeLrj6XFBiCLySZIMH+0geh7ikAZ9sBKO0yr5P2BXPjS39BE5ZBiuMku3yYbw5
-	 I7YjOQ/sa9t3jxVzH55EKuAn1GznCygf3qbudLWA3HBsZlMINZH4AbeILu7ex+jVoG
-	 qkJ+8fdPnJsUw==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 0817D5EC2E65; Sun, 22 Mar 2026 15:31:52 -0500 (CDT)
-Date: Sun, 22 Mar 2026 15:31:51 -0500
-From: "Theodore Tso" <tytso@mit.edu>
-To: Anand Jain <asj@kernel.org>
-Cc: linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 0/3] fix s_uuid and f_fsid consistency for cloned
- filesystems
-Message-ID: <20260322203151.GA98947@mac.lan>
-References: <cover.1772095546.git.asj@kernel.org>
+	dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b="S3bBQPX5"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=uniontech.com;
+	s=onoh2408; t=1774231086;
+	bh=U6CfW020VaiCPJpEFzx5LZvJi0pfiqwCtRTy25AdTTg=;
+	h=From:To:Subject:Date:Message-ID:MIME-Version;
+	b=S3bBQPX5ymw+RqT1ue8TMrmtolKDX80H+u121Rpf8b3hdX9lJDZD2csigcC0ns0kC
+	 ya7Kv81gBpNRutrno1cjcdahQ3YbbfCdqd9Y9zHRalLXk4UjUhg+3Oolt5IlRSfek7
+	 OS1ghl0N98Q8yTDWLPiOJjlhWoXe+XSc2/t6TLXc=
+X-QQ-mid: esmtpgz14t1774231081t9973f5df
+X-QQ-Originating-IP: R8HxEBsUaKMU7NU7hpM9fSc9EgbyRv2GSZHwRmuhTSk=
+Received: from hongao-PC ( [113.57.152.160])
+	by bizesmtp.qq.com (ESMTP) with 
+	id ; Mon, 23 Mar 2026 09:57:55 +0800 (CST)
+X-QQ-SSF: 0000000000000000000000000000000
+X-QQ-GoodBg: 1
+X-BIZMAIL-ID: 16343628199778094862
+EX-QQ-RecipientCnt: 9
+From: hongao <hongao@uniontech.com>
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	yi.zhang@huawei.com,
+	ojaswin@linux.ibm.com
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	hongao <hongao@uniontech.com>,
+	syzbot+1ffa5d865557e51cb604@syzkaller.appspotmail.com
+Subject: [PATCH] ext4: skip split extent recovery on corruption
+Date: Mon, 23 Mar 2026 09:57:52 +0800
+Message-ID: <FA074540F4E30F27+20260323015752.60064-1-hongao@uniontech.com>
+X-Mailer: git-send-email 2.51.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <cover.1772095546.git.asj@kernel.org>
+X-QQ-SENDSIZE: 520
+Feedback-ID: esmtpgz:uniontech.com:qybglogicsvrgz:qybglogicsvrgz6b-0
+X-QQ-XMAILINFO: MNbA5mkmBXEJj4uCN+9aC4/dSBxy97O0dx2AQipHy9DIU10cKXzymZtR
+	maVKS209yqplDu0APaHeECvdbt8GgLsY2/NMlAkQsu62Rmdi0F0AhgycQqDFrHElX/VB5Um
+	Q02MGv0awaGVEWCX7KIKiBqspjrq11QRWy+ZxnrzDL6z1UImclhG+tltM2l6eKs5lQdi/q6
+	9TH9oga2vdYNr7KrwiI+AJ+1X8Z76Dr0Vu4Ty+O7MpBM99zyMr4TMUZZsyWFlqV9iQ0QYzg
+	zPYdEnT+K46cwSAN2u2pzAF4gaVIlmRK/Kb/NCzHHmB/TjTffnHkmI9q3hrm44VwtpM8WZN
+	QFuZWS5MKYmox6R77leowuO2JTxKdSG7VG268XRMcdN/dUJzKxfgPVCmGp1CDM5YaqjbnJz
+	h9Qv51g4e6H7ryr4eE5p7beCbLgkcOwWZTWVBTt8LLjTlkMuiYFJy/uU3zMYY0ZiyjYaO5M
+	MlGZbj84IkAtNTZWWFC9MOxs8bDGPwnsLtAa0vQZrauu0ybLLiurCrsKGnhY0aLspymk0dl
+	1zLr6Xs3myoGFAATX3yTl4rSQagpjTfvGHrYDG8Ccbxa4La0GYEW2YiwtWl3Z3krwl7xaAN
+	Oy1tVQRM/QfmG+FUEIX2w8VOczb9wxe6fyq+HCl3gW1/GpumJNNwol0S0iLsKMxtfvaHSLS
+	ZJm5YV0m+zZyIbBKZDM6ouPxBkUG1SAtq23qQrSj2popbZ7FbtJ4vtrCQ+jI9WvwPG3tvNW
+	vm3hEUvBSIWRGCPPAm0xxMpkq3ydnryVnTw+qasHGDm/WdVQNdTDtTawkT4NYSwMCBwFadc
+	vWRjxexn3Qx+LfeVNR+T7xbGkluqZpLNthBU2rURxgnozOP/fcoi4otA1TZxLqEU5EG9Eae
+	4DPwTVsh6k1mqdOYgCcYA1s+uxLIEfNmaWeq/Y1KOY2TvGffrcXOhAycEb0VSOTmSWBXZPM
+	b/kNM+mem1+0Z22dGR+mDadnyYhMFPFxcwYOXz5vsxgQ2YsA4xKJKAuw9bFwWpoPtohI0bG
+	4gxoRXc9bsVJuq+qY0ZT5HTb9V9iLe2aRowE1gxjlJTySw0Nmt
+X-QQ-XMRINFO: NI4Ajvh11aEjEMj13RCX7UuhPEoou2bs1g==
+X-QQ-RECHKSPAM: 0
 
-On Thu, Feb 26, 2026 at 10:23:32PM +0800, Anand Jain wrote:
-> 
->               | s_uuid  f_fsid
-> --------------|---------------------------
-> EXT4          | same    same
-> Btrfs         | random  random
-> XFS           | same    f(devt)
-> EXT4-patched  | same    f(devt)
-> Btrfs-patched | same    f(s_uuid,rootid,devt)
+ext4_split_extent_at() retries after ext4_ext_insert_extent() fails by
+refinding the original extent and restoring its length. That recovery is
+only safe for transient resource failures such as -ENOSPC, -EDQUOT, and
+-ENOMEM.
 
-I don't *object* to changing ext4 reports since having something that
-is unique is probably better.  However, my bigger concern is using
-f_fsid in the first place.  It's only 64 bits, and that's really not
-enough to gaurantee uniqueness.  And even as you've proposed to change
-things, it's not consistent across file systems.  In particular, your
-proposed solution mixes s_uuid into btrfs-patched, but not
-ext4-patched.  Why?
+When ext4_ext_insert_extent() fails because the extent tree is already
+corrupted, ext4_find_extent() can return a leaf path without p_ext.
+ext4_split_extent_at() then dereferences path[depth].p_ext while trying to
+fix up the original extent length, causing a NULL pointer dereference while
+handling a pre-existing filesystem corruption.
 
-> Problem
-> -------
-> Btrfs currently never duplicates s_uuid or f_fsid for cloned filesystems.
-> When an fsid collision is detected at mount time, btrfs generates a new
-> in-memory fsid (temp_fsid), but this is ephemeral — it changes on every
-> mount. This has two consequences:
-> 
-> 1. IMA (Integrity Measurement Architecture) cannot reliably track the
->    filesystem across mount-cycle, since the f_fsid it sees keeps changing.
->    This does not scale. Whereas on the otherhand if you have same s_uuid
->    on multiple filesystems, monitoring per distint filesystem is lost.
+Do not enter the recovery path for corruption errors, and validate p_ext
+after refinding the extent before touching it. This keeps the recovery path
+limited to cases it can actually repair and turns the syzbot-triggered crash
+into a proper corruption report.
 
-The problem with using f(dev_t) for IMA is that if you have a
-removable device (e.g., an SD card), reporting f_fsid as purely being
-a function of dev_t means that the if an SD card ejected, and replaced
-with another, the fsid_t will manifestly *not* be unique.  So in that
-sense, replace f(dev_t) with f(s_uuid) would be worse if you think
-"file system unique id" should be unique in the case of removable
-storage devices.
+Fixes: 716b9c23b862 ("ext4: refactor split and convert extents")
+Reported-by: syzbot+1ffa5d865557e51cb604@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=1ffa5d865557e51cb604
+Signed-off-by: hongao <hongao@uniontech.com>
 
-If the audit log includes mounts and unmounts, then this might not be
-fatal.  But if less-than intelligent system administrator or LLM tries
-to analyize an audit log using tools like "grep", it would be pretty
-easy for someone to get misled.
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index ae3804f36535..aba9947fd151 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3239,6 +3239,9 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
+ 
+ 	insert_err = PTR_ERR(path);
+ 	err = 0;
++	if (insert_err != -ENOSPC && insert_err != -EDQUOT &&
++	    insert_err != -ENOMEM)
++		goto out_path;
+ 
+ 	/*
+ 	 * Get a new path to try to zeroout or fix the extent length.
+@@ -3261,6 +3264,13 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
+ 
+ 	depth = ext_depth(inode);
+ 	ex = path[depth].p_ext;
++	if (!ex) {
++		EXT4_ERROR_INODE(inode,
++				 "bad extent address lblock: %lu, depth: %d pblock %lld",
++				 (unsigned long)ee_block, depth, path[depth].p_block);
++		err = -EFSCORRUPTED;
++		goto out;
++	}
+ 
+ fix_extent_len:
+ 	ex->ee_len = orig_ex.ee_len;
+-- 
+2.51.0
 
-I know you were primarily interested in cloned file systems, but I
-think we also need to take into account other cases, including ones
-where there might be more the file system associated with a block
-device over time.
-
-> 2. If we instead allow cloned filesystems to share the same f_fsid (as
->    ext4 currently does), fanotify loses the ability to distinguish
->    between distinct filesystem instances. FAN_EVENT_INFO_TYPE_FID events
->    will fail to resolve to the correct mountpoint when f_fsid values
->    are identical across clones.
-
-My personal opinion is that f_fsuid is just a terrible interface, the
-fact that IMA and fanotify used this is regrettable.  I understand why
-it happened, because there wasn't anything better, and for many use
-cases, it's good enough.   But not all.
-
-So I hope we can just actively discourage anyone else using it.  Given
-that exactly it has not been standardized, across different operating
-systems, and different file systems for Linux --- hopefully most
-people will have already made that choice.
-
-						- Ted
