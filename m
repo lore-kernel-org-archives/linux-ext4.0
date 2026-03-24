@@ -1,30 +1,30 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0841570818;
-	Tue, 24 Mar 2026 03:29:28 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 66C3114F9FB;
+	Tue, 24 Mar 2026 03:34:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774322971; cv=none; b=kB2MVih4rT3dNIovbwKeHLJER16UYkARPU9BgUgR7aS97Rg//ZCktIRFijHjFNhcNuxpG322G9M4m1BxfjjA2ieMO8qP5sXYi+Jq7NzVGQ8dGr2cd8eCymrwPuY8Q1uHXMOBw7Fd8hxJYoZD/3V/Ay2tdKMwh58u2RyC7dxhjFk=
+	t=1774323259; cv=none; b=mqwTiANGaIELzmyxhg7V9TvPqRBfOWm+vza2l+mlcExFX8i/pWbqHd2BmIyhO7QvJXUbXf1ZbgoLv/CSpQEkErqm1jJ2qqhXOrRu36hcGK39Zdx1zkA10gJlKo0acaqFKBIP3e6qDXOF1vEgVEtBkr3airIoxnZxZrOQehXJ8Lc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774322971; c=relaxed/simple;
-	bh=W+zML29ThLJvgg5xVFwOhFpst4BSV6pLRaUhcTsK+68=;
+	s=arc-20240116; t=1774323259; c=relaxed/simple;
+	bh=G+tLhU17itLhOwKAuxt2hN3EcYX3tp9MDPI7gc42IMQ=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=gKivB9ykO78Dvc9xL4h167fDAyXRErMkhPU34b7M2L2vmE92FLO072TQhg0ujG3i+/1XtslKU8Hrcu8lKwIm8KB+7BAQ4fq3oLcEtbovLD9f4L/22eaM1ah8Fbe9TRXML9+r6GSfS8DuByhxzCZKXhmQ/uRTrEUZxvY3twncBO8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 In-Reply-To:Content-Type; b=DFKW1J92g0usMg8wtRV7foIzqewtbICNTmrgP374tZwYZVFEe4Y7tFQF3Apol3MdKuGPdi38q/xlDCw9gdVKtgzQxgA/II7+Ovuo13CPx5ml7yEdu366vsxHnfHISiA+qN6Xc4faRdD6M1FLmlTyARjclW++8QTsh8QxDAw+gA4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4ffwWL3s8YzYQtgV;
-	Tue, 24 Mar 2026 11:29:18 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.177])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4ffwDz0Zy6zKHLy7;
+	Tue, 24 Mar 2026 11:16:51 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 882C94056B;
-	Tue, 24 Mar 2026 11:29:26 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 91C4440592;
+	Tue, 24 Mar 2026 11:17:27 +0800 (CST)
 Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP1 (Coremail) with SMTP id cCh0CgC3BtcUBcJputIOCA--.56435S3;
-	Tue, 24 Mar 2026 11:29:26 +0800 (CST)
-Message-ID: <a256a938-56ae-4a9c-b6d7-b74175f04393@huaweicloud.com>
-Date: Tue, 24 Mar 2026 11:29:23 +0800
+	by APP1 (Coremail) with SMTP id cCh0CgD3+NhGAsJp9NENCA--.17374S3;
+	Tue, 24 Mar 2026 11:17:27 +0800 (CST)
+Message-ID: <8363cbb0-d48e-48e0-964e-5965ecb3e4de@huaweicloud.com>
+Date: Tue, 24 Mar 2026 11:17:25 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -32,8 +32,8 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 10/10] ext4: zero post-EOF partial block before appending
- write
+Subject: Re: [PATCH 06/10] ext4: move ordered data handling out of
+ ext4_block_do_zero_range()
 To: Jan Kara <jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
  linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
@@ -41,18 +41,18 @@ Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
  yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com,
  yukuai@fnnas.com
 References: <20260310014101.4140698-1-yi.zhang@huaweicloud.com>
- <20260310014101.4140698-11-yi.zhang@huaweicloud.com>
- <fcjjsad6v5v6ubtjidrstg3pjeeqn7njjm2qrovufdklnbhhci@ldy4nrlmtoek>
+ <20260310014101.4140698-7-yi.zhang@huaweicloud.com>
+ <cfniq2uvcf5al6ltvbw5s46nacv5a2j6vh57npu64rlqbftkrd@hel5yrb6f22s>
 Content-Language: en-US
 From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <fcjjsad6v5v6ubtjidrstg3pjeeqn7njjm2qrovufdklnbhhci@ldy4nrlmtoek>
+In-Reply-To: <cfniq2uvcf5al6ltvbw5s46nacv5a2j6vh57npu64rlqbftkrd@hel5yrb6f22s>
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:cCh0CgC3BtcUBcJputIOCA--.56435S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxurWfCr48tFy7AF17Zw15XFb_yoWrtry7pF
-	ZIk3W7uwnFqF9rur1Ig3WDXry29a48Jr4xGry3Ka4rZ3ZrCr1rKF1Sg348GFW5ArW7Jw4F
-	qF4q9F9ru3Wjy3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUv0b4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+X-CM-TRANSID:cCh0CgD3+NhGAsJp9NENCA--.17374S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxuw4UKr17Aw1kWw1UJr48Crg_yoWxWF4Upr
+	y5KF45Cr47WF9F9F1IqF12qF1a9w1fKFW8WrW3GryFv34IvFn3KF1UKr1F9F1jvr47W3W0
+	vF4Ut342gw1DAaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvYb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
 	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
 	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
 	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
@@ -62,152 +62,196 @@ X-Coremail-Antispam: 1UD129KBjvJXoWxurWfCr48tFy7AF17Zw15XFb_yoWrtry7pF
 	14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
 	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8
 	ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
-	0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_
-	Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU1
-	0PfPUUUUU==
+	0267AKxVWxJVW8Jr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v2
+	6r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07
+	UG-eOUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On 3/24/2026 4:31 AM, Jan Kara wrote:
-> On Tue 10-03-26 09:41:01, Zhang Yi wrote:
+On 3/24/2026 12:59 AM, Jan Kara wrote:
+> On Tue 10-03-26 09:40:57, Zhang Yi wrote:
 >> From: Zhang Yi <yi.zhang@huawei.com>
 >>
->> In cases of appending write beyond EOF, ext4_zero_partial_blocks() is
->> called within ext4_*_write_end() to zero out the partial block beyond
->> EOF. This prevents exposing stale data that might be written through
->> mmap.
+>> Remove the handle parameter from ext4_block_do_zero_range() and move the
+>> ordered data handling to ext4_block_zero_eof().
 >>
->> However, supporting only the regular buffered write path is
->> insufficient. It is also necessary to support the DAX path as well as
->> the upcoming iomap buffered write path. Therefore, move this operation
->> to ext4_write_checks().
+>> This is necessary for truncate up and append writes across a range
+>> extending beyond EOF. The ordered data must be committed before updating
+>> i_disksize to prevent exposing stale on-disk data from concurrent
+>> post-EOF mmap writes during previous folio writeback or in case of
+>> system crash during append writes.
 >>
->> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+>> This is unnecessary for partial block hole punching because the entire
+>> punch operation does not provide atomicity guarantees and can already
+>> expose intermediate results in case of crash.
 > 
-> I'd note that this allows page fault to race in between the zeroing and
-> actual write resulting in new possible result - previously for file size 8,
-> pwrite('WWWW...', 8, 16) racing with mmap writes of 'MMMMMM...' at offset 8
-> into the page you could see either:
-> 
-> DDDDDDDD00000000WWWWWWWW
-> or
-> DDDDDDDDMMMMMMMMMMMMMMMM
-> 
-> 
-> now you can see both of the above an also
-> 
-> DDDDDDDMMMMMMMMWWWWWWWWW
-> 
-> But I don't think that's strictly invalid content and userspace that would
-> depend on the outcome of such race would be silly. So feel free to add:
+> Also because hole punching can only ever expose data that was there before
+> the punch but missed zeroing during append / truncate could expose data
+> that was not visible in the file before the operation.
 
-Yes exactly.  :-)
+Yeah, right, will add.
 
 Thanks,
 Yi.
 
+> 
+>> Since ordered data handling is no longer performed inside
+>> ext4_zero_partial_blocks(), ext4_punch_hole() no longer needs to attach
+>> jinode.
+>>
+>> This is prepared for the conversion to the iomap infrastructure, which
+>> does not use ordered data mode while zeroing post-EOF partial blocks.
+>>
+>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> 
+> The patch looks good. Feel free to add:
 > 
 > Reviewed-by: Jan Kara <jack@suse.cz>
 > 
 > 								Honza
 > 
 >> ---
->>  fs/ext4/file.c  | 14 ++++++++++++++
->>  fs/ext4/inode.c | 21 +++++++--------------
->>  2 files changed, 21 insertions(+), 14 deletions(-)
+>>  fs/ext4/inode.c | 58 ++++++++++++++++++++++++-------------------------
+>>  1 file changed, 29 insertions(+), 29 deletions(-)
 >>
->> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
->> index f1dc5ce791a7..b2e44601ab6a 100644
->> --- a/fs/ext4/file.c
->> +++ b/fs/ext4/file.c
->> @@ -271,6 +271,8 @@ static ssize_t ext4_generic_write_checks(struct kiocb *iocb,
->>  
->>  static ssize_t ext4_write_checks(struct kiocb *iocb, struct iov_iter *from)
->>  {
->> +	struct inode *inode = file_inode(iocb->ki_filp);
->> +	loff_t old_size = i_size_read(inode);
->>  	ssize_t ret, count;
->>  
->>  	count = ext4_generic_write_checks(iocb, from);
->> @@ -280,6 +282,18 @@ static ssize_t ext4_write_checks(struct kiocb *iocb, struct iov_iter *from)
->>  	ret = file_modified(iocb->ki_filp);
->>  	if (ret)
->>  		return ret;
->> +
->> +	/*
->> +	 * If the position is beyond the EOF, it is necessary to zero out the
->> +	 * partial block that beyond the existing EOF, as it may contains
->> +	 * stale data written through mmap.
->> +	 */
->> +	if (iocb->ki_pos > old_size && !ext4_verity_in_progress(inode)) {
->> +		ret = ext4_block_zero_eof(inode, old_size, iocb->ki_pos);
->> +		if (ret < 0)
->> +			return ret;
->> +	}
->> +
->>  	return count;
->>  }
->>  
 >> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index 5288d36b0f09..67a4d12fcb4d 100644
+>> index 86f169df226a..8fea044b3bff 100644
 >> --- a/fs/ext4/inode.c
 >> +++ b/fs/ext4/inode.c
->> @@ -1456,10 +1456,9 @@ static int ext4_write_end(const struct kiocb *iocb,
+>> @@ -4076,12 +4076,12 @@ static struct buffer_head *ext4_block_get_zero_range(struct inode *inode,
+>>  	return err ? ERR_PTR(err) : NULL;
+>>  }
+>>  
+>> -static int ext4_block_do_zero_range(handle_t *handle, struct inode *inode,
+>> -				    loff_t from, loff_t length, bool *did_zero)
+>> +static int ext4_block_do_zero_range(struct inode *inode, loff_t from,
+>> +				    loff_t length, bool *did_zero,
+>> +				    bool *zero_written)
+>>  {
+>>  	struct buffer_head *bh;
+>>  	struct folio *folio;
+>> -	int err = 0;
+>>  
+>>  	bh = ext4_block_get_zero_range(inode, from, length);
+>>  	if (IS_ERR_OR_NULL(bh))
+>> @@ -4092,19 +4092,14 @@ static int ext4_block_do_zero_range(handle_t *handle, struct inode *inode,
+>>  	BUFFER_TRACE(bh, "zeroed end of block");
+>>  
+>>  	mark_buffer_dirty(bh);
+>> -	/*
+>> -	 * Only the written block requires ordered data to prevent exposing
+>> -	 * stale data.
+>> -	 */
+>> -	if (ext4_should_order_data(inode) &&
+>> -	    !buffer_unwritten(bh) && !buffer_delay(bh))
+>> -		err = ext4_jbd2_inode_add_write(handle, inode, from, length);
+>> -	if (!err && did_zero)
+>> +	if (did_zero)
+>>  		*did_zero = true;
+>> +	if (zero_written && !buffer_unwritten(bh) && !buffer_delay(bh))
+>> +		*zero_written = true;
+>>  
 >>  	folio_unlock(folio);
 >>  	folio_put(folio);
+>> -	return err;
+>> +	return 0;
+>>  }
 >>  
->> -	if (old_size < pos && !verity) {
->> +	if (old_size < pos && !verity)
->>  		pagecache_isize_extended(inode, old_size, pos);
->> -		ext4_block_zero_eof(inode, old_size, pos);
+>>  static int ext4_block_journalled_zero_range(handle_t *handle,
+>> @@ -4148,7 +4143,8 @@ static int ext4_block_journalled_zero_range(handle_t *handle,
+>>   * that corresponds to 'from'
+>>   */
+>>  static int ext4_block_zero_range(handle_t *handle, struct inode *inode,
+>> -				 loff_t from, loff_t length, bool *did_zero)
+>> +				 loff_t from, loff_t length, bool *did_zero,
+>> +				 bool *zero_written)
+>>  {
+>>  	unsigned blocksize = inode->i_sb->s_blocksize;
+>>  	unsigned int max = blocksize - (from & (blocksize - 1));
+>> @@ -4167,7 +4163,8 @@ static int ext4_block_zero_range(handle_t *handle, struct inode *inode,
+>>  		return ext4_block_journalled_zero_range(handle, inode, from,
+>>  							length, did_zero);
+>>  	}
+>> -	return ext4_block_do_zero_range(handle, inode, from, length, did_zero);
+>> +	return ext4_block_do_zero_range(inode, from, length, did_zero,
+>> +					zero_written);
+>>  }
+>>  
+>>  /*
+>> @@ -4184,6 +4181,7 @@ int ext4_block_zero_eof(handle_t *handle, struct inode *inode,
+>>  	unsigned int offset;
+>>  	loff_t length = end - from;
+>>  	bool did_zero = false;
+>> +	bool zero_written = false;
+>>  	int err;
+>>  
+>>  	offset = from & (blocksize - 1);
+>> @@ -4196,9 +4194,22 @@ int ext4_block_zero_eof(handle_t *handle, struct inode *inode,
+>>  	if (length > blocksize - offset)
+>>  		length = blocksize - offset;
+>>  
+>> -	err = ext4_block_zero_range(handle, inode, from, length, &did_zero);
+>> +	err = ext4_block_zero_range(handle, inode, from, length,
+>> +				    &did_zero, &zero_written);
+>>  	if (err)
+>>  		return err;
+>> +	/*
+>> +	 * It's necessary to order zeroed data before update i_disksize when
+>> +	 * truncating up or performing an append write, because there might be
+>> +	 * exposing stale on-disk data which may caused by concurrent post-EOF
+>> +	 * mmap write during folio writeback.
+>> +	 */
+>> +	if (ext4_should_order_data(inode) &&
+>> +	    did_zero && zero_written && !IS_DAX(inode)) {
+>> +		err = ext4_jbd2_inode_add_write(handle, inode, from, length);
+>> +		if (err)
+>> +			return err;
+>> +	}
+>>  
+>>  	return did_zero ? length : 0;
+>>  }
+>> @@ -4222,13 +4233,13 @@ int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
+>>  	if (start == end &&
+>>  	    (partial_start || (partial_end != sb->s_blocksize - 1))) {
+>>  		err = ext4_block_zero_range(handle, inode, lstart,
+>> -					    length, NULL);
+>> +					    length, NULL, NULL);
+>>  		return err;
+>>  	}
+>>  	/* Handle partial zero out on the start of the range */
+>>  	if (partial_start) {
+>>  		err = ext4_block_zero_range(handle, inode, lstart,
+>> -					    sb->s_blocksize, NULL);
+>> +					    sb->s_blocksize, NULL, NULL);
+>>  		if (err)
+>>  			return err;
+>>  	}
+>> @@ -4236,7 +4247,7 @@ int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
+>>  	if (partial_end != sb->s_blocksize - 1)
+>>  		err = ext4_block_zero_range(handle, inode,
+>>  					    byte_end - partial_end,
+>> -					    partial_end + 1, NULL);
+>> +					    partial_end + 1, NULL, NULL);
+>>  	return err;
+>>  }
+>>  
+>> @@ -4411,17 +4422,6 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+>>  		end = max_end;
+>>  	length = end - offset;
+>>  
+>> -	/*
+>> -	 * Attach jinode to inode for jbd2 if we do any zeroing of partial
+>> -	 * block.
+>> -	 */
+>> -	if (!IS_ALIGNED(offset | end, sb->s_blocksize)) {
+>> -		ret = ext4_inode_attach_jinode(inode);
+>> -		if (ret < 0)
+>> -			return ret;
 >> -	}
->> +
->>  	/*
->>  	 * Don't mark the inode dirty under folio lock. First, it unnecessarily
->>  	 * makes the holding time of folio lock longer. Second, it forces lock
->> @@ -1574,10 +1573,8 @@ static int ext4_journalled_write_end(const struct kiocb *iocb,
->>  	folio_unlock(folio);
->>  	folio_put(folio);
->>  
->> -	if (old_size < pos && !verity) {
->> +	if (old_size < pos && !verity)
->>  		pagecache_isize_extended(inode, old_size, pos);
->> -		ext4_block_zero_eof(inode, old_size, pos);
->> -	}
->>  
->>  	if (size_changed) {
->>  		ret2 = ext4_mark_inode_dirty(handle, inode);
->> @@ -3196,7 +3193,7 @@ static int ext4_da_do_write_end(struct address_space *mapping,
->>  	struct inode *inode = mapping->host;
->>  	loff_t old_size = inode->i_size;
->>  	bool disksize_changed = false;
->> -	loff_t new_i_size, zero_len = 0;
->> +	loff_t new_i_size;
->>  	handle_t *handle;
->>  
->>  	if (unlikely(!folio_buffers(folio))) {
->> @@ -3240,19 +3237,15 @@ static int ext4_da_do_write_end(struct address_space *mapping,
->>  	folio_unlock(folio);
->>  	folio_put(folio);
->>  
->> -	if (pos > old_size) {
->> +	if (pos > old_size)
->>  		pagecache_isize_extended(inode, old_size, pos);
->> -		zero_len = pos - old_size;
->> -	}
->>  
->> -	if (!disksize_changed && !zero_len)
->> +	if (!disksize_changed)
->>  		return copied;
->>  
->> -	handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
->> +	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
->>  	if (IS_ERR(handle))
->>  		return PTR_ERR(handle);
->> -	if (zero_len)
->> -		ext4_block_zero_eof(inode, old_size, pos);
->>  	ext4_mark_inode_dirty(handle, inode);
->>  	ext4_journal_stop(handle);
->>  
+>> -
+>> -
+>>  	ret = ext4_update_disksize_before_punch(inode, offset, length);
+>>  	if (ret)
+>>  		return ret;
 >> -- 
 >> 2.52.0
 >>
