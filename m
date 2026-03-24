@@ -1,79 +1,78 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 36BD9386C38;
-	Tue, 24 Mar 2026 15:54:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EE2AF408221;
+	Tue, 24 Mar 2026 17:32:27 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774367669; cv=none; b=DRnHbGQ7vA7Y2i+2imT79xlVj0T1nD1P0FEfSJH7oX4DNdMP5ZNFXV2Shrg7BtajubWCmI67ioxrm7qgfc/M+gO70I7dqtYNVtBhM9HbcxlOHKn8HgqdBrn6TY94Axz3NX8VZW8d+DoI2EaFnn0wXdgSmgdwoKZkUS+mpyfdHUg=
+	t=1774373548; cv=none; b=gYU+PmC366fg6dNM6bIXbFvJX7z1pyYeXxw69hZvVRy15X6HAmE4/5BYfdTZgjhPdI/obIylWWGHjfcqRdMQq4LAoyHkcylpcA4ulw5FDrw4NdtY+XRZjrix1czIILvg6hJDXh2Pn6Nvec8XFq9SYqKD348O5L2GP63cJ0m+iKk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774367669; c=relaxed/simple;
-	bh=KbYmkEWDX5xCI96hmXaNT9f7KUtmIZhSGdAp9nzN7/s=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=a+u5V8On+V1d1zkRbMh9isSIlwxBfnSGClGOzkzswzBHgFF00qjHdKt4Xoi8JOj9zOBa+Kqx4Pd77IPMspjvnvwAOBdgyMmkZpDs6SP4TFvXPaVFIPJWZA19lBo3e6K3xcusia2Ke439Bl13DC9lXYXvBVWf7fOO5vmQdCItYi8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=SFRR2AU2; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	s=arc-20240116; t=1774373548; c=relaxed/simple;
+	bh=6PvabfWqgV6Mk2o8Mrspk5xNPAhygV5RC4LIJoudYN8=;
+	h=Content-Type:MIME-Version:Subject:From:Message-Id:Date:References:
+	 In-Reply-To:To:Cc; b=PMpKcYeQgwbfinuCLYS/X5BRTB5dpeKGQzQt24GZ0fSv8tQNBGy20DhMAJiQtnB5+Chf/6jw9YvN6VaRhoha/3ucNwpy17FOzRSrWTiqgyPGkpF2c+eFgAjrlu0pmnWBsgxXXUA2cgNXXGZ1KaJv6GH3dZsTgGx0vMqZlgSMEiw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Zo8h9UkR; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="SFRR2AU2"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=0OJwGIwkcTDehRPnixVOyfTvqxydByh7rJFCM6sQA7s=; b=SFRR2AU25aXwGVjJvwFLF3gDgO
-	CbdZeKb/9jBMzKy//cI8sVP8V51izbKH4hpRVvaHwZbOh82i7nQikRYyuBXjMYeYC967m3zMLJHy8
-	6fVM0TP4GYzJpa7ESSVcTUm9ozOeEK03eAAsAy5Fzb13DOlWRhyOPfJK2gPJInrQKVW0Zs0SGpQ5m
-	gGQrFqYn0+XosNl5gdgE/zUCzR3PuGtomDL14UimKDey4wIeHnhBuYZxW2hKBf0HwS2XZam2L1NpT
-	d9+5W8CgiiDjPzRCvAGIiKiyJIp81T9jngiiv21p8l/Uld1yt1cl/xmOYjyoqD1TE5xWtWSAZTI3y
-	bZNRjwVQ==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1w545G-00000001nIU-1AG0;
-	Tue, 24 Mar 2026 15:54:22 +0000
-Date: Tue, 24 Mar 2026 08:54:22 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jan Kara <jack@suse.cz>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
-	linux-block@vger.kernel.org, Christian Brauner <brauner@kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>, linux-ext4@vger.kernel.org,
-	Ted Tso <tytso@mit.edu>,
-	"Tigran A. Aivazian" <aivazian.tigran@gmail.com>,
-	David Sterba <dsterba@suse.com>,
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-	Muchun Song <muchun.song@linux.dev>,
-	Oscar Salvador <osalvador@suse.de>,
-	David Hildenbrand <david@kernel.org>, linux-mm@kvack.org,
-	linux-aio@kvack.org, Benjamin LaHaise <bcrl@kvack.org>
-Subject: Re: [PATCH 12/41] fs: Drop sync_mapping_buffers() from
- __generic_file_fsync()
-Message-ID: <acKzrqjnKFNK0xmh@infradead.org>
-References: <20260320131728.6449-1-jack@suse.cz>
- <20260320134100.20731-53-jack@suse.cz>
- <acIjxUzWFstarlwv@infradead.org>
- <ezdm6d34jqdrcohk7o6wycxvvlgtf6aqenwx5ffr3plfagdbzi@gibz7xwr6yhr>
- <acKO3NRw852FdGUO@infradead.org>
- <rsftk7gdlamfryksv63vhmewdi6etvvfyi6as5m2zs75ctvzkq@fnoiwumyfdsv>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Zo8h9UkR"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A1C9DC2BC87;
+	Tue, 24 Mar 2026 17:32:27 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1774373547;
+	bh=6PvabfWqgV6Mk2o8Mrspk5xNPAhygV5RC4LIJoudYN8=;
+	h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
+	b=Zo8h9UkR3EFZ5X+t7pfglF358HIzZfkYCEPXbzgvSpn1932RytFLUmxbaM7vvtb+8
+	 jOc+954Byl6hn4EPrsHfGfcxTsXE+uJ/91AD9cpiFU6fQFUnqTIZOUCz3jiKp9Lt/y
+	 fP9agQ5q5IpglKVONQ2rdOMbIopiphjj96iDiDCdLhsIg4j6oOgV7iv4UPtrAChvwo
+	 Lf11yj5JD7NSZtLROFPsdSkSE5aVMD/liTgqh0NDhuTdaGleJaQf9azubnWFNzP4Uo
+	 AztXkDjv+clCATZJstRL/ReX0kcwsokdxAQqf0P4yOrlBxTSfcE3G2EgYulRsJROWY
+	 I9c7LivQUYhng==
+Received: from [10.30.226.235] (localhost [IPv6:::1])
+	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 7D0D83808203;
+	Tue, 24 Mar 2026 17:32:16 +0000 (UTC)
+Content-Type: text/plain; charset="utf-8"
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <rsftk7gdlamfryksv63vhmewdi6etvvfyi6as5m2zs75ctvzkq@fnoiwumyfdsv>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Transfer-Encoding: 8bit
+Subject: Re: [f2fs-dev] [GIT PULL] fsverity updates for 6.3
+From: patchwork-bot+f2fs@kernel.org
+Message-Id: 
+ <177437353528.1223048.9746825008977248948.git-patchwork-notify@kernel.org>
+Date: Tue, 24 Mar 2026 17:32:15 +0000
+References: <Y/KLHT3zaA0QFhVJ@sol.localdomain>
+In-Reply-To: <Y/KLHT3zaA0QFhVJ@sol.localdomain>
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: torvalds@linux-foundation.org, fsverity@lists.linux.dev, tytso@mit.edu,
+ linux-kernel@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+ linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
 
-On Tue, Mar 24, 2026 at 02:36:53PM +0100, Jan Kara wrote:
-> Leaving the two implementations separate certainly works for me as well
-> (that's why I've put that patch to the end because I've expected some
-> discussions around it :)). Just the amount of common trivial calls you need
-> to do (fdatawrite(), sync_inode_metadata(),
-> file_check_and_advance_wb_err(), blkdev_issue_flush()) looked high enough
-> to me to be worth merging the implementations. But I don't feel strongly
-> either way.
+Hello:
 
-I don't really feel either way, and I really should not micro-manage
-the series either.  So go for what you think works best.  The important
-part is to have the fsync changes early and to avoid hardcoding
-buffer_head knowledge into libfs.c.
+This pull request was applied to jaegeuk/f2fs.git (dev)
+by Linus Torvalds <torvalds@linux-foundation.org>:
+
+On Sun, 19 Feb 2023 12:48:29 -0800 you wrote:
+> The following changes since commit 88603b6dc419445847923fcb7fe5080067a30f98:
+> 
+>   Linux 6.2-rc2 (2023-01-01 13:53:16 -0800)
+> 
+> are available in the Git repository at:
+> 
+>   https://git.kernel.org/pub/scm/fs/fsverity/linux.git tags/fsverity-for-linus
+> 
+> [...]
+
+Here is the summary with links:
+  - [f2fs-dev,GIT,PULL] fsverity updates for 6.3
+    https://git.kernel.org/jaegeuk/f2fs/c/5ee8dbf54602
+
+You are awesome, thank you!
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/patchwork/pwbot.html
+
 
