@@ -1,147 +1,207 @@
-Received: from smtpbgsg1.qq.com (smtpbgsg1.qq.com [54.254.200.92])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E053D37E319;
-	Tue, 24 Mar 2026 01:59:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=54.254.200.92
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6F5A720F08C;
+	Tue, 24 Mar 2026 03:10:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774317562; cv=none; b=jKUiJ9vZ56ZNR0KDYmD1YeV+NDGyJ57WRTaL6u1OuQ6GqlLZG7PamoHP/eK/nWu8VVT3gRkjVNSpADGbqfCS8gYGOpuwsBDUrpf//+ucC1cTSP2EZHSmSz+F3NHCWVBZTm0ci+eaTU0J1gY5/zoBF6B6DWUNtJq7pD4Tg9NdGYA=
+	t=1774321823; cv=none; b=MLyPxmbT17uK5laXJertXpK9gb4AlV3t6HUVL449BGubErSKl9YoDh/VcTr2fH7+RlJTHesYNgr6V94OvWDIxc4KYklQ61F8QGmU0mBQhUV7pjqIQXI9o60Zz7MKzP8S0NjLpP9e/E3MJBG4Z6GMUUPtQ80PnKs/4wAPFXBBOP0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774317562; c=relaxed/simple;
-	bh=abIFJ8smRTBqrvZnrPhpdohK2tW99nCYiFH2Pizf88I=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=lfLkqgQebwgCq7d6XE/vM8yUFkG3CN8PrvBVaXQtvVVQCPn1Aopp1as2k3O2iv+VUHRGURRu4uZHW903hoO6cnp0zfETZAGhSsUB3q/Mfwb+f7oEvejN1lKLTG4powOE9BkufZeYBq+0EOuYoNftqfJnPSAHaxglt48p+w9AZD0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com; spf=pass smtp.mailfrom=uniontech.com; dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b=GILh9+Pb; arc=none smtp.client-ip=54.254.200.92
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uniontech.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b="GILh9+Pb"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=uniontech.com;
-	s=onoh2408; t=1774317511;
-	bh=oCrreMXCnwpdAby3dPZAlqXRykCRYbzSUk7p2Y0wsKg=;
-	h=From:To:Subject:Date:Message-ID:MIME-Version;
-	b=GILh9+PbjZHStIDrf9GgW+QwZCCTxW9F5fjs8tlUKOJh6ATS95vYu79kj3h1c+RQW
-	 A5on9oXBR9ihAUhIoAVMfSPSrnaioan9Derkyy9u+U+9bpJNNBUID+ZsWJl3QclDBA
-	 3yLEklm/7N7yVBphaHSP97gUEfavlZjAazKaxTgY=
-X-QQ-mid: zesmtpsz4t1774317502tbbaf9c55
-X-QQ-Originating-IP: aDNpvSpBjxKjNoAy0XmL/wtWtxE8Ch9KTjJNxwgGFW0=
-Received: from hongao-PC ( [113.57.152.160])
-	by bizesmtp.qq.com (ESMTP) with 
-	id ; Tue, 24 Mar 2026 09:58:15 +0800 (CST)
-X-QQ-SSF: 0000000000000000000000000000000
-X-QQ-GoodBg: 1
-X-BIZMAIL-ID: 17027558838027790740
-From: hongao <hongao@uniontech.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	jack@suse.cz,
-	yi.zhang@huawei.com,
-	ojaswin@linux.ibm.com
-Cc: linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	syzbot+1ffa5d865557e51cb604@syzkaller.appspotmail.com
-Subject: [PATCH v2] ext4: skip split extent recovery on corruption
-Date: Tue, 24 Mar 2026 09:58:15 +0800
-Message-ID: <EF77870F23FF9C90+20260324015815.35248-1-hongao@uniontech.com>
-X-Mailer: git-send-email 2.51.0
-In-Reply-To: <FA074540F4E30F27+20260323015752.60064-1-hongao@uniontech.com>
-References: <FA074540F4E30F27+20260323015752.60064-1-hongao@uniontech.com>
+	s=arc-20240116; t=1774321823; c=relaxed/simple;
+	bh=XPd31gqAVamZHVCsQ3YIXFmnixAN2lyqsYPUyeeBfQs=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=Oj0n3i+2l9nUOQjwJRLZ5SLvcFYl0haNLVeA25jT3rNlcn/WzYhuCORHOfxOyO4MFPf9/hno6sB0BvY+i7hLvGNABaXsp+DtE+ur4a2d0jdYpxI1Ju7fMX9vlsMSQ2nCH1xM8a4rnqxRZxnJ84RDUoeS1H42UaM6L6od0ifvuaI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4ffw5F5LvJzYQtmL;
+	Tue, 24 Mar 2026 11:10:09 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id B3C8940562;
+	Tue, 24 Mar 2026 11:10:17 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP1 (Coremail) with SMTP id cCh0CgC3BteVAMJpBjcNCA--.56131S3;
+	Tue, 24 Mar 2026 11:10:15 +0800 (CST)
+Message-ID: <7fa8415e-199f-4e31-8b07-08f0f73d5b99@huaweicloud.com>
+Date: Tue, 24 Mar 2026 11:10:13 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-QQ-SENDSIZE: 520
-Feedback-ID: zesmtpsz:uniontech.com:qybglogicsvrgz:qybglogicsvrgz6b-0
-X-QQ-XMAILINFO: MKbpLBOB35npTDTzjbRJRvWHJ1P7NPAsHiprx/EgBRFHHqMyPZmi6Pdy
-	R7LNwnsTqUUWvFH3BNCV/cvhm+kx8is2S4Vm1uAzvbF4rQGzJ9+ygpz6ViLLXlKppoSUltH
-	OjMj4BaGKymHnUHRIphEKI43OuJUugUCx2Wwm6kvJl3Sk7wK40qhlT/zHRX5Rvu5Y8MXpIU
-	xhe8XWfKMmz/9EyNqqbeBpV/QjsVj3BnVncK+S8t+EAxrq4GbQ8U6Huz2wyl443Vd00ik31
-	EB7e5EHm4w/wW7sLeKWfdc3TGtE5Pv0BMA45PfENUbcPCj1T2sNSPyBaRdF+1Qm+Xs/zrs8
-	UB5fsVUul1M/L4yJEzS+ZoZHUJGq3fqwh8u3N0SnZSET9yaQc3Gef46s0D/sWD20tq+2TxB
-	+xGxX65DjdNxG7PVYeyxKhx2E3J9R3LB8ehKmkTk/teWsB6uqF4i37atjAsDouag2Bn7+x4
-	03sakdyVF9JdB3IJRg//udcxZR4uCUNn/Gq0QG9Fxfto4xoAdZvTamWD2xGArzGN51lr1uP
-	Anw0Bn8f0A2HJYFGOc0c6szyVH5+8gFMC8QT/k7RvyVcSUKCm79mLKLbhsORmCZKx5UlCLg
-	rNWxTv7E9baYLlsid1hF5jcAvQK0R4q9WwIx8tqlOQK8Xd1uonHSY/onub1gHIKRXYZ2Eoc
-	Acu4L37r+4/bFSR5LzvuFco+gMSixssm0ys3AURQiWvmfIbYJdd0YrmKeUSX3xVxhMM8P5h
-	1/hQaO70rUIdXRJyX1k3B2obszmyFA91pGLkvwkFNBVWBDX1npX76lfHxUfLmmK1vRC6BGS
-	9ogfL3XvXwBSsjD/2zcdKVRzlhTb1QVyA1DM+YJ9W0JsFqumlEp7LoFYpd9vrKWDIu5OM/i
-	FNJWFnXyXNwB0WHSxUe+KrZRGIlYlaRfQd1gF0e178sXK13LJ+7dWlamdqw4cua7vzAe692
-	yS67NdZopBPyn7oyIojko7Z20Ph2IMMI30CNdOOWkFm03BnbookXwezJMoiL9gotrSnyESD
-	mG5x875FDret/61c7x4AoXsF4PMRcG1KDr++vkw4G0Tbktp+HJ
-X-QQ-XMRINFO: NyFYKkN4Ny6FuXrnB5Ye7Aabb3ujjtK+gg==
-X-QQ-RECHKSPAM: 0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 09/10] ext4: move zero partial block range functions out
+ of active handle
+To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+ ojaswin@linux.ibm.com, ritesh.list@gmail.com, libaokun@linux.alibaba.com,
+ yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com,
+ yukuai@fnnas.com
+References: <20260310014101.4140698-1-yi.zhang@huaweicloud.com>
+ <20260310014101.4140698-10-yi.zhang@huaweicloud.com>
+ <irkaodowvqmpug3moetmd75vssj6czh67qzuxs4v5vxe56qxz7@opkvl3apdpuk>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <irkaodowvqmpug3moetmd75vssj6czh67qzuxs4v5vxe56qxz7@opkvl3apdpuk>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:cCh0CgC3BteVAMJpBjcNCA--.56131S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxtrWftrW3CFWUKr1xGF13twb_yoW7Zw13pF
+	Z8KFyUKF4kWa4v9r4IgF4DZF40k3Z7KF4UGry7Gr1UZa98Zw1IkF47K3W09a4jyrW7C340
+	vF1Ykr9ru3WDAa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUv0b4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
+	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS
+	14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
+	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8
+	ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
+	0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_
+	Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU1
+	7KsUUUUUU==
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-ext4_split_extent_at() retries after ext4_ext_insert_extent() fails by
-refinding the original extent and restoring its length. That recovery is
-only safe for transient resource failures such as -ENOSPC, -EDQUOT, and
--ENOMEM.
+On 3/24/2026 4:17 AM, Jan Kara wrote:
+> On Tue 10-03-26 09:41:00, Zhang Yi wrote:
+>> From: Zhang Yi <yi.zhang@huawei.com>
+>>
+>> Move ext4_block_zero_eof() and ext4_zero_partial_blocks() calls out of
+>> the active handle context, making them independent operations. This is
+>> safe because it still ensures data is updated before metadata for
+>> data=ordered mode and data=journal mode because we still zero data and
+>> ordering data before modifying the metadata.
+>>
+>> This change is required for iomap infrastructure conversion because the
+>> iomap buffered I/O path does not use the same journal infrastructure for
+>> partial block zeroing. The lock ordering of folio lock and starting
+>> transactions is "folio lock -> transaction start", which is opposite of
+>> the current path. Therefore, zeroing partial blocks cannot be performed
+>> under the active handle.
+>>
+>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> 
+> So in this patch you also move ext4_zero_partial_blocks() before the
+> transaction start in ext4_zero_range() and ext4_punch_hole(). However
+> cannot these operations in theory fail with error such as EDQUOT or ENOSPC
+> when they need to grow the extent tree as a result of the operation? In
+> that case we'd return such error but partial blocks are already zeroed out
+> which is a problem... 
 
-When ext4_ext_insert_extent() fails because the extent tree is already
-corrupted, ext4_find_extent() can return a leaf path without p_ext.
-ext4_split_extent_at() then dereferences path[depth].p_ext while trying to
-fix up the original extent length, causing a NULL pointer dereference while
-handling a pre-existing filesystem corruption.
+Thank you for review this patch set!
 
-Do not enter the recovery path for corruption errors, and validate p_ext
-after refinding the extent before touching it. This keeps the recovery path
-limited to cases it can actually repair and turns the syzbot-triggered crash
-into a proper corruption report.
+Let me see, I believe you are referring to the cases where
+ext4_xxx_remove_space() in ext4_punch_hole() and
+ext4_alloc_file_blocks() in ext4_zero_range() return normal error codes
+such as EDQUOT or ENOSPC.
 
-Fixes: 716b9c23b862 ("ext4: refactor split and convert extents")
-Reported-by: syzbot+1ffa5d865557e51cb604@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=1ffa5d865557e51cb604
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
-Signed-off-by: hongao <hongao@uniontech.com>
----
-v2:
-- move the p_ext validation before ext4_ext_get_access()
-- add Reviewed-by tags from Jan Kara and Zhang Yi
+In ext4_punch_hole(), we first zero out the partial blocks at the
+beginning and end of the punch range, and then release the aligned
+blocks in the middle. If errors occur during the middle of the
+hole-punching operation, there will left some data in the middle of the
+punch range, this is weird. Conversely, if the zeroization is performed
+in sequence, the result is zeroization at the front and the retention of
+valid data at the rear, which is acceptable. right? Besides, this
+problem seems not occur in ext4_zero_range() because
+ext4_zero_partial_blocks() is still called after
+ext4_alloc_file_blocks() after this patch.
 
- fs/ext4/extents.c | 16 +++++++++++++---
- 1 file changed, 13 insertions(+), 3 deletions(-)
+Regarding this, I found that the result is the same whether
+ext4_alloc_file_blocks() is called inside transaction start or not. The
+partial blocks at the head and tail have already been zeroed out after
+calling ext4_zero_partial_blocks(), am I missing some thing? Or do you
+suggest that we should also move ext4_zero_partial_blocks() to execute
+after ext4_xxx_remove_space() in ext4_punch_hole()?
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index ae3804f36535..10af8dee0f1a 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3239,6 +3239,9 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
- 
- 	insert_err = PTR_ERR(path);
- 	err = 0;
-+	if (insert_err != -ENOSPC && insert_err != -EDQUOT &&
-+	    insert_err != -ENOMEM)
-+		goto out_path;
- 
- 	/*
- 	 * Get a new path to try to zeroout or fix the extent length.
-@@ -3255,13 +3258,20 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
- 		goto out_path;
- 	}
- 
-+	depth = ext_depth(inode);
-+	ex = path[depth].p_ext;
-+	if (!ex) {
-+		EXT4_ERROR_INODE(inode,
-+				 "bad extent address lblock: %lu, depth: %d pblock %lld",
-+				 (unsigned long)ee_block, depth, path[depth].p_block);
-+		err = -EFSCORRUPTED;
-+		goto out;
-+	}
-+
- 	err = ext4_ext_get_access(handle, inode, path + depth);
- 	if (err)
- 		goto out;
- 
--	depth = ext_depth(inode);
--	ex = path[depth].p_ext;
--
- fix_extent_len:
- 	ex->ee_len = orig_ex.ee_len;
- 	err = ext4_ext_dirty(handle, inode, path + path->p_depth);
--- 
-2.51.0
+> OTOH in these cases we don't need to order the data
+> at all so in principle we shouldn't need to move the zeroing earlier
+> here. Am I missing something?
+> 
+
+Moving the zero partial block before the start handle is not only
+because they do not need to order the data, but rather to avoid
+deadlock. iomap_zero_range() acquires the folio lock, and if it is
+called after ext4_journal_start(), the locking order would be
+transaction start -> folio lock, which is the opposite of the locking
+order used in the writeback process. If these two operations are
+performed concurrently (), it could potentially result in an ABBA
+deadlock.
+
+In the subsequent iomap patch [1], I will add a WARNING and a comment
+in ext4_iomap_block_zero_range(I don't see anything can prevent this)
+to ensure it is not called under an active handle.
+
+[1] https://lore.kernel.org/linux-ext4/20260203062523.3869120-18-yi.zhang@huawei.com/
+
+Thanks,
+Yi.
+
+> 								Honza
+> 
+>> @@ -4722,25 +4724,18 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+>>  	if (IS_ALIGNED(offset | end, blocksize))
+>>  		return ret;
+>>  
+>> -	/*
+>> -	 * In worst case we have to writeout two nonadjacent unwritten
+>> -	 * blocks and update the inode
+>> -	 */
+>> -	credits = (2 * ext4_ext_index_trans_blocks(inode, 2)) + 1;
+>> -	if (ext4_should_journal_data(inode))
+>> -		credits += 2;
+>> -	handle = ext4_journal_start(inode, EXT4_HT_MISC, credits);
+>> +	/* Zero out partial block at the edges of the range */
+>> +	ret = ext4_zero_partial_blocks(inode, offset, len);
+>> +	if (ret)
+>> +		return ret;
+>> +
+>> +	handle = ext4_journal_start(inode, EXT4_HT_MISC, 1);
+>>  	if (IS_ERR(handle)) {
+>>  		ret = PTR_ERR(handle);
+>>  		ext4_std_error(inode->i_sb, ret);
+>>  		return ret;
+>>  	}
+>>  
+>> -	/* Zero out partial block at the edges of the range */
+>> -	ret = ext4_zero_partial_blocks(inode, offset, len);
+>> -	if (ret)
+>> -		goto out_handle;
+>> -
+>>  	if (new_size)
+>>  		ext4_update_inode_size(inode, new_size);
+>>  	ret = ext4_mark_inode_dirty(handle, inode);
+>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>> index d5b783a7c814..5288d36b0f09 100644
+>> --- a/fs/ext4/inode.c
+>> +++ b/fs/ext4/inode.c
+>> @@ -4443,8 +4443,12 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+>>  	if (ret)
+>>  		return ret;
+>>  
+>> +	ret = ext4_zero_partial_blocks(inode, offset, length);
+>> +	if (ret)
+>> +		return ret;
+>> +
+>>  	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+>> -		credits = ext4_chunk_trans_extent(inode, 2);
+>> +		credits = ext4_chunk_trans_extent(inode, 0);
+>>  	else
+>>  		credits = ext4_blocks_for_truncate(inode);
+>>  	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
+>> @@ -4454,10 +4458,6 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+>>  		return ret;
+>>  	}
+>>  
+>> -	ret = ext4_zero_partial_blocks(inode, offset, length);
+>> -	if (ret)
+>> -		goto out_handle;
+>> -
+>>  	/* If there are blocks to remove, do it */
+>>  	start_lblk = EXT4_B_TO_LBLK(inode, offset);
+>>  	end_lblk = end >> inode->i_blkbits;
 
