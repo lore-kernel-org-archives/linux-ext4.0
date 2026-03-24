@@ -1,36 +1,36 @@
-Received: from smtpbguseast3.qq.com (smtpbguseast3.qq.com [54.243.244.52])
+Received: from smtpbgsg1.qq.com (smtpbgsg1.qq.com [54.254.200.92])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 33B8A35FF50;
-	Tue, 24 Mar 2026 01:41:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=54.243.244.52
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E053D37E319;
+	Tue, 24 Mar 2026 01:59:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=54.254.200.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774316499; cv=none; b=jgOHZHWgXi+YJCqayE/upl3RUlg4qSIyeTDRnFSO7045kzQYsKD8oTuqoGKUzfouDcuuUQQVBvgD75kdt6XTqu9jfIBBYalMkcfqC/Uhlbbfti92UosmXobo9QdA1edbtpMU38/Oc2+Z+5hD79WBnk8pUeZQ6r3Ph7jbKBzynAQ=
+	t=1774317562; cv=none; b=jKUiJ9vZ56ZNR0KDYmD1YeV+NDGyJ57WRTaL6u1OuQ6GqlLZG7PamoHP/eK/nWu8VVT3gRkjVNSpADGbqfCS8gYGOpuwsBDUrpf//+ucC1cTSP2EZHSmSz+F3NHCWVBZTm0ci+eaTU0J1gY5/zoBF6B6DWUNtJq7pD4Tg9NdGYA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774316499; c=relaxed/simple;
-	bh=GpswIbFYYVlQBnSq+Tk81j4O8Y5/C2xuehw61lMLoDI=;
+	s=arc-20240116; t=1774317562; c=relaxed/simple;
+	bh=abIFJ8smRTBqrvZnrPhpdohK2tW99nCYiFH2Pizf88I=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=o/1CqCMscL/Z7BQ/S6Yvl8TP4VT7h5oJ1bJOcnf/+4dHimmQIBH/DNgos+JIDg4PekJkpKmSGDq0qVyIa0IZj/djod32qNJTLrDLANnGt0EUTas28fOSe0B7yGQ6Fu8wFWpKbRwDwijK7lLQsHNMqoxg4aJOXzfmUf4ZwUWwlUk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com; spf=pass smtp.mailfrom=uniontech.com; dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b=onHBe3lf; arc=none smtp.client-ip=54.243.244.52
+	 MIME-Version; b=lfLkqgQebwgCq7d6XE/vM8yUFkG3CN8PrvBVaXQtvVVQCPn1Aopp1as2k3O2iv+VUHRGURRu4uZHW903hoO6cnp0zfETZAGhSsUB3q/Mfwb+f7oEvejN1lKLTG4powOE9BkufZeYBq+0EOuYoNftqfJnPSAHaxglt48p+w9AZD0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com; spf=pass smtp.mailfrom=uniontech.com; dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b=GILh9+Pb; arc=none smtp.client-ip=54.254.200.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uniontech.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b="onHBe3lf"
+	dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b="GILh9+Pb"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=uniontech.com;
-	s=onoh2408; t=1774316445;
-	bh=GpswIbFYYVlQBnSq+Tk81j4O8Y5/C2xuehw61lMLoDI=;
+	s=onoh2408; t=1774317511;
+	bh=oCrreMXCnwpdAby3dPZAlqXRykCRYbzSUk7p2Y0wsKg=;
 	h=From:To:Subject:Date:Message-ID:MIME-Version;
-	b=onHBe3lfNd8pOT8PwF/id1F2c//cowlzecDVO0Rexs5XGS3wPCKtiRkcpUyMBKd8Z
-	 zSfJOMkwFcDGluDVuD6gLg+urcd105kgIroSE5PG+HSPPraIG18WhFkvECNxhFoTMw
-	 r+hwxtRdmucf6z6GZI/qihAlJIHMsmRaz1imUNY4=
-X-QQ-mid: zesmtpgz3t1774316436tf2f38db0
-X-QQ-Originating-IP: pSAu+TrXxnYfoOB1eFEsoStcjcQN1XvZjiLvgXwfHNs=
+	b=GILh9+PbjZHStIDrf9GgW+QwZCCTxW9F5fjs8tlUKOJh6ATS95vYu79kj3h1c+RQW
+	 A5on9oXBR9ihAUhIoAVMfSPSrnaioan9Derkyy9u+U+9bpJNNBUID+ZsWJl3QclDBA
+	 3yLEklm/7N7yVBphaHSP97gUEfavlZjAazKaxTgY=
+X-QQ-mid: zesmtpsz4t1774317502tbbaf9c55
+X-QQ-Originating-IP: aDNpvSpBjxKjNoAy0XmL/wtWtxE8Ch9KTjJNxwgGFW0=
 Received: from hongao-PC ( [113.57.152.160])
 	by bizesmtp.qq.com (ESMTP) with 
-	id ; Tue, 24 Mar 2026 09:40:30 +0800 (CST)
+	id ; Tue, 24 Mar 2026 09:58:15 +0800 (CST)
 X-QQ-SSF: 0000000000000000000000000000000
 X-QQ-GoodBg: 1
-X-BIZMAIL-ID: 7415584528744268832
+X-BIZMAIL-ID: 17027558838027790740
 From: hongao <hongao@uniontech.com>
 To: tytso@mit.edu,
 	adilger.kernel@dilger.ca,
@@ -40,9 +40,9 @@ To: tytso@mit.edu,
 Cc: linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
 	syzbot+1ffa5d865557e51cb604@syzkaller.appspotmail.com
-Subject: Re: [PATCH] ext4: skip split extent recovery on corruption
-Date: Tue, 24 Mar 2026 09:40:25 +0800
-Message-ID: <E4BAF530323E79C3+20260324014025.31601-1-hongao@uniontech.com>
+Subject: [PATCH v2] ext4: skip split extent recovery on corruption
+Date: Tue, 24 Mar 2026 09:58:15 +0800
+Message-ID: <EF77870F23FF9C90+20260324015815.35248-1-hongao@uniontech.com>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <FA074540F4E30F27+20260323015752.60064-1-hongao@uniontech.com>
 References: <FA074540F4E30F27+20260323015752.60064-1-hongao@uniontech.com>
@@ -54,57 +54,94 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-QQ-SENDSIZE: 520
-Feedback-ID: zesmtpgz:uniontech.com:qybglogicsvrgz:qybglogicsvrgz6b-0
-X-QQ-XMAILINFO: NULCRwGdozm47mWGiyHLnvltEZ2IqhRbcsW2Ivv/f7LuyywHY10cSgck
-	wiGDZvbg89iENsR8kjh02dl2X+71n9vSBDAbpmH7gZd0cDXLhfLBTe1VpZmIWEtmjKRUXz7
-	NlxKyEzeZ/4vOtuDYR+o/d4XnFFhB9fxFxqyiTs4usAFUM6sp7AfYZq+FJZ7C/jhhmH2O4J
-	7FmloyQhRAmJBYczjp8tQlWt4UWxN/veKCxoqeFW8nJv/lKv4/7eXqhrC/TIFcAe4bKg/8L
-	rKVuPStRhum5cJwAdYa1UvBtoylhgtrW2srcacIXFf86wMWPfDaetPMI2gwmLPkmMn8K5qr
-	JqlJWtutzltQrbgUBu6Hvtv9NoD9rVkhtcafPbgObwKiwNKO5qGTIAsAXaGImtMeT491mTo
-	OuytYWiycjZxHqw9YmfzBxeaK0HWqgoqA6qSBGBHuBxCxgtbcn/DKZyi7j25Sc1P20FriSi
-	Yc+57RTTdQMIbS/HBjkZ7oH7wA/38lCeHq6RpgmBQWg6hAboAJ8K8DfGHLybp/wrEJJm3AC
-	45+OhH2xkHPGvsAvwQ/22cG0Bf1acOJ/iM+cvAYP1x6tCb57E9z4ItC67HQLwh27TniuWVq
-	qp8FpWSEaavYJE22n3qZqEX2rTyhoSFhSdhKam8SlYn6AlzvksOC/aZ5pMVf1nLWYrzN5+B
-	aRUjj1lEld9ViikhMzai97YoaBGSaBI6wwr33NL0aezvqhROfBvYdrwjfah8rheapswlpvU
-	rK/s0IW6RcZ9i3cE44HAcAqXfGj2Eg+qi0ySfUUBLgfW/kH53d6lPeHRalv84pdKOZ1we+B
-	BGQln6hmybBeEOUXRs2W4ABI384j53Is9WqQHckv8gG/43XSHal3fhuIvqaEFLkvOtnXfMa
-	zgQM+XQcQcP+bahzkPXr9AFEvaM/obD1jOSr4zEMg4ocsnNkn/wlrXz3QyIf6b9W82qu66r
-	gI0U9HOr4RrKhD9cosBCAImBU9sSGIKkVIU9P4WyicBSV5dUCHq+5D9MpA0uWcqpkf02Uf0
-	JjGwaY9gm1wiHeF44su5WucBDd7+5STk6IX4/vqkwvOMSSuUA6sd3IZouc4ufKSWmsAh75v
-	g==
+Feedback-ID: zesmtpsz:uniontech.com:qybglogicsvrgz:qybglogicsvrgz6b-0
+X-QQ-XMAILINFO: MKbpLBOB35npTDTzjbRJRvWHJ1P7NPAsHiprx/EgBRFHHqMyPZmi6Pdy
+	R7LNwnsTqUUWvFH3BNCV/cvhm+kx8is2S4Vm1uAzvbF4rQGzJ9+ygpz6ViLLXlKppoSUltH
+	OjMj4BaGKymHnUHRIphEKI43OuJUugUCx2Wwm6kvJl3Sk7wK40qhlT/zHRX5Rvu5Y8MXpIU
+	xhe8XWfKMmz/9EyNqqbeBpV/QjsVj3BnVncK+S8t+EAxrq4GbQ8U6Huz2wyl443Vd00ik31
+	EB7e5EHm4w/wW7sLeKWfdc3TGtE5Pv0BMA45PfENUbcPCj1T2sNSPyBaRdF+1Qm+Xs/zrs8
+	UB5fsVUul1M/L4yJEzS+ZoZHUJGq3fqwh8u3N0SnZSET9yaQc3Gef46s0D/sWD20tq+2TxB
+	+xGxX65DjdNxG7PVYeyxKhx2E3J9R3LB8ehKmkTk/teWsB6uqF4i37atjAsDouag2Bn7+x4
+	03sakdyVF9JdB3IJRg//udcxZR4uCUNn/Gq0QG9Fxfto4xoAdZvTamWD2xGArzGN51lr1uP
+	Anw0Bn8f0A2HJYFGOc0c6szyVH5+8gFMC8QT/k7RvyVcSUKCm79mLKLbhsORmCZKx5UlCLg
+	rNWxTv7E9baYLlsid1hF5jcAvQK0R4q9WwIx8tqlOQK8Xd1uonHSY/onub1gHIKRXYZ2Eoc
+	Acu4L37r+4/bFSR5LzvuFco+gMSixssm0ys3AURQiWvmfIbYJdd0YrmKeUSX3xVxhMM8P5h
+	1/hQaO70rUIdXRJyX1k3B2obszmyFA91pGLkvwkFNBVWBDX1npX76lfHxUfLmmK1vRC6BGS
+	9ogfL3XvXwBSsjD/2zcdKVRzlhTb1QVyA1DM+YJ9W0JsFqumlEp7LoFYpd9vrKWDIu5OM/i
+	FNJWFnXyXNwB0WHSxUe+KrZRGIlYlaRfQd1gF0e178sXK13LJ+7dWlamdqw4cua7vzAe692
+	yS67NdZopBPyn7oyIojko7Z20Ph2IMMI30CNdOOWkFm03BnbookXwezJMoiL9gotrSnyESD
+	mG5x875FDret/61c7x4AoXsF4PMRcG1KDr++vkw4G0Tbktp+HJ
 X-QQ-XMRINFO: NyFYKkN4Ny6FuXrnB5Ye7Aabb3ujjtK+gg==
 X-QQ-RECHKSPAM: 0
 
-Hi Jan, Yi, Ojaswin,
+ext4_split_extent_at() retries after ext4_ext_insert_extent() fails by
+refinding the original extent and restoring its length. That recovery is
+only safe for transient resource failures such as -ENOSPC, -EDQUOT, and
+-ENOMEM.
 
-Thank you for reviewing the patch.
+When ext4_ext_insert_extent() fails because the extent tree is already
+corrupted, ext4_find_extent() can return a leaf path without p_ext.
+ext4_split_extent_at() then dereferences path[depth].p_ext while trying to
+fix up the original extent length, causing a NULL pointer dereference while
+handling a pre-existing filesystem corruption.
 
-I will send a v2 that moves the p_ext validation before
-ext4_ext_get_access(), as Yi suggested.
+Do not enter the recovery path for corruption errors, and validate p_ext
+after refinding the extent before touching it. This keeps the recovery path
+limited to cases it can actually repair and turns the syzbot-triggered crash
+into a proper corruption report.
 
-Also, thanks for the Reviewed-by tags:
+Fixes: 716b9c23b862 ("ext4: refactor split and convert extents")
+Reported-by: syzbot+1ffa5d865557e51cb604@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=1ffa5d865557e51cb604
 Reviewed-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+Signed-off-by: hongao <hongao@uniontech.com>
+---
+v2:
+- move the p_ext validation before ext4_ext_get_access()
+- add Reviewed-by tags from Jan Kara and Zhang Yi
 
-Regarding Ojaswin's questions:
+ fs/ext4/extents.c | 16 +++++++++++++---
+ 1 file changed, 13 insertions(+), 3 deletions(-)
 
-I do not have a local reproducer at the moment. My analysis was based on
-the syzbot report, the crash trace, and code inspection.
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index ae3804f36535..10af8dee0f1a 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3239,6 +3239,9 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
+ 
+ 	insert_err = PTR_ERR(path);
+ 	err = 0;
++	if (insert_err != -ENOSPC && insert_err != -EDQUOT &&
++	    insert_err != -ENOMEM)
++		goto out_path;
+ 
+ 	/*
+ 	 * Get a new path to try to zeroout or fix the extent length.
+@@ -3255,13 +3258,20 @@ static struct ext4_ext_path *ext4_split_extent_at(handle_t *handle,
+ 		goto out_path;
+ 	}
+ 
++	depth = ext_depth(inode);
++	ex = path[depth].p_ext;
++	if (!ex) {
++		EXT4_ERROR_INODE(inode,
++				 "bad extent address lblock: %lu, depth: %d pblock %lld",
++				 (unsigned long)ee_block, depth, path[depth].p_block);
++		err = -EFSCORRUPTED;
++		goto out;
++	}
++
+ 	err = ext4_ext_get_access(handle, inode, path + depth);
+ 	if (err)
+ 		goto out;
+ 
+-	depth = ext_depth(inode);
+-	ex = path[depth].p_ext;
+-
+ fix_extent_len:
+ 	ex->ee_len = orig_ex.ee_len;
+ 	err = ext4_ext_dirty(handle, inode, path + path->p_depth);
+-- 
+2.51.0
 
-For the p_ext == NULL case, a successful ext4_find_extent() only means
-that we were able to walk the tree down to a leaf. It does not guarantee
-that the leaf still contains a valid extent entry for the target logical
-block.
-
-path[depth].p_ext is derived from the extent entries stored in that leaf.
-If the leaf metadata is already corrupted, ext4_find_extent() may still
-return a non-error path, but p_ext can be NULL because there is no usable
-extent entry there anymore.
-
-So in the corruption case, a valid path is not enough to continue the
-recovery path safely. Returning -EFSCORRUPTED is safer than
-dereferencing p_ext and crashing while trying to repair already-broken
-metadata.
-
-Thanks,
-Hongao
