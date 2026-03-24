@@ -1,203 +1,190 @@
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 51DAB3E3150
-	for <linux-ext4@vger.kernel.org>; Tue, 24 Mar 2026 13:52:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 213563E556B
+	for <linux-ext4@vger.kernel.org>; Tue, 24 Mar 2026 13:56:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774360354; cv=none; b=Iz2UJEcelEHVN3MYhtMuB/1Pf4ielqP3q6aosfeztl+K2zKktfQ3rJfozl6mG4cisuDsu62NqKSFrkuFB3MCCRjS3hhQQBg+XWa26gyzV7FeT3tLesXot4IqGAI4VW88hhjJVyPekK5V/bwTNaaY3Wzxue0pJpYQKCIKsR0uDaI=
+	t=1774360570; cv=none; b=AnzmCdwggmhupTawGJhfUXkII/RrZFdG56l0GNOxK4F3WudbW/wswGWCPQY8gE6V7bSWrUyjfJGYch1YR+3TQN21jfCZEwoLF8beNgEnbRmmbyWQWWgESJMODCce0UdNbfEBb1Ts49VrGJBMuckLdDMvG4BrqRCy6Ygiv8POh9I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774360354; c=relaxed/simple;
-	bh=UT6CWXv4BidstC/EImQRHW6izHfpZi0TlMnQCoZdy8I=;
+	s=arc-20240116; t=1774360570; c=relaxed/simple;
+	bh=wzDPb14kr2pCImB6dQnkUULtJuvaamQvGvLe2QbM+BY=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=ArNKDkLil0JdZMk9W5sf0oCTzuKQ0MtX/qWywyL1sXxVDBwFX73TlUOw+aUu48+5pEIGQ4QAVVXkFHBQu+ZoT14b9dR+MYY4a0Qun6zf+nB+RTu/lFcUK11bGw3K8wplj8LvsH9WpEFtd0nOS1P/JJUC49oyQszRzsd9fVThd+c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=QcOMDL4E; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=e1ks+Msg; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=QcOMDL4E; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=e1ks+Msg; arc=none smtp.client-ip=195.135.223.131
+	 Content-Type:Content-Disposition:In-Reply-To; b=aC/NZkV45+tOpE3TZ94/2f+4xSoyGeMMIDHPd1K7m3pQORIA3JdhZHRi4TlrKNgqIxAILabOkuZKcRZuES0siRosv/MPEvDdKabU86bU2YHo4blYug8LF4qe51ZPq/deUpLYMtvg5FftGyVdBKjUXAueivPjF17wXCOCSDJ1edw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=d35LRlCs; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=4/38gvu3; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=d35LRlCs; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=4/38gvu3; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="QcOMDL4E";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="e1ks+Msg";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="QcOMDL4E";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="e1ks+Msg"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="d35LRlCs";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="4/38gvu3";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="d35LRlCs";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="4/38gvu3"
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 7DD7C5BCEB;
-	Tue, 24 Mar 2026 13:52:31 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 531635BCEB;
+	Tue, 24 Mar 2026 13:56:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1774360351; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1774360566; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=wzUJiK0Jsd8W2FOeN2md5b65aVTohx0lmkYKrmYqfqU=;
-	b=QcOMDL4EM9+hNA9dbdnc8iKYUCqyHZiULcfMXNDjc7xg/EoncK6vGA0cx+pZm12ydkssn4
-	DOcpIFGLhZ9A1xMO/+zMzzp5nKYGr5zmAabfXp6iaXrxgO9lZwxZVOb3nvlqq4wwVqJCBO
-	KzzCkH13I7xGKyLz4cskj4quEgZUIwU=
+	bh=QGZZOvd3k++L8qP6bDgWLb4hKlyIZ69YrTWaam0tH8g=;
+	b=d35LRlCsY24Vrq7V0wAyZ2TNvsDHMdmtZZeAxGJvWOHHhkzKwuRo1CEKzv8uXiS7o4ASni
+	/Yt22AvpvuKn+IK7JsxIRPICdsIwpetVvLZY4Pz4WtMbc4hUHQwW7usnh6qhiUmlZTBdJV
+	BbCdWnJ20B8ASrH0tUjbPGiK38cnbXg=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1774360351;
+	s=susede2_ed25519; t=1774360566;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=wzUJiK0Jsd8W2FOeN2md5b65aVTohx0lmkYKrmYqfqU=;
-	b=e1ks+MsgWq9SlBuE8S4aLtlwMm4KTxQDWFXcZBrC6Zlg+QsxH0gkF/nequei490wwT5BLa
-	TLgwNz7Ql443kuAg==
+	bh=QGZZOvd3k++L8qP6bDgWLb4hKlyIZ69YrTWaam0tH8g=;
+	b=4/38gvu3WyDzIXpYUKuGV/73uXWO55St5QmoEMCmkAGVT+B6OSFJc63p4ozufe33qH9O/o
+	1ddL/7SRoGbeSUAw==
 Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=QcOMDL4E;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=e1ks+Msg
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=d35LRlCs;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b="4/38gvu3"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1774360351; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1774360566; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=wzUJiK0Jsd8W2FOeN2md5b65aVTohx0lmkYKrmYqfqU=;
-	b=QcOMDL4EM9+hNA9dbdnc8iKYUCqyHZiULcfMXNDjc7xg/EoncK6vGA0cx+pZm12ydkssn4
-	DOcpIFGLhZ9A1xMO/+zMzzp5nKYGr5zmAabfXp6iaXrxgO9lZwxZVOb3nvlqq4wwVqJCBO
-	KzzCkH13I7xGKyLz4cskj4quEgZUIwU=
+	bh=QGZZOvd3k++L8qP6bDgWLb4hKlyIZ69YrTWaam0tH8g=;
+	b=d35LRlCsY24Vrq7V0wAyZ2TNvsDHMdmtZZeAxGJvWOHHhkzKwuRo1CEKzv8uXiS7o4ASni
+	/Yt22AvpvuKn+IK7JsxIRPICdsIwpetVvLZY4Pz4WtMbc4hUHQwW7usnh6qhiUmlZTBdJV
+	BbCdWnJ20B8ASrH0tUjbPGiK38cnbXg=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1774360351;
+	s=susede2_ed25519; t=1774360566;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=wzUJiK0Jsd8W2FOeN2md5b65aVTohx0lmkYKrmYqfqU=;
-	b=e1ks+MsgWq9SlBuE8S4aLtlwMm4KTxQDWFXcZBrC6Zlg+QsxH0gkF/nequei490wwT5BLa
-	TLgwNz7Ql443kuAg==
+	bh=QGZZOvd3k++L8qP6bDgWLb4hKlyIZ69YrTWaam0tH8g=;
+	b=4/38gvu3WyDzIXpYUKuGV/73uXWO55St5QmoEMCmkAGVT+B6OSFJc63p4ozufe33qH9O/o
+	1ddL/7SRoGbeSUAw==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 74E8B43E87;
-	Tue, 24 Mar 2026 13:52:31 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 4759A43E89;
+	Tue, 24 Mar 2026 13:56:06 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id CK+FHB+XwmmPQgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 24 Mar 2026 13:52:31 +0000
+	id kINhEfaXwmlLRgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 24 Mar 2026 13:56:06 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 360E8A0B32; Tue, 24 Mar 2026 14:52:23 +0100 (CET)
-Date: Tue, 24 Mar 2026 14:52:23 +0100
+	id 059EEA0B32; Tue, 24 Mar 2026 14:56:01 +0100 (CET)
+Date: Tue, 24 Mar 2026 14:56:01 +0100
 From: Jan Kara <jack@suse.cz>
-To: Milos Nikic <nikic.milos@gmail.com>
-Cc: jack@suse.cz, tytso@mit.edu, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, Zhang Yi <yi.zhang@huawei.com>, 
-	Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH v5 1/2] jbd2: gracefully abort instead of panicking on
- unlocked buffer
-Message-ID: <au4akf3qdluvblskpk4vjz4ylav7ykjubngthqcfhknswlh3kl@qrukgpcr5u6c>
-References: <20260304172016.23525-1-nikic.milos@gmail.com>
- <20260304172016.23525-2-nikic.milos@gmail.com>
- <CAOeJtk8hrcM6NR73Xo5++aU_ZXyM8GvN7U44iA-rJdp0evhrpQ@mail.gmail.com>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, 
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, tytso@mit.edu, 
+	adilger.kernel@dilger.ca, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	libaokun@linux.alibaba.com, yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com, 
+	yukuai@fnnas.com
+Subject: Re: [PATCH 09/10] ext4: move zero partial block range functions out
+ of active handle
+Message-ID: <dlxu3pvhlwgbggdt5lfgxltqrpeqj3vqhal3hkvbwkx7x3ydil@xnzcts5zve2l>
+References: <20260310014101.4140698-1-yi.zhang@huaweicloud.com>
+ <20260310014101.4140698-10-yi.zhang@huaweicloud.com>
+ <irkaodowvqmpug3moetmd75vssj6czh67qzuxs4v5vxe56qxz7@opkvl3apdpuk>
+ <7fa8415e-199f-4e31-8b07-08f0f73d5b99@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <CAOeJtk8hrcM6NR73Xo5++aU_ZXyM8GvN7U44iA-rJdp0evhrpQ@mail.gmail.com>
+In-Reply-To: <7fa8415e-199f-4e31-8b07-08f0f73d5b99@huaweicloud.com>
+X-Rspamd-Action: no action
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
 X-Spamd-Result: default: False [-2.51 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
 	MX_GOOD(-0.01)[];
-	RCVD_COUNT_THREE(0.00)[3];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FREEMAIL_TO(0.00)[gmail.com];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	TO_DN_SOME(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
 	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	MIME_TRACE(0.00)[0:+];
 	ARC_NA(0.00)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	RCPT_COUNT_TWELVE(0.00)[14];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_TLS_LAST(0.00)[];
 	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	RCPT_COUNT_SEVEN(0.00)[7];
+	TO_DN_SOME(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,suse.cz:email,suse.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
 	FROM_EQ_ENVFROM(0.00)[];
 	FROM_HAS_DN(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	TAGGED_RCPT(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
 	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email]
-X-Rspamd-Action: no action
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_CC(0.00)[suse.cz,vger.kernel.org,mit.edu,dilger.ca,linux.ibm.com,gmail.com,linux.alibaba.com,huawei.com,fnnas.com];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from]
+X-Rspamd-Queue-Id: 531635BCEB
 X-Spam-Flag: NO
 X-Spam-Score: -2.51
 X-Spam-Level: 
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Rspamd-Queue-Id: 7DD7C5BCEB
 
-Hello!
-
-On Mon 23-03-26 14:50:00, Milos Nikic wrote:
-> Just sending a gentle ping on this v5 series from March 4th.
-> It looks like both patches have collected Reviewed-by tags from Jan,
-> Andreas and Zhang.
+On Tue 24-03-26 11:10:13, Zhang Yi wrote:
+> On 3/24/2026 4:17 AM, Jan Kara wrote:
+> > On Tue 10-03-26 09:41:00, Zhang Yi wrote:
+> >> From: Zhang Yi <yi.zhang@huawei.com>
+> >>
+> >> Move ext4_block_zero_eof() and ext4_zero_partial_blocks() calls out of
+> >> the active handle context, making them independent operations. This is
+> >> safe because it still ensures data is updated before metadata for
+> >> data=ordered mode and data=journal mode because we still zero data and
+> >> ordering data before modifying the metadata.
+> >>
+> >> This change is required for iomap infrastructure conversion because the
+> >> iomap buffered I/O path does not use the same journal infrastructure for
+> >> partial block zeroing. The lock ordering of folio lock and starting
+> >> transactions is "folio lock -> transaction start", which is opposite of
+> >> the current path. Therefore, zeroing partial blocks cannot be performed
+> >> under the active handle.
+> >>
+> >> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> > 
+> > So in this patch you also move ext4_zero_partial_blocks() before the
+> > transaction start in ext4_zero_range() and ext4_punch_hole(). However
+> > cannot these operations in theory fail with error such as EDQUOT or ENOSPC
+> > when they need to grow the extent tree as a result of the operation? In
+> > that case we'd return such error but partial blocks are already zeroed out
+> > which is a problem... 
 > 
-> Please let me know if there is anything else you need from my side, or
-> if this is good to be queued up in the ext4 tree for the next merge
-> window.
+> Thank you for review this patch set!
+> 
+> Let me see, I believe you are referring to the cases where
+> ext4_xxx_remove_space() in ext4_punch_hole() and
+> ext4_alloc_file_blocks() in ext4_zero_range() return normal error codes
+> such as EDQUOT or ENOSPC.
 
-Ted Tso is generally picking jbd2 patches. Since this is a cleanup, I
-expect him to pick up this patch for the next merge window - i.e., in a
-week or two :)
+Yes, I was referring to those.
+
+> In ext4_punch_hole(), we first zero out the partial blocks at the
+> beginning and end of the punch range, and then release the aligned
+> blocks in the middle. If errors occur during the middle of the
+> hole-punching operation, there will left some data in the middle of the
+> punch range, this is weird. Conversely, if the zeroization is performed
+> in sequence, the result is zeroization at the front and the retention of
+> valid data at the rear, which is acceptable. right? Besides, this
+> problem seems not occur in ext4_zero_range() because
+> ext4_zero_partial_blocks() is still called after
+> ext4_alloc_file_blocks() after this patch.
+
+Indeed, I've got confused. Your patch is fine. Feel free to add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
-
-> 
-> Thanks, Milos
-> 
-> On Wed, Mar 4, 2026 at 9:20 AM Milos Nikic <nikic.milos@gmail.com> wrote:
-> >
-> > In jbd2_journal_get_create_access(), if the caller passes an unlocked
-> > buffer, the code currently triggers a fatal J_ASSERT.
-> >
-> > While an unlocked buffer here is a clear API violation and a bug in the
-> > caller, crashing the entire system is an overly severe response. It brings
-> > down the whole machine for a localized filesystem inconsistency.
-> >
-> > Replace the J_ASSERT with a WARN_ON_ONCE to capture the offending caller's
-> > stack trace, and return an error (-EINVAL). This allows the journal to
-> > gracefully abort the transaction, protecting data integrity without
-> > causing a kernel panic.
-> >
-> > Signed-off-by: Milos Nikic <nikic.milos@gmail.com>
-> > Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
-> > Reviewed-by: Jan Kara <jack@suse.cz>
-> > Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-> > ---
-> >  fs/jbd2/transaction.c | 7 ++++++-
-> >  1 file changed, 6 insertions(+), 1 deletion(-)
-> >
-> > diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> > index dca4b5d8aaaa..04d17a5f2a82 100644
-> > --- a/fs/jbd2/transaction.c
-> > +++ b/fs/jbd2/transaction.c
-> > @@ -1302,7 +1302,12 @@ int jbd2_journal_get_create_access(handle_t *handle, struct buffer_head *bh)
-> >                 goto out;
-> >         }
-> >
-> > -       J_ASSERT_JH(jh, buffer_locked(jh2bh(jh)));
-> > +       if (WARN_ON_ONCE(!buffer_locked(jh2bh(jh)))) {
-> > +               err = -EINVAL;
-> > +               spin_unlock(&jh->b_state_lock);
-> > +               jbd2_journal_abort(journal, err);
-> > +               goto out;
-> > +       }
-> >
-> >         if (jh->b_transaction == NULL) {
-> >                 /*
-> > --
-> > 2.53.0
-> >
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
