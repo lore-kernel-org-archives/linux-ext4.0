@@ -1,83 +1,110 @@
-Received: from mailgw.kylinos.cn (mailgw.kylinos.cn [124.126.103.232])
+Received: from out30-111.freemail.mail.aliyun.com (out30-111.freemail.mail.aliyun.com [115.124.30.111])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 477FB3DA5CB
-	for <linux-ext4@vger.kernel.org>; Tue, 24 Mar 2026 09:13:22 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=124.126.103.232
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A08E83E92A6;
+	Tue, 24 Mar 2026 11:00:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.111
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774343613; cv=none; b=U7KsMBpGfx4eAbn6PmhAMW7Kwe3pwDMbbDq+rrFRFzuwvj+Ta4SwlxhXsc1Xn8f9AaX1wrdlQIJx3wdVlzzXyy3VVyZUNY09zeobQG9P5e8AaIBj8FZm9XNh6aJ0RkE+/oZtkNjk8WsjZBehubih5nop53jZJTbam834uWvS/TE=
+	t=1774350039; cv=none; b=gg551ioW8YWdCTzkIEv2RjHMoUuBfvvoNPHU5QGNFN19WeKArccKBCuVodQ/IcGwd1pothgtuJof1+zL8ecsrf9Z3HapARGJGdklOViiMzDZxZoPgvHzh4AjQmyvC4d8maFJ5Zy2UOEATlkvw4oZsmpxkf0O7PYrz1jfCKbifnQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774343613; c=relaxed/simple;
-	bh=wI/hihErKn7cdDHBSOkTioHxMT/dpcSO/DMb3V++bZo=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=rdwLj4n7IbyfslYBvVsVCT+ccq88HypUNW5aW/z6kJkXdaAUbdvmzMv0qIUiggOwBye9B/rX3UPeWSb/eLee2Z1svo84rFHO8XW8wu8KY7PvMo7br0cquiy5JxuUdNDYCHMkbjP/oBcZZPDI5hEKcijXWNcTJqHLNtKYvTxmhrc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=kylinos.cn; spf=pass smtp.mailfrom=kylinos.cn; arc=none smtp.client-ip=124.126.103.232
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=kylinos.cn
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=kylinos.cn
-X-UUID: b133f7f2276111f1a21c59e7364eecb8-20260324
-X-CTIC-Tags:
-	HR_CC_COUNT, HR_CC_DOMAIN_COUNT, HR_CC_NAME, HR_CC_NO_NAME, HR_CTE_8B
-	HR_CTT_MISS, HR_DATE_H, HR_DATE_WKD, HR_DATE_ZONE, HR_FROM_NAME
-	HR_SJ_LANG, HR_SJ_LEN, HR_SJ_LETTER, HR_SJ_NOR_SYM, HR_SJ_PHRASE
-	HR_SJ_PHRASE_LEN, HR_SJ_WS, HR_TO_COUNT, HR_TO_DOMAIN_COUNT, HR_TO_NO_NAME
-	IP_UNTRUSTED, SRC_UNTRUSTED, IP_UNFAMILIAR, SRC_UNFAMILIAR, DN_TRUSTED
-	SRC_TRUSTED, SA_TRUSTED, SA_EXISTED, SN_TRUSTED, SN_EXISTED
-	SPF_NOPASS, DKIM_NOPASS, DMARC_NOPASS, CIE_BAD, CIE_GOOD_SPF
-	CIE_UNKNOWN, GTI_FG_BS, GTI_RG_INFO, GTI_C_BU, AMN_GOOD
-	ABX_GENE_RDNS
-X-CID-P-RULE: Release_Ham
-X-CID-O-INFO: VERSION:1.3.11,REQID:5b9bfe7d-aee5-42e1-b81f-5411ff8e3a89,IP:10,
-	URL:0,TC:0,Content:0,EDM:0,RT:0,SF:-5,FILE:0,BULK:0,RULE:Release_Ham,ACTIO
-	N:release,TS:5
-X-CID-INFO: VERSION:1.3.11,REQID:5b9bfe7d-aee5-42e1-b81f-5411ff8e3a89,IP:10,UR
-	L:0,TC:0,Content:0,EDM:0,RT:0,SF:-5,FILE:0,BULK:0,RULE:Release_Ham,ACTION:
-	release,TS:5
-X-CID-META: VersionHash:89c9d04,CLOUDID:b7d7cb0a6cd3c7057a77abd950a7500e,BulkI
-	D:2603241713175H0GUI0Q,BulkQuantity:0,Recheck:0,SF:17|19|66|78|102|127|898
-	,TC:nil,Content:0|15|50,EDM:-3,IP:-2,URL:0,File:nil,RT:nil,Bulk:nil,QS:nil
-	,BEC:nil,COL:0,OSI:0,OSA:0,AV:0,LES:1,SPR:NO,DKR:0,DKP:0,BRR:0,BRE:0,ARC:0
-X-CID-BVR: 2,SSN|SDN
-X-CID-BAS: 2,SSN|SDN,0,_
-X-CID-FACTOR: TF_CID_SPAM_SNR,TF_CID_SPAM_FAS,TF_CID_SPAM_FSD
-X-CID-RHF: D41D8CD98F00B204E9800998ECF8427E
-X-UUID: b133f7f2276111f1a21c59e7364eecb8-20260324
-X-User: jinzhiguang@kylinos.cn
-Received: from jinzig [(171.8.192.234)] by mailgw.kylinos.cn
-	(envelope-from <jinzhiguang@kylinos.cn>)
-	(Generic MTA with TLSv1.3 TLS_AES_256_GCM_SHA384 256/256)
-	with ESMTP id 893019214; Tue, 24 Mar 2026 17:13:16 +0800
-From: jinzhiguang <jinzhiguang@kylinos.cn>
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org,
-	jinzhiguang <jinzhiguang@kylinos.cn>
-Subject: [PATCH] doc: correct date in release notes
-Date: Tue, 24 Mar 2026 17:12:59 +0800
-Message-ID: <20260324091259.1167-1-jinzhiguang@kylinos.cn>
-X-Mailer: git-send-email 2.53.0.windows.2
+	s=arc-20240116; t=1774350039; c=relaxed/simple;
+	bh=hkPccoDD3wwAsrOYocTQZLWOFYY1JDCxpR9Q1bWWSP4=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=ikwtJr/BgPuV/J9JUtzpKFpJA9U9rtW6Q4EuE4dyfYc5NQVXWA8uK5dozWmm91xxJbY7yDsLqDnTqaN37z3gwyz7Z4HjGM6hZOUiDHzUodaPTIjcGox8qeVo9XdFo/yRFnZcjveyGHSe2cndiTR6B5SQUa5BXwbtrbp6OsfLOs4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=i/2BJSF+; arc=none smtp.client-ip=115.124.30.111
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="i/2BJSF+"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1774350031; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=R5+HI63vns9irSYBpzTGS3kRRols7k3i+h9tt1469vM=;
+	b=i/2BJSF+UBhvCTh131srz6f+K4y/W5U1CHZHO6ihWrdvD/UhaMoeyC5WhWNBvuv97G3Mak9wKr6swWC+9jx5GLn/uY/f4hXign0YSB1QeM6f6ymKwjprNTddEg+Xtf5pun8C3WVddN2KeL9jZGEBYz+hU6pcltlgmwlwMULKioA=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R201e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033032089153;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=6;SR=0;TI=SMTPD_---0X.eEVSz_1774350030;
+Received: from 30.221.131.178(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X.eEVSz_1774350030 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Tue, 24 Mar 2026 19:00:31 +0800
+Message-ID: <d7a82737-a293-4e72-b5e4-1c8492d06e8c@linux.alibaba.com>
+Date: Tue, 24 Mar 2026 19:00:30 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [bug report] e2fsprogs 1.47.4: mke2fs creates oversized orphan
+ file for 1k blocksize (breaks mount)
+To: Yi Zhang <yi.zhang@redhat.com>
+Cc: linux-ext4@vger.kernel.org, linux-block <linux-block@vger.kernel.org>,
+ Shinichiro Kawasaki <shinichiro.kawasaki@wdc.com>,
+ Theodore Ts'o <tytso@mit.edu>, libaokun@linux.alibaba.com
+References: <CAHj4cs8o5HExeOX2YCYrWH86iz4xwL52YtsJNV2YOyDPbyEffg@mail.gmail.com>
+Content-Language: en-US
+From: Baokun Li <libaokun@linux.alibaba.com>
+In-Reply-To: <CAHj4cs8o5HExeOX2YCYrWH86iz4xwL52YtsJNV2YOyDPbyEffg@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-Correct the date in the RelNotes/v1.47.4.txt from 2025 to 2026.
+Hi,
 
-Signed-off-by: jinzhiguang <jinzhiguang@kylinos.cn>
----
- doc/RelNotes/v1.47.4.txt | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On 3/24/26 8:54 AM, Yi Zhang wrote:
+> Hi
+>
+> I'm reporting a regression in e2fsprogs-1.47.4 where mke2fs creates an
+> orphan file[2] that exceeds the kernel's maximum allowed size for
+> filesystems with a 1KB block size[1]. This causes subsequent mount
+> operations to fail.
+>
+> This issue is currently causing blktests loop/007 to fail on latest
+> Fedora. Downgrading to e2fsprogs 1.47.3 resolves the issue.
+> And revert [3] fixed this issue, here is the reproducer[4].
+>
+> [1]
+> Kernel limit for 1KB blocks: 512 * 1024 = 512 KB
+> [2]
+> Orphan file created by e2fsprogs 1.47.4: 1024 KB (1 MB)
+> [3]
+> 6f03c698 libext2fs: fix orphan file size > kernel limit with large blocksize
 
-diff --git a/doc/RelNotes/v1.47.4.txt b/doc/RelNotes/v1.47.4.txt
-index 6e7e1c4c..6c78a2b2 100644
---- a/doc/RelNotes/v1.47.4.txt
-+++ b/doc/RelNotes/v1.47.4.txt
-@@ -1,4 +1,4 @@
--E2fsprogs 1.47.4 (March 6, 2025)
-+E2fsprogs 1.47.4 (March 6, 2026)
- ================================
- 
- Updates/Fixes since v1.47.3:
--- 
-2.53.0.windows.2
+Refer to the discussion in [a], you can revert [3] and apply [b] to fix
+this issue.
+
+[a]:
+https://lore.kernel.org/linux-ext4/d4d64000-6b55-449e-83bb-be438aaa5146@linux.alibaba.com/
+[b]:
+https://lore.kernel.org/linux-ext4/20251120135514.3013973-1-libaokun@huaweicloud.com/
+
+
+Cheers,
+Baokun
+
+> [4]
+> # dd if=/dev/zero of=test.img bs=1M count=1024
+> # mkfs.ext4 -b 1024 test.img  -F
+> mke2fs 1.47.4 (6-Mar-2025)
+> test.img contains a ext4 file system
+>         last mounted on Mon Mar 23 20:32:40 2026
+> Discarding device blocks: done
+> Creating filesystem with 1048576 1k blocks and 65536 inodes
+> Filesystem UUID: 16683060-ed47-46cc-a040-c5e049785831
+> Superblock backups stored on blocks:
+>         8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553,
+>         1024001
+>
+> Allocating group tables: done
+> Writing inode tables: done
+> Creating journal (16384 blocks): done
+> Writing superblocks and filesystem accounting information: done
+> # mount test.img /mnt
+> mount: /mnt: fsconfig() failed: Structure needs cleaning.
+>        dmesg(1) may have more information after failed mount system call.
+>
+> # dmesg
+> [ 5985.339637] loop0: detected capacity change from 0 to 2097152
+> [ 5985.347473] EXT4-fs (loop0): orphan file too big: 1048576
+> [ 5985.352939] EXT4-fs (loop0): mount failed
+>
+>
 
