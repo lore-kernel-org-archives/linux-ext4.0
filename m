@@ -1,185 +1,155 @@
-Received: from mail-qt1-f171.google.com (mail-qt1-f171.google.com [209.85.160.171])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F3A13822A9
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Mar 2026 22:03:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.160.171
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 912EE33A6E9
+	for <linux-ext4@vger.kernel.org>; Tue, 24 Mar 2026 00:55:15 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=170.10.129.124
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774303432; cv=pass; b=p5JafiOqghQq5dJdgOrbth3nr+ObjGDIkD2HeOKrE3woH/jHGzH0cqcpWMfFUHUzaJGDlyRYdqY9sTlVceBYBydaAiPinfo8KZfJsY5WLOm9RzEZsziFY1FCNYb+JOp1OH2xml0Htf9ECZfRVlJ5RcxKRNLzt7Zy2lHw7pBwkxY=
+	t=1774313716; cv=pass; b=Ee+iT7uFRYVTAqpleFbCMeAneHs654U9lFcFsfcfSvYZi9FMgFgDmFg+uuiSKBRUnd57MYjuRg0QVgI4e7epNngtcmIyeDgSgLx02zkRzmo1LrYxFrmpWZogtzSyKUF1FX14a7TORJmAP7xWQA7MQTYKPL1oVwujJIx+EZ5Ajo8=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774303432; c=relaxed/simple;
-	bh=isQFDI7d05AvIlrp9iqnyQriaU043z6DYylvG6vWhF4=;
-	h=MIME-Version:From:Date:Message-ID:Subject:To:Cc:Content-Type; b=ZNWG4LeUSHtTwfG2RUyKhGJTz7+j7WRKwC+VasAL4jMkran5fNfsLFm6HG6f/Mv4JC0F+dtdW9VWGyucX/o3DHOAyZlS8XTy0fT9zIR3R5Mjs9lDuS4P7HPddi6cjlkfpNCBCd8WRzXaY2EwiEwuoB2OKQWIFP3qtTzX1pY2pAs=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=K3fNt6Hz; arc=pass smtp.client-ip=209.85.160.171
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
+	s=arc-20240116; t=1774313716; c=relaxed/simple;
+	bh=HxtuXJovGdFtvO/g0aPG6G8S4ZGyC235+Any0lZK9I0=;
+	h=MIME-Version:From:Date:Message-ID:Subject:To:Cc:Content-Type; b=KS+Fkt/hqp1tZvki9kF8vevO6uDbLrGd8wR1sUYXEQI4CR8Pn2TqmPnScjSyb8yrK54XJDHljFYh68LC9CLGbaTDj34oKO3vWuUUqSep7j2qsgVIVtwHE0izgQsucPXK6xc9tZZG6P9JapxhVAi33V5s+fsoRBXV3hG7cen4YEY=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=f49R+u40; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=Tj6hEuik; arc=pass smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="K3fNt6Hz"
-Received: by mail-qt1-f171.google.com with SMTP id d75a77b69052e-509062d829dso100751cf.1
-        for <linux-ext4@vger.kernel.org>; Mon, 23 Mar 2026 15:03:51 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1774303430; cv=none;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="f49R+u40";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="Tj6hEuik"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1774313714;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type;
+	bh=rNMnhbVlcAruOYvlrOijLU6TL16d6X5j1YTOGwOu/KA=;
+	b=f49R+u40dX08T0rgqwAPzCYfMP00LfbgmmL7ZdIb0lXG823GyZI3+c7q5vqfQPYAir5BxS
+	XR2J+qqDPCePnR0Aj+joUiCyqrdU7TO3QEwyre1u5AAuN+y48VHtx7SzfrppTjSTVCzIEv
+	i/7VppePeQJEjB6bVRunjeYSVoYvAXE=
+Received: from mail-lj1-f198.google.com (mail-lj1-f198.google.com
+ [209.85.208.198]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-301-Y8Z4JGA0MSCArJrTyjKd0w-1; Mon, 23 Mar 2026 20:55:12 -0400
+X-MC-Unique: Y8Z4JGA0MSCArJrTyjKd0w-1
+X-Mimecast-MFC-AGG-ID: Y8Z4JGA0MSCArJrTyjKd0w_1774313711
+Received: by mail-lj1-f198.google.com with SMTP id 38308e7fff4ca-38a326b8fa0so30847181fa.0
+        for <linux-ext4@vger.kernel.org>; Mon, 23 Mar 2026 17:55:12 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1774313709; cv=none;
         d=google.com; s=arc-20240605;
-        b=O1BGZhxktQxPcxqWasjfe8MTObbVtNb0qeC5K+D5AWZdRCuzow6gIRhc9E0O0YJ4Mn
-         csVpOLGw688vupwV6ERkasp3LTiOxGD+aCAj+zcxDd1S1NIvcvPEd1MxgbFPtjbXBWvK
-         fb1J0bwnygg5iaWTeyG+l8U3q0PQ/ReFxUJYDBKw6WlZXxyygc1TqDMvsmwKJOm4KzDM
-         kgjG3WygqXtMwVbLY5a1mCBMh6kVSHEX7l7ox34JiETqZyO8Oi4jNVGQKVSIvl7FKno8
-         ICJueo8AW0JkU5G0ia7vFNN8/A6oHIbhA2ci04qDC396ISTZI9BfMOoKdKhMwoxYtI6J
-         FxqA==
+        b=DcD17BU/y/utQSy6E95w2QzIUhbEBjALEWVGRYZCv4XsO15gYt3W0E9RQ38jfkDxcn
+         z50n5W/MsaI1d1ldvB0olRCCh7J6TROzw7mPYhqVM8Y2VCNVUb7v/95ZtkWtH/pGisaR
+         6ovySzxh38NoMKtgaTpBj6fisfL8mQao5Gxxxbdk3uXUkgPUHjrK7CWeG8F/Z1Cwwdhn
+         OqhaTn327sa9V51dl0oyImsOj2m9LjQQjTjiAiFwn1QiXQLbHZvOqJ6PZ17dZE+hZBn/
+         Jr9bQXIKGHpv6hTPsKfmUjuODTy3bopCWvw2uRb2NNf6OKOB+DZIHkxbINh9QzQsTbiW
+         wO2Q==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
         h=cc:to:subject:message-id:date:from:mime-version:dkim-signature;
-        bh=o1eGtSxZYUuz2uzB/0xmbY0GGzJTsHFF98WP24mcOxI=;
-        fh=CBMiLPm+KsLFkfrdbBvPh2UEFXHn7tfuOwf8n0+jNnI=;
-        b=eP71rj4txN2NdF9hgv/YjgiOJVX1GkpWstjIOqjdvT23RZLu+P8ZVy1b3Imm6gCy+0
-         NwBjqi52I0LmLNFSlwnw5tKG/BgfZp8sXTZcfO2mc9JU03XkZ5C4RewRRLW6H5LOyJxz
-         XOzhH9o0a+Tv45Ue2VCg6yuFquVF7ZCVbbsxzGDznMPOXI0KuS5VT4HjCO01HlCyw5Ux
-         FjV/iADHD6GlwzQDXSq37hCheJDF3hoo/TruLJp6u/X3KySGmjlL2Smz6aElvl5QifO7
-         efm0Sxjm7uVV2K+i0d/VAVnOS/Xfvq6T9NJW6Koh5jPQG+t+t9OZ9z+HO2LA3SPVFS+6
-         0WBA==;
+        bh=rNMnhbVlcAruOYvlrOijLU6TL16d6X5j1YTOGwOu/KA=;
+        fh=+Ppf4gSXSg96w0vgjwnoa6EUvMZXRxgVaX7VoLlFcIM=;
+        b=Dfl5wF+1EtqA0lMwKdxBQ7z/H7s+Aul66YJrQeDzTDrdyPiYNmlXMwRMMRL7mMIHyw
+         LaULrZXul+Qd1VgMIA9mSVZUXUZ1Njk9BQSn39qcyHg3davEbl2n0iYh5uzusnTubT6h
+         n7Nb6sw74uE12rtOcKFOQGRgLlmEOzXkPZ9sisXi3KgER4IzIafMzG3sSgpmQHu18kkg
+         dRFk7EJn+RwHvY2gVIBtBA8Fy7EDPK5dqYLez7J8qt33+9aVqJrir4lS26bx/qYGpOh8
+         qSpdJQPLsXbWmRNeTFbyVmO7tAiplKVYtBfmr9Qmizf83mwXZyuQH6JGLe3Yxzmbw1cX
+         n4ZA==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20251104; t=1774303430; x=1774908230; darn=vger.kernel.org;
+        d=redhat.com; s=google; t=1774313709; x=1774918509; darn=vger.kernel.org;
         h=cc:to:subject:message-id:date:from:mime-version:from:to:cc:subject
          :date:message-id:reply-to;
-        bh=o1eGtSxZYUuz2uzB/0xmbY0GGzJTsHFF98WP24mcOxI=;
-        b=K3fNt6HzXpYnOTnwLtrEjVhhBv7zXHOrjFBtbAxr+ZyS7FR2fUfxCnZWbOSCEmrN0A
-         LCQcPnw6Cow7sGLE0ftcBkWmtyaZkG9XfjNhyY911L3hu2NmurLlPdvOB99h8OXY1Zjx
-         tJMiasHwW3RvN5cOsQ7jEDr640+2Ofc2nHTW6PJ/UJmCwvL92iVHBmYaetkxp9c8oj9y
-         xruAfeWok1v5EP1VlX/oczgtAhlBRa90mOK5hf82vL8dNFZOuSrddVwdDb7JKa6N2Sct
-         FFF3/slkc7qnL5QzRsRp6R7EfNdH5C4dtpO9Vr9+kQD8iTzV1/gU1BuiD8pKJzgfWkoy
-         2Kgw==
+        bh=rNMnhbVlcAruOYvlrOijLU6TL16d6X5j1YTOGwOu/KA=;
+        b=Tj6hEuikFfxLnm9u+TBZ7n3iJtywqc66f2JWMMkw50t/U9UPPaKCUT+edIyOmVvojG
+         fjFeIMPJOfxifdJEhX9el5luv2nyCpVIgI+xzM2/jYrgR/brVJhgQtaXl0eiqzZj5RTt
+         9tijGkXnHoVpsE2jhjb10V4JN2ij5qYB0i8lVNCnQDhjbT6APkay/m7i8AJCJ4TKIzmp
+         05SBN8D2Wvua1J98f0H3Pd+ROjHbrEXS5uBWmZUpCn475Gpq820qfvxNjyqcgqjFmfCI
+         KoDg6tnC9Awv6wdvDhTCaK2anRDK2v3fNQWDJAKWGz6b0OXATvO2EpM3HZmEblnpkpk4
+         JD0w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1774303430; x=1774908230;
+        d=1e100.net; s=20251104; t=1774313709; x=1774918509;
         h=cc:to:subject:message-id:date:from:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=o1eGtSxZYUuz2uzB/0xmbY0GGzJTsHFF98WP24mcOxI=;
-        b=lhPZe0GNo9jgUlNOBpszMGlps0zKqS5LIMxPWsnpkf59BfcvRzHHYmMjGiri7W22cu
-         q7H47e2pPlm+Uw6MXv+EtipqjTzi7jaw7oNGYjCUHtMLGbPr0QCl+HhXs8/zNWiok6je
-         rIyVgwld0ABWeBzLlY4ShvirStIV1p9wniRJq2b/p8S/orQ5PZsQyUOusKCFT91C8dDT
-         QB7pwUie5BRHE0j4qnvAZd+VORTbtETx/I4Xj8mmOeqP7oDtulccOCj4T/yJQazlqkmt
-         xudg5HeEWA3DCu7lMig6l7KexzTarPb+JjP+tWOTX8qZFGDPKS+kjn3qonPHcuEVFF3L
-         s2Rw==
-X-Forwarded-Encrypted: i=1; AJvYcCU/bVv3XI/2u1RX9kFllFnSXyBO8SdvdKayompaXiuU8rqzjlwXaIGp4ekYOkgkq4S1r/qUv2FGzqAd@vger.kernel.org
-X-Gm-Message-State: AOJu0YyBSGP7kl8NUNI+omXKlEPcj+FbnBzZooUfwJH572hGAXNYpAI4
-	imyuzsBN+y/9ZGJrs41lwfT9nKH8qUcZDe0lDzkA0EBRD3mYFym9SMX2eJ/NRcIHuA2dYNeFJn3
-	7SeMRhRix2/ACPEtUz2f7lLxKWD9/VtWIhvbI5Oa9
-X-Gm-Gg: ATEYQzy7mKxdGj0HCEUgAZbTbR4r1Sl89PI+6p+tHbojUSUYM7GlAxx0iyC6AZQBzrT
-	25rnffgbds8ozDGzXunUl2dqRHedf9T0+lSsNm56a1rsPLslYNDbZLFx06o/Y8AIXaJGQkwm6vB
-	HV1jSExaCp0CkJRR2NIDnzM8lXXNM/uXHA8ZouA3ISZQfZgBtUZfkYS34u2w2348HEJsMrmyqNh
-	+yt8Aa9EPYaqPHzEaDBAwsEheVBnVrokWvltsWCYgQlDUIu57P5hNQ5HqBhmJthj2BMNRbjrxVV
-	mKTJhDvpSSLEhdPJzZhF9AX+dk3DlEOW9d0=
-X-Received: by 2002:a05:622a:9009:b0:506:1f23:e22c with SMTP id
- d75a77b69052e-50b6fb9bd95mr4925811cf.6.1774303429792; Mon, 23 Mar 2026
- 15:03:49 -0700 (PDT)
+        bh=rNMnhbVlcAruOYvlrOijLU6TL16d6X5j1YTOGwOu/KA=;
+        b=KN41cGw9OAIM4Freg1grx02iK+fE65FJeJG/rUM55JvsBfxwcpDT/whw4UAsDASqzu
+         q/0P2aE7RddSCZO46FgnOaNrRRtXAn9D/yAkLWQgShqVM1faT+Qax+sfqyhmijUyOssY
+         xGOTCHuw/Q32Omz5F2EHJ1Wo+0czRC7mcI3P9g6jDRJZZ3mm+8UCkUBTEHHhf6HJYSJi
+         h3xasRKs4XkfVfxDSzHePXhKdFMdtAVa4k3hH7azfhAGkTsu2TyJ6v5LptM1JvtOYVur
+         ulFTTQAS/fPBM0RbUu024fe9j2V6ZimpIKgpM6llD4anecbyEBTAsWaiwGrTje4YzBih
+         XVzA==
+X-Gm-Message-State: AOJu0YyIvYj9Jgc9ZskV3kdkWjasLb4vMr5Z4ENhImJP4pb7yZRYqqGX
+	JpLa64x/ccg2sCs83LtBKHQLhHPsd+GHPHFwXj6JIIaoQOGsoywkKJbDFGYL67qgYOhECS3Vpzq
+	bBa4zgLic56OQibKowpE+gqS54+D5bDHCjv0A9f1Y/LWuXz/fv+OXuJ/T1d2Y/rLuVGyyf/is9a
+	euygoSwDiOLzGlxdVrhu4TSkiZsAWnsb32uJz7AiYtx0yK3EiaXjI=
+X-Gm-Gg: ATEYQzx5bKzmvce1OpIYFhaaZ8LMYqRZ8C5nq0EugfLaJZJFt/0SRLd7aJxVZdeLCh0
+	YHUydoGvtl835PP2rAYdi24bpQvESs5+wqn2G0D+odE7ezYNUCMgTGjl8pJxWK3v+HhdpFN5Gzr
+	mtH2rw1suWj8yVhL3vvRhODtBGv0HW555VB4OkVaY4bayyWyeNdjk6pIgtVafSTtVgA+ew22bq2
+	6e4ivQ4odsHVhmM88dZbpklfJYXk76gWW8/9wk1KP0PZ9YLvJE=
+X-Received: by 2002:a2e:a9a3:0:b0:38a:61ce:78d5 with SMTP id 38308e7fff4ca-38c328af794mr4892181fa.11.1774313709467;
+        Mon, 23 Mar 2026 17:55:09 -0700 (PDT)
+X-Received: by 2002:a2e:a9a3:0:b0:38a:61ce:78d5 with SMTP id
+ 38308e7fff4ca-38c328af794mr4892021fa.11.1774313709013; Mon, 23 Mar 2026
+ 17:55:09 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: Chenglong Tang <chenglongtang@google.com>
-Date: Mon, 23 Mar 2026 15:03:39 -0700
-X-Gm-Features: AQROBzCJ71kjMcg47Y9l0d3oTHYV_D4QnyFW5DxoPbe2RkRTxMNDx_bzID4OPcQ
-Message-ID: <CAOdxtTadAFH01Vui1FvWfcmQ8jH1O45owTzUcpYbNvBxnLeM7Q@mail.gmail.com>
-Subject: [REGRESSION] fs/overlayfs/ext4: Severe jbd2 lock contention and
- journal starvation on concurrent copy-up (v6.6 -> v6.12)
-To: linux-unionfs@vger.kernel.org, linux-ext4@vger.kernel.org, 
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	regressions@lists.linux.dev
-Cc: jack@suse.com, Jan Kara <jack@suse.cz>, miklos@szeredi.hu, 
-	Amir Goldstein <amir73il@gmail.com>, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	viro@zeniv.linux.org.uk, brauner@kernel.org, Kevin Berry <kpberry@google.com>, 
-	Robert Kolchmeyer <rkolchmeyer@google.com>, Deepa Dinamani <deepadinamani@google.com>, 
-	He Gao <hegao@google.com>
+From: Yi Zhang <yi.zhang@redhat.com>
+Date: Tue, 24 Mar 2026 08:54:55 +0800
+X-Gm-Features: AQROBzCd2X0HSqrZkZ5_gPcp4_zLBh3e0B2dNGJJen5DEuw_a4XyQymmGvSP9sg
+Message-ID: <CAHj4cs8o5HExeOX2YCYrWH86iz4xwL52YtsJNV2YOyDPbyEffg@mail.gmail.com>
+Subject: [bug report] e2fsprogs 1.47.4: mke2fs creates oversized orphan file
+ for 1k blocksize (breaks mount)
+To: linux-ext4@vger.kernel.org
+Cc: linux-block <linux-block@vger.kernel.org>, 
+	Shinichiro Kawasaki <shinichiro.kawasaki@wdc.com>, Baokun Li <libaokun1@huawei.com>, 
+	"Theodore Ts'o" <tytso@mit.edu>
 Content-Type: text/plain; charset="UTF-8"
 
-Hi all,
+Hi
 
-We are tracking a severe performance regression in Google's
-Container-Optimized OS (COS) that appeared when moving from the 6.6
-LTS kernel to the 6.12 LTS kernel.
+I'm reporting a regression in e2fsprogs-1.47.4 where mke2fs creates an
+orphan file[2] that exceeds the kernel's maximum allowed size for
+filesystems with a 1KB block size[1]. This causes subsequent mount
+operations to fail.
 
-Under concurrent CI workloads (specifically, many containers doing
-Python package compilation / .pyc generation simultaneously), the 6.12
-kernel suffers from massive jbd2 journal contention. Processes hang
-for 20-30 seconds waiting for VFS locks and journal space. On 6.6, the
-exact same workload completes in ~4 seconds.
+This issue is currently causing blktests loop/007 to fail on latest
+Fedora. Downgrading to e2fsprogs 1.47.3 resolves the issue.
+And revert [3] fixed this issue, here is the reproducer[4].
 
-# Environment:
-* Host FS: ext4 (backed by standard cloud block storage)
-* Container FS: OverlayFS (Docker)
-* Machine: n2d-highmem-96 (96 vCPU, high memory)
-* Good Kernel: 6.6.87
-* Bad Kernels: 6.12.55, 6.12.68
+[1]
+Kernel limit for 1KB blocks: 512 * 1024 = 512 KB
+[2]
+Orphan file created by e2fsprogs 1.47.4: 1024 KB (1 MB)
+[3]
+6f03c698 libext2fs: fix orphan file size > kernel limit with large blocksize
+[4]
+# dd if=/dev/zero of=test.img bs=1M count=1024
+# mkfs.ext4 -b 1024 test.img  -F
+mke2fs 1.47.4 (6-Mar-2025)
+test.img contains a ext4 file system
+        last mounted on Mon Mar 23 20:32:40 2026
+Discarding device blocks: done
+Creating filesystem with 1048576 1k blocks and 65536 inodes
+Filesystem UUID: 16683060-ed47-46cc-a040-c5e049785831
+Superblock backups stored on blocks:
+        8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553,
+        1024001
 
-# The Bottleneck
-During the 20+ second hang, `cat /proc/<pid>/stack` reveals three
-distinct groups of blocked processes thrashing on the jbd2 journal.
-The OverlayFS copy-up mechanism seems to be generating so many
-synchronous ext4 transactions that it exhausts the jbd2 transaction
-buffers.
+Allocating group tables: done
+Writing inode tables: done
+Creating journal (16384 blocks): done
+Writing superblocks and filesystem accounting information: done
+# mount test.img /mnt
+mount: /mnt: fsconfig() failed: Structure needs cleaning.
+       dmesg(1) may have more information after failed mount system call.
 
-1. Journal Space Exhaustion (Waiting to start transaction):
-[<0>] __jbd2_log_wait_for_space+0xa3/0x240
-[<0>] start_this_handle+0x42d/0x8a0
-[<0>] jbd2__journal_start+0x103/0x1e0
-[<0>] __ext4_journal_start_sb+0x129/0x1c0
-[<0>] __ext4_new_inode+0x7cd/0x1290
-[<0>] ext4_create+0xbc/0x1b0
-[<0>] vfs_create+0x192/0x250
-[<0>] ovl_create_real+0xd5/0x170
-[<0>] ovl_create_or_link+0x1d7/0x7f0
+# dmesg
+[ 5985.339637] loop0: detected capacity change from 0 to 2097152
+[ 5985.347473] EXT4-fs (loop0): orphan file too big: 1048576
+[ 5985.352939] EXT4-fs (loop0): mount failed
 
-2. VFS Rename / Copy-up Contention (Blocked by the slow sync):
-[<0>] lock_rename+0x29/0x50
-[<0>] ovl_copy_up_flags+0x84c/0x12e0
-[<0>] ovl_create_object+0x4a/0x120
-[<0>] vfs_mkdir+0x1aa/0x260
-[<0>] do_mkdirat+0xb9/0x240
 
-3. Synchronous Flush Blocking:
-[<0>] jbd2_log_wait_commit+0x107/0x150
-[<0>] jbd2_journal_force_commit+0x9c/0xc0
-[<0>] ext4_sync_file+0x278/0x310
-[<0>] ovl_sync_file+0x2f/0x50
-[<0>] ovl_copy_up_metadata+0x455/0x4b0
+-- 
+Best Regards,
+  Yi Zhang
 
-# Minimal Reproducer
-The issue is easily reproducible by triggering 20 concurrent cold
-Python imports in Docker, which forces OverlayFS to copy-up the
-`__pycache__` directories and write the `.pyc` files.
-
-```bash
-# 1. Build a clean image with no pre-compiled bytecode
-cat << 'EOF' > Dockerfile
-FROM python:3.10-slim
-RUN pip install --quiet google-cloud-compute
-RUN find /usr/local -type d -name "__pycache__" -exec rm -rf {} +
-EOF
-docker build -t clean-import-test .
-
-# 2. Fire 20 concurrent imports
-for i in {1..20}; do
-  docker run --rm clean-import-test bash -c 'time python -c "import
-google.cloud.compute_v1"' > clean_test_cold_$i.log 2>&1 &
-done
-wait
-grep "real" clean_test_cold_*.log
-```
-
-On 6.6.87, all 20 containers finish in ~4.3s.
-On 6.12.x, they hang and finish between 17s and 27s. Bypassing disk
-writes completely mitigates the regression on 6.12 (using
-PYTHONDONTWRITEBYTECODE=1), confirming it is an ext4/overlayfs I/O
-contention issue rather than a CPU scheduling one.
-
-Because the regression spans from 6.6 to 6.12, bisection is quite
-heavy. Before we initiate a full kernel bisect, does this symptom ring
-a bell for any ext4 fast_commit, jbd2 locking, or OverlayFS
-metacopy/sync changes introduced during this window?
-
-Any pointers or patches you'd like us to test would be greatly appreciated.
-
-Thanks,
-Chenglong Tang
-Google Container-Optimized OS Team
