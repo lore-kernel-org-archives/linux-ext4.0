@@ -1,159 +1,264 @@
-Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ed1-f53.google.com (mail-ed1-f53.google.com [209.85.208.53])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 92F20332EC8;
-	Tue, 24 Mar 2026 07:52:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.158.5
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774338753; cv=none; b=XjM+Z8Pz8cj/miDlGJUd4mLl9ykXguR21SJT4AD7/li3ZXwhirjQ3jN8q/L8CM5+bug+1GkpV0pGGe3XF+noOaxxSsmWxb8RjRkcS8Ywu0dVsf1g8YivccHoie+rRM6adad5YvyXjJ9Jb3fD/THGORysljtUIMfMj9pZNyoKWGE=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774338753; c=relaxed/simple;
-	bh=GK2IYXY4fWED+zdWnR9Z0qZk6u43ugpNDiwX6DRQ9k0=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=EN99QACJPNY30DXAgVcYVSJug2eVsWlu6YJqDvN3rO7GLh3nRWwMhniPXGAuufMTwR6iIoyXwxQl+lov59iusun4ZF5hu+62Lvl53ZPNyishP5bHYQedx3AS/VJKySIjtBkoNVKMv+oHW5qgj/NeBWPvfRSwJ4zytMlr6XGpRoo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=qSs3X2uu; arc=none smtp.client-ip=148.163.158.5
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DAC9C35DA46
+	for <linux-ext4@vger.kernel.org>; Tue, 24 Mar 2026 07:53:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.53
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1774338824; cv=pass; b=JcOa5TikvjqyEtUmEEuV5MKoDjYup1UHwTUHdqVO0pkPWdNGSvXLXH1RrfKFB64jBhGg1BRZg4oCZi34X0h00oy3In5ZQE16OUieuf2N+yClE70BUx2/BYKy2d2Hfip2hNAaBTY1mLBwmHx4OPG8he5xrnqGLrPkJRtDhzfsnec=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1774338824; c=relaxed/simple;
+	bh=EkHahqFiKzq0hXwxECnVuQUIAlqeYMLsbgChKFxta08=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=Gck3FfdvLUmmneBbhQrWVEGIdw5TK0vzgCnccoAxqadNovhhDtst6eONfCPcMJWsaf9Bc3s7xVgu1FoivA5AWHVGlXgB2bePibmRyCBdOSmHSip12E5tMWwaTNT6nqsaro45cWK7kcuBq8a5HiW7q/rgPVYlzWFl3AOIJTrEjyA=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=UXWj93Ix; arc=pass smtp.client-ip=209.85.208.53
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="qSs3X2uu"
-Received: from pps.filterd (m0353725.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 62O31UXY3644267;
-	Tue, 24 Mar 2026 07:52:07 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-type:date:from:in-reply-to:message-id:mime-version
-	:references:subject:to; s=pp1; bh=HlT36rphlz9gK4CWzL5Cac89x7zgq/
-	ZvBcLuzcsZ9QU=; b=qSs3X2uuRbkKbPOQLMXZC19izEPaFxjSVZ4JeUAAawF80k
-	o5LcyDxKrmg+zci+xdy93PNKsbzIU48mS6rrfsmcQIOtXf8O1qk32cIyC2bzPjEU
-	2/LzO9xG6ppp0/HMtoMpHfjxyu5urJpelmzDEDB4oitWhh5hHyMKEAyhppNUT8FL
-	/Y+li98OG8DBcfnir2VnVJ3fuBBKGtWt/51pQ6AkG6dEP6CNs8TbM2+S8xfvtvew
-	k1hGHHkEUPW6z5YDC6nNhdECBt0PNZ01F9OmVzcXILpdmr0QQ1SqJXEuZmiowosH
-	qBV1tZDldCJt/wqQltH2haZ9iZxPrNIOUqsoKodA==
-Received: from ppma21.wdc07v.mail.ibm.com (5b.69.3da9.ip4.static.sl-reverse.com [169.61.105.91])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4d1ky01tv8-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 24 Mar 2026 07:52:06 +0000 (GMT)
-Received: from pps.filterd (ppma21.wdc07v.mail.ibm.com [127.0.0.1])
-	by ppma21.wdc07v.mail.ibm.com (8.18.1.2/8.18.1.2) with ESMTP id 62O3HIPf008722;
-	Tue, 24 Mar 2026 07:52:06 GMT
-Received: from smtprelay06.fra02v.mail.ibm.com ([9.218.2.230])
-	by ppma21.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4d26nngrt3-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 24 Mar 2026 07:52:05 +0000
-Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
-	by smtprelay06.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 62O7q4kv29295094
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Tue, 24 Mar 2026 07:52:04 GMT
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id EABD920040;
-	Tue, 24 Mar 2026 07:52:03 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id D037A2004B;
-	Tue, 24 Mar 2026 07:52:01 +0000 (GMT)
-Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.39.26.38])
-	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
-	Tue, 24 Mar 2026 07:52:01 +0000 (GMT)
-Date: Tue, 24 Mar 2026 13:21:59 +0530
-From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To: hongao <hongao@uniontech.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz, yi.zhang@huawei.com,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        syzbot+1ffa5d865557e51cb604@syzkaller.appspotmail.com
-Subject: Re: [PATCH] ext4: skip split extent recovery on corruption
-Message-ID: <acJCn4F6TTaegl4U@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-References: <FA074540F4E30F27+20260323015752.60064-1-hongao@uniontech.com>
- <E4BAF530323E79C3+20260324014025.31601-1-hongao@uniontech.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UXWj93Ix"
+Received: by mail-ed1-f53.google.com with SMTP id 4fb4d7f45d1cf-65c4152313fso7073277a12.1
+        for <linux-ext4@vger.kernel.org>; Tue, 24 Mar 2026 00:53:32 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1774338811; cv=none;
+        d=google.com; s=arc-20240605;
+        b=X7LhTtfAAnawQIX1stT9ZPzEiVQtNjG0mie5CEgfThEkN0D6UYu3qeM4sVrKozF/3b
+         G0KakCNNXbdXUzdfsmn87MLG4pzoFWaewWIH8TEsZ43C5yGwWOxq0OaFs84L12kSN1is
+         nFNeq1PBuLSbUbqQ08ad4Xoj+unGUvF8b8u2Gc3gaBlYUnHsg3GqaTDUbN2W4S4HAXKf
+         yC1V3NcfDT5IevU/3H1qkWj83VVF40Jy6HspntzwbS/W3N+BAEd4O7C+31frT3q3k36K
+         NHcOKMxuWIt9Q4jAYTOWTKZuSgbcOa0NW2FiACqGhAIcworLyVmAihczcnvRYwoka09W
+         g8jA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=BvlIol/fyMPbQwPX/OXsXdgiKOBBe/R83FLdoCNg1RY=;
+        fh=2JQbApKFuWzUiNnQg/3F1B8bWW7pnatyDGpxrXkQ9mM=;
+        b=h81mVsjzhtrutJONpEXd4Po5M1nKZyFt4FMrVF0ZGhDaH+Ed1ZBxNdnkIv+Fiq5+f5
+         wXUNfdt6B0Jy98g9IjCVEsW1ZomXJbnbgE/1wEorTKwsx1jYaQgAX2lY5cd49YWzngg2
+         noAZMH2azgUZ48DKfq9TOH9yjfSaNg/INkcLPmHtePRD/xwBPY5RjsKIp7Dg/rR/08QL
+         mTRa73IJR/Uk4OgnVL1KXjhV/93rvjfK2Ahny7GPB9yvitRfbpoemHmup78LpMTvS+jF
+         beqf3w3uIfVZuPvz/oVF+lXQdUeQFdEl3K8oSr5nkleWjltJOU+g9iIajeFJU/JA7gsb
+         WNoA==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1774338811; x=1774943611; darn=vger.kernel.org;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=BvlIol/fyMPbQwPX/OXsXdgiKOBBe/R83FLdoCNg1RY=;
+        b=UXWj93IxztkZMV/i0SthmZJjuhzAm0hyPkRv5spOGA8Y0hl0mczMZ8R0cTvwa2lUFQ
+         CYmjnGeVwEsUGCj0KPqZ4afL9p0pXHhnZCfH7pLEUPRPel7GhC/VgqLUYljELw270h5f
+         3AeeBKx69DxrLqtXg6epER4oXyqPvzo7GnBkIyJSioJFjBIVXLzjzrP9KdRrhT3XuSdp
+         pg4rLnGZ4uU42LgGFA7CtKcD3hTlwueLBNGNe7Tt4E1v3LnkzCp8EUx7Kl7pge6XKMFq
+         8tVGILHXiEbIh8KPfscQZKACd+uP+lNWYfgyOkm+52UnQdpL0XkpJpb7AiNjpvfVqi97
+         50IQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1774338811; x=1774943611;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=BvlIol/fyMPbQwPX/OXsXdgiKOBBe/R83FLdoCNg1RY=;
+        b=lLJn/gfv+S0p7bqp0IrJHpRdfP9Z4Tcw0jhVhxXy0XYLWwlbM0BTPm+YLInV8DD4US
+         H8qw15FoFNOwul8wKHzTAmnJloAryc56IwYWytBqiV1R82iG/jX7UCbqRVD4ngZvxiKx
+         B5qNhGVGi6tEH0QFUbyRsDMN39lRpT2UpplQCRPOxd5IaXS0SdSbkryRtIrfH7Pv1Gxv
+         QtD9EdyA8eW3wJ6QLgVS6R62fCCSt7fx41vmF9ADHxSENLpJ4EA6seDbQSROcO8iPqdJ
+         MQZ5fz21sONl5lWdv7JQ2imZa4hkebsOb2niRPstKCSy+Dvjl+wj7767ARgiPJSI3Xqv
+         Okcg==
+X-Forwarded-Encrypted: i=1; AJvYcCXSAiRxuavMSNGgyA5WNxrUvLpqfQh9yWRG4IPBDW3/l83a3HBUeBk85BAOdZqfIC3bytZkSoIATOhR@vger.kernel.org
+X-Gm-Message-State: AOJu0Yyhc50naeTTaGdGyGFCSCkbZuKHyNIA/7uAYaj78q61iLNXw7C6
+	P+xbJt4iID5WEkiP4Yo+OCHDkcvjEA+2xsKuKGKFxlHW6aziaSiZYM8dpyericq8NBIdxnfeLMU
+	/7TKtHCnwsvEP5pcC92uWFrRSVdryxu4=
+X-Gm-Gg: ATEYQzx85QXp9M8oqja65ktvoS6r7GIt46k5MwPSDHRm8lzgJ5ipdBBfoEY+SrXkm51
+	5vUxpD54mCmxK6cFcDJBwNZZRggpMd+CnPRVLuyJHu+dHK5/f6IcUbF4q8/EZDCaFyYZlIhw0ab
+	xlkF6pe1TrfAluK5W7k5Ipi/234IRRefk8RL5mmsLe5UgiXQP7lmwPIWFz9sRTt7JvbBWu1g21I
+	epI2bbmjhP0HhCN5tKMAjTanZEHU/Nj6MqpDv4gIqOWEwn2vfq73bEJY7EoxhohNwXfdCTiNCxG
+	q+6f4gG6FHAQVARosiyyiZN38OKPRSxfNj7NMO1VGg==
+X-Received: by 2002:a17:906:5994:b0:b94:1771:5296 with SMTP id
+ a640c23a62f3a-b982f27d258mr722760466b.23.1774338810639; Tue, 24 Mar 2026
+ 00:53:30 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <E4BAF530323E79C3+20260324014025.31601-1-hongao@uniontech.com>
-X-TM-AS-GCONF: 00
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwMzI0MDA2MiBTYWx0ZWRfXyqux1ox4BKa9
- 2KwFNv7OY56KvIyR0Mw8Kbx7n2VZErcgv01aBKWw3pI4M+AcwfwTCVg9VOJuwEPMYZ7ULZ9VLx7
- c4l4Tz7PByjCVPYOssdjGauCuDTrn6Oci5Km6zd7AgxZRo8zp2gWJMclzEZ7+ViMNMyqaJo+kP9
- 31CipUvirLWL5pOOdfmLh2IyPjsbL/wW153CDNrtUaLRw184o6SCgIMyFcEBCEDkTbC1bgu21A4
- xrI2BNkH17fFYZiowhBBvR0csQMGqF55UrMByzinsVBDi1cSM67FwNGbTc1icdWETb7OtM4OxNs
- h5kzpKxeRbD7o0Y+8KAj56lwz3Ek7jBjnAioDHzxxxKRmp8fyQmcU5pf8k9VHCUzD/85fCmQAdE
- UteUHPygpXMRjj+kS0jrnNPUCWbAJR7DLcX9j3bHoaWi4kwEq35vxWV5bg7ko+1z2GK03gzsDNw
- oXapcThlWIJ88RDsumg==
-X-Authority-Analysis: v=2.4 cv=JK42csKb c=1 sm=1 tr=0 ts=69c242a6 cx=c_pps
- a=GFwsV6G8L6GxiO2Y/PsHdQ==:117 a=GFwsV6G8L6GxiO2Y/PsHdQ==:17
- a=kj9zAlcOel0A:10 a=Yq5XynenixoA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=RnoormkPH1_aCDwRdu11:22 a=V8glGbnc2Ofi9Qvn3v5h:22 a=i0EeH86SAAAA:8
- a=VnNF1IyMAAAA:8 a=qiODnJNJ2US13fybofsA:9 a=CjuIK1q_8ugA:10
-X-Proofpoint-ORIG-GUID: gInWFBDZqrD-kFbgguwmXIPulAvPsTJl
-X-Proofpoint-GUID: gInWFBDZqrD-kFbgguwmXIPulAvPsTJl
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.51,FMLib:17.12.100.49
- definitions=2026-03-24_02,2026-03-23_02,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- impostorscore=0 clxscore=1015 priorityscore=1501 malwarescore=0 adultscore=0
- spamscore=0 suspectscore=0 phishscore=0 lowpriorityscore=0 bulkscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2603050001 definitions=main-2603240062
+References: <CAOdxtTadAFH01Vui1FvWfcmQ8jH1O45owTzUcpYbNvBxnLeM7Q@mail.gmail.com>
+In-Reply-To: <CAOdxtTadAFH01Vui1FvWfcmQ8jH1O45owTzUcpYbNvBxnLeM7Q@mail.gmail.com>
+From: Amir Goldstein <amir73il@gmail.com>
+Date: Tue, 24 Mar 2026 08:53:19 +0100
+X-Gm-Features: AQROBzDDpxDWrnI_0ErHKf9B-NvnkFzklWGTuiS7-g7t4QluNxFJT4EpViODXMc
+Message-ID: <CAOQ4uxjuAfCJXGRchDf-7d+uCS+8=Du_Y8OzgX15w4-fOR_oHQ@mail.gmail.com>
+Subject: Re: [REGRESSION] fs/overlayfs/ext4: Severe jbd2 lock contention and
+ journal starvation on concurrent copy-up (v6.6 -> v6.12)
+To: Chenglong Tang <chenglongtang@google.com>
+Cc: linux-unionfs@vger.kernel.org, linux-ext4@vger.kernel.org, 
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	regressions@lists.linux.dev, jack@suse.com, Jan Kara <jack@suse.cz>, 
+	miklos@szeredi.hu, tytso@mit.edu, adilger.kernel@dilger.ca, 
+	viro@zeniv.linux.org.uk, brauner@kernel.org, Kevin Berry <kpberry@google.com>, 
+	Robert Kolchmeyer <rkolchmeyer@google.com>, Deepa Dinamani <deepadinamani@google.com>, 
+	He Gao <hegao@google.com>, Fei Lv <feilv@asrmicro.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-On Tue, Mar 24, 2026 at 09:40:25AM +0800, hongao wrote:
-> Hi Jan, Yi, Ojaswin,
-> 
-> Thank you for reviewing the patch.
-> 
-> I will send a v2 that moves the p_ext validation before
-> ext4_ext_get_access(), as Yi suggested.
-> 
-> Also, thanks for the Reviewed-by tags:
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
-> 
-> Regarding Ojaswin's questions:
-> 
-> I do not have a local reproducer at the moment. My analysis was based on
-> the syzbot report, the crash trace, and code inspection.
-> 
-> For the p_ext == NULL case, a successful ext4_find_extent() only means
-> that we were able to walk the tree down to a leaf. It does not guarantee
-> that the leaf still contains a valid extent entry for the target logical
-> block.
-> 
-> path[depth].p_ext is derived from the extent entries stored in that leaf.
-> If the leaf metadata is already corrupted, ext4_find_extent() may still
-> return a non-error path, but p_ext can be NULL because there is no usable
-> extent entry there anymore.
-> 
-> So in the corruption case, a valid path is not enough to continue the
-> recovery path safely. Returning -EFSCORRUPTED is safer than
-> dereferencing p_ext and crashing while trying to repair already-broken
-> metadata.
+On Mon, Mar 23, 2026 at 11:03=E2=80=AFPM Chenglong Tang
+<chenglongtang@google.com> wrote:
+>
+> Hi all,
 
-Hmm so I looked a bit more and this path can lead to an empty extent:
+Hi Chenglong,
 
-ext4_ext_insert_extent():
-  ...
-	// Creates an empty leaf with p_ext == 0
-	path = ext4_ext_create_new_leaf(handle, inode, mb_flags, gb_flags,
-					path, newext);
+>
+> We are tracking a severe performance regression in Google's
+> Container-Optimized OS (COS) that appeared when moving from the 6.6
+> LTS kernel to the 6.12 LTS kernel.
+>
+> Under concurrent CI workloads (specifically, many containers doing
+> Python package compilation / .pyc generation simultaneously), the 6.12
+> kernel suffers from massive jbd2 journal contention. Processes hang
+> for 20-30 seconds waiting for VFS locks and journal space. On 6.6, the
+> exact same workload completes in ~4 seconds.
+>
+> # Environment:
+> * Host FS: ext4 (backed by standard cloud block storage)
+> * Container FS: OverlayFS (Docker)
+> * Machine: n2d-highmem-96 (96 vCPU, high memory)
+> * Good Kernel: 6.6.87
+> * Bad Kernels: 6.12.55, 6.12.68
+>
+> # The Bottleneck
+> During the 20+ second hang, `cat /proc/<pid>/stack` reveals three
+> distinct groups of blocked processes thrashing on the jbd2 journal.
+> The OverlayFS copy-up mechanism seems to be generating so many
+> synchronous ext4 transactions that it exhausts the jbd2 transaction
+> buffers.
+>
+> 1. Journal Space Exhaustion (Waiting to start transaction):
+> [<0>] __jbd2_log_wait_for_space+0xa3/0x240
+> [<0>] start_this_handle+0x42d/0x8a0
+> [<0>] jbd2__journal_start+0x103/0x1e0
+> [<0>] __ext4_journal_start_sb+0x129/0x1c0
+> [<0>] __ext4_new_inode+0x7cd/0x1290
+> [<0>] ext4_create+0xbc/0x1b0
+> [<0>] vfs_create+0x192/0x250
+> [<0>] ovl_create_real+0xd5/0x170
+> [<0>] ovl_create_or_link+0x1d7/0x7f0
+>
+> 2. VFS Rename / Copy-up Contention (Blocked by the slow sync):
+> [<0>] lock_rename+0x29/0x50
+> [<0>] ovl_copy_up_flags+0x84c/0x12e0
+> [<0>] ovl_create_object+0x4a/0x120
+> [<0>] vfs_mkdir+0x1aa/0x260
+> [<0>] do_mkdirat+0xb9/0x240
+>
+> 3. Synchronous Flush Blocking:
+> [<0>] jbd2_log_wait_commit+0x107/0x150
+> [<0>] jbd2_journal_force_commit+0x9c/0xc0
+> [<0>] ext4_sync_file+0x278/0x310
+> [<0>] ovl_sync_file+0x2f/0x50
+> [<0>] ovl_copy_up_metadata+0x455/0x4b0
+>
+> # Minimal Reproducer
+> The issue is easily reproducible by triggering 20 concurrent cold
+> Python imports in Docker, which forces OverlayFS to copy-up the
+> `__pycache__` directories and write the `.pyc` files.
+>
+> ```bash
+> # 1. Build a clean image with no pre-compiled bytecode
+> cat << 'EOF' > Dockerfile
+> FROM python:3.10-slim
+> RUN pip install --quiet google-cloud-compute
+> RUN find /usr/local -type d -name "__pycache__" -exec rm -rf {} +
+> EOF
+> docker build -t clean-import-test .
+>
+> # 2. Fire 20 concurrent imports
+> for i in {1..20}; do
+>   docker run --rm clean-import-test bash -c 'time python -c "import
+> google.cloud.compute_v1"' > clean_test_cold_$i.log 2>&1 &
+> done
+> wait
+> grep "real" clean_test_cold_*.log
+> ```
 
-  // Errors out
-	err = ext4_ext_get_access(handle, inode, path + depth);
-	if (err)
-		goto errout;
+I don't understand.
 
-Checking ext4_ext_get_access()
+You write that Python imports in Docker forces OverlayFS to copy-up the
+`__pycache__` directories, but the prep stage removes all the
+`__pycache__` directories.
 
-Seems like it can return EROFS when journal is aborted or EIO if journal
-detected some IO errors on backing device. I guess we have already
-handled these by exiting early in your patch, but sure having an extra
-check wont hurt. 
+My guess would be that rm -rf __pycache__ would generate a lot of
+metadata copy ups, but you write that the issue occurs during the
+2nd stage. Maybe I misunderstood.
 
-Feel free to add:
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Please try to figure out which and how many copy up objects this translates=
+ to
+for directories, for files?
 
-Regards,
-Ojaswin
+>
+> On 6.6.87, all 20 containers finish in ~4.3s.
+> On 6.12.x, they hang and finish between 17s and 27s. Bypassing disk
+> writes completely mitigates the regression on 6.12 (using
+> PYTHONDONTWRITEBYTECODE=3D1), confirming it is an ext4/overlayfs I/O
+> contention issue rather than a CPU scheduling one.
+>
+> Because the regression spans from 6.6 to 6.12, bisection is quite
+> heavy. Before we initiate a full kernel bisect, does this symptom ring
+> a bell for any ext4 fast_commit, jbd2 locking, or OverlayFS
+> metacopy/sync changes introduced during this window?
+>
+> Any pointers or patches you'd like us to test would be greatly appreciate=
+d.
+>
 
-> 
-> Thanks,
-> Hongao
+Very high suspect:
+
+7d6899fb69d25 ovl: fsync after metadata copy-up
+
+As you can see from this discussion [1] this performance regression
+was somewhat anticipated:
+
+"Now we just need to hope that users won't come shouting about
+performance regressions."
+
+[1] https://lore.kernel.org/linux-unionfs/CAOQ4uxgKC1SgjMWre=3DfUb00v8rxtd6=
+sQi-S+dxR8oDzAuiGu8g@mail.gmail.com/
+
+With metacopy disabled this change introduced fsyncs on metadata-only
+changes made my overlayfs which could generate a lot of journal stress
+and explain the regression.
+
+But we had not anticipated that workloads could be affected with
+metacopy disabled, because it was anticipated that data fsync
+would be the more significant bottleneck.
+
+Do your containers have metacopy enabled?
+If not, why not? Is it because metacopy is conflicting with some
+other overlayfs feature that you need like userxattr?
+
+Thinking out loud, I wonder if metadata copy up code would benefit from
+calling export_ops->commit_metadata() when supported by upper fs
+instead of open+vfs_fsync(), but I doubt if that would relieve journal stre=
+ss
+in this case.
+
+Anyway, please see if forcing metadata_fsync off solves the regression
+and I will stage the original patch from Fei to make metadata_fsync
+opt-in.
+
+Thanks,
+Amir.
+
+--- a/fs/overlayfs/copy_up.c
++++ b/fs/overlayfs/copy_up.c
+@@ -1154,7 +1154,7 @@ static int ovl_copy_up_one(struct dentry
+*parent, struct dentry *dentry,
+         * that will hurt performance of workloads such as chown -R, so we
+         * only fsync on data copyup as legacy behavior.
+         */
+-       ctx.metadata_fsync =3D !OVL_FS(dentry->d_sb)->config.metacopy &&
++       ctx.metadata_fsync =3D 0 && !OVL_FS(dentry->d_sb)->config.metacopy =
+&&
+                             (S_ISREG(ctx.stat.mode) || S_ISDIR(ctx.stat.mo=
+de));
+        ctx.metacopy =3D ovl_need_meta_copy_up(dentry, ctx.stat.mode, flags=
+);
