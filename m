@@ -1,47 +1,46 @@
-Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E20EA3EAC88;
-	Wed, 25 Mar 2026 15:06:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3BE333E868D;
+	Wed, 25 Mar 2026 16:02:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774451202; cv=none; b=t7Akrtu0bcd4zNozc2LT/a2RcBnIFNk6K3fccLrbmhPhrEG1LEH/r/C58N+tp7qaFuivzPbja9kZd3B+LHprCmJGV7yXj91o/nF9dT//vWlwfNgz4ct3ctqVksNI7LDcbfdrZgANwi+3wlcZykoOaWTQYMAxu5BHjIxXS+GpAO8=
+	t=1774454545; cv=none; b=BTET6zQBr3k9K3EHt7UmiCKCCWnk31NBZQlBY49QOzDLhsRfinZSpgB8xFwLVs110j784uJBue/dV3YNKQkpmceojsmUZ+YkGVBv+qZAvFK7+QDnTOTuTzBe2x+MRhFtHV3mzuCMbKQUhkL6wjCVZcAJe5XjL8CGSiyrZ191sK0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774451202; c=relaxed/simple;
-	bh=abjIJLR7w82rkCffSg5vDwCkeaoGvkn81T+GGKFIJeA=;
+	s=arc-20240116; t=1774454545; c=relaxed/simple;
+	bh=vJ5xGASjMp/TlxhmM7CCfj7w6GupzT6n+xYGWNCGtRs=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=DgkVfdfkqYqrjaMP0Ea4LqASK7xgQq4sz5xb9K+551HanIdS+z8cRCfUDBg40Ow1L9S4PSw7Mkas6qHadPOTf9PUjp9WMqW8Gc76u+/rVsVDwh2XdaWdR/Oa706NX+KQPCAyimo10egIgVO/q/MXSQDhKlvJHnI/TBspM72XLMs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=ZZt0Yymr; arc=none smtp.client-ip=90.155.50.34
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
+	 Content-Type:Content-Disposition:In-Reply-To; b=Hr7T/QCGwZb7qmKrgrJyIHozFxgYM8FKSadqHjaa0Yja2dknTyQ8tLwB9pBdinxIvjGYK0lNVLanyDGNe/Mb3JVpUyzVmH8xhPI/euqShrTR5n99Wd3sZlHXAAc0FOFRTiqEEN+8dvHC1j4H0B3JD7F/wSRX6AoDoz/BOgUMjwM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=B+2FchYb; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="ZZt0Yymr"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=cYXwyEMIc1ILNL2kDIuCLRrloFnkyAEPOIgK7nUnE1Q=; b=ZZt0YymrAGmGOAlCDew140Csby
-	Sqro/tJ1OLbP+0eCHxcuBsYQLcChXM3MKErmu8pWHq3e6cRwelDRiiVEbe/qOrEd+lzp5XvGs6cJT
-	NgnQCqOVoPkR4GWJhlzCOIZTar/5gg3Mo6kztithAhgAcbIEeThPm6IiKFzcrr2dMV3hV3dAxC1A1
-	hsCnaj6JDcdfpDOi+9LobAF5PIpRY5gaV6IUqI2yYcLIAAGneQXbB3eXTKTcT01MmaZyhaDdM5Dqw
-	/CFhoLcKrzZMWMYw3tWja4X2i/kSk12PeVu4sM27yu5JQzMgcY99A0mrIx8/KN+hUQTRFuMEmkDL0
-	3h7pPLDQ==;
-Received: from willy by casper.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1w5PoY-0000000G2du-1PBr;
-	Wed, 25 Mar 2026 15:06:34 +0000
-Date: Wed, 25 Mar 2026 15:06:34 +0000
-From: Matthew Wilcox <willy@infradead.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: Diangang Li <diangangli@gmail.com>, tytso@mit.edu,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, changfengnan@bytedance.com,
-	Diangang Li <lidiangang@bytedance.com>
-Subject: Re: [RFC 1/1] ext4: fail fast on repeated metadata reads after IO
- failure
-Message-ID: <acP5-v85CwUQZlMB@casper.infradead.org>
-References: <20260325093349.630193-1-diangangli@gmail.com>
- <20260325093349.630193-2-diangangli@gmail.com>
- <B53E253C-F314-4376-BD9D-58867FC8D3F6@dilger.ca>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="B+2FchYb"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C4ACCC2BCB3;
+	Wed, 25 Mar 2026 16:02:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1774454544;
+	bh=vJ5xGASjMp/TlxhmM7CCfj7w6GupzT6n+xYGWNCGtRs=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=B+2FchYbbkhWOofwvjIv9Q9SCnlXi2yRnZCJyFCjE/4lIXvKo7/3kCKeDOLwQg/34
+	 ZiDtgzoi/papPZGLWU9JlD52PxCDTJ980jG5ZuhDQGf/bgZzvD5effQuMJ6p16xp/F
+	 VBK9/3dNU7Vc1H6G6Fg5kZq9BP22TEMnWs/dKZiaQTlPnPT1yT7hcAB5v1MXGP0q4j
+	 SXTJ1/xW7qVVP9awRDMj5dxDxCTO34dPiQfePoIKCM9W280FQ7CfsnbJDhMI0ONFZ+
+	 za9Vojisydqn+4vOQVw8wIxrFjFDVNSpFv4rltLNOSvB8dTcoLnW0gxg6J2rBsbpe+
+	 KlR96DzdoON3g==
+Date: Wed, 25 Mar 2026 09:02:24 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Andrey Albershteyn <aalbersh@redhat.com>
+Cc: Christoph Hellwig <hch@lst.de>,
+	Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org,
+	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org,
+	ebiggers@kernel.org, linux-ext4@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net, linux-btrfs@vger.kernel.org
+Subject: Re: [PATCH v5 01/25] fsverity: report validation errors through
+ fserror to fsnotify
+Message-ID: <20260325160224.GT6223@frogsfrogsfrogs>
+References: <20260319170231.1455553-1-aalbersh@kernel.org>
+ <20260319170231.1455553-2-aalbersh@kernel.org>
+ <20260325075402.GA952@lst.de>
+ <3lllvimldwcgi7crh3kgwy3a5z2ng2ugcka52ab47o5mwx4dnu@xyzbelhykn7n>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -50,56 +49,30 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <B53E253C-F314-4376-BD9D-58867FC8D3F6@dilger.ca>
+In-Reply-To: <3lllvimldwcgi7crh3kgwy3a5z2ng2ugcka52ab47o5mwx4dnu@xyzbelhykn7n>
 
-On Wed, Mar 25, 2026 at 04:15:42AM -0600, Andreas Dilger wrote:
-> On Mar 25, 2026, at 03:33, Diangang Li <diangangli@gmail.com> wrote:
+On Wed, Mar 25, 2026 at 12:41:23PM +0100, Andrey Albershteyn wrote:
+> On 2026-03-25 08:54:02, Christoph Hellwig wrote:
+> > On Thu, Mar 19, 2026 at 06:01:48PM +0100, Andrey Albershteyn wrote:
+> > > Reported verification errors to fsnotify through recently added fserror
+> > > interface.
 > > 
-> > From: Diangang Li <lidiangang@bytedance.com>
+> > Looks good:
 > > 
-> > ext4 metadata reads serialize on BH_Lock (lock_buffer). If the read fails,
-> > the buffer remains !Uptodate. With concurrent callers, each waiter can
-> > retry the same failing read after the previous holder drops BH_Lock. This
-> > amplifies device retry latency and may trigger hung tasks.
-> > 
-> > In the normal read path the block driver already performs its own retries.
-> > Once the retries keep failing, re-submitting the same metadata read from
-> > the filesystem just amplifies the latency by serializing waiters on
-> > BH_Lock.
-> > 
-> > Remember read failures on buffer_head and fail fast for ext4 metadata reads
-> > once a buffer has already failed to read. Clear the flag on successful
-> > read/write completion so the buffer can recover. ext4 read-ahead uses
-> > ext4_read_bh_nowait(), so it does not set the failure flag and remains
-> > best-effort.
+> > Reviewed-by: Christoph Hellwig <hch@lst.de>
+> Thanks!
 > 
-> Not that the patch is bad, but if the BH_Read_EIO flag is set on a buffer
-> and it prevents other tasks from reading that block again, how would the
-> buffer ever become Uptodate to clear the flag?  There isn't enough state
-> in a 1-bit flag to have any kind of expiry and later retry.
+> > 
+> > Btw, would it make sense to enhance the interface to tell why the
+> > data vs considered lost?  i.e. checksum failure vs
+> 
+> > (part of) device disappeared?
+> 
+> isn't it something filesystem should report even before fsverity
+> gets the page?
 
-I've been thinking about this problem too, albeit from a folio read
-perspective, not from a buffer_head read perspective.  You're quite
-right that one bit isn't enough.  The solution I was considering but
-haven't implemented yet was to tell all the current waiters that
-the IO has failed, but not set any kind of permanent error flag.
+Since the verification code is mostly called from read(ahead)
+completion, doesn't a merkle tree verification failure result in the
+folio remaining !uptodate?  And all that gets compressed to EIO...
 
-I was thinking about starting with this:
-
-+++ b/include/linux/wait_bit.h
-@@ -10,6 +10,7 @@
- struct wait_bit_key {
-        unsigned long           *flags;
-        int                     bit_nr;
-+       int                     error;
-        unsigned long           timeout;
- };
-
-
-and then adding/changing various APIs to allow an error to be passed in
-and noticed by the woken task.
-
-With this change, the thundering herd all wake up, see the error and
-return immediately instead of each submitting their own I/O.  New reads
-will retry the read, but each will only be held up for a maximum of
-their own timeout.
+--D
