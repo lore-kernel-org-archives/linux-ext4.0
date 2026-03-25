@@ -1,64 +1,65 @@
-Received: from mail-pl1-f169.google.com (mail-pl1-f169.google.com [209.85.214.169])
+Received: from mail-pf1-f177.google.com (mail-pf1-f177.google.com [209.85.210.177])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 75F9438F234
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 09:58:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91BDF3A1696
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 10:02:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.177
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774432699; cv=none; b=tWvZfXoaY1Jluur4owBTLj3vQNjivzREuiwsZpzpnBKoICjTB/v4tVYJNWnepyEdqpOrSG/ocJTZeJW8UcpV6jUNis7f9cRRu0N0WOudumUZDiysbklPUfSrXpnSuE/s3IzLWMzhQa9JBzqi5RekRXdppddfWY+LzKqTlmznOsc=
+	t=1774432939; cv=none; b=rsE295nVoU6I9SvGFPz2aajUvXtl3Eg9l7g1iS4hExGxn5iEptj0noxoO9qTYB4t+FJxPsdwkZPK14xvX4678ZYecMn+hmusphJNw0+EB4AyltJevu8wqVecUIQwZ02IcPIMvSdMlhsoGNW5Ka2PyZKkC86pWLHH+zgIDLOcmk4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774432699; c=relaxed/simple;
-	bh=hzZ6/op2g3F67XFCQL6RSZD3FXfQqffbdJUyoXA3zbE=;
+	s=arc-20240116; t=1774432939; c=relaxed/simple;
+	bh=P3rvQK8EHY1Spejs6a+SvPn95uZfEHFfvTlYlTqRmJk=;
 	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
-	 Message-Id:References:To; b=Wpu288V+NK2hRTH0k6LL/WghHtMkovbGXCzGb7CRVATl2CeZRzsH4y0fAXW4Rv+/Dv87YRyqCVcWKF9lFHnDh8pOACyqqunWJlR7KhuhamEKvYQMEcg4MT26dRTeNR6P/2I+aeT6pNJekdY+/jL/EU2XZG46A6bMqcLL5cR0QY4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20230601.gappssmtp.com header.i=@dilger-ca.20230601.gappssmtp.com header.b=Nn7RVfFf; arc=none smtp.client-ip=209.85.214.169
+	 Message-Id:References:To; b=j4BhH/2EaFr8k/9NTLgxSdACv48DaRhoRvGg5u4WITCgPmjY5Qn2sT+4AaVCR4np+/drqMLhLLfJdt4L1HiTUqYPGf/owy5heDwj8tkO1/TFaHzGGIJx98b2d+35gCPiMeRv1hHnM6PnHRyLlcXNw+mSwb5+0IUNANQJD5vJvfE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20230601.gappssmtp.com header.i=@dilger-ca.20230601.gappssmtp.com header.b=Ab+nufVH; arc=none smtp.client-ip=209.85.210.177
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20230601.gappssmtp.com header.i=@dilger-ca.20230601.gappssmtp.com header.b="Nn7RVfFf"
-Received: by mail-pl1-f169.google.com with SMTP id d9443c01a7336-2b0603ee486so15793245ad.0
-        for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 02:58:17 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=dilger-ca.20230601.gappssmtp.com header.i=@dilger-ca.20230601.gappssmtp.com header.b="Ab+nufVH"
+Received: by mail-pf1-f177.google.com with SMTP id d2e1a72fcca58-82a655cfab5so4676468b3a.1
+        for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 03:02:17 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20230601.gappssmtp.com; s=20230601; t=1774432697; x=1775037497; darn=vger.kernel.org;
+        d=dilger-ca.20230601.gappssmtp.com; s=20230601; t=1774432937; x=1775037737; darn=vger.kernel.org;
         h=to:references:message-id:content-transfer-encoding:cc:date
          :in-reply-to:from:subject:mime-version:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=6ySQX1bYaFtB+temqyqED5nWAImH+Dkzo6iJEBKw1nM=;
-        b=Nn7RVfFfpSRwJgV3SExb1F3ofqEYfiYRpqMr3BcR+CLouv4kddzA9TCVJarD8d5MIb
-         ZDSryj9n9hkkh74IARm0qN/pq1dfnZs8mD/wA3DSI8wNh/OovRZWLP3mMasUnhwU+gqP
-         eUutkiSPZvBXDwBKULgHkrEZXa2ndxDo0CBGjFjWgr2ayjQsCa9RwyAo8HT2s1E2I7q2
-         WD+UTdjP2zsRtOD4xfMAh6l6oGsfUm4ogoNloB8EY+rX4oDGsdWcho31CktyzktTs8Ob
-         jvMNrv5e2PGACFJ/0z7rR2RFB1OEyEhJ8Lq5XuriT4ECxJlCUuldZGGIQNINTog1hg7T
-         R4zw==
+        bh=49iXHKmEQM2dhLWAHUR7DZSBP2ZJdulu8X9K0pNpkxk=;
+        b=Ab+nufVHLy+sA55lrtxjk1Nt4BWdJCE9jKwJEgb9PAPwx+KJJXAgOLMEYgcGroSfds
+         pYGz/mlzq9WBghl4xG6DUA9x2DI8W/ytiPY85UvEMOJ650pinB0VXSO/SfsCeC5EAZ8A
+         5KVS4yWz0F6WmYfkVwF9x09ao7eGFGru8Yc/ohGnYP4cgGfifZo05y8fr72TJYiLqALB
+         rtaecIdHfZyijrukXIe+/JBi6rR48jkvQP/Oimml6HrYb0+EiJ4jL4AqwLpiYKnvr9/3
+         fQ8mmUhrtA/IPvY83gS52AbdCrgFHBeMn/fKXo+U9Iw/IW6u13KNARdzdk6AyH+ILvAn
+         COdg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1774432697; x=1775037497;
+        d=1e100.net; s=20251104; t=1774432937; x=1775037737;
         h=to:references:message-id:content-transfer-encoding:cc:date
          :in-reply-to:from:subject:mime-version:x-gm-gg:x-gm-message-state
          :from:to:cc:subject:date:message-id:reply-to;
-        bh=6ySQX1bYaFtB+temqyqED5nWAImH+Dkzo6iJEBKw1nM=;
-        b=lDNTDjMHUsSx21pFBFfAju7K+nOsBF5NyTo2YXTAhHn1EQbLLcu4XcBmGWb31GRLbN
-         rIuaJgDXtJ8q/m27s9/GsWa2tKBEuQ3qmoWkxgdjcjCGsXYwIUAYobZxD+slKlIWaA9S
-         k1CLzAxRg8UiBKW9Jw4MPR+c40plrQD7+KMGIZPjjcN7yU6Bo4PZyX+OpiQqcoShejAI
-         tTvy/DMiWt60dnouF3jcfVCzoud4TMku4u1fG3zxOg/LaNSlqAsv6YoQ/xQGD42OEIPd
-         uSbkjRbiVhhdZv3gpYprj8swSFR0i9ys/sw9Xxs7YQFwrbbpkmxqVs5oY8llQLaXd7lZ
-         5UYQ==
-X-Forwarded-Encrypted: i=1; AJvYcCVCOk5jFqSVaW42imGyHdTCh4VgQ4gulYQFajb/+n94ikg5XXTKYAFrJHffo6BDjp9ltstnq/MwA47b@vger.kernel.org
-X-Gm-Message-State: AOJu0YyGG994nMMWQ3EOUXbtu3pwd9P6lcfKaO9yu5GkJixkhzAh0GT1
-	1AB25skLy2p7CjFnm+tw//GOvwv8ka96yemcRa/YDs1d5Qy1QZLv+xCD9Lc6JFLIDtQ=
-X-Gm-Gg: ATEYQzwyATipZTVx4nI0Lksq/Vps0JIJ6uP/vN84WhhnoYvhdbefViUhr4qpiHdaMg4
-	mWsCIcgy7zUR7WYdkk6zSlq185sjtx7IgSjJQhN1H5V41mYhFlxJmYx9rhnuNuVwyIXDJhRzZ1r
-	b12nRDnXIRUia7e7WxSVaBoubWQ2DZCps4bNYB4gZOJs9jZI4BMT1IkAbwE7iX3cJJfwl5K31pl
-	bqaGuEOm1OcBYd1cDO2vJrp9YURfo7rgDkBCGKkPWMG8DO6D2WNDiHzf4bQjsFg6EUv+EodLA3F
-	lFFMB5DQVu7XzTV1xSnDb6LVf2AyXjdZKSH5KemOZs4HPMfJT9YqK9h2iSY6PKsH4kKmPEry/Fa
-	VrSKHggwrJCfKtTdtV8ZkbL26FH9ggw3pbPTGscO+7yf8Stuopa85vOVHQWKmm5IpOgd5BBPPgM
-	YzOSbT+Woxz4/g6lStuuTpwI5EvxSFziElvP2SpcUyQ9zljS+463WBpM7dUUpEeGklUyxe0jSL3
-	bOjGg==
-X-Received: by 2002:a17:902:e54d:b0:2b0:608d:d8a8 with SMTP id d9443c01a7336-2b0b09a0addmr31739585ad.1.1774432696787;
-        Wed, 25 Mar 2026 02:58:16 -0700 (PDT)
+        bh=49iXHKmEQM2dhLWAHUR7DZSBP2ZJdulu8X9K0pNpkxk=;
+        b=q0+XNnWH2aY06MYx+feVr5/yQod7MvQJzZij8cHuPKUK3swo7o8GPzPgkjoV4Ug+8i
+         Polg/+ALJsDHGiBetVsRiahuc24jcgOQrGGzE/KdXq9rnbRemn4m+huOCSUQcy7QExlW
+         sdmW9dUL9KuwBTQK2+v00mpOKQN2VpVE2FLRYyAKaAnjAOOlG+lBOWyaOJTH6hmGdqSf
+         9RoVX0f8s6PTU5G3pd6X974XNSqGMgiEcT2n8v07ogeS1b4KJ7cjuOhEd6INkZgQOUaJ
+         YWQA744aLAGHlRr1dIoyu/OwyYmxuAJktJNk7uqh5Ebw6TqwpIX5UGNOU9BlUCr/dZvH
+         YAOg==
+X-Forwarded-Encrypted: i=1; AJvYcCWXeQNNX89YCSaP8GUWbEdUw0zsP2zqfIlDZbbe6EbBYicWchGFDb27iJZJ55fENAWlnqZZXLWTGZJt@vger.kernel.org
+X-Gm-Message-State: AOJu0YxRpuLPdQTWVi/2D61uXEnaO844Lhwy5rgWKxON7xIDvuf8Doa1
+	dIfLLdZtonpm/XLPfEb+LJ6jYO2S36UVmfzaQtm6mcQdZP4L7xmsox5B+zhyi/OMwaS+hGERTMJ
+	agxbniV0=
+X-Gm-Gg: ATEYQzy1DymOR+hLHi854F9WdHtldpBqa7xuJ4ZZJD3YZX2JOdPsE97spHQAIrFvCnz
+	owp2+nY8r6jylKGGjxxvnmVjz1Se1c4h2mwy32AWLgvkP6Qi039j9TrjDnLPHU8uo6jgPUap8KT
+	rOQcfnZyYKltG8yRoUTCQF9HJ6eu4JPBqcyKZfSKA5qKKxlOEKZZJ7gYQthHRQNSZ5hhHJatHlJ
+	LLEoE0nP2kIbwNq7B32lP70Y7jpGtj+8JLfBkEpH71kX3euuZ7n38BXFriVcIE3d0JElrzXN0uj
+	MgKbp20mIMEjUrC+FSbeDWfvS/Y6JuTJpl+raCHs9mgyZL85BTJDEiCKonzt/EBlSB/ygxJdG0I
+	bNeWAthAPAp8LL4H/3btCHQa+uYdjudkNq1oPrEJZSzT8KDf2E0vtz6OL6nCwTfUCBQYRj0WB8k
+	9c1rVxp/QCZ/uZLIJQ5Z3KnlTg2uH4aCmDtYzgDcawCq8WEzdIp/njeLl8kskW9uoWsOCIWh3vp
+	rOZlQ==
+X-Received: by 2002:a05:6a00:189d:b0:82a:955:50d3 with SMTP id d2e1a72fcca58-82c6e0d1e4amr3194806b3a.45.1774432936918;
+        Wed, 25 Mar 2026 03:02:16 -0700 (PDT)
 Received: from smtpclient.apple (S01068c763f81ca4b.cg.shawcable.net. [70.77.200.158])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2b08366c74dsm239318035ad.62.2026.03.25.02.58.15
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-82b03aa79c6sm15938724b3a.10.2026.03.25.03.02.15
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 25 Mar 2026 02:58:16 -0700 (PDT)
+        Wed, 25 Mar 2026 03:02:16 -0700 (PDT)
 Content-Type: text/plain;
 	charset=us-ascii
 Precedence: bulk
@@ -67,69 +68,78 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.100.1.1.5\))
-Subject: =?utf-8?Q?Re=3A_=5BRFC=5D_Proposal=3A_provenance=5Ftime_=28ptime?=
- =?utf-8?Q?=29_=E2=80=94_a_settable_timestamp_for_cross-filesystem_migrati?=
- =?utf-8?Q?on?=
+Subject: Re: [PATCH v2 3/3] ext4: derive f_fsid from block device to avoid
+ collisions
 From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <CAOx6djP4hb-Cd1Zk07SNfFfLc8irjNmbVqq+58h1Whz+h1wSFA@mail.gmail.com>
-Date: Wed, 25 Mar 2026 03:58:04 -0600
-Cc: linux-fsdevel@vger.kernel.org,
+In-Reply-To: <20260323152943.GH6223@frogsfrogsfrogs>
+Date: Wed, 25 Mar 2026 04:02:04 -0600
+Cc: Theodore Tso <tytso@mit.edu>,
+ Anand Jain <asj@kernel.org>,
  linux-ext4@vger.kernel.org,
- tytso@mit.edu,
- dsterba@suse.com,
- david@fromorbit.com,
- brauner@kernel.org,
- osandov@osandov.com
+ linux-btrfs@vger.kernel.org,
+ linux-xfs@vger.kernel.org,
+ hch@infradead.org
 Content-Transfer-Encoding: 7bit
-Message-Id: <A9DCEEDC-5F71-465C-A519-244853CF3069@dilger.ca>
-References: <CAOx6djP4hb-Cd1Zk07SNfFfLc8irjNmbVqq+58h1Whz+h1wSFA@mail.gmail.com>
-To: Sean Smith <defendthedisabled@gmail.com>
+Message-Id: <5DB914D4-594D-49EE-B69E-6F68E9C103A1@dilger.ca>
+References: <cover.1774092915.git.asj@kernel.org>
+ <33e8eb64c304a4d42b60f608c26497bf9a2e9e19.1774092915.git.asj@kernel.org>
+ <20260323041624.GA11453@mac.lan> <20260323152943.GH6223@frogsfrogsfrogs>
+To: "Darrick J. Wong" <djwong@kernel.org>
 X-Mailer: Apple Mail (2.3864.100.1.1.5)
 
-On Mar 24, 2026, at 22:26, Sean Smith <defendthedisabled@gmail.com> wrote:
+On Mar 23, 2026, at 09:29, Darrick J. Wong <djwong@kernel.org> wrote:
 > 
-> [Email draft produced by AI agent. Reviewed, revised, and submitted by
-> Sean Smith.]
+> On Sun, Mar 22, 2026 at 11:16:24PM -0500, Theodore Tso wrote:
+>> On Sat, Mar 21, 2026 at 07:55:19PM +0800, Anand Jain wrote:
+>>> statfs() currently reports f_fsid derived from the on-disk UUID.
+>>> Cloned block devices share the same UUID, so distinct ext4 instances
+>>> can return identical f_fsid values. This leads to collisions in
+>>> fanotify.
+>>> 
+>>> Encode sb->s_dev into f_fsid instead of using the superblock UUID.
+>>> This provides a per-device identifier and avoids conflicts when
+>>> filesystem is cloned, matching the behavior with xfs.
+>> 
+>> As I observed in [1] this leads to collisions when for removable block
+>> devices which can be used to mount different file systems.
+>> 
+>> [1] https://lore.kernel.org/all/20260322203151.GA98947@mac.lan/
+>> 
+>>> Place this change behind the new mount option "-o nouuid" for ABI
+>>> compatibility.
+>> 
+>> I *really* hate this mount option.  It's not at all obvious what it
+>> means for a system administrator who hasn't had the context of reading
+>> the e-mail discussion on this subject.
 > 
-> Hello,
+> I don't love 'nouuid' either, because it means something completely
+> different in XFS.  'fsid_from_dev' or something would at least be
+> clearer about what it's doing...
 > 
-> I am writing as a user whose work is directly harmed by the absence
-> of a settable file creation timestamp in the Linux kernel. I am not a
-> kernel developer, but I believe this use case may help inform the
-> ongoing design discussion about btime semantics.
+>> As I stated in [1], I think the f_fsid is a terrible interface that
+>> was promulgated by history, and future usage should be strongly
+>> discouraged, and the wise programmer won't use it because it has
+>> significant compatibility issues.
+>> 
+>> As such, my personal preference is that we not try to condition it on
+>> a mount option, which in all likelihood almost no one will use, and
+>> instead just change it so that we hash the file system's UUID and
+>> block device number together and use that for ext4's f_fsid.
+> 
+> ...but why not just set fsid to some approximation of the dev_t like
+> XFS and be done with it?
+> 
+> st->f_fsid = u64_to_fsid(huge_encode_dev(mp->m_ddev_targp->bt_dev))
+> 
+> There are a few other single-bdev filesystems that do this.
 
-Implementing a new timestamp for every filesystem is unlikely to happen
-any time soon.  Even if the implementation was finished tomorrow, it
-would be many years before a large number of users were running those
-kernels, and tools had been modified to process the extra timestamps.
+On the flip side, if the fsid of a filesystem changes because a new disk
+was installed on a server and the old disk gets a new device number or an
+upgraded kernel with different device driver load ordering, that would
+also be a big problem, as it would break NFS file handles over a reboot.
 
-
-A simple solution that would work today would be to write a script for
-Windows that extracted the creation time from NTFS and saved it as an
-xattr on each file like "user.ptime" before they are copied to Linux.
-
-Many tools today handle backup/restore and copying of xattrs already,
-and since the goal of "ptime" is that it stays the same across copies,
-then copying the xattr preserves the correct semantics with low effort.
-
-The xattrs can be written in ASCII ISO8601 format like "date +%Is" does,
-"2026-03-25T03:43:21-06:00", so that it sorts properly and is easily parsed.
-It would be easy to set this via normal command-line tools on Linux, like:
-
-$ setfattr -n user.ptime -v $(date -Is --date=@$(stat -c %W FILE)) FILE
-$ getfattr -d -m user.ptime FILE
-# file: FILE
-user.ptime="2013-10-11T13:46:10-06:00"
-
-to extract the (local) birth time in seconds, convert to ISO8601 format
-and store it in the "user.ptime" xattr where it will stay unchanged.
-
-To expand this further, you might consider submitting patches to Windows
-tools (where file creation time can be set) like 7zip, rclone, etc.) to
-save and restore the "user.ptime" xattr from creation time automatically.
-If a few popular tools start doing this, it is more likely others would
-follow suit.
+The whole point of generating the fsid from the persistent storage is that
+it is persistent across reboots.  It seems like the real issue here is
+cloning filesystem images and not assigning a new UUID to the cloned image.
 
 Cheers, Andreas
-
-
