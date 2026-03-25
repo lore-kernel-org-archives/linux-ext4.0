@@ -1,27 +1,27 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9954B36E487;
-	Wed, 25 Mar 2026 07:33:46 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E4F6D374E76;
+	Wed, 25 Mar 2026 07:33:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774424030; cv=none; b=JwOo1SLi+YyzaqvgQ3dSgtMnCEXnbKWpo+IHYgkfed/+5euWtrsC7ZgKnGd6bFGlJ3lf7PBk2J9afdMCwAe2l8vmaoDz280nu8CnU346xADtugjiSszB4Qlhoveett8w4mUIt94kADh/ViP/Q4p4uCnW1iiZ1X9thksCvinxSow=
+	t=1774424033; cv=none; b=IBXpSMhHXMAbNFcE1kKflketzE68U+iI4GgZxnC8Ba0gzXIT4GRd5iPhLP0yKNOcLs5x6UmiOf2XBxZ/2o8ovvdooyK2c2a9YJ4/uVS3EJH+Udism3aW9M9GTA03URHptzhPInQdyzjJd/H2mSIFxY6HX+cLc0JXo5P/T/DGt8Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774424030; c=relaxed/simple;
-	bh=SaZsXlqQlKMJtJslUW02LI7hk29DIv9bgzjrJByHt2w=;
+	s=arc-20240116; t=1774424033; c=relaxed/simple;
+	bh=wqfNvHslotxbWLqwkMSvQMGcX6E44362PIxu1wGqjTI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=VUMF8hYWwdt3IjJpkYaygwLAOws+8WMb6XdTAOyBiITrBNcKuXleXo+lfxh++oWV4rsqicEOu7tYx5CniHz1QDcbHqq9Vxy/tR0YmKtGWVpkFLiqXqI4BVQAaAdA5lLeOtIFQ0OjGP1+3PbvGSipmw2ThSd5Nl7FdgXqAflsaIQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=AOu5QRLVcQevLjuUI4DuBd50amx1EmZ5Hy2CteGAh7RroEeXNPuq9zobbA/kunuByDdn51UD5k4zj2sxf4UkKtl9J+68SQRG0KGS7Bp7skTffz37KtIoQ4k35SvRM2rH4l/2Th26vE5HRSsHGRqaj+jhOnLK7YPBRRVkimIUdXQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4fgdt51DmbzKHMZJ;
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4fgdt541KdzKHMZf;
 	Wed, 25 Mar 2026 15:33:01 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 82C014058C;
+	by mail.maildlp.com (Postfix) with ESMTP id E107440575;
 	Wed, 25 Mar 2026 15:33:39 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP1 (Coremail) with SMTP id cCh0CgAHC9vFj8NpuR6cCA--.49898S8;
+	by APP1 (Coremail) with SMTP id cCh0CgAHC9vFj8NpuR6cCA--.49898S13;
 	Wed, 25 Mar 2026 15:33:39 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
@@ -38,9 +38,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yizhang089@gmail.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH v2 04/10] ext4: factor out journalled block zeroing range
-Date: Wed, 25 Mar 2026 15:28:43 +0800
-Message-ID: <20260325072850.3997161-5-yi.zhang@huaweicloud.com>
+Subject: [PATCH v2 09/10] ext4: move zero partial block range functions out of active handle
+Date: Wed, 25 Mar 2026 15:28:48 +0800
+Message-ID: <20260325072850.3997161-10-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260325072850.3997161-1-yi.zhang@huaweicloud.com>
 References: <20260325072850.3997161-1-yi.zhang@huaweicloud.com>
@@ -51,11 +51,11 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgAHC9vFj8NpuR6cCA--.49898S8
-X-Coremail-Antispam: 1UD129KBjvJXoWxur18Jr4kCryrtryUJw4Utwb_yoW7JF13pr
-	y3K39rZrW7WF9FgF4Sq3W7Xr1a9a4rGrW8WFWxG3savayYqFn3KF1UK3WSvF45tr43G3W0
-	qF4Yy34j93WDtrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+X-CM-TRANSID:cCh0CgAHC9vFj8NpuR6cCA--.49898S13
+X-Coremail-Antispam: 1UD129KBjvJXoWxuFW3XFykCFyxCw13Xry5Jwb_yoW7Kr4Dp3
+	y5Ja4fGr1kWF909F4IkF47ZF4Yk3WxGr4UGrWxCryFqa4DZw1SkF1aya40vFWUKrWUur4Y
+	vF4jkryUG3WUC3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
 	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
@@ -65,172 +65,185 @@ X-Coremail-Antispam: 1UD129KBjvJXoWxur18Jr4kCryrtryUJw4Utwb_yoW7JF13pr
 	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
 	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
 	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
-	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI
-	42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
-	CI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnI
-	WIevJa73UjIFyTuYvjfUriihUUUUU
+	AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
+	4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
+	daVFxhVjvjDU0xZFpf9x0JUWMKtUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Refactor __ext4_block_zero_page_range() by separating the block zeroing
-operations for ordered data mode and journal data mode into two distinct
-functions:
+Move ext4_block_zero_eof() and ext4_zero_partial_blocks() calls out of
+the active handle context, making them independent operations. This is
+safe because it still ensures data is updated before metadata for
+data=ordered mode and data=journal mode because we still zero data and
+ordering data before modifying the metadata.
 
-  - ext4_block_do_zero_range(): handles non-journal data mode with
-    ordered data support
-  - ext4_block_journalled_zero_range(): handles journal data mode
-
-Also extract a common helper, ext4_load_tail_bh(), to handle buffer head
-and folio retrieval, along with the associated error handling. This
-prepares for converting the partial block zero range to the iomap
-infrastructure.
+This change is required for iomap infrastructure conversion because the
+iomap buffered I/O path does not use the same journal infrastructure for
+partial block zeroing. The lock ordering of folio lock and starting
+transactions is "folio lock -> transaction start", which is opposite of
+the current path. Therefore, zeroing partial blocks cannot be performed
+under the active handle.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 98 ++++++++++++++++++++++++++++++++++---------------
- 1 file changed, 69 insertions(+), 29 deletions(-)
+ fs/ext4/extents.c | 29 ++++++++++++-----------------
+ fs/ext4/inode.c   | 36 ++++++++++++++++++------------------
+ 2 files changed, 30 insertions(+), 35 deletions(-)
 
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 57a686b600d9..81b9d5b4ad71 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4585,6 +4585,10 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
+ 	credits = ext4_chunk_trans_blocks(inode, len_lblk);
+ 	depth = ext_depth(inode);
+ 
++	/* Zero to the end of the block containing i_size */
++	if (new_size && offset > old_size)
++		ext4_block_zero_eof(inode, old_size, LLONG_MAX);
++
+ retry:
+ 	while (len_lblk) {
+ 		/*
+@@ -4623,10 +4627,8 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
+ 			if (ext4_update_inode_size(inode, epos) & 0x1)
+ 				inode_set_mtime_to_ts(inode,
+ 						      inode_get_ctime(inode));
+-			if (epos > old_size) {
++			if (epos > old_size)
+ 				pagecache_isize_extended(inode, old_size, epos);
+-				ext4_block_zero_eof(inode, old_size, epos);
+-			}
+ 		}
+ 		ret2 = ext4_mark_inode_dirty(handle, inode);
+ 		ext4_update_inode_fsync_trans(handle, inode, 1);
+@@ -4668,7 +4670,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+ 	loff_t align_start, align_end, new_size = 0;
+ 	loff_t end = offset + len;
+ 	unsigned int blocksize = i_blocksize(inode);
+-	int ret, flags, credits;
++	int ret, flags;
+ 
+ 	trace_ext4_zero_range(inode, offset, len, mode);
+ 	WARN_ON_ONCE(!inode_is_locked(inode));
+@@ -4722,25 +4724,18 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+ 	if (IS_ALIGNED(offset | end, blocksize))
+ 		return ret;
+ 
+-	/*
+-	 * In worst case we have to writeout two nonadjacent unwritten
+-	 * blocks and update the inode
+-	 */
+-	credits = (2 * ext4_ext_index_trans_blocks(inode, 2)) + 1;
+-	if (ext4_should_journal_data(inode))
+-		credits += 2;
+-	handle = ext4_journal_start(inode, EXT4_HT_MISC, credits);
++	/* Zero out partial block at the edges of the range */
++	ret = ext4_zero_partial_blocks(inode, offset, len);
++	if (ret)
++		return ret;
++
++	handle = ext4_journal_start(inode, EXT4_HT_MISC, 1);
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+ 		ext4_std_error(inode->i_sb, ret);
+ 		return ret;
+ 	}
+ 
+-	/* Zero out partial block at the edges of the range */
+-	ret = ext4_zero_partial_blocks(inode, offset, len);
+-	if (ret)
+-		goto out_handle;
+-
+ 	if (new_size)
+ 		ext4_update_inode_size(inode, new_size);
+ 	ret = ext4_mark_inode_dirty(handle, inode);
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index a7635bbac1a0..3ccba708895d 100644
+index f68b2afdcfcb..530197a53208 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4002,13 +4002,11 @@ void ext4_set_aops(struct inode *inode)
-  * ext4_punch_hole, etc) which needs to be properly zeroed out. Otherwise a
-  * racing writeback can come later and flush the stale pagecache to disk.
-  */
--static int __ext4_block_zero_page_range(handle_t *handle,
--		struct address_space *mapping, loff_t from, loff_t length,
--		bool *did_zero)
-+static struct buffer_head *ext4_load_tail_bh(struct inode *inode, loff_t from)
- {
- 	unsigned int offset, blocksize, pos;
- 	ext4_lblk_t iblock;
--	struct inode *inode = mapping->host;
-+	struct address_space *mapping = inode->i_mapping;
- 	struct buffer_head *bh;
- 	struct folio *folio;
- 	int err = 0;
-@@ -4017,7 +4015,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
- 				    FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
- 				    mapping_gfp_constraint(mapping, ~__GFP_FS));
- 	if (IS_ERR(folio))
--		return PTR_ERR(folio);
-+		return ERR_CAST(folio);
+@@ -4442,8 +4442,12 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 	if (ret)
+ 		return ret;
  
- 	blocksize = inode->i_sb->s_blocksize;
++	ret = ext4_zero_partial_blocks(inode, offset, length);
++	if (ret)
++		return ret;
++
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+-		credits = ext4_chunk_trans_extent(inode, 2);
++		credits = ext4_chunk_trans_extent(inode, 0);
+ 	else
+ 		credits = ext4_blocks_for_truncate(inode);
+ 	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
+@@ -4453,10 +4457,6 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 		return ret;
+ 	}
  
-@@ -4069,33 +4067,73 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+-	ret = ext4_zero_partial_blocks(inode, offset, length);
+-	if (ret)
+-		goto out_handle;
+-
+ 	/* If there are blocks to remove, do it */
+ 	start_lblk = EXT4_B_TO_LBLK(inode, offset);
+ 	end_lblk = end >> inode->i_blkbits;
+@@ -4588,6 +4588,9 @@ int ext4_truncate(struct inode *inode)
+ 		err = ext4_inode_attach_jinode(inode);
+ 		if (err)
+ 			goto out_trace;
++
++		/* Zero to the end of the block containing i_size */
++		ext4_block_zero_eof(inode, inode->i_size, LLONG_MAX);
+ 	}
+ 
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+@@ -4601,10 +4604,6 @@ int ext4_truncate(struct inode *inode)
+ 		goto out_trace;
+ 	}
+ 
+-	/* Zero to the end of the block containing i_size */
+-	if (inode->i_size & (inode->i_sb->s_blocksize - 1))
+-		ext4_block_zero_eof(inode, inode->i_size, LLONG_MAX);
+-
+ 	/*
+ 	 * We add the inode to the orphan list, so that if this
+ 	 * truncate spans multiple transactions, and we crash, we will
+@@ -5962,15 +5961,6 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 					goto out_mmap_sem;
  			}
- 		}
- 	}
--	if (ext4_should_journal_data(inode)) {
--		BUFFER_TRACE(bh, "get write access");
--		err = ext4_journal_get_write_access(handle, inode->i_sb, bh,
--						    EXT4_JTR_NONE);
--		if (err)
--			goto unlock;
--	}
--	folio_zero_range(folio, offset, length);
-+	return bh;
-+
-+unlock:
-+	folio_unlock(folio);
-+	folio_put(folio);
-+	return err ? ERR_PTR(err) : NULL;
-+}
-+
-+static int ext4_block_do_zero_range(handle_t *handle, struct inode *inode,
-+				    loff_t from, loff_t length, bool *did_zero)
-+{
-+	struct buffer_head *bh;
-+	struct folio *folio;
-+	int err = 0;
-+
-+	bh = ext4_load_tail_bh(inode, from);
-+	if (IS_ERR_OR_NULL(bh))
-+		return PTR_ERR_OR_ZERO(bh);
-+
-+	folio = bh->b_folio;
-+	folio_zero_range(folio, offset_in_folio(folio, from), length);
- 	BUFFER_TRACE(bh, "zeroed end of block");
  
--	if (ext4_should_journal_data(inode)) {
--		err = ext4_dirty_journalled_data(handle, bh);
--	} else {
--		mark_buffer_dirty(bh);
--		/*
--		 * Only the written block requires ordered data to prevent
--		 * exposing stale data.
--		 */
--		if (!buffer_unwritten(bh) && !buffer_delay(bh) &&
--		    ext4_should_order_data(inode))
--			err = ext4_jbd2_inode_add_write(handle, inode, from,
--					length);
--	}
-+	mark_buffer_dirty(bh);
-+	/*
-+	 * Only the written block requires ordered data to prevent exposing
-+	 * stale data.
-+	 */
-+	if (ext4_should_order_data(inode) &&
-+	    !buffer_unwritten(bh) && !buffer_delay(bh))
-+		err = ext4_jbd2_inode_add_write(handle, inode, from, length);
- 	if (!err && did_zero)
- 		*did_zero = true;
+-			handle = ext4_journal_start(inode, EXT4_HT_INODE, 3);
+-			if (IS_ERR(handle)) {
+-				error = PTR_ERR(handle);
+-				goto out_mmap_sem;
+-			}
+-			if (ext4_handle_valid(handle) && shrink) {
+-				error = ext4_orphan_add(handle, inode);
+-				orphan = 1;
+-			}
+ 			/*
+ 			 * Update c/mtime and tail zero the EOF folio on
+ 			 * truncate up. ext4_truncate() handles the shrink case
+@@ -5984,6 +5974,16 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 							    LLONG_MAX);
+ 			}
  
--unlock:
-+	folio_unlock(folio);
-+	folio_put(folio);
-+	return err;
-+}
++			handle = ext4_journal_start(inode, EXT4_HT_INODE, 3);
++			if (IS_ERR(handle)) {
++				error = PTR_ERR(handle);
++				goto out_mmap_sem;
++			}
++			if (ext4_handle_valid(handle) && shrink) {
++				error = ext4_orphan_add(handle, inode);
++				orphan = 1;
++			}
 +
-+static int ext4_block_journalled_zero_range(handle_t *handle,
-+		struct inode *inode, loff_t from, loff_t length, bool *did_zero)
-+{
-+	struct buffer_head *bh;
-+	struct folio *folio;
-+	int err;
-+
-+	bh = ext4_load_tail_bh(inode, from);
-+	if (IS_ERR_OR_NULL(bh))
-+		return PTR_ERR_OR_ZERO(bh);
-+	folio = bh->b_folio;
-+
-+	BUFFER_TRACE(bh, "get write access");
-+	err = ext4_journal_get_write_access(handle, inode->i_sb, bh,
-+					    EXT4_JTR_NONE);
-+	if (err)
-+		goto out;
-+
-+	folio_zero_range(folio, offset_in_folio(folio, from), length);
-+	BUFFER_TRACE(bh, "zeroed end of block");
-+
-+	err = ext4_dirty_journalled_data(handle, bh);
-+	if (err)
-+		goto out;
-+
-+	if (did_zero)
-+		*did_zero = true;
-+out:
- 	folio_unlock(folio);
- 	folio_put(folio);
- 	return err;
-@@ -4126,9 +4164,11 @@ static int ext4_block_zero_page_range(handle_t *handle,
- 	if (IS_DAX(inode)) {
- 		return dax_zero_range(inode, from, length, did_zero,
- 				      &ext4_iomap_ops);
-+	} else if (ext4_should_journal_data(inode)) {
-+		return ext4_block_journalled_zero_range(handle, inode, from,
-+							length, did_zero);
- 	}
--	return __ext4_block_zero_page_range(handle, mapping, from, length,
--					    did_zero);
-+	return ext4_block_do_zero_range(handle, inode, from, length, did_zero);
- }
- 
- /*
+ 			if (shrink)
+ 				ext4_fc_track_range(handle, inode,
+ 					(attr->ia_size > 0 ? attr->ia_size - 1 : 0) >>
 -- 
 2.52.0
 
