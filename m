@@ -1,197 +1,172 @@
-Received: from mail-ed1-f43.google.com (mail-ed1-f43.google.com [209.85.208.43])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 32507327BEC
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 21:07:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.43
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774472855; cv=pass; b=MYbIpbXoa5Vw1W6cjPQwnudPbOWd/w4/5D/+RjgnWXh/Y5sTAaHeo4wAhCEibcU5gXRL8AvWkTPRMkqxwZf1UrGgBk+Xo33WfsUkS6nxLXKsPhRoBtbP2SrI1+ZtGu/eJHP9D5Z9+ErYcZKiL0YNswBA/kgAOxBc6HfSjQxUVv8=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774472855; c=relaxed/simple;
-	bh=JGjs+v5dawp1OwMd2nAirdT8cW4F0CuocDS42X+FnRk=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=tH9A5H10WsXIu76d+CaEj80B0V1B8oIqHGjXtKk0jwPkFE2QfMe8iqDIujRdjlRc3QI3MIXmtUFSNiwQcl4VBt1Cj7CxcbTvljINiCWIO7tf/gYn01RNmiy5oPcajLzxYJLHInrv5ft7l1e1SdVlUE/nWZCowxmSiKDK23T78RY=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=OImVs1zk; arc=pass smtp.client-ip=209.85.208.43
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DDE003563FB;
+	Wed, 25 Mar 2026 22:12:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1774476745; cv=none; b=I59T7zM/NG0N8bsOzgy9bwjd57lEQiAhp5q6fF+rDaL4IbH1p0BQNX3t+0V9SFN1Uu+8tPJAxJx2o3DFYrv0qABjmuXIKGP6IEc9J+e/sbQLWNRtK+nx5dIOnUbXlAyYuCuyOX0qxTIio819KEbOoll3iUjqHce0QMLjjwC2P7k=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1774476745; c=relaxed/simple;
+	bh=rbAlc8Rhl8PMQBnjFbZ/hlsd4nHOhW9/up6gimmrhW8=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=oih82Oy+EPzoCJLO63ZwXQ1c+K/Z4S9tYIR+8RupiXulahGfosocPrgHmU30AFDcwh/l8Y0HZtm/c1s7q1jgaVb01/p494iHYdmty3MUEbzHR4yEY0oGplKQxf7Fh5/xmkUA9914yUcldFO7drV2+0JlrngqCMzlmlW5/1XVOo0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Pg3trNfP; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OImVs1zk"
-Received: by mail-ed1-f43.google.com with SMTP id 4fb4d7f45d1cf-66970715adbso551135a12.3
-        for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 14:07:33 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1774472852; cv=none;
-        d=google.com; s=arc-20240605;
-        b=JykDlY9aTrAHg2Kbkdbo3i/s5EnhWdx9eAzTddbbnIkGMZFUFt2IjIIhCYg2qAbMta
-         QZSTj4AaTkNXi71F58H/UVc8MYwi3eEMABvpizR1XQy/55xcJ2N47eq11iYMP4EP6u2m
-         YMYzhAiwNuola92DjokCUGCLNoX9rzCnGb0JY5KNVlH0aQWX35is7rAcUPW5SNW1khiT
-         S8BQ4VhcsVafVq7TpF4zqjujhPjOQ+nLZrV3Q17RjBec0e70kfw0orwAeMHIvBQAhvIR
-         UZ4msOjMiXalZZEi2Kl32oGqAZbPaKz3nMCVzh+xpXtyzIcbbaw7tERYHZxrB1REtjV8
-         BzYg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=MYHNxKB+bgvczQp1QPu1TdjgicMQ/b36W0rRs4Y4aSg=;
-        fh=PO4n2WBPaalELz73/30y88UgVUim4kmeRddFh02b9dE=;
-        b=C2tG76fXMIUX034JeEVq1T+3OooHipgLE4YkZK5H+JBXuplIQlD1rm2Yz63VC+TcCC
-         wGQqvyyPJOd2W7XR9bfx1qrHb568QeVTYCwPg/c7B/tzePdUK741HuHhbuQkclOKUH1y
-         5MpL2wXRnMm8oHY7wGfvbkgTakOKrhGcN5dJBkv6PRgnPGxYLg7e5SJRoJWlhC7a6WWb
-         x5WPT4NjinCgKSbucBn4obr9LK+0fZfatP9wBGHdxvOxg3MifTHezAdeJWiVNEG26rvF
-         of9zWvK72hI/96+m7O4GLkLjBkiPaxsTCSZYNIcx5mATMBZP9Oo5SY8k7vEO5U5+TSaw
-         tmOw==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1774472852; x=1775077652; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=MYHNxKB+bgvczQp1QPu1TdjgicMQ/b36W0rRs4Y4aSg=;
-        b=OImVs1zkUJrlAkN52OwyfOW0lQFYMTwJf4Aq0gO3e+S/8/zHDfVDOG7htEcM0wVjxS
-         7QBcjyYil/fcM56MZvIPoU8ESgiGBASTGxGb0GYVcHRaJ/Yb7GWo63hKC6fSYxx83Nky
-         IMAZg9n4IICog16zDUZqs6PM9+B6T4ID8SUXWLDs50vlRwQaayYepSt5SzlQ6ruxnhIh
-         MhgnFk4BzJwrYUo7QqlgkVfz/iVGEic1WZ/sVbH8IbyOmaqkZdNoNran00OHGlnmt20L
-         2cNTbKeBQrxptXlhbB+Umo6alPQsb1k7KhAUg89JpUOelK3yO89TSz17qzDSrWcLS4Xn
-         jjaw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1774472852; x=1775077652;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=MYHNxKB+bgvczQp1QPu1TdjgicMQ/b36W0rRs4Y4aSg=;
-        b=Up/jqSow50OhZfbcxqo+Ilzbt2YlPQJjS4YOO0AJvSpdSa7+ObKaZNdOdp9WXNVBVR
-         8EBpLljJdkKXTX0cjCCIlyTjc+26Pkk5NLbzkPGV64Ehdg7NA6d/HHaYDFFYcyVfaYPE
-         GGHq2XrkfqeRIdFWM0X3M5p8uIHaWFlszixv5SVq843u3mvIafiNBB7xO0yR+PrM0lNt
-         fKGb6hGWVD4L2H0P4bMA/sRuIdGAfXVncZTCVg9cBpiOuYNowVZtpsFx1mghii6ESmA0
-         /w1wT1m+hoQfznmfd+q40GM1M9lL2oIfinwim2enEYcDABJZA7GKyzDXOb8HL2XALAM+
-         AGMg==
-X-Forwarded-Encrypted: i=1; AJvYcCWdroCvWEV1HQRzvlmpM8xBFHobOkpKYFv9YiE6cHV3+l5fZM3vm96sRu9u/nyGl57211sjtRnom7kC@vger.kernel.org
-X-Gm-Message-State: AOJu0Yy9678641OjjkZil0BSEalbctbE5u2E69WfAGv8t3lZRQzDKXq9
-	FjkCejqO1ErlbNuLiHDxkosYbxNv802QuNMUxuPVoDXv1WNIkN/mZSDhIYOIGQ89U8pvyV5qe9t
-	kQHlJPtiGsAfdUq8IiFHpcGJ3h0bzZfX13PSl
-X-Gm-Gg: ATEYQzxbXTVlC8xs+mAytj5p+wFEFKz2bzcV2wbW31tNaWkxP0CnYRkwj+fewL1bGz1
-	baRq//Vi9O9+KlDbkSk9WSLndlekyYRvbI0SLj0FXbbrfdOybxDogE9bmYhgePh+gzhr6n3lPiw
-	iTsHanN2Ku0l1StUYnUhHwy18y5Vxn1oYpW1R3zePwKZYILOrUnto6U7Ng9itz2fPhEgHb5nvmH
-	eQxPOOnwc9Z0+QUXFK/o14iDzjqd2zj9joittxFTeQW7btbHN7cVaZ0uF0QgVlym8AZixkhcIHC
-	54DrpRZOyZOtBGGOFpEbNT9GjQrjdqIq8mPgmpo=
-X-Received: by 2002:a05:6402:528d:b0:66a:16ed:46d3 with SMTP id
- 4fb4d7f45d1cf-66a826ea687mr3278329a12.30.1774472852230; Wed, 25 Mar 2026
- 14:07:32 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Pg3trNfP"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 83BC8C4CEF7;
+	Wed, 25 Mar 2026 22:12:25 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1774476745;
+	bh=rbAlc8Rhl8PMQBnjFbZ/hlsd4nHOhW9/up6gimmrhW8=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=Pg3trNfPcDaaiMq/Ilhqs4aWxsEtkNXLtZGtHjFSlqyILNyWc9vkKKddSEUqZNY6U
+	 MYudpCZq+ePEggiMRwfksz8pWLz5NVoDVdSvtS6x0xCl8u/Ybx4/4bSvjis/5k/K5J
+	 Wr7V4znLHk3ou5Dds3kKfRapyEj3a9yAlpj/HUSmxzbVpqWCCIJQNEdCNQ0sjwHXOp
+	 LW0k3uJ/T5jch/5IItdYnV/sIcXsh7GjAJyJ58rYjqYivJojr3ZZRBQ51IyXl4djvJ
+	 LDPp5oDty9bZc9Y1f1lurpaZtBDnNEr81XdQlY0KeXEm6znhVNl75CV2JsnSVXGkAd
+	 LxQ2W8a6cyfxQ==
+Date: Wed, 25 Mar 2026 15:12:25 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Joanne Koong <joannelkoong@gmail.com>
+Cc: miklos@szeredi.hu, bpf@vger.kernel.org, bernd@bsbernd.com,
+	neal@gompa.dev, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 3/5] fuse: implement file attributes mask for statx
+Message-ID: <20260325221225.GG6202@frogsfrogsfrogs>
+References: <177188733084.3935219.10400570136529869673.stgit@frogsfrogsfrogs>
+ <177188733175.3935219.14499232455997407711.stgit@frogsfrogsfrogs>
+ <CAJnrk1ZZV=nf2ZvsFz2gCEdFanK2c=_4X8hH5PyZ4ys-b5T8kQ@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260320090428.24899-2-jack@suse.cz>
-In-Reply-To: <20260320090428.24899-2-jack@suse.cz>
-From: Mateusz Guzik <mjguzik@gmail.com>
-Date: Wed, 25 Mar 2026 22:07:20 +0100
-X-Gm-Features: AQROBzBanJ2emY_czit1kyH4Eyo3hZKOPBi6ESjKXPu7BVQXtoaBV59UZf-eTh8
-Message-ID: <CAGudoHF8zgjcKiHx75EwPmz5eTp_7yk+dh+ju4Ju2xZJqFJYvw@mail.gmail.com>
-Subject: Re: [PATCH] ext4: Fix deadlock on inode reallocation
-To: Jan Kara <jack@suse.cz>
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org, yi1.lai@linux.intel.com, 
-	stable@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <CAJnrk1ZZV=nf2ZvsFz2gCEdFanK2c=_4X8hH5PyZ4ys-b5T8kQ@mail.gmail.com>
 
-can this get any traction?
+On Wed, Mar 25, 2026 at 11:35:47AM -0700, Joanne Koong wrote:
+> On Mon, Feb 23, 2026 at 3:07 PM Darrick J. Wong <djwong@kernel.org> wrote:
+> >
+> > From: Darrick J. Wong <djwong@kernel.org>
+> >
+> > Actually copy the attributes/attributes_mask from userspace.  Ignore
+> > file attributes bits that the VFS sets (or doesn't set) on its own.
+> >
+> > Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
+> > Reviewed-by: Joanne Koong <joannelkoong@gmail.com>
+> > ---
+> >  fs/fuse/fuse_i.h |   37 +++++++++++++++++++++++++++++++++++++
+> >  fs/fuse/dir.c    |    4 ++++
+> >  fs/fuse/inode.c  |    4 ++++
+> >  3 files changed, 45 insertions(+)
+> >
+> >
+> > diff --git a/fs/fuse/fuse_i.h b/fs/fuse/fuse_i.h
+> > index 1d4beca5c7018d..79793db3e9a743 100644
+> > --- a/fs/fuse/fuse_i.h
+> > +++ b/fs/fuse/fuse_i.h
+> > @@ -147,6 +147,10 @@ struct fuse_inode {
+> >         /** Version of last attribute change */
+> >         u64 attr_version;
+> >
+> > +       /** statx file attributes */
+> > +       u64 statx_attributes;
+> > +       u64 statx_attributes_mask;
+> > +
+> >         union {
+> >                 /* read/write io cache (regular file only) */
+> >                 struct {
+> > @@ -1236,6 +1240,39 @@ void fuse_change_attributes_common(struct inode *inode, struct fuse_attr *attr,
+> >                                    u64 attr_valid, u32 cache_mask,
+> >                                    u64 evict_ctr);
+> >
+> > +/*
+> > + * These statx attribute flags are set by the VFS so mask them out of replies
+> > + * from the fuse server for local filesystems.  Nonlocal filesystems are
+> > + * responsible for enforcing and advertising these flags themselves.
+> > + */
+> > +#define FUSE_STATX_LOCAL_VFS_ATTRIBUTES (STATX_ATTR_IMMUTABLE | \
+> > +                                        STATX_ATTR_APPEND)
+> > +
+> > +/*
+> > + * These statx attribute flags are set by the VFS so mask them out of replies
+> > + * from the fuse server.
+> > + */
+> > +#define FUSE_STATX_VFS_ATTRIBUTES (STATX_ATTR_AUTOMOUNT | STATX_ATTR_DAX | \
+> > +                                  STATX_ATTR_MOUNT_ROOT)
+> > +
+> > +static inline u64 fuse_statx_attributes_mask(const struct inode *inode,
+> > +                                            const struct fuse_statx *sx)
+> > +{
+> > +       if (fuse_inode_is_exclusive(inode))
+> > +               return sx->attributes_mask & ~(FUSE_STATX_VFS_ATTRIBUTES |
+> > +                                              FUSE_STATX_LOCAL_VFS_ATTRIBUTES);
+> > +       return sx->attributes_mask & ~FUSE_STATX_VFS_ATTRIBUTES;
+> > +}
+> > +
+> > +static inline u64 fuse_statx_attributes(const struct inode *inode,
+> > +                                       const struct fuse_statx *sx)
+> > +{
+> > +       if (fuse_inode_is_exclusive(inode))
+> > +               return sx->attributes & ~(FUSE_STATX_VFS_ATTRIBUTES |
+> > +                                         FUSE_STATX_LOCAL_VFS_ATTRIBUTES);
+> > +       return sx->attributes & ~FUSE_STATX_VFS_ATTRIBUTES;
+> > +}
+> > +
+> >  u32 fuse_get_cache_mask(struct inode *inode);
+> >
+> >  /**
+> > diff --git a/fs/fuse/dir.c b/fs/fuse/dir.c
+> > index 7ac6b232ef1232..10fa47e969292f 100644
+> > --- a/fs/fuse/dir.c
+> > +++ b/fs/fuse/dir.c
+> > @@ -1464,6 +1464,8 @@ static int fuse_do_statx(struct mnt_idmap *idmap, struct inode *inode,
+> >                 stat->result_mask = sx->mask & (STATX_BASIC_STATS | STATX_BTIME);
+> >                 stat->btime.tv_sec = sx->btime.tv_sec;
+> >                 stat->btime.tv_nsec = min_t(u32, sx->btime.tv_nsec, NSEC_PER_SEC - 1);
+> > +               stat->attributes |= fuse_statx_attributes(inode, sx);
+> > +               stat->attributes_mask |= fuse_statx_attributes_mask(inode, sx);
+> >                 fuse_fillattr(idmap, inode, &attr, stat);
+> >                 stat->result_mask |= STATX_TYPE;
+> >         }
+> > @@ -1568,6 +1570,8 @@ static int fuse_update_get_attr(struct mnt_idmap *idmap, struct inode *inode,
+> >                         stat->btime = fi->i_btime;
+> >                         stat->result_mask |= STATX_BTIME;
+> >                 }
+> > +               stat->attributes = fi->statx_attributes;
+> > +               stat->attributes_mask = fi->statx_attributes_mask;
+> 
+> Do these need to be |= so we don't overwrite any vfs attributes stored
+> in stat already?
 
-master as-is contains a change which uncovered the ext4 problem.
-either the deadlock needs to be fixed in time for the release or the
-other change needs to get temporarily reverted.
+Ackpth yes.  Good catch!
 
-interested parties can find proposed revert here:
-https://lore.kernel.org/linux-fsdevel/20260316103306.1258289-1-mjguzik@gmai=
-l.com/
+--D
 
-On Fri, Mar 20, 2026 at 10:04=E2=80=AFAM Jan Kara <jack@suse.cz> wrote:
->
-> Currently there is a race in ext4 when reallocating freed inode
-> resulting in a deadlock:
->
-> Task1                                   Task2
-> ext4_evict_inode()
->   handle =3D ext4_journal_start();
->   ...
->   if (IS_SYNC(inode))
->     handle->h_sync =3D 1;
->   ext4_free_inode()
->                                         ext4_new_inode()
->                                           handle =3D ext4_journal_start()
->                                           finds the bit in inode bitmap
->                                             already clear
->                                           insert_inode_locked()
->                                             waits for inode to be
->                                               removed from the hash.
->   ext4_journal_stop(handle)
->     jbd2_journal_stop(handle)
->       jbd2_log_wait_commit(journal, tid);
->         - deadlocks waiting for transaction handle Task2 holds
->
-> Fix the problem by removing inode from the hash already in
-> ext4_clear_inode() by which time all IO for the inode is done so reuse
-> is already fine but we are still before possibly blocking on transaction
-> commit.
->
-> Reported-by: "Lai, Yi" <yi1.lai@linux.intel.com>
-> Link: https://lore.kernel.org/all/abNvb2PcrKj1FBeC@ly-workstation
-> Fixes: 88ec797c4680 ("fs: make insert_inode_locked() wait for inode destr=
-uction")
-> CC: stable@vger.kernel.org
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/super.c | 21 +++++++++++++++++++++
->  1 file changed, 21 insertions(+)
->
-> Ted, this is a regression recently introduced by VFS changes in
-> insert_inode_locked() but I think it's best fixed in ext4. If you agree, =
-it
-> would be nice to merge this so that it makes it to 7.0 release. Thanks!
->
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 43f680c750ae..b8122d24c083 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1527,6 +1527,27 @@ void ext4_clear_inode(struct inode *inode)
->         invalidate_inode_buffers(inode);
->         clear_inode(inode);
->         ext4_discard_preallocations(inode);
-> +       /*
-> +        * We must remove the inode from the hash before ext4_free_inode(=
-)
-> +        * clears the bit in inode bitmap as otherwise another process re=
-using
-> +        * the inode will block in insert_inode_hash() waiting for inode
-> +        * eviction to complete while holding transaction handle open, bu=
-t
-> +        * ext4_evict_inode() still running for that inode could block wa=
-iting
-> +        * for transaction commit if the inode is marked as IS_SYNC =3D> =
-deadlock.
-> +        *
-> +        * Removing the inode from the hash here is safe. There are two c=
-ases
-> +        * to consider:
-> +        * 1) The inode still has references to it (i_nlink > 0). In that=
- case
-> +        * we are keeping the inode and once we remove the inode from the=
- hash,
-> +        * iget() can create the new inode structure for the same inode n=
-umber
-> +        * and we are fine with that as all IO on behalf of the inode is
-> +        * finished.
-> +        * 2) We are deleting the inode (i_nlink =3D=3D 0). In that case =
-inode
-> +        * number cannot be reused until ext4_free_inode() clears the bit=
- in
-> +        * the inode bitmap, at which point all IO is done and reuse is f=
-ine
-> +        * again.
-> +        */
-> +       remove_inode_hash(inode);
->         ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
->         dquot_drop(inode);
->         if (EXT4_I(inode)->jinode) {
-> --
-> 2.51.0
->
+> Thanks,
+> Joanne
+> 
+> >         }
+> >
+> >         return err;
+> > diff --git a/fs/fuse/inode.c b/fs/fuse/inode.c
+> > index 58c3351b467221..ff8b94cb02e63c 100644
+> > --- a/fs/fuse/inode.c
+> > +++ b/fs/fuse/inode.c
+> > @@ -286,6 +286,10 @@ void fuse_change_attributes_common(struct inode *inode, struct fuse_attr *attr,
+> >                         fi->i_btime.tv_sec = sx->btime.tv_sec;
+> >                         fi->i_btime.tv_nsec = sx->btime.tv_nsec;
+> >                 }
+> > +
+> > +               fi->statx_attributes = fuse_statx_attributes(inode, sx);
+> > +               fi->statx_attributes_mask = fuse_statx_attributes_mask(inode,
+> > +                                                                      sx);
+> >         }
+> >
+> >         if (attr->blksize)
+> >
+> 
