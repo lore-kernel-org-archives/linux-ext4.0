@@ -1,65 +1,65 @@
-Received: from mail-pf1-f177.google.com (mail-pf1-f177.google.com [209.85.210.177])
+Received: from mail-pf1-f179.google.com (mail-pf1-f179.google.com [209.85.210.179])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91BDF3A1696
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 10:02:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.177
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E0D023AEF50
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 10:15:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.179
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774432939; cv=none; b=rsE295nVoU6I9SvGFPz2aajUvXtl3Eg9l7g1iS4hExGxn5iEptj0noxoO9qTYB4t+FJxPsdwkZPK14xvX4678ZYecMn+hmusphJNw0+EB4AyltJevu8wqVecUIQwZ02IcPIMvSdMlhsoGNW5Ka2PyZKkC86pWLHH+zgIDLOcmk4=
+	t=1774433756; cv=none; b=gShJW6gTLY7OfBBoDBTs53MsWV0Ve6qyR2GdViN7uDXlspFXqkMGvnicZEmk/M2OZa9dt5A9kH3pHV7H/acTlH2+40dD92jAoABmNSx4zH91vQdOM/oFOImV4/bQjS6EUuD88+yTWsuOK8z4RFEoLIJlXdhg8oaU9uz4GTDT0DU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774432939; c=relaxed/simple;
-	bh=P3rvQK8EHY1Spejs6a+SvPn95uZfEHFfvTlYlTqRmJk=;
+	s=arc-20240116; t=1774433756; c=relaxed/simple;
+	bh=dTbxFPey7xSpEexAbeZMQA6ed4XE8QfZT3WtybmGSMY=;
 	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
-	 Message-Id:References:To; b=j4BhH/2EaFr8k/9NTLgxSdACv48DaRhoRvGg5u4WITCgPmjY5Qn2sT+4AaVCR4np+/drqMLhLLfJdt4L1HiTUqYPGf/owy5heDwj8tkO1/TFaHzGGIJx98b2d+35gCPiMeRv1hHnM6PnHRyLlcXNw+mSwb5+0IUNANQJD5vJvfE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20230601.gappssmtp.com header.i=@dilger-ca.20230601.gappssmtp.com header.b=Ab+nufVH; arc=none smtp.client-ip=209.85.210.177
+	 Message-Id:References:To; b=mw5TBMrL842TMz7aOgom/X6Knm8Vd2gihlW2YmqTopVKWPVwg4r3zJgywSWWtnMv7AqGiNkdIvgSUpe5Fp6IuzA3/w0j8y/1kQ9WWtVXtpUxn9oW2V5biFN/KAcxtQIyy4fVgA8/aYTZWlkW7WegG1Kyet/ojeM7lKa5njZsRrs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20230601.gappssmtp.com header.i=@dilger-ca.20230601.gappssmtp.com header.b=KZfZlDPw; arc=none smtp.client-ip=209.85.210.179
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20230601.gappssmtp.com header.i=@dilger-ca.20230601.gappssmtp.com header.b="Ab+nufVH"
-Received: by mail-pf1-f177.google.com with SMTP id d2e1a72fcca58-82a655cfab5so4676468b3a.1
-        for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 03:02:17 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=dilger-ca.20230601.gappssmtp.com header.i=@dilger-ca.20230601.gappssmtp.com header.b="KZfZlDPw"
+Received: by mail-pf1-f179.google.com with SMTP id d2e1a72fcca58-82c2239140aso1835609b3a.0
+        for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 03:15:54 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20230601.gappssmtp.com; s=20230601; t=1774432937; x=1775037737; darn=vger.kernel.org;
+        d=dilger-ca.20230601.gappssmtp.com; s=20230601; t=1774433754; x=1775038554; darn=vger.kernel.org;
         h=to:references:message-id:content-transfer-encoding:cc:date
          :in-reply-to:from:subject:mime-version:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=49iXHKmEQM2dhLWAHUR7DZSBP2ZJdulu8X9K0pNpkxk=;
-        b=Ab+nufVHLy+sA55lrtxjk1Nt4BWdJCE9jKwJEgb9PAPwx+KJJXAgOLMEYgcGroSfds
-         pYGz/mlzq9WBghl4xG6DUA9x2DI8W/ytiPY85UvEMOJ650pinB0VXSO/SfsCeC5EAZ8A
-         5KVS4yWz0F6WmYfkVwF9x09ao7eGFGru8Yc/ohGnYP4cgGfifZo05y8fr72TJYiLqALB
-         rtaecIdHfZyijrukXIe+/JBi6rR48jkvQP/Oimml6HrYb0+EiJ4jL4AqwLpiYKnvr9/3
-         fQ8mmUhrtA/IPvY83gS52AbdCrgFHBeMn/fKXo+U9Iw/IW6u13KNARdzdk6AyH+ILvAn
-         COdg==
+        bh=mAbulfAiOEAPrh906GbXLOqJOMJAMSMFlPNota4Sbhc=;
+        b=KZfZlDPw0qnVjy/dNdph6mtgtzPAy8k4qrpyhZC4GsDW6UNt6FUjA1O207xSlcZyNU
+         2e0TSTM48MDmZ9s53fRvrHXIDnuQHs/mjdegBE1q1CbA6cxfH6KstCVKlLrjMDsdoieC
+         XcXcraLctLcPyP9hVOLoXKztjng9dUS5cpa6jVqdRyKyfdWvyI0u41BgVluYvv7FE3kU
+         Cafyqb+R/EcmP4eDjhC5FtoifCUexYsbHTwtZmQszYgYYefN2epoMQEDmYPdj9TfCHFr
+         0eq5fvdOQM8GNF181Ep1Ttun0pP4O/GnYTJ+EPWf+Is5w6LMggZOnzDx0RvFHlnzj7Ae
+         lRpg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1774432937; x=1775037737;
+        d=1e100.net; s=20251104; t=1774433754; x=1775038554;
         h=to:references:message-id:content-transfer-encoding:cc:date
          :in-reply-to:from:subject:mime-version:x-gm-gg:x-gm-message-state
          :from:to:cc:subject:date:message-id:reply-to;
-        bh=49iXHKmEQM2dhLWAHUR7DZSBP2ZJdulu8X9K0pNpkxk=;
-        b=q0+XNnWH2aY06MYx+feVr5/yQod7MvQJzZij8cHuPKUK3swo7o8GPzPgkjoV4Ug+8i
-         Polg/+ALJsDHGiBetVsRiahuc24jcgOQrGGzE/KdXq9rnbRemn4m+huOCSUQcy7QExlW
-         sdmW9dUL9KuwBTQK2+v00mpOKQN2VpVE2FLRYyAKaAnjAOOlG+lBOWyaOJTH6hmGdqSf
-         9RoVX0f8s6PTU5G3pd6X974XNSqGMgiEcT2n8v07ogeS1b4KJ7cjuOhEd6INkZgQOUaJ
-         YWQA744aLAGHlRr1dIoyu/OwyYmxuAJktJNk7uqh5Ebw6TqwpIX5UGNOU9BlUCr/dZvH
-         YAOg==
-X-Forwarded-Encrypted: i=1; AJvYcCWXeQNNX89YCSaP8GUWbEdUw0zsP2zqfIlDZbbe6EbBYicWchGFDb27iJZJ55fENAWlnqZZXLWTGZJt@vger.kernel.org
-X-Gm-Message-State: AOJu0YxRpuLPdQTWVi/2D61uXEnaO844Lhwy5rgWKxON7xIDvuf8Doa1
-	dIfLLdZtonpm/XLPfEb+LJ6jYO2S36UVmfzaQtm6mcQdZP4L7xmsox5B+zhyi/OMwaS+hGERTMJ
-	agxbniV0=
-X-Gm-Gg: ATEYQzy1DymOR+hLHi854F9WdHtldpBqa7xuJ4ZZJD3YZX2JOdPsE97spHQAIrFvCnz
-	owp2+nY8r6jylKGGjxxvnmVjz1Se1c4h2mwy32AWLgvkP6Qi039j9TrjDnLPHU8uo6jgPUap8KT
-	rOQcfnZyYKltG8yRoUTCQF9HJ6eu4JPBqcyKZfSKA5qKKxlOEKZZJ7gYQthHRQNSZ5hhHJatHlJ
-	LLEoE0nP2kIbwNq7B32lP70Y7jpGtj+8JLfBkEpH71kX3euuZ7n38BXFriVcIE3d0JElrzXN0uj
-	MgKbp20mIMEjUrC+FSbeDWfvS/Y6JuTJpl+raCHs9mgyZL85BTJDEiCKonzt/EBlSB/ygxJdG0I
-	bNeWAthAPAp8LL4H/3btCHQa+uYdjudkNq1oPrEJZSzT8KDf2E0vtz6OL6nCwTfUCBQYRj0WB8k
-	9c1rVxp/QCZ/uZLIJQ5Z3KnlTg2uH4aCmDtYzgDcawCq8WEzdIp/njeLl8kskW9uoWsOCIWh3vp
-	rOZlQ==
-X-Received: by 2002:a05:6a00:189d:b0:82a:955:50d3 with SMTP id d2e1a72fcca58-82c6e0d1e4amr3194806b3a.45.1774432936918;
-        Wed, 25 Mar 2026 03:02:16 -0700 (PDT)
+        bh=mAbulfAiOEAPrh906GbXLOqJOMJAMSMFlPNota4Sbhc=;
+        b=KYEWfClAErd5qS/18x5XgOKqdxrH6RRcXZIk57YK+sYLDkznAPQUGNAFkorB1wX/OR
+         h+7+Z3RICueWKLNnOI6Bg2EEvhb3sUwIbVqkiOfuZV/LxhWG7cO8fbXMB+xeoXcjEasl
+         5dPFppUdTxLRif/Iqic4/p2G/PcmFehX849lYRl852GB9Z8inhpKGGCdgpZaYwb+DZ4A
+         Vcdjep7Dxu/fR6ZNrMrLJ29xKRnk+Z0lU0nlONx8cMWHBYBpBHXngbOjprAf/MRDXNy0
+         HoawvTS0iyrsd59anJMj9nt4r616Yo8R31/nb7HPzm4AU7DyOXLYESFdb9rBfsjGQZBR
+         2g6A==
+X-Forwarded-Encrypted: i=1; AJvYcCUSsUh17Pxf0T3JKho0yMuKZGMwEZ9RPne3txdrpg9eg9xcCao1rV0U+7LiAS0P+677Y35b+xL8Gvbi@vger.kernel.org
+X-Gm-Message-State: AOJu0YyhSESL+i7kkr3zP+YEsyjATmPvSEX7KdO8GNqWokwhQgftMRJg
+	P4UZ3+vfK5qEDoLmDPrc0fBfq7En8m3RLvmcSXbcI27aVoRk9Dy3Sa53FEGaPOQg92lBM1Qh/pS
+	JOQa6t3c=
+X-Gm-Gg: ATEYQzwjvRQfP1nmRmJJO1icNmDUHpb82K/BLSNwujQQXZMINwFg7Ik/IC63TOwfmUI
+	xmJmSH8R+gUNzuDsoS7NHWW+P9LrQD6VdsnMr8NQB/CcFzUneIyw2UtdSbS19GPtrh4/DXZNO4N
+	JoQ6VYvsztBnNCvb+Lw1XcREDbvp/aisB2SMlIroxEqJnjZGs4XjlzJLSqKm+OUf1VdvIqLQn6+
+	MMcGLKUxMPlllkYN3uQWVIDzbCiGPCh3EQG4QaC4/QwpbP3KxqsYFeNw97dBdS46FQxCdVYIxkZ
+	zZUYJ3Edh/1C1GOBCNmDvQq29lCfCxUTaDXovOZXDEb0hPoYUGGzXwTcAFBQoFCnAVSuxAsfFnV
+	Ggkpo08X1iZcFF5sRiPUkFNo6RD7C2pO04LTwugePeGnfqI7PjCqjfMOnTqXwOmjgzIhs1eZ2Av
+	ieoQMROdn8X5+PExbVL6VoKcu8jja0m7odA3Xe9vJdaW/cZalrxtHXMgHT8YSO/ZxHJG1BhnEb0
+	JDQ4A==
+X-Received: by 2002:a05:6a00:4398:b0:829:800b:9fe with SMTP id d2e1a72fcca58-82c6dfb397emr2776396b3a.39.1774433754335;
+        Wed, 25 Mar 2026 03:15:54 -0700 (PDT)
 Received: from smtpclient.apple (S01068c763f81ca4b.cg.shawcable.net. [70.77.200.158])
-        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-82b03aa79c6sm15938724b3a.10.2026.03.25.03.02.15
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-82b03bc1e59sm15996602b3a.13.2026.03.25.03.15.53
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 25 Mar 2026 03:02:16 -0700 (PDT)
+        Wed, 25 Mar 2026 03:15:53 -0700 (PDT)
 Content-Type: text/plain;
 	charset=us-ascii
 Precedence: bulk
@@ -68,78 +68,48 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.100.1.1.5\))
-Subject: Re: [PATCH v2 3/3] ext4: derive f_fsid from block device to avoid
- collisions
+Subject: Re: [RFC 1/1] ext4: fail fast on repeated metadata reads after IO
+ failure
 From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <20260323152943.GH6223@frogsfrogsfrogs>
-Date: Wed, 25 Mar 2026 04:02:04 -0600
-Cc: Theodore Tso <tytso@mit.edu>,
- Anand Jain <asj@kernel.org>,
+In-Reply-To: <20260325093349.630193-2-diangangli@gmail.com>
+Date: Wed, 25 Mar 2026 04:15:42 -0600
+Cc: tytso@mit.edu,
  linux-ext4@vger.kernel.org,
- linux-btrfs@vger.kernel.org,
- linux-xfs@vger.kernel.org,
- hch@infradead.org
+ linux-fsdevel@vger.kernel.org,
+ linux-kernel@vger.kernel.org,
+ changfengnan@bytedance.com,
+ Diangang Li <lidiangang@bytedance.com>
 Content-Transfer-Encoding: 7bit
-Message-Id: <5DB914D4-594D-49EE-B69E-6F68E9C103A1@dilger.ca>
-References: <cover.1774092915.git.asj@kernel.org>
- <33e8eb64c304a4d42b60f608c26497bf9a2e9e19.1774092915.git.asj@kernel.org>
- <20260323041624.GA11453@mac.lan> <20260323152943.GH6223@frogsfrogsfrogs>
-To: "Darrick J. Wong" <djwong@kernel.org>
+Message-Id: <B53E253C-F314-4376-BD9D-58867FC8D3F6@dilger.ca>
+References: <20260325093349.630193-1-diangangli@gmail.com>
+ <20260325093349.630193-2-diangangli@gmail.com>
+To: Diangang Li <diangangli@gmail.com>
 X-Mailer: Apple Mail (2.3864.100.1.1.5)
 
-On Mar 23, 2026, at 09:29, Darrick J. Wong <djwong@kernel.org> wrote:
+On Mar 25, 2026, at 03:33, Diangang Li <diangangli@gmail.com> wrote:
 > 
-> On Sun, Mar 22, 2026 at 11:16:24PM -0500, Theodore Tso wrote:
->> On Sat, Mar 21, 2026 at 07:55:19PM +0800, Anand Jain wrote:
->>> statfs() currently reports f_fsid derived from the on-disk UUID.
->>> Cloned block devices share the same UUID, so distinct ext4 instances
->>> can return identical f_fsid values. This leads to collisions in
->>> fanotify.
->>> 
->>> Encode sb->s_dev into f_fsid instead of using the superblock UUID.
->>> This provides a per-device identifier and avoids conflicts when
->>> filesystem is cloned, matching the behavior with xfs.
->> 
->> As I observed in [1] this leads to collisions when for removable block
->> devices which can be used to mount different file systems.
->> 
->> [1] https://lore.kernel.org/all/20260322203151.GA98947@mac.lan/
->> 
->>> Place this change behind the new mount option "-o nouuid" for ABI
->>> compatibility.
->> 
->> I *really* hate this mount option.  It's not at all obvious what it
->> means for a system administrator who hasn't had the context of reading
->> the e-mail discussion on this subject.
+> From: Diangang Li <lidiangang@bytedance.com>
 > 
-> I don't love 'nouuid' either, because it means something completely
-> different in XFS.  'fsid_from_dev' or something would at least be
-> clearer about what it's doing...
+> ext4 metadata reads serialize on BH_Lock (lock_buffer). If the read fails,
+> the buffer remains !Uptodate. With concurrent callers, each waiter can
+> retry the same failing read after the previous holder drops BH_Lock. This
+> amplifies device retry latency and may trigger hung tasks.
 > 
->> As I stated in [1], I think the f_fsid is a terrible interface that
->> was promulgated by history, and future usage should be strongly
->> discouraged, and the wise programmer won't use it because it has
->> significant compatibility issues.
->> 
->> As such, my personal preference is that we not try to condition it on
->> a mount option, which in all likelihood almost no one will use, and
->> instead just change it so that we hash the file system's UUID and
->> block device number together and use that for ext4's f_fsid.
+> In the normal read path the block driver already performs its own retries.
+> Once the retries keep failing, re-submitting the same metadata read from
+> the filesystem just amplifies the latency by serializing waiters on
+> BH_Lock.
 > 
-> ...but why not just set fsid to some approximation of the dev_t like
-> XFS and be done with it?
-> 
-> st->f_fsid = u64_to_fsid(huge_encode_dev(mp->m_ddev_targp->bt_dev))
-> 
-> There are a few other single-bdev filesystems that do this.
+> Remember read failures on buffer_head and fail fast for ext4 metadata reads
+> once a buffer has already failed to read. Clear the flag on successful
+> read/write completion so the buffer can recover. ext4 read-ahead uses
+> ext4_read_bh_nowait(), so it does not set the failure flag and remains
+> best-effort.
 
-On the flip side, if the fsid of a filesystem changes because a new disk
-was installed on a server and the old disk gets a new device number or an
-upgraded kernel with different device driver load ordering, that would
-also be a big problem, as it would break NFS file handles over a reboot.
-
-The whole point of generating the fsid from the persistent storage is that
-it is persistent across reboots.  It seems like the real issue here is
-cloning filesystem images and not assigning a new UUID to the cloned image.
+Not that the patch is bad, but if the BH_Read_EIO flag is set on a buffer
+and it prevents other tasks from reading that block again, how would the
+buffer ever become Uptodate to clear the flag?  There isn't enough state
+in a 1-bit flag to have any kind of expiry and later retry.
 
 Cheers, Andreas
+
